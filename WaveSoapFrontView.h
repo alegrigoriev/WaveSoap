@@ -11,6 +11,7 @@
 
 #include "ScaledScrollView.h"
 #include "WaveSoapFrontDoc.h"
+#include "DataSection.h"
 
 class CWaveSoapFrontView : public CScaledScrollView
 {
@@ -66,7 +67,6 @@ protected:
 	virtual void AdjustNewScale(double OldScaleX, double OldScaleY,
 								double & NewScaleX, double & NewScaleY);
 	virtual BOOL MasterScrollBy(double dx, double dy, BOOL bDoScroll = TRUE);
-	void GetWaveSamples(ULONG Position, size_t NumOfSamples);
 	void DrawHorizontalWithSelection(CDC * pDC,
 									int left, int right, int Y,
 									CPen * NormalPen, CPen * SelectedPen,
@@ -87,11 +87,15 @@ protected:
 	// additional vertical offset, to see a region of magnified wave
 	double m_WaveOffsetY;
 
+#if 0
+	void GetWaveSamples(ULONG Position, size_t NumOfSamples);
 	DWORD m_FirstSampleInBuffer;    // in 16-bit numbers
 	__int16 * m_pWaveBuffer;
 	size_t m_WaveBufferSize;    // in 16-bit samples
 	size_t m_WaveDataSizeInBuffer;  // in 16-bit samples
-
+#else
+	CDataSection<__int16, CWaveSoapFrontView> m_WaveBuffer;
+#endif
 	virtual void DrawPlaybackCursor(CDC * pDC, long Sample, int Channel);
 	virtual void ShowPlaybackCursor(CDC * pDC = NULL);
 	virtual void HidePlaybackCursor(CDC * pDC = NULL);

@@ -119,6 +119,7 @@
 				AdditionalLibraryDirectories="&quot;C:\Program Files\WMSDK\WMFSDK\lib&quot;"
 				IgnoreDefaultLibraryNames="msvcrt.lib"
 				DelayLoadDLLs="wmvcore.dll"
+				GenerateDebugInformation="TRUE"
 				GenerateMapFile="TRUE"
 				MapFileName=".\Release/WaveSoap.map"
 				SubSystem="2"/>
@@ -344,6 +345,9 @@
 			</File>
 			<File
 				RelativePath=".\CustomSampleRateDlg.h">
+			</File>
+			<File
+				RelativePath="DataSection.h">
 			</File>
 			<File
 				RelativePath=".\DirectFile.h">

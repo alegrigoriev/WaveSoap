@@ -3,6 +3,7 @@ Known problems and tasks:
 If main window is minimized, save its state before minimization
 Enter WMA file attributes (title, author, etc)
 Enter MP3 file attributes
+Make WSPK file hidden (optional)
 Put "Save As" files to file MRU
 Support CD grabbing under Win9x
 If CD recording not supported, SET SPEED WriteSpeed set to zero
@@ -60,6 +61,7 @@ Find which alignment better for edit box labels: left or right
 
 Problems:
 
+"Save as" from LLADPCM: PCM16 is not shown when "Compatible only" selected
 During playback, outline is invalidated. (??)
 WinXP doesn't have CDRAL
 Multisession disk shows only begin of tracks. Read the whole structure.
