@@ -486,8 +486,7 @@ WAVEFORMATEX * CWaveSoapFileSaveDialog::GetWaveFormat()
 	case SoundFileMp3:
 	case SoundFileWma:
 	case SoundFileWav:
-		if (m_SelectedFormat >= m_Acm.m_Formats.size()
-			|| m_SelectedFormat < 0)
+		if (m_SelectedFormat >= m_Acm.m_Formats.size())
 		{
 			return NULL;
 		}
@@ -519,7 +518,7 @@ void CWaveSoapFileSaveDialog::FillFormatTagCombo(WaveFormatTagEx const ListOfTag
 	m_FormatTagCombo.ResetContent();
 
 	int sel = -1;
-	for (int i = 0; i < m_Acm.m_FormatTags.size(); i++)
+	for (unsigned i = 0; i < m_Acm.m_FormatTags.size(); i++)
 	{
 		if (m_Acm.m_FormatTags[i].Tag == m_SelectedTag)
 		{
@@ -537,7 +536,7 @@ void CWaveSoapFileSaveDialog::FillFormatTagCombo(WaveFormatTagEx const ListOfTag
 	m_FormatTagCombo.SetCurSel(sel);
 }
 
-int CWaveSoapFileSaveDialog::FillFormatCombo(int SelFormat, int Flags)
+int CWaveSoapFileSaveDialog::FillFormatCombo(unsigned SelFormat, int Flags)
 {
 	if (m_AttributesCombo.m_hWnd == NULL
 		&& ! m_AttributesCombo.SubclassDlgItem(IDC_COMBO_ATTRIBUTES, this))
@@ -555,14 +554,14 @@ int CWaveSoapFileSaveDialog::FillFormatCombo(int SelFormat, int Flags)
 	m_Acm.FillFormatArray(SelFormat, Flags);
 
 	DWORD dwFormatTag = m_Acm.m_FormatTags[SelFormat].Tag.Tag;
-	int i;
+	unsigned i;
 
 	for (i = 0; i < m_Acm.m_Formats.size(); i++)
 	{
 		m_AttributesCombo.AddString(m_Acm.m_Formats[i].Name);
 	}
 
-	int sel = -1;
+	unsigned sel = -1;
 	int BestMatch = 0;
 	for (i = 0; i < m_Acm.m_Formats.size(); i++)
 	{
@@ -956,8 +955,8 @@ void CWaveSoapFileSaveDialog::FillLameEncoderFormats()
 {
 	m_Acm.FillLameEncoderFormats();
 	m_AttributesCombo.ResetContent();
-	int sel = 0;
-	for (int i = 0; i < m_Acm.m_Formats.size(); i++)
+	unsigned sel = 0;
+	for (unsigned i = 0; i < m_Acm.m_Formats.size(); i++)
 	{
 		m_AttributesCombo.AddString(m_Acm.m_Formats[i].Name);
 		if (m_Acm.m_Formats[i].Wf.m_pWf->nAvgBytesPerSec / 125 == m_SelectedMp3Bitrate)
@@ -965,7 +964,7 @@ void CWaveSoapFileSaveDialog::FillLameEncoderFormats()
 			sel = i;
 		}
 	}
-	m_AttributesCombo.SetCurSel(i);
+	m_AttributesCombo.SetCurSel(sel);
 }
 
 void CWaveSoapFileSaveDialog::FillWmaFormatCombo()
@@ -995,7 +994,7 @@ void CWaveSoapFileSaveDialog::FillMp3EncoderCombo()
 		return;
 	}
 
-	for (int i = 0; i < m_Acm.m_FormatTags.size(); i++)
+	for (unsigned i = 0; i < m_Acm.m_FormatTags.size(); i++)
 	{
 		m_FormatTagCombo.AddString(m_Acm.m_FormatTags[i].Name);
 	}

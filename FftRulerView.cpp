@@ -71,14 +71,14 @@ void CFftRulerView::OnDraw(CDC* pDC)
 	double VerticalScale = pMasterView->m_VerticalScale;
 
 	// if all the chart was drawn, how many scans it would have:
-	int TotalRows = nHeight * VerticalScale;
+	int TotalRows = int(nHeight * VerticalScale);
 
 	if (0 == TotalRows)
 	{
 		return;
 	}
 
-	int LastFftSample = pMasterView->m_FftOrder - pMasterView->m_FirstbandVisible;
+	int LastFftSample = int(pMasterView->m_FftOrder - pMasterView->m_FirstbandVisible);
 	int FirstFftSample = LastFftSample + (-nHeight * pMasterView->m_FftOrder) / TotalRows;
 	if (FirstFftSample < 0)
 	{
@@ -96,7 +96,7 @@ void CFftRulerView::OnDraw(CDC* pDC)
 	pDC->SetTextColor(0x000000);   // black
 	pDC->SetBkMode(TRANSPARENT);
 
-	int nSampleUnits = nVertStep * pDoc->WaveFormat()->nSamplesPerSec / (nHeight * VerticalScale);
+	int nSampleUnits = int(nVertStep * pDoc->WaveFormat()->nSamplesPerSec / (nHeight * VerticalScale));
 	// round sample units to 10 or 5
 	int step;
 	for (step = 1; step < nSampleUnits; step *= 10)
@@ -138,11 +138,11 @@ void CFftRulerView::OnDraw(CDC* pDC)
 		}
 		ClipLow += tm.tmHeight / 2;
 		ClipHigh -= tm.tmHeight / 2;
-		int yLow = pMasterView->m_FirstbandVisible *
-					0.5 * pDoc->WaveFormat()->nSamplesPerSec / pMasterView->m_FftOrder;
+		int yLow = int(pMasterView->m_FirstbandVisible *
+						0.5 * pDoc->WaveFormat()->nSamplesPerSec / pMasterView->m_FftOrder);
 		// round to the next multiple of step
 		yLow += (step*0x10000-yLow) % step;
-		int yHigh = yLow + 0.5 * pDoc->WaveFormat()->nSamplesPerSec / VerticalScale;
+		int yHigh = int(yLow + 0.5 * pDoc->WaveFormat()->nSamplesPerSec / VerticalScale);
 		yHigh -= (step*0x10000+yHigh) % step;
 		ASSERT(yLow <= yHigh);
 		for (int y = yLow; y <= yHigh; y += step)
@@ -150,8 +150,8 @@ void CFftRulerView::OnDraw(CDC* pDC)
 			// y is frequency
 			double band = double(y) / (0.5 * pDoc->WaveFormat()->nSamplesPerSec)
 						* pMasterView->m_FftOrder;
-			int yDev= Offset - fround((band - pMasterView->m_FirstbandVisible)
-									/ pMasterView->m_FftOrder * nHeight * VerticalScale);
+			int yDev= int(Offset - fround((band - pMasterView->m_FirstbandVisible)
+										/ pMasterView->m_FftOrder * nHeight * VerticalScale));
 			if (yDev - tm.tmHeight/2 < ClipLow
 				|| yDev + tm.tmHeight/2 > ClipHigh)
 			{

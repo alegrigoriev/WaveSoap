@@ -62,9 +62,9 @@ struct CdAddressMSF
 
 	CdAddressMSF & operator =(LONG sector)
 	{
-		Frame = sector % 75;
-		Second = (sector / 75) % 60;
-		Minute = sector / (75 * 60);
+		Frame = UCHAR(sector % 75);
+		Second = UCHAR((sector / 75) % 60);
+		Minute = UCHAR(sector / (75 * 60));
 		return *this;
 	}
 };
@@ -204,7 +204,7 @@ struct ReadCD_NEC : CD_CDB
 
 	UCHAR Control;
 
-	ReadCD_NEC(ULONG BeginLba, ULONG nNumBlocks)
+	ReadCD_NEC(ULONG BeginLba, USHORT nNumBlocks)
 	{
 		memzero(*this);
 		Opcode = OPCODE;
@@ -1131,8 +1131,8 @@ public:
 	BOOL ReadSessions(CDROM_TOC * pToc);
 	void StopAudioPlay();
 
-	BOOL CanEjectMedia();
-	BOOL CanLoadMedia();
+	bool CanEjectMedia();
+	bool CanLoadMedia();
 	void EjectMedia();
 	void LoadMedia();
 	BOOL IsTrayOpen();
@@ -1189,7 +1189,7 @@ protected:
 
 	HMODULE m_hWinaspi32;
 	ULONG m_MaxTransferSize;
-	USHORT m_BufferAlignment;
+	ULONG m_BufferAlignment;
 
 	DWORD m_MediaChangeCount;
 	ULONG m_OffsetBytesPerSector;

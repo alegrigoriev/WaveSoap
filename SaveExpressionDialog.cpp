@@ -72,7 +72,7 @@ BOOL CSaveExpressionDialog::OnInitDialog()
 	// EXCEPTION: OCX Property Pages should return FALSE
 }
 
-void CSaveExpressionDialog::BuildExpressionGroupCombobox(int nGroupSelected, int nExprSelected)
+void CSaveExpressionDialog::BuildExpressionGroupCombobox(unsigned nGroupSelected, int nExprSelected)
 {
 	m_ExpressionGroupCombo.ResetContent();
 
@@ -92,16 +92,14 @@ void CSaveExpressionDialog::BuildExpressionGroupCombobox(int nGroupSelected, int
 	LoadExpressionCombobox(nGroupSelected, nExprSelected);
 }
 
-void CSaveExpressionDialog::LoadExpressionCombobox(int nGroupSelected, int nExprSelected)
+void CSaveExpressionDialog::LoadExpressionCombobox(unsigned nGroupSelected, unsigned nExprSelected)
 {
 	m_ExpressionGroupSelected = nGroupSelected;
 	m_CurrExpressionGroupSelected = nGroupSelected;
 
 	while(m_SavedExpressionCombo.DeleteString(0) > 0);
 
-	if (nGroupSelected < 0
-		|| m_Expressions.size() <= 1
-		|| nGroupSelected > m_Expressions.size() - 1)
+	if (nGroupSelected >= m_Expressions.size())
 	{
 		m_CurrExpressionGroupSelected = -1;
 		m_SavedExpressionCombo.SetCurSel(-1);
@@ -114,7 +112,7 @@ void CSaveExpressionDialog::LoadExpressionCombobox(int nGroupSelected, int nExpr
 	{
 		m_SavedExpressionCombo.AddString(jj->name);
 	}
-	int NumExpressions =  m_Expressions[nGroupSelected + 1].exprs.size();
+	unsigned NumExpressions =  m_Expressions[nGroupSelected + 1].exprs.size();
 	if (nExprSelected >= NumExpressions)
 	{
 		nExprSelected = NumExpressions - 1;
@@ -138,10 +136,10 @@ void CSaveExpressionDialog::OnSelchangeComboName()
 	// if name selected, set comment edit box
 	if ( ! m_bCommentChanged)
 	{
-		int sel = m_SavedExpressionCombo.GetCurSel();
+		unsigned sel = m_SavedExpressionCombo.GetCurSel();
 
 		vector<ExprGroup>::const_iterator ii = m_Expressions.begin() + m_ExpressionGroupSelected + 1;
-		if (sel >= 0 && sel < ii->exprs.size())
+		if (sel < ii->exprs.size())
 		{
 			m_eComment.SetWindowText(ii->exprs[sel].comment);
 		}

@@ -605,23 +605,6 @@ void CChildFrame::OnUpdateFrameTitle(BOOL bAddToTitle)
 	}
 }
 
-class CPushRoutingFrame
-{
-protected:
-	CFrameWnd* pOldRoutingFrame;
-	_AFX_THREAD_STATE* pThreadState;
-
-public:
-	CPushRoutingFrame(CFrameWnd* pNewRoutingFrame)
-	{
-		pThreadState = AfxGetThreadState();
-		pOldRoutingFrame = pThreadState->m_pRoutingFrame;
-		pThreadState->m_pRoutingFrame = pNewRoutingFrame;
-	}
-	~CPushRoutingFrame()
-	{ pThreadState->m_pRoutingFrame = pOldRoutingFrame; }
-};
-
 // the function overloaded to get views that never get focus a chance to process the command
 BOOL CChildFrame::OnCmdMsg(UINT nID, int nCode, void* pExtra, AFX_CMDHANDLERINFO* pHandlerInfo)
 {
@@ -1098,7 +1081,7 @@ CMiniToolbar::CMiniToolbar()
 
 CMiniToolbar::~CMiniToolbar()
 {
-	for (int i = 0; i < m_Buttons.size(); i++)
+	for (unsigned i = 0; i < m_Buttons.size(); i++)
 	{
 		// delete our own bitmaps
 		if (m_Buttons[i].bDeleteBitmap)
@@ -1226,7 +1209,7 @@ void CMiniToolbar::OnPaint()
 	GetClientRect( & cr);
 	// draw the bitmaps
 	CBrush br(COLORREF(0));
-	for (int i = 0; i < m_Buttons.size(); i++)
+	for (unsigned i = 0; i < m_Buttons.size(); i++)
 	{
 		BITMAP bmp;
 		m_Buttons[i].pBitmap->GetBitmap( & bmp);
@@ -1270,7 +1253,7 @@ void CMiniToolbar::GetItemRect(UINT nID, RECT & rect) const
 {
 	CRect cr;
 	GetClientRect( & cr);
-	for (int i = 0; i < m_Buttons.size(); i++)
+	for (unsigned i = 0; i < m_Buttons.size(); i++)
 	{
 		if (m_Buttons[i].nID == nID)
 		{
@@ -1309,7 +1292,7 @@ void CMiniToolbar::HiliteButton(UINT nID, bool Hilite)
 		}
 		m_ButtonHilit = 0;
 	}
-	for (int i = 0; i < m_Buttons.size(); i++)
+	for (unsigned i = 0; i < m_Buttons.size(); i++)
 	{
 		if (m_Buttons[i].nID == nID)
 		{
@@ -1362,9 +1345,9 @@ void CMiniToolbar::AddButton(UINT nBitmapID, UINT nID)
 	m_Buttons.push_back(btn);
 }
 
-void CMiniToolbar::EnableButton(int Index, BOOL bEnable)
+void CMiniToolbar::EnableButton(unsigned Index, BOOL bEnable)
 {
-	if (Index < 0 || Index >= m_Buttons.size())
+	if (Index >= m_Buttons.size())
 	{
 		return;
 	}

@@ -193,7 +193,7 @@ BOOL CMmioFile::Open( LPCTSTR szFileName, UINT nOpenFlags)
 		{
 			if (NULL == GetRiffChunk())
 			{
-				AllocateCommonData(0);
+				AllocateInstanceData<CMmioFile::InstanceDataMm>();
 				LPMMCKINFO pRiffck = GetRiffChunk();
 				pRiffck->ckid = FOURCC_RIFF;
 				pRiffck->cksize = 0;
@@ -216,7 +216,7 @@ BOOL CMmioFile::LoadRiffChunk()
 {
 	if (NULL == GetRiffChunk())
 	{
-		AllocateCommonData(0);
+		AllocateInstanceData<InstanceDataMm>();
 		LPMMCKINFO pRiffck = GetRiffChunk();
 		pRiffck->ckid = FOURCC_RIFF;
 		pRiffck->cksize = 0;
@@ -391,14 +391,9 @@ BOOL CWaveFile::LoadWaveformat()
 
 BOOL CWaveFile::FindData()
 {
-	if (GetCommonDataSize() < sizeof (COMMON_DATA))
-	{
-		if (NULL == AllocateCommonData(sizeof (COMMON_DATA)))
-		{
-			return FALSE;
-		}
-	}
-	LPMMCKINFO pDatack = (LPMMCKINFO) GetCommonData();
+	AllocateInstanceData<InstanceDataWav>();
+
+	LPMMCKINFO pDatack = & GetInstanceData()->datack;
 	pDatack->ckid = mmioFOURCC('d', 'a', 't', 'a');
 	return FindChunk( * pDatack, GetRiffChunk());
 }
@@ -528,22 +523,20 @@ BOOL CWaveFile::CreateWaveFile(CWaveFile * pTemplateFile, WAVEFORMATEX * pTempla
 		return FALSE;
 	}
 
-	if (GetCommonDataSize() < sizeof (COMMON_DATA))
+	if (NULL == AllocateInstanceData<CWaveFile::InstanceDataWav>())
 	{
-		if (NULL == AllocateCommonData(sizeof (COMMON_DATA)))
-		{
-			Close();
-			return FALSE;
-		}
+		Close();
+		return FALSE;
 	}
 
 	WAVEFORMATEX * pWF = NULL;
-	int FormatSize = sizeof PCMWAVEFORMAT;
+	int FormatSize = sizeof (PCMWAVEFORMAT);
 	if (NULL != pTemplateFormat)
 	{
 		if ((flags & CreateWaveFilePcmFormat)
 			|| WAVE_FORMAT_PCM == pTemplateFormat->wFormatTag)
 		{
+			GetInstanceData()->wf.Allocate(0);
 			pWF = GetWaveFormat();
 			if (pWF)
 			{
@@ -576,12 +569,11 @@ BOOL CWaveFile::CreateWaveFile(CWaveFile * pTemplateFile, WAVEFORMATEX * pTempla
 		}
 		else
 		{
-			FormatSize = sizeof WAVEFORMATEX + pTemplateFormat->cbSize;
-			AllocateCommonData(FormatSize + offsetof (COMMON_DATA, wf));
+			GetInstanceData()->wf = pTemplateFormat;
+			FormatSize = sizeof (WAVEFORMATEX) + pTemplateFormat->cbSize;
 			pWF = GetWaveFormat();
 			if (pWF)
 			{
-				memcpy(pWF, pTemplateFormat, FormatSize);
 				if (ALL_CHANNELS == Channels)
 				{
 					pWF->nChannels = pTemplateFormat->nChannels;
@@ -607,12 +599,11 @@ BOOL CWaveFile::CreateWaveFile(CWaveFile * pTemplateFile, WAVEFORMATEX * pTempla
 	else
 	{
 		// create default PCM descriptor
+		GetInstanceData()->wf.InitCdAudioFormat();
 		pWF = GetWaveFormat();
+
 		if (pWF)
 		{
-			pWF->nSamplesPerSec = 44100;
-			pWF->wFormatTag = WAVE_FORMAT_PCM;
-			pWF->wBitsPerSample = 16;
 			if (ALL_CHANNELS == Channels)
 			{
 				pWF->nChannels = 2;
@@ -682,34 +673,32 @@ BOOL CWaveFile::CreateWaveFile(CWaveFile * pTemplateFile, WAVEFORMATEX * pTempla
 
 int CWaveFile::SampleSize() const
 {
-	COMMON_DATA * cd = (COMMON_DATA *)GetCommonData();
-	if (NULL == cd
-		|| 0 == cd->wf.nChannels
-		|| 0 == cd->wf.wBitsPerSample)
+	InstanceDataWav * cd = GetInstanceData();
+	if (NULL == cd)
 	{
 		return 0;
 	}
-	return cd->wf.nChannels * cd->wf.wBitsPerSample / 8;
+	return cd->wf.NumChannels() * cd->wf.BitsPerSample() / 8;
 }
 
 LONG CWaveFile::NumberOfSamples() const
 {
-	COMMON_DATA * cd = (COMMON_DATA *)GetCommonData();
+	InstanceDataWav * cd = GetInstanceData();
 	if (NULL == cd
-		|| 0 == cd->wf.nChannels
-		|| 0 == cd->wf.wBitsPerSample)
+		|| 0 == cd->wf.NumChannels()
+		|| 0 == cd->wf.BitsPerSample())
 	{
 		return 0;
 	}
-	return MulDiv(cd->datack.cksize, 8, cd->wf.nChannels * cd->wf.wBitsPerSample);
+	return MulDiv(cd->datack.cksize, 8, cd->wf.NumChannels() * cd->wf.BitsPerSample());
 }
 
 WAVEFORMATEX * CWaveFile::GetWaveFormat() const
 {
-	COMMON_DATA * tmp = (COMMON_DATA *)GetCommonData();
+	InstanceDataWav * tmp = GetInstanceData();
 	if (tmp)
 	{
-		return & tmp->wf;
+		return tmp->wf;
 	}
 	else
 	{
@@ -719,7 +708,7 @@ WAVEFORMATEX * CWaveFile::GetWaveFormat() const
 
 MMCKINFO * CWaveFile::GetFmtChunk() const
 {
-	COMMON_DATA * tmp = (COMMON_DATA *)GetCommonData();
+	InstanceDataWav * tmp = GetInstanceData();
 	if (tmp)
 	{
 		return & tmp->fmtck;
@@ -732,7 +721,7 @@ MMCKINFO * CWaveFile::GetFmtChunk() const
 
 MMCKINFO * CWaveFile::GetFactChunk() const
 {
-	COMMON_DATA * tmp = (COMMON_DATA *)GetCommonData();
+	InstanceDataWav * tmp = GetInstanceData();
 	if (tmp)
 	{
 		return & tmp->factck;

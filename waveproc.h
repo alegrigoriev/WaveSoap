@@ -229,7 +229,7 @@ public:
 	virtual BOOL SetAndValidateWaveformat(WAVEFORMATEX const * pWf);
 	//protected:
 	long m_SamplesPerSec;
-	int m_nFftOrder;
+	unsigned m_nFftOrder;
 	float m_MinFrequencyToProcess;
 	// decay rates for average amplitude and frequency
 	float m_AvgFreqDecayRate;

@@ -359,7 +359,7 @@ void CWaveSoapFrontView::OnDraw(CDC* pDC)
 						{
 							if (pPeaks >= pDoc->m_pPeaks)
 							{
-								for (int j = 0; j < PeakSamplesPerPoint; j++, pPeaks+= nChannels)
+								for (DWORD j = 0; j < PeakSamplesPerPoint; j++, pPeaks+= nChannels)
 								{
 									if (pPeaks >= pDoc->m_pPeaks + pDoc->m_WavePeakSize)
 									{
@@ -523,7 +523,7 @@ void CWaveSoapFrontView::OnDraw(CDC* pDC)
 
 // NumOfSamples - number of 16-bit words needed
 // Position - offset in data chunk in 16-bit words
-void CWaveSoapFrontView::GetWaveSamples(int Position, int NumOfSamples)
+void CWaveSoapFrontView::GetWaveSamples(ULONG Position, size_t NumOfSamples)
 {
 	int nSamples = NumOfSamples;
 	if (Position < 0)
@@ -553,7 +553,7 @@ void CWaveSoapFrontView::GetWaveSamples(int Position, int NumOfSamples)
 		m_WaveBufferSize = NumOfSamples;
 		m_WaveDataSizeInBuffer = 0;
 	}
-	int nTotalWaveFileSamples = pDoc->WaveDataChunk()->cksize / sizeof(__int16);
+	unsigned nTotalWaveFileSamples = pDoc->WaveDataChunk()->cksize / sizeof(__int16);
 	if (Position >= nTotalWaveFileSamples)
 	{
 		m_WaveDataSizeInBuffer = 0;
@@ -595,9 +595,9 @@ void CWaveSoapFrontView::GetWaveSamples(int Position, int NumOfSamples)
 		m_FirstSampleInBuffer + m_WaveDataSizeInBuffer)
 	{
 		// move data down
-		int MoveBy = Position + NumOfSamples -
-					(m_FirstSampleInBuffer + m_WaveBufferSize);
-		if (MoveBy > 0)
+		unsigned int MoveBy = Position + NumOfSamples -
+							(m_FirstSampleInBuffer + m_WaveBufferSize);
+		if (MoveBy != 0)
 		{
 			ASSERT(m_WaveDataSizeInBuffer > MoveBy);
 			m_WaveDataSizeInBuffer -= MoveBy;
@@ -639,7 +639,7 @@ void CWaveSoapFrontView::AdjustNewScale(double OldScaleX, double OldScaleY,
 {
 	//NewScaleY = OldScaleY;  // vertical scale never changes
 
-	m_HorizontalScale = 1. / NewScaleX;
+	m_HorizontalScale = int(1. / NewScaleX);
 	if (m_HorizontalScale < 1)
 	{
 		m_HorizontalScale = 1;
@@ -1164,7 +1164,7 @@ void CWaveSoapFrontView::OnLButtonDown(UINT nFlags, CPoint point)
 	{
 		return;
 	}
-	int nSampleUnderMouse = WindowToWorldX(point.x);
+	int nSampleUnderMouse = int(WindowToWorldX(point.x));
 	int SelectionStart = pDoc->m_SelectionStart;
 	int SelectionEnd = pDoc->m_SelectionEnd;
 
@@ -1231,8 +1231,8 @@ void CWaveSoapFrontView::OnLButtonUp(UINT nFlags, CPoint point)
 				// the whole area wasn't selected
 				&& pDoc->m_SelectionStart == pDoc->m_SelectionEnd)
 			{
-				long nBegin = WindowToWorldX(point.x);
-				long nEnd = WindowToWorldX(point.x + 1);
+				long nBegin = long(WindowToWorldX(point.x));
+				long nEnd = long(WindowToWorldX(point.x + 1));
 				pDoc->SetSelection(nBegin, nEnd, pDoc->m_SelectedChannel, nBegin,
 									SetSelection_SnapToMaximum
 									| SetSelection_MakeCaretVisible);
@@ -1302,7 +1302,7 @@ void CWaveSoapFrontView::OnMouseMove(UINT nFlags, CPoint point)
 		}
 	}
 
-	int nSampleUnderMouse = WindowToWorldX(point.x);
+	long nSampleUnderMouse = long(WindowToWorldX(point.x));
 	if (nSampleUnderMouse < 0)
 	{
 		nSampleUnderMouse = 0;
@@ -1665,7 +1665,7 @@ void CWaveSoapFrontView::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 	// process cursor control commands
 	CWaveSoapFrontDoc * pDoc = GetDocument();
 
-	int nCaret = pDoc->m_CaretPosition;
+	long nCaret = pDoc->m_CaretPosition;
 	int nSelBegin = pDoc->m_SelectionStart;
 	int nSelEnd = pDoc->m_SelectionEnd;
 	int nChan = pDoc->m_SelectedChannel;
@@ -1725,7 +1725,7 @@ void CWaveSoapFrontView::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 		}
 		else
 		{
-			nCaret = WindowToWorldX(r.left + 1); // cursor to the left boundary + 1
+			nCaret = long(WindowToWorldX(r.left + 1)); // cursor to the left boundary + 1
 		}
 
 		break;
@@ -1747,7 +1747,7 @@ void CWaveSoapFrontView::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 		}
 		else
 		{
-			nCaret = WindowToWorldX(r.right - 2); // cursor to the right boundary + 1
+			nCaret = long(WindowToWorldX(r.right - 2)); // cursor to the right boundary + 1
 		}
 		break;
 	case VK_PRIOR:

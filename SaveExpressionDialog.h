@@ -44,8 +44,8 @@ protected:
 
 // Implementation
 protected:
-	void BuildExpressionGroupCombobox(int nGroupSelected, int nExprSelected);
-	void LoadExpressionCombobox(int nGroupSelected, int nExprSelected);
+	void BuildExpressionGroupCombobox(unsigned nGroupSelected, int nExprSelected);
+	void LoadExpressionCombobox(unsigned nGroupSelected, unsigned nExprSelected);
 
 	// Generated message map functions
 	//{{AFX_MSG(CSaveExpressionDialog)

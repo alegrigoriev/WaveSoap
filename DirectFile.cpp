@@ -274,7 +274,7 @@ CDirectFile::File * CDirectFile::CDirectFileCache::Open(LPCTSTR szName, DWORD fl
 
 		pFile->WrittenMaskSize = WrittenMaskLength;
 		memset(pFile->m_pWrittenMask, 0, WrittenMaskLength);
-		memset(pFile->m_pWrittenMask, 0xFF, (pFile->FileLength +0xFFFF) >> 19);
+		memset(pFile->m_pWrittenMask, 0xFF, size_t((pFile->FileLength +0xFFFF) >> 19));
 		pFile->m_pWrittenMask[(pFile->FileLength +0xFFFF) >> 19] =
 			0xFF >> (8 - (((pFile->FileLength +0xFFFF) >> 16) & 7));
 	}
@@ -368,7 +368,7 @@ BOOL CDirectFile::File::Commit(DWORD flags)
 								OPEN_EXISTING,
 								FILE_ATTRIBUTE_NORMAL,
 								NULL);
-		long MoveHigh = FileLength >> 32;
+		long MoveHigh = long(FileLength >> 32);
 		SetLastError(ERROR_SUCCESS);
 		if (hf != INVALID_HANDLE_VALUE)
 		{
@@ -610,7 +610,7 @@ BOOL CDirectFile::File::Close(DWORD flags)
 										OPEN_EXISTING,
 										FILE_ATTRIBUTE_NORMAL,
 										NULL);
-				long MoveHigh = FileLength >> 32;
+				long MoveHigh = long(FileLength >> 32);
 				SetLastError(ERROR_SUCCESS);
 				if (hf != INVALID_HANDLE_VALUE)
 				{
@@ -698,7 +698,7 @@ long CDirectFile::Read(void *buf, long count)
 	}
 	if (count > 0 && count + m_FilePointer > m_pFile->FileLength)
 	{
-		count = m_pFile->FileLength - m_FilePointer;
+		count = long(m_pFile->FileLength - m_FilePointer);
 	}
 
 	while(count > 0)
@@ -737,7 +737,7 @@ long CDirectFile::ReadAt(void *buf, long count, LONGLONG Position)
 	}
 	if (count > 0 && count + Position > m_pFile->FileLength)
 	{
-		count = m_pFile->FileLength - Position;
+		count = long(m_pFile->FileLength - Position);
 	}
 
 	while(count > 0)
@@ -1099,7 +1099,7 @@ long CDirectFile::CDirectFileCache::GetDataBuffer(File * pFile,
 		}
 		*ppBuf = pFile->m_pMemoryFileBuffer + DWORD(position);
 		pFile->m_MemoryBufferRefCount++;
-		return length;
+		return long(length);
 	}
 	unsigned long BufferPosition;
 	if (length > 0)
@@ -1625,10 +1625,10 @@ void CDirectFile::File::ReadDataBuffer(BufferHeader * pBuf, DWORD MaskToRead)
 					&& MaskToRead != 0)
 				{
 					// read the data from the source file
-					int ToRead = 0x10000;
+					DWORD ToRead = 0x10000;
 					if (UseSourceFileLength - StartFilePtr < 0x10000)
 					{
-						ToRead = int(UseSourceFileLength) - int(StartFilePtr);
+						ToRead = DWORD(UseSourceFileLength) - DWORD(StartFilePtr);
 					}
 
 					CSimpleCriticalSectionLock lock(pSourceFile->m_FileLock);
@@ -2041,7 +2041,7 @@ unsigned CDirectFile::CDirectFileCache::_ThreadProc()
 			else
 			{
 				// set prefetch area
-				pPrefetchFile->m_PrefetchedBeginBlock = PrefetchPosition >> 16;
+				pPrefetchFile->m_PrefetchedBeginBlock = DWORD(PrefetchPosition >> 16);
 				pPrefetchFile->m_PrefetchedEndBlock = pPrefetchFile->m_PrefetchedBeginBlock;
 			}
 
@@ -2132,11 +2132,11 @@ BOOL CDirectFile::File::InitializeTheRestOfFile(int timeout, int * pPercentCompl
 			}
 		}
 		if (timeout != 0
-			&& timeGetTime() - BeginTime > timeout)
+			&& int(timeGetTime() - BeginTime) > timeout)
 		{
 			if (pPercentCompleted)
 			{
-				*pPercentCompleted = MulDiv(100, i, (FileLength + 0xFFFF) >> 16);
+				*pPercentCompleted = MulDiv(100, i, int((FileLength + 0xFFFF) >> 16));
 			}
 			return FALSE;   // not finished yet
 		}
@@ -2165,7 +2165,7 @@ BOOL CDirectFile::File::SetFileLength(LONGLONG NewLength)
 		{
 			if (NewLength > FileLength)
 			{
-				memset(m_pMemoryFileBuffer + FileLength, 0, NewLength - FileLength);
+				memset(m_pMemoryFileBuffer + FileLength, 0, size_t(NewLength - FileLength));
 			}
 			FileLength = NewLength;
 			return TRUE;
@@ -2177,12 +2177,12 @@ BOOL CDirectFile::File::SetFileLength(LONGLONG NewLength)
 		}
 		if (m_pMemoryFileBuffer)
 		{
-			memcpy(NewBuf, m_pMemoryFileBuffer, FileLength);
+			memcpy(NewBuf, m_pMemoryFileBuffer, size_t(FileLength));
 			delete m_pMemoryFileBuffer;
 		}
-		m_MemoryFileBufferSize = NewLength;
+		m_MemoryFileBufferSize = long(NewLength);
 		m_pMemoryFileBuffer = NewBuf;
-		memset(m_pMemoryFileBuffer + FileLength, 0, NewLength - FileLength);
+		memset(m_pMemoryFileBuffer + FileLength, 0, size_t(NewLength - FileLength));
 		FileLength = NewLength;
 		return TRUE;
 	}
@@ -2298,39 +2298,6 @@ void CDirectFile::File::FlushRequestedRange()
 		m_FlushBegin += Flushed;
 		m_FlushLength -= Flushed;
 	}
-}
-
-void * CDirectFile::File::AllocateCommonData(size_t size)
-{
-	if (0 == size)
-	{
-		return m_pCommonData;
-	}
-	if (size <= m_CommonDataSize)
-	{
-		memset((char*)m_pCommonData + size, 0, m_CommonDataSize - size);
-		return m_pCommonData;
-	}
-
-	char * tmp = new char[size];
-	if (NULL == tmp)
-	{
-		return NULL;
-	}
-
-	if (NULL != m_pCommonData)
-	{
-		memcpy(tmp, m_pCommonData, m_CommonDataSize);
-		memset(tmp + m_CommonDataSize, 0, size - m_CommonDataSize);
-		delete[] (char*) m_pCommonData;
-	}
-	else
-	{
-		memset(tmp, 0, size);
-	}
-	m_CommonDataSize = size;
-	m_pCommonData = tmp;
-	return tmp;
 }
 
 CDirectFile const & CDirectFile::operator=(CDirectFile & file)

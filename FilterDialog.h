@@ -123,12 +123,12 @@ public:
 	static int GainToPosY(double Gain, int height)
 	{
 		// full range: 5 to -85 db
-		return (0.25 - log10(Gain)) * height / 4.5;
+		return int((0.25 - log10(Gain)) * height / 4.5);
 	}
 	static int GainDbToPosY(double GainDb, int height)
 	{
 		// full range: 5 to -85 db
-		return (5. - GainDb) * height / 90.;
+		return int((5. - GainDb) * height / 90.);
 	}
 	// Operations
 public:

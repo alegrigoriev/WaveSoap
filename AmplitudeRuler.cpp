@@ -99,7 +99,7 @@ void CAmplitudeRuler::DrawSamples(CDC * pDC)
 	int nHeight = cr.Height() / nChannels;
 	double VerticalScale = pMasterView->m_VerticalScale;
 	double ScaledWaveOffset = pMasterView->m_WaveOffsetY * VerticalScale;
-	int nSampleUnits = nVertStep * 65536. / (nHeight * VerticalScale);
+	int nSampleUnits = int(nVertStep * 65536. / (nHeight * VerticalScale));
 	// round sample units to 10 or 5
 	int step;
 	for (step = 1; step < nSampleUnits; step *= 10)
@@ -142,10 +142,10 @@ void CAmplitudeRuler::DrawSamples(CDC * pDC)
 		}
 		ClipLow += tm.tmHeight / 2;
 		ClipHigh -= tm.tmHeight / 2;
-		int yLow = (ClipHigh / YScaleDev -WaveOffset) / VerticalScale;
+		int yLow = int((ClipHigh / YScaleDev -WaveOffset) / VerticalScale);
 		// round to the next multiple of step
 		yLow += (step*0x10000-yLow) % step;
-		int yHigh = (ClipLow / YScaleDev -WaveOffset) / VerticalScale;
+		int yHigh = int((ClipLow / YScaleDev -WaveOffset) / VerticalScale);
 		yHigh -= (step*0x10000+yHigh) % step;
 		ASSERT(yLow <= yHigh);
 		for (int y = yLow; y <= yHigh; y += step)
@@ -230,10 +230,10 @@ void CAmplitudeRuler::DrawPercents(CDC * pDC)
 		}
 		ClipLow += tm.tmHeight / 2;
 		ClipHigh -= tm.tmHeight / 2;
-		int yLow = 100. / 32768. * (ClipHigh / YScaleDev -WaveOffset) / VerticalScale;
+		int yLow = int(100. / 32768. * (ClipHigh / YScaleDev -WaveOffset) / VerticalScale);
 		// round to the next multiple of step
 		yLow += (step*0x10000-yLow) % step;
-		int yHigh = 100. / 32768. * (ClipLow / YScaleDev -WaveOffset) / VerticalScale;
+		int yHigh = int(100. / 32768. * (ClipLow / YScaleDev -WaveOffset) / VerticalScale);
 		yHigh -= (step*0x10000+yHigh) % step;
 		ASSERT(yLow <= yHigh);
 		for (int y = yLow; y <= yHigh; y += step)
@@ -278,7 +278,7 @@ void CAmplitudeRuler::DrawDecibels(CDC * pDC)
 	int nHeight = cr.Height() / nChannels;
 	double VerticalScale = pMasterView->m_VerticalScale;
 	double ScaledWaveOffset = pMasterView->m_WaveOffsetY * VerticalScale;
-	int nSampleUnits = nVertStep * 65536. / (nHeight * VerticalScale);
+	int nSampleUnits = int(nVertStep * 65536. / (nHeight * VerticalScale));
 
 	double YScaleDev = pMasterView->GetYScaleDev();
 	int ChannelSeparatorY = fround((0 - pMasterView->dOrgY) * YScaleDev);
@@ -338,10 +338,10 @@ void CAmplitudeRuler::DrawDecibels(CDC * pDC)
 			}
 			ClipLow += tm.tmHeight / 2;
 			ClipHigh -= tm.tmHeight / 2;
-			int yLow = (ClipHigh / YScaleDev -WaveOffset) / VerticalScale;
+			int yLow = int((ClipHigh / YScaleDev -WaveOffset) / VerticalScale);
 			// round to the next multiple of step
 			//yLow += (step*0x10000-yLow) % step;
-			int yHigh = (ClipLow / YScaleDev -WaveOffset) / VerticalScale;
+			int yHigh = int((ClipLow / YScaleDev -WaveOffset) / VerticalScale);
 			//yHigh -= (step*0x10000+yHigh) % step;
 			ASSERT(yLow <= yHigh);
 
@@ -586,12 +586,12 @@ void CSpectrumSectionRuler::OnDraw(CDC* pDC)
 	else if (Dist <= 5.)
 	{
 		Dist = 5.;
-		nTickCount = 5.;
+		nTickCount = 5;
 	}
 	else
 	{
 		Dist = 10.;
-		nTickCount = 10.;
+		nTickCount = 10;
 	}
 
 	CGdiObject * OldPen = pDC->SelectStockObject(BLACK_PEN);

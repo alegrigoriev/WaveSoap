@@ -165,7 +165,7 @@ BOOL CInsertExpressionDialog::OnInitDialog()
 	// EXCEPTION: OCX Property Pages should return FALSE
 }
 
-void CInsertExpressionDialog::BuildExpressionGroupCombobox(int nGroupSelected, int nExprSelected)
+void CInsertExpressionDialog::BuildExpressionGroupCombobox(unsigned nGroupSelected, unsigned nExprSelected)
 {
 	m_ExpressionGroupCombo.ResetContent();
 	for (vector<ExprGroup>::iterator ii = m_Expressions.begin()
@@ -184,15 +184,13 @@ void CInsertExpressionDialog::BuildExpressionGroupCombobox(int nGroupSelected, i
 	LoadExpressionCombobox(nGroupSelected, nExprSelected);
 }
 
-void CInsertExpressionDialog::LoadExpressionCombobox(int nGroupSelected, int nExprSelected)
+void CInsertExpressionDialog::LoadExpressionCombobox(unsigned nGroupSelected, unsigned nExprSelected)
 {
 	m_ExpressionGroupSelected = nGroupSelected;
 	m_CurrExpressionGroupSelected = nGroupSelected;
 
 	m_SavedExpressionCombo.ResetContent();
-	if (nGroupSelected < 0
-		|| m_Expressions.size() <= 0
-		|| nGroupSelected > m_Expressions.size())
+	if (nGroupSelected >= m_Expressions.size())
 	{
 		m_CurrExpressionGroupSelected = -1;
 		m_SavedExpressionCombo.SetCurSel(-1);
@@ -204,7 +202,7 @@ void CInsertExpressionDialog::LoadExpressionCombobox(int nGroupSelected, int nEx
 	{
 		m_SavedExpressionCombo.AddString(jj->name);
 	}
-	int NumExpressions =  m_Expressions[nGroupSelected].exprs.size();
+	unsigned NumExpressions =  m_Expressions[nGroupSelected].exprs.size();
 	if (nExprSelected >= NumExpressions)
 	{
 		nExprSelected = NumExpressions - 1;
@@ -225,11 +223,11 @@ void CInsertExpressionDialog::OnSelchangeComboSavedExpressionGroup()
 
 void CInsertExpressionDialog::OnSelchangeComboSavedExpressions()
 {
-	int sel = m_SavedExpressionCombo.GetCurSel();
+	unsigned sel = m_SavedExpressionCombo.GetCurSel();
 
 	vector<ExprGroup>::iterator ii = m_Expressions.begin() + m_ExpressionGroupSelected;
 
-	if (sel >= 0 && sel < ii->exprs.size())
+	if (sel < ii->exprs.size())
 	{
 		CString s;
 
@@ -249,11 +247,11 @@ void CInsertExpressionDialog::OnButtonInsertExpression()
 
 	if (NULL != pEdit)
 	{
-		int sel = m_SavedExpressionCombo.GetCurSel();
+		unsigned sel = m_SavedExpressionCombo.GetCurSel();
 
 		vector<ExprGroup>::iterator ii = m_Expressions.begin() + m_ExpressionGroupSelected;
 
-		if (sel >= 0 && sel < ii->exprs.size())
+		if (sel < ii->exprs.size())
 		{
 			pEdit->ReplaceSel(ii->exprs[sel].expr, TRUE);
 			pEdit->SetFocus();
@@ -265,11 +263,9 @@ void CInsertExpressionDialog::OnButtonDeleteExpression()
 {
 	CString s;
 	CThisApp * pApp = GetApp();
-	int ExprSel = m_SavedExpressionCombo.GetCurSel();
-	int nGroup = m_ExpressionGroupSelected;
-	if (nGroup < 0
-		|| nGroup >= m_Expressions.size()
-		|| ExprSel < 0
+	unsigned ExprSel = m_SavedExpressionCombo.GetCurSel();
+	unsigned nGroup = m_ExpressionGroupSelected;
+	if (nGroup >= m_Expressions.size()
 		|| ExprSel >= m_Expressions[nGroup].exprs.size())
 	{
 		return;
@@ -389,7 +385,7 @@ BOOL CInsertExpressionDialog::SaveExpression(const CString & expr,
 	if (ii == m_Expressions.end())
 	{
 		// add a new group
-		ii = m_Expressions.insert(ii); // one item
+		ii = m_Expressions.insert(ii, ExprGroup()); // one item
 		ii->name = Group;
 	}
 	// check if there is already an expression with the same name
@@ -435,7 +431,7 @@ BOOL CInsertExpressionDialog::SaveExpression(const CString & expr,
 			return FALSE;
 		}
 	}
-	jj = ii->exprs.insert(jj);
+	jj = ii->exprs.insert(jj, Expr());
 	jj->name = Name;
 	jj->expr = expr;
 	jj->comment = Comment;

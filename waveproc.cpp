@@ -146,10 +146,10 @@ CClickRemoval::CClickRemoval()
 	//m_Deriv2Threshold = 60.;
 	m_NextPossibleClickPosition[0] = 16 * CLICK_LENGTH;
 	m_NextPossibleClickPosition[1] = 16 * CLICK_LENGTH;
-	m_PrevDeriv[0] = 0.;
-	m_PrevDeriv[1] = 0.;
-	m_PrevDeriv2[0] = 0.;
-	m_PrevDeriv2[1] = 0.;
+	m_PrevDeriv[0] = 0;
+	m_PrevDeriv[1] = 0;
+	m_PrevDeriv2[0] = 0;
+	m_PrevDeriv2[1] = 0;
 	m_ClickDeriv3ThresholdScale = 0.1f;
 	m_PowerToDeriv3RatioThreshold = 30.;
 	m_MinDeriv3Threshold = 200*200;
@@ -319,7 +319,7 @@ CNoiseReduction::CNoiseReduction(int nFftOrder)
 		for (int i = 0; i < nFftOrder; i++)
 		{
 			// sine window
-			m_Window[i] = sin((i + 0.5) * M_PI / nFftOrder);
+			m_Window[i] = float(sin((i + 0.5) * M_PI / nFftOrder));
 		}
 	}
 
@@ -343,7 +343,7 @@ CNoiseReduction::CNoiseReduction(int nFftOrder)
 		memset(m_pParams[1], 0, (nFftOrder /2 + 1) * sizeof m_pParams[1][0]);
 	}
 	// norm masking factor to make it independent of FFT order
-	m_PowerScale = 1. / nFftOrder;
+	m_PowerScale = float(1. / nFftOrder);
 	double MaskingFactor = 2 * m_PowerScale;
 	//m_FarMaskingScale = MaskingFactor;
 
@@ -355,14 +355,14 @@ CNoiseReduction::CNoiseReduction(int nFftOrder)
 			// power drops as reciprocal of the distance
 			if (k == i)
 			{
-				m_FarMaskingCoeffs[i][k] = MaskingFactor * 5;
+				m_FarMaskingCoeffs[i][k] = float(MaskingFactor * 5);
 			}
 			else
 			{
 				int n = k - i;
 				if (n < 0) n = -n;
-				float x = 1. / (n + 1);
-				m_FarMaskingCoeffs[i][k] = MaskingFactor * x;
+				float x = 1.f / (n + 1);
+				m_FarMaskingCoeffs[i][k] = float(MaskingFactor * x);
 			}
 		}
 	}
@@ -579,7 +579,7 @@ int CHumRemoval::ProcessSoundBuffer(char const * pIn, char * pOut,
 			double outL = (float(pInBuf[i] - m_PrevHpfL[0] - m_PrevHpfL[0] + m_PrevHpfL[1])
 							+ m_HighpassCoeffs[0] * m_PrevHpOutL[0] - m_HighpassCoeffs[1] * m_PrevHpOutL[1]);
 			m_PrevHpOutL[1] = m_PrevHpOutL[0];
-			m_PrevHpOutL[0] = outL;
+			m_PrevHpOutL[0] = float(outL);
 			curr_l = float(outL * m_HighpassCoeffs[2]);
 			m_PrevHpfL[1] = m_PrevHpfL[0];
 			m_PrevHpfL[0] = pInBuf[i];
@@ -589,7 +589,7 @@ int CHumRemoval::ProcessSoundBuffer(char const * pIn, char * pOut,
 				double outR = (float(pInBuf[i+1] - m_PrevHpfR[0] - m_PrevHpfR[0] + m_PrevHpfR[1])
 								+ m_HighpassCoeffs[0] * m_PrevHpOutR[0] - m_HighpassCoeffs[1] * m_PrevHpOutR[1]);
 				m_PrevHpOutR[1] = m_PrevHpOutR[0];
-				m_PrevHpOutR[0] = outR;
+				m_PrevHpOutR[0] = float(outR);
 				curr_r = float(outR * m_HighpassCoeffs[2]);
 
 				m_PrevHpfR[1] = m_PrevHpfR[0];
@@ -604,18 +604,18 @@ int CHumRemoval::ProcessSoundBuffer(char const * pIn, char * pOut,
 		if (m_ApplyCommonModeFilter
 			&& 2 == m_InputChannels)
 		{
-			m_prev_outl =
-				(curr_l + m_prev_inl) * m_DiffCutoffCoeffs[0]
-				+ m_DiffCutoffCoeffs[1] * m_prev_outl;
-			m_prev_outr =
-				(curr_r + m_prev_inr) * m_DiffCutoffCoeffs[0]
-				+ m_DiffCutoffCoeffs[1] * m_prev_outr;
+			m_prev_outl = float(
+								(curr_l + m_prev_inl) * m_DiffCutoffCoeffs[0]
+								+ m_DiffCutoffCoeffs[1] * m_prev_outl);
+			m_prev_outr = float(
+								(curr_r + m_prev_inr) * m_DiffCutoffCoeffs[0]
+								+ m_DiffCutoffCoeffs[1] * m_prev_outr);
 			float hpf_l = m_prev_inl - m_prev_outl;
 			float hpf_r = m_prev_inr - m_prev_outr;
 			m_prev_inl = curr_l;
 			m_prev_inr = curr_r;
-			curr_l = (long) floor(hpf_l + m_prev_outr + 0.5);
-			curr_r = (long) floor(hpf_r + m_prev_outl + 0.5);
+			curr_l = (float)floor(hpf_l + m_prev_outr + 0.5);
+			curr_r = (float)floor(hpf_r + m_prev_outl + 0.5);
 		}
 		if (m_ChannelsToProcess != 1)
 		{
@@ -888,9 +888,9 @@ int CClickRemoval::ProcessSoundBuffer(char const * pIn, char * pOut,
 			int deriv3 = deriv2 - m_PrevDeriv2[ch];
 			m_PrevDeriv2[ch] = deriv2;
 			m_prev3[ch][CLICK_LENGTH / 2] = deriv3;
-			int Deriv3Threshold = m_MeanPower[ch] * m_PowerToDeriv3RatioThreshold;
+			int Deriv3Threshold = int(m_MeanPower[ch] * m_PowerToDeriv3RatioThreshold);
 
-			float power = m_prev3[ch][0];
+			float power = float(m_prev3[ch][0]);
 			power = power * power;
 
 			if (power > m_MeanPower[ch])
@@ -936,7 +936,7 @@ int CClickRemoval::ProcessSoundBuffer(char const * pIn, char * pOut,
 				ClickLength = 0;
 				if (Deriv3Threshold < m_MinDeriv3Threshold)
 				{
-					Deriv3Threshold = m_MinDeriv3Threshold;
+					Deriv3Threshold = (int)m_MinDeriv3Threshold;
 				}
 
 				if (PrevIndex < m_NextPossibleClickPosition[ch]
@@ -965,7 +965,7 @@ int CClickRemoval::ProcessSoundBuffer(char const * pIn, char * pOut,
 					int NewDeriv =  FftIn[f + 1] - FftIn[f];
 
 					deriv2 = NewDeriv - OldDeriv;
-					deriv3 = fabs(deriv2 - OldDeriv2);
+					deriv3 = int(fabs(deriv2 - OldDeriv2));
 					OldDeriv = NewDeriv;
 					OldDeriv2 = deriv2;
 
@@ -982,7 +982,7 @@ int CClickRemoval::ProcessSoundBuffer(char const * pIn, char * pOut,
 
 				if (Deriv3Threshold < m_MinClickDeriv3BoundThreshold)
 				{
-					Deriv3Threshold = m_MinClickDeriv3BoundThreshold;
+					Deriv3Threshold = int(m_MinClickDeriv3BoundThreshold);
 				}
 				int NoiseFloorThreshold = int(sqrt(m_MeanPower[ch]) * m_NoiseFloorThresholdScale);
 				if (Deriv3Threshold < NoiseFloorThreshold)
@@ -1088,7 +1088,7 @@ void CNoiseReduction::SIGNAL_PARAMS::AnalyzeFftSample(complex<DATA> smp, CNoiseR
 	complex<DATA> cZero(0., 0.);
 	double nrm = pNr->m_PowerScale *
 				(real(smp) * real(smp) + imag(smp) * imag(smp));
-	sp_Power = nrm;
+	sp_Power = float(nrm);
 	sp_FftIn[1] = sp_FftIn[0];
 	sp_FftIn[0] = smp;
 
@@ -1104,7 +1104,7 @@ void CNoiseReduction::SIGNAL_PARAMS::AnalyzeFftSample(complex<DATA> smp, CNoiseR
 
 		if (smp != cZero)
 		{
-			sp_FilteredLevel = log(abs(smp));
+			sp_FilteredLevel = float(log(abs(smp)));
 		}
 		else
 		{
@@ -1202,13 +1202,13 @@ void CNoiseReduction::SIGNAL_PARAMS::AnalyzeFftSample(complex<DATA> smp, CNoiseR
 		double PhaseError = dPhase - sp_AvgPhase;
 		double FreqError = dFreq - sp_AvgFreq;
 #if 0
-		sp_FilteredFreqError +=
-			pNr->m_FreqErrorDecayRate * (FreqError - sp_FilteredFreqError);
-		sp_FreqDev += (sp_FilteredFreqError * sp_FilteredFreqError - sp_FreqDev)
-					* pNr->m_FreqDevDecayRate;
+		sp_FilteredFreqError += float(
+									pNr->m_FreqErrorDecayRate * (FreqError - sp_FilteredFreqError));
+		sp_FreqDev += float((sp_FilteredFreqError * sp_FilteredFreqError - sp_FreqDev)
+							* pNr->m_FreqDevDecayRate);
 #else
-		sp_FreqDev += (FreqError * FreqError - sp_FreqDev)
-					* pNr->m_FreqDevDecayRate;
+		sp_FreqDev += float((FreqError * FreqError - sp_FreqDev)
+							* pNr->m_FreqDevDecayRate);
 #endif
 		// if sp_FreqDev is greater than threshold, then the signal is noise-like
 		sp_AvgPhase += sp_AvgFreq + sp_FilteredFreqError;
@@ -1227,8 +1227,8 @@ void CNoiseReduction::SIGNAL_PARAMS::AnalyzeFftSample(complex<DATA> smp, CNoiseR
 		sp_FilteredLevel +=
 			pNr->m_AvgLevelDecayRate * (dLevel - sp_FilteredLevel);
 		double LevelError = dLevel - sp_FilteredLevel;
-		sp_FilteredLevelError += pNr->m_LevelErrorDecayRate *
-								(LevelError - sp_FilteredLevelError);
+		sp_FilteredLevelError += float(pNr->m_LevelErrorDecayRate *
+										(LevelError - sp_FilteredLevelError));
 		sp_LevelDev += pNr->m_LevelDevDecayRate *
 						(sp_FilteredLevelError * sp_FilteredLevelError - sp_LevelDev);
 
@@ -1272,7 +1272,7 @@ int CNoiseReduction::ProcessSoundBuffer(char const * pIn, char * pOut,
 	int nSamples = __min(nInSamples, nOutSamples);
 	const int PREV_MASK = (m_nFftOrder * 2) - 1;
 	const unsigned int ANALYZE_LAG = m_nFftOrder;
-	int MinFrequencyToProcess = int(m_MinFrequencyToProcess / 44100. * m_nFftOrder);
+	unsigned MinFrequencyToProcess = unsigned(m_MinFrequencyToProcess / 44100. * m_nFftOrder);
 
 	if (NULL == pInBuf)
 	{
@@ -1291,6 +1291,7 @@ int CNoiseReduction::ProcessSoundBuffer(char const * pIn, char * pOut,
 		{
 			for (int ch = 0; ch < nChans; ch++)
 			{
+				// TODO: use conversion routine
 				*pOutBuf = m_BackBuffer[(m_nStoredSamples + ANALYZE_LAG) & PREV_MASK][ch];
 				pOutBuf++;
 			}
@@ -1300,9 +1301,9 @@ int CNoiseReduction::ProcessSoundBuffer(char const * pIn, char * pOut,
 	}
 
 	int ch;
-	int nBacklogIndex = m_nBackSampleCount;
+	unsigned nBacklogIndex = m_nBackSampleCount;
 	int nStoredSamples = 0;
-	int n;
+	unsigned n;
 	for (int i = 0; i < nSamples; i ++)
 	{
 		for (ch = 0; ch < nChans; ch++)
@@ -1326,7 +1327,7 @@ int CNoiseReduction::ProcessSoundBuffer(char const * pIn, char * pOut,
 			}
 
 			// process FFT result
-			int f;
+			unsigned f;
 			float FarMasking[FAR_MASKING_GRANULARITY];
 			float SubbandPower[FAR_MASKING_GRANULARITY];
 
@@ -1348,7 +1349,7 @@ int CNoiseReduction::ProcessSoundBuffer(char const * pIn, char * pOut,
 			{
 				FarMasking[n] = 0.;
 				SubbandPower[n] = 0.;
-				for (int k = 0; k < m_nFftOrder / (FAR_MASKING_GRANULARITY*2); k++, f++)
+				for (unsigned k = 0; k < m_nFftOrder / (FAR_MASKING_GRANULARITY*2); k++, f++)
 				{
 					for (ch = 0; ch < nChans; ch++)
 					{
@@ -1373,9 +1374,9 @@ int CNoiseReduction::ProcessSoundBuffer(char const * pIn, char * pOut,
 			{
 				for (ch = 0; ch < nChans; ch++)
 				{
-					m_pParams[ch][f].sp_MaskingPower =
-						m_pParams[ch][f].sp_Power * m_NearMaskingCoeff
-						+ (1. - m_NearMaskingCoeff) * FarMasking[f * FAR_MASKING_GRANULARITY*2 / m_nFftOrder]
+					m_pParams[ch][f].sp_MaskingPower = float(
+															m_pParams[ch][f].sp_Power * m_NearMaskingCoeff
+															+ (1. - m_NearMaskingCoeff) * FarMasking[f * FAR_MASKING_GRANULARITY*2 / m_nFftOrder])
 					;
 				}
 			}
@@ -1402,7 +1403,7 @@ int CNoiseReduction::ProcessSoundBuffer(char const * pIn, char * pOut,
 
 			PrevFilteredPower[0] = 0.;
 			PrevFilteredPower[1] = 0.;
-			float ToneEmphasis = exp(m_ToneOverNoisePreference);
+			float ToneEmphasis = (float)exp(m_ToneOverNoisePreference);
 			for (f = 0; f < m_nFftOrder / 2+1; f++)
 			{
 				double decay = 1. / MaskingSpectralDecayNormLow;
@@ -1418,7 +1419,7 @@ int CNoiseReduction::ProcessSoundBuffer(char const * pIn, char * pOut,
 						power = m_pParams[ch][f].sp_MaskingPower;
 					}
 					PrevFilteredPower[ch] += (power - PrevFilteredPower[ch]) * decay;
-					m_pParams[ch][f].sp_MaskingPower = PrevFilteredPower[ch];
+					m_pParams[ch][f].sp_MaskingPower = float(PrevFilteredPower[ch]);
 				}
 				MaskingSpectralDecayNormLow += MaskingDistanceDelta;
 			}
@@ -1432,21 +1433,21 @@ int CNoiseReduction::ProcessSoundBuffer(char const * pIn, char * pOut,
 				{
 					PrevFilteredPower[ch] += (m_pParams[ch][f].sp_MaskingPower - PrevFilteredPower[ch])
 											* decay;
-					m_pParams[ch][f].sp_MaskingPower = PrevFilteredPower[ch];
+					m_pParams[ch][f].sp_MaskingPower = float(PrevFilteredPower[ch]);
 				}
 			}
-			float MaskingTemporalDecayNormLow =
-				// coeff to filter masking function in time
-				//m_NearMaskingDecayTimeLow * 0.001 * m_SamplesPerSec / (m_nFftOrder / 2);
-				m_NearMaskingDecayTimeLow * 0.002 * m_SamplesPerSec / m_nFftOrder;
+			float MaskingTemporalDecayNormLow = float(
+													// coeff to filter masking function in time
+													//m_NearMaskingDecayTimeLow * 0.001 * m_SamplesPerSec / (m_nFftOrder / 2);
+													m_NearMaskingDecayTimeLow * 0.002 * m_SamplesPerSec / m_nFftOrder);
 			if (MaskingTemporalDecayNormLow < 1.)
 			{
 				MaskingTemporalDecayNormLow = 1.;
 			}
 
-			float MaskingTemporalDecayNormHigh =
-				// coeff to filter masking function in time
-				m_NearMaskingDecayTimeHigh * 0.002 * m_SamplesPerSec / m_nFftOrder;
+			float MaskingTemporalDecayNormHigh = float(
+														// coeff to filter masking function in time
+														m_NearMaskingDecayTimeHigh * 0.002 * m_SamplesPerSec / m_nFftOrder);
 			if (MaskingTemporalDecayNormHigh < 1.)
 			{
 				MaskingTemporalDecayNormHigh = 1.;
@@ -1462,8 +1463,8 @@ int CNoiseReduction::ProcessSoundBuffer(char const * pIn, char * pOut,
 				{
 					if (m_pParams[ch][f].sp_MaskingPower < m_pParams[ch][f].sp_PrevMaskingPower)
 					{
-						m_pParams[ch][f].sp_PrevMaskingPower += decay *
-							(m_pParams[ch][f].sp_MaskingPower - m_pParams[ch][f].sp_PrevMaskingPower);
+						m_pParams[ch][f].sp_PrevMaskingPower += float(decay *
+								(m_pParams[ch][f].sp_MaskingPower - m_pParams[ch][f].sp_PrevMaskingPower));
 						m_pParams[ch][f].sp_MaskingPower = m_pParams[ch][f].sp_PrevMaskingPower;
 					}
 					else
@@ -1566,7 +1567,7 @@ int CNoiseReduction::ProcessSoundBuffer(char const * pIn, char * pOut,
 							{
 								suppress = SuppressionLimit;
 							}
-							m_FftOutBuffer[ch][f] *= suppress;
+							m_FftOutBuffer[ch][f] *= float(suppress);
 						}
 						else
 						{
@@ -1883,13 +1884,13 @@ BOOL CResampleFilter::InitResample(double ResampleRatio, double FilterLength, in
 		}
 		double val1 = Window1 * sin(arg1) / arg1;
 		// val *= FilterScale;
-		m_FilterBuf[i] = PrevVal;
+		m_FilterBuf[i] = float(PrevVal);
 		//TRACE("Resample filter[%03d]=%f\n", i, m_FilterBuf[i]);
 		double dif1 = val1 - PrevVal;
 		double dif2 = val - val1;
 		double sqrdif = (dif2 - dif1) * 4. / 3.;
-		m_FilterDifBuf[i] = (val - PrevVal - sqrdif) / (1 << ResampleIndexShift);
-		m_FilterDif2Buf[i] = sqrdif / (1 << ResampleIndexShift) / (1 << ResampleIndexShift);
+		m_FilterDifBuf[i] = float(val - PrevVal - sqrdif) / (1 << ResampleIndexShift);
+		m_FilterDif2Buf[i] = float(sqrdif / (1 << ResampleIndexShift) / (1 << ResampleIndexShift));
 		PrevVal = val;
 	}
 	if (ResampleRatio >= 1.)
@@ -1909,7 +1910,7 @@ BOOL CResampleFilter::InitResample(double ResampleRatio, double FilterLength, in
 	}
 	//TRACE("InputPeriod=%08x, OutputPeriod=%08x\n", m_InputPeriod, m_OutputPeriod);
 
-	m_SrcFilterLength = 0x100000000i64 / m_InputPeriod;
+	m_SrcFilterLength = int(0x100000000i64 / m_InputPeriod);
 	m_Phase = 0x80000000u % m_InputPeriod;
 	m_ResampleRatio = ResampleRatio;
 
@@ -1925,7 +1926,7 @@ BOOL CResampleFilter::InitResample(double ResampleRatio, double FilterLength, in
 	}
 	m_SrcBufFilled = SrcBufSize;
 	FilterSoundResample();
-	double Max = 0;
+	float Max = 0;
 	for (i = 2; i < m_DstBufUsed; i++)
 	{
 		if (Max < m_pDstBuf[i])
@@ -2018,7 +2019,7 @@ int CResampleFilter::ProcessSoundBuffer(char const * pIn, char * pOut,
 	if (0 == pInBuf)
 	{
 		// adjust nOutSamples
-		LONGLONG MaxOutSamples = m_ResampleRatio * m_TotalProcessedSamples;
+		LONGLONG MaxOutSamples = LONGLONG(m_ResampleRatio * m_TotalProcessedSamples);
 		if (2 == m_InputChannels)
 		{
 			MaxOutSamples &= ~1;
@@ -2030,7 +2031,7 @@ int CResampleFilter::ProcessSoundBuffer(char const * pIn, char * pOut,
 		}
 		if (nOutSamples > MaxOutSamples)
 		{
-			nOutSamples = MaxOutSamples;
+			nOutSamples = int(MaxOutSamples);
 		}
 	}
 

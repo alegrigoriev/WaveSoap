@@ -197,10 +197,10 @@ private:
 	static void _fastcall Log10(Operation *t);
 	static void _fastcall Sqrt(Operation *t);
 	static void _fastcall Noise(Operation *t);
-	static void _fastcall Abs(Operation *t)  { *t->dDst = abs(*t->dSrc1); }
+	static void _fastcall Abs(Operation *t)  { *t->dDst = fabs(*t->dSrc1); }
 	static void _fastcall DoubleToInt(Operation *t)
 	{
-		*t->nDst = *t->dSrc1;
+		*t->nDst = int(*t->dSrc1);
 	}
 	static void _fastcall IntToDouble(Operation *t)  { *t->dDst = *t->nSrc1; }
 	static void _fastcall AndInt(Operation *t)
@@ -346,7 +346,7 @@ public:
 protected:
 	CCdDrive m_Drive;
 	CdAddressMSF m_CdAddress;
-	LONG m_NumberOfSectors;
+	ULONG m_NumberOfSectors;
 	HANDLE m_hEvent;
 	void * m_pCdBuffer;
 	size_t m_CdBufferSize;

@@ -85,11 +85,11 @@ public:
 	}
 	DWORD GetLength()
 	{
-		return m_File.GetLength();
+		return (DWORD)m_File.GetLength();
 	}
 	DWORD GetPos()
 	{
-		return m_File.Seek(0, FILE_CURRENT);
+		return (DWORD)m_File.Seek(0, FILE_CURRENT);
 	}
 
 private:
@@ -173,7 +173,7 @@ public:
 	QWORD m_CurrentStreamTime;
 	QWORD m_BufferLengthTime; //32kbytes in 100ns units
 	QWORD m_StreamDuration;
-	LONG m_CurrentSamples;
+	ULONG m_CurrentSamples;
 	DWORD m_dwAudioOutputNum;
 	CWaveFormat m_DstWf;
 	CWaveFormat m_SrcWf;

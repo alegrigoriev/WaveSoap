@@ -21,7 +21,7 @@ helper.
 */
 #include <mmsystem.h>
 #include "DirectFile.h"
-
+#include "WaveSupport.h"
 enum
 {
 	MmioFileOpenExisting = CDirectFile::OpenExisting,
@@ -126,46 +126,33 @@ public:
 	HMMIO m_hmmio;
 	FOURCC m_RiffckType;
 	CSimpleCriticalSection m_cs;
-	struct COMMON_DATA
+
+	struct InstanceDataMm : public CDirectFile::InstanceData
 	{
 		MMCKINFO riffck;
 		HMMIO m_hmmio;
+		InstanceDataMm()
+		{
+			m_hmmio = NULL;
+			memzero(riffck);
+			m_size = sizeof *this;
+		}
+		virtual void CopyDataTo(InstanceData * dst)
+		{
+			InstanceDataMm * dst1 = static_cast<InstanceDataMm *>(dst);
+			dst1->riffck = riffck;
+			dst1->m_hmmio = m_hmmio;
+			InstanceData::CopyDataTo(dst);
+		}
 	};
-	void * GetCommonData() const
-	{
-		COMMON_DATA * tmp = (COMMON_DATA *)CDirectFile::GetCommonData();
-		if (NULL == tmp)
-		{
-			return NULL;
-		}
-		return tmp + 1;
-	}
-	size_t GetCommonDataSize() const
-	{
-		size_t tmp = CDirectFile::GetCommonDataSize();
-		if (tmp >= sizeof (COMMON_DATA))
-		{
-			return tmp - sizeof (COMMON_DATA);
-		}
-		else
-		{
-			return 0;
-		}
-	}
 
-	void * AllocateCommonData(size_t size)
+	InstanceDataMm * GetInstanceData() const
 	{
-		COMMON_DATA * tmp = (COMMON_DATA *)CDirectFile::AllocateCommonData(size + sizeof (COMMON_DATA));
-		if (NULL == tmp)
-		{
-			return NULL;
-		}
-		return tmp + 1;
+		return static_cast<InstanceDataMm *>(CDirectFile::GetInstanceData());
 	}
-
 	LPMMCKINFO GetRiffChunk() const
 	{
-		return &((COMMON_DATA*)CDirectFile::GetCommonData())->riffck;
+		return & GetInstanceData()->riffck;
 	}
 
 	BOOL LoadRiffChunk();
@@ -215,13 +202,37 @@ public:
 	virtual void Close( );
 	int SampleSize() const;
 
-	struct COMMON_DATA
+	struct InstanceDataWav : CMmioFile::InstanceDataMm
 	{
 		MMCKINFO datack;
 		MMCKINFO fmtck;
 		MMCKINFO factck;
-		WAVEFORMATEX wf;    // should be the last member
+		MMCKINFO infock;    // INFO chunk
+		CWaveFormat wf;
+
+		InstanceDataWav()
+		{
+			memzero(datack);
+			memzero(fmtck);
+			memzero(factck);
+			memzero(infock);
+			m_size = sizeof *this;
+		}
+		virtual void CopyDataTo(InstanceData * dst)
+		{
+			InstanceDataWav * dst1 = static_cast<InstanceDataWav *>(dst);
+			dst1->datack = datack;
+			dst1->fmtck = fmtck;
+			dst1->factck = factck;
+			dst1->infock = infock;
+			dst1->wf = wf;
+			InstanceDataMm::CopyDataTo(dst);
+		}
 	};
+	InstanceDataWav * GetInstanceData() const
+	{
+		return static_cast<InstanceDataWav *>(CDirectFile::GetInstanceData());
+	}
 	int Channels() const
 	{
 		WAVEFORMATEX * pWf = GetWaveFormat();
@@ -238,16 +249,7 @@ public:
 
 	WAVEFORMATEX * AllocateWaveformat(size_t FormatSize = sizeof (WAVEFORMATEX))
 	{
-		if (FormatSize < sizeof (WAVEFORMATEX))
-		{
-			FormatSize = sizeof (WAVEFORMATEX);
-		}
-		COMMON_DATA * pCd = (COMMON_DATA *)AllocateCommonData(offsetof (COMMON_DATA, wf) + FormatSize);
-		if (NULL == pCd)
-		{
-			return NULL;
-		}
-		return & pCd->wf;
+		return GetInstanceData()->wf.Allocate(FormatSize - sizeof (WAVEFORMATEX));
 	}
 
 	BOOL LoadWaveformat();
@@ -268,7 +270,7 @@ public:
 
 	LPMMCKINFO GetDataChunk() const
 	{
-		return & ((COMMON_DATA*)GetCommonData())->datack;
+		return & GetInstanceData()->datack;
 	}
 	WAVEFORMATEX * GetWaveFormat() const;
 	// save all changes in wave format and data chunk size

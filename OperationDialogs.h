@@ -162,11 +162,11 @@ public:
 	//}}AFX_DATA
 	int		m_Chan;
 	int		m_TimeFormat;
-	long m_Start;
-	long m_End;
-	long m_CaretPosition;
-	long m_Length;
-	long m_FileLength;
+	ULONG m_Start;
+	ULONG m_End;
+	ULONG m_CaretPosition;
+	ULONG m_Length;
+	ULONG m_FileLength;
 	const WAVEFORMATEX * m_pWf;
 
 	struct Selection
@@ -220,8 +220,8 @@ public:
 	int		m_TimeFormatIndex;
 	//}}AFX_DATA
 	int m_TimeFormat;
-	long m_Position;
-	long m_FileLength;
+	ULONG m_Position;
+	ULONG m_FileLength;
 	const WAVEFORMATEX * m_pWf;
 // Overrides
 	// ClassWizard generated virtual function overrides

@@ -31,9 +31,9 @@ public:
 
 	int		m_nChannel;
 	int		m_TimeFormat;
-	long    m_Length;
-	long    m_Start;
-	long    m_FileLength;
+	ULONG    m_Length;
+	ULONG    m_Start;
+	ULONG    m_FileLength;
 	long    m_CaretPosition;
 	WAVEFORMATEX * m_pWf;
 
@@ -264,7 +264,7 @@ protected:
 	afx_msg void OnSysColorChange();
 	//}}AFX_MSG
 	void OnMetricsChange();
-	afx_msg LRESULT OnDeviceChange(UINT, DWORD);
+	afx_msg BOOL OnDeviceChange(UINT, DWORD);
 	DECLARE_MESSAGE_MAP()
 };
 #pragma pack(pop)

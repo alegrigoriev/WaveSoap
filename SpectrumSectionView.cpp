@@ -131,7 +131,7 @@ void CSpectrumSectionView::OnDraw(CDC* pDC)
 	// create an array of points
 	int nNumberOfPoints = rows;
 	// if all the chart was drawn, how many scans it would have:
-	int TotalRows = rows * pFftView->m_VerticalScale;
+	int TotalRows = int(rows * pFftView->m_VerticalScale);
 
 	if (0 == TotalRows)
 	{
@@ -142,7 +142,7 @@ void CSpectrumSectionView::OnDraw(CDC* pDC)
 		return;
 	}
 
-	int LastFftSample = m_FftOrder - pFftView->m_FirstbandVisible;
+	int LastFftSample = int(m_FftOrder - pFftView->m_FirstbandVisible);
 	int FirstFftSample = LastFftSample + MulDiv(-rows, m_FftOrder, TotalRows);
 	int NoiseReductionBegin = MulDiv(nBeginFrequency, m_FftOrder,
 									pDoc->WaveFormat()->nSamplesPerSec);
@@ -320,8 +320,8 @@ void CSpectrumSectionView::OnDraw(CDC* pDC)
 				double re2 = pSrcArray[i * 2] - pSrcArray[(m_FftOrder * 2 - i) * 2];
 				double im1 = pSrcArray[i * 2 + 1] - pSrcArray[(m_FftOrder * 2 - i) * 2 + 1];
 				double im2 = pSrcArray[i * 2 + 1] + pSrcArray[(m_FftOrder * 2 - i) * 2 + 1];
-				m_pFftSum[i * 2] += 0.25 * (re1 * re1 + im1 * im1);
-				m_pFftSum[i * 2 + 1] += 0.25 * (re2 * re2 + im2 * im2);
+				m_pFftSum[i * 2] = float(m_pFftSum[i * 2] + 0.25 * (re1 * re1 + im1 * im1));
+				m_pFftSum[i * 2 + 1] = float(m_pFftSum[i * 2 + 1] + 0.25 * (re2 * re2 + im2 * im2));
 			}
 		}
 	}

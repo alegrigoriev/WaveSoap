@@ -66,7 +66,7 @@ protected:
 	virtual void AdjustNewScale(double OldScaleX, double OldScaleY,
 								double & NewScaleX, double & NewScaleY);
 	virtual BOOL MasterScrollBy(double dx, double dy, BOOL bDoScroll = TRUE);
-	void GetWaveSamples(int Position, int NumOfSamples);
+	void GetWaveSamples(ULONG Position, size_t NumOfSamples);
 	void DrawHorizontalWithSelection(CDC * pDC,
 									int left, int right, int Y,
 									CPen * NormalPen, CPen * SelectedPen,
