@@ -1386,7 +1386,10 @@ BOOL CWaveSoapFrontDoc::DoPaste(SAMPLE_INDEX Start, SAMPLE_INDEX End, CHANNEL_MA
 			double ResampleQuality = 40.;
 			double ResampleRatio = double(TargetSampleRate) / SrcSampleRate;
 
-			if ( ! DstFile.CreateWaveFile(& SrcFile, NULL, ALL_CHANNELS, NumSamplesToPasteFrom,
+			CWaveFormat wf;
+			wf.InitFormat(WAVE_FORMAT_PCM, TargetSampleRate, SrcFile.Channels());
+
+			if ( ! DstFile.CreateWaveFile(& SrcFile, wf, ALL_CHANNELS, NumSamplesToPasteFrom,
 										CreateWaveFileTempDir
 										| CreateWaveFileDeleteAfterClose
 										| CreateWaveFilePcmFormat
@@ -1397,14 +1400,14 @@ BOOL CWaveSoapFrontDoc::DoPaste(SAMPLE_INDEX Start, SAMPLE_INDEX End, CHANNEL_MA
 				return FALSE;
 			}
 
-			DstFile.GetWaveFormat()->nSamplesPerSec = TargetSampleRate;
+			DstFile.GetInstanceData()->RescaleMarkers(SrcFile.SampleRate(), TargetSampleRate);
 
 			CResampleContext::auto_ptr pResampleContext(
 														new CResampleContext(this, IDS_RESAMPLE_CLIPBOARD_STATUS_PROMPT,
 															0,
 															SrcFile, DstFile, ResampleRatio, ResampleQuality));
 
-			SrcFile = pResampleContext->m_DstFile;
+			SrcFile = DstFile;
 
 			pStagedContext->AddContext(pResampleContext.release());
 		}
@@ -1713,6 +1716,7 @@ BOOL CWaveSoapFrontDoc::OnOpenDocument(LPCTSTR lpszPathName, int DocOpenFlags)
 				| CreateWaveFileDontInitStructure
 				| CreateWaveFileTemp;
 		}
+
 		if (! m_WavFile.CreateWaveFile( & m_OriginalWavFile, NULL, ALL_CHANNELS,
 										nNewFileSamples, flags, NULL))
 		{
@@ -4114,6 +4118,8 @@ void CWaveSoapFrontDoc::OnProcessResample()
 		FileCreationErrorMessageBox(NULL);
 		return;
 	}
+
+	DstFile.GetInstanceData()->RescaleMarkers(OldSamplingRate, NewSamplingRate);
 
 	CStagedContext::auto_ptr pContext
 	(new CStagedContext(this, 0, IDS_RESAMPLE_STATUS_PROMPT, IDS_RESAMPLE_OPERATION_NAME));
