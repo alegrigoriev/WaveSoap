@@ -436,12 +436,13 @@ public:
 	typedef std::auto_ptr<ThisClass> auto_ptr;
 
 	CLengthChangeOperation(class CWaveSoapFrontDoc * pDoc,
-							MEDIA_FILE_SIZE NewLength);
+							CWaveFile & File, MEDIA_FILE_SIZE NewLength);
 
 	virtual BOOL CreateUndo(BOOL IsRedo = FALSE);
 	virtual BOOL OperationProc();
 
 protected:
+	CWaveFile m_File;
 	MEDIA_FILE_SIZE m_NewLength;
 };
 
@@ -453,13 +454,14 @@ public:
 	typedef std::auto_ptr<ThisClass> auto_ptr;
 
 	CWaveSamplesChangeOperation(CWaveSoapFrontDoc * pDoc,
-								NUMBER_OF_SAMPLES NewSamples);
+								CWaveFile & File, NUMBER_OF_SAMPLES NewSamples);
 
 	virtual BOOL CreateUndo(BOOL IsRedo = FALSE);
 	virtual BOOL OperationProc();
 
 protected:
 	NUMBER_OF_SAMPLES m_NewSamples;
+	CWaveFile m_File;
 };
 
 class CMoveOperation : public CCopyContext
@@ -487,65 +489,40 @@ protected:
 	virtual BOOL OperationProc();
 };
 
-class CExpandContext : public CMoveOperation
+class CInitChannels : public CThroughProcessOperation
 {
-	typedef CExpandContext ThisClass;
-	typedef CMoveOperation BaseClass;
-	//friend class CWaveSoapFrontDoc;
-	// Start, End and position are in bytes
-
+	// Zero some channels. When undone, data is left as is (will be overwritten)
+	typedef CInitChannels ThisClass;
+	typedef CThroughProcessOperation BaseClass;
 public:
 	typedef std::auto_ptr<ThisClass> auto_ptr;
+
+	CInitChannels(CWaveSoapFrontDoc * pDoc,
+				CWaveFile & File, SAMPLE_POSITION Start, SAMPLE_POSITION End, CHANNEL_MASK Channels);
+
+protected:
+	virtual BOOL PrepareUndo();
+	virtual void UnprepareUndo();
+
 	virtual BOOL CreateUndo(BOOL IsRedo = FALSE);
-
-	CExpandContext(CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString, LPCTSTR OperationName)
-		: BaseClass(pDoc, StatusString, OperationName)
-	{
-
-	}
-	BOOL InitExpand(CWaveFile & File, SAMPLE_INDEX StartSample, NUMBER_OF_SAMPLES Length, CHANNEL_MASK Channel);
-	virtual BOOL OperationProc();
+	virtual BOOL ProcessBuffer(void * buf, size_t len, SAMPLE_POSITION offset, BOOL bBackward = FALSE);
 };
 
-class CShrinkContext : public CMoveOperation
+class CInitChannelsUndo : public COneFileOperation
 {
-	typedef CShrinkContext ThisClass;
-	typedef CMoveOperation BaseClass;
-	//friend class CWaveSoapFrontDoc;
-	// Start, End and position are in bytes
-
+	// Zero some channels. When undone, data is left as is (will be overwritten)
+	typedef CInitChannelsUndo ThisClass;
+	typedef COneFileOperation BaseClass;
 public:
 	typedef std::auto_ptr<ThisClass> auto_ptr;
+
+	CInitChannelsUndo(CWaveSoapFrontDoc * pDoc,
+					SAMPLE_POSITION Start, SAMPLE_POSITION End, CHANNEL_MASK Channels);
+
+protected:
+
 	virtual BOOL CreateUndo(BOOL IsRedo = FALSE);
-
-	CShrinkContext(CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString, LPCTSTR OperationName)
-		: BaseClass(pDoc, StatusString, OperationName)
-	{
-
-	}
-	BOOL InitShrink(CWaveFile & File, SAMPLE_INDEX StartSample, NUMBER_OF_SAMPLES Length, CHANNEL_MASK Channel);
 	virtual BOOL OperationProc();
-};
-
-class CInsertContext : public CStagedContext
-{
-	typedef CInsertContext ThisClass;
-	typedef CStagedContext BaseClass;
-	//friend class CWaveSoapFrontDoc;
-	// Start, End and position are in bytes
-
-public:
-	typedef std::auto_ptr<ThisClass> auto_ptr;
-	CInsertContext(CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString, LPCTSTR OperationName)
-		: BaseClass(pDoc, StatusString, OperationContextDiskIntensive, OperationName)
-	{
-
-	}
-	BOOL InitInsertCopy(CWaveFile & DstFile, SAMPLE_INDEX StartDstSample,
-						NUMBER_OF_SAMPLES LengthToReplace, CHANNEL_MASK DstChannel,
-						CWaveFile & SrcFile, SAMPLE_INDEX StartSrcSample,
-						NUMBER_OF_SAMPLES SamplesToInsert, CHANNEL_MASK SrcChannel);
-	//virtual BOOL CreateUndo(BOOL IsRedo = FALSE);
 };
 
 class CMetadataChangeOperation : public COperationContext
@@ -582,5 +559,18 @@ protected:
 	NUMBER_OF_SAMPLES m_Length;
 	CHANNEL_MASK m_Channels;
 };
+
+BOOL InitInsertCopy(CStagedContext * pContext,
+					CWaveFile & DstFile, SAMPLE_INDEX StartDstSample,
+					NUMBER_OF_SAMPLES LengthToReplace, CHANNEL_MASK DstChannel,
+					CWaveFile & SrcFile, SAMPLE_INDEX StartSrcSample,
+					NUMBER_OF_SAMPLES SamplesToInsert, CHANNEL_MASK SrcChannel);
+
+BOOL InitExpandOperation(CStagedContext * pContext,
+						CWaveFile & File, SAMPLE_INDEX StartSample,
+						NUMBER_OF_SAMPLES Length, CHANNEL_MASK Channel);
+// delete area from StartSample to StartSample+Length
+BOOL InitShrinkOperation(CStagedContext * pContext,
+						CWaveFile & File, SAMPLE_INDEX StartSample, NUMBER_OF_SAMPLES Length, CHANNEL_MASK Channel);
 
 #endif // AFX_OPERATIONCONTEXT2_H__FFA16C44_2FA7_11D4_9ADD_00C0F0583C4B__INCLUDED_
