@@ -150,7 +150,7 @@ void CWaveSoapFrontView::DrawHorizontalWithSelection(CDC * pDC,
 													CPen * NormalPen, CPen * SelectedPen,
 													int nChannel)
 {
-	CWaveSoapFrontDoc * pDoc = GetDocument();
+	ThisDoc * pDoc = GetDocument();
 	// find positions of the selection start and and
 	// and check whether the selected area is visible
 	double XScaleDev = GetXScaleDev();
@@ -205,9 +205,28 @@ void CWaveSoapFrontView::DrawHorizontalWithSelection(CDC * pDC,
 	}
 }
 
+void CWaveSoapFrontView::GetChannelRect(int Channel, RECT * pR)
+{
+	ThisDoc * pDoc = GetDocument();
+	int nChannels = pDoc->WaveChannels();
+
+	GetClientRect(pR);
+	if (Channel >= nChannels)
+	{
+		pR->top = pR->bottom;
+		pR->bottom += 2;
+		return;
+	}
+
+	int h = (pR->bottom - pR->top + 1) / nChannels;
+	// for all channels, the rectangle is of the same height
+	pR->top = h * Channel;
+	pR->bottom = pR->top + h - 1;
+}
+
 void CWaveSoapFrontView::OnDraw(CDC* pDC)
 {
-	CWaveSoapFrontDoc* pDoc = GetDocument();
+	ThisDoc * pDoc = GetDocument();
 	ASSERT_VALID(pDoc);
 	if (! pDoc->m_WavFile.IsOpen())
 	{
@@ -250,11 +269,10 @@ void CWaveSoapFrontView::OnDraw(CDC* pDC)
 		SelectedChannelSeparatorPen.CreatePen(PS_SOLID, 1, pApp->m_SelectedChannelSeparatorColor);
 
 		CGdiObjectSaveT<CPen> OldPen(pDC, pDC->SelectObject(& ZeroLinePen));
-		RECT r;
-		//double y;
-		double left, right, top, bottom;
 
-		GetClientRect(&r);
+		CRect r;
+
+		GetClientRect(r);
 		if (pDC->IsKindOf(RUNTIME_CLASS(CPaintDC)))
 		{
 			RECT r_upd = ((CPaintDC*)pDC)->m_ps.rcPaint;
@@ -265,10 +283,10 @@ void CWaveSoapFrontView::OnDraw(CDC* pDC)
 
 		r.left--;   // make additional
 		r.right++;
-		int iClientWidth = r.right - r.left;
 
-		PointToDoubleDev(CPoint(r.left, r.top), left, top);
-		PointToDoubleDev(CPoint(r.right, r.bottom), right, bottom);
+		double left = WindowToWorldX(r.left);
+		double right = WindowToWorldX(r.right);
+		if (left < 0.) left = 0.;
 
 		// number of sample that corresponds to the r.left position
 		SAMPLE_INDEX NumOfFirstSample = DWORD(left);
@@ -276,13 +294,9 @@ void CWaveSoapFrontView::OnDraw(CDC* pDC)
 
 		// create an array of points
 
-		if (left < 0.) left = 0.;
-
 		NUMBER_OF_CHANNELS nChannels = pDoc->WaveChannels();
 		int nNumberOfPoints = r.right - r.left;
 
-		int ChannelSeparatorY = fround((0 - dOrgY) * GetYScaleDev());
-		double YScaleDev = GetYScaleDev();
 		int SelBegin = WorldToWindowX(pDoc->m_SelectionStart);
 		int SelEnd = WorldToWindowX(pDoc->m_SelectionEnd);
 
@@ -291,47 +305,40 @@ void CWaveSoapFrontView::OnDraw(CDC* pDC)
 		{
 			SelEnd++;
 		}
-		if (nChannels > 1)
-		{
-			// draw channel separator line
-			DrawHorizontalWithSelection(pDC, r.left, r.right,
-										ChannelSeparatorY,
-										& ChannelSeparatorPen,
-										& SelectedChannelSeparatorPen, ALL_CHANNELS);
-		}
+
 		if (nNumberOfPoints > 0)
 		{
 			ppArray = new POINT[nNumberOfPoints][2];
 			if (ppArray)
 				for (int ch = 0; ch < nChannels; ch++)
 				{
-					double WaveOffset = m_WaveOffsetY * m_VerticalScale - dOrgY;
-					int ClipHigh = r.bottom;
-					int ClipLow = r.top;
-					if (nChannels > 1)
-					{
-						if (0 == ch)
-						{
-							WaveOffset = m_WaveOffsetY * m_VerticalScale + 32768. - dOrgY;
-							ClipHigh = ChannelSeparatorY;
-						}
-						else
-						{
-							WaveOffset = m_WaveOffsetY * m_VerticalScale -32768. - dOrgY;
-							ClipLow = ChannelSeparatorY + 1;
-						}
-					}
+					CRect ChanR;
+					GetChannelRect(ch, ChanR);
 
-					int ZeroLinePos = fround(WaveOffset * YScaleDev);
+					int const ClipHigh = ChanR.bottom;
+					int const ClipLow = ChanR.top;
+
+					WaveCalculate WaveToY(m_WaveOffsetY, m_VerticalScale, ChanR.top, ChanR.bottom);
+
+					TRACE("V Scale=%f, m_WaveOffsetY=%f, top = %d, bottom = %d, height=%d, W2Y(32767)=%d, W2Y(-32768)=%d\n",
+						m_VerticalScale, m_WaveOffsetY, ChanR.top, ChanR.bottom,
+						ChanR.Height(), WaveToY(32767), WaveToY(-32768));
+					// Y = wave * m_VerticalScale + m_WaveOffsetY * m_VerticalScale
+					//     + (ChanR.bottom + ChanR.top) / 2
+					int ZeroLinePos = WaveToY(0);
+
 					if (ZeroLinePos >= ClipLow &&
 						ZeroLinePos < ClipHigh)
 					{
+						TRACE("CWaveSoapFrontView Zero pos=%d\n", ZeroLinePos);
+
 						DrawHorizontalWithSelection(pDC, r.left, r.right,
 													ZeroLinePos,
 													& ZeroLinePen,
 													& SelectedZeroLinePen, ch);
 					}
-					int n6DBLine = fround((16384.* m_VerticalScale + WaveOffset) * YScaleDev);
+
+					int n6DBLine = WaveToY(16384);
 					if (n6DBLine >= ClipLow &&
 						n6DBLine < ClipHigh)
 					{
@@ -340,7 +347,9 @@ void CWaveSoapFrontView::OnDraw(CDC* pDC)
 													& SixDBLinePen,
 													& SelectedSixDBLinePen, ch);
 					}
-					n6DBLine = fround((-16384.* m_VerticalScale + WaveOffset) * YScaleDev);
+
+					n6DBLine = WaveToY(-16384);
+
 					if (n6DBLine >= ClipLow &&
 						n6DBLine < ClipHigh)
 					{
@@ -378,68 +387,41 @@ void CWaveSoapFrontView::OnDraw(CDC* pDC)
 							WavePeak peak =
 								pDoc->m_WavFile.GetPeakMinMax(index1, index2, nChannels);
 
-							ppArray[i][0] = CPoint(i + r.left,
-													fround((peak.low * m_VerticalScale + WaveOffset) * YScaleDev));
-							ppArray[i][1] = CPoint(i + r.left,
-													fround((peak.high * m_VerticalScale + WaveOffset) * YScaleDev));
+							ppArray[i][0] = CPoint(i + r.left, WaveToY(peak.low));
+							ppArray[i][1] = CPoint(i + r.left, WaveToY(peak.high));
 						}
 					}
 					else
 					{
 						// use wave data for drawing
-	#if 0
-						GetWaveSamples(NumOfFirstSample * nChannels, nNumberOfPoints * SamplesPerPoint * nChannels);
-
-						int nIndexOfSample =
-							ch + NumOfFirstSample * nChannels - m_FirstSampleInBuffer;
-						WAVE_SAMPLE * pWaveSamples = & m_pWaveBuffer[nIndexOfSample];
-	#else
 						WAVE_SAMPLE * pWaveSamples = NULL;
-						int nSample = 0;
-						if (NumOfFirstSample < 0)
-						{
-							nSample = NumOfFirstSample * nChannels;
-							NumOfFirstSample = 0;
-						}
+
 						int nCountSamples = m_WaveBuffer.GetData( & pWaveSamples,
 																NumOfFirstSample * nChannels,
 																nNumberOfPoints * SamplesPerPoint * nChannels, this);
-	#endif
+
+						int nSample = ch;
+
 						for (i = 0; i < nNumberOfPoints; i++)
 						{
 							int low = 0x7FFF;
 							int high = -0x8000;
-							if (NULL != pWaveSamples
-								&& nSample < nCountSamples)
+							for (unsigned j = 0; j < SamplesPerPoint && nSample < nCountSamples;
+								j++, nSample += nChannels)
 							{
-								if (nSample >= 0)
+								if (high < pWaveSamples[nSample])
 								{
-									for (unsigned j = 0; j < SamplesPerPoint; j++, nSample += nChannels)
-									{
-										if (nSample >= nCountSamples)
-										{
-											break;
-										}
-										if (high < pWaveSamples[nSample])
-										{
-											high = pWaveSamples[nSample];
-										}
-										if (low > pWaveSamples[nSample])
-										{
-											low = pWaveSamples[nSample];
-										}
-									}
+									high = pWaveSamples[nSample];
 								}
-								else
+								if (low > pWaveSamples[nSample])
 								{
-									nSample += SamplesPerPoint * nChannels;
+									low = pWaveSamples[nSample];
 								}
 							}
 
-							ppArray[i][0] = CPoint(i + r.left,
-													fround((low * m_VerticalScale + WaveOffset) * YScaleDev));
-							ppArray[i][1] = CPoint(i + r.left,
-													fround((high * m_VerticalScale + WaveOffset) * YScaleDev));
+							ppArray[i][0] = CPoint(i + r.left, WaveToY(low));
+							ppArray[i][1] = CPoint(i + r.left, WaveToY(high));
+//                        ASSERT(ppArray[i][0].y >= ppArray[i][1].y);
 						}
 					}
 
@@ -453,58 +435,50 @@ void CWaveSoapFrontView::OnDraw(CDC* pDC)
 
 					for (i = 0; i < nNumberOfPoints; i ++)
 					{
-						if (ppArray[i][0].y >= ppArray[i][1].y)
+						POINT (* const pp)[2] = ppArray + i;
+						if (pp[0][0].y >= pp[0][1].y)
 						{
-							ppArray[i][1].y--;
+							pp[0][1].y--;
 							if (i < nNumberOfPoints - 1
-								&& ppArray[i + 1][0].y >= ppArray[i + 1][1].y)
+								&& pp[1][0].y >= pp[1][1].y)
 							{
-								if (ppArray[i][0].y < ppArray[i + 1][1].y)
+								if (pp[0][0].y < pp[1][1].y)
 								{
-									ppArray[i][0].y = (ppArray[i + 1][1].y + ppArray[i][0].y) >> 1;
+									pp[0][0].y = (pp[1][1].y + pp[0][0].y) >> 1;
 								}
-								else if (ppArray[i + 1][0].y < ppArray[i][1].y)
+								else if (pp[1][0].y < pp[0][1].y)
 								{
-									ppArray[i][1].y = (ppArray[i][1].y + ppArray[i + 1][0].y) >> 1;
+									pp[0][1].y = (pp[0][1].y + pp[1][0].y) >> 1;
 								}
 							}
 							if (LastY0 >= LastY1)
 							{
-								if (ppArray[i][0].y < LastY1)
+								if (pp[0][0].y < LastY1)
 								{
-									ppArray[i][0].y = LastY1;
+									pp[0][0].y = LastY1;
 								}
-								else if (ppArray[i][1].y > LastY0)
+								else if (pp[0][1].y > LastY0)
 								{
-									ppArray[i][1].y = LastY0;
+									pp[0][1].y = LastY0;
 								}
 							}
 
-							LastY0 = ppArray[i][0].y;
-							LastY1 = ppArray[i][1].y;
+							LastY0 = pp[0][0].y;
+							LastY1 = pp[0][1].y;
 
-							if (ppArray[i][0].y < ClipLow)
+							if (pp[0][0].y < ClipLow)
 							{
 								continue;
 							}
-							else if (ppArray[i][0].y > ClipHigh)
-							{
-								ppArray[i][0].y = ClipHigh;
-							}
-
-							if (ppArray[i][1].y < ClipLow)
-							{
-								ppArray[i][1].y = ClipLow-1;
-							}
-							else if (ppArray[i][1].y > ClipHigh)
+							if (pp[0][1].y > ClipHigh)
 							{
 								continue;
 							}
 
 							CPen * pPenToDraw = & WaveformPen;
 
-							if (ppArray[i][0].x >= SelBegin
-								&& ppArray[i][0].x < SelEnd
+							if (pp[0][0].x >= SelBegin
+								&& pp[0][0].x < SelEnd
 								&& (ALL_CHANNELS == pDoc->m_SelectedChannel
 									|| ch == pDoc->m_SelectedChannel))
 							{
@@ -515,9 +489,26 @@ void CWaveSoapFrontView::OnDraw(CDC* pDC)
 								pDC->SelectObject(pPenToDraw);
 								pLastPen = pPenToDraw;
 							}
-							pDC->MoveTo(ppArray[i][0]);
-							pDC->LineTo(ppArray[i][1]);
+							if (pp[0][1].y < ClipLow)
+							{
+								pp[0][1].y = ClipLow - 1;
+							}
+							if (pp[0][0].y > ClipHigh)
+							{
+								pp[0][0].y = ClipHigh;
+							}
+
+							pDC->MoveTo(pp[0][0]);
+							pDC->LineTo(pp[0][1]);
 						}
+					}
+					if (ch + 1 < nChannels)
+					{
+						// draw channel separator line
+						DrawHorizontalWithSelection(pDC, r.left, r.right,
+													ChanR.bottom,
+													& ChannelSeparatorPen,
+													& SelectedChannelSeparatorPen, ALL_CHANNELS);
 					}
 				}
 		}
@@ -617,8 +608,10 @@ void CWaveSoapFrontView::AdjustNewScale(double OldScaleX, double OldScaleY,
 BOOL CWaveSoapFrontView::PlaybackCursorVisible()
 {
 	int pos = WorldToWindowX(m_PlaybackCursorDrawnSamplePos);
+
 	CRect r;
-	GetClientRect( & r);
+	GetClientRect(r);
+
 	if (pos < r.left || pos >= r.right)
 	{
 		// not in the view;
@@ -638,8 +631,10 @@ void CWaveSoapFrontView::DrawPlaybackCursor(CDC * pDC, SAMPLE_INDEX Sample, CHAN
 		return;
 	}
 	int pos = WorldToWindowX(Sample);
+
 	CRect r;
-	GetClientRect( & r);
+	GetClientRect(r);
+
 	if (pos < r.left || pos >= r.right)
 	{
 		// not in the view;
@@ -750,7 +745,7 @@ void CWaveSoapFrontView::Dump(CDumpContext& dc) const
 CWaveSoapFrontDoc* CWaveSoapFrontView::GetDocument() // non-debug version is inline
 {
 	ASSERT(m_pDocument->IsKindOf(RUNTIME_CLASS(CWaveSoapFrontDoc)));
-	return (CWaveSoapFrontDoc*)m_pDocument;
+	return static_cast<ThisDoc*>(m_pDocument);
 }
 #endif //_DEBUG
 
@@ -791,7 +786,7 @@ void CWaveSoapFrontView::OnViewZoomOutVert()
 	if (m_VerticalScale > 1.)
 	{
 		m_VerticalScale	*= sqrt(0.5);
-		if (m_VerticalScale < 1.001)    // compensate any error
+		if (m_VerticalScale < 1.01)    // compensate any error
 		{
 			m_VerticalScale = 1.;
 		}
@@ -830,10 +825,12 @@ void CWaveSoapFrontView::OnUpdateViewZoomOutVert(CCmdUI* pCmdUI)
 // return client hit test code. 'p' is in client coordinates
 DWORD CWaveSoapFrontView::ClientHitTest(CPoint p)
 {
-	CWaveSoapFrontDoc * pDoc = GetDocument();
+	ThisDoc * pDoc = GetDocument();
 	DWORD result = 0;
+
 	CRect r;
-	GetClientRect( & r);
+	GetClientRect(r);
+
 	if ( ! r.PtInRect(p))
 	{
 		return VSHT_NONCLIENT;
@@ -980,14 +977,15 @@ void CWaveSoapFrontView::CreateAndShowCaret()
 	{
 		return;
 	}
-	CWaveSoapFrontDoc * pDoc = GetDocument();
+	ThisDoc * pDoc = GetDocument();
 	if (pDoc->m_PlayingSound && ! m_NewSelectionMade)
 	{
 		DestroyCaret();
 		return;
 	}
+
 	CRect r;
-	GetClientRect( & r);
+	GetClientRect(r);
 
 	CPoint p(WorldToWindowX(pDoc->m_CaretPosition), r.top);
 //    TRACE("Client rect height=%d, caret position=%d\n", r.Height(), p.x);
@@ -1013,11 +1011,13 @@ void CWaveSoapFrontView::CreateAndShowCaret()
 BOOL CWaveSoapFrontView::OnEraseBkgnd(CDC* pDC)
 {
 	CThisApp * pApp = GetApp();
-	CWaveSoapFrontDoc * pDoc = GetDocument();
+	ThisDoc * pDoc = GetDocument();
 	RemoveSelectionRect();
 	CBrush backBrush(pApp->m_WaveBackground);
+
 	CRect r;
-	GetClientRect( & r);
+	GetClientRect(r);
+
 	CRect gr = r;
 	int SelBegin = WorldToWindowX(pDoc->m_SelectionStart);
 	int SelEnd = WorldToWindowX(pDoc->m_SelectionEnd);
@@ -1119,7 +1119,7 @@ void CWaveSoapFrontView::OnLButtonDown(UINT nFlags, CPoint point)
 {
 	// begin tracking
 	// point is in client coordinates
-	CWaveSoapFrontDoc * pDoc = GetDocument();
+	ThisDoc * pDoc = GetDocument();
 	DWORD nHit = ClientHitTest(point);
 	if (nHit & VSHT_NONCLIENT)
 	{
@@ -1181,7 +1181,7 @@ void CWaveSoapFrontView::OnLButtonDown(UINT nFlags, CPoint point)
 
 void CWaveSoapFrontView::OnLButtonUp(UINT nFlags, CPoint point)
 {
-	CWaveSoapFrontDoc * pDoc = GetDocument();
+	ThisDoc * pDoc = GetDocument();
 
 	if (pDoc->m_TimeSelectionMode)
 	{
@@ -1266,10 +1266,12 @@ BOOL CWaveSoapFrontView::OnMouseWheel(UINT nFlags, short zDelta, CPoint pt)
 void CWaveSoapFrontView::OnMouseMove(UINT nFlags, CPoint point)
 {
 	// point is in client coordinates
-	CWaveSoapFrontDoc * pDoc = GetDocument();
+	ThisDoc * pDoc = GetDocument();
 	DWORD nHit = ClientHitTest(point);
+
 	CRect r;
-	GetClientRect( & r);
+	GetClientRect(r);
+
 	if (nHit & (VSHT_NOWAVE | VSHT_NONCLIENT))
 	{
 		if (point.x < r.left)
@@ -1371,9 +1373,9 @@ void CWaveSoapFrontView::OnMouseMove(UINT nFlags, CPoint point)
 
 void CWaveSoapFrontView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
 {
-	CWaveSoapFrontDoc * pDoc = GetDocument();
+	ThisDoc * pDoc = GetDocument();
 
-	if (lHint == CWaveSoapFrontDoc::UpdateSelectionChanged
+	if (lHint == ThisDoc::UpdateSelectionChanged
 		&& NULL != pHint)
 	{
 		m_NewSelectionMade = true;
@@ -1403,7 +1405,7 @@ void CWaveSoapFrontView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
 			}
 		}
 
-		GetClientRect( & r);
+		GetClientRect(r);
 		int Separator = WorldToWindowY(0.);
 
 		// calculate new selection boundaries
@@ -1525,13 +1527,14 @@ void CWaveSoapFrontView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
 		}
 		CreateAndShowCaret();
 	}
-	else if (lHint == CWaveSoapFrontDoc::UpdateSoundChanged
+	else if (lHint == ThisDoc::UpdateSoundChanged
 			&& NULL != pHint)
 	{
 		CSoundUpdateInfo * pInfo = static_cast<CSoundUpdateInfo *> (pHint);
-		CWaveSoapFrontDoc * pDoc = GetDocument();
+
 		CRect r;
-		GetClientRect( & r);
+		GetClientRect(r);
+
 		CRect r1;
 		if (0) TRACE("OnUpdate Sound Changed from %d to %d, length=%d\n",
 					pInfo->m_Begin, pInfo->m_End, pInfo->m_NewLength);
@@ -1578,18 +1581,18 @@ void CWaveSoapFrontView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
 			InvalidateRect(& r1, TRUE);
 		}
 	}
-	else if (lHint == CWaveSoapFrontDoc::UpdatePlaybackPositionChanged
+	else if (lHint == ThisDoc::UpdatePlaybackPositionChanged
 			&& NULL != pHint)
 	{
 		CSoundUpdateInfo * pInfo = static_cast<CSoundUpdateInfo *> (pHint);
 		UpdatePlaybackCursor(pInfo->m_Begin, pInfo->m_End);
 	}
-	else if (lHint == CWaveSoapFrontDoc::UpdateSampleRateChanged
+	else if (lHint == ThisDoc::UpdateSampleRateChanged
 			&& NULL == pHint)
 	{
 		// don't do anything
 	}
-	else if (lHint == CWaveSoapFrontDoc::UpdateWholeFileChanged
+	else if (lHint == ThisDoc::UpdateWholeFileChanged
 			&& NULL == pHint
 			)
 	{
@@ -1612,13 +1615,15 @@ void CWaveSoapFrontView::InvalidateRect( LPCRECT lpRect, BOOL bErase)
 
 POINT CWaveSoapFrontView::GetZoomCenter()
 {
-	CWaveSoapFrontDoc * pDoc = GetDocument();
+	ThisDoc * pDoc = GetDocument();
 	int caret = WorldToWindowX(pDoc->m_CaretPosition);
 	int SelBegin = WorldToWindowX(pDoc->m_SelectionStart);
 	int SelEnd = WorldToWindowX(pDoc->m_SelectionEnd);
 	//int CenterY = WorldToWindowY(0);
+
 	CRect r;
-	GetClientRect( & r);
+	GetClientRect(r);
+
 	// if both selection start and end are
 	// outside the visible area, zoom center is the window center
 	if ((caret < r.left
@@ -1661,7 +1666,7 @@ POINT CWaveSoapFrontView::GetZoomCenter()
 void CWaveSoapFrontView::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 {
 	// process cursor control commands
-	CWaveSoapFrontDoc * pDoc = GetDocument();
+	ThisDoc * pDoc = GetDocument();
 
 	SAMPLE_INDEX nCaret = pDoc->m_CaretPosition;
 	SAMPLE_INDEX nSelBegin = pDoc->m_SelectionStart;
@@ -1683,7 +1688,7 @@ void CWaveSoapFrontView::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 	NUMBER_OF_SAMPLES nTotalSamples = pDoc->WaveFileSamples();
 
 	CRect r;
-	GetClientRect( & r);
+	GetClientRect(r);
 
 	// page is one half of the window width
 	int nPage = r.Width() * m_HorizontalScale / 2;
@@ -1813,7 +1818,7 @@ void CWaveSoapFrontView::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 void CWaveSoapFrontView::MovePointIntoView(SAMPLE_INDEX nCaret, BOOL bCenter)
 {
 	CRect r;
-	GetClientRect( & r);
+	GetClientRect(r);
 
 	int nDesiredPos = WorldToWindowX(nCaret);
 	double scroll;
@@ -1847,7 +1852,7 @@ void CWaveSoapFrontView::UpdateCaretPosition()
 
 void CWaveSoapFrontView::OnActivateView(BOOL bActivate, CView* pActivateView, CView* pDeactiveView)
 {
-	CWaveSoapFrontDoc * pDoc = GetDocument();
+	ThisDoc * pDoc = GetDocument();
 	if (bActivate
 		&& pActivateView == this)
 	{
@@ -1872,7 +1877,7 @@ int CWaveSoapFrontView::OnCreate(LPCREATESTRUCT lpCreateStruct)
 	KeepOrgOnResizeY(FALSE);
 
 	CRect r;
-	GetClientRect( r);
+	GetClientRect(r);
 
 	SetExtents(0., double(r.Width()) * m_HorizontalScale, 0., 0.);
 
@@ -1897,19 +1902,13 @@ BOOL CWaveSoapFrontView::MasterScrollBy(double dx, double dy, BOOL bDoScroll)
 	{
 		// check for the limits
 		// ndy is in pixels
-		int ndy = fround(dy * GetYScaleDev());
-		CWaveSoapFrontDoc * pDoc = GetDocument();
+
 		CRect r;
-		GetClientRect( & r);
-		int nHeight = r.Height();
+		GetChannelRect(0, r);
 
-		NUMBER_OF_CHANNELS nChannels = pDoc->WaveChannels();
-		if (0 != nChannels)
-		{
-			nHeight /= nChannels;
-		}
+		int ndy = -fround(dy * GetYScaleDev());
 
-		double offset = m_WaveOffsetY + 65536. * ndy / (nHeight * m_VerticalScale);
+		double offset = m_WaveOffsetY - 65536. * ndy / (r.Height() * m_VerticalScale);
 		// find max and min offset for this scale
 		double MaxOffset = 32768. * (1 - 1. / m_VerticalScale);
 		BOOL NoScroll = false;
@@ -1924,10 +1923,20 @@ BOOL CWaveSoapFrontView::MasterScrollBy(double dx, double dy, BOOL bDoScroll)
 			offset = MinOffset;
 			NoScroll = true;
 		}
-		if (offset != m_WaveOffsetY)
+
+		int y1 = WaveCalculate
+				(m_WaveOffsetY, m_VerticalScale, r.top, r.bottom)(0);
+		int y2 = WaveCalculate
+				(offset, m_VerticalScale, r.top, r.bottom)(0);
+
+		ndy = y2 - y1;
+
+		if (0 != ndy)
 		{
 			TRACE("New offset = %g, MaxOffset=%g, VerticalScale = %g\n",
 				offset, MaxOffset, m_VerticalScale);
+			// calculate how much zero line would move
+
 			m_WaveOffsetY = offset;
 			NotifySlaveViews(WAVE_OFFSET_CHANGED);
 			// change to scroll
@@ -1937,32 +1946,21 @@ BOOL CWaveSoapFrontView::MasterScrollBy(double dx, double dy, BOOL bDoScroll)
 			}
 			else
 			{
-				CWaveSoapFrontDoc * pDoc = GetDocument();
-				CRect cr;
-				GetClientRect( & cr);
+				int nChannels = GetDocument()->WaveChannels();
+
 				HidePlaybackCursor();
-				if (pDoc->WaveChannels() == 1)
+				for (int ch = 0; ch < nChannels; ch++)
 				{
-					ScrollWindowEx(0, -ndy, NULL, NULL, NULL, NULL,
+					CRect cr, ir;
+					GetChannelRect(ch, cr);
+#if 1
+					ScrollWindowEx(0, ndy, & cr, & cr, NULL, & ir,
+									SW_INVALIDATE);
+					InvalidateRect( & ir);
+#else
+					ScrollWindowEx(0, ndy, NULL, NULL, NULL, NULL,
 									SW_INVALIDATE | SW_ERASE);
-				}
-				else
-				{
-					int Separator = fround((0 - dOrgY) * GetYScaleDev());
-					CRect cr1 = cr, cr2 = cr;
-					cr1.bottom = Separator;
-					cr2.top = Separator + 1;
-					// invalidated rects
-					CRect ir1, ir2;
-					ScrollWindowEx(0, -ndy, & cr1, & cr1, NULL, & ir1,
-									SW_INVALIDATE);
-					ScrollWindowEx(0, -ndy, & cr2, & cr2, NULL, & ir2,
-									SW_INVALIDATE);
-					//cr2.bottom = cr2.top;
-					//cr2.top = cr1.bottom;
-					//InvalidateRect( & cr2);
-					InvalidateRect( & ir1);
-					InvalidateRect( & ir2);
+#endif
 				}
 				ShowPlaybackCursor();
 			}
@@ -2057,8 +2055,10 @@ void CWaveSoapFrontView::UpdatePlaybackCursor(SAMPLE_INDEX sample, CHANNEL_MASK 
 		// not playing now
 		return;
 	}
+
 	CRect r;
-	GetClientRect( & r);
+	GetClientRect(r);
+
 	if ((OldPos < r.left || OldPos >= r.right)
 		&& (pos < r.left || pos >= r.right))
 	{
@@ -2095,7 +2095,8 @@ void CWaveSoapFrontView::UpdatePlaybackCursor(SAMPLE_INDEX sample, CHANNEL_MASK 
 void CWaveSoapFrontView::UpdateMaxHorExtents(NUMBER_OF_SAMPLES Length)
 {
 	CRect r;
-	GetClientRect( & r);
+	GetClientRect(r);
+
 	long nRightMaxExtent = long(Length - Length % m_HorizontalScale + 100. * m_HorizontalScale);
 	long MinWidth = r.Width() * m_HorizontalScale;
 	long nRightExtent = 0;
@@ -2116,7 +2117,8 @@ void CWaveSoapFrontView::UpdateMaxHorExtents(NUMBER_OF_SAMPLES Length)
 void CWaveSoapFrontView::UpdateVertExtents()
 {
 	CRect r;
-	GetClientRect( & r);
+	GetClientRect(r);
+
 	if (0 == r.Height())
 	{
 		return;
@@ -2174,13 +2176,13 @@ void CWaveSoapFrontView::OnRButtonUp(UINT nFlags, CPoint point)
 
 void CWaveSoapFrontView::OnUpdateViewZoomSelection(CCmdUI* pCmdUI)
 {
-	CWaveSoapFrontDoc * pDoc = GetDocument();
+	ThisDoc * pDoc = GetDocument();
 	pCmdUI->Enable(pDoc->m_SelectionEnd - pDoc->m_SelectionStart > 32);
 }
 
 void CWaveSoapFrontView::OnViewZoomSelection()
 {
-	CWaveSoapFrontDoc * pDoc = GetDocument();
+	ThisDoc * pDoc = GetDocument();
 	SetExtents(pDoc->m_SelectionStart, pDoc->m_SelectionEnd, 0, 0);
 }
 
@@ -2371,8 +2373,9 @@ void CWaveSoapFrontView::OnTimer(UINT nIDEvent)
 			int nDistance;
 			if (nHit & VSHT_RIGHT_AUTOSCROLL)
 			{
-				RECT r;
-				GetClientRect( & r);
+				CRect r;
+				GetClientRect(r);
+
 				nDistance = p.x - r.right + GetSystemMetrics(SM_CXVSCROLL) - 1;
 				scroll = m_HorizontalScale;
 			}
