@@ -1673,6 +1673,12 @@ AudioStreamConvertor::AudioStreamConvertor(HACMDRIVER drv)
 	m_DstBufSize(0),
 	m_acmDrv(drv),
 	m_acmStr(NULL)
+	, m_DstBufRead(0)
+#ifdef _DEBUG
+	, m_ProcessedInputBytes(0)
+	, m_SavedOutputBytes(0)
+	, m_GotOutputBytes(0)
+#endif
 {
 	memzero(m_ash);
 	m_ash.cbStruct = sizeof m_ash;
@@ -1718,6 +1724,7 @@ BOOL AudioStreamConvertor::Open(WAVEFORMATEX const * pWfSrc,
 								const_cast<LPWAVEFORMATEX>(pWfSrc),
 								const_cast<LPWAVEFORMATEX>(pWfDst), NULL, NULL, NULL,
 								flags);
+	m_DstBufRead = 0;
 	return MMSYSERR_NOERROR == m_MmResult;
 }
 
@@ -1736,6 +1743,8 @@ BOOL AudioStreamConvertor::Open(WAVEFORMATEX const * pWfSrc,
 								const_cast<LPWAVEFORMATEX>(pWfDst), NULL,
 								reinterpret_cast<DWORD_PTR>(hCallbackWnd), dwInstance,
 								flags | CALLBACK_WINDOW);
+
+	m_DstBufRead = 0;
 	return MMSYSERR_NOERROR == m_MmResult;
 }
 
@@ -1754,6 +1763,8 @@ BOOL AudioStreamConvertor::Open(WAVEFORMATEX const * pWfSrc,
 								const_cast<LPWAVEFORMATEX>(pWfDst), NULL,
 								reinterpret_cast<DWORD_PTR>(hEvent), NULL,
 								flags | CALLBACK_EVENT);
+
+	m_DstBufRead = 0;
 	return MMSYSERR_NOERROR == m_MmResult;
 }
 
@@ -1772,6 +1783,8 @@ BOOL AudioStreamConvertor::Open(WAVEFORMATEX const * pWfSrc,
 								const_cast<LPWAVEFORMATEX>(pWfDst), NULL,
 								reinterpret_cast<DWORD_PTR>(Callback), dwInstance,
 								flags | CALLBACK_FUNCTION);
+
+	m_DstBufRead = 0;
 	return MMSYSERR_NOERROR == m_MmResult;
 }
 
@@ -1820,6 +1833,8 @@ BOOL AudioStreamConvertor::AllocateBuffers(size_t PreferredInBufSize,
 	m_MmResult = acmStreamPrepareHeader(m_acmStr, & m_ash, 0);
 	m_ash.cbSrcLength = 0;
 	m_ash.cbDstLength = 0;
+
+	m_DstBufRead = 0;
 	return MMSYSERR_NOERROR == m_MmResult;
 }
 
@@ -1836,8 +1851,15 @@ BOOL AudioStreamConvertor::Convert(void const * pSrc, size_t SrcSize, size_t * p
 		ToCopy = unsigned(SrcSize);
 	}
 
-	* pDstBufFilled = 0;
-	* ppDstBuf = m_ash.pbDst;
+	if (NULL != pDstBufFilled)
+	{
+		* pDstBufFilled = 0;
+	}
+
+	if (NULL != ppDstBuf)
+	{
+		* ppDstBuf = m_ash.pbDst;
+	}
 
 	memcpy(m_ash.pbSrc + m_ash.cbSrcLength, pSrc, ToCopy);
 	m_ash.cbSrcLength += ToCopy;
@@ -1849,13 +1871,23 @@ BOOL AudioStreamConvertor::Convert(void const * pSrc, size_t SrcSize, size_t * p
 	{
 		return TRUE;
 	}
+
 	m_ash.cbSrcLengthUsed = 0;
+	m_DstBufRead = 0;
 	m_ash.cbDstLength = m_DstBufSize;
 	m_ash.cbDstLengthUsed = 0;
 
 	m_MmResult = acmStreamConvert(m_acmStr, & m_ash, flags);
 
-	* pDstBufFilled = m_ash.cbDstLengthUsed;
+#ifdef _DEBUG
+	m_ProcessedInputBytes += m_ash.cbSrcLengthUsed;
+	m_SavedOutputBytes += m_ash.cbDstLengthUsed;
+#endif
+
+	if (NULL != pDstBufFilled)
+	{
+		* pDstBufFilled = m_ash.cbDstLengthUsed;
+	}
 
 	if (MMSYSERR_NOERROR != m_MmResult
 		|| (0 == m_ash.cbDstLengthUsed && 0 == m_ash.cbSrcLengthUsed
@@ -1871,9 +1903,32 @@ BOOL AudioStreamConvertor::Convert(void const * pSrc, size_t SrcSize, size_t * p
 	return TRUE;
 }
 
+size_t AudioStreamConvertor::GetConvertedData(void * pDstBuf, size_t DstBufSize)
+{
+	ASSERT(m_ash.cbDstLengthUsed >= m_DstBufRead);
+
+	size_t const ToRead = std::min<size_t>(m_ash.cbDstLengthUsed - m_DstBufRead, DstBufSize);
+
+#ifdef _DEBUG
+	if (0) TRACE("AudioStreamConvertor::GetConvertedData: DstUsed=%d, DstRead=%d, returned %d\n",
+				m_ash.cbDstLengthUsed, m_DstBufRead, ToRead);
+	m_GotOutputBytes += ToRead;
+#endif
+
+	memcpy(pDstBuf, m_ash.pbDst + m_DstBufRead, ToRead);
+	m_DstBufRead += ToRead;
+
+	return ToRead;
+}
+
 BOOL AudioStreamConvertor::Reset(DWORD flags)
 {
 	ASSERT(NULL != m_acmStr);
+
+	m_DstBufRead = 0;
+	m_ash.cbSrcLengthUsed = m_ash.cbSrcLength;
+	m_ash.cbDstLengthUsed = 0;
+
 	return NULL != m_acmStr
 			&& MMSYSERR_NOERROR == acmStreamReset(m_acmStr, flags);
 }
@@ -1882,9 +1937,14 @@ void AudioStreamConvertor::Close()
 {
 	m_ash.cbDstLength = m_DstBufSize;
 	m_ash.cbSrcLength = m_SrcBufSize;
+	m_DstBufRead = 0;
 
 	if (NULL != m_acmStr)
 	{
+#ifdef _DEBUG
+		if (0) TRACE("AudioStreamConvertor::Close: Input bytes processed=%d, output bytes saved=%d, got=%d\n",
+					m_ProcessedInputBytes, m_SavedOutputBytes, m_GotOutputBytes);
+#endif
 		if (m_ash.fdwStatus & ACMSTREAMHEADER_STATUSF_PREPARED)
 		{
 			acmStreamUnprepareHeader(m_acmStr, & m_ash, 0);
