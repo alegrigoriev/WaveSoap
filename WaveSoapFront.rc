@@ -577,8 +577,7 @@ BEGIN
             MENUITEM "Half-sine",                   ID_FFT_WINDOW_SINE
             MENUITEM "Hamming",                     ID_FFT_WINDOW_HAMMING
         END
-        MENUITEM "Show Noise Reduction Threshold", 
-                                                ID_VIEW_SS_SHOW_NOISE_THRESHOLD
+        MENUITEM "Show Noise Masking",          ID_VIEW_SS_SHOW_NOISE_THRESHOLD
 
         MENUITEM SEPARATOR
         MENUITEM "Hide",                        ID_VIEW_HIDE_SPECTRUMSECTION
@@ -1448,8 +1447,8 @@ BEGIN
     LTEXT           "&Tone over noise preference:",IDC_STATIC,7,109,75,19
     EDITTEXT        IDC_EDIT_TONE_PREFERENCE,104,112,40,13,ES_AUTOHSCROLL
     LTEXT           "dB",IDC_STATIC,150,114,12,8
-    PUSHBUTTON      "Show spectrum and noise threshold",
-                    IDC_BUTTON_SET_THRESHOLD,8,132,88,21,BS_MULTILINE
+    PUSHBUTTON      "Show noise masking",IDC_BUTTON_SET_THRESHOLD,8,132,88,
+                    21,BS_MULTILINE
     LTEXT           "&Continuous tone detection\nthreshold:",IDC_STATIC,7,
                     161,87,17
     EDITTEXT        IDC_EDIT_NOISE_CRITERION,104,161,40,13,ES_AUTOHSCROLL
@@ -3457,7 +3456,7 @@ BEGIN
     ID_VIEW_SS_ZOOMINHOR2   "Horizontal zoom in\nZoom In"
     ID_VIEW_SS_ZOOMOUTHOR2  "Horizontal zoom out\nZoom Out"
     ID_VIEW_SS_SHOW_NOISE_THRESHOLD 
-                            "Show noise threshold set for noise reduction\nShow noise threshold"
+                            "Show noise masking function and threshold\nShow noise masking"
     ID_VIEW_SS_ZOOMINVERT   "Zoom in vertical\nZoom In vertical"
     ID_VIEW_SS_ZOOMOUTVERT  "Zoom out vertical\nZoom out vertical"
     ID_VIEW_HOR_SCALE_1     "Show 1 sample per pixel\n1:1"
