@@ -1754,8 +1754,11 @@ CMarkerRegionDialog::CMarkerRegionDialog(struct WAVEREGIONINFO * pRegionInfo, SA
 				IDD, pParent)
 	, m_pRegionData(pRegionInfo)
 	, m_bMarkerOrRegion(0 != pRegionInfo->Length)
-	, m_sName(pRegionInfo->Label)
 {
+	if (NULL != pRegionInfo->Label)
+	{
+		m_sName = pRegionInfo->Label;
+	}
 }
 
 BEGIN_MESSAGE_MAP(CMarkerRegionDialog, BaseClass)
