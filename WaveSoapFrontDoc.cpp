@@ -5238,19 +5238,12 @@ void CWaveSoapFrontDoc::OnProcessEqualizer()
 		return;
 	}
 
+	double BandCoefficients[MaxNumberOfEqualizerBands][6];
+	dlg.GetBandCoefficients(BandCoefficients);
+
 	CEqualizerContext::auto_ptr pContext
-	(new CEqualizerContext(this, IDS_EQUALIZER_STATUS_PROMPT, IDS_EQUALIZER_OPERATION_NAME));
-
-	for (int i = 0; i < dlg.m_nBands; i++)
-	{
-		for (int j = 0; j < 6; j++)
-		{
-			pContext->m_BandCoefficients[i][j] = dlg.m_wGraph.m_BandCoefficients[i][j];
-		}
-	}
-
-	pContext->m_NumOfBands = dlg.m_nBands;
-	pContext->m_bZeroPhase = dlg.m_wGraph.m_bZeroPhase;
+	(new CEqualizerContext(this, IDS_EQUALIZER_STATUS_PROMPT, IDS_EQUALIZER_OPERATION_NAME,
+							BandCoefficients, dlg.GetNumberOfBands(), dlg.IsZeroPhase()));
 
 	if ( ! pContext->InitDestination(m_WavFile, dlg.GetStart(),
 									dlg.GetEnd(), dlg.GetChannel(), dlg.UndoEnabled()))
