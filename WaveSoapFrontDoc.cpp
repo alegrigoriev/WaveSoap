@@ -1290,12 +1290,15 @@ void CWaveSoapFrontDoc::DoPaste(SAMPLE_INDEX Start, SAMPLE_INDEX End, CHANNEL_MA
 	// todo: support copy from a file (FileName)
 	CWaveFile SrcFile;
 
+	CStagedContext::auto_ptr pStagedContext(new CStagedContext(this, _T("Paste"), 0));
+
 	if (NULL != FileName)
 	{
 	}
 	else
 	{
 		SrcFile = pApp->m_ClipboardFile;
+		pStagedContext->m_Flags |= OperationContextClipboard;
 	}
 
 	if ( ! SrcFile.IsOpen())
@@ -1308,7 +1311,6 @@ void CWaveSoapFrontDoc::DoPaste(SAMPLE_INDEX Start, SAMPLE_INDEX End, CHANNEL_MA
 	int SrcSampleRate = SrcFile.SampleRate();
 	int TargetSampleRate = WaveSampleRate();
 
-	CStagedContext::auto_ptr pStagedContext(new CStagedContext(this, _T("Paste"), 0));
 
 	if (SrcSampleRate != TargetSampleRate)
 	{
@@ -1429,20 +1431,15 @@ void CWaveSoapFrontDoc::DoPaste(SAMPLE_INDEX Start, SAMPLE_INDEX End, CHANNEL_MA
 			return;
 		}
 
-
 		pStagedContext->AddContext(pCopyContext.release());
 	}
 	else
 	{
-		CInsertContext::auto_ptr pInsertContext(new CInsertContext(this, _T("Inserting data from clipboard..."), _T("Paste")));
-
-		if ( ! pInsertContext->InitInsertCopy(m_WavFile, Start, End - Start, Channel,
-											SrcFile, 0, NumSamplesToPasteFrom, ChannelToCopyFrom))
+		if ( ! InitInsertCopy(pStagedContext.get(), m_WavFile, Start, End - Start, Channel,
+							SrcFile, 0, NumSamplesToPasteFrom, ChannelToCopyFrom))
 		{
 			return;
 		}
-
-		pStagedContext->AddContext(pInsertContext.release());
 	}
 
 	if (UndoEnabled()
@@ -1450,10 +1447,6 @@ void CWaveSoapFrontDoc::DoPaste(SAMPLE_INDEX Start, SAMPLE_INDEX End, CHANNEL_MA
 	{
 		return;
 	}
-
-	pStagedContext->m_Flags |= OperationContextClipboard;
-
-	SoundChanged(WaveFileID(), 0, 0, WaveFileSamples());
 
 	// set operation context to the queue
 	pStagedContext.release()->Execute();
@@ -1466,18 +1459,8 @@ void CWaveSoapFrontDoc::DoCut(SAMPLE_INDEX Start, SAMPLE_INDEX End, CHANNEL_MASK
 	// create a operation context
 	CStagedContext::auto_ptr pContext(
 									new CStagedContext(this, _T("Copying data to clipboard..."), 0, _T("Cut")));
-	if (NULL == pContext.get())
-	{
-		NotEnoughMemoryMessageBox();
-		return;
-	}
 
 	CCopyContext * pCopyContext = new CCopyContext(this, _T("Copying data to clipboard..."), _T("Cut"));
-	if (NULL == pCopyContext)
-	{
-		NotEnoughMemoryMessageBox();
-		return;
-	}
 
 	pContext->AddContext(pCopyContext);
 
@@ -1501,19 +1484,13 @@ void CWaveSoapFrontDoc::DoCut(SAMPLE_INDEX Start, SAMPLE_INDEX End, CHANNEL_MASK
 
 	pCopyContext->InitCopy(DstFile, 0, ALL_CHANNELS,
 							m_WavFile, Start, Channel, End - Start);
+
 	GetApp()->m_ClipboardFile = DstFile;
 
 	// set operation context to the queue
+	pContext->AddContext(pCopyContext);
 
-	CShrinkContext * pShrinkContext = new CShrinkContext(this, _T("Shrinking the file..."), _T("File Resize"));
-	if (NULL == pShrinkContext)
-	{
-		NotEnoughMemoryMessageBox();
-		return;
-	}
-
-	pContext->AddContext(pShrinkContext);
-	pShrinkContext->InitShrink(m_WavFile, Start, End - Start, Channel);
+	InitShrinkOperation(pContext.get(), m_WavFile, Start, End - Start, Channel);
 
 	if (UndoEnabled())
 	{
@@ -1533,16 +1510,19 @@ void CWaveSoapFrontDoc::DoDelete(SAMPLE_INDEX Start, SAMPLE_INDEX End, CHANNEL_M
 		End++;
 	}
 
-	CShrinkContext * pShrinkContext = new CShrinkContext(this, _T("Deleting the selection..."), _T("Delete"));
-	pShrinkContext->InitShrink(m_WavFile, Start, End - Start, Channel);
+	CStagedContext * pContext = new CStagedContext(this,
+													_T("Deleting the selection..."), OperationContextDiskIntensive,
+													_T("Delete"));
+
+	InitShrinkOperation(pContext, m_WavFile, Start, End - Start, Channel);
 
 	if (UndoEnabled())
 	{
-		pShrinkContext->CreateUndo();
+		pContext->CreateUndo();
 	}
 
 	SetSelection(Start, Start, Channel, Start);
-	pShrinkContext->Execute();
+	pContext->Execute();
 	SetModifiedFlag(TRUE);
 }
 
@@ -3981,16 +3961,21 @@ void CWaveSoapFrontDoc::OnProcessInsertsilence()
 		return;
 	}
 
-	CInsertSilenceContext::auto_ptr pContext(new CInsertSilenceContext(this,
-												_T("Inserting silence..."), _T("Insert Silence")));
+	CStagedContext::auto_ptr pContext(new CStagedContext(this,
+														_T("Inserting silence..."), OperationContextDiskIntensive,
+														_T("Insert Silence")));
 
-	if ( ! pContext->InitExpand(m_WavFile, dlg.GetStart(),
-								dlg.GetLength(), dlg.GetChannel(), TRUE))   // BUGBUG??undo isn't necessary
+	if ( ! InitExpandOperation(pContext.get(), m_WavFile, dlg.GetStart(),
+								dlg.GetLength(), dlg.GetChannel()))
 	{
 		return;
 	}
 
-	SoundChanged(WaveFileID(), 0, 0, WaveFileSamples());
+	pContext->AddContext(new CInitChannelsUndo(this, dlg.GetStart(),
+												dlg.GetLength(), dlg.GetChannel()));
+
+	pContext->CreateUndo();
+
 	pContext.release()->Execute();
 	SetModifiedFlag(TRUE, TRUE);    // keep previous undo
 }
