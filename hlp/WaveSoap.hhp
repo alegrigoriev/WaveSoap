@@ -13,7 +13,7 @@ Language=0x409 English (United States)
 [FILES]
 html\main_index.htm
 html\File\menu_file.htm
-html\menu_edit.htm
+html\Edit\menu_edit.htm
 html\menu_view.htm
 html\menu_window.htm
 html\menu_help.htm
@@ -33,21 +33,27 @@ html\File\hid_file_mru_file1.htm
 html\File\hid_app_exit.htm
 html\Dialogs\FileSave\afx_hidd_filesave.htm
 html\Dialogs\FileOpen\afx_hidd_fileopen.htm
-html\hid_edit_undo.htm
-html\hid_edit_redo.htm
-html\hid_edit_cut.htm
-html\hid_edit_copy.htm
-html\hid_edit_paste.htm
+html\Edit\hid_edit_undo.htm
+html\Edit\hid_edit_redo.htm
+html\Edit\hid_edit_cut.htm
+html\Edit\hid_edit_copy.htm
+html\Edit\hid_edit_paste.htm
+html\Edit\hid_edit_clear.htm
+html\Edit\hid_edit_insert_silence.htm
+html\Edit\hid_edit_stop.htm
+html\Edit\hid_lock_channels.htm
+html\Edit\hid_edit_goto.htm
+html\Edit\hid_edit_selection.htm
 html\hid_view_toolbar.htm
 html\afx_hidw_toolbar.htm
 html\hid_view_status_bar.htm
 html\afx_hidw_status_bar.htm
-html\hid_window_new.htm
-html\hid_window_cascade.htm
-html\hid_window_tile.htm
-html\hid_window_tile_horz.htm
-html\hid_window_arrange.htm
-html\hid_window_all.htm
+html\Window\hid_window_new.htm
+html\Window\hid_window_cascade.htm
+html\Window\hid_window_tile.htm
+html\Window\hid_window_tile_horz.htm
+html\Window\hid_window_arrange.htm
+html\Window\hid_window_all.htm
 html\hid_help_index.htm
 html\hid_help_using.htm
 html\hid_app_about.htm
@@ -63,27 +69,24 @@ html\hid_sc_prevwindow.htm
 html\hid_sc_close.htm
 html\hid_sc_restore.htm
 html\hid_view_ruler.htm
-html\hid_edit_repeat.htm
-html\hid_edit_clear.htm
-html\hid_edit_clear_all.htm
-html\hid_next_pane.htm
-html\hid_prev_pane.htm
+html\Window\hid_next_pane.htm
+html\Window\hid_prev_pane.htm
 html\hidr_convertype.htm
 html\hid_ht_nowhere.htm
 html\afx_hidp_default.htm
-html\hid_file_print.htm
-html\afx_hidd_print.htm
-html\afx_hidd_printdlg.htm
-html\hid_file_print_preview.htm
+html\File\hid_file_print.htm
+html\File\afx_hidd_print.htm
+html\File\afx_hidd_printdlg.htm
+html\File\hid_file_print_preview.htm
 html\afx_hidw_preview_bar.htm
-html\hid_file_print_setup.htm
-html\afx_hidd_printsetup.htm
-html\hid_file_page_setup.htm
+html\File\hid_file_print_setup.htm
+html\File\afx_hidd_printsetup.htm
+html\File\hid_file_page_setup.htm
 
 [ALIAS]
 main_index = html\main_index.htm
 menu_file = html\File\menu_file.htm
-menu_edit = html\menu_edit.htm
+menu_edit = html\Edit\menu_edit.htm
 menu_view = html\menu_view.htm
 menu_window = html\menu_window.htm
 menu_help = html\menu_help.htm
@@ -102,22 +105,29 @@ afx_hidd_filesave = html\Dialogs\FileSave\afx_hidd_filesave.htm
 hid_tools_cdgrab = html\File\hid_read_audio_cd.htm
 hid_file_mru_file1 = html\File\hid_file_mru_file1.htm
 hid_app_exit = html\File\hid_app_exit.htm
-hid_edit_undo = html\hid_edit_undo.htm
-hid_edit_redo = html\hid_edit_redo.htm
-hid_edit_cut = html\hid_edit_cut.htm
-hid_edit_copy = html\hid_edit_copy.htm
-hid_edit_paste = html\hid_edit_paste.htm
+hid_edit_undo = html\Edit\hid_edit_undo.htm
+hid_edit_redo = html\Edit\hid_edit_redo.htm
+hid_edit_cut = html\Edit\hid_edit_cut.htm
+hid_edit_copy = html\Edit\hid_edit_copy.htm
+hid_edit_paste = html\Edit\hid_edit_paste.htm
 hid_edit_paste_new = html\File\file_new_from_clipboard.htm
+hid_edit_clear = html\Edit\hid_edit_clear.htm
+hid_process_insertsilence = html\Edit\hid_edit_insert_silence.htm
+hid_edit_stop = html\Edit\hid_edit_stop.htm
+hid_edit_channels_lock = html\Edit\hid_lock_channels.htm
+hid_edit_goto = html\Edit\hid_edit_goto.htm
+hid_edit_selection = html\Edit\hid_edit_selection.htm
 hid_view_toolbar = html\hid_view_toolbar.htm
+hid_view_ruler = html\hid_view_ruler.htm
 afx_hidw_toolbar = html\afx_hidw_toolbar.htm
 hid_view_status_bar = html\hid_view_status_bar.htm
 afx_hidw_status_bar = html\afx_hidw_status_bar.htm
-hid_window_new = html\hid_window_new.htm
-hid_window_cascade = html\hid_window_cascade.htm
-hid_window_tile = html\hid_window_tile.htm
-hid_window_tile_horz = html\hid_window_tile_horz.htm
-hid_window_arrange = html\hid_window_arrange.htm
-hid_window_all = html\hid_window_all.htm
+hid_window_new = html\Window\hid_window_new.htm
+hid_window_cascade = html\Window\hid_window_cascade.htm
+hid_window_tile = html\Window\hid_window_tile.htm
+hid_window_tile_horz = html\Window\hid_window_tile_horz.htm
+hid_window_arrange = html\Window\hid_window_arrange.htm
+hid_window_all = html\Window\hid_window_all.htm
 hid_help_index = html\hid_help_index.htm
 hid_help_using = html\hid_help_using.htm
 hid_app_about = html\hid_app_about.htm
@@ -132,24 +142,20 @@ hid_sc_nextwindow = html\hid_sc_nextwindow.htm
 hid_sc_prevwindow = html\hid_sc_prevwindow.htm
 hid_sc_close = html\hid_sc_close.htm
 hid_sc_restore = html\hid_sc_restore.htm
-hid_view_ruler = html\hid_view_ruler.htm
-hid_edit_repeat = html\hid_edit_repeat.htm
-hid_edit_clear = html\hid_edit_clear.htm
-hid_edit_clear_all = html\hid_edit_clear_all.htm
-hid_next_pane = html\hid_next_pane.htm
-hid_prev_pane = html\hid_prev_pane.htm
+hid_next_pane = html\Window\hid_next_pane.htm
+hid_prev_pane = html\Window\hid_prev_pane.htm
 hidr_convertype = html\hidr_convertype.htm
 hidr_doc1type = html\hidr_convertype.htm
 hid_ht_nowhere = html\hid_ht_nowhere.htm
 afx_hidp_default = html\afx_hidp_default.htm
-hid_file_print = html\hid_file_print.htm
-afx_hidd_print = html\afx_hidd_print.htm
-afx_hidd_printdlg = html\afx_hidd_printdlg.htm
-hid_file_print_preview = html\hid_file_print_preview.htm
+hid_file_print = html\File\hid_file_print.htm
+afx_hidd_print = html\File\afx_hidd_print.htm
+afx_hidd_printdlg = html\File\afx_hidd_printdlg.htm
+hid_file_print_preview = html\File\hid_file_print_preview.htm
 afx_hidw_preview_bar = html\afx_hidw_preview_bar.htm
-hid_file_print_setup = html\hid_file_print_setup.htm
-afx_hidd_printsetup = html\afx_hidd_printsetup.htm
-hid_file_page_setup = html\hid_file_page_setup.htm
+hid_file_print_setup = html\File\hid_file_print_setup.htm
+afx_hidd_printsetup = html\File\afx_hidd_printsetup.htm
+hid_file_page_setup = html\File\hid_file_page_setup.htm
 
 [MAP]
 #include HTMLDefines.h

@@ -10,12 +10,38 @@
 <P><B>Paste command (<a href="menu_edit.htm">Edit menu</a>)</B></P>
 
 <P>Use this command to insert a copy of the clipboard contents at the insertion point.  This command is unavailable if the clipboard is empty.</P>
+<P>If the clipboard data has different sample rate that the target file, 
+WaveSoap asks:</P>
+<P><img border="0" src="../../images/ResampleOnPaste.png"></P>
+<P><b>Resample the clipboard contents on paste - </b>the data will be converted 
+to the target sample rate.</P>
+<P><b>Paste sound samples as is, without resampling</b> - the data will be 
+inserted as if the sample rate is the same.</P>
 
-<P><B>Shortcuts</B></P>
+<P>If the data stored in the clipboard has more channels than the target file or 
+selection, WaveSoap asks what to do:</P>
+<P><img border="0" src="../../images/SelectSourceChannel.png"></P>
+<P>If there is a non-empty selection, WaveSoap asks:</P>
+<P><img border="0" src="../../images/SelectPasteDestination.png"></P>
+<P><b>Replace selection with the clipboard contents</b> <b>&nbsp;- </b>the 
+clipboard selection will replace the selection, shrinking or expanding the file, 
+as necessary.</P>
+<P><b>Paste as much as selection length </b>- no more than selected will be 
+pasted. The file length will not change.</P>
+<P><b>Insert clipboard data at current caret position</b> - just insert the 
+clipboard at the current edit point. The file will be expanded.</P>
+<P><b>NOTE: </b>If only one channel of the stereo file is selected, inserting 
+the clipboard contents will cause offset between channels. If you don't want that, make 
+sure both channels are selected, or
+<a href="file:///D:/My%20Projects/WaveSoap/hlp/html/Edit/hid_lock_channels.htm">
+Lock Channels</a> button is checked, like
+<img border="0" src="../../images/EditLockChannelsPressed.png" align="top">.</P>
 
-<P>Toolbar:<IMG SRC="../../images/editpast.png" ALT="" BORDER=0 width="26" height="24"></P>
+<P><B>Shortcuts:</B></P>
 
-<P>Keys:Ctrl+V</P>
+<P>Toolbar:<IMG SRC="../../images/editpast.png" ALT="" BORDER=0></P>
+
+<P>Keys: Ctrl+V</P>
 
 </BODY>
 </HTML>
