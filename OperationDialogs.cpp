@@ -1045,7 +1045,6 @@ void CSelectionDialog::OnDeferredSelchangeComboEnd()
 /////////////////////////////////////////////////////////////////////////////
 // CGotoDialog dialog
 
-
 CGotoDialog::CGotoDialog(SAMPLE_INDEX Position,
 						CWaveFile & WaveFile,
 						int TimeFormat, CWnd* pParent /*=NULL*/)
@@ -1053,6 +1052,7 @@ CGotoDialog::CGotoDialog(SAMPLE_INDEX Position,
 	m_Position(Position),
 	m_TimeFormat(TimeFormat),
 	m_eStart(Position, WaveFile, TimeFormat)
+	, m_WaveFile(WaveFile)
 {
 	//{{AFX_DATA_INIT(CGotoDialog)
 	m_TimeFormatIndex = -1;
@@ -1090,12 +1090,71 @@ void CGotoDialog::DoDataExchange(CDataExchange* pDX)
 BEGIN_MESSAGE_MAP(CGotoDialog, BaseClass)
 	//{{AFX_MSG_MAP(CGotoDialog)
 	ON_CBN_SELCHANGE(IDC_COMBO_TIME_FORMAT, OnSelchangeComboTimeFormat)
+	ON_CBN_KILLFOCUS(IDC_COMBO_START, OnKillfocusEditStart)
+	ON_NOTIFY(CTimeSpinCtrl::TSC_BUDDY_CHANGE, IDC_SPIN_START, OnBuddyChangeSpinStart)
 	//}}AFX_MSG_MAP
 END_MESSAGE_MAP()
 
 /////////////////////////////////////////////////////////////////////////////
 // CGotoDialog message handlers
 /////////////////////////////////////////////////////////////////////////////
+void CGotoDialog::OnSelchangeComboTimeFormat()
+{
+	int sel = ((CComboBox *)GetDlgItem(IDC_COMBO_TIME_FORMAT))->GetCurSel();
+	int Format;
+	switch (sel)
+	{
+	case 0:
+		Format = SampleToString_Sample;
+		break;
+	case 1:
+		Format = SampleToString_HhMmSs | TimeToHhMmSs_NeedsMs | TimeToHhMmSs_NeedsHhMm;
+		break;
+	case 2:
+	default:
+		Format = SampleToString_Seconds | TimeToHhMmSs_NeedsMs;
+		break;
+	case 3:
+		Format = SampleToString_HhMmSsFf | TimeToHhMmSs_NeedsHhMm;
+		break;
+	}
+	if (Format == m_TimeFormat)
+	{
+		return;
+	}
+	m_TimeFormat = Format;
+	m_Position = m_eStart.GetTimeSample();
+	m_eStart.SetTimeFormat(Format);
+	m_eStart.SetTimeSample(m_Position);
+}
+
+BOOL CGotoDialog::OnInitDialog()
+{
+	BaseClass::OnInitDialog();
+
+	m_eStart.FillFileTimes();
+
+	m_eStart.GetComboBox().SetExtendedUI(TRUE);
+
+	return TRUE;  // return TRUE unless you set the focus to a control
+}
+
+void CGotoDialog::OnKillfocusEditStart()
+{
+	m_Position = m_eStart.GetTimeSample();
+	if (m_Position > m_WaveFile.NumberOfSamples())
+	{
+		m_Position = m_WaveFile.NumberOfSamples();
+	}
+
+	m_eStart.SetTimeSample(m_Position);
+}
+
+void CGotoDialog::OnBuddyChangeSpinStart(NMHDR * /*pNmHdr*/, LRESULT * /*pResult*/)
+{
+	OnKillfocusEditStart();
+}
+
 // CDcOffsetDialog dialog
 
 
@@ -1661,46 +1720,6 @@ void CNormalizeSoundDialog::OnHScroll(UINT nSBCode, UINT nPos, CScrollBar* pScro
 	}
 }
 
-void CGotoDialog::OnSelchangeComboTimeFormat()
-{
-	int sel = ((CComboBox *)GetDlgItem(IDC_COMBO_TIME_FORMAT))->GetCurSel();
-	int Format;
-	switch (sel)
-	{
-	case 0:
-		Format = SampleToString_Sample;
-		break;
-	case 1:
-		Format = SampleToString_HhMmSs | TimeToHhMmSs_NeedsMs | TimeToHhMmSs_NeedsHhMm;
-		break;
-	case 2:
-	default:
-		Format = SampleToString_Seconds | TimeToHhMmSs_NeedsMs;
-		break;
-	case 3:
-		Format = SampleToString_HhMmSsFf | TimeToHhMmSs_NeedsHhMm;
-		break;
-	}
-	if (Format == m_TimeFormat)
-	{
-		return;
-	}
-	m_TimeFormat = Format;
-	m_Position = m_eStart.GetTimeSample();
-	m_eStart.SetTimeFormat(Format);
-	m_eStart.SetTimeSample(m_Position);
-}
-
-BOOL CGotoDialog::OnInitDialog()
-{
-	BaseClass::OnInitDialog();
-
-	m_eStart.FillFileTimes();
-
-	m_eStart.GetComboBox().SetExtendedUI(TRUE);
-
-	return TRUE;  // return TRUE unless you set the focus to a control
-}
 /////////////////////////////////////////////////////////////////////////////
 // CResampleDialog dialog
 
