@@ -249,8 +249,9 @@ public:
 	}
 
 	BOOL LoadRiffChunk();
-	BOOL ReadChunkString(ULONG Length, CString & String);
-	BOOL ReadChunkStringW(ULONG Length, CString & String);
+	BOOL ReadChunkString(ULONG Length, CStringA & String);
+	BOOL ReadChunkString(ULONG Length, CStringW & String);
+	BOOL ReadChunkStringW(ULONG Length, CStringW & String);
 
 	BOOL CommitChanges();
 
@@ -375,15 +376,24 @@ struct WAVEREGIONINFO
 	};
 };
 
-struct InfoListItem
+struct InfoListItemA
+{
+	FOURCC fccCode;
+	CStringA Text;
+};
+
+struct InfoListItemW
 {
 	FOURCC fccCode;
 	CStringA Tag;   // tag as in WMA file
-	CString Text;
+	CStringW Text;
 };
 
-typedef std::vector<InfoListItem> InfoListItemVector;
+typedef std::vector<InfoListItemA> InfoListItemVector;
 typedef InfoListItemVector::iterator InfoListItemIterator;
+
+typedef std::vector<InfoListItemW> InfoListItemVectorW;
+typedef InfoListItemVectorW::iterator InfoListItemIteratorW;
 
 struct WavePeak
 {
@@ -558,6 +568,7 @@ public:
 		LabelVector m_Notes;     // comments for the cue points
 
 		InfoListItemVector m_InfoList;
+		InfoListItemVectorW m_InfoListW;    // UNFO list
 
 		bool m_InfoChanged;
 
@@ -648,7 +659,7 @@ public:
 	BOOL LoadWaveformat();
 	BOOL FindData();
 	BOOL LoadMetadata();
-	BOOL SaveMetadata();
+	DWORD SaveMetadata();   // returns total saved length
 	DWORD GetMetadataLength();
 
 	BOOL LoadListMetadata(MMCKINFO & chunk);
