@@ -19,6 +19,7 @@
 #include "FileDialogWithHistory.h"
 #include "PreferencesPropertySheet.h"
 #include "WaveSoapFileDialogs.h"
+#include "BatchConvertDlg.h"
 
 #define _countof(array) (sizeof(array)/sizeof(array[0]))
 
@@ -118,6 +119,7 @@ BEGIN_MESSAGE_MAP(CWaveSoapFrontApp, CWinApp)
 	ON_COMMAND(ID_FILE_SAVE_ALL, OnFileSaveAll)
 	ON_UPDATE_COMMAND_UI(ID_FILE_SAVE_ALL, OnUpdateFileSaveAll)
 	ON_COMMAND(ID_TOOLS_OPTIONS, OnToolsOptions)
+	ON_COMMAND(ID_FILE_BATCHCONVERSION, OnFileBatchconversion)
 	//}}AFX_MSG_MAP
 	// if no documents, Paste will create a new file
 	ON_COMMAND(ID_EDIT_PASTE, OnEditPasteNew)
@@ -2559,3 +2561,12 @@ CString GetSelectionText(long Start, long End, int Chan,
 	return s;
 }
 
+
+void CWaveSoapFrontApp::OnFileBatchconversion()
+{
+	CBatchConvertDlg dlg;
+	if (IDOK != dlg.DoModal())
+	{
+		return;
+	}
+}

@@ -102,6 +102,14 @@ SOURCE=.\ApplicationProfile.cpp
 # End Source File
 # Begin Source File
 
+SOURCE=.\BatchConvertDlg.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=.\BatchSaveTargetDlg.cpp
+# End Source File
+# Begin Source File
+
 SOURCE=.\CdDrive.cpp
 # End Source File
 # Begin Source File
@@ -242,15 +250,6 @@ SOURCE=.\TimeRulerView.cpp
 # Begin Source File
 
 SOURCE=.\WaveFftView.cpp
-
-!IF  "$(CFG)" == "WaveSoapFront - Win32 Release"
-
-!ELSEIF  "$(CFG)" == "WaveSoapFront - Win32 Debug"
-
-# SUBTRACT CPP /FA<none>
-
-!ENDIF 
-
 # End Source File
 # Begin Source File
 
@@ -333,6 +332,14 @@ SOURCE=.\AmplitudeRuler.h
 # Begin Source File
 
 SOURCE=.\ApplicationProfile.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\BatchConvertDlg.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\BatchSaveTargetDlg.h
 # End Source File
 # Begin Source File
 

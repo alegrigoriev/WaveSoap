@@ -1,6 +1,7 @@
 Known problems and tasks:
 
 Add CD grabbing
+Open CDA files
 Load sound from AVI
 Add options dialog
 Save WAVEFORMAT of an open WMA/MP3 file

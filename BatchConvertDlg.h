@@ -35,7 +35,13 @@ protected:
 
 	// Generated message map functions
 	//{{AFX_MSG(CBatchConvertDlg)
-	// NOTE: the ClassWizard will add member functions here
+	afx_msg void OnButtonAddDestination();
+	afx_msg void OnButtonAddFiles();
+	afx_msg void OnButtonDeleteDestination();
+	afx_msg void OnButtonDeleteFiles();
+	afx_msg void OnButtonEditDestination();
+	afx_msg void OnButtonMoveDown();
+	afx_msg void OnButtonMoveUp();
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 };

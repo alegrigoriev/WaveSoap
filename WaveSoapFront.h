@@ -201,6 +201,7 @@ public:
 	afx_msg void OnFileSaveAll();
 	afx_msg void OnUpdateFileSaveAll(CCmdUI* pCmdUI);
 	afx_msg void OnToolsOptions();
+	afx_msg void OnFileBatchconversion();
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 	CWinThread m_Thread;

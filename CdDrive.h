@@ -454,13 +454,23 @@ typedef SRB_HAInquiry *PSRB_HAInquiry;
 #define SS_ASPI_IS_BUSY    0xE5
 #define SS_BUFFER_TOO_BIG   0xE6
 
+enum CdMediaChangeState
+{
+	CdMediaStateNotReady,
+	CdMediaStateSameMedia,
+	CdMediaStateChanged,
+};
 class CCdDrive
 {
 public:
 	CCdDrive(BOOL UseAspi = TRUE);
 	virtual ~CCdDrive();
+
 	BOOL Open(TCHAR letter);
 	void Close();
+	static int FindCdDrives(TCHAR Drives['Z' - 'A' + 1]);
+	DWORD GetDiskID();
+
 	long GetMaxReadSpeed(); // bytes/s
 	long GetMinReadSpeed();
 	BOOL SetReadSpeed(long BytesPerSec);
@@ -472,6 +482,8 @@ public:
 	BOOL DisableMediaChangeDetection();
 	BOOL LockDoor();
 	BOOL UnlockDoor();
+	BOOL ReadToc(CDROM_TOC * pToc);
+	CdMediaChangeState CheckForMediaChange();
 
 	BOOL SendScsiCommand(CD_CDB * pCdb, void * pData, DWORD * pDataLen,
 						int DataDirection,
@@ -480,13 +492,19 @@ public:
 
 private:
 	HANDLE m_hDrive;
+	HANDLE m_hDriveAttributes;
+	TCHAR m_DriveLetter;
+
 	SCSI_ADDRESS m_ScsiAddr;
 	HMODULE m_hWinaspi32;
 	ULONG m_MaxTransferSize;
 	USHORT m_BufferAlignment;
+
+	DWORD m_MediaChangeCount;
+
 	bool m_bMediaChangeNotificationDisabled;
 	bool m_bDoorLocked;
-	CDROM_TOC m_Toc;
+
 	DWORD (_cdecl * GetASPI32DLLVersion)();
 	DWORD (_cdecl * GetASPI32SupportInfo)();
 	DWORD (_cdecl * SendASPI32Command)(SRB * lpSRB);
