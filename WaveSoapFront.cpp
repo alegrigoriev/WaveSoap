@@ -2611,14 +2611,63 @@ BOOL VerifyCreateDirectory(LPCTSTR pszPath)
 							_T("SHCreateDirectoryExA")
 #endif
 							);
-	if (NULL != SHCreateDirectoryEx)
+
+	CString s;
+	CString DirPath(pszPath);
+	DirPath.TrimRight("\\/");
+	DWORD attr = GetFileAttributes(DirPath);
+	if (~0 == attr)
 	{
-		return SHCreateDirectoryEx(AfxGetMainWnd()->GetSafeHwnd(),
-									pszPath, NULL);
+		DWORD error = GetLastError();
+		if (ERROR_ACCESS_DENIED == error)
+		{
+			s.Format(IDS_DIRECTORY_CREATE_ACCESS_DENIED, pszPath);
+			AfxMessageBox(s, MB_OK | MB_ICONEXCLAMATION);
+			return FALSE;
+		}
+		s.Format(IDS_DIRECTORY_CREATE_PROMPT, pszPath);
+		if (IDYES != AfxMessageBox(s, MB_YESNO | MB_ICONQUESTION))
+		{
+			return FALSE;
+		}
+		CString DirPathWithSlash(DirPath + '\\');
+		if (NULL != SHCreateDirectoryEx)
+		{
+			SHCreateDirectoryEx(AfxGetMainWnd()->GetSafeHwnd(),
+								DirPath, NULL);
+		}
+		else
+		{
+			MakeSureDirectoryPathExists(DirPathWithSlash);
+			error = GetLastError();
+			if (ERROR_ACCESS_DENIED == error)
+			{
+				s.Format(IDS_UNABLE_TO_CREATE_DIRECTORY_ACCESSDENIED, pszPath);
+				AfxMessageBox(s, MB_OK | MB_ICONEXCLAMATION);
+				return FALSE;
+			}
+		}
+		if (~0 != GetFileAttributes(DirPath))
+		{
+			return TRUE;
+		}
+		UINT format = IDS_UNABLE_TO_CREATE_DIRECTORY;
+		if (ERROR_ACCESS_DENIED == error)
+		{
+			format = IDS_UNABLE_TO_CREATE_DIRECTORY_ACCESSDENIED;
+		}
+		AfxMessageBox(IDS_UNABLE_TO_CREATE_DIRECTORY, MB_OK | MB_ICONEXCLAMATION);
+		return FALSE;
 	}
 	else
 	{
-		return MakeSureDirectoryPathExists(pszPath);
+		if (FILE_ATTRIBUTE_DIRECTORY & attr)
+		{
+			return TRUE;
+		}
+		s.Format(IDS_WRONG_DIRECTORY_NAME, pszPath);
+		AfxMessageBox(s, MB_OK | MB_ICONEXCLAMATION);
+		return FALSE;
 	}
 }
 

@@ -1627,7 +1627,7 @@ BEGIN
     CONTROL         "24-bit resolution",IDC_CHECK_24BIT,"Button",
                     BS_AUTOCHECKBOX | WS_DISABLED | WS_GROUP | WS_TABSTOP,7,
                     62,71,10
-    CONTROL         "Show this dialog only if Shift pressed",
+    CONTROL         "Show this dialog box only if Shift pressed",
                     IDC_CHECK_SHOW_ONLY_WHEN_SHIFT,"Button",BS_AUTOCHECKBOX | 
                     WS_TABSTOP,7,78,145,10
     DEFPUSHBUTTON   "OK",IDOK,24,92,50,14
@@ -3023,7 +3023,7 @@ BEGIN
     ID_INDICATOR_CHANNELS   "\nChannels"
     IDS_SOUND_CLIPPED       "%s:\nSome of the samples exceeded limit and were clipped to the appropriate value. \nMax peak value has reached %d percents of the allowed range."
     IDS_SOUND_MAY_BE_CLIPPED 
-                            "%s:\nAs a result of the operation, some samples may exceed limit and will be clipped. Continue?"
+                            "%s:\nAs a result of the operation, some samples might exceed limit and be clipped, causing sound distortion. Continue?"
     IDS_M_UNABLE_TO_CREATE_UNDO "Unable to save undo data, continue?"
     IDS_STATISTICS_FORMAT   "%s (%s)\r\n%s (%s dB; %.2f%%)\r\n\r\n%s (%s)\r\n%s (%s dB; %.2f%%)\r\n\r\n%s (%s)\r\n%s (%s dB; %.2f%%)\r\n\r\n%s dB (%.2f%%)\r\n%s (%s dB; %.2f%%)\r\n%.2f Hz\r\n\r\n%08X"
     IDS_REOPEN_IN_DIRECT_MODE 
@@ -3251,6 +3251,13 @@ BEGIN
     IDS_TRACK_NUM_FORMAT    "Track %d"
     IDS_TRACK_NAME          "Track name"
     IDS_LENGTH              "Length"
+    IDS_WRONG_DIRECTORY_NAME """%s"" is not a valid folder name"
+    IDS_DIRECTORY_CREATE_PROMPT "Folder ""%s"" does not exist, create it?"
+    IDS_DIRECTORY_CREATE_ACCESS_DENIED 
+                            "Directory ""%s"" cannot be used: \nAccess denied"
+    IDS_UNABLE_TO_CREATE_DIRECTORY "Folder ""%s"" cannot be created"
+    IDS_UNABLE_TO_CREATE_DIRECTORY_ACCESSDENIED 
+                            "You do not have sufficient permissions to create folder ""%s"""
 END
 
 #endif    // English (U.S.) resources

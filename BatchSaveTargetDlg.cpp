@@ -162,7 +162,8 @@ void CBatchSaveTargetDlg::OnButtonBrowsePlaylist()
 	{
 		int pos = m_sSaveFolder.GetLength();
 		if (m_sPlaylistFile.GetLength() > pos
-			&& '\\' == m_sPlaylistFile[pos])
+			&& ('\\' == m_sPlaylistFile[pos]
+				|| '/' == m_sPlaylistFile[pos]))
 		{
 			pos++;
 		}
@@ -207,7 +208,8 @@ void CBatchSaveTargetDlg::OnButtonBrowseWebpage()
 	{
 		int pos = m_sSaveFolder.GetLength();
 		if (m_sHtmlFile.GetLength() > pos
-			&& '\\' == m_sHtmlFile[pos])
+			&& ('\\' == m_sHtmlFile[pos]
+				|| '/' == m_sHtmlFile[pos]))
 		{
 			pos++;
 		}
