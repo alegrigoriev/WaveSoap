@@ -211,8 +211,8 @@ void CWaveFftView::OnDraw(CDC* pDC)
 		pDC->GetClipBox(&r);
 	}
 	int iClientWidth = r.right - r.left;
-	PointToDoubleDev(CPoint(r.left, r.top), left, top);
-	PointToDoubleDev(CPoint(r.right, r.bottom), right, bottom);
+	PointToDoubleDev(CPoint(r.left, cr.top), left, top);
+	PointToDoubleDev(CPoint(r.right, cr.bottom), right, bottom);
 	// TODO: add draw code here
 
 	// draw the graph
@@ -252,7 +252,7 @@ void CWaveFftView::OnDraw(CDC* pDC)
 	LPBYTE pBmp = LPBYTE(pBits);
 
 	size_t width = r.right - r.left;
-	size_t height = r.bottom - r.top;
+	size_t height = cr.bottom - cr.top;
 	size_t stride = (width * 3 + 3) & ~3;
 	size_t BmpSize = stride * abs(height);
 	memset(pBmp, 0, BmpSize);
@@ -378,7 +378,7 @@ void CWaveFftView::MakeFftArray(int left, int right)
 	int FftSpacing = m_HorizontalScale;
 	if (m_FftOrder <= m_HorizontalScale)
 	{
-		NumberOfFftPoints = r.Width();
+		NumberOfFftPoints = r.Width()+1;
 	}
 	else
 	{
@@ -409,12 +409,11 @@ void CWaveFftView::MakeFftArray(int left, int right)
 		}
 
 		m_FftArraySize = NecessaryArraySize;
-		int NewFftArrayWidth = m_FftArraySize / NewFftArrayHeight;
 		unsigned char * pTmp = m_pFftResultArray;
 		int i;
 		int FirstFftSample = left - left % FftSpacing;
 		int FftSample = FirstFftSample;
-		for (i = 0; i < NewFftArrayWidth; i++,
+		for (i = 0; i < NumberOfFftPoints; i++,
 			pTmp += NewFftArrayHeight, FftSample += FftSpacing)
 		{
 			pTmp[0] = 0;    // invalidate
@@ -440,6 +439,7 @@ void CWaveFftView::MakeFftArray(int left, int right)
 	}
 	m_FftSpacing = FftSpacing;
 	m_FftResultArrayHeight = NewFftArrayHeight;
+	m_FftResultArrayWidth = NumberOfFftPoints;
 
 	if (NULL == m_pFftResultArray)
 	{
@@ -456,8 +456,8 @@ void CWaveFftView::CalculateFftRange(int left, int right)
 	// buffer size is enough to hold all data
 	int FirstSampleRequired = left - left % m_FftSpacing;
 	int LastSampleRequired = right + m_FftSpacing - right % m_FftSpacing;
-	TRACE("Samples required from %d to %d\n",
-		FirstSampleRequired, LastSampleRequired);
+	TRACE("Samples required from %d to %d, in the buffer: from %d to %d\n",
+		FirstSampleRequired, LastSampleRequired, m_FftResultBegin, m_FftResultEnd);
 	if (FirstSampleRequired < m_FftResultBegin)
 	{
 		int i = (m_FftResultArrayWidth - 1) * m_FftResultArrayHeight;
@@ -481,6 +481,7 @@ void CWaveFftView::CalculateFftRange(int left, int right)
 				}
 			}
 		}
+		TRACE("Cleaning %d remaining FFT sets\n", i / m_FftResultArrayHeight + 1);
 		for (; i >= 0; i -= m_FftResultArrayHeight)
 		{
 			m_pFftResultArray[i] = 0;
