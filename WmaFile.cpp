@@ -747,6 +747,7 @@ void CWmaDecoder::SetDstFile(CWaveFile & file)
 WmaEncoder::WmaEncoder()
 	:m_pWriter(NULL),
 	m_pProfileManager(NULL),
+	m_pWriterAdvanced(NULL),
 	m_pHeaderInfo(NULL),
 	m_SampleTimeMs(0),
 	m_pBuffer(NULL)
