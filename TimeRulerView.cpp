@@ -67,9 +67,16 @@ void CTimeRulerView::OnDraw(CDC* pDC)
 	// draw horizontal line with ticks and numbers
 	CGdiObjectSave OldFont(pDC, pDC->SelectStockObject(ANSI_VAR_FONT));
 
+	TEXTMETRIC tm;
+	pDC->GetTextMetrics( & tm);
+
+	int const MarkerHeight = tm.tmAveCharWidth;
+
 	CPen DarkGrayPen(PS_SOLID, 0, 0x808080);
 	CRect cr;
-	GetClientRect( & cr);
+	GetClientRect(cr);
+
+	int const RulerBase = cr.bottom - MarkerHeight - 2;
 
 	pDC->SetTextAlign(TA_BOTTOM | TA_LEFT);
 	pDC->SetTextColor(0x000000);   // black
@@ -77,16 +84,16 @@ void CTimeRulerView::OnDraw(CDC* pDC)
 
 	CGdiObjectSave OldPen(pDC, pDC->SelectStockObject(BLACK_PEN));
 
-	pDC->MoveTo(cr.left, cr.bottom - 5);
-	pDC->LineTo(cr.right, cr.bottom - 5);
+	pDC->MoveTo(cr.left, RulerBase - 1);
+	pDC->LineTo(cr.right, RulerBase - 1);
 
 	pDC->SelectStockObject(WHITE_PEN);
-	pDC->MoveTo(cr.left, cr.bottom - 4);
-	pDC->LineTo(cr.right, cr.bottom - 4);
+	pDC->MoveTo(cr.left, RulerBase);
+	pDC->LineTo(cr.right, RulerBase);
 
 	pDC->SelectObject( & DarkGrayPen);
-	pDC->MoveTo(cr.left, cr.bottom - 6);
-	pDC->LineTo(cr.right, cr.bottom - 6);
+	pDC->MoveTo(cr.left, RulerBase - 2);
+	pDC->LineTo(cr.right, RulerBase - 2);
 
 	TCHAR const DecimalPoint = GetApp()->m_DecimalPoint;
 	float const SampleRate = float(pDoc->WaveSampleRate());
@@ -329,12 +336,12 @@ void CTimeRulerView::OnDraw(CDC* pDC)
 		{
 			// draw bigger tick (6 pixels high) and the number
 			pDC->SelectStockObject(WHITE_PEN);
-			pDC->MoveTo(x + 1, cr.bottom - 6);
-			pDC->LineTo(x + 1, cr.bottom - 12);
+			pDC->MoveTo(x + 1, RulerBase - 2);
+			pDC->LineTo(x + 1, RulerBase - 8);
 
 			pDC->SelectStockObject(BLACK_PEN);
-			pDC->MoveTo(x, cr.bottom - 6);
-			pDC->LineTo(x, cr.bottom - 12);
+			pDC->MoveTo(x, RulerBase - 2);
+			pDC->LineTo(x, RulerBase - 8);
 
 			switch (m_CurrentDisplayMode)
 			{
@@ -372,19 +379,85 @@ void CTimeRulerView::OnDraw(CDC* pDC)
 				}
 			}
 			}
-			pDC->TextOut(x + 2, cr.bottom - 9, s);
+			pDC->TextOut(x + 2, RulerBase - 5, s);
 
 		}
 		else
 		{
-			// draw small tick (2 pixels high)
+			// draw small tick (3 pixels high)
 			pDC->SelectStockObject(BLACK_PEN);
-			pDC->MoveTo(x, cr.bottom - 6);
-			pDC->LineTo(x, cr.bottom - 8);
+			pDC->MoveTo(x, RulerBase - 2);
+			pDC->LineTo(x, RulerBase - 5);
 
 			pDC->SelectStockObject(WHITE_PEN);
-			pDC->MoveTo(x + 1, cr.bottom - 6);
-			pDC->LineTo(x + 1, cr.bottom - 8);
+			pDC->MoveTo(x + 1, RulerBase - 2);
+			pDC->LineTo(x + 1, RulerBase - 5);
+		}
+	}
+
+	// draw markers and regions
+
+	CWaveFile::InstanceDataWav * pInst = pDoc->m_WavFile.GetInstanceData();
+
+	pDC->SelectStockObject(BLACK_PEN);
+	pDC->SetPolyFillMode(WINDING);
+	CGdiObjectSave OldBrush(pDC, pDC->SelectStockObject(WHITE_BRUSH));
+
+	for (CuePointVectorIterator i = pInst->m_CuePoints.begin();
+		i < pInst->m_CuePoints.end(); i++)
+	{
+		long x = WorldToWindowX(i->dwSampleOffset);
+		WaveRegionMarker * pMarker = pInst->GetRegionMarker(i->CuePointID);
+
+		if (x >= cr.left - MarkerHeight
+			&& x <= cr.right + MarkerHeight)
+		{
+			if (pMarker != NULL
+				&& pMarker->SampleLength != 0)
+			{
+				// draw mark of the region begin
+				POINT p[] = {
+					x, cr.bottom - 1,
+					x, cr.bottom - MarkerHeight,
+					x + MarkerHeight - 2, cr.bottom - MarkerHeight,
+					x + MarkerHeight - 2, cr.bottom - MarkerHeight + 1,
+				};
+
+				pDC->Polygon(p, countof(p));
+			}
+			else
+			{
+				// draw marker
+				POINT p[] = {
+					x, cr.bottom - 1,
+					x + (MarkerHeight >> 1), cr.bottom - (MarkerHeight >> 1) - 1,
+					x + (MarkerHeight >> 1), cr.bottom - MarkerHeight,
+					x - (MarkerHeight >> 1), cr.bottom - MarkerHeight,
+					x - (MarkerHeight >> 1), cr.bottom - (MarkerHeight >> 1) - 1,
+				};
+
+				pDC->Polygon(p, countof(p));
+			}
+		}
+
+		if (pMarker != NULL
+			&& pMarker->SampleLength != 0)
+		{
+			x = WorldToWindowX(i->dwSampleOffset + pMarker->SampleLength);
+
+			if (x >= cr.left - MarkerHeight
+				&& x <= cr.right + MarkerHeight)
+			{
+				// draw mark of the region end
+				POINT p[] = {
+					x, cr.bottom - 1,
+					x, cr.bottom - MarkerHeight,
+					x - MarkerHeight + 2, cr.bottom - MarkerHeight,
+					x - MarkerHeight + 2, cr.bottom - MarkerHeight + 1,
+				};
+
+				pDC->Polygon(p, countof(p));
+			}
 		}
 	}
 }
@@ -458,3 +531,19 @@ void CTimeRulerView::OnUpdate( CView* /*pSender*/, LPARAM lHint, CObject* pHint 
 		Invalidate();
 	}
 }
+
+int CTimeRulerView::CalculateHeight()
+{
+	CWindowDC dc(GetDesktopWindow());
+	CGdiObjectSave OldFont(dc, dc.SelectStockObject(ANSI_VAR_FONT));
+
+	int height = dc.GetTextExtent(_T("0"), 1).cy;
+
+	TEXTMETRIC tm;
+	dc.GetTextMetrics( & tm);
+
+	int MarkerHeight = tm.tmAveCharWidth;
+
+	return height + 7 + MarkerHeight;
+}
+
