@@ -993,10 +993,15 @@ void CWaveFftView::CalculateFftRange(SAMPLE_INDEX left, SAMPLE_INDEX right)
 
 			NUMBER_OF_CHANNELS nChannels = pDoc->WaveChannels();
 			unsigned char * pRes = & m_pFftResultArray[i + 1 + m_FftOrder];
-			if (FirstSampleRequired + m_FftOrder > pDoc->WaveFileSamples())
+
+			if (FirstSampleRequired + m_FftOrder > pDoc->WaveFileSamples()
+				|| FirstSampleRequired < 0)
 			{
 				TRACE("The required samples from %d to %d are out of the file\n",
 					FirstSampleRequired, FirstSampleRequired + m_FftOrder);
+				m_pFftResultArray[i] = 1;   // mark as valid
+				// make all black
+				memset(m_pFftResultArray + i + 1, 127, m_FftOrder * nChannels);
 				continue;
 			}
 #if 0
@@ -1016,7 +1021,7 @@ void CWaveFftView::CalculateFftRange(SAMPLE_INDEX left, SAMPLE_INDEX right)
 														ch + FirstSampleRequired * nChannels,
 														NeedSamples, this))
 				{
-					m_pFftResultArray[i] = 0;   // mark as invalid
+					memset(pRes - m_FftOrder, 127, m_FftOrder);
 					continue;
 				}
 

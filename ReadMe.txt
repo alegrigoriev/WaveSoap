@@ -1,6 +1,11 @@
 TODO tasks:
 
+Allow dragging NR threshold points
+Show FFT of NR result in spectrum view
+Check all loading/saving of compressed files
 Add support for markers and regions: save on copy and with undo, move and delete on Cut, move on Paste
+Make Fade In/Out command
+Make Paste Special command (with Fade In/Fade Out etc)
 Delete/Insert operations can auto add markers and regions
 If metadata doesn't come as the very last chunk of the file, copy the original file to 
  a file where it does (for non-compressed file, that is)
@@ -17,7 +22,6 @@ Don't ask to replace the file if Save As with the same name
 Add "Retry" to error dialog boxes
 Enter WMA file attributes (title, author, etc)
 Enter MP3 file attributes
-Make WSPK file hidden (optional)
 
 Support CD grabbing under Win9x
 If CD recording not supported, SET SPEED WriteSpeed set to zero
@@ -37,11 +41,8 @@ Add options dialog
 In outline view, change mouse cursor over caret and view and selection boundaries
 TODO: check 4GB WAV files
 
-Add noise reduction estimation in spectrum section view
 Add sound recording
 Support "Play" in selection dialog
-Make Paste Special command (with Fade In/Fade Out etc)
-Add Save Selection As function
 If displaying data without peak info, call RescanPeaks for this range.
 Support CFSTR_FILECONTENTS clipboard format
 Save current workspace
@@ -72,9 +73,9 @@ Find which alignment better for edit box labels: left or right
 
 Problems:
 
-Suggests u-Law when saving a file from clipboard (??)
-Reopen after save new file doesn't work
+New file conversion: mono to stereo - does not work
 When scrolling FFT view during playback, checkered background after EOF is constantly blinking
+Reopen after save new file doesn't work
 Vertical scroll in the wave view makes marker labels blinking
 If a clipboard operation gets stopped, need to cancel all the operations that depend on it.
 Save As adds "Copy of" for direct file
@@ -90,6 +91,8 @@ Windows2000 is trying to zero the allocated file
 Log Off query doesn't close the active dialog. Recursion is possible. Make sure to check after Cancel
 
 Fixed:
+FFT view - last (incomplete) column is drawn from the first
+Spectrum section: if FFT is zoomed vertically, section is not redrawn
 Last WavePeak is not rescanned when file length is cut
 Expression evaluation selection longer than file length doesn't update file length
 Wrong CP used for UNICODE->ANSI conversion
@@ -140,6 +143,7 @@ No Disk In Drive has a checkmark
 CD list combo height too low
 
 Deferred:
+Suggests u-Law when saving a file from clipboard (??)
 Daylight saving time change invalidates peak info timestamp (FAT only??)
 doesn't show caret on the outline (as designed)
 32 kbps file reading does too much read ahead (1.wma)
@@ -155,6 +159,11 @@ Save As dialog is not centered first time (comdlg problem?)
 ??? When time/seconds format is set for status bar, MM:SS is actually shown
 
 Done:
+Add noise reduction estimation in spectrum section view
+When noise threshold is shown, fix the FFT resolution to the NR
+Make WSPK file hidden (optional)
+Add Save Selection As function
+Optimize use of ReadWaveSamples
 Double click on the outline view should select between markers
 Complete "Reverse" command
 Complete "Insert silence" command
