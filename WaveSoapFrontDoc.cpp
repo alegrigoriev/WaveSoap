@@ -352,7 +352,7 @@ BOOL CWaveSoapFrontDoc::OnNewDocument(NewFileParameters * pParams)
 	{
 		// zero wave peak data
 		m_WavFile.SetPeaks(0, nSamples * WaveChannels(),
-							WaveChannels(), WavePeak(0, 0));
+							1, WavePeak(0, 0));
 	}
 	return TRUE;
 }
