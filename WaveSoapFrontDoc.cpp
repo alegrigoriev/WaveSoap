@@ -5805,6 +5805,60 @@ void CWaveSoapFrontDoc::OnProcessFilter()
 	{
 		return;
 	}
+	CFilterContext * pContext =
+		new CFilterContext(this, "Applying filter...", "Filter");
+	if (NULL == pContext)
+	{
+		NotEnoughMemoryMessageBox();
+		return;
+	}
+
+	for (int i = 0; i < MaxFilterOrder; i++)
+	{
+		for (int j = 0; j < 6; j++)
+		{
+			pContext->m_LpfCoeffs[i][j] = dlg.m_wGraph.m_LpfCoeffs[i][j];
+			pContext->m_HpfCoeffs[i][j] = dlg.m_wGraph.m_HpfCoeffs[i][j];
+			pContext->m_NotchCoeffs[i][j] = dlg.m_wGraph.m_NotchCoeffs[i][j];
+		}
+	}
+
+	pContext->m_bZeroPhase = dlg.m_wGraph.m_bZeroPhase;
+	if (dlg.m_wGraph.m_bLowPass)
+	{
+		pContext->m_nLpfOrder = dlg.m_wGraph.m_nLpfOrder;
+	}
+	else
+	{
+		pContext->m_nLpfOrder = 0;
+	}
+
+	if (dlg.m_wGraph.m_bHighPass)
+	{
+		pContext->m_nHpfOrder = dlg.m_wGraph.m_nHpfOrder;
+	}
+	else
+	{
+		pContext->m_nHpfOrder = 0;
+	}
+
+	if (dlg.m_wGraph.m_bNotchFilter)
+	{
+		pContext->m_nNotchOrder = dlg.m_wGraph.m_nNotchOrder;
+	}
+	else
+	{
+		pContext->m_nNotchOrder = 0;
+	}
+
+	if ( ! pContext->InitDestination(m_WavFile, dlg.m_Start,
+									dlg.m_End, dlg.m_Chan, dlg.m_bUndo))
+	{
+		delete pContext;
+		return;
+	}
+	pContext->Execute();
+	SetModifiedFlag(TRUE, dlg.m_bUndo);
 }
 
 void CWaveSoapFrontDoc::OnUpdateProcessFilter(CCmdUI* pCmdUI)
