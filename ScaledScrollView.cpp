@@ -446,7 +446,6 @@ void CScaledScrollView::OnChangeOrgExt(double left, double width,
 		dNewScaleY = dScaleY;
 	}
 
-	ArrangeMaxExtents();
 	if ((flag & CHANGE_HOR_ORIGIN) == 0)
 	{
 		dNewOrgX = dOrgX;
@@ -456,11 +455,41 @@ void CScaledScrollView::OnChangeOrgExt(double left, double width,
 		dNewOrgY = dOrgY;
 	}
 
+	AdjustNewScale(dScaleX, dScaleY, dNewScaleX, dNewScaleY);
+
+	ArrangeMaxExtents();
+	if (dExtX > 0)
+	{
+		if (dNewOrgX + dExtX > dMaxRight)
+		{
+			dNewOrgX = dMaxRight - dExtX;
+			flag |= CHANGE_HOR_ORIGIN;
+		}
+		if (dNewOrgX < dMinLeft)
+		{
+			dNewOrgX = dMinLeft;
+			flag |= CHANGE_HOR_ORIGIN;
+		}
+	}
+	else
+	{
+		if (dNewOrgX + dExtX < dMaxRight)
+		{
+			dNewOrgX = dMaxRight - dExtX;
+			flag |= CHANGE_HOR_ORIGIN;
+		}
+		if (dNewOrgX > dMinLeft)
+		{
+			dNewOrgX = dMinLeft;
+			flag |= CHANGE_HOR_ORIGIN;
+		}
+	}
 	if (dNewScaleY != dScaleY || dNewScaleX != dScaleX)
 	{
 		dScaleY = dNewScaleY;
 		dScaleX = dNewScaleX;
-		dOrgX = dNewOrgX;
+		if (flag & CHANGE_HOR_ORIGIN)
+			dOrgX = dNewOrgX;
 		if (flag & CHANGE_VERT_ORIGIN)
 			dOrgY = dNewOrgY;
 		InvalidateRgn(NULL);
@@ -606,7 +635,7 @@ void CScaledScrollView::UpdateScrollbars(BOOL bRedraw)
 					0
 	};
 	// update horizontal scrollbar
-	if ( ! IsSlaveHor())
+	if (! IsSlaveHor())
 	{
 		sci.nPage = int((sci.nMax - sci.nMin) * dExtX / (dMaxRight - dMinLeft));
 		if (sci.nPage == 0) sci.nPage = 1;
@@ -723,8 +752,7 @@ void CScaledScrollView::OnSize(UINT nType, int cx, int cy)
 			}
 			flag |= CHANGE_HOR_EXTENTS;
 			double dNewScaleY = -cy / (dExtY * dLogScaleY);
-			// optimizer can compare 80 bit result with double dScaleY,
-			// and the comparision will never be equal
+			AdjustNewScale(dScaleX, dScaleY, dScaleX, dNewScaleY);
 			if (dNewScaleY != dScaleY)
 			{
 				TRACE("New Y scale != old scale, invalidating...\n");
@@ -754,8 +782,7 @@ void CScaledScrollView::OnSize(UINT nType, int cx, int cy)
 			}
 			flag |= CHANGE_VERT_EXTENTS;
 			double dNewScaleX = cx / (dExtX * dLogScaleX);
-			// optimizer can compare 80 bit result with double dScaleY,
-			// and the comparision will never be equal
+			AdjustNewScale(dScaleX, dScaleY, dNewScaleX, dScaleY);
 			if (dNewScaleX != dScaleX)
 			{
 				TRACE("New X scale != old scale, invalidating...\n");
@@ -771,26 +798,34 @@ void CScaledScrollView::OnSize(UINT nType, int cx, int cy)
 	{
 		flag = CHANGE_HOR_EXTENTS | CHANGE_VERT_EXTENTS;
 		// compute new scale
+		double dNewScaleX = dScaleX;
+		double dNewScaleY = dScaleY;
 		if (cx > 0)
 		{
-			dScaleX = cx / (dExtX * dLogScaleX);
+			dNewScaleX = cx / (dExtX * dLogScaleX);
 		}
 
 		// compute scale
 		if (bKeepAspectRatio)
 		{
 			int sign = (dScaleY >= 0) ? 1 : -1;
-			dScaleY = sign * fabs(dScaleX);
+			dNewScaleY = sign * fabs(dNewScaleX);
+			AdjustNewScale(dScaleX, dScaleY, dNewScaleX, dNewScaleY);
 			if (cy > 0)
 			{
-				dExtY = -cy / (dScaleY * dLogScaleY);
+				dExtY = -cy / (dNewScaleY * dLogScaleY);
 				dSizeY = fabs(dExtY);
 			}
 		}
 		else if (cy > 0)
 		{
-			dScaleY = -cy / (dExtY * dLogScaleY);
+			dNewScaleY = -cy / (dExtY * dLogScaleY);
+			AdjustNewScale(dScaleX, dScaleY, dNewScaleX, dNewScaleY);
 		}
+
+		dScaleX = dNewScaleX;
+		dScaleY = dNewScaleY;
+
 		InvalidateRgn(NULL);
 		UpdateScrollbars();
 	}
