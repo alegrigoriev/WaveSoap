@@ -34,7 +34,9 @@ CExpressionEvaluationContext::CExpressionEvaluationContext(CWaveSoapFrontDoc * p
 {
 	m_OperationName = OperationName;
 	m_ReturnBufferFlags = CDirectFile::ReturnBufferDirty;
+	m_bClipped = false;
 }
+
 BOOL CExpressionEvaluationContext::Init()
 {
 	m_nSamplingRate = m_DstFile.SampleRate();
@@ -67,10 +69,12 @@ BOOL CExpressionEvaluationContext::ProcessBuffer(void * buf, size_t len, DWORD o
 				if (result > 0x7FFF)
 				{
 					result = 0x7FFF;
+					m_bClipped = true;
 				}
 				else if (result < -0x8000)
 				{
 					result = -0x8000;
+					m_bClipped = true;
 				}
 				*pDst = result;
 				pDst++;
@@ -95,10 +99,12 @@ BOOL CExpressionEvaluationContext::ProcessBuffer(void * buf, size_t len, DWORD o
 						if (result > 0x7FFF)
 						{
 							result = 0x7FFF;
+							m_bClipped = true;
 						}
 						else if (result < -0x8000)
 						{
 							result = -0x8000;
+							m_bClipped = true;
 						}
 						*pDst = result;
 					}
@@ -116,10 +122,12 @@ BOOL CExpressionEvaluationContext::ProcessBuffer(void * buf, size_t len, DWORD o
 						if (result > 0x7FFF)
 						{
 							result = 0x7FFF;
+							m_bClipped = true;
 						}
 						else if (result < -0x8000)
 						{
 							result = -0x8000;
+							m_bClipped = true;
 						}
 						*pDst = result;
 					}
@@ -1481,3 +1489,14 @@ void CConversionContext::PostRetire(BOOL bChildContext)
 	CCopyContext::PostRetire(bChildContext);
 }
 
+
+void CExpressionEvaluationContext::PostRetire(BOOL bChildContext)
+{
+	if (m_bClipped)
+	{
+		CString s;
+		s.Format(IDS_SOUND_CLIPPED, pDocument->GetTitle());
+		AfxMessageBox(s, MB_OK | MB_ICONEXCLAMATION);
+	}
+	COperationContext::PostRetire(bChildContext);
+}

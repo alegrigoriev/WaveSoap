@@ -1541,6 +1541,13 @@ void CExpressionEvaluationDialog::DoDataExchange(CDataExchange* pDX)
 	DDX_Check(pDX, IDC_CHECK_UNDO, m_bUndo);
 	DDX_Text(pDX, IDC_EDIT_EXPRESSION, m_sExpression);
 	//}}AFX_DATA_MAP
+	if (pDX->m_bSaveAndValidate)
+	{
+		CThisApp * pApp = GetApp();
+		pApp->m_ExpressionGroupSelected = m_SavedExprTabDlg.m_ExpressionGroupSelected;
+		pApp->m_ExpressionSelected = m_SavedExprTabDlg.m_ExpressionSelected;
+	}
+
 }
 
 
@@ -2219,6 +2226,10 @@ void CExpressionEvaluationDialog::ShowHideTabDialogs()
 
 BOOL CExpressionEvaluationDialog::OnInitDialog()
 {
+	CThisApp * pApp = GetApp();
+	m_SavedExprTabDlg.m_ExpressionGroupSelected = pApp->m_ExpressionGroupSelected;
+	m_SavedExprTabDlg.m_ExpressionSelected = pApp->m_ExpressionSelected;
+
 	m_FunctionsTabDlg.Create(IDD_FUNCTIONS_TAB, this);
 	m_OperandsTabDlg.Create(IDD_OPERANDS_TAB, this);
 	m_OperatorsTabDlg.Create(IDD_OPERATORS_TAB, this);
@@ -2252,7 +2263,7 @@ BOOL CExpressionEvaluationDialog::OnInitDialog()
 	m_TabTokens.InsertItem(2, _T("Operators"));
 	m_TabTokens.InsertItem(3, _T("Saved Expressions"));
 
-	m_TabTokens.SetCurSel(GetApp()->m_ExpressionTabSelected);
+	m_TabTokens.SetCurSel(pApp->m_ExpressionTabSelected);
 	ShowHideTabDialogs();
 
 	UpdateSelectionStatic();

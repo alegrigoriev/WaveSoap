@@ -9,12 +9,16 @@
 
 /////////////////////////////////////////////////////////////////////////////
 // CSaveExpressionDialog dialog
+#include "ChildDialog.h"
 
 class CSaveExpressionDialog : public CDialog
 {
+	typedef Expressions::Expr Expr;
+	typedef Expressions::ExprGroup ExprGroup;
 // Construction
 public:
-	CSaveExpressionDialog(CWnd* pParent = NULL);   // standard constructor
+	CSaveExpressionDialog(const vector<ExprGroup> & Exprs,
+						CWnd* pParent = NULL);   // standard constructor
 
 // Dialog Data
 	//{{AFX_DATA(CSaveExpressionDialog)
@@ -26,6 +30,7 @@ public:
 	CString	m_Comment;
 	CString	m_Name;
 	//}}AFX_DATA
+	const vector<ExprGroup> & m_Expressions;
 	int m_ExpressionGroupSelected;
 	int m_CurrExpressionGroupSelected;
 	int m_ExpressionSelected;

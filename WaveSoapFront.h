@@ -163,6 +163,7 @@ public:
 
 	CString m_ExpressionToEvaluate;
 
+#if 0
 	enum { MaxSavedExpressionGroups = 32,
 		MaxSavedTotalExpressions = 512, };
 	CString m_ExpressionGroups[MaxSavedExpressionGroups];
@@ -173,12 +174,13 @@ public:
 	CString m_Expressions[MaxSavedTotalExpressions];
 	CString m_ExpressionComments[MaxSavedTotalExpressions];
 	CString m_ExpressionNames[MaxSavedTotalExpressions];
+	void LoadSavedExpressions();
+#endif
 
 	int m_ExpressionGroupSelected;
 	int m_ExpressionSelected;
 	int m_ExpressionTabSelected;
 	double m_dFrequencyArgument;
-	void LoadSavedExpressions();
 
 	CString m_UserKey;
 

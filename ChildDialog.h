@@ -7,6 +7,7 @@
 // ChildDialog.h : header file
 //
 #include "NumEdit.h"
+#include <vector>
 /////////////////////////////////////////////////////////////////////////////
 // CChildDialog dialog
 
@@ -70,9 +71,25 @@ protected:
 
 /////////////////////////////////////////////////////////////////////////////
 // CInsertExpressionDialog dialog
+namespace Expressions
+{
+struct Expr
+{
+	CString name;
+	CString expr;
+	CString comment;
+};
+struct ExprGroup
+{
+	CString name;
+	vector<Expr> exprs;
+};
+};
 
 class CInsertExpressionDialog : public CDialog
 {
+	typedef Expressions::Expr Expr;
+	typedef Expressions::ExprGroup ExprGroup;
 // Construction
 public:
 	CInsertExpressionDialog(CWnd* pParent = NULL);   // standard constructor
@@ -87,9 +104,12 @@ public:
 	int m_ExpressionGroupSelected;
 	int m_CurrExpressionGroupSelected;
 	int m_ExpressionSelected;
-	//CString m_Expressions[CThisApp::MaxSavedTotalExpressions];
-	//CString m_ExpressionComments[CThisApp::MaxSavedTotalExpressions];
-	//CString m_ExpressionNames[CThisApp::MaxSavedTotalExpressions];
+	bool m_ExpressionsChanged;
+
+	vector<Expressions::ExprGroup> m_Expressions;
+	void LoadExpressions(LPCTSTR ProfileName = NULL);
+	void UnloadExpressions(LPCTSTR ProfileName = NULL);
+	void RebuildAllExpressionsList();
 	void SaveExpressionAs(const CString & expr);
 
 // Overrides

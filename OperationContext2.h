@@ -16,6 +16,7 @@ public:
 	BOOL SetExpression(LPCSTR * ppszExpression);
 	CString m_ErrorString;
 	void Evaluate();
+	bool m_bClipped;
 
 private:
 	enum TokenType
@@ -137,6 +138,7 @@ private:
 	double m_dSelectionTimeArgument;
 	double m_dFileTimeArgument;
 public:
+	virtual void PostRetire(BOOL bChildContext = FALSE);
 	double m_dFrequencyArgument;
 private:
 	double m_dSelectionLengthTime;
