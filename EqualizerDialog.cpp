@@ -841,9 +841,10 @@ BOOL CEqualizerGraphWnd::OnEraseBkgnd(CDC* pDC)
 		}
 		pDC->SelectObject(pOldBrush);
 	}
-	catch (CResourceException)
+	catch (CResourceException * e)
 	{
 		TRACE("CResourceException\n");
+		e->Delete();
 	}
 	CPen DotPen(PS_DOT, 0, COLORREF(0));
 	CPen * pOldPen = pDC->SelectObject( & DotPen);

@@ -1127,9 +1127,10 @@ BOOL CWaveSoapFrontView::OnEraseBkgnd(CDC* pDC)
 			gr.left = FileEnd;
 			pDC->FillRect(gr, & GrayBrush);
 		}
-		catch (CResourceException)
+		catch (CResourceException * e)
 		{
 			TRACE("CResourceException\n");
+			e->Delete();
 		}
 	}
 	if (pDoc->m_SelectionEnd != pDoc->m_SelectionStart

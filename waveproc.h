@@ -251,7 +251,7 @@ public:
 	// for tonal bands
 	float m_ToneOverNoisePreference;
 
-	float m_NoiseReductionRatio;    // aggressivness of noise suppression
+	double m_NoiseReductionRatio;    // aggressivness of noise suppression
 	float m_MaxNoiseSuppression;    // how much FFT band can be suppressed (in dB)
 
 	// DecayDistance is frequency distance where masking decays by 1/e

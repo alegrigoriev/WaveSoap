@@ -636,9 +636,10 @@ void CSpectrumSectionView::DrawCrossHair(POINT point, CDC * pDC)
 
 		pDrawDC->SelectObject(pOldBrush);
 	}
-	catch (CResourceException)
+	catch (CResourceException * e)
 	{
 		TRACE("CResourceException\n");
+		e->Delete();
 	}
 
 	pDrawDC->SetMapMode(OldMap);
