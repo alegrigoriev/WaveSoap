@@ -1,3 +1,4 @@
+// Copyright Alexander Grigoriev, 1997-2002, All Rights Reserved
 // WaveSoapFront.cpp : Defines the class behaviors for the application.
 //
 
@@ -1664,11 +1665,11 @@ BOOL CWaveSoapFileList::GetDisplayName(CString& strName, int nIndex,
 	{
 		if (flags & OpenDocumentReadOnly)
 		{
-			suffix = " (RO)";
+			suffix = _T(" (RO)");
 		}
 		else if (flags & OpenDocumentDirectMode)
 		{
-			suffix = " (D)";
+			suffix = _T(" (D)");
 		}
 		lstrcpyn(lpch, 1 + LPCTSTR(m_arrNames[nIndex]), _MAX_PATH);
 	}
