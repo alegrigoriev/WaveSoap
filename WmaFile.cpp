@@ -358,27 +358,30 @@ HRESULT STDMETHODCALLTYPE CWmaDecoder::OnSample( /* [in] */ DWORD dwOutputNum,
 		return hr;
 	}
 	m_DstFile.CDirectFile::Write(pData, cbData);
+
 	// update current number of samples
-	unsigned nSampleSize = m_DstFile.SampleSize();
-	DWORD DstCopyPos = (DWORD)m_DstFile.CDirectFile::Seek(0, FILE_CURRENT);
-	LPMMCKINFO pck = m_DstFile.GetDataChunk();
-	DWORD DstCopySample = (DstCopyPos - pck->dwDataOffset)
-						/ nSampleSize;
+	SAMPLE_POSITION DstCopyPos = (SAMPLE_POSITION)m_DstFile.CDirectFile::Seek(0, FILE_CURRENT);
+	SAMPLE_INDEX DstCopySample = m_DstFile.PositionToSample(DstCopyPos);
+
 	if (DstCopySample > m_CurrentSamples)
 	{
 		// calculate new length
-		ULONG TotalSamples = MulDiv(DstCopySample, SrcLength(), SrcPos());
-		if (TotalSamples > 0x7FFFFFFF / nSampleSize)
+		unsigned nSampleSize = m_DstFile.SampleSize();
+		ULONG TotalSamplesEstimated = MulDiv(DstCopySample, SrcLength(), SrcPos());
+		if (TotalSamplesEstimated > 0x7FFFFFFF / nSampleSize)
 		{
-			TotalSamples = 0x7FFFFFFF / nSampleSize;
+			TotalSamplesEstimated = 0x7FFFFFFF / nSampleSize;
 		}
-		if (TotalSamples < m_CurrentSamples)
+		if (NUMBER_OF_SAMPLES(TotalSamplesEstimated) < m_CurrentSamples)
 		{
-			TotalSamples = m_CurrentSamples;
+			TotalSamplesEstimated = m_CurrentSamples;
 		}
-		DWORD datasize = TotalSamples * nSampleSize;
+		DWORD datasize = TotalSamplesEstimated * nSampleSize;
+
+		LPMMCKINFO pck = m_DstFile.GetDataChunk();
 		m_DstFile.SetFileLength(datasize + pck->dwDataOffset);
-		m_CurrentSamples = TotalSamples;
+		m_CurrentSamples = TotalSamplesEstimated;
+
 		// update data chunk length
 		pck->cksize = datasize;
 		pck->dwFlags |= MMIO_DIRTY;
