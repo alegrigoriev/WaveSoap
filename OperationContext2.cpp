@@ -2883,22 +2883,33 @@ BOOL CReverseOperation::OperationProc()
 	SAMPLE_POSITION dwOperationBeginTop = m_SrcPos;
 	SAMPLE_POSITION dwOperationBeginBottom = m_DstPos;
 
-	WAVE_SAMPLE BufBottom[MAX_NUMBER_OF_CHANNELS];
-	WAVE_SAMPLE BufTop[MAX_NUMBER_OF_CHANNELS];
+	int const TempBufCount = 1024;
+	ASSERT(m_DstFile.GetSampleType() == SampleType16bit);
+	WAVE_SAMPLE BufBottom[TempBufCount];
+	WAVE_SAMPLE BufTop[TempBufCount];
 
 	int const DstSampleSize = m_DstFile.SampleSize();
 
 	NUMBER_OF_CHANNELS const NumDstChannels = m_DstFile.Channels();
-	ASSERT(m_DstFile.GetSampleType() == SampleType16bit);
+
+	int const TempBufSamples = TempBufCount / NumDstChannels;
 
 	do
 	{
-		m_SrcPos -= DstSampleSize;
 
-		if (1 != m_DstFile.ReadSamples(ALL_CHANNELS,
-										m_SrcPos, 1, BufTop, m_DstFile.GetSampleType())
-			|| 1 != m_DstFile.ReadSamples(ALL_CHANNELS,
-										m_DstPos, 1, BufBottom, m_DstFile.GetSampleType()))
+		NUMBER_OF_SAMPLES CanReadSamples = (m_DstEnd - m_DstPos) / DstSampleSize;
+		if (CanReadSamples > TempBufSamples)
+		{
+			CanReadSamples = TempBufSamples;
+		}
+
+		WAVE_SAMPLE * p1 = BufBottom;
+		WAVE_SAMPLE * p2 = BufTop + TempBufCount;
+
+		if (-CanReadSamples != m_DstFile.ReadSamples(ALL_CHANNELS,
+													m_SrcPos, -CanReadSamples, p2, m_DstFile.GetSampleType())
+			|| CanReadSamples != m_DstFile.ReadSamples(ALL_CHANNELS,
+														m_DstPos, CanReadSamples, p1, m_DstFile.GetSampleType()))
 		{
 			// error
 			TRACE("Reading samples was unsuccessful!\n");
@@ -2906,23 +2917,42 @@ BOOL CReverseOperation::OperationProc()
 			break;
 		}
 
-		// save the changed data to undo buffer
+		long const DataSize = CanReadSamples * DstSampleSize;
+
+		// save the old data to undo buffer
 		if (NULL != m_pUndoLow)
 		{
-			m_pUndoLow->SaveUndoData(BufBottom,
-									DstSampleSize, m_DstPos, NumDstChannels);
+			m_pUndoLow->SaveUndoData(p1,
+									DataSize, m_DstPos, NumDstChannels);
 		}
 
 		if (NULL != m_pUndoHigh)
 		{
-			m_pUndoHigh->SaveUndoData(BufTop + NumDstChannels,
-									-DstSampleSize, m_SrcPos + DstSampleSize, NumDstChannels);
+			m_pUndoHigh->SaveUndoData(p2,
+									-DataSize, m_SrcPos, NumDstChannels);
 		}
 
-		if (1 != m_DstFile.WriteSamples(m_DstChan,
-										m_SrcPos, 1, BufBottom, m_DstChan, NumDstChannels, m_DstFile.GetSampleType())
-			|| 1 != m_DstFile.WriteSamples(m_DstChan,
-											m_DstPos, 1, BufTop, m_DstChan, NumDstChannels, m_DstFile.GetSampleType()))
+
+		for (NUMBER_OF_SAMPLES i = 0; i < CanReadSamples; i++)
+		{
+			p2 -= NumDstChannels;
+			for (NUMBER_OF_CHANNELS ch = 0; ch < NumDstChannels; ch ++)
+			{
+				std::swap(p1[ch], p2[ch]);
+				//WAVE_SAMPLE tmp = p1[ch];
+				//p1[ch] = p2[ch];
+				//p2[ch] = tmp;
+			}
+			p1 += NumDstChannels;
+		}
+
+		// save the data back
+		if (-CanReadSamples != m_DstFile.WriteSamples(m_DstChan,
+													m_SrcPos, -CanReadSamples, BufTop + TempBufCount,
+													m_DstChan, NumDstChannels, m_DstFile.GetSampleType())
+			|| CanReadSamples != m_DstFile.WriteSamples(m_DstChan,
+														m_DstPos, CanReadSamples, BufBottom,
+														m_DstChan, NumDstChannels, m_DstFile.GetSampleType()))
 		{
 			// error
 			TRACE("Writing samples was unsuccessful!\n");
@@ -2930,7 +2960,8 @@ BOOL CReverseOperation::OperationProc()
 			break;
 		}
 
-		m_DstPos += DstSampleSize;
+		m_SrcPos -= CanReadSamples * DstSampleSize;
+		m_DstPos += CanReadSamples * DstSampleSize;
 	}
 	while ((m_DstPos < m_DstEnd
 				&& GetTickCount() - dwStartTime < 200)
