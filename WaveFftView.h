@@ -77,7 +77,7 @@ protected:
 		WindowTypeHamming = 2,
 	};
 	int m_FftWindowType;
-	int m_FftOrder;     // frequencies in FFT conversions (width=2*FFT order)
+	int m_FftOrder;     // frequencies in FFT conversions (window width=2*FFT order)
 	int m_FftSpacing;   // samples between FFT columns
 
 	void OnSetWindowType(int window);
