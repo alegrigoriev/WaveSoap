@@ -193,6 +193,8 @@ void CWaveOutlineView::OnDraw(CDC* pDC)
 	else
 	{
 		WavePeak Peak = pDoc->m_WavFile.GetPeakMinMax(0, TotalPeaks);
+		PeakMax = Peak.high;
+		PeakMin = Peak.low;
 	}
 
 	PeakMax = abs(PeakMax);
