@@ -8,6 +8,7 @@
 #include <mmreg.h>
 #include <msacm.h>
 #include "BladeMP3EncDll.h"
+#include "WaveSupport.h"
 
 using namespace std;
 
@@ -415,20 +416,17 @@ public:
 class CAudioConvertor : public CWaveProc
 {
 public:
-	CAudioConvertor();
+	CAudioConvertor(HACMDRIVER had = NULL);
 	virtual ~CAudioConvertor();
 
-	HACMSTREAM m_acmStr;
-	size_t m_SrcBufSize;
-	size_t m_DstBufSize;
-	ACMSTREAMHEADER m_ash;
+	AudioStreamConvertor m_AcmConvertor;
+
 	DWORD m_DstSaved;
 	DWORD m_ConvertFlags;
-	WAVEFORMATEX * m_SrcFormat;
-	WAVEFORMATEX * m_DstFormat;
+	size_t m_LeftInDstBuffer;
+	UCHAR const * m_DstBufPtr;
 
-	BOOL InitConversion(WAVEFORMATEX * SrcFormat, WAVEFORMATEX * DstFormat,
-						HACMDRIVER had = NULL);
+	BOOL InitConversion(WAVEFORMATEX * SrcFormat, WAVEFORMATEX * DstFormat);
 	virtual size_t ProcessSound(char const * pInBuf, char * pOutBuf,
 								size_t nInBytes, size_t nOutBytes, size_t * pUsedBytes);
 };
