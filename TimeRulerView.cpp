@@ -983,8 +983,11 @@ void CTimeRulerView::OnMouseMove(UINT nFlags, CPoint point)
 			m_AutoscrollTimerID = NULL;
 		}
 		// do drag
+		NUMBER_OF_SAMPLES const nSamples = pDoc->WaveFileSamples();
+
 		SAMPLE_INDEX NewPosition = SAMPLE_INDEX(WindowToWorldX(point.x));
-		if (NewPosition > pDoc->WaveFileSamples())
+		if (NewPosition > nSamples
+			|| NewPosition < 0)
 		{
 			return;
 		}
@@ -998,23 +1001,47 @@ void CTimeRulerView::OnMouseMove(UINT nFlags, CPoint point)
 
 		if (m_DraggedMarkerHitTest & HitTestRegionBegin)
 		{
-			if (NewPosition >= SAMPLE_INDEX(info.Sample + info.Length))
+			if (nFlags & MK_SHIFT)
 			{
-				return;
+				// don't change length
+				if (NewPosition + SAMPLE_INDEX(info.Length) > nSamples)
+				{
+					return;
+				}
+				info.Flags = info.ChangeSample;
 			}
-
-			info.Flags = info.ChangeSample | info.ChangeLength;
-			info.Length += info.Sample - NewPosition;
+			else
+			{
+				if (NewPosition >= SAMPLE_INDEX(info.Sample + info.Length))
+				{
+					return;
+				}
+				info.Flags = info.ChangeSample | info.ChangeLength;
+				info.Length += info.Sample - NewPosition;
+			}
 			info.Sample = NewPosition;
 		}
 		else if (m_DraggedMarkerHitTest & HitTestRegionEnd)
 		{
-			if (NewPosition <= SAMPLE_INDEX(info.Sample))
+			if (nFlags & MK_SHIFT)
 			{
-				return;
+				// don't change length
+				if (NewPosition - SAMPLE_INDEX(info.Length) < 0)
+				{
+					return;
+				}
+				info.Sample = NewPosition - info.Length;
+				info.Flags = info.ChangeSample;
 			}
-			info.Flags = info.ChangeLength;
-			info.Length = NewPosition - info.Sample;
+			else
+			{
+				if (NewPosition <= SAMPLE_INDEX(info.Sample))
+				{
+					return;
+				}
+				info.Flags = info.ChangeLength;
+				info.Length = NewPosition - info.Sample;
+			}
 		}
 		else if (m_DraggedMarkerHitTest & HitTestMarker)
 		{
