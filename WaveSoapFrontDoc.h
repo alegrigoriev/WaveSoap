@@ -201,7 +201,7 @@ public:
 
 	BOOL OpenWaveFile(CWaveFile & WaveFile, LPCTSTR szName, DWORD flags);
 	void QueueSoundUpdate(int UpdateCode, ULONG_PTR FileID,
-						SAMPLE_INDEX Begin, SAMPLE_INDEX End, NUMBER_OF_SAMPLES NewLength, int flags);
+						SAMPLE_INDEX Begin, SAMPLE_INDEX End, NUMBER_OF_SAMPLES NewLength, int flags = 0);
 	enum {
 		QueueSoundUpdateMerge = 1,  // merge update range
 		QueueSoundUpdateReplace = 2, // replace existing item
