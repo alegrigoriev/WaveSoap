@@ -816,26 +816,17 @@ class CWmaDecodeContext : public CTwoFilesOperation
 {
 	typedef CWmaDecodeContext ThisClass;
 	typedef CTwoFilesOperation BaseClass;
+
 public:
 	typedef std::auto_ptr<ThisClass> auto_ptr;
+
 	CWmaDecodeContext(CWaveSoapFrontDoc * pDoc, UINT StatusStringId,
-					CDirectFile & rWmaFile)
-		: BaseClass(pDoc,
-					// operation can be terminated by Close
-					OperationContextDiskIntensive | OperationContextNonCritical, StatusStringId),
-		m_WmaFile(rWmaFile)
-	{
-	}
-	~CWmaDecodeContext()
-	{
-		m_Decoder.Stop();
-	}
+					CDirectFile & rWmaFile);
+	~CWmaDecodeContext();
+
 protected:
-	CWmaDecoder m_Decoder;
 	// opens m_Decoder, loads wave format to its SrcFile
 	void SetDstFile(CWaveFile & file);
-	NUMBER_OF_SAMPLES m_CurrentSamples;
-	SAMPLE_INDEX m_DstCopySample;
 	virtual BOOL OperationProc();
 	virtual BOOL Init();
 	virtual void DeInit();
@@ -852,6 +843,9 @@ protected:
 	}
 
 private:
+	NUMBER_OF_SAMPLES m_CurrentSamples;
+	SAMPLE_INDEX m_DstCopySample;
+	CWmaDecoder m_Decoder;
 	CDirectFile & m_WmaFile;
 	CoInitHelper m_CoInit;
 };
