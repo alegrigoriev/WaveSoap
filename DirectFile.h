@@ -177,11 +177,11 @@ public:
 			return FALSE;
 	}
 
-	BOOL InitializeTheRestOfFile(int timeout = 0)
+	BOOL InitializeTheRestOfFile(int timeout = 0, int * pPercentCompleted = NULL)
 	{
 		if (NULL != m_pFile)
 		{
-			return m_pFile->InitializeTheRestOfFile(timeout);
+			return m_pFile->InitializeTheRestOfFile(timeout, pPercentCompleted);
 		}
 		else
 			return TRUE;    // operation completed
@@ -340,7 +340,7 @@ protected:
 		void InsertBuffer(BufferHeader * pBuf);
 		BOOL SetFileLength(LONGLONG NewLength);
 		BOOL Flush();
-		BOOL InitializeTheRestOfFile(int timeout = 0);
+		BOOL InitializeTheRestOfFile(int timeout = 0, int * pPercentCompleted = NULL);
 		BOOL SetSourceFile(File * pOriginalFile);
 		void * AllocateCommonData(size_t size);
 		void * GetCommonData() const

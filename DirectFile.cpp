@@ -2120,12 +2120,16 @@ unsigned CDirectFile::CDirectFileCache::_ThreadProc()
 	return 0;
 }
 
-BOOL CDirectFile::File::InitializeTheRestOfFile(int timeout)
+BOOL CDirectFile::File::InitializeTheRestOfFile(int timeout, int * pPercentCompleted)
 {
 	if (NULL == m_pWrittenMask
 		|| (m_Flags & FileFlagsReadOnly)
 		|| (m_Flags & FileFlagsMemoryFile))
 	{
+		if (pPercentCompleted)
+		{
+			*pPercentCompleted = 100;
+		}
 		return TRUE;
 	}
 	// find uninitialized buffer
@@ -2144,10 +2148,18 @@ BOOL CDirectFile::File::InitializeTheRestOfFile(int timeout)
 		if (timeout != 0
 			&& timeGetTime() - BeginTime > timeout)
 		{
+			if (pPercentCompleted)
+			{
+				*pPercentCompleted = MulDiv(100, i, (FileLength + 0xFFFF) >> 16);
+			}
 			return FALSE;   // not finished yet
 		}
 	}
 	Flush();
+	if (pPercentCompleted)
+	{
+		*pPercentCompleted = 100;
+	}
 	return TRUE;
 }
 

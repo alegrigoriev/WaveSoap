@@ -121,7 +121,6 @@ public:
 	BOOL InitExpand(CWaveFile & File, LONG StartSample, LONG Length, int Channel);
 	BOOL InitShrink(CWaveFile & File, LONG StartSample, LONG Length, int Channel);
 	virtual BOOL OperationProc();
-	//virtual void PostRetire(BOOL bChildContext = FALSE);
 	virtual CString GetStatusString();
 };
 
