@@ -402,6 +402,7 @@ public:
 						CWaveFile & NewFile, bool bNewDirectMode = false);
 
 	virtual BOOL CreateUndo();
+	virtual bool KeepsPermanentFileReference() const;
 
 	virtual BOOL OperationProc();
 protected:
@@ -502,6 +503,7 @@ protected:
 
 // this object saves the data being discarded as a result
 // of trimming the file
+// It uses RestoreTrimmedOperation as UNDO
 class CSaveTrimmedOperation : public CCopyContext
 {
 	// move data in the same file
@@ -567,6 +569,7 @@ public:
 protected:
 	virtual BOOL PrepareUndo();
 	virtual void UnprepareUndo();
+	virtual void DeInit();
 
 	virtual BOOL CreateUndo();
 	virtual BOOL ProcessBuffer(void * buf, size_t len, SAMPLE_POSITION offset, BOOL bBackward = FALSE);
@@ -590,6 +593,7 @@ protected:
 	virtual BOOL OperationProc();
 };
 
+// This operation can be used as UNDO/REDO
 class CMetadataChangeOperation : public COperationContext
 {
 	typedef CMetadataChangeOperation ThisClass;
@@ -602,6 +606,8 @@ public:
 	~CMetadataChangeOperation();
 
 	virtual BOOL CreateUndo();
+	virtual BOOL PrepareUndo();
+	virtual void UnprepareUndo();
 
 	void SaveUndoMetadata(unsigned ChangeFlags);
 
@@ -613,6 +619,7 @@ protected:
 	CWaveFile m_WaveFile;
 };
 
+// This operation is never used as UNDO/REDO
 class CCueEditOperation : public CMetadataChangeOperation
 {
 	typedef CCueEditOperation ThisClass;
