@@ -804,7 +804,8 @@ BOOL CResizeContext::InitUndoRedo(CString UndoOperationString)
 		pUndo->m_DstEnd = 0;
 		pUndo->m_DstPos = 0;
 	}
-	pUndo->m_RestoredLength = pDocument->m_WavFile.GetLength();
+
+	pUndo->m_RestoredLength = pDocument->WaveFileSamples();
 	m_pUndoContext = pUndo;
 	return TRUE;
 }
@@ -2372,11 +2373,6 @@ void CUndoRedoContext::PostRetire(BOOL bChildContext)
 
 CUndoRedoContext::~CUndoRedoContext()
 {
-	if (m_pOldPeaks)
-	{
-		delete[] m_pOldPeaks;
-		m_pOldPeaks = NULL;
-	}
 }
 
 CString CUndoRedoContext::GetStatusString()
