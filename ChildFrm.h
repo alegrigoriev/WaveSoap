@@ -84,12 +84,16 @@ public:
 		VerticalTrackerID,
 		ScaleStaticID,
 		Static1ID,
+		FftStaticLID,
+		FftStaticUID,
 		OutlineViewID,
 		SpectrumSectionRulerID,
 	};
 
 	CWnd wStatic;
 	CWnd wStatic1;
+	CWnd wStaticFftU;
+	CWnd wStaticFftL;
 	CVerticalTrackerBar wTracker;
 	CScrollBar m_sb;
 

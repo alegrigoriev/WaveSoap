@@ -158,7 +158,10 @@ private:
 
 	static void _fastcall MultiplyDouble(Operation *t) { *t->dDst = *t->dSrc1 * *t->dSrc2; }
 	static void _fastcall MultiplyInt(Operation *t) { *t->nDst = *t->nSrc1 * *t->nSrc2; }
-	static void _fastcall MultiplyDoubleInt(Operation *t)  { *t->dDst = *t->dSrc1 * *t->nSrc2; }
+	static void _fastcall MultiplyDoubleInt(Operation *t)
+	{
+		*t->dDst = *t->dSrc1 * *t->nSrc2;
+	}
 
 	static void _fastcall DivideDouble(Operation *t);
 	static void _fastcall DivideInt(Operation *t);

@@ -68,6 +68,8 @@ public:
 
 	int WorldToWindowX(double x) const;
 	int WorldToWindowY(double y) const;
+	int WorldToWindowXrnd(double x) const;
+	int WorldToWindowYrnd(double y) const;
 	double WindowToWorldX(int x) const;
 	double WindowToWorldY(int y) const;
 

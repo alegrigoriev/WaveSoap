@@ -4,6 +4,7 @@
 #include "stdafx.h"
 #include "WaveSoapFront.h"
 #include "AmplitudeRuler.h"
+#include "SpectrumSectionView.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -251,6 +252,7 @@ void CAmplitudeRuler::DrawPercents(CDC * pDC)
 void CAmplitudeRuler::DrawDecibels(CDC * pDC)
 {
 	// decibels are drawn with 1.5 dB step
+	// if there is not enough space to draw next 2*step, it doubles the step
 	CWaveSoapFrontDoc* pDoc = GetDocument();
 	if (! pDoc->m_WavFile.IsOpen())
 	{
@@ -277,21 +279,7 @@ void CAmplitudeRuler::DrawDecibels(CDC * pDC)
 	double VerticalScale = pMasterView->m_VerticalScale;
 	double ScaledWaveOffset = pMasterView->m_WaveOffsetY * VerticalScale;
 	int nSampleUnits = nVertStep * 65536. / (nHeight * VerticalScale);
-	// round sample units to 10 or 5
-	int step;
-	for (step = 1; step < nSampleUnits; step *= 10)
-	{
-		if (step * 2 >= nSampleUnits)
-		{
-			step *= 2;
-			break;
-		}
-		if (step * 5 >= nSampleUnits)
-		{
-			step *= 5;
-			break;
-		}
-	}
+
 	double YScaleDev = pMasterView->GetYScaleDev();
 	int ChannelSeparatorY = fround((0 - pMasterView->dOrgY) * YScaleDev);
 	if (2 == nChannels)
@@ -299,42 +287,85 @@ void CAmplitudeRuler::DrawDecibels(CDC * pDC)
 		pDC->MoveTo(0, ChannelSeparatorY);
 		pDC->LineTo(cr.right, ChannelSeparatorY);
 	}
-	for (int ch = 0; ch < nChannels; ch++)
-	{
-		double WaveOffset = ScaledWaveOffset - pMasterView->dOrgY;
-		int ClipHigh = cr.bottom;
-		int ClipLow = cr.top;
-		if (nChannels > 1)
-		{
-			if (0 == ch)
-			{
-				WaveOffset = ScaledWaveOffset + 32768. - pMasterView->dOrgY;
-				ClipHigh = ChannelSeparatorY;
-			}
-			else
-			{
-				WaveOffset = ScaledWaveOffset -32768. - pMasterView->dOrgY;
-				ClipLow = ChannelSeparatorY + 1;
-			}
-		}
-		ClipLow += tm.tmHeight / 2;
-		ClipHigh -= tm.tmHeight / 2;
-		int yLow = (ClipHigh / YScaleDev -WaveOffset) / VerticalScale;
-		// round to the next multiple of step
-		yLow += (step*0x10000-yLow) % step;
-		int yHigh = (ClipLow / YScaleDev -WaveOffset) / VerticalScale;
-		yHigh -= (step*0x10000+yHigh) % step;
-		ASSERT(yLow <= yHigh);
-		for (int y = yLow; y <= yHigh; y += step)
-		{
-			int yDev= fround((y * VerticalScale + WaveOffset) * YScaleDev);
-			pDC->MoveTo(cr.right - 3, yDev);
-			pDC->LineTo(cr.right, yDev);
-			CString s;
-			s.Format(_T("%d"), y);
 
-			pDC->TextOut(cr.right - 3, yDev + tm.tmHeight / 2, s);
+	double MultStep = 0.841395141; //pow(10., -1.5 / 20.);
+	double DbStep = -1.5;
+
+	double CurrDb = -1.5;
+	double CurrVal = 27570.836;
+
+	while (CurrDb > -120.)
+	{
+		int yDev1 = -fround(CurrVal * VerticalScale * YScaleDev);
+		if (yDev1 < nVertStep)
+		{
+			break;  // can't draw anymore
 		}
+		// if it's not multiple of DbStep*2, see if we need to multiply step and skip this value
+		if (0. != fmod(CurrDb, DbStep * 2.))
+		{
+			// check if we have enough space to draw the next value
+			int yDev2 = -fround(CurrVal * MultStep * VerticalScale * YScaleDev);
+			if (yDev1 - yDev2 < nVertStep)
+			{
+				CurrVal *= MultStep;
+				MultStep *= MultStep;
+
+				CurrDb += DbStep;
+				DbStep *= 2;
+				continue;
+			}
+		}
+		CString s;
+		s.Format(_T("%.1f dB"), CurrDb);
+		for (int ch = 0; ch < nChannels; ch++)
+		{
+			double WaveOffset = ScaledWaveOffset - pMasterView->dOrgY;
+			int ClipHigh = cr.bottom;
+			int ClipLow = cr.top;
+			if (nChannels > 1)
+			{
+				if (0 == ch)
+				{
+					WaveOffset = ScaledWaveOffset + 32768. - pMasterView->dOrgY;
+					ClipHigh = ChannelSeparatorY;
+				}
+				else
+				{
+					WaveOffset = ScaledWaveOffset -32768. - pMasterView->dOrgY;
+					ClipLow = ChannelSeparatorY + 1;
+				}
+			}
+			ClipLow += tm.tmHeight / 2;
+			ClipHigh -= tm.tmHeight / 2;
+			int yLow = (ClipHigh / YScaleDev -WaveOffset) / VerticalScale;
+			// round to the next multiple of step
+			//yLow += (step*0x10000-yLow) % step;
+			int yHigh = (ClipLow / YScaleDev -WaveOffset) / VerticalScale;
+			//yHigh -= (step*0x10000+yHigh) % step;
+			ASSERT(yLow <= yHigh);
+
+
+			if (CurrVal >= yLow && CurrVal <= yHigh)
+			{
+				int yDev = fround((CurrVal * VerticalScale + WaveOffset) * YScaleDev);
+				pDC->MoveTo(cr.right - 3, yDev);
+				pDC->LineTo(cr.right, yDev);
+
+				pDC->TextOut(cr.right - 3, yDev + tm.tmHeight / 2, s);
+			}
+			if (-CurrVal >= yLow && -CurrVal <= yHigh)
+			{
+				int yDev = fround((-CurrVal * VerticalScale + WaveOffset) * YScaleDev);
+				pDC->MoveTo(cr.right - 3, yDev);
+				pDC->LineTo(cr.right, yDev);
+
+				pDC->TextOut(cr.right - 3, yDev + tm.tmHeight / 2, s);
+			}
+		}
+
+		CurrVal *= MultStep;
+		CurrDb += DbStep;
 	}
 }
 
@@ -478,95 +509,162 @@ END_MESSAGE_MAP()
 
 void CSpectrumSectionRuler::OnDraw(CDC* pDC)
 {
-	CGdiObject * pOldFont = (CFont *) pDC->SelectStockObject(ANSI_VAR_FONT);
-	CGdiObject * OldPen = pDC->SelectStockObject(BLACK_PEN);
-	// decibels are drawn with 1.5 dB step
 	CWaveSoapFrontDoc* pDoc = GetDocument();
 	if (! pDoc->m_WavFile.IsOpen())
 	{
 		return;
 	}
 
-	CWaveSoapFrontView * pMasterView = DYNAMIC_DOWNCAST(CWaveSoapFrontView, m_pVertMaster);
+	CSpectrumSectionView * pMasterView = DYNAMIC_DOWNCAST(CSpectrumSectionView, m_pHorMaster);
 	if (NULL == pMasterView)
 	{
 		return; // not attached
 	}
-#if 0
-	CRect cr;
-	GetClientRect(cr);
 
-	TEXTMETRIC tm;
-	pDC->GetTextMetrics( & tm);
-	pDC->SetTextAlign(TA_BOTTOM | TA_RIGHT);
+	CGdiObject * pOldFont = (CFont *) pDC->SelectStockObject(ANSI_VAR_FONT);
+	// draw horizontal line with ticks and numbers
+	CPen DarkGrayPen(PS_SOLID, 0, 0x808080);
+	CRect cr;
+	GetClientRect( & cr);
+
+	int nTickCount;
+	double LeftExt = fabs(WindowToWorldX(cr.left));
+	double RightExt = fabs(WindowToWorldX(cr.right));
+	double MaxExt = RightExt;
+	if (MaxExt < LeftExt)
+	{
+		MaxExt = LeftExt;
+	}
+	double ExtDiff = fabs(RightExt - LeftExt);
+	LPCTSTR MaxText;
+	LPCTSTR FormatText;
+	if (MaxExt > 99.)
+	{
+		if (ExtDiff < 2)
+		{
+			MaxText = "-100.0";
+		}
+		else
+		{
+			MaxText = "-100";
+		}
+	}
+	else
+	{
+		if (ExtDiff < 2)
+		{
+			MaxText = "-10.0";
+		}
+		else
+		{
+			MaxText = "-10";
+		}
+	}
+
+	int nLength = pDC->GetTextExtent(MaxText, strlen(MaxText)).cx;
+
+	double Dist = fabs(1.5 * nLength / GetXScaleDev());
+	// select distance between ticks
+	double multiplier = 1.;
+	double divisor = 1.;
+	if (Dist >= 1.)
+	{
+		if (Dist > 10.)
+		{
+			multiplier = 10;
+			Dist = ceil(Dist / 10.);
+		}
+		else
+		{
+			Dist = ceil(Dist);
+		}
+		FormatText = "%.f";
+	}
+	else    // DistDb < 1
+	{
+		divisor = 10.;
+		Dist = ceil(Dist * 10.);
+		FormatText = "%.1f";
+	}
+	// find the closest bigger 1,2,5, 10,
+	if (Dist <= 1.)
+	{
+		Dist = 1.;
+		nTickCount = 10;
+	}
+	else if (Dist <= 2.)
+	{
+		Dist = 2.;
+		nTickCount = 2;
+	}
+	else if (Dist <= 5.)
+	{
+		Dist = 5.;
+		nTickCount = 5.;
+	}
+	else
+	{
+		Dist = 10.;
+		nTickCount = 10.;
+	}
+
+	CGdiObject * OldPen = pDC->SelectStockObject(BLACK_PEN);
+	pDC->SetTextAlign(TA_BOTTOM | TA_LEFT);
 	pDC->SetTextColor(0x000000);   // black
 	pDC->SetBkMode(TRANSPARENT);
-	int nVertStep = GetSystemMetrics(SM_CYMENU);
-	int nChannels = pDoc->WaveChannels();
-	int nHeight = cr.Height() / nChannels;
-	double VerticalScale = pMasterView->m_VerticalScale;
-	double ScaledWaveOffset = pMasterView->m_WaveOffsetY * VerticalScale;
-	int nSampleUnits = nVertStep * 65536. / (nHeight * VerticalScale);
-	// round sample units to 10 or 5
-	int step;
-	for (step = 1; step < nSampleUnits; step *= 10)
-	{
-		if (step * 2 >= nSampleUnits)
-		{
-			step *= 2;
-			break;
-		}
-		if (step * 5 >= nSampleUnits)
-		{
-			step *= 5;
-			break;
-		}
-	}
-	double YScaleDev = pMasterView->GetYScaleDev();
-	int ChannelSeparatorY = fround((0 - pMasterView->dOrgY) * YScaleDev);
-	if (2 == nChannels)
-	{
-		pDC->MoveTo(0, ChannelSeparatorY);
-		pDC->LineTo(cr.right, ChannelSeparatorY);
-	}
-	for (int ch = 0; ch < nChannels; ch++)
-	{
-		double WaveOffset = ScaledWaveOffset - pMasterView->dOrgY;
-		int ClipHigh = cr.bottom;
-		int ClipLow = cr.top;
-		if (nChannels > 1)
-		{
-			if (0 == ch)
-			{
-				WaveOffset = ScaledWaveOffset + 32768. - pMasterView->dOrgY;
-				ClipHigh = ChannelSeparatorY;
-			}
-			else
-			{
-				WaveOffset = ScaledWaveOffset -32768. - pMasterView->dOrgY;
-				ClipLow = ChannelSeparatorY + 1;
-			}
-		}
-		ClipLow += tm.tmHeight / 2;
-		ClipHigh -= tm.tmHeight / 2;
-		int yLow = (ClipHigh / YScaleDev -WaveOffset) / VerticalScale;
-		// round to the next multiple of step
-		yLow += (step*0x10000-yLow) % step;
-		int yHigh = (ClipLow / YScaleDev -WaveOffset) / VerticalScale;
-		yHigh -= (step*0x10000+yHigh) % step;
-		ASSERT(yLow <= yHigh);
-		for (int y = yLow; y <= yHigh; y += step)
-		{
-			int yDev= fround((y * VerticalScale + WaveOffset) * YScaleDev);
-			pDC->MoveTo(cr.right - 3, yDev);
-			pDC->LineTo(cr.right, yDev);
-			CString s;
-			s.Format(_T("%d"), y);
 
-			pDC->TextOut(cr.right - 3, yDev + tm.tmHeight / 2, s);
+	pDC->MoveTo(cr.left, cr.bottom - 2);
+	pDC->LineTo(cr.right, cr.bottom - 2);
+
+	pDC->SelectStockObject(WHITE_PEN);
+	pDC->MoveTo(cr.left, cr.bottom - 1);
+	pDC->LineTo(cr.right, cr.bottom - 1);
+
+	pDC->SelectObject( & DarkGrayPen);
+	pDC->MoveTo(cr.left, cr.bottom - 3);
+	pDC->LineTo(cr.right, cr.bottom - 3);
+
+	double DistDb = Dist * multiplier / divisor;
+	double nFirstDb = floor(WindowToWorldX(cr.right + nLength)
+							/ DistDb) * DistDb;
+
+	for(int nTick = 0; ; nTick++)
+	{
+		double Db = nFirstDb + DistDb * nTick / double(nTickCount);
+		int x = WorldToWindowXrnd(Db);
+
+		if (x < cr.left - nLength)
+		{
+			break;
+		}
+		pDC->SelectStockObject(BLACK_PEN);
+		pDC->MoveTo(x - 1, cr.bottom - 3);
+
+		if (0 == nTick % nTickCount)
+		{
+			// draw bigger tick (6 pixels high) and the number
+			pDC->LineTo(x - 1, cr.bottom - 9);
+			CString s;
+			s.Format(FormatText, Db * 1.000001);
+
+			pDC->TextOut(x + 2, cr.bottom - 6, s);
+
+			pDC->SelectStockObject(WHITE_PEN);
+			pDC->MoveTo(x, cr.bottom - 3);
+			pDC->LineTo(x, cr.bottom - 9);
+		}
+		else
+		{
+			// draw small tick (2 pixels high)
+			pDC->LineTo(x - 1, cr.bottom - 5);
+
+			pDC->SelectStockObject(WHITE_PEN);
+			pDC->MoveTo(x, cr.bottom - 3);
+			pDC->LineTo(x, cr.bottom - 5);
 		}
 	}
-#endif
+
+
 	pDC->SelectObject(OldPen);
 	pDC->SelectObject(pOldFont);
 }

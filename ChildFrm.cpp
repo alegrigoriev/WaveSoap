@@ -261,6 +261,8 @@ void CWaveMDIChildClient::RecalcLayout()
 	int RulerHeight = CTimeRulerView::CalculateHeight();
 	// calculate horizontal ruler width
 	int RulerWidth = CAmplitudeRuler::CalculateWidth();
+	int FftRulerWidth = CFftRulerView::CalculateWidth();
+
 	int cyhscroll = GetSystemMetrics(SM_CYHSCROLL);
 	int OutlineHeight = 2 * cyhscroll;
 	int SpectrumSectionWidth = m_SpectrumSectionWidth;
@@ -282,8 +284,16 @@ void CWaveMDIChildClient::RecalcLayout()
 	if ( ! m_bShowVerticalRuler)
 	{
 		RulerWidth = 0;
+		FftRulerWidth = 0;
 	}
-
+	if ( ! m_bShowFft && ! m_bShowSpectrumSection)
+	{
+		FftRulerWidth = 0;
+	}
+	if (m_bShowFft)
+	{
+		RulerWidth = 0;
+	}
 	CWnd * pOutline = GetDlgItem(OutlineViewID);
 	if (NULL != pOutline && m_bShowOutline)
 	{
@@ -308,7 +318,7 @@ void CWaveMDIChildClient::RecalcLayout()
 
 	if (m_bShowTimeRuler)
 	{
-		r.left = SpectrumSectionWidth + VerticalTrackerWidth + RulerWidth;
+		r.left = SpectrumSectionWidth + VerticalTrackerWidth + RulerWidth + FftRulerWidth;
 		r.top = OutlineHeight;
 		r.bottom = OutlineHeight + RulerHeight;
 		r.right = cr.right;
@@ -317,8 +327,8 @@ void CWaveMDIChildClient::RecalcLayout()
 			pHorRuler->ShowWindow(SW_SHOWNOACTIVATE);
 			DeferClientPos(&layout, pHorRuler, r, FALSE);
 		}
-		r.left = RulerWidth;
-		r.right = SpectrumSectionWidth + RulerWidth;
+		r.left = FftRulerWidth;
+		r.right = SpectrumSectionWidth + FftRulerWidth;
 		if (NULL != pSpectrumSectionRuler)
 		{
 			pSpectrumSectionRuler->ShowWindow(SW_SHOWNOACTIVATE);
@@ -344,8 +354,8 @@ void CWaveMDIChildClient::RecalcLayout()
 	{
 		if (NULL != pVertRuler)
 		{
-			r.left = 0;
-			r.right = RulerWidth;
+			r.left = SpectrumSectionWidth + FftRulerWidth;
+			r.right = r.left + RulerWidth;
 			r.top = OutlineHeight + RulerHeight;
 			r.bottom = cr.bottom - cyhscroll;
 			if (m_bShowWaveform)
@@ -362,10 +372,10 @@ void CWaveMDIChildClient::RecalcLayout()
 		if (pVertFftRuler)
 		{
 			r.left = 0;
-			r.right = RulerWidth;
+			r.right = FftRulerWidth;
 			r.top = OutlineHeight + RulerHeight;
 			r.bottom = cr.bottom - cyhscroll;
-			if (m_bShowFft)
+			if (m_bShowFft || m_bShowSpectrumSection)
 			{
 				pVertFftRuler->ShowWindow(SW_SHOWNOACTIVATE);
 			}
@@ -392,7 +402,7 @@ void CWaveMDIChildClient::RecalcLayout()
 	CWnd * pScroll = GetDlgItem(AFX_IDW_HSCROLL_FIRST);
 	if (pScroll)
 	{
-		r.left = SpectrumSectionWidth + VerticalTrackerWidth + RulerWidth;
+		r.left = SpectrumSectionWidth + VerticalTrackerWidth + RulerWidth + FftRulerWidth;
 		r.right = cr.right;
 		r.top = cr.bottom - cyhscroll;
 		r.bottom = cr.bottom;
@@ -402,8 +412,8 @@ void CWaveMDIChildClient::RecalcLayout()
 	CWnd * pSpectrumSection = GetDlgItem(SpectrumSectionViewID);
 	if (pSpectrumSection)
 	{
-		r.left = RulerWidth;
-		r.right = RulerWidth + SpectrumSectionWidth;
+		r.left = FftRulerWidth;
+		r.right = FftRulerWidth + SpectrumSectionWidth;
 		r.top = OutlineHeight + RulerHeight;
 		r.bottom = cr.bottom;
 		if (0 != SpectrumSectionWidth)
@@ -420,8 +430,8 @@ void CWaveMDIChildClient::RecalcLayout()
 	CWnd * pVerticalTracker = GetDlgItem(VerticalTrackerID);
 	if (pVerticalTracker)
 	{
-		r.left = RulerWidth + SpectrumSectionWidth;
-		r.right = RulerWidth + SpectrumSectionWidth + VerticalTrackerWidth;
+		r.left = RulerWidth + FftRulerWidth + SpectrumSectionWidth;
+		r.right = RulerWidth + FftRulerWidth + SpectrumSectionWidth + VerticalTrackerWidth;
 		r.top = OutlineHeight;
 		r.bottom = cr.bottom;
 		if (0 != VerticalTrackerWidth)
@@ -435,8 +445,8 @@ void CWaveMDIChildClient::RecalcLayout()
 		DeferClientPos(&layout, pVerticalTracker, r, FALSE);
 	}
 
-	r.left = 0;
-	r.right = RulerWidth;
+	r.left = FftRulerWidth + SpectrumSectionWidth;
+	r.right = RulerWidth + FftRulerWidth + SpectrumSectionWidth;
 	r.top = cr.bottom - cyhscroll;
 	r.bottom = cr.bottom;
 	if (r.right != 0)
@@ -449,11 +459,9 @@ void CWaveMDIChildClient::RecalcLayout()
 		wStatic1.ShowWindow(SW_HIDE);
 	}
 
-	r.left = 0;
-	r.right = RulerWidth;
 	r.top = OutlineHeight;
 	r.bottom = OutlineHeight + RulerHeight;
-	if (r.right != 0 && r.bottom != 0)
+	if (r.right != r.left && r.bottom != 0)
 	{
 		wStatic.ShowWindow(SW_SHOWNOACTIVATE);
 		DeferClientPos(&layout, & wStatic1, r, FALSE);
@@ -463,7 +471,33 @@ void CWaveMDIChildClient::RecalcLayout()
 		wStatic.ShowWindow(SW_HIDE);
 	}
 
-	r.left = SpectrumSectionWidth + VerticalTrackerWidth + RulerWidth;
+	r.left = 0;
+	r.right = FftRulerWidth;
+	r.top = cr.bottom - cyhscroll;
+	r.bottom = cr.bottom;
+	if (r.right != r.left)
+	{
+		wStaticFftL.ShowWindow(SW_SHOWNOACTIVATE);
+		DeferClientPos(&layout, & wStaticFftL, r, FALSE);
+	}
+	else
+	{
+		wStaticFftL.ShowWindow(SW_HIDE);
+	}
+
+	r.top = OutlineHeight;
+	r.bottom = OutlineHeight + RulerHeight;
+	if (r.right != 0 && r.bottom != 0)
+	{
+		wStaticFftU.ShowWindow(SW_SHOWNOACTIVATE);
+		DeferClientPos(&layout, & wStaticFftU, r, FALSE);
+	}
+	else
+	{
+		wStaticFftU.ShowWindow(SW_HIDE);
+	}
+
+	r.left = SpectrumSectionWidth + VerticalTrackerWidth + RulerWidth + FftRulerWidth;
 	r.top = OutlineHeight + RulerHeight;
 	r.bottom = cr.bottom - cyhscroll;
 	r.right = cr.right;
@@ -677,8 +711,10 @@ int CWaveMDIChildClient::OnCreate(LPCREATESTRUCT lpCreateStruct)
 									r, OutlineViewID, pContext, TRUE);    // visible
 
 	wStatic.Create("STATIC", "", WS_BORDER | WS_VISIBLE | WS_CHILD | SS_CENTER, r, this, ScaleStaticID, NULL);
-	wStatic.SetFont(CFont::FromHandle((HFONT)GetStockObject(ANSI_VAR_FONT)));
+	//wStatic.SetFont(CFont::FromHandle((HFONT)GetStockObject(ANSI_VAR_FONT)));
 	wStatic1.Create("STATIC", "", WS_BORDER | WS_VISIBLE | WS_CHILD | SS_CENTER, r, this, Static1ID, NULL);
+	wStaticFftU.Create("STATIC", "", WS_BORDER | WS_VISIBLE | WS_CHILD | SS_CENTER, r, this, FftStaticLID, NULL);
+	wStaticFftL.Create("STATIC", "", WS_BORDER | WS_VISIBLE | WS_CHILD | SS_CENTER, r, this, FftStaticUID, NULL);
 
 	// create scrollbar
 	m_sb.Create(SBS_HORZ | WS_VISIBLE | WS_CHILD, r, this, AFX_IDW_HSCROLL_FIRST);
