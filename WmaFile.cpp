@@ -249,9 +249,7 @@ void CDirectFileStream::Close()
 
 
 CWmaDecoder::CWmaDecoder()
-	: m_Reader(NULL),
-	m_pAdvReader(NULL),
-//ReaderStatus(WMT_ERROR),
+	: //ReaderStatus(WMT_ERROR),
 	m_CurrentStreamTime(0),
 	m_bNeedNextSample(false),
 	m_BufferLengthTime(0),
@@ -264,21 +262,12 @@ CWmaDecoder::CWmaDecoder()
 
 CWmaDecoder::~CWmaDecoder()
 {
-	DeInit();
 }
 
 void CWmaDecoder::DeInit()
 {
-	if (NULL != m_pAdvReader)
-	{
-		m_pAdvReader->Release();
-		m_pAdvReader = NULL;
-	}
-	if (NULL != m_Reader)
-	{
-		m_Reader->Release();
-		m_Reader = NULL;
-	}
+	m_pAdvReader.Release();
+	m_Reader.Release();
 }
 
 HRESULT STDMETHODCALLTYPE CWmaDecoder::OnStatus( /* [in] */ WMT_STATUS Status,
@@ -450,13 +439,14 @@ BOOL CWmaDecoder::Init()
 	{
 		return FALSE;
 	}
-	hr = m_Reader->QueryInterface(IID_IWMReaderAdvanced2, ( VOID ** )& m_pAdvReader);
-	if( FAILED( hr ) )
+
+	m_pAdvReader = m_Reader;
+	if( ! m_pAdvReader)
 	{
-		m_Reader->Release();
-		m_Reader = NULL;
+		m_Reader.Release();
 		return FALSE;
 	}
+
 	m_CurrentStreamTime = 0;
 	m_bNeedNextSample = true;
 	return TRUE;
@@ -488,6 +478,7 @@ HRESULT CWmaDecoder::Open(CDirectFile & file)
 		return hr;
 	}
 	WaitForSingleObject(m_OpenedEvent, 5000);
+
 	if ( ! IsOpened())
 	{
 		m_Reader->Close();
@@ -504,18 +495,21 @@ HRESULT CWmaDecoder::Open(CDirectFile & file)
 		return hr;
 	}
 	// query profile (stream properties)
-	IWMOutputMediaProps* pProps = NULL ;
 
 	WM_MEDIA_TYPE* pMedia = NULL ;
 	ULONG cbType = 0 ;
+
 	for(DWORD i = 0 ; i < cOutputs ; i++ )
 	{
+		CComPtr<IWMOutputMediaProps> pProps;
+
 		hr = m_Reader->GetOutputProps( i, &pProps );
 
 		if (FAILED(hr))
 		{
 			break;
 		}
+
 		hr = pProps->GetMediaType(NULL, &cbType) ;
 
 		if (FAILED(hr))
@@ -539,9 +533,6 @@ HRESULT CWmaDecoder::Open(CDirectFile & file)
 			break;
 		}
 
-		pProps->Release();
-		pProps = NULL;
-
 		if (pMedia->majortype == WMMEDIATYPE_Audio)
 		{
 			break;
@@ -551,11 +542,7 @@ HRESULT CWmaDecoder::Open(CDirectFile & file)
 		pMedia = NULL;
 		cbType = 0;
 	}
-	if (NULL != pProps)
-	{
-		pProps->Release();
-		pProps = NULL;
-	}
+
 	if( i >= cOutputs || NULL == pMedia)
 	{
 		//
@@ -595,31 +582,32 @@ HRESULT CWmaDecoder::Open(CDirectFile & file)
 			hr = E_UNEXPECTED;
 		}
 	}
+
 	delete[] ( BYTE* )pMedia;
 	pMedia = NULL;
 	if (FAILED(hr))
 	{
 		return hr;
 	}
-	IWMHeaderInfo * pHeaderInfo = NULL;
-	hr = m_Reader->QueryInterface(IID_IWMHeaderInfo, ( VOID ** )& pHeaderInfo);
-	if (SUCCEEDED(hr))
+
+	if (CComQIPtr<IWMHeaderInfo> pHeaderInfo = m_Reader)
 	{
 		WORD stream = WORD(m_dwAudioOutputNum);
 		if (TRACE_WMA_DECODER) TRACE(_T("IWMHeaderInfo interface acquired\n"));
+
 		QWORD StreamLength = 0;
 		WORD SizeofStreamLength = sizeof StreamLength;
 		WMT_ATTR_DATATYPE type = WMT_TYPE_QWORD;
+
 		hr = pHeaderInfo->GetAttributeByName( & stream, g_wszWMDuration,
 											& type, (BYTE *) & StreamLength, & SizeofStreamLength);
+
 		if (SUCCEEDED(hr))
 		{
 			if (TRACE_WMA_DECODER) TRACE(_T("Stream Length = %08X%08X (%d seconds), size=%d\n"),
 				DWORD(StreamLength >> 32), DWORD(StreamLength & 0xFFFFFFFF), DWORD(StreamLength / 10000000), SizeofStreamLength);
 			m_StreamDuration = StreamLength;
 		}
-		pHeaderInfo->Release();
-		pHeaderInfo = NULL;
 	}
 	else
 	{
@@ -630,23 +618,22 @@ HRESULT CWmaDecoder::Open(CDirectFile & file)
 	if (TRACE_WMA_DECODER) TRACE(_T("m_CurrentSamples = %d (%d seconds)\n"), m_CurrentSamples,
 								m_CurrentSamples / m_DstWf.SampleRate());
 
-	IWMProfile * pProfile = NULL;
-	hr = m_Reader->QueryInterface(IID_IWMProfile, (void **) &pProfile);
-	if (SUCCEEDED(hr))
+	if (CComQIPtr<IWMProfile> pProfile = m_Reader)
 	{
 		DWORD nStreamCount = 0;
 		pProfile->GetStreamCount( & nStreamCount);
+
 		for (unsigned iStream = 0; iStream < nStreamCount; iStream++)
 		{
-			IWMStreamConfig * pStreamConfig = NULL;
+			CComPtr<IWMStreamConfig> pStreamConfig;
 			hr = pProfile->GetStream(iStream, & pStreamConfig);
+
 			if (SUCCEEDED(hr))
 			{
 				WORD iStreamNumber;
 				pStreamConfig->GetStreamNumber( & iStreamNumber);
 
-				IWMMediaProps * pStreamProps = NULL;
-				if (SUCCEEDED(pStreamConfig->QueryInterface(IID_IWMMediaProps, (void**) &pStreamProps)))
+				if (CComQIPtr<IWMMediaProps> pStreamProps = pStreamConfig)
 				{
 					if (FAILED(pStreamConfig->GetBitrate( & m_Bitrate)))
 					{
@@ -654,6 +641,7 @@ HRESULT CWmaDecoder::Open(CDirectFile & file)
 					}
 					DWORD size = 0;
 					pStreamProps->GetMediaType(NULL, & size);
+
 					WM_MEDIA_TYPE * pType = (WM_MEDIA_TYPE *)new  char[size];
 					if (pType)
 					{
@@ -669,24 +657,12 @@ HRESULT CWmaDecoder::Open(CDirectFile & file)
 						m_SrcWf = (WAVEFORMATEX *) pType->pbFormat;
 						delete[] (char*) pType;
 					}
-					pStreamProps->Release();
-					pStreamProps = NULL;
 				}
-			}
-			if (NULL != pStreamConfig)
-			{
-				pStreamConfig->Release();
-				pStreamConfig = NULL;
 			}
 		}
 	}
-	if (NULL != pProfile)
-	{
-		pProfile->Release();
-		pProfile = NULL;
-	}
 
-	if (NULL != m_pAdvReader)
+	if (m_pAdvReader)
 	{
 		m_pAdvReader->SetUserProvidedClock(TRUE);   // use our clock for fast decompression
 	}
@@ -697,7 +673,7 @@ HRESULT CWmaDecoder::Start()
 {
 	if (1 || TRACE_WMA_DECODER) TRACE(_T("CWmaDecoder::Start()\n"));
 
-	if (NULL != m_Reader)
+	if (m_Reader)
 	{
 		HRESULT hr = m_Reader->Start(0, 0, 1.0, NULL);
 		if (1 || TRACE_WMA_DECODER) TRACE(_T("m_Reader->Start=%X, Immediately after Start: IsStarted()=%X\n"),
@@ -709,7 +685,7 @@ HRESULT CWmaDecoder::Start()
 			return S_FALSE;
 		}
 		if(SUCCEEDED(hr)
-			&& NULL != m_pAdvReader)
+			&& m_pAdvReader)
 		{
 			HRESULT hr1 = m_pAdvReader->DeliverTime(m_BufferLengthTime);
 			if (1 || TRACE_WMA_DECODER) TRACE(_T("m_pAdvReader->DeliverTime returned %X\n"), hr1);
@@ -725,7 +701,7 @@ HRESULT CWmaDecoder::Start()
 HRESULT CWmaDecoder::Stop()
 {
 	if (1 || TRACE_WMA_DECODER) TRACE(_T("CWmaDecoder::Stop()\n"));
-	if (NULL != m_Reader
+	if (m_Reader
 		&& m_bStarted)
 	{
 		return m_Reader->Stop();
@@ -745,53 +721,25 @@ void CWmaDecoder::SetDstFile(CWaveFile & file)
 }
 
 WmaEncoder::WmaEncoder()
-	:m_pWriter(NULL),
-	m_pProfileManager(NULL),
-	m_pWriterAdvanced(NULL),
-	m_pHeaderInfo(NULL),
-	m_SampleTimeMs(0),
-	m_pBuffer(NULL)
+	:m_SampleTimeMs(0)
 {
 }
 
 void WmaEncoder::DeInit()
 {
-	if (NULL != m_pWriter)
+	if (m_pWriter)
 	{
 		m_pWriter->EndWriting();
 	}
-
-	if (NULL != m_pBuffer)
-	{
-		m_pBuffer->Release();
-		m_pBuffer = NULL;
-	}
-
-	if (NULL != m_pProfileManager)
-	{
-		m_pProfileManager->Release();
-		m_pProfileManager = NULL;
-	}
-	if (NULL != m_pHeaderInfo)
-	{
-		m_pHeaderInfo->Release();
-		m_pHeaderInfo = NULL;
-	}
-	if (NULL != m_pWriterAdvanced)
-	{
-		m_pWriterAdvanced->Release();
-		m_pWriterAdvanced = NULL;
-	}
-	if (NULL != m_pWriter)
-	{
-		m_pWriter->Release();
-		m_pWriter = NULL;
-	}
+	m_pWriter.Release();
+	m_pWriterAdvanced.Release();
+	m_pProfileManager.Release();
+	m_pHeaderInfo.Release();
+	m_pBuffer.Release();
 }
 
 WmaEncoder::~WmaEncoder()
 {
-	DeInit();
 }
 
 BOOL WmaEncoder::OpenWrite(CDirectFile & File)
@@ -803,27 +751,25 @@ BOOL WmaEncoder::OpenWrite(CDirectFile & File)
 
 #if 0
 
-	hr = m_pWriter->QueryInterface(IID_IWMHeaderInfo, ( VOID ** )& m_pHeaderInfo);
+	m_pHeaderInfo = m_pWriter;
+	if ( ! m_pHeaderInfo)
+	{
+		return FALSE;
+	}
+
+	m_pHeaderInfo->SetAttribute(0, g_wszWMTitle, WMT_TYPE_STRING, (BYTE const *)L"Title", sizeof L"Title");
+	m_pHeaderInfo->SetAttribute(0, g_wszWMAuthor, WMT_TYPE_STRING, (BYTE const *)L"Author", sizeof L"Author");
+	m_pHeaderInfo.Release();
+#endif
+	// open input properties
+	CComPtr<IWMInputMediaProps> pMediaProps;
+	hr = m_pWriter->GetInputProps(0, & pMediaProps);
+
 	if ( ! SUCCEEDED(hr))
 	{
 		return FALSE;
 	}
 
-	if (SUCCEEDED(hr))
-	{
-		m_pHeaderInfo->SetAttribute(0, g_wszWMTitle, WMT_TYPE_STRING, (BYTE const *)L"Title", sizeof L"Title");
-		m_pHeaderInfo->SetAttribute(0, g_wszWMAuthor, WMT_TYPE_STRING, (BYTE const *)L"Author", sizeof L"Author");
-		m_pHeaderInfo->Release();
-		m_pHeaderInfo = NULL;
-	}
-#endif
-	// open input properties
-	IWMInputMediaProps * pMediaProps = NULL;
-	hr = m_pWriter->GetInputProps(0, & pMediaProps);
-	if ( ! SUCCEEDED(hr))
-	{
-		return FALSE;
-	}
 	char * buf = NULL;
 	DWORD size = 0;
 	pMediaProps->GetMediaType(NULL, & size);
@@ -842,7 +788,6 @@ BOOL WmaEncoder::OpenWrite(CDirectFile & File)
 	}
 
 	delete[] buf;
-	pMediaProps->Release();
 
 	if ( ! SUCCEEDED(hr))
 	{
@@ -857,6 +802,7 @@ BOOL WmaEncoder::OpenWrite(CDirectFile & File)
 	{
 		return FALSE;
 	}
+
 #ifdef _DEBUG
 	DWORD NumSinks;
 	m_pWriterAdvanced->GetSinkCount( & NumSinks);
@@ -864,10 +810,12 @@ BOOL WmaEncoder::OpenWrite(CDirectFile & File)
 #endif
 	return TRUE;
 }
+
 #ifdef _DEBUG
 void PrintProfile(IWMProfileManager * pProfileManager, REFGUID guid)
 {
-	IWMProfile * pProfile = NULL;
+	CComPtr<IWMProfile> pProfile;
+
 	HRESULT hr;
 	hr = pProfileManager->LoadProfileByID(guid, & pProfile);
 	if ( ! SUCCEEDED(hr))
@@ -875,17 +823,18 @@ void PrintProfile(IWMProfileManager * pProfileManager, REFGUID guid)
 		return;
 	}
 
-	IWMStreamConfig * pStreamConfig;
+	CComPtr<IWMStreamConfig> pStreamConfig;
 	hr = pProfile->GetStreamByNumber(1, & pStreamConfig);
+
 	if (SUCCEEDED(hr))
 	{
-		IWMMediaProps * pProps = NULL;
-		HRESULT hr = pStreamConfig->QueryInterface(IID_IWMMediaProps, (void**) & pProps);
+		CComQIPtr<IWMMediaProps> pProps = pStreamConfig;
+
 		DWORD bitrate;
 		pStreamConfig->GetBitrate( & bitrate);
-		if (SUCCEEDED(hr))
-		{
 
+		if (pProps)
+		{
 			DWORD cbType;
 			//   Make the first call to establish the size of buffer needed.
 			pProps -> GetMediaType(NULL, &cbType);
@@ -907,30 +856,27 @@ void PrintProfile(IWMProfileManager * pProfileManager, REFGUID guid)
 
 			delete[] pBuf;
 
-			pProps->Release();
-			pProps = NULL;
 		}
-		pStreamConfig->Release();
 	}
 
-	pProfile->Release();
 }
 #endif
+
 BOOL WmaEncoder::Init()
 {
+	HRESULT hr;
 	if (S_OK != WMCreateWriter(NULL, & m_pWriter))
 	{
 		return FALSE;
 	}
 
-	HRESULT hr = m_pWriter->QueryInterface(IID_IWMWriterAdvanced, ( VOID ** )& m_pWriterAdvanced);
+	m_pWriterAdvanced = m_pWriter;
 
-	if ( ! SUCCEEDED(hr))
+	if ( ! m_pWriterAdvanced)
 	{
 		return FALSE;
 	}
 
-	//IWMHeaderInfo * pHeaderInfo = NULL;
 	hr = WMCreateProfileManager( & m_pProfileManager);
 	if ( ! SUCCEEDED(hr))
 	{
@@ -967,6 +913,7 @@ void WmaEncoder::SetArtist(LPCTSTR szArtist)
 								(LPBYTE)Artist, (nChars + 1) * sizeof(TCHAR));
 #endif
 }
+
 void WmaEncoder::SetAlbum(LPCTSTR szAlbum)
 {
 #ifdef _UNICODE
@@ -984,6 +931,7 @@ void WmaEncoder::SetAlbum(LPCTSTR szAlbum)
 								(LPBYTE)Album, (nChars + 1) * sizeof(TCHAR));
 #endif
 }
+
 void WmaEncoder::SetGenre(LPCTSTR szGenre)
 {
 #ifdef _UNICODE
@@ -1002,11 +950,16 @@ void WmaEncoder::SetGenre(LPCTSTR szGenre)
 #endif
 }
 
-BOOL WmaEncoder::SetFormat(WAVEFORMATEX * pDstWfx)
+void WmaEncoder::SetSourceWaveFormat(WAVEFORMATEX const * pSrcWfx)
+{
+	m_SrcWfx = pSrcWfx;
+}
+
+BOOL WmaEncoder::SetDestinationFormat(WAVEFORMATEX const * pDstWfx)
 {
 // pDstWfx points to the destination format (but with wFormatTag = WAVE_FORMAT_PCM
 // the function must replace wFormatTag
-	IWMProfile * pProfile = NULL;
+	CComPtr<IWMProfile> pProfile;
 
 	HRESULT hr = m_pProfileManager->LoadProfileByID(WMProfile_V70_128Audio, & pProfile);
 	if ( ! SUCCEEDED(hr))
@@ -1014,19 +967,18 @@ BOOL WmaEncoder::SetFormat(WAVEFORMATEX * pDstWfx)
 		return FALSE;
 	}
 
-	IWMStreamConfig * pStreamConfig = NULL;
+	CComPtr<IWMStreamConfig> pStreamConfig;
 	hr = pProfile->GetStreamByNumber(1, & pStreamConfig);
+
 	if ( ! SUCCEEDED(hr))
 	{
-		pProfile->Release();
 		return FALSE;
 	}
-	IWMMediaProps * pProps = NULL;
-	hr = pStreamConfig->QueryInterface(IID_IWMMediaProps, (void**) & pProps);
-	if ( ! SUCCEEDED(hr))
+
+	CComQIPtr<IWMMediaProps> pProps = pStreamConfig;
+
+	if ( ! pProps)
 	{
-		pStreamConfig->Release();
-		pProfile->Release();
 		return FALSE;
 	}
 
@@ -1057,7 +1009,6 @@ BOOL WmaEncoder::SetFormat(WAVEFORMATEX * pDstWfx)
 	if (TRACE_WMA_DECODER) TRACE(_T("MediaType: wFormatTag=%d, BytesPerSec = %d\n"),
 								pDstWfx->wFormatTag, pDstWfx->nAvgBytesPerSec);
 
-
 	hr = pStreamConfig->SetBitrate(pDstWfx->nAvgBytesPerSec * 8);
 	hr = pProps->SetMediaType(pType);
 
@@ -1065,13 +1016,6 @@ BOOL WmaEncoder::SetFormat(WAVEFORMATEX * pDstWfx)
 	if (TRACE_WMA_DECODER) TRACE(_T("ReconfigStream returned %X\n"), hr);
 	hr = m_pWriter->SetProfile(pProfile);
 	delete[] pBuf;
-
-	pProps->Release();
-	pProps = NULL;
-
-	pStreamConfig->Release();
-
-	pProfile->Release();
 
 	return SUCCEEDED(hr);
 }
@@ -1086,15 +1030,16 @@ BOOL WmaEncoder::Write(void * Buf, size_t size)
 	do
 	{
 
-		if (NULL == m_pBuffer)
+		if ( ! m_pBuffer)
 		{
-			HRESULT hr = m_pWriter->AllocateSample(m_SrcWfx.nAvgBytesPerSec, & m_pBuffer);
+			HRESULT hr = m_pWriter->AllocateSample(m_SrcWfx.BytesPerSec(), & m_pBuffer);
 			if (! SUCCEEDED(hr))
 			{
 				return FALSE;
 			}
 			m_pBuffer->SetLength(0);
 		}
+
 		DWORD BufLength = 0;
 		DWORD MaxLength = 0;
 		BYTE * pBuf;
@@ -1128,14 +1073,15 @@ BOOL WmaEncoder::Write(void * Buf, size_t size)
 
 			if (TRACE_WMA_DECODER) TRACE(_T("Writing src buf %p, time=%d ms, ActualWriterTime=%d ms\n"),
 										m_pBuffer, DWORD(WriterTime / 10000), DWORD(ActualWriterTime / 10000));
+
 			if (! SUCCEEDED(m_pWriter->WriteSample(0, WriterTime, 0, m_pBuffer)))
 			{
 				return FALSE;
 			}
 			Sleep(50);
-			m_SampleTimeMs += MulDiv(1000, BufLength, m_SrcWfx.nAvgBytesPerSec);
-			m_pBuffer->Release();
-			m_pBuffer = NULL;
+			m_SampleTimeMs += MulDiv(1000, BufLength, m_SrcWfx.BytesPerSec());
+
+			m_pBuffer.Release();
 		}
 	} while(size != 0);
 
@@ -1164,6 +1110,8 @@ HRESULT STDMETHODCALLTYPE FileWriter::IsRealTime(
 	}
 }
 
+namespace
+{
 class NSSBuffer : public INSSBuffer
 {
 
@@ -1275,6 +1223,7 @@ private:
 		delete[] pBuf;
 	}
 };
+}
 
 HRESULT STDMETHODCALLTYPE FileWriter::AllocateDataUnit(
 														/* [in] */ DWORD cbDataUnit,
