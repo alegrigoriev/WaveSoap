@@ -32,6 +32,11 @@ protected:
 
 // Implementation
 protected:
+	int m_FftOrder;
+	double * m_pFftSum;
+	double * m_pWindow;
+	int m_nFftSumSize;
+	long m_FftPosition;
 	virtual ~CSpectrumSectionView();
 #ifdef _DEBUG
 	virtual void AssertValid() const;
@@ -41,7 +46,8 @@ protected:
 	// Generated message map functions
 protected:
 	//{{AFX_MSG(CSpectrumSectionView)
-	// NOTE - the ClassWizard will add and remove member functions here.
+	afx_msg int OnCreate(LPCREATESTRUCT lpCreateStruct);
+	afx_msg int OnMouseActivate(CWnd* pDesktopWnd, UINT nHitTest, UINT message);
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 };

@@ -578,10 +578,12 @@ int CWaveSoapFrontApp::ExitInstance()
 		m_RunThread = false;
 #ifdef _DEBUG
 		DWORD Time = timeGetTime();
+		TRACE("Signalled App thread stop\n");
 #endif
 		SetEvent(m_hThreadEvent);
 		if (WAIT_TIMEOUT == WaitForSingleObject(m_Thread.m_hThread, 5000))
 		{
+			TRACE("Terminating App Thread\n");
 			TerminateThread(m_Thread.m_hThread, -1);
 		}
 #ifdef _DEBUG
