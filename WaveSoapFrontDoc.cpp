@@ -719,7 +719,7 @@ void CWaveSoapFrontDoc::SetSelection(SAMPLE_INDEX begin, SAMPLE_INDEX end,
 	if (end > length) end = length;
 	if (caret < 0) caret = 0;
 	if (caret > length) caret = length;
-	if (channel < 0 || channel > 1) channel = ALL_CHANNELS;
+	//if (channel < 0 || channel > 1) channel = ALL_CHANNELS;
 
 	if (flags & SetSelection_SnapToMaximum)
 	{
@@ -742,69 +742,50 @@ void CWaveSoapFrontDoc::SetSelection(SAMPLE_INDEX begin, SAMPLE_INDEX end,
 			// limit to 1 MB
 			SamplesToRead = 0x40000;
 		}
-		int Max = 0;
-		SAMPLE_INDEX pos = begin;
+
+		SAMPLE_INDEX pos = BeginSample;
+
+		int nChannels = m_WavFile.Channels();
+		ASSERT(nChannels <= 2);
+
+		int nReadChannels = nChannels;
+
+		if ( ! m_WavFile.AllChannels(channel))
+		{
+			nReadChannels = 1;
+		}
+
+		long Max = 0;
 
 		while (SamplesToRead > 0)
 		{
-			WAVE_SAMPLE data[128];
-			int nWordsToRead = SamplesToRead * WaveChannels();
-			if (nWordsToRead > 128) nWordsToRead = 128;
-
-			m_WavFile.ReadAt(data, nWordsToRead * sizeof data[0],
-							m_WavFile.SampleToPosition(BeginSample));
-
-			if (WaveChannels() <= 1)
+			WAVE_SAMPLE data[256];
+			unsigned nWordsToRead = SamplesToRead * nReadChannels;
+			if (nWordsToRead > countof (data))
 			{
-				for (int i = 0; i < nWordsToRead; i++)
+				nWordsToRead = countof (data);
+			}
+
+			long SamplesRead = m_WavFile.ReadSamples(channel,
+													m_WavFile.SampleToPosition(BeginSample),
+													nWordsToRead / nReadChannels, data);
+
+			for (unsigned i = 0; i < nWordsToRead; i++)
+			{
+				long tmp = data[i];
+				if (tmp < 0)
 				{
-					int tmp = data[i];
-					if (tmp < 0)
-					{
-						tmp = -tmp;
-					}
-					if (tmp > Max)
-					{
-						Max = tmp;
-						pos = BeginSample + i;
-					}
+					tmp = -tmp;
+				}
+
+				if (tmp > Max)
+				{
+					Max = tmp;
+					pos = BeginSample + i / nReadChannels;
 				}
 			}
-			else
-			{
-				for (int i = 0; i < nWordsToRead / 2; i++)
-				{
-					int tmp;
-					if (channel != 1)
-					{
-						tmp = data[i * 2];
-						if (tmp < 0)
-						{
-							tmp = -tmp;
-						}
-						if (tmp > Max)
-						{
-							Max = tmp;
-							pos = BeginSample + i;
-						}
-					}
-					if (channel != 0)
-					{
-						tmp = data[i * 2 + 1];
-						if (tmp < 0)
-						{
-							tmp = -tmp;
-						}
-						if (tmp > Max)
-						{
-							Max = tmp;
-							pos = BeginSample + i;
-						}
-					}
-				}
-			}
-			SamplesToRead -= nWordsToRead / WaveChannels();
-			BeginSample += nWordsToRead / WaveChannels();
+			SamplesToRead -= SamplesRead;
+			BeginSample += SamplesRead;
 		}
 		begin = pos;
 		end = pos;
@@ -821,6 +802,7 @@ void CWaveSoapFrontDoc::SetSelection(SAMPLE_INDEX begin, SAMPLE_INDEX end,
 		m_SelectionStart = end;
 		m_SelectionEnd = begin;
 	}
+
 	m_SelectedChannel = channel;
 	m_CaretPosition = caret;
 	ui.Flags = flags;
@@ -5356,7 +5338,7 @@ BOOL CWaveSoapFrontDoc::DoFileSave()
 bool CWaveSoapFrontDoc::CanStartOperation(NUMBER_OF_SAMPLES SamplesNecessary,
 										bool SelectionNecessary, bool Modify) const
 {
-	return m_OperationInProgress != 0
+	return m_OperationInProgress == 0
 			&& WaveFileSamples() >= SamplesNecessary
 			&& ( ! SelectionNecessary || m_SelectionEnd > m_SelectionStart)
 			&& ! (Modify && IsReadOnly());
