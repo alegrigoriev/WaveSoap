@@ -370,25 +370,19 @@ HRESULT STDMETHODCALLTYPE CWmaDecoder::OnSample( /* [in] */ DWORD dwOutputNum,
 	if (DstCopySample > m_CurrentSamples)
 	{
 		// calculate new length
-		unsigned nSampleSize = m_DstFile.SampleSize();
+		NUMBER_OF_SAMPLES MaxNumberOfSamples = 0x7FFFFFFF / m_DstFile.SampleSize();
 		ULONG TotalSamplesEstimated = ULONG(double(DstCopySample) * SrcLength() / SrcPos());
-		if (TotalSamplesEstimated > 0x7FFFFFFF / nSampleSize)
+		if (TotalSamplesEstimated > MaxNumberOfSamples)
 		{
-			TotalSamplesEstimated = 0x7FFFFFFF / nSampleSize;
+			TotalSamplesEstimated = MaxNumberOfSamples;
 		}
 		if (NUMBER_OF_SAMPLES(TotalSamplesEstimated) < m_CurrentSamples)
 		{
 			TotalSamplesEstimated = m_CurrentSamples;
 		}
-		DWORD datasize = TotalSamplesEstimated * nSampleSize;
 
-		LPMMCKINFO pck = m_DstFile.GetDataChunk();
-		m_DstFile.SetFileLength(datasize + pck->dwDataOffset);
 		m_CurrentSamples = TotalSamplesEstimated;
-
-		// update data chunk length
-		pck->cksize = datasize;
-		pck->dwFlags |= MMIO_DIRTY;
+		m_DstFile.SetFileLengthSamples(TotalSamplesEstimated);
 	}
 	// modify positions after file length modified,
 	m_DstPos = DstCopyPos;  // to avoid race condition
