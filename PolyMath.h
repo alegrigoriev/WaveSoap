@@ -8,7 +8,7 @@
  #include "afx.h"
 #endif
 #include <complex>
-typedef complex<double> Complex;
+typedef std::complex<double> Complex;
 class poly;
 /*
 complexArray class is introduced to reduce array copy overhead
@@ -202,8 +202,8 @@ protected:
 	int iMaxCount;  // maximum allowed array size
 };
 
-ostream & __stdcall operator<<(ostream &, const poly &);
-istream & __stdcall operator>>(istream &, poly &);
+std::ostream & __stdcall operator<<(std::ostream &, const poly &);
+std::istream & __stdcall operator>>(std::istream &, poly &);
 
 int __stdcall PolyRoots(Complex * roots, const poly & src,
 						Complex cmStart = Complex(0., 0.), int iIter = 100);

@@ -407,6 +407,8 @@ BOOL CEqualizerGraphWnd::PreCreateWindow(CREATESTRUCT& cs)
 }
 
 // frequency is in radians
+using std::complex;
+
 complex<float> Equalizer::CalculateResponse(double Frequency)
 {
 	complex<double> Numerator(1., 0.);

@@ -10,6 +10,7 @@
 
 /////////////////////////////////////////////////////////////////////////////
 // CSpectrumSectionView view
+#include "ScaledScrollView.h"
 
 class CSpectrumSectionView : public CScaledScrollView
 {

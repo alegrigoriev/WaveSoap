@@ -77,13 +77,14 @@ inline void AssignMultiSz(CStringA & dst, LPCWSTR src)
 #include "mmsystem.h"
 #include "SimpleCriticalSection.h"
 
+#if 0
 #include "WaveFile.h"
 #include "waveproc.h"
-#include "WaveSoapFront.h"
 #include "WaveSoapFrontDoc.h"
 #include "WaveSoapFrontView.h"
 #include "WaveFftView.h"
-
+#endif
+#include "WaveSoapFront.h"
 //{{AFX_INSERT_LOCATION}}
 // Microsoft Visual C++ will insert additional declarations immediately before the previous line.
 

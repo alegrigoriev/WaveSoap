@@ -16,7 +16,7 @@ static char THIS_FILE[] = __FILE__;
 // CSaveExpressionDialog dialog
 
 
-CSaveExpressionDialog::CSaveExpressionDialog(const vector<ExprGroup> & Exprs,
+CSaveExpressionDialog::CSaveExpressionDialog(const ExprGroupVector & Exprs,
 											CWnd* pParent /*=NULL*/)
 	: BaseClass(IDD, pParent),
 	m_Expressions(Exprs)
@@ -77,7 +77,7 @@ void CSaveExpressionDialog::BuildExpressionGroupCombobox(unsigned nGroupSelected
 {
 	m_ExpressionGroupCombo.ResetContent();
 
-	for (vector<ExprGroup>::const_iterator ii = m_Expressions.begin() + 1
+	for (ExprGroupVector::const_iterator ii = m_Expressions.begin() + 1
 		; ii < m_Expressions.end(); ii++)
 	{
 		m_ExpressionGroupCombo.AddString(ii->name);
@@ -108,7 +108,7 @@ void CSaveExpressionDialog::LoadExpressionCombobox(unsigned nGroupSelected, unsi
 		return;
 	}
 
-	for (vector<Expr>::const_iterator jj = m_Expressions[nGroupSelected + 1].exprs.begin()
+	for (ExprVector::const_iterator jj = m_Expressions[nGroupSelected + 1].exprs.begin()
 		; jj < m_Expressions[nGroupSelected + 1].exprs.end(); jj++)
 	{
 		m_SavedExpressionCombo.AddString(jj->name);
@@ -139,7 +139,7 @@ void CSaveExpressionDialog::OnSelchangeComboName()
 	{
 		unsigned sel = m_SavedExpressionCombo.GetCurSel();
 
-		vector<ExprGroup>::const_iterator ii = m_Expressions.begin() + m_ExpressionGroupSelected + 1;
+		ExprGroupVector::const_iterator ii = m_Expressions.begin() + m_ExpressionGroupSelected + 1;
 		if (sel < ii->exprs.size())
 		{
 			m_eComment.SetWindowText(ii->exprs[sel].comment);

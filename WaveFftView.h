@@ -10,6 +10,7 @@
 
 /////////////////////////////////////////////////////////////////////////////
 // CWaveFftView view
+#include "WaveSoapFrontView.h"
 
 class CWaveFftView : public CWaveSoapFrontView
 {

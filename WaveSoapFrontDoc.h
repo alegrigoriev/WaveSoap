@@ -11,7 +11,7 @@
 #endif // _MSC_VER > 1000
 #include "WmaFile.h"
 #include "KListEntry.h"
-
+#include "KInterlocked.h"
 typedef int PASTE_MODE;
 typedef int PASTE_RESAMPLE_MODE;
 
@@ -66,10 +66,6 @@ enum {
 	SaveFile_AviFile = OpenDocumentAviFile,
 	SaveRawFileMsbFirst = OpenRawFileMsbFirst,
 	SaveFile_NonWavFile = OpenDocumentNonWavFile,
-};
-enum
-{
-	MaxInterpolatedLength = 128,
 };
 
 class CWaveSoapFrontDoc : public CDocument

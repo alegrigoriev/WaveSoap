@@ -1,7 +1,13 @@
 //#include "Complex.h"
 #include "stdafx.h"
 #include "PolyMath.h"
-#include "float.h"
+#include <float.h>
+#ifdef NOMINMAX
+#include <algorithm>
+using std::min;
+using std::max;
+#endif
+
 #if defined(_DEBUG)
 CDumpContext & operator << (CDumpContext & dc, Complex c)
 {
@@ -1034,7 +1040,7 @@ void poly::Dump(CDumpContext & dc)
 }
 #endif
 
-ostream & __stdcall operator << (ostream &os, const poly &p)
+std::ostream & __stdcall operator << (std::ostream &os, const poly &p)
 {
 	os << p.order() << "\n";
 	for (int i=0; i <= p.order(); i++)

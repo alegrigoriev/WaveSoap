@@ -16,10 +16,14 @@ class CSaveExpressionDialog : public CDialog
 {
 	typedef Expressions::Expr Expr;
 	typedef Expressions::ExprGroup ExprGroup;
+	typedef std::vector<ExprGroup> ExprGroupVector;
+	typedef ExprGroupVector::iterator ExprGroupIterator;
+	typedef std::vector<Expr> ExprVector;
+	typedef ExprVector::iterator ExprIterator;
 	typedef CDialog BaseClass;
 // Construction
 public:
-	CSaveExpressionDialog(const vector<ExprGroup> & Exprs,
+	CSaveExpressionDialog(const ExprGroupVector & Exprs,
 						CWnd* pParent = NULL);   // standard constructor
 	LPCTSTR GetName() const
 	{
@@ -45,7 +49,7 @@ protected:
 	CString	m_Comment;
 	CString	m_Name;
 	//}}AFX_DATA
-	const vector<ExprGroup> & m_Expressions;
+	const ExprGroupVector & m_Expressions;
 	int m_ExpressionGroupSelected;
 	int m_CurrExpressionGroupSelected;
 	int m_ExpressionSelected;

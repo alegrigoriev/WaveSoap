@@ -100,7 +100,7 @@ protected:
 	poly m_denom, m_numer;
 };
 
-ostream & __stdcall operator<<(ostream &, const polyRatio &);
-istream & __stdcall operator>>(istream &, polyRatio &);
+std::ostream & __stdcall operator<<(std::ostream &, const polyRatio &);
+std::istream & __stdcall operator>>(std::istream &, polyRatio &);
 
 #endif // _INC_POLYRATIO

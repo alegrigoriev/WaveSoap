@@ -5,6 +5,7 @@
 #pragma intrinsic(sin, cos, exp, log, atan2)
 #include "stdafx.h"
 #include <complex>
+#include "Waveproc.h"
 
 #ifndef _CONSOLE
 #define puts(t) AfxMessageBox(_T(t), MB_OK | MB_ICONEXCLAMATION)
@@ -29,85 +30,6 @@ void __cdecl DoFFT(const float * src, float * dst, int count)
 	delete[] tmp;
 }
 #endif
-template <class T_ext, class T_int>
-CBackBuffer<T_ext, T_int>::CBackBuffer()
-	: pBuf(NULL),
-	BufSize(0),nCurrIndex(0),
-	dwIndexMask(0)
-{
-}
-
-template <class T_ext, class T_int>
-CBackBuffer<T_ext, T_int>::~CBackBuffer()
-{
-	if (pBuf != NULL)
-	{
-		delete[] pBuf;
-		pBuf = NULL;
-	}
-}
-
-template <class T_ext, class T_int>
-BOOL CBackBuffer<T_ext, T_int>::Allocate(int size)
-{
-	ASSERT(size != 0 && size <= 0x10000000 / sizeof(T_int));
-	// make size a "round" number
-	for (int i = 1; i <= 0x10000000; i <<= 1)
-	{
-		if (i >= size)
-		{
-			break;
-		}
-	}
-	size = i;
-	if (pBuf != NULL)
-	{
-		if (BufSize == size)
-		{
-			nCurrIndex = 0;
-			return TRUE;
-		}
-		delete[] pBuf;
-		pBuf = NULL;
-	}
-	pBuf = new T_int[size];
-	if (NULL == pBuf)
-	{
-		return FALSE;
-	}
-
-	for (i = 0; i < size; i++)
-	{
-		pBuf[i] = T_int(0);
-	}
-
-	BufSize = size;
-	dwIndexMask = size - 1;
-	nCurrIndex = 0;
-	return TRUE;
-}
-
-template <class T_ext, class T_int>
-inline T_ext CBackBuffer<T_ext, T_int>::Get(int index)
-{
-	ASSERT(pBuf != NULL);
-	return pBuf[(index + nCurrIndex) & dwIndexMask];
-}
-
-template <class T_ext, class T_int>
-inline void CBackBuffer<T_ext, T_int>::Put(int index, T_ext data)
-{
-	ASSERT(pBuf != NULL);
-	pBuf[(index + nCurrIndex) & dwIndexMask] = data;
-}
-
-template <class T_ext, class T_int>
-inline T_int& CBackBuffer<T_ext, T_int>::operator[](int index)
-{
-	ASSERT(pBuf != NULL);
-	return pBuf[(index + nCurrIndex) & dwIndexMask];
-}
-
 CHumRemoval::CHumRemoval()
 {
 	m_ApplyHighpassFilter = FALSE;

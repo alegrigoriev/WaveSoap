@@ -9,6 +9,11 @@
 #include "FileDialogWithHistory.h"
 #include "GdiObjectSave.h"
 #include "DialogWithSelection.inl"
+#ifdef NOMINMAX
+#include <algorithm>
+using std::min;
+using std::max;
+#endif
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -598,6 +603,7 @@ BOOL CFilterGraphWnd::PreCreateWindow(CREATESTRUCT& cs)
 	return CWnd::PreCreateWindow(cs);
 }
 
+using std::complex;
 // frequency is in radians
 complex<float> Filter::CalculateResponse(double Frequency)
 {

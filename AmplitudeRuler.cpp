@@ -7,6 +7,8 @@
 #include "AmplitudeRuler.h"
 #include "SpectrumSectionView.h"
 #include "GdiObjectSave.h"
+#include "WaveSoapFrontDoc.h"
+#include "WaveSoapFrontView.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW

@@ -3,6 +3,7 @@
 //
 
 #include "stdafx.h"
+#include "WaveSoapFrontDoc.h"
 #include "MainFrm.h"
 #include "OperationContext2.h"
 #include "Resample.h"
@@ -2111,6 +2112,8 @@ BOOL CWaveSoapFrontDoc::OnSaveMp3File(int flags, LPCTSTR FullTargetName, WAVEFOR
 
 	pContext->m_SrcFile = pConvert->m_SrcFile;
 	pContext->m_DstFile = pConvert->m_DstFile;
+
+#if 0
 	// fill unused data members:
 	pContext->m_SrcStart = pConvert->m_SrcStart;
 	pContext->m_DstStart = pConvert->m_DstStart;
@@ -2121,6 +2124,7 @@ BOOL CWaveSoapFrontDoc::OnSaveMp3File(int flags, LPCTSTR FullTargetName, WAVEFOR
 
 	pContext->m_SrcChan = ALL_CHANNELS;
 	pContext->m_DstChan = ALL_CHANNELS;
+#endif
 
 	if (WAVE_FORMAT_MPEGLAYER3 == pWf->wFormatTag)
 	{
@@ -2773,9 +2777,9 @@ void CWaveSoapFrontDoc::OnIdle()
 		if (pInfo->m_NewLength != -1)
 		{
 			// check if the selection fits in the new length
-			SetSelection(min(pInfo->m_NewLength, m_SelectionStart),
-						min(pInfo->m_NewLength, m_SelectionEnd), m_SelectedChannel,
-						min(pInfo->m_NewLength, m_CaretPosition), SetSelection_MakeFileVisible);
+			SetSelection(std::min(pInfo->m_NewLength, m_SelectionStart),
+						std::min(pInfo->m_NewLength, m_SelectionEnd), m_SelectedChannel,
+						std::min(pInfo->m_NewLength, m_CaretPosition), SetSelection_MakeFileVisible);
 		}
 		delete pInfo;
 	}
@@ -2839,7 +2843,8 @@ static void LimitUndoRedo(ListHead<COperationContext> * pEntry, int MaxNum, size
 		Num++;
 		CUndoRedoContext * pUndoRedo = dynamic_cast<CUndoRedoContext *>(pContext);
 		if (NULL != pUndoRedo
-			&& pUndoRedo->m_SrcFile.IsOpen())
+			//&& pUndoRedo->m_SrcFile.IsOpen()
+			)
 		{
 			Size += pUndoRedo->GetTempDataSize();
 		}
@@ -4667,7 +4672,7 @@ void CWaveSoapFrontDoc::OnToolsInterpolate()
 	{
 		CUndoRedoContext::auto_ptr pUndo(new CUndoRedoContext(this, _T("Interpolate")));
 
-		CCopyContext * pCopy = new CCopyContext(this, _T("Interpolate"), _T(""));
+		CCopyUndoContext * pCopy = new CCopyUndoContext(this, _T("Interpolate"), _T(""));
 		pUndo->AddContext(pCopy);
 
 		if ( ! pCopy->InitUndoCopy(m_WavFile,

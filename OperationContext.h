@@ -13,6 +13,7 @@
 #include "WmaFile.h"
 #include "KListEntry.h"
 #include "CoInitHelper.h"
+#include "Waveproc.h"
 
 enum {
 	OperationContextClipboard = 1,  // clipboard operations are serialized
@@ -343,46 +344,6 @@ protected:
 	virtual BOOL OperationProc();
 	virtual void PostRetire(BOOL bChildContext = FALSE);
 	virtual BOOL Init();
-};
-
-class CExpandContext : public COperationContext
-{
-	typedef CExpandContext ThisClass;
-	typedef COperationContext BaseClass;
-	//friend class CWaveSoapFrontDoc;
-	// Start, End and position are in bytes
-
-public:
-	typedef std::auto_ptr<ThisClass> auto_ptr;
-	virtual BOOL CreateUndo(BOOL IsRedo = FALSE);
-
-	CExpandContext(CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString, LPCTSTR OperationName)
-		: BaseClass(pDoc, StatusString, OperationContextDiskIntensive, OperationName)
-	{
-
-	}
-	BOOL InitExpand(CWaveFile & File, SAMPLE_INDEX StartSample, NUMBER_OF_SAMPLES Length, CHANNEL_MASK Channel);
-	virtual BOOL OperationProc();
-};
-
-class CShrinkContext : public COperationContext
-{
-	typedef CShrinkContext ThisClass;
-	typedef COperationContext BaseClass;
-	//friend class CWaveSoapFrontDoc;
-	// Start, End and position are in bytes
-
-public:
-	typedef std::auto_ptr<ThisClass> auto_ptr;
-	virtual BOOL CreateUndo(BOOL IsRedo = FALSE);
-
-	CShrinkContext(CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString, LPCTSTR OperationName)
-		: BaseClass(pDoc, StatusString, OperationContextDiskIntensive, OperationName)
-	{
-
-	}
-	BOOL InitShrink(CWaveFile & File, SAMPLE_INDEX StartSample, NUMBER_OF_SAMPLES Length, CHANNEL_MASK Channel);
-	virtual BOOL OperationProc();
 };
 
 class CCopyContext : public CTwoFilesOperation

@@ -1,12 +1,14 @@
 // Copyright Alexander Grigoriev, 1997-2002, All Rights Reserved
 #include "StdAfx.h"
 #include "WaveSoapFront.h"
+#include "WaveSoapFrontDoc.h"
 #include "WaveSoapFileDialogs.h"
 #include "ShelLink.h"
 #include "OperationDialogs2.h"
 #include <Dlgs.h>
 #include "BladeMP3EncDLL.h"
 #include "CoInitHelper.h"
+#include "WmaFile.h"
 
 BOOL AFXAPI AfxComparePath(LPCTSTR lpszPath1, LPCTSTR lpszPath2);
 
