@@ -275,9 +275,12 @@ protected:
 	BECLOSESTREAM beCloseStream;
 	BEVERSION beGetVersion;
 	BEWRITEVBRHEADER beWriteVBRHeader;
+
 	HBE_STREAM m_pStream;
 	HMODULE m_DllModule;
+public:
 	DWORD m_InBufferSize;
+	DWORD m_OutBufferSize;
 };
 
 #endif

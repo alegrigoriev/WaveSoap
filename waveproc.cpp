@@ -1,11 +1,9 @@
 // waveproc.cpp
+
 #include <math.h>
 #pragma intrinsic(sin, cos, exp, log, atan2)
-
-#include <afxwin.h>
-#include <mmsystem.h>
+#include "stdafx.h"
 #include <complex>
-#include "waveproc.h"
 
 #ifndef _CONSOLE
 #define puts(t) AfxMessageBox(_T(t), MB_OK | MB_ICONEXCLAMATION)
@@ -2577,13 +2575,131 @@ int CChannelConvertor::ProcessSoundBuffer(char const * pIn, char * pOut,
 	return nSavedBytes;
 }
 
-BOOL CLameEncConvertor::Open(WAVEFORMATEX * pWF)
+BladeMp3Encoder::BladeMp3Encoder()
+	: m_pStream(NULL),
+	m_DllModule(NULL),
+	m_InBufferSize(0),
+	m_OutBufferSize(0),
+	beInitStream(InitStreamStub),
+	beEncodeChunk(EncodeChunkStub),
+	beDeinitStream(DeinitStreamStub),
+	beCloseStream(CloseStreamStub),
+	beGetVersion(GetVersionStub),
+	beWriteVBRHeader(WriteVBRHeaderStub)
 {
-	BE_CONFIG cfg;
-	if (! m_Enc.OpenStream( & cfg))
+}
+
+void BladeMp3Encoder::Close()
+{
+	if (m_pStream)
+	{
+		CloseStream();
+	}
+	beInitStream = InitStreamStub;
+	beEncodeChunk = EncodeChunkStub;
+	beDeinitStream = DeinitStreamStub;
+	beCloseStream = CloseStreamStub;
+	beGetVersion = GetVersionStub;
+	beWriteVBRHeader = WriteVBRHeaderStub;
+	if (m_DllModule)
+	{
+		FreeLibrary(m_DllModule);
+		m_DllModule = NULL;
+	}
+}
+BOOL BladeMp3Encoder::OpenStream(PBE_CONFIG pConfig)
+{
+	DWORD dwSamples;
+	if (NULL != m_pStream)
 	{
 		return FALSE;
 	}
+	if (BE_ERR_SUCCESSFUL != beInitStream(pConfig, & dwSamples, & m_OutBufferSize, & m_pStream))
+	{
+		return FALSE;
+	}
+	m_InBufferSize = dwSamples * 2;
+	if (pConfig->format.LHV1.nMode != BE_MP3_MODE_MONO)
+	{
+		m_InBufferSize *= 2;
+	}
+	return TRUE;
+}
+
+BOOL BladeMp3Encoder::Open(LPCTSTR DllName)
+{
+	if (m_DllModule != NULL)
+	{
+		// cannot open twice
+		return FALSE;
+	}
+	m_DllModule = LoadLibrary(DllName);
+	if (NULL == m_DllModule)
+	{
+		return FALSE;
+	}
+
+	beInitStream = (BEINITSTREAM)GetProcAddress(m_DllModule, TEXT_BEINITSTREAM);
+	beEncodeChunk = (BEENCODECHUNK)GetProcAddress(m_DllModule, TEXT_BEENCODECHUNK);
+	beDeinitStream = (BEDEINITSTREAM)GetProcAddress(m_DllModule, TEXT_BEDEINITSTREAM);
+	beCloseStream = (BECLOSESTREAM)GetProcAddress(m_DllModule, TEXT_BECLOSESTREAM);
+	beGetVersion = (BEVERSION)GetProcAddress(m_DllModule, TEXT_BEVERSION);
+	beWriteVBRHeader = (BEWRITEVBRHEADER)GetProcAddress(m_DllModule, TEXT_BEWRITEVBRHEADER);
+
+	if (NULL == beInitStream
+		|| NULL == beEncodeChunk
+		|| NULL == beDeinitStream
+		|| NULL == beCloseStream
+		|| NULL == beGetVersion
+		|| NULL == beWriteVBRHeader)
+	{
+		Close();
+		return FALSE;
+	}
+	return TRUE;
+}
+
+BOOL BladeMp3Encoder::EncodeChunk(short const * pSrc, int nSamples, BYTE * pDst, DWORD * pBytesEncoded)
+{
+	return BE_ERR_SUCCESSFUL == beEncodeChunk(m_pStream, nSamples, pSrc, pDst, pBytesEncoded);
+}
+
+BOOL BladeMp3Encoder::FlushStream(BYTE * pDst, DWORD * pBytesEncoded)
+{
+	return BE_ERR_SUCCESSFUL == beDeinitStream(m_pStream, pDst, pBytesEncoded);
+}
+
+BOOL CLameEncConvertor::Open(WAVEFORMATEX * pWF)
+{
+	BE_CONFIG cfg;
+	memzero(cfg);
+	cfg.dwConfig = BE_CONFIG_LAME;
+	cfg.format.LHV1.dwStructVersion = 1;
+	cfg.format.LHV1.dwStructSize = sizeof cfg;
+	cfg.format.LHV1.dwSampleRate = pWF->nSamplesPerSec;
+	cfg.format.LHV1.nMode = BE_MP3_MODE_MONO;
+	if (pWF->nChannels > 1)
+	{
+		cfg.format.LHV1.nMode = BE_MP3_MODE_STEREO;
+	}
+	cfg.format.LHV1.dwBitrate = pWF->nAvgBytesPerSec / (1000 / 8);
+
+	cfg.format.LHV1.bCRC = TRUE;
+
+	if ( ! m_Enc.OpenStream( & cfg))
+	{
+		return FALSE;
+	}
+	// allocate buffers
+	m_InputBufferSize = m_Enc.m_InBufferSize;
+	m_InputBufferFilled = 0;
+	m_pInputBuffer = new char[m_Enc.m_InBufferSize];
+
+	m_OutputBufferSize = m_Enc.m_OutBufferSize;
+	m_OutputBufferFilled = 0;
+	m_pOutputBuffer = new char[m_OutputBufferSize];
+
+	return TRUE;
 }
 
 int CLameEncConvertor::ProcessSound(char const * pInBuf, char * pOutBuf,
@@ -2592,10 +2708,17 @@ int CLameEncConvertor::ProcessSound(char const * pInBuf, char * pOutBuf,
 	// save extra data from the output buffer
 	*pUsedBytes = 0;
 	int nSavedBytes = 0;
+	BOOL FlushBuffer = FALSE;
+	if (NULL == pInBuf)
+	{
+		nInBytes = 0;
+		FlushBuffer = TRUE;
+	}
 	// copy data to the temp buffer
 	while (0 != nInBytes
 			|| 0 != m_InputBufferFilled
-			|| 0 != m_OutputBufferFilled)
+			|| 0 != m_OutputBufferFilled
+			|| FlushBuffer)
 	{
 		if (0 != m_OutputBufferFilled)
 		{
@@ -2606,6 +2729,7 @@ int CLameEncConvertor::ProcessSound(char const * pInBuf, char * pOutBuf,
 			nOutBytes -= ToCopy;
 			pOutBuf += ToCopy;
 			nSavedBytes += ToCopy;
+
 			if (0 != m_OutputBufferFilled)
 			{
 				memmove(m_pOutputBuffer, m_pOutputBuffer + ToCopy, m_OutputBufferFilled);
@@ -2642,6 +2766,7 @@ int CLameEncConvertor::ProcessSound(char const * pInBuf, char * pOutBuf,
 			DWORD OutFilled = 0;
 			m_Enc.FlushStream((BYTE*)m_pOutputBuffer, & OutFilled);
 			m_OutputBufferFilled = OutFilled;
+			FlushBuffer = FALSE;
 		}
 	}
 	return nSavedBytes;
