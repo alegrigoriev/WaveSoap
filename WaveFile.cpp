@@ -996,11 +996,11 @@ BOOL CWaveFile::SetDatachunkLength(DWORD Length)
 	return TRUE;
 }
 
-void CWaveFile::SetFactNumberOfSamples(NUMBER_OF_SAMPLES length)
+void CWaveFile::SetFactNumberOfSamples(NUMBER_OF_SAMPLES samples)
 {
 	GetFactChunk()->dwFlags |= MMIO_DIRTY;
 	// save number of samples
-	m_FactSamples = length;
+	m_FactSamples = samples;
 }
 
 BOOL CWaveFile::SetFileLengthSamples(NUMBER_OF_SAMPLES length)
