@@ -15,13 +15,14 @@ typedef BOOL (_stdcall * WAVE_OPERATION_PROC)(COperationContext *);
 class COperationContext
 {
 public:
-	COperationContext(class CWaveSoapFrontDoc * pDoc, DWORD Flags)
+	COperationContext(class CWaveSoapFrontDoc * pDoc, LPCTSTR OperationName, DWORD Flags)
 		: pDocument(pDoc),
 		m_Flags(Flags),
 		pNextChain(NULL),
 		pNext(NULL),
 		pPrev(NULL),
 		m_pUndoContext(NULL),
+		m_OperationName(OperationName),
 		PercentCompleted(0)
 	{
 	}
@@ -40,6 +41,7 @@ public:
 	virtual void Retire();
 	virtual void PostRetire(BOOL bChildContext = FALSE);
 	virtual CString GetStatusString() = 0;
+	CString m_OperationName;
 	COperationContext * pNext;
 	COperationContext * pPrev;
 	COperationContext * pNextChain;
@@ -81,7 +83,7 @@ public:
 	int m_GranuleSize;
 	CString sOp;
 	CScanPeaksContext(CWaveSoapFrontDoc * pDoc)
-		: COperationContext(pDoc, OperationContextDiskIntensive),
+		: COperationContext(pDoc, "Peak Scan", OperationContextDiskIntensive),
 		sOp("Scanning the file for peaks..."),
 		m_Start(0), m_End(0), m_Position(0)
 	{
@@ -107,12 +109,12 @@ class CResizeContext : public COperationContext
 	DWORD m_DstEnd;
 	BOOL ExpandProc();
 	BOOL ShrinkProc();
-	BOOL InitUndo(CString UndoStatusString);
+	BOOL InitUndoRedo(CString UndoStatusString);
 public:
 
 	CString sOp;
-	CResizeContext(CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString)
-		: COperationContext(pDoc, OperationContextDiskIntensive),
+	CResizeContext(CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString, LPCTSTR OperationName)
+		: COperationContext(pDoc, OperationName, OperationContextDiskIntensive),
 		sOp(StatusString)
 	{
 
@@ -144,8 +146,8 @@ public:
 
 public:
 	CString sOp;
-	CCopyContext(CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString)
-		: COperationContext(pDoc, OperationContextDiskIntensive),
+	CCopyContext(CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString, LPCTSTR OperationName)
+		: COperationContext(pDoc, OperationName, OperationContextDiskIntensive),
 		sOp(StatusString),
 		m_pExpandShrinkContext(NULL)
 	{
@@ -172,13 +174,11 @@ public:
 	DWORD m_DstSavePos;
 	int m_SaveChan;
 	size_t m_RestoredLength;
-	CString sOp;
-	CUndoRedoContext(CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString)
-		: CCopyContext(pDoc, "Undoing..."),
-		sOp(StatusString)
+	CUndoRedoContext(CWaveSoapFrontDoc * pDoc, LPCTSTR OperationName)
+		: CCopyContext(pDoc, "", OperationName)
 	{
-
 	}
+
 	BOOL InitUndoCopy(CWaveFile & SrcFile,
 					DWORD SaveStartPos, // source file position of data needed to save and restore
 					DWORD SaveEndPos,
@@ -186,6 +186,7 @@ public:
 	BOOL SaveUndoData(void * pBuf, long BufSize, DWORD Position, int Channel);
 	BOOL NeedToSave(DWORD Position, size_t length);
 	virtual void PostRetire(BOOL bChildContext = FALSE);
+	virtual CString GetStatusString();
 	~CUndoRedoContext() {}
 };
 
@@ -194,7 +195,7 @@ class CCutContext : public CCopyContext
 	friend class CWaveSoapFrontDoc;
 public:
 	CCutContext(CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString)
-		: CCopyContext(pDoc, StatusString)
+		: CCopyContext(pDoc, StatusString, "")
 	{
 
 	}
@@ -229,7 +230,7 @@ class CDecompressContext : public COperationContext
 public:
 	CString sOp;
 	CDecompressContext(CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString)
-		: COperationContext(pDoc,
+		: COperationContext(pDoc, "",
 							// operation can be terminated by Close
 							OperationContextDiskIntensive | OperationContextNonCritical),
 		sOp(StatusString),
@@ -266,7 +267,7 @@ public:
 
 public:
 	CSoundPlayContext(CWaveSoapFrontDoc * pDoc)
-		: COperationContext(pDoc,
+		: COperationContext(pDoc, "Play",
 							OperationContextDontAdjustPriority),
 		m_ss(_T("Playing")),
 		m_bPauseRequested(false)
@@ -284,19 +285,22 @@ public:
 class CVolumeChangeContext : public COperationContext
 {
 public:
-	CVolumeChangeContext(CWaveSoapFrontDoc * pDoc);
+	CVolumeChangeContext(CWaveSoapFrontDoc * pDoc,
+						LPCTSTR StatusString, LPCTSTR OperationName);
 	~CVolumeChangeContext();
+	CWaveFile m_DstFile;
 	float m_VolumeLeft;
 	float m_VolumeRight;
 	int m_DstChan;
 	DWORD m_DstStart;
 	DWORD m_DstEnd;
 	DWORD m_DstCopyPos;
+	BOOL m_bClipped;
 
 	CString m_ss;
 	virtual BOOL OperationProc();
-	virtual BOOL Init();
-	virtual BOOL DeInit();
+//    virtual BOOL Init();
+//    virtual BOOL DeInit();
 	virtual void PostRetire(BOOL bChildContext = FALSE);
 	virtual CString GetStatusString() { return m_ss; }
 
