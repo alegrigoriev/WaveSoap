@@ -1753,21 +1753,50 @@ CMarkerRegionDialog::CMarkerRegionDialog(struct WAVEREGIONINFO * pRegionInfo, SA
 				CaretPos, ALL_CHANNELS, WaveFile, TimeFormat, FALSE,
 				IDD, pParent)
 	, m_pRegionData(pRegionInfo)
+	, m_bMarkerOrRegion(0 != pRegionInfo->Length)
+	, m_sName(pRegionInfo->Label)
 {
 }
 
 BEGIN_MESSAGE_MAP(CMarkerRegionDialog, BaseClass)
 //{{AFX_MSG_MAP(CMarkerRegionDialog)
 	//}}AFX_MSG_MAP
-	//ON_CBN_SELCHANGE(IDC_COMBO_TIME_FORMAT, OnSelchangeComboTimeFormat)
-	//ON_CBN_KILLFOCUS(IDC_COMBO_END, OnKillfocusEditEnd)
-	//ON_EN_KILLFOCUS(IDC_EDIT_LENGTH, OnKillfocusEditLength)
-	//ON_CBN_KILLFOCUS(IDC_COMBO_START, OnKillfocusEditStart)
-	//ON_CBN_SELCHANGE(IDC_COMBO_SELECTION, OnSelchangeComboSelection)
+	ON_UPDATE_COMMAND_UI(IDC_EDIT_LENGTH, OnUpdateEditLength)
+	ON_UPDATE_COMMAND_UI(IDC_COMBO_END, OnUpdateEditLength)
+	ON_BN_CLICKED(IDC_RADIO_MARKER, OnClickedMarkerRegion)
+	ON_BN_CLICKED(IDC_RADIO_REGION, OnClickedMarkerRegion)
+
 END_MESSAGE_MAP()
 
 void CMarkerRegionDialog::DoDataExchange(CDataExchange* pDX)
 {
 	BaseClass::DoDataExchange(pDX);
+
+	DDX_Radio(pDX, IDC_RADIO_MARKER, m_bMarkerOrRegion);
+	DDX_Text(pDX, IDC_EDIT_MARKER_NAME, m_sName);
+
+	if (pDX->m_bSaveAndValidate)
+	{
+		m_pRegionData->Label = m_sName;
+		m_pRegionData->Sample = GetStart();
+		m_pRegionData->Flags |= m_pRegionData->ChangeLength;
+		if (m_bMarkerOrRegion)
+		{
+			m_pRegionData->Length = GetEnd() - GetStart();
+		}
+		else
+		{
+			m_pRegionData->Length = 0;
+		}
+	}
 }
 
+void CMarkerRegionDialog::OnUpdateEditLength(CCmdUI * pCmdUI)
+{
+	pCmdUI->Enable(IsDlgButtonChecked(IDC_RADIO_REGION));
+}
+
+void CMarkerRegionDialog::OnClickedMarkerRegion()
+{
+	NeedUpdateControls();
+}
