@@ -243,6 +243,79 @@ void CSpectrumSectionView::BuildBandArray(double PowerScaleCoeff, FftGraphBand *
 	}
 }
 
+void CSpectrumSectionView::BuildPointArray(FftGraphBand * pBands, int NumBands,
+											DoublePoint * ppArray, int nNumberOfPoints, int OffsetY)
+{
+	for (int i = 0, j = 0; i < NumBands && j < nNumberOfPoints; i++, pBands++)
+	{
+		for (int k = 0; k < pBands->nNumOfRows && j < nNumberOfPoints; k++, j++, ppArray++)
+		{
+			ppArray[0][0].x = pBands->nMax;
+			ppArray[0][1].x = pBands->nMin - 1;
+			ppArray[0][0].y = OffsetY + j;
+			ppArray[0][1].y = OffsetY + j;
+		}
+	}
+}
+
+void CSpectrumSectionView::DrawPointArray(CDC * pDC, DoublePoint * ppArray, int NumberOfPoints, int right)
+{
+	int LastX0 = ppArray[0][0].x;
+	int LastX1 = ppArray[0][1].x;
+
+	for (int n = 0; n < NumberOfPoints; n++, ppArray++)
+	{
+		//TRACE("ppArray[%d].x = %d, %d\n", n, ppArray[0][1].x, ppArray[0][0].x);
+		if (n < NumberOfPoints - 1
+			&& ppArray[1][0].x >= ppArray[1][1].x)
+		{
+			if (ppArray[0][0].x < ppArray[1][1].x)
+			{
+				ppArray[0][0].x = (ppArray[1][1].x + ppArray[0][0].x) >> 1;
+			}
+			else if (ppArray[1][0].x < ppArray[0][1].x)
+			{
+				ppArray[0][1].x = (ppArray[0][1].x + ppArray[1][0].x) >> 1;
+			}
+		}
+
+		if (LastX0 >= LastX1)
+		{
+			if (ppArray[0][0].x < LastX1)
+			{
+				ppArray[0][0].x = LastX1;
+			}
+			else if (ppArray[0][1].x > LastX0)
+			{
+				ppArray[0][1].x = LastX0;
+			}
+		}
+
+		LastX0 = ppArray[0][0].x;
+		LastX1 = ppArray[0][1].x;
+
+		if (ppArray[0][0].x < 0)
+		{
+			continue;
+		}
+		else if (ppArray[0][0].x > right)
+		{
+			ppArray[0][0].x = right;
+		}
+
+		if (ppArray[0][1].x < 0)
+		{
+			ppArray[0][1].x = -1;
+		}
+		else if (ppArray[0][1].x > right)
+		{
+			continue;
+		}
+		pDC->MoveTo(ppArray[0][0]);
+		pDC->LineTo(ppArray[0][1]);
+	}
+}
+
 void CSpectrumSectionView::OnDraw(CDC* pDC)
 {
 	CWaveSoapFrontDoc* pDoc = GetDocument();
@@ -339,12 +412,6 @@ void CSpectrumSectionView::OnDraw(CDC* pDC)
 
 	ATL::CHeapPtr<FftGraphBand> pIdArray;
 
-	POINT (* ppArray)[2] = new POINT[nNumberOfPoints][2];
-	if (NULL == ppArray)
-	{
-		return;
-	}
-
 	// fill the array
 	int IdxSize = InitBandArray(pIdArray, rows);
 
@@ -353,7 +420,6 @@ void CSpectrumSectionView::OnDraw(CDC* pDC)
 
 	int i;
 	int j;
-	int ch;
 	// read the data
 	// if there is selection, calculate the whole region sum
 
@@ -361,76 +427,18 @@ void CSpectrumSectionView::OnDraw(CDC* pDC)
 
 	double PowerScaleCoeff = 1. / (NumberOfFftSamplesAveraged * 65536. * m_FftOrder * 65536 * m_FftOrder);
 	// now that we have calculated the FFT
-	for (ch = 0; ch < nChannels; ch++)
-	{
-		int ChannelOffset = rows * ch;
 
+	ATL::CHeapPtr<POINT[2]> ppArray;
+
+	ppArray.Allocate(nNumberOfPoints);
+
+	for (int ch = 0; ch < nChannels; ch++)
+	{
 		BuildBandArray(PowerScaleCoeff, pIdArray, IdxSize, m_pFftSum, m_FftOrder + ch);
 
-		for (i = 0, j = 0; i < IdxSize && j < nNumberOfPoints; i++)
-		{
-			for (int k = 0; k < pIdArray[i].nNumOfRows  && j < nNumberOfPoints; k++, j++)
-			{
-				ppArray[j][0].x = pIdArray[i].nMax;
-				ppArray[j][1].x = pIdArray[i].nMin - 1;
-				ppArray[j][0].y = ChannelOffset + j;
-				ppArray[j][1].y = ChannelOffset + j;
-			}
-		}
+		BuildPointArray(pIdArray, IdxSize, ppArray, nNumberOfPoints, rows * ch);
 
-		int LastX0 = ppArray[0][0].x;
-		int LastX1 = ppArray[0][1].x;
-
-		for (i = 0; i < nNumberOfPoints; i++)
-		{
-			//TRACE("ppArray[%d].x = %d, %d\n", i, ppArray[i][1].x, ppArray[i][0].x);
-			if (i < nNumberOfPoints - 1
-				&& ppArray[i + 1][0].x >= ppArray[i + 1][1].x)
-			{
-				if (ppArray[i][0].x < ppArray[i + 1][1].x)
-				{
-					ppArray[i][0].x = (ppArray[i + 1][1].x + ppArray[i][0].x) >> 1;
-				}
-				else if (ppArray[i + 1][0].x < ppArray[i][1].x)
-				{
-					ppArray[i][1].x = (ppArray[i][1].x + ppArray[i + 1][0].x) >> 1;
-				}
-			}
-			if (LastX0 >= LastX1)
-			{
-				if (ppArray[i][0].x < LastX1)
-				{
-					ppArray[i][0].x = LastX1;
-				}
-				else if (ppArray[i][1].x > LastX0)
-				{
-					ppArray[i][1].x = LastX0;
-				}
-			}
-
-			LastX0 = ppArray[i][0].x;
-			LastX1 = ppArray[i][1].x;
-
-			if (ppArray[i][0].x < 0)
-			{
-				continue;
-			}
-			else if (ppArray[i][0].x > cr.right)
-			{
-				ppArray[i][0].x = cr.right;
-			}
-
-			if (ppArray[i][1].x < 0)
-			{
-				ppArray[i][1].x = -1;
-			}
-			else if (ppArray[i][1].x > cr.right)
-			{
-				continue;
-			}
-			pDC->MoveTo(ppArray[i][0]);
-			pDC->LineTo(ppArray[i][1]);
-		}
+		DrawPointArray(pDC, ppArray, nNumberOfPoints, cr.right);
 
 		if (nChannels > 1)
 		{
@@ -450,7 +458,7 @@ void CSpectrumSectionView::OnDraw(CDC* pDC)
 		pDC->SetROP2(R2_XORPEN);
 		pDC->SetBkColor(RGB(0, 0, 0));
 
-		for (ch = 0; ch < nChannels; ch++)
+		for (int ch = 0; ch < nChannels; ch++)
 		{
 			CRect ChanR;
 

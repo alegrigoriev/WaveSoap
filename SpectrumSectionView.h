@@ -62,6 +62,11 @@ protected:
 	void BuildBandArray(double PowerScaleCoeff, FftGraphBand * pBands, int NumBands,
 						float const * pFftSum, int FftOrder);
 
+	typedef POINT DoublePoint[2];
+
+	void BuildPointArray(FftGraphBand * pBands, int NumBands, DoublePoint * ppArray, int nNumberOfPoints, int OffsetY);
+	void DrawPointArray(CDC * pDC, DoublePoint * ppArray, int NumberOfPoints, int right);
+
 	int m_FftOrder;
 
 	float * m_pFftSum;
