@@ -14,7 +14,7 @@ class CResizableDialog : public CDialog
 {
 // Construction
 protected:
-	CResizableDialog(UINT id, CWnd* pParent = NULL);   // standard constructor
+	CResizableDialog(UINT id, CWnd* pParent);   // standard constructor
 public:
 
 // Dialog Data
@@ -26,16 +26,42 @@ public:
 // Overrides
 	// ClassWizard generated virtual function overrides
 	//{{AFX_VIRTUAL(CResizableDialog)
-protected:
-	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV support
 	//}}AFX_VIRTUAL
 
 // Implementation
 protected:
+	CSize m_PrevSize;
+	MINMAXINFO m_mmxi;
+	int m_DlgWidth;
+	int m_DlgHeight;
 
+	enum
+	{
+		CenterHorizontally = 1,
+		ExpandRight = 2,
+		MoveRight = 4,
+		ExpandDown = 8,
+		MoveDown = 0x10,
+	};
+	struct ResizableDlgItem
+	{
+		UINT Id;
+		UINT flags;
+	};
+
+	ResizableDlgItem const * m_pResizeItems;
+	int m_pResizeItemsCount;
+
+	void OnMetricsChange();
 	// Generated message map functions
 	//{{AFX_MSG(CResizableDialog)
-	// NOTE: the ClassWizard will add member functions here
+	afx_msg void OnSize(UINT nType, int cx, int cy);
+	afx_msg void OnSizing(UINT fwSide, LPRECT pRect);
+	afx_msg void OnGetMinMaxInfo(MINMAXINFO FAR* lpMMI);
+	afx_msg BOOL OnEraseBkgnd(CDC* pDC);
+	afx_msg UINT OnNcHitTest(CPoint point);
+	virtual BOOL OnInitDialog();
+	virtual void OnOK();
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 };
