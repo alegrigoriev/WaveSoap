@@ -1043,3 +1043,35 @@ BOOL CInsertSilenceContext::ProcessBuffer(void * buf, size_t BufferLength, DWORD
 	}
 	return TRUE;
 }
+
+BOOL CCommitFileSaveContext::OperationProc()
+{
+	if (m_Flags & OperationContextStopRequested)
+	{
+		m_Flags |= OperationContextStop;
+		return TRUE;
+	}
+	if (m_DstFile.InitializeTheRestOfFile(500, & PercentCompleted))
+	{
+		m_Flags |= OperationContextFinished;
+	}
+	return TRUE;
+}
+
+void CCommitFileSaveContext::PostRetire(BOOL bChildContext)
+{
+	m_DstFile.Close();
+	if ((m_Flags & OperationContextFinished)
+		&& pDocument->PostCommitFileSave(m_FileSaveFlags, m_TargetName))
+	{
+		if (pDocument->m_bClosePending)
+		{
+			pDocument->m_bCloseThisDocumentNow = true;
+		}
+	}
+	else
+	{
+		pDocument->m_bClosePending = false;
+	}
+	COperationContext::PostRetire(bChildContext);
+}
