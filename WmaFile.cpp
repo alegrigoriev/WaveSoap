@@ -4,14 +4,14 @@
 #include "WmaFile.h"
 #include <wmsysprf.h>
 #include "KInterlocked.h"
-
+#define TRACE_WMA_DECODER 0
 HRESULT STDMETHODCALLTYPE CDirectFileStream::Read(
 												/* [length_is][size_is][out] */ void __RPC_FAR *pv,
 												/* [in] */ ULONG cb,
 												/* [out] */ ULONG __RPC_FAR *pcbRead)
 {
-	TRACE("CDirectFileStream::Read %d bytes at pos %d, length=%d\n",
-		cb, (DWORD)m_File.Seek(0, FILE_CURRENT), (DWORD)m_File.GetLength());
+	if (TRACE_WMA_DECODER) TRACE("CDirectFileStream::Read %d bytes at pos %d, length=%d\n",
+								cb, (DWORD)m_File.Seek(0, FILE_CURRENT), (DWORD)m_File.GetLength());
 	LONG lRead = m_File.Read(pv, cb);
 	if (lRead != -1)
 	{
@@ -32,7 +32,7 @@ HRESULT STDMETHODCALLTYPE CDirectFileStream::Write(
 													/* [in] */ ULONG cb,
 													/* [out] */ ULONG __RPC_FAR *pcbWritten)
 {
-	TRACE("CDirectFileStream::Write %d bytes\n", cb);
+	if (TRACE_WMA_DECODER) TRACE("CDirectFileStream::Write %d bytes\n", cb);
 	LONG lWritten = m_File.Write(pv, cb);
 	if (-1 != lWritten)
 	{
@@ -53,8 +53,8 @@ HRESULT STDMETHODCALLTYPE CDirectFileStream::Seek(
 												/* [in] */ DWORD dwOrigin,
 												/* [out] */ ULARGE_INTEGER __RPC_FAR *plibNewPosition)
 {
-	TRACE("CDirectFileStream::Seek to %08X%08X, %d\n",
-		dlibMove.HighPart, dlibMove.LowPart, dwOrigin);
+	if (TRACE_WMA_DECODER) TRACE("CDirectFileStream::Seek to %08X%08X, %d\n",
+								dlibMove.HighPart, dlibMove.LowPart, dwOrigin);
 	int origin;
 	switch (dwOrigin)
 	{
@@ -102,7 +102,7 @@ HRESULT STDMETHODCALLTYPE CDirectFileStream::CopyTo(
 													/* [out] */ ULARGE_INTEGER __RPC_FAR *pcbWritten)
 {
 	// copy cb bytes from this stream to *pstrm
-	TRACE("CDirectFileStream::CopyTo %d bytes\n", cb);
+	if (TRACE_WMA_DECODER) TRACE("CDirectFileStream::CopyTo %d bytes\n", cb);
 	LONGLONG FilePos = m_File.Seek(0, FILE_CURRENT);
 	LONGLONG FileLength = m_File.GetLength();
 	if (NULL != pcbRead)
@@ -180,7 +180,7 @@ HRESULT STDMETHODCALLTYPE CDirectFileStream::LockRegion(
 														/* [in] */ ULARGE_INTEGER cb,
 														/* [in] */ DWORD dwLockType)
 {
-	TRACE("CDirectFileStream::LockRegion\n");
+	if (TRACE_WMA_DECODER) TRACE("CDirectFileStream::LockRegion\n");
 	return STG_E_INVALIDFUNCTION;
 }
 
@@ -189,7 +189,7 @@ HRESULT STDMETHODCALLTYPE CDirectFileStream::UnlockRegion(
 														/* [in] */ ULARGE_INTEGER cb,
 														/* [in] */ DWORD dwLockType)
 {
-	TRACE("CDirectFileStream::UnlockRegion\n");
+	if (TRACE_WMA_DECODER) TRACE("CDirectFileStream::UnlockRegion\n");
 	return STG_E_INVALIDFUNCTION;
 }
 
@@ -197,7 +197,7 @@ HRESULT STDMETHODCALLTYPE CDirectFileStream::Stat(
 												/* [out] */ STATSTG __RPC_FAR *pstatstg,
 												/* [in] */ DWORD grfStatFlag)
 {
-	TRACE("CDirectFileStream::Stat flag=%x\n", grfStatFlag);
+	if (TRACE_WMA_DECODER) TRACE("CDirectFileStream::Stat flag=%x\n", grfStatFlag);
 	if (! m_File.IsOpen())
 	{
 		return STG_E_ACCESSDENIED;
@@ -231,7 +231,7 @@ HRESULT STDMETHODCALLTYPE CDirectFileStream::Stat(
 HRESULT STDMETHODCALLTYPE CDirectFileStream::Clone(
 													/* [out] */ IStream __RPC_FAR *__RPC_FAR *ppstm)
 {
-	TRACE("CDirectFileStream::Clone\n");
+	if (TRACE_WMA_DECODER) TRACE("CDirectFileStream::Clone\n");
 	return STG_E_INVALIDFUNCTION;
 }
 
@@ -280,8 +280,8 @@ HRESULT STDMETHODCALLTYPE CWmaDecoder::OnStatus( /* [in] */ WMT_STATUS Status,
 															/* [in] */ BYTE __RPC_FAR *pValue,
 															/* [in] */ void __RPC_FAR *pvContext )
 {
-	TRACE("CWmaDecoder::OnStatus Status=%X, hr=%08X, DataType=%X, pValue=%X\n",
-		Status, hr, dwType, pValue);
+	if (TRACE_WMA_DECODER) TRACE("CWmaDecoder::OnStatus Status=%X, hr=%08X, DataType=%X, pValue=%X\n",
+								Status, hr, dwType, pValue);
 	// The following values are used:
 	// WMT_OPENED
 	// WMT_STOPPED
@@ -335,13 +335,13 @@ HRESULT STDMETHODCALLTYPE CWmaDecoder::OnSample( /* [in] */ DWORD dwOutputNum,
 	//
 	if (m_dwAudioOutputNum != dwOutputNum)
 	{
-		TRACE("CWmaDecoder::OnSample m_dwAudioOutputNum != dwOutputNum\n");
+		if (TRACE_WMA_DECODER) TRACE("CWmaDecoder::OnSample m_dwAudioOutputNum != dwOutputNum\n");
 		return S_OK;
 	}
 
 	if (! IsStarted())
 	{
-		TRACE("CWmaDecoder::OnSample: ! IsStarted()\n");
+		if (TRACE_WMA_DECODER) TRACE("CWmaDecoder::OnSample: ! IsStarted()\n");
 		return S_OK;
 	}
 
@@ -351,8 +351,8 @@ HRESULT STDMETHODCALLTYPE CWmaDecoder::OnSample( /* [in] */ DWORD dwOutputNum,
 
 	hr = pSample->GetBufferAndLength( &pData, &cbData);
 
-	if (1) TRACE("CWmaDecoder::OnSample, time=%d ms, %d bytes, hr=%X\n",
-				DWORD(cnsSampleTime/10000), cbData, hr);
+	if (TRACE_WMA_DECODER) TRACE("CWmaDecoder::OnSample, time=%d ms, %d bytes, hr=%X\n",
+								DWORD(cnsSampleTime/10000), cbData, hr);
 	if( FAILED( hr ) )
 	{
 		return hr;
@@ -398,6 +398,19 @@ HRESULT STDMETHODCALLTYPE CWmaDecoder::OnSample( /* [in] */ DWORD dwOutputNum,
 	return S_OK;
 }
 
+HRESULT STDMETHODCALLTYPE CWmaDecoder::OnTime(
+											/* [in] */ QWORD cnsCurrentTime,
+											/* [in] */ void __RPC_FAR *pvContext)
+{
+	if (TRACE_WMA_DECODER) TRACE("IWMReaderCallbackAdvancedOnTime(%I64d)\n", cnsCurrentTime);
+	// ask for next buffer
+	m_CurrentStreamTime = cnsCurrentTime;
+
+	m_bNeedNextSample = true;
+	m_SampleEvent.SetEvent();
+	return S_OK;
+}
+
 void CWmaDecoder::DeliverNextSample(DWORD timeout)
 {
 	if (m_bNeedNextSample)
@@ -406,19 +419,19 @@ void CWmaDecoder::DeliverNextSample(DWORD timeout)
 		if (m_pAdvReader)
 		{
 			QWORD NextSampleTime = m_CurrentStreamTime + m_BufferLengthTime;
-			TRACE("CWmaDecoder::DeliverNextSample:  m_CurrentStreamTime=%I64d, NextTime=%I64d\n",
-				m_CurrentStreamTime, NextSampleTime);
+			if (TRACE_WMA_DECODER) TRACE("CWmaDecoder::DeliverNextSample:  m_CurrentStreamTime=%I64d, NextTime=%I64d\n",
+										m_CurrentStreamTime, NextSampleTime);
 
 			m_pAdvReader->DeliverTime(NextSampleTime);
 		}
 		else
 		{
-			TRACE("NULL == m_pAdvReader, m_Reader = %X\n", m_Reader);
+			if (TRACE_WMA_DECODER) TRACE("NULL == m_pAdvReader, m_Reader = %X\n", m_Reader);
 		}
 	}
 	else
 	{
-		TRACE("CWmaDecoder::DeliverNextSample:  ! m_bNeedNextSample\n");
+		if (TRACE_WMA_DECODER) TRACE("CWmaDecoder::DeliverNextSample:  ! m_bNeedNextSample\n");
 	}
 	if (0 != timeout)
 	{
@@ -555,7 +568,7 @@ HRESULT CWmaDecoder::Open(CDirectFile & file)
 		WCHAR str2[100];
 		StringFromGUID2(pMedia->majortype, str1, sizeof str1 / sizeof str1[0]);
 		StringFromGUID2(pMedia->subtype, str2, sizeof str2 / sizeof str2[0]);
-		TRACE(_T("Media type = %S, subtype = %S\n"), str1, str2);
+		if (TRACE_WMA_DECODER) TRACE(_T("Media type = %S, subtype = %S\n"), str1, str2);
 // WMA: Media type = {73647561-0000-0010-8000-00AA00389B71}, sybtype = {00000001-0000-0010-8000-00AA00389B71}
 // MP3: Media type = {73647561-0000-0010-8000-00AA00389B71}, sybtype = {00000001-0000-0010-8000-00AA00389B71}
 #endif
@@ -566,7 +579,7 @@ HRESULT CWmaDecoder::Open(CDirectFile & file)
 		DWORD MaxSampleSize = 32768;
 
 		hr = m_pAdvReader->GetMaxOutputSampleSize(m_dwAudioOutputNum, & MaxSampleSize);
-		TRACE("m_pAdvReader->GetMaxOutputSampleSize=%d\n", MaxSampleSize);
+		if (TRACE_WMA_DECODER) TRACE("m_pAdvReader->GetMaxOutputSampleSize=%d\n", MaxSampleSize);
 		if (FAILED(hr))
 		{
 			MaxSampleSize = 32768;
@@ -590,7 +603,7 @@ HRESULT CWmaDecoder::Open(CDirectFile & file)
 	if (SUCCEEDED(hr))
 	{
 		WORD stream = WORD(m_dwAudioOutputNum);
-		TRACE("IWMHeaderInfo interface acquired\n");
+		if (TRACE_WMA_DECODER) TRACE("IWMHeaderInfo interface acquired\n");
 		QWORD StreamLength = 0;
 		WORD SizeofStreamLength = sizeof StreamLength;
 		WMT_ATTR_DATATYPE type = WMT_TYPE_QWORD;
@@ -598,7 +611,7 @@ HRESULT CWmaDecoder::Open(CDirectFile & file)
 											& type, (BYTE *) & StreamLength, & SizeofStreamLength);
 		if (SUCCEEDED(hr))
 		{
-			TRACE("Stream Length = %08X%08X (%d seconds), size=%d\n",
+			if (TRACE_WMA_DECODER) TRACE("Stream Length = %08X%08X (%d seconds), size=%d\n",
 				DWORD(StreamLength >> 32), DWORD(StreamLength & 0xFFFFFFFF), DWORD(StreamLength / 10000000), SizeofStreamLength);
 			m_StreamDuration = StreamLength;
 		}
@@ -611,8 +624,8 @@ HRESULT CWmaDecoder::Open(CDirectFile & file)
 	}
 
 	m_CurrentSamples = ULONG(m_StreamDuration * m_DstWf.SampleRate() / 10000000);
-	TRACE("m_CurrentSamples = %d (%d seconds)\n", m_CurrentSamples,
-		m_CurrentSamples / m_DstWf.SampleRate());
+	if (TRACE_WMA_DECODER) TRACE("m_CurrentSamples = %d (%d seconds)\n", m_CurrentSamples,
+								m_CurrentSamples / m_DstWf.SampleRate());
 
 	IWMProfile * pProfile = NULL;
 	hr = m_Reader->QueryInterface(IID_IWMProfile, (void **) &pProfile);
@@ -679,12 +692,12 @@ HRESULT CWmaDecoder::Open(CDirectFile & file)
 
 HRESULT CWmaDecoder::Start()
 {
-	TRACE("CWmaDecoder::Start()\n");
+	if (TRACE_WMA_DECODER) TRACE("CWmaDecoder::Start()\n");
 
 	if (NULL != m_Reader)
 	{
 		HRESULT hr = m_Reader->Start(0, 0, 1.0, NULL);
-		TRACE("Immediately after Start: IsStarted()=%X\n", IsStarted());
+		if (TRACE_WMA_DECODER) TRACE("Immediately after Start: IsStarted()=%X\n", IsStarted());
 		WaitForSingleObject(m_StartedEvent, 5000);
 		if ( ! IsStarted())
 		{
@@ -695,7 +708,7 @@ HRESULT CWmaDecoder::Start()
 			&& NULL != m_pAdvReader)
 		{
 			HRESULT hr1 = m_pAdvReader->DeliverTime(m_BufferLengthTime);
-			TRACE("m_pAdvReader->DeliverTime returned %X\n", hr1);
+			if (TRACE_WMA_DECODER) TRACE("m_pAdvReader->DeliverTime returned %X\n", hr1);
 		}
 		return hr;
 	}
@@ -707,7 +720,7 @@ HRESULT CWmaDecoder::Start()
 
 HRESULT CWmaDecoder::Stop()
 {
-	TRACE("CWmaDecoder::Stop()\n");
+	if (TRACE_WMA_DECODER) TRACE("CWmaDecoder::Stop()\n");
 	if (NULL != m_Reader
 		&& m_bStarted)
 	{
@@ -842,7 +855,7 @@ BOOL WmaEncoder::OpenWrite(CDirectFile & File)
 #ifdef _DEBUG
 	DWORD NumSinks;
 	m_pWriterAdvanced->GetSinkCount( & NumSinks);
-	TRACE("Writer sink count=%d\n", NumSinks);
+	if (TRACE_WMA_DECODER) TRACE("Writer sink count=%d\n", NumSinks);
 #endif
 	return TRUE;
 }
@@ -882,10 +895,10 @@ void PrintProfile(IWMProfileManager * pProfileManager, REFGUID guid)
 
 			WAVEFORMATEX * pWfx = (WAVEFORMATEX *) pType->pbFormat;
 			DWORD * pExt = (DWORD *) (pType->pbFormat + sizeof WAVEFORMATEX);
-			TRACE("Format: %d, BytesPerSec: %d, BlockAlign: %d, cbSize: %d, stream bitrate=%d\n",
-				pWfx->wFormatTag, pWfx->nAvgBytesPerSec,
-				pWfx->nBlockAlign, pWfx->cbSize, bitrate);
-			TRACE("FormatExtension: %08X, %08X, %08X\n", pExt[0], pExt[1], pExt[2]);
+			if (TRACE_WMA_DECODER) TRACE("Format: %d, BytesPerSec: %d, BlockAlign: %d, cbSize: %d, stream bitrate=%d\n",
+										pWfx->wFormatTag, pWfx->nAvgBytesPerSec,
+										pWfx->nBlockAlign, pWfx->cbSize, bitrate);
+			if (TRACE_WMA_DECODER) TRACE("FormatExtension: %08X, %08X, %08X\n", pExt[0], pExt[1], pExt[2]);
 
 			delete[] pBuf;
 
@@ -1027,24 +1040,24 @@ BOOL WmaEncoder::SetFormat(WAVEFORMATEX * pDstWfx)
 #ifdef _DEBUG
 	WAVEFORMATEX * pWfx = (WAVEFORMATEX *) pType->pbFormat;
 	DWORD * pExt = (DWORD *) (pType->pbFormat + sizeof WAVEFORMATEX);
-	TRACE("Format: %d, BytesPerSec: %d, BlockAlign: %d, cbSize: %d\n",
-		pWfx->wFormatTag, pWfx->nAvgBytesPerSec,
-		pWfx->nBlockAlign, pWfx->cbSize);
-	TRACE("FormatExtension: %08X, %08X, %08X\n", pExt[0], pExt[1], pExt[2]);
+	if (TRACE_WMA_DECODER) TRACE("Format: %d, BytesPerSec: %d, BlockAlign: %d, cbSize: %d\n",
+								pWfx->wFormatTag, pWfx->nAvgBytesPerSec,
+								pWfx->nBlockAlign, pWfx->cbSize);
+	if (TRACE_WMA_DECODER) TRACE("FormatExtension: %08X, %08X, %08X\n", pExt[0], pExt[1], pExt[2]);
 
 #endif
 	pType->pbFormat = PBYTE(pDstWfx);
 	pType->cbFormat = sizeof (WAVEFORMATEX) + pDstWfx->cbSize;
 
-	TRACE("MediaType: wFormatTag=%d, BytesPerSec = %d\n",
-		pDstWfx->wFormatTag, pDstWfx->nAvgBytesPerSec);
+	if (TRACE_WMA_DECODER) TRACE("MediaType: wFormatTag=%d, BytesPerSec = %d\n",
+								pDstWfx->wFormatTag, pDstWfx->nAvgBytesPerSec);
 
 
 	hr = pStreamConfig->SetBitrate(pDstWfx->nAvgBytesPerSec * 8);
 	hr = pProps->SetMediaType(pType);
 
 	hr = pProfile->ReconfigStream(pStreamConfig);
-	TRACE("ReconfigStream returned %X\n", hr);
+	if (TRACE_WMA_DECODER) TRACE("ReconfigStream returned %X\n", hr);
 	hr = m_pWriter->SetProfile(pProfile);
 	delete[] pBuf;
 
@@ -1108,8 +1121,8 @@ BOOL WmaEncoder::Write(void * Buf, size_t size)
 
 			QWORD WriterTime = m_SampleTimeMs * 10000i64;
 
-			TRACE("Writing src buf %p, time=%d ms, ActualWriterTime=%d ms\n",
-				m_pBuffer, DWORD(WriterTime / 10000), DWORD(ActualWriterTime / 10000));
+			if (TRACE_WMA_DECODER) TRACE("Writing src buf %p, time=%d ms, ActualWriterTime=%d ms\n",
+										m_pBuffer, DWORD(WriterTime / 10000), DWORD(ActualWriterTime / 10000));
 			if (! SUCCEEDED(m_pWriter->WriteSample(0, WriterTime, 0, m_pBuffer)))
 			{
 				return FALSE;
@@ -1127,7 +1140,7 @@ BOOL WmaEncoder::Write(void * Buf, size_t size)
 HRESULT STDMETHODCALLTYPE FileWriter::OnHeader(
 												/* [in] */ INSSBuffer __RPC_FAR *pHeader)
 {
-	TRACE("FileWriter::OnHeader\n");
+	if (TRACE_WMA_DECODER) TRACE("FileWriter::OnHeader\n");
 	m_DstFile.Seek(0, FILE_BEGIN);
 	return OnDataUnit(pHeader);
 }
@@ -1281,8 +1294,8 @@ HRESULT STDMETHODCALLTYPE FileWriter::OnDataUnit(
 	}
 
 	pDataUnit->GetBufferAndLength( & pData, & Length);
-	TRACE("FileWriter::OnDataUnit buf = %p, Length=%d\n",
-		pData, Length);
+	if (TRACE_WMA_DECODER) TRACE("FileWriter::OnDataUnit buf = %p, Length=%d\n",
+								pData, Length);
 	if (NULL == pData)
 	{
 		return E_POINTER;
@@ -1307,7 +1320,7 @@ HRESULT STDMETHODCALLTYPE FileWriter::OnDataUnit(
 
 HRESULT STDMETHODCALLTYPE FileWriter::OnEndWriting( void)
 {
-	TRACE("OnEndWriting\n");
+	if (TRACE_WMA_DECODER) TRACE("OnEndWriting\n");
 	return S_OK;
 }
 
