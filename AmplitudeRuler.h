@@ -6,11 +6,12 @@
 #endif // _MSC_VER > 1000
 // AmplitudeRuler.h : header file
 //
-
+#include "Ruler.h"
+#include "resource.h"
 /////////////////////////////////////////////////////////////////////////////
 // CAmplitudeRuler view
 
-class CAmplitudeRuler : public CView
+class CAmplitudeRuler : public CVerticalRuler
 {
 protected:
 	CAmplitudeRuler();           // protected constructor used by dynamic creation
@@ -18,13 +19,21 @@ protected:
 
 // Attributes
 public:
-
+	CWaveSoapFrontDoc* GetDocument();
+	static int CalculateWidth();
 // Operations
 public:
+	enum
+	{
+		SampleView = 0,
+		PercentView = 1,
+		DecibelView = 2,
+	};
 
 // Overrides
 	// ClassWizard generated virtual function overrides
 	//{{AFX_VIRTUAL(CAmplitudeRuler)
+	virtual void OnUpdate( CView* pSender, LPARAM lHint, CObject* pHint );
 protected:
 	virtual void OnDraw(CDC* pDC);      // overridden to draw this view
 	//}}AFX_VIRTUAL
@@ -32,19 +41,32 @@ protected:
 // Implementation
 protected:
 	virtual ~CAmplitudeRuler();
+	virtual UINT GetPopupMenuID() { return IDR_MENU_AMPLITUDE_RULER; }
 #ifdef _DEBUG
 	virtual void AssertValid() const;
 	virtual void Dump(CDumpContext& dc) const;
 #endif
+	int m_DrawMode;
+	void DrawSamples(CDC * pDC);
+	void DrawPercents(CDC * pDC);
+	void DrawDecibels(CDC * pDC);
 
 	// Generated message map functions
 protected:
 	//{{AFX_MSG(CAmplitudeRuler)
-	// NOTE - the ClassWizard will add and remove member functions here.
+	afx_msg int OnCreate(LPCREATESTRUCT lpCreateStruct);
+	afx_msg void OnLButtonDblClk(UINT nFlags, CPoint point);
+	afx_msg void OnViewAmplRulerSamples();
+	afx_msg void OnViewAmplRulerPercent();
+	afx_msg void OnViewAmplRulerDecibels();
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 };
 
+#ifndef _DEBUG  // debug version in AmplitudeRuler.cpp
+inline CWaveSoapFrontDoc* CAmplitudeRuler::GetDocument()
+{ return (CWaveSoapFrontDoc*)m_pDocument; }
+#endif
 /////////////////////////////////////////////////////////////////////////////
 
 //{{AFX_INSERT_LOCATION}}
