@@ -131,27 +131,29 @@ public:
 	virtual size_t ProcessSound(char const * pInBuf, char * pOutBuf,
 								size_t nInBytes, size_t nOutBytes, size_t * pUsedBytes);
 
-	// SetAndValidateWaveformat returns FALSE if the wave cannot be
+	// SetInputWaveformat returns FALSE if the wave cannot be
 	// processed
-	virtual BOOL SetAndValidateWaveformat(WAVEFORMATEX const * pWf);
+	virtual BOOL SetInputWaveformat(WAVEFORMATEX const * pWf);
+	virtual WAVEFORMATEX const * GetInputWaveformat() const;
+	virtual WAVEFORMATEX const * GetOutputWaveformat() const;
 
-	NUMBER_OF_CHANNELS m_InputChannels;
-	NUMBER_OF_CHANNELS m_OutputChannels;
+	CWaveFormat m_InputFormat;
+	CWaveFormat m_OutputFormat;
+
 	CHANNEL_MASK m_ChannelsToProcess;
-	long m_SamplesPerSecond;
 
 	// if input data is compressed and not sample-aligned, this should be 0
 	// it can be multiple of block size for compressed format
 	virtual size_t GetInputSampleSize() const
 	{
-		return m_InputChannels * sizeof (WAVE_SAMPLE);
+		return m_InputFormat.SampleSize();
 	}
 
 	// if output data is compressed and not sample-aligned, this should be 0
 	// it can be multiple of block size for compressed format
 	virtual size_t GetOutputSampleSize() const
 	{
-		return m_OutputChannels * sizeof (WAVE_SAMPLE);
+		return m_OutputFormat.SampleSize();
 	}
 
 	virtual NUMBER_OF_SAMPLES GetInputNumberOfSamples() const
@@ -212,20 +214,19 @@ class CHumRemoval : public CWaveProc
 
 public:
 	typedef std::auto_ptr<ThisClass> auto_ptr;
-	CHumRemoval();
+
+	CHumRemoval(WAVEFORMATEX const * pWf, CHANNEL_MASK ChannelsToProcess);
 
 	virtual size_t ProcessSoundBuffer(char const * pInBuf, char * pOutBuf,
 									size_t nInBytes, size_t nOutBytes, size_t * pUsedBytes);
-	virtual BOOL SetAndValidateWaveformat(WAVEFORMATEX const * pWf);
+	virtual BOOL SetInputWaveformat(WAVEFORMATEX const * pWf);
 
-	float m_prev_outl, m_prev_outr;
-	float m_prev_inl, m_prev_inr;
+	double m_prev_out[MAX_NUMBER_OF_CHANNELS];
+	int m_prev_in[MAX_NUMBER_OF_CHANNELS];
 
-	int m_PrevHpfL[2];
-	int m_PrevHpfR[2];
+	double m_PrevHpf[2][MAX_NUMBER_OF_CHANNELS];
 
-	float m_PrevHpOutL[2];
-	float m_PrevHpOutR[2];
+	double m_PrevHpOut[2][MAX_NUMBER_OF_CHANNELS];
 
 	double m_DiffCutoffCoeffs[2];
 	double m_HighpassCoeffs[3];
@@ -265,12 +266,13 @@ class CClickRemoval: public CWaveProc
 public:
 	typedef std::auto_ptr<ThisClass> auto_ptr;
 
-	CClickRemoval();
+	CClickRemoval(WAVEFORMATEX const * pWf, CHANNEL_MASK ChannelsToProcess);
 	virtual ~CClickRemoval();
 
 	virtual size_t ProcessSoundBuffer(char const * pInBuf, char * pOutBuf,
 									size_t nInBytes, size_t nOutBytes, size_t * pUsedBytes);
-	virtual BOOL SetAndValidateWaveformat(WAVEFORMATEX const * pWf);
+
+	virtual BOOL SetInputWaveformat(WAVEFORMATEX const * pWf);
 
 	void InterpolateGap(CBackBuffer<int, int> & data, int nLeftIndex, int InterpolateSamples, bool BigGap);
 	void InterpolateGap(WAVE_SAMPLE data[], int nLeftIndex, int ClickLength, int nChans, bool BigGap);
@@ -310,11 +312,11 @@ protected:
 
 private:
 	// array for the clicks defined in a file
-	CArray<StoredClickData, StoredClickData&> PredefinedClicks;
-	int PredefinedClickCurrentIndex;
-	CString InClickFilename;
+	typedef std::vector<StoredClickData> ClicksVector;
+	typedef ClicksVector::iterator ClicksVectorIterator;
+	ClicksVector PredefinedClicks;
+
 	CString OutClickFilename;
-	FILE * pInClicksFile;
 	FILE * pOutClicksFile;
 };
 
@@ -437,14 +439,14 @@ class CNoiseReduction : public CWaveProc
 public:
 	typedef std::auto_ptr<ThisClass> auto_ptr;
 
-	CNoiseReduction(unsigned nFftOrder, NoiseReductionParameters const & nr = NoiseReductionParameters());
+	CNoiseReduction(WAVEFORMATEX const * pWf, CHANNEL_MASK ChannelsToProcess, unsigned nFftOrder, NoiseReductionParameters const & nr = NoiseReductionParameters());
 	~CNoiseReduction();
 
 	virtual void Dump(unsigned indent=0) const;
 
 	virtual size_t ProcessSoundBuffer(char const * pInBuf, char * pOutBuf,
 									size_t nInBytes, size_t nOutBytes, size_t * pUsedBytes);
-	virtual BOOL SetAndValidateWaveformat(WAVEFORMATEX const * pWf);
+	virtual BOOL SetInputWaveformat(WAVEFORMATEX const * pWf);
 
 	NoiseReductionCore * m_pNrCore;
 	NoiseReductionParameters m_NrParms;
@@ -467,7 +469,7 @@ public:
 
 	virtual size_t ProcessSoundBuffer(char const * pInBuf, char * pOutBuf,
 									size_t nInBytes, size_t nOutBytes, size_t * pUsedBytes);
-	virtual BOOL SetAndValidateWaveformat(WAVEFORMATEX const * pWf);
+	virtual BOOL SetInputWaveformat(WAVEFORMATEX const * pWf);
 
 	// if input data is compressed and not sample-aligned, this could be 0
 	// it can be multiple of block size for compressed format
@@ -516,7 +518,7 @@ public:
 
 	virtual size_t ProcessSoundBuffer(char const * pInBuf, char * pOutBuf,
 									size_t nInBytes, size_t nOutBytes, size_t * pUsedBytes);
-	//virtual BOOL SetAndValidateWaveformat(WAVEFORMATEX const * pWf);
+	//virtual BOOL SetInputWaveformat(WAVEFORMATEX const * pWf);
 	void InitResample(long OriginalSampleRate, long NewSampleRate, int FilterLength,
 					NUMBER_OF_CHANNELS nChannels);
 
@@ -572,8 +574,6 @@ private:
 	unsigned __int32 m_Phase;
 	BOOL m_bUseInterpolatedFilter;
 
-	long m_OriginalSampleRate;
-	long m_NewSampleRate;
 	unsigned m_SamplesInFilter;
 	unsigned m_FilterArraySize;
 	signed m_RationalResampleFraction;
@@ -628,8 +628,8 @@ public:
 	CChannelConvertor(NUMBER_OF_CHANNELS OldChannels,
 					NUMBER_OF_CHANNELS NewChannels, CHANNEL_MASK ChannelsToProcess)
 	{
-		m_InputChannels = OldChannels;
-		m_OutputChannels = NewChannels;
+		m_InputFormat.NumChannels() = OldChannels;
+		m_OutputFormat.NumChannels() = NewChannels;
 		m_ChannelsToProcess = ChannelsToProcess;
 	}
 
