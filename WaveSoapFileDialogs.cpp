@@ -282,23 +282,8 @@ void CWaveSoapFileOpenDialog::OnFileNameChange()
 			CString s2;
 
 			// get format name
-			ACMFORMATDETAILS afd;
-			memzero(afd);
-
-			afd.cbStruct = sizeof afd;
-			afd.pwfx = pWf;
-			afd.cbwfx = sizeof (WAVEFORMATEX) + pWf->cbSize;
-			afd.dwFormatTag = pWf->wFormatTag;
-
-			if (MMSYSERR_NOERROR == acmFormatDetails(NULL, & afd,
-													ACM_FORMATDETAILSF_FORMAT))
-			{
-				SetDlgItemText(IDC_STATIC_ATTRIBUTES, afd.szFormat);
-			}
-			else
-			{
-				SetDlgItemText(IDC_STATIC_ATTRIBUTES, _T("Unknown"));
-			}
+			SetDlgItemText(IDC_STATIC_ATTRIBUTES,
+							CAudioCompressionManager::GetFormatName(NULL, pWf));
 
 			s2.Format(_T("%s (%s)"),
 					LPCTSTR(TimeToHhMmSs(MulDiv(nSamples, 1000, nSamplingRate))),
@@ -308,7 +293,7 @@ void CWaveSoapFileOpenDialog::OnFileNameChange()
 			ACMFORMATTAGDETAILS aft;
 			memzero(aft);
 			aft.cbStruct = sizeof aft;
-			aft.dwFormatTag = afd.dwFormatTag;
+			aft.dwFormatTag = pWf->wFormatTag;
 
 			if (MMSYSERR_NOERROR == acmFormatTagDetails(NULL, & aft,
 														ACM_FORMATTAGDETAILSF_FORMATTAG))
