@@ -1,0 +1,56 @@
+<html>
+
+<head>
+<meta http-equiv="Content-Language" content="en-us">
+<meta name="GENERATOR" content="Microsoft FrontPage 6.0">
+<meta name="ProgId" content="FrontPage.Editor.Document">
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>Process/Resample... menu command</title>
+</head>
+
+<body>
+
+<p><b>Process/Resample... menu command</b></p>
+<p>This command allows you to change the sound sample rate, while preserving its 
+tempo/pitch. It can also change the sound tempo/pitch, while keeping the 
+playback sample rate.</p>
+<p>The resampling algorithm is described <a href="#ResampleBasics">here</a>.</p>
+<p>You may want to resample the sound to correct wrong playback rate of the 
+analog media. Or you may need different target sample rate, than your source 
+sound material was recorded with.</p>
+<p>Note that this command doesn't allow to change pitch while keeping the tempo 
+unchanged.</p>
+<p>When you execute Process/Resample... command in the menu, the following 
+dialog appears:</p>
+<p><img border="0" src="../images/dlg_resample.png"></p>
+<p>If you select &quot;<b>Change sampling rate</b>&quot; and enter the new sampling rate 
+value, the whole file gets processed. Tempo/pitch is preserved. You can enter 
+new sampling rate from 1/4 to 4 times the original sample rate.</p>
+<p>If you select &quot;<b>Change tempo and pitch</b>&quot; and enter the tempo change in 
+percents (100% means no change, &lt;100% is slower playback, &gt;100% means faster 
+playback), the whole file gets processed. The sample rate in the file attributes 
+won't change, but the total number of samples and the file duration will.</p>
+<p>If &quot;<b>Change sampling rate only, do not resample data</b>&quot; checkbox is 
+marked, the sampling rate will only be changed in the file attributes, but the 
+sound data itself is not changed with this operation. The same operation can be 
+done with <a href="menu_sample_rate_popup.htm">sample rate popup menu</a>.</p>
+<p><b><a name="ResampleBasics"></a>How resample is done</b></p>
+<p>Sound samples are signal measurements, taken at come constant rate. </p>
+<p>Without going deep to theory, it's enough to say that sample rate should be 
+more that twice the highest frequency in the source signal (Nyquist rule).</p>
+<p>If, given samples taken with rate F1, one wants to find the samples taken 
+with rate F2, one solution would be to completely restore the original signal 
+from F1 samples, and then take samples with new rate.</p>
+<p>Since it's not feasible to exactly restore the source signal, some 
+approximation techniques are used. One low-quality approach is to use 
+combination of decimation (throwing out extra samples), and interpolation. 
+Unfortunately, this gives a lot of artifacts, and the signal spectrum becomes 
+very polluted.</p>
+<p>The modern approach to resample is use of sliding finite-impulse-response 
+filter. The filter coefficients are calculated on the fly for each sample. This 
+gives decent resampling quality.</p>
+<p>&nbsp;</p>
+
+</body>
+
+</html>
