@@ -1756,15 +1756,59 @@ BOOL CFilterContext::ProcessBuffer(void * buf, size_t len, DWORD offset, BOOL bB
 	return TRUE;
 }
 
-void CCdReadingContext::SetTrackInformation(CCdDrive const & Drive,
-											CdAddressMSF StartAddr, LONG NumSectors)
+BOOL CCdReadingContext::InitTrackInformation(CCdDrive const & Drive,
+											CdTrackInfo * pTrack,
+											DWORD TargetFileType,
+											WAVEFORMATEX const * pTargetFormat)
 {
+	CWaveFormat wfx;
+	wfx.InitCdAudioFormat();
+
 	m_Drive = Drive;
-	m_CdAddress = StartAddr;
-	m_NumberOfSectors = NumSectors;
-	InitDestination(pDocument->m_WavFile, 0, NumSectors * (CDDASectorSize / 4), 2, FALSE);
+	m_CdAddress = pTrack->TrackBegin;
+	m_NumberOfSectors = pTrack->NumSectors;
+
+	m_TrackName = pTrack->Track;
+	m_TrackFileName = pTrack->TrackFileName;
+	m_TrackAlbum = pTrack->Album;
+	m_TrackArtist = pTrack->Artist;
+	m_TargetFormat = pTargetFormat;
+	m_TargetFileType = TargetFileType;
+
+	CWaveFile WaveFile;
+
+	ULONG flags = CreateWaveFileTempDir
+				| CreateWaveFileDeleteAfterClose
+				| CreateWaveFilePcmFormat
+				| CreateWaveFileTemp;
+
+	LPCTSTR FileName = NULL;
+	if (WAVE_FORMAT_PCM == pTargetFormat->wFormatTag)
+	{
+		flags = CreateWaveFileDeleteAfterClose
+				| CreateWaveFilePcmFormat
+				| CreateWaveFileTemp;
+		FileName = m_TrackFileName;
+	}
+
+	ULONG nSamples = m_NumberOfSectors * CDDASectorSize / 4;
+	if ( ! CanAllocateWaveFileSamplesDlg(wfx, nSamples))
+	{
+		return FALSE;
+	}
+
+	if (FALSE == WaveFile.CreateWaveFile(NULL, wfx, ALL_CHANNELS,
+										nSamples, flags, FileName))
+	{
+		AfxMessageBox(IDS_UNABLE_TO_CREATE_NEW_FILE, MB_OK | MB_ICONEXCLAMATION);
+		return FALSE;
+	}
+
+	InitDestination(WaveFile, 0, nSamples, 2, FALSE);
+
 	m_Drive.DisableMediaChangeDetection();
 	m_Drive.LockDoor();
+	return TRUE;
 }
 
 BOOL CCdReadingContext::ProcessBuffer(void * buf, size_t len, DWORD offset, BOOL bBackward)
@@ -1857,7 +1901,7 @@ void CCdReadingContext::DeInit()
 	}
 	timeEndPeriod(2);
 	if (0 == (m_Flags & OperationContextFinished)
-		|| m_bLastTrack)
+		|| NULL == m_pNextTrackContext)
 	{
 		TRACE("CD drive speed reset to original %d\n", m_OriginalReadSpeed);
 		m_Drive.SetReadSpeed(m_OriginalReadSpeed);
@@ -1865,6 +1909,38 @@ void CCdReadingContext::DeInit()
 		m_Drive.StopDrive();
 	}
 	m_Drive.SetDriveBusy(false);
+}
+
+void CCdReadingContext::Execute()
+{
+	// create new document, assign a file to it
+	NewFileParameters Params;
+	Params.InitialSamples = m_NumberOfSectors * (CDDASectorSize / 4);
+	Params.pInitialTitle = m_TrackFileName;
+	Params.m_FileTypeFlags = m_TargetFileType | OpenDocumentCreateNewFromCWaveFile;
+	Params.m_pFile = & m_DstFile;
+	Params.pWf = m_TargetFormat;
+
+	CThisApp * pApp = GetApp();
+	POSITION pos = pApp->m_pDocManager->GetFirstDocTemplatePosition();
+	CDocTemplate* pTemplate = pApp->m_pDocManager->GetNextDocTemplate(pos);
+	if (NULL == pTemplate)
+	{
+		delete this;
+		return;
+	}
+
+	pDocument = (CWaveSoapFrontDoc *)pTemplate->OpenDocumentFile(
+																(LPCTSTR) & Params,
+																OpenDocumentCreateNewWithParameters);
+	if (NULL == pDocument)
+	{
+		delete this;
+		return;
+	}
+
+	pDocument->SetModifiedFlag();
+	COperationContext::Execute();
 }
 
 void CCdReadingContext::PostRetire(BOOL bChildContext)
@@ -1895,5 +1971,16 @@ void CCdReadingContext::PostRetire(BOOL bChildContext)
 			pDocument->SoundChanged(m_DstFile.GetFileID(), 0, 0, NewLength);
 		}
 	}
+	else if (NULL != m_pNextTrackContext)
+	{
+		CCdReadingContext * pContext = m_pNextTrackContext;
+		m_pNextTrackContext = NULL;
+		pContext->Execute();
+	}
 	COperationContext::PostRetire(bChildContext);
+}
+
+CCdReadingContext::~CCdReadingContext()
+{
+	delete m_pNextTrackContext;
 }

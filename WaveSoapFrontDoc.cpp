@@ -289,6 +289,7 @@ BOOL CWaveSoapFrontDoc::OnNewDocument(NewFileParameters * pParams)
 {
 	if (!CDocument::OnNewDocument())
 		return FALSE;
+
 	TRACE("CWaveSoapFrontDoc::OnNewDocument\n");
 	// (SDI documents will reuse this document)
 	WAVEFORMATEX * pWfx = pParams->pWf;
@@ -296,43 +297,54 @@ BOOL CWaveSoapFrontDoc::OnNewDocument(NewFileParameters * pParams)
 	m_SelectionStart = 0;
 	m_SelectionEnd = 0;
 	m_SelectedChannel = ALL_CHANNELS;
-	m_FileTypeFlags = pParams->m_FileTypeFlags;
+
+	m_FileTypeFlags = pParams->m_FileTypeFlags & OpenDocumentNonWavFile;
 
 	m_TimeSelectionMode = TRUE;
 	m_bReadOnly = false;
-	if (NULL == pWfx)
-	{
-		pWfx = & GetApp()->m_NewFileFormat;
-	}
 
 	LONG nSamples = pParams->InitialSamples;
-	ULONG flags = CreateWaveFileTempDir
-				| CreateWaveFileDeleteAfterClose
-				| CreateWaveFilePcmFormat
-				| CreateWaveFileTemp;
-
-	LPCTSTR FileName = NULL;
-	// For PCM files, create new temporary file in the target directory
-	if (NULL != pParams->pInitialTitle
-		&& WAVE_FORMAT_PCM == pWfx->wFormatTag)
+	if (pParams->m_FileTypeFlags & OpenDocumentCreateNewFromCWaveFile)
 	{
-		flags = CreateWaveFileDeleteAfterClose
-				| CreateWaveFilePcmFormat
-				| CreateWaveFileTemp;
-		FileName = pParams->pInitialTitle;
+		m_WavFile = * pParams->m_pFile;
+	}
+	else
+	{
+		if (NULL == pWfx)
+		{
+			pWfx = & GetApp()->m_NewFileFormat;
+		}
+
+		ULONG flags = CreateWaveFileTempDir
+					| CreateWaveFileDeleteAfterClose
+					| CreateWaveFilePcmFormat
+					| CreateWaveFileTemp;
+
+		LPCTSTR FileName = NULL;
+		// For PCM files, create new temporary file in the target directory
+		if (NULL != pParams->pInitialTitle
+			&& WAVE_FORMAT_PCM == pWfx->wFormatTag)
+		{
+			flags = CreateWaveFileDeleteAfterClose
+					| CreateWaveFilePcmFormat
+					| CreateWaveFileTemp;
+			FileName = pParams->pInitialTitle;
+		}
+
+		if ( ! CanAllocateWaveFileSamplesDlg(pWfx, nSamples))
+		{
+			nSamples = 0;
+		}
+
+		if (FALSE == m_WavFile.CreateWaveFile(NULL, pWfx, ALL_CHANNELS,
+											nSamples, flags, FileName))
+		{
+			AfxMessageBox(IDS_UNABLE_TO_CREATE_NEW_FILE, MB_OK | MB_ICONEXCLAMATION);
+			return FALSE;
+		}
 	}
 
-	if ( ! CanAllocateWaveFileSamplesDlg(pWfx, nSamples))
-	{
-		nSamples = 0;
-	}
-
-	if (FALSE == m_WavFile.CreateWaveFile(NULL, pWfx, ALL_CHANNELS,
-										nSamples, flags, FileName))
-	{
-		AfxMessageBox(IDS_UNABLE_TO_CREATE_NEW_FILE, MB_OK | MB_ICONEXCLAMATION);
-		return FALSE;
-	}
+	m_OriginalWaveFormat = pWfx;
 	AllocatePeakData(nSamples);
 	// zero wave peak data
 	if (NULL != m_pPeaks)
@@ -617,32 +629,22 @@ BOOL CWaveSoapFrontDoc::DoSave(LPCTSTR lpszPathName, BOOL bReplace)
 		return false;   // don't continue
 	}
 	CThisApp * pApp = GetApp();
-	WAVEFORMATEX * pWf;
-	WAVEFORMATEX * pOriginalWf = NULL;
-	if (m_OriginalWavFile.IsOpen())
+
+	CWaveFormat Wf;
+
+	if (NULL != (WAVEFORMATEX*)m_OriginalWaveFormat)
 	{
-		pOriginalWf = m_OriginalWavFile.GetWaveFormat();
+		Wf = m_OriginalWaveFormat;
 	}
-	if (NULL == pOriginalWf)
+	else
 	{
-		pOriginalWf = m_WavFile.GetWaveFormat();
-	}
-	if (NULL == pOriginalWf)
-	{
-		return FALSE;
+		Wf = m_WavFile.GetWaveFormat();
 	}
 
-	pWf = (WAVEFORMATEX*) new char[0xFFFF]; // max size
-	if (NULL == pWf)
-	{
-		NotEnoughMemoryMessageBox();
-		return FALSE;
-	}
-	memcpy(pWf, pOriginalWf, pOriginalWf->cbSize + sizeof (WAVEFORMATEX));
 	// sample rate and number of channels might change from the original file
 	// new format may not be quite valid for some convertors!!
-	pWf->nSamplesPerSec = m_WavFile.GetWaveFormat()->nSamplesPerSec;
-	pWf->nChannels = m_WavFile.GetWaveFormat()->nChannels;
+	Wf.SampleRate() = m_WavFile.GetWaveFormat()->nSamplesPerSec;
+	Wf.NumChannels() = m_WavFile.GetWaveFormat()->nChannels;
 
 	CString newName = lpszPathName;
 	int SaveFlags = m_FileTypeFlags;
@@ -743,7 +745,7 @@ BOOL CWaveSoapFrontDoc::DoSave(LPCTSTR lpszPathName, BOOL bReplace)
 			dlg.m_ofn.lpstrTitle = DlgTitle;
 		}
 
-		dlg.m_pWf = pWf;
+		dlg.m_Wf = Wf;
 		dlg.m_pDocument = this;
 
 		CString strFilter;
@@ -796,7 +798,6 @@ BOOL CWaveSoapFrontDoc::DoSave(LPCTSTR lpszPathName, BOOL bReplace)
 
 		if (IDOK != dlg.DoModal())
 		{
-			delete[] (char*) pWf;
 			return FALSE;       // don't even attempt to save
 		}
 		newName = dlg.GetPathName();
@@ -807,11 +808,8 @@ BOOL CWaveSoapFrontDoc::DoSave(LPCTSTR lpszPathName, BOOL bReplace)
 			newName = LongPath;
 		}
 
-		WAVEFORMATEX * pNewWf = dlg.GetWaveFormat();
-		if (pNewWf)
-		{
-			memcpy(pWf, pNewWf, pNewWf->cbSize + sizeof (WAVEFORMATEX));
-		}
+		Wf = dlg.GetWaveFormat();
+
 		SaveFlags &= ~SaveFile_NonWavFile;
 
 		switch (dlg.m_FileType)
@@ -827,8 +825,8 @@ BOOL CWaveSoapFrontDoc::DoSave(LPCTSTR lpszPathName, BOOL bReplace)
 				// waveformat is there
 				break;
 			case Mp3EncoderLameencoder:
-				pWf->wFormatTag = -1;
-				pWf->nAvgBytesPerSec = dlg.GetLameEncBitrate() / 8;
+				Wf.FormatTag() = -1;
+				Wf.BytesPerSec() = dlg.GetLameEncBitrate() / 8;
 				break;
 			}
 			break;
@@ -844,31 +842,31 @@ BOOL CWaveSoapFrontDoc::DoSave(LPCTSTR lpszPathName, BOOL bReplace)
 				// fall through
 			default:
 			case RawSoundFilePcm16Lsb:
-				pWf->wFormatTag = WAVE_FORMAT_PCM;
-				pWf->wBitsPerSample = 16;
+				Wf.FormatTag() = WAVE_FORMAT_PCM;
+				Wf.BitsPerSample() = 16;
 				break;
 			case RawSoundFilePcm8:
-				pWf->wFormatTag = WAVE_FORMAT_PCM;
-				pWf->wBitsPerSample = 8;
+				Wf.FormatTag() = WAVE_FORMAT_PCM;
+				Wf.BitsPerSample() = 8;
 				break;
 			case RawSoundFileALaw8:
-				pWf->wFormatTag = WAVE_FORMAT_ALAW;
-				pWf->wBitsPerSample = 8;
+				Wf.FormatTag() = WAVE_FORMAT_ALAW;
+				Wf.BitsPerSample() = 8;
 				break;
 			case RawSoundFileULaw8:
-				pWf->wFormatTag = WAVE_FORMAT_MULAW;
-				pWf->wBitsPerSample = 8;
+				Wf.FormatTag() = WAVE_FORMAT_MULAW;
+				Wf.BitsPerSample() = 8;
 				break;
 			}
-			pWf->nBlockAlign = (pWf->wBitsPerSample * pWf->nChannels) / 8;
-			pWf->nAvgBytesPerSec = pWf->nBlockAlign * pWf->nSamplesPerSec;
+			Wf.SampleSize() = (Wf.BitsPerSample() * Wf.NumChannels()) / 8;
+			Wf.BytesPerSec() = Wf.SampleSize() * Wf.SampleRate();
 			break;
 		}
 	}
 
 	CWaitCursor wait;
-	BOOL Result = OnSaveDocument(newName, SaveFlags, pWf);
-	delete[] (char*) pWf;
+	BOOL Result = OnSaveDocument(newName, SaveFlags, Wf);
+
 	if ( ! Result)
 	{
 		return FALSE;
@@ -2012,6 +2010,8 @@ BOOL CWaveSoapFrontDoc::OnOpenDocument(LPCTSTR lpszPathName, int DocOpenFlags)
 	// we need the full pathname.
 	SetModifiedFlag(FALSE);     // start off with unmodified
 	m_OriginalWavFile = m_WavFile;
+	m_OriginalWaveFormat = m_WavFile.GetWaveFormat();
+
 	// if non-direct mode, create a temp file.
 	if ( ! m_bDirectMode)
 	{
@@ -2948,6 +2948,7 @@ void CWaveSoapFrontDoc::PostFileSave(CFileSaveContext * pContext)
 					// set new title
 					SetPathName(pContext->m_NewName);
 					m_OriginalWavFile = pContext->m_DstFile;
+					m_OriginalWaveFormat = pContext->m_DstFile.GetWaveFormat();
 					pContext->m_DstFile.Close();
 					ASSERT(m_WavFile.IsOpen());
 					//todo
@@ -5004,8 +5005,7 @@ BOOL CWaveSoapFrontDoc::OpenRawFileDocument(LPCTSTR lpszPathName)
 	CDecompressContext * pContext =
 		new CDecompressContext(this, "Loading the raw sound file...", & wf);
 
-	m_OriginalWavFile.AllocateWaveformat();
-	*m_OriginalWavFile.GetWaveFormat() = wf;
+	m_OriginalWaveFormat = & wf;
 
 	pContext->m_SrcFile = m_OriginalWavFile;
 	pContext->m_DstFile = m_WavFile;
@@ -5078,8 +5078,7 @@ BOOL CWaveSoapFrontDoc::OpenWmaFileDocument(LPCTSTR lpszPathName)
 		AfxMessageBox(s, MB_ICONEXCLAMATION | MB_OK);
 		return FALSE;
 	}
-	// enum drivers, query which driver suports MP3 format, and open this driver
-	// for decode
+
 	CWmaDecodeContext * pWmaContext = new CWmaDecodeContext(this, "Loading the compressed file...");
 	if (NULL == pWmaContext)
 	{
@@ -5090,31 +5089,7 @@ BOOL CWaveSoapFrontDoc::OpenWmaFileDocument(LPCTSTR lpszPathName)
 
 	CoInitializeEx(NULL, COINIT_MULTITHREADED );
 	BOOL res = pWmaContext->Open(m_OriginalWavFile);
-	if (res)
-	{
-		//pWmaContext->m_CurrentSamples = 0x10000;
-		if ( ! m_WavFile.CreateWaveFile(NULL, pWmaContext->m_Decoder.m_pwfx,
-										ALL_CHANNELS, pWmaContext->m_CurrentSamples,  // initiali sample count
-										CreateWaveFileTempDir
-										| CreateWaveFileDeleteAfterClose
-										| CreateWaveFilePcmFormat
-										| CreateWaveFileTemp, NULL))
-		{
-			AfxMessageBox(IDS_UNABLE_TO_CREATE_TEMPORARY_FILE, MB_OK | MB_ICONEXCLAMATION);
-			delete pWmaContext;
-			CoUninitialize();
-			return FALSE;
-		}
-		pWmaContext->SetDstFile(m_WavFile);
-		AllocatePeakData(pWmaContext->m_CurrentSamples);
-
-		LoadPeaksForCompressedFile(m_WavFile, m_OriginalWavFile);
-
-		pWmaContext->Execute();
-		CoUninitialize();
-		return TRUE;
-	}
-	else
+	if ( ! res)
 	{
 		delete pWmaContext;
 		CString s;
@@ -5123,7 +5098,27 @@ BOOL CWaveSoapFrontDoc::OpenWmaFileDocument(LPCTSTR lpszPathName)
 		CoUninitialize();
 		return FALSE;
 	}
-	return FALSE;
+	//pWmaContext->m_CurrentSamples = 0x10000;
+	if ( ! m_WavFile.CreateWaveFile(NULL, pWmaContext->m_Decoder.m_DstWf,
+									ALL_CHANNELS, pWmaContext->m_CurrentSamples,  // initiali sample count
+									CreateWaveFileTempDir
+									| CreateWaveFileDeleteAfterClose
+									| CreateWaveFilePcmFormat
+									| CreateWaveFileTemp, NULL))
+	{
+		AfxMessageBox(IDS_UNABLE_TO_CREATE_TEMPORARY_FILE, MB_OK | MB_ICONEXCLAMATION);
+		delete pWmaContext;
+		CoUninitialize();
+		return FALSE;
+	}
+	pWmaContext->SetDstFile(m_WavFile);
+	AllocatePeakData(pWmaContext->m_CurrentSamples);
+
+	LoadPeaksForCompressedFile(m_WavFile, m_OriginalWavFile);
+
+	pWmaContext->Execute();
+	CoUninitialize();
+	return TRUE;
 }
 
 void CWaveSoapFrontDoc::OnUpdateToolsInterpolate(CCmdUI* pCmdUI)
@@ -5993,3 +5988,29 @@ void CWaveSoapFrontDoc::OnUpdateProcessFilter(CCmdUI* pCmdUI)
 					&& ! m_OperationInProgress
 					&& m_WavFile.IsOpen() && WaveFileSamples() > 0);
 }
+
+BOOL CWaveSoapFrontDoc::DoFileSave()
+{
+	DWORD dwAttrib;
+	if (m_strPathName.IsEmpty()
+		|| (0xFFFFFFFF != (dwAttrib = GetFileAttributes(m_strPathName))
+			&& dwAttrib & FILE_ATTRIBUTE_READONLY))
+	{
+		// we do not have read-write access or the file does not (now) exist
+		if (!DoSave(NULL))
+		{
+			TRACE0("Warning: File save with new name failed.\n");
+			return FALSE;
+		}
+	}
+	else
+	{
+		if (!DoSave(m_strPathName))
+		{
+			TRACE0("Warning: File save failed.\n");
+			return FALSE;
+		}
+	}
+	return TRUE;
+}
+

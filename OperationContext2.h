@@ -323,20 +323,24 @@ public:
 		m_CdBufferFilled(0),
 		m_hEvent(NULL),
 		m_CdDataOffset(0),
-		m_bLastTrack(false),
+		m_pNextTrackContext(NULL),
+		m_TargetFileType(0),
 		m_CdBufferSize(0)
 	{
 		m_GetBufferFlags = CDirectFile::GetBufferWriteOnly | CDirectFile::GetBufferNoPrefetch;
 		m_ReturnBufferFlags = CDirectFile::ReturnBufferDirty | CDirectFile::ReturnBufferFlush;
 	}
 
-	virtual ~CCdReadingContext() {}
-	void SetTrackInformation(CCdDrive const & Drive,
-							CdAddressMSF StartAddr, LONG NumSectors);
+	virtual ~CCdReadingContext();
+	virtual void Execute();
+	BOOL InitTrackInformation(CCdDrive const & Drive,
+							struct CdTrackInfo * pTrack,
+							DWORD TargetFileType,
+							WAVEFORMATEX const * pTargetFormat);
 
+	CCdReadingContext * m_pNextTrackContext;
 	int m_RequiredReadSpeed;
 	int m_OriginalReadSpeed;
-	bool m_bLastTrack;
 protected:
 	CCdDrive m_Drive;
 	CdAddressMSF m_CdAddress;
@@ -347,6 +351,12 @@ protected:
 	size_t m_CdBufferFilled;
 	size_t m_CdDataOffset;
 
+	CString m_TrackName;
+	CString m_TrackFileName;
+	CString m_TrackAlbum;
+	CString m_TrackArtist;
+	CWaveFormat m_TargetFormat;
+	DWORD m_TargetFileType;
 
 	virtual BOOL ProcessBuffer(void * buf, size_t len, DWORD offset, BOOL bBackward = FALSE);
 	virtual BOOL Init();

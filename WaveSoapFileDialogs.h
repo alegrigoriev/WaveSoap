@@ -117,7 +117,6 @@ public:
 							CWnd* pParentWnd = NULL)
 		: CFileDialogWithHistory(bOpenFileDialog, lpszDefExt, lpszFileName, dwFlags,
 								lpszFilter, pParentWnd),
-		m_pWf(NULL),
 		m_SelectedFormat(-1),
 		m_SelectedMp3Encoder(0),
 		m_NumOfMp3Encoders(0),
@@ -204,7 +203,7 @@ public:
 	CArray<SaveFormatTag, SaveFormatTag&> m_FormatTags;
 	CArray<SaveFormat, SaveFormat&> m_Formats;
 
-	WAVEFORMATEX * m_pWf; // original format
+	CWaveFormat m_Wf; // original format
 	CString WaveFormat;
 	CWaveSoapFrontDoc * m_pDocument;
 
