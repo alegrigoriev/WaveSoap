@@ -268,6 +268,7 @@
 #define IDC_CHECK_SNAP_MOUSE_SELECTION  1150
 #define IDC_CHECK1                      1151
 #define IDC_BUTTON8                     1152
+#define IDC_CHECK_HIGHPASS              1152
 #define IDC_RADIO4                      1153
 #define IDC_RADIO_WAV_SIZE              1154
 #define IDC_RADIO_COMPRESSION_ULAW      1154
@@ -300,6 +301,8 @@
 #define IDC_RADIO_COMPRESSION_ALAW      1187
 #define IDC_STATIC_COMPRESSION          1188
 #define IDC_CHECK_ZERO_PHASE            1189
+#define IDC_CHECK_LOWPASS               1190
+#define IDC_CHECK_STOPBAND              1191
 #define IDC_VIEW_RULER_SAMPLES          32771
 #define IDC_VIEW_RULER_HHMMSS           32772
 #define IDC_VIEW_RULER_SECONDS          32773
@@ -556,7 +559,7 @@
 #define _APS_3D_CONTROLS                     1
 #define _APS_NEXT_RESOURCE_VALUE        179
 #define _APS_NEXT_COMMAND_VALUE         40109
-#define _APS_NEXT_CONTROL_VALUE         1190
+#define _APS_NEXT_CONTROL_VALUE         1191
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif

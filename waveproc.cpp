@@ -4,7 +4,7 @@
 
 #include <afxwin.h>
 #include <mmsystem.h>
-#include "complex.h"
+#include <complex>
 #include "waveproc.h"
 
 #ifndef _CONSOLE

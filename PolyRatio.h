@@ -8,19 +8,12 @@
 
 #include <afxtempl.h>
 
-class polyRatio;
-class lpolyRatio;
-
-#pragma pack(push,2)
-
 class polyRatio
 {
-	friend class lpolyRatio;
 public:
 	CArray<polyRatio *, polyRatio *> *
 		Decompose(int nCellsOrder, polyRoots * DenomRoots,
 				int nFirstRatioOrder = 0);
-	polyRatio(const lpolyRatio&);
 	polyRatio(const polyRatio&);
 	polyRatio(const poly& numer,const poly& denom = poly((int)0, 1.));
 	polyRatio(Complex first=0., int iMaxOrder=200);
@@ -107,98 +100,6 @@ protected:
 	poly m_denom, m_numer;
 };
 
-class lpolyRatio
-{
-	friend class polyRatio;
-public:
-	lpolyRatio(const lpolyRatio&);
-	lpolyRatio(const polyRatio&);
-	lpolyRatio(lcomplex first=lcomplex(0., 0.), int iMaxOrder=200);
-	lpolyRatio(lcomplex *zeros, int nOrder=0,
-				lcomplex *poles=NULL, int dOrder=0,
-				lcomplex first=lcomplex(1., 0.));
-	// Binary Operator Functions
-	friend lpolyRatio __stdcall operator+(const lpolyRatio &, const lpolyRatio &);
-	friend lpolyRatio __stdcall operator+(const lpolyRatio &, ldouble);
-	friend lpolyRatio __stdcall operator+(const lpolyRatio &, const lcomplex&);
-	friend lpolyRatio __stdcall operator+(const lpolyRatio &, const lpoly&);
-	friend lpolyRatio __stdcall operator+(ldouble, const lpolyRatio &);
-	friend lpolyRatio __stdcall operator+(const lcomplex&, const lpolyRatio &);
-	friend lpolyRatio __stdcall operator+(const lpoly&, const lpolyRatio &);
-
-	friend lpolyRatio __stdcall operator-(const lpolyRatio &, const lpolyRatio &);
-	friend lpolyRatio __stdcall operator-(const lpolyRatio &, ldouble);
-	friend lpolyRatio __stdcall operator-(const lpolyRatio &, const lcomplex&);
-	friend lpolyRatio __stdcall operator-(const lpolyRatio &, const lpoly&);
-	friend lpolyRatio __stdcall operator-(ldouble, const lpolyRatio &);
-	friend lpolyRatio __stdcall operator-(const lcomplex&, const lpolyRatio &);
-	friend lpolyRatio __stdcall operator-(const lpoly&, const lpolyRatio &);
-
-	friend lpolyRatio __stdcall operator*(const lpolyRatio &, ldouble);
-	friend lpolyRatio __stdcall operator*(const lpolyRatio &, const lcomplex&);
-	friend lpolyRatio __stdcall operator*(const lpolyRatio &, const lpoly&);
-	friend lpolyRatio __stdcall operator*(ldouble, const lpolyRatio &);
-	friend lpolyRatio __stdcall operator*(const lcomplex&, const lpolyRatio &);
-	friend lpolyRatio __stdcall operator*(const lpoly&, const lpolyRatio &);
-
-	friend lpolyRatio __stdcall operator/(const lpolyRatio &, const lpolyRatio &);
-	friend lpolyRatio __stdcall operator/(const lpolyRatio &, const lpoly &);
-//	friend lpolyRatio __stdcall operator%(const lpolyRatio &, const lpolyRatio &);
-	friend lpolyRatio __stdcall operator/(const lpolyRatio &, ldouble);
-	friend lpolyRatio __stdcall operator/(const lpolyRatio &, const lcomplex&);
-	friend lpolyRatio __stdcall operator<<(const lpolyRatio &, int);
-	friend lpolyRatio __stdcall operator>>(const lpolyRatio &, int);
-	friend int __stdcall operator==(const lpolyRatio &, const lpolyRatio &);
-	friend int __stdcall operator!=(const lpolyRatio &, const lpolyRatio &);
-	lcomplex eval(lcomplex arg) const;
-	lcomplex operator ()(lcomplex x) const { return eval(x); }
-	lpolyRatio deriv(void) const;
-	void ScaleRoots(const lcomplex & scale);
-
-	lpolyRatio & operator+=(const lpolyRatio &);
-	lpolyRatio & operator+=(const lpoly &);
-	lpolyRatio & operator+=(const lcomplex &);
-	lpolyRatio & operator+=(ldouble);
-
-	lpolyRatio & operator-=(const lpolyRatio &);
-	lpolyRatio & operator-=(const lpoly &);
-	lpolyRatio & operator-=(const lcomplex &);
-	lpolyRatio & operator-=(ldouble);
-
-	lpolyRatio & operator*=(const lpolyRatio &);
-	lpolyRatio & operator*=(const lpoly &);
-	lpolyRatio & operator*=(const lcomplex &);
-	lpolyRatio & operator*=(ldouble);
-
-	lpolyRatio & operator/=(const lpolyRatio &);
-	lpolyRatio & operator/=(const lpoly &);
-	lpolyRatio & operator/=(const lcomplex &);
-	lpolyRatio & operator/=(ldouble);
-	lpolyRatio & operator<<=(int);
-	lpolyRatio & operator>>=(int);
-	lpolyRatio & operator = (const lpolyRatio &);
-
-	lpolyRatio operator+() const;
-	lpolyRatio operator-() const;
-	int DenomOrder() const {return m_denom.order(); }
-	int NumerOrder() const {return m_numer.order(); }
-	lpoly &denom() {return m_denom; }
-	const lpoly & denom() const {return m_denom; }
-	lpoly &numer() {return m_numer; }
-	const lpoly &numer() const {return m_numer; }
-
-#ifdef _DEBUG
-	void Dump(CDumpContext & = afxDump);
-#endif
-
-	~lpolyRatio();
-protected:
-	lpoly m_denom, m_numer;
-};
-
-#pragma pack(pop)
-ostream & __stdcall operator<<(ostream &, const lpolyRatio &);
-istream & __stdcall operator>>(istream &, lpolyRatio &);
 ostream & __stdcall operator<<(ostream &, const polyRatio &);
 istream & __stdcall operator>>(istream &, polyRatio &);
 

@@ -2,25 +2,15 @@
 #define _INC_FILTERMATH
 
 
-#ifdef USE_LONGDOUBLE
-	#define POLY_ROOTS lpolyRoots
-	#define POLY_RATIO lpolyRatio
-	#define POLY lpoly
-	#define COMPLEX lcomplex
-	#define REAL ldouble
-	#define COMPLEX_ARRAY lcomplexArray
-#else
-	#define POLY_ROOTS polyRoots
-	#define POLY_RATIO polyRatio
-	#define POLY poly
-	#define COMPLEX Complex
-	#define REAL double
-	#define COMPLEX_ARRAY complexArray
-#endif
+#define POLY_ROOTS polyRoots
+#define POLY_RATIO polyRatio
+#define POLY poly
+#define COMPLEX Complex
+#define COMPLEX_ARRAY complexArray
 
 //#include "windows.h"
 #include <math.h>
-#include "Complex.h"
+#include <complex>
 #include "PolyMath.h"
 #include "PolyRatio.h"
 
@@ -28,23 +18,23 @@
 
 int LaguerreMethod(	POLY &coef,
 					Complex *zz,
-					REAL epsilon,
-					REAL epsilon2,
+					double epsilon,
+					double epsilon2,
 					int maxIterations);
 
-void UnwrapPhase( int ix, REAL *phase);
+void UnwrapPhase( int ix, double *phase);
 
-void EllipticPolesZeros(REAL omegaPass,
-						REAL omegaStop,
-						REAL &minStopLossDB,
-						REAL &maxPassLossDB,
+void EllipticPolesZeros(double omegaPass,
+						double omegaStop,
+						double &minStopLossDB,
+						double &maxPassLossDB,
 						int order,
 						POLY_ROOTS &zeros,
 						POLY_ROOTS &poles,
 						COMPLEX &rNormCoeff);
 
 void TwoAllpassDecompose(const POLY_ROOTS &poles,
-						REAL T,
+						double T,
 						POLY &denom1,
 						POLY &numer1,
 						POLY &denom2,
@@ -52,8 +42,8 @@ void TwoAllpassDecompose(const POLY_ROOTS &poles,
 						double angle = 0.);
 
 void TwoAllpassPassbandDecompose(const POLY_ROOTS & poles,
-								REAL W0,
-								REAL T,
+								double W0,
+								double T,
 								POLY &denom1,
 								POLY &numer1,
 								POLY &denom2,
@@ -61,171 +51,171 @@ void TwoAllpassPassbandDecompose(const POLY_ROOTS & poles,
 								POLY_ROOTS & ZPlanePoles);
 void BesselCoefficients(	int order,
 							char typeOfNormalization,
-							REAL coef[]);
+							double coef[]);
 
 void cgdFirResponse(	int firType,
 						int numbTaps,
-						REAL hh[],
+						double hh[],
 						BOOL dbScale,
 						int numberOfPoints,
-						REAL hD[]);
+						double hD[]);
 
 void NormalizeResponse(	BOOL dbScale,
 						int numberOfPoints,
-						REAL hh[]);
+						double hh[]);
 
 void IdealLowpass( 	int numbTaps,
-					REAL omegaU,
-					REAL coefficient[]);
+					double omegaU,
+					double coefficient[]);
 
 void IdealHighpass(	int numbTaps,
-					REAL omegaL,
-					REAL coefficient[]);
+					double omegaL,
+					double coefficient[]);
 
 void IdealBandpass(	int numbTaps,
-					REAL omegaL,
-					REAL omegaU,
-					REAL coefficient[]);
+					double omegaL,
+					double omegaU,
+					double coefficient[]);
 
 void IdealBandstop(	int numbTaps,
-					REAL omegaL,
-					REAL omegaU,
-					REAL coefficient[]);
+					double omegaL,
+					double omegaU,
+					double coefficient[]);
 
-REAL ContRectangularResponse(	REAL freq,
-								REAL tau,
+double ContRectangularResponse(	double freq,
+								double tau,
 								BOOL dbScale);
 
-REAL DiscRectangularResponse(	REAL freq,
+double DiscRectangularResponse(	double freq,
 								int M,
 								BOOL normAmp);
 
-REAL ContTriangularResponse(	REAL freq,
-								REAL tau,
+double ContTriangularResponse(	double freq,
+								double tau,
 								BOOL dbScale);
 
-REAL DiscTriangularResponse(	REAL freq,
+double DiscTriangularResponse(	double freq,
 								int M,
 								BOOL normAmp);
 
-void TriangularWindow( int N, REAL window[]);
+void TriangularWindow( int N, double window[]);
 
 void MakeLagWindow(	int N,
-					REAL window[],
+					double window[],
 					int center,
-					REAL outWindow[]);
+					double outWindow[]);
 
 void MakeDataWindow(	int N,
-						REAL window[],
-						REAL outWindow[]);
+						double window[],
+						double outWindow[]);
 
-void HannWindow( int nn, REAL window[]);
-void HammingWindow( int nn, REAL window[]);
+void HannWindow( int nn, double window[]);
+void HammingWindow( int nn, double window[]);
 
 int fsDesign(	int nn,
 				int firType,
-				REAL aa[],
-				REAL h[]);
+				double aa[],
+				double h[]);
 
-REAL findSbPeak(	int bandConfig[],
+double findSbPeak(	int bandConfig[],
 					int numPts,
-					REAL hh[]);
+					double hh[]);
 
-REAL GoldenSearch(	int firType,
-					int numbTaps,
-					REAL hD[],
-					REAL gsTol,
-					int numFreqPts,
-					int bandConfig[],
-					REAL *fmin);
+double GoldenSearch(	int firType,
+						int numbTaps,
+						double hD[],
+						double gsTol,
+						int numFreqPts,
+						int bandConfig[],
+						double *fmin);
 
 void SetTrans(	int bandConfig[],
-				REAL x,
-				REAL hD[]);
+				double x,
+				double hD[]);
 
-REAL GoldenSearch2(	REAL rhoMin,
-					REAL rhoMax,
-					int firType,
-					int numbTaps,
-					REAL hD[],
-					REAL gsTol,
-					int numFreqPts,
-					REAL origins[],
-					REAL slopes[],
+double GoldenSearch2(	double rhoMin,
+						double rhoMax,
+						int firType,
+						int numbTaps,
+						double hD[],
+						double gsTol,
+						int numFreqPts,
+						double origins[],
+						double slopes[],
+						int bandConfig[],
+						double *fmin);
+
+void SetTransition(	double origins[],
+					double slopes[],
 					int bandConfig[],
-					REAL *fmin);
+					double x,
+					double Hd[]);
 
-void SetTransition(	REAL origins[],
-					REAL slopes[],
-					int bandConfig[],
-					REAL x,
-					REAL Hd[]);
-
-void Optimize2(	REAL yBase,
+void Optimize2(	double yBase,
 				int firType,
 				int numbTaps,
-				REAL hD[],
-				REAL gsTol,
+				double hD[],
+				double gsTol,
 				int numFreqPts,
 				int bandConfig[],
-				REAL tweakFactor,
-				REAL rectComps[]);
+				double tweakFactor,
+				double rectComps[]);
 
-void DumpRectComps(	REAL origins[],
-					REAL slopes[],
+void DumpRectComps(	double origins[],
+					double slopes[],
 					int numTransSamps,
-					REAL x);
+					double x);
 
-REAL GridFreq(  REAL gridParam[], int gI);
+double GridFreq(  double gridParam[], int gI);
 
-REAL DesLpfResp(  REAL freqP, REAL freq);
+double DesLpfResp(  double freqP, double freq);
 
-REAL WeightLp( REAL kk, REAL freqP, REAL freq);
+double WeightLp( double kk, double freqP, double freq);
 
-void RemezError(	REAL gridParam[],
+void RemezError(	double gridParam[],
 					int gridMax,
 					int r,
-					REAL kk,
-					REAL freqP,
+					double kk,
+					double freqP,
 					int iFF[],
-					REAL ee[]);
+					double ee[]);
 
-REAL ComputeRemezA(	REAL gridParam[],
-					int r,
-					REAL kk,
-					REAL freqP,
-					int iFF[],
-					int initFlag,
-					REAL contFreq);
+double ComputeRemezA(	double gridParam[],
+						int r,
+						double kk,
+						double freqP,
+						int iFF[],
+						int initFlag,
+						double contFreq);
 
-void RemezSearch(	REAL ee[],
-					REAL absDelta,
+void RemezSearch(	double ee[],
+					double absDelta,
 					int gP,
 					int iFF[],
 					int gridMax,
 					int r,
-					REAL gridParam[]);
+					double gridParam[]);
 
 int RemezStop(  int iFF[],  int r);
 
-int RemezStop2(  REAL ee[], int iFF[], int r);
+int RemezStop2(  double ee[], int iFF[], int r);
 
-void RemezFinish(	REAL extFreq[],
+void RemezFinish(	double extFreq[],
 					int nn,
 					int r,
-					REAL freqP,
-					REAL kk,
-					REAL aa[],
-					REAL h[]);
+					double freqP,
+					double kk,
+					double aa[],
+					double h[]);
 
 void Remez(	int nn,
 			int r,
 			int gridDensity,
-			REAL kk,
-			REAL freqP,
-			REAL freqS,
-			REAL extFreq[],
-			REAL h[]);
+			double kk,
+			double freqP,
+			double freqS,
+			double extFreq[],
+			double h[]);
 
 void IirResponse(	POLY &a,
 					int bigN,
@@ -233,12 +223,12 @@ void IirResponse(	POLY &a,
 					int bigM,
 					int numberOfPoints,
 					BOOL dbScale,
-					REAL magnitude[],
-					REAL phase[]);
+					double magnitude[],
+					double phase[]);
 
 void BilinearLowPass(const POLY_ROOTS & SrcPoles,
 					const POLY_ROOTS & SrcZeros,
-					REAL T,
+					double T,
 					POLY_ROOTS & ZPlanePoles,
 					POLY_ROOTS & ZPlaneZeros,
 					COMPLEX rotator = Complex(1., 0.));
@@ -251,41 +241,41 @@ void BilinearTransform(const polyRatio & src, polyRatio & dst,
 
 COMPLEX BilinearNormCoeff(const POLY_ROOTS & SrcPoles,
 						const POLY_ROOTS & SrcZeros,
-						REAL T, COMPLEX NormCoeff);
+						double T, COMPLEX NormCoeff);
 
 void BilinearPassBand(const POLY_ROOTS &poles,
 					const POLY_ROOTS &zeros,
 					Complex hZero,
-					REAL W0, // center frequency
-					REAL T,
+					double W0, // center frequency
+					double T,
 					POLY &a,
 					POLY &b);
 
 void LowpassToBandpass(const POLY_ROOTS & SrcPoles,
 						const POLY_ROOTS & SrcZeros,
-						REAL W0, // center frequency
-						REAL T,
+						double W0, // center frequency
+						double T,
 						POLY_ROOTS & ZPlanePoles,
 						POLY & Denom);
 
-void ElipticOrderEstim(	REAL omegaPass,
-						REAL omegaStop,
-						REAL maxPassLoss,
-						REAL &minStopLoss,
+void ElipticOrderEstim(	double omegaPass,
+						double omegaStop,
+						double maxPassLoss,
+						double &minStopLoss,
 						unsigned int &order);
 
 void EllipticPassbandPolesZeros(POLY_ROOTS &poles,
 								POLY_ROOTS &zeros,
 								int order,
 								int bilinear,
-								REAL T,
-								REAL PassFreqLow,
-								REAL PassFreqHigh,
-								REAL StopFreqLow,
-								REAL StopFreqHigh,
-								REAL &CenterFreq,
-								REAL maxPassLossDB,
-								REAL minStopLossDB);
+								double T,
+								double PassFreqLow,
+								double PassFreqHigh,
+								double StopFreqLow,
+								double StopFreqHigh,
+								double &CenterFreq,
+								double maxPassLossDB,
+								double minStopLossDB);
 
 void HilbertTwoAllpassDecompose(const POLY_ROOTS &poles,
 								POLY &denom1,
@@ -293,9 +283,9 @@ void HilbertTwoAllpassDecompose(const POLY_ROOTS &poles,
 								POLY &denom2,
 								POLY &numer2);
 
-void EllipticHilbertPoles(REAL omegaPass,
-						REAL &minStopLossDB,
-						REAL &maxPassLossDB, // 0 - power-symmetric filter
+void EllipticHilbertPoles(double omegaPass,
+						double &minStopLossDB,
+						double &maxPassLossDB, // 0 - power-symmetric filter
 						int order,
 						POLY_ROOTS &poles);
 

@@ -1,10 +1,7 @@
 //#include "Complex.h"
+#include "stdafx.h"
 #include "PolyRatio.h"
 #include "float.h"
-#if defined(_DEBUG)
-#include "fstream.h"
-extern ofstream logfile;
-#endif
 
 polyRatio::polyRatio(Complex first, int MaxOrder)
 	: m_denom(0, Complex(1.), MaxOrder), m_numer(0, first, MaxOrder)
@@ -24,11 +21,6 @@ polyRatio::polyRatio(Complex *zeros, int nOrder,
 }
 
 polyRatio::polyRatio(const polyRatio & p)
-	: m_numer(p.m_numer), m_denom(p.m_denom)
-{
-}
-
-polyRatio::polyRatio(const lpolyRatio & p)
 	: m_numer(p.m_numer), m_denom(p.m_denom)
 {
 }
