@@ -25,12 +25,14 @@ public:
 	virtual BOOL DeInit() { return TRUE; }
 	virtual void Retire();
 	virtual void PostRetire(BOOL bChildContext = FALSE);
+	virtual void Execute();
 
-	virtual CString GetStatusString() = 0;
+	virtual CString GetStatusString();
 	CString m_OperationName;
+	CString m_OperationString;
 	COperationContext * pNext;
 	COperationContext * pPrev;
-	COperationContext * pNextChain;
+	COperationContext * m_pSecondaryContext;
 	class CWaveSoapFrontDoc * pDocument;
 	DWORD m_Flags;
 	int PercentCompleted;
@@ -72,6 +74,10 @@ enum {
 	ContextScanning = 0x04000000,
 	StatisticsContext_DcOnly = 0x02000000,
 	StatisticsContext_MinMaxOnly = 0x01000000,
+	UndoContextReplaceFormat = 0x00800000,
+	FileSaveContext_SavingCopy    = 0x00400000,
+	FileSaveContext_SameName    =   0x00200000,
+	ScanPeaksSavePeakFile = 0x00200000,
 };
 
 class CScanPeaksContext : public COperationContext
@@ -82,17 +88,14 @@ public:
 	DWORD m_Start;
 	DWORD m_End;
 	int m_GranuleSize;
-	CString sOp;
 	CScanPeaksContext(CWaveSoapFrontDoc * pDoc)
 		: COperationContext(pDoc, "Peak Scan", OperationContextDiskIntensive),
-		sOp("Scanning the file for peaks..."),
 		m_Start(0), m_End(0), m_Position(0)
 	{
-
+		m_OperationString = "Scanning the file for peaks...";
 	}
 	~CScanPeaksContext() {}
 	virtual BOOL OperationProc();
-	virtual CString GetStatusString() { return sOp; }
 };
 
 class CResizeContext : public COperationContext
@@ -165,8 +168,17 @@ public:
 	DWORD m_DstSavePos;
 	int m_SaveChan;
 	size_t m_RestoredLength;
+
+	struct WavePeak * m_pOldPeaks;
+	size_t m_OldWavePeakSize;
+	size_t m_OldAllocatedWavePeakSize;
+	int m_OldPeakDataGranularity;
+	bool m_bOldDirectMode;
+	WAVEFORMATEX m_OldWaveFormat;
+
 	CUndoRedoContext(CWaveSoapFrontDoc * pDoc, LPCTSTR OperationName)
-		: CCopyContext(pDoc, "", OperationName)
+		: CCopyContext(pDoc, "", OperationName),
+		m_pOldPeaks(NULL)
 	{
 	}
 
@@ -178,7 +190,9 @@ public:
 	BOOL NeedToSave(DWORD Position, size_t length);
 	virtual void PostRetire(BOOL bChildContext = FALSE);
 	virtual CString GetStatusString();
-	~CUndoRedoContext() {}
+	virtual void Execute();
+
+	~CUndoRedoContext();
 };
 
 class CCutContext : public CCopyContext
@@ -198,6 +212,7 @@ public:
 class CDecompressContext : public COperationContext
 {
 	friend class CWaveSoapFrontDoc;
+	friend class CWaveSoapMP3Doc;
 	CWaveFile m_SrcFile;
 	// Start, End and position are in bytes
 	DWORD m_SrcStart;
@@ -206,7 +221,6 @@ class CDecompressContext : public COperationContext
 
 	DWORD m_CurrentSamples;
 
-	HACMSTREAM m_acmStr;
 	size_t m_SrcBufSize;
 	size_t m_DstBufSize;
 	ACMSTREAMHEADER m_ash;
@@ -214,26 +228,27 @@ class CDecompressContext : public COperationContext
 
 
 public:
-	CString sOp;
+	HACMSTREAM m_acmStr;
+	HACMDRIVER m_acmDrv;
 	CDecompressContext(CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString)
 		: COperationContext(pDoc, "",
 							// operation can be terminated by Close
 							OperationContextDiskIntensive | OperationContextNonCritical),
-		sOp(StatusString),
 		m_SrcBufSize(0),
 		m_DstBufSize(0),
+		m_acmDrv(NULL),
 		m_acmStr(NULL)
 	{
+		m_OperationString = StatusString;
 		memset( & m_ash, 0, sizeof m_ash);
 	}
-	~CDecompressContext() {}
+	~CDecompressContext()
+	{
+		DeInit();
+	}
 	virtual BOOL OperationProc();
 	virtual BOOL Init();
 	virtual BOOL DeInit();
-	virtual CString GetStatusString()
-	{
-		return sOp;
-	}
 };
 
 class CSoundPlayContext : public COperationContext
@@ -249,15 +264,14 @@ public:
 	bool m_bPauseRequested;
 	int m_PlaybackDevice;
 	int m_OldThreadPriority;
-	CString m_ss;
 
 public:
 	CSoundPlayContext(CWaveSoapFrontDoc * pDoc)
 		: COperationContext(pDoc, "Play",
 							OperationContextDontAdjustPriority),
-		m_ss(_T("Playing")),
 		m_bPauseRequested(false)
 	{
+		m_OperationString = _T("Playing");
 		PercentCompleted = -1;  // no percents
 	}
 	virtual ~CSoundPlayContext() {}
@@ -265,7 +279,6 @@ public:
 	virtual BOOL Init();
 	virtual BOOL DeInit();
 	virtual void PostRetire(BOOL bChildContext = FALSE);
-	virtual CString GetStatusString() { return m_ss; }
 };
 
 class CVolumeChangeContext : public COperationContext
@@ -278,11 +291,9 @@ public:
 	float m_VolumeRight;
 	BOOL m_bClipped;
 
-	CString m_ss;
 	//virtual BOOL OperationProc();
 	virtual BOOL ProcessBuffer(void * buf, size_t len, DWORD offset);
 	virtual void PostRetire(BOOL bChildContext = FALSE);
-	virtual CString GetStatusString() { return m_ss; }
 
 };
 
@@ -297,7 +308,6 @@ public:
 	BOOL m_bClipped;
 
 	class CStatisticsContext * m_pScanContext;
-	CString m_ss;
 
 	virtual BOOL OperationProc();
 	virtual BOOL ProcessBuffer(void * buf, size_t len, DWORD offset);
@@ -329,10 +339,8 @@ public:
 	LONGLONG m_SumLeft;
 	LONGLONG m_SumRight;
 
-	CString m_ss;
 	//virtual BOOL OperationProc();
 	virtual BOOL ProcessBuffer(void * buf, size_t BufferLength, DWORD offset);
-	virtual CString GetStatusString() { return m_ss; }
 
 	virtual void PostRetire(BOOL bChildContext = FALSE);
 };
@@ -357,4 +365,66 @@ public:
 	virtual CString GetStatusString();
 };
 
+class CConversionContext : public CCopyContext
+{
+public:
+	CConversionContext(CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString, LPCTSTR OperationName)
+		: CCopyContext(pDoc, StatusString, OperationName),
+		m_pWf(NULL)
+	{
+		// delete the procs in the destructor
+		m_ProcBatch.m_bAutoDeleteProcs = TRUE;
+	}
+	~CConversionContext()
+	{
+		delete[] (char*) m_pWf;
+	}
+	//virtual BOOL Init();
+	//virtual BOOL DeInit();
+	CBatchProcessing m_ProcBatch;
+	WAVEFORMATEX * m_pWf;
+	virtual BOOL OperationProc();
+	BOOL SetTargetFormat(WAVEFORMATEX * pwf);
+};
+
+class CFileSaveContext : public CCopyContext
+{
+public:
+	CFileSaveContext(CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString, LPCTSTR OperationName)
+		: CCopyContext(pDoc, StatusString, OperationName),
+		m_pConvert(NULL)
+	{
+	}
+	CConversionContext * m_pConvert;
+	virtual ~CFileSaveContext()
+	{
+		delete m_pConvert;
+	}
+	CString m_NewName;
+	virtual BOOL OperationProc();
+	virtual void PostRetire(BOOL bChildContext = FALSE);
+};
+
+class CConvertedFileSaveContext : public CFileSaveContext
+{
+public:
+	CConvertedFileSaveContext(CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString, LPCTSTR OperationName)
+		: CFileSaveContext(pDoc, StatusString, OperationName),
+		m_pWf(NULL)
+	{
+	}
+	WAVEFORMATEX * m_pWf;
+	CBatchProcessing m_ProcBatch;
+
+	virtual ~CConvertedFileSaveContext()
+	{
+		delete[] (char*) m_pWf;
+	}
+	//virtual BOOL OperationProc();
+	//virtual void PostRetire(BOOL bChildContext = FALSE);
+	//virtual BOOL Init();
+	//virtual BOOL DeInit();
+	BOOL SetTargetFormat(WAVEFORMATEX * pwf);
+
+};
 #endif // AFX_OPERATIONCONTEXT_H__FFA16C44_2FA7_11D4_9ADD_00C0F0583C4B__INCLUDED_
