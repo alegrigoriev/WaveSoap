@@ -57,3 +57,10 @@ void CWaveOutlineView::Dump(CDumpContext& dc) const
 
 /////////////////////////////////////////////////////////////////////////////
 // CWaveOutlineView message handlers
+
+void CWaveOutlineView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
+{
+	// TODO: Add your specialized code here and/or call the base class
+
+
+}

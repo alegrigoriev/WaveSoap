@@ -18,7 +18,12 @@ protected:
 
 // Attributes
 public:
-
+	friend class CFftRulerView;
+	enum
+	{
+		FFT_OFFSET_CHANGED = 0x00300000,
+		FFT_SCALE_CHANGED = 0x00400000,
+	};
 // Operations
 public:
 
@@ -33,6 +38,7 @@ protected:
 // Implementation
 protected:
 	virtual ~CWaveFftView();
+	virtual BOOL ScrollBy(double dx, double dy, BOOL bDoScroll = TRUE);
 #ifdef _DEBUG
 	virtual void AssertValid() const;
 	virtual void Dump(CDumpContext& dc) const;
@@ -55,6 +61,9 @@ protected:
 	// Generated message map functions
 protected:
 	//{{AFX_MSG(CWaveFftView)
+	afx_msg void OnViewZoomvertNormal();
+	afx_msg void OnViewZoomInVert();
+	afx_msg void OnViewZoomOutVert();
 	afx_msg void OnPaint();
 	afx_msg BOOL OnEraseBkgnd(CDC* pDC);
 	//}}AFX_MSG

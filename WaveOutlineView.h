@@ -27,6 +27,7 @@ public:
 	//{{AFX_VIRTUAL(CWaveOutlineView)
 protected:
 	virtual void OnDraw(CDC* pDC);      // overridden to draw this view
+	virtual void OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint);
 	//}}AFX_VIRTUAL
 
 // Implementation
