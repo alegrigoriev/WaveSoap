@@ -1,21 +1,21 @@
 TODO tasks:
 
-Check if after file extension metadata gets saved again.
-Check all loading/saving of compressed files
 Make Fade In/Out command
 Make Paste Special command (with Fade In/Fade Out etc)
-Delete/Insert operations can auto add markers and regions
+Check if after file extension metadata gets saved again.
+Check all loading/saving of compressed files
 If metadata doesn't come as the very last chunk of the file, copy the original file to 
  a file where it does (for non-compressed file, that is)
 Allow dragging NR threshold points
 Show FFT of NR result in spectrum view
 Show/edit markers as a table
+Delete/Insert operations can auto add markers and regions
+Unnamed region name is composed from its boundaries. Marker name - from its position
 Make context menu for outline view
+Show the marker position when dragging it.
 
-Fix GetBufferWriteOnly flag support (do zero instead of read)
 Do rewriting from a source file to the work file in background thread.
 
-Unnamed region name is composed from its boundaries
 Move "Import/Export clicks" to "Advanced" dialog
 Make Windows/Close All command
 Put copyright notices to all files
@@ -39,12 +39,14 @@ Read CD text
 Open CDA files
 Raw file: make format tag and save attributes
 Handle "Compatible/All" formats for MP3, WMA
+Support VBR WMA
+Check loading of lossless WMA and VBR WMA
 Set icons to all resizable dialogs (for XP)
 
 Load sound from AVI
 Add options dialog
 In outline view, change mouse cursor over caret and view and selection boundaries
-TODO: check 4GB WAV files
+check 4GB WAV files
 
 Add sound recording
 Support "Play" in selection dialog
@@ -78,7 +80,9 @@ Find which alignment better for edit box labels: left or right
 
 Problems:
 
-Operation status text is sticky after undo/redo
+Selected Mpeg3 compressor is not saved
+Last columns (of the file) in FFT view are not getting erased/drawn properly
+Operation status text may get sticky after undo/redo
 Vertical scroll in the wave view makes marker labels blinking
 During exit, asks to reopen the file
 Ctrl+S doesn't always work
@@ -93,6 +97,11 @@ Windows2000 is trying to zero the allocated file
 Log Off query doesn't close the active dialog. Recursion is possible. Make sure to check after Cancel
 
 Fixed:
+Go to max peak goes a bit off
+mm:ss.FF if not available in Marker/Region dialog
+Unable to reopen after Save As compressed
+Compressed data saved corrupted!
+Save Copy (or save compressed or Save As): does not save markers!
 Resample doesn't set modified flag
 If a clipboard operation gets stopped, need to cancel all the operations that depend on it.
 MRU list doesn't show directories
@@ -175,6 +184,7 @@ Save As dialog is not centered first time (comdlg problem?)
 ??? When time/seconds format is set for status bar, MM:SS is actually shown
 
 Done:
+Fix GetBufferWriteOnly flag support (do zero instead of read)
 Show tooltip on a marker in outline view
 Make right click to move caret (unless inside a selection)
 Add Marker command to the main menu
