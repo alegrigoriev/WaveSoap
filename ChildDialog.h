@@ -107,10 +107,14 @@ public:
 	bool m_ExpressionsChanged;
 
 	vector<Expressions::ExprGroup> m_Expressions;
-	void LoadExpressions(LPCTSTR ProfileName = NULL);
+	static void LoadExpressions(vector<Expressions::ExprGroup> & Expressions,
+								LPCTSTR ProfileName = NULL);
 	void UnloadExpressions(LPCTSTR ProfileName = NULL);
 	void RebuildAllExpressionsList();
 	void SaveExpressionAs(const CString & expr);
+	BOOL SaveExpression(const CString & expr, const CString & Name,
+						const CString & Group, const CString & Comment, bool bEnableCancel);
+	BOOL FindExpression(LPCTSTR Group, LPCTSTR Name, int * nGroup, int * nExpr);
 
 // Overrides
 	// ClassWizard generated virtual function overrides
@@ -133,6 +137,8 @@ protected:
 	afx_msg void OnSelchangeComboSavedExpressions();
 	afx_msg void OnButtonInsertExpression();
 	afx_msg void OnButtonDeleteExpression();
+	afx_msg void OnButtonExportExpressions();
+	afx_msg void OnButtonImportExpressions();
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 };

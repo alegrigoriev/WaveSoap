@@ -6,6 +6,7 @@
 #include "ChildDialog.h"
 #include "MainFrm.h"
 #include "SaveExpressionDialog.h"
+#include "FileDialogWithHistory.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -117,6 +118,8 @@ BEGIN_MESSAGE_MAP(CInsertExpressionDialog, CDialog)
 	ON_CBN_SELCHANGE(IDC_COMBO_SAVED_EXPRESSIONS, OnSelchangeComboSavedExpressions)
 	ON_BN_CLICKED(IDC_BUTTON_INSERT_EXPRESSION, OnButtonInsertExpression)
 	ON_BN_CLICKED(IDC_BUTTON_DELETE_EXPRESSION, OnButtonDeleteExpression)
+	ON_BN_CLICKED(IDC_BUTTON_EXPORT_EXPRESSIONS, OnButtonExportExpressions)
+	ON_BN_CLICKED(IDC_BUTTON_IMPORT_EXPRESSIONS, OnButtonImportExpressions)
 	//}}AFX_MSG_MAP
 	ON_UPDATE_COMMAND_UI(IDC_BUTTON_DELETE_EXPRESSION, OnUpdateDeleteExpression)
 	ON_UPDATE_COMMAND_UI(IDC_BUTTON_INSERT_EXPRESSION, OnUpdateInsertExpression)
@@ -129,7 +132,7 @@ BOOL CInsertExpressionDialog::OnInitDialog()
 {
 	CDialog::OnInitDialog();
 	// load expressions
-	LoadExpressions();
+	LoadExpressions(m_Expressions);
 	if (m_Expressions.size() <= 1)
 	{
 		// load default expressions
@@ -142,7 +145,7 @@ BOOL CInsertExpressionDialog::OnInitDialog()
 		CString ProfileName(FullPathName);
 		ProfileName += _T("Expressions.ini");
 
-		LoadExpressions(ProfileName);
+		LoadExpressions(m_Expressions, ProfileName);
 		m_ExpressionsChanged = true;
 	}
 	BuildExpressionGroupCombobox(m_ExpressionGroupSelected, m_ExpressionSelected);
@@ -319,54 +322,113 @@ void CInsertExpressionDialog::SaveExpressionAs(const CString & expr)
 	// query expression name and comment
 	CSaveExpressionDialog dlg(m_Expressions);
 
-	if (IDOK == dlg.DoModal())
+	if (IDOK == dlg.DoModal()
+		&& SaveExpression(expr, dlg.m_Name, dlg.m_GroupName, dlg.m_Comment, false))
 	{
-		// find if there is such group
-		for (vector<ExprGroup>::iterator ii = m_Expressions.begin()
-			; ii < m_Expressions.end(); ii++)
-		{
-			if (ii->name == dlg.m_GroupName)
-			{
-				break;
-			}
-		}
-		if (ii == m_Expressions.end())
-		{
-			// add a new group
-			ii = m_Expressions.insert(ii); // one item
-			ii->name = dlg.m_GroupName;
-		}
-		// check if there is already an expression with the same name
-		for (vector<Expr>::iterator jj = ii->exprs.begin()
-			; jj < ii->exprs.end(); jj++)
-		{
-			if (jj->name == dlg.m_Name)
-			{
-				break;
-			}
-		}
-		if (jj < ii->exprs.end())
-		{
-			CString s;
-			s.Format(IDS_REPLACE_EXPRESSION, LPCTSTR(dlg.m_Name), LPCTSTR(dlg.m_GroupName));
-			if (IDYES != AfxMessageBox(s, MB_YESNO | MB_ICONQUESTION | MB_DEFBUTTON2))
-			{
-				return;
-			}
-			jj->expr = expr;
-			jj->comment = dlg.m_Comment;
-		}
-		else
-		{
-			jj = ii->exprs.insert(jj);
-			jj->name = dlg.m_Name;
-			jj->expr = expr;
-			jj->comment = dlg.m_Comment;
-		}
 		RebuildAllExpressionsList();
-		BuildExpressionGroupCombobox(ii - m_Expressions.begin(), jj - ii->exprs.begin());
+		int nGroup;
+		int nExpr;
+		if (FindExpression(dlg.m_GroupName, dlg.m_Name, & nGroup, & nExpr))
+		{
+			BuildExpressionGroupCombobox(nGroup, nExpr);
+		}
 		UnloadExpressions();
 	}
+}
+
+BOOL CInsertExpressionDialog::FindExpression(LPCTSTR Group, LPCTSTR Name, int * nGroup, int * nExpr)
+{
+	// find if there is such group
+	for (vector<ExprGroup>::iterator ii = m_Expressions.begin()
+		; ii < m_Expressions.end(); ii++)
+	{
+		if (0 == ii->name.CompareNoCase(Group))
+		{
+			// check if there is already an expression with the same name
+			for (vector<Expr>::iterator jj = ii->exprs.begin()
+				; jj < ii->exprs.end(); jj++)
+			{
+				if (0 == jj->name.CompareNoCase(Name))
+				{
+					*nGroup = ii - m_Expressions.begin();
+					*nExpr = jj - ii->exprs.begin();
+					return TRUE;
+				}
+			}
+			return FALSE;
+		}
+	}
+	return FALSE;
+}
+
+BOOL CInsertExpressionDialog::SaveExpression(const CString & expr,
+											const CString & Name,
+											const CString & Group, const CString & Comment, bool bEnableCancel)
+{
+	// find if there is such group
+	for (vector<ExprGroup>::iterator ii = m_Expressions.begin()
+		; ii < m_Expressions.end(); ii++)
+	{
+		if (0 == ii->name.CompareNoCase(Group))
+		{
+			break;
+		}
+	}
+	if (ii == m_Expressions.end())
+	{
+		// add a new group
+		ii = m_Expressions.insert(ii); // one item
+		ii->name = Group;
+	}
+	// check if there is already an expression with the same name
+	for (vector<Expr>::iterator jj = ii->exprs.begin()
+		; jj < ii->exprs.end(); jj++)
+	{
+		if (0 == jj->name.CompareNoCase(Name))
+		{
+			int result = IDYES;
+			// only query if the expression or comment changed
+			if (0 != expr.Compare(jj->expr)
+				|| 0 != Comment.Compare(jj->comment))
+			{
+				CString s;
+				s.Format(IDS_REPLACE_EXPRESSION, LPCTSTR(jj->name),
+						LPCTSTR(jj->expr), LPCTSTR(ii->name), LPCTSTR(expr));
+				int flags;
+				if (bEnableCancel)
+				{
+					flags = MB_YESNOCANCEL | MB_ICONQUESTION | MB_DEFBUTTON2;
+				}
+				else
+				{
+					flags = MB_YESNO | MB_ICONQUESTION | MB_DEFBUTTON2;
+				}
+				result = AfxMessageBox(s, flags);
+			}
+			if (IDYES == result)
+			{
+				jj->expr = expr;
+				jj->comment = Comment;
+				return TRUE;
+			}
+			if (IDCANCEL == result)
+			{
+				return FALSE;
+			}
+			if (bEnableCancel)
+			{
+				// expression not saved, but go forward with others
+				return TRUE;
+			}
+			return FALSE;
+		}
+	}
+	jj = ii->exprs.insert(jj);
+	jj->name = Name;
+	jj->expr = expr;
+	jj->comment = Comment;
+
+	return TRUE;
 }
 
 void CInsertExpressionDialog::OnUpdateDeleteExpression(CCmdUI* pCmdUI)
@@ -379,7 +441,7 @@ void CInsertExpressionDialog::OnUpdateInsertExpression(CCmdUI* pCmdUI)
 	pCmdUI->Enable(m_Expressions.size() > 1);
 }
 
-void CInsertExpressionDialog::LoadExpressions(LPCTSTR ProfileName)
+void CInsertExpressionDialog::LoadExpressions(vector<Expressions::ExprGroup> & Expressions, LPCTSTR ProfileName)
 {
 	CApplicationProfile profile;
 	if (NULL != ProfileName)
@@ -387,9 +449,9 @@ void CInsertExpressionDialog::LoadExpressions(LPCTSTR ProfileName)
 		profile.m_pszProfileName = ProfileName;
 	}
 	int NumGroups = profile.GetProfileInt("Expressions", "NumOfGroups", 0);
-	m_Expressions.reserve(NumGroups + 1);
-	m_Expressions.resize(1);
-	m_Expressions[0].name = "All Expressions";
+	Expressions.reserve(NumGroups + 1);
+	Expressions.resize(1);
+	Expressions[0].name = "All Expressions";
 	for (int i = 1; i < NumGroups + 1; i++)
 	{
 		ExprGroup egroup;
@@ -419,8 +481,8 @@ void CInsertExpressionDialog::LoadExpressions(LPCTSTR ProfileName)
 		}
 		if ( ! egroup.exprs.empty())
 		{
-			m_Expressions.push_back(egroup);
-			m_Expressions[0].exprs.insert(m_Expressions[0].exprs.end(),
+			Expressions.push_back(egroup);
+			Expressions[0].exprs.insert(Expressions[0].exprs.end(),
 										egroup.exprs.begin(), egroup.exprs.end());
 		}
 	}
@@ -457,4 +519,73 @@ void CInsertExpressionDialog::UnloadExpressions(LPCTSTR ProfileName)
 			profile.WriteProfileString("Expressions", s, jj->comment);
 		}
 	}
+}
+
+void CInsertExpressionDialog::OnButtonExportExpressions()
+{
+	CString FileName;
+	CString Filter;
+	Filter.LoadString(IDS_EXPRESSIONS_FILE_FILTER);
+
+	CString Title;
+	Title.LoadString(IDS_EXPRESSIONS_SAVE_TITLE);
+
+	CFileDialogWithHistory dlg(FALSE,
+								"Expr", NULL,
+								OFN_HIDEREADONLY | OFN_OVERWRITEPROMPT
+								| OFN_EXPLORER | OFN_NONETWORKBUTTON | OFN_PATHMUSTEXIST,
+								Filter);
+	dlg.m_ofn.lpstrTitle = Title;
+
+	if (IDOK != dlg.DoModal())
+	{
+		return;
+	}
+	FileName = dlg.GetPathName();
+	UnloadExpressions(FileName);
+}
+
+void CInsertExpressionDialog::OnButtonImportExpressions()
+{
+	CString FileName;
+	CString Filter;
+	Filter.LoadString(IDS_EXPRESSIONS_FILE_FILTER);
+
+	CString Title;
+	Title.LoadString(IDS_EXPRESSIONS_LOAD_TITLE);
+
+	CFileDialogWithHistory dlg(TRUE,
+								"Expr", NULL,
+								OFN_HIDEREADONLY
+								| OFN_EXPLORER | OFN_NONETWORKBUTTON | OFN_FILEMUSTEXIST,
+								Filter);
+	dlg.m_ofn.lpstrTitle = Title;
+
+	if (IDOK != dlg.DoModal())
+	{
+		return;
+	}
+	FileName = dlg.GetPathName();
+	vector<Expressions::ExprGroup> vExpressions;
+	LoadExpressions(vExpressions, FileName);
+	// merge with m_Expressions
+	for (vector<ExprGroup>::iterator gr = vExpressions.begin() + 1
+		; gr < m_Expressions.end(); gr++)
+	{
+		gr->exprs.size();
+		gr->name;
+		// find the expression group in the original data
+
+		int j = 1;
+		for (vector<Expr>::iterator jj = gr->exprs.begin(); jj < gr->exprs.end(); j++, jj++)
+		{
+			if ( ! SaveExpression(jj->expr, jj->name, gr->name, jj->comment, true))
+			{
+				break;
+			}
+		}
+	}
+	RebuildAllExpressionsList();
+	BuildExpressionGroupCombobox(0, 0);
+	UnloadExpressions();
 }

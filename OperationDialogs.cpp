@@ -2299,11 +2299,8 @@ void CExpressionEvaluationDialog::ShowHideTabDialogs()
 	m_OperandsTabDlg.EnableWindow(1 == sel);
 	m_OperandsTabDlg.ShowWindow((1 == sel) ? SW_SHOWNA : SW_HIDE);
 
-	m_OperatorsTabDlg.EnableWindow(2 == sel);
-	m_OperatorsTabDlg.ShowWindow((2 == sel) ? SW_SHOWNA : SW_HIDE);
-
-	m_SavedExprTabDlg.EnableWindow(3 == sel);
-	m_SavedExprTabDlg.ShowWindow((3 == sel) ? SW_SHOWNA : SW_HIDE);
+	m_SavedExprTabDlg.EnableWindow(2 == sel);
+	m_SavedExprTabDlg.ShowWindow((2 == sel) ? SW_SHOWNA : SW_HIDE);
 
 	m_ExpressionTabSelected = sel;
 }
@@ -2316,14 +2313,13 @@ BOOL CExpressionEvaluationDialog::OnInitDialog()
 	m_Profile.AddItem(_T("Settings\\Expressions"), _T("ExpressionSelected"),
 					m_SavedExprTabDlg.m_ExpressionSelected, 0, 0, 1000);
 	m_Profile.AddItem(_T("Settings\\Expressions"), _T("ExpressionTabSelected"),
-					m_ExpressionTabSelected, 0, 0, 3);
+					m_ExpressionTabSelected, 0, 0, 2);
 	m_Profile.AddItem(_T("Settings\\Expressions"), _T("FrequencyArgument"),
 					m_OperandsTabDlg.m_dFrequency, 500., 0., 1000000.);
 	m_Profile.AddItem(_T("Settings\\Expressions"), _T("EvaluateExpression"), m_sExpression);
 
-	m_FunctionsTabDlg.Create(IDD_FUNCTIONS_TAB, this);
+	m_FunctionsTabDlg.Create(IDD_FUNCTIONS_AND_OPERATORS_TAB, this);
 	m_OperandsTabDlg.Create(IDD_OPERANDS_TAB, this);
-	m_OperatorsTabDlg.Create(IDD_OPERATORS_TAB, this);
 	m_SavedExprTabDlg.Create(IDD_SAVED_EXPRESSIONS_TAB, this);
 
 	CDialog::OnInitDialog();
@@ -2340,9 +2336,6 @@ BOOL CExpressionEvaluationDialog::OnInitDialog()
 		m_OperandsTabDlg.MoveWindow( & r, FALSE);
 		m_OperandsTabDlg.EnableToolTips();
 
-		m_OperatorsTabDlg.MoveWindow( & r, FALSE);
-		m_OperatorsTabDlg.EnableToolTips();
-
 		m_FunctionsTabDlg.MoveWindow( & r, FALSE);
 		m_FunctionsTabDlg.EnableToolTips();
 
@@ -2350,10 +2343,9 @@ BOOL CExpressionEvaluationDialog::OnInitDialog()
 		m_SavedExprTabDlg.EnableToolTips();
 	}
 
-	m_TabTokens.InsertItem(0, _T("Functions"));
+	m_TabTokens.InsertItem(0, _T("Functions And Operators"));
 	m_TabTokens.InsertItem(1, _T("Operands"));
-	m_TabTokens.InsertItem(2, _T("Operators"));
-	m_TabTokens.InsertItem(3, _T("Saved Expressions"));
+	m_TabTokens.InsertItem(2, _T("Saved Expressions"));
 
 	m_TabTokens.SetCurSel(m_ExpressionTabSelected);
 	ShowHideTabDialogs();

@@ -499,7 +499,6 @@ public:
 	//}}AFX_DATA
 	CChildDialog m_FunctionsTabDlg;
 	COperandsDialog m_OperandsTabDlg;
-	CChildDialog m_OperatorsTabDlg;
 	CInsertExpressionDialog m_SavedExprTabDlg;
 
 	BOOL	m_bLockChannels;

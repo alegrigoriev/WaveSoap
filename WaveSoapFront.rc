@@ -820,7 +820,7 @@ CAPTION "About WaveSoap"
 FONT 8, "MS Sans Serif"
 BEGIN
     ICON            IDR_MAINFRAME,IDC_STATIC,11,17,20,20
-    CTEXT           "WaveSoap Version 0.56 beta",IDC_STATIC_VERSION,58,8,110,
+    CTEXT           "WaveSoap Version 0.57 beta",IDC_STATIC_VERSION,58,8,110,
                     10,SS_NOPREFIX
     CTEXT           "Copyright (C) Alexander Grigoriev, 2000-2001",
                     IDC_STATIC,41,27,145,12
@@ -1224,25 +1224,25 @@ BEGIN
     PUSHBUTTON      "&Help",IDHELP,132,81,50,14
 END
 
-IDD_DIALOG_EXPRESSION_EVALUATION DIALOG DISCARDABLE  0, 0, 252, 241
+IDD_DIALOG_EXPRESSION_EVALUATION DIALOG DISCARDABLE  0, 0, 252, 249
 STYLE DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
 CAPTION "Expression Evaluation"
 FONT 8, "MS Sans Serif"
 BEGIN
-    LTEXT           "&Expression:",IDC_STATIC,7,98,53,8
-    EDITTEXT        IDC_EDIT_EXPRESSION,7,111,238,58,ES_MULTILINE | 
+    LTEXT           "&Expression:",IDC_STATIC,7,106,53,8
+    EDITTEXT        IDC_EDIT_EXPRESSION,7,119,238,58,ES_MULTILINE | 
                     ES_AUTOVSCROLL | ES_NOHIDESEL | WS_VSCROLL
-    PUSHBUTTON      "Save &As...",IDC_BUTTON_SAVEAS,195,94,50,14
-    LTEXT           "Selection:\nChannels:",IDC_STATIC_SELECTION,7,180,238,
+    PUSHBUTTON      "Save &As...",IDC_BUTTON_SAVEAS,195,102,50,14
+    LTEXT           "Selection:\nChannels:",IDC_STATIC_SELECTION,7,188,238,
                     17
     CONTROL         "Save &Undo",IDC_CHECK_UNDO,"Button",BS_AUTOCHECKBOX | 
-                    WS_TABSTOP,7,201,50,10
-    PUSHBUTTON      "&Selection...",IDC_BUTTON_SELECTION,7,220,50,14
-    DEFPUSHBUTTON   "OK",IDOK,81,220,50,14
-    PUSHBUTTON      "Cancel",IDCANCEL,137,220,50,14
-    PUSHBUTTON      "&Help",IDHELP,195,220,50,14
-    CONTROL         "Tab1",IDC_TAB_TOKENS,"SysTabControl32",0x0,7,7,238,80
-    LTEXT           "",IDC_STATIC_TAB_INTERIOR,8,21,236,63,NOT WS_VISIBLE | 
+                    WS_TABSTOP,7,209,50,10
+    PUSHBUTTON      "&Selection...",IDC_BUTTON_SELECTION,7,228,50,14
+    DEFPUSHBUTTON   "OK",IDOK,81,228,50,14
+    PUSHBUTTON      "Cancel",IDCANCEL,137,228,50,14
+    PUSHBUTTON      "&Help",IDHELP,195,228,50,14
+    CONTROL         "Tab1",IDC_TAB_TOKENS,"SysTabControl32",0x0,7,7,238,88
+    LTEXT           "",IDC_STATIC_TAB_INTERIOR,8,21,236,71,NOT WS_VISIBLE | 
                     WS_DISABLED | NOT WS_GROUP
 END
 
@@ -1424,7 +1424,7 @@ BEGIN
     PUSHBUTTON      "&Close the file",IDCANCEL,35,110,115,14
 END
 
-IDD_FUNCTIONS_TAB DIALOGEX 0, 0, 230, 60
+IDD_FUNCTIONS_TAB DIALOGEX 0, 0, 230, 71
 STYLE DS_CONTROL | WS_CHILD | WS_DISABLED
 EXSTYLE WS_EX_CONTROLPARENT
 FONT 8, "MS Sans Serif"
@@ -1444,10 +1444,10 @@ BEGIN
     PUSHBUTTON      "abs",IDC_BUTTON_ABS,146,14,27,10,BS_NOTIFY
     PUSHBUTTON      "pow",IDC_BUTTON_POW,175,14,27,10,BS_NOTIFY
     LTEXT           "Hold mouse cursor over the button to see its description",
-                    IDC_STATIC,2,48,224,10
+                    IDC_STATIC,2,60,224,10
 END
 
-IDD_OPERANDS_TAB DIALOGEX 0, 0, 230, 60
+IDD_OPERANDS_TAB DIALOGEX 0, 0, 230, 71
 STYLE DS_CONTROL | WS_CHILD | WS_DISABLED
 EXSTYLE WS_EX_CONTROLPARENT
 FONT 8, "MS Sans Serif"
@@ -1468,10 +1468,19 @@ BEGIN
     CTEXT           "=",IDC_STATIC,31,28,9,8
     EDITTEXT        IDC_EDIT_FREQUENCY,42,26,44,13,ES_AUTOHSCROLL
     LTEXT           "Hold mouse cursor over the button to see its description",
-                    IDC_STATIC,2,48,224,10
+                    IDC_STATIC,2,60,224,10
+    PUSHBUTTON      "f1",IDC_BUTTON_LC_F1,92,28,27,10,BS_NOTIFY
+    CTEXT           "=",IDC_STATIC,122,28,9,8
+    EDITTEXT        IDC_EDIT_FREQUENCY1,133,26,44,13,ES_AUTOHSCROLL
+    PUSHBUTTON      "f2",IDC_BUTTON_LC_F2,1,44,27,10,BS_NOTIFY
+    CTEXT           "=",IDC_STATIC,31,44,9,8
+    EDITTEXT        IDC_EDIT_FREQUENCY2,42,42,44,13,ES_AUTOHSCROLL
+    PUSHBUTTON      "f3",IDC_BUTTON_LC_F3,92,44,27,10,BS_NOTIFY
+    CTEXT           "=",IDC_STATIC,122,44,9,8
+    EDITTEXT        IDC_EDIT_FREQUENCY3,133,42,44,13,ES_AUTOHSCROLL
 END
 
-IDD_OPERATORS_TAB DIALOGEX 0, 0, 230, 60
+IDD_OPERATORS_TAB DIALOGEX 0, 0, 230, 71
 STYLE DS_CONTROL | WS_CHILD | WS_DISABLED
 EXSTYLE WS_EX_CONTROLPARENT
 FONT 8, "MS Sans Serif"
@@ -1486,23 +1495,25 @@ BEGIN
     PUSHBUTTON      "^",IDC_BUTTON_XOR,59,14,27,10,BS_NOTIFY
     PUSHBUTTON      "~",IDC_BUTTON_INVERSE,88,14,27,10,BS_NOTIFY
     LTEXT           "Hold mouse cursor over the button to see its description",
-                    IDC_STATIC,2,48,224,10
+                    IDC_STATIC,2,60,224,10
 END
 
-IDD_SAVED_EXPRESSIONS_TAB DIALOGEX 0, 0, 235, 60
+IDD_SAVED_EXPRESSIONS_TAB DIALOGEX 0, 0, 230, 71
 STYLE DS_CONTROL | WS_CHILD | WS_DISABLED
 EXSTYLE WS_EX_CONTROLPARENT
 FONT 8, "MS Sans Serif"
 BEGIN
-    COMBOBOX        IDC_COMBO_SAVED_EXPRESSIONS,3,21,172,54,CBS_DROPDOWNLIST | 
+    COMBOBOX        IDC_COMBO_SAVED_EXPRESSIONS,3,19,172,54,CBS_DROPDOWNLIST | 
                     WS_VSCROLL | WS_TABSTOP
-    PUSHBUTTON      "&Insert",IDC_BUTTON_INSERT_EXPRESSION,180,20,50,14
-    LTEXT           "(no description)",IDC_STATIC_DESCRIPTION,3,35,232,25,
+    PUSHBUTTON      "&Insert",IDC_BUTTON_INSERT_EXPRESSION,179,19,50,14
+    LTEXT           "(no description)",IDC_STATIC_DESCRIPTION,3,33,173,35,
                     SS_NOPREFIX
     LTEXT           "&Group:",IDC_STATIC,1,5,34,11
     COMBOBOX        IDC_COMBO_SAVED_EXPRESSION_GROUP,38,3,137,52,
                     CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
-    PUSHBUTTON      "Delete",IDC_BUTTON_DELETE_EXPRESSION,180,2,50,14
+    PUSHBUTTON      "Delete",IDC_BUTTON_DELETE_EXPRESSION,179,2,50,14
+    PUSHBUTTON      "Export...",IDC_BUTTON_EXPORT_EXPRESSIONS,179,36,50,14
+    PUSHBUTTON      "Import...",IDC_BUTTON_IMPORT_EXPRESSIONS,179,53,50,14
 END
 
 IDD_DIALOG_SAVE_EXPRESSION DIALOG DISCARDABLE  0, 0, 214, 111
@@ -1847,6 +1858,38 @@ BEGIN
     PUSHBUTTON      "Cancel",IDCANCEL,98,69,50,14
 END
 
+IDD_FUNCTIONS_AND_OPERATORS_TAB DIALOGEX 0, 0, 230, 71
+STYLE DS_CONTROL | WS_CHILD | WS_DISABLED
+EXSTYLE WS_EX_CONTROLPARENT
+FONT 8, "MS Sans Serif"
+BEGIN
+    PUSHBUTTON      "sin",IDC_BUTTON_SIN,1,2,27,10,BS_NOTIFY
+    PUSHBUTTON      "cos",IDC_BUTTON_COS,30,2,27,10,BS_NOTIFY
+    PUSHBUTTON      "tan",IDC_BUTTON_TAN,59,2,27,10,BS_NOTIFY
+    PUSHBUTTON      "exp",IDC_BUTTON_EXP,88,2,27,10,BS_NOTIFY
+    PUSHBUTTON      "exp10",IDC_BUTTON_EXP10,117,2,27,10,BS_NOTIFY
+    PUSHBUTTON      "sqrt",IDC_BUTTON_SQRT,146,2,27,10,BS_NOTIFY
+    PUSHBUTTON      "int",IDC_BUTTON_INT,175,2,27,10,BS_NOTIFY
+    PUSHBUTTON      "sinh",IDC_BUTTON_SINH,1,14,27,10,BS_NOTIFY
+    PUSHBUTTON      "cosh",IDC_BUTTON_COSH,30,14,27,10,BS_NOTIFY
+    PUSHBUTTON      "tanh",IDC_BUTTON_TANH,59,14,27,10,BS_NOTIFY
+    PUSHBUTTON      "ln",IDC_BUTTON_LN,88,14,27,10,BS_NOTIFY
+    PUSHBUTTON      "log10",IDC_BUTTON_LOG10,117,14,27,10,BS_NOTIFY
+    PUSHBUTTON      "abs",IDC_BUTTON_ABS,146,14,27,10,BS_NOTIFY
+    PUSHBUTTON      "pow",IDC_BUTTON_POW,175,14,27,10,BS_NOTIFY
+    LTEXT           "Hold mouse cursor over the button to see its description",
+                    IDC_STATIC,2,60,224,10
+    PUSHBUTTON      "+",IDC_BUTTON_PLUS,1,26,27,10,BS_NOTIFY
+    PUSHBUTTON      "-",IDC_BUTTON_MINUS,30,26,27,10,BS_NOTIFY
+    PUSHBUTTON      "/",IDC_BUTTON_DIVIDE,59,26,27,10,BS_NOTIFY
+    PUSHBUTTON      "*",IDC_BUTTON_MULTIPLY,88,26,27,10,BS_NOTIFY
+    PUSHBUTTON      "%",IDC_BUTTON_MODULE,117,26,27,10,BS_NOTIFY
+    PUSHBUTTON      "&&",IDC_BUTTON_AND,1,38,27,10,BS_NOTIFY
+    PUSHBUTTON      "|",IDC_BUTTON_OR,30,38,27,10,BS_NOTIFY
+    PUSHBUTTON      "^",IDC_BUTTON_XOR,59,38,27,10,BS_NOTIFY
+    PUSHBUTTON      "~",IDC_BUTTON_INVERSE,88,38,27,10,BS_NOTIFY
+END
+
 
 #ifndef _MAC
 /////////////////////////////////////////////////////////////////////////////
@@ -1855,8 +1898,8 @@ END
 //
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 0,56,0,1
- PRODUCTVERSION 0,56,0,1
+ FILEVERSION 0,57,0,1
+ PRODUCTVERSION 0,57,0,1
  FILEFLAGSMASK 0x3fL
 #ifdef _DEBUG
  FILEFLAGS 0x9L
@@ -1874,14 +1917,14 @@ BEGIN
             VALUE "Comments", "\0"
             VALUE "CompanyName", "Alexandre Grigoriev\0"
             VALUE "FileDescription", "WaveSoap - Sound Cleaning And Editing Application\0"
-            VALUE "FileVersion", "0, 56, 0, 1\0"
+            VALUE "FileVersion", "0, 57, 0, 1\0"
             VALUE "InternalName", "WaveSoap\0"
             VALUE "LegalCopyright", "Copyright (C) 2000-2001 Alexandre Grigoriev\0"
             VALUE "LegalTrademarks", "\0"
             VALUE "OriginalFilename", "WaveSoap.EXE\0"
-            VALUE "PrivateBuild", "Beta 0.56\0"
+            VALUE "PrivateBuild", "Beta 0.57\0"
             VALUE "ProductName", "WaveSoap Application\0"
-            VALUE "ProductVersion", "0, 56, 0, 1\0"
+            VALUE "ProductVersion", "0, 57, 0, 1\0"
             VALUE "SpecialBuild", "\0"
         END
     END
@@ -2034,7 +2077,7 @@ BEGIN
         LEFTMARGIN, 7
         RIGHTMARGIN, 245
         TOPMARGIN, 7
-        BOTTOMMARGIN, 234
+        BOTTOMMARGIN, 242
     END
 
     IDD_DIALOG_DECLICKING, DIALOG
@@ -2530,7 +2573,7 @@ BEGIN
     IDS_NOT_ENOUGH_DISK_SPACE 
                             "Not enough disk space to create or expand a file"
     IDS_DELETE_EXPRESSION   "Are you sure you want to delete expression ""%s"" from group ""%s"" ?"
-    IDS_REPLACE_EXPRESSION  "Are you sure you want to replace expression ""%s"" in group ""%s"" ?"
+    IDS_REPLACE_EXPRESSION  "Are you sure you want to replace expression ""%s"" (%s) in group ""%s""  with ""%s""?"
     ID_VIEW_ZOOMINVERT      "Zoom in vertical\nZoom in vertical"
     ID_VIEW_ZOOMOUTHOR      "Zoom out time\nZoom out time"
     ID_VIEW_ZOOMOUTVERT     "Zoom out vertical\nZoom out vertical"
@@ -2824,6 +2867,10 @@ BEGIN
                             "Equalizer files (*.Eqlz)|*.Eqlz|All Files (*.*)|*||"
     IDS_EQUALIZER_SAVE_TITLE "Save Equalizer As"
     IDS_EQUALIZER_LOAD_TITLE "Load Equalizer"
+    IDS_EXPRESSIONS_FILE_FILTER 
+                            "Saved Expression files (*.Expr)|*.Expr|All Files (*.*)|*||"
+    IDS_EXPRESSIONS_SAVE_TITLE "Save All Expression"
+    IDS_EXPRESSIONS_LOAD_TITLE "Load Expressions"
 END
 
 #endif    // English (U.S.) resources
