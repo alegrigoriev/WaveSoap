@@ -103,6 +103,7 @@ BEGIN_MESSAGE_MAP(CFilterDialog, CDialog)
 	ON_BN_CLICKED(IDC_CHECK_LOWPASS, OnCheckLowpass)
 	ON_BN_CLICKED(IDC_CHECK_HIGHPASS, OnCheckHighpass)
 	ON_EN_KILLFOCUS(IDC_EDIT_FREQUENCY, OnKillfocusEditFrequency)
+	ON_BN_CLICKED(IDC_CHECK_STOPBAND, OnCheckStopband)
 	//}}AFX_MSG_MAP
 	ON_NOTIFY(NM_RETURN, AFX_IDW_PANE_FIRST, OnNotifyGraph)
 END_MESSAGE_MAP()
@@ -266,8 +267,6 @@ void CFilterDialog::OnCheckLowpass()
 	{
 		m_wGraph.m_bLowPass = FALSE;
 	}
-	// force filter recalculation
-	//m_wGraph.SetNumberOfBands(m_nBands);
 	m_wGraph.RebuildFilters();
 	m_wGraph.Invalidate();
 }
@@ -282,12 +281,23 @@ void CFilterDialog::OnCheckHighpass()
 	{
 		m_wGraph.m_bHighPass = FALSE;
 	}
-	// force filter recalculation
-	//m_wGraph.SetNumberOfBands(m_nBands);
 	m_wGraph.RebuildFilters();
 	m_wGraph.Invalidate();
 }
 
+void CFilterDialog::OnCheckStopband()
+{
+	if (IsDlgButtonChecked(IDC_CHECK_STOPBAND))
+	{
+		m_wGraph.m_bNotchFilter = TRUE;
+	}
+	else
+	{
+		m_wGraph.m_bNotchFilter = FALSE;
+	}
+	m_wGraph.RebuildFilters();
+	m_wGraph.Invalidate();
+}
 BOOL CFilterDialog::OnInitDialog()
 {
 	m_wGraph.m_SamplingRate = m_pWf->nSamplesPerSec;
@@ -377,9 +387,9 @@ CFilterGraphWnd::CFilterGraphWnd()
 	m_Frequencies[HpfStopbandIndex] = M_PI / 500.;
 
 	m_Gain[NotchBeginIndex] = 0.9;
-	m_Gain[NotchEndIndex] = 0.9;
+	m_Gain[NotchZeroIndex] = 0.00001;
 	m_Frequencies[NotchBeginIndex] = M_PI * 0.48;
-	m_Frequencies[NotchEndIndex] = M_PI * 0.52;
+	m_Frequencies[NotchZeroIndex] = M_PI * 0.52;
 
 	m_Gain[LpfPassbandIndex] = 0.9;
 	m_Gain[LpfStopbandIndex] = 0.001;
@@ -491,6 +501,10 @@ void CFilterGraphWnd::OnPaint()
 		double f;
 		f = M_PI * pow(1000., (x + 1. - cr.Width()) / cr.Width());
 		double gain = abs(CalculateResponse(f));
+		if (gain < 0.0000001)
+		{
+			gain = 0.0000001;
+		}
 		int y = GainToPosY(gain, cr.Height());
 		if (x == ur.left)
 		{
@@ -598,11 +612,11 @@ void CFilterGraphWnd::OnMouseMove(UINT nFlags, CPoint point)
 		{
 			point.x = cr.right - 1;
 		}
-
+		// TODO: process Ctrl and Shift
 		SetCurrentPointGainDb(PosYToGainDb(point.y, cr.Height()));
 		if (GetFilterPointPixel(m_PointWithFocus) != point.x)
 		{
-			SetFilterPointPixel(m_PointWithFocus, point.x);
+			SetFilterPointPixel(m_PointWithFocus, point.x, nFlags & MK_CONTROL);
 			RebuildFilters();
 			Invalidate();
 		}
@@ -704,6 +718,15 @@ complex<float> Filter::CalculateResponse(double Frequency)
 	}
 	if (m_bNotchFilter)
 	{
+		complex<double> NotchResult(1., 0.);
+		for (int i = 0; i < m_nNotchOrder; i++)
+		{
+			NotchResult *= (m_NotchCoeffs[i][0] + z * m_NotchCoeffs[i][1]
+								+ z2 * m_NotchCoeffs[i][2])
+							/ (m_NotchCoeffs[i][3] + z * m_NotchCoeffs[i][4]
+								+ z2 * m_NotchCoeffs[i][5]);
+		}
+		Result *= NotchResult;
 	}
 
 	if (m_bZeroPhase)
@@ -737,8 +760,8 @@ void CFilterGraphWnd::SetPointGainDb(int nPoint, double GainDb)
 	case NotchBeginIndex:
 		GainDb = -3.;
 		break;
-	case NotchEndIndex:
-		GainDb = -3.;
+	case NotchZeroIndex:
+		GainDb = -85.;
 		break;
 	case LpfPassbandIndex:
 		if (GainDb < -6.)
@@ -782,8 +805,8 @@ BOOL CFilterGraphWnd::OnEraseBkgnd(CDC* pDC)
 	GetClientRect( & cr);
 	if (0) TRACE("CFilterGraphWnd::OnEraseBkgnd, cr=%d, %d, %d, %d\n",
 				cr.left, cr.right, cr.top, cr.bottom);
-
-	pDC->PatBlt(cr.left, cr.top, cr.Width(), cr.Height(), PATCOPY);
+	int ClientHeight = cr.Height();
+	pDC->PatBlt(cr.left, cr.top, cr.Width(), ClientHeight, PATCOPY);
 
 	// have to use PatBlt to draw alternate lines
 	CBitmap bmp;
@@ -803,8 +826,8 @@ BOOL CFilterGraphWnd::OnEraseBkgnd(CDC* pDC)
 		CBrush GrayBrush( & bmp);
 		pDC->SelectObject( & GrayBrush);
 
-		// draw zero level line
-		pDC->PatBlt(cr.left, (cr.top + cr.bottom) / 2, cr.Width(), 1, PATINVERT);
+		// draw zero level line at 0 dB
+		pDC->PatBlt(cr.left, GainDbToPosY(0., ClientHeight), cr.Width(), 1, PATINVERT);
 		// draw frequency lines
 		for (int i = 0; i < 20; i++)
 		{
@@ -819,12 +842,13 @@ BOOL CFilterGraphWnd::OnEraseBkgnd(CDC* pDC)
 	}
 	CPen DotPen(PS_DOT, 0, COLORREF(0));
 	CPen * pOldPen = pDC->SelectObject( & DotPen);
-	// TODO: change
-	pDC->MoveTo(cr.left, cr.bottom / 4);
-	pDC->LineTo(cr.right, cr.bottom / 4);
 
-	pDC->MoveTo(cr.left, cr.bottom - cr.bottom / 4);
-	pDC->LineTo(cr.right, cr.bottom - cr.bottom / 4);
+	for (double d = -20.; d >= -80.; d -= 20.)
+	{
+		int y = GainDbToPosY(d, ClientHeight);
+		pDC->MoveTo(cr.left, y);
+		pDC->LineTo(cr.right, y);
+	}
 
 	pDC->SelectObject(pOldPen);
 
@@ -839,7 +863,7 @@ void CFilterGraphWnd::OnNcCalcSize(BOOL bCalcValidRects, NCCALCSIZE_PARAMS * lpn
 	CWnd * pW = GetDesktopWindow();
 	CDC * pDC = pW->GetWindowDC();
 	CGdiObject * pOld = pDC->SelectStockObject(ANSI_VAR_FONT);
-	ncWidth = 3 + pDC->GetTextExtent("-20 dB", 6).cx;
+	ncWidth = 3 + pDC->GetTextExtent(" -20 dB", 7).cx;
 
 	pDC->SelectObject(pOld);
 	pW->ReleaseDC(pDC);
@@ -922,24 +946,24 @@ void CFilterGraphWnd::OnNcPaint(UINT wParam)
 			s.Format("%.1fk", f / 1000.);
 			if (f >= 10000.)
 			{
-				TextWidth = pDC->GetTextExtent("20.0k ", 7).cx;
+				TextWidth = pDC->GetTextExtent("20.0k ", 6).cx;
 			}
 			else
 			{
-				TextWidth = pDC->GetTextExtent("0.0k ", 7).cx;
+				TextWidth = pDC->GetTextExtent("0.0k ", 5).cx;
 			}
 		}
 		else if (f >= 100.)
 		{
 			// 550 (round to 10)
 			s.Format("%d", 10 * ((int(f) + 5) / 10));
-			TextWidth = pDC->GetTextExtent("999 ", 7).cx;
+			TextWidth = pDC->GetTextExtent("999 ", 4).cx;
 		}
 		else
 		{
 			// 55
 			s.Format("%d", int(f));
-			TextWidth = pDC->GetTextExtent("99 ", 7).cx;
+			TextWidth = pDC->GetTextExtent("99 ", 3).cx;
 		}
 		if (x - TextWidth / 2 >= PrevX)
 		{
@@ -949,27 +973,18 @@ void CFilterGraphWnd::OnNcPaint(UINT wParam)
 	}
 
 	pDC->SetTextAlign(TA_BOTTOM | TA_RIGHT);
-	int TextHeight = pDC->GetTextExtent("9", 1).cy;
+	int TextOrigin = pDC->GetTextExtent("9", 1).cy / 2 + ncp.rgrc[0].top;
+	int ClientHeight = ncp.rgrc[0].bottom - ncp.rgrc[0].top;
 
-	pDC->TextOut(ncp.rgrc[0].left - 1,
-				ncp.rgrc[0].top + TextHeight,
-				"+5 dB", 5);
-
-	pDC->TextOut(ncp.rgrc[0].left - 1,
-				ncp.rgrc[0].top + (ncp.rgrc[0].bottom - ncp.rgrc[0].top) / 4 + TextHeight / 2,
-				"-20 dB", 5);
-
-	pDC->TextOut(ncp.rgrc[0].left - 1,
-				ncp.rgrc[0].top + (ncp.rgrc[0].bottom - ncp.rgrc[0].top) / 2 + TextHeight / 2,
-				"-40 dB", 4);
-
-	pDC->TextOut(ncp.rgrc[0].left - 1,
-				ncp.rgrc[0].bottom - (ncp.rgrc[0].bottom - ncp.rgrc[0].top) / 4 + TextHeight / 2,
-				"-60 dB", 6);
-
-	pDC->TextOut(ncp.rgrc[0].left - 1,
-				ncp.rgrc[0].bottom + TextHeight / 2,
-				"-80 dB", 6);
+	// from 0 to -80 dB, with 20 dB step
+	for (int d = 0; d >= -80; d -= 20)
+	{
+		CString s;
+		s.Format("%d dB", d);
+		pDC->TextOut(ncp.rgrc[0].left - 1,
+					TextOrigin + GainDbToPosY(d, ClientHeight),
+					s);
+	}
 
 	pDC->SelectObject(pOldFont);
 	pDC->SelectObject(pOldBrush);
@@ -1023,7 +1038,7 @@ BOOL CFilterGraphWnd::OnSetCursor(CWnd* pWnd, UINT nHitTest, UINT message)
 	if (HTCLIENT == nHitTest
 		&& GetHitCode(p) >= 0)
 	{
-		SetCursor(AfxGetApp()->LoadStandardCursor(IDC_SIZENS));
+		SetCursor(AfxGetApp()->LoadStandardCursor(IDC_SIZEALL));
 		return TRUE;
 	}
 	SetCursor(AfxGetApp()->LoadStandardCursor(IDC_ARROW));
@@ -1090,13 +1105,98 @@ int CFilterGraphWnd::GetFilterPointPixel(int FilterPoint)
 {
 	CRect cr;
 	GetClientRect( & cr);
-	return (1. + log10(m_Frequencies[FilterPoint] / M_PI) / 3.) * cr.Width() - 1;
+	if (FilterPoint == LeftmostPoint)
+	{
+		return cr.left;
+	}
+	else if (FilterPoint == RightmostPoint)
+	{
+		return cr.right;
+	}
+	return (1.00001 + log10(m_Frequencies[FilterPoint] / M_PI) / 3.) * cr.Width() - 1;
 }
-void CFilterGraphWnd::SetFilterPointPixel(int FilterPoint, int PointPixel)
+
+void CFilterGraphWnd::SetFilterPointPixel(int FilterPoint, int PointPixel, BOOL MoveBothSides)
 {
 	CRect cr;
 	GetClientRect( & cr);
-	m_Frequencies[FilterPoint] = M_PI * pow(10., ((PointPixel + 1.) / cr.Width() - 1.) * 3);
+	if (MoveBothSides)
+	{
+		int BeginPoint, EndPoint;
+		switch (FilterPoint)
+		{
+		case HpfStopbandIndex:
+		case HpfPassbandIndex:
+			BeginPoint = HpfStopbandIndex;
+			EndPoint = HpfPassbandIndex;
+			break;
+		case NotchBeginIndex:
+		case NotchZeroIndex:
+			BeginPoint = NotchBeginIndex;
+			EndPoint = NotchZeroIndex;
+			break;
+		case LpfPassbandIndex:
+		case LpfStopbandIndex:
+			BeginPoint = LpfPassbandIndex;
+			EndPoint = LpfStopbandIndex;
+			break;
+		default:
+			return;
+		}
+
+		int OffsetX = PointPixel - GetFilterPointPixel(FilterPoint);
+		int BeginX = OffsetX + GetFilterPointPixel(BeginPoint);
+		int EndX = OffsetX + GetFilterPointPixel(EndPoint);
+		if (BeginX <= cr.left
+			|| EndX >= cr.right)
+		{
+			return;
+		}
+
+		m_Frequencies[BeginPoint] = M_PI * pow(10., ((BeginX + 1.) / cr.Width() - 1.) * 3);
+		m_Frequencies[EndPoint] = M_PI * pow(10., ((EndX + 1.) / cr.Width() - 1.) * 3);
+	}
+	else
+	{
+		int BeginPoint, EndPoint;
+		switch (FilterPoint)
+		{
+		case HpfStopbandIndex:
+			BeginPoint = LeftmostPoint;
+			EndPoint = HpfPassbandIndex;
+			break;
+		case HpfPassbandIndex:
+			BeginPoint = HpfStopbandIndex;
+			EndPoint = RightmostPoint;
+			break;
+		case NotchBeginIndex:
+			BeginPoint = LeftmostPoint;
+			EndPoint = NotchZeroIndex;
+			break;
+		case NotchZeroIndex:
+			BeginPoint = NotchBeginIndex;
+			EndPoint = RightmostPoint;
+			break;
+		case LpfPassbandIndex:
+			BeginPoint = LeftmostPoint;
+			EndPoint = LpfStopbandIndex;
+			break;
+		case LpfStopbandIndex:
+			BeginPoint = LpfPassbandIndex;
+			EndPoint = RightmostPoint;
+			break;
+		default:
+			return;
+		}
+		int BeginX = GetFilterPointPixel(BeginPoint);
+		int EndX = GetFilterPointPixel(EndPoint);
+		if (PointPixel <= BeginX
+			|| PointPixel >= EndX)
+		{
+			return;
+		}
+		m_Frequencies[FilterPoint] = M_PI * pow(10., ((PointPixel + 1.) / cr.Width() - 1.) * 3);
+	}
 }
 
 void CFilterGraphWnd::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
@@ -1129,102 +1229,20 @@ void CFilterGraphWnd::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 		break;
 	case VK_LEFT:
 
-		// focus to the prev band
-		if (CtrlPressed)
+		if (CtrlPressed || ShiftPressed)
 		{
 			// Ctrl+Left - shift the whole transition band
-			int BeginPoint, EndPoint;
-			switch (m_PointWithFocus)
-			{
-			case HpfStopbandIndex:
-			case HpfPassbandIndex:
-				BeginPoint = HpfStopbandIndex;
-				EndPoint = HpfPassbandIndex;
-				break;
-			case NotchBeginIndex:
-			case NotchEndIndex:
-				BeginPoint = NotchBeginIndex;
-				EndPoint = NotchEndIndex;
-				break;
-			case LpfPassbandIndex:
-			case LpfStopbandIndex:
-				BeginPoint = LpfPassbandIndex;
-				EndPoint = LpfStopbandIndex;
-				break;
-			default:
-				return;
-			}
+			// Shift+Left - shift only the focused point
 
-			int TransitionBegin = GetFilterPointPixel(BeginPoint);
-			int TransitionEnd = GetFilterPointPixel(EndPoint);
-			if (TransitionBegin <= 0)
-			{
-				return;
-			}
-			if (TransitionEnd > TransitionBegin)
-			{
-				TransitionEnd--;
-			}
-			TransitionBegin--;
-
-			SetFilterPointPixel(BeginPoint, TransitionBegin);
-			SetFilterPointPixel(EndPoint, TransitionEnd);
+			SetFilterPointPixel(m_PointWithFocus,
+								GetFilterPointPixel(m_PointWithFocus) - 1, CtrlPressed);
 			RebuildFilters();
 			Invalidate();
 			NotifyParentDlg();
 		}
-		else if (ShiftPressed)
-		{
-			// Shift+Left - shift focused point
-			// between left and right points must be at least 1 pixel
-			int BeginPoint, EndPoint, ChangePoint;
-			switch (m_PointWithFocus)
-			{
-			case HpfStopbandIndex:
-				BeginPoint = HpfStopbandIndex;
-				EndPoint = HpfPassbandIndex;
-				break;
-			case HpfPassbandIndex:
-				BeginPoint = HpfStopbandIndex;
-				EndPoint = HpfPassbandIndex;
-				break;
-			case NotchBeginIndex:
-				BeginPoint = NotchBeginIndex;
-				EndPoint = NotchEndIndex;
-				break;
-			case NotchEndIndex:
-				BeginPoint = NotchBeginIndex;
-				EndPoint = NotchEndIndex;
-				break;
-			case LpfPassbandIndex:
-				BeginPoint = LpfPassbandIndex;
-				EndPoint = LpfStopbandIndex;
-				break;
-			case LpfStopbandIndex:
-				BeginPoint = LpfPassbandIndex;
-				EndPoint = LpfStopbandIndex;
-				break;
-			default:
-				return;
-			}
-			switch (m_PointWithFocus)
-			{
-			case HpfStopbandIndex:
-				break;
-			case HpfPassbandIndex:
-				break;
-			case NotchBeginIndex:
-				break;
-			case NotchEndIndex:
-				break;
-			case LpfPassbandIndex:
-				break;
-			case LpfStopbandIndex:
-				break;
-			}
-		}
 		else
 		{
+			// focus to the prev band
 			// find next visible point
 			int NewFocusPoint = m_PointWithFocus;
 			switch (m_PointWithFocus)
@@ -1241,13 +1259,13 @@ void CFilterGraphWnd::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 					NewFocusPoint = HpfPassbandIndex;
 				}
 				break;
-			case NotchEndIndex:
+			case NotchZeroIndex:
 				NewFocusPoint = NotchBeginIndex;
 				break;
 			case LpfPassbandIndex:
 				if (m_bNotchFilter)
 				{
-					NewFocusPoint = NotchEndIndex;
+					NewFocusPoint = NotchZeroIndex;
 				}
 				else if (m_bHighPass)
 				{
@@ -1266,49 +1284,13 @@ void CFilterGraphWnd::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 		}
 		break;
 	case VK_RIGHT:
-		if (CtrlPressed)
+		if (CtrlPressed || ShiftPressed)
 		{
 			// Ctrl+Right - shift the whole transition band
-			CRect cr;
-			GetClientRect( & cr);
+			// Shift+Right - shift only the focused point
 
-			int BeginPoint, EndPoint;
-
-			switch (m_PointWithFocus)
-			{
-			case HpfStopbandIndex:
-			case HpfPassbandIndex:
-				BeginPoint = HpfStopbandIndex;
-				EndPoint = HpfPassbandIndex;
-				break;
-			case NotchBeginIndex:
-			case NotchEndIndex:
-				BeginPoint = NotchBeginIndex;
-				EndPoint = NotchEndIndex;
-				break;
-			case LpfPassbandIndex:
-			case LpfStopbandIndex:
-				BeginPoint = LpfPassbandIndex;
-				EndPoint = LpfStopbandIndex;
-				break;
-			default:
-				return;
-			}
-
-			int TransitionBegin = GetFilterPointPixel(BeginPoint);
-			int TransitionEnd = GetFilterPointPixel(EndPoint);
-			if (TransitionEnd >= cr.right - 1)
-			{
-				return;
-			}
-			if (TransitionEnd > TransitionBegin)
-			{
-				TransitionBegin ++;
-			}
-			TransitionEnd ++;
-
-			SetFilterPointPixel(BeginPoint, TransitionBegin);
-			SetFilterPointPixel(EndPoint, TransitionEnd);
+			SetFilterPointPixel(m_PointWithFocus,
+								GetFilterPointPixel(m_PointWithFocus) + 1, CtrlPressed);
 			RebuildFilters();
 			Invalidate();
 			NotifyParentDlg();
@@ -1334,9 +1316,9 @@ void CFilterGraphWnd::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 				}
 				break;
 			case NotchBeginIndex:
-				NewFocusPoint = NotchEndIndex;
+				NewFocusPoint = NotchZeroIndex;
 				break;
-			case NotchEndIndex:
+			case NotchZeroIndex:
 				if (m_bLowPass)
 				{
 					NewFocusPoint = LpfPassbandIndex;
@@ -1572,6 +1554,22 @@ void Filter::RebuildFilters()
 	}
 	if (m_bNotchFilter)
 	{
+		// two zeros at unity circle, two poles
+		double f0 = m_Frequencies[NotchZeroIndex];
+		double Width = fabs(f0 - m_Frequencies[NotchBeginIndex]);
+		if (m_bZeroPhase)
+		{
+			Width /= 2.;
+		}
+		m_nNotchOrder = 1;
+		double RotC = cos(f0);
+		double pole = 1. - Width;
+		m_NotchCoeffs[0][0] = 1;
+		m_NotchCoeffs[0][1] = -2 * RotC;
+		m_NotchCoeffs[0][2] = 1;
+		m_NotchCoeffs[0][3] = 1;
+		m_NotchCoeffs[0][4] = -2 * pole * RotC;
+		m_NotchCoeffs[0][5] = pole * pole;
 	}
 }
 
@@ -1706,3 +1704,4 @@ void CFilterDialog::OnKillfocusEditFrequency()
 		m_wGraph.SetCurrentPointFrequencyHz(Frequency);
 	}
 }
+

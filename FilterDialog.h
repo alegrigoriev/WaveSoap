@@ -13,10 +13,12 @@ enum
 	HpfStopbandIndex,
 	HpfPassbandIndex,
 	NotchBeginIndex,
-	NotchEndIndex,
+	NotchZeroIndex,
 	LpfPassbandIndex,
 	LpfStopbandIndex,
-	MaxFilterFrequencies
+	MaxFilterFrequencies,
+	LeftmostPoint = -1,
+	RightmostPoint = MaxFilterFrequencies + 1,
 };
 
 class Filter
@@ -109,7 +111,7 @@ public:
 
 	// get pixel where the point is drawn (x coordinate in client area)
 	int GetFilterPointPixel(int FilterPoint);
-	void SetFilterPointPixel(int FilterPoint, int PointPixel);
+	void SetFilterPointPixel(int FilterPoint, int PointPixel, BOOL MoveBoth);
 	void InvalidateGraphPoint(double Frequency, double Gain);
 	static double PosYToGainDb(int y, int height)
 	{
@@ -120,6 +122,11 @@ public:
 	{
 		// full range: 5 to -85 db
 		return (0.25 - log10(Gain)) * height / 4.5;
+	}
+	static int GainDbToPosY(double GainDb, int height)
+	{
+		// full range: 5 to -85 db
+		return (5. - GainDb) * height / 90.;
 	}
 	// Operations
 public:
@@ -232,6 +239,7 @@ protected:
 	virtual BOOL OnInitDialog();
 	virtual void OnOK();
 	afx_msg void OnKillfocusEditFrequency();
+	afx_msg void OnCheckStopband();
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 };
