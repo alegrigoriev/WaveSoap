@@ -265,7 +265,7 @@ void CSpectrumSectionView::OnDraw(CDC* pDC)
 		pIdArray[k].nNumOfRows = NextRow - LastRow;
 		LastRow = NextRow;
 	}
-	TRACE("LastRow = %d, cr.height=%d\n", LastRow, cr.Height());
+	if (0) TRACE("LastRow = %d, cr.height=%d\n", LastRow, cr.Height());
 	ASSERT(LastRow <= rows);
 	int IdxSize = k;
 	pIdArray[k].nFftOffset = m_FftOrder;

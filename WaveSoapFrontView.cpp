@@ -618,6 +618,9 @@ void CWaveSoapFrontView::GetWaveSamples(int Position, int NumOfSamples)
 	{
 		// all requested data is already in the buffer
 	}
+#ifdef _DEBUG
+	// verify that the buffer contains the correct data
+#endif
 	return;
 }
 

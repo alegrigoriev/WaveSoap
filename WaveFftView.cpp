@@ -456,7 +456,7 @@ void CWaveFftView::OnDraw(CDC* pDC)
 		pIdArray[k].nNumOfRows = NextRow - LastRow;
 		LastRow = NextRow;
 	}
-	TRACE("LastRow = %d, cr.height=%d\n", LastRow, cr.Height());
+	if (0) TRACE("LastRow = %d, cr.height=%d\n", LastRow, cr.Height());
 	ASSERT(LastRow <= rows);
 	int IdxSize = k;
 
@@ -631,7 +631,8 @@ void CWaveFftView::MakeFftArray(int left, int right)
 		{
 			return;
 		}
-
+		TRACE("New FFT array allocated, height=%d, FFT spacing=%d\n",
+			NewFftArrayHeight, FftSpacing);
 		unsigned char * pTmp = m_pFftResultArray;
 		int i;
 		int FirstFftSample = left - left % FftSpacing;
@@ -640,20 +641,20 @@ void CWaveFftView::MakeFftArray(int left, int right)
 			pTmp += NewFftArrayHeight, FftSample += FftSpacing)
 		{
 			pTmp[0] = 0;    // invalidate
-			if (pOldArray != NULL
-				&& 0 == FftSample % m_FftSpacing
-				&& FftSample >= m_FftResultBegin
-				&& FftSample < m_FftResultEnd)
-			{
-				unsigned char * p = pOldArray +
-									(FftSample - m_FftResultBegin) / m_FftSpacing * NewFftArrayHeight;
-				ASSERT(p >= pOldArray && p + NewFftArrayHeight <= pOldArray + m_FftArraySize);
-				if (p[0] != 0)
+			if (0) if (pOldArray != NULL
+						&& 0 == FftSample % m_FftSpacing
+						&& FftSample >= m_FftResultBegin
+						&& FftSample < m_FftResultEnd)
 				{
-					ASSERT(1 == p[0]);
-					memcpy(pTmp, p, NewFftArrayHeight);
+					unsigned char * p = pOldArray +
+										(FftSample - m_FftResultBegin) / m_FftSpacing * NewFftArrayHeight;
+					ASSERT(p >= pOldArray && p + NewFftArrayHeight <= pOldArray + m_FftArraySize);
+					if (p[0] != 0)
+					{
+						ASSERT(1 == p[0]);
+						memcpy(pTmp, p, NewFftArrayHeight);
+					}
 				}
-			}
 		}
 
 		m_FftArraySize = NecessaryArraySize;
@@ -705,7 +706,7 @@ void CWaveFftView::CalculateFftRange(int left, int right)
 				}
 			}
 		}
-		TRACE("Cleaning %d remaining FFT sets\n", i / m_FftResultArrayHeight + 1);
+		TRACE("Cleaning %d remaining FFT sets in the beginning of the buffer\n", i / m_FftResultArrayHeight + 1);
 		for (; i >= 0; i -= m_FftResultArrayHeight)
 		{
 			m_pFftResultArray[i] = 0;
@@ -735,6 +736,8 @@ void CWaveFftView::CalculateFftRange(int left, int right)
 				}
 			}
 		}
+		TRACE("Cleaning %d remaining FFT sets in the end of the buffer\n",
+			(m_FftArraySize - i) / m_FftResultArrayHeight);
 		for (; i < m_FftArraySize; i += m_FftResultArrayHeight)
 		{
 			m_pFftResultArray[i] = 0;
@@ -776,6 +779,7 @@ void CWaveFftView::CalculateFftRange(int left, int right)
 #ifdef _DEBUG
 	int MaxRes = 0;
 	int MinRes = 128;
+	int nNewFFtCalculated = 0;
 #endif
 	for (; i < j; i += m_FftResultArrayHeight, FirstSampleRequired += m_FftSpacing)
 	{
@@ -793,7 +797,8 @@ void CWaveFftView::CalculateFftRange(int left, int right)
 			unsigned char * pRes = & m_pFftResultArray[i + 1 + m_FftOrder];
 			if (FirstSampleRequired + m_FftOrder * 2 > pDoc->WaveFileSamples())
 			{
-				// the required samples are out of the file
+				TRACE("The required samples from %d to %d are out of the file\n",
+					FirstSampleRequired, FirstSampleRequired + m_FftOrder * 2);
 				continue;
 			}
 
@@ -844,10 +849,18 @@ void CWaveFftView::CalculateFftRange(int left, int right)
 				pRes += m_FftOrder * 2;
 			}
 			m_pFftResultArray[i] = 1;   // mark as valid
+#ifdef _DEBUG
+			nNewFFtCalculated++;
+#endif
+		}
+		else
+		{
+			ASSERT(1 == m_pFftResultArray[i]);
 		}
 	}
 #ifdef _DEBUG
-	TRACE("MaxRes=%d, MinRes=%d\n", MaxRes, MinRes);
+	TRACE("%d new FFT calculated\n", nNewFFtCalculated);
+	if (0) TRACE("MaxRes=%d, MinRes=%d\n", MaxRes, MinRes);
 #endif
 	delete[] buf;
 }
