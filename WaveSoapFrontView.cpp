@@ -2100,10 +2100,10 @@ void CWaveSoapFrontView::UpdatePlaybackCursor(long sample, int channel)
 	m_PlaybackCursorDrawnSamplePos = sample;
 	m_PlaybackCursorChannel = channel;
 
+	CreateAndShowCaret();
 	if (-2 == channel)
 	{
 		// not playing now
-		CreateAndShowCaret();
 		return;
 	}
 	CRect r;
