@@ -18,18 +18,86 @@ apply a formula to the existing waveform.</P>
 <P><img border="0" src="../../images/ExpressionEvaluationDialog.png"></P>
 <P>An expression can be typed directly into the &quot;Expression&quot; edit box, or a 
 previously saved expression can be inserted in it.</P>
+<P>Note that the expression result range should be from -1 to +1. This will be 
+scaled to the full range of the wave file.</P>
 <P>The expression obeys the usual rules of operation precedence.</P>
 <P>The following operators can be used:</P>
-<P>&quot;+&quot; - add two operands together;</P>
+<P>&quot;<b>+</b>&quot; - add two operands together;</P>
 <P>&quot;-&quot; - subtract the right hand operand from the left hand one;</P>
-<P>&quot;/&quot; - divide the left hand operand by the right hand one;</P>
-<P>&quot;*&quot; - multiply the two operands</P>
-<P>&quot;%&quot; - the left hand operand modulo right hand operand. In other words, the 
+<P>&quot;<b>/</b>&quot; - divide the left hand operand by the right hand one;</P>
+<P>&quot;<b>*</b>&quot; - multiply the two operands</P>
+<P>&quot;<b>%</b>&quot; - the left hand operand modulo right hand operand. In other words, the 
 remainder of dividing the left operand by the right one.</P>
-<P>&quot;&amp;&quot; - bitwise logical AND of two operands. The operands are converted to 
+<P>&quot;<b>&amp;</b>&quot; - bitwise AND of two operands. The operands are converted to 
 integers first.</P>
-<P>&quot;|&quot;</P>
-<P>&nbsp;</P>
+<P>&quot;<b>|</b>&quot; - bitwise OR of two operands. The operands are converted 
+to integers first.</P>
+<P>&quot;<b>^</b>&quot; - bitwise XOR of two operands. The operands are converted to 
+integers first.</P>
+<P>&quot;<b>~</b>&quot; - bitwise one's complement of an operand. The operand is 
+converted to an integer first.</P>
+<P>The following functions can be used:</P>
+<P>&quot;<b>sin(x)</b>&quot; - sine, <i>x </i>is in radians;</P>
+<P>&quot;<b>cos(x)</b>&quot; - cosine, <i>x </i>is in radians;</P>
+<P>&quot;<b>tan(x)</b>&quot; - tangent, <i>x </i>is in radians;</P>
+<P>&quot;<b>exp(x)</b>&quot; - exponent (<b><i>e</i> </b>power <i>x</i>);</P>
+<P>&quot;<b>exp10(x)</b>&quot; - decimal exponent (10 power <i>x</i>);</P>
+<P>&quot;<b>sqrt(x)</b>&quot; - square root of <i>x</i>;</P>
+<P>&quot;<b>int(x)</b>&quot; - convert <i>x </i>to integer. If <i>x</i> is a floating 
+point number, it is rounded toward zero;</P>
+<P>&quot;<b>sinh(x)</b>&quot; - hyperbolic sine;</P>
+<P>&quot;<b>cosh(x)</b>&quot; - hyperbolic cosine;</P>
+<P>&quot;<b>tanh(x)</b>&quot; - hyperbolic tangent;</P>
+<P>&quot;<b>ln(x)</b>&quot; - natural logarithm of <i>x</i>(base <i>e</i>);</P>
+<P>&quot;<b>log10(x)</b>&quot; - decimal logarithm of <i>x</i> (base 10);</P>
+<P>&quot;<b>abs(x)</b>&quot; - if <i>x</i> is negative, negate it;</P>
+<P>&quot;<b>pow(x, y)</b>&quot; - make <i>x</i> power <i>y</i>;</P>
+<P><b>Operands</b> tab shows chat you can use in the expression:</P>
+<P><img border="0" src="../../images/ExpressionOperandsTab.png"></P>
+<P>Operands have the following meaning:</P>
+<P>&quot;<b>noise()</b>&quot; - white noise, evenly distributed from -1 to 1, mean square 
+root is sqrt(1/3);</P>
+<P>&quot;<b>T</b>&quot; - time in seconds from the beginning of file;</P>
+<P>&quot;<b>N</b>&quot; - number of sample from the beginning of the file;</P>
+<P>&quot;<b>DT</b>&quot; - length of the file, in seconds;</P>
+<P>&quot;<b>DN</b>&quot; - number of samples in the file;</P>
+<P>&quot;<b>F</b>&quot; - sample rate;</P>
+<P>&quot;<b>pi</b>&quot; - 3.1415926......;</P>
+<P>&quot;<b>t</b>&quot; - time in seconds from the beginning of selection;</P>
+<P>&quot;<b>n</b>&quot; - number of samples from the beginning of selection;</P>
+<P>&quot;<b>dt</b>&quot; - length of the selection, in seconds;</P>
+<P>&quot;<b>dn</b>&quot; - length of the selection, in samples;</P>
+<P>&quot;<b>wave</b>&quot; - current wave sample of the file;</P>
+<P>&quot;<b>Saved Expressions</b>&quot; tab shows previously saved expressions, including 
+those provided as default.</P>
+<P><img border="0" src="../../images/ExpressionsSavedTab.png"></P>
+<P>The expressions can be grouped into categories.</P>
+<P>&quot;<b>Group</b>&quot; drop-down list selects a group. There are two predefined 
+groups: &quot;<b>Waves</b>&quot; and &quot;<b>Noises</b>&quot;. &quot;<b>All Expressions</b>&quot; selection 
+combines them all.</P>
+<P>The lower drop-down list selects an expression from the group. After you've 
+found the one you need, press &quot;<b>Insert</b>&quot; button, to put it into the 
+expression edit box.</P>
+<P>&quot;<b>Delete</b>&quot; button deletes the selected expression.</P>
+<P>&quot;<b>Export</b>&quot; button saves all the expressions in a file with .expr 
+extension. &quot;<b>Import</b>&quot; button loads expressions from a previously saved 
+file.</P>
+<P>&quot;<b>Save As...</b>&quot; button saves the contents of the expression edit box with 
+a name and group you choose. The following dialog is opened:</P>
+<P>
+<img border="0" src="../../images/SaveExpressionDialog.jpg" width="381" height="259"></P>
+<P>Type the expression name into &quot;<b>Name</b>&quot; edit box, or select it from a 
+drop-down list.</P>
+<P>Type the group name into &quot;<b>Group</b>&quot; edit box, or select it from a 
+drop-down list.</P>
+<P>Type the comment into &quot;<b>Comment</b>&quot; edit box. Press OK to save the 
+expression, or Cancel.</P>
+<P><b>Save Undo</b> checkbox enables undoing the operation. If it's not checked, 
+you won't be able to undo the operation and all previous operations.</P>
+<P><b>Selection</b> button allows to specify range and channels to perform the 
+operation. It opens a
+<a href="../Dialogs/Selection/SelectionDialog.htm">selection dialog</a>.</P>
+
 <P>You can expand the file, if the selection length goes beyond the file end.</P>
 
 <P><B>Shortcuts:</B></P>
