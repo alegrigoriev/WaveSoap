@@ -34,6 +34,41 @@ public:
 	void RebuildFilters();
 	void ResetBands();
 
+	BOOL IsZeroPhase() const
+	{
+		return m_bZeroPhase;
+	}
+
+	BOOL LowPassEnabled() const
+	{
+		return m_bLowPass;
+	}
+	BOOL HighPassEnabled() const
+	{
+		return m_bHighPass;
+	}
+	BOOL NotchEnabled() const
+	{
+		return m_bNotchFilter;
+	}
+
+	int GetLowpassFilterOrder() const;
+
+	int GetHighpassFilterOrder() const;
+
+	int GetNotchFilterOrder() const;
+
+	void GetLpfCoefficients(double Coeffs[MaxFilterOrder][6]);
+
+	void GetHpfCoefficients(double Coeffs[MaxFilterOrder][6]);
+
+	void GetNotchCoefficients(double Coeffs[MaxFilterOrder][6]);
+
+	void EnableLowPass(bool Enable = true);
+	void EnableHighPass(bool Enable = true);
+	void EnableNotch(bool Enable = true);
+	void SetZeroPhase(bool ZeroPhase = true);
+
 	// frequency is in radians
 	std::complex<float> CalculateResponse(double Frequency);
 	void CalculateCoefficients(double Gain1, double Frequency1,
@@ -44,8 +79,8 @@ public:
 								double StopFreq, double StopLoss);
 
 	// the coefficients are: 3 numerator's coeffs and 3 denominator's coeffs
-
-	// frequencies are in radians
+protected:
+	// frequencies are in radians/s
 	double m_Frequencies[MaxFilterFrequencies];
 	double m_Gain[MaxFilterFrequencies];
 
@@ -69,87 +104,20 @@ class CFilterGraphWnd : public CWnd, public Filter
 	typedef CWnd BaseClass;
 	// Construction
 public:
-	CFilterGraphWnd();
 	CFilterGraphWnd(CApplicationProfile & Profile, int SampleRate);
+	virtual ~CFilterGraphWnd();
 
 	// Attributes
-public:
-
-	BOOL IsZeroPhase() const
-	{
-		return m_bZeroPhase;
-	}
-
-	int GetLowpassFilterOrder() const
-	{
-		if (m_bLowPass)
-		{
-			return m_nLpfOrder;
-		}
-		else
-		{
-			return 0;
-		}
-	}
-
-	int GetHighpassFilterOrder() const
-	{
-		if (m_bHighPass)
-		{
-			return m_nHpfOrder;
-		}
-		else
-		{
-			return 0;
-		}
-	}
-
-	int GetNotchFilterOrder() const
-	{
-		if (m_bNotchFilter)
-		{
-			return m_nNotchOrder;
-		}
-		else
-		{
-			return 0;
-		}
-	}
-
-	void GetLpfCoefficients(double Coeffs[MaxFilterOrder][6])
-	{
-		for (int i = 0; i < MaxFilterOrder; i++)
-		{
-			for (int j = 0; j < 6; j++)
-			{
-				Coeffs[i][j] = m_LpfCoeffs[i][j];
-			}
-		}
-	}
-
-	void GetHpfCoefficients(double Coeffs[MaxFilterOrder][6])
-	{
-		for (int i = 0; i < MaxFilterOrder; i++)
-		{
-			for (int j = 0; j < 6; j++)
-			{
-				Coeffs[i][j] = m_HpfCoeffs[i][j];
-			}
-		}
-	}
-
-	void GetNotchCoefficients(double Coeffs[MaxFilterOrder][6])
-	{
-		for (int i = 0; i < MaxFilterOrder; i++)
-		{
-			for (int j = 0; j < 6; j++)
-			{
-				Coeffs[i][j] = m_NotchCoeffs[i][j];
-			}
-		}
-	}
 
 	void ValidateFilterSettings();
+	void ResetToInitial();
+	void RebuildFilters();
+
+	void EnableLowPass(bool Enable = true);
+	void EnableHighPass(bool Enable = true);
+	void EnableNotch(bool Enable = true);
+	void SetZeroPhase(bool ZeroPhase = true);
+
 	void SetPointGainDb(int nPoint, double Gain);
 	void SetPointFrequency(int nPoint, double Frequency);
 	void SetPointFrequencyHz(int nPoint, double Frequency)
@@ -164,19 +132,19 @@ public:
 	{
 		SetPointFrequencyHz(m_PointWithFocus, Frequency);
 	}
-	double GetCurrentPointGain()
+	double GetCurrentPointGain() const
 	{
 		return m_Gain[m_PointWithFocus];
 	}
-	double GetCurrentPointFrequency()
+	double GetCurrentPointFrequency() const
 	{
 		return m_Frequencies[m_PointWithFocus];
 	}
-	double GetPointFrequencyHz(int nPoint)
+	double GetPointFrequencyHz(int nPoint) const
 	{
 		return m_SamplingRate * m_Frequencies[nPoint] / (2. * M_PI);
 	}
-	double GetCurrentPointFrequencyHz()
+	double GetCurrentPointFrequencyHz() const
 	{
 		return m_SamplingRate * m_Frequencies[m_PointWithFocus] / (2. * M_PI);
 	}
@@ -184,9 +152,13 @@ public:
 	{
 		SetPointGainDb(m_PointWithFocus, GainDb);
 	}
-	double GetCurrentPointGainDb()
+	double GetCurrentPointGainDb() const
 	{
 		return 20. * log10(m_Gain[m_PointWithFocus]);
+	}
+	double GetSamplingRate() const
+	{
+		return m_SamplingRate;
 	}
 	void SetFocusPoint(int nPoint);
 
@@ -213,6 +185,7 @@ public:
 	}
 	// Operations
 public:
+	void DoDataExchange(CDataExchange* pDX);
 
 // Overrides
 	// ClassWizard generated virtual function overrides
@@ -224,8 +197,8 @@ protected:
 // Implementation
 	void DrawDotCaret(bool state = true);
 //    void ShowDotCaret(bool state = true);
-public:
-	virtual ~CFilterGraphWnd();
+
+protected:
 	bool m_bMouseCaptured;
 	bool m_bButtonPressed;
 	bool m_bGotFocus;
@@ -233,8 +206,9 @@ public:
 
 	int m_PointWithFocus;
 	double m_SamplingRate;
+
+	CApplicationProfile & m_Profile;
 	// Generated message map functions
-protected:
 	void NotifyParentDlg();
 	//{{AFX_MSG(CEqualizerGraphWnd)
 	afx_msg void OnPaint();
@@ -329,6 +303,7 @@ protected:
 
 	CNumEdit m_EditGain;
 	CNumEdit m_EditFrequency;
+
 	CFilterGraphWnd m_wGraph;
 	void OnNotifyGraph( NMHDR * pNotifyStruct, LRESULT * result );
 	void OnKillfocusEditBandGain();
