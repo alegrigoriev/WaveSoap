@@ -1,5 +1,6 @@
 Known problems and tasks:
 
+Add file extension to CD track file name
 Set CD reading speed !
 Pass wave format to CD grabbing dialog
 check file length param on new file creation
@@ -53,8 +54,9 @@ Make recording from Internet stream
 
 Problems:
 
+WinXP doesn't have CDRAL
 Multisession disk shows only begin of tracks. Read the whole structure.
-
+Daylight saving time change invalidates peak info timespamp (FAT only??)
 Expression evaluation selection longer than file length doesn't update file length
 After file length increased to 1 sample from 0, scroll bar set to wrond scale
 Multiline edit box in child dialog eats Esc and Enter (DLGC_WANTALLCHARS) (MFC CDialog::PreTranslateMessage() bug

@@ -393,8 +393,6 @@ BOOL CWaveSoapFrontApp::InitInstance()
 
 	Profile.AddItem(_T("Settings"), _T("NewFileLength"), m_NewFileLength, 10, 0, 4800);
 	Profile.AddItem(_T("Settings"), _T("NewFileSampleRate"), m_NewFileFormat.nSamplesPerSec, 44100, 1, 1000000);
-	Profile.AddItem(_T("Settings"), _T("NewFileChannels"), m_NewFileChannels, 2, 1, 2);
-	m_NewFileFormat.nChannels = m_NewFileChannels;
 
 	Profile.AddItem(_T("Settings"), _T("SpectrumSectionWidth"), m_SpectrumSectionWidth, 100, 1, 1000);
 	Profile.AddItem(_T("Settings"), _T("FftBandsOrder"), m_FftBandsOrder, 9, 6, 13);
@@ -729,38 +727,6 @@ CDocument* CWaveSoapDocTemplate::OpenDocumentFile(LPCTSTR lpszPathName,
 			SetDefaultTitle(pDocument);
 		}
 
-		if (flags & OpenDocumentCreateNewQueryFormat
-			&& NULL != pWfx)
-		{
-			if (! pApp->m_bShowNewFormatDialogWhenShiftOnly
-				|| (0x8000 & GetKeyState(VK_SHIFT)))
-			{
-				CNewFilePropertiesDlg dlg;
-				dlg.m_bShowOnlyWhenShift = pApp->m_bShowNewFormatDialogWhenShiftOnly;
-				dlg.m_nSamplingRate = pWfx->nSamplesPerSec;
-				dlg.m_MonoStereo = (pWfx->nChannels == 2);
-				dlg.m_Length = pApp->m_NewFileLength;   // in seconds
-				if (IDOK != dlg.DoModal())
-				{
-					delete pDocument;
-					return NULL;
-				}
-
-				pApp->m_NewFileLength = dlg.m_Length;   // in seconds
-				pParams->InitialSamples = dlg.m_Length * pWfx->nSamplesPerSec;
-
-				pApp->m_bShowNewFormatDialogWhenShiftOnly = (dlg.m_bShowOnlyWhenShift != 0);
-				pWfx->nSamplesPerSec = dlg.m_nSamplingRate;
-				if (dlg.m_MonoStereo)
-				{
-					pWfx->nChannels = 2;
-				}
-				else
-				{
-					pWfx->nChannels = 1;
-				}
-			}
-		}
 		// avoid creating temporary compound file when starting up invisible
 		if (!bMakeVisible)
 			pDocument->m_bEmbedded = TRUE;
@@ -1492,18 +1458,45 @@ void CWaveSoapFrontApp::OnFileNew()
 {
 	POSITION pos = m_pDocManager->GetFirstDocTemplatePosition();
 	CDocTemplate* pTemplate = m_pDocManager->GetNextDocTemplate(pos);
+
 	if (pTemplate != NULL)
 	{
 		NewFileParameters Params;
-		Params.InitialSamples = GetApp()->m_NewFileLength;
 		Params.pInitialTitle = NULL;
-		Params.pWf = & GetApp()->m_NewFileFormat;
+		Params.pWf = & m_NewFileFormat;
 
-		(CWaveSoapFrontDoc *)pTemplate->OpenDocumentFile(
-														(LPCTSTR) & Params,
-														OpenDocumentCreateNewWithParameters | OpenDocumentCreateNewQueryFormat);
+		if (! m_bShowNewFormatDialogWhenShiftOnly
+			|| (0x8000 & GetKeyState(VK_SHIFT)))
+		{
+			CNewFilePropertiesDlg dlg;
+			dlg.m_bShowOnlyWhenShift = m_bShowNewFormatDialogWhenShiftOnly;
+			dlg.m_nSamplingRate = m_NewFileFormat.nSamplesPerSec;
+			dlg.m_MonoStereo = (m_NewFileFormat.nChannels == 2);
+			dlg.m_Length = m_NewFileLength;   // in seconds
+			if (IDOK != dlg.DoModal())
+			{
+				return;
+			}
 
-		m_NewFileChannels = m_NewFileFormat.nChannels;
+			m_NewFileLength = dlg.m_Length;   // in seconds
+
+			m_bShowNewFormatDialogWhenShiftOnly = (dlg.m_bShowOnlyWhenShift != 0);
+			m_NewFileFormat.nSamplesPerSec = dlg.m_nSamplingRate;
+			if (dlg.m_MonoStereo)
+			{
+				m_NewFileFormat.nChannels = 2;
+			}
+			else
+			{
+				m_NewFileFormat.nChannels = 1;
+			}
+		}
+
+		Params.InitialSamples = m_NewFileLength * m_NewFileFormat.nSamplesPerSec;
+
+		pTemplate->OpenDocumentFile((LPCTSTR) & Params,
+									OpenDocumentCreateNewWithParameters);
+
 	}
 }
 
@@ -2167,7 +2160,7 @@ void CWaveSoapFrontApp::OnToolsCdgrab()
 		}
 
 		NewFileParameters Params;
-		Params.InitialSamples = dlg.m_Tracks[t].NumSectors * (2352 / 4);
+		Params.InitialSamples = dlg.m_Tracks[t].NumSectors * (CDDASectorSize / 4);
 		Params.pInitialTitle = dlg.m_Tracks[t].TrackFileName;
 		Params.pWf = dlg.m_pWfx;
 

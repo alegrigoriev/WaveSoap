@@ -204,7 +204,7 @@ END_MESSAGE_MAP()
 
 /////////////////////////////////////////////////////////////////////////
 CCdGrabbingDialog::CCdGrabbingDialog(CWnd* pParent /*=NULL*/)
-	: CDialog(CCdGrabbingDialog::IDD, pParent)
+	: CResizableDialog(CCdGrabbingDialog::IDD, pParent)
 {
 	//{{AFX_DATA_INIT(CCdGrabbingDialog)
 	m_RadioAssignAttributes = -1;
@@ -218,13 +218,11 @@ CCdGrabbingDialog::CCdGrabbingDialog(CWnd* pParent /*=NULL*/)
 	m_RadioStoreImmediately = 0;
 	m_RadioStoreMultiple = 0;
 	m_DiskID = -1;
-	m_PreviousSize.cx = -1;
-	m_PreviousSize.cy = -1;
-	memzero(m_mmxi);
 	m_pWfx = NULL;
 	m_bNeedUpdateControls = TRUE;
 	m_MaxReadSpeed = 0;
 	m_DiskReady = DiskStateUnknown;
+	m_bPlayingAudio = FALSE;
 
 	m_Profile.AddItem(_T("CdRead"), _T("BaseDirectory"), m_sSaveFolderOrFile);
 	m_Profile.AddItem(_T("CdRead"), _T("Speed"), m_SelectedReadSpeed, 64000000,
@@ -240,6 +238,37 @@ CCdGrabbingDialog::CCdGrabbingDialog(CWnd* pParent /*=NULL*/)
 						_T("EditFiles"), m_RadioStoreImmediately, FALSE);
 	m_Profile.AddBoolItem(_T("CdRead"),
 						_T("StoreSingleFile"), m_RadioStoreMultiple, FALSE);
+
+	static ResizableDlgItem const ResizeItems[] =
+	{
+		{IDC_BUTTON_SELECT_ALL, MoveRight},
+		{IDC_BUTTON_DESELECT_ALL, MoveRight},
+
+		{IDC_RADIO_ASSIGN_ATTRIBUTES, MoveDown},
+		{IDC_RADIO_ASSIGN_SELECTED_TRACK, MoveDown},
+		{IDC_STATIC_ALBUM, MoveDown},
+		{IDC_EDIT_ALBUM, MoveDown},
+		{IDC_STATIC_ARTIST, MoveDown},
+		{IDC_EDIT_ARTIST, MoveDown},
+		{IDC_RADIO_STORE_MULTIPLE_FILES, MoveDown},
+		{IDC_RADIO_STORE_SINGLE_FILE, MoveDown},
+		{IDC_EDIT_FOLDER_OR_FILE, MoveDown},
+		{IDC_BUTTON_BROWSE_SAVE_FOLDER, MoveDown},
+		{IDC_RADIO_STORE_IMMEDIATELY, MoveDown},
+		{IDC_RADIO_LOAD_FOR_EDITING, MoveDown},
+		{IDC_STATIC_FORMAT, MoveDown},
+		{IDC_BUTTON_SET_FORMAT, MoveDown},
+
+		{IDC_BUTTON_CDDB, MoveRight | MoveDown},
+		{IDOK, MoveRight | MoveDown},
+		{IDCANCEL, MoveRight | MoveDown},
+
+		{IDC_LIST_TRACKS, ExpandRight | ExpandDown},
+	};
+
+	m_pResizeItems = ResizeItems;
+	m_pResizeItemsCount = sizeof ResizeItems / sizeof ResizeItems[0];
+
 }
 
 CCdGrabbingDialog::~CCdGrabbingDialog()
@@ -248,8 +277,10 @@ CCdGrabbingDialog::~CCdGrabbingDialog()
 
 void CCdGrabbingDialog::DoDataExchange(CDataExchange* pDX)
 {
-	CDialog::DoDataExchange(pDX);
+	CResizableDialog::DoDataExchange(pDX);
 	//{{AFX_DATA_MAP(CCdGrabbingDialog)
+	DDX_Control(pDX, IDC_BUTTON_STOP, m_StopButton);
+	DDX_Control(pDX, IDC_BUTTON_PLAY, m_PlayButton);
 	DDX_Control(pDX, IDC_EDIT_ARTIST, m_eArtist);
 	DDX_Control(pDX, IDC_EDIT_ALBUM, m_eAlbum);
 	DDX_Control(pDX, IDC_EDIT_FOLDER_OR_FILE, m_eSaveFolderOrFile);
@@ -329,13 +360,9 @@ void CCdGrabbingDialog::DoDataExchange(CDataExchange* pDX)
 	}
 }
 
-BEGIN_MESSAGE_MAP(CCdGrabbingDialog, CDialog)
+BEGIN_MESSAGE_MAP(CCdGrabbingDialog, CResizableDialog)
 	//{{AFX_MSG_MAP(CCdGrabbingDialog)
-	ON_WM_ERASEBKGND()
 	ON_WM_SIZE()
-	ON_WM_SIZING()
-	ON_WM_NCHITTEST()
-	ON_WM_GETMINMAXINFO()
 	ON_WM_TIMER()
 	ON_BN_CLICKED(IDC_BUTTON_MORE, OnButtonMore)
 	ON_CBN_SELCHANGE(IDC_COMBO_DRIVES, OnSelchangeComboDrives)
@@ -353,10 +380,16 @@ BEGIN_MESSAGE_MAP(CCdGrabbingDialog, CDialog)
 	ON_NOTIFY(LVN_BEGINLABELEDIT, IDC_LIST_TRACKS, OnBeginlabeleditListTracks)
 	ON_NOTIFY(LVN_ENDLABELEDIT, IDC_LIST_TRACKS, OnEndlabeleditListTracks)
 	ON_EN_CHANGE(IDC_EDIT_FOLDER_OR_FILE, OnChangeEditFolderOrFile)
+	ON_BN_CLICKED(IDC_BUTTON_PLAY, OnButtonPlay)
+	ON_BN_CLICKED(IDC_BUTTON_STOP, OnButtonStop)
 	//}}AFX_MSG_MAP
 	ON_WM_DEVICECHANGE()
 	ON_MESSAGE(WM_KICKIDLE, OnKickIdle)
 	ON_UPDATE_COMMAND_UI(IDOK, OnUpdateOk)
+	ON_UPDATE_COMMAND_UI(IDC_BUTTON_SELECT_ALL, OnUpdateSelectAll)
+	ON_UPDATE_COMMAND_UI(IDC_BUTTON_DESELECT_ALL, OnUpdateDeselectAll)
+	ON_UPDATE_COMMAND_UI(IDC_BUTTON_PLAY, OnUpdatePlay)
+	ON_UPDATE_COMMAND_UI(IDC_BUTTON_STOP, OnUpdateStop)
 
 END_MESSAGE_MAP()
 
@@ -494,6 +527,7 @@ void CCdGrabbingDialog::ReloadTrackList()
 
 	int tr;
 	vector<CdTrackInfo>::iterator pTrack;
+	UINT FocusedState = LVIS_FOCUSED | LVIS_SELECTED;
 	for (tr = 0, pTrack = m_Tracks.begin()
 		; tr <= m_toc.LastTrack - m_toc.FirstTrack; tr++, pTrack++)
 	{
@@ -505,7 +539,7 @@ void CCdGrabbingDialog::ReloadTrackList()
 
 		CString s;
 
-		UINT StateImage = 0, StateImageMask = 0;
+		UINT State = 0, StateMask = 0;
 		if (m_toc.TrackData[tr].Control & 0xC)
 		{
 			pTrack->Track.LoadString(IDS_DATA_TRACK);
@@ -522,8 +556,9 @@ void CCdGrabbingDialog::ReloadTrackList()
 			pTrack->Album = m_sAlbum;
 			pTrack->Artist = m_sArtist;
 			pTrack->IsAudio = true;
-			StateImage = 2;    // checked
-			StateImageMask = LVIS_STATEIMAGEMASK;
+			State = FocusedState | INDEXTOSTATEIMAGEMASK(2);    // checked
+			FocusedState = 0;
+			StateMask = LVIS_STATEIMAGEMASK | LVIS_FOCUSED | LVIS_SELECTED;
 			pTrack->Checked = TRUE;
 		}
 		pTrack->TrackBegin.Minute = m_toc.TrackData[tr].Address[1];
@@ -536,8 +571,8 @@ void CCdGrabbingDialog::ReloadTrackList()
 			LVIF_TEXT | LVIF_STATE,
 			tr,
 			0,
-			INDEXTOSTATEIMAGEMASK(StateImage),
-			StateImageMask,
+			State,
+			StateMask,
 			LPTSTR(LPCTSTR(pTrack->Track)),
 			0, 0, 0, 0};
 		m_lbTracks.InsertItem( & item1);
@@ -603,16 +638,13 @@ void CCdGrabbingDialog::CreateImageList()
 
 BOOL CCdGrabbingDialog::OnInitDialog()
 {
-	CDialog::OnInitDialog();
+	CResizableDialog::OnInitDialog();
 
 	CreateImageList();
 	CRect cr;
 	GetClientRect( & cr);
 
-	m_PreviousSize.cx = cr.Width();
-	m_PreviousSize.cy = cr.Height();
 	// init MINMAXINFO
-	OnMetricsChange();
 
 	m_lbTracks.GetClientRect( & cr);
 
@@ -642,173 +674,18 @@ BOOL CCdGrabbingDialog::OnInitDialog()
 
 void CCdGrabbingDialog::OnSize(UINT nType, int cx, int cy)
 {
-	CDialog::OnSize(nType, cx, cy);
+	CSize PrevSize = m_PrevSize;
+	CResizableDialog::OnSize(nType, cx, cy);
 
 	// invalidate an area which is (after resizing) occupied by size grip
-	if (m_PreviousSize.cx < 0)
+	int dx = m_PrevSize.cx - PrevSize.cx;
+	if (PrevSize.cx < 0 || 0 == dx)
 	{
-		m_PreviousSize.cx = cx;
-		m_PreviousSize.cy = cy;
 		return;
 	}
 
-	// reposition controls
+	m_lbTracks.SetColumnWidth(0, m_lbTracks.GetColumnWidth(0) + dx);
 
-	int dx = cx - m_PreviousSize.cx;
-	int dy = cy - m_PreviousSize.cy;
-	m_PreviousSize.cx = cx;
-	m_PreviousSize.cy = cy;
-
-	if (dx == cx      // previous size was unknown
-		|| 0 == dx && 0 == dy)
-	{
-		TRACE("Nothing to do in OnSize\n");
-		return;
-	}
-
-	static UINT const Controls[] =
-	{
-		IDC_BUTTON_SELECT_ALL, IDC_BUTTON_DESELECT_ALL,    // move X only
-		IDC_BUTTON_CDDB, IDOK, IDCANCEL, // move X, Y
-		IDC_RADIO_ASSIGN_ATTRIBUTES, IDC_RADIO_ASSIGN_SELECTED_TRACK,  // move Y only
-		IDC_STATIC_ALBUM, IDC_EDIT_ALBUM,
-		IDC_STATIC_ARTIST, IDC_EDIT_ARTIST,
-		IDC_RADIO_STORE_MULTIPLE_FILES, IDC_RADIO_STORE_SINGLE_FILE,
-		IDC_EDIT_FOLDER_OR_FILE, IDC_BUTTON_BROWSE_SAVE_FOLDER,
-		IDC_RADIO_STORE_IMMEDIATELY, IDC_RADIO_LOAD_FOR_EDITING,
-		IDC_STATIC_FORMAT, IDC_BUTTON_SET_FORMAT,
-	};
-	const int NoMoveYItems = 2;
-	const int MoveXItems = 5;
-
-	int i;
-	HDWP hdwp = ::BeginDeferWindowPos(sizeof Controls/ sizeof Controls[0] + 2);
-
-	if (NULL == hdwp)
-	{
-		m_PreviousSize.cx -= dx;
-		m_PreviousSize.cy -= dy;
-		return;
-	}
-
-	HWND hWnd;
-	for (i = 0; i < sizeof Controls/ sizeof Controls[0]; i++)
-	{
-		hWnd = ::GetDlgItem(GetSafeHwnd(), Controls[i]);
-		if (NULL == hWnd) continue;
-
-		CRect cr;
-		::GetWindowRect(hWnd, cr);
-		ScreenToClient(cr);
-		if (i < MoveXItems)
-		{
-			cr.left += dx;
-			cr.right += dx;
-		}
-
-		if (i >= NoMoveYItems)
-		{
-			cr.top += dy;
-			cr.bottom += dy;
-		}
-
-		hdwp = ::DeferWindowPos(hdwp, hWnd, NULL, cr.left, cr.top,
-								cr.Width(), cr.Height(),
-								SWP_NOZORDER | SWP_NOOWNERZORDER// | SWP_NOACTIVATE | SWP_NOSENDCHANGING
-								);
-		TRACE("DeferWindowPos hwnd=%x dw=%d dy=%d x=%d, y=%d returned %X\n",
-			hWnd, dx, dy, cr.left, cr.top, hdwp);
-		if (NULL == hdwp)
-		{
-			break;
-		}
-	}
-
-	if (NULL != hdwp
-		&& m_lbTracks.m_hWnd != NULL)
-	{
-		CRect cr;
-		m_lbTracks.GetWindowRect(cr);
-		ScreenToClient(cr);
-		hdwp = ::DeferWindowPos(hdwp, m_lbTracks.GetSafeHwnd(), NULL,
-								cr.left, cr.top, cr.Width() + dx, cr.Height() + dy,
-								SWP_NOZORDER | SWP_NOOWNERZORDER//|SWP_NOACTIVATE | SWP_NOSENDCHANGING
-								);
-		m_lbTracks.SetColumnWidth(0, m_lbTracks.GetColumnWidth(0) + dx);
-
-		TRACE("Calling ::EndDeferWindowPos(hdwp)\n");
-		::EndDeferWindowPos(hdwp);
-	}
-	else
-	{
-		m_PreviousSize.cx -= dx;
-		m_PreviousSize.cy -= dy;
-	}
-	// invalidate an area which is (after resizing)
-	// occupied by size grip
-	int size = GetSystemMetrics(SM_CXVSCROLL);
-	CRect r(cx - size, cy - size, cx, cy);
-	InvalidateRect( & r, TRUE);
-}
-
-void CCdGrabbingDialog::OnSizing(UINT fwSide, LPRECT pRect)
-{
-	CDialog::OnSizing(fwSide, pRect);
-
-	// invalidate an area currently (before resizing) occupied by size grip
-	CRect r;
-	GetClientRect( & r);
-	int size = GetSystemMetrics(SM_CXVSCROLL);
-	r.left = r.right - size;
-	r.top = r.bottom - size;
-	InvalidateRect( & r, FALSE);
-}
-
-UINT CCdGrabbingDialog::OnNcHitTest(CPoint point)
-{
-	// return HTBOTTOMRIGHT for sizegrip area
-	CRect r;
-	GetClientRect( & r);
-	int size = GetSystemMetrics(SM_CXVSCROLL);
-	r.left = r.right - size;
-	r.top = r.bottom - size;
-	CPoint p(point);
-	ScreenToClient( & p);
-
-	if (r.PtInRect(p))
-	{
-		return HTBOTTOMRIGHT;
-	}
-	else
-		return CDialog::OnNcHitTest(point);
-}
-
-void CCdGrabbingDialog::OnGetMinMaxInfo(MINMAXINFO FAR* lpMMI)
-{
-	if (m_mmxi.ptMaxSize.x != 0)
-	{
-		*lpMMI = m_mmxi;
-	}
-	else
-	{
-		CDialog::OnGetMinMaxInfo(lpMMI);
-	}
-}
-
-void CCdGrabbingDialog::OnMetricsChange()
-{
-	// Initialize MINMAXINFO
-	CRect r;
-	SystemParametersInfo(SPI_GETWORKAREA, 0, & r, 0);
-	m_mmxi.ptMaxSize.x = r.Width();
-	m_mmxi.ptMaxTrackSize.x = m_mmxi.ptMaxSize.x;
-	m_mmxi.ptMaxSize.y = r.Height();
-	m_mmxi.ptMaxTrackSize.y = m_mmxi.ptMaxSize.y;
-	m_mmxi.ptMaxPosition.x = r.left;
-	m_mmxi.ptMaxPosition.y = r.top;
-	GetWindowRect(& r);
-	m_mmxi.ptMinTrackSize.x = r.Width();
-	m_mmxi.ptMinTrackSize.y = r.Height();
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -854,25 +731,6 @@ int CInsertSilenceDialog::DoModal()
 		m_lpszTemplateName = MAKEINTRESOURCE(IDD_DIALOG_INSERT_SILENCE_MONO);
 	}
 	return CDialog::DoModal();
-}
-
-BOOL CCdGrabbingDialog::OnEraseBkgnd(CDC* pDC)
-{
-	if (CDialog::OnEraseBkgnd(pDC))
-	{
-		// draw size grip
-		CRect r;
-		GetClientRect( & r);
-		int size = GetSystemMetrics(SM_CXVSCROLL);
-		r.left = r.right - size;
-		r.top = r.bottom - size;
-		pDC->DrawFrameControl( & r, DFC_SCROLL, DFCS_SCROLLSIZEGRIP);
-		return TRUE;
-	}
-	else
-	{
-		return FALSE;
-	}
 }
 
 void CCdGrabbingDialog::OnTimer(UINT nIDEvent)
@@ -946,7 +804,7 @@ LRESULT CCdGrabbingDialog::OnDeviceChange(UINT event, DWORD data)
 void CCdGrabbingDialog::OnDestroy()
 {
 	KillTimer(1);
-	CDialog::OnDestroy();
+	CResizableDialog::OnDestroy();
 
 }
 
@@ -1271,7 +1129,7 @@ BOOL CCdGrabbingDialog::PreTranslateMessage(MSG* pMsg)
 		return TRUE;
 	}
 
-	return CDialog::PreTranslateMessage(pMsg);
+	return CResizableDialog::PreTranslateMessage(pMsg);
 }
 
 void CCdGrabbingDialog::OnUpdateOk(CCmdUI* pCmdUI)
@@ -1326,4 +1184,105 @@ void CCdGrabbingDialog::OnEndlabeleditListTracks(NMHDR* pNMHDR, LRESULT* pResult
 void CCdGrabbingDialog::OnChangeEditFolderOrFile()
 {
 	m_bNeedUpdateControls = TRUE;
+}
+
+void CCdGrabbingDialog::OnButtonPlay()
+{
+	WAVEFORMATEX wfx;
+	wfx.cbSize = 0;
+	wfx.nChannels = 2;
+	wfx.nSamplesPerSec = 44100;
+	wfx.wBitsPerSample = 16;
+	wfx.wFormatTag = WAVE_FORMAT_PCM;
+	wfx.nBlockAlign = 4;
+	wfx.nAvgBytesPerSec = 44100 * 4;
+
+	MMRESULT mmres = m_WaveOut.Open(GetApp()->m_DefaultPlaybackDevice,
+									& wfx, 0);
+	if (MMSYSERR_NOERROR != mmres)
+	{
+		return;
+	}
+	if (FALSE == m_WaveOut.AllocateBuffers(0x10000 - 0x10000 % CDDASectorSize, 4))
+	{
+		m_WaveOut.Close();
+		return;
+	}
+	m_bPlayingAudio = TRUE;
+	m_bNeedUpdateControls = TRUE;
+	if ( ! FillPlaybackBuffers())
+	{
+		StopCdPlayback();
+	}
+}
+
+void CCdGrabbingDialog::OnButtonStop()
+{
+	if (m_bPlayingAudio)
+	{
+		m_WaveOut.Reset();
+	}
+	m_bPlayingAudio = FALSE;
+	m_bNeedUpdateControls = TRUE;
+
+}
+
+void CCdGrabbingDialog::OnUpdatePlay(CCmdUI* pCmdUI)
+{
+	BOOL bEnable = FALSE;
+	for (int t = 0; t < m_Tracks.size(); t++)
+	{
+		if (m_Tracks[t].IsAudio)
+		{
+			bEnable = TRUE;
+			break;
+		}
+	}
+
+	pCmdUI->Enable(bEnable);
+	pCmdUI->SetCheck(m_bPlayingAudio);
+
+}
+
+BOOL CCdGrabbingDialog::FillPlaybackBuffers()
+{
+	// get sound buffers, fill from CD
+	return TRUE;
+}
+
+void CCdGrabbingDialog::StopCdPlayback()
+{
+}
+
+void CCdGrabbingDialog::OnUpdateStop(CCmdUI* pCmdUI)
+{
+	pCmdUI->Enable(m_bPlayingAudio);
+}
+
+void CCdGrabbingDialog::OnUpdateSelectAll(CCmdUI* pCmdUI)
+{
+	BOOL bEnable = FALSE;
+	for (int t = 0; t < m_Tracks.size(); t++)
+	{
+		if (m_Tracks[t].IsAudio)
+		{
+			bEnable = TRUE;
+			break;
+		}
+	}
+	pCmdUI->Enable(bEnable);
+}
+
+void CCdGrabbingDialog::OnUpdateDeselectAll(CCmdUI* pCmdUI)
+{
+	BOOL bEnable = FALSE;
+	for (int t = 0; t < m_Tracks.size(); t++)
+	{
+		if (m_Tracks[t].IsAudio)
+		{
+			bEnable = TRUE;
+			break;
+		}
+	}
+	pCmdUI->Enable(bEnable);
 }

@@ -184,27 +184,13 @@ MMRESULT CWaveOut::Open(UINT id, const WAVEFORMATEX * pwfe, DWORD dwAuxFlags)
 	ASSERT(this != NULL);
 	Close();
 
-	size_t size = sizeof (WAVEFORMATEX);
-	if (pwfe->wFormatTag != WAVE_FORMAT_PCM)
-	{
-		size += pwfe->cbSize;
-	}
-
-	WAVEFORMATEX * pwfeTmp = (WAVEFORMATEX*) new char[size];
-	if (NULL == pwfeTmp) return MMSYSERR_NOMEM;
-
-	memcpy(pwfeTmp, pwfe, size);
-
-	MMRESULT err = waveOutOpen( & m_hwo, id, pwfeTmp, ULONG(waveOutProc), (DWORD)this,
+	MMRESULT err = waveOutOpen( & m_hwo, id, pwfe, ULONG(waveOutProc), (DWORD)this,
 								CALLBACK_FUNCTION | (dwAuxFlags & (WAVE_ALLOWSYNC | WAVE_FORMAT_QUERY | WAVE_MAPPED)));
+
 	if (MMSYSERR_NOERROR == err)
 	{
-		m_pwfe = pwfeTmp;
+		m_pwfe = CopyWaveformat(pwfe);
 		m_id = id;
-	}
-	else
-	{
-		delete [] (char*) pwfeTmp;
 	}
 
 	return err;

@@ -356,6 +356,7 @@
 #define IDC_STATIC_ALBUM                1238
 #define IDC_STATIC_ARTIST               1239
 #define IDC_RADIO_LOAD_FOR_EDITING      1240
+#define IDC_BUTTON_STOP                 1241
 #define IDC_VIEW_RULER_SAMPLES          32771
 #define IDC_VIEW_RULER_HHMMSS           32772
 #define IDC_VIEW_RULER_SECONDS          32773
@@ -645,7 +646,7 @@
 #define _APS_3D_CONTROLS                     1
 #define _APS_NEXT_RESOURCE_VALUE        187
 #define _APS_NEXT_COMMAND_VALUE         40110
-#define _APS_NEXT_CONTROL_VALUE         1241
+#define _APS_NEXT_CONTROL_VALUE         1242
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif
