@@ -76,6 +76,12 @@ void CTimeRulerView::OnDraw(CDC* pDC)
 	CRect cr;
 	GetClientRect(cr);
 
+	CPaintDC * pPaintDC = dynamic_cast<CPaintDC *>(pDC);
+	if (NULL != pPaintDC)
+	{
+		cr = pPaintDC->m_ps.rcPaint;
+	}
+
 	int const RulerBase = cr.bottom - MarkerHeight - 2;
 
 	pDC->SetTextAlign(TA_BOTTOM | TA_LEFT);
@@ -103,6 +109,7 @@ void CTimeRulerView::OnDraw(CDC* pDC)
 	int nLength;
 
 	CString s;
+	ASSERT(0 == fmod(dOrgX, dScaleX * dLogScaleX));
 
 	switch (m_CurrentDisplayMode)
 	{
@@ -325,7 +332,7 @@ void CTimeRulerView::OnDraw(CDC* pDC)
 			break;
 		}
 
-		int x = WorldToWindowX(sample);
+		int x = WorldToWindowXfloor(sample);
 
 		if (x > cr.right)
 		{
@@ -334,6 +341,7 @@ void CTimeRulerView::OnDraw(CDC* pDC)
 
 		if (0 == nTick % nTickCount)
 		{
+			if (0) TRACE("tick for sample %f is drawn at position %d\n", sample, x);
 			// draw bigger tick (6 pixels high) and the number
 			pDC->SelectStockObject(WHITE_PEN);
 			pDC->MoveTo(x + 1, RulerBase - 2);
@@ -406,7 +414,7 @@ void CTimeRulerView::OnDraw(CDC* pDC)
 	for (CuePointVectorIterator i = pInst->m_CuePoints.begin();
 		i < pInst->m_CuePoints.end(); i++)
 	{
-		long x = WorldToWindowX(i->dwSampleOffset);
+		long x = WorldToWindowXfloor(i->dwSampleOffset);
 		WaveRegionMarker * pMarker = pInst->GetRegionMarker(i->CuePointID);
 
 		if (x >= cr.left - MarkerHeight
@@ -443,7 +451,7 @@ void CTimeRulerView::OnDraw(CDC* pDC)
 		if (pMarker != NULL
 			&& pMarker->SampleLength != 0)
 		{
-			x = WorldToWindowX(i->dwSampleOffset + pMarker->SampleLength);
+			x = WorldToWindowXfloor(i->dwSampleOffset + pMarker->SampleLength);
 
 			if (x >= cr.left - MarkerHeight
 				&& x <= cr.right + MarkerHeight)
