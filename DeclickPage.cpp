@@ -2,7 +2,7 @@
 //
 
 #include "stdafx.h"
-#include "WaveSoap.h"
+//#include "WaveSoap.h"
 #include "DeclickPage.h"
 #ifdef _DEBUG
 #define new DEBUG_NEW

@@ -6,7 +6,7 @@
 #endif // _MSC_VER >= 1000
 // NoiseReductionPage.h : header file
 //
-#include <NumEdit.h>
+#include "NumEdit.h"
 /////////////////////////////////////////////////////////////////////////////
 // CNoiseReductionPage dialog
 

@@ -49,6 +49,10 @@ static int fround(double d)
 void CFftRulerView::OnDraw(CDC* pDC)
 {
 	CWaveSoapFrontDoc* pDoc = GetDocument();
+	if (! pDoc->m_WavFile.IsOpen())
+	{
+		return;
+	}
 
 	CWaveFftView * pMasterView = DYNAMIC_DOWNCAST(CWaveFftView, m_pVertMaster);
 	if (NULL == pMasterView)
@@ -167,7 +171,8 @@ void CFftRulerView::OnDraw(CDC* pDC)
 void CFftRulerView::OnUpdate( CView* pSender, LPARAM lHint, CObject* pHint )
 {
 	if ((lHint == CWaveFftView::FFT_OFFSET_CHANGED
-			|| lHint == CWaveFftView::FFT_SCALE_CHANGED)
+			|| lHint == CWaveFftView::FFT_SCALE_CHANGED
+			|| lHint == CWaveSoapFrontDoc::UpdateSampleRateChanged)
 		&& NULL == pHint)
 	{
 		Invalidate();

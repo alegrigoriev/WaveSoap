@@ -9,7 +9,7 @@
 
 /////////////////////////////////////////////////////////////////////////////
 // CDeclickPage dialog
-#include <NumEdit.h>
+#include "NumEdit.h"
 
 class CDeclickPage : public CPropertyPage
 {
