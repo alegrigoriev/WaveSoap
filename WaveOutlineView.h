@@ -20,7 +20,7 @@ protected:
 
 // Attributes
 public:
-	CWaveSoapFrontDoc* GetDocument();
+	CWaveSoapFrontDoc* GetDocument() const;
 
 // Operations
 public:
@@ -52,6 +52,15 @@ protected:
 	BOOL EraseBkgnd(CDC* pDC);
 	// Generated message map functions
 protected:
+	unsigned HitTest(POINT p, RECT * pHitRect = NULL /*, int * OffsetX = NULL*/) const;
+
+	enum {
+		HitTestNone = 0x00000000,          // non-specific area of the ruler hit - no bits set
+		HitTestRegionBegin = 0x40000000,    // mark of region begin hit
+		HitTestRegionEnd = 0x20000000,      // mark of region begin hit
+		HitTestMarker = 0x10000000,
+		HitTestCueIndexMask = 0x000FFFF,    // these bits contain index of the region/marker hit
+	};
 	//{{AFX_MSG(CWaveOutlineView)
 	afx_msg int OnMouseActivate(CWnd* pDesktopWnd, UINT nHitTest, UINT message);
 	afx_msg BOOL OnEraseBkgnd(CDC* pDC);
@@ -60,16 +69,21 @@ protected:
 	afx_msg void OnMouseMove(UINT nFlags, CPoint point);
 	afx_msg void OnCaptureChanged(CWnd *pWnd);
 	afx_msg BOOL OnSetCursor(CWnd* pWnd, UINT nHitTest, UINT message);
+	virtual void OnInitialUpdate();
 	//}}AFX_MSG
+	virtual INT_PTR OnToolHitTest(CPoint point, TOOLINFO* pTI) const;
+	void OnToolTipText(UINT /*id*/, NMHDR* pNMHDR, LRESULT* pResult);
+	afx_msg void OnLButtonDblClk(UINT nFlags, CPoint point);
+	virtual BOOL OnNotify(WPARAM wParam, LPARAM lParam, LRESULT* pResult);
 	DECLARE_MESSAGE_MAP()
 public:
-	afx_msg void OnLButtonDblClk(UINT nFlags, CPoint point);
+protected:
 };
 
 /////////////////////////////////////////////////////////////////////////////
 
 #ifndef _DEBUG  // debug version in WaveSoapFrontView.cpp
-inline CWaveSoapFrontDoc* CWaveOutlineView::GetDocument()
+inline CWaveSoapFrontDoc* CWaveOutlineView::GetDocument() const
 { return (CWaveSoapFrontDoc*)m_pDocument; }
 #endif
 

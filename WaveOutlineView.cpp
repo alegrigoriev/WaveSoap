@@ -292,7 +292,7 @@ void CWaveOutlineView::Dump(CDumpContext& dc) const
 	CView::Dump(dc);
 }
 
-CWaveSoapFrontDoc* CWaveOutlineView::GetDocument() // non-debug version is inline
+CWaveSoapFrontDoc* CWaveOutlineView::GetDocument() const// non-debug version is inline
 {
 	ASSERT(m_pDocument->IsKindOf(RUNTIME_CLASS(CWaveSoapFrontDoc)));
 	return (CWaveSoapFrontDoc*)m_pDocument;
@@ -301,6 +301,13 @@ CWaveSoapFrontDoc* CWaveOutlineView::GetDocument() // non-debug version is inlin
 
 /////////////////////////////////////////////////////////////////////////////
 // CWaveOutlineView message handlers
+
+void CWaveOutlineView::OnInitialUpdate()
+{
+	BaseClass::OnInitialUpdate();
+
+	EnableToolTips();
+}
 
 void CWaveOutlineView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
 {
@@ -764,6 +771,10 @@ void CWaveOutlineView::OnLButtonUp(UINT /*nFlags*/, CPoint point)
 		nBegin = Granularity * MulDiv(point.x, PeaksSamples, width);
 		nEnd = Granularity * MulDiv(point.x + 1, PeaksSamples, width);
 	}
+	else
+	{
+		nSamples = 1;
+	}
 
 	if ( ! bIsTrackingSelection
 		&&  nKeyPressed == WM_LBUTTONDOWN)
@@ -793,8 +804,7 @@ void CWaveOutlineView::OnLButtonUp(UINT /*nFlags*/, CPoint point)
 				}
 			}
 
-			pDoc->SetSelection(nBegin, nEnd, ALL_CHANNELS, nBegin,
-								Flags);
+			pDoc->SetSelection(nBegin, nEnd, ALL_CHANNELS, nBegin, Flags);
 		}
 	}
 
@@ -921,6 +931,158 @@ void CWaveOutlineView::OnLButtonDblClk(UINT nFlags, CPoint point)
 	CRect cr;
 	GetClientRect(cr);
 
-	GetDocument()->SelectBetweenMarkers(SAMPLE_INDEX(
-													MulDiv(point.x, GetDocument()->WaveFileSamples(), cr.Width())));
+	if (cr.Width() != 0)
+	{
+		GetDocument()->SelectBetweenMarkers(SAMPLE_INDEX(
+														MulDiv(point.x, GetDocument()->WaveFileSamples(), cr.Width())));
+	}
 }
+
+BOOL CWaveOutlineView::OnNotify(WPARAM wParam, LPARAM lParam, LRESULT* pResult)
+{
+	// TODO: Add your specialized code here and/or call the base class
+	NMHDR * pNMHDR = (NMHDR *) lParam;
+	if (pNMHDR->code == TTN_NEEDTEXTA || pNMHDR->code == TTN_NEEDTEXTW)
+	{
+		OnToolTipText(wParam, pNMHDR, pResult);
+		return 0;
+	}
+	return BaseClass::OnNotify(wParam, lParam, pResult);
+}
+
+INT_PTR CWaveOutlineView::OnToolHitTest(CPoint point, TOOLINFO* pTI) const
+{
+	RECT r;
+	unsigned const hit = HitTest(point, & r);
+	if (HitTestNone == hit)
+	{
+		return -1;
+	}
+
+	if (pTI != NULL && pTI->cbSize >= offsetof(TOOLINFO, lParam))
+	{
+		pTI->hwnd = m_hWnd;
+		pTI->uId = hit;
+		pTI->rect = r;
+		pTI->lpszText = LPSTR_TEXTCALLBACK;
+	}
+
+	return hit;
+}
+
+void CWaveOutlineView::OnToolTipText(UINT /*id*/, NMHDR* pNMHDR, LRESULT* pResult)
+{
+	ASSERT(pNMHDR->code == TTN_NEEDTEXTA || pNMHDR->code == TTN_NEEDTEXTW);
+
+	// need to handle both ANSI and UNICODE versions of the message
+	TOOLTIPTEXTA* pTTTA = (TOOLTIPTEXTA*)pNMHDR;
+	TOOLTIPTEXTW* pTTTW = (TOOLTIPTEXTW*)pNMHDR;
+
+	CWaveFile::InstanceDataWav * pInst = GetDocument()->m_WavFile.GetInstanceData();
+
+	LPCTSTR strTipText = pInst->GetCueTextByIndex(pNMHDR->idFrom & HitTestCueIndexMask);
+	if (NULL != strTipText)
+	{
+#ifndef _UNICODE
+		if (pNMHDR->code == TTN_NEEDTEXTA)
+		{
+			lstrcpyn(pTTTA->szText, strTipText, countof(pTTTA->szText));
+		}
+		else
+		{
+			_mbstowcsz(pTTTW->szText, strTipText, countof(pTTTW->szText));
+		}
+#else
+		if (pNMHDR->code == TTN_NEEDTEXTA)
+		{
+			_wcstombsz(pTTTA->szText, strTipText, countof(pTTTA->szText));
+		}
+		else
+		{
+			lstrcpyn(pTTTW->szText, strTipText, countof(pTTTW->szText));
+		}
+#endif
+		*pResult = 0;
+	}
+
+	// bring the tooltip window above other popup windows
+	::SetWindowPos(pNMHDR->hwndFrom, HWND_TOP, 0, 0, 0, 0,
+					SWP_NOACTIVATE|SWP_NOSIZE|SWP_NOMOVE|SWP_NOOWNERZORDER);
+}
+
+// the function accepts point coordinates relative to the client area
+// it puts the marker rectangle into optional *pHitRect, and offset from the marker origin to *OffsetX
+unsigned CWaveOutlineView::HitTest(POINT p, RECT * pHitRect/*, int * OffsetX*/) const
+{
+	unsigned result = HitTestNone;
+
+	CWaveSoapFrontDoc * pDoc = GetDocument();
+	NUMBER_OF_SAMPLES const NumberOfSamples = pDoc->WaveFileSamples();
+
+	CRect cr;
+	GetClientRect(cr);
+
+	int ClientWidth = cr.Width();
+	if (0 == ClientWidth
+		|| 0 == NumberOfSamples)
+	{
+		return result;
+	}
+
+	CWaveFile::InstanceDataWav * pInst = pDoc->m_WavFile.GetInstanceData();
+
+	int n;
+	CuePointVectorIterator i;
+
+	for (n = 0, i = pInst->m_CuePoints.begin();
+		i < pInst->m_CuePoints.end(); i++, n++)
+	{
+		long x = MulDiv(i->dwSampleOffset, ClientWidth, NumberOfSamples);
+		WaveRegionMarker * pMarker = pInst->GetRegionMarker(i->CuePointID);
+
+		if (NULL == pMarker
+			|| 0 == pMarker->SampleLength)
+		{
+			if (p.x == x)
+			{
+				// marker
+				result = HitTestMarker | n;
+
+				break;
+			}
+		}
+		else
+		{
+			if (p.x == x)
+			{
+				// mark of the region begin
+
+				result = HitTestRegionBegin | n;
+
+				break;
+			}
+
+			x = MulDiv(i->dwSampleOffset + pMarker->SampleLength, ClientWidth, NumberOfSamples);
+
+			if (p.x == x)
+			{
+				// mark of the region end
+				result = HitTestRegionEnd | n;
+
+				break;
+			}
+		}
+	}
+
+	if (result != HitTestNone
+		&& NULL != pHitRect)
+	{
+		pHitRect->left = p.x;
+		pHitRect->right = p.x + 1;
+		pHitRect->top = cr.top;
+		pHitRect->bottom = cr.bottom;
+	}
+
+	return result;
+}
+
