@@ -169,9 +169,6 @@ public:
 						CWaveFile & WaveFile, int TimeFormat,
 						BOOL bAllowFileExtension = FALSE);   // standard constructor
 
-	void InitSelectionUi();
-	void DoDataExchange(CDataExchange* pDX, CWnd * pWnd);
-
 	SAMPLE_INDEX GetStart() const
 	{
 		return m_Start;
@@ -195,6 +192,13 @@ public:
 			break;
 		}
 	}
+
+protected:
+	void SetSelection(SAMPLE_INDEX Start, SAMPLE_INDEX End, CHANNEL_MASK Channel = ALL_CHANNELS);
+
+	void InitSelectionUi();
+	void DoDataExchange(CDataExchange* pDX, CWnd * pWnd);
+
 	CComboBox	m_SelectionCombo;
 	CComboBox	m_TimeFormatCombo;
 	CTimeSpinCtrl	m_SpinStart;
@@ -205,7 +209,7 @@ public:
 	CFileTimesCombo	m_eEnd;
 	int		m_TimeFormatIndex;
 	int		m_SelectionNumber;
-protected:
+
 	CWaveFile & m_WaveFile;
 	int m_Chan;
 	int		m_TimeFormat;
@@ -220,14 +224,6 @@ protected:
 						NUMBER_OF_SAMPLES Length);
 	void UpdateComboSelection();
 
-	struct Selection
-	{
-		SAMPLE_INDEX begin;
-		SAMPLE_INDEX end;
-	};
-
-	std::vector<Selection> m_Selections;
-
 	void AddSelection(LPCTSTR Name, SAMPLE_INDEX begin, SAMPLE_INDEX end);
 	void AddSelection(UINT id, SAMPLE_INDEX begin, SAMPLE_INDEX end);
 	int FindSelection(SAMPLE_INDEX begin, SAMPLE_INDEX end);
@@ -240,6 +236,15 @@ protected:
 	afx_msg void OnBuddyChangeSpinLength(NMHDR * pNmHdr, LRESULT * pResult);
 	afx_msg void OnBuddyChangeSpinStart(NMHDR * pNmHdr, LRESULT * pResult);
 	afx_msg void OnSelchangeComboSelection();
+
+private:
+	struct Selection
+	{
+		SAMPLE_INDEX begin;
+		SAMPLE_INDEX end;
+	};
+
+	std::vector<Selection> m_Selections;
 };
 
 class CSelectionDialog : public CDialog, public CSelectionUiSupport
