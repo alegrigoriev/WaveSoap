@@ -835,7 +835,7 @@ BOOL CStatisticsDialog::OnInitDialog()
 
 	int nSampleSize = m_pContext->m_DstFile.SampleSize();
 	long nSamples =
-		(m_pContext->m_DstCopyPos - m_pContext->m_DstStart)
+		(m_pContext->m_DstPos - m_pContext->m_DstStart)
 		/ nSampleSize;
 	if (0 == nSamples)
 	{

@@ -15,11 +15,11 @@ BOOL CResampleContext::InitResample(CWaveFile & SrcFile, CWaveFile &DstFile,
 	m_Resample.InitResample(FrequencyRatio, FilterLength, SrcFile.Channels());
 
 	m_SrcStart = m_SrcFile.SampleToPosition(0);
-	m_SrcCopyPos = m_SrcStart;
+	m_SrcPos = m_SrcStart;
 	m_SrcEnd = m_SrcFile.SampleToPosition(LAST_SAMPLE);
 
 	m_DstStart = m_DstFile.SampleToPosition(0);
-	m_DstCopyPos = m_DstStart;
+	m_DstPos = m_DstStart;
 	m_DstEnd = m_DstFile.SampleToPosition(LAST_SAMPLE);
 
 	return TRUE;
@@ -27,14 +27,14 @@ BOOL CResampleContext::InitResample(CWaveFile & SrcFile, CWaveFile &DstFile,
 
 BOOL CResampleContext::OperationProc()
 {
-	SAMPLE_POSITION dwOperationBegin = m_DstCopyPos;
+	SAMPLE_POSITION dwOperationBegin = m_DstPos;
 	DWORD dwStartTime = GetTickCount();
 	if (m_Flags & OperationContextStopRequested)
 	{
 		m_Flags |= OperationContextStop;
 		return TRUE;
 	}
-	if (m_DstCopyPos >= m_DstEnd)
+	if (m_DstPos >= m_DstEnd)
 	{
 		m_Flags |= OperationContextFinished;
 		return TRUE;
@@ -52,7 +52,7 @@ BOOL CResampleContext::OperationProc()
 	{
 		if (0 == LeftToRead)
 		{
-			MEDIA_FILE_SIZE SizeToRead = m_SrcEnd - m_SrcCopyPos;
+			MEDIA_FILE_SIZE SizeToRead = m_SrcEnd - m_SrcPos;
 			if (SizeToRead > 0x10000)
 			{
 				SizeToRead = 0x10000;
@@ -60,7 +60,7 @@ BOOL CResampleContext::OperationProc()
 			if (SizeToRead != 0)
 			{
 				WasRead = m_SrcFile.GetDataBuffer( & pOriginalSrcBuf,
-													SizeToRead, m_SrcCopyPos, CDirectFile::GetBufferAndPrefetchNext);
+													SizeToRead, m_SrcPos, CDirectFile::GetBufferAndPrefetchNext);
 				if (0 == WasRead)
 				{
 					m_DstFile.ReturnDataBuffer(pOriginalDstBuf, WasLockedToWrite,
@@ -81,13 +81,13 @@ BOOL CResampleContext::OperationProc()
 
 		if (0 == LeftToWrite)
 		{
-			MEDIA_FILE_SIZE SizeToWrite = m_DstEnd - m_DstCopyPos;
+			MEDIA_FILE_SIZE SizeToWrite = m_DstEnd - m_DstPos;
 			if (0 == SizeToWrite)
 			{
 				break;  // all data written
 			}
 			WasLockedToWrite = m_DstFile.GetDataBuffer( & pOriginalDstBuf,
-														SizeToWrite, m_DstCopyPos, m_GetBufferFlags);
+														SizeToWrite, m_DstPos, m_GetBufferFlags);
 
 			if (0 == WasLockedToWrite)
 			{
@@ -107,10 +107,10 @@ BOOL CResampleContext::OperationProc()
 													LeftToWrite, & SrcBufUsed);
 
 		TRACE("ResampleContext: SrcPos=%d (0x%X), DstPos=%d (0x%X), src: %d bytes, dst: %d bytes\n",
-			m_SrcCopyPos, m_SrcCopyPos, m_DstCopyPos, m_DstCopyPos,
+			m_SrcPos, m_SrcPos, m_DstPos, m_DstPos,
 			SrcBufUsed, DstBufUsed);
 		LeftToRead -= SrcBufUsed;
-		m_SrcCopyPos += SrcBufUsed;
+		m_SrcPos += SrcBufUsed;
 		pSrcBuf += SrcBufUsed;
 
 		if (0 == LeftToRead)
@@ -121,7 +121,7 @@ BOOL CResampleContext::OperationProc()
 		}
 
 		LeftToWrite -= DstBufUsed;
-		m_DstCopyPos += DstBufUsed;
+		m_DstPos += DstBufUsed;
 		pDstBuf += DstBufUsed;
 
 		if (0 == LeftToWrite)
@@ -132,7 +132,7 @@ BOOL CResampleContext::OperationProc()
 		}
 
 	}
-	while (m_DstCopyPos < m_DstEnd
+	while (m_DstPos < m_DstEnd
 			&& timeGetTime() - dwStartTime < 200
 			);
 
@@ -142,10 +142,8 @@ BOOL CResampleContext::OperationProc()
 	m_DstFile.ReturnDataBuffer(pOriginalDstBuf, WasLockedToWrite,
 								CDirectFile::ReturnBufferDirty);
 
-	if (m_DstEnd > m_DstStart)
-	{
-		PercentCompleted = 100i64 * (m_DstCopyPos - m_DstStart) / (m_DstEnd - m_DstStart);
-	}
+	UpdateCompletedPercent(m_DstPos, m_DstStart, m_DstEnd);
+
 	return TRUE;
 }
 
