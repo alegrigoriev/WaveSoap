@@ -2706,6 +2706,21 @@ CResampleFilter::CResampleFilter()
 {
 }
 
+CResampleFilter::CResampleFilter(double ResampleRatio, int FilterLength,
+								NUMBER_OF_CHANNELS nChannels)
+	: m_SrcBufUsed(0)
+	, m_DstBufUsed(0)
+	, m_DstBufSaved(0)
+	, m_SrcBufFilled(0)
+	, m_SrcFilterLength(0)
+	, m_ResampleRatio(1.)
+	, m_Phase(0)
+	, m_InputPeriod(0x80000000)
+	, m_OutputPeriod(0x80000000)
+{
+	InitResample(ResampleRatio, FilterLength, nChannels);
+}
+
 CResampleFilter::~CResampleFilter()
 {
 }
@@ -2740,12 +2755,35 @@ double CResampleFilter::sinc(double arg, double FilterLength)
 	}
 }
 
-BOOL CResampleFilter::InitResample(double ResampleRatio,
-									double FilterLength, NUMBER_OF_CHANNELS nChannels)
+void CResampleFilter::InitResample(double ResampleRatio,
+									int FilterLength, NUMBER_OF_CHANNELS nChannels)
 {
 	// FrequencyRatio is out freq/ input freq. If >1, it is upsampling,
 	// if < 1 it is downsampling
 	// FilterLength is how many Sin periods are in the array
+
+	if (ResampleRatio >= 1.)
+	{
+		// upsampling.
+		//
+		double InputPeriod = 0x100000000i64 / (FilterLength + 1.);
+		m_InputPeriod = unsigned __int32(InputPeriod);
+		m_OutputPeriod = unsigned __int32(InputPeriod / ResampleRatio);
+	}
+	else
+	{
+		// downsampling
+		double OutputPeriod = 0x100000000i64 / (FilterLength + 1.);
+		m_OutputPeriod = unsigned __int32(OutputPeriod);
+		m_InputPeriod = unsigned __int32(OutputPeriod * ResampleRatio);
+	}
+	//TRACE("InputPeriod=%08x, OutputPeriod=%08x\n", m_InputPeriod, m_OutputPeriod);
+	m_SrcFilterLength = int(0x100000000i64 / m_InputPeriod);
+	m_Phase = 0x80000000u % m_InputPeriod;
+	m_ResampleRatio = ResampleRatio;
+
+	// check low order bits of m_InputPeriod and m_OutputPeriod
+	// to see if we can reduce number of table elements and give up interpolation
 
 #ifdef _DEBUG
 	double MaxErr = 0;
@@ -2759,25 +2797,25 @@ BOOL CResampleFilter::InitResample(double ResampleRatio,
 		double val05 = sinc(arg + 0.5, FilterLength) * FilterWindow(arg + 0.5);
 		double val1 = sinc(arg + 1., FilterLength) * FilterWindow(arg + 1.);
 
-		m_FilterBuf[i] = val;
 
 		double dif1 = val05 - val;
 		double dif2 = val1 - val05;
 
-		m_FilterDifBuf[i] = (3. * dif1 - dif2) / 2. / (1 << (ResampleIndexShift - 1));
-		m_FilterDif2Buf[i] = (dif2 - dif1) / 2. / (1 << (ResampleIndexShift - 1)) / (1 << (ResampleIndexShift - 1));
+		m_FilterTable[i].tap = val;
+		m_FilterTable[i].deriv1 = (3. * dif1 - dif2) / 2. / (1 << (ResampleIndexShift - 1));
+		m_FilterTable[i].deriv2 = (dif2 - dif1) / 2. / (1 << (ResampleIndexShift - 1)) / (1 << (ResampleIndexShift - 1));
 
 		TRACE("[%03d] Window=%f, sinc=%f, Resample filter=%.9f, next extrapolated=%.9f\n",
-			i, FilterWindow(arg), sinc(arg, FilterLength), m_FilterBuf[i],
-			m_FilterBuf[i] + (1 << ResampleIndexShift) *
-			(m_FilterDifBuf[i] + (1 << ResampleIndexShift) * m_FilterDif2Buf[i]));
+			i, FilterWindow(arg), sinc(arg, FilterLength), m_FilterTable[i].tap,
+			m_FilterTable[i].tap + (1 << ResampleIndexShift) *
+			(m_FilterTable[i].deriv1 + (1 << ResampleIndexShift) * m_FilterTable[i].deriv2));
 
 #ifdef _DEBUG
 		if (i > 0)
 		{
 			double err = fabs(sinc(arg + 0.25, FilterLength) * FilterWindow(arg + 0.25) -
 							(val + (1 << ResampleIndexShift) * 0.25 *
-								(m_FilterDifBuf[i] + (1 << ResampleIndexShift) * 0.25 * m_FilterDif2Buf[i])));
+								(m_FilterTable[i].deriv1 + (1 << ResampleIndexShift) * 0.25 * m_FilterTable[i].deriv2)));
 			if (MaxErr < err)
 			{
 				MaxErr = err;
@@ -2785,7 +2823,7 @@ BOOL CResampleFilter::InitResample(double ResampleRatio,
 
 			err = fabs(sinc(arg + 0.75, FilterLength) * FilterWindow(arg + 0.75) -
 						(val + (1 << ResampleIndexShift) * 0.75 *
-							(m_FilterDifBuf[i] + (1 << ResampleIndexShift) * 0.75 * m_FilterDif2Buf[i])));
+							(m_FilterTable[i].deriv1 + (1 << ResampleIndexShift) * 0.75 * m_FilterTable[i].deriv2)));
 			if (MaxErr < err)
 			{
 				MaxErr = err;
@@ -2797,27 +2835,6 @@ BOOL CResampleFilter::InitResample(double ResampleRatio,
 #ifdef _DEBUG
 	TRACE("Max err = %g\n", MaxErr);
 #endif
-
-	if (ResampleRatio >= 1.)
-	{
-		// upsampling.
-		//
-		double InputPeriod = 0x100000000i64 / (FilterLength * (1. + 1. / FilterLength));
-		m_InputPeriod = unsigned __int32(InputPeriod);
-		m_OutputPeriod = unsigned __int32(InputPeriod / ResampleRatio);
-	}
-	else
-	{
-		// downsampling
-		double OutputPeriod = 0x100000000i64 / (FilterLength * (1. + 1. / FilterLength));
-		m_OutputPeriod = unsigned __int32(OutputPeriod);
-		m_InputPeriod = unsigned __int32(OutputPeriod * ResampleRatio);
-	}
-	//TRACE("InputPeriod=%08x, OutputPeriod=%08x\n", m_InputPeriod, m_OutputPeriod);
-
-	m_SrcFilterLength = int(0x100000000i64 / m_InputPeriod);
-	m_Phase = 0x80000000u % m_InputPeriod;
-	m_ResampleRatio = ResampleRatio;
 
 	m_SrcBufUsed = 0;
 	m_DstBufUsed = 0;
@@ -2846,9 +2863,9 @@ BOOL CResampleFilter::InitResample(double ResampleRatio,
 
 	for (int i = 0; i < ResampleFilterSize; i++)
 	{
-		m_FilterBuf[i] /= Max;
-		m_FilterDifBuf[i] /= Max;
-		m_FilterDif2Buf[i] /= Max;
+		m_FilterTable[i].tap /= Max;
+		m_FilterTable[i].deriv1 /= Max;
+		m_FilterTable[i].deriv2 /= Max;
 	}
 
 	m_SrcBufUsed = 0;
@@ -2859,7 +2876,6 @@ BOOL CResampleFilter::InitResample(double ResampleRatio,
 	m_SrcBufFilled = (0x80000000u / m_InputPeriod) * m_InputChannels;
 	m_Phase = 0x80000000u % m_InputPeriod;
 
-	return TRUE;
 }
 
 void CResampleFilter::FilterSoundResample()
@@ -2874,6 +2890,7 @@ void CResampleFilter::FilterSoundResample()
 
 	for (int i = m_DstBufUsed; i < DstBufSize; i+= m_InputChannels)
 	{
+#if 0
 		for (int ch = 0; ch < m_InputChannels; ch++)
 		{
 			unsigned __int32 Phase1 = m_Phase;
@@ -2885,9 +2902,9 @@ void CResampleFilter::FilterSoundResample()
 				int const TableIndex = Phase1 >> ResampleIndexShift;
 				double PhaseFraction = int(Phase1 & ~(0xFFFFFFFF << ResampleIndexShift));
 
-				OutSample += src[j] * (m_FilterBuf[TableIndex] +
-										PhaseFraction * (m_FilterDifBuf[TableIndex]
-											+ PhaseFraction * m_FilterDif2Buf[TableIndex]));
+				OutSample += src[j] * (m_FilterTable[TableIndex].tap +
+										PhaseFraction * (m_FilterTable[TableIndex].deriv1
+											+ PhaseFraction * m_FilterTable[TableIndex].deriv2));
 
 				unsigned __int32 Phase2 = Phase1 + m_InputPeriod;
 				if (Phase2 < Phase1)
@@ -2898,7 +2915,43 @@ void CResampleFilter::FilterSoundResample()
 			}
 			m_pDstBuf[i + ch] = float(OutSample);
 		}
+#else
+		unsigned __int32 Phase1 = m_Phase;
+		double OutSample[MAX_NUMBER_OF_CHANNELS];
+		for (int ch = 0; ch < m_InputChannels; ch++)
+		{
+			OutSample[ch] = 0;
+		}
 
+		for (int j = 0; ; j+= m_InputChannels)
+		{
+			ASSERT(src + j < m_pSrcBuf + SrcBufSize);
+
+			int const TableIndex = Phase1 >> ResampleIndexShift;
+			double PhaseFraction = int(Phase1 & ~(0xFFFFFFFF << ResampleIndexShift));
+
+			double const coeff = (m_FilterTable[TableIndex].tap +
+									PhaseFraction * (m_FilterTable[TableIndex].deriv1
+										+ PhaseFraction * m_FilterTable[TableIndex].deriv2));
+
+			for (int ch = 0; ch < m_InputChannels; ch++)
+			{
+				OutSample[ch] += src[j + ch] * coeff;
+			}
+
+			unsigned __int32 Phase2 = Phase1 + m_InputPeriod;
+			if (Phase2 < Phase1)
+			{
+				break;
+			}
+			Phase1 = Phase2;
+		}
+
+		for (int ch = 0; ch < m_InputChannels; ch++)
+		{
+			m_pDstBuf[i + ch] = float(OutSample[ch]);
+		}
+#endif
 		m_DstBufUsed += m_InputChannels;
 		m_Phase -= m_OutputPeriod;
 

@@ -509,13 +509,15 @@ class CResampleFilter: public CWaveProc
 public:
 	typedef std::auto_ptr<ThisClass> auto_ptr;
 	CResampleFilter();
+	CResampleFilter(double ResampleRatio, int FilterLength,
+					NUMBER_OF_CHANNELS nChannels);
 
 	virtual ~CResampleFilter();
 
 	virtual size_t ProcessSoundBuffer(char const * pInBuf, char * pOutBuf,
 									size_t nInBytes, size_t nOutBytes, size_t * pUsedBytes);
 	//virtual BOOL SetAndValidateWaveformat(WAVEFORMATEX const * pWf);
-	BOOL InitResample(double ResampleRatio, double FilterLength,
+	void InitResample(double ResampleRatio, int FilterLength,
 					NUMBER_OF_CHANNELS nChannels);
 
 private:
@@ -543,9 +545,13 @@ private:
 	size_t m_SrcBufFilled; // position to put new samples converted from __int16
 	size_t m_SrcFilterLength;
 
-	double m_FilterBuf[ResampleFilterSize];
-	double m_FilterDifBuf[ResampleFilterSize];
-	double m_FilterDif2Buf[ResampleFilterSize];
+	struct FilterCoeff
+	{
+		double tap;
+		double deriv1;
+		double deriv2;
+	};
+	FilterCoeff m_FilterTable[ResampleFilterSize];
 
 	unsigned __int32 m_InputPeriod;
 	unsigned __int32 m_OutputPeriod;
