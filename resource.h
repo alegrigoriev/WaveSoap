@@ -115,7 +115,6 @@
 #define IDB_BITMAP_EJECT                190
 #define IDB_BITMAP_STOP                 191
 #define IDB_BITMAP_LOAD                 192
-#define ID_EDIT_MARKERREGION            193
 #define IDR_MENU_TIME_RULER_MARKER      194
 #define IDR_MENU_TIME_RULER_MARKER1     195
 #define IDR_MENU_TIME_RULER_REGION      195
@@ -398,6 +397,7 @@
 #define IDC_CHECK_ENABLE_FADEINOUT      1268
 #define IDC_RADIO_LINEAR                1269
 #define IDC_RADIO_SQUARED_SINE          1270
+#define IDC_BUTTON_DELETE               1271
 #define IDC_VIEW_RULER_SAMPLES          32771
 #define IDC_VIEW_RULER_HHMMSS           32772
 #define IDC_VIEW_RULER_SECONDS          32773
@@ -744,7 +744,6 @@
 #define IDS_STRING_DIRECT_MODE_PROMPT   33103
 #define IDS_OPEN_RECENT_FILE_PROMPT_FORMAT 33104
 #define IDS_STATUS_OPERATION_PROMPT_STOPPED 33105
-#define IDS_STRING33106                 33106
 #define IDS_STATUS_OPERATION_PROMPT_FAILED 33106
 #define ID_FILE_PROPERTIES              40000
 #define ID_VIEW_ZOOMVERT_NORMAL         40001
@@ -854,9 +853,7 @@
 #define ID_VIEW_ZOOMPREVIOUS            40138
 #define IDC_VIEW_STATUS_HHMMSSFF        40140
 #define IDC_VIEW_RULER_HHMMSSFF         40141
-#define ID_TOOLS_SYNTHESIS              65535
-#define IDC_END_LABEL                   65535
-#define IDC_LENGTH_LABEL                65535
+#define ID_TOOLS_SYNTHESIS              40142
 
 // Next default values for new objects
 //
@@ -864,8 +861,8 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_3D_CONTROLS                     1
 #define _APS_NEXT_RESOURCE_VALUE        196
-#define _APS_NEXT_COMMAND_VALUE         40142
-#define _APS_NEXT_CONTROL_VALUE         1271
+#define _APS_NEXT_COMMAND_VALUE         40143
+#define _APS_NEXT_CONTROL_VALUE         1272
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif
