@@ -222,6 +222,10 @@ protected:
 
 	void AdjustSelection(SAMPLE_INDEX Start, SAMPLE_INDEX End,
 						NUMBER_OF_SAMPLES Length);
+
+	// update data from all edit boxes
+	void UpdateAllSelections();
+
 	void UpdateComboSelection();
 
 	void AddSelection(LPCTSTR Name, SAMPLE_INDEX begin, SAMPLE_INDEX end);

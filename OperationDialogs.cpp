@@ -699,6 +699,11 @@ void CSelectionUiSupport::OnSelchangeComboTimeFormat()
 	m_eLength.SetTimeSample(m_Length);
 }
 
+void CSelectionUiSupport::UpdateAllSelections()
+{
+	AdjustSelection(m_eStart.UpdateTimeSample(), m_eEnd.UpdateTimeSample(), m_eLength.UpdateTimeSample());
+}
+
 void CSelectionUiSupport::AdjustSelection(SAMPLE_INDEX Start, SAMPLE_INDEX End,
 										NUMBER_OF_SAMPLES Length)
 {
