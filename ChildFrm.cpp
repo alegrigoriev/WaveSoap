@@ -285,7 +285,7 @@ void CWaveMDIChildClient::RecalcLayout()
 	}
 
 	CWnd * pOutline = GetDlgItem(OutlineViewID);
-	if (pOutline && m_bShowOutline)
+	if (NULL != pOutline && m_bShowOutline)
 	{
 		r.left = 0;
 		r.top = 0;
@@ -297,29 +297,44 @@ void CWaveMDIChildClient::RecalcLayout()
 	else
 	{
 		OutlineHeight = 0;
-		if (pOutline)
+		if (NULL != pOutline)
 		{
 			pOutline->ShowWindow(SW_HIDE);
 		}
 	}
 
 	CWnd * pHorRuler = GetDlgItem(HorizontalRulerID);
+	CWnd * pSpectrumSectionRuler = GetDlgItem(SpectrumSectionRulerID);
 
-	if (pHorRuler && m_bShowTimeRuler)
+	if (m_bShowTimeRuler)
 	{
 		r.left = SpectrumSectionWidth + VerticalTrackerWidth + RulerWidth;
 		r.top = OutlineHeight;
 		r.bottom = OutlineHeight + RulerHeight;
 		r.right = cr.right;
-		pHorRuler->ShowWindow(SW_SHOWNOACTIVATE);
-		DeferClientPos(&layout, pHorRuler, r, FALSE);
+		if (NULL != pHorRuler)
+		{
+			pHorRuler->ShowWindow(SW_SHOWNOACTIVATE);
+			DeferClientPos(&layout, pHorRuler, r, FALSE);
+		}
+		r.left = RulerWidth;
+		r.right = SpectrumSectionWidth + RulerWidth;
+		if (NULL != pSpectrumSectionRuler)
+		{
+			pSpectrumSectionRuler->ShowWindow(SW_SHOWNOACTIVATE);
+			DeferClientPos(&layout, pSpectrumSectionRuler, r, FALSE);
+		}
 	}
 	else
 	{
 		RulerHeight = 0;
-		if (pHorRuler)
+		if (NULL != pHorRuler)
 		{
 			pHorRuler->ShowWindow(SW_HIDE);
+		}
+		if (NULL != pSpectrumSectionRuler)
+		{
+			pSpectrumSectionRuler->ShowWindow(SW_HIDE);
 		}
 	}
 
@@ -327,7 +342,7 @@ void CWaveMDIChildClient::RecalcLayout()
 	CWnd * pVertFftRuler = GetDlgItem(VerticalFftRulerID);
 	if (m_bShowVerticalRuler)
 	{
-		if (pVertRuler)
+		if (NULL != pVertRuler)
 		{
 			r.left = 0;
 			r.right = RulerWidth;
@@ -407,7 +422,7 @@ void CWaveMDIChildClient::RecalcLayout()
 	{
 		r.left = RulerWidth + SpectrumSectionWidth;
 		r.right = RulerWidth + SpectrumSectionWidth + VerticalTrackerWidth;
-		r.top = OutlineHeight + RulerHeight;
+		r.top = OutlineHeight;
 		r.bottom = cr.bottom;
 		if (0 != VerticalTrackerWidth)
 		{
@@ -435,7 +450,7 @@ void CWaveMDIChildClient::RecalcLayout()
 	}
 
 	r.left = 0;
-	r.right = RulerWidth + SpectrumSectionWidth + VerticalTrackerWidth;
+	r.right = RulerWidth;
 	r.top = OutlineHeight;
 	r.bottom = OutlineHeight + RulerHeight;
 	if (r.right != 0 && r.bottom != 0)
@@ -655,6 +670,9 @@ int CWaveMDIChildClient::OnCreate(LPCREATESTRUCT lpCreateStruct)
 	CWnd * pFftRuler = CreateView(RUNTIME_CLASS(CFftRulerView),
 								r, VerticalFftRulerID, pContext, FALSE);    // not visible
 
+	CWnd * pSpectrumSectionRuler = CreateView(RUNTIME_CLASS(CSpectrumSectionRuler),
+											r, SpectrumSectionRulerID, pContext, FALSE);    // not visible
+
 	CWnd * pOutlineView = CreateView(RUNTIME_CLASS(CWaveOutlineView),
 									r, OutlineViewID, pContext, TRUE);    // visible
 
@@ -688,6 +706,12 @@ int CWaveMDIChildClient::OnCreate(LPCREATESTRUCT lpCreateStruct)
 	{
 		(DYNAMIC_DOWNCAST(CScaledScrollView, pTrackView))->SyncVertical
 			(DYNAMIC_DOWNCAST(CScaledScrollView, pFftView));
+	}
+
+	if (pTrackView && pSpectrumSectionRuler)
+	{
+		(DYNAMIC_DOWNCAST(CScaledScrollView, pSpectrumSectionRuler))->SyncHorizontal
+			(DYNAMIC_DOWNCAST(CScaledScrollView, pTrackView));
 	}
 
 	GetParentFrame()->SetActiveView(DYNAMIC_DOWNCAST(CView, pView));

@@ -453,3 +453,187 @@ void CAmplitudeRuler::OnViewAmplRulerDecibels()
 	Invalidate();
 }
 
+/////////////////////////////////////////////////////////////////////////////
+// CSpectrumSectionRuler
+
+IMPLEMENT_DYNCREATE(CSpectrumSectionRuler, CHorizontalRuler)
+
+CSpectrumSectionRuler::CSpectrumSectionRuler()
+{
+}
+
+CSpectrumSectionRuler::~CSpectrumSectionRuler()
+{
+}
+
+
+BEGIN_MESSAGE_MAP(CSpectrumSectionRuler, CHorizontalRuler)
+	//{{AFX_MSG_MAP(CSpectrumSectionRuler)
+	//}}AFX_MSG_MAP
+	//ON_WM_CREATE()
+END_MESSAGE_MAP()
+
+/////////////////////////////////////////////////////////////////////////////
+// CSpectrumSectionRuler drawing
+
+void CSpectrumSectionRuler::OnDraw(CDC* pDC)
+{
+	CGdiObject * pOldFont = (CFont *) pDC->SelectStockObject(ANSI_VAR_FONT);
+	CGdiObject * OldPen = pDC->SelectStockObject(BLACK_PEN);
+	// decibels are drawn with 1.5 dB step
+	CWaveSoapFrontDoc* pDoc = GetDocument();
+	if (! pDoc->m_WavFile.IsOpen())
+	{
+		return;
+	}
+
+	CWaveSoapFrontView * pMasterView = DYNAMIC_DOWNCAST(CWaveSoapFrontView, m_pVertMaster);
+	if (NULL == pMasterView)
+	{
+		return; // not attached
+	}
+#if 0
+	CRect cr;
+	GetClientRect(cr);
+
+	TEXTMETRIC tm;
+	pDC->GetTextMetrics( & tm);
+	pDC->SetTextAlign(TA_BOTTOM | TA_RIGHT);
+	pDC->SetTextColor(0x000000);   // black
+	pDC->SetBkMode(TRANSPARENT);
+	int nVertStep = GetSystemMetrics(SM_CYMENU);
+	int nChannels = pDoc->WaveChannels();
+	int nHeight = cr.Height() / nChannels;
+	double VerticalScale = pMasterView->m_VerticalScale;
+	double ScaledWaveOffset = pMasterView->m_WaveOffsetY * VerticalScale;
+	int nSampleUnits = nVertStep * 65536. / (nHeight * VerticalScale);
+	// round sample units to 10 or 5
+	int step;
+	for (step = 1; step < nSampleUnits; step *= 10)
+	{
+		if (step * 2 >= nSampleUnits)
+		{
+			step *= 2;
+			break;
+		}
+		if (step * 5 >= nSampleUnits)
+		{
+			step *= 5;
+			break;
+		}
+	}
+	double YScaleDev = pMasterView->GetYScaleDev();
+	int ChannelSeparatorY = fround((0 - pMasterView->dOrgY) * YScaleDev);
+	if (2 == nChannels)
+	{
+		pDC->MoveTo(0, ChannelSeparatorY);
+		pDC->LineTo(cr.right, ChannelSeparatorY);
+	}
+	for (int ch = 0; ch < nChannels; ch++)
+	{
+		double WaveOffset = ScaledWaveOffset - pMasterView->dOrgY;
+		int ClipHigh = cr.bottom;
+		int ClipLow = cr.top;
+		if (nChannels > 1)
+		{
+			if (0 == ch)
+			{
+				WaveOffset = ScaledWaveOffset + 32768. - pMasterView->dOrgY;
+				ClipHigh = ChannelSeparatorY;
+			}
+			else
+			{
+				WaveOffset = ScaledWaveOffset -32768. - pMasterView->dOrgY;
+				ClipLow = ChannelSeparatorY + 1;
+			}
+		}
+		ClipLow += tm.tmHeight / 2;
+		ClipHigh -= tm.tmHeight / 2;
+		int yLow = (ClipHigh / YScaleDev -WaveOffset) / VerticalScale;
+		// round to the next multiple of step
+		yLow += (step*0x10000-yLow) % step;
+		int yHigh = (ClipLow / YScaleDev -WaveOffset) / VerticalScale;
+		yHigh -= (step*0x10000+yHigh) % step;
+		ASSERT(yLow <= yHigh);
+		for (int y = yLow; y <= yHigh; y += step)
+		{
+			int yDev= fround((y * VerticalScale + WaveOffset) * YScaleDev);
+			pDC->MoveTo(cr.right - 3, yDev);
+			pDC->LineTo(cr.right, yDev);
+			CString s;
+			s.Format(_T("%d"), y);
+
+			pDC->TextOut(cr.right - 3, yDev + tm.tmHeight / 2, s);
+		}
+	}
+#endif
+	pDC->SelectObject(OldPen);
+	pDC->SelectObject(pOldFont);
+}
+
+
+void CSpectrumSectionRuler::OnUpdate( CView* pSender, LPARAM lHint, CObject* pHint )
+{
+}
+
+/////////////////////////////////////////////////////////////////////////////
+// CSpectrumSectionRuler diagnostics
+
+#ifdef _DEBUG
+void CSpectrumSectionRuler::AssertValid() const
+{
+	CHorizontalRuler::AssertValid();
+}
+
+void CSpectrumSectionRuler::Dump(CDumpContext& dc) const
+{
+	CHorizontalRuler::Dump(dc);
+}
+
+CWaveSoapFrontDoc* CSpectrumSectionRuler::GetDocument() // non-debug version is inline
+{
+	ASSERT(m_pDocument->IsKindOf(RUNTIME_CLASS(CWaveSoapFrontDoc)));
+	return (CWaveSoapFrontDoc*)m_pDocument;
+}
+#endif //_DEBUG
+
+/////////////////////////////////////////////////////////////////////////////
+// CSpectrumSectionRuler message handlers
+
+int CSpectrumSectionRuler::OnCreate(LPCREATESTRUCT lpCreateStruct)
+{
+	if (CHorizontalRuler::OnCreate(lpCreateStruct) == -1)
+		return -1;
+#if 0
+	KeepAspectRatio(FALSE);
+	KeepScaleOnResizeX(FALSE);
+	KeepScaleOnResizeY(FALSE);
+	KeepOrgOnResizeX(FALSE);
+	KeepOrgOnResizeY(TRUE);
+
+	UpdateMaxExtents();
+
+	ShowScrollBar(SB_VERT, FALSE);
+	ShowScrollBar(SB_HORZ, FALSE);
+#endif
+	return 0;
+}
+
+void CSpectrumSectionRuler::UpdateMaxExtents()
+{
+#if 0
+	int nChannels = GetDocument()->WaveChannels();
+	int nLowExtent = -32768;
+	int nHighExtent = 32767;
+	if (nChannels > 1)
+	{
+		nLowExtent = -0x10000;
+		nHighExtent = 0x10000;
+	}
+
+	// don't want to go through the master window
+	SetMaxExtentsMaster(0., 1., nLowExtent, nHighExtent);
+	SetExtents(0., 1., nLowExtent, nHighExtent);
+#endif
+}
+

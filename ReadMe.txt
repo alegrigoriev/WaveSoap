@@ -1,6 +1,6 @@
 Known problems and tasks:
 
-Draw decibels and crosshair in Spectrum Section view
+Draw decibels in Spectrum Section view
 Add options dialog
 Show File Properties
 Add decibel view to CAmplitudeRuler
@@ -85,6 +85,7 @@ Wrong minimum/maximum valies shown for a zero length file in Statistics (command
 ???? When a file is opened in non-direct mode, peak info is saved with wrong time stamp
 
 Done:
+Draw crosshair in Spectrum Section view
 Make sliders working in Resample Dialog
 Max WAV file size: [x] 2GB [ ] 4 GB
 Selection dialog shows more options in combobox and doesn't show non-applicable options

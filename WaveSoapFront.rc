@@ -517,6 +517,7 @@ BEGIN
 
         MENUITEM SEPARATOR
         MENUITEM "Hide",                        ID_VIEW_HIDE_SPECTRUMSECTION
+        MENUITEM "Show &Crosshair Cursor",      ID_VIEW_SHOW_CROSSHAIR
     END
 END
 
@@ -2650,6 +2651,7 @@ STRINGTABLE DISCARDABLE
 BEGIN
     ID_EDIT_CLEAR_UNDO      "Erase stored Undo for this sound file\nClear Undo"
     ID_EDIT_CLEAR_REDO      "Erase stored Redo for this sound file\nClear Redo"
+    ID_VIEW_SHOW_CROSSHAIR  "Show crosshairs under cursor\nShow cross-hair"
 END
 
 #endif    // English (U.S.) resources
