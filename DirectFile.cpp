@@ -66,7 +66,7 @@ BOOL CDirectFile::Attach(CDirectFile * const pOriginalFile)
 		return FALSE;
 	}
 
-	pOriginalFile->m_pFile->RefCount++;
+	InterlockedIncrement( & pOriginalFile->m_pFile->RefCount);
 	Close(0);
 	m_pFile = pOriginalFile->m_pFile;
 	m_FilePointer = 0;
@@ -108,8 +108,7 @@ BOOL CDirectFile::DetachSourceFile()
 		return TRUE;
 }
 
-CDirectFile::File * CDirectFile::CDirectFileCache::Open
-	(LPCTSTR szName, DWORD flags)
+CDirectFile::File * CDirectFile::CDirectFileCache::Open(LPCTSTR szName, DWORD flags)
 {
 	// find if the file with this name is in the list.
 	// if it is, add a reference
@@ -174,10 +173,12 @@ CDirectFile::File * CDirectFile::CDirectFileCache::Open
 					&& info.nFileIndexLow == pFile->m_FileInfo.nFileIndexLow)
 				{
 					TRACE("File is in the list\n");
-					// file can be reopened only for reading
-					if (0 == (flags & OpenReadOnly))
+					// read-only file can be reopened only for reading
+					if ((pFile->m_Flags & FileFlagsReadOnly)
+						&& 0 == (flags & OpenReadOnly))
 					{
 						SetLastError(ERROR_SHARING_VIOLATION);
+						return NULL;
 					}
 
 					SetLastError(ERROR_ALREADY_EXISTS);
@@ -323,7 +324,7 @@ BOOL CDirectFile::File::SetSourceFile(File * pOriginalFile)
 		// double indirection is not allowed
 		return FALSE;
 	}
-	pOriginalFile->RefCount++;
+	InterlockedIncrement( & pOriginalFile->RefCount);
 	if (pSourceFile != NULL)
 	{
 		pSourceFile->Close(0);
@@ -485,25 +486,30 @@ BOOL CDirectFile::File::Close(DWORD flags)
 	// dereference File structure.
 	CDirectFileCache * pCache = GetCache();
 	ASSERT(pCache);
-	// stop all prefetch operations on the file
+	// stop all background operations on the files
+
 	// if the file in prefetch is ours, then wait for the operation to finish
 	// last Close operation is always synchronous, there is no parallel activity
-	pCache->m_cs.Lock();
-	InterlockedCompareExchangePointer((PVOID *)& pCache->m_pPrefetchFile, NULL, this);
-	if (this == InterlockedCompareExchangePointer(& pCache->m_pCurrentPrefetchFile, NULL, this))
+	if (InterlockedIncrement(const_cast<long *>( & pCache->m_ThreadRunState)) < 0)
 	{
-		pCache->m_cs.Unlock();
-		WaitForSingleObject(pCache->m_hStopPrefetchEvent, INFINITE);
-	}
-	else
-	{
-		pCache->m_cs.Unlock();
+		while (pCache->m_ThreadRunState < 0)
+		{
+			WaitForSingleObject(pCache->m_hThreadSuspendedEvent, 2000);
+		}
 	}
 
 	if (InterlockedDecrement( & RefCount) > 0)
 	{
+		// allow background thread to run along
+		if (InterlockedDecrement(const_cast<long *>( & pCache->m_ThreadRunState)) == 0)
+		{
+			SetEvent(pCache->m_hEvent);
+		}
 		return TRUE;
 	}
+	// if this file was set to prefetch, cancel prefetch
+	InterlockedCompareExchangePointer((void **) & pCache->m_pPrefetchFile, NULL, this);
+
 	TRACE("Closing file %s, flags=%X\n", LPCTSTR(sName), m_Flags);
 	// If the use count is 0, copy all remaining data
 	// from the source file or init the rest and flush all the buffers,
@@ -526,6 +532,11 @@ BOOL CDirectFile::File::Close(DWORD flags)
 			if (pBuf->LockCount != 0)
 			{
 				TRACE("CDirectFile::File::Close: Buffer not released!\n");
+				// allow background thread to run along
+				if (InterlockedDecrement(const_cast<long *>( & pCache->m_ThreadRunState)) == 0)
+				{
+					SetEvent(pCache->m_hEvent);
+				}
 				return FALSE;
 			}
 			if (pBuf->DirtyMask)
@@ -610,7 +621,6 @@ BOOL CDirectFile::File::Close(DWORD flags)
 		}
 	}
 
-
 	if (m_Flags & FileFlagsDeleteAfterClose)
 	{
 		// in Windows NT, the file is filled with zeros before being closed
@@ -668,6 +678,13 @@ BOOL CDirectFile::File::Close(DWORD flags)
 
 	TRACE("Closed file %s\n", LPCTSTR(sName));
 	delete this;
+
+	// allow background thread to run along
+	if (InterlockedDecrement(const_cast<long *>( & pCache->m_ThreadRunState)) == 0)
+	{
+		SetEvent(pCache->m_hEvent);
+	}
+
 	return TRUE;
 }
 
@@ -871,22 +888,22 @@ CDirectFile::CDirectFileCache::CDirectFileCache(size_t CacheSize)
 	m_MRU_Count(1),
 	m_Flags(0),
 	m_NumberOfBuffers(0),
-	m_bRunThread(FALSE),
 	m_pPrefetchFile(NULL),
 	m_PrefetchPosition(0),
 	m_PrefetchLength(0),
 	m_MinPrefetchMRU(0),
 	m_pMruListHead(NULL),
 	m_pMruListTail(NULL),
-	m_pCurrentPrefetchFile(NULL),
+	m_ThreadRunState(0),
 	m_pFreeBuffers(NULL)
 {
 	if (SingleInstance != NULL)
 	{
 		return;
 	}
-	m_hEvent = CreateEvent(NULL, NULL, FALSE, NULL);
-	m_hStopPrefetchEvent = CreateEvent(NULL, NULL, FALSE, NULL);
+	m_hEvent = CreateEvent(NULL, FALSE, FALSE, NULL);
+	// this is manual reset event
+	m_hThreadSuspendedEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
 	// round up to 64K
 	if (0 == CacheSize)
 	{
@@ -921,13 +938,13 @@ CDirectFile::CDirectFileCache::CDirectFileCache(size_t CacheSize)
 	m_pFreeBuffers = Next;  // address of the last descriptor
 
 	unsigned ThreadID = NULL;
-	m_bRunThread = TRUE;
+
 	m_hThread = (HANDLE) _beginthreadex(NULL, 0x10000, ThreadProc,
 										this, CREATE_SUSPENDED, & ThreadID);
 	if (m_hThread != NULL)
 	{
 		if (m_hEvent != NULL
-			&& m_hStopPrefetchEvent != NULL
+			&& m_hThreadSuspendedEvent != NULL
 			&& m_pBuffersArray != NULL
 			&& m_pHeaders != NULL)
 		{
@@ -949,7 +966,7 @@ CDirectFile::CDirectFileCache::~CDirectFileCache()
 	// stop the thread
 	if (NULL != m_hThread)
 	{
-		m_bRunThread = FALSE;
+		m_ThreadRunState = ~0;
 #ifdef _DEBUG
 		DWORD Time = timeGetTime();
 #endif
@@ -973,10 +990,10 @@ CDirectFile::CDirectFileCache::~CDirectFileCache()
 		CloseHandle(m_hEvent);
 		m_hEvent = NULL;
 	}
-	if (NULL != m_hStopPrefetchEvent)
+	if (NULL != m_hThreadSuspendedEvent)
 	{
-		CloseHandle(m_hStopPrefetchEvent);
-		m_hStopPrefetchEvent = NULL;
+		CloseHandle(m_hThreadSuspendedEvent);
+		m_hThreadSuspendedEvent = NULL;
 	}
 	if (NULL != m_pBuffersArray)
 	{
@@ -2044,9 +2061,55 @@ void CDirectFile::File::ValidateList() const
 
 unsigned CDirectFile::CDirectFileCache::_ThreadProc()
 {
-	while (m_bRunThread)
+	while (m_ThreadRunState != ~0)
 	{
-		do {
+		int WaitStatus = WaitForSingleObject(m_hEvent, 2000);
+		if (0 != InterlockedCompareExchange(const_cast<long *>( & m_ThreadRunState), 0x80000000, 0))
+		{
+			// signal that the thread is inactive
+			SetEvent(m_hThreadSuspendedEvent);
+			while (m_ThreadRunState != ~0 && 0 != m_ThreadRunState)
+			{
+				WaitStatus = WaitForSingleObject(m_hEvent, 2000);
+			}
+			ResetEvent(m_hThreadSuspendedEvent);
+			continue;
+		}
+		if (WAIT_TIMEOUT == WaitStatus)
+		{
+			// flush the files
+			for (int nFile = 0 ; NULL == m_pPrefetchFile && 0x80000000 == m_ThreadRunState
+				; nFile++)
+			{
+				File * pFile = 0;
+				{
+					CSimpleCriticalSectionLock lock(m_cs);
+					pFile = m_pFileList;
+					for (int i = 0; pFile != NULL
+						&& (i < nFile
+							|| 0 == pFile->DirtyBuffersCount
+							|| (pFile->m_Flags & FileFlagsMemoryFile)); i++,
+						pFile = pFile->pNext)
+					{
+						// empty
+					}
+					nFile = i;
+					if (NULL == pFile)
+					{
+						break;
+					}
+					if (0 == pFile->DirtyBuffersCount)
+					{
+						continue;
+					}
+					// there is no need to add a reference to file
+					// Close() will wait for the loop to suspend
+				}
+				pFile->Flush();
+			}
+		}
+		while(0x80000000 == m_ThreadRunState)
+		{
 			LONGLONG PrefetchPosition;
 			LONGLONG PrefetchLength;
 			unsigned PrefetchMRU;
@@ -2058,7 +2121,6 @@ unsigned CDirectFile::CDirectFileCache::_ThreadProc()
 			{
 				CSimpleCriticalSectionLock lock(m_cs);
 				pPrefetchFile = m_pPrefetchFile;
-				m_pCurrentPrefetchFile = pPrefetchFile;
 				PrefetchPosition = m_PrefetchPosition;
 				PrefetchLength = m_PrefetchLength;
 				PrefetchMRU = m_MinPrefetchMRU;
@@ -2069,10 +2131,6 @@ unsigned CDirectFile::CDirectFileCache::_ThreadProc()
 			}
 			if (0 == PrefetchLength)
 			{
-				if (NULL == InterlockedExchangePointer(& m_pCurrentPrefetchFile, NULL))
-				{
-					SetEvent(m_hStopPrefetchEvent);
-				}
 				break;
 			}
 			void * pBuf = NULL;
@@ -2084,11 +2142,6 @@ unsigned CDirectFile::CDirectFileCache::_ThreadProc()
 				ReturnDataBuffer(pPrefetchFile, pBuf, ReadLength, 0);
 			}
 			// prefetch was canceled for this file
-			if (NULL == InterlockedExchangePointer(& m_pCurrentPrefetchFile, NULL))
-			{
-				SetEvent(m_hStopPrefetchEvent);
-				break;
-			}
 			{
 				CSimpleCriticalSectionLock lock(m_cs);
 				if (m_pPrefetchFile != pPrefetchFile
@@ -2113,43 +2166,12 @@ unsigned CDirectFile::CDirectFileCache::_ThreadProc()
 					break;
 				}
 			}
-		} while(1);
-		if (WAIT_TIMEOUT == WaitForSingleObject(m_hEvent, 2000))
-		{
-			// flush the files
-			;
-			for (int nFile = 0 ; NULL == m_pPrefetchFile; nFile++)
-			{
-				File * pFile = 0;
-				{
-					CSimpleCriticalSectionLock lock(m_cs);
-					pFile = m_pFileList;
-					for (int i = 0; pFile != NULL
-						&& (i < nFile
-							|| 0 == pFile->DirtyBuffersCount
-							|| (pFile->m_Flags & FileFlagsMemoryFile)); i++,
-						pFile = pFile->pNext)
-					{
-						// empty
-					}
-					nFile = i;
-					if (NULL != pFile)
-					{
-						if (0 == pFile->DirtyBuffersCount)
-						{
-							continue;
-						}
-						pFile->RefCount++;  // protected by lock(m_cs)
-					}
-					else
-					{
-						break;
-					}
-				}
-				pFile->Flush();
-				pFile->Close(0);    // decrement RefCount and delete file, if necessary
-			}
 		}
+		// reset bit 0x80000000, but only if not equal ~0
+		long tmp;
+		while ((tmp = m_ThreadRunState) != ~0
+				&& tmp != InterlockedCompareExchange(const_cast<long *>( & m_ThreadRunState),
+													tmp & ~ 0x80000000, tmp));
 	}
 	return 0;
 }
@@ -2234,6 +2256,11 @@ BOOL CDirectFile::File::SetFileLength(LONGLONG NewLength)
 		FileLength = NewLength;
 		return TRUE;
 	}
+	if (m_Flags & FileFlagsReadOnly)
+	{
+		SetLastError(ERROR_FILE_READ_ONLY);
+		return FALSE;
+	}
 	// if the file becomes shorter, discard all buffers after the trunk point
 	if (NewLength < FileLength)
 	{
@@ -2270,6 +2297,7 @@ BOOL CDirectFile::File::SetFileLength(LONGLONG NewLength)
 		}
 		else
 		{
+			SetLastError(ERROR_DISK_FULL);
 			return FALSE;
 		}
 	}
@@ -2280,6 +2308,7 @@ BOOL CDirectFile::File::SetFileLength(LONGLONG NewLength)
 		{
 			RealFileLength = SizeLow | (LONGLONG(SizeHigh) << 32);
 		}
+		SetLastError(ERROR_DISK_FULL);
 		return FALSE;
 	}
 

@@ -115,6 +115,7 @@ public:
 	void AddUndoRedo(class CUndoRedoContext * pUndo);
 	void EnableUndo(BOOL bEnable = TRUE);
 	void EnableRedo(BOOL bEnable = TRUE);
+	void DeletePermanentUndoRedo();
 	BOOL InitUndoRedo(class CUndoRedoContext * pContext);
 	BOOL OnSaveDocument(LPCTSTR lpszPathName, DWORD flags, WAVEFORMATEX * pWf);
 

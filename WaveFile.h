@@ -38,41 +38,6 @@ enum
 
 class CMmioFile : public CDirectFile
 {
-	class CSimpleCriticalSection
-	{
-		CRITICAL_SECTION m_cs;
-	public:
-		CSimpleCriticalSection()
-		{
-			InitializeCriticalSection( & m_cs);
-		}
-		~CSimpleCriticalSection()
-		{
-			DeleteCriticalSection( & m_cs);
-		}
-		void Lock()
-		{
-			EnterCriticalSection( & m_cs);
-		}
-		void Unlock()
-		{
-			LeaveCriticalSection( & m_cs);
-		}
-	};
-	class CSimpleCriticalSectionLock
-	{
-		CSimpleCriticalSection & m_cs;
-	public:
-		CSimpleCriticalSectionLock(CSimpleCriticalSection & cs)
-			: m_cs(cs)
-		{
-			cs.Lock();
-		}
-		~CSimpleCriticalSectionLock()
-		{
-			m_cs.Unlock();
-		}
-	};
 public:
 	// construction
 	CMmioFile();

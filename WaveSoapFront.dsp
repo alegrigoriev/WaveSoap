@@ -43,7 +43,7 @@ RSC=rc.exe
 # PROP Ignore_Export_Lib 0
 # PROP Target_Dir ""
 # ADD BASE CPP /nologo /MT /W3 /GX /O2 /D "WIN32" /D "NDEBUG" /D "_WINDOWS" /Yu"stdafx.h" /FD /c
-# ADD CPP /nologo /G6 /MT /W3 /GR /GX /Zi /O2 /I "c:\ntddk\inc" /D "NDEBUG" /D "WIN32" /D "_WINDOWS" /D "_MBCS" /D _WIN32_WINNT=0x0400 /D "OEMRESOURCE" /Yu"stdafx.h" /FD /c
+# ADD CPP /nologo /G6 /MT /W3 /GR /GX /Zi /O2 /I "c:\ntddk\inc" /D "NDEBUG" /D "WIN32" /D "_WINDOWS" /D "_MBCS" /D _WIN32_WINNT=0x0500 /D "OEMRESOURCE" /Yu"stdafx.h" /FD /c
 # ADD BASE MTL /nologo /D "NDEBUG" /mktyplib203 /win32
 # ADD MTL /nologo /D "NDEBUG" /mktyplib203 /win32
 # ADD BASE RSC /l 0x419 /d "NDEBUG"
@@ -70,7 +70,7 @@ LINK32=link.exe
 # PROP Ignore_Export_Lib 0
 # PROP Target_Dir ""
 # ADD BASE CPP /nologo /MTd /W3 /Gm /GX /ZI /Od /D "WIN32" /D "_DEBUG" /D "_WINDOWS" /Yu"stdafx.h" /FD /GZ /c
-# ADD CPP /nologo /MTd /W3 /Gm /GR /GX /ZI /Od /I "c:\ntddk\inc" /D "_DEBUG" /D "WIN32" /D "_WINDOWS" /D "_MBCS" /D _WIN32_WINNT=0x0400 /D "OEMRESOURCE" /Yu"stdafx.h" /FD /GZ /c
+# ADD CPP /nologo /MTd /W3 /Gm /GR /GX /ZI /Od /I "c:\ntddk\inc" /D "_DEBUG" /D "WIN32" /D "_WINDOWS" /D "_MBCS" /D _WIN32_WINNT=0x0500 /D "OEMRESOURCE" /Yu"stdafx.h" /FD /GZ /c
 # ADD BASE MTL /nologo /D "_DEBUG" /mktyplib203 /win32
 # ADD MTL /nologo /D "_DEBUG" /mktyplib203 /win32
 # ADD BASE RSC /l 0x419 /d "_DEBUG"
@@ -119,6 +119,11 @@ SOURCE=.\CustomSampleRateDlg.cpp
 # Begin Source File
 
 SOURCE=.\DirectFile.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=.\DlgFileNew.cpp
+# SUBTRACT CPP /YX /Yc /Yu
 # End Source File
 # Begin Source File
 
@@ -348,6 +353,10 @@ SOURCE=.\MainFrm.h
 # End Source File
 # Begin Source File
 
+SOURCE=.\MfcStdAfx.h
+# End Source File
+# Begin Source File
+
 SOURCE=.\NewFilePropertiesDlg.h
 # End Source File
 # Begin Source File
@@ -448,6 +457,10 @@ SOURCE=.\ScaledScrollView.h
 # Begin Source File
 
 SOURCE=.\shellink.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\SimpleCriticalSection.h
 # End Source File
 # Begin Source File
 
