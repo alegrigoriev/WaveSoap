@@ -962,8 +962,12 @@ BEGIN_MESSAGE_MAP(CSelectionDialog, BaseClass)
 	ON_CBN_KILLFOCUS(IDC_COMBO_START, OnKillfocusEditStart)
 	ON_NOTIFY(CTimeSpinCtrl::TSC_BUDDY_CHANGE, IDC_SPIN_START, OnBuddyChangeSpinStart)
 	ON_CBN_SELCHANGE(IDC_COMBO_SELECTION, OnSelchangeComboSelection)
-	ON_CBN_SELCHANGE(IDC_COMBO_END, OnSelchangeComboStartEnd)
-	ON_CBN_SELCHANGE(IDC_COMBO_START, OnSelchangeComboStartEnd)
+
+	ON_CBN_SELCHANGE(IDC_COMBO_END, OnSelchangeComboEnd)
+	ON_CBN_SELCHANGE(IDC_COMBO_START, OnSelchangeComboStart)
+
+	ON_CONTROL(20, IDC_COMBO_START, OnDeferredSelchangeComboStart)
+	ON_CONTROL(20, IDC_COMBO_END, OnDeferredSelchangeComboEnd)
 	//}}AFX_MSG_MAP
 END_MESSAGE_MAP()
 
@@ -1018,9 +1022,24 @@ void CSelectionDialog::OnSelchangeComboSelection()
 	CSelectionUiSupport::OnSelchangeComboSelection();
 }
 
-void CSelectionDialog::OnSelchangeComboStartEnd()
+void CSelectionDialog::OnSelchangeComboStart()
 {
-	UpdateComboSelection();
+	PostMessage(WM_COMMAND, MAKEWPARAM(IDC_COMBO_START, 20), LPARAM(m_eStart.m_hWnd));
+}
+
+void CSelectionDialog::OnSelchangeComboEnd()
+{
+	PostMessage(WM_COMMAND, MAKEWPARAM(IDC_COMBO_END, 20), LPARAM(m_eStart.m_hWnd));
+}
+
+void CSelectionDialog::OnDeferredSelchangeComboStart()
+{
+	CSelectionUiSupport::OnKillfocusEditStart();
+}
+
+void CSelectionDialog::OnDeferredSelchangeComboEnd()
+{
+	CSelectionUiSupport::OnKillfocusEditEnd();
 }
 
 /////////////////////////////////////////////////////////////////////////////

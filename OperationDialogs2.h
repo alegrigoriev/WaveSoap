@@ -391,6 +391,11 @@ protected:
 	afx_msg void OnBuddyChangeSpinStart(NMHDR * pNmHdr, LRESULT * pResult);
 	afx_msg void OnSelchangeComboSelection();
 
+	afx_msg void OnSelchangeComboStart();
+	afx_msg void OnSelchangeComboEnd();
+	afx_msg void OnDeferredSelchangeComboStart();
+	afx_msg void OnDeferredSelchangeComboEnd();
+
 	DECLARE_MESSAGE_MAP()
 public:
 	// 0 - marker, 1 - region
