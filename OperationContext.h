@@ -195,7 +195,7 @@ public:
 		, m_bSavePeakFile(bSavePeaks)
 	{
 		WavFile.SetPeaks(0, WavFile.NumberOfSamples() * WavFile.Channels(),
-						WavFile.Channels(), WavePeak(0x7FFF, -0x8000));
+						1, WavePeak(0x7FFF, -0x8000));
 
 		m_OriginalFile = OriginalFile;
 		m_SrcFile = WavFile;
