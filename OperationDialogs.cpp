@@ -2636,6 +2636,8 @@ void CNoiseReductionDialog::OnButtonSetThreshold()
 		// the UpdateData routine will set focus to correct item
 		return;
 	}
+
+	Profile.FlushAll();
 	EndDialog(IDC_BUTTON_SET_THRESHOLD);
 }
 
