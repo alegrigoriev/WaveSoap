@@ -12,27 +12,37 @@
 #include "WmaFile.h"
 #include "KListEntry.h"
 
-#define ALL_CHANNELS (-1)
+#define ALL_CHANNELS ((CHANNEL_MASK)-1)
+typedef int PASTE_MODE;
+
 class CSelectionUpdateInfo : public CObject
 {
 public:
 	CSelectionUpdateInfo() {}
 	~CSelectionUpdateInfo() {}
-	int SelBegin;
-	int SelEnd;
-	int SelChannel;
-	int CaretPos;
+	SAMPLE_INDEX SelBegin;
+	SAMPLE_INDEX SelEnd;
+	CHANNEL_MASK SelChannel;
+	SAMPLE_INDEX CaretPos;
 	int Flags;
 };
 
 class CSoundUpdateInfo : public ListItem<CSoundUpdateInfo>, public CObject
 {
 public:
-	DWORD FileID;
-	int UpdateCode;
-	int Begin;
-	int End;
-	int Length;
+	CSoundUpdateInfo(int UpdateCode, ULONG_PTR FileID,
+					SAMPLE_INDEX Begin, SAMPLE_INDEX End, long NewLength)
+		: m_UpdateCode(UpdateCode)
+		, m_Begin(Begin)
+		, m_End(End)
+		, m_NewLength(NewLength)
+	{
+	}
+	ULONG_PTR m_FileID;
+	int m_UpdateCode;
+	SAMPLE_INDEX m_Begin;
+	SAMPLE_INDEX m_End;
+	NUMBER_OF_SAMPLES m_NewLength;
 };
 
 // Active document have highest priority for disk-intensive operations.
@@ -85,10 +95,10 @@ public:
 	int WaveFileSamples() const;
 	LPMMCKINFO WaveDataChunk() const;
 	LPWAVEFORMATEX WaveFormat() const;
-	int WaveChannels() const;
+	NUMBER_OF_SAMPLES WaveChannels() const;
 	int WaveSampleRate() const;
 	int WaveSampleSize() const;
-	DWORD WaveFileID() const;
+	ULONG_PTR WaveFileID() const;
 
 	virtual BOOL IsModified();
 	BOOL IsBusy() const
@@ -156,11 +166,16 @@ public:
 	LONG m_CaretPosition;
 	LONG m_SelectionStart;
 	LONG m_SelectionEnd;
-	int m_SelectedChannel; // 0, 1, 2
+	CHANNEL_MASK m_SelectedChannel; // 0, 1, 2
 	bool m_TimeSelectionMode;
-	void SetSelection(long begin, long end, int channel, int caret, int flags = 0);
-	void SoundChanged(DWORD FileID, long begin, long end, int length = -1, DWORD flags = 0);
-	void PlaybackPositionNotify(long position, int channel);
+
+	void SetSelection(SAMPLE_INDEX begin, SAMPLE_INDEX end, CHANNEL_MASK channel,
+					SAMPLE_INDEX caret, int flags = 0);
+
+	void SoundChanged(ULONG_PTR FileID, SAMPLE_INDEX begin, SAMPLE_INDEX end,
+					NUMBER_OF_SAMPLES length = -1, DWORD flags = 0);
+
+	void PlaybackPositionNotify(SAMPLE_INDEX position, CHANNEL_MASK channel);
 	BOOL ProcessUpdatePlaybackPosition();
 
 	enum {UpdateSelectionChanged = 1,
@@ -178,20 +193,25 @@ public:
 
 	void BuildPeakInfo(BOOL bSavePeakFile);
 	void GetSoundMinMax(WavePeak & Left, WavePeak & Right,
-						long begin, long end);
+						SAMPLE_INDEX begin, SAMPLE_INDEX end);
 	BOOL SetThreadPriority(int priority)
 	{
 		return m_Thread.SetThreadPriority(priority);
 	}
 
 	BOOL OpenWaveFile(CWaveFile & WaveFile, LPCTSTR szName, DWORD flags);
-
+	void QueueSoundUpdate(int UpdateCode, ULONG_PTR FileID,
+						SAMPLE_INDEX Begin, SAMPLE_INDEX End, NUMBER_OF_SAMPLES NewLength, int flags);
+	enum {
+		QueueSoundUpdateMerge = 1,  // merge update range
+		QueueSoundUpdateReplace = 2, // replace existing item
+	};
 #ifdef _DEBUG
 	virtual void AssertValid() const;
 	virtual void Dump(CDumpContext& dc) const;
 #endif
 
-	long m_OperationInProgress;
+	LONG_volatile m_OperationInProgress;
 	bool volatile m_StopOperation;
 	bool m_OperationNonCritical;
 	bool m_PlayingSound;
@@ -199,8 +219,8 @@ public:
 	bool m_bUndoEnabled;
 	bool m_bRedoEnabled;
 	bool m_bChannelsLocked;
-	int m_PrevChannelToCopy;
-	int m_DefaultPasteMode;
+	CHANNEL_MASK m_PrevChannelToCopy;
+	PASTE_MODE m_DefaultPasteMode;
 
 	CString m_CurrentStatusString;
 	CSimpleCriticalSection m_StatusStringLock;
@@ -254,10 +274,10 @@ public:
 protected:
 	// save the selected area to the permanent or temporary file
 	BOOL CanCloseFrame(CFrameWnd* pFrameArg);
-	void DoCopy(LONG Start, LONG End, LONG Channel, LPCTSTR FileName);
-	void DoPaste(LONG Start, LONG End, LONG Channel, LPCTSTR FileName);
-	void DoCut(LONG Start, LONG End, LONG Channel);
-	void DoDelete(LONG Start, LONG End, LONG Channel);
+	void DoCopy(SAMPLE_INDEX Start, SAMPLE_INDEX End, CHANNEL_MASK Channel, LPCTSTR FileName);
+	void DoPaste(SAMPLE_INDEX Start, SAMPLE_INDEX End, CHANNEL_MASK Channel, LPCTSTR FileName);
+	void DoCut(SAMPLE_INDEX Start, SAMPLE_INDEX End, CHANNEL_MASK Channel);
+	void DoDelete(SAMPLE_INDEX Start, SAMPLE_INDEX End, CHANNEL_MASK Channel);
 	void DeleteUndo();
 	void DeleteRedo();
 
