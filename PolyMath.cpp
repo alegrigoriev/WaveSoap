@@ -5,12 +5,7 @@
 #if defined(_DEBUG)
 CDumpContext & operator << (CDumpContext & dc, Complex c)
 {
-	dc << "(" << c.re << "," << c.im << ")";
-	return dc;
-}
-CDumpContext & operator << (CDumpContext & dc, const lcomplex & c)
-{
-	dc << "(" << c.re << "," << c.im << ")";
+	dc << "(" << c.real() << "," << c.imag() << ")";
 	return dc;
 }
 int PolyIterCount=0;
@@ -69,7 +64,7 @@ poly::poly(int iInitOrder, Complex first, int MaxOrder)
 	isReal = 1;
 	SetOrder(iInitOrder);
 	(*this)[0]=first;
-	if (imag(first) != 0) isReal = 0;
+	if (first.imag() != 0) isReal = 0;
 }
 
 poly::poly(const Complex *roots, int iInitOrder, Complex first, int MaxOrder)
@@ -115,7 +110,7 @@ void poly::FromRoots(const polyRoots & roots, Complex first)
 		(*this)[0] = first;
 		return;
 	}
-	if (imag(first) != 0) isReal = 0;
+	if (first.imag() != 0) isReal = 0;
 	poly * pp = new poly[(iInitOrder + 1)/2], *pp1=pp, *pp2;
 	for (int i = 0; i < iInitOrder; i += 2, ++pp1)
 	{
@@ -155,7 +150,7 @@ poly & poly::operator +=(const Complex &a)
 	MakeUnique();
 	Allocate(0);
 	array()[iOrder] += a;
-	if(imag(a) != 0.) isReal = 0;
+	if(a.imag() != 0.) isReal = 0;
 	return *this;
 }
 
@@ -164,7 +159,7 @@ poly & poly::operator -=(const Complex &a)
 	MakeUnique();
 	Allocate(0);
 	array()[iOrder] -= a;
-	if(imag(a) != 0.) isReal = 0;
+	if(a.imag() != 0.) isReal = 0;
 	return *this;
 }
 
@@ -221,7 +216,7 @@ poly & poly::operator *= (Complex a)
 	MakeUnique();
 	Complex *dst = array();
 	for(int ord = order()+1; ord--; dst++) *dst *= a;
-	if(imag(a) != 0.) isReal = 0;
+	if(a.imag() != 0.) isReal = 0;
 	return *this;
 }
 
@@ -230,7 +225,7 @@ poly & poly::operator /= (const Complex &a)
 	MakeUnique();
 	Complex *dst = array(), b= 1./a;
 	for(int ord = order()+1; ord--; dst++) *dst *= b;
-	if(imag(a) != 0.) isReal = 0;
+	if(a.imag() != 0.) isReal = 0;
 	return *this;
 }
 
@@ -623,7 +618,7 @@ polyRoots poly::roots(Complex start, int iIter) const
 			polyRoots roots2 = r2.roots(start, iIter);
 			int newRootCount = roots2.count();
 #if defined(_DEBUG)
-			afxDump << "Coupled roots: " << newRootCount << "\n";
+			//afxDump << "Coupled roots: " << newRootCount << "\n";
 #endif
 			rootCounter += newRootCount + lastRootCount;
 			for (i = 0; i< lastRootCount; ++i)
@@ -693,7 +688,7 @@ polyRoots poly::roots(Complex start, int iIter) const
 						break;
 					}
 					else
-						if (real(b) * real(d) + imag(b) * imag(d) > 0.)
+						if (b.real() * d.real() + b.imag() * d.imag() > 0.)
 							d -= b;
 						else
 							d = -b - d;
@@ -749,7 +744,7 @@ polyRoots poly::roots(Complex start, int iIter) const
 //						else
 					{
 						Q = sqrt(p1 + q1);
-						if (real(Q) * real(q) + imag(Q) * imag(q) > 0.)
+						if (Q.real() * q.real() + Q.imag() * q.imag() > 0.)
 							A = pow(-q - Q, 1/3.);
 						else
 							A = pow(-q + Q, 1/3.);
@@ -811,7 +806,7 @@ polyRoots poly::roots(Complex start, int iIter) const
 //						}
 //						else
 			Q = sqrt(p1 + q1);
-			if (real(Q) * real(q) + imag(Q) * imag(q) > 0.)
+			if (Q.real() * q.real() + Q.imag() * q.imag() > 0.)
 				A = pow(-q - Q, 1/3.);
 			else
 				A = pow(-q + Q, 1/3.);
@@ -844,7 +839,7 @@ polyRoots poly::roots(Complex start, int iIter) const
 					if (norm(d)*1e10 < norm(b))
 						d = -b;
 					else
-						if (real(b) * real(d) + imag(b) * imag(d) > 0.)
+						if (b.real() * d.real() + imag(b) * imag(d) > 0.)
 							d -= b;
 						else
 							d = -b - d;
@@ -1033,7 +1028,7 @@ void poly::Dump(CDumpContext & dc)
 	for (int i = 0; i <= iOrder; i++)
 	{
 		Complex x = array()[i];
-		s.Format("x[%d]=(%.8g, %.8g)\n", i, x.re, x.im);
+		s.Format("x[%d]=(%.8g, %.8g)\n", i, x.real(), x.imag());
 		dc << s;
 	}
 }
@@ -1203,7 +1198,7 @@ void polyRoots::Dump(CDumpContext & dc)
 	for (int i = 0; i < iCount; i++)
 	{
 		Complex x = array()[i];
-		s.Format("x[%d]=(%.8g, %.8g)\n", i, x.re, x.im);
+		s.Format("x[%d]=(%.8g, %.8g)\n", i, x.real(), x.imag());
 		dc << s;
 	}
 }
