@@ -21,6 +21,7 @@ public:
 		pNextChain(NULL),
 		pNext(NULL),
 		pPrev(NULL),
+		m_pUndoContext(NULL),
 		PercentCompleted(0)
 	{
 	}
@@ -37,7 +38,7 @@ public:
 	virtual BOOL Init() { return TRUE; }
 	virtual BOOL DeInit() { return TRUE; }
 	virtual void Retire();
-	virtual void PostRetire();
+	virtual void PostRetire(BOOL bChildContext = FALSE);
 	virtual CString GetStatusString() = 0;
 	COperationContext * pNext;
 	COperationContext * pPrev;
@@ -45,6 +46,7 @@ public:
 	class CWaveSoapFrontDoc * pDocument;
 	DWORD m_Flags;
 	int PercentCompleted;
+	class CUndoRedoContext * m_pUndoContext;
 };
 enum {
 	OperationContextClipboard = 1,  // clipboard operations are serialized
@@ -58,6 +60,15 @@ enum {
 	OperationContextNonCritical = 0x100,
 	OperationContextDontKeepAfterRetire = 0x200,
 	OperationContextDontAdjustPriority = 0x400,
+};
+
+// additional custom flags for the contexts
+enum {
+	CopyExpandFile = 0x80000000,
+	CopyShrinkFile = 0x40000000,
+	CopyCreatingUndo = 0x20000000,
+	RedoContext = 0x10000000,
+	UndoContextReplaceWholeFile = 0x08000000,
 };
 
 class CScanPeaksContext : public COperationContext
@@ -81,15 +92,6 @@ public:
 	virtual CString GetStatusString() { return sOp; }
 };
 
-// additional custom flags for the contexts
-enum {
-	CopyExpandFile = 0x80000000,
-	CopyShrinkFile = 0x40000000,
-	CopyCreatingUndo = 0x20000000,
-	RedoContext = 0x10000000,
-	UndoContextReplaceWholeFile = 0x08000000,
-};
-
 class CResizeContext : public COperationContext
 {
 	friend class CWaveSoapFrontDoc;
@@ -107,13 +109,11 @@ class CResizeContext : public COperationContext
 	BOOL ShrinkProc();
 	BOOL InitUndo(CString UndoStatusString);
 public:
-	class CUndoRedoContext * m_pUndoContext;
 
 	CString sOp;
 	CResizeContext(CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString)
 		: COperationContext(pDoc, OperationContextDiskIntensive),
-		sOp(StatusString),
-		m_pUndoContext(NULL)
+		sOp(StatusString)
 	{
 
 	}
@@ -121,7 +121,7 @@ public:
 	BOOL InitExpand(CWaveFile & File, LONG StartSample, LONG Length, int Channel);
 	BOOL InitShrink(CWaveFile & File, LONG StartSample, LONG Length, int Channel);
 	virtual BOOL OperationProc();
-	virtual void PostRetire();
+	virtual void PostRetire(BOOL bChildContext = FALSE);
 	virtual CString GetStatusString();
 };
 
@@ -141,14 +141,12 @@ public:
 	DWORD m_DstEnd;
 	int m_DstChan;
 	class CResizeContext * m_pExpandShrinkContext;
-	class CUndoRedoContext * m_pUndoContext;
 
 public:
 	CString sOp;
 	CCopyContext(CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString)
 		: COperationContext(pDoc, OperationContextDiskIntensive),
 		sOp(StatusString),
-		m_pUndoContext(NULL),
 		m_pExpandShrinkContext(NULL)
 	{
 
@@ -161,6 +159,7 @@ public:
 				);
 	BOOL InitExpand(LONG StartSample, LONG Length, int Channel);
 	virtual BOOL OperationProc();
+	virtual void PostRetire(BOOL bChildContext = FALSE);
 	virtual CString GetStatusString();
 };
 
@@ -186,7 +185,7 @@ public:
 					int SaveChannel);
 	BOOL SaveUndoData(void * pBuf, long BufSize, DWORD Position, int Channel);
 	BOOL NeedToSave(DWORD Position, size_t length);
-	virtual void PostRetire();
+	virtual void PostRetire(BOOL bChildContext = FALSE);
 	~CUndoRedoContext() {}
 };
 
@@ -278,9 +277,28 @@ public:
 	virtual BOOL OperationProc();
 	virtual BOOL Init();
 	virtual BOOL DeInit();
-	virtual void PostRetire();
+	virtual void PostRetire(BOOL bChildContext = FALSE);
 	virtual CString GetStatusString() { return m_ss; }
 };
 
+class CVolumeChangeContext : public COperationContext
+{
+public:
+	CVolumeChangeContext(CWaveSoapFrontDoc * pDoc);
+	~CVolumeChangeContext();
+	float m_VolumeLeft;
+	float m_VolumeRight;
+	int m_DstChan;
+	DWORD m_DstStart;
+	DWORD m_DstEnd;
+	DWORD m_DstCopyPos;
 
+	CString m_ss;
+	virtual BOOL OperationProc();
+	virtual BOOL Init();
+	virtual BOOL DeInit();
+	virtual void PostRetire(BOOL bChildContext = FALSE);
+	virtual CString GetStatusString() { return m_ss; }
+
+};
 #endif // AFX_OPERATIONCONTEXT_H__FFA16C44_2FA7_11D4_9ADD_00C0F0583C4B__INCLUDED_

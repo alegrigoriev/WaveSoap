@@ -29,9 +29,12 @@ void COperationContext::Retire()
 	}
 }
 
-void COperationContext::PostRetire()
+void COperationContext::PostRetire(BOOL bChildContext)
 {
-	InterlockedDecrement( & pDocument->m_OperationInProgress);
+	if ( ! bChildContext)
+	{
+		InterlockedDecrement( & pDocument->m_OperationInProgress);
+	}
 	delete this;
 }
 
@@ -379,7 +382,7 @@ BOOL CResizeContext::InitShrink(CWaveFile & File, LONG StartSample, LONG Length,
 	return TRUE;
 }
 
-void CResizeContext::PostRetire()
+void CResizeContext::PostRetire(BOOL bChildContext)
 {
 	// save undo context
 	if (m_pUndoContext)
@@ -387,7 +390,7 @@ void CResizeContext::PostRetire()
 		pDocument->AddUndoRedo(m_pUndoContext);
 		m_pUndoContext = NULL;
 	}
-	COperationContext::PostRetire();
+	COperationContext::PostRetire(bChildContext);
 }
 
 BOOL CResizeContext::OperationProc()
@@ -435,6 +438,8 @@ BOOL CResizeContext::ShrinkProc()
 
 			m_DstFile.m_File.ReturnDataBuffer(pSrcBuf, WasRead,
 											CDirectFile::ReturnBufferDiscard);
+			m_pUndoContext->m_DstEnd = m_pUndoContext->m_SrcSavePos;
+			m_pUndoContext->m_SrcEnd = m_pUndoContext->m_DstSavePos;
 			//m_pUndoContext->m_SrcSavePos += WasRead;
 		}
 
@@ -849,7 +854,8 @@ CString CCopyContext::GetStatusString()
 	{
 		return m_pUndoContext->GetStatusString();
 	}
-	else if (m_pExpandShrinkContext)
+	else if (NULL != m_pExpandShrinkContext
+			&& 0 == (m_pExpandShrinkContext->m_Flags & (OperationContextStop | OperationContextFinished)))
 	{
 		return m_pExpandShrinkContext->GetStatusString();
 	}
@@ -878,6 +884,7 @@ BOOL CCopyContext::InitCopy(CWaveFile & DstFile,
 
 	m_DstCopyPos = m_DstFile.GetDataChunk()->dwDataOffset +
 					DstStartSample * DstSampleSize;
+	m_DstStart = m_DstCopyPos;
 
 	m_DstEnd = m_DstFile.GetDataChunk()->dwDataOffset +
 				(DstStartSample + SrcLength) * DstSampleSize;
@@ -901,6 +908,18 @@ BOOL CCopyContext::InitCopy(CWaveFile & DstFile,
 	}
 	else if (SrcLength < DstLength)
 	{
+		m_pExpandShrinkContext = new CResizeContext(pDocument, _T("Shrinking  the file..."));
+		if (NULL == m_pExpandShrinkContext)
+		{
+			return FALSE;
+		}
+		if ( ! m_pExpandShrinkContext->InitShrink(DstFile, DstStartSample + SrcLength,
+												DstLength - SrcLength, DstChannel))
+		{
+			delete m_pExpandShrinkContext;
+			m_pExpandShrinkContext = NULL;
+			return FALSE;
+		}
 		m_Flags |= CopyShrinkFile;
 	}
 
@@ -944,8 +963,6 @@ BOOL CCopyContext::OperationProc()
 			if (m_pExpandShrinkContext->m_Flags &
 				(OperationContextStop | OperationContextFinished))
 			{
-				delete m_pExpandShrinkContext;
-				m_pExpandShrinkContext = NULL;
 				m_Flags &= ~(CopyExpandFile | CopyShrinkFile);
 			}
 			return TRUE;
@@ -1038,6 +1055,8 @@ BOOL CCopyContext::OperationProc()
 			{
 				m_pUndoContext->SaveUndoData(pOriginalDstBuf, WasLockedToWrite,
 											m_DstCopyPos, m_DstChan);
+				m_pUndoContext->m_DstEnd = m_pUndoContext->m_SrcSavePos;
+				m_pUndoContext->m_SrcEnd = m_pUndoContext->m_DstSavePos;
 			}
 
 		}
@@ -1130,6 +1149,17 @@ BOOL CCopyContext::OperationProc()
 					m_SrcCopyPos += ToCopy * sizeof (__int16);
 					LeftToWrite -= ToCopy * (2 * sizeof (__int16));
 					m_DstCopyPos += ToCopy * (2 * sizeof (__int16));
+					if (2 == LeftToRead && LeftToWrite != 0)
+					{
+						// only one channel sample available
+						pDst[0] = pSrc[0];
+						pSrc++;
+						pDst++;
+						m_SrcCopyPos += 2;
+						m_DstCopyPos += 2;
+						LeftToRead -= 2;
+						LeftToWrite -= 2;
+					}
 				}
 			}
 			else if (m_DstFile.Channels() == 1)
@@ -1198,6 +1228,17 @@ BOOL CCopyContext::OperationProc()
 					m_SrcCopyPos += ToCopy * (2 * sizeof (__int16));
 					LeftToWrite -= ToCopy * sizeof (__int16);
 					m_DstCopyPos += ToCopy * sizeof (__int16);
+					if (2 == LeftToRead && LeftToWrite != 0)
+					{
+						// only one channel sample available
+						pDst[0] = pSrc[0];
+						pSrc++;
+						pDst++;
+						m_SrcCopyPos += 2;
+						m_DstCopyPos += 2;
+						LeftToRead -= 2;
+						LeftToWrite -= 2;
+					}
 				}
 			}
 			else
@@ -1291,6 +1332,23 @@ BOOL CCopyContext::OperationProc()
 
 }
 
+void CCopyContext::PostRetire(BOOL bChildContext)
+{
+	// only one undo context at a time
+	ASSERT ((NULL != m_pUndoContext) + (NULL != m_pExpandShrinkContext
+				&& m_pExpandShrinkContext->m_pUndoContext) <= 1);
+	if (NULL != m_pUndoContext)
+	{
+		pDocument->AddUndoRedo(m_pUndoContext);
+		m_pUndoContext = NULL;
+	}
+	if (NULL != m_pExpandShrinkContext)
+	{
+		m_pExpandShrinkContext->PostRetire(TRUE);
+		m_pExpandShrinkContext = NULL;
+	}
+	COperationContext::PostRetire(bChildContext);
+}
 ///////////// CDecompressContext
 BOOL CDecompressContext::OperationProc()
 {
@@ -1490,7 +1548,7 @@ BOOL CSoundPlayContext::DeInit()
 	return TRUE;
 }
 
-void CSoundPlayContext::PostRetire()
+void CSoundPlayContext::PostRetire(BOOL bChildContext)
 {
 	pDocument->m_PlayingSound = false;
 	if (m_bPauseRequested)
@@ -1508,7 +1566,7 @@ void CSoundPlayContext::PostRetire()
 		pDocument->SetSelection(pDocument->m_SelectionStart, pDocument->m_SelectionEnd,
 								pDocument->m_SelectedChannel, pDocument->m_SelectionEnd, TRUE);
 	}
-	COperationContext::PostRetire();
+	COperationContext::PostRetire(bChildContext);
 }
 
 BOOL CSoundPlayContext::OperationProc()
@@ -1734,16 +1792,49 @@ BOOL CUndoRedoContext::SaveUndoData(void * pBuf, long BufSize, DWORD Position, i
 	return TRUE;
 }
 
-void CUndoRedoContext::PostRetire()
+void CUndoRedoContext::PostRetire(BOOL bChildContext)
 {
+	// check if the operation completed
+	if ((m_Flags & OperationContextFinished)
+		&& (NULL == m_pExpandShrinkContext
+			|| (m_pExpandShrinkContext->m_Flags & OperationContextFinished)))
+	{
+		CCopyContext::PostRetire(bChildContext);
+		return;
+	}
+
+	// save undo context
+	m_Flags &= ~(OperationContextStop | OperationContextStopRequested);
+	// only one undo context at a time
+	ASSERT ((NULL != m_pUndoContext) + (NULL != m_pExpandShrinkContext
+				&& m_pExpandShrinkContext->m_pUndoContext) <= 1);
+	if (NULL != m_pUndoContext)
+	{
+		pDocument->AddUndoRedo(m_pUndoContext);
+		m_pUndoContext = NULL;
+	}
+	if (NULL != m_pExpandShrinkContext
+		&& m_pExpandShrinkContext->m_pUndoContext)
+	{
+		pDocument->AddUndoRedo(m_pExpandShrinkContext->m_pUndoContext);
+		m_pExpandShrinkContext->m_pUndoContext = NULL;
+	}
+	// put the context back to undo/redo list
+	pDocument->AddUndoRedo(this);
+	// modify modification number, depending on operation
 	if (m_Flags & RedoContext)
 	{
-		pDocument->IncrementModified(FALSE);    // bDeleteRedo=FALSE
+		if (pDocument->m_ModificationSequenceNumber <= 0)
+		{
+			pDocument->DecrementModified();
+		}
 	}
 	else
 	{
-		pDocument->DecrementModified();
+		if (pDocument->m_ModificationSequenceNumber >= 0)
+		{
+			pDocument->IncrementModified(FALSE);    // bDeleteRedo=FALSE
+		}
 	}
-	CCopyContext::PostRetire();
 }
 
