@@ -46,7 +46,7 @@ html\File\hid_file_close.htm
 html\File\hid_file_save.htm
 html\File\hid_file_save_all.htm
 html\File\hid_file_save_as.htm
-html\File\hid_save_selection.htm
+html\File\hid_save_selection_as.htm
 html\File\hid_save_copy_as.htm
 html\File\hid_split_to_files.htm
 html\File\hid_file_properties.htm
@@ -180,6 +180,7 @@ hid_file_save = html\File\hid_file_save.htm
 hid_file_save_as = html\File\hid_file_save_as.htm
 hid_file_save_copy_as = html\File\hid_save_copy_as.htm
 hid_file_save_all = html\File\hid_file_save_all.htm
+hid_save_saveselectionas = html\File\hid_save_selection_as.htm
 hid_save_split_to_files = html\File\hid_split_to_files.htm
 hid_file_properties = html\File\hid_file_properties.htm
 hid_file_statistics = html\File\hid_file_statistics.htm
@@ -239,7 +240,6 @@ hid_view_zoomvert_normal = html\View\hid_view_zoomvert_normal.htm
 hid_view_ruler = html\View\hid_view_ruler.htm
 hid_view_status_bar = html\View\hid_view_status_bar.htm
 
-hid_process_mute = html\Process\process_mute.htm
 hid_process_resample = html\Process\process_resample.htm
 hid_process_do_declicking = html\Process\process_click_removal.htm
 hid_process_do_ulf = html\Process\process_ulf_noise.htm
