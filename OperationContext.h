@@ -236,7 +236,12 @@ public:
 
 	virtual LONGLONG GetTempDataSize() const;
 	BOOL InitDestination(CWaveFile & DstFile, SAMPLE_INDEX StartSample, SAMPLE_INDEX EndSample,
-						CHANNEL_MASK chan, BOOL NeedUndo);
+						CHANNEL_MASK chan, BOOL NeedUndo,
+						SAMPLE_INDEX StartUndoSample = 0,
+						SAMPLE_INDEX EndUndoSample = LAST_SAMPLE);
+
+	void SetSaveForUndo(SAMPLE_INDEX StartSample, SAMPLE_INDEX EndSample);
+	virtual BOOL CreateUndo(BOOL IsRedo = FALSE);
 
 //    protected:
 	class CCopyUndoContext * m_pUndoContext;
@@ -247,6 +252,8 @@ public:
 	SAMPLE_POSITION m_DstEnd;
 	SAMPLE_POSITION m_DstPos;
 
+	SAMPLE_POSITION m_UndoStartPos;
+	SAMPLE_POSITION m_UndoEndPos;
 };
 
 class CThroughProcessOperation : public CTwoFilesOperation
@@ -325,21 +332,7 @@ public:
 	CScanPeaksContext(CWaveSoapFrontDoc * pDoc,
 					CWaveFile & WavFile,
 					CWaveFile & OriginalFile,
-					BOOL bSavePeaks)
-		: BaseClass(pDoc, _T("Scanning the file for peaks..."), OperationContextDiskIntensive, _T("Peak Scan"))
-		, m_GranuleSize(WavFile.SampleSize() * WavFile.GetPeakGranularity())
-		, m_bSavePeakFile(bSavePeaks)
-	{
-		WavFile.SetPeaks(0, WavFile.NumberOfSamples() * WavFile.Channels(),
-						1, WavePeak(0x7FFF, -0x8000));
-
-		m_OriginalFile = OriginalFile;
-		m_SrcFile = WavFile;
-		m_SrcStart = WavFile.SampleToPosition(0);
-		m_SrcPos = m_SrcStart;
-
-		m_SrcEnd = WavFile.SampleToPosition(LAST_SAMPLE);
-	}
+					BOOL bSavePeaks);
 	//~CScanPeaksContext() {}
 protected:
 	CWaveFile m_OriginalFile;
@@ -357,10 +350,7 @@ class CCopyContext : public CTwoFilesOperation
 
 public:
 	typedef std::auto_ptr<ThisClass> auto_ptr;
-	CCopyContext(CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString, LPCTSTR OperationName)
-		: BaseClass(pDoc, StatusString, OperationContextDiskIntensive, OperationName)
-	{
-	}
+	CCopyContext(CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString, LPCTSTR OperationName);
 
 	BOOL InitCopy(CWaveFile & DstFile,
 				SAMPLE_INDEX DstStartSample, CHANNEL_MASK DstChannel,
@@ -368,8 +358,7 @@ public:
 				SAMPLE_INDEX SrcStartSample, CHANNEL_MASK SrcChannel,
 				NUMBER_OF_SAMPLES SrcDstLength);
 
-	virtual BOOL CreateUndo(BOOL IsRedo = FALSE);
-	//virtual void DeleteUndo();
+protected:
 
 	virtual BOOL OperationProc();
 };

@@ -216,6 +216,9 @@ void COneFileOperation::InitSource(CWaveFile & SrcFile, SAMPLE_INDEX StartSample
 	m_SrcStart = m_SrcFile.SampleToPosition(StartSample);
 	m_SrcPos = m_SrcStart;
 	m_SrcEnd = m_SrcFile.SampleToPosition(EndSample);
+
+	TRACE("SrcStart=%X, SrcEnd=%X, SrcPos=%X\n",
+		m_SrcStart, m_SrcEnd, m_SrcPos);
 }
 
 void COneFileOperation::UpdateCompletedPercent()
@@ -256,6 +259,8 @@ CTwoFilesOperation::CTwoFilesOperation(class CWaveSoapFrontDoc * pDoc, LPCTSTR S
 	, m_DstEnd(0)
 	, m_DstPos(0)
 	, m_pUndoContext(NULL)
+	, m_UndoStartPos(0)
+	, m_UndoEndPos(0)
 {
 }
 
@@ -273,7 +278,8 @@ LONGLONG CTwoFilesOperation::GetTempDataSize() const
 }
 
 BOOL CTwoFilesOperation::InitDestination(CWaveFile & DstFile, SAMPLE_INDEX StartSample, SAMPLE_INDEX EndSample,
-										CHANNEL_MASK chan, BOOL NeedUndo)
+										CHANNEL_MASK chan, BOOL NeedUndo,
+										SAMPLE_INDEX StartUndoSample, SAMPLE_INDEX EndUndoSample)
 {
 	m_DstFile = DstFile;
 	// set begin and end offsets
@@ -284,24 +290,58 @@ BOOL CTwoFilesOperation::InitDestination(CWaveFile & DstFile, SAMPLE_INDEX Start
 	m_DstEnd = m_DstFile.SampleToPosition(EndSample);
 
 	m_DstChan = chan;
+
+	TRACE("DstStart=%X, DstEnd=%X, DstPos=%X\n",
+		m_DstStart, m_DstEnd, m_DstPos);
+
 	// create undo
 	if (NeedUndo)
 	{
-		CCopyUndoContext::auto_ptr pUndo(new CCopyUndoContext(pDocument, m_OperationName, _T("")));
+		if (0 == StartUndoSample
+			&& LAST_SAMPLE == EndUndoSample)
+		{
+			StartUndoSample = StartSample;
+			EndUndoSample = EndSample;
+		}
 
-		if (NULL != pUndo.get()
-			&& pUndo->InitUndoCopy(m_DstFile, m_DstStart,
-									m_DstEnd, m_DstChan))
-		{
-			m_pUndoContext = pUndo.release();
-			m_UndoChain.InsertTail(m_pUndoContext);
-		}
-		else
-		{
-			return FALSE;
-		}
+		SetSaveForUndo(StartUndoSample, EndUndoSample);
+		return CreateUndo();
+	}
+	else
+	{
+		m_UndoStartPos = 0;
+		m_UndoEndPos = 0;
 	}
 	return TRUE;
+}
+
+BOOL CTwoFilesOperation::CreateUndo(BOOL IsRedo)
+{
+	if (NULL != m_pUndoContext
+		|| ! m_DstFile.IsOpen()
+		|| m_DstFile.GetFileID() != pDocument->WaveFileID()
+		|| m_UndoStartPos == m_UndoEndPos)
+	{
+		return TRUE;
+	}
+
+	CCopyUndoContext::auto_ptr pUndo(new CCopyUndoContext(pDocument, _T(""), m_OperationName));
+
+	if ( ! pUndo->InitUndoCopy(m_DstFile, m_UndoStartPos, m_UndoEndPos, m_DstChan))
+	{
+		return FALSE;
+	}
+
+	m_pUndoContext = pUndo.release();
+	m_UndoChain.InsertTail(m_pUndoContext);
+
+	return TRUE;
+}
+
+void CTwoFilesOperation::SetSaveForUndo(SAMPLE_INDEX StartSample, SAMPLE_INDEX EndSample)
+{
+	m_UndoStartPos = m_DstFile.SampleToPosition(StartSample);
+	m_UndoEndPos = m_DstFile.SampleToPosition(EndSample);
 }
 
 /////////// CThroughProcessOperation
@@ -821,6 +861,26 @@ ListHead<COperationContext> * CStagedContext::GetUndoChain()
 	return & m_UndoChain;
 }
 
+///////////////// CScanPeaksContext
+CScanPeaksContext::CScanPeaksContext(CWaveSoapFrontDoc * pDoc,
+									CWaveFile & WavFile,
+									CWaveFile & OriginalFile,
+									BOOL bSavePeaks)
+	: BaseClass(pDoc, _T("Scanning the file for peaks..."), OperationContextDiskIntensive, _T("Peak Scan"))
+	, m_GranuleSize(WavFile.SampleSize() * WavFile.GetPeakGranularity())
+	, m_bSavePeakFile(bSavePeaks)
+{
+	WavFile.SetPeaks(0, WavFile.NumberOfSamples() * WavFile.Channels(),
+					1, WavePeak(0x7FFF, -0x8000));
+
+	m_OriginalFile = OriginalFile;
+	m_SrcFile = WavFile;
+	m_SrcStart = WavFile.SampleToPosition(0);
+	m_SrcPos = m_SrcStart;
+
+	m_SrcEnd = WavFile.SampleToPosition(LAST_SAMPLE);
+}
+
 BOOL CScanPeaksContext::OperationProc()
 {
 	if (m_Flags & OperationContextStopRequested)
@@ -1009,240 +1069,23 @@ BOOL CScanPeaksContext::Init()
 }
 
 ///////// CCopyContext
-BOOL CCopyContext::CreateUndo(BOOL IsRedo)
-{
-	if ( ! m_DstFile.IsOpen()
-		|| m_DstFile.GetFileID() != pDocument->WaveFileID())
-	{
-		return TRUE;
-	}
-
-	CCopyUndoContext::auto_ptr pUndo(new CCopyUndoContext(pDocument, _T(""), m_OperationName));
-
-	if ( ! pUndo->InitUndoCopy(m_DstFile, m_DstStart, m_DstEnd, m_DstChan))
-	{
-		return FALSE;
-	}
-
-	m_pUndoContext = pUndo.release();
-	m_UndoChain.InsertTail(m_pUndoContext);
-
-	return TRUE;
-}
-
-BOOL CCopyUndoContext::PrepareUndo()
-{
-	m_Flags &= ~(OperationContextStop | OperationContextFinished);
-	m_DstFile = pDocument->m_WavFile;
-	m_SrcPos = m_SrcStart;
-	m_DstPos = m_DstStart;
-	return TRUE;
-}
-
-void CCopyUndoContext::UnprepareUndo()
-{
-	m_DstFile.Close();
-}
-
-// check if any part of the (Position, Position + length) range
-// is inside range to be saved
-BOOL CCopyUndoContext::NeedToSaveUndo(SAMPLE_POSITION Position, long length)
-{
-	if (length < 0)
-	{
-		if (Position > unsigned long(-length))
-		{
-			Position += length;
-			length = -length;
-		}
-		else
-		{
-			length = Position;
-			Position = 0;
-		}
-	}
-
-	if (m_DstEnd >= m_DstStart)
-	{
-		ASSERT(m_DstPos <= m_DstEnd);
-
-		if (Position >= m_DstEnd
-			|| Position + length <= m_DstPos
-			|| length == 0)
-		{
-			return FALSE;
-		}
-		return TRUE;
-	}
-	else
-	{
-		ASSERT(m_DstPos >= m_DstEnd);
-
-		if (Position >= m_DstPos
-			|| Position + length <= m_DstEnd)
-		{
-			return FALSE;
-		}
-		return TRUE;
-	}
-}
-
 // is called for a CCopyContext which is actually Undo/Redo context
 // copies data from one file to another, with possible changing number of channels
+CCopyContext::CCopyContext(CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString, LPCTSTR OperationName)
+	: BaseClass(pDoc, StatusString, OperationContextDiskIntensive, OperationName)
+{
+}
+
 BOOL CCopyContext::InitCopy(CWaveFile & DstFile,
 							SAMPLE_INDEX DstStartSample, CHANNEL_MASK DstChannel,
 							CWaveFile & SrcFile,
 							SAMPLE_INDEX SrcStartSample, CHANNEL_MASK SrcChannel,
 							NUMBER_OF_SAMPLES SrcDstLength)
 {
-	TRACE("CCopyContext::InitCopy : SrcStart=%d, SrcChan=%x, DstStart=%d, DstChan=%x, SrcDstLength=%d\n",
-		SrcStartSample, SrcChannel, DstStartSample, DstChannel, SrcDstLength);
+	InitSource(SrcFile, SrcStartSample, SrcStartSample + SrcDstLength, SrcChannel);
 
-	m_DstFile = DstFile;
-	m_SrcFile = SrcFile;
-
-	m_SrcChan = SrcChannel;
-
-	m_SrcStart = m_SrcFile.SampleToPosition(SrcStartSample);
-	m_SrcPos = m_SrcStart;
-	m_SrcEnd = m_SrcFile.SampleToPosition(SrcStartSample + SrcDstLength);
-
-	m_DstPos = m_DstFile.SampleToPosition(DstStartSample);
-	m_DstStart = m_DstPos;
-
-	m_DstEnd = m_DstFile.SampleToPosition(DstStartSample + SrcDstLength);
-	m_DstChan = DstChannel;
-
-	TRACE("SrcStart=%X, SrcEnd=%X, SrcPos=%X, DstStart=%X, DstEnd=%X, DstPos=%X\n",
-		m_SrcStart, m_SrcEnd, m_SrcPos, m_DstStart, m_DstEnd, m_DstPos);
-
-	return TRUE;
-}
-
-// init pointers and allocate a file to save the undo information
-// is called for a UNDO context when it's created
-BOOL CCopyUndoContext::InitUndoCopy(CWaveFile & SrcFile,
-									SAMPLE_POSITION SaveStartPos, // source file position of data needed to save and restore
-									SAMPLE_POSITION SaveEndPos,
-									CHANNEL_MASK SaveChannel)
-{
-	// don't keep reference to the file
-	//m_DstFile = SrcFile;
-
-	m_DstStart = SaveStartPos;
-	m_DstPos = SaveStartPos;
-	m_DstEnd = SaveEndPos;
-
-	ASSERT(SaveEndPos >= SaveStartPos);
-
-	if (SaveEndPos > SaveStartPos)
-	{
-		if ( ! m_SrcFile.CreateWaveFile( & SrcFile, NULL,
-										SaveChannel,
-										(SaveEndPos - SaveStartPos) / SrcFile.SampleSize(),
-										CreateWaveFileTempDir
-										| CreateWaveFileDeleteAfterClose
-										| CreateWaveFileDontCopyInfo
-										| CreateWaveFilePcmFormat
-										| CreateWaveFileAllowMemoryFile
-										| CreateWaveFileTemp,
-										NULL))
-		{
-			NotEnoughUndoSpaceMessageBox();
-			return FALSE;
-		}
-
-		m_SrcStart = m_SrcFile.SampleToPosition(0);
-		m_SrcPos = m_SrcStart;
-		m_SrcChan = ALL_CHANNELS;
-		m_DstChan = SaveChannel;
-
-		m_SrcEnd = m_SrcFile.SampleToPosition(LAST_SAMPLE);
-	}
-
-	return TRUE;
-}
-
-// save the data being overwritten by other operation
-// Position is source position. It goes to DstPos of this context.
-// Channels saved from buffer are specified in m_DstChan
-BOOL CCopyUndoContext::SaveUndoData(void const * pBuf, long BufSize,
-									SAMPLE_POSITION Position,
-									NUMBER_OF_CHANNELS NumSrcChannels)
-{
-	int const SrcSampleSize = m_SrcFile.BitsPerSample() / 8 * NumSrcChannels;
-	NUMBER_OF_SAMPLES Samples = BufSize / SrcSampleSize;
-	ASSERT(0 == BufSize % SrcSampleSize);
-
-	char const * pSrcBuf = (char const*) pBuf;
-
-	if (m_DstEnd < m_DstStart)
-	{
-		// pBuf points after the buffer.
-		// Position is the block end
-		if (BufSize >= 0
-			|| Position <= m_DstEnd
-			|| Position >= m_DstPos + -BufSize)
-		{
-			return FALSE;   // no need to save
-		}
-
-		if (Position < m_DstEnd + -BufSize)
-		{
-			BufSize = m_DstEnd - Position;
-		}
-
-		if (Position > m_DstPos)
-		{
-			BufSize -= m_DstPos - Position;
-			pSrcBuf += m_DstPos - Position;
-			Position = m_DstPos;
-		}
-		else
-		{
-			ASSERT(Position == m_DstPos);
-		}
-		ASSERT(0 == (m_DstStart - Position) % SrcSampleSize);
-	}
-	else
-	{
-		if (Position >= m_DstEnd
-			|| Position + BufSize <= m_DstPos
-			|| BufSize <= 0)
-		{
-			return FALSE;
-		}
-
-		ASSERT(Position == m_DstPos);
-
-		// saving data from the beginning to the end
-		if (Position + BufSize > m_DstEnd)
-		{
-			BufSize = m_DstEnd - Position;
-		}
-		if (Position < m_DstPos)
-		{
-			BufSize -= m_DstPos - Position;
-			pSrcBuf += m_DstPos - Position;
-			Position = m_DstPos;
-		}
-		else
-		{
-			ASSERT(Position == m_DstPos);
-		}
-		ASSERT(0 == (Position - m_DstStart) % SrcSampleSize);
-	}
-
-	ASSERT(0 == (BufSize % SrcSampleSize));
-
-	long SamplesWritten = m_SrcFile.WriteSamples(ALL_CHANNELS,
-												m_SrcPos, Samples, pSrcBuf, m_DstChan, NumSrcChannels,
-												m_DstFile.GetSampleType());
-
-	m_DstPos += SamplesWritten * SrcSampleSize;
-	m_SrcPos += SamplesWritten * m_SrcFile.SampleSize();
-
-	return SamplesWritten == Samples;
+	return InitDestination(DstFile, DstStartSample,
+							DstStartSample + SrcDstLength, DstChannel, FALSE);
 }
 
 // copy the actual data, while probably changing number of channels
@@ -1452,6 +1295,189 @@ BOOL CCopyContext::OperationProc()
 }
 
 ////////////// CCopyUndoContext
+
+BOOL CCopyUndoContext::PrepareUndo()
+{
+	m_Flags &= ~(OperationContextStop | OperationContextFinished);
+	m_DstFile = pDocument->m_WavFile;
+	m_SrcPos = m_SrcStart;
+	m_DstPos = m_DstStart;
+	return TRUE;
+}
+
+void CCopyUndoContext::UnprepareUndo()
+{
+	m_DstFile.Close();
+}
+
+// check if any part of the (Position, Position + length) range
+// is inside range to be saved
+BOOL CCopyUndoContext::NeedToSaveUndo(SAMPLE_POSITION Position, long length)
+{
+	if (length < 0)
+	{
+		if (Position > unsigned long(-length))
+		{
+			Position += length;
+			length = -length;
+		}
+		else
+		{
+			length = Position;
+			Position = 0;
+		}
+	}
+
+	if (m_DstEnd >= m_DstStart)
+	{
+		ASSERT(m_DstPos <= m_DstEnd);
+
+		if (Position >= m_DstEnd
+			|| Position + length <= m_DstPos
+			|| length == 0)
+		{
+			return FALSE;
+		}
+		return TRUE;
+	}
+	else
+	{
+		ASSERT(m_DstPos >= m_DstEnd);
+
+		if (Position >= m_DstPos
+			|| Position + length <= m_DstEnd)
+		{
+			return FALSE;
+		}
+		return TRUE;
+	}
+}
+
+// init pointers and allocate a file to save the undo information
+// is called for a UNDO context when it's created
+BOOL CCopyUndoContext::InitUndoCopy(CWaveFile & SrcFile,
+									SAMPLE_POSITION SaveStartPos, // source file position of data needed to save and restore
+									SAMPLE_POSITION SaveEndPos,
+									CHANNEL_MASK SaveChannel)
+{
+	// don't keep reference to the file
+	//m_DstFile = SrcFile;
+
+	m_DstStart = SaveStartPos;
+	m_DstPos = SaveStartPos;
+	m_DstEnd = SaveEndPos;
+
+	ASSERT(SaveEndPos >= SaveStartPos);
+
+	if (SaveEndPos > SaveStartPos)
+	{
+		if ( ! m_SrcFile.CreateWaveFile( & SrcFile, NULL,
+										SaveChannel,
+										(SaveEndPos - SaveStartPos) / SrcFile.SampleSize(),
+										CreateWaveFileTempDir
+										| CreateWaveFileDeleteAfterClose
+										| CreateWaveFileDontCopyInfo
+										| CreateWaveFilePcmFormat
+										| CreateWaveFileAllowMemoryFile
+										| CreateWaveFileTemp,
+										NULL))
+		{
+			NotEnoughUndoSpaceMessageBox();
+			return FALSE;
+		}
+
+		m_SrcStart = m_SrcFile.SampleToPosition(0);
+		m_SrcPos = m_SrcStart;
+		m_SrcChan = ALL_CHANNELS;
+		m_DstChan = SaveChannel;
+
+		m_SrcEnd = m_SrcFile.SampleToPosition(LAST_SAMPLE);
+	}
+
+	return TRUE;
+}
+
+// save the data being overwritten by other operation
+// Position is source position. It goes to DstPos of this context.
+// Channels saved from buffer are specified in m_DstChan
+BOOL CCopyUndoContext::SaveUndoData(void const * pBuf, long BufSize,
+									SAMPLE_POSITION Position,
+									NUMBER_OF_CHANNELS NumSrcChannels)
+{
+	int const SrcSampleSize = m_SrcFile.BitsPerSample() / 8 * NumSrcChannels;
+	NUMBER_OF_SAMPLES Samples = BufSize / SrcSampleSize;
+	ASSERT(0 == BufSize % SrcSampleSize);
+
+	char const * pSrcBuf = (char const*) pBuf;
+
+	if (m_DstEnd < m_DstStart)
+	{
+		// pBuf points after the buffer.
+		// Position is the block end
+		if (BufSize >= 0
+			|| Position <= m_DstEnd
+			|| Position >= m_DstPos + -BufSize)
+		{
+			return FALSE;   // no need to save
+		}
+
+		if (Position < m_DstEnd + -BufSize)
+		{
+			BufSize = m_DstEnd - Position;
+		}
+
+		if (Position > m_DstPos)
+		{
+			BufSize -= m_DstPos - Position;
+			pSrcBuf += m_DstPos - Position;
+			Position = m_DstPos;
+		}
+		else
+		{
+			ASSERT(Position == m_DstPos);
+		}
+		ASSERT(0 == (m_DstStart - Position) % SrcSampleSize);
+	}
+	else
+	{
+		if (Position >= m_DstEnd
+			|| Position + BufSize <= m_DstPos
+			|| BufSize <= 0)
+		{
+			return FALSE;
+		}
+
+		ASSERT(Position == m_DstPos);
+
+		// saving data from the beginning to the end
+		if (Position + BufSize > m_DstEnd)
+		{
+			BufSize = m_DstEnd - Position;
+		}
+		if (Position < m_DstPos)
+		{
+			BufSize -= m_DstPos - Position;
+			pSrcBuf += m_DstPos - Position;
+			Position = m_DstPos;
+		}
+		else
+		{
+			ASSERT(Position == m_DstPos);
+		}
+		ASSERT(0 == (Position - m_DstStart) % SrcSampleSize);
+	}
+
+	ASSERT(0 == (BufSize % SrcSampleSize));
+
+	long SamplesWritten = m_SrcFile.WriteSamples(ALL_CHANNELS,
+												m_SrcPos, Samples, pSrcBuf, m_DstChan, NumSrcChannels,
+												m_DstFile.GetSampleType());
+
+	m_DstPos += SamplesWritten * SrcSampleSize;
+	m_SrcPos += SamplesWritten * m_SrcFile.SampleSize();
+
+	return SamplesWritten == Samples;
+}
 
 ///////////// CDecompressContext
 CDecompressContext::CDecompressContext(CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString,
