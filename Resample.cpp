@@ -1,7 +1,10 @@
 // Copyright Alexander Grigoriev, 1997-2002, All Rights Reserved
 // Resample.cpp
 #include "stdafx.h"
+#include "WaveSoapFrontDoc.h"
+#include "resource.h"
 #include "Resample.h"
+#include "MessageBoxSynch.h"
 
 #define M_PI        3.14159265358979323846
 #define M_PI_2      1.57079632679489661923
@@ -13,19 +16,10 @@ CResampleContext::CResampleContext(CWaveSoapFrontDoc * pDoc,
 									double FrequencyRatio, double FilterLength)
 	: BaseClass(pDoc, 0, StatusStringId, OperationNameId)
 {
-
-	m_SrcFile = SrcFile;
-	m_DstFile = DstFile;
+	InitSource(SrcFile, 0, LAST_SAMPLE, ALL_CHANNELS);
+	InitDestination(DstFile, 0, LAST_SAMPLE, ALL_CHANNELS, FALSE, 0, 0);
 
 	m_Resample.InitResample(FrequencyRatio, FilterLength, SrcFile.Channels());
-
-	m_SrcStart = m_SrcFile.SampleToPosition(0);
-	m_SrcPos = m_SrcStart;
-	m_SrcEnd = m_SrcFile.SampleToPosition(LAST_SAMPLE);
-
-	m_DstStart = m_DstFile.SampleToPosition(0);
-	m_DstPos = m_DstStart;
-	m_DstEnd = m_DstFile.SampleToPosition(LAST_SAMPLE);
 }
 
 BOOL CResampleContext::OperationProc()
@@ -150,3 +144,44 @@ BOOL CResampleContext::OperationProc()
 	return TRUE;
 }
 
+void CResampleContext::DeInit()
+{
+	BaseClass::DeInit();
+	// if overflow happened, ask the user if it should continue
+	if ( ! m_Resample.WasClipped())
+	{
+		return;
+	}
+
+	class QueryOverflow : public MainThreadCall
+	{
+	public:
+		QueryOverflow(CResampleContext * pContext)
+			: m_pContext(pContext)
+		{
+		}
+	protected:
+		virtual LRESULT Exec()
+		{
+			// bring document frame to the top, then return
+			CDocumentPopup pop(m_pContext->pDocument);
+
+			CString s;
+			s.Format(IDS_SOUND_CLIPPED, m_pContext->pDocument->GetTitle(),
+					int(m_pContext->GetMaxClipped() * (100. / 32678)));
+
+			CString s1;
+			s1.LoadString(IDS_CONTINUE_QUESTION);
+
+			s += s1;
+			LRESULT result = AfxMessageBox(s, MB_YESNO | MB_ICONEXCLAMATION);
+			return result;
+		}
+		CResampleContext * const m_pContext;
+	} call(this);
+
+	if (IDNO == call.Call())
+	{
+		m_Flags |= OperationContextStop;
+	}
+}

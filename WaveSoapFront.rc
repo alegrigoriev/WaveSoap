@@ -3730,6 +3730,7 @@ BEGIN
     IDS_INPUT_NAME_FREQUENCY_ARGUMENT1 "Frequency argument f1"
     IDS_MARKER_REGION_CHANGE "Marker/region change"
     IDS_SAVE_SELECTION_TITLE "Save selection as file..."
+    IDS_CONTINUE_QUESTION   "\nContinue?"
 END
 
 STRINGTABLE 

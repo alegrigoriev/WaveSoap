@@ -25,6 +25,7 @@ public:
 
 	CResampleFilter m_Resample;
 
+	virtual void DeInit();
 	virtual BOOL OperationProc();
 };
 
