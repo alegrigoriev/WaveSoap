@@ -215,7 +215,8 @@ typename RingBufferT<L>::Type RingBufferT<L>::Read()
 		return Array[ReadIndex ++];
 	}
 }
-
+//////////////////////////////////////////////////////////////
+/////////// CWaveProc
 CWaveProc::CWaveProc()
 	: m_TmpInBufPut(0),
 	m_TmpInBufGet(0),
@@ -357,6 +358,15 @@ BOOL CWaveProc::CheckForMinBufferSize(char const * &pIn, char * &pOut,
 		return FALSE;
 	}
 	return TRUE;
+}
+
+void CWaveProc::Dump(unsigned indent) const
+{
+	TRACE("%*.s%s\n", indent, "", typeid(*this).name());
+	TRACE(_T(" %*.sSamples per second=%d, Input channels=%d, Output channels=%d\n")
+		_T(" %*.sChannels to process=%x, Max clipped=%f\n"),
+		indent, "", m_SamplesPerSecond, m_InputChannels, m_OutputChannels,
+		indent, "", m_ChannelsToProcess, m_MaxClipped);
 }
 
 ////////////////// CHumRemoval ///////////////////////
@@ -792,6 +802,36 @@ NoiseReductionParameters::NoiseReductionParameters()
 {
 }
 
+void NoiseReductionParameters::Dump(unsigned indent) const
+{
+	TRACE(" %*.sMinFrequencyToProcess=%f, AvgFreqDecayRate=%f, AvgLevelDecayRate=%f\n",
+		indent, "", m_MinFrequencyToProcess, m_AvgFreqDecayRate, m_AvgLevelDecayRate);
+
+	TRACE(" %*.sFreqErrorDecayRate=%f, LevelErrorDecayRate=%f\n",
+		indent, "", m_FreqErrorDecayRate, m_LevelErrorDecayRate);
+
+	TRACE(" %*.sFreqDevDecayRate=%f, LevelDevDecayRate=%f\n",
+		indent, "", m_FreqDevDecayRate, m_LevelDevDecayRate);
+
+	TRACE(" %*.sThresholdOfTransient=%f, FreqThresholdOfNoiselike=%f\n",
+		indent, "", m_ThresholdOfTransient, m_FreqThresholdOfNoiselike);
+
+	TRACE(" %*.sLevelThresholdForNoiseLow=%f, LevelThresholdForNoiseHigh=%f\n",
+		indent, "", m_LevelThresholdForNoiseLow, m_LevelThresholdForNoiseHigh);
+
+	TRACE(" %*.sToneOverNoisePreference=%f, NoiseReductionRatio=%f, MaxNoiseSuppression=%f\n",
+		indent, "", m_ToneOverNoisePreference, m_NoiseReductionRatio, m_MaxNoiseSuppression);
+
+	TRACE(" %*.sNearMaskingDecayDistanceHigh=%f, NearMaskingDecayDistanceLow=%f, NearMaskingDecayRate=%f\n",
+		indent, "", m_NearMaskingDecayDistanceHigh, m_NearMaskingDecayDistanceLow, m_NearMaskingDecayRate);
+
+	TRACE(" %*.sNearMaskingDecayTimeLow=%f, NearMaskingDecayTimeHigh=%f, FarMaskingLevelDb=%f\n\n",
+		indent, "", m_NearMaskingDecayTimeLow, m_NearMaskingDecayTimeHigh, m_FarMaskingLevelDb);
+
+}
+
+/////////////////////////////////////////////////////////////////////////////
+////////////////////////  NoiseReductionCore
 NoiseReductionCore::NoiseReductionCore(int nFftOrder, int nChannels,
 										long SampleRate, NoiseReductionParameters const & nr)
 	: NoiseReductionParameters(nr)
@@ -864,9 +904,9 @@ NoiseReductionCore::NoiseReductionCore(int nFftOrder, int nChannels,
 	// calculate noise floor profile:
 	unsigned const MinFrequencyBandToProcess = unsigned(m_MinFrequencyToProcess * m_nFftOrder * 2 / m_SampleRate);
 	double const NoiseFloorDelta = exp((m_LevelThresholdForNoiseHigh - m_LevelThresholdForNoiseLow)
-										/ (m_nFftOrder / 2 - MinFrequencyBandToProcess));
+										/ (m_nFftOrder - MinFrequencyBandToProcess));
 
-	double NoiseFloor = 32768. * 32768. * exp(m_LevelThresholdForNoiseLow + m_MaxNoiseSuppression / m_NoiseReductionRatio);
+	double NoiseFloor = 32768. * 32768. * exp(m_LevelThresholdForNoiseLow /*+ m_MaxNoiseSuppression / m_NoiseReductionRatio*/);
 
 	for (i = 0; i < m_nFftOrder && i < MinFrequencyBandToProcess; i++)
 	{
@@ -879,11 +919,398 @@ NoiseReductionCore::NoiseReductionCore(int nFftOrder, int nChannels,
 	}
 }
 
-CNoiseReduction::CNoiseReduction(int nFftOrder, int nChannels, NoiseReductionParameters const & nr)
-	: NoiseReductionCore(nFftOrder, nChannels, 0, nr)
+void NoiseReductionCore::Dump(unsigned indent) const
+{
+	NoiseReductionParameters::Dump(indent);
+	if (0)
+	{
+		for (unsigned i = 0; i < m_nFftOrder; i += 4)
+		{
+			TRACE(" %*.sNF[%d]=%f, NF[%d]=%f, NF[%d]=%f, NF[%d]=%f,\n",
+				indent, "", i, m_pNoiseFloor[i], i+1, m_pNoiseFloor[i+1],
+				i+2, m_pNoiseFloor[i+2], i+3, m_pNoiseFloor[i+3]);
+		}
+		TRACE(" %*.sNF[%d]=%f\n\n",
+			indent, "", m_nFftOrder, m_pNoiseFloor[m_nFftOrder]);
+
+		for (unsigned i = 0; i < m_nFftOrder * 2; i += 4)
+		{
+			TRACE(" %*.sW[%d]=%f, W[%d]=%f, W[%d]=%f, W[%d]=%f,\n",
+				indent, "", i, m_Window[i], i+1, m_Window[i+1],
+				i+2, m_Window[i+2], i+3, m_Window[i+3]);
+		}
+
+		for (unsigned i = 0; i < FAR_MASKING_GRANULARITY; i++)
+		{
+			for (unsigned k = 0; k < FAR_MASKING_GRANULARITY; k+=4)
+			{
+				TRACE(" %*.sFM[%d][%d]=%f, FM[%d][%d]=%f, FM[%d][%d]=%f, FM[%d][%d]=%f,\n",
+					indent, "", i, k, m_FarMaskingCoeffs[i][k], i, k+1, m_FarMaskingCoeffs[i][k+1],
+					i, k+2, m_FarMaskingCoeffs[i][k+2], i, k+3, m_FarMaskingCoeffs[i][k+3]);
+			}
+		}
+	}
+}
+
+void NoiseReductionCore::CalculateFarMasking(float SubbandPower[FAR_MASKING_GRANULARITY],
+											float FarMasking[FAR_MASKING_GRANULARITY])
+{
+	for (int f = 0; f < FAR_MASKING_GRANULARITY; f++)
+	{
+		FarMasking[f] = 0.;
+		for (int n = 0; n < FAR_MASKING_GRANULARITY; n++)
+		{
+			FarMasking[f] += SubbandPower[n] * m_FarMaskingCoeffs[f][n];
+		}
+		FarMasking[f] /= m_nChannels;
+	}
+}
+
+// get noise masking
+// channels data is interleaved in the dst buffer
+void NoiseReductionCore::GetAudioMasking(DATA * pBuf)  // nChannels * FftOrder
+{
+	for (int ch = 0; ch < m_nChannels; ch++)
+	{
+		DATA * pDst = pBuf + ch;
+		NoiseReductionChannelData * pCh = m_ChannelData[ch];
+		SIGNAL_PARAMS const * pParms = pCh->m_pParams;
+
+		for (unsigned i = 0; i < m_nFftOrder; i++, pParms++, pDst += m_nChannels)
+		{
+			*pDst = pParms->sp_MaskingPower;
+		}
+	}
+}
+
+void NoiseReductionCore::GetNoiseThreshold(DATA * pBuf) // precomputed threshold, nChannels *FftOrder count
+{
+	for (unsigned i = 0; i < m_nFftOrder; i++)
+	{
+		for (int ch = 0; ch < m_nChannels; ch++, pBuf ++)
+		{
+			*pBuf = m_pNoiseFloor[i];
+		}
+	}
+}
+
+// FFT power of the source signal
+void NoiseReductionCore::GetPowerInBands(DATA * pBuf)  // nChannels * FftOrder
+{
+	for (int ch = 0; ch < m_nChannels; ch++)
+	{
+		NoiseReductionChannelData * pCh = m_ChannelData[ch];
+		SIGNAL_PARAMS const * pParms = pCh->m_pParams;
+		DATA * pDst = pBuf + ch;
+
+		for (unsigned i = 0; i < m_nFftOrder; i++, pParms++, pDst += m_nChannels)
+		{
+			*pDst = pParms->sp_Power;
+		}
+	}
+}
+// FFT power of the output
+void NoiseReductionCore::GetResultPowerInBands(DATA * pBuf)  // nChannels * FftOrder
+{
+	for (int ch = 0; ch < m_nChannels; ch++)
+	{
+		NoiseReductionChannelData * pCh = m_ChannelData[ch];
+		SIGNAL_PARAMS const * pParms = pCh->m_pParams;
+
+		for (unsigned i = 0; i < m_nFftOrder; i++, pBuf++, pParms++)
+		{
+			*pBuf = pParms->sp_FftIn[0].real() * pParms->sp_FftIn[0].real() +
+					pParms->sp_FftIn[0].imag() * pParms->sp_FftIn[0].imag();
+		}
+	}
+}
+
+NoiseReductionCore::~NoiseReductionCore()
+{
+	delete[] m_Window;
+	delete[] m_pNoiseFloor;
+
+	for (int ch = 0; ch < countof(m_ChannelData); ch++)
+	{
+		delete m_ChannelData[ch];
+	}
+}
+
+bool NoiseReductionCore::CanProcessFft() const
+{
+	return m_ChannelData[0]->CanProcessFft();
+}
+
+int NoiseReductionCore::DrainOutBuffer(DATA * pBuf, int nOutSamples)
+{
+	int nSavedSamples = 0;
+	for (int ch = 0; ch < m_nChannels; ch++)
+	{
+		nSavedSamples = m_ChannelData[ch]->DrainOutBuffer(pBuf + ch, nOutSamples, m_nChannels);
+	}
+	return nSavedSamples;
+}
+
+int NoiseReductionCore::FlushSamples(DATA * pBuf, int nOutSamples)
+{
+	int FlushedSamples = 0;
+	for (int ch = 0; ch < m_nChannels; ch++)
+	{
+		FlushedSamples = m_ChannelData[ch]->FlushSamples(pBuf + ch, nOutSamples, m_nChannels);
+	}
+	return FlushedSamples;
+}
+
+int NoiseReductionCore::FillInBuffer(WAVE_SAMPLE const * pBuf, int nSamples)
+{
+	// fill input buffer
+	int InputSamplesUsed = 0;
+	for (int ch = 0; ch < m_nChannels; ch++)
+	{
+		InputSamplesUsed = m_ChannelData[ch]->FillInBuffer(pBuf + ch, nSamples, m_nChannels);
+	}
+
+	return InputSamplesUsed;
+}
+
+void NoiseReductionCore::Reset()
+{
+	for (int ch = 0; ch < m_nChannels; ch++)
+	{
+		m_ChannelData[ch]->Reset();
+	}
+}
+
+void NoiseReductionCore::ProcessInputFft()
+{
+	for (int ch = 0; ch < m_nChannels; ch++)
+	{
+		m_ChannelData[ch]->ProcessInputFft();
+	}
+}
+
+void NoiseReductionCore::AnalyseFft()
+{
+	unsigned const MinFrequencyBandToProcess = unsigned(m_MinFrequencyToProcess * m_nFftOrder * 2 / m_SampleRate);
+
+	double const SuppressionLimit = exp(-m_MaxNoiseSuppression);
+
+	double const MaskingTemporalDecayNormHigh =
+		// coeff to filter masking function in time
+		std::max<double>(m_NearMaskingDecayTimeHigh * 0.001 * m_SampleRate / (m_nFftOrder * 2), 1.);
+
+	double const MaskingTemporalDecayNormLow =
+		// coeff to filter masking function in time
+		//m_NearMaskingDecayTimeLow * 0.001 * m_SampleRate / (m_nFftOrder / 2);
+		std::max<double>(m_NearMaskingDecayTimeLow * 0.001 * m_SampleRate / (m_nFftOrder * 2), 1.);
+
+	double const MaskingSpectralDecayNormLow =
+		// coeff to filter masking function in frequencies
+		std::max<double>(m_NearMaskingDecayDistanceLow / m_SampleRate * (m_nFftOrder * 2), 1.);
+
+	double const MaskingSpectralDecayNormHigh =
+		// coeff to filter masking function in frequencies
+		std::max<double>(m_NearMaskingDecayDistanceHigh / m_SampleRate * (m_nFftOrder * 2), 1.);
+
+	double const ToneEmphasis = exp(m_ToneOverNoisePreference);
+
+	int n, ch;
+
+	float SubbandPower[FAR_MASKING_GRANULARITY];
+
+	for (n = 0; n < countof(SubbandPower); n++)
+	{
+		SubbandPower[n] = 0.;
+	}
+
+	for (ch = 0; ch < m_nChannels; ch++)
+	{
+		NoiseReductionChannelData * pCh = m_ChannelData[ch];
+
+		pCh->ProcessInputFft();
+		pCh->AnalyzeInputFft();
+		pCh->AccumulateSubbandPower(SubbandPower);
+	}
+
+	float FarMasking[FAR_MASKING_GRANULARITY];
+	CalculateFarMasking(SubbandPower, FarMasking);
+
+	for (ch = 0; ch < m_nChannels; ch++)
+	{
+		NoiseReductionChannelData * pCh = m_ChannelData[ch];
+		pCh->ApplyFarMasking(FarMasking);
+		// process FFT result
+
+		// find vector deviation
+		// check if the signal is noise-like or is narrow-band.
+		// if FreqDev is less than PI/8, signal is narrow-band,
+
+
+		// Just filter the power in frequency and time
+		// add far masking value
+		// filter in frequency in two directions
+		// those are calculated from m_NearMaskingDecayTime* :
+
+		pCh->CalculateMasking(MaskingSpectralDecayNormLow,
+							MaskingSpectralDecayNormHigh, ToneEmphasis);
+
+		pCh->ProcessMaskingTemporalEnvelope(MaskingTemporalDecayNormLow,
+											MaskingTemporalDecayNormHigh, MinFrequencyBandToProcess);
+
+		// post-process output data
+
+		pCh->AdjustFftBands(m_pNoiseFloor, SuppressionLimit);
+	}
+}
+
+void NoiseReductionCore::ProcessInverseFft()
+{
+	for (int ch = 0; ch < m_nChannels; ch++)
+	{
+		m_ChannelData[ch]->ProcessInverseFft();
+	}
+}
+
+////////////////////////////////////////////////////////////////////////
+///////////////  CNoiseReduction
+CNoiseReduction::CNoiseReduction(unsigned nFftOrder, NoiseReductionParameters const & nr)
+	: m_pNrCore(NULL)//NoiseReductionCore(nFftOrder, nChannels, 0, nr)
+	, m_NrParms(nr)
+	, m_FftOrder(nFftOrder)
 {
 }
 
+CNoiseReduction::~CNoiseReduction()
+{
+	delete m_pNrCore;
+}
+
+void CNoiseReduction::Dump(unsigned indent) const
+{
+	CWaveProc::Dump(indent);
+	if (NULL != m_pNrCore)
+	{
+		m_pNrCore->Dump(indent);
+	}
+}
+
+BOOL CNoiseReduction::SetAndValidateWaveformat(WAVEFORMATEX const * pWf)
+{
+	if (CWaveProc::SetAndValidateWaveformat(pWf))
+	{
+		delete m_pNrCore;
+		m_pNrCore = NULL;
+
+		m_pNrCore = new NoiseReductionCore(m_FftOrder, pWf->nChannels, pWf->nSamplesPerSec, m_NrParms);
+		return TRUE;
+	}
+	else
+	{
+		return FALSE;
+	}
+
+}
+
+size_t CNoiseReduction::ProcessSoundBuffer(char const * pIn, char * pOut,
+											size_t nInBytes, size_t nOutBytes, size_t * pUsedBytes)
+{
+	*pUsedBytes = 0;
+	NUMBER_OF_CHANNELS nChans = m_InputChannels;
+	DATA tmp[256];
+
+	unsigned nInSamples = nInBytes / (nChans * sizeof (WAVE_SAMPLE));
+	unsigned nOutSamples = nOutBytes / (nChans * sizeof (WAVE_SAMPLE));
+	unsigned nStoredSamples = 0;
+
+	WAVE_SAMPLE const * pInBuf = (WAVE_SAMPLE *) pIn;
+	WAVE_SAMPLE * pOutBuf = (WAVE_SAMPLE *) pOut;
+
+	if (NULL == pInBuf)
+	{
+		if (NULL == m_pNrCore)
+		{
+			return 0;
+		}
+
+		while (0 != nOutSamples)
+		{
+			int TmpSamples = m_pNrCore->FlushSamples(tmp, std::min(unsigned(countof(tmp) / nChans), nOutSamples));
+
+			if (0 == TmpSamples)
+			{
+				break;
+			}
+
+			nOutSamples -= TmpSamples;
+			nStoredSamples += TmpSamples;
+			TmpSamples *= nChans;
+
+			for (int i = 0; i < TmpSamples; i++, pOutBuf++)
+			{
+				*pOutBuf = DoubleToShort(tmp[i]);
+			}
+		}
+		return nStoredSamples * nChans * sizeof(WAVE_SAMPLE);
+	}
+
+	if (NULL == m_pNrCore)
+	{
+		*pUsedBytes = nInBytes;
+		return 0;
+	}
+
+	// process the samples
+	while (1)
+	{
+		int InputSamplesUsed = m_pNrCore->FillInBuffer(pInBuf, nInSamples);
+
+		pInBuf += InputSamplesUsed * nChans;
+		nInSamples -= InputSamplesUsed;
+		*pUsedBytes += InputSamplesUsed * (nChans * sizeof (WAVE_SAMPLE));
+
+		if (m_pNrCore->CanProcessFft())
+		{
+			// now we have enough samples to do FFT
+			m_pNrCore->AnalyseFft();
+			m_pNrCore->ProcessInverseFft();
+		}
+
+		// store the result
+		int nSavedSamples = 0;
+		while (0 != nOutSamples)
+		{
+			int TmpSamples = m_pNrCore->DrainOutBuffer(tmp, std::min(unsigned(countof(tmp) / nChans), nOutSamples));
+
+			if (0 == TmpSamples)
+			{
+				break;
+			}
+
+			nOutSamples -= TmpSamples;
+			nStoredSamples += TmpSamples;
+			nSavedSamples += TmpSamples;
+
+			TmpSamples *= nChans;
+			for (int i = 0; i < TmpSamples; i++, pOutBuf++)
+			{
+				ASSERT(tmp[i] <= 32767. && tmp[i] >= -32768.);
+
+				*pOutBuf = DoubleToShort(tmp[i]);
+			}
+		}
+
+		if (0 == nSavedSamples && 0 == InputSamplesUsed)
+		{
+			// can do no more
+			break;
+		}
+	}
+
+	return nChans * sizeof(WAVE_SAMPLE) * nStoredSamples;
+}
+
+////////////////////////////////////////////
+/////////////////  NR_ChannelData
 NR_ChannelData::NoiseReductionChannelData(NoiseReductionCore * nr, int nFftOrder)
 	: pNr(nr)
 	, m_FftOrder(nFftOrder)
@@ -1034,7 +1461,7 @@ void NR_ChannelData::ProcessInverseFft()
 	// Because FFT output is delayed by one round,
 	// we need to skip the very first result, which should be all zeros,
 	// and the next result, which is the first FFT window actually processed, already written to the output
-	if (m_FftResultsProcessed >= 1)
+	if (m_FftResultsProcessed >= 2)
 	{
 		// perform inverse transform
 		FastInverseFourierTransform(m_FftOutBuffer, m_FftInBuffer, m_FftOrder * 2);
@@ -1143,79 +1570,28 @@ void NR_ChannelData::AdjustFftBands(float const * pNoiseFloor, double Suppressio
 			m_FftOutBuffer[f] = p->sp_FftIn[1];
 		}
 	}
-}
 
-void NoiseReductionCore::CalculateFarMasking(float SubbandPower[FAR_MASKING_GRANULARITY],
-											float FarMasking[FAR_MASKING_GRANULARITY])
-{
-	for (int f = 0; f < FAR_MASKING_GRANULARITY; f++)
+#if 0 && defined(_DEBUG)
+	p = m_pParams;
+	for (unsigned f = 0; f <= m_FftOrder; f++, p++)
 	{
-		FarMasking[f] = 0.;
-		for (int n = 0; n < FAR_MASKING_GRANULARITY; n++)
+		if (p->sp_MaskingPower < pNoiseFloor[f])
 		{
-			FarMasking[f] += SubbandPower[n] * m_FarMaskingCoeffs[f][n];
+			double suppress = pow( double(p->sp_MaskingPower / pNoiseFloor[f]),
+									double(pNr->m_NoiseReductionRatio));
+
+			if (suppress < SuppressionLimit)
+			{
+				suppress = SuppressionLimit;
+			}
+			m_FftOutBuffer[f] = float(suppress) * p->sp_FftIn[1];
 		}
-		FarMasking[f] /= m_nChannels;
-	}
-}
-
-// get noise masking
-// channels data is interleaved in the dst buffer
-void NoiseReductionCore::GetAudioMasking(DATA * pBuf)  // nChannels * FftOrder
-{
-	for (int ch = 0; ch < m_nChannels; ch++)
-	{
-		DATA * pDst = pBuf + ch;
-		NoiseReductionChannelData * pCh = m_ChannelData[ch];
-		SIGNAL_PARAMS const * pParms = pCh->m_pParams;
-
-		for (unsigned i = 0; i < m_nFftOrder; i++, pParms++, pDst += m_nChannels)
+		else
 		{
-			*pDst = pParms->sp_MaskingPower;
+			m_FftOutBuffer[f] = p->sp_FftIn[1];
 		}
 	}
-}
-
-void NoiseReductionCore::GetNoiseThreshold(DATA * pBuf) // precomputed threshold, nChannels *FftOrder count
-{
-	for (unsigned i = 0; i < m_nFftOrder; i++)
-	{
-		for (int ch = 0; ch < m_nChannels; ch++, pBuf ++)
-		{
-			*pBuf = m_pNoiseFloor[i];
-		}
-	}
-}
-
-// FFT power of the source signal
-void NoiseReductionCore::GetPowerInBands(DATA * pBuf)  // nChannels * FftOrder
-{
-	for (int ch = 0; ch < m_nChannels; ch++)
-	{
-		NoiseReductionChannelData * pCh = m_ChannelData[ch];
-		SIGNAL_PARAMS const * pParms = pCh->m_pParams;
-		DATA * pDst = pBuf + ch;
-
-		for (unsigned i = 0; i < m_nFftOrder; i++, pParms++, pDst += m_nChannels)
-		{
-			*pDst = pParms->sp_Power;
-		}
-	}
-}
-// FFT power of the output
-void NoiseReductionCore::GetResultPowerInBands(DATA * pBuf)  // nChannels * FftOrder
-{
-	for (int ch = 0; ch < m_nChannels; ch++)
-	{
-		NoiseReductionChannelData * pCh = m_ChannelData[ch];
-		SIGNAL_PARAMS const * pParms = pCh->m_pParams;
-
-		for (unsigned i = 0; i < m_nFftOrder; i++, pBuf++, pParms++)
-		{
-			*pBuf = pParms->sp_FftIn[0].real() * pParms->sp_FftIn[0].real() +
-					pParms->sp_FftIn[0].imag() * pParms->sp_FftIn[0].imag();
-		}
-	}
+#endif
 }
 
 void NR_ChannelData::ApplyFarMasking(float FarMasking[FAR_MASKING_GRANULARITY])
@@ -1310,25 +1686,6 @@ void NR_ChannelData::ProcessMaskingTemporalEnvelope(double MaskingTemporalDecayN
 			MaskingTemporalDecayNormLow += DecayDelta;
 		}
 	}
-}
-
-NoiseReductionCore::~NoiseReductionCore()
-{
-	delete[] m_Window;
-	delete[] m_pNoiseFloor;
-
-	for (int ch = 0; ch < countof(m_ChannelData); ch++)
-	{
-		delete m_ChannelData[ch];
-	}
-}
-
-BOOL CNoiseReduction::SetAndValidateWaveformat(WAVEFORMATEX const * pWf)
-{
-	m_SampleRate = pWf->nSamplesPerSec;
-	return CWaveProc::SetAndValidateWaveformat(pWf)
-			//&& pWf->nSamplesPerSec == 44100
-	;
 }
 
 // smp - source FFT sample
@@ -1508,244 +1865,12 @@ void SIGNAL_PARAMS::AnalyzeFftSample(complex<DATA> smp, NoiseReductionCore * pNr
 	return;
 }
 
-bool NoiseReductionCore::CanProcessFft() const
-{
-	return m_ChannelData[0]->CanProcessFft();
-}
-
-int NoiseReductionCore::DrainOutBuffer(DATA * pBuf, int nOutSamples)
-{
-	int nSavedSamples = 0;
-	for (int ch = 0; ch < m_nChannels; ch++)
-	{
-		nSavedSamples = m_ChannelData[ch]->DrainOutBuffer(pBuf + ch, nOutSamples, m_nChannels);
-	}
-	return nSavedSamples;
-}
-
-int NoiseReductionCore::FlushSamples(DATA * pBuf, int nOutSamples)
-{
-	int FlushedSamples = 0;
-	for (int ch = 0; ch < m_nChannels; ch++)
-	{
-		FlushedSamples = m_ChannelData[ch]->FlushSamples(pBuf + ch, nOutSamples, m_nChannels);
-	}
-	return FlushedSamples;
-}
-
-int NoiseReductionCore::FillInBuffer(WAVE_SAMPLE const * pBuf, int nSamples)
-{
-	// fill input buffer
-	int InputSamplesUsed = 0;
-	for (int ch = 0; ch < m_nChannels; ch++)
-	{
-		InputSamplesUsed = m_ChannelData[ch]->FillInBuffer(pBuf + ch, nSamples, m_nChannels);
-	}
-
-	return InputSamplesUsed;
-}
-
-void NoiseReductionCore::Reset()
-{
-	for (int ch = 0; ch < m_nChannels; ch++)
-	{
-		m_ChannelData[ch]->Reset();
-	}
-}
-
-void NoiseReductionCore::ProcessInputFft()
-{
-	for (int ch = 0; ch < m_nChannels; ch++)
-	{
-		m_ChannelData[ch]->ProcessInputFft();
-	}
-}
-
-void NoiseReductionCore::AnalyseFft()
-{
-	unsigned const MinFrequencyBandToProcess = unsigned(m_MinFrequencyToProcess * m_nFftOrder * 2 / m_SampleRate);
-
-	double const SuppressionLimit = exp(-m_MaxNoiseSuppression);
-
-	double const MaskingTemporalDecayNormHigh =
-		// coeff to filter masking function in time
-		std::max<double>(m_NearMaskingDecayTimeHigh * 0.001 * m_SampleRate / (m_nFftOrder * 2), 1.);
-
-	double const MaskingTemporalDecayNormLow =
-		// coeff to filter masking function in time
-		//m_NearMaskingDecayTimeLow * 0.001 * m_SampleRate / (m_nFftOrder / 2);
-		std::max<double>(m_NearMaskingDecayTimeLow * 0.001 * m_SampleRate / (m_nFftOrder * 2), 1.);
-
-	double const MaskingSpectralDecayNormLow =
-		// coeff to filter masking function in frequencies
-		std::max<double>(m_NearMaskingDecayDistanceLow / m_SampleRate * (m_nFftOrder * 2), 1.);
-
-	double const MaskingSpectralDecayNormHigh =
-		// coeff to filter masking function in frequencies
-		std::max<double>(m_NearMaskingDecayDistanceHigh / m_SampleRate * (m_nFftOrder * 2), 1.);
-
-	double const ToneEmphasis = exp(m_ToneOverNoisePreference);
-
-	int n, ch;
-
-	float SubbandPower[FAR_MASKING_GRANULARITY];
-
-	for (n = 0; n < countof(SubbandPower); n++)
-	{
-		SubbandPower[n] = 0.;
-	}
-
-	for (ch = 0; ch < m_nChannels; ch++)
-	{
-		NoiseReductionChannelData * pCh = m_ChannelData[ch];
-
-		pCh->ProcessInputFft();
-		pCh->AnalyzeInputFft();
-		pCh->AccumulateSubbandPower(SubbandPower);
-	}
-
-	float FarMasking[FAR_MASKING_GRANULARITY];
-	CalculateFarMasking(SubbandPower, FarMasking);
-
-	for (ch = 0; ch < m_nChannels; ch++)
-	{
-		NoiseReductionChannelData * pCh = m_ChannelData[ch];
-		pCh->ApplyFarMasking(FarMasking);
-		// process FFT result
-
-		// find vector deviation
-		// check if the signal is noise-like or is narrow-band.
-		// if FreqDev is less than PI/8, signal is narrow-band,
-
-
-		// Just filter the power in frequency and time
-		// add far masking value
-		// filter in frequency in two directions
-		// those are calculated from m_NearMaskingDecayTime* :
-
-		pCh->CalculateMasking(MaskingSpectralDecayNormLow,
-							MaskingSpectralDecayNormHigh, ToneEmphasis);
-
-		pCh->ProcessMaskingTemporalEnvelope(MaskingTemporalDecayNormLow,
-											MaskingTemporalDecayNormHigh, MinFrequencyBandToProcess);
-
-		// post-process output data
-
-		pCh->AdjustFftBands(m_pNoiseFloor, SuppressionLimit);
-	}
-}
-
-void NoiseReductionCore::ProcessInverseFft()
-{
-	for (int ch = 0; ch < m_nChannels; ch++)
-	{
-		m_ChannelData[ch]->ProcessInverseFft();
-	}
-}
-
-size_t CNoiseReduction::ProcessSoundBuffer(char const * pIn, char * pOut,
-											size_t nInBytes, size_t nOutBytes, size_t * pUsedBytes)
-{
-	*pUsedBytes = 0;
-	NUMBER_OF_CHANNELS nChans = m_InputChannels;
-	DATA tmp[256];
-
-	unsigned nInSamples = nInBytes / (nChans * sizeof (WAVE_SAMPLE));
-	unsigned nOutSamples = nOutBytes / (nChans * sizeof (WAVE_SAMPLE));
-	unsigned nStoredSamples = 0;
-
-	WAVE_SAMPLE const * pInBuf = (WAVE_SAMPLE *) pIn;
-	WAVE_SAMPLE * pOutBuf = (WAVE_SAMPLE *) pOut;
-
-	if (NULL == pInBuf)
-	{
-		while (0 != nOutSamples)
-		{
-			int TmpSamples = FlushSamples(tmp, std::min(unsigned(countof(tmp) / nChans), nOutSamples));
-
-			if (0 == TmpSamples)
-			{
-				break;
-			}
-
-			nOutSamples -= TmpSamples;
-			nStoredSamples += TmpSamples;
-			TmpSamples *= nChans;
-
-			for (int i = 0; i < TmpSamples; i++, pOutBuf++)
-			{
-				*pOutBuf = DoubleToShort(tmp[i]);
-			}
-		}
-		return nStoredSamples * nChans * sizeof(WAVE_SAMPLE);
-	}
-
-	// process the samples
-	while (1)
-	{
-		int InputSamplesUsed = FillInBuffer(pInBuf, nInSamples);
-
-		pInBuf += InputSamplesUsed * nChans;
-		nInSamples -= InputSamplesUsed;
-		*pUsedBytes += InputSamplesUsed * (nChans * sizeof (WAVE_SAMPLE));
-
-		if (CanProcessFft())
-		{
-			// now we have enough samples to do FFT
-			AnalyseFft();
-			ProcessInverseFft();
-		}
-
-		// store the result
-		int nSavedSamples = 0;
-		while (0 != nOutSamples)
-		{
-			int TmpSamples = DrainOutBuffer(tmp, std::min(unsigned(countof(tmp) / nChans), nOutSamples));
-
-			if (0 == TmpSamples)
-			{
-				break;
-			}
-
-			nOutSamples -= TmpSamples;
-			nStoredSamples += TmpSamples;
-			nSavedSamples += TmpSamples;
-
-			TmpSamples *= nChans;
-			for (int i = 0; i < TmpSamples; i++, pOutBuf++)
-			{
-				ASSERT(tmp[i] <= 32767. && tmp[i] >= -32768.);
-
-				*pOutBuf = DoubleToShort(tmp[i]);
-			}
-		}
-
-		if (0 == nSavedSamples && 0 == InputSamplesUsed)
-		{
-			// can do no more
-			break;
-		}
-	}
-
-	return nChans * sizeof(WAVE_SAMPLE) * nStoredSamples;
-}
-
 ///////////////////////////////////////////////////////////
 BOOL CClickRemoval::SetAndValidateWaveformat(WAVEFORMATEX const * pWf)
 {
 	return CWaveProc::SetAndValidateWaveformat(pWf)
 			//&& pWf->nSamplesPerSec == 44100
 	;
-}
-
-BOOL CBatchProcessing::SetAndValidateWaveformat(WAVEFORMATEX const * pWf)
-{
-	for (int i = 0; i < m_Stages.GetSize(); i++)
-	{
-		if (FALSE == m_Stages[i].Proc->SetAndValidateWaveformat(pWf))
-			return FALSE;
-	}
-	return TRUE;
 }
 
 void CClickRemoval::InterpolateGap(CBackBuffer<int, int> & data, int nLeftIndex, int InterpolateSamples, bool BigGap)
@@ -2194,6 +2319,9 @@ size_t CClickRemoval::ProcessSoundBuffer(char const * pIn, char * pOut,
 	return nSavedBytes + m_InputChannels * sizeof(WAVE_SAMPLE) * nStoredSamples;
 }
 
+////////////////////////////
+/////////// CBatchProcessing
+
 CBatchProcessing::~CBatchProcessing()
 {
 	for (int i = 0; i < m_Stages.GetSize(); i++)
@@ -2230,6 +2358,16 @@ double CBatchProcessing::GetMaxClipped() const
 		}
 	}
 	return MaxClipped;
+}
+
+BOOL CBatchProcessing::SetAndValidateWaveformat(WAVEFORMATEX const * pWf)
+{
+	for (int i = 0; i < m_Stages.GetSize(); i++)
+	{
+		if (FALSE == m_Stages[i].Proc->SetAndValidateWaveformat(pWf))
+			return FALSE;
+	}
+	return TRUE;
 }
 
 size_t CBatchProcessing::ProcessSound(char const * pIn, char * pOut,
@@ -2435,6 +2573,16 @@ void CBatchProcessing::AddWaveProc(CWaveProc * pProc, int index)
 	m_Stages.InsertAt(index, item);
 }
 
+void CBatchProcessing::Dump(unsigned indent) const
+{
+	BaseClass::Dump(indent);
+	for (int i = 0; i < m_Stages.GetSize(); i++)
+	{
+		m_Stages[i].Proc->Dump(indent + 1);
+	}
+}
+////////////////////////////////////////
+//////////// CResampleFilter
 CResampleFilter::~CResampleFilter()
 {
 }

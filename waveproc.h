@@ -119,6 +119,8 @@ class CWaveProc
 public:
 	CWaveProc();
 	virtual ~CWaveProc() {}
+
+	virtual void Dump(unsigned indent=0) const;
 	// the function returns number of returned samples
 	// if NULL == pInBuf, the function should flush back stored samples
 	// and return their number, or 0 if no more samples
@@ -313,6 +315,7 @@ protected:
 struct NoiseReductionParameters
 {
 	NoiseReductionParameters();     // default initialization
+	void Dump(unsigned indent=0) const;
 
 	float m_MinFrequencyToProcess;
 
@@ -362,6 +365,7 @@ public:
 	NoiseReductionCore(int nFftOrder, int nChannels, long SampleRate,
 						NoiseReductionParameters const & nr = NoiseReductionParameters());
 	~NoiseReductionCore();
+	void Dump(unsigned indent=0) const;
 
 	int FlushSamples(DATA * pBuf, int nOutSamples);
 	int FillInBuffer(WAVE_SAMPLE const * pBuf, int nInSamples);
@@ -419,20 +423,26 @@ public:
 #endif
 };
 
-class CNoiseReduction : public CWaveProc, public NoiseReductionCore
+class CNoiseReduction : public CWaveProc
 {
 	typedef CNoiseReduction ThisClass;
 	typedef CWaveProc BaseClass;
-
+	typedef NoiseReductionCore::DATA DATA;
 public:
 	typedef std::auto_ptr<ThisClass> auto_ptr;
 
-	CNoiseReduction(int nFftOrder, int nChannels, NoiseReductionParameters const & nr = NoiseReductionParameters());
+	CNoiseReduction(unsigned nFftOrder, NoiseReductionParameters const & nr = NoiseReductionParameters());
+	~CNoiseReduction();
+
+	virtual void Dump(unsigned indent=0) const;
 
 	virtual size_t ProcessSoundBuffer(char const * pInBuf, char * pOutBuf,
 									size_t nInBytes, size_t nOutBytes, size_t * pUsedBytes);
 	virtual BOOL SetAndValidateWaveformat(WAVEFORMATEX const * pWf);
 
+	NoiseReductionCore * m_pNrCore;
+	NoiseReductionParameters m_NrParms;
+	unsigned m_FftOrder;
 };
 
 class CBatchProcessing: public CWaveProc
@@ -447,6 +457,7 @@ public:
 		:m_bAutoDeleteProcs(FALSE)
 	{}
 	virtual ~CBatchProcessing();
+	virtual void Dump(unsigned indent=0) const;
 
 	virtual size_t ProcessSound(char const * pInBuf, char * pOutBuf,
 								size_t nInBytes, size_t nOutBytes, size_t * pUsedBytes);
