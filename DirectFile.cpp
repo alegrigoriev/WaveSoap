@@ -628,6 +628,38 @@ BOOL CDirectFile::Close(DWORD flags)
 	return TRUE;
 }
 
+LONGLONG CDirectFile::Seek(LONGLONG position, int origin)
+{
+	switch (origin)
+	{
+	case FILE_BEGIN:
+		if (position < 0)
+		{
+			return -1i64;
+		}
+		m_FilePointer = position;
+		break;
+	case FILE_CURRENT:
+		if (m_FilePointer + position < 0)
+		{
+			return -1i64;
+		}
+		m_FilePointer += position;
+		break;
+	case FILE_END:
+		position += GetLength();
+		if (position < 0)
+		{
+			return -1i64;
+		}
+		m_FilePointer = position;
+		break;
+	default:
+		return -1i64;
+	}
+	return m_FilePointer;
+}
+
 // read data ('count' bytes) from the current position to *buf
 long CDirectFile::Read(void *buf, long count)
 {
