@@ -13,6 +13,7 @@
 
 class CWaveFftView : public CWaveSoapFrontView
 {
+	typedef CWaveSoapFrontView BaseClass;
 protected:
 	CWaveFftView();           // protected constructor used by dynamic creation
 	DECLARE_DYNCREATE(CWaveFftView)
@@ -56,23 +57,32 @@ protected:
 	int m_FftResultArrayWidth;    // number of FFT sets
 	int m_FftResultArrayHeight;   // number of frequencies
 	int m_IndexOfFftBegin;
-	long m_FftResultBegin;     // number of the first sample
-	long m_FftResultEnd;     // number of the sample after the last
+
+	SAMPLE_INDEX m_FftResultBegin;     // number of the first sample
+	SAMPLE_INDEX m_FftResultEnd;     // number of the sample after the last
+
 	//int m_FftSamplesCalculated;
 	double m_FftLogRange;     // what dB zero value corresponds
 	double m_FirstbandVisible;     // how much the chart is scrolled. 0 = DC is visible
-	float * m_pFftWindow;
+
+	ATL::CHeapPtr<float> m_pFftWindow;
 	enum {
 		WindowTypeSquaredSine = 0,
 		WindowTypeHalfSine = 1,
 		WindowTypeHamming = 2,
 	};
 	int m_FftWindowType;
-	int m_FftOrder;
-	int m_FftSpacing;
+	int m_FftOrder;     // frequencies in FFT conversions (width=2*FFT order)
+	int m_FftSpacing;   // samples between FFT columns
+
 	void OnSetWindowType(int window);
-	void MakeFftArray(long left, long right);
-	void CalculateFftRange(long left, long right);
+	void MakeFftArray(SAMPLE_INDEX left, SAMPLE_INDEX right);
+	void CalculateFftRange(SAMPLE_INDEX left, SAMPLE_INDEX right);
+
+	long SampleToFftColumn(SAMPLE_INDEX sample);
+	SAMPLE_INDEX FftColumnToDisplaySample(long Column);
+	SAMPLE_INDEX SampleToFftBaseSample(SAMPLE_INDEX sample);
+
 	static HBRUSH m_Brush;
 	// Generated message map functions
 protected:

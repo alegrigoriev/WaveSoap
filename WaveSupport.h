@@ -405,6 +405,7 @@ protected:
 	static BOOL _stdcall FormatEnumCallback(
 											HACMDRIVERID hadid, LPACMFORMATDETAILS pafd,
 											DWORD dwInstance, DWORD fdwSupport);
+	// source wave format for comparing:
 	CWaveFormat m_Wf;
 };
 
