@@ -24,26 +24,30 @@ CNoiseReductionPage::CNoiseReductionPage() : CPropertyPage(CNoiseReductionPage::
 	m_dTransientThreshold = 2;
 	m_dNoiseReduction = 10.;
 	m_dNoiseCriterion = 0.25;
-	m_dNoiseThreshold = -70.;
-	m_dContinuousThreshold = -80.;
+	m_dNoiseThresholdLow = -70.;
+	m_dNoiseThresholdHigh = -70.;
 	m_dLowerFrequency = 4000.;
 	m_FftOrder = 128;
+	m_dNoiseReductionAggressivness = 1.;
 }
 
 CNoiseReductionPage::~CNoiseReductionPage()
 {
+	CWaveSoapApp * pApp = (CWaveSoapApp *)AfxGetApp();
+	pApp->Profile.RemoveSection(_T("NoiseReduction"));
 }
 
 void CNoiseReductionPage::DoDataExchange(CDataExchange* pDX)
 {
 	CPropertyPage::DoDataExchange(pDX);
 	//{{AFX_DATA_MAP(CNoiseReductionPage)
+	DDX_Control(pDX, IDC_EDIT_TONE_PREFERENCE, m_eToneOverNoisePreference);
 	DDX_Control(pDX, IDC_EDIT_AGGRESSIVNESS, m_EditAggressivness);
 	DDX_Control(pDX, IDC_EDIT_NOISE_REDUCTION, m_eNoiseReduction);
 	DDX_Control(pDX, IDC_EDIT_NOISE_CRITERION, m_eNoiseCriterion);
-	DDX_Control(pDX, IDC_EDIT_NOISE_AREA_THRESHOLD, m_eNoiseThreshold);
+	DDX_Control(pDX, IDC_EDIT_NOISE_AREA_THRESHOLD_HIGH, m_eNoiseThresholdHigh);
+	DDX_Control(pDX, IDC_EDIT_NOISE_AREA_THRESHOLD_LOW, m_eNoiseThresholdLow);
 	DDX_Control(pDX, IDC_EDIT_LOWER_FREQUENCY, m_eLowerFrequency);
-	DDX_Control(pDX, IDC_EDIT_CONT_AREA_THRESHOLD, m_eContinuousThreshold);
 	DDX_CBIndex(pDX, IDC_COMBO_FFT_ORDER, m_nFftOrderExp);
 	//}}AFX_DATA_MAP
 	m_FftOrder = 256 << m_nFftOrderExp;
@@ -55,12 +59,17 @@ void CNoiseReductionPage::DoDataExchange(CDataExchange* pDX)
 									"Noise reduction", "dB", 0., 100.);
 	m_eNoiseCriterion.ExchangeData(pDX, m_dNoiseCriterion,
 									"Noise/continuous criterion", "", 0.0, 1.);
-	m_eNoiseThreshold.ExchangeData(pDX, m_dNoiseThreshold,
-									"Noise floor for noise", "dB", -100., -10.);
+	m_eNoiseThresholdHigh.ExchangeData(pDX, m_dNoiseThresholdHigh,
+										"Noise floor for noise in higher frequencies", "dB", -100., -10.);
+	m_eNoiseThresholdLow.ExchangeData(pDX, m_dNoiseThresholdLow,
+									"Noise floor for noise in lower frequencies", "dB", -100., -10.);
+	m_EditAggressivness.ExchangeData(pDX, m_dNoiseReductionAggressivness,
+									"Noise suppression aggressiveness", "", 0.1, 3.);
+	m_eToneOverNoisePreference.ExchangeData(pDX, m_dToneOverNoisePreference,
+											"Tone over noise preference", "dB", 0., 20.);
+	m_dNoiseThresholdHigh = m_dNoiseThresholdLow;
 	m_eLowerFrequency.ExchangeData(pDX, m_dLowerFrequency,
 									"Frequency", "Hz", 100., 48000.);
-	m_eContinuousThreshold.ExchangeData(pDX, m_dContinuousThreshold,
-										"Noise floor for continuous tone", "dB", -100., -10.);
 
 }
 
@@ -112,9 +121,11 @@ void CNoiseReductionPage::LoadValuesFromRegistry()
 	pApp->Profile.AddItem(_T("NoiseReduction"), _T("TransientThreshold"), m_dTransientThreshold, 1., 0.3, 2);
 	pApp->Profile.AddItem(_T("NoiseReduction"), _T("NoiseReduction"), m_dNoiseReduction, 10., 0., 100.);
 	pApp->Profile.AddItem(_T("NoiseReduction"), _T("NoiseCriterion"), m_dNoiseCriterion, 0.25, 0., 1.);
-	pApp->Profile.AddItem(_T("NoiseReduction"), _T("NoiseThreshold"), m_dNoiseThreshold, -70., -100., -10.);
+	pApp->Profile.AddItem(_T("NoiseReduction"), _T("NoiseThresholdLow"), m_dNoiseThresholdLow, -70., -100., -10.);
+	pApp->Profile.AddItem(_T("NoiseReduction"), _T("NoiseThresholdHigh"), m_dNoiseThresholdHigh, -65., -100., -10.);
 	pApp->Profile.AddItem(_T("NoiseReduction"), _T("LowerFrequency"), m_dLowerFrequency, 4000., 100., 48000.);
-	pApp->Profile.AddItem(_T("NoiseReduction"), _T("ContinuousThreshold"), m_dContinuousThreshold, -80., -100., -10.);
+	pApp->Profile.AddItem(_T("NoiseReduction"), _T("ToneOverNoisePreference"), m_dToneOverNoisePreference, 10., 0., 20.);
+	pApp->Profile.AddItem(_T("NoiseReduction"), _T("NoiseReductionAggressivness"), m_dNoiseReductionAggressivness, 1., 0.1, 3.);
 }
 
 void CNoiseReductionPage::StoreValuesToRegistry()
@@ -136,8 +147,10 @@ void CNoiseReductionPage::SetWaveprocData(CNoiseReduction * pNr)
 	pNr->m_ThresholdOfTransient = m_dTransientThreshold;
 	pNr->m_FreqThresholdOfNoiselike = M_PI_2 * M_PI_2 * m_dNoiseCriterion * m_dNoiseCriterion;
 	pNr->m_MaxNoiseSuppression = DB_TO_NEPER * m_dNoiseReduction;
-	pNr->m_LevelThresholdForNoise = DB_TO_NEPER * m_dNoiseThreshold + 22.;
-	pNr->m_LevelThresholdForStationary = DB_TO_NEPER * m_dContinuousThreshold + 22.;
+	pNr->m_LevelThresholdForNoiseLow = DB_TO_NEPER * (m_dNoiseThresholdHigh +126.);
+	pNr->m_LevelThresholdForNoiseHigh = DB_TO_NEPER * (m_dNoiseThresholdHigh +126.);
+	pNr->m_ToneOverNoisePreference = DB_TO_NEPER * m_dToneOverNoisePreference;
+	pNr->m_NoiseReductionRatio = 0.5 * m_dNoiseReductionAggressivness;
 }
 
 void CNoiseReductionPage::OnOK()

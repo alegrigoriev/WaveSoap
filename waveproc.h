@@ -186,7 +186,7 @@ public:
 
 	// we multiply the band power to tone preservation factor
 	// for tonal bands
-	float m_TonePreservationFactor;
+	float m_ToneOverNoisePreference;
 
 	float m_NoiseReductionRatio;    // aggressivness of noise suppression
 	float m_MaxNoiseSuppression;    // how much FFT band can be suppressed (in dB)
@@ -201,8 +201,8 @@ public:
 	// DecayTime is time interval where masking decays by 1/e
 	// it is different for high and low frequencies
 	// Specified in miliseconds
-	float m_NearMaskingDecayTimeHigh;   // for high frequencies
 	float m_NearMaskingDecayTimeLow;   // for low frequencies
+	float m_NearMaskingDecayTimeHigh;   // for high frequencies
 
 	float m_FarMaskingCoeff;  // weights far masking against near masking
 
@@ -222,9 +222,11 @@ public:
 
 	struct SIGNAL_PARAMS
 	{
-		complex<DATA> sp_PrevFftIn;
-		complex<DATA> sp_PrevFftOut;
-		complex<DATA> ProcessFftSample(complex<DATA> smp, CNoiseReduction * pNr);
+		// current and previous samples are stored. Result of current analysis
+		// is used for the previous sample
+		complex<DATA> sp_FftIn[2];
+		//complex<DATA> sp_PrevFftOut;
+		void AnalyzeFftSample(complex<DATA> smp, CNoiseReduction * pNr, int nSample);
 		// average frequency and amplitude in the band
 		float sp_AvgFreq; // filtered arg(x[n] / x[n-1])
 		float sp_AvgPhase;
@@ -239,12 +241,12 @@ public:
 		float sp_FreqDev;
 		float sp_LevelDev;
 		float sp_PrevInstantLevel;
-		float sp_PrevPhase; // prevoius phase
+		float sp_PrevPhase; // previous phase
 		float sp_Freq;  // current frequency
-		float sp_PrevPower; // previous power
 		float sp_Power;     // current power
 		float sp_MaskingPower; // masking function
 		float sp_PrevMaskingPower;
+		char m_TonalBand;
 	};
 	SIGNAL_PARAMS * m_pParams[2];
 	friend struct SIGNAL_PARAMS;

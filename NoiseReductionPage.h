@@ -22,21 +22,24 @@ public:
 // Dialog Data
 	//{{AFX_DATA(CNoiseReductionPage)
 	enum { IDD = IDD_PROPPAGE_NOISEREDUCT };
+	CNumEdit	m_eToneOverNoisePreference;
 	CNumEdit	m_EditAggressivness;
 	CNumEdit	m_eNoiseReduction;
 	CNumEdit	m_eNoiseCriterion;
-	CNumEdit	m_eNoiseThreshold;
+	CNumEdit	m_eNoiseThresholdHigh;
+	CNumEdit	m_eNoiseThresholdLow;
 	CNumEdit	m_eLowerFrequency;
-	CNumEdit	m_eContinuousThreshold;
 	int		m_nFftOrderExp;
 	//}}AFX_DATA
 
 	double	m_dTransientThreshold;
 	double	m_dNoiseReduction;
 	double	m_dNoiseCriterion;
-	double	m_dNoiseThreshold;
+	double	m_dNoiseThresholdLow;
+	double	m_dNoiseThresholdHigh;
 	double	m_dLowerFrequency;
-	double	m_dContinuousThreshold;
+	double  m_dNoiseReductionAggressivness;
+	double  m_dToneOverNoisePreference;
 	int m_FftOrder;
 
 	void LoadValuesFromRegistry();

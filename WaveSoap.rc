@@ -172,27 +172,31 @@ BEGIN
     LTEXT           "FFT order for analyze:",IDC_STATIC,7,27,67,8
     COMBOBOX        IDC_COMBO_FFT_ORDER,96,24,40,44,CBS_DROPDOWNLIST | 
                     WS_VSCROLL | WS_TABSTOP
-    LTEXT           "Noise floor for\nnoise-like area:",IDC_STATIC,7,38,59,
-                    19
-    EDITTEXT        IDC_EDIT_NOISE_AREA_THRESHOLD,96,41,40,13,ES_AUTOHSCROLL
-    LTEXT           "dB",IDC_STATIC,142,43,12,8
-    LTEXT           "Noise floor for\ncontinuous tone area:",IDC_STATIC,7,57,
-                    70,18
-    EDITTEXT        IDC_EDIT_CONT_AREA_THRESHOLD,96,59,40,13,ES_AUTOHSCROLL
-    LTEXT           "dB",IDC_STATIC,142,61,12,8
-    LTEXT           "Continuous tone detection\nthreshold:",IDC_STATIC,7,76,
+    LTEXT           "Tone over noise preference:",IDC_STATIC,7,109,59,19
+    EDITTEXT        IDC_EDIT_TONE_PREFERENCE,96,112,40,13,ES_AUTOHSCROLL
+    LTEXT           "dB",IDC_STATIC,142,114,12,8
+    LTEXT           "Noise floor for higher frequencies:",IDC_STATIC,7,38,70,
+                    17
+    EDITTEXT        IDC_EDIT_NOISE_AREA_THRESHOLD_HIGH,96,40,40,13,
+                    ES_AUTOHSCROLL
+    LTEXT           "dB",IDC_STATIC,142,42,12,8
+    LTEXT           "Continuous tone detection\nthreshold:",IDC_STATIC,7,161,
                     81,18
-    EDITTEXT        IDC_EDIT_NOISE_CRITERION,96,76,40,13,ES_AUTOHSCROLL
-    LTEXT           "Transient area threshold:",IDC_STATIC,7,96,75,8
-    EDITTEXT        IDC_EDIT_TRANSIENT_THRESHOLD,96,93,40,13,ES_AUTOHSCROLL
-    LTEXT           "dB",IDC_STATIC,142,95,12,8
-    LTEXT           "Noise reduction \naggressivness:",IDC_STATIC,7,109,65,
-                    18
-    EDITTEXT        IDC_EDIT_AGGRESSIVNESS,96,111,40,14,ES_AUTOHSCROLL
-    LTEXT           "Maximum noise reduction:",IDC_STATIC,7,133,78,8
-    EDITTEXT        IDC_EDIT_NOISE_REDUCTION,96,130,40,14,ES_AUTOHSCROLL
-    LTEXT           "dB",IDC_STATIC,142,132,12,8
+    EDITTEXT        IDC_EDIT_NOISE_CRITERION,96,161,40,13,ES_AUTOHSCROLL
+    LTEXT           "Transient area threshold:",IDC_STATIC,7,181,75,8
+    EDITTEXT        IDC_EDIT_TRANSIENT_THRESHOLD,96,178,40,13,ES_AUTOHSCROLL
+    LTEXT           "dB",IDC_STATIC,142,180,12,8
+    LTEXT           "Noise reduction \naggressivness:",IDC_STATIC,7,73,65,18
+    EDITTEXT        IDC_EDIT_AGGRESSIVNESS,96,75,40,14,ES_AUTOHSCROLL
+    LTEXT           "Maximum noise reduction:",IDC_STATIC,7,97,78,8
+    EDITTEXT        IDC_EDIT_NOISE_REDUCTION,96,94,40,14,ES_AUTOHSCROLL
+    LTEXT           "dB",IDC_STATIC,142,96,12,8
     PUSHBUTTON      "More...",IDC_BUTTON_MORE,138,217,50,14
+    LTEXT           "Noise floor for lower frequencies:",IDC_STATIC,7,56,70,
+                    17
+    EDITTEXT        IDC_EDIT_NOISE_AREA_THRESHOLD_LOW,96,58,40,13,
+                    ES_AUTOHSCROLL
+    LTEXT           "dB",IDC_STATIC,142,60,12,8
 END
 
 IDD_PROPPAGE_CAMNOISE DIALOG DISCARDABLE  0, 0, 195, 127
