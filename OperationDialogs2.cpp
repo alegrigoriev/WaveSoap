@@ -1123,6 +1123,7 @@ static int const CdSpeeds[] =
 	32,
 	40,
 	48,
+	56,
 	64,
 };
 void CCdGrabbingDialog::InitReadSpeedCombobox()
@@ -1565,16 +1566,6 @@ void CCdGrabbingDialog::OnCancel()
 	//CStringW DosDevices;
 	//QueryDosDeviceW(_T("E:"), DosDevices.GetBuffer(4096), 4095);
 	BaseClass::OnCancel();
-}
-
-void CCdGrabbingDialog::OnOK()
-{
-	CRect r;
-	GetWindowRect( & r);
-	m_DlgWidth = r.Width();
-	m_DlgHeight = r.Height();
-
-	BaseClass::OnOK();
 }
 
 void CCdGrabbingDialog::OnContextMenu(CWnd* pWnd, CPoint point)
