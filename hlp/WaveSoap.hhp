@@ -1,155 +1,144 @@
 [OPTIONS]
+Auto TOC=9
 Binary Index=No
 Compatibility=1.1 or later
 Compiled file=WaveSoap.chm
-Contents file=Table Of Contents.hhc
-Default topic=html\afxc0wc8.htm
-Display compile progress=No
+Contents file=WaveSoap.hhc
+Default topic=html\main_index.htm
+Display compile progress=Yes
 Index file=WaveSoapFront.hhk
 Language=0x409 English (United States)
 
 
 [FILES]
-html\afxc0wc8.htm
-html\afxc0c4l.htm
-html\afxc49x0.htm
-html\afxc0853.htm
-html\afxc9ctz.htm
-html\afxc181c.htm
-html\afxc72d3.htm
-html\afxc8rhq.htm
-html\afxc31ym.htm
-html\afxc45r9.htm
-html\afxc9y05.htm
-html\afxc30hf.htm
-html\afxc48h1.htm
-html\afxc590x.htm
-html\afxc7d4k.htm
-html\afxc8zxr.htm
-html\afxc1cof.htm
-html\afxc3ewk.htm
-html\afxc7yt5.htm
-html\afxc67ad.htm
-html\afxc8ble.htm
-html\afxc9jci.htm
-html\afxc6tv6.htm
-html\afxc72ya.htm
-html\afxc0xpz.htm
-html\afxc9u5h.htm
-html\afxc3zz9.htm
-html\afxc3at6.htm
-html\afxc1304.htm
-html\afxc4mn9.htm
-html\afxc9sz0.htm
-html\afxc85dk.htm
-html\afxc1tk7.htm
-html\afxc9vp0.htm
-html\afxc9ysw.htm
-html\afxc4r72.htm
-html\afxc1g4z.htm
-html\afxc8eed.htm
-html\afxc57j9.htm
-html\afxc1vqd.htm
-html\afxc6ztx.htm
-html\afxc33uf.htm
-html\afxc6t2v.htm
-html\afxc0085.htm
-html\afxc5tr9.htm
-html\afxc71o2.htm
-html\afxc56lw.htm
-html\afxc214i.htm
-html\afxc2fsc.htm
-html\afxc0l7p.htm
-html\afxc48o5.htm
-html\afxc31id.htm
-html\afxc5zol.htm
-html\afxc9b3o.htm
-html\afxp225w.htm
-html\afxp5hf8.htm
-html\afxp86av.htm
-html\afxp7q2f.htm
-html\afxp3i9e.htm
-html\afxp0434.htm
-html\afxp0vjk.htm
-html\afxp42b4.htm
+html\main_index.htm
+html\menu_file.htm
+html\menu_edit.htm
+html\menu_view.htm
+html\menu_window.htm
+html\menu_help.htm
+html\hid_file_new.htm
+html\hid_file_open.htm
+html\afx_hidd_fileopen.htm
+html\hid_file_close.htm
+html\hid_file_save.htm
+html\hid_file_save_as.htm
+html\afx_hidd_filesave.htm
+html\hid_file_mru_file1.htm
+html\hid_app_exit.htm
+html\hid_edit_undo.htm
+html\hid_edit_redo.htm
+html\hid_edit_cut.htm
+html\hid_edit_copy.htm
+html\hid_edit_paste.htm
+html\hid_view_toolbar.htm
+html\afx_hidw_toolbar.htm
+html\hid_view_status_bar.htm
+html\afx_hidw_status_bar.htm
+html\hid_window_new.htm
+html\hid_window_cascade.htm
+html\hid_window_tile.htm
+html\hid_window_tile_horz.htm
+html\hid_window_arrange.htm
+html\hid_window_all.htm
+html\hid_help_index.htm
+html\hid_help_using.htm
+html\hid_app_about.htm
+html\hid_context_help.htm
+html\hid_ht_caption.htm
+html\scrollbars.htm
+html\hid_sc_size.htm
+html\hid_sc_move.htm
+html\hid_sc_minimize.htm
+html\hid_sc_maximize.htm
+html\hid_sc_nextwindow.htm
+html\hid_sc_prevwindow.htm
+html\hid_sc_close.htm
+html\hid_sc_restore.htm
+html\hid_view_ruler.htm
+html\hid_edit_repeat.htm
+html\hid_edit_clear.htm
+html\hid_edit_clear_all.htm
+html\hid_next_pane.htm
+html\hid_prev_pane.htm
+html\hidr_convertype.htm
+html\hid_ht_nowhere.htm
+html\afx_hidp_default.htm
+html\hid_file_print.htm
+html\afx_hidd_print.htm
+html\afx_hidd_printdlg.htm
+html\hid_file_print_preview.htm
+html\afx_hidw_preview_bar.htm
+html\hid_file_print_setup.htm
+html\afx_hidd_printsetup.htm
+html\hid_file_page_setup.htm
 
 [ALIAS]
-main_index = html\afxc0wc8.htm
-menu_file = html\afxc0c4l.htm
-menu_edit = html\afxc49x0.htm
-menu_view = html\afxc0853.htm
-menu_window = html\afxc9ctz.htm
-menu_help = html\afxc181c.htm
-hid_file_new = html\afxc72d3.htm
-afx_hidd_newtypedlg = html\afxc14vb.htm
-hid_file_open = html\afxc8rhq.htm
-afx_hidd_fileopen = html\afxc31ym.htm
-hid_file_close = html\afxc45r9.htm
-hid_file_save = html\afxc9y05.htm
-hid_file_save_as = html\afxc30hf.htm
-hid_file_send_mail = html\afxc0qss.htm
-afx_hidd_filesave = html\afxc48h1.htm
-hid_file_mru_file1 = html\afxc590x.htm
-hid_app_exit = html\afxc7d4k.htm
-hid_edit_undo = html\afxc8zxr.htm
-hid_edit_redo = html\afxc1cof.htm
-hid_edit_cut = html\afxc3ewk.htm
-hid_edit_copy = html\afxc7yt5.htm
-hid_edit_paste = html\afxc67ad.htm
-hid_view_toolbar = html\afxc8ble.htm
-afx_hidw_toolbar = html\afxc9jci.htm
-hid_view_status_bar = html\afxc6tv6.htm
-afx_hidw_status_bar = html\afxc72ya.htm
-hid_window_new = html\afxc0xpz.htm
-hid_window_cascade = html\afxc9u5h.htm
-hid_window_tile = html\afxc3zz9.htm
-hid_window_tile_horz = html\afxc3at6.htm
-hid_window_tile_vert = html\afxc1304.htm
-hid_window_arrange = html\afxc4mn9.htm
-hid_window_split = html\afxc5ph0.htm
-hid_window_all = html\afxc9sz0.htm
-hid_help_index = html\afxc85dk.htm
-hid_help_using = html\afxc1tk7.htm
-hid_app_about = html\afxc9vp0.htm
-hid_context_help = html\afxc9ysw.htm
-hid_ht_caption = html\afxc4r72.htm
-scrollbars = html\afxc1g4z.htm
-hid_sc_size = html\afxc8eed.htm
-hid_sc_move = html\afxc57j9.htm
-hid_sc_minimize = html\afxc1vqd.htm
-hid_sc_maximize = html\afxc6ztx.htm
-hid_sc_nextwindow = html\afxc33uf.htm
-hid_sc_prevwindow = html\afxc6t2v.htm
-hid_sc_close = html\afxc0085.htm
-hid_sc_restore = html\afxc5tr9.htm
-hid_sc_tasklist = html\afxc1sj8.htm
-hid_view_ruler = html\afxc71o2.htm
-afx_hidd_font = html\afxc369g.htm
-afx_hidd_color = html\afxc465u.htm
-hid_edit_find = html\afxc4ajo.htm
-afx_hidd_find = html\afxc2nac.htm
-hid_edit_replace = html\afxc121x.htm
-afx_hidd_replace = html\afxc8asl.htm
-hid_edit_repeat = html\afxc56lw.htm
-hid_edit_clear = html\afxc214i.htm
-hid_edit_clear_all = html\afxc2fsc.htm
-hid_next_pane = html\afxc0l7p.htm
-hid_prev_pane = html\afxc48o5.htm
-hidr_convertype = html\afxc31id.htm
-hidr_doc1type = html\afxc31id.htm
-hid_ht_nowhere = html\afxc5zol.htm
-afx_hidp_default = html\afxc9b3o.htm
-hid_file_print = html\afxp225w.htm
-afx_hidd_print = html\afxp5hf8.htm
-afx_hidd_printdlg = html\afxp86av.htm
-hid_file_print_preview = html\afxp7q2f.htm
-afx_hidw_preview_bar = html\afxp3i9e.htm
-hid_file_print_setup = html\afxp0434.htm
-afx_hidd_printsetup = html\afxp0vjk.htm
-hid_file_page_setup = html\afxp42b4.htm
+main_index = html\main_index.htm
+menu_file = html\menu_file.htm
+menu_edit = html\menu_edit.htm
+menu_view = html\menu_view.htm
+menu_window = html\menu_window.htm
+menu_help = html\menu_help.htm
+hid_file_new = html\hid_file_new.htm
+hid_file_open = html\hid_file_open.htm
+afx_hidd_fileopen = html\afx_hidd_fileopen.htm
+hid_file_close = html\hid_file_close.htm
+hid_file_save = html\hid_file_save.htm
+hid_file_save_as = html\hid_file_save_as.htm
+afx_hidd_filesave = html\afx_hidd_filesave.htm
+hid_file_mru_file1 = html\hid_file_mru_file1.htm
+hid_app_exit = html\hid_app_exit.htm
+hid_edit_undo = html\hid_edit_undo.htm
+hid_edit_redo = html\hid_edit_redo.htm
+hid_edit_cut = html\hid_edit_cut.htm
+hid_edit_copy = html\hid_edit_copy.htm
+hid_edit_paste = html\hid_edit_paste.htm
+hid_view_toolbar = html\hid_view_toolbar.htm
+afx_hidw_toolbar = html\afx_hidw_toolbar.htm
+hid_view_status_bar = html\hid_view_status_bar.htm
+afx_hidw_status_bar = html\afx_hidw_status_bar.htm
+hid_window_new = html\hid_window_new.htm
+hid_window_cascade = html\hid_window_cascade.htm
+hid_window_tile = html\hid_window_tile.htm
+hid_window_tile_horz = html\hid_window_tile_horz.htm
+hid_window_arrange = html\hid_window_arrange.htm
+hid_window_all = html\hid_window_all.htm
+hid_help_index = html\hid_help_index.htm
+hid_help_using = html\hid_help_using.htm
+hid_app_about = html\hid_app_about.htm
+hid_context_help = html\hid_context_help.htm
+hid_ht_caption = html\hid_ht_caption.htm
+scrollbars = html\scrollbars.htm
+hid_sc_size = html\hid_sc_size.htm
+hid_sc_move = html\hid_sc_move.htm
+hid_sc_minimize = html\hid_sc_minimize.htm
+hid_sc_maximize = html\hid_sc_maximize.htm
+hid_sc_nextwindow = html\hid_sc_nextwindow.htm
+hid_sc_prevwindow = html\hid_sc_prevwindow.htm
+hid_sc_close = html\hid_sc_close.htm
+hid_sc_restore = html\hid_sc_restore.htm
+hid_view_ruler = html\hid_view_ruler.htm
+hid_edit_repeat = html\hid_edit_repeat.htm
+hid_edit_clear = html\hid_edit_clear.htm
+hid_edit_clear_all = html\hid_edit_clear_all.htm
+hid_next_pane = html\hid_next_pane.htm
+hid_prev_pane = html\hid_prev_pane.htm
+hidr_convertype = html\hidr_convertype.htm
+hidr_doc1type = html\hidr_convertype.htm
+hid_ht_nowhere = html\hid_ht_nowhere.htm
+afx_hidp_default = html\afx_hidp_default.htm
+hid_file_print = html\hid_file_print.htm
+afx_hidd_print = html\afx_hidd_print.htm
+afx_hidd_printdlg = html\afx_hidd_printdlg.htm
+hid_file_print_preview = html\hid_file_print_preview.htm
+afx_hidw_preview_bar = html\afx_hidw_preview_bar.htm
+hid_file_print_setup = html\hid_file_print_setup.htm
+afx_hidd_printsetup = html\afx_hidd_printsetup.htm
+hid_file_page_setup = html\hid_file_page_setup.htm
 
 [MAP]
-#include <C:\Program Files\Microsoft Visual Studio .NET\Vc7\atlmfc\include\afxhelp.hm>
+#include [afxhelp.hm]
 #include [WaveSoap.hm]
 
 [INFOTYPES]
