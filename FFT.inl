@@ -8,25 +8,52 @@
 #define ASSERT(x)
 #endif
 
+#ifdef _DEBUG
+#pragma warning(disable: 4035)
+static inline __int64 FftReadTSC()
+{
+	__asm RDTSC
+}
+#pragma warning(default: 4035)
+
+unsigned FftTime1, FftTime2, FftTime3, FftTime4, FftTime5, FftTime6, FftTime7;
+#endif
+
 // Conversion of 'count' complex FFT result terms to 'count'
 // terms as if they were obtained from real data. Used in real->complex FFT
 template<class T>
 void FFTPostProc(complex<T> * x, const int count)
 {
+#ifdef _DEBUG
+	FftTime6 = FftReadTSC();
+#endif
 	ASSERT(count > 0 && count % 2 == 0);
 	double angle = -M_PI / count;
-	complex<T> rotator(cos(angle), -sin(angle));
-	complex<T> u(0., 1.);
+	T rot_r = cos(angle), rot_i = -sin(angle);
+	T u_r = 0., u_i = 1.;
 	x[count] = x[0];
 	for (int i = 0, k = count; i <= count / 2; i++, k--)
 	{
-		complex<T> tmp1 = conj(x[k]);
-		complex<T> tmp2 = u * (x[i] - tmp1);
-		tmp1 += x[i];
-		x[i] = (tmp1 - tmp2) * T(0.5);
-		x[k] = conj((tmp1 + tmp2) * T(0.5));
-		u *= rotator;
+		T tmp_r = real(x[k]) + real(x[i]);
+		T tmp_i = imag(x[k]) - imag(x[i]); // -sign omitted
+		T tmp2_r = real(x[k]) - real(x[i]);
+		T tmp2_i = imag(x[k]) + imag(x[i]); // -sign omitted
+		T tmp3 = u_r * tmp2_r + u_i * tmp2_i;   // tmp2_r
+		tmp2_i = u_i * tmp2_r - u_r * tmp2_i;
+		x[i].real(T(0.5) * (tmp3 + tmp_r));
+		x[i].imag(T(0.5) * (tmp2_i - tmp_i));
+		x[k].real(T(0.5) * (tmp_r - tmp3));
+		x[k].imag(T(0.5) * (tmp2_i + tmp_i));
+		tmp_r = u_r * rot_r - u_i * rot_i;
+		u_i = u_r * rot_i + u_i * rot_r;
+		u_r = tmp_r;
+		if (0) TRACE("x[%d]=(%g,%g),x[%d]=(%g,%g)\n",
+					i, x[i].real(), x[i].imag(),
+					k, x[k].real(), x[k].imag());
 	}
+#ifdef _DEBUG
+	FftTime7 = FftReadTSC();
+#endif
 }
 
 // Conversion of 'count+1' complex FFT result terms to 'count+1'
@@ -35,20 +62,36 @@ void FFTPostProc(complex<T> * x, const int count)
 template<class T>
 void IFFTPreProc(const complex<T> * src, complex<T> * dst, const int count)
 {
+#ifdef _DEBUG
+	FftTime6 = FftReadTSC();
+#endif
 	ASSERT(count > 0 && count % 2 == 0);
 	double angle = -M_PI / count;
-	complex<T> rotator(cos(angle), sin(angle));
-	complex<T> u(0., -1.);
-	dst[0] = T(0.5) * (src[0] + conj(src[count]) + u * (conj(src[count]) - src[0]));
+	T rot_r = cos(angle), rot_i = sin(angle);
+	T u_r = 0., u_i = -1.;
+	dst[0] = T(0.5) * (src[0] + conj(src[count]) + complex<T>(0., -1.) * (conj(src[count]) - src[0]));
 	for (int i = 1, k = count - 1; i <= count / 2; i++, k--)
 	{
-		u *= rotator;
-		complex<T> tmp1 = conj(src[k]);
-		complex<T> tmp2 = u * (tmp1 - src[i]);
-		tmp1 += src[i];
-		dst[i] = T(0.5) * (tmp1 + tmp2);
-		dst[k] = T(0.5) * conj(tmp1 - tmp2);
+		T tmp_r = u_r * rot_r - u_i * rot_i;
+		u_i = u_r * rot_i + u_i * rot_r;
+		u_r = tmp_r;
+		tmp_r = real(src[i]) + real(src[k]);
+		T tmp_i = imag(src[k]) - imag(src[i]); // -sign omitted
+		T tmp2_r = real(src[k]) - real(src[i]);
+		T tmp2_i = imag(src[k]) + imag(src[i]); // -sign omitted
+		T tmp3 = u_r * tmp2_r + u_i * tmp2_i;   // tmp2_r
+		tmp2_i = u_i * tmp2_r - u_r * tmp2_i;
+		dst[i].real(T(0.5) * (tmp3 + tmp_r));
+		dst[i].imag(T(0.5) * (tmp2_i - tmp_i));
+		dst[k].real(T(0.5) * (tmp_r - tmp3));
+		dst[k].imag(T(0.5) * (tmp2_i + tmp_i));
+		if (0)TRACE("dst[%d]=(%g,%g),dst[%d]=(%g,%g)\n",
+					i, dst[i].real(), dst[i].imag(),
+					k, dst[k].real(), dst[k].imag());
 	}
+#ifdef _DEBUG
+	FftTime7 = FftReadTSC();
+#endif
 }
 
 //inline implementation of a generic complex->complex fft function
@@ -58,31 +101,53 @@ void FastFourierTransformCore(const T * src, T * dst,
 							const int order_power,
 							const int reverse_fft)
 {
+#ifdef _DEBUG
+	FftTime1 = FftReadTSC();
+#endif
 	int n = 1 << (order_power + 1);
 	if (src != dst)
 	{
 		memcpy(dst, src, n * sizeof * dst);
 	}
+#ifdef _DEBUG
+	FftTime2 = FftReadTSC();
+#endif
+	int i;
 	for (int L = 0; L < order_power; L++)
 	{
 
 		int f = 1 << (order_power - L);
-		int e = f * 2;
 
-		if (f > 2)
+		if (f <= 2)
+		{
+			for(i = 0; i < n; i += 4)
+			{
+				T p, q;
+				int o = i + f;
+				ASSERT(o < n);
+				p = dst[i] + dst[o];
+				q = dst[i + 1] + dst[o + 1];
+				dst[o] = dst[i] - dst[o];
+				dst[i] = p;
+				dst[o + 1] = dst[i + 1] - dst[o + 1];
+				dst[i + 1] = q;
+			} // i-loop
+		}
+		else
 		{
 			T z = M_PI / f * 2.;
 
 			T c = cos(z);
+			int e = f * 2;
 			T s = sin(z);
 			if (reverse_fft) s = -s;
 
-			T u = (T)1.;
-			T v = (T)0.;
+			T u = 1.;
+			T v = 0.;
 
-			for (int j = 0; j < f; j += 2)
+			for (int j = 2; j < f; j += 2)
 			{
-				for(int i = j; i < n; i += e)
+				for(i = j; i < n; i += e)
 				{
 					double r, t;
 					int o = i + f;
@@ -92,8 +157,8 @@ void FastFourierTransformCore(const T * src, T * dst,
 					//q = dst[i + 1] + dst[o + 1];
 					t = dst[i + 1] - dst[o + 1];
 					dst[i] = dst[i] + dst[o];
-					dst[i + 1] = dst[i + 1] + dst[o + 1];
 					dst[o] = T(r * u - t * v);
+					dst[i + 1] = dst[i + 1] + dst[o + 1];
 					dst[o + 1] = T(t * u + r * v);
 				} // i-loop
 				double p = u * c - v * s;
@@ -101,43 +166,49 @@ void FastFourierTransformCore(const T * src, T * dst,
 				u = (T)p;
 			}  // j - loop
 		}
-		else
-		{
-			for(int i = 0; i < n; i += e)
-			{
-				T p, q;
-				int o = i + f;
-				ASSERT(o < n);
-				p = dst[i] + dst[o];
-				q = dst[i + 1] + dst[o + 1];
-				dst[o] = dst[i] - dst[o];
-				dst[o + 1] = dst[i + 1] - dst[o + 1];
-				dst[i] = p;
-				dst[i + 1] = q;
-			} // i-loop
-		}
 	} // L - loop
 
-	for (int i = 0, j = 0; i < n - 2; i += 2)
+#ifdef _DEBUG
+	FftTime3 = FftReadTSC();
+#endif
+	int j;
+	for (i = 0, j = 0; i < n >> 1; i +=4)
 	{
-		if (i < j)
+		T t[2];
+		if (i <= j)
 		{
-			T p = dst[j];
-			T q = dst[j + 1];
-			dst[j] = dst[i];
-			dst[i] = p;
-			dst[j + 1] = dst[i + 1];
-			dst[i + 1] = q;
+			// exchange 0..i..1 and 1..j..0
+			memcpy(t, & dst[j + (n >> 1)], 2 * sizeof dst[j]);
+			memcpy(& dst[j + (n >> 1)], & dst[i + 2], 2 * sizeof dst[j]);
+			memcpy(& dst[i + 2], t, 2 * sizeof dst[j]);
 		}
-		int k = n / 2;
-		while(k <= j)
+		else
 		{
-			j = j - k;
-			k = k / 2;
+			memcpy(t, & dst[j + (n >> 1)], 2 * sizeof dst[j]);
+			memcpy(& dst[j + (n >> 1)], & dst[i + 2], 2 * sizeof dst[j]);
+			memcpy(& dst[i + 2], t, 2 * sizeof dst[j]);
+			// exchange 0..i..0 and 0..j..0
+			memcpy(t, & dst[j], 2 * sizeof dst[j]);
+			memcpy(& dst[j], & dst[i], 2 * sizeof dst[j]);
+			memcpy(& dst[i], t, 2 * sizeof dst[j]);
+			// exchange 1..i..1 and 1..j..1
+			memcpy(t, & dst[j + 2 + (n >> 1)], 2 * sizeof dst[j]);
+			memcpy(& dst[j + 2 + (n >> 1)], & dst[i + 2 + (n >> 1)], 2 * sizeof dst[j]);
+			memcpy(& dst[i + 2 + (n >> 1)], t, 2 * sizeof dst[j]);
+		}
+		// n = 2*number of complex numbers
+		int k = n >> 2;
+		while(k & j)
+		{
+			j ^= k;
+			k >>= 1;
 		}
 		j += k;
 	}
 
+#ifdef _DEBUG
+	FftTime5 = FftTime4 = FftReadTSC();
+#endif
 	if (! reverse_fft) return;
 
 	T a = 2.0 / n;
@@ -147,6 +218,9 @@ void FastFourierTransformCore(const T * src, T * dst,
 		dst[k + 1] *= a;
 	}
 
+#ifdef _DEBUG
+	FftTime5 = FftReadTSC();
+#endif
 	return;
 }
 #elif 1
