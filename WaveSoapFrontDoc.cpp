@@ -822,6 +822,13 @@ void CWaveSoapFrontDoc::SetSelection(SAMPLE_INDEX begin, SAMPLE_INDEX end,
 void CWaveSoapFrontDoc::QueueSoundUpdate(int UpdateCode, ULONG_PTR FileID,
 										SAMPLE_INDEX begin, SAMPLE_INDEX end, NUMBER_OF_SAMPLES NewLength, int flags)
 {
+	if (begin > end)
+	{
+		SAMPLE_INDEX tmp = begin;
+		begin = end;
+		end = tmp;
+	}
+
 	CSoundUpdateInfo * pui = new CSoundUpdateInfo(UpdateCode,
 												FileID, begin, end, NewLength);
 
