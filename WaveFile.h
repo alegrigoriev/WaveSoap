@@ -32,6 +32,7 @@ enum
 	MmioFileAllowReadOnlyFallback = CDirectFile::OpenAllowReadOnlyFallback,
 	MmioFileOpenDeleteAfterClose = CDirectFile::OpenDeleteAfterClose,
 	MmioFileOpenDontCreateRiff = 0x80000000,
+	MmioFileOpenDontLoadRiff = MmioFileOpenDontCreateRiff,
 };
 
 class CMmioFile : public CDirectFile
