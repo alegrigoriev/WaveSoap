@@ -1656,20 +1656,38 @@ BOOL CWaveSoapFileList::GetDisplayName(CString& strName, int nIndex,
 	if (m_arrNames[nIndex].IsEmpty())
 		return FALSE;
 
+	CThisApp * pApp = GetApp();
+
 	LPTSTR lpch = strName.GetBuffer(_MAX_PATH+1);
 	lpch[_MAX_PATH] = 0;
-	CString suffix;
+
+	LPCTSTR suffix = _T("");
+
 	TCHAR flags = m_arrNames[nIndex][0];
 	//TRACE("First byte of name #%d = %02x\n", nIndex, flags);
 	if (flags <= 0x1F)
 	{
-		if (flags & OpenDocumentReadOnly)
+		if ((flags & OpenDocumentModeFlagsMask) == OpenDocumentDefaultMode)
 		{
-			suffix = _T(" (RO)");
+			if (pApp->m_bReadOnly)
+			{
+				suffix = _T(" (RO)");
+			}
+			else if (pApp->m_bDirectMode)
+			{
+				suffix = _T(" (D)");
+			}
 		}
-		else if (flags & OpenDocumentDirectMode)
+		else
 		{
-			suffix = _T(" (D)");
+			if (0 != (flags & OpenDocumentReadOnly))
+			{
+				suffix = _T(" (RO)");
+			}
+			else if (flags & OpenDocumentDirectMode)
+			{
+				suffix = _T(" (D)");
+			}
 		}
 		lstrcpyn(lpch, 1 + LPCTSTR(m_arrNames[nIndex]), _MAX_PATH);
 	}
