@@ -4471,7 +4471,6 @@ void CWaveSoapFrontDoc::OnProcessSynthesisExpressionEvaluation()
 	dlg.m_bLockChannels = m_bChannelsLocked;
 	dlg.m_TimeFormat = pApp->m_SoundTimeFormat;
 	dlg.m_FileLength = WaveFileSamples();
-	dlg.m_OperandsTabDlg.m_dFrequency = pApp->m_dFrequencyArgument;
 
 	CExpressionEvaluationContext * pContext = new CExpressionEvaluationContext(this, "Calculating the waveform...",
 												"Expression evaluation");
@@ -4481,14 +4480,13 @@ void CWaveSoapFrontDoc::OnProcessSynthesisExpressionEvaluation()
 		NotEnoughMemoryMessageBox();
 		return;
 	}
-	dlg.m_sExpression = pApp->m_ExpressionToEvaluate;
+
 	if (IDOK != dlg.DoModal())
 	{
 		delete dlg.m_pContext;
 		return;
 	}
 
-	pApp->m_dFrequencyArgument = dlg.m_OperandsTabDlg.m_dFrequency;
 	pContext->m_dFrequencyArgument = dlg.m_OperandsTabDlg.m_dFrequency;
 
 	if ( ! dlg.m_pContext->InitDestination(m_WavFile, dlg.m_Start, dlg.m_End,
@@ -4497,7 +4495,7 @@ void CWaveSoapFrontDoc::OnProcessSynthesisExpressionEvaluation()
 		delete pContext;
 		return;
 	}
-	pApp->m_ExpressionToEvaluate = dlg.m_sExpression;
+
 	dlg.m_pContext->Execute();
 	SetModifiedFlag(TRUE, dlg.m_bUndo);
 }

@@ -33,8 +33,10 @@ public:
 	DECLARE_MESSAGE_MAP()
 };
 
-enum { OpenDocumentReadOnly = 4,
-	OpenDocumentDirectMode = 2,
+enum {OpenDocumentDirectMode = 2,
+	OpenDocumentReadOnly = 4,
+	OpenDocumentCreateNewWithWaveformat = 8, // NAME is actually WAVEFORMATEX *
+	OpenDocumentCreateNewQueryFormat = 0x10,
 	OpenDocumentNonWavFile = 0x100,
 };
 class CWaveSoapFrontApp : public CWinApp
@@ -66,6 +68,7 @@ public:
 	bool m_bOpenChildMaximized;
 	bool m_bShowToolbar;
 	bool m_bShowStatusBar;
+	bool m_bShowNewFormatDialogWhenShiftOnly;
 	// display colors:
 	union {
 		struct {
@@ -161,27 +164,6 @@ public:
 
 	BOOL m_bSnapMouseSelectionToMax;
 
-	CString m_ExpressionToEvaluate;
-
-#if 0
-	enum { MaxSavedExpressionGroups = 32,
-		MaxSavedTotalExpressions = 512, };
-	CString m_ExpressionGroups[MaxSavedExpressionGroups];
-	int m_IndexOfGroupBegin[MaxSavedExpressionGroups];
-	int m_NumExpressions[MaxSavedExpressionGroups];
-	int m_NumOfExprGroups;
-
-	CString m_Expressions[MaxSavedTotalExpressions];
-	CString m_ExpressionComments[MaxSavedTotalExpressions];
-	CString m_ExpressionNames[MaxSavedTotalExpressions];
-	void LoadSavedExpressions();
-#endif
-
-	int m_ExpressionGroupSelected;
-	int m_ExpressionSelected;
-	int m_ExpressionTabSelected;
-	double m_dFrequencyArgument;
-
 	CString m_UserKey;
 
 	CDocument* OpenDocumentFile(LPCTSTR lpszPathName, int flags);
@@ -196,6 +178,7 @@ public:
 	CString m_NotEnoughMemoryMsg;
 
 	//{{AFX_MSG(CWaveSoapFrontApp)
+	afx_msg void OnFileNew();
 	afx_msg void OnAppAbout();
 	afx_msg void OnEditPasteNew();
 	afx_msg void OnUpdateEditPasteNew(CCmdUI* pCmdUI);

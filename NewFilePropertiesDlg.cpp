@@ -19,7 +19,9 @@ CNewFilePropertiesDlg::CNewFilePropertiesDlg(CWnd* pParent /*=NULL*/)
 	: CDialog(CNewFilePropertiesDlg::IDD, pParent)
 {
 	//{{AFX_DATA_INIT(CNewFilePropertiesDlg)
-	// NOTE: the ClassWizard will add member initialization here
+	m_bShowOnlyWhenShift = FALSE;
+	m_MonoStereo = -1;
+	m_nSamplingRate = -1;
 	//}}AFX_DATA_INIT
 }
 
@@ -28,16 +30,31 @@ void CNewFilePropertiesDlg::DoDataExchange(CDataExchange* pDX)
 {
 	CDialog::DoDataExchange(pDX);
 	//{{AFX_DATA_MAP(CNewFilePropertiesDlg)
-	// NOTE: the ClassWizard will add DDX and DDV calls here
+	DDX_Control(pDX, IDC_EDIT_LENGTH, m_eLength);
+	DDX_Control(pDX, IDC_SPIN_LENGTH, m_SpinLength);
+	DDX_Text(pDX, IDC_COMBO_SAMPLING_RATE, m_nSamplingRate);
+	DDV_MinMaxInt(pDX, m_nSamplingRate, 1, 1000000);
+	DDX_Check(pDX, IDC_CHECK_SHOW_ONLY_WHEN_SHIFT, m_bShowOnlyWhenShift);
+	DDX_Radio(pDX, IDC_RADIO_MONO, m_MonoStereo);
 	//}}AFX_DATA_MAP
+	m_eLength.ExchangeData(pDX, m_Length);
 }
 
 
 BEGIN_MESSAGE_MAP(CNewFilePropertiesDlg, CDialog)
 	//{{AFX_MSG_MAP(CNewFilePropertiesDlg)
-		// NOTE: the ClassWizard will add message map macros here
 	//}}AFX_MSG_MAP
 END_MESSAGE_MAP()
 
 /////////////////////////////////////////////////////////////////////////////
 // CNewFilePropertiesDlg message handlers
+
+BOOL CNewFilePropertiesDlg::OnInitDialog()
+{
+	m_eLength.SetTimeFormat(SampleToString_HhMmSs | TimeToHhMmSs_NeedsHhMm);
+	m_eLength.SetSamplingRate(m_nSamplingRate);
+	CDialog::OnInitDialog();
+
+	return TRUE;  // return TRUE unless you set the focus to a control
+	// EXCEPTION: OCX Property Pages should return FALSE
+}

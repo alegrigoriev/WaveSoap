@@ -130,6 +130,10 @@ SOURCE=.\MainFrm.cpp
 # End Source File
 # Begin Source File
 
+SOURCE=.\NewFilePropertiesDlg.cpp
+# End Source File
+# Begin Source File
+
 SOURCE=.\NumEdit.cpp
 # End Source File
 # Begin Source File
@@ -341,6 +345,10 @@ SOURCE=.\FftRulerView.h
 # Begin Source File
 
 SOURCE=.\MainFrm.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\NewFilePropertiesDlg.h
 # End Source File
 # Begin Source File
 

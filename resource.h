@@ -74,6 +74,7 @@
 #define IDD_SAVED_EXPRESSIONS_TAB       163
 #define IDD_DIALOG_SAVE_EXPRESSION      164
 #define IDD_DIALOG_CUSTOM_SAMPLERATE    165
+#define IDD_DIALOG_NEW_FILE_PARAMETERS  166
 #define IDC_EDIT_MIN_CLICK_AMPLITUDE    1000
 #define IDC_TAB_SWITCH_VIEW_MODE        1000
 #define IDC_CHECK_LOG_CLICKS            1001
@@ -114,6 +115,7 @@
 #define IDC_COMBO_DRIVES                1013
 #define IDC_COMBO_NAME                  1013
 #define IDC_COMBO_SAVED_EXPRESSION_GROUP 1013
+#define IDC_COMBO_SAMPLING_RATE         1013
 #define IDC_COMBO_GROUP                 1014
 #define IDC_STATIC_FILE_TYPE            1016
 #define IDC_STATIC_FILE_FORMAT          1017
@@ -203,6 +205,10 @@
 #define IDC_BUTTON_DELETE_EXPRESSION    1112
 #define IDC_EDIT_FREQUENCY              1113
 #define IDC_EDIT_SAMPLE_RATE            1114
+#define IDC_RADIO_MONO                  1115
+#define IDC_RADIO_STEREO                1116
+#define IDC_CHECK_24BIT                 1117
+#define IDC_CHECK_SHOW_ONLY_WHEN_SHIFT  1119
 #define IDC_VIEW_RULER_SAMPLES          32771
 #define IDC_VIEW_RULER_HHMMSS           32772
 #define IDC_VIEW_RULER_SECONDS          32773
@@ -411,9 +417,9 @@
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_3D_CONTROLS                     1
-#define _APS_NEXT_RESOURCE_VALUE        166
+#define _APS_NEXT_RESOURCE_VALUE        168
 #define _APS_NEXT_COMMAND_VALUE         40089
-#define _APS_NEXT_CONTROL_VALUE         1115
+#define _APS_NEXT_CONTROL_VALUE         1120
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif

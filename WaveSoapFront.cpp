@@ -16,6 +16,8 @@
 #include <msacm.h>
 #include "OperationDialogs2.h"
 #include <Dlgs.h>
+#include "NewFilePropertiesDlg.h"
+
 #define _countof(array) (sizeof(array)/sizeof(array[0]))
 
 #ifdef _DEBUG
@@ -159,12 +161,12 @@ BEGIN_MESSAGE_MAP(CWaveSoapFrontApp, CWinApp)
 	ON_UPDATE_COMMAND_UI(ID_EDIT_PASTE_NEW, OnUpdateEditPasteNew)
 	ON_COMMAND_EX_RANGE(ID_FILE_MRU_FILE1, ID_FILE_MRU_FILE16, OnOpenRecentFile)
 	ON_COMMAND(ID_TOOLS_CDGRAB, OnToolsCdgrab)
+	ON_COMMAND(ID_FILE_NEW, OnFileNew)
 	//}}AFX_MSG_MAP
 	// if no documents, Paste will create a new file
 	ON_COMMAND(ID_EDIT_PASTE, OnEditPasteNew)
 	ON_UPDATE_COMMAND_UI(ID_EDIT_PASTE, OnUpdateEditPasteNew)
 	// Standard file based document commands
-	ON_COMMAND(ID_FILE_NEW, CWinApp::OnFileNew)
 	ON_COMMAND(ID_FILE_OPEN, CWinApp::OnFileOpen)
 	// Standard print setup command
 	ON_COMMAND(ID_FILE_PRINT_SETUP, CWinApp::OnFilePrintSetup)
@@ -228,9 +230,7 @@ CWaveSoapFrontApp::CWaveSoapFrontApp()
 
 	m_hWMVCORE_DLL_Handle(NULL),
 
-	m_ExpressionGroupSelected(0),
-	m_ExpressionSelected(0),
-	m_ExpressionTabSelected(0),
+	m_bShowNewFormatDialogWhenShiftOnly(false),
 
 	m_OpenFileDialogFilter(1)
 {
@@ -354,8 +354,6 @@ BOOL CWaveSoapFrontApp::InitInstance()
 	Profile.AddBoolItem(_T("Settings"), _T("SuppressDifferential"), m_bSuppressDifferential, TRUE);
 	Profile.AddBoolItem(_T("Settings"), _T("SuppressLowFrequency"), m_bSuppressLowFrequency, TRUE);
 
-	Profile.AddItem(_T("Settings"), _T("EvaluateExpression"), m_ExpressionToEvaluate);
-
 	Profile.AddBoolItem(_T("Settings"), _T("DontShowMediaPlayerWarning"), m_DontShowMediaPlayerWarning, FALSE);
 
 	Profile.AddBoolItem(_T("Settings"), _T("SnapMouseSelectionToMax"), m_bSnapMouseSelectionToMax, TRUE);
@@ -364,6 +362,7 @@ BOOL CWaveSoapFrontApp::InitInstance()
 	Profile.AddItem(_T("Settings"), _T("ShowStatusBar"), m_bShowStatusBar, true);
 	Profile.AddItem(_T("Settings"), _T("OpenChildMaximized"), m_bOpenChildMaximized, true);
 	Profile.AddItem(_T("Settings"), _T("OpenMaximized"), m_bOpenMaximized, true);
+	Profile.AddItem(_T("Settings"), _T("ShowNewFormatDialogWhenShiftOnly"), m_bShowNewFormatDialogWhenShiftOnly, false);
 
 	LoadStdProfileSettings(10);  // Load standard INI file options (including MRU)
 
@@ -584,6 +583,13 @@ CDocument* CWaveSoapDocTemplate::OpenDocumentFile(LPCTSTR lpszPathName,
 {
 	CDocument* pJustDocument = CreateNewDocument();
 	BOOL bMakeVisible = flags & 1;
+	WAVEFORMATEX * pWfx = NULL;
+	if (flags & OpenDocumentCreateNewWithWaveformat)
+	{
+		pWfx = (WAVEFORMATEX *) lpszPathName;
+		lpszPathName = NULL;
+		flags &= ~ OpenDocumentCreateNewWithWaveformat;
+	}
 	if (pJustDocument == NULL)
 	{
 		TRACE0("CDocTemplate::CreateNewDocument returned NULL.\n");
@@ -605,7 +611,35 @@ CDocument* CWaveSoapDocTemplate::OpenDocumentFile(LPCTSTR lpszPathName,
 	{
 		// create a new document - with default document name
 		SetDefaultTitle(pDocument);
-
+		if (flags & OpenDocumentCreateNewQueryFormat
+			&& NULL != pWfx)
+		{
+			CThisApp * pApp = GetApp();
+			if (! pApp->m_bShowNewFormatDialogWhenShiftOnly
+				|| (0x8000 & GetKeyState(VK_SHIFT)))
+			{
+				CNewFilePropertiesDlg dlg;
+				dlg.m_bShowOnlyWhenShift = pApp->m_bShowNewFormatDialogWhenShiftOnly;
+				dlg.m_nSamplingRate = pWfx->nSamplesPerSec;
+				dlg.m_MonoStereo = (pWfx->nChannels == 2);
+				dlg.m_Length = 10 * dlg.m_nSamplingRate;
+				if (IDOK != dlg.DoModal())
+				{
+					delete pDocument;
+					return NULL;
+				}
+				pApp->m_bShowNewFormatDialogWhenShiftOnly = (dlg.m_bShowOnlyWhenShift != 0);
+				pWfx->nSamplesPerSec = dlg.m_nSamplingRate;
+				if (dlg.m_MonoStereo)
+				{
+					pWfx->nChannels = 2;
+				}
+				else
+				{
+					pWfx->nChannels = 1;
+				}
+			}
+		}
 		// avoid creating temporary compound file when starting up invisible
 		if (!bMakeVisible)
 			pDocument->m_bEmbedded = TRUE;
@@ -1796,6 +1830,18 @@ void SetStatusString(CCmdUI* pCmdUI, const CString & string,
 	pCmdUI->SetText(string);
 }
 
+void CWaveSoapFrontApp::OnFileNew()
+{
+	POSITION pos = m_pDocManager->GetFirstDocTemplatePosition();
+	CDocTemplate* pTemplate = m_pDocManager->GetNextDocTemplate(pos);
+	if (pTemplate != NULL)
+	{
+		//CWaveSoapFrontDoc * pDoc =
+		(CWaveSoapFrontDoc *)pTemplate->OpenDocumentFile(
+														(LPCTSTR) & (GetApp()->m_NewFileFormat),
+														OpenDocumentCreateNewWithWaveformat | OpenDocumentCreateNewQueryFormat);
+	}
+}
 
 void CWaveSoapFrontApp::OnEditPasteNew()
 {
@@ -1807,9 +1853,12 @@ void CWaveSoapFrontApp::OnEditPasteNew()
 	CDocTemplate* pTemplate = m_pDocManager->GetNextDocTemplate(pos);
 	if (pTemplate != NULL)
 	{
-		m_NewFileFormat = *m_ClipboardFile.GetWaveFormat();
+		WAVEFORMATEX * pWfx = m_ClipboardFile.GetWaveFormat();
 
-		CWaveSoapFrontDoc * pDoc = (CWaveSoapFrontDoc *)pTemplate->OpenDocumentFile(NULL);
+		CWaveSoapFrontDoc * pDoc =
+			(CWaveSoapFrontDoc *)pTemplate->OpenDocumentFile((LPCTSTR) pWfx,
+															OpenDocumentCreateNewWithWaveformat);
+
 		if (NULL != pDoc)
 		{
 			BOOL TmpUndo = pDoc->UndoEnabled();
