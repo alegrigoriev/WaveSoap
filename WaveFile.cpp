@@ -126,6 +126,10 @@ BOOL CMmioFile::Open( LPCTSTR szFileName, UINT nOpenFlags)
 		{
 			DirectFileOpenFlags |= CDirectFile::OpenDeleteAfterClose;
 		}
+		if (nOpenFlags & MmioFileMemoryFile)
+		{
+			DirectFileOpenFlags |= CDirectFile::CreateMemoryFile;
+		}
 	}
 
 	if ( ! CDirectFile::Open(szFileName, DirectFileOpenFlags))
@@ -163,6 +167,10 @@ BOOL CMmioFile::Open( LPCTSTR szFileName, UINT nOpenFlags)
 	else
 	{
 		// new file created
+		if (nOpenFlags & MmioFileMemoryFile)
+		{
+			SetFileLength(0x40);
+		}
 		MMIOINFO mmii;
 		memset( & mmii, 0, sizeof mmii);
 		mmii.fccIOProc = 0;
@@ -407,8 +415,14 @@ BOOL CWaveFile::CreateWaveFile(CWaveFile * pTemplateFile, WAVEFORMATEX * pTempla
 	CString name;
 	char NameBuf[512];
 	// if the name is empty, create a temp name
-	if (NULL != FileName
-		&& FileName[0] != 0)
+	DWORD OpenFlags = MmioFileOpenCreateAlways;
+	if ((flags & CreateWaveFileAllowMemoryFile)
+		&& SizeOrSamples <= 0x4000)
+	{
+		OpenFlags |= MmioFileMemoryFile;
+	}
+	else if (NULL != FileName
+			&& FileName[0] != 0)
 	{
 		name = FileName;
 	}
@@ -455,7 +469,6 @@ BOOL CWaveFile::CreateWaveFile(CWaveFile * pTemplateFile, WAVEFORMATEX * pTempla
 	}
 	// create a file, RIFF list, fmt chunk, data chunk of specified size
 	// temp file with this name may already be created
-	DWORD OpenFlags = MmioFileOpenCreateAlways;
 	if (flags & CreateWaveFileDeleteAfterClose)
 	{
 		OpenFlags |= MmioFileOpenDeleteAfterClose;
