@@ -241,6 +241,8 @@ struct CWaveFormat
 								(WAVE_FORMAT_PCM == m_pWf->wFormatTag) ?
 									sizeof (PCMWAVEFORMAT) : sizeof (WAVEFORMATEX) + m_pWf->cbSize);
 	}
+	CString GetFormatNameString(HACMDRIVER had = NULL);
+	CString GetFormatTagNameString(HACMDRIVER had = NULL);
 	static WAVEFORMATEX const CdAudioFormat;
 };
 
@@ -414,6 +416,8 @@ public:
 	void FillLameEncoderFormats();
 
 	static CString GetFormatName(HACMDRIVER had, WAVEFORMATEX const * pWf);
+	static CString GetFormatTagName(HACMDRIVER had, DWORD Tag);
+
 	int FillFormatsCombo(CComboBox * pCombo, CWaveFormat & Wf,
 						WaveFormatTagEx SelectedTag, int SelectedBitrate);
 protected:
@@ -498,6 +502,16 @@ protected:
 	DWORD m_SrcBufSize;
 	DWORD m_DstBufSize;
 };
+
+inline CString CWaveFormat::GetFormatNameString(HACMDRIVER had)
+{
+	return CAudioCompressionManager::GetFormatName(had, *this);
+}
+
+inline CString CWaveFormat::GetFormatTagNameString(HACMDRIVER had)
+{
+	return CAudioCompressionManager::GetFormatTagName(had, FormatTag());
+}
 
 WAVEFORMATEX * CopyWaveformat(const WAVEFORMATEX * src);
 #endif // #ifndef WAVESUPPORT_H__

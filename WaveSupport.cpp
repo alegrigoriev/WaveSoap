@@ -1246,6 +1246,21 @@ CString CAudioCompressionManager::GetFormatName(HACMDRIVER had, WAVEFORMATEX con
 	return CString();
 }
 
+CString CAudioCompressionManager::GetFormatTagName(HACMDRIVER had, DWORD Tag)
+{
+	ACMFORMATTAGDETAILS afd = {0};
+
+	afd.cbStruct = sizeof afd;
+	afd.dwFormatTag = Tag;
+
+	MMRESULT res = acmFormatTagDetails(had, & afd, ACM_FORMATTAGDETAILSF_FORMATTAG);
+	if (MMSYSERR_NOERROR == res)
+	{
+		return afd.szFormatTag;
+	}
+	return CString();
+}
+
 AudioStreamConvertor::AudioStreamConvertor(HACMDRIVER drv)
 	: m_SrcBufSize(0),
 	m_DstBufSize(0),

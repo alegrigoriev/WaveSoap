@@ -266,8 +266,10 @@ private:
 		ASSERT(FALSE);
 	}
 
+#ifndef OVERRIDE_MMLIB_FUNCTIONS
 	static LRESULT PASCAL BufferedIOProc(LPSTR lpmmioinfo, UINT wMsg,
 										LPARAM lParam1, LPARAM lParam2);
+#endif
 
 };
 
