@@ -26,6 +26,7 @@ enum {
 	OperationContextInitialized = 0x40,
 	OperationContextCommitFile = 0x80,
 	OperationContextNonCritical = 0x100,
+	OperationContextWriteToClipboard = 0x200,  // the operation write to clipboard
 
 	OperationContextDontAdjustPriority = 0x400,
 	OperationContextInitFailed = 0x800,
