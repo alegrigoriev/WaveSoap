@@ -68,7 +68,6 @@ void CNoiseReductionPage::DoDataExchange(CDataExchange* pDX)
 									"Noise suppression aggressiveness", "", 0.1, 3.);
 	m_eToneOverNoisePreference.ExchangeData(pDX, m_dToneOverNoisePreference,
 											"Tone over noise preference", "dB", 0., 20.);
-	m_dNoiseThresholdHigh = m_dNoiseThresholdLow;
 	m_eLowerFrequency.ExchangeData(pDX, m_dLowerFrequency,
 									"Frequency", "Hz", 100., 48000.);
 
@@ -152,7 +151,7 @@ void CNoiseReductionPage::SetWaveprocData(CNoiseReduction * pNr)
 	pNr->m_ThresholdOfTransient = m_dTransientThreshold;
 	pNr->m_FreqThresholdOfNoiselike = M_PI_2 * M_PI_2 * m_dNoiseCriterion * m_dNoiseCriterion;
 	pNr->m_MaxNoiseSuppression = DB_TO_NEPER * m_dNoiseReduction;
-	pNr->m_LevelThresholdForNoiseLow = DB_TO_NEPER * (m_dNoiseThresholdHigh +111.);
+	pNr->m_LevelThresholdForNoiseLow = DB_TO_NEPER * (m_dNoiseThresholdLow +111.);
 	pNr->m_LevelThresholdForNoiseHigh = DB_TO_NEPER * (m_dNoiseThresholdHigh +111.);
 	pNr->m_ToneOverNoisePreference = DB_TO_NEPER * m_dToneOverNoisePreference;
 	pNr->m_NoiseReductionRatio = 0.5 * m_dNoiseReductionAggressivness;

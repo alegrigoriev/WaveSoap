@@ -21,9 +21,9 @@ void CApplicationProfileItemStr::ReadData()
 	StrRef = AfxGetApp()->GetProfileString(Section, Name, m_Default);
 }
 
-void CApplicationProfileItemStr::WriteData()
+void CApplicationProfileItemStr::WriteData(BOOL bForceWrite)
 {
-	if (StrRef != InitialData)
+	if (bForceWrite || StrRef != InitialData)
 	{
 		AfxGetApp()->WriteProfileString(Section, Name, StrRef);
 	}
@@ -55,9 +55,9 @@ void CApplicationProfileItemLong::ReadData()
 	LongRef = AfxGetApp()->GetProfileInt(Section, Name, m_Default);
 }
 
-void CApplicationProfileItemLong::WriteData()
+void CApplicationProfileItemLong::WriteData(BOOL bForceWrite)
 {
-	if (LongRef != InitialData)
+	if (bForceWrite || LongRef != InitialData)
 	{
 		AfxGetApp()->WriteProfileInt(Section, Name, LongRef);
 	}
@@ -89,9 +89,9 @@ void CApplicationProfileItemInt::ReadData()
 	Ref = AfxGetApp()->GetProfileInt(Section, Name, m_Default);
 }
 
-void CApplicationProfileItemInt::WriteData()
+void CApplicationProfileItemInt::WriteData(BOOL bForceWrite)
 {
-	if (Ref != InitialData)
+	if (bForceWrite || Ref != InitialData)
 	{
 		AfxGetApp()->WriteProfileInt(Section, Name, Ref);
 	}
@@ -123,9 +123,9 @@ void CApplicationProfileItemUlong::ReadData()
 	LongRef = AfxGetApp()->GetProfileInt(Section, Name, m_Default);
 }
 
-void CApplicationProfileItemUlong::WriteData()
+void CApplicationProfileItemUlong::WriteData(BOOL bForceWrite)
 {
-	if (LongRef != InitialData)
+	if (bForceWrite || LongRef != InitialData)
 	{
 		AfxGetApp()->WriteProfileInt(Section, Name, LongRef);
 	}
@@ -174,9 +174,9 @@ void CApplicationProfileItemDouble::ReadData()
 	DoubleRef = val;
 }
 
-void CApplicationProfileItemDouble::WriteData()
+void CApplicationProfileItemDouble::WriteData(BOOL bForceWrite)
 {
-	if (DoubleRef != InitialData)
+	if (bForceWrite || DoubleRef != InitialData)
 	{
 		CString s;
 		s.Format("%g", DoubleRef);
@@ -212,10 +212,10 @@ void CApplicationProfileItemFloat::ReadData()
 	FloatRef = IntermediateValue;
 }
 
-void CApplicationProfileItemFloat::WriteData()
+void CApplicationProfileItemFloat::WriteData(BOOL bForceWrite)
 {
 	IntermediateValue = FloatRef;
-	CApplicationProfileItemDouble::WriteData();
+	CApplicationProfileItemDouble::WriteData(bForceWrite);
 }
 
 void CApplicationProfileItemFloat::ResetToInitial()
@@ -473,5 +473,80 @@ BOOL CApplicationProfile::RevertSectionToInitial(LPCTSTR szSection)
 		}
 		pTmp = pTmp->Next;
 	}
+	return TRUE;
+}
+		// saves the section in INI file. If section name is empty,
+		// saves all of them
+BOOL CApplicationProfile::ExportSection(LPCTSTR szSection, LPCTSTR szFilename)
+{
+	CWinApp * pApp = AfxGetApp();
+	if (NULL == szFilename || 0 == szFilename[0])
+	{
+		return FALSE;
+	}
+	LPCTSTR OldRegistryKeyName = pApp->m_pszRegistryKey;
+	LPCTSTR OldProfileName = pApp->m_pszProfileName;
+	pApp->m_pszRegistryKey = NULL;
+	pApp->m_pszProfileName = szFilename;
+	try
+	{
+		CApplicationProfileItem * pTmp = pItems;
+		while(pTmp != NULL)
+		{
+			if (NULL == szSection
+				|| 0 == szSection[0]
+				|| pTmp->Section.CompareNoCase(szSection))
+			{
+				pTmp->WriteData(TRUE);  // force to write
+			}
+			pTmp = pTmp->Next;
+		}
+	}
+	catch(...)
+	{
+		pApp->m_pszProfileName = OldProfileName;
+		pApp->m_pszRegistryKey = OldRegistryKeyName;
+		throw;
+	}
+	pApp->m_pszProfileName = OldProfileName;
+	pApp->m_pszRegistryKey = OldRegistryKeyName;
+	return TRUE;
+}
+
+// restores the section from INI file. If section name is empty,
+// restores all of them.
+BOOL CApplicationProfile::ImportSection(LPCTSTR szSection, LPCTSTR szFilename)
+{
+	CWinApp * pApp = AfxGetApp();
+	if (NULL == szFilename || 0 == szFilename[0])
+	{
+		return FALSE;
+	}
+	LPCTSTR OldRegistryKeyName = pApp->m_pszRegistryKey;
+	LPCTSTR OldProfileName = pApp->m_pszProfileName;
+	pApp->m_pszRegistryKey = NULL;
+	pApp->m_pszProfileName = szFilename;
+	try
+	{
+		CApplicationProfileItem * pTmp = pItems;
+		while(pTmp != NULL)
+		{
+			if (NULL == szSection
+				|| 0 == szSection[0]
+				|| pTmp->Section.CompareNoCase(szSection))
+			{
+				pTmp->ReadData();
+			}
+			pTmp = pTmp->Next;
+		}
+	}
+	catch(...)
+	{
+		pApp->m_pszProfileName = OldProfileName;
+		pApp->m_pszRegistryKey = OldRegistryKeyName;
+		throw;
+	}
+	pApp->m_pszProfileName = OldProfileName;
+	pApp->m_pszRegistryKey = OldRegistryKeyName;
 	return TRUE;
 }
