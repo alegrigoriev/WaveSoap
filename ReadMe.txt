@@ -1,11 +1,14 @@
 TODO tasks:
 
-Add prefix to the "Split to files" files: index and/or text
-When saving partial file, show the file name in the status prompt, don't show the source name
+Make possible MP3/WMA save with different sampling rate
+
 Allow Save Selection to save with compression
+
 When doing Paste from file, make the file title a region name.
 When saving the selection as, set the file title from the marker at beginning of the selection (unless all the file is selected)
 Make Fade In/Out command
+Add prefix to CD-saved files
+Add "Single file" option to CD-grab dialog
 Make Paste Special command (with Fade In/Fade Out etc)
 Check all loading/saving of compressed files
 If metadata doesn't come as the very last chunk of the file, copy the original file to 
@@ -86,10 +89,9 @@ Find which alignment better for edit box labels: left or right
 Problems:
 
 WMA encoded/decoded is delayed by 2048 samples.
-Save split to files shows MP3 formats for MP3 codec with different sample rate, even though "Show compatible formats" is selected
 SaveAs shows AVI as possible type
 Last columns (of the file) in FFT view are not getting erased/drawn properly
-Operation status text may get sticky after undo/redo
+Operation status text may get sticky after undo/redo ???
 Vertical scroll in the wave view makes marker labels blinking
 During exit, asks to reopen the file
 Ctrl+S doesn't always work
@@ -104,6 +106,7 @@ Windows2000 is trying to zero the allocated file
 Log Off query doesn't close the active dialog. Recursion is possible. Make sure to check after Cancel
 
 Fixed:
+Save split to files shows MP3 formats for MP3 codec with different sample rate, even though "Show compatible formats" is selected
 Selected Mpeg3 compressor is not saved
 Go to max peak goes a bit off
 mm:ss.FF if not available in Marker/Region dialog
@@ -192,6 +195,14 @@ Save As dialog is not centered first time (comdlg problem?)
 ??? When time/seconds format is set for status bar, MM:SS is actually shown
 
 Done:
+Do enable/disable buttons in Split to files dialog
+When saving partial file, show the file name in the status prompt, don't show the source name
+Make an icon for Split To Files dialog as scissors.
+Save changed range back to the list view on KillFocus
+Add Delete and New functions to Split File, and also editing of the segments.
+Add Selection choice handling
+When time format changes, rebuild the list.
+Add prefix to the "Split to files" files: index and/or text
 Make "Save: Split to files" command
 Check if after file extension metadata gets saved again.
 Fix GetBufferWriteOnly flag support (do zero instead of read)
