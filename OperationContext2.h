@@ -18,7 +18,7 @@ public:
 	CString m_ErrorString;
 	void Evaluate();
 	bool m_bClipped;
-	long m_MaxClipped;
+	double m_MaxClipped;
 
 private:
 	enum TokenType
@@ -247,9 +247,7 @@ public:
 	~CEqualizerContext();
 
 	BOOL m_bClipped;
-	long m_MaxClipped;
-
-	Equalizer m_Equalizer;
+	double m_MaxClipped;
 
 	// the coefficients are: 3 numerator's coeffs and 3 denominator's coeffs
 	double m_BandCoefficients[MaxNumberOfEqualizerBands][6];

@@ -1530,7 +1530,7 @@ void CExpressionEvaluationContext::PostRetire(BOOL bChildContext)
 	if (m_bClipped)
 	{
 		CString s;
-		s.Format(IDS_SOUND_CLIPPED, pDocument->GetTitle(), m_MaxClipped);
+		s.Format(IDS_SOUND_CLIPPED, pDocument->GetTitle(), int(m_MaxClipped * 100. / 32678));
 		AfxMessageBox(s, MB_OK | MB_ICONEXCLAMATION);
 	}
 	COperationContext::PostRetire(bChildContext);
@@ -1579,7 +1579,7 @@ double CEqualizerContext::CalculateResult(int ch, int Input)
 		m_PrevSamples[ch][i][1] = m_PrevSamples[ch][i][0];
 		m_PrevSamples[ch][i][0] = tmp;
 		m_PrevSamples[ch][i][3] = m_PrevSamples[ch][i][2];
-		m_PrevSamples[ch][i][0] = tmp1;
+		m_PrevSamples[ch][i][2] = tmp1;
 		tmp = tmp1;
 	}
 	return tmp;
@@ -1590,7 +1590,7 @@ void CEqualizerContext::PostRetire(BOOL bChildContext)
 	if (m_bClipped)
 	{
 		CString s;
-		s.Format(IDS_SOUND_CLIPPED, pDocument->GetTitle(), m_MaxClipped);
+		s.Format(IDS_SOUND_CLIPPED, pDocument->GetTitle(), int(m_MaxClipped * 100. / 32678));
 		AfxMessageBox(s, MB_OK | MB_ICONEXCLAMATION);
 	}
 	COperationContext::PostRetire(bChildContext);
@@ -1607,21 +1607,22 @@ BOOL CEqualizerContext::ProcessBuffer(void * buf, size_t len, DWORD offset)
 	{
 		while (len >= sizeof (__int16))
 		{
-			int result = fround(CalculateResult(0, *pDst));
+			double dResult = CalculateResult(0, *pDst);
+			int result = fround(dResult);
 			if (result > 0x7FFF)
 			{
-				m_bClipped = true;
-				if (m_MaxClipped < result)
+				if (m_MaxClipped < dResult)
 				{
-					m_MaxClipped = result;
+					m_MaxClipped = dResult;
 				}
+				m_bClipped = true;
 				result = 0x7FFF;
 			}
 			else if (result < -0x8000)
 			{
-				if (m_MaxClipped < -result)
+				if (m_MaxClipped < -dResult)
 				{
-					m_MaxClipped = -result;
+					m_MaxClipped = -dResult;
 				}
 				result = -0x8000;
 				m_bClipped = true;
@@ -1639,21 +1640,22 @@ BOOL CEqualizerContext::ProcessBuffer(void * buf, size_t len, DWORD offset)
 			{
 				if (m_DstChan != 1) // not right only
 				{
-					int result = fround(CalculateResult(0, *pDst));
+					double dResult = CalculateResult(0, *pDst);
+					int result = fround(dResult);
 					if (result > 0x7FFF)
 					{
-						if (m_MaxClipped < result)
+						if (m_MaxClipped < dResult)
 						{
-							m_MaxClipped = result;
+							m_MaxClipped = dResult;
 						}
-						result = 0x7FFF;
 						m_bClipped = true;
+						result = 0x7FFF;
 					}
 					else if (result < -0x8000)
 					{
-						if (m_MaxClipped < -result)
+						if (m_MaxClipped < -dResult)
 						{
-							m_MaxClipped = -result;
+							m_MaxClipped = -dResult;
 						}
 						result = -0x8000;
 						m_bClipped = true;
@@ -1668,21 +1670,22 @@ BOOL CEqualizerContext::ProcessBuffer(void * buf, size_t len, DWORD offset)
 			{
 				if (m_DstChan != 0) // not left only
 				{
-					int result = fround(CalculateResult(1, *pDst));
+					double dResult = CalculateResult(1, *pDst);
+					int result = fround(dResult);
 					if (result > 0x7FFF)
 					{
-						if (m_MaxClipped < result)
+						if (m_MaxClipped < dResult)
 						{
-							m_MaxClipped = result;
+							m_MaxClipped = dResult;
 						}
-						result = 0x7FFF;
 						m_bClipped = true;
+						result = 0x7FFF;
 					}
 					else if (result < -0x8000)
 					{
-						if (m_MaxClipped < -result)
+						if (m_MaxClipped < -dResult)
 						{
-							m_MaxClipped = -result;
+							m_MaxClipped = -dResult;
 						}
 						result = -0x8000;
 						m_bClipped = true;

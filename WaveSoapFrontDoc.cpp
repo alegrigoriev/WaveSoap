@@ -5511,9 +5511,35 @@ void CWaveSoapFrontDoc::OnProcessEqualizer()
 	dlg.m_bLockChannels = m_bChannelsLocked;
 	dlg.m_TimeFormat = pApp->m_SoundTimeFormat;
 	dlg.m_FileLength = WaveFileSamples();
-	if (IDOK == dlg.DoModal())
+	if (IDOK != dlg.DoModal())
 	{
+		return;
 	}
+	CEqualizerContext * pContext =
+		new CEqualizerContext(this, "Applying equalizer...", "Equalizer");
+	if (NULL == pContext)
+	{
+		NotEnoughMemoryMessageBox();
+		return;
+	}
+
+	for (int i = 0; i < dlg.m_nBands; i++)
+	{
+		for (int j = 0; j < 6; j++)
+		{
+			pContext->m_BandCoefficients[i][j] = dlg.m_wGraph.m_BandCoefficients[i][j];
+		}
+	}
+	pContext->m_NumOfBands = dlg.m_nBands;
+
+	if ( ! pContext->InitDestination(m_WavFile, dlg.m_Start,
+									dlg.m_End, dlg.m_Chan, dlg.m_bUndo))
+	{
+		delete pContext;
+		return;
+	}
+	pContext->Execute();
+	SetModifiedFlag(TRUE, dlg.m_bUndo);
 }
 
 void CWaveSoapFrontDoc::OnUpdateProcessEqualizer(CCmdUI* pCmdUI)
