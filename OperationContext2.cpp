@@ -1900,6 +1900,12 @@ BOOL CReplaceFileContext::CreateUndo()
 	return FALSE;
 }
 
+bool CReplaceFileContext::KeepsPermanentFileReference() const
+{
+	return m_File.IsOpen()
+			&& ! m_File.IsTemporaryFile();
+}
+
 BOOL CReplaceFileContext::OperationProc()
 {
 	pDocument->m_WavFile = m_File;
@@ -1972,8 +1978,6 @@ BOOL CLengthChangeOperation::CreateUndo()
 	CLengthChangeOperation * pUndo = new CLengthChangeOperation(pDocument,
 																m_File, m_File.GetLength());
 
-	pUndo->m_File.Close();
-
 	m_UndoChain.InsertHead(pUndo);
 	return TRUE;
 }
@@ -2019,8 +2023,6 @@ BOOL CWaveSamplesChangeOperation::CreateUndo()
 
 	CWaveSamplesChangeOperation * pUndo = new CWaveSamplesChangeOperation(pDocument,
 											m_File, m_File.NumberOfSamples());
-
-	pUndo->m_File.Close();
 
 	m_UndoChain.InsertHead(pUndo);
 	return TRUE;
@@ -2185,8 +2187,9 @@ ListHead<COperationContext> * CMoveOperation::GetUndoChain()
 
 void CMoveOperation::DeInit()
 {
-	m_SrcStart = m_SrcPos;
-	m_DstStart = m_DstPos;
+	// Copy context does it
+	//m_SrcStart = m_SrcPos;
+	//m_DstStart = m_DstPos;
 
 	BaseClass::DeInit();
 }
@@ -2201,6 +2204,7 @@ void CMoveOperation::DeleteUndo()
 
 BOOL CMoveOperation::PrepareUndo()
 {
+	m_Flags &= ~(OperationContextStop | OperationContextFinished);
 	m_SrcFile = pDocument->m_WavFile;
 	m_DstFile = pDocument->m_WavFile;
 	return TRUE;
@@ -2547,8 +2551,8 @@ BOOL CSaveTrimmedOperation::OperationProc()
 
 BOOL CSaveTrimmedOperation::PrepareUndo()
 {
+	m_Flags &= ~(OperationContextStop | OperationContextFinished);
 	m_SrcFile = pDocument->m_WavFile;
-
 	return TRUE;
 }
 
@@ -2591,14 +2595,12 @@ BOOL CRestoreTrimmedOperation::CreateUndo()
 		return TRUE;
 	}
 
+	// a reference on the main document file will be closed in UnprepareUndo
 	m_pSaveOperation = new CSaveTrimmedOperation(pDocument,
 												m_DstFile,
 												m_DstFile.PositionToSample(m_DstStart),
 												m_DstFile.PositionToSample(m_DstEnd),
 												m_DstChan);
-
-	// should not keep a reference on the main document file
-	m_pSaveOperation->m_SrcFile.Close();
 
 	return TRUE;
 }
@@ -2627,29 +2629,36 @@ void CRestoreTrimmedOperation::DeleteUndo()
 }
 
 ////////////// CInitChannels
+// This operation fills the specified channels with zeros, from start to end
+// The target file
+// It doesn't save the erased information for UNDO. Instead, CInitChannelsUndo
+// is used to create such operation for subsequent REDO
 CInitChannels::CInitChannels(CWaveSoapFrontDoc * pDoc,
 							CWaveFile & File, SAMPLE_INDEX Start, SAMPLE_INDEX End, CHANNEL_MASK Channels)
 	: BaseClass(pDoc, 0)
 {
-	InitDestination(File, Start, End, Channels, FALSE);
+	InitDestination(File, Start, End, Channels, FALSE, 0, 0);
 }
 
+// if this is used for UNDO:
+// set its destination to the document file
 BOOL CInitChannels::PrepareUndo()
 {
+	m_Flags &= ~(OperationContextStop | OperationContextFinished);
 	m_DstFile = pDocument->m_WavFile;
-
-	m_DstEnd = m_DstPos;
-
+	m_SrcPos = m_SrcStart;
 	m_DstPos = m_DstStart;
-
 	return TRUE;
+}
+
+void CInitChannels::DeInit()
+{
+	BaseClass::DeInit();
 }
 
 void CInitChannels::UnprepareUndo()
 {
 	m_DstFile.Close();
-
-	m_DstPos = m_DstEnd;    //??
 }
 
 BOOL CInitChannels::CreateUndo()
@@ -2705,6 +2714,7 @@ BOOL CInitChannels::ProcessBuffer(void * buf, size_t BufferLength,
 }
 
 ////////////////// CInitChannelsUndo
+// This operation is a placeholder for subsequent CInitChannels REDO operation
 CInitChannelsUndo::CInitChannelsUndo(CWaveSoapFrontDoc * pDoc,
 									SAMPLE_POSITION Start, SAMPLE_POSITION End, CHANNEL_MASK Channels)
 	: BaseClass(pDoc, 0)
@@ -3037,6 +3047,17 @@ void CMetadataChangeOperation::SaveUndoMetadata(unsigned ChangeFlags)
 	}
 	m_MetadataCopyFlags |= ChangeFlags;
 	m_pMetadata->CopyMetadata(pDocument->m_WavFile.GetInstanceData(), ChangeFlags);
+}
+
+BOOL CMetadataChangeOperation::PrepareUndo()
+{
+	m_WaveFile = pDocument->m_WavFile;
+	return TRUE;
+}
+
+void CMetadataChangeOperation::UnprepareUndo()
+{
+	m_WaveFile.Close();
 }
 
 /////////////  CCueEditOperation      //////////////////////////////////////////////
