@@ -1,7 +1,7 @@
 Known problems and tasks:
 
-Save peak info for compressed files, too
 Add low/high frequency and notch filters functions
+Save peak info for compressed files, too
 Add "phase corrected" stereo to mono conversion
 Test "reload compressed file" dialogs
 Add options dialog

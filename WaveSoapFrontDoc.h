@@ -402,6 +402,8 @@ protected:
 	afx_msg void OnUpdateProcessEqualizer(CCmdUI* pCmdUI);
 	afx_msg void OnProcessSwapchannels();
 	afx_msg void OnUpdateProcessSwapchannels(CCmdUI* pCmdUI);
+	afx_msg void OnProcessFilter();
+	afx_msg void OnUpdateProcessFilter(CCmdUI* pCmdUI);
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 

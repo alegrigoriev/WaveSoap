@@ -301,6 +301,7 @@ BEGIN
         MENUITEM "C&hange Channels...",         ID_PROCESS_CHANNELS
         MENUITEM "E&qualizer...",               ID_PROCESS_EQUALIZER
         MENUITEM "Swap Channels",               ID_PROCESS_SWAPCHANNELS
+        MENUITEM "Filter...",                   ID_PROCESS_FILTER
         MENUITEM SEPARATOR
         MENUITEM "Stop\tEsc",                   ID_EDIT_STOP
     END
@@ -836,7 +837,7 @@ CAPTION "About WaveSoap"
 FONT 8, "MS Sans Serif"
 BEGIN
     ICON            IDR_MAINFRAME,IDC_STATIC,11,17,20,20
-    CTEXT           "WaveSoap Version 0.58 beta",IDC_STATIC_VERSION,58,8,110,
+    CTEXT           "WaveSoap Version 0.59 beta",IDC_STATIC_VERSION,58,8,110,
                     10,SS_NOPREFIX
     CTEXT           "Copyright (C) Alexander Grigoriev, 2000-2001",
                     IDC_STATIC,41,27,145,12
@@ -1800,6 +1801,8 @@ BEGIN
     EDITTEXT        IDC_EDIT_BAND_GAIN,113,88,31,14,ES_AUTOHSCROLL | 
                     ES_WANTRETURN
     CTEXT           "dB",IDC_STATIC2,145,90,14,8
+    CONTROL         "&Zero phase shift",IDC_CHECK_ZERO_PHASE,"Button",
+                    BS_AUTOCHECKBOX | WS_TABSTOP,7,107,113,10
     CONTROL         "Sim&ple",IDC_RADIO_EQUALIZER_TYPE,"Button",
                     BS_AUTORADIOBUTTON | WS_GROUP | WS_TABSTOP,7,124,39,10
     CONTROL         "&Multiband:",IDC_RADIO2,"Button",BS_AUTORADIOBUTTON,54,
@@ -1811,7 +1814,7 @@ BEGIN
     LTEXT           "bands",IDC_STATIC3,134,125,27,8
     CONTROL         "Save &Undo",IDC_CHECK_UNDO,"Button",BS_AUTOCHECKBOX | 
                     WS_TABSTOP,7,138,50,10
-    LTEXT           "Selection:\nChannels:",IDC_STATIC_SELECTION,7,154,153,
+    LTEXT           "Selection:\nChannels:",IDC_STATIC_SELECTION,7,154,192,
                     25
     PUSHBUTTON      "&Reset all",IDC_BUTTON_RESET_BANDS,178,87,50,14
     PUSHBUTTON      "Save &As...",IDC_BUTTON_SAVE_AS,178,105,50,14
@@ -1820,8 +1823,6 @@ BEGIN
     DEFPUSHBUTTON   "OK",IDOK,64,187,50,14
     PUSHBUTTON      "Cancel",IDCANCEL,121,187,50,14
     PUSHBUTTON      "&Help",IDHELP,178,187,50,14
-    CONTROL         "&Zero phase shift",IDC_CHECK_ZERO_PHASE,"Button",
-                    BS_AUTOCHECKBOX | WS_TABSTOP,7,107,113,10
 END
 
 IDD_SELECTION_DIALOG_MONO DIALOG DISCARDABLE  0, 0, 177, 132
@@ -1986,6 +1987,35 @@ BEGIN
     PUSHBUTTON      "Help",IDHELP,123,83,50,14
 END
 
+IDD_DIALOG_FILTER DIALOG DISCARDABLE  0, 0, 235, 208
+STYLE WS_POPUP | WS_CAPTION | WS_SYSMENU | WS_THICKFRAME
+CAPTION "Filter"
+FONT 8, "MS Sans Serif"
+BEGIN
+    LTEXT           "",IDC_STATIC_RESPONSE_TEMPLATE,7,7,221,77
+    LTEXT           "&Transfer:",IDC_STATIC1,7,91,44,8
+    EDITTEXT        IDC_EDIT_BAND_GAIN,58,88,40,14,ES_AUTOHSCROLL | 
+                    ES_WANTRETURN
+    CTEXT           "dB",IDC_STATIC2,104,90,14,8
+    LTEXT           "At &Frequency:",IDC_STATIC3,7,111,49,8
+    EDITTEXT        IDC_EDIT_FREQUENCY,58,107,40,14,ES_AUTOHSCROLL | 
+                    ES_WANTRETURN
+    CTEXT           "Hz",IDC_STATIC4,104,109,14,8
+    CONTROL         "&Zero phase shift",IDC_CHECK_ZERO_PHASE,"Button",
+                    BS_AUTOCHECKBOX | WS_TABSTOP,7,125,113,10
+    CONTROL         "Save &Undo",IDC_CHECK_UNDO,"Button",BS_AUTOCHECKBOX | 
+                    WS_TABSTOP,7,138,50,10
+    LTEXT           "Selection:\nChannels:",IDC_STATIC_SELECTION,7,154,184,
+                    25
+    PUSHBUTTON      "&Reset",IDC_BUTTON_RESET_BANDS,178,87,50,14
+    PUSHBUTTON      "Save &As...",IDC_BUTTON_SAVE_AS,178,105,50,14
+    PUSHBUTTON      "&Load...",IDC_BUTTON_LOAD,178,122,50,14
+    PUSHBUTTON      "&Selection...",IDC_BUTTON_SELECTION,7,187,50,14
+    DEFPUSHBUTTON   "OK",IDOK,64,187,50,14
+    PUSHBUTTON      "Cancel",IDCANCEL,121,187,50,14
+    PUSHBUTTON      "&Help",IDHELP,178,187,50,14
+END
+
 
 #ifndef _MAC
 /////////////////////////////////////////////////////////////////////////////
@@ -1994,8 +2024,8 @@ END
 //
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 0,58,0,1
- PRODUCTVERSION 0,58,0,1
+ FILEVERSION 0,59,0,1
+ PRODUCTVERSION 0,59,0,1
  FILEFLAGSMASK 0x3fL
 #ifdef _DEBUG
  FILEFLAGS 0x9L
@@ -2013,14 +2043,14 @@ BEGIN
             VALUE "Comments", "\0"
             VALUE "CompanyName", "Alexandre Grigoriev\0"
             VALUE "FileDescription", "WaveSoap - Sound Cleaning And Editing Application\0"
-            VALUE "FileVersion", "0, 58, 0, 1\0"
+            VALUE "FileVersion", "0, 59, 0, 1\0"
             VALUE "InternalName", "WaveSoap\0"
             VALUE "LegalCopyright", "Copyright (C) 2000-2001 Alexandre Grigoriev\0"
             VALUE "LegalTrademarks", "\0"
             VALUE "OriginalFilename", "WaveSoap.EXE\0"
-            VALUE "PrivateBuild", "Beta 0.58\0"
+            VALUE "PrivateBuild", "Beta 0.59\0"
             VALUE "ProductName", "WaveSoap Application\0"
-            VALUE "ProductVersion", "0, 58, 0, 1\0"
+            VALUE "ProductVersion", "0, 59, 0, 1\0"
             VALUE "SpecialBuild", "\0"
         END
     END
@@ -2360,6 +2390,14 @@ BEGIN
         RIGHTMARGIN, 173
         TOPMARGIN, 7
         BOTTOMMARGIN, 97
+    END
+
+    IDD_DIALOG_FILTER, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 228
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 201
     END
 END
 #endif    // APSTUDIO_INVOKED
@@ -3001,6 +3039,7 @@ BEGIN
     ID_VIEW_SHOW_CROSSHAIR  "Show crosshairs under cursor\nShow cross-hair"
     ID_PROCESS_EQUALIZER    "Change bass/treble balance\nEqualizer"
     ID_PROCESS_SWAPCHANNELS "Swap left and right channels\nSwap channels"
+    ID_PROCESS_FILTER       "Filter low and/or high frequencies out\nFilter"
 END
 
 STRINGTABLE DISCARDABLE 

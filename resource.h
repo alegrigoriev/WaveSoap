@@ -94,6 +94,7 @@
 #define IDD_DIALOG_NO_WINDOWS_MEDIA_TYPE 178
 #define IDD_DIALOG_RAW_FILE_PARAMETERS  179
 #define IDD_DIALOG_SAVE_RAW_FILE        180
+#define IDD_DIALOG_FILTER               181
 #define IDC_EDIT_MIN_CLICK_AMPLITUDE    1000
 #define IDC_TAB_SWITCH_VIEW_MODE        1000
 #define IDC_CHECK_LOG_CLICKS            1001
@@ -287,6 +288,7 @@
 #define IDC_STATIC2                     1176
 #define IDC_STATIC3                     1177
 #define IDC_BUTTON_EXPORT_EXPRESSIONS   1178
+#define IDC_STATIC4                     1178
 #define IDC_BUTTON_IMPORT_EXPRESSIONS   1179
 #define IDC_EDIT_HEADER_LENGTH          1180
 #define IDC_EDIT_TRAILER_LENGTH         1181
@@ -544,6 +546,7 @@
 #define ID_VIEW_INCREASE_FFT_BANDS      40105
 #define ID_VIEW_DECREASE_FFT_BANDS      40106
 #define ID_PROCESS_SWAPCHANNELS         40107
+#define ID_PROCESS_FILTER               40108
 #define ID_TOOLS_SYNTHESIS              65535
 
 // Next default values for new objects
@@ -552,7 +555,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_3D_CONTROLS                     1
 #define _APS_NEXT_RESOURCE_VALUE        179
-#define _APS_NEXT_COMMAND_VALUE         40108
+#define _APS_NEXT_COMMAND_VALUE         40109
 #define _APS_NEXT_CONTROL_VALUE         1190
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
