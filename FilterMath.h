@@ -2,19 +2,19 @@
 #define _INC_FILTERMATH
 
 
-#define POLY_ROOTS polyRoots
-#define POLY_RATIO polyRatio
-#define POLY poly
-#define COMPLEX Complex
-#define COMPLEX_ARRAY complexArray
-
 //#include "windows.h"
+#define _USE_MATH_DEFINES   // for M_PI definition
 #include <math.h>
 #include <complex>
 #include "PolyMath.h"
 #include "PolyRatio.h"
 
-#define M_PI        3.14159265358979323846
+typedef polyRoots POLY_ROOTS;
+typedef polyRatio POLY_RATIO;
+typedef poly POLY;
+typedef Complex COMPLEX;
+typedef complexArray COMPLEX_ARRAY;
+
 #define TWO_PI (M_PI*2.)
 
 int LaguerreMethod(	POLY &coef,
