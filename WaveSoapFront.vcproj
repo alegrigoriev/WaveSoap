@@ -388,6 +388,9 @@
 				RelativePath=".\DirectFile.h">
 			</File>
 			<File
+				RelativePath=".\ElapsedTime.h">
+			</File>
+			<File
 				RelativePath=".\EqualizerDialog.h">
 			</File>
 			<File
@@ -413,6 +416,9 @@
 			</File>
 			<File
 				RelativePath=".\KListEntry.h">
+			</File>
+			<File
+				RelativePath=".\LastError.h">
 			</File>
 			<File
 				RelativePath=".\MainFrm.h">
