@@ -2381,6 +2381,7 @@ BOOL CSoundPlayContext::Init()
 	m_OldThreadPriority = GetThreadPriority(GetCurrentThread());
 
 	MMRESULT mmres = m_WaveOut.Open(m_PlaybackDevice, m_Wf, 0);
+//    CWaveOut::EnumFormats(0, NULL, 0);
 
 	if (MMSYSERR_NOERROR != mmres)
 	{
@@ -3524,8 +3525,7 @@ BOOL CWaveProcContext::MakeCompatibleFormat(WAVEFORMATEX const * pSrcWf, WAVEFOR
 
 	if (pDstWf->nSamplesPerSec != pSrcWf->nSamplesPerSec)
 	{
-		AddWaveProc(new CResampleFilter(
-										double(pDstWf->nSamplesPerSec) / pSrcWf->nSamplesPerSec,
+		AddWaveProc(new CResampleFilter(pSrcWf->nSamplesPerSec, pDstWf->nSamplesPerSec,
 										63, OldChannels));
 
 		m_DstFile.GetInstanceData()->RescaleMarkers(pSrcWf->nSamplesPerSec, pDstWf->nSamplesPerSec);
