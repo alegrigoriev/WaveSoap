@@ -2286,7 +2286,7 @@ void CWaveSoapFrontApp::OnToolsOptions()
 		m_bRememberSelectionInUndo = dlg.m_FilePage.m_bRememberSelectionInUndo;
 		m_DefaultOpenMode = dlg.m_FilePage.m_DefaultFileOpenMode;
 		m_bAllow4GbWavFile = (0 != dlg.m_FilePage.m_bEnable4GbWavFile);
-		m_bUseMemoryFiles = dlg.m_FilePage.m_UseMemoryFiles;
+		m_bUseMemoryFiles = dlg.m_FilePage.m_UseMemoryFiles != FALSE;
 		m_MaxMemoryFileSize = dlg.m_FilePage.m_MaxMemoryFileSize;
 		m_MaxFileCache = dlg.m_FilePage.m_MaxFileCache;
 
