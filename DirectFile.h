@@ -175,6 +175,22 @@ private:
 	CDirectFile(CDirectFile const &);
 };
 
+	// this structure should be a base class of the application class
+struct DirectFileParameters
+{
+	int m_MaxMemoryFileSize;    // in Kbytes
+	int m_MaxFileCache;        // in megabytes
+	bool m_bUseMemoryFiles;  // File proppage
+	CString m_sTempDir;         // File proppage
+
+	DirectFileParameters()
+		: m_bUseMemoryFiles(true),
+		m_MaxMemoryFileSize(64),
+		m_MaxFileCache(64)
+	{
+	}
+};
+
 class CDirectFileCacheProxy
 {
 public:

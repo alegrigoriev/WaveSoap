@@ -3,7 +3,7 @@
 //
 
 #include "stdafx.h"
-#include "WaveSoapFront.h"
+//#include "WaveSoapFront.h"
 #include "TimeEdit.h"
 
 #ifdef _DEBUG

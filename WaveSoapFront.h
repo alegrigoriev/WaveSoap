@@ -98,7 +98,7 @@ protected:
 	DWORD m_OpenDocumentFlags;
 };
 
-class CWaveSoapFrontApp : public CWinApp
+class CWaveSoapFrontApp : public CWinApp, public DirectFileParameters
 {
 public:
 	CWaveSoapFrontApp();
@@ -116,15 +116,12 @@ public:
 	//}}AFX_VIRTUAL
 
 // Implementation
-	static OSVERSIONINFO m_VersionInfo;
-	static bool SupportsV5FileDialog();
 	double GetProfileDouble(LPCTSTR Section, LPCTSTR ValueName,
 							double Default, double MinVal, double MaxVal);
 	void WriteProfileDouble(LPCTSTR Section, LPCTSTR ValueName, double value);
 	CApplicationProfile Profile;
 	CString m_CurrentDir;
 	int m_OpenFileDialogFilter;
-	CString m_sTempDir;             // File proppage
 	int m_DefaultOpenMode;
 	enum { DefaultOpenReadOnly = 0,
 		DefaultOpenDirect = 1,
@@ -164,7 +161,7 @@ public:
 	CDirectFileCacheProxy * m_FileCache;
 	CWaveSoapFrontDoc * m_pActiveDocument;
 
-	ListHead<COperationContext> m_OpList;
+	LockedListHead<COperationContext> m_OpList;
 
 	CString m_CurrentStatusString;
 	CWaveSoapFrontDoc * m_pLastStatusDocument;
@@ -206,9 +203,6 @@ public:
 	BOOL m_bEnableUndoDepthLimit;     // File proppage
 	BOOL m_bEnableRedoDepthLimit;     // File proppage
 	BOOL m_bRememberSelectionInUndo;  // File proppage
-	BOOL m_bUseMemoryFiles;  // File proppage
-	int m_MaxMemoryFileSize;    // in Kbytes
-	int m_MaxFileCache;
 
 	BOOL m_bUseCountrySpecificNumberAndTime;
 	TCHAR m_TimeSeparator;
@@ -254,11 +248,12 @@ public:
 	afx_msg void OnFileBatchconversion();
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
+
 	CWinThread m_Thread;
 	unsigned _ThreadProc();
 	bool volatile m_RunThread;
 	HANDLE m_hThreadEvent;
-	CSimpleCriticalSection m_cs;
+//    CSimpleCriticalSection m_cs;
 	static UINT AFX_CDECL ThreadProc(PVOID arg)
 	{
 		return ((CWaveSoapFrontApp *) arg)->_ThreadProc();
