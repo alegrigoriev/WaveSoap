@@ -924,7 +924,7 @@ BOOL CStagedContext::OperationProc()
 		pContext->m_Flags |= OperationContextInitialized;
 	}
 
-	if (pDocument->m_StopOperation)
+	if (m_Flags & OperationContextStopRequested)
 	{
 		pContext->m_Flags |= OperationContextStopRequested;
 	}
@@ -939,14 +939,25 @@ BOOL CStagedContext::OperationProc()
 		m_PercentCompleted = pContext->m_PercentCompleted;
 	}
 
-	if (0 != (pContext->m_Flags & (OperationContextStop | OperationContextFinished)))
+	if (pContext->m_Flags & (OperationContextFinished | OperationContextInitFailed))
 	{
 		COperationContext * pDone = m_ContextList.RemoveHead();
 		m_DoneSize += pDone->GetTotalOperationSize();
 
 		TRACE("Staged context: %s::DeInit()\n", typeid(*pContext).name());
 		pDone->DeInit();
+		pDone->m_Flags &= ~OperationContextInitialized;
 		m_DoneList.InsertTail(pDone);
+
+	}
+	else if ((m_Flags & OperationContextStopRequested)
+			&& (pContext->m_Flags & OperationContextStop))
+	{
+		pContext->DeInit();
+
+		pContext->m_Flags &= ~OperationContextInitialized;
+
+		m_Flags |= OperationContextStop;
 	}
 
 	return result;
@@ -1975,6 +1986,13 @@ CString CSoundPlayContext::GetPlaybackTimeString(int TimeFormat) const
 	}
 }
 
+//////////////// CUndoRedoContext
+CUndoRedoContext::CUndoRedoContext(CWaveSoapFrontDoc * pDoc, LPCTSTR OperationName)
+	: BaseClass(pDoc, _T(""), 0, OperationName)
+{
+	m_Flags |= OperationContextUndoing;
+}
+
 void CUndoRedoContext::PostRetire()
 {
 	// check if the operation completed
@@ -1985,13 +2003,20 @@ void CUndoRedoContext::PostRetire()
 		return;
 	}
 
+	// remove stop and error flags
+	m_Flags &= ~(OperationContextStopRequested | OperationContextStop);
+	// last incomplete operation: remove stop and error flags
+	if ( ! m_ContextList.IsEmpty())
+	{
+		m_ContextList.First()->m_Flags &= ~(OperationContextStopRequested | OperationContextStop);
+	}
+
 	CUndoRedoContext * pUndo = GetUndo();
 	if (pUndo)
 	{
 		pDocument->AddUndoRedo(pUndo);
 	}
 
-	// TODO: if the last context is not done
 	while( ! m_DoneList.IsEmpty())
 	{
 		COperationContext * pContext = m_DoneList.RemoveHead();
