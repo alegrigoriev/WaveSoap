@@ -1,6 +1,7 @@
 // OperationContext.cpp
 #include "stdafx.h"
 #include "OperationContext.h"
+#include "OperationDialogs.h"
 
 static int fround(double d)
 {
@@ -2017,22 +2018,46 @@ BOOL CVolumeChangeContext::ProcessBuffer(void * buf, size_t BufferLength, DWORD 
 	if (m_DstFile.Channels() == 1)
 	{
 		float volume = m_VolumeLeft;
-		for (int i = 0; i < BufferLength / sizeof pDst[0]; i++)
+		// special code for mute and inverse
+		if (0 == volume)
 		{
-			long tmp = fround(pDst[i] * volume);
-			if (tmp > 0x7FFF)
+			memset(buf, 0, BufferLength);
+		}
+		else if (-1. == volume)
+		{
+			for (int i = 0; i < BufferLength / sizeof pDst[0]; i++)
 			{
-				pDst[i] = 0x7FFF;
-				m_bClipped = TRUE;
+				long tmp = -pDst[i];
+				if (tmp == 0x8000)
+				{
+					pDst[i] = 0x7FFF;
+					m_bClipped = TRUE;
+				}
+				else
+				{
+					pDst[i] = __int16(tmp);
+				}
 			}
-			else if (tmp < -0x8000)
+		}
+		else
+		{
+			for (int i = 0; i < BufferLength / sizeof pDst[0]; i++)
 			{
-				pDst[i] = -0x8000;
-				m_bClipped = TRUE;
-			}
-			else
-			{
-				pDst[i] = __int16(tmp);
+				long tmp = fround(pDst[i] * volume);
+				if (tmp > 0x7FFF)
+				{
+					pDst[i] = 0x7FFF;
+					m_bClipped = TRUE;
+				}
+				else if (tmp < -0x8000)
+				{
+					pDst[i] = -0x8000;
+					m_bClipped = TRUE;
+				}
+				else
+				{
+					pDst[i] = __int16(tmp);
+				}
 			}
 		}
 		return TRUE;
@@ -2062,38 +2087,75 @@ BOOL CVolumeChangeContext::ProcessBuffer(void * buf, size_t BufferLength, DWORD 
 			BufferLength -= 2;
 		}
 
-		for (i = 0; i < BufferLength / (2 * sizeof pDst[0]); i++, pDst += 2)
+		// special code for mute and inverse
+		if (0 == m_VolumeLeft && 0 == m_VolumeRight)
 		{
-			long tmp = fround(pDst[0] * m_VolumeLeft);
-			if (tmp > 0x7FFF)
+			memset(pDst, 0, BufferLength);
+			BufferLength = 0;
+			i = 0;
+		}
+		else if (-1. == m_VolumeLeft && -1. == m_VolumeRight)
+		{
+			for (i = 0; i < BufferLength / (2 * sizeof pDst[0]); i++, pDst += 2)
 			{
-				pDst[0] = 0x7FFF;
-				m_bClipped = TRUE;
-			}
-			else if (tmp < -0x8000)
-			{
-				pDst[0] = -0x8000;
-				m_bClipped = TRUE;
-			}
-			else
-			{
-				pDst[0] = __int16(tmp);
-			}
+				long tmp = -pDst[0];
+				if (tmp == 0x8000)
+				{
+					pDst[0] = 0x7FFF;
+					m_bClipped = TRUE;
+				}
+				else
+				{
+					pDst[0] = __int16(tmp);
+				}
 
-			tmp = fround(pDst[1] * m_VolumeRight);
-			if (tmp > 0x7FFF)
-			{
-				pDst[1] = 0x7FFF;
-				m_bClipped = TRUE;
+				tmp = -pDst[1];
+				if (tmp == 0x8000)
+				{
+					pDst[1] = 0x7FFF;
+					m_bClipped = TRUE;
+				}
+				else
+				{
+					pDst[1] = __int16(tmp);
+				}
 			}
-			else if (tmp < -0x8000)
+		}
+		else
+		{
+			for (i = 0; i < BufferLength / (2 * sizeof pDst[0]); i++, pDst += 2)
 			{
-				pDst[1] = -0x8000;
-				m_bClipped = TRUE;
-			}
-			else
-			{
-				pDst[1] = __int16(tmp);
+				long tmp = fround(pDst[0] * m_VolumeLeft);
+				if (tmp > 0x7FFF)
+				{
+					pDst[0] = 0x7FFF;
+					m_bClipped = TRUE;
+				}
+				else if (tmp < -0x8000)
+				{
+					pDst[0] = -0x8000;
+					m_bClipped = TRUE;
+				}
+				else
+				{
+					pDst[0] = __int16(tmp);
+				}
+
+				tmp = fround(pDst[1] * m_VolumeRight);
+				if (tmp > 0x7FFF)
+				{
+					pDst[1] = 0x7FFF;
+					m_bClipped = TRUE;
+				}
+				else if (tmp < -0x8000)
+				{
+					pDst[1] = -0x8000;
+					m_bClipped = TRUE;
+				}
+				else
+				{
+					pDst[1] = __int16(tmp);
+				}
 			}
 		}
 
@@ -2138,22 +2200,48 @@ BOOL CVolumeChangeContext::ProcessBuffer(void * buf, size_t BufferLength, DWORD 
 			volume = m_VolumeRight;
 		}
 
-		for (i = 0; i < BufferLength / (2 * sizeof pDst[0]); i++, pDst += 2)
+		// special code for mute and inverse
+		if (0 == volume)
 		{
-			long tmp = fround(pDst[0] * volume);
-			if (tmp > 0x7FFF)
+			memset(pDst, 0, BufferLength);
+			BufferLength = 0;
+			i = 0;
+		}
+		else if (-1. == volume)
+		{
+			for (int i = 0; i < BufferLength / (2 * sizeof pDst[0]); i++, pDst += 2)
 			{
-				pDst[0] = 0x7FFF;
-				m_bClipped = TRUE;
+				long tmp = -pDst[0];
+				if (tmp == 0x8000)
+				{
+					pDst[0] = 0x7FFF;
+					m_bClipped = TRUE;
+				}
+				else
+				{
+					pDst[0] = __int16(tmp);
+				}
 			}
-			else if (tmp < -0x8000)
+		}
+		else
+		{
+			for (i = 0; i < BufferLength / (2 * sizeof pDst[0]); i++, pDst += 2)
 			{
-				pDst[0] = -0x8000;
-				m_bClipped = TRUE;
-			}
-			else
-			{
-				pDst[0] = __int16(tmp);
+				long tmp = fround(pDst[0] * volume);
+				if (tmp > 0x7FFF)
+				{
+					pDst[0] = 0x7FFF;
+					m_bClipped = TRUE;
+				}
+				else if (tmp < -0x8000)
+				{
+					pDst[0] = -0x8000;
+					m_bClipped = TRUE;
+				}
+				else
+				{
+					pDst[0] = __int16(tmp);
+				}
 			}
 		}
 
@@ -2220,7 +2308,7 @@ CDcOffsetContext::~CDcOffsetContext()
 BOOL CDcOffsetContext::OperationProc()
 {
 	if (NULL != m_pScanContext
-		&& m_Flags & DcContextScanning)
+		&& m_Flags & ContextScanning)
 	{
 		if (m_Flags & OperationContextStopRequested)
 		{
@@ -2231,11 +2319,12 @@ BOOL CDcOffsetContext::OperationProc()
 		{
 			return FALSE;
 		}
+		PercentCompleted = m_pScanContext->PercentCompleted;
 		if (0 == (m_pScanContext->m_Flags & OperationContextFinished))
 		{
 			return TRUE;
 		}
-		m_Flags &= ~ DcContextScanning;
+		m_Flags &= ~ ContextScanning;
 		// calculate DC offset
 		long nSamples =
 			(m_pScanContext->m_DstCopyPos - m_pScanContext->m_DstStart)
@@ -2449,6 +2538,16 @@ void CDcOffsetContext::PostRetire(BOOL bChildContext)
 	COperationContext::PostRetire(bChildContext);
 }
 
+CString CDcOffsetContext::GetStatusString()
+{
+	if (NULL != m_pScanContext
+		&& m_Flags & ContextScanning)
+	{
+		return m_pScanContext->GetStatusString();
+	}
+	return m_ss;
+}
+
 CStatisticsContext::CStatisticsContext(CWaveSoapFrontDoc * pDoc,
 										LPCTSTR StatusString, LPCTSTR OperationName)
 	: COperationContext(pDoc, OperationName, OperationContextDiskIntensive),
@@ -2467,7 +2566,8 @@ CStatisticsContext::CStatisticsContext(CWaveSoapFrontDoc * pDoc,
 	m_EnergyLeft(0),
 	m_EnergyRight(0),
 	m_SumLeft(0),
-	m_SumRight(0)
+	m_SumRight(0),
+	m_ss(StatusString)
 {
 	m_DstChan = 2;
 }
@@ -2619,3 +2719,101 @@ BOOL CStatisticsContext::ProcessBuffer(void * buf, size_t BufferLength, DWORD of
 	}
 	return TRUE;
 }
+
+void CStatisticsContext::PostRetire(BOOL bChildContext)
+{
+	// show dialog
+	CStatisticsDialog dlg;
+	dlg.m_pContext = this;
+	dlg.m_SamplesPerSec = pDocument->WaveFormat()->nSamplesPerSec;
+	dlg.m_Cursor = pDocument->m_CaretPosition;
+	dlg.DoModal();
+
+	COperationContext::PostRetire(bChildContext);
+}
+
+BOOL CNormalizeContext::OperationProc()
+{
+	if (NULL != m_pScanContext
+		&& m_Flags & ContextScanning)
+	{
+		if (m_Flags & OperationContextStopRequested)
+		{
+			m_Flags |= OperationContextFinished;
+			return TRUE;
+		}
+		if ( ! m_pScanContext->OperationProc())
+		{
+			return FALSE;
+		}
+		PercentCompleted = m_pScanContext->PercentCompleted;
+		if (0 == (m_pScanContext->m_Flags & OperationContextFinished))
+		{
+			return TRUE;
+		}
+		m_Flags &= ~ ContextScanning;
+
+		// calculate normalization
+		int MaxLeft = abs(m_pScanContext->m_MaxLeft);
+		int MinLeft = abs(m_pScanContext->m_MinLeft);
+		if (MaxLeft < MinLeft) MaxLeft = MinLeft;
+		if (MaxLeft != 0)
+		{
+			m_VolumeLeft = 32767. * m_LimitLevel / MaxLeft;
+		}
+		else
+		{
+			m_VolumeLeft = 100.;
+		}
+
+		int MaxRight = abs(m_pScanContext->m_MaxRight);
+		int MinRight = abs(m_pScanContext->m_MinRight);
+		if (MaxRight < MinRight) MaxRight = MinRight;
+		if (MaxRight != 0)
+		{
+			m_VolumeRight = 32767. * m_LimitLevel / MaxRight;
+		}
+		else
+		{
+			m_VolumeRight = 100.;
+		}
+
+		delete m_pScanContext;
+		m_pScanContext = NULL;
+
+		if (m_DstFile.Channels() > 1
+			&& m_DstChan == 2
+			&& m_bEqualChannels)
+		{
+			if (m_VolumeLeft > m_VolumeRight)
+			{
+				m_VolumeLeft = m_VolumeRight;
+			}
+			else
+			{
+				m_VolumeRight = m_VolumeLeft;
+			}
+		}
+		if ((m_DstChan == 1 || 1. == m_VolumeLeft || 0 == MaxLeft)
+			&& (m_DstFile.Channels() == 1
+				|| 1. == m_VolumeRight || 0 == MaxRight
+				|| m_DstChan == 0))
+		{
+			// nothing to change
+			m_Flags |= OperationContextFinished;
+		}
+		return TRUE;
+	}
+	return COperationContext::OperationProc();
+}
+
+CString CNormalizeContext::GetStatusString()
+{
+	if (NULL != m_pScanContext
+		&& m_Flags & ContextScanning)
+	{
+		return m_pScanContext->GetStatusString();
+	}
+	return m_ss;
+}
+
