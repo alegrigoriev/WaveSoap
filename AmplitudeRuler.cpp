@@ -394,6 +394,8 @@ int CAmplitudeRuler::OnCreate(LPCREATESTRUCT lpCreateStruct)
 	KeepScaleOnResizeY(FALSE);
 	KeepOrgOnResizeX(FALSE);
 	KeepOrgOnResizeY(TRUE);
+	// TODO: if number of channels changed??
+	// add UpdateMaxExtents function
 	int nChannels = GetDocument()->WaveChannels();
 	int nLowExtent = -32768;
 	int nHighExtent = 32767;

@@ -1,8 +1,6 @@
 Known problems and tasks:
 
 Make combobox in selection dialog
-Add "Cancel" (don't reopen, but close) to Reopen after save dialog
-Change file extension in Save As dialog, if the type changed
 File specified in the command line is not open
 Add CD grabbing
 Make save presets for Expression Evaluation command
@@ -12,6 +10,7 @@ Add MP3 save
 Add ASF save
 Add sound recording
 If read-only file is saved, name should be different
+keep cursor in 10% from the view boundary.
 Statistics: zero crossings shows double the frequency (as supposed??)
 Make Paste Special command
 ???? When a file is opened in non-direct mode, peak info is saved with wrong time stamp
@@ -35,6 +34,7 @@ Make tooltips
 Make help file
 
 Problems:
+If number of channels changed, amplitude ruler doesn't update extents
 Ctrl-End, Ctrl-Home loses synchronization between FFT and wave
 When selecting to the begin of file, FFT is corrupted
 Doesn't detect new active document, when previous closed.
@@ -47,6 +47,8 @@ Multiple MP3 files open: all but one get stuck
 
 
 Done:
+Change file extension in Save As dialog, if the type changed
+Add "Cancel" (don't reopen, but close) to Reopen after save dialog
 Add Hide in spectrum section context menu
 Make more convesient Ctrl+Tab
 add CDirectFile::operator= (WMA open crash)

@@ -1976,6 +1976,7 @@ void CWaveSoapFrontView::OnUpdateViewZoominHorFull(CCmdUI* pCmdUI)
 	pCmdUI->Enable(m_HorizontalScale > 1);
 }
 
+// the function scrolls the real image, and modifies dOrgX, dOrgY.
 BOOL CWaveSoapFrontView::OnScrollBy(CSize sizeScroll, BOOL bDoScroll)
 {
 	if (bDoScroll)
