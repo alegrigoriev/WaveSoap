@@ -167,7 +167,8 @@ void CFileDialogWithHistory::OnFolderChange()
 	CThisApp * pApp = GetApp();
 	CString dir = GetFolderPath();
 	if (dir.GetLength() > 1
-		&& dir[dir.GetLength() - 1] == '\\')
+		&& (dir[dir.GetLength() - 1] == '\\'
+			|| dir[dir.GetLength() - 1] == '/'))
 	{
 		dir.SetAt(dir.GetLength() - 1, 0);
 	}

@@ -473,7 +473,9 @@ BOOL CWaveFile::CreateWaveFile(CWaveFile * pTemplateFile, WAVEFORMATEX * pTempla
 			}
 		}
 
-		if ( ! dir.IsEmpty() && dir[dir.GetLength() - 1] != '\\')
+		if ( ! dir.IsEmpty()
+			&& dir[dir.GetLength() - 1] != '\\'
+			&& dir[dir.GetLength() - 1] != '/')
 		{
 			dir += _T("\\");
 		}
