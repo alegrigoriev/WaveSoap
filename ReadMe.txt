@@ -106,6 +106,8 @@ Windows2000 is trying to zero the allocated file
 Log Off query doesn't close the active dialog. Recursion is possible. Make sure to check after Cancel
 
 Fixed:
+
+Beta 0.710:
 Save split to files shows MP3 formats for MP3 codec with different sample rate, even though "Show compatible formats" is selected
 Selected Mpeg3 compressor is not saved
 Go to max peak goes a bit off
@@ -195,6 +197,7 @@ Save As dialog is not centered first time (comdlg problem?)
 ??? When time/seconds format is set for status bar, MM:SS is actually shown
 
 Done:
+Beta 0.710:
 Do enable/disable buttons in Split to files dialog
 When saving partial file, show the file name in the status prompt, don't show the source name
 Make an icon for Split To Files dialog as scissors.
