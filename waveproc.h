@@ -521,20 +521,29 @@ public:
 					NUMBER_OF_CHANNELS nChannels);
 
 private:
+	void InitSlidingInterpolatedFilter(int FilterLength);
+	void InitSlidingFilter(int FilterLength, unsigned long NumberOfFilterTables);
+
 	void FilterSoundResample();
+
+	void DoSlidingInterpolatedFilterResample();
+	void DoSlidingFilterResample();
+
+	void ResetResample();
+
 	enum {WindowTypeSquareSine,
 		WindowTypeNuttall,
 		WindowType = WindowTypeNuttall,
 	};
 
 	double FilterWindow(double arg);
-	double sinc(double arg);
+	static double sinc(double arg);
 	double ResampleFilterTap(double arg, double FilterLength);
 
 	enum {ResampleTableBits = 10,
 		ResampleFilterSize = (1 << ResampleTableBits),
 		ResampleIndexShift = (32 - ResampleTableBits),
-		MaxNumberOfFilterSamples = 200*100,
+		MaxNumberOfFilterSamples = 500*100,
 		SrcBufSize = 0x4000,
 		DstBufSize = 0x4000 };
 
@@ -561,6 +570,7 @@ private:
 	unsigned __int32 m_InputPeriod;
 	unsigned __int32 m_OutputPeriod;
 	unsigned __int32 m_Phase;
+	BOOL m_bUseInterpolatedFilter;
 
 	long m_OriginalSampleRate;
 	long m_NewSampleRate;
@@ -569,7 +579,6 @@ private:
 	signed m_RationalResampleFraction;
 	unsigned m_FilterIndex;
 
-	void ResetResample();
 };
 
 class CAudioConvertor : public CWaveProc
