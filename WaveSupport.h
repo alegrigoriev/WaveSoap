@@ -11,7 +11,7 @@ public:
 
 	virtual BOOL IsOpen() = 0;
 	BOOL AllocateBuffers(size_t size = 8192, int count = 4);
-	UINT GetBuffer(char ** ppbuf, size_t * pSize);
+	UINT GetBuffer(char ** ppbuf, size_t * pSize, BOOL bWait = TRUE);
 	BOOL ReturnBuffer(UINT hBuffer);    // return unused buffer
 	BOOL ResetBuffers();
 	BOOL WaitForQueueEmpty(DWORD timeout);
@@ -20,7 +20,7 @@ public:
 	virtual MMRESULT Reset() = 0;
 
 protected:
-	virtual MMRESULT Unprepare(UINT index) = 0;
+	virtual MMRESULT Unprepare(UINT index)= 0;
 	struct BUFFER_STRUCT
 	{
 		WAVEHDR whd;
@@ -38,7 +38,7 @@ protected:
 	UINT nBuffers;
 };
 
-class CWaveOut : protected CWaveDevice
+class CWaveOut : public CWaveDevice
 {
 public:
 	CWaveOut();
@@ -68,7 +68,7 @@ private:
 	CWaveOut & operator=(const CWaveOut&) {ASSERT(FALSE); return *this;}
 };
 
-class CWaveIn : protected CWaveDevice
+class CWaveIn : public CWaveDevice
 {
 public:
 	CWaveIn();

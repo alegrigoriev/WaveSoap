@@ -18,7 +18,6 @@ CWaveDevice::CWaveDevice():
 
 CWaveDevice::~CWaveDevice()
 {
-	DeallocateBuffers();
 	if (hEvent != NULL) CloseHandle(hEvent);
 	DeleteCriticalSection( & cs);
 }
@@ -53,9 +52,11 @@ void CWaveDevice::DeallocateBuffers()
 {
 	ASSERT(this);
 	Reset();
+	ResetBuffers();
 	for (unsigned i = 0; i < nBuffers; i++)
 	{
-		VERIFY(MMSYSERR_NOERROR == Unprepare(i + 1));
+		//VERIFY(MMSYSERR_NOERROR == Unprepare(i + 1));
+		// buffers are unprepared in ResetBuffers
 		delete[] m_pBufs[i].pBuf;
 	}
 	nBuffers = 0;
@@ -63,7 +64,7 @@ void CWaveDevice::DeallocateBuffers()
 	m_pBufs = NULL;
 }
 
-UINT CWaveDevice::GetBuffer(char ** ppbuf, size_t * pSize)
+UINT CWaveDevice::GetBuffer(char ** ppbuf, size_t * pSize, BOOL bWait)
 {
 	ASSERT(this && ppbuf && pSize);
 
@@ -88,6 +89,10 @@ UINT CWaveDevice::GetBuffer(char ** ppbuf, size_t * pSize)
 			}
 		}
 		::LeaveCriticalSection(&cs);
+		if ( ! bWait)
+		{
+			return -1;
+		}
 		::WaitForSingleObject(hEvent, 500);
 	}while(1);
 }
@@ -104,6 +109,10 @@ BOOL CWaveDevice::ReturnBuffer(UINT hBuffer)
 BOOL CWaveDevice::ResetBuffers()
 {
 	ASSERT(this != NULL);
+	if ( ! IsOpen())
+	{
+		return FALSE;
+	}
 	EnterCriticalSection( & cs);
 	for (unsigned i = 0; i < nBuffers; i++)
 	{
@@ -152,6 +161,7 @@ CWaveOut::CWaveOut():
 CWaveOut::~CWaveOut()
 {
 	Close();
+	DeallocateBuffers();
 }
 
 MMRESULT CWaveOut::Open(UINT id, const WAVEFORMATEX * pwfe, DWORD dwAuxFlags)
@@ -223,10 +233,10 @@ MMRESULT CWaveOut::Close()
 	if (! IsOpen())
 		return MMSYSERR_INVALHANDLE;
 	Reset();
+	ResetBuffers();
 	MMRESULT err = waveOutClose(m_hwo);
 	if (err != MMSYSERR_NOERROR)
 		return err;
-	ResetBuffers();
 	m_hwo = NULL;
 	m_id = WAVE_MAPPER - 1;
 	return MMSYSERR_NOERROR;
@@ -360,6 +370,7 @@ CWaveIn::CWaveIn():
 
 CWaveIn::~CWaveIn()
 {
+	DeallocateBuffers();
 	Close();
 }
 
@@ -430,10 +441,10 @@ MMRESULT CWaveIn::Close()
 	if (! CWaveIn::IsOpen())
 		return MMSYSERR_INVALHANDLE;
 	Reset();
+	ResetBuffers();
 	MMRESULT err = waveInClose(m_hwi);
 	if (err != MMSYSERR_NOERROR)
 		return err;
-	ResetBuffers();
 	m_hwi = NULL;
 	m_id = WAVE_MAPPER - 1;
 	return MMSYSERR_NOERROR;
