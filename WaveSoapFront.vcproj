@@ -1,7 +1,7 @@
-<?xml version="1.0" encoding = "windows-1251"?>
+<?xml version="1.0" encoding="windows-1251"?>
 <VisualStudioProject
 	ProjectType="Visual C++"
-	Version="7.00"
+	Version="7.10"
 	Name="WaveSoapFront"
 	SccProjectName="&quot;$/WaveSoapFront&quot;, XGAAAAAA"
 	SccAuxPath=""
@@ -79,7 +79,13 @@
 			<Tool
 				Name="VCWebServiceProxyGeneratorTool"/>
 			<Tool
+				Name="VCXMLDataGeneratorTool"/>
+			<Tool
 				Name="VCWebDeploymentTool"/>
+			<Tool
+				Name="VCManagedWrapperGeneratorTool"/>
+			<Tool
+				Name="VCAuxiliaryManagedWrapperGeneratorTool"/>
 		</Configuration>
 		<Configuration
 			Name="Release|Win32"
@@ -145,9 +151,17 @@
 			<Tool
 				Name="VCWebServiceProxyGeneratorTool"/>
 			<Tool
+				Name="VCXMLDataGeneratorTool"/>
+			<Tool
 				Name="VCWebDeploymentTool"/>
+			<Tool
+				Name="VCManagedWrapperGeneratorTool"/>
+			<Tool
+				Name="VCAuxiliaryManagedWrapperGeneratorTool"/>
 		</Configuration>
 	</Configurations>
+	<References>
+	</References>
 	<Files>
 		<Filter
 			Name="Source Files"
@@ -249,6 +263,9 @@
 				RelativePath=".\ScaledScrollView.cpp">
 			</File>
 			<File
+				RelativePath=".\shellink.cpp">
+			</File>
+			<File
 				RelativePath=".\SpectrumSectionView.cpp">
 			</File>
 			<File
@@ -291,6 +308,9 @@
 				RelativePath=".\WaveOutlineView.cpp">
 			</File>
 			<File
+				RelativePath=".\waveproc.cpp">
+			</File>
+			<File
 				RelativePath=".\hlp\WaveSoap.hhp">
 			</File>
 			<File
@@ -313,12 +333,6 @@
 			</File>
 			<File
 				RelativePath=".\WmaFile.cpp">
-			</File>
-			<File
-				RelativePath=".\shellink.cpp">
-			</File>
-			<File
-				RelativePath=".\waveproc.cpp">
 			</File>
 		</Filter>
 		<Filter
@@ -359,6 +373,9 @@
 			</File>
 			<File
 				RelativePath=".\EqualizerDialog.h">
+			</File>
+			<File
+				RelativePath=".\fft.h">
 			</File>
 			<File
 				RelativePath=".\FFT.inl">
@@ -482,6 +499,9 @@ makehm IDW_,HIDW_,0x50000 resource.h &gt;&gt;&quot;hlp\$(TargetName).hm&quot;
 				RelativePath=".\ScaledScrollView.h">
 			</File>
 			<File
+				RelativePath=".\shellink.h">
+			</File>
+			<File
 				RelativePath=".\SimpleCriticalSection.h">
 			</File>
 			<File
@@ -509,6 +529,9 @@ makehm IDW_,HIDW_,0x50000 resource.h &gt;&gt;&quot;hlp\$(TargetName).hm&quot;
 				RelativePath=".\WaveOutlineView.h">
 			</File>
 			<File
+				RelativePath=".\waveproc.h">
+			</File>
+			<File
 				RelativePath=".\WaveSoapFileDialogs.h">
 			</File>
 			<File
@@ -527,36 +550,12 @@ makehm IDW_,HIDW_,0x50000 resource.h &gt;&gt;&quot;hlp\$(TargetName).hm&quot;
 				RelativePath=".\WmaFile.h">
 			</File>
 			<File
-				RelativePath=".\fft.h">
-			</File>
-			<File
-				RelativePath=".\shellink.h">
-			</File>
-			<File
-				RelativePath=".\waveproc.h">
-			</File>
-			<File
 				RelativePath=".\wnaspi32.h">
 			</File>
 		</Filter>
 		<Filter
 			Name="Resource Files"
 			Filter="ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe">
-			<File
-				RelativePath=".\res\Toolbar.bmp">
-			</File>
-			<File
-				RelativePath=".\res\WaveSoap.ico">
-			</File>
-			<File
-				RelativePath=".\res\WaveSoapFront.ico">
-			</File>
-			<File
-				RelativePath=".\res\WaveSoapFront.rc2">
-			</File>
-			<File
-				RelativePath=".\res\WaveSoapFrontDoc.ico">
-			</File>
 			<File
 				RelativePath=".\res\bitmap_load.bmp">
 			</File>
@@ -594,90 +593,27 @@ makehm IDW_,HIDW_,0x50000 resource.h &gt;&gt;&quot;hlp\$(TargetName).hm&quot;
 				RelativePath=".\res\idc_zoom.bmp">
 			</File>
 			<File
+				RelativePath=".\res\Toolbar.bmp">
+			</File>
+			<File
 				RelativePath=".\res\toolbar1.bmp">
+			</File>
+			<File
+				RelativePath=".\res\WaveSoap.ico">
+			</File>
+			<File
+				RelativePath=".\res\WaveSoapFront.ico">
+			</File>
+			<File
+				RelativePath=".\res\WaveSoapFront.rc2">
+			</File>
+			<File
+				RelativePath=".\res\WaveSoapFrontDoc.ico">
 			</File>
 		</Filter>
 		<Filter
 			Name="Help Files"
 			Filter="cnt;rtf">
-			<File
-				RelativePath=".\hlp\images\AppExit.png">
-			</File>
-			<File
-				RelativePath=".\hlp\images\Bullet.png">
-			</File>
-			<File
-				RelativePath=".\hlp\images\CurArw4.png">
-			</File>
-			<File
-				RelativePath=".\hlp\images\CurHelp.png">
-			</File>
-			<File
-				RelativePath=".\hlp\images\DlgResizeHandle.png">
-			</File>
-			<File
-				RelativePath=".\hlp\images\EditCopy.png">
-			</File>
-			<File
-				RelativePath=".\hlp\images\EditCut.png">
-			</File>
-			<File
-				RelativePath=".\hlp\images\EditPast.png">
-			</File>
-			<File
-				RelativePath=".\hlp\images\EditUndo.png">
-			</File>
-			<File
-				RelativePath=".\hlp\images\FileCloseButton.png">
-			</File>
-			<File
-				RelativePath=".\hlp\images\FileCloseIcon.png">
-			</File>
-			<File
-				RelativePath=".\hlp\images\FileNew.png">
-			</File>
-			<File
-				RelativePath=".\hlp\images\FileOpen.png">
-			</File>
-			<File
-				RelativePath=".\hlp\images\FileOpenDlg.png">
-			</File>
-			<File
-				RelativePath=".\hlp\images\FilePrnt.png">
-			</File>
-			<File
-				RelativePath=".\hlp\images\FileSave.png">
-			</File>
-			<File
-				RelativePath=".\hlp\images\HlpSBar.png">
-			</File>
-			<File
-				RelativePath=".\hlp\images\HlpTBar.png">
-			</File>
-			<File
-				RelativePath=".\hlp\html\Menu Item Template.htm">
-			</File>
-			<File
-				RelativePath=".\hlp\images\NewFileDlg.png">
-			</File>
-			<File
-				RelativePath=".\hlp\images\ScMenu.png">
-			</File>
-			<File
-				RelativePath=".\hlp\images\Scmax.png">
-			</File>
-			<File
-				RelativePath=".\hlp\images\Scmin.png">
-			</File>
-			<File
-				RelativePath=".\hlp\images\ViewMenu.png">
-			</File>
-			<File
-				RelativePath=".\hlp\html\ViewWaveform.htm">
-			</File>
-			<File
-				RelativePath=".\hlp\WaveSoapFront.hhk">
-			</File>
 			<File
 				RelativePath=".\hlp\html\afxc0085.htm">
 			</File>
@@ -868,13 +804,73 @@ makehm IDW_,HIDW_,0x50000 resource.h &gt;&gt;&quot;hlp\$(TargetName).hm&quot;
 				RelativePath=".\hlp\html\amplitude_ruler.htm">
 			</File>
 			<File
+				RelativePath=".\hlp\images\AppExit.png">
+			</File>
+			<File
+				RelativePath=".\hlp\images\Bullet.png">
+			</File>
+			<File
 				RelativePath=".\hlp\html\creating_a_new_sound_file.htm">
+			</File>
+			<File
+				RelativePath=".\hlp\images\CurArw4.png">
+			</File>
+			<File
+				RelativePath=".\hlp\images\CurHelp.png">
+			</File>
+			<File
+				RelativePath=".\hlp\images\DlgResizeHandle.png">
+			</File>
+			<File
+				RelativePath=".\hlp\images\EditCopy.png">
+			</File>
+			<File
+				RelativePath=".\hlp\images\EditCut.png">
+			</File>
+			<File
+				RelativePath=".\hlp\images\EditPast.png">
+			</File>
+			<File
+				RelativePath=".\hlp\images\EditUndo.png">
 			</File>
 			<File
 				RelativePath=".\hlp\html\fft_spectrum_command.htm">
 			</File>
 			<File
 				RelativePath=".\hlp\html\fft_spectrum_view.htm">
+			</File>
+			<File
+				RelativePath=".\hlp\images\FileCloseButton.png">
+			</File>
+			<File
+				RelativePath=".\hlp\images\FileCloseIcon.png">
+			</File>
+			<File
+				RelativePath=".\hlp\images\FileNew.png">
+			</File>
+			<File
+				RelativePath=".\hlp\images\FileOpen.png">
+			</File>
+			<File
+				RelativePath=".\hlp\images\FileOpenDlg.png">
+			</File>
+			<File
+				RelativePath=".\hlp\images\FilePrnt.png">
+			</File>
+			<File
+				RelativePath=".\hlp\images\FileSave.png">
+			</File>
+			<File
+				RelativePath=".\hlp\images\HlpSBar.png">
+			</File>
+			<File
+				RelativePath=".\hlp\images\HlpTBar.png">
+			</File>
+			<File
+				RelativePath=".\hlp\html\Menu Item Template.htm">
+			</File>
+			<File
+				RelativePath=".\hlp\images\NewFileDlg.png">
 			</File>
 			<File
 				RelativePath=".\hlp\html\opening_an_existing_sound_file.htm">
@@ -884,6 +880,15 @@ makehm IDW_,HIDW_,0x50000 resource.h &gt;&gt;&quot;hlp\$(TargetName).hm&quot;
 			</File>
 			<File
 				RelativePath=".\hlp\html\process_menu_commands.htm">
+			</File>
+			<File
+				RelativePath=".\hlp\images\Scmax.png">
+			</File>
+			<File
+				RelativePath=".\hlp\images\ScMenu.png">
+			</File>
+			<File
+				RelativePath=".\hlp\images\Scmin.png">
 			</File>
 			<File
 				RelativePath=".\hlp\html\spectrum_section_command.htm">
@@ -898,6 +903,12 @@ makehm IDW_,HIDW_,0x50000 resource.h &gt;&gt;&quot;hlp\$(TargetName).hm&quot;
 				RelativePath=".\hlp\html\tools_menu_commands.htm">
 			</File>
 			<File
+				RelativePath=".\hlp\images\ViewMenu.png">
+			</File>
+			<File
+				RelativePath=".\hlp\html\ViewWaveform.htm">
+			</File>
+			<File
 				RelativePath=".\hlp\html\wave_outline_view.htm">
 			</File>
 			<File
@@ -908,6 +919,9 @@ makehm IDW_,HIDW_,0x50000 resource.h &gt;&gt;&quot;hlp\$(TargetName).hm&quot;
 			</File>
 			<File
 				RelativePath=".\hlp\html\wavesoap_main_window.htm">
+			</File>
+			<File
+				RelativePath=".\hlp\WaveSoapFront.hhk">
 			</File>
 			<File
 				RelativePath=".\hlp\html\zoom_in_time_command.htm">
@@ -936,10 +950,10 @@ makehm IDW_,HIDW_,0x50000 resource.h &gt;&gt;&quot;hlp\$(TargetName).hm&quot;
 			</File>
 		</Filter>
 		<File
-			RelativePath=".\ReadMe.txt">
+			RelativePath=".\aspi_w32.txt">
 		</File>
 		<File
-			RelativePath=".\aspi_w32.txt">
+			RelativePath=".\ReadMe.txt">
 		</File>
 	</Files>
 	<Globals>
