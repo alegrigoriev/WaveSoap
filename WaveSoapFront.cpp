@@ -420,7 +420,7 @@ BOOL CWaveSoapFrontApp::InitInstance()
 		m_ThousandSeparator = ThousandSeparator[0];
 	}
 
-	m_FileCache = new CDirectFile::CDirectFileCache(m_MaxFileCache * 0x100000);
+	m_FileCache = new CDirectFileCacheProxy(m_MaxFileCache * 0x100000);
 
 	// Register the application's document templates.  Document templates
 	//  serve as the connection between documents, frame windows and views.
@@ -866,7 +866,7 @@ int CWaveSoapFrontApp::ExitInstance()
 		TRACE("Signalled App thread stop\n");
 #endif
 		SetEvent(m_hThreadEvent);
-		if (WAIT_TIMEOUT == WaitForSingleObject(m_Thread.m_hThread, 5000))
+		if (WAIT_TIMEOUT == WaitForSingleObjectAcceptSends(m_Thread.m_hThread, 20000))
 		{
 			TRACE("Terminating App Thread\n");
 			TerminateThread(m_Thread.m_hThread, -1);
@@ -942,46 +942,45 @@ unsigned CWaveSoapFrontApp::_ThreadProc()
 		{
 			CSimpleCriticalSectionLock lock(m_cs);
 			// find if stop requested for any document
-			pContext = m_OpList.Next();
-			while (pContext != m_OpList.Head())
+
+			for (pContext = m_OpList.First();
+				m_OpList.NotEnd(pContext); pContext = m_OpList.Next(pContext))
 			{
 				if ((pContext->m_Flags & OperationContextStopRequested)
 					|| pContext->pDocument->m_StopOperation)
 				{
 					break;
 				}
-				pContext = pContext->Next();
 			}
-			if (pContext == m_OpList.Head())
+
+			if (m_OpList.IsEnd(pContext))
 			{
 				// Find if there is an operation for the active document
-				pContext = m_OpList.Next();
-				while (pContext != m_OpList.Head())
+				for (pContext = m_OpList.First();
+					m_OpList.NotEnd(pContext); pContext = m_OpList.Next(pContext))
 				{
 					if (pContext->pDocument == m_pActiveDocument)
 					{
 						break;
 					}
-					pContext = pContext->Next();
 				}
 				// But if it is clipboard operation,
 				// the first clipboard op will be executed instead
-				if (pContext != m_OpList.Head()
+				if (m_OpList.NotEnd(pContext)
 					&& (pContext->m_Flags & OperationContextClipboard))
 				{
-					pContext = m_OpList.Next();
-					while (pContext != m_OpList.Head())
+					for (pContext = m_OpList.First();
+						m_OpList.NotEnd(pContext); pContext = m_OpList.Next(pContext))
 					{
 						if (pContext->m_Flags & OperationContextClipboard)
 						{
 							break;
 						}
-						pContext = pContext->Next();
 					}
 				}
-				if (pContext == m_OpList.Head())
+				if (m_OpList.IsEnd(pContext))
 				{
-					pContext = m_OpList.Next();
+					pContext = m_OpList.First();
 				}
 			}
 		}
