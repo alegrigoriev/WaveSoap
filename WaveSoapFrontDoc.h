@@ -446,6 +446,9 @@ protected:
 	void DoCopy(SAMPLE_INDEX Start, SAMPLE_INDEX End, CHANNEL_MASK Channel, LPCTSTR FileName);
 	void DoCut(SAMPLE_INDEX Start, SAMPLE_INDEX End, CHANNEL_MASK Channel);
 	void DoDelete(SAMPLE_INDEX Start, SAMPLE_INDEX End, CHANNEL_MASK Channel);
+
+	void DoFadeInOut(BOOL FadeOut);
+
 	void DeleteUndo();
 	void DeleteRedo();
 
@@ -592,6 +595,10 @@ public:
 	afx_msg void OnUpdateSaveSplitToFiles(CCmdUI *pCmdUI);
 	afx_msg void OnEditMoreUndoRedo();
 	afx_msg void OnUpdateEditMoreUndoRedo(CCmdUI *pCmdUI);
+	afx_msg void OnEditFadeOut();
+	afx_msg void OnEditFadeIn();
+	afx_msg void OnUpdateEditFadeIn(CCmdUI *pCmdUI);
+	afx_msg void OnUpdateEditFadeOut(CCmdUI *pCmdUI);
 };
 
 #pragma pack(push, 1)
