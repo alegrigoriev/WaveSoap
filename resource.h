@@ -2,7 +2,6 @@
 // Microsoft Visual C++ generated include file.
 // Used by WaveSoapFront.rc
 //
-#define CREATEPROCESS_MANIFEST_RESOURCE_ID 1
 #define IDD_ABOUTBOX                    100
 #define IDS_WAV_FILTER                  102
 #define IDD_FUNCTIONS_TAB               102
