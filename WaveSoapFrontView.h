@@ -16,6 +16,7 @@
 
 class CWaveSoapFrontView : public CScaledScrollView
 {
+	typedef CScaledScrollView BaseClass;
 protected: // create from serialization only
 	CWaveSoapFrontView();
 	DECLARE_DYNCREATE(CWaveSoapFrontView);
@@ -76,8 +77,10 @@ protected:
 	DWORD ClientHitTest(CPoint p);
 	virtual POINT GetZoomCenter();
 	void MovePointIntoView(SAMPLE_INDEX nCaret, BOOL Center = FALSE);
-	void UpdateMaxExtents(NUMBER_OF_SAMPLES Length);
+
+	void UpdateMaxHorExtents(NUMBER_OF_SAMPLES Length);
 	void UpdateVertExtents();
+
 	virtual void NotifySlaveViews(DWORD flag);
 
 	int m_HorizontalScale;

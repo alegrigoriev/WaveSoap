@@ -149,6 +149,21 @@ static const unsigned char palette[128 * 3] =
 
 };
 
+SAMPLE_INDEX CWaveFftView::SampleToFftBaseSample(SAMPLE_INDEX sample)
+{
+	return sample - sample & (-m_FftOrder);
+}
+
+long CWaveFftView::SampleToFftColumn(SAMPLE_INDEX sample)
+{
+	return (sample + m_FftOrder) / m_FftSpacing;
+}
+
+SAMPLE_INDEX CWaveFftView::FftColumnToDisplaySample(long Column)
+{
+	return Column * m_FftSpacing - m_FftOrder;
+}
+
 void CWaveFftView::FillLogPalette(LOGPALETTE * pal, int nEntries)
 {
 	pal->palVersion = 0x300;
@@ -180,7 +195,6 @@ CWaveFftView::CWaveFftView()
 	m_FftResultArrayHeight(0),
 	m_FftResultBegin(0),
 	m_FftLogRange(4.34294481903251827651128918916605),
-	m_pFftWindow(NULL),
 	m_FirstbandVisible(0),
 	m_FftWindowType(WindowTypeSquaredSine),
 	m_IndexOfFftBegin(0),
@@ -193,14 +207,12 @@ CWaveFftView::CWaveFftView()
 
 CWaveFftView::~CWaveFftView()
 {
-	delete[] m_pFftWindow;
-	m_pFftWindow = NULL;
 	delete[] m_pFftResultArray;
 	m_pFftResultArray = NULL;
 }
 
 
-BEGIN_MESSAGE_MAP(CWaveFftView, CWaveSoapFrontView)
+BEGIN_MESSAGE_MAP(CWaveFftView, BaseClass)
 	//{{AFX_MSG_MAP(CWaveFftView)
 	ON_COMMAND(ID_VIEW_ZOOMVERT_NORMAL, OnViewZoomvertNormal)
 	ON_COMMAND(ID_VIEW_ZOOMINVERT, OnViewZoomInVert)
@@ -597,7 +609,7 @@ void CWaveFftView::OnDraw(CDC* pDC)
 	CScaledScrollView::OnDraw(pDC);
 }
 
-void CWaveFftView::MakeFftArray(long left, long right)
+void CWaveFftView::MakeFftArray(SAMPLE_INDEX left, SAMPLE_INDEX right)
 {
 	CWaveSoapFrontDoc * pDoc = GetDocument();
 	CRect r;
@@ -639,8 +651,9 @@ void CWaveFftView::MakeFftArray(long left, long right)
 			NewFftArrayHeight, FftSpacing);
 		unsigned char * pTmp = m_pFftResultArray;
 		int i;
-		int FirstFftSample = left - left % FftSpacing;
-		int FftSample = FirstFftSample;
+		SAMPLE_INDEX FirstFftSample = left - left % FftSpacing;
+		SAMPLE_INDEX FftSample = FirstFftSample;
+
 		for (i = 0; i < NumberOfFftPoints; i++,
 			pTmp += NewFftArrayHeight, FftSample += FftSpacing)
 		{
@@ -681,18 +694,18 @@ void CWaveFftView::MakeFftArray(long left, long right)
 	CalculateFftRange(left, right);
 }
 
-void CWaveFftView::CalculateFftRange(long left, long right)
+void CWaveFftView::CalculateFftRange(SAMPLE_INDEX left, SAMPLE_INDEX right)
 {
 	CWaveSoapFrontDoc * pDoc = GetDocument();
 	// make sure the required range is in the buffer
 	// buffer size is enough to hold all data
-	int FirstSampleRequired = left - left % m_FftSpacing;
+	SAMPLE_INDEX FirstSampleRequired = left - left % m_FftSpacing;
 	if (FirstSampleRequired < 0)
 	{
 		FirstSampleRequired = 0;
 	}
 
-	int LastSampleRequired = right + m_FftSpacing - right % m_FftSpacing;
+	SAMPLE_INDEX LastSampleRequired = right + m_FftSpacing - right % m_FftSpacing;
 
 	if (0) TRACE("Samples required from %d to %d, in the buffer: from %d to %d\n",
 				FirstSampleRequired, LastSampleRequired, m_FftResultBegin, m_FftResultEnd);
@@ -766,10 +779,11 @@ void CWaveFftView::CalculateFftRange(long left, long right)
 		}
 	}
 	// calculate FFT
-	if (NULL == m_pFftWindow)
+	if (NULL == (float*)m_pFftWindow)
 	{
 		TRACE("Calculating FFT window\n");
-		m_pFftWindow = new float[m_FftOrder * 2];
+		m_pFftWindow.Allocate(m_FftOrder * 2);
+
 		for (int w = 0; w < m_FftOrder * 2; w++)
 		{
 			switch (m_FftWindowType)
@@ -897,12 +911,12 @@ void CWaveFftView::CalculateFftRange(long left, long right)
 #ifdef _DEBUG
 void CWaveFftView::AssertValid() const
 {
-	CWaveSoapFrontView::AssertValid();
+	BaseClass::AssertValid();
 }
 
 void CWaveFftView::Dump(CDumpContext& dc) const
 {
-	CWaveSoapFrontView::Dump(dc);
+	BaseClass::Dump(dc);
 }
 #endif //_DEBUG
 
@@ -937,7 +951,7 @@ void CWaveFftView::OnPaint()
 		TRACE("No update region !\n");
 	}
 	// do regular paint on the smaller region
-	CWaveSoapFrontView::OnPaint();
+	BaseClass::OnPaint();
 	if (NULL != InvalidRgn.m_hObject)
 	{
 		//TRACE("Invalidating unpainted region\n");
@@ -1161,6 +1175,9 @@ void CWaveFftView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
 		&& NULL != pHint
 		&& NULL != m_pFftResultArray)
 	{
+		ASSERT(SAMPLE_INDEX(-1L) < SAMPLE_INDEX(0));
+
+		m_NewSelectionMade = true;
 		CSoundUpdateInfo * pInfo = static_cast<CSoundUpdateInfo *>(pHint);
 
 		// calculate update boundaries
@@ -1168,8 +1185,9 @@ void CWaveFftView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
 		SAMPLE_INDEX left = pInfo->m_Begin;
 		SAMPLE_INDEX right = pInfo->m_End;
 
-		SAMPLE_INDEX FirstSampleChanged = left - left % m_FftSpacing;
-		SAMPLE_INDEX LastSampleRequired = right - right % m_FftSpacing + m_FftSpacing;
+		// find out which samples are affected
+		SAMPLE_INDEX FirstSampleChanged = SampleToFftBaseSample(left);
+		SAMPLE_INDEX LastSampleRequired = SampleToFftBaseSample(right) + 2 * m_FftOrder;
 
 		if (FirstSampleChanged < m_FftResultBegin)
 		{
@@ -1190,6 +1208,7 @@ void CWaveFftView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
 				m_pFftResultArray[i] = 0;
 			}
 		}
+		// process length change
 		if (pInfo->m_NewLength != -1)
 		{
 			NUMBER_OF_SAMPLES sample = pInfo->m_NewLength;
@@ -1208,7 +1227,7 @@ void CWaveFftView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
 				m_pFftResultArray[i] = 0;
 			}
 		}
-
+		BaseClass::OnUpdate(pSender, lHint, pHint);
 	}
 	else if (lHint == CWaveSoapFrontDoc::UpdateSelectionChanged
 			&& NULL != pHint)
@@ -1230,8 +1249,8 @@ void CWaveFftView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
 		}
 
 		NUMBER_OF_CHANNELS nChannels = pDoc->WaveChannels();
-		int nLowExtent = -32768;
-		int nHighExtent = 32767;
+		int nLowExtent = -0x8000;
+		int nHighExtent = 0x7FFF;
 
 		if (nChannels > 1)
 		{
@@ -1254,7 +1273,10 @@ void CWaveFftView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
 		return; // don't call Wave view OnUpdate in this case
 		// we don't want to invalidate
 	}
-	CWaveSoapFrontView::OnUpdate(pSender, lHint, pHint);
+	else
+	{
+		BaseClass::OnUpdate(pSender, lHint, pHint);
+	}
 }
 
 HBRUSH CWaveFftView::m_Brush = NULL;
@@ -1274,8 +1296,9 @@ void CWaveFftView::OnSetBands(int order)
 
 		delete[] m_pFftResultArray;
 		m_pFftResultArray = NULL;
-		delete[] m_pFftWindow;
-		m_pFftWindow = NULL;
+
+		m_pFftWindow.Free();
+
 		Invalidate();
 		NotifySlaveViews(FFT_BANDS_CHANGED);
 	}
@@ -1290,8 +1313,9 @@ void CWaveFftView::OnSetWindowType(int window)
 
 		delete[] m_pFftResultArray;
 		m_pFftResultArray = NULL;
-		delete[] m_pFftWindow;
-		m_pFftWindow = NULL;
+
+		m_pFftWindow.Free();
+
 		Invalidate();
 		NotifySlaveViews(FFT_BANDS_CHANGED);
 	}
