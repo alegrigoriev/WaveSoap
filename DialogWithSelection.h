@@ -1,16 +1,20 @@
+// Copyright Alexander Grigoriev, 1997-2002, All Rights Reserved
+// DialogWithSelection.inl: class declaration for CDialogWithSelectionT
+//
+//////////////////////////////////////////////////////////////////////
 #pragma once
-
-#include "UiUpdatedDlg.h"
-
+#include "MessageMapT.h"
 /////////////////////////////////////////////////////////////////////////////
 // CDialogWithSelection dialog
 
-class CDialogWithSelection : public CUiUpdatedDlg
+template<typename B = CUiUpdatedDlg>
+class CDialogWithSelectionT : public B
 {
-	typedef CUiUpdatedDlg BaseClass;
+	// B should be derived from CUiUpdatedDlgT<T>
+	typedef B BaseClass;
 // Construction
 public:
-	CDialogWithSelection(SAMPLE_INDEX Start,
+	CDialogWithSelectionT(SAMPLE_INDEX Start,
 						SAMPLE_INDEX End, SAMPLE_INDEX CaretPos,
 						CHANNEL_MASK Channel,
 						CWaveFile & File, int TimeFormat,
@@ -18,8 +22,6 @@ public:
 						CWnd* pParent = NULL);   // standard constructor
 
 // Dialog Data
-	//{{AFX_DATA(CDialogWithSelection)
-	//}}AFX_DATA
 
 	SAMPLE_INDEX GetStart() const
 	{
@@ -71,21 +73,36 @@ protected:
 	void AddSelection(UINT id, SAMPLE_INDEX begin, SAMPLE_INDEX end);
 	int FindSelection(SAMPLE_INDEX begin, SAMPLE_INDEX end);
 // Overrides
-	// ClassWizard generated virtual function overrides
-	//{{AFX_VIRTUAL(CDialogWithSelection)
-protected:
-	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV support
-	//}}AFX_VIRTUAL
 
 // Implementation
 protected:
 
 	// Generated message map functions
-	//{{AFX_MSG(CDialogWithSelection)
 	afx_msg void OnButtonSelection();
-	afx_msg void OnChecklockChannels();
-	afx_msg void OnUpdateSelectionStatic(CCmdUI * pCmdUI);
-	//}}AFX_MSG
+
+	afx_msg void OnChecklockChannels()
+	{
+		m_bLockChannels = IsDlgButtonChecked(IDC_CHECKLOCK_CHANNELS);
+		NeedUpdateControls();
+	}
+
+	afx_msg void OnUpdateSelectionStatic(CCmdUI * pCmdUI)
+	{
+		pCmdUI->SetText(GetSelectionText(m_Start, m_End, m_Chan,
+										m_WaveFile.Channels(), m_bLockChannels,
+										m_WaveFile.SampleRate(), m_TimeFormat));
+	}
+
 	DECLARE_MESSAGE_MAP()
 };
+
+BEGIN_MESSAGE_MAP_T(CDialogWithSelectionT, BaseClass)
+	//{{AFX_MSG_MAP(CDialogWithSelectionT)
+	ON_BN_CLICKED(IDC_CHECKLOCK_CHANNELS, OnChecklockChannels)
+	ON_BN_CLICKED(IDC_BUTTON_SELECTION, OnButtonSelection)
+	ON_UPDATE_COMMAND_UI(IDC_STATIC_SELECTION, OnUpdateSelectionStatic)
+	//}}AFX_MSG_MAP
+END_MESSAGE_MAP()
+
+typedef CDialogWithSelectionT<> CDialogWithSelection;
 
