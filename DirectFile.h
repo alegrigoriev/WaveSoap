@@ -90,7 +90,11 @@ public:
 	long ReadAt(void * buf, long count, LONGLONG Position);
 	long Write(const void * pBuf, long count);
 	long WriteAt(const void * buf, long count, LONGLONG Position);
-	LONGLONG Seek(LONGLONG position, int flag);
+	LONGLONG Seek(LONGLONG position, int flag = FILE_BEGIN);
+	LONGLONG GetFilePointer() const
+	{
+		return m_FilePointer;
+	}
 
 	UINT_PTR GetFileID() const
 	{
