@@ -221,6 +221,19 @@ hid_view_status_bar = html\View\hid_view_status_bar.htm
 
 hid_process_mute = html\Process\process_mute.htm
 hid_process_resample = html\Process\process_resample.htm
+hid_process_do_declicking = html\Process\process_click_removal.htm
+hid_process_do_ulf = html\Process\process_ulf_noise.htm
+hid_process_noise_reduction = html\Process\process_noise_reduction.htm
+hid_process_equalizer = html\Process\process_equalizer.htm
+hid_process_filter = html\Process\process_filter.htm
+hid_process_normalize = html\Process\process_normalize.htm
+hid_process_dcoffset = html\Process\process_dcoffset.htm
+hid_process_changevolume = html\Process\process_change_volume.htm
+hid_process_mute = html\Process\process_mute.htm
+hid_process_invert = html\Process\process_invert.htm
+hid_process_channels = html\Process\process_change_channels.htm
+hid_process_swapchannels = html\Process\process_swap_channels.htm
+hid_process_reverse = html\Process\process_reverse.htm
 
 afx_hidw_toolbar = html\MainWindow\afx_hidw_toolbar.htm
 afx_hidw_status_bar = html\MainWindow\afx_hidw_status_bar.htm

@@ -1,0 +1,93 @@
+<html>
+
+<head>
+<meta http-equiv="Content-Language" content="en-us">
+<meta name="GENERATOR" content="Microsoft FrontPage 6.0">
+<meta name="ProgId" content="FrontPage.Editor.Document">
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>Tools Preferences command</title>
+</head>
+
+<body>
+
+<h3><B>Preferences
+command (<a href="tools_menu.htm">Tools menu</a>)</B></h3>
+
+<P>Use this command to change user preferences.</P>
+
+<p>A property sheet dialog of 3 tabs is open.</p>
+<p><b>File</b> page:</p>
+<p><img border="0" src="../../images/PreferencesFileDialog.png"></p>
+<p>&quot;<b>Temporary file location</b>&quot; edit box allows to specify where to place 
+any temporary files the program creates.</p>
+<p>&quot;<b>Use RAM for temporary files not larger than</b>&quot; edit box allows to 
+specify what is size threshold for storing temporary data in memory, rather than 
+on the disk.</p>
+<p>&quot;<b>Max WAV file size</b>&quot; option allows to specify whether the program is 
+allowed to create 4 GB WAV files. Some programs may have troubles with such 
+size. Windows 98/ME doesn't support them at all, and the option is disabled for 
+it.</p>
+<p>&quot;Save label/comment text with encoding&quot; option chooses how the text data will 
+be saved in WAV files.</p>
+<ul>
+  <li><b>8 bit</b> - the text will be saved in language-specific 8-bit encoding. 
+  If a file saved on one computer is read on another computer with different 
+  language settings, the labels and other text data may be shown incorrectly. 
+  This is the standard format used by most sound editing applications.</li>
+  <li><b>UTF-8</b> - the text will be saved using UTF-8 representation of 
+  UNICODE character set. Such representation doesn't depend on the language 
+  settings. Most languages are supported by default. This is a format extension 
+  and may not be supported in other applications.</li>
+  <li><b>UTF-16</b> - the text will be saved using UTF-16 representation of 
+  UNICODE character set. Such representation doesn't depend on the language 
+  settings. Most languages are supported by default. This is a format extension 
+  and may not be supported in other applications.</li>
+</ul>
+<p>&quot;<b>Max file cache size</b>&quot; - specifies upper limit of memory allocated to 
+cache the files. Default is 64 MB.</p>
+<p><b>Undo</b> group:</p>
+<p>&quot;<b>Enable</b>&quot; - enables saving Undo information. This allows to return to 
+the state before editing. This option can also be changed in More Undo/Redo 
+submenu of <a href="../Edit/menu_edit.htm">Edit menu</a>.</p>
+<p>&quot;<b>Limit total size</b>&quot; - sets limit for the size of saved Undo 
+information.</p>
+<p>&quot;<b>Limit depth</b>&quot; - sets maximum number of Undo steps saved.</p>
+<p><b>Redo</b> group:</p>
+<p>&quot;<b>Enable</b>&quot; - enables saving Redo information. This allows to repeat the 
+undone operation. This option can also be changed in More Undo/Redo submenu of
+<a href="../Edit/menu_edit.htm">Edit menu</a>.</p>
+<p>&quot;<b>Limit total size</b>&quot; - sets limit for the size of saved Redo 
+information.</p>
+<p>&quot;<b>Limit depth</b>&quot; - sets maximum number of Redo steps saved.</p>
+<p>&quot;Remember current selection in Undo/Redo&quot; - if checked, Undo/Redo operation 
+will also restore the selection.</p>
+<p>&quot;<b>Open files from command line and drag-and-drop as</b>&quot; option chooses how 
+such files are opened:</p>
+<ul>
+  <li>Read only - the file(s) can only be viewed and listened to;</li>
+  <li>Direct edit - the file(s) will be opened for direct editing: any changes 
+  are saved immediately in the original copy;</li>
+  <li>Buffered - the file(s) will be opened in buffered mode: any changes will 
+  go to a temporary copy and commited to the permanent file only on
+  <a href="../File/hid_file_save.htm">File/Save command</a>.</li>
+</ul>
+<p><b>Sound</b> page:</p>
+<p><img border="0" src="../../images/PreferencesSoundDialog.png"></p>
+<p>Playback group:</p>
+<p><b>Device</b> drop-down box selects an audio output device to use for 
+playback. If <b>&lt;default&gt;</b> is selected, a device selected in the system 
+&quot;Sounds audio devices&quot; control panel applet will be used.</p>
+<p>&quot;<b>Buffer size</b>&quot; and &quot;<b>Number of buffers</b>&quot; select depth of buffering 
+for playback. Some low-end systems may require more buffers for steady audio 
+playback.</p>
+<p><b>View</b> page:</p>
+<p>
+<img border="0" src="../../images/PreferencesViewDialog.png"></p>
+
+<p>&quot;Snap mouse selection to max sample&quot; -&nbsp; if checked, the mouse click will 
+cause the current position go to the max sample of all that fit into the clicked 
+pixel column.</p>
+
+</body>
+
+</html>

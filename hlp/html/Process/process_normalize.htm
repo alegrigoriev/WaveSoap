@@ -3,15 +3,31 @@
 <head>
 <meta name="GENERATOR" content="Microsoft FrontPage 6.0">
 <meta name="ProgId" content="FrontPage.Editor.Document">
-<meta http-equiv="Content-Type" content="text/html; charset=windows-1251">
-<title>New Page 0</title>
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>Process Normalize Volume command</title>
 </head>
 
 <body>
 
-<P><B>&nbsp;command (<a href="process_menu.htm">Process menu</a>)</B></P>
+<h3><B>Normalize&nbsp;command (<a href="process_menu.htm">Process menu</a>)</B></h3>
 
-<P>Use this command to .</P>
+<P>Use this command to bring the sound volume to the specified peak value.</P>
+<P>The following dialog box is shown:</P>
+<P><img border="0" src="../../images/NormalizeDialog.png"></P>
+
+<p><b>&quot;Normalize to&quot;</b> slider and edit box allow to enter the desired peak 
+volume. It can be specified in percents of the full range (allowed values are 
+from 1 to 100), or in decibels, in range from -40 to 0. The drop list below the 
+edit box selects percents or dB.</p>
+<p>If &quot;<b>Equally adjust both channels</b>&quot; checkbox is checked, both channels 
+volume will be multiplied by the same factor, but their peak volume may be 
+different. Otherwise, the peak volume in each channel will be brought to the 
+specified level, but it may require different multiplier for them.</p>
+<P><b>Save Undo</b> checkbox enables undoing the operation. If it's not checked, 
+you cannot revert to the previous volume.</P>
+<P><b>Selection</b> button allows to specify range and channels to perform the 
+operation. It opens a
+<a href="../Dialogs/Selection/SelectionDialog.htm">selection dialog</a>.</P>
 
 </body>
 
