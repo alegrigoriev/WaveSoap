@@ -4020,7 +4020,10 @@ BOOL CWmaSaveContext::Init()
 		return FALSE;
 	}
 
-	m_Enc.SetSourceWaveFormat(m_SrcFile.GetWaveFormat());
+	CWaveFormat wf;
+	wf.InitFormat(WAVE_FORMAT_PCM, m_DstFile.SampleRate(), m_DstFile.Channels());
+
+	m_Enc.SetSourceWaveFormat(wf);
 
 	m_CoInit.InitializeCom(COINIT_MULTITHREADED);
 
