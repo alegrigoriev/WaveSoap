@@ -108,6 +108,19 @@ BEGIN
     SEPARATOR
     BUTTON      ID_APP_ABOUT
     BUTTON      ID_CONTEXT_HELP
+    SEPARATOR
+    BUTTON      IDC_SOUND_PLAY
+    BUTTON      IDC_SOUND_PAUSE
+    BUTTON      IDC_SOUND_STOP
+    SEPARATOR
+    BUTTON      IDC_VIEW_SHOW_FFT
+    BUTTON      IDC_VIEW_WAVEFORM
+    SEPARATOR
+    BUTTON      IDC_PROCESS_DO_ULF
+    BUTTON      IDC_PROCESS_DO_DECLICKING
+    BUTTON      IDC_PROCESS_NOISE_REDUCTION
+    SEPARATOR
+    BUTTON      ID_EDIT_STOP
 END
 
 
@@ -164,9 +177,10 @@ BEGIN
     BEGIN
         MENUITEM "&Undo\tCtrl+Z",               ID_EDIT_UNDO
         MENUITEM SEPARATOR
-        MENUITEM "Cu&t\tCtrl+X",                ID_EDIT_CUT
         MENUITEM "&Copy\tCtrl+C",               ID_EDIT_COPY
+        MENUITEM "Cu&t\tCtrl+X",                ID_EDIT_CUT
         MENUITEM "&Paste\tCtrl+V",              ID_EDIT_PASTE
+        MENUITEM "&Delete\tDel",                ID_EDIT_DELETE
     END
     POPUP "&View"
     BEGIN
@@ -177,6 +191,9 @@ BEGIN
         MENUITEM "Zoom in vertical",            ID_VIEW_ZOOMINVERT
         MENUITEM "Zoom out horizontal",         ID_VIEW_ZOOMOUTHOR
         MENUITEM "Zoom out vertical",           ID_VIEW_ZOOMOUTVERT
+        MENUITEM "Samples",                     IDC_VIEW_RULER_SAMPLES
+        MENUITEM "HH:MM:SS",                    IDC_VIEW_RULER_HHMMSS
+        MENUITEM "Seconds",                     IDC_VIEW_RULER_SECONDS
     END
     POPUP "&Window"
     BEGIN
@@ -199,6 +216,16 @@ BEGIN
     BEGIN
         MENUITEM "Zoom in\tGray +",             ID_VIEW_ZOOMIN
         MENUITEM "Zoom out\tGray -",            ID_VIEW_ZOOMOUT
+    END
+END
+
+IDR_MENU_TIME_RULER MENU DISCARDABLE 
+BEGIN
+    POPUP " "
+    BEGIN
+        MENUITEM "Samples",                     IDC_VIEW_RULER_SAMPLES
+        MENUITEM "HH:MM:SS",                    IDC_VIEW_RULER_HHMMSS
+        MENUITEM "Seconds",                     IDC_VIEW_RULER_SECONDS
     END
 END
 
@@ -372,6 +399,22 @@ BEGIN
     LTEXT           "dB",IDC_STATIC,142,60,12,8
 END
 
+IDD_DIALOGBAR_MDI_CHILD DIALOG DISCARDABLE  0, 0, 393, 16
+STYLE WS_CHILD | WS_VISIBLE | WS_BORDER
+FONT 8, "MS Sans Serif"
+BEGIN
+    CONTROL         "De-humming",IDC_CHECK_DEHUMMING,"Button",
+                    BS_AUTOCHECKBOX | WS_TABSTOP,199,3,54,10
+    CONTROL         "De-clicking",IDC_CHECK_DECLICKING,"Button",
+                    BS_AUTOCHECKBOX | WS_TABSTOP,264,3,50,10
+    CONTROL         "Noise reduction",IDC_CHECK_NOISE_REDUCTION,"Button",
+                    BS_AUTOCHECKBOX | WS_TABSTOP,323,3,63,10
+    CONTROL         "Tab1",IDC_TAB_VIEW_SWITCH,"SysTabControl32",0x0,0,0,92,
+                    12
+    CONTROL         "Tab1",IDC_TAB_SWITCH_VIEW_MODE,"SysTabControl32",
+                    TCS_BUTTONS,99,0,75,16
+END
+
 
 #ifndef _MAC
 /////////////////////////////////////////////////////////////////////////////
@@ -394,17 +437,20 @@ VS_VERSION_INFO VERSIONINFO
 BEGIN
     BLOCK "StringFileInfo"
     BEGIN
-        BLOCK "040904B0"
+        BLOCK "040904b0"
         BEGIN
-            VALUE "CompanyName", "\0"
-            VALUE "FileDescription", "WaveSoapFront MFC Application\0"
+            VALUE "Comments", "\0"
+            VALUE "CompanyName", "Alexandre Grigoriev\0"
+            VALUE "FileDescription", "WaveSoap - WAV file cleanup\0"
             VALUE "FileVersion", "1, 0, 0, 1\0"
-            VALUE "InternalName", "WaveSoapFront\0"
-            VALUE "LegalCopyright", "Copyright (C) 2000\0"
+            VALUE "InternalName", "WaveSoap\0"
+            VALUE "LegalCopyright", "Copyright (C) 2000 Alexandre Grigoriev\0"
             VALUE "LegalTrademarks", "\0"
             VALUE "OriginalFilename", "WaveSoapFront.EXE\0"
-            VALUE "ProductName", "WaveSoapFront Application\0"
+            VALUE "PrivateBuild", "\0"
+            VALUE "ProductName", "WaveSoap Application\0"
             VALUE "ProductVersion", "1, 0, 0, 1\0"
+            VALUE "SpecialBuild", "\0"
         END
     END
     BLOCK "VarFileInfo"
@@ -463,6 +509,11 @@ BEGIN
         TOPMARGIN, 7
         BOTTOMMARGIN, 231
     END
+
+    IDD_DIALOGBAR_MDI_CHILD, DIALOG
+    BEGIN
+        RIGHTMARGIN, 386
+    END
 END
 #endif    // APSTUDIO_INVOKED
 
@@ -494,13 +545,25 @@ END
 
 /////////////////////////////////////////////////////////////////////////////
 //
+// Cursor
+//
+
+IDC_CURSOR_BEAM_RIGHT   CURSOR  FIXED IMPURE    "res\\cursor_b.cur"
+
+IDC_CURSOR_BEAM_LEFT    CURSOR  FIXED IMPURE    "res\\cur00001.cur"
+
+IDC_CURSOR_BEAM         CURSOR  FIXED IMPURE    "res\\cur00002.cur"
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
 // String Table
 //
 
 STRINGTABLE PRELOAD DISCARDABLE 
 BEGIN
     IDR_MAINFRAME           "WaveSoap"
-    IDR_WAVESOTYPE          "\nWaveSo\nWaveSoap job\nWaveSoap job files (*.wsjb)\n.wsjb\nWaveSoap.Document\nWaveSoap Document"
+    IDR_WAVESOTYPE          "\nWaveSo\nWindowsSound file\nWindows Sound files (*.wav)\n.wav\nWaveSoap.Document\nWaveSoap Document"
 END
 
 STRINGTABLE PRELOAD DISCARDABLE 
@@ -631,6 +694,7 @@ END
 
 STRINGTABLE DISCARDABLE 
 BEGIN
+    ID_EDIT_STOP            "Stop the current operation\nStop"
     ID_VIEW_ZOOMIN          "Magnify the view"
     ID_VIEW_ZOOMOUT         "Diminish the view"
     ID_VIEW_ZOOM_OUT2       "Zoom out x2"
@@ -655,6 +719,32 @@ BEGIN
     ID_VIEW_ZOOMINVERT2     "Zoom in vertical"
     ID_VIEW_ZOOMOUTHOR2     "Zoom out horizontal"
     ID_VIEW_ZOOMOUTVERT2    "Zoom out vertical"
+END
+
+STRINGTABLE DISCARDABLE 
+BEGIN
+    IDC_VIEW_RULER_SAMPLES  "Show time in samples\nShow samples"
+    IDC_VIEW_RULER_HHMMSS   "Show time as hour:minute:seconds\nShow hh:mm:ss"
+    IDC_VIEW_RULER_SECONDS  "Show time in seconds\nShow seconds"
+    IDC_SOUND_PLAY          "Plays from the current cursor position\nPlay"
+    IDC_SOUND_PAUSE         "Stops playback and leaves the cursor at the current position\nPause"
+    IDC_SOUND_STOP          "Stops playback and returns to the last known cursor position\nStop"
+    IDC_VIEW_SHOW_FFT       "Show the wave spectrum\nSpectral view"
+    IDC_VIEW_WAVEFORM       "Show the sound as waveform\nShow waveform"
+    IDC_PROCESS_DO_ULF      "Enables ultra-low frequency noise suppression (required for vinyl recordings)\nTurntable noise suppression"
+    IDC_PROCESS_DO_DECLICKING 
+                            "Enables click removal required for vinyl recordings\nClick removal"
+    IDC_PROCESS_NOISE_REDUCTION 
+                            "Enables noise (hiss) suppression\nNoise reduction"
+    ID_EDIT_DELETE          "Delete the selection\nDelete"
+END
+
+STRINGTABLE DISCARDABLE 
+BEGIN
+    IDS_STRING_UNABLE_TO_CREATE_CLIPBOARD 
+                            "Unable to create temporary file to hold clipboard data"
+    IDS_STRING_OPERATION_IN_PROGRESS 
+                            "(Program error!!)\nFile operation is already in progress"
 END
 
 #endif    // English (U.S.) resources
