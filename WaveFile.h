@@ -27,6 +27,16 @@ helper.
 #include <atlbase.h>
 #include <atlpath.h>
 
+typedef long SAMPLE_INDEX;
+typedef long NUMBER_OF_SAMPLES;
+typedef int CHANNEL_MASK;
+typedef int NUMBER_OF_CHANNELS;
+typedef DWORD SAMPLE_POSITION;
+typedef DWORD WAV_FILE_SIZE;
+typedef DWORD MEDIA_FILE_SIZE;  // to be expanded to 64 nits
+typedef unsigned PEAK_INDEX;
+typedef __int16 WAVE_SAMPLE;
+
 enum
 {
 	MmioFileOpenExisting = CDirectFile::OpenExisting,
@@ -269,9 +279,9 @@ struct LtxtChunk  // in LIST adtl
 
 struct WavePeak
 {
-	__int16 low;
-	__int16 high;
-	WavePeak(__int16 Low, __int16 High)
+	WAVE_SAMPLE low;
+	WAVE_SAMPLE high;
+	WavePeak(WAVE_SAMPLE Low, WAVE_SAMPLE High)
 		: low(Low), high(High) {}
 	WavePeak() {}
 };
@@ -285,25 +295,25 @@ public:
 	{
 		return m_PeakDataGranularity;
 	}
-	void SetPeakData(unsigned index, __int16 low, __int16 high)
+	void SetPeakData(unsigned index, WAVE_SAMPLE low, WAVE_SAMPLE high)
 	{
 		ASSERT(index < m_WavePeakSize);
 		m_pPeaks[index].low = low;
 		m_pPeaks[index].high = high;
 	}
 
-	__int16 GetPeakDataLow(unsigned index) const
+	WAVE_SAMPLE GetPeakDataLow(PEAK_INDEX index) const
 	{
 		ASSERT(index < m_WavePeakSize);
 		return m_pPeaks[index].low;
 	}
-	__int16 GetPeakDataHigh(unsigned index) const
+	WAVE_SAMPLE GetPeakDataHigh(PEAK_INDEX index) const
 	{
 		ASSERT(index < m_WavePeakSize);
 		return m_pPeaks[index].high;
 	}
 
-	WavePeak * AllocatePeakData(long NewNumberOfSamples, int NumberOfChannels = 1);
+	WavePeak * AllocatePeakData(NUMBER_OF_SAMPLES NewNumberOfSamples, NUMBER_OF_CHANNELS NumberOfChannels = 1);
 	WavePeak * GetPeakArray()
 	{
 		return m_pPeaks;
@@ -312,7 +322,7 @@ public:
 	{
 		return m_pPeaks;
 	}
-	WavePeak GetPeakMinMax(unsigned from, unsigned to, unsigned stride = 1);
+	WavePeak GetPeakMinMax(PEAK_INDEX from, PEAK_INDEX to, NUMBER_OF_CHANNELS stride = 1);
 
 	unsigned GetPeaksSize() const
 	{
@@ -323,7 +333,7 @@ public:
 		return m_PeakLock;
 	}
 
-	void SetPeaks(unsigned from, unsigned to, unsigned stride, WavePeak value);
+	void SetPeaks(PEAK_INDEX from, PEAK_INDEX to, NUMBER_OF_CHANNELS stride, WavePeak value);
 	CWavePeaks & operator =(CWavePeaks const & src);
 protected:
 	WavePeak * m_pPeaks;
@@ -340,16 +350,16 @@ public:
 	CWaveFile();
 	~CWaveFile();
 	BOOL CreateWaveFile(CWaveFile * pTemplateFile, WAVEFORMATEX * pTemplateFormat,
-						int Channels, unsigned long SizeOrSamples, DWORD flags, LPCTSTR FileName);
+						NUMBER_OF_CHANNELS Channels, WAV_FILE_SIZE SizeOrSamples, DWORD flags, LPCTSTR FileName);
 
 	virtual BOOL Open(LPCTSTR lpszFileName, UINT nOpenFlags);
 	virtual void Close();
 	int SampleSize() const;
 	BOOL SetSourceFile(CWaveFile * const pOriginalFile);
 
-	void RescanPeaks(long begin, long end);
-	BOOL AllocatePeakData(long NewNumberOfSamples);
-	WavePeak GetPeakMinMax(unsigned from, unsigned to, unsigned stride = 1);
+	void RescanPeaks(SAMPLE_INDEX begin, SAMPLE_INDEX end);
+	BOOL AllocatePeakData(NUMBER_OF_SAMPLES NewNumberOfSamples);
+	WavePeak GetPeakMinMax(PEAK_INDEX from, PEAK_INDEX to, NUMBER_OF_CHANNELS stride = 1);
 	unsigned GetPeaksSize() const;
 	unsigned GetPeakGranularity() const;
 	int CalculatePeakInfoSize() const
@@ -357,7 +367,7 @@ public:
 		unsigned Granularity = GetPeakGranularity();
 		return (NumberOfSamples() + Granularity - 1) / Granularity * Channels();
 	}
-	void SetPeakData(unsigned index, __int16 low, __int16 high);
+	void SetPeakData(PEAK_INDEX index, WAVE_SAMPLE low, WAVE_SAMPLE high);
 	BOOL LoadPeaksForCompressedFile(CWaveFile & OriginalWaveFile, ULONG NumberOfSamples);
 
 	BOOL CheckAndLoadPeakFile();
@@ -477,9 +487,9 @@ public:
 		}
 		return & pInstData->m_PeakData;
 	}
-	void SetPeaks(unsigned from, unsigned to, unsigned stride, WavePeak value);
+	void SetPeaks(PEAK_INDEX from, PEAK_INDEX to, NUMBER_OF_CHANNELS stride, WavePeak value);
 
-	int Channels() const
+	NUMBER_OF_CHANNELS Channels() const
 	{
 		WAVEFORMATEX * pWf = GetWaveFormat();
 		if (NULL == pWf)

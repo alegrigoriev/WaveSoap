@@ -684,7 +684,7 @@ BOOL CWaveFile::LoadListMetadata(MMCKINFO & chunk)
 }
 // creates a file based on template format from pTemplateFile
 BOOL CWaveFile::CreateWaveFile(CWaveFile * pTemplateFile, WAVEFORMATEX * pTemplateFormat,
-								int Channels, unsigned long SizeOrSamples, DWORD flags, LPCTSTR FileName)
+								NUMBER_OF_CHANNELS Channels, WAV_FILE_SIZE SizeOrSamples, DWORD flags, LPCTSTR FileName)
 {
 	CString name;
 	TCHAR NameBuf[512];
@@ -927,6 +927,7 @@ BOOL CWaveFile::CreateWaveFile(CWaveFile * pTemplateFile, WAVEFORMATEX * pTempla
 		memzero(*fact);
 		fact->ckid = mmioFOURCC('f', 'a', 'c', 't');
 		fact->cksize = sizeof (DWORD);
+
 		if (CreateChunk(* fact, 0))
 		{
 			DWORD tmp = 0;
@@ -972,7 +973,7 @@ int CWaveFile::SampleSize() const
 	return cd->wf.NumChannels() * cd->wf.BitsPerSample() / 8;
 }
 
-LONG CWaveFile::NumberOfSamples() const
+NUMBER_OF_SAMPLES CWaveFile::NumberOfSamples() const
 {
 	InstanceDataWav * cd = GetInstanceData();
 	if (NULL == cd
@@ -1033,6 +1034,7 @@ BOOL CMmioFile::CommitChanges()
 	// save RIFF header
 	DWORD CurrentLength = (DWORD)GetLength();
 	LPMMCKINFO riff = GetRiffChunk();
+
 	if (NULL != riff && 0 != riff->ckid
 		&& ((riff->dwFlags & MMIO_DIRTY) || riff->dwDataOffset + riff->cksize != CurrentLength))
 	{
@@ -1054,23 +1056,29 @@ BOOL CWaveFile::CommitChanges()
 	}
 	// write new fmt chunk
 	MMCKINFO * fmtck = GetFmtChunk();
+
 	if (NULL != fmtck
 		&& 0 != fmtck->dwDataOffset
 		&& (fmtck->dwFlags & MMIO_DIRTY))
 	{
 		Seek(fmtck->dwDataOffset);
+
 		Write(GetWaveFormat(), fmtck->cksize);
 		fmtck->dwFlags &= ~MMIO_DIRTY;
 	}
+
 	MMCKINFO * factck = GetFactChunk();
+
 	if (NULL != factck
 		&& factck->dwDataOffset != 0
 		&& (factck->dwFlags & MMIO_DIRTY))
 	{
 		Seek(factck->dwDataOffset);
+
 		Write( & m_FactSamples, sizeof m_FactSamples);
 		factck->dwFlags &= ~MMIO_DIRTY;
 	}
+
 	// update data chunk
 	MMCKINFO * datack = GetDataChunk();
 	if (NULL != datack
@@ -1078,6 +1086,7 @@ BOOL CWaveFile::CommitChanges()
 		&& datack->dwFlags & MMIO_DIRTY)
 	{
 		Seek(datack->dwDataOffset - sizeof datack->cksize);
+
 		Write( & datack->cksize, sizeof datack->cksize);
 		datack->dwFlags &= ~MMIO_DIRTY;
 		GetRiffChunk()->dwFlags |= MMIO_DIRTY;
@@ -1098,7 +1107,8 @@ CWavePeaks::~CWavePeaks()
 	delete[] m_pPeaks;
 }
 
-WavePeak * CWavePeaks::AllocatePeakData(long NewNumberOfSamples, int NumberOfChannels)
+WavePeak * CWavePeaks::AllocatePeakData(NUMBER_OF_SAMPLES NewNumberOfSamples,
+										NUMBER_OF_CHANNELS NumberOfChannels)
 {
 	// change m_pPeaks size
 	// need to synchronize with OnDraw
@@ -1108,7 +1118,7 @@ WavePeak * CWavePeaks::AllocatePeakData(long NewNumberOfSamples, int NumberOfCha
 	if (NULL == m_pPeaks
 		|| NewWavePeakSize > m_AllocatedWavePeakSize)
 	{
-		int NewAllocatedWavePeakSize = NewWavePeakSize + 1024;  // reserve more
+		unsigned NewAllocatedWavePeakSize = NewWavePeakSize + 1024;  // reserve more
 		WavePeak * NewPeaks = new WavePeak[NewAllocatedWavePeakSize];
 		if (NULL == NewPeaks)
 		{
@@ -1150,7 +1160,7 @@ WavePeak * CWavePeaks::AllocatePeakData(long NewNumberOfSamples, int NumberOfCha
 	return m_pPeaks;
 }
 
-void CWaveFile::SetPeakData(unsigned index, __int16 low, __int16 high)
+void CWaveFile::SetPeakData(PEAK_INDEX index, WAVE_SAMPLE low, WAVE_SAMPLE high)
 {
 	CWavePeaks * pPeaks = GetWavePeaks();
 	if (NULL != pPeaks)
@@ -1159,7 +1169,7 @@ void CWaveFile::SetPeakData(unsigned index, __int16 low, __int16 high)
 	}
 }
 
-BOOL CWaveFile::AllocatePeakData(long NewNumberOfSamples)
+BOOL CWaveFile::AllocatePeakData(NUMBER_OF_SAMPLES NewNumberOfSamples)
 {
 	CWavePeaks * pPeaks = GetWavePeaks();
 	if (NULL != pPeaks)
@@ -1184,7 +1194,7 @@ BOOL CWaveFile::SetSourceFile(CWaveFile * const pOriginalFile)
 	return FALSE;
 }
 
-WavePeak CWaveFile::GetPeakMinMax(unsigned from, unsigned to, unsigned stride)
+WavePeak CWaveFile::GetPeakMinMax(PEAK_INDEX from, PEAK_INDEX to, NUMBER_OF_CHANNELS stride)
 {
 	CWavePeaks * pPeaks = GetWavePeaks();
 	if (NULL != pPeaks)
@@ -1214,7 +1224,7 @@ unsigned CWaveFile::GetPeaksSize() const
 	return 0;
 }
 
-void CWaveFile::SetPeaks(unsigned from, unsigned to, unsigned stride, WavePeak value)
+void CWaveFile::SetPeaks(PEAK_INDEX from, PEAK_INDEX to, NUMBER_OF_CHANNELS stride, WavePeak value)
 {
 	CWavePeaks * pPeaks = GetWavePeaks();
 	if (NULL != pPeaks)
@@ -1223,7 +1233,7 @@ void CWaveFile::SetPeaks(unsigned from, unsigned to, unsigned stride, WavePeak v
 	}
 }
 
-void CWaveFile::RescanPeaks(long begin, long end)
+void CWaveFile::RescanPeaks(SAMPLE_INDEX begin, SAMPLE_INDEX end)
 {
 	// if called immediately after data modification, it will get
 	// the data directly from the cache
@@ -1236,7 +1246,7 @@ void CWaveFile::RescanPeaks(long begin, long end)
 	LPMMCKINFO datack = GetDataChunk();
 	DWORD dwDataChunkOffset = datack->dwDataOffset;
 
-	unsigned GranuleSize = Channels() * Granularity * sizeof(__int16);
+	unsigned GranuleSize = Channels() * Granularity * sizeof(WAVE_SAMPLE);
 
 	DWORD Pos = nSampleSize * (begin & -int(Granularity)) + dwDataChunkOffset;
 
@@ -1257,7 +1267,7 @@ void CWaveFile::RescanPeaks(long begin, long end)
 		{
 			unsigned i;
 			unsigned DataToProcess = lRead;
-			__int16 * pWaveData = (__int16 *) pBuf;
+			WAVE_SAMPLE * pWaveData = (WAVE_SAMPLE *) pBuf;
 			DWORD DataOffset = Pos - dwDataChunkOffset;
 			unsigned DataForGranule = GranuleSize - DataOffset % GranuleSize;
 
@@ -1307,7 +1317,7 @@ void CWaveFile::RescanPeaks(long begin, long end)
 					}
 
 					DataOffset += DataForGranule;
-					for (i = 0; i < DataForGranule / (sizeof(__int16) * 2); i++, pWaveData += 2)
+					for (i = 0; i < DataForGranule / (sizeof(WAVE_SAMPLE) * 2); i++, pWaveData += 2)
 					{
 						if (pWaveData[0] < wpl_l)
 						{
@@ -1372,7 +1382,7 @@ void CWaveFile::RescanPeaks(long begin, long end)
 					DataToProcess -= DataForGranule;
 					DataOffset += DataForGranule;
 
-					for (i = 0; i < DataForGranule / sizeof(__int16); i++, pWaveData ++)
+					for (i = 0; i < DataForGranule / sizeof(WAVE_SAMPLE); i++, pWaveData ++)
 					{
 						if (pWaveData[0] < wp_l)
 						{
@@ -1402,7 +1412,7 @@ void CWaveFile::RescanPeaks(long begin, long end)
 	}
 }
 
-WavePeak CWavePeaks::GetPeakMinMax(unsigned from, unsigned to, unsigned stride)
+WavePeak CWavePeaks::GetPeakMinMax(PEAK_INDEX from, PEAK_INDEX to, NUMBER_OF_CHANNELS stride)
 {
 
 	WavePeak peak;
@@ -1430,7 +1440,7 @@ WavePeak CWavePeaks::GetPeakMinMax(unsigned from, unsigned to, unsigned stride)
 	return peak;
 }
 
-void CWavePeaks::SetPeaks(unsigned from, unsigned to, unsigned stride, WavePeak value)
+void CWavePeaks::SetPeaks(PEAK_INDEX from, PEAK_INDEX to, NUMBER_OF_CHANNELS stride, WavePeak value)
 {
 	CSimpleCriticalSectionLock lock(m_PeakLock);
 
