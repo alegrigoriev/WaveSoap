@@ -3645,8 +3645,9 @@ void CWaveSoapFrontDoc::OnProcessChangevolume()
 	}
 
 	//CThisApp * pApp = GetApp();
-	CVolumeChangeDialog dlg(start, end, m_CaretPosition, channel, WaveFileSamples(),
-							WaveFormat(), m_bChannelsLocked, UndoEnabled(), GetApp()->m_SoundTimeFormat);
+	CVolumeChangeDialog dlg(start, end, m_CaretPosition, channel,
+							m_WavFile,
+							m_bChannelsLocked, UndoEnabled(), GetApp()->m_SoundTimeFormat);
 
 	if (IDOK != dlg.DoModal())
 	{
@@ -3847,8 +3848,8 @@ void CWaveSoapFrontDoc::OnProcessDcoffset()
 		channel = ALL_CHANNELS;
 	}
 
-	CDcOffsetDialog dlg;
 	CThisApp * pApp = GetApp();
+	CDcOffsetDialog dlg;
 	dlg.m_Start = start;
 	dlg.m_End = end;
 	dlg.m_CaretPosition = m_CaretPosition;
