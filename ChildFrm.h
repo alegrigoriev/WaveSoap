@@ -11,43 +11,6 @@
 #include "resource.h"
 /////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////
-// CChildViewDialogBar dialog
-
-class CChildViewDialogBar : public CDialog
-{
-// Construction
-public:
-	CChildViewDialogBar(CWnd* pParent = NULL);   // standard constructor
-
-// Dialog Data
-	//{{AFX_DATA(CChildViewDialogBar)
-	enum { IDD = IDD_DIALOGBAR_MDI_CHILD };
-	CButton	m_ClickRemoval;
-	CButton	m_HumReduction;
-	CButton	m_NoiseReduction;
-	CTabCtrl	m_TabViewSwitch;
-	//}}AFX_DATA
-
-
-// Overrides
-	// ClassWizard generated virtual function overrides
-	//{{AFX_VIRTUAL(CChildViewDialogBar)
-protected:
-	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV support
-	//}}AFX_VIRTUAL
-
-// Implementation
-protected:
-
-	// Generated message map functions
-	//{{AFX_MSG(CChildViewDialogBar)
-	afx_msg void OnSelchangeTabViewSwitch(NMHDR* pNMHDR, LRESULT* pResult);
-	afx_msg void OnSelchangeTabSwitchViewMode(NMHDR* pNMHDR, LRESULT* pResult);
-	virtual BOOL OnInitDialog();
-	//}}AFX_MSG
-	DECLARE_MESSAGE_MAP()
-};
-/////////////////////////////////////////////////////////////////////////////
 // CWaveMDIChildClient window
 
 class CWaveMDIChildClient : public CWnd
@@ -71,19 +34,23 @@ public:
 	virtual BOOL OnCmdMsg(UINT nID, int nCode, void* pExtra, AFX_CMDHANDLERINFO* pHandlerInfo);
 	//}}AFX_VIRTUAL
 	enum { HorizontalRulerID = 1,
-		VerticalRulerID,
+		VerticalWaveRulerID,
+		VerticalFftRulerID,
 		WaveViewID,
 		FftViewID,
 		ScaleStaticID,
+		Static1ID,
 		OutlineViewID};
 
 	CWnd wStatic;
+	CWnd wStatic1;
+	CScrollBar m_sb;
 // Implementation
 	BOOL m_bShowWaveform;
 	BOOL m_bShowFft;
 public:
 	virtual ~CWaveMDIChildClient();
-	void RecalcLayout(int cx, int cy);
+	void RecalcLayout();
 	// Generated message map functions
 protected:
 	//{{AFX_MSG(CWaveMDIChildClient)
@@ -93,6 +60,7 @@ protected:
 	afx_msg void OnUpdateViewShowFft(CCmdUI* pCmdUI);
 	afx_msg void OnViewWaveform();
 	afx_msg void OnUpdateViewWaveform(CCmdUI* pCmdUI);
+	afx_msg void OnHScroll(UINT nSBCode, UINT nPos, CScrollBar* pScrollBar);
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 };
@@ -107,9 +75,9 @@ public:
 // Attributes
 public:
 	CWaveMDIChildClient m_wClient;
-	CChildViewDialogBar m_dBar;
 // Operations
 public:
+	virtual void OnUpdateFrameTitle(BOOL bAddToTitle);
 
 // Overrides
 	// ClassWizard generated virtual function overrides
