@@ -3,6 +3,7 @@
 //
 
 #include "stdafx.h"
+#define _USE_MATH_DEFINES   // for M_PI definition
 #include "WaveSoapFront.h"
 #include "resource.h"
 #include "OperationDialogs.h"
@@ -12,7 +13,10 @@
 #include "SaveExpressionDialog.h"
 #include "DialogWithSelection.inl"
 #include "FileDialogWithHistory.h"
+
 #include <math.h>
+
+#define DB_TO_NEPER (0.1 * M_LN10)
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -2521,11 +2525,6 @@ void CNoiseReductionDialog::LoadValuesFromRegistry()
 	Profile.AddItem(_T("NoiseReduction"), _T("Aggressiveness"), m_dNoiseReductionAggressiveness, 1., 0.1, 3.);
 }
 
-
-#define DB_TO_NEPER 0.23025851
-#define M_PI        3.14159265358979323846
-#define M_PI_2      1.57079632679489661923
-#define M_PI_4      0.785398163397448309616
 
 void CNoiseReductionDialog::GetNoiseReductionData(NoiseReductionParameters * pNr)
 {
