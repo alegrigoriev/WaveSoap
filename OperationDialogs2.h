@@ -16,6 +16,7 @@
 
 class CInsertSilenceDialog : public CDialog
 {
+	typedef CDialog BaseClass;
 // Construction
 public:
 	CInsertSilenceDialog(SAMPLE_INDEX Start,
@@ -72,6 +73,7 @@ protected:
 
 class CSilenceOptionDialog : public CDialog
 {
+	typedef CDialog BaseClass;
 // Construction
 public:
 	CSilenceOptionDialog(CWnd* pParent = NULL);   // standard constructor
@@ -104,6 +106,7 @@ protected:
 
 class CWmpNotInstalleedWarningDlg : public CDialog
 {
+	typedef CDialog BaseClass;
 // Construction
 public:
 	CWmpNotInstalleedWarningDlg(CWnd* pParent = NULL);   // standard constructor
@@ -136,6 +139,7 @@ protected:
 #pragma pack(push, 8)
 class CCdGrabbingDialog : public CResizableDialog
 {
+	typedef CResizableDialog BaseClass;
 // Construction
 public:
 	CCdGrabbingDialog(CWnd* pParent = NULL);   // standard constructor
@@ -286,6 +290,7 @@ protected:
 
 class CReopenDialog : public CDialog
 {
+	typedef CDialog BaseClass;
 // Construction
 public:
 	CReopenDialog(CWnd* pParent = NULL);   // standard constructor

@@ -29,7 +29,7 @@ CInsertSilenceDialog::CInsertSilenceDialog(SAMPLE_INDEX Start,
 											int TimeFormat,
 											WAVEFORMATEX * pWf,
 											CWnd* pParent /*=NULL*/)
-	: CDialog(CInsertSilenceDialog::IDD, pParent)
+	: BaseClass(CInsertSilenceDialog::IDD, pParent)
 	, m_Length(Length)
 	, m_Start(Start)
 	, m_CaretPosition(Start)
@@ -63,7 +63,7 @@ CInsertSilenceDialog::CInsertSilenceDialog(SAMPLE_INDEX Start,
 
 void CInsertSilenceDialog::DoDataExchange(CDataExchange* pDX)
 {
-	CDialog::DoDataExchange(pDX);
+	BaseClass::DoDataExchange(pDX);
 	//{{AFX_DATA_MAP(CInsertSilenceDialog)
 	DDX_Control(pDX, IDC_SPIN_START, m_SpinStart);
 	DDX_Control(pDX, IDC_SPIN_LENGTH, m_SpinLength);
@@ -80,7 +80,7 @@ void CInsertSilenceDialog::DoDataExchange(CDataExchange* pDX)
 }
 
 
-BEGIN_MESSAGE_MAP(CInsertSilenceDialog, CDialog)
+BEGIN_MESSAGE_MAP(CInsertSilenceDialog, BaseClass)
 	//{{AFX_MSG_MAP(CInsertSilenceDialog)
 	ON_CBN_SELCHANGE(IDC_COMBO_TIME_FORMAT, OnSelchangeComboTimeFormat)
 	ON_EN_KILLFOCUS(IDC_EDIT_LENGTH, OnKillfocusEditLength)
@@ -126,7 +126,7 @@ void CInsertSilenceDialog::OnSelchangeComboTimeFormat()
 
 BOOL CInsertSilenceDialog::OnInitDialog()
 {
-	CDialog::OnInitDialog();
+	BaseClass::OnInitDialog();
 
 	m_eStart.AddPosition(IDS_BEGIN_OF_SAMPLE, 0);
 	if (m_CaretPosition != 0
@@ -158,7 +158,7 @@ void CInsertSilenceDialog::OnKillfocusEditStart()
 
 
 CSilenceOptionDialog::CSilenceOptionDialog(CWnd* pParent /*=NULL*/)
-	: CDialog(CSilenceOptionDialog::IDD, pParent)
+	: BaseClass(CSilenceOptionDialog::IDD, pParent)
 {
 	//{{AFX_DATA_INIT(CSilenceOptionDialog)
 	// NOTE: the ClassWizard will add member initialization here
@@ -168,14 +168,14 @@ CSilenceOptionDialog::CSilenceOptionDialog(CWnd* pParent /*=NULL*/)
 
 void CSilenceOptionDialog::DoDataExchange(CDataExchange* pDX)
 {
-	CDialog::DoDataExchange(pDX);
+	BaseClass::DoDataExchange(pDX);
 	//{{AFX_DATA_MAP(CSilenceOptionDialog)
 	// NOTE: the ClassWizard will add DDX and DDV calls here
 	//}}AFX_DATA_MAP
 }
 
 
-BEGIN_MESSAGE_MAP(CSilenceOptionDialog, CDialog)
+BEGIN_MESSAGE_MAP(CSilenceOptionDialog, BaseClass)
 	//{{AFX_MSG_MAP(CSilenceOptionDialog)
 	ON_BN_CLICKED(IDC_BUTTON_SILENCE, OnButtonSilence)
 	//}}AFX_MSG_MAP
@@ -190,7 +190,7 @@ void CSilenceOptionDialog::OnButtonSilence()
 }
 /////////////////////////////////////////////////////////////////
 CWmpNotInstalleedWarningDlg::CWmpNotInstalleedWarningDlg(CWnd* pParent /*=NULL*/)
-	: CDialog(CWmpNotInstalleedWarningDlg::IDD, pParent)
+	: BaseClass(CWmpNotInstalleedWarningDlg::IDD, pParent)
 {
 	//{{AFX_DATA_INIT(CWmpNotInstalleedWarningDlg)
 	m_DontShowAnymore = FALSE;
@@ -200,21 +200,21 @@ CWmpNotInstalleedWarningDlg::CWmpNotInstalleedWarningDlg(CWnd* pParent /*=NULL*/
 
 void CWmpNotInstalleedWarningDlg::DoDataExchange(CDataExchange* pDX)
 {
-	CDialog::DoDataExchange(pDX);
+	BaseClass::DoDataExchange(pDX);
 	//{{AFX_DATA_MAP(CWmpNotInstalleedWarningDlg)
 	DDX_Check(pDX, IDC_CHECK_DONT_SHOW_THIS, m_DontShowAnymore);
 	//}}AFX_DATA_MAP
 }
 
 
-BEGIN_MESSAGE_MAP(CWmpNotInstalleedWarningDlg, CDialog)
+BEGIN_MESSAGE_MAP(CWmpNotInstalleedWarningDlg, BaseClass)
 	//{{AFX_MSG_MAP(CWmpNotInstalleedWarningDlg)
 	//}}AFX_MSG_MAP
 END_MESSAGE_MAP()
 
 /////////////////////////////////////////////////////////////////////////
 CCdGrabbingDialog::CCdGrabbingDialog(CWnd* pParent /*=NULL*/)
-	: CResizableDialog(CCdGrabbingDialog::IDD, pParent)
+	: BaseClass(CCdGrabbingDialog::IDD, pParent)
 	, m_Profile()
 	, m_AlbumHistory( & m_Profile, _T("CdRead"), _T("Album%d"), 15, CStringHistory::CaseSensitive)
 	, m_ArtistHistory( & m_Profile, _T("CdRead"), _T("Artist%d"), 15, CStringHistory::CaseSensitive)
@@ -322,7 +322,7 @@ CCdGrabbingDialog::~CCdGrabbingDialog()
 
 void CCdGrabbingDialog::DoDataExchange(CDataExchange* pDX)
 {
-	CResizableDialog::DoDataExchange(pDX);
+	BaseClass::DoDataExchange(pDX);
 	//{{AFX_DATA_MAP(CCdGrabbingDialog)
 	DDX_Control(pDX, IDC_BUTTON_EJECT, m_EjectButton);
 	DDX_Control(pDX, IDC_COMBO_BITRATE, m_ComboBitrate);
@@ -506,7 +506,7 @@ void CCdGrabbingDialog::DoDataExchange(CDataExchange* pDX)
 	}
 }
 
-BEGIN_MESSAGE_MAP(CCdGrabbingDialog, CResizableDialog)
+BEGIN_MESSAGE_MAP(CCdGrabbingDialog, BaseClass)
 	//{{AFX_MSG_MAP(CCdGrabbingDialog)
 	ON_WM_SIZE()
 	ON_WM_TIMER()
@@ -833,7 +833,7 @@ void CCdGrabbingDialog::CreateImageList()
 
 BOOL CCdGrabbingDialog::OnInitDialog()
 {
-	CResizableDialog::OnInitDialog();
+	BaseClass::OnInitDialog();
 
 	HICON hIcon = AfxGetApp()->LoadIcon(IDI_ICON_CD);
 	SetIcon(hIcon, TRUE);			// Set big icon
@@ -895,7 +895,7 @@ BOOL CCdGrabbingDialog::OnInitDialog()
 void CCdGrabbingDialog::OnSize(UINT nType, int cx, int cy)
 {
 	CSize PrevSize = m_PrevSize;
-	CResizableDialog::OnSize(nType, cx, cy);
+	BaseClass::OnSize(nType, cx, cy);
 
 	// invalidate an area which is (after resizing) occupied by size grip
 	int dx = m_PrevSize.cx - PrevSize.cx;
@@ -913,7 +913,7 @@ void CCdGrabbingDialog::OnSize(UINT nType, int cx, int cy)
 
 
 CReopenDialog::CReopenDialog(CWnd* pParent /*=NULL*/)
-	: CDialog(CReopenDialog::IDD, pParent)
+	: BaseClass(CReopenDialog::IDD, pParent)
 {
 	//{{AFX_DATA_INIT(CReopenDialog)
 	m_Prompt = _T("");
@@ -923,14 +923,14 @@ CReopenDialog::CReopenDialog(CWnd* pParent /*=NULL*/)
 
 void CReopenDialog::DoDataExchange(CDataExchange* pDX)
 {
-	CDialog::DoDataExchange(pDX);
+	BaseClass::DoDataExchange(pDX);
 	//{{AFX_DATA_MAP(CReopenDialog)
 	DDX_Text(pDX, IDC_STATIC_PROMPT, m_Prompt);
 	//}}AFX_DATA_MAP
 }
 
 
-BEGIN_MESSAGE_MAP(CReopenDialog, CDialog)
+BEGIN_MESSAGE_MAP(CReopenDialog, BaseClass)
 	//{{AFX_MSG_MAP(CReopenDialog)
 	ON_BN_CLICKED(IDNO, OnNo)
 	//}}AFX_MSG_MAP
@@ -950,7 +950,7 @@ int CInsertSilenceDialog::DoModal()
 	{
 		m_lpszTemplateName = MAKEINTRESOURCE(IDD_DIALOG_INSERT_SILENCE_MONO);
 	}
-	return CDialog::DoModal();
+	return BaseClass::DoModal();
 }
 
 void CCdGrabbingDialog::OnTimer(UINT nIDEvent)
@@ -1029,7 +1029,7 @@ void CCdGrabbingDialog::OnDestroy()
 {
 	KillTimer(1);
 	StopCdPlayback();
-	CResizableDialog::OnDestroy();
+	BaseClass::OnDestroy();
 
 }
 
@@ -1309,7 +1309,7 @@ BOOL CCdGrabbingDialog::PreTranslateMessage(MSG* pMsg)
 		}
 	}
 
-	return CResizableDialog::PreTranslateMessage(pMsg);
+	return BaseClass::PreTranslateMessage(pMsg);
 }
 
 void CCdGrabbingDialog::OnUpdateOk(CCmdUI* pCmdUI)
@@ -1538,7 +1538,7 @@ void CCdGrabbingDialog::OnCancel()
 	}
 	//CStringW DosDevices;
 	//QueryDosDeviceW(_T("E:"), DosDevices.GetBuffer(4096), 4095);
-	CResizableDialog::OnCancel();
+	BaseClass::OnCancel();
 }
 
 void CCdGrabbingDialog::OnOK()
@@ -1548,12 +1548,12 @@ void CCdGrabbingDialog::OnOK()
 	m_DlgWidth = r.Width();
 	m_DlgHeight = r.Height();
 
-	CResizableDialog::OnOK();
+	BaseClass::OnOK();
 }
 
 void CCdGrabbingDialog::OnContextMenu(CWnd* pWnd, CPoint point)
 {
-	CResizableDialog::OnContextMenu(pWnd, point);
+	BaseClass::OnContextMenu(pWnd, point);
 	return;
 	CRect cr;
 	m_lbTracks.GetClientRect( & cr);
@@ -1718,7 +1718,7 @@ void CCdGrabbingDialog::FillFormatCombo()
 
 void CCdGrabbingDialog::OnSysColorChange()
 {
-	CResizableDialog::OnSysColorChange();
+	BaseClass::OnSysColorChange();
 
 	CreateImageList();
 }
