@@ -1087,7 +1087,12 @@ BOOL CWaveFftView::MasterScrollBy(double dx, double dy, BOOL bDoScroll)
 		CWaveSoapFrontDoc * pDoc = GetDocument();
 		CRect r;
 		GetClientRect( & r);
-		int nHeight = r.Height() / pDoc->WaveChannels();
+		int nHeight = r.Height();
+		int nChannels = pDoc->WaveChannels();
+		if (0 != nChannels)
+		{
+			nHeight /= nChannels;
+		}
 		double offset = m_FirstbandVisible + -m_FftOrder * ndy / (nHeight * m_VerticalScale);
 		// find max and min offset for this scale
 		double MaxOffset = m_FftOrder * (1 - 1. / m_VerticalScale);
