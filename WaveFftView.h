@@ -10,7 +10,7 @@
 /////////////////////////////////////////////////////////////////////////////
 // CWaveFftView view
 
-class CWaveFftView : public CView
+class CWaveFftView : public CWaveSoapFrontView
 {
 protected:
 	CWaveFftView();           // protected constructor used by dynamic creation
@@ -37,10 +37,24 @@ protected:
 	virtual void Dump(CDumpContext& dc) const;
 #endif
 
+	unsigned char * m_pFftResultArray;
+	size_t m_FftArraySize;
+	int m_FftResultArrayWidth;    // number of FFT sets
+	int m_FftResultArrayHeight;   // number of frequencies
+	int m_FftResultBegin;     // number of the first sample
+	int m_FftResultEnd;     // number of the sample after the last
+	//int m_FftSamplesCalculated;
+	double m_FftLogRange;     // what dB zero value corresponds
+	float * m_pFftWindow;
+	int m_FftOrder;
+	int m_FftSpacing;
+	void MakeFftArray(int left, int right);
+	void CalculateFftRange(int left, int right);
 	// Generated message map functions
 protected:
 	//{{AFX_MSG(CWaveFftView)
-	// NOTE - the ClassWizard will add and remove member functions here.
+	afx_msg void OnPaint();
+	afx_msg BOOL OnEraseBkgnd(CDC* pDC);
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 };
