@@ -337,36 +337,62 @@ void CWaveFftView::OnDraw(CDC* pDC)
 		{
 			nColumns = r.right - col;
 		}
-		BYTE * pChBmp = pColBmp;
 		if (pData[0])
-			//if (nColumns != 1)
 		{
-			for (ff = 0, pId = pIdArray; ff < IdxSize; ff++, pId++)
+			pData++;
+			for (int ch = 0, nFftChOffset = 1, nBmpChOffset = 0; ch < nChannels; ch++,
+				nBmpChOffset += nChanOffset, pData += m_FftOrder)
 			{
-				for (int ch = 0, nFftChOffset = 1, nBmpChOffset = 0; ch < nChannels; ch++,
-					nBmpChOffset += nChanOffset, nFftChOffset += m_FftOrder)
+				BYTE * pRgb = pColBmp + nBmpChOffset;
+				if (nColumns != 1)
 				{
-					BYTE * pRgb = pChBmp + nBmpChOffset;
-					unsigned char const * pColor = & palette[pData[pId->nFftOffset + nFftChOffset] * 3];
-					// set the color to pId->nNumOfRows rows
-					for (int y = 0; y < pId->nNumOfRows; y++, pRgb += stride - nColumns * 3)
+					for (ff = 0, pId = pIdArray; ff < IdxSize; ff++, pId++)
 					{
-						// set the color to nColumns pixels across
-						for (int x = 0; x < nColumns; x++, pRgb += 3)
+						unsigned char const * pColor = & palette[pData[pId->nFftOffset] * 3];
+						// set the color to pId->nNumOfRows rows
+						unsigned char r = pColor[0];
+						unsigned char g = pColor[1];
+						unsigned char b = pColor[2];
+						for (int y = 0; y < pId->nNumOfRows; y++, pRgb += stride - nColumns * 3)
 						{
-							ASSERT(pRgb >= pBmp && pRgb + 3 <= pBmp + BmpSize);
-							pRgb[0] = pColor[2];    // B
-							pRgb[1] = pColor[1];    // G
-							pRgb[2] = pColor[0];    // R
+							// set the color to nColumns pixels across
+							for (int x = 0; x < nColumns; x++, pRgb += 3)
+							{
+								ASSERT(pRgb >= pBmp && pRgb + 3 <= pBmp + BmpSize);
+								pRgb[0] = b;    // B
+								pRgb[1] = g;    // G
+								pRgb[2] = r;    // R
+							}
 						}
 					}
 				}
-				pChBmp += stride * pId->nNumOfRows;
+				else
+				{
+					for (ff = 0, pId = pIdArray; ff < IdxSize; ff++, pId++)
+					{
+						unsigned char const * pColor = & palette[pData[pId->nFftOffset] * 3];
+						// set the color to pId->nNumOfRows rows
+						unsigned char r = pColor[0];
+						unsigned char g = pColor[1];
+						unsigned char b = pColor[2];
+						for (int y = 0; y < pId->nNumOfRows; y++, pRgb += stride)
+						{
+							// set the color
+							ASSERT(pRgb >= pBmp && pRgb + 3 <= pBmp + BmpSize);
+							pRgb[0] = b;    // B
+							pRgb[1] = g;    // G
+							pRgb[2] = r;    // R
+						}
+					}
+				}
 			}
+		}
+		else
+		{
+			pData += m_FftResultArrayHeight;
 		}
 		col += nColumns;
 		pColBmp += nColumns * BytesPerPixel;
-		pData += m_FftResultArrayHeight;
 		nColumns = ColsPerFftPoint;
 	}
 	delete[] pIdArray;
@@ -538,9 +564,9 @@ void CWaveFftView::CalculateFftRange(int left, int right)
 			// Hamming window (sucks!!!)
 			//m_pFftWindow[w] = float(0.54 - 0.46 * cos (w * M_PI /  m_FftOrder));
 			// squared sine
-			//m_pFftWindow[w] = float(0.5 - 0.5 * cos ((w + 0.5) * M_PI /  m_FftOrder));
-			// half size is the best so far
-			m_pFftWindow[w] = float(0.707107 * sin (w * M_PI /  (2*m_FftOrder)));
+			m_pFftWindow[w] = float(0.5 - 0.5 * cos ((w + 0.5) * M_PI /  m_FftOrder));
+			// half sine is the best so far
+			//m_pFftWindow[w] = float(0.707107 * sin (w * M_PI /  (2*m_FftOrder)));
 		}
 	}
 
@@ -648,11 +674,11 @@ void CWaveFftView::OnPaint()
 		CRect r;
 		UpdRgn.GetRgnBox( & r);
 		TRACE("Update region width=%d\n", r.Width());
-		if (r.Width() > 64)
+		if (r.Width() > 128)
 		{
-			r.right = r.left + 64;
+			r.right = r.left + 128;
 			RectToDraw.CreateRectRgnIndirect( & r);
-			// init the hcndle
+			// init the handle
 			InvalidRgn.CreateRectRgn(0, 0, 1, 1);
 			InvalidRgn.CombineRgn( & UpdRgn, & RectToDraw, RGN_DIFF);
 			UpdRgn.CombineRgn( & UpdRgn, & RectToDraw, RGN_AND);
