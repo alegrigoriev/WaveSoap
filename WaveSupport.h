@@ -303,7 +303,7 @@ public:
 	CWaveDevice();
 	virtual ~CWaveDevice();
 
-	virtual BOOL IsOpen() = 0;
+	virtual BOOL IsOpen() const = 0;
 	BOOL AllocateBuffers(size_t size = 8192, int count = 4);
 	int GetBuffer(char ** ppbuf, size_t * pSize, BOOL bWait = TRUE);
 	BOOL ReturnBuffer(UINT hBuffer);    // return unused buffer
@@ -342,20 +342,38 @@ public:
 	CWaveOut();
 	virtual ~CWaveOut();
 
-	virtual BOOL IsOpen() { return m_hwo != NULL; }
+	static UINT GetNumDevs()
+	{
+		return waveOutGetNumDevs();
+	}
+
+	static MMRESULT GetDevCaps(UINT_PTR id, LPWAVEOUTCAPS pCaps)
+	{
+		return waveOutGetDevCaps(id, pCaps, sizeof *pCaps);
+	}
+
+	virtual BOOL IsOpen() const
+	{
+		return m_hwo != NULL;
+	}
+
 	MMRESULT Open(UINT id, const WAVEFORMATEX * pwfe, DWORD dwAuxFlags = 0u);
 	MMRESULT Open(LPCSTR szName, const WAVEFORMATEX * pwfe, DWORD dwAuxFlags = 0u);
+
+	MMRESULT GetDevCaps(LPWAVEOUTCAPS pCaps) const;
+
 	MMRESULT Close();
 	MMRESULT Reset();
 	MMRESULT Pause();
 	MMRESULT Resume();
 	MMRESULT BreakLoop();
-	DWORD GetPosition(UINT type=TIME_SAMPLES);
+	DWORD GetPosition(UINT type=TIME_SAMPLES) const;
 
 	MMRESULT Play(UINT hBuffer, unsigned UsedSize, DWORD AuxFlags = 0);
 
 private:
 	HWAVEOUT m_hwo;
+
 	virtual MMRESULT Unprepare(UINT index);
 	static void CALLBACK waveOutProc(HWAVEOUT hwo,
 									UINT uMsg,	DWORD_PTR dwInstance, DWORD_PTR dwParam1,
@@ -373,9 +391,25 @@ public:
 	CWaveIn();
 	virtual ~CWaveIn();
 
-	virtual BOOL IsOpen() { return m_hwi != NULL; }
+	static UINT GetNumDevs()
+	{
+		return waveInGetNumDevs();
+	}
+
+	static MMRESULT GetDevCaps(UINT_PTR id, LPWAVEINCAPS pCaps)
+	{
+		return waveInGetDevCaps(id, pCaps, sizeof *pCaps);
+	}
+
+	virtual BOOL IsOpen() const
+	{
+		return m_hwi != NULL;
+	}
 	MMRESULT Open(UINT id, const WAVEFORMATEX * pwfe, DWORD dwAuxFlags = 0u);
 	MMRESULT Open(LPCSTR szName, const WAVEFORMATEX * pwfe, DWORD dwAuxFlags = 0u);
+
+	MMRESULT GetDevCaps(LPWAVEINCAPS pCaps) const;
+
 	MMRESULT Close();
 	MMRESULT Reset();
 	MMRESULT Start();
@@ -386,7 +420,7 @@ public:
 private:
 	virtual MMRESULT Unprepare(UINT index);
 	HWAVEIN m_hwi;
-	DWORD GetPosition(UINT type=TIME_SAMPLES);
+	DWORD GetPosition(UINT type=TIME_SAMPLES) const;
 	static void CALLBACK waveInProc(HWAVEIN hwi,
 									UINT uMsg,	DWORD_PTR dwInstance, DWORD dwParam1,
 									DWORD dwParam2	);

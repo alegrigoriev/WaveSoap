@@ -298,7 +298,7 @@ MMRESULT CWaveOut::Resume()
 	return waveOutRestart(m_hwo);
 }
 
-DWORD CWaveOut::GetPosition(UINT type)
+DWORD CWaveOut::GetPosition(UINT type) const
 {
 	ASSERT(this != NULL);
 	ASSERT(TIME_SAMPLES == type || TIME_BYTES == type
@@ -356,6 +356,15 @@ void CALLBACK CWaveOut::waveOutProc(HWAVEOUT hwo,
 	}
 }
 
+MMRESULT CWaveOut::GetDevCaps(LPWAVEOUTCAPS pCaps) const
+{
+	if ( ! IsOpen())
+	{
+		return MMSYSERR_INVALHANDLE;
+	}
+
+	return waveOutGetDevCaps(UINT_PTR(m_hwo), pCaps, sizeof *pCaps);
+}
 /////////////////////////////////
 // CWaveIn stuff
 /////////////////////////////////
@@ -480,7 +489,7 @@ MMRESULT CWaveIn::Start()
 	return waveInStart(m_hwi);
 }
 
-DWORD CWaveIn::GetPosition(UINT type)
+DWORD CWaveIn::GetPosition(UINT type) const
 {
 	ASSERT(this != NULL);
 	ASSERT(TIME_SAMPLES == type || TIME_BYTES == type
@@ -508,7 +517,20 @@ void CALLBACK CWaveIn::waveInProc(HWAVEIN /*hwi*/,
 								UINT /*uMsg*/,	DWORD_PTR /*dwInstance*/, DWORD /*dwParam1*/,
 								DWORD /*dwParam2*/	)
 {
+	// TODO
 }
+
+MMRESULT CWaveIn::GetDevCaps(LPWAVEINCAPS pCaps) const
+{
+	if ( ! IsOpen())
+	{
+		return MMSYSERR_INVALHANDLE;
+	}
+
+	return waveInGetDevCaps(UINT_PTR(m_hwi), pCaps, sizeof *pCaps);
+}
+/////////////////////////////////////////////////////////////
+/////////CWaveFormat
 
 WAVEFORMATEX * CopyWaveformat(const WAVEFORMATEX * src)
 {
