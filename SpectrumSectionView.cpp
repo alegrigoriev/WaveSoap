@@ -14,7 +14,7 @@ static char THIS_FILE[] = __FILE__;
 /////////////////////////////////////////////////////////////////////////////
 // CSpectrumSectionView
 
-IMPLEMENT_DYNCREATE(CSpectrumSectionView, CView)
+IMPLEMENT_DYNCREATE(CSpectrumSectionView, CScaledScrollView)
 
 CSpectrumSectionView::CSpectrumSectionView()
 {
@@ -25,7 +25,7 @@ CSpectrumSectionView::~CSpectrumSectionView()
 }
 
 
-BEGIN_MESSAGE_MAP(CSpectrumSectionView, CView)
+BEGIN_MESSAGE_MAP(CSpectrumSectionView, CScaledScrollView)
 	//{{AFX_MSG_MAP(CSpectrumSectionView)
 		// NOTE - the ClassWizard will add and remove mapping macros here.
 	//}}AFX_MSG_MAP
@@ -36,7 +36,7 @@ END_MESSAGE_MAP()
 
 void CSpectrumSectionView::OnDraw(CDC* pDC)
 {
-	CDocument* pDoc = GetDocument();
+	CWaveSoapFrontDoc* pDoc = GetDocument();
 	// TODO: add draw code here
 }
 
@@ -46,14 +46,20 @@ void CSpectrumSectionView::OnDraw(CDC* pDC)
 #ifdef _DEBUG
 void CSpectrumSectionView::AssertValid() const
 {
-	CView::AssertValid();
+	CScaledScrollView::AssertValid();
 }
 
 void CSpectrumSectionView::Dump(CDumpContext& dc) const
 {
-	CView::Dump(dc);
+	CScaledScrollView::Dump(dc);
+}
+CWaveSoapFrontDoc* CSpectrumSectionView::GetDocument() // non-debug version is inline
+{
+	ASSERT(m_pDocument->IsKindOf(RUNTIME_CLASS(CWaveSoapFrontDoc)));
+	return (CWaveSoapFrontDoc*)m_pDocument;
 }
 #endif //_DEBUG
 
 /////////////////////////////////////////////////////////////////////////////
 // CSpectrumSectionView message handlers
+/////////////////////////////////////////////////////////////////////////////

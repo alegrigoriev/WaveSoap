@@ -11,6 +11,7 @@
 #include "FftRulerView.h"
 #include "WaveFftView.h"
 #include "WaveOutlineView.h"
+#include "SpectrumSectionView.h"
 #include <afxpriv.h>
 
 #ifdef _DEBUG
@@ -581,6 +582,9 @@ int CWaveMDIChildClient::OnCreate(LPCREATESTRUCT lpCreateStruct)
 	CWnd * pView = CreateView(RUNTIME_CLASS(CWaveSoapFrontView),
 							r10, WaveViewID, pContext);
 
+	CWnd * pTrackView = CreateView(RUNTIME_CLASS(CSpectrumSectionView),
+									r10, SpectrumSectionViewID, pContext);
+
 	if (pView && pFftView)
 	{
 		(DYNAMIC_DOWNCAST(CScaledScrollView, pFftView))->SyncHorizontal
@@ -756,3 +760,46 @@ void CWaveMDIChildClient::OnViewVerticalRuler()
 	m_bShowVerticalRuler = ! m_bShowVerticalRuler;
 	RecalcLayout();
 }
+
+// CVerticalTrackerBar
+
+CVerticalTrackerBar::CVerticalTrackerBar()
+{
+}
+
+CVerticalTrackerBar::~CVerticalTrackerBar()
+{
+}
+
+
+BEGIN_MESSAGE_MAP(CVerticalTrackerBar, CWnd)
+	//{{AFX_MSG_MAP(CVerticalTrackerBar)
+		// NOTE - the ClassWizard will add and remove mapping macros here.
+	//}}AFX_MSG_MAP
+END_MESSAGE_MAP()
+
+/////////////////////////////////////////////////////////////////////////////
+// CVerticalTrackerBar drawing
+
+void CVerticalTrackerBar::OnDraw(CDC* pDC)
+{
+	// TODO: add draw code here
+}
+
+/////////////////////////////////////////////////////////////////////////////
+// CVerticalTrackerBar diagnostics
+
+#ifdef _DEBUG
+void CVerticalTrackerBar::AssertValid() const
+{
+	CWnd::AssertValid();
+}
+
+void CVerticalTrackerBar::Dump(CDumpContext& dc) const
+{
+	CWnd::Dump(dc);
+}
+#endif //_DEBUG
+
+/////////////////////////////////////////////////////////////////////////////
+// CVerticalTrackerBar message handlers

@@ -47,6 +47,7 @@
 #define IDD_DIALOG_EXPRESSION_EVALUATION 151
 #define IDC_CURSOR_BEAM_RIGHT           152
 #define IDD_DIALOG_DECLICKING           152
+#define IDD_DIALOG_NOISE_REDUCTION      153
 #define IDC_EDIT_MIN_CLICK_AMPLITUDE    1000
 #define IDC_TAB_SWITCH_VIEW_MODE        1000
 #define IDC_CHECK_LOG_CLICKS            1001
@@ -102,23 +103,22 @@
 #define IDC_SLIDER_VOLUME_LEFT          1028
 #define IDC_BUTTON_RESET_DEFAULT        1029
 #define IDC_EDIT_VOLUME_LEFT            1029
-#define IDC_BUTTON_REVERT_INITIAL       1030
 #define IDC_BUTTON_SELECTION            1030
 #define IDC_SLIDER_TEMPO                1030
-#define IDC_BUTTON_MORE_SETTINGS        1031
 #define IDC_STATIC_SELECTION            1031
 #define IDC_EDIT_TEMPO                  1031
-#define IDC_EDIT_AGGRESSIVNESS          1032
 #define IDC_CHECK_UNDO                  1032
 #define IDC_EDIT_NEAR_MASKING_COEFF     1033
 #define IDC_SLIDER_VOLUME_RIGHT         1033
 #define IDC_BUTTON_REVERT_INITIAL2      1033
+#define IDC_EDIT_AGGRESSIVNESS          1033
 #define IDC_EDIT_NEAR_MASKING_DISTANCE_HIGH 1034
 #define IDC_CHECK_DEHUMMING             1034
 #define IDC_BUTTON_MORE_SETTINGS2       1034
 #define IDC_EDIT_FAR_MASKING_COEFF      1035
 #define IDC_CHECK_DECLICKING            1035
 #define IDC_EDIT_VOLUME_RIGHT           1035
+#define IDC_EDIT_AGGRESSIVNESS2         1035
 #define IDC_EDIT4                       1036
 #define IDC_CHECKLOCK_CHANNELS          1036
 #define IDC_EDIT_NEAR_MASKING_DISTANCE_LOW 1037
@@ -150,6 +150,8 @@
 #define IDC_EDIT_DIFF_NOISE_RANGE       1058
 #define IDC_EDIT_LF_NOISE_RANGE         1059
 #define IDC_EDIT_EXPRESSION             1059
+#define IDC_BUTTON_REVERT_INITIAL       1061
+#define IDC_BUTTON_MORE_SETTINGS        1062
 #define IDC_VIEW_RULER_SAMPLES          32771
 #define IDC_VIEW_RULER_HHMMSS           32772
 #define IDC_VIEW_RULER_SECONDS          32773
@@ -269,15 +271,16 @@
 #define ID_VIEW_ZOOM_SELECTION          40060
 #define ID_TOOLS_OPTIONS                40062
 #define ID_TOOLS_INTERPOLATE            40063
+#define ID_VIEW_SPECTRUMSECTION         40066
 
 // Next default values for new objects
 //
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_3D_CONTROLS                     1
-#define _APS_NEXT_RESOURCE_VALUE        147
-#define _APS_NEXT_COMMAND_VALUE         40066
-#define _APS_NEXT_CONTROL_VALUE         1060
+#define _APS_NEXT_RESOURCE_VALUE        149
+#define _APS_NEXT_COMMAND_VALUE         40067
+#define _APS_NEXT_CONTROL_VALUE         1070
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif
