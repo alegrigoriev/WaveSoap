@@ -157,6 +157,7 @@ class CWnd;
     typedef void (CWnd::* fAfxSig_vwww)(UINT, UINT, UINT);
     typedef void (CWnd::* fAfxSig_vwii)(UINT, int, int);
     typedef void (CWnd::* fAfxSig_vwl)(UINT, LPARAM);
+    typedef void (CWinThread::* ftAfxSig_vwl)(UINT, LPARAM);
     typedef void (CWnd::* fAfxSig_vbWW)(BOOL, CWnd*, CWnd*);
     typedef void (CWnd::* fAfxSig_vD)(CDC*);
     typedef void (CWnd::* fAfxSig_vM)(CMenu*);
@@ -776,12 +777,12 @@ class CWnd;
 // for Thread messages
 #define ON_THREAD_MESSAGE(message, memberFxn) \
 	{ message, 0, 0, 0, AfxSig_vwl, \
-		(AFX_PMSG)(AFX_PMSGT)(void (AFX_MSG_CALL CWinThread::*)(WPARAM, LPARAM))&memberFxn },
+		(AFX_PMSG)static_cast<ftAfxSig_vwl>(memberFxn) },
 
 // for Registered Windows messages
 #define ON_REGISTERED_THREAD_MESSAGE(nMessageVariable, memberFxn) \
 	{ 0xC000, 0, 0, 0, (UINT)(UINT*)(&nMessageVariable), \
 		/*implied 'AfxSig_vwl'*/ \
-		(AFX_PMSG)(AFX_PMSGT)(void (AFX_MSG_CALL CWinThread::*)(WPARAM, LPARAM))&memberFxn },
+		(AFX_PMSG)static_cast<ftAfxSig_vwl>(memberFxn) },
 
 /////////////////////////////////////////////////////////////////////////////
