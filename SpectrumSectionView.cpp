@@ -101,6 +101,15 @@ void CSpectrumSectionView::OnDraw(CDC* pDC)
 		NumberOfFftSamplesAveraged = 4;
 		nStartSample = m_PlaybackSample;
 	}
+	if (nStartSample > m_FftOrder)
+	{
+		nStartSample -= m_FftOrder;
+	}
+	else
+	{
+		nStartSample = 0;
+	}
+
 	DWORD start = nStartSample * nSampleSize + pDoc->WaveDataChunk()->dwDataOffset;
 	DWORD FftStepInFile = m_FftOrder * nSampleSize;
 
@@ -309,7 +318,7 @@ void CSpectrumSectionView::OnDraw(CDC* pDC)
 	// now that we have calculated the FFT
 	for (ch = 0; ch < nChannels; ch++)
 	{
-		int ChannelOffset = rows * (nChannels - 1 - ch);
+		int ChannelOffset = rows * ch;//(nChannels - 1 - ch);
 		for (i = 0; i < IdxSize; i++)
 		{
 			pIdArray[i].nMin = 0x7FFFFF;

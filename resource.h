@@ -7,6 +7,7 @@
 #define IDD_FUNCTIONS_TAB               102
 #define IDD_PROPPAGE_DECLICK            104
 #define IDD_PROPPAGE_NOISEREDUCT        106
+#define IDD_PROPPAGE_FILE_PREFERENCES   106
 #define IDR_MAINFRAME                   128
 #define IDR_WAVESOTYPE                  129
 #define IDR_MENU_TIME_RULER             130
@@ -79,6 +80,8 @@
 #define IDD_DIALOG_NEW_FILE_PARAMETERS  166
 #define IDD_DIALOG_OPEN_TEMPLATE_V4     167
 #define IDD_DIALOG_SAVE_TEMPLATE_V5     168
+#define IDD_PROPPAGE_VIEW_PREFERENCES   169
+#define IDD_PROPPAGE_PLAYBACK_PREFERENCES 170
 #define IDC_EDIT_MIN_CLICK_AMPLITUDE    1000
 #define IDC_TAB_SWITCH_VIEW_MODE        1000
 #define IDC_CHECK_LOG_CLICKS            1001
@@ -429,6 +432,10 @@
 #define ID_FFT_WINDOW_SQUARED_SINE      40089
 #define ID_FFT_WINDOW_SINE              40090
 #define ID_FFT_WINDOW_HAMMING           40091
+#define ID_EDIT_ENABLE_UNDO             40094
+#define ID_EDIT_ENABLE_REDO             40095
+#define ID_EDIT_CLEAR_UNDO              40096
+#define ID_EDIT_CLEAR_REDO              40097
 
 // Next default values for new objects
 //
@@ -436,7 +443,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_3D_CONTROLS                     1
 #define _APS_NEXT_RESOURCE_VALUE        168
-#define _APS_NEXT_COMMAND_VALUE         40092
+#define _APS_NEXT_COMMAND_VALUE         40098
 #define _APS_NEXT_CONTROL_VALUE         1122
 #define _APS_NEXT_SYMED_VALUE           101
 #endif

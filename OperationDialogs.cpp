@@ -91,11 +91,12 @@ CVolumeChangeDialog::CVolumeChangeDialog(CWnd* pParent /*=NULL*/)
 	m_DbPercent = 0;
 	//}}AFX_DATA_INIT
 	// m_DbPercent: 0 = Decibel, 1 - Percent
-	m_dVolumeLeftDb = 0.;
-	m_dVolumeRightDb = 0.;
-	m_dVolumeLeftPercent = 100.;
-	m_dVolumeRightPercent = 100.;
 
+	m_Profile.AddItem(_T("Settings"), _T("VolumeDialogDbPercents"), m_DbPercent, 0, 0, 1);
+	m_Profile.AddItem(_T("Settings"), _T("VolumeLeftDb"), m_dVolumeLeftDb, 0., -40., 40.);
+	m_Profile.AddItem(_T("Settings"), _T("VolumeLeftPercent"), m_dVolumeLeftPercent, 100., 1., 10000.);
+	m_Profile.AddItem(_T("Settings"), _T("VolumeRightDb"), m_dVolumeRightDb, 0., -40., 40.);
+	m_Profile.AddItem(_T("Settings"), _T("VolumeRightPercent"), m_dVolumeRightPercent, 100., 1., 10000.);
 }
 
 void CVolumeChangeDialog::UpdateVolumeData(CDataExchange* pDX, BOOL InPercents)
@@ -189,6 +190,10 @@ void CVolumeChangeDialog::DoDataExchange(CDataExchange* pDX)
 	if ( ! pDX->m_bSaveAndValidate)
 	{
 		UpdateSelectionStatic();
+	}
+	else
+	{
+		m_Profile.FlushAll();
 	}
 }
 
@@ -686,6 +691,11 @@ CDcOffsetDialog::CDcOffsetDialog(CWnd* pParent /*=NULL*/)
 	m_nDcOffset = 0;
 	m_DcSelectMode = -1;
 	//}}AFX_DATA_INIT
+	// DC offset parameters:
+	m_Profile.AddBoolItem(_T("Settings"), _T("5SecondsDC"), m_b5SecondsDC, TRUE);
+	m_Profile.AddItem(_T("Settings"), _T("DcOffsetSelectMode"), m_DcSelectMode, 0, 0, 1);
+	m_Profile.AddItem(_T("Settings"), _T("DcOffset"), m_nDcOffset, 0, -32767, 32767);
+
 }
 
 
@@ -703,12 +713,23 @@ void CDcOffsetDialog::DoDataExchange(CDataExchange* pDX)
 		GetDlgItem(IDC_EDIT_DC_OFFSET)->EnableWindow(FALSE);
 		//GetDlgItem(IDC_EDIT_DC_OFFSET)->EnableWindow(FALSE);
 	}
+	if (pDX->m_bSaveAndValidate)
+	{
+		m_Profile.FlushAll();
+	}
+	else
+	{
+		UpdateSelectionStatic();
+	}
+}
+
+void CDcOffsetDialog::UpdateSelectionStatic()
+{
 	GetDlgItem(IDC_STATIC_SELECTION)->SetWindowText(
 													GetSelectionText(m_Start, m_End, m_Chan,
 														m_pWf->nChannels, FALSE,
 														m_pWf->nSamplesPerSec, m_TimeFormat));
 }
-
 
 BEGIN_MESSAGE_MAP(CDcOffsetDialog, CDialog)
 	//{{AFX_MSG_MAP(CDcOffsetDialog)
@@ -739,10 +760,7 @@ void CDcOffsetDialog::OnButtonSelection()
 	m_Start = dlg.m_Start;
 	m_End = dlg.m_End;
 	m_Chan = dlg.m_Chan - 1;
-	GetDlgItem(IDC_STATIC_SELECTION)->SetWindowText(
-													GetSelectionText(m_Start, m_End, m_Chan,
-														m_pWf->nChannels, FALSE,
-														m_pWf->nSamplesPerSec, m_TimeFormat));
+	UpdateSelectionStatic();
 }
 
 void CDcOffsetDialog::OnRadioDcSelect()
@@ -993,6 +1011,9 @@ CNormalizeSoundDialog::CNormalizeSoundDialog(CWnd* pParent /*=NULL*/)
 	m_bUndo = FALSE;
 	m_DbPercent = -1;
 	//}}AFX_DATA_INIT
+	m_Profile.AddItem(_T("Settings"), _T("NormalizeDialogDbPercents"), m_DbPercent, 0, 0, 1);
+	m_Profile.AddItem(_T("Settings"), _T("NormalizeLevelDb"), m_dLevelDb, -6., -40., 0.);
+	m_Profile.AddItem(_T("Settings"), _T("NormalizeLevelPercent"), m_dLevelPercent, 50., 1., 100.);
 }
 
 
@@ -1022,6 +1043,10 @@ void CNormalizeSoundDialog::DoDataExchange(CDataExchange* pDX)
 	if ( ! pDX->m_bSaveAndValidate)
 	{
 		UpdateSelectionStatic();
+	}
+	else
+	{
+		m_Profile.FlushAll();
 	}
 }
 
@@ -1257,6 +1282,10 @@ CResampleDialog::CResampleDialog(CWnd* pParent /*=NULL*/)
 	m_NewSampleRate = 0;
 	//}}AFX_DATA_INIT
 	m_bCanOnlyChangeSamplerate = false;
+	m_Profile.AddItem(_T("Settings"), _T("ResampleChangeRateOnly"), m_bChangeRateOnly, 0, 0, 1);
+	m_Profile.AddItem(_T("Settings"), _T("ResampleChangeSamplingRate"), m_bChangeSamplingRate, 1, 0, 1);
+	m_Profile.AddItem(_T("Settings"), _T("ResampleTempoChange"), m_TempoChange, 100., 25., 400.);
+	m_Profile.AddItem(_T("Settings"), _T("ResampleNewSampleRate"), m_NewSampleRate, 44100, 11025, 176400);
 }
 
 
@@ -1275,6 +1304,15 @@ void CResampleDialog::DoDataExchange(CDataExchange* pDX)
 	DDV_MinMaxUInt(pDX, m_NewSampleRate, m_OldSampleRate / 4, m_OldSampleRate * 4);
 	m_EditTempo.ExchangeData(pDX, m_TempoChange,
 							"Tempo/pitch change", "%", 25., 400.);
+	if (pDX->m_bSaveAndValidate)
+	{
+		if (m_bCanOnlyChangeSamplerate)
+		{
+			m_Profile.RevertItemToInitial(_T("Settings"), _T("ResampleChangeRateOnly"));
+		}
+
+		m_Profile.FlushAll();
+	}
 }
 
 
@@ -1409,6 +1447,11 @@ CLowFrequencySuppressDialog::CLowFrequencySuppressDialog(CWnd* pParent /*=NULL*/
 	m_LowFrequencySuppress = FALSE;
 	m_bUndo = FALSE;
 	//}}AFX_DATA_INIT
+	m_Profile.AddItem(_T("Settings"), _T("SuppressDifferentialRange"), m_dDiffNoiseRange, 200., 1., 1000.);
+	m_Profile.AddItem(_T("Settings"), _T("SuppressLowFreqRange"), m_dLfNoiseRange, 20., 1., 1000.);
+	m_Profile.AddBoolItem(_T("Settings"), _T("SuppressDifferential"), m_DifferentialModeSuppress, TRUE);
+	m_Profile.AddBoolItem(_T("Settings"), _T("SuppressLowFrequency"), m_LowFrequencySuppress, TRUE);
+
 }
 
 
@@ -1427,6 +1470,11 @@ void CLowFrequencySuppressDialog::DoDataExchange(CDataExchange* pDX)
 								"Low frequency suppression range", "Hz", 1., 1000.);
 	m_eDiffNoiseRange.ExchangeData(pDX, m_dDiffNoiseRange,
 									"Differential static suppression range", "Hz", 1., 1000.);
+
+	if (pDX->m_bSaveAndValidate)
+	{
+		m_Profile.FlushAll();
+	}
 }
 
 

@@ -10,7 +10,7 @@
 #include "TimeEdit.h"
 #include "ChildDialog.h"
 #include <vector>
-
+#include "ApplicationProfile.h"
 /////////////////////////////////////////////////////////////////////////////
 // CCopyChannelsSelectDlg dialog
 
@@ -99,6 +99,8 @@ public:
 	BOOL	m_bLockChannels;
 	int		m_DbPercent;
 	//}}AFX_DATA
+
+	CApplicationProfile m_Profile;
 
 	double m_dVolumeLeftDb;
 	double m_dVolumeRightDb;
@@ -250,6 +252,8 @@ public:
 	int		m_DcSelectMode;
 	//}}AFX_DATA
 
+	CApplicationProfile m_Profile;
+
 	long m_Start;
 	long m_End;
 	long m_FileLength;
@@ -335,6 +339,7 @@ public:
 
 	double m_dLevelDb;
 	double m_dLevelPercent;
+	CApplicationProfile m_Profile;
 
 	long m_Start;
 	long m_End;
@@ -384,6 +389,8 @@ public:
 	UINT	m_ResampleSamplingRate;
 	//}}AFX_DATA
 
+	CApplicationProfile m_Profile;
+
 	double m_TempoChange;
 	int m_NewSampleRate;
 	int m_OldSampleRate;
@@ -431,6 +438,8 @@ public:
 
 	double m_dLfNoiseRange;
 	double m_dDiffNoiseRange;
+
+	CApplicationProfile m_Profile;
 
 	BOOL	m_bLockChannels;
 	long m_Start;

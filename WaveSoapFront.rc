@@ -104,6 +104,7 @@ BEGIN
     BUTTON      ID_FILE_SAVE_ALL
     BUTTON      ID_FILE_PRINT
     SEPARATOR
+    BUTTON      ID_EDIT_CHANNELS_LOCK
     BUTTON      ID_EDIT_CUT
     BUTTON      ID_EDIT_COPY
     BUTTON      ID_EDIT_PASTE
@@ -198,7 +199,15 @@ BEGIN
         MENUITEM "&Undo\tCtrl+Z",               ID_EDIT_UNDO
         MENUITEM "&Redo\tCtrl+Y",               ID_EDIT_REDO
         MENUITEM "Undo All Changes\tCtrl+Shift+Z", ID_EDIT_UNDO_ALL_CHANGES
-        MENUITEM "More Undo/Redo...",           ID_EDIT_MORE_UNDO_REDO
+        POPUP "More Undo/Redo"
+        BEGIN
+            MENUITEM "Enable &Undo",                ID_EDIT_ENABLE_UNDO
+            MENUITEM "Enable &Redo",                ID_EDIT_ENABLE_REDO
+            MENUITEM SEPARATOR
+            MENUITEM "&Clear Undo Data",            ID_EDIT_CLEAR_UNDO
+            MENUITEM "Clear Redo &Data",            ID_EDIT_CLEAR_REDO
+            MENUITEM "Undo/Redo &Options...",       ID_EDIT_MORE_UNDO_REDO
+        END
         MENUITEM SEPARATOR
         MENUITEM "&Copy\tCtrl+C",               ID_EDIT_COPY
         MENUITEM "Cu&t\tCtrl+X",                ID_EDIT_CUT
@@ -1578,6 +1587,27 @@ BEGIN
     PUSHBUTTON      "More...",IDC_BUTTON_MORE,316,45,50,14
 END
 
+IDD_PROPPAGE_FILE_PREFERENCES DIALOG DISCARDABLE  0, 0, 210, 154
+STYLE WS_CHILD | WS_DISABLED | WS_CAPTION
+CAPTION "File"
+FONT 8, "MS Sans Serif"
+BEGIN
+END
+
+IDD_PROPPAGE_VIEW_PREFERENCES DIALOG DISCARDABLE  0, 0, 210, 154
+STYLE WS_CHILD | WS_DISABLED | WS_CAPTION
+CAPTION "View"
+FONT 8, "MS Sans Serif"
+BEGIN
+END
+
+IDD_PROPPAGE_PLAYBACK_PREFERENCES DIALOG DISCARDABLE  0, 0, 210, 154
+STYLE WS_CHILD | WS_DISABLED | WS_CAPTION
+CAPTION "Playback"
+FONT 8, "MS Sans Serif"
+BEGIN
+END
+
 
 #ifndef _MAC
 /////////////////////////////////////////////////////////////////////////////
@@ -1856,6 +1886,30 @@ BEGIN
     IDD_DIALOG_SAVE_TEMPLATE_V5, DIALOG
     BEGIN
         BOTTOMMARGIN, 105
+    END
+
+    IDD_PROPPAGE_FILE_PREFERENCES, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 203
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 147
+    END
+
+    IDD_PROPPAGE_VIEW_PREFERENCES, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 203
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 147
+    END
+
+    IDD_PROPPAGE_PLAYBACK_PREFERENCES, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 203
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 147
     END
 END
 #endif    // APSTUDIO_INVOKED
@@ -2372,6 +2426,8 @@ BEGIN
                             "Apply squared sine-shaped window to the data before FFT"
     ID_FFT_WINDOW_SINE      "Apply half sine-shaped window to the data before FFT"
     ID_FFT_WINDOW_HAMMING   "Apply Hamming window to the data before FFT"
+    ID_EDIT_ENABLE_UNDO     "Unable Undo system\nEnable Undo"
+    ID_EDIT_ENABLE_REDO     "Enable Redo system\nEnable Redo"
 END
 
 STRINGTABLE DISCARDABLE 
@@ -2433,6 +2489,12 @@ BEGIN
     IDS_MONO_TO_STEREO      "Are you sure you want to convert this file to stereo?"
     IDS_OVERWRITE_SHARING_VIOLATION 
                             "File ""%s"" couldn't be overwritten\nbecause it is in use by WaveSoap or another application"
+END
+
+STRINGTABLE DISCARDABLE 
+BEGIN
+    ID_EDIT_CLEAR_UNDO      "Erase stored Undo for this sound file\nClear Undo"
+    ID_EDIT_CLEAR_REDO      "Erase stored Redo for this sound file\nClear Redo"
 END
 
 #endif    // English (U.S.) resources

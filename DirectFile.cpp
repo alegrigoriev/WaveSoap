@@ -1805,12 +1805,13 @@ void CDirectFile::File::ReadDataBuffer(BufferHeader * pBuf, DWORD MaskToRead)
 						SetFilePointer(pSourceFile->hFile, (LONG)StartFilePtr, & FilePtrH, FILE_BEGIN);
 						pSourceFile->m_FilePointer = StartFilePtr;
 					}
-					TRACE("ReadFile(%08x, pos=0x%08X, bytes=%X)\n", hFile, long(StartFilePtr), ToRead);
+					TRACE("ReadSourceFile(%08x, pos=0x%08X, bytes=%X)\n", hFile, long(StartFilePtr), ToRead);
 					ReadFile(pSourceFile->hFile, buf, ToRead, & BytesRead, NULL);
 					if (0 == m_LastError)
 					{
 						m_LastError = ::GetLastError();
 					}
+
 					pSourceFile->m_FilePointer += BytesRead;
 					ToZero -= BytesRead;
 				}

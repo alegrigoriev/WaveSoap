@@ -69,13 +69,13 @@ public:
 	CApplicationProfile Profile;
 	CString m_CurrentDir;
 	int m_OpenFileDialogFilter;
-	CString sTempDir;
+	CString sTempDir;             // File proppage
 	bool m_bOpenMaximized;
 	bool m_bOpenChildMaximized;
 	bool m_bShowToolbar;
 	bool m_bShowStatusBar;
 	bool m_bShowNewFormatDialogWhenShiftOnly;
-	bool m_bAllow4GbWavFile;
+	bool m_bAllow4GbWavFile;      // File proppage
 	// display colors:
 	union {
 		struct {
@@ -128,46 +128,12 @@ public:
 	BOOL m_bReadOnly;
 	BOOL m_bDirectMode;
 	// Undo/Redo parameters
-	BOOL m_bUndoEnabled;
-	BOOL m_bRedoEnabled;
-	int m_MaxUndoDepth;
-	int m_MaxRedoDepth;
-	DWORD m_MaxUndoSize;
-	DWORD m_MaxRedoSize;
-
-	// TODO: move to the dialog
-	// volume change parameters:
-	int m_VolumeDialogDbPercents;
-	double m_dVolumeLeftDb;
-	double m_dVolumeRightDb;
-	double m_dVolumeLeftPercent;
-	double m_dVolumeRightPercent;
-
-	// TODO: move to the dialog
-	// DC offset parameters:
-	BOOL m_b5SecondsDC;
-	int m_nDcOffset;
-	int m_DcSelectMode;
-
-	// TODO: move to the dialog
-	// Normalize parameters:
-	int m_NormalizeDialogDbPercents;
-	double m_dNormalizeLevelDb;
-	double m_dNormalizeLevelPercent;
-
-	// TODO: move to the dialog
-	// Resample parameters:
-	BOOL m_bResampleChangeRateOnly;
-	BOOL m_bResampleRate;
-	int m_ResampleSamplingRate;
-	double m_ResampleTempoPercents;
-
-	// TODO: move to the dialog
-	// Low Frequency suppression params:
-	BOOL m_bSuppressDifferential;
-	BOOL m_bSuppressLowFrequency;
-	double m_dSuppressDifferentialRange;
-	double m_dSuppressLowFreqRange;
+	BOOL m_bUndoEnabled;              // File proppage
+	BOOL m_bRedoEnabled;              // File proppage
+	int m_MaxUndoDepth;               // File proppage
+	int m_MaxRedoDepth;               // File proppage
+	DWORD m_MaxUndoSize;              // File proppage
+	DWORD m_MaxRedoSize;              // File proppage
 
 	BOOL m_bUseCountrySpecificNumberAndTime;
 	TCHAR m_TimeSeparator;

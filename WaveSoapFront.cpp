@@ -198,26 +198,9 @@ CWaveSoapFrontApp::CWaveSoapFrontApp()
 	m_bOpenMaximized(true),
 	m_bOpenChildMaximized(true),
 	m_bAllow4GbWavFile(false),
-	m_VolumeDialogDbPercents(0),    // dB, 1 - percents
-	m_dVolumeLeftDb(0.),
-	m_dVolumeRightDb(0.),
-	m_dVolumeLeftPercent(100.),
-	m_dVolumeRightPercent(100.),
+
 	m_SoundTimeFormat(SampleToString_HhMmSs | TimeToHhMmSs_NeedsHhMm | TimeToHhMmSs_NeedsMs),
 
-	m_bResampleChangeRateOnly(FALSE),
-	m_bResampleRate(TRUE),
-	m_ResampleSamplingRate(44100),
-	m_ResampleTempoPercents(100.),
-
-	m_bSuppressDifferential(TRUE),
-	m_bSuppressLowFrequency(TRUE),
-	m_dSuppressDifferentialRange(200.),
-	m_dSuppressLowFreqRange(20.),
-
-	m_b5SecondsDC(TRUE),
-	m_nDcOffset(0),
-	m_DcSelectMode(0),
 	m_pActiveDocument(NULL),
 	m_pLastStatusDocument(NULL),
 
@@ -440,28 +423,6 @@ BOOL CWaveSoapFrontApp::InitInstance()
 					0u, 0xC0000000u);
 	Profile.AddItem(_T("Settings"), _T("MaxRedoSize"), m_MaxRedoSize, 0x40000000u,
 					0u, 0xC0000000u);
-
-	// DC offset parameters:
-	Profile.AddBoolItem(_T("Settings"), _T("5SecondsDC"), m_b5SecondsDC, TRUE);
-	Profile.AddItem(_T("Settings"), _T("DcOffsetSelectMode"), m_DcSelectMode, 0, 0, 1);
-	Profile.AddItem(_T("Settings"), _T("DcOffset"), m_nDcOffset, 0, -32767, 32767);
-
-	// Normalize volume parameters:
-	Profile.AddItem(_T("Settings"), _T("NormalizeDialogDbPercents"), m_NormalizeDialogDbPercents, 0, 0, 1);
-	Profile.AddItem(_T("Settings"), _T("NormalizeLevelDb"), m_dNormalizeLevelDb, -6., -40., 0.);
-	Profile.AddItem(_T("Settings"), _T("NormalizeLevelPercent"), m_dNormalizeLevelPercent, 50., 1., 100.);
-
-	// change volume parameters:
-	Profile.AddItem(_T("Settings"), _T("VolumeDialogDbPercents"), m_VolumeDialogDbPercents, 0, 0, 1);
-	Profile.AddItem(_T("Settings"), _T("VolumeLeftDb"), m_dVolumeLeftDb, 0., -40., 40.);
-	Profile.AddItem(_T("Settings"), _T("VolumeLeftPercent"), m_dVolumeLeftPercent, 100., 1., 10000.);
-	Profile.AddItem(_T("Settings"), _T("VolumeRightDb"), m_dVolumeRightDb, 0., -40., 40.);
-	Profile.AddItem(_T("Settings"), _T("VolumeRightPercent"), m_dVolumeRightPercent, 100., 1., 10000.);
-
-	Profile.AddItem(_T("Settings"), _T("SuppressDifferentialRange"), m_dSuppressDifferentialRange, 200., 1., 1000.);
-	Profile.AddItem(_T("Settings"), _T("SuppressLowFreqRange"), m_dSuppressLowFreqRange, 20., 1., 1000.);
-	Profile.AddBoolItem(_T("Settings"), _T("SuppressDifferential"), m_bSuppressDifferential, TRUE);
-	Profile.AddBoolItem(_T("Settings"), _T("SuppressLowFrequency"), m_bSuppressLowFrequency, TRUE);
 
 	Profile.AddBoolItem(_T("Settings"), _T("DontShowMediaPlayerWarning"), m_DontShowMediaPlayerWarning, FALSE);
 
