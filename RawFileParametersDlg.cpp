@@ -109,8 +109,13 @@ void CRawFileParametersDlg::DoDataExchange(CDataExchange* pDX)
 	DDX_Radio(pDX, IDC_RADIO_COMPRESSION_NONE, m_Compression);
 	DDX_Radio(pDX, IDC_RADIO_LSB_FIRST, m_bMsbFirst);
 	//}}AFX_DATA_MAP
-	DDV_MinMaxDWordHex(pDX, m_HeaderLength, 0, m_SourceFileSize - 4);
-	DDV_MinMaxDWordHex(pDX, m_TrailerLength, 0, m_SourceFileSize - 4 - m_HeaderLength);
+	DWORD MaxHeaderLength = 0xFFFFFFFC;
+	if (m_SourceFileSize < 0x100000000i64)
+	{
+		MaxHeaderLength = DWORD(m_SourceFileSize) - 4;
+	}
+	DDV_MinMaxDWordHex(pDX, m_HeaderLength, 0, MaxHeaderLength);
+	DDV_MinMaxDWordHex(pDX, m_TrailerLength, 0, MaxHeaderLength - m_HeaderLength);
 	DDX_Text(pDX, IDC_COMBO_SAMPLING_RATE, m_SamplingRate);
 
 	if (pDX->m_bSaveAndValidate)
