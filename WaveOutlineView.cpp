@@ -119,6 +119,8 @@ void CWaveOutlineView::OnDraw(CDC* pDC)
 	}
 	else if (TotalPeaks / channels >= width)
 	{
+		CSimpleCriticalSectionLock lock(pDoc->m_WavFile.GetPeakLock());
+
 		int PrevIdx = ur.left * TotalPeaks / width;
 		for (i = ur.left; i < ur.right; i++)
 		{
@@ -375,7 +377,7 @@ void CWaveOutlineView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
 		CSoundUpdateInfo * pInfo = static_cast<CSoundUpdateInfo *>(pHint);
 		CRect r1;
 
-		if (pInfo->Length != -1)
+		if (pInfo->m_NewLength != -1)
 		{
 			Invalidate();
 			return;
@@ -408,8 +410,8 @@ void CWaveOutlineView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
 		r1.top = cr.top;
 		r1.bottom = cr.bottom;
 		// calculate update boundaries
-		r1.left = MulDiv(pInfo->Begin, cr.Width(), nSamples) - 1;
-		r1.right = 1 + MulDiv(pInfo->End, cr.Width(), nSamples);
+		r1.left = MulDiv(pInfo->m_Begin, cr.Width(), nSamples) - 1;
+		r1.right = 1 + MulDiv(pInfo->m_End, cr.Width(), nSamples);
 
 		if (r1.left != r1.right
 			// limit the rectangles with the window boundaries
@@ -434,7 +436,7 @@ void CWaveOutlineView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
 	{
 		CSoundUpdateInfo * pInfo = static_cast<CSoundUpdateInfo *>(pHint);
 		int OldPosition = MulDiv(m_PlaybackCursorPosition, cr.Width(), nSamples);
-		int NewPosition = MulDiv(pInfo->Begin, cr.Width(), nSamples);
+		int NewPosition = MulDiv(pInfo->m_Begin, cr.Width(), nSamples);
 		if (NewPosition != OldPosition)
 		{
 			CRect r;
@@ -446,14 +448,14 @@ void CWaveOutlineView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
 				r.right = OldPosition + 1;
 				InvalidateRect( & r, FALSE);
 			}
-			if (-1 != pInfo->Begin)
+			if (-1 != pInfo->m_Begin)
 			{
 				r.left = NewPosition;
 				r.right = NewPosition + 1;
 				InvalidateRect( & r, FALSE);
 			}
 		}
-		m_PlaybackCursorPosition = pInfo->Begin;
+		m_PlaybackCursorPosition = pInfo->m_Begin;
 	}
 	else
 	{
