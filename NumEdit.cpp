@@ -160,16 +160,19 @@ void CNumEdit::ExchangeData(CDataExchange* pDX, double & num,
 		(void)pDX->PrepareEditCtrl(ID);
 		LPCTSTR pszDataName = NULL;
 		LPCTSTR pszUnits = NULL;
-		CString str;
+		CString DataName;
+		CString Units;
+
 		if (uIdDataName != 0)
 		{
-			str.LoadString(uIdDataName);
-			pszDataName = str;
+			DataName.LoadString(uIdDataName);
+			pszDataName = DataName;
 		}
+
 		if (uIdUnits != 0)
 		{
-			str.LoadString(uIdUnits);
-			pszUnits = str;
+			Units.LoadString(uIdUnits);
+			pszUnits = Units;
 		}
 		GetData(pDX, num, pszDataName, pszUnits, dLowLimit, dHighLimit);
 		return;
@@ -206,8 +209,10 @@ BOOL CNumEdit::GetData(CDataExchange * pDX, double & num,
 			}
 		}
 	}
+
 	CString str;
 	CString ErrStr;
+
 	GetWindowText(str);
 	if (SimpleFloatParse(str, num) == FALSE)
 	{
@@ -219,6 +224,7 @@ BOOL CNumEdit::GetData(CDataExchange * pDX, double & num,
 		}
 		return FALSE;
 	}
+
 	if (dHighLimit > dLowLimit
 		&& (num < dLowLimit
 			|| num > dHighLimit))
