@@ -1166,6 +1166,8 @@ void CWaveSoapFrontDoc::OnEditUndo()
 			m_UndoList.InsertHead(pUndo);
 			return;
 		}
+
+		pUndo->m_Flags |= OperationContextUndoCreated;
 	}
 	else
 	{
@@ -1204,6 +1206,8 @@ void CWaveSoapFrontDoc::OnEditRedo()
 			m_RedoList.InsertHead(pRedo);
 			return;
 		}
+
+		pRedo->m_Flags |= OperationContextUndoCreated;
 	}
 	else
 	{
@@ -1300,7 +1304,7 @@ void CWaveSoapFrontDoc::DoCopy(SAMPLE_INDEX Start, SAMPLE_INDEX End,
 		GetApp()->m_ClipboardFile = DstFile;
 	}
 	// set operation context to the queue
-	pContext.release()->Execute();
+	ExecuteOperation(pContext.release());
 }
 
 BOOL CWaveSoapFrontDoc::DoPaste(SAMPLE_INDEX Start, SAMPLE_INDEX End, CHANNEL_MASK Channel,
@@ -1485,9 +1489,7 @@ BOOL CWaveSoapFrontDoc::DoPaste(SAMPLE_INDEX Start, SAMPLE_INDEX End, CHANNEL_MA
 	}
 
 	// set operation context to the queue
-	pStagedContext.release()->Execute();
-	SetModifiedFlag(TRUE);
-
+	ExecuteOperation(pStagedContext.release(), TRUE);
 	return TRUE;
 }
 
@@ -1547,8 +1549,7 @@ void CWaveSoapFrontDoc::DoCut(SAMPLE_INDEX Start, SAMPLE_INDEX End, CHANNEL_MASK
 	}
 
 	// set operation context to the queue
-	pContext.release()->Execute();
-	SetModifiedFlag(TRUE);
+	ExecuteOperation(pContext.release(), TRUE);
 }
 
 void CWaveSoapFrontDoc::DoDelete(SAMPLE_INDEX Start, SAMPLE_INDEX End, CHANNEL_MASK Channel)
@@ -1578,8 +1579,7 @@ void CWaveSoapFrontDoc::DoDelete(SAMPLE_INDEX Start, SAMPLE_INDEX End, CHANNEL_M
 		return;
 	}
 
-	pContext.release()->Execute();
-	SetModifiedFlag(TRUE);
+	ExecuteOperation(pContext.release(), TRUE);
 }
 
 void CWaveSoapFrontDoc::OnEditStop()
@@ -2159,6 +2159,7 @@ BOOL CWaveSoapFrontDoc::OnSaveMp3File(int flags, LPCTSTR FullTargetName, WAVEFOR
 	{
 		pContext->m_Flags |= FileSaveContext_SavingCopy;
 	}
+
 	pContext.release()->Execute();
 	return FALSE;   // not saved yet
 }
@@ -2266,12 +2267,6 @@ BOOL CWaveSoapFrontDoc::OnSaveRawFile(int flags, LPCTSTR FullTargetName, WAVEFOR
 
 	CFileSaveContext::auto_ptr pContext(new CFileSaveContext(this,
 															IDS_RAW_SAVE_STATUS_PROMPT, IDS_RAW_SAVE_OPERATION_NAME));
-
-	if (NULL == pContext.get())
-	{
-		NotEnoughMemoryMessageBox();
-		return FALSE;
-	}
 
 	pContext->m_NewName = FullTargetName;
 	pContext->m_NewFileTypeFlags = OpenDocumentMp3File;
@@ -3135,10 +3130,12 @@ void CWaveSoapFrontDoc::IncrementModified(BOOL bDeleteRedo, int KeepPreviousUndo
 	{
 		m_ModificationSequenceNumber++;
 	}
+
 	if (-1 == KeepPreviousUndo)
 	{
 		KeepPreviousUndo = UndoEnabled();
 	}
+
 	if (! KeepPreviousUndo)
 	{
 		// since it is unable to restore undo, delete all previous undo
@@ -3155,12 +3152,6 @@ void CWaveSoapFrontDoc::DecrementModified()   // called at UNDO
 {
 	BOOL OldModified = IsModified();
 	m_ModificationSequenceNumber--;
-
-	if (! RedoEnabled())
-	{
-		// since it is unable to redo, delete all previous redo
-		DeleteRedo();
-	}
 
 	if (IsModified() != OldModified)
 	{
@@ -3298,14 +3289,16 @@ void CWaveSoapFrontDoc::SetSampleRate(unsigned SampleRate)
 	CWaveFormat wf;
 	wf.InitFormat(WAVE_FORMAT_PCM, SampleRate, WaveChannels());
 
-	CReplaceFormatContext * pContext = new CReplaceFormatContext(this, IDS_SAMPLE_RATE_CHANGE_OPERATION_NAME, wf);
-	if (UndoEnabled())
+	CReplaceFormatContext::auto_ptr pContext(
+											new CReplaceFormatContext(this, IDS_SAMPLE_RATE_CHANGE_OPERATION_NAME, wf));
+
+	if (UndoEnabled()
+		&& ! pContext->CreateUndo())
 	{
-		pContext->CreateUndo();
+		return;
 	}
 
-	pContext->Execute();
-	SetModifiedFlag();
+	ExecuteOperation(pContext.release(), TRUE);
 }
 
 void CWaveSoapFrontDoc::OnUpdateSampleRate(CCmdUI* pCmdUI, unsigned SampleRate)
@@ -3426,21 +3419,16 @@ void CWaveSoapFrontDoc::ChangeChannels(NUMBER_OF_CHANNELS nChannels)
 	{
 		// easy change
 
-		CReplaceFormatContext * pContext = new CReplaceFormatContext(this,
-												IDS_CHANNELS_CHANGE_OPERATION_NAME, NewFormat);
-		if (NULL == pContext)
+		CReplaceFormatContext::auto_ptr pContext(new CReplaceFormatContext(this,
+													IDS_CHANNELS_CHANGE_OPERATION_NAME, NewFormat));
+
+		if (UndoEnabled()
+			&& ! pContext->CreateUndo())
 		{
-			NotEnoughMemoryMessageBox();
 			return;
 		}
-		if (UndoEnabled())
-		{
-			pContext->CreateUndo();
-		}
 
-		pContext->Execute();
-
-		SetModifiedFlag();
+		ExecuteOperation(pContext.release(), TRUE);
 		return;
 	}
 
@@ -3498,11 +3486,13 @@ void CWaveSoapFrontDoc::ChangeChannels(NUMBER_OF_CHANNELS nChannels)
 
 	pContext->AddContext(new CScanPeaksContext(this, DstFile, m_OriginalWavFile, FALSE));
 
-	if (UndoEnabled())
+	if (UndoEnabled()
+		&& ! pContext->CreateUndo())
 	{
-		pContext->CreateUndo();
+		return;
 	}
-	pContext.release()->Execute();
+
+	ExecuteOperation(pContext.release(), TRUE);
 }
 
 void CWaveSoapFrontDoc::OnChannelsMono()
@@ -3625,8 +3615,7 @@ void CWaveSoapFrontDoc::OnProcessChangevolume()
 		return;
 	}
 
-	pContext.release()->Execute();
-	SetModifiedFlag(TRUE, dlg.UndoEnabled());
+	ExecuteOperation(pContext.release(), TRUE, dlg.UndoEnabled(), dlg.UndoEnabled());
 }
 
 void CWaveSoapFrontDoc::GetSoundMinMax(WavePeak & Left,
@@ -3845,8 +3834,7 @@ void CWaveSoapFrontDoc::OnProcessDcoffset()
 		pContext = pDcContext.release();
 	}
 
-	pContext->Execute();
-	SetModifiedFlag(TRUE, dlg.UndoEnabled());
+	ExecuteOperation(pContext, TRUE, dlg.UndoEnabled(), dlg.UndoEnabled());
 }
 
 void CWaveSoapFrontDoc::OnUpdateProcessInsertsilence(CCmdUI* pCmdUI)
@@ -3908,7 +3896,7 @@ void CWaveSoapFrontDoc::OnProcessInsertsilence()
 												IDS_INSERT_SILENCE_STATUS_PROMPT, IDS_INSERT_SILENCE_OPERATION_NAME));
 
 	if ( ! pContext->InitExpand(m_WavFile, dlg.GetStart(),
-								dlg.GetLength(), dlg.GetChannel(), TRUE))
+								dlg.GetLength(), dlg.GetChannel(), FALSE))
 	{
 		return;
 	}
@@ -3919,8 +3907,12 @@ void CWaveSoapFrontDoc::OnProcessInsertsilence()
 		pContext->InitMoveMarkers(m_WavFile, dlg.GetStart(), 0, dlg.GetLength());
 	}
 
-	pContext.release()->Execute();
-	SetModifiedFlag(TRUE, TRUE);    // keep previous undo
+	if ( ! pContext->CreateUndo())
+	{
+		return;
+	}
+
+	ExecuteOperation(pContext.release(), TRUE, TRUE, TRUE);
 }
 
 void CWaveSoapFrontDoc::OnUpdateProcessMute(CCmdUI* pCmdUI)
@@ -3990,8 +3982,7 @@ void CWaveSoapFrontDoc::OnProcessMute()
 		return;
 	}
 
-	pContext.release()->Execute();
-	SetModifiedFlag(TRUE);
+	ExecuteOperation(pContext.release(), TRUE);
 }
 
 void CWaveSoapFrontDoc::OnUpdateProcessNormalize(CCmdUI* pCmdUI)
@@ -4054,8 +4045,7 @@ void CWaveSoapFrontDoc::OnProcessNormalize()
 		return;
 	}
 
-	pContext.release()->Execute();
-	SetModifiedFlag(TRUE, dlg.UndoEnabled());
+	ExecuteOperation(pContext.release(), TRUE, dlg.UndoEnabled(), dlg.UndoEnabled());
 }
 
 void CWaveSoapFrontDoc::OnUpdateProcessResample(CCmdUI* pCmdUI)
@@ -4133,14 +4123,13 @@ void CWaveSoapFrontDoc::OnProcessResample()
 
 	pContext->AddContext(new CScanPeaksContext(this, DstFile, m_OriginalWavFile, FALSE));
 
-	if (dlg.UndoEnabled())
+	if (dlg.UndoEnabled()
+		&& ! pContext->CreateUndo())
 	{
-		pContext->CreateUndo();
+		return;
 	}
 
-	pContext.release()->Execute();
-	// don't mark the file as modified yet
-	//SetModifiedFlag();
+	ExecuteOperation(pContext.release(), TRUE, dlg.UndoEnabled(), dlg.UndoEnabled());
 }
 
 void CWaveSoapFrontDoc::OnFileStatistics()
@@ -4227,8 +4216,7 @@ void CWaveSoapFrontDoc::OnProcessInvert()
 		return;
 	}
 
-	pContext.release()->Execute();
-	SetModifiedFlag(TRUE);
+	ExecuteOperation(pContext.release(), TRUE);
 }
 
 void CWaveSoapFrontDoc::OnUpdateViewRescanPeaks(CCmdUI* pCmdUI)
@@ -4278,8 +4266,7 @@ void CWaveSoapFrontDoc::OnProcessSynthesisExpressionEvaluation()
 
 	if (NULL != pContext)
 	{
-		pContext->Execute();
-		SetModifiedFlag(TRUE, dlg.UndoEnabled());
+		ExecuteOperation(pContext, TRUE, dlg.UndoEnabled(), dlg.UndoEnabled());
 	}
 }
 
@@ -4677,8 +4664,7 @@ void CWaveSoapFrontDoc::OnProcessDoUlf()
 
 	pContext->AddWaveProc(pUlfProc.release());
 
-	pContext.release()->Execute();
-	SetModifiedFlag(TRUE, dlg.UndoEnabled());
+	ExecuteOperation(pContext.release(), TRUE, dlg.UndoEnabled(), dlg.UndoEnabled());
 }
 
 void CWaveSoapFrontDoc::OnUpdateProcessDoDeclicking(CCmdUI* pCmdUI)
@@ -4811,8 +4797,7 @@ void CWaveSoapFrontDoc::OnProcessNoiseReduction()
 		return;
 	}
 
-	pContext.release()->Execute();
-	SetModifiedFlag(TRUE, dlg.UndoEnabled());
+	ExecuteOperation(pContext.release(), TRUE, dlg.UndoEnabled(), dlg.UndoEnabled());
 }
 
 void CWaveSoapFrontDoc::OnFileClose()
@@ -5092,8 +5077,7 @@ void CWaveSoapFrontDoc::OnProcessEqualizer()
 		return;
 	}
 
-	pContext.release()->Execute();
-	SetModifiedFlag(TRUE, dlg.UndoEnabled());
+	ExecuteOperation(pContext.release(), TRUE, dlg.UndoEnabled(), dlg.UndoEnabled());
 }
 
 void CWaveSoapFrontDoc::OnUpdateProcessEqualizer(CCmdUI* pCmdUI)
@@ -5132,8 +5116,8 @@ void CWaveSoapFrontDoc::OnProcessSwapchannels()
 		delete pContext;
 		return;
 	}
-	pContext->Execute();
-	SetModifiedFlag(TRUE);
+
+	ExecuteOperation(pContext, TRUE);
 }
 
 void CWaveSoapFrontDoc::OnUpdateProcessSwapchannels(CCmdUI* pCmdUI)
@@ -5187,8 +5171,7 @@ void CWaveSoapFrontDoc::OnProcessFilter()
 		return;
 	}
 
-	pContext.release()->Execute();
-	SetModifiedFlag(TRUE, dlg.UndoEnabled());
+	ExecuteOperation(pContext.release(), TRUE, dlg.UndoEnabled(), dlg.UndoEnabled());
 }
 
 void CWaveSoapFrontDoc::OnUpdateProcessFilter(CCmdUI* pCmdUI)
@@ -5278,8 +5261,7 @@ void CWaveSoapFrontDoc::OnProcessReverse()
 		return;
 	}
 
-	pStagedContext.release()->Execute();
-	SetModifiedFlag(TRUE);
+	ExecuteOperation(pStagedContext.release(), TRUE);
 }
 
 void CWaveSoapFrontDoc::OnUpdateProcessReverse(CCmdUI *pCmdUI)
@@ -5470,4 +5452,26 @@ void CWaveSoapFrontDoc::OnSaveSaveselectionas()
 void CWaveSoapFrontDoc::OnUpdateSaveSaveselectionas(CCmdUI *pCmdUI)
 {
 	pCmdUI->Enable(CanReadSelection());
+}
+
+void CWaveSoapFrontDoc::ExecuteOperation(COperationContext * pContext, BOOL SetModify,
+										int UndoCreated, int KeepPreviousUndo)
+{
+	if (-1 == UndoCreated)
+	{
+		UndoCreated = UndoEnabled();
+	}
+
+	if (UndoCreated)
+	{
+		pContext->m_Flags |= OperationContextUndoCreated;
+	}
+
+	if (SetModify)
+	{
+		pContext->m_Flags |= OperationContextModifyCountIncremented;
+		SetModifiedFlag(TRUE, KeepPreviousUndo);
+	}
+
+	pContext->Execute();
 }
