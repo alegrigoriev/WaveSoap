@@ -1895,7 +1895,7 @@ SAMPLE_INDEX CWaveFile::PositionToSample(SAMPLE_POSITION position) const
 	}
 
 	ASSERT(position >= datack->dwDataOffset);
-	return (position - datack->dwDataOffset) / SampleSize();
+	return SAMPLE_INDEX((position - datack->dwDataOffset) / SampleSize());
 }
 
 using CWaveFile::InstanceDataWav;
@@ -1972,6 +1972,12 @@ void CWaveFile::CopyMetadata(CWaveFile const & src)
 NUMBER_OF_CHANNELS CWaveFile::NumChannelsFromMask(CHANNEL_MASK ChannelMask) const
 {
 	return GetInstanceData()->wf.NumChannelsFromMask(ChannelMask);
+}
+
+bool CWaveFile::AllChannels(CHANNEL_MASK Channels) const
+{
+	CHANNEL_MASK mask = ChannelsMask();
+	return mask == (mask & Channels);
 }
 
 long CWaveFile::ReadSamples(CHANNEL_MASK SrcChannels,
