@@ -690,15 +690,23 @@ BOOL CWaveSoapFrontDoc::DoSave(LPCTSTR lpszPathName, BOOL bReplace)
 			newName = path + name;
 		}
 
+
 		CWaveSoapFileSaveDialog dlg(FALSE, "wav", newName,
 									OFN_HIDEREADONLY
 									| OFN_PATHMUSTEXIST
 									| OFN_EXPLORER
 									| OFN_ENABLESIZING
 									| OFN_ENABLETEMPLATE
-									| OFN_OVERWRITEPROMPT
 									//| OFN_SHAREAWARE
+									| OFN_OVERWRITEPROMPT
 									);
+
+		CString DlgTitle;
+		if (SaveFlags & SaveFile_SaveCopy)
+		{
+			DlgTitle.LoadString(IDS_SAVE_COPY_AS_TITLE);
+			dlg.m_ofn.lpstrTitle = DlgTitle;
+		}
 
 		if (CThisApp::SupportsV5FileDialog())
 		{
@@ -808,7 +816,31 @@ BOOL CWaveSoapFrontDoc::DoSave(LPCTSTR lpszPathName, BOOL bReplace)
 			break;
 		case SoundFileRaw:
 			SaveFlags |= SaveFile_RawFile;
-			pWf->wFormatTag = dlg.m_SelectedRawFormat;
+			switch (dlg.m_SelectedRawFormat)
+			{
+			case RawSoundFilePcm16Msb:
+				SaveFlags |= SaveRawFileMsbFirst;
+				// fall through
+			default:
+			case RawSoundFilePcm16Lsb:
+				pWf->wFormatTag = WAVE_FORMAT_PCM;
+				pWf->wBitsPerSample = 16;
+				break;
+			case RawSoundFilePcm8:
+				pWf->wFormatTag = WAVE_FORMAT_PCM;
+				pWf->wBitsPerSample = 8;
+				break;
+			case RawSoundFileALaw8:
+				pWf->wFormatTag = WAVE_FORMAT_ALAW;
+				pWf->wBitsPerSample = 8;
+				break;
+			case RawSoundFileULaw8:
+				pWf->wFormatTag = WAVE_FORMAT_MULAW;
+				pWf->wBitsPerSample = 8;
+				break;
+			}
+			pWf->nBlockAlign = (pWf->wBitsPerSample * pWf->nChannels) / 8;
+			pWf->nAvgBytesPerSec = pWf->nBlockAlign * pWf->nSamplesPerSec;
 			break;
 		}
 	}
@@ -2415,7 +2447,112 @@ BOOL CWaveSoapFrontDoc::OnSaveWmaFile(int flags, LPCTSTR FullTargetName, WAVEFOR
 
 BOOL CWaveSoapFrontDoc::OnSaveRawFile(int flags, LPCTSTR FullTargetName, WAVEFORMATEX * pWf)
 {
-	return FALSE;
+	// create output file
+	CWaveFile NewWaveFile;
+	CString NewTempFilename = FullTargetName;
+	if (0 == (flags & SaveFile_SaveCopy))
+	{
+		NewTempFilename += _T(".temp");
+	}
+	DWORD FileSize = MulDiv(pWf->nAvgBytesPerSec, m_WavFile.GetDataChunk()->cksize,
+							m_WavFile.GetWaveFormat()->nAvgBytesPerSec);
+	if (FALSE == NewWaveFile.CreateWaveFile(& m_OriginalWavFile, pWf, ALL_CHANNELS,
+											FileSize,
+											CreateWaveFileDontInitStructure | CreateWaveFileSizeSpecified,
+											NewTempFilename))
+	{
+		FileCreationErrorMessageBox(NewTempFilename);
+		return FALSE;
+	}
+
+	WAVEFORMATEX * pNewFormat = NewWaveFile.AllocateWaveformat();
+	if (NULL != pNewFormat)
+	{
+		* pNewFormat = * pWf;
+	}
+
+	CFileSaveContext * pContext = new CFileSaveContext(this,
+														"Saving the file in raw binary format...", "Raw File Save");
+	if (NULL == pContext)
+	{
+		NotEnoughMemoryMessageBox();
+		return FALSE;
+	}
+
+	pContext->m_NewName = FullTargetName;
+	pContext->m_NewFileTypeFlags = OpenDocumentMp3File;
+	CConversionContext * pConvert = new CConversionContext(this, "", "");
+
+	if (NULL == pConvert)
+	{
+		delete pContext;
+		NotEnoughMemoryMessageBox();
+		return FALSE;
+	}
+	pContext->m_pConvert = pConvert;
+	pConvert->m_SrcFile = m_WavFile;
+	pConvert->m_DstFile = NewWaveFile;
+	pConvert->m_SrcStart = m_WavFile.GetDataChunk()->dwDataOffset;
+	pConvert->m_DstStart = 0;
+	pConvert->m_SrcCopyPos = pConvert->m_SrcStart;
+	pConvert->m_DstCopyPos = pConvert->m_DstStart;
+	pConvert->m_SrcEnd = pConvert->m_SrcStart + m_WavFile.GetDataChunk()->cksize;
+	pConvert->m_DstEnd = pConvert->m_DstStart;
+
+	pConvert->m_SrcChan = ALL_CHANNELS;
+	pConvert->m_DstChan = ALL_CHANNELS;
+
+	pContext->m_SrcFile = pConvert->m_SrcFile;
+	pContext->m_DstFile = pConvert->m_DstFile;
+	// fill unused data members:
+	pContext->m_SrcStart = pConvert->m_SrcStart;
+	pContext->m_DstStart = pConvert->m_DstStart;
+	pContext->m_SrcCopyPos = pContext->m_SrcStart;
+	pContext->m_DstCopyPos = pContext->m_DstCopyPos;
+	pContext->m_SrcEnd = m_WavFile.GetLength();
+	pContext->m_DstEnd = pContext->m_DstStart;
+
+	pContext->m_SrcChan = ALL_CHANNELS;
+	pContext->m_DstChan = ALL_CHANNELS;
+
+	if (WAVE_FORMAT_PCM != pWf->wFormatTag
+		|| 16 != pWf->wBitsPerSample)
+	{
+		CAudioConvertor * pAcmConvertor = new CAudioConvertor;
+		if (NULL == pAcmConvertor)
+		{
+			delete pContext;    // pConvert will be deleted
+			NotEnoughMemoryMessageBox();
+			return FALSE;
+		}
+		pConvert->m_ProcBatch.AddWaveProc(pAcmConvertor);
+		WAVEFORMATEX SrcFormat;
+		SrcFormat.nChannels = pWf->nChannels;
+		SrcFormat.nSamplesPerSec = pWf->nSamplesPerSec;
+		SrcFormat.nBlockAlign = SrcFormat.nChannels * sizeof (__int16);
+		SrcFormat.nAvgBytesPerSec = SrcFormat.nBlockAlign * SrcFormat.nSamplesPerSec;
+		SrcFormat.cbSize = 0;
+		SrcFormat.wFormatTag = WAVE_FORMAT_PCM;
+		SrcFormat.wBitsPerSample = 16;
+		if (! pAcmConvertor->InitConversion( & SrcFormat, pWf))
+		{
+			delete pContext;
+			//todo: enable to convert dialog
+			return FALSE;
+		}
+	}
+	else if (flags & SaveRawFileMsbFirst)
+	{
+		CByteSwapConvertor * pSwapConvertor = new CByteSwapConvertor;
+		pConvert->m_ProcBatch.AddWaveProc(pSwapConvertor);
+	}
+
+	if (flags & SaveFile_SaveCopy)
+	{
+		pContext->m_Flags |= FileSaveContext_SavingCopy;
+	}
+	pContext->Execute();
+	return FALSE;   // not saved yet
 }
 
 BOOL CWaveSoapFrontDoc::OnSaveDocument(LPCTSTR lpszPathName, DWORD flags, WAVEFORMATEX * pWf)
@@ -4695,8 +4832,12 @@ BOOL CWaveSoapFrontDoc::OpenRawFileDocument(LPCTSTR lpszPathName)
 		AfxMessageBox(IDS_UNABLE_TO_CREATE_TEMPORARY_FILE, MB_OK | MB_ICONEXCLAMATION);
 		return FALSE;
 	}
+
 	CDecompressContext * pContext =
 		new CDecompressContext(this, "Loading the raw sound file...", & wf);
+
+	m_OriginalWavFile.AllocateWaveformat();
+	*m_OriginalWavFile.GetWaveFormat() = wf;
 
 	pContext->m_SrcFile = m_OriginalWavFile;
 	pContext->m_DstFile = m_WavFile;
@@ -4712,6 +4853,10 @@ BOOL CWaveSoapFrontDoc::OpenRawFileDocument(LPCTSTR lpszPathName)
 	if (16 == wf.wBitsPerSample)
 	{
 		pContext->m_bSwapBytes = dlg.m_bMsbFirst;
+		if (dlg.m_bMsbFirst)
+		{
+			m_FileTypeFlags |= OpenRawFileMsbFirst;
+		}
 	}
 
 	AllocatePeakData(nNewFileSamples);

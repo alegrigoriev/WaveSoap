@@ -44,7 +44,8 @@ enum
 	OpenDocumentWmaFile = 0x200,
 	OpenDocumentRawFile = 0x400,
 	OpenDocumentAviFile = 0x800,
-	OpenDocumentNonWavFile = OpenDocumentMp3File
+	OpenRawFileMsbFirst = 0x1000,
+	OpenDocumentNonWavFile = OpenDocumentMp3File | OpenRawFileMsbFirst
 							| OpenDocumentWmaFile | OpenDocumentRawFile | OpenDocumentAviFile,
 };
 

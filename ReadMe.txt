@@ -1,8 +1,6 @@
 Known problems and tasks:
 
-Pass file type flags for MP3 file reopen
-Add RAW format save
-Add MP3 save
+Pass saved Raw file parameters back for reopen
 Add WMA save
 Load sound from AVI
 Test "reload compressed file" dialogs
@@ -83,6 +81,10 @@ No status bar in WinME
 FFT doesn't invaludate some areas
 
 Done:
+Add RAW format save
+When saving a copy, change the dialog title
+Pass file type flags for MP3 file reopen
+Add MP3 save
 Save Copy As asks for file reopen
 File/New and File/Save items moved to submenus
 Put zoom buttons instead of the static fields in the view:
