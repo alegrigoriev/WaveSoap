@@ -1589,7 +1589,7 @@ BOOL CWaveFile::LoadPeaksForCompressedFile(CWaveFile & OriginalWaveFile,
 			)
 		{
 			// allocate data and read it
-			WavePeak * pPeaks = pPeakInfo->AllocatePeakData(pfh.NumOfSamples, 1);
+			WavePeak * pPeaks = pPeakInfo->AllocatePeakData(pfh.NumOfSamples, Channels());
 			if (NULL == pPeaks)
 			{
 				TRACE("Unable to allocate peak info buffer\n");
@@ -1642,5 +1642,26 @@ void CWaveFile::SavePeakInfo(CWaveFile & SavedWaveFile)
 		PeakFile.Close();
 	}
 
+}
+
+SAMPLE_POSITION CWaveFile::SampleToPosition(SAMPLE_INDEX sample) const
+{
+	LPMMCKINFO datack = GetDataChunk();
+	if (NULL == datack)
+	{
+		return 0;
+	}
+	return datack->dwDataOffset + sample * SampleSize();
+}
+
+SAMPLE_INDEX CWaveFile::PositionToSample(SAMPLE_POSITION position) const
+{
+	LPMMCKINFO datack = GetDataChunk();
+	if (NULL == datack)
+	{
+		return 0;
+	}
+	ASSERT(position >= datack->dwDataOffset);
+	return (position - datack->dwDataOffset) / SampleSize();
 }
 
