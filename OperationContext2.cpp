@@ -50,7 +50,7 @@ BOOL CExpressionEvaluationContext::Init()
 
 	m_nSelectionSampleArgument = 0;
 	m_dSelectionTimeArgument = 0.;
-	m_nFileSampleArgument = (m_DstStart - m_DstFile.GetDataChunk()->dwDataOffset) / m_DstFile.SampleSize();
+	m_nFileSampleArgument = m_DstFile.PositionToSample(m_DstStart);
 	m_dFileTimeArgument = m_nFileSampleArgument / double(m_nSamplingRate);
 	return TRUE;
 }
@@ -61,7 +61,7 @@ BOOL CExpressionEvaluationContext::ProcessBuffer(void * buf, size_t len, SAMPLE_
 	int nSampleSize = m_DstFile.SampleSize();
 	int nChannels = m_DstFile.Channels();
 	int nSample = (offset - m_DstStart) / nSampleSize;
-	__int16 * pDst = (__int16 *) buf;
+	WAVE_SAMPLE * pDst = (WAVE_SAMPLE *) buf;
 	try
 	{
 		if (1 == nChannels)
@@ -1350,7 +1350,7 @@ BOOL CInsertSilenceContext::OperationProc()
 
 BOOL CInsertSilenceContext::ProcessBuffer(void * buf, size_t BufferLength, SAMPLE_POSITION offset, BOOL bBackward)
 {
-	__int16 * pDst = (__int16 *) buf;
+	WAVE_SAMPLE * pDst = (WAVE_SAMPLE *) buf;
 	if (m_DstFile.Channels() == 1
 		|| ALL_CHANNELS == m_DstChan)
 	{
@@ -1517,19 +1517,19 @@ BOOL CEqualizerContext::ProcessBuffer(void * buf, size_t len, SAMPLE_POSITION of
 	int nSampleSize = m_DstFile.SampleSize();
 	int nChannels = m_DstFile.Channels();
 	//int nSample = (offset - m_DstStart) / nSampleSize;
-	__int16 * pDst = (__int16 *) buf;
+	WAVE_SAMPLE * pDst = (WAVE_SAMPLE *) buf;
 	if (1 == nChannels)
 	{
 		if ( ! bBackward)
 		{
-			for (unsigned i = 0; i < len / sizeof (__int16); i ++)
+			for (unsigned i = 0; i < len / sizeof (WAVE_SAMPLE); i ++)
 			{
 				pDst[i] = DoubleToShort(CalculateResult(0, pDst[i]));
 			}
 		}
 		else
 		{
-			for (int i = len / sizeof (__int16) - 1; i >=0; i --)
+			for (int i = len / sizeof (WAVE_SAMPLE) - 1; i >=0; i --)
 			{
 				pDst[i] = DoubleToShort(CalculateResult(0, pDst[i]));
 			}
@@ -1539,7 +1539,7 @@ BOOL CEqualizerContext::ProcessBuffer(void * buf, size_t len, SAMPLE_POSITION of
 	{
 		if ( ! bBackward)
 		{
-			for (unsigned i = 0; i < len / sizeof (__int16); i += 2)
+			for (unsigned i = 0; i < len / sizeof (WAVE_SAMPLE); i += 2)
 			{
 				if (m_DstChan != 1) // not right only
 				{
@@ -1554,7 +1554,7 @@ BOOL CEqualizerContext::ProcessBuffer(void * buf, size_t len, SAMPLE_POSITION of
 		}
 		else
 		{
-			for (int i = len / sizeof (__int16) - 2; i >=0; i -= 2)
+			for (int i = len / sizeof (WAVE_SAMPLE) - 2; i >=0; i -= 2)
 			{
 				if (m_DstChan != 1) // not right only
 				{
@@ -1573,11 +1573,11 @@ BOOL CEqualizerContext::ProcessBuffer(void * buf, size_t len, SAMPLE_POSITION of
 
 BOOL CSwapChannelsContext::ProcessBuffer(void * buf, size_t len, SAMPLE_POSITION offset, BOOL bBackward)
 {
-	__int16 * pDst = (__int16 *) buf;
+	WAVE_SAMPLE * pDst = (WAVE_SAMPLE *) buf;
 	// channels are always 2
 	for (unsigned i = 0; i < len / sizeof pDst[0]; i += 2)
 	{
-		__int16 tmp = pDst[i];
+		WAVE_SAMPLE tmp = pDst[i];
 		pDst[i] = pDst[i + 1];
 		pDst[i + 1] = tmp;
 	}
@@ -1691,19 +1691,19 @@ BOOL CFilterContext::ProcessBuffer(void * buf, size_t len, SAMPLE_POSITION offse
 	int nSampleSize = m_DstFile.SampleSize();
 	int nChannels = m_DstFile.Channels();
 	//int nSample = (offset - m_DstStart) / nSampleSize;
-	__int16 * pDst = (__int16 *) buf;
+	WAVE_SAMPLE * pDst = (WAVE_SAMPLE *) buf;
 	if (1 == nChannels)
 	{
 		if ( ! bBackward)
 		{
-			for (unsigned i = 0; i < len / sizeof (__int16); i ++)
+			for (unsigned i = 0; i < len / sizeof (WAVE_SAMPLE); i ++)
 			{
 				pDst[i] = DoubleToShort(CalculateResult(0, pDst[i]));
 			}
 		}
 		else
 		{
-			for (int i = len / sizeof (__int16) - 1; i >=0; i --)
+			for (int i = len / sizeof (WAVE_SAMPLE) - 1; i >=0; i --)
 			{
 				pDst[i] = DoubleToShort(CalculateResult(0, pDst[i]));
 			}
@@ -1713,7 +1713,7 @@ BOOL CFilterContext::ProcessBuffer(void * buf, size_t len, SAMPLE_POSITION offse
 	{
 		if ( ! bBackward)
 		{
-			for (unsigned i = 0; i < len / sizeof (__int16); i += 2)
+			for (unsigned i = 0; i < len / sizeof (WAVE_SAMPLE); i += 2)
 			{
 				if (m_DstChan != 1) // not right only
 				{
@@ -1728,7 +1728,7 @@ BOOL CFilterContext::ProcessBuffer(void * buf, size_t len, SAMPLE_POSITION offse
 		}
 		else
 		{
-			for (int i = len / sizeof (__int16) - 2; i >=0; i -= 2)
+			for (int i = len / sizeof (WAVE_SAMPLE) - 2; i >=0; i -= 2)
 			{
 				if (m_DstChan != 1) // not right only
 				{
