@@ -133,7 +133,7 @@ void CMainFrame::GetMessageString(UINT nID, CString& rMessage) const
 					rMessage.Format(_T("%s: %s"), LPCTSTR(pDoc->GetTitle()),
 									LPCTSTR(pDoc->m_CurrentStatusString));
 				}
-				if ( ! pDoc->m_OperationInProgress)
+				if (0 == pDoc->m_OperationInProgress)
 				{
 					pDoc->m_CurrentStatusString.Empty();
 				}
