@@ -3117,6 +3117,40 @@ BOOL CCueEditOperation::OperationProc()
 	return BaseClass::OperationProc();
 }
 
+/////////////  CCueReverseOperation      //////////////////////////////////////////////
+
+CCueReverseOperation::CCueReverseOperation(CWaveSoapFrontDoc * pDoc,
+											CWaveFile & DstFile, SAMPLE_INDEX StartDstSample,
+											NUMBER_OF_SAMPLES LengthToReverse)
+	: BaseClass(pDoc, DstFile, CWaveFile::InstanceDataWav::MetadataCopyAllCueData)
+	, m_StartDstSample(StartDstSample)
+	, m_LengthToReverse(LengthToReverse)
+{
+}
+
+CCueReverseOperation::~CCueReverseOperation()
+{
+}
+
+BOOL CCueReverseOperation::OperationProc()
+{
+	if (NULL == m_pMetadata)
+	{
+		m_pMetadata = new CWaveFile::InstanceDataWav;
+	}
+
+	m_pMetadata->CopyMetadata(m_WaveFile.GetInstanceData(), m_pMetadata->MetadataCopyAllCueData);
+
+	BOOL HasChanged = m_pMetadata->ReverseMarkers(m_StartDstSample, m_LengthToReverse);
+
+	if ( ! HasChanged)
+	{
+		return TRUE;
+	}
+
+	return BaseClass::OperationProc();
+}
+
 /////////////  CInsertSilenceContext      //////////////////////////////////////////////
 BOOL CInsertSilenceContext::InitExpand(CWaveFile & DstFile, SAMPLE_INDEX StartSample, SAMPLE_INDEX length,
 										CHANNEL_MASK chan, BOOL NeedUndo)
