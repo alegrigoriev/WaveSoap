@@ -4799,8 +4799,7 @@ void CWaveSoapFrontDoc::OnProcessNoiseReduction()
 	NoiseReductionParameters NrParms;
 	dlg.GetNoiseReductionData( & NrParms);
 	CNoiseReduction * pNoiseReduction =
-		new CNoiseReduction(dlg.GetNoiseReductionFftOrder(),
-							m_WavFile.NumChannelsFromMask(dlg.GetChannel()), NrParms);
+		new CNoiseReduction(dlg.GetNoiseReductionFftOrder(), NrParms);
 
 	pContext->AddWaveProc(pNoiseReduction);
 
