@@ -24,8 +24,25 @@ public:
 // Dialog Data
 	//{{AFX_DATA(CFilePreferencesPage)
 	enum { IDD = IDD_PROPPAGE_FILE_PREFERENCES };
-	// NOTE - ClassWizard will add data members here.
-	//    DO NOT EDIT what you see in these blocks of generated code !
+	CSpinButtonCtrl	m_SpinUndoLimit;
+	CSpinButtonCtrl	m_SpinRedoLimit;
+	CEdit	m_eTempFileLocation;
+	BOOL	m_bAllow4GbWav;
+	BOOL	m_bEnableRedo;
+	BOOL	m_bEnableUndo;
+	BOOL	m_bLimitRedoDepth;
+	BOOL	m_bLimitRedoSize;
+	BOOL	m_bLimitUndoSize;
+	BOOL	m_bLimitUndoDepth;
+	BOOL	m_bRememberSelectionInUndo;
+	BOOL	m_UseMemoryFiles;
+	UINT	m_RedoDepthLimit;
+	UINT	m_RedoSizeLimit;
+	CString	m_sTempFileLocation;
+	UINT	m_MaxMemoryFileSize;
+	UINT	m_UndoDepthLimit;
+	UINT	m_UndoSizeLimit;
+	int		m_DefaultFileOpenMode;
 	//}}AFX_DATA
 
 
@@ -40,7 +57,8 @@ protected:
 protected:
 	// Generated message map functions
 	//{{AFX_MSG(CFilePreferencesPage)
-	// NOTE: the ClassWizard will add member functions here
+	afx_msg void OnButtonBrowseTempFileLocation();
+	virtual BOOL OnInitDialog();
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 
@@ -96,8 +114,7 @@ public:
 // Dialog Data
 	//{{AFX_DATA(CViewPreferencesPage)
 	enum { IDD = IDD_PROPPAGE_VIEW_PREFERENCES };
-	// NOTE - ClassWizard will add data members here.
-	//    DO NOT EDIT what you see in these blocks of generated code !
+	BOOL	m_bSnapMouseSelection;
 	//}}AFX_DATA
 
 

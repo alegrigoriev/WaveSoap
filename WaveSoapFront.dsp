@@ -135,6 +135,10 @@ SOURCE=.\FileDialogWithHistory.cpp
 # End Source File
 # Begin Source File
 
+SOURCE=.\FolderDialog.cpp
+# End Source File
+# Begin Source File
+
 SOURCE=.\MainFrm.cpp
 # End Source File
 # Begin Source File
@@ -366,6 +370,10 @@ SOURCE=.\FftRulerView.h
 # Begin Source File
 
 SOURCE=.\FileDialogWithHistory.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\FolderDialog.h
 # End Source File
 # Begin Source File
 

@@ -1589,51 +1589,61 @@ BEGIN
     PUSHBUTTON      "More...",IDC_BUTTON_MORE,316,45,50,14
 END
 
-IDD_PROPPAGE_FILE_PREFERENCES DIALOG DISCARDABLE  0, 0, 221, 252
+IDD_PROPPAGE_FILE_PREFERENCES DIALOG DISCARDABLE  0, 0, 195, 250
 STYLE WS_CHILD | WS_DISABLED | WS_CAPTION
 CAPTION "File"
 FONT 8, "MS Sans Serif"
 BEGIN
-    LTEXT           "Temporary file location:",IDC_STATIC,7,24,93,8
-    EDITTEXT        IDC_EDIT1,7,38,161,14,ES_AUTOHSCROLL
-    PUSHBUTTON      "...",IDC_BUTTON1,194,38,20,14
-    CONTROL         "Enable",IDC_CHECK1,"Button",BS_AUTOCHECKBOX | 
-                    WS_TABSTOP,11,97,56,10
-    EDITTEXT        IDC_EDIT2,82,108,40,14,ES_AUTOHSCROLL
-    CONTROL         "Limit total size:",IDC_CHECK2,"Button",BS_AUTOCHECKBOX | 
-                    WS_TABSTOP,11,110,67,10
-    LTEXT           "MB",IDC_STATIC,127,111,11,8
-    CONTROL         "Limit depth:",IDC_CHECK3,"Button",BS_AUTOCHECKBOX | 
-                    WS_TABSTOP,11,126,50,10
-    EDITTEXT        IDC_EDIT3,82,125,40,14,ES_AUTOHSCROLL
-    CONTROL         "Enable",IDC_CHECK4,"Button",BS_AUTOCHECKBOX | 
-                    WS_TABSTOP,11,155,62,10
-    EDITTEXT        IDC_EDIT5,82,166,40,14,ES_AUTOHSCROLL
-    CONTROL         "Limit total size:",IDC_CHECK5,"Button",BS_AUTOCHECKBOX | 
-                    WS_TABSTOP,11,168,67,10
-    LTEXT           "MB",IDC_STATIC,127,169,11,8
-    CONTROL         "Limit depth:",IDC_CHECK6,"Button",BS_AUTOCHECKBOX | 
-                    WS_TABSTOP,11,184,50,10
-    EDITTEXT        IDC_EDIT6,82,183,40,14,ES_AUTOHSCROLL
-    CONTROL         "Use RAM for temp files not larger than:",IDC_CHECK7,
-                    "Button",BS_AUTOCHECKBOX | BS_MULTILINE | WS_TABSTOP,11,
-                    59,81,20
-    EDITTEXT        IDC_EDIT4,99,61,40,14,ES_AUTOHSCROLL
-    GROUPBOX        "Redo",IDC_STATIC,7,145,139,58
-    CONTROL         "Spin1",IDC_SPIN1,"msctls_updown32",UDS_ARROWKEYS,125,
-                    183,10,14
-    CONTROL         "Spin1",IDC_SPIN2,"msctls_updown32",UDS_ARROWKEYS,125,
-                    124,8,14
-    GROUPBOX        "Undo",IDC_STATIC,7,87,139,56
-    LTEXT           "kB",IDC_STATIC,144,63,12,8
+    LTEXT           "Temporary file location:",IDC_STATIC,7,10,93,8
+    EDITTEXT        IDC_EDIT_TEMP_FILE_LOCATION,7,24,158,14,ES_AUTOHSCROLL
+    PUSHBUTTON      "...",IDC_BUTTON_BROWSE_TEMP_FILE_LOCATION,171,24,17,14
+    CONTROL         "Use RAM for temp files not larger than:",
+                    IDC_CHECK_TEMP_MEMORY_FILES,"Button",BS_AUTOCHECKBOX | 
+                    BS_MULTILINE | WS_TABSTOP,11,45,84,20
+    EDITTEXT        IDC_EDIT_TEMP_MEMORY_FILE_LIMIT,99,47,40,13,
+                    ES_AUTOHSCROLL | ES_NUMBER
+    LTEXT           "kB",IDC_STATIC,144,49,14,8
+    CONTROL         "Allow creating 4 GB wave file",IDC_CHECK_ALLOW_4GB_WAV,
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,11,66,122,10
+    GROUPBOX        "Undo",IDC_STATIC,7,78,139,57
+    CONTROL         "Enable",IDC_CHECK_ENABLE_UNDO,"Button",BS_AUTOCHECKBOX | 
+                    WS_TABSTOP,11,88,56,10
+    CONTROL         "Limit total size:",IDC_CHECK_LIMIT_UNDO,"Button",
+                    BS_AUTOCHECKBOX | WS_TABSTOP,11,103,67,10
+    EDITTEXT        IDC_EDIT_UNDO_LIMIT,82,101,40,13,ES_AUTOHSCROLL | 
+                    ES_NUMBER
+    LTEXT           "MB",IDC_STATIC,127,103,14,8
+    CONTROL         "Limit depth:",IDC_CHECK_LIMIT_UNDO_DEPTH,"Button",
+                    BS_AUTOCHECKBOX | WS_TABSTOP,11,118,60,10
+    EDITTEXT        IDC_EDIT_UNDO_DEPTH_LIMIT,82,116,40,13,ES_AUTOHSCROLL | 
+                    ES_NUMBER
+    CONTROL         "Spin1",IDC_SPIN_UNDO_DEPTH,"msctls_updown32",
+                    UDS_ALIGNRIGHT | UDS_AUTOBUDDY | UDS_ARROWKEYS,125,115,8,
+                    14
+    GROUPBOX        "Redo",IDC_STATIC,7,136,139,57
+    CONTROL         "Enable",IDC_CHECK_ENABLE_REDO,"Button",BS_AUTOCHECKBOX | 
+                    WS_TABSTOP,11,147,62,10
+    CONTROL         "Limit total size:",IDC_CHECK_LIMIT_REDO_SIZE,"Button",
+                    BS_AUTOCHECKBOX | WS_TABSTOP,11,162,67,10
+    EDITTEXT        IDC_EDIT_REDO_SIZE_LIMIT,82,159,40,13,ES_AUTOHSCROLL
+    LTEXT           "MB",IDC_STATIC,127,161,15,8
+    CONTROL         "Limit depth:",IDC_CHECK_LIMIT_REDO_DEPTH,"Button",
+                    BS_AUTOCHECKBOX | WS_TABSTOP,11,177,55,10
+    EDITTEXT        IDC_EDIT_REDO_DEPTH_LIMIT,82,174,40,13,ES_AUTOHSCROLL
+    CONTROL         "Spin1",IDC_SPIN_REDO_LIMIT,"msctls_updown32",
+                    UDS_ALIGNRIGHT | UDS_AUTOBUDDY | UDS_ARROWKEYS,125,174,
+                    10,14
+    CONTROL         "Remember current selection in Undo/Redo",
+                    IDC_CHECK_REMEMBER_SELECTION_IN_UNDO,"Button",
+                    BS_AUTOCHECKBOX | WS_TABSTOP,11,199,170,10
     LTEXT           "Open files from command line and drag-and-drop as:",
-                    IDC_STATIC,7,208,188,8
-    CONTROL         "Read only",IDC_RADIO1,"Button",BS_AUTORADIOBUTTON,10,
-                    222,47,10
-    CONTROL         "Direct edit",IDC_RADIO2,"Button",BS_AUTORADIOBUTTON,70,
-                    222,61,10
-    CONTROL         "Buffered",IDC_RADIO3,"Button",BS_AUTORADIOBUTTON,140,
-                    222,49,10
+                    IDC_STATIC,9,214,177,8
+    CONTROL         "Read only",IDC_RADIO_OPEN_FILE_MODE,"Button",
+                    BS_AUTORADIOBUTTON | WS_GROUP,10,228,51,10
+    CONTROL         "Direct edit",IDC_RADIO2,"Button",BS_AUTORADIOBUTTON,71,
+                    228,57,10
+    CONTROL         "Buffered",IDC_RADIO3,"Button",BS_AUTORADIOBUTTON,132,
+                    228,49,10
 END
 
 IDD_PROPPAGE_VIEW_PREFERENCES DIALOG DISCARDABLE  0, 0, 210, 154
@@ -1642,6 +1652,9 @@ CAPTION "View"
 FONT 8, "MS Sans Serif"
 BEGIN
     LTEXT           "Colors:",IDC_STATIC,7,18,35,8
+    CONTROL         "Snap mouse selection to max sample",
+                    IDC_CHECK_SNAP_MOUSE_SELECTION,"Button",BS_AUTOCHECKBOX | 
+                    WS_TABSTOP,9,131,142,10
 END
 
 IDD_PROPPAGE_SOUND_PREFERENCES DIALOG DISCARDABLE  0, 0, 210, 191
@@ -1690,6 +1703,30 @@ BEGIN
     LTEXT           "File ""%s"" saved. ",IDC_STATIC_PROMPT,7,7,173,59
     DEFPUSHBUTTON   "&Reload compressed file",IDYES,35,72,115,14
     PUSHBUTTON      "&Close the file",IDCANCEL,35,88,115,14
+END
+
+IDD_DIALOG_RECORD_SOUND DIALOG DISCARDABLE  0, 0, 212, 153
+STYLE DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "Record Sound"
+FONT 8, "MS Sans Serif"
+BEGIN
+    DEFPUSHBUTTON   "OK",IDOK,155,39,50,14
+    PUSHBUTTON      "Cancel",IDCANCEL,155,56,50,14
+    PUSHBUTTON      "&Record",IDC_BUTTON1,24,99,19,14,BS_ICON
+    PUSHBUTTON      "&Pause",IDC_BUTTON2,47,99,19,14,BS_ICON
+    PUSHBUTTON      "Re&wind",IDC_BUTTON3,69,99,19,14,BS_ICON
+    PUSHBUTTON      "&Record",IDC_BUTTON4,92,99,19,14,BS_ICON
+    PUSHBUTTON      "From CD...",IDC_BUTTON5,155,73,50,14
+    PUSHBUTTON      "Mixer >>",IDC_BUTTON6,155,113,50,14
+    PUSHBUTTON      "Selection...",IDC_BUTTON7,155,91,50,14
+    CONTROL         "Play this file during recording:",IDC_CHECK1,"Button",
+                    BS_AUTOCHECKBOX | WS_TABSTOP,7,49,117,10
+    LTEXT           "Record to file:",IDC_STATIC,7,7,58,8
+    PUSHBUTTON      "New",IDC_BUTTON8,155,21,50,14
+    COMBOBOX        IDC_COMBO1,7,22,141,51,CBS_DROPDOWN | CBS_SORT | 
+                    WS_VSCROLL | WS_TABSTOP
+    COMBOBOX        IDC_COMBO2,7,63,142,30,CBS_DROPDOWN | CBS_SORT | 
+                    WS_VSCROLL | WS_TABSTOP
 END
 
 
@@ -1975,9 +2012,9 @@ BEGIN
     IDD_PROPPAGE_FILE_PREFERENCES, DIALOG
     BEGIN
         LEFTMARGIN, 7
-        RIGHTMARGIN, 214
+        RIGHTMARGIN, 188
         TOPMARGIN, 7
-        BOTTOMMARGIN, 245
+        BOTTOMMARGIN, 243
     END
 
     IDD_PROPPAGE_VIEW_PREFERENCES, DIALOG
@@ -2010,6 +2047,14 @@ BEGIN
         RIGHTMARGIN, 180
         TOPMARGIN, 7
         BOTTOMMARGIN, 102
+    END
+
+    IDD_DIALOG_RECORD_SOUND, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 205
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 146
     END
 END
 #endif    // APSTUDIO_INVOKED

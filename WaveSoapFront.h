@@ -69,7 +69,12 @@ public:
 	CApplicationProfile Profile;
 	CString m_CurrentDir;
 	int m_OpenFileDialogFilter;
-	CString sTempDir;             // File proppage
+	CString m_sTempDir;             // File proppage
+	int m_DefaultOpenMode;
+	enum { DefaultOpenReadOnly = 0,
+		DefaultOpenDirect = 1,
+		DefaultOpenBuffered = 2, };
+
 	bool m_bOpenMaximized;
 	bool m_bOpenChildMaximized;
 	bool m_bShowToolbar;
@@ -125,6 +130,11 @@ public:
 	int m_DefaultPlaybackDevice;
 	int m_NumPlaybackBuffers;
 	size_t m_SizePlaybackBuffers;
+
+	int m_DefaultRecordDevice;
+	int m_NumRecordBuffers;
+	size_t m_SizeRecordBuffers;
+
 	BOOL m_bReadOnly;
 	BOOL m_bDirectMode;
 	// Undo/Redo parameters
@@ -134,6 +144,13 @@ public:
 	int m_MaxRedoDepth;               // File proppage
 	DWORD m_MaxUndoSize;              // File proppage
 	DWORD m_MaxRedoSize;              // File proppage
+	BOOL m_bEnableUndoLimit;          // File proppage
+	BOOL m_bEnableRedoLimit;          // File proppage
+	BOOL m_bEnableUndoDepthLimit;     // File proppage
+	BOOL m_bEnableRedoDepthLimit;     // File proppage
+	BOOL m_bRememberSelectionInUndo;  // File proppage
+	BOOL m_bUseMemoryFiles;  // File proppage
+	int m_MaxMemoryFileSize;    // in Kbytes
 
 	BOOL m_bUseCountrySpecificNumberAndTime;
 	TCHAR m_TimeSeparator;

@@ -3015,6 +3015,7 @@ void CWaveSoapFrontDoc::OnEditSelection()
 	CSelectionDialog dlg;
 	dlg.m_Start = m_SelectionStart;
 	dlg.m_End = m_SelectionEnd;
+	dlg.m_CaretPosition = m_CaretPosition;
 	dlg.m_Length = m_SelectionEnd - m_SelectionStart;
 	dlg.m_FileLength = WaveFileSamples();
 	dlg.m_Chan = m_SelectedChannel + 1;
@@ -3798,6 +3799,7 @@ void CWaveSoapFrontDoc::OnProcessChangevolume()
 
 	dlg.m_Start = start;
 	dlg.m_End = end;
+	dlg.m_CaretPosition = m_CaretPosition;
 	dlg.m_Chan = channel;
 	dlg.m_pWf = m_WavFile.GetWaveFormat();
 	dlg.m_bLockChannels = m_bChannelsLocked;
@@ -4067,6 +4069,7 @@ void CWaveSoapFrontDoc::OnProcessDcoffset()
 	CThisApp * pApp = GetApp();
 	dlg.m_Start = start;
 	dlg.m_End = end;
+	dlg.m_CaretPosition = m_CaretPosition;
 	dlg.m_Chan = channel;
 	dlg.m_pWf = m_WavFile.GetWaveFormat();
 	dlg.m_bUndo = UndoEnabled();
@@ -4315,6 +4318,7 @@ void CWaveSoapFrontDoc::OnProcessNormalize()
 	CThisApp * pApp = GetApp();
 	dlg.m_Start = start;
 	dlg.m_End = end;
+	dlg.m_CaretPosition = m_CaretPosition;
 	dlg.m_Chan = channel;
 	dlg.m_pWf = m_WavFile.GetWaveFormat();
 	dlg.m_bLockChannels = m_bChannelsLocked;
@@ -4623,6 +4627,7 @@ void CWaveSoapFrontDoc::OnProcessSynthesisExpressionEvaluation()
 	dlg.m_bUndo = UndoEnabled();
 	dlg.m_Start = start;
 	dlg.m_End = end;
+	dlg.m_CaretPosition = m_CaretPosition;
 	dlg.m_Chan = channel;
 	dlg.m_pWf = m_WavFile.GetWaveFormat();
 	dlg.m_bLockChannels = m_bChannelsLocked;
@@ -4773,12 +4778,28 @@ BOOL CWaveSoapFrontDoc::OpenWmaFileDocument(LPCTSTR lpszPathName)
 void CWaveSoapFrontDoc::OnUpdateToolsInterpolate(CCmdUI* pCmdUI)
 {
 	// the area must be at least 5* length away from the file beginning and from the end
-	pCmdUI->Enable(m_SelectionStart != m_SelectionEnd
-					&& m_SelectionEnd - m_SelectionStart <= MaxInterpolatedLength   // 128
-					&& m_SelectionStart >= 5 * (m_SelectionEnd - m_SelectionStart)
+	int InterpolateSamples = m_SelectionEnd - m_SelectionStart;
+	int PreInterpolateSamples = 0;
+	int PostInterpolateSamples = 0;
+	int InterpolationOverlap;
+	bool BigGap = (InterpolateSamples > 32);
+	if (BigGap)
+	{
+		InterpolationOverlap = 2048 + InterpolateSamples + InterpolateSamples / 2;
+		PostInterpolateSamples = InterpolateSamples / 2;
+		PreInterpolateSamples = InterpolateSamples - InterpolateSamples / 2;
+	}
+	else
+	{
+		InterpolationOverlap = 5 * InterpolateSamples;
+	}
+	pCmdUI->Enable(0 != InterpolateSamples
+					&& InterpolateSamples <= MaxInterpolatedLength   // 128
+					&& m_SelectionStart >= InterpolationOverlap
 					&& m_WavFile.IsOpen()
-					&& m_SelectionEnd + 5 * (m_SelectionEnd - m_SelectionStart) < WaveFileSamples()
-					&& ! (m_OperationInProgress || m_bReadOnly));
+					&& m_SelectionEnd + InterpolationOverlap < WaveFileSamples()
+					&& ! m_OperationInProgress
+					&& ! m_bReadOnly);
 }
 
 void CWaveSoapFrontDoc::OnToolsInterpolate()
@@ -4922,6 +4943,7 @@ void CWaveSoapFrontDoc::OnProcessDoUlf()
 
 	dlg.m_Start = start;
 	dlg.m_End = end;
+	dlg.m_CaretPosition = m_CaretPosition;
 	dlg.m_Chan = channel;
 	dlg.m_pWf = m_WavFile.GetWaveFormat();
 	dlg.m_bLockChannels = m_bChannelsLocked;
@@ -5006,6 +5028,7 @@ void CWaveSoapFrontDoc::OnProcessDoDeclicking()
 	dlg.m_bUndo = UndoEnabled();
 	dlg.m_Start = start;
 	dlg.m_End = end;
+	dlg.m_CaretPosition = m_CaretPosition;
 	dlg.m_Chan = channel;
 	dlg.m_pWf = m_WavFile.GetWaveFormat();
 	dlg.m_bLockChannels = m_bChannelsLocked;
@@ -5088,6 +5111,7 @@ void CWaveSoapFrontDoc::OnProcessNoiseReduction()
 	dlg.m_bUndo = UndoEnabled();
 	dlg.m_Start = start;
 	dlg.m_End = end;
+	dlg.m_CaretPosition = m_CaretPosition;
 	dlg.m_Chan = channel;
 	dlg.m_pWf = m_WavFile.GetWaveFormat();
 	dlg.m_bLockChannels = m_bChannelsLocked;

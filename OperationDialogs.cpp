@@ -238,6 +238,7 @@ void CVolumeChangeDialog::OnButtonSelection()
 	CSelectionDialog dlg;
 	dlg.m_Start = m_Start;
 	dlg.m_End = m_End;
+	dlg.m_CaretPosition = m_CaretPosition;
 	dlg.m_Length = m_End - m_Start;
 	dlg.m_FileLength = m_FileLength;
 	dlg.m_Chan = m_Chan + 1;
@@ -542,19 +543,24 @@ BOOL CSelectionDialog::OnInitDialog()
 	((CComboBox*) & m_eStart)->SetExtendedUI(TRUE);
 	((CComboBox*) & m_eEnd)->SetExtendedUI(TRUE);
 
-	AddSelection("(current selection)", m_Start, m_End);
+	if ((0 != m_Start || m_FileLength != m_End)
+		&& (0 != m_Start || m_CaretPosition != m_End)
+		&& (m_CaretPosition != m_Start || m_FileLength != m_End))
+	{
+		AddSelection("(current selection)", m_Start, m_End);
+	}
 	AddSelection("All Sample Data", 0, m_FileLength);
 
-	if (0 != m_Start)
+	if (0 != m_CaretPosition
+		&& m_FileLength != m_CaretPosition)
 	{
-		AddSelection("From Begin To Cursor", 0, m_Start);
-	}
-	if (m_FileLength != m_End)
-	{
-		AddSelection("From Cursor To End", m_Start, m_FileLength);
+		AddSelection("From Begin To Cursor", 0, m_CaretPosition);
+		AddSelection("From Cursor To End", m_CaretPosition, m_FileLength);
+		m_eStart.AddPosition("Cursor", m_CaretPosition);
+		m_eEnd.AddPosition("Cursor", m_CaretPosition);
 	}
 
-	m_SelectionCombo.SetCurSel(0);
+	m_SelectionCombo.SetCurSel(FindSelection(m_Start, m_End));
 	// TODO: add regions
 	return TRUE;  // return TRUE unless you set the focus to a control
 	// EXCEPTION: OCX Property Pages should return FALSE
@@ -640,6 +646,19 @@ void CSelectionDialog::AddSelection(LPCTSTR Name, long begin, long end)
 	m_SelectionCombo.AddString(Name);
 	Selection s = {begin, end};
 	m_Selections.push_back(s);
+}
+
+int CSelectionDialog::FindSelection(long begin, long end)
+{
+	for (int i = 0; i < m_Selections.size(); i++)
+	{
+		if (m_Selections[i].begin == begin
+			&& m_Selections[i].end == end)
+		{
+			return i;
+		}
+	}
+	return -1;
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -747,6 +766,7 @@ void CDcOffsetDialog::OnButtonSelection()
 	CSelectionDialog dlg;
 	dlg.m_Start = m_Start;
 	dlg.m_End = m_End;
+	dlg.m_CaretPosition = m_CaretPosition;
 	dlg.m_Length = m_End - m_Start;
 	dlg.m_FileLength = m_FileLength;
 	dlg.m_Chan = m_Chan + 1;
@@ -867,9 +887,9 @@ BOOL CStatisticsDialog::OnInitDialog()
 
 	sprintf(s.GetBuffer(1024), format,
 			//%s (%s)\r\n"
-			LPCTSTR(SampleToString(m_Cursor, m_SamplesPerSec,
+			LPCTSTR(SampleToString(m_CaretPosition, m_SamplesPerSec,
 									SampleToString_HhMmSs | TimeToHhMmSs_NeedsMs | TimeToHhMmSs_NeedsHhMm)),
-			LPCTSTR(SampleToString(m_Cursor, m_SamplesPerSec, SampleToString_Sample)),
+			LPCTSTR(SampleToString(m_CaretPosition, m_SamplesPerSec, SampleToString_Sample)),
 
 			//"%s (%.2f dB; %.2f%%)\r\n"
 			LPCTSTR(LtoaCS(m_ValueAtCursorLeft)), LPCTSTR(AtCursorDb),
@@ -955,9 +975,9 @@ BOOL CStatisticsDialog::OnInitDialog()
 
 		sprintf(s.GetBuffer(1024), format,
 				//%s (%s)\r\n"
-				LPCTSTR(SampleToString(m_Cursor, m_SamplesPerSec,
+				LPCTSTR(SampleToString(m_CaretPosition, m_SamplesPerSec,
 										SampleToString_HhMmSs | TimeToHhMmSs_NeedsMs | TimeToHhMmSs_NeedsHhMm)),
-				LPCTSTR(SampleToString(m_Cursor, m_SamplesPerSec, SampleToString_Sample)),
+				LPCTSTR(SampleToString(m_CaretPosition, m_SamplesPerSec, SampleToString_Sample)),
 
 				//"%s (%.2f dB; %.2f%%)\r\n"
 				LPCTSTR(LtoaCS(m_ValueAtCursorRight)), LPCTSTR(AtCursorDb),
@@ -1100,6 +1120,7 @@ void CNormalizeSoundDialog::OnButtonSelection()
 	CSelectionDialog dlg;
 	dlg.m_Start = m_Start;
 	dlg.m_End = m_End;
+	dlg.m_CaretPosition = m_CaretPosition;
 	dlg.m_Length = m_End - m_Start;
 	dlg.m_FileLength = m_FileLength;
 	dlg.m_Chan = m_Chan + 1;
@@ -1494,6 +1515,7 @@ void CLowFrequencySuppressDialog::OnButtonSelection()
 	CSelectionDialog dlg;
 	dlg.m_Start = m_Start;
 	dlg.m_End = m_End;
+	dlg.m_CaretPosition = m_CaretPosition;
 	dlg.m_Length = m_End - m_Start;
 	dlg.m_FileLength = m_FileLength;
 	dlg.m_Chan = m_Chan + 1;
@@ -1686,6 +1708,7 @@ void CExpressionEvaluationDialog::OnButtonSelection()
 	CSelectionDialog dlg;
 	dlg.m_Start = m_Start;
 	dlg.m_End = m_End;
+	dlg.m_CaretPosition = m_CaretPosition;
 	dlg.m_Length = m_End - m_Start;
 	dlg.m_FileLength = m_FileLength;
 	dlg.m_Chan = m_Chan + 1;
@@ -1910,6 +1933,7 @@ void CDeclickDialog::OnButtonSelection()
 	CSelectionDialog dlg;
 	dlg.m_Start = m_Start;
 	dlg.m_End = m_End;
+	dlg.m_CaretPosition = m_CaretPosition;
 	dlg.m_Length = m_End - m_Start;
 	dlg.m_FileLength = m_FileLength;
 	dlg.m_Chan = m_Chan + 1;
@@ -2197,6 +2221,7 @@ void CNoiseReductionDialog::OnButtonSelection()
 	CSelectionDialog dlg;
 	dlg.m_Start = m_Start;
 	dlg.m_End = m_End;
+	dlg.m_CaretPosition = m_CaretPosition;
 	dlg.m_Length = m_End - m_Start;
 	dlg.m_FileLength = m_FileLength;
 	dlg.m_Chan = m_Chan + 1;

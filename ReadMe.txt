@@ -1,7 +1,6 @@
 Known problems and tasks:
 
 Add options dialog
-Test "reload compressed file" dialogs
 Show File Properties
 Make sliders working in Resample Dialog
 Add decibel view to CAmplitudeRuler
@@ -9,6 +8,9 @@ Draw decibels and crosshair in Spectrum Section view
 Add equalizer and low/high frequency filters functions
 Use list instead of array for FFT data (for performance reason).
 Include MP3 and WMA filters even if there is no WMP, but show warning, if the filter is selected
+Test "reload compressed file" dialogs
+Show file name in Statistics Dialog
+Show file names in PostRetire dialogs, because they can be shown for background DOC.
 
 Add CD grabbing
 Add noise reduction estimation in spectrum section view
@@ -16,6 +18,7 @@ Add MP3 save
 Add ASF save
 Add sound recording
 Add splash screen
+In CSelectionDialog: replace combobox strings with LoadString
 Support "Play" in selection dialog
 Make Paste Special command (with Fade In/Fade Out etc)
 Make Undo/redo save the selection and regions
@@ -40,6 +43,9 @@ When Open/Save dialog is resized, resize/move the controls
 Verify that FileSave can be canceled
 Reconsider Undo All Changes functionality and Redo All Changes
 ??Delete permanent undo: non-permanent file may become permanent after save, move call after save
+Use ReplaceFile for renaming the file
+Add DELETE premission when creating temp file
+If there is no selection, Selection button dialog doesn't give option From Cursor, To Cursor
 
 Problems:
 Expression dialog: OK not disabled on the beginning, if expression is empty
@@ -57,6 +63,7 @@ Save As dialog is not centered first time (comdlg problem?)
 ??? When time/seconds format is set for status bar, MM:SS is actually shown
 
 Fixed:
+"Interpolate" command not disabled properly
 Last 64 KB block is not read from the master file (need to round read length to sector size
 Channels swapped in Spectrum Section view
 FFT view is ahead of the data??? 
@@ -78,6 +85,7 @@ Wrong minimum/maximum valies shown for a zero length file in Statistics (command
 ???? When a file is opened in non-direct mode, peak info is saved with wrong time stamp
 
 Done:
+Selection dialog shows more options in combobox and doesn't show non-applicable options
 Add "Close File" option to other "reload after save" dialogs
 Place all CApplicationProfile members to the end of class, or add RemoveAll or UnloadAll() call to the destructors
 Make default for "Don't show MP3/WMA warning" FALSE
