@@ -124,6 +124,14 @@
 #define IDS_FILE_OPENED_NONDIRECT       32825
 #define IDS_UNABLE_TO_CREATE_TEMPORARY_FILE 32826
 #define IDS_UNABLE_TO_CREATE_NEW_FILE   32827
+#define ID_INDICATOR_FILE_SIZE          32828
+#define ID_INDICATOR_SELECTION_BEGIN    32829
+#define ID_INDICATOR_SELECTION_LENGTH   32830
+#define ID_INDICATOR_CURRENT_POS        32831
+#define ID_INDICATOR_DUMMY              32832
+#define ID_INDICATOR_SAMPLE_RATE        32833
+#define ID_INDICATOR_SAMPLE_SIZE        32834
+#define ID_INDICATOR_CHANNELS           32835
 #define IDC_VIEW_AMPL_RULER_PERCENT     32900
 #define ID_FILE_PROPERTIES              40000
 #define ID_VIEW_ZOOMVERT_NORMAL         40001
@@ -138,6 +146,8 @@
 #define ID_FILE_REOPENFOREDITING        40010
 #define ID_EDIT_REVERTALLCHANGES        40011
 #define ID_EDIT_UNDO_ALL_CHANGES        40012
+#define ID_STOP_ALL                     40013
+#define IDC_PLAY_AND_STOP               -25522
 
 // Next default values for new objects
 //
@@ -145,7 +155,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_3D_CONTROLS                     1
 #define _APS_NEXT_RESOURCE_VALUE        137
-#define _APS_NEXT_COMMAND_VALUE         40013
+#define _APS_NEXT_COMMAND_VALUE         40015
 #define _APS_NEXT_CONTROL_VALUE         1024
 #define _APS_NEXT_SYMED_VALUE           101
 #endif

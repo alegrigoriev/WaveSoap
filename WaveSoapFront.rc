@@ -320,13 +320,16 @@ BEGIN
     VK_DELETE,      ID_EDIT_DELETE,         VIRTKEY, NOINVERT
     VK_DELETE,      ID_EDIT_CUT,            VIRTKEY, SHIFT, NOINVERT
     VK_DOWN,        ID_VIEW_ZOOMOUTVERT,    VIRTKEY, ALT, NOINVERT
+    VK_ESCAPE,      ID_STOP_ALL,            VIRTKEY, NOINVERT
     VK_F1,          ID_HELP,                VIRTKEY, NOINVERT
     VK_F1,          ID_CONTEXT_HELP,        VIRTKEY, SHIFT, NOINVERT
     VK_F6,          ID_NEXT_PANE,           VIRTKEY, NOINVERT
     VK_F6,          ID_PREV_PANE,           VIRTKEY, SHIFT, NOINVERT
     VK_INSERT,      ID_EDIT_COPY,           VIRTKEY, CONTROL, NOINVERT
     VK_INSERT,      ID_EDIT_PASTE,          VIRTKEY, SHIFT, NOINVERT
+    VK_RETURN,      IDC_SOUND_PAUSE,        VIRTKEY, NOINVERT
     VK_RETURN,      ID_FILE_PROPERTIES,     VIRTKEY, ALT, NOINVERT
+    VK_SPACE,       IDC_PLAY_AND_STOP,      VIRTKEY, NOINVERT
     VK_SUBTRACT,    ID_VIEW_ZOOMOUTHOR2,    VIRTKEY, NOINVERT
     VK_UP,          ID_VIEW_ZOOMINVERT,     VIRTKEY, ALT, NOINVERT
     "X",            ID_EDIT_CUT,            VIRTKEY, CONTROL, NOINVERT
@@ -898,11 +901,15 @@ BEGIN
     IDS_FILE_OPEN_SHARING_VIOLATION 
                             "File ""%s"" couldn't be opened because it is in use by another application"
     IDS_FILE_OPENED_NONDIRECT 
-                            "File ""%s"" can only be opened in non-direct mode because it is in use by this or another application"
+                            "File ""%s"" cannot be opened in direct mode because it is either read-only or already in use by this or another application"
     IDS_UNABLE_TO_CREATE_TEMPORARY_FILE 
                             "Unable to create temporary file to load the wave file"
     IDS_UNABLE_TO_CREATE_NEW_FILE 
                             "Unable to create temporary file for the new sound"
+    ID_INDICATOR_FILE_SIZE  "\nTotal Length"
+    ID_INDICATOR_SELECTION_BEGIN "\nSelection Left"
+    ID_INDICATOR_SELECTION_LENGTH "\nSelection Length"
+    ID_INDICATOR_CURRENT_POS "\nCurrent Position"
 END
 
 STRINGTABLE DISCARDABLE 
@@ -929,6 +936,14 @@ BEGIN
                             "Revert all changes to return the file to the state before open"
     ID_EDIT_UNDO_ALL_CHANGES 
                             "Undo all changes to return the file to the last saved state\nUndo all"
+END
+
+STRINGTABLE DISCARDABLE 
+BEGIN
+    ID_INDICATOR_DUMMY      "                    "
+    ID_INDICATOR_SAMPLE_RATE "\nSample Rate"
+    ID_INDICATOR_SAMPLE_SIZE "\nSample Size"
+    ID_INDICATOR_CHANNELS   "\nChannels"
 END
 
 #endif    // English (U.S.) resources

@@ -9,7 +9,6 @@
 #include "WaveSoapFrontDoc.h"
 #include "WaveSoapFrontView.h"
 #include "WaveFftView.h"
-#include "FileSubDialog.h"
 #include "ShelLink.h"
 #include <float.h>
 #include <afxpriv.h>
@@ -101,14 +100,6 @@ BEGIN_MESSAGE_MAP(CWaveSoapFileDialog, CFileDialog)
 	ON_CBN_CLOSEUP(IDC_COMBO_RECENT, OnComboClosed)
 	//}}AFX_MSG_MAP
 END_MESSAGE_MAP()
-
-#if 0
-BOOL CWaveSoapFileDialog::OnCommand(WPARAM wParam, LPARAM lParam)
-{
-	TRACE("CWaveSoapFileDialog::OnCommand(%x, %x)\n", wParam, lParam);
-	return CFileDialog::OnCommand(wParam, lParam);
-}
-#endif
 
 BEGIN_MESSAGE_MAP(CWaveSoapFrontApp, CWinApp)
 	//{{AFX_MSG_MAP(CWaveSoapFrontApp)
@@ -469,6 +460,37 @@ BOOL CWaveSoapFrontApp::QueueOperation(COperationContext * pContext)
 	return TRUE;
 }
 
+void COperationContext::Retire()
+{
+	// all context go to retirement list
+	if (m_Flags & OperationContextDontKeepAfterRetire)
+	{
+		delete this;
+		return;
+	}
+	// queue it to the Doc
+	CSimpleCriticalSectionLock lock(pDocument->m_cs);
+	COperationContext * pLast = pDocument->m_pRetiredList;
+	pNext = NULL;
+	if (NULL == pLast)
+	{
+		pDocument->m_pRetiredList = this;
+	}
+	else
+	{
+		while (NULL != pLast->pNext)
+		{
+			pLast = pLast->pNext;
+		}
+		pLast->pNext = this;
+	}
+}
+
+void COperationContext::PostRetire()
+{
+	delete this;
+}
+
 unsigned CWaveSoapFrontApp::_ThreadProc()
 {
 	m_Thread.SetThreadPriority(THREAD_PRIORITY_BELOW_NORMAL);
@@ -593,12 +615,12 @@ unsigned CWaveSoapFrontApp::_ThreadProc()
 				}
 				ASSERT(pContext->pDocument->m_pQueuedOperation == pContext);
 				pContext->pDocument->m_pQueuedOperation = NULL;
-				pContext->pDocument->m_OperationInProgress = false;
 				// send a signal to the document, that the operation completed
 				pContext->pDocument->m_CurrentStatusString =
 					pContext->GetStatusString() + _T("Completed");
 				pContext->DeInit();
-				delete pContext;
+				pContext->Retire();     // usually deletes it
+				pContext->pDocument->m_OperationInProgress = false;
 				// send a signal to the document, that the operation completed
 				NeedKickIdle = true;    // this will reenable all commands
 			}
@@ -1038,7 +1060,7 @@ CString LtoaCS(long num)
 	return CString(s1);
 }
 
-CString TimeToHhMmSs(unsigned TimeMs, BOOL needMs)
+CString TimeToHhMmSs(unsigned TimeMs, int Flags)
 {
 	int hh = TimeMs / 3600000;
 	TimeMs -= hh * 3600000;
@@ -1051,9 +1073,9 @@ CString TimeToHhMmSs(unsigned TimeMs, BOOL needMs)
 	TCHAR TimeSeparator = GetApp()->m_TimeSeparator;
 	TCHAR DecimalPoint = GetApp()->m_DecimalPoint;
 
-	if (needMs)
+	if (Flags & TimeToHhMmSs_NeedsMs)
 	{
-		if (hh != 0)
+		if (hh != 0 || (Flags & TimeToHhMmSs_NeedsHhMm))
 		{
 			s.Format(_T("%d%c%02d%c%02d%c%03d"),
 					hh, TimeSeparator,
@@ -1077,7 +1099,7 @@ CString TimeToHhMmSs(unsigned TimeMs, BOOL needMs)
 	}
 	else
 	{
-		if (hh != 0)
+		if (hh != 0 || (Flags & TimeToHhMmSs_NeedsHhMm))
 		{
 			s.Format(_T("%d%c%02d%c%02d"),
 					hh, TimeSeparator,
@@ -1093,3 +1115,62 @@ CString TimeToHhMmSs(unsigned TimeMs, BOOL needMs)
 	}
 	return s;
 }
+
+int CWaveSoapFrontStatusBar::OnToolHitTest(CPoint point, TOOLINFO* pTI) const
+{
+	for (int i = 1; i < m_nCount; i++)
+	{
+		CRect r;
+		GetItemRect(i, & r);
+		if (r.PtInRect(point))
+		{
+			int nHit = GetItemID(i);
+			if (pTI != NULL && pTI->cbSize >= sizeof(TTTOOLINFOA_V1_SIZE))
+			{
+				pTI->hwnd = m_hWnd;
+				pTI->rect = r;
+				pTI->uId = nHit;
+				pTI->lpszText = LPSTR_TEXTCALLBACK;
+			}
+			// found matching rect, return the ID
+			return nHit != 0 ? nHit : -1;
+		}
+	}
+	return -1;
+}
+
+void SetStatusString(CCmdUI* pCmdUI, const CString & string,
+					LPCTSTR MaxString, BOOL bForceSize)
+{
+	CStatusBar *pSB = DYNAMIC_DOWNCAST(CStatusBar,
+										pCmdUI->m_pOther);
+	if (NULL == MaxString)
+	{
+		MaxString = string;
+	}
+	if(pSB != NULL)
+	{
+		// Set pane size
+		CSize size;
+		{
+			CWindowDC dc(pSB);
+			CFont * pFont = pSB->GetFont();
+			VERIFY(pFont);
+			CFont *pOldFont = dc.SelectObject(pFont);
+			VERIFY(::GetTextExtentPoint32(dc,
+										MaxString, strlen(MaxString), & size));
+			dc.SelectObject(pOldFont);
+		}
+		UINT nID, nStyle;
+		int cxWidth;
+		pSB->GetPaneInfo(pCmdUI->m_nIndex, nID, nStyle,
+						cxWidth);
+		if (bForceSize || size.cx > cxWidth)
+		{
+			pSB->SetPaneInfo(pCmdUI->m_nIndex, nID,
+							nStyle, size.cx);
+		}
+	}
+	pCmdUI->SetText(string);
+}
+
