@@ -18,7 +18,13 @@ class CInsertSilenceDialog : public CDialog
 {
 // Construction
 public:
-	CInsertSilenceDialog(CWnd* pParent = NULL);   // standard constructor
+	CInsertSilenceDialog(SAMPLE_INDEX Start,
+						NUMBER_OF_SAMPLES Length,
+						CHANNEL_MASK	m_nChannel,
+						NUMBER_OF_SAMPLES    FileLength,
+						int TimeFormat,
+						WAVEFORMATEX * pWf,
+						CWnd* pParent = NULL);   // standard constructor
 
 // Dialog Data
 	//{{AFX_DATA(CInsertSilenceDialog)
@@ -30,10 +36,11 @@ public:
 	int		m_TimeFormatIndex;
 	//}}AFX_DATA
 
+	NUMBER_OF_SAMPLES    m_Length;
+	SAMPLE_INDEX    m_Start;
 	CHANNEL_MASK	m_nChannel;
 	int		m_TimeFormat;
-	SAMPLE_INDEX    m_Length;
-	SAMPLE_INDEX    m_Start;
+protected:
 	NUMBER_OF_SAMPLES    m_FileLength;
 	SAMPLE_INDEX    m_CaretPosition;
 	WAVEFORMATEX * m_pWf;

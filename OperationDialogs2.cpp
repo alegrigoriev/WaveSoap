@@ -21,16 +21,42 @@ static char THIS_FILE[] = __FILE__;
 // CInsertSilenceDialog dialog
 
 
-CInsertSilenceDialog::CInsertSilenceDialog(CWnd* pParent /*=NULL*/)
+CInsertSilenceDialog::CInsertSilenceDialog(SAMPLE_INDEX Start,
+											NUMBER_OF_SAMPLES Length,
+											CHANNEL_MASK	m_nChannel,
+											NUMBER_OF_SAMPLES    FileLength,
+											int TimeFormat,
+											WAVEFORMATEX * pWf,
+											CWnd* pParent /*=NULL*/)
 	: CDialog(CInsertSilenceDialog::IDD, pParent)
+	, m_Length(Length)
+	, m_Start(Start)
+	, m_CaretPosition(Start)
+	, m_pWf(pWf)
+	, m_nChannel(m_nChannel)
+	, m_FileLength(FileLength)
+	, m_TimeFormat(TimeFormat)
+	, m_eLength(TimeFormat)
+	, m_eStart(TimeFormat)
 {
-	m_pWf = NULL;
+
+	m_eLength.SetSamplingRate(pWf->nSamplesPerSec);
+	m_eStart.SetSamplingRate(pWf->nSamplesPerSec);
 	//{{AFX_DATA_INIT(CInsertSilenceDialog)
 	m_TimeFormatIndex = -1;
 	//}}AFX_DATA_INIT
-	m_nChannel = -1;
-	m_Length = 0;
-	m_Start = 0;
+	switch (TimeFormat & SampleToString_Mask)
+	{
+	case SampleToString_Sample:
+		m_TimeFormatIndex = 0;
+		break;
+	case SampleToString_HhMmSs:
+		m_TimeFormatIndex = 1;
+		break;
+	case SampleToString_Seconds: default:
+		m_TimeFormatIndex = 2;
+		break;
+	}
 }
 
 
@@ -86,9 +112,11 @@ void CInsertSilenceDialog::OnSelchangeComboTimeFormat()
 		return;
 	}
 	m_TimeFormat = Format;
+
 	m_Length = m_eLength.GetTimeSample();
 	m_eLength.SetTimeFormat(Format);
 	m_eLength.SetTimeSample(m_Length);
+
 	m_Start = m_eStart.GetTimeSample();
 	m_eStart.SetTimeFormat(Format);
 	m_eStart.SetTimeSample(m_Start);
@@ -97,25 +125,6 @@ void CInsertSilenceDialog::OnSelchangeComboTimeFormat()
 
 BOOL CInsertSilenceDialog::OnInitDialog()
 {
-	m_eLength.SetTimeFormat(m_TimeFormat);
-	m_eStart.SetTimeFormat(m_TimeFormat);
-	switch (m_TimeFormat & SampleToString_Mask)
-	{
-	case SampleToString_Sample:
-		m_TimeFormatIndex = 0;
-		break;
-	case SampleToString_HhMmSs:
-		m_TimeFormatIndex = 1;
-		break;
-	case SampleToString_Seconds: default:
-		m_TimeFormatIndex = 2;
-		break;
-	}
-	if (NULL != m_pWf)
-	{
-		m_eLength.SetSamplingRate(m_pWf->nSamplesPerSec);
-		m_eStart.SetSamplingRate(m_pWf->nSamplesPerSec);
-	}
 	CDialog::OnInitDialog();
 
 	m_eStart.AddPosition(IDS_BEGIN_OF_SAMPLE, 0);
