@@ -237,6 +237,9 @@ BEGIN_MESSAGE_MAP(CVolumeChangeDialog, BaseClass)
 	ON_EN_KILLFOCUS(IDC_EDIT_VOLUME_LEFT, OnKillfocusEditVolumeLeft)
 	ON_EN_KILLFOCUS(IDC_EDIT_VOLUME_RIGHT, OnKillfocusEditVolumeRight)
 
+	ON_BN_CLICKED(IDC_CHECKLOCK_CHANNELS, OnBnClickedLockChannels)
+	ON_UPDATE_COMMAND_UI(IDC_CHECKLOCK_CHANNELS, OnUpdateLockChannels)
+
 	ON_UPDATE_COMMAND_UI(IDC_EDIT_VOLUME_LEFT, OnUpdateVolumeLeft)
 	ON_UPDATE_COMMAND_UI(IDC_STATIC_LEFT_CHANNEL, OnUpdateVolumeLeft)
 	ON_UPDATE_COMMAND_UI(IDC_SLIDER_VOLUME_LEFT, OnUpdateVolumeLeft)
@@ -252,12 +255,27 @@ END_MESSAGE_MAP()
 
 void CVolumeChangeDialog::OnUpdateVolumeLeft(CCmdUI * pCmdUI)
 {
-	pCmdUI->Enable(m_bLockChannels || (m_Chan & SPEAKER_FRONT_LEFT));
+	// Enable if left channel is selected
+	pCmdUI->Enable(0 != (m_Chan & SPEAKER_FRONT_LEFT));
 }
 
 void CVolumeChangeDialog::OnUpdateVolumeRight(CCmdUI * pCmdUI)
 {
-	pCmdUI->Enable(m_bLockChannels || (m_Chan & SPEAKER_FRONT_RIGHT));
+	// Enable if right channel is selected and NOT channels locked together
+	pCmdUI->Enable((m_Chan & SPEAKER_FRONT_RIGHT)
+					&& ! (IsDlgButtonChecked(IDC_CHECKLOCK_CHANNELS)
+						&& (SPEAKER_FRONT_RIGHT | SPEAKER_FRONT_LEFT) == (m_Chan & (SPEAKER_FRONT_RIGHT | SPEAKER_FRONT_LEFT))));
+}
+
+void CVolumeChangeDialog::OnUpdateLockChannels(CCmdUI * pCmdUI)
+{
+	// enable only if both channels are selected
+	pCmdUI->Enable((SPEAKER_FRONT_RIGHT | SPEAKER_FRONT_LEFT) == (m_Chan & (SPEAKER_FRONT_RIGHT | SPEAKER_FRONT_LEFT)));
+}
+
+void CVolumeChangeDialog::OnBnClickedLockChannels()
+{
+	NeedUpdateControls();
 }
 
 void CVolumeChangeDialog::OnSelchangeCombodbPercent()
