@@ -1,3 +1,4 @@
+// Copyright Alexander Grigoriev, 1997-2002, All Rights Reserved
 #ifndef __SCALED_SCROLL_VIEW_H__
 #define __SCALED_SCROLL_VIEW_H__
 // ScaledScrollView.h : header file
