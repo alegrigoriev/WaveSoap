@@ -2044,6 +2044,9 @@ BOOL CMoveOperation::InitMove(CWaveFile & File,
 		// shrinking the file
 		InitSource(File, SrcStartSample, SrcStartSample + Length, Channel);
 		InitDestination(File, DstStartSample, DstStartSample + Length, Channel, FALSE);
+
+		SAMPLE_INDEX UndoEnd = min(SrcStartSample, DstStartSample + Length);
+		SetSaveForUndo(DstStartSample, UndoEnd);
 	}
 	else
 	{
@@ -2072,8 +2075,28 @@ BOOL CMoveOperation::CreateUndo(BOOL /*IsRedo*/)
 	pUndo->m_DstEnd = m_SrcStart;
 	pUndo->m_DstStart = m_SrcEnd;
 
+	if (pUndo->m_DstStart < pUndo->m_SrcStart)
+	{
+		// it will need REDO creation
+		pUndo->m_UndoStartPos = pUndo->m_DstStart;
+		pUndo->m_UndoEndPos = pUndo->m_SrcStart;
+
+		if (pUndo->m_SrcStart > pUndo->m_DstEnd)
+		{
+			pUndo->m_UndoEndPos = pUndo->m_DstEnd;
+		}
+	}
+
 	m_UndoChain.InsertTail(pUndo);
 
+	if (BaseClass::CreateUndo()
+		&& NULL != m_pUndoContext)
+	{
+		// don't create REDO for that
+		m_pUndoContext->m_UndoStartPos = 0;
+		m_pUndoContext->m_UndoEndPos = 0;
+		return TRUE;
+	}
 	return TRUE;
 }
 
@@ -2099,23 +2122,6 @@ void CMoveOperation::UnprepareUndo()
 	m_SrcPos = m_SrcEnd;
 	m_DstPos = m_DstEnd;    //??
 }
-
-#if 0
-ListHead<COperationContext> * CMoveOperation::GetUndoChain()
-{
-	if ( ! m_UndoChain.IsEmpty())
-	{
-		CMoveOperation * pUndo =
-			dynamic_cast<CMoveOperation *>(m_UndoChain.First());
-		if (NULL != pUndo)
-		{
-			pUndo->m_SrcPos = m_DstPos;
-			pUndo->m_DstPos = m_SrcPos;
-		}
-	}
-	return BaseClass::GetUndoChain();
-}
-#endif
 
 BOOL CMoveOperation::OperationProc()
 {
@@ -2420,6 +2426,8 @@ void CSaveTrimmedOperation::DeInit()
 	{
 		m_pRestoreOperation->m_SrcEnd = m_DstPos;
 		m_pRestoreOperation->m_DstEnd = m_SrcPos;
+
+		m_pRestoreOperation = NULL;
 	}
 
 	BaseClass::DeInit();
@@ -2466,6 +2474,8 @@ void CRestoreTrimmedOperation::DeInit()
 	{
 		m_pSaveOperation->m_SrcEnd = m_DstPos;
 		m_pSaveOperation->m_DstEnd = m_SrcPos;
+
+		m_pSaveOperation = NULL;
 	}
 
 	BaseClass::DeInit();

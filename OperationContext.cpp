@@ -358,6 +358,8 @@ void CTwoFilesOperation::DeInit()
 	{
 		m_pUndoContext->m_SrcEnd = m_pUndoContext->m_SrcPos;
 		m_pUndoContext->m_DstEnd = m_pUndoContext->m_DstPos;
+
+		m_pUndoContext = NULL;
 	}
 
 	BaseClass::DeInit();
