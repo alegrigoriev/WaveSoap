@@ -427,22 +427,6 @@ BOOL CWaveSoapFrontDoc::OpenWaveFile(CWaveFile & WaveFile, LPCTSTR szName, DWORD
 	return FALSE;
 }
 
-/////////////////////////////////////////////////////////////////////////////
-// CWaveSoapFrontDoc serialization
-
-void CWaveSoapFrontDoc::Serialize(CArchive& ar)
-{
-	TRACE("CWaveSoapFrontDoc::Serialize\n");
-	if (ar.IsStoring())
-	{
-		// TODO: add storing code here
-	}
-	else
-	{
-		// TODO: add loading code here
-	}
-}
-
 void _AfxAppendFilterSuffix(CString& filter, OPENFILENAME& ofn,
 							CDocTemplate* pTemplate, CString* pstrDefaultExt);
 
