@@ -1283,7 +1283,8 @@ BOOL CWaveSoapFrontDoc::DoPaste(SAMPLE_INDEX Start, SAMPLE_INDEX End, CHANNEL_MA
 	// todo: support copy from a file (FileName)
 	CWaveFile SrcFile;
 
-	CStagedContext::auto_ptr pStagedContext(new CStagedContext(this, _T("Paste"), 0));
+	CString Op;
+	long Flags = 0;
 
 	if (NULL != FileName)
 	{
@@ -1297,17 +1298,23 @@ BOOL CWaveSoapFrontDoc::DoPaste(SAMPLE_INDEX Start, SAMPLE_INDEX End, CHANNEL_MA
 		{
 			return FALSE;
 		}
+
+		Op.Format(_T("Paste from %s "), FileName);
 	}
 	else
 	{
 		SrcFile = pApp->m_ClipboardFile;
-		pStagedContext->m_Flags |= OperationContextClipboard;
+		Flags |= OperationContextClipboard;
+
+		Op = _T("Paste from clipboard");
 	}
 
 	if ( ! SrcFile.IsOpen())
 	{
 		return FALSE;
 	}
+
+	CStagedContext::auto_ptr pStagedContext(new CStagedContext(this, Op, Flags));
 
 	NUMBER_OF_SAMPLES NumSamplesToPasteFrom = SrcFile.NumberOfSamples();
 	// check if the sampling rate matches the clipboard
@@ -1428,6 +1435,9 @@ BOOL CWaveSoapFrontDoc::DoPaste(SAMPLE_INDEX Start, SAMPLE_INDEX End, CHANNEL_MA
 		return FALSE;
 	}
 
+	pStagedContext->AddContext(new CSelectionChangeOperation(this, Start, Start + NumSamplesToPasteFrom,
+															Start, m_SelectedChannel));
+
 	if (UndoEnabled()
 		&& ! pStagedContext->CreateUndo())
 	{
@@ -1478,7 +1488,12 @@ void CWaveSoapFrontDoc::DoCut(SAMPLE_INDEX Start, SAMPLE_INDEX End, CHANNEL_MASK
 	// set operation context to the queue
 	pContext->AddContext(pCopyContext);
 
-	InitShrinkOperation(pContext.get(), m_WavFile, Start, End - Start, Channel);
+	pContext->AddContext(new CSelectionChangeOperation(this, Start, Start, Start, m_SelectedChannel));
+
+	if ( ! InitShrinkOperation(pContext.get(), m_WavFile, Start, End - Start, Channel))
+	{
+		return;
+	}
 
 	if (UndoEnabled()
 		&& ! pContext->CreateUndo())
@@ -1486,7 +1501,6 @@ void CWaveSoapFrontDoc::DoCut(SAMPLE_INDEX Start, SAMPLE_INDEX End, CHANNEL_MASK
 		return;
 	}
 
-	SetSelection(Start, Start, Channel, Start);
 
 	pContext.release()->Execute();
 	SetModifiedFlag(TRUE);
@@ -1503,6 +1517,8 @@ void CWaveSoapFrontDoc::DoDelete(SAMPLE_INDEX Start, SAMPLE_INDEX End, CHANNEL_M
 														_T("Deleting the selection..."), OperationContextDiskIntensive,
 														_T("Delete")));
 
+	pContext->AddContext(new CSelectionChangeOperation(this, Start, Start, Start, m_SelectedChannel));
+
 	InitShrinkOperation(pContext.get(), m_WavFile, Start, End - Start, Channel);
 
 	if (UndoEnabled()
@@ -1511,7 +1527,6 @@ void CWaveSoapFrontDoc::DoDelete(SAMPLE_INDEX Start, SAMPLE_INDEX End, CHANNEL_M
 		return;
 	}
 
-	SetSelection(Start, Start, Channel, Start);
 	pContext.release()->Execute();
 	SetModifiedFlag(TRUE);
 }
