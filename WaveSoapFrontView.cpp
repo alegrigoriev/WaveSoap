@@ -160,8 +160,8 @@ void CWaveSoapFrontView::DrawHorizontalWithSelection(CDC * pDC,
 	// find positions of the selection start and and
 	// and check whether the selected area is visible
 	//double XScaleDev = GetXScaleDev();
-	int SelectionLeft = WorldToWindowX(pDoc->m_SelectionStart);
-	int SelectionRight = WorldToWindowX(pDoc->m_SelectionEnd);
+	int SelectionLeft = WorldToWindowXfloor(pDoc->m_SelectionStart);
+	int SelectionRight = WorldToWindowXfloor(pDoc->m_SelectionEnd);
 
 	// draw selection if Channel==ALL or all selected, or
 	// this channel is selected
@@ -327,8 +327,8 @@ void CWaveSoapFrontView::OnDraw(CDC* pDC)
 		NUMBER_OF_CHANNELS nChannels = pDoc->WaveChannels();
 		int nNumberOfPoints = r.right - r.left;
 
-		int SelBegin = WorldToWindowX(pDoc->m_SelectionStart);
-		int SelEnd = WorldToWindowX(pDoc->m_SelectionEnd);
+		int SelBegin = WorldToWindowXfloor(pDoc->m_SelectionStart);
+		int SelEnd = WorldToWindowXfloor(pDoc->m_SelectionEnd);
 
 		if (pDoc->m_SelectionEnd != pDoc->m_SelectionStart
 			&& SelEnd == SelBegin)
@@ -608,7 +608,7 @@ LONGLONG CDataSection<WAVE_SAMPLE, CWaveSoapFrontView>::GetSourceCount(CWaveSoap
 void CWaveSoapFrontView::AdjustNewOrigin(double & NewOrgX, double & /*NewOrgY*/)
 {
 	// make sure the screen is aligned by a multiple of m_HorizontalScale
-	NewOrgX -= SAMPLE_INDEX(NewOrgX) % m_HorizontalScale;
+	NewOrgX -= fmod(NewOrgX, m_HorizontalScale);
 }
 
 void CWaveSoapFrontView::AdjustNewScale(double OldScaleX, double OldScaleY,
@@ -639,7 +639,7 @@ void CWaveSoapFrontView::AdjustNewScale(double OldScaleX, double OldScaleY,
 
 BOOL CWaveSoapFrontView::PlaybackCursorVisible()
 {
-	int pos = WorldToWindowX(m_PlaybackCursorDrawnSamplePos);
+	int pos = WorldToWindowXfloor(m_PlaybackCursorDrawnSamplePos);
 
 	CRect r;
 	GetClientRect(r);
@@ -662,7 +662,7 @@ void CWaveSoapFrontView::DrawPlaybackCursor(CDC * pDC, SAMPLE_INDEX Sample, CHAN
 	{
 		return;
 	}
-	int pos = WorldToWindowX(Sample);
+	int pos = WorldToWindowXfloor(Sample);
 
 	CRect r;
 	GetClientRect(r);
@@ -879,8 +879,8 @@ DWORD CWaveSoapFrontView::ClientHitTest(CPoint p) const
 		if (0 != (pDoc->m_SelectedChannel & (1 << ChannelUnderCursor))
 			&& pDoc->m_SelectionStart <= pDoc->m_SelectionEnd)
 		{
-			int SelBegin = WorldToWindowX(pDoc->m_SelectionStart);
-			int SelEnd = WorldToWindowX(pDoc->m_SelectionEnd);
+			int SelBegin = WorldToWindowXfloor(pDoc->m_SelectionStart);
+			int SelEnd = WorldToWindowXfloor(pDoc->m_SelectionEnd);
 
 			if (pDoc->m_SelectionEnd != pDoc->m_SelectionStart
 				&& SelEnd == SelBegin)
@@ -908,7 +908,7 @@ DWORD CWaveSoapFrontView::ClientHitTest(CPoint p) const
 		}
 	}
 
-	int DataEnd = WorldToWindowX(pDoc->WaveFileSamples());
+	int DataEnd = WorldToWindowXceil(pDoc->WaveFileSamples());
 
 	if (p.x < DataEnd)
 	{
@@ -1029,7 +1029,7 @@ void CWaveSoapFrontView::CreateAndShowCaret()
 	CRect r;
 	GetClientRect(r);
 
-	CPoint p(WorldToWindowX(pDoc->m_CaretPosition), r.top);
+	CPoint p(WorldToWindowXfloor(pDoc->m_CaretPosition), r.top);
 
 	if (TRACE_CARET) TRACE("Client rect height=%d, caret position=%d\n", r.Height(), p.x);
 
@@ -1064,9 +1064,9 @@ BOOL CWaveSoapFrontView::OnEraseBkgnd(CDC* pDC)
 	GetClientRect(r);
 
 	CRect gr = r;
-	int SelBegin = WorldToWindowX(pDoc->m_SelectionStart);
-	int SelEnd = WorldToWindowX(pDoc->m_SelectionEnd);
-	int FileEnd = WorldToWindowX(pDoc->WaveFileSamples());
+	int SelBegin = WorldToWindowXfloor(pDoc->m_SelectionStart);
+	int SelEnd = WorldToWindowXfloor(pDoc->m_SelectionEnd);
+	int FileEnd = WorldToWindowXceil(pDoc->WaveFileSamples());
 
 	if (FileEnd < r.right)
 	{
@@ -1468,8 +1468,9 @@ void CWaveSoapFrontView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
 		int Separator = WorldToWindowY(0.);
 
 		// calculate new selection boundaries
-		int SelBegin = WorldToWindowX(pInfo->SelBegin);
-		int SelEnd = WorldToWindowX(pInfo->SelEnd);
+		int SelBegin = WorldToWindowXfloor(pInfo->SelBegin);
+		int SelEnd = WorldToWindowXfloor(pInfo->SelEnd);
+
 		if (pInfo->SelEnd != pInfo->SelBegin
 			&& SelEnd == SelBegin)
 		{
@@ -1506,8 +1507,9 @@ void CWaveSoapFrontView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
 			}
 		}
 
-		int OldSelBegin = WorldToWindowX(pInfo->OldSelBegin);
-		int OldSelEnd = WorldToWindowX(pInfo->OldSelEnd);
+		int OldSelBegin = WorldToWindowXfloor(pInfo->OldSelBegin);
+		int OldSelEnd = WorldToWindowXfloor(pInfo->OldSelEnd);
+
 		if (pInfo->OldSelEnd != pInfo->OldSelBegin
 			&& OldSelEnd == OldSelBegin)
 		{
@@ -1618,8 +1620,8 @@ void CWaveSoapFrontView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
 		}
 
 		// calculate update boundaries
-		r1.left = WorldToWindowX(pInfo->m_Begin) - 1;
-		r1.right = WorldToWindowX(pInfo->m_End) + 2;
+		r1.left = WorldToWindowXfloor(pInfo->m_Begin);
+		r1.right = WorldToWindowXceil(pInfo->m_End) + 2;
 
 		if (r1.left != r1.right
 			// limit the rectangles with the window boundaries
@@ -1675,9 +1677,9 @@ void CWaveSoapFrontView::InvalidateRect( LPCRECT lpRect, BOOL bErase)
 POINT CWaveSoapFrontView::GetZoomCenter()
 {
 	ThisDoc * pDoc = GetDocument();
-	int caret = WorldToWindowX(pDoc->m_CaretPosition);
-	int SelBegin = WorldToWindowX(pDoc->m_SelectionStart);
-	int SelEnd = WorldToWindowX(pDoc->m_SelectionEnd);
+	int caret = WorldToWindowXfloor(pDoc->m_CaretPosition);
+	int SelBegin = WorldToWindowXfloor(pDoc->m_SelectionStart);
+	int SelEnd = WorldToWindowXfloor(pDoc->m_SelectionEnd);
 	//int CenterY = WorldToWindowY(0);
 
 	CRect r;
@@ -1891,9 +1893,10 @@ void CWaveSoapFrontView::MovePointIntoView(SAMPLE_INDEX nCaret, BOOL bCenter)
 	CRect r;
 	GetClientRect(r);
 
-	int nDesiredPos = WorldToWindowX(nCaret);
+	int nDesiredPos = WorldToWindowXfloor(nCaret);
 	double scroll;
 	int AutoscrollWidth = GetSystemMetrics(SM_CXVSCROLL);
+
 	if (bCenter)
 	{
 		scroll = (nDesiredPos - r.right / 2) * m_HorizontalScale;
@@ -2108,8 +2111,8 @@ void CWaveSoapFrontView::UpdatePlaybackCursor(SAMPLE_INDEX sample, CHANNEL_MASK 
 		m_NewSelectionMade = false; // to hide the caret
 	}
 
-	int pos = WorldToWindowX(sample);
-	int OldPos = WorldToWindowX(m_PlaybackCursorDrawnSamplePos);
+	int pos = WorldToWindowXfloor(sample);
+	int OldPos = WorldToWindowXfloor(m_PlaybackCursorDrawnSamplePos);
 
 	if (pos == OldPos
 		&& channel == m_PlaybackCursorChannel)
