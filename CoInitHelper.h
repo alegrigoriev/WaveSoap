@@ -7,12 +7,18 @@ public:
 	{
 		if (0 == m_InitCount)
 		{
+			TRACE("CoInitializeEx(%X) for thread %X\n", dwCoInit, GetCurrentThreadId());
+
 			HRESULT hr = CoInitializeEx(NULL, dwCoInit);
 			if (SUCCEEDED(hr))
 			{
 				m_InitCount = 1;
 				m_Thread = GetCurrentThreadId();
 				m_Mode = dwCoInit;
+			}
+			else
+			{
+				TRACE("CoInitializeEx failed, hr=%X\n", hr);
 			}
 			return hr;
 		}
@@ -31,6 +37,7 @@ public:
 		ASSERT(m_InitCount > 0);
 		if (0 == --m_InitCount)
 		{
+			TRACE("CoUninitializeEx for thread %X\n", GetCurrentThreadId());
 			CoUninitialize();
 			m_Thread = 0;
 			m_Mode = 0;
