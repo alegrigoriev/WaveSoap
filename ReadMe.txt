@@ -1,9 +1,7 @@
 TODO tasks:
 
-Draw markers in the FFT view
 If metadata doesn't come as the very last chunk of the file, copy the original file to 
  a file where it does (for non-compressed file, that is)
-Implement Marker/Region dialog
 
 Unnamed region name is composed from its boundaries
 Add support for markers and regions: save on copy and with undo, move and delete on Cut, move on Paste
@@ -90,6 +88,7 @@ Windows2000 is trying to zero the allocated file
 Log Off query doesn't close the active dialog. Recursion is possible. Make sure to check after Cancel
 
 Fixed:
+Using up-down controls doesn't cause any "release" notification
 Lines duplicated when scrolling the horizontal ruler
 If delete (shrink) is done with one channel of two, fill the rest with zeros
 Playback cursor not shown properly
@@ -151,6 +150,8 @@ Save As dialog is not centered first time (comdlg problem?)
 ??? When time/seconds format is set for status bar, MM:SS is actually shown
 
 Done:
+Implement Marker/Region dialog
+Draw markers in the FFT view
 Double click selects between two markers
 Ctrl+Arrow goes to next marker
 When dragging a marker, keep the same position relative to click position
