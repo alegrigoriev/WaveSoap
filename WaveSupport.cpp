@@ -1645,7 +1645,8 @@ BOOL AudioStreamConvertor::Convert(void const * pSrc, size_t SrcSize, size_t * p
 	* pDstBufFilled = m_ash.cbDstLengthUsed;
 
 	if (MMSYSERR_NOERROR != m_MmResult
-		|| (0 == m_ash.cbDstLengthUsed && 0 == m_ash.cbSrcLengthUsed))
+		|| (0 == m_ash.cbDstLengthUsed && 0 == m_ash.cbSrcLengthUsed
+			&& 0 == (flags & ACM_STREAMCONVERTF_END)))
 	{
 		return FALSE;
 	}
