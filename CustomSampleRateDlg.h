@@ -15,14 +15,18 @@ class CCustomSampleRateDlg : public CDialog
 {
 // Construction
 public:
-	CCustomSampleRateDlg(CWnd* pParent = NULL);   // standard constructor
+	CCustomSampleRateDlg(long SampleRate, CWnd* pParent = NULL);   // standard constructor
 
+	long GetSampleRate() const
+	{
+		return m_SampleRate;
+	}
+protected:
 // Dialog Data
 	//{{AFX_DATA(CCustomSampleRateDlg)
 	enum { IDD = IDD_DIALOG_CUSTOM_SAMPLERATE };
 	int		m_SampleRate;
 	//}}AFX_DATA
-
 
 // Overrides
 	// ClassWizard generated virtual function overrides

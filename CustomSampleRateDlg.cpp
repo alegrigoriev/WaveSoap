@@ -16,11 +16,11 @@ static char THIS_FILE[] = __FILE__;
 // CCustomSampleRateDlg dialog
 
 
-CCustomSampleRateDlg::CCustomSampleRateDlg(CWnd* pParent /*=NULL*/)
-	: CDialog(CCustomSampleRateDlg::IDD, pParent)
+CCustomSampleRateDlg::CCustomSampleRateDlg(long SampleRate, CWnd* pParent /*=NULL*/)
+	: CDialog(IDD, pParent)
+	, m_SampleRate(SampleRate)
 {
 	//{{AFX_DATA_INIT(CCustomSampleRateDlg)
-	m_SampleRate = 0;
 	//}}AFX_DATA_INIT
 }
 
