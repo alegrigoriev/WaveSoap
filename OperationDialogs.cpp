@@ -302,11 +302,34 @@ CSelectionDialog::CSelectionDialog(SAMPLE_INDEX Start, SAMPLE_INDEX End,
 	, m_FileLength(TotalSamples)
 	, m_pWf(pWf)
 	, m_TimeFormat(TimeFormat)
+	, m_eStart(TimeFormat)
+	, m_eEnd(TimeFormat)
+	, m_eLength(TimeFormat)
+
 {
 	//{{AFX_DATA_INIT(CSelectionDialog)
 	m_TimeFormatIndex = 0;
 	m_SelectionNumber = 0;
 	//}}AFX_DATA_INIT
+	switch (TimeFormat & SampleToString_Mask)
+	{
+	case SampleToString_Sample:
+		m_TimeFormatIndex = 0;
+		break;
+	case SampleToString_HhMmSs:
+		m_TimeFormatIndex = 1;
+		break;
+	case SampleToString_Seconds: default:
+		m_TimeFormatIndex = 2;
+		break;
+	}
+
+	if (NULL != pWf)
+	{
+		m_eStart.SetSamplingRate(pWf->nSamplesPerSec);
+		m_eEnd.SetSamplingRate(pWf->nSamplesPerSec);
+		m_eLength.SetSamplingRate(pWf->nSamplesPerSec);
+	}
 }
 
 
@@ -485,27 +508,6 @@ void CVolumeChangeDialog::OnKillfocusEditVolumeRight()
 
 BOOL CSelectionDialog::OnInitDialog()
 {
-	m_eStart.SetTimeFormat(m_TimeFormat);
-	m_eEnd.SetTimeFormat(m_TimeFormat);
-	m_eLength.SetTimeFormat(m_TimeFormat);
-	switch (m_TimeFormat & SampleToString_Mask)
-	{
-	case SampleToString_Sample:
-		m_TimeFormatIndex = 0;
-		break;
-	case SampleToString_HhMmSs:
-		m_TimeFormatIndex = 1;
-		break;
-	case SampleToString_Seconds: default:
-		m_TimeFormatIndex = 2;
-		break;
-	}
-	if (NULL != m_pWf)
-	{
-		m_eStart.SetSamplingRate(m_pWf->nSamplesPerSec);
-		m_eEnd.SetSamplingRate(m_pWf->nSamplesPerSec);
-		m_eLength.SetSamplingRate(m_pWf->nSamplesPerSec);
-	}
 	CDialog::OnInitDialog();
 
 	m_eStart.AddPosition(IDS_BEGIN_OF_SAMPLE, 0);
@@ -565,12 +567,15 @@ void CSelectionDialog::OnSelchangeComboTimeFormat()
 		return;
 	}
 	m_TimeFormat = Format;
+
 	m_Start = m_eStart.GetTimeSample();
 	m_eStart.SetTimeFormat(Format);
 	m_eStart.SetTimeSample(m_Start);
+
 	m_End = m_eEnd.GetTimeSample();
 	m_eEnd.SetTimeFormat(Format);
 	m_eEnd.SetTimeSample(m_End);
+
 	m_Length = m_End - m_Start;
 	m_eLength.SetTimeFormat(Format);
 	m_eLength.SetTimeSample(m_Length);
@@ -648,15 +653,35 @@ int CSelectionDialog::FindSelection(SAMPLE_INDEX begin, SAMPLE_INDEX end)
 // CGotoDialog dialog
 
 
-CGotoDialog::CGotoDialog(CWnd* pParent /*=NULL*/)
+CGotoDialog::CGotoDialog(SAMPLE_INDEX Position,
+						NUMBER_OF_SAMPLES FileLength,
+						const WAVEFORMATEX * pWf,
+						int TimeFormat, CWnd* pParent /*=NULL*/)
 	: CDialog(CGotoDialog::IDD, pParent),
-	m_pWf(NULL),
-	m_Position(0),
-	m_TimeFormat(0)
+	m_Position(Position),
+	m_FileLength(FileLength),
+	m_TimeFormat(TimeFormat),
+	m_eStart(TimeFormat)
 {
 	//{{AFX_DATA_INIT(CGotoDialog)
 	m_TimeFormatIndex = -1;
 	//}}AFX_DATA_INIT
+	switch (m_TimeFormat & SampleToString_Mask)
+	{
+	case SampleToString_Sample:
+		m_TimeFormatIndex = 0;
+		break;
+	case SampleToString_HhMmSs:
+		m_TimeFormatIndex = 1;
+		break;
+	case SampleToString_Seconds: default:
+		m_TimeFormatIndex = 2;
+		break;
+	}
+	if (NULL != pWf)
+	{
+		m_eStart.SetSamplingRate(pWf->nSamplesPerSec);
+	}
 }
 
 
@@ -1254,23 +1279,6 @@ void CGotoDialog::OnSelchangeComboTimeFormat()
 
 BOOL CGotoDialog::OnInitDialog()
 {
-	m_eStart.SetTimeFormat(m_TimeFormat);
-	switch (m_TimeFormat & SampleToString_Mask)
-	{
-	case SampleToString_Sample:
-		m_TimeFormatIndex = 0;
-		break;
-	case SampleToString_HhMmSs:
-		m_TimeFormatIndex = 1;
-		break;
-	case SampleToString_Seconds: default:
-		m_TimeFormatIndex = 2;
-		break;
-	}
-	if (NULL != m_pWf)
-	{
-		m_eStart.SetSamplingRate(m_pWf->nSamplesPerSec);
-	}
 	CDialog::OnInitDialog();
 
 	m_eStart.AddPosition(IDS_BEGIN_OF_SAMPLE, 0);
