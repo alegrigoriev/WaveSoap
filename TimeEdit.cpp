@@ -3,7 +3,6 @@
 //
 
 #include "stdafx.h"
-//#include "WaveSoapFront.h"
 #include "TimeEdit.h"
 #include "TimeToStr.h"
 #include "resource.h"
