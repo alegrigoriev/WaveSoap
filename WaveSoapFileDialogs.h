@@ -101,6 +101,19 @@ class CFileSaveUiSupport
 public:
 
 	CFileSaveUiSupport(CWaveFormat const & Wf);
+	WAVEFORMATEX * GetWaveFormat();
+	int GetFileTypeForName(LPCTSTR FileName);
+
+	int GetSelectedRawFormat() const
+	{
+		return m_SelectedRawFormat;
+	}
+	int GetFileType() const  // Wav, Mp3, wma, raw...
+	{
+		return m_FileType;
+	}
+
+protected:
 
 	CApplicationProfile m_Profile;
 
@@ -141,8 +154,6 @@ public:
 	void FillRawFormatsCombo();
 	void FillLameEncoderFormats();
 	int GetFileTypeForExt(LPCTSTR lpExt);
-	int GetFileTypeForName(LPCTSTR FileName);
-	WAVEFORMATEX * GetWaveFormat();
 
 	afx_msg void OnCompatibleFormatsClicked();
 	afx_msg void OnComboFormatsChange();
