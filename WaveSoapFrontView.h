@@ -29,6 +29,7 @@ public:
 	ThisDoc * GetDocument() const;
 	int GetHorizontalScale() const { return m_HorizontalScale; }
 	void SetHorizontalScale(int HorScale);
+	virtual BOOL OnScrollBy(CSize sizeScroll, BOOL bDoScroll, RECT const * pScrollRect, RECT const * pClipRect);
 
 // Operations
 public:
@@ -46,7 +47,6 @@ protected:
 	virtual void OnEndPrinting(CDC* pDC, CPrintInfo* pInfo);
 	virtual void OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint);
 	virtual void OnActivateView(BOOL bActivate, CView* pActivateView, CView* pDeactiveView);
-	virtual BOOL OnScrollBy(CSize sizeScroll, BOOL bDoScroll = TRUE);
 	//}}AFX_VIRTUAL
 
 // Implementation
@@ -73,7 +73,8 @@ protected:
 	virtual void AdjustNewScale(double OldScaleX, double OldScaleY,
 								double & NewScaleX, double & NewScaleY);
 	virtual void AdjustNewOrigin(double & NewOrgX, double & NewOrgY);
-	virtual BOOL MasterScrollBy(double dx, double dy, BOOL bDoScroll = TRUE);
+
+	virtual BOOL MasterScrollBy(double dx, double dy, BOOL bDoScroll);
 	void DrawHorizontalWithSelection(CDC * pDC,
 									int left, int right, int Y,
 									CPen * NormalPen, CPen * SelectedPen,

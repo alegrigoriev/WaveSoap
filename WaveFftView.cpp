@@ -1146,27 +1146,32 @@ BOOL CWaveFftView::OnEraseBkgnd(CDC* pDC)
 	GetClientRect( & r);
 	int FileEnd = WorldToWindowXceil(pDoc->WaveFileSamples());
 
-	if (FileEnd < r.right)
+	CRect ClipRect;
+	pDC->GetClipBox(ClipRect);
+
+	if (FileEnd < ClipRect.right)
 	{
-		CBitmap bmp;
-		static const unsigned char pattern[] =
-		{
-			0x55, 0,  // aligned to WORD
-			0xAA, 0,
-			0x55, 0,
-			0xAA, 0,
-			0x55, 0,
-			0xAA, 0,
-			0x55, 0,
-			0xAA, 0,
-			0x55, 0,
-		};
 		try {
+			CBitmap bmp;
+			static const unsigned char pattern[] =
+			{
+				0x55, 0,  // aligned to WORD
+				0xAA, 0,
+				0x55, 0,
+				0xAA, 0,
+				0x55, 0,
+				0xAA, 0,
+				0x55, 0,
+				0xAA, 0,
+			};
+
 			// Windows98 can only use 8x8 bitmap for a brush
-			bmp.CreateBitmap(8, 8, 1, 1, pattern + 2 * (FileEnd & 1));
+			bmp.CreateBitmap(8, 8, 1, 1, pattern);
 			CBrush GrayBrush( & bmp);
-			CRect gr = r;
+
+			CRect gr = ClipRect;
 			gr.left = FileEnd;
+
 			pDC->FillRect(gr, & GrayBrush);
 		}
 		catch (CResourceException * e)
