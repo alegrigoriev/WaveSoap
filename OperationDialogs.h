@@ -9,6 +9,7 @@
 //
 #include "NumEdit.h"
 #include "TimeEdit.h"
+#include "TimeToStr.h"
 #include "ChildDialog.h"
 #include <vector>
 #include "ApplicationProfile.h"
