@@ -19,7 +19,12 @@ protected:
 // Attributes
 public:
 	CWaveSoapFrontDoc* GetDocument();
+	virtual UINT GetPopupMenuID(CPoint point) { return IDR_MENU_SPECTRUMSECTION_VIEW;}
+	BOOL m_bShowNoiseThreshold;
 
+	double m_dNoiseThresholdLow;
+	double m_dNoiseThresholdHigh;
+	int nBeginFrequency;
 // Operations
 public:
 
@@ -28,15 +33,17 @@ public:
 	//{{AFX_VIRTUAL(CSpectrumSectionView)
 protected:
 	virtual void OnDraw(CDC* pDC);      // overridden to draw this view
+	virtual void OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint);
 	//}}AFX_VIRTUAL
 
 // Implementation
 protected:
 	int m_FftOrder;
-	double * m_pFftSum;
-	double * m_pWindow;
+	float * m_pFftSum;
+	float * m_pWindow;
 	int m_nFftSumSize;
 	long m_FftPosition;
+	long m_PlaybackSample;
 	virtual ~CSpectrumSectionView();
 #ifdef _DEBUG
 	virtual void AssertValid() const;
@@ -48,6 +55,12 @@ protected:
 	//{{AFX_MSG(CSpectrumSectionView)
 	afx_msg int OnCreate(LPCREATESTRUCT lpCreateStruct);
 	afx_msg int OnMouseActivate(CWnd* pDesktopWnd, UINT nHitTest, UINT message);
+	afx_msg void OnUpdateViewSsShowNoiseThreshold(CCmdUI* pCmdUI);
+	afx_msg void OnViewSsShowNoiseThreshold();
+	afx_msg void OnViewSsZoominhor2();
+	afx_msg void OnUpdateViewSsZoominhor2(CCmdUI* pCmdUI);
+	afx_msg void OnViewSsZoomouthor2();
+	afx_msg void OnUpdateViewSsZoomouthor2(CCmdUI* pCmdUI);
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 };
