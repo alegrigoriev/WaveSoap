@@ -732,6 +732,10 @@ unsigned CTimeRulerView::HitTest(POINT p, RECT * pHitRect, int * OffsetX) const
 	GetClientRect(cr);
 
 	CWaveFile::InstanceDataWav * pInst = pDoc->m_WavFile.GetInstanceData();
+	if (NULL == pInst)
+	{
+		return 0;
+	}
 
 	if (p.y >= cr.bottom - m_MarkerHeight)
 	{
