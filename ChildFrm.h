@@ -28,12 +28,12 @@ public:
 // Overrides
 	// ClassWizard generated virtual function overrides
 	//{{AFX_VIRTUAL(CVerticalTrackerBar)
-protected:
-	virtual void OnDraw(CDC* pDC);      // overridden to draw this view
 	//}}AFX_VIRTUAL
 
 // Implementation
 protected:
+	BOOL m_bTracking;
+	int m_ClickPointX;
 #ifdef _DEBUG
 	virtual void AssertValid() const;
 	virtual void Dump(CDumpContext& dc) const;
@@ -42,7 +42,11 @@ protected:
 	// Generated message map functions
 protected:
 	//{{AFX_MSG(CVerticalTrackerBar)
-	// NOTE - the ClassWizard will add and remove member functions here.
+	afx_msg void OnPaint();
+	afx_msg void OnLButtonDown(UINT nFlags, CPoint point);
+	afx_msg void OnLButtonUp(UINT nFlags, CPoint point);
+	afx_msg void OnMouseMove(UINT nFlags, CPoint point);
+	afx_msg void OnCaptureChanged(CWnd *pWnd);
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 };
@@ -94,6 +98,8 @@ public:
 	BOOL m_bShowOutline;
 	BOOL m_bShowTimeRuler;
 	BOOL m_bShowVerticalRuler;
+	BOOL m_bShowSpectrumSection;
+	int m_SpectrumSectionWidth;
 
 public:
 	virtual ~CWaveMDIChildClient();
@@ -114,6 +120,8 @@ protected:
 	afx_msg void OnUpdateViewTimeRuler(CCmdUI* pCmdUI);
 	afx_msg void OnUpdateViewVerticalRuler(CCmdUI* pCmdUI);
 	afx_msg void OnViewVerticalRuler();
+	afx_msg void OnUpdateViewSpectrumsection(CCmdUI* pCmdUI);
+	afx_msg void OnViewSpectrumsection();
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 };
