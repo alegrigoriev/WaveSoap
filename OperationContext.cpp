@@ -1100,6 +1100,13 @@ BOOL CStagedContext::OperationProc()
 		TRACE("Staged context: %s::DeInit()\n", typeid(*pContext).name());
 		pDone->DeInit();
 		pDone->m_Flags &= ~OperationContextInitialized;
+
+		// if DeInit set Stop flag, stop all gurther operations
+		if (pDone->m_Flags & OperationContextStop)
+		{
+			m_Flags |= OperationContextStop;
+		}
+
 		m_DoneList.InsertTail(pDone);
 
 	}
