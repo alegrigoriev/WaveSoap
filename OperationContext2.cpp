@@ -1,6 +1,8 @@
 // Copyright Alexander Grigoriev, 1997-2002, All Rights Reserved
 // OperationContext2.cpp
 #include "stdafx.h"
+#define _USE_MATH_DEFINES   // for M_PI definition
+#include <math.h>
 #include "OperationContext2.h"
 #include "OperationDialogs.h"
 #include "WaveSoapFrontDoc.h"
@@ -401,7 +403,7 @@ CExpressionEvaluationContext::TokenType
 		}
 		break;
 	case ePiConstant:
-		PushConstant(3.14159265358979323846);
+		PushConstant(M_PI);
 		break;
 	case eSelectionSampleNumber:
 		PushVariable( & m_nSelectionSampleArgument);
