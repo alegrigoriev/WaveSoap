@@ -12,12 +12,6 @@
 #include "WmaFile.h"
 #include "KListEntry.h"
 
-struct WavePeak
-{
-	__int16 low;
-	__int16 high;
-};
-
 #define ALL_CHANNELS (-1)
 class CSelectionUpdateInfo : public CObject
 {
@@ -31,7 +25,7 @@ public:
 	int Flags;
 };
 
-class CSoundUpdateInfo : public KListEntry<CSoundUpdateInfo>, public CObject
+class CSoundUpdateInfo : public ListItem<CSoundUpdateInfo>, public CObject
 {
 public:
 	DWORD FileID;
@@ -159,14 +153,6 @@ public:
 
 	//WAVEFORMATEX WavFileFormat;
 
-	WavePeak * m_pPeaks;
-	size_t m_WavePeakSize;
-	size_t m_AllocatedWavePeakSize;
-	int m_PeakDataGranularity;
-	CSimpleCriticalSection m_PeakLock;
-	void RescanPeaks(long begin, long end);
-	BOOL AllocatePeakData(long NewNumberOfSamples);
-
 	LONG m_CaretPosition;
 	LONG m_SelectionStart;
 	LONG m_SelectionEnd;
@@ -189,21 +175,15 @@ public:
 public:
 	virtual ~CWaveSoapFrontDoc();
 	void UpdateDocumentTitle();
-	void LoadPeaksForCompressedFile(CWaveFile & WaveFile, CWaveFile & OriginalWaveFile);
-	void CheckAndLoadPeakFile(CWaveFile & WaveFile);
+
 	void BuildPeakInfo(BOOL bSavePeakFile);
-	void GetSoundMinMax(int & MinL, int & MaxL, int & MinR, int & MaxR, long begin, long end);
-	int CalculatePeakInfoSize() const
-	{
-		return (WaveFileSamples() + m_PeakDataGranularity - 1)
-			/ m_PeakDataGranularity * WaveChannels();
-	}
+	void GetSoundMinMax(WavePeak & Left, WavePeak & Right,
+						long begin, long end);
 	BOOL SetThreadPriority(int priority)
 	{
 		return m_Thread.SetThreadPriority(priority);
 	}
 
-	void SavePeakInfo(CWaveFile & WaveFile, CWaveFile & SavedWaveFile);
 	BOOL OpenWaveFile(CWaveFile & WaveFile, LPCTSTR szName, DWORD flags);
 
 #ifdef _DEBUG
@@ -233,11 +213,12 @@ public:
 	bool m_bClosePending;   // Save is in progress, request close afterwards
 	bool m_bCloseThisDocumentNow;   // CDocTemplate should close it in OnIdle
 	CSimpleCriticalSection m_cs;
+
 	LockedListHead<COperationContext> m_OpList;
-	KListEntry<COperationContext> m_UndoList;
-	KListEntry<COperationContext> m_RedoList;
-	KListEntry<COperationContext> m_RetiredList;
-	KListEntry<CSoundUpdateInfo> m_UpdateList;
+	ListHead<COperationContext> m_UndoList;
+	ListHead<COperationContext> m_RedoList;
+	ListHead<COperationContext> m_RetiredList;
+	LockedListHead<CSoundUpdateInfo> m_UpdateList;
 
 protected:
 	HANDLE m_hThreadEvent;
