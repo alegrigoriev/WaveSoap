@@ -85,8 +85,6 @@ void CSpectrumSectionView::OnDraw(CDC* pDC)
 	PointToDoubleDev(CPoint(r.right, cr.bottom), right, bottom);
 
 	if (left < 0) left = 0;
-	// create an array of points
-	int nNumberOfPoints = r.bottom - r.top;
 
 	m_FftOrder = pFftView->m_FftOrder;
 	int nSampleSize = pDoc->WaveSampleSize();
@@ -112,6 +110,8 @@ void CSpectrumSectionView::OnDraw(CDC* pDC)
 	// find vertical offset in the result array and how many
 	// rows to fill with this color
 	int rows = cr.Height() / nChannels;
+	// create an array of points
+	int nNumberOfPoints = rows;
 	// if all the chart was drawn, how many scans it would have:
 	int TotalRows = rows * pFftView->m_VerticalScale;
 
@@ -322,7 +322,7 @@ void CSpectrumSectionView::OnDraw(CDC* pDC)
 		}
 		for (i = 0, j = 0; i < IdxSize && j < nNumberOfPoints; i++)
 		{
-			for (int k = 0; k < pIdArray[i].nNumOfRows; k++, j++)
+			for (int k = 0; k < pIdArray[i].nNumOfRows  && j < nNumberOfPoints; k++, j++)
 			{
 				ppArray[j][0].x = pIdArray[i].nMax;
 				ppArray[j][1].x = pIdArray[i].nMin - 1;
@@ -334,6 +334,7 @@ void CSpectrumSectionView::OnDraw(CDC* pDC)
 		int LastX1 = ppArray[0][1].x;
 		for (i = 0; i < nNumberOfPoints; i++)
 		{
+			//TRACE("ppArray[%d].x = %d, %d\n", i, ppArray[i][1].x, ppArray[i][0].x);
 			if (i < nNumberOfPoints - 1
 				&& ppArray[i + 1][0].x >= ppArray[i + 1][1].x)
 			{
@@ -381,6 +382,11 @@ void CSpectrumSectionView::OnDraw(CDC* pDC)
 			pDC->MoveTo(ppArray[i][0]);
 			pDC->LineTo(ppArray[i][1]);
 		}
+	}
+	if (nChannels > 1)
+	{
+		pDC->MoveTo(0, rows);
+		pDC->LineTo(cr.right, rows);
 	}
 	pDC->SelectObject(pOldPen);
 	delete[] ppArray;
