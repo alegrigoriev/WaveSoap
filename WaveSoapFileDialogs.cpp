@@ -643,6 +643,7 @@ void CFileSaveUiSupport::OnComboFormatsChange()
 	case SoundFileMp3:
 		// MP3 file
 		m_SelectedTag = m_Acm.m_FormatTags[sel].Tag;
+		m_SelectedMp3Encoder = sel;
 		m_SelectedFormat = FillFormatCombo(sel);
 		break;
 	case SoundFileWma:
