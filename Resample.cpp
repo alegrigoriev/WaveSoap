@@ -174,18 +174,6 @@ void CResampleContext::PostRetire(BOOL bChildContext)
 			if (NULL != m_pUndoContext)
 			{
 				m_pUndoContext->m_bOldDirectMode = pDocument->m_bDirectMode;
-				m_pUndoContext->m_OldAllocatedWavePeakSize =
-					pDocument->m_AllocatedWavePeakSize;
-				m_pUndoContext->m_OldWavePeakSize = pDocument->m_WavePeakSize;
-				pDocument->m_WavePeakSize = 0;
-				m_pUndoContext->m_OldPeakDataGranularity =
-					pDocument->m_PeakDataGranularity;
-				m_pUndoContext->m_pOldPeaks = pDocument->m_pPeaks;
-
-				// detach peaks
-				pDocument->m_pPeaks = NULL;
-				pDocument->m_AllocatedWavePeakSize = 0;
-				pDocument->m_WavePeakSize = 0;
 
 				pDocument->AddUndoRedo(m_pUndoContext);
 				m_pUndoContext = NULL;
