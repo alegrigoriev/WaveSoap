@@ -696,6 +696,7 @@ WmaEncoder::WmaEncoder()
 	m_pProfileManager(NULL),
 	m_pHeaderInfo(NULL),
 	m_pStreamConfig(NULL),
+	m_SampleTimeMs(0),
 	m_pBuffer(NULL)
 {
 }
@@ -704,7 +705,6 @@ void WmaEncoder::DeInit()
 {
 	if (NULL != m_pWriter)
 	{
-		m_pWriter->Flush();
 		m_pWriter->EndWriting();
 	}
 
@@ -754,18 +754,33 @@ WmaEncoder::~WmaEncoder()
 BOOL WmaEncoder::OpenWrite(CDirectFile & File)
 {
 	m_FileWriter.Open(File);
-
-	HRESULT hr = m_pWriterAdvanced->AddSink( & m_FileWriter);
+	HRESULT hr;
+#if 1
+	hr = m_pWriterAdvanced->AddSink( & m_FileWriter);
+#elif 1
+	hr = m_pWriter->SetOutputFilename(L"D:\\My Sounds\\Greatest Rock & Roll Hits 1960's Disk 3\\MrBassman.wma");
+#else
+	IWMWriterFileSink * pFileSink = NULL;
+	hr = WMCreateWriterFileSink( & pFileSink);
+	hr = pFileSink->Open(L"D:\\My Sounds\\Greatest Rock & Roll Hits 1960's Disk 3\\MrBassman.wma");
+	hr = m_pWriterAdvanced->AddSink(pFileSink);
+	hr = pFileSink->Release();
+#endif
 
 	m_pWriter->SetProfileByID(WMProfile_V70_128Audio);
 
-	IWMHeaderInfo * pHeaderInfo = NULL;
-	hr = m_pWriter->QueryInterface(IID_IWMHeaderInfo, ( VOID ** )& pHeaderInfo);
+	hr = m_pWriter->QueryInterface(IID_IWMHeaderInfo, ( VOID ** )& m_pHeaderInfo);
+	if ( ! SUCCEEDED(hr))
+	{
+		return FALSE;
+	}
+
 	if (SUCCEEDED(hr))
 	{
-		pHeaderInfo->SetAttribute(0, g_wszWMTitle, WMT_TYPE_STRING, (BYTE const *)L"Title", sizeof L"Title");
-		pHeaderInfo->SetAttribute(0, g_wszWMAuthor, WMT_TYPE_STRING, (BYTE const *)L"Author", sizeof L"Author");
-		pHeaderInfo->Release();
+		m_pHeaderInfo->SetAttribute(0, g_wszWMTitle, WMT_TYPE_STRING, (BYTE const *)L"Title", sizeof L"Title");
+		m_pHeaderInfo->SetAttribute(0, g_wszWMAuthor, WMT_TYPE_STRING, (BYTE const *)L"Author", sizeof L"Author");
+		m_pHeaderInfo->Release();
+		m_pHeaderInfo = NULL;
 	}
 
 	// open input properties
@@ -782,22 +797,33 @@ BOOL WmaEncoder::OpenWrite(CDirectFile & File)
 
 	WM_MEDIA_TYPE * pType = (WM_MEDIA_TYPE *) buf;
 	hr = pMediaProps->GetMediaType(pType, & size);
+
 	if (SUCCEEDED(hr))
 	{
 		WAVEFORMATEX * pwfx = (WAVEFORMATEX *)pType->pbFormat;
 
+		pType->pbFormat = (PBYTE) & m_SrcWfx;
+		pType->cbFormat = sizeof m_SrcWfx;
 		hr = m_pWriter->SetInputProps(0, pMediaProps);
 	}
 
 	delete[] buf;
 	pMediaProps->Release();
 
-	hr = m_pWriter->BeginWriting();
-	hr = m_pWriter->AllocateSample(0x10000, & m_pBuffer);
 	if ( ! SUCCEEDED(hr))
 	{
 		return FALSE;
 	}
+
+	m_SampleTimeMs = 0;
+
+	hr = m_pWriter->BeginWriting();
+	hr = m_pWriter->AllocateSample(m_SrcWfx.nAvgBytesPerSec, & m_pBuffer);
+	if ( ! SUCCEEDED(hr))
+	{
+		return FALSE;
+	}
+	m_pBuffer->SetLength(0);
 
 	return TRUE;
 }
@@ -817,12 +843,6 @@ BOOL WmaEncoder::Init()
 	}
 
 	//IWMHeaderInfo * pHeaderInfo = NULL;
-	hr = m_pWriter->QueryInterface(IID_IWMHeaderInfo, ( VOID ** )& m_pHeaderInfo);
-	if ( ! SUCCEEDED(hr))
-	{
-		return FALSE;
-	}
-
 	hr = WMCreateProfileManager( & m_pProfileManager);
 	if ( ! SUCCEEDED(hr))
 	{
@@ -874,7 +894,7 @@ BOOL WmaEncoder::Init()
 		pProfManager->Release();
 	}
 #endif
-
+#if 0
 	hr = m_pProfileManager->LoadProfileByID(WMProfile_V70_128Audio, & m_pProfile);
 	if ( ! SUCCEEDED(hr))
 	{
@@ -887,54 +907,7 @@ BOOL WmaEncoder::Init()
 		return FALSE;
 	}
 	m_pWriter->SetProfile(m_pProfile);
-#if 0
-	DWORD SourceBitrate = 0;
-	m_pStreamConfig->GetBitrate( & SourceBitrate);
-	TRACE("Stream Bitrate = %d\n", SourceBitrate);
-
-	IWMMediaProps * pProps = NULL;
-	hr = m_pStreamConfig->QueryInterface(IID_IWMMediaProps, (void**) & pProps);
-	if ( ! SUCCEEDED(hr))
-	{
-		return FALSE;
-	}
-
-	DWORD cbType;
-	//   Make the first call to establish the size of buffer needed.
-	pProps -> GetMediaType(NULL, &cbType);
-	//   Now create a buffer of the appropriate size
-	BYTE *pBuf = new BYTE[cbType];
-	//   Create an appropriate structure pointer to the buffer.
-	WM_MEDIA_TYPE *pType = (WM_MEDIA_TYPE*) pBuf;
-	//   Call the method again to extract the information.
-	hr = pProps -> GetMediaType(pType, & cbType);
-	WAVEFORMATEX * pwfx = (WAVEFORMATEX *) pType->pbFormat;
-	TRACE("MediaType: wFormatTag=%x, BytesPerSec = %d\n",
-		pwfx->wFormatTag, pwfx->nAvgBytesPerSec);
-
-	hr = m_pStreamConfig->SetBitrate(96024*2);
-	hr = pProps -> GetMediaType(pType, & cbType);
-	pwfx = (WAVEFORMATEX *) pType->pbFormat;
-	TRACE("new MediaType: wFormatTag=%x, BytesPerSec = %d\n",
-		pwfx->wFormatTag, pwfx->nAvgBytesPerSec);
-
-
-	m_pStreamConfig->GetBitrate( & SourceBitrate);
-	TRACE("Stream Bitrate = %d\n", SourceBitrate);
-
-	pwfx->nAvgBytesPerSec = SourceBitrate / 8;
-
-	pProps->SetMediaType(pType);
-
-	hr = m_pProfile->ReconfigStream(m_pStreamConfig);
-	TRACE("ReconfigBitrate returned %X\n", hr);
-	delete[] pBuf;
-
-	pProps->Release();
-	pProps = NULL;
-
 #endif
-
 	return TRUE;
 }
 
@@ -1063,18 +1036,19 @@ BOOL WmaEncoder::Write(void * Buf, size_t size)
 			m_pBuffer->SetLength(BufLength);
 		}
 
-		if (NULL == pSrcBuf
+		if ((NULL == pSrcBuf && 0 != BufLength)
 			|| BufLength == MaxLength
-			|| 0 != BufLength)
+			)
 		{
-			QWORD WriterTime = 0;
-			m_pWriterAdvanced->GetWriterTime( & WriterTime);
+			QWORD WriterTime = m_SampleTimeMs * 10000i64;
+
 			TRACE("Writing src buf %p, time=%d ms\n",
 				m_pBuffer, DWORD(WriterTime / 10000));
 			if (! SUCCEEDED(m_pWriter->WriteSample(0, WriterTime, 0, m_pBuffer)))
 			{
 				return FALSE;
 			}
+			m_SampleTimeMs += MulDiv(1000, BufLength, m_SrcWfx.nAvgBytesPerSec);
 			m_pBuffer->SetLength(0);
 		}
 	} while(size != 0);
@@ -1086,6 +1060,7 @@ HRESULT STDMETHODCALLTYPE FileWriter::OnHeader(
 												/* [in] */ INSSBuffer __RPC_FAR *pHeader)
 {
 	TRACE("FileWriter::OnHeader\n");
+	m_DstFile.Seek(0, FILE_BEGIN);
 	return OnDataUnit(pHeader);
 }
 
@@ -1114,7 +1089,7 @@ class NSSBuffer : public INSSBuffer
 public:
 	NSSBuffer(DWORD Length)
 		: RefCount(1),
-		BufLength(0),
+		BufLength(Length),
 		MaxLength(Length),
 		pBuf(new BYTE[Length])
 	{
@@ -1232,18 +1207,28 @@ HRESULT STDMETHODCALLTYPE FileWriter::OnDataUnit(
 {
 	PBYTE pData;
 	DWORD Length;
-	TRACE("FileWriter::OnDataUnit buf = %p\n", pDataUnit);
 	if (NULL == pDataUnit)
 	{
 		return E_POINTER;
 	}
+
 	pDataUnit->GetBufferAndLength( & pData, & Length);
+	TRACE("FileWriter::OnDataUnit buf = %p, Length=%d\n",
+		pData, Length);
 	if (NULL == pData)
 	{
 		return E_POINTER;
 	}
+
 	if (Length == m_DstFile.Write(pData, Length))
 	{
+		DWORD CurPos = m_DstFile.Seek(0, FILE_CURRENT);
+		if (CurPos > m_WrittenLength)
+		{
+			m_WrittenLength = CurPos;
+		}
+		//pDataUnit->SetLength(0); //???
+
 		return S_OK;
 	}
 	else
@@ -1254,5 +1239,6 @@ HRESULT STDMETHODCALLTYPE FileWriter::OnDataUnit(
 
 HRESULT STDMETHODCALLTYPE FileWriter::OnEndWriting( void)
 {
+	TRACE("OnEndWriting\n");
 	return S_OK;
 }

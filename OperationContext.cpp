@@ -3719,6 +3719,7 @@ void CWmaDecodeContext::PostRetire(BOOL bChildContext)
 
 BOOL CWmaSaveContext::Init()
 {
+	m_Enc.m_SrcWfx = * m_SrcFile.GetWaveFormat();
 	CoInitializeEx(NULL, COINIT_MULTITHREADED);
 	if (! m_Enc.Init())
 	{
@@ -3739,7 +3740,7 @@ void CWmaSaveContext::DeInit()
 {
 	m_Enc.DeInit();
 	CoUninitialize();
-	m_DstCopyPos = m_DstFile.Seek(0, FILE_CURRENT);
+	m_DstCopyPos = m_Enc.GetWrittenLength();
 }
 
 void CWmaSaveContext::PostRetire(BOOL bChildContext)
