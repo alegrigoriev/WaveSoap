@@ -772,14 +772,12 @@ protected:
 	CApplicationProfile Profile;
 	//{{AFX_DATA(CNoiseReductionDialog)
 	enum { IDD = IDD_DIALOG_NOISE_REDUCTION };
-	CNumEdit	m_eToneOverNoisePreference;
-	CNumEdit	m_EditAggressiveness;
-	CNumEdit	m_eNoiseReduction;
-	CNumEdit	m_eNoiseCriterion;
+	int		m_nFftOrderExp;
+	CNumEdit	m_eLowerFrequency;
 	CNumEdit	m_eNoiseThresholdHigh;
 	CNumEdit	m_eNoiseThresholdLow;
-	CNumEdit	m_eLowerFrequency;
-	int		m_nFftOrderExp;
+	CNumEdit	m_EditAggressiveness;
+	CNumEdit	m_eNoiseReduction;
 	//}}AFX_DATA
 
 	double	m_dTransientThreshold;
@@ -820,6 +818,8 @@ protected:
 	afx_msg void OnButtonRevert();
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
+
+	friend class CMoreNoiseDialog;
 };
 /////////////////////////////////////////////////////////////////////////////
 // CMoreNoiseDialog dialog
@@ -829,24 +829,24 @@ class CMoreNoiseDialog : public CDialog
 	typedef CDialog BaseClass;
 // Construction
 public:
-	CMoreNoiseDialog(CWnd* pParent = NULL);   // standard constructor
+	CMoreNoiseDialog(CNoiseReductionDialog * pParentDlg, CWnd* pParent = NULL);   // standard constructor
 
 // Dialog Data
 	//{{AFX_DATA(CMoreNoiseDialog)
 	enum { IDD = IDD_DIALOG_MORE_NOISEREDUCTION };
-	CNumEdit	m_eNearMaskingCoeff;
-	CNumEdit	m_eFarMaskingCoeff;
-	CNumEdit	m_eNearMaskingTimeLow;
-	CNumEdit	m_eNearMaskingTimeHigh;
+	CNumEdit	m_eFarMaskingLevel;
+
 	CNumEdit	m_eNearMaskingDistanceLow;
 	CNumEdit	m_eNearMaskingDistanceHigh;
+
+	CNumEdit	m_eNearMaskingTimeLow;
+	CNumEdit	m_eNearMaskingTimeHigh;
+
+	CNumEdit	m_eToneOverNoisePreference;
+	CNumEdit	m_eNoiseCriterion;
+	CNumEdit	m_eTransientThreshold;
 	//}}AFX_DATA
 
-	double  m_NearMaskingDecayDistanceHigh;
-	double  m_NearMaskingDecayDistanceLow;
-	double m_NearMaskingDecayTimeLow;   // for low frequencies
-	double m_NearMaskingDecayTimeHigh;   // for high frequencies
-	double m_FarMaskingLevelDb;
 // Overrides
 	// ClassWizard generated virtual function overrides
 	//{{AFX_VIRTUAL(CMoreNoiseDialog)
@@ -856,7 +856,7 @@ protected:
 
 // Implementation
 protected:
-
+	CNoiseReductionDialog * const m_pParentDlg;
 	// Generated message map functions
 	//{{AFX_MSG(CMoreNoiseDialog)
 	// NOTE: the ClassWizard will add member functions here

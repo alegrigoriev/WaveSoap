@@ -2398,7 +2398,7 @@ CNoiseReductionDialog::CNoiseReductionDialog(SAMPLE_INDEX begin, SAMPLE_INDEX en
 	//{{AFX_DATA_INIT(CNoiseReductionDialog)
 	m_nFftOrderExp = -1;
 	//}}AFX_DATA_INIT
-	m_dTransientThreshold = 2;
+	m_dTransientThreshold = 10.;
 	m_dNoiseReduction = 10.;
 	m_dNoiseCriterion = 0.25;
 	m_dNoiseThresholdLow = -70.;
@@ -2408,13 +2408,11 @@ CNoiseReductionDialog::CNoiseReductionDialog(SAMPLE_INDEX begin, SAMPLE_INDEX en
 	m_dNoiseReductionAggressiveness = 1.;
 	m_FarMaskingLevelDb = -40.;
 
-	m_eToneOverNoisePreference.SetPrecision(1);
-	m_EditAggressiveness.SetPrecision(2);
-	m_eNoiseReduction.SetPrecision(2);
-	m_eNoiseCriterion.SetPrecision(2);
+	m_eLowerFrequency.SetPrecision(1);
 	m_eNoiseThresholdHigh.SetPrecision(1);
 	m_eNoiseThresholdLow.SetPrecision(1);
-	m_eLowerFrequency.SetPrecision(1);
+	m_EditAggressiveness.SetPrecision(2);
+	m_eNoiseReduction.SetPrecision(2);
 
 	LoadValuesFromRegistry();
 }
@@ -2423,34 +2421,24 @@ void CNoiseReductionDialog::DoDataExchange(CDataExchange* pDX)
 {
 	BaseClass::DoDataExchange(pDX);
 	//{{AFX_DATA_MAP(CNoiseReductionDialog)
-	DDX_Control(pDX, IDC_EDIT_TONE_PREFERENCE, m_eToneOverNoisePreference);
-	DDX_Control(pDX, IDC_EDIT_AGGRESSIVNESS, m_EditAggressiveness);
-	DDX_Control(pDX, IDC_EDIT_NOISE_REDUCTION, m_eNoiseReduction);
-	DDX_Control(pDX, IDC_EDIT_NOISE_CRITERION, m_eNoiseCriterion);
+	DDX_CBIndex(pDX, IDC_COMBO_FFT_ORDER, m_nFftOrderExp);
+	DDX_Control(pDX, IDC_EDIT_LOWER_FREQUENCY, m_eLowerFrequency);
 	DDX_Control(pDX, IDC_EDIT_NOISE_AREA_THRESHOLD_HIGH, m_eNoiseThresholdHigh);
 	DDX_Control(pDX, IDC_EDIT_NOISE_AREA_THRESHOLD_LOW, m_eNoiseThresholdLow);
-	DDX_Control(pDX, IDC_EDIT_LOWER_FREQUENCY, m_eLowerFrequency);
-	DDX_CBIndex(pDX, IDC_COMBO_FFT_ORDER, m_nFftOrderExp);
+	DDX_Control(pDX, IDC_EDIT_AGGRESSIVNESS, m_EditAggressiveness);
+	DDX_Control(pDX, IDC_EDIT_NOISE_REDUCTION, m_eNoiseReduction);
 	DDX_Check(pDX, IDC_CHECK_UNDO, m_bUndo);
 	//}}AFX_DATA_MAP
-#if 0
-	m_eTransientThreshold.ExchangeData(pDX, m_dTransientThreshold,
-										"Transient threshold", "", 0.3, 2);
-#endif
-	m_eNoiseReduction.ExchangeData(pDX, m_dNoiseReduction,
-									IDS_INPUT_NAME_NOISE_REDUCTION, IDS_DECIBEL, 0., 100.);
-	m_eNoiseCriterion.ExchangeData(pDX, m_dNoiseCriterion,
-									IDS_INPUT_NAME_NOISE_VS_CONTINUOUS, 0, 0.0, 1.);
+	m_eLowerFrequency.ExchangeData(pDX, m_dLowerFrequency,
+									IDS_INPUT_NAME_FREQUENCY, IDS_HERTZ, 100., 48000.);
 	m_eNoiseThresholdHigh.ExchangeData(pDX, m_dNoiseThresholdHigh,
 										IDS_INPUT_NAME_NOISE_FLOOR_HIGH, IDS_DECIBEL, -120., -10.);
 	m_eNoiseThresholdLow.ExchangeData(pDX, m_dNoiseThresholdLow,
 									IDS_INPUT_NAME_NOISE_FLOOR_LOW, IDS_DECIBEL, -120., -10.);
 	m_EditAggressiveness.ExchangeData(pDX, m_dNoiseReductionAggressiveness,
 									IDS_INPUT_NAME_NOISE_SUPPRESSION_AGGR, 0, 0.1, 3.);
-	m_eToneOverNoisePreference.ExchangeData(pDX, m_dToneOverNoisePreference,
-											IDS_INPUT_NAME_TONE_OVER_NOISE, IDS_DECIBEL, 0., 20.);
-	m_eLowerFrequency.ExchangeData(pDX, m_dLowerFrequency,
-									IDS_INPUT_NAME_FREQUENCY, IDS_HERTZ, 100., 48000.);
+	m_eNoiseReduction.ExchangeData(pDX, m_dNoiseReduction,
+									IDS_INPUT_NAME_NOISE_REDUCTION, IDS_DECIBEL, 0., 40.);
 
 	if (pDX->m_bSaveAndValidate)
 	{
@@ -2510,7 +2498,7 @@ void CNoiseReductionDialog::LoadValuesFromRegistry()
 		m_nFftOrderExp = 0;
 	}
 
-	Profile.AddItem(_T("NoiseReduction"), _T("TransientThreshold"), m_dTransientThreshold, 1., 0.3, 2);
+	Profile.AddItem(_T("NoiseReduction"), _T("TransientThreshold"), m_dTransientThreshold, 10., 2., 30.);
 	Profile.AddItem(_T("NoiseReduction"), _T("NoiseReduction"), m_dNoiseReduction, 10., 0., 100.);
 	Profile.AddItem(_T("NoiseReduction"), _T("NoiseCriterion"), m_dNoiseCriterion, 0.25, 0., 1.);
 	Profile.AddItem(_T("NoiseReduction"), _T("NoiseThresholdLow"), m_dNoiseThresholdLow, -70., -120., -10.);
@@ -2530,7 +2518,7 @@ void CNoiseReductionDialog::GetNoiseReductionData(NoiseReductionParameters * pNr
 {
 	//pNr->m_bApplyPhaseFilter = m_bPhaseFilter;
 	pNr->m_MinFrequencyToProcess = float(m_dLowerFrequency);
-	pNr->m_ThresholdOfTransient = float(m_dTransientThreshold);
+	pNr->m_ThresholdOfTransient = float(DB_TO_NEPER * m_dTransientThreshold);
 	pNr->m_FreqThresholdOfNoiselike = float(M_PI_2 * M_PI_2 * m_dNoiseCriterion * m_dNoiseCriterion);
 	pNr->m_MaxNoiseSuppression = float(DB_TO_NEPER * m_dNoiseReduction);
 	pNr->m_LevelThresholdForNoiseLow = float(DB_TO_NEPER * (m_dNoiseThresholdLow));
@@ -2561,18 +2549,24 @@ void CNoiseReductionDialog::OnOK()
 // CMoreNoiseDialog dialog
 
 
-CMoreNoiseDialog::CMoreNoiseDialog(CWnd* pParent /*=NULL*/)
+CMoreNoiseDialog::CMoreNoiseDialog(CNoiseReductionDialog * pParentDlg, CWnd* pParent /*=NULL*/)
 	: BaseClass(CMoreNoiseDialog::IDD, pParent)
+	, m_pParentDlg(pParentDlg)
 {
 	//{{AFX_DATA_INIT(CMoreNoiseDialog)
 	// NOTE: the ClassWizard will add member initialization here
 	//}}AFX_DATA_INIT
-	m_eNearMaskingCoeff.SetPrecision(2);
-	m_eFarMaskingCoeff.SetPrecision(2);
+	m_eFarMaskingLevel.SetPrecision(2);
+
 	m_eNearMaskingTimeLow.SetPrecision(1);
 	m_eNearMaskingTimeHigh.SetPrecision(1);
+
 	m_eNearMaskingDistanceLow.SetPrecision(1);
 	m_eNearMaskingDistanceHigh.SetPrecision(1);
+
+	m_eToneOverNoisePreference.SetPrecision(1);
+	m_eNoiseCriterion.SetPrecision(2);
+	m_eTransientThreshold.SetPrecision(1);
 }
 
 
@@ -2580,26 +2574,36 @@ void CMoreNoiseDialog::DoDataExchange(CDataExchange* pDX)
 {
 	BaseClass::DoDataExchange(pDX);
 	//{{AFX_DATA_MAP(CMoreNoiseDialog)
-	DDX_Control(pDX, IDC_EDIT_FAR_MASKING_LEVEL, m_eNearMaskingCoeff);
-	DDX_Control(pDX, IDC_EDIT_FAR_MASKING_COEFF, m_eFarMaskingCoeff);
+	DDX_Control(pDX, IDC_EDIT_FAR_MASKING_LEVEL, m_eFarMaskingLevel);
 	DDX_Control(pDX, IDC_EDIT_MASKING_TIME_LOW, m_eNearMaskingTimeLow);
 	DDX_Control(pDX, IDC_EDIT_MASKING_TIME_HIGH, m_eNearMaskingTimeHigh);
 	DDX_Control(pDX, IDC_EDIT_NEAR_MASKING_DISTANCE_LOW, m_eNearMaskingDistanceLow);
 	DDX_Control(pDX, IDC_EDIT_NEAR_MASKING_DISTANCE_HIGH, m_eNearMaskingDistanceHigh);
+	DDX_Control(pDX, IDC_EDIT_TONE_PREFERENCE, m_eToneOverNoisePreference);
+	DDX_Control(pDX, IDC_EDIT_NOISE_CRITERION, m_eNoiseCriterion);
+	DDX_Control(pDX, IDC_EDIT_TRANSIENT_THRESHOLD, m_eTransientThreshold);
 	//}}AFX_DATA_MAP
-	m_eNearMaskingDistanceHigh.ExchangeData(pDX, m_NearMaskingDecayDistanceHigh,
+	m_eNearMaskingDistanceHigh.ExchangeData(pDX, m_pParentDlg->m_NearMaskingDecayDistanceHigh,
 											IDS_INPUT_NAME_NEAR_MASK_DISTANCE_HIGH, IDS_HERTZ, 1., 5000.);
-	m_eNearMaskingDistanceLow.ExchangeData(pDX, m_NearMaskingDecayDistanceLow,
+	m_eNearMaskingDistanceLow.ExchangeData(pDX, m_pParentDlg->m_NearMaskingDecayDistanceLow,
 											IDS_INPUT_NAME_NEAR_MASK_DISTANCE_LOW, IDS_HERTZ, 1., 1000.);
 
-	m_eNearMaskingTimeHigh.ExchangeData(pDX, m_NearMaskingDecayTimeHigh,
+	m_eNearMaskingTimeHigh.ExchangeData(pDX, m_pParentDlg->m_NearMaskingDecayTimeHigh,
 										IDS_INPUT_NAME_NEAR_MASK_TIME_HIGH, IDS_MILISECOND, 1., 1000.);
-	m_eNearMaskingTimeLow.ExchangeData(pDX, m_NearMaskingDecayTimeLow,
+	m_eNearMaskingTimeLow.ExchangeData(pDX, m_pParentDlg->m_NearMaskingDecayTimeLow,
 										IDS_INPUT_NAME_NEAR_MASK_TIME_LOW, IDS_MILISECOND, 1., 1000.);
 
-	m_eNearMaskingCoeff.ExchangeData(pDX, m_FarMaskingLevelDb,
+	m_eFarMaskingLevel.ExchangeData(pDX, m_pParentDlg->m_FarMaskingLevelDb,
 									IDS_INPUT_NAME_FAR_MASK_LEVEL, 0, -100., -10.);
 
+	m_eTransientThreshold.ExchangeData(pDX, m_pParentDlg->m_dTransientThreshold,
+										NULL, IDS_DECIBEL, 2., 30.);
+
+	m_eNoiseCriterion.ExchangeData(pDX, m_pParentDlg->m_dNoiseCriterion,
+									IDS_INPUT_NAME_NOISE_VS_CONTINUOUS, 0, 0.0, 1.);
+
+	m_eToneOverNoisePreference.ExchangeData(pDX, m_pParentDlg->m_dToneOverNoisePreference,
+											IDS_INPUT_NAME_TONE_OVER_NOISE, IDS_DECIBEL, 0., 20.);
 }
 
 
@@ -2614,23 +2618,11 @@ END_MESSAGE_MAP()
 
 void CNoiseReductionDialog::OnButtonMore()
 {
-	CMoreNoiseDialog dlg;
+	CMoreNoiseDialog dlg(this);
 	// set the data to dlg
-	dlg.m_NearMaskingDecayDistanceLow = m_NearMaskingDecayDistanceLow;
-	dlg.m_NearMaskingDecayDistanceHigh = m_NearMaskingDecayDistanceHigh;
-
-	dlg.m_NearMaskingDecayTimeLow = m_NearMaskingDecayTimeLow;
-	dlg.m_NearMaskingDecayTimeHigh = m_NearMaskingDecayTimeHigh;
-	dlg.m_FarMaskingLevelDb = m_FarMaskingLevelDb;
 	if (IDOK == dlg.DoModal())
 	{
-		// return the data from dlg
-		m_NearMaskingDecayDistanceLow = dlg.m_NearMaskingDecayDistanceLow;
-		m_NearMaskingDecayDistanceHigh = dlg.m_NearMaskingDecayDistanceHigh;
-
-		m_NearMaskingDecayTimeLow = dlg.m_NearMaskingDecayTimeLow;
-		m_NearMaskingDecayTimeHigh = dlg.m_NearMaskingDecayTimeHigh;
-		m_FarMaskingLevelDb = dlg.m_FarMaskingLevelDb;
+		// the data from dlg is returned through the parent dialog pointer
 	}
 }
 
