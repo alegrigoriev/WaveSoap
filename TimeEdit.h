@@ -19,7 +19,7 @@ public:
 // Attributes
 public:
 	void ExchangeData(CDataExchange* pDX, long & sample);
-	long GetTimeSample(LPCTSTR str = NULL);
+	long GetTimeSample();
 // Operations
 public:
 	void SetTimeFormat(int format);
@@ -45,7 +45,7 @@ protected:
 	long m_Sample;
 	CString m_OriginalString;
 	//{{AFX_MSG(CTimeEdit)
-	// NOTE - the ClassWizard will add and remove member functions here.
+	afx_msg void OnVScroll(UINT nSBCode, UINT nPos, CScrollBar* pScrollBar);
 	//}}AFX_MSG
 
 	DECLARE_MESSAGE_MAP()
@@ -53,6 +53,40 @@ protected:
 
 /////////////////////////////////////////////////////////////////////////////
 
+/////////////////////////////////////////////////////////////////////////////
+// CTimeSpinCtrl window
+
+class CTimeSpinCtrl : public CSpinButtonCtrl
+{
+// Construction
+public:
+	CTimeSpinCtrl();
+
+// Attributes
+public:
+
+// Operations
+public:
+
+// Overrides
+	// ClassWizard generated virtual function overrides
+	//{{AFX_VIRTUAL(CTimeSpinCtrl)
+	//}}AFX_VIRTUAL
+
+// Implementation
+public:
+	virtual ~CTimeSpinCtrl();
+
+	// Generated message map functions
+protected:
+	//{{AFX_MSG(CTimeSpinCtrl)
+	afx_msg void OnDeltapos(NMHDR* pNMHDR, LRESULT* pResult);
+	//}}AFX_MSG
+
+	DECLARE_MESSAGE_MAP()
+};
+
+/////////////////////////////////////////////////////////////////////////////
 //{{AFX_INSERT_LOCATION}}
 // Microsoft Visual C++ will insert additional declarations immediately before the previous line.
 
