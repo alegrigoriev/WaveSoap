@@ -201,7 +201,8 @@ public:
 	USHORT m_PreviousDriveLetter;
 
 	CDROM_TOC m_toc;
-	std::vector<CdTrackInfo> m_Tracks;
+	typedef std::vector<CdTrackInfo> CdTrackInfoVector;
+	CdTrackInfoVector m_Tracks;
 	DWORD m_DiskID;
 
 	// Format to save the files:
