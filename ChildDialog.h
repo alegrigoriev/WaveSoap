@@ -98,6 +98,7 @@ class CInsertExpressionDialog : public CDialog
 {
 	typedef Expressions::Expr Expr;
 	typedef Expressions::ExprGroup ExprGroup;
+
 	typedef std::vector<ExprGroup> ExprGroupVector;
 	typedef ExprGroupVector::iterator ExprGroupIterator;
 	typedef std::vector<Expr> ExprVector;
@@ -119,7 +120,6 @@ public:
 	int m_ExpressionSelected;
 	bool m_ExpressionsChanged;
 
-	ExprGroupVector m_Expressions;
 	static void LoadExpressions(ExprGroupVector & Expressions,
 								LPCTSTR ProfileName = NULL);
 	void UnloadExpressions(LPCTSTR ProfileName = NULL);
@@ -138,6 +138,8 @@ protected:
 
 // Implementation
 protected:
+	ExprGroupVector m_Expressions;
+
 	void BuildExpressionGroupCombobox(unsigned nGroupSelected, unsigned nExprSelected);
 	void LoadExpressionCombobox(unsigned nGroupSelected, unsigned nExprSelected);
 	void OnUpdateDeleteExpression(CCmdUI* pCmdUI);

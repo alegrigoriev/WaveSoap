@@ -57,6 +57,11 @@ COperandsDialog::COperandsDialog(UINT id, CWnd* pParent /*=NULL*/)
 	m_dFrequency1 = 0.;
 	m_dFrequency2 = 0.;
 	m_dFrequency3 = 0.;
+
+	m_eFrequency.SetPrecision(2);
+	m_eFrequency1.SetPrecision(2);
+	m_eFrequency2.SetPrecision(2);
+	m_eFrequency3.SetPrecision(2);
 }
 
 
@@ -176,12 +181,13 @@ void CInsertExpressionDialog::BuildExpressionGroupCombobox(unsigned nGroupSelect
 		m_ExpressionGroupCombo.AddString(ii->name);
 	}
 
-	if (nGroupSelected > m_Expressions.size())
+	if (nGroupSelected >= m_Expressions.size())
 	{
 		nGroupSelected = 0;
 	}
 	m_ExpressionGroupSelected = nGroupSelected;
 	m_CurrExpressionGroupSelected = nGroupSelected;
+
 	m_ExpressionGroupCombo.SetCurSel(m_ExpressionGroupSelected);
 	LoadExpressionCombobox(nGroupSelected, nExprSelected);
 }
@@ -273,6 +279,7 @@ void CInsertExpressionDialog::OnButtonDeleteExpression()
 	{
 		return;
 	}
+
 	ExprGroupIterator ii = m_Expressions.begin() + nGroup;
 	if (0 == nGroup)
 	{
@@ -292,6 +299,7 @@ void CInsertExpressionDialog::OnButtonDeleteExpression()
 			return;
 		}
 	}
+
 	ExprIterator jj = ii->exprs.begin() + ExprSel;
 	s.Format(IDS_DELETE_EXPRESSION, LPCTSTR(jj->name),
 			LPCTSTR(ii->name));
@@ -312,7 +320,6 @@ void CInsertExpressionDialog::OnButtonDeleteExpression()
 			// rebuild combobox
 			BuildExpressionGroupCombobox(m_CurrExpressionGroupSelected, ExprSel);
 		}
-		UnloadExpressions();
 	}
 }
 
@@ -522,6 +529,7 @@ void CInsertExpressionDialog::UnloadExpressions(LPCTSTR ProfileName)
 	{
 		s.Format(_T("ExprsInGroup%d"), i);
 		profile.WriteProfileInt(_T("Expressions"), s, ii->exprs.size());
+
 		s.Format(_T("GroupName%d"), i);
 		profile.WriteProfileString(_T("Expressions"), s, ii->name);
 
@@ -530,8 +538,10 @@ void CInsertExpressionDialog::UnloadExpressions(LPCTSTR ProfileName)
 		{
 			s.Format(_T("Name%d.%d"), i, j);
 			profile.WriteProfileString(_T("Expressions"), s, jj->name);
+
 			s.Format(_T("Expr%d.%d"), i, j);
 			profile.WriteProfileString(_T("Expressions"), s, jj->expr);
+
 			s.Format(_T("Comment%d.%d"), i, j);
 			profile.WriteProfileString(_T("Expressions"), s, jj->comment);
 		}
