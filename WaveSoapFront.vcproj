@@ -255,6 +255,9 @@
 				RelativePath=".\AmplitudeRuler.cpp">
 			</File>
 			<File
+				RelativePath=".\ApplicationParameters.cpp">
+			</File>
+			<File
 				RelativePath=".\ApplicationProfile.cpp">
 			</File>
 			<File
@@ -397,6 +400,9 @@
 				RelativePath=".\TimeToStr.cpp">
 			</File>
 			<File
+				RelativePath=".\UndoRedoOptionsDlg.cpp">
+			</File>
+			<File
 				RelativePath=".\WaveFftView.cpp">
 			</File>
 			<File
@@ -492,6 +498,9 @@ echo.
 			Filter="h;hpp;hxx;hm;inl">
 			<File
 				RelativePath=".\AmplitudeRuler.h">
+			</File>
+			<File
+				RelativePath=".\ApplicationParameters.h">
 			</File>
 			<File
 				RelativePath=".\ApplicationProfile.h">
@@ -732,6 +741,9 @@ makehm /h /a afxhh.h IDW_,HIDW_,0x50000 &quot;$(InputFileName)&quot; &gt;&gt; &q
 			</File>
 			<File
 				RelativePath="UiUpdatedDlg.h">
+			</File>
+			<File
+				RelativePath=".\UndoRedoOptionsDlg.h">
 			</File>
 			<File
 				RelativePath=".\WaveFftView.h">
