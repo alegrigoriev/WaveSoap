@@ -576,37 +576,44 @@ BOOL CMmioFile::ReadChunkString(ULONG Length, CStringA & String)
 	}
 
 	CStringA s;
-	if ((long)Length != Read(s.GetBuffer(Length), Length))
+	LPSTR p = s.GetBuffer(Length);
+
+	if (Length != (ULONG)Read(p, Length))
 	{
 		return FALSE;
 	}
+	p[Length - 1] = 0;
+	s.ReleaseBuffer();
+	Length = s.GetLength();
 
-	if (Length >= 4
+	if (Length >= 3
 		&& UCHAR(s[0]) == 0xFE
 		&& UCHAR(s[1]) == 0xFF)
 	{
 		// UNICODE marker
-		Length &= ~1;
-		s.SetAt(Length - 1, 0);
-		s.SetAt(Length - 2, 0);
+		Length = (Length - 1) & ~1;
+		s.SetAt(Length, 0);
+		s.SetAt(Length + 1, 0);
+
 		String = PCWSTR(LPCSTR(s) + 2);
 	}
-	else if (Length >= 5
+	else if (Length >= 4
 			&& UCHAR(s[0]) == 0xEF
 			&& UCHAR(s[1]) == 0xBB
 			&& UCHAR(s[2]) == 0xBF)
 	{
 		// UTF-8
-		s.ReleaseBuffer(Length - 1);
 		CStringW stringW;
-		int result = ::MultiByteToWideChar(CP_UTF8, 0, LPCSTR(s) + 3, Length - 4,
-											stringW.GetBuffer(Length - 4), Length - 4);
+		Length -= 3;
+
+		int result = ::MultiByteToWideChar(CP_UTF8, 0, LPCSTR(s) + 3, Length,
+											stringW.GetBuffer(Length), Length);
+
 		stringW.ReleaseBuffer(result);
 		String = stringW;
 	}
 	else
 	{
-		s.ReleaseBuffer(Length - 1);
 		String = s;
 	}
 	return TRUE;
@@ -622,35 +629,41 @@ BOOL CMmioFile::ReadChunkString(ULONG Length, CStringW & String)
 	}
 
 	CStringA s;
-	if (Length != (ULONG)Read(s.GetBuffer(Length), Length))
+	LPSTR p = s.GetBuffer(Length);
+
+	if (Length != (ULONG)Read(p, Length))
 	{
 		return FALSE;
 	}
-	if (Length >= 4
+	p[Length - 1] = 0;
+	s.ReleaseBuffer();
+	Length = s.GetLength();
+
+	if (Length >= 3
 		&& UCHAR(s[0]) == 0xFE
 		&& UCHAR(s[1]) == 0xFF)
 	{
 		// UNICODE marker
-		Length &= ~1;
-		s.SetAt(Length - 1, 0);
-		s.SetAt(Length - 2, 0);
+		Length = (Length - 1) & ~1;
+		s.SetAt(Length, 0);
+		s.SetAt(Length + 1, 0);
+
 		String = PCWSTR(LPCSTR(s) + 2);
 	}
-	else if (Length >= 5
+	else if (Length >= 4
 			&& UCHAR(s[0]) == 0xEF
 			&& UCHAR(s[1]) == 0xBB
 			&& UCHAR(s[2]) == 0xBF)
 	{
 		// UTF-8
-		s.ReleaseBuffer(Length - 1);
+		Length -= 3;
+		int result = ::MultiByteToWideChar(CP_UTF8, 0, LPCSTR(s) + 3, Length,
+											String.GetBuffer(Length), Length);
 
-		int result = ::MultiByteToWideChar(CP_UTF8, 0, LPCSTR(s) + 3, Length - 4,
-											String.GetBuffer(Length - 4), Length - 4);
 		String.ReleaseBuffer(result);
 	}
 	else
 	{
-		s.ReleaseBuffer(Length - 1);
 		String = s;
 	}
 	return TRUE;
