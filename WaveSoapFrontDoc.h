@@ -291,6 +291,10 @@ public:
 	virtual ~CWaveSoapFrontDoc();
 	void UpdateDocumentTitle();
 
+	void SetWaveFormat(WAVEFORMATEX const * pWf)
+	{
+		m_WavFile.SetWaveFormat(pWf);
+	}
 	void BuildPeakInfo(BOOL bSavePeakFile);
 	void GetSoundMinMax(WavePeak & Left, WavePeak & Right,
 						SAMPLE_INDEX begin, SAMPLE_INDEX end);
