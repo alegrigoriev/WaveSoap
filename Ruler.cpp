@@ -361,7 +361,7 @@ int CHorizontalRuler::CalculateHeight()
 
 BOOL CVerticalRuler::OnEraseBkgnd(CDC* pDC)
 {
-	CBrush brush(GetSysColor(COLOR_MENU));
+	CBrush brush(GetSysColor(COLOR_3DFACE));
 	CRect cr;
 	GetClientRect( & cr);
 	pDC->FillRect( & cr, & brush);
@@ -371,7 +371,7 @@ BOOL CVerticalRuler::OnEraseBkgnd(CDC* pDC)
 
 BOOL CHorizontalRuler::OnEraseBkgnd(CDC* pDC)
 {
-	CBrush brush(GetSysColor(COLOR_MENU));
+	CBrush brush(GetSysColor(COLOR_3DFACE));
 	CRect cr;
 	GetClientRect( & cr);
 	pDC->FillRect( & cr, & brush);
