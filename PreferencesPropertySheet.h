@@ -16,6 +16,7 @@
 
 class CFilePreferencesPage : public CPropertyPage
 {
+	typedef CPropertyPage BaseClass;
 	DECLARE_DYNCREATE(CFilePreferencesPage)
 
 // Construction
@@ -71,6 +72,7 @@ protected:
 
 class CSoundPreferencesPage : public CPropertyPage
 {
+	typedef CPropertyPage BaseClass;
 	DECLARE_DYNCREATE(CSoundPreferencesPage)
 
 // Construction
@@ -115,6 +117,7 @@ protected:
 
 class CViewPreferencesPage : public CPropertyPage
 {
+	typedef CPropertyPage BaseClass;
 	DECLARE_DYNCREATE(CViewPreferencesPage)
 
 // Construction
