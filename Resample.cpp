@@ -110,7 +110,7 @@ BOOL CResampleContext::OperationProc()
 		int SrcBufUsed = 0;
 
 		int DstBufUsed = m_Resample.ProcessSound(pSrcBuf, pDstBuf, LeftToRead,
-												LeftToWrite, & SrcBufUsed, m_SrcFile.Channels());
+												LeftToWrite, & SrcBufUsed);
 
 		TRACE("ResampleContext: SrcPos=%d (0x%X), DstPos=%d (0x%X), src: %d bytes, dst: %d bytes\n",
 			m_SrcCopyPos, m_SrcCopyPos, m_DstCopyPos, m_DstCopyPos,
@@ -166,6 +166,7 @@ void CResampleContext::PostRetire(BOOL bChildContext)
 	{
 		pDocument->m_WavFile = m_DstFile;
 		// since we replaced the file, it's no more direct
+		pDocument->SetModifiedFlag(TRUE, m_pUndoContext != NULL);
 		if (NULL != m_pUndoContext)
 		{
 			m_pUndoContext->m_bOldDirectMode = pDocument->m_bDirectMode;
@@ -190,7 +191,6 @@ void CResampleContext::PostRetire(BOOL bChildContext)
 			pDocument->m_bDirectMode = false;
 			pDocument->UpdateFrameTitles();        // will cause name change in views
 		}
-		pDocument->SetModifiedFlag();
 		long nSamples = pDocument->WaveFileSamples();
 		pDocument->SoundChanged(pDocument->WaveFileID(),
 								0, nSamples, nSamples, UpdateSoundDontRescanPeaks);

@@ -392,6 +392,57 @@ protected:
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 };
+/////////////////////////////////////////////////////////////////////////////
+// CLowFrequencySuppressDialog dialog
+
+class CLowFrequencySuppressDialog : public CDialog
+{
+// Construction
+public:
+	CLowFrequencySuppressDialog(CWnd* pParent = NULL);   // standard constructor
+
+// Dialog Data
+	//{{AFX_DATA(CLowFrequencySuppressDialog)
+	enum { IDD = IDD_DIALOG_ULF_REDUCTION };
+	CStatic	m_SelectionStatic;
+	CNumEdit	m_eLfNoiseRange;
+	CNumEdit	m_eDiffNoiseRange;
+	BOOL	m_DifferentialModeSuppress;
+	BOOL	m_LowFrequencySuppress;
+	BOOL	m_bUndo;
+	//}}AFX_DATA
+
+	double m_dLfNoiseRange;
+	double m_dDiffNoiseRange;
+
+	BOOL	m_bLockChannels;
+	long m_Start;
+	long m_End;
+	long m_FileLength;
+	int m_Chan;
+	int m_TimeFormat;
+	const WAVEFORMATEX * m_pWf;
+
+// Overrides
+	// ClassWizard generated virtual function overrides
+	//{{AFX_VIRTUAL(CLowFrequencySuppressDialog)
+protected:
+	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV support
+	//}}AFX_VIRTUAL
+
+// Implementation
+protected:
+	void UpdateSelectionStatic();
+
+	// Generated message map functions
+	//{{AFX_MSG(CLowFrequencySuppressDialog)
+	afx_msg void OnButtonSelection();
+	afx_msg void OnCheckDifferentialModeSuppress();
+	afx_msg void OnCheckLowFrequency();
+	virtual BOOL OnInitDialog();
+	//}}AFX_MSG
+	DECLARE_MESSAGE_MAP()
+};
 //{{AFX_INSERT_LOCATION}}
 // Microsoft Visual C++ will insert additional declarations immediately before the previous line.
 
