@@ -105,8 +105,9 @@ enum {
 
 	SetSelection_MakeCaretVisible = 1,
 	SetSelection_MoveCaretToCenter = 2,
+	SetSelection_KeepCaretVisible = SetSelection_MakeCaretVisible | SetSelection_MoveCaretToCenter,
 	SetSelection_SnapToMaximum = 4,
-	SetSelection_MakeFileVisible = 8,   // make sure the file is in the
+	SetSelection_MakeFileVisible = 8,   // make sure the end of file is in the view (that not all the view is beyond EOF)
 
 	SaveFile_SameName = 4,
 	SaveFile_CloseAfterSave = 8,

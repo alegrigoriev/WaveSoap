@@ -2654,7 +2654,8 @@ void CWaveSoapFrontDoc::PostFileSave(CWaveFile & DstFile,
 			Chan = ALL_CHANNELS;
 		}
 
-		SetSelection(SelStart, SelEnd, Chan, Caret, SetSelection_MakeCaretVisible);
+		SetSelection(SelStart, SelEnd, Chan, Caret,
+					SetSelection_MakeFileVisible | SetSelection_MakeCaretVisible);
 		// view length will be adjusted in OpenDocument?
 	}
 	else if (OldFormat.nChannels != NewFormat.nChannels)
@@ -2830,7 +2831,7 @@ void CWaveSoapFrontDoc::OnEditSelection()
 	if (IDOK == dlg.DoModal())
 	{
 		SetSelection(dlg.GetStart(), dlg.GetEnd(),
-					dlg.GetChannel(), dlg.GetEnd(), SetSelection_MakeCaretVisible);
+					dlg.GetChannel(), dlg.GetEnd(), SetSelection_KeepCaretVisible);
 	}
 }
 
@@ -5398,13 +5399,13 @@ SAMPLE_INDEX CWaveSoapFrontDoc::GetPrevMarker() const
 void CWaveSoapFrontDoc::GotoNextMarker()
 {
 	SAMPLE_INDEX pos = GetNextMarker();
-	SetSelection(pos, pos, m_SelectedChannel, pos, SetSelection_MakeCaretVisible);
+	SetSelection(pos, pos, m_SelectedChannel, pos, SetSelection_KeepCaretVisible);
 }
 
 void CWaveSoapFrontDoc::GotoPrevMarker()
 {
 	SAMPLE_INDEX pos = GetPrevMarker();
-	SetSelection(pos, pos, m_SelectedChannel, pos, SetSelection_MakeCaretVisible);
+	SetSelection(pos, pos, m_SelectedChannel, pos, SetSelection_KeepCaretVisible);
 }
 
 void CWaveSoapFrontDoc::OnEditWaveMarker()
