@@ -1122,13 +1122,18 @@ void CWaveFftView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
 	{
 		CSelectionUpdateInfo * pInfo = (CSelectionUpdateInfo *) pHint;
 
-		if (pInfo->Flags & SetSelection_MakeCaretVisible)
+		CFrameWnd * pFrameWnd = GetParentFrame();
+		if (NULL != pFrameWnd
+			&& pFrameWnd == pFrameWnd->GetWindow(GW_HWNDFIRST))
 		{
-			MovePointIntoView(pDoc->m_CaretPosition);
-		}
-		else if (pInfo->Flags & SetSelection_MoveCaretToCenter)
-		{
-			MovePointIntoView(pDoc->m_CaretPosition, TRUE);
+			if (pInfo->Flags & SetSelection_MakeCaretVisible)
+			{
+				MovePointIntoView(pDoc->m_CaretPosition);
+			}
+			else if (pInfo->Flags & SetSelection_MoveCaretToCenter)
+			{
+				MovePointIntoView(pDoc->m_CaretPosition, TRUE);
+			}
 		}
 
 		int nChannels = pDoc->WaveChannels();

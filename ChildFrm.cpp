@@ -142,6 +142,8 @@ BEGIN_MESSAGE_MAP(CWaveMDIChildClient, CWnd)
 	ON_UPDATE_COMMAND_UI(ID_VIEW_HIDE_SPECTRUMSECTION, OnUpdateViewHideSpectrumsection)
 	ON_COMMAND(ID_VIEW_HIDE_SPECTRUMSECTION, OnViewHideSpectrumsection)
 	//}}AFX_MSG_MAP
+	ON_MESSAGE(WM_DISPLAYCHANGE, OnDisplayChange)
+	ON_MESSAGE(WM_SETTINGCHANGE, OnSettingChange)
 END_MESSAGE_MAP()
 
 CWnd * CWaveMDIChildClient::CreateView(CRuntimeClass* pViewClass,
@@ -937,6 +939,18 @@ void CWaveMDIChildClient::OnViewHideSpectrumsection()
 {
 	m_bShowSpectrumSection = FALSE;
 	RecalcLayout();
+}
+
+void CWaveMDIChildClient::OnSettingChange(UINT uFlags, LPCTSTR lpszSection)
+{
+	RecalcLayout();
+	CWnd::OnSettingChange(uFlags, lpszSection);
+}
+
+LRESULT CWaveMDIChildClient::OnDisplayChange(LPARAM lParam, WPARAM wParam)
+{
+	RecalcLayout();
+	return CWnd::OnDisplayChange(lParam, wParam);
 }
 
 

@@ -1382,13 +1382,19 @@ void CWaveSoapFrontView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
 		CSelectionUpdateInfo * pInfo = (CSelectionUpdateInfo *) pHint;
 		CWaveSoapFrontDoc * pDoc = GetDocument();
 		CRect r;
-		if (pInfo->Flags & SetSelection_MakeCaretVisible)
+		// change for foreground frame only
+		CFrameWnd * pFrameWnd = GetParentFrame();
+		if (NULL != pFrameWnd
+			&& pFrameWnd == pFrameWnd->GetWindow(GW_HWNDFIRST))
 		{
-			MovePointIntoView(pDoc->m_CaretPosition);
-		}
-		else if (pInfo->Flags & SetSelection_MoveCaretToCenter)
-		{
-			MovePointIntoView(pDoc->m_CaretPosition, TRUE);
+			if (pInfo->Flags & SetSelection_MakeCaretVisible)
+			{
+				MovePointIntoView(pDoc->m_CaretPosition);
+			}
+			else if (pInfo->Flags & SetSelection_MoveCaretToCenter)
+			{
+				MovePointIntoView(pDoc->m_CaretPosition, TRUE);
+			}
 		}
 
 		GetClientRect( & r);
@@ -1801,13 +1807,13 @@ void CWaveSoapFrontView::MovePointIntoView(int nCaret, BOOL bCenter)
 	{
 		scroll = (nDesiredPos - r.right / 2) * m_HorizontalScale;
 	}
-	else if (nDesiredPos < r.left)
+	else if (nDesiredPos < r.left + r.Width() / 32)
 	{
-		scroll = (nDesiredPos - r.left) * m_HorizontalScale;
+		scroll = (nDesiredPos - (r.left + r.Width() / 32)) * m_HorizontalScale;
 	}
-	else if (nDesiredPos >= r.right)
+	else if (nDesiredPos >= r.right - r.Width() / 32)
 	{
-		scroll = (nDesiredPos - r.right + 1) * m_HorizontalScale;
+		scroll = (nDesiredPos - (r.right - r.Width() / 32)) * m_HorizontalScale;
 	}
 	else
 	{
