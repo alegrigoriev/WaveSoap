@@ -1,3 +1,4 @@
+// Copyright Alexander Grigoriev, 1997-2002, All Rights Reserved
 // WaveSoapFrontDoc.cpp : implementation of the CWaveSoapFrontDoc class
 //
 
@@ -251,7 +252,7 @@ CWaveSoapFrontDoc::~CWaveSoapFrontDoc()
 	pApp->GetStatusStringAndDoc(str, & pTmpDoc);
 	if (this == pTmpDoc)
 	{
-		pApp->SetStatusStringAndDoc("", NULL);
+		pApp->SetStatusStringAndDoc(_T(""), NULL);
 	}
 }
 
