@@ -27,6 +27,10 @@ public:
 	CWaveSoapFrontStatusBar() {}
 	~CWaveSoapFrontStatusBar() {}
 	virtual int OnToolHitTest(CPoint point, TOOLINFO* pTI) const;
+	//{{AFX_MSG(CWaveSoapFrontStatusBar)
+	afx_msg void OnContextMenu( CWnd* pWnd, CPoint pos );
+	//}}AFX_MSG
+	DECLARE_MESSAGE_MAP()
 };
 
 class CWaveSoapFrontApp : public CWinApp
@@ -63,6 +67,10 @@ public:
 	DWORD m_SelectedZeroLineColor;
 	DWORD m_SelectedChannelSeparatorColor;
 	DWORD m_SelectedInterpolatedColor;
+	DWORD m_MarkerColor;
+	DWORD m_SelectedMarkerColor;
+	DWORD m_RegionColor;
+	DWORD m_SelectedRegionColor;
 
 	CDirectFile::CDirectFileCache * m_FileCache;
 	CWaveSoapFrontDoc * m_pActiveDocument;
@@ -78,6 +86,11 @@ public:
 	BOOL m_bReadOnly;
 	BOOL m_bDirectMode;
 	BOOL m_bUndoEnabled;
+	BOOL m_bRedoEnabled;
+	int m_MaxUndoDepth;
+	int m_MaxRedoDepth;
+	DWORD m_MaxUndoSize;
+	DWORD m_MaxRedoSize;
 
 	BOOL m_bUseCountrySpecificNumberAndTime;
 	TCHAR m_TimeSeparator;
