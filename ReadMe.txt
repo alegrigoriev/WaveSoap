@@ -44,7 +44,7 @@ Add splash screen
 Make recording from Internet stream
 
 Problems:
-OpenWmaFile crashes if the temporary file couldn't be created
+Save copy reopen file dialog has "Close" instead of "Cancel"
 During playback, scroll is done without hiding playback cursor
 When FFT array is reallocated, it is invalidated
 Paste operation doesn't check if sampling rate is the same. Add dialog to resample
@@ -65,6 +65,7 @@ Save As dialog is not centered first time (comdlg problem?)
 ??? When time/seconds format is set for status bar, MM:SS is actually shown
 
 Fixed:
+OpenWmaFile crashes if the temporary file couldn't be created
 File dialog didn't open in Win98
 Equalizer and filter views invalidated wrong area (CXDRAG instead of CXSIZEFRAME)
 Tooltips could be shown only after TTN_GETTEXT failed once, otherwise the tips was inactive

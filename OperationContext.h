@@ -395,6 +395,7 @@ public:
 		m_pWf(NULL)
 	{
 		// delete the procs in the destructor
+		m_Flags &= ~OperationContextDiskIntensive;
 		m_ProcBatch.m_bAutoDeleteProcs = TRUE;
 	}
 	~CConversionContext()
@@ -431,6 +432,7 @@ public:
 	virtual void DeInit();
 	virtual BOOL OperationProc();
 	virtual void PostRetire(BOOL bChildContext = FALSE);
+	virtual void Execute();
 };
 
 class CWmaDecodeContext: public COperationContext

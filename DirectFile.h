@@ -327,6 +327,18 @@ protected:
 		LONGLONG m_FilePointer;
 		LONGLONG RealFileLength;
 		LONGLONG FileLength;
+
+		// prefetch control
+		// shows last prefetched range (in 64K units
+		DWORD m_PrefetchedBeginBlock;
+		DWORD m_PrefetchedEndBlock;
+		// max number of 64K block allowed to read ahead
+		DWORD m_MaxBlocksToPrefetch;
+
+		// the ranges expire after 1 second
+		DWORD m_LastPrefetchTick;
+		enum { PrefetchRangeExpirationTimeout = 1000, };
+
 		CSimpleCriticalSection mutable m_FileLock;    // synchronize FileRead, FileWrite
 		BY_HANDLE_FILE_INFORMATION m_FileInfo;
 		CString sName;
@@ -378,6 +390,11 @@ protected:
 			UseSourceFileLength(0),
 			m_pCommonData(NULL),
 			m_CommonDataSize(0),
+			m_PrefetchedBeginBlock(-1),
+			m_PrefetchedEndBlock(-1),
+			m_LastPrefetchTick(0),
+			// one sixth of cache size is allowed to prefetch
+			m_MaxBlocksToPrefetch(GetCache()->m_NumberOfBuffers / 6),
 			m_LastError(0)
 		{
 			memset(& m_FileInfo, 0, sizeof m_FileInfo);

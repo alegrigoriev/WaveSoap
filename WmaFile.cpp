@@ -814,7 +814,11 @@ BOOL WmaEncoder::OpenWrite(CDirectFile & File)
 	{
 		return FALSE;
 	}
-
+#ifdef _DEBUG
+	DWORD NumSinks;
+	m_pWriterAdvanced->GetSinkCount( & NumSinks);
+	TRACE("Writer sink count=%d\n", NumSinks);
+#endif
 	return TRUE;
 }
 
