@@ -860,8 +860,8 @@ void CTimeRulerView::OnLButtonDblClk(UINT nFlags, CPoint point)
 	}
 	else
 	{
-		// TODO: Add your message handler code here and/or call default
 		// if double clicked between markers, select
+		pDoc->SelectBetweenMarkers(SAMPLE_INDEX(WindowToWorldX(point.x)));
 	}
 }
 
