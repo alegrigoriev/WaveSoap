@@ -22,6 +22,7 @@
 #include "WaveSoapFileDialogs.h"
 #include "BatchConvertDlg.h"
 #include <imagehlp.h>
+#include <shlwapi.h>
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -155,6 +156,7 @@ CWaveSoapFrontApp::CWaveSoapFrontApp()
 	m_pWavTypeTemplate(NULL),
 	m_pRawTypeTemplate(NULL),
 	m_pWmaTypeTemplate(NULL),
+	m_pAllWmTypeTemplate(NULL),
 
 	m_DontShowMediaPlayerWarning(FALSE),
 
@@ -431,8 +433,8 @@ BOOL CWaveSoapFrontApp::InitInstance()
 												IDR_WAVESOTYPE, IDR_WAVESOTYPE,
 												RUNTIME_CLASS(CWaveSoapFrontDoc),
 												RUNTIME_CLASS(CChildFrame), // custom MDI child frame
-												RUNTIME_CLASS(CWaveSoapFrontView)
-												);
+												RUNTIME_CLASS(CWaveSoapFrontView),
+												0);
 	AddDocTemplate(m_pWavTypeTemplate);
 
 	// MP3 and WMA are registered even when the decoder is not available
@@ -441,9 +443,9 @@ BOOL CWaveSoapFrontApp::InitInstance()
 												IDR_WAVESOTYPE, IDR_MP3TYPE,
 												RUNTIME_CLASS(CWaveSoapFrontDoc),
 												RUNTIME_CLASS(CChildFrame), // custom MDI child frame
-												RUNTIME_CLASS(CWaveSoapFrontView)
-												);
-	m_pMP3TypeTemplate->m_OpenDocumentFlags = OpenDocumentMp3File;
+												RUNTIME_CLASS(CWaveSoapFrontView),
+												OpenDocumentMp3File);
+
 	AddDocTemplate(m_pMP3TypeTemplate);
 
 	// register WMA document
@@ -451,19 +453,29 @@ BOOL CWaveSoapFrontApp::InitInstance()
 												IDR_WAVESOTYPE, IDR_WMATYPE,
 												RUNTIME_CLASS(CWaveSoapFrontDoc),
 												RUNTIME_CLASS(CChildFrame), // custom MDI child frame
-												RUNTIME_CLASS(CWaveSoapFrontView)
-												);
-	m_pWmaTypeTemplate->m_OpenDocumentFlags = OpenDocumentWmaFile;
+												RUNTIME_CLASS(CWaveSoapFrontView),
+												OpenDocumentWmaFile);
+
 	AddDocTemplate(m_pWmaTypeTemplate);
 
-	// register WMA document
+	// register all Windows media documents
+	m_pAllWmTypeTemplate = new CWaveSoapDocTemplate(
+													IDR_WAVESOTYPE, IDR_WMTYPES,
+													RUNTIME_CLASS(CWaveSoapFrontDoc),
+													RUNTIME_CLASS(CChildFrame), // custom MDI child frame
+													RUNTIME_CLASS(CWaveSoapFrontView),
+													OpenDocumentWmaFile);
+
+	AddDocTemplate(m_pAllWmTypeTemplate);
+
+	// register RAW document
 	m_pRawTypeTemplate = new CWaveSoapDocTemplate(
 												IDR_WAVESOTYPE, IDR_RAWTYPE,
 												RUNTIME_CLASS(CWaveSoapFrontDoc),
 												RUNTIME_CLASS(CChildFrame), // custom MDI child frame
-												RUNTIME_CLASS(CWaveSoapFrontView)
-												);
-	m_pRawTypeTemplate->m_OpenDocumentFlags = OpenDocumentRawFile;
+												RUNTIME_CLASS(CWaveSoapFrontView),
+												OpenDocumentRawFile);
+
 	AddDocTemplate(m_pRawTypeTemplate);
 
 	// register All types document
@@ -471,9 +483,8 @@ BOOL CWaveSoapFrontApp::InitInstance()
 													IDR_WAVESOTYPE, IDR_ALLTYPES,
 													RUNTIME_CLASS(CWaveSoapFrontDoc),
 													RUNTIME_CLASS(CChildFrame), // custom MDI child frame
-													RUNTIME_CLASS(CWaveSoapFrontView)
-													);
-	m_pAllTypesTemplate->m_OpenDocumentFlags = OpenDocumentRawFile;
+													RUNTIME_CLASS(CWaveSoapFrontView),
+													OpenDocumentRawFile);
 
 	// create main MDI Frame window
 	CMainFrame* pMainFrame = new CMainFrame;
@@ -673,6 +684,55 @@ CDocument* CWaveSoapFrontApp::OpenDocumentFile(LPCTSTR lpszPathName)
 	return OpenDocumentFile(lpszPathName, flags);
 }
 
+CDocTemplate::Confidence CWaveSoapDocTemplate::MatchDocType(LPCTSTR lpszPathName,
+															CDocument*& rpDocMatch)
+{
+	Confidence conf = BaseClass::MatchDocType(lpszPathName, rpDocMatch);
+	if (yesAlreadyOpen == conf)
+	{
+		return conf;
+	}
+
+	// allow multiple suffixes
+	// see if it matches our default suffixes
+	CString strFilterAllExts;
+	if (GetDocString(strFilterAllExts, CDocTemplate::filterExt) &&
+		! strFilterAllExts.IsEmpty())
+	{
+		// see if extension matches
+		LPCTSTR lpszDot = ::PathFindExtension(lpszPathName);
+		LPCTSTR pExt = strFilterAllExts;
+		if (NULL != lpszDot)
+		{
+			while(0 != pExt[0])
+			{
+				unsigned i;
+				if ('*' == pExt[0])
+				{
+					pExt++;
+					continue;
+				}
+				ASSERT('.' == pExt[0]);
+				for (i = 0; pExt[i] != ';' && pExt[i] != ',' && pExt[i] != 0; i++)
+				{
+				}
+				if (0 == _tcsnicmp(lpszDot, pExt, i))
+				{
+					return yesAttemptNative; // extension matches, looks like ours
+				}
+				pExt += i;
+				if (pExt[0] != 0)
+				{
+					pExt++;
+				}
+			}
+		}
+	}
+
+	// otherwise we will guess it may work
+	return yesAttemptForeign;
+}
+
 CDocument* CWaveSoapDocTemplate::OpenDocumentFile(LPCTSTR lpszPathName,
 												int flags/* BOOL bMakeVisible */)
 {
@@ -843,11 +903,6 @@ int CWaveSoapFrontApp::ExitInstance()
 	}
 	delete m_pAllTypesTemplate;
 
-	// those are deleted by doc manager:
-	//delete m_pMP3TypeTemplate;
-	//delete m_pWavTypeTemplate;
-	//delete m_pWmaTypeTemplate;
-	//delete m_pRawTypeTemplate;
 	m_Palette.DeleteObject();
 	return CWinApp::ExitInstance();
 }
@@ -1070,6 +1125,10 @@ void CWaveSoapDocManager::OnFileOpen()
 	if (pApp->m_pWmaTypeTemplate)
 	{
 		_AfxAppendFilterSuffix(strFilter, dlgFile.m_ofn, pApp->m_pWmaTypeTemplate, NULL);
+	}
+	if (pApp->m_pWmaTypeTemplate)
+	{
+		_AfxAppendFilterSuffix(strFilter, dlgFile.m_ofn, pApp->m_pAllWmTypeTemplate, NULL);
 	}
 	dlgFile.m_MaxWmaFilter = dlgFile.m_ofn.nMaxCustFilter;
 
