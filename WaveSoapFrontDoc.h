@@ -12,7 +12,6 @@
 #include "WmaFile.h"
 #include "KListEntry.h"
 
-#define ALL_CHANNELS ((CHANNEL_MASK)-1)
 typedef int PASTE_MODE;
 typedef int PASTE_RESAMPLE_MODE;
 
