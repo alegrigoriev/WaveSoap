@@ -991,28 +991,45 @@ BOOL CWaveSoapFrontDoc::DoSave(LPCTSTR lpszPathName, BOOL bReplace)
 			}
 		}
 
-		int idx = newName.ReverseFind('.');
-		// replace the extension
-		// TODO: Add the extension for the supported type
+		TCHAR Buf[MAX_PATH * 2] = {0};
+		LPTSTR FilePart = Buf;
+		GetFullPathName(newName, MAX_PATH * 2, Buf, & FilePart);
+		CString path(Buf, FilePart - Buf);
+		CString name(FilePart);
+
+		CString Ext;
+		int idx = name.ReverseFind('.');
 		if (idx != -1
-			&& idx >= newName.GetLength() - 4
-			&& 0 != stricmp(LPCTSTR(newName) + idx+1, "wav"))
+			&& idx >= name.GetLength() - 4)
 		{
-			newName.Delete(idx + 1, newName.GetLength() - idx - 1);
-			newName += "wav";
+			Ext = LPCTSTR(name) + idx;
+			name = name.Left(idx);
 		}
 
 		if (SaveFlags & SaveFile_SaveCopy)
 		{
 			// add Copy Of
 			// Get filename
-			TCHAR Buf[MAX_PATH * 2] = {0};
-			LPTSTR FilePart = Buf;
-			GetFullPathName(newName, MAX_PATH * 2, Buf, & FilePart);
-			CString path(Buf, FilePart - Buf);
-			CString name(FilePart);
-
+			CString CopyOf;
+			CopyOf.LoadString(IDS_COPY_OF);
+			if (0 != _tcsnicmp(name, CopyOf, CopyOf.GetLength()))
+			{
+				name = CopyOf + name;
+			}
+			else
+			{
+				name += _T("(1)");
+			}
 		}
+
+		// replace the extension
+		// TODO: Add the extension for the supported type
+		if (! Ext.IsEmpty())
+		{
+			name += _T(".wav");
+		}
+
+		newName = path + name;
 
 		CWaveSoapFileSaveDialog dlg(FALSE, "wav", newName,
 									OFN_HIDEREADONLY

@@ -61,6 +61,8 @@ public:
 	//}}AFX_VIRTUAL
 
 // Implementation
+	static OSVERSIONINFO m_VersionInfo;
+	static bool SupportsV5FileDialog();
 	double GetProfileDouble(LPCTSTR Section, LPCTSTR ValueName,
 							double Default, double MinVal, double MaxVal);
 	void WriteProfileDouble(LPCTSTR Section, LPCTSTR ValueName, double value);
@@ -233,6 +235,7 @@ void NotEnoughMemoryMessageBox();
 void NotEnoughDiskSpaceMessageBox();
 void NotEnoughUndoSpaceMessageBox();
 void FileCreationErrorMessageBox(LPCTSTR name);
+void AddStringToHistory(const CString & str, CString history[], int NumItems, bool CaseSensitive = false);
 /////////////////////////////////////////////////////////////////////////////
 //{{AFX_INSERT_LOCATION}}
 // Microsoft Visual C++ will insert additional declarations immediately before the previous line.

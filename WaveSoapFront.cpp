@@ -119,7 +119,7 @@ public:
 	int nSamplingRate;
 	int nSamples;
 	CString WaveFormat;
-	CString m_RecentFolders[10];
+	CString m_RecentFolders[15];
 
 	virtual BOOL OnFileNameOK();
 	//virtual void OnLBSelChangedNotify(UINT nIDBox, UINT iCurSel, UINT nCode);
@@ -362,6 +362,11 @@ BOOL CWaveSoapFrontApp::InitInstance()
 	// If you are not using these features and wish to reduce the size
 	//  of your final executable, you should remove from the following
 	//  the specific initialization routines you do not need.
+	m_VersionInfo.dwOSVersionInfoSize = sizeof m_VersionInfo;
+	GetVersionEx( & m_VersionInfo);
+#ifdef _DEBUG
+	SupportsV5FileDialog();
+#endif
 	m_hWMVCORE_DLL_Handle = LoadLibrary(_T("WMVCORE.DLL"));
 
 #ifdef _AFXDLL
@@ -584,7 +589,7 @@ protected:
 // Implementation
 protected:
 	//{{AFX_MSG(CAboutDlg)
-	// No message handlers
+	afx_msg void OnButtonMailto();
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 };
@@ -604,9 +609,34 @@ void CAboutDlg::DoDataExchange(CDataExchange* pDX)
 
 BEGIN_MESSAGE_MAP(CAboutDlg, CDialog)
 	//{{AFX_MSG_MAP(CAboutDlg)
-		// No message handlers
+	ON_BN_CLICKED(IDC_BUTTON_MAILTO, OnButtonMailto)
 	//}}AFX_MSG_MAP
 END_MESSAGE_MAP()
+
+void CAboutDlg::OnButtonMailto()
+{
+	SHELLEXECUTEINFO shex;
+	memset( & shex, 0, sizeof shex);
+	shex.cbSize = sizeof shex;
+	shex.hwnd = NULL;//AfxGetMainWnd()->m_hWnd;
+
+	CString Subj;
+	CWnd * pWnd = GetDlgItem(IDC_STATIC_VERSION);
+	if (NULL != pWnd)
+	{
+		pWnd->GetWindowText(Subj);
+	}
+	else
+	{
+		Subj = _T("WaveSoap");
+	}
+	CString file(_T("mailto:alegr@earthlink.net?Subject="));
+	file += Subj;
+	shex.lpFile = file;
+	shex.nShow = SW_SHOWDEFAULT;
+	ShellExecuteEx( & shex);
+	EndDialog(IDOK);
+}
 
 // App command to run the dialog
 void CWaveSoapFrontApp::OnAppAbout()
@@ -1123,7 +1153,15 @@ void CWaveSoapDocManager::OnFileOpen()
 		| OFN_ENABLESIZING
 		| OFN_ENABLETEMPLATE
 		| OFN_ALLOWMULTISELECT;
-	dlgFile.m_ofn.lpTemplateName = MAKEINTRESOURCE(IDD_DIALOG_OPEN_TEMPLATE1);
+
+	if (CThisApp::SupportsV5FileDialog())
+	{
+		dlgFile.m_ofn.lpTemplateName = MAKEINTRESOURCE(IDD_DIALOG_OPEN_TEMPLATE_V5);
+	}
+	else
+	{
+		dlgFile.m_ofn.lpTemplateName = MAKEINTRESOURCE(IDD_DIALOG_OPEN_TEMPLATE_V4);
+	}
 
 	CString strFilter;
 	CString strDefault;
@@ -1377,35 +1415,14 @@ void CWaveSoapFileOpenDialog::OnCheckDirectMode()
 BOOL CWaveSoapFileOpenDialog::OnFileNameOK()
 {
 	// add the current directory name to MRU
-	int i, j;
 	CString sCurrDir;
 	GetParent()->SendMessage(CDM_GETFOLDERPATH, MAX_PATH, LPARAM(sCurrDir.GetBuffer(MAX_PATH)));
 	sCurrDir.ReleaseBuffer();
 	TRACE("CWaveSoapFileOpenDialog::OnFileNameOK Folder Path=%s\n", sCurrDir);
 
-	for (i = 0, j = 0; i < sizeof m_RecentFolders / sizeof m_RecentFolders[0]; i++)
-	{
-		if (m_RecentFolders[i].IsEmpty()
-			|| 0 == sCurrDir.CompareNoCase(m_RecentFolders[i]))
-		{
-			continue;
-		}
-		if (i != j)
-		{
-			m_RecentFolders[j] = m_RecentFolders[i];
-		}
-		j++;
-	}
-	for ( ; j < sizeof m_RecentFolders / sizeof m_RecentFolders[0]; j++)
-	{
-		m_RecentFolders[j].Empty();
-	}
-	// remove the last dir from the list
-	for (i = (sizeof m_RecentFolders / sizeof m_RecentFolders[0]) - 1; i >= 1; i--)
-	{
-		m_RecentFolders[i] = m_RecentFolders[i - 1];
-	}
-	m_RecentFolders[0] = sCurrDir;
+	AddStringToHistory(sCurrDir, m_RecentFolders,
+						sizeof m_RecentFolders / sizeof m_RecentFolders[0], false);
+
 	GetApp()->Profile.FlushSection(_T("RecentOpenDirs"));
 
 	m_WaveFile.Close();
@@ -1443,7 +1460,6 @@ void CWaveSoapFileOpenDialog::OnInitDone()
 		{
 			CString s;
 			s.Format("Dir%d", i);
-			TRACE("Added reg item %s\n", LPCTSTR(s));
 			pApp->Profile.AddItem(_T("RecentOpenDirs"), s, m_RecentFolders[i]);
 			m_RecentFolders[i].TrimLeft();
 			m_RecentFolders[i].TrimRight();
@@ -1629,6 +1645,28 @@ void CWaveSoapFileOpenDialog::ClearFileInfoDisplay()
 
 void CWaveSoapFileOpenDialog::OnFolderChange()
 {
+	CThisApp * pApp = GetApp();
+	CString dir = GetFolderPath();
+	if (dir.GetLength() > 1
+		&& dir[dir.GetLength() - 1] == '\\')
+	{
+		dir.SetAt(dir.GetLength() - 1, 0);
+	}
+	CComboBox * pCb = static_cast<CComboBox *>(GetDlgItem(IDC_COMBO_RECENT));
+	if (NULL != pCb)
+	{
+		for (int i = 0; i < sizeof m_RecentFolders / sizeof m_RecentFolders[0]; i++)
+		{
+			if ( ! m_RecentFolders[i].IsEmpty())
+			{
+				if (0 == m_RecentFolders[i].CompareNoCase(dir))
+				{
+					pCb->SetCurSel(i);
+					break;
+				}
+			}
+		}
+	}
 }
 
 void CWaveSoapFileOpenDialog::OnTypeChange()
@@ -2746,3 +2784,58 @@ void CWaveSoapFrontApp::SetStatusStringAndDoc(const CString & str, CWaveSoapFron
 	m_StatusStringLock.Unlock();
 }
 
+void AddStringToHistory(const CString & str, CString history[], int NumItems, bool CaseSensitive)
+{
+	// remove those that match the currently selected dirs
+	int i, j;
+	for (i = 0, j = 0; i < NumItems; i++)
+	{
+		if (CaseSensitive)
+		{
+			if (0 == str.Compare(history[i]))
+			{
+				continue;
+			}
+		}
+		else
+		{
+			if (0 == str.CompareNoCase(history[i]))
+			{
+				continue;
+			}
+		}
+		if (i != j)
+		{
+			history[j] = history[i];
+		}
+		j++;
+	}
+	// remove last dir from the list
+	for (i = NumItems - 1; i >= 1; i--)
+	{
+		history[i] = history[i - 1];
+	}
+	history[0] = str;
+}
+
+OSVERSIONINFO CWaveSoapFrontApp::m_VersionInfo;
+
+bool CWaveSoapFrontApp::SupportsV5FileDialog()
+{
+	TRACE("Major version=%d, minor version=%d, build=%d\n",
+		m_VersionInfo.dwMajorVersion,
+		m_VersionInfo.dwMinorVersion,
+		m_VersionInfo.dwBuildNumber);
+	switch (m_VersionInfo.dwPlatformId)
+	{
+	case VER_PLATFORM_WIN32_NT:
+		return m_VersionInfo.dwMajorVersion >= 5;
+		break;
+	case VER_PLATFORM_WIN32_WINDOWS:
+		return m_VersionInfo.dwMajorVersion >= 5;
+		break;
+	default:
+		return FALSE;
+
+	}
+}
