@@ -597,12 +597,18 @@ class CMetadataChangeOperation : public COperationContext
 public:
 	typedef std::auto_ptr<ThisClass> auto_ptr;
 
-	CMetadataChangeOperation(CWaveSoapFrontDoc * pDoc);
+	CMetadataChangeOperation(CWaveSoapFrontDoc * pDoc, unsigned MetadataChangeFlags = 0);
+	~CMetadataChangeOperation();
 
 	virtual BOOL CreateUndo();
-	virtual BOOL OperationProc();
+
+	void SaveUndoMetadata(unsigned ChangeFlags);
 
 protected:
+	virtual BOOL OperationProc();
+	CWaveFile::InstanceDataWav * m_pMetadata;
+	unsigned m_MetadataCopyFlags;
+	CMetadataChangeOperation * m_pUndoData;
 };
 
 class CSelectionChangeOperation : public COperationContext
