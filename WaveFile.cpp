@@ -1064,14 +1064,24 @@ BOOL CWaveFile::InstanceDataWav::MoveMarkers(SAMPLE_INDEX BeginSample, NUMBER_OF
 		{
 			DWORD RegionEnd = i->dwSampleOffset + pMarker->SampleLength;
 
-			if (i->dwSampleOffset >= unsigned(BeginSample + SrcLength))
+			if (RegionEnd < unsigned(BeginSample))
+			{
+				// do nothing
+			}
+			else if (RegionEnd == unsigned(BeginSample))
+			{
+				if (SrcLength == 0
+					&& DstLength != 0
+					&& pMarker->SampleLength != 0)
+				{
+					pMarker->SampleLength += DstLength;
+					HasChanged = TRUE;
+				}
+			}
+			else if (i->dwSampleOffset >= unsigned(BeginSample + SrcLength))
 			{
 				i->dwSampleOffset += DstLength - SrcLength;
 				HasChanged = TRUE;
-			}
-			else if (RegionEnd <= unsigned(BeginSample))
-			{
-				// do nothing
 			}
 			else if (i->dwSampleOffset <= unsigned(BeginSample))
 			{
@@ -1133,12 +1143,16 @@ BOOL CWaveFile::InstanceDataWav::MoveMarkers(SAMPLE_INDEX BeginSample, NUMBER_OF
 		}
 		else
 		{
-			if (i->dwSampleOffset >= unsigned(BeginSample + SrcLength))
+			if (i->dwSampleOffset <= unsigned(BeginSample))
+			{
+				// nothing
+			}
+			else if (i->dwSampleOffset >= unsigned(BeginSample + SrcLength))
 			{
 				i->dwSampleOffset += DstLength - SrcLength;
 				HasChanged = TRUE;
 			}
-			else if (i->dwSampleOffset > unsigned(BeginSample))
+			else
 			{
 				// delete the cue point
 				WAVEREGIONINFO info = { WAVEREGIONINFO::ChangeLabel | WAVEREGIONINFO::ChangeComment };
@@ -1161,10 +1175,6 @@ BOOL CWaveFile::InstanceDataWav::MoveMarkers(SAMPLE_INDEX BeginSample, NUMBER_OF
 				}
 
 				HasChanged = TRUE;
-			}
-			else
-			{
-				// nothing
 			}
 		}
 		i = next;
