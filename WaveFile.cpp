@@ -1179,6 +1179,11 @@ BOOL CWaveFile::InstanceDataWav::MoveMarkers(SAMPLE_INDEX BeginSample, NUMBER_OF
 		}
 		i = next;
 	}
+
+	if (HasChanged)
+	{
+		m_InfoChanged = true;
+	}
 	return HasChanged;
 }
 
@@ -1511,6 +1516,7 @@ BOOL CWaveFile::InstanceDataWav::SetWaveMarker(WAVEREGIONINFO * pInfo)
 		item.SamplePosition = 0;
 
 		m_CuePoints.push_back(item);
+		m_InfoChanged = true;
 
 		// add region length
 		if (info.Length != 0)
@@ -1546,6 +1552,7 @@ BOOL CWaveFile::InstanceDataWav::SetWaveMarker(WAVEREGIONINFO * pInfo)
 				// delete text
 				i = m_CuePoints.erase(i);
 				m_FreeCuePointNumber = info.MarkerCueID;
+				m_InfoChanged = true;
 				break;
 			}
 		}
@@ -1556,6 +1563,7 @@ BOOL CWaveFile::InstanceDataWav::SetWaveMarker(WAVEREGIONINFO * pInfo)
 			{
 				// delete text
 				i = m_RegionMarkers.erase(i);
+				m_InfoChanged = true;
 				break;
 			}
 		}
@@ -1584,6 +1592,7 @@ BOOL CWaveFile::InstanceDataWav::SetWaveMarker(WAVEREGIONINFO * pInfo)
 					// delete text
 					i = m_Notes.erase(i);
 				}
+				m_InfoChanged = true;
 				break;
 			}
 		}
@@ -1598,6 +1607,7 @@ BOOL CWaveFile::InstanceDataWav::SetWaveMarker(WAVEREGIONINFO * pInfo)
 			note.Text = info.Comment;
 
 			m_Notes.push_back(note);
+			m_InfoChanged = true;
 		}
 	}
 
@@ -1619,6 +1629,7 @@ BOOL CWaveFile::InstanceDataWav::SetWaveMarker(WAVEREGIONINFO * pInfo)
 					// delete text
 					i = m_Labels.erase(i);
 				}
+				m_InfoChanged = true;
 				break;
 			}
 		}
@@ -1633,6 +1644,7 @@ BOOL CWaveFile::InstanceDataWav::SetWaveMarker(WAVEREGIONINFO * pInfo)
 			note.Text = info.Label;
 
 			m_Labels.push_back(note);
+			m_InfoChanged = true;
 		}
 	}
 
@@ -1642,6 +1654,7 @@ BOOL CWaveFile::InstanceDataWav::SetWaveMarker(WAVEREGIONINFO * pInfo)
 		if (NULL != pCue)
 		{
 			pCue->dwSampleOffset = info.Sample;
+			m_InfoChanged = true;
 		}
 	}
 
@@ -1651,6 +1664,7 @@ BOOL CWaveFile::InstanceDataWav::SetWaveMarker(WAVEREGIONINFO * pInfo)
 		if (NULL != pMarker)
 		{
 			pMarker->SampleLength = info.Length;
+			m_InfoChanged = true;
 		}
 	}
 
@@ -1878,7 +1892,6 @@ BOOL CWaveFile::CreateWaveFile(CWaveFile * pTemplateFile, WAVEFORMATEX * pTempla
 
 DWORD CWaveFile::SaveMetadata()
 {
-	// TODO
 	InstanceDataWav * inst = GetInstanceData();
 	if (NULL == inst)
 	{
@@ -2106,6 +2119,8 @@ DWORD CWaveFile::SaveMetadata()
 
 		Ascend(list);
 	}
+
+	inst->SetChanged(false);
 
 	return DWORD(GetFilePointer() - MetadataBegin);
 }
@@ -2348,15 +2363,33 @@ BOOL CWaveFile::CommitChanges()
 	// update data chunk
 	MMCKINFO * datack = GetDataChunk();
 	if (NULL != datack
-		&& 0 != datack->dwDataOffset
-		&& datack->dwFlags & MMIO_DIRTY)
+		&& 0 != datack->dwDataOffset)
 	{
-		Seek(datack->dwDataOffset - sizeof datack->cksize);
+		InstanceDataWav * pInst = GetInstanceData();
 
-		Write( & datack->cksize, sizeof datack->cksize);
-		datack->dwFlags &= ~MMIO_DIRTY;
-		GetRiffChunk()->dwFlags |= MMIO_DIRTY;
+		if (pInst->IsChanged()
+			|| (datack->dwFlags & MMIO_DIRTY))
+		{
+			DWORD MetadataLength = SaveMetadata();
+			if ( ! SetFileLength(datack->dwDataOffset + datack->cksize + MetadataLength))
+			{
+				return FALSE;
+			}
+
+			GetRiffChunk()->dwFlags |= MMIO_DIRTY;
+		}
+
+		if (datack->dwFlags & MMIO_DIRTY)
+		{
+			Seek(datack->dwDataOffset - sizeof datack->cksize);
+
+			Write( & datack->cksize, sizeof datack->cksize);
+			datack->dwFlags &= ~MMIO_DIRTY;
+			GetRiffChunk()->dwFlags |= MMIO_DIRTY;
+		}
+
 	}
+
 	return CMmioFile::CommitChanges();
 }
 
