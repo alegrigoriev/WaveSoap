@@ -211,8 +211,8 @@ BEGIN
     BEGIN
         POPUP "&New"
         BEGIN
-            MENUITEM "Blank sound\tCtrl+N",         ID_FILE_NEW
-            MENUITEM "Ne&w From Clipboard\tCtrl+E", ID_EDIT_PASTE_NEW
+            MENUITEM "Blank sou&nd\tCtrl+N",        ID_FILE_NEW
+            MENUITEM "New From &Clipboard\tCtrl+E", ID_EDIT_PASTE_NEW
         END
         MENUITEM "&Open...\tCtrl+O",            ID_FILE_OPEN
         MENUITEM "Read Audio CD Tracks...",     ID_TOOLS_CDGRAB
@@ -226,7 +226,7 @@ BEGIN
             MENUITEM "Save Al&l\tCtrl+Shift+S",     ID_FILE_SAVE_ALL
             MENUITEM "Save &Selection As...\tCtrl+Shift+F12", 
                                                     ID_SAVE_SAVESELECTIONAS
-            MENUITEM "Split to files...",           ID_SAVE_SPLIT_TO_FILES
+            MENUITEM "S&plit to files...",          ID_SAVE_SPLIT_TO_FILES
         END
         MENUITEM "&Close\tCtrl+Shift+F4",       ID_FILE_CLOSE
         MENUITEM SEPARATOR
@@ -245,11 +245,13 @@ BEGIN
     BEGIN
         MENUITEM "&Undo\tCtrl+Z",               ID_EDIT_UNDO
         MENUITEM "&Redo\tCtrl+Y",               ID_EDIT_REDO
-        MENUITEM "Undo All Changes\tCtrl+Shift+Z", ID_EDIT_UNDO_ALL_CHANGES
-        POPUP "More Undo/Redo"
+        POPUP "&More Undo/Redo"
         BEGIN
             MENUITEM "Enable &Undo",                ID_EDIT_ENABLE_UNDO
             MENUITEM "Enable &Redo",                ID_EDIT_ENABLE_REDO
+            MENUITEM SEPARATOR
+            MENUITEM "Undo &All Changes\tCtrl+Shift+Z", 
+                                                    ID_EDIT_UNDO_ALL_CHANGES
             MENUITEM SEPARATOR
             MENUITEM "&Clear Undo Data",            ID_EDIT_CLEAR_UNDO
             MENUITEM "Clear Redo &Data",            ID_EDIT_CLEAR_REDO
@@ -262,14 +264,15 @@ BEGIN
         MENUITEM "&Paste\tCtrl+V",              ID_EDIT_PASTE
         MENUITEM "Past&e...\tCtrl+Shift+V",     ID_EDIT_PASTE_SPECIAL
         MENUITEM "Paste As &New File\tCtrl+E",  ID_EDIT_PASTE_NEW
+        MENUITEM "Insert from &file...",        ID_EDIT_INSERTFROMFILE
         MENUITEM "&Insert Silence...",          ID_PROCESS_INSERTSILENCE
         MENUITEM SEPARATOR
         MENUITEM "&Go To...\tCtrl+G",           ID_EDIT_GOTO
         MENUITEM "Select &All\tCtrl+A",         ID_EDIT_SELECT_ALL
         MENUITEM "&Selection...\tCtrl+D",       ID_EDIT_SELECTION
-        MENUITEM "Marker/Region\tM",            IDC_EDIT_MARKER_REGION
+        MENUITEM "Mar&ker/Region\tM",           IDC_EDIT_MARKER_REGION
         MENUITEM "&Lock Channels",              ID_EDIT_CHANNELS_LOCK
-        MENUITEM "Stop\tEsc",                   ID_EDIT_STOP
+        MENUITEM "St&op\tEsc",                  ID_EDIT_STOP
     END
     POPUP "&View"
     BEGIN
@@ -279,19 +282,19 @@ BEGIN
         MENUITEM "&Waveform\tAlt+1",            IDC_VIEW_WAVEFORM
         MENUITEM "&FFT Spectrum\tAlt+2",        IDC_VIEW_SHOW_FFT
         MENUITEM SEPARATOR
-        MENUITEM "Spectrum Section\tAlt+3",     ID_VIEW_SPECTRUMSECTION
+        MENUITEM "&Spectrum Section\tAlt+3",    ID_VIEW_SPECTRUMSECTION
         MENUITEM "&Outline\tAlt+4",             ID_VIEW_OUTLINE
         MENUITEM SEPARATOR
-        MENUITEM "Zoom In Time\tNum +",         ID_VIEW_ZOOMINHOR2
-        MENUITEM "Zoom Out Time\tNum -",        ID_VIEW_ZOOMOUTHOR2
+        MENUITEM "&Zoom In Time\tNum +",        ID_VIEW_ZOOMINHOR2
+        MENUITEM "Zoom Out &Time\tNum -",       ID_VIEW_ZOOMOUTHOR2
         MENUITEM "Zoom To Selection\tShift+Num +", ID_VIEW_ZOOM_SELECTION
-        POPUP "Time Ruler"
+        POPUP "Ti&me Ruler"
         BEGIN
-            MENUITEM "Enable\tAlt+5",               ID_VIEW_TIME_RULER
+            MENUITEM "&Enable\tAlt+5",              ID_VIEW_TIME_RULER
             MENUITEM SEPARATOR
-            MENUITEM "Samples",                     IDC_VIEW_RULER_SAMPLES
-            MENUITEM "HH:MM:SS",                    IDC_VIEW_RULER_HHMMSS
-            MENUITEM "Seconds",                     IDC_VIEW_RULER_SECONDS
+            MENUITEM "&Samples",                    IDC_VIEW_RULER_SAMPLES
+            MENUITEM "&HH:MM:SS",                   IDC_VIEW_RULER_HHMMSS
+            MENUITEM "Se&conds",                    IDC_VIEW_RULER_SECONDS
             MENUITEM "HH:MM:SS.&FF",                IDC_VIEW_RULER_HHMMSSFF
         END
         MENUITEM SEPARATOR
@@ -309,11 +312,11 @@ BEGIN
 
         END
         MENUITEM SEPARATOR
-        MENUITEM "Rescan Peaks",                ID_VIEW_RESCAN_PEAKS
+        MENUITEM "Rescan &Peaks",               ID_VIEW_RESCAN_PEAKS
     END
     POPUP "&Process"
     BEGIN
-        POPUP "Sound Cleanup"
+        POPUP "Sound &Cleanup"
         BEGIN
             MENUITEM "&Click Removal...",           IDC_PROCESS_DO_DECLICKING
 
@@ -322,7 +325,7 @@ BEGIN
 
         END
         MENUITEM "E&qualizer...",               ID_PROCESS_EQUALIZER
-        MENUITEM "Filter...",                   ID_PROCESS_FILTER
+        MENUITEM "&Filter...",                  ID_PROCESS_FILTER
         MENUITEM "&Normalize...",               ID_PROCESS_NORMALIZE
         MENUITEM "DC &Offset...",               ID_PROCESS_DCOFFSET
         MENUITEM "Change &Volume...",           ID_PROCESS_CHANGEVOLUME
@@ -330,10 +333,10 @@ BEGIN
         MENUITEM "Inv&ert",                     ID_PROCESS_INVERT
         MENUITEM "&Resample...",                ID_PROCESS_RESAMPLE
         MENUITEM "C&hange Channels...",         ID_PROCESS_CHANNELS
-        MENUITEM "Swap Channels",               ID_PROCESS_SWAPCHANNELS
-        MENUITEM "Reverse",                     ID_PROCESS_REVERSE
+        MENUITEM "S&wap Channels",              ID_PROCESS_SWAPCHANNELS
+        MENUITEM "R&everse",                    ID_PROCESS_REVERSE
         MENUITEM SEPARATOR
-        MENUITEM "Stop\tEsc",                   ID_EDIT_STOP
+        MENUITEM "&Stop\tEsc",                  ID_EDIT_STOP
     END
     POPUP "&Tools"
     BEGIN
