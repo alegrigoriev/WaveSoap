@@ -539,3 +539,23 @@ void CALLBACK CWaveIn::waveInProc(HWAVEIN hwi,
 								DWORD dwParam2	)
 {
 }
+
+WAVEFORMATEX * CopyWaveformat(const WAVEFORMATEX * src)
+{
+	int size = src->cbSize + sizeof (WAVEFORMATEX);
+	if (WAVE_FORMAT_PCM == src->wFormatTag)
+	{
+		size = sizeof (WAVEFORMATEX);
+	}
+	WAVEFORMATEX * dst = ( WAVEFORMATEX *) new char[size];
+	if (NULL == dst)
+	{
+		return NULL;
+	}
+	memcpy(dst, src, size);
+	if (WAVE_FORMAT_PCM == src->wFormatTag)
+	{
+		dst->cbSize = 0;
+	}
+	return dst;
+}
