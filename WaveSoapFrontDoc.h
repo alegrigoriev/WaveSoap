@@ -314,6 +314,14 @@ protected:
 	afx_msg void OnProcessNormalize();
 	afx_msg void OnUpdateProcessResample(CCmdUI* pCmdUI);
 	afx_msg void OnProcessResample();
+	afx_msg void OnFileStatistics();
+	afx_msg void OnUpdateFileStatistics(CCmdUI* pCmdUI);
+	afx_msg void OnUpdateEditGoto(CCmdUI* pCmdUI);
+	afx_msg void OnEditGoto();
+	afx_msg void OnUpdateProcessInvert(CCmdUI* pCmdUI);
+	afx_msg void OnProcessInvert();
+	afx_msg void OnUpdateViewRescanPeaks(CCmdUI* pCmdUI);
+	afx_msg void OnViewRescanPeaks();
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 

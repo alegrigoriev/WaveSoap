@@ -1,8 +1,10 @@
 Known problems and tasks:
 
+Add playback cursor and visible area to OutlineView
+Draw OutlineView from the real data if the file is too short
 prb: Zoom In Full command moves to wrong position
+prb: playback stops during FFT draw
 Add spin support for selection dialog.
-Add GoTo dialog and command
 Rintime error during Undo on some systems
 Make Paste Special command
 When a file is opened in non-direct mode, peak info is saved with wrong time stamp
@@ -20,7 +22,6 @@ Make zoom to selection command
 Add support for 256 color display (palette)
 If displaying data without peak info, call RescanPeaks for this range.
 When wave background is scrolled, it gets lines.
-Show Outline view
 Show current scale in the "static" child control.
 Add options dialog
 Save current workspace
@@ -33,13 +34,6 @@ Add mouse wheel support
 Add autoscroll during selection
 
 Done:
-Make check for clipping in VolumeChange command
-prb: font may not fit in the time ruler. Change size calculation
-Add Selection... command and dialog
-Add Drag and Drop support
-Add context menu to the status bar
-Make Volume Change dialog
-Horizontal scale is automatically changed to stretch the sound to the view
-Fixed vertical scroll problem with FFT view
-Ruler background made consistent with menu color.
-Time ruler height calculated from the font height
+Add GoTo dialog and command
+Show Outline view
+Statistics dialog
