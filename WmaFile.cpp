@@ -1,3 +1,4 @@
+// Copyright Alexander Grigoriev, 1997-2002, All Rights Reserved
 // WmaFile.cpp
 #include "stdafx.h"
 #include "WmaFile.h"
@@ -241,11 +242,13 @@ void CDirectFileStream::Close()
 CWmaDecoder::CWmaDecoder()
 	: m_Reader(NULL),
 	m_pAdvReader(NULL),
-	ReaderStatus(WMT_ERROR),
+//ReaderStatus(WMT_ERROR),
 	m_CurrentStreamTime(0),
 	m_bNeedNextSample(false),
 	m_BufferLengthTime(0),
 	m_Bitrate(1),
+	m_bOpened(false),
+	m_bStarted(false),
 	m_dwAudioOutputNum(0)
 {
 }
@@ -281,33 +284,35 @@ HRESULT STDMETHODCALLTYPE CWmaDecoder::OnStatus( /* [in] */ WMT_STATUS Status,
 	switch (Status)
 	{
 	case WMT_OPENED:
-	case WMT_STOPPED:
+		m_bOpened = true;
+		m_OpenedEvent.SetEvent();
+		break;
 	case WMT_STARTED:
-		ReaderStatus = Status;
+		m_bStarted = true;
+		m_StartedEvent.SetEvent();
+		break;
+	case WMT_STOPPED:
+		m_bStarted = false;
+		m_StartedEvent.SetEvent();
 		break;
 	case WMT_ERROR:
-		ReaderStatus = Status;
+		m_bStarted = false;
+		m_StartedEvent.SetEvent();
 		break;
 	case WMT_END_OF_FILE:
-		ReaderStatus = Status;
+		m_bStarted = false;
+		m_StartedEvent.SetEvent();
+		m_OpenedEvent.SetEvent();
 		if (m_Reader)
 		{
 			m_Reader->Stop();
 		}
-		else
-		{
-			ReaderStatus = WMT_STOPPED;
-		}
 		break;
 	}
-	if (WMT_END_OF_STREAMING != Status)
+	if (WMT_END_OF_STREAMING == Status)
 	{
-		ReaderStatus = Status;
+		m_bStarted = false;
 	}
-	if (WMT_END_OF_FILE == Status)
-	{
-	}
-	m_SignalEvent.SetEvent();
 	return S_OK;
 }
 
@@ -323,12 +328,13 @@ HRESULT STDMETHODCALLTYPE CWmaDecoder::OnSample( /* [in] */ DWORD dwOutputNum,
 	//
 	if (m_dwAudioOutputNum != dwOutputNum)
 	{
+		TRACE("CWmaDecoder::OnSample m_dwAudioOutputNum != dwOutputNum\n");
 		return S_OK;
 	}
 
-	if (ReaderStatus != WMT_STARTED)
+	if (! IsStarted())
 	{
-		TRACE("CWmaDecoder::OnSample: ReaderStatus(%d) != WMT_STARTED\n", ReaderStatus);
+		TRACE("CWmaDecoder::OnSample: ! IsStarted()\n");
 		return S_OK;
 	}
 
@@ -338,7 +344,7 @@ HRESULT STDMETHODCALLTYPE CWmaDecoder::OnSample( /* [in] */ DWORD dwOutputNum,
 
 	hr = pSample->GetBufferAndLength( &pData, &cbData);
 
-	if (0) TRACE("CWmaDecoder::OnSample, time=%d ms, %d bytes, hr=%X\n",
+	if (1) TRACE("CWmaDecoder::OnSample, time=%d ms, %d bytes, hr=%X\n",
 				DWORD(cnsSampleTime/10000), cbData, hr);
 	if( FAILED( hr ) )
 	{
@@ -377,7 +383,7 @@ HRESULT STDMETHODCALLTYPE CWmaDecoder::OnSample( /* [in] */ DWORD dwOutputNum,
 	// ask for next buffer
 	m_CurrentStreamTime = cnsSampleTime + cnsSampleDuration;
 	m_bNeedNextSample = true;
-	m_SignalEvent.SetEvent();
+	m_SampleEvent.SetEvent();
 	return S_OK;
 }
 
@@ -385,11 +391,14 @@ void CWmaDecoder::DeliverNextSample()
 {
 	if ( ! m_bNeedNextSample)
 	{
+		TRACE("CWmaDecoder::DeliverNextSample:  ! m_bNeedNextSample\n");
 		return;
 	}
 	m_bNeedNextSample = false;
 	if (m_pAdvReader)
 	{
+		TRACE("CWmaDecoder::DeliverNextSample:  m_CurrentStreamTime=%X%X, BufferLengthTime=%d\n",
+			ULONG(m_CurrentStreamTime >> 32), ULONG(m_CurrentStreamTime), m_BufferLengthTime);
 		m_pAdvReader->DeliverTime(m_CurrentStreamTime + m_BufferLengthTime);
 	}
 	else
@@ -401,7 +410,7 @@ void CWmaDecoder::DeliverNextSample()
 BOOL CWmaDecoder::Init()
 {
 	HRESULT hr;
-	hr = WMCreateReader( NULL, WMT_RIGHT_PLAYBACK , &m_Reader );
+	hr = WMCreateReader( NULL, 0 , &m_Reader );
 	if( FAILED( hr ) )
 	{
 		return FALSE;
@@ -443,8 +452,8 @@ HRESULT CWmaDecoder::Open(CDirectFile & file)
 		m_InputStream.Close();
 		return hr;
 	}
-	WaitForSingleObject(m_SignalEvent, 5000);
-	if (ReaderStatus != WMT_OPENED)
+	WaitForSingleObject(m_OpenedEvent, 5000);
+	if ( ! IsOpened())
 	{
 		m_Reader->Close();
 		m_InputStream.Close();
@@ -588,52 +597,56 @@ HRESULT CWmaDecoder::Open(CDirectFile & file)
 	hr = m_Reader->QueryInterface(IID_IWMProfile, (void **) &pProfile);
 	if (SUCCEEDED(hr))
 	{
-		IWMStreamConfig * pStreamConfig = NULL;
-		hr = pProfile->GetStream(m_dwAudioOutputNum, & pStreamConfig);
-		if (SUCCEEDED(hr))
+		DWORD nStreamCount = 0;
+		pProfile->GetStreamCount( & nStreamCount);
+		for (int iStream = 0; iStream < nStreamCount; iStream++)
 		{
-			if (FAILED(pStreamConfig->GetBitrate( & m_Bitrate)))
+			IWMStreamConfig * pStreamConfig = NULL;
+			hr = pProfile->GetStream(iStream, & pStreamConfig);
+			if (SUCCEEDED(hr))
 			{
-				m_Bitrate = 1;
-			}
-			IWMMediaProps * pStreamProps = NULL;
-			if (SUCCEEDED(pStreamConfig->QueryInterface(IID_IWMMediaProps, (void**) &pStreamProps)))
-			{
-				DWORD size = 0;
-				pStreamProps->GetMediaType(NULL, & size);
-				WM_MEDIA_TYPE * pType = (WM_MEDIA_TYPE *)new  char[size];
-				if (pType)
+				WORD iStreamNumber;
+				pStreamConfig->GetStreamNumber( & iStreamNumber);
+
+				IWMMediaProps * pStreamProps = NULL;
+				if (SUCCEEDED(pStreamConfig->QueryInterface(IID_IWMMediaProps, (void**) &pStreamProps)))
 				{
-					pStreamProps->GetMediaType(pType, & size);
-					m_SrcWf = (WAVEFORMATEX *) pType->pbFormat;
-					delete[] (char*) pType;
+					if (FAILED(pStreamConfig->GetBitrate( & m_Bitrate)))
+					{
+						m_Bitrate = 1;
+					}
+					DWORD size = 0;
+					pStreamProps->GetMediaType(NULL, & size);
+					WM_MEDIA_TYPE * pType = (WM_MEDIA_TYPE *)new  char[size];
+					if (pType)
+					{
+						pStreamProps->GetMediaType(pType, & size);
+						WMT_STREAM_SELECTION StreamSelection = WMT_ON;
+						if (pType->majortype != WMMEDIATYPE_Audio)
+						{
+							StreamSelection = WMT_OFF;
+						}
+
+						m_pAdvReader->SetStreamsSelected(1, & iStreamNumber, & StreamSelection);
+
+						m_SrcWf = (WAVEFORMATEX *) pType->pbFormat;
+						delete[] (char*) pType;
+					}
+					pStreamProps->Release();
+					pStreamProps = NULL;
 				}
-				pStreamProps->Release();
-				pStreamProps = NULL;
 			}
-		}
-		if (NULL != pStreamConfig)
-		{
-			pStreamConfig->Release();
-			pStreamConfig = NULL;
+			if (NULL != pStreamConfig)
+			{
+				pStreamConfig->Release();
+				pStreamConfig = NULL;
+			}
 		}
 	}
 	if (NULL != pProfile)
 	{
 		pProfile->Release();
 		pProfile = NULL;
-	}
-
-	// if more than one stream, call SetStreamsSelected,
-	// to have only 1 stream decompressed
-	for (WORD StreamNumber = 1; StreamNumber <= cOutputs; StreamNumber++)
-	{
-		WMT_STREAM_SELECTION StreamSelection = WMT_ON;
-		if (StreamNumber != m_dwAudioOutputNum)
-		{
-			StreamSelection = WMT_OFF;
-		}
-		m_pAdvReader->SetStreamsSelected(1, & StreamNumber, & StreamSelection);
 	}
 
 	if (NULL != m_pAdvReader)
@@ -646,13 +659,13 @@ HRESULT CWmaDecoder::Open(CDirectFile & file)
 HRESULT CWmaDecoder::Start()
 {
 	TRACE("CWmaDecoder::Start()\n");
-	m_SignalEvent.ResetEvent();
+
 	if (NULL != m_Reader)
 	{
 		HRESULT hr = m_Reader->Start(0, 0, 1.0, NULL);
-		TRACE("Immediately after Start: ReaderStatus=%X\n", ReaderStatus);
-		WaitForSingleObject(m_SignalEvent, 5000);
-		if (ReaderStatus != WMT_STARTED)
+		TRACE("Immediately after Start: IsStarted()=%X\n", IsStarted());
+		WaitForSingleObject(m_StartedEvent, 5000);
+		if ( ! IsStarted())
 		{
 			m_Reader->Stop();
 			return S_FALSE;
@@ -1267,3 +1280,34 @@ HRESULT STDMETHODCALLTYPE FileWriter::OnEndWriting( void)
 	TRACE("OnEndWriting\n");
 	return S_OK;
 }
+
+#if USE_READER_CALLBACK_ADVANCED
+HRESULT STDMETHODCALLTYPE CWmaDecoder::AllocateForStream(
+														/* [in] */ WORD wStreamNum,
+														/* [in] */ DWORD cbBuffer,
+														/* [out] */ INSSBuffer __RPC_FAR *__RPC_FAR *ppBuffer,
+														/* [in] */ void __RPC_FAR *pvContext)
+{
+	if (NULL == ppBuffer)
+	{
+		return E_POINTER;
+	}
+	* ppBuffer = new NSSBuffer(cbBuffer);
+	return S_OK;
+}
+
+HRESULT STDMETHODCALLTYPE CWmaDecoder::AllocateForOutput(
+														/* [in] */ DWORD dwOutputNum,
+														/* [in] */ DWORD cbBuffer,
+														/* [out] */ INSSBuffer __RPC_FAR *__RPC_FAR *ppBuffer,
+														/* [in] */ void __RPC_FAR *pvContext)
+{
+	if (NULL == ppBuffer)
+	{
+		return E_POINTER;
+	}
+	* ppBuffer = new NSSBuffer(cbBuffer);
+	return S_OK;
+}
+
+#endif
