@@ -8,6 +8,7 @@
 #include "WaveSoapFrontView.h"
 #include "GdiObjectSave.h"
 #include "TimeToStr.h"
+#include ".\timerulerview.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -52,6 +53,8 @@ BEGIN_MESSAGE_MAP(CTimeRulerView, CHorizontalRuler)
 	ON_UPDATE_COMMAND_UI(IDC_VIEW_RULER_SECONDS, OnUpdateViewRulerSeconds)
 	//}}AFX_MSG_MAP
 	ON_WM_SETCURSOR()
+	ON_NOTIFY_RANGE(TTN_NEEDTEXTW, 0, 0xFFFF, OnToolTipText)
+	ON_NOTIFY_RANGE(TTN_NEEDTEXTA, 0, 0xFFFF, OnToolTipText)
 END_MESSAGE_MAP()
 
 /////////////////////////////////////////////////////////////////////////////
@@ -485,7 +488,7 @@ void CTimeRulerView::Dump(CDumpContext& dc) const
 	CScaledScrollView::Dump(dc);
 }
 
-CWaveSoapFrontDoc* CTimeRulerView::GetDocument() // non-debug version is inline
+CWaveSoapFrontDoc* CTimeRulerView::GetDocument() const// non-debug version is inline
 {
 	ASSERT(m_pDocument->IsKindOf(RUNTIME_CLASS(CWaveSoapFrontDoc)));
 	return (CWaveSoapFrontDoc*)m_pDocument;
@@ -552,7 +555,7 @@ int CTimeRulerView::CalculateHeight()
 	return tm.tmHeight + tm.tmAveCharWidth + 7;
 }
 
-unsigned CTimeRulerView::HitTest(POINT p)
+unsigned CTimeRulerView::HitTest(POINT p, RECT * pHitRect) const
 {
 	unsigned result = 0;
 
@@ -569,7 +572,7 @@ unsigned CTimeRulerView::HitTest(POINT p)
 
 	CWaveFile::InstanceDataWav * pInst = GetDocument()->m_WavFile.GetInstanceData();
 
-	if (p.y >= cr.bottom - tm.tmAveCharWidth)
+	if (p.y >= cr.bottom - MarkerHeight)
 	{
 		int n;
 		CuePointVectorIterator i;
@@ -583,8 +586,8 @@ unsigned CTimeRulerView::HitTest(POINT p)
 			if (NULL == pMarker
 				|| 0 == pMarker->SampleLength)
 			{
-				if (p.x <= x + MarkerHeight - 1
-					&& p.x >= x - (MarkerHeight - 1))
+				if (p.x <= x + (MarkerHeight >> 1)
+					&& p.x >= x - (MarkerHeight >> 1))
 				{
 					// marker
 					POINT p[] = {
@@ -596,6 +599,14 @@ unsigned CTimeRulerView::HitTest(POINT p)
 					};
 
 					result = HitTestMarker | n;
+
+					if (NULL != pHitRect)
+					{
+						pHitRect->left = x - (MarkerHeight >> 1);
+						pHitRect->right = x + (MarkerHeight >> 1);
+						pHitRect->top = cr.bottom - MarkerHeight;
+						pHitRect->bottom = cr.bottom;
+					}
 					break;
 				}
 			}
@@ -613,6 +624,14 @@ unsigned CTimeRulerView::HitTest(POINT p)
 					};
 
 					result = HitTestRegionBegin | n;
+
+					if (NULL != pHitRect)
+					{
+						pHitRect->left = x;
+						pHitRect->right = x + MarkerHeight;
+						pHitRect->top = cr.bottom - MarkerHeight;
+						pHitRect->bottom = cr.bottom;
+					}
 					break;
 				}
 
@@ -630,6 +649,14 @@ unsigned CTimeRulerView::HitTest(POINT p)
 					};
 
 					result = HitTestRegionEnd | n;
+
+					if (NULL != pHitRect)
+					{
+						pHitRect->left = x - MarkerHeight;
+						pHitRect->right = x;
+						pHitRect->top = cr.bottom - MarkerHeight;
+						pHitRect->bottom = cr.bottom;
+					}
 					break;
 				}
 			}
@@ -669,4 +696,71 @@ BOOL CTimeRulerView::OnSetCursor(CWnd* pWnd, UINT nHitTest, UINT message)
 	}
 
 	return BaseClass::OnSetCursor(pWnd, nHitTest, message);
+}
+
+void CTimeRulerView::OnInitialUpdate()
+{
+	CHorizontalRuler::OnInitialUpdate();
+
+	EnableToolTips();
+}
+
+INT_PTR CTimeRulerView::OnToolHitTest(CPoint point, TOOLINFO* pTI) const
+{
+	RECT r;
+	unsigned hit = HitTest(point, & r);
+	if (HitTestNone == hit)
+	{
+		return -1;
+	}
+
+	if (pTI != NULL && pTI->cbSize >= offsetof(TOOLINFO, lParam))
+	{
+		pTI->hwnd = m_hWnd;
+		pTI->uId = hit;
+		pTI->rect = r;
+		pTI->lpszText = LPSTR_TEXTCALLBACK;
+	}
+
+	return hit;
+}
+
+void CTimeRulerView::OnToolTipText(UINT /*id*/, NMHDR* pNMHDR, LRESULT* pResult)
+{
+	ASSERT(pNMHDR->code == TTN_NEEDTEXTA || pNMHDR->code == TTN_NEEDTEXTW);
+
+	// need to handle both ANSI and UNICODE versions of the message
+	TOOLTIPTEXTA* pTTTA = (TOOLTIPTEXTA*)pNMHDR;
+	TOOLTIPTEXTW* pTTTW = (TOOLTIPTEXTW*)pNMHDR;
+
+	CWaveFile::InstanceDataWav * pInst = GetDocument()->m_WavFile.GetInstanceData();
+
+	LPCTSTR strTipText = pInst->GetCueTextByIndex(pNMHDR->idFrom & HitTestCueIndexMask);
+	if (NULL != strTipText)
+	{
+#ifndef _UNICODE
+		if (pNMHDR->code == TTN_NEEDTEXTA)
+		{
+			lstrcpyn(pTTTA->szText, strTipText, countof(pTTTA->szText));
+		}
+		else
+		{
+			_mbstowcsz(pTTTW->szText, strTipText, countof(pTTTW->szText));
+		}
+#else
+		if (pNMHDR->code == TTN_NEEDTEXTA)
+		{
+			_wcstombsz(pTTTA->szText, strTipText, countof(pTTTA->szText));
+		}
+		else
+		{
+			lstrcpyn(pTTTW->szText, strTipText, countof(pTTTW->szText));
+		}
+#endif
+		*pResult = 0;
+	}
+
+	// bring the tooltip window above other popup windows
+	::SetWindowPos(pNMHDR->hwndFrom, HWND_TOP, 0, 0, 0, 0,
+					SWP_NOACTIVATE|SWP_NOSIZE|SWP_NOMOVE|SWP_NOOWNERZORDER);
 }
