@@ -27,7 +27,9 @@
 #define IDR_MENU_WAVE_VIEW_SELECTION    141
 #define IDD_DIALOG_VOLUME_CHANGE_MONO   141
 #define IDR_MENU_FFT_VIEW               142
+#define IDD_DIALOG_GOTO                 142
 #define IDR_MENU_CURRENT_POSITION       143
+#define IDD_DIALOG_DC_OFFSET            143
 #define IDR_MENU_SELECTION_LENGTH       144
 #define IDR_MENU_FILE_LENGTH            145
 #define IDC_CURSOR_BEAM                 150
@@ -44,13 +46,17 @@
 #define IDC_EDIT_END                    1004
 #define IDC_EDIT_CLICK_TO_NOISE         1005
 #define IDC_EDIT3                       1005
+#define IDC_EDIT_LENGTH                 1005
 #define IDC_EDIT_MAX_CLICK_LENGTH       1006
 #define IDC_EDIT_ATTACK_RATE            1007
 #define IDC_SPIN1                       1007
+#define IDC_SPIN_START                  1007
 #define IDC_EDIT_DECAY_RATE             1008
 #define IDC_SPIN2                       1008
+#define IDC_SPIN_END                    1008
 #define IDC_EDIT_CLICK_IMPORT_FILENAME  1009
 #define IDC_SPIN3                       1009
+#define IDC_SPIN_LENGTH                 1009
 #define IDC_CLICK_IMPORT_BROWSE_BUTTON  1010
 #define IDC_COMBO2                      1010
 #define IDC_CHECK_IMPORT_CLICKS         1011
@@ -60,6 +66,7 @@
 #define IDC_COMBO1                      1013
 #define IDC_COMBO_RECENT                1013
 #define IDC_COMBODB_PERCENT             1013
+#define IDC_COMBO_TIME_FORMAT           1013
 #define IDC_STATIC_FILE_TYPE            1016
 #define IDC_STATIC_FILE_FORMAT          1017
 #define IDC_EDIT_LOWER_FREQUENCY        1018
@@ -100,7 +107,15 @@
 #define IDC_TAB_VIEW_SWITCH             1037
 #define IDC_STATIC_RIGHT_CHANNEL        1037
 #define IDC_EDIT_MASKING_TIME_HIGH      1038
+#define IDC_STATIC_LEFT_CHANNEL         1038
 #define IDC_EDIT_MASKING_TIME_LOW       1039
+#define IDC_BUTTON_PLAY                 1039
+#define IDC_RADIO_CHANNEL               1040
+#define IDC_RADIO2                      1041
+#define IDC_RADIO3                      1042
+#define IDC_RADIO_DC_SELECT             1043
+#define IDC_EDIT_DC_OFFSET              1044
+#define IDC_CHECK_5SECONDS              1045
 #define IDC_VIEW_RULER_SAMPLES          32771
 #define IDC_VIEW_RULER_HHMMSS           32772
 #define IDC_VIEW_RULER_SECONDS          32773
@@ -213,7 +228,7 @@
 #define _APS_3D_CONTROLS                     1
 #define _APS_NEXT_RESOURCE_VALUE        142
 #define _APS_NEXT_COMMAND_VALUE         40050
-#define _APS_NEXT_CONTROL_VALUE         1038
+#define _APS_NEXT_CONTROL_VALUE         1046
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif
