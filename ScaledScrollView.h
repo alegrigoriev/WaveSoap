@@ -79,6 +79,7 @@ public:
 					double & bottom, double & top) const;
 	virtual void SetExtents(double left, double right,
 							double bottom, double top);
+	void NotifySlaveViews(DWORD flag);
 
 	virtual BOOL ScrollBy(double dx, double dy, BOOL bDoScroll = TRUE);
 	BOOL ScrollTo(double x, double y, BOOL bDoScroll = TRUE)
@@ -122,7 +123,6 @@ protected:
 
 	CScaledScrollView * m_pHorMaster;
 	CScaledScrollView * m_pVertMaster;
-	void NotifySlaveViews(DWORD flag);
 
 	enum {ScrollMin = -16384, ScrollMax = 16383};
 
@@ -164,6 +164,8 @@ protected:
 	}
 
 	void UpdateScrollbars(BOOL bRedraw = TRUE);
+	virtual void UpdateCaretPosition() {}
+
 	int GetMappingInfo();
 	void ArrangeMaxExtents();
 	virtual void OnChangeOrgExt(double left, double width,
@@ -172,6 +174,8 @@ protected:
 	// flag bits:
 	enum {CHANGE_WIDTH = 0x1, CHANGE_HOR_ORIGIN = 0x2,
 		CHANGE_HEIGHT = 0x4, CHANGE_VERT_ORIGIN = 0x8,
+		CHANGE_MAX_HOR_EXTENTS = 0x10,
+		CHANGE_MAX_VERT_EXTENTS = 0x20,
 		CHANGE_HOR_EXTENTS = CHANGE_WIDTH | CHANGE_HOR_ORIGIN,
 		CHANGE_VERT_EXTENTS = CHANGE_HEIGHT | CHANGE_VERT_ORIGIN};
 
