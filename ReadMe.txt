@@ -73,6 +73,7 @@ Find which alignment better for edit box labels: left or right
 
 Problems:
 
+Last WavePeak is not rescanned when file length is cut
 Expression evaluation selection longer than file length doesn't update file length
 Suggests u-Law when saving a file from clipboard
 Reopen after save new file doesn't work

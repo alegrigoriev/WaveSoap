@@ -4297,20 +4297,16 @@ void CWaveSoapFrontDoc::OnProcessSynthesisExpressionEvaluation()
 		end = WaveFileSamples();
 	}
 
-	CExpressionEvaluationContext * pContext =
-		new CExpressionEvaluationContext(this, IDS_EXPRESSION_STATUS_PROMPT,
-										IDS_EXPRESSION_OPERATION_NAME);
-
 	CExpressionEvaluationDialog dlg(start, end, m_CaretPosition, GetSelectedChannel(),
 									m_WavFile, ChannelsLocked(), UndoEnabled(), GetApp()->m_SoundTimeFormat,
-									pContext);
+									new CExpressionEvaluationContext(this, 0, 0));
 
 	if (IDOK != dlg.DoModal())
 	{
 		return;
 	}
 
-	pContext = dlg.GetExpressionContext();
+	COperationContext * pContext = dlg.GetExpressionContext();
 
 	if (NULL != pContext)
 	{
