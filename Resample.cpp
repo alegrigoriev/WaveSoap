@@ -11,9 +11,8 @@ CResampleContext::CResampleContext(CWaveSoapFrontDoc * pDoc,
 									LPCTSTR StatusString, LPCTSTR OperationName,
 									CWaveFile & SrcFile, CWaveFile &DstFile,
 									double FrequencyRatio, double FilterLength)
-	: BaseClass(pDoc, StatusString, OperationName)
+	: BaseClass(pDoc, StatusString, 0, OperationName)
 {
-	m_GetBufferFlags = CDirectFile::GetBufferWriteOnly;
 
 	m_SrcFile = SrcFile;
 	m_DstFile = DstFile;
@@ -93,7 +92,7 @@ BOOL CResampleContext::OperationProc()
 				break;  // all data written
 			}
 			WasLockedToWrite = m_DstFile.GetDataBuffer( & pOriginalDstBuf,
-														SizeToWrite, m_DstPos, m_GetBufferFlags);
+														SizeToWrite, m_DstPos, CDirectFile::GetBufferWriteOnly);
 
 			if (0 == WasLockedToWrite)
 			{

@@ -11,9 +11,9 @@
 #include "waveproc.h"
 /////////////////////////////////////////////////////////////////////////////
 // Resample sound
-class CResampleContext : public CCopyContext
+class CResampleContext : public CTwoFilesOperation
 {
-	typedef CCopyContext BaseClass;
+	typedef CTwoFilesOperation BaseClass;
 	typedef CResampleContext ThisClass;
 public:
 	typedef std::auto_ptr<ThisClass> auto_ptr;
