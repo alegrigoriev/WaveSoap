@@ -423,7 +423,7 @@ void CEqualizerGraphWnd::OnPaint()
 
 	cdc.Ellipse(0, 0, 2 * dx, 2 * dy);
 
-	cdc.SelectStockObject(WHITE_BRUSH);
+	cdc.SelectStockObject(BLACK_BRUSH);
 	cdc.Ellipse(w, 0, w + 2 * dx, 2 * dy);
 
 	cdc.SelectObject(pOldCdcPen);
@@ -875,7 +875,8 @@ void CEqualizerGraphWnd::OnNcPaint(UINT wParam)
 	// Paint into this DC
 	CBrush BkBrush;
 	CWnd * pParentDlg = GetParent();
-	BkBrush.Attach((HBRUSH) pParentDlg->SendMessage(WM_CTLCOLORDLG, (WPARAM)(pParentDlg->m_hWnd), LPARAM(pDC->m_hDC)));
+	BkBrush.Attach(GetSysColorBrush(COLOR_BTNFACE));
+	//BkBrush.Attach((HBRUSH) pParentDlg->SendMessage(WM_CTLCOLORDLG, (WPARAM)(pParentDlg->m_hWnd), LPARAM(pDC->m_hDC)));
 
 	CGdiObject * pOldPen = pDC->SelectStockObject(BLACK_PEN);
 	CGdiObject * pOldBrush = pDC->SelectObject( & BkBrush);

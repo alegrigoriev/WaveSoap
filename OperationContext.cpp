@@ -3053,7 +3053,7 @@ void CStatisticsContext::PostRetire(BOOL bChildContext)
 	dlg.m_CaretPosition = pDocument->m_CaretPosition;
 	dlg.m_ValueAtCursorLeft = Value[0];
 	dlg.m_ValueAtCursorRight = Value[1];
-	dlg.m_sFilename = pDocument->GetPathName();
+	dlg.m_sFilename = pDocument->GetTitle();
 
 	dlg.DoModal();
 
