@@ -268,9 +268,8 @@ END_MESSAGE_MAP()
 
 // CUndoPropertyPage dialog
 
-IMPLEMENT_DYNAMIC(CUndoPropertyPage, CPropertyPage)
 CUndoPropertyPage::CUndoPropertyPage(UndoRedoParameters const * pParams)
-	: CPropertyPage(CUndoPropertyPage::IDD)
+	: BaseClass(IDD, UINT(NULL))
 	, UndoRedoParameters(*pParams)
 {
 }
@@ -282,38 +281,135 @@ CUndoPropertyPage::~CUndoPropertyPage()
 void CUndoPropertyPage::DoDataExchange(CDataExchange* pDX)
 {
 	CPropertyPage::DoDataExchange(pDX);
-	DDX_Control(pDX, IDC_SPIN_UNDO_DEPTH, m_SpinUndoLimit);
-	DDX_Control(pDX, IDC_SPIN_REDO_LIMIT, m_SpinRedoLimit);
-	DDX_Check(pDX, IDC_CHECK_ENABLE_REDO, m_RedoEnabled);
 	DDX_Check(pDX, IDC_CHECK_ENABLE_UNDO, m_UndoEnabled);
-	DDX_Check(pDX, IDC_CHECK_LIMIT_REDO_DEPTH, m_LimitRedoDepth);
-	DDX_Check(pDX, IDC_CHECK_LIMIT_REDO_SIZE, m_LimitRedoSize);
-	DDX_Check(pDX, IDC_CHECK_LIMIT_UNDO, m_LimitUndoSize);
+
+	DDX_Check(pDX, IDC_CHECK_LIMIT_UNDO_SIZE, m_LimitUndoSize);
+	DDX_Text(pDX, IDC_EDIT_UNDO_SIZE_LIMIT, m_UndoSizeLimit);
+	DDV_MinMaxUInt(pDX, m_UndoSizeLimit, 1, 4096);
+
 	DDX_Check(pDX, IDC_CHECK_LIMIT_UNDO_DEPTH, m_LimitUndoDepth);
-	DDX_Check(pDX, IDC_CHECK_REMEMBER_SELECTION_IN_UNDO, m_RememberSelectionInUndo);
-	DDX_Text(pDX, IDC_EDIT_REDO_DEPTH_LIMIT, m_RedoDepthLimit);
-	DDV_MinMaxUInt(pDX, m_RedoDepthLimit, 1, 200);
-	DDX_Text(pDX, IDC_EDIT_REDO_SIZE_LIMIT, m_RedoSizeLimit);
-	DDV_MinMaxUInt(pDX, m_RedoSizeLimit, 1, 2047);
 	DDX_Text(pDX, IDC_EDIT_UNDO_DEPTH_LIMIT, m_UndoDepthLimit);
-	DDV_MinMaxUInt(pDX, m_UndoDepthLimit, 1, 200);
-	DDX_Text(pDX, IDC_EDIT_UNDO_LIMIT, m_UndoSizeLimit);
-	DDV_MinMaxUInt(pDX, m_UndoSizeLimit, 1, 2047);
+	DDV_MinMaxUInt(pDX, m_UndoDepthLimit, 1, 1000);
+	DDX_Control(pDX, IDC_SPIN_UNDO_DEPTH, m_SpinUndoLimit);
+
+	DDX_Check(pDX, IDC_CHECK_ENABLE_REDO, m_RedoEnabled);
+
+	DDX_Check(pDX, IDC_CHECK_LIMIT_REDO_SIZE, m_LimitRedoSize);
+	DDX_Text(pDX, IDC_EDIT_REDO_SIZE_LIMIT, m_RedoSizeLimit);
+	DDV_MinMaxUInt(pDX, m_RedoSizeLimit, 1, 4096);
+
+	DDX_Check(pDX, IDC_CHECK_LIMIT_REDO_DEPTH, m_LimitRedoDepth);
+	DDX_Text(pDX, IDC_EDIT_REDO_DEPTH_LIMIT, m_RedoDepthLimit);
+	DDV_MinMaxUInt(pDX, m_RedoDepthLimit, 1, 1000);
+	DDX_Control(pDX, IDC_SPIN_REDO_DEPTH, m_SpinRedoLimit);
+
+	DDX_Check(pDX, IDC_CHECK_REMEMBER_SELECTION_IN_UNDO, m_RememberSelectionInUndo);
 }
 
 BOOL CUndoPropertyPage::OnInitDialog()
 {
 	BaseClass::OnInitDialog();
 
-	m_SpinUndoLimit.SetRange(1, 200);
-	m_SpinRedoLimit.SetRange(1, 200);
+	m_SpinUndoLimit.SetRange(1, 1000);
+	m_SpinRedoLimit.SetRange(1, 1000);
 	return TRUE;  // return TRUE unless you set the focus to a control
 	// EXCEPTION: OCX Property Pages should return FALSE
 }
 
 
-BEGIN_MESSAGE_MAP(CUndoPropertyPage, CPropertyPage)
+BEGIN_MESSAGE_MAP(CUndoPropertyPage, BaseClass)
+	ON_BN_CLICKED(IDC_CHECK_ENABLE_REDO, OnBnClickedCheckEnableRedo)
+	ON_BN_CLICKED(IDC_CHECK_ENABLE_UNDO, OnBnClickedCheckEnableUndo)
+
+	ON_BN_CLICKED(IDC_CHECK_LIMIT_UNDO_DEPTH, OnBnClickedCheckLimitUndoDepth)
+	ON_BN_CLICKED(IDC_CHECK_LIMIT_UNDO_SIZE, OnBnClickedCheckLimitUndoSize)
+	ON_UPDATE_COMMAND_UI(IDC_CHECK_LIMIT_UNDO_DEPTH, OnUpdateCheckLimitUndoDepth)
+	ON_UPDATE_COMMAND_UI(IDC_CHECK_LIMIT_UNDO_SIZE, OnUpdateCheckLimitUndoSize)
+	ON_UPDATE_COMMAND_UI(IDC_EDIT_UNDO_SIZE_LIMIT, OnUpdateEditLimitUndoSize)
+	ON_UPDATE_COMMAND_UI(IDC_EDIT_UNDO_DEPTH_LIMIT, OnUpdateEditLimitUndoDepth)
+	ON_UPDATE_COMMAND_UI(IDC_STATIC_UNDO_MB, OnUpdateEditLimitUndoSize)
+	ON_UPDATE_COMMAND_UI(IDC_SPIN_UNDO_DEPTH, OnUpdateEditLimitUndoDepth)
+
+	ON_BN_CLICKED(IDC_CHECK_LIMIT_REDO_DEPTH, OnBnClickedCheckLimitRedoDepth)
+	ON_BN_CLICKED(IDC_CHECK_LIMIT_REDO_SIZE, OnBnClickedCheckLimitRedoSize)
+	ON_UPDATE_COMMAND_UI(IDC_CHECK_LIMIT_REDO_DEPTH, OnUpdateCheckLimitRedoDepth)
+	ON_UPDATE_COMMAND_UI(IDC_CHECK_LIMIT_REDO_SIZE, OnUpdateCheckLimitRedoSize)
+	ON_UPDATE_COMMAND_UI(IDC_EDIT_REDO_SIZE_LIMIT, OnUpdateEditLimitRedoSize)
+	ON_UPDATE_COMMAND_UI(IDC_EDIT_REDO_DEPTH_LIMIT, OnUpdateEditLimitRedoDepth)
+	ON_UPDATE_COMMAND_UI(IDC_STATIC_REDO_MB, OnUpdateEditLimitRedoSize)
+	ON_UPDATE_COMMAND_UI(IDC_SPIN_REDO_DEPTH, OnUpdateEditLimitRedoDepth)
 END_MESSAGE_MAP()
 
-
 // CUndoPropertyPage message handlers
+void CUndoPropertyPage::OnBnClickedCheckEnableRedo()
+{
+	m_RedoEnabled = IsDlgButtonChecked(IDC_CHECK_ENABLE_REDO);
+	NeedUpdateControls();
+}
+
+void CUndoPropertyPage::OnBnClickedCheckEnableUndo()
+{
+	m_UndoEnabled = IsDlgButtonChecked(IDC_CHECK_ENABLE_UNDO);
+	NeedUpdateControls();
+}
+
+void CUndoPropertyPage::OnBnClickedCheckLimitRedoDepth()
+{
+	m_LimitRedoDepth = IsDlgButtonChecked(IDC_CHECK_LIMIT_REDO_DEPTH);
+	NeedUpdateControls();
+}
+
+void CUndoPropertyPage::OnBnClickedCheckLimitRedoSize()
+{
+	m_LimitRedoSize = IsDlgButtonChecked(IDC_CHECK_LIMIT_REDO_SIZE);
+	NeedUpdateControls();
+}
+
+void CUndoPropertyPage::OnBnClickedCheckLimitUndoDepth()
+{
+	m_LimitUndoDepth = IsDlgButtonChecked(IDC_CHECK_LIMIT_UNDO_DEPTH);
+	NeedUpdateControls();
+}
+
+void CUndoPropertyPage::OnBnClickedCheckLimitUndoSize()
+{
+	m_LimitUndoSize = IsDlgButtonChecked(IDC_CHECK_LIMIT_UNDO_SIZE);
+	NeedUpdateControls();
+}
+
+void CUndoPropertyPage::OnUpdateCheckLimitRedoDepth(CCmdUI * pCmdUI)
+{
+	pCmdUI->Enable(m_RedoEnabled);
+}
+void CUndoPropertyPage::OnUpdateCheckLimitRedoSize(CCmdUI * pCmdUI)
+{
+	pCmdUI->Enable(m_RedoEnabled);
+}
+void CUndoPropertyPage::OnUpdateCheckLimitUndoDepth(CCmdUI * pCmdUI)
+{
+	pCmdUI->Enable(m_UndoEnabled);
+}
+void CUndoPropertyPage::OnUpdateCheckLimitUndoSize(CCmdUI * pCmdUI)
+{
+	pCmdUI->Enable(m_UndoEnabled);
+}
+void CUndoPropertyPage::OnUpdateEditLimitRedoDepth(CCmdUI * pCmdUI)
+{
+	pCmdUI->Enable(m_RedoEnabled && m_LimitRedoDepth);
+}
+
+void CUndoPropertyPage::OnUpdateEditLimitRedoSize(CCmdUI * pCmdUI)
+{
+	pCmdUI->Enable(m_RedoEnabled && m_LimitRedoSize);
+}
+
+void CUndoPropertyPage::OnUpdateEditLimitUndoDepth(CCmdUI * pCmdUI)
+{
+	pCmdUI->Enable(m_UndoEnabled && m_LimitUndoDepth);
+}
+
+void CUndoPropertyPage::OnUpdateEditLimitUndoSize(CCmdUI * pCmdUI)
+{
+	pCmdUI->Enable(m_UndoEnabled && m_LimitUndoSize);
+}
+
