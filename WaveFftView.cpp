@@ -151,7 +151,14 @@ static const unsigned char palette[128 * 3] =
 
 SAMPLE_INDEX CWaveFftView::SampleToFftBaseSample(SAMPLE_INDEX sample)
 {
-	return sample - sample & (-m_FftOrder);
+	sample += m_FftOrder;
+	return sample & -m_FftSpacing;
+}
+
+SAMPLE_INDEX CWaveFftView::DisplaySampleToFftBaseSample(SAMPLE_INDEX sample)
+{
+	sample += m_FftSpacing >> 1;
+	return sample & -m_FftSpacing;
 }
 
 long CWaveFftView::SampleToFftColumn(SAMPLE_INDEX sample)
@@ -198,7 +205,6 @@ CWaveFftView::CWaveFftView()
 	m_FirstbandVisible(0),
 	m_FftWindowType(WindowTypeSquaredSine),
 	m_IndexOfFftBegin(0),
-//m_FftSamplesCalculated(0),
 	m_FftArraySize(0)
 {
 	m_FftOrder = 1 << GetApp()->m_FftBandsOrder;
@@ -309,10 +315,11 @@ void CWaveFftView::OnDraw(CDC* pDC)
 	if (left < 0) left = 0;
 	// create an array of points
 	int nNumberOfPoints = r.right - r.left;
+
 	if (r.left < r.right)
 	{
 
-		MakeFftArray(long(left), long(right));
+		MakeFftArray(SAMPLE_INDEX(left), SAMPLE_INDEX(right));
 
 		void * pBits;
 		bool bUsePalette;
@@ -403,11 +410,17 @@ void CWaveFftView::OnDraw(CDC* pDC)
 		NUMBER_OF_CHANNELS nChannels = pDoc->WaveChannels();
 		// find offset in the FFT result array for 'left' point
 		// and how many columns to fill with this color
+		ASSERT(m_FftSpacing >= m_HorizontalScale);
+
 		int ColsPerFftPoint = m_FftSpacing / m_HorizontalScale;
-		int nFirstCol = (long(left) - m_FftResultBegin) / m_FftSpacing;
+		ASSERT(long(left) + m_FftSpacing / 2 >= m_FftResultBegin);
+		ASSERT(long(right) - m_FftSpacing / 2 <= m_FftResultEnd);
+
+		int nFirstCol = (long(left) + m_FftSpacing / 2 - m_FftResultBegin) / m_FftSpacing;
+
 		ASSERT(nFirstCol >= 0);
 		int FirstCols = ColsPerFftPoint -
-						((long(left) - m_FftResultBegin) % m_FftSpacing) / m_HorizontalScale;
+						((long(left) - m_FftResultBegin + m_FftSpacing / 2) % m_FftSpacing) / m_HorizontalScale;
 
 		// find vertical offset in the result array and how many
 		// rows to fill with this color
@@ -479,6 +492,13 @@ void CWaveFftView::OnDraw(CDC* pDC)
 		int nChanOffset = stride * rows;
 		unsigned char * pData = m_pFftResultArray +
 								(nFirstCol + m_IndexOfFftBegin) * m_FftResultArrayHeight;
+
+		if (0 != ((long(WindowToWorldX(r.left + FirstCols)) + m_FftSpacing/2) % m_FftSpacing) / m_HorizontalScale)
+		{
+			TRACE("band boundary=%d\n",
+				((long(WindowToWorldX(r.left + FirstCols)) + m_FftSpacing/2) % m_FftSpacing) / m_HorizontalScale);
+		}
+
 		int nColumns = FirstCols;
 		for(int col = r.left; col < r.right; )
 		{
@@ -492,12 +512,13 @@ void CWaveFftView::OnDraw(CDC* pDC)
 			{
 				pData -= m_FftArraySize;
 			}
+
 			if (pData[0])
 			{
 				pData++;
 				if ( ! bUsePalette)
 				{
-					for (int ch = 0, nFftChOffset = 1, nBmpChOffset = 0; ch < nChannels; ch++,
+					for (int ch = 0, nBmpChOffset = 0; ch < nChannels; ch++,
 						nBmpChOffset += nChanOffset, pData += m_FftOrder)
 					{
 						BYTE * pRgb = pColBmp + nBmpChOffset;
@@ -547,23 +568,23 @@ void CWaveFftView::OnDraw(CDC* pDC)
 				}
 				else
 				{   // use palette
-					for (int ch = 0, nFftChOffset = 1, nBmpChOffset = 0; ch < nChannels; ch++,
+					for (int ch = 0, nBmpChOffset = 0; ch < nChannels; ch++,
 						nBmpChOffset += nChanOffset, pData += m_FftOrder)
 					{
-						BYTE * pPalIndex = pColBmp + nBmpChOffset;
+						BYTE * pPal = pColBmp + nBmpChOffset;
 						if (nColumns != 1)
 						{
 							for (ff = 0, pId = pIdArray; ff < IdxSize; ff++, pId++)
 							{
 								unsigned char ColorIndex = 10 + pData[pId->nFftOffset];
 								// set the color to pId->nNumOfRows rows
-								for (int y = 0; y < pId->nNumOfRows; y++, pPalIndex += stride - nColumns)
+								for (int y = 0; y < pId->nNumOfRows; y++, pPal += stride)
 								{
 									// set the color to nColumns pixels across
-									for (int x = 0; x < nColumns; x++, pPalIndex ++)
+									for (int x = 0; x < nColumns; x++)
 									{
-										ASSERT(pPalIndex >= pBmp && pPalIndex < pBmp + BmpSize);
-										pPalIndex[0] = ColorIndex;
+										ASSERT(pPal >= pBmp && pPal+x < pBmp + BmpSize);
+										pPal[x] = ColorIndex;
 									}
 								}
 							}
@@ -574,11 +595,11 @@ void CWaveFftView::OnDraw(CDC* pDC)
 							{
 								unsigned char ColorIndex = 10 + pData[pId->nFftOffset];
 								// set the color to pId->nNumOfRows rows
-								for (int y = 0; y < pId->nNumOfRows; y++, pPalIndex += stride)
+								for (int y = 0; y < pId->nNumOfRows; y++, pPal += stride)
 								{
 									// set the color
-									ASSERT(pPalIndex >= pBmp && pPalIndex < pBmp + BmpSize);
-									pPalIndex[0] = ColorIndex;
+									ASSERT(pPal >= pBmp && pPal < pBmp + BmpSize);
+									pPal[0] = ColorIndex;
 								}
 							}
 						}
@@ -588,8 +609,47 @@ void CWaveFftView::OnDraw(CDC* pDC)
 			else
 			{
 				pData += m_FftResultArrayHeight;
+				if ( ! bUsePalette)
+				{
+					for (int ch = 0, nBmpChOffset = 0; ch < nChannels;
+						ch++, nBmpChOffset += nChanOffset)
+					{
+						BYTE * pRgb = pColBmp + nBmpChOffset;
+						for (int y = 0; y < rows; y++, pRgb += stride - nColumns * 3)
+						{
+							// set the color to nColumns pixels across
+							for (int x = 0; x < nColumns; x++, pRgb += 3)
+							{
+								ASSERT(pRgb >= pBmp && pRgb + 3 <= pBmp + BmpSize);
+								pRgb[0] = 0;    // B
+								pRgb[1] = 0;    // G
+								pRgb[2] = 0;    // R
+							}
+						}
+					}
+
+				}
+				else
+				{   // use palette
+					for (int ch = 0, nBmpChOffset = 0; ch < nChannels; ch++,
+						nBmpChOffset += nChanOffset)
+					{
+						BYTE * pPal = pColBmp + nBmpChOffset;
+						// set the color to pId->nNumOfRows rows
+						for (int y = 0; y < rows; y++, pPal += stride - nColumns)
+						{
+							// set the color to nColumns pixels across
+							for (int x = 0; x < nColumns; x++, pPal ++)
+							{
+								ASSERT(pPal >= pBmp && pPal < pBmp + BmpSize);
+								pPal[0] = 0;
+							}
+						}
+					}
+				}
 			}
 			col += nColumns;
+
 			pColBmp += nColumns * BytesPerPixel;
 			nColumns = ColsPerFftPoint;
 		}
@@ -615,10 +675,11 @@ void CWaveFftView::MakeFftArray(SAMPLE_INDEX left, SAMPLE_INDEX right)
 	CRect r;
 	int NumberOfFftPoints;
 	GetClientRect( & r);
+
 	int FftSpacing = m_HorizontalScale;
 	if (m_FftOrder <= m_HorizontalScale)
 	{
-		NumberOfFftPoints = r.Width()+2;
+		NumberOfFftPoints = r.Width() + 2;
 	}
 	else
 	{
@@ -627,6 +688,7 @@ void CWaveFftView::MakeFftArray(SAMPLE_INDEX left, SAMPLE_INDEX right)
 	}
 	// for each FFT set we keep a byte to mark it valid or invalid
 	int NewFftArrayHeight = (m_FftOrder * pDoc->WaveChannels() + 1);
+
 	size_t NecessaryArraySize =
 		NumberOfFftPoints * NewFftArrayHeight;
 	if (FftSpacing != m_FftSpacing
@@ -649,9 +711,11 @@ void CWaveFftView::MakeFftArray(SAMPLE_INDEX left, SAMPLE_INDEX right)
 		}
 		TRACE("New FFT array allocated, height=%d, FFT spacing=%d\n",
 			NewFftArrayHeight, FftSpacing);
+
 		unsigned char * pTmp = m_pFftResultArray;
 		int i;
-		SAMPLE_INDEX FirstFftSample = left - left % FftSpacing;
+
+		SAMPLE_INDEX FirstFftSample = (left + FftSpacing / 2) & -FftSpacing;
 		SAMPLE_INDEX FftSample = FirstFftSample;
 
 		for (i = 0; i < NumberOfFftPoints; i++,
@@ -661,7 +725,7 @@ void CWaveFftView::MakeFftArray(SAMPLE_INDEX left, SAMPLE_INDEX right)
 			if (pOldArray != NULL
 				&& 0 == FftSample % m_FftSpacing
 				&& FftSample >= m_FftResultBegin
-				&& FftSample < m_FftResultEnd)
+				&& FftSample <= m_FftResultEnd)
 			{
 				long offset = m_IndexOfFftBegin + (FftSample - m_FftResultBegin) / m_FftSpacing;
 				offset %= m_FftResultArrayWidth;
@@ -677,14 +741,16 @@ void CWaveFftView::MakeFftArray(SAMPLE_INDEX left, SAMPLE_INDEX right)
 
 		m_FftArraySize = NecessaryArraySize;
 		m_FftResultBegin = FirstFftSample;
-		m_FftResultEnd = FftSample;
+		m_FftResultEnd = FftSample - FftSpacing;
+
 		m_IndexOfFftBegin = 0;
 		delete[] pOldArray;
+
 		m_FftSpacing = FftSpacing;
 		m_FftResultArrayHeight = NewFftArrayHeight;
 		m_FftResultArrayWidth = NumberOfFftPoints;
 	}
-	ASSERT(m_FftResultEnd - m_FftResultBegin == m_FftResultArrayWidth * m_FftSpacing);
+	ASSERT(m_FftResultEnd - m_FftResultBegin == (m_FftResultArrayWidth - 1) * m_FftSpacing);
 
 	if (NULL == m_pFftResultArray)
 	{
@@ -699,20 +765,22 @@ void CWaveFftView::CalculateFftRange(SAMPLE_INDEX left, SAMPLE_INDEX right)
 	CWaveSoapFrontDoc * pDoc = GetDocument();
 	// make sure the required range is in the buffer
 	// buffer size is enough to hold all data
-	SAMPLE_INDEX FirstSampleRequired = left - left % m_FftSpacing;
+	SAMPLE_INDEX FirstSampleRequired = DisplaySampleToFftBaseSample(left);
+
 	if (FirstSampleRequired < 0)
 	{
 		FirstSampleRequired = 0;
 	}
 
-	SAMPLE_INDEX LastSampleRequired = right + m_FftSpacing - right % m_FftSpacing;
+	SAMPLE_INDEX LastSampleRequired = DisplaySampleToFftBaseSample(right);
 
 	if (0) TRACE("Samples required from %d to %d, in the buffer: from %d to %d\n",
 				FirstSampleRequired, LastSampleRequired, m_FftResultBegin, m_FftResultEnd);
-	ASSERT(LastSampleRequired > FirstSampleRequired);
-	ASSERT(m_FftResultEnd > m_FftResultBegin);
+
+	ASSERT(LastSampleRequired >= FirstSampleRequired);
+	ASSERT(m_FftResultEnd >= m_FftResultBegin);
 	ASSERT(LastSampleRequired - FirstSampleRequired <= m_FftResultEnd - m_FftResultBegin);
-	ASSERT(m_FftResultEnd - m_FftResultBegin == m_FftResultArrayWidth * m_FftSpacing);
+	ASSERT(m_FftResultEnd - m_FftResultBegin == (m_FftResultArrayWidth - 1) * m_FftSpacing);
 	ASSERT(m_IndexOfFftBegin < m_FftResultArrayWidth);
 
 	if (FirstSampleRequired < m_FftResultBegin)
@@ -748,10 +816,10 @@ void CWaveFftView::CalculateFftRange(SAMPLE_INDEX left, SAMPLE_INDEX right)
 	}
 	else if (LastSampleRequired > m_FftResultEnd)
 	{
-		if (FirstSampleRequired < m_FftResultEnd)
+		if (FirstSampleRequired <= m_FftResultEnd)
 		{
 			// free some space after the calculated
-			while (m_FftResultEnd < LastSampleRequired)
+			while (m_FftResultEnd <= LastSampleRequired)
 			{
 				m_pFftResultArray[m_IndexOfFftBegin * m_FftResultArrayHeight] = 0;
 
@@ -805,8 +873,6 @@ void CWaveFftView::CalculateFftRange(SAMPLE_INDEX left, SAMPLE_INDEX right)
 		}
 	}
 
-	int ii = (FirstSampleRequired - m_FftResultBegin) / m_FftSpacing * m_FftResultArrayHeight;
-	int j = (LastSampleRequired - m_FftResultBegin) / m_FftSpacing * m_FftResultArrayHeight;
 	typedef double DATA;
 	DATA * buf = NULL;
 	double PowerOffset = log(65536. * m_FftOrder * 0.31622) * 2.;
@@ -815,7 +881,13 @@ void CWaveFftView::CalculateFftRange(SAMPLE_INDEX left, SAMPLE_INDEX right)
 	int MinRes = 128;
 	int nNewFFtCalculated = 0;
 #endif
-	for (; ii < j; ii += m_FftResultArrayHeight, FirstSampleRequired += m_FftSpacing)
+
+	int ii = (FirstSampleRequired - m_FftResultBegin) / m_FftSpacing * m_FftResultArrayHeight;
+	int j = (LastSampleRequired - m_FftResultBegin) / m_FftSpacing * m_FftResultArrayHeight;
+
+	FirstSampleRequired -= m_FftOrder;
+
+	for (; ii <= j; ii += m_FftResultArrayHeight, FirstSampleRequired += m_FftSpacing)
 	{
 		int i = (ii + m_IndexOfFftBegin * m_FftResultArrayHeight) % m_FftArraySize;
 
@@ -832,20 +904,32 @@ void CWaveFftView::CalculateFftRange(SAMPLE_INDEX left, SAMPLE_INDEX right)
 
 			NUMBER_OF_CHANNELS nChannels = pDoc->WaveChannels();
 			unsigned char * pRes = & m_pFftResultArray[i + 1 + m_FftOrder];
-			if (FirstSampleRequired + m_FftOrder * 2 > pDoc->WaveFileSamples())
+			if (FirstSampleRequired + m_FftOrder > pDoc->WaveFileSamples())
 			{
 				TRACE("The required samples from %d to %d are out of the file\n",
-					FirstSampleRequired, FirstSampleRequired + m_FftOrder * 2);
+					FirstSampleRequired, FirstSampleRequired + m_FftOrder);
 				continue;
 			}
-
+#if 0
+			if (FirstSampleRequired < 0)
+			{
+				memset(m_pFftResultArray + 1, 0, m_FftOrder * 2);
+			}
+			else
+#endif
 			for (int ch = 0; ch < nChannels; ch++)
 			{
 				WAVE_SAMPLE * pWaveSamples;
 
-				ASSERT(FirstSampleRequired >= 0);
-				m_WaveBuffer.GetData( & pWaveSamples, FirstSampleRequired * nChannels,
-									m_FftOrder * 2 * nChannels, this);
+				long NeedSamples = m_FftOrder * 2 * nChannels;
+
+				if (NeedSamples != m_WaveBuffer.GetData( & pWaveSamples,
+														ch + FirstSampleRequired * nChannels,
+														NeedSamples, this))
+				{
+					m_pFftResultArray[i] = 0;   // mark as invalid
+					continue;
+				}
 
 				int k;
 				for (k = 0; k < m_FftOrder * 2; k++, pWaveSamples += nChannels)
@@ -1076,7 +1160,7 @@ BOOL CWaveFftView::MasterScrollBy(double dx, double dy, BOOL bDoScroll)
 {
 	if (dx != 0.)
 	{
-		CScaledScrollView::MasterScrollBy(dx, 0, bDoScroll);
+		BaseClass::MasterScrollBy(dx, 0, bDoScroll);
 	}
 	if (dy != 0.)
 	{
@@ -1186,21 +1270,22 @@ void CWaveFftView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
 		SAMPLE_INDEX right = pInfo->m_End;
 
 		// find out which samples are affected
-		SAMPLE_INDEX FirstSampleChanged = SampleToFftBaseSample(left);
-		SAMPLE_INDEX LastSampleRequired = SampleToFftBaseSample(right) + 2 * m_FftOrder;
+		SAMPLE_INDEX FirstSampleChanged = SampleToFftBaseSample(left - m_FftOrder);
+		SAMPLE_INDEX LastSampleChanged = SampleToFftBaseSample(right);
 
 		if (FirstSampleChanged < m_FftResultBegin)
 		{
 			FirstSampleChanged = m_FftResultBegin;
 		}
-		if (LastSampleRequired > m_FftResultEnd)
+		if (LastSampleChanged > m_FftResultEnd)
 		{
-			LastSampleRequired = m_FftResultEnd;
+			LastSampleChanged = m_FftResultEnd;
 		}
-		if (LastSampleRequired > m_FftResultBegin
-			&& FirstSampleChanged < m_FftResultEnd)
+
+		if (LastSampleChanged > m_FftResultBegin
+			&& FirstSampleChanged <= m_FftResultEnd)
 		{
-			for (SAMPLE_INDEX Sample = FirstSampleChanged; Sample < LastSampleRequired; Sample += m_FftSpacing)
+			for (SAMPLE_INDEX Sample = FirstSampleChanged; Sample <= LastSampleChanged; Sample += m_FftSpacing)
 			{
 				size_t i = (((Sample - m_FftResultBegin) / m_FftSpacing + m_IndexOfFftBegin)
 								* m_FftResultArrayHeight) % m_FftArraySize;
@@ -1211,15 +1296,15 @@ void CWaveFftView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
 		// process length change
 		if (pInfo->m_NewLength != -1)
 		{
-			NUMBER_OF_SAMPLES sample = pInfo->m_NewLength;
-			sample -= sample % m_FftSpacing;
+			NUMBER_OF_SAMPLES sample = SampleToFftBaseSample(pInfo->m_NewLength - m_FftOrder);
+
 			if (sample < m_FftResultBegin)
 			{
 				sample = m_FftResultBegin;
 			}
 
 			// invalidate the columns that correspond to the deleted data
-			for (; sample < m_FftResultEnd; sample += m_FftSpacing)
+			for (; sample <= m_FftResultEnd; sample += m_FftSpacing)
 			{
 				// invalidate the column
 				size_t i = (((sample - m_FftResultBegin) / m_FftSpacing + m_IndexOfFftBegin)
@@ -1227,7 +1312,12 @@ void CWaveFftView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
 				m_pFftResultArray[i] = 0;
 			}
 		}
-		BaseClass::OnUpdate(pSender, lHint, pHint);
+
+		pInfo->m_Begin = FirstSampleChanged - m_FftSpacing / 2;
+		pInfo->m_End = LastSampleChanged + m_FftSpacing / 2;
+		BaseClass::OnUpdate(pSender, lHint, pInfo);
+		pInfo->m_Begin = left;
+		pInfo->m_End = right;
 	}
 	else if (lHint == CWaveSoapFrontDoc::UpdateSelectionChanged
 			&& NULL != pHint)

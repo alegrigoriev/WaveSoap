@@ -50,18 +50,22 @@ protected:
 	virtual void Dump(CDumpContext& dc) const;
 #endif
 
-	// FFT array is stored as circular.
-	// m_IndexOfFftBegin is index of row with m_FftResultBegin
+	// FFT array is stored as circular buffer of FFT columns.
+	// each column is a row of the array of m_FftResultArrayHeight bytes
+	// m_IndexOfFftBegin is number of row with m_FftResultBegin
+	// FFT array is stored as a ring array of 'm_FftResultArrayWidth' columns
+	// m_IndexOfFftBegin is offset in the array of the beginning column.
+	// m_FftResultBegin holds the median sample index of the first column.
+	// m_FftResultEnd holds the median sample index of the last column.
 	unsigned char * m_pFftResultArray;
 	size_t m_FftArraySize;
 	int m_FftResultArrayWidth;    // number of FFT sets
 	int m_FftResultArrayHeight;   // number of frequencies
 	int m_IndexOfFftBegin;
 
-	SAMPLE_INDEX m_FftResultBegin;     // number of the first sample
-	SAMPLE_INDEX m_FftResultEnd;     // number of the sample after the last
+	SAMPLE_INDEX m_FftResultBegin;
+	SAMPLE_INDEX m_FftResultEnd;
 
-	//int m_FftSamplesCalculated;
 	double m_FftLogRange;     // what dB zero value corresponds
 	double m_FirstbandVisible;     // how much the chart is scrolled. 0 = DC is visible
 
@@ -82,6 +86,7 @@ protected:
 	long SampleToFftColumn(SAMPLE_INDEX sample);
 	SAMPLE_INDEX FftColumnToDisplaySample(long Column);
 	SAMPLE_INDEX SampleToFftBaseSample(SAMPLE_INDEX sample);
+	SAMPLE_INDEX DisplaySampleToFftBaseSample(SAMPLE_INDEX sample);
 
 	static HBRUSH m_Brush;
 	// Generated message map functions
