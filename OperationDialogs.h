@@ -145,6 +145,9 @@ public:
 // Dialog Data
 	//{{AFX_DATA(CSelectionDialog)
 	enum { IDD = IDD_SELECTION_DIALOG };
+	CSpinButtonCtrl	m_SpinStart;
+	CSpinButtonCtrl	m_SpinLength;
+	CSpinButtonCtrl	m_SpinEnd;
 	CTimeEdit	m_eLength;
 	CTimeEdit	m_eStart;
 	CTimeEdit	m_eEnd;
@@ -191,6 +194,7 @@ public:
 // Dialog Data
 	//{{AFX_DATA(CGotoDialog)
 	enum { IDD = IDD_DIALOG_GOTO };
+	CTimeSpinCtrl	m_StartSpin;
 	CTimeEdit	m_eStart;
 	int		m_TimeFormatIndex;
 	//}}AFX_DATA

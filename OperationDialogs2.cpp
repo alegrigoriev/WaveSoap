@@ -32,10 +32,12 @@ void CInsertSilenceDialog::DoDataExchange(CDataExchange* pDX)
 {
 	CDialog::DoDataExchange(pDX);
 	//{{AFX_DATA_MAP(CInsertSilenceDialog)
-	DDX_Control(pDX, IDC_EDIT_START, m_eStart);
+	DDX_Control(pDX, IDC_SPIN_START, m_SpinStart);
+	DDX_Control(pDX, IDC_SPIN_LENGTH, m_SpinLength);
 	DDX_Control(pDX, IDC_EDIT_LENGTH, m_eLength);
-	DDX_CBIndex(pDX, IDC_COMBO_TIME_FORMAT, m_TimeFormatIndex);
+	DDX_Control(pDX, IDC_EDIT_START, m_eStart);
 	DDX_Radio(pDX, IDC_RADIO_CHANNEL, m_nChannel);
+	DDX_CBIndex(pDX, IDC_COMBO_TIME_FORMAT, m_TimeFormatIndex);
 	//}}AFX_DATA_MAP
 	m_eLength.ExchangeData(pDX, m_Length);
 	m_eStart.ExchangeData(pDX, m_Start);

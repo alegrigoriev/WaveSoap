@@ -29,7 +29,7 @@ void CCopyChannelsSelectDlg::DoDataExchange(CDataExchange* pDX)
 {
 	CDialog::DoDataExchange(pDX);
 	//{{AFX_DATA_MAP(CCopyChannelsSelectDlg)
-	DDX_Radio(pDX, IDC_RADIO_LEFT, m_ChannelToCopy);
+	DDX_Radio(pDX, IDC_RADIO_CHANNEL_BOTH, m_ChannelToCopy);
 	//}}AFX_DATA_MAP
 }
 
@@ -335,6 +335,9 @@ void CSelectionDialog::DoDataExchange(CDataExchange* pDX)
 {
 	CDialog::DoDataExchange(pDX);
 	//{{AFX_DATA_MAP(CSelectionDialog)
+	DDX_Control(pDX, IDC_SPIN_START, m_SpinStart);
+	DDX_Control(pDX, IDC_SPIN_LENGTH, m_SpinLength);
+	DDX_Control(pDX, IDC_SPIN_END, m_SpinEnd);
 	DDX_Control(pDX, IDC_EDIT_LENGTH, m_eLength);
 	DDX_Control(pDX, IDC_EDIT_START, m_eStart);
 	DDX_Control(pDX, IDC_EDIT_END, m_eEnd);
@@ -603,6 +606,7 @@ void CGotoDialog::DoDataExchange(CDataExchange* pDX)
 {
 	CDialog::DoDataExchange(pDX);
 	//{{AFX_DATA_MAP(CGotoDialog)
+	DDX_Control(pDX, IDC_SPIN_START, m_StartSpin);
 	DDX_Control(pDX, IDC_EDIT_START, m_eStart);
 	DDX_CBIndex(pDX, IDC_COMBO_TIME_FORMAT, m_TimeFormatIndex);
 	//}}AFX_DATA_MAP
