@@ -2237,6 +2237,32 @@ BEGIN
     LTEXT           "dB",IDC_STATIC_NORMALIZE_DB,136,21,13,8
 END
 
+IDD_DIALOG_WITH_HISTORY_TEMPLATE_V4 DIALOGEX 0, 0, 279, 38
+STYLE DS_SETFONT | DS_3DLOOK | DS_FIXEDSYS | DS_CONTROL | WS_CHILD | 
+    WS_CLIPSIBLINGS
+FONT 8, "MS Shell Dlg", 0, 0, 0x0
+BEGIN
+    RTEXT           "Re&cent: ",-1,3,9,26,8
+    COMBOBOX        IDC_COMBO_RECENT,36,7,228,68,CBS_DROPDOWNLIST | 
+                    WS_VSCROLL | WS_TABSTOP
+    RTEXT           "",1119,0,22,272,8,NOT WS_VISIBLE
+    CONTROL         " ",IDC_CHECK1,"Button",BS_AUTOCHECKBOX | NOT WS_VISIBLE | 
+                    WS_DISABLED | WS_TABSTOP,99,30,12,8
+END
+
+IDD_DIALOG_WITH_HISTORY_TEMPLATE_V5 DIALOGEX 0, 0, 372, 39
+STYLE DS_SETFONT | DS_3DLOOK | DS_FIXEDSYS | DS_CONTROL | WS_CHILD | 
+    WS_CLIPSIBLINGS
+FONT 8, "MS Shell Dlg", 0, 0, 0x0
+BEGIN
+    RTEXT           "Re&cent: ",-1,33,9,26,8
+    COMBOBOX        IDC_COMBO_RECENT,66,7,228,68,CBS_DROPDOWNLIST | 
+                    WS_VSCROLL | WS_TABSTOP
+    RTEXT           "",1119,0,22,367,8,NOT WS_VISIBLE
+    CONTROL         " ",IDC_CHECK1,"Button",BS_AUTOCHECKBOX | NOT WS_VISIBLE | 
+                    WS_DISABLED | WS_TABSTOP,126,31,12,8
+END
+
 
 /////////////////////////////////////////////////////////////////////////////
 //
@@ -2645,6 +2671,17 @@ BEGIN
         RIGHTMARGIN, 225
         TOPMARGIN, 7
         BOTTOMMARGIN, 188
+    END
+
+    IDD_DIALOG_WITH_HISTORY_TEMPLATE_V4, DIALOG
+    BEGIN
+        RIGHTMARGIN, 275
+        BOTTOMMARGIN, 37
+    END
+
+    IDD_DIALOG_WITH_HISTORY_TEMPLATE_V5, DIALOG
+    BEGIN
+        RIGHTMARGIN, 368
     END
 END
 #endif    // APSTUDIO_INVOKED
@@ -3352,6 +3389,7 @@ BEGIN
     IDS_WMA_ENCODER_NOT_AVILABLE 
                             "Windows Media Audio (WMA) encoder is not available. To encode to WMA format, you need to install Windows Media Player."
     IDS_REPLACEYESNO        "%s\nThis file already exists.\nReplace existing file?"
+    IDC_FILE_READ_ERROR     "Error occured while reading file ""%s"":\n\n%s"
 END
 
 #endif    // English (U.S.) resources
