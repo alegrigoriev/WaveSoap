@@ -192,6 +192,10 @@ void CWaveOutlineView::OnDraw(CDC* pDC)
 		}
 	}
 
+	if (0 == PeakMax)
+	{
+		PeakMax = 1;
+	}
 	for (i = ur.left; i < ur.right; i++)
 	{
 		if (pPeaks[i].low <= pPeaks[i].high)
