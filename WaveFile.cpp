@@ -2714,18 +2714,24 @@ void CWaveFile::CopyMetadata(CWaveFile const & src)
 	}
 }
 
-void CWaveFile::GetSortedMarkers(SAMPLE_INDEX_Vector & markers) const
+// NOTE: vector 'markers' is NOT cleared in the function!
+void CWaveFile::GetSortedMarkers(SAMPLE_INDEX_Vector & markers, BOOL IncludeFileLimits) const
 {
 	InstanceDataWav * inst = GetInstanceData();
 	if (NULL != inst)
 	{
+		if (IncludeFileLimits)
+		{
+			markers.push_back(0);
+			markers.push_back(NumberOfSamples());
+		}
 		inst->GetSortedMarkers(markers);
 	}
 }
 
 void CWaveFile::InstanceDataWav::GetSortedMarkers(SAMPLE_INDEX_Vector & markers) const
 {
-	markers.reserve(m_CuePoints.size() + m_RegionMarkers.size());
+	markers.reserve(markers.size() + m_CuePoints.size() + m_RegionMarkers.size());
 
 	for (ConstCuePointVectorIterator i = m_CuePoints.begin(); i < m_CuePoints.end(); i++)
 	{

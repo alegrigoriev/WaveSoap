@@ -718,7 +718,7 @@ public:
 	BOOL SetMarkerLabel(unsigned long MarkerCueID, LPCTSTR Label);
 
 	// return sorted array of markers
-	void GetSortedMarkers(SAMPLE_INDEX_Vector & markers) const;
+	void GetSortedMarkers(SAMPLE_INDEX_Vector & markers, BOOL IncludeFileLimits = FALSE) const;
 
 	unsigned SampleRate() const
 	{
