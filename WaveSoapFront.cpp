@@ -26,11 +26,6 @@
 #include "GdiObjectSave.h"
 #include "OperationContext.h"
 #include "OperationContext2.h"
-#ifdef NOMINMAX
-#include <algorithm>
-using std::min;
-using std::max;
-#endif
 
 #ifdef _DEBUG
 #define new DEBUG_NEW

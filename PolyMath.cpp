@@ -2,11 +2,6 @@
 #include "stdafx.h"
 #include "PolyMath.h"
 #include <float.h>
-#ifdef NOMINMAX
-#include <algorithm>
-using std::min;
-using std::max;
-#endif
 
 #if defined(_DEBUG)
 CDumpContext & operator << (CDumpContext & dc, Complex c)

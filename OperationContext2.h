@@ -541,6 +541,10 @@ public:
 	{
 
 	}
+	BOOL InitInsertCopy(CWaveFile & DstFile, SAMPLE_INDEX StartDstSample,
+						NUMBER_OF_SAMPLES LengthToReplace, CHANNEL_MASK DstChannel,
+						CWaveFile & SrcFile, SAMPLE_INDEX StartSrcSample,
+						NUMBER_OF_SAMPLES SamplesToInsert, CHANNEL_MASK SrcChannel);
 	//virtual BOOL CreateUndo(BOOL IsRedo = FALSE);
 };
 

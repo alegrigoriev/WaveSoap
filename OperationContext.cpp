@@ -8,10 +8,6 @@
 #include "DialogWithSelection.inl"
 #include "WaveSoapFrontDoc.h"
 #include <algorithm>
-#ifdef NOMINMAX
-using std::min;
-using std::max;
-#endif
 
 static int fround(double d)
 {
