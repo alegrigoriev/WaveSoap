@@ -8,25 +8,11 @@
 #define ASSERT(x)
 #endif
 
-#ifdef _DEBUG
-#pragma warning(disable: 4035)
-static inline __int64 FftReadTSC()
-{
-	__asm RDTSC
-}
-#pragma warning(default: 4035)
-
-unsigned FftTime1, FftTime2, FftTime3, FftTime4, FftTime5, FftTime6, FftTime7;
-#endif
-
 // Conversion of 'count' complex FFT result terms to 'count'
 // terms as if they were obtained from real data. Used in real->complex FFT
 template<class T>
 void FFTPostProc(complex<T> * x, const int count)
 {
-#if 0//def _DEBUG
-	FftTime6 = FftReadTSC();
-#endif
 	ASSERT(count > 0 && count % 2 == 0);
 	double angle = -M_PI / count;
 	T rot_r = cos(angle), rot_i = -sin(angle);
@@ -48,9 +34,6 @@ void FFTPostProc(complex<T> * x, const int count)
 		u_i = u_r * rot_i + u_i * rot_r;
 		u_r = tmp_r;
 	}
-#if 0 //def _DEBUG
-	FftTime7 = FftReadTSC();
-#endif
 }
 
 // Conversion of 'count+1' complex FFT result terms to 'count+1'
@@ -59,9 +42,6 @@ void FFTPostProc(complex<T> * x, const int count)
 template<class T>
 void IFFTPreProc(const complex<T> * src, complex<T> * dst, const int count)
 {
-#if 0//def _DEBUG
-	FftTime6 = FftReadTSC();
-#endif
 	ASSERT(count > 0 && count % 2 == 0);
 	double angle = -M_PI / count;
 	T rot_r = cos(angle), rot_i = sin(angle);
@@ -83,9 +63,6 @@ void IFFTPreProc(const complex<T> * src, complex<T> * dst, const int count)
 		dst[k].real(T(0.5) * (tmp_r - tmp3));
 		dst[k].imag(T(0.5) * (tmp2_i + tmp_i));
 	}
-#if 0//def _DEBUG
-	FftTime7 = FftReadTSC();
-#endif
 }
 
 //inline implementation of a generic complex->complex fft function
@@ -94,9 +71,6 @@ void FastFourierTransformCore(const T * src, T * dst,
 							const int order_power,
 							const int reverse_fft)
 {
-#if 0//def _DEBUG
-	FftTime1 = FftReadTSC();
-#endif
 	int i;
 	int n = 1 << (order_power + 1);
 	if (src != dst)
@@ -106,9 +80,6 @@ void FastFourierTransformCore(const T * src, T * dst,
 			dst[i] = src[i];
 		}
 	}
-#if 0//def _DEBUG
-	FftTime2 = FftReadTSC();
-#endif
 	for (int L = 0; L < order_power; L++)
 	{
 
@@ -164,9 +135,6 @@ void FastFourierTransformCore(const T * src, T * dst,
 		}
 	} // L - loop
 
-#if 0//def _DEBUG
-	FftTime3 = FftReadTSC();
-#endif
 	int j;
 	for (i = 0, j = 0; i < n >> 1; i +=4)
 	{
@@ -202,9 +170,6 @@ void FastFourierTransformCore(const T * src, T * dst,
 		j += k;
 	}
 
-#if 0//def _DEBUG
-	FftTime5 = FftTime4 = FftReadTSC();
-#endif
 	if (! reverse_fft) return;
 
 	T a = 2.0 / n;
@@ -214,9 +179,6 @@ void FastFourierTransformCore(const T * src, T * dst,
 		dst[k + 1] *= a;
 	}
 
-#if 0//def _DEBUG
-	FftTime5 = FftReadTSC();
-#endif
 	return;
 }
 
