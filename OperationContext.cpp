@@ -3349,47 +3349,62 @@ BOOL CNormalizeContext::Init()
 
 void CFileSaveContext::PostRetire()
 {
-	RetireAllChildren();
+	RetireAllChildren();  // make sure all references in child operations are closed
 	// rename files, change them
 	if (m_Flags & OperationContextFinished)
 	{
 		// but if a copy is created, just close it
-		if (m_Flags & FileSaveContext_SavingCopy)
+		if (m_Flags & FileSaveContext_SavingPartial)
 		{
-			// will be closed by the destructor
 			m_DstFile.CommitChanges();
-			m_pDocument->m_WavFile.SavePeakInfo(m_DstFile);
+			m_DstFile.Close();
+		}
+		else if (m_Flags & FileSaveContext_SavingCopy)
+		{
+			m_DstFile.CommitChanges();
 
-			// ask about opening the file
-			CReopenSavedFileCopyDlg dlg;
-			UINT fmt = IDS_OPEN_SAVED_FILE_COPY;
-			if (m_NewFileTypeFlags != 0
-				|| m_DstFile.GetWaveFormat()->wFormatTag != WAVE_FORMAT_PCM
-				|| m_DstFile.GetWaveFormat()->wBitsPerSample != 16)
+			if (0 == (m_Flags & FileSaveContext_DontSavePeakInfo))
 			{
-				fmt = IDS_OPEN_SAVED_FILE_COPY_NONDIRECT;
-				dlg.m_bDisableDirect = TRUE;
+				m_pDocument->m_WavFile.SavePeakInfo(m_DstFile);
 			}
 
-			dlg.m_Prompt.Format(fmt, LPCTSTR(m_pDocument->GetTitle()),
-								LPCTSTR(m_NewName));
-
-			int res;
+			if (0 == (m_Flags & FileSaveContext_DontPromptReopen))
 			{
-				CDocumentPopup pop(m_pDocument);
-				res = dlg.DoModal();
-			}
-			if (IDCANCEL != res)
-			{
-				m_DstFile.Close();  // to allow open
-				int OpenFlags = 0;
-				if (IDOK == res)
+				// ask about opening the file
+				CReopenSavedFileCopyDlg dlg;
+				UINT fmt = IDS_OPEN_SAVED_FILE_COPY;
+				if (m_NewFileTypeFlags != 0
+					|| m_DstFile.GetWaveFormat()->wFormatTag != WAVE_FORMAT_PCM
+					|| m_DstFile.GetWaveFormat()->wBitsPerSample != 16)
 				{
-					// direct mode
-					OpenFlags = OpenDocumentDirectMode;
+					fmt = IDS_OPEN_SAVED_FILE_COPY_NONDIRECT;
+					dlg.m_bDisableDirect = TRUE;
 				}
-				// file type will be determined there
-				GetApp()->OpenDocumentFile(m_NewName, OpenFlags);
+
+				dlg.m_Prompt.Format(fmt, LPCTSTR(m_pDocument->GetTitle()),
+									LPCTSTR(m_NewName));
+
+				int res;
+				{
+					CDocumentPopup pop(m_pDocument);
+					res = dlg.DoModal();
+				}
+				if (IDCANCEL != res)
+				{
+					m_DstFile.Close();  // to allow open
+					int OpenFlags = 0;
+					if (IDOK == res)
+					{
+						// direct mode
+						OpenFlags = OpenDocumentDirectMode;
+					}
+					// file type will be determined there
+					GetApp()->OpenDocumentFile(m_NewName, OpenFlags);
+				}
+			}
+			else
+			{
+				m_DstFile.Close();
 			}
 		}
 		else
@@ -3422,16 +3437,16 @@ CConversionContext::CConversionContext(CWaveSoapFrontDoc * pDoc, UINT StatusStri
 CConversionContext::CConversionContext(CWaveSoapFrontDoc * pDoc, UINT StatusStringId,
 										UINT OperationNameId,
 										CWaveFile & SrcFile,
-										CWaveFile & DstFile, BOOL RawDstFile)
+										CWaveFile & DstFile, BOOL RawDstFile, SAMPLE_INDEX SrcBegin, SAMPLE_INDEX SrcEnd)
 	: BaseClass(pDoc, StatusStringId, OperationNameId)
 {
 	// delete the procs in the destructor
 	m_SrcFile = SrcFile;
 	m_DstFile = DstFile;
 
-	m_SrcStart = m_SrcFile.SampleToPosition(0);
+	m_SrcStart = m_SrcFile.SampleToPosition(SrcBegin);
 	m_SrcPos = m_SrcStart;
-	m_SrcEnd = m_SrcFile.SampleToPosition(LAST_SAMPLE);
+	m_SrcEnd = m_SrcFile.SampleToPosition(SrcEnd);
 
 	if (RawDstFile)
 	{
@@ -3641,6 +3656,16 @@ BOOL CWaveProcContext::OperationProc()
 	m_pDocument->FileChanged(m_DstFile, dwOperationBegin, m_DstPos);
 
 	return TRUE;
+}
+
+BOOL CWaveProcContext::Init()
+{
+	return m_ProcBatch.Init();
+}
+
+void CWaveProcContext::DeInit()
+{
+	m_ProcBatch.DeInit();
 }
 
 BOOL CDecompressContext::OperationProc()

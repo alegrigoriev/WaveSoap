@@ -323,6 +323,9 @@ public:
 enum {
 	FileSaveContext_SavingCopy    = 0x40000000,
 	FileSaveContext_SameName    =   0x20000000,
+	FileSaveContext_DontPromptReopen =   0x10000000,
+	FileSaveContext_DontSavePeakInfo =   0x08000000,
+	FileSaveContext_SavingPartial    = 0x04000000,
 	DecompressSavePeakFile = 0x20000000,
 };
 
@@ -715,10 +718,12 @@ public:
 	{
 		return m_ProcBatch.GetMaxClipped();
 	}
+protected:
 	virtual BOOL OperationProc();
 
-protected:
 	CBatchProcessing m_ProcBatch;
+	virtual BOOL Init();
+	virtual void DeInit();
 };
 
 // is used to convert the whole file
@@ -733,7 +738,7 @@ public:
 	CConversionContext(CWaveSoapFrontDoc * pDoc, UINT StatusStringId,
 						UINT OperationNameId,
 						CWaveFile & SrcFile,
-						CWaveFile & DstFile, BOOL RawDstFile);
+						CWaveFile & DstFile, BOOL RawDstFile, SAMPLE_INDEX SrcBegin = 0, SAMPLE_INDEX SrcEnd = LAST_SAMPLE);
 
 	virtual void PostRetire();
 };
@@ -842,8 +847,10 @@ class CWmaSaveContext : public CConversionContext
 public:
 	typedef std::auto_ptr<ThisClass> auto_ptr;
 
-	CWmaSaveContext(CWaveSoapFrontDoc * pDoc, UINT StatusStringId = 0, UINT OperationNameId = 0)
-		: BaseClass(pDoc, StatusStringId, OperationNameId)
+	CWmaSaveContext(CWaveSoapFrontDoc * pDoc, UINT StatusStringId, UINT OperationNameId,
+					CWaveFile & SrcFile, CWaveFile & DstFile,
+					SAMPLE_INDEX SrcBegin, SAMPLE_INDEX SrcEnd)
+		: BaseClass(pDoc, StatusStringId, OperationNameId, SrcFile, DstFile, TRUE, SrcBegin, SrcEnd)
 	{
 	}
 
