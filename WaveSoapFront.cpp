@@ -385,9 +385,9 @@ BOOL CWaveSoapFrontApp::InitInstance()
 	Profile.AddItem(_T("Settings"), _T("FftWindowType"), m_FftWindowType, 0, 0, 2);
 	Profile.AddItem(_T("Settings"), _T("DefaultOpenMode"), m_DefaultOpenMode, DefaultOpenBuffered, 0, 2);
 
-	Profile.AddItem(_T("Settings"), _T("UseMemoryFiles"), m_bUseMemoryFiles, true);
 	Profile.AddItem(_T("Settings"), _T("MaxMemoryFileSize"), m_MaxMemoryFileSize, 64, 1, 1024);
 	Profile.AddItem(_T("Settings"), _T("Allow4GbWavFile"), m_bAllow4GbWavFile, FALSE);
+	Profile.AddItem(_T("Settings"), _T("MetaTextEncoding"), CMmioFile::m_TextEncodingInFiles, 0, 0, 2);
 
 	Profile.AddItem(_T("Settings"), _T("PlaybackDevice"), m_DefaultPlaybackDevice, WAVE_MAPPER, WAVE_MAPPER, 64);
 	Profile.AddItem(_T("Settings"), _T("NumPlaybackBuffers"), m_NumPlaybackBuffers, 4, 2, 32);
@@ -2277,9 +2277,10 @@ void CWaveSoapFrontApp::OnToolsOptions()
 	dlg.m_FilePage.m_bRememberSelectionInUndo = m_bRememberSelectionInUndo;
 	dlg.m_FilePage.m_DefaultFileOpenMode = m_DefaultOpenMode;
 	dlg.m_FilePage.m_bEnable4GbWavFile = m_bAllow4GbWavFile;
-	dlg.m_FilePage.m_UseMemoryFiles = m_bUseMemoryFiles;
+
 	dlg.m_FilePage.m_MaxMemoryFileSize = m_MaxMemoryFileSize;
 	dlg.m_FilePage.m_MaxFileCache = m_MaxFileCache;
+	dlg.m_FilePage.m_FileTextEncoding = CMmioFile::m_TextEncodingInFiles;
 
 	dlg.m_SoundPage.m_PlaybackDevice = m_DefaultPlaybackDevice;
 	dlg.m_SoundPage.m_NumPlaybackBuffers = m_NumPlaybackBuffers;
@@ -2296,22 +2297,29 @@ void CWaveSoapFrontApp::OnToolsOptions()
 	if (IDOK == dlg.DoModal())
 	{
 		m_sTempDir = dlg.m_FilePage.m_sTempFileLocation;
+
 		m_bUndoEnabled = dlg.m_FilePage.m_bEnableUndo;
 		m_bRedoEnabled = dlg.m_FilePage.m_bEnableRedo;
+
 		m_MaxUndoDepth = dlg.m_FilePage.m_UndoDepthLimit;
 		m_MaxRedoDepth = dlg.m_FilePage.m_RedoDepthLimit;
+
 		m_MaxUndoSize = dlg.m_FilePage.m_UndoSizeLimit * 0x100000;
 		m_MaxRedoSize = dlg.m_FilePage.m_RedoSizeLimit * 0x100000;
+
 		m_bEnableUndoLimit = dlg.m_FilePage.m_bLimitUndoSize;
 		m_bEnableRedoLimit = dlg.m_FilePage.m_bLimitRedoSize;
+
 		m_bEnableUndoDepthLimit = dlg.m_FilePage.m_bLimitUndoDepth;
 		m_bEnableRedoDepthLimit = dlg.m_FilePage.m_bLimitRedoDepth;
+
 		m_bRememberSelectionInUndo = dlg.m_FilePage.m_bRememberSelectionInUndo;
 		m_DefaultOpenMode = dlg.m_FilePage.m_DefaultFileOpenMode;
+
 		m_bAllow4GbWavFile = (0 != dlg.m_FilePage.m_bEnable4GbWavFile);
-		m_bUseMemoryFiles = dlg.m_FilePage.m_UseMemoryFiles != FALSE;
 		m_MaxMemoryFileSize = dlg.m_FilePage.m_MaxMemoryFileSize;
 		m_MaxFileCache = dlg.m_FilePage.m_MaxFileCache;
+		CMmioFile::m_TextEncodingInFiles = dlg.m_FilePage.m_FileTextEncoding;
 
 		m_DefaultPlaybackDevice = dlg.m_SoundPage.m_PlaybackDevice;
 		m_NumPlaybackBuffers = dlg.m_SoundPage.m_NumPlaybackBuffers;
