@@ -664,6 +664,11 @@ class CWaveProcContext : public CTwoFilesOperation
 public:
 	typedef std::auto_ptr<ThisClass> auto_ptr;
 	CWaveProcContext(CWaveSoapFrontDoc * pDoc, UINT StatusStringId = 0, UINT OperationNameId = 0);
+	virtual void Dump(unsigned indent) const
+	{
+		BaseClass::Dump(indent);
+		m_ProcBatch.Dump(indent+1);
+	}
 
 	void AddWaveProc(CWaveProc * pProc, int index = -1)
 	{
