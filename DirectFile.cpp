@@ -499,6 +499,7 @@ BOOL CDirectFile::File::Close(DWORD flags)
 	{
 		return TRUE;
 	}
+	TRACE("Closing file %s, flags=%X\n", LPCTSTR(sName), m_Flags);
 	// If the use count is 0, copy all remaining data
 	// from the source file or init the rest and flush all the buffers,
 	if (0 == (m_Flags & FileFlagsDeleteAfterClose))
@@ -604,18 +605,31 @@ BOOL CDirectFile::File::Close(DWORD flags)
 		}
 	}
 
-	if (NULL != hFile)
-	{
-		CloseHandle(hFile);
-		hFile = NULL;
-	}
 
 	if (m_Flags & FileFlagsDeleteAfterClose)
 	{
+		// in Windows NT, the file is filled with zeros before being closed
+		// if the file wasn't written, CloseHandle may take a while
+		// so we better reset file length
+		if (NULL != hFile)
+		{
+			SetFilePointer(hFile, 0, NULL, FILE_BEGIN);
+			if (GetLastError() == ERROR_SUCCESS)
+			{
+				SetEndOfFile(hFile);
+			}
+			CloseHandle(hFile);
+			hFile = NULL;
+		}
 		DeleteFile(sName);
 	}
 	else
 	{
+		if (NULL != hFile)
+		{
+			CloseHandle(hFile);
+			hFile = NULL;
+		}
 		// set file length
 		// if the file is open for writing, open it in normal mode,
 		// set length, and close. When the file is open in direct mode,
@@ -647,6 +661,7 @@ BOOL CDirectFile::File::Close(DWORD flags)
 		}
 	}
 
+	TRACE("Closed file %s\n", LPCTSTR(sName));
 	delete this;
 	return TRUE;
 }
