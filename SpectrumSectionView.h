@@ -74,6 +74,8 @@ protected:
 	afx_msg void OnViewSsZoomouthor2();
 	afx_msg void OnUpdateViewSsZoomouthor2(CCmdUI* pCmdUI);
 	afx_msg void OnMouseMove(UINT nFlags, CPoint point);
+	afx_msg void OnUpdateViewShowCrosshair(CCmdUI* pCmdUI);
+	afx_msg void OnViewShowCrosshair();
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 };

@@ -85,6 +85,7 @@ public:
 		ScaleStaticID,
 		Static1ID,
 		OutlineViewID,
+		SpectrumSectionRulerID,
 	};
 
 	CWnd wStatic;

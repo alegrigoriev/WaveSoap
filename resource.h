@@ -481,6 +481,7 @@
 #define ID_EDIT_ENABLE_REDO             40095
 #define ID_EDIT_CLEAR_UNDO              40096
 #define ID_EDIT_CLEAR_REDO              40097
+#define ID_VIEW_SHOW_CROSSHAIR          40098
 
 // Next default values for new objects
 //
@@ -488,7 +489,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_3D_CONTROLS                     1
 #define _APS_NEXT_RESOURCE_VALUE        174
-#define _APS_NEXT_COMMAND_VALUE         40098
+#define _APS_NEXT_COMMAND_VALUE         40099
 #define _APS_NEXT_CONTROL_VALUE         1159
 #define _APS_NEXT_SYMED_VALUE           101
 #endif

@@ -26,7 +26,7 @@ CSpectrumSectionView::CSpectrumSectionView()
 	m_nFftSumSize = 0;
 	m_PlaybackSample = 0;
 	m_bShowNoiseThreshold = FALSE;
-	m_bShowCrossHair = true;false;
+	m_bShowCrossHair = false;
 	m_bTrackingMouseRect = false;
 }
 
@@ -48,6 +48,8 @@ BEGIN_MESSAGE_MAP(CSpectrumSectionView, CScaledScrollView)
 	ON_COMMAND(ID_VIEW_SS_ZOOMOUTHOR2, OnViewSsZoomouthor2)
 	ON_UPDATE_COMMAND_UI(ID_VIEW_SS_ZOOMOUTHOR2, OnUpdateViewSsZoomouthor2)
 	ON_WM_MOUSEMOVE()
+	ON_UPDATE_COMMAND_UI(ID_VIEW_SHOW_CROSSHAIR, OnUpdateViewShowCrosshair)
+	ON_COMMAND(ID_VIEW_SHOW_CROSSHAIR, OnViewShowCrosshair)
 	//}}AFX_MSG_MAP
 	ON_MESSAGE(WM_MOUSELEAVE, OnMouseLeave)
 END_MESSAGE_MAP()
@@ -564,8 +566,7 @@ void CSpectrumSectionView::OnMouseMove(UINT nFlags, CPoint point)
 		TrackMouseEvent( & tme);
 		m_bTrackingMouseRect = true;
 	}
-	if (m_bShowCrossHair
-		&& point != m_PrevCrossHair)
+	if (point != m_PrevCrossHair)
 	{
 		HideCrossHair();
 		ShowCrossHair(point);
@@ -574,7 +575,8 @@ void CSpectrumSectionView::OnMouseMove(UINT nFlags, CPoint point)
 
 void CSpectrumSectionView::ShowCrossHair(POINT point, CDC * pDC)
 {
-	if ( ! m_bCrossHairDrawn)
+	if (m_bShowCrossHair
+		&&  ! m_bCrossHairDrawn)
 	{
 		DrawCrossHair(point, pDC);
 		m_PrevCrossHair = point;
@@ -660,4 +662,16 @@ void CSpectrumSectionView::RemoveSelectionRect()
 void CSpectrumSectionView::RestoreSelectionRect()
 {
 	ShowCrossHair(m_PrevCrossHair);
+}
+
+void CSpectrumSectionView::OnUpdateViewShowCrosshair(CCmdUI* pCmdUI)
+{
+	pCmdUI->SetCheck(m_bShowCrossHair);
+}
+
+void CSpectrumSectionView::OnViewShowCrosshair()
+{
+	RemoveSelectionRect();
+	m_bShowCrossHair = ! m_bShowCrossHair;
+	RestoreSelectionRect();
 }
