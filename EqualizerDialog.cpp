@@ -155,23 +155,17 @@ void CEqualizerDialog::UpdateSelectionStatic()
 
 void CEqualizerDialog::OnButtonSelection()
 {
-	CSelectionDialog dlg;
-	dlg.m_Start = m_Start;
-	dlg.m_End = m_End;
-	dlg.m_CaretPosition = m_CaretPosition;
-	dlg.m_Length = m_End - m_Start;
-	dlg.m_FileLength = m_FileLength;
-	dlg.m_Chan = m_Chan + 1;
-	dlg.m_pWf = m_pWf;
-	dlg.m_TimeFormat = m_TimeFormat;
+	CSelectionDialog dlg(m_Start, m_End, m_CaretPosition, m_Chan + 1, m_FileLength, m_pWf, m_TimeFormat);
 
 	if (IDOK != dlg.DoModal())
 	{
 		return;
 	}
-	m_Start = dlg.m_Start;
-	m_End = dlg.m_End;
-	m_Chan = dlg.m_Chan - 1;
+
+	m_Start = dlg.GetStart();
+	m_End = dlg.GetEnd();
+	m_Chan = dlg.GetChannel() - 1;
+
 	UpdateSelectionStatic();
 }
 /////////////////////////////////////////////////////////////////////////////
