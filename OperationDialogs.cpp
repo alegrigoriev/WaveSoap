@@ -1372,12 +1372,17 @@ BOOL CGotoDialog::OnInitDialog()
 // CResampleDialog dialog
 
 
-CResampleDialog::CResampleDialog(CWnd* pParent /*=NULL*/)
+CResampleDialog::CResampleDialog(BOOL bUndoEnabled,
+								long OldSampleRate,
+								bool CanOnlyChangeSampleRate,
+								CWnd* pParent /*=NULL*/)
 	: BaseClass(CResampleDialog::IDD, pParent)
+	, m_bUndo(bUndoEnabled)
+	, m_bCanOnlyChangeSamplerate(CanOnlyChangeSampleRate)
+	, m_OldSampleRate(OldSampleRate)
 {
 	//{{AFX_DATA_INIT(CResampleDialog)
 	m_bChangeRateOnly = FALSE;
-	m_bUndo = FALSE;
 	m_bChangeSamplingRate = -1;
 	m_NewSampleRate = 0;
 	//}}AFX_DATA_INIT
