@@ -24,11 +24,14 @@ helper.
 
 enum
 {
-	MmioFileOpenExisting = 1,
-	MmioFileOpenCreateNew = 2,
-	MmioFileOpenReadOnly = 4,
-	MmioFileOpenDontCreateRiff = 8,
+	MmioFileOpenExisting = CDirectFile::OpenExisting,
+	MmioFileOpenCreateNew = CDirectFile::CreateNew,
+	MmioFileOpenCreateAlways = CDirectFile::CreateAlways,
+	MmioFileOpenReadOnly = CDirectFile::OpenReadOnly,
+	MmioFileOpenDeleteAfterClose = CDirectFile::OpenDeleteAfterClose,
+	MmioFileOpenDontCreateRiff = 0x80000000,
 };
+
 class CMmioFile
 {
 	class CSimpleCriticalSection
@@ -69,9 +72,11 @@ class CMmioFile
 public:
 	// construction
 	CMmioFile();
-	CMmioFile( LPCTSTR lpszFileName, UINT nOpenFlags );
 	virtual BOOL Open( LPCTSTR lpszFileName, UINT nOpenFlags);
 	virtual void Close( );
+	CMmioFile & operator =(CMmioFile &);
+
+
 	BOOL GetFileInformationByHandle(LPBY_HANDLE_FILE_INFORMATION lpFileInformation)
 	{
 		return m_File.GetFileInformationByHandle(lpFileInformation);
@@ -161,23 +166,15 @@ public:
 
 	CDirectFile m_File;
 	HMMIO m_hmmio;
-	enum { ReadBufferSize = 0x10000};   // 64k
-	//char * m_pReadBuffer;
-	//DWORD m_BufFileOffset;
-	//ORD m_CurrFileOffset;
-	//DWORD m_SectorSize;
 	DWORD m_dwSize;
 	MMCKINFO m_riffck;  // RIFF chunk info
 	CSimpleCriticalSection m_cs;
 private:
-#if 0
-	size_t BufferedRead(void * pBuf, size_t size);
-	LONG FileRead(void * pBuf, size_t size);
-	void SeekBufferedRead(DWORD position)
+	// wrong type of constructor
+	CMmioFile(const CMmioFile &)
 	{
-		m_CurrFileOffset = position;
+		ASSERT(FALSE);
 	}
-#endif
 
 	static LRESULT PASCAL BufferedIOProc(LPSTR lpmmioinfo, UINT wMsg,
 										LPARAM lParam1, LPARAM lParam2);
@@ -185,12 +182,12 @@ private:
 };
 
 enum {
-	CreateWaveFileTempDir = 1,
-	CreateWaveFileDeleteAfterClose = 2,
-	CreateWaveFileDontInitStructure = 4,
-	CreateWaveFileDontCopyInfo = 8,
-	CreateWaveFilePcmFormat = 0x10,
-	CreateWaveFileTemp = 0x20,
+	CreateWaveFileDeleteAfterClose = MmioFileOpenDeleteAfterClose,
+	CreateWaveFileDontInitStructure = MmioFileOpenDontCreateRiff,
+	CreateWaveFileTempDir = 0x00100000,
+	CreateWaveFileDontCopyInfo = 0x00200000,
+	CreateWaveFilePcmFormat = 0x00400000,
+	CreateWaveFileTemp = 0x00800000,
 };
 
 class CWaveFile : public CMmioFile
@@ -202,8 +199,10 @@ public:
 	BOOL CreateWaveFile(CWaveFile * pTemplateFile, int Channel, int Samples, DWORD flags, LPCTSTR FileName);
 #if 0
 	virtual BOOL Open( LPCTSTR lpszFileName, UINT nOpenFlags);
-	virtual void Close( );
 #endif
+	virtual void Close( );
+	CWaveFile & operator =(CWaveFile &);
+
 	MMCKINFO m_datack;
 
 	BOOL LoadWaveformat();
@@ -213,6 +212,12 @@ public:
 	int Channels() const;
 
 	WAVEFORMATEX * m_pWf;
+private:
+	// wrong type of constructor
+	CWaveFile(const CWaveFile &)
+	{
+		ASSERT(FALSE);
+	}
 };
 
 #endif //#ifndef WAVE_FILE__H__
