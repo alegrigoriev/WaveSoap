@@ -3072,18 +3072,21 @@ void CWaveSoapFrontDoc::OnSoundPlay()
 	{
 		CThisApp * pApp = GetApp();
 
+		INT_PTR PlaybackDevice = pApp->m_DefaultPlaybackDevice;
+		if (PlaybackDevice >= CWaveOut::GetNumDevs())
+		{
+			PlaybackDevice = WAVE_MAPPER;
+		}
+
 		CSoundPlayContext * pContext = new CSoundPlayContext(this,
 															m_WavFile,
 															m_SelectionStart, m_SelectionEnd, m_SelectedChannel,
-															pApp->m_DefaultPlaybackDevice,
+															PlaybackDevice,
 															pApp->m_NumPlaybackBuffers,
 															pApp->m_SizePlaybackBuffers);
 
-		if (NULL != pContext)
-		{
-			m_PlayingSound = true;
-			pContext->Execute();
-		}
+		m_PlayingSound = true;
+		pContext->Execute();
 	}
 }
 
