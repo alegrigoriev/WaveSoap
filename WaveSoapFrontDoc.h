@@ -56,6 +56,7 @@ enum {
 	SetSelection_MakeCaretVisible = 1,
 	SetSelection_MoveCaretToCenter = 2,
 	SetSelection_SnapToMaximum = 4,
+	SetSelection_MakeFileVisible = 8,   // make sure the file is in the
 	SaveFile_SameName = 4,
 	SaveFile_CloseAfterSave = 8,
 	SaveFile_SaveCopy = 0x10,
