@@ -1738,13 +1738,15 @@ CExpressionEvaluationDialog::CExpressionEvaluationDialog(SAMPLE_INDEX begin,
 														CWaveFile & File,
 														BOOL ChannelsLocked, BOOL UndoEnabled,
 														int TimeFormat,
+														CExpressionEvaluationContext * pContext,
 														CWnd* pParent /*=NULL*/)
 	: BaseClass(begin, end, caret, Channels, File,
 				TimeFormat,
 				IDD, pParent),
 	m_ExpressionGroupSelected(0),
 	m_ExpressionSelected(0),
-	m_ExpressionTabSelected(0)
+	m_ExpressionTabSelected(0),
+	m_pContext(pContext)
 {
 	m_bUndo = UndoEnabled;
 	m_bLockChannels = ChannelsLocked;
@@ -1752,6 +1754,10 @@ CExpressionEvaluationDialog::CExpressionEvaluationDialog(SAMPLE_INDEX begin,
 	//}}AFX_DATA_INIT
 }
 
+CExpressionEvaluationDialog::~CExpressionEvaluationDialog()
+{
+	delete m_pContext;
+}
 
 void CExpressionEvaluationDialog::DoDataExchange(CDataExchange* pDX)
 {
@@ -2475,4 +2481,25 @@ LRESULT CExpressionEvaluationDialog::OnKickIdle(WPARAM w, LPARAM l)
 	m_SavedExprTabDlg.UpdateDialogControls( & m_SavedExprTabDlg, FALSE);
 	return BaseClass::OnKickIdle(w, l);
 }
+
+CExpressionEvaluationContext * CExpressionEvaluationDialog::GetExpressionContext()
+{
+	CExpressionEvaluationContext * pContext = m_pContext;
+
+	pContext->m_dFrequencyArgument = m_OperandsTabDlg.m_dFrequency;
+	pContext->m_dFrequencyArgument1 = m_OperandsTabDlg.m_dFrequency1;
+	pContext->m_dFrequencyArgument2 = m_OperandsTabDlg.m_dFrequency2;
+	pContext->m_dFrequencyArgument3 = m_OperandsTabDlg.m_dFrequency3;
+
+	if ( ! pContext->InitDestination(m_WaveFile,
+									GetStart(), GetEnd(), GetChannel(), UndoEnabled()))
+	{
+		return NULL;
+	}
+
+	m_pContext = NULL;
+
+	return pContext;
+}
+
 

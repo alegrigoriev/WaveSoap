@@ -4373,40 +4373,32 @@ void CWaveSoapFrontDoc::OnProcessSynthesisExpressionEvaluation()
 		channel = ALL_CHANNELS;
 	}
 
-	CExpressionEvaluationDialog dlg(start, end, m_CaretPosition, channel,
-									m_WavFile, ChannelsLocked(), UndoEnabled(), GetApp()->m_SoundTimeFormat);
-	//CThisApp * pApp = GetApp();
+	CExpressionEvaluationContext * pContext =
+		new CExpressionEvaluationContext(this, _T("Calculating the waveform..."),
+										_T("Expression evaluation"));
 
-	CExpressionEvaluationContext * pContext = new CExpressionEvaluationContext(this, _T("Calculating the waveform..."),
-												_T("Expression evaluation"));
-
-	dlg.m_pContext = pContext;
 	if (NULL == pContext)
 	{
 		NotEnoughMemoryMessageBox();
 		return;
 	}
 
+	CExpressionEvaluationDialog dlg(start, end, m_CaretPosition, channel,
+									m_WavFile, ChannelsLocked(), UndoEnabled(), GetApp()->m_SoundTimeFormat,
+									pContext);
+
 	if (IDOK != dlg.DoModal())
 	{
-		delete dlg.m_pContext;
 		return;
 	}
 
-	pContext->m_dFrequencyArgument = dlg.m_OperandsTabDlg.m_dFrequency;
-	pContext->m_dFrequencyArgument1 = dlg.m_OperandsTabDlg.m_dFrequency1;
-	pContext->m_dFrequencyArgument2 = dlg.m_OperandsTabDlg.m_dFrequency2;
-	pContext->m_dFrequencyArgument3 = dlg.m_OperandsTabDlg.m_dFrequency3;
+	pContext = dlg.GetExpressionContext();
 
-	if ( ! dlg.m_pContext->InitDestination(m_WavFile,
-											dlg.GetStart(), dlg.GetEnd(), dlg.GetChannel(), dlg.UndoEnabled()))
+	if (NULL != pContext)
 	{
-		delete pContext;
-		return;
+		pContext->Execute();
+		SetModifiedFlag(TRUE, dlg.UndoEnabled());
 	}
-
-	dlg.m_pContext->Execute();
-	SetModifiedFlag(TRUE, dlg.UndoEnabled());
 }
 
 void CWaveSoapFrontDoc::OnUpdateViewStatusHhmmss(CCmdUI* pCmdUI)
