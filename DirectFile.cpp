@@ -11,6 +11,7 @@
 #include "resource.h"
 #include "LastError.h"
 #include "ElapsedTime.h"
+#include "PathEx.h"
 
 typedef DWORD BLOCK_INDEX;
 typedef NUM_volatile<DWORD> SUBBLOCK_MASK;
@@ -443,6 +444,8 @@ File * CDirectFileCache::Open(LPCTSTR szName, DWORD flags)
 	// if it is, add a reference
 	CLastError err;
 
+	DWORD SectorSize = GetSectorSize(szName);
+
 	CSimpleCriticalSectionLock lock(m_cs);
 
 	if (flags & CDirectFile::CreateMemoryFile)
@@ -462,12 +465,9 @@ File * CDirectFileCache::Open(LPCTSTR szName, DWORD flags)
 		return pFile;
 	}
 
-	CString FullName;
-	TCHAR * pName = FullName.GetBuffer(512);
+	CPathEx FullName(szName);
+	FullName.MakeFullPath();
 
-	LPTSTR pFilePart = NULL;
-	GetFullPathName(szName, 511, pName, & pFilePart);
-	FullName.ReleaseBuffer();
 	TRACE(_T("Full name: %s\n"), (LPCTSTR) FullName);
 
 	HANDLE hf;
@@ -3305,3 +3305,47 @@ CDirectFileCacheProxy::~CDirectFileCacheProxy()
 {
 	CacheInstance.DeInitCache();
 }
+
+DWORD GetSectorSize(LPCTSTR szFilename)
+{
+#if 1
+	CPathEx curr_dir;
+
+	if ( ! curr_dir.GetCurrentDirectory())
+	{
+		return 0x1000;
+	}
+#endif
+
+	CPathEx file_dir(szFilename);
+
+	if ( ! file_dir.MakeFullPath())
+	{
+		return 0x1000;
+	}
+
+	if (file_dir.IsUNC())
+	{
+		return 0x1000;
+	}
+
+	if ( ! file_dir.StripToRoot())
+	{
+		return 0x1000;
+	}
+
+	DWORD sector_size = 0;
+	DWORD sectors_per_cluster;
+	DWORD free_clusters;
+	DWORD total_clusters;
+
+	if (! GetDiskFreeSpace(file_dir, & sectors_per_cluster,
+							& sector_size, & free_clusters, & total_clusters)
+		|| 0 == sector_size)
+	{
+		sector_size = 0x1000;
+	}
+
+	return sector_size;
+}
+
