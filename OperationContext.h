@@ -481,11 +481,11 @@ public:
 						LPCTSTR StatusString, LPCTSTR OperationName,
 						double const * VolumeArray, int VolumeArraySize = 2);
 	CVolumeChangeContext(CWaveSoapFrontDoc * pDoc,
-						LPCTSTR StatusString, LPCTSTR OperationName);
+						LPCTSTR StatusString, LPCTSTR OperationName,
+						float Volume = 1.f);
 
 protected:
-	float m_VolumeLeft;
-	float m_VolumeRight;
+	float m_Volume[MAX_NUMBER_OF_CHANNELS];
 
 	//virtual BOOL OperationProc();
 	virtual BOOL ProcessBuffer(void * buf, size_t len, SAMPLE_POSITION offset, BOOL bBackward = FALSE);
@@ -547,7 +547,7 @@ public:
 	int GetDc(int channel);
 
 protected:
-	LONGLONG m_Sum[2];
+	LONGLONG m_Sum[MAX_NUMBER_OF_CHANNELS];
 
 	virtual BOOL ProcessBuffer(void * buf, size_t BufferLength, SAMPLE_POSITION offset, BOOL bBackward = FALSE);
 };
@@ -562,12 +562,13 @@ public:
 	CDcOffsetContext(CWaveSoapFrontDoc * pDoc,
 					LPCTSTR StatusString, LPCTSTR OperationName,
 					CDcScanContext * pScanContext);
+
 	CDcOffsetContext(CWaveSoapFrontDoc * pDoc,
 					LPCTSTR StatusString, LPCTSTR OperationName,
-					int offset[2]);
+					int offset[], unsigned OffsetArraySize = 2);
 
 protected:
-	int m_Offset[2];
+	int m_Offset[MAX_NUMBER_OF_CHANNELS];
 
 	CDcScanContext * m_pScanContext;
 
@@ -589,7 +590,7 @@ public:
 	int GetMax(int channel);
 
 protected:
-	int m_Max[2];
+	int m_Max[MAX_NUMBER_OF_CHANNELS];
 
 	virtual BOOL ProcessBuffer(void * buf, size_t BufferLength, SAMPLE_POSITION offset, BOOL bBackward = FALSE);
 };
