@@ -716,31 +716,22 @@ BOOL CResizeContext::InitExpand(CWaveFile & File, SAMPLE_INDEX StartSample, NUMB
 
 	m_DstChan = Channel;
 	// first, expand the file itself
-	LPMMCKINFO pDatachunk = m_DstFile.GetDataChunk();
-	if (NULL == pDatachunk)
-	{
-		return FALSE;
-	}
 
 	m_SrcEnd = m_DstFile.SampleToPosition(LAST_SAMPLE);
 	m_SrcPos = m_SrcEnd;
 	m_SrcStart = m_DstFile.SampleToPosition(StartSample);
 
-	WAV_FILE_SIZE NewDataLength = m_DstFile.SampleToPosition(m_DstFile.NumberOfSamples() + Length);
-
-	if (FALSE == m_DstFile.SetFileLength(pDatachunk->dwDataOffset + NewDataLength))
+	if (FALSE == m_DstFile.SetFileLengthSamples(m_DstFile.NumberOfSamples() + Length))
 	{
 		NotEnoughDiskSpaceMessageBox();
 		return FALSE;
 	}
-	pDatachunk->cksize = NewDataLength;
-	pDatachunk->dwFlags |= MMIO_DIRTY;
 	// when expanding, data is moved starting from the end of the file,
 	// but I use SrcStart as begin of the moved area and SrcEns as end (SrcStart <= SrcEnd)
 
 	m_DstStart = m_DstFile.SampleToPosition(StartSample + Length);
 
-	m_DstEnd = pDatachunk->dwDataOffset + NewDataLength;
+	m_DstEnd = m_DstFile.SampleToPosition(LAST_SAMPLE);
 	m_DstPos = m_DstEnd;
 
 	m_Flags |= CopyExpandFile;
@@ -903,18 +894,14 @@ BOOL CResizeContext::ShrinkProc()
 		if (0 == (m_Flags & OperationContextFinished)
 			&& ALL_CHANNELS == m_DstChan)
 		{
-			MMCKINFO * pDatachunk = pDocument->WaveDataChunk();
-			pDatachunk->cksize = m_DstEnd - pDatachunk->dwDataOffset;
-			pDatachunk->dwFlags |= MMIO_DIRTY;
-
-			NUMBER_OF_SAMPLES NewLength = pDatachunk->cksize / pDocument->WaveSampleSize();
 			// first, shrink the file itself
-			if (FALSE == m_DstFile.SetFileLength(m_DstEnd))
+			if (FALSE == m_DstFile.SetFileLengthSamples(
+														m_DstFile.SampleToPosition(m_DstEnd)))
 			{
 				m_Flags |= OperationContextFinished;
 				return FALSE;
 			}
-			pDocument->SoundChanged(m_DstFile.GetFileID(), 0, 0, NewLength);
+			pDocument->FileChanged(m_DstFile, 0, 0, m_DstFile.NumberOfSamples());
 		}
 		m_Flags |= OperationContextFinished;
 		return TRUE;
@@ -3053,22 +3040,13 @@ void CFileSaveContext::PostRetire(BOOL bChildContext)
 	if (NULL != m_pConvert)
 	{
 		// update data chunk and number of samples
-		MMCKINFO * datack = m_pConvert->m_DstFile.GetDataChunk();
+		m_DstFile.SetFactNumberOfSamples((m_pConvert->m_SrcPos - m_pConvert->m_SrcStart)
+										/ m_pConvert->m_SrcFile.SampleSize());
 
-		if (NULL != datack && datack->ckid != 0)
-		{
-			datack->dwFlags |= MMIO_DIRTY;
-			datack->cksize = m_pConvert->m_DstPos - datack->dwDataOffset;
-			//MMCKINFO * fact = m_pConvert->m_DstFile.GetFactChunk();
-			m_DstFile.GetFactChunk()->dwFlags |= MMIO_DIRTY;
-			// save number of samples in the main context
-			m_DstFile.m_FactSamples =
-				(m_pConvert->m_SrcPos - m_pConvert->m_SrcStart)
-				/ m_pConvert->m_SrcFile.SampleSize();
-			m_pConvert->m_DstPos = (m_pConvert->m_DstPos + 1) & ~1;
-		}
-		// set length of file (even)
-		m_DstFile.SetFileLength(m_pConvert->m_DstPos);
+		// BUGBUG For raw file, don't add an extra byte
+		m_pConvert->m_DstPos = (m_pConvert->m_DstPos + 1) & ~1;
+		m_DstFile.SetDatachunkLength(m_pConvert->m_DstPos - m_pConvert->m_DstStart);
+
 		// release references
 		m_pConvert->PostRetire(TRUE);
 		m_pConvert = NULL;
@@ -3321,22 +3299,19 @@ BOOL CConversionContext::OperationProc()
 		if (nLastSample > m_CurrentSamples)
 		{
 			// calculate new length
-			int nSampleSize = m_DstFile.SampleSize();
+			NUMBER_OF_SAMPLES MaxNumberOfSamples = 0x7FFFFFFF / m_DstFile.SampleSize();
+
 			TotalSamples = MulDiv(nLastSample, m_SrcEnd - m_SrcStart, m_SrcPos - m_SrcStart);
-			if (TotalSamples > 0x7FFFFFFF / nSampleSize)
+
+			if (TotalSamples > MaxNumberOfSamples)
 			{
-				TotalSamples = 0x7FFFFFFF / nSampleSize;
+				TotalSamples = MaxNumberOfSamples;
 			}
 
-			LPMMCKINFO pck = m_DstFile.GetDataChunk();
-			WAV_FILE_SIZE datasize = TotalSamples * nSampleSize;
-			m_DstFile.SetFileLength(datasize + pck->dwDataOffset);
 			m_CurrentSamples = TotalSamples;
 
-			// update data chunk length
-			pck->cksize = datasize;
-			pck->dwFlags |= MMIO_DIRTY;
-//            m_DstFile.AllocatePeakData(nLastSample);
+			m_DstFile.SetFileLengthSamples(TotalSamples);
+
 		}
 		TRACE("Decompress: sound changed from %d to %d, length=%d\n",
 			nFirstSample, nLastSample, TotalSamples);
@@ -3440,7 +3415,7 @@ BOOL CWmaDecodeContext::Init()
 	pDocument->m_OriginalWaveFormat = m_Decoder.GetDstFormat();
 	SetDstFile(pDocument->m_WavFile);
 
-	pDocument->SoundChanged(pDocument->WaveFileID(), 0, 0, m_CurrentSamples);
+	pDocument->SoundChanged(pDocument->WaveFileID(), 0, m_CurrentSamples, m_CurrentSamples, UpdateSoundDontRescanPeaks);
 
 	pDocument->QueueSoundUpdate(pDocument->UpdateWholeFileChanged,
 								pDocument->WaveFileID(), 0, 0, m_CurrentSamples);
