@@ -3261,6 +3261,8 @@ BEGIN
     IDS_UNABLE_TO_CREATE_DIRECTORY "Folder ""%s"" cannot be created"
     IDS_UNABLE_TO_CREATE_DIRECTORY_ACCESSDENIED 
                             "You do not have sufficient permissions to create folder ""%s"""
+    IDS_CD_READING_ERROR_FORMAT 
+                            "CD could not be read at address %d:%02d because of data error"
 END
 
 #endif    // English (U.S.) resources

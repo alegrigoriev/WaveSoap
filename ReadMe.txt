@@ -51,7 +51,7 @@ Make recording from Internet stream
 
 Problems:
 
-Open WMA file through dialog crashes the app
+READ CD SCSI command doesn't work for old NEC drive.
 During playback, outline is invalidated. (??)
 WinXP doesn't have CDRAL
 Multisession disk shows only begin of tracks. Read the whole structure.
@@ -66,6 +66,7 @@ samples with 32767, -32768 are not visible
 Log Off query doesn't close the active dialog. Recursion is possible. Make sure to check after Cancel
 
 Fixed:
+Open WMA file through dialog crashes the app
 ".wav" added one more time in File Save dialog
 IOCTL_CDROM_RAW_READ doesn't work on old Panasonic
 File title is not passed to SaveAs

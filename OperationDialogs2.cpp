@@ -247,17 +247,19 @@ CCdGrabbingDialog::CCdGrabbingDialog(CWnd* pParent /*=NULL*/)
 		{IDC_RADIO_ASSIGN_ATTRIBUTES, MoveDown},
 		{IDC_RADIO_ASSIGN_SELECTED_TRACK, MoveDown},
 		{IDC_STATIC_ALBUM, MoveDown},
-		{IDC_EDIT_ALBUM, MoveDown},
+		{IDC_EDIT_ALBUM, MoveDown | ExpandRight},
 		{IDC_STATIC_ARTIST, MoveDown},
-		{IDC_EDIT_ARTIST, MoveDown},
+		{IDC_EDIT_ARTIST, MoveDown | ExpandRight},
 		{IDC_RADIO_STORE_MULTIPLE_FILES, MoveDown},
 		{IDC_RADIO_STORE_SINGLE_FILE, MoveDown},
-		{IDC_EDIT_FOLDER_OR_FILE, MoveDown},
-		{IDC_BUTTON_BROWSE_SAVE_FOLDER, MoveDown},
+		{IDC_EDIT_FOLDER_OR_FILE, MoveDown | ExpandRight},
+		{IDC_BUTTON_BROWSE_SAVE_FOLDER, MoveRight | MoveDown},
 		{IDC_RADIO_STORE_IMMEDIATELY, MoveDown},
 		{IDC_RADIO_LOAD_FOR_EDITING, MoveDown},
 		{IDC_STATIC_FORMAT, MoveDown},
 		{IDC_BUTTON_SET_FORMAT, MoveDown},
+		{IDC_BUTTON_PLAY, MoveRight | MoveDown},
+		{IDC_BUTTON_STOP, MoveRight | MoveDown},
 
 		{IDC_BUTTON_CDDB, MoveRight | MoveDown},
 		{IDOK, MoveRight | MoveDown},
@@ -1305,9 +1307,10 @@ BOOL CCdGrabbingDialog::FillPlaybackBuffers()
 		}
 
 		m_PlaybackAddress = m_PlaybackAddress + NumSectors;
+		m_PlaybackSectors -= NumSectors;
 		m_WaveOut.Play(hBuffer, NumSectors * CDDASectorSize);
-
 	}
+
 	if (0 == m_PlaybackSectors)
 	{
 		// wait until all buffers are returned
@@ -1391,3 +1394,5 @@ void CCdGrabbingDialog::OnCancel()
 
 	CResizableDialog::OnCancel();
 }
+
+void UpdateFormatStatic();

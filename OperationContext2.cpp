@@ -1824,6 +1824,7 @@ BOOL CCdReadingContext::ProcessBuffer(void * buf, size_t len, DWORD offset, BOOL
 BOOL CCdReadingContext::Init()
 {
 	// allocate buffer. Round to sector size multiple
+	m_Drive.SetDriveBusy();
 	m_CdBufferFilled = 0;
 	m_CdDataOffset = 0;
 	m_CdBufferSize = 0x10000 - 0x10000 % CDDASectorSize;
@@ -1860,8 +1861,39 @@ void CCdReadingContext::DeInit()
 	{
 		TRACE("CD drive speed reset to original %d\n", m_OriginalReadSpeed);
 		m_Drive.SetReadSpeed(m_OriginalReadSpeed);
-		CDROM_TOC toc;
 		// stop drive:
-		m_Drive.ReadToc( & toc);
+		m_Drive.StopDrive();
 	}
+	m_Drive.SetDriveBusy(false);
+}
+
+void CCdReadingContext::PostRetire(BOOL bChildContext)
+{
+	// if the operation was not successfully completed, truncate the file.
+
+	if (0 == (m_Flags & OperationContextFinished))
+	{
+		if (0 == (m_Flags & OperationContextStop))
+		{
+			CString s;
+			s.Format(IDS_CD_READING_ERROR_FORMAT,
+					m_CdAddress.Minute, m_CdAddress.Second);
+			AfxMessageBox(s, MB_OK | MB_ICONEXCLAMATION);
+		}
+
+		MMCKINFO * pDatachunk = m_DstFile.GetDataChunk();
+		pDatachunk->cksize = m_DstCopyPos - pDatachunk->dwDataOffset;
+		pDatachunk->dwFlags |= MMIO_DIRTY;
+		long NewLength = pDatachunk->cksize / m_DstFile.SampleSize();
+		// if no data has been read, delete the document
+		if (0 == NewLength)
+		{
+			pDocument->m_bCloseThisDocumentNow = true;
+		}
+		else if (m_DstFile.SetFileLength(m_DstCopyPos))
+		{
+			pDocument->SoundChanged(m_DstFile.GetFileID(), 0, 0, NewLength);
+		}
+	}
+	COperationContext::PostRetire(bChildContext);
 }
