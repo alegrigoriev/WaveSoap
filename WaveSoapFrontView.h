@@ -58,10 +58,15 @@ protected:
 	// m_VerticalScale means all the range is shown, scale 2 means the wave
 	// is magnified 2 times.
 	double m_VerticalScale;
+	enum {
+		WAVE_OFFSET_CHANGED = 0x10000,
+		WAVE_SCALE_CHANGED = 0x20000,
+	};
 	// additional vertical offset, to see a region of magnified wave
 	double m_WaveOffsetY;
 	virtual void AdjustNewScale(double OldScaleX, double OldScaleY,
 								double & NewScaleX, double & NewScaleY);
+	virtual BOOL ScrollBy(double dx, double dy, BOOL bDoScroll = TRUE);
 	DWORD m_FirstSampleInBuffer;    // in 16-bit numbers
 	__int16 * m_pWaveBuffer;
 	size_t m_WaveBufferSize;    // in 16-bit samples
@@ -94,6 +99,11 @@ protected:
 	afx_msg void OnMouseMove(UINT nFlags, CPoint point);
 	afx_msg void OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags);
 	afx_msg int OnCreate(LPCREATESTRUCT lpCreateStruct);
+	afx_msg void OnSize(UINT nType, int cx, int cy);
+	afx_msg void OnViewZoomvertNormal();
+	afx_msg void OnUpdateViewZoomvertNormal(CCmdUI* pCmdUI);
+	afx_msg void OnViewZoominHorFull();
+	afx_msg void OnUpdateViewZoominHorFull(CCmdUI* pCmdUI);
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 };

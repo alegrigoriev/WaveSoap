@@ -37,6 +37,11 @@ BEGIN_MESSAGE_MAP(CWaveSoapFrontView, CScaledScrollView)
 	ON_WM_MOUSEMOVE()
 	ON_WM_KEYDOWN()
 	ON_WM_CREATE()
+	ON_WM_SIZE()
+	ON_COMMAND(ID_VIEW_ZOOMVERT_NORMAL, OnViewZoomvertNormal)
+	ON_UPDATE_COMMAND_UI(ID_VIEW_ZOOMVERT_NORMAL, OnUpdateViewZoomvertNormal)
+	ON_COMMAND(ID_VIEW_ZOOMIN_HOR_FULL, OnViewZoominHorFull)
+	ON_UPDATE_COMMAND_UI(ID_VIEW_ZOOMIN_HOR_FULL, OnUpdateViewZoominHorFull)
 	//}}AFX_MSG_MAP
 	// Standard printing commands
 	ON_COMMAND(ID_FILE_PRINT, CScaledScrollView::OnFilePrint)
@@ -244,19 +249,19 @@ void CWaveSoapFrontView::OnDraw(CDC* pDC)
 		if (ppArray)
 			for (int ch = 0; ch < nChannels; ch++)
 			{
-				double WaveOffset = m_WaveOffsetY - dOrgY;
+				double WaveOffset = m_WaveOffsetY * m_VerticalScale - dOrgY;
 				int ClipHigh = r.bottom;
 				int ClipLow = r.top;
 				if (nChannels > 1)
 				{
 					if (0 == ch)
 					{
-						WaveOffset = m_WaveOffsetY + 32768. - dOrgY;
+						WaveOffset = m_WaveOffsetY * m_VerticalScale + 32768. - dOrgY;
 						ClipHigh = ChannelSeparatorY;
 					}
 					else
 					{
-						WaveOffset = m_WaveOffsetY -32768. - dOrgY;
+						WaveOffset = m_WaveOffsetY * m_VerticalScale -32768. - dOrgY;
 						ClipLow = ChannelSeparatorY + 1;
 					}
 				}
@@ -625,7 +630,7 @@ void CWaveSoapFrontView::OnInitialUpdate()
 	TRACE("OnInitialUpdate style = %08X\n", GetStyle());
 
 	CScaledScrollView::OnInitialUpdate();
-
+	UpdateScrollbars();
 	TRACE("OnInitialUpdate final style = %08X\n", GetStyle());
 }
 
@@ -645,7 +650,7 @@ void CWaveSoapFrontView::OnViewZoomInVert()
 	{
 		m_VerticalScale	*= sqrt(2.);
 		InvalidateRgn(NULL);
-		NotifySlaveViews(CHANGE_HEIGHT);
+		NotifySlaveViews(WAVE_SCALE_CHANGED);
 	}
 }
 
@@ -655,12 +660,29 @@ void CWaveSoapFrontView::OnViewZoomOutVert()
 	if (m_VerticalScale > 1.)
 	{
 		m_VerticalScale	*= sqrt(0.5);
-		if (m_VerticalScale < 1.)
+		if (m_VerticalScale < 1.001)    // compensate any error
 		{
 			m_VerticalScale = 1.;
 		}
-		InvalidateRgn(NULL);
-		NotifySlaveViews(CHANGE_HEIGHT);
+		// correct the offset, if necessary
+		// find max and min offset for this scale
+		double offset = m_WaveOffsetY;
+		double MaxOffset = 65536. * (1. - 1. / m_VerticalScale);
+		if (offset > MaxOffset)
+		{
+			offset = MaxOffset;
+		}
+		double MinOffset = -MaxOffset;
+		if (offset < MinOffset)
+		{
+			offset = MinOffset;
+		}
+		if (offset != m_WaveOffsetY)
+		{
+			m_WaveOffsetY = offset;
+		}
+		Invalidate();
+		NotifySlaveViews(WAVE_SCALE_CHANGED);
 	}
 }
 
@@ -820,7 +842,7 @@ void CWaveSoapFrontView::CreateAndShowCaret()
 	GetClientRect( & r);
 
 	CPoint p(WorldToWindowX(pDoc->m_CaretPosition), r.top);
-	TRACE("Client rect height=%d, caret poisition=%d\n", r.Height(), p.x);
+	TRACE("Client rect height=%d, caret position=%d\n", r.Height(), p.x);
 	if (2 == pDoc->m_SelectedChannel || pDoc->WaveChannels() == 1)
 	{
 		CreateSolidCaret(1, r.Height());
@@ -950,7 +972,7 @@ void CWaveSoapFrontView::OnLButtonDown(UINT nFlags, CPoint point)
 	// point is in client coordinates
 	CWaveSoapFrontDoc * pDoc = GetDocument();
 	DWORD nHit = ClientHitTest(point);
-	if (nHit & (VSHT_NOWAVE | VSHT_NONCLIENT))
+	if (nHit & VSHT_NONCLIENT)
 	{
 		return;
 	}
@@ -961,6 +983,10 @@ void CWaveSoapFrontView::OnLButtonDown(UINT nFlags, CPoint point)
 	if (nSampleUnderMouse < 0)
 	{
 		nSampleUnderMouse = 0;
+	}
+	if (nSampleUnderMouse > pDoc->WaveFileSamples())
+	{
+		nSampleUnderMouse = pDoc->WaveFileSamples();
 	}
 
 	if (pDoc->m_TimeSelectionMode)
@@ -1032,14 +1058,28 @@ void CWaveSoapFrontView::OnMouseMove(UINT nFlags, CPoint point)
 	// point is in client coordinates
 	CWaveSoapFrontDoc * pDoc = GetDocument();
 	DWORD nHit = ClientHitTest(point);
+	CRect r;
+	GetClientRect( & r);
 	if (nHit & (VSHT_NOWAVE | VSHT_NONCLIENT))
 	{
-		return;
+		if (point.x < r.left)
+		{
+			point.x = r.left;
+		}
+		if (point.x > r.right)
+		{
+			point.x = r.right;
+		}
 	}
+
 	int nSampleUnderMouse = WindowToWorldX(point.x);
 	if (nSampleUnderMouse < 0)
 	{
 		nSampleUnderMouse = 0;
+	}
+	if (nSampleUnderMouse > pDoc->WaveFileSamples())
+	{
+		nSampleUnderMouse = pDoc->WaveFileSamples();
 	}
 	int SelectionStart = pDoc->m_SelectionStart;
 	int SelectionEnd = pDoc->m_SelectionEnd;
@@ -1080,7 +1120,12 @@ void CWaveSoapFrontView::OnMouseMove(UINT nFlags, CPoint point)
 			}
 
 			int nChan = 2;
-			if (nHit & VSHT_LEFT_CHAN)
+			if (nHit & (VSHT_NOWAVE | VSHT_NONCLIENT))
+			{
+				// don't change the channel
+				nChan = pDoc->m_SelectedChannel;
+			}
+			else if (nHit & VSHT_LEFT_CHAN)
 			{
 				nChan = 0;
 			}
@@ -1576,4 +1621,111 @@ int CWaveSoapFrontView::OnCreate(LPCREATESTRUCT lpCreateStruct)
 	ShowScrollBar(SB_VERT, FALSE);
 	ShowScrollBar(SB_HORZ, FALSE);
 	return 0;
+}
+
+BOOL CWaveSoapFrontView::ScrollBy(double dx, double dy, BOOL bDoScroll)
+{
+	if (dx != 0.)
+	{
+		CScaledScrollView::ScrollBy(dx, 0, bDoScroll);
+	}
+	if (dy != 0.)
+	{
+		// check for the limits
+		// ndy is in pixels
+		int ndy = fround(dy * GetYScaleDev());
+		CWaveSoapFrontDoc * pDoc = GetDocument();
+		CRect r;
+		GetClientRect( & r);
+		int nHeight = r.Height() / pDoc->WaveChannels();
+		double offset = m_WaveOffsetY + 65536. * ndy / (nHeight * m_VerticalScale);
+		// find max and min offset for this scale
+		double MaxOffset = 32768. * (1 - 1. / m_VerticalScale);
+		BOOL NoScroll = false;
+		if (offset > MaxOffset)
+		{
+			offset = MaxOffset;
+			NoScroll = true;
+		}
+		double MinOffset = -MaxOffset;
+		if (offset < MinOffset)
+		{
+			offset = MinOffset;
+			NoScroll = true;
+		}
+		if (offset != m_WaveOffsetY)
+		{
+			TRACE("New offset = %g, MaxOffset=%g, VerticalScale = %g\n",
+				offset, MaxOffset, m_VerticalScale);
+			m_WaveOffsetY = offset;
+			NotifySlaveViews(WAVE_OFFSET_CHANGED);
+			// change to scroll
+			if (NoScroll)
+			{
+				Invalidate();
+			}
+			else
+			{
+				CWaveSoapFrontDoc * pDoc = GetDocument();
+				CRect cr;
+				GetClientRect( & cr);
+				if (pDoc->WaveChannels() == 1)
+				{
+					ScrollWindowEx(0, -ndy, NULL, NULL, NULL, NULL,
+									SW_INVALIDATE | SW_ERASE);
+				}
+				else
+				{
+					CRect cr1 = cr, cr2 = cr, r;
+					cr1.bottom = cr.bottom / 2 - 1;
+					cr2.top = cr1.bottom + 2;
+					// invalidated rects
+					CRect ir1, ir2;
+					ScrollWindowEx(0, -ndy, & cr1, & cr1, NULL, & ir1,
+									SW_INVALIDATE);
+					ScrollWindowEx(0, -ndy, & cr2, & cr2, NULL, & ir2,
+									SW_INVALIDATE);
+					cr2.bottom = cr2.top;
+					cr2.top = cr1.bottom;
+					InvalidateRect( & cr2);
+					InvalidateRect( & ir1);
+					InvalidateRect( & ir2);
+				}
+			}
+		}
+	}
+	return TRUE;
+}
+
+void CWaveSoapFrontView::OnSize(UINT nType, int cx, int cy)
+{
+	CScaledScrollView::OnSize(nType, cx, cy);
+
+	CreateAndShowCaret();
+}
+
+void CWaveSoapFrontView::OnViewZoomvertNormal()
+{
+	if (m_VerticalScale != 1.)
+	{
+		m_VerticalScale = 1.;
+		m_WaveOffsetY = 0.;
+		Invalidate();
+		NotifySlaveViews(WAVE_SCALE_CHANGED);
+	}
+}
+
+void CWaveSoapFrontView::OnUpdateViewZoomvertNormal(CCmdUI* pCmdUI)
+{
+	pCmdUI->Enable(m_VerticalScale > 1.);
+}
+
+void CWaveSoapFrontView::OnViewZoominHorFull()
+{
+	Zoom(m_HorizontalScale, 1., CPoint(INT_MAX, INT_MAX));
+}
+
+void CWaveSoapFrontView::OnUpdateViewZoominHorFull(CCmdUI* pCmdUI)
+{
+	pCmdUI->Enable(m_HorizontalScale > 1);
 }
