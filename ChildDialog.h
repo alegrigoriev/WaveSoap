@@ -49,9 +49,15 @@ public:
 
 // Dialog Data
 	//{{AFX_DATA(COperandsDialog)
-	CNumEdit m_eFrequency;
 	//}}AFX_DATA
+	CNumEdit m_eFrequency;
+	CNumEdit m_eFrequency1;
+	CNumEdit m_eFrequency2;
+	CNumEdit m_eFrequency3;
 	double m_dFrequency;
+	double m_dFrequency1;
+	double m_dFrequency2;
+	double m_dFrequency3;
 // Overrides
 	// ClassWizard generated virtual function overrides
 	//{{AFX_VIRTUAL(COperandsDialog)

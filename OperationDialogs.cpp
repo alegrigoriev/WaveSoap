@@ -2316,6 +2316,12 @@ BOOL CExpressionEvaluationDialog::OnInitDialog()
 					m_ExpressionTabSelected, 0, 0, 2);
 	m_Profile.AddItem(_T("Settings\\Expressions"), _T("FrequencyArgument"),
 					m_OperandsTabDlg.m_dFrequency, 500., 0., 1000000.);
+	m_Profile.AddItem(_T("Settings\\Expressions"), _T("FrequencyArgument1"),
+					m_OperandsTabDlg.m_dFrequency1, 500., 0., 1000000.);
+	m_Profile.AddItem(_T("Settings\\Expressions"), _T("FrequencyArgument2"),
+					m_OperandsTabDlg.m_dFrequency2, 500., 0., 1000000.);
+	m_Profile.AddItem(_T("Settings\\Expressions"), _T("FrequencyArgument3"),
+					m_OperandsTabDlg.m_dFrequency3, 500., 0., 1000000.);
 	m_Profile.AddItem(_T("Settings\\Expressions"), _T("EvaluateExpression"), m_sExpression);
 
 	m_FunctionsTabDlg.Create(IDD_FUNCTIONS_AND_OPERATORS_TAB, this);

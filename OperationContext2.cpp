@@ -229,6 +229,9 @@ CString CExpressionEvaluationContext::GetToken(LPCSTR * ppStr, TokenType * pType
 		"dn", eSelectionLengthSamples,
 		"DN", eFileLengthSamples,
 		//"T", eSamplePeriod,
+		"f1", eCurrentFrequencyArgument1,
+		"f2", eCurrentFrequencyArgument2,
+		"f3", eCurrentFrequencyArgument3,
 		"f", eCurrentFrequencyArgument,
 		"wave", eCurrentSampleValue,
 	};
@@ -506,6 +509,15 @@ CExpressionEvaluationContext::TokenType
 		break;
 	case eCurrentFrequencyArgument:
 		PushVariable( & m_dFrequencyArgument);
+		break;
+	case eCurrentFrequencyArgument1:
+		PushVariable( & m_dFrequencyArgument1);
+		break;
+	case eCurrentFrequencyArgument2:
+		PushVariable( & m_dFrequencyArgument2);
+		break;
+	case eCurrentFrequencyArgument3:
+		PushVariable( & m_dFrequencyArgument3);
 		break;
 	case eCurrentSampleValue:
 		PushVariable( & m_dCurrentSample);
