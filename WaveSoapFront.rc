@@ -1615,9 +1615,9 @@ CAPTION "Reopen Saved File"
 FONT 8, "MS Shell Dlg", 0, 0, 0x0
 BEGIN
     LTEXT           "File ""%s"" saved. ",IDC_STATIC_PROMPT,7,7,213,62
-    DEFPUSHBUTTON   "&Reopen for direct editing",IDOK,56,79,115,14
-    PUSHBUTTON      "Reopen in &buffered mode",IDNO,56,96,115,14
-    PUSHBUTTON      "&Close the file",IDCANCEL,56,114,115,14
+    DEFPUSHBUTTON   "&Reopen for direct editing",IDOK,50,79,127,14
+    PUSHBUTTON      "Reopen in &buffered mode",IDNO,50,96,127,14
+    PUSHBUTTON      "&Close the file",IDCANCEL,50,114,127,14
 END
 
 IDD_FUNCTIONS_TAB DIALOGEX 0, 0, 230, 71
@@ -1927,20 +1927,20 @@ CAPTION "Reopen Saved Compressed File"
 FONT 8, "MS Shell Dlg", 0, 0, 0x0
 BEGIN
     LTEXT           "File ""%s"" saved. ",IDC_STATIC_PROMPT,7,7,213,67
-    DEFPUSHBUTTON   "Keep working on the current copy",IDOK,50,79,127,14
+    DEFPUSHBUTTON   "Keep working on the current copy",IDOK,50,78,127,14
     PUSHBUTTON      "&Reload compressed file",IDNO,50,96,127,14
     PUSHBUTTON      "&Close the file",IDCANCEL,50,114,127,14
 END
 
-IDD_DIALOG_SHOULD_RELOAD_CONVERTED DIALOGEX 0, 0, 187, 109
+IDD_DIALOG_SHOULD_RELOAD_CONVERTED DIALOGEX 0, 0, 227, 135
 STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | 
     WS_SYSMENU
 CAPTION "Reopen File Saved With Conversion"
 FONT 8, "MS Shell Dlg", 0, 0, 0x0
 BEGIN
-    LTEXT           "File ""%s"" saved. ",IDC_STATIC_PROMPT,7,7,173,59
-    DEFPUSHBUTTON   "&Reload compressed file",IDOK,35,72,115,14
-    PUSHBUTTON      "&Close the file",IDCANCEL,35,88,115,14
+    LTEXT           "File ""%s"" saved. ",IDC_STATIC_PROMPT,7,7,213,84
+    DEFPUSHBUTTON   "&Reload compressed file",IDOK,50,96,127,14
+    PUSHBUTTON      "&Close the file",IDCANCEL,50,114,127,14
 END
 
 IDD_DIALOG_RECORD_SOUND DIALOGEX 0, 0, 212, 153
@@ -2872,9 +2872,9 @@ BEGIN
     IDD_DIALOG_SHOULD_RELOAD_CONVERTED, DIALOG
     BEGIN
         LEFTMARGIN, 7
-        RIGHTMARGIN, 180
+        RIGHTMARGIN, 220
         TOPMARGIN, 7
-        BOTTOMMARGIN, 102
+        BOTTOMMARGIN, 128
     END
 
     IDD_DIALOG_RECORD_SOUND, DIALOG
