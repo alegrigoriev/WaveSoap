@@ -8,6 +8,7 @@
 // OperationDialogs2.h : header file
 //
 #include "TimeEdit.h"
+#include "OperationDialogs.h"
 
 #include "CdDrive.h"
 #include <vector>
@@ -21,10 +22,9 @@ class CInsertSilenceDialog : public CDialog
 public:
 	CInsertSilenceDialog(SAMPLE_INDEX Start,
 						NUMBER_OF_SAMPLES Length,
-						CHANNEL_MASK	m_nChannel,
-						NUMBER_OF_SAMPLES    FileLength,
+						CHANNEL_MASK	Channel,
+						CWaveFile & WaveFile,
 						int TimeFormat,
-						WAVEFORMATEX * pWf,
 						CWnd* pParent = NULL);   // standard constructor
 
 // Dialog Data
@@ -33,24 +33,34 @@ public:
 	CTimeSpinCtrl	m_SpinStart;
 	CTimeSpinCtrl	m_SpinLength;
 	CTimeEdit	m_eLength;
-	CTimeEditCombo	m_eStart;
+	CFileTimesCombo	m_eStart;
 	int		m_TimeFormatIndex;
 	//}}AFX_DATA
+	CHANNEL_MASK GetChannel() const
+	{
+		return m_nChannel - 1;
+	}
+	SAMPLE_INDEX GetStart() const
+	{
+		return m_Start;
+	}
 
+	NUMBER_OF_SAMPLES GetLength() const
+	{
+		return m_Length;
+	}
+
+protected:
 	NUMBER_OF_SAMPLES    m_Length;
 	SAMPLE_INDEX    m_Start;
 	CHANNEL_MASK	m_nChannel;
 	int		m_TimeFormat;
-protected:
-	NUMBER_OF_SAMPLES    m_FileLength;
 	SAMPLE_INDEX    m_CaretPosition;
-	WAVEFORMATEX * m_pWf;
+	CWaveFile & m_WaveFile;
 
 // Overrides
 	// ClassWizard generated virtual function overrides
 	//{{AFX_VIRTUAL(CInsertSilenceDialog)
-public:
-	virtual int DoModal();
 protected:
 	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV support
 	//}}AFX_VIRTUAL
@@ -293,7 +303,7 @@ class CReopenDialog : public CDialog
 	typedef CDialog BaseClass;
 // Construction
 public:
-	CReopenDialog(CWnd* pParent = NULL);   // standard constructor
+	CReopenDialog(UINT FormatId, LPCTSTR Name, CWnd* pParent = NULL);   // standard constructor
 
 // Dialog Data
 	//{{AFX_DATA(CReopenDialog)
@@ -301,7 +311,7 @@ public:
 	CString	m_Prompt;
 	//}}AFX_DATA
 
-
+	int DoModalPopDocument(CDocument * pDoc);
 // Overrides
 	// ClassWizard generated virtual function overrides
 	//{{AFX_VIRTUAL(CReopenDialog)
