@@ -303,7 +303,8 @@ void CWaveFftView::OnDraw(CDC* pDC)
 		pDC->GetClipBox(&r);
 	}
 	// limit right to the file area
-	int FileEnd = WorldToWindowX(pDoc->WaveFileSamples());
+	int FileEnd = WorldToWindowXceil(pDoc->WaveFileSamples());
+
 	if (r.right > FileEnd)
 	{
 		r.right = FileEnd;
@@ -1051,7 +1052,8 @@ BOOL CWaveFftView::OnEraseBkgnd(CDC* pDC)
 
 	CRect r;
 	GetClientRect( & r);
-	int FileEnd = WorldToWindowX(pDoc->WaveFileSamples());
+	int FileEnd = WorldToWindowXceil(pDoc->WaveFileSamples());
+
 	if (FileEnd < r.right)
 	{
 		CBitmap bmp;
