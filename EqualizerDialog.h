@@ -39,11 +39,14 @@ protected:
 	//}}AFX_VIRTUAL
 
 // Implementation
+	void DrawDotCaret(bool state = true);
+	void ShowDotCaret(bool state = true);
 public:
 	virtual ~CEqualizerGraphWnd();
 	bool m_bMouseCaptured;
 	bool m_bButtonPressed;
 	bool m_bGotFocus;
+	bool m_DotCaretIsOn;
 
 	int m_NumOfBands;    // 2-MaxNumberOfBands
 	int m_BandWithFocus;
@@ -69,6 +72,7 @@ protected:
 	afx_msg BOOL OnSetCursor(CWnd* pWnd, UINT nHitTest, UINT message);
 	afx_msg void OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags);
 	afx_msg UINT OnGetDlgCode();
+	afx_msg void OnTimer(UINT nIDEvent);
 	//}}AFX_MSG
 	afx_msg void OnNcPaint(UINT wParam);
 	DECLARE_MESSAGE_MAP()

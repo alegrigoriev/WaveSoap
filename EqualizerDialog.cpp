@@ -269,6 +269,7 @@ BEGIN_MESSAGE_MAP(CEqualizerGraphWnd, CWnd)
 	ON_WM_SETCURSOR()
 	ON_WM_KEYDOWN()
 	ON_WM_GETDLGCODE()
+	ON_WM_TIMER()
 	//}}AFX_MSG_MAP
 { WM_NCPAINT, 0, 0, 0, AfxSig_vw,
 	(AFX_PMSG)(AFX_PMSGW)
@@ -285,13 +286,15 @@ void CEqualizerGraphWnd::OnPaint()
 	CPaintDC dc(this); // device context for painting
 
 	CRect cr;
+	CRect ur;
 	GetClientRect( & cr);
+	dc.GetClipBox( & ur);
 	dc.SetMapMode(MM_TEXT);
 	CGdiObject * pOldPen = dc.SelectStockObject(BLACK_PEN);
 	CGdiObject * pOldBrush = dc.SelectStockObject(NULL_BRUSH);
 
 	double coeff = M_PI / pow(500., m_NumOfBands / (m_NumOfBands - 0.5));
-	for (int x = cr.left; x < cr.right; x++)
+	for (int x = ur.left; x < ur.right; x++)
 	{
 		double f = coeff * pow(500., m_NumOfBands * (x + 1) /((m_NumOfBands - 0.5) * cr.Width()));
 		double gain = abs(CalculateResponse(f));
@@ -309,7 +312,7 @@ void CEqualizerGraphWnd::OnPaint()
 		int y = (1 - log10(m_BandGain[i])) * cr.Height() / 2;
 		CRect r(x - dx, y - dy, x + dx, y + dy);
 
-		if (m_bGotFocus && i == m_BandWithFocus)
+		if (m_DotCaretIsOn && i == m_BandWithFocus)
 		{
 			dc.SelectStockObject(BLACK_BRUSH);
 		}
@@ -353,24 +356,11 @@ void CEqualizerGraphWnd::SetFocusBand(int nBand)
 {
 	if (nBand != m_BandWithFocus)
 	{
-		CRect cr;
-		GetClientRect( & cr);
-		int dx = GetSystemMetrics(SM_CXDRAG);
-		int dy = GetSystemMetrics(SM_CYDRAG);
-
-		int x = cr.Width() * (m_BandWithFocus * 2 + 1) / (2 * m_NumOfBands);
-		int y = (1 - log10(m_BandGain[m_BandWithFocus])) * cr.Height() / 2;
-		CRect r(x - dx, y - dy, x + dx, y + dy);
-		InvalidateRect( & r);
+		DrawDotCaret(false);
 
 		m_BandWithFocus = nBand;
-
-		x = cr.Width() * (m_BandWithFocus * 2 + 1) / (2 * m_NumOfBands);
-		y = (1 - log10(m_BandGain[m_BandWithFocus])) * cr.Height() / 2;
-		CRect r1(x - dx, y - dy, x + dx, y + dy);
-
-		InvalidateRect( & r1);
 	}
+	DrawDotCaret(true);
 }
 
 void CEqualizerGraphWnd::OnLButtonDown(UINT nFlags, CPoint point)
@@ -383,17 +373,22 @@ void CEqualizerGraphWnd::OnLButtonDown(UINT nFlags, CPoint point)
 		return;
 	}
 	m_bButtonPressed = true;
+	DrawDotCaret(true);
 	SetFocusBand(nHit);
 }
 
 void CEqualizerGraphWnd::OnLButtonUp(UINT nFlags, CPoint point)
 {
 	CWnd::OnLButtonUp(nFlags, point);
-	m_bButtonPressed = false;
 	if (m_bMouseCaptured)
 	{
 		ReleaseCapture();
 		m_bMouseCaptured = false;
+	}
+	if (m_bButtonPressed)
+	{
+		m_bButtonPressed = false;
+		DrawDotCaret(false);
 	}
 }
 
@@ -487,6 +482,10 @@ void CalculateCoefficients(double Gain, double Frequency, double Width, double C
 }
 void CEqualizerGraphWnd::SetBandGain(int nBand, double Gain)
 {
+	if (m_BandGain[nBand] == Gain)
+	{
+		return;
+	}
 	m_BandGain[nBand] = Gain;
 	RebuildBandFilters();
 	Invalidate();
@@ -665,11 +664,23 @@ BOOL CEqualizerGraphWnd::OnEraseBkgnd(CDC* pDC)
 	return TRUE;
 }
 
-void CEqualizerGraphWnd::OnNcCalcSize(BOOL bCalcValidRects, NCCALCSIZE_PARAMS FAR* lpncsp)
+void CEqualizerGraphWnd::OnNcCalcSize(BOOL bCalcValidRects, NCCALCSIZE_PARAMS * lpncsp)
 {
-	// TODO: Add your message handler code here and/or call default
+	int ncHeight = GetSystemMetrics(SM_CYMENUSIZE);
+	int ncWidth;
+	CWnd * pW = GetDesktopWindow();
+	CDC * pDC = pW->GetWindowDC();
+	CGdiObject * pOld = pDC->SelectStockObject(ANSI_VAR_FONT);
+	ncWidth = 3 + pDC->GetTextExtent("-20 dB", 6).cx;
 
-	CWnd::OnNcCalcSize(bCalcValidRects, lpncsp);
+	pDC->SelectObject(pOld);
+	pW->ReleaseDC(pDC);
+	lpncsp->rgrc[0].left += ncWidth;
+	lpncsp->rgrc[0].right--;
+	lpncsp->rgrc[0].top++;
+	lpncsp->rgrc[0].bottom -= ncHeight;
+
+	//CWnd::OnNcCalcSize(bCalcValidRects, lpncsp);
 }
 
 void CEqualizerGraphWnd::OnNcPaint(UINT wParam)
@@ -706,31 +717,17 @@ void CEqualizerGraphWnd::OnKillFocus(CWnd* pNewWnd)
 
 	if (m_bGotFocus)
 	{
-		CRect cr;
-		GetClientRect( & cr);
-		int x = cr.Width() * (m_BandWithFocus * 2 + 1) / (2 * m_NumOfBands);
-		int y = (1 - log10(m_BandGain[m_BandWithFocus])) * cr.Height() / 2;
-		int dx = GetSystemMetrics(SM_CXDRAG);
-		int dy = GetSystemMetrics(SM_CYDRAG);
-		CRect r(x - dx, y - dy, x + dx, y + dy);
-		InvalidateRect( & r);
+		m_bGotFocus = false;
+		DrawDotCaret(false);
 	}
-	m_bGotFocus = false;
 }
 
 void CEqualizerGraphWnd::OnSetFocus(CWnd* pOldWnd)
 {
 	CWnd::OnSetFocus(pOldWnd);
-	CRect cr;
-	GetClientRect( & cr);
-	int x = cr.Width() * (m_BandWithFocus * 2 + 1) / (2 * m_NumOfBands);
-	int y = (1 - log10(m_BandGain[m_BandWithFocus])) * cr.Height() / 2;
-	int dx = GetSystemMetrics(SM_CXDRAG);
-	int dy = GetSystemMetrics(SM_CYDRAG);
-	CRect r(x - dx, y - dy, x + dx, y + dy);
-	InvalidateRect( & r);
 
 	m_bGotFocus = true;
+	DrawDotCaret(true);
 
 }
 
@@ -792,6 +789,7 @@ void CEqualizerGraphWnd::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 		if (GainDb < 19.)
 		{
 			SetBandGain(m_BandWithFocus, pow(10., (GainDb + 1.) / 20.));
+			DrawDotCaret(true);
 		}
 		return;
 		break;
@@ -800,6 +798,7 @@ void CEqualizerGraphWnd::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 		if (GainDb > -19.)
 		{
 			SetBandGain(m_BandWithFocus, pow(10., (GainDb - 1.) / 20.));
+			DrawDotCaret(true);
 		}
 		return;
 		break;
@@ -848,4 +847,33 @@ int CEqualizerGraphWnd::GetHitCode(POINT point)
 		}
 	}
 	return -1;
+}
+
+void CEqualizerGraphWnd::OnTimer(UINT nIDEvent)
+{
+	// redraw blinking dot
+	if (m_bGotFocus && ! m_bButtonPressed)
+	{
+		DrawDotCaret( ! m_DotCaretIsOn);
+	}
+}
+
+void CEqualizerGraphWnd::DrawDotCaret(bool state)
+{
+	if (m_DotCaretIsOn != state)
+	{
+		m_DotCaretIsOn = state;
+		CRect cr;
+		GetClientRect( & cr);
+		int x = cr.Width() * (m_BandWithFocus * 2 + 1) / (2 * m_NumOfBands);
+		int y = (1 - log10(m_BandGain[m_BandWithFocus])) * cr.Height() / 2;
+		int dx = GetSystemMetrics(SM_CXDRAG);
+		int dy = GetSystemMetrics(SM_CYDRAG);
+		CRect r(x - dx, y - dy, x + dx, y + dy);
+		InvalidateRect( & r);
+	}
+	if (m_bGotFocus && ! m_bButtonPressed)
+	{
+		SetTimer(1, GetCaretBlinkTime(), NULL);
+	}
 }
