@@ -155,8 +155,7 @@ void CFftRulerView::OnDraw(CDC* pDC)
 			}
 			pDC->MoveTo(cr.right - 3, yDev);
 			pDC->LineTo(cr.right, yDev);
-			CString s;
-			s.Format(_T("%d"), y);
+			CString s = LtoaCS(y);
 
 			pDC->TextOut(cr.right - 3, yDev + tm.tmHeight / 2, s);
 		}
