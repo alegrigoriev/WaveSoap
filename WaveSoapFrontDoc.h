@@ -15,6 +15,31 @@ struct WavePeak
 	__int16 high;
 };
 
+class CSelectionUpdateInfo : public CObject
+{
+public:
+	CSelectionUpdateInfo() {}
+	~CSelectionUpdateInfo() {}
+	int SelBegin;
+	int SelEnd;
+	int SelChannel;
+	int CaretPos;
+};
+
+class CSoundUpdateInfo : public CObject
+{
+public:
+	CSoundUpdateInfo()
+		: pNext(NULL)
+	{}
+	~CSoundUpdateInfo() {}
+	CSoundUpdateInfo * pNext;
+	int UpdateCode;
+	int Begin;
+	int End;
+	int Length;
+};
+
 // Active document have highest priority for disk-intensive operations.
 // while it is executing a disk-intensive command,
 // such operations with non-active documents are suspended.
@@ -41,6 +66,7 @@ public:
 	virtual BOOL OnOpenDocument(LPCTSTR lpszPathName);
 	virtual BOOL OnSaveDocument(LPCTSTR lpszPathName);
 	//}}AFX_VIRTUAL
+	virtual void OnIdle();
 	virtual BOOL DoSave(LPCTSTR lpszPathName, BOOL bReplace = TRUE);
 	CString szWaveFilename;
 	CString szWaveTitle;
@@ -99,6 +125,10 @@ public:
 	{
 		return m_WavFile.m_pWf->nChannels;
 	}
+	BOOL SetThreadPriority(int priority)
+	{
+		return m_Thread.SetThreadPriority(priority);
+	}
 
 	void SavePeakInfo();
 	BOOL OpenWaveFile();
@@ -109,12 +139,16 @@ public:
 
 	bool volatile m_OperationInProgress;
 	bool volatile m_StopOperation;
+	CString m_CurrentStatusString;
 	bool m_bReadOnly;
 	bool m_bUndoAvailable;
+	CSimpleCriticalSection m_cs;
 	COperationContext * m_pCurrentContext;
 	COperationContext * m_pQueuedOperation;
 	COperationContext * m_pUndoList;
 	COperationContext * m_pRedoList;
+	CSoundUpdateInfo * m_pUpdateList;
+
 protected:
 	HANDLE m_hThreadEvent;
 	bool volatile m_bRunThread;
@@ -154,27 +188,6 @@ protected:
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 
-};
-
-class CSelectionUpdateInfo : public CObject
-{
-public:
-	CSelectionUpdateInfo() {}
-	~CSelectionUpdateInfo() {}
-	int SelBegin;
-	int SelEnd;
-	int SelChannel;
-	int CaretPos;
-};
-
-class CSoundUpdateInfo : public CObject
-{
-public:
-	CSoundUpdateInfo() {}
-	~CSoundUpdateInfo() {}
-	int Begin;
-	int End;
-	int Length;
 };
 
 #pragma pack(push, 2)
