@@ -1,7 +1,11 @@
 TODO tasks:
 
-Made "percent" through file size
-Fix all operation status prompts
+Make Undo/redo save the selection and regions
+Add support for markers and regions: save on copy and with undo, move and delete on Cut, move on Paste
+Double click selects between two markers
+Delete/Insert operations can auto add markers and regions
+
+Make Windows/Close All command
 
 When starting playing selection, bring the playback cursor into view
 Add "Goto" button to the statistics dialog
@@ -30,18 +34,12 @@ Load sound from AVI
 Add options dialog
 In outline view, change mouse cursor over caret and view and selection boundaries
 TODO: check 4GB WAV files
-Make Windows/Close All command
 
 Add noise reduction estimation in spectrum section view
 Add sound recording
 Support "Play" in selection dialog
 Make Paste Special command (with Fade In/Fade Out etc)
 Add Save Selection As function
-Make Undo/redo save the selection and regions
-Add support for markers and regions: save on copy and with undo, move and delete on Cut, move on Paste
-Double click selects between two markers
-Delete/Insert operations can auto add markers and regions
-If delete (shrink) is done with one channel of two, fill the rest with zeros
 If displaying data without peak info, call RescanPeaks for this range.
 Support CFSTR_FILECONTENTS clipboard format
 Save current workspace
@@ -87,6 +85,7 @@ Windows2000 is trying to zero the allocated file
 Log Off query doesn't close the active dialog. Recursion is possible. Make sure to check after Cancel
 
 Fixed:
+If delete (shrink) is done with one channel of two, fill the rest with zeros
 Playback cursor not shown properly
 Saving short file with zeros as u-law doesn't save anything
 Mono file with compression is not fuly saved
@@ -146,6 +145,9 @@ Save As dialog is not centered first time (comdlg problem?)
 ??? When time/seconds format is set for status bar, MM:SS is actually shown
 
 Done:
+Load operation prompts from resources
+Fix all operation status prompts
+Made "percent" through file size
 Add keyboard accelerators to selection dialog
 Interrupted operations: UNDO and REDO
 detach CScanPeaksContext from a document, associate with a file
