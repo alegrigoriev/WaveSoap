@@ -504,7 +504,37 @@ inline BOOL CUndoRedoContext::NeedToSave(SAMPLE_POSITION Position, size_t length
 	return TRUE;
 }
 
-// TODO: detach from a document, associate with a file
+CDecompressContext::CDecompressContext(CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString,
+										CWaveFile & SrcFile,
+										CWaveFile & DstFile,
+										SAMPLE_POSITION SrcStart,
+										SAMPLE_POSITION SrcEnd,
+										NUMBER_OF_SAMPLES NumSamples,
+										WAVEFORMATEX const * pWf,
+										BOOL SwapBytes)
+	: COperationContext(pDoc, StatusString,
+						// operation can be terminated by Close
+						OperationContextDiskIntensive | OperationContextNonCritical),
+	m_SrcBufSize(0),
+	m_DstBufSize(0),
+	m_acmDrv(NULL),
+	m_acmStr(NULL),
+	m_bSwapBytes(SwapBytes),
+	m_Wf(pWf),
+	m_CurrentSamples(NumSamples),
+	m_MmResult(MMSYSERR_NOERROR)
+{
+	memzero(m_ash);
+	m_DstFile = DstFile;
+	m_SrcFile = SrcFile;
+
+	m_DstStart = m_DstFile.SampleToPosition(0);
+	m_DstPos = m_DstStart;
+
+	m_SrcStart = SrcStart;
+	m_SrcPos = SrcStart;
+	m_SrcEnd = SrcEnd;
+}
 BOOL CScanPeaksContext::OperationProc()
 {
 	if (m_Flags & OperationContextStopRequested)
@@ -512,7 +542,7 @@ BOOL CScanPeaksContext::OperationProc()
 		m_Flags |= OperationContextStop;
 		return TRUE;
 	}
-	if (m_Position >= m_End)
+	if (m_SrcPos >= m_SrcEnd)
 	{
 		m_Flags |= OperationContextFinished;
 		PercentCompleted = 100;
@@ -520,33 +550,36 @@ BOOL CScanPeaksContext::OperationProc()
 	}
 
 	DWORD dwStartTime = timeGetTime();
-	SAMPLE_POSITION dwOperationBegin = m_Position;
+
+	SAMPLE_POSITION dwOperationBegin = m_SrcPos;
 	do
 	{
-		DWORD SizeToRead = m_End - m_Position;
+		MEDIA_FILE_SIZE SizeToRead = m_SrcEnd - m_SrcPos;
+
 		void * pBuf;
-		long lRead = pDocument->m_WavFile.GetDataBuffer( & pBuf,
-														SizeToRead, m_Position, CDirectFile::GetBufferAndPrefetchNext);
+		long lRead = m_SrcFile.GetDataBuffer( & pBuf,
+											SizeToRead, m_SrcPos, CDirectFile::GetBufferAndPrefetchNext);
+
 		if (lRead > 0)
 		{
 			unsigned i;
 			ULONG DataToProcess = lRead;
 			WAVE_SAMPLE * pWaveData = (WAVE_SAMPLE *) pBuf;
 
-			DWORD DataOffset = m_Position - pDocument->WaveDataChunk()->dwDataOffset;
+			DWORD DataOffset = m_SrcPos - m_SrcStart;
 			unsigned DataForGranule = m_GranuleSize - DataOffset % m_GranuleSize;
 
-			if (2 == pDocument->WaveChannels())
+			if (2 == m_SrcFile.Channels())
 			{
 				unsigned PeakIndex = (DataOffset / m_GranuleSize) * 2;
 
 				while (0 != DataToProcess)
 				{
-					WavePeak peak = pDocument->m_WavFile.GetPeakMinMax(PeakIndex, PeakIndex + 1);
+					WavePeak peak = m_SrcFile.GetPeakMinMax(PeakIndex, PeakIndex + 1);
 					int wpl_l = peak.low;
 					int wpl_h = peak.high;
 
-					peak = pDocument->m_WavFile.GetPeakMinMax(PeakIndex + 1, PeakIndex + 2);
+					peak = m_SrcFile.GetPeakMinMax(PeakIndex + 1, PeakIndex + 2);
 					int wpr_l = peak.low;
 					int wpr_h = peak.high;
 
@@ -603,8 +636,8 @@ BOOL CScanPeaksContext::OperationProc()
 						pWaveData++;
 					}
 
-					pDocument->m_WavFile.SetPeakData(PeakIndex, wpl_l, wpl_h);
-					pDocument->m_WavFile.SetPeakData(PeakIndex + 1, wpr_l, wpr_h);
+					m_SrcFile.SetPeakData(PeakIndex, wpl_l, wpl_h);
+					m_SrcFile.SetPeakData(PeakIndex + 1, wpr_l, wpr_h);
 
 					PeakIndex += 2;
 					DataForGranule = m_GranuleSize;
@@ -615,7 +648,7 @@ BOOL CScanPeaksContext::OperationProc()
 				unsigned PeakIndex = DataOffset / m_GranuleSize;
 				while (0 != DataToProcess)
 				{
-					WavePeak peak = pDocument->m_WavFile.GetPeakMinMax(PeakIndex, PeakIndex + 1);
+					WavePeak peak = m_SrcFile.GetPeakMinMax(PeakIndex, PeakIndex + 1);
 					int wp_l = peak.low;
 					int wp_h = peak.high;
 
@@ -637,15 +670,15 @@ BOOL CScanPeaksContext::OperationProc()
 						}
 					}
 
-					pDocument->m_WavFile.SetPeakData(PeakIndex, wp_l, wp_h);
+					m_SrcFile.SetPeakData(PeakIndex, wp_l, wp_h);
 
 					PeakIndex ++;
 					DataForGranule = m_GranuleSize;
 				}
 			}
 
-			m_Position += lRead;
-			pDocument->m_WavFile.ReturnDataBuffer(pBuf, lRead, 0);
+			m_SrcPos += lRead;
+			m_SrcFile.ReturnDataBuffer(pBuf, lRead, 0);
 		}
 		else
 		{
@@ -654,31 +687,39 @@ BOOL CScanPeaksContext::OperationProc()
 			return FALSE;
 		}
 	}
-	while (m_Position < m_End
+	while (m_SrcPos < m_SrcEnd
 			&& timeGetTime() - dwStartTime < 200);
 
-	TRACE("CScanPeaksContext current position=%X\n", m_Position);
+	TRACE("CScanPeaksContext current position=%X\n", m_SrcPos);
 
-	UpdateCompletedPercent(m_Position, m_Start, m_End);
+	UpdateCompletedPercent();
 
 	// notify the view
-	SAMPLE_INDEX nFirstSample = pDocument->m_WavFile.PositionToSample(dwOperationBegin);
-	SAMPLE_INDEX nLastSample = pDocument->m_WavFile.PositionToSample(m_Position);
+	pDocument->FileChanged(m_SrcFile, dwOperationBegin,
+							m_SrcPos, -1, UpdateSoundDontRescanPeaks);
 
-	pDocument->SoundChanged(pDocument->WaveFileID(),
-							nFirstSample, nLastSample, -1, UpdateSoundDontRescanPeaks);
 	return TRUE;
 }
 
 void CScanPeaksContext::PostRetire(BOOL bChildContext)
 {
-	if ((m_Flags & ScanPeaksSavePeakFile)
+	if (m_bSavePeakFile
 		&& (m_Flags & OperationContextFinished)
-		&& pDocument->m_OriginalWavFile.IsOpen())
+		&& m_OriginalFile.IsOpen())
 	{
-		pDocument->m_WavFile.SavePeakInfo(pDocument->m_OriginalWavFile);
+		m_SrcFile.SavePeakInfo(m_OriginalFile);
 	}
 	COperationContext::PostRetire(bChildContext);
+}
+
+BOOL CScanPeaksContext::Init()
+{
+	if ( ! m_SrcFile.AllocatePeakData(m_SrcFile.NumberOfSamples()))
+	{
+		NotEnoughMemoryMessageBox();
+		return FALSE;
+	}
+	return TRUE;
 }
 
 CResizeContext::~CResizeContext()
