@@ -47,9 +47,6 @@ void FFTPostProc(complex<T> * x, const int count)
 		tmp_r = u_r * rot_r - u_i * rot_i;
 		u_i = u_r * rot_i + u_i * rot_r;
 		u_r = tmp_r;
-		if (0) TRACE("x[%d]=(%g,%g),x[%d]=(%g,%g)\n",
-					i, x[i].real(), x[i].imag(),
-					k, x[k].real(), x[k].imag());
 	}
 #ifdef _DEBUG
 	FftTime7 = FftReadTSC();
@@ -85,9 +82,6 @@ void IFFTPreProc(const complex<T> * src, complex<T> * dst, const int count)
 		dst[i].imag(T(0.5) * (tmp2_i - tmp_i));
 		dst[k].real(T(0.5) * (tmp_r - tmp3));
 		dst[k].imag(T(0.5) * (tmp2_i + tmp_i));
-		if (0)TRACE("dst[%d]=(%g,%g),dst[%d]=(%g,%g)\n",
-					i, dst[i].real(), dst[i].imag(),
-					k, dst[k].real(), dst[k].imag());
 	}
 #ifdef _DEBUG
 	FftTime7 = FftReadTSC();
