@@ -15,9 +15,9 @@ static char THIS_FILE[] = __FILE__;
 /////////////////////////////////////////////////////////////////////////////
 // CRawFileParametersDlg dialog
 
-
-CRawFileParametersDlg::CRawFileParametersDlg(CWnd* pParent /*=NULL*/)
-	: CDialog(CRawFileParametersDlg::IDD, pParent)
+CRawFileParametersDlg::CRawFileParametersDlg(LONGLONG Length, CWnd* pParent /*=NULL*/)
+	: BaseClass(IDD, pParent)
+	, m_SourceFileSize(Length)
 {
 	//{{AFX_DATA_INIT(CRawFileParametersDlg)
 	m_HeaderLength = 0;
@@ -99,7 +99,7 @@ void AFXAPI DDX_TextHex(CDataExchange* pDX, int nIDC, DWORD& value)
 
 void CRawFileParametersDlg::DoDataExchange(CDataExchange* pDX)
 {
-	CDialog::DoDataExchange(pDX);
+	BaseClass::DoDataExchange(pDX);
 	//{{AFX_DATA_MAP(CRawFileParametersDlg)
 	DDX_Control(pDX, IDC_COMBO_SAMPLING_RATE, m_cbSamplingRate);
 	DDX_TextHex(pDX, IDC_EDIT_HEADER_LENGTH, m_HeaderLength);
@@ -125,10 +125,18 @@ void CRawFileParametersDlg::DoDataExchange(CDataExchange* pDX)
 }
 
 
-BEGIN_MESSAGE_MAP(CRawFileParametersDlg, CDialog)
+BEGIN_MESSAGE_MAP(CRawFileParametersDlg, BaseClass)
 	//{{AFX_MSG_MAP(CRawFileParametersDlg)
 	ON_BN_CLICKED(IDC_RADIO_8BITS, OnClicked8bits)
 	ON_BN_CLICKED(IDC_RADIO_16BITS, OnClicked16bits)
+	ON_UPDATE_COMMAND_UI(IDC_STATIC_COMPRESSION, OnUpdate8bitsOnly)
+	ON_UPDATE_COMMAND_UI(IDC_RADIO_COMPRESSION_NONE, OnUpdate8bitsOnly)
+	ON_UPDATE_COMMAND_UI(IDC_RADIO_COMPRESSION_ALAW, OnUpdate8bitsOnly)
+	ON_UPDATE_COMMAND_UI(IDC_RADIO_COMPRESSION_ULAW, OnUpdate8bitsOnly)
+
+	ON_UPDATE_COMMAND_UI(IDC_STATIC_BYTE_ORDER, OnUpdate16bitsOnly)
+	ON_UPDATE_COMMAND_UI(IDC_RADIO_LSB_FIRST, OnUpdate16bitsOnly)
+	ON_UPDATE_COMMAND_UI(IDC_RADIO_MSB_FIRST, OnUpdate16bitsOnly)
 	//}}AFX_MSG_MAP
 END_MESSAGE_MAP()
 
@@ -137,42 +145,24 @@ END_MESSAGE_MAP()
 
 void CRawFileParametersDlg::OnClicked8bits()
 {
-	EnableDlgItem(IDC_STATIC_COMPRESSION, TRUE);
-	EnableDlgItem(IDC_RADIO_COMPRESSION_NONE, TRUE);
-	EnableDlgItem(IDC_RADIO_COMPRESSION_ALAW, TRUE);
-	EnableDlgItem(IDC_RADIO_COMPRESSION_ULAW, TRUE);
-
-	EnableDlgItem(IDC_STATIC_BYTE_ORDER, FALSE);
-	EnableDlgItem(IDC_RADIO_LSB_FIRST, FALSE);
-	EnableDlgItem(IDC_RADIO_MSB_FIRST, FALSE);
+	m_bBits16 = 0;
+	NeedUpdateControls();
 }
 
 void CRawFileParametersDlg::OnClicked16bits()
 {
-	EnableDlgItem(IDC_STATIC_COMPRESSION, FALSE);
-	EnableDlgItem(IDC_RADIO_COMPRESSION_NONE, FALSE);
-	EnableDlgItem(IDC_RADIO_COMPRESSION_ALAW, FALSE);
-	EnableDlgItem(IDC_RADIO_COMPRESSION_ULAW, FALSE);
-
-	EnableDlgItem(IDC_STATIC_BYTE_ORDER, TRUE);
-	EnableDlgItem(IDC_RADIO_LSB_FIRST, TRUE);
-	EnableDlgItem(IDC_RADIO_MSB_FIRST, TRUE);
+	m_bBits16 = 1;
+	NeedUpdateControls();
 }
 
-BOOL CRawFileParametersDlg::OnInitDialog()
+void CRawFileParametersDlg::OnUpdate16bitsOnly(CCmdUI * pCmdUI)
 {
-	CDialog::OnInitDialog();
+	pCmdUI->Enable(m_bBits16);
+}
 
-	if (m_bBits16)
-	{
-		OnClicked16bits();
-	}
-	else
-	{
-		OnClicked8bits();
-	}
-	return TRUE;  // return TRUE unless you set the focus to a control
-	// EXCEPTION: OCX Property Pages should return FALSE
+void CRawFileParametersDlg::OnUpdate8bitsOnly(CCmdUI * pCmdUI)
+{
+	pCmdUI->Enable( ! m_bBits16);
 }
 
 /////////////////////////////////////////////////////////////////////////////

@@ -8,6 +8,7 @@
 // RawFileParametersDlg.h : header file
 //
 #include "ApplicationProfile.h"
+#include "UiUpdatedDlg.h"
 
 /////////////////////////////////////////////////////////////////////////////
 // CRawFileParametersDlg dialog
@@ -27,15 +28,65 @@ struct RawFileParams
 	};
 };
 
-class CRawFileParametersDlg : public CDialog, RawFileParams
+class CRawFileParametersDlg : public CUiUpdatedDlg, protected RawFileParams
 {
+	typedef CUiUpdatedDlg BaseClass;
 // Construction
 public:
-	CRawFileParametersDlg(CWnd* pParent = NULL);   // standard constructor
+	CRawFileParametersDlg(LONGLONG Length, CWnd* pParent = NULL);   // standard constructor
+
+	DWORD HeaderLength() const
+	{
+		return m_HeaderLength;
+	}
+
+	DWORD TrailerLength() const
+	{
+		return m_TrailerLength;
+	}
+
+	BOOL MsbFirst() const
+	{
+		return m_bMsbFirst;
+	}
+
+	NUMBER_OF_CHANNELS NumberOfChannels() const
+	{
+		return 1 + (0 != m_bStereo);
+	}
+
+	int NumberOfBits() const
+	{
+		return 8 + 8 * (0 != m_bBits16);
+	}
+
+	long SamplingRate() const
+	{
+		return m_SamplingRate;
+	}
+
+	WORD GetFormatTag() const
+	{
+		if (m_bBits16)
+		{
+			return WAVE_FORMAT_PCM;
+		}
+		switch(m_Compression)
+		{
+		case 0:
+		default:
+			return WAVE_FORMAT_PCM;
+		case 1:
+			return WAVE_FORMAT_ALAW;
+		case 2:
+			return WAVE_FORMAT_MULAW;
+		}
+	}
 
 // Dialog Data
 	//{{AFX_DATA(CRawFileParametersDlg)
 	enum { IDD = IDD_DIALOG_RAW_FILE_PARAMETERS };
+protected:
 	CComboBox	m_cbSamplingRate;
 	DWORD	m_HeaderLength;
 	DWORD	m_TrailerLength;
@@ -45,7 +96,7 @@ public:
 	int		m_bMsbFirst;
 	//}}AFX_DATA
 	long    m_SamplingRate;
-	ULONG   m_SourceFileSize;
+	LONGLONG  m_SourceFileSize;
 
 	CApplicationProfile m_Profile;
 // Overrides
@@ -62,8 +113,9 @@ protected:
 	//{{AFX_MSG(CRawFileParametersDlg)
 	afx_msg void OnClicked8bits();
 	afx_msg void OnClicked16bits();
-	virtual BOOL OnInitDialog();
 	//}}AFX_MSG
+	afx_msg void OnUpdate16bitsOnly(CCmdUI * pCmdUI);
+	afx_msg void OnUpdate8bitsOnly(CCmdUI * pCmdUI);
 	DECLARE_MESSAGE_MAP()
 };
 
