@@ -2603,7 +2603,35 @@ UINT CWaveSoapFrontView::GetPopupMenuID(CPoint point)
 
 void CWaveSoapFrontView::OnRButtonDown(UINT nFlags, CPoint point)
 {
+	// point is in client coordinates
 	CView::OnRButtonDown(nFlags, point);
+	DWORD nHit = ClientHitTest(point);
+	if ((nHit & VSHT_NONCLIENT)
+		|| (nHit & VSHT_SELECTION))
+	{
+		return;
+	}
+
+	ThisDoc * pDoc = GetDocument();
+
+	SAMPLE_INDEX nBegin = SAMPLE_INDEX(WindowToWorldX(point.x));
+	SAMPLE_INDEX nEnd = SAMPLE_INDEX(WindowToWorldX(point.x + 1));
+
+	CHANNEL_MASK nChan = ALL_CHANNELS;
+	if (nHit & VSHT_LEFT_CHAN)
+	{
+		nChan = SPEAKER_FRONT_LEFT;
+	}
+	else if (nHit & VSHT_RIGHT_CHAN)
+	{
+		nChan = SPEAKER_FRONT_RIGHT;
+	}
+
+	pDoc->SetSelection(nBegin, nEnd, nChan, nBegin,
+						SetSelection_SnapToMaximum
+						| SetSelection_MakeCaretVisible);
+
+	OnSetCursor(this, HTCLIENT, WM_RBUTTONDOWN);
 }
 
 void CWaveSoapFrontView::OnRButtonUp(UINT nFlags, CPoint point)
