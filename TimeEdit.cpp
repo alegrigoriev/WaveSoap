@@ -312,3 +312,49 @@ void CTimeEditCombo::AddPosition(UINT id, SAMPLE_INDEX time)
 	s.LoadString(id);
 	AddPosition(s, time);
 }
+
+CFileTimesCombo::CFileTimesCombo(SAMPLE_INDEX caret,
+								CWaveFile & WaveFile, int TimeFormat)
+	: BaseClass(TimeFormat)
+	, m_WaveFile(WaveFile)
+	, m_CaretPosition(caret)
+{
+	SetSamplingRate(WaveFile.SampleRate());
+}
+
+void CFileTimesCombo::FillFileTimes()
+{
+	AddPosition(IDS_BEGIN_OF_SAMPLE, 0);
+
+	NUMBER_OF_SAMPLES FileLength = m_WaveFile.NumberOfSamples();
+	AddPosition(IDS_END_OF_SAMPLE, FileLength);
+
+	if (0 != m_CaretPosition
+		&& FileLength != m_CaretPosition)
+	{
+		AddPosition(IDS_CURSOR, m_CaretPosition);
+	}
+	CWaveFile::InstanceDataWav * pInst = m_WaveFile.GetInstanceData();
+
+	CString s;
+	for (std::vector<WaveMarker>::iterator i = pInst->Markers.begin();
+		i < pInst->Markers.end(); i++)
+	{
+		// TODO: include positions in HH:mm:ss and the tooltips
+		if (0 == i->LengthSamples
+			&& i->StartSample <= FileLength)
+		{
+			if (i->Comment.IsEmpty())
+			{
+				s = i->Name;
+			}
+			else
+			{
+				s.Format(_T("%s (%s)"), LPCTSTR(i->Name), LPCTSTR(i->Comment));
+			}
+
+			AddPosition(s, i->StartSample);
+		}
+	}
+}
+
