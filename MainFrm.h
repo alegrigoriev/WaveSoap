@@ -24,7 +24,7 @@ public:
 	{
 		m_nIDLastMessage = 0;
 	}
-
+	using CMDIFrameWnd::OnToolTipText;
 // Overrides
 	// ClassWizard generated virtual function overrides
 	//{{AFX_VIRTUAL(CMainFrame)

@@ -5,6 +5,7 @@
 #include "WaveSoapFront.h"
 #include "resource.h"
 #include "OperationDialogs.h"
+#include "MainFrm.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -1480,6 +1481,7 @@ void CExpressionEvaluationDialog::DoDataExchange(CDataExchange* pDX)
 {
 	CDialog::DoDataExchange(pDX);
 	//{{AFX_DATA_MAP(CExpressionEvaluationDialog)
+	DDX_Control(pDX, IDC_TAB_TOKENS, m_TabTokens);
 	DDX_Control(pDX, IDC_EDIT_EXPRESSION, m_eExpression);
 	DDX_Control(pDX, IDC_STATIC_SELECTION, m_SelectionStatic);
 	DDX_Check(pDX, IDC_CHECK_UNDO, m_bUndo);
@@ -1491,6 +1493,7 @@ void CExpressionEvaluationDialog::DoDataExchange(CDataExchange* pDX)
 BEGIN_MESSAGE_MAP(CExpressionEvaluationDialog, CDialog)
 	//{{AFX_MSG_MAP(CExpressionEvaluationDialog)
 	ON_BN_CLICKED(IDC_BUTTON_SELECTION, OnButtonSelection)
+	ON_NOTIFY(TCN_SELCHANGE, IDC_TAB_TOKENS, OnSelchangeTabTokens)
 	//}}AFX_MSG_MAP
 END_MESSAGE_MAP()
 
@@ -2069,3 +2072,60 @@ void CNoiseReductionDialog::OnButtonSetThreshold()
 	GetApp()->Profile.FlushSection(_T("NoiseReduction"));
 	EndDialog(IDC_BUTTON_SET_THRESHOLD);
 }
+
+void CExpressionEvaluationDialog::OnSelchangeTabTokens(NMHDR* pNMHDR, LRESULT* pResult)
+{
+	int sel = m_TabTokens.GetCurSel();
+
+	m_FunctionsTabDlg.EnableWindow(0 == sel);
+	m_FunctionsTabDlg.ShowWindow((0 == sel) ? SW_SHOWNA : SW_HIDE);
+
+	m_OperandsTabDlg.EnableWindow(1 == sel);
+	m_OperandsTabDlg.ShowWindow((1 == sel) ? SW_SHOWNA : SW_HIDE);
+
+	m_OperatorsTabDlg.EnableWindow(2 == sel);
+	m_OperatorsTabDlg.ShowWindow((2 == sel) ? SW_SHOWNA : SW_HIDE);
+
+	m_SavedExprTabDlg.EnableWindow(3 == sel);
+	m_SavedExprTabDlg.ShowWindow((3 == sel) ? SW_SHOWNA : SW_HIDE);
+
+	*pResult = 0;
+}
+
+BOOL CExpressionEvaluationDialog::OnInitDialog()
+{
+	m_FunctionsTabDlg.Create(IDD_FUNCTIONS_TAB, this);
+	m_OperandsTabDlg.Create(IDD_OPERANDS_TAB, this);
+	m_OperatorsTabDlg.Create(IDD_OPERATORS_TAB, this);
+	m_SavedExprTabDlg.Create(IDD_SAVED_EXPRESSIONS_TAB, this);
+
+	CDialog::OnInitDialog();
+	CRect r;
+	CWnd * pWnd = GetDlgItem(IDC_STATIC_TAB_INTERIOR);
+	if (pWnd)
+	{
+		pWnd->GetWindowRect( & r);
+		ScreenToClient( & r);
+		m_OperandsTabDlg.MoveWindow( & r, FALSE);
+		m_OperandsTabDlg.EnableToolTips();
+
+		m_OperatorsTabDlg.MoveWindow( & r, FALSE);
+		m_OperatorsTabDlg.EnableToolTips();
+
+		m_FunctionsTabDlg.MoveWindow( & r, FALSE);
+		m_FunctionsTabDlg.EnableToolTips();
+
+		m_SavedExprTabDlg.MoveWindow( & r, FALSE);
+		m_SavedExprTabDlg.EnableToolTips();
+	}
+
+	m_FunctionsTabDlg.EnableWindow();
+	m_FunctionsTabDlg.ShowWindow(SW_SHOWNA);
+	m_TabTokens.InsertItem(0, _T("Functions"));
+	m_TabTokens.InsertItem(1, _T("Operands"));
+	m_TabTokens.InsertItem(2, _T("Operators"));
+	m_TabTokens.InsertItem(3, _T("Saved Expressions"));
+	return TRUE;  // return TRUE unless you set the focus to a control
+	// EXCEPTION: OCX Property Pages should return FALSE
+}
+

@@ -1,10 +1,13 @@
 Known problems and tasks:
 
 Make combobox in selection dialog
+Support WAVEFORMATEXTENSIBLE.
 File specified in the command line is not open
 Add CD grabbing
 Make save presets for Expression Evaluation command
 Make more integer operations for Expression Evaluation (bit ops, modulo)
+Add Channels... command to menu
+Add Resample... command to sample rate context menu
 Add noise reduction estimation in spectrum section view
 Add MP3 save
 Add ASF save
@@ -34,12 +37,15 @@ Make tooltips
 Make help file
 
 Problems:
+Expression evaluation selection longer than file length doesn't update file length
+Doesn't see the document as active
 If number of channels changed, amplitude ruler doesn't update extents
 Ctrl-End, Ctrl-Home loses synchronization between FFT and wave
 When selecting to the begin of file, FFT is corrupted
 Doesn't detect new active document, when previous closed.
 MP3 open, WAV save as - can't reopen in direct until 2 seconds passed.
 If there is not enough space on NTFS volume, it will be seen only during flush
+Windows2000 is trying to zero the allocated file
 
 Fixed:
 Insert Silence of zero length still tries to modify the file

@@ -106,6 +106,10 @@ SOURCE=.\CdDrive.cpp
 # End Source File
 # Begin Source File
 
+SOURCE=.\ChildDialog.cpp
+# End Source File
+# Begin Source File
+
 SOURCE=.\ChildFrm.cpp
 # End Source File
 # Begin Source File
@@ -293,6 +297,10 @@ SOURCE=.\ApplicationProfile.h
 # Begin Source File
 
 SOURCE=.\CdDrive.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\ChildDialog.h
 # End Source File
 # Begin Source File
 
