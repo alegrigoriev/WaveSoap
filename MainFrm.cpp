@@ -15,10 +15,13 @@ static char THIS_FILE[] = __FILE__;
 
 /////////////////////////////////////////////////////////////////////////////
 // CMainFrame
-
+#if 0
+IMPLEMENT_DYNAMIC(CMainFrame, DialogProxyWnd)
+IMPLEMENT_DYNAMIC_T(DialogProxyWnd, CMDIFrameWnd, CMDIFrameWnd)
+#else
 IMPLEMENT_DYNAMIC(CMainFrame, CMDIFrameWnd)
-
-BEGIN_MESSAGE_MAP(CMainFrame, CMDIFrameWnd)
+#endif
+BEGIN_MESSAGE_MAP(CMainFrame, BaseClass)
 	//{{AFX_MSG_MAP(CMainFrame)
 	ON_WM_CREATE()
 	ON_WM_PALETTECHANGED()
@@ -29,16 +32,17 @@ BEGIN_MESSAGE_MAP(CMainFrame, CMDIFrameWnd)
 	ON_WM_DESTROY()
 	//}}AFX_MSG_MAP
 	// Global help commands
-	ON_COMMAND(ID_HELP_FINDER, CMDIFrameWnd::OnHelpFinder)
-	ON_COMMAND(ID_HELP, CMDIFrameWnd::OnHelp)
-	ON_COMMAND(ID_CONTEXT_HELP, CMDIFrameWnd::OnContextHelp)
-	ON_COMMAND(ID_DEFAULT_HELP, CMDIFrameWnd::OnHelpFinder)
+	ON_COMMAND(ID_HELP_FINDER, BaseClass::OnHelpFinder)
+	ON_COMMAND(ID_HELP, BaseClass::OnHelp)
+	ON_COMMAND(ID_CONTEXT_HELP, BaseClass::OnContextHelp)
+	ON_COMMAND(ID_DEFAULT_HELP, BaseClass::OnHelpFinder)
 	ON_UPDATE_COMMAND_UI(ID_INDICATOR_FILE_SIZE, OnUpdateIndicatorFileSize)
 	ON_UPDATE_COMMAND_UI(ID_INDICATOR_SAMPLE_RATE, OnUpdateIndicatorSampleRate)
 	//ON_UPDATE_COMMAND_UI(ID_INDICATOR_SAMPLE_SIZE, OnUpdateIndicatorSampleSize)
 	ON_UPDATE_COMMAND_UI(ID_INDICATOR_CHANNELS, OnUpdateIndicatorChannels)
 	ON_MESSAGE(WM_DISPLAYCHANGE, OnDisplayChange)
 	ON_MESSAGE(WM_SETTINGCHANGE, OnSettingChange)
+
 END_MESSAGE_MAP()
 
 static UINT indicators[] =
@@ -64,21 +68,21 @@ CMainFrame::~CMainFrame()
 
 LRESULT CMainFrame::OnSettingChange(WPARAM uFlags, LPARAM lParam)
 {
-	CFrameWnd::OnSettingChange(uFlags, (LPCTSTR)lParam);
+	BaseClass::OnSettingChange(uFlags, (LPCTSTR)lParam);
 	RecalcLayout();
 	return 0;
 }
 
 LRESULT CMainFrame::OnDisplayChange(WPARAM wParam, LPARAM lParam)
 {
-	LRESULT result = CFrameWnd::OnDisplayChange(wParam, lParam);
+	LRESULT result = BaseClass::OnDisplayChange(wParam, lParam);
 	RecalcLayout();
 	return result;
 }
 
 int CMainFrame::OnCreate(LPCREATESTRUCT lpCreateStruct)
 {
-	if (CMDIFrameWnd::OnCreate(lpCreateStruct) == -1)
+	if (BaseClass::OnCreate(lpCreateStruct) == -1)
 		return -1;
 
 	if (!m_wndToolBar.CreateEx(this) ||
@@ -143,7 +147,7 @@ int CMainFrame::OnCreate(LPCREATESTRUCT lpCreateStruct)
 
 BOOL CMainFrame::OnBarCheckStatusBar(UINT nID)
 {
-	if (CFrameWnd::OnBarCheck(nID))
+	if (BaseClass::OnBarCheck(nID))
 	{
 		GetApp()->m_bShowStatusBar = (0 != (GetControlBar(nID)->GetStyle() & WS_VISIBLE));
 		return TRUE;
@@ -153,7 +157,7 @@ BOOL CMainFrame::OnBarCheckStatusBar(UINT nID)
 
 BOOL CMainFrame::OnBarCheckToolbar(UINT nID)
 {
-	if (CFrameWnd::OnBarCheck(nID))
+	if (BaseClass::OnBarCheck(nID))
 	{
 		GetApp()->m_bShowToolbar = (0 != (GetControlBar(nID)->GetStyle() & WS_VISIBLE));
 		return TRUE;
@@ -163,7 +167,7 @@ BOOL CMainFrame::OnBarCheckToolbar(UINT nID)
 
 BOOL CMainFrame::OnBarCheckRebar(UINT nID)
 {
-	if (CFrameWnd::OnBarCheck(nID))
+	if (BaseClass::OnBarCheck(nID))
 	{
 		GetApp()->m_bShowToolbar = (0 != (GetControlBar(nID)->GetStyle() & WS_VISIBLE));
 		return TRUE;
@@ -173,7 +177,7 @@ BOOL CMainFrame::OnBarCheckRebar(UINT nID)
 
 BOOL CMainFrame::PreCreateWindow(CREATESTRUCT& cs)
 {
-	if( !CMDIFrameWnd::PreCreateWindow(cs) )
+	if( !BaseClass::PreCreateWindow(cs) )
 		return FALSE;
 
 	return TRUE;
@@ -262,7 +266,7 @@ void CMainFrame::GetMessageString(UINT nID, CString& rMessage) const
 	}
 	else
 	{
-		CMDIFrameWnd::GetMessageString(nID, rMessage);
+		BaseClass::GetMessageString(nID, rMessage);
 	}
 }
 
@@ -327,12 +331,12 @@ void CMainFrame::OnUpdateIndicatorChannels(CCmdUI* pCmdUI)
 #ifdef _DEBUG
 void CMainFrame::AssertValid() const
 {
-	CMDIFrameWnd::AssertValid();
+	BaseClass::AssertValid();
 }
 
 void CMainFrame::Dump(CDumpContext& dc) const
 {
-	CMDIFrameWnd::Dump(dc);
+	BaseClass::Dump(dc);
 }
 
 #endif //_DEBUG
@@ -362,7 +366,7 @@ BOOL CMainFrame::OnQueryNewPalette()
 	}
 	dc->SelectPalette(hOldPal, FALSE);
 	ReleaseDC(dc);
-	//CMDIFrameWnd::OnQueryNewPalette();
+	//BaseClass::OnQueryNewPalette();
 	return TRUE;
 }
 
@@ -469,7 +473,7 @@ BOOL CMainFrame::PreTranslateMessage(MSG* pMsg)
 		m_nRotateChildIndex = 0;
 	}
 
-	return CMDIFrameWnd::PreTranslateMessage(pMsg);
+	return BaseClass::PreTranslateMessage(pMsg);
 }
 
 void CMainFrame::OnDestroy()
@@ -479,5 +483,6 @@ void CMainFrame::OnDestroy()
 
 	GetWindowPlacement( & wp);
 	GetApp()->m_bOpenMaximized = 0 != (wp.flags & WPF_RESTORETOMAXIMIZED);
-	CMDIFrameWnd::OnDestroy();
+	BaseClass::OnDestroy();
 }
+
