@@ -2323,31 +2323,33 @@ CString GetSelectionText(SAMPLE_INDEX Start, SAMPLE_INDEX End, CHANNEL_MASK Chan
 	CString s;
 	if (nChannels > 1)
 	{
+		CHANNEL_MASK mask = ~(~0L << nChannels);
 		LPCTSTR sChans = _T("Stereo");
-		if (! bLockChannels)
+		if (! bLockChannels
+			&& mask != (Chan & mask))
 		{
-			if (0 == Chan)
+			if (Chan & (1 << 0))
 			{
 				sChans = _T("Left");
 			}
-			else if (1 == Chan)
+			else if (Chan & (1 << 1))
 			{
 				sChans = _T("Right");
 			}
 		}
 		s.Format(_T("Selection : %s to %s (%s)\n")
 				_T("Channels: %s"),
-				SampleToString(Start, nSamplesPerSec, TimeFormat),
-				SampleToString(End, nSamplesPerSec, TimeFormat),
-				SampleToString(End - Start, nSamplesPerSec, TimeFormat),
+				LPCTSTR(SampleToString(Start, nSamplesPerSec, TimeFormat)),
+				LPCTSTR(SampleToString(End, nSamplesPerSec, TimeFormat)),
+				LPCTSTR(SampleToString(End - Start, nSamplesPerSec, TimeFormat)),
 				sChans);
 	}
 	else
 	{
 		s.Format(_T("Selection : %s to %s (%s)"),
-				SampleToString(Start, nSamplesPerSec, TimeFormat),
-				SampleToString(End, nSamplesPerSec, TimeFormat),
-				SampleToString(End - Start, nSamplesPerSec, TimeFormat));
+				LPCTSTR(SampleToString(Start, nSamplesPerSec, TimeFormat)),
+				LPCTSTR(SampleToString(End, nSamplesPerSec, TimeFormat)),
+				LPCTSTR(SampleToString(End - Start, nSamplesPerSec, TimeFormat)));
 	}
 	return s;
 }
