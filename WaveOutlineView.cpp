@@ -290,8 +290,8 @@ void CWaveOutlineView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
 		CSelectionUpdateInfo * pInfo = (CSelectionUpdateInfo *) pHint;
 
 		// calculate new selection boundaries
-		int SelBegin = MulDiv(pDoc->m_SelectionStart, cr.Width(), nSamples);
-		int SelEnd = MulDiv(pDoc->m_SelectionEnd, cr.Width(), nSamples);
+		SAMPLE_INDEX SelBegin = MulDiv(pDoc->m_SelectionStart, cr.Width(), nSamples);
+		SAMPLE_INDEX SelEnd = MulDiv(pDoc->m_SelectionEnd, cr.Width(), nSamples);
 		if (pDoc->m_SelectionEnd != pDoc->m_SelectionStart
 			&& SelEnd == SelBegin)
 		{
@@ -299,8 +299,8 @@ void CWaveOutlineView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
 		}
 
 		// calculate old selection boundaries
-		int OldSelBegin = MulDiv(pInfo->SelBegin, cr.Width(), nSamples);
-		int OldSelEnd = MulDiv(pInfo->SelEnd, cr.Width(), nSamples);
+		SAMPLE_INDEX OldSelBegin = MulDiv(pInfo->SelBegin, cr.Width(), nSamples);
+		SAMPLE_INDEX OldSelEnd = MulDiv(pInfo->SelEnd, cr.Width(), nSamples);
 		if (pInfo->SelEnd != pInfo->SelBegin
 			&& OldSelEnd == OldSelBegin)
 		{
@@ -311,7 +311,7 @@ void CWaveOutlineView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
 		CRect r1(SelBegin, cr.top, SelEnd, cr.bottom);
 		CRect r2(OldSelBegin, cr.top, OldSelEnd, cr.bottom);
 		// invalidate the regions with changed selection
-		int x[4] = {SelBegin, OldSelBegin, SelEnd, OldSelEnd };
+		SAMPLE_INDEX x[4] = {SelBegin, OldSelBegin, SelEnd, OldSelEnd };
 		if (SelBegin > OldSelBegin)
 		{
 			x[0] = OldSelBegin;
@@ -324,7 +324,7 @@ void CWaveOutlineView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
 		}
 		if (x[1] > x[2])
 		{
-			int tmp = x[1];
+			SAMPLE_INDEX tmp = x[1];
 			x[1] = x[2];
 			x[2] = tmp;
 		}
@@ -437,8 +437,9 @@ void CWaveOutlineView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
 			&& NULL != pHint)
 	{
 		CSoundUpdateInfo * pInfo = static_cast<CSoundUpdateInfo *>(pHint);
-		int OldPosition = MulDiv(m_PlaybackCursorPosition, cr.Width(), nSamples);
-		int NewPosition = MulDiv(pInfo->m_Begin, cr.Width(), nSamples);
+		SAMPLE_INDEX OldPosition = MulDiv(m_PlaybackCursorPosition, cr.Width(), nSamples);
+		SAMPLE_INDEX NewPosition = MulDiv(pInfo->m_Begin, cr.Width(), nSamples);
+
 		if (NewPosition != OldPosition)
 		{
 			CRect r;
@@ -493,8 +494,8 @@ BOOL CWaveOutlineView::EraseBkgnd(CDC* pDC)
 	GetClientRect( & r);
 
 	long nSamples = pDoc->WaveFileSamples();
-	int SelBegin = MulDiv(pDoc->m_SelectionStart, r.Width(), nSamples);
-	int SelEnd = MulDiv(pDoc->m_SelectionEnd, r.Width(), nSamples);
+	SAMPLE_INDEX SelBegin = MulDiv(pDoc->m_SelectionStart, r.Width(), nSamples);
+	SAMPLE_INDEX SelEnd = MulDiv(pDoc->m_SelectionEnd, r.Width(), nSamples);
 
 	if (pDoc->m_SelectionEnd != pDoc->m_SelectionStart
 		&& SelEnd == SelBegin)
@@ -543,18 +544,21 @@ void CWaveOutlineView::NotifyViewExtents(long left, long right)
 {
 	CWaveSoapFrontDoc * pDoc = GetDocument();
 	long nSamples = pDoc->WaveFileSamples();
+
 	if (0 == nSamples)
 	{
 		return;
 	}
+
 	CRect cr;
 	GetClientRect( & cr);
 	CRect r;
 	r.top = cr.top;
 	r.bottom = cr.bottom;
 
-	int OldLPosition = MulDiv(m_LeftViewBoundary, cr.Width(), nSamples);
-	int NewLPosition = MulDiv(left, cr.Width(), nSamples);
+	SAMPLE_INDEX OldLPosition = MulDiv(m_LeftViewBoundary, cr.Width(), nSamples);
+	SAMPLE_INDEX NewLPosition = MulDiv(left, cr.Width(), nSamples);
+
 	if (NewLPosition != OldLPosition)
 	{
 		if (-1 != m_LeftViewBoundary)
@@ -626,9 +630,10 @@ void CWaveOutlineView::OnLButtonDown(UINT nFlags, CPoint point)
 	{
 		return;
 	}
-	int nSampleUnderMouse = MulDiv(point.x, nSamples, width);
-	int SelectionStart = pDoc->m_SelectionStart;
-	int SelectionEnd = pDoc->m_SelectionEnd;
+
+	SAMPLE_INDEX nSampleUnderMouse = MulDiv(point.x, nSamples, width);
+	SAMPLE_INDEX SelectionStart = pDoc->m_SelectionStart;
+	SAMPLE_INDEX SelectionEnd = pDoc->m_SelectionEnd;
 
 	nKeyPressed = WM_LBUTTONDOWN;
 	if ((nFlags & MK_SHIFT)
@@ -653,8 +658,9 @@ void CWaveOutlineView::OnLButtonDown(UINT nFlags, CPoint point)
 		unsigned PeaksSamples = pDoc->m_WavFile.GetPeaksSize() / pDoc->WaveChannels();
 		unsigned Granularity = pDoc->m_WavFile.GetPeakGranularity();
 		// round to peak info granularity
-		long nBegin = Granularity * MulDiv(point.x, PeaksSamples, width);
-		long nEnd = Granularity * MulDiv(point.x + 1, PeaksSamples, width);
+
+		SAMPLE_INDEX nBegin = Granularity * MulDiv(point.x, PeaksSamples, width);
+		SAMPLE_INDEX nEnd = Granularity * MulDiv(point.x + 1, PeaksSamples, width);
 
 		pDoc->SetSelection(nBegin, nEnd, ALL_CHANNELS, nBegin,
 							SetSelection_SnapToMaximum | SetSelection_MoveCaretToCenter);
@@ -668,8 +674,10 @@ void CWaveOutlineView::OnLButtonUp(UINT nFlags, CPoint point)
 	long nSamples = pDoc->WaveFileSamples();
 	CRect cr;
 	GetClientRect( & cr);
-	long nBegin = 0;
-	long nEnd = 0;
+
+	SAMPLE_INDEX nBegin = 0;
+	SAMPLE_INDEX nEnd = 0;
+
 	int width = cr.Width();
 	if (0 != width && 0 != nSamples)
 	{
@@ -721,8 +729,8 @@ void CWaveOutlineView::OnMouseMove(UINT nFlags, CPoint point)
 	unsigned PeaksSamples = pDoc->m_WavFile.GetPeaksSize() / pDoc->WaveChannels();
 	unsigned Granularity = pDoc->m_WavFile.GetPeakGranularity();
 	// round to peak info granularity
-	long nBegin = Granularity * MulDiv(point.x, PeaksSamples, width);
-	long nEnd = Granularity * MulDiv(point.x + 1, PeaksSamples, width);
+	SAMPLE_INDEX nBegin = Granularity * MulDiv(point.x, PeaksSamples, width);
+	SAMPLE_INDEX nEnd = Granularity * MulDiv(point.x + 1, PeaksSamples, width);
 
 	if (nBegin < 0)
 	{
@@ -743,8 +751,8 @@ void CWaveOutlineView::OnMouseMove(UINT nFlags, CPoint point)
 	}
 
 
-	int SelectionStart = pDoc->m_SelectionStart;
-	int SelectionEnd = pDoc->m_SelectionEnd;
+	SAMPLE_INDEX SelectionStart = pDoc->m_SelectionStart;
+	SAMPLE_INDEX SelectionEnd = pDoc->m_SelectionEnd;
 
 	CView::OnMouseMove(nFlags, point);
 	if (nKeyPressed != 0)
@@ -763,7 +771,7 @@ void CWaveOutlineView::OnMouseMove(UINT nFlags, CPoint point)
 
 		// tracked side (where the caret is) is moved,
 		// other side stays
-		int nSampleUnderMouse;
+		SAMPLE_INDEX nSampleUnderMouse;
 		if (SelectionStart == pDoc->m_CaretPosition)
 		{
 			SelectionStart = nBegin;
