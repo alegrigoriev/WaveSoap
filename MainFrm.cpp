@@ -190,8 +190,13 @@ void CMainFrame::GetMessageString(UINT nID, CString& rMessage) const
 	}
 	if (str.IsEmpty())
 	{
-		Topmost = FALSE;
-		pApp->GetStatusStringAndDoc(str, & pDoc);
+		CWaveSoapFrontDoc * pTmpDoc = NULL;
+		pApp->GetStatusStringAndDoc(str, & pTmpDoc);
+		if (pTmpDoc != pDoc)
+		{
+			Topmost = FALSE;
+		}
+		pDoc = pTmpDoc;
 		if ( ! str.IsEmpty() && 0 == pDoc->m_OperationInProgress)
 		{
 			pApp->SetStatusStringAndDoc(CString(), NULL);

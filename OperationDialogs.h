@@ -9,6 +9,7 @@
 #include "NumEdit.h"
 #include "TimeEdit.h"
 #include "ChildDialog.h"
+#include <vector>
 
 /////////////////////////////////////////////////////////////////////////////
 // CCopyChannelsSelectDlg dialog
@@ -146,12 +147,13 @@ public:
 // Dialog Data
 	//{{AFX_DATA(CSelectionDialog)
 	enum { IDD = IDD_SELECTION_DIALOG };
-	CSpinButtonCtrl	m_SpinStart;
-	CSpinButtonCtrl	m_SpinLength;
-	CSpinButtonCtrl	m_SpinEnd;
+	CComboBox	m_SelectionCombo;
+	CTimeSpinCtrl	m_SpinStart;
+	CTimeSpinCtrl	m_SpinLength;
+	CTimeSpinCtrl	m_SpinEnd;
 	CTimeEdit	m_eLength;
-	CTimeEdit	m_eStart;
-	CTimeEdit	m_eEnd;
+	CTimeEditCombo	m_eStart;
+	CTimeEditCombo	m_eEnd;
 	int		m_Chan;
 	int		m_TimeFormatIndex;
 	int		m_SelectionNumber;
@@ -163,6 +165,15 @@ public:
 	long m_FileLength;
 	const WAVEFORMATEX * m_pWf;
 
+	struct Selection
+	{
+		long begin;
+		long end;
+	};
+
+	std::vector<Selection> m_Selections;
+
+	void AddSelection(LPCTSTR Name, long begin, long end);
 // Overrides
 	// ClassWizard generated virtual function overrides
 	//{{AFX_VIRTUAL(CSelectionDialog)
@@ -180,6 +191,7 @@ protected:
 	afx_msg void OnKillfocusEditEnd();
 	afx_msg void OnKillfocusEditLength();
 	afx_msg void OnKillfocusEditStart();
+	afx_msg void OnSelchangeComboSelection();
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 };
@@ -196,7 +208,7 @@ public:
 	//{{AFX_DATA(CGotoDialog)
 	enum { IDD = IDD_DIALOG_GOTO };
 	CTimeSpinCtrl	m_StartSpin;
-	CTimeEdit	m_eStart;
+	CTimeEditCombo	m_eStart;
 	int		m_TimeFormatIndex;
 	//}}AFX_DATA
 	int m_TimeFormat;
@@ -466,7 +478,7 @@ public:
 	CString m_sExpression;
 	//}}AFX_DATA
 	CChildDialog m_FunctionsTabDlg;
-	CChildDialog m_OperandsTabDlg;
+	COperandsDialog m_OperandsTabDlg;
 	CChildDialog m_OperatorsTabDlg;
 	CInsertExpressionDialog m_SavedExprTabDlg;
 

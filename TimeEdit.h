@@ -6,7 +6,7 @@
 #endif // _MSC_VER > 1000
 // TimeEdit.h : header file
 //
-
+#include <vector>
 /////////////////////////////////////////////////////////////////////////////
 // CTimeEdit window
 
@@ -86,6 +86,38 @@ protected:
 	DECLARE_MESSAGE_MAP()
 };
 
+// CTimeEditCombo privides combobox with several time choices
+class CTimeEditCombo : public CTimeEdit
+{
+// Construction
+public:
+	CTimeEditCombo();
+
+// Attributes
+public:
+	std::vector<long> m_Positions;
+// Operations
+	void AddPosition(LPCTSTR name, long time);
+public:
+// Overrides
+	// ClassWizard generated virtual function overrides
+	//{{AFX_VIRTUAL(CTimeEditCombo)
+	//}}AFX_VIRTUAL
+
+// Implementation
+public:
+	virtual ~CTimeEditCombo();
+
+	// Generated message map functions
+protected:
+	afx_msg void OnReflectComboSelectionChanged();
+	afx_msg void OnComboSelectionChanged();
+	//{{AFX_MSG(CTimeEditCombo)
+
+	//}}AFX_MSG
+
+	DECLARE_MESSAGE_MAP()
+};
 /////////////////////////////////////////////////////////////////////////////
 //{{AFX_INSERT_LOCATION}}
 // Microsoft Visual C++ will insert additional declarations immediately before the previous line.

@@ -1,24 +1,17 @@
 Known problems and tasks:
 
-Make a few source samples available in expression and a few output samples too
-Make group "All Expressions"
-
+Make group "All Expressions" in expression evaluation dialog
 Make "New File parameters" dialog
-
+Support "Play" in selection dialog
 Move most persistent dialog parameters to dialogs, to update registry dynamically
-Make combobox in selection dialog
-Make "Begin" and "End" comboboxes in selection dialog
 File specified in the command line is not open
 Add CD grabbing
-Add Channels... command to menu
-Add Resample... command to sample rate context menu
 Add noise reduction estimation in spectrum section view
 Add MP3 save
 Add ASF save
 Add sound recording
 If read-only file is saved, name should be different
 keep cursor in 10% from the view boundary.
-Statistics: zero crossings shows double the frequency (as supposed??)
 Make Paste Special command
 ???? When a file is opened in non-direct mode, peak info is saved with wrong time stamp
 Before Save, delete Undo and REdo which keeps reference to the target file
@@ -41,25 +34,35 @@ Make tooltips
 Make help file
 
 Problems:
-LOg Off query doesn't close the active dialog. Recursion is possible. Make sure to check after Cancel
-when "sincos" entered, complains "Right parentheses expected" rather than "syntax"
 Expression evaluation selection longer than file length doesn't update file length
-Doesn't see the document as active
-If number of channels changed, amplitude ruler doesn't update extents
+LOg Off query doesn't close the active dialog. Recursion is possible. Make sure to check after Cancel
 Ctrl-End, Ctrl-Home loses synchronization between FFT and wave
 When selecting to the begin of file, FFT is corrupted
-Doesn't detect new active document, when previous closed.
 MP3 open, WAV save as - can't reopen in direct until 2 seconds passed.
 If there is not enough space on NTFS volume, it will be seen only during flush
 Windows2000 is trying to zero the allocated file
 
 Fixed:
+If number of channels changed, amplitude ruler doesn't update extents
+Rejected: Statistics: zero crossings shows double the frequency (as supposed??)
+Doesn't detect new active document, when previous closed.
+Doesn't see the document as active
+when "sincos" entered, complains "Right parentheses expected" rather than "syntax"
+Spin buttons didn't work in selection dialog
 Noise function had only 15 bit resolution
 Make save presets for Expression Evaluation command
 Insert Silence of zero length still tries to modify the file
 Multiple MP3 files open: all but one get stuck
 
 Done:
+Make "Custom samplerate" dialog
+Add Resample... command to sample rate context menu
+Add Channels... command to menu
+Make Combobox in InsertSilence dialog
+Make "Begin" and "End" comboboxes in selection dialog
+Make combobox in goto dialog
+Combobox in selection dialog for time and selections
+Frequency argument added to expression evaluation
 Keep selected tab number in ExprEvaluation dialog
 Show expression descriptions
 Remember toolbar/status bar toggle
@@ -77,6 +80,9 @@ Make all correct error messages and message boxes
 
 
 For Version 2:
+Make a few source samples available in expression and a few output samples too
+    use wave(1...63) and wave(-1...-63)
+    wave_ch(1, 1...63)
 Support WAVEFORMATEXTENSIBLE.
 Make multichannel editing
 allow 24/32 bit data

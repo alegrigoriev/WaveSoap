@@ -1571,6 +1571,12 @@ void CWaveSoapFrontView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
 	{
 		// don't do anything
 	}
+	else if (lHint == CWaveSoapFrontDoc::UpdateWholeFileChanged
+			&& NULL == pHint)
+	{
+		// recalculate the extents
+		UpdateMaxExtents(GetDocument()->WaveFileSamples());
+	}
 	else
 	{
 		CScaledScrollView::OnUpdate(pSender, lHint, pHint);

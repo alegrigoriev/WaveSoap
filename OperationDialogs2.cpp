@@ -35,7 +35,7 @@ void CInsertSilenceDialog::DoDataExchange(CDataExchange* pDX)
 	DDX_Control(pDX, IDC_SPIN_START, m_SpinStart);
 	DDX_Control(pDX, IDC_SPIN_LENGTH, m_SpinLength);
 	DDX_Control(pDX, IDC_EDIT_LENGTH, m_eLength);
-	DDX_Control(pDX, IDC_EDIT_START, m_eStart);
+	DDX_Control(pDX, IDC_COMBO_START, m_eStart);
 	DDX_Radio(pDX, IDC_RADIO_CHANNEL, m_nChannel);
 	DDX_CBIndex(pDX, IDC_COMBO_TIME_FORMAT, m_TimeFormatIndex);
 	//}}AFX_DATA_MAP
@@ -48,7 +48,7 @@ BEGIN_MESSAGE_MAP(CInsertSilenceDialog, CDialog)
 	//{{AFX_MSG_MAP(CInsertSilenceDialog)
 	ON_CBN_SELCHANGE(IDC_COMBO_TIME_FORMAT, OnSelchangeComboTimeFormat)
 	ON_EN_KILLFOCUS(IDC_EDIT_LENGTH, OnKillfocusEditLength)
-	ON_EN_KILLFOCUS(IDC_EDIT_START, OnKillfocusEditStart)
+	ON_CBN_KILLFOCUS(IDC_COMBO_START, OnKillfocusEditStart)
 	//}}AFX_MSG_MAP
 END_MESSAGE_MAP()
 
@@ -108,6 +108,11 @@ BOOL CInsertSilenceDialog::OnInitDialog()
 		m_eStart.SetSamplingRate(m_pWf->nSamplesPerSec);
 	}
 	CDialog::OnInitDialog();
+
+	m_eStart.AddPosition("Begin Of Sample", 0);
+	m_eStart.AddPosition("End Of Sample", m_FileLength);
+	((CComboBox*) & m_eStart)->SetExtendedUI(TRUE);
+	// TODO: add markers
 
 	return TRUE;  // return TRUE unless you set the focus to a control
 	// EXCEPTION: OCX Property Pages should return FALSE

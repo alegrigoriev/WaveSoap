@@ -248,3 +248,48 @@ void CTimeSpinCtrl::OnDeltapos(NMHDR* pNMHDR, LRESULT* pResult)
 	}
 	*pResult = 0;
 }
+
+CTimeEditCombo::CTimeEditCombo()
+{
+}
+
+CTimeEditCombo::~CTimeEditCombo()
+{
+}
+
+BEGIN_MESSAGE_MAP(CTimeEditCombo, CTimeEdit)
+	//{{AFX_MSG_MAP(CTimeEditCombo)
+	ON_CONTROL_REFLECT(CBN_SELCHANGE, OnReflectComboSelectionChanged)
+	ON_COMMAND(CBN_SELCHANGE, OnComboSelectionChanged)
+	//}}AFX_MSG_MAP
+END_MESSAGE_MAP()
+
+void CTimeEditCombo::OnReflectComboSelectionChanged()
+{
+	CComboBox * pCB = (CComboBox *) this;
+	int sel = pCB->GetCurSel();
+	if (sel >= 0 && sel < m_Positions.size())
+	{
+		// repost it to itself
+		// need to use posted message, because edit control is modified
+		// after the function exits
+		PostMessage(WM_COMMAND, CBN_SELCHANGE, NULL);
+	}
+}
+
+void CTimeEditCombo::OnComboSelectionChanged()
+{
+	CComboBox * pCB = (CComboBox *) this;
+	int sel = pCB->GetCurSel();
+	if (sel >= 0 && sel < m_Positions.size())
+	{
+		SetTimeSample(m_Positions[sel]);
+	}
+}
+
+void CTimeEditCombo::AddPosition(LPCTSTR name, long time)
+{
+	CComboBox * pCB = (CComboBox *) this;
+	pCB->AddString(name);
+	m_Positions.push_back(time);
+}

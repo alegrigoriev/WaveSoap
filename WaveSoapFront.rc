@@ -263,6 +263,7 @@ BEGIN
         MENUITEM "&Mute",                       ID_PROCESS_MUTE
         MENUITEM "Inv&ert",                     ID_PROCESS_INVERT
         MENUITEM "&Resample...",                ID_PROCESS_RESAMPLE
+        MENUITEM "C&hange Channels...",         ID_PROCESS_CHANNELS
     END
     POPUP "&Tools"
     BEGIN
@@ -339,7 +340,6 @@ IDR_MENU_POPUP_SAMPLE_RATE MENU DISCARDABLE
 BEGIN
     POPUP " "
     BEGIN
-        MENUITEM "7200",                        ID_SAMPLERATE_7200
         MENUITEM "8000",                        ID_SAMPLERATE_8000
         MENUITEM "11025",                       ID_SAMPLERATE_11025
         MENUITEM "16000",                       ID_SAMPLERATE_16000
@@ -347,8 +347,8 @@ BEGIN
         MENUITEM "32000",                       ID_SAMPLERATE_32000
         MENUITEM "44100",                       ID_SAMPLERATE_44100
         MENUITEM "48000",                       ID_SAMPLERATE_48K
-        MENUITEM "96000",                       ID_SAMPLERATE_96K
-        MENUITEM "Custom...",                   ID_SAMPLERATE_CUSTOM
+        MENUITEM "Other...",                    ID_SAMPLERATE_CUSTOM
+        MENUITEM "&Resample...",                ID_PROCESS_RESAMPLE
     END
 END
 
@@ -724,6 +724,7 @@ IDR_MAINFRAME ACCELERATORS PRELOAD MOVEABLE PURE
 BEGIN
     "A",            ID_EDIT_SELECT_ALL,     VIRTKEY, CONTROL, NOINVERT
     "C",            ID_EDIT_COPY,           VIRTKEY, CONTROL, NOINVERT
+    "D",            ID_EDIT_SELECTION,      VIRTKEY, CONTROL, NOINVERT
     "E",            ID_EDIT_PASTE_NEW,      VIRTKEY, CONTROL, NOINVERT
     "G",            ID_EDIT_GOTO,           VIRTKEY, CONTROL, NOINVERT
     "N",            ID_FILE_NEW,            VIRTKEY, CONTROL, NOINVERT
@@ -822,33 +823,36 @@ STYLE DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
 CAPTION "Selection"
 FONT 8, "MS Sans Serif"
 BEGIN
-    LTEXT           "Start:",IDC_STATIC,7,43,26,8
-    EDITTEXT        IDC_EDIT_START,52,40,82,14,ES_AUTOHSCROLL
+    LTEXT           "Start:",IDC_STATIC,16,43,26,8
+    COMBOBOX        IDC_COMBO_START,61,41,82,39,CBS_DROPDOWN | WS_VSCROLL | 
+                    WS_TABSTOP
     CONTROL         "Spin1",IDC_SPIN_START,"msctls_updown32",UDS_ALIGNRIGHT | 
-                    UDS_AUTOBUDDY | UDS_ARROWKEYS,136,40,10,14
-    LTEXT           "End:",IDC_STATIC,7,60,26,8
-    EDITTEXT        IDC_EDIT_END,52,57,82,14,ES_AUTOHSCROLL
+                    UDS_AUTOBUDDY | UDS_ARROWKEYS,145,40,10,14
+    LTEXT           "End:",IDC_STATIC,16,60,26,8
+    COMBOBOX        IDC_COMBO_END,61,58,82,39,CBS_DROPDOWN | WS_VSCROLL | 
+                    WS_TABSTOP
     CONTROL         "Spin1",IDC_SPIN_END,"msctls_updown32",UDS_ALIGNRIGHT | 
-                    UDS_AUTOBUDDY | UDS_ARROWKEYS,136,58,10,14
-    LTEXT           "Length:",IDC_STATIC,7,78,32,8
-    EDITTEXT        IDC_EDIT_LENGTH,52,75,82,14,ES_AUTOHSCROLL
+                    UDS_AUTOBUDDY | UDS_ARROWKEYS,145,57,10,14
+    LTEXT           "Length:",IDC_STATIC,16,78,32,8
+    EDITTEXT        IDC_EDIT_LENGTH,61,75,82,14,ES_AUTOHSCROLL
     CONTROL         "Spin1",IDC_SPIN_LENGTH,"msctls_updown32",UDS_ALIGNRIGHT | 
-                    UDS_AUTOBUDDY | UDS_ARROWKEYS,136,76,10,14
-    LTEXT           "Time format: ",IDC_STATIC,7,96,40,8
-    COMBOBOX        IDC_COMBO_TIME_FORMAT,52,94,83,53,CBS_DROPDOWNLIST | 
+                    UDS_AUTOBUDDY | UDS_ARROWKEYS,145,75,10,14
+    LTEXT           "Time format: ",IDC_STATIC,16,96,40,8
+    COMBOBOX        IDC_COMBO_TIME_FORMAT,61,94,82,53,CBS_DROPDOWNLIST | 
                     WS_VSCROLL | WS_TABSTOP
-    GROUPBOX        "Channel",IDC_STATIC,7,110,129,26
+    GROUPBOX        "Channel",IDC_STATIC,16,110,129,26
     CONTROL         "Both",IDC_RADIO_CHANNEL,"Button",BS_AUTORADIOBUTTON | 
-                    WS_GROUP,102,121,30,10
-    CONTROL         "Left ",IDC_RADIO1,"Button",BS_AUTORADIOBUTTON,13,121,28,
+                    WS_GROUP,111,121,30,10
+    CONTROL         "Left ",IDC_RADIO1,"Button",BS_AUTORADIOBUTTON,22,121,28,
                     10
-    CONTROL         "Right",IDC_RADIO2,"Button",BS_AUTORADIOBUTTON,56,121,32,
+    CONTROL         "Right",IDC_RADIO2,"Button",BS_AUTORADIOBUTTON,65,121,32,
                     10
-    PUSHBUTTON      "&Play",IDC_BUTTON_PLAY,7,144,50,14,WS_GROUP
+    PUSHBUTTON      "&Play",IDC_BUTTON_PLAY,7,144,50,14,WS_DISABLED | 
+                    WS_GROUP
     DEFPUSHBUTTON   "OK",IDOK,63,144,50,14
     PUSHBUTTON      "Cancel",IDCANCEL,119,144,50,14
-    LTEXT           "Selection:",IDC_STATIC,7,10,31,8
-    COMBOBOX        IDC_COMBO_SELECTION,7,22,127,72,CBS_DROPDOWNLIST | 
+    LTEXT           "Selection:",IDC_STATIC,16,10,31,8
+    COMBOBOX        IDC_COMBO_SELECTION,16,22,127,72,CBS_DROPDOWNLIST | 
                     WS_VSCROLL | WS_TABSTOP
 END
 
@@ -963,23 +967,21 @@ BEGIN
     PUSHBUTTON      "&Help",IDHELP,132,89,50,14
 END
 
-IDD_DIALOG_GOTO DIALOG DISCARDABLE  0, 0, 162, 98
+IDD_DIALOG_GOTO DIALOG DISCARDABLE  0, 0, 162, 77
 STYLE DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
 CAPTION "Go To..."
 FONT 8, "MS Sans Serif"
 BEGIN
-    LTEXT           "&Position:",IDC_STATIC,7,28,26,8
-    EDITTEXT        IDC_EDIT_START,52,25,82,14,ES_AUTOHSCROLL
+    LTEXT           "&Position:",IDC_STATIC,7,11,39,8
+    COMBOBOX        IDC_COMBO_START,51,9,83,38,CBS_DROPDOWN | WS_VSCROLL | 
+                    WS_TABSTOP
     CONTROL         "Spin1",IDC_SPIN_START,"msctls_updown32",UDS_ALIGNRIGHT | 
-                    UDS_AUTOBUDDY | UDS_ARROWKEYS,136,25,10,14
-    LTEXT           "&Time format: ",IDC_STATIC,7,47,40,8
-    COMBOBOX        IDC_COMBO_TIME_FORMAT,52,45,83,53,CBS_DROPDOWNLIST | 
+                    UDS_AUTOBUDDY | UDS_ARROWKEYS,136,9,10,14
+    LTEXT           "&Time format: ",IDC_STATIC,7,32,43,8
+    COMBOBOX        IDC_COMBO_TIME_FORMAT,51,30,83,53,CBS_DROPDOWNLIST | 
                     WS_VSCROLL | WS_TABSTOP
-    DEFPUSHBUTTON   "OK",IDOK,7,77,50,14
-    PUSHBUTTON      "Cancel",IDCANCEL,105,77,50,14
-    LTEXT           "&Go To:",IDC_STATIC,7,7,22,8
-    COMBOBOX        IDC_COMBO_SELECTION,51,6,83,72,CBS_DROPDOWNLIST | 
-                    WS_VSCROLL | WS_TABSTOP
+    DEFPUSHBUTTON   "OK",IDOK,21,56,50,14
+    PUSHBUTTON      "Cancel",IDCANCEL,90,56,50,14
 END
 
 IDD_DIALOG_DC_OFFSET DIALOG DISCARDABLE  0, 0, 193, 126
@@ -1287,7 +1289,8 @@ BEGIN
     CONTROL         "Spin1",IDC_SPIN_LENGTH,"msctls_updown32",UDS_ALIGNRIGHT | 
                     UDS_AUTOBUDDY | UDS_ARROWKEYS,136,7,10,14
     LTEXT           "Position:",IDC_STATIC,7,31,41,8
-    EDITTEXT        IDC_EDIT_START,52,28,82,14,ES_AUTOHSCROLL
+    COMBOBOX        IDC_COMBO_START,52,28,82,53,CBS_DROPDOWN | WS_VSCROLL | 
+                    WS_TABSTOP
     CONTROL         "Spin1",IDC_SPIN_START,"msctls_updown32",UDS_ALIGNRIGHT | 
                     UDS_AUTOBUDDY | UDS_ARROWKEYS,136,28,10,14
     LTEXT           "&Time format: ",IDC_STATIC,7,52,43,8
@@ -1434,7 +1437,8 @@ BEGIN
     COMBOBOX        IDC_COMBO_SAVED_EXPRESSIONS,3,21,172,54,CBS_DROPDOWNLIST | 
                     WS_VSCROLL | WS_TABSTOP
     PUSHBUTTON      "&Insert",IDC_BUTTON_INSERT_EXPRESSION,180,20,50,14
-    LTEXT           "(no description)",IDC_STATIC_DESCRIPTION,2,36,226,22
+    LTEXT           "(no description)",IDC_STATIC_DESCRIPTION,2,36,226,22,
+                    SS_NOPREFIX
     LTEXT           "&Group:",IDC_STATIC,1,5,34,11
     COMBOBOX        IDC_COMBO_SAVED_EXPRESSION_GROUP,38,3,137,52,
                     CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
@@ -1457,6 +1461,19 @@ BEGIN
                     ES_AUTOVSCROLL | WS_VSCROLL
     DEFPUSHBUTTON   "OK",IDOK,51,90,50,14
     PUSHBUTTON      "Cancel",IDCANCEL,112,90,50,14
+END
+
+IDD_DIALOG_CUSTOM_SAMPLERATE DIALOG DISCARDABLE  0, 0, 164, 105
+STYLE DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "Set custom sample rate"
+FONT 8, "MS Sans Serif"
+BEGIN
+    DEFPUSHBUTTON   "OK",IDOK,26,84,50,14
+    PUSHBUTTON      "Cancel",IDCANCEL,88,84,50,14
+    LTEXT           "Sample Rate:",IDC_STATIC,7,10,52,8
+    EDITTEXT        IDC_EDIT_SAMPLE_RATE,68,7,40,14,ES_AUTOHSCROLL
+    LTEXT           "Only playback sample rate (with tempo and pitch) will be changed, the data won't be resampled.\nTo change sample rate while preserving tempo and pitch, use ""Resample"" command.",
+                    IDC_STATIC,7,30,150,48,SS_NOPREFIX
 END
 
 
@@ -1580,7 +1597,7 @@ BEGIN
         LEFTMARGIN, 7
         RIGHTMARGIN, 155
         TOPMARGIN, 7
-        BOTTOMMARGIN, 91
+        BOTTOMMARGIN, 70
     END
 
     IDD_DIALOG_DC_OFFSET, DIALOG
@@ -1712,6 +1729,14 @@ BEGIN
         TOPMARGIN, 7
         BOTTOMMARGIN, 104
     END
+
+    IDD_DIALOG_CUSTOM_SAMPLERATE, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 157
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 98
+    END
 END
 #endif    // APSTUDIO_INVOKED
 
@@ -1729,16 +1754,6 @@ BEGIN
 0x6868, 0x6d3a, 0x3a6d, 0x7373, 0x732e, 0x7373, "\000" 
     IDC_COMBO_TIME_FORMAT, 0x403, 8, 0
 0x6553, 0x6f63, 0x646e, 0x0073, 
-    IDC_COMBO_SELECTION, 0x403, 9, 0
-0x4328, 0x7375, 0x6f74, 0x296d, "\000" 
-    IDC_COMBO_SELECTION, 0x403, 16, 0
-0x6c41, 0x206c, 0x6153, 0x706d, 0x656c, 0x4420, 0x7461, 0x0061, 
-    IDC_COMBO_SELECTION, 0x403, 22, 0
-0x7543, 0x7372, 0x726f, 0x5420, 0x206f, 0x6e45, 0x2064, 0x664f, 0x4620, 
-0x6c69, 0x0065, 
-    IDC_COMBO_SELECTION, 0x403, 24, 0
-0x7543, 0x7372, 0x726f, 0x5420, 0x206f, 0x6542, 0x6967, 0x206e, 0x664f, 
-0x4620, 0x6c69, 0x0065, 
     0
 END
 
@@ -1768,12 +1783,6 @@ BEGIN
 0x6868, 0x6d3a, 0x3a6d, 0x7373, 0x732e, 0x7373, "\000" 
     IDC_COMBO_TIME_FORMAT, 0x403, 8, 0
 0x6553, 0x6f63, 0x646e, 0x0073, 
-    IDC_COMBO_SELECTION, 0x403, 9, 0
-0x4328, 0x7375, 0x6f74, 0x296d, "\000" 
-    IDC_COMBO_SELECTION, 0x403, 12, 0
-0x6e45, 0x2064, 0x664f, 0x4620, 0x6c69, 0x0065, 
-    IDC_COMBO_SELECTION, 0x403, 14, 0
-0x6542, 0x6967, 0x206e, 0x664f, 0x4620, 0x6c69, 0x0065, 
     0
 END
 
@@ -2197,6 +2206,7 @@ BEGIN
     ID_VIEW_HOR_SCALE_8192  "Show 8192 samples per pixel\n1:8192"
     ID_TOOLS_CDGRAB         "Read data from an audio CD\nCD Grabber"
     ID_VIEW_HIDE_SPECTRUMSECTION "Hide spectrum section pane\nHide spectrum"
+    ID_PROCESS_CHANNELS     "Change number of channels\nChange channels"
 END
 
 STRINGTABLE DISCARDABLE 
@@ -2255,6 +2265,7 @@ BEGIN
     IDC_BUTTON_6            "sin"
     IDC_BUTTON_7            "sin"
     IDC_BUTTON_8            "sin"
+    IDS_MONO_TO_STEREO      "Are you sure you want to convert this file to stereo?"
 END
 
 #endif    // English (U.S.) resources

@@ -206,6 +206,14 @@ CString CExpressionEvaluationContext::GetToken(LPCSTR * ppStr, TokenType * pType
 		{}
 		if ('\0' == Table[i].token[j])
 		{
+			// check that the alphanum token is not longer that the table entry
+			if ((isalnum(str[0] & 0xFF) || '_' == str[0])
+				&& (isalnum(str[j] & 0xFF) || '_' == str[j]))
+			{
+				// the string not fully compared
+				* pType = eUnknownToken;
+				return str;
+			}
 			*ppStr = str + j;
 			* pType = Table[i].type;
 			return str;
@@ -427,7 +435,15 @@ CExpressionEvaluationContext::TokenType
 	case eDoubleConstant:
 		DoubleConstant = strtod(prevStr, & endptr);
 		*ppStr = endptr;
-		PushConstant(DoubleConstant);
+		IntConstant = int(DoubleConstant);
+		if (IntConstant == DoubleConstant)
+		{
+			PushConstant(IntConstant);
+		}
+		else
+		{
+			PushConstant(DoubleConstant);
+		}
 		break;
 	case ePiConstant:
 		PushConstant(3.14159265358979323846);
@@ -1450,7 +1466,7 @@ void CConversionContext::PostRetire(BOOL bChildContext)
 			pDocument->SoundChanged(pDocument->WaveFileID(),
 									0, nSamples, nSamples, UpdateSoundDontRescanPeaks);
 			pDocument->BuildPeakInfo(FALSE);    // don't save it yet
-			//pDocument->UpdateAllViews(NULL);
+			pDocument->UpdateAllViews(NULL, pDocument->UpdateWholeFileChanged);
 		}
 		else
 		{

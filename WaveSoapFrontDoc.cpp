@@ -11,6 +11,7 @@
 #include "OperationDialogs2.h"
 #include <afxpriv.h>
 #include <Dlgs.h>
+#include "CustomSampleRateDlg.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -131,6 +132,10 @@ BEGIN_MESSAGE_MAP(CWaveSoapFrontDoc, CDocument)
 	ON_UPDATE_COMMAND_UI(IDC_PROCESS_NOISE_REDUCTION, OnUpdateProcessNoiseReduction)
 	ON_COMMAND(IDC_PROCESS_NOISE_REDUCTION, OnProcessNoiseReduction)
 	ON_COMMAND(ID_FILE_CLOSE, OnFileClose)
+	ON_COMMAND(ID_PROCESS_CHANNELS, OnProcessChannels)
+	ON_UPDATE_COMMAND_UI(ID_PROCESS_CHANNELS, OnUpdateProcessChannels)
+	ON_COMMAND(ID_SAMPLERATE_CUSTOM, OnSamplerateCustom)
+	ON_UPDATE_COMMAND_UI(ID_SAMPLERATE_CUSTOM, OnUpdateSamplerateCustom)
 	//}}AFX_MSG_MAP
 END_MESSAGE_MAP()
 
@@ -3504,6 +3509,7 @@ void CWaveSoapFrontDoc::ChangeChannels(int nChannels)
 		UpdateAllViews(NULL);
 		// update wave view boundaries
 		SoundChanged(m_WavFile.GetFileID(), 0, 0, 0);
+		UpdateAllViews(NULL, CWaveSoapFrontDoc::UpdateWholeFileChanged);
 		return;
 	}
 	WAVEFORMATEX NewFormat = *pWf;
@@ -3523,6 +3529,10 @@ void CWaveSoapFrontDoc::ChangeChannels(int nChannels)
 	else
 	{
 		// if mono->Stereo, duplicate the channels
+		if (IDYES != AfxMessageBox(IDS_MONO_TO_STEREO, MB_YESNO | MB_ICONQUESTION))
+		{
+			return;
+		}
 	}
 	CChannelConvertor * pConvert = new CChannelConvertor;
 	if (NULL == pConvert)
@@ -4040,6 +4050,7 @@ void CWaveSoapFrontDoc::OnProcessInsertsilence()
 	dlg.m_Start = m_SelectionEnd;
 	dlg.m_Length = 0;
 	dlg.m_pWf = WaveFormat();
+	dlg.m_FileLength = WaveFileSamples();
 	dlg.m_nChannel = channel + 1;
 	dlg.m_TimeFormat = GetApp()->m_SoundTimeFormat;
 
@@ -4460,6 +4471,8 @@ void CWaveSoapFrontDoc::OnProcessSynthesisExpressionEvaluation()
 	dlg.m_bLockChannels = m_bChannelsLocked;
 	dlg.m_TimeFormat = pApp->m_SoundTimeFormat;
 	dlg.m_FileLength = WaveFileSamples();
+	dlg.m_OperandsTabDlg.m_dFrequency = pApp->m_dFrequencyArgument;
+
 	CExpressionEvaluationContext * pContext = new CExpressionEvaluationContext(this, "Calculating the waveform...",
 												"Expression evaluation");
 	dlg.m_pContext = pContext;
@@ -4474,6 +4487,10 @@ void CWaveSoapFrontDoc::OnProcessSynthesisExpressionEvaluation()
 		delete dlg.m_pContext;
 		return;
 	}
+
+	pApp->m_dFrequencyArgument = dlg.m_OperandsTabDlg.m_dFrequency;
+	pContext->m_dFrequencyArgument = dlg.m_OperandsTabDlg.m_dFrequency;
+
 	if ( ! dlg.m_pContext->InitDestination(m_WavFile, dlg.m_Start, dlg.m_End,
 											dlg.m_Chan, dlg.m_bUndo))
 	{
@@ -5086,4 +5103,48 @@ void CWaveSoapFrontDoc::SetCurrentStatusString(const CString & str)
 	m_StatusStringLock.Lock();
 	m_CurrentStatusString = str;
 	m_StatusStringLock.Unlock();
+}
+
+void CWaveSoapFrontDoc::OnProcessChannels()
+{
+	if (m_OperationInProgress || m_bReadOnly
+		|| ! m_WavFile.IsOpen())
+	{
+		return;
+	}
+	if (1 == WaveChannels())
+	{
+		ChangeChannels(2);
+	}
+	else if (2 == WaveChannels())
+	{
+		ChangeChannels(1);
+	}
+}
+
+void CWaveSoapFrontDoc::OnUpdateProcessChannels(CCmdUI* pCmdUI)
+{
+	pCmdUI->Enable(m_WavFile.IsOpen() && ! (m_OperationInProgress || m_bReadOnly));
+}
+
+void CWaveSoapFrontDoc::OnSamplerateCustom()
+{
+	if ( ! m_WavFile.IsOpen()
+		|| m_OperationInProgress
+		|| m_bReadOnly)
+	{
+		return;
+	}
+	CCustomSampleRateDlg dlg;
+	dlg.m_SampleRate = m_WavFile.SampleRate();
+	if (IDOK == dlg.DoModal()
+		&& dlg.m_SampleRate > 0)
+	{
+		SetSampleRate(dlg.m_SampleRate);
+	}
+}
+
+void CWaveSoapFrontDoc::OnUpdateSamplerateCustom(CCmdUI* pCmdUI)
+{
+	pCmdUI->Enable(m_WavFile.IsOpen() && ! (m_OperationInProgress || m_bReadOnly));
 }

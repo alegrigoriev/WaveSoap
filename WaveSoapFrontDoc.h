@@ -167,6 +167,7 @@ public:
 		UpdateSelectionModeChanged,
 		UpdateSoundChanged,
 		UpdateSampleRateChanged,
+		UpdateWholeFileChanged,
 		UpdatePlaybackPositionChanged,
 	};
 
@@ -368,6 +369,10 @@ protected:
 	afx_msg void OnUpdateProcessNoiseReduction(CCmdUI* pCmdUI);
 	afx_msg void OnProcessNoiseReduction();
 	afx_msg void OnFileClose();
+	afx_msg void OnProcessChannels();
+	afx_msg void OnUpdateProcessChannels(CCmdUI* pCmdUI);
+	afx_msg void OnSamplerateCustom();
+	afx_msg void OnUpdateSamplerateCustom(CCmdUI* pCmdUI);
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 

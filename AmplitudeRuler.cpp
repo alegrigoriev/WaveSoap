@@ -352,9 +352,13 @@ int CAmplitudeRuler::CalculateWidth()
 
 void CAmplitudeRuler::OnUpdate( CView* pSender, LPARAM lHint, CObject* pHint )
 {
-	if ((lHint == CWaveSoapFrontView::WAVE_OFFSET_CHANGED
-			|| lHint == CWaveSoapFrontView::WAVE_SCALE_CHANGED)
-		&& NULL == pHint)
+	if (lHint == CWaveSoapFrontDoc::UpdateWholeFileChanged)
+	{
+		UpdateMaxExtents();
+	}
+	else if ((lHint == CWaveSoapFrontView::WAVE_OFFSET_CHANGED
+				|| lHint == CWaveSoapFrontView::WAVE_SCALE_CHANGED)
+			&& NULL == pHint)
 	{
 		Invalidate();
 	}
@@ -394,8 +398,17 @@ int CAmplitudeRuler::OnCreate(LPCREATESTRUCT lpCreateStruct)
 	KeepScaleOnResizeY(FALSE);
 	KeepOrgOnResizeX(FALSE);
 	KeepOrgOnResizeY(TRUE);
-	// TODO: if number of channels changed??
-	// add UpdateMaxExtents function
+
+	UpdateMaxExtents();
+
+	ShowScrollBar(SB_VERT, FALSE);
+	ShowScrollBar(SB_HORZ, FALSE);
+
+	return 0;
+}
+
+void CAmplitudeRuler::UpdateMaxExtents()
+{
 	int nChannels = GetDocument()->WaveChannels();
 	int nLowExtent = -32768;
 	int nHighExtent = 32767;
@@ -407,10 +420,6 @@ int CAmplitudeRuler::OnCreate(LPCREATESTRUCT lpCreateStruct)
 
 	SetMaxExtents(0., 1., nLowExtent, nHighExtent);
 	SetExtents(0., 1., nLowExtent, nHighExtent);
-	ShowScrollBar(SB_VERT, FALSE);
-	ShowScrollBar(SB_HORZ, FALSE);
-
-	return 0;
 }
 
 void CAmplitudeRuler::OnLButtonDblClk(UINT nFlags, CPoint point)

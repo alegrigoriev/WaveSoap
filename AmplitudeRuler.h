@@ -40,6 +40,7 @@ protected:
 
 // Implementation
 protected:
+	void UpdateMaxExtents();
 	virtual ~CAmplitudeRuler();
 	virtual UINT GetPopupMenuID(CPoint) { return IDR_MENU_AMPLITUDE_RULER; }
 #ifdef _DEBUG

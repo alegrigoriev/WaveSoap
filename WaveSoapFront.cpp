@@ -2513,6 +2513,8 @@ void CWaveSoapFrontApp::LoadSavedExpressions()
 					m_ExpressionSelected, 0, 0, MaxSavedTotalExpressions);
 	Profile.AddItem(_T("Expressions"), _T("ExpressionTabSelected"),
 					m_ExpressionTabSelected, 0, 0, 3);
+	Profile.AddItem(_T("Expressions"), _T("FrequencyArgument"),
+					m_dFrequencyArgument, 100., 0., 1000000.);
 
 	if (-1 == m_NumOfExprGroups)
 	{

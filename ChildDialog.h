@@ -6,7 +6,7 @@
 #endif // _MSC_VER > 1000
 // ChildDialog.h : header file
 //
-
+#include "NumEdit.h"
 /////////////////////////////////////////////////////////////////////////////
 // CChildDialog dialog
 
@@ -35,6 +35,34 @@ protected:
 
 	// Generated message map functions
 	//{{AFX_MSG(CChildDialog)
+	// NOTE: the ClassWizard will add member functions here
+	//}}AFX_MSG
+	DECLARE_MESSAGE_MAP()
+};
+
+class COperandsDialog : public CChildDialog
+{
+// Construction
+public:
+	COperandsDialog(UINT id = 0, CWnd* pParent = NULL);   // standard constructor
+
+// Dialog Data
+	//{{AFX_DATA(COperandsDialog)
+	CNumEdit m_eFrequency;
+	//}}AFX_DATA
+	double m_dFrequency;
+// Overrides
+	// ClassWizard generated virtual function overrides
+	//{{AFX_VIRTUAL(COperandsDialog)
+protected:
+	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV support
+	//}}AFX_VIRTUAL
+
+// Implementation
+protected:
+
+	// Generated message map functions
+	//{{AFX_MSG(COperandsDialog)
 	// NOTE: the ClassWizard will add member functions here
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
