@@ -615,28 +615,43 @@ BOOL CSelectionDialog::OnInitDialog()
 
 	CString s;
 
-	for (std::vector<WaveMarker>::iterator i = pInst->Markers.begin();
-		i < pInst->Markers.end(); i++)
+	for (RegionMarkerIterator i = pInst->m_RegionMarkers.begin();
+		i < pInst->m_RegionMarkers.end(); i++)
 	{
+		CuePointChunkItem * pCue = pInst->GetCuePoint(i->CuePointID);
+		if (NULL == pCue)
+		{
+			continue;
+		}
 		// TODO: include positions in HH:mm:ss and the tooltips
-		SAMPLE_INDEX StartSample = i->StartSample;
-		SAMPLE_INDEX EndSample = StartSample + i->LengthSamples;
+		LPCTSTR pNote = pInst->GetCueComment(i->CuePointID);
+		LPCTSTR pLabel = pInst->GetCueLabel(i->CuePointID);
+
+		if (NULL == pLabel
+			|| 0 == pLabel[0])
+		{
+			// use comment text instead
+			pLabel = pNote;
+		}
+
+		SAMPLE_INDEX StartSample = pCue->dwSampleOffset;
+
+		SAMPLE_INDEX EndSample = StartSample + i->SampleLength;
 
 		if (StartSample > 0
 			&& StartSample < EndSample
 			&& StartSample < FileLength
 			&& EndSample <= FileLength)
 		{
-			if (i->Comment.IsEmpty())
+			LPCTSTR pTitle = pLabel;
+
+			if (NULL == pTitle
+				|| 0 == pTitle[0])
 			{
-				s = i->Name;
-			}
-			else
-			{
-				s.Format(_T("%s (%s)"), LPCTSTR(i->Name), LPCTSTR(i->Comment));
+				pTitle = i->Name;
 			}
 
-			AddSelection(s, StartSample, EndSample);
+			AddSelection(pTitle, StartSample, EndSample);
 		}
 	}
 

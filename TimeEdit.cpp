@@ -347,23 +347,62 @@ void CFileTimesCombo::FillFileTimes()
 	CWaveFile::InstanceDataWav * pInst = m_WaveFile.GetInstanceData();
 
 	CString s;
-	for (std::vector<WaveMarker>::iterator i = pInst->Markers.begin();
-		i < pInst->Markers.end(); i++)
+
+	for (CuePointVectorIterator i = pInst->m_CuePoints.begin();
+		i < pInst->m_CuePoints.end(); i++)
 	{
 		// TODO: include positions in HH:mm:ss and the tooltips
-		if (0 == i->LengthSamples
-			&& i->StartSample <= FileLength)
+		LPCTSTR pNote = pInst->GetCueComment(i->CuePointID);
+		LPCTSTR pLabel = pInst->GetCueLabel(i->CuePointID);
+		WaveRegionMarker * pMarker = pInst->GetRegionMarker(i->CuePointID);
+
+		if (NULL == pLabel
+			|| 0 == pLabel[0])
 		{
-			if (i->Comment.IsEmpty())
+			// use comment text instead
+			pLabel = pNote;
+		}
+
+		if (NULL != pMarker
+			&& 0 == pMarker->SampleLength)
+		{
+			SAMPLE_INDEX end = i->dwSampleOffset + pMarker->SampleLength;
+
+			if (i->dwSampleOffset <= unsigned(FileLength))
 			{
-				s = i->Name;
-			}
-			else
-			{
-				s.Format(_T("%s (%s)"), LPCTSTR(i->Name), LPCTSTR(i->Comment));
+				LPCTSTR pTitle = pLabel;
+
+				if (NULL == pTitle
+					|| 0 == pTitle[0])
+				{
+					pTitle = pMarker->Name;
+				}
+
+				s.Format(_T("Begin of %s"), pTitle);
+				AddPosition(s, i->dwSampleOffset);
 			}
 
-			AddPosition(s, i->StartSample);
+			if (end <= FileLength
+				&& unsigned(end) > i->dwSampleOffset)
+			{
+				LPCTSTR pTitle = pLabel;
+
+				if (NULL == pTitle
+					|| 0 == pTitle[0])
+				{
+					pTitle = pMarker->Name;
+				}
+
+				s.Format(_T("End of %s"), pTitle);
+				AddPosition(s, end);
+			}
+		}
+		else
+		{
+			if (i->dwSampleOffset <= unsigned(FileLength))
+			{
+				AddPosition(pLabel, i->dwSampleOffset);
+			}
 		}
 	}
 }
