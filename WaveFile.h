@@ -33,7 +33,7 @@ typedef int CHANNEL_MASK;
 typedef int NUMBER_OF_CHANNELS;
 typedef DWORD SAMPLE_POSITION;
 typedef DWORD WAV_FILE_SIZE;
-typedef DWORD MEDIA_FILE_SIZE;  // to be expanded to 64 nits
+typedef DWORD MEDIA_FILE_SIZE;  // to be expanded to 64 bits
 typedef unsigned PEAK_INDEX;
 typedef __int16 WAVE_SAMPLE;
 
@@ -362,6 +362,10 @@ public:
 	WavePeak GetPeakMinMax(PEAK_INDEX from, PEAK_INDEX to, NUMBER_OF_CHANNELS stride = 1);
 	unsigned GetPeaksSize() const;
 	unsigned GetPeakGranularity() const;
+
+	SAMPLE_POSITION SampleToPosition(SAMPLE_INDEX sample) const;
+	SAMPLE_INDEX PositionToSample(SAMPLE_POSITION position) const;
+
 	int CalculatePeakInfoSize() const
 	{
 		unsigned Granularity = GetPeakGranularity();
