@@ -675,7 +675,7 @@ BOOL CWaveSoapFrontDoc::DoSave(LPCTSTR lpszPathName, BOOL bReplace)
 			// append the default suffix if there is one
 			CString strExt;
 			if (pTemplate->GetDocString(strExt, CDocTemplate::filterExt) &&
-				!strExt.IsEmpty())
+				! strExt.IsEmpty())
 			{
 				ASSERT(strExt[0] == '.');
 				newName += strExt;
@@ -866,7 +866,11 @@ BOOL CWaveSoapFrontDoc::DoSave(LPCTSTR lpszPathName, BOOL bReplace)
 	}
 
 	// reset the title and change the document name
-	if (bReplace)
+	if (SaveFlags & SaveFile_SaveCopy)
+	{
+		GetApp()->AddToRecentFileList(CString(TCHAR(OpenDocumentDefaultMode | 1), 1) + newName);
+	}
+	else
 	{
 		SetPathName(newName);
 	}
@@ -1924,14 +1928,21 @@ void CWaveSoapFrontDoc::OnUpdateEditStop(CCmdUI* pCmdUI)
 
 BOOL CWaveSoapFrontDoc::OnOpenDocument(LPCTSTR lpszPathName, int DocOpenFlags)
 {
-
 	TRACE(_T("CWaveSoapFrontDoc::OnOpenDocument(%s)\n"), lpszPathName);
 	m_WavFile.Close();
 	m_OriginalWavFile.Close();
 
 	CThisApp * pApp = GetApp();
-	m_bDirectMode = ((DocOpenFlags & OpenDocumentDirectMode) != 0);
-	m_bReadOnly = ((DocOpenFlags & OpenDocumentReadOnly) != 0);
+	if ((DocOpenFlags & OpenDocumentModeFlagsMask) == OpenDocumentDefaultMode)
+	{
+		m_bDirectMode = pApp->m_bDirectMode != FALSE;
+		m_bReadOnly = pApp->m_bReadOnly != FALSE;
+	}
+	else
+	{
+		m_bDirectMode = ((DocOpenFlags & OpenDocumentDirectMode) != 0);
+		m_bReadOnly = ((DocOpenFlags & OpenDocumentReadOnly) != 0);
+	}
 	if (m_bReadOnly)
 	{
 		m_bDirectMode = TRUE;
@@ -2298,12 +2309,16 @@ BOOL CWaveSoapFrontDoc::OnSaveConvertedFile(int flags, LPCTSTR FullTargetName, W
 
 	pContext->m_SrcChan = ALL_CHANNELS;
 	pContext->m_DstChan = ALL_CHANNELS;
+
 	if (flags & SaveFile_SaveCopy)
 	{
 		pContext->m_Flags |= FileSaveContext_SavingCopy;
 	}
+
+	int const OldChannels = m_WavFile.GetWaveFormat()->nChannels;
+	int const NewChannels = pWf->nChannels;
 	// if target channels is less than source, convert it before resampling,
-	if (pWf->nChannels < m_WavFile.GetWaveFormat()->nChannels)
+	if (NewChannels < OldChannels)
 	{
 		// ask which channels to save
 		CCopyChannelsSelectDlg dlg;
@@ -2313,7 +2328,9 @@ BOOL CWaveSoapFrontDoc::OnSaveConvertedFile(int flags, LPCTSTR FullTargetName, W
 			delete pContext;    // pConvert will be deleted
 			return FALSE;
 		}
-		CChannelConvertor * pChConvertor = new CChannelConvertor;
+		CChannelConvertor * pChConvertor =
+			new CChannelConvertor(OldChannels, NewChannels, dlg.m_ChannelToCopy - 1);
+
 		if (NULL == pChConvertor)
 		{
 			delete pContext;    // pConvert will be deleted
@@ -2321,12 +2338,10 @@ BOOL CWaveSoapFrontDoc::OnSaveConvertedFile(int flags, LPCTSTR FullTargetName, W
 			return FALSE;
 		}
 		m_PrevChannelToCopy = dlg.m_ChannelToCopy - 1;
-		pChConvertor->m_ChannelsToProcess = dlg.m_ChannelToCopy - 1;
-		pChConvertor->m_InputChannels =  m_WavFile.GetWaveFormat()->nChannels;
-		pChConvertor->m_OutputChannels =  pWf->nChannels;
 
-		pConvert->m_ProcBatch.AddWaveProc(pChConvertor);
+		pConvert->AddWaveProc(pChConvertor);
 	}
+
 	if (pWf->nSamplesPerSec != m_WavFile.GetWaveFormat()->nSamplesPerSec)
 	{
 		CResampleFilter * pFilter = new CResampleFilter;
@@ -2336,24 +2351,30 @@ BOOL CWaveSoapFrontDoc::OnSaveConvertedFile(int flags, LPCTSTR FullTargetName, W
 			NotEnoughMemoryMessageBox();
 			return FALSE;
 		}
+		// FIX: Wrong conversion if resampling and increasing channels
+		int nChannels = NewChannels;
+		if (nChannels > OldChannels)
+		{
+			nChannels = OldChannels;
+		}
 		pFilter->InitResample(double(pWf->nSamplesPerSec)
-							/ m_WavFile.GetWaveFormat()->nSamplesPerSec, 40., pWf->nChannels);
-		pConvert->m_ProcBatch.AddWaveProc(pFilter);
+							/ m_WavFile.GetWaveFormat()->nSamplesPerSec, 40., nChannels);
+		pConvert->AddWaveProc(pFilter);
 	}
+
 	// if target channels is more than source, convert it after resampling,
-	if (pWf->nChannels > m_WavFile.GetWaveFormat()->nChannels)
+	if (NewChannels > OldChannels)
 	{
-		CChannelConvertor * pChConvertor = new CChannelConvertor;
+		CChannelConvertor * pChConvertor =
+			new CChannelConvertor(OldChannels, NewChannels, ALL_CHANNELS);
+
 		if (NULL == pChConvertor)
 		{
 			delete pContext;    // pConvert will be deleted
 			NotEnoughMemoryMessageBox();
 			return FALSE;
 		}
-		pChConvertor->m_InputChannels =  m_WavFile.GetWaveFormat()->nChannels;
-		pChConvertor->m_OutputChannels =  pWf->nChannels;
-		pChConvertor->m_ChannelsToProcess = ALL_CHANNELS;
-		pConvert->m_ProcBatch.AddWaveProc(pChConvertor);
+		pConvert->AddWaveProc(pChConvertor);
 	}
 
 	if (pWf->wFormatTag != WAVE_FORMAT_PCM
@@ -2366,7 +2387,8 @@ BOOL CWaveSoapFrontDoc::OnSaveConvertedFile(int flags, LPCTSTR FullTargetName, W
 			NotEnoughMemoryMessageBox();
 			return FALSE;
 		}
-		pConvert->m_ProcBatch.AddWaveProc(pAcmConvertor);
+		pConvert->AddWaveProc(pAcmConvertor);
+
 		WAVEFORMATEX SrcFormat;
 		SrcFormat.nChannels = pWf->nChannels;
 		SrcFormat.nSamplesPerSec = pWf->nSamplesPerSec;
@@ -2375,6 +2397,7 @@ BOOL CWaveSoapFrontDoc::OnSaveConvertedFile(int flags, LPCTSTR FullTargetName, W
 		SrcFormat.cbSize = 0;
 		SrcFormat.wFormatTag = WAVE_FORMAT_PCM;
 		SrcFormat.wBitsPerSample = 16;
+
 		//todo: init conversion in Context->Init, error dialog in PostRetire.
 		if (! pAcmConvertor->InitConversion( & SrcFormat, pWf))
 		{
@@ -2467,7 +2490,7 @@ BOOL CWaveSoapFrontDoc::OnSaveMp3File(int flags, LPCTSTR FullTargetName, WAVEFOR
 			NotEnoughMemoryMessageBox();
 			return FALSE;
 		}
-		pConvert->m_ProcBatch.AddWaveProc(pAcmConvertor);
+		pConvert->AddWaveProc(pAcmConvertor);
 		WAVEFORMATEX SrcFormat;
 		SrcFormat.nChannels = pWf->nChannels;
 		SrcFormat.nSamplesPerSec = pWf->nSamplesPerSec;
@@ -2486,7 +2509,7 @@ BOOL CWaveSoapFrontDoc::OnSaveMp3File(int flags, LPCTSTR FullTargetName, WAVEFOR
 	else
 	{
 		CLameEncConvertor * pMp3Convertor = new CLameEncConvertor;
-		pConvert->m_ProcBatch.AddWaveProc(pMp3Convertor);
+		pConvert->AddWaveProc(pMp3Convertor);
 		if ( ! pMp3Convertor->Open(pWf))
 		{
 			delete pContext;
@@ -2675,7 +2698,8 @@ BOOL CWaveSoapFrontDoc::OnSaveRawFile(int flags, LPCTSTR FullTargetName, WAVEFOR
 			NotEnoughMemoryMessageBox();
 			return FALSE;
 		}
-		pConvert->m_ProcBatch.AddWaveProc(pAcmConvertor);
+		pConvert->AddWaveProc(pAcmConvertor);
+
 		WAVEFORMATEX SrcFormat;
 		SrcFormat.nChannels = pWf->nChannels;
 		SrcFormat.nSamplesPerSec = pWf->nSamplesPerSec;
@@ -2694,7 +2718,7 @@ BOOL CWaveSoapFrontDoc::OnSaveRawFile(int flags, LPCTSTR FullTargetName, WAVEFOR
 	else if (flags & SaveRawFileMsbFirst)
 	{
 		CByteSwapConvertor * pSwapConvertor = new CByteSwapConvertor;
-		pConvert->m_ProcBatch.AddWaveProc(pSwapConvertor);
+		pConvert->AddWaveProc(pSwapConvertor);
 	}
 
 	if (flags & SaveFile_SaveCopy)
@@ -2770,6 +2794,7 @@ BOOL CWaveSoapFrontDoc::OnSaveDocument(LPCTSTR lpszPathName, DWORD flags, WAVEFO
 	{
 		flags |= SaveFile_SameName;
 	}
+
 	m_WavFile.CommitChanges();
 
 	DeletePermanentUndoRedo();
@@ -3901,7 +3926,8 @@ void CWaveSoapFrontDoc::ChangeChannels(int nChannels)
 			return;
 		}
 	}
-	CChannelConvertor * pConvert = new CChannelConvertor;
+	CChannelConvertor * pConvert =
+		new CChannelConvertor(WaveChannels(), nChannels, nSrcChan);
 	if (NULL == pConvert)
 	{
 		NotEnoughMemoryMessageBox();
@@ -3915,11 +3941,9 @@ void CWaveSoapFrontDoc::ChangeChannels(int nChannels)
 		NotEnoughMemoryMessageBox();
 		return;
 	}
-	pConvert->m_InputChannels = WaveChannels();
-	pConvert->m_OutputChannels = nChannels;
-	pConvert->m_ChannelsToProcess = nSrcChan;
 
-	pContext->m_ProcBatch.AddWaveProc(pConvert);
+	pContext->AddWaveProc(pConvert);
+
 	// create new temporary file
 	CWaveFile DstFile;
 	if ( ! DstFile.CreateWaveFile( & m_WavFile, & NewFormat, ALL_CHANNELS, SampleCount,
@@ -4217,8 +4241,10 @@ void CWaveSoapFrontDoc::SetPathName(LPCTSTR lpszPathName, BOOL bAddToMRU)
 	// store the path fully qualified
 	TCHAR szFullPath[_MAX_PATH];
 	AfxFullPath(szFullPath, lpszPathName);
+
 	m_strPathName = szFullPath;
 	ASSERT(!m_strPathName.IsEmpty());       // must be set to something
+
 	m_bEmbedded = FALSE;
 	ASSERT_VALID(this);
 
@@ -4231,17 +4257,17 @@ void CWaveSoapFrontDoc::SetPathName(LPCTSTR lpszPathName, BOOL bAddToMRU)
 	{
 		// add it to the file MRU list
 		// first byte is a flag byte
-		char flag = 1;
-		if (m_bDirectMode)
-		{
-			flag |= OpenDocumentDirectMode;
-		}
+		TCHAR flag = 1;
 		if (m_bReadOnly)
 		{
 			flag |= OpenDocumentReadOnly;
 		}
+		else if (m_bDirectMode)
+		{
+			flag |= OpenDocumentDirectMode;
+		}
 
-		AfxGetApp()->AddToRecentFileList(CString(flag, 1) + m_strPathName);
+		GetApp()->AddToRecentFileList(CString(flag, 1) + m_strPathName);
 	}
 
 	ASSERT_VALID(this);
@@ -5339,7 +5365,7 @@ void CWaveSoapFrontDoc::OnProcessDoUlf()
 	pUlfProc->SetDifferentialCutoff(dlg.m_dDiffNoiseRange);
 	pUlfProc->SetHighpassCutoff(dlg.m_dLfNoiseRange);
 
-	pContext->m_ProcBatch.AddWaveProc(pUlfProc);
+	pContext->AddWaveProc(pUlfProc);
 
 	pContext->Execute();
 	SetModifiedFlag(TRUE, dlg.m_bUndo);
@@ -5408,7 +5434,7 @@ void CWaveSoapFrontDoc::OnProcessDoDeclicking()
 	pDeclick->SetAndValidateWaveformat(dlg.m_pWf);
 	dlg.SetDeclickData(pDeclick);
 
-	pContext->m_ProcBatch.AddWaveProc(pDeclick);
+	pContext->AddWaveProc(pDeclick);
 
 	if ( ! pContext->InitDestination(m_WavFile, dlg.m_Start,
 									dlg.m_End, dlg.m_Chan, dlg.m_bUndo))
@@ -5524,7 +5550,7 @@ void CWaveSoapFrontDoc::OnProcessNoiseReduction()
 	pNoiseReduction->SetAndValidateWaveformat(dlg.m_pWf);
 	dlg.SetNoiseReductionData(pNoiseReduction);
 
-	pContext->m_ProcBatch.AddWaveProc(pNoiseReduction);
+	pContext->AddWaveProc(pNoiseReduction);
 
 	if ( ! pContext->InitDestination(m_WavFile, dlg.m_Start,
 									dlg.m_End, dlg.m_Chan, dlg.m_bUndo))
