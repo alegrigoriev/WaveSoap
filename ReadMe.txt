@@ -73,8 +73,6 @@ Find which alignment better for edit box labels: left or right
 
 Problems:
 
-Last WavePeak is not rescanned when file length is cut
-Expression evaluation selection longer than file length doesn't update file length
 Suggests u-Law when saving a file from clipboard
 Reopen after save new file doesn't work
 When scrolling FFT view during playback, checkered background after EOF is constantly blinking
@@ -93,6 +91,8 @@ Windows2000 is trying to zero the allocated file
 Log Off query doesn't close the active dialog. Recursion is possible. Make sure to check after Cancel
 
 Fixed:
+Last WavePeak is not rescanned when file length is cut
+Expression evaluation selection longer than file length doesn't update file length
 Wrong CP used for UNICODE->ANSI conversion
 Using up-down controls doesn't cause any "release" notification
 Lines duplicated when scrolling the horizontal ruler
