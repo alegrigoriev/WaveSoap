@@ -747,7 +747,7 @@ void CSpectrumSectionView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint
 		}
 		return;
 	}
-	else if (0 == lHint)
+	else if (0 == pHint)
 	{
 		BaseClass::OnUpdate(pSender, lHint, pHint);
 	}
