@@ -19,8 +19,9 @@ typedef NUM_volatile<DWORD> SUBBLOCK_MASK;
 #define TRACE_READ 0
 #define TRACE_WRITE 0
 #define TRACE_MRU 0
+#define DO_VALIDATE 0
 
-#define BLOCK_SIZE_SHIFT 16
+#define BLOCK_SIZE_SHIFT 17
 #define CACHE_BLOCK_SIZE (1UL << BLOCK_SIZE_SHIFT)
 #define SUBBLOCK_SIZE_SHIFT (BLOCK_SIZE_SHIFT - 5)
 #define CACHE_SUBBLOCK_SIZE (1UL << SUBBLOCK_SIZE_SHIFT)
@@ -51,6 +52,11 @@ struct BufferHeader;
 using namespace DirectFileCache;
 
 static BOOL UseOverlappedIo = FALSE;
+
+int CDirectFile::CacheBufferSize()
+{
+	return CACHE_BLOCK_SIZE;
+}
 
 struct PrefetchDescriptor : ListItem<PrefetchDescriptor>
 {
@@ -311,9 +317,12 @@ struct DirectFileCache::File : public ListItem<DirectFileCache::File>
 	{
 		memzero(m_FileInfo);
 	}
-	#ifdef _DEBUG
-	void ValidateList() const;
-	#endif
+	void ValidateList() const
+#ifndef _DEBUG
+	{}
+#else
+	;
+#endif
 private:
 	~File()
 	{
@@ -1196,7 +1205,7 @@ void CDirectFileCache::InitCache(size_t MaxCacheSize)
 	TRACE("Direct file CacheSize = %d MB\n", CacheSize / 0x100000);
 	CacheSize = (CacheSize + CACHE_BLOCK_SIZE - 1) & ~MASK_OFFSET_IN_BLOCK;
 	m_pBuffersArray = VirtualAlloc(NULL, CacheSize, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
-	m_NumberOfBuffers = CacheSize / 0x10000;
+	m_NumberOfBuffers = CacheSize / CACHE_BLOCK_SIZE;
 
 	m_pHeaders = new BufferHeader[m_NumberOfBuffers];
 
@@ -1311,10 +1320,11 @@ BufferHeader * CDirectFileCache::GetBufferHeader(void * pAddr)
 	int BufferNumber = (PUCHAR(pAddr) - PUCHAR(m_pBuffersArray)) / CACHE_BLOCK_SIZE;
 	ASSERT(BufferNumber >= 0 && BufferNumber < m_NumberOfBuffers);
 
-	BufferHeader * pBuf = m_pHeaders + BufferNumber;
+	BufferHeader * pBuf = & m_pHeaders[BufferNumber];
 
 	ASSERT(pBuf->LockCount > 0);
-	ASSERT((DWORD)pBuf->pBuf == (DWORD(pAddr) & ~MASK_OFFSET_IN_BLOCK));
+	ASSERT(((PUCHAR(pAddr) - PUCHAR(m_pBuffersArray)) & ~MASK_OFFSET_IN_BLOCK)
+			== ((PUCHAR(pBuf->pBuf) - PUCHAR(m_pBuffersArray)) & ~MASK_OFFSET_IN_BLOCK));
 
 	return pBuf;
 }
@@ -1391,9 +1401,8 @@ void File::InsertBuffer(BufferHeader * pBuf)
 
 	// pBufAfter->PositionKey < pBuf->PositionKey
 	pBufAfter->ListItem<BufferHeader>::InsertAsNextItem(pBuf);
-#ifdef _DEBUG
+
 	ValidateList();
-#endif
 }
 
 // find a buffer in the list with the specified key
@@ -1402,9 +1411,8 @@ BufferHeader * File::FindBuffer(BLOCK_INDEX key) const
 {
 	// the buffers are ordered: BuffersListHead has lowest key, BuffersListTail has the highest key
 	BufferHeader * pBuf;
-#ifdef _DEBUG
 	ValidateList();
-#endif
+
 	if (BuffersList.IsEmpty()
 		|| BuffersList.First()->PositionKey > key
 		|| BuffersList.Last()->PositionKey < key)
@@ -2685,6 +2693,10 @@ void File::FlushDirtyBuffers(BufferHeader * pDirtyBuf, BLOCK_INDEX MaxKey)
 
 void File::ValidateList() const
 {
+	if ( ! DO_VALIDATE)
+	{
+		return;
+	}
 	if (m_Flags & CDirectFile::FileFlagsMemoryFile)
 	{
 		return;
