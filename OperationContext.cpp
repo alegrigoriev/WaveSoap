@@ -3744,7 +3744,7 @@ BOOL CWaveProcContext::OperationProc()
 		}
 
 		m_DstPos += DstBufUsed;
-	} while (GetTickCount() - dwStartTime < 500);
+	} while (GetTickCount() - dwStartTime < 1000);
 
 	m_SrcFile.ReturnDataBuffer(pOriginalSrcBuf, WasRead,
 								CDirectFile::ReturnBufferDiscard);
@@ -3825,6 +3825,20 @@ void CConversionContext::PostRetire()
 }
 
 //////////////// CWmaDecodeContext
+CWmaDecodeContext::CWmaDecodeContext(CWaveSoapFrontDoc * pDoc, UINT StatusStringId,
+									CDirectFile & rWmaFile)
+	: BaseClass(pDoc,
+				// operation can be terminated by Close
+				OperationContextDiskIntensive | OperationContextNonCritical, StatusStringId),
+	m_WmaFile(rWmaFile)
+{
+}
+
+CWmaDecodeContext::~CWmaDecodeContext()
+{
+	//m_Decoder.Stop();
+}
+
 BOOL CWmaDecodeContext::OperationProc()
 {
 	if (m_Flags & OperationContextStopRequested)
@@ -3967,9 +3981,17 @@ void CWmaDecodeContext::PostRetire()
 			AfxMessageBox(s, MB_ICONSTOP);
 		}
 	}
-	else if (m_Flags & DecompressSavePeakFile)
+	else
 	{
-		m_DstFile.SavePeakInfo(m_pDocument->m_OriginalWavFile);
+		// set the file length, according to the actual number of samples decompressed
+		m_DstFile.SetFileLengthSamples(m_DstCopySample);
+
+		m_pDocument->SoundChanged(m_DstFile.GetFileID(), 0, 0, m_DstCopySample, UpdateSoundDontRescanPeaks);
+
+		if (m_Flags & DecompressSavePeakFile)
+		{
+			m_DstFile.SavePeakInfo(m_pDocument->m_OriginalWavFile);
+		}
 	}
 	BaseClass::PostRetire();
 }
@@ -3998,16 +4020,17 @@ BOOL CWmaSaveContext::Init()
 		return FALSE;
 	}
 
-	m_Enc.m_SrcWfx = * m_SrcFile.GetWaveFormat();
+	m_Enc.SetSourceWaveFormat(m_SrcFile.GetWaveFormat());
 
-	m_CoInit.InitializeCom(COINIT_APARTMENTTHREADED);
+	m_CoInit.InitializeCom(COINIT_MULTITHREADED);
 
 	if (! m_Enc.Init())
 	{
 		return FALSE;
 	}
 
-	m_Enc.SetFormat(m_DstFile.GetWaveFormat());
+	m_Enc.SetDestinationFormat(m_DstFile.GetWaveFormat());
+
 	if ( ! m_Enc.OpenWrite(m_DstFile))
 	{
 		return FALSE;
@@ -4035,30 +4058,68 @@ BOOL CWmaSaveContext::OperationProc()
 	DWORD dwStartTime = GetTickCount();
 
 	LONG WasRead = 0;
-	void * pSrcBuf = NULL;
+	void * pOriginalSrcBuf = NULL;
+
 	LONG LeftToRead = 0;
 	char const * pSrc = NULL;
+	long const InputSampleSize = m_SrcFile.SampleSize();
+
+	WAVE_SAMPLE TmpReadBuffer[MAX_NUMBER_OF_CHANNELS];
+	BOOL TmpReadBufferUsed = FALSE;
 
 	do
 	{
 		if (0 == LeftToRead)
 		{
+			TmpReadBufferUsed = FALSE;
+
 			LONGLONG SizeToRead = m_SrcEnd - m_SrcPos;
 			if (SizeToRead > CDirectFile::CacheBufferSize())
 			{
 				SizeToRead = CDirectFile::CacheBufferSize();
 			}
 
-
-			WasRead = m_SrcFile.GetDataBuffer( & pSrcBuf,
-												SizeToRead, m_SrcPos, CDirectFile::GetBufferAndPrefetchNext);
-
-			if (0 != LeftToRead
-				&& 0 == WasRead)
+			if (0 != SizeToRead)
 			{
-				return FALSE;
+				WasRead = m_SrcFile.GetDataBuffer( & pOriginalSrcBuf,
+													SizeToRead, m_SrcPos, CDirectFile::GetBufferAndPrefetchNext);
+
+				if (0 != SizeToRead
+					&& 0 == WasRead)
+				{
+					return FALSE;
+				}
+
+				pSrc = (char const *) pOriginalSrcBuf;
+				LeftToRead = WasRead;
+
+				if (0 != InputSampleSize)
+				{
+					LeftToRead -= LeftToRead % InputSampleSize;
+
+					if (0 == LeftToRead)
+					{
+						m_SrcFile.ReturnDataBuffer(pOriginalSrcBuf, WasRead,
+													CDirectFile::ReturnBufferDiscard);
+
+						WasRead = 0;
+						if (InputSampleSize != m_SrcFile.ReadAt(TmpReadBuffer,
+																InputSampleSize, m_SrcPos))
+						{
+							return FALSE;
+						}
+						pSrc = (char const *) TmpReadBuffer;
+						LeftToRead = InputSampleSize;
+						TmpReadBufferUsed = TRUE;
+					}
+				}
 			}
-			pSrc = (char const *) pSrcBuf;
+			else
+			{
+				pOriginalSrcBuf = NULL;
+				LeftToRead = 0;
+				WasRead = 0;
+			}
 		}
 
 		size_t SrcBufUsed = 0;
@@ -4069,7 +4130,7 @@ BOOL CWmaSaveContext::OperationProc()
 		m_TmpBufferFilled += DstBufUsed;
 
 		if (m_TmpBufferFilled == m_TmpBufferSize
-			|| 0 == WasRead)
+			|| (0 == WasRead && ! TmpReadBufferUsed))
 		{
 			m_Enc.Write(m_TmpBuffer, m_TmpBufferFilled);
 			m_TmpBufferFilled = 0;
@@ -4087,7 +4148,7 @@ BOOL CWmaSaveContext::OperationProc()
 
 		if (0 == LeftToRead)
 		{
-			m_SrcFile.ReturnDataBuffer(pSrcBuf, WasRead, 0);
+			m_SrcFile.ReturnDataBuffer(pOriginalSrcBuf, WasRead, 0);
 			WasRead = 0;
 		}
 	}
@@ -4095,7 +4156,7 @@ BOOL CWmaSaveContext::OperationProc()
 
 	if (WasRead != 0)
 	{
-		m_SrcFile.ReturnDataBuffer(pSrcBuf, WasRead, 0);
+		m_SrcFile.ReturnDataBuffer(pOriginalSrcBuf, WasRead, 0);
 	}
 
 	return TRUE;
