@@ -48,15 +48,13 @@ Add Export Settings, Import Settings to Options dialog
 Add splash screen
 
 Problems:
-SpectrumSection ruler sometimes doesn't draw smaller ticks
-Spectrum section resize uses wrong position
-samples with 32767, -32768 are not visible
-When switched to/from FFT view, scrollbar is set to wrong range (Suite1.wav)
+FFT doesn't invaludate some areas
 After file length increased to 1 sample from 0, scroll bar set to wrond scale
 Expression evaluation selection longer than file length doesn't update file length
 Multiline edit box in child dialog eats Esc and Enter (DLGC_WANTALLCHARS)
 If there is not enough space on NTFS volume, it will be seen only during flush
 Windows2000 is trying to zero the allocated file
+samples with 32767, -32768 are not visible
 
 LOg Off query doesn't close the active dialog. Recursion is possible. Make sure to check after Cancel
 
@@ -66,6 +64,11 @@ Save As dialog is not centered first time (comdlg problem?)
 ??? When time/seconds format is set for status bar, MM:SS is actually shown
 
 Fixed:
+Insert silence dialog showing channels for MONO sound
+When switched to/from FFT view, scrollbar is set to wrong range (Suite1.wav)
+Static in the child frame was incorrectly repositioned
+SpectrumSection ruler sometimes doesn't draw smaller ticks
+Spectrum section resize uses wrong position
 Equalizer window could be drawn with non-client backgrould in the client area
 Selection dialog shows channels for MONO sound
 Expression evaluation didn't show status string

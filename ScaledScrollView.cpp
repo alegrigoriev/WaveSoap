@@ -374,7 +374,8 @@ CScrollBar* CScaledScrollView::GetScrollBarCtrl(int nBar) const
 	UINT nID = GetDlgCtrlID();
 	if (nID < AFX_IDW_PANE_FIRST || nID > AFX_IDW_PANE_LAST)
 	{
-		nID = AFX_IDW_PANE_FIRST;
+		// those don't get the associated scroll bar ctrl
+		return NULL;
 	}
 
 	// appropriate PANE id - look for sibling (splitter, or just frame)
@@ -807,7 +808,9 @@ void CScaledScrollView::UpdateScrollbars(BOOL bRedraw)
 					0
 	};
 	// update horizontal scrollbar
-	if (! IsSlaveHor())
+	if (! IsSlaveHor()
+		&& (0 != (GetStyle() & WS_HSCROLL)
+			|| NULL != GetScrollBarCtrl(SB_HORZ)))
 	{
 		sci.nPage = int((sci.nMax - sci.nMin) * dExtX / (dMaxRight - dMinLeft));
 		if (sci.nPage == 0) sci.nPage = 1;
@@ -828,11 +831,15 @@ void CScaledScrollView::UpdateScrollbars(BOOL bRedraw)
 			if (sci.nPos > (sci.nMax - int(sci.nPage - 1)))
 				sci.nPos = sci.nMax - int(sci.nPage - 1);
 		}
+		TRACE("SetScrollInfo SB_HORZ, min=%d, max=%d, page=%d, pos=%d\n",
+			sci.nMin, sci.nMax, sci.nPage, sci.nPos);
 		SetScrollInfo(SB_HORZ, & sci, bRedraw);
 	}
 
 	// update vertical scrollbar
-	if( ! IsSlaveVert())
+	if( ! IsSlaveVert()
+		&& (0 != (GetStyle() & WS_VSCROLL)
+			|| NULL != GetScrollBarCtrl(SB_VERT)))
 	{
 		sci.nPage = int((sci.nMax - sci.nMin)
 						* dExtY / (dMaxTop - dMinBottom));

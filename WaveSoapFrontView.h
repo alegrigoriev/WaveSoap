@@ -76,6 +76,7 @@ protected:
 	virtual POINT GetZoomCenter();
 	void MovePointIntoView(int nCaret, BOOL Center = FALSE);
 	void UpdateMaxExtents(unsigned Length);
+	void UpdateVertExtents();
 	virtual void NotifySlaveViews(DWORD flag);
 
 	int m_HorizontalScale;

@@ -354,7 +354,7 @@ void CWaveMDIChildClient::RecalcLayout()
 	{
 		if (NULL != pVertRuler)
 		{
-			r.left = SpectrumSectionWidth + FftRulerWidth;
+			r.left = SpectrumSectionWidth + FftRulerWidth + VerticalTrackerWidth;
 			r.right = r.left + RulerWidth;
 			r.top = OutlineHeight + RulerHeight;
 			r.bottom = cr.bottom - cyhscroll;
@@ -430,8 +430,8 @@ void CWaveMDIChildClient::RecalcLayout()
 	CWnd * pVerticalTracker = GetDlgItem(VerticalTrackerID);
 	if (pVerticalTracker)
 	{
-		r.left = RulerWidth + FftRulerWidth + SpectrumSectionWidth;
-		r.right = RulerWidth + FftRulerWidth + SpectrumSectionWidth + VerticalTrackerWidth;
+		r.left = FftRulerWidth + SpectrumSectionWidth;
+		r.right = r.left + VerticalTrackerWidth;
 		r.top = OutlineHeight;
 		r.bottom = cr.bottom;
 		if (0 != VerticalTrackerWidth)
@@ -445,11 +445,11 @@ void CWaveMDIChildClient::RecalcLayout()
 		DeferClientPos(&layout, pVerticalTracker, r, FALSE);
 	}
 
-	r.left = FftRulerWidth + SpectrumSectionWidth;
-	r.right = RulerWidth + FftRulerWidth + SpectrumSectionWidth;
+	r.left = FftRulerWidth + SpectrumSectionWidth + VerticalTrackerWidth;
+	r.right = RulerWidth + r.left;
 	r.top = cr.bottom - cyhscroll;
 	r.bottom = cr.bottom;
-	if (r.right != 0)
+	if (RulerWidth != 0)
 	{
 		wStatic1.ShowWindow(SW_SHOWNOACTIVATE);
 		DeferClientPos(&layout, & wStatic, r, FALSE);
@@ -461,7 +461,7 @@ void CWaveMDIChildClient::RecalcLayout()
 
 	r.top = OutlineHeight;
 	r.bottom = OutlineHeight + RulerHeight;
-	if (r.right != r.left && r.bottom != 0)
+	if (RulerWidth != r.left && RulerHeight != 0)
 	{
 		wStatic.ShowWindow(SW_SHOWNOACTIVATE);
 		DeferClientPos(&layout, & wStatic1, r, FALSE);
@@ -568,17 +568,20 @@ void CChildFrame::OnUpdateFrameTitle(BOOL bAddToTitle)
 			szText += sznum;
 		}
 
-		if (pDocument->m_bReadOnly)
+		if (NULL != pDocument)
 		{
-			szText += _T(" (Read Only)");
-		}
-		else if (pDocument->m_bDirectMode)
-		{
-			szText += _T(" (Direct)");
-		}
-		if (pDocument->IsModified())
-		{
-			szText += _T(" *");
+			if (pDocument->m_bReadOnly)
+			{
+				szText += _T(" (Read Only)");
+			}
+			else if (pDocument->m_bDirectMode)
+			{
+				szText += _T(" (Direct)");
+			}
+			if (pDocument->IsModified())
+			{
+				szText += _T(" *");
+			}
 		}
 
 		// set title if changed, but don't remove completely

@@ -25,10 +25,10 @@ public:
 	CTimeSpinCtrl	m_SpinLength;
 	CTimeEdit	m_eLength;
 	CTimeEditCombo	m_eStart;
-	int		m_nChannel;
 	int		m_TimeFormatIndex;
 	//}}AFX_DATA
 
+	int		m_nChannel;
 	int		m_TimeFormat;
 	long    m_Length;
 	long    m_Start;
@@ -39,6 +39,8 @@ public:
 // Overrides
 	// ClassWizard generated virtual function overrides
 	//{{AFX_VIRTUAL(CInsertSilenceDialog)
+public:
+	virtual int DoModal();
 protected:
 	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV support
 	//}}AFX_VIRTUAL

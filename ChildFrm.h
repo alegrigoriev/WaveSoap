@@ -78,8 +78,6 @@ public:
 	enum { HorizontalRulerID = 1,
 		VerticalWaveRulerID,
 		VerticalFftRulerID,
-		WaveViewID,
-		FftViewID,
 		SpectrumSectionViewID,
 		VerticalTrackerID,
 		ScaleStaticID,
@@ -88,6 +86,8 @@ public:
 		FftStaticUID,
 		OutlineViewID,
 		SpectrumSectionRulerID,
+		WaveViewID = AFX_IDW_PANE_FIRST,
+		FftViewID = AFX_IDW_PANE_FIRST + 16,
 	};
 
 	CWnd wStatic;
