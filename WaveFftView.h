@@ -41,7 +41,7 @@ protected:
 // Implementation
 protected:
 	virtual ~CWaveFftView();
-	virtual BOOL ScrollBy(double dx, double dy, BOOL bDoScroll = TRUE);
+	virtual BOOL MasterScrollBy(double dx, double dy, BOOL bDoScroll = TRUE);
 	virtual UINT GetPopupMenuID(CPoint point);
 #ifdef _DEBUG
 	virtual void AssertValid() const;
@@ -58,8 +58,15 @@ protected:
 	double m_FftLogRange;     // what dB zero value corresponds
 	double m_FirstbandVisible;     // how much the chart is scrolled. 0 = DC is visible
 	float * m_pFftWindow;
+	enum {
+		WindowTypeSquaredSine = 0,
+		WindowTypeHalfSine = 1,
+		WindowTypeHamming = 2,
+	};
+	int m_FftWindowType;
 	int m_FftOrder;
 	int m_FftSpacing;
+	void OnSetWindowType(int window);
 	void MakeFftArray(int left, int right);
 	void CalculateFftRange(int left, int right);
 	static HBRUSH m_Brush;
@@ -87,9 +94,17 @@ protected:
 	afx_msg void OnUpdateFftBands64(CCmdUI* pCmdUI);
 	afx_msg void OnFftBands8192();
 	afx_msg void OnUpdateFftBands8192(CCmdUI* pCmdUI);
+	afx_msg void OnFftWindowSquaredSine();
+	afx_msg void OnUpdateFftWindowSquaredSine(CCmdUI* pCmdUI);
+	afx_msg void OnFftWindowSine();
+	afx_msg void OnUpdateFftWindowSine(CCmdUI* pCmdUI);
+	afx_msg void OnFftWindowHamming();
+	afx_msg void OnUpdateFftWindowHamming(CCmdUI* pCmdUI);
 	//}}AFX_MSG
 	void OnUpdateBands(CCmdUI* pCmdUI, int number);
-	void OnSetBands(int number);
+	void OnSetBands(int order);
+	virtual void DrawSelectionRect(CDC * pDC,
+									double left, double right, double bottom, double top);
 	friend class CSpectrumSectionView;
 	DECLARE_MESSAGE_MAP()
 };

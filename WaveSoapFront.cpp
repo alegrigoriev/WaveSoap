@@ -130,10 +130,10 @@ public:
 	virtual void OnTypeChange();
 	void ClearFileInfoDisplay();
 	void ShowWmaFileInfo(CDirectFile & File);
-
 	//{{AFX_MSG(CWaveSoapFileOpenDialog)
 	afx_msg void OnCheckReadOnly();
 	afx_msg void OnCheckDirectMode();
+	afx_msg void OnSize(UINT nType, int cx, int cy);
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 	virtual BOOL OnWndMsg(UINT message, WPARAM wParam, LPARAM lParam, LRESULT* pResult);
@@ -143,6 +143,7 @@ BEGIN_MESSAGE_MAP(CWaveSoapFileOpenDialog, CFileDialogWithHistory)
 	//{{AFX_MSG_MAP(CWaveSoapFileOpenDialog)
 	ON_BN_CLICKED(IDC_CHECK_READONLY, OnCheckReadOnly)
 	ON_BN_CLICKED(IDC_CHECK_DIRECT, OnCheckDirectMode)
+	ON_WM_SIZE()
 	//}}AFX_MSG_MAP
 END_MESSAGE_MAP()
 
@@ -233,6 +234,10 @@ CWaveSoapFrontApp::CWaveSoapFrontApp()
 
 	m_bShowNewFormatDialogWhenShiftOnly(false),
 	m_NewFileLength(10),
+
+	m_SpectrumSectionWidth(100),
+	m_FftBandsOrder(9),
+	m_FftWindowType(0),
 
 	m_OpenFileDialogFilter(1)
 {
@@ -473,6 +478,10 @@ BOOL CWaveSoapFrontApp::InitInstance()
 	Profile.AddItem(_T("Settings"), _T("NewFileSampleRate"), m_NewFileFormat.nSamplesPerSec, 44100, 1, 1000000);
 	Profile.AddItem(_T("Settings"), _T("NewFileChannels"), m_NewFileChannels, 2, 1, 2);
 	m_NewFileFormat.nChannels = m_NewFileChannels;
+
+	Profile.AddItem(_T("Settings"), _T("SpectrumSectionWidth"), m_SpectrumSectionWidth, 100, 1, 1000);
+	Profile.AddItem(_T("Settings"), _T("FftBandsOrder"), m_FftBandsOrder, 9, 6, 13);
+	Profile.AddItem(_T("Settings"), _T("FftWindowType"), m_FftWindowType, 0, 0, 2);
 
 	LoadStdProfileSettings(10);  // Load standard INI file options (including MRU)
 
@@ -1537,77 +1546,12 @@ void CWaveSoapFileOpenDialog::OnTypeChange()
 {
 }
 
-#if 0
-CString CWaveSoapFileOpenDialog::GetNextPathName(POSITION& pos) const
+void CWaveSoapFileOpenDialog::OnSize(UINT nType, int cx, int cy)
 {
-	ASSERT(m_ofn.Flags & OFN_EXPLORER);
-
-	LPTSTR lpsz = (LPTSTR)pos;
-	if (lpsz == m_ofn.lpstrFile) // first time
-	{
-		if ((m_ofn.Flags & OFN_ALLOWMULTISELECT) == 0)
-		{
-			pos = NULL;
-			return m_ofn.lpstrFile;
-		}
-
-		// find char pos after first Delimiter
-		while(*lpsz != '\0')
-			lpsz = _tcsinc(lpsz);
-		lpsz = _tcsinc(lpsz);
-
-		// if single selection then return only selection
-		if (*lpsz == 0)
-		{
-			pos = NULL;
-			return m_ofn.lpstrFile;
-		}
-	}
-
-	CString strPath = m_ofn.lpstrFile;
-	LPTSTR lpszFileName = lpsz;
-	CString strFileName = lpsz;
-
-	// find char pos at next Delimiter
-	while(*lpsz != '\0')
-		lpsz = _tcsinc(lpsz);
-
-	lpsz = _tcsinc(lpsz);
-	if (*lpsz == '\0') // if double terminated then done
-		pos = NULL;
-	else
-		pos = (POSITION)lpsz;
-
-	// check if the filename is already absolute
-	if (strFileName[0] == '/' || strFileName[0] == '\\'
-		|| (strFileName.GetLength() > 1 && strFileName[1] == ':'))
-	{
-		TCHAR * pTitle;
-		GetFullPathName(strFileName,MAX_PATH,strPath.GetBuffer(MAX_PATH), & pTitle);
-		strPath.ReleaseBuffer();
-		return strPath;
-	}
-	else
-	{
-		// only add '\\' if it is needed
-		if (!strPath.IsEmpty())
-		{
-			// check for last back-slash or forward slash (handles DBCS)
-			LPCTSTR lpsz = _tcsrchr(strPath, '\\');
-			if (lpsz == NULL)
-				lpsz = _tcsrchr(strPath, '/');
-			// if it is also the last character, then we don't need an extra
-			if (lpsz != NULL &&
-				(lpsz - (LPCTSTR)strPath) == strPath.GetLength()-1)
-			{
-				ASSERT(*lpsz == '\\' || *lpsz == '/');
-				return strPath + strFileName;
-			}
-		}
-		return strPath + '\\' + strFileName;
-	}
+	CFileDialogWithHistory::OnSize(nType, cx, cy);
+	// move dialog items
 }
-#endif
+
 // long to string, thousands separated by commas
 CString LtoaCS(long num)
 {

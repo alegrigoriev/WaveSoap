@@ -178,13 +178,14 @@ CWaveFftView::CWaveFftView()
 	m_FftResultArrayHeight(0),
 	m_FftResultBegin(0),
 	m_FftLogRange(4.34294481903251827651128918916605),
-	m_FftOrder(512),
-	m_FftSpacing(512),
 	m_pFftWindow(NULL),
 	m_FirstbandVisible(0),
+	m_FftWindowType(WindowTypeSquaredSine),
 //m_FftSamplesCalculated(0),
 	m_FftArraySize(0)
 {
+	m_FftOrder = 1 << GetApp()->m_FftBandsOrder;
+	m_FftSpacing = m_FftOrder;
 }
 
 CWaveFftView::~CWaveFftView()
@@ -219,6 +220,12 @@ BEGIN_MESSAGE_MAP(CWaveFftView, CWaveSoapFrontView)
 	ON_UPDATE_COMMAND_UI(ID_FFT_BANDS_64, OnUpdateFftBands64)
 	ON_COMMAND(ID_FFT_BANDS_8192, OnFftBands8192)
 	ON_UPDATE_COMMAND_UI(ID_FFT_BANDS_8192, OnUpdateFftBands8192)
+	ON_COMMAND(ID_FFT_WINDOW_SQUARED_SINE, OnFftWindowSquaredSine)
+	ON_UPDATE_COMMAND_UI(ID_FFT_WINDOW_SQUARED_SINE, OnUpdateFftWindowSquaredSine)
+	ON_COMMAND(ID_FFT_WINDOW_SINE, OnFftWindowSine)
+	ON_UPDATE_COMMAND_UI(ID_FFT_WINDOW_SINE, OnUpdateFftWindowSine)
+	ON_COMMAND(ID_FFT_WINDOW_HAMMING, OnFftWindowHamming)
+	ON_UPDATE_COMMAND_UI(ID_FFT_WINDOW_HAMMING, OnUpdateFftWindowHamming)
 	//}}AFX_MSG_MAP
 	ON_COMMAND(ID_VIEW_SS_ZOOMINVERT, OnViewZoomInVert)
 	ON_COMMAND(ID_VIEW_SS_ZOOMOUTVERT, OnViewZoomOutVert)
@@ -741,12 +748,22 @@ void CWaveFftView::CalculateFftRange(int left, int right)
 		m_pFftWindow = new float[m_FftOrder * 2];
 		for (int w = 0; w < m_FftOrder * 2; w++)
 		{
-			// Hamming window (sucks!!!)
-			//m_pFftWindow[w] = float(0.54 - 0.46 * cos (w * M_PI /  m_FftOrder));
-			// squared sine
-			m_pFftWindow[w] = float(0.5 - 0.5 * cos ((w + 0.5) * M_PI /  m_FftOrder));
-			// half sine is the best so far
-			//m_pFftWindow[w] = float(0.707107 * sin (w * M_PI /  (2*m_FftOrder)));
+			switch (m_FftWindowType)
+			{
+			default:
+			case WindowTypeSquaredSine:
+				// squared sine
+				m_pFftWindow[w] = float(0.5 - 0.5 * cos ((w + 0.5) * M_PI /  m_FftOrder));
+				break;
+			case WindowTypeHalfSine:
+				// half sine
+				m_pFftWindow[w] = float(0.707107 * sin (w * M_PI /  (2*m_FftOrder)));
+				break;
+			case WindowTypeHamming:
+				// Hamming window (sucks!!!)
+				m_pFftWindow[w] = float(0.54 - 0.46 * cos (w * M_PI /  m_FftOrder));
+				break;
+			}
 		}
 	}
 
@@ -961,11 +978,11 @@ void CWaveFftView::OnViewZoomOutVert()
 	}
 }
 
-BOOL CWaveFftView::ScrollBy(double dx, double dy, BOOL bDoScroll)
+BOOL CWaveFftView::MasterScrollBy(double dx, double dy, BOOL bDoScroll)
 {
 	if (dx != 0.)
 	{
-		CScaledScrollView::ScrollBy(dx, 0, bDoScroll);
+		CScaledScrollView::MasterScrollBy(dx, 0, bDoScroll);
 	}
 	if (dy != 0.)
 	{
@@ -1006,6 +1023,7 @@ BOOL CWaveFftView::ScrollBy(double dx, double dy, BOOL bDoScroll)
 				CWaveSoapFrontDoc * pDoc = GetDocument();
 				CRect cr;
 				GetClientRect( & cr);
+				RemoveSelectionRect();
 				if (pDoc->WaveChannels() == 1)
 				{
 					ScrollWindowEx(0, -ndy, NULL, NULL, NULL, NULL,
@@ -1028,6 +1046,7 @@ BOOL CWaveFftView::ScrollBy(double dx, double dy, BOOL bDoScroll)
 					InvalidateRect( & ir1);
 					InvalidateRect( & ir2);
 				}
+				RestoreSelectionRect();
 			}
 		}
 	}
@@ -1146,11 +1165,30 @@ void CWaveFftView::OnUpdateBands(CCmdUI* pCmdUI, int number)
 	pCmdUI->SetRadio(number == m_FftOrder);
 }
 
-void CWaveFftView::OnSetBands(int number)
+void CWaveFftView::OnSetBands(int order)
 {
+	int number = 1 << order;
 	if (number != m_FftOrder)
 	{
 		m_FftOrder = number;
+		GetApp()->m_FftBandsOrder = order;
+
+		delete[] m_pFftResultArray;
+		m_pFftResultArray = NULL;
+		delete[] m_pFftWindow;
+		m_pFftWindow = NULL;
+		Invalidate();
+		NotifySlaveViews(FFT_BANDS_CHANGED);
+	}
+}
+
+void CWaveFftView::OnSetWindowType(int window)
+{
+	if (window != m_FftWindowType)
+	{
+		m_FftWindowType = window;
+		GetApp()->m_FftWindowType = window;
+
 		delete[] m_pFftResultArray;
 		m_pFftResultArray = NULL;
 		delete[] m_pFftWindow;
@@ -1162,7 +1200,7 @@ void CWaveFftView::OnSetBands(int number)
 
 void CWaveFftView::OnFftBands1024()
 {
-	OnSetBands(1024);
+	OnSetBands(10);
 }
 
 void CWaveFftView::OnUpdateFftBands1024(CCmdUI* pCmdUI)
@@ -1172,7 +1210,7 @@ void CWaveFftView::OnUpdateFftBands1024(CCmdUI* pCmdUI)
 
 void CWaveFftView::OnFftBands128()
 {
-	OnSetBands(128);
+	OnSetBands(7);
 }
 
 void CWaveFftView::OnUpdateFftBands128(CCmdUI* pCmdUI)
@@ -1182,7 +1220,7 @@ void CWaveFftView::OnUpdateFftBands128(CCmdUI* pCmdUI)
 
 void CWaveFftView::OnFftBands2048()
 {
-	OnSetBands(2048);
+	OnSetBands(11);
 }
 
 void CWaveFftView::OnUpdateFftBands2048(CCmdUI* pCmdUI)
@@ -1192,7 +1230,7 @@ void CWaveFftView::OnUpdateFftBands2048(CCmdUI* pCmdUI)
 
 void CWaveFftView::OnFftBands256()
 {
-	OnSetBands(256);
+	OnSetBands(8);
 }
 
 void CWaveFftView::OnUpdateFftBands256(CCmdUI* pCmdUI)
@@ -1202,7 +1240,7 @@ void CWaveFftView::OnUpdateFftBands256(CCmdUI* pCmdUI)
 
 void CWaveFftView::OnFftBands4096()
 {
-	OnSetBands(4096);
+	OnSetBands(12);
 }
 
 void CWaveFftView::OnUpdateFftBands4096(CCmdUI* pCmdUI)
@@ -1212,7 +1250,7 @@ void CWaveFftView::OnUpdateFftBands4096(CCmdUI* pCmdUI)
 
 void CWaveFftView::OnFftBands512()
 {
-	OnSetBands(512);
+	OnSetBands(9);
 }
 
 void CWaveFftView::OnUpdateFftBands512(CCmdUI* pCmdUI)
@@ -1222,7 +1260,7 @@ void CWaveFftView::OnUpdateFftBands512(CCmdUI* pCmdUI)
 
 void CWaveFftView::OnFftBands64()
 {
-	OnSetBands(64);
+	OnSetBands(6);
 }
 
 void CWaveFftView::OnUpdateFftBands64(CCmdUI* pCmdUI)
@@ -1232,7 +1270,7 @@ void CWaveFftView::OnUpdateFftBands64(CCmdUI* pCmdUI)
 
 void CWaveFftView::OnFftBands8192()
 {
-	OnSetBands(8192);
+	OnSetBands(13);
 }
 
 void CWaveFftView::OnUpdateFftBands8192(CCmdUI* pCmdUI)
@@ -1255,3 +1293,62 @@ UINT CWaveFftView::GetPopupMenuID(CPoint point)
 	}
 }
 
+void CWaveFftView::DrawSelectionRect(CDC * pDC,
+									double left, double right, double bottom, double top)
+{
+	CDC * pDrawDC = pDC;
+	if (NULL == pDrawDC)
+	{
+		pDrawDC = GetDC();
+		if (NULL == pDrawDC)
+		{
+			return;
+		}
+		pDrawDC->ExcludeUpdateRgn(this);
+	}
+	CRect r(DoubleToPoint(left, bottom),
+			DoubleToPoint(right, top));
+	r.NormalizeRect();
+	CRect r0(0, 0, 0, 0);
+	CSize size;
+	size.cx = GetSystemMetrics(SM_CXSIZEFRAME);
+	size.cy = GetSystemMetrics(SM_CYSIZEFRAME);
+
+	pDrawDC->DrawDragRect( & r, size, & r0, size, NULL, NULL);
+
+	if (NULL == pDC)
+	{
+		ReleaseDC(pDrawDC);
+	}
+}
+
+
+void CWaveFftView::OnFftWindowSquaredSine()
+{
+	OnSetWindowType(WindowTypeSquaredSine);
+}
+
+void CWaveFftView::OnUpdateFftWindowSquaredSine(CCmdUI* pCmdUI)
+{
+	pCmdUI->SetRadio(WindowTypeSquaredSine == m_FftWindowType);
+}
+
+void CWaveFftView::OnFftWindowSine()
+{
+	OnSetWindowType(WindowTypeHalfSine);
+}
+
+void CWaveFftView::OnUpdateFftWindowSine(CCmdUI* pCmdUI)
+{
+	pCmdUI->SetRadio(WindowTypeHalfSine == m_FftWindowType);
+}
+
+void CWaveFftView::OnFftWindowHamming()
+{
+	OnSetWindowType(WindowTypeHamming);
+}
+
+void CWaveFftView::OnUpdateFftWindowHamming(CCmdUI* pCmdUI)
+{
+	pCmdUI->SetRadio(WindowTypeHamming == m_FftWindowType);
+}

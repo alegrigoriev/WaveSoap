@@ -1,16 +1,7 @@
 Known problems and tasks:
 
-Reset "Playing" status message after it stopped
-When Open/Save dialog is resized, resize/move the controls
-Verify that FileSave can be canceled
-Reconsider Undo All Changes functionality and Redo All Changes
-??Delete permanent undo: non-permanent file may become permanent after save, move call after save
-V2: Add Undo/Redo drop list
-Remember Spectrum Section settings and size
 Add FFT windowing choice
-Make middle button scroll (drop anchor window)
-
-Add Application Close Pending flag
+Use list instead of array for FFT data.
 Broadcast UpdateAllViews if settings or metrics changed
 Add CD grabbing
 Add noise reduction estimation in spectrum section view
@@ -39,20 +30,22 @@ Support filenames with stream extension
 Add decibel view to CAmplitudeRuler
 Draw decibels and crosshair in Spectrum Section view
 Add VU meter for playback
+Add equalizer function
+Add Application Close Pending flag
 Make tooltips in wave view and other important views
 Make help file
 Add "Favorite formats" combobox to Save dialog
+When Open/Save dialog is resized, resize/move the controls
+Verify that FileSave can be canceled
+Reconsider Undo All Changes functionality and Redo All Changes
+??Delete permanent undo: non-permanent file may become permanent after save, move call after save
 
 Problems:
-Stop button doesn't work for saving the compressed file
-When Save As from LLADPCM to PCM, suggests 8 bit
  
 Multiline edit box in child dialog eats Esc and Enter (DLGC_WANTALLCHARS)
 If there is not enough space on NTFS volume, it will be seen only during flush
 Windows2000 is trying to zero the allocated file
 
-Ctrl-End, Ctrl-Home loses synchronization between FFT and wave
-When selecting to the begin of file, FFT is corrupted
 Expression evaluation selection longer than file length doesn't update file length
 LOg Off query doesn't close the active dialog. Recursion is possible. Make sure to check after Cancel
 
@@ -62,11 +55,25 @@ Save As dialog is not centered first time (comdlg problem?)
 ??? When time/seconds format is set for status bar, MM:SS is actually shown
 
 Fixed:
+Ctrl-End, Ctrl-Home loses synchronization between FFT and wave
+When selecting to the begin of file, FFT is corrupted
+When Save As from LLADPCM to PCM, suggests 8 bit (now chooises max number of bits)
+Stop button doesn't work for saving the compressed file
+Reset "Playing" status message after it stopped
+In Statistics dialog: replace "Minimum sample", Maximum sample" 
+     with "peak positive value, peak negative value"
+Change channels to copy from: no ':'
+Resample: Change tempo and pitch clipped
+Normalize: "Equally adjust" clipped
+Adjust DC: Automatically detect and remove" clipped, Compute DC offset clipped
+Click removal: More settings button too small, "Log all clicks to a file" clipped
 After Save As, peak info is saved with wrong timestamp for the new PCM file.
 Wrong minimum/maximum valies shown for a zero length file in Statistics (command disabled for such file)
 ???? When a file is opened in non-direct mode, peak info is saved with wrong time stamp
 
 Done:
+Show FFT selection with thick XOR rectangle
+Remember Spectrum Section settings (FFT order) and size
 Appropriate commands are disabled when the file has zero length
 calculate max file length in seconds, given sampling rate and number of channels
 Change default lower frequency for noise suppression to 1000
@@ -76,6 +83,8 @@ Move 'f' button a bit down in Operands tab
 
 
 For Version 2:
+Make middle button scroll (drop anchor window)
+Add Undo/Redo drop list
 Make a few source samples available in expression and a few output samples too
     use wave[-63...63]
     wave(1)
@@ -118,3 +127,26 @@ If saving a file under the same name, copy security information from the old fil
 the new file.
 
 If using the temporary file as 
+
+
+ScaledScroolView:
+
+SlaveViews and master views
+
+Operations:
+
+Set Max boundaries:
+Forwarded to master view SetMaxExtentsMaster(). Then master notifies the slave views.
+
+Set view boundaries:
+Set view origin and extents:
+Call master view OnChangeOrgExtMaster. It will then notify slave views
+
+Scroll by world units:
+Recalculated to pixel units. Called master view MasterScrollBy
+
+Scroll by pixels:
+Call master view MasterScrollBy
+
+
+When origin is set, it is possible to round it to whole pixels. It is also done when zoom is done

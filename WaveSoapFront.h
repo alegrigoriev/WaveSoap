@@ -135,6 +135,7 @@ public:
 	DWORD m_MaxUndoSize;
 	DWORD m_MaxRedoSize;
 
+	// TODO: move to the dialog
 	// volume change parameters:
 	int m_VolumeDialogDbPercents;
 	double m_dVolumeLeftDb;
@@ -142,22 +143,26 @@ public:
 	double m_dVolumeLeftPercent;
 	double m_dVolumeRightPercent;
 
+	// TODO: move to the dialog
 	// DC offset parameters:
 	BOOL m_b5SecondsDC;
 	int m_nDcOffset;
 	int m_DcSelectMode;
 
+	// TODO: move to the dialog
 	// Normalize parameters:
 	int m_NormalizeDialogDbPercents;
 	double m_dNormalizeLevelDb;
 	double m_dNormalizeLevelPercent;
 
+	// TODO: move to the dialog
 	// Resample parameters:
 	BOOL m_bResampleChangeRateOnly;
 	BOOL m_bResampleRate;
 	int m_ResampleSamplingRate;
 	double m_ResampleTempoPercents;
 
+	// TODO: move to the dialog
 	// Low Frequency suppression params:
 	BOOL m_bSuppressDifferential;
 	BOOL m_bSuppressLowFrequency;
@@ -172,6 +177,10 @@ public:
 	BOOL m_DontShowMediaPlayerWarning;
 
 	BOOL m_bSnapMouseSelectionToMax;
+
+	int m_SpectrumSectionWidth;
+	int m_FftBandsOrder;
+	int m_FftWindowType;
 
 	CString m_UserKey;
 

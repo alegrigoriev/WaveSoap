@@ -429,6 +429,13 @@ BEGIN
             MENUITEM "4096",                        ID_FFT_BANDS_4096
             MENUITEM "8192",                        ID_FFT_BANDS_8192
         END
+        POPUP "FFT window type"
+        BEGIN
+            MENUITEM "Squared Sine",                ID_FFT_WINDOW_SQUARED_SINE
+
+            MENUITEM "Half-sine",                   ID_FFT_WINDOW_SINE
+            MENUITEM "Hamming",                     ID_FFT_WINDOW_HAMMING
+        END
     END
 END
 
@@ -486,6 +493,13 @@ BEGIN
             MENUITEM "2048",                        ID_FFT_BANDS_2048
             MENUITEM "4096",                        ID_FFT_BANDS_4096
             MENUITEM "8192",                        ID_FFT_BANDS_8192
+        END
+        POPUP "FFT window type"
+        BEGIN
+            MENUITEM "Squared Sine",                ID_FFT_WINDOW_SQUARED_SINE
+
+            MENUITEM "Half-sine",                   ID_FFT_WINDOW_SINE
+            MENUITEM "Hamming",                     ID_FFT_WINDOW_HAMMING
         END
         MENUITEM "Show Noise Reduction Threshold", 
                                                 ID_VIEW_SS_SHOW_NOISE_THRESHOLD
@@ -890,7 +904,7 @@ STYLE DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
 CAPTION "Select Source Channel"
 FONT 8, "MS Sans Serif"
 BEGIN
-    LTEXT           "Copying stereo data to single channel. Select a channel to copy from",
+    LTEXT           "Copying stereo data to single channel. Select a channel to copy from:",
                     IDC_STATIC,7,7,117,23
     CONTROL         "Left+Right",IDC_RADIO_CHANNEL_BOTH,"Button",
                     BS_AUTORADIOBUTTON | WS_GROUP,85,32,46,10
@@ -992,7 +1006,7 @@ CAPTION "Adjust DC offset"
 FONT 8, "MS Sans Serif"
 BEGIN
     CONTROL         "Automatically detect and remove",IDC_RADIO_DC_SELECT,
-                    "Button",BS_AUTORADIOBUTTON | WS_GROUP,7,16,114,10
+                    "Button",BS_AUTORADIOBUTTON | WS_GROUP,7,16,133,10
     CONTROL         "Adjust DC offset by:",IDC_RADIO2,"Button",
                     BS_AUTORADIOBUTTON,7,32,74,10
     EDITTEXT        IDC_EDIT_DC_OFFSET,131,30,35,14,ES_AUTOHSCROLL | 
@@ -1001,7 +1015,7 @@ BEGIN
                     UDS_AUTOBUDDY | UDS_ARROWKEYS,166,30,10,14
     CONTROL         "Compute DC offset from 5 seconds only",
                     IDC_CHECK_5SECONDS,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,
-                    7,52,134,10
+                    7,52,150,10
     LTEXT           "Selection:\nChannels:",IDC_STATIC_SELECTION,7,68,179,17
     CONTROL         "Save &Undo",IDC_CHECK_UNDO,"Button",BS_AUTOCHECKBOX | 
                     WS_TABSTOP,7,89,50,10
@@ -1011,21 +1025,22 @@ BEGIN
     PUSHBUTTON      "&Help",IDHELP,132,105,50,14
 END
 
-IDD_DIALOG_STATISTICS DIALOG DISCARDABLE  0, 0, 330, 133
+IDD_DIALOG_STATISTICS DIALOG DISCARDABLE  0, 0, 330, 192
 STYLE DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
 CAPTION "File statistics:"
 FONT 8, "MS Sans Serif"
 BEGIN
-    DEFPUSHBUTTON   "OK",IDOK,140,112,50,14
-    EDITTEXT        IDC_EDIT_LEFT,99,25,100,83,ES_MULTILINE | ES_AUTOVSCROLL | 
+    DEFPUSHBUTTON   "OK",IDOK,140,171,50,14
+    EDITTEXT        IDC_EDIT_LEFT,112,25,100,114,ES_MULTILINE | 
+                    ES_AUTOVSCROLL | ES_AUTOHSCROLL | ES_READONLY | NOT 
+                    WS_BORDER
+    EDITTEXT        IDC_EDIT_RIGHT,220,25,100,114,ES_MULTILINE | 
                     ES_AUTOHSCROLL | ES_READONLY | NOT WS_BORDER
-    EDITTEXT        IDC_EDIT_RIGHT,207,25,100,83,ES_MULTILINE | 
-                    ES_AUTOHSCROLL | ES_READONLY | NOT WS_BORDER
-    CONTROL         "Cursor position:\nSample value at cursor:\nMinimum sample position:\nMinimum sample value:\nMaximum sample position:\nMaximum sample value:\nRMS power:\nAverage value (DC offset):\nZero crossings:",
-                    IDC_STATIC,"Static",SS_LEFTNOWORDWRAP | WS_GROUP,7,25,91,
-                    80
-    LTEXT           "Left channel: ",IDC_STATIC,99,13,54,8
-    LTEXT           "Right channel:",IDC_STATIC,207,13,54,8
+    CONTROL         "Cursor position:\nSample value at cursor:\n\nMax negative peak position:\nMax negative peak value:\n\nMax positive peak position:\nMax positive peak value:\n\nRMS power:\nAverage value (DC offset):\nZero crossings:",
+                    IDC_STATIC,"Static",SS_LEFTNOWORDWRAP | WS_GROUP,7,25,
+                    102,114
+    LTEXT           "Left channel: ",IDC_STATIC,112,13,54,8
+    LTEXT           "Right channel:",IDC_STATIC,220,13,54,8
 END
 
 IDD_DIALOG_NORMALIZE DIALOG DISCARDABLE  0, 0, 193, 110
@@ -1033,14 +1048,14 @@ STYLE DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
 CAPTION "Normalize sound"
 FONT 8, "MS Sans Serif"
 BEGIN
-    LTEXT           "&Normalize to:",IDC_STATIC,7,7,44,8
+    LTEXT           "&Normalize to:",IDC_STATIC,7,7,47,8
     CONTROL         "Slider1",IDC_SLIDER_LEVEL,"msctls_trackbar32",
                     TBS_AUTOTICKS | WS_TABSTOP,54,4,86,21
     EDITTEXT        IDC_EDIT_LEVEL,143,4,35,14,ES_AUTOHSCROLL
     COMBOBOX        IDC_COMBODB_PERCENT,143,25,34,59,CBS_DROPDOWNLIST | 
                     WS_TABSTOP
     CONTROL         "&Equally adjust both channels",IDC_CHECK_LOCK_CHANNELS,
-                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,7,31,101,10
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,7,31,129,10
     LTEXT           "Selection:\nChannels:",IDC_STATIC_SELECTION,7,45,179,17
     CONTROL         "Save &Undo",IDC_CHECK_UNDO,"Button",BS_AUTOCHECKBOX | 
                     WS_TABSTOP,7,66,50,10
@@ -1055,40 +1070,42 @@ STYLE DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
 CAPTION "Resample"
 FONT 8, "MS Sans Serif"
 BEGIN
-    EDITTEXT        IDC_EDIT_RATE,164,7,35,14,ES_AUTOHSCROLL | ES_NUMBER
+    EDITTEXT        IDC_EDIT_RATE,166,7,35,14,ES_AUTOHSCROLL | ES_NUMBER
     LTEXT           "Hz",IDC_STATIC,207,10,12,8
     CONTROL         "Slider1",IDC_SLIDER_TEMPO,"msctls_trackbar32",
-                    TBS_AUTOTICKS | TBS_BOTH | WS_TABSTOP,96,28,64,21
-    EDITTEXT        IDC_EDIT_TEMPO,164,32,35,14,ES_AUTOHSCROLL
+                    TBS_AUTOTICKS | TBS_BOTH | WS_TABSTOP,100,28,62,21
+    EDITTEXT        IDC_EDIT_TEMPO,166,32,35,14,ES_AUTOHSCROLL
     LTEXT           "%",IDC_STATIC,208,35,11,8
     CONTROL         "Change sampling rate only, do not resample data",
                     IDC_CHECK_CHANGE_RATE_ONLY,"Button",BS_AUTOCHECKBOX | 
-                    BS_MULTILINE | WS_TABSTOP,7,56,102,21
+                    BS_MULTILINE | WS_TABSTOP,7,56,114,21
     CONTROL         "Save &Undo",IDC_CHECK_UNDO,"Button",BS_AUTOCHECKBOX | 
                     WS_TABSTOP,163,64,50,10
     DEFPUSHBUTTON   "OK",IDOK,57,99,50,14
     PUSHBUTTON      "Cancel",IDCANCEL,111,99,50,14
     PUSHBUTTON      "&Help",IDHELP,167,99,50,14
     CONTROL         "Change tempo and pitch:",IDC_RADIO_CHANGE_PITCH,"Button",
-                    BS_AUTORADIOBUTTON | WS_GROUP,7,34,90,10
+                    BS_AUTORADIOBUTTON | WS_GROUP,7,34,93,10
     CONTROL         "Change sampling rate:",IDC_RADIO_CHANGE_RATE,"Button",
-                    BS_AUTORADIOBUTTON,7,9,83,10
+                    BS_AUTORADIOBUTTON,7,9,91,10
     CONTROL         "Slider1",IDC_SLIDER_RATE,"msctls_trackbar32",
-                    TBS_AUTOTICKS | TBS_BOTH | WS_GROUP | WS_TABSTOP,96,3,64,
-                    21
+                    TBS_AUTOTICKS | TBS_BOTH | WS_GROUP | WS_TABSTOP,100,3,
+                    62,21
     LTEXT           "All the file will be processed",IDC_STATIC,7,83,190,8
 END
 
-IDD_DIALOG_STATISTICS_MONO DIALOG DISCARDABLE  0, 0, 211, 133
+IDD_DIALOG_STATISTICS_MONO DIALOG DISCARDABLE  0, 0, 225, 152
 STYLE DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
 CAPTION "File statistics:"
 FONT 8, "MS Sans Serif"
 BEGIN
-    DEFPUSHBUTTON   "OK",IDOK,80,112,50,14
-    EDITTEXT        IDC_EDIT_LEFT,99,25,100,83,ES_MULTILINE | ES_AUTOVSCROLL | 
-                    ES_AUTOHSCROLL | ES_READONLY | NOT WS_BORDER
-    CONTROL         "Cursor position:\nSample value at cursor:\nMinimum sample position:\nMinimum sample value:\nMaximum sample position:\nMaximum sample value:\nRMS power:\nAverage value (DC offset):\nZero crossings:",
-                    -1,"Static",SS_LEFTNOWORDWRAP | WS_GROUP,7,25,91,80
+    DEFPUSHBUTTON   "OK",IDOK,87,131,50,14
+    EDITTEXT        IDC_EDIT_LEFT,113,8,100,114,ES_MULTILINE | 
+                    ES_AUTOVSCROLL | ES_AUTOHSCROLL | ES_READONLY | NOT 
+                    WS_BORDER
+    CONTROL         "Cursor position:\nSample value at cursor:\n\nMax negative peak position:\nMax negative peak value:\n\nMax positive peak position:\nMax positive peak value:\n\nRMS power:\nAverage value (DC offset):\nZero crossings:",
+                    IDC_STATIC,"Static",SS_LEFTNOWORDWRAP | WS_GROUP,8,8,102,
+                    114
 END
 
 IDD_DIALOG_OPEN_TEMPLATE_V5 DIALOG DISCARDABLE  0, 0, 372, 136
@@ -1209,11 +1226,11 @@ BEGIN
     LTEXT           "Click proximity factor:",IDC_STATIC,31,84,73,8
     EDITTEXT        IDC_EDIT_DECAY_RATE,110,80,40,14,ES_AUTOHSCROLL
     CONTROL         "Import clicks from a file:",IDC_CHECK_IMPORT_CLICKS,
-                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,31,102,85,10
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,31,102,103,10
     EDITTEXT        IDC_EDIT_CLICK_IMPORT_FILENAME,31,118,128,14,
                     ES_AUTOHSCROLL
     CONTROL         "Log all found clicks to a file:",IDC_CHECK_LOG_CLICKS,
-                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,31,138,97,10
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,31,138,112,10
     EDITTEXT        IDC_EDIT_CLICK_LOG_FILENAME,31,153,128,14,ES_AUTOHSCROLL
     CONTROL         "Log clicks only, don't change the wave",
                     IDC_CHECK_LOG_CLICKS_ONLY,"Button",BS_AUTOCHECKBOX | 
@@ -1224,7 +1241,7 @@ BEGIN
                     WS_TABSTOP,7,233,50,10
     PUSHBUTTON      "Set defaults",IDC_BUTTON_RESET_DEFAULT,173,7,50,14
     PUSHBUTTON      "Revert",IDC_BUTTON_REVERT_INITIAL,173,25,50,14
-    PUSHBUTTON      "More settings...",IDC_BUTTON_MORE_SETTINGS,173,80,50,14
+    PUSHBUTTON      "More settings...",IDC_BUTTON_MORE_SETTINGS,167,80,56,14
     PUSHBUTTON      "Browse...",IDC_CLICK_IMPORT_BROWSE_BUTTON,181,118,42,14
     PUSHBUTTON      "Browse...",IDC_CLICK_LOG_BROWSE_BUTTON,181,153,42,14
     PUSHBUTTON      "&Selection...",IDC_BUTTON_SELECTION,8,251,50,14
@@ -1698,7 +1715,7 @@ BEGIN
         LEFTMARGIN, 7
         RIGHTMARGIN, 323
         TOPMARGIN, 7
-        BOTTOMMARGIN, 126
+        BOTTOMMARGIN, 185
     END
 
     IDD_DIALOG_NORMALIZE, DIALOG
@@ -1720,9 +1737,9 @@ BEGIN
     IDD_DIALOG_STATISTICS_MONO, DIALOG
     BEGIN
         LEFTMARGIN, 7
-        RIGHTMARGIN, 204
+        RIGHTMARGIN, 219
         TOPMARGIN, 7
-        BOTTOMMARGIN, 126
+        BOTTOMMARGIN, 145
     END
 
     IDD_DIALOG_OPEN_TEMPLATE_V5, DIALOG
@@ -2262,7 +2279,7 @@ BEGIN
     IDS_SOUND_MAY_BE_CLIPPED 
                             "%s:\nAs a result of the operation, some samples may exceed limit and will be clipped. Continue?"
     IDS_M_UNABLE_TO_CREATE_UNDO "Unable to save undo data, continue?"
-    IDS_STATISTICS_FORMAT   "%s (%s)\r\n%s (%s dB; %.2f%%)\r\n%s (%s)\r\n%s (%s dB; %.2f%%)\r\n%s (%s)\r\n%s (%s dB; %.2f%%)\r\n%s dB (%.2f%%)\r\n%s (%s dB; %.2f%%)\r\n%.2f Hz"
+    IDS_STATISTICS_FORMAT   "%s (%s)\r\n%s (%s dB; %.2f%%)\r\n\r\n%s (%s)\r\n%s (%s dB; %.2f%%)\r\n\r\n%s (%s)\r\n%s (%s dB; %.2f%%)\r\n\r\n%s dB (%.2f%%)\r\n%s (%s dB; %.2f%%)\r\n%.2f Hz"
     IDS_REOPEN_IN_DIRECT_MODE 
                             "File ""%s"" saved. \nWhat do you want to do with it:"
     IDS_RELOAD_COMPRESSED_FILE 
@@ -2351,6 +2368,10 @@ BEGIN
     ID_TOOLS_CDGRAB         "Read data from an audio CD\nCD Grabber"
     ID_VIEW_HIDE_SPECTRUMSECTION "Hide spectrum section pane\nHide spectrum"
     ID_PROCESS_CHANNELS     "Change number of channels\nChange channels"
+    ID_FFT_WINDOW_SQUARED_SINE 
+                            "Apply squared sine-shaped window to the data before FFT"
+    ID_FFT_WINDOW_SINE      "Apply half sine-shaped window to the data before FFT"
+    ID_FFT_WINDOW_HAMMING   "Apply Hamming window to the data before FFT"
 END
 
 STRINGTABLE DISCARDABLE 

@@ -1892,6 +1892,15 @@ BOOL CSoundPlayContext::OperationProc()
 		if (m_Flags & OperationContextStopRequested)
 		{
 			m_Flags |= OperationContextFinished;
+			if (m_bPauseRequested)
+			{
+				m_OperationString = _T("Playback Paused");
+			}
+			else
+			{
+				m_OperationString = _T("Playback Stopped");
+			}
+			PercentCompleted = -2;
 			break;
 		}
 		if (m_CurrentPlaybackPos >= m_End)
@@ -1902,7 +1911,8 @@ BOOL CSoundPlayContext::OperationProc()
 				break;    // not finished yet
 			}
 			m_Flags |= OperationContextFinished;
-			PercentCompleted = 100;
+			PercentCompleted = -2;
+			m_OperationString = _T("Playback Stopped");
 			break;
 		}
 		char * pBuf;
@@ -3024,6 +3034,7 @@ BOOL CFileSaveContext::OperationProc()
 		{
 			return TRUE;
 		}
+		m_pConvert->m_Flags |= m_Flags & OperationContextStopRequested;
 		BOOL result = m_pConvert->OperationProc();
 		PercentCompleted = m_pConvert->PercentCompleted;
 		return result;

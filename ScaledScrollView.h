@@ -87,8 +87,15 @@ public:
 	{
 		return ScrollBy(x - dOrgX, y - dOrgY, bDoScroll);
 	}
+	virtual BOOL MasterScrollBy(double dx, double dy, BOOL bDoScroll = TRUE);
+	BOOL MasterScrollTo(double x, double y, BOOL bDoScroll = TRUE)
+	{
+		return MasterScrollBy(x - dOrgX, y - dOrgY, bDoScroll);
+	}
 	void SetMaxExtents(double left, double right,
 						double bottom, double top);
+	void SetMaxExtentsMaster(double left, double right,
+							double bottom, double top);
 
 	void KeepAspectRatio(bool flag) {bKeepAspectRatio = flag; }
 	void KeepScaleOnResize(bool flag)
@@ -171,6 +178,8 @@ protected:
 	void ArrangeMaxExtents();
 	virtual void OnChangeOrgExt(double left, double width,
 								double top, double height, DWORD flag);
+	virtual void OnMasterChangeOrgExt(double left, double width,
+									double top, double height, DWORD flag);
 	virtual POINT GetZoomCenter();
 	// flag bits:
 	enum {CHANGE_WIDTH = 0x1, CHANGE_HOR_ORIGIN = 0x2,
