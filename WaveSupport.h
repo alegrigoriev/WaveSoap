@@ -22,6 +22,37 @@ enum {
 	WaveFormatMatchCompatibleFormats = 0x10000,
 	WaveFormatExcludeFormats = 0x20000,
 };
+struct WaveFormatTagEx
+{
+	int Tag;
+	GUID SubFormat;
+	bool operator ==(WaveFormatTagEx const & wfx) const
+	{
+		return Tag == wfx.Tag
+				&& (Tag != WAVE_FORMAT_EXTENSIBLE || SubFormat == wfx.SubFormat);
+	}
+
+	bool operator ==(WAVEFORMATEX const * wfx) const
+	{
+		return Tag == wfx->wFormatTag
+				&& (Tag != WAVE_FORMAT_EXTENSIBLE
+					|| SubFormat == ((PWAVEFORMATEXTENSIBLE)wfx)->SubFormat);
+	}
+
+	operator =(WAVEFORMATEX const * pwf)
+	{
+		Tag = pwf->wFormatTag;
+		if (Tag != WAVE_FORMAT_EXTENSIBLE)
+		{
+			memzero(SubFormat);
+		}
+		else
+		{
+			SubFormat = ((PWAVEFORMATEXTENSIBLE)pwf)->SubFormat;
+		}
+	}
+};
+
 struct CWaveFormat
 {
 	WAVEFORMATEX * m_pWf;
@@ -65,6 +96,16 @@ struct CWaveFormat
 	WORD & FormatTag()
 	{
 		return m_pWf->wFormatTag;
+	}
+
+	void FormatTag(WaveFormatTagEx const & tag)
+	{
+		m_pWf->wFormatTag = tag.Tag;
+		if (WAVE_FORMAT_EXTENSIBLE == tag.Tag
+			&& m_AllocatedSize >= sizeof (WAVEFORMATEXTENSIBLE))
+		{
+			((PWAVEFORMATEXTENSIBLE)m_pWf)->SubFormat = tag.SubFormat;
+		}
 	}
 
 	WORD FormatTag() const
@@ -129,6 +170,20 @@ struct CWaveFormat
 		m_pWf->nAvgBytesPerSec = nSampleRate * nNumChannels * nBitsPerSample / 8;
 	}
 	int MatchFormat(WAVEFORMATEX const * pWf);
+	//comparision operator is used for sorting
+	bool operator <(CWaveFormat const & cmp) const
+	{
+		return SampleRate() < cmp.SampleRate()
+				|| (SampleRate() == cmp.SampleRate()
+					&& BytesPerSec() < cmp.BytesPerSec());
+	}
+	bool operator ==(CWaveFormat const & cmp) const
+	{
+		return m_pWf->cbSize == cmp.m_pWf->cbSize
+				&& 0 == memcmp(m_pWf, cmp.m_pWf,
+								(WAVE_FORMAT_PCM == m_pWf->wFormatTag) ?
+									sizeof (PCMWAVEFORMAT) : sizeof (WAVEFORMATEX) + m_pWf->cbSize);
+	}
 };
 
 class CWaveDevice
@@ -229,36 +284,6 @@ class CAudioMixer
 	HMIXER m_hmix;
 };
 
-struct WaveFormatTagEx
-{
-	int Tag;
-	GUID SubFormat;
-	bool operator ==(WaveFormatTagEx const & wfx) const
-	{
-		return Tag == wfx.Tag
-				&& (Tag != WAVE_FORMAT_EXTENSIBLE || SubFormat == wfx.SubFormat);
-	}
-
-	bool operator ==(WAVEFORMATEX const * wfx) const
-	{
-		return Tag == wfx->wFormatTag
-				&& (Tag != WAVE_FORMAT_EXTENSIBLE
-					|| SubFormat == ((PWAVEFORMATEXTENSIBLE)wfx)->SubFormat);
-	}
-
-	operator =(WAVEFORMATEX const * pwf)
-	{
-		Tag = pwf->wFormatTag;
-		if (Tag != WAVE_FORMAT_EXTENSIBLE)
-		{
-			memzero(SubFormat);
-		}
-		else
-		{
-			SubFormat = ((PWAVEFORMATEXTENSIBLE)pwf)->SubFormat;
-		}
-	}
-};
 class CAudioCompressionManager
 {
 public:
@@ -282,6 +307,18 @@ public:
 	{
 		CWaveFormat Wf;
 		CString Name;
+		bool operator <(FormatItem const & cmp) const
+		{
+			return Wf < cmp.Wf;
+		}
+		bool operator >(FormatItem const & cmp) const
+		{
+			return ! (Wf < cmp.Wf);
+		}
+		bool operator ==(FormatItem const & cmp) const
+		{
+			return Wf == cmp.Wf;
+		}
 	};
 
 	std::vector<FormatTagItem> m_FormatTags;
