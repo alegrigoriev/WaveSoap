@@ -27,7 +27,7 @@ public:
 	int		m_MonoStereo;
 	int m_nSamplingRate;
 	//}}AFX_DATA
-	ULONG m_Length;
+	NUMBER_OF_SAMPLES m_Length;
 
 // Overrides
 	// ClassWizard generated virtual function overrides
