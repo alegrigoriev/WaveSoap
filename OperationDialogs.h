@@ -282,6 +282,8 @@ public:
 // Overrides
 	// ClassWizard generated virtual function overrides
 	//{{AFX_VIRTUAL(CStatisticsDialog)
+public:
+	virtual int DoModal();
 protected:
 	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV support
 	//}}AFX_VIRTUAL
@@ -342,6 +344,51 @@ protected:
 	afx_msg void OnSelchangeCombodbPercent();
 	virtual BOOL OnInitDialog();
 	afx_msg void OnHScroll(UINT nSBCode, UINT nPos, CScrollBar* pScrollBar);
+	//}}AFX_MSG
+	DECLARE_MESSAGE_MAP()
+};
+/////////////////////////////////////////////////////////////////////////////
+// CResampleDialog dialog
+
+class CResampleDialog : public CDialog
+{
+// Construction
+public:
+	CResampleDialog(CWnd* pParent = NULL);   // standard constructor
+
+// Dialog Data
+	//{{AFX_DATA(CResampleDialog)
+	enum { IDD = IDD_DIALOG_RESAMPLE };
+	CSliderCtrl	m_SliderTempo;
+	CSliderCtrl	m_SliderRate;
+	CNumEdit	m_EditTempo;
+	BOOL	m_bChangeRateOnly;
+	BOOL	m_bUndo;
+	int		m_bChangeSamplingRate;
+	UINT	m_ResampleSamplingRate;
+	//}}AFX_DATA
+
+	double m_TempoChange;
+	int m_NewSampleRate;
+	int m_OldSampleRate;
+// Overrides
+	// ClassWizard generated virtual function overrides
+	//{{AFX_VIRTUAL(CResampleDialog)
+protected:
+	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV support
+	//}}AFX_VIRTUAL
+
+// Implementation
+protected:
+
+	// Generated message map functions
+	//{{AFX_MSG(CResampleDialog)
+	afx_msg void OnRadioChangeRate();
+	afx_msg void OnRadioChangeTempo();
+	afx_msg void OnHScroll(UINT nSBCode, UINT nPos, CScrollBar* pScrollBar);
+	afx_msg void OnKillfocusEditRate();
+	afx_msg void OnKillfocusEditTempo();
+	virtual BOOL OnInitDialog();
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 };

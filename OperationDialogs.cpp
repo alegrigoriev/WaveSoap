@@ -81,7 +81,7 @@ CVolumeChangeDialog::CVolumeChangeDialog(CWnd* pParent /*=NULL*/)
 	: CDialog(CVolumeChangeDialog::IDD, pParent),
 	m_TimeFormat(SampleToString_HhMmSs | TimeToHhMmSs_NeedsHhMm | TimeToHhMmSs_NeedsMs),
 	m_pWf(NULL),
-	m_Chan(2)
+	m_Chan(ALL_CHANNELS)
 {
 	//{{AFX_DATA_INIT(CVolumeChangeDialog)
 	m_bUndo = FALSE;
@@ -779,7 +779,7 @@ BOOL CStatisticsDialog::OnInitDialog()
 	if (m_pContext->m_EnergyLeft != 0)
 	{
 		RmsDb.Format("%.2f",
-					10. * log10(abs(m_pContext->m_EnergyLeft) / (nSamples * 1073741824.)));
+					10. * log10(fabs(m_pContext->m_EnergyLeft) / (nSamples * 1073741824.)));
 	}
 	else
 	{
@@ -826,7 +826,7 @@ BOOL CStatisticsDialog::OnInitDialog()
 			//"%.2f dB (%.2f%%)\r\n"
 			// RMS
 			LPCTSTR(RmsDb),
-			100. * sqrt(abs(m_pContext->m_EnergyLeft) / (nSamples * 1073741824.)),
+			100. * sqrt(fabs(m_pContext->m_EnergyLeft) / (nSamples * 1073741824.)),
 			//"%s (%.2f dB; %.2f%%)\r\n"
 			LPCTSTR(LtoaCS(m_pContext->m_SumLeft / nSamples)),
 			LPCTSTR(DcDb), (m_pContext->m_SumLeft / nSamples) / 327.68,
@@ -867,7 +867,7 @@ BOOL CStatisticsDialog::OnInitDialog()
 		if (m_pContext->m_EnergyRight != 0)
 		{
 			RmsDb.Format("%.2f",
-						10. * log10(abs(m_pContext->m_EnergyRight) / (nSamples * 1073741824.)));
+						10. * log10(fabs(m_pContext->m_EnergyRight) / (nSamples * 1073741824.)));
 		}
 		else
 		{
@@ -914,7 +914,7 @@ BOOL CStatisticsDialog::OnInitDialog()
 				//"%.2f dB (%.2f%%)\r\n"
 				// RMS
 				LPCTSTR(RmsDb),
-				100. * sqrt(abs(m_pContext->m_EnergyRight) / (nSamples * 1073741824.)),
+				100. * sqrt(fabs(m_pContext->m_EnergyRight) / (nSamples * 1073741824.)),
 				//"%s (%.2f dB; %.2f%%)\r\n"
 				LPCTSTR(LtoaCS(m_pContext->m_SumRight / nSamples)),
 				LPCTSTR(DcDb), (m_pContext->m_SumRight / nSamples) / 327.68,
@@ -1187,4 +1187,149 @@ BOOL CGotoDialog::OnInitDialog()
 
 	return TRUE;  // return TRUE unless you set the focus to a control
 	// EXCEPTION: OCX Property Pages should return FALSE
+}
+/////////////////////////////////////////////////////////////////////////////
+// CResampleDialog dialog
+
+
+CResampleDialog::CResampleDialog(CWnd* pParent /*=NULL*/)
+	: CDialog(CResampleDialog::IDD, pParent)
+{
+	//{{AFX_DATA_INIT(CResampleDialog)
+	m_bChangeRateOnly = FALSE;
+	m_bUndo = FALSE;
+	m_bChangeSamplingRate = -1;
+	m_NewSampleRate = 0;
+	//}}AFX_DATA_INIT
+}
+
+
+void CResampleDialog::DoDataExchange(CDataExchange* pDX)
+{
+	CDialog::DoDataExchange(pDX);
+	//{{AFX_DATA_MAP(CResampleDialog)
+	DDX_Control(pDX, IDC_SLIDER_TEMPO, m_SliderTempo);
+	DDX_Control(pDX, IDC_SLIDER_RATE, m_SliderRate);
+	DDX_Control(pDX, IDC_EDIT_TEMPO, m_EditTempo);
+	DDX_Check(pDX, IDC_CHECK_CHANGE_RATE_ONLY, m_bChangeRateOnly);
+	DDX_Check(pDX, IDC_CHECK_UNDO, m_bUndo);
+	DDX_Radio(pDX, IDC_RADIO_CHANGE_PITCH, m_bChangeSamplingRate);
+	DDX_Text(pDX, IDC_EDIT_RATE, m_NewSampleRate);
+	//}}AFX_DATA_MAP
+	DDV_MinMaxUInt(pDX, m_NewSampleRate, m_OldSampleRate / 4, m_OldSampleRate * 4);
+	m_EditTempo.ExchangeData(pDX, m_TempoChange,
+							"Tempo/pitch change", "%", 25., 400.);
+}
+
+
+BEGIN_MESSAGE_MAP(CResampleDialog, CDialog)
+	//{{AFX_MSG_MAP(CResampleDialog)
+	ON_BN_CLICKED(IDC_RADIO_CHANGE_RATE, OnRadioChangeRate)
+	ON_BN_CLICKED(IDC_RADIO_CHANGE_PITCH, OnRadioChangeTempo)
+	ON_WM_HSCROLL()
+	ON_EN_KILLFOCUS(IDC_EDIT_RATE, OnKillfocusEditRate)
+	ON_EN_KILLFOCUS(IDC_EDIT_TEMPO, OnKillfocusEditTempo)
+	//}}AFX_MSG_MAP
+END_MESSAGE_MAP()
+
+/////////////////////////////////////////////////////////////////////////////
+// CResampleDialog message handlers
+
+void CResampleDialog::OnRadioChangeRate()
+{
+	m_bChangeSamplingRate = 1;
+	m_SliderRate.EnableWindow(TRUE);
+	GetDlgItem(IDC_EDIT_RATE)->EnableWindow(TRUE);
+	m_SliderTempo.EnableWindow(FALSE);
+	m_EditTempo.EnableWindow(FALSE);
+}
+
+void CResampleDialog::OnRadioChangeTempo()
+{
+	m_bChangeSamplingRate = 0;
+	m_SliderTempo.EnableWindow(TRUE);
+	m_EditTempo.EnableWindow(TRUE);
+	m_SliderRate.EnableWindow(FALSE);
+	GetDlgItem(IDC_EDIT_RATE)->EnableWindow(FALSE);
+}
+
+void CResampleDialog::OnHScroll(UINT nSBCode, UINT nPos, CScrollBar* pScrollBar)
+{
+	// TODO: Add your message handler code here and/or call default
+
+	CDialog::OnHScroll(nSBCode, nPos, pScrollBar);
+}
+
+void CResampleDialog::OnKillfocusEditRate()
+{
+	CString s;
+	GetDlgItemText(IDC_EDIT_RATE, s);
+	int SliderPos = 0;
+	if (! s.IsEmpty())
+	{
+		BOOL NoErr;
+		int val = GetDlgItemInt(IDC_EDIT_RATE, & NoErr, FALSE);
+		if ( ! NoErr || val < m_OldSampleRate / 4 || val > m_OldSampleRate * 4)
+		{
+			return;
+		}
+		SliderPos = val;
+		m_SliderTempo.SetPos(SliderPos);
+	}
+
+}
+
+void CResampleDialog::OnKillfocusEditTempo()
+{
+	double num;
+	CString s;
+	m_EditTempo.GetWindowText(s);
+	int SliderPos = 0;
+	if (! s.IsEmpty()
+		&& m_EditTempo.SimpleFloatParse(s, num))
+	{
+		if (num < 25. || num > 400.)
+		{
+			return;
+		}
+		SliderPos = int(num);
+		m_SliderTempo.SetPos(SliderPos);
+	}
+}
+
+
+BOOL CResampleDialog::OnInitDialog()
+{
+	CDialog::OnInitDialog();
+
+	m_SliderTempo.SetRange(25, 400);
+	m_SliderTempo.SetTicFreq(25);
+	m_SliderTempo.SetLineSize(5);
+	m_SliderTempo.SetPageSize(25);
+
+	m_SliderRate.SetRange(m_OldSampleRate / 4, m_OldSampleRate * 4);
+	m_SliderRate.SetTicFreq(m_OldSampleRate / 4);
+	m_SliderRate.SetLineSize(m_OldSampleRate / 20);
+	m_SliderRate.SetPageSize(m_OldSampleRate / 4);
+
+	if (m_bChangeSamplingRate)
+	{
+		OnRadioChangeRate();
+	}
+	else
+	{
+		OnRadioChangeTempo();
+	}
+	return TRUE;  // return TRUE unless you set the focus to a control
+	// EXCEPTION: OCX Property Pages should return FALSE
+}
+
+int CStatisticsDialog::DoModal()
+{
+	if (NULL != m_pContext
+		&& m_pContext->m_DstFile.Channels() == 1)
+	{
+		m_lpszTemplateName = MAKEINTRESOURCE(IDD_DIALOG_STATISTICS_MONO);
+	}
+	return CDialog::DoModal();
 }
