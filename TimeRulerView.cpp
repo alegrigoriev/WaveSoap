@@ -17,7 +17,7 @@ static char THIS_FILE[] = __FILE__;
 IMPLEMENT_DYNCREATE(CTimeRulerView, CHorizontalRuler)
 
 CTimeRulerView::CTimeRulerView()
-	: m_CurrentDisplayMode(ShowSamples)
+	: m_CurrentDisplayMode(ShowHhMmSs)
 {
 }
 
