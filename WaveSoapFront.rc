@@ -1618,8 +1618,8 @@ BEGIN
     EDITTEXT        IDC_EDIT_UNDO_DEPTH_LIMIT,82,116,40,13,ES_AUTOHSCROLL | 
                     ES_NUMBER
     CONTROL         "Spin1",IDC_SPIN_UNDO_DEPTH,"msctls_updown32",
-                    UDS_ALIGNRIGHT | UDS_AUTOBUDDY | UDS_ARROWKEYS,125,115,8,
-                    14
+                    UDS_SETBUDDYINT | UDS_ALIGNRIGHT | UDS_AUTOBUDDY | 
+                    UDS_ARROWKEYS,125,115,8,14
     GROUPBOX        "Redo",IDC_STATIC,7,136,139,57
     CONTROL         "Enable",IDC_CHECK_ENABLE_REDO,"Button",BS_AUTOCHECKBOX | 
                     WS_TABSTOP,11,147,62,10
@@ -1631,8 +1631,8 @@ BEGIN
                     BS_AUTOCHECKBOX | WS_TABSTOP,11,177,55,10
     EDITTEXT        IDC_EDIT_REDO_DEPTH_LIMIT,82,174,40,13,ES_AUTOHSCROLL
     CONTROL         "Spin1",IDC_SPIN_REDO_LIMIT,"msctls_updown32",
-                    UDS_ALIGNRIGHT | UDS_AUTOBUDDY | UDS_ARROWKEYS,125,174,
-                    10,14
+                    UDS_SETBUDDYINT | UDS_ALIGNRIGHT | UDS_AUTOBUDDY | 
+                    UDS_ARROWKEYS,125,174,10,14
     CONTROL         "Remember current selection in Undo/Redo",
                     IDC_CHECK_REMEMBER_SELECTION_IN_UNDO,"Button",
                     BS_AUTOCHECKBOX | WS_TABSTOP,11,199,170,10

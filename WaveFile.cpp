@@ -414,10 +414,34 @@ BOOL CWaveFile::CreateWaveFile(CWaveFile * pTemplateFile, WAVEFORMATEX * pTempla
 {
 	CString name;
 	char NameBuf[512];
+	CThisApp * pApp = GetApp();
 	// if the name is empty, create a temp name
 	DWORD OpenFlags = MmioFileOpenCreateAlways;
-	if ((flags & CreateWaveFileAllowMemoryFile)
-		&& SizeOrSamples <= 0x4000)
+	// create new WAVEFORMATEX
+	if (NULL == pTemplateFormat
+		&& NULL != pTemplateFile
+		&& pTemplateFile->IsOpen())
+	{
+		pTemplateFormat = pTemplateFile->GetWaveFormat();
+	}
+	if (flags & CreateWaveFileAllowMemoryFile)
+	{
+		// check file size
+		int nSampleSize = 4;
+		if (Channels != ALL_CHANNELS
+			|| (pTemplateFormat != NULL && pTemplateFormat->nChannels < 2))
+		{
+			nSampleSize = 2;
+		}
+		LONGLONG size = SizeOrSamples * nSampleSize;
+		if ( ! pApp->m_bUseMemoryFiles
+			|| size > pApp->m_MaxMemoryFileSize * 1024)
+		{
+			flags &= ~CreateWaveFileAllowMemoryFile;
+		}
+	}
+
+	if (flags & CreateWaveFileAllowMemoryFile)
 	{
 		OpenFlags |= MmioFileMemoryFile;
 	}
@@ -501,14 +525,8 @@ BOOL CWaveFile::CreateWaveFile(CWaveFile * pTemplateFile, WAVEFORMATEX * pTempla
 			return FALSE;
 		}
 	}
-	// create new WAVEFORMATEX
+
 	WAVEFORMATEX * pWF = NULL;
-	if (NULL == pTemplateFormat
-		&& NULL != pTemplateFile
-		&& pTemplateFile->IsOpen())
-	{
-		pTemplateFormat = pTemplateFile->GetWaveFormat();
-	}
 	int FormatSize = sizeof PCMWAVEFORMAT;
 	if (NULL != pTemplateFormat)
 	{
