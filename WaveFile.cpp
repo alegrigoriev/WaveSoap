@@ -457,15 +457,15 @@ void CWaveFile::Close( )
 
 BOOL CWaveFile::LoadWaveformat()
 {
-
 	MMCKINFO ck = {mmioFOURCC('f', 'm', 't', ' '), 0, 0, 0, 0};
 	if ( ! FindChunk(ck, GetRiffChunk()))
 	{
 		return FALSE;
 	}
-	if (ck.cksize > 0xFFF0) // 64K
+	if (ck.cksize > 0xFFF0  // 64K
+		|| ck.cksize < sizeof (WAVEFORMAT))
 	{
-		TRACE("fmt chunk is too big: > 64K\n");
+		TRACE("fmt chunk is too small or too big: > 64K\n");
 		Ascend(ck);
 		return FALSE;
 	}
@@ -2447,10 +2447,10 @@ NUMBER_OF_SAMPLES CWaveFile::NumberOfSamples() const
 
 WAVEFORMATEX * CWaveFile::GetWaveFormat() const
 {
-	InstanceDataWav * tmp = GetInstanceData();
-	if (tmp)
+	InstanceDataWav * pInstData = GetInstanceData();
+	if (pInstData)
 	{
-		return tmp->wf;
+		return pInstData->wf;
 	}
 	else
 	{
@@ -2482,6 +2482,92 @@ MMCKINFO * CWaveFile::GetFactChunk() const
 	{
 		return NULL;
 	}
+}
+
+CWavePeaks * CWaveFile::GetWavePeaks() const
+{
+	InstanceDataWav * pInstData = GetInstanceData();
+	if (NULL == pInstData)
+	{
+		return NULL;
+	}
+	return & pInstData->m_PeakData;
+}
+
+NUMBER_OF_CHANNELS CWaveFile::Channels() const
+{
+	WAVEFORMATEX * pWf = GetWaveFormat();
+	if (NULL == pWf)
+	{
+		return 1;
+	}
+	return pWf->nChannels;
+}
+
+WAVEFORMATEX * CWaveFile::AllocateWaveformat(size_t FormatSize)
+{
+	if (FormatSize < sizeof (WAVEFORMATEX))
+	{
+		FormatSize = sizeof (WAVEFORMATEX);
+	}
+	return AllocateInstanceData<InstanceDataWav>()->wf.Allocate(unsigned(FormatSize - sizeof (WAVEFORMATEX)));
+}
+
+bool CWaveFile::IsCompressed() const
+{
+	InstanceDataWav * pInstData = GetInstanceData();
+	if (NULL == pInstData)
+	{
+		return false;
+	}
+
+	return pInstData->wf.IsCompressed();
+}
+
+CHANNEL_MASK CWaveFile::ChannelsMask() const
+{
+	InstanceDataWav * pInstData = GetInstanceData();
+	if (NULL == pInstData)
+	{
+		return 0;
+	}
+	return pInstData->wf.ChannelsMask();
+}
+
+unsigned CWaveFile::SampleRate() const
+{
+	WAVEFORMATEX * pWf = GetWaveFormat();
+	if (pWf)
+	{
+		return pWf->nSamplesPerSec;
+	}
+	else
+	{
+		return 0;
+	}
+}
+
+WORD CWaveFile::BitsPerSample() const
+{
+	WAVEFORMATEX * pWf = GetWaveFormat();
+	if (pWf)
+	{
+		return pWf->wBitsPerSample;
+	}
+	else
+	{
+		return 8;
+	}
+}
+
+LPMMCKINFO CWaveFile::GetDataChunk() const
+{
+	InstanceDataWav * pInstData = GetInstanceData();
+	if (NULL == pInstData)
+	{
+		return NULL;
+	}
+	return & pInstData->datack;
 }
 
 BOOL CMmioFile::CommitChanges()
