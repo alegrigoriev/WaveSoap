@@ -169,6 +169,7 @@ public:
 	CSelectionUiSupport(SAMPLE_INDEX Start, SAMPLE_INDEX End, SAMPLE_INDEX CaretPos,
 						CHANNEL_MASK Channel,
 						CWaveFile & WaveFile, int TimeFormat,
+						BOOL bChannelsLocked = FALSE,
 						BOOL bAllowFileExtension = FALSE);   // standard constructor
 
 	SAMPLE_INDEX GetStart() const
@@ -221,6 +222,7 @@ protected:
 	NUMBER_OF_SAMPLES m_Length;
 
 	BOOL const m_bAllowFileExtension;
+	BOOL const m_bChannelsLocked;
 
 	void AdjustSelection(SAMPLE_INDEX Start, SAMPLE_INDEX End,
 						NUMBER_OF_SAMPLES Length);
@@ -261,6 +263,7 @@ public:
 	CSelectionDialog(SAMPLE_INDEX Start, SAMPLE_INDEX End, SAMPLE_INDEX CaretPos,
 					CHANNEL_MASK Channel,
 					CWaveFile & WaveFile, int TimeFormat,
+					BOOL bChannelsLocked,
 					BOOL bAllowFileExtension = FALSE,
 					UINT TemplateId = IDD, CWnd* pParent = NULL);   // standard constructor
 
