@@ -5,15 +5,60 @@
 <meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
 <meta name="GENERATOR" content="Microsoft FrontPage 6.0">
 <meta name="ProgId" content="FrontPage.Editor.Document">
-<title>FFT Spectrum view</title>
+<title>Spectrum view</title>
 </head>
 
 <body>
 
-<h2>FFT Spectrum view</h2>
-<p><img border="0" src="../../images/FftView.png" width="481" height="467"></p>
+<h2>Spectrum view</h2>
+<p><map name="FPMap0">
+<area href="../Edit/hid_edit_region_marker.htm" shape="rect" coords="83, 192, 357, 215">
+<area href="../Edit/hid_edit_paste.htm" shape="rect" coords="83, 213, 355, 239">
+<area href="../View/hid_view_zoom_in_time.htm" shape="rect" coords="82, 241, 355, 268">
+<area href="../View/hid_view_zoom_out_time.htm" shape="rect" coords="82, 265, 354, 291">
+<area href="../View/hid_view_zoomin_hor_full.htm" shape="rect" coords="82, 286, 355, 310">
+<area href="../View/hid_view_zoom_selection.htm" shape="rect" coords="82, 310, 354, 332">
+<area href="../View/hid_view_zoomprevious.htm" shape="rect" coords="83, 327, 355, 353">
+<area href="time_ruler.htm" shape="rect" coords="54, 0, 503, 29"></map>
+<img border="0" src="../../images/FftView.png" usemap="#FPMap0"></p>
 
-<p>TODO</p>
+<p>Spectrum view shows how the sound energy is distributed among different 
+frequencies. The spectrum is calculated using FFT procedure, which stands for 
+Fast Fourier Transform.</p>
+
+<p>Lower side of each channel's display corresponds to lower frequencies; upper 
+side corresponds to higher frequencies.</p>
+<p>Greater power is shown with brighter red and orange colors, lower power is 
+shown with darker blue color.</p>
+<p>The frequency is displayed on the left sidebar, at the same place where the
+<a href="amplitude_ruler.htm">amplitude ruler </a>is shown for the
+<a href="waveform_view.htm">waveform view</a>.</p>
+
+<p>Right-click in the spectrum view opens the popup menu. Besides from usual 
+zoom commands, it allows to select number of FFT bands (also called bins) and 
+type of FFT window.</p>
+<p>Number of FFT bins is power of 2, from 64 to 8192. More bins give better 
+resolution in frequency domain, but lower resolution in time, because each FFT 
+block takes more source audio samples.</p>
+<p>Each block of source samples is shaped by a chosen FFT window function. 
+Without such windowing, it's not possible to separate the frequency bands well 
+enough. Energy from one band would bleed (leak) to other bands, far from it.</p>
+<p><b>Squared sine</b> is also known as Hanning window. It has low leakage to 
+the far bins, but the closest bin has -30 dB leakage, which is a bit worse than 
+Hamming window.</p>
+<p>Half-sine window quality is between Hamming and Hanning.</p>
+<p><b>Hamming</b> window (0.54 – 0.46*cos(2*pi * n/N)) has the lowest leak to 
+the first bin, but the worst leakage to the far bins. All sidelobes of its 
+transfer function are mere -40 dB.</p>
+
+<p>On the lower end of the ruler, two buttons are shown:</p>
+<p><img border="0" src="../../images/amplitude_zoom_buttons.png"></p>
+<p>The left button is for zooming in, the 
+right one is for zooming out.</p>
+
+<p>Keyboard shortcut for zooming <b>in</b> is <b>Alt+Up Arrow</b>.</p>
+<p>If you double click on the ruler, the zoom scale is reset back to 100%.</p>
+<p>Keyboard shortcut for zooming <b>out</b> is <b>Alt+Down Arrow</b>.</p>
 
 </body>
 
