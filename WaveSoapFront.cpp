@@ -942,6 +942,7 @@ unsigned CWaveSoapFrontApp::_ThreadProc()
 			pLastContext = pContext;
 			NeedKickIdle = true;
 		}
+
 		if (pContext != NULL)
 		{
 			// execute one step
@@ -964,7 +965,8 @@ unsigned CWaveSoapFrontApp::_ThreadProc()
 			{
 				pContext->m_Flags |= OperationContextStopRequested;
 			}
-			int LastPercent = pContext->m_PercentCompleted;
+
+			int LastPercent = pContext->PercentCompleted();
 			if ( 0 == (pContext->m_Flags & (OperationContextStop | OperationContextFinished)))
 			{
 				if ( ! pContext->OperationProc())
@@ -972,18 +974,21 @@ unsigned CWaveSoapFrontApp::_ThreadProc()
 					pContext->m_Flags |= OperationContextStop;
 				}
 			}
+
+			int NewPercent = pContext->PercentCompleted();
 			// signal for status update
-			if (LastPercent != pContext->m_PercentCompleted)
+			if (LastPercent != NewPercent)
 			{
 				NeedKickIdle = true;
 			}
+
 			if (pContext->m_Flags & (OperationContextStop | OperationContextFinished))
 			{
 				// remove the context from the list and delete the context
 				m_OpList.RemoveEntry(pContext);
 
 				// send a signal to the document, that the operation completed
-				SetStatusStringAndDoc(pContext->GetStatusString() + _T("Completed"),
+				SetStatusStringAndDoc(pContext->GetCompletedStatusString(),
 									pContext->pDocument);
 
 				pContext->DeInit();
@@ -998,7 +1003,7 @@ unsigned CWaveSoapFrontApp::_ThreadProc()
 				{
 					CString s;
 					s.Format(_T("%s%d%%"),
-							(LPCTSTR)pContext->GetStatusString(), pContext->m_PercentCompleted);
+							(LPCTSTR)pContext->GetStatusString(), NewPercent);
 					SetStatusStringAndDoc(s, pContext->pDocument);
 				}
 			}

@@ -89,7 +89,8 @@ public:
 		return false;
 	}
 
-	virtual CString GetStatusString();
+	virtual CString GetStatusString() const;
+	virtual CString GetCompletedStatusString() const;
 
 	CString m_OperationName;
 	CString m_OperationString;
@@ -98,7 +99,6 @@ public:
 	class CWaveSoapFrontDoc * pDocument;
 	DWORD m_Flags;
 
-	int m_PercentCompleted;
 	// This list keeps all UNDO operations for this operation context.
 	// they are created in advance, before the operation is executed
 	// First item in the list is to be executed first
@@ -171,11 +171,6 @@ public:
 		return m_MaxClipped;
 	}
 
-	void UpdateCompletedPercent(SAMPLE_INDEX CurrentSample,
-								SAMPLE_INDEX StartSample, SAMPLE_INDEX EndSample);
-	void UpdateCompletedPercent(SAMPLE_POSITION CurrentPos,
-								SAMPLE_POSITION StartPos, SAMPLE_POSITION EndPos);
-
 	virtual MEDIA_FILE_SIZE GetTotalOperationSize() const
 	{
 		return 0;
@@ -185,6 +180,8 @@ public:
 	{
 		return 0;
 	}
+
+	virtual int PercentCompleted() const;
 
 #ifdef _DEBUG
 	FILETIME m_ThreadUserTime;
@@ -213,10 +210,6 @@ public:
 
 	void InitSource(CWaveFile & SrcFile, SAMPLE_INDEX StartSample,
 					SAMPLE_INDEX EndSample, CHANNEL_MASK chan);
-
-	using BaseClass::UpdateCompletedPercent;
-	// add another overload
-	void UpdateCompletedPercent();
 
 	CWaveFile m_SrcFile;
 	CHANNEL_MASK m_SrcChan;
@@ -313,7 +306,7 @@ public:
 	virtual ListHead<COperationContext> * GetUndoChain();
 
 	virtual void PostRetire();
-	virtual CString GetStatusString();
+	virtual CString GetStatusString() const;
 	virtual void Execute();
 	virtual BOOL CreateUndo();
 	virtual BOOL PrepareUndo();
@@ -428,7 +421,7 @@ public:
 	virtual class CUndoRedoContext * GetUndo();
 
 	virtual void PostRetire();
-	virtual CString GetStatusString();
+	virtual CString GetStatusString() const;
 };
 
 class CSoundPlayContext : public COperationContext
@@ -442,6 +435,9 @@ public:
 					SAMPLE_INDEX PlaybackStart, SAMPLE_INDEX PlaybackEnd, CHANNEL_MASK Channel,
 					int PlaybackDevice, int PlaybackBuffers, size_t PlaybackBufferSize);
 	CString GetPlaybackTimeString(int TimeFormat) const;
+
+	//virtual CString GetStatusString() const;
+	virtual CString GetCompletedStatusString() const;
 
 	void Pause()
 	{
@@ -741,6 +737,16 @@ protected:
 	virtual BOOL Init();
 	virtual void DeInit();
 	virtual void PostRetire();
+
+	virtual MEDIA_FILE_SIZE GetTotalOperationSize() const
+	{
+		return m_CurrentSamples;
+	}
+
+	virtual MEDIA_FILE_SIZE GetCompletedOperationSize() const
+	{
+		return m_DstCopySample;
+	}
 
 private:
 	CDirectFile & m_WmaFile;

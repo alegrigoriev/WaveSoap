@@ -51,7 +51,6 @@ COperationContext::COperationContext(class CWaveSoapFrontDoc * pDoc, LPCTSTR Sta
 	m_Flags(Flags),
 	m_OperationName(OperationName),
 	sOp(StatusString),
-	m_PercentCompleted(0),
 	m_bClipped(false),
 	m_MaxClipped(0.)
 {
@@ -78,9 +77,14 @@ void COperationContext::Dump(unsigned indent) const
 	}
 }
 
-CString COperationContext::GetStatusString()
+CString COperationContext::GetStatusString() const
 {
 	return sOp;
+}
+
+CString COperationContext::GetCompletedStatusString() const
+{
+	return GetStatusString() + _T("Completed");
 }
 
 void COperationContext::DeleteUndo()
@@ -88,26 +92,6 @@ void COperationContext::DeleteUndo()
 	while ( ! m_UndoChain.IsEmpty())
 	{
 		delete m_UndoChain.RemoveTail();
-	}
-}
-
-void COperationContext::UpdateCompletedPercent(SAMPLE_INDEX CurrentSample,
-												SAMPLE_INDEX StartSample, SAMPLE_INDEX EndSample)
-{
-	if (EndSample != StartSample)
-	{
-		m_PercentCompleted = MulDiv(100, CurrentSample - StartSample,
-									EndSample - StartSample);
-	}
-}
-
-void COperationContext::UpdateCompletedPercent(SAMPLE_POSITION CurrentPos,
-												SAMPLE_POSITION StartPos, SAMPLE_POSITION EndPos)
-{
-	if (EndPos != StartPos)
-	{
-		m_PercentCompleted = int(100 * (MEDIA_FILE_SIZE(CurrentPos) - StartPos)
-								/ (MEDIA_FILE_SIZE(EndPos) - StartPos));
 	}
 }
 
@@ -206,6 +190,18 @@ BOOL COperationContext::CreateUndo()
 	return TRUE;
 }
 
+int COperationContext::PercentCompleted() const
+{
+	MEDIA_FILE_SIZE TotalSize = GetTotalOperationSize();
+
+	if (0 == TotalSize)
+	{
+		return -1;  // don't print percent
+	}
+
+	return int(GetCompletedOperationSize() * 100. / TotalSize);
+}
+
 //////////// COneFileOperation
 COneFileOperation::COneFileOperation(class CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString,
 									ULONG Flags, LPCTSTR OperationName)
@@ -246,11 +242,6 @@ void COneFileOperation::InitSource(CWaveFile & SrcFile, SAMPLE_INDEX StartSample
 
 	if (0) TRACE("SrcStart=%X, SrcEnd=%X, SrcPos=%X\n",
 				m_SrcStart, m_SrcEnd, m_SrcPos);
-}
-
-void COneFileOperation::UpdateCompletedPercent()
-{
-	UpdateCompletedPercent(m_SrcPos, m_SrcStart, m_SrcEnd);
 }
 
 MEDIA_FILE_SIZE COneFileOperation::GetTotalOperationSize() const
@@ -615,11 +606,6 @@ BOOL CThroughProcessOperation::OperationProc()
 			pDocument->FileChanged(m_DstFile, dwOperationBegin, m_DstPos);
 		}
 
-		if (m_DstEnd > m_DstStart)
-		{
-			m_PercentCompleted = int(100. * (m_DstPos + double(m_DstEnd - m_DstStart) * (m_CurrentPass - 1) - m_DstStart)
-									/ (double(m_DstEnd - m_DstStart) * (m_NumberOfForwardPasses + m_NumberOfBackwardPasses)));
-		}
 	}
 	else
 	{
@@ -712,12 +698,6 @@ BOOL CThroughProcessOperation::OperationProc()
 			pDocument->FileChanged(m_DstFile, dwOperationBegin, m_DstPos);
 		}
 
-		if (m_DstEnd > m_DstStart)
-		{
-			m_PercentCompleted = int(100. * (m_DstEnd + double(m_DstEnd - m_DstStart)
-										* (- 1 - m_CurrentPass + m_NumberOfForwardPasses) - m_DstPos)
-									/ ((double(m_DstEnd) - m_DstStart) * (m_NumberOfForwardPasses + m_NumberOfBackwardPasses)));
-		}
 	}
 	return res;
 }
@@ -730,8 +710,16 @@ MEDIA_FILE_SIZE CThroughProcessOperation::GetTotalOperationSize() const
 
 MEDIA_FILE_SIZE CThroughProcessOperation::GetCompletedOperationSize() const
 {
-	return m_CurrentPass * BaseClass::GetTotalOperationSize()
-			+ BaseClass::GetCompletedOperationSize();
+	if (m_CurrentPass < 0)
+	{
+		return (m_NumberOfForwardPasses - m_CurrentPass) * BaseClass::GetTotalOperationSize()
+			- BaseClass::GetCompletedOperationSize();
+	}
+	else
+	{
+		return m_CurrentPass * BaseClass::GetTotalOperationSize()
+				+ BaseClass::GetCompletedOperationSize();
+	}
 }
 
 BOOL CThroughProcessOperation::Init()
@@ -936,7 +924,6 @@ BOOL CStagedContext::OperationProc()
 			pContext->m_Flags |= OperationContextStop;
 			result = FALSE;
 		}
-		m_PercentCompleted = pContext->m_PercentCompleted;
 	}
 
 	if (pContext->m_Flags & (OperationContextFinished | OperationContextInitFailed))
@@ -985,7 +972,7 @@ void CStagedContext::PostRetire()
 	BaseClass::PostRetire();
 }
 
-CString CStagedContext::GetStatusString()
+CString CStagedContext::GetStatusString() const
 {
 	if (m_ContextList.IsEmpty())
 	{
@@ -1096,7 +1083,6 @@ BOOL CScanPeaksContext::OperationProc()
 	if (m_SrcPos >= m_SrcEnd)
 	{
 		m_Flags |= OperationContextFinished;
-		m_PercentCompleted = 100;
 		return TRUE;
 	}
 
@@ -1244,8 +1230,6 @@ BOOL CScanPeaksContext::OperationProc()
 			&& GetTickCount() - dwStartTime < 200);
 
 	TRACE("CScanPeaksContext current position=%X\n", m_SrcPos);
-
-	UpdateCompletedPercent();
 
 	// notify the view
 	pDocument->FileChanged(m_SrcFile, dwOperationBegin,
@@ -1507,8 +1491,6 @@ BOOL CCopyContext::OperationProc()
 
 	// notify the view
 	pDocument->FileChanged(m_DstFile, dwOperationBegin, m_DstPos);
-
-	UpdateCompletedPercent();
 
 	return TRUE;
 }
@@ -1810,7 +1792,6 @@ CSoundPlayContext::CSoundPlayContext(CWaveSoapFrontDoc * pDoc, CWaveFile & WavFi
 	, m_PlaybackBufferSize(PlaybackBufferSize)
 {
 
-	m_PercentCompleted = -1;  // no percents
 	m_PlayFile = WavFile;
 	m_Begin = m_PlayFile.SampleToPosition(m_FirstSamplePlayed);
 
@@ -1896,17 +1877,9 @@ BOOL CSoundPlayContext::OperationProc()
 		if (m_Flags & OperationContextStopRequested)
 		{
 			m_Flags |= OperationContextStop;
-			if (m_bPauseRequested)
-			{
-				m_OperationString = _T("Playback Paused");
-			}
-			else
-			{
-				m_OperationString = _T("Playback Stopped");
-			}
-			m_PercentCompleted = -2;
 			break;
 		}
+
 		if (m_CurrentPlaybackPos >= m_End)
 		{
 			// wait until all the buffer is finished
@@ -1915,8 +1888,6 @@ BOOL CSoundPlayContext::OperationProc()
 				break;    // not finished yet
 			}
 			m_Flags |= OperationContextFinished;
-			m_PercentCompleted = -2;
-			m_OperationString = _T("Playback Stopped");
 			break;
 		}
 
@@ -1986,6 +1957,22 @@ CString CSoundPlayContext::GetPlaybackTimeString(int TimeFormat) const
 			TimeMs = BeginTimeMs;
 		}
 		return TimeToHhMmSs(TimeMs, TimeFormat);
+	}
+}
+
+//CString CSoundPlayContext::GetStatusString() const
+	//{
+	//}
+
+CString CSoundPlayContext::GetCompletedStatusString() const
+{
+	if (m_bPauseRequested)
+	{
+		return _T("Playback Paused");
+	}
+	else
+	{
+		return _T("Playback Stopped");
 	}
 }
 
@@ -2063,7 +2050,7 @@ CUndoRedoContext * CUndoRedoContext::GetUndo()
 	return pUndo;
 }
 
-CString CUndoRedoContext::GetStatusString()
+CString CUndoRedoContext::GetStatusString() const
 {
 	if (IsUndoOperation())
 	{
@@ -3061,8 +3048,6 @@ BOOL CConversionContext::OperationProc()
 		pDocument->FileChanged(m_DstFile, dwOperationBegin, m_DstPos);
 	}
 
-	UpdateCompletedPercent();
-
 	return TRUE;
 }
 
@@ -3103,6 +3088,7 @@ BOOL CWmaDecodeContext::OperationProc()
 		m_Flags |= OperationContextFinished;
 		NewSampleCount = m_CurrentSamples;
 	}
+
 	if (nFirstSample != nLastSample
 		|| -1 != NewSampleCount)
 	{
@@ -3111,10 +3097,6 @@ BOOL CWmaDecodeContext::OperationProc()
 		pDocument->SoundChanged(m_DstFile.GetFileID(), nFirstSample, nLastSample, NewSampleCount);
 	}
 
-	if (m_CurrentSamples)
-	{
-		m_PercentCompleted = MulDiv(100, m_DstCopySample, m_CurrentSamples);
-	}
 	return TRUE;
 }
 
@@ -3306,8 +3288,6 @@ BOOL CWmaSaveContext::OperationProc()
 	}
 	while (m_SrcPos < m_SrcEnd
 			&& GetTickCount() - dwStartTime < 1000);
-
-	UpdateCompletedPercent();
 
 	return TRUE;
 }
