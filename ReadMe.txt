@@ -1,15 +1,46 @@
 TODO tasks:
 
-Make possible MP3/WMA save with different sampling rate
+Change "Normalize" to "Normalize Volume"
+Add "Hold Shift to specify fade in/out length" to Mute prompt
+Disable "Compute from 5 second" in CD dialog, if the offset is selected
+Change Click Removal dialog title
+Change Equalizer button in the toolbar
+Make Filter dialog show all frequencies and responses
+Filter dialog: Transfer loss should be positive.
+Filter: Transfer loss edit box should be disabled for the notch filter
+Make an icon for the filter and equalizer dialogs
+Change Expression button in the toolbar
+Change "FFT order for analyze" to "Number of frequency bands"
+Support "Set defaults" and "Revert" in Noise reduction dialog.
+"Aggressivness" is spelled with e:Aggressiveness
+"Transient area threshold" ???
+Change "Show spectrum" to "Show masking function and threshold"
+More noise settings: make group boxes
+Unused fields in More noise settings???
+Remove CD grabber from Tools menu
+"Restore selection" option: make sure to use values from the document, not Begin/End.
+Do Playback device selection in the preferences. Add kB label to buffer size selection.
+In expression dialog: set max number of digits for edit fields
+After last expression of a group is deleted, select another group.
 
+Support "What is it" help for the window parts
+Support popup help for dialogs.
+Make help index and contents
+Don't show contents bar by default.
+Show the help window maximized by height
+Instead of "Failed to launch help" show default help page
+In "Selection" combo, try showing marker names
 Allow Save Selection to save with compression
 
-When doing Paste from file, make the file title a region name.
+Show warning when editing will cause offset between stereo channels.
+
 When saving the selection as, set the file title from the marker at beginning of the selection (unless all the file is selected)
 Make Fade In/Out command
 Add prefix to CD-saved files
 Add "Single file" option to CD-grab dialog
 Make Paste Special command (with Fade In/Fade Out etc)
+Make Paste From File command
+When doing Paste from file, make the file title a region name.
 Check all loading/saving of compressed files
 If metadata doesn't come as the very last chunk of the file, copy the original file to 
  a file where it does (for non-compressed file, that is)
@@ -20,6 +51,9 @@ Delete/Insert operations can auto add markers and regions
 Unnamed region name is composed from its boundaries. Marker name - from its position
 Make context menu for outline view
 Show the marker position when dragging it.
+
+Make "Lock channels" more consistent (disable items in the dialogs, if channels are locked).
+Use MakeCompatibleFormat function in DoPaste
 
 Make "URL-safe filenames" option in CD grab dialog and file split dialog.
 Do rewriting from a source file to the work file in background thread.
@@ -88,6 +122,14 @@ Find which alignment better for edit box labels: left or right
 
 Problems:
 
+Mute undo doesn't restore selection
+Selection dialog spin boxes stop when upper limit has reached, even if expansion is allowed.
+When playing, zoom should use the playback point as a center.
+Spin doesn't work in DC dialog
+Selection dialog does not find region in the Selection combo.
+"Statistics" dialog shows only file name instead of full path (Sound1.wav opened from MRU).
+After Save As, The document title is still the old one.
+WMA format list shows only compatible formats, even when checkbox not checked.
 WMA encoded/decoded is delayed by 2048 samples.
 SaveAs shows AVI as possible type
 Last columns (of the file) in FFT view are not getting erased/drawn properly
@@ -107,6 +149,9 @@ Log Off query doesn't close the active dialog. Recursion is possible. Make sure 
 
 Fixed:
 
+After Reset button, Filter graph mouse/keyboard interface doesn't work
+Stopped WMA save crashes the program.
+When Split To Files stopped, unsaved files are not deleted
 Beta 0.710:
 Save split to files shows MP3 formats for MP3 codec with different sample rate, even though "Show compatible formats" is selected
 Selected Mpeg3 compressor is not saved
@@ -197,6 +242,11 @@ Save As dialog is not centered first time (comdlg problem?)
 ??? When time/seconds format is set for status bar, MM:SS is actually shown
 
 Done:
+Menu item IDs starting from IDC_ changed to ID_, otherwise they didn't go to HTMLDefines.h.
+Try better prefetch (little effect)
+Add hotkey 'p' to Split To Files command and other hotkeys to the main menu
+Make possible MP3/WMA save with different sampling rate
+Limit filename length in "Split to files status".
 Beta 0.710:
 Do enable/disable buttons in Split to files dialog
 When saving partial file, show the file name in the status prompt, don't show the source name
