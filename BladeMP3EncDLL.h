@@ -249,14 +249,8 @@ public:
 	BOOL OpenStream(PBE_CONFIG pConfig);
 	BOOL EncodeChunk(short const * pSrc, int nSamples, BYTE * pDst, DWORD * pBytesEncoded);
 	BOOL FlushStream(BYTE * pDst, DWORD * pBytesEncoded);
-	void CloseStream()
-	{
-		if (NULL != m_pStream)
-		{
-			beCloseStream(m_pStream);
-			m_pStream = NULL;
-		}
-	}
+	void CloseStream();
+
 	void GetVersion(PBE_VERSION pVer)
 	{
 		beGetVersion(pVer);
@@ -296,6 +290,8 @@ protected:
 	HBE_STREAM m_pStream;
 	HMODULE m_DllModule;
 	BOOL m_bFlushStreamCalled;
+
+	static LONG m_StreamCount;
 public:
 	DWORD m_InBufferSize;
 	DWORD m_OutBufferSize;
