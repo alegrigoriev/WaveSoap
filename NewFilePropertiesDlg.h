@@ -41,7 +41,6 @@ protected:
 
 	// Generated message map functions
 	//{{AFX_MSG(CNewFilePropertiesDlg)
-	virtual BOOL OnInitDialog();
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 };

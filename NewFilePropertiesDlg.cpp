@@ -17,7 +17,8 @@ static char THIS_FILE[] = __FILE__;
 
 
 CNewFilePropertiesDlg::CNewFilePropertiesDlg(CWnd* pParent /*=NULL*/)
-	: CDialog(CNewFilePropertiesDlg::IDD, pParent)
+	: CDialog(CNewFilePropertiesDlg::IDD, pParent),
+	m_eLength(SampleToString_HhMmSs | TimeToHhMmSs_NeedsHhMm)
 {
 	//{{AFX_DATA_INIT(CNewFilePropertiesDlg)
 	m_bShowOnlyWhenShift = FALSE;
@@ -46,7 +47,7 @@ void CNewFilePropertiesDlg::DoDataExchange(CDataExchange* pDX)
 		{
 			channels = 2;
 		}
-		unsigned long MaxLength = 0x7FFFFFFFu - 0x100000u;
+		NUMBER_OF_SAMPLES MaxLength = 0x7FFFFFFFu - 0x100000u;
 		if (GetApp()->m_bAllow4GbWavFile)
 		{
 			MaxLength = 0xFFFFFFFFu - 0x100000u;
@@ -73,12 +74,3 @@ END_MESSAGE_MAP()
 /////////////////////////////////////////////////////////////////////////////
 // CNewFilePropertiesDlg message handlers
 
-BOOL CNewFilePropertiesDlg::OnInitDialog()
-{
-	m_eLength.SetTimeFormat(SampleToString_HhMmSs | TimeToHhMmSs_NeedsHhMm);
-	m_eLength.SetSamplingRate(1);
-	CDialog::OnInitDialog();
-
-	return TRUE;  // return TRUE unless you set the focus to a control
-	// EXCEPTION: OCX Property Pages should return FALSE
-}
