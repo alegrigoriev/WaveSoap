@@ -55,14 +55,26 @@ public:
 	void ZoomInSelection(DWORD flags);
 	void ZoomOutSelection(DWORD flags);
 
-	POINT DoubleToPointDev(double x, double y) const;
 	double GetXScale() const { return dScaleX; }
 	double GetYScale() const { return dScaleY; }
 	double GetXScaleDev() const { return dScaleX * dLogScaleX; }
 	double GetYScaleDev() const { return dScaleY * dLogScaleX; }
+
+	POINT DoubleToPointDev(double x, double y) const;
 	void PointToDoubleDev(POINT pt, double & x, double & y) const;
 	POINT DoubleToPoint(double x, double y) const;
 	void PointToDouble(POINT pt, double & x, double & y) const;
+
+	int WorldToWindowX(double x) const;
+	int WorldToWindowY(double y) const;
+	double WindowToWorldX(int x) const;
+	double WindowToWorldY(int y) const;
+
+	int WorldToLogX(double x) const;
+	int WorldToLogY(double y) const;
+	double LogToWorldX(int x) const;
+	double LogToWorldY(int y) const;
+
 	void GetExtents(double & left, double & right,
 					double & bottom, double & top) const;
 	virtual void SetExtents(double left, double right,
@@ -156,6 +168,7 @@ protected:
 	void ArrangeMaxExtents();
 	virtual void OnChangeOrgExt(double left, double width,
 								double top, double height, DWORD flag);
+	virtual POINT GetZoomCenter();
 	// flag bits:
 	enum {CHANGE_WIDTH = 0x1, CHANGE_HOR_ORIGIN = 0x2,
 		CHANGE_HEIGHT = 0x4, CHANGE_VERT_ORIGIN = 0x8,
