@@ -32,10 +32,20 @@ public:
 		PercentCompleted(0)
 	{
 	}
-	virtual ~COperationContext() {}
+	virtual ~COperationContext()
+	{
+		if (pNextChain)
+		{
+			COperationContext * pContext = pNextChain;
+			pNextChain = NULL;
+			delete pContext;
+		}
+	}
 	virtual BOOL OperationProc() = 0;
 	virtual BOOL Init() { return TRUE; }
 	virtual BOOL DeInit() { return TRUE; }
+	virtual void Retire();
+	virtual void PostRetire();
 	virtual CString GetStatusString() = 0;
 	COperationContext * pNext;
 	COperationContext * pPrev;
@@ -54,6 +64,16 @@ enum {
 	OperationContextInitialized = 0x40,
 	OperationContextCreatingUndo = 0x80,
 	OperationContextNonCritical = 0x100,
+	OperationContextDontKeepAfterRetire = 0x200,
+	OperationContextDontAdjustPriority = 0x400,
+};
+
+class CWaveSoapFrontStatusBar : public CStatusBar
+{
+public:
+	CWaveSoapFrontStatusBar() {}
+	~CWaveSoapFrontStatusBar() {}
+	virtual int OnToolHitTest(CPoint point, TOOLINFO* pTI) const;
 };
 
 class CWaveSoapFrontApp : public CWinApp
@@ -111,8 +131,6 @@ public:
 
 	//{{AFX_MSG(CWaveSoapFrontApp)
 	afx_msg void OnAppAbout();
-	// NOTE - the ClassWizard will add and remove member functions here.
-	//    DO NOT EDIT what you see in these blocks of generated code !
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 	CWinThread m_Thread;
@@ -134,7 +152,14 @@ inline CWaveSoapFrontApp * GetApp()
 typedef CWaveSoapFrontApp CWaveSoapApp;
 // long to string, thousands separated by commas
 CString LtoaCS(long num);
-CString TimeToHhMmSs(unsigned TimeMs, BOOL needMs = TRUE);
+enum
+{
+	TimeToHhMmSs_NeedsMs = 1,
+	TimeToHhMmSs_NeedsHhMm = 2,
+};
+CString TimeToHhMmSs(unsigned TimeMs, int Flags = TimeToHhMmSs_NeedsMs);
+void SetStatusString(CCmdUI* pCmdUI, const CString & string,
+					LPCTSTR MaxString = NULL, BOOL bForceSize = FALSE);
 /////////////////////////////////////////////////////////////////////////////
 //{{AFX_INSERT_LOCATION}}
 // Microsoft Visual C++ will insert additional declarations immediately before the previous line.
