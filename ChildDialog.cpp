@@ -8,6 +8,7 @@
 #include "MainFrm.h"
 #include "SaveExpressionDialog.h"
 #include "FileDialogWithHistory.h"
+#include "PathEx.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -149,18 +150,17 @@ BOOL CInsertExpressionDialog::OnInitDialog()
 	if (m_Expressions.size() <= 1)
 	{
 		// load default expressions
-		TCHAR ModuleName[MAX_PATH] = {0};
-		TCHAR FullPathName[MAX_PATH];
-		LPTSTR FilePart = FullPathName;
-		GetModuleFileName(NULL, ModuleName, MAX_PATH);
-		GetFullPathName(ModuleName, MAX_PATH, FullPathName, & FilePart);
-		*FilePart = 0;
-		CString ProfileName(FullPathName);
-		ProfileName += _T("Expressions.ini");
+		CPathEx ProfileName;
 
-		LoadExpressions(m_Expressions, ProfileName);
-		m_ExpressionsChanged = true;
+		if (ProfileName.GetModuleFileName(NULL)
+			&& ProfileName.RemoveFileSpec()
+			&& ProfileName.Append(_T("Expressions.ini")))
+		{
+			LoadExpressions(m_Expressions, ProfileName);
+			m_ExpressionsChanged = true;
+		}
 	}
+
 	BuildExpressionGroupCombobox(m_ExpressionGroupSelected, m_ExpressionSelected);
 	return TRUE;  // return TRUE unless you set the focus to a control
 	// EXCEPTION: OCX Property Pages should return FALSE
