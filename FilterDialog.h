@@ -7,11 +7,11 @@
 #endif // _MSC_VER > 1000
 // FilterDialog.h : header file
 //
-#include "FilterMath.h"
 #include "ResizableDialog.h"
 #include "DialogWithSelection.h"
 #include "NumEdit.h"
 #include "resource.h"       // main symbols
+#include <complex>
 
 enum { MaxFilterOrder = 16, };
 enum
@@ -25,6 +25,10 @@ enum
 	MaxFilterFrequencies,
 	LeftmostPoint = -1,
 	RightmostPoint = MaxFilterFrequencies + 1,
+
+	HighpassFilter = HpfStopbandIndex,
+	LowpassFilter = LpfPassbandIndex,
+	NotchFilter = NotchBeginIndex,
 };
 
 class Filter
@@ -120,47 +124,37 @@ public:
 
 	void SetPointGainDb(int nPoint, double Gain);
 	void SetPointFrequency(int nPoint, double Frequency);
-	void SetPointFrequencyHz(int nPoint, double Frequency)
-	{
-		SetPointFrequency(nPoint, Frequency / m_SamplingRate * (2. * M_PI));
-	}
-	void SetCurrentPointFrequency(double Frequency)
-	{
-		SetPointFrequency(m_PointWithFocus, Frequency);
-	}
-	void SetCurrentPointFrequencyHz(double Frequency)
-	{
-		SetPointFrequencyHz(m_PointWithFocus, Frequency);
-	}
-	double GetCurrentPointGain() const
-	{
-		return m_Gain[m_PointWithFocus];
-	}
-	double GetCurrentPointFrequency() const
-	{
-		return m_Frequencies[m_PointWithFocus];
-	}
-	double GetPointFrequencyHz(int nPoint) const
-	{
-		return m_SamplingRate * m_Frequencies[nPoint] / (2. * M_PI);
-	}
-	double GetCurrentPointFrequencyHz() const
-	{
-		return m_SamplingRate * m_Frequencies[m_PointWithFocus] / (2. * M_PI);
-	}
-	void SetCurrentPointGainDb(double GainDb)
-	{
-		SetPointGainDb(m_PointWithFocus, GainDb);
-	}
-	double GetCurrentPointGainDb() const
-	{
-		return 20. * log10(m_Gain[m_PointWithFocus]);
-	}
+	void SetPointFrequencyHz(int nPoint, double Frequency);
+	void SetCurrentPointFrequency(double Frequency);
+	void SetCurrentPointFrequencyHz(double Frequency);
+	double GetCurrentPointGain() const;
+	double GetCurrentPointFrequency() const;
+	double GetPointGainDb(unsigned nPoint) const;
+	double GetPointFrequencyHz(unsigned nPoint) const;
+	double GetCurrentPointFrequencyHz() const;
+	void SetCurrentPointGainDb(double GainDb);
+	double GetCurrentPointGainDb() const;
 	double GetSamplingRate() const
 	{
 		return m_SamplingRate;
 	}
-	void SetFocusPoint(int nPoint);
+
+	int GetCurrentFilter() const;
+
+	int GetCurrentFilterPassbandIndex() const;
+	int GetCurrentFilterStopbandIndex() const;
+
+	void SetCurrentFilterPassbandFrequency(double Frequency);
+	void SetCurrentFilterPassbandLossDb(double Loss);
+	void SetCurrentFilterStopbandFrequency(double Frequency);
+	void SetCurrentFilterStopbandLossDb(double Loss);
+
+	double GetCurrentFilterPassbandFrequency() const;
+	double GetCurrentFilterPassbandLossDb() const;
+	double GetCurrentFilterStopbandFrequency() const;
+	double GetCurrentFilterStopbandLossDb() const;
+
+	void SetFocusPoint(unsigned nPoint);
 
 	int GetHitCode(POINT point);
 
@@ -204,7 +198,7 @@ protected:
 	bool m_bGotFocus;
 	bool m_DotCaretIsOn;
 
-	int m_PointWithFocus;
+	unsigned m_PointWithFocus;
 	double m_SamplingRate;
 
 	CApplicationProfile & m_Profile;
@@ -295,17 +289,23 @@ protected:
 protected:
 	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV support
 	virtual void OnOK();
+	virtual BOOL OnInitDialog();
 	//}}AFX_VIRTUAL
 
 // Implementation
 
 	CApplicationProfile m_Profile;  // goes before m_wGraph
 
-	CNumEdit m_EditGain;
-	CNumEdit m_EditFrequency;
+	CNumEdit m_EditPassLoss;
+	CNumEdit m_EditPassFrequency;
+
+	CNumEdit m_EditStopLoss;
+	CNumEdit m_EditStopFrequency;
 
 	CFilterGraphWnd m_wGraph;
-	void OnNotifyGraph( NMHDR * pNotifyStruct, LRESULT * result );
+
+	void OnNotifyGraph(NMHDR * pNotifyStruct, LRESULT * result );
+
 	void OnKillfocusEditBandGain();
 	// Generated message map functions
 	//{{AFX_MSG(CFilterDialog)
@@ -315,8 +315,13 @@ protected:
 	afx_msg void OnCheckZeroPhase();
 	afx_msg void OnCheckLowpass();
 	afx_msg void OnCheckHighpass();
-	virtual BOOL OnInitDialog();
-	afx_msg void OnKillfocusEditFrequency();
+	afx_msg void OnKillfocusEditPassbandFrequency();
+	afx_msg void OnKillfocusEditStopbandFrequency();
+	afx_msg void OnKillfocusEditPassbandLoss();
+	afx_msg void OnKillfocusEditStopbandLoss();
+	afx_msg void OnUpdateEditPassbandLoss(CCmdUI * pCmdUI);
+	afx_msg void OnUpdateEditStopbandLoss(CCmdUI * pCmdUI);
+
 	afx_msg void OnCheckStopband();
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
