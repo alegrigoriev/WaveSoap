@@ -1221,6 +1221,10 @@ CString CAudioCompressionManager::GetFormatName(HACMDRIVER had, WAVEFORMATEX con
 	afd.fdwSupport = 0;
 	afd.pwfx = const_cast<WAVEFORMATEX*>(pWf);
 	afd.cbwfx = sizeof (WAVEFORMATEX) + pWf->cbSize;
+	if (WAVE_FORMAT_PCM == pWf->wFormatTag)
+	{
+		afd.cbwfx = sizeof (PCMWAVEFORMAT);
+	}
 
 	MMRESULT res = acmFormatDetails(had, & afd, ACM_FORMATDETAILSF_FORMAT);
 	if (MMSYSERR_NOERROR == res)
@@ -1228,6 +1232,240 @@ CString CAudioCompressionManager::GetFormatName(HACMDRIVER had, WAVEFORMATEX con
 		return afd.szFormat;
 	}
 	return CString();
+}
+
+AudioStreamConvertor::AudioStreamConvertor(HACMDRIVER drv)
+	: m_SrcBufSize(0),
+	m_DstBufSize(0),
+	m_acmDrv(drv),
+	m_acmStr(NULL)
+{
+	memzero(m_ash);
+	m_ash.cbStruct = sizeof m_ash;
+}
+
+AudioStreamConvertor::~AudioStreamConvertor()
+{
+	Close();
+}
+
+BOOL AudioStreamConvertor::SuggestFormat(WAVEFORMATEX const * pWf1,
+										WAVEFORMATEX * pWf2, size_t MaxFormat2Size, DWORD flags)
+{
+	m_MmResult = acmFormatSuggest(m_acmDrv,
+								const_cast<LPWAVEFORMATEX>(pWf1),
+								pWf2, MaxFormat2Size, flags);
+	return MMSYSERR_NOERROR == m_MmResult;
+}
+
+BOOL AudioStreamConvertor::QueryOpen(WAVEFORMATEX const * pWfSrc,
+									WAVEFORMATEX const * pWfDst, DWORD flags)
+{
+	ASSERT(0 == (flags & (CALLBACK_EVENT | CALLBACK_FUNCTION | CALLBACK_WINDOW)));
+	HACMSTREAM has;
+
+	m_MmResult = acmStreamOpen( & has, m_acmDrv,
+								const_cast<LPWAVEFORMATEX>(pWfSrc),
+								const_cast<LPWAVEFORMATEX>(pWfDst), NULL, NULL, NULL,
+								ACM_STREAMOPENF_QUERY | flags);
+	return MMSYSERR_NOERROR == m_MmResult;
+}
+
+BOOL AudioStreamConvertor::Open(WAVEFORMATEX const * pWfSrc,
+								WAVEFORMATEX const * pWfDst, DWORD flags)
+{
+	ASSERT(NULL == m_acmStr);
+	ASSERT(0 == (flags & (ACM_STREAMOPENF_QUERY | CALLBACK_EVENT | CALLBACK_FUNCTION | CALLBACK_WINDOW)));
+
+	memzero(m_ash);
+	m_ash.cbStruct = sizeof m_ash;
+
+	m_MmResult = acmStreamOpen( & m_acmStr, m_acmDrv,
+								const_cast<LPWAVEFORMATEX>(pWfSrc),
+								const_cast<LPWAVEFORMATEX>(pWfDst), NULL, NULL, NULL,
+								flags);
+	return MMSYSERR_NOERROR == m_MmResult;
+}
+
+BOOL AudioStreamConvertor::Open(WAVEFORMATEX const * pWfSrc,
+								WAVEFORMATEX const * pWfDst, HWND hCallbackWnd, DWORD_PTR dwInstance,
+								DWORD flags)
+{
+	ASSERT(NULL == m_acmStr);
+	ASSERT(0 == (flags & (ACM_STREAMOPENF_QUERY | CALLBACK_EVENT | CALLBACK_FUNCTION)));
+
+	memzero(m_ash);
+	m_ash.cbStruct = sizeof m_ash;
+
+	m_MmResult = acmStreamOpen( & m_acmStr, m_acmDrv,
+								const_cast<LPWAVEFORMATEX>(pWfSrc),
+								const_cast<LPWAVEFORMATEX>(pWfDst), NULL,
+								reinterpret_cast<DWORD_PTR>(hCallbackWnd), dwInstance,
+								flags | CALLBACK_WINDOW);
+	return MMSYSERR_NOERROR == m_MmResult;
+}
+
+BOOL AudioStreamConvertor::Open(WAVEFORMATEX const * pWfSrc,
+								WAVEFORMATEX const * pWfDst, HANDLE hEvent,
+								DWORD flags)
+{
+	ASSERT(NULL == m_acmStr);
+	ASSERT(0 == (flags & (ACM_STREAMOPENF_QUERY | CALLBACK_WINDOW | CALLBACK_FUNCTION)));
+
+	memzero(m_ash);
+	m_ash.cbStruct = sizeof m_ash;
+
+	m_MmResult = acmStreamOpen( & m_acmStr, m_acmDrv,
+								const_cast<LPWAVEFORMATEX>(pWfSrc),
+								const_cast<LPWAVEFORMATEX>(pWfDst), NULL,
+								reinterpret_cast<DWORD_PTR>(hEvent), NULL,
+								flags | CALLBACK_EVENT);
+	return MMSYSERR_NOERROR == m_MmResult;
+}
+
+BOOL AudioStreamConvertor::Open(WAVEFORMATEX const * pWfSrc,
+								WAVEFORMATEX const * pWfDst, AcmStreamCallback Callback, DWORD_PTR dwInstance,
+								DWORD flags)
+{
+	ASSERT(NULL == m_acmStr);
+	ASSERT(0 == (flags & (ACM_STREAMOPENF_QUERY | CALLBACK_WINDOW | CALLBACK_EVENT)));
+
+	memzero(m_ash);
+	m_ash.cbStruct = sizeof m_ash;
+
+	m_MmResult = acmStreamOpen( & m_acmStr, m_acmDrv,
+								const_cast<LPWAVEFORMATEX>(pWfSrc),
+								const_cast<LPWAVEFORMATEX>(pWfDst), NULL,
+								reinterpret_cast<DWORD_PTR>(Callback), dwInstance,
+								flags | CALLBACK_FUNCTION);
+	return MMSYSERR_NOERROR == m_MmResult;
+}
+
+BOOL AudioStreamConvertor::AllocateBuffers(size_t PreferredInBufSize,
+											size_t PreferredOutBufSize)
+{
+	ASSERT(NULL != m_acmStr);
+	ASSERT(NULL == m_ash.pbSrc);
+	ASSERT(NULL == m_ash.pbDst);
+
+	m_SrcBufSize = PreferredInBufSize;
+	m_DstBufSize = PreferredOutBufSize;
+
+	if (0 == PreferredInBufSize)
+	{
+		if (MMSYSERR_NOERROR != (m_MmResult = acmStreamSize(m_acmStr, m_DstBufSize, & m_SrcBufSize,
+															ACM_STREAMSIZEF_DESTINATION))
+			|| MMSYSERR_NOERROR != (m_MmResult = acmStreamSize(m_acmStr, m_SrcBufSize, & m_DstBufSize,
+																ACM_STREAMSIZEF_SOURCE)))
+		{
+			return FALSE;
+		}
+	}
+	else
+	{
+		if (MMSYSERR_NOERROR != (m_MmResult = acmStreamSize(m_acmStr, m_SrcBufSize, & m_DstBufSize,
+															ACM_STREAMSIZEF_SOURCE))
+			|| MMSYSERR_NOERROR != (m_MmResult = acmStreamSize(m_acmStr, m_DstBufSize, & m_SrcBufSize,
+																ACM_STREAMSIZEF_DESTINATION)))
+		{
+			return FALSE;
+		}
+	}
+	// allocate buffers
+	m_ash.cbSrcLength = m_SrcBufSize;
+	m_ash.cbDstLength = m_DstBufSize;
+	m_ash.pbSrc = new BYTE[m_SrcBufSize];
+	m_ash.pbDst = new BYTE[m_DstBufSize];
+
+	if (NULL == m_ash.pbSrc
+		|| NULL == m_ash.pbDst)
+	{
+		return FALSE;
+	}
+
+	m_MmResult = acmStreamPrepareHeader(m_acmStr, & m_ash, 0);
+	m_ash.cbSrcLength = 0;
+	m_ash.cbDstLength = 0;
+	return MMSYSERR_NOERROR == m_MmResult;
+}
+
+BOOL AudioStreamConvertor::Convert(void const * pSrc, size_t SrcSize, size_t * pSrcBufUsed,
+									void* * ppDstBuf, size_t * pDstBufFilled,
+									DWORD flags)
+{
+	ASSERT(NULL != m_acmStr);
+	// fill input buffer
+	size_t ToCopy = m_SrcBufSize - m_ash.cbSrcLength;
+
+	if (ToCopy > SrcSize)
+	{
+		ToCopy = SrcSize;
+	}
+
+	* pDstBufFilled = 0;
+	* ppDstBuf = m_ash.pbDst;
+
+	memcpy(m_ash.pbSrc + m_ash.cbSrcLength, pSrc, ToCopy);
+	m_ash.cbSrcLength += ToCopy;
+
+	*pSrcBufUsed = ToCopy;
+
+	if (m_ash.cbSrcLength < m_SrcBufSize
+		&& 0 == (flags & ACM_STREAMCONVERTF_END))
+	{
+		return TRUE;
+	}
+	m_ash.cbSrcLengthUsed = 0;
+	m_ash.cbDstLength = m_DstBufSize;
+	m_ash.cbDstLengthUsed = 0;
+
+	m_MmResult = acmStreamConvert(m_acmStr, & m_ash, flags);
+
+	* pDstBufFilled = m_ash.cbDstLengthUsed;
+
+	if (MMSYSERR_NOERROR != m_MmResult
+		|| (0 == m_ash.cbDstLengthUsed && 0 == m_ash.cbSrcLengthUsed))
+	{
+		return FALSE;
+	}
+
+	memmove(m_ash.pbSrc, m_ash.pbSrc + m_ash.cbSrcLengthUsed,
+			m_ash.cbSrcLength - m_ash.cbSrcLengthUsed);
+	m_ash.cbSrcLength -= m_ash.cbSrcLengthUsed;
+
+	return TRUE;
+}
+
+BOOL AudioStreamConvertor::Reset(DWORD flags)
+{
+	ASSERT(NULL != m_acmStr);
+	return NULL != m_acmStr
+			&& MMSYSERR_NOERROR == acmStreamReset(m_acmStr, flags);
+}
+
+void AudioStreamConvertor::Close()
+{
+	m_ash.cbDstLength = m_DstBufSize;
+	m_ash.cbSrcLength = m_SrcBufSize;
+
+	if (NULL != m_acmStr)
+	{
+		if (m_ash.fdwStatus & ACMSTREAMHEADER_STATUSF_PREPARED)
+		{
+			acmStreamUnprepareHeader(m_acmStr, & m_ash, 0);
+		}
+
+		m_ash.fdwStatus = 0;
+
+		delete[] m_ash.pbDst;
+		m_ash.pbDst = NULL;
+
+		delete[] m_ash.pbSrc;
+		m_ash.pbSrc = NULL;
+
+		acmStreamClose(m_acmStr, 0);
+		m_acmStr = NULL;
+	}
 }
 
 WAVEFORMATEX const CWaveFormat::CdAudioFormat =
