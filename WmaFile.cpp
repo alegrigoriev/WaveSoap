@@ -3,6 +3,7 @@
 #include "stdafx.h"
 #include "WmaFile.h"
 #include <wmsysprf.h>
+#include "KInterlocked.h"
 
 HRESULT STDMETHODCALLTYPE CDirectFileStream::Read(
 												/* [length_is][size_is][out] */ void __RPC_FAR *pv,
@@ -255,6 +256,11 @@ CWmaDecoder::CWmaDecoder()
 
 CWmaDecoder::~CWmaDecoder()
 {
+	DeInit();
+}
+
+void CWmaDecoder::DeInit()
+{
 	if (NULL != m_pAdvReader)
 	{
 		m_pAdvReader->Release();
@@ -387,23 +393,29 @@ HRESULT STDMETHODCALLTYPE CWmaDecoder::OnSample( /* [in] */ DWORD dwOutputNum,
 	return S_OK;
 }
 
-void CWmaDecoder::DeliverNextSample()
+void CWmaDecoder::DeliverNextSample(DWORD timeout)
 {
-	if ( ! m_bNeedNextSample)
+	if (m_bNeedNextSample)
 	{
-		TRACE("CWmaDecoder::DeliverNextSample:  ! m_bNeedNextSample\n");
-		return;
-	}
-	m_bNeedNextSample = false;
-	if (m_pAdvReader)
-	{
-		TRACE("CWmaDecoder::DeliverNextSample:  m_CurrentStreamTime=%X%X, BufferLengthTime=%d\n",
-			ULONG(m_CurrentStreamTime >> 32), ULONG(m_CurrentStreamTime), m_BufferLengthTime);
-		m_pAdvReader->DeliverTime(m_CurrentStreamTime + m_BufferLengthTime);
+		m_bNeedNextSample = false;
+		if (m_pAdvReader)
+		{
+			TRACE("CWmaDecoder::DeliverNextSample:  m_CurrentStreamTime=%X%X, BufferLengthTime=%d\n",
+				ULONG(m_CurrentStreamTime >> 32), ULONG(m_CurrentStreamTime), m_BufferLengthTime);
+			m_pAdvReader->DeliverTime(m_CurrentStreamTime + m_BufferLengthTime);
+		}
+		else
+		{
+			TRACE("NULL == m_pAdvReader, m_Reader = %X\n", m_Reader);
+		}
 	}
 	else
 	{
-		TRACE("NULL == m_pAdvReader, m_Reader = %X\n", m_Reader);
+		TRACE("CWmaDecoder::DeliverNextSample:  ! m_bNeedNextSample\n");
+	}
+	if (0 != timeout)
+	{
+		WaitForSingleObject(m_SampleEvent, timeout);
 	}
 }
 
@@ -578,7 +590,7 @@ HRESULT CWmaDecoder::Open(CDirectFile & file)
 		if (SUCCEEDED(hr))
 		{
 			TRACE("Stream Length = %08X%08X (%d seconds), size=%d\n",
-				DWORD(StreamLength >> 32), DWORD(StreamLength), DWORD(StreamLength / 10000000), SizeofStreamLength);
+				DWORD(StreamLength >> 32), DWORD(StreamLength & 0xFFFFFFFF), DWORD(StreamLength / 10000000), SizeofStreamLength);
 			m_StreamDuration = StreamLength;
 		}
 		pHeaderInfo->Release();
@@ -687,7 +699,8 @@ HRESULT CWmaDecoder::Start()
 HRESULT CWmaDecoder::Stop()
 {
 	TRACE("CWmaDecoder::Stop()\n");
-	if (NULL != m_Reader)
+	if (NULL != m_Reader
+		&& m_bStarted)
 	{
 		return m_Reader->Stop();
 	}
@@ -695,6 +708,14 @@ HRESULT CWmaDecoder::Stop()
 	{
 		return S_OK;
 	}
+}
+
+void CWmaDecoder::SetDstFile(CWaveFile & file)
+{
+	m_DstFile = file;
+	m_DstCopyPos = file.GetDataChunk()->dwDataOffset;
+	m_DstCopySample = 0;
+	m_DstFile.CDirectFile::Seek(m_DstCopyPos, FILE_BEGIN);
 }
 
 WmaEncoder::WmaEncoder()
@@ -1119,7 +1140,7 @@ HRESULT STDMETHODCALLTYPE FileWriter::IsRealTime(
 class NSSBuffer : public INSSBuffer
 {
 
-	LONG RefCount;
+	LONG_volatile RefCount;
 	DWORD BufLength;
 	DWORD MaxLength;
 	BYTE * pBuf;
@@ -1153,12 +1174,12 @@ private:
 
 	ULONG STDMETHODCALLTYPE AddRef( void )
 	{
-		return InterlockedIncrement( & RefCount);
+		return ++RefCount;
 	}
 
 	ULONG STDMETHODCALLTYPE Release( void )
 	{
-		LONG Ref = InterlockedDecrement( & RefCount);
+		LONG Ref = --RefCount;
 		if (0 == Ref)
 		{
 			delete this;

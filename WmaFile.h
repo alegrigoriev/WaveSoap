@@ -206,9 +206,13 @@ public:
 
 	HRESULT Open(LPCTSTR szFilename);
 	HRESULT Open(CDirectFile & file);
+
 	BOOL Init();
+	void DeInit();
+
 	HRESULT Start();
 	HRESULT Stop();
+
 	DWORD SrcLength()
 	{
 		return m_InputStream.GetLength();
@@ -226,7 +230,30 @@ public:
 	{
 		return m_bStarted;
 	}
-	void DeliverNextSample();
+	void DeliverNextSample(DWORD timeout);
+	void SetDstFile(CWaveFile & file);
+	CWaveFormat const & GetSrcFormat() const
+	{
+		return m_SrcWf;
+	}
+	CWaveFormat const & GetDstFormat() const
+	{
+		return m_DstWf;
+	}
+	DWORD GetBitRate() const
+	{
+		return m_Bitrate;
+	}
+	long GetCurrentSample() const
+	{
+		return m_DstCopySample;
+	}
+	ULONG GetTotalSamples() const
+	{
+		return m_CurrentSamples;
+	}
+
+protected:
 	BOOL m_bNeedNextSample;
 	CWaveFile m_DstFile;
 	DWORD m_DstCopyPos;
