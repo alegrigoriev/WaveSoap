@@ -5,8 +5,8 @@
 template<typename B>
 void CDialogWithSelectionT<B>::OnButtonSelection()
 {
-	CSelectionDialog dlg(m_Start, m_End, m_CaretPosition, m_Chan + 1,
-						m_WaveFile.NumberOfSamples(), m_WaveFile.GetWaveFormat(), m_TimeFormat);
+	CSelectionDialog dlg(m_Start, m_End, m_CaretPosition, m_Chan,
+						m_WaveFile, m_TimeFormat);
 
 	if (IDOK != dlg.DoModal())
 	{
@@ -15,7 +15,7 @@ void CDialogWithSelectionT<B>::OnButtonSelection()
 
 	m_Start = dlg.GetStart();
 	m_End = dlg.GetEnd();
-	m_Chan = dlg.GetChannel() - 1;
+	m_Chan = dlg.GetChannel();
 
 	NeedUpdateControls();
 }
