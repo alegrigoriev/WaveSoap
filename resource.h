@@ -322,10 +322,8 @@
 #define IDC_CHECK_MAKE_PLAYLIST         1196
 #define IDC_CHECK_MAKE_HTML             1197
 #define IDC_BUTTON_BROWSE_PLAYLIST      1198
-#define IDC_CHECK_MAKE_HTML1            1199
 #define IDC_BUTTON_BROWSE_WEBPAGE       1199
 #define IDC_EDIT_HTML                   1200
-#define IDC_BUTTON_BROWSE_PLAYLIST2     1201
 #define IDC_LIST1                       1206
 #define IDC_BUTTON_MOVE_UP              1207
 #define IDC_LIST_DESTINATIONS           1208
@@ -345,6 +343,14 @@
 #define IDC_STATIC_NORMALIZE_DB         1223
 #define IDC_RADIO_MP3                   1224
 #define IDC_STATIC_SAVE_TYPE            1225
+#define IDC_EDIT1                       1227
+#define IDC_EDIT2                       1228
+#define IDC_BUTTON_BROWSE_SAVE_FOLDER   1230
+#define IDC_RADIO5                      1232
+#define IDC_RADIO_ASSIGN_ATTRIBUTES     1233
+#define IDC_BUTTON_SET_FORMAT           1234
+#define IDC_RADIO_STORE_MULTIPLE_FILES  1235
+#define IDC_RADIO_STORE_IMMEDIATELY     1236
 #define IDC_VIEW_RULER_SAMPLES          32771
 #define IDC_VIEW_RULER_HHMMSS           32772
 #define IDC_VIEW_RULER_SECONDS          32773
@@ -623,7 +629,7 @@
 #define _APS_3D_CONTROLS                     1
 #define _APS_NEXT_RESOURCE_VALUE        187
 #define _APS_NEXT_COMMAND_VALUE         40110
-#define _APS_NEXT_CONTROL_VALUE         1226
+#define _APS_NEXT_CONTROL_VALUE         1237
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif

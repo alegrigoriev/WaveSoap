@@ -1425,37 +1425,49 @@ BEGIN
                     "Button",BS_AUTOCHECKBOX | WS_TABSTOP,7,52,110,10
 END
 
-IDD_DIALOG_CD_GRABBING DIALOGEX 0, 0, 314, 283
+IDD_DIALOG_CD_GRABBING DIALOGEX 0, 0, 313, 291
 STYLE WS_POPUP | WS_CAPTION | WS_SYSMENU | WS_THICKFRAME
 CAPTION "CD Audio Extraction"
 FONT 8, "MS Sans Serif"
 BEGIN
-    DEFPUSHBUTTON   "OK",IDOK,257,241,50,14
-    PUSHBUTTON      "Cancel",IDCANCEL,257,262,50,14
-    COMBOBOX        IDC_COMBO_DRIVES,33,7,42,30,CBS_DROPDOWNLIST | CBS_SORT | 
-                    WS_VSCROLL | WS_TABSTOP
-    LTEXT           "Drive:",IDC_STATIC,7,9,24,8
-    LTEXT           "Tracks:",IDC_STATIC,7,23,38,8
-    COMBOBOX        IDC_COMBO_SPEED,77,163,51,40,CBS_DROPDOWN | CBS_SORT | 
-                    WS_VSCROLL | WS_TABSTOP
-    LTEXT           "Extraction speed:",IDC_STATIC_SPEED,7,166,62,8
-    PUSHBUTTON      "CDDB Lookup...",IDC_BUTTON_CDDB,247,7,60,14
-    CONTROL         "Store in a single file",IDC_CHECK_SINGLE_FILE,"Button",
-                    BS_AUTOCHECKBOX | WS_TABSTOP,223,164,84,10
+    LTEXT           "&Tracks:",IDC_STATIC,7,23,38,8
     CONTROL         "List1",IDC_LIST_TRACKS,"SysListView32",LVS_REPORT | 
                     LVS_EDITLABELS | LVS_ALIGNLEFT | LVS_NOSORTHEADER | 
-                    WS_BORDER | WS_TABSTOP,7,34,300,117,WS_EX_CLIENTEDGE
-    PUSHBUTTON      "More...",IDC_BUTTON_MORE,115,262,50,14
-    PUSHBUTTON      "Select all tracks",IDC_BUTTON_SELECT_ALL,124,7,56,14
-    PUSHBUTTON      "Deselect all",IDC_BUTTON_DESELECT_ALL,186,7,56,14
-    CONTROL         "Make playlist:",IDC_CHECK_MAKE_PLAYLIST,"Button",
-                    BS_AUTOCHECKBOX | WS_TABSTOP,7,181,61,10
-    EDITTEXT        IDC_EDIT_PLAYLIST,72,180,153,14,ES_AUTOHSCROLL
-    PUSHBUTTON      "...",IDC_BUTTON_BROWSE_PLAYLIST,230,180,18,14
-    CONTROL         "Make Web file:",IDC_CHECK_MAKE_HTML1,"Button",
-                    BS_AUTOCHECKBOX | WS_TABSTOP,7,200,63,10
-    EDITTEXT        IDC_EDIT_HTML,72,198,153,14,ES_AUTOHSCROLL
-    PUSHBUTTON      "...",IDC_BUTTON_BROWSE_PLAYLIST2,230,198,18,14
+                    WS_BORDER | WS_TABSTOP,7,34,299,117,WS_EX_CLIENTEDGE
+    CONTROL         "Assign to selected tracks only:",IDC_RADIO5,"Button",
+                    BS_AUTORADIOBUTTON,106,155,114,10
+    CONTROL         "Assign to all tracks:",IDC_RADIO_ASSIGN_ATTRIBUTES,
+                    "Button",BS_AUTORADIOBUTTON | WS_GROUP | WS_TABSTOP,7,
+                    155,73,10
+    LTEXT           "Album:",IDC_STATIC,7,172,25,8
+    EDITTEXT        IDC_EDIT1,33,169,203,14,ES_AUTOHSCROLL
+    LTEXT           "Artist:",IDC_STATIC,7,188,17,8
+    EDITTEXT        IDC_EDIT2,33,186,203,14,ES_AUTOHSCROLL
+    PUSHBUTTON      "Lookup in CDDB...",IDC_BUTTON_CDDB,242,169,64,14
+    CONTROL         "Store files in this folder:",
+                    IDC_RADIO_STORE_MULTIPLE_FILES,"Button",
+                    BS_AUTORADIOBUTTON | WS_GROUP | WS_TABSTOP,7,204,84,10
+    CONTROL         "Put all tracks in a single file:",IDC_RADIO4,"Button",
+                    BS_AUTORADIOBUTTON,106,204,97,10
+    EDITTEXT        IDC_EDIT3,7,217,230,14,ES_AUTOHSCROLL
+    PUSHBUTTON      "...",IDC_BUTTON_BROWSE_SAVE_FOLDER,243,217,15,14
+    CONTROL         "Store file(s) immediately",IDC_RADIO_STORE_IMMEDIATELY,
+                    "Button",BS_AUTORADIOBUTTON | WS_GROUP | WS_TABSTOP,7,
+                    237,91,10
+    CONTROL         "Load file(s) for editing first",IDC_RADIO3,"Button",
+                    BS_AUTORADIOBUTTON,106,237,90,10
+    DEFPUSHBUTTON   "OK",IDOK,256,251,50,14
+    PUSHBUTTON      "Cancel",IDCANCEL,256,270,50,14
+    LTEXT           "&Drive:",IDC_STATIC,7,9,24,8
+    COMBOBOX        IDC_COMBO_DRIVES,33,7,42,30,CBS_DROPDOWNLIST | CBS_SORT | 
+                    WS_VSCROLL | WS_TABSTOP
+    LTEXT           "&Extraction speed:",IDC_STATIC_SPEED,79,9,60,8
+    COMBOBOX        IDC_COMBO_SPEED,141,7,48,40,CBS_DROPDOWN | CBS_SORT | 
+                    WS_VSCROLL | WS_TABSTOP
+    PUSHBUTTON      "Mark all tracks",IDC_BUTTON_SELECT_ALL,195,7,54,14
+    PUSHBUTTON      "Unmark all",IDC_BUTTON_DESELECT_ALL,252,7,54,14
+    LTEXT           "Static",IDC_STATIC,7,250,183,34
+    PUSHBUTTON      "File(s) format...",IDC_BUTTON_SET_FORMAT,196,251,50,14
 END
 
 IDD_DIALOG_REOPEN_DIRECT DIALOG DISCARDABLE  0, 0, 187, 131
@@ -2104,31 +2116,31 @@ CAPTION "Destination folder and format"
 FONT 8, "MS Sans Serif"
 BEGIN
     EDITTEXT        IDC_EDIT_SAVE_FOLDER,7,53,196,14,ES_AUTOHSCROLL
-    CONTROL         "Create playlist:",IDC_CHECK_MAKE_PLAYLIST,"Button",
+    PUSHBUTTON      "...",IDC_BUTTON_BROWSE_DST_FOLDER,207,53,18,14
+    LTEXT           "Save as type:",IDC_STATIC_SAVE_TYPE,7,74,46,8
+    CONTROL         "WA&V",IDC_RADIO_SAVE_TYPE,"Button",BS_AUTORADIOBUTTON | 
+                    WS_GROUP | WS_TABSTOP,61,74,32,10
+    CONTROL         "MP&3",IDC_RADIO_MP3,"Button",BS_AUTORADIOBUTTON,96,74,
+                    30,10
+    CONTROL         "Windows Audio (W&MA)",IDC_RADIO_WMA,"Button",
+                    BS_AUTORADIOBUTTON,131,74,86,10
+    LTEXT           "",IDC_STATIC_FORMAT_DETAILS,7,86,160,17
+    PUSHBUTTON      "Attributes...",IDC_BUTTON_FORMAT,168,88,57,14
+    CONTROL         "Create &playlist:",IDC_CHECK_MAKE_PLAYLIST,"Button",
                     BS_AUTOCHECKBOX | WS_TABSTOP,7,107,70,10
     EDITTEXT        IDC_EDIT_PLAYLIST,7,120,196,14,ES_AUTOHSCROLL
-    CONTROL         "Create Web page:",IDC_CHECK_MAKE_HTML,"Button",
+    CONTROL         "Create &Web page:",IDC_CHECK_MAKE_HTML,"Button",
                     BS_AUTOCHECKBOX | WS_TABSTOP,7,138,77,10
     EDITTEXT        IDC_EDIT_HTML,7,151,196,14,ES_AUTOHSCROLL
-    PUSHBUTTON      "...",IDC_BUTTON_BROWSE_DST_FOLDER,207,53,18,14
     PUSHBUTTON      "...",IDC_BUTTON_BROWSE_PLAYLIST,207,120,18,14
     PUSHBUTTON      "...",IDC_BUTTON_BROWSE_WEBPAGE,207,151,18,14
     DEFPUSHBUTTON   "OK",IDOK,63,174,50,14
     PUSHBUTTON      "Cancel",IDCANCEL,120,174,50,14
-    LTEXT           "Save as type:",IDC_STATIC_SAVE_TYPE,7,74,46,8
-    CONTROL         "WAV",IDC_RADIO_SAVE_TYPE,"Button",BS_AUTORADIOBUTTON | 
-                    WS_GROUP,61,74,32,10
-    CONTROL         "MP3",IDC_RADIO_MP3,"Button",BS_AUTORADIOBUTTON,96,74,30,
-                    10
-    CONTROL         "Windows Audio (WMA)",IDC_RADIO_WMA,"Button",
-                    BS_AUTORADIOBUTTON,131,74,86,10
-    PUSHBUTTON      "Attributes...",IDC_BUTTON_FORMAT,168,88,57,14
-    LTEXT           "",IDC_STATIC_FORMAT_DETAILS,7,86,160,17
-    LTEXT           "Save to folder:",IDC_STATIC,7,41,44,8
+    LTEXT           "&Save to folder:",IDC_STATIC,7,41,44,8
     CONTROL         "Make playlist and/or webpage only; don't convert or save the files",
                     IDC_CHECK_MAKE_PLAYLIST_ONLY,"Button",BS_AUTOCHECKBOX | 
                     BS_MULTILINE | WS_TABSTOP,7,2,218,17
-    CONTROL         "Normalize sound level to:",IDC_CHECK_NORMALIZE,"Button",
+    CONTROL         "&Normalize sound level to:",IDC_CHECK_NORMALIZE,"Button",
                     BS_AUTOCHECKBOX | WS_TABSTOP,7,20,91,10
     EDITTEXT        IDC_EDIT_NORMALIZE,99,19,32,14,ES_AUTOHSCROLL
     LTEXT           "dB",IDC_STATIC_NORMALIZE_DB,136,21,13,8
@@ -2367,9 +2379,9 @@ BEGIN
     IDD_DIALOG_CD_GRABBING, DIALOG
     BEGIN
         LEFTMARGIN, 7
-        RIGHTMARGIN, 307
+        RIGHTMARGIN, 306
         TOPMARGIN, 7
-        BOTTOMMARGIN, 276
+        BOTTOMMARGIN, 284
     END
 
     IDD_DIALOG_REOPEN_DIRECT, DIALOG
