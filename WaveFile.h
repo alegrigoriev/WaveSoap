@@ -551,8 +551,11 @@ public:
 
 		CuePointChunkItem * GetCuePoint(DWORD CueId);
 		WaveRegionMarker * GetRegionMarker(DWORD CueId);
-		LPCTSTR GetCueLabel(DWORD CueId);
-		LPCTSTR GetCueComment(DWORD CueId);
+		LPCTSTR GetCueLabel(DWORD CueId);   // from 'labl' chunk, if any
+		LPCTSTR GetCueComment(DWORD CueId); // from 'note' chunk, if any
+
+		LPCTSTR GetCueText(DWORD CueId);    // use either label, or comment, or marker text
+		LPCTSTR GetCueTextByIndex(unsigned CueIndex);   // the same, using cue index
 
 		InstanceDataWav & operator =(InstanceDataWav const & src);
 
@@ -627,6 +630,8 @@ public:
 	WaveRegionMarker * GetRegionMarker(DWORD CueId);
 	LPCTSTR GetCueLabel(DWORD CueId);
 	LPCTSTR GetCueComment(DWORD CueId);
+	LPCTSTR GetCueText(DWORD CueId);    // use either label, or comment, or marker text
+	LPCTSTR GetCueTextByIndex(unsigned CueIndex);   // the same, using cue index
 
 	unsigned SampleRate() const
 	{

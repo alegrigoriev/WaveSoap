@@ -736,6 +736,52 @@ LPCTSTR CWaveFile::InstanceDataWav::GetCueComment(DWORD CueId)
 	return NULL;
 }
 
+LPCTSTR CWaveFile::GetCueText(DWORD CueId)
+{
+	return GetInstanceData()->GetCueText(CueId);
+}
+
+LPCTSTR CWaveFile::InstanceDataWav::GetCueText(DWORD CueId)
+{
+	LPCTSTR text = GetCueLabel(CueId);
+	if (NULL != text
+		&& 0 != text[0])
+	{
+		return text;
+	}
+
+	text = GetCueComment(CueId);
+	if (NULL != text
+		&& 0 != text[0])
+	{
+		return text;
+	}
+
+	WaveRegionMarker  * pMarker = GetRegionMarker(CueId);
+	if (NULL != pMarker
+		&& ! pMarker->Name.IsEmpty())
+	{
+		return pMarker->Name;
+	}
+
+	return NULL;
+}
+
+LPCTSTR CWaveFile::GetCueTextByIndex(unsigned CueIndex)
+{
+	return GetInstanceData()->GetCueTextByIndex(CueIndex);
+}
+
+LPCTSTR CWaveFile::InstanceDataWav::GetCueTextByIndex(unsigned CueIndex)
+{
+	if (CueIndex < m_CuePoints.size())
+	{
+		return GetCueText(m_CuePoints[CueIndex].CuePointID);
+	}
+
+	return NULL;
+}
+
 WaveRegionMarker * CWaveFile::GetRegionMarker(DWORD CueId)
 {
 	return GetInstanceData()->GetRegionMarker(CueId);
