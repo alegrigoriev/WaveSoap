@@ -9,6 +9,7 @@
 #include "SaveExpressionDialog.h"
 #include "FileDialogWithHistory.h"
 #include "PathEx.h"
+#include "resource.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -69,13 +70,13 @@ void COperandsDialog::DoDataExchange(CDataExchange* pDX)
 	DDX_Control(pDX, IDC_EDIT_FREQUENCY2, m_eFrequency2);
 	DDX_Control(pDX, IDC_EDIT_FREQUENCY3, m_eFrequency3);
 	m_eFrequency.ExchangeData(pDX, m_dFrequency,
-							_T("Frequency argument f"), _T(""), 0., 1000000.);
+							IDS_INPUT_NAME_FREQUENCY_ARGUMENT, 0, 0., 1000000.);
 	m_eFrequency1.ExchangeData(pDX, m_dFrequency1,
-								_T("Frequency argument f1"), _T(""), 0., 1000000.);
+								IDS_INPUT_NAME_FREQUENCY_ARGUMENT1, 0, 0., 1000000.);
 	m_eFrequency2.ExchangeData(pDX, m_dFrequency2,
-								_T("Frequency argument f2"), _T(""), 0., 1000000.);
+								IDS_INPUT_NAME_FREQUENCY_ARGUMENT2, 0, 0., 1000000.);
 	m_eFrequency3.ExchangeData(pDX, m_dFrequency3,
-								_T("Frequency argument f3"), _T(""), 0., 1000000.);
+								IDS_INPUT_NAME_FREQUENCY_ARGUMENT3, 0, 0., 1000000.);
 }
 
 BEGIN_MESSAGE_MAP(COperandsDialog, CChildDialog)
@@ -461,15 +462,18 @@ void CInsertExpressionDialog::LoadExpressions(ExprGroupVector & Expressions, LPC
 	int NumGroups = profile.GetProfileInt(_T("Expressions"), _T("NumOfGroups"), 0);
 	Expressions.reserve(NumGroups + 1);
 	Expressions.resize(1);
-	Expressions[0].name = _T("All Expressions");
+	Expressions[0].name.LoadString(IDS_ALL_EXPRESSIONS_GROUP);
+
 	for (int i = 1; i < NumGroups + 1; i++)
 	{
 		ExprGroup egroup;
 		CString s;
 		s.Format(_T("ExprsInGroup%d"), i);
+
 		int GroupSize = profile.GetProfileInt(_T("Expressions"), s, 0);
 		s.Format(_T("GroupName%d"), i);
 		egroup.name = profile.GetProfileString(_T("Expressions"), s, _T(""));
+
 		if (egroup.name.IsEmpty())
 		{
 			continue;
@@ -479,10 +483,13 @@ void CInsertExpressionDialog::LoadExpressions(ExprGroupVector & Expressions, LPC
 			Expr expr;
 			s.Format(_T("Name%d.%d"), i, j + 1);
 			expr.name = profile.GetProfileString(_T("Expressions"), s, _T(""));
+
 			s.Format(_T("Expr%d.%d"), i, j + 1);
 			expr.expr = profile.GetProfileString(_T("Expressions"), s, _T(""));
+
 			s.Format(_T("Comment%d.%d"), i, j + 1);
 			expr.comment = profile.GetProfileString(_T("Expressions"), s, _T(""));
+
 			if ( ! expr.name.IsEmpty()
 				&& ! expr.comment.IsEmpty())
 			{

@@ -285,22 +285,22 @@ void CMainFrame::OnUpdateFrameTitle(BOOL bAddToTitle)
 
 void CMainFrame::OnUpdateIndicatorFileSize(CCmdUI* pCmdUI)
 {
-	SetStatusString(pCmdUI, _T(""), _T("00:00:00.000"), TRUE);
+	SetStatusString(pCmdUI, CString(), _T("00:00:00.000"), TRUE);
 }
 
 void CMainFrame::OnUpdateIndicatorSampleRate(CCmdUI* pCmdUI)
 {
-	SetStatusString(pCmdUI, _T(""), _T("44,100"), TRUE);
+	SetStatusString(pCmdUI, CString(), _T("44,100"), TRUE);
 }
 
 void CMainFrame::OnUpdateIndicatorSampleSize(CCmdUI* pCmdUI)
 {
-	SetStatusString(pCmdUI, _T(""), _T("16-bit"), TRUE);
+	SetStatusString(pCmdUI, CString(), LoadCString(IDS_STATUS_STRING16BIT), TRUE);
 }
 
 void CMainFrame::OnUpdateIndicatorChannels(CCmdUI* pCmdUI)
 {
-	SetStatusString(pCmdUI, _T(""), _T("Stereo"), TRUE);
+	SetStatusString(pCmdUI, CString(), LoadCString(IDS_STATUS_STRING_STEREO), TRUE);
 }
 
 /////////////////////////////////////////////////////////////////////////////
