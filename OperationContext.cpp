@@ -2288,7 +2288,7 @@ void CDecompressContext::PostRetire()
 ////////// CSoundPlayContext
 CSoundPlayContext::CSoundPlayContext(CWaveSoapFrontDoc * pDoc, CWaveFile & WavFile,
 									SAMPLE_INDEX PlaybackStart, SAMPLE_INDEX PlaybackEnd, CHANNEL_MASK Channel,
-									int PlaybackDevice, int PlaybackBuffers, size_t PlaybackBufferSize)
+									INT_PTR PlaybackDevice, int PlaybackBuffers, size_t PlaybackBufferSize)
 	: BaseClass(pDoc, OperationContextDontAdjustPriority,
 				IDS_PLAYBACK_STATUS_PROMPT, IDS_PLAYBACK_OPERATION_NAME)
 	, m_bPauseRequested(false)
