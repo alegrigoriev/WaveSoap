@@ -391,7 +391,7 @@ HRESULT STDMETHODCALLTYPE CWmaDecoder::OnSample( /* [in] */ DWORD dwOutputNum,
 		pck->dwFlags |= MMIO_DIRTY;
 	}
 	// modify positions after file length modified,
-	m_DstCopyPos = DstCopyPos;  // to avoid race condition
+	m_DstPos = DstCopyPos;  // to avoid race condition
 	m_DstCopySample = DstCopySample;
 
 	// ask for next buffer
@@ -740,9 +740,9 @@ HRESULT CWmaDecoder::Stop()
 void CWmaDecoder::SetDstFile(CWaveFile & file)
 {
 	m_DstFile = file;
-	m_DstCopyPos = file.SampleToPosition(0);
+	m_DstPos = file.SampleToPosition(0);
 	m_DstCopySample = 0;
-	m_DstFile.CDirectFile::Seek(m_DstCopyPos, FILE_BEGIN);
+	m_DstFile.CDirectFile::Seek(m_DstPos, FILE_BEGIN);
 }
 
 WmaEncoder::WmaEncoder()
