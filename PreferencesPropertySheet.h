@@ -27,7 +27,6 @@ public:
 	CSpinButtonCtrl	m_SpinUndoLimit;
 	CSpinButtonCtrl	m_SpinRedoLimit;
 	CEdit	m_eTempFileLocation;
-	BOOL	m_bAllow4GbWav;
 	BOOL	m_bEnableRedo;
 	BOOL	m_bEnableUndo;
 	BOOL	m_bLimitRedoDepth;
@@ -43,6 +42,8 @@ public:
 	UINT	m_UndoDepthLimit;
 	UINT	m_UndoSizeLimit;
 	int		m_DefaultFileOpenMode;
+	int		m_bEnable4GbWavFile;
+	UINT	m_MaxFileCache;
 	//}}AFX_DATA
 
 
@@ -78,8 +79,16 @@ public:
 // Dialog Data
 	//{{AFX_DATA(CSoundPreferencesPage)
 	enum { IDD = IDD_PROPPAGE_SOUND_PREFERENCES };
-	// NOTE - ClassWizard will add data members here.
-	//    DO NOT EDIT what you see in these blocks of generated code !
+	CSpinButtonCtrl	m_SpinRecordingBufs;
+	CSpinButtonCtrl	m_SpinPlaybackBufs;
+	CComboBox	m_RecordingDeviceCombo;
+	CComboBox	m_PlaybackDeviceCombo;
+	int		m_PlaybackDevice;
+	int		m_RecordingDevice;
+	UINT	m_NumPlaybackBuffers;
+	UINT	m_NumRecordingBuffers;
+	UINT	m_PlaybackBufferSize;
+	UINT	m_RecordingBufferSize;
 	//}}AFX_DATA
 
 
@@ -94,7 +103,7 @@ protected:
 protected:
 	// Generated message map functions
 	//{{AFX_MSG(CSoundPreferencesPage)
-	// NOTE: the ClassWizard will add member functions here
+	virtual BOOL OnInitDialog();
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 

@@ -25,6 +25,8 @@ public:
 	double m_dNoiseThresholdLow;
 	double m_dNoiseThresholdHigh;
 	int nBeginFrequency;
+	bool m_bShowCrossHair;
+
 // Operations
 public:
 
@@ -38,6 +40,13 @@ protected:
 
 // Implementation
 protected:
+	CPoint m_PrevCrossHair;
+	bool m_bCrossHairDrawn;
+	bool m_bTrackingMouseRect;
+	void ShowCrossHair(POINT point, CDC * pDC = NULL);
+	void HideCrossHair(CDC * pDC = NULL);
+	void DrawCrossHair(POINT point, CDC * pDC = NULL);
+
 	int m_FftOrder;
 	float * m_pFftSum;
 	float * m_pWindow;
@@ -52,6 +61,9 @@ protected:
 
 	// Generated message map functions
 protected:
+	virtual void RemoveSelectionRect();
+	virtual void RestoreSelectionRect();
+	LRESULT OnMouseLeave(WPARAM wParam, LPARAM lParam);
 	//{{AFX_MSG(CSpectrumSectionView)
 	afx_msg int OnCreate(LPCREATESTRUCT lpCreateStruct);
 	afx_msg int OnMouseActivate(CWnd* pDesktopWnd, UINT nHitTest, UINT message);
@@ -61,6 +73,7 @@ protected:
 	afx_msg void OnUpdateViewSsZoominhor2(CCmdUI* pCmdUI);
 	afx_msg void OnViewSsZoomouthor2();
 	afx_msg void OnUpdateViewSsZoomouthor2(CCmdUI* pCmdUI);
+	afx_msg void OnMouseMove(UINT nFlags, CPoint point);
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 };

@@ -97,14 +97,16 @@
 #define IDC_EDIT_CLICK_TO_NOISE         1005
 #define IDC_EDIT3                       1005
 #define IDC_EDIT_LENGTH                 1005
+#define IDC_EDIT_PLAYBACK_BUF_SIZE      1005
 #define IDC_EDIT_MAX_CLICK_LENGTH       1006
-#define IDC_EDIT6                       1006
+#define IDC_EDIT_RECORDING_BUF_SIZE     1006
 #define IDC_EDIT_ATTACK_RATE            1007
 #define IDC_SPIN1                       1007
 #define IDC_SPIN_START                  1007
 #define IDC_EDIT_DECAY_RATE             1008
 #define IDC_SPIN2                       1008
 #define IDC_SPIN_END                    1008
+#define IDC_SPIN_NUM_RECORDING_BUFFERS  1008
 #define IDC_EDIT_CLICK_IMPORT_FILENAME  1009
 #define IDC_SPIN3                       1009
 #define IDC_SPIN_LENGTH                 1009
@@ -221,9 +223,9 @@
 #define IDC_CHECK_24BIT                 1117
 #define IDC_CHECK_SHOW_ONLY_WHEN_SHIFT  1119
 #define IDC_STATIC_VERSION              1120
-#define IDC_EDIT2                       1123
-#define IDC_EDIT7                       1124
+#define IDC_EDIT_NUM_PLAYBACK_BUFFERS   1123
 #define IDC_EDIT_TEMP_FILE_LOCATION     1124
+#define IDC_EDIT_NUM_RECORDING_BUFFERS  1124
 #define IDC_BUTTON1                     1125
 #define IDC_BUTTON2                     1126
 #define IDC_CHECK_ENABLE_UNDO           1126
@@ -238,7 +240,6 @@
 #define IDC_CHECK_TEMP_MEMORY_FILES     1133
 #define IDC_RADIO3                      1136
 #define IDC_CHECK_REMEMBER_SELECTION_IN_UNDO 1137
-#define IDC_CHECK_ALLOW_4GB_WAV         1138
 #define IDC_BUTTON5                     1139
 #define IDC_BUTTON6                     1140
 #define IDC_BUTTON7                     1141
@@ -253,6 +254,12 @@
 #define IDC_CHECK_SNAP_MOUSE_SELECTION  1150
 #define IDC_CHECK1                      1151
 #define IDC_BUTTON8                     1152
+#define IDC_RADIO4                      1153
+#define IDC_RADIO_WAV_SIZE              1154
+#define IDC_COMBO_PLAYBACK_DEVICE       1155
+#define IDC_SPIN_NUM_PLAYBACK_BUFFERS   1156
+#define IDC_COMBO_RECORDING_DEVICE      1157
+#define IDC_EDIT_MAX_FILE_CACHE         1158
 #define IDC_VIEW_RULER_SAMPLES          32771
 #define IDC_VIEW_RULER_HHMMSS           32772
 #define IDC_VIEW_RULER_SECONDS          32773
@@ -482,7 +489,7 @@
 #define _APS_3D_CONTROLS                     1
 #define _APS_NEXT_RESOURCE_VALUE        174
 #define _APS_NEXT_COMMAND_VALUE         40098
-#define _APS_NEXT_CONTROL_VALUE         1153
+#define _APS_NEXT_CONTROL_VALUE         1159
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif

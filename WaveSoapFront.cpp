@@ -470,9 +470,18 @@ BOOL CWaveSoapFrontApp::InitInstance()
 	Profile.AddItem(_T("Settings"), _T("FftWindowType"), m_FftWindowType, 0, 0, 2);
 	Profile.AddItem(_T("Settings"), _T("DefaultOpenMode"), m_DefaultOpenMode, DefaultOpenBuffered, 0, 2);
 
-	Profile.AddBoolItem(_T("Settings"), _T("MemoryFiles"), m_bUseMemoryFiles, TRUE);
-	Profile.AddItem(_T("Settings"), _T("Allow4GbWavFile"), m_bAllow4GbWavFile, FALSE);
+	Profile.AddBoolItem(_T("Settings"), _T("UseMemoryFiles"), m_bUseMemoryFiles, TRUE);
 	Profile.AddItem(_T("Settings"), _T("MaxMemoryFileSize"), m_MaxMemoryFileSize, 64, 1, 1024);
+	Profile.AddItem(_T("Settings"), _T("Allow4GbWavFile"), m_bAllow4GbWavFile, FALSE);
+
+	Profile.AddItem(_T("Settings"), _T("PlaybackDevice"), m_DefaultPlaybackDevice, WAVE_MAPPER, WAVE_MAPPER, 64);
+	Profile.AddItem(_T("Settings"), _T("NumPlaybackBuffers"), m_NumPlaybackBuffers, 4, 2, 32);
+	Profile.AddItem(_T("Settings"), _T("SizePlaybackBuffers"), m_SizePlaybackBuffers, 0x10000, 0x1000, 0x40000);
+
+	Profile.AddItem(_T("Settings"), _T("RecordingDevice"), m_DefaultRecordDevice, WAVE_MAPPER, WAVE_MAPPER, 64);
+	Profile.AddItem(_T("Settings"), _T("NumRecordBuffers"), m_NumRecordBuffers, 8, 2, 32);
+	Profile.AddItem(_T("Settings"), _T("SizeRecordBuffers"), m_SizeRecordBuffers, 0x10000, 0x1000, 0x40000);
+	Profile.AddItem(_T("Settings"), _T("MaxFileCache"), m_MaxFileCache, 64, 1, 512);
 
 	LoadStdProfileSettings(10);  // Load standard INI file options (including MRU)
 
@@ -489,7 +498,7 @@ BOOL CWaveSoapFrontApp::InitInstance()
 		m_ThousandSeparator = ThousandSeparator[0];
 	}
 
-	m_FileCache = new CDirectFile::CDirectFileCache(0);
+	m_FileCache = new CDirectFile::CDirectFileCache(m_MaxFileCache * 0x100000);
 
 	// Register the application's document templates.  Document templates
 	//  serve as the connection between documents, frame windows and views.
@@ -2833,18 +2842,20 @@ void CWaveSoapFrontApp::OnToolsOptions()
 	dlg.m_FilePage.m_bLimitRedoDepth = m_bEnableRedoDepthLimit;
 	dlg.m_FilePage.m_bRememberSelectionInUndo = m_bRememberSelectionInUndo;
 	dlg.m_FilePage.m_DefaultFileOpenMode = m_DefaultOpenMode;
-	dlg.m_FilePage.m_bAllow4GbWav = m_bAllow4GbWavFile;
+	dlg.m_FilePage.m_bEnable4GbWavFile = m_bAllow4GbWavFile;
 	dlg.m_FilePage.m_UseMemoryFiles = m_bUseMemoryFiles;
 	dlg.m_FilePage.m_MaxMemoryFileSize = m_MaxMemoryFileSize;
+	dlg.m_FilePage.m_MaxFileCache = m_MaxFileCache;
+
+	dlg.m_SoundPage.m_PlaybackDevice = m_DefaultPlaybackDevice;
+	dlg.m_SoundPage.m_NumPlaybackBuffers = m_NumPlaybackBuffers;
+	dlg.m_SoundPage.m_PlaybackBufferSize = m_SizePlaybackBuffers / 1024;
+	dlg.m_SoundPage.m_RecordingDevice = m_DefaultRecordDevice;
+	dlg.m_SoundPage.m_NumRecordingBuffers = m_NumRecordBuffers;
+	dlg.m_SoundPage.m_RecordingBufferSize = m_SizeRecordBuffers / 1024;
+
 
 #if 0
-	dlg.m_SoundPage. = m_DefaultPlaybackDevice;
-	dlg.m_SoundPage. = m_NumPlaybackBuffers;
-	dlg.m_SoundPage. = m_SizePlaybackBuffers;
-	dlg.m_SoundPage. = m_DefaultRecordDevice;
-	dlg.m_SoundPage. = m_NumRecordBuffers;
-	dlg.m_SoundPage. = m_SizeRecordBuffers;
-
 	dlg.m_ViewPage.m_bSnapMouseSelection = m_bSnapMouseSelectionToMax;
 #endif
 
@@ -2863,8 +2874,18 @@ void CWaveSoapFrontApp::OnToolsOptions()
 		m_bEnableRedoDepthLimit = dlg.m_FilePage.m_bLimitRedoDepth;
 		m_bRememberSelectionInUndo = dlg.m_FilePage.m_bRememberSelectionInUndo;
 		m_DefaultOpenMode = dlg.m_FilePage.m_DefaultFileOpenMode;
-		m_bAllow4GbWavFile = (0 != dlg.m_FilePage.m_bAllow4GbWav);
+		m_bAllow4GbWavFile = (0 != dlg.m_FilePage.m_bEnable4GbWavFile);
 		m_bUseMemoryFiles = dlg.m_FilePage.m_UseMemoryFiles;
 		m_MaxMemoryFileSize = dlg.m_FilePage.m_MaxMemoryFileSize;
+		m_MaxFileCache = dlg.m_FilePage.m_MaxFileCache;
+
+		m_DefaultPlaybackDevice = dlg.m_SoundPage.m_PlaybackDevice;
+		m_NumPlaybackBuffers = dlg.m_SoundPage.m_NumPlaybackBuffers;
+		m_SizePlaybackBuffers = dlg.m_SoundPage.m_PlaybackBufferSize * 1024;
+
+		m_DefaultRecordDevice = dlg.m_SoundPage.m_RecordingDevice;
+		m_NumRecordBuffers = dlg.m_SoundPage.m_NumRecordingBuffers;
+		m_SizeRecordBuffers = dlg.m_SoundPage.m_RecordingBufferSize * 1024;
+
 	}
 }

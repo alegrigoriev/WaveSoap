@@ -1,11 +1,9 @@
 Known problems and tasks:
 
-Max WAV file size: [x] 2GB [ ] 4 GB
+Draw decibels and crosshair in Spectrum Section view
 Add options dialog
 Show File Properties
-Make sliders working in Resample Dialog
 Add decibel view to CAmplitudeRuler
-Draw decibels and crosshair in Spectrum Section view
 Add equalizer and low/high frequency filters functions
 Use list instead of array for FFT data (for performance reason).
 Include MP3 and WMA filters even if there is no WMP, but show warning, if the filter is selected
@@ -87,6 +85,8 @@ Wrong minimum/maximum valies shown for a zero length file in Statistics (command
 ???? When a file is opened in non-direct mode, peak info is saved with wrong time stamp
 
 Done:
+Make sliders working in Resample Dialog
+Max WAV file size: [x] 2GB [ ] 4 GB
 Selection dialog shows more options in combobox and doesn't show non-applicable options
 Add "Close File" option to other "reload after save" dialogs
 Place all CApplicationProfile members to the end of class, or add RemoveAll or UnloadAll() call to the destructors

@@ -56,7 +56,6 @@ IMPLEMENT_DYNCREATE(CFilePreferencesPage, CPropertyPage)
 CFilePreferencesPage::CFilePreferencesPage() : CPropertyPage(CFilePreferencesPage::IDD)
 {
 	//{{AFX_DATA_INIT(CFilePreferencesPage)
-	m_bAllow4GbWav = FALSE;
 	m_bEnableRedo = FALSE;
 	m_bEnableUndo = FALSE;
 	m_bLimitRedoDepth = FALSE;
@@ -72,6 +71,8 @@ CFilePreferencesPage::CFilePreferencesPage() : CPropertyPage(CFilePreferencesPag
 	m_UndoDepthLimit = 0;
 	m_UndoSizeLimit = 0;
 	m_DefaultFileOpenMode = -1;
+	m_bEnable4GbWavFile = -1;
+	m_MaxFileCache = 0;
 	//}}AFX_DATA_INIT
 }
 
@@ -86,7 +87,6 @@ void CFilePreferencesPage::DoDataExchange(CDataExchange* pDX)
 	DDX_Control(pDX, IDC_SPIN_UNDO_DEPTH, m_SpinUndoLimit);
 	DDX_Control(pDX, IDC_SPIN_REDO_LIMIT, m_SpinRedoLimit);
 	DDX_Control(pDX, IDC_EDIT_TEMP_FILE_LOCATION, m_eTempFileLocation);
-	DDX_Check(pDX, IDC_CHECK_ALLOW_4GB_WAV, m_bAllow4GbWav);
 	DDX_Check(pDX, IDC_CHECK_ENABLE_REDO, m_bEnableRedo);
 	DDX_Check(pDX, IDC_CHECK_ENABLE_UNDO, m_bEnableUndo);
 	DDX_Check(pDX, IDC_CHECK_LIMIT_REDO_DEPTH, m_bLimitRedoDepth);
@@ -107,6 +107,9 @@ void CFilePreferencesPage::DoDataExchange(CDataExchange* pDX)
 	DDX_Text(pDX, IDC_EDIT_UNDO_LIMIT, m_UndoSizeLimit);
 	DDV_MinMaxUInt(pDX, m_UndoSizeLimit, 1, 2047);
 	DDX_Radio(pDX, IDC_RADIO_OPEN_FILE_MODE, m_DefaultFileOpenMode);
+	DDX_Radio(pDX, IDC_RADIO_WAV_SIZE, m_bEnable4GbWavFile);
+	DDX_Text(pDX, IDC_EDIT_MAX_FILE_CACHE, m_MaxFileCache);
+	DDV_MinMaxUInt(pDX, m_MaxFileCache, 1, 512);
 	//}}AFX_DATA_MAP
 }
 
@@ -127,7 +130,12 @@ IMPLEMENT_DYNCREATE(CSoundPreferencesPage, CPropertyPage)
 CSoundPreferencesPage::CSoundPreferencesPage() : CPropertyPage(CSoundPreferencesPage::IDD)
 {
 	//{{AFX_DATA_INIT(CSoundPreferencesPage)
-	// NOTE: the ClassWizard will add member initialization here
+	m_PlaybackDevice = -1;
+	m_RecordingDevice = -1;
+	m_NumPlaybackBuffers = 0;
+	m_NumRecordingBuffers = 0;
+	m_PlaybackBufferSize = 0;
+	m_RecordingBufferSize = 0;
 	//}}AFX_DATA_INIT
 }
 
@@ -139,14 +147,26 @@ void CSoundPreferencesPage::DoDataExchange(CDataExchange* pDX)
 {
 	CPropertyPage::DoDataExchange(pDX);
 	//{{AFX_DATA_MAP(CSoundPreferencesPage)
-	// NOTE: the ClassWizard will add DDX and DDV calls here
+	DDX_Control(pDX, IDC_SPIN_NUM_RECORDING_BUFFERS, m_SpinRecordingBufs);
+	DDX_Control(pDX, IDC_SPIN_NUM_PLAYBACK_BUFFERS, m_SpinPlaybackBufs);
+	DDX_Control(pDX, IDC_COMBO_RECORDING_DEVICE, m_RecordingDeviceCombo);
+	DDX_Control(pDX, IDC_COMBO_PLAYBACK_DEVICE, m_PlaybackDeviceCombo);
+	DDX_CBIndex(pDX, IDC_COMBO_PLAYBACK_DEVICE, m_PlaybackDevice);
+	DDX_CBIndex(pDX, IDC_COMBO_RECORDING_DEVICE, m_RecordingDevice);
+	DDX_Text(pDX, IDC_EDIT_NUM_PLAYBACK_BUFFERS, m_NumPlaybackBuffers);
+	DDV_MinMaxUInt(pDX, m_NumPlaybackBuffers, 2, 32);
+	DDX_Text(pDX, IDC_EDIT_NUM_RECORDING_BUFFERS, m_NumRecordingBuffers);
+	DDV_MinMaxUInt(pDX, m_NumRecordingBuffers, 2, 32);
+	DDX_Text(pDX, IDC_EDIT_PLAYBACK_BUF_SIZE, m_PlaybackBufferSize);
+	DDV_MinMaxUInt(pDX, m_PlaybackBufferSize, 4, 256);
+	DDX_Text(pDX, IDC_EDIT_RECORDING_BUF_SIZE, m_RecordingBufferSize);
+	DDV_MinMaxUInt(pDX, m_RecordingBufferSize, 4, 256);
 	//}}AFX_DATA_MAP
 }
 
 
 BEGIN_MESSAGE_MAP(CSoundPreferencesPage, CPropertyPage)
 	//{{AFX_MSG_MAP(CSoundPreferencesPage)
-		// NOTE: the ClassWizard will add message map macros here
 	//}}AFX_MSG_MAP
 END_MESSAGE_MAP()
 
@@ -206,6 +226,16 @@ BOOL CFilePreferencesPage::OnInitDialog()
 
 	m_SpinUndoLimit.SetRange(1, 200);
 	m_SpinRedoLimit.SetRange(1, 200);
+	return TRUE;  // return TRUE unless you set the focus to a control
+	// EXCEPTION: OCX Property Pages should return FALSE
+}
+
+BOOL CSoundPreferencesPage::OnInitDialog()
+{
+	CPropertyPage::OnInitDialog();
+
+	m_SpinPlaybackBufs.SetRange(2, 32);
+	m_SpinRecordingBufs.SetRange(2, 32);
 	return TRUE;  // return TRUE unless you set the focus to a control
 	// EXCEPTION: OCX Property Pages should return FALSE
 }

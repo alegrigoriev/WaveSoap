@@ -26,6 +26,8 @@ CSpectrumSectionView::CSpectrumSectionView()
 	m_nFftSumSize = 0;
 	m_PlaybackSample = 0;
 	m_bShowNoiseThreshold = FALSE;
+	m_bShowCrossHair = true;false;
+	m_bTrackingMouseRect = false;
 }
 
 CSpectrumSectionView::~CSpectrumSectionView()
@@ -45,7 +47,9 @@ BEGIN_MESSAGE_MAP(CSpectrumSectionView, CScaledScrollView)
 	ON_UPDATE_COMMAND_UI(ID_VIEW_SS_ZOOMINHOR2, OnUpdateViewSsZoominhor2)
 	ON_COMMAND(ID_VIEW_SS_ZOOMOUTHOR2, OnViewSsZoomouthor2)
 	ON_UPDATE_COMMAND_UI(ID_VIEW_SS_ZOOMOUTHOR2, OnUpdateViewSsZoomouthor2)
+	ON_WM_MOUSEMOVE()
 	//}}AFX_MSG_MAP
+	ON_MESSAGE(WM_MOUSELEAVE, OnMouseLeave)
 END_MESSAGE_MAP()
 
 /////////////////////////////////////////////////////////////////////////////
@@ -56,7 +60,10 @@ void CSpectrumSectionView::OnDraw(CDC* pDC)
 	CWaveSoapFrontDoc* pDoc = GetDocument();
 	if ( ! pDoc->m_WavFile.IsOpen())
 	{
-		CScaledScrollView::OnDraw(pDC);
+		if (m_bCrossHairDrawn)
+		{
+			DrawCrossHair(m_PrevCrossHair, pDC);
+		}
 		return;
 	}
 	// calculate FFT
@@ -126,7 +133,10 @@ void CSpectrumSectionView::OnDraw(CDC* pDC)
 
 	if (0 == TotalRows)
 	{
-		CScaledScrollView::OnDraw(pDC);
+		if (m_bCrossHairDrawn)
+		{
+			DrawCrossHair(m_PrevCrossHair, pDC);
+		}
 		return;
 	}
 
@@ -418,6 +428,10 @@ void CSpectrumSectionView::OnDraw(CDC* pDC)
 	delete[] pIdArray;
 	delete[] pSrcIntArray;
 	delete[] pSrcArray;
+	if (m_bCrossHairDrawn)
+	{
+		DrawCrossHair(m_PrevCrossHair, pDC);
+	}
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -535,4 +549,115 @@ void CSpectrumSectionView::OnViewSsZoomouthor2()
 void CSpectrumSectionView::OnUpdateViewSsZoomouthor2(CCmdUI* pCmdUI)
 {
 	pCmdUI->Enable(dSizeX < 150.);
+}
+
+void CSpectrumSectionView::OnMouseMove(UINT nFlags, CPoint point)
+{
+	CView::OnMouseMove(nFlags, point);
+	if ( ! m_bTrackingMouseRect)
+	{
+		TRACKMOUSEEVENT tme;
+		tme.cbSize = sizeof tme;
+		tme.dwFlags = TME_LEAVE;
+		tme.dwHoverTime = HOVER_DEFAULT;
+		tme.hwndTrack = m_hWnd;
+		TrackMouseEvent( & tme);
+		m_bTrackingMouseRect = true;
+	}
+	if (m_bShowCrossHair
+		&& point != m_PrevCrossHair)
+	{
+		HideCrossHair();
+		ShowCrossHair(point);
+	}
+}
+
+void CSpectrumSectionView::ShowCrossHair(POINT point, CDC * pDC)
+{
+	if ( ! m_bCrossHairDrawn)
+	{
+		DrawCrossHair(point, pDC);
+		m_PrevCrossHair = point;
+		m_bCrossHairDrawn = true;
+	}
+}
+
+void CSpectrumSectionView::HideCrossHair(CDC * pDC)
+{
+	if (m_bCrossHairDrawn)
+	{
+		DrawCrossHair(m_PrevCrossHair, pDC);
+		m_bCrossHairDrawn = false;
+		m_PrevCrossHair.x = 0x8000;
+		m_PrevCrossHair.y = 0x8000;
+	}
+}
+
+void CSpectrumSectionView::DrawCrossHair(POINT point, CDC * pDC)
+{
+	CDC * pDrawDC = pDC;
+	if (NULL == pDrawDC)
+	{
+		pDrawDC = GetDC();
+		if (NULL == pDrawDC)
+		{
+			return;
+		}
+		pDrawDC->ExcludeUpdateRgn(this);
+	}
+
+	int OldMap = pDrawDC->SetMapMode(MM_TEXT);
+	RECT cr;
+
+	GetClientRect( & cr);
+	// have to use PatBlt to draw alternate lines
+	CBitmap bmp;
+	static const unsigned char pattern[] =
+	{
+		0x55, 0,  // aligned to WORD
+		0xAA, 0,
+		0x55, 0,
+		0xAA, 0,
+		0x55, 0,
+		0xAA, 0,
+		0x55, 0,
+		0xAA, 0,
+	};
+	try {
+		bmp.CreateBitmap(8, 8, 1, 1, pattern);
+		CBrush GrayBrush( & bmp);
+		CBrush * pOldBrush = pDrawDC->SelectObject( & GrayBrush);
+
+		pDrawDC->PatBlt(cr.left, point.y, cr.right - cr.left, 1, PATINVERT);
+		pDrawDC->PatBlt(point.x, cr.top, 1, cr.bottom - cr.top, PATINVERT);
+
+		pDrawDC->SelectObject(pOldBrush);
+	}
+	catch (CResourceException)
+	{
+		TRACE("CResourceException\n");
+	}
+
+	pDrawDC->SetMapMode(OldMap);
+	if (NULL == pDC)
+	{
+		ReleaseDC(pDrawDC);
+	}
+}
+
+LRESULT CSpectrumSectionView::OnMouseLeave(WPARAM wParam, LPARAM lParam)
+{
+	m_bTrackingMouseRect = false;
+	HideCrossHair();
+	return 0;
+}
+
+void CSpectrumSectionView::RemoveSelectionRect()
+{
+	HideCrossHair();
+}
+
+void CSpectrumSectionView::RestoreSelectionRect()
+{
+	ShowCrossHair(m_PrevCrossHair);
 }
