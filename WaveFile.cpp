@@ -1046,6 +1046,194 @@ WaveRegionMarker const * CWaveFile::InstanceDataWav::GetRegionMarker(DWORD CueId
 	return NULL;
 }
 
+// this function is called on removal or insertion of data
+// Markers inside the replaced area are removed, markers after the area are adjusted
+// returns TRUE if the markers has changed
+BOOL CWaveFile::InstanceDataWav::MoveMarkers(SAMPLE_INDEX BeginSample, NUMBER_OF_SAMPLES SrcLength, NUMBER_OF_SAMPLES DstLength)
+{
+	BOOL HasChanged = FALSE;
+
+	for (CuePointVectorIterator i = m_CuePoints.begin();
+		i < m_CuePoints.end(); )
+	{
+		CuePointVectorIterator next = i + 1;
+
+		WaveRegionMarker * pMarker = GetRegionMarker(i->CuePointID);
+
+		if (NULL != pMarker)
+		{
+			DWORD RegionEnd = i->dwSampleOffset + pMarker->SampleLength;
+
+			if (i->dwSampleOffset >= unsigned(BeginSample + SrcLength))
+			{
+				i->dwSampleOffset += DstLength - SrcLength;
+				HasChanged = TRUE;
+			}
+			else if (RegionEnd <= unsigned(BeginSample))
+			{
+				// do nothing
+			}
+			else if (i->dwSampleOffset <= unsigned(BeginSample))
+			{
+				// change length only
+				if (RegionEnd < unsigned(BeginSample + SrcLength))
+				{
+					pMarker->SampleLength = BeginSample - i->dwSampleOffset;
+				}
+				else
+				{
+					pMarker->SampleLength += DstLength - SrcLength;
+				}
+				HasChanged = TRUE;
+			}
+			else if (RegionEnd >= unsigned(BeginSample + SrcLength))
+			{
+				// change length only and the start
+				// the start of region is moved to end of range
+				i->dwSampleOffset = BeginSample + DstLength;
+				pMarker->SampleLength = RegionEnd - SrcLength;
+				HasChanged = TRUE;
+			}
+			else
+			{
+				// delete it and the region
+				for (RegionMarkerIterator p = m_RegionMarkers.begin(); p != m_RegionMarkers.end(); )
+				{
+					if (p->CuePointID == i->CuePointID)
+					{
+						p = m_RegionMarkers.erase(p);
+					}
+					else
+					{
+						p++;
+					}
+				}
+				// delete the cue point
+				WAVEREGIONINFO info = { WAVEREGIONINFO::ChangeLabel | WAVEREGIONINFO::ChangeComment };
+				info.MarkerCueID = i->CuePointID;
+				SetWaveMarker( & info);     // remove label and comment
+
+				next = m_CuePoints.erase(i);
+
+				// delete from playlist
+				for (PlaylistVectorIterator p = m_Playlist.begin(); p != m_Playlist.end(); )
+				{
+					if (p->CuePointID == i->CuePointID)
+					{
+						p = m_Playlist.erase(p);
+					}
+					else
+					{
+						p++;
+					}
+				}
+
+				HasChanged = TRUE;
+			}
+		}
+		else
+		{
+			if (i->dwSampleOffset >= unsigned(BeginSample + SrcLength))
+			{
+				i->dwSampleOffset += DstLength - SrcLength;
+				HasChanged = TRUE;
+			}
+			else if (i->dwSampleOffset > unsigned(BeginSample))
+			{
+				// delete the cue point
+				WAVEREGIONINFO info = { WAVEREGIONINFO::ChangeLabel | WAVEREGIONINFO::ChangeComment };
+				info.MarkerCueID = i->CuePointID;
+				SetWaveMarker( & info);     // remove label and comment
+
+				next = m_CuePoints.erase(i);
+
+				// delete from playlist
+				for (PlaylistVectorIterator p = m_Playlist.begin(); p != m_Playlist.end(); )
+				{
+					if (p->CuePointID == i->CuePointID)
+					{
+						p = m_Playlist.erase(p);
+					}
+					else
+					{
+						p++;
+					}
+				}
+
+				HasChanged = TRUE;
+			}
+			else
+			{
+				// nothing
+			}
+		}
+		i = next;
+	}
+	return HasChanged;
+}
+
+// copy marker data:
+// copy those that fall into SrcBegin...SrcBegin+Length.
+// offset their position to DstBegin-SrcBegin
+BOOL CWaveFile::InstanceDataWav::CopyMarkers(InstanceDataWav const * pSrc,
+											SAMPLE_INDEX SrcBegin, SAMPLE_INDEX DstBegin, NUMBER_OF_SAMPLES Length)
+{
+	BOOL HasChanged = FALSE;
+
+	for (int i = 0; ; i++)
+	{
+		WAVEREGIONINFO SrcInfo = { WAVEREGIONINFO::CuePointIndex };
+		SrcInfo.MarkerCueID = i;
+		if ( ! pSrc->GetWaveMarker( & SrcInfo))
+		{
+			break;
+		}
+
+		// see if we need to copy it
+		if (SrcInfo.Sample + SrcInfo.Length > DWORD(SrcBegin + Length)
+			|| SrcInfo.Sample < DWORD(SrcBegin))
+		{
+			// skip it
+			continue;
+		}
+
+		// adjust sample
+		SrcInfo.Sample += DstBegin - SrcBegin;
+
+		WAVEREGIONINFO DstInfo = SrcInfo;
+		DstInfo.Flags = DstInfo.FindCue;
+
+		if (GetWaveMarker( & DstInfo)
+			&& (SrcInfo.Label == DstInfo.Label
+				|| (SrcInfo.Label != NULL && DstInfo.Label != NULL
+					&& 0 == _tcscmp(SrcInfo.Label, DstInfo.Label)))
+			&& (SrcInfo.Comment == DstInfo.Comment
+				|| (SrcInfo.Comment != NULL && DstInfo.Comment != NULL
+					&& 0 == _tcscmp(SrcInfo.Comment, DstInfo.Comment)))
+			&& (SrcInfo.Ltxt == DstInfo.Ltxt
+				|| (SrcInfo.Ltxt != NULL && DstInfo.Ltxt != NULL && 0 == _tcscmp(SrcInfo.Ltxt, DstInfo.Ltxt))))
+		{
+			continue;
+		}
+
+		SrcInfo.Flags = SrcInfo.AddNew;
+		SetWaveMarker( & SrcInfo);
+		HasChanged = TRUE;
+	}
+	return HasChanged;
+}
+
+CWaveFile::InstanceDataWav::InstanceDataWav()
+	: m_PeakData(512)
+	, m_InfoChanged(false)
+	, m_FreeCuePointNumber(0)
+{
+	memzero(datack);
+	memzero(fmtck);
+	memzero(factck);
+	m_size = sizeof *this;
+}
+
 BOOL CWaveFile::LoadListMetadata(MMCKINFO & chunk)
 {
 	// fccType is already read
