@@ -328,8 +328,8 @@ public:
 	void FillFormatTagArray(WAVEFORMATEX * pwf,
 							WaveFormatTagEx const ListOfTags[],
 							int NumTags, DWORD flags = 0);
-	void FillWmaFormatArray();
-	void FillMp3EncoderArray();
+	void FillWmaFormatTags();
+	void FillMp3EncoderTags();
 	void FillMp3FormatArray();
 	static BOOL _stdcall FormatTestEnumCallback(
 												HACMDRIVERID hadid, LPACMFORMATDETAILS pafd,

@@ -1639,7 +1639,7 @@ void CDirectFile::File::ReadDataBuffer(BufferHeader * pBuf, DWORD MaskToRead)
 						pSourceFile->m_FilePointer = StartFilePtr;
 					}
 					// round to sector size! otherwize ReadFile would fail
-					if (0) TRACE("ReadSourceFile(%08x, pos=0x%08X, bytes=%X)\n", hFile, long(StartFilePtr), ToRead);
+					if (1) TRACE("ReadSourceFile(%08x, pos=0x%08X, bytes=%X)\n", hFile, long(StartFilePtr), ToRead);
 					ReadFile(pSourceFile->hFile, buf, (ToRead + 0x1FF) & ~0x1FF, & BytesRead, NULL);
 #ifdef _DEBUG
 					if (BytesRead < ToRead)
@@ -1705,7 +1705,7 @@ void CDirectFile::File::ReadDataBuffer(BufferHeader * pBuf, DWORD MaskToRead)
 				SetFilePointer(hFile, (LONG)StartFilePtr, & FilePtrH, FILE_BEGIN);
 				m_FilePointer = StartFilePtr;
 			}
-			if (0) TRACE("ReadFile(%08x, pos=0x%08X, bytes=%X)\n", hFile, long(StartFilePtr), ToRead);
+			if (1) TRACE("ReadFile(%08x, pos=0x%08X, bytes=%X)\n", hFile, long(StartFilePtr), ToRead);
 			ReadFile(hFile, buf, ToRead, & BytesRead, NULL);
 			if (0 == m_LastError)
 			{

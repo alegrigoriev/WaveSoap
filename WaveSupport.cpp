@@ -3,8 +3,10 @@
 #include "stdafx.h"
 #include <mmsystem.h>
 #include "WaveSupport.h"
+#include "BladeMP3EncDLL.h"
 #include <algorithm>
 #include <functional>
+
 /////////////////////////////////
 // CWaveDevice stuff
 /////////////////////////////////
@@ -1032,3 +1034,33 @@ void CAudioCompressionManager::FillFormatArray(unsigned SelFormat, int Flags)
 	}
 }
 
+void CAudioCompressionManager::FillWmaFormatTags()
+{
+	//WAVE_FORMAT_MSAUDIO1+1 - WMA V2
+	static WaveFormatTagEx const format = {WAVE_FORMAT_MSAUDIO1 + 1};
+	// fill format tag array with V2 format
+	FillFormatTagArray(m_Wf, & format, 1);
+}
+
+void CAudioCompressionManager::FillMp3EncoderTags()
+{
+	// check if LAME encoder is available
+
+	// check if MP3 ACM encoder presents
+	static WaveFormatTagEx const Mp3Tag = { WAVE_FORMAT_MPEGLAYER3 };
+
+	FillFormatTagArray(m_Wf, & Mp3Tag, 1);
+	FormatTagItem TagItem;
+
+	BladeMp3Encoder Mp3Enc;
+	if (Mp3Enc.Open())
+	{
+		TagItem.Name = Mp3Enc.GetVersionString();
+		TagItem.Tag = Mp3Enc.GetTag();
+
+		m_FormatTags.insert(m_FormatTags.begin(), TagItem);
+
+		Mp3Enc.Close();
+	}
+
+}

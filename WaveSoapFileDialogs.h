@@ -119,7 +119,6 @@ public:
 								lpszFilter, pParentWnd),
 		m_SelectedFormat(-1),
 		m_SelectedMp3Encoder(0),
-		m_NumOfMp3Encoders(0),
 		m_SelectedLameMp3Bitrate(LameEncBitrate128),
 		m_bCompatibleFormatsOnly(TRUE),
 		m_FileType(SoundFileWav),
@@ -154,7 +153,6 @@ public:
 
 	int m_SelectedMp3Encoder;
 	int m_Mp3Encoders[4];
-	int m_NumOfMp3Encoders;
 	int m_SelectedLameMp3Bitrate;
 	int GetLameEncBitrate() const;
 
@@ -174,20 +172,20 @@ public:
 
 	void ShowDlgItem(UINT nID, int nCmdShow);
 
-	void FillFormatCombo(int nSel, int Flags);
-	void FillFormatCombo(int nSel)
+	int FillFormatCombo(int nSel, int Flags);
+	int FillFormatCombo(int nSel)
 	{
-		FillFormatCombo(nSel,
-						m_bCompatibleFormatsOnly ?
-							WaveFormatMatchCompatibleFormats
-						: WaveFormatMatchFormatTag);
+		return FillFormatCombo(nSel,
+								m_bCompatibleFormatsOnly ?
+									WaveFormatMatchCompatibleFormats
+								: WaveFormatMatchFormatTag);
 	}
 
 	void FillFormatTagCombo(WaveFormatTagEx const ListOfTags[] = NULL, int NumTags = 0, DWORD Flags = 0);
 
-	void FillWmaFormatArray();
-	void FillMp3EncoderArray();
-	void FillMp3FormatArray();
+	void FillWmaFormatCombo();
+	void FillMp3EncoderCombo();
+	void FillMp3FormatCombo();
 	void FillLameEncoderFormats();
 
 	WAVEFORMATEX * GetWaveFormat();
