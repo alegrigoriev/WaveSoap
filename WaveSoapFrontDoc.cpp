@@ -9,7 +9,6 @@
 #include "SpectrumSectionView.h"
 #include "OperationDialogs.h"
 #include "OperationDialogs2.h"
-
 #include <afxpriv.h>
 
 #ifdef _DEBUG
@@ -972,7 +971,7 @@ BOOL CWaveSoapFrontDoc::DoSave(LPCTSTR lpszPathName, BOOL bReplace)
 		//dlg.m_ofn.lpstrTitle = title;
 //	dlgFile.m_ofn.lpstrFile = fileName.GetBuffer(_MAX_PATH);
 
-		CWaveSoapFrontApp * pApp = GetApp();
+		CThisApp * pApp = GetApp();
 
 		if (IDOK != dlg.DoModal())
 		{
@@ -1553,7 +1552,7 @@ UINT CWaveSoapFrontDoc::_ThreadProc(void)
 				{
 					pContext->m_Flags |= OperationContextStop;
 				}
-				m_CurrentStatusString = pContext->GetStatusString();
+				SetCurrentStatusString(pContext->GetStatusString());
 				pContext->m_Flags |= OperationContextInitialized;
 				NeedKickIdle = true;
 			}
@@ -1581,13 +1580,15 @@ UINT CWaveSoapFrontDoc::_ThreadProc(void)
 				{
 					if (pContext->PercentCompleted >= 0)
 					{
-						m_CurrentStatusString.Format(_T("%s%d%%"),
-													(LPCTSTR)pContext->GetStatusString(),
-													pContext->PercentCompleted);
+						CString s;
+						s.Format(_T("%s%d%%"),
+								(LPCTSTR)pContext->GetStatusString(),
+								pContext->PercentCompleted);
+						SetCurrentStatusString(s);
 					}
 					else
 					{
-						m_CurrentStatusString = pContext->GetStatusString();
+						SetCurrentStatusString(pContext->GetStatusString());
 					}
 				}
 			}
@@ -1596,8 +1597,7 @@ UINT CWaveSoapFrontDoc::_ThreadProc(void)
 			{
 				if (pContext->PercentCompleted >= 0)
 				{
-					m_CurrentStatusString =
-						pContext->GetStatusString() + _T("Completed");
+					SetCurrentStatusString(pContext->GetStatusString() + _T("Completed"));
 				}
 				NeedKickIdle = true;
 				{
@@ -1605,6 +1605,7 @@ UINT CWaveSoapFrontDoc::_ThreadProc(void)
 					m_pCurrentContext = pContext->pNext;
 				}
 				pContext->DeInit();
+				TRACE("Retire context %X\n", pContext);
 				pContext->Retire();     // usually deletes it
 			}
 			continue;
@@ -1994,7 +1995,7 @@ BOOL CWaveSoapFrontDoc::OnOpenDocument(LPCTSTR lpszPathName, int DocOpenFlags)
 	m_WavFile.Close();
 	m_OriginalWavFile.Close();
 
-	CWaveSoapFrontApp * pApp = GetApp();
+	CThisApp * pApp = GetApp();
 	m_bDirectMode = ((DocOpenFlags & OpenDocumentDirectMode) != 0);
 	m_bReadOnly = ((DocOpenFlags & OpenDocumentReadOnly) != 0);
 	if (m_bReadOnly)
@@ -2583,12 +2584,19 @@ void CWaveSoapFrontDoc::PostFileSave(CFileSaveContext * pContext)
 			if (! m_bDirectMode || m_bReadOnly)
 			{
 				// if PCM format and read-only or non-direct, ask about reopening as direct
-				CString s;
-				s.Format(IDS_REOPEN_IN_DIRECT_MODE, pContext->m_NewName);
-				if (IDYES == AfxMessageBox(s,
-											MB_ICONQUESTION | MB_YESNO))
+				CReopenDialog ReopenDlg;
+				ReopenDlg.m_Prompt.Format(IDS_REOPEN_IN_DIRECT_MODE, m_WavFile.GetName());
+				int result = ReopenDlg.DoModal();
+				if (IDOK == result)
 				{
 					ReopenDocumentFlags = OpenDocumentDirectMode;
+				}
+				else if (IDCANCEL == result)
+				{
+					pContext->m_DstFile.Close();
+					SetModifiedFlag(FALSE);
+					m_bCloseThisDocumentNow = true; // the document will be deleted
+					return;
 				}
 			}
 		}
@@ -2697,19 +2705,26 @@ BOOL CWaveSoapFrontDoc::PostCommitFileSave(int flags, LPCTSTR FullTargetName)
 	{
 		// if PCM format and non-direct, ask about reopening as direct
 		SavePeakInfo(m_WavFile);
-		CString s;
-		s.Format(IDS_REOPEN_IN_DIRECT_MODE, m_WavFile.GetName());
 		SetModifiedFlag(FALSE);
 		if (m_bClosePending)
 		{
 			m_WavFile.Close();
 			return TRUE;
 		}
-		if (IDYES == AfxMessageBox(s,
-									MB_ICONQUESTION | MB_YESNO))
+
+		CReopenDialog ReopenDlg;
+		ReopenDlg.m_Prompt.Format(IDS_REOPEN_IN_DIRECT_MODE, m_WavFile.GetName());
+		int result = ReopenDlg.DoModal();
+
+		if (IDOK == result)
 		{
 			// keep undo/redo
 			OnOpenDocument(FullTargetName, OpenDocumentDirectMode);
+			return TRUE;
+		}
+		else if (IDCANCEL == result)
+		{
+			m_bCloseThisDocumentNow = true;
 			return TRUE;
 		}
 		else
@@ -3561,7 +3576,7 @@ void CWaveSoapFrontDoc::OnProcessChangevolume()
 	}
 
 	CVolumeChangeDialog dlg;
-	CWaveSoapFrontApp * pApp = GetApp();
+	CThisApp * pApp = GetApp();
 	dlg.m_DbPercent = pApp->m_VolumeDialogDbPercents;
 	dlg.m_dVolumeLeftDb = pApp->m_dVolumeLeftDb;
 	dlg.m_dVolumeRightDb = pApp->m_dVolumeRightDb;
@@ -3839,7 +3854,7 @@ void CWaveSoapFrontDoc::OnProcessDcoffset()
 	}
 
 	CDcOffsetDialog dlg;
-	CWaveSoapFrontApp * pApp = GetApp();
+	CThisApp * pApp = GetApp();
 	dlg.m_Start = start;
 	dlg.m_End = end;
 	dlg.m_Chan = channel;
@@ -3986,8 +4001,15 @@ void CWaveSoapFrontDoc::OnProcessInsertsilence()
 		return;
 	}
 
-	channel = dlg.m_nChannel - 1;
 	GetApp()->m_SoundTimeFormat = dlg.m_TimeFormat;
+	channel = dlg.m_nChannel - 1;
+
+	if (0 == dlg.m_Length)
+	{
+		// nothing to change
+		return;
+	}
+
 	CInsertSilenceContext * pContext = new CInsertSilenceContext(this,
 																"Inserting silence...", "Insert Silence");
 
@@ -4079,7 +4101,7 @@ void CWaveSoapFrontDoc::OnProcessNormalize()
 	}
 
 	CNormalizeSoundDialog dlg;
-	CWaveSoapFrontApp * pApp = GetApp();
+	CThisApp * pApp = GetApp();
 	dlg.m_DbPercent = pApp->m_NormalizeDialogDbPercents;
 	dlg.m_dLevelDb = pApp->m_dNormalizeLevelDb;
 	dlg.m_dLevelPercent = pApp->m_dNormalizeLevelPercent;
@@ -4165,7 +4187,7 @@ void CWaveSoapFrontDoc::OnProcessResample()
 	}
 
 	CResampleDialog dlg;
-	CWaveSoapFrontApp * pApp = GetApp();
+	CThisApp * pApp = GetApp();
 	dlg.m_bUndo = UndoEnabled();
 	dlg.m_bChangeRateOnly = pApp->m_bResampleChangeRateOnly;
 	dlg.m_bChangeSamplingRate = pApp->m_bResampleRate;
@@ -4382,7 +4404,7 @@ void CWaveSoapFrontDoc::OnProcessSynthesisExpressionEvaluation()
 	}
 
 	CExpressionEvaluationDialog dlg;
-	CWaveSoapFrontApp * pApp = GetApp();
+	CThisApp * pApp = GetApp();
 	dlg.m_bUndo = UndoEnabled();
 	dlg.m_Start = start;
 	dlg.m_End = end;
@@ -4446,7 +4468,7 @@ BOOL CWaveSoapFrontDoc::OpenWmaFileDocument(LPCTSTR lpszPathName)
 
 	TRACE("CWaveSoapFrontDoc::OpenWmaFileDocument(%s)\n", lpszPathName);
 
-	CWaveSoapFrontApp * pApp = GetApp();
+	CThisApp * pApp = GetApp();
 	if ( ! pApp->CanOpenWindowsMedia())
 	{
 		if (pApp->m_DontShowMediaPlayerWarning)
@@ -4671,7 +4693,7 @@ void CWaveSoapFrontDoc::OnProcessDoUlf()
 	}
 
 	CLowFrequencySuppressDialog dlg;
-	CWaveSoapFrontApp * pApp = GetApp();
+	CThisApp * pApp = GetApp();
 	dlg.m_DifferentialModeSuppress = pApp->m_bSuppressDifferential;
 	dlg.m_LowFrequencySuppress = pApp->m_bSuppressLowFrequency;
 	dlg.m_bUndo = UndoEnabled();
@@ -4763,7 +4785,7 @@ void CWaveSoapFrontDoc::OnProcessDoDeclicking()
 	}
 
 	CDeclickDialog dlg;
-	CWaveSoapFrontApp * pApp = GetApp();
+	CThisApp * pApp = GetApp();
 
 	dlg.m_bUndo = UndoEnabled();
 	dlg.m_Start = start;
@@ -4845,7 +4867,7 @@ void CWaveSoapFrontDoc::OnProcessNoiseReduction()
 	}
 
 	CNoiseReductionDialog dlg;
-	CWaveSoapFrontApp * pApp = GetApp();
+	CThisApp * pApp = GetApp();
 
 	dlg.m_bUndo = UndoEnabled();
 	dlg.m_Start = start;
@@ -4984,4 +5006,37 @@ BOOL CWaveSoapFrontDoc::CanCloseFrame(CFrameWnd* pFrameArg)
 	BOOL res = SaveModified();
 	m_bClosing = false;
 	return res;
+}
+
+void CWaveSoapFrontDoc::OnActivateDocument(BOOL bActivate)
+{
+	if (bActivate)
+	{
+		if ( ! m_PlayingSound)
+		{
+			SetThreadPriority(THREAD_PRIORITY_BELOW_NORMAL);
+		}
+	}
+	else
+	{
+		if ( ! m_PlayingSound)
+		{
+			SetThreadPriority(THREAD_PRIORITY_LOWEST);
+		}
+	}
+
+}
+
+void CWaveSoapFrontDoc::GetCurrentStatusString(CString & str)
+{
+	m_StatusStringLock.Lock();
+	str = m_CurrentStatusString;
+	m_StatusStringLock.Unlock();
+}
+
+void CWaveSoapFrontDoc::SetCurrentStatusString(const CString & str)
+{
+	m_StatusStringLock.Lock();
+	m_CurrentStatusString = str;
+	m_StatusStringLock.Unlock();
 }

@@ -40,6 +40,7 @@ enum { OpenDocumentReadOnly = 4,
 class CWaveSoapFrontApp : public CWinApp
 {
 public:
+	void OnActivateDocument(CWaveSoapFrontDoc * pDocument, BOOL bActivate);
 	CWaveSoapFrontApp();
 	void QueueOperation(COperationContext * pContext);
 	void LoadStdProfileSettings(UINT nMaxMRU);
@@ -90,7 +91,13 @@ public:
 	CWaveSoapFrontDoc * m_pActiveDocument;
 	COperationContext * m_pFirstOp;
 	COperationContext * m_pLastOp;
-	//CString m_CurrentStatusString;
+	CString m_CurrentStatusString;
+	CWaveSoapFrontDoc * m_pLastStatusDocument;
+	CSimpleCriticalSection m_StatusStringLock;
+
+	void GetStatusStringAndDoc(CString & str, CWaveSoapFrontDoc ** ppDoc);
+	void SetStatusStringAndDoc(const CString & str, CWaveSoapFrontDoc * pDoc);
+
 	CWaveFile m_ClipboardFile;
 	WAVEFORMATEX m_NewFileFormat;
 
@@ -186,12 +193,13 @@ public:
 	HINSTANCE m_hWMVCORE_DLL_Handle;
 };
 
-inline CWaveSoapFrontApp * GetApp()
+typedef CWaveSoapFrontApp CWaveSoapApp;
+typedef CWaveSoapFrontApp CThisApp;
+inline CThisApp * GetApp()
 {
-	return (CWaveSoapFrontApp *) AfxGetApp();
+	return static_cast<CThisApp *>(AfxGetApp());
 }
 
-typedef CWaveSoapFrontApp CWaveSoapApp;
 // long to string, thousands separated by commas
 CString LtoaCS(long num);
 enum

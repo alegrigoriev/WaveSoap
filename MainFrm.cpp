@@ -48,7 +48,7 @@ static UINT indicators[] =
 
 CMainFrame::CMainFrame()
 {
-	// TODO: add member initialization code here
+	m_nRotateChildIndex = 0;
 
 }
 
@@ -114,40 +114,84 @@ BOOL CMainFrame::PreCreateWindow(CREATESTRUCT& cs)
 
 void CMainFrame::GetMessageString(UINT nID, CString& rMessage) const
 {
+	// use either a status string from the topmost child,
+	// or status string from application thread, or status string from one of other documents
 	// find, starting with the topmost frame,
 	// a document which performs an operation
-	CFrameWnd * pWnd = const_cast<CMainFrame *>(this)->GetActiveFrame();
+	CFrameWnd * pFrameWnd = const_cast<CMainFrame *>(this)->GetActiveFrame();
+	CString str;
 	CWaveSoapFrontDoc * pDoc = NULL;
+	CThisApp * pApp = GetApp();
+
 	BOOL Topmost = TRUE;
-	while (NULL != pWnd)
+	if (pFrameWnd)
 	{
-		CView * pView = pWnd->GetActiveView();
-		if (NULL != pView)
+		pDoc = dynamic_cast<CWaveSoapFrontDoc *>(pFrameWnd->GetActiveDocument());
+		if (NULL != pDoc)
 		{
-			pDoc = DYNAMIC_DOWNCAST(CWaveSoapFrontDoc,
-									pView->GetDocument());
-			if ( ! pDoc->m_CurrentStatusString.IsEmpty())
+			pDoc->GetCurrentStatusString(str);
+			if ( ! str.IsEmpty() && 0 == pDoc->m_OperationInProgress)
 			{
-				if (Topmost)
-				{
-					rMessage = pDoc->m_CurrentStatusString;
-				}
-				else
-				{
-					rMessage.Format(_T("%s: %s"), LPCTSTR(pDoc->GetTitle()),
-									LPCTSTR(pDoc->m_CurrentStatusString));
-				}
-				if (0 == pDoc->m_OperationInProgress)
-				{
-					pDoc->m_CurrentStatusString.Empty();
-				}
-				return;
+				pDoc->SetCurrentStatusString(CString());
 			}
 		}
-		Topmost = false;
-		pWnd = DYNAMIC_DOWNCAST(CFrameWnd, pWnd->GetWindow(GW_HWNDNEXT));
+		else
+		{
+			TRACE("CMainFrame::GetMessageString: NULL == GetActiveDocument()\n");
+		}
 	}
-	CMDIFrameWnd::GetMessageString(nID, rMessage);
+	else
+	{
+		TRACE("CMainFrame::GetMessageString: NULL == GetActiveFrame()\n");
+	}
+	if (str.IsEmpty())
+	{
+		Topmost = FALSE;
+		pApp->GetStatusStringAndDoc(str, & pDoc);
+		if ( ! str.IsEmpty() && 0 == pDoc->m_OperationInProgress)
+		{
+			pApp->SetStatusStringAndDoc(CString(), NULL);
+		}
+	}
+
+	if (NULL != pFrameWnd && str.IsEmpty())
+	{
+		Topmost = FALSE;
+		while (NULL != (pFrameWnd = dynamic_cast<CFrameWnd *>(pFrameWnd->GetWindow(GW_HWNDNEXT))))
+		{
+			pDoc = dynamic_cast<CWaveSoapFrontDoc *>(pFrameWnd->GetActiveDocument());
+			if (NULL != pDoc)
+			{
+				pDoc->GetCurrentStatusString(str);
+				if ( ! str.IsEmpty() && 0 == pDoc->m_OperationInProgress)
+				{
+					pDoc->SetCurrentStatusString(CString());
+				}
+			}
+			else
+			{
+				TRACE("CMainFrame::GetMessageString: NULL == pFrameWnd->GetActiveDocument()\n");
+			}
+		}
+	}
+
+	if ( ! str.IsEmpty())
+	{
+		if (Topmost)
+		{
+			rMessage = str;
+		}
+		else
+		{
+			rMessage.Format(_T("%s: %s"), LPCTSTR(pDoc->GetTitle()),
+							LPCTSTR(str));
+		}
+		return;
+	}
+	else
+	{
+		CMDIFrameWnd::GetMessageString(nID, rMessage);
+	}
 }
 
 void CMainFrame::OnUpdateFrameTitle(BOOL bAddToTitle)
@@ -250,3 +294,108 @@ BOOL CMainFrame::OnQueryNewPalette()
 	return TRUE;
 }
 
+
+BOOL CMainFrame::PreTranslateMessage(MSG* pMsg)
+{
+	// catch Ctrl key down and up
+	if (WM_KEYDOWN == pMsg->message)
+	{
+		if (VK_CONTROL == pMsg->wParam
+			&& 0 == (0x40000000 & pMsg->lParam))
+		{
+			TRACE("Ctrl key was just pressed\n");
+			m_nRotateChildIndex = 0;
+		}
+		else
+		{
+			if ((VK_TAB == pMsg->wParam || VK_F6 == pMsg->wParam)
+				&& (0x8000 & GetKeyState(VK_CONTROL)))
+			{
+				CMDIChildWnd * pActive = MDIGetActive();
+				if (NULL == pActive)
+				{
+					return TRUE;
+				}
+				CWnd * pBottom = pActive->GetWindow(GW_HWNDLAST);
+
+				if (pBottom != pActive)
+				{
+					CWnd * pPlaceWnd = pActive;
+					CWnd * pFrameToActivate;
+					if (0x8000 & GetKeyState(VK_SHIFT))
+					{
+						if (m_nRotateChildIndex > 0)
+						{
+							for (int i = 0; i < m_nRotateChildIndex - 1; i++)
+							{
+								pPlaceWnd = pPlaceWnd->GetWindow(GW_HWNDNEXT);
+								if (pPlaceWnd == pBottom)
+								{
+									break;
+								}
+							}
+							m_nRotateChildIndex = i;
+							if (pPlaceWnd == pBottom)
+							{
+								pFrameToActivate = pBottom;
+								pPlaceWnd = pBottom->GetWindow(GW_HWNDPREV);
+							}
+							else
+							{
+								pFrameToActivate = pPlaceWnd->GetWindow(GW_HWNDNEXT);
+							}
+						}
+						else
+						{
+							pFrameToActivate = pBottom;
+							pPlaceWnd = pFrameToActivate;
+							m_nRotateChildIndex = 1000;  // arbitrary big
+						}
+					}
+					else
+					{
+						for (int i = 0; i < m_nRotateChildIndex; i++)
+						{
+							pPlaceWnd = pPlaceWnd->GetWindow(GW_HWNDNEXT);
+							if (pPlaceWnd == pBottom)
+							{
+								break;
+							}
+						}
+						m_nRotateChildIndex = i + 1;
+
+						if (pPlaceWnd == pBottom)
+						{
+							pFrameToActivate = pActive->GetWindow(GW_HWNDNEXT);
+							m_nRotateChildIndex = 0;
+						}
+						else
+						{
+							pFrameToActivate = pPlaceWnd->GetWindow(GW_HWNDNEXT);
+						}
+					}
+
+					if (0) TRACE("m_nRotateChildIndex=%d, prev active=%X, pFrameToActivate=%X, pPlaceWnd=%X\n",
+								m_nRotateChildIndex, pActive, pFrameToActivate, pPlaceWnd);
+
+					// first activate new frame
+					((CMDIChildWnd *) pFrameToActivate)->MDIActivate();
+					// then move previously active window under pPlaceWnd
+					pActive->SetWindowPos(pPlaceWnd, 0, 0, 0, 0,
+										SWP_NOACTIVATE
+										| SWP_NOMOVE
+										| SWP_NOOWNERZORDER
+										| SWP_NOSIZE);
+				}
+				return TRUE;  // message eaten
+			}
+		}
+	}
+	else if (WM_KEYUP == pMsg->message
+			&& VK_CONTROL == pMsg->wParam)
+	{
+		m_nRotateChildIndex = 0;
+	}
+
+	return CMDIFrameWnd::PreTranslateMessage(pMsg);
+}

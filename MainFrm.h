@@ -28,7 +28,9 @@ public:
 // Overrides
 	// ClassWizard generated virtual function overrides
 	//{{AFX_VIRTUAL(CMainFrame)
+public:
 	virtual BOOL PreCreateWindow(CREATESTRUCT& cs);
+	virtual BOOL PreTranslateMessage(MSG* pMsg);
 	//}}AFX_VIRTUAL
 
 // Implementation
@@ -45,6 +47,7 @@ protected:  // control bar embedded members
 	CToolBar    m_wndToolBar;
 	CReBar      m_wndReBar;
 	CDialogBar      m_wndDlgBar;
+	int m_nRotateChildIndex;  // used for Ctrl+Tab handling
 // Generated message map functions
 protected:
 	//{{AFX_MSG(CMainFrame)

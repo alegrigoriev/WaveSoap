@@ -159,6 +159,8 @@ public:
 	{
 		return m_InputStream.GetPos();
 	}
+	void DeliverNextSample();
+	BOOL m_bNeedNextSample;
 	CWaveFile m_DstFile;
 	DWORD m_DstCopyPos;
 	long m_DstCopySample;
@@ -170,7 +172,7 @@ public:
 	WMT_STATUS ReaderStatus;
 	//DWORD m_DstPosStart;
 	//DWORD m_DstCopyPos;
-	QWORD StreamTime;
+	QWORD m_CurrentStreamTime;
 	QWORD m_BufferLengthTime; //32kbytes in 100ns units
 	QWORD m_StreamDuration;
 	LONG m_CurrentSamples;

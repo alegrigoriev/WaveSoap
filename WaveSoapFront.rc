@@ -490,6 +490,8 @@ BEGIN
         MENUITEM "Show Noise Reduction Threshold", 
                                                 ID_VIEW_SS_SHOW_NOISE_THRESHOLD
 
+        MENUITEM SEPARATOR
+        MENUITEM "Hide",                        ID_VIEW_HIDE_SPECTRUMSECTION
     END
 END
 
@@ -1090,7 +1092,7 @@ STYLE DS_3DLOOK | DS_CONTROL | WS_CHILD | WS_CLIPSIBLINGS
 FONT 8, "MS Sans Serif"
 BEGIN
     RTEXT           "Re&cent: ",IDC_STATIC,3,9,26,8
-    COMBOBOX        IDC_COMBO_RECENT,36,7,228,68,CBS_DROPDOWN | CBS_SORT | 
+    COMBOBOX        IDC_COMBO_RECENT,36,7,228,68,CBS_DROPDOWNLIST | 
                     WS_VSCROLL | WS_TABSTOP
     RTEXT           "",1119,0,22,272,8,NOT WS_VISIBLE
     CONTROL         "Open as &read-only",IDC_CHECK_READONLY,"Button",
@@ -1329,7 +1331,7 @@ FONT 8, "MS Sans Serif"
 BEGIN
     DEFPUSHBUTTON   "OK",IDOK,175,206,50,14
     PUSHBUTTON      "Cancel",IDCANCEL,232,206,50,14
-    COMBOBOX        IDC_COMBO1,33,7,129,30,CBS_DROPDOWNLIST | CBS_SORT | 
+    COMBOBOX        IDC_COMBO_DRIVES,33,7,129,30,CBS_DROPDOWNLIST | CBS_SORT | 
                     WS_VSCROLL | WS_TABSTOP
     LTEXT           "Drive:",IDC_STATIC,7,9,24,8
     LTEXT           "Tracks:",IDC_STATIC,7,27,38,8
@@ -1342,6 +1344,17 @@ BEGIN
     CONTROL         "List1",IDC_LIST_TRACKS,"SysListView32",LVS_REPORT | 
                     LVS_EDITLABELS | LVS_ALIGNLEFT | LVS_NOSORTHEADER | 
                     WS_BORDER | WS_TABSTOP,7,39,286,117,WS_EX_CLIENTEDGE
+END
+
+IDD_DIALOG_REOPEN_DIRECT DIALOG DISCARDABLE  0, 0, 187, 108
+STYLE DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "Reopen Saved File"
+FONT 8, "MS Sans Serif"
+BEGIN
+    LTEXT           "File ""%s"" saved. ",IDC_STATIC_PROMPT,7,7,173,36
+    DEFPUSHBUTTON   "&Reopen in direct mode",IDOK,35,53,115,14
+    PUSHBUTTON      "Create &new temporary file",IDNO,35,70,115,14
+    PUSHBUTTON      "&Close the file",IDCANCEL,35,87,115,14
 END
 
 
@@ -1580,6 +1593,14 @@ BEGIN
         RIGHTMARGIN, 293
         TOPMARGIN, 7
         BOTTOMMARGIN, 220
+    END
+
+    IDD_DIALOG_REOPEN_DIRECT, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 180
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 101
     END
 END
 #endif    // APSTUDIO_INVOKED
@@ -1978,7 +1999,7 @@ BEGIN
     IDS_M_UNABLE_TO_CREATE_UNDO "Unable to save undo data, continue?"
     IDS_STATISTICS_FORMAT   "%s (%s)\r\n%s (%s dB; %.2f%%)\r\n%s (%s)\r\n%s (%s dB; %.2f%%)\r\n%s (%s)\r\n%s (%s dB; %.2f%%)\r\n%s dB (%.2f%%)\r\n%s (%s dB; %.2f%%)\r\n%.2f Hz"
     IDS_REOPEN_IN_DIRECT_MODE 
-                            "File ""%s"" saved. Reopen it in direct mode?\nIf ""No"", a new temporary file will be created."
+                            "File ""%s"" saved. \nWhat do you want to do with it:"
     IDS_RELOAD_COMPRESSED_FILE 
                             "Sound data might change because of compression loss, reload it?"
     ID_INDICATOR_SCALE      "\nHorizontal Scale"
@@ -2063,6 +2084,13 @@ BEGIN
     ID_VIEW_HOR_SCALE_4096  "Show 4096 samples per pixel\n1:4096"
     ID_VIEW_HOR_SCALE_8192  "Show 8192 samples per pixel\n1:8192"
     ID_TOOLS_CDGRAB         "Read data from an audio CD\nCD Grabber"
+    ID_VIEW_HIDE_SPECTRUMSECTION "Hide spectrum section pane\nHide spectrum"
+END
+
+STRINGTABLE DISCARDABLE 
+BEGIN
+    IDS_DIRECTORY_ACCESS_DENIED "Access to directory ""%s"" denied"
+    IDS_DIRECTORY_NOT_FOUND "Directory ""%s"" not found"
 END
 
 #endif    // English (U.S.) resources

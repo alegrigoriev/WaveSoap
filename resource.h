@@ -61,10 +61,13 @@
 #define IDD_DIALOG_MUTE_OR_SILENCE      155
 #define IDR_MENU_POPUP_HOR_SCALE16      155
 #define IDR_MENU_POPUP_HOR_SCALE1024    156
+#define IDD_DIALOG_NO_WINDOWS_MEDIA     156
 #define IDR_MENU_POPUP_HOR_SCALE2048    157
+#define IDD_DIALOG_CD_GRABBING          157
 #define IDR_MENU_POPUP_HOR_SCALE512     158
 #define IDR_MENU_POPUP_HOR_SCALE4096    159
 #define IDR_MENU_POPUP_HOR_SCALE8192    160
+#define IDD_DIALOG_REOPEN_DIRECT        160
 #define IDC_EDIT_MIN_CLICK_AMPLITUDE    1000
 #define IDC_TAB_SWITCH_VIEW_MODE        1000
 #define IDC_CHECK_LOG_CLICKS            1001
@@ -90,6 +93,7 @@
 #define IDC_CLICK_IMPORT_BROWSE_BUTTON  1010
 #define IDC_COMBO2                      1010
 #define IDC_COMBO_FORMAT                1010
+#define IDC_COMBO_SPEED                 1010
 #define IDC_CHECK_IMPORT_CLICKS         1011
 #define IDC_CHECK_NOISE_REDUCTION       1011
 #define IDC_CHECK_READONLY              1011
@@ -99,6 +103,7 @@
 #define IDC_COMBO_RECENT                1013
 #define IDC_COMBODB_PERCENT             1013
 #define IDC_COMBO_TIME_FORMAT           1013
+#define IDC_COMBO_DRIVES                1013
 #define IDC_STATIC_FILE_TYPE            1016
 #define IDC_STATIC_FILE_FORMAT          1017
 #define IDC_EDIT_LOWER_FREQUENCY        1018
@@ -173,6 +178,12 @@
 #define IDC_BUTTON_SILENCE              1071
 #define IDC_BUTTON_MAILTO               1072
 #define IDC_BUTTON_HOMEPAGE             1073
+#define IDC_CHECK_DONT_SHOW_THIS        1074
+#define IDC_BUTTON_CDDB                 1078
+#define IDC_CHECK_SINGLE_FILE           1079
+#define IDC_LIST_TRACKS                 1080
+#define IDC_STATIC_SPEED                1081
+#define IDC_STATIC_PROMPT               1083
 #define IDC_VIEW_RULER_SAMPLES          32771
 #define IDC_VIEW_RULER_HHMMSS           32772
 #define IDC_VIEW_RULER_SECONDS          32773
@@ -205,6 +216,9 @@
 #define ID_VIEW_ZOOMIN3                 32802
 #define ID_VIEW_ZOOMINHOR2              32803
 #define ID_INDICATOR_MOUSE_POSITION     32804
+#define IDS_NOT_ENOUGH_MEMORY           32805
+#define IDS_NOT_ENOUGH_UNDO_SPACE       32806
+#define IDS_NOT_ENOUGH_DISK_SPACE       32807
 #define ID_VIEW_ZOOMINVERT              32810
 #define ID_VIEW_ZOOMOUTHOR              32811
 #define ID_VIEW_ZOOMOUTVERT             32812
@@ -238,6 +252,13 @@
 #define IDS_REOPEN_IN_DIRECT_MODE       32840
 #define IDS_RELOAD_COMPRESSED_FILE      32841
 #define ID_INDICATOR_SCALE              32842
+#define IDS_UNABLE_TO_OPEN_WMA_FILE     32843
+#define IDS_CANT_OPEN_WMA_DECODER       32844
+#define IDS_CANT_COMMIT_FILE_DATA       32845
+#define IDS_UNABLE_TO_RENAME_TEMPORARY_FILE 32846
+#define IDS_UNABLE_TO_REOPEN_AS         32847
+#define IDS_DIRECTORY_ACCESS_DENIED     32848
+#define IDS_DIRECTORY_NOT_FOUND         32849
 #define IDC_VIEW_AMPL_RULER_PERCENT     32900
 #define ID_FILE_PROPERTIES              40000
 #define ID_VIEW_ZOOMVERT_NORMAL         40001
@@ -313,15 +334,17 @@
 #define ID_VIEW_HOR_SCALE_2048          40083
 #define ID_VIEW_HOR_SCALE_4096          40084
 #define ID_VIEW_HOR_SCALE_8192          40085
+#define ID_TOOLS_CDGRAB                 40086
+#define ID_VIEW_HIDE_SPECTRUMSECTION    40087
 
 // Next default values for new objects
 //
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_3D_CONTROLS                     1
-#define _APS_NEXT_RESOURCE_VALUE        149
-#define _APS_NEXT_COMMAND_VALUE         40086
-#define _APS_NEXT_CONTROL_VALUE         1074
+#define _APS_NEXT_RESOURCE_VALUE        161
+#define _APS_NEXT_COMMAND_VALUE         40088
+#define _APS_NEXT_CONTROL_VALUE         1084
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif

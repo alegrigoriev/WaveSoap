@@ -235,7 +235,8 @@ CWmaDecoder::CWmaDecoder()
 	ReaderStatus(WMT_ERROR),
 //m_DstPosStart(0),
 //m_DstCopyPos(0),
-	StreamTime(0),
+	m_CurrentStreamTime(0),
+	m_bNeedNextSample(false),
 	m_BufferLengthTime(0),
 	m_Bitrate(1),
 	m_dwAudioOutputNum(0)
@@ -337,8 +338,8 @@ HRESULT STDMETHODCALLTYPE CWmaDecoder::OnSample( /* [in] */ DWORD dwOutputNum,
 
 	hr = pSample->GetBufferAndLength( &pData, &cbData);
 
-	TRACE("CWmaDecoder::OnSample, time=%d ms, %d bytes, hr=%X\n",
-		DWORD(cnsSampleTime/10000), cbData, hr);
+	if (0) TRACE("CWmaDecoder::OnSample, time=%d ms, %d bytes, hr=%X\n",
+				DWORD(cnsSampleTime/10000), cbData, hr);
 	if( FAILED( hr ) )
 	{
 		return hr;
@@ -373,17 +374,28 @@ HRESULT STDMETHODCALLTYPE CWmaDecoder::OnSample( /* [in] */ DWORD dwOutputNum,
 	m_DstCopyPos = DstCopyPos;  // to avoid race condition
 	m_DstCopySample = DstCopySample;
 
-	m_SignalEvent.SetEvent();
 	// ask for next buffer
+	m_CurrentStreamTime = cnsSampleTime + cnsSampleDuration;
+	m_bNeedNextSample = true;
+	m_SignalEvent.SetEvent();
+	return S_OK;
+}
+
+void CWmaDecoder::DeliverNextSample()
+{
+	if ( ! m_bNeedNextSample)
+	{
+		return;
+	}
+	m_bNeedNextSample = false;
 	if (m_pAdvReader)
 	{
-		m_pAdvReader->DeliverTime(cnsSampleTime + cnsSampleDuration + m_BufferLengthTime);
+		m_pAdvReader->DeliverTime(m_CurrentStreamTime + m_BufferLengthTime);
 	}
 	else
 	{
 		TRACE("NULL == m_pAdvReader, m_Reader = %X\n", m_Reader);
 	}
-	return S_OK;
 }
 
 BOOL CWmaDecoder::Init()
@@ -401,7 +413,8 @@ BOOL CWmaDecoder::Init()
 		m_Reader = NULL;
 		return FALSE;
 	}
-	StreamTime = 0;
+	m_CurrentStreamTime = 0;
+	m_bNeedNextSample = true;
 	return TRUE;
 }
 
