@@ -14,16 +14,13 @@ BOOL CResampleContext::InitResample(CWaveFile & SrcFile, CWaveFile &DstFile,
 
 	m_Resample.InitResample(FrequencyRatio, FilterLength, SrcFile.Channels());
 
-	WAVEFORMATEX * pWf = m_SrcFile.GetWaveFormat();
-	MMCKINFO * pCk = m_SrcFile.GetDataChunk();
-	m_SrcStart = pCk->dwDataOffset;
+	m_SrcStart = m_SrcFile.SampleToPosition(0);
 	m_SrcCopyPos = m_SrcStart;
-	m_SrcEnd = m_SrcStart + pCk->cksize;
+	m_SrcEnd = m_SrcFile.SampleToPosition(LAST_SAMPLE);
 
-	pCk = m_DstFile.GetDataChunk();
-	m_DstStart = pCk->dwDataOffset;
+	m_DstStart = m_DstFile.SampleToPosition(0);
 	m_DstCopyPos = m_DstStart;
-	m_DstEnd = m_DstStart + pCk->cksize;
+	m_DstEnd = m_DstFile.SampleToPosition(LAST_SAMPLE);
 
 	return TRUE;
 }
