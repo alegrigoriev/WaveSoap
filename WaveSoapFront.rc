@@ -280,9 +280,9 @@ BEGIN
         MENUITEM "Spectrum Section\tAlt+3",     ID_VIEW_SPECTRUMSECTION
         MENUITEM "&Outline\tAlt+4",             ID_VIEW_OUTLINE
         MENUITEM SEPARATOR
-        MENUITEM "Zoom In Time\tGray +",        ID_VIEW_ZOOMINHOR2
-        MENUITEM "Zoom Out Time\tGray -",       ID_VIEW_ZOOMOUTHOR2
-        MENUITEM "Zoom To Selection",           ID_VIEW_ZOOM_SELECTION
+        MENUITEM "Zoom In Time\tNum +",         ID_VIEW_ZOOMINHOR2
+        MENUITEM "Zoom Out Time\tNum -",        ID_VIEW_ZOOMOUTHOR2
+        MENUITEM "Zoom To Selection\tShift+Num +", ID_VIEW_ZOOM_SELECTION
         POPUP "Time Ruler"
         BEGIN
             MENUITEM "Enable\tAlt+5",               ID_VIEW_TIME_RULER
@@ -335,7 +335,7 @@ BEGIN
     END
     POPUP "&Tools"
     BEGIN
-        MENUITEM "I&nterpolate",                ID_TOOLS_INTERPOLATE
+        MENUITEM "I&nterpolate\tCtrl+I",        ID_TOOLS_INTERPOLATE
         MENUITEM "&Expression Evaluation...",   ID_PROCESS_SYNTHESIS_EXPRESSION_EVALUATION
 
         MENUITEM "&Synthesis",                  ID_TOOLS_SYNTHESIS
@@ -448,10 +448,10 @@ BEGIN
         MENUITEM "Marker...\tM",                40127
         MENUITEM "Paste\tCtrl+V",               ID_EDIT_PASTE
         MENUITEM SEPARATOR
-        MENUITEM "&Zoom In Time\tGray +",       ID_VIEW_ZOOMINHOR2
-        MENUITEM "Zoom &Out Time\tGray -",      ID_VIEW_ZOOMOUTHOR2
-        MENUITEM "Zoom In &Full",               ID_VIEW_ZOOMIN_HOR_FULL
-        MENUITEM "Zoom Previous\tCtrl+Gray +",  ID_VIEW_ZOOMPREVIOUS
+        MENUITEM "&Zoom In Time\tNum +",        ID_VIEW_ZOOMINHOR2
+        MENUITEM "Zoom &Out Time\tNum -",       ID_VIEW_ZOOMOUTHOR2
+        MENUITEM "Zoom In &Full\tCtrl+Num +",   ID_VIEW_ZOOMIN_HOR_FULL
+        MENUITEM "Zoom Previous\tCtrl+Num -",   ID_VIEW_ZOOMPREVIOUS
         MENUITEM SEPARATOR
         MENUITEM "Zoom In Amplitude\tAlt+Up",   ID_VIEW_ZOOMINVERT
         MENUITEM "Zoom Out Amplitude\tAlt+Down", ID_VIEW_ZOOMOUTVERT
@@ -466,15 +466,15 @@ BEGIN
         MENUITEM "Paste\tCtrl+V",               ID_EDIT_PASTE
         MENUITEM "Cut\tCtrl+X",                 ID_EDIT_CUT
         MENUITEM "Delete\tDel",                 ID_EDIT_DELETE
-        MENUITEM "&Region...",                  IDC_EDIT_WAVE_REGION
+        MENUITEM "&Region...\tR",               IDC_EDIT_WAVE_REGION
         MENUITEM SEPARATOR
-        MENUITEM "&Zoom In Time",               ID_VIEW_ZOOMINHOR2
-        MENUITEM "Zoom &Out Time",              ID_VIEW_ZOOMOUTHOR2
-        MENUITEM "Zoom In &Full",               ID_VIEW_ZOOMIN_HOR_FULL
-        MENUITEM "Zoom To Selection",           ID_VIEW_ZOOM_SELECTION
+        MENUITEM "&Zoom In Time\tNum +",        ID_VIEW_ZOOMINHOR2
+        MENUITEM "Zoom &Out Time\tNum -",       ID_VIEW_ZOOMOUTHOR2
+        MENUITEM "Zoom In &Full\tCtrl+Num +",   ID_VIEW_ZOOMIN_HOR_FULL
+        MENUITEM "Zoom To Selection\tShift+Num +", ID_VIEW_ZOOM_SELECTION
         MENUITEM SEPARATOR
-        MENUITEM "Zoom In Amplitude",           ID_VIEW_ZOOMINVERT
-        MENUITEM "Zoom Out Amplitude",          ID_VIEW_ZOOMOUTVERT
+        MENUITEM "Zoom In Amplitude\tAlt+Up",   ID_VIEW_ZOOMINVERT
+        MENUITEM "Zoom Out Amplitude\tAlt+Down", ID_VIEW_ZOOMOUTVERT
     END
 END
 
@@ -485,11 +485,11 @@ BEGIN
         MENUITEM "&Marker...\tM",               IDC_EDIT_WAVE_MARKER
         MENUITEM "Paste\tCtrl+V",               ID_EDIT_PASTE
         MENUITEM SEPARATOR
-        MENUITEM "&Zoom In Time\tGray +",       ID_VIEW_ZOOMINHOR2
-        MENUITEM "Zoom &Out Time\tGray -",      ID_VIEW_ZOOMOUTHOR2
-        MENUITEM "Zoom In &Full",               ID_VIEW_ZOOMIN_HOR_FULL
-        MENUITEM "Zoom To Selection",           ID_VIEW_ZOOM_SELECTION
-        MENUITEM "Zoom Previous\tCtrl+Gray +",  ID_VIEW_ZOOMPREVIOUS
+        MENUITEM "&Zoom In Time\tNum +",        ID_VIEW_ZOOMINHOR2
+        MENUITEM "Zoom &Out Time\tNum -",       ID_VIEW_ZOOMOUTHOR2
+        MENUITEM "Zoom In &Full\tCtrl+Num +",   ID_VIEW_ZOOMIN_HOR_FULL
+        MENUITEM "Zoom To Selection\tShift+Num +", ID_VIEW_ZOOM_SELECTION
+        MENUITEM "Zoom Previous\tCtrl+Num -",   ID_VIEW_ZOOMPREVIOUS
         MENUITEM SEPARATOR
         MENUITEM "Zoom In Frequency\tAlt+Up",   ID_VIEW_ZOOMINVERT
         MENUITEM "Zoom Out Frequency\tAlt+Down", ID_VIEW_ZOOMOUTVERT
@@ -867,8 +867,6 @@ BEGIN
     "D",            ID_EDIT_SELECTION,      VIRTKEY, CONTROL, NOINVERT
     VK_BACK,        ID_EDIT_UNDO,           VIRTKEY, ALT, NOINVERT
     "Z",            ID_EDIT_UNDO,           VIRTKEY, CONTROL, NOINVERT
-    "M",            IDC_EDIT_WAVE_MARKER,   VIRTKEY, NOINVERT
-    "R",            IDC_EDIT_WAVE_REGION,   VIRTKEY, NOINVERT
     "N",            ID_FILE_NEW,            VIRTKEY, CONTROL, NOINVERT
     "N",            ID_FILE_NEW,            VIRTKEY, SHIFT, CONTROL, 
                                                     NOINVERT
@@ -902,10 +900,13 @@ BEGIN
     VK_SUBTRACT,    ID_VIEW_ZOOMOUTHOR2,    VIRTKEY, NOINVERT
     VK_DOWN,        ID_VIEW_ZOOMOUTVERT,    VIRTKEY, ALT, NOINVERT
     VK_SUBTRACT,    ID_VIEW_ZOOMPREVIOUS,   VIRTKEY, CONTROL, NOINVERT
+    "M",            IDC_EDIT_WAVE_MARKER,   VIRTKEY, NOINVERT
+    "R",            IDC_EDIT_WAVE_REGION,   VIRTKEY, NOINVERT
     VK_SPACE,       IDC_PLAY_AND_STOP,      VIRTKEY, NOINVERT
     VK_RETURN,      IDC_SOUND_PAUSE,        VIRTKEY, NOINVERT
     "2",            IDC_VIEW_SHOW_FFT,      VIRTKEY, ALT, NOINVERT
     "1",            IDC_VIEW_WAVEFORM,      VIRTKEY, ALT, NOINVERT
+    VK_ADD,         ID_VIEW_ZOOM_SELECTION, VIRTKEY, SHIFT, NOINVERT
 END
 
 
