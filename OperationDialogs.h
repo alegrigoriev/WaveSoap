@@ -162,16 +162,16 @@ protected:
 /////////////////////////////////////////////////////////////////////////////
 // CSelectionDialog dialog
 
-class CSelectionDialog : public CDialog
+class CSelectionDialog : public CUiUpdatedDlg
 {
-	typedef CDialog BaseClass;
+	typedef CUiUpdatedDlg BaseClass;
 // Construction
 public:
 	CSelectionDialog(SAMPLE_INDEX Start, SAMPLE_INDEX End, SAMPLE_INDEX CaretPos,
 					CHANNEL_MASK Channel,
 					CWaveFile & WaveFile, int TimeFormat,
 					BOOL bAllowFileExtension = FALSE,
-					CWnd* pParent = NULL);   // standard constructor
+					UINT TemplateId = IDD, CWnd* pParent = NULL);   // standard constructor
 
 	SAMPLE_INDEX GetStart() const
 	{
@@ -222,6 +222,7 @@ protected:
 
 	void AdjustSelection(SAMPLE_INDEX Start, SAMPLE_INDEX End,
 						NUMBER_OF_SAMPLES Length);
+	void UpdateComboSelection();
 
 	struct Selection
 	{

@@ -469,8 +469,9 @@ CSelectionDialog::CSelectionDialog(SAMPLE_INDEX Start, SAMPLE_INDEX End,
 									CWaveFile & WaveFile,
 									int TimeFormat,
 									BOOL bAllowFileExtension,
+									UINT id,
 									CWnd* pParent /*=NULL*/)
-	: BaseClass(IDD, pParent)
+	: BaseClass(id, pParent)
 	, m_Chan(-1)
 	, m_Start(0)
 	, m_End(0)
@@ -542,8 +543,12 @@ CSelectionDialog::CSelectionDialog(SAMPLE_INDEX Start, SAMPLE_INDEX End,
 void CSelectionDialog::DoDataExchange(CDataExchange* pDX)
 {
 	BaseClass::DoDataExchange(pDX);
+	if (NULL != GetDlgItem(IDC_COMBO_SELECTION))
+	{
+		DDX_Control(pDX, IDC_COMBO_SELECTION, m_SelectionCombo);
+		DDX_CBIndex(pDX, IDC_COMBO_SELECTION, m_SelectionNumber);
+	}
 	//{{AFX_DATA_MAP(CSelectionDialog)
-	DDX_Control(pDX, IDC_COMBO_SELECTION, m_SelectionCombo);
 	DDX_Control(pDX, IDC_SPIN_START, m_SpinStart);
 	DDX_Control(pDX, IDC_SPIN_LENGTH, m_SpinLength);
 	DDX_Control(pDX, IDC_SPIN_END, m_SpinEnd);
@@ -551,9 +556,9 @@ void CSelectionDialog::DoDataExchange(CDataExchange* pDX)
 	DDX_Control(pDX, IDC_COMBO_START, m_eStart);
 	DDX_Control(pDX, IDC_COMBO_END, m_eEnd);
 	DDX_CBIndex(pDX, IDC_COMBO_TIME_FORMAT, m_TimeFormatIndex);
-	DDX_CBIndex(pDX, IDC_COMBO_SELECTION, m_SelectionNumber);
 	//}}AFX_DATA_MAP
-	if (m_WaveFile.Channels() >= 2)
+	if (NULL != GetDlgItem(IDC_RADIO_CHANNEL)
+		&& m_WaveFile.Channels() >= 2)
 	{
 		DDX_Radio(pDX, IDC_RADIO_CHANNEL, m_Chan);
 	}
@@ -655,7 +660,8 @@ BOOL CSelectionDialog::OnInitDialog()
 		}
 	}
 
-	m_SelectionCombo.SetCurSel(FindSelection(m_Start, m_End));
+	UpdateComboSelection();
+
 	return TRUE;  // return TRUE unless you set the focus to a control
 }
 
@@ -783,25 +789,33 @@ void CSelectionDialog::AdjustSelection(SAMPLE_INDEX Start, SAMPLE_INDEX End,
 	m_eLength.SetTimeSample(m_Length);
 }
 
+void CSelectionDialog::UpdateComboSelection()
+{
+	if (NULL != m_SelectionCombo.m_hWnd)
+	{
+		m_SelectionCombo.SetCurSel(FindSelection(m_Start, m_End));
+	}
+}
+
 void CSelectionDialog::OnKillfocusEditEnd()
 {
 	AdjustSelection(m_Start, m_eEnd.UpdateTimeSample(), m_Length);
 
-	m_SelectionCombo.SetCurSel(FindSelection(m_Start, m_End));
+	UpdateComboSelection();
 }
 
 void CSelectionDialog::OnKillfocusEditLength()
 {
 	AdjustSelection(m_Start, m_End, m_eLength.UpdateTimeSample());
 
-	m_SelectionCombo.SetCurSel(FindSelection(m_Start, m_End));
+	UpdateComboSelection();
 }
 
 void CSelectionDialog::OnKillfocusEditStart()
 {
 	AdjustSelection(m_eStart.UpdateTimeSample(), m_End, m_Length);
 
-	m_SelectionCombo.SetCurSel(FindSelection(m_Start, m_End));
+	UpdateComboSelection();
 }
 
 void CSelectionDialog::OnSelchangeComboSelection()
@@ -830,6 +844,10 @@ void CSelectionDialog::OnSelchangeComboSelection()
 
 void CSelectionDialog::AddSelection(LPCTSTR Name, SAMPLE_INDEX begin, SAMPLE_INDEX end)
 {
+	if (NULL == m_SelectionCombo.m_hWnd)
+	{
+		return;
+	}
 	m_SelectionCombo.AddString(Name);
 	Selection s = {begin, end};
 	m_Selections.push_back(s);
