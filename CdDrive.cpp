@@ -151,6 +151,10 @@ CCdDrive::CCdDrive(CCdDrive const & Drive, BOOL UseAspi)
 	m_bNECDrive(false),
 	m_bUseNonStandardRead(false),
 	m_bDriveBusy(false),
+	m_bTrayLoading(true),
+	m_bTrayOut(false),
+	m_bEjectSupported(true),
+	m_bSlotLoading(false),
 	m_bDoorLocked(false)
 {
 	if (UseAspi)
@@ -223,6 +227,10 @@ CCdDrive::CCdDrive(BOOL UseAspi)
 	m_bNECDrive(false),
 	m_bUseNonStandardRead(false),
 	m_bDriveBusy(false),
+	m_bTrayLoading(true),
+	m_bTrayOut(false),
+	m_bSlotLoading(false),
+	m_bEjectSupported(true),
 	m_bDoorLocked(false)
 {
 	memzero(m_ScsiAddr);
@@ -408,7 +416,6 @@ BOOL CCdDrive::Open(TCHAR letter)
 	CString path;
 	path.Format("\\\\.\\%c:", letter);
 
-	// access MAXIMUM_ALLOWED is necessary to have READ_ATTRIBUTES privilege
 	HANDLE Drive = CreateFile(
 							path,
 							MAXIMUM_ALLOWED,
@@ -425,6 +432,7 @@ BOOL CCdDrive::Open(TCHAR letter)
 
 	m_hDrive = Drive;   // we will needit
 
+	// access 0 is necessary to have READ_ATTRIBUTES privilege
 	Drive = CreateFile(
 						path,
 						0,
@@ -510,6 +518,17 @@ BOOL CCdDrive::Open(TCHAR letter)
 		{
 			m_bNECDrive = true;
 		}
+	}
+	struct MODE: ModeInfoHeader, CDCapabilitiesMechStatusModePage
+	{
+	} mode;
+	ModeSenseCDB msc(sizeof mode, mode.Code);
+	bytes = sizeof mode;
+	if (SendScsiCommand( & msc, & mode, & bytes, SCSI_IOCTL_DATA_IN, NULL))
+	{
+		m_bSlotLoading = mode.LoadingMechanismType == 2;
+		m_bTrayLoading = mode.LoadingMechanismType == 1;
+		m_bEjectSupported = mode.Eject;
 	}
 	return TRUE;
 }
@@ -876,6 +895,7 @@ BOOL CCdDrive::ReadToc(CDROM_TOC * pToc)
 	m_OffsetBytesPerSector = 2048;
 	if (res)
 	{
+		m_bTrayOut = false;
 		DISK_GEOMETRY geom;
 		if (DeviceIoControl(m_hDrive, IOCTL_CDROM_GET_DRIVE_GEOMETRY,
 							NULL, 0, & geom, sizeof geom, & dwReturned, NULL)
@@ -943,11 +963,11 @@ CdMediaChangeState CCdDrive::CheckForMediaChange()
 		else if (MediaChangeCount != m_MediaChangeCount)
 		{
 			m_MediaChangeCount = MediaChangeCount;
-			return CdMediaStateChanged;
+			return CdMediaStateDiskChanged;
 		}
 		else
 		{
-			return CdMediaStateSameMedia;
+			return CdMediaStateReady;
 		}
 	}
 	return CdMediaStateNotReady;
@@ -1323,4 +1343,66 @@ bool CCdDrive::IsDriveBusy(TCHAR letter)
 }
 
 LONG CCdDrive::m_DriveBusyCount['Z' - 'A' + 1]; // zero-initialized
+
+BOOL CCdDrive::CanEjectMedia()
+{
+	// true: tray/slot or unknown
+	if (NULL == m_hDriveAttributes
+		&& ! m_bScsiCommandsAvailable)
+	{
+		return FALSE;
+	}
+	return m_bEjectSupported && ! m_bTrayOut;
+}
+
+BOOL CCdDrive::CanLoadMedia()
+{
+	if (NULL == m_hDriveAttributes
+		&& ! m_bScsiCommandsAvailable)
+	{
+		return FALSE;
+	}
+	// TRUE - tray mechanism
+	// false: all others
+	return m_bTrayLoading && m_bTrayOut;
+}
+
+void CCdDrive::EjectMedia()
+{
+	DWORD bytes = 0;
+	if (m_hDriveAttributes)
+	{
+		BOOL res = DeviceIoControl(m_hDrive, IOCTL_STORAGE_EJECT_MEDIA,
+									NULL, 0, NULL, 0, & bytes, NULL);
+		TRACE("IOCTL_STORAGE_EJECT_MEDIA returned %d, last error=%d\n", res, GetLastError());
+		m_bTrayOut = res != 0;
+	}
+	else if (m_bScsiCommandsAvailable)
+	{
+		StartStopCdb ssc(StartStopCdb::NoChange, false, true, false);
+		m_bTrayOut = 0 != SendScsiCommand( & ssc, NULL, & bytes, SCSI_IOCTL_DATA_UNSPECIFIED, NULL);
+	}
+}
+
+void CCdDrive::LoadMedia()
+{
+	DWORD bytes = 0;
+	if (m_hDriveAttributes)
+	{
+		BOOL res = DeviceIoControl(m_hDrive, IOCTL_STORAGE_LOAD_MEDIA2,
+									NULL, 0, NULL, 0, & bytes, NULL);
+		TRACE("IOCTL_STORAGE_LOAD_MEDIA2 returned %d, last error=%d\n", res, GetLastError());
+	}
+	else if (m_bScsiCommandsAvailable)
+	{
+		StartStopCdb ssc(StartStopCdb::NoChange, true, true, false);
+		SendScsiCommand( & ssc, NULL, & bytes, SCSI_IOCTL_DATA_UNSPECIFIED, NULL);
+	}
+	m_bTrayOut = false;
+}
+
+BOOL CCdDrive::IsTrayOpen()
+{
+	return m_bTrayOut;
+}
 

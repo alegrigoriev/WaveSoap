@@ -938,9 +938,12 @@ struct SRB_Abort : SRB
 
 enum CdMediaChangeState
 {
+	CdMediaStateUnknown,
 	CdMediaStateNotReady,
-	CdMediaStateSameMedia,
-	CdMediaStateChanged,
+	CdMediaStateReady,
+	CdMediaStateDiskChanged,
+	CdMediaStateBusy,
+	CdMediaStateNoDrives,
 };
 enum { CDDASectorSize = 2352} ;
 
@@ -1008,6 +1011,30 @@ public:
 	BOOL ReadSessions(CDROM_TOC * pToc);
 	void StopAudioPlay();
 
+	BOOL CanEjectMedia();
+	BOOL CanLoadMedia();
+	void EjectMedia();
+	void LoadMedia();
+	BOOL IsTrayOpen();
+	BOOL EjectSupported() const
+	{
+		return m_bEjectSupported;
+	}
+
+	BOOL IsSlotType() const
+	{
+		return m_bSlotLoading;
+	}
+	BOOL IsTrayType() const
+	{
+		return m_bTrayLoading;
+	}
+
+	void SetTrayOut(bool Out)
+	{
+		m_bTrayOut = Out;
+	}
+
 	CdMediaChangeState CheckForMediaChange();
 
 	BOOL SendScsiCommand(CD_CDB * pCdb, void * pData, DWORD * pDataLen,
@@ -1053,6 +1080,10 @@ protected:
 	bool m_bPlextorDrive;
 	bool m_bNECDrive;
 	bool m_bUseNonStandardRead;
+	bool m_bTrayLoading;
+	bool m_bSlotLoading;
+	bool m_bEjectSupported;
+	bool m_bTrayOut;
 	bool m_bDriveBusy;
 
 	void LoadAspi();

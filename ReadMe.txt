@@ -1,18 +1,13 @@
 Known problems and tasks:
 
-Handle situation when the CD file save directory is not accessible for writing
+Add eject CD button
 When showing a dialog for a document, make the doc active, then restore the previous one.
-CD grab: prompt for file replacement
 If CD recording not supported, SET SPEED WriteSpeed set to zero
 Restore CD speed to max rather than current!
 SetSpeed returned sense 5/24
-Restore 
-Make a few retries to read TOC after disk change
 Set speed doesn't work on Goldstar CDRW
 Add file format selection for CD grabbing
-Add check/uncheck icons to the header
 Add context menu to track list (check/uncheck all/selected)
-Add eject CD button
 Pass wave format to CD grabbing dialog
 Process Loss Of Streaming error
 Add CD grabbing
@@ -94,6 +89,7 @@ No Disk In Drive has a checkmark
 CD list combo height too low
 
 Deferred:
+Add check/uncheck icons to the header
 Move WMA error dialog to PostRetire, all initialization to Init()
 16 and 20 kbit/s WMA save is incomplete (not reproduced)
 During playback, scrolled remnants of playback cursor seen (video driver?)
@@ -103,6 +99,9 @@ Save As dialog is not centered first time (comdlg problem?)
 ??? When time/seconds format is set for status bar, MM:SS is actually shown
 
 Done:
+Make a few retries to read TOC after disk change
+CD grab: prompt for file replacement
+Handle situation when the CD file save directory is not accessible for writing
 Add comboboxes to Author, Album, Folder
 Save WAVEFORMAT of an open WMA/MP3 file
 Process Space key in track list
