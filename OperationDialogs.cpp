@@ -34,7 +34,7 @@ CCopyChannelsSelectDlg::CCopyChannelsSelectDlg(CHANNEL_MASK Channels, CWnd* pPar
 {
 	//{{AFX_DATA_INIT(CCopyChannelsSelectDlg)
 	//}}AFX_DATA_INIT
-	CHANNEL_MASK AllChannels = 3; //WaveFile.ChannelsMask();
+	CHANNEL_MASK const AllChannels = 3; //WaveFile.ChannelsMask();
 
 	if ((Channels & AllChannels) == AllChannels)
 	{
