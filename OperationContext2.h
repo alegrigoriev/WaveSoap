@@ -642,6 +642,9 @@ public:
 	CReverseOperation(CWaveSoapFrontDoc * pDoc, UINT StatusStringId, UINT OperationNameId);
 	~CReverseOperation();
 
+	BOOL InitDestination(CWaveFile & DstFile, SAMPLE_INDEX StartSample, SAMPLE_INDEX EndSample,
+						CHANNEL_MASK chan, BOOL NeedUndo);
+
 protected:
 
 	CCopyUndoContext * m_pUndoLow;
