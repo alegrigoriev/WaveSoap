@@ -12,7 +12,6 @@
 #include "FolderDialog.h"
 #include "BladeMP3EncDLL.h"
 #include "WaveSoapFrontDoc.h"
-#include ".\splittofilesdialog.h"
 
 enum
 {
@@ -24,10 +23,10 @@ enum
 
 // CSplitToFilesDialog dialog
 
-CSplitToFilesDialog::CSplitToFilesDialog(CWaveFile & WaveFile, CWnd* pParent /*=NULL*/)
-	: BaseClass(CSplitToFilesDialog::IDD, pParent)
+CSplitToFilesDialog::CSplitToFilesDialog(CWaveFile & WaveFile, int TimeFormat, CWnd* pParent /*=NULL*/)
+	: BaseClass(IDD, pParent)
 	, CFileSaveUiSupport(WaveFile.GetWaveFormat())
-	, m_WaveFile(WaveFile)
+	, CSelectionUiSupport(0, 0, 0, ALL_CHANNELS, WaveFile, TimeFormat, FALSE)
 	, m_FileTypeFlags(0)
 	, m_RecentFolders(& m_Profile, _T("RecentOpenDirs"), _T("Dir%d"), 15)
 	, m_RecentFilenamePrefixes(& m_Profile, _T("RecentFilenamePrefixes"), _T("Prefix%d"), 15,
@@ -36,6 +35,48 @@ CSplitToFilesDialog::CSplitToFilesDialog(CWaveFile & WaveFile, CWnd* pParent /*=
 	// fill the files list
 	WaveFile.GetSortedFileSegments(m_Files);
 	m_Profile.AddItem(_T("Settings"), _T("SplitToFileType"), m_FileType, SoundFileWav, SoundFileWav, SoundFileWma);
+
+	// resizable dialog support:
+	static const ResizableDlgItem items[] =
+	{
+		IDC_LIST_FILES, ExpandRight | ExpandDown,
+		IDC_COMBO_FILE_TYPE, ExpandRight | MoveDown,
+		IDC_COMBO_SAVE_DIR, ExpandRight | MoveDown,
+		IDC_COMBO_FILE_TYPE, ExpandRight | MoveDown,
+		IDC_COMBO_FILENAME_PREFIX, ExpandRight | MoveDown,
+		IDC_COMBO_FORMAT_TAG, ExpandRight | MoveDown,
+		IDC_COMBO_FORMAT_ATTRIBUTES, ExpandRight | MoveDown,
+		IDC_COMBO_SELECTION, ExpandRight | MoveDown,
+		IDC_COMBO_START, ExpandRight | MoveDown,
+		IDC_COMBO_END, ExpandRight | MoveDown,
+		IDC_EDIT_LENGTH, ExpandRight | MoveDown,
+		IDC_COMBO_TIME_FORMAT, MoveDown,
+
+		IDC_BUTTON_BROWSE_FOLDER, MoveRight | MoveDown,
+		IDC_CHECK_COMPATIBLE_FORMATS, MoveRight | MoveDown,
+		IDC_SPIN_START, MoveRight | MoveDown,
+		IDC_SPIN_END, MoveRight | MoveDown,
+		IDC_SPIN_LENGTH, MoveRight | MoveDown,
+
+		IDC_STATIC1, MoveDown,
+		IDC_STATIC2, MoveDown,
+		IDC_STATIC3, MoveDown,
+		IDC_STATIC4, MoveDown,
+		IDC_STATIC5, MoveDown,
+		IDC_STATIC6, MoveDown,
+		IDC_STATIC7, MoveDown,
+		IDC_STATIC8, MoveDown,
+		IDC_STATIC_FORMAT, MoveDown,
+		IDC_STATIC_FORMAT_ATTRIBUTES, MoveDown,
+
+		IDOK, MoveRight,
+		IDCANCEL, MoveRight,
+		IDC_BUTTON_NEW, MoveRight,
+		IDC_BUTTON_DELETE, MoveRight,
+		IDC_BUTTON_PLAY, MoveRight,
+	};
+
+	SetResizeableItems(items, countof(items));
 }
 
 CSplitToFilesDialog::~CSplitToFilesDialog()
@@ -54,6 +95,7 @@ void CSplitToFilesDialog::ShowDlgItem(UINT nID, int nCmdShow)
 void CSplitToFilesDialog::DoDataExchange(CDataExchange* pDX)
 {
 	BaseClass::DoDataExchange(pDX);
+	CSelectionUiSupport::DoDataExchange(pDX, this);
 
 	DDX_Control(pDX, IDC_LIST_FILES, m_FilesList);
 	DDX_Control(pDX, IDC_COMBO_FILE_TYPE, m_SaveAsTypesCombo);
@@ -337,8 +379,16 @@ BEGIN_MESSAGE_MAP(CSplitToFilesDialog, BaseClass)
 	ON_CBN_SELCHANGE(IDC_COMBO_FORMAT_TAG, OnComboFormatsChange)
 	ON_CBN_SELCHANGE(IDC_COMBO_FORMAT_ATTRIBUTES, OnComboAttributesChange)
 	ON_CBN_SELCHANGE(IDC_COMBO_FILE_TYPE, OnComboFileTypeSelChange)
-//    ON_NOTIFY(LVN_BEGINLABELEDIT, IDC_LIST_FILES, OnLvnBeginlabeleditListFiles)
 	ON_NOTIFY(LVN_ENDLABELEDIT, IDC_LIST_FILES, OnLvnEndlabeleditListFiles)
+// CSelectionSupport
+	ON_CBN_SELCHANGE(IDC_COMBO_TIME_FORMAT, OnSelchangeComboTimeFormat)
+	ON_CBN_KILLFOCUS(IDC_COMBO_END, OnKillfocusEditEnd)
+	ON_NOTIFY(CTimeSpinCtrl::TSC_BUDDY_CHANGE, IDC_SPIN_END, OnBuddyChangeSpinEnd)
+	ON_EN_KILLFOCUS(IDC_EDIT_LENGTH, OnKillfocusEditLength)
+	ON_NOTIFY(CTimeSpinCtrl::TSC_BUDDY_CHANGE, IDC_SPIN_LENGTH, OnBuddyChangeSpinLength)
+	ON_CBN_KILLFOCUS(IDC_COMBO_START, OnKillfocusEditStart)
+	ON_NOTIFY(CTimeSpinCtrl::TSC_BUDDY_CHANGE, IDC_SPIN_START, OnBuddyChangeSpinStart)
+	ON_CBN_SELCHANGE(IDC_COMBO_SELECTION, OnSelchangeComboSelection)
 END_MESSAGE_MAP()
 
 void CSplitToFilesDialog::OnCompatibleFormatsClicked()
@@ -387,13 +437,6 @@ void CSplitToFilesDialog::OnBnClickedButtonBrowseFolder()
 		m_eSaveToFolder.SetWindowText(m_sSaveToFolder);
 		// TODO: check if the folder exists and create if necessary
 	}
-}
-
-void CSplitToFilesDialog::OnLvnBeginlabeleditListFiles(NMHDR *pNMHDR, LRESULT *pResult)
-{
-	NMLVDISPINFO *pDispInfo = reinterpret_cast<NMLVDISPINFO*>(pNMHDR);
-	// TODO: Add your control notification handler code here
-	*pResult = 0;
 }
 
 BOOL CSplitToFilesDialog::PreTranslateMessage(MSG* pMsg)
@@ -469,9 +512,9 @@ void CSplitToFilesDialog::SetFileType(int nType, BOOL Force)
 
 		ShowDlgItem(IDC_STATIC_FORMAT, SW_SHOWNOACTIVATE);
 		ShowDlgItem(IDC_COMBO_FORMAT_TAG, SW_SHOWNOACTIVATE);
-		ShowDlgItem(IDC_COMBO_FORMAT_ATTRIBUTES, SW_SHOWNOACTIVATE);
-		ShowDlgItem(IDC_CHECK_COMPATIBLE_FORMATS, SW_SHOWNOACTIVATE);
-		ShowDlgItem(IDC_STATIC_FORMAT_ATTRIBUTES, SW_SHOWNOACTIVATE);
+		//ShowDlgItem(IDC_COMBO_FORMAT_ATTRIBUTES, SW_SHOWNOACTIVATE);
+		//ShowDlgItem(IDC_CHECK_COMPATIBLE_FORMATS, SW_SHOWNOACTIVATE);
+		//ShowDlgItem(IDC_STATIC_FORMAT_ATTRIBUTES, SW_SHOWNOACTIVATE);
 
 		FillFormatTagCombo(ExcludeFormats, -1, WaveFormatExcludeFormats);
 
@@ -482,11 +525,12 @@ void CSplitToFilesDialog::SetFileType(int nType, BOOL Force)
 		// replace Format with Encoder: (LAME, Fraunhofer
 		s.LoadString(IDS_ENCODER);
 		SetDlgItemText(IDC_STATIC_FORMAT, s);
+
 		ShowDlgItem(IDC_STATIC_FORMAT, SW_SHOWNOACTIVATE);
 		ShowDlgItem(IDC_COMBO_FORMAT_TAG, SW_SHOWNOACTIVATE);
-		ShowDlgItem(IDC_COMBO_FORMAT_ATTRIBUTES, SW_SHOWNOACTIVATE);
-		ShowDlgItem(IDC_STATIC_FORMAT_ATTRIBUTES, SW_SHOWNOACTIVATE);
-		ShowDlgItem(IDC_CHECK_COMPATIBLE_FORMATS, SW_SHOWNOACTIVATE);
+		//ShowDlgItem(IDC_COMBO_FORMAT_ATTRIBUTES, SW_SHOWNOACTIVATE);
+		//ShowDlgItem(IDC_STATIC_FORMAT_ATTRIBUTES, SW_SHOWNOACTIVATE);
+		//ShowDlgItem(IDC_CHECK_COMPATIBLE_FORMATS, SW_SHOWNOACTIVATE);
 		// Hide Comments, show Artist, Genre, Title
 		//
 		// set tag to MP3
@@ -509,9 +553,9 @@ void CSplitToFilesDialog::SetFileType(int nType, BOOL Force)
 		// remove Format: combo
 		ShowDlgItem(IDC_STATIC_FORMAT, SW_HIDE);
 		ShowDlgItem(IDC_COMBO_FORMAT_TAG, SW_HIDE);
-		ShowDlgItem(IDC_COMBO_FORMAT_ATTRIBUTES, SW_SHOWNOACTIVATE);
-		ShowDlgItem(IDC_STATIC_FORMAT_ATTRIBUTES, SW_SHOWNOACTIVATE);
-		ShowDlgItem(IDC_CHECK_COMPATIBLE_FORMATS, SW_SHOWNOACTIVATE);
+		//ShowDlgItem(IDC_COMBO_FORMAT_ATTRIBUTES, SW_SHOWNOACTIVATE);
+		//ShowDlgItem(IDC_STATIC_FORMAT_ATTRIBUTES, SW_SHOWNOACTIVATE);
+		//ShowDlgItem(IDC_CHECK_COMPATIBLE_FORMATS, SW_SHOWNOACTIVATE);
 		// fill profiles combo
 		FillWmaFormatCombo();
 		break;
@@ -527,6 +571,8 @@ BOOL CSplitToFilesDialog::OnInitDialog()
 	m_sFilenamePrefix = m_RecentFilenamePrefixes[0];
 
 	BaseClass::OnInitDialog();
+
+	InitSelectionUi();
 
 	m_eSaveToFolder.SetExtendedUI();
 	m_RecentFolders.LoadCombo(& m_eSaveToFolder);
@@ -642,3 +688,44 @@ void CSplitToFilesDialog::OnOK()
 
 	CFileSaveUiSupport::m_Profile.FlushAll();
 }
+
+void CSplitToFilesDialog::OnSelchangeComboTimeFormat()
+{
+	CSelectionUiSupport::OnSelchangeComboTimeFormat();
+}
+
+void CSplitToFilesDialog::OnBuddyChangeSpinEnd(NMHDR * pNmHdr, LRESULT * pResult)
+{
+	CSelectionUiSupport::OnBuddyChangeSpinEnd(pNmHdr, pResult);
+}
+
+void CSplitToFilesDialog::OnKillfocusEditEnd()
+{
+	CSelectionUiSupport::OnKillfocusEditEnd();
+}
+
+void CSplitToFilesDialog::OnBuddyChangeSpinLength(NMHDR * pNmHdr, LRESULT * pResult)
+{
+	CSelectionUiSupport::OnBuddyChangeSpinLength(pNmHdr, pResult);
+}
+
+void CSplitToFilesDialog::OnKillfocusEditLength()
+{
+	CSelectionUiSupport::OnKillfocusEditLength();
+}
+
+void CSplitToFilesDialog::OnBuddyChangeSpinStart(NMHDR * pNmHdr, LRESULT * pResult)
+{
+	CSelectionUiSupport::OnBuddyChangeSpinStart(pNmHdr, pResult);
+}
+
+void CSplitToFilesDialog::OnKillfocusEditStart()
+{
+	CSelectionUiSupport::OnKillfocusEditStart();
+}
+
+void CSplitToFilesDialog::OnSelchangeComboSelection()
+{
+	CSelectionUiSupport::OnSelchangeComboSelection();
+}
+
