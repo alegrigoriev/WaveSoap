@@ -1860,6 +1860,8 @@ void CCdReadingContext::PostRetire()
 	{
 		if (m_bSaveImmediately)
 		{
+			m_SrcFile.Close();
+			m_DstFile.Close();
 			m_pDocument->m_bClosing = true;
 			m_pDocument->DoFileSave();
 		}
