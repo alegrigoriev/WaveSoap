@@ -195,8 +195,10 @@ public:
 	CTimeEdit	m_eStart;
 	int		m_TimeFormatIndex;
 	//}}AFX_DATA
-
-
+	int m_TimeFormat;
+	long m_Position;
+	long m_FileLength;
+	const WAVEFORMATEX * m_pWf;
 // Overrides
 	// ClassWizard generated virtual function overrides
 	//{{AFX_VIRTUAL(CGotoDialog)
@@ -209,7 +211,8 @@ protected:
 
 	// Generated message map functions
 	//{{AFX_MSG(CGotoDialog)
-	// NOTE: the ClassWizard will add member functions here
+	afx_msg void OnSelchangeComboTimeFormat();
+	virtual BOOL OnInitDialog();
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 };
@@ -253,6 +256,92 @@ protected:
 	afx_msg void OnButtonSelection();
 	afx_msg void OnRadioDcSelect();
 	afx_msg void OnRadioAdjustSelectEdit();
+	//}}AFX_MSG
+	DECLARE_MESSAGE_MAP()
+};
+/////////////////////////////////////////////////////////////////////////////
+// CStatisticsDialog dialog
+
+class CStatisticsDialog : public CDialog
+{
+// Construction
+public:
+	CStatisticsDialog(CWnd* pParent = NULL);   // standard constructor
+
+// Dialog Data
+	//{{AFX_DATA(CStatisticsDialog)
+	enum { IDD = IDD_DIALOG_STATISTICS };
+	// NOTE: the ClassWizard will add data members here
+	//}}AFX_DATA
+
+	CStatisticsContext * m_pContext;
+	long m_SamplesPerSec;
+	long m_Cursor;
+	int m_ValueAtCursorLeft;
+	int m_ValueAtCursorRight;
+// Overrides
+	// ClassWizard generated virtual function overrides
+	//{{AFX_VIRTUAL(CStatisticsDialog)
+protected:
+	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV support
+	//}}AFX_VIRTUAL
+
+// Implementation
+protected:
+
+	// Generated message map functions
+	//{{AFX_MSG(CStatisticsDialog)
+	virtual BOOL OnInitDialog();
+	//}}AFX_MSG
+	DECLARE_MESSAGE_MAP()
+};
+/////////////////////////////////////////////////////////////////////////////
+// CNormalizeSoundDialog dialog
+
+class CNormalizeSoundDialog : public CDialog
+{
+// Construction
+public:
+	CNormalizeSoundDialog(CWnd* pParent = NULL);   // standard constructor
+
+// Dialog Data
+	//{{AFX_DATA(CNormalizeSoundDialog)
+	enum { IDD = IDD_DIALOG_NORMALIZE };
+	CStatic	m_SelectionStatic;
+	CSliderCtrl	m_SliderLevel;
+	CNumEdit	m_eLevel;
+	BOOL	m_bLockChannels;
+	BOOL	m_bUndo;
+	int		m_DbPercent;
+	//}}AFX_DATA
+
+	double m_dLevelDb;
+	double m_dLevelPercent;
+
+	long m_Start;
+	long m_End;
+	long m_FileLength;
+	int m_Chan;
+	int m_TimeFormat;
+	const WAVEFORMATEX * m_pWf;
+// Overrides
+	// ClassWizard generated virtual function overrides
+	//{{AFX_VIRTUAL(CNormalizeSoundDialog)
+protected:
+	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV support
+	//}}AFX_VIRTUAL
+
+// Implementation
+protected:
+	void UpdateSelectionStatic();
+
+	// Generated message map functions
+	//{{AFX_MSG(CNormalizeSoundDialog)
+	afx_msg void OnKillfocusEditLevel();
+	afx_msg void OnButtonSelection();
+	afx_msg void OnSelchangeCombodbPercent();
+	virtual BOOL OnInitDialog();
+	afx_msg void OnHScroll(UINT nSBCode, UINT nPos, CScrollBar* pScrollBar);
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 };

@@ -591,7 +591,10 @@ void CSelectionDialog::OnKillfocusEditStart()
 
 
 CGotoDialog::CGotoDialog(CWnd* pParent /*=NULL*/)
-	: CDialog(CGotoDialog::IDD, pParent)
+	: CDialog(CGotoDialog::IDD, pParent),
+	m_pWf(NULL),
+	m_Position(0),
+	m_TimeFormat(0)
 {
 	//{{AFX_DATA_INIT(CGotoDialog)
 	m_TimeFormatIndex = -1;
@@ -606,12 +609,13 @@ void CGotoDialog::DoDataExchange(CDataExchange* pDX)
 	DDX_Control(pDX, IDC_EDIT_START, m_eStart);
 	DDX_CBIndex(pDX, IDC_COMBO_TIME_FORMAT, m_TimeFormatIndex);
 	//}}AFX_DATA_MAP
+	m_eStart.ExchangeData(pDX, m_Position);
 }
 
 
 BEGIN_MESSAGE_MAP(CGotoDialog, CDialog)
 	//{{AFX_MSG_MAP(CGotoDialog)
-		// NOTE: the ClassWizard will add message map macros here
+	ON_CBN_SELCHANGE(IDC_COMBO_TIME_FORMAT, OnSelchangeComboTimeFormat)
 	//}}AFX_MSG_MAP
 END_MESSAGE_MAP()
 
@@ -697,4 +701,490 @@ void CDcOffsetDialog::OnRadioDcSelect()
 void CDcOffsetDialog::OnRadioAdjustSelectEdit()
 {
 	GetDlgItem(IDC_EDIT_DC_OFFSET)->EnableWindow(TRUE);
+}
+/////////////////////////////////////////////////////////////////////////////
+// CStatisticsDialog dialog
+
+
+CStatisticsDialog::CStatisticsDialog(CWnd* pParent /*=NULL*/)
+	: CDialog(CStatisticsDialog::IDD, pParent)
+{
+	//{{AFX_DATA_INIT(CStatisticsDialog)
+	// NOTE: the ClassWizard will add member initialization here
+	//}}AFX_DATA_INIT
+}
+
+
+void CStatisticsDialog::DoDataExchange(CDataExchange* pDX)
+{
+	CDialog::DoDataExchange(pDX);
+	//{{AFX_DATA_MAP(CStatisticsDialog)
+	// NOTE: the ClassWizard will add DDX and DDV calls here
+	//}}AFX_DATA_MAP
+}
+
+
+BEGIN_MESSAGE_MAP(CStatisticsDialog, CDialog)
+	//{{AFX_MSG_MAP(CStatisticsDialog)
+	//}}AFX_MSG_MAP
+END_MESSAGE_MAP()
+
+/////////////////////////////////////////////////////////////////////////////
+// CStatisticsDialog message handlers
+
+BOOL CStatisticsDialog::OnInitDialog()
+{
+	CDialog::OnInitDialog();
+
+	CString s;
+	long nSamples =
+		(m_pContext->m_DstCopyPos - m_pContext->m_DstStart)
+		/ m_pContext->m_DstFile.SampleSize();
+	if (0 == nSamples)
+	{
+		nSamples = 1;
+	}
+	CString format;
+	format.LoadString(IDS_STATISTICS_FORMAT);
+	CString AtCursorDb;
+	CString MinDb;
+	CString MaxDb;
+	CString RmsDb;
+	CString DcDb;
+
+	if (m_ValueAtCursorLeft != 0)
+	{
+		AtCursorDb.Format("%.2f", 20. * log10(abs(m_ValueAtCursorLeft) / 32768.));
+	}
+	else
+	{
+		AtCursorDb = "-Inf.";
+	}
+	if (m_pContext->m_MinLeft != 0)
+	{
+		MinDb.Format("%.2f", 20. * log10(abs(m_pContext->m_MinLeft) / 32768.));
+	}
+	else
+	{
+		MinDb = "-Inf.";
+	}
+	if (m_pContext->m_MinLeft != 0)
+	{
+		MaxDb.Format("%.2f", 20. * log10(abs(m_pContext->m_MaxLeft) / 32768.));
+	}
+	else
+	{
+		MaxDb = "-Inf.";
+	}
+	if (m_pContext->m_EnergyLeft != 0)
+	{
+		RmsDb.Format("%.2f",
+					10. * log10(abs(m_pContext->m_EnergyLeft) / (nSamples * 1073741824.)));
+	}
+	else
+	{
+		RmsDb = "-Inf.";
+	}
+	if (m_pContext->m_SumLeft / nSamples != 0)
+	{
+		DcDb.Format("%.2f",
+					20. * log10(abs(m_pContext->m_SumLeft / nSamples) / 32768.));
+	}
+	else
+	{
+		DcDb = "-Inf.";
+	}
+
+	sprintf(s.GetBuffer(1024), format,
+			//%s (%s)\r\n"
+			LPCTSTR(SampleToString(m_Cursor, m_SamplesPerSec,
+									SampleToString_HhMmSs | TimeToHhMmSs_NeedsMs | TimeToHhMmSs_NeedsHhMm)),
+			LPCTSTR(SampleToString(m_Cursor, m_SamplesPerSec, SampleToString_Sample)),
+
+			//"%s (%.2f dB; %.2f%%)\r\n"
+			LPCTSTR(LtoaCS(m_ValueAtCursorLeft)), LPCTSTR(AtCursorDb),
+			m_ValueAtCursorLeft / 327.68,
+
+			//"%s (%s)\r\n"
+			LPCTSTR(SampleToString(m_pContext->m_PosMinLeft, m_SamplesPerSec,
+									SampleToString_HhMmSs | TimeToHhMmSs_NeedsMs | TimeToHhMmSs_NeedsHhMm)),
+			LPCTSTR(SampleToString(m_pContext->m_PosMinLeft, m_SamplesPerSec, SampleToString_Sample)),
+
+			//"%s (%.2f dB; %.2f%%)\r\n"
+			LPCTSTR(LtoaCS(m_pContext->m_MinLeft)), LPCTSTR(MinDb),
+			m_pContext->m_MinLeft / 327.68,
+
+			//"%s (%s)\r\n"
+			LPCTSTR(SampleToString(m_pContext->m_PosMaxLeft, m_SamplesPerSec,
+									SampleToString_HhMmSs | TimeToHhMmSs_NeedsMs | TimeToHhMmSs_NeedsHhMm)),
+			LPCTSTR(SampleToString(m_pContext->m_PosMaxLeft, m_SamplesPerSec, SampleToString_Sample)),
+
+			//"%s (%.2f dB; %.2f%%)\r\n"
+			LPCTSTR(LtoaCS(m_pContext->m_MaxLeft)),
+			LPCTSTR(MaxDb), m_pContext->m_MaxLeft / 327.68,
+
+			//"%.2f dB (%.2f%%)\r\n"
+			// RMS
+			LPCTSTR(RmsDb),
+			100. * sqrt(abs(m_pContext->m_EnergyLeft) / (nSamples * 1073741824.)),
+			//"%s (%.2f dB; %.2f%%)\r\n"
+			LPCTSTR(LtoaCS(m_pContext->m_SumLeft / nSamples)),
+			LPCTSTR(DcDb), (m_pContext->m_SumLeft / nSamples) / 327.68,
+			//"%.2f Hz"
+			// zero crossing
+			m_pContext->m_ZeroCrossingLeft / double(nSamples) * m_SamplesPerSec
+			);
+	s.ReleaseBuffer();
+	SetDlgItemText(IDC_EDIT_LEFT, s);
+
+	// right channel
+	if (m_pContext->m_DstFile.Channels() > 1)
+	{
+		if (m_ValueAtCursorRight != 0)
+		{
+			AtCursorDb.Format("%.2f", 20. * log10(abs(m_ValueAtCursorRight) / 32768.));
+		}
+		else
+		{
+			AtCursorDb = "-Inf.";
+		}
+		if (m_pContext->m_MinRight != 0)
+		{
+			MinDb.Format("%.2f", 20. * log10(abs(m_pContext->m_MinRight) / 32768.));
+		}
+		else
+		{
+			MinDb = "-Inf.";
+		}
+		if (m_pContext->m_MinRight != 0)
+		{
+			MaxDb.Format("%.2f", 20. * log10(abs(m_pContext->m_MaxRight) / 32768.));
+		}
+		else
+		{
+			MaxDb = "-Inf.";
+		}
+		if (m_pContext->m_EnergyRight != 0)
+		{
+			RmsDb.Format("%.2f",
+						10. * log10(abs(m_pContext->m_EnergyRight) / (nSamples * 1073741824.)));
+		}
+		else
+		{
+			RmsDb = "-Inf.";
+		}
+		if (m_pContext->m_SumRight / nSamples != 0)
+		{
+			DcDb.Format("%.2f",
+						20. * log10(abs(m_pContext->m_SumRight / nSamples) / 32768.));
+		}
+		else
+		{
+			DcDb = "-Inf.";
+		}
+
+		sprintf(s.GetBuffer(1024), format,
+				//%s (%s)\r\n"
+				LPCTSTR(SampleToString(m_Cursor, m_SamplesPerSec,
+										SampleToString_HhMmSs | TimeToHhMmSs_NeedsMs | TimeToHhMmSs_NeedsHhMm)),
+				LPCTSTR(SampleToString(m_Cursor, m_SamplesPerSec, SampleToString_Sample)),
+
+				//"%s (%.2f dB; %.2f%%)\r\n"
+				LPCTSTR(LtoaCS(m_ValueAtCursorRight)), LPCTSTR(AtCursorDb),
+				m_ValueAtCursorRight / 327.68,
+
+				//"%s (%s)\r\n"
+				LPCTSTR(SampleToString(m_pContext->m_PosMinRight, m_SamplesPerSec,
+										SampleToString_HhMmSs | TimeToHhMmSs_NeedsMs | TimeToHhMmSs_NeedsHhMm)),
+				LPCTSTR(SampleToString(m_pContext->m_PosMinRight, m_SamplesPerSec, SampleToString_Sample)),
+
+				//"%s (%.2f dB; %.2f%%)\r\n"
+				LPCTSTR(LtoaCS(m_pContext->m_MinRight)), LPCTSTR(MinDb),
+				m_pContext->m_MinRight / 327.68,
+
+				//"%s (%s)\r\n"
+				LPCTSTR(SampleToString(m_pContext->m_PosMaxRight, m_SamplesPerSec,
+										SampleToString_HhMmSs | TimeToHhMmSs_NeedsMs | TimeToHhMmSs_NeedsHhMm)),
+				LPCTSTR(SampleToString(m_pContext->m_PosMaxRight, m_SamplesPerSec, SampleToString_Sample)),
+
+				//"%s (%.2f dB; %.2f%%)\r\n"
+				LPCTSTR(LtoaCS(m_pContext->m_MaxRight)),
+				LPCTSTR(MaxDb), m_pContext->m_MaxRight / 327.68,
+
+				//"%.2f dB (%.2f%%)\r\n"
+				// RMS
+				LPCTSTR(RmsDb),
+				100. * sqrt(abs(m_pContext->m_EnergyRight) / (nSamples * 1073741824.)),
+				//"%s (%.2f dB; %.2f%%)\r\n"
+				LPCTSTR(LtoaCS(m_pContext->m_SumRight / nSamples)),
+				LPCTSTR(DcDb), (m_pContext->m_SumRight / nSamples) / 327.68,
+				//"%.2f Hz"
+				// zero crossing
+				m_pContext->m_ZeroCrossingRight / double(nSamples) * m_SamplesPerSec
+				);
+
+		s.ReleaseBuffer();
+		SetDlgItemText(IDC_EDIT_RIGHT, s);
+	}
+	return TRUE;  // return TRUE unless you set the focus to a control
+	// EXCEPTION: OCX Property Pages should return FALSE
+}
+/////////////////////////////////////////////////////////////////////////////
+// CNormalizeSoundDialog dialog
+
+
+CNormalizeSoundDialog::CNormalizeSoundDialog(CWnd* pParent /*=NULL*/)
+	: CDialog(CNormalizeSoundDialog::IDD, pParent)
+{
+	//{{AFX_DATA_INIT(CNormalizeSoundDialog)
+	m_bLockChannels = FALSE;
+	m_bUndo = FALSE;
+	m_DbPercent = -1;
+	//}}AFX_DATA_INIT
+}
+
+
+void CNormalizeSoundDialog::DoDataExchange(CDataExchange* pDX)
+{
+	CDialog::DoDataExchange(pDX);
+	//{{AFX_DATA_MAP(CNormalizeSoundDialog)
+	DDX_Control(pDX, IDC_STATIC_SELECTION, m_SelectionStatic);
+	DDX_Control(pDX, IDC_SLIDER_LEVEL, m_SliderLevel);
+	DDX_Control(pDX, IDC_EDIT_LEVEL, m_eLevel);
+	DDX_Check(pDX, IDC_CHECK_LOCK_CHANNELS, m_bLockChannels);
+	DDX_Check(pDX, IDC_CHECK_UNDO, m_bUndo);
+	//}}AFX_DATA_MAP
+	if (0 == m_DbPercent)
+	{
+		// decibels
+		m_eLevel.ExchangeData(pDX, m_dLevelDb,
+							"Target level", "dB", -40., 0.);
+	}
+	else
+	{
+		// percents
+		m_eLevel.ExchangeData(pDX, m_dLevelPercent,
+							"Target level", "%", 1., 100.);
+	}
+	DDX_CBIndex(pDX, IDC_COMBODB_PERCENT, m_DbPercent);
+	if ( ! pDX->m_bSaveAndValidate)
+	{
+		UpdateSelectionStatic();
+	}
+}
+
+
+BEGIN_MESSAGE_MAP(CNormalizeSoundDialog, CDialog)
+	//{{AFX_MSG_MAP(CNormalizeSoundDialog)
+	ON_EN_KILLFOCUS(IDC_EDIT_LEVEL, OnKillfocusEditLevel)
+	ON_BN_CLICKED(IDC_BUTTON_SELECTION, OnButtonSelection)
+	ON_CBN_SELCHANGE(IDC_COMBODB_PERCENT, OnSelchangeCombodbPercent)
+	ON_WM_HSCROLL()
+	//}}AFX_MSG_MAP
+END_MESSAGE_MAP()
+
+/////////////////////////////////////////////////////////////////////////////
+// CNormalizeSoundDialog message handlers
+
+void CNormalizeSoundDialog::OnKillfocusEditLevel()
+{
+	double num;
+	CString s;
+	m_eLevel.GetWindowText(s);
+	int SliderPos = 0;
+	if (! s.IsEmpty()
+		&& m_eLevel.SimpleFloatParse(s, num))
+	{
+		if (0 == m_DbPercent)
+		{
+			// decibel
+			if (num < -40. || num > 0.)
+			{
+				return;
+			}
+			SliderPos = int(num * 10.);
+		}
+		else
+		{
+			// percent
+			if (num < 1.
+				|| num > 100.)
+			{
+				return;
+			}
+			SliderPos = int(200. * log10(num / 100.));
+		}
+		m_SliderLevel.SetPos(SliderPos);
+	}
+}
+
+void CNormalizeSoundDialog::OnButtonSelection()
+{
+	CSelectionDialog dlg;
+	dlg.m_Start = m_Start;
+	dlg.m_End = m_End;
+	dlg.m_Length = m_End - m_Start;
+	dlg.m_FileLength = m_FileLength;
+	dlg.m_Chan = m_Chan;
+	dlg.m_pWf = m_pWf;
+	dlg.m_TimeFormat = m_TimeFormat;
+
+	if (IDOK != dlg.DoModal())
+	{
+		return;
+	}
+	m_Start = dlg.m_Start;
+	m_End = dlg.m_End;
+	m_Chan = dlg.m_Chan;
+	UpdateSelectionStatic();
+}
+
+void CNormalizeSoundDialog::OnSelchangeCombodbPercent()
+{
+	int sel = ((CComboBox *)GetDlgItem(IDC_COMBODB_PERCENT))->GetCurSel();
+	TRACE("OnSelchangeCombodbPercent() sel=%d\n", sel);
+	if (sel == m_DbPercent)
+	{
+		return;
+	}
+	UpdateData();
+	if (0 == sel)
+	{
+		// get percent values and convert to dB values
+		if (m_dLevelPercent > 0)
+		{
+			m_dLevelDb = 20 * log10(0.01 * m_dLevelPercent);
+			if (m_dLevelDb < -40.)
+			{
+				m_dLevelDb = -40.;
+			}
+			if (m_dLevelDb > 0.)
+			{
+				m_dLevelDb = 0.;
+			}
+		}
+		else
+		{
+			m_dLevelDb = 0;
+		}
+	}
+	else
+	{
+		m_dLevelPercent = 100. * pow(10., m_dLevelDb / 20.);
+		if (m_dLevelPercent < 1.)
+		{
+			m_dLevelPercent = 1.;
+		}
+		else if (m_dLevelPercent > 10000.)
+		{
+			m_dLevelPercent = 10000.;
+		}
+	}
+	UpdateData(FALSE);
+}
+
+void CNormalizeSoundDialog::UpdateSelectionStatic()
+{
+	m_SelectionStatic.SetWindowText(GetSelectionText(m_Start, m_End, m_Chan,
+													m_pWf->nChannels, m_bLockChannels,
+													m_pWf->nSamplesPerSec, m_TimeFormat));
+}
+
+
+BOOL CNormalizeSoundDialog::OnInitDialog()
+{
+	CDialog::OnInitDialog();
+	m_SliderLevel.SetRange(-400, 0);
+	m_SliderLevel.SetTicFreq(100);
+	m_SliderLevel.SetLineSize(10);
+	m_SliderLevel.SetPageSize(50);
+	if (0 == m_DbPercent)
+	{
+		// decibel
+		m_SliderLevel.SetPos(int(m_dLevelDb * 10.));
+	}
+	else
+	{
+		m_SliderLevel.SetPos(int(200. * log10(m_dLevelPercent / 100.)));
+	}
+	if (1 == m_pWf->nChannels)
+	{
+		GetDlgItem(IDC_CHECK_LOCK_CHANNELS)->ShowWindow(SW_HIDE);
+	}
+
+	return TRUE;  // return TRUE unless you set the focus to a control
+	// EXCEPTION: OCX Property Pages should return FALSE
+}
+
+void CNormalizeSoundDialog::OnHScroll(UINT nSBCode, UINT nPos, CScrollBar* pScrollBar)
+{
+	CDialog::OnHScroll(nSBCode, nPos, pScrollBar);
+	CSliderCtrl * pSlider = dynamic_cast<CSliderCtrl *>(pScrollBar);
+	if (NULL != pSlider)
+	{
+		int pos = pSlider->GetPos();
+		CString s;
+		if (0 == m_DbPercent)
+		{
+			s.Format("%.2f", pos / 10.);
+		}
+		else
+		{
+			s.Format("%.0f", 100. * pow(10., pos / 200.));
+		}
+		SetDlgItemText(IDC_EDIT_LEVEL, s);
+	}
+}
+
+void CGotoDialog::OnSelchangeComboTimeFormat()
+{
+	int sel = ((CComboBox *)GetDlgItem(IDC_COMBO_TIME_FORMAT))->GetCurSel();
+	int Format;
+	switch (sel)
+	{
+	case 0:
+		Format = SampleToString_Sample;
+		break;
+	case 1:
+		Format = SampleToString_HhMmSs | TimeToHhMmSs_NeedsMs | TimeToHhMmSs_NeedsHhMm;
+		break;
+	case 2:
+	default:
+		Format = SampleToString_Seconds | TimeToHhMmSs_NeedsMs;
+		break;
+	}
+	if (Format == m_TimeFormat)
+	{
+		return;
+	}
+	m_TimeFormat = Format;
+	m_Position = m_eStart.GetTimeSample();
+	m_eStart.SetTimeFormat(Format);
+	m_eStart.SetTimeSample(m_Position);
+}
+
+BOOL CGotoDialog::OnInitDialog()
+{
+	m_eStart.SetTimeFormat(m_TimeFormat);
+	switch (m_TimeFormat & SampleToString_Mask)
+	{
+	case SampleToString_Sample:
+		m_TimeFormatIndex = 0;
+		break;
+	case SampleToString_HhMmSs:
+		m_TimeFormatIndex = 1;
+		break;
+	case SampleToString_Seconds: default:
+		m_TimeFormatIndex = 2;
+		break;
+	}
+	if (NULL != m_pWf)
+	{
+		m_eStart.SetSamplingRate(m_pWf->nSamplesPerSec);
+	}
+	CDialog::OnInitDialog();
+
+
+	return TRUE;  // return TRUE unless you set the focus to a control
+	// EXCEPTION: OCX Property Pages should return FALSE
 }
