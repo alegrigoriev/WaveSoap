@@ -412,6 +412,9 @@
 				RelativePath=".\FolderDialog.h">
 			</File>
 			<File
+				RelativePath=".\GdiObjectSave.h">
+			</File>
+			<File
 				RelativePath=".\KInterlocked.h">
 			</File>
 			<File

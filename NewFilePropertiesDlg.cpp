@@ -47,12 +47,13 @@ void CNewFilePropertiesDlg::DoDataExchange(CDataExchange* pDX)
 		{
 			channels = 2;
 		}
-		NUMBER_OF_SAMPLES MaxLength = 0x7FFFFFFFu - 0x100000u;
+		WAV_FILE_SIZE MaxFileLength = 0x7FFFFFFFu - 0x100000u;
 		if (GetApp()->m_bAllow4GbWavFile)
 		{
-			MaxLength = 0xFFFFFFFFu - 0x100000u;
+			MaxFileLength = 0xFFFFFFFFu - 0x100000u;
 		}
-		MaxLength /= channels * m_nSamplingRate * 2;
+
+		NUMBER_OF_SAMPLES MaxLength = MaxFileLength / (channels * m_nSamplingRate * 2);
 
 		if (m_Length < 0
 			|| m_Length > MaxLength)

@@ -66,6 +66,7 @@ class CFilterGraphWnd : public CWnd, public Filter
 	// Construction
 public:
 	CFilterGraphWnd();
+	CFilterGraphWnd(CApplicationProfile & Profile, int SampleRate);
 
 	// Attributes
 public:
@@ -214,9 +215,9 @@ public:
 	int m_TimeFormat;
 	const WAVEFORMATEX * m_pWf;
 
+	CApplicationProfile m_Profile;  // goes before m_wGraph
 	CFilterGraphWnd m_wGraph;
 
-	CApplicationProfile m_Profile;
 // Overrides
 	// ClassWizard generated virtual function overrides
 	//{{AFX_VIRTUAL(CFilterDialog)

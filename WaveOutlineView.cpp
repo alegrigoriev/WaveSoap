@@ -540,7 +540,7 @@ BOOL CWaveOutlineView::EraseBkgnd(CDC* pDC)
 	return TRUE;
 }
 
-void CWaveOutlineView::NotifyViewExtents(long left, long right)
+void CWaveOutlineView::NotifyViewExtents(SAMPLE_INDEX left, SAMPLE_INDEX right)
 {
 	CWaveSoapFrontDoc * pDoc = GetDocument();
 	NUMBER_OF_SAMPLES nSamples = pDoc->WaveFileSamples();

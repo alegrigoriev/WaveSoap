@@ -27,7 +27,7 @@ BOOL CResampleContext::InitResample(CWaveFile & SrcFile, CWaveFile &DstFile,
 
 BOOL CResampleContext::OperationProc()
 {
-	DWORD dwOperationBegin = m_DstCopyPos;
+	SAMPLE_POSITION dwOperationBegin = m_DstCopyPos;
 	DWORD dwStartTime = GetTickCount();
 	if (m_Flags & OperationContextStopRequested)
 	{
@@ -52,7 +52,7 @@ BOOL CResampleContext::OperationProc()
 	{
 		if (0 == LeftToRead)
 		{
-			DWORD SizeToRead = m_SrcEnd - m_SrcCopyPos;
+			MEDIA_FILE_SIZE SizeToRead = m_SrcEnd - m_SrcCopyPos;
 			if (SizeToRead > 0x10000)
 			{
 				SizeToRead = 0x10000;
@@ -63,11 +63,9 @@ BOOL CResampleContext::OperationProc()
 													SizeToRead, m_SrcCopyPos, CDirectFile::GetBufferAndPrefetchNext);
 				if (0 == WasRead)
 				{
-					if (0 != WasLockedToWrite)
-					{
-						m_DstFile.ReturnDataBuffer(pOriginalDstBuf, WasLockedToWrite,
-													CDirectFile::ReturnBufferDirty);
-					}
+					m_DstFile.ReturnDataBuffer(pOriginalDstBuf, WasLockedToWrite,
+												CDirectFile::ReturnBufferDirty);
+
 					return FALSE;
 				}
 				pSrcBuf = (char *) pOriginalSrcBuf;
@@ -83,7 +81,7 @@ BOOL CResampleContext::OperationProc()
 
 		if (0 == LeftToWrite)
 		{
-			DWORD SizeToWrite = m_DstEnd - m_DstCopyPos;
+			MEDIA_FILE_SIZE SizeToWrite = m_DstEnd - m_DstCopyPos;
 			if (0 == SizeToWrite)
 			{
 				break;  // all data written
@@ -93,11 +91,9 @@ BOOL CResampleContext::OperationProc()
 
 			if (0 == WasLockedToWrite)
 			{
-				if (0 != WasRead)
-				{
-					m_SrcFile.ReturnDataBuffer(pOriginalSrcBuf, WasRead,
-												CDirectFile::ReturnBufferDiscard);
-				}
+				m_SrcFile.ReturnDataBuffer(pOriginalSrcBuf, WasRead,
+											CDirectFile::ReturnBufferDiscard);
+
 				return FALSE;
 			}
 			pDstBuf = (char *) pOriginalDstBuf;
@@ -105,10 +101,10 @@ BOOL CResampleContext::OperationProc()
 
 		}
 
-		int SrcBufUsed = 0;
+		size_t SrcBufUsed = 0;
 
-		int DstBufUsed = m_Resample.ProcessSound(pSrcBuf, pDstBuf, LeftToRead,
-												LeftToWrite, & SrcBufUsed);
+		size_t DstBufUsed = m_Resample.ProcessSound(pSrcBuf, pDstBuf, LeftToRead,
+													LeftToWrite, & SrcBufUsed);
 
 		TRACE("ResampleContext: SrcPos=%d (0x%X), DstPos=%d (0x%X), src: %d bytes, dst: %d bytes\n",
 			m_SrcCopyPos, m_SrcCopyPos, m_DstCopyPos, m_DstCopyPos,
@@ -117,7 +113,7 @@ BOOL CResampleContext::OperationProc()
 		m_SrcCopyPos += SrcBufUsed;
 		pSrcBuf += SrcBufUsed;
 
-		if (0 == LeftToRead && 0 != WasRead)
+		if (0 == LeftToRead)
 		{
 			m_SrcFile.ReturnDataBuffer(pOriginalSrcBuf, WasRead,
 										CDirectFile::ReturnBufferDiscard);
@@ -140,16 +136,11 @@ BOOL CResampleContext::OperationProc()
 			&& timeGetTime() - dwStartTime < 200
 			);
 
-	if (0 != WasRead)
-	{
-		m_SrcFile.ReturnDataBuffer(pOriginalSrcBuf, WasRead,
-									CDirectFile::ReturnBufferDiscard);
-	}
-	if (0 != WasLockedToWrite)
-	{
-		m_DstFile.ReturnDataBuffer(pOriginalDstBuf, WasLockedToWrite,
-									CDirectFile::ReturnBufferDirty);
-	}
+	m_SrcFile.ReturnDataBuffer(pOriginalSrcBuf, WasRead,
+								CDirectFile::ReturnBufferDiscard);
+
+	m_DstFile.ReturnDataBuffer(pOriginalDstBuf, WasLockedToWrite,
+								CDirectFile::ReturnBufferDirty);
 
 	if (m_DstEnd > m_DstStart)
 	{

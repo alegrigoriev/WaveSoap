@@ -249,7 +249,7 @@ CWaveSoapFrontDoc::~CWaveSoapFrontDoc()
 	}
 }
 
-int CWaveSoapFrontDoc::WaveFileSamples() const
+NUMBER_OF_SAMPLES CWaveSoapFrontDoc::WaveFileSamples() const
 {
 	return m_WavFile.NumberOfSamples();
 }
@@ -464,19 +464,19 @@ BOOL CWaveSoapFrontDoc::DoSave(LPCTSTR lpszPathName, BOOL bReplace)
 
 	CWaveFormat Wf;
 
-	if (NULL != (WAVEFORMATEX*)m_OriginalWaveFormat)
-	{
-		Wf = m_OriginalWaveFormat;
-	}
-	else
+	if (NULL == (WAVEFORMATEX*)m_OriginalWaveFormat)
 	{
 		Wf = WaveFormat();
 	}
+	else
+	{
+		Wf = m_OriginalWaveFormat;
+		// sample rate and number of channels might change from the original file
+		// new format may not be quite valid for some convertors!!
+		Wf.SampleRate() = WaveSampleRate();
+		Wf.NumChannels() = WaveChannels();
+	}
 
-	// sample rate and number of channels might change from the original file
-	// new format may not be quite valid for some convertors!!
-	Wf.SampleRate() = WaveSampleRate();
-	Wf.NumChannels() = WaveChannels();
 
 	CString newName = lpszPathName;
 	int SaveFlags = m_FileTypeFlags;
@@ -730,7 +730,9 @@ void CWaveSoapFrontDoc::SetSelection(SAMPLE_INDEX begin, SAMPLE_INDEX end,
 	if (flags & SetSelection_SnapToMaximum)
 	{
 		// read from 'begin' to 'end', find the max
-		int SamplesToRead, BeginSample;
+		NUMBER_OF_SAMPLES SamplesToRead;
+		SAMPLE_INDEX BeginSample;
+
 		if (begin <= end)
 		{
 			BeginSample = begin;
@@ -1713,13 +1715,12 @@ BOOL CWaveSoapFrontDoc::OnOpenDocument(LPCTSTR lpszPathName, int DocOpenFlags)
 			pContext->m_Flags |= DecompressSavePeakFile;
 
 			pContext->m_SrcFile = m_OriginalWavFile;
-			pContext->m_DstFile = m_WavFile;
 
 			pContext->m_SrcStart = m_OriginalWavFile.SampleToPosition(0);
 			pContext->m_SrcPos = pContext->m_SrcStart;
-			pContext->m_SrcEnd = pContext->m_SrcStart +
-								m_OriginalWavFile.GetDataChunk()->cksize;
+			pContext->m_SrcEnd = m_OriginalWavFile.SampleToPosition(LAST_SAMPLE);
 
+			pContext->m_DstFile = m_WavFile;
 			pContext->m_DstStart = m_WavFile.SampleToPosition(0);
 			pContext->m_DstCopyPos = pContext->m_DstStart;
 			pContext->m_CurrentSamples = WaveFileSamples();
@@ -1917,14 +1918,16 @@ BOOL CWaveSoapFrontDoc::OnSaveConvertedFile(int flags, LPCTSTR FullTargetName, W
 		// saving compressed file
 		// if number of channels changes, ask about it
 		// sample rate change may be also required
-		unsigned long NewSize = WaveFileSamples() * pWf->wBitsPerSample * pWf->nChannels / 8;
+		MEDIA_FILE_SIZE NewSize = MEDIA_FILE_SIZE(WaveFileSamples()) * pWf->wBitsPerSample * pWf->nChannels / 8;
+
 		if (NewSize < 0x100000) NewSize = 0x100000; // 1 meg
 		if (NewSize > 0x100 * 0x100000) NewSize = 0x100 * 0x100000; // 256 meg
-		if (FALSE == NewWaveFile.CreateWaveFile(& m_OriginalWavFile, pWf, ALL_CHANNELS, NewSize,
-												CreateWaveFileDontCopyInfo
-												| CreateWaveFileCreateFact
-												| CreateWaveFileSizeSpecified,
-												NewTempFilename))
+
+		if ( ! NewWaveFile.CreateWaveFile(& m_OriginalWavFile, pWf, ALL_CHANNELS, NewSize,
+										CreateWaveFileDontCopyInfo
+										| CreateWaveFileCreateFact
+										| CreateWaveFileSizeSpecified,
+										NewTempFilename))
 		{
 			FileCreationErrorMessageBox(NewTempFilename);
 			return FALSE;
@@ -1959,7 +1962,7 @@ BOOL CWaveSoapFrontDoc::OnSaveConvertedFile(int flags, LPCTSTR FullTargetName, W
 	pConvert->m_DstStart = NewWaveFile.SampleToPosition(0);
 	pConvert->m_SrcCopyPos = pConvert->m_SrcStart;
 	pConvert->m_DstCopyPos = pConvert->m_DstStart;
-	pConvert->m_SrcEnd = pConvert->m_SrcStart + m_WavFile.GetDataChunk()->cksize;
+	pConvert->m_SrcEnd = m_WavFile.SampleToPosition(LAST_SAMPLE);
 	pConvert->m_DstEnd = pConvert->m_DstStart;
 
 	pConvert->m_SrcChan = ALL_CHANNELS;
@@ -2020,7 +2023,7 @@ BOOL CWaveSoapFrontDoc::OnSaveConvertedFile(int flags, LPCTSTR FullTargetName, W
 			return FALSE;
 		}
 		// FIX: Wrong conversion if resampling and increasing channels
-		int nChannels = NewChannels;
+		NUMBER_OF_CHANNELS nChannels = NewChannels;
 		if (nChannels > OldChannels)
 		{
 			nChannels = OldChannels;
@@ -2130,7 +2133,7 @@ BOOL CWaveSoapFrontDoc::OnSaveMp3File(int flags, LPCTSTR FullTargetName, WAVEFOR
 	pConvert->m_DstStart = 0;
 	pConvert->m_SrcCopyPos = pConvert->m_SrcStart;
 	pConvert->m_DstCopyPos = pConvert->m_DstStart;
-	pConvert->m_SrcEnd = pConvert->m_SrcStart + m_WavFile.GetDataChunk()->cksize;
+	pConvert->m_SrcEnd = m_WavFile.SampleToPosition(LAST_SAMPLE);
 	pConvert->m_DstEnd = pConvert->m_DstStart;
 
 	pConvert->m_SrcChan = ALL_CHANNELS;
@@ -2247,7 +2250,7 @@ BOOL CWaveSoapFrontDoc::OnSaveWmaFile(int flags, LPCTSTR FullTargetName, WAVEFOR
 	pConvert->m_DstStart = 0;
 	pConvert->m_SrcCopyPos = pConvert->m_SrcStart;
 	pConvert->m_DstCopyPos = pConvert->m_DstStart;
-	pConvert->m_SrcEnd = pConvert->m_SrcStart + m_WavFile.GetDataChunk()->cksize;
+	pConvert->m_SrcEnd = m_WavFile.SampleToPosition(LAST_SAMPLE);
 	pConvert->m_DstEnd = pConvert->m_DstStart;
 
 	pConvert->m_SrcChan = ALL_CHANNELS;
@@ -2338,7 +2341,7 @@ BOOL CWaveSoapFrontDoc::OnSaveRawFile(int flags, LPCTSTR FullTargetName, WAVEFOR
 	pConvert->m_DstStart = 0;
 	pConvert->m_SrcCopyPos = pConvert->m_SrcStart;
 	pConvert->m_DstCopyPos = pConvert->m_DstStart;
-	pConvert->m_SrcEnd = pConvert->m_SrcStart + m_WavFile.GetDataChunk()->cksize;
+	pConvert->m_SrcEnd = m_WavFile.SampleToPosition(LAST_SAMPLE);
 	pConvert->m_DstEnd = pConvert->m_DstStart;
 
 	pConvert->m_SrcChan = ALL_CHANNELS;
@@ -3182,7 +3185,7 @@ inline BOOL CWaveSoapFrontDoc::IsModified()
 void CWaveSoapFrontDoc::IncrementModified(BOOL bDeleteRedo, int KeepPreviousUndo)
 {
 	// bDeleteRedo is FALSE for Redo command ONLY
-	BOOL OldModified = CWaveSoapFrontDoc::IsModified();
+	BOOL OldModified = IsModified();
 	// Modification sequence number may become zero only after Redo operation
 	// if bDeleteRedo, don't allow it to become 0 from -1.
 	if (bDeleteRedo)
@@ -3213,7 +3216,7 @@ void CWaveSoapFrontDoc::IncrementModified(BOOL bDeleteRedo, int KeepPreviousUndo
 		DeleteUndo();
 	}
 
-	if (CWaveSoapFrontDoc::IsModified() != OldModified)
+	if (IsModified() != OldModified)
 	{
 		UpdateFrameTitles();        // will cause name change in views
 	}
@@ -3221,7 +3224,7 @@ void CWaveSoapFrontDoc::IncrementModified(BOOL bDeleteRedo, int KeepPreviousUndo
 
 void CWaveSoapFrontDoc::DecrementModified()   // called at UNDO
 {
-	BOOL OldModified = CWaveSoapFrontDoc::IsModified();
+	BOOL OldModified = IsModified();
 	m_ModificationSequenceNumber--;
 
 	if (! RedoEnabled())
@@ -3230,7 +3233,7 @@ void CWaveSoapFrontDoc::DecrementModified()   // called at UNDO
 		DeleteRedo();
 	}
 
-	if (CWaveSoapFrontDoc::IsModified() != OldModified)
+	if (IsModified() != OldModified)
 	{
 		UpdateFrameTitles();        // will cause name change in views
 	}
@@ -3244,7 +3247,7 @@ void CWaveSoapFrontDoc::SetModifiedFlag(BOOL bModified, int KeepPreviousUndo)
 	}
 	else
 	{
-		BOOL OldModified = CWaveSoapFrontDoc::IsModified();
+		BOOL OldModified = IsModified();
 		m_ModificationSequenceNumber = 0;
 		if (OldModified)
 		{
@@ -3522,7 +3525,8 @@ void CWaveSoapFrontDoc::ChangeChannels(NUMBER_OF_CHANNELS nChannels)
 	}
 	WAVEFORMATEX NewFormat = *pWf;
 	NewFormat.nChannels = nChannels;
-	int nSrcChan = ALL_CHANNELS;
+	CHANNEL_MASK nSrcChan = ALL_CHANNELS;
+
 	if ( ! CanAllocateWaveFileSamplesDlg( & NewFormat, SampleCount))
 	{
 		return;
@@ -3603,11 +3607,10 @@ void CWaveSoapFrontDoc::OnChannelsMono()
 
 void CWaveSoapFrontDoc::OnUpdateChannelsMono(CCmdUI* pCmdUI)
 {
-	if ( ! m_WavFile.IsOpen())
+	if (m_WavFile.IsOpen())
 	{
-		return;
+		pCmdUI->SetRadio(WaveChannels() == 1);
 	}
-	pCmdUI->SetRadio(WaveChannels() == 1);
 }
 
 void CWaveSoapFrontDoc::OnChannelsStereo()
@@ -3617,11 +3620,10 @@ void CWaveSoapFrontDoc::OnChannelsStereo()
 
 void CWaveSoapFrontDoc::OnUpdateChannelsStereo(CCmdUI* pCmdUI)
 {
-	if ( ! m_WavFile.IsOpen())
+	if (m_WavFile.IsOpen())
 	{
-		return;
+		pCmdUI->SetRadio(WaveChannels() == 2);
 	}
-	pCmdUI->SetRadio(WaveChannels() == 2);
 }
 
 void CWaveSoapFrontDoc::OnProcessChangevolume()
@@ -3918,7 +3920,8 @@ void CWaveSoapFrontDoc::OnProcessDcoffset()
 			return;
 		}
 		pContext->m_pScanContext->m_Flags |= StatisticsContext_DcOnly;
-		long EndScanSample = dlg.m_End;
+
+		SAMPLE_INDEX EndScanSample = dlg.m_End;
 		if (dlg.m_b5SecondsDC)
 		{
 			// 5.4 seconds is actually scanned, to compensate for turntable rotation

@@ -1,7 +1,8 @@
 TODO tasks:
 
 When starting playing selection, bring the playback cursor into view
-
+Add "Goto" button to the statistics dialog
+Add "Show" button to the selection dialog
 Put "Save As" and "Save Copy As" files to file MRU
 Don't ask to replace the file if Save As with the same name
 Add "Retry" to error dialog boxes
@@ -68,8 +69,6 @@ Find which alignment better for edit box labels: left or right
 
 Problems:
 
-Wrong dialog when saving/loading filter file.
-
 File resample doesn't tell about overflow
 Save As fails if the file replaced is read-only
 doesn't show caret on the outline (short file, all in view)
@@ -91,6 +90,7 @@ samples with 32767, -32768 are not visible
 Log Off query doesn't close the active dialog. Recursion is possible. Make sure to check after Cancel
 
 Fixed:
+Wrong dialog when saving/loading filter file.
 WMA vertical ruler is not updated
 Cache buffers discarded too early.
 File outline doesn't scale properly

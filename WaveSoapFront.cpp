@@ -1125,7 +1125,7 @@ void CWaveSoapDocManager::OnFileOpen()
 	{
 		_AfxAppendFilterSuffix(strFilter, dlgFile.m_ofn, pApp->m_pWmaTypeTemplate, NULL);
 	}
-	if (pApp->m_pWmaTypeTemplate)
+	if (pApp->m_pAllWmTypeTemplate)
 	{
 		_AfxAppendFilterSuffix(strFilter, dlgFile.m_ofn, pApp->m_pAllWmTypeTemplate, NULL);
 	}
@@ -1289,7 +1289,7 @@ CString TimeToHhMmSs(unsigned TimeMs, int Flags)
 	return s;
 }
 
-CString SampleToString(long Sample, long nSamplesPerSec, int Flags)
+CString SampleToString(SAMPLE_INDEX Sample, int nSamplesPerSec, int Flags)
 {
 	switch (Flags & SampleToString_Mask)
 	{
@@ -1721,7 +1721,8 @@ BOOL CWaveSoapFileList::GetDisplayName(CString& strName, int nIndex,
 
 	LPCTSTR suffix = _T("");
 
-	TCHAR flags = m_arrNames[nIndex][0];
+	LPCTSTR src = m_arrNames[nIndex];
+	TCHAR flags = src[0];
 	//TRACE("First byte of name #%d = %02x\n", nIndex, flags);
 	if (flags <= 0x1F)
 	{
@@ -1747,41 +1748,29 @@ BOOL CWaveSoapFileList::GetDisplayName(CString& strName, int nIndex,
 				suffix = _T(" (D)");
 			}
 		}
-		lstrcpyn(lpch, 1 + LPCTSTR(m_arrNames[nIndex]), _MAX_PATH);
+		src++;
 	}
-	else
-	{
-		lstrcpyn(lpch, m_arrNames[nIndex], _MAX_PATH);
-	}
-	// nLenDir is the length of the directory part of the full path
-	int nLenDir = lstrlen(lpch) - (AfxGetFileName(lpch, NULL, 0) - 1);
-	BOOL bSameDir = FALSE;
-	if (nLenDir == nCurDir)
-	{
-		TCHAR chSave = lpch[nLenDir];
-		lpch[nCurDir] = 0;  // terminate at same location as current dir
-		bSameDir = lstrcmpi(lpszCurDir, lpch) == 0;
-		lpch[nLenDir] = chSave;
-	}
+
+	strName = src;
+	CPath dir(strName);
+	dir.RemoveFileSpec();
+
 	// copy the full path, otherwise abbreviate the name
-	if (bSameDir)
+	if (dir.RemoveFileSpec()
+		&& 0 == dir.m_strPath.CompareNoCase(lpszCurDir))
 	{
-		// copy file name only since directories are same
-		TCHAR szTemp[_MAX_PATH];
-		AfxGetFileTitle(lpch+nCurDir, szTemp, countof(szTemp));
-		lstrcpyn(lpch, szTemp, _MAX_PATH);
+		dir = src;
+		dir.StripPath();
+		strName = LPCTSTR(dir);
 	}
 	else if (m_nMaxDisplayLength != -1)
 	{
-		// strip the extension if the system calls for it
-		TCHAR szTemp[_MAX_PATH];
-		AfxGetFileTitle(lpch+nLenDir, szTemp, countof(szTemp));
-		lstrcpyn(lpch+nLenDir, szTemp, _MAX_PATH-nLenDir);
+		strName.GetBuffer(MAX_PATH);
 
 		// abbreviate name based on what will fit in limited space
-		_AfxAbbreviateName(lpch, m_nMaxDisplayLength, bAtLeastName);
+		_AfxAbbreviateName(strName.GetBuffer(MAX_PATH), m_nMaxDisplayLength, bAtLeastName);
+		strName.ReleaseBuffer();
 	}
-	strName.ReleaseBuffer();
 	strName += suffix;
 	return TRUE;
 }
@@ -2518,7 +2507,7 @@ void CWaveSoapFrontApp::OnToolsOptions()
 
 CString GetSelectionText(SAMPLE_INDEX Start, SAMPLE_INDEX End, CHANNEL_MASK Chan,
 						NUMBER_OF_CHANNELS nChannels, BOOL bLockChannels,
-						long nSamplesPerSec, int TimeFormat)
+						int nSamplesPerSec, int TimeFormat)
 {
 	CString s;
 	if (nChannels > 1)
@@ -2579,7 +2568,7 @@ BOOL VerifyCreateDirectory(LPCTSTR pszPath)
 	CString DirPath(pszPath);
 	DirPath.TrimRight(_T("\\/"));
 	DWORD attr = GetFileAttributes(DirPath);
-	if (~0 == attr)
+	if (INVALID_FILE_ATTRIBUTES == attr)
 	{
 		DWORD error = GetLastError();
 		if (ERROR_ACCESS_DENIED == error)
@@ -2611,7 +2600,8 @@ BOOL VerifyCreateDirectory(LPCTSTR pszPath)
 				return FALSE;
 			}
 		}
-		if (~0 != GetFileAttributes(DirPath))
+
+		if (INVALID_FILE_ATTRIBUTES != GetFileAttributes(DirPath))
 		{
 			return TRUE;
 		}

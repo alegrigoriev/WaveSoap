@@ -260,10 +260,12 @@ void CWaveSoapFrontView::OnDraw(CDC* pDC)
 	r.left--;   // make additional
 	r.right++;
 	int iClientWidth = r.right - r.left;
+
 	PointToDoubleDev(CPoint(r.left, r.top), left, top);
 	PointToDoubleDev(CPoint(r.right, r.bottom), right, bottom);
+
 	// number of sample that corresponds to the r.left position
-	int NumOfFirstSample = DWORD(left);
+	SAMPLE_INDEX NumOfFirstSample = DWORD(left);
 	unsigned SamplesPerPoint = m_HorizontalScale;
 
 
@@ -1116,7 +1118,8 @@ void CWaveSoapFrontView::OnLButtonDown(UINT nFlags, CPoint point)
 			SelectionStart = nSampleUnderMouse;
 			SelectionEnd = SelectionStart;
 		}
-		int nChan = ALL_CHANNELS;
+
+		CHANNEL_MASK nChan = ALL_CHANNELS;
 		if (nHit & VSHT_LEFT_CHAN)
 		{
 			nChan = 0;
@@ -1148,8 +1151,9 @@ void CWaveSoapFrontView::OnLButtonUp(UINT nFlags, CPoint point)
 				// the whole area wasn't selected
 				&& pDoc->m_SelectionStart == pDoc->m_SelectionEnd)
 			{
-				long nBegin = long(WindowToWorldX(point.x));
-				long nEnd = long(WindowToWorldX(point.x + 1));
+				SAMPLE_INDEX nBegin = SAMPLE_INDEX(WindowToWorldX(point.x));
+				SAMPLE_INDEX nEnd = SAMPLE_INDEX(WindowToWorldX(point.x + 1));
+
 				pDoc->SetSelection(nBegin, nEnd, pDoc->m_SelectedChannel, nBegin,
 									SetSelection_SnapToMaximum
 									| SetSelection_MakeCaretVisible);
@@ -1236,7 +1240,7 @@ void CWaveSoapFrontView::OnMouseMove(UINT nFlags, CPoint point)
 		}
 	}
 
-	SAMPLE_INDEX nSampleUnderMouse = long(WindowToWorldX(point.x));
+	SAMPLE_INDEX nSampleUnderMouse = SAMPLE_INDEX(WindowToWorldX(point.x));
 	if (nSampleUnderMouse < 0)
 	{
 		nSampleUnderMouse = 0;
@@ -1665,7 +1669,7 @@ void CWaveSoapFrontView::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 		}
 		else
 		{
-			nCaret = long(WindowToWorldX(r.left + 1)); // cursor to the left boundary + 1
+			nCaret = SAMPLE_INDEX(WindowToWorldX(r.left + 1)); // cursor to the left boundary + 1
 		}
 
 		break;
@@ -1687,8 +1691,9 @@ void CWaveSoapFrontView::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 		}
 		else
 		{
-			nCaret = long(WindowToWorldX(r.right - 2)); // cursor to the right boundary + 1
+			nCaret = SAMPLE_INDEX(WindowToWorldX(r.right - 2)); // cursor to the right boundary + 1
 		}
+
 		break;
 	case VK_PRIOR:
 		nCaret -= nPage;
@@ -2130,7 +2135,7 @@ void CWaveSoapFrontView::NotifySlaveViews(DWORD flag)
 		{
 			double left, right, top, bottom;
 			GetExtents(left, right, bottom, top);
-			pOutlineView->NotifyViewExtents(long(left), long(right));
+			pOutlineView->NotifyViewExtents(SAMPLE_INDEX(left), SAMPLE_INDEX(right));
 		}
 	}
 	CScaledScrollView::NotifySlaveViews(flag);

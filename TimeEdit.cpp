@@ -64,7 +64,7 @@ void CTimeEdit::UpdateEditControl()
 	SetWindowText(m_OriginalString);
 }
 
-ULONG CTimeEdit::GetTimeSample()
+SAMPLE_INDEX CTimeEdit::GetTimeSample()
 {
 	CString s;
 	GetWindowText(s);
@@ -126,7 +126,7 @@ ULONG CTimeEdit::GetTimeSample()
 				break;
 			}
 		}
-		m_Sample = ULONG(time * m_nSamplesPerSec / 1000.);
+		m_Sample = SAMPLE_INDEX(time * m_nSamplesPerSec / 1000.);
 	}
 	return m_Sample;
 }
@@ -135,7 +135,7 @@ void CTimeEdit::OnVScroll(UINT nSBCode, UINT nPos, CScrollBar* pScrollBar)
 {
 	TRACE("CTimeEdit::OnVScroll, nPos=%d\n", nPos);
 	// nPos is actually an increment from CTimeSpinCtrl
-	ULONG nSample = GetTimeSample();
+	SAMPLE_INDEX nSample = GetTimeSample();
 	int step = abs(int(nPos));
 	int increment = 0;
 	switch (m_TimeFormat & SampleToString_Mask)
@@ -292,14 +292,14 @@ void CTimeEditCombo::OnComboSelectionChanged()
 	}
 }
 
-void CTimeEditCombo::AddPosition(LPCTSTR name, long time)
+void CTimeEditCombo::AddPosition(LPCTSTR name, SAMPLE_INDEX time)
 {
 	CComboBox * pCB = (CComboBox *) this;
 	pCB->AddString(name);
 	m_Positions.push_back(time);
 }
 
-void CTimeEditCombo::AddPosition(UINT id, long time)
+void CTimeEditCombo::AddPosition(UINT id, SAMPLE_INDEX time)
 {
 	CString s;
 	s.LoadString(id);
