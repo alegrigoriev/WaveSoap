@@ -3511,6 +3511,38 @@ BOOL CWaveProcContext::InitDestination(CWaveFile & DstFile, SAMPLE_INDEX StartSa
 	return TRUE;
 }
 
+// convert number of channels and sample rate to make data compatible with the destination compressor
+BOOL CWaveProcContext::MakeCompatibleFormat(WAVEFORMATEX const * pSrcWf, WAVEFORMATEX const * pDstWf,
+											CHANNEL_MASK ChannelsToUse)
+{
+	NUMBER_OF_CHANNELS OldChannels = pSrcWf->nChannels;
+	NUMBER_OF_CHANNELS const NewChannels = pDstWf->nChannels;
+
+	if (NewChannels < OldChannels)
+	{
+		AddWaveProc(new CChannelConvertor(OldChannels, NewChannels, ChannelsToUse));
+		OldChannels = NewChannels;
+	}
+
+	if (pDstWf->nSamplesPerSec != pSrcWf->nSamplesPerSec)
+	{
+		CResampleFilter * pFilter = new CResampleFilter;
+
+		pFilter->InitResample(double(pDstWf->nSamplesPerSec)
+							/ pSrcWf->nSamplesPerSec, 40., OldChannels);
+		AddWaveProc(pFilter);
+
+		m_DstFile.GetInstanceData()->RescaleMarkers(pSrcWf->nSamplesPerSec, pDstWf->nSamplesPerSec);
+	}
+
+	// if target channels is more than source, convert it after resampling,
+	if (NewChannels > OldChannels)
+	{
+		AddWaveProc(new CChannelConvertor(OldChannels, NewChannels, ALL_CHANNELS));
+	}
+	return TRUE;
+}
+
 BOOL CWaveProcContext::OperationProc()
 {
 	SAMPLE_POSITION dwOperationBegin = m_DstPos;
