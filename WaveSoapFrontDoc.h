@@ -102,10 +102,12 @@ struct MarkerRegionUpdateInfo : public CObject
 enum {
 	UpdateSoundDontRescanPeaks = 1,
 	UpdateSoundSamplingRateChanged = 2,
+
 	SetSelection_MakeCaretVisible = 1,
 	SetSelection_MoveCaretToCenter = 2,
 	SetSelection_SnapToMaximum = 4,
 	SetSelection_MakeFileVisible = 8,   // make sure the file is in the
+
 	SaveFile_SameName = 4,
 	SaveFile_CloseAfterSave = 8,
 	SaveFile_SaveCopy = 0x10,
@@ -252,6 +254,11 @@ public:
 
 	void SetSelection(SAMPLE_INDEX begin, SAMPLE_INDEX end, CHANNEL_MASK channel,
 					SAMPLE_INDEX caret, int flags = 0);
+	void SelectBetweenMarkers(SAMPLE_INDEX Origin);
+	void GotoNextMarker();
+	void GotoPrevMarker();
+	SAMPLE_INDEX GetNextMarker() const;
+	SAMPLE_INDEX GetPrevMarker() const;
 
 	void SoundChanged(ULONG_PTR FileID, SAMPLE_INDEX begin, SAMPLE_INDEX end,
 					NUMBER_OF_SAMPLES length = -1, DWORD flags = 0);
