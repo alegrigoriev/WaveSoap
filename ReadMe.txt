@@ -1,7 +1,7 @@
 Known problems and tasks:
 
-Pass saved Raw file parameters back for reopen
 Add WMA save
+Pass saved Raw file parameters back for reopen
 Load sound from AVI
 Test "reload compressed file" dialogs
 Add options dialog
@@ -44,6 +44,7 @@ Add splash screen
 Make recording from Internet stream
 
 Problems:
+OpenWmaFile crashes if the temporary file couldn't be created
 During playback, scroll is done without hiding playback cursor
 When FFT array is reallocated, it is invalidated
 Paste operation doesn't check if sampling rate is the same. Add dialog to resample

@@ -23,7 +23,7 @@ public:
 	virtual BOOL Init() { return InitPass(1); }
 	virtual BOOL InitPass(int nPass) { return TRUE; }
 
-	virtual BOOL DeInit() { return TRUE; }
+	virtual void DeInit() { }
 	virtual void Retire();
 	virtual void PostRetire(BOOL bChildContext = FALSE);
 	virtual void Execute();
@@ -248,7 +248,7 @@ public:
 	}
 	virtual BOOL OperationProc();
 	virtual BOOL Init();
-	virtual BOOL DeInit();
+	virtual void DeInit();
 	virtual void PostRetire(BOOL bChildContext = FALSE);
 };
 
@@ -278,7 +278,7 @@ public:
 	virtual ~CSoundPlayContext() {}
 	virtual BOOL OperationProc();
 	virtual BOOL Init();
-	virtual BOOL DeInit();
+	virtual void DeInit();
 	virtual void PostRetire(BOOL bChildContext = FALSE);
 };
 
@@ -417,6 +417,8 @@ public:
 	}
 	CString m_NewName;
 	DWORD m_NewFileTypeFlags;
+	virtual BOOL Init();
+	virtual void DeInit();
 	virtual BOOL OperationProc();
 	virtual void PostRetire(BOOL bChildContext = FALSE);
 };
@@ -443,9 +445,29 @@ public:
 	long m_DstCopySample;
 	virtual BOOL OperationProc();
 	virtual BOOL Init();
-	virtual BOOL DeInit();
+	virtual void DeInit();
 	virtual void PostRetire(BOOL bChildContext = FALSE);
 };
 
+class CWmaSaveContext : public CConversionContext
+{
+public:
+	CWmaSaveContext(CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString, LPCTSTR OperationName)
+		: CConversionContext(pDoc, StatusString, OperationName)
+	{
+		// delete the procs in the destructor
+	}
+	~CWmaSaveContext()
+	{
+	}
 
+	WmaEncoder m_Enc;
+	CString m_SaveFilename;
+	CString m_TargetFilename;
+	virtual BOOL Init();
+	virtual void DeInit();
+	virtual BOOL ProcessBuffer(void * buf, size_t len, DWORD offset, BOOL bBackward = FALSE);
+	//BOOL SetTargetFormat(WAVEFORMATEX * pwf);
+	virtual void PostRetire(BOOL bChildContext = FALSE);
+};
 #endif // AFX_OPERATIONCONTEXT_H__FFA16C44_2FA7_11D4_9ADD_00C0F0583C4B__INCLUDED_

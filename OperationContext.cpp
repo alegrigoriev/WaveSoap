@@ -1983,7 +1983,7 @@ BOOL CDecompressContext::Init()
 	return TRUE;
 }
 
-BOOL CDecompressContext::DeInit()
+void CDecompressContext::DeInit()
 {
 	m_ash.cbDstLength = m_DstBufSize;
 	m_ash.cbSrcLength = m_DstBufSize;
@@ -2005,7 +2005,6 @@ BOOL CDecompressContext::DeInit()
 		acmDriverClose(m_acmDrv, 0);
 		m_acmDrv = NULL;
 	}
-	return TRUE;
 }
 
 void CDecompressContext::PostRetire(BOOL bChildContext)
@@ -2051,12 +2050,11 @@ BOOL CSoundPlayContext::Init()
 	return TRUE;
 }
 
-BOOL CSoundPlayContext::DeInit()
+void CSoundPlayContext::DeInit()
 {
 	pDocument->PlaybackPositionNotify(-1, -2);// sample=-1, channel=-2
 	SetThreadPriority(GetCurrentThread(), m_OldThreadPriority);
 	m_WaveOut.Reset();
-	return TRUE;
 }
 
 void CSoundPlayContext::PostRetire(BOOL bChildContext)
@@ -3368,7 +3366,7 @@ void CFileSaveContext::PostRetire(BOOL bChildContext)
 		// set length of file (even)
 		m_DstFile.SetFileLength((m_pConvert->m_DstCopyPos + 1) & ~1);
 		// release references
-		delete m_pConvert;
+		m_pConvert->PostRetire(TRUE);
 		m_pConvert = NULL;
 	}
 	// rename files, change them
@@ -3423,6 +3421,26 @@ void CFileSaveContext::PostRetire(BOOL bChildContext)
 		m_DstFile.Close();
 	}
 	CCopyContext::PostRetire(bChildContext);
+}
+
+BOOL CFileSaveContext::Init()
+{
+	CCopyContext::Init();
+	if (NULL != m_pConvert
+		&& ! m_pConvert->Init())
+	{
+		return FALSE;
+	}
+	return TRUE;
+}
+
+void CFileSaveContext::DeInit()
+{
+	if (NULL != m_pConvert)
+	{
+		m_pConvert->DeInit();
+	}
+	CCopyContext::DeInit();
 }
 
 BOOL CConversionContext::OperationProc()
@@ -3655,11 +3673,11 @@ BOOL CWmaDecodeContext::Init()
 	CoUninitialize();
 	return FALSE;
 }
-BOOL CWmaDecodeContext::DeInit()
+
+void CWmaDecodeContext::DeInit()
 {
 	m_Decoder.Stop();
 	CoUninitialize();
-	return TRUE;
 }
 
 void CWmaDecodeContext::SetDstFile(CWaveFile & file)
@@ -3697,4 +3715,37 @@ void CWmaDecodeContext::PostRetire(BOOL bChildContext)
 		pDocument->SavePeakInfo(m_DstFile, pDocument->m_OriginalWavFile);
 	}
 	COperationContext::PostRetire(bChildContext);
+}
+
+BOOL CWmaSaveContext::Init()
+{
+	CoInitializeEx(NULL, COINIT_MULTITHREADED);
+	if (! m_Enc.Init())
+	{
+		return FALSE;
+	}
+	return FALSE;
+	// TODO: load the proper profile
+	// TODO: Open the destination file
+	if ( ! m_Enc.OpenWrite(m_SaveFilename))
+	{
+		return FALSE;
+	}
+	return TRUE;
+}
+
+void CWmaSaveContext::DeInit()
+{
+	m_Enc.DeInit();
+	CoUninitialize();
+}
+
+void CWmaSaveContext::PostRetire(BOOL bChildContext)
+{
+	CConversionContext::PostRetire(bChildContext);
+}
+
+BOOL CWmaSaveContext::ProcessBuffer(void * buf, size_t len, DWORD offset, BOOL bBackward)
+{
+	return m_Enc.Write(buf, len);
 }

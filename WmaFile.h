@@ -181,4 +181,29 @@ public:
 	WAVEFORMATEX * m_pSrcWf;
 	DWORD m_Bitrate;
 };
+
+class WmaEncoder
+{
+public:
+	WmaEncoder();
+	~WmaEncoder();
+	BOOL OpenWrite(LPCTSTR FileName);
+	BOOL Init();
+	void DeInit();
+	void SetArtist(LPCTSTR szArtist);
+	void SetAlbum(LPCTSTR szAlbum);
+	void SetGenre(LPCTSTR szGenre);
+	BOOL SetBitrate(int Bitrate);
+	BOOL Write(void * Buf, size_t size);
+protected:
+	IWMWriter * m_pWriter;
+	IWMWriterAdvanced * m_pWriterAdvanced;
+	IWMProfileManager * m_pProfileManager;
+	IWMProfile * m_pProfile;
+	IWMStreamConfig * m_pStreamConfig;
+	IWMWriterFileSink * m_pFileSink;
+	IWMHeaderInfo * m_pHeaderInfo;
+	INSSBuffer * m_pBuffer;
+};
+
 #endif
