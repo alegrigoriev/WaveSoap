@@ -1175,8 +1175,8 @@ void CWaveFftView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
 
 		// calculate update boundaries
 		int nChannels = pDoc->WaveChannels();
-		int left = pInfo->Begin;
-		int right = pInfo->End;
+		int left = pInfo->m_Begin;
+		int right = pInfo->m_End;
 		int FirstSampleChanged = left - left % m_FftSpacing;
 		int LastSampleRequired = right - right % m_FftSpacing + m_FftSpacing;
 		if (FirstSampleChanged < m_FftResultBegin)
@@ -1198,9 +1198,9 @@ void CWaveFftView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
 				m_pFftResultArray[i] = 0;
 			}
 		}
-		if (pInfo->Length != -1)
+		if (pInfo->m_NewLength != -1)
 		{
-			int sample = pInfo->Length;
+			int sample = pInfo->m_NewLength;
 			sample -= sample % m_FftSpacing;
 			if (sample < m_FftResultBegin)
 			{

@@ -576,7 +576,7 @@ void CTimeRulerView::OnUpdate( CView* pSender, LPARAM lHint, CObject* pHint )
 	CSoundUpdateInfo * pInfo = dynamic_cast<CSoundUpdateInfo *>(pHint);
 	if (lHint == CWaveSoapFrontDoc::UpdateSampleRateChanged
 		|| (lHint == CWaveSoapFrontDoc::UpdateSoundChanged
-			&& pInfo != NULL && pInfo->Length != -1))
+			&& pInfo != NULL && pInfo->m_NewLength != -1))
 	{
 		// either unknown notification or length changed
 		Invalidate();
