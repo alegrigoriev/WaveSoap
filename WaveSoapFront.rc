@@ -111,6 +111,7 @@ BEGIN
     BUTTON      ID_EDIT_REDO
     BUTTON      ID_EDIT_STOP
     SEPARATOR
+    BUTTON      ID_FILE_STATISTICS
     BUTTON      ID_APP_ABOUT
     BUTTON      ID_CONTEXT_HELP
     SEPARATOR
@@ -131,6 +132,7 @@ BEGIN
     SEPARATOR
     BUTTON      ID_VIEW_ZOOMINHOR2
     BUTTON      ID_VIEW_ZOOMOUTHOR2
+    BUTTON      ID_VIEW_ZOOM_SELECTION
 END
 
 
@@ -663,11 +665,11 @@ BEGIN
     COMBOBOX        IDC_COMBO_TIME_FORMAT,52,94,83,53,CBS_DROPDOWNLIST | 
                     WS_VSCROLL | WS_TABSTOP
     GROUPBOX        "Channel",IDC_STATIC,7,110,129,26
-    CONTROL         "Left ",IDC_RADIO_CHANNEL,"Button",BS_AUTORADIOBUTTON | 
-                    WS_GROUP,13,121,28,10
-    CONTROL         "Right",IDC_RADIO2,"Button",BS_AUTORADIOBUTTON,56,121,32,
+    CONTROL         "Both",IDC_RADIO_CHANNEL,"Button",BS_AUTORADIOBUTTON | 
+                    WS_GROUP,102,121,30,10
+    CONTROL         "Left ",IDC_RADIO1,"Button",BS_AUTORADIOBUTTON,13,121,28,
                     10
-    CONTROL         "Both",IDC_RADIO3,"Button",BS_AUTORADIOBUTTON,102,121,30,
+    CONTROL         "Right",IDC_RADIO2,"Button",BS_AUTORADIOBUTTON,56,121,32,
                     10
     PUSHBUTTON      "&Play",IDC_BUTTON_PLAY,7,144,50,14,WS_GROUP
     DEFPUSHBUTTON   "OK",IDOK,63,144,50,14
@@ -963,6 +965,30 @@ BEGIN
                     WS_VSCROLL | WS_TABSTOP
 END
 
+IDD_DIALOG_ULF_REDUCTION DIALOG DISCARDABLE  0, 0, 193, 107
+STYLE DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "Ultra low frequency suppression"
+FONT 8, "MS Sans Serif"
+BEGIN
+    CONTROL         "Suppress differential noise up to:",
+                    IDC_CHECK_DIFFERENTIAL_MODE_SUPPRESS,"Button",
+                    BS_AUTOCHECKBOX | WS_TABSTOP,7,11,113,10
+    EDITTEXT        IDC_EDIT_DIFF_NOISE_RANGE,123,9,40,14,ES_AUTOHSCROLL
+    LTEXT           "Hz",IDC_STATIC,168,11,14,8
+    CONTROL         "Suppress low frequencies up to:",
+                    IDC_CHECK_LOW_FREQUENCY,"Button",BS_AUTOCHECKBOX | 
+                    WS_TABSTOP,7,27,111,10
+    EDITTEXT        IDC_EDIT_LF_NOISE_RANGE,123,25,40,14,ES_AUTOHSCROLL
+    LTEXT           "Hz",IDC_STATIC,169,27,14,8
+    LTEXT           "Selection:\nChannels:",IDC_STATIC_SELECTION,7,49,179,17
+    CONTROL         "Save &Undo",IDC_CHECK_UNDO,"Button",BS_AUTOCHECKBOX | 
+                    WS_TABSTOP,7,70,50,10
+    PUSHBUTTON      "&Selection...",IDC_BUTTON_SELECTION,132,68,50,14
+    DEFPUSHBUTTON   "OK",IDOK,12,86,50,14
+    PUSHBUTTON      "Cancel",IDCANCEL,73,86,50,14
+    PUSHBUTTON      "&Help",IDHELP,132,86,50,14
+END
+
 
 #ifndef _MAC
 /////////////////////////////////////////////////////////////////////////////
@@ -1159,6 +1185,14 @@ BEGIN
     IDD_DIALOG_SAVE_TEMPLATE, DIALOG
     BEGIN
         RIGHTMARGIN, 275
+    END
+
+    IDD_DIALOG_ULF_REDUCTION, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 186
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 100
     END
 END
 #endif    // APSTUDIO_INVOKED
