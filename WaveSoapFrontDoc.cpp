@@ -2591,12 +2591,9 @@ void CWaveSoapFrontDoc::PostFileSave(CFileSaveContext * pContext)
 			if (! m_bDirectMode || m_bReadOnly)
 			{
 				// if PCM format and read-only or non-direct, ask about reopening as direct
-				CReopenDialog ReopenDlg;
-				ReopenDlg.m_Prompt.Format(IDS_REOPEN_IN_DIRECT_MODE, pContext->m_NewName);
+				CReopenDialog ReopenDlg(IDS_REOPEN_IN_DIRECT_MODE, pContext->m_NewName);
 
-				CDocumentPopup pop(this);
-
-				int result = ReopenDlg.DoModal();
+				int result = ReopenDlg.DoModalPopDocument(this);
 				if (IDOK == result)
 				{
 					ReopenDocumentFlags = OpenDocumentDirectMode;
@@ -2771,13 +2768,9 @@ BOOL CWaveSoapFrontDoc::PostCommitFileSave(int flags, LPCTSTR FullTargetName)
 			return TRUE;
 		}
 
-		CReopenDialog ReopenDlg;
-		ReopenDlg.m_Prompt.Format(IDS_REOPEN_IN_DIRECT_MODE, m_WavFile.GetName());
-		int result;
-		{
-			CDocumentPopup pop(this);
-			result = ReopenDlg.DoModal();
-		}
+		CReopenDialog ReopenDlg(IDS_REOPEN_IN_DIRECT_MODE, m_WavFile.GetName());
+
+		int result = ReopenDlg.DoModalPopDocument(this);
 
 		if (IDOK == result)
 		{
@@ -3978,25 +3971,23 @@ void CWaveSoapFrontDoc::OnProcessInsertsilence()
 	}
 
 	CInsertSilenceDialog dlg(m_CaretPosition, 0,
-							channel + 1,
-							WaveFileSamples(), GetApp()->m_SoundTimeFormat,
-							WaveFormat());
+							channel,
+							m_WavFile, GetApp()->m_SoundTimeFormat);
 
 	if (IDOK != dlg.DoModal())
 	{
 		return;
 	}
 
-	GetApp()->m_SoundTimeFormat = dlg.m_TimeFormat;
-	channel = dlg.m_nChannel - 1;
+	//GetApp()->m_SoundTimeFormat = dlg.m_TimeFormat;
 
-	if (dlg.m_Length <= 0)
+	if (dlg.GetLength() <= 0)
 	{
 		// nothing to change
 		return;
 	}
 
-	if ( ! CanExpandWaveFileDlg(m_WavFile, dlg.m_Length))
+	if ( ! CanExpandWaveFileDlg(m_WavFile, dlg.GetLength()))
 	{
 		return;
 	}
@@ -4010,12 +4001,13 @@ void CWaveSoapFrontDoc::OnProcessInsertsilence()
 		return;
 	}
 
-	if ( ! pContext->InitExpand(m_WavFile, dlg.m_Start,
-								dlg.m_Length, channel, FALSE))   // undo isn't necessary
+	if ( ! pContext->InitExpand(m_WavFile, dlg.GetStart(),
+								dlg.GetLength(), dlg.GetChannel(), FALSE))   // undo isn't necessary
 	{
 		delete pContext;
 		return;
 	}
+
 	SoundChanged(WaveFileID(), 0, 0, WaveFileSamples());
 	pContext->Execute();
 	SetModifiedFlag(TRUE, TRUE);    // kepp previous undo
@@ -4928,25 +4920,16 @@ void CWaveSoapFrontDoc::OnProcessNoiseReduction()
 		channel = ALL_CHANNELS;
 	}
 
-	CNoiseReductionDialog dlg;
-	CThisApp * pApp = GetApp();
-
-	dlg.m_bUndo = UndoEnabled();
-	dlg.m_Start = start;
-	dlg.m_End = end;
-	dlg.m_CaretPosition = m_CaretPosition;
-	dlg.m_Chan = channel;
-	dlg.m_pWf = WaveFormat();
-	dlg.m_bLockChannels = m_bChannelsLocked;
-	dlg.m_TimeFormat = pApp->m_SoundTimeFormat;
-	dlg.m_FileLength = WaveFileSamples();
+	CNoiseReductionDialog dlg(start, end, m_CaretPosition, channel,
+							m_WavFile, ChannelsLocked(), UndoEnabled(), GetApp()->m_SoundTimeFormat);
 
 	ULONG result = dlg.DoModal();
+
 	if (IDC_BUTTON_SET_THRESHOLD == result)
 	{
 		// get active frame, enable spectrum section, store threshold
 		CChildFrame * pFrame =
-			dynamic_cast<CChildFrame*>(((CFrameWnd*)pApp->GetMainWnd())->GetActiveFrame());
+			dynamic_cast<CChildFrame*>(((CFrameWnd*)GetApp()->GetMainWnd())->GetActiveFrame());
 		if (NULL != pFrame)
 		{
 			CSpectrumSectionView * pSectionView =
@@ -4955,9 +4938,9 @@ void CWaveSoapFrontDoc::OnProcessNoiseReduction()
 			if (NULL != pSectionView)
 			{
 				pSectionView->m_bShowNoiseThreshold = TRUE;
-				pSectionView->m_dNoiseThresholdLow = dlg.m_dNoiseThresholdLow;
-				pSectionView->m_dNoiseThresholdHigh = dlg.m_dNoiseThresholdHigh;
-				pSectionView->nBeginFrequency = int(dlg.m_dLowerFrequency);
+				pSectionView->m_dNoiseThresholdLow = dlg.GetNoiseThresholdLow();
+				pSectionView->m_dNoiseThresholdHigh = dlg.GetNoiseThresholdHigh();
+				pSectionView->nBeginFrequency = int(dlg.GetLowerFrequency());
 
 				if (! pFrame->m_wClient.m_bShowSpectrumSection)
 				{
@@ -4979,6 +4962,7 @@ void CWaveSoapFrontDoc::OnProcessNoiseReduction()
 
 	CConversionContext * pContext = new CConversionContext(this, _T("Removing background noise..."),
 															_T("Noise Reduction"));
+
 	if (NULL == pContext)
 	{
 		NotEnoughMemoryMessageBox();
@@ -4993,26 +4977,27 @@ void CWaveSoapFrontDoc::OnProcessNoiseReduction()
 		return;
 	}
 
-	pNoiseReduction->SetAndValidateWaveformat(dlg.m_pWf);
+	pNoiseReduction->SetAndValidateWaveformat(WaveFormat());
 	dlg.SetNoiseReductionData(pNoiseReduction);
 
 	pContext->AddWaveProc(pNoiseReduction);
 
-	if ( ! pContext->InitDestination(m_WavFile, dlg.m_Start,
-									dlg.m_End, dlg.m_Chan, dlg.m_bUndo))
+	if ( ! pContext->InitDestination(m_WavFile, dlg.GetStart(),
+									dlg.GetEnd(), dlg.GetChannel(), dlg.UndoEnabled()))
 	{
 		delete pContext;
 		return;
 	}
+
 	pContext->m_SrcFile = m_WavFile;
 	pContext->m_SrcStart = pContext->m_DstStart;
 	pContext->m_SrcPos = pContext->m_SrcStart;
 	pContext->m_SrcEnd = pContext->m_DstEnd;
 
-	pContext->m_SrcChan = dlg.m_Chan;
+	pContext->m_SrcChan = dlg.GetChannel();
 
 	pContext->Execute();
-	SetModifiedFlag(TRUE, dlg.m_bUndo);
+	SetModifiedFlag(TRUE, dlg.UndoEnabled());
 
 }
 
