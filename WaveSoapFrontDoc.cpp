@@ -1703,12 +1703,12 @@ BOOL CWaveSoapFrontDoc::OnOpenDocument(LPCTSTR lpszPathName, int DocOpenFlags)
 			pContext->m_SrcFile = m_OriginalWavFile;
 			pContext->m_DstFile = m_WavFile;
 
-			pContext->m_SrcStart = m_OriginalWavFile.GetDataChunk()->dwDataOffset;
+			pContext->m_SrcStart = m_OriginalWavFile.SampleToPosition(0);
 			pContext->m_SrcPos = pContext->m_SrcStart;
 			pContext->m_SrcEnd = pContext->m_SrcStart +
 								m_OriginalWavFile.GetDataChunk()->cksize;
 
-			pContext->m_DstStart = m_WavFile.GetDataChunk()->dwDataOffset;
+			pContext->m_DstStart = m_WavFile.SampleToPosition(0);
 			pContext->m_DstCopyPos = pContext->m_DstStart;
 			pContext->m_CurrentSamples = m_WavFile.NumberOfSamples();
 
@@ -1943,8 +1943,8 @@ BOOL CWaveSoapFrontDoc::OnSaveConvertedFile(int flags, LPCTSTR FullTargetName, W
 	pContext->m_pConvert = pConvert;
 	pConvert->m_SrcFile = m_WavFile;
 	pConvert->m_DstFile = NewWaveFile;
-	pConvert->m_SrcStart = m_WavFile.GetDataChunk()->dwDataOffset;
-	pConvert->m_DstStart = NewWaveFile.GetDataChunk()->dwDataOffset;
+	pConvert->m_SrcStart = m_WavFile.SampleToPosition(0);
+	pConvert->m_DstStart = NewWaveFile.SampleToPosition(0);
 	pConvert->m_SrcCopyPos = pConvert->m_SrcStart;
 	pConvert->m_DstCopyPos = pConvert->m_DstStart;
 	pConvert->m_SrcEnd = pConvert->m_SrcStart + m_WavFile.GetDataChunk()->cksize;
@@ -2114,7 +2114,7 @@ BOOL CWaveSoapFrontDoc::OnSaveMp3File(int flags, LPCTSTR FullTargetName, WAVEFOR
 	pContext->m_pConvert = pConvert;
 	pConvert->m_SrcFile = m_WavFile;
 	pConvert->m_DstFile = NewWaveFile;
-	pConvert->m_SrcStart = m_WavFile.GetDataChunk()->dwDataOffset;
+	pConvert->m_SrcStart = m_WavFile.SampleToPosition(0);
 	pConvert->m_DstStart = 0;
 	pConvert->m_SrcCopyPos = pConvert->m_SrcStart;
 	pConvert->m_DstCopyPos = pConvert->m_DstStart;
@@ -2231,7 +2231,7 @@ BOOL CWaveSoapFrontDoc::OnSaveWmaFile(int flags, LPCTSTR FullTargetName, WAVEFOR
 	pContext->m_pConvert = pConvert;
 	pConvert->m_SrcFile = m_WavFile;
 	pConvert->m_DstFile = NewWaveFile;
-	pConvert->m_SrcStart = m_WavFile.GetDataChunk()->dwDataOffset;
+	pConvert->m_SrcStart = m_WavFile.SampleToPosition(0);
 	pConvert->m_DstStart = 0;
 	pConvert->m_SrcCopyPos = pConvert->m_SrcStart;
 	pConvert->m_DstCopyPos = pConvert->m_DstStart;
@@ -2321,7 +2321,7 @@ BOOL CWaveSoapFrontDoc::OnSaveRawFile(int flags, LPCTSTR FullTargetName, WAVEFOR
 	pContext->m_pConvert = pConvert;
 	pConvert->m_SrcFile = m_WavFile;
 	pConvert->m_DstFile = NewWaveFile;
-	pConvert->m_SrcStart = m_WavFile.GetDataChunk()->dwDataOffset;
+	pConvert->m_SrcStart = m_WavFile.SampleToPosition(0);
 	pConvert->m_DstStart = 0;
 	pConvert->m_SrcCopyPos = pConvert->m_SrcStart;
 	pConvert->m_DstCopyPos = pConvert->m_DstStart;
@@ -4608,7 +4608,7 @@ BOOL CWaveSoapFrontDoc::OpenRawFileDocument(LPCTSTR lpszPathName)
 	pContext->m_SrcPos = pContext->m_SrcStart;
 	pContext->m_SrcEnd = dlg.m_SourceFileSize - dlg.m_TrailerLength;
 
-	pContext->m_DstStart = m_WavFile.GetDataChunk()->dwDataOffset;
+	pContext->m_DstStart = m_WavFile.SampleToPosition(0);
 	pContext->m_DstCopyPos = pContext->m_DstStart;
 
 	pContext->m_CurrentSamples = nNewFileSamples;
