@@ -136,6 +136,7 @@ public:
 // Dialog Data
 	//{{AFX_DATA(CCdGrabbingDialog)
 	enum { IDD = IDD_DIALOG_CD_GRABBING };
+	CComboBox	m_ComboBitrate;
 	CButton	m_StopButton;
 	CButton	m_PlayButton;
 	CEdit	m_eArtist;
@@ -149,6 +150,7 @@ public:
 	CString	m_sSaveFolderOrFile;
 	CString	m_sAlbum;
 	CString	m_sArtist;
+	int		m_RadioFileFormat;
 	//}}AFX_DATA
 
 	CCdDrive m_CdDrive;
@@ -223,8 +225,8 @@ protected:
 	afx_msg void OnUpdateOk(CCmdUI* pCmdUI);
 	afx_msg void OnUpdatePlay(CCmdUI* pCmdUI);
 	afx_msg void OnUpdateStop(CCmdUI* pCmdUI);
-	afx_msg void OnUpdateSelectAll(CCmdUI* pCmdUI);
-	afx_msg void OnUpdateDeselectAll(CCmdUI* pCmdUI);
+	afx_msg void OnUpdateEject(CCmdUI* pCmdUI);
+	afx_msg void OnUpdateComboBitrate(CCmdUI* pCmdUI);
 
 	//{{AFX_MSG(CCdGrabbingDialog)
 	afx_msg void OnSize(UINT nType, int cx, int cy);
@@ -234,8 +236,6 @@ protected:
 	afx_msg void OnSelchangeComboDrives();
 	afx_msg void OnDestroy();
 	afx_msg void OnButtonCddb();
-	afx_msg void OnButtonDeselectAll();
-	afx_msg void OnButtonSelectAll();
 	afx_msg void OnChangeEditAlbum();
 	afx_msg void OnChangeEditArtist();
 	afx_msg void OnClickListTracks(NMHDR* pNMHDR, LRESULT* pResult);
@@ -250,6 +250,9 @@ protected:
 	afx_msg void OnButtonBrowseSaveFolder();
 	afx_msg void OnContextMenu(CWnd* pWnd, CPoint point);
 	afx_msg void OnDblclkListTracks(NMHDR* pNMHDR, LRESULT* pResult);
+	afx_msg void OnRadioWmaFormat();
+	afx_msg void OnRadioMp3Format();
+	afx_msg void OnRadioWavFormat();
 	//}}AFX_MSG
 	void OnMetricsChange();
 	afx_msg LRESULT OnDeviceChange(UINT, DWORD);

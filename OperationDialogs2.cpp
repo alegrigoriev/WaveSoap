@@ -212,6 +212,7 @@ CCdGrabbingDialog::CCdGrabbingDialog(CWnd* pParent /*=NULL*/)
 	m_sSaveFolderOrFile = _T("");
 	m_sAlbum = _T("");
 	m_sArtist = _T("");
+	m_RadioFileFormat = -1;
 	//}}AFX_DATA_INIT
 	m_RadioAssignAttributes = 0;
 	m_RadioStoreImmediately = 0;
@@ -228,6 +229,19 @@ CCdGrabbingDialog::CCdGrabbingDialog(CWnd* pParent /*=NULL*/)
 					0, SaveFile_WmaFile);
 	m_FileTypeFlags &= ~SaveFile_NonWavFile;
 
+	switch (m_FileTypeFlags)
+	{
+	case OpenDocumentMp3File:
+		m_RadioFileFormat = 2;
+		break;
+	case OpenDocumentWmaFile:
+		m_RadioFileFormat = 1;
+		break;
+	default:
+		m_RadioFileFormat = 0;
+		break;
+	}
+
 	m_Profile.AddItem(_T("CdRead"), _T("Speed"), m_SelectedReadSpeed, 64000000,
 					176400, 0x10000000);
 	m_Profile.AddItem(_T("CdRead"), _T("DriveLetter"),
@@ -240,30 +254,40 @@ CCdGrabbingDialog::CCdGrabbingDialog(CWnd* pParent /*=NULL*/)
 
 	static ResizableDlgItem const ResizeItems[] =
 	{
-		{IDC_BUTTON_SELECT_ALL, MoveRight},
-		{IDC_BUTTON_DESELECT_ALL, MoveRight},
+		{IDC_LIST_TRACKS, ExpandRight | ExpandDown},
 
 		{IDC_RADIO_ASSIGN_ATTRIBUTES, MoveDown},
 		{IDC_RADIO_ASSIGN_SELECTED_TRACK, MoveDown},
+
 		{IDC_STATIC_ALBUM, MoveDown},
 		{IDC_EDIT_ALBUM, MoveDown | ExpandRight},
+
 		{IDC_STATIC_ARTIST, MoveDown},
 		{IDC_EDIT_ARTIST, MoveDown | ExpandRight},
+
 		{IDC_STATIC_STORE_FOLDER, MoveDown},
 		{IDC_EDIT_FOLDER_OR_FILE, MoveDown | ExpandRight},
 		{IDC_BUTTON_BROWSE_SAVE_FOLDER, MoveRight | MoveDown},
+
+		{IDC_STATIC_SAVE_AS, MoveDown},
+		{IDC_RADIO_WAV_FORMAT, MoveDown},
+		{IDC_RADIO_WMA_FORMAT, MoveDown},
+		{IDC_RADIO_MP3_FORMAT, MoveDown},
+		{IDC_STATIC_BITRATE, MoveDown},
+		{IDC_COMBO_BITRATE, MoveDown},
+
 		{IDC_RADIO_STORE_IMMEDIATELY, MoveDown},
 		{IDC_RADIO_LOAD_FOR_EDITING, MoveDown},
-		{IDC_STATIC_FORMAT, MoveDown},
+
 		{IDC_BUTTON_PLAY, MoveRight | MoveDown},
 		{IDC_BUTTON_STOP, MoveRight | MoveDown},
-
+		{IDC_BUTTON_EJECT, MoveRight | MoveDown},
 		{IDC_BUTTON_CDDB, MoveRight | MoveDown},
+
 		{IDHELP, MoveRight | MoveDown},
 		{IDOK, MoveRight | MoveDown},
 		{IDCANCEL, MoveRight | MoveDown},
 
-		{IDC_LIST_TRACKS, ExpandRight | ExpandDown},
 	};
 
 	m_pResizeItems = ResizeItems;
@@ -280,6 +304,7 @@ void CCdGrabbingDialog::DoDataExchange(CDataExchange* pDX)
 {
 	CResizableDialog::DoDataExchange(pDX);
 	//{{AFX_DATA_MAP(CCdGrabbingDialog)
+	DDX_Control(pDX, IDC_COMBO_BITRATE, m_ComboBitrate);
 	DDX_Control(pDX, IDC_BUTTON_STOP, m_StopButton);
 	DDX_Control(pDX, IDC_BUTTON_PLAY, m_PlayButton);
 	DDX_Control(pDX, IDC_EDIT_ARTIST, m_eArtist);
@@ -293,6 +318,7 @@ void CCdGrabbingDialog::DoDataExchange(CDataExchange* pDX)
 	DDX_Text(pDX, IDC_EDIT_FOLDER_OR_FILE, m_sSaveFolderOrFile);
 	DDX_Text(pDX, IDC_EDIT_ALBUM, m_sAlbum);
 	DDX_Text(pDX, IDC_EDIT_ARTIST, m_sArtist);
+	DDX_Radio(pDX, IDC_RADIO_WAV_FORMAT, m_RadioFileFormat);
 	//}}AFX_DATA_MAP
 
 	if (pDX->m_bSaveAndValidate)
@@ -304,6 +330,19 @@ void CCdGrabbingDialog::DoDataExchange(CDataExchange* pDX)
 		// check if the folder exists
 		m_sSaveFolderOrFile.TrimLeft();
 		m_sSaveFolderOrFile.TrimRight();
+
+		switch (m_RadioFileFormat)
+		{
+		case 2:
+			m_FileTypeFlags = OpenDocumentMp3File;
+			break;
+		case 1:
+			m_FileTypeFlags = OpenDocumentWmaFile;
+			break;
+		default:
+			m_FileTypeFlags = 0;
+			break;
+		}
 
 		if ( ! VerifyCreateDirectory(m_sSaveFolderOrFile))
 		{
@@ -376,8 +415,6 @@ BEGIN_MESSAGE_MAP(CCdGrabbingDialog, CResizableDialog)
 	ON_CBN_SELCHANGE(IDC_COMBO_DRIVES, OnSelchangeComboDrives)
 	ON_WM_DESTROY()
 	ON_BN_CLICKED(IDC_BUTTON_CDDB, OnButtonCddb)
-	ON_BN_CLICKED(IDC_BUTTON_DESELECT_ALL, OnButtonDeselectAll)
-	ON_BN_CLICKED(IDC_BUTTON_SELECT_ALL, OnButtonSelectAll)
 	ON_EN_CHANGE(IDC_EDIT_ALBUM, OnChangeEditAlbum)
 	ON_EN_CHANGE(IDC_EDIT_ARTIST, OnChangeEditArtist)
 	ON_NOTIFY(NM_CLICK, IDC_LIST_TRACKS, OnClickListTracks)
@@ -391,16 +428,19 @@ BEGIN_MESSAGE_MAP(CCdGrabbingDialog, CResizableDialog)
 	ON_BN_CLICKED(IDC_BUTTON_BROWSE_SAVE_FOLDER, OnButtonBrowseSaveFolder)
 	ON_WM_CONTEXTMENU()
 	ON_NOTIFY(NM_DBLCLK, IDC_LIST_TRACKS, OnDblclkListTracks)
+	ON_BN_CLICKED(IDC_RADIO_WMA_FORMAT, OnRadioWmaFormat)
+	ON_BN_CLICKED(IDC_RADIO_MP3_FORMAT, OnRadioMp3Format)
+	ON_BN_CLICKED(IDC_RADIO_WAV_FORMAT, OnRadioWavFormat)
 	//}}AFX_MSG_MAP
 	ON_WM_DEVICECHANGE()
 	ON_COMMAND(IDC_BUTTON_PLAY, OnButtonPlay)
 	ON_COMMAND(IDC_BUTTON_STOP, OnButtonStop)
 	ON_MESSAGE(WM_KICKIDLE, OnKickIdle)
 	ON_UPDATE_COMMAND_UI(IDOK, OnUpdateOk)
-	ON_UPDATE_COMMAND_UI(IDC_BUTTON_SELECT_ALL, OnUpdateSelectAll)
-	ON_UPDATE_COMMAND_UI(IDC_BUTTON_DESELECT_ALL, OnUpdateDeselectAll)
 	ON_UPDATE_COMMAND_UI(IDC_BUTTON_PLAY, OnUpdatePlay)
 	ON_UPDATE_COMMAND_UI(IDC_BUTTON_STOP, OnUpdateStop)
+	ON_UPDATE_COMMAND_UI(IDC_BUTTON_EJECT, OnUpdateEject)
+	ON_UPDATE_COMMAND_UI(IDC_COMBO_BITRATE, OnUpdateComboBitrate)
 
 END_MESSAGE_MAP()
 
@@ -477,20 +517,6 @@ void CCdGrabbingDialog::FillTrackList(TCHAR letter)
 		return;
 	}
 
-	if (m_CdDrive.IsDriveBusy(letter))
-	{
-		if (DiskStateBusy == m_DiskReady)
-		{
-			return;
-		}
-		m_lbTracks.DeleteAllItems();
-		s.Format(IDS_CD_DRIVE_BUSY, letter);
-		m_lbTracks.InsertItem(0, s);
-
-		m_DiskReady = DiskStateBusy;
-		return;
-	}
-
 	if ( ! OpenDrive(letter))
 	{
 		TRACE("Couldn't open CD,error=%d\n",GetLastError());
@@ -499,6 +525,7 @@ void CCdGrabbingDialog::FillTrackList(TCHAR letter)
 		m_lbTracks.InsertItem(0, s);
 		return;
 	}
+
 	ReloadTrackList();
 	InitReadSpeedCombobox();
 }
@@ -506,6 +533,23 @@ void CCdGrabbingDialog::FillTrackList(TCHAR letter)
 void CCdGrabbingDialog::ReloadTrackList(CdMediaChangeState NewMediaState)
 {
 	BOOL res = FALSE;
+	if (m_CdDrive.IsDriveBusy(m_DriveLetterSelected))
+	{
+		if (DiskStateBusy == m_DiskReady)
+		{
+			return;
+		}
+		memzero(m_toc);
+		m_Tracks.clear();
+		m_lbTracks.DeleteAllItems();
+		CString s;
+		s.Format(IDS_CD_DRIVE_BUSY, m_DriveLetterSelected);
+		m_lbTracks.InsertItem(0, s);
+
+		m_DiskReady = DiskStateBusy;
+		return;
+	}
+
 	if (NewMediaState != CdMediaStateNotReady)
 	{
 		m_CdDrive.StopAudioPlay();
@@ -672,6 +716,10 @@ void CCdGrabbingDialog::CreateImageList()
 BOOL CCdGrabbingDialog::OnInitDialog()
 {
 	CResizableDialog::OnInitDialog();
+
+	HICON hIcon = AfxGetApp()->LoadIcon(IDI_ICON_CD);
+	SetIcon(hIcon, TRUE);			// Set big icon
+	SetIcon(hIcon, FALSE);		// Set small icon
 
 	CreateImageList();
 	CRect cr;
@@ -885,38 +933,6 @@ void CCdGrabbingDialog::OnButtonCddb()
 {
 	// TODO: Add your control notification handler code here
 
-}
-
-void CCdGrabbingDialog::OnButtonDeselectAll()
-{
-	for (int tr = 0; tr < m_Tracks.size(); tr++)
-	{
-		if (m_Tracks[tr].IsAudio)
-		{
-			if (m_Tracks[tr].Checked)
-			{
-				m_bNeedUpdateControls = TRUE;
-			}
-			m_lbTracks.SetCheck(tr, FALSE);
-			m_Tracks[tr].Checked = false;
-		}
-	}
-}
-
-void CCdGrabbingDialog::OnButtonSelectAll()
-{
-	for (int tr = 0; tr < m_Tracks.size(); tr++)
-	{
-		if (m_Tracks[tr].IsAudio)
-		{
-			if ( ! m_Tracks[tr].Checked)
-			{
-				m_bNeedUpdateControls = TRUE;
-			}
-			m_lbTracks.SetCheck(tr, TRUE);
-			m_Tracks[tr].Checked = true;
-		}
-	}
 }
 
 void CCdGrabbingDialog::OnChangeEditAlbum()
@@ -1361,34 +1377,6 @@ void CCdGrabbingDialog::OnUpdateStop(CCmdUI* pCmdUI)
 	pCmdUI->Enable(m_bPlayingAudio);
 }
 
-void CCdGrabbingDialog::OnUpdateSelectAll(CCmdUI* pCmdUI)
-{
-	BOOL bEnable = FALSE;
-	for (int t = 0; t < m_Tracks.size(); t++)
-	{
-		if (m_Tracks[t].IsAudio)
-		{
-			bEnable = TRUE;
-			break;
-		}
-	}
-	pCmdUI->Enable(bEnable);
-}
-
-void CCdGrabbingDialog::OnUpdateDeselectAll(CCmdUI* pCmdUI)
-{
-	BOOL bEnable = FALSE;
-	for (int t = 0; t < m_Tracks.size(); t++)
-	{
-		if (m_Tracks[t].IsAudio)
-		{
-			bEnable = TRUE;
-			break;
-		}
-	}
-	pCmdUI->Enable(bEnable);
-}
-
 void CCdGrabbingDialog::OnSelchangeComboSpeed()
 {
 	m_SelectedReadSpeed = 176400 * CdSpeeds[m_SpeedCombo.GetCurSel()];
@@ -1425,6 +1413,7 @@ void CCdGrabbingDialog::OnCancel()
 
 void CCdGrabbingDialog::OnContextMenu(CWnd* pWnd, CPoint point)
 {
+	CResizableDialog::OnContextMenu(pWnd, point);
 	return;
 	CRect cr;
 	m_lbTracks.GetClientRect( & cr);
@@ -1442,5 +1431,51 @@ void CCdGrabbingDialog::OnContextMenu(CWnd* pWnd, CPoint point)
 								point.x, point.y,
 								this);
 	}
+}
+
+
+void CCdGrabbingDialog::OnRadioWmaFormat()
+{
+	// TODO: Add your control notification handler code here
+	// check if WMA encoder is available
+	m_bNeedUpdateControls = TRUE;
+	if (GetApp()->CanOpenWindowsMedia())
+	{
+		m_RadioFileFormat = 1;
+		// fill bitrate dialog
+		return;
+	}
+	int id = AfxMessageBox(IDS_WMA_ENCODER_NOT_AVILABLE, MB_OK | MB_ICONEXCLAMATION | MB_HELP);
+	if (IDHELP == id)
+	{
+		// TODO
+	}
+	CheckRadioButton(IDC_RADIO_WAV_FORMAT, IDC_RADIO_WAV_FORMAT, IDC_RADIO_MP3_FORMAT);
+	m_RadioFileFormat = 0;
+}
+
+void CCdGrabbingDialog::OnRadioMp3Format()
+{
+	m_bNeedUpdateControls = TRUE;
+	m_RadioFileFormat = 2;
+	// TODO: Add your control notification handler code here
+	// check if MP3 encoder is available
+
+}
+
+void CCdGrabbingDialog::OnRadioWavFormat()
+{
+	// TODO: Add your control notification handler code here
+	m_bNeedUpdateControls = TRUE;
+	m_RadioFileFormat = 0;
+
+}
+void CCdGrabbingDialog::OnUpdateComboBitrate(CCmdUI* pCmdUI)
+{
+	pCmdUI->Enable(0 != m_RadioFileFormat);
+}
+
+void CCdGrabbingDialog::OnUpdateEject(CCmdUI* pCmdUI)
+{
 }
 

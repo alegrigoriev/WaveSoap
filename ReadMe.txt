@@ -1,19 +1,20 @@
 Known problems and tasks:
 
-Get rid of "grab CD to a single file" mode
+Make a few retries to read TOC after disk change
+Set speed doesn't work on Goldstar CDRW
 Add file format selection for CD grabbing
 Add check/uncheck icons to the header
 Add context menu to track list (check/uncheck all/selected)
 Add eject CD button
-Process Space key in track list
 Pass wave format to CD grabbing dialog
 Process Loss Of Streaming error
 Add CD grabbing
+Handle "Save from CD immediately" option
+Read CD text
 Open CDA files
 Set icons to all resizable dialogs (for XP)
 Load sound from AVI
 Add options dialog
-Save WAVEFORMAT of an open WMA/MP3 file
 Enter WMA file attributes (title, author, etc)
 Enter MP3 file attributes
 In outline view, change mouse cursor over caret and view and selection boundaries
@@ -86,6 +87,7 @@ No Disk In Drive has a checkmark
 CD list combo height too low
 
 Deferred:
+Move WMA error dialog to PostRetire, all initialization to Init()
 16 and 20 kbit/s WMA save is incomplete (not reproduced)
 During playback, scrolled remnants of playback cursor seen (video driver?)
 Put buttons for the view commands to the wave window status bar
@@ -94,6 +96,10 @@ Save As dialog is not centered first time (comdlg problem?)
 ??? When time/seconds format is set for status bar, MM:SS is actually shown
 
 Done:
+Save WAVEFORMAT of an open WMA/MP3 file
+Process Space key in track list
+Get rid of "grab CD to a single file" mode
+Call default OnContextMenu!
 Created CWaveFormat class
 During CD read, create next document during Context::Execute()
 Use temporary filename for CD temp files

@@ -104,6 +104,7 @@
 #define IDD_DIALOG_BATCH_CONVERSION     185
 #define IDD_DIALOG_BATCH_SAVE_TARGET    186
 #define IDR_MENU_CDGRAB                 187
+#define IDI_ICON_CD                     188
 #define IDC_EDIT_MIN_CLICK_AMPLITUDE    1000
 #define IDC_TAB_SWITCH_VIEW_MODE        1000
 #define IDC_CHECK_LOG_CLICKS            1001
@@ -360,6 +361,9 @@
 #define IDC_RADIO_WMA_FORMAT            1244
 #define IDC_STATIC_SAVE_AS              1245
 #define IDC_COMBO_BITRATE               1246
+#define IDC_BUTTON_EJECT                1247
+#define IDC_STATIC_BITRATE              1248
+#define IDC_RADIO_MP3_FORMAT            1249
 #define IDC_VIEW_RULER_SAMPLES          32771
 #define IDC_VIEW_RULER_HHMMSS           32772
 #define IDC_VIEW_RULER_SECONDS          32773
@@ -552,6 +556,7 @@
 #define IDS_NO_CD_DRIVES                32957
 #define IDS_CD_DRIVE_INACCESSIBLE       32958
 #define IDS_CD_DRIVE_BUSY               32959
+#define IDS_WMA_ENCODER_NOT_AVILABLE    32960
 #define ID_FILE_PROPERTIES              40000
 #define ID_VIEW_ZOOMVERT_NORMAL         40001
 #define ID_VIEW_ZOOMIN_HOR_FULL         40002
@@ -653,9 +658,9 @@
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_3D_CONTROLS                     1
-#define _APS_NEXT_RESOURCE_VALUE        188
-#define _APS_NEXT_COMMAND_VALUE         40113
-#define _APS_NEXT_CONTROL_VALUE         1247
+#define _APS_NEXT_RESOURCE_VALUE        189
+#define _APS_NEXT_COMMAND_VALUE         40114
+#define _APS_NEXT_CONTROL_VALUE         1250
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif

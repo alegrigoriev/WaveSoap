@@ -634,6 +634,10 @@ SOURCE=.\res\cursor_b.cur
 # End Source File
 # Begin Source File
 
+SOURCE=.\res\icon_cd.ico
+# End Source File
+# Begin Source File
+
 SOURCE=.\res\id_bitma.bmp
 # End Source File
 # Begin Source File
