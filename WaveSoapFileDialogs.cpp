@@ -379,6 +379,34 @@ CFileSaveUiSupport::CFileSaveUiSupport(CWaveFormat const & Wf)
 	, m_FileType(SoundFileTypeUnknown)
 	, m_SelectedRawFormat(RawSoundFilePcm16Lsb)
 {
+	FileParameters * pRawParams = PersistentFileParameters::GetData();
+	switch (pRawParams->RawFileFormat.wFormatTag)
+	{
+	case WAVE_FORMAT_PCM:
+	default:
+		if (8 == pRawParams->RawFileFormat.wBitsPerSample)
+		{
+			m_SelectedRawFormat = RawSoundFilePcm8;
+		}
+		else if (pRawParams->RawFileBigEnded)
+		{
+			m_SelectedRawFormat = RawSoundFilePcm16Msb;
+		}
+		else
+		{
+			m_SelectedRawFormat = RawSoundFilePcm16Lsb;
+		}
+		break;
+
+	case WAVE_FORMAT_ALAW:
+		m_SelectedRawFormat = RawSoundFileALaw8;
+		break;
+
+	case WAVE_FORMAT_MULAW:
+		m_SelectedRawFormat = RawSoundFileULaw8;
+		break;
+	}
+
 	m_DefExt[1] = _T("wav");
 	m_DefExt[2] = _T("mp3");
 	m_DefExt[3] = _T("wma");
@@ -1056,7 +1084,7 @@ void CFileSaveUiSupport::FillRawFormatsCombo()
 	s.LoadString(IDS_RAW_8BITS_ULAW);
 	m_FormatTagCombo.InsertString(RawSoundFileULaw8, s);
 
-	m_FormatTagCombo.SetCurSel(0);
+	m_FormatTagCombo.SetCurSel(m_SelectedRawFormat);
 
 }
 
