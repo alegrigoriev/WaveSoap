@@ -3776,12 +3776,6 @@ void CWaveSoapFrontDoc::OnProcessDcoffset()
 		pDcContext.reset(new CDcOffsetContext(this, IDS_DC_ADJUST_STATUS_PROMPT,
 											IDS_DC_ADJUST_OPERATION_NAME, pScanContext));
 
-		if (NULL == pDcContext.get())
-		{
-			NotEnoughMemoryMessageBox();
-			return;
-		}
-
 		if ( ! pDcContext->InitDestination(m_WavFile, dlg.GetStart(),
 											dlg.GetEnd(), dlg.GetChannel(), dlg.UndoEnabled()))
 		{
@@ -3827,12 +3821,6 @@ void CWaveSoapFrontDoc::OnProcessDcoffset()
 
 		pDcContext.reset(new CDcOffsetContext(this, IDS_DC_ADJUST_STATUS_PROMPT,
 											IDS_DC_ADJUST_OPERATION_NAME, offset));
-
-		if (NULL == pDcContext.get())
-		{
-			NotEnoughMemoryMessageBox();
-			return;
-		}
 
 		if ( ! pDcContext->InitDestination(m_WavFile, dlg.GetStart(),
 											dlg.GetEnd(), dlg.GetChannel(), dlg.UndoEnabled()))
@@ -4513,7 +4501,7 @@ void CWaveSoapFrontDoc::OnToolsInterpolate()
 	int PostInterpolateSamples = 0;
 	int InterpolationOverlap;
 
-	bool BigGap = (InterpolateSamples > 32);
+	bool BigGap = (InterpolateSamples > 16);
 	if (BigGap)
 	{
 		InterpolationOverlap = 2048 + InterpolateSamples + InterpolateSamples / 2;
