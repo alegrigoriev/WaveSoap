@@ -1,0 +1,1318 @@
+ASPI for Win32 Specification
+
+Read this specification to find out about
+    *   How to program ASPI for Win32
+    *   The syntax of ASPI for Win32 commands
+    *   How to handle polling and posting of ASPI for Win32 SCSI requests
+    *   How to migrate to ASPI for Win32
+
+-------------------------------------------------------------------------------
+
+Introduction
+
+The Advanced SCSI Programming Interface (ASPI) has become an industry standard
+SCSI software interface in the DOS, Windows, OS/2, and Netware environments.
+ASPI allows developers to write device drivers and applications which are
+independent of the specific host adapter platform used to connect SCSI
+peripherals. With ASPI, there is a single driver managing the host bus
+adapter, eliminating conflicts when multiple applications try to access the
+SCSI bus at the same time.
+
+With the arrival of Windows NT and Windows 95, ASPI must be extended to allow
+applications to take full advantage of these new, 32-bit operating systems.
+This specification describes the Advanced SCSI Programming Interface (ASPI)
+for the Win32 environment.
+
+Note: This specification defines the protocol between ASPI client
+      applications and the ASPI Manager wnaspi32.dll. The specification does
+      not describe the protocol between wnaspi32.dll and the target Win32
+      environment, since this implementation may vary between operating
+      systems.
+
+-------------------------------------------------------------------------------
+
+Using ASPI for Win32 - An Overview
+
+The ASPI manager for Win32 is implemented as a Dynamic Link Library (DLL)
+called wnaspi32.dll. ASPI function calls can be used to retrieve information
+about installed SCSI host adapters and devices, and to execute SCSI I/O
+requests. The ASPI for Win32 layer is fully re-entrant, supporting
+multitasking and multithreaded operations. To use ASPI for Win32, the
+following two functions must be imported from wnaspi32.dll into the client's
+Win32 application.
+
+    Function              Description
+    --------------------  -----------------------------------------------------
+    GetASPI32SupportInfo  This function returns the number of host adapters
+                          installed and other miscellaneous information. You
+                          should call this function to make sure that ASPI
+                          is properly initialized before calling the
+                          SendASPICommand function.
+    SendASPI32Command     This function allows you to send an ASPI for Win16
+                          command.
+    --------------------  -----------------------------------------------------
+
+Note: The structure definitions for ASPI for Win32 have changed from the
+      structure definitions for ASPI for DOS and ASPI for Win16.  Please
+      make sure that code meant for both platforms is conditionally compiled
+      with the new structure defintitions.
+
+-------------------------------------------------------------------------------
+
+GetASPI32SupportInfo Function
+
+Prototype: DWORD GetASPI32SupportInfo( VOID );
+
+The GetASPI32SupportInfo function returns the number of host adapters
+installed and ensures that the ASPI manager is initialized properly. This
+function must be called once at initialization time, before SendASPI32Command
+is accessed. The number of host adapters returned represents the logical bus
+count, not the true physical adapter count. For host adapters with a single
+bus, the host adapter count and logical bus count are identical.
+
+The DWORD return value specifies the result of the ASPI request. The DWORD is
+encoded as follows:
+
+    Table 1: Return Values from GetASPI32SupportInfo Function
+
+    Length  Bits   Description
+    ------  -----  ------------------------------------------------------------
+    WORD    31-16  Reserved = 0
+    BYTE    15-8   Status
+                   SS_COMP        = 00h = ASPI request completed without error
+                   SS_FAILED_INIT = E4h = ASPI manager unable to initialize or
+                                          ASPI services not available
+    BYTE    7-0    Number of host adapters
+    ------  -----  ------------------------------------------------------------
+
+Example
+
+This example returns the current status of ASPI for Win32.
+
+    DWORD ASPIStatus;
+    BYTE NumAdapters;
+    HWND hwnd;
+            .
+            .
+    ASPIStatus = GetASPI32SupportInfo();
+    switch( HIBYTE(LOWORD(ASPIStatus)) )
+    {
+        case SS_COMP:
+            /*
+             * ASPI for Win32 is properly initialized
+             */
+            NumAdapters = LOBYTE(LOWORD(ASPIStatus));
+            break;
+        default:
+            MessageBox( hwnd,
+                        "ASPI for Win32 is not initialized!!",
+                        NULL,
+                        MB_ICONSTOP );
+            return FALSE;
+    }
+            .
+            .
+
+-------------------------------------------------------------------------------
+
+SendASPI32Command Function
+
+Prototype: DWORD SendASPI32Command( LPSRB lpSRB );
+
+The SendASPI32Command function handles all SCSI I/O requests. A command code
+is used to specify the type of I/O requested. SendASPI32Command is called with
+a pointer to a SCSI Request Block (SRB) structure. While SRB definition can
+vary depending on the ASPI command code, all SRBs include a standard SRB
+header:
+
+    typedef struct
+    {
+        BYTE        SRB_Cmd;            // ASPI command code
+        BYTE        SRB_Status;         // ASPI command status byte
+        BYTE        SRB_HaId;           // ASPI host adapter number
+        BYTE        SRB_Flags;          // ASPI request flags
+        DWORD       SRB_Hdr_Rsvd;       // Reserved, MUST = 0
+    } SRB_Header;
+
+The following SCSI I/O command codes are defined for use in the SRB_Cmd
+field within the SendASPI32Command (each of these commands is described in
+the following sections):
+
+    Command           Value  Descriptiion
+    ----------------  -----  --------------------------------------------------
+    SC_HA_INQUIRY      00h   Get information about installed host adapters,
+                             including the number of installed adapters.
+    SC_GET_DEV_TYPE    01h   Get information about installed SCSI devices.
+    SC_EXEC_SCSI_CMD   02h   Execute SCSI I/O.
+    SC_ABORT_SRB       03h   Abort an outstanding I/O request.
+    SC_RESET_DEV       04h   Reset an individual SCSI target.
+    SC_GET_DISK_INFO   06h   Get information on disk type SCSI devices (not
+                             available under Windows NT).
+    ----------------  -----  --------------------------------------------------
+
+Note: In the following sections, fields marked with 'R' are returned by the
+      ASPI manager. Fields marked with 'W' are set by the ASPI client before
+      they are sent to the ASPI manager. Fields marked as '-' are reserved and
+      must be zeroed before the SRB is sent to the ASPI manager.
+
+-------------------------------------------------------------------------------
+
+Host Adapter Inquiry Command
+
+Prototype: DWORD SendASPI32Command( LPSRB lpSRB );
+
+The SendASPI32Command function with command code SC_HA_INQUIRY is used to get
+information on the installed host adapter hardware, including the number of
+host adapters installed. As previously stated, the number of host adapters
+returned represents the logical bus count instead of the true physical adapter
+count. For host adapters that support single bus only, the host adapter count
+and logical bus count are identical. For host adapters that support multiple
+buses, the host adapter count represents the total logical bus count.
+
+lpSRB is a pointer to the following structure:
+
+    Table 2: Host Adapter Inquiry Command
+
+    typedef struct
+    {
+        BYTE        SRB_Cmd;            // ASPI command code = SC_HA_INQUIRY
+        BYTE        SRB_Status;         // ASPI command status byte
+        BYTE        SRB_HaId;           // ASPI host adapter number
+        BYTE        SRB_Flags;          // ASPI request flags
+        DWORD       SRB_Hdr_Rsvd;       // Reserved, MUST = 0
+        BYTE        HA_Count;           // Number of host adapters present
+        BYTE        HA_SCSI_ID;         // SCSI ID of host adapter
+        BYTE        HA_ManagerId[16];   // String describing the manager
+        BYTE        HA_Identifier[16];  // String describing the host adapter
+        BYTE        HA_Unique[16];      // Host Adapter Unique parameters
+        WORD        HA_Rsvd1;
+    } SRB_HAInquiry, *PSRB_HAInquiry;
+
+    Offset   # Bytes  Description                                          R/W
+    -------- -------- ---------------------------------------------------- ---
+    00h (00) 01h (01) Command Code = SC_HA_INQUIRY (00h)                    W
+    01h (01) 01h (01) Command Status. This byte always returns with a       R
+                      non-zero status. A SCSI Request Completed Without
+                      Error (01h) status indicates that the remaining
+                      fields are valid.  See the table below for other
+                      return codes for this command.
+    02h (02) 01h (01) Host Adapter Number. This field specifies which       W
+                      installed host adapter the request is intended for.
+                      Host adapter numbers are assigned by the SCSI
+                      manager layer, beginning with 0. An Invalid Host
+                      Adapter Number (81h) status indicates that the
+                      specified host adapter is not installed.
+    03h (03) 01h (01) Reserved = 0                                          -
+    04h (04) 04h (04) Reserved = 0                                          -
+    08h (08) 01h (01) Number of Host Adapters. The ASPI manager sets this   R
+                      field with the number of host adapters installed
+                      under ASPI. For example, a return value of 2
+                      indicates that host adapters #0 and #1 are valid.
+                      To determine the total number of host adapters in
+                      the system the SRB_HaId field (offset 02h) should
+                      be set to 0, or GetASPISupportInfo can be used.
+                      The number of host adapters returned represents the
+                      logical bus count instead of the true physical
+                      adaptec count.  For host adapters that support
+                      single bus only, the host adapter count and logical
+                      bus count are identical.
+    09h (09) 01h (01) Host Adapter SCSI ID. The ASPI manager sets this      R
+                      field with the SCSI ID of the given host adapter.
+    0Ah (10) 10h (16) SCSI Manager ID. This field contains a 16-byte        R
+                      ASCII string describing the SCSI manager.  For
+                      ASPI for Win32 the string "ASPI for WIN32" shall
+                      be returned.
+    1Ah (26) 10h (16) Host Adapter Identifier. This field contains a        R
+                      16-byte ASCII string describing the SCSI host
+                      adapter.
+    2Ah (42) 10h (16) Host Adapter Unique Parameters.  The buffer is        R
+                      encoded as follows:
+                      Byte 15-8 Reserved
+                      Byte  7-4 Maximum transfer length.
+                      Byte    3 Maximum SCSI targets.  Indicates the
+                                maximum number of targets (SCSI IDs)
+                                the adapter supports.  If this value
+                                is not set, it is assumed that there
+                                are 8 targets (SCSI IDs 0-7).
+                      Byte    2 Adapter unique flags:
+                                Bit 7-2 Reserved
+                                Bit   1 1=Residual byte count supported
+                                        0=Residual count not supported
+                                Bit   0 Reserved
+                      Byte  1-0 Buffer Alignment mask.  The host adapter
+                                requires data buffer alignment specified
+                                by the 16-bit value.  A value of 0x0000
+                                means no boundary requirements (e.g.
+                                byte alignment), 0x0001 word alignment,
+                                0x0002 double-word, 0x0007 8-byte
+                                alignment, etc.  The 16-bit value allows
+                                buffer alignments of up to 65536-byte
+                                boundaries.  Byte 1 is the most
+                                significant byte of the field.
+    3Ah (58) 02h (02) Reserved = 0                                          -
+    -------- -------- ---------------------------------------------------- ---
+
+The return value specifies the outcome of the function. One of the following
+values is returned by ASPI for Win32:
+
+    Table 3: Return Values from Host Adapter Inquiry Command
+
+    Status            Value  Description
+    ----------------  -----  --------------------------------------------------
+    SS_COMP            01h   SCSI Request Completed Without Error
+    SS_INVALID_HA      81h   Invalid Host Adapter Number
+    ----------------  -----  --------------------------------------------------
+
+Residual Byte Length
+
+Residual byte length is the number of bytes not transferred to, or received
+from, the target SCSI device. For example, if the ASPI buffer length for a
+SCSI Inquiry command is set for 100 bytes, but the target only returns 36
+bytes; the residual length is 64 bytes. If the ASPI buffer length for a SCSI
+Write command is set for 514 bytes but the target only takes 512 bytes, the
+residual length is 2 bytes. ASPI modules can determine if the loaded ASPI
+manager supports residual byte length by issuing an Extended Host Adapter
+Inquiry command, as described in the previous section.
+
+Example
+
+This example of the Host Adapter Inquiry command gets host adapter hardware
+information from adapter #0.
+
+    SRB_HAInquiry MySRB;
+    WORD ASPI_Status;
+                .
+                .
+    MySRB.SRB_Cmd      = SC_HA_INQUIRY;
+    MySRB.SRB_HaId     = 0;
+    MySRB.SRB_Flags    = 0;
+    MySRB.SRB_Hdr_Rsvd = 0;
+    ASPI_Status = SendASPI32Command ( (LPSRB) &MySRB );
+                .
+                .
+
+-------------------------------------------------------------------------------
+
+Get Device Type Command
+
+Prototype: DWORD SendASPI32Command( LPSRB lpSRB );
+
+The SendASPI32Command function with command code SC_GET_DEV_TYPE enables you
+to identify the devices available on the SCSI bus. A Win32 tape backup
+package, for example, can scan each target/LUN on each installed host adapter
+looking for a device type corresponding to sequential access devices. This
+eliminates the need for each Win32 application to duplicate the effort of
+scanning the SCSI bus for devices.
+
+lpSRB is a pointer to the following structure:
+
+    Table 4: Get Device Type Command
+
+    typedef struct
+    {
+        BYTE        SRB_Cmd;            // ASPI command code = SC_GET_DEV_TYPE
+        BYTE        SRB_Status;         // ASPI command status byte
+        BYTE        SRB_HaId;           // ASPI host adapter number
+        BYTE        SRB_Flags;          // Reserved
+        DWORD       SRB_Hdr_Rsvd;       // Reserved
+        BYTE        SRB_Target;         // Target's SCSI ID
+        BYTE        SRB_Lun;            // Target's LUN number
+        BYTE        SRB_DeviceType;     // Target's peripheral device type
+        BYTE        SRB_Rsvd1;          // Reserved for alignment
+    } SRB_GDEVBlock, *PSRB_GDEVBlock;
+
+    Offset   # Bytes  Description                                          R/W
+    -------- -------- ---------------------------------------------------- ---
+    00h (00) 01h (01) Command Code = SC_GET_DEV_TYPE (01h)                  W
+    01h (01) 01h (01) Command Status. This byte always returns with a       R
+                      non-zero status. A SCSI Request Completed Without
+                      Error (01h) status indicates that the specified
+                      device is installed and the Peripheral Device Type
+                      field is valid. A SCSI Device Not Installed Error
+                      (82h) indicates that the Peripheral Device Type
+                      field is not valid.
+    02h (02) 01h (01) Host Adapter Number. This field specifies which       W
+                      installed host adapter the request is intended for.
+                      Host adapter numbers are assigned by the SCSI
+                      manager layer, beginning with 0. An Invalid Host
+                      Adapter Number (81h) status indicates that the
+                      specified host adapter is not installed.
+    03h (03) 01h (01) Reserved = 0                                          -
+    04h (04) 04h (04) Reserved = 0                                          -
+    08h (08) 01h (01) Target ID. This field indicates the SCSI ID of the    W
+                      target device.
+    09h (09) 01h (01) LUN. This field indicates the Logical Unit Number     W
+                      (LUN) of the device.
+    0Ah (10) 01h (01) Peripheral Device Type of Target/LUN. The ASPI        R
+                      manager fills this field with the peripheral device
+                      type, as previously reported by the SCSI Inquiry
+                      command. Refer to any SCSI specification to learn
+                      more about the SCSI Inquiry command.
+    0Bh (11) 01h (01) Reserved = 0                                          -
+    -------- -------- ---------------------------------------------------- ---
+
+The return value specifies the outcome of the function. One of the following
+values is returned by ASPI for Win32:
+
+    Table 5: Return Values from Get Device Type Command
+
+    Status            Value  Description
+    ----------------  -----  --------------------------------------------------
+    SS_COMP            01h   SCSI Request Completed Without Error
+    SS_INVALID_HA      81h   Invalid Host Adapter Number
+    SS_NO_DEVICE       82h   SCSI Device Not Installed
+    ----------------  -----  --------------------------------------------------
+
+Example
+
+This example gets the peripheral device type from host adapter #0, target ID
+#4, and LUN #0.
+
+    SRB_GDEVBlock MySRB;
+    DWORD ASPIStatus;
+            .
+            .
+    MySRB.SRB_Cmd      = SC_GET_DEV_TYPE;
+    MySRB.SRB_HaId     = 0;
+    MySRB.SRB_Flags    = 0;
+    MySRB.SRB_Hdr_Rsvd = 0;
+    MySRB.SRB_Target   = 4;
+    MySRB.SRB_Lun      = 0;
+    ASPIStatus = SendASPI32Command( (LPSRB)&MySRB );
+            .
+    /****************************************************************/
+    /* If MySRB.SRB_Status == SS_COMP, MySRB.SRB_DeviceType
+    /* will contain the peripheral device type.
+    /****************************************************************/
+            .
+            .
+
+-------------------------------------------------------------------------------
+
+Execute SCSI I/O Command
+
+Prototype: DWORD SendASPI32Command( LPSRB lpSRB );
+
+The SendASPI32Command function with command code SC_EXEC_SCSI_CMD is used to
+execute a SCSI I/O command. Once an ASPI client has initialized, virtually all
+I/O is performed with this command.
+
+lpSRB is a pointer to the following structure (note that there are no longer
+variable sized CDBs in Win32-this means that CDBs do not have to place the
+sense data in a variable location as in Win16):
+
+    Table 6: Execute SCSI I/O Command
+
+    typedef struct
+    {
+        BYTE        SRB_Cmd;            // ASPI command code = SC_EXEC_SCSI_CMD
+        BYTE        SRB_Status;         // ASPI command status byte
+        BYTE        SRB_HaId;           // ASPI host adapter number
+        BYTE        SRB_Flags;          // ASPI request flags
+        DWORD       SRB_Hdr_Rsvd;       // Reserved
+        BYTE        SRB_Target;         // Target's SCSI ID
+        BYTE        SRB_Lun;            // Target's LUN number
+        WORD        SRB_Rsvd1;          // Reserved for Alignment
+        DWORD       SRB_BufLen;         // Data Allocation Length
+        BYTE        *SRB_BufPointer;    // Data Buffer Point
+        BYTE        SRB_SenseLen;       // Sense Allocation Length
+        BYTE        SRB_CDBLen;         // CDB Length
+        BYTE        SRB_HaStat;         // Host Adapter Status
+        BYTE        SRB_TargStat;       // Target Status
+        void        (*SRB_PostProc)();  // Post routine
+        void        *SRB_Rsvd2;         // Reserved
+        BYTE        SRB_Rsvd3[16];      // Reserved for expansion
+        BYTE        CDBByte[16];        // SCSI CDB
+        BYTE        SenseArea[SENSE_LEN+2]; // Request Sense buffer
+    } SRB_ExecSCSICmd, *PSRB_ExecSCSICmd;
+
+    Offset   # Bytes  Description                                          R/W
+    -------- -------- ---------------------------------------------------- ---
+    00h (00) 01h (01) Command Code = SC_EXEC_SCSI_CMD (02h)                 W
+    01h (01) 01h (01) Command Status (see below).                           R
+    02h (02) 01h (01) Host Adapter Number. This field specifies which       W
+                      installed host adapter the request is intended for.
+                      Host adapter numbers are assigned by the SCSI
+                      manager layer, beginning with 0.
+    03h (03) 01h (01) SCSI Request Flags (see below).                       W
+    04h (04) 04h (04) Reserved = 0                                          -
+    08h (08) 01h (01) Target ID. This field specifies the target ID of      W
+                      the peripheral device involved in the I/O
+                      operation.
+    09h (09) 01h (01) LUN. This field specifies the LUN of the peripheral   W
+                      device involved in the I/O operation.
+    0Ah (10) 02h (02) Reserved = 0                                          -
+    0Ch (12) 04h (04) Data Allocation Length. This field indicates the     R/W
+                      number of bytes to be transferred. If the SCSI
+                      command to be executed does not transfer data
+                      (i.e., Rewind, Start Unit, etc.) the Data
+                      Allocation Length MUST be set to zero. If residual
+                      byte length is supported and selected, this field
+                      is returned with the residual number of bytes.
+    10h (16) 04h (04) Data Buffer Pointer.
+    14h (20) 01h (01) Sense Allocation Length (N). This field indicates     W
+                      the number of bytes allocated at the end of the SRB
+                      for sense data. A request sense is automatically
+                      generated if a check condition is presented at the
+                      end of a SCSI command.
+    15h (21) 01h (01) SCSI CDB Length (M). This field establishes the       W
+                      length, in bytes, of the SCSI Command Descriptor
+                      Block (CDB).
+    16h (22) 01h (01) Host Adapter Status.                                  R
+                      00h - Host adapter did not detect any error
+                      09h - The time allocated for the transaction ran out
+                      0Bh - SRB expired (timed out) while waiting to be
+                            processed
+                      0Dh - While processing SRB, the adapter received
+                            a MESSAGE REJECT.
+                      0Eh - A bus reset was detected
+                      0Fh - A parity error was detected
+                      10h - An auto request sense failed
+                      11h - Selection time-out
+                      12h - Data overrun/underrun
+                      13h - Unexpected Bus Free
+                      14h - Target Bus phase sequence failure
+    17h (23) 01h (01) Target Status.                                        R
+                      00h - No target status
+                      02h - Check status (sense data is in sense
+                            allocation area)
+                      08h - Specified target/LUN is busy
+                      18h - Reservation conflict
+    18h (24) 04h (04) Post Routine Address - If posting is enabled
+                      (SRB_POSTING flag), this field contains a pointer
+                      to a function.  ASPI for Win32 calls this function
+                      upon completion of an ASPI request.  If event
+                      notification (SRB_EVENT_NOTIFY flag) is enabled,
+                      this field contains a handle to an event.  ASPI
+                      for Win32 signals this event upon completion of
+                      an ASPI request.
+    1Ch (28) 14h (20) Reserved = 0                                          -
+    30h (48) 10h (16) SCSI Command Descriptor Block (CDB). This field       W
+                      contains the CDB as defined by the target's SCSI
+                      command set. The actual length of the SCSI CDB is
+                      specified in the SCSI Command Length field, but
+                      this buffer is ALWAYS 16 bytes in Win32.
+    40h (64) N        Sense Allocation Area. This field is filled with      R
+                      sense data on a check condition. The maximum length
+                      of this field is specified in the Sense Allocation
+                      Length field. The target can return fewer than the
+                      number of sense bytes requested.
+    -------- -------- ---------------------------------------------------- ---
+
+The SRB_Flags are defined below.  These flags may be OR'd together to form
+the final value for SRB_Flags in the SRB.  Note that SRB_POSTING and
+SRB_EVENT_NOTIFY are mutually exclusive, as are SRB_DIR_IN and SRB_DIR_OUT.  In
+addition, the directioin bits (SRB_DIR_IN and SRB_DIR_OUT) MUST be set
+correctly on commands which transfer data.  Using SRB_DIR_SCSI is no longer
+an option as in ASPI for DOS and ASPI for Win16.
+
+    SRB_Flags                 Value Description
+    ------------------------- ----- -------------------------------------------
+    SRB_POSTING                01h  Enable ASPI command completion posting. See
+                                    section on posting below.
+    SRB_ENABLE_RESIDUAL_COUNT  04h  Enables reporting of residual byte count.
+                                    This flag is only significant if the host
+                                    adapter reports support for residual byte
+                                    count in the SC_HA_INQUIRY command.  When
+                                    data underrun occurs, the SRB_BufLen field
+                                    is updated to reflect the remaining bytes
+                                    to transfer.
+    SRB_DIR_IN                 08h  Data transfer from SCSI target to host.
+    SRB_DIR_OUT                10h  Data transfer from host to SCSI target.
+    SRB_EVENT_NOTIFY           40h  Enable ASPI command event notification. See
+                                    section on event notification below.
+    ------------------------- ----- -------------------------------------------
+
+The return value specifies the outcome of the function. ASPI for Win32 returns
+one of the following values is SRB_Status (the result of the function call
+itself is either SS_PENDING or SS_NO_DEVICE):
+
+    Table 7: Return Values from Execute SCSI I/O Command
+
+    Status            Value  Description
+    ----------------  -----  --------------------------------------------------
+    SS_PENDING         00h   SCSI request is in progress.
+    SS_COMP            01h   SCSI/ASPI request has completed without error.
+    SS_ABORTED         02h   SCSI command has been aborted.
+    SS_ABORT_FAIL      03h   SCSI command abort failed.
+    SS_ERR             04h   SCSI command has completed with an error.
+    SS_INVALID_HA      81h   Invalid Host Adapter Number
+    SS_INVALID_SRB     E0h   One or more parameters in the SCSI Request Block
+                             (SRB) are set incorrectly.
+    SS_BUFFER_ALIGN    E1h   The ASPI manager cannot handle the alignment on
+                             this buffer.  You must force the buffer into the
+                             alignment specified by the alignment mask returned
+                             as part of the SC_HA_INQUIRY command.
+    SS_ASPI_IS_BUSY    E5h   The ASPI manager cannot handle the request at this
+                             time. This error generally occurs if the ASPI
+                             manager is already using up all of his resources
+                             to execute other requests. Try resending the
+                             command later.
+    SS_BUFFER_TO_BIG   E6h   The ASPI manager cannot handle the given transfer
+                             size. Refer to Miscellaneous for more information.
+    ----------------  -----  --------------------------------------------------
+
+Example
+
+This example sends a SCSI Inquiry command to host adapter #0, target #0, LUN
+#0.
+
+    SRB_ExecSCSICmd MySRB;
+    DWORD ASPIStatus;
+    char InquiryBuffer[32];
+        .
+        .
+        .
+    MySRB.SRB_Header     = SC_EXEC_SCSI_CMD;
+    MySRB.SRB_HaId       = 0;
+    MySRB.SRB_Flags      = SRB_DIR_IN | SRB_POSTING;
+    MySRB.SRB_Hdr_Rsvd   = 0;
+    MySRB.SRB_Target     = 0;
+    MySRB.SRB_Lun        = 0;
+    MySRB.SRB_BufLen     = 32;
+    MySRB.SRB_SenseLen   = SENSE_LEN;
+    MySRB.SRB_BufPointer = InquiryBuffer;
+    MySRB.SRB_CDBLen     = 6;
+    MySRB.RB_PostProc    = PostProcedure;
+    MySRB.CDBByte[0]     = SCSI_INQUIRY;
+    MySRB.CDBByte[1]     = 0;
+    MySRB.CDBByte[2]     = 0;
+    MySRB.CDBByte[3]     = 0;
+    MySRB.CDBByte[4]     = 32;
+    MySRB.CDBByte[5]     = 0;
+        .
+    /***************************************************/
+    /* Make sure all other reserved fields are zeroed
+    /* before passing the SRB to ASPI for Win32
+    /***************************************************/
+        .
+    ASPIStatus = SendASPI32Command( (LPSRB)&MySRB );
+        .
+        .
+
+-------------------------------------------------------------------------------
+
+Abort SCSI I/O Command
+
+Prototype: DWORD SendASPI32Command( LPSRB lpSRB );
+
+The SendASPI32Command function with command code SC_ABORT_SRB is used to
+request that a pending SRB be aborted. It should be issued on any I/O request
+that has not completed if the application wishes to time-out on that request.
+Success of the abort command is never assured.
+
+lpSRB is a pointer to the following structure:
+
+    Table 8: Abort SCSI I/O Command
+
+    typedef struct
+    {
+        BYTE        SRB_Cmd;            // ASPI command code = SC_ABORT_SRB
+        BYTE        SRB_Status;         // ASPI command status byte
+        BYTE        SRB_HaId;           // ASPI host adapter number
+        BYTE        SRB_Flags;          // Reserved
+        DWORD       SRB_Hdr_Rsvd;       // Reserved
+        void        *SRB_ToAbort;       // Pointer to SRB to abort
+    } SRB_Abort, *PSRB_Abort;
+
+    Offset   # Bytes  Description                                          R/W
+    -------- -------- ---------------------------------------------------- ---
+    00h (00) 01h (01) Command Code = SC_ARORT_SRB (03h)                     W
+    01h (01) 01h (01) Command Status. This byte always returns with a       R
+                      non-zero status. A SCSI Request Completed Without
+                      Error (01h) status indicates that the remaining
+                      fields are valid, and the abort will be attempted.
+    02h (02) 01h (01) Host Adapter Number. This field specifies which       W
+                      installed host adapter the request is intended for.
+                      Host adapter numbers are assigned by the SCSI
+                      manager layer, beginning with 0. An Invalid Host
+                      Adapter Number (81h) status indicates that the
+                      specified host adapter is not installed.
+    03h (03) 01h (01) Reserved = 0                                          -
+    04h (04) 04h (04) Reserved = 0                                          -
+    08h (08) 04h (04) Pointer to SRB previously sent to SendASPI32Command
+                      which is to now be aborted.
+    -------- -------- ---------------------------------------------------- ---
+
+The return value specifies the outcome of the function. One of the following
+values is returned by ASPI for Win32:
+
+    Table 9: Return Values from Abort SCSI I/O Command
+
+    Status            Value  Description
+    ----------------  -----  --------------------------------------------------
+    SS_COMP            01h   SCSI/ASPI request has completed without error.
+    SS_INVALID_HA      81h   Invalid Host Adapter Number
+    SS_INVALID_SRB     E0h   One or more parameters in the SCSI Request Block
+                             (SRB) are set incorrectly.
+    ----------------  -----  --------------------------------------------------
+
+Example
+
+This example shows how to abort a "stuck" SCSI I/O.
+
+    SRB_ExecSCSICmd StuckSRB;
+    SRB_Abort AbortSRB;
+    DWORD ASPIStatus;
+        .
+        .
+    AbortSRB.SRB_Cmd      = SC_ABORT_SRB;
+    AbortSRB.SRB_HaId     = 0;
+    AbortSRB.SRB_Flags    = 0;
+    AbortSRB.SRB_Hdr_Rsvd = 0;
+    AbortSRB.SRB_ToAbort  = (LPSRB)&StuckSRB;
+    ASPIStatus = SendASPI32Command ( (LPSRB)&AbortSRB );
+        .
+        .
+
+-------------------------------------------------------------------------------
+
+Reset SCSI Device Command
+
+Prototype: DWORD SendASPI32Command( LPSRB lpSRB );
+
+The SendASPI32Command function with command code SC_RESET_DEV is used to
+send a SCSI Bus Device reset to the specified target.  At the present time
+this function is not fully operational under Windows NT.  In particular,
+requests for posting using this command are not processed.
+
+lpSRB is a pointer to the following structure:
+
+    Table 10: Reset SCSI Device Command
+
+    typedef struct
+    {
+        BYTE        SRB_Cmd;            // ASPI command code = SC_RESET_DEV
+        BYTE        SRB_Status;         // ASPI command status byte
+        BYTE        SRB_HaId;           // ASPI host adapter number
+        BYTE        SRB_Flags;          // Reserved
+        DWORD       SRB_Hdr_Rsvd;       // Reserved
+        BYTE        SRB_Target;         // Target's SCSI ID
+        BYTE        SRB_Lun;            // Target's LUN number
+        BYTE        SRB_Rsvd1[12];      // Reserved for Alignment
+        BYTE        SRB_HaStat;         // Host Adapter Status
+        BYTE        SRB_TargStat;       // Target Status
+        void        *SRB_PostProc;      // Post routine
+        void        *SRB_Rsvd2;         // Reserved
+        BYTE        SRB_Rsvd3[32];      // Reserved
+    } SRB_BusDeviceReset, *PSRB_BusDeviceReset;
+
+    Offset   # Bytes  Description                                          R/W
+    -------- -------- ---------------------------------------------------- ---
+    00h (00) 01h (01) Command Code = SC_EXEC_SCSI_CMD (02h)                 W
+    01h (01) 01h (01) Command Status (see below).                           R
+    02h (02) 01h (01) Host Adapter Number. This field specifies which       W
+                      installed host adapter the request is intended for.
+                      Host adapter numbers are assigned by the SCSI
+                      manager layer, beginning with 0.
+    03h (03) 01h (01) SCSI Request Flags = 0 or SRB_POSTING.                W
+    04h (04) 04h (04) Reserved = 0                                          -
+    08h (08) 01h (01) Target ID. This field specifies the target ID of      W
+                      the peripheral device to be reset.
+    09h (09) 01h (01) LUN. This field specifies the LUN of the peripheral   W
+                      device to be reset.  It is ignored by ASPI for Win32
+                      since SCSI bus resets are done on a per-target basis
+                      only.
+    0Ah (10) 0Ch (12) Reserved = 0                                          -
+    16h (22) 01h (01) Host Adapter Status.                                  R
+                      00h - Host adapter did not detect any error
+                      09h - The time allocated for the transaction ran out
+                      0Bh - SRB expired (timed out) while waiting to be
+                            processed
+                      0Dh - While processing SRB, the adapter received
+                            a MESSAGE REJECT.
+                      0Eh - A bus reset was detected
+                      0Fh - A parity error was detected
+                      10h - An auto request sense failed
+                      11h - Selection time-out
+                      12h - Data overrun/underrun
+                      13h - Unexpected Bus Free
+                      14h - Target Bus phase sequence failure
+    17h (23) 01h (01) Target Status.                                        R
+                      00h - No target status
+                      02h - Check status (sense data is in sense
+                            allocation area)
+                      08h - Specified target/LUN is busy
+                      18h - Reservation conflict
+    18h (24) 04h (04) Post Routine Address - If posting is enabled
+                      (SRB_POSTING flag), this field contains a pointer
+                      to a function.  ASPI for Win32 calls this function
+                      upon completion of an ASPI request.
+    1Ch (28) 24h (36) Reserved = 0                                          -
+    -------- -------- ---------------------------------------------------- ---
+
+The return value specifies the outcome of the function. ASPI for Win32 returns
+one of the following values:
+
+    Table 11: Return Values from Reset SCSI Device Command
+
+    Status            Value  Description
+    ----------------  -----  --------------------------------------------------
+    SS_PENDING         00h   SCSI request is in progress.
+    SS_COMP            01h   SCSI/ASPI request has completed without error.
+    SS_ABORTED         02h   SCSI command has been aborted.
+    SS_ABORT_FAIL      03h   SCSI command abort failed.
+    SS_ERR             04h   SCSI command has completed with an error.
+    SS_INVALID_SRB     E0h   One or more parameters in the SCSI Request Block
+                             (SRB) are set incorrectly.
+    ----------------  -----  --------------------------------------------------
+
+Example
+
+This example issues a SCSI bus device reset to host adapter #0, target #5.
+
+    SRB_BusDeviceReset MySRB;
+    DWORD ASPIStatus;
+        .
+        .
+    MySRB.SRB_Header   = SC_RESET_DEV;
+    MySRB.SRB_HaId     = 0;
+    MySRB.SRB_Flags    = 0;
+    MySRB.SRB_Hdr_Rsvd = 0;
+    MySRB.SRB_Target   = 5;
+    MySRB.SRB_Lun      = 0;
+    ASPIStatus = SendASPI32Command ( (LPSRB) &MySRB );
+        .
+        .
+
+-------------------------------------------------------------------------------
+
+Get SCSI Disk Information Command
+
+Prototype: DWORD SendASPI32Command( LPSRB lpSRB );
+
+The SendASPI32Command function with command code SC_GET_DISK_INFO is used to
+obtain information about a disk type SCSI device. The information returned
+includes BIOS Int 13h control and accessibility of the device, the drive's Int
+13h physical drive number, and the geometry used by the Int 13h services for
+the drive.
+
+Note: This command is not valid for Windows NT, which does not use the Int 13
+      interface.
+
+lpSRB is a pointer to the following structure:
+
+    Table 12: Get SCSI Disk Information Command
+
+    typedef struct
+    {
+        BYTE        SRB_Cmd;            // ASPI command code = SC_EXEC_SCSI_CMD
+        BYTE        SRB_Status;         // ASPI command status byte
+        BYTE        SRB_HaId;           // ASPI host adapter number
+        BYTE        SRB_Flags;          // Reserved
+        DWORD       SRB_Hdr_Rsvd;       // Reserved
+        BYTE        SRB_Target;         // Target's SCSI ID
+        BYTE        SRB_Lun;            // Target's LUN number
+        BYTE        SRB_DriveFlags;     // Driver flags
+        BYTE        SRB_Int13HDriveInfo;// Host Adapter Status
+        BYTE        SRB_Heads;          // Preferred number of heads translation
+        BYTE        SRB_Sectors;        // Preferred number of sectors translation
+        BYTE        SRB_Rsvd1[10];      // Reserved
+    } SRB_GetDiskInfo, *PSRB_GetDiskInfo;
+
+    Offset   # Bytes  Description                                          R/W
+    -------- -------- ---------------------------------------------------- ---
+    00h (00) 01h (01) Command Code = SC_GET_DISK_INFO (06h)                 W
+    01h (01) 01h (01) Command Status. ASPI managers that support this       R
+                      command code always return with a status of SCSI
+                      Request Completed Without Error (01h). ASPI
+                      managers that do not support this command code
+                      always return with a status of Invalid SCSI Request
+                      (80h).
+    02h (02) 01h (01) Host Adapter Number. This field specifies which       W
+                      installed host adapter the request is intended for.
+                      Host adapter numbers are assigned by the SCSI
+                      manager layer, beginning with 0. An Invalid Host
+                      Adapter Number (81h) status indicates that the
+                      specified host adapter is not installed.
+    03h (03) 01h (01) SCSI Request Flags. This field is currently           -
+                      undefined for this command and should be zero
+    04h (04) 04h (04) Reserved = 0                                          -
+    08h (08) 01h (01) Target ID. This field indicates the SCSI ID of the    W
+                      target device.
+    09h (09) 01h (01) LUN. This field indicates the Logical Unit Number     W
+                      (LUN) of the device.
+    0Ah (10) 01h (01) Drive Flags                                           R
+                      Bits 7-2  Reserved
+                      Bits 1-0  These bits return information pertaining
+                                to the Int 13 drive field:
+                                00 The given drive (HA #/Target/LUN) is
+                                   not accessible via Int 13h. If you wish
+                                   to read/write to this drive, you must
+                                   send ASPI read/write requests to the
+                                   drive. The Int 13h Drive field is
+                                   invalid.
+                                01 The given drive (HA #/Target/LUN) is
+                                   accessible via Int 13h. The Int 13h
+                                   Drive field contains the drive's Int
+                                   13h drive number. This drive is under
+                                   the control of DOS.
+                                10 The given drive (HA #/Target/LUN) is
+                                   accessible via Int 13h. The Int 13h
+                                   Drive field contains the drive's Int
+                                   13h drive number. This drive is not
+                                   under control of DOS and can be used,
+                                   for example, by a SCSI Disk Driver.
+                                11 Invalid.
+    0Bh (11) 01h (01) Int 13h Drive. This field returns the Int 13 drive    R
+                      number for the given host adapter number, target
+                      ID, and LUN. Valid Int 13 drive numbers range for
+                      00-FFh.
+    0Ch (12) 01h (01) Preferred Head Translation. This field indicates      R
+                      the given host adapter's/disk drive's preferred
+                      head translation method. A typical value is 64
+                      heads.
+    0Dh (13) 01h (01) Preferred Sector Translation. This field indicates    R
+                      the given host adapter's/disk drive's preferred
+                      sector translation method. A typical value is 32
+                      sectors per track.
+    0Eh (14) 0Ah (10) Reserved = 0                                          -
+    -------- -------- ---------------------------------------------------- ---
+
+The return value specifies the outcome of the function. ASPI for Win32 returns
+one of the following values:
+
+    Table 4-13. Return Values from Get SCSI Disk Information Command
+
+    Status            Value  Description
+    ----------------  -----  --------------------------------------------------
+    SS_COMP            01h   SCSI/ASPI request has completed without error.
+    SS_INVALID_HA      81h   Invalid Host Adapter Number
+    SS_INVALID_SRB     E0h   One or more parameters in the SCSI Request Block
+                             (SRB) are set incorrectly.
+    ----------------  -----  --------------------------------------------------
+
+Example
+
+This example obtains disk information from device LUN 0, SCSI ID 2, attached to
+host adapter #0.
+
+    SRB_GetDiskInfo MySRB;
+    DWORD ASPIStatus;
+        .
+        .
+    MySRB.SRB_Cmd      = SC_GET_DISK_INFO;
+    MySRB.SRB_HaId     = 0;
+    MySRB.SRB_Flags    = 0;
+    MySRB.SRB_Hdr_Rsvd = 0;
+    MySRB.SRB_Target   = 2;
+    MySRB.SRB_Lun      = 0;
+    ASPIStatus = SendASPI32Command ( (LPSRB) &MySRB );
+        .
+        .
+
+-------------------------------------------------------------------------------
+
+Rescan SCSI Port Command
+
+Prototype: DWORD SendASPI32Command( LPSRB lpSRB );
+
+The SendASPI32Command function with command code SC_RESCAN_SCSI_BUS is used to
+rescan the SCSI bus for targets which may have been powered on after the
+system was started.  This command is only available under ASPI for Win32 under
+Windows NT.
+
+lpSRB is a pointer to the following structure:
+
+    Table 11: Rescan SCSI Port Command
+
+    typedef struct
+    {
+        BYTE    SRB_Cmd;                // ASPI code = SC_RESCAN_SCSI_BUS
+        BYTE    SRB_Status;             // ASPI command status byte
+        BYTE    SRB_HaId;               // ASPI host adapter number
+        BYTE    SRB_Flags;              // ASPI request flags
+        DWORD   SRB_Hdr_Rsvd;           // Reserved, MUST = 0
+    } SRB_RescanPort, *PSRB_RescanPort;
+
+    Offset   # Bytes  Description                                          R/W
+    -------- -------- ---------------------------------------------------- ---
+    00h (00) 01h (01) Command Code = SC_RESCAN_SCSI_BUS (07h)               W
+    01h (01) 01h (01) Command Status (see below).                           R
+    02h (02) 01h (01) Host Adapter Number. This field specifies which       W
+                      installed host adapter the request is intended for.
+                      Host adapter numbers are assigned by the SCSI
+                      manager layer, beginning with 0.
+    03h (03) 01h (01) SCSI Request Flags = 0                                W
+    04h (04) 04h (04) Reserved = 0                                          -
+    -------- -------- ---------------------------------------------------- ---
+
+The return value specifies the outcome of the function. ASPI for Win32 returns
+one of the following values:
+
+    Table 12: Return Values from Rescan SCSI Port Command
+
+    Status            Value  Description
+    ----------------  -----  --------------------------------------------------
+    SS_COMP            01h   SCSI/ASPI request has completed without error.
+    SS_INVALID_HA      81h   Invalid Host Adapter Number
+    SS_NO_DEVICE       82h   SCSI Device Not Installed
+    ----------------  -----  --------------------------------------------------
+
+Example
+
+This example forces a rescan of all devices attached to host adapter #0:
+
+    SRB_RescanPort MySRB;
+    DWORD ASPIStatus;
+        .
+        .
+    MySRB.SRB_Cmd      = SC_RESCAN_SCSI_BUS;
+    MySRB.SRB_HaId     = 0;
+    MySRB.SRB_Flags    = 0;
+    MySRB.SRB_Hdr_Rsvd = 0;
+    ASPIStatus = SendASPI32Command ( (LPSRB) &MySRB );
+        .
+        .
+
+-------------------------------------------------------------------------------
+
+Request Completion/Notification
+
+Once an ASPI for Win32 SCSI request has been sent to the ASPI manager, there
+are three ways of being notified that the SCSI request has completed. The
+first and recommended method uses event notification. The second method uses
+callback (also referred to as posting). The third method uses polling.
+
+-------------------------------------------------------------------------------
+
+Using Event Notification
+
+Event notification is an ideal mechanism for notifying ASPI clients of the
+completion of an ASPI request.  ASPI clients may block on this event until
+completion. Upon completion of a request, the ASPI for Win32 manager will set
+the event to the signaled state. The ASPI client is responsible for making
+sure that the event is not in a signaled state when an ASPI command request is
+submitted to the ASPI for WIN32 manager.  The following sample code
+illustrates event notification. The sample code sends a SCSI Inquiry command
+to target #2
+
+    SRB_ExecSCSICmd MySRB;
+    HANDLE ASPICompletionEvent;
+    DWORD ASPIEventStatus;
+    DWORD ASPIStatus;
+    char InquiryBuffer[32];
+    .
+    /**************************************************/
+    /* Create event for MySRB.  Initial state         */
+    /* non-signaled, manual reset.                    */
+    /**************************************************/
+
+    if ((ASPICompletionEvent = CreateEvent(NULL,FALSE,FALSE,NULL)) == NULL)
+          return FALSE;
+
+    /**************************************************/
+    /* Code is entered with 'MySRB' zeroed.           */
+    /**************************************************/
+
+    MySRB.SRB_Cmd        = SC_EXEC_SCSI_CMD;
+    MySRB.SRB_Flags      = SRB_DIR_SCSI|SRB_EVENT_NOTIFY;
+    MySRB.SRB_Target     = 2;
+    MySRB.SRB_BufLen     = 32;
+    MySRB.SRB_SenseLen   = SENSE_LEN;
+    MySRB.SRB_BufPointer = InquiryBuffer;
+    MySRB.SRB_CDBLen     = 6;
+    MySRB.CDBByte[0]     = SCSI_INQUIRY;
+    MySRB.CDBByte[4]     = 32;
+    MySRB.SRB_PostProc   = ASPICompletionEvent;
+    .
+    .
+    ASPIStatus = SendASPI32Command ( (LPSRB) &MySRB );
+
+    /**************************************************/
+    /* Block on event till signaled                   */
+    /**************************************************/
+
+    if ( MySRB.SRB_Status == SS_PENDING )
+          ASPIEventStatus == WaitForSingleObject(ASPICompletionEvent, TIMEOUT);
+
+    /**************************************************/
+    /* Reset event to non-signaled state.             */
+    /**************************************************/
+
+    if (ASPIEventStatus == WAIT_OBJECT_0)
+         ResetEvent(ASPICompletionEvent);
+              .
+              .
+
+-------------------------------------------------------------------------------
+
+Using Callback
+
+Callback (or posting) may also be used to receive notification that a SCSI
+request has completed. When callback is used, ASPI for Win32 posts
+completion by passing control to your callback function. For example, the
+following code segment sends a SCSI Inquiry command to target #2 during the
+WM_CREATE message.
+
+    LRESULT CALLBACK WndProc (HWND, UINT, UPARAM, LPARAM);
+    void APIENTRY ASPIPostProc (PSRB_ExecSCSICmd );
+
+    HWND        PostHWND;
+    HANDLE      hInstance;
+                        .
+                        .
+                        .
+    // ************************************************************************
+    //
+    // Function:    ASPIPostProc
+    //
+    // Description: If POSTING is enabled,  this function is called by ASPI
+    //              for Windows when the SCSI request has completed.  This
+    //              sample function simply posts a message to our Window
+    //              handle to indicate that the SCSI request has completed.
+    //
+    //  DoneSRB     This parameter points to the ASPI SCSI Request Block (SRB)
+    //              which has completed.
+    //
+    //  Returns     Nothing
+    //
+    // ************************************************************************
+
+    #ifdef WIN32
+        void ASPIPostProc(PSRB_ExecSCSICmd DoneSRB)
+        {
+            PostMessage(PostHWND,WM_ASPIPOST,0,(LPARAM)DoneSRB);
+            return;
+        }
+    #else
+        void _loadds __far __pascal ASPIPostProc(LPSRB DoneSRB)
+        {
+            PostMessage(PostHWND,WM_ASPIPOST,
+                        (WORD)((SRB_ExecSCSICmd6 far *)DoneSRB)->SRB_Status,
+                        (DWORD)DoneSRB);
+            return;
+        }
+    #endif
+
+    // ************************************************************************
+    //
+    // Procedure: WndProc()
+    //
+    // ************************************************************************
+
+    #ifdef WIN32
+        LRESULT CALLBACK WndProc(HWND hwnd,UINT message,WPARAM wParam,
+                                 LPARAM lParam)
+    #else
+        long __far __pascal _export WndProc(HWND hwnd,UINT message,WPARAM
+                                            wParam,LPARAM lParam)
+    #endif
+    {
+        HDC          hdc;
+        PAINTSTRUCT  ps;
+        TEXTMETRIC   tm;
+        HMENU        hMenu;
+        static short cxClient, cyClient;
+        int          i=0;
+        WORD         status;
+
+        #ifdef WIN32
+            SRB_ExecSCSICmd *SRBPtr;
+        #else
+            SRB_ExecSCSICmd6 far *SRBPtr;
+        #endif
+
+        switch (message)
+        {
+            case WM_CREATE:
+                hdc = GetDC(hwnd);
+                SelectObject(hdc,GetStockObject(SYSTEM_FIXED_FONT));
+                GetTextMetrics(hdc,&tm);
+                cxChar = tm.tmAveCharWidth;
+                cyChar = tm.tmHeight;
+                ReleaseDC(hwnd,hdc);
+                rect.top = 0;
+                return 0;
+
+            case WM_PAINT:
+                InvalidateRect(hwnd,NULL,TRUE);
+                hdc = BeginPaint(hwnd,&ps) ;
+                EndPaint (hwnd,&ps) ;
+                return 0 ;
+
+            case WM_SIZE:
+                cxClient = LOWORD(lParam);
+                cyClient = HIWORD(lParam);
+                rect.right  = LOWORD(lParam);
+                rect.bottom = HIWORD(lParam);
+                UpdateWindow(hwnd);
+                return 0;
+
+            case WM_COMMAND:
+                hMenu = GetMenu(hwnd);
+                switch (wParam)
+                {
+                    case ID_FILE_EXIT:
+                        SendMessage(hwnd,WM_CLOSE,0,0L);
+                        return 0;
+
+                    default:
+                        // 10 = target #0
+                        // 11 = target #1
+                        // 12 = target #2
+                        // 13 = target #3
+                        // 14 = target #4
+                        // 15 = target #5
+                        // 16 = target #6
+                        // 17 = target #7
+
+                        // Toggle the SCSI target scan status (ENABLED/DISABELD)
+                        if ((wParam >= 10 && wParam <= 17) ||
+                            (wParam >= 20 && wParam <= 27))
+                        {
+                            status = GetMenuState(hMenu,wParam,MF_BYCOMMAND) &
+                                                MF_CHECKED;
+                            CheckMenuItem(hMenu,wParam,MF_BYCOMMAND | ((status) ?
+                                                MF_UNCHECKED:MF_CHECKED));
+                        }
+                        return 0;
+                }
+
+            case WM_ASPIPOST:
+                #ifdef WIN32
+                    SRBPtr = (PSRB_ExecSCSICmd)lParam;
+                #else
+                    SRBPtr = (SRB_ExecSCSICmd6 far *)lParam;
+                #endif
+                DisplaySCSIID(hwnd,SRBPtr);
+                ScanNextTarget(hwnd);
+                return 0;
+
+            case WM_DESTROY:
+                PostQuitMessage(0) ;
+                return 0 ;
+        }
+        return DefWindowProc (hwnd, message, wParam, lParam) ;
+    }
+
+When the post routine is called, this sample post handler will fill the wParam
+field with the status of ASPI command (SRB_Status) while the lParam field will
+contain a pointer to the SRB which has completed.
+
+-------------------------------------------------------------------------------
+
+Polling
+
+Polling is another method of determining SCSI request completion. This method
+is not recommended. After the command is sent and ASPI for Win32 returns
+control back to the calling application, you can then poll the status byte
+waiting for the command to complete. For example, the following code segment
+will execute a SCSI Inquiry command to target #2 using polling.
+
+    SRB_ExecSCSICmd6 MySRB;
+    DWORD ASPIStatus;
+    char InquiryBuffer[32];
+        .
+        .
+    /**************************************************/
+    /* Code is entered with 'MySRB' zeroed.
+    /**************************************************/
+    MySRB.SRB_Cmd        = SC_EXEC_SCSI_CMD;
+    MySRB.SRB_Flags      = SRB_DIR_SCSI;
+    MySRB.SRB_Target     = 2;
+    MySRB.SRB_BufLen     = 32;
+    MySRB.SRB_SenseLen   = SENSE_LEN;
+    MySRB.SRB_BufPointer = InquiryBuffer;
+    MySRB.SRB_CDBLen     = 6;
+    MySRB.CDBByte[0]     = SCSI_INQUIRY;
+    MySRB.CDBByte[4]     = 32;
+        .
+        .
+    ASPIStatus = SendASPI32Command( (LPSRB)&MySRB );// Send inquiry command
+    while( MySRB.SRB_Status == SS_PENDING );        // Wait till it's finished
+
+-------------------------------------------------------------------------------
+
+Migrating to ASPI for Win32
+
+If you have written ASPI or ASPI for Windows applications in the past, here
+are some key points to keep in mind when you migrate the applications to ASPI
+for Win32:
+
+*   Although structure definitions have changed slightly to optimize alignment
+    for 32-bit processors, structure names are consistent with those used in
+    previous ASPI developer's kits. If you would like to use one source base
+    for both 16-bit and 32-bit applications, make sure that you conditionally
+    compile with the appropriate include files for each programming model. New
+    32-bit include files are available in the ASPI developer's kit. There are
+    many #ifdef statements in the sample code.
+
+*   The CDB area has been fixed in length at 16. Therefore, the sense data
+    area no longer shifts location depending on command length. If you are
+    developing an application targeted only at Win32, you no longer need to
+    account for the "floating" sense buffer.
+
+*   For requests requiring data transfers, the direction bits in the SRB Flags
+    field must be set correctly. Direction bits are no longer optional for
+    data transfers. For requests not requiring data transfers, the direction
+    bits are ignored.
+
+*   If you are using dynamic DLL linking, use LoadLibrary (winaspi32.dll)
+    instead of LoadLibrary(winaspi.dll) in order to access ASPI for Win32. If
+    you are using static DLL linking, use the wnaspi32.lib.
+
+*   All pointers in Win32 are 32 bits (Flat model). Therefore, FAR references
+    are not used.
+
+*   When allocating memory, page locking and global allocations are not
+    necessary.
+
+-------------------------------------------------------------------------------
+
+Programming Guidelines
+
+The following are additional guidelines for writing ASPI for Win32 applications.
+
+*   ASPI for Win32 applications/clients should send an ASPI Abort command to
+    terminate pending ASPI requests before exit.
+
+*   SRBs and data buffers do not need to be in page-locked memory. The ASPI
+    manager takes care of locking buffers and SRBs.
+
+*   If an error SS_BUFFER_TO_BIG is returned by the SendASPI32Command
+    routine, you should break the transfer down into 64 KByte transfers or
+    less. For maximum compatibility, we recommend that you do not request
+    transfer sizes larger than 64 KBytes unless your application requires it.
+
+*   If you send an ASPI request with posting or callback enabled, the
+    callback procedure will always be called. The post or callback routine is
+    called as a standard C function. The caller (in this case, the ASPI
+    manager) cleans up the stack.
+
+*   ASPI for Win32 is fully re-entrant and permits overlapped, asynchronous
+    I/O. Clients can send additional ASPI requests while others are pending
+    completion. Be sure to use a separate SRB for each ASPI request.
+
+*   Be sure to zero out all reserved fields before passing an SRB to ASPI for
+    Win32.
+
+*   Be sure that buffers are aligned according to the buffer alignment mask
+    returned by the SC_HA_INQUIRY command. An alignment of at least a double
+    word is recommended.
+
+*   All structures must be "packed" onto byte alingments.  To do this using
+    Microsoft compilers use the "#pragma pack(1)" command within your source
+    code or use the /Zp1 command line option.  Please check your documentation
+    for the proper commands or pragmas for other compilers.
+
+*   All of the ASPI functions use 'C' style name decoration.  If using a
+    'C++' compiler then make sure to include your function prototypes within
+    an "extern "C" {}" block.
+
+*   Some SCSI devices may have security restrictions that make them
+    inaccessible for read/write operations. In operating systems where
+    security is a feature, accessing a device where the application does not
+    have sufficient security privilege results in a SS_SECURITY_VIOLATION
+    error.
+
+*   When scanning for devices, the SendASPI32Command may also return the
+    status SS_NO_DEVICE in the SRB_Status field. Check for this exception in
+    addition to the host adapter status HASTAT_SEL_TO. As previously
+    mentioned, the callback procedure is always called, including this
+    condition.
+
+*   The SRB flags SRB_POSTING and SRB_EVENT_NOTIFY are mutually exclusive.
+
+
+
