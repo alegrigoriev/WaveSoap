@@ -2398,6 +2398,12 @@ BOOL CSaveTrimmedOperation::CreateUndo(BOOL /*IsRedo*/)
 	return TRUE;
 }
 
+void CSaveTrimmedOperation::DeleteUndo()
+{
+	m_pRestoreOperation = NULL;
+	BaseClass::DeleteUndo();
+}
+
 BOOL CSaveTrimmedOperation::OperationProc()
 {
 	if (NULL == m_pRestoreOperation)
@@ -2468,6 +2474,12 @@ BOOL CRestoreTrimmedOperation::CreateUndo(BOOL /*IsRedo*/)
 	m_UndoChain.InsertTail(m_pSaveOperation);
 
 	return TRUE;
+}
+
+void CRestoreTrimmedOperation::DeleteUndo()
+{
+	m_pSaveOperation = NULL;
+	BaseClass::DeleteUndo();
 }
 
 void CRestoreTrimmedOperation::DeInit()
@@ -2587,6 +2599,35 @@ BOOL CInitChannelsUndo::OperationProc()
 	return TRUE;
 }
 
+/////////// CSelectionChangeOperation
+CSelectionChangeOperation::CSelectionChangeOperation(CWaveSoapFrontDoc * pDoc,
+													SAMPLE_INDEX Start, SAMPLE_INDEX End, SAMPLE_INDEX Caret,
+													CHANNEL_MASK Channels)
+
+	: BaseClass(pDoc, _T(""), OperationContextSynchronous, _T(""))
+	, m_Start(Start)
+	, m_End(End)
+	, m_Caret(Caret)
+	, m_Channels(Channels)
+{
+}
+
+BOOL CSelectionChangeOperation::CreateUndo(BOOL /*IsRedo*/)
+{
+	m_UndoChain.InsertTail(new CSelectionChangeOperation(pDocument,
+														pDocument->m_SelectionStart, pDocument->m_SelectionEnd,
+														pDocument->m_CaretPosition, pDocument->m_SelectedChannel));
+
+	return TRUE;
+}
+
+BOOL CSelectionChangeOperation::OperationProc()
+{
+	pDocument->SetSelection(m_Start, m_End, m_Channels, m_Caret);
+	return TRUE;
+}
+
+///////////////////////////////////////////////////////////////////////
 BOOL InitExpandOperation(CStagedContext * pContext,
 						CWaveFile & File, SAMPLE_INDEX StartSample,
 						NUMBER_OF_SAMPLES Length, CHANNEL_MASK Channel)
