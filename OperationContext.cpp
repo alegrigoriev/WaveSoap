@@ -3213,13 +3213,12 @@ BOOL CConversionContext::OperationProc()
 			// save the changed data to undo buffer
 			pDstBuf = (char *) pOriginalDstBuf;
 			LeftToWrite = WasLockedToWrite;
-#if 0
+
 			if (NULL != m_pUndoContext)
 			{
 				m_pUndoContext->SaveUndoData(pDstBuf, WasLockedToWrite,
 											m_DstPos, m_DstFile.Channels());
 			}
-#endif
 		}
 
 		size_t SrcBufUsed = 0;
