@@ -12,8 +12,92 @@
 #include "ChildDialog.h"
 #include <vector>
 #include "ApplicationProfile.h"
+#include "UiUpdatedDlg.h"
+
 /////////////////////////////////////////////////////////////////////////////
 // CCopyChannelsSelectDlg dialog
+
+/////////////////////////////////////////////////////////////////////////////
+// CSelectionDialog dialog
+
+class CDialogWithSelection : public CUiUpdatedDlg
+{
+	typedef CUiUpdatedDlg BaseClass;
+// Construction
+public:
+	CDialogWithSelection(SAMPLE_INDEX Start,
+						SAMPLE_INDEX End, SAMPLE_INDEX CaretPos,
+						CHANNEL_MASK Channel,
+						CWaveFile & File, int TimeFormat,
+						UINT TemplateID,
+						CWnd* pParent = NULL);   // standard constructor
+
+// Dialog Data
+	//{{AFX_DATA(CDialogWithSelection)
+	//}}AFX_DATA
+
+	SAMPLE_INDEX GetStart() const
+	{
+		return m_Start;
+	}
+	SAMPLE_INDEX GetEnd() const
+	{
+		return m_End;
+	}
+	BOOL UndoEnabled() const
+	{
+		return m_bUndo;
+	}
+
+	CHANNEL_MASK GetChannel() const
+	{
+		if (m_bLockChannels)
+		{
+			return ALL_CHANNELS;
+		}
+		return m_Chan;
+	}
+
+protected:
+	CHANNEL_MASK m_Chan;
+	int		m_TimeFormat;
+	SAMPLE_INDEX m_Start;
+	SAMPLE_INDEX m_End;
+	SAMPLE_INDEX m_CaretPosition;
+	CWaveFile & m_WaveFile;
+
+	BOOL	m_bUndo;
+	BOOL	m_bLockChannels;
+
+	struct Selection
+	{
+		SAMPLE_INDEX begin;
+		SAMPLE_INDEX end;
+	};
+
+	std::vector<Selection> m_Selections;
+
+	void AddSelection(LPCTSTR Name, SAMPLE_INDEX begin, SAMPLE_INDEX end);
+	void AddSelection(UINT id, SAMPLE_INDEX begin, SAMPLE_INDEX end);
+	int FindSelection(SAMPLE_INDEX begin, SAMPLE_INDEX end);
+// Overrides
+	// ClassWizard generated virtual function overrides
+	//{{AFX_VIRTUAL(CDialogWithSelection)
+protected:
+	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV support
+	//}}AFX_VIRTUAL
+
+// Implementation
+protected:
+
+	// Generated message map functions
+	//{{AFX_MSG(CDialogWithSelection)
+	afx_msg void OnButtonSelection();
+	afx_msg void OnChecklockChannels();
+	afx_msg void OnUpdateSelectionStatic(CCmdUI * pCmdUI);
+	//}}AFX_MSG
+	DECLARE_MESSAGE_MAP()
+};
 
 class CCopyChannelsSelectDlg : public CDialog
 {
@@ -53,6 +137,7 @@ protected:
 
 class CPasteModeDialog : public CDialog
 {
+	typedef CDialog BaseClass;
 // Construction
 public:
 	CPasteModeDialog(int PasteMode, CWnd* pParent = NULL);   // standard constructor
@@ -85,38 +170,18 @@ protected:
 /////////////////////////////////////////////////////////////////////////////
 // CVolumeChangeDialog dialog
 
-class CVolumeChangeDialog : public CDialog
+class CVolumeChangeDialog : public CDialogWithSelection
 {
+	typedef CDialogWithSelection BaseClass;
 // Construction
 public:
 	CVolumeChangeDialog(
 						SAMPLE_INDEX begin, SAMPLE_INDEX end, SAMPLE_INDEX caret,
 						CHANNEL_MASK Channels,
-						NUMBER_OF_SAMPLES FileLength, WAVEFORMATEX const * pWf,
+						CWaveFile & File,
 						BOOL ChannelsLocked, BOOL UndoEnabled,
 						int TimeFormat = SampleToString_HhMmSs | TimeToHhMmSs_NeedsHhMm | TimeToHhMmSs_NeedsMs,
 						CWnd* pParent = NULL);   // standard constructor
-
-	BOOL UndoEnabled() const
-	{
-		return m_bUndo;
-	}
-	SAMPLE_INDEX GetStart() const
-	{
-		return m_Start;
-	}
-	SAMPLE_INDEX GetEnd() const
-	{
-		return m_End;
-	}
-	CHANNEL_MASK GetChannel() const
-	{
-		if (m_bLockChannels)
-		{
-			return ALL_CHANNELS;
-		}
-		return m_Chan;
-	}
 
 	double GetLeftVolume();
 	double GetRightVolume();
@@ -127,11 +192,8 @@ public:
 	//{{AFX_DATA(CVolumeChangeDialog)
 	CSliderCtrl	m_SliderVolumeRight;
 	CSliderCtrl	m_SliderVolumeLeft;
-	CStatic	m_SelectionStatic;
 	CNumEdit	m_eVolumeRight;
 	CNumEdit	m_eVolumeLeft;
-	BOOL	m_bUndo;
-	BOOL	m_bLockChannels;
 	int		m_DbPercent;
 	//}}AFX_DATA
 
@@ -147,12 +209,9 @@ protected:
 // Implementation
 protected:
 	void UpdateVolumeData(CDataExchange* pDX, BOOL InPercents);
-	void UpdateSelectionStatic();
 	void UpdateEnables();
 	// Generated message map functions
 	//{{AFX_MSG(CVolumeChangeDialog)
-	afx_msg void OnChecklockChannels();
-	afx_msg void OnButtonSelection();
 	afx_msg void OnSelchangeCombodbPercent();
 	virtual BOOL OnInitDialog();
 	afx_msg void OnHScroll(UINT nSBCode, UINT nPos, CScrollBar* pScrollBar);
@@ -160,14 +219,6 @@ protected:
 	afx_msg void OnKillfocusEditVolumeRight();
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
-
-	SAMPLE_INDEX m_Start;
-	SAMPLE_INDEX m_End;
-	SAMPLE_INDEX m_CaretPosition;
-	NUMBER_OF_SAMPLES const m_FileLength;
-	CHANNEL_MASK m_Chan;
-	int m_TimeFormat;
-	WAVEFORMATEX const * const m_pWf;
 
 	double m_dVolumeLeftDb;
 	double m_dVolumeRightDb;
@@ -180,6 +231,7 @@ protected:
 
 class CSelectionDialog : public CDialog
 {
+	typedef CDialog BaseClass;
 // Construction
 public:
 	CSelectionDialog(SAMPLE_INDEX Start, SAMPLE_INDEX End, SAMPLE_INDEX CaretPos,
@@ -236,8 +288,6 @@ protected:
 // Overrides
 	// ClassWizard generated virtual function overrides
 	//{{AFX_VIRTUAL(CSelectionDialog)
-public:
-	virtual int DoModal();
 protected:
 	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV support
 	//}}AFX_VIRTUAL
@@ -261,6 +311,7 @@ protected:
 
 class CGotoDialog : public CDialog
 {
+	typedef CDialog BaseClass;
 // Construction
 public:
 	CGotoDialog(SAMPLE_INDEX Position,
@@ -300,6 +351,7 @@ protected:
 
 class CDcOffsetDialog : public CDialog
 {
+	typedef CDialog BaseClass;
 // Construction
 public:
 	CDcOffsetDialog(CWnd* pParent = NULL);   // standard constructor
@@ -348,6 +400,7 @@ protected:
 
 class CStatisticsDialog : public CDialog
 {
+	typedef CDialog BaseClass;
 // Construction
 public:
 	CStatisticsDialog(CWnd* pParent = NULL);   // standard constructor
@@ -387,6 +440,7 @@ protected:
 
 class CNormalizeSoundDialog : public CDialog
 {
+	typedef CDialog BaseClass;
 // Construction
 public:
 	CNormalizeSoundDialog(CWnd* pParent = NULL);   // standard constructor
@@ -439,6 +493,7 @@ protected:
 
 class CResampleDialog : public CDialog
 {
+	typedef CDialog BaseClass;
 // Construction
 public:
 	CResampleDialog(CWnd* pParent = NULL);   // standard constructor
@@ -487,6 +542,7 @@ protected:
 
 class CLowFrequencySuppressDialog : public CDialog
 {
+	typedef CDialog BaseClass;
 // Construction
 public:
 	CLowFrequencySuppressDialog(CWnd* pParent = NULL);   // standard constructor
@@ -541,6 +597,7 @@ protected:
 
 class CExpressionEvaluationDialog : public CDialog
 {
+	typedef CDialog BaseClass;
 // Construction
 public:
 	CExpressionEvaluationDialog(CWnd* pParent = NULL);   // standard constructor
@@ -608,6 +665,7 @@ protected:
 
 class CDeclickDialog : public CDialog
 {
+	typedef CDialog BaseClass;
 // Construction
 public:
 	CDeclickDialog(CWnd* pParent = NULL);   // standard constructor
@@ -672,6 +730,7 @@ protected:
 
 class CNoiseReductionDialog : public CDialog
 {
+	typedef CDialog BaseClass;
 // Construction
 public:
 	CNoiseReductionDialog(CWnd* pParent = NULL);   // standard constructor
@@ -745,6 +804,7 @@ protected:
 
 class CMoreNoiseDialog : public CDialog
 {
+	typedef CDialog BaseClass;
 // Construction
 public:
 	CMoreNoiseDialog(CWnd* pParent = NULL);   // standard constructor
