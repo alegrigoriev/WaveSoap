@@ -1,3 +1,4 @@
+// Copyright Alexander Grigoriev, 1997-2002, All Rights Reserved
 // shellink.cpp
 #include <stdafx.h>
 #include "shellink.h"
