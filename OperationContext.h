@@ -172,9 +172,9 @@ class CScanPeaksContext : public COperationContext
 {
 	friend class CWaveSoapFrontDoc;
 public:
-	DWORD m_Position;
-	DWORD m_Start;
-	DWORD m_End;
+	SAMPLE_POSITION m_Position;
+	SAMPLE_POSITION m_Start;
+	SAMPLE_POSITION m_End;
 	int m_GranuleSize;
 	CScanPeaksContext(CWaveSoapFrontDoc * pDoc)
 		: COperationContext(pDoc, _T("Scanning the file for peaks..."), OperationContextDiskIntensive, _T("Peak Scan")),
@@ -405,10 +405,10 @@ public:
 	int m_MaxLeft;
 	int m_MinRight;
 	int m_MaxRight;
-	DWORD m_PosMinLeft;
-	DWORD m_PosMaxLeft;
-	DWORD m_PosMinRight;
-	DWORD m_PosMaxRight;
+	SAMPLE_INDEX m_PosMinLeft;
+	SAMPLE_INDEX m_PosMaxLeft;
+	SAMPLE_INDEX m_PosMinRight;
+	SAMPLE_INDEX m_PosMaxRight;
 	LONGLONG m_EnergyLeft;
 	LONGLONG m_EnergyRight;
 	LONGLONG m_SumLeft;

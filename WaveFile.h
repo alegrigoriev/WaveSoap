@@ -33,8 +33,8 @@ typedef int CHANNEL_MASK;
 typedef short NUMBER_OF_CHANNELS;
 typedef DWORD SAMPLE_POSITION;
 typedef DWORD WAV_FILE_SIZE;
-typedef DWORD MEDIA_FILE_SIZE;  // to be expanded to 64 bits
-typedef DWORD MEDIA_FILE_POSITION;
+typedef LONGLONG MEDIA_FILE_SIZE;  // to be expanded to 64 bits
+typedef LONGLONG MEDIA_FILE_POSITION;
 typedef unsigned PEAK_INDEX;
 typedef __int16 WAVE_SAMPLE;
 

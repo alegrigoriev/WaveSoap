@@ -23,7 +23,7 @@ public:
 
 // Operations
 public:
-	void NotifyViewExtents(long left, long right);
+	void NotifyViewExtents(SAMPLE_INDEX left, SAMPLE_INDEX right);
 
 // Overrides
 	// ClassWizard generated virtual function overrides

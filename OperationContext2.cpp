@@ -1291,8 +1291,8 @@ void CExpressionEvaluationContext::Evaluate()
 	}
 }
 
-BOOL CInsertSilenceContext::InitExpand(CWaveFile & DstFile, long StartSample, long Length,
-										int Channel, BOOL NeedUndo)
+BOOL CInsertSilenceContext::InitExpand(CWaveFile & DstFile, SAMPLE_INDEX StartSample, SAMPLE_INDEX Length,
+										CHANNEL_MASK Channel, BOOL NeedUndo)
 {
 	m_pExpandShrinkContext = new CResizeContext(pDocument, _T("Expanding the file..."), _T(""));
 	if (NULL == m_pExpandShrinkContext)

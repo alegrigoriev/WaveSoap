@@ -423,10 +423,10 @@ BOOL CBatchProcessing::SetAndValidateWaveformat(WAVEFORMATEX const * pWf)
 	return TRUE;
 }
 
-int CWaveProc::ProcessSound(char const * pInBuf, char * pOutBuf,
-							int nInBytes, int nOutBytes, int * pUsedBytes)
+size_t CWaveProc::ProcessSound(char const * pInBuf, char * pOutBuf,
+								size_t nInBytes, size_t nOutBytes, size_t * pUsedBytes)
 {
-	int nSavedBytes = 0;
+	size_t nSavedBytes = 0;
 	*pUsedBytes = 0;
 	if ( ! CheckForMinBufferSize(pInBuf, pOutBuf, nInBytes, nOutBytes,
 								pUsedBytes, & nSavedBytes,
@@ -438,13 +438,14 @@ int CWaveProc::ProcessSound(char const * pInBuf, char * pOutBuf,
 }
 
 BOOL CWaveProc::CheckForMinBufferSize(char const * &pIn, char * &pOut,
-									int &nInBytes, int &nOutBytes,
-									int * pUsedBytes, int * pSavedBytes,
-									int nMinInBytes, int nMinOutBytes)
+									size_t &nInBytes, size_t &nOutBytes,
+									size_t * pUsedBytes, size_t * pSavedBytes,
+									size_t nMinInBytes, size_t nMinOutBytes)
 {
-	int nSavedBytes = 0;
+	size_t nSavedBytes = 0;
 	*pSavedBytes = 0;
 	*pUsedBytes = 0;
+
 	if (m_TmpOutBufPut != m_TmpOutBufGet)
 	{
 		for ( ;m_TmpOutBufPut > m_TmpOutBufGet
@@ -475,8 +476,9 @@ BOOL CWaveProc::CheckForMinBufferSize(char const * &pIn, char * &pOut,
 		}
 		if (nMinInBytes == m_TmpInBufPut)
 		{
-			int nUsed = 0;
-			int nSaved = ProcessSoundBuffer(m_TmpInBuf, pOut, nMinInBytes, nOutBytes, & nUsed);
+			size_t nUsed = 0;
+			size_t nSaved = ProcessSoundBuffer(m_TmpInBuf, pOut, nMinInBytes, nOutBytes, & nUsed);
+
 			if (nUsed != nMinInBytes)
 			{
 				TRACE("Couldn't process min bytes!\n");
@@ -509,12 +511,15 @@ BOOL CWaveProc::CheckForMinBufferSize(char const * &pIn, char * &pOut,
 
 	if (nOutBytes < nMinOutBytes)
 	{
-		int nUsed = 0;
+		size_t nUsed = 0;
 		m_TmpOutBufGet = 0;
 		m_TmpOutBufPut = 0;
-		int nSaved = ProcessSoundBuffer(pIn, m_TmpOutBuf, nInBytes, nMinOutBytes, & nUsed);
+
+		size_t nSaved = ProcessSoundBuffer(pIn, m_TmpOutBuf, nInBytes, nMinOutBytes, & nUsed);
+
 		m_TmpOutBufPut = nSaved;
 		* pUsedBytes += nUsed;
+
 		for ( ; nOutBytes > 0 && m_TmpOutBufGet < m_TmpOutBufPut; m_TmpOutBufGet++,
 			nOutBytes--, nSavedBytes++, pOut++)
 		{
@@ -550,14 +555,15 @@ void CHumRemoval::SetHighpassCutoff(double frequency)
 		m_HighpassCoeffs[1],  m_HighpassCoeffs[2]);
 }
 
-int CHumRemoval::ProcessSoundBuffer(char const * pIn, char * pOut,
-									int nInBytes, int nOutBytes, int * pUsedBytes)
+size_t CHumRemoval::ProcessSoundBuffer(char const * pIn, char * pOut,
+										size_t nInBytes, size_t nOutBytes, size_t * pUsedBytes)
 {
-	int nSavedBytes = 0;
+	size_t nSavedBytes = 0;
 	*pUsedBytes = 0;
 
-	int nInSamples = nInBytes / sizeof (WAVE_SAMPLE);
-	int nOutSamples = nOutBytes / sizeof (WAVE_SAMPLE);
+	size_t nInSamples = nInBytes / sizeof (WAVE_SAMPLE);
+	size_t nOutSamples = nOutBytes / sizeof (WAVE_SAMPLE);
+
 	WAVE_SAMPLE const * pInBuf = (WAVE_SAMPLE *) pIn;
 	WAVE_SAMPLE * pOutBuf = (WAVE_SAMPLE *) pOut;
 
@@ -827,8 +833,8 @@ void CClickRemoval::InterpolateGap(WAVE_SAMPLE data[], int nLeftIndex, int Click
 	}
 }
 
-int CClickRemoval::ProcessSoundBuffer(char const * pIn, char * pOut,
-									int nInBytes, int nOutBytes, int * pUsedBytes)
+size_t CClickRemoval::ProcessSoundBuffer(char const * pIn, char * pOut,
+										size_t nInBytes, size_t nOutBytes, size_t * pUsedBytes)
 {
 	int nSavedBytes = 0;
 	*pUsedBytes = 0;
@@ -1257,15 +1263,16 @@ void CNoiseReduction::SIGNAL_PARAMS::AnalyzeFftSample(complex<DATA> smp, CNoiseR
 	return;
 }
 
-int CNoiseReduction::ProcessSoundBuffer(char const * pIn, char * pOut,
-										int nInBytes, int nOutBytes, int * pUsedBytes)
+size_t CNoiseReduction::ProcessSoundBuffer(char const * pIn, char * pOut,
+											size_t nInBytes, size_t nOutBytes, size_t * pUsedBytes)
 {
-	int nSavedBytes = 0;
+	size_t nSavedBytes = 0;
 	*pUsedBytes = 0;
-	int nChans = m_InputChannels;
+	NUMBER_OF_CHANNELS nChans = m_InputChannels;
 
 	int nInSamples = nInBytes / (nChans * sizeof (WAVE_SAMPLE));
 	int nOutSamples = nOutBytes / (nChans * sizeof (WAVE_SAMPLE));
+
 	WAVE_SAMPLE const * pInBuf = (WAVE_SAMPLE *) pIn;
 	WAVE_SAMPLE * pOutBuf = (WAVE_SAMPLE *) pOut;
 
@@ -1651,10 +1658,10 @@ double CBatchProcessing::GetMaxClipped() const
 	return MaxClipped;
 }
 
-int CBatchProcessing::ProcessSound(char const * pIn, char * pOut,
-									int nInBytes, int nOutBytes, int * pUsedBytes)
+size_t CBatchProcessing::ProcessSound(char const * pIn, char * pOut,
+									size_t nInBytes, size_t nOutBytes, size_t * pUsedBytes)
 {
-	int nSavedBytes = 0;
+	size_t nSavedBytes = 0;
 	*pUsedBytes = 0;
 
 	if (NULL != pIn)
@@ -1663,7 +1670,7 @@ int CBatchProcessing::ProcessSound(char const * pIn, char * pOut,
 		if (0 == m_Stages.GetSize())
 		{
 			// just pass through
-			int ToCopy = __min(nInBytes, nOutBytes);
+			size_t ToCopy = __min(nInBytes, nOutBytes);
 			memcpy(pOut, pIn, ToCopy);
 			* pUsedBytes = ToCopy;
 			return ToCopy;
@@ -1674,9 +1681,9 @@ int CBatchProcessing::ProcessSound(char const * pIn, char * pOut,
 			bDataWasProcessed = false;
 			for (int i = 0; i < m_Stages.GetSize(); i++)
 			{
-				int nProcessedBytes;
-				int nCurrInputBytes;
-				int nCurrOutputBytes;
+				size_t nProcessedBytes;
+				size_t nCurrInputBytes;
+				size_t nCurrOutputBytes;
 				char const * inbuf;
 				char * outbuf;
 				Item * pItem = & m_Stages[i];
@@ -1765,9 +1772,9 @@ int CBatchProcessing::ProcessSound(char const * pIn, char * pOut,
 			bDataWasProcessed = false;
 			for (int i = 0; i < m_Stages.GetSize(); i++)
 			{
-				int nProcessedBytes;
-				int nCurrInputBytes;
-				int nCurrOutputBytes;
+				size_t nProcessedBytes;
+				size_t nCurrInputBytes;
+				size_t nCurrOutputBytes;
 				char const * inbuf;
 				char * outbuf;
 				Item * pItem = & m_Stages[i];
@@ -1864,7 +1871,7 @@ BOOL CResampleFilter::InitResample(double ResampleRatio, double FilterLength, in
 	// if < 1 it is downsampling
 	// FilterLength is how many Sin periods are in the array
 	double PrevVal = 0.;
-	int i;
+	unsigned i;
 	for (i = 0; i < ResampleFilterSize; i++)
 	{
 		double arg = M_PI * FilterLength / ResampleFilterSize * (i + 1 - ResampleFilterSize / 2);
@@ -1944,6 +1951,7 @@ BOOL CResampleFilter::InitResample(double ResampleRatio, double FilterLength, in
 
 	m_SrcBufUsed = 0;
 	m_DstBufUsed = 0;
+
 	// prefill at 1/2 filter length
 	memset(m_pSrcBuf, 0, SrcBufSize * sizeof * m_pSrcBuf);
 	m_SrcBufFilled = (0x80000000u / m_InputPeriod) * m_InputChannels;
@@ -2004,19 +2012,19 @@ void CResampleFilter::FilterSoundResample()
 	}
 }
 
-int CResampleFilter::ProcessSoundBuffer(char const * pIn, char * pOut,
-										int nInBytes, int nOutBytes, int * pUsedBytes)
+size_t CResampleFilter::ProcessSoundBuffer(char const * pIn, char * pOut,
+											size_t nInBytes, size_t nOutBytes, size_t * pUsedBytes)
 {
-	int nSavedBytes = 0;
+	size_t nSavedBytes = 0;
 	*pUsedBytes = 0;
 
-	int nInSamples = nInBytes / sizeof (WAVE_SAMPLE);
-	int nOutSamples = nOutBytes / sizeof (WAVE_SAMPLE);
+	unsigned nInSamples = nInBytes / sizeof (WAVE_SAMPLE);
+	unsigned nOutSamples = nOutBytes / sizeof (WAVE_SAMPLE);
 	WAVE_SAMPLE const * pInBuf = (WAVE_SAMPLE *) pIn;
 	WAVE_SAMPLE * pOutBuf = (WAVE_SAMPLE *) pOut;
 
-	int nUsedSamples = 0;
-	int nSavedSamples = 0;
+	unsigned nUsedSamples = 0;
+	unsigned nSavedSamples = 0;
 	if (0 == pInBuf)
 	{
 		// adjust nOutSamples
@@ -2042,7 +2050,7 @@ int CResampleFilter::ProcessSoundBuffer(char const * pIn, char * pOut,
 		if ((m_SrcBufFilled - m_SrcBufUsed) / m_InputChannels
 			<= m_SrcFilterLength * 2)
 		{
-			for (int i = 0, j = m_SrcBufUsed; j < m_SrcBufFilled; i++, j++)
+			for (unsigned i = 0, j = m_SrcBufUsed; j < m_SrcBufFilled; i++, j++)
 			{
 				m_pSrcBuf[i] = m_pSrcBuf[j];
 			}
@@ -2052,11 +2060,11 @@ int CResampleFilter::ProcessSoundBuffer(char const * pIn, char * pOut,
 		if (m_SrcBufFilled < SrcBufSize)
 		{
 
-			int ToCopy = __min(SrcBufSize - m_SrcBufFilled, nInSamples);
+			unsigned ToCopy = __min(SrcBufSize - m_SrcBufFilled, nInSamples);
 			if (0 == pInBuf)
 			{
 				// fill the rest of the input buffer with zeros
-				for (int j = m_SrcBufFilled; j < SrcBufSize; j++)
+				for (unsigned j = m_SrcBufFilled; j < SrcBufSize; j++)
 				{
 					m_pSrcBuf[j] = 0.;
 				}
@@ -2064,7 +2072,7 @@ int CResampleFilter::ProcessSoundBuffer(char const * pIn, char * pOut,
 			}
 			else
 			{
-				for (int i = 0, j = m_SrcBufFilled; i < ToCopy; i++, j++)
+				for (unsigned i = 0, j = m_SrcBufFilled; i < ToCopy; i++, j++)
 				{
 					m_pSrcBuf[j] = pInBuf[i];
 				}
@@ -2234,23 +2242,25 @@ BOOL CAudioConvertor::InitConversion(WAVEFORMATEX * SrcFormat, WAVEFORMATEX * Ds
 	return TRUE;
 }
 
-int CAudioConvertor::ProcessSound(char const * pIn, char * pOut,
-								int nInBytes, int nOutBytes, int * pUsedBytes)
+size_t CAudioConvertor::ProcessSound(char const * pIn, char * pOut,
+									size_t nInBytes, size_t nOutBytes, size_t * pUsedBytes)
 {
-	int nSavedBytes = 0;
+	size_t nSavedBytes = 0;
 	*pUsedBytes = 0;
 	while (1)
 	{
 		// empty the output buffer
 		if (m_ash.cbDstLengthUsed > m_DstSaved)
 		{
-			int ToCopy = m_ash.cbDstLengthUsed - m_DstSaved;
+			size_t ToCopy = m_ash.cbDstLengthUsed - m_DstSaved;
+
 			if (nOutBytes < ToCopy)
 			{
 				ToCopy = nOutBytes;
 			}
 			memmove(pOut, m_ash.pbDst + m_DstSaved, ToCopy);
 			pOut += ToCopy;
+
 			nSavedBytes += ToCopy;
 			nOutBytes -= ToCopy;
 			m_DstSaved += ToCopy;
@@ -2258,16 +2268,19 @@ int CAudioConvertor::ProcessSound(char const * pIn, char * pOut,
 		// fill the source buffer
 		if (m_ash.cbSrcLength < m_SrcBufSize && NULL != pIn)
 		{
-			int ToCopy = m_SrcBufSize - m_ash.cbSrcLength;
+			size_t ToCopy = m_SrcBufSize - m_ash.cbSrcLength;
 			if (ToCopy > nInBytes)
 			{
 				ToCopy = nInBytes;
 			}
+
 			memmove(m_ash.pbSrc + m_ash.cbSrcLength, pIn, ToCopy);
+
 			m_ash.cbSrcLength += ToCopy;
 			pIn += ToCopy;
 			nInBytes -= ToCopy;
 			* pUsedBytes += ToCopy;
+
 			if (m_ash.cbSrcLength < m_SrcBufSize)
 			{
 				break;  // still not enough data
@@ -2317,10 +2330,10 @@ int CAudioConvertor::ProcessSound(char const * pIn, char * pOut,
 	return nSavedBytes;
 }
 
-int CChannelConvertor::ProcessSoundBuffer(char const * pIn, char * pOut,
-										int nInBytes, int nOutBytes, int * pUsedBytes)
+size_t CChannelConvertor::ProcessSoundBuffer(char const * pIn, char * pOut,
+											size_t nInBytes, size_t nOutBytes, size_t * pUsedBytes)
 {
-	int nSavedBytes = 0;
+	size_t nSavedBytes = 0;
 	*pUsedBytes = 0;
 
 	int nInSamples = nInBytes / (m_InputChannels * sizeof (WAVE_SAMPLE));
@@ -2542,12 +2555,12 @@ BOOL CLameEncConvertor::Open(WAVEFORMATEX * pWF)
 	return TRUE;
 }
 
-int CLameEncConvertor::ProcessSound(char const * pInBuf, char * pOutBuf,
-									int nInBytes, int nOutBytes, int * pUsedBytes)
+size_t CLameEncConvertor::ProcessSound(char const * pInBuf, char * pOutBuf,
+										size_t nInBytes, size_t nOutBytes, size_t * pUsedBytes)
 {
 	// save extra data from the output buffer
 	*pUsedBytes = 0;
-	int nSavedBytes = 0;
+	size_t nSavedBytes = 0;
 	BOOL FlushBuffer = FALSE;
 	if (NULL == pInBuf)
 	{
@@ -2562,7 +2575,7 @@ int CLameEncConvertor::ProcessSound(char const * pInBuf, char * pOutBuf,
 	{
 		if (0 != m_OutputBufferFilled)
 		{
-			int ToCopy = __min(nOutBytes, m_OutputBufferFilled);
+			size_t ToCopy = __min(nOutBytes, m_OutputBufferFilled);
 			memcpy(pOutBuf, m_pOutputBuffer, ToCopy);
 
 			m_OutputBufferFilled -= ToCopy;
@@ -2576,7 +2589,8 @@ int CLameEncConvertor::ProcessSound(char const * pInBuf, char * pOutBuf,
 				return nSavedBytes;
 			}
 		}
-		int ToCopy = m_InputBufferSize - m_InputBufferFilled;
+
+		size_t ToCopy = m_InputBufferSize - m_InputBufferFilled;
 		if (ToCopy > nInBytes)
 		{
 			ToCopy = nInBytes;
@@ -2616,16 +2630,17 @@ int CLameEncConvertor::ProcessSound(char const * pInBuf, char * pOutBuf,
 	return nSavedBytes;
 }
 
-int CByteSwapConvertor::ProcessSoundBuffer(char const * pIn, char * pOut,
-											int nInBytes, int nOutBytes, int * pUsedBytes)
+size_t CByteSwapConvertor::ProcessSoundBuffer(char const * pIn, char * pOut,
+											size_t nInBytes, size_t nOutBytes, size_t * pUsedBytes)
 {
 	if (NULL == pIn)
 	{
 		*pUsedBytes = 0;
 		return 0;
 	}
-	int nBytes = __min(nInBytes, nOutBytes);
-	for (int i = 0; i < nBytes; i+= sizeof (WAVE_SAMPLE))
+
+	size_t nBytes = __min(nInBytes, nOutBytes);
+	for (size_t i = 0; i < nBytes; i+= sizeof (WAVE_SAMPLE))
 	{
 		pOut[i + 1] = pIn[i];
 		pOut[i] = pIn[i + 1];

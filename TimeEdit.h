@@ -20,7 +20,7 @@ public:
 	// Attributes
 public:
 	void ExchangeData(CDataExchange* pDX, SAMPLE_INDEX & sample);
-	ULONG GetTimeSample();
+	SAMPLE_INDEX GetTimeSample();
 	// Operations
 public:
 	void SetTimeFormat(int format)
@@ -47,7 +47,7 @@ public:
 protected:
 	long m_nSamplesPerSec;
 	int m_TimeFormat;
-	ULONG m_Sample;
+	SAMPLE_INDEX m_Sample;
 	CString m_OriginalString;
 	//{{AFX_MSG(CTimeEdit)
 	afx_msg void OnVScroll(UINT nSBCode, UINT nPos, CScrollBar* pScrollBar);
@@ -103,10 +103,10 @@ public:
 
 	// Attributes
 public:
-	std::vector<long> m_Positions;
+	std::vector<SAMPLE_INDEX> m_Positions;
 	// Operations
-	void AddPosition(LPCTSTR name, long time);
-	void AddPosition(UINT id, long time);
+	void AddPosition(LPCTSTR name, SAMPLE_INDEX Sample);
+	void AddPosition(UINT id, SAMPLE_INDEX Sample);
 public:
 	// Overrides
 	// ClassWizard generated virtual function overrides

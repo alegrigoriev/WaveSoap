@@ -67,7 +67,16 @@ void CFftRulerView::OnDraw(CDC* pDC)
 
 	int nVertStep = GetSystemMetrics(SM_CYMENU);
 	NUMBER_OF_CHANNELS nChannels = pDoc->WaveChannels();
+	if (0 == nChannels)
+	{
+		return;
+	}
 	int nHeight = cr.Height() / nChannels;
+
+	if (0 == nHeight)
+	{
+		return;
+	}
 
 	double VerticalScale = pMasterView->m_VerticalScale;
 

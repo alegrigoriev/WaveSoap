@@ -76,12 +76,13 @@ void CTimeRulerView::DrawRulerSamples(CDC* pDC)
 
 	// calculate position string length
 	CString s;
-	int nLength;
-	unsigned dist, nTickDist;
-	unsigned nSamples, k;
-	nLength = pDC->GetTextExtent(_T("0,000,000,000"), 13).cx;
+	int dist;
+	unsigned nTickDist;
+	unsigned k;
 
-	nSamples = unsigned(1.5 * nLength / GetXScaleDev());
+	int nLength = pDC->GetTextExtent(_T("0,000,000,000"), 13).cx;
+
+	NUMBER_OF_SAMPLES nSamples = NUMBER_OF_SAMPLES(1.5 * nLength / GetXScaleDev());
 	// calculate how much samples can be between the numbers
 	if (nSamples > INT_MAX / 10)
 	{
@@ -128,7 +129,8 @@ void CTimeRulerView::DrawRulerSamples(CDC* pDC)
 	pDC->MoveTo(cr.left, cr.bottom - 6);
 	pDC->LineTo(cr.right, cr.bottom - 6);
 
-	long nFirstSample = long(WindowToWorldX(cr.left - nLength));
+	NUMBER_OF_SAMPLES nFirstSample = NUMBER_OF_SAMPLES(WindowToWorldX(cr.left - nLength));
+
 	if (nFirstSample < 0)
 	{
 		nFirstSample = 0;

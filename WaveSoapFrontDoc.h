@@ -92,7 +92,7 @@ public:
 		return m_bChannelsLocked;
 	}
 
-	int WaveFileSamples() const;
+	NUMBER_OF_SAMPLES WaveFileSamples() const;
 	LPMMCKINFO WaveDataChunk() const;
 	LPWAVEFORMATEX WaveFormat() const;
 	NUMBER_OF_CHANNELS WaveChannels() const;
@@ -414,15 +414,15 @@ protected:
 #pragma pack(push, 2)
 struct PeakFileHeader
 {
+	enum { pfhSignature = 'KPSW', pfhMaxVersion = 3};
 	DWORD dwSignature;
 	WORD wSize;
-	enum { pfhSignature = 'KPSW', pfhMaxVersion=2};
 	WORD dwVersion;
 	FILETIME WaveFileTime;
-	DWORD dwWaveFileSize;   // WAV file is less than 4G
+	WAV_FILE_SIZE dwWaveFileSize;   // WAV file is less than 4G
 	DWORD Granularity;      // number of WAV samples for each PeakFile value
 	DWORD PeakInfoSize;
-	DWORD NumOfSamples;
+	NUMBER_OF_SAMPLES NumOfSamples;
 	WAVEFORMATEX wfFormat;
 };
 

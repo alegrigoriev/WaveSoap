@@ -226,8 +226,8 @@ public:
 	}
 	virtual BOOL OperationProc();
 	virtual BOOL ProcessBuffer(void * buf, size_t len, SAMPLE_POSITION offset, BOOL bBackward = FALSE);
-	BOOL InitExpand(CWaveFile & DstFile, long StartSample, long length,
-					int chan, BOOL NeedUndo);
+	BOOL InitExpand(CWaveFile & DstFile, SAMPLE_INDEX StartSample, SAMPLE_INDEX length,
+					CHANNEL_MASK chan, BOOL NeedUndo);
 };
 
 class CCommitFileSaveContext :public COperationContext

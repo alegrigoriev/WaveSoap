@@ -103,6 +103,7 @@ void CAmplitudeRuler::DrawSamples(CDC * pDC)
 	{
 		nHeight /= nChannels;
 	}
+
 	double VerticalScale = pMasterView->m_VerticalScale;
 	double ScaledWaveOffset = pMasterView->m_WaveOffsetY * VerticalScale;
 	int nSampleUnits = int(nVertStep * 65536. / (nHeight * VerticalScale));
@@ -190,9 +191,18 @@ void CAmplitudeRuler::DrawPercents(CDC * pDC)
 	pDC->SetBkMode(TRANSPARENT);
 
 	int nVertStep = GetSystemMetrics(SM_CYMENU);
-	NUMBER_OF_CHANNELS nChannels = pDoc->WaveChannels();
 
+	NUMBER_OF_CHANNELS nChannels = pDoc->WaveChannels();
+	if (0 == nChannels)
+	{
+		return;
+	}
 	int nHeight = cr.Height() / nChannels;
+
+	if (0 == nHeight)
+	{
+		return;
+	}
 
 	double VerticalScale = pMasterView->m_VerticalScale;
 	double ScaledWaveOffset = pMasterView->m_WaveOffsetY * VerticalScale;
@@ -239,12 +249,14 @@ void CAmplitudeRuler::DrawPercents(CDC * pDC)
 		}
 		ClipLow += tm.tmHeight / 2;
 		ClipHigh -= tm.tmHeight / 2;
+
 		int yLow = int(100. / 32768. * (ClipHigh / YScaleDev -WaveOffset) / VerticalScale);
 		// round to the next multiple of step
-		yLow += (step*0x10000-yLow) % step;
+		yLow += (step * 0x10000 - yLow) % step;
+
 		int yHigh = int(100. / 32768. * (ClipLow / YScaleDev -WaveOffset) / VerticalScale);
-		yHigh -= (step*0x10000+yHigh) % step;
-		ASSERT(yLow <= yHigh);
+		yHigh -= (step * 0x10000 + yHigh) % step;
+
 		for (int y = yLow; y <= yHigh; y += step)
 		{
 			int yDev= fround((y * 32768. / 100.* VerticalScale + WaveOffset) * YScaleDev);
@@ -284,9 +296,14 @@ void CAmplitudeRuler::DrawDecibels(CDC * pDC)
 	pDC->SetBkMode(TRANSPARENT);
 
 	int nVertStep = GetSystemMetrics(SM_CYMENU);
-	NUMBER_OF_CHANNELS nChannels = pDoc->WaveChannels();
 
-	int nHeight = cr.Height() / nChannels;
+	NUMBER_OF_CHANNELS nChannels = pDoc->WaveChannels();
+	int nHeight = cr.Height();
+	if (0 != nChannels)
+	{
+		nHeight /= nChannels;
+	}
+
 	double VerticalScale = pMasterView->m_VerticalScale;
 	double ScaledWaveOffset = pMasterView->m_WaveOffsetY * VerticalScale;
 	int nSampleUnits = int(nVertStep * 65536. / (nHeight * VerticalScale));

@@ -175,7 +175,7 @@ public:
 
 	CWaveFile m_ClipboardFile;
 	WAVEFORMATEX m_NewFileFormat;
-	long m_NewFileLength;
+	LONG m_NewFileLength;   // seconds
 
 	class CWaveSoapDocTemplate * m_pAllTypesTemplate;
 	class CWaveSoapDocTemplate * m_pMP3TypeTemplate;
@@ -296,7 +296,7 @@ enum
 	TimeToHhMmSs_NeedsHhMm = 0x200,
 };
 CString TimeToHhMmSs(unsigned TimeMs, int Flags = TimeToHhMmSs_NeedsMs);
-CString SampleToString(long Sample, long nSamplesPerSec,
+CString SampleToString(SAMPLE_INDEX Sample, int nSamplesPerSec,
 						int Flags = SampleToString_HhMmSs
 									| TimeToHhMmSs_NeedsHhMm
 									| TimeToHhMmSs_NeedsMs);
@@ -314,7 +314,7 @@ BOOL CanAllocateWaveFileSamples(const WAVEFORMATEX * pWf, LONGLONG NumOfSamples)
 BOOL CanAllocateWaveFileSamplesDlg(const WAVEFORMATEX * pWf, LONGLONG NumOfSamples);
 CString GetSelectionText(SAMPLE_INDEX Start, SAMPLE_INDEX End, CHANNEL_MASK Chan,
 						NUMBER_OF_CHANNELS nChannels, BOOL bLockChannels,
-						long nSamplesPerSec, int TimeFormat);
+						int nSamplesPerSec, int TimeFormat);
 
 /////////////////////////////////////////////////////////////////////////////
 //{{AFX_INSERT_LOCATION}}

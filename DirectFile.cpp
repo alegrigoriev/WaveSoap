@@ -16,9 +16,9 @@ typedef DWORD BLOCK_INDEX;
 typedef NUM_volatile<DWORD> SUBBLOCK_MASK;
 
 #define TRACE_PREFETCH 0
-#define TRACE_READ 1
-#define TRACE_WRITE 1
-#define TRACE_MRU 1
+#define TRACE_READ 0
+#define TRACE_WRITE 0
+#define TRACE_MRU 0
 
 #define BLOCK_SIZE_SHIFT 16
 #define CACHE_BLOCK_SIZE (1UL << BLOCK_SIZE_SHIFT)
@@ -1641,7 +1641,6 @@ long CDirectFileCache::GetDataBuffer(File * pFile,
 		{
 			pBuf = pFreeBuf;
 			pFreeBuf = NULL;
-			//pBuf->BufferMruEntry::Init();  // ???
 
 			pBuf->LockCount = 1;
 			pBuf->ReadMask = 0;
@@ -1717,7 +1716,7 @@ long CDirectFileCache::GetDataBuffer(File * pFile,
 				else
 				{
 					// round the length to make it prefetch the whole buffer
-					length -= 0xFFFF & (long(position) - length);
+					length -= MASK_OFFSET_IN_BLOCK & (long(position) - length);
 				}
 			}
 			RequestPrefetch(pFile, position - BytesRequested, length + BytesRequested, m_MRU_Count);
@@ -2796,10 +2795,7 @@ unsigned CDirectFileCache::_ThreadProc()
 			if (TRACE_PREFETCH) TRACE("Prefetched block 0x%X file %x\n",
 									pPrefetch->m_PrefetchPosition, pPrefetch->m_pFile->hFile);
 
-			if (pBuf)
-			{
-				pPrefetch->m_pFile->ReturnDataBuffer(pBuf, ReadLength, 0);
-			}
+			pPrefetch->m_pFile->ReturnDataBuffer(pBuf, ReadLength, 0);
 
 			{
 				CSimpleCriticalSectionLock lock(m_cs);
@@ -2995,8 +2991,9 @@ BOOL File::Flush()
 
 	while(1)
 	{
-		CSimpleCriticalSectionLock lock(m_FileLock);
+		CSimpleCriticalSectionLock lock(BuffersList);
 		BufferHeader * pBuf = BuffersList.First();
+
 		while (1)
 		{
 			if (BuffersList.IsEnd(pBuf))

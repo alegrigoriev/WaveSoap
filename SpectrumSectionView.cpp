@@ -99,7 +99,13 @@ void CSpectrumSectionView::OnDraw(CDC* pDC)
 	m_FftOrder = pFftView->m_FftOrder;
 	int nSampleSize = pDoc->WaveSampleSize();
 	NUMBER_OF_CHANNELS nChannels = pDoc->WaveChannels();
-	LONG nStartSample = pDoc->m_SelectionStart;
+	if (0 == nChannels)
+	{
+		return;
+	}
+
+	SAMPLE_INDEX nStartSample = pDoc->m_SelectionStart;
+
 	int NumberOfFftSamplesAveraged =
 		(pDoc->m_SelectionEnd - pDoc->m_SelectionStart) / m_FftOrder + 1;
 	if (NumberOfFftSamplesAveraged > 100)
@@ -120,7 +126,7 @@ void CSpectrumSectionView::OnDraw(CDC* pDC)
 		nStartSample = 0;
 	}
 
-	DWORD start = pDoc->m_WavFile.SampleToPosition(nStartSample);
+	SAMPLE_POSITION start = pDoc->m_WavFile.SampleToPosition(nStartSample);
 	DWORD FftStepInFile = m_FftOrder * nSampleSize;
 
 	int length = FftStepInFile * 2;
@@ -178,7 +184,6 @@ void CSpectrumSectionView::OnDraw(CDC* pDC)
 			return;
 		}
 
-
 	}
 	if (NULL == m_pWindow)
 	{
@@ -205,6 +210,7 @@ void CSpectrumSectionView::OnDraw(CDC* pDC)
 			}
 		}
 	}
+
 	float * pSrcArray = new float [nChannels * (m_FftOrder * 2 + 2)];
 	if (NULL == pSrcArray)
 	{
@@ -245,6 +251,7 @@ void CSpectrumSectionView::OnDraw(CDC* pDC)
 	// fill the array
 	int LastRow = 0;
 	int k;
+
 	for (k = 0; k < IdxSize1; k++)
 	{
 		if (FirstFftSample >= m_FftOrder
@@ -270,6 +277,7 @@ void CSpectrumSectionView::OnDraw(CDC* pDC)
 	if (0) TRACE("LastRow = %d, cr.height=%d\n", LastRow, cr.Height());
 	ASSERT(LastRow <= rows);
 	int IdxSize = k;
+
 	pIdArray[k].nFftOffset = m_FftOrder;
 	pIdArray[k].nNumOfRows = 0;
 
@@ -369,8 +377,10 @@ void CSpectrumSectionView::OnDraw(CDC* pDC)
 				ppArray[j][1].y = ChannelOffset + j;
 			}
 		}
+
 		int LastX0 = ppArray[0][0].x;
 		int LastX1 = ppArray[0][1].x;
+
 		for (i = 0; i < nNumberOfPoints; i++)
 		{
 			//TRACE("ppArray[%d].x = %d, %d\n", i, ppArray[i][1].x, ppArray[i][0].x);
@@ -491,6 +501,7 @@ int CSpectrumSectionView::OnMouseActivate(CWnd* pDesktopWnd, UINT nHitTest, UINT
 void CSpectrumSectionView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
 {
 	CWaveSoapFrontDoc * pDoc = GetDocument();
+
 	if (lHint == CWaveSoapFrontDoc::UpdateSoundChanged
 		&& NULL != pHint)
 	{
@@ -558,6 +569,7 @@ void CSpectrumSectionView::OnUpdateViewSsZoomouthor2(CCmdUI* pCmdUI)
 void CSpectrumSectionView::OnMouseMove(UINT nFlags, CPoint point)
 {
 	CView::OnMouseMove(nFlags, point);
+
 	if ( ! m_bTrackingMouseRect)
 	{
 		TRACKMOUSEEVENT tme;
