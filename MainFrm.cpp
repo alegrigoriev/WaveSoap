@@ -62,15 +62,16 @@ CMainFrame::~CMainFrame()
 {
 }
 
-void CMainFrame::OnSettingChange(UINT uFlags, LPCTSTR lpszSection)
+LRESULT CMainFrame::OnSettingChange(WPARAM uFlags, LPARAM lParam)
 {
-	CFrameWnd::OnSettingChange(uFlags, lpszSection);
+	CFrameWnd::OnSettingChange(uFlags, (LPCTSTR)lParam);
 	RecalcLayout();
+	return 0;
 }
 
-LRESULT CMainFrame::OnDisplayChange(LPARAM lParam, WPARAM wParam)
+LRESULT CMainFrame::OnDisplayChange(WPARAM wParam, LPARAM lParam)
 {
-	LRESULT result = CFrameWnd::OnDisplayChange(lParam, wParam);
+	LRESULT result = CFrameWnd::OnDisplayChange(wParam, lParam);
 	RecalcLayout();
 	return result;
 }

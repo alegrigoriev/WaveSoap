@@ -157,10 +157,10 @@ public:
 	CTimeEdit	m_eLength;
 	CTimeEditCombo	m_eStart;
 	CTimeEditCombo	m_eEnd;
-	int		m_Chan;
 	int		m_TimeFormatIndex;
 	int		m_SelectionNumber;
 	//}}AFX_DATA
+	int		m_Chan;
 	int		m_TimeFormat;
 	long m_Start;
 	long m_End;
@@ -183,6 +183,8 @@ public:
 // Overrides
 	// ClassWizard generated virtual function overrides
 	//{{AFX_VIRTUAL(CSelectionDialog)
+public:
+	virtual int DoModal();
 protected:
 	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV support
 	//}}AFX_VIRTUAL

@@ -298,10 +298,10 @@ CSelectionDialog::CSelectionDialog(CWnd* pParent /*=NULL*/)
 	: CDialog(CSelectionDialog::IDD, pParent)
 {
 	//{{AFX_DATA_INIT(CSelectionDialog)
-	m_Chan = -1;
 	m_TimeFormatIndex = 0;
 	m_SelectionNumber = 0;
 	//}}AFX_DATA_INIT
+	m_Chan = -1;
 }
 
 
@@ -316,10 +316,13 @@ void CSelectionDialog::DoDataExchange(CDataExchange* pDX)
 	DDX_Control(pDX, IDC_EDIT_LENGTH, m_eLength);
 	DDX_Control(pDX, IDC_COMBO_START, m_eStart);
 	DDX_Control(pDX, IDC_COMBO_END, m_eEnd);
-	DDX_Radio(pDX, IDC_RADIO_CHANNEL, m_Chan);
 	DDX_CBIndex(pDX, IDC_COMBO_TIME_FORMAT, m_TimeFormatIndex);
 	DDX_CBIndex(pDX, IDC_COMBO_SELECTION, m_SelectionNumber);
 	//}}AFX_DATA_MAP
+	if (m_pWf->nChannels >= 2)
+	{
+		DDX_Radio(pDX, IDC_RADIO_CHANNEL, m_Chan);
+	}
 	m_eStart.ExchangeData(pDX, m_Start);
 	m_eEnd.ExchangeData(pDX, m_End);
 	m_eLength.ExchangeData(pDX, m_Length);
@@ -2397,3 +2400,12 @@ void CExpressionEvaluationDialog::OnChangeEditExpression()
 	m_bNeedUpdateControls = TRUE;
 }
 
+
+int CSelectionDialog::DoModal()
+{
+	if (m_pWf->nChannels < 2)
+	{
+		m_lpszTemplateName = MAKEINTRESOURCE(IDD_SELECTION_DIALOG_MONO);
+	}
+	return CDialog::DoModal();
+}

@@ -111,8 +111,8 @@ public:
 	void RecalcLayout();
 	// Generated message map functions
 protected:
-	afx_msg LRESULT OnDisplayChange(LPARAM, WPARAM);
-	void OnSettingChange(UINT uFlags, LPCTSTR lpszSection);
+	afx_msg LRESULT OnDisplayChange(WPARAM, LPARAM);
+	LRESULT OnSettingChange(WPARAM uFlags, LPARAM);
 	//{{AFX_MSG(CWaveMDIChildClient)
 	afx_msg void OnSize(UINT nType, int cx, int cy);
 	afx_msg int OnCreate(LPCREATESTRUCT lpCreateStruct);
