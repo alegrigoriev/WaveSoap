@@ -83,6 +83,7 @@ IDR_MAINFRAME           ICON                    "res\\WaveSoap.ico"
 IDR_WAVESOTYPE          ICON                    "res\\WaveSoapFrontDoc.ico"
 IDI_ICON_CD             ICON                    "res\\icon_cd.ico"
 IDI_ICON_SPLIT_TO_FILES ICON                    "res\\icon_split_to_files.ico"
+IDI_ICON_EQIALIZER      ICON                    "res\\icon_equalizer.ico"
 
 /////////////////////////////////////////////////////////////////////////////
 //
