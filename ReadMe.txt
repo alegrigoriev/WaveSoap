@@ -1,16 +1,13 @@
 Known problems and tasks:
 
-
-If read-only file is saved, name should be different
-If saving copy, assign different file name in the Save dialog
 Show current folder name in "Recent"
+Keep Save File name when switching folders on Recent Folders
 ???? When a file is opened in non-direct mode, peak info is saved with wrong time stamp
 After Save As, peak info is not saved for the new PCM file.
 Check if the file size will exceed 2 GB
 Verify that FileSave can be canceled
-
-Keep Save File name when switching folders on Recent Folders
 Remember Open and Save As folders
+
 Broadcast UpdateAllViews if settings or metrics changed
 Add CD grabbing
 Add noise reduction estimation in spectrum section view
@@ -68,6 +65,8 @@ Insert Silence of zero length still tries to modify the file
 Multiple MP3 files open: all but one get stuck
 
 Done:
+If read-only file is saved, name should be different
+If saving copy, assign different file name in the Save dialog
 Make Percent default setting for amplitude ruler
 Ctrl+Shift+N is also accelerator for File New
 Before Save, delete Undo and REdo which keeps reference to the target file

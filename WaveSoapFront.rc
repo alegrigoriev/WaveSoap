@@ -765,21 +765,21 @@ END
 // Dialog
 //
 
-IDD_ABOUTBOX DIALOG DISCARDABLE  0, 0, 235, 111
+IDD_ABOUTBOX DIALOG DISCARDABLE  0, 0, 235, 84
 STYLE DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
 CAPTION "About WaveSoap"
 FONT 8, "MS Sans Serif"
 BEGIN
     ICON            IDR_MAINFRAME,IDC_STATIC,11,17,20,20
-    CTEXT           "WaveSoap Version 0.9 beta",IDC_STATIC,62,7,110,13,
-                    SS_NOPREFIX
-    CTEXT           "Copyright (C) Alexander Grigoriev, 2000",IDC_STATIC,45,
-                    27,145,14
-    DEFPUSHBUTTON   "OK",IDOK,92,52,50,14,WS_GROUP
-    PUSHBUTTON      "mailto:alegr@earthlink.net",IDC_BUTTON_MAILTO,52,72,128,
-                    14
-    PUSHBUTTON      "http://www.home.earthlink.net/~alegr",
-                    IDC_BUTTON_HOMEPAGE,52,90,128,14
+    CTEXT           "WaveSoap Version 0.5 beta",IDC_STATIC_VERSION,58,8,110,
+                    10,SS_NOPREFIX
+    CTEXT           "Copyright (C) Alexander Grigoriev, 2000",IDC_STATIC,41,
+                    27,145,12
+    DEFPUSHBUTTON   "OK",IDOK,178,7,50,14,WS_GROUP
+    PUSHBUTTON      "&mailto:alegr@earthlink.net",IDC_BUTTON_MAILTO,52,45,
+                    128,14
+    PUSHBUTTON      "&http://www.home.earthlink.net/~alegr",
+                    IDC_BUTTON_HOMEPAGE,52,63,128,14
 END
 
 IDR_MAINFRAME DIALOG DISCARDABLE  0, 0, 330, 16
@@ -1091,35 +1091,35 @@ BEGIN
                     -1,"Static",SS_LEFTNOWORDWRAP | WS_GROUP,7,25,91,80
 END
 
-IDD_DIALOG_OPEN_TEMPLATE1 DIALOG DISCARDABLE  0, 0, 279, 136
+IDD_DIALOG_OPEN_TEMPLATE_V5 DIALOG DISCARDABLE  0, 0, 372, 136
 STYLE DS_3DLOOK | DS_CONTROL | WS_CHILD | WS_CLIPSIBLINGS
 FONT 8, "MS Sans Serif"
 BEGIN
-    RTEXT           "Re&cent: ",IDC_STATIC,3,9,26,8
-    COMBOBOX        IDC_COMBO_RECENT,36,7,228,68,CBS_DROPDOWNLIST | 
+    RTEXT           "Re&cent: ",IDC_STATIC,33,9,26,8
+    COMBOBOX        IDC_COMBO_RECENT,66,7,228,68,CBS_DROPDOWNLIST | 
                     WS_VSCROLL | WS_TABSTOP
-    RTEXT           "",1119,0,22,272,8,NOT WS_VISIBLE
+    RTEXT           "",1119,0,22,367,8,NOT WS_VISIBLE
     CONTROL         "Open as &read-only",IDC_CHECK_READONLY,"Button",
-                    BS_AUTOCHECKBOX | WS_TABSTOP,3,31,78,10
+                    BS_AUTOCHECKBOX | WS_TABSTOP,67,31,78,10
     CONTROL         "Operate directly on the sound file",IDC_CHECK_DIRECT,
-                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,89,31,113,10
-    PUSHBUTTON      "Help",IDHELP,222,30,50,14
-    RTEXT           "File type:",IDC_STATIC,4,58,30,8
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,153,31,113,10
+    PUSHBUTTON      "Help",IDHELP,316,30,50,14
+    RTEXT           "File type:",IDC_STATIC,4,58,34,8
     CONTROL         "Unknown",IDC_STATIC_FILE_TYPE,"Static",
-                    SS_LEFTNOWORDWRAP | SS_NOPREFIX | WS_GROUP,37,58,73,8
-    RTEXT           "Length: ",IDC_STATIC,3,83,31,8
+                    SS_LEFTNOWORDWRAP | SS_NOPREFIX | WS_GROUP,50,58,85,8
+    RTEXT           "Length: ",IDC_STATIC,3,83,35,8
     CONTROL         "Static",IDC_STATIC_FILE_LENGTH,"Static",
-                    SS_LEFTNOWORDWRAP | SS_NOPREFIX | WS_GROUP,37,83,98,8
-    RTEXT           "Format: ",IDC_STATIC,4,71,30,8
+                    SS_LEFTNOWORDWRAP | SS_NOPREFIX | WS_GROUP,50,83,98,8
+    RTEXT           "Format: ",IDC_STATIC,4,71,34,8
     CONTROL         "Unknown",IDC_STATIC_FILE_FORMAT,"Static",
-                    SS_LEFTNOWORDWRAP | SS_NOPREFIX | WS_GROUP,37,71,118,8
-    RTEXT           "Attributes: ",IDC_STATIC,2,96,32,8
-    LTEXT           "Attr",IDC_STATIC_ATTRIBUTES,38,96,103,23,SS_NOPREFIX
-    RTEXT           "Comments: ",IDC_STATIC,109,58,49,8
-    EDITTEXT        IDC_EDIT_FILE_COMMENTS,161,57,114,54,ES_MULTILINE | 
+                    SS_LEFTNOWORDWRAP | SS_NOPREFIX | WS_GROUP,50,71,118,8
+    RTEXT           "Attributes: ",IDC_STATIC,2,96,36,8
+    LTEXT           "Attr",IDC_STATIC_ATTRIBUTES,51,96,122,23,SS_NOPREFIX
+    RTEXT           "Comments: ",IDC_STATIC,156,58,49,8
+    EDITTEXT        IDC_EDIT_FILE_COMMENTS,214,57,133,54,ES_MULTILINE | 
                     ES_AUTOVSCROLL | ES_READONLY | WS_VSCROLL
-    GROUPBOX        "",IDC_STATIC,0,45,276,90
-    PUSHBUTTON      "More...",IDC_BUTTON_MORE,222,115,50,14
+    GROUPBOX        "",IDC_STATIC,0,45,352,90
+    PUSHBUTTON      "More...",IDC_BUTTON_MORE,298,115,50,14
 END
 
 IDD_DIALOG_SAVE_TEMPLATE DIALOG DISCARDABLE  0, 0, 279, 182
@@ -1504,6 +1504,37 @@ BEGIN
     PUSHBUTTON      "Cancel",IDCANCEL,84,92,50,14
 END
 
+IDD_DIALOG_OPEN_TEMPLATE_V4 DIALOG DISCARDABLE  0, 0, 279, 136
+STYLE DS_3DLOOK | DS_CONTROL | WS_CHILD | WS_CLIPSIBLINGS
+FONT 8, "MS Sans Serif"
+BEGIN
+    RTEXT           "Re&cent: ",IDC_STATIC,3,9,26,8
+    COMBOBOX        IDC_COMBO_RECENT,36,7,228,68,CBS_DROPDOWNLIST | 
+                    WS_VSCROLL | WS_TABSTOP
+    RTEXT           "",1119,0,22,272,8,NOT WS_VISIBLE
+    CONTROL         "Open as &read-only",IDC_CHECK_READONLY,"Button",
+                    BS_AUTOCHECKBOX | WS_TABSTOP,3,31,78,10
+    CONTROL         "Operate directly on the sound file",IDC_CHECK_DIRECT,
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,89,31,113,10
+    PUSHBUTTON      "Help",IDHELP,222,30,50,14
+    RTEXT           "File type:",IDC_STATIC,4,58,30,8
+    CONTROL         "Unknown",IDC_STATIC_FILE_TYPE,"Static",
+                    SS_LEFTNOWORDWRAP | SS_NOPREFIX | WS_GROUP,37,58,73,8
+    RTEXT           "Length: ",IDC_STATIC,3,83,31,8
+    CONTROL         "Static",IDC_STATIC_FILE_LENGTH,"Static",
+                    SS_LEFTNOWORDWRAP | SS_NOPREFIX | WS_GROUP,37,83,98,8
+    RTEXT           "Format: ",IDC_STATIC,4,71,30,8
+    CONTROL         "Unknown",IDC_STATIC_FILE_FORMAT,"Static",
+                    SS_LEFTNOWORDWRAP | SS_NOPREFIX | WS_GROUP,37,71,118,8
+    RTEXT           "Attributes: ",IDC_STATIC,2,96,32,8
+    LTEXT           "Attr",IDC_STATIC_ATTRIBUTES,38,96,103,23,SS_NOPREFIX
+    RTEXT           "Comments: ",IDC_STATIC,109,58,49,8
+    EDITTEXT        IDC_EDIT_FILE_COMMENTS,161,57,114,54,ES_MULTILINE | 
+                    ES_AUTOVSCROLL | ES_READONLY | WS_VSCROLL
+    GROUPBOX        "",IDC_STATIC,0,45,276,90
+    PUSHBUTTON      "More...",IDC_BUTTON_MORE,222,115,50,14
+END
+
 
 #ifndef _MAC
 /////////////////////////////////////////////////////////////////////////////
@@ -1564,7 +1595,7 @@ BEGIN
         LEFTMARGIN, 7
         RIGHTMARGIN, 228
         TOPMARGIN, 7
-        BOTTOMMARGIN, 104
+        BOTTOMMARGIN, 77
     END
 
     IDD_DIALOG_MORE_NOISEREDUCTION, DIALOG
@@ -1668,9 +1699,9 @@ BEGIN
         BOTTOMMARGIN, 126
     END
 
-    IDD_DIALOG_OPEN_TEMPLATE1, DIALOG
+    IDD_DIALOG_OPEN_TEMPLATE_V5, DIALOG
     BEGIN
-        RIGHTMARGIN, 275
+        RIGHTMARGIN, 368
     END
 
     IDD_DIALOG_SAVE_TEMPLATE, DIALOG
@@ -1772,6 +1803,11 @@ BEGIN
         RIGHTMARGIN, 152
         TOPMARGIN, 7
         BOTTOMMARGIN, 106
+    END
+
+    IDD_DIALOG_OPEN_TEMPLATE_V4, DIALOG
+    BEGIN
+        RIGHTMARGIN, 275
     END
 END
 #endif    // APSTUDIO_INVOKED
@@ -2151,6 +2187,9 @@ BEGIN
     IDS_UNKNOWN_FILE_CREATION_ERROR_TEMP 
                             "Temporary file couldn't be created because of unknown error"
     IDC_VIEW_AMPL_RULER_PERCENT "Show sample value in percents\nPercents"
+    IDS_COPY_OF             "Copy of "
+    IDS_FILE_MAY_GET_TOO_BIG 
+                            "Operation cannot be performed because the file size would exceed the WAV format limit"
 END
 
 STRINGTABLE DISCARDABLE 
