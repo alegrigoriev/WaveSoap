@@ -71,6 +71,80 @@ public:
 	// Attributes
 public:
 
+	BOOL IsZeroPhase() const
+	{
+		return m_bZeroPhase;
+	}
+
+	int GetLowpassFilterOrder() const
+	{
+		if (m_bLowPass)
+		{
+			return m_nLpfOrder;
+		}
+		else
+		{
+			return 0;
+		}
+	}
+
+	int GetHighpassFilterOrder() const
+	{
+		if (m_bHighPass)
+		{
+			return m_nHpfOrder;
+		}
+		else
+		{
+			return 0;
+		}
+	}
+
+	int GetNotchFilterOrder() const
+	{
+		if (m_bNotchFilter)
+		{
+			return m_nNotchOrder;
+		}
+		else
+		{
+			return 0;
+		}
+	}
+
+	void GetLpfCoefficients(double Coeffs[MaxFilterOrder][6])
+	{
+		for (int i = 0; i < MaxFilterOrder; i++)
+		{
+			for (int j = 0; j < 6; j++)
+			{
+				Coeffs[i][j] = m_LpfCoeffs[i][j];
+			}
+		}
+	}
+
+	void GetHpfCoefficients(double Coeffs[MaxFilterOrder][6])
+	{
+		for (int i = 0; i < MaxFilterOrder; i++)
+		{
+			for (int j = 0; j < 6; j++)
+			{
+				Coeffs[i][j] = m_HpfCoeffs[i][j];
+			}
+		}
+	}
+
+	void GetNotchCoefficients(double Coeffs[MaxFilterOrder][6])
+	{
+		for (int i = 0; i < MaxFilterOrder; i++)
+		{
+			for (int j = 0; j < 6; j++)
+			{
+				Coeffs[i][j] = m_NotchCoeffs[i][j];
+			}
+		}
+	}
+
 	void SetPointGainDb(int nPoint, double Gain);
 	void SetPointFrequency(int nPoint, double Frequency);
 	void SetPointFrequencyHz(int nPoint, double Frequency)
@@ -200,12 +274,42 @@ public:
 	//{{AFX_DATA(CFilterDialog)
 	enum { IDD = IDD_DIALOG_FILTER };
 	//}}AFX_DATA
-	CNumEdit m_EditGain;
-	CNumEdit m_EditFrequency;
+	BOOL IsZeroPhase() const
+	{
+		return m_wGraph.IsZeroPhase();
+	}
 
-	CApplicationProfile m_Profile;  // goes before m_wGraph
-	CFilterGraphWnd m_wGraph;
+	int GetLowpassFilterOrder() const
+	{
+		return m_wGraph.GetLowpassFilterOrder();
+	}
 
+	int GetHighpassFilterOrder() const
+	{
+		return m_wGraph.GetHighpassFilterOrder();
+	}
+
+	int GetNotchFilterOrder() const
+	{
+		return m_wGraph.GetNotchFilterOrder();
+	}
+
+	void GetLpfCoefficients(double Coeffs[MaxFilterOrder][6])
+	{
+		m_wGraph.GetLpfCoefficients(Coeffs);
+	}
+
+	void GetHpfCoefficients(double Coeffs[MaxFilterOrder][6])
+	{
+		m_wGraph.GetHpfCoefficients(Coeffs);
+	}
+
+	void GetNotchCoefficients(double Coeffs[MaxFilterOrder][6])
+	{
+		m_wGraph.GetNotchCoefficients(Coeffs);
+	}
+
+protected:
 // Overrides
 	// ClassWizard generated virtual function overrides
 	//{{AFX_VIRTUAL(CFilterDialog)
@@ -214,8 +318,11 @@ protected:
 	//}}AFX_VIRTUAL
 
 // Implementation
-protected:
 
+	CApplicationProfile m_Profile;  // goes before m_wGraph
+	CNumEdit m_EditGain;
+	CNumEdit m_EditFrequency;
+	CFilterGraphWnd m_wGraph;
 	void OnNotifyGraph( NMHDR * pNotifyStruct, LRESULT * result );
 	void OnKillfocusEditBandGain();
 	// Generated message map functions

@@ -3,17 +3,26 @@
 // It then runs in the context of the main thread
 // Make sure not to keep any critical sections entered when calling any of those
 #pragma once
+#include "MessageMapT.h"
+
 enum
 {
-	WM_USER_RUN_MSGBOX_SYNC = WM_USER+0xAA,
-	WM_USER_RUN_MODAL_SYNC,
+	WM_USER_CALL_MAIN_THREAD = WM_USER+0xAA,
 };
 
 // BaseClass is usually CFrameWnd.
 // This class is used as a base for CMainFrm class
-template<class BaseClass>
-class DialogProxyWnd : public BaseClass
+class MainThreadCall
 {
+public:
+	virtual LRESULT Exec() = 0;
+	LRESULT Call(class CSimpleCriticalSection * pLock = NULL);
+};
+
+template<class B>
+class DialogProxyWnd : public B
+{
+	typedef B BaseClass;
 public:
 	template<typename W>
 	DialogProxyWnd(W * pParent)
@@ -37,46 +46,17 @@ protected:
 //    DECLARE_DYNAMIC(DialogProxyWnd);
 
 private:
-	LRESULT OnRunModalSync(WPARAM, LPARAM lparam)
+	LRESULT OnCallMainThread(WPARAM, LPARAM lparam)
 	{
-		CDialog * pDlg = reinterpret_cast<CDialog *>(lparam);
-		return pDlg->DoModal();
+		MainThreadCall * pCall = reinterpret_cast<MainThreadCall *>(lparam);
+		return pCall->Exec();
 	}
-	LRESULT OnRunMsgBoxSync(WPARAM id, LPARAM lparam)
-	{
 
-		MSGBOXPARAMS * pMsg = reinterpret_cast<MSGBOXPARAMS *>(lparam);
-
-		if (0 != id)
-		{
-			return AfxMessageBox(UINT(id), pMsg->dwStyle, pMsg->dwContextHelpId);
-		}
-		else
-		{
-			return AfxMessageBox(pMsg->lpszText, pMsg->dwStyle, pMsg->dwContextHelpId);
-		}
-	}
 };
 
-template<class BaseClass>
-const AFX_MSGMAP* DialogProxyWnd<BaseClass>::GetMessageMap() const
-{
-	return & messageMap;
-}
-
-template<class BaseClass>
-AFX_COMDAT const AFX_MSGMAP DialogProxyWnd<BaseClass>::messageMap =
-{
-	& BaseClass::messageMap, _messageEntries
-};
-
-template<class BaseClass>
-AFX_COMDAT const AFX_MSGMAP_ENTRY DialogProxyWnd<BaseClass>::_messageEntries[] =
-{
-	ON_MESSAGE(WM_USER_RUN_MODAL_SYNC, OnRunModalSync)
-	ON_MESSAGE(WM_USER_RUN_MSGBOX_SYNC, OnRunMsgBoxSync)
-{0, 0, 0, 0, AfxSig_end, (AFX_PMSG)0 }
-};
+BEGIN_MESSAGE_MAP_T(DialogProxyWnd, BaseClass)
+	ON_MESSAGE(WM_USER_CALL_MAIN_THREAD, OnCallMainThread)
+END_MESSAGE_MAP()
 
 // synchronously runs the dialog from a worker thread in the main thread context
 INT_PTR RunModalDialogSync(CDialog & dlg);
