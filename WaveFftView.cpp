@@ -662,6 +662,92 @@ void CWaveFftView::OnDraw(CDC* pDC)
 						width, height,
 						0, 0, 0, height, pBits, & bmi,
 						DIB_RGB_COLORS);
+
+		//this bitmap is used to draw a dashed line
+		CBitmap bmp;
+		int const DashLength = 4;
+		static const unsigned char pattern[] =
+		{
+			0xFF, 0xFF,  // aligned to WORD
+			0xFF, 0xFF,  // aligned to WORD
+			0x00, 0,
+			0x00, 0,
+			0xFF, 0xFF,  // aligned to WORD
+			0xFF, 0xFF,  // aligned to WORD
+			0x00, 0,
+			0x00, 0,
+			0xFF, 0xFF,  // aligned to WORD
+			0xFF, 0xFF,  // aligned to WORD
+			0x00, 0,
+			0x00, 0,
+		};
+
+		// Windows98 can only use (at least?) 8x8 bitmap for a brush
+		bmp.CreateBitmap(8, 8, 1, 1, pattern);
+
+		CBrush DashBrush( & bmp);
+
+		DashBrush.UnrealizeObject();
+
+		int nHeight = cr.Height();
+
+		if (0 != nChannels)
+		{
+			nHeight /= nChannels;
+		}
+
+		int BrushOffset = int(m_FirstbandVisible * (nHeight * m_VerticalScale) / m_FftOrder);
+
+		pDC->SetBrushOrg(0, BrushOffset % DashLength);
+
+		CGdiObjectSaveT<CBrush> OldBrush(pDC, pDC->SelectObject( & DashBrush));
+		CGdiObjectSave OldFont(pDC, pDC->SelectStockObject(ANSI_VAR_FONT));
+
+		CThisApp * pApp = GetApp();
+		pDC->SetBkColor(pApp->m_WaveBackground);
+		pDC->SetTextColor(0xFFFFFF ^ pApp->m_WaveBackground);
+		pDC->SetBkMode(OPAQUE);
+
+		CWaveFile::InstanceDataWav * pInst = pDoc->m_WavFile.GetInstanceData();
+
+		for (CuePointVectorIterator i = pInst->m_CuePoints.begin();
+			i < pInst->m_CuePoints.end(); i++)
+		{
+			long x = WorldToWindowXfloor(i->dwSampleOffset);
+
+			// draw text
+			if (x < r.right)
+			{
+				LPCTSTR txt = pInst->GetCueText(i->CuePointID);
+				if (NULL != txt)
+				{
+					int count = _tcslen(txt);
+					CPoint size = pDC->GetTextExtent(txt, count);
+					if (x + size.x > r.left)
+					{
+						pDC->DrawText(txt, count, CRect(x, cr.top, x + size.x, cr.top + size.y),
+									DT_LEFT | DT_NOPREFIX | DT_SINGLELINE | DT_TOP);
+					}
+				}
+			}
+		}
+
+		SAMPLE_INDEX_Vector markers;
+		pDoc->m_WavFile.GetSortedMarkers(markers, FALSE);
+
+		for (SAMPLE_INDEX_Vector::const_iterator i = markers.begin();
+			i < markers.end(); i++)
+		{
+			long x = WorldToWindowXfloor( *i);
+
+			if (x >= r.left
+				&& x <= r.right)
+			{
+				// draw marker
+				pDC->PatBlt(x, cr.top, 1, cr.bottom - cr.top, PATINVERT);
+			}
+		}
+
 		GdiFlush(); // make sure bitmap is drawn before deleting it (NT only)
 		// free resources
 	}
