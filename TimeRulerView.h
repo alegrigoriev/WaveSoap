@@ -38,7 +38,8 @@ protected:
 // Implementation
 protected:
 	virtual ~CTimeRulerView();
-	virtual UINT GetPopupMenuID(CPoint) { return IDR_MENU_TIME_RULER; }
+	virtual UINT GetPopupMenuID(CPoint);
+	virtual void OnContextMenu(CWnd* pWnd, CPoint point);
 #ifdef _DEBUG
 	virtual void AssertValid() const;
 	virtual void Dump(CDumpContext& dc) const;
@@ -51,13 +52,16 @@ protected:
 		HitTestRegionBegin = 0x40000000,    // mark of region begin hit
 		HitTestRegionEnd = 0x20000000,      // mark of region begin hit
 		HitTestMarker = 0x10000000,
-
+		HitTestLowerHalf = 0x08000000,
 		HitTestCueIndexMask = 0x000FFFF,    // these bits contain index of the region/marker hit
 	};
 	// Generated message map functions
 protected:
 	int m_CurrentDisplayMode;
 	unsigned m_DraggedMarkerHitTest;
+	unsigned m_PopupMenuHitTest;
+	WAVEREGIONINFO m_PopupMenuHit;
+
 	UINT_PTR m_AutoscrollTimerID;
 	int m_MarkerHeight;
 
@@ -84,6 +88,14 @@ protected:
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 public:
+	afx_msg void OnGotoMarker();
+	afx_msg void OnDeleteMarker();
+	afx_msg void OnUpdateDeleteMarker(CCmdUI *pCmdUI);
+	afx_msg void OnMoveMarkerToCurrent();
+	afx_msg void OnUpdateMoveMarkerToCurrent(CCmdUI *pCmdUI);
+	afx_msg void OnEditMarker();
+	afx_msg void OnUpdateEditMarker(CCmdUI *pCmdUI);
+	afx_msg void OnSelectRegion();
 };
 
 #ifndef _DEBUG  // debug version in TimeRulerView.cpp
