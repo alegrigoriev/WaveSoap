@@ -464,7 +464,7 @@ HRESULT CWmaDecoder::Open(CDirectFile & file)
 
 	WM_MEDIA_TYPE* pMedia = NULL ;
 	ULONG cbType = 0 ;
-	for(DWORD i = 1 ; i <= cOutputs ; i++ )
+	for(DWORD i = 0 ; i < cOutputs ; i++ )
 	{
 		hr = m_Reader->GetOutputProps( i, &pProps );
 
@@ -512,7 +512,7 @@ HRESULT CWmaDecoder::Open(CDirectFile & file)
 		pProps->Release();
 		pProps = NULL;
 	}
-	if( i > cOutputs || NULL == pMedia)
+	if( i >= cOutputs || NULL == pMedia)
 	{
 		//
 		// Couldnt find any Audio output number in the file

@@ -699,7 +699,7 @@ BOOL CCdDrive::SendScsiCommand(CD_CDB * pCdb,
 		DWORD status = SendASPI32Command( & srb);
 		if (SS_PENDING == status)
 		{
-			TRACE("Scsi request pending\n");
+			//TRACE("Scsi request pending\n");
 			if (ERROR_TIMEOUT == WaitForSingleObject(m_hEvent, timeout * 1000))
 			{
 				SRB_Abort abrt;
@@ -715,6 +715,8 @@ BOOL CCdDrive::SendScsiCommand(CD_CDB * pCdb,
 			memcpy(pSense, & srb.SenseInfo, sizeof * pSense);
 		}
 
+		TRACE("SendASPI32Command Opcode=0x%02X returned %d, srb.Status=%d, Sense=%x/%x\n",
+			pCdb->Opcode, status, srb.Status, srb.SenseInfo.SenseKey, srb.SenseInfo.AdditionalSenseCode);
 		return SS_COMP == srb.Status;
 	}
 	else
@@ -788,7 +790,8 @@ BOOL CCdDrive::SendScsiCommand(CD_CDB * pCdb,
 				{
 					m_bScsiCommandsAvailable = false;
 				}
-				TRACE("IOCTL_SCSI_PASS_THROUGH returned %d, error=%d\n", res, GetLastError());
+				TRACE("IOCTL_SCSI_PASS_THROUGH Opcode=0x%02X returned %d, error=%d, Sense=%x/%x\n",
+					pCdb->Opcode, res, GetLastError(), spt.SenseKey, spt.AdditionalSenseCode);
 				return FALSE;
 			}
 		}
@@ -837,7 +840,8 @@ BOOL CCdDrive::SendScsiCommand(CD_CDB * pCdb,
 				{
 					m_bScsiCommandsAvailable = false;
 				}
-				TRACE("IOCTL_SCSI_PASS_THROUGH returned %d, error=%d\n", res, GetLastError());
+				TRACE("IOCTL_SCSI_PASS_THROUGH_DIRECT Opcode=0x%02X returned %d, error=%d, Sense=%x/%x\n",
+					pCdb->Opcode, res, GetLastError(), spt.SenseKey, spt.AdditionalSenseCode);
 
 				return FALSE;
 			}
