@@ -2899,6 +2899,9 @@ void CWaveSoapFrontDoc::PostFileSave(CFileSaveContext * pContext)
 				// if PCM format and read-only or non-direct, ask about reopening as direct
 				CReopenDialog ReopenDlg;
 				ReopenDlg.m_Prompt.Format(IDS_REOPEN_IN_DIRECT_MODE, pContext->m_NewName);
+
+				CDocumentPopup pop(this);
+
 				int result = ReopenDlg.DoModal();
 				if (IDOK == result)
 				{
@@ -2935,7 +2938,10 @@ void CWaveSoapFrontDoc::PostFileSave(CFileSaveContext * pContext)
 				SavePeakInfo(m_WavFile, pContext->m_DstFile);
 				CReopenCompressedFileDialog dlg;
 				dlg.m_Text.Format(IDS_RELOAD_COMPRESSED_FILE, LPCTSTR(pContext->m_NewName));
+
+				CDocumentPopup pop(this);
 				int result = dlg.DoModal();
+
 				if (IDOK == result)
 				{
 					// set new title
@@ -2960,6 +2966,9 @@ void CWaveSoapFrontDoc::PostFileSave(CFileSaveContext * pContext)
 				// samples or channels changed
 				CReopenConvertedFileDlg dlg;
 				dlg.m_Text.Format(IDS_SHOULD_RELOAD_COMPRESSED_FILE, LPCTSTR(pContext->m_NewName));
+
+				CDocumentPopup pop(this);
+
 				int result = dlg.DoModal();
 				if (IDCANCEL == result)
 				{
@@ -3069,7 +3078,11 @@ BOOL CWaveSoapFrontDoc::PostCommitFileSave(int flags, LPCTSTR FullTargetName)
 
 		CReopenDialog ReopenDlg;
 		ReopenDlg.m_Prompt.Format(IDS_REOPEN_IN_DIRECT_MODE, m_WavFile.GetName());
-		int result = ReopenDlg.DoModal();
+		int result;
+		{
+			CDocumentPopup pop(this);
+			result = ReopenDlg.DoModal();
+		}
 
 		if (IDOK == result)
 		{
@@ -3215,7 +3228,7 @@ void CWaveSoapFrontDoc::AddUndoRedo(CUndoRedoContext * pContext)
 	CThisApp * pApp = GetApp();
 	if (pContext->m_Flags & RedoContext)
 	{
-		m_RedoList.InsertTail(pContext);
+		m_RedoList.InsertHead(pContext);
 
 		// free extra redo, if count or size limit is exceeded
 		int MaxRedoDepth = pApp->m_MaxRedoDepth;
@@ -3233,7 +3246,7 @@ void CWaveSoapFrontDoc::AddUndoRedo(CUndoRedoContext * pContext)
 	}
 	else
 	{
-		m_UndoList.InsertTail(pContext);
+		m_UndoList.InsertHead(pContext);
 
 		// free extra undo, if count or size limit is exceeded
 		int MaxUndoDepth = pApp->m_MaxUndoDepth;

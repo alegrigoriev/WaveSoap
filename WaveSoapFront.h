@@ -255,6 +255,19 @@ public:
 	HINSTANCE m_hWMVCORE_DLL_Handle;
 };
 
+
+// this class brings a document frame temporary to the top,
+// then restores it back
+class CDocumentPopup
+{
+public:
+	CDocumentPopup(CDocument * pDoc);
+	~CDocumentPopup();
+protected:
+	CFrameWnd * m_pPopupFrame;
+	CFrameWnd * m_pFrameAbove;
+};
+
 typedef CWaveSoapFrontApp CWaveSoapApp;
 typedef CWaveSoapFrontApp CThisApp;
 inline CThisApp * GetApp()

@@ -1489,3 +1489,4 @@ BOOL CMiniToolbar::OnToolTipText(UINT, NMHDR* pNMHDR, LRESULT* pResult)
 {
 	return ((CMainFrame*)AfxGetMainWnd())->OnToolTipText(0, pNMHDR, pResult);
 }
+

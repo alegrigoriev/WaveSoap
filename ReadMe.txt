@@ -1,16 +1,13 @@
 Known problems and tasks:
 
-Add file format selection for CD grabbing
+Add saved from CD files to the MRU list
 Handle "Compatible/All" formats for MP3, WMA
 Raw file: make format tag and save attributes
-When PCM is selected for CD grabbing, show default format
-When showing a dialog for a document, make the doc active, then restore the previous one.
 If CD recording not supported, SET SPEED WriteSpeed set to zero
 Restore CD speed to max rather than current!
 Set speed doesn't work on Goldstar CDRW	 SetSpeed returned sense 5/24
 Pass wave format to CD grabbing dialog
 Process Loss Of Streaming error
-Add CD grabbing
 Make option to ask for file reopen
 Handle "Save from CD immediately" option
 Read CD text
@@ -21,6 +18,7 @@ Add options dialog
 Enter WMA file attributes (title, author, etc)
 Enter MP3 file attributes
 In outline view, change mouse cursor over caret and view and selection boundaries
+TODO: check 4GB WAV files
 
 Add noise reduction estimation in spectrum section view
 Add sound recording
@@ -75,6 +73,7 @@ samples with 32767, -32768 are not visible
 Log Off query doesn't close the active dialog. Recursion is possible. Make sure to check after Cancel
 
 Fixed:
+Undo/redo order was wrong
 Path change doesn't update OK
 checkmark draw with gray background - all black drawn
 Wrong calculation of click position in outline view
@@ -105,8 +104,12 @@ Save As dialog is not centered first time (comdlg problem?)
 ??? When time/seconds format is set for status bar, MM:SS is actually shown
 
 Done:
+When showing a dialog for a document, make the doc active, then restore the previous one.
+Add file format selection for CD grabbing
+When PCM is selected for CD grabbing, show default format
 For WMA format: When saving from non-WMA file, remember selected bitrate, restore
 For MP3 format: When saving from non-MP3 file, remember selected bitrate, restore
+Add CD grabbing
 Include PCM format always
 If there is no compatible PCM format, add one
 Enumerate format tags (filter by tag)

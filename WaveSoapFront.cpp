@@ -2608,3 +2608,54 @@ BOOL VerifyCreateDirectory(LPCTSTR pszPath)
 	}
 }
 
+CDocumentPopup::CDocumentPopup(CDocument * pDoc)
+{
+	m_pPopupFrame = NULL;
+	m_pFrameAbove = NULL;
+
+	CMDIChildWnd * pActive = ((CMDIFrameWnd*)AfxGetMainWnd())->MDIGetActive();
+	if (NULL == pActive)
+	{
+		return;
+	}
+	POSITION pos = pDoc->GetFirstViewPosition();
+	CView * pView;
+	// check if the top level frame is associated with the document
+	while (NULL != (pView = pDoc->GetNextView(pos)))
+	{
+		CFrameWnd * pFrame = pView->GetParentFrame();
+		if (pFrame == pActive)
+		{
+			return;
+		}
+	}
+
+	pos = pDoc->GetFirstViewPosition();
+	while (NULL != (pView = pDoc->GetNextView(pos)))
+	{
+		m_pPopupFrame = pView->GetParentFrame();
+		if (NULL != m_pPopupFrame)
+		{
+			m_pFrameAbove = (CFrameWnd *)m_pPopupFrame->GetWindow(GW_HWNDPREV);
+			static_cast<CMDIChildWnd*>(m_pPopupFrame)->MDIActivate();
+			return;
+		}
+	}
+}
+
+CDocumentPopup::~CDocumentPopup()
+{
+	// move previously active window under m_pFrameAbove
+	if (NULL != m_pFrameAbove
+		&& NULL != m_pPopupFrame)
+	{
+		m_pPopupFrame->SetWindowPos(m_pFrameAbove, 0, 0, 0, 0,
+									SWP_NOACTIVATE
+									| SWP_NOMOVE
+									| SWP_NOOWNERZORDER
+									| SWP_NOSIZE);
+
+		CWnd * pTop = m_pPopupFrame->GetWindow(GW_HWNDFIRST);
+		static_cast<CMDIChildWnd*>(pTop)->MDIActivate();
+	}
+}
