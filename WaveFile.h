@@ -519,6 +519,7 @@ public:
 
 	int SampleSize() const;
 	BOOL SetSourceFile(CWaveFile * const pOriginalFile);
+	void SetWaveFormat(WAVEFORMATEX const * pWf);
 
 	void RescanPeaks(SAMPLE_INDEX begin, SAMPLE_INDEX end);
 	BOOL AllocatePeakData(NUMBER_OF_SAMPLES NewNumberOfSamples);

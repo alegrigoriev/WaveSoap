@@ -3193,6 +3193,13 @@ bool CWaveFile::AllChannels(CHANNEL_MASK Channels) const
 	return mask == (mask & Channels);
 }
 
+void CWaveFile::SetWaveFormat(WAVEFORMATEX const * pWf)
+{
+	InstanceDataWav * pInst = GetInstanceData();
+	pInst->wf = pWf;
+	pInst->fmtck.dwFlags |= MMIO_DIRTY;
+}
+
 long CWaveFile::ReadSamples(CHANNEL_MASK SrcChannels,
 							SAMPLE_POSITION Pos,
 							long Samples, void * pBuf, WaveSampleType type)
