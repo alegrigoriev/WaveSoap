@@ -3140,37 +3140,19 @@ void CStatisticsContext::PostRetire()
 	// only show the dialog if the operation was all completed
 	if (m_Flags & OperationContextFinished)
 	{
-		// read sample value at cursor
-		WAVE_SAMPLE Value[2] = {0, 0};
-		if (m_pDocument->m_CaretPosition < m_pDocument->WaveFileSamples())
-		{
-			int SampleSize = m_pDocument->WaveSampleSize();
-			SAMPLE_POSITION offset = m_pDocument->m_WavFile.SampleToPosition(m_pDocument->m_CaretPosition);
-
-			if (SampleSize > sizeof Value)
-			{
-				SampleSize = sizeof Value;
-			}
-			m_pDocument->m_WavFile.ReadAt(Value, SampleSize, offset);
-		}
 		// show dialog
-		CStatisticsDialog dlg;
-		dlg.m_pContext = this;
-		dlg.m_SamplesPerSec = m_pDocument->WaveSampleRate();
-		dlg.m_CaretPosition = m_pDocument->m_CaretPosition;
-		dlg.m_ValueAtCursorLeft = Value[0];
-		dlg.m_ValueAtCursorRight = Value[1];
-		dlg.m_sFilename = m_pDocument->GetTitle();
+		CStatisticsDialog dlg(this,
+							m_pDocument->m_WavFile, m_pDocument->m_CaretPosition,
+							m_pDocument->GetPathName());
 
+		CDocumentPopup pop(m_pDocument);
+
+		if (IDC_BUTTON_GOTO_MAX == dlg.DoModal())
 		{
-			CDocumentPopup pop(m_pDocument);
-			if (IDC_BUTTON_GOTO_MAX == dlg.DoModal())
-			{
-				CHANNEL_MASK Channel;
-				SAMPLE_INDEX Sample = dlg.GetMaxSamplePosition( & Channel);
+			CHANNEL_MASK Channel;
+			SAMPLE_INDEX Sample = dlg.GetMaxSamplePosition( & Channel);
 
-				m_pDocument->SetSelection(Sample, Sample, Channel, Sample, SetSelection_MoveCaretToCenter);
-			}
+			m_pDocument->SetSelection(Sample, Sample, Channel, Sample, SetSelection_MoveCaretToCenter);
 		}
 	}
 	BaseClass::PostRetire();

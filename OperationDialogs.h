@@ -407,7 +407,10 @@ class CStatisticsDialog : public CDialog
 	typedef CDialog BaseClass;
 // Construction
 public:
-	CStatisticsDialog(CWnd* pParent = NULL);   // standard constructor
+	CStatisticsDialog(class CStatisticsContext * pContext,
+					CWaveFile & WaveFile, SAMPLE_INDEX CaretPosition,
+					LPCTSTR FileName,
+					CWnd* pParent = NULL);
 
 // Dialog Data
 	//{{AFX_DATA(CStatisticsDialog)
@@ -419,7 +422,7 @@ public:
 
 	class CStatisticsContext * m_pContext;
 	long m_SamplesPerSec;
-	long m_CaretPosition;
+	SAMPLE_INDEX m_CaretPosition;
 	int m_ValueAtCursorLeft;
 	int m_ValueAtCursorRight;
 	CString m_sFilename;

@@ -189,9 +189,14 @@ hid_edit_channels_lock = html\Edit\hid_lock_channels.htm
 hid_edit_goto = html\Edit\hid_edit_goto.htm
 hid_edit_selection = html\Edit\hid_edit_selection.htm
 hid_edit_select_all = html\Edit\hid_edit_select_all.htm
-hidr_menu_time_ruler_marker = html\Edit\hid_edit_region_marker.htm
-hidr_menu_time_ruler_marker1 = html\Edit\hid_edit_region_marker.htm
-hidr_menu_time_ruler_region = html\Edit\hid_edit_region_marker.htm
+hid_edit_wave_region = html\Edit\hid_edit_region_marker.htm
+hid_edit_wave_marker1 = html\Edit\hid_edit_region_marker.htm
+hid_edit_marker_region = html\Edit\hid_edit_region_marker.htm
+hid_edit_more_undo_redo = html\Edit\edit_undo_redo_options.htm
+hid_edit_enable_undo = html\Edit\hid_edit_enable_undo.htm
+hid_edit_enable_redo = html\Edit\hid_edit_enable_redo.htm
+hid_edit_clear_undo = html\Edit\hid_edit_clear_undo.htm
+hid_edit_clear_redo = html\Edit\hid_edit_clear_redo.htm
 
 hid_view_toolbar = html\View\hid_view_toolbar.htm
 hid_view_show_fft = html\View\hid_view_fft.htm
