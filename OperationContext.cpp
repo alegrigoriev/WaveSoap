@@ -14,6 +14,136 @@ static int fround(double d)
 	}
 }
 
+COperationContext::COperationContext(class CWaveSoapFrontDoc * pDoc, LPCTSTR OperationName, DWORD Flags)
+	: pDocument(pDoc),
+	m_Flags(Flags),
+	pNextChain(NULL),
+	pNext(NULL),
+	pPrev(NULL),
+	m_pUndoContext(NULL),
+	m_OperationName(OperationName),
+	PercentCompleted(0),
+	m_GetBufferFlags(CDirectFile::GetBufferAndPrefetchNext),
+	m_ReturnBufferFlags(0)
+{
+}
+
+COperationContext::~COperationContext()
+{
+	if (pNextChain)
+	{
+		COperationContext * pContext = pNextChain;
+		pNextChain = NULL;
+		delete pContext;
+	}
+}
+
+BOOL COperationContext::InitDestination(CWaveFile & DstFile, long StartSample, long EndSample,
+										int chan, BOOL NeedUndo)
+{
+	m_DstFile = DstFile;
+	// set begin and end offsets
+	DWORD DstSampleSize = m_DstFile.SampleSize();
+
+	m_DstCopyPos = m_DstFile.GetDataChunk()->dwDataOffset
+					+ StartSample * DstSampleSize;
+	m_DstStart = m_DstCopyPos;
+
+	m_DstEnd = m_DstFile.GetDataChunk()->dwDataOffset
+				+ EndSample * DstSampleSize;
+	m_DstChan = chan;
+	// create undo
+	if (NeedUndo)
+	{
+		CUndoRedoContext * pUndo = new CUndoRedoContext(pDocument, m_OperationName);
+		if (NULL != pUndo
+			&& pUndo->InitUndoCopy(m_DstFile, m_DstStart,
+									m_DstEnd, m_DstChan))
+		{
+			m_pUndoContext = pUndo;
+		}
+		else
+		{
+			delete pUndo;
+			if (IDYES != AfxMessageBox(IDS_M_UNABLE_TO_CREATE_UNDO, MB_YESNO | MB_ICONEXCLAMATION))
+			{
+				return FALSE;
+			}
+		}
+	}
+	return TRUE;
+}
+
+BOOL COperationContext::OperationProc()
+{
+	// generic procedure working on one file
+	// get buffers from source file and copy them to m_CopyFile
+	if (m_Flags & OperationContextStopRequested)
+	{
+		m_Flags |= OperationContextFinished;
+		return TRUE;
+	}
+	if (m_DstCopyPos >= m_DstEnd)
+	{
+		m_Flags |= OperationContextFinished;
+		return TRUE;
+	}
+
+	DWORD dwStartTime = timeGetTime();
+	DWORD dwOperationBegin = m_DstCopyPos;
+
+	DWORD LeftToWrite = 0;
+	DWORD WasLockedToWrite = 0;
+	void * pDstBuf;
+
+	do
+	{
+		DWORD SizeToWrite = m_DstEnd - m_DstCopyPos;
+		WasLockedToWrite = m_DstFile.m_File.GetDataBuffer( & pDstBuf,
+															SizeToWrite, m_DstCopyPos, m_GetBufferFlags);
+
+		if (0 == WasLockedToWrite)
+		{
+			return FALSE;
+		}
+
+		LeftToWrite = WasLockedToWrite;
+		// save the changed data to undo buffer
+		if (NULL != m_pUndoContext)
+		{
+			m_pUndoContext->SaveUndoData(pDstBuf, WasLockedToWrite,
+										m_DstCopyPos, m_DstChan);
+			m_pUndoContext->m_DstEnd = m_pUndoContext->m_SrcSavePos;
+			m_pUndoContext->m_SrcEnd = m_pUndoContext->m_DstSavePos;
+		}
+		// virtual function which modifies the actual data:
+		ProcessBuffer(pDstBuf, WasLockedToWrite, m_DstCopyPos - m_DstStart);
+
+		m_DstFile.m_File.ReturnDataBuffer(pDstBuf, WasLockedToWrite,
+										m_ReturnBufferFlags);
+		m_DstCopyPos += WasLockedToWrite;
+	}
+	while (m_DstCopyPos < m_DstEnd
+			&& timeGetTime() - dwStartTime < 200);
+
+	if (m_ReturnBufferFlags & CDirectFile::ReturnBufferDirty)
+	{
+		// notify the view
+		int nSampleSize = m_DstFile.SampleSize();
+		int nFirstSample = (dwOperationBegin - m_DstFile.GetDataChunk()->dwDataOffset)
+							/ nSampleSize;
+		int nLastSample = (m_DstCopyPos - m_DstFile.GetDataChunk()->dwDataOffset)
+						/ nSampleSize;
+		pDocument->SoundChanged(m_DstFile.GetFileID(), nFirstSample, nLastSample);
+	}
+
+	if (m_DstEnd > m_DstStart)
+	{
+		PercentCompleted = 100i64 * (m_DstCopyPos - m_DstStart) / (m_DstEnd - m_DstStart);
+	}
+	return TRUE;
+}
+
 void COperationContext::Retire()
 {
 	// all context go to retirement list
@@ -1161,7 +1291,7 @@ BOOL CCopyContext::OperationProc()
 					m_SrcCopyPos += ToCopy * sizeof (__int16);
 					LeftToWrite -= ToCopy * (2 * sizeof (__int16));
 					m_DstCopyPos += ToCopy * (2 * sizeof (__int16));
-					if (2 == LeftToRead && LeftToWrite != 0)
+					if (2 == LeftToWrite && LeftToRead != 0)
 					{
 						// only one channel sample available
 						pDst[0] = pSrc[0];
@@ -1365,7 +1495,7 @@ void CCopyContext::PostRetire(BOOL bChildContext)
 BOOL CDecompressContext::OperationProc()
 {
 
-	DWORD dwOperationBegin = m_DstPos;
+	DWORD dwOperationBegin = m_DstCopyPos;
 	DWORD StartTime = GetTickCount();
 	while (GetTickCount() - StartTime < 200)
 	{
@@ -1399,8 +1529,8 @@ BOOL CDecompressContext::OperationProc()
 			if (0 != m_ash.cbDstLengthUsed)
 			{
 				long written = m_DstFile.m_File.WriteAt(m_ash.pbDst,
-														m_ash.cbDstLengthUsed, m_DstPos);
-				m_DstPos += written;
+														m_ash.cbDstLengthUsed, m_DstCopyPos);
+				m_DstCopyPos += written;
 				if (written != m_ash.cbDstLengthUsed)
 				{
 					// error
@@ -1427,7 +1557,7 @@ BOOL CDecompressContext::OperationProc()
 	int TotalSamples = -1;
 	int nFirstSample = (dwOperationBegin - m_DstFile.GetDataChunk()->dwDataOffset)
 						/ nSampleSize;
-	int nLastSample = (m_DstPos - m_DstFile.GetDataChunk()->dwDataOffset)
+	int nLastSample = (m_DstCopyPos - m_DstFile.GetDataChunk()->dwDataOffset)
 					/ nSampleSize;
 	// check if we need to change file size
 	if (nLastSample > m_CurrentSamples)
@@ -1749,18 +1879,21 @@ BOOL CUndoRedoContext::SaveUndoData(void * pBuf, long BufSize, DWORD Position, i
 		void * buf;
 		long SizeToLock = BufSize;
 		if (Channel != 2
-			&& (Position & 2) != Channel * 2
-			&& BufSize >= 2)
+			&& (Position & 2) != Channel * 2)
 		{
 			BufSize -= 2;
 			Position += 2;
 			m_SrcSavePos += 2;
 			pSrcBuf += 2;
+			if (0 == BufSize)
+			{
+				break;
+			}
 		}
 
 		if (Channel != 2)
 		{
-			SizeToLock = BufSize / 2;
+			SizeToLock = (BufSize & ~3) / 2;
 		}
 		long LockedToWrite = m_SrcFile.m_File.GetDataBuffer( & buf, SizeToLock,
 															m_DstSavePos, CDirectFile::GetBufferWriteOnly);
@@ -1871,245 +2004,180 @@ CVolumeChangeContext::CVolumeChangeContext(CWaveSoapFrontDoc * pDoc,
 	m_bClipped(FALSE),
 	m_ss(StatusString)
 {
+	m_ReturnBufferFlags = CDirectFile::ReturnBufferDirty;
 }
 
 CVolumeChangeContext::~CVolumeChangeContext()
 {
 }
 
-BOOL CVolumeChangeContext::OperationProc()
+BOOL CVolumeChangeContext::ProcessBuffer(void * buf, size_t BufferLength, DWORD offset)
 {
-	// get buffers from source file and copy them to m_CopyFile
-	if (m_Flags & OperationContextStopRequested)
+	__int16 * pDst = (__int16 *) buf;
+	if (m_DstFile.Channels() == 1)
 	{
-		m_Flags |= OperationContextFinished;
-		return TRUE;
-	}
-	if (m_DstCopyPos >= m_DstEnd)
-	{
-		m_Flags |= OperationContextFinished;
-		return TRUE;
-	}
-
-	DWORD dwStartTime = timeGetTime();
-	DWORD dwOperationBegin = m_DstCopyPos;
-
-	DWORD LeftToWrite = 0;
-	DWORD WasLockedToWrite = 0;
-	void * pOriginalDstBuf;
-	const DWORD DstFileFlags = CDirectFile::GetBufferAndPrefetchNext;
-
-	do
-	{
-		DWORD SizeToWrite = m_DstEnd - m_DstCopyPos;
-		WasLockedToWrite = m_DstFile.m_File.GetDataBuffer( & pOriginalDstBuf,
-															SizeToWrite, m_DstCopyPos, DstFileFlags);
-
-		if (0 == WasLockedToWrite)
+		float volume = m_VolumeLeft;
+		for (int i = 0; i < BufferLength / sizeof pDst[0]; i++)
 		{
-			return FALSE;
-		}
-
-		LeftToWrite = WasLockedToWrite;
-		// save the changed data to undo buffer
-		if (NULL != m_pUndoContext)
-		{
-			m_pUndoContext->SaveUndoData(pOriginalDstBuf, WasLockedToWrite,
-										m_DstCopyPos, m_DstChan);
-			m_pUndoContext->m_DstEnd = m_pUndoContext->m_SrcSavePos;
-			m_pUndoContext->m_SrcEnd = m_pUndoContext->m_DstSavePos;
-		}
-
-		__int16 * pDst = (__int16 *) pOriginalDstBuf;
-		if (m_DstFile.Channels() == 1)
-		{
-			float volume = m_VolumeLeft;
-			for (int i = 0; i < WasLockedToWrite / sizeof pDst[0]; i++)
+			long tmp = fround(pDst[i] * volume);
+			if (tmp > 0x7FFF)
 			{
-				long tmp = fround(pDst[i] * volume);
-				if (tmp > 0x7FFF)
-				{
-					pDst[i] = 0x7FFF;
-					m_bClipped = TRUE;
-				}
-				else if (tmp < -0x8000)
-				{
-					pDst[i] = -0x8000;
-					m_bClipped = TRUE;
-				}
-				else
-				{
-					pDst[i] = __int16(tmp);
-				}
+				pDst[i] = 0x7FFF;
+				m_bClipped = TRUE;
 			}
-		}
-		else
-		{
-			// copy one channel
-			// sample pair may get across buffer boundary,
-			// we need to account this
-			int i;
-			if (2 == m_DstChan)
+			else if (tmp < -0x8000)
 			{
-				// process both channels
-				if ((m_DstCopyPos - m_DstStart) & 2)
-				{
-					long tmp = fround(pDst[0] * m_VolumeRight);
-					if (tmp > 0x7FFF)
-					{
-						pDst[0] = 0x7FFF;
-						m_bClipped = TRUE;
-					}
-					else if (tmp < -0x8000)
-					{
-						pDst[0] = -0x8000;
-						m_bClipped = TRUE;
-					}
-					else
-					{
-						pDst[0] = __int16(tmp);
-					}
-					pDst++;
-					LeftToWrite -= 2;
-				}
-
-				for (i = 0; i < LeftToWrite / (2 * sizeof pDst[0]); i++, pDst += 2)
-				{
-					long tmp = fround(pDst[0] * m_VolumeLeft);
-					if (tmp > 0x7FFF)
-					{
-						pDst[0] = 0x7FFF;
-						m_bClipped = TRUE;
-					}
-					else if (tmp < -0x8000)
-					{
-						pDst[0] = -0x8000;
-						m_bClipped = TRUE;
-					}
-					else
-					{
-						pDst[0] = __int16(tmp);
-					}
-
-					tmp = fround(pDst[1] * m_VolumeRight);
-					if (tmp > 0x7FFF)
-					{
-						pDst[1] = 0x7FFF;
-						m_bClipped = TRUE;
-					}
-					else if (tmp < -0x8000)
-					{
-						pDst[1] = -0x8000;
-						m_bClipped = TRUE;
-					}
-					else
-					{
-						pDst[1] = __int16(tmp);
-					}
-				}
-
-				LeftToWrite -= i * (2 * sizeof pDst[0]);
-				if (2 == LeftToWrite)
-				{
-					long tmp = fround(pDst[0] * m_VolumeLeft);
-					if (tmp > 0x7FFF)
-					{
-						pDst[0] = 0x7FFF;
-						m_bClipped = TRUE;
-					}
-					else if (tmp < -0x8000)
-					{
-						pDst[0] = -0x8000;
-						m_bClipped = TRUE;
-					}
-					else
-					{
-						pDst[0] = __int16(tmp);
-					}
-				}
+				pDst[i] = -0x8000;
+				m_bClipped = TRUE;
 			}
 			else
 			{
-				// change one channel
-				if (((m_DstCopyPos - m_DstStart) & 2)
-					!= m_DstChan * 2)
-				{
-					// skip this word
-					pDst++;
-					LeftToWrite -= 2;
-				}
+				pDst[i] = __int16(tmp);
+			}
+		}
+		return TRUE;
+	}
+	int i;
+	if (2 == m_DstChan)
+	{
+		// process both channels
+		if (offset & 2)
+		{
+			long tmp = fround(pDst[0] * m_VolumeRight);
+			if (tmp > 0x7FFF)
+			{
+				pDst[0] = 0x7FFF;
+				m_bClipped = TRUE;
+			}
+			else if (tmp < -0x8000)
+			{
+				pDst[0] = -0x8000;
+				m_bClipped = TRUE;
+			}
+			else
+			{
+				pDst[0] = __int16(tmp);
+			}
+			pDst++;
+			BufferLength -= 2;
+		}
 
-				float volume;
-				if (0 == m_DstChan)
-				{
-					volume = m_VolumeLeft;
-				}
-				else
-				{
-					volume = m_VolumeLeft;
-				}
+		for (i = 0; i < BufferLength / (2 * sizeof pDst[0]); i++, pDst += 2)
+		{
+			long tmp = fround(pDst[0] * m_VolumeLeft);
+			if (tmp > 0x7FFF)
+			{
+				pDst[0] = 0x7FFF;
+				m_bClipped = TRUE;
+			}
+			else if (tmp < -0x8000)
+			{
+				pDst[0] = -0x8000;
+				m_bClipped = TRUE;
+			}
+			else
+			{
+				pDst[0] = __int16(tmp);
+			}
 
-				for (i = 0; i < LeftToWrite / (2 * sizeof pDst[0]); i++, pDst += 2)
-				{
-					long tmp = fround(pDst[0] * volume);
-					if (tmp > 0x7FFF)
-					{
-						pDst[0] = 0x7FFF;
-						m_bClipped = TRUE;
-					}
-					else if (tmp < -0x8000)
-					{
-						pDst[0] = -0x8000;
-						m_bClipped = TRUE;
-					}
-					else
-					{
-						pDst[0] = __int16(tmp);
-					}
-				}
-
-				LeftToWrite -= i * (2 * sizeof pDst[0]);
-				if (2 == LeftToWrite)
-				{
-					long tmp = fround(pDst[0] * volume);
-					if (tmp > 0x7FFF)
-					{
-						pDst[0] = 0x7FFF;
-						m_bClipped = TRUE;
-					}
-					else if (tmp < -0x8000)
-					{
-						pDst[0] = -0x8000;
-						m_bClipped = TRUE;
-					}
-					else
-					{
-						pDst[0] = __int16(tmp);
-					}
-				}
+			tmp = fround(pDst[1] * m_VolumeRight);
+			if (tmp > 0x7FFF)
+			{
+				pDst[1] = 0x7FFF;
+				m_bClipped = TRUE;
+			}
+			else if (tmp < -0x8000)
+			{
+				pDst[1] = -0x8000;
+				m_bClipped = TRUE;
+			}
+			else
+			{
+				pDst[1] = __int16(tmp);
 			}
 		}
 
-		m_DstFile.m_File.ReturnDataBuffer(pOriginalDstBuf, WasLockedToWrite,
-										CDirectFile::ReturnBufferDirty);
-		m_DstCopyPos += WasLockedToWrite;
+		BufferLength -= i * (2 * sizeof pDst[0]);
+		if (2 == BufferLength)
+		{
+			long tmp = fround(pDst[0] * m_VolumeLeft);
+			if (tmp > 0x7FFF)
+			{
+				pDst[0] = 0x7FFF;
+				m_bClipped = TRUE;
+			}
+			else if (tmp < -0x8000)
+			{
+				pDst[0] = -0x8000;
+				m_bClipped = TRUE;
+			}
+			else
+			{
+				pDst[0] = __int16(tmp);
+			}
+		}
 	}
-	while (m_DstCopyPos < m_DstEnd
-			&& timeGetTime() - dwStartTime < 200);
-	// notify the view
-	int nSampleSize = m_DstFile.SampleSize();
-	int nFirstSample = (dwOperationBegin - m_DstFile.GetDataChunk()->dwDataOffset)
-						/ nSampleSize;
-	int nLastSample = (m_DstCopyPos - m_DstFile.GetDataChunk()->dwDataOffset)
-					/ nSampleSize;
-	pDocument->SoundChanged(m_DstFile.GetFileID(), nFirstSample, nLastSample);
-
-	if (m_DstEnd > m_DstStart)
+	else
 	{
-		PercentCompleted = 100i64 * (m_DstCopyPos - m_DstStart) / (m_DstEnd - m_DstStart);
+		// change one channel
+		if ((offset & 2)
+			!= m_DstChan * 2)
+		{
+			// skip this word
+			pDst++;
+			BufferLength -= 2;
+		}
+
+		float volume;
+		if (0 == m_DstChan)
+		{
+			volume = m_VolumeLeft;
+		}
+		else
+		{
+			volume = m_VolumeRight;
+		}
+
+		for (i = 0; i < BufferLength / (2 * sizeof pDst[0]); i++, pDst += 2)
+		{
+			long tmp = fround(pDst[0] * volume);
+			if (tmp > 0x7FFF)
+			{
+				pDst[0] = 0x7FFF;
+				m_bClipped = TRUE;
+			}
+			else if (tmp < -0x8000)
+			{
+				pDst[0] = -0x8000;
+				m_bClipped = TRUE;
+			}
+			else
+			{
+				pDst[0] = __int16(tmp);
+			}
+		}
+
+		BufferLength -= i * (2 * sizeof pDst[0]);
+		if (2 == BufferLength)
+		{
+			long tmp = fround(pDst[0] * volume);
+			if (tmp > 0x7FFF)
+			{
+				pDst[0] = 0x7FFF;
+				m_bClipped = TRUE;
+			}
+			else if (tmp < -0x8000)
+			{
+				pDst[0] = -0x8000;
+				m_bClipped = TRUE;
+			}
+			else
+			{
+				pDst[0] = __int16(tmp);
+			}
+		}
 	}
 	return TRUE;
-
 }
 
 void CVolumeChangeContext::PostRetire(BOOL bChildContext)
@@ -2124,8 +2192,430 @@ void CVolumeChangeContext::PostRetire(BOOL bChildContext)
 	{
 		CString s;
 		s.Format(IDS_SOUND_CLIPPED, pDocument->GetTitle());
-		AfxMessageBox(s, IDOK | MB_ICONEXCLAMATION);
+		AfxMessageBox(s, MB_OK | MB_ICONEXCLAMATION);
 	}
 	COperationContext::PostRetire(bChildContext);
 }
 
+CDcOffsetContext::CDcOffsetContext(CWaveSoapFrontDoc * pDoc,
+									LPCTSTR StatusString, LPCTSTR OperationName)
+	: COperationContext(pDoc, OperationName, OperationContextDiskIntensive),
+	m_OffsetLeft(0),
+	m_OffsetRight(0),
+	m_bClipped(FALSE),
+	m_pScanContext(NULL),
+	m_ss(StatusString)
+{
+	m_ReturnBufferFlags = CDirectFile::ReturnBufferDirty;
+}
+
+CDcOffsetContext::~CDcOffsetContext()
+{
+	if (m_pScanContext)
+	{
+		delete m_pScanContext;
+		m_pScanContext = NULL;
+	}
+}
+BOOL CDcOffsetContext::OperationProc()
+{
+	if (NULL != m_pScanContext
+		&& m_Flags & DcContextScanning)
+	{
+		if (m_Flags & OperationContextStopRequested)
+		{
+			m_Flags |= OperationContextFinished;
+			return TRUE;
+		}
+		if ( ! m_pScanContext->OperationProc())
+		{
+			return FALSE;
+		}
+		if (0 == (m_pScanContext->m_Flags & OperationContextFinished))
+		{
+			return TRUE;
+		}
+		m_Flags &= ~ DcContextScanning;
+		// calculate DC offset
+		long nSamples =
+			(m_pScanContext->m_DstCopyPos - m_pScanContext->m_DstStart)
+			/ m_pScanContext->m_DstFile.SampleSize();
+		if (0 == nSamples)
+		{
+			return FALSE;
+		}
+		m_OffsetLeft = -int(m_pScanContext->m_SumLeft / nSamples);
+		m_OffsetRight = -int(m_pScanContext->m_SumRight / nSamples);
+
+		delete m_pScanContext;
+		m_pScanContext = NULL;
+
+		if ((m_DstChan == 1 || 0 == m_OffsetLeft)
+			&& (m_DstFile.Channels() == 1
+				|| 0 == m_OffsetRight
+				|| m_DstChan == 0))
+		{
+			// all offsets are zero, nothing to change
+			m_Flags |= OperationContextFinished;
+		}
+		return TRUE;
+	}
+	return COperationContext::OperationProc();
+}
+
+BOOL CDcOffsetContext::ProcessBuffer(void * buf, size_t BufferLength, DWORD offset)
+{
+	__int16 * pDst = (__int16 *) buf;
+	if (m_DstFile.Channels() == 1)
+	{
+		int DcOffset = m_OffsetLeft;
+		for (int i = 0; i < BufferLength / sizeof pDst[0]; i++)
+		{
+			long tmp = pDst[i] + DcOffset;
+			if (tmp > 0x7FFF)
+			{
+				pDst[i] = 0x7FFF;
+				m_bClipped = TRUE;
+			}
+			else if (tmp < -0x8000)
+			{
+				pDst[i] = -0x8000;
+				m_bClipped = TRUE;
+			}
+			else
+			{
+				pDst[i] = __int16(tmp);
+			}
+		}
+		return TRUE;
+	}
+	int i;
+	if (2 == m_DstChan)
+	{
+		// process both channels
+		if (offset & 2)
+		{
+			long tmp = pDst[0] + m_OffsetRight;
+			if (tmp > 0x7FFF)
+			{
+				pDst[0] = 0x7FFF;
+				m_bClipped = TRUE;
+			}
+			else if (tmp < -0x8000)
+			{
+				pDst[0] = -0x8000;
+				m_bClipped = TRUE;
+			}
+			else
+			{
+				pDst[0] = __int16(tmp);
+			}
+			pDst++;
+			BufferLength -= 2;
+		}
+
+		for (i = 0; i < BufferLength / (2 * sizeof pDst[0]); i++, pDst += 2)
+		{
+			long tmp = pDst[0] + m_OffsetLeft;
+			if (tmp > 0x7FFF)
+			{
+				pDst[0] = 0x7FFF;
+				m_bClipped = TRUE;
+			}
+			else if (tmp < -0x8000)
+			{
+				pDst[0] = -0x8000;
+				m_bClipped = TRUE;
+			}
+			else
+			{
+				pDst[0] = __int16(tmp);
+			}
+
+			tmp = pDst[1] + m_OffsetRight;
+			if (tmp > 0x7FFF)
+			{
+				pDst[1] = 0x7FFF;
+				m_bClipped = TRUE;
+			}
+			else if (tmp < -0x8000)
+			{
+				pDst[1] = -0x8000;
+				m_bClipped = TRUE;
+			}
+			else
+			{
+				pDst[1] = __int16(tmp);
+			}
+		}
+
+		BufferLength -= i * (2 * sizeof pDst[0]);
+		if (2 == BufferLength)
+		{
+			long tmp = pDst[0] + m_OffsetLeft;
+			if (tmp > 0x7FFF)
+			{
+				pDst[0] = 0x7FFF;
+				m_bClipped = TRUE;
+			}
+			else if (tmp < -0x8000)
+			{
+				pDst[0] = -0x8000;
+				m_bClipped = TRUE;
+			}
+			else
+			{
+				pDst[0] = __int16(tmp);
+			}
+		}
+	}
+	else
+	{
+		// change one channel
+		if ((offset & 2)
+			!= m_DstChan * 2)
+		{
+			// skip this word
+			pDst++;
+			BufferLength -= 2;
+		}
+
+		int DcOffset;
+		if (0 == m_DstChan)
+		{
+			DcOffset = m_OffsetLeft;
+		}
+		else
+		{
+			DcOffset = m_OffsetRight;
+		}
+
+		for (i = 0; i < BufferLength / (2 * sizeof pDst[0]); i++, pDst += 2)
+		{
+			long tmp = pDst[0] + DcOffset;
+			if (tmp > 0x7FFF)
+			{
+				pDst[0] = 0x7FFF;
+				m_bClipped = TRUE;
+			}
+			else if (tmp < -0x8000)
+			{
+				pDst[0] = -0x8000;
+				m_bClipped = TRUE;
+			}
+			else
+			{
+				pDst[0] = __int16(tmp);
+			}
+		}
+
+		BufferLength -= i * (2 * sizeof pDst[0]);
+		if (2 == BufferLength)
+		{
+			long tmp = pDst[0] + DcOffset;
+			if (tmp > 0x7FFF)
+			{
+				pDst[0] = 0x7FFF;
+				m_bClipped = TRUE;
+			}
+			else if (tmp < -0x8000)
+			{
+				pDst[0] = -0x8000;
+				m_bClipped = TRUE;
+			}
+			else
+			{
+				pDst[0] = __int16(tmp);
+			}
+		}
+	}
+	return TRUE;
+}
+
+void CDcOffsetContext::PostRetire(BOOL bChildContext)
+{
+	// save undo context
+	if (m_pUndoContext)
+	{
+		pDocument->AddUndoRedo(m_pUndoContext);
+		m_pUndoContext = NULL;
+	}
+	if (m_bClipped)
+	{
+		CString s;
+		s.Format(IDS_SOUND_CLIPPED, pDocument->GetTitle());
+		AfxMessageBox(s, MB_OK | MB_ICONEXCLAMATION);
+	}
+	COperationContext::PostRetire(bChildContext);
+}
+
+CStatisticsContext::CStatisticsContext(CWaveSoapFrontDoc * pDoc,
+										LPCTSTR StatusString, LPCTSTR OperationName)
+	: COperationContext(pDoc, OperationName, OperationContextDiskIntensive),
+	m_ZeroCrossingLeft(0),
+	m_ZeroCrossingRight(0),
+	m_MinLeft(INT_MAX),
+	m_MaxLeft(INT_MIN),
+	m_MinRight(INT_MAX),
+	m_MaxRight(INT_MIN),
+	m_PrevSampleLeft(0),
+	m_PrevSampleRight(0),
+	m_PosMinLeft(0),
+	m_PosMaxLeft(0),
+	m_PosMinRight(0),
+	m_PosMaxRight(0),
+	m_EnergyLeft(0),
+	m_EnergyRight(0),
+	m_SumLeft(0),
+	m_SumRight(0)
+{
+	m_DstChan = 2;
+}
+
+BOOL CStatisticsContext::ProcessBuffer(void * buf, size_t BufferLength, DWORD offset)
+{
+	__int16 * pSrc = (__int16 *) buf;
+	if (m_DstFile.Channels() == 1)
+	{
+		if (m_Flags & StatisticsContext_DcOnly)
+		{
+			for (int i = 0; i < BufferLength / sizeof pSrc[0]; i++)
+			{
+				m_SumLeft += pSrc[i];
+			}
+		}
+		else if (m_Flags & StatisticsContext_MinMaxOnly)
+		{
+			for (int i = 0; i < BufferLength / sizeof pSrc[0]; i++)
+			{
+				int sample = pSrc[i];
+
+				if (m_MinLeft > sample)
+				{
+					m_MinLeft = sample;
+				}
+				if (m_MaxLeft < sample)
+				{
+					m_MaxLeft = sample;
+				}
+			}
+		}
+		else for (int i = 0; i < BufferLength / sizeof pSrc[0]; i++)
+		{
+			int sample = pSrc[i];
+			m_SumLeft += sample;
+			m_EnergyLeft += sample * sample;
+			if (m_MinLeft > sample)
+			{
+				m_MinLeft = sample;
+				m_PosMinLeft = offset + i * sizeof pSrc[0];
+			}
+			if (m_MaxLeft < sample)
+			{
+				m_PosMaxLeft = offset + i * sizeof pSrc[0];
+				m_MaxLeft = sample;
+			}
+			if (0x8000 & (sample ^ m_PrevSampleLeft))
+			{
+				m_ZeroCrossingLeft++;
+			}
+			m_PrevSampleLeft = sample;
+		}
+	}
+	else
+	{
+		if (m_Flags & StatisticsContext_DcOnly)
+		{
+			if (offset & 2)
+			{
+				m_SumLeft += pSrc[0];
+				pSrc++;
+				offset += 2;
+				BufferLength -= 2;
+			}
+			for (int i = 0; i < BufferLength / (2 * sizeof pSrc[0]); i++)
+			{
+				m_SumLeft += pSrc[i * 2];
+				m_SumRight += pSrc[i * 2 + 1];
+			}
+			if (BufferLength >= 2)
+			{
+				m_SumLeft += pSrc[i * 2];
+			}
+		}
+		else if (m_Flags & StatisticsContext_MinMaxOnly)
+		{
+			for (int i = 0; i < BufferLength / sizeof pSrc[0]; i++, offset += 2)
+			{
+				int sample = pSrc[i];
+				if (offset & 2)
+				{
+					if (m_MinRight > sample)
+					{
+						m_MinRight = sample;
+					}
+					if (m_MaxRight < sample)
+					{
+						m_MaxRight = sample;
+					}
+				}
+				else
+				{
+					if (m_MinLeft > sample)
+					{
+						m_MinLeft = sample;
+					}
+					if (m_MaxLeft < sample)
+					{
+						m_MaxLeft = sample;
+					}
+				}
+			}
+		}
+		else for (int i = 0; i < BufferLength / sizeof pSrc[0]; i++, offset += 2)
+		{
+			int sample = pSrc[i];
+			if (offset & 2)
+			{
+				m_SumRight += sample;
+				m_EnergyRight += sample * sample;
+				if (m_MinRight > sample)
+				{
+					m_MinRight = sample;
+					m_PosMinRight = offset;
+				}
+				if (m_MaxRight < sample)
+				{
+					m_MaxRight = sample;
+					m_PosMaxRight = offset;
+				}
+				if (0x8000 & (sample ^ m_PrevSampleRight))
+				{
+					m_ZeroCrossingRight++;
+				}
+				m_PrevSampleRight = sample;
+			}
+			else
+			{
+				m_SumLeft += sample;
+				m_EnergyLeft += sample * sample;
+				if (m_MinLeft > sample)
+				{
+					m_MinLeft = sample;
+					m_PosMinLeft = offset;
+				}
+				if (m_MaxLeft < sample)
+				{
+					m_MaxLeft = sample;
+					m_PosMaxLeft = offset;
+				}
+				if (0x8000 & (sample ^ m_PrevSampleLeft))
+				{
+					m_ZeroCrossingLeft++;
+				}
+				m_PrevSampleLeft = sample;
+			}
+		}
+	}
+	return TRUE;
+}
