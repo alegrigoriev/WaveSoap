@@ -8,7 +8,8 @@
 // OperationDialogs2.h : header file
 //
 #include "TimeEdit.h"
-#include "OperationDialogs.h"
+#include "UiUpdatedDlg.h"
+#include "DialogWithSelection.h"
 
 #include "CdDrive.h"
 #include <vector>
