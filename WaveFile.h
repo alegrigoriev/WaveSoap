@@ -368,6 +368,7 @@ struct WAVEREGIONINFO
 	LPCTSTR Label;
 	LPCTSTR Comment;
 	LPCTSTR Ltxt;
+
 	enum // flags for WAVEREGIONINFO
 	{
 		AddNew = 0x00000001,
@@ -379,6 +380,7 @@ struct WAVEREGIONINFO
 		Delete = 0x00000040,
 		CuePointIndex = 0x00000080,     // MarkerCueId is an index in cue point array
 		CommitChanges = 0x00000100,     // for Doc class - save UNDO for the file
+		FindCue     = 0x00000200,   // find CueID by sample and length
 
 		ChangeAll = ChangeLabel | ChangeComment | ChangeLength | ChangeLtxt | ChangeSample,
 	};
