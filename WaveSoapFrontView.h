@@ -88,15 +88,8 @@ protected:
 	// additional vertical offset, to see a region of magnified wave
 	double m_WaveOffsetY;
 
-#if 0
-	void GetWaveSamples(ULONG Position, size_t NumOfSamples);
-	DWORD m_FirstSampleInBuffer;    // in 16-bit numbers
-	WAVE_SAMPLE * m_pWaveBuffer;
-	size_t m_WaveBufferSize;    // in 16-bit samples
-	size_t m_WaveDataSizeInBuffer;  // in 16-bit samples
-#else
 	CDataSection<WAVE_SAMPLE, CWaveSoapFrontView> m_WaveBuffer;
-#endif
+
 	virtual void DrawPlaybackCursor(CDC * pDC, SAMPLE_INDEX Sample, CHANNEL_MASK Channel);
 	virtual void ShowPlaybackCursor(CDC * pDC = NULL);
 	virtual void HidePlaybackCursor(CDC * pDC = NULL);
@@ -108,7 +101,7 @@ protected:
 	bool m_NewSelectionMade;
 	bool m_bAutoscrollTimerStarted;
 	UINT m_TimerID;
-	long m_PlaybackCursorDrawnSamplePos;
+	SAMPLE_INDEX m_PlaybackCursorDrawnSamplePos;
 	int m_WheelAccumulator;
 	// Generated message map functions
 protected:
