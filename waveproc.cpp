@@ -369,6 +369,43 @@ void CWaveProc::Dump(unsigned indent) const
 		indent, "", m_ChannelsToProcess, m_MaxClipped);
 }
 
+__int16 CWaveProc::DoubleToShort(double x)
+{
+	long tmp = (long) floor(x + 0.5);
+	if (tmp < -0x8000)
+	{
+		if (m_MaxClipped < -x)
+		{
+			m_MaxClipped = -x;
+		}
+		m_bClipped = TRUE;
+		return -0x8000;
+	}
+	else if (tmp > 0x7FFF)
+	{
+		if (m_MaxClipped < x)
+		{
+			m_MaxClipped = x;
+		}
+		m_bClipped = TRUE;
+		return 0x7FFF;
+	}
+	else
+	{
+		return __int16(tmp);
+	}
+}
+
+BOOL CWaveProc::Init()
+{
+	return TRUE;
+}
+
+void CWaveProc::DeInit()
+{
+}
+
+
 ////////////////// CHumRemoval ///////////////////////
 CHumRemoval::CHumRemoval()
 {
@@ -2642,6 +2679,34 @@ void CBatchProcessing::Dump(unsigned indent) const
 		m_Stages[i].Proc->Dump(indent + 1);
 	}
 }
+
+BOOL CBatchProcessing::Init()
+{
+	if ( ! BaseClass::Init())
+	{
+		return FALSE;
+	}
+
+	for (int i = 0; i < m_Stages.GetSize(); i++)
+	{
+		if ( ! m_Stages[i].Proc->Init())
+		{
+			return FALSE;
+		}
+	}
+
+	return TRUE;
+}
+
+void CBatchProcessing::DeInit()
+{
+	for (int i = 0; i < m_Stages.GetSize(); i++)
+	{
+		m_Stages[i].Proc->DeInit();
+	}
+	BaseClass::DeInit();
+}
+
 ////////////////////////////////////////
 //////////// CResampleFilter
 CResampleFilter::~CResampleFilter()
@@ -2914,7 +2979,7 @@ CAudioConvertor::~CAudioConvertor()
 {
 }
 
-BOOL CAudioConvertor::InitConversion(WAVEFORMATEX * SrcFormat, WAVEFORMATEX * DstFormat)
+BOOL CAudioConvertor::InitConversion(WAVEFORMATEX const * SrcFormat, WAVEFORMATEX const * DstFormat)
 {
 	if (WAVE_FORMAT_PCM == SrcFormat->wFormatTag)
 	{
@@ -3097,43 +3162,12 @@ size_t CChannelConvertor::ProcessSoundBuffer(char const * pIn, char * pOut,
 
 CLameEncConvertor::~CLameEncConvertor()
 {
-	delete[] m_pInputBuffer;
-	m_pInputBuffer = NULL;
-	delete[] m_pOutputBuffer;
-	m_pOutputBuffer = NULL;
+	DeInit();
 }
 
-BOOL CLameEncConvertor::Open(WAVEFORMATEX * pWF)
+BOOL CLameEncConvertor::SetFormat(WAVEFORMATEX const * pWF)
 {
-	BE_CONFIG cfg;
-	memzero(cfg);
-
-	cfg.dwConfig = BE_CONFIG_LAME;
-	cfg.format.LHV1.dwStructVersion = 1;
-	cfg.format.LHV1.dwStructSize = sizeof cfg;
-	cfg.format.LHV1.dwSampleRate = pWF->nSamplesPerSec;
-	cfg.format.LHV1.nMode = BE_MP3_MODE_MONO;
-	if (pWF->nChannels > 1)
-	{
-		cfg.format.LHV1.nMode = BE_MP3_MODE_STEREO;
-	}
-	cfg.format.LHV1.dwBitrate = pWF->nAvgBytesPerSec / (1000 / 8);
-
-	cfg.format.LHV1.bCRC = TRUE;
-
-	if ( ! m_Enc.OpenStream( & cfg))
-	{
-		return FALSE;
-	}
-	// allocate buffers
-	m_InputBufferSize = m_Enc.m_InBufferSize;
-	m_InputBufferFilled = 0;
-	m_pInputBuffer = new char[m_Enc.m_InBufferSize];
-
-	m_OutputBufferSize = m_Enc.m_OutBufferSize;
-	m_OutputBufferFilled = 0;
-	m_pOutputBuffer = new char[m_OutputBufferSize];
-
+	m_Wf = pWF;
 	return TRUE;
 }
 
@@ -3149,6 +3183,7 @@ size_t CLameEncConvertor::ProcessSound(char const * pInBuf, char * pOutBuf,
 		nInBytes = 0;
 		FlushBuffer = TRUE;
 	}
+
 	// copy data to the temp buffer
 	while (0 != nInBytes
 			|| 0 != m_InputBufferFilled
@@ -3191,7 +3226,7 @@ size_t CLameEncConvertor::ProcessSound(char const * pInBuf, char * pOutBuf,
 			DWORD OutFilled = 0;
 			m_Enc.EncodeChunk((short*)m_pInputBuffer,
 							m_InputBufferFilled / (sizeof (WAVE_SAMPLE) * m_InputChannels),
-							(BYTE*)m_pOutputBuffer, & OutFilled);
+							m_pOutputBuffer, & OutFilled);
 			m_OutputBufferFilled = OutFilled;
 			m_InputBufferFilled = 0;    // all used up
 			continue;
@@ -3204,7 +3239,7 @@ size_t CLameEncConvertor::ProcessSound(char const * pInBuf, char * pOutBuf,
 		{
 			// flush data
 			DWORD OutFilled = 0;
-			m_Enc.FlushStream((BYTE*)m_pOutputBuffer, & OutFilled);
+			m_Enc.FlushStream(m_pOutputBuffer, & OutFilled);
 			m_OutputBufferFilled = OutFilled;
 			FlushBuffer = FALSE;
 		}
@@ -3212,6 +3247,51 @@ size_t CLameEncConvertor::ProcessSound(char const * pInBuf, char * pOutBuf,
 	return nSavedBytes;
 }
 
+BOOL CLameEncConvertor::Init()
+{
+	BE_CONFIG cfg;
+	memzero(cfg);
+
+	cfg.dwConfig = BE_CONFIG_LAME;
+	cfg.format.LHV1.dwStructVersion = 1;
+	cfg.format.LHV1.dwStructSize = sizeof cfg;
+	cfg.format.LHV1.dwSampleRate = m_Wf.SampleRate();
+	cfg.format.LHV1.nMode = BE_MP3_MODE_MONO;
+	if (m_Wf.NumChannels() > 1)
+	{
+		cfg.format.LHV1.nMode = BE_MP3_MODE_STEREO;
+	}
+	cfg.format.LHV1.dwBitrate = m_Wf.BytesPerSec() / (1000 / 8);
+
+	cfg.format.LHV1.bCRC = TRUE;
+
+	if ( ! m_Enc.OpenStream( & cfg))
+	{
+		return FALSE;
+	}
+	// allocate buffers
+	m_InputBufferSize = m_Enc.m_InBufferSize;
+	m_InputBufferFilled = 0;
+	m_pInputBuffer = new char[m_Enc.m_InBufferSize];
+
+	m_OutputBufferSize = m_Enc.m_OutBufferSize;
+	m_OutputBufferFilled = 0;
+	m_pOutputBuffer = new BYTE[m_OutputBufferSize];
+
+	return TRUE;
+}
+
+void CLameEncConvertor::DeInit()
+{
+	m_Enc.CloseStream();
+	delete[] m_pInputBuffer;
+	m_pInputBuffer = NULL;
+	delete[] m_pOutputBuffer;
+	m_pOutputBuffer = NULL;
+}
+
+//////////////////////////////////////////////////////////////////////////
+////////////  CByteSwapConvertor
 size_t CByteSwapConvertor::ProcessSoundBuffer(char const * pIn, char * pOut,
 											size_t nInBytes, size_t nOutBytes, size_t * pUsedBytes)
 {
