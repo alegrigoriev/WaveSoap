@@ -145,6 +145,12 @@ CCdDrive::CCdDrive(CCdDrive const & Drive, BOOL UseAspi)
 	m_MediaChangeCount(-1),
 	m_OffsetBytesPerSector(2048),
 	m_bMediaChangeNotificationDisabled(false),
+	m_bScsiCommandsAvailable(false),
+	m_bStreamingFeatureSuported(true),
+	m_bPlextorDrive(false),
+	m_bNECDrive(false),
+	m_bUseNonStandardRead(false),
+	m_bDriveBusy(false),
 	m_bDoorLocked(false)
 {
 	if (UseAspi)
@@ -184,6 +190,9 @@ CCdDrive & CCdDrive::operator =(CCdDrive const & Drive)
 	m_bScsiCommandsAvailable = Drive.m_bScsiCommandsAvailable;
 	m_OffsetBytesPerSector = Drive.m_OffsetBytesPerSector;
 	m_bStreamingFeatureSuported = Drive.m_bStreamingFeatureSuported;
+	m_bPlextorDrive = Drive.m_bPlextorDrive;
+	m_bNECDrive = Drive.m_bNECDrive;
+	m_bUseNonStandardRead = Drive.m_bUseNonStandardRead;
 	return *this;
 }
 
@@ -193,6 +202,7 @@ CCdDrive::CCdDrive(BOOL UseAspi)
 	m_hEvent(CreateEvent(NULL, FALSE, FALSE, NULL)),
 	m_DriveLetter(0),
 	m_hWinaspi32(NULL),
+
 	GetASPI32DLLVersion(NULL),
 	GetASPI32SupportInfo(NULL),
 	SendASPI32Command(NULL),
@@ -204,9 +214,15 @@ CCdDrive::CCdDrive(BOOL UseAspi)
 	m_MaxTransferSize(0x10000),
 	m_BufferAlignment(1),
 	m_MediaChangeCount(-1),
+	m_OffsetBytesPerSector(2048),
 	m_bScsiCommandsAvailable(false),
 	m_bMediaChangeNotificationDisabled(false),
 	m_bStreamingFeatureSuported(true),
+
+	m_bPlextorDrive(false),
+	m_bNECDrive(false),
+	m_bUseNonStandardRead(false),
+	m_bDriveBusy(false),
 	m_bDoorLocked(false)
 {
 	memzero(m_ScsiAddr);
@@ -431,6 +447,9 @@ BOOL CCdDrive::Open(TCHAR letter)
 
 	m_bScsiCommandsAvailable = true;
 	m_bStreamingFeatureSuported = true;
+	m_bPlextorDrive = false;
+	m_bNECDrive = false;
+	m_bUseNonStandardRead = false;
 
 	DWORD bytes =0;
 	res = DeviceIoControl(m_hDrive, IOCTL_SCSI_GET_ADDRESS,
@@ -479,11 +498,25 @@ BOOL CCdDrive::Open(TCHAR letter)
 		m_MaxTransferSize, m_BufferAlignment
 		);
 
+	CString Vendor;
+	if (QueryVendor(Vendor))
+	{
+		TRACE("QueryVendor returned \"%s\"\n", LPCTSTR(Vendor));
+		if (0 == strncmp(Vendor, "PLEXTOR", 7))
+		{
+			m_bPlextorDrive = true;
+		}
+		else if (0 == strncmp(Vendor, "NEC", 3))
+		{
+			m_bNECDrive = true;
+		}
+	}
 	return TRUE;
 }
 
 void CCdDrive::Close()
 {
+	SetDriveBusy(false);
 	if (NULL != m_hDriveAttributes)
 	{
 		UnlockDoor();
@@ -1068,13 +1101,30 @@ BOOL CCdDrive::ReadCdData(void * pBuf, long Address, int nSectors)
 
 		SCSI_SenseInfo ssi;
 
-		res = SendScsiCommand( & rcd, pBuf, & Length,
-								SCSI_IOCTL_DATA_IN, & ssi);
-		if (! res)
+		if (! m_bUseNonStandardRead)
 		{
+			res = SendScsiCommand( & rcd, pBuf, & Length,
+									SCSI_IOCTL_DATA_IN, & ssi);
+			if (res)
+			{
+				return TRUE;
+			}
 			TRACE("READ CD error, SenseKey=%d, AdditionalSenseCode=%X\n",
 				ssi.SenseKey, ssi.AdditionalSenseCode);
 		}
+		if (m_bPlextorDrive)
+		{
+			ReadCD_Plextor rcdpx(Address, nSectors);
+			res = SendScsiCommand( & rcdpx, pBuf, & Length,
+									SCSI_IOCTL_DATA_IN, & ssi);
+		}
+		else if (m_bNECDrive)
+		{
+			ReadCD_NEC rcdNec(Address, nSectors);
+			res = SendScsiCommand( & rcdNec, pBuf, & Length,
+									SCSI_IOCTL_DATA_IN, & ssi);
+		}
+		return res;
 	}
 	else
 	{
@@ -1109,16 +1159,34 @@ BOOL CCdDrive::ReadCdData(void * pBuf, CdAddressMSF Address, int nSectors)
 			Address.Minute, Address.Second, Address.Frame);
 		CdAddressMSF EndAddress;
 		EndAddress = LONG(Address) + nSectors;
-		ReadCD_MSF_CDB rcd(Address, EndAddress);
-		SCSI_SenseInfo ssi;
 
-		res = SendScsiCommand( & rcd, pBuf, & Length,
-								SCSI_IOCTL_DATA_IN, & ssi);
-		if (! res)
+		SCSI_SenseInfo ssi;
+		if (! m_bUseNonStandardRead)
 		{
+			ReadCD_MSF_CDB rcd(Address, EndAddress);
+
+			res = SendScsiCommand( & rcd, pBuf, & Length,
+									SCSI_IOCTL_DATA_IN, & ssi);
+			if (res)
+			{
+				return TRUE;
+			}
 			TRACE("READ CD error, SenseKey=%d, AdditionalSenseCode=%X\n",
 				ssi.SenseKey, ssi.AdditionalSenseCode);
 		}
+		if (m_bPlextorDrive)
+		{
+			ReadCD_Plextor rcdpx(Address - 150, nSectors);
+			res = SendScsiCommand( & rcdpx, pBuf, & Length,
+									SCSI_IOCTL_DATA_IN, & ssi);
+		}
+		else if (m_bNECDrive)
+		{
+			ReadCD_NEC rcdNec(Address - 150, nSectors);
+			res = SendScsiCommand( & rcdNec, pBuf, & Length,
+									SCSI_IOCTL_DATA_IN, & ssi);
+		}
+		return res;
 	}
 	else
 	{
@@ -1128,7 +1196,7 @@ BOOL CCdDrive::ReadCdData(void * pBuf, CdAddressMSF Address, int nSectors)
 		rri.SectorCount = nSectors;
 		rri.TrackMode = CDDA;
 		// 2 seconds (150 sectors) offset between MSF address and logical block address
-		rri.DiskOffset.QuadPart = m_OffsetBytesPerSector * (LONG(Address) - 150);
+		rri.DiskOffset.QuadPart = m_OffsetBytesPerSector * (Address - 150);
 
 		res = DeviceIoControl(m_hDrive, IOCTL_CDROM_RAW_READ,
 							& rri, sizeof rri,
@@ -1172,3 +1240,83 @@ BOOL CCdDrive::SetReadSpeed(ULONG BytesPerSec, ULONG BeginLba, ULONG NumSectors)
 		return res;
 	}
 }
+BOOL CCdDrive::QueryVendor(CString & Vendor)
+{
+	InquiryData iqd;
+	InquiryCDB iqcdb(sizeof iqd);
+	DWORD Length = sizeof iqd;
+	BOOL res = SendScsiCommand( & iqcdb, & iqd, & Length,
+								SCSI_IOCTL_DATA_IN, NULL);
+	if (res)
+	{
+		Vendor = CString(PSTR(iqd.VendorId), sizeof iqd.VendorId);
+		return TRUE;
+	}
+	return FALSE;
+
+}
+
+void CCdDrive::StopDrive()
+{
+	DWORD Length = 0;
+	StartStopCdb sscbd(StartStopCdb::NoChange, false);
+	SendScsiCommand( & sscbd, & Length, & Length,
+					SCSI_IOCTL_DATA_UNSPECIFIED, NULL);
+}
+
+void CCdDrive::SetDriveBusy(bool Busy)
+{
+	int DrvIndex;
+	if (m_DriveLetter >= 'A'
+		&& m_DriveLetter <= 'Z')
+	{
+		DrvIndex = m_DriveLetter - 'A';
+	}
+	else if (m_DriveLetter >= 'a'
+			&& m_DriveLetter <= 'z')
+	{
+		DrvIndex = m_DriveLetter - 'a';
+	}
+	else
+	{
+		return;
+	}
+	if (Busy)
+	{
+		if (m_bDriveBusy)
+		{
+			return;
+		}
+		InterlockedIncrement( & m_DriveBusyCount[DrvIndex]);
+	}
+	else
+	{
+		if ( ! m_bDriveBusy)
+		{
+			return;
+		}
+		InterlockedDecrement( & m_DriveBusyCount[DrvIndex]);
+	}
+	m_bDriveBusy = Busy;
+}
+
+bool CCdDrive::IsDriveBusy(TCHAR letter)
+{
+	if (letter >= 'A'
+		&& letter <= 'Z')
+	{
+		return m_DriveBusyCount[letter - 'A'] != 0;
+	}
+	else if (letter >= 'a'
+			&& letter <= 'z')
+	{
+		return m_DriveBusyCount[letter - 'a'] != 0;
+	}
+	else
+	{
+		return false;
+	}
+}
+
+LONG CCdDrive::m_DriveBusyCount['Z' - 'A' + 1]; // zero-initialized
+

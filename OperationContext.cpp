@@ -899,7 +899,7 @@ BOOL CResizeContext::ShrinkProc()
 			pDatachunk->cksize = m_DstEnd - pDatachunk->dwDataOffset;
 			pDatachunk->dwFlags |= MMIO_DIRTY;
 			long NewLength = pDatachunk->cksize / pDocument->WaveSampleSize();
-			// first, expand the file itself
+			// first, shrink the file itself
 			if (FALSE == m_DstFile.SetFileLength(m_DstEnd))
 			{
 				m_Flags |= OperationContextFinished;

@@ -172,6 +172,47 @@ struct ReadCD_CDB : CD_CDB
 	}
 };
 
+struct ReadCD_Plextor : CD_CDB
+{
+	enum { OPCODE = 0xD8};
+	UCHAR reserved:5;
+	UCHAR Lun:3;
+
+	BigEndDword BeginBlock;
+	BigEndDword NumBlocks;
+
+	UCHAR Subcode;
+	UCHAR Control;
+
+	ReadCD_Plextor(ULONG BeginLba, ULONG nNumBlocks)
+	{
+		memzero(*this);
+		Opcode = OPCODE;
+		BeginBlock = BeginLba;
+		NumBlocks = nNumBlocks;
+	}
+};
+
+struct ReadCD_NEC : CD_CDB
+{
+	enum { OPCODE = 0xD4};
+	UCHAR reserved1;
+
+	BigEndDword BeginBlock;
+	UCHAR reserved2;
+	BigEndWord NumBlocks;
+
+	UCHAR Control;
+
+	ReadCD_NEC(ULONG BeginLba, ULONG nNumBlocks)
+	{
+		memzero(*this);
+		Opcode = OPCODE;
+		BeginBlock = BeginLba;
+		NumBlocks = nNumBlocks;
+	}
+};
+
 struct ReadCD_MSF_CDB : CD_CDB
 {
 	enum { OPCODE = 0xB9};
@@ -759,6 +800,44 @@ struct SetStreamingCDB : CD_CDB
 	}
 };
 //////////////////////////////////////////////////////////////////
+// UNIT START/STOP
+//////////////////////////////////////////////////////////////////
+struct StartStopCdb : CD_CDB
+{
+	enum { OPCODE = 0x1B};
+	UCHAR Immediate:1;
+	UCHAR reserved1:7;
+
+	UCHAR reserved2[2];
+
+	UCHAR Start:1;
+	UCHAR LoadEject:1;
+	UCHAR reserved3:2;
+	UCHAR PowerConditions:4;
+
+	UCHAR Control;
+	enum {
+		NoChange = 0,
+		Active = 1,
+		Idle = 2,
+		Standby = 3,
+		Sleep = 5,
+		IdleTimerToExpire = 0xA,
+		StandbyTimerToExpire = 0xB,
+	};
+	StartStopCdb(int Power, bool bStart = false,
+				bool bLoadEject = false, bool bImmed = true)
+	{
+		memzero(*this);
+		Opcode = OPCODE;
+		Immediate = bImmed;
+		PowerConditions = Power;
+		Start = bStart;
+		LoadEject = bLoadEject;
+	}
+};
+
+//////////////////////////////////////////////////////////////////
 // Generic SCSI structures
 //////////////////////////////////////////////////////////////////
 
@@ -896,9 +975,9 @@ public:
 	BOOL SetReadSpeed(ULONG BytesPerSec, ULONG BeginLba = 0, ULONG NumSectors = 0);
 	BOOL ReadCdData(void * pBuf, long Address, int nSectors);
 	BOOL ReadCdData(void * pBuf, CdAddressMSF Address, int nSectors);
-	BOOL SetStreaming(long BytesPerSecond);
+	//BOOL SetStreaming(long BytesPerSecond);
 
-	CString GetLastScsiErrorText();
+	//CString GetLastScsiErrorText();
 	BOOL GetMediaChanged(); // TRUE if disk was changed after previous call
 	BOOL EnableMediaChangeDetection();
 	BOOL DisableMediaChangeDetection();
@@ -915,6 +994,15 @@ public:
 						SCSI_SenseInfo * pSense,
 						unsigned timeout = 20);
 	BOOL ScsiInquiry(SRB_HAInquiry * pInq);
+	BOOL QueryVendor(CString & Vendor);
+	void StopDrive();
+
+	void SetDriveBusy(bool Busy = true);
+	static bool IsDriveBusy(TCHAR letter);
+	bool IsDriveBusy() const
+	{
+		return IsDriveBusy(m_DriveLetter);
+	}
 
 	//BOOL GetEcMode(BOOL * C2ErrorPointersSupported);
 
@@ -941,6 +1029,10 @@ protected:
 	bool m_bMediaChangeNotificationDisabled;
 	bool m_bDoorLocked;
 	bool m_bStreamingFeatureSuported;
+	bool m_bPlextorDrive;
+	bool m_bNECDrive;
+	bool m_bUseNonStandardRead;
+	bool m_bDriveBusy;
 
 	void LoadAspi();
 	DWORD (_cdecl * GetASPI32DLLVersion)();
@@ -951,6 +1043,8 @@ protected:
 	TRANSLATEASPI32ADDRESS TranslateAspi32Address;
 	GETASPI32DRIVELETTER GetAspi32DriveLetter;
 	GETASPI32HATARGETLUN GetAspi32HaTargetLun;
+private:
+	static LONG m_DriveBusyCount['Z' - 'A' + 1];
 };
 
 #pragma pack(pop)

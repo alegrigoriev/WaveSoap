@@ -235,6 +235,8 @@ protected:
 	void CheckForDiskChanged();
 	void CheckForDrivesChanged();
 
+	void UpdateFormatStatic();
+
 	// Generated message map functions
 	LRESULT OnKickIdle(WPARAM, LPARAM);
 	afx_msg void OnUpdateOk(CCmdUI* pCmdUI);
