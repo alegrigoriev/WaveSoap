@@ -21,14 +21,14 @@ protected:
 
 // Attributes
 public:
-	CWaveSoapFrontDoc* GetDocument();
+	CWaveSoapFrontDoc* GetDocument() const;
 	virtual UINT GetPopupMenuID(CPoint point);
 
 	BOOL m_bShowNoiseThreshold;
 
 	double m_dNoiseThresholdLow;
 	double m_dNoiseThresholdHigh;
-	int nBeginFrequency;
+	int m_nBeginFrequency;
 	bool m_bShowCrossHair;
 
 // Operations
@@ -50,8 +50,20 @@ protected:
 	void ShowCrossHair(POINT point, CDC * pDC = NULL);
 	void HideCrossHair(CDC * pDC = NULL);
 	void DrawCrossHair(POINT point, CDC * pDC = NULL);
+	void GetChannelRect(int Channel, RECT * pR) const;
+
+	struct FftGraphBand;
+
+	BOOL AllocateFftArrays();
+	int InitBandArray(ATL::CHeapPtr<FftGraphBand> & pBands, int rows);
+	void CalculateFftPowerSum(float * pFftSum, SAMPLE_INDEX FirstSample,
+							int NumberOfSamplesAveraged, int FftOrder);
+
+	void BuildBandArray(double PowerScaleCoeff, FftGraphBand * pBands, int NumBands,
+						float const * pFftSum, int FftOrder);
 
 	int m_FftOrder;
+
 	float * m_pFftSum;
 	float * m_pWindow;
 	int m_nFftSumSize;
@@ -85,7 +97,7 @@ protected:
 };
 
 #ifndef _DEBUG  // debug version in WaveSoapFrontView.cpp
-inline CWaveSoapFrontDoc* CSpectrumSectionView::GetDocument()
+inline CWaveSoapFrontDoc* CSpectrumSectionView::GetDocument() const
 { return (CWaveSoapFrontDoc*)m_pDocument; }
 #endif
 /////////////////////////////////////////////////////////////////////////////
