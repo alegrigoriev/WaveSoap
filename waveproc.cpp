@@ -2554,10 +2554,10 @@ int CChannelConvertor::ProcessSound(char const * pIn, char * pOut,
 	if (2 == m_InputChannels
 		&& 1 == m_OutputChannels)
 	{
-		if (0 == nSrcChannel
-			|| 1 == nSrcChannel)
+		if (0 == m_ChannelsToProcess
+			|| 1 == m_ChannelsToProcess)
 		{
-			pInBuf += nSrcChannel;
+			pInBuf += m_ChannelsToProcess;
 			for (i = 0; i < nSamples; i++,
 				pInBuf += 2, pOutBuf += 1)
 			{

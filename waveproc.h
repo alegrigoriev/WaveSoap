@@ -392,13 +392,11 @@ class CChannelConvertor : public CWaveProc
 {
 public:
 	CChannelConvertor()
-		: nSrcChannel(2),
-		dwSrcProcessed(0),
+		:dwSrcProcessed(0),
 		dwDstProcessed(0)
 	{
 	}
 	virtual ~CChannelConvertor() {}
-	int nSrcChannel;
 	DWORD dwSrcProcessed;
 	DWORD dwDstProcessed;
 	// conversion either mono->stereo, or stereo->mono.
