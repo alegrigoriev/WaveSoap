@@ -40,6 +40,8 @@ enum
 {
 	OpenDocumentDirectMode = 2,
 	OpenDocumentReadOnly = 4,
+	OpenDocumentDefaultMode = OpenDocumentDirectMode | OpenDocumentReadOnly,
+	OpenDocumentModeFlagsMask = OpenDocumentDirectMode | OpenDocumentReadOnly,
 	OpenDocumentCreateNewWithParameters = 8, // NAME is actually NewFileParameters *
 	OpenDocumentCreateNewFromCWaveFile = 0x10,// use m_pFile from NewFileParameters
 	OpenDocumentMp3File = 0x100,
