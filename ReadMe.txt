@@ -1,9 +1,8 @@
 TODO tasks:
 
+waveproc.cpp: Where it can affect throughput, instead of calling m_InputFormat.NumChannels(), save it in a local var.
+waveproc.cpp: refactor CDeclick::ProcessSoundBuffer.
 Synchronize m_WaveFile file creation with the document object.
-
-File save dialog: get file type and extension from template flag table, created during filling the filter string
-
 Support VBR WMA
 Check loading of lossless WMA and VBR WMA
 Set icons to all resizable dialogs (for XP)
@@ -253,6 +252,9 @@ Save As dialog is not centered first time (comdlg problem?)
 ??? When time/seconds format is set for status bar, MM:SS is actually shown
 
 Done:
+If channels are locked, disable channels select in the selection dialog.
+File save dialog: get file type and extension from template flag table, created during filling the filter string
+
 Change volume: if Lock checked, disable controls for the right channel.
 Make sure m_OriginalWaveFormat is set for raw file
 Make sure m_OriginalWaveFormat is set for compressed file
