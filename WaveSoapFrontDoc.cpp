@@ -2,13 +2,16 @@
 //
 
 #include "stdafx.h"
-#include "resource.h"
 #include "MainFrm.h"
 #include "OperationContext.h"
 #include "Resample.h"
-
+#include "ChildFrm.h"
+#include "SpectrumSectionView.h"
 #include "OperationDialogs.h"
+#include "OperationDialogs2.h"
+
 #include <afxpriv.h>
+
 #ifdef _DEBUG
 #define new DEBUG_NEW
 #undef THIS_FILE
@@ -1682,17 +1685,17 @@ BOOL CWaveSoapFrontDoc::InitUndoRedo(CUndoRedoContext * pContext)
 		{
 			pResize->m_pUndoContext->m_Flags |= RedoContext;
 		}
-		if (FALSE == pContext->m_DstFile.SetFileLength(pContext->m_RestoredLength))
+		if (FALSE == m_WavFile.SetFileLength(pContext->m_RestoredLength))
 		{
 			delete pResize->m_pUndoContext;
 			pResize->m_pUndoContext = NULL;
 			return FALSE;
 		}
-		MMCKINFO * pDatachunk = pContext->m_DstFile.GetDataChunk();
+		MMCKINFO * pDatachunk = m_WavFile.GetDataChunk();
 		pDatachunk->cksize = pContext->m_RestoredLength - pDatachunk->dwDataOffset;
 		pDatachunk->dwFlags |= MMIO_DIRTY;
-		long NewLength = pDatachunk->cksize / pContext->m_DstFile.SampleSize();
-		SoundChanged(pContext->m_DstFile.GetFileID(), 0, 0, NewLength);
+		long NewLength = pDatachunk->cksize / m_WavFile.SampleSize();
+		SoundChanged(m_WavFile.GetFileID(), 0, 0, NewLength);
 	}
 	else
 	{
@@ -1813,31 +1816,49 @@ void CWaveSoapFrontDoc::QueueOperation(COperationContext * pContext)
 void CWaveSoapFrontDoc::DoCopy(LONG Start, LONG End, LONG Channel, LPCTSTR FileName)
 {
 	// create a operation context
-	CCopyContext * pContext = new CCopyContext(this, _T("Copying data to clipboard..."), "Copy");
-
+	CString OpName;
+	DWORD OpenFlags;
+	DWORD OperationFlags;
 	CWaveFile DstFile;
+	if (NULL != FileName && FileName[0] != 0)
+	{
+		OpName.Format("Copying the selection to \"%s\"...", FileName);
+		OpenFlags = 0;  // default options
+		OperationFlags = 0; // default
+	}
+	else
+	{
+		OpName = _T("Copying data to clipboard...");
+		OpenFlags = CreateWaveFileTempDir
+					| CreateWaveFileDeleteAfterClose
+					| CreateWaveFileAllowMemoryFile
+					| CreateWaveFileDontCopyInfo
+					| CreateWaveFilePcmFormat
+					| CreateWaveFileTemp;
+		OperationFlags = OperationContextClipboard;
+	}
+	CCopyContext * pContext = new CCopyContext(this, OpName, "Copy");
+
 	// create a temporary clipboard WAV file
 	if (FALSE == DstFile.CreateWaveFile( & m_WavFile, NULL, m_SelectedChannel,
 										m_SelectionEnd - m_SelectionStart,
-										CreateWaveFileTempDir
-										| CreateWaveFileDeleteAfterClose
-										| CreateWaveFileAllowMemoryFile
-										| CreateWaveFileDontCopyInfo
-										| CreateWaveFilePcmFormat
-										| CreateWaveFileTemp,
+										OpenFlags,
 										FileName))
 	{
 		delete pContext;
 		AfxMessageBox(IDS_STRING_UNABLE_TO_CREATE_CLIPBOARD, MB_OK | MB_ICONEXCLAMATION);
 		return;
 	}
-	pContext->m_Flags |= OperationContextClipboard;
+	pContext->m_Flags |= OperationFlags;
 
 	pContext->InitCopy(DstFile, 0, m_SelectionEnd - m_SelectionStart, ALL_CHANNELS,
 						m_WavFile, m_SelectionStart, m_SelectionEnd - m_SelectionStart,
 						m_SelectedChannel);
 
-	GetApp()->m_ClipboardFile = DstFile;
+	if (OperationFlags & OperationContextClipboard)
+	{
+		GetApp()->m_ClipboardFile = DstFile;
+	}
 	// set operation context to the queue
 	pContext->Execute();
 }
@@ -2148,11 +2169,13 @@ BOOL CWaveSoapFrontDoc::OnOpenDocument(LPCTSTR lpszPathName, int DocOpenFlags)
 				return FALSE;
 			}
 			LoadPeakFile(m_OriginalWavFile);
+			SoundChanged(m_WavFile.GetFileID(), 0, 0, WaveFileSamples());
 		}
 	}
 	else
 	{
 		LoadPeakFile(m_WavFile);
+		SoundChanged(m_WavFile.GetFileID(), 0, 0, WaveFileSamples());
 	}
 	// if file is open in direct mode or read-only, leave it as is,
 	// otherwise open
@@ -3794,8 +3817,67 @@ void CWaveSoapFrontDoc::OnUpdateProcessInsertsilence(CCmdUI* pCmdUI)
 
 void CWaveSoapFrontDoc::OnProcessInsertsilence()
 {
-	// TODO: Add your command handler code here
+	if (m_OperationInProgress
+		|| m_bReadOnly)
+	{
+		// don't do anything
+		return;
+	}
+	if (m_SelectionStart != m_SelectionEnd)
+	{
+		CSilenceOptionDialog dlg1;
+		switch (dlg1.DoModal())
+		{
+		case IDOK:
+			OnProcessMute();
+			return;
+			break;
+		default:
+		case IDCANCEL:
+			// do nothing
+			return;
+			break;
+		case IDC_BUTTON_SILENCE:
+			// go on
+			break;
+		}
+	}
+	int channel = m_SelectedChannel;
+	if (ChannelsLocked())
+	{
+		channel = ALL_CHANNELS;
+	}
+	CInsertSilenceDialog dlg;
+	dlg.m_Start = m_SelectionEnd;
+	dlg.m_Length = 0;
+	dlg.m_pWf = WaveFormat();
+	dlg.m_nChannel = channel + 1;
+	dlg.m_TimeFormat = GetApp()->m_SoundTimeFormat;
 
+	if (IDOK != dlg.DoModal())
+	{
+		return;
+	}
+
+	channel = dlg.m_nChannel - 1;
+	GetApp()->m_SoundTimeFormat = dlg.m_TimeFormat;
+	CInsertSilenceContext * pContext = new CInsertSilenceContext(this,
+																"Inserting silence...", "Insert Silence");
+
+	if (NULL == pContext)
+	{
+		return;
+	}
+
+	if ( ! pContext->InitExpand(m_WavFile, dlg.m_Start,
+								dlg.m_Length, channel, FALSE))   // undo isn't necessary
+	{
+		delete pContext;
+		return;
+	}
+	SoundChanged(WaveFileID(), 0, 0, WaveFileSamples());
+	pContext->Execute();
+	SetModifiedFlag(TRUE, TRUE);    // kepp previous undo
 }
 
 void CWaveSoapFrontDoc::OnUpdateProcessMute(CCmdUI* pCmdUI)
@@ -4594,10 +4676,43 @@ void CWaveSoapFrontDoc::OnProcessNoiseReduction()
 	dlg.m_bLockChannels = m_bChannelsLocked;
 	dlg.m_TimeFormat = pApp->m_SoundTimeFormat;
 	dlg.m_FileLength = WaveFileSamples();
-	if (IDOK != dlg.DoModal())
+
+	ULONG result = dlg.DoModal();
+	if (IDC_BUTTON_SET_THRESHOLD == result)
+	{
+		// get active frame, enable spectrum section, store threshold
+		CChildFrame * pFrame =
+			dynamic_cast<CChildFrame*>(((CFrameWnd*)pApp->GetMainWnd())->GetActiveFrame());
+		if (NULL != pFrame)
+		{
+			CSpectrumSectionView * pSectionView =
+				dynamic_cast<CSpectrumSectionView *>
+				(pFrame->m_wClient.GetDlgItem(CWaveMDIChildClient::SpectrumSectionViewID));
+			if (NULL != pSectionView)
+			{
+				pSectionView->m_bShowNoiseThreshold = TRUE;
+				pSectionView->m_dNoiseThresholdLow = dlg.m_dNoiseThresholdLow;
+				pSectionView->m_dNoiseThresholdHigh = dlg.m_dNoiseThresholdHigh;
+				pSectionView->nBeginFrequency = dlg.m_dLowerFrequency;
+
+				if (! pFrame->m_wClient.m_bShowSpectrumSection)
+				{
+					pFrame->m_wClient.m_bShowSpectrumSection = TRUE;
+					pFrame->m_wClient.RecalcLayout();   // would invalidate
+				}
+				else
+				{
+					pSectionView->Invalidate();
+				}
+			}
+		}
+		return;
+	}
+	else if (IDOK != result)
 	{
 		return;
 	}
+
 	CConversionContext * pContext = new CConversionContext(this, "Removing background noise...",
 															"Noise Reduction");
 	if (NULL == pContext)
