@@ -35,11 +35,14 @@ protected:
 	virtual BOOL OnPreparePrinting(CPrintInfo* pInfo);
 	virtual void OnBeginPrinting(CDC* pDC, CPrintInfo* pInfo);
 	virtual void OnEndPrinting(CDC* pDC, CPrintInfo* pInfo);
+	virtual BOOL OnScrollBy(CSize sizeScroll, BOOL bDoScroll = TRUE);
 	//}}AFX_VIRTUAL
 
 // Implementation
 public:
 	virtual ~CWaveSoapFrontView();
+	virtual void OnChangeOrgExt(double left, double width,
+								double top, double height, DWORD flag);
 #ifdef _DEBUG
 	virtual void AssertValid() const;
 	virtual void Dump(CDumpContext& dc) const;
@@ -62,8 +65,9 @@ protected:
 	void GetWaveSamples(int Position, int NumOfSamples);
 	void DrawHorizontalWithSelection(CDC * pDC,
 									int left, int right, int Y, CPen * NormalPen, CPen * SelectedPen);
+	void CreateAndShowCaret();
 
-// Generated message map functions
+	// Generated message map functions
 protected:
 	//{{AFX_MSG(CWaveSoapFrontView)
 	afx_msg void OnUpdateViewZoominhor(CCmdUI* pCmdUI);
@@ -72,6 +76,11 @@ protected:
 	afx_msg void OnViewZoomOutVert();
 	afx_msg void OnUpdateViewZoomInVert(CCmdUI* pCmdUI);
 	afx_msg void OnUpdateViewZoomOutVert(CCmdUI* pCmdUI);
+	afx_msg BOOL OnSetCursor(CWnd* pWnd, UINT nHitTest, UINT message);
+	afx_msg void OnKillFocus(CWnd* pNewWnd);
+	afx_msg void OnSetFocus(CWnd* pOldWnd);
+	afx_msg void OnSize(UINT nType, int cx, int cy);
+	afx_msg BOOL OnEraseBkgnd(CDC* pDC);
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 };
