@@ -37,15 +37,14 @@ protected:
 	virtual BOOL OnPreparePrinting(CPrintInfo* pInfo);
 	virtual void OnBeginPrinting(CDC* pDC, CPrintInfo* pInfo);
 	virtual void OnEndPrinting(CDC* pDC, CPrintInfo* pInfo);
-	virtual BOOL OnScrollBy(CSize sizeScroll, BOOL bDoScroll = TRUE);
 	virtual void OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint);
+	virtual void OnActivateView(BOOL bActivate, CView* pActivateView, CView* pDeactiveView);
 	//}}AFX_VIRTUAL
 
 // Implementation
 public:
 	virtual ~CWaveSoapFrontView();
-	virtual void OnChangeOrgExt(double left, double width,
-								double top, double height, DWORD flag);
+	virtual void UpdateCaretPosition();
 	void InvalidateRect( LPCRECT lpRect, BOOL bErase = TRUE );
 
 #ifdef _DEBUG
@@ -88,7 +87,6 @@ protected:
 	afx_msg BOOL OnSetCursor(CWnd* pWnd, UINT nHitTest, UINT message);
 	afx_msg void OnKillFocus(CWnd* pNewWnd);
 	afx_msg void OnSetFocus(CWnd* pOldWnd);
-	afx_msg void OnSize(UINT nType, int cx, int cy);
 	afx_msg BOOL OnEraseBkgnd(CDC* pDC);
 	afx_msg void OnLButtonDown(UINT nFlags, CPoint point);
 	afx_msg void OnLButtonUp(UINT nFlags, CPoint point);

@@ -30,7 +30,6 @@ BEGIN_MESSAGE_MAP(CWaveSoapFrontView, CScaledScrollView)
 	ON_WM_SETCURSOR()
 	ON_WM_KILLFOCUS()
 	ON_WM_SETFOCUS()
-	ON_WM_SIZE()
 	ON_WM_ERASEBKGND()
 	ON_WM_LBUTTONDOWN()
 	ON_WM_LBUTTONUP()
@@ -856,29 +855,6 @@ void CWaveSoapFrontView::CreateAndShowCaret()
 	}
 }
 
-void CWaveSoapFrontView::OnSize(UINT nType, int cx, int cy)
-{
-	CScaledScrollView::OnSize(nType, cx, cy);
-
-	CreateAndShowCaret();
-}
-
-BOOL CWaveSoapFrontView::OnScrollBy(CSize sizeScroll, BOOL bDoScroll)
-{
-	// TODO: Add your specialized code here and/or call the base class
-
-	BOOL ret = CScaledScrollView::OnScrollBy(sizeScroll, bDoScroll);
-	CreateAndShowCaret();
-	return ret;
-}
-
-void CWaveSoapFrontView::OnChangeOrgExt(double left, double width,
-										double top, double height, DWORD flag)
-{
-	CScaledScrollView::OnChangeOrgExt(left, width, top, height, flag);
-	CreateAndShowCaret();
-}
-
 BOOL CWaveSoapFrontView::OnEraseBkgnd(CDC* pDC)
 {
 	// TODO: Add your message handler code here and/or call default
@@ -1466,4 +1442,22 @@ void CWaveSoapFrontView::MovePointIntoView(int nCaret)
 	ScrollBy(scroll, 0, TRUE);
 	NotifySlaveViews(CHANGE_HOR_ORIGIN);
 	CreateAndShowCaret();
+}
+
+void CWaveSoapFrontView::UpdateCaretPosition()
+{
+	CreateAndShowCaret();
+}
+
+void CWaveSoapFrontView::OnActivateView(BOOL bActivate, CView* pActivateView, CView* pDeactiveView)
+{
+	if (bActivate)
+	{
+		GetApp()->m_pActiveDocument = (CWaveSoapFrontDoc*)pActivateView->GetDocument();
+	}
+	else if (pDeactiveView == this)
+	{
+		GetApp()->m_pActiveDocument = NULL;
+	}
+	CScaledScrollView::OnActivateView(bActivate, pActivateView, pDeactiveView);
 }
