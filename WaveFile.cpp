@@ -445,7 +445,7 @@ BOOL CWaveFile::CreateWaveFile(CWaveFile * pTemplateFile, WAVEFORMATEX * pTempla
 		}
 		else
 		{
-			dir = GetApp()->sTempDir;
+			dir = GetApp()->m_sTempDir;
 			if (dir.IsEmpty())
 			{
 				if (GetTempPath(sizeof NameBuf, NameBuf))

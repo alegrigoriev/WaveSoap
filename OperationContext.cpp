@@ -2932,7 +2932,7 @@ void CStatisticsContext::PostRetire(BOOL bChildContext)
 	CStatisticsDialog dlg;
 	dlg.m_pContext = this;
 	dlg.m_SamplesPerSec = pDocument->WaveFormat()->nSamplesPerSec;
-	dlg.m_Cursor = pDocument->m_CaretPosition;
+	dlg.m_CaretPosition = pDocument->m_CaretPosition;
 	dlg.m_ValueAtCursorLeft = Value[0];
 	dlg.m_ValueAtCursorRight = Value[1];
 	dlg.DoModal();

@@ -84,6 +84,7 @@
 #define IDD_PROPPAGE_SOUND_PREFERENCES  170
 #define IDD_DIALOG_REOPEN_COMPRESSED    171
 #define IDD_DIALOG_SHOULD_RELOAD_CONVERTED 172
+#define IDD_DIALOG_RECORD_SOUND         173
 #define IDC_EDIT_MIN_CLICK_AMPLITUDE    1000
 #define IDC_TAB_SWITCH_VIEW_MODE        1000
 #define IDC_CHECK_LOG_CLICKS            1001
@@ -221,18 +222,37 @@
 #define IDC_CHECK_SHOW_ONLY_WHEN_SHIFT  1119
 #define IDC_STATIC_VERSION              1120
 #define IDC_EDIT2                       1123
-#define IDC_EDIT1                       1124
 #define IDC_EDIT7                       1124
+#define IDC_EDIT_TEMP_FILE_LOCATION     1124
 #define IDC_BUTTON1                     1125
-#define IDC_CHECK1                      1126
-#define IDC_CHECK2                      1127
-#define IDC_CHECK3                      1128
-#define IDC_CHECK4                      1129
-#define IDC_EDIT5                       1130
-#define IDC_CHECK5                      1131
-#define IDC_CHECK6                      1132
-#define IDC_CHECK7                      1133
+#define IDC_BUTTON2                     1126
+#define IDC_CHECK_ENABLE_UNDO           1126
+#define IDC_BUTTON3                     1127
+#define IDC_CHECK_LIMIT_UNDO            1127
+#define IDC_BUTTON4                     1128
+#define IDC_CHECK_LIMIT_UNDO_DEPTH      1128
+#define IDC_CHECK_ENABLE_REDO           1129
+#define IDC_EDIT_REDO_SIZE_LIMIT        1130
+#define IDC_CHECK_LIMIT_REDO_SIZE       1131
+#define IDC_CHECK_LIMIT_REDO_DEPTH      1132
+#define IDC_CHECK_TEMP_MEMORY_FILES     1133
 #define IDC_RADIO3                      1136
+#define IDC_CHECK_REMEMBER_SELECTION_IN_UNDO 1137
+#define IDC_CHECK_ALLOW_4GB_WAV         1138
+#define IDC_BUTTON5                     1139
+#define IDC_BUTTON6                     1140
+#define IDC_BUTTON7                     1141
+#define IDC_EDIT_UNDO_LIMIT             1142
+#define IDC_EDIT_UNDO_DEPTH_LIMIT       1143
+#define IDC_SPIN_UNDO_DEPTH             1144
+#define IDC_BUTTON_BROWSE_TEMP_FILE_LOCATION 1145
+#define IDC_EDIT_TEMP_MEMORY_FILE_LIMIT 1146
+#define IDC_EDIT_REDO_DEPTH_LIMIT       1147
+#define IDC_SPIN_REDO_LIMIT             1148
+#define IDC_RADIO_OPEN_FILE_MODE        1149
+#define IDC_CHECK_SNAP_MOUSE_SELECTION  1150
+#define IDC_CHECK1                      1151
+#define IDC_BUTTON8                     1152
 #define IDC_VIEW_RULER_SAMPLES          32771
 #define IDC_VIEW_RULER_HHMMSS           32772
 #define IDC_VIEW_RULER_SECONDS          32773
@@ -460,9 +480,9 @@
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_3D_CONTROLS                     1
-#define _APS_NEXT_RESOURCE_VALUE        168
+#define _APS_NEXT_RESOURCE_VALUE        174
 #define _APS_NEXT_COMMAND_VALUE         40098
-#define _APS_NEXT_CONTROL_VALUE         1137
+#define _APS_NEXT_CONTROL_VALUE         1153
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif

@@ -107,6 +107,7 @@ public:
 	double m_dVolumeRightPercent;
 	long m_Start;
 	long m_End;
+	long m_CaretPosition;
 	long m_FileLength;
 	int m_Chan;
 	int m_TimeFormat;
@@ -163,6 +164,7 @@ public:
 	int		m_TimeFormat;
 	long m_Start;
 	long m_End;
+	long m_CaretPosition;
 	long m_Length;
 	long m_FileLength;
 	const WAVEFORMATEX * m_pWf;
@@ -176,6 +178,7 @@ public:
 	std::vector<Selection> m_Selections;
 
 	void AddSelection(LPCTSTR Name, long begin, long end);
+	int FindSelection(long begin, long end);
 // Overrides
 	// ClassWizard generated virtual function overrides
 	//{{AFX_VIRTUAL(CSelectionDialog)
@@ -255,6 +258,7 @@ public:
 
 	long m_Start;
 	long m_End;
+	long m_CaretPosition;
 	long m_FileLength;
 	int m_Chan;
 	int m_TimeFormat;
@@ -296,7 +300,7 @@ public:
 
 	CStatisticsContext * m_pContext;
 	long m_SamplesPerSec;
-	long m_Cursor;
+	long m_CaretPosition;
 	int m_ValueAtCursorLeft;
 	int m_ValueAtCursorRight;
 // Overrides
@@ -342,6 +346,7 @@ public:
 
 	long m_Start;
 	long m_End;
+	long m_CaretPosition;
 	long m_FileLength;
 	int m_Chan;
 	int m_TimeFormat;
@@ -443,6 +448,7 @@ public:
 	BOOL	m_bLockChannels;
 	long m_Start;
 	long m_End;
+	long m_CaretPosition;
 	long m_FileLength;
 	int m_Chan;
 	int m_TimeFormat;
@@ -495,6 +501,7 @@ public:
 	BOOL	m_bLockChannels;
 	long m_Start;
 	long m_End;
+	long m_CaretPosition;
 	long m_FileLength;
 	int m_Chan;
 	int m_TimeFormat;
@@ -569,6 +576,7 @@ public:
 	BOOL	m_bLockChannels;
 	long m_Start;
 	long m_End;
+	long m_CaretPosition;
 	long m_FileLength;
 	int m_Chan;
 	int m_TimeFormat;
@@ -647,6 +655,7 @@ public:
 	BOOL	m_bLockChannels;
 	long m_Start;
 	long m_End;
+	long m_CaretPosition;
 	long m_FileLength;
 	int m_Chan;
 	int m_TimeFormat;

@@ -184,22 +184,40 @@ CWaveSoapFrontApp::CWaveSoapFrontApp()
 	m_pLastOp(NULL),
 	m_Thread(ThreadProc, this),
 	m_RunThread(false),
+
 	m_DefaultPlaybackDevice(WAVE_MAPPER),
 	m_NumPlaybackBuffers(4),
 	m_SizePlaybackBuffers(0x10000),
+
+	m_DefaultRecordDevice(WAVE_MAPPER),
+	m_NumRecordBuffers(8),
+	m_SizeRecordBuffers(0x10000),
+
 	m_bReadOnly(false),
 	m_bDirectMode(false),
+
 	m_TimeSeparator(':'),
 	m_DecimalPoint('.'),
 	m_ThousandSeparator(','),
 	m_bUseCountrySpecificNumberAndTime(false),
+
 	m_bUndoEnabled(true),
 	m_bRedoEnabled(true),
+	m_bRememberSelectionInUndo(false),
+	m_bEnableUndoLimit(true),
+	m_bEnableRedoLimit(true),
+	m_bEnableUndoDepthLimit(false),
+	m_bEnableRedoDepthLimit(false),
+	m_bUseMemoryFiles(true),
+	m_MaxMemoryFileSize(64),
+
 	m_bShowToolbar(true),
 	m_bShowStatusBar(true),
 	m_bOpenMaximized(true),
 	m_bOpenChildMaximized(true),
+
 	m_bAllow4GbWavFile(false),
+	m_DefaultOpenMode(DefaultOpenBuffered),
 
 	m_SoundTimeFormat(SampleToString_HhMmSs | TimeToHhMmSs_NeedsHhMm | TimeToHhMmSs_NeedsMs),
 
@@ -2792,6 +2810,34 @@ BOOL CanExpandWaveFileDlg(const CWaveFile & WaveFile, long NumOfSamplesToAdd)
 void CWaveSoapFrontApp::OnToolsOptions()
 {
 	CPreferencesPropertySheet dlg(IDS_OPTIONS_CAPTION);
+	dlg.m_FilePage.m_sTempFileLocation = m_sTempDir;
+	dlg.m_FilePage.m_bEnableUndo = m_bUndoEnabled;
+	dlg.m_FilePage.m_bEnableRedo = m_bRedoEnabled;
+	dlg.m_FilePage.m_UndoDepthLimit = m_MaxUndoDepth;
+	dlg.m_FilePage.m_RedoDepthLimit = m_MaxRedoDepth;
+	dlg.m_FilePage.m_UndoSizeLimit = m_MaxUndoSize / 0x100000;
+	dlg.m_FilePage.m_RedoSizeLimit = m_MaxRedoSize / 0x100000;
+	dlg.m_FilePage.m_bLimitUndoSize = m_bEnableUndoLimit;
+	dlg.m_FilePage.m_bLimitRedoSize = m_bEnableRedoLimit;
+	dlg.m_FilePage.m_bLimitUndoDepth = m_bEnableUndoDepthLimit;
+	dlg.m_FilePage.m_bLimitRedoDepth = m_bEnableRedoDepthLimit;
+	dlg.m_FilePage.m_DefaultFileOpenMode = m_DefaultOpenMode;
+	dlg.m_FilePage.m_bRememberSelectionInUndo = m_bRememberSelectionInUndo;
+	dlg.m_FilePage.m_bAllow4GbWav = m_bAllow4GbWavFile;
+	dlg.m_FilePage.m_UseMemoryFiles = m_bUseMemoryFiles;
+	dlg.m_FilePage.m_MaxMemoryFileSize = m_MaxMemoryFileSize;
+
+#if 0
+	dlg.m_SoundPage. = m_DefaultPlaybackDevice;
+	dlg.m_SoundPage. = m_NumPlaybackBuffers;
+	dlg.m_SoundPage. = m_SizePlaybackBuffers;
+	dlg.m_SoundPage. = m_DefaultRecordDevice;
+	dlg.m_SoundPage. = m_NumRecordBuffers;
+	dlg.m_SoundPage. = m_SizeRecordBuffers;
+
+	dlg.m_ViewPage.m_bSnapMouseSelection = m_bSnapMouseSelectionToMax;
+#endif
+
 	if (IDOK == dlg.DoModal())
 	{
 	}
