@@ -1,10 +1,6 @@
 Known problems and tasks:
 
-Make "CRC" field for the statistics
-Add Checksum field for the statistics
-
 Save peak info for compressed files, too
-Add "Swap Channels" function
 Add low/high frequency and notch filters functions
 Add "phase corrected" stereo to mono conversion
 Test "reload compressed file" dialogs
@@ -69,6 +65,7 @@ Save As dialog is not centered first time (comdlg problem?)
 ??? When time/seconds format is set for status bar, MM:SS is actually shown
 
 Fixed:
+CEqualizerContext didn't set Dirty flag in the buffers
 Min/Max sample position not divided by the sample size
 Save, Undo, Modify - causes to mark the file as unchanged
 Right-only volume change skipped some samples
@@ -80,6 +77,9 @@ No status bar in WinME
 FFT doesn't invaludate some areas
 
 Done:
+Add "Swap Channels" function
+Make "CRC" field for the statistics
+Add Checksum field for the statistics
 F12 - shortcut for Save As, Shift+F12 - shortcut for Save Copy
 Add "Zero phase" option to the equalizer
 Make shortcuts:

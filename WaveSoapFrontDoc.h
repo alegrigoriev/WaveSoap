@@ -400,6 +400,8 @@ protected:
 	afx_msg void OnUpdateEditClearRedo(CCmdUI* pCmdUI);
 	afx_msg void OnProcessEqualizer();
 	afx_msg void OnUpdateProcessEqualizer(CCmdUI* pCmdUI);
+	afx_msg void OnProcessSwapchannels();
+	afx_msg void OnUpdateProcessSwapchannels(CCmdUI* pCmdUI);
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 
