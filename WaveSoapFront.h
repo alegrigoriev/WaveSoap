@@ -55,6 +55,11 @@ struct NewFileParameters
 	WAVEFORMATEX * pWf;
 	LPCTSTR pInitialTitle;
 	LONG InitialSamples;
+	DWORD m_FileTypeFlags;
+	NewFileParameters()
+	{
+		memzero(*this);
+	}
 };
 
 class CWaveSoapDocTemplate : public CMultiDocTemplate

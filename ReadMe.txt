@@ -1,13 +1,13 @@
 Known problems and tasks:
 
+Use temporary filename for CD temp files
 Add file extension to CD track file name
 Set CD reading speed !
 Pass wave format to CD grabbing dialog
-check file length param on new file creation
-Add flush control to CDirectFile
+Process Loss Of Streaming error
 Add CD grabbing
-use CDRALW2K.sys service before trying ASPI
 Open CDA files
+Set icons to all resizable dialogs (for XP)
 Load sound from AVI
 Add options dialog
 Save WAVEFORMAT of an open WMA/MP3 file
@@ -54,6 +54,8 @@ Make recording from Internet stream
 
 Problems:
 
+During playback, horizontal ruler and outline is invalidated.
+IOCTL_CDROM_RAW_READ doesn't work on old Panasonic
 WinXP doesn't have CDRAL
 Multisession disk shows only begin of tracks. Read the whole structure.
 Daylight saving time change invalidates peak info timespamp (FAT only??)
@@ -67,6 +69,7 @@ samples with 32767, -32768 are not visible
 Log Off query doesn't close the active dialog. Recursion is possible. Make sure to check after Cancel
 
 Fixed:
+Track names are not updated in the program.
 No status string during CD reading?
 When opening CD drive, set its media state to undefined
 No Disk In Drive has a checkmark
@@ -107,6 +110,9 @@ Save As dialog is not centered first time (comdlg problem?)
 ??? When time/seconds format is set for status bar, MM:SS is actually shown
 
 Done:
+use CDRALW2K.sys service before trying ASPI
+check file length param on new file creation
+Add flush control to CDirectFile
 make CDRAL.DLL first choice
 Disable label edit, if the track is not audio
 Draw gray background outside file area on FFT

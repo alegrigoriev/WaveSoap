@@ -686,6 +686,82 @@ struct SerialNumberFeatureDesc : FeatureDescriptor
 	UCHAR SerialNumber[128];  // number of bytes is in AdditionalLength
 };
 
+//////////////////////////////////////////////////////////////////
+// SET SPEED, SET STREAMING
+//////////////////////////////////////////////////////////////////
+struct SetCdSpeedCDB : CD_CDB
+{
+	enum { OPCODE = 0xBB};
+	UCHAR Reserved1;
+
+	BigEndWord ReadSpeed;
+	BigEndWord WriteSpeed;
+
+	UCHAR Reserved2[5];
+	UCHAR Control;
+
+	SetCdSpeedCDB(USHORT nReadSpeed, USHORT nWriteSpeed=0xFFFF)
+	{
+		memzero(*this);
+		Opcode = OPCODE;
+		ReadSpeed = nReadSpeed;
+		WriteSpeed = nWriteSpeed;
+	}
+};
+
+struct StreamingPerformanceDescriptor
+{
+	UCHAR RandomAccess:1;
+	UCHAR Exact:1;
+	UCHAR RestoreDefaults:1;
+	UCHAR Reserved1:5;
+	UCHAR Reserved2[3];
+
+	BigEndDword StartLBA;
+	BigEndDword EndLBA;
+
+	BigEndDword ReadSize;
+	BigEndDword ReadTime;
+
+	BigEndDword WriteSize;
+	BigEndDword WriteTime;
+	StreamingPerformanceDescriptor(ULONG nStart, ULONG nEnd,
+									ULONG ReadSpeed = 0xFFFF, ULONG WriteSpeed=0xFFFF)
+	{
+		memzero(*this);
+
+		StartLBA = nStart;
+		EndLBA = nEnd;
+
+		ReadSize = ReadSpeed;
+		ReadTime = 1000;
+
+		WriteSize = WriteSpeed;
+		WriteTime = 1000;
+	}
+};
+
+struct SetStreamingCDB : CD_CDB
+{
+	enum { OPCODE = 0xB6};
+	UCHAR Reserved1;
+	UCHAR Reserved2[7];
+
+	BigEndWord ParameterLength;
+
+	UCHAR Control;
+
+	SetStreamingCDB()
+	{
+		memzero(*this);
+		Opcode = OPCODE;
+		ParameterLength = sizeof (StreamingPerformanceDescriptor);
+	}
+};
+//////////////////////////////////////////////////////////////////
+// Generic SCSI structures
+//////////////////////////////////////////////////////////////////
+
 struct SCSI_SenseInfo
 {
 	UCHAR ResponseCode:7;
@@ -776,6 +852,10 @@ struct SRB_ExecSCSICmd : SRB
 
 typedef SRB_HAInquiry *PSRB_HAInquiry;
 
+struct SRB_Abort : SRB
+{
+	SRB * pSRBToAbort;
+};
 
 enum CdMediaChangeState
 {
@@ -797,9 +877,9 @@ public:
 	static int FindCdDrives(TCHAR Drives['Z' - 'A' + 1]);
 	DWORD GetDiskID();
 
-	BOOL GetMaxReadSpeed(int * pMaxSpeed); // bytes/s
+	BOOL GetMaxReadSpeed(int * pMaxSpeed, int * pCurrentSpeed); // bytes/s
 
-	BOOL SetReadSpeed(long BytesPerSec);
+	BOOL SetReadSpeed(ULONG BytesPerSec, ULONG BeginLba = 0, ULONG NumSectors = 0);
 	BOOL ReadCdData(void * pBuf, long Address, int nSectors);
 	BOOL ReadCdData(void * pBuf, CdAddressMSF Address, int nSectors);
 	BOOL SetStreaming(long BytesPerSecond);
@@ -817,19 +897,21 @@ public:
 	CdMediaChangeState CheckForMediaChange();
 
 	BOOL SendScsiCommand(CD_CDB * pCdb, void * pData, DWORD * pDataLen,
-						int DataDirection,
-						SCSI_SenseInfo * pSense);  // SCSI_IOCTL_DATA_IN, SCSI_IOCTL_DATA_OUT,
+						int DataDirection,   // SCSI_IOCTL_DATA_IN, SCSI_IOCTL_DATA_OUT,
+						SCSI_SenseInfo * pSense,
+						unsigned timeout = 20);
 	BOOL ScsiInquiry(SRB_HAInquiry * pInq);
 
-	BOOL GetEcMode(BOOL * C2ErrorPointersSupported);
+	//BOOL GetEcMode(BOOL * C2ErrorPointersSupported);
 
-	BOOL StartReading(int speed);
+	//BOOL StartReading(int speed);
 
 	CCdDrive & operator =(CCdDrive const & Drive);
 
 protected:
 	HANDLE m_hDrive;
 	HANDLE m_hDriveAttributes;
+	HANDLE m_hEvent;
 	TCHAR m_DriveLetter;
 
 	SCSI_ADDRESS m_ScsiAddr;
@@ -844,6 +926,7 @@ protected:
 	bool m_bScsiCommandsAvailable;
 	bool m_bMediaChangeNotificationDisabled;
 	bool m_bDoorLocked;
+	bool m_bStreamingFeatureSuported;
 
 	void LoadAspi();
 	DWORD (_cdecl * GetASPI32DLLVersion)();

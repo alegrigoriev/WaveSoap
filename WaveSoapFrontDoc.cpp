@@ -296,6 +296,8 @@ BOOL CWaveSoapFrontDoc::OnNewDocument(NewFileParameters * pParams)
 	m_SelectionStart = 0;
 	m_SelectionEnd = 0;
 	m_SelectedChannel = ALL_CHANNELS;
+	m_FileTypeFlags = pParams->m_FileTypeFlags;
+
 	m_TimeSelectionMode = TRUE;
 	m_bReadOnly = false;
 	if (NULL == pWfx)
@@ -308,7 +310,9 @@ BOOL CWaveSoapFrontDoc::OnNewDocument(NewFileParameters * pParams)
 				| CreateWaveFileDeleteAfterClose
 				| CreateWaveFilePcmFormat
 				| CreateWaveFileTemp;
-	CString FileName;
+
+	LPCTSTR FileName = NULL;
+	// For PCM files, create new temporary file in the target directory
 	if (NULL != pParams->pInitialTitle
 		&& WAVE_FORMAT_PCM == pWfx->wFormatTag)
 	{
@@ -316,7 +320,6 @@ BOOL CWaveSoapFrontDoc::OnNewDocument(NewFileParameters * pParams)
 				| CreateWaveFilePcmFormat
 				| CreateWaveFileTemp;
 		FileName = pParams->pInitialTitle;
-		FileName += _T(".tmp");
 	}
 
 	if ( ! CanAllocateWaveFileSamplesDlg(pWfx, nSamples))
