@@ -109,6 +109,9 @@ public:
 // Implementation
 public:
 	virtual ~CWaveSoapFrontDoc();
+	virtual void SetModifiedFlag(BOOL bModified = TRUE);
+	//virtual void SetTitle(LPCTSTR lpszTitle);
+	void UpdateDocumentTitle();
 	void LoadPeakFile();
 	void BuildPeakInfo();
 	BOOL AllocatePeakInfo();
@@ -157,7 +160,9 @@ public:
 	bool volatile m_OperationInProgress;
 	bool volatile m_StopOperation;
 	CString m_CurrentStatusString;
+	CString m_strRealTitle;
 	bool m_bReadOnly;
+	bool m_bDirectMode;
 	CSimpleCriticalSection m_cs;
 	COperationContext * m_pCurrentContext;
 	COperationContext * m_pQueuedOperation;
@@ -202,6 +207,7 @@ protected:
 	afx_msg void OnEditStop();
 	afx_msg void OnUpdateEditStop(CCmdUI* pCmdUI);
 	afx_msg void OnUpdateFileSave(CCmdUI* pCmdUI);
+	afx_msg void OnEditSelectAll();
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 
