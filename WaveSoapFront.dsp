@@ -43,7 +43,7 @@ RSC=rc.exe
 # PROP Ignore_Export_Lib 0
 # PROP Target_Dir ""
 # ADD BASE CPP /nologo /MT /W3 /GX /O2 /D "WIN32" /D "NDEBUG" /D "_WINDOWS" /Yu"stdafx.h" /FD /c
-# ADD CPP /nologo /G6 /MT /W3 /GR /GX /O2 /D "WIN32" /D "NDEBUG" /D "_WINDOWS" /D "_MBCS" /Yu"stdafx.h" /FD /c
+# ADD CPP /nologo /G6 /MT /W3 /GR /GX /Zi /O2 /D "WIN32" /D "NDEBUG" /D "_WINDOWS" /D "_MBCS" /Yu"stdafx.h" /FD /c
 # ADD BASE MTL /nologo /D "NDEBUG" /mktyplib203 /win32
 # ADD MTL /nologo /D "NDEBUG" /mktyplib203 /win32
 # ADD BASE RSC /l 0x419 /d "NDEBUG"
@@ -53,7 +53,7 @@ BSC32=bscmake.exe
 # ADD BSC32 /nologo
 LINK32=link.exe
 # ADD BASE LINK32 /nologo /subsystem:windows /machine:I386
-# ADD LINK32 winmm.lib msacm32.lib /nologo /subsystem:windows /machine:I386 /out:"Release/WaveSoap.exe"
+# ADD LINK32 winmm.lib msacm32.lib /nologo /subsystem:windows /debug /machine:I386 /out:"Release/WaveSoap.exe"
 
 !ELSEIF  "$(CFG)" == "WaveSoapFront - Win32 Debug"
 
@@ -128,6 +128,18 @@ SOURCE=.\NumEdit.cpp
 # End Source File
 # Begin Source File
 
+SOURCE=.\OperationContext.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=.\OperationDialogs.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=.\Resample.cpp
+# End Source File
+# Begin Source File
+
 SOURCE=.\Ruler.cpp
 # End Source File
 # Begin Source File
@@ -142,6 +154,10 @@ SOURCE=.\shellink.cpp
 
 SOURCE=.\StdAfx.cpp
 # ADD CPP /Yc"stdafx.h"
+# End Source File
+# Begin Source File
+
+SOURCE=.\TimeEdit.cpp
 # End Source File
 # Begin Source File
 
@@ -302,6 +318,18 @@ SOURCE=.\NumEdit.h
 # End Source File
 # Begin Source File
 
+SOURCE=.\OperationContext.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\OperationDialogs.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\Resample.h
+# End Source File
+# Begin Source File
+
 SOURCE=.\Resource.h
 
 !IF  "$(CFG)" == "WaveSoapFront - Win32 Release"
@@ -374,6 +402,10 @@ SOURCE=.\shellink.h
 # Begin Source File
 
 SOURCE=.\StdAfx.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\TimeEdit.h
 # End Source File
 # Begin Source File
 

@@ -15,6 +15,7 @@ struct WavePeak
 	__int16 high;
 };
 
+#define ALL_CHANNELS (-1)
 class CSelectionUpdateInfo : public CObject
 {
 public:
@@ -24,7 +25,7 @@ public:
 	int SelEnd;
 	int SelChannel;
 	int CaretPos;
-	BOOL m_bMakeCaretVisible;
+	int Flags;
 };
 
 class CSoundUpdateInfo : public CObject
@@ -49,6 +50,11 @@ public:
 //
 enum {
 	UpdateSoundDontRescanPeaks = 1,
+	SetSelection_MakeCaretVisible = 1,
+	SetSelection_MoveCaretToCenter = 2,
+	SaveFile_SameName = 4,
+	SaveFile_CloseAfterSave = 8,
+	SaveFile_SaveCopy = 0x10,
 };
 class CWaveSoapFrontDoc : public CDocument
 {
@@ -105,15 +111,16 @@ public:
 	void EnableUndo(BOOL bEnable = TRUE);
 	void EnableRedo(BOOL bEnable = TRUE);
 	BOOL InitUndoRedo(class CUndoRedoContext * pContext);
+	BOOL OnSaveDocument(LPCTSTR lpszPathName, DWORD flags, WAVEFORMATEX * pWf);
 
+	// flags OpenDocumentReadOnly - ReadOnly, 2 - DirectMode
+	virtual BOOL OnOpenDocument(LPCTSTR lpszPathName, int flags);
 // Overrides
 	// ClassWizard generated virtual function overrides
 	//{{AFX_VIRTUAL(CWaveSoapFrontDoc)
 public:
 	virtual BOOL OnNewDocument();
 	virtual void Serialize(CArchive& ar);
-	virtual BOOL OnOpenDocument(LPCTSTR lpszPathName);
-	virtual BOOL OnSaveDocument(LPCTSTR lpszPathName);
 	virtual BOOL OnCmdMsg(UINT nID, int nCode, void* pExtra, AFX_CMDHANDLERINFO* pHandlerInfo);
 	virtual void SetPathName(LPCTSTR lpszPathName, BOOL bAddToMRU = TRUE);
 protected:
@@ -124,12 +131,14 @@ protected:
 public:
 	CString m_szWaveFilename;
 	CString szWaveTitle;
+	// wave file currently containing the data (it could be the temp file)
 	CWaveFile m_WavFile;
+	// original file with the name which was open
+	// for new file, it isn't open
+	CWaveFile m_OriginalWavFile;
 	int m_ModificationSequenceNumber;
 
 	//WAVEFORMATEX WavFileFormat;
-	CString szPeakFilename;
-	BY_HANDLE_FILE_INFORMATION WavFileInfo;
 
 	WavePeak * m_pPeaks;
 	size_t m_WavePeakSize;
@@ -139,24 +148,19 @@ public:
 	void RescanPeaks(long begin, long end);
 	BOOL AllocatePeakData(long NewNumberOfSamples);
 
-	DWORD m_SizeOfWaveData;
-	//__int16 * m_pWaveBuffer;
-	//size_t m_WaveBufferSize;
-	//BOOL AllocateWaveBuffer(size_t size = 0x100000);    // 1M default
-	//void FreeWaveBuffer();
-
 	LONG m_CaretPosition;
 	LONG m_SelectionStart;
 	LONG m_SelectionEnd;
 	int m_SelectedChannel; // 0, 1, 2
 	bool m_TimeSelectionMode;
-	void SetSelection(long begin, long end, int channel, int caret, BOOL bMakeCaretVisible = FALSE);
+	void SetSelection(long begin, long end, int channel, int caret, int flags = 0);
 	void SoundChanged(DWORD FileID, long begin, long end, int length = -1, DWORD flags = 0);
 	void PlaybackPositionNotify(long position, int channel);
 
 	enum {UpdateSelectionChanged = 1,
 		UpdateSelectionModeChanged,
 		UpdateSoundChanged,
+		UpdateSampleRateChanged,
 		UpdatePlaybackPositionChanged,
 	};
 
@@ -164,8 +168,8 @@ public:
 public:
 	virtual ~CWaveSoapFrontDoc();
 	void UpdateDocumentTitle();
-	void LoadPeakFile();
-	void BuildPeakInfo();
+	void LoadPeakFile(CWaveFile & WaveFile);
+	void BuildPeakInfo(BOOL bSavePeakFile);
 	void GetSoundMinMax(int & MinL, int & MaxL, int & MinR, int & MaxR, long begin, long end);
 	int CalculatePeakInfoSize() const
 	{
@@ -177,8 +181,8 @@ public:
 		return m_Thread.SetThreadPriority(priority);
 	}
 
-	void SavePeakInfo();
-	BOOL OpenWaveFile(LPCTSTR szName, DWORD flags);
+	void SavePeakInfo(CWaveFile & WaveFile);
+	BOOL OpenWaveFile(CWaveFile & WaveFile, LPCTSTR szName, DWORD flags);
 #ifdef _DEBUG
 	virtual void AssertValid() const;
 	virtual void Dump(CDumpContext& dc) const;
@@ -198,6 +202,7 @@ public:
 	CString m_CurrentStatusString;
 	bool m_bReadOnly;
 	bool m_bDirectMode;
+	bool m_bClosing;
 	CSimpleCriticalSection m_cs;
 	COperationContext * m_pCurrentContext;
 	COperationContext * m_pQueuedOperation;
@@ -228,8 +233,13 @@ public:
 	{
 		OnEditPaste();
 	}
-protected:
 	void QueueOperation(COperationContext * pContext);
+	void UpdateFrameTitles()
+	{
+		UpdateFrameCounts();
+	}
+	void PostFileSave(CFileSaveContext * pContext);
+protected:
 	// save the selected area to the permanent or temporary file
 	void DoCopy(LONG Start, LONG End, LONG Channel, LPCTSTR FileName);
 	void DoPaste(LONG Start, LONG End, LONG Channel, LPCTSTR FileName);
@@ -237,7 +247,9 @@ protected:
 	void DoDelete(LONG Start, LONG End, LONG Channel);
 	void DeleteUndo();
 	void DeleteRedo();
+
 	void OnUpdateSampleRate(CCmdUI* pCmdUI, unsigned SampleRate);
+	void SetSampleRate(unsigned SampleRate);
 	//{{AFX_MSG(CWaveSoapFrontDoc)
 	afx_msg void OnEditCopy();
 	afx_msg void OnUpdateEditCopy(CCmdUI* pCmdUI);
@@ -322,6 +334,14 @@ protected:
 	afx_msg void OnProcessInvert();
 	afx_msg void OnUpdateViewRescanPeaks(CCmdUI* pCmdUI);
 	afx_msg void OnViewRescanPeaks();
+	afx_msg void OnUpdateProcessSynthesisExpressionEvaluation(CCmdUI* pCmdUI);
+	afx_msg void OnProcessSynthesisExpressionEvaluation();
+	afx_msg void OnUpdateViewStatusHhmmss(CCmdUI* pCmdUI);
+	afx_msg void OnUpdateViewStatusSamples(CCmdUI* pCmdUI);
+	afx_msg void OnUpdateViewStatusSeconds(CCmdUI* pCmdUI);
+	afx_msg void OnUpdateFileSaveAs(CCmdUI* pCmdUI);
+	afx_msg void OnUpdateFileSaveCopyAs(CCmdUI* pCmdUI);
+	afx_msg void OnFileSaveCopyAs();
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 
@@ -340,7 +360,41 @@ struct PeakFileHeader
 	DWORD PeakInfoSize;
 	WAVEFORMATEX wfFormat;
 };
+
+struct MP3_IDTAG
+{
+	char Tag[3];    // "TAG"
+	char Title[30];
+	char Artist[30];
+	char Album[30];
+	char Year[4];
+	union {
+		char CommentV0[30];
+		struct {
+			char CommentV1[28];
+			char Track[2];
+		};
+	};
+	char Genre;
+};
 #pragma pack(pop)
+class CWaveSoapMP3Doc : public CWaveSoapFrontDoc
+{
+protected: // create from serialization only
+	CWaveSoapMP3Doc();
+	DECLARE_DYNCREATE(CWaveSoapMP3Doc)
+// Implementation
+public:
+	MP3_IDTAG m_MP3Tag;
+	MPEG1WAVEFORMAT m_Format;
+	virtual ~CWaveSoapMP3Doc();
+	virtual BOOL OnOpenDocument(LPCTSTR lpszPathName, int flags);
+protected:
+	static BOOL _stdcall DriverEnumProc(HACMDRIVERID hadid, DWORD dwInstance, DWORD fdwSupport);
+	//{{AFX_MSG(CWaveSoapMP3Doc)
+	//}}AFX_MSG
+	DECLARE_MESSAGE_MAP()
+};
 
 /////////////////////////////////////////////////////////////////////////////
 
