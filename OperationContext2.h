@@ -233,13 +233,17 @@ public:
 class CCommitFileSaveContext :public COperationContext
 {
 public:
-	CCommitFileSaveContext(CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString)
+	CCommitFileSaveContext(CWaveSoapFrontDoc * pDoc,
+							LPCTSTR StatusString, CWaveFile & WavFile, int flags, LPCTSTR TargetName)
 		: COperationContext(pDoc, StatusString, OperationContextDiskIntensive)
+		, m_FileSaveFlags(flags)
+		, m_TargetName(TargetName)
 	{
+		m_DstFile = WavFile;
 	}
 	int m_FileSaveFlags;
 	CString m_TargetName;
-	~CCommitFileSaveContext() { }
+	//~CCommitFileSaveContext() { }
 	virtual BOOL OperationProc();
 	virtual void PostRetire(BOOL bChildContext = FALSE);
 };
