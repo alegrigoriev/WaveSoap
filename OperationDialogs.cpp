@@ -564,9 +564,10 @@ void CSelectionDialog::DoDataExchange(CDataExchange* pDX)
 
 }
 
-void CSelectionDialog::OnUpdateOk(CCmdUI * pCmdUI)
+void CSelectionDialog::OnOK()
 {
-	pCmdUI->Enable(TRUE);   // TODO
+	AdjustSelection(m_eStart.GetTimeSample(), m_eEnd.GetTimeSample(), m_eLength.GetTimeSample());
+	BaseClass::OnOK();
 }
 
 BEGIN_MESSAGE_MAP(CSelectionDialog, BaseClass)
@@ -576,7 +577,6 @@ BEGIN_MESSAGE_MAP(CSelectionDialog, BaseClass)
 	ON_EN_KILLFOCUS(IDC_EDIT_LENGTH, OnKillfocusEditLength)
 	ON_CBN_KILLFOCUS(IDC_COMBO_START, OnKillfocusEditStart)
 	ON_CBN_SELCHANGE(IDC_COMBO_SELECTION, OnSelchangeComboSelection)
-	ON_UPDATE_COMMAND_UI(IDOK, OnUpdateOk)
 	//}}AFX_MSG_MAP
 END_MESSAGE_MAP()
 

@@ -161,9 +161,8 @@ protected:
 /////////////////////////////////////////////////////////////////////////////
 // CSelectionDialog dialog
 
-class CSelectionDialog : public CDialog //CUiUpdatedDlg
+class CSelectionDialog : public CDialog
 {
-	//typedef CUiUpdatedDlg BaseClass;
 	typedef CDialog BaseClass;
 // Construction
 public:
@@ -252,7 +251,7 @@ protected:
 	afx_msg void OnKillfocusEditLength();
 	afx_msg void OnKillfocusEditStart();
 	afx_msg void OnSelchangeComboSelection();
-	afx_msg void OnUpdateOk(CCmdUI * pCmdUI);
+	afx_msg void OnOK();
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 };
