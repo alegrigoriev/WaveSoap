@@ -654,7 +654,7 @@ BOOL CWaveSoapFrontDoc::DoSave(LPCTSTR lpszPathName, BOOL bReplace)
 
 		SaveFlags &= ~SaveFile_NonWavFile;
 
-		switch (dlg.m_FileType)
+		switch (dlg.GetFileType())
 		{
 		case SoundFileWav:
 			break;
@@ -666,7 +666,8 @@ BOOL CWaveSoapFrontDoc::DoSave(LPCTSTR lpszPathName, BOOL bReplace)
 			break;
 		case SoundFileRaw:
 			SaveFlags |= SaveFile_RawFile;
-			switch (dlg.m_SelectedRawFormat)
+
+			switch (dlg.GetSelectedRawFormat())
 			{
 			case RawSoundFilePcm16Msb:
 				SaveFlags |= SaveRawFileMsbFirst;
