@@ -279,6 +279,7 @@ protected:
 	virtual void DeInit();
 
 	virtual MEDIA_FILE_SIZE GetTotalOperationSize() const;
+	virtual bool KeepsPermanentFileReference() const;
 
 	virtual MEDIA_FILE_SIZE GetCompletedOperationSize() const;
 };
