@@ -1084,13 +1084,9 @@ void CDcOffsetDialog::DoDataExchange(CDataExchange* pDX)
 	DDX_Check(pDX, IDC_CHECK_5SECONDS, m_b5SecondsDC);
 	DDX_Check(pDX, IDC_CHECK_UNDO, m_bUndo);
 	DDX_Text(pDX, IDC_EDIT_DC_OFFSET, m_nDcOffset);
+	DDV_MinMaxInt(pDX, m_nDcOffset, -0x8000, 0x7FFF);
 	DDX_Radio(pDX, IDC_RADIO_DC_SELECT, m_DcSelectMode);
 	//}}AFX_DATA_MAP
-	if (0 == m_DcSelectMode)
-	{
-		GetDlgItem(IDC_EDIT_DC_OFFSET)->EnableWindow(FALSE);
-		//GetDlgItem(IDC_EDIT_DC_OFFSET)->EnableWindow(FALSE);
-	}
 	if (pDX->m_bSaveAndValidate)
 	{
 		m_Profile.UnloadAll();
@@ -1099,22 +1095,31 @@ void CDcOffsetDialog::DoDataExchange(CDataExchange* pDX)
 
 BEGIN_MESSAGE_MAP(CDcOffsetDialog, BaseClass)
 	//{{AFX_MSG_MAP(CDcOffsetDialog)
-	ON_BN_CLICKED(IDC_RADIO_DC_SELECT, OnRadioDcSelect)
-	ON_BN_CLICKED(IDC_RADIO2, OnRadioAdjustSelectEdit)
+	ON_BN_CLICKED(IDC_RADIO_DC_SELECT, OnRadioDcChange)
+	ON_BN_CLICKED(IDC_RADIO_DC_EDIT, OnRadioDcChange)
+	ON_UPDATE_COMMAND_UI(IDC_CHECK_5SECONDS, OnUpdate5SecondsDcCompute)
+	ON_UPDATE_COMMAND_UI(IDC_EDIT_DC_OFFSET, OnUpdateDcOffsetEdit)
 	//}}AFX_MSG_MAP
 END_MESSAGE_MAP()
 
 /////////////////////////////////////////////////////////////////////////////
 // CDcOffsetDialog message handlers
 
-void CDcOffsetDialog::OnRadioDcSelect()
+void CDcOffsetDialog::OnUpdate5SecondsDcCompute(CCmdUI * pCmdUI)
 {
-	GetDlgItem(IDC_EDIT_DC_OFFSET)->EnableWindow(FALSE);
+	// compare with TRUE (1) to avoid Undefined state (2), too
+	pCmdUI->Enable(TRUE == IsDlgButtonChecked(IDC_RADIO_DC_SELECT));
 }
 
-void CDcOffsetDialog::OnRadioAdjustSelectEdit()
+void CDcOffsetDialog::OnUpdateDcOffsetEdit(CCmdUI * pCmdUI)
 {
-	GetDlgItem(IDC_EDIT_DC_OFFSET)->EnableWindow(TRUE);
+	// compare with TRUE (1) to avoid Undefined state (2), too
+	pCmdUI->Enable(TRUE == IsDlgButtonChecked(IDC_RADIO_DC_EDIT));
+}
+
+void CDcOffsetDialog::OnRadioDcChange()
+{
+	NeedUpdateControls();
 }
 
 BOOL CDcOffsetDialog::OnInitDialog()

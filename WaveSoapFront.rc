@@ -1153,12 +1153,13 @@ FONT 8, "MS Shell Dlg", 0, 0, 0x0
 BEGIN
     CONTROL         "Automatically detect and remove",IDC_RADIO_DC_SELECT,
                     "Button",BS_AUTORADIOBUTTON | WS_GROUP,7,16,181,10
-    CONTROL         "Adjust DC offset by:",IDC_RADIO2,"Button",
+    CONTROL         "Adjust DC offset by:",IDC_RADIO_DC_EDIT,"Button",
                     BS_AUTORADIOBUTTON,7,32,126,10
-    EDITTEXT        IDC_EDIT_DC_OFFSET,157,30,35,14,ES_AUTOHSCROLL | 
+    EDITTEXT        IDC_EDIT_DC_OFFSET,157,30,50,14,ES_AUTOHSCROLL | 
                     WS_GROUP
-    CONTROL         "Spin1",IDC_SPIN1,"msctls_updown32",UDS_AUTOBUDDY | 
-                    UDS_ARROWKEYS,192,30,10,14
+    CONTROL         "Spin1",IDC_SPIN1,"msctls_updown32",UDS_SETBUDDYINT | 
+                    UDS_ALIGNRIGHT | UDS_AUTOBUDDY | UDS_ARROWKEYS | 
+                    UDS_NOTHOUSANDS | UDS_HOTTRACK,196,31,12,14
     CONTROL         "Compute DC offset from 5 seconds only",
                     IDC_CHECK_5SECONDS,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,
                     7,52,187,10

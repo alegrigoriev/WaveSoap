@@ -384,10 +384,11 @@ protected:
 
 	// Generated message map functions
 	//{{AFX_MSG(CDcOffsetDialog)
-	afx_msg void OnRadioDcSelect();
-	afx_msg void OnRadioAdjustSelectEdit();
+	afx_msg void OnRadioDcChange();
 	virtual BOOL OnInitDialog();
 	//}}AFX_MSG
+	afx_msg void OnUpdate5SecondsDcCompute(CCmdUI * pCmdUI);
+	afx_msg void OnUpdateDcOffsetEdit(CCmdUI * pCmdUI);
 	DECLARE_MESSAGE_MAP()
 };
 /////////////////////////////////////////////////////////////////////////////

@@ -419,6 +419,7 @@
 #define IDC_STATIC6                     1281
 #define IDC_STATIC7                     1282
 #define IDC_STATIC8                     1283
+#define IDC_RADIO_DC_EDIT               1284
 #define ID_VIEW_RULER_SAMPLES           32771
 #define ID_VIEW_RULER_HHMMSS            32772
 #define ID_VIEW_RULER_SECONDS           32773
@@ -898,7 +899,7 @@
 #define _APS_3D_CONTROLS                     1
 #define _APS_NEXT_RESOURCE_VALUE        199
 #define _APS_NEXT_COMMAND_VALUE         40146
-#define _APS_NEXT_CONTROL_VALUE         1284
+#define _APS_NEXT_CONTROL_VALUE         1285
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif
