@@ -157,6 +157,8 @@ public:
 // Dialog Data
 	//{{AFX_DATA(CCdGrabbingDialog)
 	enum { IDD = IDD_DIALOG_CD_GRABBING };
+	CEdit	m_eArtist;
+	CEdit	m_eAlbum;
 	CEdit	m_eSaveFolderOrFile;
 	CStatic	m_StaticFormat;
 	CComboBox	m_SpeedCombo;
@@ -166,6 +168,8 @@ public:
 	int		m_RadioStoreImmediately;
 	int		m_RadioStoreMultiple;
 	CString	m_sSaveFolderOrFile;
+	CString	m_sAlbum;
+	CString	m_sArtist;
 	//}}AFX_DATA
 
 	CCdDrive m_CdDrive;

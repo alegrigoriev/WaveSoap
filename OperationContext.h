@@ -15,7 +15,7 @@
 class COperationContext : public KListEntry<COperationContext>
 {
 public:
-	COperationContext(class CWaveSoapFrontDoc * pDoc, LPCTSTR OperationName, DWORD Flags);
+	COperationContext(class CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString, DWORD Flags, LPCTSTR OperationName = "");
 	virtual ~COperationContext();
 
 	virtual BOOL OperationProc();
@@ -175,10 +175,9 @@ public:
 	DWORD m_End;
 	int m_GranuleSize;
 	CScanPeaksContext(CWaveSoapFrontDoc * pDoc)
-		: COperationContext(pDoc, "Peak Scan", OperationContextDiskIntensive),
+		: COperationContext(pDoc, "Scanning the file for peaks...", OperationContextDiskIntensive, "Peak Scan"),
 		m_Start(0), m_End(0), m_Position(0)
 	{
-		m_OperationString = "Scanning the file for peaks...";
 	}
 	~CScanPeaksContext() {}
 	virtual BOOL OperationProc();
@@ -306,7 +305,7 @@ public:
 	MMRESULT m_MmResult;
 	BOOL m_bSwapBytes;
 	CDecompressContext(CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString, WAVEFORMATEX * pWf)
-		: COperationContext(pDoc, "",
+		: COperationContext(pDoc, StatusString,
 							// operation can be terminated by Close
 							OperationContextDiskIntensive | OperationContextNonCritical),
 		m_SrcBufSize(0),
@@ -317,8 +316,7 @@ public:
 		m_pWf(CopyWaveformat(pWf)),
 		m_MmResult(MMSYSERR_NOERROR)
 	{
-		m_OperationString = StatusString;
-		memset( & m_ash, 0, sizeof m_ash);
+		memzero(m_ash);
 	}
 	~CDecompressContext()
 	{
@@ -347,11 +345,10 @@ public:
 
 public:
 	CSoundPlayContext(CWaveSoapFrontDoc * pDoc)
-		: COperationContext(pDoc, "Play",
-							OperationContextDontAdjustPriority),
+		: COperationContext(pDoc, _T("Playing"),
+							OperationContextDontAdjustPriority, "Play"),
 		m_bPauseRequested(false)
 	{
-		m_OperationString = _T("Playing");
 		PercentCompleted = -1;  // no percents
 	}
 	virtual ~CSoundPlayContext() {}
@@ -511,11 +508,10 @@ class CWmaDecodeContext: public COperationContext
 {
 public:
 	CWmaDecodeContext(CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString)
-		: COperationContext(pDoc, "",
+		: COperationContext(pDoc, StatusString,
 							// operation can be terminated by Close
 							OperationContextDiskIntensive | OperationContextNonCritical)
 	{
-		m_OperationString = StatusString;
 	}
 	~CWmaDecodeContext()
 	{

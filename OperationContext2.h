@@ -235,7 +235,6 @@ public:
 	CCommitFileSaveContext(CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString)
 		: COperationContext(pDoc, StatusString, OperationContextDiskIntensive)
 	{
-		m_OperationString = StatusString;
 	}
 	int m_FileSaveFlags;
 	CString m_TargetName;
@@ -304,9 +303,9 @@ class CSwapChannelsContext : public COperationContext
 public:
 	CSwapChannelsContext(CWaveSoapFrontDoc * pDoc,
 						LPCTSTR StatusString, LPCTSTR OperationName)
-		: COperationContext(pDoc, OperationName, OperationContextDiskIntensive)
+		: COperationContext(pDoc, StatusString,
+							OperationContextDiskIntensive, OperationName)
 	{
-		m_OperationString = StatusString;
 		m_ReturnBufferFlags = CDirectFile::ReturnBufferDirty;
 	}
 	virtual ~CSwapChannelsContext() {}
@@ -318,8 +317,8 @@ class CCdReadingContext : public COperationContext
 public:
 	CCdReadingContext(CWaveSoapFrontDoc * pDoc,
 					LPCTSTR StatusString, LPCTSTR OperationName)
-		: COperationContext(pDoc, OperationName,
-							OperationContextDiskIntensive | OperationContextSerialized),
+		: COperationContext(pDoc, StatusString,
+							OperationContextDiskIntensive | OperationContextSerialized, OperationName),
 		m_pCdBuffer(NULL),
 		m_CdBufferFilled(0),
 		m_CdDataOffset(0),

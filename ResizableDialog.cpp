@@ -15,8 +15,8 @@ static char THIS_FILE[] = __FILE__;
 // CResizableDialog dialog
 
 
-CResizableDialog::CResizableDialog(CWnd* pParent /*=NULL*/)
-	: CDialog(CResizableDialog::IDD, pParent)
+CResizableDialog::CResizableDialog(UINT id, CWnd* pParent /*=NULL*/)
+	: CDialog(id, pParent)
 {
 	//{{AFX_DATA_INIT(CResizableDialog)
 	// NOTE: the ClassWizard will add member initialization here

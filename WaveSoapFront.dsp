@@ -216,6 +216,10 @@ SOURCE=.\Resample.cpp
 # End Source File
 # Begin Source File
 
+SOURCE=.\ResizableDialog.cpp
+# End Source File
+# Begin Source File
+
 SOURCE=.\Ruler.cpp
 # End Source File
 # Begin Source File
@@ -460,6 +464,10 @@ SOURCE=.\ReopenSavedFileCopyDlg.h
 # Begin Source File
 
 SOURCE=.\Resample.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\ResizableDialog.h
 # End Source File
 # Begin Source File
 

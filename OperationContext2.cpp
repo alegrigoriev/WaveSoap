@@ -31,11 +31,8 @@ void SkipWhitespace(LPCSTR * ppStr)
 }
 
 CExpressionEvaluationContext::CExpressionEvaluationContext(CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString, LPCTSTR OperationName)
-	:COperationContext(pDoc, StatusString, 0)
-
+	:COperationContext(pDoc, StatusString, 0, OperationName)
 {
-	m_OperationString = StatusString;
-	m_OperationName = OperationName;
 	m_ReturnBufferFlags = CDirectFile::ReturnBufferDirty;
 }
 
@@ -1468,10 +1465,9 @@ void CConversionContext::PostRetire(BOOL bChildContext)
 
 CEqualizerContext::CEqualizerContext(CWaveSoapFrontDoc * pDoc,
 									LPCTSTR StatusString, LPCTSTR OperationName)
-	: COperationContext(pDoc, OperationName, OperationContextDiskIntensive),
+	: COperationContext(pDoc, StatusString, OperationContextDiskIntensive, OperationName),
 	m_bZeroPhase(FALSE)
 {
-	m_OperationString = StatusString;
 	//m_GetBufferFlags = 0; // leave CDirectFile::GetBufferAndPrefetchNext flag
 	m_ReturnBufferFlags = CDirectFile::ReturnBufferDirty;
 }
@@ -1601,10 +1597,9 @@ BOOL CSwapChannelsContext::ProcessBuffer(void * buf, size_t len, DWORD offset, B
 
 CFilterContext::CFilterContext(CWaveSoapFrontDoc * pDoc,
 								LPCTSTR StatusString, LPCTSTR OperationName)
-	: COperationContext(pDoc, OperationName, OperationContextDiskIntensive),
+	: COperationContext(pDoc, StatusString, OperationContextDiskIntensive, OperationName),
 	m_bZeroPhase(FALSE)
 {
-	m_OperationString = StatusString;
 	//m_GetBufferFlags = 0; // leave CDirectFile::GetBufferAndPrefetchNext flag
 	m_ReturnBufferFlags = CDirectFile::ReturnBufferDirty;
 }

@@ -38,12 +38,13 @@ void COperationContext::PrintElapsedTime()
 
 #endif
 
-COperationContext::COperationContext(class CWaveSoapFrontDoc * pDoc, LPCTSTR OperationName, DWORD Flags)
+COperationContext::COperationContext(class CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString, DWORD Flags, LPCTSTR OperationName)
 	: pDocument(pDoc),
 	m_Flags(Flags),
 	m_pChainedContext(NULL),
 	m_pUndoContext(NULL),
 	m_OperationName(OperationName),
+	m_OperationString(StatusString),
 	PercentCompleted(0),
 	m_NumberOfForwardPasses(1),
 	m_NumberOfBackwardPasses(0),
@@ -2403,11 +2404,10 @@ CString CUndoRedoContext::GetStatusString()
 
 CVolumeChangeContext::CVolumeChangeContext(CWaveSoapFrontDoc * pDoc,
 											LPCTSTR StatusString, LPCTSTR OperationName)
-	: COperationContext(pDoc, OperationName, OperationContextDiskIntensive),
+	: COperationContext(pDoc, StatusString, OperationContextDiskIntensive, OperationName),
 	m_VolumeLeft(1.),
 	m_VolumeRight(1.)
 {
-	m_OperationString = StatusString;
 	m_GetBufferFlags = 0;
 	m_ReturnBufferFlags = CDirectFile::ReturnBufferDirty;
 }
@@ -2496,12 +2496,11 @@ BOOL CVolumeChangeContext::ProcessBuffer(void * buf, size_t BufferLength, DWORD 
 
 CDcOffsetContext::CDcOffsetContext(CWaveSoapFrontDoc * pDoc,
 									LPCTSTR StatusString, LPCTSTR OperationName)
-	: COperationContext(pDoc, OperationName, OperationContextDiskIntensive),
+	: COperationContext(pDoc, StatusString, OperationContextDiskIntensive, OperationName),
 	m_OffsetLeft(0),
 	m_OffsetRight(0),
 	m_pScanContext(NULL)
 {
-	m_OperationString = StatusString;
 	m_GetBufferFlags = 0;
 	m_ReturnBufferFlags = CDirectFile::ReturnBufferDirty;
 }
@@ -2616,7 +2615,7 @@ CString CDcOffsetContext::GetStatusString()
 
 CStatisticsContext::CStatisticsContext(CWaveSoapFrontDoc * pDoc,
 										LPCTSTR StatusString, LPCTSTR OperationName)
-	: COperationContext(pDoc, OperationName, OperationContextDiskIntensive),
+	: COperationContext(pDoc, StatusString, OperationContextDiskIntensive, OperationName),
 	m_ZeroCrossingLeft(0),
 	m_ZeroCrossingRight(0),
 	m_MinLeft(INT_MAX),
@@ -2648,7 +2647,6 @@ CStatisticsContext::CStatisticsContext(CWaveSoapFrontDoc * pDoc,
 	m_SumLeft(0),
 	m_SumRight(0)
 {
-	m_OperationString = StatusString;
 	m_DstChan = ALL_CHANNELS;
 }
 

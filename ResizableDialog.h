@@ -13,12 +13,12 @@
 class CResizableDialog : public CDialog
 {
 // Construction
+protected:
+	CResizableDialog(UINT id, CWnd* pParent = NULL);   // standard constructor
 public:
-	CResizableDialog(CWnd* pParent = NULL);   // standard constructor
 
 // Dialog Data
 	//{{AFX_DATA(CResizableDialog)
-	enum { IDD = IDD_ABOUTBOX };
 	// NOTE: the ClassWizard will add data members here
 	//}}AFX_DATA
 
