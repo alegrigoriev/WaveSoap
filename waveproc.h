@@ -133,10 +133,15 @@ public:
 	double m_MaxClipped;
 };
 
-class CHumRemoval: public CWaveProc
+class CHumRemoval : public CWaveProc
 {
+	typedef CHumRemoval ThisClass;
+	typedef CWaveProc BaseClass;
+
 public:
+	typedef std::auto_ptr<ThisClass> auto_ptr;
 	CHumRemoval();
+
 	virtual size_t ProcessSoundBuffer(char const * pInBuf, char * pOutBuf,
 									size_t nInBytes, size_t nOutBytes, size_t * pUsedBytes);
 	virtual BOOL SetAndValidateWaveformat(WAVEFORMATEX const * pWf);
@@ -177,9 +182,15 @@ struct StoredClickData
 
 class CClickRemoval: public CWaveProc
 {
+	typedef CClickRemoval ThisClass;
+	typedef CWaveProc BaseClass;
+
 public:
+	typedef std::auto_ptr<ThisClass> auto_ptr;
+
 	CClickRemoval();
 	virtual ~CClickRemoval();
+
 	virtual size_t ProcessSoundBuffer(char const * pInBuf, char * pOutBuf,
 									size_t nInBytes, size_t nOutBytes, size_t * pUsedBytes);
 	virtual BOOL SetAndValidateWaveformat(WAVEFORMATEX const * pWf);
@@ -231,9 +242,15 @@ protected:
 
 class CNoiseReduction: public CWaveProc
 {
+	typedef CNoiseReduction ThisClass;
+	typedef CWaveProc BaseClass;
+
 public:
+	typedef std::auto_ptr<ThisClass> auto_ptr;
+
 	CNoiseReduction(int nFftOrder = 1024);
 	virtual ~CNoiseReduction();
+
 	typedef float DATA;
 	virtual size_t ProcessSoundBuffer(char const * pInBuf, char * pOutBuf,
 									size_t nInBytes, size_t nOutBytes, size_t * pUsedBytes);
@@ -341,7 +358,12 @@ public:
 
 class CBatchProcessing: public CWaveProc
 {
+	typedef CBatchProcessing ThisClass;
+	typedef CWaveProc BaseClass;
+
 public:
+	typedef std::auto_ptr<ThisClass> auto_ptr;
+
 	CBatchProcessing()
 		:m_bAutoDeleteProcs(FALSE)
 	{}
@@ -372,11 +394,16 @@ int ProcessWaveFile(LPCTSTR NameIn, LPCTSTR NameOut, CWaveProc * pProc);
 
 class CResampleFilter: public CWaveProc
 {
+	typedef CResampleFilter ThisClass;
+	typedef CWaveProc BaseClass;
+
 public:
+	typedef std::auto_ptr<ThisClass> auto_ptr;
 	CResampleFilter()
 	{
 	}
 	virtual ~CResampleFilter();
+
 	virtual size_t ProcessSoundBuffer(char const * pInBuf, char * pOutBuf,
 									size_t nInBytes, size_t nOutBytes, size_t * pUsedBytes);
 	//virtual BOOL SetAndValidateWaveformat(WAVEFORMATEX const * pWf);
@@ -415,7 +442,12 @@ public:
 
 class CAudioConvertor : public CWaveProc
 {
+	typedef CAudioConvertor ThisClass;
+	typedef CWaveProc BaseClass;
+
 public:
+	typedef std::auto_ptr<ThisClass> auto_ptr;
+
 	CAudioConvertor(HACMDRIVER had = NULL);
 	virtual ~CAudioConvertor();
 
@@ -433,7 +465,11 @@ public:
 
 class CChannelConvertor : public CWaveProc
 {
+	typedef CChannelConvertor ThisClass;
+	typedef CWaveProc BaseClass;
+
 public:
+	typedef std::auto_ptr<ThisClass> auto_ptr;
 	CChannelConvertor(NUMBER_OF_CHANNELS OldChannels,
 					NUMBER_OF_CHANNELS NewChannels, CHANNEL_MASK ChannelsToProcess)
 	{
@@ -451,7 +487,11 @@ public:
 
 class CByteSwapConvertor : public CWaveProc
 {
+	typedef CByteSwapConvertor ThisClass;
+	typedef CWaveProc BaseClass;
+
 public:
+	typedef std::auto_ptr<ThisClass> auto_ptr;
 	CByteSwapConvertor()
 	{
 	}
@@ -462,7 +502,12 @@ public:
 
 class CLameEncConvertor : public CWaveProc
 {
+	typedef CLameEncConvertor ThisClass;
+	typedef CWaveProc BaseClass;
+
 public:
+	typedef std::auto_ptr<ThisClass> auto_ptr;
+
 	CLameEncConvertor(LPCTSTR pDll = _T("LAME_ENC.DLL"))
 		: m_InputBufferSize(0),
 		m_InputBufferFilled(0),
