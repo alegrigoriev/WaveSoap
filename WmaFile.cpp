@@ -385,7 +385,6 @@ HRESULT STDMETHODCALLTYPE CWmaDecoder::OnSample( /* [in] */ DWORD dwOutputNum,
 		m_CurrentSamples = NUMBER_OF_SAMPLES(TotalSamplesEstimated);
 
 		m_DstFile.SetFileLengthSamples(m_CurrentSamples);
-		m_DstFile.AllocatePeakData(m_CurrentSamples);
 	}
 	// modify positions after file length modified,
 	m_DstPos = DstCopyPos;  // to avoid race condition
