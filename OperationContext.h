@@ -280,6 +280,7 @@ public:
 	float m_VolumeLeft;
 	float m_VolumeRight;
 	BOOL m_bClipped;
+	double m_MaxClipped;
 
 	//virtual BOOL OperationProc();
 	virtual BOOL ProcessBuffer(void * buf, size_t len, DWORD offset);
@@ -296,6 +297,7 @@ public:
 	int m_OffsetLeft;
 	int m_OffsetRight;
 	BOOL m_bClipped;
+	double m_MaxClipped;
 
 	class CStatisticsContext * m_pScanContext;
 

@@ -2201,6 +2201,7 @@ CVolumeChangeContext::CVolumeChangeContext(CWaveSoapFrontDoc * pDoc,
 	: COperationContext(pDoc, OperationName, OperationContextDiskIntensive),
 	m_VolumeLeft(1.),
 	m_VolumeRight(1.),
+	m_MaxClipped(0.),
 	m_bClipped(FALSE)
 {
 	m_OperationString = StatusString;
@@ -2232,6 +2233,7 @@ BOOL CVolumeChangeContext::ProcessBuffer(void * buf, size_t BufferLength, DWORD 
 				{
 					pDst[i] = 0x7FFF;
 					m_bClipped = TRUE;
+					m_MaxClipped = 32768;
 				}
 				else
 				{
@@ -2246,11 +2248,19 @@ BOOL CVolumeChangeContext::ProcessBuffer(void * buf, size_t BufferLength, DWORD 
 				long tmp = fround(pDst[i] * volume);
 				if (tmp > 0x7FFF)
 				{
+					if (m_MaxClipped < tmp)
+					{
+						m_MaxClipped = tmp;
+					}
 					pDst[i] = 0x7FFF;
 					m_bClipped = TRUE;
 				}
 				else if (tmp < -0x8000)
 				{
+					if (m_MaxClipped < -tmp)
+					{
+						m_MaxClipped = -tmp;
+					}
 					pDst[i] = -0x8000;
 					m_bClipped = TRUE;
 				}
@@ -2271,11 +2281,19 @@ BOOL CVolumeChangeContext::ProcessBuffer(void * buf, size_t BufferLength, DWORD 
 			long tmp = fround(pDst[0] * m_VolumeRight);
 			if (tmp > 0x7FFF)
 			{
+				if (m_MaxClipped < tmp)
+				{
+					m_MaxClipped = tmp;
+				}
 				pDst[0] = 0x7FFF;
 				m_bClipped = TRUE;
 			}
 			else if (tmp < -0x8000)
 			{
+				if (m_MaxClipped < -tmp)
+				{
+					m_MaxClipped = -tmp;
+				}
 				pDst[0] = -0x8000;
 				m_bClipped = TRUE;
 			}
@@ -2303,6 +2321,7 @@ BOOL CVolumeChangeContext::ProcessBuffer(void * buf, size_t BufferLength, DWORD 
 				{
 					pDst[0] = 0x7FFF;
 					m_bClipped = TRUE;
+					m_MaxClipped = 32768.;
 				}
 				else
 				{
@@ -2314,6 +2333,7 @@ BOOL CVolumeChangeContext::ProcessBuffer(void * buf, size_t BufferLength, DWORD 
 				{
 					pDst[1] = 0x7FFF;
 					m_bClipped = TRUE;
+					m_MaxClipped = 32768.;
 				}
 				else
 				{
@@ -2328,11 +2348,19 @@ BOOL CVolumeChangeContext::ProcessBuffer(void * buf, size_t BufferLength, DWORD 
 				long tmp = fround(pDst[0] * m_VolumeLeft);
 				if (tmp > 0x7FFF)
 				{
+					if (m_MaxClipped < tmp)
+					{
+						m_MaxClipped = tmp;
+					}
 					pDst[0] = 0x7FFF;
 					m_bClipped = TRUE;
 				}
 				else if (tmp < -0x8000)
 				{
+					if (m_MaxClipped < -tmp)
+					{
+						m_MaxClipped = -tmp;
+					}
 					pDst[0] = -0x8000;
 					m_bClipped = TRUE;
 				}
@@ -2344,11 +2372,19 @@ BOOL CVolumeChangeContext::ProcessBuffer(void * buf, size_t BufferLength, DWORD 
 				tmp = fround(pDst[1] * m_VolumeRight);
 				if (tmp > 0x7FFF)
 				{
+					if (m_MaxClipped < tmp)
+					{
+						m_MaxClipped = tmp;
+					}
 					pDst[1] = 0x7FFF;
 					m_bClipped = TRUE;
 				}
 				else if (tmp < -0x8000)
 				{
+					if (m_MaxClipped < -tmp)
+					{
+						m_MaxClipped = -tmp;
+					}
 					pDst[1] = -0x8000;
 					m_bClipped = TRUE;
 				}
@@ -2365,11 +2401,19 @@ BOOL CVolumeChangeContext::ProcessBuffer(void * buf, size_t BufferLength, DWORD 
 			long tmp = fround(pDst[0] * m_VolumeLeft);
 			if (tmp > 0x7FFF)
 			{
+				if (m_MaxClipped < tmp)
+				{
+					m_MaxClipped = tmp;
+				}
 				pDst[0] = 0x7FFF;
 				m_bClipped = TRUE;
 			}
 			else if (tmp < -0x8000)
 			{
+				if (m_MaxClipped < -tmp)
+				{
+					m_MaxClipped = -tmp;
+				}
 				pDst[0] = -0x8000;
 				m_bClipped = TRUE;
 			}
@@ -2417,6 +2461,7 @@ BOOL CVolumeChangeContext::ProcessBuffer(void * buf, size_t BufferLength, DWORD 
 				{
 					pDst[0] = 0x7FFF;
 					m_bClipped = TRUE;
+					m_MaxClipped = 32768.;
 				}
 				else
 				{
@@ -2431,11 +2476,19 @@ BOOL CVolumeChangeContext::ProcessBuffer(void * buf, size_t BufferLength, DWORD 
 				long tmp = fround(pDst[0] * volume);
 				if (tmp > 0x7FFF)
 				{
+					if (m_MaxClipped < tmp)
+					{
+						m_MaxClipped = tmp;
+					}
 					pDst[0] = 0x7FFF;
 					m_bClipped = TRUE;
 				}
 				else if (tmp < -0x8000)
 				{
+					if (m_MaxClipped < -tmp)
+					{
+						m_MaxClipped = -tmp;
+					}
 					pDst[0] = -0x8000;
 					m_bClipped = TRUE;
 				}
@@ -2452,11 +2505,19 @@ BOOL CVolumeChangeContext::ProcessBuffer(void * buf, size_t BufferLength, DWORD 
 			long tmp = fround(pDst[0] * volume);
 			if (tmp > 0x7FFF)
 			{
+				if (m_MaxClipped < tmp)
+				{
+					m_MaxClipped = tmp;
+				}
 				pDst[0] = 0x7FFF;
 				m_bClipped = TRUE;
 			}
 			else if (tmp < -0x8000)
 			{
+				if (m_MaxClipped < -tmp)
+				{
+					m_MaxClipped = -tmp;
+				}
 				pDst[0] = -0x8000;
 				m_bClipped = TRUE;
 			}
@@ -2475,7 +2536,7 @@ void CVolumeChangeContext::PostRetire(BOOL bChildContext)
 	if (m_bClipped)
 	{
 		CString s;
-		s.Format(IDS_SOUND_CLIPPED, pDocument->GetTitle());
+		s.Format(IDS_SOUND_CLIPPED, pDocument->GetTitle(), int(m_MaxClipped * 100. / 32678));
 		AfxMessageBox(s, MB_OK | MB_ICONEXCLAMATION);
 	}
 	COperationContext::PostRetire(bChildContext);
@@ -2487,6 +2548,7 @@ CDcOffsetContext::CDcOffsetContext(CWaveSoapFrontDoc * pDoc,
 	m_OffsetLeft(0),
 	m_OffsetRight(0),
 	m_bClipped(FALSE),
+	m_MaxClipped(0.),
 	m_pScanContext(NULL)
 {
 	m_OperationString = StatusString;
@@ -2560,11 +2622,19 @@ BOOL CDcOffsetContext::ProcessBuffer(void * buf, size_t BufferLength, DWORD offs
 			long tmp = pDst[i] + DcOffset;
 			if (tmp > 0x7FFF)
 			{
+				if (m_MaxClipped < tmp)
+				{
+					m_MaxClipped = tmp;
+				}
 				pDst[i] = 0x7FFF;
 				m_bClipped = TRUE;
 			}
 			else if (tmp < -0x8000)
 			{
+				if (m_MaxClipped < -tmp)
+				{
+					m_MaxClipped = -tmp;
+				}
 				pDst[i] = -0x8000;
 				m_bClipped = TRUE;
 			}
@@ -2584,11 +2654,19 @@ BOOL CDcOffsetContext::ProcessBuffer(void * buf, size_t BufferLength, DWORD offs
 			long tmp = pDst[0] + m_OffsetRight;
 			if (tmp > 0x7FFF)
 			{
+				if (m_MaxClipped < tmp)
+				{
+					m_MaxClipped = tmp;
+				}
 				pDst[0] = 0x7FFF;
 				m_bClipped = TRUE;
 			}
 			else if (tmp < -0x8000)
 			{
+				if (m_MaxClipped < -tmp)
+				{
+					m_MaxClipped = -tmp;
+				}
 				pDst[0] = -0x8000;
 				m_bClipped = TRUE;
 			}
@@ -2605,11 +2683,19 @@ BOOL CDcOffsetContext::ProcessBuffer(void * buf, size_t BufferLength, DWORD offs
 			long tmp = pDst[0] + m_OffsetLeft;
 			if (tmp > 0x7FFF)
 			{
+				if (m_MaxClipped < tmp)
+				{
+					m_MaxClipped = tmp;
+				}
 				pDst[0] = 0x7FFF;
 				m_bClipped = TRUE;
 			}
 			else if (tmp < -0x8000)
 			{
+				if (m_MaxClipped < -tmp)
+				{
+					m_MaxClipped = -tmp;
+				}
 				pDst[0] = -0x8000;
 				m_bClipped = TRUE;
 			}
@@ -2621,11 +2707,19 @@ BOOL CDcOffsetContext::ProcessBuffer(void * buf, size_t BufferLength, DWORD offs
 			tmp = pDst[1] + m_OffsetRight;
 			if (tmp > 0x7FFF)
 			{
+				if (m_MaxClipped < tmp)
+				{
+					m_MaxClipped = tmp;
+				}
 				pDst[1] = 0x7FFF;
 				m_bClipped = TRUE;
 			}
 			else if (tmp < -0x8000)
 			{
+				if (m_MaxClipped < -tmp)
+				{
+					m_MaxClipped = -tmp;
+				}
 				pDst[1] = -0x8000;
 				m_bClipped = TRUE;
 			}
@@ -2641,11 +2735,19 @@ BOOL CDcOffsetContext::ProcessBuffer(void * buf, size_t BufferLength, DWORD offs
 			long tmp = pDst[0] + m_OffsetLeft;
 			if (tmp > 0x7FFF)
 			{
+				if (m_MaxClipped < tmp)
+				{
+					m_MaxClipped = tmp;
+				}
 				pDst[0] = 0x7FFF;
 				m_bClipped = TRUE;
 			}
 			else if (tmp < -0x8000)
 			{
+				if (m_MaxClipped < -tmp)
+				{
+					m_MaxClipped = -tmp;
+				}
 				pDst[0] = -0x8000;
 				m_bClipped = TRUE;
 			}
@@ -2681,11 +2783,19 @@ BOOL CDcOffsetContext::ProcessBuffer(void * buf, size_t BufferLength, DWORD offs
 			long tmp = pDst[0] + DcOffset;
 			if (tmp > 0x7FFF)
 			{
+				if (m_MaxClipped < tmp)
+				{
+					m_MaxClipped = tmp;
+				}
 				pDst[0] = 0x7FFF;
 				m_bClipped = TRUE;
 			}
 			else if (tmp < -0x8000)
 			{
+				if (m_MaxClipped < -tmp)
+				{
+					m_MaxClipped = -tmp;
+				}
 				pDst[0] = -0x8000;
 				m_bClipped = TRUE;
 			}
@@ -2701,11 +2811,19 @@ BOOL CDcOffsetContext::ProcessBuffer(void * buf, size_t BufferLength, DWORD offs
 			long tmp = pDst[0] + DcOffset;
 			if (tmp > 0x7FFF)
 			{
+				if (m_MaxClipped < tmp)
+				{
+					m_MaxClipped = tmp;
+				}
 				pDst[0] = 0x7FFF;
 				m_bClipped = TRUE;
 			}
 			else if (tmp < -0x8000)
 			{
+				if (m_MaxClipped < -tmp)
+				{
+					m_MaxClipped = -tmp;
+				}
 				pDst[0] = -0x8000;
 				m_bClipped = TRUE;
 			}
@@ -2724,7 +2842,7 @@ void CDcOffsetContext::PostRetire(BOOL bChildContext)
 	if (m_bClipped)
 	{
 		CString s;
-		s.Format(IDS_SOUND_CLIPPED, pDocument->GetTitle());
+		s.Format(IDS_SOUND_CLIPPED, pDocument->GetTitle(), int(m_MaxClipped * 100. / 32678));
 		AfxMessageBox(s, MB_OK | MB_ICONEXCLAMATION);
 	}
 	COperationContext::PostRetire(bChildContext);
