@@ -6,11 +6,12 @@
 #endif // _MSC_VER > 1000
 // Ruler.h : header file
 //
+#include "ScaledScrollView.h"
 
 /////////////////////////////////////////////////////////////////////////////
 // CHorizontalRuler view
 
-class CHorizontalRuler : public CView
+class CHorizontalRuler : public CScaledScrollView
 {
 protected:
 	CHorizontalRuler();           // protected constructor used by dynamic creation
@@ -25,8 +26,12 @@ public:
 // Overrides
 	// ClassWizard generated virtual function overrides
 	//{{AFX_VIRTUAL(CHorizontalRuler)
+public:
+	virtual void OnInitialUpdate();
 protected:
 	virtual void OnDraw(CDC* pDC);      // overridden to draw this view
+	virtual BOOL PreCreateWindow(CREATESTRUCT& cs);
+	virtual BOOL OnScrollBy(CSize sizeScroll, BOOL bDoScroll = TRUE);
 	//}}AFX_VIRTUAL
 
 // Implementation
@@ -36,17 +41,74 @@ protected:
 	virtual void AssertValid() const;
 	virtual void Dump(CDumpContext& dc) const;
 #endif
+	int PrevMouseX;
+	int ButtonPressed;
 
 	// Generated message map functions
 protected:
 	//{{AFX_MSG(CHorizontalRuler)
-	// NOTE - the ClassWizard will add and remove member functions here.
+	afx_msg void OnSetFocus(CWnd* pOldWnd);
+	afx_msg void OnMouseMove(UINT nFlags, CPoint point);
+	afx_msg void OnLButtonDown(UINT nFlags, CPoint point);
+	afx_msg void OnLButtonUp(UINT nFlags, CPoint point);
+	afx_msg int OnMouseActivate(CWnd* pDesktopWnd, UINT nHitTest, UINT message);
+	afx_msg void OnCaptureChanged(CWnd *pWnd);
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 };
 
 /////////////////////////////////////////////////////////////////////////////
 
+/////////////////////////////////////////////////////////////////////////////
+// CVerticalRuler view
+
+class CVerticalRuler : public CScaledScrollView
+{
+protected:
+	CVerticalRuler();           // protected constructor used by dynamic creation
+	DECLARE_DYNCREATE(CVerticalRuler)
+
+// Attributes
+public:
+
+// Operations
+public:
+
+// Overrides
+	// ClassWizard generated virtual function overrides
+	//{{AFX_VIRTUAL(CVerticalRuler)
+public:
+	virtual void OnInitialUpdate();
+protected:
+	virtual void OnDraw(CDC* pDC);      // overridden to draw this view
+	virtual BOOL PreCreateWindow(CREATESTRUCT& cs);
+	virtual BOOL OnScrollBy(CSize sizeScroll, BOOL bDoScroll = TRUE);
+	//}}AFX_VIRTUAL
+
+// Implementation
+protected:
+	virtual ~CVerticalRuler();
+#ifdef _DEBUG
+	virtual void AssertValid() const;
+	virtual void Dump(CDumpContext& dc) const;
+#endif
+	int PrevMouseY;
+	int ButtonPressed;
+
+	// Generated message map functions
+protected:
+	//{{AFX_MSG(CVerticalRuler)
+	afx_msg void OnSetFocus(CWnd* pOldWnd);
+	afx_msg void OnMouseMove(UINT nFlags, CPoint point);
+	afx_msg void OnLButtonDown(UINT nFlags, CPoint point);
+	afx_msg void OnLButtonUp(UINT nFlags, CPoint point);
+	afx_msg int OnMouseActivate(CWnd* pDesktopWnd, UINT nHitTest, UINT message);
+	afx_msg void OnCaptureChanged(CWnd *pWnd);
+	//}}AFX_MSG
+	DECLARE_MESSAGE_MAP()
+};
+
+/////////////////////////////////////////////////////////////////////////////
 //{{AFX_INSERT_LOCATION}}
 // Microsoft Visual C++ will insert additional declarations immediately before the previous line.
 
