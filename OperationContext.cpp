@@ -3207,7 +3207,7 @@ SAMPLE_INDEX CStatisticsContext::GetMaxSamplePosition(CHANNEL_MASK * pChannel) c
 		*pChannel = Channel;
 	}
 
-	return SamplePos / m_pDocument->WaveSampleSize();
+	return m_DstFile.PositionToSample(SamplePos);
 }
 
 CMaxScanContext::CMaxScanContext(CWaveSoapFrontDoc * pDoc,
