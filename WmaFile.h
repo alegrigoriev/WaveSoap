@@ -169,16 +169,7 @@ public:
 
 	virtual HRESULT STDMETHODCALLTYPE OnTime(
 											/* [in] */ QWORD cnsCurrentTime,
-											/* [in] */ void __RPC_FAR *pvContext)
-	{
-		TRACE("IWMReaderCallbackAdvancedOnTime(%I64d)\n", cnsCurrentTime);
-		// ask for next buffer
-		m_CurrentStreamTime = cnsCurrentTime;
-
-		m_bNeedNextSample = true;
-		m_SampleEvent.SetEvent();
-		return S_OK;
-	}
+											/* [in] */ void __RPC_FAR *pvContext);
 
 	virtual HRESULT STDMETHODCALLTYPE OnStreamSelection(
 														/* [in] */ WORD wStreamCount,
