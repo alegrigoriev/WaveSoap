@@ -2860,13 +2860,13 @@ void CWaveSoapFrontDoc::OnEditSelectAll()
 void CWaveSoapFrontDoc::OnEditSelection()
 {
 	CSelectionDialog dlg(m_SelectionStart, m_SelectionEnd, m_CaretPosition,
-						m_SelectedChannel + 1, WaveFileSamples(), WaveFormat(), GetApp()->m_SoundTimeFormat);
+						m_SelectedChannel, m_WavFile, GetApp()->m_SoundTimeFormat);
 
 	if (IDOK != dlg.DoModal())
 	{
 		return;
 	}
-	SetSelection(dlg.GetStart(), dlg.GetEnd(), dlg.GetChannel() - 1, dlg.GetEnd(), true);
+	SetSelection(dlg.GetStart(), dlg.GetEnd(), dlg.GetChannel(), dlg.GetEnd(), true);
 
 }
 
