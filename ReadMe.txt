@@ -1,6 +1,7 @@
 Known problems and tasks:
 
 Make group "All Expressions" in expression evaluation dialog
+Notify when there is overflow during expression evaluation
 Make "New File parameters" dialog
 Support "Play" in selection dialog
 Move most persistent dialog parameters to dialogs, to update registry dynamically

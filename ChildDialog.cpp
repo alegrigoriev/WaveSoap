@@ -133,13 +133,17 @@ void CInsertExpressionDialog::BuildExpressionGroupCombobox(int nGroupSelected, i
 {
 	CThisApp * pApp = GetApp();
 	m_ExpressionGroupCombo.ResetContent();
+	if (pApp->m_NumOfExprGroups > 0)
+	{
+		m_ExpressionGroupCombo.AddString("All Expressions");
+	}
 	for (int i = 0; i < pApp->m_NumOfExprGroups; i++)
 	{
 		m_ExpressionGroupCombo.AddString(pApp->m_ExpressionGroups[i]);
 	}
-	if (nGroupSelected >= pApp->m_NumOfExprGroups)
+	if (nGroupSelected > pApp->m_NumOfExprGroups)
 	{
-		nGroupSelected = pApp->m_NumOfExprGroups - 1;
+		nGroupSelected = 0;
 	}
 	m_ExpressionGroupSelected = nGroupSelected;
 	m_CurrExpressionGroupSelected = nGroupSelected;
@@ -155,18 +159,30 @@ void CInsertExpressionDialog::LoadExpressionCombobox(int nGroupSelected, int nEx
 
 	m_SavedExpressionCombo.ResetContent();
 	if (nGroupSelected < 0
-		|| nGroupSelected >= pApp->m_NumOfExprGroups)
+		|| pApp->m_NumOfExprGroups <= 0
+		|| nGroupSelected > pApp->m_NumOfExprGroups)
 	{
 		m_CurrExpressionGroupSelected = -1;
 		m_SavedExpressionCombo.SetCurSel(-1);
 		OnSelchangeComboSavedExpressions();
 		return;
 	}
-
-	for (int i = 0; i < pApp->m_NumExpressions[nGroupSelected]; i++)
+	int NumExpressions;
+	int GroupBegin;
+	if (0 == nGroupSelected)
 	{
-		m_SavedExpressionCombo.AddString(
-										pApp->m_ExpressionNames[i + pApp->m_IndexOfGroupBegin[nGroupSelected]]);
+		GroupBegin = 0;
+		NumExpressions = pApp->m_NumExpressions[pApp->m_NumOfExprGroups - 1] +
+						pApp->m_IndexOfGroupBegin[pApp->m_NumOfExprGroups - 1];
+	}
+	else
+	{
+		GroupBegin = pApp->m_IndexOfGroupBegin[nGroupSelected - 1];
+		NumExpressions = pApp->m_NumExpressions[nGroupSelected - 1];
+	}
+	for (int i = 0; i < NumExpressions; i++)
+	{
+		m_SavedExpressionCombo.AddString(pApp->m_ExpressionNames[i + GroupBegin]);
 	}
 	if (nExprSelected >= i)
 	{
@@ -190,9 +206,22 @@ void CInsertExpressionDialog::OnSelchangeComboSavedExpressions()
 {
 	CThisApp * pApp = GetApp();
 	int sel = m_SavedExpressionCombo.GetCurSel();
-	if (sel >= 0 && sel < pApp->m_NumExpressions[m_ExpressionGroupSelected])
+	int NumExpressions;
+	int GroupBegin;
+	if (0 == m_ExpressionGroupSelected)
 	{
-		int ExprIndex = sel + pApp->m_IndexOfGroupBegin[m_ExpressionGroupSelected];
+		GroupBegin = 0;
+		NumExpressions = pApp->m_NumExpressions[pApp->m_NumOfExprGroups - 1] +
+						pApp->m_IndexOfGroupBegin[pApp->m_NumOfExprGroups - 1];
+	}
+	else
+	{
+		GroupBegin = pApp->m_IndexOfGroupBegin[m_ExpressionGroupSelected - 1];
+		NumExpressions = pApp->m_NumExpressions[m_ExpressionGroupSelected - 1];
+	}
+	if (sel >= 0 && sel < NumExpressions)
+	{
+		int ExprIndex = sel + GroupBegin;
 		CString s;
 		s.Format("%s - %s", LPCTSTR(pApp->m_Expressions[ExprIndex]),
 				LPCTSTR(pApp->m_ExpressionComments[ExprIndex]));
@@ -211,9 +240,22 @@ void CInsertExpressionDialog::OnButtonInsertExpression()
 	if (NULL != pEdit)
 	{
 		int sel = m_SavedExpressionCombo.GetCurSel();
-		if (sel >= 0 && sel < pApp->m_NumExpressions[m_ExpressionGroupSelected])
+		int NumExpressions;
+		int GroupBegin;
+		if (0 == m_ExpressionGroupSelected)
 		{
-			int ExprIndex = sel + pApp->m_IndexOfGroupBegin[m_ExpressionGroupSelected];
+			GroupBegin = 0;
+			NumExpressions = pApp->m_NumExpressions[pApp->m_NumOfExprGroups - 1] +
+							pApp->m_IndexOfGroupBegin[pApp->m_NumOfExprGroups - 1];
+		}
+		else
+		{
+			GroupBegin = pApp->m_IndexOfGroupBegin[m_ExpressionGroupSelected - 1];
+			NumExpressions = pApp->m_NumExpressions[m_ExpressionGroupSelected - 1];
+		}
+		if (sel >= 0 && sel < NumExpressions)
+		{
+			int ExprIndex = sel + GroupBegin;
 			pEdit->ReplaceSel(pApp->m_Expressions[ExprIndex], TRUE);
 			pEdit->SetFocus();
 		}
