@@ -255,7 +255,6 @@ CCdGrabbingDialog::CCdGrabbingDialog(CWnd* pParent /*=NULL*/)
 		{IDC_RADIO_STORE_IMMEDIATELY, MoveDown},
 		{IDC_RADIO_LOAD_FOR_EDITING, MoveDown},
 		{IDC_STATIC_FORMAT, MoveDown},
-		{IDC_BUTTON_SET_FORMAT, MoveDown},
 		{IDC_BUTTON_PLAY, MoveRight | MoveDown},
 		{IDC_BUTTON_STOP, MoveRight | MoveDown},
 
@@ -286,7 +285,6 @@ void CCdGrabbingDialog::DoDataExchange(CDataExchange* pDX)
 	DDX_Control(pDX, IDC_EDIT_ARTIST, m_eArtist);
 	DDX_Control(pDX, IDC_EDIT_ALBUM, m_eAlbum);
 	DDX_Control(pDX, IDC_EDIT_FOLDER_OR_FILE, m_eSaveFolderOrFile);
-	DDX_Control(pDX, IDC_STATIC_FORMAT, m_StaticFormat);
 	DDX_Control(pDX, IDC_COMBO_SPEED, m_SpeedCombo);
 	DDX_Control(pDX, IDC_COMBO_DRIVES, m_DrivesCombo);
 	DDX_Control(pDX, IDC_LIST_TRACKS, m_lbTracks);
@@ -377,11 +375,9 @@ BEGIN_MESSAGE_MAP(CCdGrabbingDialog, CResizableDialog)
 	ON_BN_CLICKED(IDC_BUTTON_MORE, OnButtonMore)
 	ON_CBN_SELCHANGE(IDC_COMBO_DRIVES, OnSelchangeComboDrives)
 	ON_WM_DESTROY()
-	ON_BN_CLICKED(IDC_BUTTON_BROWSE_SAVE_FOLDER, OnButtonBrowseSaveFolder)
 	ON_BN_CLICKED(IDC_BUTTON_CDDB, OnButtonCddb)
 	ON_BN_CLICKED(IDC_BUTTON_DESELECT_ALL, OnButtonDeselectAll)
 	ON_BN_CLICKED(IDC_BUTTON_SELECT_ALL, OnButtonSelectAll)
-	ON_BN_CLICKED(IDC_BUTTON_SET_FORMAT, OnButtonSetFormat)
 	ON_EN_CHANGE(IDC_EDIT_ALBUM, OnChangeEditAlbum)
 	ON_EN_CHANGE(IDC_EDIT_ARTIST, OnChangeEditArtist)
 	ON_NOTIFY(NM_CLICK, IDC_LIST_TRACKS, OnClickListTracks)
@@ -392,8 +388,13 @@ BEGIN_MESSAGE_MAP(CCdGrabbingDialog, CResizableDialog)
 	ON_BN_CLICKED(IDC_BUTTON_STOP, OnButtonStop)
 	ON_CBN_SELCHANGE(IDC_COMBO_SPEED, OnSelchangeComboSpeed)
 	ON_NOTIFY(LVN_ITEMCHANGED, IDC_LIST_TRACKS, OnItemchangedListTracks)
+	ON_BN_CLICKED(IDC_BUTTON_BROWSE_SAVE_FOLDER, OnButtonBrowseSaveFolder)
+	ON_WM_CONTEXTMENU()
+	ON_NOTIFY(NM_DBLCLK, IDC_LIST_TRACKS, OnDblclkListTracks)
 	//}}AFX_MSG_MAP
 	ON_WM_DEVICECHANGE()
+	ON_COMMAND(IDC_BUTTON_PLAY, OnButtonPlay)
+	ON_COMMAND(IDC_BUTTON_STOP, OnButtonStop)
 	ON_MESSAGE(WM_KICKIDLE, OnKickIdle)
 	ON_UPDATE_COMMAND_UI(IDOK, OnUpdateOk)
 	ON_UPDATE_COMMAND_UI(IDC_BUTTON_SELECT_ALL, OnUpdateSelectAll)
@@ -459,6 +460,9 @@ BOOL CCdGrabbingDialog::OpenDrive(TCHAR letter)
 
 void CCdGrabbingDialog::FillTrackList(TCHAR letter)
 {
+	memzero(m_toc);
+	m_Tracks.clear();
+	CString s;
 	if (0 == m_NumberOfDrives)
 	{
 		if (DiskStateNoCdDrive == m_DiskReady)
@@ -466,18 +470,33 @@ void CCdGrabbingDialog::FillTrackList(TCHAR letter)
 			return;
 		}
 		m_lbTracks.DeleteAllItems();
-		m_lbTracks.InsertItem(0, "CD drives not found");
-		m_Tracks.clear();
+		s.LoadString(IDS_NO_CD_DRIVES);
+		m_lbTracks.InsertItem(0, s);
 
-		memzero(m_toc);
 		m_DiskReady = DiskStateNoCdDrive;
 		return;
 	}
+
+	if (m_CdDrive.IsDriveBusy(letter))
+	{
+		if (DiskStateBusy == m_DiskReady)
+		{
+			return;
+		}
+		m_lbTracks.DeleteAllItems();
+		s.Format(IDS_CD_DRIVE_BUSY, letter);
+		m_lbTracks.InsertItem(0, s);
+
+		m_DiskReady = DiskStateBusy;
+		return;
+	}
+
 	if ( ! OpenDrive(letter))
 	{
 		TRACE("Couldn't open CD,error=%d\n",GetLastError());
 		m_lbTracks.DeleteAllItems();
-		m_lbTracks.InsertItem(0, "Invalid drive letter");
+		s.Format(IDS_CD_DRIVE_INACCESSIBLE, letter);
+		m_lbTracks.InsertItem(0, s);
 		return;
 	}
 	ReloadTrackList();
@@ -487,11 +506,10 @@ void CCdGrabbingDialog::FillTrackList(TCHAR letter)
 void CCdGrabbingDialog::ReloadTrackList(CdMediaChangeState NewMediaState)
 {
 	BOOL res = FALSE;
-
 	if (NewMediaState != CdMediaStateNotReady)
 	{
 		m_CdDrive.StopAudioPlay();
-		m_CdDrive.ReadSessions( & m_toc);
+		//m_CdDrive.ReadSessions( & m_toc);
 		res = m_CdDrive.ReadToc( & m_toc);
 	}
 
@@ -683,7 +701,6 @@ BOOL CCdGrabbingDialog::OnInitDialog()
 	FillTrackList(m_DriveLetterSelected);
 
 	SetTimer(1, 200, NULL);
-	UpdateFormatStatic();
 
 	return TRUE;  // return TRUE unless you set the focus to a control
 	// EXCEPTION: OCX Property Pages should return FALSE
@@ -902,12 +919,6 @@ void CCdGrabbingDialog::OnButtonSelectAll()
 	}
 }
 
-void CCdGrabbingDialog::OnButtonSetFormat()
-{
-	// TODO: Add your control notification handler code here
-
-}
-
 void CCdGrabbingDialog::OnChangeEditAlbum()
 {
 	// TODO: If this is a RICHEDIT control, the control will not
@@ -1028,6 +1039,53 @@ void CCdGrabbingDialog::OnClickListTracks(NMHDR* pNMHDR, LRESULT* pResult)
 	m_bNeedUpdateControls = TRUE;
 }
 
+void CCdGrabbingDialog::OnDblclkListTracks(NMHDR* pNMHDR, LRESULT* pResult)
+{
+	*pResult = 0;
+
+	NMLISTVIEW * pnmlv = (NMLISTVIEW *) pNMHDR;
+	LVHITTESTINFO hti;
+	hti.pt = pnmlv->ptAction;
+	m_lbTracks.HitTest( & hti);
+	TRACE("NM_CLICK Hittest=%X, item=%d\n", hti.flags, hti.iItem);
+	if (-1 == hti.iItem
+		|| hti.iItem >= m_Tracks.size()
+		|| 0 == (LVHT_ONITEMSTATEICON & hti.flags)
+		|| ! m_Tracks[hti.iItem].IsAudio)
+	{
+		return;
+	}
+
+	// check/uncheck all iteps
+	LVITEM lvi;
+	lvi.iSubItem = 0;
+	lvi.mask = LVIF_STATE;
+	lvi.stateMask = LVIS_STATEIMAGEMASK;
+
+	bool Checked = m_Tracks[hti.iItem].Checked;
+	if (Checked)
+	{
+		// uncheck
+		lvi.state = INDEXTOSTATEIMAGEMASK(2);
+	}
+	else
+	{
+		lvi.state = INDEXTOSTATEIMAGEMASK(1);
+	}
+
+	for (lvi.iItem = 0; lvi.iItem < m_Tracks.size(); lvi.iItem++)
+	{
+		if ( ! m_Tracks[lvi.iItem].IsAudio
+			|| Checked == m_Tracks[lvi.iItem].Checked)
+		{
+			continue;
+		}
+		m_Tracks[lvi.iItem].Checked = Checked;
+		m_lbTracks.SetItem( & lvi);
+		m_bNeedUpdateControls = TRUE;
+	}
+}
+
 void CCdGrabbingDialog::OnBeginlabeleditListTracks(NMHDR* pNMHDR, LRESULT* pResult)
 {
 	NMLVDISPINFO* pDispInfo = (NMLVDISPINFO*)pNMHDR;
@@ -1046,35 +1104,64 @@ void CCdGrabbingDialog::OnBeginlabeleditListTracks(NMHDR* pNMHDR, LRESULT* pResu
 
 BOOL CCdGrabbingDialog::PreTranslateMessage(MSG* pMsg)
 {
-	if (pMsg->message == WM_KEYDOWN &&
-		pMsg->wParam == VK_F2
+	if (pMsg->message == WM_KEYDOWN
 		&& pMsg->hwnd != NULL
 		&& pMsg->hwnd == m_lbTracks.m_hWnd)
 	{
-		// find a selected item
-		int nSelItem = -1;
-		while (-1 != (nSelItem = m_lbTracks.GetNextItem(nSelItem, LVNI_SELECTED)))
+		if (pMsg->wParam == VK_F2)
 		{
-			if (nSelItem < m_Tracks.size()
-				&& m_Tracks[nSelItem].IsAudio)
+			// find a selected item
+			int nSelItem = -1;
+			while (-1 != (nSelItem = m_lbTracks.GetNextItem(nSelItem, LVNI_SELECTED)))
 			{
-				// unselect all items
-				int nItem = -1;
-				while (-1 != (nItem = m_lbTracks.GetNextItem(nItem, LVNI_SELECTED)))
+				if (nSelItem < m_Tracks.size()
+					&& m_Tracks[nSelItem].IsAudio)
 				{
-					if (nItem != nSelItem)
+					// unselect all items
+					int nItem = -1;
+					while (-1 != (nItem = m_lbTracks.GetNextItem(nItem, LVNI_SELECTED)))
 					{
-						m_lbTracks.SetItemState(nItem, LVIS_SELECTED, 0);
+						if (nItem != nSelItem)
+						{
+							m_lbTracks.SetItemState(nItem, LVIS_SELECTED, 0);
+						}
 					}
-				}
-				m_lbTracks.SetItemState(nSelItem, LVIS_FOCUSED, LVIS_FOCUSED);
-				TRACE("m_lbTracks.EditLabel(%d)\n", nSelItem);
-				m_lbTracks.EditLabel(nSelItem);
+					m_lbTracks.SetItemState(nSelItem, LVIS_FOCUSED, LVIS_FOCUSED);
+					TRACE("m_lbTracks.EditLabel(%d)\n", nSelItem);
+					m_lbTracks.EditLabel(nSelItem);
 
-				break;
+					break;
+				}
 			}
+			return TRUE;
 		}
-		return TRUE;
+		else if (pMsg->wParam == VK_SPACE)
+		{
+			// toggle check
+			LVITEM lvi;
+			lvi.iItem = m_lbTracks.GetNextItem(-1, LVNI_FOCUSED);
+			lvi.iSubItem = 0;
+			lvi.mask = LVIF_STATE;
+			lvi.stateMask = LVIS_STATEIMAGEMASK;
+
+			if (m_Tracks[lvi.iItem].IsAudio)
+			{
+				if (m_Tracks[lvi.iItem].Checked)
+				{
+					// uncheck
+					lvi.state = INDEXTOSTATEIMAGEMASK(1);
+					m_Tracks[lvi.iItem].Checked = false;
+				}
+				else
+				{
+					lvi.state = INDEXTOSTATEIMAGEMASK(2);
+					m_Tracks[lvi.iItem].Checked = true;
+				}
+				m_lbTracks.SetItem( & lvi);
+				m_bNeedUpdateControls = TRUE;
+			}
+			return TRUE;
+		}
 	}
 
 	return CResizableDialog::PreTranslateMessage(pMsg);
@@ -1149,15 +1236,24 @@ void CCdGrabbingDialog::OnButtonPlay()
 	{
 		tr = m_lbTracks.GetNextItem(-1, LVNI_FOCUSED);
 	}
-	if (-1 == tr
-		|| tr >= m_Tracks.size()
-		|| ! m_Tracks[tr].IsAudio)
+	if (-1 == tr)
 	{
 		return;
 	}
-	m_PlaybackAddress = m_Tracks[tr].TrackBegin;
-	m_PlaybackSectors = m_Tracks[tr].NumSectors;
-	m_PlayingTrack = tr;
+	StartCdPlayback(tr);
+}
+
+void CCdGrabbingDialog::StartCdPlayback(unsigned track)
+{
+	if (m_CdDrive.IsDriveBusy()
+		|| track >= m_Tracks.size()
+		|| ! m_Tracks[track].IsAudio)
+	{
+		return;
+	}
+	m_PlaybackAddress = m_Tracks[track].TrackBegin;
+	m_PlaybackSectors = m_Tracks[track].NumSectors;
+	m_PlayingTrack = track;
 
 	WAVEFORMATEX wfx;
 	wfx.cbSize = 0;
@@ -1180,9 +1276,10 @@ void CCdGrabbingDialog::OnButtonPlay()
 		return;
 	}
 	m_bPlayingAudio = TRUE;
-	m_bNeedUpdateControls = TRUE;
 	m_CdDrive.SetReadSpeed(176400 * 4);
 	FillPlaybackBuffers();
+
+	m_bNeedUpdateControls = TRUE;
 }
 
 void CCdGrabbingDialog::OnButtonStop()
@@ -1250,10 +1347,11 @@ void CCdGrabbingDialog::StopCdPlayback()
 	if (m_bPlayingAudio)
 	{
 		m_WaveOut.Reset();
-		m_bNeedUpdateControls = TRUE;
 		m_WaveOut.WaitForQueueEmpty(1000);
 		m_WaveOut.DeallocateBuffers();
 		m_WaveOut.Close();
+
+		m_bNeedUpdateControls = TRUE;
 	}
 	m_bPlayingAudio = FALSE;
 }
@@ -1300,11 +1398,15 @@ void CCdGrabbingDialog::OnItemchangedListTracks(NMHDR* pNMHDR, LRESULT* pResult)
 {
 	NM_LISTVIEW* pNMListView = (NM_LISTVIEW*)pNMHDR;
 	if (m_bPlayingAudio
-		&& pNMListView->iItem == m_PlayingTrack)
+		&& pNMListView->iItem != m_PlayingTrack)
 	{
-		if (0 == (pNMListView->uNewState & (LVIS_SELECTED | LVIS_FOCUSED)))
+		// if another item becomes selected, change playback to that item
+		if (pNMListView->uNewState
+			& ~ pNMListView->uOldState
+			& LVIS_SELECTED)
 		{
 			StopCdPlayback();
+			StartCdPlayback(pNMListView->iItem);
 		}
 	}
 	*pResult = 0;
@@ -1312,26 +1414,33 @@ void CCdGrabbingDialog::OnItemchangedListTracks(NMHDR* pNMHDR, LRESULT* pResult)
 
 void CCdGrabbingDialog::OnCancel()
 {
-	m_CdDrive.SetReadSpeed(m_CurrentReadSpeed);
+	if (! m_CdDrive.IsDriveBusy())
+	{
+		m_CdDrive.SetReadSpeed(m_CurrentReadSpeed);
+		m_CdDrive.StopDrive();
+	}
 
 	CResizableDialog::OnCancel();
 }
 
-void CCdGrabbingDialog::UpdateFormatStatic()
+void CCdGrabbingDialog::OnContextMenu(CWnd* pWnd, CPoint point)
 {
-	CString s;
-	switch (m_FileTypeFlags & SaveFile_NonWavFile)
+	return;
+	CRect cr;
+	m_lbTracks.GetClientRect( & cr);
+	m_lbTracks.ClientToScreen( & cr);
+	if ( ! cr.PtInRect(point))
 	{
-	case 0:
-		s.LoadString(IDS_CD_SAVE_WAV_FORMAT);
-		break;
-	case SaveFile_Mp3File:
-		s.Format(IDS_CD_SAVE_MP3_FORMAT, LPCTSTR(m_Mp3EncoderName), m_Wf.BytesPerSec / 125);
-		break;
-	case SaveFile_WmaFile:
-		s.Format(IDS_CD_SAVE_WMA_FORMAT, m_Wf.BytesPerSec / 125);
-		break;
+		return;
 	}
-	m_StaticFormat.SetWindowText(s);
+	CMenu menu;
+	menu.LoadMenu(IDR_MENU_CDGRAB);
+	CMenu* pPopup = menu.GetSubMenu(0);
+	if(pPopup != NULL)
+	{
+		pPopup->TrackPopupMenu(TPM_LEFTALIGN | TPM_RIGHTBUTTON,
+								point.x, point.y,
+								this);
+	}
 }
 

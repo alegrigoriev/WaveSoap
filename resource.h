@@ -103,6 +103,7 @@
 #define IDD_DIALOG_PASTE_RESAMPLE_MODE  183
 #define IDD_DIALOG_BATCH_CONVERSION     185
 #define IDD_DIALOG_BATCH_SAVE_TARGET    186
+#define IDR_MENU_CDGRAB                 187
 #define IDC_EDIT_MIN_CLICK_AMPLITUDE    1000
 #define IDC_TAB_SWITCH_VIEW_MODE        1000
 #define IDC_CHECK_LOG_CLICKS            1001
@@ -349,13 +350,16 @@
 #define IDC_BUTTON_BROWSE_SAVE_FOLDER   1230
 #define IDC_RADIO_ASSIGN_SELECTED_TRACK 1232
 #define IDC_RADIO_ASSIGN_ATTRIBUTES     1233
-#define IDC_BUTTON_SET_FORMAT           1234
 #define IDC_RADIO_STORE_IMMEDIATELY     1236
 #define IDC_STATIC_ALBUM                1238
 #define IDC_STATIC_ARTIST               1239
 #define IDC_RADIO_LOAD_FOR_EDITING      1240
 #define IDC_BUTTON_STOP                 1241
 #define IDC_STATIC_STORE_FOLDER         1242
+#define IDC_RADIO_WAV_FORMAT            1243
+#define IDC_RADIO_WMA_FORMAT            1244
+#define IDC_STATIC_SAVE_AS              1245
+#define IDC_COMBO_BITRATE               1246
 #define IDC_VIEW_RULER_SAMPLES          32771
 #define IDC_VIEW_RULER_HHMMSS           32772
 #define IDC_VIEW_RULER_SECONDS          32773
@@ -545,9 +549,9 @@
 #define IDS_UNABLE_TO_CREATE_DIRECTORY  32954
 #define IDS_UNABLE_TO_CREATE_DIRECTORY_ACCESSDENIED 32955
 #define IDS_CD_READING_ERROR_FORMAT     32956
-#define IDS_CD_SAVE_WAV_FORMAT          32957
-#define IDS_CD_SAVE_MP3_FORMAT          32958
-#define IDS_CD_SAVE_WMA_FORMAT          32959
+#define IDS_NO_CD_DRIVES                32957
+#define IDS_CD_DRIVE_INACCESSIBLE       32958
+#define IDS_CD_DRIVE_BUSY               32959
 #define ID_FILE_PROPERTIES              40000
 #define ID_VIEW_ZOOMVERT_NORMAL         40001
 #define ID_VIEW_ZOOMIN_HOR_FULL         40002
@@ -640,6 +644,8 @@
 #define ID_PROCESS_SWAPCHANNELS         40107
 #define ID_PROCESS_FILTER               40108
 #define ID_FILE_BATCHCONVERSION         40109
+#define ID_CDGRAB_SETCHECK              40110
+#define ID_CDGRAB_UNCHECK               40111
 #define ID_TOOLS_SYNTHESIS              65535
 
 // Next default values for new objects
@@ -647,9 +653,9 @@
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_3D_CONTROLS                     1
-#define _APS_NEXT_RESOURCE_VALUE        187
-#define _APS_NEXT_COMMAND_VALUE         40110
-#define _APS_NEXT_CONTROL_VALUE         1243
+#define _APS_NEXT_RESOURCE_VALUE        188
+#define _APS_NEXT_COMMAND_VALUE         40113
+#define _APS_NEXT_CONTROL_VALUE         1247
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif
