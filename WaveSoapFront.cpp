@@ -44,6 +44,7 @@ public:
 											//BOOL bMakeVisible = TRUE
 										);
 	virtual void OnIdle();
+	void BroadcastUpdate(UINT lHint);
 
 };
 
@@ -55,6 +56,7 @@ public:
 	~CWaveSoapDocManager() {}
 	virtual void OnFileOpen();
 	CDocument* OpenDocumentFile(LPCTSTR lpszFileName, int flags);
+	void BroadcastUpdate(UINT lHint);
 };
 
 void CWaveSoapDocTemplate::OnIdle()
@@ -213,6 +215,14 @@ CWaveSoapFrontApp::CWaveSoapFrontApp()
 	m_OpenFileDialogFilter(1)
 {
 	// Place all significant initialization in InitInstance
+	m_NewFileFormat.wFormatTag = WAVE_FORMAT_PCM;
+	m_NewFileFormat.nChannels = 2;
+	m_NewFileFormat.nSamplesPerSec = 44100;
+	m_NewFileFormat.nAvgBytesPerSec = 44100 * 4;
+	m_NewFileFormat.wBitsPerSample = 16;
+	m_NewFileFormat.nBlockAlign = 4;
+	m_NewFileFormat.cbSize = 0;
+
 	m_Thread.m_bAutoDelete = FALSE;
 	m_pDocManager = new CWaveSoapDocManager;
 }
@@ -636,6 +646,10 @@ int CWaveSoapFrontApp::ExitInstance()
 		GetCurrentDirectory(MAX_PATH+1, dirbuf);
 		m_CurrentDir.ReleaseBuffer();
 	}
+	for (int i = 0; i < sizeof AppColors / sizeof AppColors[0]; i++)
+	{
+		AppColors[i] &= 0x00FFFFFF;
+	}
 	Profile.UnloadSection(_T("Settings"));
 	Profile.UnloadSection(_T("Settings\\Colors"));
 	// must close the file before deleting the cache
@@ -652,6 +666,7 @@ int CWaveSoapFrontApp::ExitInstance()
 	delete m_pMP3TypeTemplate;
 	//delete m_pWavTypeTemplate;
 	delete m_pWmaTypeTemplate;
+	m_Palette.DeleteObject();
 	return CWinApp::ExitInstance();
 }
 
@@ -1504,6 +1519,71 @@ void CWaveSoapFrontStatusBar::OnContextMenu(CWnd* pWnd, CPoint point)
 	case ID_INDICATOR_SELECTION_LENGTH:
 		id = IDR_MENU_SELECTION_LENGTH;
 		break;
+	case ID_INDICATOR_SCALE:
+	{
+		CFrameWnd * pFrame = GetParentFrame();
+		if (NULL != pFrame)
+		{
+			CWnd * pClient = pFrame->GetDlgItem(AFX_IDW_PANE_FIRST);
+			if (NULL != pClient)
+			{
+				CWaveSoapFrontView * pView =
+					dynamic_cast<CWaveSoapFrontView *>(pClient->GetDlgItem(CWaveMDIChildClient::WaveViewID));
+				if (NULL != pView)
+				{
+					switch (pView->GetHorizontalScale())
+					{
+					case 1:
+						id = IDR_MENU_POPUP_HOR_SCALE1;
+						break;
+					case 2:
+						id = IDR_MENU_POPUP_HOR_SCALE2;
+						break;
+					case 4:
+						id = IDR_MENU_POPUP_HOR_SCALE4;
+						break;
+					case 8:
+						id = IDR_MENU_POPUP_HOR_SCALE8;
+						break;
+					case 16:
+						id = IDR_MENU_POPUP_HOR_SCALE16;
+						break;
+					case 32:
+						id = IDR_MENU_POPUP_HOR_SCALE32;
+						break;
+					case 64:
+						id = IDR_MENU_POPUP_HOR_SCALE64;
+						break;
+					case 128:
+						id = IDR_MENU_POPUP_HOR_SCALE128;
+						break;
+					case 256:
+						id = IDR_MENU_POPUP_HOR_SCALE256;
+						break;
+					case 512:
+						id = IDR_MENU_POPUP_HOR_SCALE512;
+						break;
+					case 1024:
+						id = IDR_MENU_POPUP_HOR_SCALE1024;
+						break;
+					case 2048:
+						id = IDR_MENU_POPUP_HOR_SCALE2048;
+						break;
+					case 4096:
+						id = IDR_MENU_POPUP_HOR_SCALE4096;
+						break;
+					default:
+					case 8192:
+						id = IDR_MENU_POPUP_HOR_SCALE8192;
+						break;
+					}
+					break;
+				}
+			}
+		}
+	}
+		Default();
+		break;
 	default:
 		Default();
 		return;
@@ -1564,8 +1644,7 @@ void CWaveSoapFrontApp::OnEditPasteNew()
 	CDocTemplate* pTemplate = m_pDocManager->GetNextDocTemplate(pos);
 	if (pTemplate != NULL)
 	{
-		m_NewTemplateFile = m_ClipboardFile;
-		TRACE("New file channels=%d\n", m_NewTemplateFile.GetWaveFormat()->nChannels);
+		m_NewFileFormat = *m_ClipboardFile.GetWaveFormat();
 
 		CWaveSoapFrontDoc * pDoc = (CWaveSoapFrontDoc *)pTemplate->OpenDocumentFile(NULL);
 		if (NULL != pDoc)
@@ -1575,7 +1654,6 @@ void CWaveSoapFrontApp::OnEditPasteNew()
 			pDoc->DoEditPaste();
 			pDoc->EnableUndo(TmpUndo);
 		}
-		m_NewTemplateFile.Close();
 	}
 }
 
@@ -1984,5 +2062,112 @@ void NotEnoughMemoryMessageBox()
 
 void NotEnoughDiskSpaceMessageBox()
 {
+}
+
+void CWaveSoapFrontApp::CreatePalette()
+{
+	struct {
+		LOGPALETTE lp;
+		PALETTEENTRY pe[255];
+	} p = {0x300, 0};
+	TRACE("CMainFrame::CreateFftPalette\n");
+	CWaveFftView::FillLogPalette( & p.lp, sizeof p.pe / sizeof p.pe[0]);
+	// add wave color entries and make negative entries
+	PALETTEENTRY SysColors[20];
+	CDC * pDC = AfxGetMainWnd()->GetDC();
+	TRACE("Number of system colors = %d\n", GetSystemPaletteEntries(*pDC, 0, 40, NULL));
+	GetSystemPaletteEntries(*pDC, 0, 10, SysColors);
+	GetSystemPaletteEntries(*pDC, 246, 10, &SysColors[10]);
+	AfxGetMainWnd()->ReleaseDC(pDC);
+	for (int k = 0, n = 256 / 2; k < sizeof AppColors / sizeof AppColors[0]; k++)
+	{
+		// if the color is in system palette, don't put it to the application palette
+		AppColors[k] &= 0x00FFFFFF;
+		int i;
+		for (i = 0; i < 20; i++)
+		{
+			if ((reinterpret_cast<DWORD &>(SysColors[i]) & 0x00FFFFFF)
+				== (AppColors[k] & 0x00FFFFFF))
+			{
+				break;
+			}
+		}
+		if (i == 20)
+		{
+			n--;
+			p.lp.palPalEntry[n] = reinterpret_cast<PALETTEENTRY &>(AppColors[k]);
+			p.lp.palPalEntry[n].peFlags = PC_NOCOLLAPSE;
+			AppColors[k] |= 0x02000000;
+			TRACE("Application color %d (%06X) NOT in system palette\n", k, AppColors[k]);
+		}
+		else
+		{
+			AppColors[k] &= ~0x02000000;
+			TRACE("Application color %d (%06X) is in system palette\n", k, AppColors[k]);
+		}
+	}
+	// total 236 entries, each half is 118
+	for (int i = 10; i < 128; i++)
+	{
+		p.lp.palPalEntry[255-i].peFlags = p.lp.palPalEntry[i].peFlags;
+		p.lp.palPalEntry[255-i].peRed = ~p.lp.palPalEntry[i].peRed;
+		p.lp.palPalEntry[255-i].peGreen = ~p.lp.palPalEntry[i].peGreen;
+		p.lp.palPalEntry[255-i].peBlue = ~p.lp.palPalEntry[i].peBlue;
+	}
+	for (i = 0; i < 10; i++)
+	{
+		p.lp.palPalEntry[i].peFlags = 0;
+		p.lp.palPalEntry[i].peRed = SysColors[i].peRed;
+		p.lp.palPalEntry[i].peGreen = SysColors[i].peGreen;
+		p.lp.palPalEntry[i].peBlue = SysColors[i].peBlue;
+	}
+	p.lp.palNumEntries = 246;
+	for (i = 0; i < 20; i++)
+	{
+		TRACE("System color %d=%08X\n", i, SysColors[i]);
+	}
+	m_Palette.CreatePalette( & p.lp);
+}
+
+CPalette * CWaveSoapFrontApp::GetPalette()
+{
+
+	if (NULL == HPALETTE(m_Palette))
+	{
+		CreatePalette();
+	}
+	return & m_Palette;
+}
+
+void CWaveSoapFrontApp::BroadcastUpdate(UINT lHint)
+{
+	CWaveSoapDocManager * pDocManager = dynamic_cast<CWaveSoapDocManager *>(m_pDocManager);
+	if (pDocManager != NULL)
+	{
+		pDocManager->BroadcastUpdate(lHint);
+	}
+}
+
+void CWaveSoapDocManager::BroadcastUpdate(UINT lHint)
+{
+	POSITION pos = m_templateList.GetHeadPosition();
+	while (pos != NULL)
+	{
+		CWaveSoapDocTemplate* pTemplate = dynamic_cast<CWaveSoapDocTemplate*>((CDocTemplate*)m_templateList.GetNext(pos));
+		if (NULL != pTemplate)
+		{
+			pTemplate->BroadcastUpdate(lHint);
+		}
+	}
+}
+
+void CWaveSoapDocTemplate::BroadcastUpdate(UINT lHint)
+{
+	POSITION pos = GetFirstDocPosition();
+	while (pos != NULL)
+	{
+		CDocument* pDoc = GetNextDoc(pos);
+		pDoc->UpdateAllViews(NULL, lHint);
+	}
 }
 
