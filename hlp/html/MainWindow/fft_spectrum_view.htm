@@ -24,29 +24,31 @@
 
 <p>Spectrum view shows how the sound energy is distributed among different 
 frequencies. The spectrum is calculated using FFT procedure, which stands for 
-Fast Fourier Transform.</p>
+<b>Fast Fourier Transform</b>.</p>
 
 <p>Lower side of each channel's display corresponds to lower frequencies; upper 
 side corresponds to higher frequencies.</p>
 <p>Greater power is shown with brighter red and orange colors, lower power is 
-shown with darker blue color.</p>
+shown with darker blue colors.</p>
+<p>Selected area is outlined with a wide dotted line.</p>
 <p>The frequency is displayed on the left sidebar, at the same place where the
 <a href="amplitude_ruler.htm">amplitude ruler </a>is shown for the
 <a href="waveform_view.htm">waveform view</a>.</p>
 
 <p>Right-click in the spectrum view opens the popup menu. Besides from usual 
 zoom commands, it allows to select number of FFT bands (also called bins) and 
-type of FFT window.</p>
+type of FFT windowing function.</p>
 <p>Number of FFT bins is power of 2, from 64 to 8192. More bins give better 
 resolution in frequency domain, but lower resolution in time, because each FFT 
 block takes more source audio samples.</p>
-<p>Each block of source samples is shaped by a chosen FFT window function. 
+<p><a name="window_type"></a>Each block of source samples is shaped by a chosen FFT window function. 
 Without such windowing, it's not possible to separate the frequency bands well 
-enough. Energy from one band would bleed (leak) to other bands, far from it.</p>
+enough, because energy from one band would bleed (leak) to other bands, far from it. </p>
+<p>Window type can be chosen from the following:</p>
 <p><b>Squared sine</b> is also known as Hanning window. It has low leakage to 
-the far bins, but the closest bin has -30 dB leakage, which is a bit worse than 
+the far bins, but the sidelobe has -30 dB leakage, which is a bit worse than 
 Hamming window.</p>
-<p>Half-sine window quality is between Hamming and Hanning.</p>
+<p><b>Half-sine</b> window quality is between Hamming and squared sine.</p>
 <p><b>Hamming</b> window (0.54 – 0.46*cos(2*pi * n/N)) has the lowest leak to 
 the first bin, but the worst leakage to the far bins. All sidelobes of its 
 transfer function are mere -40 dB.</p>

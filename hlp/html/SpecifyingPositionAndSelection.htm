@@ -10,14 +10,31 @@
 
 <body>
 
-<h3>Specifying position and selection</h3>
-<p>Position can be specified in one of four formats.</p>
+<h3>Specifying position and selection length</h3>
+<p>Position and length can be specified in one of three formats.</p>
 <ol>
-  <li>Hours:minutes:seconds.miliseconds</li>
-  <li>Samples</li>
-  <li>Seconds:miliseconds.</li>
-  <li>Hours:minutes:seconds.frames</li>
+  <li><i>Hours:minutes:seconds.miliseconds</i>;</li>
+  <li><i>Samples </i>(with thousands comma-separated);</li>
+  <li><i>Hours:minutes:seconds.frames</i>, where frames are 75 per second 
+  (addressing used on compact disks);</li>
 </ol>
+
+<p>Time position is shown in the dialogs and the status bar with one of those 
+formats; besides, there is fourth format option: <i>seconds.milliseconds</i>.</p>
+<p>In the <a href="Dialogs/Selection/SelectionDialog.htm">selection</a> and
+<a href="Edit/hid_edit_goto.htm">GoTo</a> dialog boxes, you can choose one of 
+the above formats.</p>
+<p>If <i>Samples</i> option is in use, just enter the sample number, possibly 
+comma-separated (commas are ignored).</p>
+<p>If any other option is selected, you can enter hours, minutes and seconds, 
+separated with semicolon, and milliseconds or frames, separated with the decimal 
+point. You don't have to convert the time to the canonical form, with number of 
+seconds and minutes less than 60. Such input as <b>100</b> (1 minute 40 
+seconds), or <b>80:50</b> (one hour 20 minutes 50 seconds) is valid, too. </p>
+<p>If <i>Hours:minutes:seconds.frames</i> format is selected, whatever goes 
+after the decimal point is considered number of frames. Otherwise, you should 
+put 'f' after it, like: </p>
+<p><b>79:50.45f</b></p>
 
 </body>
 

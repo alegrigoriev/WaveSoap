@@ -952,11 +952,11 @@ void CWaveFftView::CalculateFftRange(SAMPLE_INDEX left, SAMPLE_INDEX right)
 				break;
 			case WindowTypeHalfSine:
 				// half sine
-				m_pFftWindow[w] = float(0.707107 * sin (w * M_PI /  (2*m_FftOrder)));
+				m_pFftWindow[w] = float(0.707107 * sin ((w + 0.5) * M_PI /  (2*m_FftOrder)));
 				break;
 			case WindowTypeHamming:
 				// Hamming window (sucks!!!)
-				m_pFftWindow[w] = float(0.9 * (0.54 - 0.46 * cos (w * M_PI /  m_FftOrder)));
+				m_pFftWindow[w] = float(0.9 * (0.54 - 0.46 * cos ((w + 0.5) * M_PI /  m_FftOrder)));
 				break;
 			}
 		}
