@@ -74,7 +74,10 @@ public:
 						double bottom, double top);
 
 	void KeepAspectRatio(BOOL flag) {bKeepAspectRatio = flag; }
-	void KeepScaleOnResize(BOOL flag) { bKeepScaleOnResize = flag; }
+	void KeepScaleOnResize(BOOL flag)
+	{ bKeepScaleOnResizeX = bKeepScaleOnResizeY = flag; }
+	void KeepScaleOnResizeX(BOOL flag) { bKeepScaleOnResizeX = flag; }
+	void KeepScaleOnResizeY(BOOL flag) { bKeepScaleOnResizeY = flag; }
 // Overrides
 	// ClassWizard generated virtual function overrides
 	//{{AFX_VIRTUAL(CScaledScrollView)
@@ -107,7 +110,8 @@ protected:
 	enum {ScrollMin = -16384, ScrollMax = 16383};
 
 	BOOL bKeepAspectRatio;
-	BOOL bKeepScaleOnResize;
+	BOOL bKeepScaleOnResizeX;
+	BOOL bKeepScaleOnResizeY;
 
 	// variables and functions for selection rectangle support
 	double m_dXStartTracking;

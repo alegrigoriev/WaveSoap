@@ -17,14 +17,19 @@ static char THIS_FILE[] = __FILE__;
 IMPLEMENT_DYNCREATE(CScaledScrollView, CView)
 
 CScaledScrollView::CScaledScrollView()
-	:bKeepAspectRatio(TRUE), bKeepScaleOnResize(TRUE),
-	dOrgX(0.), dOrgY(0.), dScaleX(72.), dScaleY(72.),
+	:bKeepAspectRatio(TRUE),
+	bKeepScaleOnResizeX(TRUE),
+	bKeepScaleOnResizeY(TRUE),
+	dOrgX(0.), dOrgY(0.),
+	dScaleX(72.), dScaleY(72.),
 	dMinLeft(-100.), dMaxRight(100.), dMinBottom(-100.),
 	dMaxTop(100.),
 	dSizeX(100.), dSizeY(100.), dExtX(100.), dExtY(100.),
 
-	bIsTrackingSelection(FALSE), bHasSelection(FALSE),
-	bSelRectDrawn(FALSE), nKeyPressed(0),
+	bIsTrackingSelection(FALSE),
+	bHasSelection(FALSE),
+	bSelRectDrawn(FALSE),
+	nKeyPressed(0),
 	m_dXStartTracking(0.),
 	m_dYStartTracking(0.),
 	m_dXEndTracking(0.),
@@ -653,7 +658,14 @@ void CScaledScrollView::OnSize(UINT nType, int cx, int cy)
 		return;
 	GetMappingInfo();
 	DWORD flag = 0;
-	if (bKeepScaleOnResize)
+	// There are the following cases:
+	// 1. Keep scale on resize only on X axis
+	// 2. Keep scale on resize only on Y axis
+	// 3. Keep scale on resize on both axis
+	// 4. Do not keep scale on both axis, keep aspect ratio
+	// 5. Do not keep scale on both axis, don't keep aspect ratio
+
+	if (bKeepScaleOnResizeX && bKeepScaleOnResizeY)
 	{
 		double dCenterX = dOrgX + dExtX * 0.5;
 		double dCenterY = dOrgY - dExtY * 0.5;
@@ -671,6 +683,44 @@ void CScaledScrollView::OnSize(UINT nType, int cx, int cy)
 		}
 		// move origin
 		ScrollTo(dCenterX - dExtX * 0.5, dCenterY + dExtY * 0.5);
+	}
+	else if (bKeepScaleOnResizeX)
+	{
+		double dCenterX = dOrgX + dExtX * 0.5;
+		if (cx > 0)
+		{
+			dExtX = cx / (dScaleX * dLogScaleX);
+			dSizeX = fabs(dExtX);
+			flag |= CHANGE_HOR_EXTENTS;
+			double dNewScaleY = -cy / (dExtY * dLogScaleY);
+			if (dNewScaleY != dScaleY)
+			{
+				dScaleY = dNewScaleY;
+				InvalidateRgn(NULL);
+				//UpdateScrollbars();
+			}
+			// move origin
+			ScrollTo(dCenterX - dExtX * 0.5, dOrgY);
+		}
+	}
+	else if (bKeepScaleOnResizeY)
+	{
+		double dCenterY = dOrgY + dExtY * 0.5;
+		if (cy > 0)
+		{
+			dExtY = -cy / (dScaleY * dLogScaleY);
+			dSizeY = fabs(dExtY);
+			flag |= CHANGE_VERT_EXTENTS;
+			double dNewScaleX = cx / (dExtX * dLogScaleX);
+			if (dNewScaleX != dScaleX)
+			{
+				dScaleX = dNewScaleX;
+				InvalidateRgn(NULL);
+				//UpdateScrollbars();
+			}
+			// move origin
+			ScrollTo(dOrgX, dCenterY - dExtY * 0.5);
+		}
 	}
 	else
 	{
