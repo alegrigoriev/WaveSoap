@@ -745,28 +745,4 @@ protected:
 	int m_FadeCurveType;
 };
 
-BOOL InitInsertCopy(CStagedContext * pContext,
-					CWaveFile & DstFile, SAMPLE_INDEX StartDstSample,
-					NUMBER_OF_SAMPLES LengthToReplace, CHANNEL_MASK DstChannel,
-					CWaveFile & SrcFile, SAMPLE_INDEX StartSrcSample,
-					NUMBER_OF_SAMPLES SamplesToInsert, CHANNEL_MASK SrcChannel);
-
-BOOL InitExpandOperation(CStagedContext * pContext,
-						CWaveFile & File, SAMPLE_INDEX StartSample,
-						NUMBER_OF_SAMPLES Length, CHANNEL_MASK Channel);
-// delete area from StartSample to StartSample+Length
-BOOL InitShrinkOperation(CStagedContext * pContext,
-						CWaveFile & File, SAMPLE_INDEX StartSample, NUMBER_OF_SAMPLES Length, CHANNEL_MASK Channel);
-
-void InitCopyMarkers(CStagedContext * pContext,
-					CWaveFile & DstFile, SAMPLE_INDEX StartDstSample,
-					NUMBER_OF_SAMPLES LengthToReplace,
-					CWaveFile & SrcFile, SAMPLE_INDEX StartSrcSample,
-					NUMBER_OF_SAMPLES SamplesToInsert);
-
-void InitMoveMarkers(CStagedContext * pContext,
-					CWaveFile & DstFile, SAMPLE_INDEX StartDstSample,
-					NUMBER_OF_SAMPLES LengthToReplace,
-					NUMBER_OF_SAMPLES SamplesToInsert);
-
 #endif // AFX_OPERATIONCONTEXT2_H__FFA16C44_2FA7_11D4_9ADD_00C0F0583C4B__INCLUDED_

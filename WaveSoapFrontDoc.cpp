@@ -1293,7 +1293,7 @@ void CWaveSoapFrontDoc::DoCopy(SAMPLE_INDEX Start, SAMPLE_INDEX End,
 	pCopy->InitCopy(DstFile, 0, ALL_CHANNELS,
 					m_WavFile, Start, Channel, End - Start);
 
-	InitCopyMarkers(pContext.get(), DstFile, 0, End - Start, m_WavFile, Start, End - Start);
+	pContext->InitCopyMarkers(DstFile, 0, End - Start, m_WavFile, Start, End - Start);
 
 	if (OperationFlags & OperationContextClipboard)
 	{
@@ -1463,8 +1463,8 @@ BOOL CWaveSoapFrontDoc::DoPaste(SAMPLE_INDEX Start, SAMPLE_INDEX End, CHANNEL_MA
 		return FALSE;
 	}
 
-	if ( ! InitInsertCopy(pStagedContext.get(), m_WavFile, Start, End - Start, Channel,
-						SrcFile, 0, NumSamplesToPasteFrom, ChannelToCopyFrom))
+	if ( ! pStagedContext->InitInsertCopy(m_WavFile, Start, End - Start, Channel,
+										SrcFile, 0, NumSamplesToPasteFrom, ChannelToCopyFrom))
 	{
 		return FALSE;
 	}
@@ -1524,15 +1524,15 @@ void CWaveSoapFrontDoc::DoCut(SAMPLE_INDEX Start, SAMPLE_INDEX End, CHANNEL_MASK
 	pContext->AddContext(new CSelectionChangeOperation(this, Start, Start, Start, m_SelectedChannel));
 
 	// copy markers to the clipboard
-	InitCopyMarkers(pContext.get(), DstFile, 0, End - Start, m_WavFile, Start, End - Start);
+	pContext->InitCopyMarkers(DstFile, 0, End - Start, m_WavFile, Start, End - Start);
 
 	if (m_WavFile.AllChannels(Channel))
 	{
 		// now modify the wave file markers
-		InitMoveMarkers(pContext.get(), m_WavFile, Start, End - Start, 0);
+		pContext->InitMoveMarkers(m_WavFile, Start, End - Start, 0);
 	}
 
-	if ( ! InitShrinkOperation(pContext.get(), m_WavFile, Start, End - Start, Channel))
+	if ( ! pContext->InitShrinkOperation(m_WavFile, Start, End - Start, Channel))
 	{
 		return;
 	}
@@ -1564,10 +1564,10 @@ void CWaveSoapFrontDoc::DoDelete(SAMPLE_INDEX Start, SAMPLE_INDEX End, CHANNEL_M
 	if (m_WavFile.AllChannels(Channel))
 	{
 		// modify markers
-		InitMoveMarkers(pContext.get(), m_WavFile, Start, End - Start, 0);
+		pContext->InitMoveMarkers(m_WavFile, Start, End - Start, 0);
 	}
 
-	InitShrinkOperation(pContext.get(), m_WavFile, Start, End - Start, Channel);
+	pContext->InitShrinkOperation(m_WavFile, Start, End - Start, Channel);
 
 	if (UndoEnabled()
 		&& ! pContext->CreateUndo())
@@ -3912,7 +3912,7 @@ void CWaveSoapFrontDoc::OnProcessInsertsilence()
 	if (m_WavFile.AllChannels(dlg.GetChannel()))
 	{
 		// modify markers
-		InitMoveMarkers(pContext.get(), m_WavFile, dlg.GetStart(), 0, dlg.GetLength());
+		pContext->InitMoveMarkers(m_WavFile, dlg.GetStart(), 0, dlg.GetLength());
 	}
 
 	pContext.release()->Execute();
