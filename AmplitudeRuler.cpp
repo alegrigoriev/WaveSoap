@@ -97,7 +97,7 @@ void CAmplitudeRuler::DrawSamples(CDC * pDC)
 	pDC->SetBkMode(TRANSPARENT);
 	int nVertStep = GetSystemMetrics(SM_CYMENU);
 
-	int nChannels = pDoc->WaveChannels();
+	NUMBER_OF_CHANNELS nChannels = pDoc->WaveChannels();
 	int nHeight = cr.Height();
 	if (0 != nChannels)
 	{
@@ -188,9 +188,12 @@ void CAmplitudeRuler::DrawPercents(CDC * pDC)
 	pDC->SetTextAlign(TA_BOTTOM | TA_RIGHT);
 	pDC->SetTextColor(0x000000);   // black
 	pDC->SetBkMode(TRANSPARENT);
+
 	int nVertStep = GetSystemMetrics(SM_CYMENU);
-	int nChannels = pDoc->WaveChannels();
+	NUMBER_OF_CHANNELS nChannels = pDoc->WaveChannels();
+
 	int nHeight = cr.Height() / nChannels;
+
 	double VerticalScale = pMasterView->m_VerticalScale;
 	double ScaledWaveOffset = pMasterView->m_WaveOffsetY * VerticalScale;
 	double nSampleUnits = nVertStep * 200. / (nHeight * VerticalScale);
@@ -279,8 +282,10 @@ void CAmplitudeRuler::DrawDecibels(CDC * pDC)
 	pDC->SetTextAlign(TA_BOTTOM | TA_RIGHT);
 	pDC->SetTextColor(0x000000);   // black
 	pDC->SetBkMode(TRANSPARENT);
+
 	int nVertStep = GetSystemMetrics(SM_CYMENU);
-	int nChannels = pDoc->WaveChannels();
+	NUMBER_OF_CHANNELS nChannels = pDoc->WaveChannels();
+
 	int nHeight = cr.Height() / nChannels;
 	double VerticalScale = pMasterView->m_VerticalScale;
 	double ScaledWaveOffset = pMasterView->m_WaveOffsetY * VerticalScale;
@@ -447,7 +452,8 @@ int CAmplitudeRuler::OnCreate(LPCREATESTRUCT lpCreateStruct)
 
 void CAmplitudeRuler::UpdateMaxExtents()
 {
-	int nChannels = GetDocument()->WaveChannels();
+	NUMBER_OF_CHANNELS nChannels = GetDocument()->WaveChannels();
+
 	int nLowExtent = -32768;
 	int nHighExtent = 32767;
 	if (nChannels > 1)
@@ -713,7 +719,7 @@ int CSpectrumSectionRuler::OnCreate(LPCREATESTRUCT lpCreateStruct)
 void CSpectrumSectionRuler::UpdateMaxExtents()
 {
 #if 0
-	int nChannels = GetDocument()->WaveChannels();
+	NUMBER_OF_CHANNELS nChannels = GetDocument()->WaveChannels();
 	int nLowExtent = -32768;
 	int nHighExtent = 32767;
 	if (nChannels > 1)
