@@ -22,6 +22,7 @@
 #include "FilterDialog.h"
 #include "WaveSoapFileDialogs.h"
 #include "PasteResampleModeDlg.h"
+#include ".\wavesoapfrontdoc.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -160,7 +161,9 @@ BEGIN_MESSAGE_MAP(CWaveSoapFrontDoc, CDocument)
 	ON_COMMAND(ID_PROCESS_FILTER, OnProcessFilter)
 	ON_UPDATE_COMMAND_UI(ID_PROCESS_FILTER, OnUpdateProcessFilter)
 	//}}AFX_MSG_MAP
-END_MESSAGE_MAP()
+	ON_COMMAND(ID_PROCESS_REVERSE, OnProcessReverse)
+	ON_UPDATE_COMMAND_UI(ID_PROCESS_REVERSE, OnUpdateProcessReverse)
+	END_MESSAGE_MAP()
 
 /////////////////////////////////////////////////////////////////////////////
 // CWaveSoapFrontDoc construction/destruction
@@ -990,7 +993,7 @@ void CWaveSoapFrontDoc::OnEditPaste()
 {
 	if (CanWriteFile())
 	{
-		DoPaste(m_SelectionStart, m_SelectionEnd, GetSelectedChannel(), NULL);
+		DoPaste(m_SelectionStart, m_SelectionEnd, GetSelectedChannel(), PasteFlagSetNewSelection);
 	}
 }
 
@@ -1136,7 +1139,7 @@ void CWaveSoapFrontDoc::OnEditUndo()
 
 	if (RedoEnabled())
 	{
-		if ( ! pUndo->CreateUndo(FALSE))
+		if ( ! pUndo->CreateUndo())
 		{
 			// return head back
 			pUndo->DeleteUndo();
@@ -1175,7 +1178,7 @@ void CWaveSoapFrontDoc::OnEditRedo()
 
 	if (UndoEnabled())
 	{
-		if ( ! pRedo->CreateUndo(TRUE))
+		if ( ! pRedo->CreateUndo())
 		{
 			pRedo->DeleteUndo();
 			pRedo->UnprepareUndo();
@@ -1273,7 +1276,8 @@ void CWaveSoapFrontDoc::DoCopy(SAMPLE_INDEX Start, SAMPLE_INDEX End,
 	pContext.release()->Execute();
 }
 
-BOOL CWaveSoapFrontDoc::DoPaste(SAMPLE_INDEX Start, SAMPLE_INDEX End, CHANNEL_MASK Channel, LPCTSTR FileName)
+BOOL CWaveSoapFrontDoc::DoPaste(SAMPLE_INDEX Start, SAMPLE_INDEX End, CHANNEL_MASK Channel,
+								ULONG PasteFlags, LPCTSTR FileName)
 {
 	TRACE("DoPaste Start=%d, End=%d, Channel=%x, FileName=%s\n",
 		Start, End, Channel, FileName);
@@ -1435,8 +1439,11 @@ BOOL CWaveSoapFrontDoc::DoPaste(SAMPLE_INDEX Start, SAMPLE_INDEX End, CHANNEL_MA
 		return FALSE;
 	}
 
-	pStagedContext->AddContext(new CSelectionChangeOperation(this, Start, Start + NumSamplesToPasteFrom,
-															Start, m_SelectedChannel));
+	if (PasteFlags & PasteFlagSetNewSelection)
+	{
+		pStagedContext->AddContext(new CSelectionChangeOperation(this, Start, Start + NumSamplesToPasteFrom,
+																Start, m_SelectedChannel));
+	}
 
 	if (UndoEnabled()
 		&& ! pStagedContext->CreateUndo())
@@ -2775,7 +2782,7 @@ void CWaveSoapFrontDoc::OnIdle()
 	while ( ! m_RetiredList.IsEmpty())
 	{
 		COperationContext * pContext = m_RetiredList.RemoveHead();
-		pContext->PostRetire(FALSE);     // deletes it usually
+		pContext->PostRetire();     // deletes it usually
 
 		--m_OperationInProgress;
 	}
@@ -4993,7 +5000,7 @@ void CWaveSoapFrontDoc::DeletePermanentUndoRedo()
 
 void CWaveSoapFrontDoc::OnEditEnableUndo()
 {
-	if ( ! m_bReadOnly)
+	if (CanModifyFile())
 	{
 		m_bUndoEnabled = ! m_bUndoEnabled;
 	}
@@ -5001,20 +5008,20 @@ void CWaveSoapFrontDoc::OnEditEnableUndo()
 
 void CWaveSoapFrontDoc::OnUpdateEditEnableUndo(CCmdUI* pCmdUI)
 {
-	if (m_bReadOnly)
+	if ( ! CanModifyFile())
 	{
 		pCmdUI->Enable(FALSE);
 	}
 	else
 	{
 		pCmdUI->SetCheck(UndoEnabled());
-		pCmdUI->Enable(! IsBusy());
+		pCmdUI->Enable( ! IsBusy());
 	}
 }
 
 void CWaveSoapFrontDoc::OnEditEnableRedo()
 {
-	if ( ! m_bReadOnly)
+	if (CanModifyFile())
 	{
 		m_bRedoEnabled = ! m_bRedoEnabled;
 	}
@@ -5022,14 +5029,14 @@ void CWaveSoapFrontDoc::OnEditEnableRedo()
 
 void CWaveSoapFrontDoc::OnUpdateEditEnableRedo(CCmdUI* pCmdUI)
 {
-	if (m_bReadOnly)
+	if ( ! CanModifyFile())
 	{
 		pCmdUI->Enable(FALSE);
 	}
 	else
 	{
 		pCmdUI->SetCheck(RedoEnabled());
-		pCmdUI->Enable(! IsBusy());
+		pCmdUI->Enable( ! IsBusy());
 	}
 }
 
@@ -5043,7 +5050,7 @@ void CWaveSoapFrontDoc::OnEditClearUndo()
 
 void CWaveSoapFrontDoc::OnUpdateEditClearUndo(CCmdUI* pCmdUI)
 {
-	pCmdUI->Enable(! IsBusy() && ! m_UndoList.IsEmpty());
+	pCmdUI->Enable( ! IsBusy() && ! m_UndoList.IsEmpty());
 }
 
 void CWaveSoapFrontDoc::OnEditClearRedo()
@@ -5056,7 +5063,7 @@ void CWaveSoapFrontDoc::OnEditClearRedo()
 
 void CWaveSoapFrontDoc::OnUpdateEditClearRedo(CCmdUI* pCmdUI)
 {
-	pCmdUI->Enable(! IsBusy() && ! m_RedoList.IsEmpty());
+	pCmdUI->Enable( ! IsBusy() && ! m_RedoList.IsEmpty());
 }
 
 void CWaveSoapFrontDoc::OnProcessEqualizer()
@@ -5251,4 +5258,34 @@ CHANNEL_MASK CWaveSoapFrontDoc::GetSelectedChannel() const
 	}
 
 	return Channels & m_WavFile.ChannelsMask();
+}
+
+void CWaveSoapFrontDoc::OnProcessReverse()
+{
+	SAMPLE_INDEX start = m_SelectionStart;
+	SAMPLE_INDEX end = m_SelectionEnd;
+	if (start == end)
+	{
+		// select all
+		start = 0;
+		end = WaveFileSamples();
+	}
+
+	CReverseOperation * pContext =
+		new CReverseOperation(this, _T("Reversing..."), _T("Reverse"));
+
+	if ( ! pContext->InitDestination(m_WavFile, start,
+									end, GetSelectedChannel(), UndoEnabled()))
+	{
+		delete pContext;
+		return;
+	}
+
+	pContext->Execute();
+	SetModifiedFlag(TRUE);
+}
+
+void CWaveSoapFrontDoc::OnUpdateProcessReverse(CCmdUI *pCmdUI)
+{
+	pCmdUI->Enable(CanStartOperation(2, false, true));
 }
