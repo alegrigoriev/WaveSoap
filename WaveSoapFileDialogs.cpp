@@ -389,6 +389,7 @@ CFileSaveUiSupport::CFileSaveUiSupport(CWaveFormat const & Wf)
 	m_Profile.AddItem(_T("Settings"), _T("WmaBitrate"), m_SelectedWmaBitrate, 128000, 0, 160000);
 	m_Profile.AddItem(_T("Settings"), _T("MP3Encoder"), m_SelectedMp3Encoder, 0, 0, 4);
 	m_Profile.AddItem(_T("Settings"), _T("FormatTag"), m_SelectedTag, m_SelectedTag);
+	m_Profile.AddBoolItem(_T("Settings"), _T("ShowCompatibleFormatsOnly"), m_bCompatibleFormatsOnly, TRUE);
 }
 
 CWaveSoapFileSaveDialog::CWaveSoapFileSaveDialog(BOOL bOpenFileDialog, // TRUE for FileOpen, FALSE for FileSaveAs
@@ -961,9 +962,6 @@ void CFileSaveUiSupport::FillWmaFormatCombo()
 
 void CFileSaveUiSupport::FillMp3EncoderCombo()
 {
-	// TODO: check if this format can be converted from the source format
-	// Remove the encoder if there is not conversion
-	// check if LAME encoder is available
 	m_FormatTagCombo.ResetContent();
 	m_Acm.FillMp3EncoderTags(m_bCompatibleFormatsOnly ?
 								WaveFormatMatchCompatibleFormats
