@@ -816,6 +816,8 @@ protected:
 	afx_msg void OnButtonSetThreshold();
 	afx_msg void OnButtonSaveSettings();
 	afx_msg void OnButtonLoadSettings();
+	afx_msg void OnButtonSetDefaults();
+	afx_msg void OnButtonRevert();
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 };
