@@ -69,7 +69,6 @@ protected:
 
 	// Generated message map functions
 	//{{AFX_MSG(CPasteModeDialog)
-	// NOTE: the ClassWizard will add member functions here
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 };
@@ -484,6 +483,181 @@ protected:
 	//{{AFX_MSG(CExpressionEvaluationDialog)
 	afx_msg void OnButtonSelection();
 	virtual void OnOK();
+	//}}AFX_MSG
+	DECLARE_MESSAGE_MAP()
+};
+/////////////////////////////////////////////////////////////////////////////
+// CDeclickDialog dialog
+
+class CDeclickDialog : public CDialog
+{
+// Construction
+public:
+	CDeclickDialog(CWnd* pParent = NULL);   // standard constructor
+	~CDeclickDialog();
+// Dialog Data
+	//{{AFX_DATA(CDeclickDialog)
+	enum { IDD = IDD_DIALOG_DECLICKING };
+	CStatic	m_SelectionStatic;
+	CNumEdit	m_EnvelopDecayRate;
+	CNumEdit	m_ClickToNoise;
+	CNumEdit	m_AttackRate;
+	CString	m_ClickLogFilename;
+	int		m_MaxClickLength;
+	int		m_MinClickAmplitude;
+	BOOL	m_bLogClicks;
+	BOOL	m_bLogClicksOnly;
+	BOOL	m_bImportClicks;
+	CString	m_ClickImportFilename;
+	BOOL	m_bUndo;
+	//}}AFX_DATA
+
+	double m_dAttackRate;
+	double m_dClickToNoise;
+	double m_dEnvelopDecayRate;
+
+	BOOL	m_bLockChannels;
+	long m_Start;
+	long m_End;
+	long m_FileLength;
+	int m_Chan;
+	int m_TimeFormat;
+	const WAVEFORMATEX * m_pWf;
+	void SetDeclickData(CClickRemoval * pCr);
+// Overrides
+	// ClassWizard generated virtual function overrides
+	//{{AFX_VIRTUAL(CDeclickDialog)
+protected:
+	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV support
+	//}}AFX_VIRTUAL
+
+// Implementation
+protected:
+
+	// Generated message map functions
+	//{{AFX_MSG(CDeclickDialog)
+	afx_msg void OnCheckLogClicks();
+	afx_msg void OnCheckImportClicks();
+	virtual BOOL OnInitDialog();
+	afx_msg void OnClickLogBrowseButton();
+	afx_msg void OnClickImportBrowseButton();
+	afx_msg void OnButtonMoreSettings();
+	afx_msg void OnButtonSelection();
+	virtual void OnOK();
+	//}}AFX_MSG
+	DECLARE_MESSAGE_MAP()
+	void UpdateSelectionStatic();
+	void LoadValuesFromRegistry();
+};
+/////////////////////////////////////////////////////////////////////////////
+// CNoiseReductionDialog dialog
+
+class CNoiseReductionDialog : public CDialog
+{
+// Construction
+public:
+	CNoiseReductionDialog(CWnd* pParent = NULL);   // standard constructor
+	~CNoiseReductionDialog();
+
+// Dialog Data
+	//{{AFX_DATA(CNoiseReductionDialog)
+	enum { IDD = IDD_DIALOG_NOISE_REDUCTION };
+	CStatic	m_SelectionStatic;
+	CNumEdit	m_eToneOverNoisePreference;
+	CNumEdit	m_EditAggressivness;
+	CNumEdit	m_eNoiseReduction;
+	CNumEdit	m_eNoiseCriterion;
+	CNumEdit	m_eNoiseThresholdHigh;
+	CNumEdit	m_eNoiseThresholdLow;
+	CNumEdit	m_eLowerFrequency;
+	int		m_nFftOrderExp;
+	BOOL	m_bUndo;
+	//}}AFX_DATA
+
+	double	m_dTransientThreshold;
+	double	m_dNoiseReduction;
+	double	m_dNoiseCriterion;
+	double	m_dNoiseThresholdLow;
+	double	m_dNoiseThresholdHigh;
+	double	m_dLowerFrequency;
+	double  m_dNoiseReductionAggressivness;
+	double  m_dToneOverNoisePreference;
+	double  m_NearMaskingDecayDistanceHigh;
+	double  m_NearMaskingDecayDistanceLow;
+	double m_NearMaskingDecayTimeLow;   // for low frequencies
+	double m_NearMaskingDecayTimeHigh;   // for high frequencies
+	double m_NearMaskingCoeff;
+	int m_FftOrder;
+
+	void LoadValuesFromRegistry();
+	void StoreValuesToRegistry();
+	void SetNoiseReductionData(CNoiseReduction * pNr);
+	void UpdateSelectionStatic();
+
+	BOOL	m_bLockChannels;
+	long m_Start;
+	long m_End;
+	long m_FileLength;
+	int m_Chan;
+	int m_TimeFormat;
+	const WAVEFORMATEX * m_pWf;
+// Overrides
+	// ClassWizard generated virtual function overrides
+	//{{AFX_VIRTUAL(CNoiseReductionDialog)
+protected:
+	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV support
+	//}}AFX_VIRTUAL
+
+// Implementation
+protected:
+
+	// Generated message map functions
+	//{{AFX_MSG(CNoiseReductionDialog)
+	afx_msg void OnButtonMore();
+	afx_msg void OnButtonSelection();
+	virtual BOOL OnInitDialog();
+	virtual void OnOK();
+	//}}AFX_MSG
+	DECLARE_MESSAGE_MAP()
+};
+/////////////////////////////////////////////////////////////////////////////
+// CMoreNoiseDialog dialog
+
+class CMoreNoiseDialog : public CDialog
+{
+// Construction
+public:
+	CMoreNoiseDialog(CWnd* pParent = NULL);   // standard constructor
+
+// Dialog Data
+	//{{AFX_DATA(CMoreNoiseDialog)
+	enum { IDD = IDD_DIALOG_MORE_NOISEREDUCTION };
+	CNumEdit	m_eNearMaskingCoeff;
+	CNumEdit	m_eFarMaskingCoeff;
+	CNumEdit	m_eNearMaskingTimeLow;
+	CNumEdit	m_eNearMaskingTimeHigh;
+	CNumEdit	m_eNearMaskingDistanceLow;
+	CNumEdit	m_eNearMaskingDistanceHigh;
+	//}}AFX_DATA
+
+	double  m_NearMaskingDecayDistanceHigh;
+	double  m_NearMaskingDecayDistanceLow;
+	double m_NearMaskingDecayTimeLow;   // for low frequencies
+	double m_NearMaskingDecayTimeHigh;   // for high frequencies
+	double m_NearMaskingCoeff;
+// Overrides
+	// ClassWizard generated virtual function overrides
+	//{{AFX_VIRTUAL(CMoreNoiseDialog)
+protected:
+	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV support
+	//}}AFX_VIRTUAL
+
+// Implementation
+protected:
+
+	// Generated message map functions
+	//{{AFX_MSG(CMoreNoiseDialog)
+	// NOTE: the ClassWizard will add member functions here
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 };

@@ -66,8 +66,7 @@ void CPasteModeDialog::DoDataExchange(CDataExchange* pDX)
 
 BEGIN_MESSAGE_MAP(CPasteModeDialog, CDialog)
 //{{AFX_MSG_MAP(CPasteModeDialog)
-// NOTE: the ClassWizard will add message map macros here
-//}}AFX_MSG_MAP
+	//}}AFX_MSG_MAP
 END_MESSAGE_MAP()
 
 /////////////////////////////////////////////////////////////////////////////
@@ -1549,4 +1548,496 @@ void CExpressionEvaluationDialog::OnOK()
 		}
 	}
 	EndDialog(IDOK);
+}
+/////////////////////////////////////////////////////////////////////////////
+// CDeclickDialog dialog
+
+
+CDeclickDialog::CDeclickDialog(CWnd* pParent /*=NULL*/)
+	: CDialog(CDeclickDialog::IDD, pParent)
+{
+	//{{AFX_DATA_INIT(CDeclickDialog)
+	m_ClickLogFilename = _T("");
+	m_MaxClickLength = 24;
+	m_MinClickAmplitude = 200;
+	m_bLogClicks = FALSE;
+	m_bLogClicksOnly = FALSE;
+	m_bImportClicks = FALSE;
+	m_ClickImportFilename = _T("");
+	m_bUndo = FALSE;
+	//}}AFX_DATA_INIT
+	m_dAttackRate = .06;
+	m_dClickToNoise = 5.;
+	m_dEnvelopDecayRate = 0.02;
+}
+
+CDeclickDialog::~CDeclickDialog()
+{
+	GetApp()->Profile.RemoveSection(_T("Declicker"));
+}
+
+void CDeclickDialog::DoDataExchange(CDataExchange* pDX)
+{
+	CDialog::DoDataExchange(pDX);
+	//{{AFX_DATA_MAP(CDeclickDialog)
+	DDX_Control(pDX, IDC_STATIC_SELECTION, m_SelectionStatic);
+	DDX_Control(pDX, IDC_EDIT_DECAY_RATE, m_EnvelopDecayRate);
+	DDX_Control(pDX, IDC_EDIT_CLICK_TO_NOISE, m_ClickToNoise);
+	DDX_Control(pDX, IDC_EDIT_ATTACK_RATE, m_AttackRate);
+	DDX_Text(pDX, IDC_EDIT_CLICK_LOG_FILENAME, m_ClickLogFilename);
+	DDX_Text(pDX, IDC_EDIT_MAX_CLICK_LENGTH, m_MaxClickLength);
+	DDV_MinMaxInt(pDX, m_MaxClickLength, 6, 64);
+	DDX_Text(pDX, IDC_EDIT_MIN_CLICK_AMPLITUDE, m_MinClickAmplitude);
+	DDV_MinMaxInt(pDX, m_MinClickAmplitude, 50, 5000);
+	DDX_Check(pDX, IDC_CHECK_LOG_CLICKS, m_bLogClicks);
+	DDX_Check(pDX, IDC_CHECK_LOG_CLICKS_ONLY, m_bLogClicksOnly);
+	DDX_Check(pDX, IDC_CHECK_IMPORT_CLICKS, m_bImportClicks);
+	DDX_Text(pDX, IDC_EDIT_CLICK_IMPORT_FILENAME, m_ClickImportFilename);
+	DDX_Check(pDX, IDC_CHECK_UNDO, m_bUndo);
+	//}}AFX_DATA_MAP
+	m_AttackRate.ExchangeData(pDX, m_dAttackRate,
+							"Attack rate", "", 0.01, 0.9);
+	m_ClickToNoise.ExchangeData(pDX, m_dClickToNoise,
+								"Click to noise rate", "", 1., 10.);
+	m_EnvelopDecayRate.ExchangeData(pDX, m_dEnvelopDecayRate,
+									"Envelop decay rate", "", 0.01, 0.99);
+}
+
+
+BEGIN_MESSAGE_MAP(CDeclickDialog, CDialog)
+	//{{AFX_MSG_MAP(CDeclickDialog)
+	ON_BN_CLICKED(IDC_CHECK_LOG_CLICKS, OnCheckLogClicks)
+	ON_BN_CLICKED(IDC_CHECK_IMPORT_CLICKS, OnCheckImportClicks)
+	ON_BN_CLICKED(IDC_CLICK_LOG_BROWSE_BUTTON, OnClickLogBrowseButton)
+	ON_BN_CLICKED(IDC_CLICK_IMPORT_BROWSE_BUTTON, OnClickImportBrowseButton)
+	ON_BN_CLICKED(IDC_BUTTON_MORE_SETTINGS, OnButtonMoreSettings)
+	ON_BN_CLICKED(IDC_BUTTON_SELECTION, OnButtonSelection)
+	//}}AFX_MSG_MAP
+END_MESSAGE_MAP()
+
+/////////////////////////////////////////////////////////////////////////////
+// CDeclickDialog message handlers
+void CDeclickDialog::OnCheckLogClicks()
+{
+	BOOL Enable = IsDlgButtonChecked(IDC_CHECK_LOG_CLICKS);
+	GetDlgItem(IDC_EDIT_CLICK_LOG_FILENAME)->EnableWindow(Enable);
+	GetDlgItem(IDC_CLICK_LOG_BROWSE_BUTTON)->EnableWindow(Enable);
+	GetDlgItem(IDC_CHECK_LOG_CLICKS_ONLY)->EnableWindow(Enable);
+}
+
+void CDeclickDialog::OnCheckImportClicks()
+{
+	BOOL Enable = IsDlgButtonChecked(IDC_CHECK_IMPORT_CLICKS);
+	GetDlgItem(IDC_EDIT_CLICK_IMPORT_FILENAME)->EnableWindow(Enable);
+	GetDlgItem(IDC_CLICK_IMPORT_BROWSE_BUTTON)->EnableWindow(Enable);
+}
+
+void CDeclickDialog::OnClickLogBrowseButton()
+{
+	CString filter("Text files (*.txt)|*.txt|All Files (*.*)|*.*||");
+
+	GetDlgItem(IDC_EDIT_CLICK_LOG_FILENAME)->GetWindowText(m_ClickLogFilename);
+
+	CFileDialog fdlg(TRUE, "txt", m_ClickLogFilename,
+					OFN_EXPLORER
+					//| OFN_FILEMUSTEXIST
+					| OFN_HIDEREADONLY,
+					filter);
+	fdlg.m_ofn.lpstrInitialDir = _T(".");
+
+	if (fdlg.DoModal() == IDOK)
+	{
+		m_ClickLogFilename = fdlg.GetPathName();
+		GetDlgItem(IDC_EDIT_CLICK_LOG_FILENAME)->SetWindowText(m_ClickLogFilename);
+	}
+
+}
+
+void CDeclickDialog::OnClickImportBrowseButton()
+{
+	CString filter("Text files (*.txt)|*.txt|All Files (*.*)|*.*||");
+
+	GetDlgItem(IDC_EDIT_CLICK_IMPORT_FILENAME)->GetWindowText(m_ClickImportFilename);
+
+	CFileDialog fdlg(TRUE, "txt", m_ClickImportFilename,
+					OFN_EXPLORER
+					| OFN_FILEMUSTEXIST
+					| OFN_HIDEREADONLY,
+					filter);
+	fdlg.m_ofn.lpstrInitialDir = _T(".");
+
+	if (fdlg.DoModal() == IDOK)
+	{
+		m_ClickImportFilename = fdlg.GetPathName();
+		GetDlgItem(IDC_EDIT_CLICK_IMPORT_FILENAME)->SetWindowText(m_ClickImportFilename);
+	}
+
+}
+void CDeclickDialog::OnButtonMoreSettings()
+{
+	// TODO: Add your control notification handler code here
+	//CMoreDeclickDialog dlg;
+	// set the data to dlg
+	//if (IDOK == dlg.DoModal())
+	{
+		// return the data from dlg
+	}
+}
+
+void CDeclickDialog::LoadValuesFromRegistry()
+{
+	CWaveSoapApp * pApp = (CWaveSoapApp *)AfxGetApp();
+	pApp->Profile.AddBoolItem(_T("Declicker"), _T("LogClicks"), m_bLogClicks, FALSE);
+	pApp->Profile.AddBoolItem(_T("Declicker"), _T("ImportClicks"), m_bImportClicks, FALSE);
+	pApp->Profile.AddBoolItem(_T("Declicker"), _T("LogClicksOnly"), m_bLogClicksOnly, FALSE);
+	pApp->Profile.AddItem(_T("Declicker"), _T("ClickLogFilename"), m_ClickLogFilename, _T(""));
+	pApp->Profile.AddItem(_T("Declicker"), _T("ClickImportFilename"), m_ClickImportFilename, _T(""));
+	pApp->Profile.AddItem(_T("Declicker"), _T("MaxClickLength"), m_MaxClickLength, 32, 6, 64);
+	pApp->Profile.AddItem(_T("Declicker"), _T("MinClickAmplitude"), m_MinClickAmplitude, 200, 50, 5000);
+	pApp->Profile.AddItem(_T("Declicker"), _T("AttackRate"), m_dAttackRate, 0.5, 0.001, 0.99);
+	pApp->Profile.AddItem(_T("Declicker"), _T("DecayRate"), m_dEnvelopDecayRate, 0.01, 0.001, 0.99);
+	pApp->Profile.AddItem(_T("Declicker"), _T("ClickToNoise"), m_dClickToNoise, 4., 1.5, 20);
+
+}
+
+BOOL CDeclickDialog::OnInitDialog()
+{
+	LoadValuesFromRegistry();
+	CDialog::OnInitDialog();
+
+	GetDlgItem(IDC_EDIT_CLICK_LOG_FILENAME)->EnableWindow(m_bLogClicks);
+	GetDlgItem(IDC_CLICK_LOG_BROWSE_BUTTON)->EnableWindow(m_bLogClicks);
+	GetDlgItem(IDC_CHECK_LOG_CLICKS_ONLY)->EnableWindow(m_bLogClicks);
+
+	GetDlgItem(IDC_EDIT_CLICK_IMPORT_FILENAME)->EnableWindow(m_bImportClicks);
+	GetDlgItem(IDC_CLICK_IMPORT_BROWSE_BUTTON)->EnableWindow(m_bImportClicks);
+
+	UpdateSelectionStatic();
+	return TRUE;  // return TRUE unless you set the focus to a control
+	// EXCEPTION: OCX Property Pages should return FALSE
+}
+
+void CDeclickDialog::OnButtonSelection()
+{
+	CSelectionDialog dlg;
+	dlg.m_Start = m_Start;
+	dlg.m_End = m_End;
+	dlg.m_Length = m_End - m_Start;
+	dlg.m_FileLength = m_FileLength;
+	dlg.m_Chan = m_Chan + 1;
+	dlg.m_pWf = m_pWf;
+	dlg.m_TimeFormat = m_TimeFormat;
+
+	if (IDOK != dlg.DoModal())
+	{
+		return;
+	}
+	m_Start = dlg.m_Start;
+	m_End = dlg.m_End;
+	m_Chan = dlg.m_Chan - 1;
+	UpdateSelectionStatic();
+}
+
+void CDeclickDialog::UpdateSelectionStatic()
+{
+	m_SelectionStatic.SetWindowText(GetSelectionText(m_Start, m_End, m_Chan,
+													m_pWf->nChannels, m_bLockChannels,
+													m_pWf->nSamplesPerSec, m_TimeFormat));
+}
+
+
+void CDeclickDialog::OnOK()
+{
+	CDialog::OnOK();
+	GetApp()->Profile.FlushSection(_T("Declicker"));
+}
+
+void CDeclickDialog::SetDeclickData(CClickRemoval * pCr)
+{
+	pCr->m_MeanPowerDecayRate = m_dEnvelopDecayRate;
+	pCr->m_PowerToDeriv3RatioThreshold = m_dClickToNoise * m_dClickToNoise;
+	pCr->m_MeanPowerAttackRate = m_dAttackRate;
+	pCr->m_nMaxClickLength = m_MaxClickLength;
+	pCr->m_MinDeriv3Threshold = m_MinClickAmplitude * m_MinClickAmplitude;
+	if (m_bImportClicks)
+	{
+		pCr->SetClickSourceFile(m_ClickImportFilename);
+	}
+	if (m_bLogClicks)
+	{
+		pCr->SetClickLogFile(m_ClickLogFilename);
+	}
+	pCr->m_PassTrough = m_bLogClicksOnly;
+}
+/////////////////////////////////////////////////////////////////////////////
+// CNoiseReductionDialog dialog
+
+
+CNoiseReductionDialog::CNoiseReductionDialog(CWnd* pParent /*=NULL*/)
+	: CDialog(CNoiseReductionDialog::IDD, pParent)
+{
+	//{{AFX_DATA_INIT(CNoiseReductionDialog)
+	m_nFftOrderExp = -1;
+	m_bUndo = -1;
+	//}}AFX_DATA_INIT
+	m_dTransientThreshold = 2;
+	m_dNoiseReduction = 10.;
+	m_dNoiseCriterion = 0.25;
+	m_dNoiseThresholdLow = -70.;
+	m_dNoiseThresholdHigh = -70.;
+	m_dLowerFrequency = 4000.;
+	m_FftOrder = 128;
+	m_dNoiseReductionAggressivness = 1.;
+	m_NearMaskingCoeff = 1.;
+}
+
+CNoiseReductionDialog::~CNoiseReductionDialog()
+{
+	CWaveSoapApp * pApp = (CWaveSoapApp *)AfxGetApp();
+	pApp->Profile.RemoveSection(_T("NoiseReduction"));
+}
+
+void CNoiseReductionDialog::DoDataExchange(CDataExchange* pDX)
+{
+	CDialog::DoDataExchange(pDX);
+	//{{AFX_DATA_MAP(CNoiseReductionDialog)
+	DDX_Control(pDX, IDC_STATIC_SELECTION, m_SelectionStatic);
+	DDX_Control(pDX, IDC_EDIT_TONE_PREFERENCE, m_eToneOverNoisePreference);
+	DDX_Control(pDX, IDC_EDIT_AGGRESSIVNESS, m_EditAggressivness);
+	DDX_Control(pDX, IDC_EDIT_NOISE_REDUCTION, m_eNoiseReduction);
+	DDX_Control(pDX, IDC_EDIT_NOISE_CRITERION, m_eNoiseCriterion);
+	DDX_Control(pDX, IDC_EDIT_NOISE_AREA_THRESHOLD_HIGH, m_eNoiseThresholdHigh);
+	DDX_Control(pDX, IDC_EDIT_NOISE_AREA_THRESHOLD_LOW, m_eNoiseThresholdLow);
+	DDX_Control(pDX, IDC_EDIT_LOWER_FREQUENCY, m_eLowerFrequency);
+	DDX_CBIndex(pDX, IDC_COMBO_FFT_ORDER, m_nFftOrderExp);
+	DDX_Check(pDX, IDC_CHECK_UNDO, m_bUndo);
+	//}}AFX_DATA_MAP
+	m_FftOrder = 256 << m_nFftOrderExp;
+#if 0
+	m_eTransientThreshold.ExchangeData(pDX, m_dTransientThreshold,
+										"Transient threshold", "", 0.3, 2);
+#endif
+	m_eNoiseReduction.ExchangeData(pDX, m_dNoiseReduction,
+									"Noise reduction", "dB", 0., 100.);
+	m_eNoiseCriterion.ExchangeData(pDX, m_dNoiseCriterion,
+									"Noise/continuous criterion", "", 0.0, 1.);
+	m_eNoiseThresholdHigh.ExchangeData(pDX, m_dNoiseThresholdHigh,
+										"Noise floor for noise in higher frequencies", "dB", -100., -10.);
+	m_eNoiseThresholdLow.ExchangeData(pDX, m_dNoiseThresholdLow,
+									"Noise floor for noise in lower frequencies", "dB", -100., -10.);
+	m_EditAggressivness.ExchangeData(pDX, m_dNoiseReductionAggressivness,
+									"Noise suppression aggressiveness", "", 0.1, 3.);
+	m_eToneOverNoisePreference.ExchangeData(pDX, m_dToneOverNoisePreference,
+											"Tone over noise preference", "dB", 0., 20.);
+	m_eLowerFrequency.ExchangeData(pDX, m_dLowerFrequency,
+									"Frequency", "Hz", 100., 48000.);
+}
+
+
+BEGIN_MESSAGE_MAP(CNoiseReductionDialog, CDialog)
+	//{{AFX_MSG_MAP(CNoiseReductionDialog)
+	ON_BN_CLICKED(IDC_BUTTON_MORE, OnButtonMore)
+	ON_BN_CLICKED(IDC_BUTTON_SELECTION, OnButtonSelection)
+	//}}AFX_MSG_MAP
+END_MESSAGE_MAP()
+
+/////////////////////////////////////////////////////////////////////////////
+// CNoiseReductionDialog message handlers
+
+/////////////////////////////////////////////////////////////////////////////
+// CNoiseReductionPage message handlers
+void CNoiseReductionDialog::LoadValuesFromRegistry()
+{
+	CWaveSoapApp * pApp = (CWaveSoapApp *)AfxGetApp();
+	//m_bPhaseFilter = (FALSE != pApp->GetProfileInt(_T("NoiseReduction"), _T("PhaseFilter"), FALSE));
+
+	pApp->Profile.AddItem(_T("NoiseReduction"), _T("FftOrder"), m_FftOrder, 2048, 256, 16384);
+
+	if (m_FftOrder >= 16384)
+	{
+		m_nFftOrderExp = 6;
+	}
+	else if (m_FftOrder >= 8192)
+	{
+		m_nFftOrderExp = 5;
+	}
+	else if (m_FftOrder >= 4096)
+	{
+		m_nFftOrderExp = 4;
+	}
+	else if (m_FftOrder >= 2048)
+	{
+		m_nFftOrderExp = 3;
+	}
+	else if (m_FftOrder >= 1024)
+	{
+		m_nFftOrderExp = 2;
+	}
+	else if (m_FftOrder >= 512)
+	{
+		m_nFftOrderExp = 1;
+	}
+	else
+	{
+		m_nFftOrderExp = 0;
+	}
+
+	pApp->Profile.AddItem(_T("NoiseReduction"), _T("TransientThreshold"), m_dTransientThreshold, 1., 0.3, 2);
+	pApp->Profile.AddItem(_T("NoiseReduction"), _T("NoiseReduction"), m_dNoiseReduction, 10., 0., 100.);
+	pApp->Profile.AddItem(_T("NoiseReduction"), _T("NoiseCriterion"), m_dNoiseCriterion, 0.25, 0., 1.);
+	pApp->Profile.AddItem(_T("NoiseReduction"), _T("NoiseThresholdLow"), m_dNoiseThresholdLow, -70., -100., -10.);
+	pApp->Profile.AddItem(_T("NoiseReduction"), _T("NoiseThresholdHigh"), m_dNoiseThresholdHigh, -65., -100., -10.);
+	pApp->Profile.AddItem(_T("NoiseReduction"), _T("LowerFrequency"), m_dLowerFrequency, 4000., 100., 48000.);
+	pApp->Profile.AddItem(_T("NoiseReduction"), _T("ToneOverNoisePreference"), m_dToneOverNoisePreference, 10., 0., 20.);
+	pApp->Profile.AddItem(_T("NoiseReduction"), _T("NearMaskingDecayDistanceHigh"), m_NearMaskingDecayDistanceHigh, 500., 1., 2000.);
+	pApp->Profile.AddItem(_T("NoiseReduction"), _T("NearMaskingDecayDistanceLow"), m_NearMaskingDecayDistanceLow, 30., 1., 2000.);
+	pApp->Profile.AddItem(_T("NoiseReduction"), _T("NearMaskingDecayTimeHigh"), m_NearMaskingDecayTimeHigh, 40., 1., 1000.);
+	pApp->Profile.AddItem(_T("NoiseReduction"), _T("NearMaskingDecayTimeLow"), m_NearMaskingDecayTimeLow, 100., 1., 1000.);
+	pApp->Profile.AddItem(_T("NoiseReduction"), _T("NearMaskingCoeff"), m_NearMaskingCoeff, 1., 0., 1.);
+}
+
+void CNoiseReductionDialog::StoreValuesToRegistry()
+{
+	CWaveSoapApp * pApp = (CWaveSoapApp *)AfxGetApp();
+	m_FftOrder = 256 << m_nFftOrderExp;
+	pApp->Profile.FlushSection(_T("NoiseReduction"));
+}
+
+#define DB_TO_NEPER 0.115129254
+#define M_PI        3.14159265358979323846
+#define M_PI_2      1.57079632679489661923
+#define M_PI_4      0.785398163397448309616
+
+void CNoiseReductionDialog::SetNoiseReductionData(CNoiseReduction * pNr)
+{
+	//pNr->m_bApplyPhaseFilter = m_bPhaseFilter;
+	pNr->m_MinFrequencyToProcess = m_dLowerFrequency;
+	pNr->m_ThresholdOfTransient = m_dTransientThreshold;
+	pNr->m_FreqThresholdOfNoiselike = M_PI_2 * M_PI_2 * m_dNoiseCriterion * m_dNoiseCriterion;
+	pNr->m_MaxNoiseSuppression = DB_TO_NEPER * m_dNoiseReduction;
+	pNr->m_LevelThresholdForNoiseLow = DB_TO_NEPER * (m_dNoiseThresholdLow +111.);
+	pNr->m_LevelThresholdForNoiseHigh = DB_TO_NEPER * (m_dNoiseThresholdHigh +111.);
+	pNr->m_ToneOverNoisePreference = DB_TO_NEPER * m_dToneOverNoisePreference;
+	pNr->m_NoiseReductionRatio = 0.5 * m_dNoiseReductionAggressivness;
+
+	pNr->m_NearMaskingDecayDistanceLow = m_NearMaskingDecayDistanceLow;
+	pNr->m_NearMaskingDecayDistanceHigh = m_NearMaskingDecayDistanceHigh;
+
+	pNr->m_NearMaskingDecayTimeLow = m_NearMaskingDecayTimeLow;
+	pNr->m_NearMaskingDecayTimeHigh = m_NearMaskingDecayTimeHigh;
+	pNr->m_NearMaskingCoeff = m_NearMaskingCoeff;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+// CMoreNoiseDialog dialog
+
+
+CMoreNoiseDialog::CMoreNoiseDialog(CWnd* pParent /*=NULL*/)
+	: CDialog(CMoreNoiseDialog::IDD, pParent)
+{
+	//{{AFX_DATA_INIT(CMoreNoiseDialog)
+	// NOTE: the ClassWizard will add member initialization here
+	//}}AFX_DATA_INIT
+}
+
+
+void CMoreNoiseDialog::DoDataExchange(CDataExchange* pDX)
+{
+	CDialog::DoDataExchange(pDX);
+	//{{AFX_DATA_MAP(CMoreNoiseDialog)
+	DDX_Control(pDX, IDC_EDIT_NEAR_MASKING_COEFF, m_eNearMaskingCoeff);
+	DDX_Control(pDX, IDC_EDIT_FAR_MASKING_COEFF, m_eFarMaskingCoeff);
+	DDX_Control(pDX, IDC_EDIT_MASKING_TIME_LOW, m_eNearMaskingTimeLow);
+	DDX_Control(pDX, IDC_EDIT_MASKING_TIME_HIGH, m_eNearMaskingTimeHigh);
+	DDX_Control(pDX, IDC_EDIT_NEAR_MASKING_DISTANCE_LOW, m_eNearMaskingDistanceLow);
+	DDX_Control(pDX, IDC_EDIT_NEAR_MASKING_DISTANCE_HIGH, m_eNearMaskingDistanceHigh);
+	//}}AFX_DATA_MAP
+	m_eNearMaskingDistanceHigh.ExchangeData(pDX, m_NearMaskingDecayDistanceHigh,
+											"Near masking distance in higher frequencies", "Hz", 1., 2000.);
+	m_eNearMaskingDistanceLow.ExchangeData(pDX, m_NearMaskingDecayDistanceLow,
+											"Near masking distance in lower frequencies", "Hz", 1., 2000.);
+	m_eNearMaskingTimeHigh.ExchangeData(pDX, m_NearMaskingDecayTimeHigh,
+										"Near masking time in higher frequencies", "ms", 1., 1000.);
+	m_eNearMaskingTimeLow.ExchangeData(pDX, m_NearMaskingDecayTimeLow,
+										"Near masking time in lower frequencies", "ms", 1., 1000.);
+	m_eNearMaskingCoeff.ExchangeData(pDX, m_NearMaskingCoeff,
+									"Near masking coefficient", "", 0., 1.);
+}
+
+
+BEGIN_MESSAGE_MAP(CMoreNoiseDialog, CDialog)
+	//{{AFX_MSG_MAP(CMoreNoiseDialog)
+		// NOTE: the ClassWizard will add message map macros here
+	//}}AFX_MSG_MAP
+END_MESSAGE_MAP()
+
+/////////////////////////////////////////////////////////////////////////////
+// CMoreNoiseDialog message handlers
+
+void CNoiseReductionDialog::OnButtonMore()
+{
+	CMoreNoiseDialog dlg;
+	// set the data to dlg
+	dlg.m_NearMaskingDecayDistanceLow = m_NearMaskingDecayDistanceLow;
+	dlg.m_NearMaskingDecayDistanceHigh = m_NearMaskingDecayDistanceHigh;
+
+	dlg.m_NearMaskingDecayTimeLow = m_NearMaskingDecayTimeLow;
+	dlg.m_NearMaskingDecayTimeHigh = m_NearMaskingDecayTimeHigh;
+	dlg.m_NearMaskingCoeff = m_NearMaskingCoeff;
+	if (IDOK == dlg.DoModal())
+	{
+		// return the data from dlg
+		m_NearMaskingDecayDistanceLow = dlg.m_NearMaskingDecayDistanceLow;
+		m_NearMaskingDecayDistanceHigh = dlg.m_NearMaskingDecayDistanceHigh;
+
+		m_NearMaskingDecayTimeLow = dlg.m_NearMaskingDecayTimeLow;
+		m_NearMaskingDecayTimeHigh = dlg.m_NearMaskingDecayTimeHigh;
+		m_NearMaskingCoeff = dlg.m_NearMaskingCoeff;
+	}
+}
+
+void CNoiseReductionDialog::OnButtonSelection()
+{
+	CSelectionDialog dlg;
+	dlg.m_Start = m_Start;
+	dlg.m_End = m_End;
+	dlg.m_Length = m_End - m_Start;
+	dlg.m_FileLength = m_FileLength;
+	dlg.m_Chan = m_Chan + 1;
+	dlg.m_pWf = m_pWf;
+	dlg.m_TimeFormat = m_TimeFormat;
+
+	if (IDOK != dlg.DoModal())
+	{
+		return;
+	}
+	m_Start = dlg.m_Start;
+	m_End = dlg.m_End;
+	m_Chan = dlg.m_Chan - 1;
+	UpdateSelectionStatic();
+}
+
+void CNoiseReductionDialog::UpdateSelectionStatic()
+{
+	m_SelectionStatic.SetWindowText(GetSelectionText(m_Start, m_End, m_Chan,
+													m_pWf->nChannels, m_bLockChannels,
+													m_pWf->nSamplesPerSec, m_TimeFormat));
+}
+
+
+BOOL CNoiseReductionDialog::OnInitDialog()
+{
+	LoadValuesFromRegistry();
+	CDialog::OnInitDialog();
+
+	UpdateSelectionStatic();
+
+	return TRUE;  // return TRUE unless you set the focus to a control
+	// EXCEPTION: OCX Property Pages should return FALSE
+}
+
+void CNoiseReductionDialog::OnOK()
+{
+	CDialog::OnOK();
+	GetApp()->Profile.FlushSection(_T("NoiseReduction"));
 }
