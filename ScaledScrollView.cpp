@@ -20,6 +20,8 @@ CScaledScrollView::CScaledScrollView()
 	:bKeepAspectRatio(TRUE),
 	bKeepScaleOnResizeX(TRUE),
 	bKeepScaleOnResizeY(TRUE),
+	bKeepOrgOnResizeX(FALSE),
+	bKeepOrgOnResizeY(FALSE),
 	dOrgX(0.), dOrgY(0.),
 	dScaleX(72.), dScaleY(72.),
 	dMinLeft(-100.), dMaxRight(100.), dMinBottom(-100.),
@@ -64,6 +66,10 @@ BEGIN_MESSAGE_MAP(CScaledScrollView, CView)
 	ON_COMMAND(ID_VIEW_ZOOMINVERT, OnViewZoomInVert)
 	ON_COMMAND(ID_VIEW_ZOOMOUTHOR, OnViewZoomOutHor)
 	ON_COMMAND(ID_VIEW_ZOOMOUTVERT, OnViewZoomOutVert)
+	ON_COMMAND(ID_VIEW_ZOOMINHOR2, OnViewZoominHor2)
+	ON_COMMAND(ID_VIEW_ZOOMINVERT2, OnViewZoomInVert2)
+	ON_COMMAND(ID_VIEW_ZOOMOUTHOR2, OnViewZoomOutHor2)
+	ON_COMMAND(ID_VIEW_ZOOMOUTVERT2, OnViewZoomOutVert2)
 	ON_WM_DESTROY()
 	ON_WM_LBUTTONDOWN()
 	ON_WM_RBUTTONDOWN()
@@ -667,59 +673,98 @@ void CScaledScrollView::OnSize(UINT nType, int cx, int cy)
 
 	if (bKeepScaleOnResizeX && bKeepScaleOnResizeY)
 	{
-		double dCenterX = dOrgX + dExtX * 0.5;
-		double dCenterY = dOrgY - dExtY * 0.5;
+		double dCenterX = dOrgX;
+		double dCenterY = dOrgY;
+		if ( ! bKeepOrgOnResizeX)
+		{
+			dCenterX = dOrgX + dExtX * 0.5;
+		}
+		if ( ! bKeepOrgOnResizeY)
+		{
+			dCenterY = dOrgY - dExtY * 0.5;
+		}
 		if (cx > 0)
 		{
 			dExtX = cx / (dScaleX * dLogScaleX);
 			dSizeX = fabs(dExtX);
+			if ( ! bKeepOrgOnResizeX)
+			{
+				dCenterX -= dExtX * 0.5;
+			}
 			flag |= CHANGE_HOR_EXTENTS;
 		}
 		if (cy > 0)
 		{
 			dExtY = -cy / (dScaleY * dLogScaleY);
 			dSizeY = fabs(dExtY);
+			if ( ! bKeepOrgOnResizeY)
+			{
+				dCenterY -= dExtY * 0.5;
+			}
 			flag |= CHANGE_VERT_EXTENTS;
 		}
 		// move origin
-		ScrollTo(dCenterX - dExtX * 0.5, dCenterY + dExtY * 0.5);
+		ScrollTo(dCenterX, dCenterY);
 	}
 	else if (bKeepScaleOnResizeX)
 	{
-		double dCenterX = dOrgX + dExtX * 0.5;
+		double dCenterX = dOrgX;
+		if ( ! bKeepOrgOnResizeX)
+		{
+			dCenterX = dOrgX + dExtX * 0.5;
+		}
 		if (cx > 0)
 		{
 			dExtX = cx / (dScaleX * dLogScaleX);
 			dSizeX = fabs(dExtX);
+			if ( ! bKeepOrgOnResizeX)
+			{
+				dCenterX -= dExtX * 0.5;
+			}
 			flag |= CHANGE_HOR_EXTENTS;
 			double dNewScaleY = -cy / (dExtY * dLogScaleY);
+			// optimizer can compare 80 bit result with double dScaleY,
+			// and the comparision will never be equal
 			if (dNewScaleY != dScaleY)
 			{
+				TRACE("New Y scale != old scale, invalidating...\n");
 				dScaleY = dNewScaleY;
 				InvalidateRgn(NULL);
 				//UpdateScrollbars();
 			}
 			// move origin
-			ScrollTo(dCenterX - dExtX * 0.5, dOrgY);
+			ScrollTo(dCenterX, dOrgY);
 		}
 	}
 	else if (bKeepScaleOnResizeY)
 	{
-		double dCenterY = dOrgY + dExtY * 0.5;
+		double dCenterY = dOrgY;
+		if ( ! bKeepOrgOnResizeY)
+		{
+			dCenterY = dOrgY - dExtY * 0.5;
+		}
+
 		if (cy > 0)
 		{
 			dExtY = -cy / (dScaleY * dLogScaleY);
 			dSizeY = fabs(dExtY);
+			if ( ! bKeepOrgOnResizeY)
+			{
+				dCenterY -= dExtY * 0.5;
+			}
 			flag |= CHANGE_VERT_EXTENTS;
 			double dNewScaleX = cx / (dExtX * dLogScaleX);
+			// optimizer can compare 80 bit result with double dScaleY,
+			// and the comparision will never be equal
 			if (dNewScaleX != dScaleX)
 			{
+				TRACE("New X scale != old scale, invalidating...\n");
 				dScaleX = dNewScaleX;
 				InvalidateRgn(NULL);
 				//UpdateScrollbars();
 			}
 			// move origin
-			ScrollTo(dOrgX, dCenterY - dExtY * 0.5);
+			ScrollTo(dOrgX, dCenterY);
 		}
 	}
 	else
@@ -804,6 +849,11 @@ void CScaledScrollView::OnViewZoomin2()
 
 void CScaledScrollView::OnViewZoomOut()
 {
+	ZoomOutSelection(CHANGE_HOR_EXTENTS | CHANGE_VERT_EXTENTS);
+}
+
+void CScaledScrollView::ZoomOutSelection(DWORD flags)
+{
 	if (bHasSelection)
 	{
 		// current view boundaries should fit to
@@ -819,7 +869,8 @@ void CScaledScrollView::OnViewZoomOut()
 		GetClientRect( & r);
 		r.NormalizeRect();
 
-		if (r.left != r.right
+		if ((flags & CHANGE_HOR_EXTENTS)
+			&& r.left != r.right
 			&& Sel.left != Sel.right)
 		{
 			left = m_pHorMaster->dOrgX
@@ -834,7 +885,8 @@ void CScaledScrollView::OnViewZoomOut()
 			right = 0.;
 		}
 
-		if (r.top != r.bottom
+		if ((flags & CHANGE_VERT_EXTENTS)
+			&& r.top != r.bottom
 			&& Sel.top != Sel.bottom)
 		{
 			top = m_pVertMaster->dOrgY
@@ -857,18 +909,31 @@ void CScaledScrollView::OnViewZoomOut()
 								m_dYEndTracking));
 		CRect r;
 		GetClientRect( & r);
-		if (r.PtInRect(p))
+		if ( ! r.PtInRect(p))
 		{
-			ZoomOut(2., p);
+			p = CPoint(INT_MAX, INT_MAX);
 		}
-		else
+		double zoomX = 1.;
+		if (flags & CHANGE_HOR_EXTENTS)
 		{
-			ZoomOut(2.);
+			zoomX = 0.5;
 		}
+		double zoomY = 1.;
+		if (flags & CHANGE_VERT_EXTENTS)
+		{
+			zoomY = 0.5;
+		}
+
+		Zoom(zoomX, zoomY, p);
 	}
 }
 
 void CScaledScrollView::OnViewZoomin()
+{
+	ZoomInSelection(CHANGE_HOR_EXTENTS | CHANGE_VERT_EXTENTS);
+}
+
+void CScaledScrollView::ZoomInSelection(DWORD flags)
 {
 	if (bHasSelection)
 	{
@@ -883,10 +948,20 @@ void CScaledScrollView::OnViewZoomin()
 			right = m_dXSelectionBegin;
 			left = m_dXSelectionEnd;
 		}
+		if (0 == (flags & CHANGE_HOR_EXTENTS))
+		{
+			right = 0.;
+			left = 0;
+		}
 		if (lt.y > rb.y)
 		{
 			bottom = m_dYSelectionBegin;
 			top = m_dYSelectionEnd;
+		}
+		if (0 == (flags & CHANGE_VERT_EXTENTS))
+		{
+			top = 0.;
+			bottom = 0.;
 		}
 		CancelSelection();
 		SetExtents(left, right, bottom, top);
@@ -897,17 +972,24 @@ void CScaledScrollView::OnViewZoomin()
 								m_dYEndTracking));
 		CRect r;
 		GetClientRect( & r);
-		if (r.PtInRect(p))
+		if ( ! r.PtInRect(p))
 		{
-			ZoomIn(2., p);
+			p = CPoint(INT_MAX, INT_MAX);
 		}
-		else
+		double zoomX = 1.;
+		if (flags & CHANGE_HOR_EXTENTS)
 		{
-			ZoomIn(2.);
+			zoomX = 2.;
 		}
+		double zoomY = 1.;
+		if (flags & CHANGE_VERT_EXTENTS)
+		{
+			zoomY = 2.;
+		}
+
+		Zoom(zoomX, zoomY, p);
 	}
 }
-
 void CScaledScrollView::OnUpdateIndicatorMousePosition(CCmdUI* pCmdUI)
 {
 	CPoint p;
@@ -982,28 +1064,45 @@ void CScaledScrollView::OnInitialUpdate()
 	UpdateScrollbars(TRUE);
 }
 
-void CScaledScrollView::OnViewZoominHor()
+void CScaledScrollView::OnViewZoominHor2()
 {
 	// TODO: Add your command handler code here
 	Zoom(2., 1.);
 }
 
+void CScaledScrollView::OnViewZoominHor()
+{
+	ZoomInSelection(CHANGE_HOR_EXTENTS);
+}
+
+void CScaledScrollView::OnViewZoomInVert2()
+{
+	Zoom(1., 2.);
+}
+
 void CScaledScrollView::OnViewZoomInVert()
 {
-	// TODO: Add your command handler code here
-	Zoom(1., 2.);
+	ZoomInSelection(CHANGE_VERT_EXTENTS);
+}
+
+void CScaledScrollView::OnViewZoomOutHor2()
+{
+	Zoom(0.5, 1.);
 }
 
 void CScaledScrollView::OnViewZoomOutHor()
 {
-	// TODO: Add your command handler code here
-	Zoom(0.5, 1.);
+	ZoomOutSelection(CHANGE_HOR_EXTENTS);
+}
+
+void CScaledScrollView::OnViewZoomOutVert2()
+{
+	Zoom(1., 0.5);
 }
 
 void CScaledScrollView::OnViewZoomOutVert()
 {
-	// TODO: Add your command handler code here
-	Zoom(1., 0.5);
+	ZoomOutSelection(CHANGE_VERT_EXTENTS);
 }
 
 UINT CScaledScrollView::GetPopupMenuID()
