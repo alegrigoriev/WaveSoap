@@ -74,6 +74,7 @@ public:
 	// the function undoes any PrepareUndo, if the operation didn't go on
 	virtual void UnprepareUndo() {}
 
+	// reverses CreateUndo
 	virtual void DeleteUndo();
 
 	bool IsUndoOperation() const
@@ -252,6 +253,7 @@ protected:
 	class CCopyUndoContext * m_pUndoContext;
 
 	virtual BOOL CreateUndo(BOOL IsRedo = FALSE);
+	virtual void DeleteUndo();
 	virtual void DeInit();
 };
 

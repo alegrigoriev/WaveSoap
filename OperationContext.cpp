@@ -343,6 +343,12 @@ BOOL CTwoFilesOperation::CreateUndo(BOOL /*IsRedo*/)
 	return TRUE;
 }
 
+void CTwoFilesOperation::DeleteUndo()
+{
+	m_pUndoContext = NULL;
+	BaseClass::DeleteUndo();
+}
+
 void CTwoFilesOperation::SetSaveForUndo(SAMPLE_INDEX StartSample, SAMPLE_INDEX EndSample)
 {
 	m_UndoStartPos = m_DstFile.SampleToPosition(StartSample);
