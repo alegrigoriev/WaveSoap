@@ -351,37 +351,26 @@ BOOL CWaveSoapFrontDoc::OnNewDocument(NewFileParameters * pParams)
 void CWaveSoapFrontDoc::BuildPeakInfo(BOOL bSavePeakFile)
 {
 	// read the DATA chunk of wavefile
+	if (0 == WaveFileSamples())
+	{
+		m_WavFile.AllocatePeakData(0);
+		return;
+	}
+
 	if ( ! m_WavFile.AllocatePeakData(WaveFileSamples()))
 	{
 		NotEnoughMemoryMessageBox();
 		return;
 	}
+	CScanPeaksContext * pContext =
+		new CScanPeaksContext(this, m_WavFile, m_OriginalWavFile, bSavePeakFile);
 
-	m_WavFile.SetPeaks(0, WaveFileSamples() * WaveChannels(),
-						WaveChannels(), WavePeak(0x7FFF, -0x8000));
-
-	CScanPeaksContext * pContext = new CScanPeaksContext(this);
 	if (NULL == pContext)
 	{
 		NotEnoughMemoryMessageBox();
 		return;
 	}
-	if (bSavePeakFile)
-	{
-		pContext->m_Flags |= ScanPeaksSavePeakFile;
-	}
-	pContext->m_Start = m_WavFile.SampleToPosition(0);
-	pContext->m_Position = pContext->m_Start;
-	pContext->m_End = m_WavFile.SampleToPosition(LAST_SAMPLE);
 
-	pContext->m_GranuleSize =
-		WaveChannels() * m_WavFile.GetPeakGranularity() * sizeof(WAVE_SAMPLE);
-
-	if (pContext->m_End <= pContext->m_Start)
-	{
-		delete pContext;
-		return;
-	}
 	pContext->Execute();
 }
 
@@ -1215,7 +1204,7 @@ BOOL CWaveSoapFrontDoc::InitUndoRedo(CUndoRedoContext * pContext)
 			}
 
 			if ( ! pUndoRedo->InitUndoCopy(m_WavFile,
-											pContext->m_DstCopyPos, pContext->m_DstEnd, pContext->m_DstChan))
+											pContext->m_DstPos, pContext->m_DstEnd, pContext->m_DstChan))
 			{
 				delete pUndoRedo;
 				return FALSE;
@@ -1736,7 +1725,7 @@ BOOL CWaveSoapFrontDoc::OnOpenDocument(LPCTSTR lpszPathName, int DocOpenFlags)
 
 			pContext->m_DstFile = m_WavFile;
 			pContext->m_DstStart = m_WavFile.SampleToPosition(0);
-			pContext->m_DstCopyPos = pContext->m_DstStart;
+			pContext->m_DstPos = pContext->m_DstStart;
 			pContext->m_CurrentSamples = WaveFileSamples();
 
 			// peak data will be created during decompression
@@ -1882,8 +1871,8 @@ BOOL CWaveSoapFrontDoc::OnSaveBufferedPcmFileCopy(int flags, LPCTSTR FullTargetN
 	pContext->m_DstFile = NewWaveFile;
 	pContext->m_SrcStart = 0;
 	pContext->m_DstStart = 0;
-	pContext->m_SrcCopyPos = 0;
-	pContext->m_DstCopyPos = 0;
+	pContext->m_SrcPos = 0;
+	pContext->m_DstPos = 0;
 	pContext->m_SrcEnd = m_WavFile.GetLength();
 	pContext->m_DstEnd = pContext->m_SrcEnd;
 	// copy 1:1
@@ -1974,8 +1963,8 @@ BOOL CWaveSoapFrontDoc::OnSaveConvertedFile(int flags, LPCTSTR FullTargetName, W
 	pConvert->m_DstFile = NewWaveFile;
 	pConvert->m_SrcStart = m_WavFile.SampleToPosition(0);
 	pConvert->m_DstStart = NewWaveFile.SampleToPosition(0);
-	pConvert->m_SrcCopyPos = pConvert->m_SrcStart;
-	pConvert->m_DstCopyPos = pConvert->m_DstStart;
+	pConvert->m_SrcPos = pConvert->m_SrcStart;
+	pConvert->m_DstPos = pConvert->m_DstStart;
 	pConvert->m_SrcEnd = m_WavFile.SampleToPosition(LAST_SAMPLE);
 	pConvert->m_DstEnd = pConvert->m_DstStart;
 
@@ -1987,8 +1976,8 @@ BOOL CWaveSoapFrontDoc::OnSaveConvertedFile(int flags, LPCTSTR FullTargetName, W
 	// fill unused data members:
 	pContext->m_SrcStart = pConvert->m_SrcStart;
 	pContext->m_DstStart = pConvert->m_DstStart;
-	pContext->m_SrcCopyPos = pContext->m_SrcStart;
-	pContext->m_DstCopyPos = pContext->m_DstCopyPos;
+	pContext->m_SrcPos = pContext->m_SrcStart;
+	pContext->m_DstPos = pContext->m_DstPos;
 	pContext->m_SrcEnd = m_WavFile.GetLength();
 	pContext->m_DstEnd = pContext->m_SrcEnd;
 
@@ -2145,8 +2134,8 @@ BOOL CWaveSoapFrontDoc::OnSaveMp3File(int flags, LPCTSTR FullTargetName, WAVEFOR
 	pConvert->m_DstFile = NewWaveFile;
 	pConvert->m_SrcStart = m_WavFile.SampleToPosition(0);
 	pConvert->m_DstStart = 0;
-	pConvert->m_SrcCopyPos = pConvert->m_SrcStart;
-	pConvert->m_DstCopyPos = pConvert->m_DstStart;
+	pConvert->m_SrcPos = pConvert->m_SrcStart;
+	pConvert->m_DstPos = pConvert->m_DstStart;
 	pConvert->m_SrcEnd = m_WavFile.SampleToPosition(LAST_SAMPLE);
 	pConvert->m_DstEnd = pConvert->m_DstStart;
 
@@ -2158,8 +2147,8 @@ BOOL CWaveSoapFrontDoc::OnSaveMp3File(int flags, LPCTSTR FullTargetName, WAVEFOR
 	// fill unused data members:
 	pContext->m_SrcStart = pConvert->m_SrcStart;
 	pContext->m_DstStart = pConvert->m_DstStart;
-	pContext->m_SrcCopyPos = pContext->m_SrcStart;
-	pContext->m_DstCopyPos = pContext->m_DstCopyPos;
+	pContext->m_SrcPos = pContext->m_SrcStart;
+	pContext->m_DstPos = pContext->m_DstPos;
 	pContext->m_SrcEnd = m_WavFile.GetLength();
 	pContext->m_DstEnd = pContext->m_DstStart;
 
@@ -2262,8 +2251,8 @@ BOOL CWaveSoapFrontDoc::OnSaveWmaFile(int flags, LPCTSTR FullTargetName, WAVEFOR
 	pConvert->m_DstFile = NewWaveFile;
 	pConvert->m_SrcStart = m_WavFile.SampleToPosition(0);
 	pConvert->m_DstStart = 0;
-	pConvert->m_SrcCopyPos = pConvert->m_SrcStart;
-	pConvert->m_DstCopyPos = pConvert->m_DstStart;
+	pConvert->m_SrcPos = pConvert->m_SrcStart;
+	pConvert->m_DstPos = pConvert->m_DstStart;
 	pConvert->m_SrcEnd = m_WavFile.SampleToPosition(LAST_SAMPLE);
 	pConvert->m_DstEnd = pConvert->m_DstStart;
 
@@ -2275,8 +2264,8 @@ BOOL CWaveSoapFrontDoc::OnSaveWmaFile(int flags, LPCTSTR FullTargetName, WAVEFOR
 	// fill unused data members:
 	pContext->m_SrcStart = pConvert->m_SrcStart;
 	pContext->m_DstStart = pConvert->m_DstStart;
-	pContext->m_SrcCopyPos = pContext->m_SrcStart;
-	pContext->m_DstCopyPos = pContext->m_DstCopyPos;
+	pContext->m_SrcPos = pContext->m_SrcStart;
+	pContext->m_DstPos = pContext->m_DstPos;
 	pContext->m_SrcEnd = m_WavFile.GetLength();
 	pContext->m_DstEnd = pContext->m_DstStart;
 
@@ -2353,8 +2342,8 @@ BOOL CWaveSoapFrontDoc::OnSaveRawFile(int flags, LPCTSTR FullTargetName, WAVEFOR
 	pConvert->m_DstFile = NewWaveFile;
 	pConvert->m_SrcStart = m_WavFile.SampleToPosition(0);
 	pConvert->m_DstStart = 0;
-	pConvert->m_SrcCopyPos = pConvert->m_SrcStart;
-	pConvert->m_DstCopyPos = pConvert->m_DstStart;
+	pConvert->m_SrcPos = pConvert->m_SrcStart;
+	pConvert->m_DstPos = pConvert->m_DstStart;
 	pConvert->m_SrcEnd = m_WavFile.SampleToPosition(LAST_SAMPLE);
 	pConvert->m_DstEnd = pConvert->m_DstStart;
 
@@ -2366,8 +2355,8 @@ BOOL CWaveSoapFrontDoc::OnSaveRawFile(int flags, LPCTSTR FullTargetName, WAVEFOR
 	// fill unused data members:
 	pContext->m_SrcStart = pConvert->m_SrcStart;
 	pContext->m_DstStart = pConvert->m_DstStart;
-	pContext->m_SrcCopyPos = pContext->m_SrcStart;
-	pContext->m_DstCopyPos = pContext->m_DstCopyPos;
+	pContext->m_SrcPos = pContext->m_SrcStart;
+	pContext->m_DstPos = pContext->m_DstPos;
 	pContext->m_SrcEnd = m_WavFile.GetLength();
 	pContext->m_DstEnd = pContext->m_DstStart;
 
@@ -4645,7 +4634,7 @@ BOOL CWaveSoapFrontDoc::OpenRawFileDocument(LPCTSTR lpszPathName)
 	pContext->m_SrcEnd = dlg.m_SourceFileSize - dlg.m_TrailerLength;
 
 	pContext->m_DstStart = m_WavFile.SampleToPosition(0);
-	pContext->m_DstCopyPos = pContext->m_DstStart;
+	pContext->m_DstPos = pContext->m_DstStart;
 
 	pContext->m_CurrentSamples = nNewFileSamples;
 	if (16 == wf.wBitsPerSample)
@@ -4913,7 +4902,7 @@ void CWaveSoapFrontDoc::OnProcessDoUlf()
 	}
 	pContext->m_SrcFile = m_WavFile;
 	pContext->m_SrcStart = pContext->m_DstStart;
-	pContext->m_SrcCopyPos = pContext->m_SrcStart;
+	pContext->m_SrcPos = pContext->m_SrcStart;
 	pContext->m_SrcEnd = pContext->m_DstEnd;
 
 	pContext->m_SrcChan = dlg.m_Chan;
@@ -5011,7 +5000,7 @@ void CWaveSoapFrontDoc::OnProcessDoDeclicking()
 	}
 	pContext->m_SrcFile = m_WavFile;
 	pContext->m_SrcStart = pContext->m_DstStart;
-	pContext->m_SrcCopyPos = pContext->m_SrcStart;
+	pContext->m_SrcPos = pContext->m_SrcStart;
 	pContext->m_SrcEnd = pContext->m_DstEnd;
 
 	pContext->m_SrcChan = dlg.m_Chan;
@@ -5127,7 +5116,7 @@ void CWaveSoapFrontDoc::OnProcessNoiseReduction()
 	}
 	pContext->m_SrcFile = m_WavFile;
 	pContext->m_SrcStart = pContext->m_DstStart;
-	pContext->m_SrcCopyPos = pContext->m_SrcStart;
+	pContext->m_SrcPos = pContext->m_SrcStart;
 	pContext->m_SrcEnd = pContext->m_DstEnd;
 
 	pContext->m_SrcChan = dlg.m_Chan;
