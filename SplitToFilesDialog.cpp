@@ -114,7 +114,7 @@ void CSplitToFilesDialog::DoDataExchange(CDataExchange* pDX)
 		unsigned FileIndex;
 		WaveFileSegmentVector::iterator t;
 
-		for (FileIndex = 1, t = m_Files.begin(); t < m_Files.end(); t++, FileIndex++)
+		for (FileIndex = 0, t = m_Files.begin(); t < m_Files.end(); t++, FileIndex++)
 		{
 			CString Name;
 			// add the prefix if any
@@ -128,19 +128,73 @@ void CSplitToFilesDialog::DoDataExchange(CDataExchange* pDX)
 				case '%':
 					if (m_sFilenamePrefix.GetLength() > i + 1)
 					{
-						if ('%' == m_sFilenamePrefix[i + 1])
+						c = m_sFilenamePrefix[i + 1];
+						if ('%' == c)
 						{
 							// double percent escape - translated to a single percent
 							i++;
 						}
-						else if ('d' == m_sFilenamePrefix[i + 1])
+						else
 						{
-							CString s;
-							s.Format(_T("%02d"), FileIndex + 1);
+							// if the sequence is %nnd, then the numbering starts from n
+							// if the sequence is %0nd, then the numbering starts from n, with leading zeros
+							int FileIndexOffset = 0;
+							int NumDigits = 0;
+							bool LeadingZero = false;
 
+							CString s;
+							while (i < m_sFilenamePrefix.GetLength() - 1)
+							{
+								c = m_sFilenamePrefix[i + 1];
+
+								if ('d' == c)
+								{
+									if (0 == NumDigits)
+									{
+										s.Format(_T("%02d"), FileIndex + 1);
+									}
+									else
+									{
+										if (LeadingZero)
+										{
+											s.Format(_T("%0*d"), NumDigits, FileIndex + FileIndexOffset);
+										}
+										else
+										{
+											s.Format(_T("%d"), FileIndex + FileIndexOffset);
+										}
+									}
+									// break from while() loop
+									break;
+								}
+								else if (c >= '0' && c <= '9')
+								{
+									// digit character
+									if (0 == NumDigits)
+									{
+										if ('0' == c)
+										{
+											LeadingZero = true;
+										}
+									}
+
+									FileIndexOffset = (c - '0') + 10 * FileIndexOffset;
+									NumDigits++;
+
+									// in case the format spec is incorrect, save the characters in the string
+									s += c;
+								}
+								else
+								{
+									// not a digit, nor 'd' character encountered. Just copy the saved string
+									s += c;
+									break;
+								}
+								i++;
+							}
 							Name += s;
 							i++;
-
+							// go around the loop end, without "Name += c"
 							continue;
 						}
 					}
@@ -188,6 +242,8 @@ void CSplitToFilesDialog::DoDataExchange(CDataExchange* pDX)
 				Name += _T(".wav");
 				break;
 			}
+
+			TRACE(_T("File name =%s\n"), LPCTSTR(Name));
 
 			t->FullFilename = m_sSaveToFolder + Name;
 
