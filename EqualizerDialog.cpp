@@ -388,26 +388,26 @@ complex<float> CEqualizerGraphWnd::CalculateResponse(double Frequency)
 	}
 }
 
-void CEqualizerGraphWnd::SetBandGain(int nBand, double Gain)
+void CalculateCoefficients(double Gain, double Frequency, double Width, double Coeffs[6])
 {
 	// given the pole/zero quality, calculate them
 	// on frequency at F - f/Q, gain should get down to sqrt(gain)
 	// first calculate for pole and zero on X axis, then turn them to the required frequency
-	if (1 == Gain)
+	if (1. == Gain)
 	{
-		m_BandCoefficients[nBand][0] = 1.;
-		m_BandCoefficients[nBand][1] = 0.;
-		m_BandCoefficients[nBand][2] = 0.;
-		m_BandCoefficients[nBand][3] = 1.;
-		m_BandCoefficients[nBand][4] = 0.;
-		m_BandCoefficients[nBand][5] = 0.;
+		Coeffs[0] = 1.;
+		Coeffs[1] = 0.;
+		Coeffs[2] = 0.;
+		Coeffs[3] = 1.;
+		Coeffs[4] = 0.;
+		Coeffs[5] = 0.;
 	}
 	else
 	{
 		double Gain2 = sqrt(Gain);
-		double df = m_BandFrequencies[nBand] * (1. - 1. / m_BandWidth);
-		TRACE("SetBandGain %d, G=%f, freq=%f, df=%f\n",
-			nBand, Gain, m_BandFrequencies[nBand], df);
+		double df = Frequency * (1. - 1. / Width);
+		TRACE("SetBandGain G=%f, freq=%f, df=%f\n",
+			Gain, Frequency, df);
 
 		complex<double> Z1(cos(df), sin(df));
 
@@ -422,28 +422,105 @@ void CEqualizerGraphWnd::SetBandGain(int nBand, double Gain)
 		double NormCoeff = (1. + z_pole) / (1. + z_zero);
 		NormCoeff *= NormCoeff;
 
-		double cos_f = cos(m_BandFrequencies[nBand]);
+		double cos_f = cos(Frequency);
 
-		m_BandCoefficients[nBand][0] = NormCoeff;
-		m_BandCoefficients[nBand][1] = -2. * NormCoeff * z_zero * cos_f;
-		m_BandCoefficients[nBand][2] = NormCoeff * z_zero * z_zero;
-		m_BandCoefficients[nBand][3] = 1.;
-		m_BandCoefficients[nBand][4] = -2. * z_pole * cos_f;
-		m_BandCoefficients[nBand][5] = z_pole * z_pole;
+		Coeffs[0] = NormCoeff;
+		Coeffs[1] = -2. * NormCoeff * z_zero * cos_f;
+		Coeffs[2] = NormCoeff * z_zero * z_zero;
+		Coeffs[3] = 1.;
+		Coeffs[4] = -2. * z_pole * cos_f;
+		Coeffs[5] = z_pole * z_pole;
 		TRACE("Coeffs= %f, %f, %f; %f, %f, %f\n",
-			m_BandCoefficients[nBand][0],
-			m_BandCoefficients[nBand][1],
-			m_BandCoefficients[nBand][2],
-			m_BandCoefficients[nBand][3],
-			m_BandCoefficients[nBand][4],
-			m_BandCoefficients[nBand][5]);
+			Coeffs[0],
+			Coeffs[1],
+			Coeffs[2],
+			Coeffs[3],
+			Coeffs[4],
+			Coeffs[5]);
 	}
+}
+void CEqualizerGraphWnd::SetBandGain(int nBand, double Gain)
+{
 	m_BandGain[nBand] = Gain;
 	// TODO:
 	// compensate band interference.
 	// Use Newton approximation.
 	// calculate derivatives, solve system of equations,
 	// to find the necessary band coefficients
+	// Make frequency responce error down to 0.1 dB
+	int i;
+	for (i = 0; i < m_NumOfBands; i++)
+	{
+		m_UsedBandGain[i] = m_BandGain[i];
+	}
+	for (int iter = 0; iter < 10; iter++)
+	{
+		for (i = 0; i < m_NumOfBands; i++)
+		{
+			CalculateCoefficients(m_UsedBandGain[i],
+								m_BandFrequencies[i], m_BandWidth, m_BandCoefficients[i]);
+		}
+		double Gain1[MaxNumberOfBands];   // real gain for m_UsedBandGain
+		double MaxError = 1.;
+		for (i = 0; i < m_NumOfBands; i++)
+		{
+			Gain1[i] = abs(CalculateResponse(m_BandFrequencies[i]));
+			double Error = Gain1[i] / m_BandGain[i];
+			if (Error < 1.) Error = 1./Error;
+			if (Error > MaxError)
+			{
+				MaxError = Error;
+			}
+		}
+		if (MaxError < 1.0116)  // .1 dB
+		{
+			break;
+		}
+		double M[MaxNumberOfBands][MaxNumberOfBands + 1];
+		// calculate all derivatives
+		for (i = 0; i < m_NumOfBands; i++)
+		{
+			CalculateCoefficients(m_UsedBandGain[i] * 1.06, // 0.5dB
+								m_BandFrequencies[i], m_BandWidth, m_BandCoefficients[i]);
+
+			for (int j = 0; j < m_NumOfBands; j++)
+			{
+				M[j][i] = log(abs(CalculateResponse(m_BandFrequencies[j])) / Gain1[j])
+						/ 0.05827; // log(1.06)
+			}
+			// return back
+			CalculateCoefficients(m_UsedBandGain[i],
+								m_BandFrequencies[i], m_BandWidth, m_BandCoefficients[i]);
+			M[i][m_NumOfBands + 1] = log(abs(CalculateResponse(m_BandFrequencies[i])) / Gain1[i]);
+		}
+		// solve system of equations using Gauss reduce
+		for (i = 0; i < m_NumOfBands - 1; i++)
+		{
+			for (int j = i + 1; j < m_NumOfBands; j++)
+			{
+				double d = M[i][i] / M[j][i];
+				for (int k = j + 1; k < m_NumOfBands + 1; k++)
+				{
+					M[j][k] -= M[i][k] * d;
+				}
+			}
+		}
+		// matrix reduced to triangular, calculate solution vector
+		for (i = m_NumOfBands - 1; i >= 0; i--)
+		{
+			M[i][m_NumOfBands + 1] /= M[i][i];
+			for (int j = 0; j < i; j++)
+			{
+				M[j][m_NumOfBands + 1] -= M[j][i] * M[i][m_NumOfBands + 1];
+			}
+		}
+		// the result is in M[*][m_NumOfBands + 1]
+		for (i = 0; i < m_NumOfBands - 1; i++)
+		{
+			m_UsedBandGain[i] *= exp(M[i][m_NumOfBands + 1]);
+		}
+	}
+
 	if (NULL != m_hWnd)
 	{
 		Invalidate();
