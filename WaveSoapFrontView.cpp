@@ -12,6 +12,7 @@
 #include "WaveOutlineView.h"
 #include "GdiObjectSave.h"
 #include <float.h>
+#include ".\wavesoapfrontview.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -92,6 +93,7 @@ BEGIN_MESSAGE_MAP(CWaveSoapFrontView, BaseClass)
 	//ON_COMMAND(ID_FILE_PRINT, OnFilePrint)
 	//ON_COMMAND(ID_FILE_PRINT_DIRECT, OnFilePrint)
 	//ON_COMMAND(ID_FILE_PRINT_PREVIEW, OnFilePrintPreview)
+	ON_WM_LBUTTONDBLCLK()
 END_MESSAGE_MAP()
 
 /////////////////////////////////////////////////////////////////////////////
@@ -1935,12 +1937,6 @@ void CWaveSoapFrontView::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 
 	int nCaretMove = m_HorizontalScale;
 
-	// ctrl+arrow moves by 32 pixels
-	if (CtrlPressed)
-	{
-		nCaretMove *= 32;
-	}
-
 	NUMBER_OF_SAMPLES nTotalSamples = pDoc->WaveFileSamples();
 
 	CRect r;
@@ -1959,12 +1955,26 @@ void CWaveSoapFrontView::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 	switch (nChar)
 	{
 	case VK_LEFT:
-		// move caret 1 pixel or 32 pixels to the left,
-		nCaret -= nCaretMove;
+		if (CtrlPressed)
+		{
+			nCaret = pDoc->GetPrevMarker();
+		}
+		else
+		{
+			// move caret 1 pixel to the left,
+			nCaret -= nCaretMove;
+		}
 		break;
 	case VK_RIGHT:
-		// move caret 1 or 32 to the right
-		nCaret += nCaretMove;
+		if (CtrlPressed)
+		{
+			nCaret = pDoc->GetNextMarker();
+		}
+		else
+		{
+			// move caret 1 to the right
+			nCaret += nCaretMove;
+		}
 		break;
 	case VK_HOME:
 		// move to the begin of file or selection
@@ -2786,4 +2796,11 @@ void CWaveSoapFrontView::OnCaptureChanged(CWnd *pWnd)
 		m_AutoscrollTimerID = NULL;
 	}
 	BaseClass::OnCaptureChanged(pWnd);
+}
+
+void CWaveSoapFrontView::OnLButtonDblClk(UINT nFlags, CPoint point)
+{
+	BaseClass::OnLButtonDblClk(nFlags, point);
+
+	GetDocument()->SelectBetweenMarkers(SAMPLE_INDEX(WindowToWorldX(point.x)));
 }
