@@ -2048,6 +2048,22 @@ BEGIN
     PUSHBUTTON      "Cancel",IDCANCEL,35,95,115,14
 END
 
+IDD_DIALOG_PASTE_RESAMPLE_MODE DIALOG DISCARDABLE  0, 0, 190, 84
+STYLE DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "Resample on paste"
+FONT 8, "MS Sans Serif"
+BEGIN
+    LTEXT           "Target file sample rate (%d) is not the same as clipboard sample rate (%d)",
+                    IDC_STATIC_TITLE,7,7,176,24
+    CONTROL         "Resample the clipboard content on paste",
+                    IDC_RADIO_SELECT,"Button",BS_AUTORADIOBUTTON | WS_GROUP,
+                    7,34,176,10
+    CONTROL         "Paste sound samples as is, without resampling",
+                    IDC_RADIO_RIGHT,"Button",BS_AUTORADIOBUTTON,7,47,176,10
+    DEFPUSHBUTTON   "OK",IDOK,40,63,50,14
+    PUSHBUTTON      "Cancel",IDCANCEL,99,63,50,14
+END
+
 
 #ifndef _MAC
 /////////////////////////////////////////////////////////////////////////////
@@ -2438,6 +2454,14 @@ BEGIN
         RIGHTMARGIN, 180
         TOPMARGIN, 7
         BOTTOMMARGIN, 109
+    END
+
+    IDD_DIALOG_PASTE_RESAMPLE_MODE, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 183
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 77
     END
 END
 #endif    // APSTUDIO_INVOKED

@@ -133,8 +133,6 @@ END_MESSAGE_MAP()
 
 CWaveSoapFrontApp::CWaveSoapFrontApp()
 	: m_FileCache(NULL),
-	m_pFirstOp(NULL),
-	m_pLastOp(NULL),
 	m_Thread(ThreadProc, this),
 	m_RunThread(false),
 
@@ -919,17 +917,7 @@ void CWaveSoapFrontApp::QueueOperation(COperationContext * pContext)
 	{
 		// add the operation to the tail
 		CSimpleCriticalSectionLock lock(m_cs);
-		pContext->pPrev = m_pLastOp;
-		pContext->pNext = NULL;
-		if (m_pLastOp != NULL)
-		{
-			m_pLastOp->pNext = pContext;
-		}
-		else
-		{
-			m_pFirstOp = pContext;
-		}
-		m_pLastOp = pContext;
+		m_OpList.InsertTail(pContext);
 	}
 	SetEvent(m_hThreadEvent);
 
@@ -955,50 +943,50 @@ unsigned CWaveSoapFrontApp::_ThreadProc()
 			}
 		}
 		COperationContext * pContext = NULL;
-		if (NULL != m_pFirstOp)
+		if ( ! m_OpList.IsEmpty())
 		{
 			CSimpleCriticalSectionLock lock(m_cs);
 			// find if stop requested for any document
-			pContext = m_pFirstOp;
-			while (pContext)
+			pContext = m_OpList.Next();
+			while (pContext != m_OpList.Head())
 			{
 				if ((pContext->m_Flags & OperationContextStopRequested)
 					|| pContext->pDocument->m_StopOperation)
 				{
 					break;
 				}
-				pContext = pContext->pNext;
+				pContext = pContext->Next();
 			}
-			if (NULL == pContext)
+			if (pContext == m_OpList.Head())
 			{
 				// Find if there is an operation for the active document
-				pContext = m_pFirstOp;
-				while (pContext)
+				pContext = m_OpList.Next();
+				while (pContext != m_OpList.Head())
 				{
 					if (pContext->pDocument == m_pActiveDocument)
 					{
 						break;
 					}
-					pContext = pContext->pNext;
+					pContext = pContext->Next();
 				}
 				// But if it is clipboard operation,
 				// the first clipboard op will be executed instead
-				if (pContext != NULL
+				if (pContext != m_OpList.Head()
 					&& (pContext->m_Flags & OperationContextClipboard))
 				{
-					pContext = m_pFirstOp;
-					while (pContext)
+					pContext = m_OpList.Next();
+					while (pContext != m_OpList.Head())
 					{
 						if (pContext->m_Flags & OperationContextClipboard)
 						{
 							break;
 						}
-						pContext = pContext->pNext;
+						pContext = pContext->Next();
 					}
 				}
-				if (NULL == pContext)
+				if (pContext == m_OpList.Head())
 				{
-					pContext = m_pFirstOp;
+					pContext = m_OpList.Next();
 				}
 			}
 		}
@@ -1040,28 +1028,16 @@ unsigned CWaveSoapFrontApp::_ThreadProc()
 			if (pContext->m_Flags & (OperationContextStop | OperationContextFinished))
 			{
 				// remove the context from the list and delete the context
-				CSimpleCriticalSectionLock lock(m_cs);
-				if (pContext->pPrev != NULL)
 				{
-					pContext->pPrev->pNext = pContext->pNext;
+					CSimpleCriticalSectionLock lock(m_cs);
+					pContext->RemoveFromList();
 				}
-				else
-				{
-					m_pFirstOp = pContext->pNext;
-				}
-				if (pContext->pNext != NULL)
-				{
-					pContext->pNext->pPrev = pContext->pPrev;
-				}
-				else
-				{
-					m_pLastOp = pContext->pPrev;
-				}
+
 				// send a signal to the document, that the operation completed
 				SetStatusStringAndDoc(pContext->GetStatusString() + _T("Completed"),
 									pContext->pDocument);
 				pContext->DeInit();
-				TRACE("Retire context %X, queue entry=%X\n", pContext, m_pFirstOp);
+
 				pContext->Retire();     // usually deletes it
 				// send a signal to the document, that the operation completed
 				NeedKickIdle = true;    // this will reenable all commands
@@ -1077,9 +1053,6 @@ unsigned CWaveSoapFrontApp::_ThreadProc()
 				}
 			}
 			continue;
-		}
-		else
-		{
 		}
 		WaitForSingleObject(m_hThreadEvent, 1000);
 	}

@@ -19,6 +19,7 @@
 #include "RawFileParametersDlg.h"
 #include "FilterDialog.h"
 #include "WaveSoapFileDialogs.h"
+#include "PasteResampleModeDlg.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -180,10 +181,6 @@ CWaveSoapFrontDoc::CWaveSoapFrontDoc()
 	m_bDirectMode(false),
 	m_bInOnIdle(false),
 	m_bChannelsLocked(true),
-	m_pCurrentContext(NULL),
-	m_pUndoList(NULL),
-	m_pRedoList(NULL),
-	m_pRetiredList(NULL),
 	m_OperationInProgress(0),
 	m_PlayingSound(false),
 	m_OperationNonCritical(false),
@@ -210,15 +207,9 @@ CWaveSoapFrontDoc::~CWaveSoapFrontDoc()
 	TRACE("CWaveSoapFrontDoc::~CWaveSoapFrontDoc()\n");
 	ASSERT(0 == m_OperationInProgress);
 	// free RetiredList and UpdateList
-	while (m_pRetiredList)
+	while ( ! m_RetiredList.IsEmpty())
 	{
-		COperationContext * pContext = m_pRetiredList;
-		m_pRetiredList = pContext->pNext;
-		if (m_pRetiredList)
-		{
-			m_pRetiredList->pPrev = NULL;
-		}
-		delete pContext;
+		delete m_RetiredList.RemoveHead();
 	}
 	while ( ! m_UpdateList.IsEmpty())
 	{
@@ -262,6 +253,36 @@ CWaveSoapFrontDoc::~CWaveSoapFrontDoc()
 	{
 		pApp->SetStatusStringAndDoc("", NULL);
 	}
+}
+
+int CWaveSoapFrontDoc::WaveFileSamples() const
+{
+	return m_WavFile.NumberOfSamples();
+}
+LPMMCKINFO CWaveSoapFrontDoc::WaveDataChunk() const
+{
+	return m_WavFile.GetDataChunk();
+}
+LPWAVEFORMATEX CWaveSoapFrontDoc::WaveFormat() const
+{
+	return m_WavFile.GetWaveFormat();
+}
+int CWaveSoapFrontDoc::WaveChannels() const
+{
+	return m_WavFile.Channels();
+}
+int CWaveSoapFrontDoc::WaveSampleRate() const
+{
+	return m_WavFile.SampleRate();
+}
+
+int CWaveSoapFrontDoc::WaveSampleSize() const
+{
+	return m_WavFile.SampleSize();
+}
+DWORD CWaveSoapFrontDoc::WaveFileID() const
+{
+	return m_WavFile.GetFileID();
 }
 
 BOOL CWaveSoapFrontDoc::OnNewDocument(WAVEFORMATEX * pWfx, long InitialLengthSeconds)
@@ -1379,7 +1400,7 @@ void CWaveSoapFrontDoc::OnUpdateEditPaste(CCmdUI* pCmdUI)
 
 void CWaveSoapFrontDoc::OnUpdateEditUndo(CCmdUI* pCmdUI)
 {
-	pCmdUI->Enable(NULL != m_pUndoList && ! (m_OperationInProgress || m_bReadOnly));
+	pCmdUI->Enable( ! m_UndoList.IsEmpty() && ! (m_OperationInProgress || m_bReadOnly));
 }
 
 UINT CWaveSoapFrontDoc::_ThreadProc(void)
@@ -1404,9 +1425,11 @@ UINT CWaveSoapFrontDoc::_ThreadProc(void)
 				}
 			}
 		}
-		COperationContext * pContext = m_pCurrentContext;
-		if (pContext)
+		if ( ! m_OpList.IsEmpty())
 		{
+			m_OpList.Lock();
+			COperationContext * pContext = m_OpList.Next();
+			m_OpList.Unlock();
 			// TODO: set the status message before calling Init
 			if (0 == (pContext->m_Flags & OperationContextInitialized))
 			{
@@ -1462,10 +1485,9 @@ UINT CWaveSoapFrontDoc::_ThreadProc(void)
 					SetCurrentStatusString(pContext->GetStatusString() + _T("Completed"));
 				}
 				NeedKickIdle = true;
-				{
-					CSimpleCriticalSectionLock lock(m_cs);
-					m_pCurrentContext = pContext->pNext;
-				}
+
+				m_OpList.RemoveEntry(pContext);
+
 				pContext->DeInit();
 				TRACE("Retire context %X\n", pContext);
 				pContext->Retire();     // usually deletes it
@@ -1568,23 +1590,18 @@ BOOL CWaveSoapFrontDoc::InitUndoRedo(CUndoRedoContext * pContext)
 void CWaveSoapFrontDoc::OnEditUndo()
 {
 	if (m_OperationInProgress
-		|| NULL == m_pUndoList)
+		|| m_UndoList.IsEmpty())
 	{
 		return;
 	}
 	// no critical section lock needed
-	CUndoRedoContext * pUndo = (CUndoRedoContext *) m_pUndoList;
+	CUndoRedoContext * pUndo = (CUndoRedoContext *) m_UndoList.RemoveHead();
 	if ( ! InitUndoRedo(pUndo))
 	{
+		// return head back
+		m_UndoList.InsertHead(pUndo);
 		return;
 	}
-
-	m_pUndoList = pUndo->pNext;
-	if (m_pUndoList)
-	{
-		m_pUndoList->pPrev = NULL;
-	}
-	pUndo->pNext = NULL;
 
 	DecrementModified();
 
@@ -1594,23 +1611,17 @@ void CWaveSoapFrontDoc::OnEditUndo()
 void CWaveSoapFrontDoc::OnEditRedo()
 {
 	if (m_OperationInProgress
-		|| NULL == m_pRedoList)
+		|| m_RedoList.IsEmpty())
 	{
 		return;
 	}
 	// no critical section lock needed
-	CUndoRedoContext * pRedo = (CUndoRedoContext *) m_pRedoList;
+	CUndoRedoContext * pRedo = (CUndoRedoContext *) m_RedoList.RemoveHead();
 	if ( ! InitUndoRedo(pRedo))
 	{
+		m_RedoList.InsertHead(pRedo);
 		return;
 	}
-
-	m_pRedoList = pRedo->pNext;
-	if (m_pRedoList)
-	{
-		m_pRedoList->pPrev = NULL;
-	}
-	pRedo->pNext = NULL;
 
 	IncrementModified(FALSE);   // don't delete redo
 
@@ -1619,7 +1630,7 @@ void CWaveSoapFrontDoc::OnEditRedo()
 
 void CWaveSoapFrontDoc::OnUpdateEditRedo(CCmdUI* pCmdUI)
 {
-	pCmdUI->Enable(NULL != m_pRedoList && ! (m_OperationInProgress || m_bReadOnly));
+	pCmdUI->Enable( ! m_RedoList.IsEmpty() && ! (m_OperationInProgress || m_bReadOnly));
 }
 
 void CWaveSoapFrontDoc::QueueOperation(COperationContext * pContext)
@@ -1634,22 +1645,7 @@ void CWaveSoapFrontDoc::QueueOperation(COperationContext * pContext)
 	// the operation is performed by the document thread
 	else
 	{
-		{
-			CSimpleCriticalSectionLock lock(m_cs);
-			if (NULL == m_pCurrentContext)
-			{
-				m_pCurrentContext = pContext;
-			}
-			else
-			{
-				COperationContext * pLast = m_pCurrentContext;
-				while (pLast->pNext != NULL)
-				{
-					pLast = pLast->pNext;
-				}
-				pLast->pNext = pContext;
-			}
-		}
+		m_OpList.InsertTail(pContext);
 		SetEvent(m_hThreadEvent);
 	}
 }
@@ -1718,6 +1714,27 @@ void CWaveSoapFrontDoc::DoPaste(LONG Start, LONG End, LONG Channel, LPCTSTR File
 		return;
 	}
 	long NumSamplesToPasteFrom = pSrcFile->NumberOfSamples();
+	// check if the sampling rate matches the clipboard
+	int SrcSampleRate = pSrcFile->SampleRate();
+	int TargetSampleRate = WaveSampleRate();
+	if (SrcSampleRate != TargetSampleRate)
+	{
+		CPasteResampleModeDlg dlg;
+		dlg.m_SrcSampleRate = SrcSampleRate;
+		dlg.m_TargetSampleRate = TargetSampleRate;
+
+		if (IDOK != dlg.DoModal())
+		{
+			return;
+		}
+		if (0 == dlg.m_ModeSelect)
+		{
+			// resample
+			NumSamplesToPasteFrom =
+				MulDiv(NumSamplesToPasteFrom, TargetSampleRate, SrcSampleRate);
+		}
+	}
+
 	if (End > Start)
 	{
 		CPasteModeDialog dlg;
@@ -3066,13 +3083,12 @@ void CWaveSoapFrontDoc::OnIdle()
 		UpdateAllViews(NULL, pInfo->UpdateCode, pInfo);
 		delete pInfo;
 	}
-	while (m_pRetiredList)
+	while ( ! m_RetiredList.IsEmpty())
 	{
 		COperationContext * pContext;
 		{
 			CSimpleCriticalSectionLock lock(m_cs);
-			pContext = m_pRetiredList;
-			m_pRetiredList = pContext->pNext;
+			pContext = m_RetiredList.RemoveHead();
 		}
 		pContext->PostRetire(FALSE);     // deletes it usually
 	}
@@ -3126,13 +3142,13 @@ void CWaveSoapFrontDoc::OnUpdateEditSelection(CCmdUI* pCmdUI)
 	pCmdUI->Enable( ! m_OperationInProgress);
 }
 
-static void LimitUndoRedo(COperationContext ** ppContext, int MaxNum, size_t MaxSize)
+static void LimitUndoRedo(KListEntry<COperationContext> * pEntry, int MaxNum, size_t MaxSize)
 {
 	size_t Size = 0;
 	int Num = 0;
-	while (* ppContext != NULL)
+	for (COperationContext * pContext = pEntry->Next()
+		; pContext != pEntry->Head(); pContext = pContext->Next())
 	{
-		COperationContext * pContext = *ppContext;
 		Num++;
 		CUndoRedoContext * pUndoRedo = dynamic_cast<CUndoRedoContext *>(pContext);
 		if (NULL != pUndoRedo
@@ -3140,18 +3156,12 @@ static void LimitUndoRedo(COperationContext ** ppContext, int MaxNum, size_t Max
 		{
 			Size += pUndoRedo->m_SrcFile.GetLength();
 		}
-		ppContext = & pContext->pNext;
 		if ((MaxNum != 0 && Num > MaxNum)
 			|| (MaxSize != 0 && Size > MaxSize))
 		{
-			COperationContext * tmp;
-			pContext = *ppContext;
-			* ppContext = NULL;
-			while (pContext != NULL)
+			while (pContext->Next() != pEntry->Head())
 			{
-				tmp = pContext;
-				pContext = pContext->pNext;
-				delete tmp;
+				delete pContext->RemoveHead();
 			}
 			break;
 		}
@@ -3163,12 +3173,8 @@ void CWaveSoapFrontDoc::AddUndoRedo(CUndoRedoContext * pContext)
 	CThisApp * pApp = GetApp();
 	if (pContext->m_Flags & RedoContext)
 	{
-		pContext->pNext = m_pRedoList;
-		if (m_pRedoList)
-		{
-			m_pRedoList->pPrev = pContext;
-		}
-		m_pRedoList = pContext;
+		m_RedoList.InsertTail(pContext);
+
 		// free extra redo, if count or size limit is exceeded
 		int MaxRedoDepth = pApp->m_MaxRedoDepth;
 		if ( ! pApp->m_bEnableRedoDepthLimit)
@@ -3181,16 +3187,12 @@ void CWaveSoapFrontDoc::AddUndoRedo(CUndoRedoContext * pContext)
 			MaxRedoSize = 0;
 		}
 
-		LimitUndoRedo( & m_pRedoList, MaxRedoDepth, MaxRedoSize);
+		LimitUndoRedo( & m_RedoList, MaxRedoDepth, MaxRedoSize);
 	}
 	else
 	{
-		pContext->pNext = m_pUndoList;
-		if (m_pUndoList)
-		{
-			m_pUndoList->pPrev = pContext;
-		}
-		m_pUndoList = pContext;
+		m_UndoList.InsertTail(pContext);
+
 		// free extra undo, if count or size limit is exceeded
 		int MaxUndoDepth = pApp->m_MaxUndoDepth;
 		if ( ! pApp->m_bEnableUndoDepthLimit)
@@ -3203,7 +3205,7 @@ void CWaveSoapFrontDoc::AddUndoRedo(CUndoRedoContext * pContext)
 			MaxUndoSize = 0;
 		}
 
-		LimitUndoRedo( & m_pUndoList, MaxUndoDepth, MaxUndoSize);
+		LimitUndoRedo( & m_UndoList, MaxUndoDepth, MaxUndoSize);
 	}
 }
 
@@ -3295,11 +3297,18 @@ void CWaveSoapFrontDoc::OnUpdateIndicatorCurrentPos(CCmdUI* pCmdUI)
 {
 	unsigned TimeMs;
 	int TimeFormat = GetApp()->m_SoundTimeFormat;
-	CSoundPlayContext * pCx = dynamic_cast<CSoundPlayContext *>(m_pCurrentContext);
+
 	if ( ! m_WavFile.IsOpen())
 	{
 		return;
 	}
+
+	CSoundPlayContext * pCx = NULL;
+	if (m_PlayingSound && ! m_OpList.IsEmpty())
+	{
+		pCx = dynamic_cast<CSoundPlayContext *>(m_OpList.Next());
+	}
+
 	if (m_PlayingSound && NULL != pCx)
 	{
 		if ((TimeFormat & SampleToString_Mask) == SampleToString_Sample)
@@ -3382,10 +3391,14 @@ void CWaveSoapFrontDoc::OnSoundPause()
 {
 	if (m_PlayingSound)
 	{
-		CSoundPlayContext * pCx = dynamic_cast<CSoundPlayContext *>(m_pCurrentContext);
-		if (pCx)
+		CSoundPlayContext * pCx = NULL;
+		if ( ! m_OpList.IsEmpty())
 		{
-			pCx->m_bPauseRequested = true;
+			pCx = dynamic_cast<CSoundPlayContext *>(m_OpList.Next());
+			if (pCx)
+			{
+				pCx->m_bPauseRequested = true;
+			}
 		}
 		m_StopOperation = true;
 	}
@@ -3420,21 +3433,17 @@ BOOL CWaveSoapFrontDoc::SaveModified()
 
 void CWaveSoapFrontDoc::DeleteUndo()
 {
-	while (m_pUndoList)
+	while ( ! m_UndoList.IsEmpty())
 	{
-		COperationContext * pContext = m_pUndoList;
-		m_pUndoList = pContext->pNext;
-		delete pContext;
+		delete m_UndoList.RemoveHead();
 	}
 }
 
 void CWaveSoapFrontDoc::DeleteRedo()
 {
-	while (m_pRedoList)
+	while ( ! m_RedoList.IsEmpty())
 	{
-		COperationContext * pContext = m_pRedoList;
-		m_pRedoList = pContext->pNext;
-		delete pContext;
+		delete m_RedoList.RemoveHead();
 	}
 }
 
@@ -5614,58 +5623,33 @@ void CWaveSoapFrontDoc::OnUpdateSamplerateCustom(CCmdUI* pCmdUI)
 
 void CWaveSoapFrontDoc::DeletePermanentUndoRedo()
 {
-	CUndoRedoContext * pUndo = static_cast<CUndoRedoContext *>(m_pUndoList);
-	while (NULL != pUndo)
+	COperationContext * pContext;
+	for (pContext = m_UndoList.Next()
+		; pContext != m_UndoList.Head(); pContext = pContext->Next())
 	{
-		if ((pUndo->m_Flags & UndoContextReplaceWholeFile)
-			&& ! pUndo->m_SrcFile.IsTemporaryFile())
+		if ((pContext->m_Flags & UndoContextReplaceWholeFile)
+			&& ! ((CUndoRedoContext *)pContext)->m_SrcFile.IsTemporaryFile())
 		{
+			pContext = pContext->Prev();
+			while (pContext->Next() != m_UndoList.Head())
+			{
+				delete pContext->RemoveHead();
+			}
 			break;
 		}
-		pUndo = static_cast<CUndoRedoContext *>(pUndo->pNext);
 	}
-	if (NULL != pUndo)
+	for (pContext = m_RedoList.Next()
+		; pContext != m_RedoList.Head(); pContext = pContext->Next())
 	{
-		if (pUndo->pPrev != NULL)
+		if ((pContext->m_Flags & UndoContextReplaceWholeFile)
+			&& ! ((CUndoRedoContext *)pContext)->m_SrcFile.IsTemporaryFile())
 		{
-			pUndo->pPrev->pNext = NULL;
-		}
-		else
-		{
-			m_pUndoList = NULL;
-		}
-		while (NULL != pUndo)
-		{
-			CUndoRedoContext * pTmp = pUndo;
-			pUndo = static_cast<CUndoRedoContext *>(pUndo->pNext);
-			delete pTmp;
-		}
-	}
-	CUndoRedoContext * pRedo = static_cast<CUndoRedoContext *>(m_pRedoList);
-	while (NULL != pRedo)
-	{
-		if ((pRedo->m_Flags & UndoContextReplaceWholeFile)
-			&& ! pRedo->m_SrcFile.IsTemporaryFile())
-		{
+			pContext = pContext->Prev();
+			while (pContext->Next() != m_RedoList.Head())
+			{
+				delete pContext->RemoveHead();
+			}
 			break;
-		}
-		pRedo = static_cast<CUndoRedoContext *>(pRedo->pNext);
-	}
-	if (NULL != pRedo)
-	{
-		if (pRedo->pPrev != NULL)
-		{
-			pRedo->pPrev->pNext = NULL;
-		}
-		else
-		{
-			m_pRedoList = NULL;
-		}
-		while (NULL != pRedo)
-		{
-			CUndoRedoContext * pTmp = pRedo;
-			pRedo = static_cast<CUndoRedoContext *>(pRedo->pNext);
-			delete pTmp;
 		}
 	}
 }
@@ -5720,7 +5704,7 @@ void CWaveSoapFrontDoc::OnEditClearUndo()
 
 void CWaveSoapFrontDoc::OnUpdateEditClearUndo(CCmdUI* pCmdUI)
 {
-	pCmdUI->Enable(! m_OperationInProgress && NULL != m_pUndoList);
+	pCmdUI->Enable(! m_OperationInProgress && ! m_UndoList.IsEmpty());
 }
 
 void CWaveSoapFrontDoc::OnEditClearRedo()
@@ -5730,7 +5714,7 @@ void CWaveSoapFrontDoc::OnEditClearRedo()
 
 void CWaveSoapFrontDoc::OnUpdateEditClearRedo(CCmdUI* pCmdUI)
 {
-	pCmdUI->Enable(! m_OperationInProgress && NULL != m_pRedoList);
+	pCmdUI->Enable(! m_OperationInProgress && ! m_RedoList.IsEmpty());
 }
 
 void CWaveSoapFrontDoc::OnProcessEqualizer()

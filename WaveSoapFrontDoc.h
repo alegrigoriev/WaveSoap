@@ -87,30 +87,14 @@ public:
 		return m_bChannelsLocked;
 	}
 
-	int WaveFileSamples() const
-	{
-		return m_WavFile.NumberOfSamples();
-	}
-	LPMMCKINFO WaveDataChunk() const
-	{
-		return m_WavFile.GetDataChunk();
-	}
-	LPWAVEFORMATEX WaveFormat() const
-	{
-		return m_WavFile.GetWaveFormat();
-	}
-	int WaveChannels() const
-	{
-		return m_WavFile.Channels();
-	}
-	int WaveSampleSize() const
-	{
-		return m_WavFile.SampleSize();
-	}
-	DWORD WaveFileID() const
-	{
-		return m_WavFile.GetFileID();
-	}
+	int WaveFileSamples() const;
+	LPMMCKINFO WaveDataChunk() const;
+	LPWAVEFORMATEX WaveFormat() const;
+	int WaveChannels() const;
+	int WaveSampleRate() const;
+	int WaveSampleSize() const;
+	DWORD WaveFileID() const;
+
 	virtual BOOL IsModified();
 	BOOL IsBusy() const
 	{
@@ -246,10 +230,10 @@ public:
 	bool m_bClosePending;   // Save is in progress, request close afterwards
 	bool m_bCloseThisDocumentNow;   // CDocTemplate should close it in OnIdle
 	CSimpleCriticalSection m_cs;
-	COperationContext * m_pCurrentContext;
-	COperationContext * m_pUndoList;
-	COperationContext * m_pRedoList;
-	COperationContext * m_pRetiredList;
+	LockedListHead<COperationContext> m_OpList;
+	KListEntry<COperationContext> m_UndoList;
+	KListEntry<COperationContext> m_RedoList;
+	KListEntry<COperationContext> m_RetiredList;
 	KListEntry<CSoundUpdateInfo> m_UpdateList;
 
 protected:
