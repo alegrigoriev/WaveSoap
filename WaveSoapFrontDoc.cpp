@@ -26,6 +26,7 @@
 #include "SplitToFilesDialog.h"
 
 #include "UndoRedoOptionsDlg.h"
+#include "EditFadeInOut.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -184,6 +185,10 @@ BEGIN_MESSAGE_MAP(CWaveSoapFrontDoc, CDocument)
 	ON_UPDATE_COMMAND_UI(ID_SAVE_SPLIT_TO_FILES, OnUpdateSaveSplitToFiles)
 	ON_COMMAND(ID_EDIT_MORE_UNDO_REDO, OnEditMoreUndoRedo)
 	ON_UPDATE_COMMAND_UI(ID_EDIT_MORE_UNDO_REDO, OnUpdateEditMoreUndoRedo)
+	ON_COMMAND(ID_EDIT_FADE_OUT, OnEditFadeOut)
+	ON_COMMAND(ID_EDIT_FADE_IN, OnEditFadeIn)
+	ON_UPDATE_COMMAND_UI(ID_EDIT_FADE_IN, OnUpdateEditFadeIn)
+	ON_UPDATE_COMMAND_UI(ID_EDIT_FADE_OUT, OnUpdateEditFadeOut)
 	END_MESSAGE_MAP()
 
 /////////////////////////////////////////////////////////////////////////////
@@ -4147,7 +4152,7 @@ void CWaveSoapFrontDoc::OnProcessMute()
 		return;
 	}
 
-	if (0x8000 & GetAsyncKeyState(VK_SHIFT))
+	if (0x8000 & GetKeyState(VK_SHIFT))
 	{
 		CFadeInOutDialog dlg(m_UseFadeInOut, m_FadeInEnvelope, m_FadeInOutLengthMs);
 
@@ -5873,5 +5878,60 @@ ULONGLONG CWaveSoapFrontDoc::GetRedoSize() const
 	}
 
 	return Size;
+}
+
+void CWaveSoapFrontDoc::OnEditFadeIn()
+{
+	DoFadeInOut(FALSE);
+}
+
+void CWaveSoapFrontDoc::OnUpdateEditFadeIn(CCmdUI *pCmdUI)
+{
+	pCmdUI->Enable(CanModifySelection());
+}
+
+void CWaveSoapFrontDoc::OnEditFadeOut()
+{
+	DoFadeInOut(TRUE);
+}
+
+void CWaveSoapFrontDoc::OnUpdateEditFadeOut(CCmdUI *pCmdUI)
+{
+	pCmdUI->Enable(CanModifySelection());
+}
+
+void CWaveSoapFrontDoc::DoFadeInOut(BOOL FadeOut)
+{
+	if (0x8000 & GetKeyState(VK_SHIFT))
+	{
+		CEditFadeInOutDlg dlg(FadeOut, m_FadeInEnvelope);
+
+		if (IDOK != dlg.DoModal())
+		{
+			return;
+		}
+
+		m_FadeInEnvelope = dlg.GetTransitionType();
+		m_FadeOutEnvelope = -m_FadeInEnvelope;
+		FadeOut = dlg.IsFadeOut();
+	}
+
+	int Envelope;
+
+	if (FadeOut)
+	{
+		Envelope = m_FadeOutEnvelope;
+	}
+	else
+	{
+		Envelope = m_FadeInEnvelope;
+	}
+
+	CFadeInOutOperation * pContext = new CFadeInOutOperation(this,
+															Envelope, m_WavFile,
+															m_SelectionStart, GetSelectedChannel(),
+															m_SelectionEnd - m_SelectionStart, UndoEnabled());
+
+	ExecuteOperation(pContext, TRUE);
 }
 
