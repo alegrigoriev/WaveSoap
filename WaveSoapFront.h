@@ -16,60 +16,11 @@
 
 #include "ApplicationProfile.h"
 #include "DirectFile.h"
+#include "OperationContext.h"
 /////////////////////////////////////////////////////////////////////////////
 // CWaveSoapFrontApp:
 // See WaveSoapFront.cpp for the implementation of this class
 //
-class COperationContext;
-typedef BOOL (_stdcall * WAVE_OPERATION_PROC)(COperationContext *);
-class COperationContext
-{
-public:
-	COperationContext(class CWaveSoapFrontDoc * pDoc, DWORD Flags)
-		: pDocument(pDoc),
-		m_Flags(Flags),
-		pNextChain(NULL),
-		pNext(NULL),
-		pPrev(NULL),
-		PercentCompleted(0)
-	{
-	}
-	virtual ~COperationContext()
-	{
-		if (pNextChain)
-		{
-			COperationContext * pContext = pNextChain;
-			pNextChain = NULL;
-			delete pContext;
-		}
-	}
-	virtual BOOL OperationProc() = 0;
-	virtual BOOL Init() { return TRUE; }
-	virtual BOOL DeInit() { return TRUE; }
-	virtual void Retire();
-	virtual void PostRetire();
-	virtual CString GetStatusString() = 0;
-	COperationContext * pNext;
-	COperationContext * pPrev;
-	COperationContext * pNextChain;
-	class CWaveSoapFrontDoc * pDocument;
-	DWORD m_Flags;
-	int PercentCompleted;
-};
-enum {
-	OperationContextClipboard = 1,  // clipboard operations are serialized
-	OperationContextDiskIntensive = 2,  // only one disk intensive can be active
-	OperationContextStopRequested = 4,    // cancel button pressed (set by the main thread)
-	OperationContextStop = 8,  // the procedure is canceling
-	OperationContextFinished = 0x10,    // the operation finished
-	OperationContextInterventionRequired = 0x20,    // need to run a modal dialog
-	OperationContextInitialized = 0x40,
-	OperationContextCreatingUndo = 0x80,
-	OperationContextNonCritical = 0x100,
-	OperationContextDontKeepAfterRetire = 0x200,
-	OperationContextDontAdjustPriority = 0x400,
-};
-
 class CWaveSoapFrontStatusBar : public CStatusBar
 {
 public:

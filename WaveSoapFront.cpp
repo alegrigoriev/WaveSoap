@@ -464,39 +464,6 @@ void CWaveSoapFrontApp::QueueOperation(COperationContext * pContext)
 
 }
 
-void COperationContext::Retire()
-{
-	// all context go to retirement list
-	if (m_Flags & OperationContextDontKeepAfterRetire)
-	{
-		InterlockedDecrement( & pDocument->m_OperationInProgress);
-		delete this;
-		return;
-	}
-	// queue it to the Doc
-	CSimpleCriticalSectionLock lock(pDocument->m_cs);
-	COperationContext * pLast = pDocument->m_pRetiredList;
-	pNext = NULL;
-	if (NULL == pLast)
-	{
-		pDocument->m_pRetiredList = this;
-	}
-	else
-	{
-		while (NULL != pLast->pNext)
-		{
-			pLast = pLast->pNext;
-		}
-		pLast->pNext = this;
-	}
-}
-
-void COperationContext::PostRetire()
-{
-	InterlockedDecrement( & pDocument->m_OperationInProgress);
-	delete this;
-}
-
 unsigned CWaveSoapFrontApp::_ThreadProc()
 {
 	m_Thread.SetThreadPriority(THREAD_PRIORITY_BELOW_NORMAL);
