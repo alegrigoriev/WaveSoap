@@ -18,6 +18,7 @@
 #include <Dlgs.h>
 #include "NewFilePropertiesDlg.h"
 #include "FileDialogWithHistory.h"
+#include "PreferencesPropertySheet.h"
 
 #define _countof(array) (sizeof(array)/sizeof(array[0]))
 
@@ -163,6 +164,7 @@ BEGIN_MESSAGE_MAP(CWaveSoapFrontApp, CWinApp)
 	ON_COMMAND(ID_TOOLS_CDGRAB, OnToolsCdgrab)
 	ON_COMMAND(ID_FILE_SAVE_ALL, OnFileSaveAll)
 	ON_UPDATE_COMMAND_UI(ID_FILE_SAVE_ALL, OnUpdateFileSaveAll)
+	ON_COMMAND(ID_TOOLS_OPTIONS, OnToolsOptions)
 	//}}AFX_MSG_MAP
 	// if no documents, Paste will create a new file
 	ON_COMMAND(ID_EDIT_PASTE, OnEditPasteNew)
@@ -2785,4 +2787,12 @@ BOOL CanExpandWaveFileDlg(const CWaveFile & WaveFile, long NumOfSamplesToAdd)
 	}
 	AfxMessageBox(IDS_FILE_MAY_GET_TOO_BIG, MB_OK | MB_ICONSTOP);
 	return FALSE;
+}
+
+void CWaveSoapFrontApp::OnToolsOptions()
+{
+	CPreferencesPropertySheet dlg(IDS_OPTIONS_CAPTION);
+	if (IDOK == dlg.DoModal())
+	{
+	}
 }

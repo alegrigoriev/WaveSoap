@@ -1,7 +1,7 @@
 Known problems and tasks:
 
-Test "reload compressed file" dialogs
 Add options dialog
+Test "reload compressed file" dialogs
 Show File Properties
 Make sliders working in Resample Dialog
 Add decibel view to CAmplitudeRuler
@@ -42,6 +42,7 @@ Reconsider Undo All Changes functionality and Redo All Changes
 ??Delete permanent undo: non-permanent file may become permanent after save, move call after save
 
 Problems:
+Expression dialog: OK not disabled on the beginning, if expression is empty
 After file length increased to 1 sample from 0, scroll bar set to wrond scale
 Expression evaluation selection longer than file length doesn't update file length
 Multiline edit box in child dialog eats Esc and Enter (DLGC_WANTALLCHARS)

@@ -150,6 +150,7 @@ BEGIN
         MENUITEM "&Open...\tCtrl+O",            ID_FILE_OPEN
         MENUITEM "CD &Grabber..",               ID_TOOLS_CDGRAB
         MENUITEM SEPARATOR
+        MENUITEM "&Preferences...",             ID_TOOLS_OPTIONS
         MENUITEM "P&rint Setup...",             ID_FILE_PRINT_SETUP
         MENUITEM SEPARATOR
         MENUITEM "Recent File",                 ID_FILE_MRU_FILE1, GRAYED
@@ -276,12 +277,13 @@ BEGIN
     END
     POPUP "&Tools"
     BEGIN
-        MENUITEM "&Options...",                 ID_TOOLS_OPTIONS
         MENUITEM "I&nterpolate",                ID_TOOLS_INTERPOLATE
         MENUITEM "&Expression Evaluation...",   ID_PROCESS_SYNTHESIS_EXPRESSION_EVALUATION
 
         MENUITEM "&Synthesis",                  65535
         MENUITEM "CD &Grabber..",               ID_TOOLS_CDGRAB
+        MENUITEM SEPARATOR
+        MENUITEM "&Preferences...",             ID_TOOLS_OPTIONS
     END
     POPUP "&Window"
     BEGIN
@@ -1391,8 +1393,8 @@ CAPTION "Reopen Saved File"
 FONT 8, "MS Sans Serif"
 BEGIN
     LTEXT           "File ""%s"" saved. ",IDC_STATIC_PROMPT,7,7,173,62
-    DEFPUSHBUTTON   "&Reopen in direct mode",IDOK,35,76,115,14
-    PUSHBUTTON      "Reopen on &Non-direct mode",IDNO,35,93,115,14
+    DEFPUSHBUTTON   "&Reopen for direct editing",IDOK,35,76,115,14
+    PUSHBUTTON      "Reopen in &buffered mode",IDNO,35,93,115,14
     PUSHBUTTON      "&Close the file",IDCANCEL,35,110,115,14
 END
 
@@ -1587,11 +1589,51 @@ BEGIN
     PUSHBUTTON      "More...",IDC_BUTTON_MORE,316,45,50,14
 END
 
-IDD_PROPPAGE_FILE_PREFERENCES DIALOG DISCARDABLE  0, 0, 210, 154
+IDD_PROPPAGE_FILE_PREFERENCES DIALOG DISCARDABLE  0, 0, 221, 252
 STYLE WS_CHILD | WS_DISABLED | WS_CAPTION
 CAPTION "File"
 FONT 8, "MS Sans Serif"
 BEGIN
+    LTEXT           "Temporary file location:",IDC_STATIC,7,24,93,8
+    EDITTEXT        IDC_EDIT1,7,38,161,14,ES_AUTOHSCROLL
+    PUSHBUTTON      "...",IDC_BUTTON1,194,38,20,14
+    CONTROL         "Enable",IDC_CHECK1,"Button",BS_AUTOCHECKBOX | 
+                    WS_TABSTOP,11,97,56,10
+    EDITTEXT        IDC_EDIT2,82,108,40,14,ES_AUTOHSCROLL
+    CONTROL         "Limit total size:",IDC_CHECK2,"Button",BS_AUTOCHECKBOX | 
+                    WS_TABSTOP,11,110,67,10
+    LTEXT           "MB",IDC_STATIC,127,111,11,8
+    CONTROL         "Limit depth:",IDC_CHECK3,"Button",BS_AUTOCHECKBOX | 
+                    WS_TABSTOP,11,126,50,10
+    EDITTEXT        IDC_EDIT3,82,125,40,14,ES_AUTOHSCROLL
+    CONTROL         "Enable",IDC_CHECK4,"Button",BS_AUTOCHECKBOX | 
+                    WS_TABSTOP,11,155,62,10
+    EDITTEXT        IDC_EDIT5,82,166,40,14,ES_AUTOHSCROLL
+    CONTROL         "Limit total size:",IDC_CHECK5,"Button",BS_AUTOCHECKBOX | 
+                    WS_TABSTOP,11,168,67,10
+    LTEXT           "MB",IDC_STATIC,127,169,11,8
+    CONTROL         "Limit depth:",IDC_CHECK6,"Button",BS_AUTOCHECKBOX | 
+                    WS_TABSTOP,11,184,50,10
+    EDITTEXT        IDC_EDIT6,82,183,40,14,ES_AUTOHSCROLL
+    CONTROL         "Use RAM for temp files not larger than:",IDC_CHECK7,
+                    "Button",BS_AUTOCHECKBOX | BS_MULTILINE | WS_TABSTOP,11,
+                    59,81,20
+    EDITTEXT        IDC_EDIT4,99,61,40,14,ES_AUTOHSCROLL
+    GROUPBOX        "Redo",IDC_STATIC,7,145,139,58
+    CONTROL         "Spin1",IDC_SPIN1,"msctls_updown32",UDS_ARROWKEYS,125,
+                    183,10,14
+    CONTROL         "Spin1",IDC_SPIN2,"msctls_updown32",UDS_ARROWKEYS,125,
+                    124,8,14
+    GROUPBOX        "Undo",IDC_STATIC,7,87,139,56
+    LTEXT           "kB",IDC_STATIC,144,63,12,8
+    LTEXT           "Open files from command line and drag-and-drop as:",
+                    IDC_STATIC,7,208,188,8
+    CONTROL         "Read only",IDC_RADIO1,"Button",BS_AUTORADIOBUTTON,10,
+                    222,47,10
+    CONTROL         "Direct edit",IDC_RADIO2,"Button",BS_AUTORADIOBUTTON,70,
+                    222,61,10
+    CONTROL         "Buffered",IDC_RADIO3,"Button",BS_AUTORADIOBUTTON,140,
+                    222,49,10
 END
 
 IDD_PROPPAGE_VIEW_PREFERENCES DIALOG DISCARDABLE  0, 0, 210, 154
@@ -1599,13 +1641,34 @@ STYLE WS_CHILD | WS_DISABLED | WS_CAPTION
 CAPTION "View"
 FONT 8, "MS Sans Serif"
 BEGIN
+    LTEXT           "Colors:",IDC_STATIC,7,18,35,8
 END
 
-IDD_PROPPAGE_PLAYBACK_PREFERENCES DIALOG DISCARDABLE  0, 0, 210, 154
+IDD_PROPPAGE_SOUND_PREFERENCES DIALOG DISCARDABLE  0, 0, 210, 191
 STYLE WS_CHILD | WS_DISABLED | WS_CAPTION
-CAPTION "Playback"
+CAPTION "Sound"
 FONT 8, "MS Sans Serif"
 BEGIN
+    GROUPBOX        "Playback",IDC_STATIC,7,7,197,72
+    LTEXT           "Device:",IDC_STATIC,9,19,32,8
+    COMBOBOX        IDC_COMBO1,42,17,157,30,CBS_DROPDOWN | CBS_SORT | 
+                    WS_VSCROLL | WS_TABSTOP
+    LTEXT           "Buffer size:",IDC_STATIC,9,45,65,8
+    EDITTEXT        IDC_EDIT3,76,41,40,14,ES_AUTOHSCROLL
+    LTEXT           "Number of buffers:",IDC_STATIC,9,63,65,8
+    EDITTEXT        IDC_EDIT2,76,59,40,14,ES_AUTOHSCROLL
+    CONTROL         "Spin1",IDC_SPIN1,"msctls_updown32",UDS_ARROWKEYS,115,59,
+                    8,14
+    GROUPBOX        "Recording",IDC_STATIC,7,86,197,72
+    LTEXT           "Device:",IDC_STATIC,10,98,31,8
+    COMBOBOX        IDC_COMBO2,42,96,157,30,CBS_DROPDOWN | CBS_SORT | 
+                    WS_VSCROLL | WS_TABSTOP
+    LTEXT           "Buffer size:",IDC_STATIC,10,124,59,8
+    EDITTEXT        IDC_EDIT6,77,120,40,14,ES_AUTOHSCROLL
+    LTEXT           "Number of buffers:",IDC_STATIC,10,142,66,8
+    EDITTEXT        IDC_EDIT7,77,138,40,14,ES_AUTOHSCROLL
+    CONTROL         "Spin1",IDC_SPIN2,"msctls_updown32",UDS_ARROWKEYS,116,
+                    138,8,14
 END
 
 IDD_DIALOG_REOPEN_COMPRESSED DIALOG DISCARDABLE  0, 0, 187, 127
@@ -1912,9 +1975,9 @@ BEGIN
     IDD_PROPPAGE_FILE_PREFERENCES, DIALOG
     BEGIN
         LEFTMARGIN, 7
-        RIGHTMARGIN, 203
+        RIGHTMARGIN, 214
         TOPMARGIN, 7
-        BOTTOMMARGIN, 147
+        BOTTOMMARGIN, 245
     END
 
     IDD_PROPPAGE_VIEW_PREFERENCES, DIALOG
@@ -1925,12 +1988,12 @@ BEGIN
         BOTTOMMARGIN, 147
     END
 
-    IDD_PROPPAGE_PLAYBACK_PREFERENCES, DIALOG
+    IDD_PROPPAGE_SOUND_PREFERENCES, DIALOG
     BEGIN
         LEFTMARGIN, 7
         RIGHTMARGIN, 203
         TOPMARGIN, 7
-        BOTTOMMARGIN, 147
+        BOTTOMMARGIN, 184
     END
 
     IDD_DIALOG_REOPEN_COMPRESSED, DIALOG
@@ -2338,6 +2401,7 @@ BEGIN
                             "Error occured while decompressing file ""%s""\nThe file may be corrupted or unreadable\nMMSYSERR error code=0x%08X"
     IDS_SHOULD_RELOAD_COMPRESSED_FILE 
                             "File ""%s"" saved with channel or sample rate conversion.\nYou can reload the saved file, or close it."
+    IDS_OPTIONS_CAPTION     "Preferences"
 END
 
 STRINGTABLE DISCARDABLE 
