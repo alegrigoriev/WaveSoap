@@ -1208,8 +1208,6 @@ BOOL CWaveSoapFrontView::OnEraseBkgnd(CDC* pDC)
 	CRect cr;
 	GetClientRect(cr);
 
-	int SelBegin = WorldToWindowXfloor(pDoc->m_SelectionStart);
-	int SelEnd = WorldToWindowXfloor(pDoc->m_SelectionEnd);
 	int FileEnd = WorldToWindowXceil(pDoc->WaveFileSamples());
 
 	try
@@ -1246,9 +1244,12 @@ BOOL CWaveSoapFrontView::OnEraseBkgnd(CDC* pDC)
 
 		for (NUMBER_OF_CHANNELS ch = 0; ch < pDoc->WaveChannels(); ch++)
 		{
-			CRect ChanR;
+			int SelBegin = WorldToWindowXfloor(pDoc->m_SelectionStart);
+			int SelEnd = WorldToWindowXfloor(pDoc->m_SelectionEnd);
 
+			CRect ChanR;
 			GetChannelRect(ch, ChanR);
+
 			ChanR.right = std::min(cr.right, ClipRect.right);
 			ChanR.left = std::max(cr.left, ClipRect.left);
 
