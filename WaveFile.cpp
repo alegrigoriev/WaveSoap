@@ -94,54 +94,95 @@ static DWORD GetSectorSize(LPCTSTR szFilename)
 BOOL CMmioFile::Open( LPCTSTR szFileName, UINT nOpenFlags)
 {
 	Close();
+	DWORD DirectFileOpenFlags = 0;
+	if (nOpenFlags & MmioFileOpenReadOnly)
+	{
+		DirectFileOpenFlags |= CDirectFile::OpenReadOnly | CDirectFile::OpenExisting;
+	}
+	if (nOpenFlags & MmioFileOpenCreateNew)
+	{
+		DirectFileOpenFlags |= CDirectFile::CreateNew;
+	}
+	if (nOpenFlags & MmioFileOpenExisting)
+	{
+		DirectFileOpenFlags |= CDirectFile::OpenExisting;
+	}
 
-	if ( ! m_File.Open(szFileName, CDirectFile::OpenReadOnly))
+	if ( ! m_File.Open(szFileName, DirectFileOpenFlags))
 	{
 		return FALSE;
 	}
 
-#if 0
-	m_BufFileOffset = 0xFFFFFFFF;
-	m_SectorSize = GetSectorSize(szFileName);
-#endif
-
-	DWORD dwSizeHigh = 0;
-	m_dwSize = m_File.GetFileSize(& dwSizeHigh);
-
-	if (dwSizeHigh != 0 ||
-		(0xFFFFFFFF == m_dwSize && GetLastError() != NO_ERROR))
+	if (0 == (nOpenFlags & MmioFileOpenCreateNew))
 	{
-		Close();
-		return FALSE;
+
+		DWORD dwSizeHigh = 0;
+		m_dwSize = m_File.GetFileSize(& dwSizeHigh);
+
+		if (dwSizeHigh != 0 ||
+			(0xFFFFFFFF == m_dwSize && GetLastError() != NO_ERROR))
+		{
+			Close();
+			return FALSE;
+		}
+
+		MMIOINFO mmii;
+		memset( & mmii, 0, sizeof mmii);
+		mmii.fccIOProc = 0;
+		mmii.pIOProc = BufferedIOProc;
+
+		mmii.adwInfo[0] = (DWORD)this;
+
+		m_hmmio = mmioOpen(NULL, & mmii,
+							MMIO_READ | MMIO_ALLOCBUF);
+
+		if (NULL == m_hmmio)
+		{
+			Close();
+			return FALSE;
+		}
+
+		m_riffck.ckid = FOURCC_RIFF;
+		m_riffck.cksize = 0;
+		m_riffck.fccType = 0;
+		m_riffck.dwDataOffset = 0;
+		m_riffck.dwFlags = 0;
+		if ( ! FindRiff())
+		{
+			Close();
+			return FALSE;
+		}
 	}
-
-	MMIOINFO mmii;
-	memset( & mmii, 0, sizeof mmii);
-	mmii.fccIOProc = 0;
-	mmii.pIOProc = BufferedIOProc;
-
-	mmii.adwInfo[0] = (DWORD)this;
-
-	m_hmmio = mmioOpen(NULL, & mmii,
-						MMIO_READ | MMIO_ALLOCBUF);
-
-	if (NULL == m_hmmio)
+	else
 	{
-		Close();
-		return FALSE;
-	}
+		// new file created
+		m_dwSize = 0;
+		MMIOINFO mmii;
+		memset( & mmii, 0, sizeof mmii);
+		mmii.fccIOProc = 0;
+		mmii.pIOProc = BufferedIOProc;
 
-	m_riffck.ckid = FOURCC_RIFF;
-	m_riffck.cksize = 0;
-	m_riffck.fccType = 0;
-	m_riffck.dwDataOffset = 0;
-	m_riffck.dwFlags = 0;
-	if ( ! FindRiff())
-	{
-		Close();
-		return FALSE;
-	}
+		mmii.adwInfo[0] = (DWORD)this;
 
+		m_hmmio = mmioOpen(NULL, & mmii,
+							MMIO_READ | MMIO_WRITE | MMIO_ALLOCBUF);
+
+		if (NULL == m_hmmio)
+		{
+			Close();
+			return FALSE;
+		}
+
+		m_riffck.ckid = FOURCC_RIFF;
+		m_riffck.cksize = 0;
+		m_riffck.fccType = 0;
+		m_riffck.dwDataOffset = 0;
+		m_riffck.dwFlags = 0;
+		if (0 == (nOpenFlags & MmioFileOpenDontCreateRiff))
+		{
+			CreateRiff( m_riffck);
+		}
+	}
 	return TRUE;
 }
 
@@ -163,7 +204,6 @@ LRESULT PASCAL CMmioFile::BufferedIOProc(LPSTR lpmmioinfo, UINT wMsg,
 	case MMIOM_READ:
 	{
 		DWORD cbRead = pFile->m_File.ReadAt((LPVOID) lParam1, lParam2, pmmi->lDiskOffset);
-		//pFile->BufferedRead();
 		if (-1 == cbRead)
 			return -1;
 		pmmi->lDiskOffset += cbRead;
@@ -171,7 +211,14 @@ LRESULT PASCAL CMmioFile::BufferedIOProc(LPSTR lpmmioinfo, UINT wMsg,
 	}
 		break;
 	case MMIOM_WRITE:
-		return -1;
+	case MMIOM_WRITEFLUSH:
+	{
+		DWORD cbWritten = pFile->m_File.WriteAt((LPVOID) lParam1, lParam2, ULONG(pmmi->lDiskOffset));
+		if (-1 == cbWritten)
+			return -1;
+		pmmi->lDiskOffset += cbWritten;
+		return cbWritten;
+	}
 		break;
 	case MMIOM_SEEK:
 		switch (lParam2)
@@ -181,7 +228,7 @@ LRESULT PASCAL CMmioFile::BufferedIOProc(LPSTR lpmmioinfo, UINT wMsg,
 			return pmmi->lDiskOffset;
 			break;
 		case SEEK_END:
-			pmmi->lDiskOffset = pFile->m_dwSize + lParam1;
+			pmmi->lDiskOffset = pFile->m_File.m_pFile->FileLength + lParam1;
 			return pmmi->lDiskOffset;
 			break;
 		case SEEK_SET:
@@ -204,64 +251,6 @@ LONG CMmioFile::ReadAt(void * lpBuf, LONG nCount, LONG Position)
 	//CSimpleCriticalSectionLock(m_cs);
 	return m_File.ReadAt(lpBuf, nCount, Position);
 }
-
-#if 0
-size_t CMmioFile::BufferedRead(void * pBuf, size_t size)
-{
-	char * buf = (char *) pBuf;
-	size_t size_read = 0;
-	if (NULL == m_pReadBuffer)
-	{
-		m_pReadBuffer = (char *) VirtualAlloc(NULL, ReadBufferSize, MEM_COMMIT, PAGE_READWRITE);
-		if (NULL == m_pReadBuffer)
-			return -1;
-		m_BufFileOffset = 0xFFFFFFFF;
-	}
-
-	while (size != 0)
-	{
-		if (m_CurrFileOffset < m_BufFileOffset
-			|| m_CurrFileOffset >= m_BufFileOffset + ReadBufferSize)
-		{
-			m_BufFileOffset = m_CurrFileOffset & -(int)m_SectorSize;
-			DWORD cbRead = 0;
-			if (0xFFFFFFFF == SetFilePointer(m_hFile, m_BufFileOffset, NULL, FILE_BEGIN)
-				|| -1 == (cbRead = FileRead(m_pReadBuffer, ReadBufferSize)))
-				return -1;
-			if (0 == cbRead)
-			{
-				break;
-			}
-		}
-
-		char * src = m_pReadBuffer + (m_CurrFileOffset - m_BufFileOffset);
-		size_t BytesToCopy = ReadBufferSize - (m_CurrFileOffset - m_BufFileOffset);
-
-		if (BytesToCopy > size) BytesToCopy = size;
-
-		memcpy(buf, src, BytesToCopy);
-
-		m_CurrFileOffset += BytesToCopy;
-		buf += BytesToCopy;
-		size -= BytesToCopy;
-		size_read += BytesToCopy;
-	}
-	return size_read;
-}
-
-LONG CMmioFile::FileRead(void * pBuf, size_t size)
-{
-	DWORD BytesRead;
-	if (ReadFile(m_hFile, pBuf, size, & BytesRead, NULL))
-	{
-		return BytesRead;
-	}
-	else
-	{
-		return 0;
-	}
-}
-#endif
 
 void CMmioFile::Close( )
 {
@@ -388,3 +377,184 @@ int CWaveFile::Channels() const
 	//return SetFilePointer(m_hFile, position, NULL, FILE_BEGIN);
 	//}
 
+// creates a file based on template format from pTemplateFile
+BOOL CWaveFile::CreateWaveFile(CWaveFile * pTemplateFile, int Channel,
+								int Samples, DWORD flags, LPCTSTR FileName)
+{
+	CString name;
+	char NameBuf[512];
+	// if the name is empty, create a temp name
+	if (NULL != FileName
+		&& FileName[0] != 0)
+	{
+		name = FileName;
+	}
+	else
+	{
+		CString dir;
+		if (0 == (flags & CreateWaveFileTempDir))
+		{
+			// get directory name from template file
+			LPTSTR pFilePart = NULL;
+			if (NULL != pTemplateFile
+				&& 0 != GetFullPathName(pTemplateFile->m_File.GetName(),
+										sizeof NameBuf, NameBuf, & pFilePart)
+				&& pFilePart != NULL)
+			{
+				*pFilePart = 0;
+				dir = NameBuf;
+			}
+		}
+		else
+		{
+			dir = GetApp()->sTempDir;
+			if (dir.IsEmpty())
+			{
+				if (GetTempPath(sizeof NameBuf, NameBuf))
+				{
+					dir = NameBuf;
+				}
+			}
+		}
+
+		if ( ! dir.IsEmpty() && dir[dir.GetLength() - 1] != '\\')
+		{
+			dir += _T("\\");
+		}
+		if (GetTempFileName(dir, _T("wav"), 0, NameBuf))
+		{
+			name = NameBuf;
+		}
+		else
+		{
+			return FALSE;
+		}
+	}
+	if (CreateWaveFileDontInitStructure)
+	{
+		if (FALSE == Open(name, MmioFileOpenCreateNew | MmioFileOpenDontCreateRiff))
+		{
+			return FALSE;
+		}
+		return TRUE;
+	}
+	// create new WAVEFORMATEX
+	WAVEFORMATEX * pWF = NULL;
+	int FormatSize = sizeof PCMWAVEFORMAT;
+	if (NULL != pTemplateFile
+		&& NULL != pTemplateFile->m_pWf)
+	{
+		if ((flags & CreateWaveFilePcmFormat)
+			|| WAVE_FORMAT_PCM == pTemplateFile->m_pWf->wFormatTag)
+		{
+			pWF = (LPWAVEFORMATEX) new char[sizeof PCMWAVEFORMAT];
+			if (pWF)
+			{
+				pWF->nSamplesPerSec = pTemplateFile->m_pWf->nSamplesPerSec;
+				pWF->wFormatTag = WAVE_FORMAT_PCM;
+				if (flags & CreateWaveFileTemp)
+				{
+					pWF->wBitsPerSample = 16;
+				}
+				else
+				{
+					pWF->wBitsPerSample = pTemplateFile->m_pWf->wBitsPerSample;
+				}
+				if (2 == Channel)
+				{
+					pWF->nChannels = pTemplateFile->m_pWf->nChannels;
+				}
+				else
+				{
+					pWF->nChannels = 1;
+				}
+				pWF->nBlockAlign = pWF->wBitsPerSample / 8 * pWF->nChannels;
+				pWF->nAvgBytesPerSec = pWF->nBlockAlign * pWF->nSamplesPerSec;
+			}
+			else
+			{
+				Close();
+				return FALSE;
+			}
+		}
+		else
+		{
+			FormatSize = sizeof WAVEFORMATEX + pTemplateFile->m_pWf->cbSize;
+			pWF = (LPWAVEFORMATEX) new char[FormatSize];
+			if (pWF)
+			{
+				memcpy(pWF, pTemplateFile->m_pWf, FormatSize);
+				if (2 == Channel)
+				{
+					pWF->nChannels = pTemplateFile->m_pWf->nChannels;
+				}
+				else
+				{
+					pWF->nChannels = 1;
+					if (pTemplateFile->m_pWf->nChannels != 1)
+					{
+						// it may not be correct, better query the compressor
+						pWF->nBlockAlign /= 2;
+						pWF->nAvgBytesPerSec /= 2;
+					}
+				}
+			}
+			else
+			{
+				Close();
+				return FALSE;
+			}
+		}
+	}
+	else
+	{
+		// create default PCM descriptor
+		pWF = (LPWAVEFORMATEX) new char[sizeof PCMWAVEFORMAT];
+		if (pWF)
+		{
+			pWF->nSamplesPerSec = 44100;
+			pWF->wFormatTag = WAVE_FORMAT_PCM;
+			pWF->wBitsPerSample = 16;
+			if (2 == Channel)
+			{
+				pWF->nChannels = 2;
+			}
+			else
+			{
+				pWF->nChannels = 1;
+			}
+			pWF->nBlockAlign = pWF->wBitsPerSample / 8 * pWF->nChannels;
+			pWF->nAvgBytesPerSec = pWF->nBlockAlign * pWF->nSamplesPerSec;
+		}
+		else
+		{
+			Close();
+			return FALSE;
+		}
+	}
+	m_pWf = pWF;
+	// create a file, RIFF list, fmt chunk, data chunk of specified size
+	if (FALSE == Open(name, MmioFileOpenCreateNew))
+	{
+		Close();
+		return FALSE;
+	}
+	// RIFF created in Open()
+	MMCKINFO fck = {mmioFOURCC('f', 'm', 't', ' '), 0, 0, 0, 0};
+	CreateChunk(fck, 0);
+	Write(m_pWf, FormatSize);
+	Ascend(fck);
+	// create data chunk
+	m_datack.ckid = mmioFOURCC('d', 'a', 't', 'a');
+	CreateChunk(m_datack, 0);
+	if (Samples)
+	{
+		size_t DataLength = Samples * (m_pWf->nChannels * m_pWf->wBitsPerSample / 8);
+		m_File.SetFileLength(m_datack.dwDataOffset + DataLength);
+		Seek(DataLength, SEEK_CUR);
+	}
+	Ascend(m_datack);
+	// and copy INFO
+	// then updata RIFF
+	Ascend(m_riffck);
+}
