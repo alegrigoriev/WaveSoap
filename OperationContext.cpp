@@ -368,7 +368,7 @@ void COperationContext::PostRetire(BOOL bChildContext)
 	}
 	if ( ! bChildContext)
 	{
-		InterlockedDecrement( & pDocument->m_OperationInProgress);
+		--pDocument->m_OperationInProgress;
 	}
 	delete this;
 }
@@ -2017,15 +2017,15 @@ void CDecompressContext::PostRetire(BOOL bChildContext)
 
 ////////// CSoundPlayContext
 CSoundPlayContext::CSoundPlayContext(CWaveSoapFrontDoc * pDoc, CWaveFile & WavFile,
-									long PlaybackStart, long PlaybackEnd, int Channel,
+									SAMPLE_INDEX PlaybackStart, SAMPLE_INDEX PlaybackEnd, CHANNEL_MASK Channel,
 									int PlaybackDevice, int PlaybackBuffers, size_t PlaybackBufferSize)
 	: COperationContext(pDoc, _T("Playing"),
 						OperationContextDontAdjustPriority, _T("Play"))
 	, m_bPauseRequested(false)
 	, m_FirstSamplePlayed(PlaybackStart)
 	, m_SamplePlayed(PlaybackStart)
-	, m_CurrentPlaybackPos(PlaybackStart)
 	, m_LastSamplePlayed(PlaybackEnd)
+	, m_CurrentPlaybackPos(0)
 	, m_Begin(0)
 	, m_End(0)
 	, m_PlaybackDevice(PlaybackDevice)
@@ -2042,6 +2042,7 @@ BOOL CSoundPlayContext::Init()
 	MMCKINFO * pDatack = m_PlayFile.GetDataChunk();
 
 	m_Begin = m_FirstSamplePlayed * m_PlayFile.SampleSize() + pDatack->dwDataOffset;
+	m_CurrentPlaybackPos = m_Begin;
 
 	if (m_FirstSamplePlayed == m_LastSamplePlayed)
 	{
