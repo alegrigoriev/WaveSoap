@@ -56,6 +56,8 @@ public:
 	BOOL Attach(CDirectFile * const pOriginalFile);
 	BOOL SetSourceFile(CDirectFile * const pOriginalFile);
 	BOOL DetachSourceFile();
+
+	static int CacheBufferSize();
 	// allocate data common for all instances
 	// attached to the same File
 	bool IsOpen() const
