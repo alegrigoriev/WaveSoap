@@ -95,6 +95,7 @@ protected:
 						unsigned MaxMRU = 0);
 
 	BufferHeader * GetFreeBuffer(unsigned MaxMRU = 0xFFFFFFFFu);
+	void FreeBuffer(BufferHeader * pBuf);
 	// get a buffer header by its buffer addr
 	BufferHeader * GetBufferHeader(void * pAddr);
 	size_t GetOffsetInBuffer(void * pAddr);
@@ -870,9 +871,9 @@ BOOL File::Close(DWORD flags)
 	}
 
 	// close the handle and delete the structure
-	BufferHeader * pBuf;
-	while (NULL != (pBuf = BuffersList.RemoveHead()))
+	while ( ! BuffersList.IsEmpty())
 	{
+		BufferHeader * pBuf = BuffersList.First();
 		ASSERT(0 == pBuf->LockCount);
 		// something strange: buffer not released
 		if (pBuf->LockCount != 0)
@@ -893,17 +894,13 @@ BOOL File::Close(DWORD flags)
 				pBuf->DirtyMask = 0;
 			}
 		}
+
 		ASSERT(0 == pBuf->DirtyMask);
+		BuffersList.RemoveEntryUnsafe(pBuf);
 
 		BuffersCount--;
-		// TODO: add function
-//        CSimpleCriticalSectionLock lock1(CacheInstance.m_cs); // already locked
 
-		CacheInstance.m_MruList.RemoveEntry(pBuf);
-
-		pBuf->pFile = NULL;
-
-		CacheInstance.m_FreeBuffers.InsertHead(pBuf);
+		CacheInstance.FreeBuffer(pBuf);
 	}
 
 	if (m_Flags & CDirectFile::FileFlagsDeleteAfterClose)
@@ -2158,6 +2155,16 @@ void File::ReturnDataBuffer(void * pBuffer, long count, DWORD flags)
 			}
 		}
 	}
+}
+
+void CDirectFileCache::FreeBuffer(BufferHeader * pBuf)
+{
+	CSimpleCriticalSectionLock lock(m_cs); // already locked
+	m_MruList.RemoveEntry(pBuf);
+
+	pBuf->pFile = NULL;
+
+	m_FreeBuffers.InsertHead(pBuf);
 }
 
 BufferHeader * CDirectFileCache::GetFreeBuffer(unsigned MaxMRU)
