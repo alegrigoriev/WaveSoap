@@ -8,6 +8,50 @@
 
 BOOL AFXAPI AfxComparePath(LPCTSTR lpszPath1, LPCTSTR lpszPath2);
 
+CWaveSoapFileOpenDialog::CWaveSoapFileOpenDialog(BOOL bOpenFileDialog, // TRUE for FileOpen, FALSE for FileSaveAs
+												LPCTSTR lpszDefExt,
+												LPCTSTR lpszFileName,
+												DWORD dwFlags,
+												LPCTSTR lpszFilter,
+												CWnd* pParentWnd)
+	: CFileDialogWithHistory(bOpenFileDialog, lpszDefExt, lpszFileName, dwFlags,
+							lpszFilter, pParentWnd),
+	m_bReadOnly(false),
+	m_MinWmaFilter(0),
+	m_MaxWmaFilter(0),
+	m_PrevFilter(-1),
+	m_bDirectMode(false)
+{
+	if (CThisApp::SupportsV5FileDialog())
+	{
+		m_ofn.lpTemplateName = MAKEINTRESOURCE(IDD_DIALOG_OPEN_TEMPLATE_V5);
+		static ResizableDlgItem const ItemsV5[] =
+		{
+			{ IDC_STATIC_GROUPBOX, ExpandRight},
+			{ IDC_COMBO_RECENT, ExpandRight},
+			{ IDC_EDIT_FILE_COMMENTS, ExpandRight},
+			{ IDC_BUTTON_MORE, MoveRight},
+			{ IDHELP, MoveRight},
+		};
+		m_pResizeItems = ItemsV5;
+		m_pResizeItemsCount = sizeof ItemsV5 / sizeof ItemsV5[0];
+	}
+	else
+	{
+		m_ofn.lpTemplateName = MAKEINTRESOURCE(IDD_DIALOG_OPEN_TEMPLATE_V4);
+		static ResizableDlgItem const ItemsV4[] =
+		{
+			{ IDC_STATIC_GROUPBOX, ExpandRight},
+			{ IDC_COMBO_RECENT, ExpandRight},
+			{ IDC_EDIT_FILE_COMMENTS, ExpandRight},
+			{ IDC_BUTTON_MORE, MoveRight},
+			{ IDHELP, MoveRight},
+		};
+		m_pResizeItems = ItemsV4;
+		m_pResizeItemsCount = sizeof ItemsV4 / sizeof ItemsV4[0];
+	}
+}
+
 BEGIN_MESSAGE_MAP(CWaveSoapFileOpenDialog, CFileDialogWithHistory)
 	//{{AFX_MSG_MAP(CWaveSoapFileOpenDialog)
 	ON_BN_CLICKED(IDC_CHECK_READONLY, OnCheckReadOnly)
@@ -323,12 +367,6 @@ void CWaveSoapFileOpenDialog::OnTypeChange()
 	}
 }
 
-void CWaveSoapFileOpenDialog::OnSize(UINT nType, int cx, int cy)
-{
-	CFileDialogWithHistory::OnSize(nType, cx, cy);
-	// move dialog items
-}
-
 CWaveSoapFileSaveDialog::CWaveSoapFileSaveDialog(BOOL bOpenFileDialog, // TRUE for FileOpen, FALSE for FileSaveAs
 												LPCTSTR lpszDefExt,
 												LPCTSTR lpszFileName,
@@ -348,11 +386,39 @@ CWaveSoapFileSaveDialog::CWaveSoapFileSaveDialog(BOOL bOpenFileDialog, // TRUE f
 {
 	if (CThisApp::SupportsV5FileDialog())
 	{
+		static ResizableDlgItem const ItemsV5[] =
+		{
+			{ IDC_COMBO_RECENT, ExpandRight},
+			{ IDC_COMBO_FORMAT, ExpandRight},
+			{ IDC_COMBO_ATTRIBUTES, ExpandRight},
+			{ IDC_COMBO_TITLE, ExpandRight},
+			{ IDC_COMBO_ARTIST, ExpandRight},
+			{ IDC_COMBO_ALBUM, ExpandRight},
+			{ IDC_CHECK_COMPATIBLE_FORMATS, MoveRight},
+			{ IDC_STATIC_COMMENTS, MoveRight},
+			{ IDC_EDIT_COMMENT, MoveRight},
+			{ IDHELP, MoveRight},
+		};
 		m_ofn.lpTemplateName = MAKEINTRESOURCE(IDD_DIALOG_SAVE_TEMPLATE_V5);
+		m_pResizeItems = ItemsV5;
+		m_pResizeItemsCount = sizeof ItemsV5 / sizeof ItemsV5[0];
 	}
 	else
 	{
+		static ResizableDlgItem const ItemsV4[] =
+		{
+			{ IDC_COMBO_RECENT, ExpandRight},
+			{ IDC_COMBO_FORMAT, ExpandRight},
+			{ IDC_COMBO_ATTRIBUTES, ExpandRight},
+			{ IDC_COMBO_TITLE, ExpandRight},
+			{ IDC_COMBO_ARTIST, ExpandRight},
+			{ IDC_COMBO_ALBUM, ExpandRight},
+			{ IDC_EDIT_COMMENT, ExpandRight},
+			{ IDHELP, MoveRight},
+		};
 		m_ofn.lpTemplateName = MAKEINTRESOURCE(IDD_DIALOG_SAVE_TEMPLATE_V4);
+		m_pResizeItems = ItemsV4;
+		m_pResizeItemsCount = sizeof ItemsV4 / sizeof ItemsV4[0];
 	}
 	m_DefExt[1] = _T("wav");
 	m_DefExt[2] = _T("mp3");
@@ -364,6 +430,7 @@ CWaveSoapFileSaveDialog::CWaveSoapFileSaveDialog(BOOL bOpenFileDialog, // TRUE f
 	m_Profile.AddItem(_T("Settings"), _T("WmaBitrate"), m_SelectedWmaBitrate, 128000, 0, 160000);
 	m_Profile.AddItem(_T("Settings"), _T("MP3Encoder"), m_SelectedMp3Encoder, 0, 0, 4);
 	m_Profile.AddItem(_T("Settings"), _T("FormatTag"), m_SelectedTag, m_SelectedTag);
+
 }
 
 BEGIN_MESSAGE_MAP(CWaveSoapFileSaveDialog, CFileDialogWithHistory)
@@ -578,9 +645,13 @@ void CWaveSoapFileSaveDialog::OnCompatibleFormatsClicked()
 							sizeof ExcludeFormats / sizeof ExcludeFormats[0], WaveFormatExcludeFormats);
 		m_SelectedFormat = FillFormatCombo(m_FormatTagCombo.GetCurSel());
 	}
-	if (SoundFileMp3 == m_FileType)
+	else if (SoundFileMp3 == m_FileType)
 	{
 		m_SelectedFormat = FillFormatCombo(m_FormatTagCombo.GetCurSel());
+	}
+	else if (SoundFileWma == m_FileType)
+	{
+		m_SelectedFormat = FillFormatCombo(0);
 	}
 }
 

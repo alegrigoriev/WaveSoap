@@ -368,6 +368,8 @@
 #define IDC_COMBO_ALBUM                 1250
 #define IDC_COMBO_ARTIST                1251
 #define IDC_COMBO_FOLDER                1252
+#define IDC_COMBO_TITLE                 1256
+#define IDC_STATIC_GROUPBOX             1257
 #define IDC_VIEW_RULER_SAMPLES          32771
 #define IDC_VIEW_RULER_HHMMSS           32772
 #define IDC_VIEW_RULER_SECONDS          32773
@@ -665,7 +667,7 @@
 #define _APS_3D_CONTROLS                     1
 #define _APS_NEXT_RESOURCE_VALUE        193
 #define _APS_NEXT_COMMAND_VALUE         40114
-#define _APS_NEXT_CONTROL_VALUE         1253
+#define _APS_NEXT_CONTROL_VALUE         1258
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif

@@ -15,9 +15,20 @@ static char THIS_FILE[] = __FILE__;
 /////////////////////////////////////////////////////////////////////////////
 // CFileDialogWithHistory
 
-IMPLEMENT_DYNAMIC(CFileDialogWithHistory, CFileDialog)
+IMPLEMENT_DYNAMIC(CResizableFileDialog, CFileDialog)
 
-BEGIN_MESSAGE_MAP(CFileDialogWithHistory, CFileDialog)
+BEGIN_MESSAGE_MAP(CResizableFileDialog, CFileDialog)
+	//{{AFX_MSG_MAP(CResizableFileDialog)
+	ON_WM_SIZE()
+	//}}AFX_MSG_MAP
+END_MESSAGE_MAP()
+
+/////////////////////////////////////////////////////////////////////////////
+// CFileDialogWithHistory
+
+IMPLEMENT_DYNAMIC(CFileDialogWithHistory, CResizableFileDialog)
+
+BEGIN_MESSAGE_MAP(CFileDialogWithHistory, CResizableFileDialog)
 	//{{AFX_MSG_MAP(CFileDialogWithHistory)
 	ON_CBN_SELENDOK(IDC_COMBO_RECENT, OnComboSelendOK)
 	//}}AFX_MSG_MAP
@@ -128,6 +139,7 @@ void CFileDialogWithHistory::OnComboSelendOK()
 
 void CFileDialogWithHistory::OnInitDone()
 {
+	CResizableFileDialog::OnInitDone();
 	CComboBox * pCb = static_cast<CComboBox *>(GetDlgItem(IDC_COMBO_RECENT));
 	if (NULL != pCb)
 	{
@@ -189,3 +201,78 @@ void CFileDialogWithHistory::OnFolderChange()
 	}
 }
 
+void CResizableFileDialog::OnSize(UINT nType, int cx, int cy)
+{
+	TRACE("CResizableFileDialog::OnSize %d %d, hwdn=%x\n", cx, cy, m_hWnd);
+	CFileDialog::OnSize(nType, cx, cy);
+	// move dialog items
+	// use _parent_ dialog size
+	CRect r;
+	GetParent()->GetClientRect( & r);
+	if (-1 == m_PrevSize.cx)
+	{
+		m_PrevSize.cx = r.Width();
+		m_PrevSize.cy = r.Height();
+		return;
+	}
+	// only X coordinate or width needs change
+	int dx = r.Width() - m_PrevSize.cx;
+	m_PrevSize.cx = r.Width();
+	m_PrevSize.cy = r.Height();
+	if (0 == dx)
+	{
+		return;
+	}
+
+	if (0 != m_pResizeItemsCount)
+	{
+		HDWP hdwp = ::BeginDeferWindowPos(m_pResizeItemsCount);
+		for (int i = 0; i < m_pResizeItemsCount && NULL != hdwp; i++)
+		{
+			HWND hWnd = ::GetDlgItem(GetSafeHwnd(), m_pResizeItems[i].Id);
+			if (NULL == hWnd) continue;
+
+			CRect cr;
+			::GetWindowRect(hWnd, cr);
+			ScreenToClient(cr);
+
+			if (m_pResizeItems[i].flags & CenterHorizontally)
+			{
+				cr.right += (dx + (cx & 1)) >> 1;
+				cr.left += (dx + (cx & 1)) >> 1;
+			}
+			else
+			{
+				if (m_pResizeItems[i].flags & (ExpandRight | MoveRight))
+				{
+					cr.right += dx;
+				}
+				if (m_pResizeItems[i].flags & MoveRight)
+				{
+					cr.left += dx;
+				}
+			}
+
+
+			hdwp = ::DeferWindowPos(hdwp, hWnd, NULL, cr.left, cr.top,
+									cr.Width(), cr.Height(),
+									SWP_NOZORDER | SWP_NOOWNERZORDER// | SWP_NOACTIVATE | SWP_NOSENDCHANGING
+									);
+			if (0) TRACE("DeferWindowPos hwnd=%x dw=%d x=%d, y=%d returned %X\n",
+						hWnd, dx, cr.left, cr.top, hdwp);
+		}
+
+		if (NULL != hdwp)
+		{
+			::EndDeferWindowPos(hdwp);
+		}
+
+	}
+
+}
+
+void CResizableFileDialog::OnInitDone()
+{
+	TRACE("CResizableFileDialog::OnInitDone\n");
+	CFileDialog::OnInitDone();
+}

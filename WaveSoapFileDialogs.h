@@ -18,21 +18,12 @@
 class CWaveSoapFileOpenDialog : public CFileDialogWithHistory
 {
 public:
-	CWaveSoapFileOpenDialog(BOOL bOpenFileDialog, // TRUE for FileOpen, FALSE for FileSaveAs
+	CWaveSoapFileOpenDialog(BOOL bOpenFileDialog = TRUE, // TRUE for FileOpen, FALSE for FileSaveAs
 							LPCTSTR lpszDefExt = NULL,
 							LPCTSTR lpszFileName = NULL,
-							DWORD dwFlags = OFN_HIDEREADONLY | OFN_OVERWRITEPROMPT,
+							DWORD dwFlags = OFN_HIDEREADONLY | OFN_FILEMUSTEXIST,
 							LPCTSTR lpszFilter = NULL,
-							CWnd* pParentWnd = NULL)
-		: CFileDialogWithHistory(bOpenFileDialog, lpszDefExt, lpszFileName, dwFlags,
-								lpszFilter, pParentWnd),
-		m_bReadOnly(false),
-		m_MinWmaFilter(0),
-		m_MaxWmaFilter(0),
-		m_PrevFilter(-1),
-		m_bDirectMode(false)
-	{
-	}
+							CWnd* pParentWnd = NULL);
 
 	CWaveFile m_WaveFile;
 	//CString GetNextPathName(POSITION& pos) const;
@@ -59,12 +50,8 @@ public:
 	//{{AFX_MSG(CWaveSoapFileOpenDialog)
 	afx_msg void OnCheckReadOnly();
 	afx_msg void OnCheckDirectMode();
-	afx_msg void OnSize(UINT nType, int cx, int cy);
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
-#ifdef _DEBUG
-	//virtual BOOL OnWndMsg(UINT message, WPARAM wParam, LPARAM lParam, LRESULT* pResult);
-#endif
 };
 
 enum {

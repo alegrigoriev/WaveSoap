@@ -1044,7 +1044,7 @@ void _AfxAppendFilterSuffix(CString& filter, OPENFILENAME& ofn,
 
 void CWaveSoapDocManager::OnFileOpen()
 {
-	CWaveSoapFileOpenDialog dlgFile(TRUE);
+	CWaveSoapFileOpenDialog dlgFile;
 
 	CString title("Open");
 	CString fileNameBuf;
@@ -1058,14 +1058,6 @@ void CWaveSoapDocManager::OnFileOpen()
 		| OFN_ENABLETEMPLATE
 		| OFN_ALLOWMULTISELECT;
 
-	if (CThisApp::SupportsV5FileDialog())
-	{
-		dlgFile.m_ofn.lpTemplateName = MAKEINTRESOURCE(IDD_DIALOG_OPEN_TEMPLATE_V5);
-	}
-	else
-	{
-		dlgFile.m_ofn.lpTemplateName = MAKEINTRESOURCE(IDD_DIALOG_OPEN_TEMPLATE_V4);
-	}
 
 	CString strFilter;
 	CString strDefault;

@@ -1,6 +1,9 @@
 Known problems and tasks:
 
-Handle "Compatible/All" formats for MP3, WMA
+Enter WMA file attributes (title, author, etc)
+Enter MP3 file attributes
+Put "Save As" files to file MRU
+Support CD grabbing under Win9x
 If CD recording not supported, SET SPEED WriteSpeed set to zero
 Restore CD speed to max rather than current!
 Set speed doesn't work on Goldstar CDRW	 SetSpeed returned sense 5/24
@@ -9,12 +12,10 @@ Make option to ask for file reopen
 Read CD text
 Open CDA files
 Raw file: make format tag and save attributes
-Support CD grabbing under Win9x
+Handle "Compatible/All" formats for MP3, WMA
 Set icons to all resizable dialogs (for XP)
 Load sound from AVI
 Add options dialog
-Enter WMA file attributes (title, author, etc)
-Enter MP3 file attributes
 In outline view, change mouse cursor over caret and view and selection boundaries
 TODO: check 4GB WAV files
 
@@ -22,6 +23,7 @@ Add noise reduction estimation in spectrum section view
 Add sound recording
 Support "Play" in selection dialog
 Make Paste Special command (with Fade In/Fade Out etc)
+Add Save Selection As function
 Make Undo/redo save the selection and regions
 Add support for markers and regions: save on copy and with undo, move and delete on Cut,
 	move on Paste
@@ -55,6 +57,7 @@ Add splash screen
 "Save selection as" in selection dialog
 "Save As" in most process dialogs
 Make recording from Internet stream
+Find which alignment better for edit box labels: left or right
 
 Problems:
 
@@ -188,38 +191,20 @@ the new file.
 
 If using the temporary file as 
 
+-----------------------------------------------------------------
 
-ScaledScroolView:
+Attributes to read from WMA/MP3/WAV file:
 
-SlaveViews and master views
+WM/AlbumTitle
+WM/Author	 (artist)
+WM/Title  (file title)
+WM/Year
+WM/Genre (ignore??)
+WM/Description  (comment)
 
-Operations:
+WAV file keeps all the meta information in the end of file. 
+If it is in the beginning, it may be moved to the end.
 
-Set Max boundaries:
-Forwarded to master view SetMaxExtentsMaster(). Then master notifies the slave views.
-
-Set view boundaries:
-Set view origin and extents:
-Call master view OnChangeOrgExtMaster. It will then notify slave views
-
-Scroll by world units:
-Recalculated to pixel units. Called master view MasterScrollBy
-
-Scroll by pixels:
-Call master view MasterScrollBy
-
-
-When origin is set, it is possible to round it to whole pixels. It is also done when zoom is done
-----------------------------------------------------------------------------------------------
-
-Enumerating format tags:
-
-Given source file format, check all format tags and see if conversion is possible from the source format to the target format. Source PCM format address is passed to the function.
-If there are tags to select, check first if the format tag is among them.
-Then enumerate formats to see if there are compatible with source format.
-In enum call check if the format is from the requested array, or if no array, that the format tag matches the tag returned for tag enumeration.
-
-If there are tags to exclude, check if the format tag is among them (unless it is WAVE_FORMAT_EXTENSIBLE). During formats enumeration also exclude the WAVE_FORMAT_EXTENSIBLE formats.
-
-
-Enumerating formats:
+Whan the file needs expansion, this information is moved.
+Copy of info is always kept in the memory.
+Total size of metainformation is limited to 256 kbytes.

@@ -10,7 +10,50 @@
 /////////////////////////////////////////////////////////////////////////////
 // CFileDialogWithHistory dialog
 
-class CFileDialogWithHistory : public CFileDialog
+class CResizableFileDialog : public CFileDialog
+{
+	DECLARE_DYNAMIC(CResizableFileDialog)
+
+public:
+	CResizableFileDialog(BOOL bOpenFileDialog, // TRUE for FileOpen, FALSE for FileSaveAs
+						LPCTSTR lpszDefExt = NULL,
+						LPCTSTR lpszFileName = NULL,
+						DWORD dwFlags = OFN_HIDEREADONLY,
+						LPCTSTR lpszFilter = NULL,
+						CWnd* pParentWnd = NULL)
+		: CFileDialog(bOpenFileDialog, lpszDefExt, lpszFileName, dwFlags, lpszFilter, pParentWnd),
+		m_pResizeItems(NULL),
+		m_pResizeItemsCount(0)
+	{
+		m_PrevSize.cx = -1;
+		m_PrevSize.cy = -1;
+	}
+protected:
+	CSize m_PrevSize;
+	enum
+	{
+		CenterHorizontally = 1,
+		ExpandRight = 2,
+		MoveRight = 4,
+	};
+	struct ResizableDlgItem
+	{
+		UINT Id;
+		UINT flags;
+	};
+
+	ResizableDlgItem const * m_pResizeItems;
+	int m_pResizeItemsCount;
+	virtual void OnInitDone();
+	//{{AFX_MSG(CResizableFileDialog)
+	afx_msg void OnSize(UINT nType, int cx, int cy);
+	//}}AFX_MSG
+	DECLARE_MESSAGE_MAP()
+};
+/////////////////////////////////////////////////////////////////////////////
+// CFileDialogWithHistory dialog
+
+class CFileDialogWithHistory : public CResizableFileDialog
 {
 	DECLARE_DYNAMIC(CFileDialogWithHistory)
 
@@ -18,10 +61,10 @@ public:
 	CFileDialogWithHistory(BOOL bOpenFileDialog, // TRUE for FileOpen, FALSE for FileSaveAs
 							LPCTSTR lpszDefExt = NULL,
 							LPCTSTR lpszFileName = NULL,
-							DWORD dwFlags = OFN_HIDEREADONLY | OFN_OVERWRITEPROMPT,
+							DWORD dwFlags = OFN_HIDEREADONLY,
 							LPCTSTR lpszFilter = NULL,
 							CWnd* pParentWnd = NULL)
-		: CFileDialog(bOpenFileDialog, lpszDefExt, lpszFileName, dwFlags, lpszFilter, pParentWnd)
+		: CResizableFileDialog(bOpenFileDialog, lpszDefExt, lpszFileName, dwFlags, lpszFilter, pParentWnd)
 	{
 	}
 

@@ -315,15 +315,6 @@ SOURCE=.\WaveSoapFrontView.cpp
 # Begin Source File
 
 SOURCE=.\WaveSupport.cpp
-
-!IF  "$(CFG)" == "WaveSoapFront - Win32 Release"
-
-!ELSEIF  "$(CFG)" == "WaveSoapFront - Win32 Debug"
-
-# SUBTRACT CPP /FA<none>
-
-!ENDIF 
-
 # End Source File
 # Begin Source File
 
@@ -620,6 +611,10 @@ SOURCE=.\wnaspi32.h
 # Begin Group "Resource Files"
 
 # PROP Default_Filter "ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe"
+# Begin Source File
+
+SOURCE=.\res\bitmap_load.bmp
+# End Source File
 # Begin Source File
 
 SOURCE=.\res\bmp00001.bmp
