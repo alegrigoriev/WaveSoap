@@ -172,6 +172,8 @@ CWaveSoapFrontApp::CWaveSoapFrontApp()
 	m_FftBandsOrder(9),
 	m_FftWindowType(0),
 
+	m_PasteResampleMode(0),
+
 	m_OpenFileDialogFilter(1)
 {
 	// Place all significant initialization in InitInstance
@@ -405,6 +407,9 @@ BOOL CWaveSoapFrontApp::InitInstance()
 	Profile.AddItem(_T("Settings"), _T("NumRecordBuffers"), m_NumRecordBuffers, 8, 2, 32);
 	Profile.AddItem(_T("Settings"), _T("SizeRecordBuffers"), m_SizeRecordBuffers, 0x10000, 0x1000, 0x40000);
 	Profile.AddItem(_T("Settings"), _T("MaxFileCache"), m_MaxFileCache, 64, 1, 512);
+
+	Profile.AddItem(_T("Settings"), _T("PasteMode"), m_DefaultPasteMode, 0, 0, 2);
+	Profile.AddItem(_T("Settings"), _T("PasteResampleMode"), m_PasteResampleMode, 0, 0, 1);
 
 	LoadStdProfileSettings(10);  // Load standard INI file options (including MRU)
 

@@ -14,6 +14,7 @@
 
 #define ALL_CHANNELS ((CHANNEL_MASK)-1)
 typedef int PASTE_MODE;
+typedef int PASTE_RESAMPLE_MODE;
 
 class CSelectionUpdateInfo : public CObject
 {
@@ -225,6 +226,7 @@ public:
 	bool m_bChannelsLocked;
 	CHANNEL_MASK m_PrevChannelToCopy;
 	PASTE_MODE m_DefaultPasteMode;
+	PASTE_RESAMPLE_MODE m_PasteResampleMode;
 
 	CString m_CurrentStatusString;
 	CSimpleCriticalSection m_StatusStringLock;

@@ -223,6 +223,9 @@ public:
 	int m_FftBandsOrder;
 	int m_FftWindowType;
 
+	int m_PasteResampleMode; // Edit/Paste to different rate: 0 - resample, 1- paste as is
+	int m_DefaultPasteMode; // 0 - replace selection, 1 - paste just selection length, 2 - insert
+
 	CString m_UserKey;
 
 	CDocument* OpenDocumentFile(LPCTSTR lpszPathName, int flags);
