@@ -19,7 +19,7 @@ public:
 // Dialog Data
 	//{{AFX_DATA(CReopenConvertedFileDlg)
 	enum { IDD = IDD_DIALOG_SHOULD_RELOAD_CONVERTED };
-	// NOTE: the ClassWizard will add data members here
+	CString	m_Text;
 	//}}AFX_DATA
 
 

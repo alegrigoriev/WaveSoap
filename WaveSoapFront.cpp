@@ -883,9 +883,8 @@ int CWaveSoapFrontApp::ExitInstance()
 	{
 		AppColors[i] &= 0x00FFFFFF;
 	}
-	//Profile.UnloadSection(_T("Settings"));
-	//Profile.UnloadSection(_T("Settings\\Colors"));
-	Profile.UnloadSection(NULL);
+
+	Profile.UnloadAll();
 	// must close the file before deleting the cache
 	m_ClipboardFile.Close();
 	delete m_FileCache;

@@ -1,12 +1,14 @@
 Known problems and tasks:
 
+Test "reload compressed file" dialogs
 Add options dialog
 Show File Properties
 Make sliders working in Resample Dialog
 Add decibel view to CAmplitudeRuler
 Draw decibels and crosshair in Spectrum Section view
-Add equalizer function
-Use list instead of array for FFT data.
+Add equalizer and low/high frequency filters functions
+Use list instead of array for FFT data (for performance reason).
+Include MP3 and WMA filters even if there is no WMP, but show warning, if the filter is selected
 
 Add CD grabbing
 Add noise reduction estimation in spectrum section view
@@ -40,7 +42,7 @@ Reconsider Undo All Changes functionality and Redo All Changes
 ??Delete permanent undo: non-permanent file may become permanent after save, move call after save
 
 Problems:
-Last 64 KB block is not read from the master file
+After file length increased to 1 sample from 0, scroll bar set to wrond scale
 Expression evaluation selection longer than file length doesn't update file length
 Multiline edit box in child dialog eats Esc and Enter (DLGC_WANTALLCHARS)
 If there is not enough space on NTFS volume, it will be seen only during flush
@@ -49,11 +51,12 @@ Windows2000 is trying to zero the allocated file
 LOg Off query doesn't close the active dialog. Recursion is possible. Make sure to check after Cancel
 
 Deferred:
-
+CWmaNotInstalledDlg doesn't save "Don't show" flag
 Save As dialog is not centered first time (comdlg problem?)
 ??? When time/seconds format is set for status bar, MM:SS is actually shown
 
 Fixed:
+Last 64 KB block is not read from the master file (need to round read length to sector size
 Channels swapped in Spectrum Section view
 FFT view is ahead of the data??? 
 SetSelection now moves only active child frame views.
@@ -74,6 +77,9 @@ Wrong minimum/maximum valies shown for a zero length file in Statistics (command
 ???? When a file is opened in non-direct mode, peak info is saved with wrong time stamp
 
 Done:
+Add "Close File" option to other "reload after save" dialogs
+Place all CApplicationProfile members to the end of class, or add RemoveAll or UnloadAll() call to the destructors
+Make default for "Don't show MP3/WMA warning" FALSE
 Add toolbar button for channels lock
 keep cursor in 5% from the view boundary.
 Add FFT windowing choice

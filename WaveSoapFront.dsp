@@ -167,6 +167,14 @@ SOURCE=.\PreferencesPropertySheet.cpp
 # End Source File
 # Begin Source File
 
+SOURCE=.\ReopenCompressedFileDialog.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=.\ReopenConvertedFileDlg.cpp
+# End Source File
+# Begin Source File
+
 SOURCE=.\Resample.cpp
 # End Source File
 # Begin Source File
@@ -394,6 +402,14 @@ SOURCE=.\OperationDialogs2.h
 # Begin Source File
 
 SOURCE=.\PreferencesPropertySheet.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\ReopenCompressedFileDialog.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\ReopenConvertedFileDlg.h
 # End Source File
 # Begin Source File
 

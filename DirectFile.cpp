@@ -329,6 +329,11 @@ BOOL CDirectFile::File::SetSourceFile(File * pOriginalFile)
 	{
 		pSourceFile->Close(0);
 	}
+	// zero m_pWrittenMask
+	if (NULL != m_pWrittenMask)
+	{
+		memset(m_pWrittenMask, 0, WrittenMaskSize);
+	}
 	pSourceFile = pOriginalFile;
 	if (NULL != pOriginalFile
 		&& SetFileLength(pOriginalFile->FileLength))
@@ -1805,8 +1810,15 @@ void CDirectFile::File::ReadDataBuffer(BufferHeader * pBuf, DWORD MaskToRead)
 						SetFilePointer(pSourceFile->hFile, (LONG)StartFilePtr, & FilePtrH, FILE_BEGIN);
 						pSourceFile->m_FilePointer = StartFilePtr;
 					}
+					// round to sector size! otherwize ReadFile would fail
 					TRACE("ReadSourceFile(%08x, pos=0x%08X, bytes=%X)\n", hFile, long(StartFilePtr), ToRead);
-					ReadFile(pSourceFile->hFile, buf, ToRead, & BytesRead, NULL);
+					ReadFile(pSourceFile->hFile, buf, (ToRead + 0x1FF) & ~0x1FF, & BytesRead, NULL);
+#ifdef _DEBUG
+					if (BytesRead < ToRead)
+					{
+						TRACE("ToRead=%x, BytesRead=%x\n", ToRead, BytesRead);
+					}
+#endif
 					if (0 == m_LastError)
 					{
 						m_LastError = ::GetLastError();
@@ -1816,7 +1828,7 @@ void CDirectFile::File::ReadDataBuffer(BufferHeader * pBuf, DWORD MaskToRead)
 					ToZero -= BytesRead;
 				}
 
-				if (ToZero)
+				if (ToZero > 0)
 				{
 					memset(buf + BytesRead, 0, ToZero);
 				}

@@ -13,6 +13,8 @@
 #include "CustomSampleRateDlg.h"
 #include "FileDialogWithHistory.h"
 #include <Dlgs.h>
+#include "ReopenCompressedFileDialog.h"
+#include "ReopenConvertedFileDlg.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -2765,7 +2767,7 @@ void CWaveSoapFrontDoc::PostFileSave(CFileSaveContext * pContext)
 				else if (IDCANCEL == result)
 				{
 					pContext->m_DstFile.Close();
-					SetModifiedFlag(FALSE);
+					//SetModifiedFlag(FALSE);
 					m_bCloseThisDocumentNow = true; // the document will be deleted
 					return;
 				}
@@ -2776,17 +2778,43 @@ void CWaveSoapFrontDoc::PostFileSave(CFileSaveContext * pContext)
 			// if non-PCM format, ask about reloading the file
 			// if format changed, always reload
 			if (OldFormat.nSamplesPerSec == NewFormat.nSamplesPerSec
-				&& OldFormat.nChannels == NewFormat.nChannels
-				&& IDYES != AfxMessageBox(IDS_RELOAD_COMPRESSED_FILE,
-										MB_ICONQUESTION | MB_YESNO))
+				&& OldFormat.nChannels == NewFormat.nChannels)
 			{
-				// set new title
-				SetPathName(pContext->m_NewName);
-				m_OriginalWavFile = pContext->m_DstFile;
-				pContext->m_DstFile.Close();
-				ASSERT(m_WavFile.IsOpen());
-				//todo
-				return; //??
+				CReopenCompressedFileDialog dlg;
+				dlg.m_Text.Format(IDS_RELOAD_COMPRESSED_FILE, LPCTSTR(pContext->m_NewName));
+				int result = dlg.DoModal();
+				if (IDYES == result)
+				{
+					// set new title
+					SetPathName(pContext->m_NewName);
+					m_OriginalWavFile = pContext->m_DstFile;
+					pContext->m_DstFile.Close();
+					ASSERT(m_WavFile.IsOpen());
+					//todo
+					return; //??
+				}
+				else if (IDCANCEL == result)
+				{
+					pContext->m_DstFile.Close();
+					//SetModifiedFlag(FALSE);
+					m_bCloseThisDocumentNow = true; // the document will be deleted
+					return;
+				}
+			}
+			else
+			{
+				// samples or channels changed
+				CReopenConvertedFileDlg dlg;
+				dlg.m_Text.Format(IDS_SHOULD_RELOAD_COMPRESSED_FILE, LPCTSTR(pContext->m_NewName));
+				int result = dlg.DoModal();
+				if (IDCANCEL == result)
+				{
+					pContext->m_DstFile.Close();
+					//SetModifiedFlag(FALSE);
+					m_bCloseThisDocumentNow = true; // the document will be deleted
+					return;
+				}
+				// else reload
 			}
 			// TODO: reconsider keeping undo/redo,
 			DeleteUndo();
@@ -4667,9 +4695,9 @@ BOOL CWaveSoapFrontDoc::OpenWmaFileDocument(LPCTSTR lpszPathName)
 			return FALSE;
 		}
 		CWmpNotInstalleedWarningDlg dlg;
-		dlg.m_DontShowAnymore = true;
+		//dlg.m_DontShowAnymore = true;
 		dlg.DoModal();
-		pApp->m_DontShowMediaPlayerWarning = dlg.m_DontShowAnymore;
+		//pApp->m_DontShowMediaPlayerWarning = dlg.m_DontShowAnymore;
 		return FALSE;
 	}
 	m_bDirectMode = FALSE;

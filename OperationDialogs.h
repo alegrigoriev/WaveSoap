@@ -100,7 +100,6 @@ public:
 	int		m_DbPercent;
 	//}}AFX_DATA
 
-	CApplicationProfile m_Profile;
 
 	double m_dVolumeLeftDb;
 	double m_dVolumeRightDb;
@@ -112,6 +111,7 @@ public:
 	int m_Chan;
 	int m_TimeFormat;
 	const WAVEFORMATEX * m_pWf;
+	CApplicationProfile m_Profile;
 // Overrides
 	// ClassWizard generated virtual function overrides
 	//{{AFX_VIRTUAL(CVolumeChangeDialog)
@@ -252,7 +252,6 @@ public:
 	int		m_DcSelectMode;
 	//}}AFX_DATA
 
-	CApplicationProfile m_Profile;
 
 	long m_Start;
 	long m_End;
@@ -260,6 +259,7 @@ public:
 	int m_Chan;
 	int m_TimeFormat;
 	const WAVEFORMATEX * m_pWf;
+	CApplicationProfile m_Profile;
 // Overrides
 	// ClassWizard generated virtual function overrides
 	//{{AFX_VIRTUAL(CDcOffsetDialog)
@@ -339,7 +339,6 @@ public:
 
 	double m_dLevelDb;
 	double m_dLevelPercent;
-	CApplicationProfile m_Profile;
 
 	long m_Start;
 	long m_End;
@@ -347,6 +346,7 @@ public:
 	int m_Chan;
 	int m_TimeFormat;
 	const WAVEFORMATEX * m_pWf;
+	CApplicationProfile m_Profile;
 // Overrides
 	// ClassWizard generated virtual function overrides
 	//{{AFX_VIRTUAL(CNormalizeSoundDialog)
@@ -389,12 +389,12 @@ public:
 	UINT	m_ResampleSamplingRate;
 	//}}AFX_DATA
 
-	CApplicationProfile m_Profile;
 
 	double m_TempoChange;
 	int m_NewSampleRate;
 	int m_OldSampleRate;
 	bool m_bCanOnlyChangeSamplerate;    // if the file have zero length
+	CApplicationProfile m_Profile;
 // Overrides
 	// ClassWizard generated virtual function overrides
 	//{{AFX_VIRTUAL(CResampleDialog)
@@ -439,7 +439,6 @@ public:
 	double m_dLfNoiseRange;
 	double m_dDiffNoiseRange;
 
-	CApplicationProfile m_Profile;
 
 	BOOL	m_bLockChannels;
 	long m_Start;
@@ -449,6 +448,7 @@ public:
 	int m_TimeFormat;
 	const WAVEFORMATEX * m_pWf;
 
+	CApplicationProfile m_Profile;
 // Overrides
 	// ClassWizard generated virtual function overrides
 	//{{AFX_VIRTUAL(CLowFrequencySuppressDialog)
