@@ -139,31 +139,31 @@ BOOL CScaledScrollView::OnScroll(UINT nScrollCode, UINT nPos, BOOL bDoScroll)
 	switch (LOBYTE(nScrollCode))
 	{
 	case SB_TOP:
-		TRACE("OnScroll horz SB_TOP, bDoScroll=%d\n", bDoScroll);
+		if (0) TRACE("OnScroll horz SB_TOP, bDoScroll=%d\n", bDoScroll);
 		X = dMaxRight;
 		break;
 	case SB_BOTTOM:
-		TRACE("OnScroll horz SB_BOTTOM, bDoScroll=%d\n", bDoScroll);
+		if (0) TRACE("OnScroll horz SB_BOTTOM, bDoScroll=%d\n", bDoScroll);
 		X = dMinLeft - dExtX;
 		break;
 	case SB_LINEUP:
-		TRACE("OnScroll horz SB_LINEUP, bDoScroll=%d\n", bDoScroll);
+		if (0) TRACE("OnScroll horz SB_LINEUP, bDoScroll=%d\n", bDoScroll);
 		X -= dExtX * 0.05;
 		break;
 	case SB_LINEDOWN:
-		TRACE("OnScroll horz SB_LINEDOWN, bDoScroll=%d\n", bDoScroll);
+		if (0) TRACE("OnScroll horz SB_LINEDOWN, bDoScroll=%d\n", bDoScroll);
 		X += dExtX * 0.05;
 		break;
 	case SB_PAGEUP:
-		TRACE("OnScroll horz SB_PAGEUP, bDoScroll=%d\n", bDoScroll);
+		if (0) TRACE("OnScroll horz SB_PAGEUP, bDoScroll=%d\n", bDoScroll);
 		X -= dExtX * 0.9;
 		break;
 	case SB_PAGEDOWN:
-		TRACE("OnScroll horz SB_PAGEDOWN, bDoScroll=%d\n", bDoScroll);
+		if (0) TRACE("OnScroll horz SB_PAGEDOWN, bDoScroll=%d\n", bDoScroll);
 		X += dExtX * 0.9;
 		break;
 	case SB_THUMBTRACK:
-		TRACE("OnScroll horz SB_THUMBTRACK, nPos=%d, bDoScroll=%d\n", nPos, bDoScroll);
+		if (0) TRACE("OnScroll horz SB_THUMBTRACK, nPos=%d, bDoScroll=%d\n", nPos, bDoScroll);
 		X = (dMaxRight - dMinLeft) * (int(nPos) - ScrollMin) / double(ScrollMax - ScrollMin)
 			+ dMinLeft;
 		break;
@@ -560,10 +560,10 @@ void CScaledScrollView::OnMasterChangeOrgExt(double left, double width,
 	}
 
 	AdjustNewScale(dScaleX, dScaleY, dNewScaleX, dNewScaleY);
-	TRACE("dNewScaleX = %g, dScaleX=%g, ExtX=%g\n",
-		dNewScaleX, dScaleX, dExtX);
-	TRACE("dNewScaleY = %g, dScaleY=%g, ExtY=%g\n",
-		dNewScaleY, dScaleY, dExtY);
+	if (0) TRACE("dNewScaleX = %g, dScaleX=%g, ExtX=%g\n",
+				dNewScaleX, dScaleX, dExtX);
+	if (0) TRACE("dNewScaleY = %g, dScaleY=%g, ExtY=%g\n",
+				dNewScaleY, dScaleY, dExtY);
 
 	if (dNewScaleX != dScaleX
 		&& r.right != r.left
@@ -831,8 +831,8 @@ void CScaledScrollView::UpdateScrollbars(BOOL bRedraw)
 			if (sci.nPos > (sci.nMax - int(sci.nPage - 1)))
 				sci.nPos = sci.nMax - int(sci.nPage - 1);
 		}
-		TRACE("SetScrollInfo SB_HORZ, min=%d, max=%d, page=%d, pos=%d\n",
-			sci.nMin, sci.nMax, sci.nPage, sci.nPos);
+		if (0) TRACE("SetScrollInfo SB_HORZ, min=%d, max=%d, page=%d, pos=%d\n",
+					sci.nMin, sci.nMax, sci.nPage, sci.nPos);
 		SetScrollInfo(SB_HORZ, & sci, bRedraw);
 	}
 
@@ -934,7 +934,7 @@ void CScaledScrollView::OnSize(UINT nType, int cx, int cy)
 			AdjustNewScale(dScaleX, dScaleY, dScaleX, dNewScaleY);
 			if (dNewScaleY != dScaleY)
 			{
-				TRACE("New Y scale != old scale, invalidating...\n");
+				if (0) TRACE("New Y scale != old scale, invalidating...\n");
 				dScaleY = dNewScaleY;
 				InvalidateRgn(NULL);
 				//UpdateScrollbars();
@@ -964,7 +964,7 @@ void CScaledScrollView::OnSize(UINT nType, int cx, int cy)
 			AdjustNewScale(dScaleX, dScaleY, dNewScaleX, dScaleY);
 			if (dNewScaleX != dScaleX)
 			{
-				TRACE("New X scale != old scale, invalidating...\n");
+				if (0) TRACE("New X scale != old scale, invalidating...\n");
 				dScaleX = dNewScaleX;
 				InvalidateRgn(NULL);
 				//UpdateScrollbars();

@@ -1785,12 +1785,12 @@ void CDirectFile::File::ReadDataBuffer(BufferHeader * pBuf, DWORD MaskToRead)
 				char * NewWrittenMask = new char[NewWrittenMaskSize];
 				if (NULL == NewWrittenMask)
 				{
-					TRACE("NewWrittenMask == NULL\n");
+					if (0) TRACE("NewWrittenMask == NULL\n");
 					memset(pBuf->pBuf, 0, 0x10000);
 					pBuf->ReadMask = 0xFFFFFFFF;
 					return;
 				}
-				TRACE("Allocated NewWrittenMask, size=%d\n", NewWrittenMaskSize);
+				if (0) TRACE("Allocated NewWrittenMask, size=%d\n", NewWrittenMaskSize);
 				memset(NewWrittenMask, 0, NewWrittenMaskSize);
 				memcpy(NewWrittenMask, m_pWrittenMask, WrittenMaskSize);
 				delete[] m_pWrittenMask;
@@ -1824,12 +1824,12 @@ void CDirectFile::File::ReadDataBuffer(BufferHeader * pBuf, DWORD MaskToRead)
 						pSourceFile->m_FilePointer = StartFilePtr;
 					}
 					// round to sector size! otherwize ReadFile would fail
-					TRACE("ReadSourceFile(%08x, pos=0x%08X, bytes=%X)\n", hFile, long(StartFilePtr), ToRead);
+					if (0) TRACE("ReadSourceFile(%08x, pos=0x%08X, bytes=%X)\n", hFile, long(StartFilePtr), ToRead);
 					ReadFile(pSourceFile->hFile, buf, (ToRead + 0x1FF) & ~0x1FF, & BytesRead, NULL);
 #ifdef _DEBUG
 					if (BytesRead < ToRead)
 					{
-						TRACE("ToRead=%x, BytesRead=%x\n", ToRead, BytesRead);
+						if (0) TRACE("ToRead=%x, BytesRead=%x\n", ToRead, BytesRead);
 					}
 #endif
 					if (0 == m_LastError)
@@ -1890,7 +1890,7 @@ void CDirectFile::File::ReadDataBuffer(BufferHeader * pBuf, DWORD MaskToRead)
 				SetFilePointer(hFile, (LONG)StartFilePtr, & FilePtrH, FILE_BEGIN);
 				m_FilePointer = StartFilePtr;
 			}
-			TRACE("ReadFile(%08x, pos=0x%08X, bytes=%X)\n", hFile, long(StartFilePtr), ToRead);
+			if (0) TRACE("ReadFile(%08x, pos=0x%08X, bytes=%X)\n", hFile, long(StartFilePtr), ToRead);
 			ReadFile(hFile, buf, ToRead, & BytesRead, NULL);
 			if (0 == m_LastError)
 			{
@@ -1899,7 +1899,7 @@ void CDirectFile::File::ReadDataBuffer(BufferHeader * pBuf, DWORD MaskToRead)
 #ifdef _DEBUG
 			if (BytesRead < ToRead)
 			{
-				TRACE("ToRead=%x, BytesRead=%x\n", ToRead, BytesRead);
+				if (0) TRACE("ToRead=%x, BytesRead=%x\n", ToRead, BytesRead);
 			}
 #endif
 			m_FilePointer += BytesRead;
@@ -2010,7 +2010,7 @@ void CDirectFile::BufferHeader::FlushDirtyBuffers()
 							long(StartFilePtr), ToWrite,
 							buf[0], buf[1], buf[2], buf[3], buf[4],
 							buf[5], buf[6], buf[7]);
-				TRACE("WriteFile(%08x, pos=0x%08X, bytes=%X)\n", pFile->hFile, long(StartFilePtr), ToWrite);
+				if (0) TRACE("WriteFile(%08x, pos=0x%08X, bytes=%X)\n", pFile->hFile, long(StartFilePtr), ToWrite);
 				BOOL result = WriteFile(pFile->hFile, buf, ToWrite, & BytesWritten, NULL);
 				if (0 == pFile->m_LastError)
 				{
