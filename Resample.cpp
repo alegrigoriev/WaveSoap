@@ -147,8 +147,6 @@ BOOL CResampleContext::OperationProc()
 	m_DstFile.ReturnDataBuffer(pOriginalDstBuf, WasLockedToWrite,
 								CDirectFile::ReturnBufferDirty);
 
-	UpdateCompletedPercent(m_DstPos, m_DstStart, m_DstEnd);
-
 	return TRUE;
 }
 

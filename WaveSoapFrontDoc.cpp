@@ -842,6 +842,7 @@ void CWaveSoapFrontDoc::QueueSoundUpdate(int UpdateCode, ULONG_PTR FileID,
 				{
 					if (pEntry->m_NewLength != -1)
 					{
+						// this entry changes length, cannot merge any items before it
 						break;
 					}
 					if (begin < pEntry->m_Begin)
@@ -1068,7 +1069,7 @@ UINT CWaveSoapFrontDoc::_ThreadProc(void)
 				pContext->m_Flags |= OperationContextStopRequested;
 			}
 
-			int LastPercent = pContext->m_PercentCompleted;
+			int LastPercent = pContext->PercentCompleted();
 			// execute one step
 			if (0 == (pContext->m_Flags &
 					(OperationContextStop | OperationContextFinished)))
@@ -1077,19 +1078,22 @@ UINT CWaveSoapFrontDoc::_ThreadProc(void)
 				{
 					pContext->m_Flags |= OperationContextStop;
 				}
+
+				int NewPercent = pContext->PercentCompleted();
 				// signal for status update
-				if (LastPercent != pContext->m_PercentCompleted)
+				if (LastPercent != NewPercent)
 				{
 					NeedKickIdle = true;
 				}
+
 				if (NeedKickIdle)
 				{
-					if (pContext->m_PercentCompleted >= 0)
+					if (NewPercent >= 0)
 					{
 						CString s;
 						s.Format(_T("%s%d%%"),
 								(LPCTSTR)pContext->GetStatusString(),
-								pContext->m_PercentCompleted);
+								NewPercent);
 						SetCurrentStatusString(s);
 					}
 					else
@@ -1098,13 +1102,12 @@ UINT CWaveSoapFrontDoc::_ThreadProc(void)
 					}
 				}
 			}
+
 			if (pContext->m_Flags &
 				(OperationContextStop | OperationContextFinished))
 			{
-				if (pContext->m_PercentCompleted >= 0)
-				{
-					SetCurrentStatusString(pContext->GetStatusString() + _T("Completed"));
-				}
+				SetCurrentStatusString(pContext->GetCompletedStatusString());
+
 				NeedKickIdle = true;
 
 				m_OpList.RemoveEntry(pContext);
