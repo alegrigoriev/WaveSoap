@@ -75,6 +75,28 @@ struct PeakFileHeader
 
 #pragma pack(pop)
 
+typedef struct _MMCKINFO64
+{
+	FOURCC          ckid;           /* chunk ID */
+	DWORD           cksize;         /* chunk size */
+	FOURCC          fccType;        /* form type or list type */
+	DWORD           dwFlags;        /* flags used by MMIO functions */
+	MEDIA_FILE_POSITION  dwDataOffset;   /* offset of data portion of chunk */
+} MMCKINFO64, *PMMCKINFO64, NEAR *NPMMCKINFO64, FAR *LPMMCKINFO64;
+typedef const MMCKINFO64 *LPCMMCKINFO64;
+
+#ifdef USE_MMCKINFO64
+#define _MMCKINFO _MMCKINFO64
+#define MMCKINFO MMCKINFO64
+#define PMMCKINFO PMMCKINFO64
+#define NPMMCKINFO NPMMCKINFO64
+#define LPMMCKINFO LPMMCKINFO64
+#define LPCMMCKINFO LPCMMCKINFO64
+
+// must use custom mmio
+#define OVERRIDE_MMLIB_FUNCTIONS
+#endif
+
 class CMmioFile : public CDirectFile
 {
 	typedef CDirectFile BaseClass;
@@ -85,6 +107,7 @@ public:
 	virtual void Close();
 	CMmioFile & operator =(CMmioFile &);
 
+#ifndef OVERRIDE_MMLIB_FUNCTIONS
 	// read/write:
 	LONG Read( void* lpBuf, LONG nCount )
 	{
@@ -121,6 +144,42 @@ public:
 		return MMSYSERR_NOERROR == mmioDescend(m_hmmio, & ck, lpckParent, uFlags);
 	}
 
+	BOOL CreateChunk(MMCKINFO & ck, UINT wFlags = 0)
+	{
+		CSimpleCriticalSectionLock lock(m_cs);
+		ck.cksize = 0;
+		return MMSYSERR_NOERROR == mmioCreateChunk(m_hmmio, & ck, wFlags);
+	}
+	BOOL GetInfo(MMIOINFO & mmioinfo, UINT wFlags = 0)
+	{
+		CSimpleCriticalSectionLock lock(m_cs);
+		return MMSYSERR_NOERROR == mmioGetInfo(m_hmmio, & mmioinfo, wFlags);
+	}
+
+	BOOL Advance(LPMMIOINFO mmio, UINT uFlags)
+	{
+		CSimpleCriticalSectionLock lock(m_cs);
+		return MMSYSERR_NOERROR == mmioAdvance(m_hmmio, mmio, uFlags);
+	}
+
+	BOOL IsOpen() const
+	{
+		return m_hmmio != NULL;
+	}
+
+#else
+	void Flush(UINT = 0)   // possible value: MMIO_EMPTYBUF
+	{
+	}
+
+	BOOL Descend(MMCKINFO & ck, LPMMCKINFO lpckParent, UINT uFlags = 0);
+
+	BOOL Ascend(MMCKINFO & ck);
+
+	BOOL CreateChunk(MMCKINFO & ck, UINT wFlags = 0);
+
+#endif
+
 	BOOL FindChunk(MMCKINFO & ck, LPMMCKINFO lpckParent)
 	{
 		return Descend(ck, lpckParent, MMIO_FINDCHUNK);
@@ -134,18 +193,6 @@ public:
 		return Descend( * GetRiffChunk(), NULL, MMIO_FINDRIFF);
 	}
 
-	BOOL Advance(LPMMIOINFO mmio, UINT uFlags)
-	{
-		CSimpleCriticalSectionLock lock(m_cs);
-		return MMSYSERR_NOERROR == mmioAdvance(m_hmmio, mmio, uFlags);
-	}
-
-	BOOL CreateChunk(MMCKINFO & ck, UINT wFlags)
-	{
-		CSimpleCriticalSectionLock lock(m_cs);
-		ck.cksize = 0;
-		return MMSYSERR_NOERROR == mmioCreateChunk(m_hmmio, & ck, wFlags);
-	}
 	BOOL CreateList(MMCKINFO & ck)
 	{
 		return CreateChunk(ck, MMIO_CREATELIST);
@@ -155,17 +202,11 @@ public:
 		return CreateChunk(ck, MMIO_CREATERIFF);
 	}
 
-	BOOL GetInfo(MMIOINFO & mmioinfo, UINT wFlags = 0)
-	{
-		CSimpleCriticalSectionLock lock(m_cs);
-		return MMSYSERR_NOERROR == mmioGetInfo(m_hmmio, & mmioinfo, wFlags);
-	}
-
 	virtual ~CMmioFile();
 
-	HMMIO m_hmmio;
 	FOURCC m_RiffckType;
 	CSimpleCriticalSection m_cs;
+	HMMIO m_hmmio;
 
 	struct InstanceDataMm : public BaseClass::InstanceData
 	{
@@ -215,11 +256,6 @@ public:
 	BOOL LoadRiffChunk();
 	BOOL ReadChunkString(ULONG Length, CString & String);
 	BOOL ReadChunkStringW(ULONG Length, CString & String);
-
-	BOOL IsOpen() const
-	{
-		return m_hmmio != NULL;
-	}
 
 	BOOL CommitChanges();
 
