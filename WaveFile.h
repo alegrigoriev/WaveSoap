@@ -318,6 +318,10 @@ public:
 	{
 		return m_WavePeakSize;
 	}
+	CSimpleCriticalSection & GetLock()
+	{
+		return m_PeakLock;
+	}
 
 	void SetPeaks(unsigned from, unsigned to, unsigned stride, WavePeak value);
 	CWavePeaks & operator =(CWavePeaks const & src);
@@ -358,6 +362,12 @@ public:
 
 	BOOL CheckAndLoadPeakFile();
 	void SavePeakInfo(CWaveFile & SavedWaveFile);
+
+	CSimpleCriticalSection & GetPeakLock()
+	{
+		return GetInstanceData()->m_PeakData.GetLock();
+	}
+
 	struct InstanceDataWav : BaseClass::InstanceDataMm
 	{
 	private:
