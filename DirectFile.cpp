@@ -2953,6 +2953,7 @@ BOOL File::InitializeTheRestOfFile(int timeout, LONGLONG * pSizeCompleted)
 
 BOOL File::SetFileLength(LONGLONG NewLength)
 {
+	CLastError err;
 	if (m_Flags & CDirectFile::FileFlagsMemoryFile)
 	{
 		// allocate or reallocate memory buffer
@@ -2995,7 +2996,7 @@ BOOL File::SetFileLength(LONGLONG NewLength)
 
 	if (m_Flags & CDirectFile::FileFlagsReadOnly)
 	{
-		SetLastError(ERROR_FILE_READ_ONLY);
+		err.Set(ERROR_FILE_READ_ONLY);
 		return FALSE;
 	}
 	// if the file becomes shorter, discard all buffers after the trunk point
@@ -3020,26 +3021,31 @@ BOOL File::SetFileLength(LONGLONG NewLength)
 
 	CSimpleCriticalSectionLock lock(m_FileLock);
 	FileLength = NewLength;
-	// set the length to the multiple of 2K
+	// set the length to the multiple of CACHE_SUBBLOCK_SIZE
 	NewLength = (NewLength + CACHE_SUBBLOCK_SIZE - 1) & ~MASK_OFFSET_IN_SUBBLOCK;
-	LONG MoveHigh = LONG(NewLength>> 32);
+	LONG MoveHigh = LONG(NewLength >> 32);
+
 	DWORD SizeLow, SizeHigh;
-	SetLastError(0);
+
+	err.Set(NO_ERROR);
+
 	m_FilePointer = -1i64;  // invalidate file pointer
+
 	if ((0xFFFFFFFF != SetFilePointer(hFile, LONG(NewLength), & MoveHigh, FILE_BEGIN)
 			|| ::GetLastError() == NO_ERROR)
 		&& SetEndOfFile(hFile)
-		&& FlushFileBuffers(hFile))
+		//&& FlushFileBuffers(hFile)
+		)
 	{
 		SizeLow = ::GetFileSize(hFile, & SizeHigh);
-		if (::GetLastError() == NO_ERROR)
+		if (err.Get() == NO_ERROR)
 		{
 			RealFileLength = SizeLow | (LONGLONG(SizeHigh) << 32);
 			return TRUE;
 		}
 		else
 		{
-			SetLastError(ERROR_DISK_FULL);
+			err.Set(ERROR_DISK_FULL);
 			return FALSE;
 		}
 	}
@@ -3050,7 +3056,7 @@ BOOL File::SetFileLength(LONGLONG NewLength)
 		{
 			RealFileLength = SizeLow | (LONGLONG(SizeHigh) << 32);
 		}
-		SetLastError(ERROR_DISK_FULL);
+		err.Set(ERROR_DISK_FULL);
 		return FALSE;
 	}
 
