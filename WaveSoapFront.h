@@ -176,6 +176,7 @@ public:
 
 	int m_ExpressionGroupSelected;
 	int m_ExpressionSelected;
+	int m_ExpressionTabSelected;
 	void LoadSavedExpressions();
 
 	CString m_UserKey;

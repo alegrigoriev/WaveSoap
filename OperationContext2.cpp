@@ -735,6 +735,13 @@ void _fastcall CExpressionEvaluationContext::Sqrt(Operation *t)
 	*t->dDst = sqrt(*t->dSrc1);
 }
 
+void _fastcall CExpressionEvaluationContext::Noise(Operation *t)
+{
+	C_ASSERT(RAND_MAX == 0x7FFF);
+	//long r = (rand() ^ (rand() << 9)) - 0x800000;    // 24 bits
+	*t->dDst = ((rand() ^ (rand() << 9)) - 0x800000) / double(0x800000);
+}
+
 void CExpressionEvaluationContext::CompileMultiply()
 {
 	TokenType type = GetTopOfStackType();

@@ -228,6 +228,10 @@ CWaveSoapFrontApp::CWaveSoapFrontApp()
 
 	m_hWMVCORE_DLL_Handle(NULL),
 
+	m_ExpressionGroupSelected(0),
+	m_ExpressionSelected(0),
+	m_ExpressionTabSelected(0),
+
 	m_OpenFileDialogFilter(1)
 {
 	// Place all significant initialization in InitInstance
@@ -2506,7 +2510,9 @@ void CWaveSoapFrontApp::LoadSavedExpressions()
 	Profile.AddItem(_T("Expressions"), _T("ExpressionGroupSelected"),
 					m_ExpressionGroupSelected, 0, 0, MaxSavedExpressionGroups);
 	Profile.AddItem(_T("Expressions"), _T("ExpressionSelected"),
-					m_ExpressionSelected, 0, 0, m_ExpressionSelected);
+					m_ExpressionSelected, 0, 0, MaxSavedTotalExpressions);
+	Profile.AddItem(_T("Expressions"), _T("ExpressionTabSelected"),
+					m_ExpressionTabSelected, 0, 0, 3);
 
 	if (-1 == m_NumOfExprGroups)
 	{

@@ -180,7 +180,7 @@ private:
 	static void _fastcall Log(Operation *t);
 	static void _fastcall Log10(Operation *t);
 	static void _fastcall Sqrt(Operation *t);
-	static void _fastcall Noise(Operation *t)  { *t->dDst = (rand() - RAND_MAX / 2) / double(RAND_MAX / 2); }
+	static void _fastcall Noise(Operation *t);
 	static void _fastcall Abs(Operation *t)  { *t->dDst = abs(*t->dSrc1); }
 	static void _fastcall DoubleToInt(Operation *t)  { *t->nDst = *t->dSrc1; }
 	static void _fastcall IntToDouble(Operation *t)  { *t->dDst = *t->nSrc1; }

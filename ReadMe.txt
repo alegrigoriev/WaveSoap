@@ -1,10 +1,9 @@
 Known problems and tasks:
 
-Make save presets for Expression Evaluation command
 Make a few source samples available in expression and a few output samples too
-Keep selected tab number in ExprEvaluation dialog
-Noise function has only 15 bit resolution
 Make group "All Expressions"
+
+Make "New File parameters" dialog
 
 Move most persistent dialog parameters to dialogs, to update registry dynamically
 Make combobox in selection dialog
@@ -55,11 +54,13 @@ If there is not enough space on NTFS volume, it will be seen only during flush
 Windows2000 is trying to zero the allocated file
 
 Fixed:
+Noise function had only 15 bit resolution
+Make save presets for Expression Evaluation command
 Insert Silence of zero length still tries to modify the file
 Multiple MP3 files open: all but one get stuck
 
-
 Done:
+Keep selected tab number in ExprEvaluation dialog
 Show expression descriptions
 Remember toolbar/status bar toggle
 Remember last frame and view maximized state
