@@ -1818,7 +1818,8 @@ BOOL CWaveSoapFrontDoc::OnSaveBufferedPcmFileCopy(class COperationContext ** ppO
 	{
 		NewTempFilename += _T(".temp");
 	}
-	if (FALSE == NewWaveFile.CreateWaveFile(& m_OriginalWavFile,
+
+	if (FALSE == NewWaveFile.CreateWaveFile(& m_WavFile,
 											WaveFormat(),
 											ALL_CHANNELS, WaveFileSamples(),
 											CreateWaveFileDeleteAfterClose,
