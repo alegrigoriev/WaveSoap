@@ -217,9 +217,7 @@ BOOL COperationContext::OperationProc()
 		if (m_ReturnBufferFlags & CDirectFile::ReturnBufferDirty)
 		{
 			// notify the view
-			pDocument->SoundChanged(m_DstFile.GetFileID(),
-									m_DstFile.PositionToSample(dwOperationBegin),
-									m_DstFile.PositionToSample(m_DstCopyPos));
+			pDocument->FileChanged(m_DstFile, dwOperationBegin, m_DstCopyPos);
 		}
 
 		if (m_DstEnd > m_DstStart)
@@ -315,9 +313,7 @@ BOOL COperationContext::OperationProc()
 		if (m_ReturnBufferFlags & CDirectFile::ReturnBufferDirty)
 		{
 			// notify the view
-			pDocument->SoundChanged(m_DstFile.GetFileID(),
-									m_DstFile.PositionToSample(dwOperationBegin),
-									m_DstFile.PositionToSample(m_DstCopyPos));
+			pDocument->FileChanged(m_DstFile, dwOperationBegin, m_DstCopyPos);
 		}
 
 		if (m_DstEnd > m_DstStart)
@@ -1036,10 +1032,8 @@ BOOL CResizeContext::ShrinkProc()
 		m_pUndoContext->m_pExpandShrinkContext->m_DstCopyPos = m_SrcCopyPos;
 	}
 	// notify the view
-	SAMPLE_INDEX nFirstSample = m_DstFile.PositionToSample(dwOperationBegin);
-	SAMPLE_INDEX nLastSample = m_DstFile.PositionToSample(m_DstCopyPos);
 
-	pDocument->SoundChanged(m_DstFile.GetFileID(), nFirstSample, nLastSample);
+	pDocument->FileChanged(m_DstFile, dwOperationBegin, m_DstCopyPos);
 
 	if (m_SrcEnd > m_SrcStart)
 	{
@@ -1228,9 +1222,7 @@ BOOL CResizeContext::ExpandProc()
 		m_pUndoContext->m_pExpandShrinkContext->m_DstCopyPos = m_SrcCopyPos;
 	}
 	// notify the view
-	pDocument->SoundChanged(m_DstFile.GetFileID(),
-							m_DstFile.PositionToSample(dwOperationBegin),
-							m_DstFile.PositionToSample(m_DstCopyPos));
+	pDocument->FileChanged(m_DstFile, dwOperationBegin, m_DstCopyPos);
 
 	if (m_SrcEnd > m_SrcStart)
 	{
@@ -1734,9 +1726,7 @@ BOOL CCopyContext::OperationProc()
 								CDirectFile::ReturnBufferDirty);
 
 	// notify the view
-	pDocument->SoundChanged(m_DstFile.GetFileID(),
-							m_DstFile.PositionToSample(dwOperationBegin),
-							m_DstFile.PositionToSample(m_DstCopyPos));
+	pDocument->FileChanged(m_DstFile, dwOperationBegin, m_DstCopyPos);
 
 	if (m_SrcEnd > m_SrcStart)
 	{
@@ -3310,14 +3300,7 @@ BOOL CConversionContext::OperationProc()
 								CDirectFile::ReturnBufferDirty);
 
 	// notify the view
-	MMCKINFO * pDataChunk = m_DstFile.GetDataChunk();
-	if (NULL != pDataChunk && pDataChunk->ckid != 0)
-	{
-		// pDataChunk is null, if the output file is not in WAV format
-		pDocument->SoundChanged(m_DstFile.GetFileID(),
-								m_DstFile.PositionToSample(dwOperationBegin),
-								m_DstFile.PositionToSample(m_DstCopyPos));
-	}
+	pDocument->FileChanged(m_DstFile, dwOperationBegin, m_DstCopyPos);
 
 	if (m_SrcEnd > m_SrcStart)
 	{
