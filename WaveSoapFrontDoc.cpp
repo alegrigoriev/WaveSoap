@@ -1269,7 +1269,8 @@ void CWaveSoapFrontDoc::DoCopy(SAMPLE_INDEX Start, SAMPLE_INDEX End,
 					| CreateWaveFileDontCopyInfo
 					| CreateWaveFilePcmFormat
 					| CreateWaveFileTemp;
-		OperationFlags = OperationContextClipboard;
+		// This operation creates clipboard file
+		OperationFlags = OperationContextClipboard | OperationContextWriteToClipboard;
 	}
 
 	CStagedContext::auto_ptr pContext(new CStagedContext(this, OperationFlags, OpName, OpName));

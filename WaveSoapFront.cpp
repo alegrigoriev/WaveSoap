@@ -1022,6 +1022,9 @@ unsigned CWaveSoapFrontApp::_ThreadProc()
 				// remove the context from the list and delete the context
 				m_OpList.RemoveEntry(pContext);
 
+				bool ClipboardCreationAborted = 0 == (pContext->m_Flags & OperationContextFinished)
+												&& 0 != (pContext->m_Flags & OperationContextWriteToClipboard);
+
 				// send a signal to the document, that the operation completed
 				SetStatusStringAndDoc(pContext->GetCompletedStatusString(),
 									pContext->pDocument);
@@ -1031,6 +1034,28 @@ unsigned CWaveSoapFrontApp::_ThreadProc()
 				pContext->Retire();     // puts it in the document queue
 				// send a signal to the document, that the operation completed
 				NeedKickIdle = true;    // this will reenable all commands
+
+				if (ClipboardCreationAborted)
+				{
+					// remove all operations that use the clipboard, to the next clipboard create operation
+					for (pContext = m_OpList.First();
+						m_OpList.NotEnd(pContext); )
+					{
+						COperationContext * pNext = m_OpList.Next(pContext);
+						if (pContext->m_Flags & OperationContextWriteToClipboard)
+						{
+							break;
+						}
+
+						if (pContext->m_Flags & OperationContextClipboard)
+						{
+							m_OpList.RemoveEntry(pContext);
+							pContext->Retire();
+						}
+
+						pContext = pNext;
+					}
+				}
 			}
 			else
 			{
@@ -2139,10 +2164,11 @@ BOOL CWaveSoapFrontApp::GetMessageString(UINT nID, CString& rMessage)
 	}
 	// form the string from the recent file name
 	nID -= ID_FILE_MRU_FILE1;
-	if (nID >= m_pRecentFileList->GetSize())
+	if (nID >= UINT(m_pRecentFileList->GetSize()))
 	{
 		return FALSE;
 	}
+
 	LPCTSTR file = m_pRecentFileList->m_arrNames[nID];
 
 	CString suffix;
