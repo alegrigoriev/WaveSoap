@@ -3362,9 +3362,10 @@ void CFileSaveContext::PostRetire(BOOL bChildContext)
 			m_DstFile.m_FactSamples =
 				(m_pConvert->m_SrcCopyPos - m_pConvert->m_SrcStart)
 				/ m_pConvert->m_SrcFile.SampleSize();
+			m_pConvert->m_DstCopyPos = (m_pConvert->m_DstCopyPos + 1) & ~1;
 		}
 		// set length of file (even)
-		m_DstFile.SetFileLength((m_pConvert->m_DstCopyPos + 1) & ~1);
+		m_DstFile.SetFileLength(m_pConvert->m_DstCopyPos);
 		// release references
 		m_pConvert->PostRetire(TRUE);
 		m_pConvert = NULL;
@@ -3726,8 +3727,7 @@ BOOL CWmaSaveContext::Init()
 		return FALSE;
 	}
 	// TODO: load the proper profile
-	// TODO: Open the destination file
-	//m_Enc.SetBitrate(128016);
+	m_Enc.SetFormat(m_DstFile.GetWaveFormat());
 	if ( ! m_Enc.OpenWrite(m_DstFile))
 	{
 		return FALSE;
