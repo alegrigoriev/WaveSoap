@@ -1761,9 +1761,11 @@ void SIGNAL_PARAMS::AnalyzeFftSample(complex<DATA> smp, NoiseReductionCore * pNr
 		sp_FilteredLevelError = 0;
 		return;
 	}
+
 #ifdef _DEBUG
 	pNr->m_TotalBandProcessed++;
 #endif
+
 #if 1
 	float dLevel = float(log(nrm) * 0.5);
 	float dPhase = (float)atan2(imag(smp), real(smp));
@@ -1813,9 +1815,10 @@ void SIGNAL_PARAMS::AnalyzeFftSample(complex<DATA> smp, NoiseReductionCore * pNr
 
 #if 1
 	// check if the signal may be considered stationary or transient
-	if (0 && (dLevelChange > pNr->m_ThresholdOfTransient
+	if (1 && (dLevelChange > pNr->m_ThresholdOfTransient
 			|| dLevelChange < -pNr->m_ThresholdOfTransient))
 	{
+		// transient signal
 		m_TonalBand = FALSE;
 #ifdef _DEBUG
 		pNr->m_TransientBandFound++;
