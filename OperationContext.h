@@ -139,7 +139,7 @@ public:
 								SAMPLE_POSITION StartPos, SAMPLE_POSITION EndPos);
 #ifdef _DEBUG
 	FILETIME m_ThreadUserTime;
-	DWORD m_SystemTime;
+	DWORD m_BeginSystemTime;
 	void SetBeginTime();
 	void PrintElapsedTime();
 #else
