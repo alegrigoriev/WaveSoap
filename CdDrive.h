@@ -865,6 +865,20 @@ enum CdMediaChangeState
 };
 enum { CDDASectorSize = 2352} ;
 
+struct RiffCddaFmt
+{
+	DWORD Riff; //"RIFF"
+	DWORD Fmt; // "fmt "
+	DWORD Size; // 0x18
+	USHORT Session; // 1 ??
+	USHORT Track;   //
+	USHORT VolumeSerialNumber;
+	ULONG FirstSector;
+	ULONG LengthSectors;
+	CdAddressMSF FirstSectorMsf;
+	CdAddressMSF LengthMsf;
+};
+
 class CCdDrive
 {
 public:

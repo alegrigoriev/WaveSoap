@@ -1838,6 +1838,7 @@ BOOL CCdReadingContext::Init()
 	}
 
 	m_Drive.SetReadSpeed(m_RequiredReadSpeed, m_CdAddress - 150, m_NumberOfSectors);
+	m_Drive.ReadCdData(m_pCdBuffer, m_CdAddress, m_CdBufferSize / CDDASectorSize);
 	return TRUE;
 }
 
@@ -1857,6 +1858,10 @@ void CCdReadingContext::DeInit()
 	if (0 == (m_Flags & OperationContextFinished)
 		|| m_bLastTrack)
 	{
+		TRACE("CD drive speed reset to original %d\n", m_OriginalReadSpeed);
 		m_Drive.SetReadSpeed(m_OriginalReadSpeed);
+		CDROM_TOC toc;
+		// stop drive:
+		m_Drive.ReadToc( & toc);
 	}
 }

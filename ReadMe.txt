@@ -51,8 +51,8 @@ Make recording from Internet stream
 
 Problems:
 
-During playback, outline is invalidated.
-IOCTL_CDROM_RAW_READ doesn't work on old Panasonic
+Open WMA file through dialog crashes the app
+During playback, outline is invalidated. (??)
 WinXP doesn't have CDRAL
 Multisession disk shows only begin of tracks. Read the whole structure.
 Daylight saving time change invalidates peak info timespamp (FAT only??)
@@ -66,6 +66,10 @@ samples with 32767, -32768 are not visible
 Log Off query doesn't close the active dialog. Recursion is possible. Make sure to check after Cancel
 
 Fixed:
+".wav" added one more time in File Save dialog
+IOCTL_CDROM_RAW_READ doesn't work on old Panasonic
+File title is not passed to SaveAs
+display color depth change from 24 to 16 bit under XP crashes the app
 During playback, horizontal ruler is invalidated.
 Track names are not updated in the program.
 No status string during CD reading?
