@@ -56,15 +56,17 @@ struct NewFileParameters
 {
 	CWaveFormat pWf;
 	LPCTSTR m_pInitialName;
-	LONG InitialSamples;
+	NUMBER_OF_SAMPLES m_InitialSamples;
 	DWORD m_FileTypeFlags;
 	CWaveFile * m_pFile;
 
-	NewFileParameters()
+	NewFileParameters(WAVEFORMATEX const * pf,
+					NUMBER_OF_SAMPLES nSamples = 0)
 		: m_pInitialName(NULL)
-		, InitialSamples(0)
+		, m_InitialSamples(nSamples)
 		, m_FileTypeFlags(0)
 		, m_pFile(NULL)
+		, pWf(pf)
 	{
 	}
 };

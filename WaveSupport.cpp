@@ -576,7 +576,11 @@ void CWaveFormat::InitCdAudioFormat()
 
 CWaveFormat & CWaveFormat::operator =(WAVEFORMATEX const * pWf)
 {
-	if (pWf != m_pWf)
+	if (NULL == pWf)
+	{
+		delete [] (char*)Detach();
+	}
+	else if (pWf != m_pWf)
 	{
 		if (WAVE_FORMAT_PCM == pWf->wFormatTag)
 		{

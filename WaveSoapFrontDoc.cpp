@@ -307,7 +307,8 @@ BOOL CWaveSoapFrontDoc::OnNewDocument(NewFileParameters * pParams)
 	m_TimeSelectionMode = TRUE;
 	m_bReadOnly = false;
 
-	LONG nSamples = pParams->InitialSamples;
+	NUMBER_OF_SAMPLES nSamples = pParams->m_InitialSamples;
+
 	if (pParams->m_FileTypeFlags & OpenDocumentCreateNewFromCWaveFile)
 	{
 		m_WavFile = * pParams->m_pFile;

@@ -1331,9 +1331,6 @@ void CWaveSoapFrontApp::OnFileNew()
 
 	if (pTemplate != NULL)
 	{
-		NewFileParameters Params;
-		//Params.m_pInitialName = NULL;
-		Params.pWf = & m_NewFileFormat;
 
 		if (! m_bShowNewFormatDialogWhenShiftOnly
 			|| (0x8000 & GetKeyState(VK_SHIFT)))
@@ -1356,7 +1353,8 @@ void CWaveSoapFrontApp::OnFileNew()
 			m_NewFileFormat.nChannels = dlg.NumberOfChannels();
 		}
 
-		Params.InitialSamples = m_NewFileLength * m_NewFileFormat.nSamplesPerSec;
+		NewFileParameters Params( & m_NewFileFormat,
+								m_NewFileLength * m_NewFileFormat.nSamplesPerSec);
 
 		pTemplate->OpenDocumentFile((LPCTSTR) & Params,
 									OpenDocumentCreateNewWithParameters);
@@ -1375,10 +1373,7 @@ void CWaveSoapFrontApp::OnEditPasteNew()
 
 	if (pTemplate != NULL)
 	{
-		NewFileParameters Params;
-		//Params.InitialSamples = 0;
-		//Params.m_pInitialName = NULL;
-		Params.pWf = m_ClipboardFile.GetWaveFormat();
+		NewFileParameters Params(m_ClipboardFile.GetWaveFormat());
 
 		CWaveSoapFrontDoc * pDoc =
 			(CWaveSoapFrontDoc *)pTemplate->OpenDocumentFile(
