@@ -177,11 +177,27 @@ CWaveFftView::~CWaveFftView()
 
 BEGIN_MESSAGE_MAP(CWaveFftView, CWaveSoapFrontView)
 	//{{AFX_MSG_MAP(CWaveFftView)
+	ON_COMMAND(ID_VIEW_ZOOMVERT_NORMAL, OnViewZoomvertNormal)
 	ON_COMMAND(ID_VIEW_ZOOMINVERT, OnViewZoomInVert)
 	ON_COMMAND(ID_VIEW_ZOOMOUTVERT, OnViewZoomOutVert)
-	ON_COMMAND(ID_VIEW_ZOOMVERT_NORMAL, OnViewZoomvertNormal)
 	ON_WM_PAINT()
 	ON_WM_ERASEBKGND()
+	ON_COMMAND(ID_FFT_BANDS_1024, OnFftBands1024)
+	ON_UPDATE_COMMAND_UI(ID_FFT_BANDS_1024, OnUpdateFftBands1024)
+	ON_COMMAND(ID_FFT_BANDS_128, OnFftBands128)
+	ON_UPDATE_COMMAND_UI(ID_FFT_BANDS_128, OnUpdateFftBands128)
+	ON_COMMAND(ID_FFT_BANDS_2048, OnFftBands2048)
+	ON_UPDATE_COMMAND_UI(ID_FFT_BANDS_2048, OnUpdateFftBands2048)
+	ON_COMMAND(ID_FFT_BANDS_256, OnFftBands256)
+	ON_UPDATE_COMMAND_UI(ID_FFT_BANDS_256, OnUpdateFftBands256)
+	ON_COMMAND(ID_FFT_BANDS_4096, OnFftBands4096)
+	ON_UPDATE_COMMAND_UI(ID_FFT_BANDS_4096, OnUpdateFftBands4096)
+	ON_COMMAND(ID_FFT_BANDS_512, OnFftBands512)
+	ON_UPDATE_COMMAND_UI(ID_FFT_BANDS_512, OnUpdateFftBands512)
+	ON_COMMAND(ID_FFT_BANDS_64, OnFftBands64)
+	ON_UPDATE_COMMAND_UI(ID_FFT_BANDS_64, OnUpdateFftBands64)
+	ON_COMMAND(ID_FFT_BANDS_8192, OnFftBands8192)
+	ON_UPDATE_COMMAND_UI(ID_FFT_BANDS_8192, OnUpdateFftBands8192)
 	//}}AFX_MSG_MAP
 END_MESSAGE_MAP()
 
@@ -993,3 +1009,117 @@ void CWaveFftView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
 }
 
 HBRUSH CWaveFftView::m_Brush = NULL;
+
+void CWaveFftView::OnUpdateBands(CCmdUI* pCmdUI, int number)
+{
+	pCmdUI->SetRadio(number == m_FftOrder);
+}
+
+void CWaveFftView::OnSetBands(int number)
+{
+	if (number != m_FftOrder)
+	{
+		m_FftOrder = number;
+		delete[] m_pFftResultArray;
+		m_pFftResultArray = NULL;
+		delete[] m_pFftWindow;
+		m_pFftWindow = NULL;
+		Invalidate();
+	}
+}
+
+void CWaveFftView::OnFftBands1024()
+{
+	OnSetBands(1024);
+}
+
+void CWaveFftView::OnUpdateFftBands1024(CCmdUI* pCmdUI)
+{
+	OnUpdateBands(pCmdUI, 1024);
+}
+
+void CWaveFftView::OnFftBands128()
+{
+	OnSetBands(128);
+}
+
+void CWaveFftView::OnUpdateFftBands128(CCmdUI* pCmdUI)
+{
+	OnUpdateBands(pCmdUI, 128);
+}
+
+void CWaveFftView::OnFftBands2048()
+{
+	OnSetBands(2048);
+}
+
+void CWaveFftView::OnUpdateFftBands2048(CCmdUI* pCmdUI)
+{
+	OnUpdateBands(pCmdUI, 2048);
+}
+
+void CWaveFftView::OnFftBands256()
+{
+	OnSetBands(256);
+}
+
+void CWaveFftView::OnUpdateFftBands256(CCmdUI* pCmdUI)
+{
+	OnUpdateBands(pCmdUI, 256);
+}
+
+void CWaveFftView::OnFftBands4096()
+{
+	OnSetBands(4096);
+}
+
+void CWaveFftView::OnUpdateFftBands4096(CCmdUI* pCmdUI)
+{
+	OnUpdateBands(pCmdUI, 4096);
+}
+
+void CWaveFftView::OnFftBands512()
+{
+	OnSetBands(512);
+}
+
+void CWaveFftView::OnUpdateFftBands512(CCmdUI* pCmdUI)
+{
+	OnUpdateBands(pCmdUI, 512);
+}
+
+void CWaveFftView::OnFftBands64()
+{
+	OnSetBands(64);
+}
+
+void CWaveFftView::OnUpdateFftBands64(CCmdUI* pCmdUI)
+{
+	OnUpdateBands(pCmdUI, 64);
+}
+
+void CWaveFftView::OnFftBands8192()
+{
+	OnSetBands(8192);
+}
+
+void CWaveFftView::OnUpdateFftBands8192(CCmdUI* pCmdUI)
+{
+	OnUpdateBands(pCmdUI, 8192);
+}
+
+UINT CWaveFftView::GetPopupMenuID(CPoint point)
+{
+	// point is in screen coordinates
+	ScreenToClient( & point);
+	DWORD hit = ClientHitTest(point);
+	if (hit & VSHT_SELECTION)
+	{
+		return IDR_MENU_WAVE_VIEW_SELECTION;
+	}
+	else
+	{
+		return IDR_MENU_FFT_VIEW;
+	}
+}
+
