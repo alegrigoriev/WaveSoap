@@ -2424,9 +2424,8 @@ void CWaveSoapFrontApp::OnToolsOptions()
 	dlg.m_SoundPage.m_RecordingBufferSize = m_SizeRecordBuffers / 1024;
 
 	dlg.m_PageSelected = m_LastPrefsPropertyPageSelected;
-#if 0
+
 	dlg.m_ViewPage.m_bSnapMouseSelection = m_bSnapMouseSelectionToMax;
-#endif
 
 	if (IDOK == dlg.DoModal())
 	{
@@ -2464,6 +2463,8 @@ void CWaveSoapFrontApp::OnToolsOptions()
 		m_SizeRecordBuffers = dlg.m_SoundPage.m_RecordingBufferSize * 1024;
 
 		m_LastPrefsPropertyPageSelected = dlg.m_PageSelected;
+
+		m_bSnapMouseSelectionToMax = dlg.m_ViewPage.m_bSnapMouseSelection;
 	}
 }
 
