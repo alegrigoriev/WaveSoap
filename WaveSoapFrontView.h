@@ -39,6 +39,7 @@ protected:
 	virtual void OnEndPrinting(CDC* pDC, CPrintInfo* pInfo);
 	virtual void OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint);
 	virtual void OnActivateView(BOOL bActivate, CView* pActivateView, CView* pDeactiveView);
+	virtual BOOL OnScrollBy(CSize sizeScroll, BOOL bDoScroll = TRUE);
 	//}}AFX_VIRTUAL
 
 // Implementation
@@ -80,6 +81,15 @@ protected:
 	DWORD ClientHitTest(CPoint p);
 	virtual POINT GetZoomCenter();
 	void MovePointIntoView(int nCaret);
+
+	virtual void DrawPlaybackCursor(CDC * pDC, long Sample, int Channel);
+	virtual void ShowPlaybackCursor(CDC * pDC = NULL);
+	virtual void HidePlaybackCursor(CDC * pDC = NULL);
+	void UpdatePlaybackCursor(long sample, int channel);
+	BOOL PlaybackCursorVisible();
+	int m_PlaybackChannel;  // -1 = not playing
+	bool m_PlaybackCursorDrawn;
+	long m_LastPlaybackCursorPos;
 	// Generated message map functions
 protected:
 	//{{AFX_MSG(CWaveSoapFrontView)
