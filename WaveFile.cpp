@@ -5,9 +5,8 @@
 
 CMmioFile::CMmioFile()
 	: m_hmmio(NULL),
-	m_dwSize(0)
+	m_RiffckType(0)
 {
-	memset( & m_riffck, 0, sizeof m_riffck);
 }
 
 CMmioFile::~CMmioFile()
@@ -20,16 +19,10 @@ CMmioFile & CMmioFile::operator=(CMmioFile & SourceFile)
 {
 	Close();
 	m_File.Attach( & SourceFile.m_File);
-	m_dwSize = SourceFile.m_dwSize;
 	MMIOINFO mmii;
 	SourceFile.GetInfo(mmii);
 	m_hmmio = mmioOpen(NULL, & mmii, MMIO_READ | MMIO_ALLOCBUF);
-	m_riffck.ckid = FOURCC_RIFF;
-	m_riffck.cksize = 0;
-	m_riffck.dwDataOffset = 0;
-	m_riffck.dwFlags = 0;
 	Seek(0);
-	FindRiff();
 	return *this;
 }
 
@@ -134,16 +127,6 @@ BOOL CMmioFile::Open( LPCTSTR szFileName, UINT nOpenFlags)
 	if (0 == (nOpenFlags & (MmioFileOpenCreateNew | MmioFileOpenCreateAlways)))
 	{
 
-		DWORD dwSizeHigh = 0;
-		m_dwSize = m_File.GetFileSize(& dwSizeHigh);
-
-		if (dwSizeHigh != 0 ||
-			(0xFFFFFFFF == m_dwSize && GetLastError() != NO_ERROR))
-		{
-			Close();
-			return FALSE;
-		}
-
 		MMIOINFO mmii;
 		memset( & mmii, 0, sizeof mmii);
 		mmii.fccIOProc = 0;
@@ -160,21 +143,26 @@ BOOL CMmioFile::Open( LPCTSTR szFileName, UINT nOpenFlags)
 			return FALSE;
 		}
 
-		m_riffck.ckid = FOURCC_RIFF;
-		m_riffck.cksize = 0;
-//        m_riffck.fccType = 0; // derived class can set it
-		m_riffck.dwDataOffset = 0;
-		m_riffck.dwFlags = 0;
-		if ( ! FindRiff())
+		if (NULL == GetRiffChunk())
 		{
-			Close();
-			return FALSE;
+			AllocateCommonData(0);
+			LPMMCKINFO pRiffck = GetRiffChunk();
+			pRiffck->ckid = FOURCC_RIFF;
+			pRiffck->cksize = 0;
+			pRiffck->fccType = m_RiffckType; // derived class can set it
+			pRiffck->dwDataOffset = 0;
+			pRiffck->dwFlags = 0;
+			if ( ! FindRiff())
+			{
+				Close();
+				return FALSE;
+			}
 		}
+		// if RIFF chunk was allocated before, it means that it is already read
 	}
 	else
 	{
 		// new file created
-		m_dwSize = 0;
 		MMIOINFO mmii;
 		memset( & mmii, 0, sizeof mmii);
 		mmii.fccIOProc = 0;
@@ -191,14 +179,24 @@ BOOL CMmioFile::Open( LPCTSTR szFileName, UINT nOpenFlags)
 			return FALSE;
 		}
 
-		m_riffck.ckid = FOURCC_RIFF;
-		m_riffck.cksize = 0;
-//        m_riffck.fccType = 0; // derived class can set it
-		m_riffck.dwDataOffset = 0;
-		m_riffck.dwFlags = 0;
 		if (0 == (nOpenFlags & MmioFileOpenDontCreateRiff))
 		{
-			CreateRiff( m_riffck);
+			if (NULL == GetRiffChunk())
+			{
+				AllocateCommonData(0);
+				LPMMCKINFO pRiffck = GetRiffChunk();
+				pRiffck->ckid = FOURCC_RIFF;
+				pRiffck->cksize = 0;
+				pRiffck->fccType = m_RiffckType; // derived class can set it
+				pRiffck->dwDataOffset = 0;
+				pRiffck->dwFlags = 0;
+				if ( ! CreateRiff( * pRiffck))
+				{
+					Close();
+					return FALSE;
+				}
+			}
+			// if RIFF chunk was allocated before, it means that it is already read
 		}
 	}
 	return TRUE;
@@ -282,33 +280,19 @@ void CMmioFile::Close( )
 
 
 CWaveFile::CWaveFile()
-	: m_pWf(NULL)
 {
-	m_riffck.fccType = mmioFOURCC('W', 'A', 'V', 'E');
-}
-
-CWaveFile::CWaveFile( LPCTSTR lpszFileName, UINT nOpenFlags )
-	: CMmioFile(), m_pWf(NULL)
-{
-	Open(lpszFileName, nOpenFlags);
+	m_RiffckType = mmioFOURCC('W', 'A', 'V', 'E');
 }
 
 CWaveFile & CWaveFile::operator =(CWaveFile & SourceFile)
 {
 	CMmioFile::operator=(SourceFile);
 	// waveformat will be read as needed
-	m_datack.cksize = 0;
-	m_datack.dwFlags = 0;
 	return *this;
 }
 
 CWaveFile::~CWaveFile()
 {
-	if (NULL != m_pWf)
-	{
-		delete [] (char*) m_pWf;
-		m_pWf = NULL;
-	}
 }
 
 #if 0
@@ -325,14 +309,9 @@ void CWaveFile::Close( )
 
 BOOL CWaveFile::LoadWaveformat()
 {
-	if (NULL != m_pWf)
-	{
-		delete [] (char*) m_pWf;
-		m_pWf = NULL;
-	}
 
 	MMCKINFO ck = {mmioFOURCC('f', 'm', 't', ' '), 0, 0, 0, 0};
-	if ( ! FindChunk(ck, & m_riffck))
+	if ( ! FindChunk(ck, GetRiffChunk()))
 	{
 		return FALSE;
 	}
@@ -348,18 +327,17 @@ BOOL CWaveFile::LoadWaveformat()
 	{
 		WaveformatSize = sizeof (WAVEFORMATEX);
 	}
-	LPWAVEFORMATEX pWf = (LPWAVEFORMATEX) new char[WaveformatSize];
-	memset(pWf, 0, WaveformatSize);
+	AllocateCommonData(sizeof (MMCKINFO) + WaveformatSize);
+	LPWAVEFORMATEX pWf = GetWaveFormat();
+
 	if (NULL != pWf)
 	{
 		if (ck.cksize == Read(pWf, ck.cksize))
 		{
-			m_pWf = pWf;
 			return TRUE;
 		}
 		else
 		{
-			delete [] (char*) pWf;
 			return FALSE;
 		}
 	}
@@ -372,32 +350,16 @@ BOOL CWaveFile::LoadWaveformat()
 
 BOOL CWaveFile::FindData()
 {
-	m_datack.ckid = mmioFOURCC('d', 'a', 't', 'a');
-	return FindChunk(m_datack, & m_riffck);
-}
-
-unsigned CWaveFile::SampleRate() const
-{
-	if (m_pWf)
+	if (GetCommonDataSize() < sizeof (MMCKINFO) + sizeof (WAVEFORMATEX))
 	{
-		return m_pWf->nSamplesPerSec;
+		if (NULL == AllocateCommonData(sizeof (MMCKINFO) + sizeof (WAVEFORMATEX)))
+		{
+			return FALSE;
+		}
 	}
-	else
-	{
-		return 0;
-	}
-}
-
-int CWaveFile::Channels() const
-{
-	if (m_pWf)
-	{
-		return m_pWf->nChannels;
-	}
-	else
-	{
-		return 0;
-	}
+	LPMMCKINFO pDatack = (LPMMCKINFO) GetCommonData();
+	pDatack->ckid = mmioFOURCC('d', 'a', 't', 'a');
+	return FindChunk( * pDatack, GetRiffChunk());
 }
 
 //DWORD CAviFile::Seek(DWORD position)
@@ -466,19 +428,44 @@ BOOL CWaveFile::CreateWaveFile(CWaveFile * pTemplateFile, int Channel,
 		}
 		return TRUE;
 	}
+	// create a file, RIFF list, fmt chunk, data chunk of specified size
+	// temp file with this name may already be created
+	DWORD OpenFlags = MmioFileOpenCreateAlways;
+	if (flags & CreateWaveFileDeleteAfterClose)
+	{
+		OpenFlags |= MmioFileOpenDeleteAfterClose;
+	}
+	if (FALSE == Open(name, OpenFlags))
+	{
+		Close();
+		return FALSE;
+	}
+
+	if (GetCommonDataSize() < sizeof (MMCKINFO) + sizeof (WAVEFORMATEX))
+	{
+		if (NULL == AllocateCommonData(sizeof (MMCKINFO) + sizeof (WAVEFORMATEX)))
+		{
+			Close();
+			return FALSE;
+		}
+	}
 	// create new WAVEFORMATEX
 	WAVEFORMATEX * pWF = NULL;
+	WAVEFORMATEX * pTemplateFormat = NULL;
+	if (NULL != pTemplateFile)
+	{
+		pTemplateFormat = pTemplateFile->GetWaveFormat();
+	}
 	int FormatSize = sizeof PCMWAVEFORMAT;
-	if (NULL != pTemplateFile
-		&& NULL != pTemplateFile->m_pWf)
+	if (NULL != pTemplateFormat)
 	{
 		if ((flags & CreateWaveFilePcmFormat)
-			|| WAVE_FORMAT_PCM == pTemplateFile->m_pWf->wFormatTag)
+			|| WAVE_FORMAT_PCM == pTemplateFormat->wFormatTag)
 		{
-			pWF = (LPWAVEFORMATEX) new char[sizeof PCMWAVEFORMAT];
+			pWF = GetWaveFormat();
 			if (pWF)
 			{
-				pWF->nSamplesPerSec = pTemplateFile->m_pWf->nSamplesPerSec;
+				pWF->nSamplesPerSec = pTemplateFormat->nSamplesPerSec;
 				pWF->wFormatTag = WAVE_FORMAT_PCM;
 				if (flags & CreateWaveFileTemp)
 				{
@@ -486,11 +473,11 @@ BOOL CWaveFile::CreateWaveFile(CWaveFile * pTemplateFile, int Channel,
 				}
 				else
 				{
-					pWF->wBitsPerSample = pTemplateFile->m_pWf->wBitsPerSample;
+					pWF->wBitsPerSample = pTemplateFormat->wBitsPerSample;
 				}
 				if (2 == Channel)
 				{
-					pWF->nChannels = pTemplateFile->m_pWf->nChannels;
+					pWF->nChannels = pTemplateFormat->nChannels;
 				}
 				else
 				{
@@ -507,19 +494,20 @@ BOOL CWaveFile::CreateWaveFile(CWaveFile * pTemplateFile, int Channel,
 		}
 		else
 		{
-			FormatSize = sizeof WAVEFORMATEX + pTemplateFile->m_pWf->cbSize;
-			pWF = (LPWAVEFORMATEX) new char[FormatSize];
+			FormatSize = sizeof WAVEFORMATEX + pTemplateFormat->cbSize;
+			AllocateCommonData(FormatSize + sizeof (MMCKINFO));
+			pWF = GetWaveFormat();
 			if (pWF)
 			{
-				memcpy(pWF, pTemplateFile->m_pWf, FormatSize);
+				memcpy(pWF, pTemplateFormat, FormatSize);
 				if (2 == Channel)
 				{
-					pWF->nChannels = pTemplateFile->m_pWf->nChannels;
+					pWF->nChannels = pTemplateFormat->nChannels;
 				}
 				else
 				{
 					pWF->nChannels = 1;
-					if (pTemplateFile->m_pWf->nChannels != 1)
+					if (pTemplateFormat->nChannels != 1)
 					{
 						// it may not be correct, better query the compressor
 						pWF->nBlockAlign /= 2;
@@ -537,7 +525,7 @@ BOOL CWaveFile::CreateWaveFile(CWaveFile * pTemplateFile, int Channel,
 	else
 	{
 		// create default PCM descriptor
-		pWF = (LPWAVEFORMATEX) new char[sizeof PCMWAVEFORMAT];
+		pWF = GetWaveFormat();
 		if (pWF)
 		{
 			pWF->nSamplesPerSec = 44100;
@@ -560,38 +548,26 @@ BOOL CWaveFile::CreateWaveFile(CWaveFile * pTemplateFile, int Channel,
 			return FALSE;
 		}
 	}
-	m_pWf = pWF;
-	// create a file, RIFF list, fmt chunk, data chunk of specified size
-	// temp file with this name may already be created
-	DWORD OpenFlags = MmioFileOpenCreateAlways;
-	if (flags & CreateWaveFileDeleteAfterClose)
-	{
-		OpenFlags |= MmioFileOpenDeleteAfterClose;
-	}
-	if (FALSE == Open(name, OpenFlags))
-	{
-		Close();
-		return FALSE;
-	}
 	// RIFF created in Open()
 	MMCKINFO fck = {mmioFOURCC('f', 'm', 't', ' '), 0, 0, 0, 0};
 	CreateChunk(fck, 0);
-	Write(m_pWf, FormatSize);
+	Write(pWF, FormatSize);
 	Ascend(fck);
 	// create data chunk
-	memset( & m_datack, 0, sizeof m_datack);
-	m_datack.ckid = mmioFOURCC('d', 'a', 't', 'a');
-	CreateChunk(m_datack, 0);
+	LPMMCKINFO pDatachunk = GetDataChunk();
+	memset(pDatachunk, 0, sizeof (MMCKINFO));
+	pDatachunk->ckid = mmioFOURCC('d', 'a', 't', 'a');
+	CreateChunk( * pDatachunk, 0);
 	if (Samples)
 	{
-		size_t DataLength = Samples * (m_pWf->nChannels * m_pWf->wBitsPerSample / 8);
-		m_File.SetFileLength(m_datack.dwDataOffset + DataLength);
+		size_t DataLength = Samples * SampleSize();
+		m_File.SetFileLength(pDatachunk->dwDataOffset + DataLength);
 		Seek(DataLength, SEEK_CUR);
 	}
-	Ascend(m_datack);
+	Ascend( * pDatachunk);
 	// and copy INFO
 	// then update RIFF
-	Ascend(m_riffck);
+	//Ascend( *GetRiffChunk());
 	return TRUE;
 }
 
