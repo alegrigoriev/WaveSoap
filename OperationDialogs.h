@@ -252,6 +252,9 @@ protected:
 	afx_msg void OnKillfocusEditEnd();
 	afx_msg void OnKillfocusEditLength();
 	afx_msg void OnKillfocusEditStart();
+	afx_msg void OnBuddyChangeSpinEnd(NMHDR * pNmHdr, LRESULT * pResult);
+	afx_msg void OnBuddyChangeSpinLength(NMHDR * pNmHdr, LRESULT * pResult);
+	afx_msg void OnBuddyChangeSpinStart(NMHDR * pNmHdr, LRESULT * pResult);
 	afx_msg void OnSelchangeComboSelection();
 	afx_msg void OnOK();
 	//}}AFX_MSG

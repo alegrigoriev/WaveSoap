@@ -579,8 +579,11 @@ BEGIN_MESSAGE_MAP(CSelectionDialog, BaseClass)
 //{{AFX_MSG_MAP(CSelectionDialog)
 	ON_CBN_SELCHANGE(IDC_COMBO_TIME_FORMAT, OnSelchangeComboTimeFormat)
 	ON_CBN_KILLFOCUS(IDC_COMBO_END, OnKillfocusEditEnd)
+	ON_NOTIFY(CTimeSpinCtrl::TSC_BUDDY_CHANGE, IDC_SPIN_END, OnBuddyChangeSpinEnd)
 	ON_EN_KILLFOCUS(IDC_EDIT_LENGTH, OnKillfocusEditLength)
+	ON_NOTIFY(CTimeSpinCtrl::TSC_BUDDY_CHANGE, IDC_SPIN_LENGTH, OnBuddyChangeSpinLength)
 	ON_CBN_KILLFOCUS(IDC_COMBO_START, OnKillfocusEditStart)
+	ON_NOTIFY(CTimeSpinCtrl::TSC_BUDDY_CHANGE, IDC_SPIN_START, OnBuddyChangeSpinStart)
 	ON_CBN_SELCHANGE(IDC_COMBO_SELECTION, OnSelchangeComboSelection)
 	//}}AFX_MSG_MAP
 END_MESSAGE_MAP()
@@ -797,6 +800,12 @@ void CSelectionDialog::UpdateComboSelection()
 	}
 }
 
+void CSelectionDialog::OnBuddyChangeSpinEnd(NMHDR * /*pNmHdr*/, LRESULT * pResult)
+{
+	OnKillfocusEditEnd();
+	*pResult = 0;
+}
+
 void CSelectionDialog::OnKillfocusEditEnd()
 {
 	AdjustSelection(m_Start, m_eEnd.UpdateTimeSample(), m_Length);
@@ -804,11 +813,23 @@ void CSelectionDialog::OnKillfocusEditEnd()
 	UpdateComboSelection();
 }
 
+void CSelectionDialog::OnBuddyChangeSpinLength(NMHDR * /*pNmHdr*/, LRESULT * pResult)
+{
+	OnKillfocusEditLength();
+	*pResult = 0;
+}
+
 void CSelectionDialog::OnKillfocusEditLength()
 {
 	AdjustSelection(m_Start, m_End, m_eLength.UpdateTimeSample());
 
 	UpdateComboSelection();
+}
+
+void CSelectionDialog::OnBuddyChangeSpinStart(NMHDR * /*pNmHdr*/, LRESULT * pResult)
+{
+	OnKillfocusEditStart();
+	*pResult = 0;
 }
 
 void CSelectionDialog::OnKillfocusEditStart()
