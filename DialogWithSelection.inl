@@ -7,7 +7,7 @@ template<typename B>
 void CDialogWithSelectionT<B>::OnButtonSelection()
 {
 	CSelectionDialog dlg(m_Start, m_End, m_CaretPosition, m_Chan,
-						m_WaveFile, m_TimeFormat, m_bAllowFileExtension);
+						m_WaveFile, m_TimeFormat, m_bLockChannels, m_bAllowFileExtension);
 
 	if (IDOK != dlg.DoModal())
 	{

@@ -491,6 +491,7 @@ void CVolumeChangeDialog::OnKillfocusEditVolumeRight()
 CSelectionUiSupport::CSelectionUiSupport(SAMPLE_INDEX Start, SAMPLE_INDEX End, SAMPLE_INDEX CaretPos,
 										CHANNEL_MASK Channel,
 										CWaveFile & WaveFile, int TimeFormat,
+										BOOL bChannelsLocked,
 										BOOL bAllowFileExtension)   // standard constructor
 	: m_Chan(-1)
 	, m_Start(0)
@@ -502,6 +503,7 @@ CSelectionUiSupport::CSelectionUiSupport(SAMPLE_INDEX Start, SAMPLE_INDEX End, S
 	, m_eEnd(CaretPos, WaveFile, TimeFormat)
 	, m_eLength(TimeFormat)
 	, m_WaveFile(WaveFile)
+	, m_bChannelsLocked(bChannelsLocked)
 	, m_bAllowFileExtension(bAllowFileExtension)
 {
 	if (Start <= End)
@@ -544,7 +546,7 @@ CSelectionUiSupport::CSelectionUiSupport(SAMPLE_INDEX Start, SAMPLE_INDEX End, S
 	}
 	else
 	{
-		if (WaveFile.AllChannels(Channel))
+		if (m_bChannelsLocked || WaveFile.AllChannels(Channel))
 		{
 			m_Chan = 0;
 		}
@@ -567,7 +569,7 @@ void CSelectionUiSupport::SetSelection(SAMPLE_INDEX Start, SAMPLE_INDEX End, CHA
 
 	AdjustSelection(Start, End, End - Start);
 
-	if (m_WaveFile.AllChannels(Channel))
+	if (m_bChannelsLocked || m_WaveFile.AllChannels(Channel))
 	{
 		m_Chan = 0;
 	}
@@ -611,48 +613,6 @@ void CSelectionUiSupport::InitSelectionUi()
 
 	CString s;
 
-#if 0
-	CWaveFile::InstanceDataWav * pInst = m_WaveFile.GetInstanceData();
-	for (RegionMarkerIterator i = pInst->m_RegionMarkers.begin();
-		i < pInst->m_RegionMarkers.end(); i++)
-	{
-		CuePointChunkItem * pCue = pInst->GetCuePoint(i->CuePointID);
-		if (NULL == pCue)
-		{
-			continue;
-		}
-		// TODO: include positions in HH:mm:ss and the tooltips
-		LPCTSTR pNote = pInst->GetCueComment(i->CuePointID);
-		LPCTSTR pLabel = pInst->GetCueLabel(i->CuePointID);
-
-		if (NULL == pLabel
-			|| 0 == pLabel[0])
-		{
-			// use comment text instead
-			pLabel = pNote;
-		}
-
-		SAMPLE_INDEX StartSample = pCue->dwSampleOffset;
-
-		SAMPLE_INDEX EndSample = StartSample + i->SampleLength;
-
-		if (StartSample > 0
-			&& StartSample < EndSample
-			&& StartSample < FileLength
-			&& EndSample <= FileLength)
-		{
-			LPCTSTR pTitle = pLabel;
-
-			if (NULL == pTitle
-				|| 0 == pTitle[0])
-			{
-				pTitle = i->Name;
-			}
-
-			AddSelection(pTitle, StartSample, EndSample);
-		}
-	}
-#else
 	WaveFileSegmentVector Segments;
 	m_WaveFile.GetSortedFileSegments(Segments, true);
 
@@ -667,7 +627,6 @@ void CSelectionUiSupport::InitSelectionUi()
 			AddSelection(i->Name, i->Begin, i->End);
 		}
 	}
-#endif
 
 	UpdateComboSelection();
 }
@@ -943,12 +902,13 @@ CSelectionDialog::CSelectionDialog(SAMPLE_INDEX Start, SAMPLE_INDEX End,
 									SAMPLE_INDEX CaretPos, CHANNEL_MASK Channel,
 									CWaveFile & WaveFile,
 									int TimeFormat,
+									BOOL bChannelsLocked,
 									BOOL bAllowFileExtension,
 									UINT id,
 									CWnd* pParent /*=NULL*/)
 	: BaseClass(id, pParent)
 	, CSelectionUiSupport(Start, End, CaretPos,
-						Channel, WaveFile, TimeFormat, bAllowFileExtension)
+						Channel, WaveFile, TimeFormat, bChannelsLocked, bAllowFileExtension)
 {
 	if (WaveFile.Channels() < 2
 		&& m_lpszTemplateName == MAKEINTRESOURCE(IDD_SELECTION_DIALOG))
@@ -997,6 +957,12 @@ BOOL CSelectionDialog::OnInitDialog()
 	BaseClass::OnInitDialog();
 
 	InitSelectionUi();
+	if (m_bChannelsLocked)
+	{
+		EnableDlgItem(IDC_RADIO_CHANNEL, FALSE);
+		EnableDlgItem(IDC_RADIO1, FALSE);
+		EnableDlgItem(IDC_RADIO2, FALSE);
+	}
 	return TRUE;  // return TRUE unless you set the focus to a control
 }
 
