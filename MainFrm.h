@@ -54,6 +54,10 @@ protected:
 	afx_msg int OnCreate(LPCREATESTRUCT lpCreateStruct);
 	afx_msg void OnPaletteChanged(CWnd* pFocusWnd);
 	afx_msg BOOL OnQueryNewPalette();
+	afx_msg BOOL OnBarCheckStatusBar(UINT nID);
+	afx_msg BOOL OnBarCheckToolbar(UINT nID);
+	afx_msg BOOL OnBarCheckRebar(UINT nID);
+	afx_msg void OnDestroy();
 	//}}AFX_MSG
 	afx_msg void OnUpdateIndicatorFileSize(CCmdUI* pCmdUI);
 	afx_msg void OnUpdateIndicatorSampleRate(CCmdUI* pCmdUI);

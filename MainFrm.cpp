@@ -22,6 +22,10 @@ BEGIN_MESSAGE_MAP(CMainFrame, CMDIFrameWnd)
 	ON_WM_CREATE()
 	ON_WM_PALETTECHANGED()
 	ON_WM_QUERYNEWPALETTE()
+	ON_COMMAND_EX(ID_VIEW_STATUS_BAR, OnBarCheckStatusBar)
+	ON_COMMAND_EX(ID_VIEW_TOOLBAR, OnBarCheckToolbar)
+	ON_COMMAND_EX(ID_VIEW_REBAR, OnBarCheckRebar)
+	ON_WM_DESTROY()
 	//}}AFX_MSG_MAP
 	// Global help commands
 	ON_COMMAND(ID_HELP_FINDER, CMDIFrameWnd::OnHelpFinder)
@@ -99,7 +103,47 @@ int CMainFrame::OnCreate(LPCREATESTRUCT lpCreateStruct)
 	m_wndToolBar.SetBarStyle(m_wndToolBar.GetBarStyle() |
 							CBRS_TOOLTIPS | CBRS_FLYBY);
 
+	CThisApp * pApp = GetApp();
+	if ( ! pApp->m_bShowStatusBar)
+	{
+		ShowControlBar( & m_wndStatusBar, FALSE, FALSE);
+	}
+	if ( ! pApp->m_bShowToolbar)
+	{
+		ShowControlBar( & m_wndToolBar, FALSE, FALSE);
+	}
+
 	return 0;
+}
+
+BOOL CMainFrame::OnBarCheckStatusBar(UINT nID)
+{
+	if (CFrameWnd::OnBarCheck(nID))
+	{
+		GetApp()->m_bShowStatusBar = (0 != (GetControlBar(nID)->GetStyle() & WS_VISIBLE));
+		return TRUE;
+	}
+	return FALSE;
+}
+
+BOOL CMainFrame::OnBarCheckToolbar(UINT nID)
+{
+	if (CFrameWnd::OnBarCheck(nID))
+	{
+		GetApp()->m_bShowToolbar = (0 != (GetControlBar(nID)->GetStyle() & WS_VISIBLE));
+		return TRUE;
+	}
+	return FALSE;
+}
+
+BOOL CMainFrame::OnBarCheckRebar(UINT nID)
+{
+	if (CFrameWnd::OnBarCheck(nID))
+	{
+		GetApp()->m_bShowToolbar = (0 != (GetControlBar(nID)->GetStyle() & WS_VISIBLE));
+		return TRUE;
+	}
+	return FALSE;
 }
 
 BOOL CMainFrame::PreCreateWindow(CREATESTRUCT& cs)
@@ -398,4 +442,10 @@ BOOL CMainFrame::PreTranslateMessage(MSG* pMsg)
 	}
 
 	return CMDIFrameWnd::PreTranslateMessage(pMsg);
+}
+
+void CMainFrame::OnDestroy()
+{
+	GetApp()->m_bOpenMaximized = (0 != (GetStyle() & WS_MAXIMIZE));
+	CMDIFrameWnd::OnDestroy();
 }

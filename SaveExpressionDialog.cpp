@@ -19,7 +19,8 @@ CSaveExpressionDialog::CSaveExpressionDialog(CWnd* pParent /*=NULL*/)
 	: CDialog(CSaveExpressionDialog::IDD, pParent)
 {
 	//{{AFX_DATA_INIT(CSaveExpressionDialog)
-	// NOTE: the ClassWizard will add member initialization here
+	m_Comment = _T("");
+	m_Name = _T("");
 	//}}AFX_DATA_INIT
 }
 
@@ -28,16 +29,23 @@ void CSaveExpressionDialog::DoDataExchange(CDataExchange* pDX)
 {
 	CDialog::DoDataExchange(pDX);
 	//{{AFX_DATA_MAP(CSaveExpressionDialog)
-	// NOTE: the ClassWizard will add DDX and DDV calls here
+	DDX_Text(pDX, IDC_EDIT_COMMENT, m_Comment);
+	DDX_CBString(pDX, IDC_COMBO_NAME, m_Name);
 	//}}AFX_DATA_MAP
 }
 
 
 BEGIN_MESSAGE_MAP(CSaveExpressionDialog, CDialog)
 	//{{AFX_MSG_MAP(CSaveExpressionDialog)
-		// NOTE: the ClassWizard will add message map macros here
+	ON_CBN_SELCHANGE(IDC_COMBO_NAME, OnSelchangeComboName)
 	//}}AFX_MSG_MAP
 END_MESSAGE_MAP()
 
 /////////////////////////////////////////////////////////////////////////////
 // CSaveExpressionDialog message handlers
+
+void CSaveExpressionDialog::OnSelchangeComboName()
+{
+	// TODO: Add your control notification handler code here
+
+}

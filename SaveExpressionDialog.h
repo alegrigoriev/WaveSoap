@@ -19,7 +19,8 @@ public:
 // Dialog Data
 	//{{AFX_DATA(CSaveExpressionDialog)
 	enum { IDD = IDD_DIALOG_SAVE_EXPRESSION };
-	// NOTE: the ClassWizard will add data members here
+	CString	m_Comment;
+	CString	m_Name;
 	//}}AFX_DATA
 
 
@@ -35,7 +36,7 @@ protected:
 
 	// Generated message map functions
 	//{{AFX_MSG(CSaveExpressionDialog)
-	// NOTE: the ClassWizard will add member functions here
+	afx_msg void OnSelchangeComboName();
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 };

@@ -126,8 +126,8 @@ void CSpectrumSectionView::OnDraw(CDC* pDC)
 	int NoiseReductionBegin = MulDiv(nBeginFrequency, m_FftOrder,
 									pDoc->WaveFormat()->nSamplesPerSec);
 	int NoiseReductionBeginY = NoiseReductionBegin;
-	int NoiseReductionBeginX;
-	int NoiseReductionEndX;
+//    int NoiseReductionBeginX;
+//    int NoiseReductionEndX;
 	if (FirstFftSample < 0)
 	{
 		LastFftSample -= FirstFftSample;

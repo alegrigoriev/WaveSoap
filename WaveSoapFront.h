@@ -62,6 +62,10 @@ public:
 	CString m_CurrentDir;
 	int m_OpenFileDialogFilter;
 	CString sTempDir;
+	bool m_bOpenMaximized;
+	bool m_bOpenChildMaximized;
+	bool m_bShowToolbar;
+	bool m_bShowStatusBar;
 	// display colors:
 	union {
 		struct {
@@ -158,6 +162,21 @@ public:
 	BOOL m_bSnapMouseSelectionToMax;
 
 	CString m_ExpressionToEvaluate;
+
+	enum { MaxSavedExpressionGroups = 32,
+		MaxSavedTotalExpressions = 512, };
+	CString m_ExpressionGroups[MaxSavedExpressionGroups];
+	int m_NumOfExprGroups;
+	CString m_Expressions[MaxSavedTotalExpressions];
+	CString m_ExpressionComments[MaxSavedTotalExpressions];
+	CString m_ExpressionNames[MaxSavedTotalExpressions];
+
+	int m_IndexOfGroupBegin[MaxSavedExpressionGroups];
+	int m_NumExpressions[MaxSavedExpressionGroups];
+
+	int m_ExpressionGroupSelected;
+	int m_ExpressionSelected;
+	void LoadSavedExpressions();
 
 	CString m_UserKey;
 

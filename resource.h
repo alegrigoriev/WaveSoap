@@ -72,6 +72,7 @@
 #define IDD_OPERANDS_TAB                161
 #define IDD_OPERATORS_TAB               162
 #define IDD_SAVED_EXPRESSIONS_TAB       163
+#define IDD_DIALOG_SAVE_EXPRESSION      164
 #define IDC_EDIT_MIN_CLICK_AMPLITUDE    1000
 #define IDC_TAB_SWITCH_VIEW_MODE        1000
 #define IDC_CHECK_LOG_CLICKS            1001
@@ -108,6 +109,9 @@
 #define IDC_COMBODB_PERCENT             1013
 #define IDC_COMBO_TIME_FORMAT           1013
 #define IDC_COMBO_DRIVES                1013
+#define IDC_COMBO_NAME                  1013
+#define IDC_COMBO_SAVED_EXPRESSION_GROUP 1013
+#define IDC_COMBO_GROUP                 1014
 #define IDC_STATIC_FILE_TYPE            1016
 #define IDC_STATIC_FILE_FORMAT          1017
 #define IDC_EDIT_LOWER_FREQUENCY        1018
@@ -188,11 +192,13 @@
 #define IDC_LIST_TRACKS                 1080
 #define IDC_STATIC_SPEED                1081
 #define IDC_STATIC_PROMPT               1083
-#define IDC_BUTTON10                    1093
 #define IDC_TAB_TOKENS                  1105
 #define IDC_STATIC_TAB_INTERIOR         1106
 #define IDC_BUTTON_SAVEAS               1107
 #define IDC_STATIC_DESCRIPTION          1108
+#define IDC_EDIT_COMMENT                1110
+#define IDC_BUTTON_DELETE_EXPRESSION    1112
+#define IDC_EDIT_FREQUENCY              1113
 #define IDC_VIEW_RULER_SAMPLES          32771
 #define IDC_VIEW_RULER_HHMMSS           32772
 #define IDC_VIEW_RULER_SECONDS          32773
@@ -228,6 +234,7 @@
 #define IDS_NOT_ENOUGH_MEMORY           32805
 #define IDS_NOT_ENOUGH_UNDO_SPACE       32806
 #define IDS_NOT_ENOUGH_DISK_SPACE       32807
+#define IDS_DELETE_EXPRESSION           32808
 #define ID_VIEW_ZOOMINVERT              32810
 #define ID_VIEW_ZOOMOUTHOR              32811
 #define ID_VIEW_ZOOMOUTVERT             32812
@@ -302,14 +309,18 @@
 #define IDC_BUTTON_OR                   32881
 #define IDC_BUTTON_XOR                  32882
 #define IDC_BUTTON_INVERSE              32883
-#define IDC_BUTTON_1                    32884
-#define IDC_BUTTON_14                   32885
+#define IDC_BUTTON_N                    32884
+#define IDC_BUTTON_LC_N                 32885
 #define IDC_BUTTON_15                   32886
 #define IDC_BUTTON_2                    32887
 #define IDC_BUTTON_3                    32888
 #define IDC_BUTTON_4                    32889
 #define IDC_BUTTON_INSERT_EXPRESSION    32890
+#define IDC_BUTTON_5                    32890
 #define IDC_COMBO_SAVED_EXPRESSIONS     32891
+#define IDC_BUTTON_6                    32891
+#define IDC_BUTTON_7                    32892
+#define IDC_BUTTON_8                    32893
 #define IDC_VIEW_AMPL_RULER_PERCENT     32900
 #define ID_FILE_PROPERTIES              40000
 #define ID_VIEW_ZOOMVERT_NORMAL         40001
@@ -393,9 +404,9 @@
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_3D_CONTROLS                     1
-#define _APS_NEXT_RESOURCE_VALUE        161
+#define _APS_NEXT_RESOURCE_VALUE        165
 #define _APS_NEXT_COMMAND_VALUE         40088
-#define _APS_NEXT_CONTROL_VALUE         1109
+#define _APS_NEXT_CONTROL_VALUE         1114
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif
