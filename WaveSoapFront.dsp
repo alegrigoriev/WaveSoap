@@ -43,7 +43,7 @@ RSC=rc.exe
 # PROP Ignore_Export_Lib 0
 # PROP Target_Dir ""
 # ADD BASE CPP /nologo /MT /W3 /GX /O2 /D "WIN32" /D "NDEBUG" /D "_WINDOWS" /Yu"stdafx.h" /FD /c
-# ADD CPP /nologo /G6 /MT /W3 /GR /GX /Zi /O2 /I "." /I "c:\ntddk\inc" /D "NDEBUG" /D "WIN32" /D "_WINDOWS" /D "_MBCS" /D _WIN32_WINNT=0x0500 /D "OEMRESOURCE" /Yu"stdafx.h" /FD /c
+# ADD CPP /nologo /G6 /MT /W3 /GR /GX /Zi /O2 /I "." /D "NDEBUG" /D "WIN32" /D "_WINDOWS" /D "_MBCS" /D _WIN32_WINNT=0x0500 /D "OEMRESOURCE" /Yu"stdafx.h" /FD /c
 # ADD BASE MTL /nologo /D "NDEBUG" /mktyplib203 /win32
 # ADD MTL /nologo /D "NDEBUG" /mktyplib203 /win32
 # ADD BASE RSC /l 0x419 /d "NDEBUG"
@@ -53,7 +53,7 @@ BSC32=bscmake.exe
 # ADD BSC32 /nologo
 LINK32=link.exe
 # ADD BASE LINK32 /nologo /subsystem:windows /machine:I386
-# ADD LINK32 winmm.lib msacm32.lib wmstub.lib wmvcore.lib delayimp.lib /nologo /subsystem:windows /pdb:none /map /machine:I386 /out:"Release/WaveSoap.exe" /libpath:"G:\WMSDK\WMFSDK\lib" /delayload:wmvcore.dll
+# ADD LINK32 winmm.lib msacm32.lib wmstub.lib wmvcore.lib delayimp.lib /nologo /subsystem:windows /pdb:none /map /machine:I386 /out:"Release/WaveSoap.exe" /delayload:wmvcore.dll
 # SUBTRACT LINK32 /debug
 
 !ELSEIF  "$(CFG)" == "WaveSoapFront - Win32 Debug"
@@ -70,7 +70,7 @@ LINK32=link.exe
 # PROP Ignore_Export_Lib 0
 # PROP Target_Dir ""
 # ADD BASE CPP /nologo /MTd /W3 /Gm /GX /ZI /Od /D "WIN32" /D "_DEBUG" /D "_WINDOWS" /Yu"stdafx.h" /FD /GZ /c
-# ADD CPP /nologo /MTd /W3 /Gm /GR /GX /ZI /Od /I "." /I "c:\ntddk\inc" /D "_DEBUG" /D "WIN32" /D "_WINDOWS" /D "_MBCS" /D _WIN32_WINNT=0x0500 /D "OEMRESOURCE" /Yu"stdafx.h" /FD /GZ /c
+# ADD CPP /nologo /MTd /W3 /Gm /GR /GX /ZI /Od /I "." /D "_DEBUG" /D "WIN32" /D "_WINDOWS" /D "_MBCS" /D _WIN32_WINNT=0x0500 /D "OEMRESOURCE" /Yu"stdafx.h" /FD /GZ /c
 # ADD BASE MTL /nologo /D "_DEBUG" /mktyplib203 /win32
 # ADD MTL /nologo /D "_DEBUG" /mktyplib203 /win32
 # ADD BASE RSC /l 0x419 /d "_DEBUG"
@@ -80,7 +80,7 @@ BSC32=bscmake.exe
 # ADD BSC32 /nologo
 LINK32=link.exe
 # ADD BASE LINK32 /nologo /subsystem:windows /debug /machine:I386 /pdbtype:sept
-# ADD LINK32 winmm.lib msacm32.lib wmstub.lib wmvcore.lib delayimp.lib /nologo /subsystem:windows /map /debug /machine:I386 /out:"Debug/WaveSoap.exe" /pdbtype:sept /libpath:"G:\WMSDK\WMFSDK\lib" /delayload:wmvcore.dll
+# ADD LINK32 winmm.lib msacm32.lib wmstub.lib wmvcore.lib delayimp.lib /nologo /subsystem:windows /map /debug /machine:I386 /out:"Debug/WaveSoap.exe" /pdbtype:sept /delayload:wmvcore.dll
 # SUBTRACT LINK32 /pdb:none
 
 !ENDIF 
@@ -872,11 +872,19 @@ SOURCE=.\hlp\html\afxp86av.htm
 # End Source File
 # Begin Source File
 
+SOURCE=.\hlp\html\amplitude_ruler.htm
+# End Source File
+# Begin Source File
+
 SOURCE=.\hlp\images\AppExit.png
 # End Source File
 # Begin Source File
 
 SOURCE=.\hlp\images\Bullet.png
+# End Source File
+# Begin Source File
+
+SOURCE=.\hlp\html\creating_a_new_sound_file.htm
 # End Source File
 # Begin Source File
 
@@ -905,6 +913,14 @@ SOURCE=.\hlp\images\EditPast.png
 # Begin Source File
 
 SOURCE=.\hlp\images\EditUndo.png
+# End Source File
+# Begin Source File
+
+SOURCE=.\hlp\html\fft_spectrum_command.htm
+# End Source File
+# Begin Source File
+
+SOURCE=.\hlp\html\fft_spectrum_view.htm
 # End Source File
 # Begin Source File
 
@@ -944,23 +960,23 @@ SOURCE=.\hlp\images\HlpTBar.png
 # End Source File
 # Begin Source File
 
+SOURCE=".\hlp\html\Menu Item Template.htm"
+# End Source File
+# Begin Source File
+
 SOURCE=.\hlp\images\NewFileDlg.png
 # End Source File
 # Begin Source File
 
-SOURCE=.\hlp\images\RecFirst.png
+SOURCE=.\hlp\html\opening_an_existing_sound_file.htm
 # End Source File
 # Begin Source File
 
-SOURCE=.\hlp\images\RecLast.png
+SOURCE=.\hlp\html\outline_command.htm
 # End Source File
 # Begin Source File
 
-SOURCE=.\hlp\images\RecNext.png
-# End Source File
-# Begin Source File
-
-SOURCE=.\hlp\images\RecPrev.png
+SOURCE=.\hlp\html\process_menu_commands.htm
 # End Source File
 # Begin Source File
 
@@ -976,7 +992,35 @@ SOURCE=.\hlp\images\Scmin.png
 # End Source File
 # Begin Source File
 
+SOURCE=.\hlp\html\spectrum_section_command.htm
+# End Source File
+# Begin Source File
+
+SOURCE=.\hlp\html\spectrum_section_pane.htm
+# End Source File
+# Begin Source File
+
+SOURCE=.\hlp\html\time_ruler.htm
+# End Source File
+# Begin Source File
+
+SOURCE=.\hlp\html\tools_menu_commands.htm
+# End Source File
+# Begin Source File
+
 SOURCE=.\hlp\images\ViewMenu.png
+# End Source File
+# Begin Source File
+
+SOURCE=.\hlp\html\ViewWaveform.htm
+# End Source File
+# Begin Source File
+
+SOURCE=.\hlp\html\wave_outline_view.htm
+# End Source File
+# Begin Source File
+
+SOURCE=.\hlp\html\waveform_view.htm
 # End Source File
 # Begin Source File
 
@@ -984,7 +1028,15 @@ SOURCE=.\hlp\wavesoap.hhc
 # End Source File
 # Begin Source File
 
+SOURCE=.\hlp\html\wavesoap_main_window.htm
+# End Source File
+# Begin Source File
+
 SOURCE=.\hlp\WaveSoapFront.hhk
+# End Source File
+# Begin Source File
+
+SOURCE=.\hlp\html\zoom_in_time_command.htm
 # End Source File
 # End Group
 # Begin Group "FilterMath"

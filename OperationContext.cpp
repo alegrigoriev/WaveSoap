@@ -3368,6 +3368,17 @@ BOOL CFileSaveContext::OperationProc()
 	return CCopyContext::OperationProc();
 }
 
+void CFileSaveContext::Execute()
+{
+	if (NULL != m_pConvert)
+	{
+		// reset OperationContextDiskIntensive
+		// if it's not set in m_pConvert
+		m_Flags &= m_pConvert->m_Flags | ~OperationContextDiskIntensive;
+	}
+	CCopyContext::Execute();
+}
+
 void CFileSaveContext::PostRetire(BOOL bChildContext)
 {
 	if (NULL != m_pConvert)

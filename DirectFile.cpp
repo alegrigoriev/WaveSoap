@@ -1905,6 +1905,78 @@ unsigned CDirectFile::CDirectFileCache::_ThreadProc()
 			{
 				break;
 			}
+
+			// check for prefetch range expiration
+			DWORD CurrentTick = GetTickCount();
+			LONGLONG OriginalPrefetchPosition = PrefetchPosition;
+			LONGLONG OriginalPrefetchLength = PrefetchLength;
+
+			if (CurrentTick - pPrefetchFile->m_LastPrefetchTick
+				> pPrefetchFile->PrefetchRangeExpirationTimeout)
+			{
+				pPrefetchFile->m_PrefetchedBeginBlock = -1;
+				pPrefetchFile->m_PrefetchedEndBlock = -1;
+			}
+			pPrefetchFile->m_LastPrefetchTick = CurrentTick;
+
+			// limit prefetch length
+			if (PrefetchLength >= 0)
+			{
+				if (DWORD(PrefetchLength >> 16) > pPrefetchFile->m_MaxBlocksToPrefetch)
+				{
+					PrefetchLength = LONGLONG(pPrefetchFile->m_MaxBlocksToPrefetch) << 16;
+				}
+			}
+			else
+			{
+				if (DWORD(( - PrefetchLength) >> 16) > pPrefetchFile->m_MaxBlocksToPrefetch)
+				{
+					PrefetchLength = -LONGLONG(pPrefetchFile->m_MaxBlocksToPrefetch) << 16;
+				}
+			}
+
+			// if prefetch area is active
+			// check already prefetched ranges
+			if (pPrefetchFile->m_PrefetchedEndBlock != -1)
+			{
+				if (PrefetchLength >= 0)
+				{
+					if (DWORD(PrefetchPosition >> 16) < pPrefetchFile->m_PrefetchedEndBlock)
+					{
+						PrefetchLength -= (LONGLONG(pPrefetchFile->m_PrefetchedEndBlock) << 16)
+										- PrefetchPosition;
+						PrefetchPosition = LONGLONG(pPrefetchFile->m_PrefetchedEndBlock) << 16;
+
+					}
+					pPrefetchFile->m_PrefetchedBeginBlock = DWORD(PrefetchPosition >> 16);
+					if (PrefetchLength < 0)
+					{
+						PrefetchLength = 0;
+					}
+				}
+				else
+				{
+					if (DWORD(PrefetchPosition >> 16) > pPrefetchFile->m_PrefetchedBeginBlock)
+					{
+						PrefetchLength -= (LONGLONG(pPrefetchFile->m_PrefetchedBeginBlock) << 16)
+										- PrefetchPosition;
+						PrefetchPosition = LONGLONG(pPrefetchFile->m_PrefetchedBeginBlock) << 16;
+
+					}
+					pPrefetchFile->m_PrefetchedEndBlock = DWORD(PrefetchPosition >> 16);
+					if (PrefetchLength >= 0)
+					{
+						PrefetchLength = 0;
+					}
+				}
+			}
+			else
+			{
+				// set prefetch area
+				pPrefetchFile->m_PrefetchedBeginBlock = PrefetchPosition >> 16;
+				pPrefetchFile->m_PrefetchedEndBlock = pPrefetchFile->m_PrefetchedBeginBlock;
+			}
+
 			if (0 == PrefetchLength)
 			{
 				break;
@@ -1921,8 +1993,9 @@ unsigned CDirectFile::CDirectFileCache::_ThreadProc()
 			{
 				CSimpleCriticalSectionLock lock(m_cs);
 				if (m_pPrefetchFile != pPrefetchFile
-					|| PrefetchPosition != m_PrefetchPosition
-					|| PrefetchLength != m_PrefetchLength)
+					|| OriginalPrefetchPosition != m_PrefetchPosition
+					|| OriginalPrefetchLength != m_PrefetchLength
+					)
 				{
 					// prefetch assignment changed
 					continue;
@@ -1932,7 +2005,15 @@ unsigned CDirectFile::CDirectFileCache::_ThreadProc()
 				if (0 != ReadLength
 					&& 0 != m_PrefetchLength)
 				{
-					m_PrefetchPosition += ReadLength;
+					m_PrefetchPosition = PrefetchPosition + ReadLength;
+					if (ReadLength >= 0)
+					{
+						pPrefetchFile->m_PrefetchedEndBlock = DWORD(PrefetchPosition >> 16);
+					}
+					else
+					{
+						pPrefetchFile->m_PrefetchedBeginBlock = DWORD(PrefetchPosition >> 16);
+					}
 					continue;
 				}
 				else

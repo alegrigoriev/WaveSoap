@@ -1405,6 +1405,7 @@ UINT CWaveSoapFrontDoc::_ThreadProc(void)
 		COperationContext * pContext = m_pCurrentContext;
 		if (pContext)
 		{
+			// TODO: set the status message before calling Init
 			if (0 == (pContext->m_Flags & OperationContextInitialized))
 			{
 				if ( ! pContext->Init())
