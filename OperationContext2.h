@@ -12,10 +12,14 @@
 #include "FilterDialog.h"
 #include "CdDrive.h"
 
-class CExpressionEvaluationContext : public COperationContext
+class CExpressionEvaluationContext : public CThroughProcessOperation
 {
+	typedef CExpressionEvaluationContext ThisClass;
+	typedef CThroughProcessOperation BaseClass;
 public:
+	typedef std::auto_ptr<ThisClass> auto_ptr;
 	CExpressionEvaluationContext(CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString, LPCTSTR OperationName);
+
 	virtual BOOL ProcessBuffer(void * buf, size_t len, SAMPLE_POSITION offset, BOOL bBackward = FALSE);
 	BOOL SetExpression(LPCTSTR * ppszExpression);
 	CString m_ErrorString;
@@ -215,24 +219,27 @@ private:
 	virtual BOOL Init();
 };
 
-class CInsertSilenceContext: public CCopyContext
+class CInsertSilenceContext : public CStagedContext
 {
+	typedef CInsertSilenceContext ThisClass;
+	typedef CStagedContext BaseClass;
 public:
+	typedef std::auto_ptr<ThisClass> auto_ptr;
+
 	CInsertSilenceContext(CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString, LPCTSTR OperationName)
-		: CCopyContext(pDoc, StatusString, OperationName)
+		: BaseClass(pDoc, StatusString, 0, OperationName)
 	{
-		m_ReturnBufferFlags = CDirectFile::ReturnBufferDirty;
-		m_GetBufferFlags = CDirectFile::GetBufferWriteOnly;
 	}
-	virtual BOOL OperationProc();
-	virtual BOOL ProcessBuffer(void * buf, size_t len, SAMPLE_POSITION offset, BOOL bBackward = FALSE);
 	BOOL InitExpand(CWaveFile & DstFile, SAMPLE_INDEX StartSample, SAMPLE_INDEX length,
 					CHANNEL_MASK chan, BOOL NeedUndo);
 };
 
 class CCommitFileSaveContext :public COperationContext
 {
+	typedef CCommitFileSaveContext ThisClass;
+	typedef COperationContext BaseClass;
 public:
+	typedef std::auto_ptr<ThisClass> auto_ptr;
 	CCommitFileSaveContext(CWaveSoapFrontDoc * pDoc,
 							LPCTSTR StatusString, CWaveFile & WavFile, int flags, LPCTSTR TargetName)
 		: COperationContext(pDoc, StatusString, OperationContextDiskIntensive)
@@ -248,9 +255,13 @@ public:
 	virtual void PostRetire(BOOL bChildContext = FALSE);
 };
 
-class CEqualizerContext: public COperationContext
+class CEqualizerContext: public CThroughProcessOperation
 {
+	typedef CEqualizerContext ThisClass;
+	typedef CThroughProcessOperation BaseClass;
 public:
+	typedef std::auto_ptr<ThisClass> auto_ptr;
+
 	CEqualizerContext(CWaveSoapFrontDoc * pDoc,
 					LPCTSTR StatusString, LPCTSTR OperationName);
 	~CEqualizerContext();
@@ -270,9 +281,13 @@ private:
 	double CalculateResult(int ch, int Input);
 };
 
-class CFilterContext: public COperationContext
+class CFilterContext: public CThroughProcessOperation
 {
+	typedef CFilterContext ThisClass;
+	typedef CThroughProcessOperation BaseClass;
 public:
+	typedef std::auto_ptr<ThisClass> auto_ptr;
+
 	CFilterContext(CWaveSoapFrontDoc * pDoc,
 					LPCTSTR StatusString, LPCTSTR OperationName);
 	~CFilterContext();
@@ -303,27 +318,35 @@ private:
 	double CalculateResult(int ch, int Input);
 };
 
-class CSwapChannelsContext : public COperationContext
+class CSwapChannelsContext : public CThroughProcessOperation
 {
+	typedef CSwapChannelsContext ThisClass;
+	typedef CThroughProcessOperation BaseClass;
 public:
+	typedef std::auto_ptr<ThisClass> auto_ptr;
+
 	CSwapChannelsContext(CWaveSoapFrontDoc * pDoc,
 						LPCTSTR StatusString, LPCTSTR OperationName)
-		: COperationContext(pDoc, StatusString,
-							OperationContextDiskIntensive, OperationName)
+		: BaseClass(pDoc, StatusString,
+					OperationContextDiskIntensive, OperationName)
 	{
 		m_ReturnBufferFlags = CDirectFile::ReturnBufferDirty;
 	}
-	virtual ~CSwapChannelsContext() {}
+
 	virtual BOOL ProcessBuffer(void * buf, size_t len, SAMPLE_POSITION offset, BOOL bBackward = FALSE);
 };
 
-class CCdReadingContext : public COperationContext
+class CCdReadingContext : public CThroughProcessOperation
 {
+	typedef CCdReadingContext ThisClass;
+	typedef CThroughProcessOperation BaseClass;
 public:
+	typedef std::auto_ptr<ThisClass> auto_ptr;
+
 	CCdReadingContext(CWaveSoapFrontDoc * pDoc,
 					LPCTSTR StatusString, LPCTSTR OperationName)
-		: COperationContext(pDoc, StatusString,
-							OperationContextDiskIntensive | OperationContextSerialized, OperationName),
+		: BaseClass(pDoc, StatusString,
+					OperationContextDiskIntensive | OperationContextSerialized, OperationName),
 		m_pCdBuffer(NULL),
 		m_CdBufferFilled(0),
 		m_hEvent(NULL),
@@ -370,4 +393,136 @@ protected:
 	virtual void DeInit();
 	virtual void PostRetire(BOOL bChildContext = FALSE);
 };
+
+class CReplaceFileContext : public COperationContext
+{
+	typedef CReplaceFileContext ThisClass;
+	typedef COperationContext BaseClass;
+public:
+	typedef std::auto_ptr<ThisClass> auto_ptr;
+
+	CReplaceFileContext(CWaveSoapFrontDoc * pDoc, LPCTSTR OperationName,
+						CWaveFile & NewFile, bool bNewDirectMode = false);
+
+	virtual BOOL CreateUndo(BOOL IsRedo = FALSE);
+
+	virtual BOOL OperationProc();
+protected:
+	bool m_bNewDirectMode;
+};
+
+class CReplaceFormatContext : public COperationContext
+{
+	typedef CReplaceFormatContext ThisClass;
+	typedef COperationContext BaseClass;
+public:
+	typedef std::auto_ptr<ThisClass> auto_ptr;
+
+	CReplaceFormatContext(CWaveSoapFrontDoc * pDoc, LPCTSTR OperationName,
+						WAVEFORMATEX const * pNewFormat);
+
+	virtual BOOL CreateUndo(BOOL IsRedo = FALSE);
+	virtual BOOL OperationProc();
+
+protected:
+	CWaveFormat m_NewWaveFormat;
+};
+
+class CLengthChangeOperation : public COperationContext
+{
+	typedef CLengthChangeOperation ThisClass;
+	typedef COperationContext BaseClass;
+public:
+	typedef std::auto_ptr<ThisClass> auto_ptr;
+
+	CLengthChangeOperation(class CWaveSoapFrontDoc * pDoc,
+							MEDIA_FILE_SIZE NewLength);
+
+	virtual BOOL CreateUndo(BOOL IsRedo = FALSE);
+	virtual BOOL OperationProc();
+
+protected:
+	MEDIA_FILE_SIZE m_NewLength;
+};
+
+class CWaveSamplesChangeOperation : public COperationContext
+{
+	typedef CWaveSamplesChangeOperation ThisClass;
+	typedef COperationContext BaseClass;
+public:
+	typedef std::auto_ptr<ThisClass> auto_ptr;
+
+	CWaveSamplesChangeOperation(CWaveSoapFrontDoc * pDoc,
+								NUMBER_OF_SAMPLES NewSamples);
+
+	virtual BOOL CreateUndo(BOOL IsRedo = FALSE);
+	virtual BOOL OperationProc();
+
+protected:
+	NUMBER_OF_SAMPLES m_NewSamples;
+};
+
+class CMoveOperation : protected CCopyContext
+{
+	// move data in the same file
+	typedef CMoveOperation ThisClass;
+	typedef CCopyContext BaseClass;
+public:
+	typedef std::auto_ptr<ThisClass> auto_ptr;
+
+	CMoveOperation(CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString, LPCTSTR OperationName)
+		: BaseClass(pDoc, StatusString, OperationName)
+	{
+	}
+
+	BOOL InitMove(CWaveFile & File,
+				SAMPLE_INDEX SrcStartSample,
+				SAMPLE_INDEX DstStartSample,
+				NUMBER_OF_SAMPLES Length, CHANNEL_MASK Channel);
+
+protected:
+	virtual BOOL PrepareUndo();
+	virtual void UnprepareUndo();
+	virtual ListHead<COperationContext> * GetUndoChain();
+	//virtual void DeleteUndo();
+
+	virtual BOOL CreateUndo(BOOL IsRedo = FALSE);
+	virtual BOOL OperationProc();
+};
+
+class CMetadataChangeOperation : public COperationContext
+{
+	typedef CMetadataChangeOperation ThisClass;
+	typedef COperationContext BaseClass;
+public:
+	typedef std::auto_ptr<ThisClass> auto_ptr;
+
+	CMetadataChangeOperation(CWaveSoapFrontDoc * pDoc);
+
+	virtual BOOL CreateUndo(BOOL IsRedo = FALSE);
+	virtual BOOL OperationProc();
+
+protected:
+};
+
+class CSelectionChangeOperation : public COperationContext
+{
+	typedef CSelectionChangeOperation ThisClass;
+	typedef COperationContext BaseClass;
+public:
+	typedef std::auto_ptr<ThisClass> auto_ptr;
+
+	CSelectionChangeOperation(CWaveSoapFrontDoc * pDoc,
+							SAMPLE_INDEX Start, NUMBER_OF_SAMPLES Length,
+							CHANNEL_MASK Channels);
+
+	virtual BOOL CreateUndo(BOOL IsRedo = FALSE);
+	virtual BOOL OperationProc();
+
+protected:
+	SAMPLE_INDEX m_Start;
+	NUMBER_OF_SAMPLES m_Length;
+	CHANNEL_MASK m_Channels;
+};
+
 #endif // AFX_OPERATIONCONTEXT2_H__FFA16C44_2FA7_11D4_9ADD_00C0F0583C4B__INCLUDED_

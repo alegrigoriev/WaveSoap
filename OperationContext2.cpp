@@ -32,7 +32,7 @@ void SkipWhitespace(LPCTSTR * ppStr)
 }
 
 CExpressionEvaluationContext::CExpressionEvaluationContext(CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString, LPCTSTR OperationName)
-	:COperationContext(pDoc, StatusString, 0, OperationName)
+	:BaseClass(pDoc, StatusString, 0, OperationName)
 {
 	m_ReturnBufferFlags = CDirectFile::ReturnBufferDirty;
 }
@@ -55,18 +55,21 @@ BOOL CExpressionEvaluationContext::Init()
 	return TRUE;
 }
 
-BOOL CExpressionEvaluationContext::ProcessBuffer(void * buf, size_t len, SAMPLE_POSITION offset, BOOL bBackward)
+BOOL CExpressionEvaluationContext::ProcessBuffer(void * buf, size_t BufferLength, SAMPLE_POSITION offset, BOOL bBackward)
 {
 	// calculate number of sample, and time
 	int nSampleSize = m_DstFile.SampleSize();
 	int nChannels = m_DstFile.Channels();
 	int nSample = (offset - m_DstStart) / nSampleSize;
+
 	WAVE_SAMPLE * pDst = (WAVE_SAMPLE *) buf;
+	NUMBER_OF_SAMPLES NumSamples = BufferLength / sizeof pDst[0];
+
 	try
 	{
 		if (1 == nChannels)
 		{
-			for (unsigned i = 0; i < len / sizeof pDst[0]; i ++)
+			for (NUMBER_OF_SAMPLES i = 0; i < NumSamples; i ++)
 			{
 				m_dCurrentSample = pDst[i] * 0.00003051850947599719229;
 				Evaluate();
@@ -80,7 +83,8 @@ BOOL CExpressionEvaluationContext::ProcessBuffer(void * buf, size_t len, SAMPLE_
 		}
 		else
 		{
-			for (unsigned i = 0; i < len / sizeof pDst[0]; i += 2)
+			ASSERT(2 == nChannels);
+			for (NUMBER_OF_SAMPLES i = 0; i < NumSamples; i += 2)
 			{
 				if (m_DstChan != 1) // not right only
 				{
@@ -1293,91 +1297,48 @@ void CExpressionEvaluationContext::Evaluate()
 	}
 }
 
-BOOL CInsertSilenceContext::InitExpand(CWaveFile & DstFile, SAMPLE_INDEX StartSample, SAMPLE_INDEX Length,
+BOOL CInsertSilenceContext::InitExpand(CWaveFile & DstFile,
+										SAMPLE_INDEX StartSample, SAMPLE_INDEX Length,
 										CHANNEL_MASK Channel, BOOL NeedUndo)
 {
-	m_pExpandShrinkContext = new CResizeContext(pDocument, _T("Expanding the file..."), _T(""));
-	if (NULL == m_pExpandShrinkContext)
-	{
-		NotEnoughMemoryMessageBox();
-		return FALSE;
-	}
-	if ( ! m_pExpandShrinkContext->InitExpand(DstFile, StartSample,
-											Length, Channel))
-	{
-		delete m_pExpandShrinkContext;
-		m_pExpandShrinkContext = NULL;
-		return FALSE;
-	}
-	InitDestination(DstFile, StartSample, StartSample + Length, Channel, FALSE);
-	m_pExpandShrinkContext->InitUndoRedo("Insert Silence");
-	m_Flags |= CopyExpandFile;
-	return TRUE;
-}
+	CExpandContext::auto_ptr pExpandContext(new CExpandContext(pDocument, _T("Expanding the file..."), _T("")));
 
-BOOL CInsertSilenceContext::OperationProc()
-{
-	// process ShrinkExpand context first, then proceed with clearing the area
-	// get buffers from source file and copy them to m_CopyFile
-	if (m_Flags & OperationContextStopRequested)
+	if ( ! pExpandContext->InitExpand(DstFile, StartSample,
+									Length, Channel))
 	{
-		m_Flags |= OperationContextStop;
-		return TRUE;
+		return FALSE;
 	}
-	if (m_Flags & CopyExpandFile)
+
+	if (NeedUndo)
 	{
-		if (NULL != m_pExpandShrinkContext)
+		pExpandContext->CreateUndo();
+	}
+
+	AddContext(pExpandContext.release());
+
+	double VolumeArray[32];
+	for (int ch = 0; ch < DstFile.Channels(); ch++)
+	{
+		if (Channel & (1 << ch))
 		{
-			if ( 0 == (m_pExpandShrinkContext->m_Flags & (OperationContextStop | OperationContextFinished)))
-			{
-				if ( ! m_pExpandShrinkContext->OperationProc())
-				{
-					m_pExpandShrinkContext->m_Flags |= OperationContextStop;
-				}
-			}
-			PercentCompleted = m_pExpandShrinkContext->PercentCompleted;
-			if (m_pExpandShrinkContext->m_Flags &
-				(OperationContextStop | OperationContextFinished))
-			{
-				m_Flags &= ~(CopyExpandFile | CopyShrinkFile);
-			}
-			return TRUE;
+			VolumeArray[ch] = 0.;
 		}
-		m_Flags &= ~(CopyExpandFile | CopyShrinkFile);
-		PercentCompleted = 0;
+		else
+		{
+			VolumeArray[ch] = 1.;
+		}
 	}
 
-	return COperationContext::OperationProc();
-}
 
-BOOL CInsertSilenceContext::ProcessBuffer(void * buf, size_t BufferLength, SAMPLE_POSITION offset, BOOL bBackward)
-{
-	WAVE_SAMPLE * pDst = (WAVE_SAMPLE *) buf;
-	if (m_DstFile.Channels() == 1
-		|| ALL_CHANNELS == m_DstChan)
-	{
-		memset(buf, 0, BufferLength);
-		return TRUE;
-	}
-	// change one channel
-	if ((offset & 2)
-		!= m_DstChan * 2)
-	{
-		// skip this word
-		pDst++;
-		BufferLength -= 2;
-	}
+	CVolumeChangeContext::auto_ptr pMuteContext
+	(new CVolumeChangeContext(pDocument,
+							_T(""), _T("Insert silence"),
+							VolumeArray, DstFile.Channels()));
 
-	for (unsigned i = 0; i < BufferLength / (2 * sizeof pDst[0]); i++, pDst += 2)
-	{
-		pDst[0] = 0;
-	}
+	pMuteContext->InitDestination(DstFile, StartSample,
+								StartSample + Length, Channel, FALSE);  // no UNDO necessary for this
 
-	BufferLength -= i * (2 * sizeof pDst[0]);
-	if (2 == BufferLength)
-	{
-		pDst[0] = 0;
-	}
+	AddContext(pMuteContext.release());
 	return TRUE;
 }
 
@@ -1388,7 +1349,7 @@ BOOL CCommitFileSaveContext::OperationProc()
 		m_Flags |= OperationContextStop;
 		return TRUE;
 	}
-	if (m_DstFile.InitializeTheRestOfFile(500, & PercentCompleted))
+	if (m_DstFile.InitializeTheRestOfFile(500, & m_PercentCompleted))
 	{
 		m_Flags |= OperationContextFinished;
 	}
@@ -1410,53 +1371,28 @@ void CCommitFileSaveContext::PostRetire(BOOL bChildContext)
 	{
 		pDocument->m_bClosePending = false;
 	}
-	COperationContext::PostRetire(bChildContext);
+	BaseClass::PostRetire(bChildContext);
 }
 
 void CConversionContext::PostRetire(BOOL bChildContext)
 {
-	if (m_Flags & ConvertContextReplaceWholeFile)
+	if (m_DstFile.GetDataChunk()->dwDataOffset != 0)
 	{
-		if (m_Flags & OperationContextFinished)
-		{
-			pDocument->m_WavFile.DetachSourceFile();
-			pDocument->m_WavFile = m_DstFile;
-			// since we replaced the file, it's no more direct
-			pDocument->SetModifiedFlag(TRUE, m_pUndoContext != NULL);
-			if (NULL != m_pUndoContext)
-			{
-				m_pUndoContext->m_bOldDirectMode = pDocument->m_bDirectMode;
+		// update data chunk and number of samples
+		m_DstFile.SetFactNumberOfSamples(
+										(m_SrcPos - m_SrcStart) / m_SrcFile.SampleSize());
 
-				pDocument->AddUndoRedo(m_pUndoContext);
-				m_pUndoContext = NULL;
-			}
-			if (pDocument->m_bDirectMode)
-			{
-				pDocument->m_bDirectMode = false;
-				pDocument->UpdateFrameTitles();        // will cause name change in views
-			}
-			NUMBER_OF_SAMPLES nSamples = pDocument->WaveFileSamples();
-			pDocument->SoundChanged(pDocument->WaveFileID(),
-									0, nSamples, nSamples, UpdateSoundDontRescanPeaks);
-			pDocument->BuildPeakInfo(FALSE);    // don't save it yet
-			pDocument->UpdateAllViews(NULL, pDocument->UpdateWholeFileChanged);
-		}
-		else
-		{
-			// we don't replace the file, nothing changed
-			if (NULL != m_pUndoContext)
-			{
-				delete m_pUndoContext;
-				m_pUndoContext = NULL;
-			}
-		}
+		// BUGBUG For non-RIFF file, don't add an extra byte
+		m_DstPos = (m_DstPos + 1) & ~1;
+		m_DstFile.SetDatachunkLength(m_DstPos - m_DstStart);
 	}
-	CCopyContext::PostRetire(bChildContext);
+
+	BaseClass::PostRetire(bChildContext);
 }
 
 CEqualizerContext::CEqualizerContext(CWaveSoapFrontDoc * pDoc,
 									LPCTSTR StatusString, LPCTSTR OperationName)
-	: COperationContext(pDoc, StatusString, OperationContextDiskIntensive, OperationName),
+	: BaseClass(pDoc, StatusString, OperationContextDiskIntensive, OperationName),
 	m_bZeroPhase(FALSE)
 {
 	//m_GetBufferFlags = 0; // leave CDirectFile::GetBufferAndPrefetchNext flag
@@ -1513,25 +1449,29 @@ double CEqualizerContext::CalculateResult(int ch, int Input)
 	return tmp;
 }
 
-BOOL CEqualizerContext::ProcessBuffer(void * buf, size_t len, SAMPLE_POSITION offset, BOOL bBackward)
+BOOL CEqualizerContext::ProcessBuffer(void * buf, size_t BufferLength, SAMPLE_POSITION offset, BOOL bBackward)
 {
 	// calculate number of sample, and time
-	int nSampleSize = m_DstFile.SampleSize();
 	int nChannels = m_DstFile.Channels();
 	//int nSample = (offset - m_DstStart) / nSampleSize;
 	WAVE_SAMPLE * pDst = (WAVE_SAMPLE *) buf;
+	NUMBER_OF_SAMPLES nSamples = BufferLength / sizeof pDst[0];
+
+	ASSERT(0 == (offset % m_DstFile.SampleSize()));
+	ASSERT(0 == (BufferLength % nChannels));
+
 	if (1 == nChannels)
 	{
 		if ( ! bBackward)
 		{
-			for (unsigned i = 0; i < len / sizeof (WAVE_SAMPLE); i ++)
+			for (NUMBER_OF_SAMPLES i = 0; i < nSamples; i ++)
 			{
 				pDst[i] = DoubleToShort(CalculateResult(0, pDst[i]));
 			}
 		}
 		else
 		{
-			for (int i = len / sizeof (WAVE_SAMPLE) - 1; i >=0; i --)
+			for (NUMBER_OF_SAMPLES i = nSamples - 1; i >=0; i --)
 			{
 				pDst[i] = DoubleToShort(CalculateResult(0, pDst[i]));
 			}
@@ -1539,9 +1479,11 @@ BOOL CEqualizerContext::ProcessBuffer(void * buf, size_t len, SAMPLE_POSITION of
 	}
 	else
 	{
+		ASSERT(2 == nChannels);
+
 		if ( ! bBackward)
 		{
-			for (unsigned i = 0; i < len / sizeof (WAVE_SAMPLE); i += 2)
+			for (NUMBER_OF_SAMPLES i = 0; i < nSamples; i += 2)
 			{
 				if (m_DstChan != 1) // not right only
 				{
@@ -1556,7 +1498,7 @@ BOOL CEqualizerContext::ProcessBuffer(void * buf, size_t len, SAMPLE_POSITION of
 		}
 		else
 		{
-			for (int i = len / sizeof (WAVE_SAMPLE) - 2; i >=0; i -= 2)
+			for (NUMBER_OF_SAMPLES i = nSamples - 2; i >=0; i -= 2)
 			{
 				if (m_DstChan != 1) // not right only
 				{
@@ -1573,11 +1515,14 @@ BOOL CEqualizerContext::ProcessBuffer(void * buf, size_t len, SAMPLE_POSITION of
 	return TRUE;
 }
 
-BOOL CSwapChannelsContext::ProcessBuffer(void * buf, size_t len, SAMPLE_POSITION offset, BOOL bBackward)
+BOOL CSwapChannelsContext::ProcessBuffer(void * buf, size_t BufferLength, SAMPLE_POSITION offset, BOOL bBackward)
 {
 	WAVE_SAMPLE * pDst = (WAVE_SAMPLE *) buf;
-	// channels are always 2
-	for (unsigned i = 0; i < len / sizeof pDst[0]; i += 2)
+	NUMBER_OF_SAMPLES nSamples = BufferLength / sizeof pDst[0];
+
+	ASSERT(2 == m_DstFile.Channels());
+
+	for (NUMBER_OF_SAMPLES i = 0; i < nSamples; i += 2)
 	{
 		WAVE_SAMPLE tmp = pDst[i];
 		pDst[i] = pDst[i + 1];
@@ -1588,7 +1533,7 @@ BOOL CSwapChannelsContext::ProcessBuffer(void * buf, size_t len, SAMPLE_POSITION
 
 CFilterContext::CFilterContext(CWaveSoapFrontDoc * pDoc,
 								LPCTSTR StatusString, LPCTSTR OperationName)
-	: COperationContext(pDoc, StatusString, OperationContextDiskIntensive, OperationName),
+	: BaseClass(pDoc, StatusString, OperationContextDiskIntensive, OperationName),
 	m_bZeroPhase(FALSE)
 {
 	//m_GetBufferFlags = 0; // leave CDirectFile::GetBufferAndPrefetchNext flag
@@ -1687,25 +1632,26 @@ double CFilterContext::CalculateResult(int ch, int Input)
 	return in;
 }
 
-BOOL CFilterContext::ProcessBuffer(void * buf, size_t len, SAMPLE_POSITION offset, BOOL bBackward)
+BOOL CFilterContext::ProcessBuffer(void * buf, size_t BufferLength, SAMPLE_POSITION offset, BOOL bBackward)
 {
 	// calculate number of sample, and time
-	int nSampleSize = m_DstFile.SampleSize();
 	int nChannels = m_DstFile.Channels();
-	//int nSample = (offset - m_DstStart) / nSampleSize;
+
 	WAVE_SAMPLE * pDst = (WAVE_SAMPLE *) buf;
+	NUMBER_OF_SAMPLES nSamples = BufferLength / sizeof pDst[0];
+
 	if (1 == nChannels)
 	{
 		if ( ! bBackward)
 		{
-			for (unsigned i = 0; i < len / sizeof (WAVE_SAMPLE); i ++)
+			for (NUMBER_OF_SAMPLES i = 0; i < nSamples; i ++)
 			{
 				pDst[i] = DoubleToShort(CalculateResult(0, pDst[i]));
 			}
 		}
 		else
 		{
-			for (int i = len / sizeof (WAVE_SAMPLE) - 1; i >=0; i --)
+			for (NUMBER_OF_SAMPLES i = nSamples - 1; i >=0; i --)
 			{
 				pDst[i] = DoubleToShort(CalculateResult(0, pDst[i]));
 			}
@@ -1713,9 +1659,11 @@ BOOL CFilterContext::ProcessBuffer(void * buf, size_t len, SAMPLE_POSITION offse
 	}
 	else
 	{
+		ASSERT(2 == nChannels);
+
 		if ( ! bBackward)
 		{
-			for (unsigned i = 0; i < len / sizeof (WAVE_SAMPLE); i += 2)
+			for (NUMBER_OF_SAMPLES i = 0; i < nSamples; i += 2)
 			{
 				if (m_DstChan != 1) // not right only
 				{
@@ -1730,7 +1678,7 @@ BOOL CFilterContext::ProcessBuffer(void * buf, size_t len, SAMPLE_POSITION offse
 		}
 		else
 		{
-			for (int i = len / sizeof (WAVE_SAMPLE) - 2; i >=0; i -= 2)
+			for (NUMBER_OF_SAMPLES i = nSamples - 2; i >=0; i -= 2)
 			{
 				if (m_DstChan != 1) // not right only
 				{
@@ -1931,7 +1879,7 @@ void CCdReadingContext::Execute()
 	}
 
 	pDocument->SetModifiedFlag();
-	COperationContext::Execute();
+	BaseClass::Execute();
 }
 
 void CCdReadingContext::PostRetire(BOOL bChildContext)
@@ -1972,10 +1920,607 @@ void CCdReadingContext::PostRetire(BOOL bChildContext)
 			pContext->Execute();
 		}
 	}
-	COperationContext::PostRetire(bChildContext);
+	BaseClass::PostRetire(bChildContext);
 }
 
 CCdReadingContext::~CCdReadingContext()
 {
 	delete m_pNextTrackContext;
 }
+
+CReplaceFileContext::CReplaceFileContext(CWaveSoapFrontDoc * pDoc, LPCTSTR OperationName,
+										CWaveFile & NewFile, bool bNewDirectMode)
+	: BaseClass(pDoc, OperationName, OperationContextSynchronous, OperationName),
+	m_bNewDirectMode(bNewDirectMode)
+{
+	m_SrcFile = NewFile;
+}
+
+BOOL CReplaceFileContext::CreateUndo(BOOL IsRedo)
+{
+	CReplaceFileContext * pUndo =
+		new CReplaceFileContext(pDocument, m_OperationName, pDocument->m_WavFile,
+								pDocument->m_bDirectMode);
+	if (NULL != pUndo)
+	{
+		m_UndoChain.InsertTail(pUndo);
+		return TRUE;
+	}
+	return FALSE;
+}
+
+BOOL CReplaceFileContext::OperationProc()
+{
+	pDocument->m_WavFile = m_SrcFile;
+
+	NUMBER_OF_SAMPLES nSamples = pDocument->WaveFileSamples();
+
+	pDocument->SoundChanged(pDocument->WaveFileID(),
+							0, nSamples, nSamples, UpdateSoundDontRescanPeaks);
+	// save/restore "Direct" flag and update title
+	pDocument->m_bDirectMode = m_bNewDirectMode;
+
+	pDocument->UpdateFrameTitles();        // will cause name change in views
+	pDocument->UpdateAllViews(NULL, CWaveSoapFrontDoc::UpdateWholeFileChanged);
+	return TRUE;
+}
+
+CReplaceFormatContext::CReplaceFormatContext(CWaveSoapFrontDoc * pDoc, LPCTSTR OperationName,
+											WAVEFORMATEX const * pNewFormat)
+	: BaseClass(pDoc, OperationName, OperationContextSynchronous, OperationName),
+	m_NewWaveFormat(pNewFormat)
+{
+}
+
+BOOL CReplaceFormatContext::CreateUndo(BOOL IsRedo)
+{
+	CReplaceFormatContext * pUndo =
+		new CReplaceFormatContext(pDocument, m_OperationName, pDocument->WaveFormat());
+
+	if (NULL != pUndo)
+	{
+		m_UndoChain.InsertTail(pUndo);
+		return TRUE;
+	}
+	return FALSE;
+}
+
+BOOL CReplaceFormatContext::OperationProc()
+{
+	// replace format to the one in m_NewWaveFormat
+	*pDocument->WaveFormat() = *(LPWAVEFORMATEX)m_NewWaveFormat;
+	// BUGBUG: set "dirty" bit
+	pDocument->UpdateFrameTitles();        // will cause name change in views
+	pDocument->UpdateAllViews(NULL, CWaveSoapFrontDoc::UpdateSampleRateChanged);
+	return TRUE;
+}
+
+CLengthChangeOperation::CLengthChangeOperation(CWaveSoapFrontDoc * pDoc,
+												MEDIA_FILE_SIZE NewLength)
+	: BaseClass(pDoc, _T("Changing the file length"), OperationContextSynchronous,
+				_T("File length change")),
+	m_NewLength(NewLength)
+{
+}
+
+BOOL CLengthChangeOperation::CreateUndo(BOOL IsRedo)
+{
+	CLengthChangeOperation * pUndo = new CLengthChangeOperation(pDocument,
+																pDocument->m_WavFile.GetLength());
+	m_UndoChain.InsertHead(pUndo);
+	return TRUE;
+}
+
+BOOL CLengthChangeOperation::OperationProc()
+{
+	if ( ! pDocument->m_WavFile.SetFileLength(m_NewLength))
+	{
+		NotEnoughDiskSpaceMessageBox();
+		return FALSE;
+	}
+	return TRUE;
+}
+
+CWaveSamplesChangeOperation::CWaveSamplesChangeOperation(CWaveSoapFrontDoc * pDoc,
+														NUMBER_OF_SAMPLES NewSamples)
+	: BaseClass(pDoc, _T("Changing the file length"), OperationContextSynchronous,
+				_T("File length change")),
+	m_NewSamples(NewSamples)
+{
+}
+
+BOOL CWaveSamplesChangeOperation::CreateUndo(BOOL IsRedo)
+{
+	CWaveSamplesChangeOperation * pUndo = new CWaveSamplesChangeOperation(pDocument,
+											pDocument->WaveFileSamples());
+	m_UndoChain.InsertHead(pUndo);
+	return TRUE;
+}
+
+BOOL CWaveSamplesChangeOperation::OperationProc()
+{
+	if ( ! pDocument->m_WavFile.SetFileLengthSamples(m_NewSamples))
+	{
+		NotEnoughDiskSpaceMessageBox();
+		return FALSE;
+	}
+	return TRUE;
+}
+
+BOOL CMoveOperation::InitMove(CWaveFile & File,
+							SAMPLE_INDEX SrcStartSample,
+							SAMPLE_INDEX DstStartSample,
+							NUMBER_OF_SAMPLES Length, CHANNEL_MASK Channel)
+{
+	m_DstFile = File;
+	m_SrcFile = File;
+
+	m_SrcChan = Channel;
+	m_DstChan = Channel;
+
+	m_SrcStart = m_SrcFile.SampleToPosition(SrcStartSample);
+	m_SrcPos = m_SrcStart;
+	m_SrcEnd = m_SrcFile.SampleToPosition(SrcStartSample + Length);
+
+	m_DstStart = m_DstFile.SampleToPosition(DstStartSample);
+	m_DstPos = m_DstStart;
+
+	m_DstEnd = m_DstFile.SampleToPosition(DstStartSample + Length);
+
+	ASSERT(SrcStartSample + Length == pDocument->WaveFileSamples());
+	if (SrcStartSample > DstStartSample)
+	{
+		// shrinking the file
+	}
+	else
+	{
+		// expanding the file, start the operation from end
+		ASSERT(SrcStartSample < DstStartSample);
+		m_SrcPos = m_SrcEnd;
+		m_SrcEnd = m_SrcStart;
+		m_SrcStart = m_SrcPos;
+
+		m_DstPos = m_DstEnd;
+		m_DstEnd = m_DstStart;
+		m_DstStart = m_DstPos;
+	}
+	return TRUE;
+}
+
+BOOL CMoveOperation::CreateUndo(BOOL IsRedo)
+{
+	CMoveOperation * pUndo = new CMoveOperation(pDocument, _T(""), _T(""));
+
+	pUndo->m_SrcPos = m_DstPos;
+	pUndo->m_SrcEnd = m_DstStart;
+	pUndo->m_SrcStart = m_DstEnd;
+
+	pUndo->m_DstPos = m_SrcPos;
+	pUndo->m_DstEnd = m_SrcStart;
+	pUndo->m_DstStart = m_SrcEnd;
+	return TRUE;
+}
+
+BOOL CMoveOperation::PrepareUndo()
+{
+	m_SrcFile = pDocument->m_WavFile;
+	m_DstFile = pDocument->m_WavFile;
+	return TRUE;
+}
+
+void CMoveOperation::UnprepareUndo()
+{
+	m_SrcFile.Close();
+	m_DstFile.Close();
+}
+
+ListHead<COperationContext> * CMoveOperation::GetUndoChain()
+{
+	if ( ! m_UndoChain.IsEmpty())
+	{
+		CMoveOperation * pUndo =
+			dynamic_cast<CMoveOperation *>(m_UndoChain.First());
+		if (NULL != pUndo)
+		{
+			pUndo->m_SrcPos = m_DstPos;
+			pUndo->m_DstPos = m_SrcPos;
+		}
+	}
+	return BaseClass::GetUndoChain();
+}
+
+BOOL CMoveOperation::OperationProc()
+{
+	if (m_Flags & OperationContextStopRequested)
+	{
+		m_Flags |= OperationContextStop;
+		return TRUE;
+	}
+
+
+	if (m_SrcStart <= m_SrcEnd)
+	{
+		// normal operation in forward direction
+		return CCopyContext::OperationProc();
+	}
+	else
+	{
+		// copy data backward
+		if (m_SrcPos <= m_SrcEnd)
+		{
+			m_Flags |= OperationContextFinished;
+			return TRUE;
+		}
+
+		DWORD dwStartTime = GetTickCount();
+		SAMPLE_POSITION dwOperationBegin = m_DstPos;
+
+		DWORD LeftToRead = 0;
+		DWORD LeftToWrite = 0;
+		DWORD WasRead = 0;
+		DWORD WasLockedToWrite = 0;
+		void * pOriginalSrcBuf;
+		char * pSrcBuf;
+		void * pOriginalDstBuf;
+		char * pDstBuf;
+		DWORD DstFileFlags = CDirectFile::GetBufferAndPrefetchNext;
+
+		// reading goes from the end to the begin
+		if (m_DstPos < m_DstEnd)
+		{
+			return FALSE;
+		}
+		do
+		{
+			if (0 == LeftToRead)
+			{
+				// SrcEnd < SrcPos
+				MEDIA_FILE_SIZE SizeToRead = MEDIA_FILE_SIZE(m_SrcPos) - MEDIA_FILE_SIZE(m_SrcEnd);
+				if (SizeToRead > CDirectFile::CacheBufferSize())
+				{
+					SizeToRead = CDirectFile::CacheBufferSize();
+				}
+				WasRead = m_SrcFile.GetDataBuffer( & pOriginalSrcBuf,
+													-SizeToRead, m_SrcPos, CDirectFile::GetBufferAndPrefetchNext);
+				if (0 == WasRead)
+				{
+					m_DstFile.ReturnDataBuffer(pOriginalDstBuf, WasLockedToWrite,
+												CDirectFile::ReturnBufferDirty);
+
+					return FALSE;
+				}
+				// it points after the buffer
+				pSrcBuf = (char *) pOriginalSrcBuf;
+				//LeftToRead < 0
+				LeftToRead = WasRead;
+			}
+
+			// DstEnd < DstPos
+			if (0 == LeftToWrite)
+			{
+				DstFileFlags = CDirectFile::GetBufferAndPrefetchNext;
+
+				MEDIA_FILE_SIZE SizeToWrite = MEDIA_FILE_SIZE(m_DstPos) - MEDIA_FILE_SIZE(m_DstEnd);
+				if (SizeToWrite > CDirectFile::CacheBufferSize())
+				{
+					SizeToWrite = CDirectFile::CacheBufferSize();
+				}
+
+				if (ALL_CHANNELS == m_DstChan
+					&& m_SrcFile.GetFileID() != m_DstFile.GetFileID()
+					&& (NULL == m_pUndoContext
+						|| ! m_pUndoContext->NeedToSaveUndo(m_DstPos, size_t(SizeToWrite))))
+				{
+					DstFileFlags = CDirectFile::GetBufferWriteOnly;
+				}
+
+
+				WasLockedToWrite = m_DstFile.GetDataBuffer( & pOriginalDstBuf,
+															-SizeToWrite, m_DstPos, DstFileFlags);
+
+				if (0 == WasLockedToWrite)
+				{
+					m_SrcFile.ReturnDataBuffer(pOriginalSrcBuf, WasRead,
+												CDirectFile::ReturnBufferDiscard);
+					return FALSE;
+				}
+
+				// it points after the buffer
+				pDstBuf = (char *) pOriginalDstBuf;
+				//LeftToWrite < 0
+				LeftToWrite = WasLockedToWrite;
+				// save the changed data to undo buffer
+				if (0 == (DstFileFlags & CDirectFile::GetBufferWriteOnly)
+					&& NULL != m_pUndoContext)
+				{
+					ASSERT(0 == (m_DstPos % m_DstFile.SampleSize()));
+					ASSERT(0 == (WasLockedToWrite % m_DstFile.SampleSize()));
+					m_pUndoContext->SaveUndoData(pOriginalDstBuf, WasLockedToWrite,
+												m_DstPos, m_DstChan);
+				}
+
+			}
+			// copy whatever possible
+			if ((m_DstFile.Channels() == 1
+					&& m_SrcFile.Channels() == 1)
+				|| (m_SrcChan == ALL_CHANNELS
+					&& m_DstFile.Channels() == 2
+					&& m_DstChan == ALL_CHANNELS
+					&& m_SrcFile.Channels() == 2))
+			{
+				size_t ToCopy = __min(LeftToRead, LeftToWrite);
+
+				memmove(pDstBuf, pSrcBuf, ToCopy);
+
+				pDstBuf += ToCopy;
+				pSrcBuf += ToCopy;
+
+				LeftToRead -= ToCopy;
+				LeftToWrite -= ToCopy;
+
+				m_SrcPos += ToCopy;
+				m_DstPos += ToCopy;
+			}
+			else
+			{
+				// copy one channel
+				// sample pair may get across buffer boundary,
+				// we need to account this
+				WAVE_SAMPLE * pSrc = (WAVE_SAMPLE *) pSrcBuf;
+				WAVE_SAMPLE * pDst = (WAVE_SAMPLE *) pDstBuf;
+				unsigned i;
+				if (m_SrcFile.Channels() == 1)
+				{
+					ASSERT(m_DstFile.Channels() == 2);
+					// source is mono, destination is stereo.
+					// copy can go either to one channel, or to both
+					if (ALL_CHANNELS == m_DstChan)
+					{
+						// copy to both channels
+						if ((m_DstPos - m_DstStart) & 2)
+						{
+							// right channel sample left not copied
+							pDst[0] = pSrc[0];
+
+							pDst++;
+							pSrc++;
+
+							LeftToRead -= 2;
+							LeftToWrite -= 2;
+
+							m_DstPos += 2;
+							m_SrcPos += 2;
+						}
+						size_t ToCopy = __min(LeftToRead / sizeof pSrc[0],
+											LeftToWrite / (2 * sizeof pDst[0]));
+
+						for (i = 0; i < ToCopy; i++, pSrc++, pDst += 2)
+						{
+							pDst[0] = pSrc[0];
+							pDst[1] = pSrc[0];
+						}
+
+						LeftToRead -= ToCopy * sizeof pSrc[0];
+						m_SrcPos += ToCopy * sizeof pSrc[0];
+
+						LeftToWrite -= ToCopy * (2 * sizeof pDst[0]);
+						m_DstPos += ToCopy * (2 * sizeof pDst[0]);
+						if (2 == LeftToWrite && LeftToRead != 0)
+						{
+							// only room for left channel sample
+							pDst[0] = pSrc[0];
+							m_DstPos += 2;
+							LeftToWrite -= 2;
+							pDst++;
+							// rigth channel will be copied later
+						}
+					}
+					else
+					{
+						// copy to one channel
+						// source - one channel,
+						// destination - one of two
+						ASSERT(m_DstFile.Channels() == 2);
+						if (((m_DstPos - m_DstStart) & 2)
+							!= m_DstChan * 2)
+						{
+							// skip this word
+							pDst++;
+							m_DstPos += 2;
+							LeftToWrite -= 2;
+						}
+						size_t ToCopy = __min(LeftToRead / sizeof pSrc[0],
+											LeftToWrite / (2 * sizeof pDst[0]));
+						for (i = 0; i < ToCopy; i++, pSrc++, pDst += 2)
+						{
+							pDst[0] = pSrc[0];
+						}
+						LeftToRead -= ToCopy * sizeof pSrc[0];
+						m_SrcPos += ToCopy * sizeof pSrc[0];
+						LeftToWrite -= ToCopy * (2 * sizeof pDst[0]);
+						m_DstPos += ToCopy * (2 * sizeof pDst[0]);
+						if (2 == LeftToWrite && LeftToRead != 0)
+						{
+							// only one channel sample available
+							pDst[0] = pSrc[0];
+							pSrc++;
+							pDst++;
+							m_SrcPos += 2;
+							m_DstPos += 2;
+							LeftToRead -= 2;
+							LeftToWrite -= 2;
+						}
+					}
+				}
+				else if (m_DstFile.Channels() == 1)
+				{
+					ASSERT(m_SrcFile.Channels() == 2);
+					unsigned i;
+					// source is stereo, destination is mono.
+					// copy can go either from one channel, or from both
+					if (ALL_CHANNELS == m_SrcChan)
+					{
+						// copy From both channels (sum)
+						if ((m_SrcPos - m_SrcStart) & 2)
+						{
+							// right channel sample left not copied
+							// left channel sample was copied before to dst[0]
+							pDst[0] = (pDst[0] + pSrc[0]) / 2;
+
+							pDst++;
+							pSrc++;
+
+							LeftToRead -= 2;
+							LeftToWrite -= 2;
+
+							m_DstPos += 2;
+							m_SrcPos += 2;
+						}
+						size_t ToCopy = __min(LeftToRead / (2 * sizeof pSrc[0]),
+											LeftToWrite / sizeof pDst[0]);
+
+						for (i = 0; i < ToCopy; i++, pDst++, pSrc += 2)
+						{
+							pDst[0] = (pSrc[0] + pSrc[1]) / 2;
+						}
+
+						LeftToRead -= ToCopy * (2 * sizeof pSrc[0]);
+						m_SrcPos += ToCopy * (2 * sizeof pSrc[0]);
+
+						LeftToWrite -= ToCopy * sizeof pDst[0];
+						m_DstPos += ToCopy * sizeof pDst[0];
+
+						if (2 == LeftToRead && LeftToWrite != 0)
+						{
+							// only left channel sample available
+							pDst[0] = pSrc[0];
+							m_SrcPos += 2;
+							LeftToRead -= 2;
+							pSrc++;
+							// rigth channel will be added later
+						}
+					}
+					else
+					{
+						// copy from one channel
+						// source - one of two,
+						// destination - one channel
+						ASSERT(m_SrcFile.Channels() == 2);
+						if (((m_SrcPos - m_SrcStart) & 2)
+							!= m_SrcChan * 2)
+						{
+							// skip this word
+							pSrc++;
+							m_SrcPos += 2;
+							LeftToRead -= 2;
+						}
+						size_t ToCopy = __min(LeftToRead / (2 * sizeof pSrc[0]),
+											LeftToWrite / sizeof pDst[0]);
+						for (i = 0; i < ToCopy; i++, pDst++, pSrc += 2)
+						{
+							pDst[0] = pSrc[0];
+						}
+						LeftToRead -= ToCopy * (2 * sizeof pSrc[0]);
+						m_SrcPos += ToCopy * (2 * sizeof pSrc[0]);
+
+						LeftToWrite -= ToCopy * sizeof pDst[0];
+						m_DstPos += ToCopy * sizeof pDst[0];
+
+						if (2 == LeftToRead && LeftToWrite != 0)
+						{
+							// only one channel sample available
+							pDst[0] = pSrc[0];
+							pSrc++;
+							pDst++;
+							m_SrcPos += 2;
+							m_DstPos += 2;
+							LeftToRead -= 2;
+							LeftToWrite -= 2;
+						}
+					}
+				}
+				else
+				{
+					// both are 2 channel
+					if (((m_DstPos - m_DstStart) & 2)
+						!= m_DstChan * 2)
+					{
+						// skip this word
+						pDst++;
+						m_DstPos += 2;
+						LeftToWrite -= 2;
+					}
+					if (((m_SrcPos - m_SrcStart) & 2)
+						!= m_SrcChan * 2)
+					{
+						// skip this word
+						pSrc++;
+						m_SrcPos += 2;
+						LeftToRead -= 2;
+					}
+					size_t ToCopy = __min(LeftToRead / (2 * sizeof pSrc[0]),
+										LeftToWrite / (2 * sizeof pDst[0]));
+
+					for (i = 0; i < ToCopy; i++, pDst += 2, pSrc += 2)
+					{
+						pDst[0] = pSrc[0];
+					}
+
+					LeftToRead -= ToCopy * (2 * sizeof pSrc[0]);
+					m_SrcPos += ToCopy * (2 * sizeof pSrc[0]);
+
+					LeftToWrite -= ToCopy * (2 * sizeof pDst[0]);
+					m_DstPos += ToCopy * (2 * sizeof pDst[0]);
+
+					if (LeftToRead >= 2 && LeftToWrite >= 2)
+					{
+						pDst[0] = pSrc[0];
+						pDst++;
+						pSrc++;
+						m_DstPos += 2;
+						LeftToWrite -= 2;
+						m_SrcPos += 2;
+						LeftToRead -= 2;
+					}
+				}
+
+				pSrcBuf = (char *) pSrc;
+				pDstBuf = (char *) pDst;
+			}
+			ASSERT(pDstBuf + LeftToWrite == WasLockedToWrite + (char*)pOriginalDstBuf);
+			ASSERT(pSrcBuf + LeftToRead == WasRead + (char*)pOriginalSrcBuf);
+			if (0 == LeftToRead)
+			{
+				m_SrcFile.ReturnDataBuffer(pOriginalSrcBuf, WasRead,
+											CDirectFile::ReturnBufferDiscard);
+				WasRead = 0;
+			}
+			if (0 == LeftToWrite)
+			{
+				m_DstFile.ReturnDataBuffer(pOriginalDstBuf, WasLockedToWrite,
+											CDirectFile::ReturnBufferDirty);
+				WasLockedToWrite = 0;
+			}
+		}
+		while (((DstFileFlags & CDirectFile::GetBufferWriteOnly)
+					// cannot exit while write-only buffer is incomplete
+					&& 0 != WasLockedToWrite)
+				|| (m_SrcPos < m_SrcEnd
+					&& GetTickCount() - dwStartTime < 200)
+				);
+
+		m_SrcFile.ReturnDataBuffer(pOriginalSrcBuf, WasRead,
+									CDirectFile::ReturnBufferDiscard);
+
+		m_DstFile.ReturnDataBuffer(pOriginalDstBuf, WasLockedToWrite,
+									CDirectFile::ReturnBufferDirty);
+
+		// notify the view
+		pDocument->FileChanged(m_DstFile, dwOperationBegin, m_DstPos);
+
+		UpdateCompletedPercent();
+
+	}
+	return TRUE;
+}
+
