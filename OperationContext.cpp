@@ -3755,7 +3755,7 @@ BOOL CWmaSaveContext::Init()
 {
 	SetBeginTime();
 	m_Enc.m_SrcWfx = * m_SrcFile.GetWaveFormat();
-	CoInitializeEx(NULL, COINIT_APARTMENTTHREADED);
+	CoInitializeEx(NULL, COINIT_MULTITHREADED);
 	if (! m_Enc.Init())
 	{
 		return FALSE;
@@ -3841,12 +3841,12 @@ BOOL CWmaSaveContext::OperationProc()
 		m_SrcCopyPos += SizeToProcess;
 	}
 	while (m_SrcCopyPos < m_SrcEnd
-			&& timeGetTime() - dwStartTime < 200);
+			&& timeGetTime() - dwStartTime < 1000);
 
 	if (m_SrcEnd > m_SrcStart)
 	{
-		PercentCompleted = int(100. * (m_SrcCopyPos - m_SrcStart + double(m_SrcEnd - m_SrcStart) * (m_CurrentPass - 1))
-								/ (double(m_SrcEnd - m_SrcStart) * (m_NumberOfForwardPasses + m_NumberOfBackwardPasses)));
+		PercentCompleted = int(100. * (m_SrcCopyPos - m_SrcStart)
+								/ double(m_SrcEnd - m_SrcStart));
 	}
 	return TRUE;
 }

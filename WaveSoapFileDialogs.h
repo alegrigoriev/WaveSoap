@@ -203,6 +203,7 @@ public:
 	void FillFormatTagArray();
 	void FillFormatTagCombo();
 
+	void FillWmaFormatArray();
 	void FillMp3EncoderArray();
 	void FillMp3FormatArray();
 	void FillLameEncoderFormats();
