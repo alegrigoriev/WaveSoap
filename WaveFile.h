@@ -33,6 +33,7 @@ enum
 	MmioFileOpenDeleteAfterClose = CDirectFile::OpenDeleteAfterClose,
 	MmioFileOpenDontCreateRiff = 0x80000000,
 	MmioFileOpenDontLoadRiff = MmioFileOpenDontCreateRiff,
+	MmioFileMemoryFile = CDirectFile::CreateMemoryFile,
 };
 
 class CMmioFile : public CDirectFile
@@ -226,6 +227,7 @@ private:
 enum {
 	CreateWaveFileDeleteAfterClose = MmioFileOpenDeleteAfterClose,
 	CreateWaveFileDontInitStructure = MmioFileOpenDontCreateRiff,
+	CreateWaveFileAllowMemoryFile = MmioFileMemoryFile,
 	CreateWaveFileTempDir = 0x00100000,
 	CreateWaveFileDontCopyInfo = 0x00200000,
 	CreateWaveFilePcmFormat = 0x00400000,
