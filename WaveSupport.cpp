@@ -549,3 +549,61 @@ WAVEFORMATEX * CopyWaveformat(const WAVEFORMATEX * src)
 	}
 	return dst;
 }
+
+WaveFormat::~WaveFormat()
+{
+	delete[] (char*) m_pWf;
+}
+
+void WaveFormat::Allocate(int ExtraSize, bool bCopy)
+{
+	int SizeToAllocate = ExtraSize + sizeof (WAVEFORMATEX);
+	if (m_AllocatedSize >= SizeToAllocate)
+	{
+		return;
+	}
+	void * NewBuf = new char[SizeToAllocate];
+	if (NULL == NewBuf)
+	{
+		return;
+	}
+	if (m_pWf)
+	{
+		if (bCopy) memcpy(NewBuf, m_pWf, AllocatedSize);
+		delete[] (char*) m_pWf;
+	}
+	m_pWf = (WAVEFORMATEX *)NewBuf;
+	m_AllocatedSize = SizeToAllocate;
+}
+
+void WaveFormat::InitCdAudioFormat()
+{
+	Allocate(0);
+	m_pWf->cbSize = 0;
+	m_pWf->nSamplesPerSec = 44100;
+	m_pWf->wFormatTag = WAVE_FORMAT_PCM;
+	m_pWf->wBitsPerSample = 16;
+	m_pWf->nChannels = 2;
+	m_pWf->nBlockAlign = 4;
+	m_pWf->nAvgBytesPerSec = 176400;
+}
+
+WaveFormat & WaveFormat::operator =(WAVEFORMATEX const * pWf)
+{
+	if (pWf == m_pWf)
+	{
+		return *this;
+	}
+	if (WAVE_FORMAT_PCM == pWf->wFormatTag)
+	{
+		Allocate(0);
+		memcpy(m_pWf, pWf, sizeof (WAVEFORMATPCM));
+		m_pWf->cbSize = 0;
+	}
+	else
+	{
+		Allocate(pWf->cbSize);
+		memcpy(m_pWf, pWf, pWf->cbSize + sizeof WAVEFORMATEX);
+	}
+}
+
