@@ -397,7 +397,7 @@ BOOL CApplicationProfile::FlushSection(LPCTSTR szSection)
 	CApplicationProfileItem * pTmp = pItems;
 	while(pTmp != NULL)
 	{
-		if (pTmp->Section.CompareNoCase(szSection))
+		if (0 == pTmp->Section.CompareNoCase(szSection))
 		{
 			pTmp->WriteData();
 		}
@@ -437,7 +437,7 @@ BOOL CApplicationProfile::ResetSectionToDefault(LPCTSTR szSection)
 	CApplicationProfileItem * pTmp = pItems;
 	while(pTmp != NULL)
 	{
-		if (pTmp->Section.CompareNoCase(szSection))
+		if (0 == pTmp->Section.CompareNoCase(szSection))
 		{
 			pTmp->ResetToDefault();
 		}
@@ -467,7 +467,7 @@ BOOL CApplicationProfile::RevertSectionToInitial(LPCTSTR szSection)
 	CApplicationProfileItem * pTmp = pItems;
 	while(pTmp != NULL)
 	{
-		if (pTmp->Section.CompareNoCase(szSection))
+		if (0 == pTmp->Section.CompareNoCase(szSection))
 		{
 			pTmp->ResetToInitial();
 		}
@@ -495,7 +495,7 @@ BOOL CApplicationProfile::ExportSection(LPCTSTR szSection, LPCTSTR szFilename)
 		{
 			if (NULL == szSection
 				|| 0 == szSection[0]
-				|| pTmp->Section.CompareNoCase(szSection))
+				|| 0 == pTmp->Section.CompareNoCase(szSection))
 			{
 				pTmp->WriteData(TRUE);  // force to write
 			}
@@ -533,7 +533,7 @@ BOOL CApplicationProfile::ImportSection(LPCTSTR szSection, LPCTSTR szFilename)
 		{
 			if (NULL == szSection
 				|| 0 == szSection[0]
-				|| pTmp->Section.CompareNoCase(szSection))
+				|| 0 == pTmp->Section.CompareNoCase(szSection))
 			{
 				pTmp->ReadData();
 			}
