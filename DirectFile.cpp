@@ -163,7 +163,7 @@ CDirectFile::File * CDirectFile::CDirectFileCache::Open(LPCTSTR szName, DWORD fl
 			// find a File struct with the same parameters
 			CSimpleCriticalSectionLock lock(m_cs);
 			File * pFile = m_FileList.Next();
-			while ( & m_FileList != pFile)
+			while (m_FileList.Head() != pFile)
 			{
 				if (info.nFileIndexHigh == pFile->m_FileInfo.nFileIndexHigh
 					&& info.nFileIndexLow == pFile->m_FileInfo.nFileIndexLow)
@@ -840,6 +840,7 @@ CDirectFile::CDirectFileCache::CDirectFileCache(size_t MaxCacheSize)
 	m_PrefetchPosition(0),
 	m_PrefetchLength(0),
 	m_MinPrefetchMRU(0),
+	m_FlushRequest(0),
 	m_ThreadRunState(0)
 {
 	if (SingleInstance != NULL)
@@ -1350,6 +1351,52 @@ void CDirectFile::CDirectFileCache::RequestPrefetch(File * pFile,
 	SetEvent(m_hEvent);
 }
 
+void CDirectFile::CDirectFileCache::RequestFlush(File * pFile, LONGLONG FlushPosition,
+												LONG FlushLength)
+{
+	// flush only whole buffers
+	if (0 == pFile->m_FlushLength)
+	{
+		pFile->m_FlushBegin = FlushPosition;
+		pFile->m_FlushLength = FlushLength;
+	}
+	else
+	{
+		if (FlushPosition == pFile->m_FlushBegin + pFile->m_FlushLength)
+		{
+			pFile->m_FlushLength += FlushLength;
+		}
+		else
+		{
+			if (pFile->m_FlushBegin > FlushPosition)
+			{
+				pFile->m_FlushLength += LONG(pFile->m_FlushBegin) - LONG(FlushPosition);
+				pFile->m_FlushBegin = FlushPosition;
+			}
+			if (pFile->m_FlushBegin + pFile->m_FlushLength < FlushPosition + FlushLength)
+			{
+				pFile->m_FlushLength = LONG(FlushPosition) - LONG(pFile->m_FlushBegin) + FlushLength;
+			}
+		}
+	}
+	// if flush boundary ends or crosses 64 boundary, request flush
+	if ((LONG(pFile->m_FlushBegin) & 0xFFFF) + pFile->m_FlushLength >= 0x10000)
+	{
+		m_FlushRequest = TRUE;
+		SetEvent(m_hEvent);
+	}
+}
+
+void CDirectFile::CDirectFileCache::FlushRequestedFiles()
+{
+	// file cannot be removed during this call
+
+	for (File * pFile = m_FileList.Next(); m_FileList.Head() != pFile; pFile = pFile->Next())
+	{
+		pFile->FlushRequestedRange();
+	}
+}
+
 void CDirectFile::CDirectFileCache::ReturnDataBuffer(File * pFile,
 													void * pBuffer, long count, DWORD flags)
 {
@@ -1377,6 +1424,7 @@ void CDirectFile::CDirectFileCache::ReturnDataBuffer(File * pFile,
 	ASSERT((DWORD)pBuf->pBuf == (dwBuffer & ~0xFFFF));
 	// mark the buffer dirty, if necessary
 	int OffsetInBuffer = dwBuffer & 0xFFFF;
+	LONGLONG FileOffset = OffsetInBuffer + (LONGLONG(pBuf->PositionKey) << 16);
 
 	ASSERT(OffsetInBuffer + count <= 0x10000);
 
@@ -1411,7 +1459,7 @@ void CDirectFile::CDirectFileCache::ReturnDataBuffer(File * pFile,
 		// to do: insert the buffer before the first with MRU_Count==1
 		pMru->MRU_Count = 1;
 		BufferMruEntry * pBufAfter = m_MruList.Prev();
-		while (& m_MruList != pBufAfter
+		while (m_MruList.Head() != pBufAfter
 				&& 1 == pBufAfter->MRU_Count)
 		{
 			pBufAfter = pBufAfter->Prev();
@@ -1421,10 +1469,20 @@ void CDirectFile::CDirectFileCache::ReturnDataBuffer(File * pFile,
 
 	}
 	// decrement lock count
-	InterlockedDecrement( & pBuf->LockCount);
-	// set a request for writing
-	if (flags & CDirectFile::ReturnBufferDirty)
+	if (0 == InterlockedDecrement( & pBuf->LockCount))
 	{
+		// set a request for writing
+		if (flags & CDirectFile::ReturnBufferFlush)
+		{
+			if (count >= 0)
+			{
+				RequestFlush(pFile, FileOffset, count);
+			}
+			else
+			{
+				RequestFlush(pFile, FileOffset + count, -count);
+			}
+		}
 	}
 }
 
@@ -1684,7 +1742,7 @@ void CDirectFile::File::ReadDataBuffer(BufferHeader * pBuf, DWORD MaskToRead)
 	::SetThreadPriority(GetCurrentThread(), OldPriority);
 }
 
-void CDirectFile::BufferHeader::FlushDirtyBuffers()
+void CDirectFile::BufferHeader::FlushDirtyBuffers(unsigned long MaxKey)
 {
 	// flush all unlocked dirty buffers in sequence with pBuf;
 	BufferHeader * pDirtyBuf = this;
@@ -1716,6 +1774,10 @@ void CDirectFile::BufferHeader::FlushDirtyBuffers()
 	// 55ms resolution is OK
 	DWORD StartTickCount = GetTickCount();
 	do {
+		if (pBuf->PositionKey > MaxKey)
+		{
+			break;
+		}
 		if (pBuf->DirtyMask)
 		{
 			key = pBuf->PositionKey;
@@ -1886,6 +1948,12 @@ unsigned CDirectFile::CDirectFileCache::_ThreadProc()
 		}
 		while(0x80000000 == m_ThreadRunState)
 		{
+			// flush the files
+			while (m_FlushRequest)
+			{
+				m_FlushRequest = FALSE;
+				FlushRequestedFiles();
+			}
 			LONGLONG PrefetchPosition;
 			LONGLONG PrefetchLength;
 			unsigned PrefetchMRU;
@@ -2179,6 +2247,8 @@ BOOL CDirectFile::File::SetFileLength(LONGLONG NewLength)
 BOOL CDirectFile::File::Flush()
 {
 	// flush all the buffers
+	m_FlushLength = 0;
+
 	while(1)
 	{
 		CSimpleCriticalSectionLock lock(m_FileLock);
@@ -2200,6 +2270,33 @@ BOOL CDirectFile::File::Flush()
 			}
 			pBuf = pBuf->KListEntry<BufferHeader>::Next();
 		}
+	}
+}
+
+void CDirectFile::File::FlushRequestedRange()
+{
+	// flush all the buffers
+	while((LONG(m_FlushBegin) & 0xFFFF) + m_FlushLength >= 0x10000)
+	{
+		CSimpleCriticalSectionLock lock(m_FileLock);
+		ULONG key = ULONG(m_FlushBegin >> 16);
+		BufferHeader * pBuf = FindBuffer(key);
+
+		if (NULL != pBuf)
+		{
+			if (0 != pBuf->LockCount)
+			{
+				break;
+			}
+			if (0 != pBuf->DirtyMask)
+			{
+				TRACE("Block %d flushed\n", key);
+				pBuf->FlushDirtyBuffers(key);
+			}
+		}
+		LONG Flushed = 0x10000 - (LONG(m_FlushBegin) & 0xFFFF);
+		m_FlushBegin += Flushed;
+		m_FlushLength -= Flushed;
 	}
 }
 

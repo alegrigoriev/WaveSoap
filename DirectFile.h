@@ -328,6 +328,8 @@ protected:
 		LONGLONG m_FilePointer;
 		LONGLONG RealFileLength;
 		LONGLONG FileLength;
+		LONGLONG m_FlushBegin;
+		LONG m_FlushLength;
 
 		// prefetch control
 		// shows last prefetched range (in 64K units
@@ -369,6 +371,7 @@ protected:
 		BOOL Rename(LPCTSTR NewName, DWORD flags);
 
 		void ReadDataBuffer(BufferHeader * pBuf, DWORD MaskToRead);
+		void FlushRequestedRange();
 		// read data, lock the buffer
 		// and return the buffer address
 		long GetDataBuffer(void * * ppBuf, LONGLONG length, LONGLONG position, DWORD flags = 0)
@@ -394,6 +397,8 @@ protected:
 			m_PrefetchedBeginBlock(-1),
 			m_PrefetchedEndBlock(-1),
 			m_LastPrefetchTick(0),
+			m_FlushBegin(0),
+			m_FlushLength(0),
 			// one sixth of cache size is allowed to prefetch
 			m_MaxBlocksToPrefetch(GetCache()->m_NumberOfBuffers / 6),
 			m_LastError(0)
@@ -430,7 +435,7 @@ protected:
 	{
 		// pointer in the common list
 		void * pBuf;        // corresponding buffer
-		void FlushDirtyBuffers();
+		void FlushDirtyBuffers(unsigned long MaxKey = 0xFFFFFFFF);
 	};
 	friend struct File;
 
@@ -450,6 +455,9 @@ public:
 		File * Open(LPCTSTR szName, DWORD flags);
 		void RequestPrefetch(File * pFile, LONGLONG PrefetchPosition,
 							LONGLONG PrefetchLength, unsigned MaxMRU);
+		void RequestFlush(File * pFile, LONGLONG FlushPosition,
+						LONG FlushLength);
+		void FlushRequestedFiles();
 
 	public:
 		CDirectFileCache(size_t CacheSize);
@@ -488,6 +496,7 @@ public:
 		// ~0 (0xFFFFFFFF) - exit requested
 
 		File * volatile m_pPrefetchFile;
+		BOOL volatile m_FlushRequest;
 		LONGLONG volatile m_PrefetchPosition;
 		LONGLONG volatile m_PrefetchLength;
 		unsigned volatile m_MinPrefetchMRU;

@@ -229,6 +229,11 @@ CCdGrabbingDialog::CCdGrabbingDialog(CWnd* pParent /*=NULL*/)
 	m_Profile.AddItem(_T("CdRead"), _T("BaseDirectory"), m_sSaveFolderOrFile);
 	m_Profile.AddItem(_T("CdRead"), _T("Speed"), m_SelectedReadSpeed, 64000000,
 					176400, 0x10000000);
+	m_Profile.AddItem(_T("CdRead"), _T("DriveLetter"),
+					m_PreviousDriveLetter, 'Z', 'A', 'Z');
+	m_Profile.AddItem(_T("CdRead"), _T("Speed"), m_SelectedReadSpeed, 64000000,
+					176400, 0x10000000);
+
 	m_Profile.AddBoolItem(_T("CdRead"),
 						_T("AssignToAllOrSelected"), m_RadioAssignAttributes, FALSE);
 	m_Profile.AddBoolItem(_T("CdRead"),
@@ -319,6 +324,7 @@ void CCdGrabbingDialog::DoDataExchange(CDataExchange* pDX)
 				m_Tracks[t].TrackFileName += Name;
 			}
 		}
+		m_PreviousDriveLetter = m_DriveLetterSelected;
 		m_Profile.UnloadAll();
 	}
 }
@@ -359,40 +365,30 @@ void CCdGrabbingDialog::FillDriveList(TCHAR SelectDrive)
 	m_NumberOfDrives = m_CdDrive.FindCdDrives(m_CDDrives);;
 	m_DriveLetterSelected = 0;
 	m_CDDriveSelected = 0;
+	m_DiskReady = DiskStateUnknown;
 
 	m_DrivesCombo.ResetContent();
-	for (int drive = 0; drive < m_NumberOfDrives; drive++)
-	{
-		CString s;
-		if (SelectDrive == m_CDDrives[drive])
-		{
-			m_CDDriveSelected = drive;
-		}
-		s.Format("%c:", m_CDDrives[drive]);
-
-		m_DrivesCombo.AddString(s);
-	}
 
 	if (0 != m_NumberOfDrives)
 	{
 		m_DrivesCombo.EnableWindow(TRUE);
+		for (int drive = 0; drive < m_NumberOfDrives; drive++)
+		{
+			CString s;
+			if (SelectDrive == m_CDDrives[drive])
+			{
+				m_CDDriveSelected = drive;
+			}
+			s.Format("%c:", m_CDDrives[drive]);
+
+			m_DrivesCombo.AddString(s);
+		}
 		m_DrivesCombo.SetCurSel(m_CDDriveSelected);
 		m_DriveLetterSelected = m_CDDrives[m_CDDriveSelected];
 	}
 	else
 	{
 		m_DrivesCombo.EnableWindow(FALSE);
-		if (DiskStateNoCdDrive == m_DiskReady)
-		{
-			return;
-		}
-		m_lbTracks.DeleteAllItems();
-		m_lbTracks.InsertItem(0, "CD drives not found");
-		m_Tracks.clear();
-
-		memzero(m_toc);
-		m_DiskReady = DiskStateNoCdDrive;
-		return;
 	}
 
 }
@@ -420,6 +416,20 @@ BOOL CCdGrabbingDialog::OpenDrive(TCHAR letter)
 
 void CCdGrabbingDialog::FillTrackList(TCHAR letter)
 {
+	if (0 == m_NumberOfDrives)
+	{
+		if (DiskStateNoCdDrive == m_DiskReady)
+		{
+			return;
+		}
+		m_lbTracks.DeleteAllItems();
+		m_lbTracks.InsertItem(0, "CD drives not found");
+		m_Tracks.clear();
+
+		memzero(m_toc);
+		m_DiskReady = DiskStateNoCdDrive;
+		return;
+	}
 	if ( ! OpenDrive(letter))
 	{
 		TRACE("Couldn't open CD,error=%d\n",GetLastError());
@@ -621,11 +631,9 @@ BOOL CCdGrabbingDialog::OnInitDialog()
 							- GetSystemMetrics(SM_CXVSCROLL) - 2);
 
 	m_lbTracks.DeleteColumn(2);
-	FillDriveList(0);
-	if (m_NumberOfDrives > 0)
-	{
-		FillTrackList(m_DriveLetterSelected);
-	}
+
+	FillDriveList(m_PreviousDriveLetter);
+	FillTrackList(m_DriveLetterSelected);
 
 	SetTimer(1, 200, NULL);
 	return TRUE;  // return TRUE unless you set the focus to a control

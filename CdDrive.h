@@ -168,6 +168,7 @@ struct ReadCD_CDB : CD_CDB
 		ExpectedSectorType = SectorType;
 		ErrorField = Error;
 		SubchannelSelect = SubchannelNone;
+		UserData = 1;
 	}
 };
 
@@ -230,6 +231,7 @@ struct ReadCD_MSF_CDB : CD_CDB
 		ExpectedSectorType = SectorType;
 		ErrorField = Error;
 		SubchannelSelect = SubchannelNone;
+		UserData = 1;
 	}
 };
 

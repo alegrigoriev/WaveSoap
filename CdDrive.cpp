@@ -23,29 +23,42 @@ void CCdDrive::LoadAspi()
 
 	if (NULL != m_hWinaspi32)
 	{
+		TRACE("Loaded CDRAL.DLL, getting function pointers\n");
 		GetASPI32DLLVersion = (DWORD (_cdecl * )())
 							GetProcAddress(m_hWinaspi32, _T("GetASPI32DLLVersion"));
+		TRACE("GetASPI32DLLVersion=%p\n", GetASPI32DLLVersion);
 
 		GetASPI32SupportInfo = (DWORD (_cdecl * )())
 								GetProcAddress(m_hWinaspi32, _T("GetASPI32SupportInfo"));
+		TRACE("GetASPI32SupportInfo=%p\n", GetASPI32SupportInfo);
+		if (NULL != GetASPI32SupportInfo)
+		{
+			TRACE("GetASPI32SupportInfo()=%x\n", GetASPI32SupportInfo());
+		}
 
 		SendASPI32Command = (DWORD (_cdecl * )(SRB * ))
 							GetProcAddress(m_hWinaspi32, _T("SendASPI32Command"));
+		TRACE("SendASPI32Command=%p\n", SendASPI32Command);
 
 		GetAspi32Buffer = (GETASPI32BUFFER)
 						GetProcAddress(m_hWinaspi32, _T("GetASPI32Buffer"));
+		TRACE("GetAspi32Buffer=%p\n", GetAspi32Buffer);
 
 		FreeAspi32Buffer = (FREEASPI32BUFFER)
 							GetProcAddress(m_hWinaspi32, _T("FreeASPI32Buffer"));
+		TRACE("FreeAspi32Buffer=%p\n", FreeAspi32Buffer);
 
 		TranslateAspi32Address = (TRANSLATEASPI32ADDRESS)
 								GetProcAddress(m_hWinaspi32, _T("TranslateASPI32Address"));
+		TRACE("TranslateAspi32Address=%p\n", TranslateAspi32Address);
 
 		GetAspi32DriveLetter = (GETASPI32DRIVELETTER)
 								GetProcAddress(m_hWinaspi32, _T("GetASPI32DriveLetter"));
+		TRACE("GetAspi32DriveLetter=%p\n", GetAspi32DriveLetter);
 
 		GetAspi32HaTargetLun = (GETASPI32HATARGETLUN)
 								GetProcAddress(m_hWinaspi32, _T("GetASPI32HaTargetLun"));
+		TRACE("GetAspi32HaTargetLun=%p\n", GetAspi32HaTargetLun);
 
 		if (NULL == GetASPI32DLLVersion
 			|| NULL == GetASPI32SupportInfo
@@ -62,19 +75,28 @@ void CCdDrive::LoadAspi()
 			m_hWinaspi32 = NULL;
 		}
 	}
-	if (NULL != m_hWinaspi32)
+
+	if (NULL == m_hWinaspi32)
 	{
 		m_hWinaspi32 = LoadLibrary(_T("wnaspi32.dll"));
-		if (NULL == m_hWinaspi32)
+		if (NULL != m_hWinaspi32)
 		{
+			TRACE("Loaded CDRAL.DLL, getting function pointers\n");
 			GetASPI32DLLVersion = (DWORD (_cdecl * )())
 								GetProcAddress(m_hWinaspi32, _T("GetASPI32DLLVersion"));
+			TRACE("GetASPI32DLLVersion=%p\n", GetASPI32DLLVersion);
 
 			GetASPI32SupportInfo = (DWORD (_cdecl * )())
 									GetProcAddress(m_hWinaspi32, _T("GetASPI32SupportInfo"));
+			TRACE("GetASPI32SupportInfo=%p\n", GetASPI32SupportInfo);
+			if (NULL != GetASPI32SupportInfo)
+			{
+				TRACE("GetASPI32SupportInfo()=%x\n", GetASPI32SupportInfo());
+			}
 
 			SendASPI32Command = (DWORD (_cdecl * )(SRB * ))
 								GetProcAddress(m_hWinaspi32, _T("SendASPI32Command"));
+			TRACE("SendASPI32Command=%p\n", SendASPI32Command);
 
 			GetAspi32Buffer = (GETASPI32BUFFER)
 							GetProcAddress(m_hWinaspi32, _T("GetASPI32Buffer"));
@@ -655,11 +677,15 @@ BOOL CCdDrive::SendScsiCommand(CD_CDB * pCdb,
 
 			TRACE("IOCTL_SCSI_PASS_THROUGH returned %d, error=%d\n", res, GetLastError());
 
-			if (res && pSense)
+			if (res)
 			{
-				memcpy(pSense, (SCSI_SenseInfo *) & spt, sizeof * pSense);
-			}
+				*pDataLen = spt.DataTransferLength;
 
+				if (pSense)
+				{
+					memcpy(pSense, (SCSI_SenseInfo *) & spt, sizeof * pSense);
+				}
+			}
 			return res && SS_COMP == spt.ScsiStatus;
 		}
 		else
@@ -810,7 +836,7 @@ BOOL CCdDrive::GetMaxReadSpeed(int * pMaxSpeed) // bytes/s
 	if (SendScsiCommand( & cdb, & perf, & DataLen, SCSI_IOCTL_DATA_IN, & ssi))
 	{
 		// check that header is valid
-		const DWORD DataLength = perf.DataLength;
+		const int DataLength = perf.DataLength - 4;
 		if (DataLength > 10 * sizeof (CdNominalPerformanceDescriptor)
 			|| 0 != DataLength % sizeof (CdNominalPerformanceDescriptor)
 			|| 0 == DataLength)
@@ -849,7 +875,6 @@ BOOL CCdDrive::GetMaxReadSpeed(int * pMaxSpeed) // bytes/s
 
 	if (res)
 	{
-		TRACE("CD speed obtained by CDCapabilitiesMechStatusModePage\n");
 		TRACE("CD speed obtained by CDCapabilitiesMechStatusModePage,current = %d, max=%d\n",
 			LONG(cdmp.CurrentReadSpeedSelected), LONG(cdmp.MaxReadSpeedSupported));
 		* pMaxSpeed = cdmp.MaxReadSpeedSupported * 1000;

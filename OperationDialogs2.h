@@ -177,6 +177,7 @@ public:
 	TCHAR m_CDDrives['Z' - 'A' + 1];
 	int m_NumberOfDrives;
 	int m_CDDriveSelected;
+	int m_PreviousDriveLetter;
 	TCHAR m_DriveLetterSelected;
 
 	CDROM_TOC m_toc;
