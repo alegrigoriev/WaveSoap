@@ -504,8 +504,8 @@ void InterpolateBigGap(CBackBuffer<int, int> & data, int nLeftIndex, int ClickLe
 	// and [nLeftIndex+2*ClickLength...nLeftIndex+2*ClickLength+FftOrder-1]
 	// and find another FFT estimation. Perform backward FFT and combine source and
 	// FFT results using squared-sine window
-	complex<float> y1[513];
-	complex<float> y2[513];
+	complex<float> y1[1024];
+	complex<float> y2[1024];
 	float xl[512];  // to save extrapolation from the left neighborhood
 
 	int FftOrder = 64;
@@ -517,54 +517,60 @@ void InterpolateBigGap(CBackBuffer<int, int> & data, int nLeftIndex, int ClickLe
 	int i;
 	for (i = 0; i < FftOrder; i++)
 	{
-		x[i] = data[nLeftIndex - FftOrder + i];
+		y2[i] = data[nLeftIndex +ClickLength-Offset- FftOrder + i];
 	}
-	FastFourierTransform(x, y2, FftOrder);
+	FastFourierTransform(y2, y2, FftOrder);
 	for (i = 0; i < FftOrder; i++)
 	{
-		x[i] = data[nLeftIndex - ClickLength - FftOrder + i];
+		y1[i] = data[nLeftIndex +ClickLength- Offset*2 - FftOrder + i];
 	}
-	FastFourierTransform(x, y1, FftOrder);
+	FastFourierTransform(y1, y1, FftOrder);
 	// calculate another set of coefficients
 	// leave only those frequencies with up to ClickLength/10 period
-	int nMaxFreq = FftOrder * 5 / ClickLength;
+	int nMaxFreq = FftOrder /2 /* * 5 / ClickLength */;
 	if (nMaxFreq > FftOrder) nMaxFreq = FftOrder;
-	for (i = 1; i <= nMaxFreq; i++)
+	for (i = 1; i < nMaxFreq; i++)
 	{
 		if (y1[i] != complex<float>(0., 0.))
 		{
-#if 0
+#if 1
 			complex<float> rot = y2[i] / y1[i];
-			rot /= abs(rot);
+			double a = abs(rot);
+			rot /= a;
 			y2[i] = y2[i] * rot;
+
+			rot = y2[FftOrder-1-i] / y1[FftOrder-1-i];
+			a = abs(rot);
+			rot /= a;
+			y2[FftOrder-1-i] = y2[FftOrder-1-i] * rot;
 #else
-			y2[i] *= y2[i] / y1[i];
+			y2[FftOrder-1-i] *= y2[FftOrder-1-i] / y1[FftOrder-1-i];
 #endif
 		}
 	}
 	// extrapolate DC
 	y2[0] += y2[0] - y1[0];
 	// zero all higher frequencies
-	for ( ; i <= FftOrder; i++)
+	for ( ; i <= FftOrder/2; i++)
 	{
 		y2[i] = complex<float>(0., 0.);
 	}
-	FastInverseFourierTransform(y2, x, FftOrder);
+	FastInverseFourierTransform(y2, y1, FftOrder);
 	// save the result
 	for (i = 0; i < ClickLength * 2; i++)
 	{
-		xl[i] = x[FftOrder-ClickLength * 2+i];
+		xl[i] = y2[FftOrder-ClickLength * 2+i].real();
 	}
 
 	// do calculations for the right side neighborhood
 	for (i = 0; i < FftOrder; i++)
 	{
-		x[i] = data[nLeftIndex + ClickLength + i];
+		x[i] = data[nLeftIndex + Offset + i];
 	}
 	FastFourierTransform(x, y2, FftOrder);
 	for (i = 0; i < FftOrder; i++)
 	{
-		x[i] = data[nLeftIndex + ClickLength*2 + i];
+		x[i] = data[nLeftIndex + Offset*2 + i];
 	}
 	FastFourierTransform(x, y1, FftOrder);
 	// calculate another set of coefficients
@@ -582,7 +588,7 @@ void InterpolateBigGap(CBackBuffer<int, int> & data, int nLeftIndex, int ClickLe
 	// extrapolate DC
 	y2[0] += y2[0] - y1[0];
 	// zero all higher frequencies
-	for ( ; i <= FftOrder; i++)
+	for ( ; i <= FftOrder/2; i++)
 	{
 		y2[i] = complex<float>(0., 0.);
 	}
@@ -604,7 +610,7 @@ void InterpolateBigGap(CBackBuffer<int, int> & data, int nLeftIndex, int ClickLe
 		data[nLeftIndex + ClickLength + i] =
 			int(data[nLeftIndex + ClickLength + i] * (1. - W) + x[i+ClickLength] * W);
 	}
-#elif 1
+#elif 0
 	// For now, just replace the samples to evaluate
 	for (i = 0; i < ClickLength * 2; i++)
 	{

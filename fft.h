@@ -32,7 +32,7 @@ template<class T>
 inline void FastInverseFourierTransform(const complex<T> * src, complex<T> * dst,
 										int count)
 {
-	FastFourierTransform(x, y, count, REV_FFT);
+	FastFourierTransform(src, dst, count, REV_FFT);
 }
 
 // x contains real part, y contains imag part
