@@ -133,24 +133,31 @@ BOOL CScaledScrollView::OnScroll(UINT nScrollCode, UINT nPos, BOOL bDoScroll)
 	switch (LOBYTE(nScrollCode))
 	{
 	case SB_TOP:
+		TRACE("OnScroll horz SB_TOP, bDoScroll=%d\n", bDoScroll);
 		dX = dMaxRight;
 		break;
 	case SB_BOTTOM:
+		TRACE("OnScroll horz SB_BOTTOM, bDoScroll=%d\n", bDoScroll);
 		dX = dMinLeft - dExtX;
 		break;
 	case SB_LINEUP:
+		TRACE("OnScroll horz SB_LINEUP, bDoScroll=%d\n", bDoScroll);
 		dX -= dExtX * 0.05;
 		break;
 	case SB_LINEDOWN:
+		TRACE("OnScroll horz SB_LINEDOWN, bDoScroll=%d\n", bDoScroll);
 		dX += dExtX * 0.05;
 		break;
 	case SB_PAGEUP:
+		TRACE("OnScroll horz SB_PAGEUP, bDoScroll=%d\n", bDoScroll);
 		dX -= dExtX * 0.9;
 		break;
 	case SB_PAGEDOWN:
+		TRACE("OnScroll horz SB_PAGEDOWN, bDoScroll=%d\n", bDoScroll);
 		dX += dExtX * 0.9;
 		break;
 	case SB_THUMBTRACK:
+		TRACE("OnScroll horz SB_THUMBTRACK, nPos=%d, bDoScroll=%d\n", nPos, bDoScroll);
 		dX = (dMaxRight - dMinLeft) * (int(nPos) - ScrollMin) / double(ScrollMax - ScrollMin)
 			+ dMinLeft;
 		break;
@@ -193,7 +200,7 @@ BOOL CScaledScrollView::OnScroll(UINT nScrollCode, UINT nPos, BOOL bDoScroll)
 //    POINT p = DoubleToPointDev(dX - dOrgX, dY - dOrgY);
 
 	BOOL bResult = ScrollTo(dX, dY, bDoScroll);
-	if (bResult && bDoScroll)
+	if (bResult /* && bDoScroll */)
 		UpdateWindow();
 	NotifySlaveViews(flag);
 	return bResult;
@@ -290,6 +297,46 @@ void CScaledScrollView::PointToDoubleDev(POINT pt,
 {
 	x = pt.x / GetXScaleDev() + dOrgX;
 	y = pt.y / GetYScaleDev() + dOrgY;
+}
+
+int CScaledScrollView::WorldToWindowX(double x) const
+{
+	return fround((x - dOrgX) * GetXScaleDev());
+}
+
+int CScaledScrollView::WorldToWindowY(double y) const
+{
+	return fround((y - dOrgY) * GetYScaleDev());
+}
+
+double CScaledScrollView::WindowToWorldX(int x) const
+{
+	return x / GetXScaleDev() + dOrgX;
+}
+
+double CScaledScrollView::WindowToWorldY(int y) const
+{
+	return y / GetYScaleDev() + dOrgY;
+}
+
+int CScaledScrollView::WorldToLogX(double x) const
+{
+	return fround((x - dOrgX) * dScaleX);
+}
+
+int CScaledScrollView::WorldToLogY(double y) const
+{
+	return fround((y - dOrgY) * dScaleY);
+}
+
+double CScaledScrollView::LogToWorldX(int x) const
+{
+	return x / dScaleX + dOrgX;
+}
+
+double CScaledScrollView::LogToWorldY(int y) const
+{
+	return y / dScaleY + dOrgY;
 }
 
 void CScaledScrollView::OnHScroll(UINT nSBCode, UINT nPos, CScrollBar* pScrollBar)
@@ -599,6 +646,7 @@ BOOL CScaledScrollView::ScrollBy(double dx, double dy, BOOL bDoScroll)
 	// scroll the view or just invalidate it
 	if (fabs(dx) > (dSizeX * 0.89) || fabs(dy) > (dSizeY * 0.89))
 	{
+		TRACE("Invalidate instead of scroll\n");
 		dOrgX = dNewOrgX;
 		dOrgY = dNewOrgY;
 		if (bDoScroll)
@@ -613,6 +661,9 @@ BOOL CScaledScrollView::ScrollBy(double dx, double dy, BOOL bDoScroll)
 		// move origin to integer count of device units
 		int ddevx = fround(dx * dScaleX * dLogScaleX);
 		int ddevy = fround(dy * dScaleY * dLogScaleY);
+		TRACE("Necessary window scroll=(%g, %g), new org=(%g, %g)\n",
+			dx, dy, dNewOrgX, dNewOrgY);
+
 		if (ddevx | ddevy)
 		{
 			return OnScrollBy(CSize(ddevx, ddevy), bDoScroll);
@@ -940,14 +991,6 @@ void CScaledScrollView::ZoomOutSelection(DWORD flags)
 	}
 	else
 	{
-		CPoint p(DoubleToPoint(m_dXEndTracking,
-								m_dYEndTracking));
-		CRect r;
-		GetClientRect( & r);
-		if ( ! r.PtInRect(p))
-		{
-			p = CPoint(INT_MAX, INT_MAX);
-		}
 		double zoomX = 1.;
 		if (flags & CHANGE_HOR_EXTENTS)
 		{
@@ -959,8 +1002,22 @@ void CScaledScrollView::ZoomOutSelection(DWORD flags)
 			zoomY = 0.5;
 		}
 
-		Zoom(zoomX, zoomY, p);
+		Zoom(zoomX, zoomY, GetZoomCenter());
 	}
+}
+
+POINT CScaledScrollView::GetZoomCenter()
+{
+	CPoint p(DoubleToPoint(m_dXEndTracking,
+							m_dYEndTracking));
+	CRect r;
+	GetClientRect( & r);
+	if ( ! r.PtInRect(p))
+	{
+		return CPoint(INT_MAX, INT_MAX);
+	}
+	else
+		return p;
 }
 
 void CScaledScrollView::OnViewZoomin()
@@ -1003,14 +1060,6 @@ void CScaledScrollView::ZoomInSelection(DWORD flags)
 	}
 	else
 	{
-		CPoint p(DoubleToPoint(m_dXEndTracking,
-								m_dYEndTracking));
-		CRect r;
-		GetClientRect( & r);
-		if ( ! r.PtInRect(p))
-		{
-			p = CPoint(INT_MAX, INT_MAX);
-		}
 		double zoomX = 1.;
 		if (flags & CHANGE_HOR_EXTENTS)
 		{
@@ -1022,7 +1071,7 @@ void CScaledScrollView::ZoomInSelection(DWORD flags)
 			zoomY = 2.;
 		}
 
-		Zoom(zoomX, zoomY, p);
+		Zoom(zoomX, zoomY, GetZoomCenter());
 	}
 }
 void CScaledScrollView::OnUpdateIndicatorMousePosition(CCmdUI* pCmdUI)
@@ -1102,7 +1151,7 @@ void CScaledScrollView::OnInitialUpdate()
 void CScaledScrollView::OnViewZoominHor2()
 {
 	// TODO: Add your command handler code here
-	Zoom(2., 1.);
+	Zoom(2., 1., GetZoomCenter());
 }
 
 void CScaledScrollView::OnViewZoominHor()
@@ -1112,7 +1161,7 @@ void CScaledScrollView::OnViewZoominHor()
 
 void CScaledScrollView::OnViewZoomInVert2()
 {
-	Zoom(1., 2.);
+	Zoom(1., 2., GetZoomCenter());
 }
 
 void CScaledScrollView::OnViewZoomInVert()
@@ -1122,7 +1171,7 @@ void CScaledScrollView::OnViewZoomInVert()
 
 void CScaledScrollView::OnViewZoomOutHor2()
 {
-	Zoom(0.5, 1.);
+	Zoom(0.5, 1., GetZoomCenter());
 }
 
 void CScaledScrollView::OnViewZoomOutHor()
@@ -1132,7 +1181,7 @@ void CScaledScrollView::OnViewZoomOutHor()
 
 void CScaledScrollView::OnViewZoomOutVert2()
 {
-	Zoom(1., 0.5);
+	Zoom(1., 0.5, GetZoomCenter());
 }
 
 void CScaledScrollView::OnViewZoomOutVert()
