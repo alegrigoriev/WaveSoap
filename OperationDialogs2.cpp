@@ -273,9 +273,12 @@ BEGIN_MESSAGE_MAP(CCdGrabbingDialog, CDialog)
 	ON_BN_CLICKED(IDC_RADIO_STORE_SINGLE_FILE, OnRadioStoreSingleFile)
 	ON_NOTIFY(NM_CLICK, IDC_LIST_TRACKS, OnClickListTracks)
 	ON_NOTIFY(LVN_BEGINLABELEDIT, IDC_LIST_TRACKS, OnBeginlabeleditListTracks)
+	ON_NOTIFY(LVN_ENDLABELEDIT, IDC_LIST_TRACKS, OnEndlabeleditListTracks)
 	//}}AFX_MSG_MAP
 	ON_WM_DEVICECHANGE()
 	ON_MESSAGE(WM_KICKIDLE, OnKickIdle)
+	ON_UPDATE_COMMAND_UI(IDOK, OnUpdateOk)
+
 END_MESSAGE_MAP()
 
 void CCdGrabbingDialog::FillDriveList(TCHAR SelectDrive)
@@ -368,7 +371,9 @@ void CCdGrabbingDialog::ReloadTrackList()
 			return;
 		}
 		m_lbTracks.DeleteAllItems();
-		m_lbTracks.InsertItem(0, "No disk in the drive");
+		CString s;
+		s.Format(IDS_NO_DISK_IN_CD_DRIVE, m_DriveLetterSelected);
+		m_lbTracks.InsertItem(0, s);
 		m_Tracks.clear();
 
 		memzero(m_toc);
@@ -411,13 +416,13 @@ void CCdGrabbingDialog::ReloadTrackList()
 		UINT StateImage = 0, StateImageMask = 0;
 		if (m_toc.TrackData[tr].Control & 0xC)
 		{
-			s = _T("Data track");
+			s.LoadString(IDS_DATA_TRACK);
 			pTrack->IsAudio = false;
 			pTrack->Checked = false;
 		}
 		else
 		{
-			s.Format("Track %d", m_toc.TrackData[tr].TrackNumber);
+			s.Format(IDS_TRACK_NUM_FORMAT, m_toc.TrackData[tr].TrackNumber);
 			pTrack->Album = Album;
 			pTrack->Artist = Artist;
 			pTrack->IsAudio = true;
@@ -505,8 +510,6 @@ BOOL CCdGrabbingDialog::OnInitDialog()
 {
 	CDialog::OnInitDialog();
 
-	//m_lbTracks.SetExtendedStyle(LVS_EX_CHECKBOXES);
-
 	CreateImageList();
 	CRect cr;
 	GetClientRect( & cr);
@@ -517,16 +520,22 @@ BOOL CCdGrabbingDialog::OnInitDialog()
 	OnMetricsChange();
 
 	m_lbTracks.GetClientRect( & cr);
-	int width = cr.Width() - 2 * GetSystemMetrics(SM_CXVSCROLL);
-	int nLengthColumnWidth = m_lbTracks.GetStringWidth(" 00:00  ");
-	if (nLengthColumnWidth >  width / 2)
-	{
-		nLengthColumnWidth = width / 2;
-	}
-	m_lbTracks.InsertColumn(0, "Track name", LVCFMT_LEFT, width - nLengthColumnWidth, 0);
-	m_lbTracks.DeleteColumn(1);
-	m_lbTracks.InsertColumn(1, "Length", LVCFMT_LEFT, nLengthColumnWidth, 1);
 
+	CString s;
+	s.LoadString(IDS_TRACK_NAME);
+	m_lbTracks.InsertColumn(0, s, LVCFMT_LEFT, cr.Width() - 20, 0);
+
+
+	s.LoadString(IDS_LENGTH);
+	m_lbTracks.InsertColumn(1, s, LVCFMT_LEFT, -1, 1);
+	m_lbTracks.InsertColumn(2, " ", LVCFMT_RIGHT, 100, 1);
+	m_lbTracks.SetColumnWidth(1, LVSCW_AUTOSIZE_USEHEADER);
+
+	m_lbTracks.SetColumnWidth(0,
+							cr.Width() - m_lbTracks.GetColumnWidth(1)
+							- GetSystemMetrics(SM_CXVSCROLL) - 2);
+
+	m_lbTracks.DeleteColumn(2);
 	FillDriveList(0);
 	if (m_NumberOfDrives > 0)
 	{
@@ -566,11 +575,17 @@ void CCdGrabbingDialog::OnSize(UINT nType, int cx, int cy)
 
 	static UINT const Controls[] =
 	{
-		IDC_BUTTON_CDDB,    // move X only
-		IDC_CHECK_SINGLE_FILE, IDOK, IDCANCEL, IDC_BUTTON_MORE, // move X, Y
-		IDC_STATIC_SPEED, IDC_COMBO_SPEED,  // move Y only
+		IDC_BUTTON_SELECT_ALL, IDC_BUTTON_DESELECT_ALL,    // move X only
+		IDC_BUTTON_CDDB, IDOK, IDCANCEL, // move X, Y
+		IDC_RADIO_ASSIGN_ATTRIBUTES, IDC_RADIO_ASSIGN_SELECTED_TRACK,  // move Y only
+		IDC_STATIC_ALBUM, IDC_EDIT_ALBUM,
+		IDC_STATIC_ARTIST, IDC_EDIT_ARTIST,
+		IDC_RADIO_STORE_MULTIPLE_FILES, IDC_RADIO_STORE_SINGLE_FILE,
+		IDC_EDIT_FOLDER_OR_FILE, IDC_BUTTON_BROWSE_SAVE_FOLDER,
+		IDC_RADIO_STORE_IMMEDIATELY, IDC_RADIO_LOAD_FOR_EDITING,
+		IDC_STATIC_FORMAT, IDC_BUTTON_SET_FORMAT,
 	};
-	const int NoMoveYItems = 1; // from IDC_ADD_FILE through IDC_AVI_PROPERTIES
+	const int NoMoveYItems = 2;
 	const int MoveXItems = 5;
 
 	int i;
@@ -1163,4 +1178,53 @@ BOOL CCdGrabbingDialog::PreTranslateMessage(MSG* pMsg)
 	}
 
 	return CDialog::PreTranslateMessage(pMsg);
+}
+
+void CCdGrabbingDialog::OnUpdateOk(CCmdUI* pCmdUI)
+{
+	BOOL bEnable = FALSE;
+	for (int i = 0; i < m_Tracks.size(); i++)
+	{
+		if (m_Tracks[i].Checked)
+		{
+			bEnable = TRUE;
+			break;
+		}
+	}
+	bEnable = bEnable && m_eSaveFolderOrFile.GetWindowTextLength() != 0;
+
+	pCmdUI->Enable(bEnable);
+}
+
+void CCdGrabbingDialog::OnEndlabeleditListTracks(NMHDR* pNMHDR, LRESULT* pResult)
+{
+	LV_DISPINFO* pDispInfo = (LV_DISPINFO*)pNMHDR;
+
+	if (pDispInfo->item.pszText != NULL)
+	{
+		// check that the value is not blank and is not the same as other track name
+		CString s(pDispInfo->item.pszText);
+		s.TrimLeft();
+		s.TrimRight();
+		if (s.IsEmpty())
+		{
+			*pResult = FALSE;
+			return;
+		}
+		for (int t = 0; t < m_Tracks.size(); t++)
+		{
+			if (t != pDispInfo->item.iItem
+				&& m_Tracks[t].IsAudio
+				&& 0 == s.CompareNoCase(m_Tracks[t].Track))
+			{
+				CString m;
+				m.Format(IDS_TRACK_NAME_ALREADY_EXISTS, s);
+				AfxMessageBox(m);
+				*pResult = FALSE;
+				return;
+			}
+		}
+		strcpy(pDispInfo->item.pszText, s);
+	}
+	*pResult = TRUE;
 }

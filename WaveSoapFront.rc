@@ -1437,11 +1437,12 @@ BEGIN
     CONTROL         "Assign to all tracks:",IDC_RADIO_ASSIGN_ATTRIBUTES,
                     "Button",BS_AUTORADIOBUTTON | WS_GROUP | WS_TABSTOP,7,
                     155,73,10
-    CONTROL         "Assign to selected tracks only:",IDC_RADIO5,"Button",
+    CONTROL         "Assign to selected tracks only:",
+                    IDC_RADIO_ASSIGN_SELECTED_TRACK,"Button",
                     BS_AUTORADIOBUTTON,106,155,114,10
-    LTEXT           "Album:",IDC_STATIC,7,172,25,8
+    LTEXT           "Album:",IDC_STATIC_ALBUM,7,172,25,8
     EDITTEXT        IDC_EDIT_ALBUM,33,169,203,14,ES_AUTOHSCROLL
-    LTEXT           "Artist:",IDC_STATIC,7,188,17,8
+    LTEXT           "Artist:",IDC_STATIC_ARTIST,7,188,17,8
     EDITTEXT        IDC_EDIT_ARTIST,33,186,203,14,ES_AUTOHSCROLL
     PUSHBUTTON      "Lookup in CDDB...",IDC_BUTTON_CDDB,242,169,64,14
     CONTROL         "Store files in this folder:",
@@ -1456,8 +1457,9 @@ BEGIN
     CONTROL         "Store file(s) immediately",IDC_RADIO_STORE_IMMEDIATELY,
                     "Button",BS_AUTORADIOBUTTON | WS_GROUP | WS_TABSTOP,7,
                     237,91,10
-    CONTROL         "Load file(s) for editing first",IDC_RADIO3,"Button",
-                    BS_AUTORADIOBUTTON,106,237,90,10
+    CONTROL         "Load file(s) for editing first",
+                    IDC_RADIO_LOAD_FOR_EDITING,"Button",BS_AUTORADIOBUTTON,
+                    106,237,90,10
     DEFPUSHBUTTON   "OK",IDOK,256,251,50,14,WS_GROUP
     PUSHBUTTON      "Cancel",IDCANCEL,256,270,50,14
     LTEXT           "&Drive:",IDC_STATIC,7,9,24,8
@@ -3243,6 +3245,12 @@ END
 STRINGTABLE DISCARDABLE 
 BEGIN
     IDS_HTML_SAVE_TITLE     "Save Webpage As"
+    IDS_TRACK_NAME_ALREADY_EXISTS "Track name ""%s""  already exists"
+    IDS_NO_DISK_IN_CD_DRIVE "No disk in the drive %c:"
+    IDS_DATA_TRACK          "Data track"
+    IDS_TRACK_NUM_FORMAT    "Track %d"
+    IDS_TRACK_NAME          "Track name"
+    IDS_LENGTH              "Length"
 END
 
 #endif    // English (U.S.) resources

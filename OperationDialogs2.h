@@ -218,6 +218,8 @@ protected:
 
 	// Generated message map functions
 	LRESULT OnKickIdle(WPARAM, LPARAM);
+	afx_msg void OnUpdateOk(CCmdUI* pCmdUI);
+
 	//{{AFX_MSG(CCdGrabbingDialog)
 	virtual BOOL OnInitDialog();
 	afx_msg BOOL OnEraseBkgnd(CDC* pDC);
@@ -240,6 +242,7 @@ protected:
 	afx_msg void OnRadioStoreSingleFile();
 	afx_msg void OnClickListTracks(NMHDR* pNMHDR, LRESULT* pResult);
 	afx_msg void OnBeginlabeleditListTracks(NMHDR* pNMHDR, LRESULT* pResult);
+	afx_msg void OnEndlabeleditListTracks(NMHDR* pNMHDR, LRESULT* pResult);
 	//}}AFX_MSG
 	void OnMetricsChange();
 	afx_msg LRESULT OnDeviceChange(UINT, DWORD);

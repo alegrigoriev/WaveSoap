@@ -347,12 +347,15 @@
 #define IDC_EDIT_ALBUM                  1227
 #define IDC_EDIT_ARTIST                 1228
 #define IDC_BUTTON_BROWSE_SAVE_FOLDER   1230
-#define IDC_RADIO5                      1232
+#define IDC_RADIO_ASSIGN_SELECTED_TRACK 1232
 #define IDC_RADIO_ASSIGN_ATTRIBUTES     1233
 #define IDC_BUTTON_SET_FORMAT           1234
 #define IDC_RADIO_STORE_MULTIPLE_FILES  1235
 #define IDC_RADIO_STORE_IMMEDIATELY     1236
 #define IDC_RADIO_STORE_SINGLE_FILE     1237
+#define IDC_STATIC_ALBUM                1238
+#define IDC_STATIC_ARTIST               1239
+#define IDC_RADIO_LOAD_FOR_EDITING      1240
 #define IDC_VIEW_RULER_SAMPLES          32771
 #define IDC_VIEW_RULER_HHMMSS           32772
 #define IDC_VIEW_RULER_SECONDS          32773
@@ -530,6 +533,12 @@
 #define IDS_HTML_FILE_FILTER            32942
 #define IDS_PLAYLIST_SAVE_TITLE         32943
 #define IDS_HTML_SAVE_TITLE             32944
+#define IDS_TRACK_NAME_ALREADY_EXISTS   32945
+#define IDS_NO_DISK_IN_CD_DRIVE         32946
+#define IDS_DATA_TRACK                  32947
+#define IDS_TRACK_NUM_FORMAT            32948
+#define IDS_TRACK_NAME                  32949
+#define IDS_LENGTH                      32950
 #define ID_FILE_PROPERTIES              40000
 #define ID_VIEW_ZOOMVERT_NORMAL         40001
 #define ID_VIEW_ZOOMIN_HOR_FULL         40002
@@ -631,7 +640,7 @@
 #define _APS_3D_CONTROLS                     1
 #define _APS_NEXT_RESOURCE_VALUE        187
 #define _APS_NEXT_COMMAND_VALUE         40110
-#define _APS_NEXT_CONTROL_VALUE         1238
+#define _APS_NEXT_CONTROL_VALUE         1241
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif
