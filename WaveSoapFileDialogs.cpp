@@ -732,22 +732,29 @@ void CWaveSoapFileSaveDialog::AddAllTypeFilters(CDocManager * pDocManager)
 	while (pos != NULL)
 	{
 		CDocTemplate* pTemplate = pDocManager->GetNextDocTemplate(pos);
+		CWaveSoapDocTemplate * pWaveTemplate =
+			dynamic_cast<CWaveSoapDocTemplate *>(pTemplate);
+
+
+		if (NULL != pWaveTemplate)
+		{
+			if (DocumentFlagOpenOnly & pWaveTemplate->GetDocumentTypeFlags())
+			{
+				continue;
+			}
+
+			TemplateFlags[nFilterIndex] = pWaveTemplate->GetDocumentTypeFlags();
+		}
+		else
+		{
+			TemplateFlags[nFilterIndex] = 0;
+		}
+
 		if (pTemplate == m_pDocument->GetDocTemplate())
 		{
 			m_ofn.nFilterIndex = nFilterIndex;
 		}
-#if 0
-		CWaveSoapDocTemplate * pWaveTemplate =
-			dynamic_cast<CWaveSoapDocTemplate *>(pTemplate);
-		if (NULL != pWaveTemplate)
-		{
-			TemplateFlags[nFilterIndex] = pWaveTemplate->m_OpenDocumentFlags;
-		}
-		else
-#endif
-		{
-			TemplateFlags[nFilterIndex] = 0;
-		}
+
 		_AfxAppendFilterSuffix(m_strFilter, m_ofn, pTemplate,
 								&strDefault);
 		nFilterIndex++;

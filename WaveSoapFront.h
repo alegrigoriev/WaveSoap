@@ -42,6 +42,7 @@ enum
 	OpenDocumentModeFlagsMask = OpenDocumentDirectMode | OpenDocumentReadOnly,
 	OpenDocumentCreateNewWithParameters = 8, // NAME is actually NewFileParameters *
 	OpenDocumentCreateNewFromCWaveFile = 0x10,// use m_pFile from NewFileParameters
+	DocumentFlagOpenOnly = 0x20, // this template is to open files only
 	OpenDocumentMp3File = 0x1000,
 	OpenDocumentWmaFile = 0x2000,
 	OpenDocumentRawFile = 0x4000,
@@ -92,13 +93,20 @@ public:
 											//BOOL bMakeVisible = TRUE
 										);
 
+	DWORD GetDocumentTypeFlags() const
+	{
+		return m_OpenDocumentFlags;
+	}
+
 	virtual void OnIdle();
 	void BroadcastUpdate(UINT lHint);
 	BOOL IsAnyDocumentModified();
 	BOOL CanSaveAnyDocument();
 	void SaveAll();
+
 protected:
 	Confidence MatchDocType(LPCTSTR lpszPathName, CDocument*& rpDocMatch);
+
 	DWORD m_OpenDocumentFlags;
 };
 
