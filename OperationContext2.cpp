@@ -2070,10 +2070,12 @@ BOOL CMoveOperation::CreateUndo(BOOL /*IsRedo*/)
 	pUndo->m_SrcPos = m_DstPos;
 	pUndo->m_SrcEnd = m_DstStart;
 	pUndo->m_SrcStart = m_DstEnd;
+	pUndo->m_SrcChan = m_DstChan;
 
 	pUndo->m_DstPos = m_SrcPos;
 	pUndo->m_DstEnd = m_SrcStart;
 	pUndo->m_DstStart = m_SrcEnd;
+	pUndo->m_DstChan = m_SrcChan;
 
 	if (pUndo->m_DstStart < pUndo->m_SrcStart)
 	{
@@ -2483,36 +2485,20 @@ void CRestoreTrimmedOperation::DeInit()
 
 ////////////// CInitChannels
 CInitChannels::CInitChannels(CWaveSoapFrontDoc * pDoc,
-							CWaveFile & File, SAMPLE_POSITION Start, SAMPLE_POSITION End, CHANNEL_MASK Channels)
+							CWaveFile & File, SAMPLE_INDEX Start, SAMPLE_INDEX End, CHANNEL_MASK Channels)
 	: BaseClass(pDoc, _T(""), 0, _T(""))
 {
-	m_DstFile = File;
-	m_SrcFile = File;
-
-	m_DstStart = Start;
-	m_SrcStart = Start;
-
-	m_DstEnd = End;
-	m_SrcEnd = End;
-
-	m_SrcPos = Start;
-	m_DstPos = Start;
-
-	m_SrcChan = Channels;
-	m_DstChan = Channels;
-
 	m_ReturnBufferFlags |= CDirectFile::ReturnBufferDirty;
+
+	InitDestination(File, Start, End, Channels, FALSE);
 }
 
 BOOL CInitChannels::PrepareUndo()
 {
-	m_SrcFile = pDocument->m_WavFile;
 	m_DstFile = pDocument->m_WavFile;
 
-	m_SrcEnd = m_SrcPos;
 	m_DstEnd = m_DstPos;
 
-	m_SrcPos = m_SrcStart;
 	m_DstPos = m_DstStart;
 
 	return TRUE;
@@ -2520,10 +2506,8 @@ BOOL CInitChannels::PrepareUndo()
 
 void CInitChannels::UnprepareUndo()
 {
-	m_SrcFile.Close();
 	m_DstFile.Close();
 
-	m_SrcPos = m_SrcEnd;
 	m_DstPos = m_DstEnd;    //??
 }
 
@@ -2536,7 +2520,7 @@ BOOL CInitChannels::CreateUndo(BOOL /*IsRedo*/)
 	}
 
 	m_UndoChain.InsertTail(new CInitChannelsUndo(pDocument,
-												m_SrcStart, m_SrcEnd, m_SrcChan));
+												m_DstStart, m_DstEnd, m_DstChan));
 	return TRUE;
 }
 
@@ -2548,7 +2532,6 @@ BOOL CInitChannels::ProcessBuffer(void * buf, size_t BufferLength,
 	WAVE_SAMPLE * pDst = (WAVE_SAMPLE *) buf;
 
 	int nChannels = m_DstFile.Channels();
-	//CHANNEL_MASK FileChannels = m_DstFile.ChannelsMask();
 
 	NUMBER_OF_SAMPLES nSamples = BufferLength / sizeof pDst[0];
 
