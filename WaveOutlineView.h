@@ -18,6 +18,7 @@ protected:
 
 // Attributes
 public:
+	CWaveSoapFrontDoc* GetDocument();
 
 // Operations
 public:
@@ -28,6 +29,7 @@ public:
 protected:
 	virtual void OnDraw(CDC* pDC);      // overridden to draw this view
 	virtual void OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint);
+	virtual BOOL PreCreateWindow(CREATESTRUCT& cs);
 	//}}AFX_VIRTUAL
 
 // Implementation
@@ -41,12 +43,18 @@ protected:
 	// Generated message map functions
 protected:
 	//{{AFX_MSG(CWaveOutlineView)
-	// NOTE - the ClassWizard will add and remove member functions here.
+	afx_msg int OnMouseActivate(CWnd* pDesktopWnd, UINT nHitTest, UINT message);
+	afx_msg BOOL OnEraseBkgnd(CDC* pDC);
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 };
 
 /////////////////////////////////////////////////////////////////////////////
+
+#ifndef _DEBUG  // debug version in WaveSoapFrontView.cpp
+inline CWaveSoapFrontDoc* CWaveOutlineView::GetDocument()
+{ return (CWaveSoapFrontDoc*)m_pDocument; }
+#endif
 
 //{{AFX_INSERT_LOCATION}}
 // Microsoft Visual C++ will insert additional declarations immediately before the previous line.
