@@ -271,7 +271,7 @@ public:
 	int m_NumOfBands;    // 2-MaxNumberOfEqualizerBands
 	// 2 channels, 2 prev input samples for each filter
 	// and 2 prev output samples
-	double m_PrevSamples[2][MaxNumberOfEqualizerBands][4];
+	double m_PrevSamples[MAX_NUMBER_OF_CHANNELS][MaxNumberOfEqualizerBands][4];
 
 	virtual BOOL ProcessBuffer(void * buf, size_t len, SAMPLE_POSITION offset, BOOL bBackward = FALSE);
 	virtual BOOL Init();
@@ -298,17 +298,17 @@ public:
 	// if order==0, no filter
 	int     m_nLpfOrder;    // low pass filter order
 	double m_LpfCoeffs[MaxFilterOrder][6];
-	double m_PrevLpfSamples[2][MaxFilterOrder][4];
+	double m_PrevLpfSamples[MAX_NUMBER_OF_CHANNELS][MaxFilterOrder][4];
 
 	// results of the filter sections are ADDED
 	int     m_nHpfOrder;    // high pass filter order
 	double m_HpfCoeffs[MaxFilterOrder][6];
-	double m_PrevHpfSamples[2][MaxFilterOrder][4];
+	double m_PrevHpfSamples[MAX_NUMBER_OF_CHANNELS][MaxFilterOrder][4];
 
 	// results of the filter sections are MULTIPLIED
 	int     m_nNotchOrder;
 	double m_NotchCoeffs[MaxFilterOrder][6];
-	double m_PrevNotchSamples[2][MaxFilterOrder][4];
+	double m_PrevNotchSamples[MAX_NUMBER_OF_CHANNELS][MaxFilterOrder][4];
 
 	virtual BOOL ProcessBuffer(void * buf, size_t len, SAMPLE_POSITION offset, BOOL bBackward = FALSE);
 	virtual BOOL Init();
