@@ -108,9 +108,9 @@ public:
 	virtual BOOL IsModified();
 // Operations
 public:
-	void IncrementModified(BOOL DeleteRedo = TRUE);
+	void IncrementModified(BOOL DeleteRedo = TRUE, int KeepPreviousUndo = -1);
 	void DecrementModified();   // called at UNDO
-	virtual void SetModifiedFlag(BOOL bModified = TRUE);
+	virtual void SetModifiedFlag(BOOL bModified = TRUE, int KeepPreviousUndo = -1);
 	void AddUndoRedo(class CUndoRedoContext * pUndo);
 	void EnableUndo(BOOL bEnable = TRUE);
 	void EnableRedo(BOOL bEnable = TRUE);
@@ -349,6 +349,8 @@ protected:
 	afx_msg void OnFileSaveCopyAs();
 	afx_msg void OnUpdateToolsInterpolate(CCmdUI* pCmdUI);
 	afx_msg void OnToolsInterpolate();
+	afx_msg void OnUpdateProcessDoUlf(CCmdUI* pCmdUI);
+	afx_msg void OnProcessDoUlf();
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 
