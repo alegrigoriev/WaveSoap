@@ -104,9 +104,12 @@ END_MESSAGE_MAP()
 BEGIN_MESSAGE_MAP(CWaveSoapFrontApp, CWinApp)
 	//{{AFX_MSG_MAP(CWaveSoapFrontApp)
 	ON_COMMAND(ID_APP_ABOUT, OnAppAbout)
-		// NOTE - the ClassWizard will add and remove mapping macros here.
-		//    DO NOT EDIT what you see in these blocks of generated code!
+	ON_COMMAND(ID_EDIT_PASTE_NEW, OnEditPasteNew)
+	ON_UPDATE_COMMAND_UI(ID_EDIT_PASTE_NEW, OnUpdateEditPasteNew)
 	//}}AFX_MSG_MAP
+	// if no documents, Paste will create a new file
+	ON_COMMAND(ID_EDIT_PASTE, OnEditPasteNew)
+	ON_UPDATE_COMMAND_UI(ID_EDIT_PASTE, OnUpdateEditPasteNew)
 	// Standard file based document commands
 	ON_COMMAND(ID_FILE_NEW, CWinApp::OnFileNew)
 	ON_COMMAND(ID_FILE_OPEN, CWinApp::OnFileOpen)
@@ -132,6 +135,7 @@ CWaveSoapFrontApp::CWaveSoapFrontApp()
 	m_DecimalPoint('.'),
 	m_ThousandSeparator(','),
 	m_bUseCountrySpecificNumberAndTime(false),
+	m_bUndoEnabled(true),
 	m_pActiveDocument(NULL)
 {
 	// Place all significant initialization in InitInstance
@@ -201,6 +205,7 @@ BOOL CWaveSoapFrontApp::InitInstance()
 	LoadStdProfileSettings();  // Load standard INI file options (including MRU)
 	Profile.AddItem(_T("Settings"), _T("OpenAsReadOnly"), m_bReadOnly, FALSE);
 	Profile.AddItem(_T("Settings"), _T("OpenInDirectMode"), m_bDirectMode, FALSE);
+	Profile.AddItem(_T("Settings"), _T("UndoEnabled"), m_bUndoEnabled, TRUE);
 
 	if (m_bUseCountrySpecificNumberAndTime)
 	{
@@ -439,7 +444,7 @@ int CWaveSoapFrontApp::ExitInstance()
 	return CWinApp::ExitInstance();
 }
 
-BOOL CWaveSoapFrontApp::QueueOperation(COperationContext * pContext)
+void CWaveSoapFrontApp::QueueOperation(COperationContext * pContext)
 {
 	// add the operation to the tail
 	CSimpleCriticalSectionLock lock(m_cs);
@@ -457,7 +462,6 @@ BOOL CWaveSoapFrontApp::QueueOperation(COperationContext * pContext)
 	m_pLastOp = pContext;
 	SetEvent(m_hThreadEvent);
 
-	return TRUE;
 }
 
 void COperationContext::Retire()
@@ -465,6 +469,7 @@ void COperationContext::Retire()
 	// all context go to retirement list
 	if (m_Flags & OperationContextDontKeepAfterRetire)
 	{
+		InterlockedDecrement( & pDocument->m_OperationInProgress);
 		delete this;
 		return;
 	}
@@ -488,6 +493,7 @@ void COperationContext::Retire()
 
 void COperationContext::PostRetire()
 {
+	InterlockedDecrement( & pDocument->m_OperationInProgress);
 	delete this;
 }
 
@@ -620,7 +626,6 @@ unsigned CWaveSoapFrontApp::_ThreadProc()
 					pContext->GetStatusString() + _T("Completed");
 				pContext->DeInit();
 				pContext->Retire();     // usually deletes it
-				pContext->pDocument->m_OperationInProgress = false;
 				// send a signal to the document, that the operation completed
 				NeedKickIdle = true;    // this will reenable all commands
 			}
@@ -753,7 +758,7 @@ void CWaveSoapFileDialog::OnCheckReadOnly()
 	CWnd * pDirect = GetDlgItem(IDC_CHECK_DIRECT);
 	if (NULL != pRO)
 	{
-		m_bReadOnly = bool(pRO->GetCheck());
+		m_bReadOnly = (0 != pRO->GetCheck());
 		if (NULL != pDirect)
 		{
 			pDirect->EnableWindow( ! m_bReadOnly);
@@ -766,7 +771,7 @@ void CWaveSoapFileDialog::OnCheckDirectMode()
 	CButton * pDirect = (CButton *)GetDlgItem(IDC_CHECK_DIRECT);
 	if (NULL != pDirect)
 	{
-		m_bDirectMode = bool(pDirect->GetCheck());
+		m_bDirectMode = (0 != pDirect->GetCheck());
 	}
 }
 
@@ -1174,3 +1179,30 @@ void SetStatusString(CCmdUI* pCmdUI, const CString & string,
 	pCmdUI->SetText(string);
 }
 
+
+void CWaveSoapFrontApp::OnEditPasteNew()
+{
+	if ( ! m_ClipboardFile.IsOpen())
+	{
+		return;
+	}
+	POSITION pos = m_pDocManager->GetFirstDocTemplatePosition();
+	CDocTemplate* pTemplate = m_pDocManager->GetNextDocTemplate(pos);
+	if (pTemplate != NULL)
+	{
+		m_NewTemplateFile = m_ClipboardFile;
+		TRACE("New file channels=%d\n", m_NewTemplateFile.GetWaveFormat()->nChannels);
+
+		CWaveSoapFrontDoc * pDoc = (CWaveSoapFrontDoc *)pTemplate->OpenDocumentFile(NULL);
+		if (NULL != pDoc)
+		{
+			pDoc->DoEditPaste();
+		}
+		m_NewTemplateFile.Close();
+	}
+}
+
+void CWaveSoapFrontApp::OnUpdateEditPasteNew(CCmdUI* pCmdUI)
+{
+	pCmdUI->Enable(m_ClipboardFile.IsOpen());
+}
