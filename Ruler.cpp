@@ -88,7 +88,7 @@ void CHorizontalRuler::OnSetFocus(CWnd* pOldWnd)
 BOOL CHorizontalRuler::PreCreateWindow(CREATESTRUCT& cs)
 {
 	cs.lpszClass = AfxRegisterWndClass(CS_VREDRAW | CS_DBLCLKS, AfxGetApp()->LoadStandardCursor(IDC_SIZEWE),
-										(HBRUSH)GetStockObject(LTGRAY_BRUSH), NULL);
+										GetSysColorBrush(COLOR_MENU), NULL);
 
 	return CScaledScrollView::PreCreateWindow(cs);
 }
@@ -238,13 +238,14 @@ void CVerticalRuler::OnSetFocus(CWnd* pOldWnd)
 BOOL CVerticalRuler::PreCreateWindow(CREATESTRUCT& cs)
 {
 	cs.lpszClass = AfxRegisterWndClass(CS_HREDRAW | CS_DBLCLKS, AfxGetApp()->LoadStandardCursor(IDC_SIZENS),
-										(HBRUSH)GetStockObject(LTGRAY_BRUSH), NULL);
+										GetSysColorBrush(COLOR_MENU), NULL);
 
 	return CScaledScrollView::PreCreateWindow(cs);
 }
 void CVerticalRuler::OnMouseMove(UINT nFlags, CPoint point)
 {
 	// TODO: Add your message handler code here and/or call default
+	//TRACE("CVerticalRuler::OnMouseMove: Y=%d, PrevY = %d\n", point.y, PrevMouseY);
 	CView::OnMouseMove(nFlags, point);
 	if (WM_LBUTTONDOWN == ButtonPressed
 		&& PrevMouseY != point.y)
@@ -346,4 +347,13 @@ int CHorizontalRuler::OnCreate(LPCREATESTRUCT lpCreateStruct)
 	ShowScrollBar(SB_VERT, FALSE);
 
 	return 0;
+}
+
+int CHorizontalRuler::CalculateHeight()
+{
+	CWindowDC dc(NULL);
+	CFont * pOldFont = (CFont * )dc.SelectStockObject(ANSI_VAR_FONT);
+	int height = dc.GetTextExtent("0", 1).cy;
+	dc.SelectObject(pOldFont);
+	return height + 9;
 }

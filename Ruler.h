@@ -19,7 +19,7 @@ protected:
 
 // Attributes
 public:
-	static int CalculateHeight() { return GetSystemMetrics(SM_CYMENU); }
+	static int CalculateHeight();
 // Operations
 public:
 
