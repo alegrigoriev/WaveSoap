@@ -489,6 +489,176 @@ int CHumRemoval::ProcessSound(__int16 const * pInBuf, __int16 * pOutBuf,
 	return nSamples;
 }
 
+void InterpolateBigGap(CBackBuffer<int, int> & data, int nLeftIndex, int ClickLength)
+{
+	float x[1024];
+	if (ClickLength > 256)
+	{
+		return;
+	}
+	// FFT order is >=64 and >= ClickLength * 4
+	// take 2 FFT in [nLeftIndex-FftOrder... nLeftIndex-1] range
+	// and [nLeftIndex-FftOrder-ClickLength...nLeftIndex-ClickLength-1] offset
+	// Find next FFT estimation as FFT2*(FFT2/FFT1/abs(FFT2/FFT1))
+	// Then take 2 FFT in [nLeftIndex+ClickLength...nLeftIndex+ClickLength+FftOrder-1]
+	// and [nLeftIndex+2*ClickLength...nLeftIndex+2*ClickLength+FftOrder-1]
+	// and find another FFT estimation. Perform backward FFT and combine source and
+	// FFT results using squared-sine window
+	complex<float> y1[513];
+	complex<float> y2[513];
+	float xl[512];  // to save extrapolation from the left neighborhood
+
+	int FftOrder = 64;
+	while (FftOrder < ClickLength * 4)
+	{
+		FftOrder +=FftOrder;
+	}
+	int Offset = FftOrder/4;
+	int i;
+	for (i = 0; i < FftOrder; i++)
+	{
+		x[i] = data[nLeftIndex - FftOrder + i];
+	}
+	FastFourierTransform(x, y2, FftOrder);
+	for (i = 0; i < FftOrder; i++)
+	{
+		x[i] = data[nLeftIndex - ClickLength - FftOrder + i];
+	}
+	FastFourierTransform(x, y1, FftOrder);
+	// calculate another set of coefficients
+	// leave only those frequencies with up to ClickLength/10 period
+	int nMaxFreq = FftOrder * 5 / ClickLength;
+	if (nMaxFreq > FftOrder) nMaxFreq = FftOrder;
+	for (i = 1; i <= nMaxFreq; i++)
+	{
+		if (y1[i] != complex<float>(0., 0.))
+		{
+#if 0
+			complex<float> rot = y2[i] / y1[i];
+			rot /= abs(rot);
+			y2[i] = y2[i] * rot;
+#else
+			y2[i] *= y2[i] / y1[i];
+#endif
+		}
+	}
+	// extrapolate DC
+	y2[0] += y2[0] - y1[0];
+	// zero all higher frequencies
+	for ( ; i <= FftOrder; i++)
+	{
+		y2[i] = complex<float>(0., 0.);
+	}
+	FastInverseFourierTransform(y2, x, FftOrder);
+	// save the result
+	for (i = 0; i < ClickLength * 2; i++)
+	{
+		xl[i] = x[FftOrder-ClickLength * 2+i];
+	}
+
+	// do calculations for the right side neighborhood
+	for (i = 0; i < FftOrder; i++)
+	{
+		x[i] = data[nLeftIndex + ClickLength + i];
+	}
+	FastFourierTransform(x, y2, FftOrder);
+	for (i = 0; i < FftOrder; i++)
+	{
+		x[i] = data[nLeftIndex + ClickLength*2 + i];
+	}
+	FastFourierTransform(x, y1, FftOrder);
+	// calculate another set of coefficients
+	// leave only those frequencies with up to ClickLength/10 period
+
+	for (i = 1; i <= nMaxFreq; i++)
+	{
+		if (y1[i] != complex<float>(0., 0.))
+		{
+			complex<float> rot = y2[i] / y1[i];
+			rot /= abs(rot);
+			y2[i] = y2[i] * rot;
+		}
+	}
+	// extrapolate DC
+	y2[0] += y2[0] - y1[0];
+	// zero all higher frequencies
+	for ( ; i <= FftOrder; i++)
+	{
+		y2[i] = complex<float>(0., 0.);
+	}
+	FastInverseFourierTransform(y2, x, FftOrder);
+
+	// the result is in x[]
+
+#if 0
+// combine the source and interpolations, using squared sine window
+	for (i = 0; i < ClickLength; i++)
+	{
+		double W = 0.5 + 0.5 * cos(M_PI / ClickLength * (i + 0.5));
+		// click area:
+		data[nLeftIndex + i] = int(xl[i + ClickLength] * W + x[i] * (1. - W));
+		// Left neighborhood:
+		data[nLeftIndex - ClickLength + i] =
+			int(data[nLeftIndex - ClickLength + i] * W + xl[i] * (1. - W));
+		// Right neighborhood:
+		data[nLeftIndex + ClickLength + i] =
+			int(data[nLeftIndex + ClickLength + i] * (1. - W) + x[i+ClickLength] * W);
+	}
+#elif 1
+	// For now, just replace the samples to evaluate
+	for (i = 0; i < ClickLength * 2; i++)
+	{
+		data[nLeftIndex+i] =
+			int(x[i]);
+	}
+#else
+	// For now, just replace the samples to evaluate
+	for (i = 0; i < ClickLength * 2; i++)
+	{
+		data[nLeftIndex-ClickLength+i] =
+			int(xl[i]);
+	}
+#endif
+}
+
+void InterpolateGap(CBackBuffer<int, int> & data, int nLeftIndex, int ClickLength)
+{
+	//float x[1024];
+	// Perform spike interpolation
+	// Use interpolating polynom by Lagrange
+	// Zero point == nLeftIndex
+	// Take 5 points to left with ClickLength/2 step
+	// and 5 points to right
+	double Y[10], X[10];
+	int n;
+	for (n = 0; n < 5; n++)
+	{
+		X[4 - n] = - (ClickLength / 2 * n + 1);
+		Y[4 - n] = data[nLeftIndex - (ClickLength / 2 * n + 1)];
+		X[n + 5] = ClickLength + ClickLength / 2 * n;
+		Y[n + 5] = data[nLeftIndex + ClickLength + ClickLength / 2 * n];
+	}
+	// perform Lagrange interpolation
+	for (n = 0; n < ClickLength; n++)
+	{
+		double x = n;
+		double y = 0;
+		for (int k = 0; k < 10; k++)
+		{
+			double a = Y[k];
+			for (int j = 0; j < 10; j++)
+			{
+				if (j != k)
+				{
+					a *= (x - X[j]) / (X[k] - X[j]);
+				}
+			}
+			y += a;
+		}
+		data[nLeftIndex + n] = y;
+	}
+}
+
 int CClickRemoval::ProcessSound(__int16 const * pInBuf, __int16 * pOutBuf,
 								int nSamples, int nChans)
 {
@@ -568,16 +738,21 @@ int CClickRemoval::ProcessSound(__int16 const * pInBuf, __int16 * pOutBuf,
 			}
 			if (nClickIndex <= PredefinedClicks.GetUpperBound())
 			{
-				nLeftIndex = PredefinedClicks[nClickIndex].Position - (PrevIndex - ANALYZE_LAG);
-				ClickLength = PredefinedClicks[nClickIndex].Length[ch];
-				nRightIndex = nLeftIndex + ClickLength;
-				if (ClickLength != 0
-					&& nLeftIndex >= 0
-					&& nRightIndex < ANALYZE_LAG)
+				if (PredefinedClicks[nClickIndex].Position == PrevIndex - ANALYZE_LAG
+					&& 0 != PredefinedClicks[nClickIndex].Length[ch])
 				{
+#ifdef _DEBUG
+					if (0) if (ch == 0 && 45321070 == PredefinedClicks[nClickIndex].Position)
+						{
+							__asm int 3
+						}
+#endif
+					nLeftIndex = 0;
+					ClickLength = PredefinedClicks[nClickIndex].Length[ch];
+					nRightIndex = nLeftIndex + ClickLength;
 					// force interpolation on this position
 					ClickFound = TRUE;
-					m_NextPossibleClickPosition[ch] = PrevIndex + CLICK_LENGTH;
+					m_NextPossibleClickPosition[ch] = PrevIndex + ClickLength * 2;
 					nClickIndex++;
 				}
 			}
@@ -698,39 +873,13 @@ int CClickRemoval::ProcessSound(__int16 const * pInBuf, __int16 * pOutBuf,
 
 			if (ClickFound && ! m_PassTrough)
 			{
-
-				// Perform spike interpolation
-				// Use interpolating polynom by Lagrange
-				// Zero point == nLeftIndex
-				// Take 5 points to left with ClickLength/2 step
-				// and 5 points to right
-				double Y[10], X[10];
-				int n;
-				for (n = 0; n < 5; n++)
+				if (ClickLength <= 16)
 				{
-					X[4 - n] = - (ClickLength / 2 * n + 1);
-					Y[4 - n] = m_prev[ch][nLeftIndex - (ClickLength / 2 * n + 1)];
-					X[n + 5] = ClickLength + ClickLength / 2 * n;
-					Y[n + 5] = m_prev[ch][nLeftIndex + ClickLength + ClickLength / 2 * n];
+					InterpolateGap(m_prev[ch], nLeftIndex, ClickLength);
 				}
-				// perform Lagrange interpolation
-				for (n = 0; n < ClickLength; n++)
+				else
 				{
-					double x = n;
-					double y = 0;
-					for (int k = 0; k < 10; k++)
-					{
-						double a = Y[k];
-						for (int j = 0; j < 10; j++)
-						{
-							if (j != k)
-							{
-								a *= (x - X[j]) / (X[k] - X[j]);
-							}
-						}
-						y += a;
-					}
-					m_prev[ch][nLeftIndex + n] = y;
+					InterpolateBigGap(m_prev[ch], nLeftIndex, ClickLength);
 				}
 			}
 #if 0
@@ -741,15 +890,15 @@ int CClickRemoval::ProcessSound(__int16 const * pInBuf, __int16 * pOutBuf,
 			}
 #endif
 			// output is delayed by 64 samples
-			if (PrevIndex > ANALYZE_LAG)
+			if (PrevIndex > ANALYZE_LAG*2-2)
 			{
 #if 1
 				pOutBuf[nStoreIndex * nChans] =
-					__int16(m_prev[ch][ -1 /*m_nStoredSamples + nStoreIndex - PrevIndex + ANALYZE_LAG*/]);
+					__int16(m_prev[ch][ 1-ANALYZE_LAG /*m_nStoredSamples + nStoreIndex - PrevIndex + ANALYZE_LAG*/]);
 #else
 				// store 3rd derivative
 				pOutBuf[nStoreIndex * nChans] =
-					__int16(m_prev3[ch][-1]);
+					__int16(m_prev3[ch][1-ANALYZE_LAG]);
 #endif
 				nStoreIndex++;
 			}
@@ -1165,7 +1314,7 @@ int CNoiseReduction::ProcessSound(__int16 const * pInBuf, __int16 * pOutBuf,
 			// total power (original and after processing)
 			// max power in band, min power in band,
 			// max masking, min masking
-			if (1) {
+			if (0) {
 				double TotalPower1=0, TotalPower2=0;
 				double MaxBandPower1=0, MaxBandPower2=0;
 				double MinBandPower1=1.e10,MinBandPower2=1.e10;
