@@ -710,6 +710,9 @@ public:
 	BOOL InitDestination(CWaveFile & DstFile, SAMPLE_INDEX StartSample, SAMPLE_INDEX EndSample,
 						CHANNEL_MASK chan, BOOL NeedUndo);
 
+	BOOL MakeCompatibleFormat(WAVEFORMATEX const * pSrcWf, WAVEFORMATEX const * pDstWf,
+							CHANNEL_MASK ChannelsToUse);
+
 	virtual BOOL WasClipped() const
 	{
 		return m_ProcBatch.WasClipped();
