@@ -725,6 +725,7 @@
 #define IDS_INPUT_NAME_FREQUENCY_ARGUMENT4 33098
 #define IDS_INPUT_NAME_FREQUENCY_ARGUMENT1 33098
 #define IDS_MARKER_REGION_CHANGE        33099
+#define IDS_SAVE_SELECTION_TITLE        33100
 #define ID_FILE_PROPERTIES              40000
 #define ID_VIEW_ZOOMVERT_NORMAL         40001
 #define ID_VIEW_ZOOMIN_HOR_FULL         40002
@@ -829,6 +830,7 @@
 #define IDC_EDIT_WAVE_MARKER            40127
 #define IDC_EDIT_MARKER_REGION          40128
 #define IDC_EDIT_WAVE_REGION            40131
+#define ID_SAVE_SAVESELECTIONAS         40132
 #define ID_TOOLS_SYNTHESIS              65535
 #define IDC_END_LABEL                   65535
 #define IDC_LENGTH_LABEL                65535
@@ -839,7 +841,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_3D_CONTROLS                     1
 #define _APS_NEXT_RESOURCE_VALUE        195
-#define _APS_NEXT_COMMAND_VALUE         40132
+#define _APS_NEXT_COMMAND_VALUE         40135
 #define _APS_NEXT_CONTROL_VALUE         1264
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
