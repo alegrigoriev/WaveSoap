@@ -201,6 +201,7 @@ void CWaveSoapFrontView::DrawHorizontalWithSelection(CDC * pDC,
 			pDC->SelectObject(NormalPen);
 			pDC->LineTo(SelectionLeft, Y);
 		}
+
 		pDC->SelectObject(SelectedPen);
 		pDC->LineTo(SelectionRight, Y);
 
@@ -326,7 +327,34 @@ void CWaveSoapFrontView::OnDraw(CDC* pDC)
 
 		if (nNumberOfPoints > 0)
 		{
+			CWaveFile::InstanceDataWav * pInst = pDoc->m_WavFile.GetInstanceData();
+
+			//this bitmap is used to draw a dashed line
+			CBitmap bmp;
+			int const DashLength = 4;
+			static const unsigned char pattern[] =
+			{
+				0xFF, 0xFF,  // aligned to WORD
+				0xFF, 0xFF,  // aligned to WORD
+				0x00, 0,
+				0x00, 0,
+				0xFF, 0xFF,  // aligned to WORD
+				0xFF, 0xFF,  // aligned to WORD
+				0x00, 0,
+				0x00, 0,
+				0xFF, 0xFF,  // aligned to WORD
+				0xFF, 0xFF,  // aligned to WORD
+				0x00, 0,
+				0x00, 0,
+			};
+
+			// Windows98 can only use (at least?) 8x8 bitmap for a brush
+			bmp.CreateBitmap(8, 8, 1, 1, pattern);
+
+			CBrush DashBrush( & bmp);
+
 			ppArray = new POINT[nNumberOfPoints][2];
+
 			if (ppArray)
 				for (int ch = 0; ch < nChannels; ch++)
 				{
@@ -522,6 +550,7 @@ void CWaveSoapFrontView::OnDraw(CDC* pDC)
 							pDC->LineTo(pp[0][1]);
 						}
 					}
+
 					if (ch + 1 < nChannels)
 					{
 						// draw channel separator line
@@ -530,52 +559,56 @@ void CWaveSoapFrontView::OnDraw(CDC* pDC)
 													& ChannelSeparatorPen,
 													& SelectedChannelSeparatorPen, ALL_CHANNELS);
 					}
+
+					DashBrush.UnrealizeObject();
+
+					// Raster OP: Destination AND brush pattern
+					DWORD const DstAndBrushRop = 0x00A000C9;
+
+					pDC->SetBrushOrg(0, WaveToY(-32768) % DashLength);
+
+					//TRACE("BrushOrg = %d\n", long((m_WaveOffsetY + 0x10000) * m_VerticalScale) % DashLength);
+
+					CGdiObjectSaveT<CBrush> OldBrush(pDC, pDC->SelectObject( & DashBrush));
+
+					for (CuePointVectorIterator i = pInst->m_CuePoints.begin();
+						i < pInst->m_CuePoints.end(); i++)
+					{
+						long x = WorldToWindowXfloor(i->dwSampleOffset);
+						WaveRegionMarker * pMarker = pInst->GetRegionMarker(i->CuePointID);
+
+						if (x >= cr.left
+							&& x <= cr.right)
+						{
+							if (pMarker != NULL
+								&& pMarker->SampleLength != 0)
+							{
+								// draw mark of the region begin
+								pDC->PatBlt(x, ChanR.top, 1, ChanR.bottom - ChanR.top, DstAndBrushRop);
+							}
+							else
+							{
+								// draw marker
+								pDC->PatBlt(x, ChanR.top, 1, ChanR.bottom - ChanR.top, DstAndBrushRop);
+							}
+						}
+
+						if (pMarker != NULL
+							&& pMarker->SampleLength != 0)
+						{
+							x = WorldToWindowXfloor(i->dwSampleOffset + pMarker->SampleLength);
+
+							if (x >= cr.left
+								&& x <= cr.right)
+							{
+								// draw mark of the region end
+								pDC->PatBlt(x, ChanR.top, 1, ChanR.bottom - ChanR.top, DstAndBrushRop);
+							}
+						}
+					}
 				}
 		}
 
-		CWaveFile::InstanceDataWav * pInst = pDoc->m_WavFile.GetInstanceData();
-
-		CPen DashedPen(PS_DASH, 1, COLORREF(0));  // black dash
-		pDC->SelectObject( & DashedPen);
-
-		for (CuePointVectorIterator i = pInst->m_CuePoints.begin();
-			i < pInst->m_CuePoints.end(); i++)
-		{
-			long x = WorldToWindowXfloor(i->dwSampleOffset);
-			WaveRegionMarker * pMarker = pInst->GetRegionMarker(i->CuePointID);
-
-			if (x >= cr.left
-				&& x <= cr.right)
-			{
-				if (pMarker != NULL
-					&& pMarker->SampleLength != 0)
-				{
-					// draw mark of the region begin
-					pDC->MoveTo(x, cr.top);
-					pDC->LineTo(x, cr.bottom);
-				}
-				else
-				{
-					// draw marker
-					pDC->MoveTo(x, cr.top);
-					pDC->LineTo(x, cr.bottom);
-				}
-			}
-
-			if (pMarker != NULL
-				&& pMarker->SampleLength != 0)
-			{
-				x = WorldToWindowXfloor(i->dwSampleOffset + pMarker->SampleLength);
-
-				if (x >= cr.left
-					&& x <= cr.right)
-				{
-					// draw mark of the region end
-					pDC->MoveTo(x, cr.top);
-					pDC->LineTo(x, cr.bottom);
-				}
-			}
-		}
 	}
 	catch (CResourceException * e)
 	{
@@ -1090,108 +1123,104 @@ BOOL CWaveSoapFrontView::OnEraseBkgnd(CDC* pDC)
 	CThisApp * pApp = GetApp();
 	ThisDoc * pDoc = GetDocument();
 	RemoveSelectionRect();
+
 	CBrush backBrush(pApp->m_WaveBackground);
 
-	CRect r;
-	GetClientRect(r);
+	CRect ClipRect;
+	pDC->GetClipBox(ClipRect);
 
-	CRect gr = r;
 	int SelBegin = WorldToWindowXfloor(pDoc->m_SelectionStart);
 	int SelEnd = WorldToWindowXfloor(pDoc->m_SelectionEnd);
 	int FileEnd = WorldToWindowXceil(pDoc->WaveFileSamples());
 
-	if (FileEnd < r.right)
+	try
 	{
-		CBitmap bmp;
-		static const unsigned char pattern[] =
+		for (NUMBER_OF_CHANNELS ch = 0; ch < pDoc->WaveChannels(); ch++)
 		{
-			0x55, 0,  // aligned to WORD
-			0xAA, 0,
-			0x55, 0,
-			0xAA, 0,
-			0x55, 0,
-			0xAA, 0,
-			0x55, 0,
-			0xAA, 0,
-			0x55, 0,
-		};
-		try {
-			bmp.CreateBitmap(8, 8, 1, 1, pattern + 2 * (FileEnd & 1));
-			CBrush GrayBrush( & bmp);
-			r.right = FileEnd;
-			gr.left = FileEnd;
-			pDC->FillRect(gr, & GrayBrush);
-		}
-		catch (CResourceException * e)
-		{
-			TRACE("CResourceException\n");
-			e->Delete();
-		}
-	}
-	if (pDoc->m_SelectionEnd != pDoc->m_SelectionStart
-		&& SelEnd == SelBegin)
-	{
-		SelEnd++;
-	}
+			CRect ChanR;
 
-	if (SelBegin >= r.right
-		|| SelEnd < r.left
-		|| pDoc->m_SelectionStart >= pDoc->m_SelectionEnd)
-	{
-		// erase using only one brush
-		pDC->FillRect(r, & backBrush);
-	}
-	else
-	{
-		if (SelBegin > r.left)
-		{
-			CRect r1 = r;
-			r1.right = SelBegin;
-			pDC->FillRect(r1, & backBrush);
-		}
-		else
-		{
-			SelBegin = r.left;
-		}
+			GetChannelRect(ch, ChanR);
 
-		if (SelEnd < r.right)
-		{
-			CRect r1 = r;
-			r1.left = SelEnd;
-			pDC->FillRect(r1, & backBrush);
-		}
-		else
-		{
-			SelEnd = r.right;
-		}
-		r.left = SelBegin;
-		r.right = SelEnd;
-		CBrush SelectedBackBrush(pApp->m_SelectedWaveBackground);
-
-		if (pDoc->m_WavFile.AllChannels(pDoc->m_SelectedChannel))
-		{
-			pDC->FillRect(r, & SelectedBackBrush);
-		}
-		else
-		{
-			// only one channel is selected
-			int Separator = WorldToWindowY(0.);
-			CRect r1 = r;
-			CRect r2 = r;
-
-			if (SPEAKER_FRONT_LEFT & pDoc->m_SelectedChannel)
+			if (FileEnd < ChanR.right)
 			{
-				r1.bottom = Separator;
-				r2.top = Separator;
+				CBitmap bmp;
+				static const WORD pattern[] =
+				{
+					0x5555,
+					0xAAAA,
+					0x5555,
+					0xAAAA,
+					0x5555,
+					0xAAAA,
+					0x5555,
+					0xAAAA,
+					0x5555,
+				};
+
+				WaveCalculate WaveToY(m_WaveOffsetY, m_VerticalScale, ChanR.top, ChanR.bottom);
+				int BrushOffset = (FileEnd + WaveToY(-32768)) % 2;
+
+				// Windows98 can only use 8x8 bitmap for a brush
+				bmp.CreateBitmap(8, 8, 1, 1, pattern + BrushOffset);
+
+				CBrush GrayBrush( & bmp);
+				CRect GrayRect = ChanR;
+				ChanR.right = FileEnd;
+				GrayRect.left = FileEnd;
+				// set background and foreground color
+				pDC->FillRect(GrayRect, & GrayBrush);
+			}
+
+			if (pDoc->m_SelectionEnd != pDoc->m_SelectionStart
+				&& SelEnd == SelBegin)
+			{
+				SelEnd++;
+			}
+
+			if (SelBegin >= ChanR.right
+				|| SelEnd < ChanR.left
+				|| pDoc->m_SelectionStart >= pDoc->m_SelectionEnd
+				|| 0 == ((1 << ch) & pDoc->m_SelectedChannel))
+			{
+				// erase using only one brush
+				pDC->FillRect(ChanR, & backBrush);
 			}
 			else
 			{
-				r2.bottom = Separator;
-				r1.top = Separator;
+				if (SelBegin > ChanR.left)
+				{
+					CRect r1 = ChanR;
+					r1.right = SelBegin;
+					pDC->FillRect(r1, & backBrush);
+				}
+				else
+				{
+					SelBegin = ChanR.left;
+				}
+
+				if (SelEnd < ChanR.right)
+				{
+					CRect r1 = ChanR;
+					r1.left = SelEnd;
+					pDC->FillRect(r1, & backBrush);
+				}
+				else
+				{
+					SelEnd = ChanR.right;
+				}
+
+				ChanR.left = SelBegin;
+				ChanR.right = SelEnd;
+				CBrush SelectedBackBrush(pApp->m_SelectedWaveBackground);
+
+				pDC->FillRect(ChanR, & SelectedBackBrush);
 			}
-			pDC->FillRect(r1, & SelectedBackBrush);
-			pDC->FillRect(r2, & backBrush);
 		}
+	}
+	catch (CResourceException * e)
+	{
+		TRACE("CResourceException\n");
+		e->Delete();
 	}
 	return TRUE;
 }
