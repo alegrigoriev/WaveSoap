@@ -96,9 +96,9 @@ struct MarkerRegionUpdateInfo : public CObject
 
 struct NoiseThresholdUpdateInfo : public CObject
 {
-	double ThresholdLowDb;
-	double ThresholdHighDb;
-	double BeginFrequencyHz;
+	struct NoiseReductionParameters * pNoiseReductionParameters;
+	int FftOrder;
+	long SampleRate;
 };
 
 // Active document have highest priority for disk-intensive operations.

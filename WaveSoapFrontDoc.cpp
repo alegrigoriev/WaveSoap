@@ -4692,20 +4692,22 @@ void CWaveSoapFrontDoc::OnProcessNoiseReduction()
 				(pFrame->m_wClient.GetDlgItem(CWaveMDIChildClient::SpectrumSectionViewID));
 			if (NULL != pSectionView)
 			{
-				pSectionView->m_bShowNoiseThreshold = TRUE;
-				pSectionView->m_dNoiseThresholdLow = dlg.GetNoiseThresholdLow();
-				pSectionView->m_dNoiseThresholdHigh = dlg.GetNoiseThresholdHigh();
-				pSectionView->m_nBeginFrequency = int(dlg.GetLowerFrequency());
 
 				if (! pFrame->m_wClient.m_bShowSpectrumSection)
 				{
 					pFrame->m_wClient.m_bShowSpectrumSection = TRUE;
 					pFrame->m_wClient.RecalcLayout();   // would invalidate
 				}
-				else
-				{
-					pSectionView->Invalidate();
-				}
+
+				NoiseThresholdUpdateInfo info;
+				NoiseReductionParameters NrParms;
+				dlg.GetNoiseReductionData( & NrParms);
+
+				info.FftOrder = dlg.GetNoiseReductionFftOrder();
+				info.pNoiseReductionParameters = & NrParms;
+				info.SampleRate = WaveSampleRate();
+
+				UpdateAllViews(NULL, UpdateNoiseThresholdChanged, & info);
 			}
 		}
 		return;
