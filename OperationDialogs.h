@@ -252,6 +252,7 @@ public:
 // Dialog Data
 	//{{AFX_DATA(CDcOffsetDialog)
 	enum { IDD = IDD_DIALOG_DC_OFFSET };
+	CSpinButtonCtrl	m_OffsetSpin;
 	BOOL	m_b5SecondsDC;
 	BOOL	m_bUndo;
 	int		m_nDcOffset;
@@ -283,6 +284,7 @@ protected:
 	afx_msg void OnButtonSelection();
 	afx_msg void OnRadioDcSelect();
 	afx_msg void OnRadioAdjustSelectEdit();
+	virtual BOOL OnInitDialog();
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 };
