@@ -94,6 +94,18 @@ enum
 	Mp3EncoderBlade = 3,
 };
 
+enum
+{
+	LameEncBitrate64 = 0,
+	LameEncBitrate96,
+	LameEncBitrate128,
+	LameEncBitrate160,
+	LameEncBitrate192,
+	LameEncBitrate256,
+	LameEncBitrate320,
+
+};
+
 class CWaveSoapFileSaveDialog : public CFileDialogWithHistory
 {
 public:
@@ -112,6 +124,7 @@ public:
 		m_SelectedLameMp3Bitrate(128),
 		m_bCompatibleFormatsOnly(TRUE),
 		m_FileType(SoundFileWav),
+		m_SelectedRawFormat(RawSoundFilePcm16Lsb),
 		m_pDocument(NULL)
 	{
 		memset(m_Mp3Encoders, 0, sizeof m_Mp3Encoders);
@@ -125,11 +138,13 @@ public:
 	DWORD m_SelectedTag;
 	int m_SelectedFormat;
 	int m_FileType;// Wav, Mp3, wma, raw...
+	int m_SelectedRawFormat;
 
 	int m_SelectedMp3Encoder;
 	int m_Mp3Encoders[4];
 	int m_NumOfMp3Encoders;
 	int m_SelectedLameMp3Bitrate;
+	int GetLameEncBitrate() const;
 
 	BOOL m_bCompatibleFormatsOnly;
 
@@ -184,8 +199,9 @@ public:
 	virtual UINT OnShareViolation( LPCTSTR lpszPathName );
 
 	void ShowDlgItem(UINT nID, int nCmdShow);
-	void FillFormatArray();
+	void FillFormatArray(int nSel);
 	void FillFormatTagArray();
+	void FillFormatTagCombo();
 
 	void FillMp3EncoderArray();
 	void FillMp3FormatArray();
