@@ -1075,3 +1075,56 @@ void CCommitFileSaveContext::PostRetire(BOOL bChildContext)
 	}
 	COperationContext::PostRetire(bChildContext);
 }
+
+void CConversionContext::PostRetire(BOOL bChildContext)
+{
+	if (m_Flags & ConvertContextReplaceWholeFile)
+	{
+		if (m_Flags & OperationContextFinished)
+		{
+			pDocument->m_WavFile.DetachSourceFile();
+			pDocument->m_WavFile = m_DstFile;
+			// since we replaced the file, it's no more direct
+			pDocument->SetModifiedFlag(TRUE, m_pUndoContext != NULL);
+			if (NULL != m_pUndoContext)
+			{
+				m_pUndoContext->m_bOldDirectMode = pDocument->m_bDirectMode;
+				m_pUndoContext->m_OldAllocatedWavePeakSize =
+					pDocument->m_AllocatedWavePeakSize;
+				m_pUndoContext->m_OldWavePeakSize = pDocument->m_WavePeakSize;
+				pDocument->m_WavePeakSize = 0;
+				m_pUndoContext->m_OldPeakDataGranularity =
+					pDocument->m_PeakDataGranularity;
+				m_pUndoContext->m_pOldPeaks = pDocument->m_pPeaks;
+
+				// detach peaks
+				pDocument->m_pPeaks = NULL;
+				pDocument->m_AllocatedWavePeakSize = 0;
+				pDocument->m_WavePeakSize = 0;
+
+				pDocument->AddUndoRedo(m_pUndoContext);
+				m_pUndoContext = NULL;
+			}
+			if (pDocument->m_bDirectMode)
+			{
+				pDocument->m_bDirectMode = false;
+				pDocument->UpdateFrameTitles();        // will cause name change in views
+			}
+			long nSamples = pDocument->WaveFileSamples();
+			pDocument->SoundChanged(pDocument->WaveFileID(),
+									0, nSamples, nSamples, UpdateSoundDontRescanPeaks);
+			pDocument->BuildPeakInfo(FALSE);    // don't save it yet
+			//pDocument->UpdateAllViews(NULL);
+		}
+		else
+		{
+			// we don't replace the file, nothing changed
+			if (NULL != m_pUndoContext)
+			{
+				delete m_pUndoContext;
+				m_pUndoContext = NULL;
+			}
+		}
+	}
+	CCopyContext::PostRetire(bChildContext);
+}
