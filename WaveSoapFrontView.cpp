@@ -307,7 +307,11 @@ void CWaveSoapFrontView::OnDraw(CDC* pDC)
 
 		double left = WindowToWorldX(cr.left);
 		//double right = WindowToWorldX(cr.right);
-		if (left < 0.) left = 0.;
+		if (left < 0.)
+		{
+			left = 0.;
+			cr.left = WorldToWindowXfloor(0.);
+		}
 
 		// number of sample that corresponds to the cr.left position
 		SAMPLE_INDEX NumOfFirstSample = DWORD(left);
