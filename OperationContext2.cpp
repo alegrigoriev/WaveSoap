@@ -1045,8 +1045,9 @@ void CExpressionEvaluationContext::AddOperation(void (_fastcall * Function)(Oper
 	t.pSrc1 = pSrc1;
 	t.pSrc2 = pSrc2;
 	t.pDst = pDst;
-	m_OperationArray.Add(t);
+	m_OperationArray.push_back(t);
 }
+
 CExpressionEvaluationContext::TokenType CExpressionEvaluationContext::GetTopOfStackType()
 {
 	if (m_DataTypeStackIndex <= 0)
@@ -1265,7 +1266,8 @@ BOOL CExpressionEvaluationContext::SetExpression(LPCTSTR * ppszExpression)
 		m_DataStackIndex = 0;
 		m_DataTypeStackIndex = 0;
 		m_ConstantBufferIndex = 0;
-		m_OperationArray.RemoveAll();
+		m_OperationArray.clear();
+
 		if (eEndOfExpression != CompileExpression(ppszExpression))
 		{
 			throw "Expression syntax error";
@@ -1285,7 +1287,7 @@ BOOL CExpressionEvaluationContext::SetExpression(LPCTSTR * ppszExpression)
 
 void CExpressionEvaluationContext::Evaluate()
 {
-	for (int i = 0; i < m_OperationArray.GetSize(); i++)
+	for (unsigned i = 0; i < m_OperationArray.size(); i++)
 	{
 		m_OperationArray[i].Function( & m_OperationArray[i]);
 	}
