@@ -1407,8 +1407,6 @@ void CDirectFile::CDirectFileCache::ReturnDataBuffer(File * pFile,
 		CSimpleCriticalSectionLock lock(m_cs);
 
 		m_MruList.RemoveEntry(pMru);
-		// insert the buffer to the list head
-		m_MruList.InsertTail(pMru);
 		// insert the buffer to the list tail
 		// to do: insert the buffer before the first with MRU_Count==1
 		pMru->MRU_Count = 1;

@@ -3726,11 +3726,12 @@ BOOL CWmaSaveContext::Init()
 	}
 	// TODO: load the proper profile
 	// TODO: Open the destination file
-	m_Enc.SetBitrate(128016);
+	//m_Enc.SetBitrate(128016);
 	if ( ! m_Enc.OpenWrite(m_DstFile))
 	{
 		return FALSE;
 	}
+	//m_Enc.SetBitrate(128016);
 	return TRUE;
 }
 
@@ -3738,6 +3739,7 @@ void CWmaSaveContext::DeInit()
 {
 	m_Enc.DeInit();
 	CoUninitialize();
+	m_DstCopyPos = m_DstFile.Seek(0, FILE_CURRENT);
 }
 
 void CWmaSaveContext::PostRetire(BOOL bChildContext)
@@ -3748,4 +3750,67 @@ void CWmaSaveContext::PostRetire(BOOL bChildContext)
 BOOL CWmaSaveContext::ProcessBuffer(void * buf, size_t len, DWORD offset, BOOL bBackward)
 {
 	return m_Enc.Write(buf, len);
+}
+
+BOOL CWmaSaveContext::OperationProc()
+{
+	// generic procedure working on one file
+	// get buffers from source file and copy them to m_CopyFile
+	if (m_Flags & OperationContextStopRequested
+		|| m_SrcCopyPos >= m_SrcEnd)
+	{
+		m_Flags |= OperationContextFinished;
+		return TRUE;
+	}
+
+	DWORD dwStartTime = timeGetTime();
+	DWORD dwOperationBegin = m_DstCopyPos;
+	int SampleSize = m_SrcFile.SampleSize();
+
+	LONG SizeToProcess = 0;
+	LONG WasLockedToWrite = 0;
+	void * pSrcBuf;
+
+	__int16 TempBuf[4];
+	do
+	{
+		// make sure ProcessBuffer gets integer number of complete samples, from sample boundary
+
+		LONGLONG SizeToWrite = m_SrcEnd - m_SrcCopyPos;
+		WasLockedToWrite = m_SrcFile.GetDataBuffer( & pSrcBuf,
+													SizeToWrite, m_SrcCopyPos, m_GetBufferFlags);
+
+		if (0 == WasLockedToWrite)
+		{
+			return FALSE;
+		}
+
+		if (WasLockedToWrite < SampleSize)
+		{
+			m_SrcFile.ReturnDataBuffer(pSrcBuf, WasLockedToWrite, 0);
+			if (SampleSize != m_SrcFile.ReadAt(TempBuf, SampleSize, m_SrcCopyPos))
+			{
+				return FALSE;
+			}
+			ProcessBuffer(TempBuf, SampleSize, m_SrcCopyPos - m_SrcStart, FALSE);
+			m_SrcCopyPos += SampleSize;
+			continue;
+		}
+		SizeToProcess = WasLockedToWrite - WasLockedToWrite % SampleSize;
+		// save the data to be changed to undo buffer, but only on the first forward pass
+		// virtual function which modifies the actual data:
+		ProcessBuffer(pSrcBuf, SizeToProcess, m_SrcCopyPos - m_SrcStart, FALSE);
+
+		m_SrcFile.ReturnDataBuffer(pSrcBuf, WasLockedToWrite, 0);
+		m_SrcCopyPos += SizeToProcess;
+	}
+	while (m_SrcCopyPos < m_SrcEnd
+			&& timeGetTime() - dwStartTime < 200);
+
+	if (m_SrcEnd > m_SrcStart)
+	{
+		PercentCompleted = int(100. * (m_SrcCopyPos - m_SrcStart + double(m_SrcEnd - m_SrcStart) * (m_CurrentPass - 1))
+								/ (double(m_SrcEnd - m_SrcStart) * (m_NumberOfForwardPasses + m_NumberOfBackwardPasses)));
+	}
+	return TRUE;
 }
