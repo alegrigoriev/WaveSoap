@@ -166,12 +166,17 @@ protected:
 	// set or change selection rectangle
 	virtual void ChangeSelection(double left, double right,
 								double bottom, double top);
+
 	virtual void CancelSelection();
 	virtual void AdjustNewScale(double OldScaleX, double OldScaleY,
 								double & NewScaleX, double & NewScaleY)
 	{
 		// change nothing
 		// the derived class function can change the new scale
+	}
+	virtual void AdjustNewOrigin(double & NewOrgX, double & NewOrgY)
+	{
+		// change nothing
 	}
 
 	void UpdateScrollbars(BOOL bRedraw = TRUE);
