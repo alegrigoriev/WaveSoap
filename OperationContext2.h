@@ -487,7 +487,9 @@ class CMoveOperation : public CCopyContext
 public:
 	typedef std::auto_ptr<ThisClass> auto_ptr;
 
-	CMoveOperation(CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString, LPCTSTR OperationName);
+	CMoveOperation(CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString, LPCTSTR OperationName = _T(""));
+	CMoveOperation(CWaveSoapFrontDoc * pDoc);
+
 	~CMoveOperation();
 
 	BOOL InitMove(CWaveFile & File,

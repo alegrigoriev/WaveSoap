@@ -37,6 +37,8 @@ class COperationContext : public ListItem<COperationContext>
 public:
 	typedef std::auto_ptr<ThisClass> auto_ptr;
 	COperationContext(class CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString, DWORD Flags, LPCTSTR OperationName = _T(""));
+	COperationContext(class CWaveSoapFrontDoc * pDoc, DWORD Flags = 0);
+
 	virtual ~COperationContext();
 
 	virtual void Dump(unsigned indent=0) const;
@@ -50,6 +52,7 @@ public:
 	virtual void PostRetire();
 	virtual void Execute();
 	virtual void ExecuteSynch();
+
 	virtual LONGLONG GetTempDataSize() const
 	{
 		return 0;
@@ -90,11 +93,19 @@ public:
 	}
 
 	virtual CString GetStatusString() const;
+	virtual CString GetOperationName() const;
 	virtual CString GetCompletedStatusString() const;
 
+	void SetOperationName(LPCTSTR str);
+	void SetOperationName(UINT id);
+
+	void SetStatusPrompt(LPCTSTR str);
+	void SetStatusPrompt(UINT id);
+
+	// this is name for the operation. It will be shown in Undo and Redo prompt
 	CString m_OperationName;
-	CString m_OperationString;
-	CString sOp;
+	// it is status prompt. It is shown during operation execution
+	CString m_StatusPrompt;
 
 	class CWaveSoapFrontDoc * pDocument;
 	DWORD m_Flags;
@@ -203,6 +214,9 @@ class COneFileOperation : public COperationContext
 public:
 	COneFileOperation(class CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString,
 					ULONG Flags, LPCTSTR OperationName = _T(""));
+
+	COneFileOperation(class CWaveSoapFrontDoc * pDoc, ULONG Flags = 0);
+
 	virtual void Dump(unsigned indent=0) const;
 
 	virtual bool KeepsPermanentFileReference() const;
@@ -229,6 +243,9 @@ class CTwoFilesOperation : public COneFileOperation
 public:
 	CTwoFilesOperation(class CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString,
 						ULONG Flags, LPCTSTR OperationName = _T(""));
+
+	CTwoFilesOperation(class CWaveSoapFrontDoc * pDoc, ULONG Flags);
+
 	~CTwoFilesOperation();
 
 	virtual void Dump(unsigned indent=0) const;
@@ -266,6 +283,7 @@ class CThroughProcessOperation : public CTwoFilesOperation
 public:
 	CThroughProcessOperation(class CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString,
 							ULONG Flags, LPCTSTR OperationName = _T(""));
+	CThroughProcessOperation(class CWaveSoapFrontDoc * pDoc, ULONG Flags = 0);
 
 	typedef std::auto_ptr<ThisClass> auto_ptr;
 
@@ -299,7 +317,9 @@ class CStagedContext : public COperationContext
 	typedef CStagedContext ThisClass;
 public:
 	typedef std::auto_ptr<ThisClass> auto_ptr;
-	CStagedContext(class CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString, DWORD Flags, LPCTSTR OperationName = _T(""));
+	CStagedContext(class CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString,
+					DWORD Flags, LPCTSTR OperationName = _T(""));
+	CStagedContext(class CWaveSoapFrontDoc * pDoc, DWORD Flags);
 	virtual ~CStagedContext();
 
 	virtual BOOL OperationProc();
@@ -361,7 +381,7 @@ class CCopyContext : public CTwoFilesOperation
 
 public:
 	typedef std::auto_ptr<ThisClass> auto_ptr;
-	CCopyContext(CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString, LPCTSTR OperationName);
+	CCopyContext(CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString = _T(""), LPCTSTR OperationName = _T(""));
 
 	BOOL InitCopy(CWaveFile & DstFile,
 				SAMPLE_INDEX DstStartSample, CHANNEL_MASK DstChannel,
@@ -382,8 +402,8 @@ class CCopyUndoContext : public CCopyContext
 
 public:
 	typedef std::auto_ptr<ThisClass> auto_ptr;
-	CCopyUndoContext(CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString, LPCTSTR OperationName)
-		: BaseClass(pDoc, StatusString, OperationName)
+	CCopyUndoContext(CWaveSoapFrontDoc * pDoc)
+		: BaseClass(pDoc)
 	{
 	}
 
@@ -422,6 +442,7 @@ public:
 
 	virtual void PostRetire();
 	virtual CString GetStatusString() const;
+	virtual CString GetOperationName() const;
 };
 
 class CSoundPlayContext : public COperationContext
@@ -434,6 +455,7 @@ public:
 	CSoundPlayContext(CWaveSoapFrontDoc * pDoc, CWaveFile & WavFile,
 					SAMPLE_INDEX PlaybackStart, SAMPLE_INDEX PlaybackEnd, CHANNEL_MASK Channel,
 					int PlaybackDevice, int PlaybackBuffers, size_t PlaybackBufferSize);
+
 	CString GetPlaybackTimeString(int TimeFormat) const;
 
 	//virtual CString GetStatusString() const;
@@ -542,7 +564,7 @@ public:
 	typedef std::auto_ptr<ThisClass> auto_ptr;
 
 	CDcScanContext(CWaveSoapFrontDoc * pDoc,
-					LPCTSTR StatusString, LPCTSTR OperationName);
+					LPCTSTR StatusString, LPCTSTR OperationName = _T(""));
 
 	int GetDc(int channel);
 
@@ -585,7 +607,7 @@ public:
 	typedef std::auto_ptr<ThisClass> auto_ptr;
 
 	CMaxScanContext(CWaveSoapFrontDoc * pDoc,
-					LPCTSTR StatusString, LPCTSTR OperationName);
+					LPCTSTR StatusString, LPCTSTR OperationName = _T(""));
 
 	int GetMax(int channel);
 
