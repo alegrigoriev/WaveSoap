@@ -2343,10 +2343,6 @@ CAudioConvertor::~CAudioConvertor()
 BOOL CAudioConvertor::InitConversion(WAVEFORMATEX * SrcFormat, WAVEFORMATEX * DstFormat,
 									HACMDRIVER had)
 {
-	if (SrcFormat->wFormatTag == DstFormat->wFormatTag)
-	{
-		return FALSE;
-	}
 	if (WAVE_FORMAT_PCM == SrcFormat->wFormatTag)
 	{
 		if (SrcFormat->nChannels != DstFormat->nChannels

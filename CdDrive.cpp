@@ -16,18 +16,39 @@ static char THIS_FILE[]=__FILE__;
 // Construction/Destruction
 //////////////////////////////////////////////////////////////////////
 
-CCdDrive::CCdDrive()
+CCdDrive::CCdDrive(BOOL UseAspi)
 	: m_hDrive(NULL),
 	m_hWinaspi32(NULL),
 	GetASPI32DLLVersion(NULL),
 	GetASPI32SupportInfo(NULL),
 	SendASPI32Command(NULL),
-	m_bReserved(false),
 	m_bMediaChangeNotificationDisabled(false),
 	m_bDoorLocked(false)
 {
 	memset( & m_Toc, 0, sizeof m_Toc);
 	memset( & m_ScsiAddr, 0, sizeof m_ScsiAddr);
+	if (UseAspi)
+	{
+		m_hWinaspi32 = LoadLibrary("wnaspi32.dll");
+		if (NULL != m_hWinaspi32)
+		{
+			GetASPI32DLLVersion = (DWORD (_cdecl * )())
+								GetProcAddress(m_hWinaspi32, "GetASPI32DLLVersion");
+			GetASPI32SupportInfo = (DWORD (_cdecl * )())
+									GetProcAddress(m_hWinaspi32, "GetASPI32SupportInfo");
+			SendASPI32Command = (DWORD (_cdecl * )(SRB * ))
+								GetProcAddress(m_hWinaspi32, "SendASPI32Command");
+			if (NULL == GetASPI32DLLVersion
+				|| NULL == GetASPI32SupportInfo
+				|| NULL == SendASPI32Command
+				|| 1 != ((0xFF00 & GetASPI32SupportInfo()) >> 8))
+			{
+				SendASPI32Command = NULL;
+				FreeLibrary(m_hWinaspi32);
+				m_hWinaspi32 = NULL;
+			}
+		}
+	}
 }
 
 CCdDrive::~CCdDrive()
@@ -45,7 +66,6 @@ BOOL CCdDrive::Open(TCHAR letter)
 	Close();
 	CString path;
 	path.Format("\\\\.\\%c:", letter);
-	//path = "\\\\.\\CdRom0";
 
 	HANDLE Drive = CreateFile(
 							path,
@@ -67,12 +87,35 @@ BOOL CCdDrive::Open(TCHAR letter)
 								NULL, 0,
 								& m_ScsiAddr, sizeof m_ScsiAddr,
 								& bytes, NULL);
-	CloseHandle(Drive);
 	if ( ! res)
 	{
+		CloseHandle(Drive);
 		return FALSE;
 	}
+	// find its equivalent in ASPI. The adapter number is suposed to be the same.
+	// use either ASPI or IOCTL to find max transfer length
 
+	m_hDrive = Drive;   // we will needit
+	if (NULL != m_hWinaspi32)
+	{
+		SRB_HAInquiry inq;
+		memset(& inq, 0, sizeof inq);
+		if (ScsiInquiry( & inq))
+		{
+			m_MaxTransferSize = inq.MaximumTransferLength;
+			m_BufferAlignment = inq.BufferAlignment;
+		}
+		else
+		{
+			CloseHandle(m_hDrive);
+			m_hDrive = NULL;
+			return FALSE;
+		}
+	}
+	else
+	{
+	}
+#if 0
 	path.Format("\\\\.\\Scsi%d:", m_ScsiAddr.PortNumber);
 
 	m_hDrive = CreateFile(
@@ -89,7 +132,7 @@ BOOL CCdDrive::Open(TCHAR letter)
 		m_hDrive = NULL;
 		return FALSE;
 	}
-
+#endif
 	return TRUE;
 }
 
@@ -121,7 +164,7 @@ BOOL CCdDrive::UnlockDoor()
 	return FALSE;
 }
 
-BOOL CCdDrive::SendAtapiCommand(CD_CDB * pCdb,
+BOOL CCdDrive::SendScsiCommand(CD_CDB * pCdb,
 								void * pData, DWORD * pDataLen,
 								int DataDirection,
 								SCSI_SenseInfo * pSense)  // SCSI_IOCTL_DATA_IN, SCSI_IOCTL_DATA_OUT,
@@ -148,6 +191,54 @@ BOOL CCdDrive::SendAtapiCommand(CD_CDB * pCdb,
 	case 7:
 		CdbLength = 16; // unknown??
 		break;
+	}
+	if (NULL != m_hWinaspi32)
+	{
+		SRB_ExecSCSICmd srb;
+		HANDLE hEvent = CreateEvent(NULL, FALSE, FALSE, NULL);
+		memset( & srb, 0, sizeof srb);
+		srb.Command = SC_EXEC_SCSI_CMD;
+		srb.HostAdapter = m_ScsiAddr.PortNumber;
+		srb.Target = m_ScsiAddr.TargetId;
+		srb.Lun = m_ScsiAddr.Lun;
+
+		srb.hCompletionEvent = hEvent;
+		srb.Flags |= SRB_EVENT_NOTIFY;
+
+		if (SCSI_IOCTL_DATA_IN == DataDirection)
+		{
+			// to host
+			srb.Flags |= SRB_DIR_IN;
+		}
+		else if (SCSI_IOCTL_DATA_OUT == DataDirection)
+		{
+			// from host
+			srb.Flags |= SRB_DIR_OUT;
+		}
+
+		srb.BufLen = * pDataLen;
+		srb.BufPointer = pData;
+		srb.SenseLen = sizeof srb.SenseInfo;
+		srb.CDBLen = CdbLength;
+		memcpy(& srb.CDBByte, pCdb, CdbLength);
+
+		DWORD status = SendASPI32Command( & srb);
+		if (SS_PENDING == status)
+		{
+			TRACE("Scsi request pending\n");
+			WaitForSingleObject(hEvent, INFINITE);
+		}
+		CloseHandle(hEvent);
+		if (pSense)
+		{
+			memcpy(pSense, & srb.SenseInfo, sizeof * pSense);
+		}
+
+		return SS_COMP == srb.Status;
+	}
+	else
+	{
+		return FALSE;
 	}
 	if (* pDataLen <= 1024 - sizeof SCSI_PASS_THROUGH - sizeof SCSI_SenseInfo)
 	{
@@ -221,4 +312,13 @@ BOOL CCdDrive::SendAtapiCommand(CD_CDB * pCdb,
 	}
 
 	return TRUE;
+}
+
+BOOL CCdDrive::ScsiInquiry(SRB_HAInquiry * pInq)
+{
+	pInq->Command = SC_HA_INQUIRY;
+	pInq->Flags = 0;
+	pInq->HostAdapter = m_ScsiAddr.PortNumber;
+	DWORD status = SendASPI32Command(pInq);
+	return status == SS_COMP;
 }

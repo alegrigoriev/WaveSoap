@@ -76,7 +76,7 @@ BOOL COperationContext::InitDestination(CWaveFile & DstFile, long StartSample, l
 		else
 		{
 			delete pUndo;
-			if (IDYES != AfxMessageBox(IDS_M_UNABLE_TO_CREATE_UNDO, MB_YESNO | MB_ICONEXCLAMATION))
+			//if (IDYES != AfxMessageBox(IDS_M_UNABLE_TO_CREATE_UNDO, MB_YESNO | MB_ICONEXCLAMATION))
 			{
 				return FALSE;
 			}
@@ -541,6 +541,7 @@ BOOL CResizeContext::InitExpand(CWaveFile & File, LONG StartSample, LONG Length,
 
 	if (FALSE == m_DstFile.SetFileLength(pDatachunk->dwDataOffset + NewDataLength))
 	{
+		NotEnoughDiskSpaceMessageBox();
 		return FALSE;
 	}
 	pDatachunk->cksize = NewDataLength;
@@ -1168,6 +1169,7 @@ BOOL CCopyContext::InitCopy(CWaveFile & DstFile,
 		m_pExpandShrinkContext = new CResizeContext(pDocument, _T("Expanding the file..."), "");
 		if (NULL == m_pExpandShrinkContext)
 		{
+			NotEnoughMemoryMessageBox();
 			return FALSE;
 		}
 		if ( ! m_pExpandShrinkContext->InitExpand(DstFile, DstStartSample + DstLength,
@@ -1185,6 +1187,7 @@ BOOL CCopyContext::InitCopy(CWaveFile & DstFile,
 		m_pExpandShrinkContext = new CResizeContext(pDocument, _T("Shrinking  the file..."), "");
 		if (NULL == m_pExpandShrinkContext)
 		{
+			NotEnoughMemoryMessageBox();
 			return FALSE;
 		}
 		if ( ! m_pExpandShrinkContext->InitShrink(DstFile, DstStartSample + SrcLength,
@@ -1745,6 +1748,7 @@ BOOL CDecompressContext::Init()
 			|| 0 != acmStreamOpen( & m_acmStr, m_acmDrv, pSrcFormat, & wf, NULL, NULL, NULL,
 									ACM_STREAMOPENF_NONREALTIME))
 		{
+			// todo:error
 			return FALSE;
 		}
 	}
@@ -1762,6 +1766,7 @@ BOOL CDecompressContext::Init()
 			acmStreamClose(m_acmStr, 0);
 			m_acmStr = NULL;
 		}
+		// todo:error
 		return FALSE;
 	}
 	// allocate buffers
@@ -1780,6 +1785,7 @@ BOOL CDecompressContext::Init()
 		m_ash.pbDst = NULL;
 		acmStreamClose(m_acmStr, 0);
 		m_acmStr = NULL;
+		// todo:error
 		return FALSE;
 	}
 	// prepare the buffer
@@ -1985,6 +1991,7 @@ BOOL CUndoRedoContext::InitUndoCopy(CWaveFile & SrcFile,
 										| CreateWaveFileTemp,
 										NULL))
 		{
+			NotEnoughUndoSpaceMessageBox();
 			return FALSE;
 		}
 		m_DstSavePos = SrcFile.GetDataChunk()->dwDataOffset;

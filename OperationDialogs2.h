@@ -8,6 +8,7 @@
 //
 #include "TimeEdit.h"
 
+#include "CdDrive.h"
 /////////////////////////////////////////////////////////////////////////////
 // CInsertSilenceDialog dialog
 
@@ -83,6 +84,84 @@ protected:
 	//{{AFX_MSG(CSilenceOptionDialog)
 	afx_msg void OnButtonSilence();
 	//}}AFX_MSG
+	DECLARE_MESSAGE_MAP()
+};
+/////////////////////////////////////////////////////////////////////////////
+// CWmpNotInstalleedWarningDlg dialog
+
+class CWmpNotInstalleedWarningDlg : public CDialog
+{
+// Construction
+public:
+	CWmpNotInstalleedWarningDlg(CWnd* pParent = NULL);   // standard constructor
+
+// Dialog Data
+	//{{AFX_DATA(CWmpNotInstalleedWarningDlg)
+	enum { IDD = IDD_DIALOG_NO_WINDOWS_MEDIA };
+	BOOL	m_DontShowAnymore;
+	//}}AFX_DATA
+
+
+// Overrides
+	// ClassWizard generated virtual function overrides
+	//{{AFX_VIRTUAL(CWmpNotInstalleedWarningDlg)
+protected:
+	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV support
+	//}}AFX_VIRTUAL
+
+// Implementation
+protected:
+
+	// Generated message map functions
+	//{{AFX_MSG(CWmpNotInstalleedWarningDlg)
+	// NOTE: the ClassWizard will add member functions here
+	//}}AFX_MSG
+	DECLARE_MESSAGE_MAP()
+};
+/////////////////////////////////////////////////////////////////////////////
+// CCdGrabbingDialog dialog
+
+class CCdGrabbingDialog : public CDialog
+{
+// Construction
+public:
+	CCdGrabbingDialog(CWnd* pParent = NULL);   // standard constructor
+
+// Dialog Data
+	//{{AFX_DATA(CCdGrabbingDialog)
+	enum { IDD = IDD_DIALOG_CD_GRABBING };
+	CListCtrl	m_lbTracks;
+	CComboBox	m_DrivesCombo;
+	//}}AFX_DATA
+	TCHAR m_CDDrives['Z' - 'A' + 1];
+	int m_NumberOfDrives;
+	int m_CDDriveSelected;
+	CDROM_TOC m_toc;
+
+// Overrides
+	// ClassWizard generated virtual function overrides
+	//{{AFX_VIRTUAL(CCdGrabbingDialog)
+protected:
+	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV support
+	//}}AFX_VIRTUAL
+
+// Implementation
+protected:
+	CSize m_PreviousSize;
+	MINMAXINFO m_mmxi;
+	void FillTrackList(TCHAR letter);
+	void FillDriveList();
+	void CreateImageList();
+
+	// Generated message map functions
+	//{{AFX_MSG(CCdGrabbingDialog)
+	virtual BOOL OnInitDialog();
+	afx_msg void OnSize(UINT nType, int cx, int cy);
+	afx_msg void OnSizing(UINT fwSide, LPRECT pRect);
+	afx_msg UINT OnNcHitTest(CPoint point);
+	afx_msg void OnGetMinMaxInfo(MINMAXINFO FAR* lpMMI);
+	//}}AFX_MSG
+	void OnMetricsChange();
 	DECLARE_MESSAGE_MAP()
 };
 //{{AFX_INSERT_LOCATION}}

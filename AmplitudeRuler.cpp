@@ -74,6 +74,10 @@ void CAmplitudeRuler::OnDraw(CDC* pDC)
 void CAmplitudeRuler::DrawSamples(CDC * pDC)
 {
 	CWaveSoapFrontDoc* pDoc = GetDocument();
+	if (! pDoc->m_WavFile.IsOpen())
+	{
+		return;
+	}
 
 	CWaveSoapFrontView * pMasterView = DYNAMIC_DOWNCAST(CWaveSoapFrontView, m_pVertMaster);
 	if (NULL == pMasterView)
@@ -158,6 +162,10 @@ void CAmplitudeRuler::DrawSamples(CDC * pDC)
 void CAmplitudeRuler::DrawPercents(CDC * pDC)
 {
 	CWaveSoapFrontDoc* pDoc = GetDocument();
+	if (! pDoc->m_WavFile.IsOpen())
+	{
+		return;
+	}
 
 	CWaveSoapFrontView * pMasterView = DYNAMIC_DOWNCAST(CWaveSoapFrontView, m_pVertMaster);
 	if (NULL == pMasterView)
@@ -244,6 +252,10 @@ void CAmplitudeRuler::DrawDecibels(CDC * pDC)
 {
 	// decibels are drawn with 1.5 dB step
 	CWaveSoapFrontDoc* pDoc = GetDocument();
+	if (! pDoc->m_WavFile.IsOpen())
+	{
+		return;
+	}
 
 	CWaveSoapFrontView * pMasterView = DYNAMIC_DOWNCAST(CWaveSoapFrontView, m_pVertMaster);
 	if (NULL == pMasterView)
