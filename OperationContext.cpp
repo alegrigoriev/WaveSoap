@@ -11,6 +11,7 @@
 #include <algorithm>
 #include "TimeToStr.h"
 #include "resource.h"       // main symbols
+#include "ElapsedTime.h"
 
 #define DUMP_ON_EXECUTE 1
 
@@ -3353,6 +3354,7 @@ void CFileSaveContext::PostRetire()
 	// rename files, change them
 	if (m_Flags & OperationContextFinished)
 	{
+		m_DstFile.DeleteOnClose(false);
 		// but if a copy is created, just close it
 		if (m_Flags & FileSaveContext_SavingPartial)
 		{
@@ -3575,8 +3577,14 @@ BOOL CWaveProcContext::OperationProc()
 			}
 			if (SizeToRead != 0)
 			{
+				//DebugTimeStamp time;
+
 				WasRead = m_SrcFile.GetDataBuffer( & pOriginalSrcBuf,
 													SizeToRead, m_SrcPos, CDirectFile::GetBufferAndPrefetchNext);
+
+				//if (1) TRACE("CWaveProcContext:block 0x%X file %p, time %d/10 ms\n",
+				//    DWORD(m_SrcPos >> 17), m_SrcFile.GetFileID(), time.ElapsedTimeTenthMs());
+
 				if (0 == WasRead)
 				{
 					m_DstFile.ReturnDataBuffer(pOriginalDstBuf, WasLockedToWrite,
@@ -3946,6 +3954,8 @@ BOOL CWmaSaveContext::OperationProc()
 			SizeToRead = CDirectFile::CacheBufferSize();
 		}
 
+		//DebugTimeStamp time;
+
 		WasRead = m_SrcFile.GetDataBuffer( & pSrcBuf,
 											SizeToRead, m_SrcPos, CDirectFile::GetBufferAndPrefetchNext);
 
@@ -3953,6 +3963,9 @@ BOOL CWmaSaveContext::OperationProc()
 		{
 			return FALSE;
 		}
+
+		//if (1) TRACE("CWaveProcContext:block 0x%X file %p, time %d/10 ms\n",
+		//    DWORD(m_SrcPos >> 17), m_SrcFile.GetFileID(), time.ElapsedTimeTenthMs());
 
 		if (WasRead < SampleSize)
 		{
