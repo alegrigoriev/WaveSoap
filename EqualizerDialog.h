@@ -144,11 +144,11 @@ public:
 	int 	m_nBands;
 	//}}AFX_DATA
 	BOOL	m_bLockChannels;
-	long m_Start;
-	long m_End;
-	long m_CaretPosition;
-	long m_FileLength;
-	int m_Chan;
+	SAMPLE_INDEX m_Start;
+	SAMPLE_INDEX m_End;
+	SAMPLE_INDEX m_CaretPosition;
+	NUMBER_OF_SAMPLES m_FileLength;
+	CHANNEL_MASK m_Chan;
 	int m_TimeFormat;
 	const WAVEFORMATEX * m_pWf;
 
