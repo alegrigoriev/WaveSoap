@@ -311,6 +311,7 @@ CString GetSelectionText(SAMPLE_INDEX Start, SAMPLE_INDEX End, CHANNEL_MASK Chan
 						int nSamplesPerSec, int TimeFormat);
 
 CString LoadCString(UINT id);
+void SetWindowIcons(CWnd * pWnd, UINT id);
 
 /////////////////////////////////////////////////////////////////////////////
 //{{AFX_INSERT_LOCATION}}
