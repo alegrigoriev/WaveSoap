@@ -23,6 +23,9 @@
 #include "WaveSoapFileDialogs.h"
 #include "PasteResampleModeDlg.h"
 #include "FadeInOutDialog.h"
+#include "SplitToFilesDialog.h"
+
+#include ".\wavesoapfrontdoc.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -177,6 +180,8 @@ BEGIN_MESSAGE_MAP(CWaveSoapFrontDoc, CDocument)
 	ON_UPDATE_COMMAND_UI(IDC_EDIT_WAVE_REGION, OnUpdateEditWaveMarker)
 	ON_COMMAND(ID_SAVE_SAVESELECTIONAS, OnSaveSaveselectionas)
 	ON_UPDATE_COMMAND_UI(ID_SAVE_SAVESELECTIONAS, OnUpdateSaveSaveselectionas)
+	ON_COMMAND(ID_SAVE_SPLIT_TO_FILES, OnSaveSplitToFiles)
+	ON_UPDATE_COMMAND_UI(ID_SAVE_SPLIT_TO_FILES, OnUpdateSaveSplitToFiles)
 	END_MESSAGE_MAP()
 
 /////////////////////////////////////////////////////////////////////////////
@@ -5465,4 +5470,39 @@ void CWaveSoapFrontDoc::ExecuteOperation(COperationContext * pContext, BOOL SetM
 	}
 
 	pContext->Execute();
+}
+
+void CWaveSoapFrontDoc::OnSaveSplitToFiles()
+{
+	// TODO: Add your command handler code here
+	CSplitToFilesDialog dlg(m_WavFile);
+
+	if (IDOK != dlg.DoModal())
+	{
+		return;
+	}
+}
+
+void CWaveSoapFrontDoc::OnUpdateSaveSplitToFiles(CCmdUI *pCmdUI)
+{
+	// enable, if there is any marker not at the file beginning or end
+	BOOL bEnable = FALSE;
+
+	if ( ! IsBusy())
+	{
+		SAMPLE_INDEX_Vector markers;
+		m_WavFile.GetSortedMarkers(markers, FALSE);
+
+		for (SAMPLE_INDEX_Vector::const_iterator i = markers.begin();
+			i < markers.end(); i++)
+		{
+			if (*i != 0
+				&& *i < WaveFileSamples())
+			{
+				bEnable = TRUE;
+				break;
+			}
+		}
+	}
+	pCmdUI->Enable(bEnable);
 }
