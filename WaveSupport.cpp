@@ -8,7 +8,8 @@
 #include <algorithm>
 #include <functional>
 #include "resource.h"
-
+#include <ks.h>
+#include <ksmedia.h>
 /////////////////////////////////
 // CWaveDevice stuff
 /////////////////////////////////
@@ -640,6 +641,195 @@ int CWaveFormat::MatchFormat(WAVEFORMATEX const * pwf)
 		match |= WaveFormatMatchBitsPerSample;
 	}
 	return match;
+}
+
+bool CWaveFormat::IsCompressed() const
+{
+	if (NULL == m_pWf)
+	{
+		return false;
+	}
+	if (WAVE_FORMAT_PCM == m_pWf->wFormatTag
+		|| WAVE_FORMAT_IEEE_FLOAT == m_pWf->wFormatTag)
+	{
+		// PCM integer or float format
+		return false;
+	}
+
+	if (WAVE_FORMAT_EXTENSIBLE == m_pWf->wFormatTag
+		|| FormatSize() >= sizeof (WAVEFORMATEXTENSIBLE))
+	{
+		WAVEFORMATEXTENSIBLE * pWfe = (WAVEFORMATEXTENSIBLE *) m_pWf;
+		if (pWfe->SubFormat == KSDATAFORMAT_SUBTYPE_PCM
+			|| pWfe->SubFormat == KSDATAFORMAT_SUBTYPE_IEEE_FLOAT)
+		{
+			return false;
+		}
+	}
+
+	return true;
+}
+
+NUMBER_OF_CHANNELS CWaveFormat::NumChannelsFromMask(CHANNEL_MASK ChannelMask) const
+{
+	NUMBER_OF_CHANNELS Channels = 0;
+	for (int ch = 0; ch < 32 && Channels < NumChannels(); ch++)
+	{
+		if (ChannelMask & (1 << ch))
+		{
+			Channels++;
+		}
+	}
+	return Channels;
+}
+
+// return channels disregarding their position
+CHANNEL_MASK CWaveFormat::ChannelsMask() const
+{
+	if (NULL == m_pWf)
+	{
+		return 0;
+	}
+
+	return ~((~0) << m_pWf->nChannels);
+}
+
+ULONG CWaveFormat::ValidateFormat() const
+{
+	if (NULL == m_pWf)
+	{
+		return WaveformatNoFormatLoaded;
+	}
+	if (0 == m_pWf->nChannels
+		|| m_pWf->nChannels > MAX_NUMBER_OF_CHANNELS)
+	{
+		return WaveformatInvalidNumberChannels;
+	}
+
+	ULONG Mask = 0;
+
+	if (m_pWf->nChannels > 2)
+	{
+		Mask |= WaveFormatMultichannel;
+	}
+
+	if (WAVE_FORMAT_PCM == m_pWf->wFormatTag)
+	{
+		// Number of bits: 8, >16, <= 32
+		if (m_pWf->wBitsPerSample > 32
+			|| (m_pWf->wBitsPerSample != 8
+				&& m_pWf->wBitsPerSample < 16))
+		{
+			return WaveformatInvalidNumberOfBits;
+		}
+
+		if (m_pWf->wBitsPerSample == 8
+			|| m_pWf->wBitsPerSample == 16)
+		{
+			if (m_pWf->nBlockAlign != m_pWf->wBitsPerSample * m_pWf->nChannels / 8)
+			{
+				// nBlockAlign is not exact
+				return WaveformatInvalidBlockAlign;
+			}
+		}
+		else if (m_pWf->wBitsPerSample > 16)
+		{
+			if (m_pWf->nBlockAlign * 8 < m_pWf->wBitsPerSample * m_pWf->nChannels
+				|| m_pWf->nBlockAlign > 4 * m_pWf->nChannels)
+			{
+				// nBlockAlign is too big
+				// or less than minimum
+				return WaveformatInvalidBlockAlign;
+			}
+			Mask |= WaveformatExtendedNumBits;
+		}
+		// nBlockAlign should be at least sample size times number of channels
+		// if nBlockAlign is divisible by nChannels, each sample is byte aligned
+		if (m_pWf->nBlockAlign / m_pWf->nChannels > (m_pWf->wBitsPerSample + 7) / 8)
+		{
+			Mask |= WaveformatDataPadded;
+		}
+
+		if (m_pWf->nSamplesPerSec > 1000000
+			|| m_pWf->nSamplesPerSec * m_pWf->nBlockAlign != m_pWf->nAvgBytesPerSec)
+		{
+			return WaveformatInvalidBytesPerSec;
+		}
+	}
+	else if (WAVE_FORMAT_IEEE_FLOAT == m_pWf->wFormatTag)
+	{
+		// Number of bits: 32, 64
+		if (m_pWf->wBitsPerSample != 32
+			|| m_pWf->wBitsPerSample != 64)
+		{
+			return WaveformatInvalidNumberOfBits;
+		}
+
+		// nBlockAlign should be exact sample size times number of channels
+		// each sample should be byte-aligned
+		if (m_pWf->nBlockAlign != m_pWf->wBitsPerSample * m_pWf->nChannels / 8)
+		{
+			// nBlockAlign is invalid
+			return WaveformatInvalidBlockAlign;
+		}
+
+		if (m_pWf->nSamplesPerSec > 1000000
+			|| m_pWf->nSamplesPerSec * m_pWf->nBlockAlign != m_pWf->nAvgBytesPerSec)
+		{
+			return WaveformatInvalidBytesPerSec;
+		}
+	}
+	else if (WAVE_FORMAT_EXTENSIBLE == m_pWf->wFormatTag)
+	{
+		if (FormatSize() < sizeof (WAVEFORMATEXTENSIBLE))
+		{
+			return WaveformatInvalidSize;
+		}
+		WAVEFORMATEXTENSIBLE * pWfe = (WAVEFORMATEXTENSIBLE *) m_pWf;
+		if (pWfe->SubFormat == KSDATAFORMAT_SUBTYPE_PCM)
+		{
+			// Number of bits: 8, 16, 24, 32
+			if (m_pWf->wBitsPerSample != 8
+				&& m_pWf->wBitsPerSample != 16
+				&& m_pWf->wBitsPerSample != 24
+				&& m_pWf->wBitsPerSample != 32)
+			{
+				return WaveformatInvalidNumberOfBits;
+			}
+
+			if (m_pWf->nBlockAlign != m_pWf->wBitsPerSample * m_pWf->nChannels / 8)
+			{
+				// nBlockAlign is not exact
+				return WaveformatInvalidBlockAlign;
+			}
+
+			if (m_pWf->wBitsPerSample == 8
+				|| m_pWf->wBitsPerSample == 16)
+			{
+			}
+			if (m_pWf->wBitsPerSample > 16)
+			{
+				Mask |= WaveformatExtendedNumBits;
+			}
+			// nBlockAlign should be at least sample size times number of channels
+			// if nBlockAlign is divisible by nChannels, each sample is byte aligned
+			if (m_pWf->nBlockAlign / m_pWf->nChannels > (m_pWf->wBitsPerSample + 7) / 8)
+			{
+				Mask |= WaveformatDataPadded;
+			}
+
+			if (m_pWf->nSamplesPerSec > 1000000
+				|| m_pWf->nSamplesPerSec * m_pWf->nBlockAlign != m_pWf->nAvgBytesPerSec)
+			{
+				return WaveformatInvalidBytesPerSec;
+			}
+		}
+		else if (pWfe->SubFormat == KSDATAFORMAT_SUBTYPE_IEEE_FLOAT)
+		{
+			// TODO
+		}
+	}
+	return Mask;
 }
 
 struct FormatTagEnumStruct
