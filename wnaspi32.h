@@ -81,7 +81,8 @@ extern "C" {
 //***************************************************************************
 //			 %%% SRB - HOST ADAPTER INQUIRY - SC_HA_INQUIRY %%%
 //***************************************************************************
-typedef struct {
+typedef struct SRB_HAInquiry
+{
 	BYTE	SRB_Cmd;				// ASPI command code = SC_HA_INQUIRY
 	BYTE	SRB_Status;				// ASPI command status byte
 	BYTE	SRB_HaId;				// ASPI host adapter number
@@ -99,7 +100,8 @@ typedef struct {
 //***************************************************************************
 //			  %%% SRB - GET DEVICE TYPE - SC_GET_DEV_TYPE %%%
 //***************************************************************************
-typedef struct {
+typedef struct SRB_GDEVBlock
+{
 
 	BYTE	SRB_Cmd;				// ASPI command code = SC_GET_DEV_TYPE
 	BYTE	SRB_Status;				// ASPI command status byte
@@ -117,7 +119,8 @@ typedef struct {
 //		  %%% SRB - EXECUTE SCSI COMMAND - SC_EXEC_SCSI_CMD %%%
 //***************************************************************************
 
-typedef struct {
+typedef struct SRB_ExecSCSICmd
+{
 	BYTE	SRB_Cmd;				// ASPI command code = SC_EXEC_SCSI_CMD
 	BYTE	SRB_Status;				// ASPI command status byte
 	BYTE	SRB_HaId;				// ASPI host adapter number
@@ -143,7 +146,8 @@ typedef struct {
 //***************************************************************************
 //				  %%% SRB - ABORT AN SRB - SC_ABORT_SRB %%%
 //***************************************************************************
-typedef struct {
+typedef struct SRB_Abort
+{
 
 	BYTE	SRB_Cmd;				// ASPI command code = SC_EXEC_SCSI_CMD
 	BYTE	SRB_Status;				// ASPI command status byte
@@ -157,7 +161,8 @@ typedef struct {
 //***************************************************************************
 //				%%% SRB - BUS DEVICE RESET - SC_RESET_DEV %%%
 //***************************************************************************
-typedef struct {
+typedef struct SRB_BusDeviceReset
+{
 
 	BYTE	SRB_Cmd;				// ASPI command code = SC_EXEC_SCSI_CMD
 	BYTE	SRB_Status;				// ASPI command status byte
@@ -179,7 +184,8 @@ typedef struct {
 //***************************************************************************
 //				%%% SRB - GET DISK INFORMATION - SC_GET_DISK_INFO %%%
 //***************************************************************************
-typedef struct {
+typedef struct SRB_GetDiskInfo
+{
 
 	BYTE	SRB_Cmd;				// ASPI command code = SC_EXEC_SCSI_CMD
 	BYTE	SRB_Status;				// ASPI command status byte
@@ -195,7 +201,7 @@ typedef struct {
 	BYTE	SRB_Rsvd1[10];			// Reserved
 } SRB_GetDiskInfo, *PSRB_GetDiskInfo;
 
-typedef struct tag_ASPI32BUFF
+typedef struct ASPI32BUFF
 {
 	PBYTE                   AB_BufPointer;      // Pointer to the ASPI allocated buffer
 	DWORD                   AB_BufLen;          // Length in bytes of the buffer
@@ -210,6 +216,7 @@ typedef struct HaTargetLun
 	BYTE HaId;
 	BYTE zero;
 } HaTargetLun;
+
 typedef DWORD (_cdecl * GETASPI32SUPPORTINFO)(void);
 typedef DWORD (_cdecl * SENDASPI32COMMAND)( void * );
 typedef BOOL (_cdecl * GETASPI32BUFFER)(PASPI32BUFF );
