@@ -1008,7 +1008,7 @@ BOOL CWaveFile::CreateWaveFile(CWaveFile * pTemplateFile, WAVEFORMATEX * pTempla
 		|| WAVE_FORMAT_PCM == wf.FormatTag())
 	{
 		pInst->wf.InitFormat(WAVE_FORMAT_PCM, wf.SampleRate(),
-							nNumChannels, wf.BitsPerSample());
+							nNumChannels, 16);
 	}
 	else
 	{
