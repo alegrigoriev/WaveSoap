@@ -720,6 +720,11 @@ CuePointChunkItem * CWaveFile::GetCuePoint(DWORD CueId)
 	return GetInstanceData()->GetCuePoint(CueId);
 }
 
+CuePointChunkItem const * CWaveFile::GetCuePoint(DWORD CueId) const
+{
+	return GetInstanceData()->GetCuePoint(CueId);
+}
+
 CuePointChunkItem * CWaveFile::InstanceDataWav::GetCuePoint(DWORD CueId)
 {
 	for (CuePointVectorIterator i = m_CuePoints.begin();
@@ -734,14 +739,28 @@ CuePointChunkItem * CWaveFile::InstanceDataWav::GetCuePoint(DWORD CueId)
 	return NULL;
 }
 
-LPCTSTR CWaveFile::GetCueLabel(DWORD CueId)
+CuePointChunkItem const * CWaveFile::InstanceDataWav::GetCuePoint(DWORD CueId) const
+{
+	for (ConstCuePointVectorIterator i = m_CuePoints.begin();
+		i < m_CuePoints.end(); i++)
+	{
+		if (CueId == i->CuePointID)
+		{
+			return i.operator->();
+		}
+	}
+
+	return NULL;
+}
+
+LPCTSTR CWaveFile::GetCueLabel(DWORD CueId) const
 {
 	return GetInstanceData()->GetCueLabel(CueId);
 }
 
-LPCTSTR CWaveFile::InstanceDataWav::GetCueLabel(DWORD CueId)
+LPCTSTR CWaveFile::InstanceDataWav::GetCueLabel(DWORD CueId) const
 {
-	for (LabelVectorIterator i = m_Labels.begin();
+	for (ConstLabelVectorIterator i = m_Labels.begin();
 		i < m_Labels.end(); i++)
 	{
 		if (CueId == i->CuePointID)
@@ -752,14 +771,14 @@ LPCTSTR CWaveFile::InstanceDataWav::GetCueLabel(DWORD CueId)
 	return NULL;
 }
 
-LPCTSTR CWaveFile::GetCueComment(DWORD CueId)
+LPCTSTR CWaveFile::GetCueComment(DWORD CueId) const
 {
 	return GetInstanceData()->GetCueComment(CueId);
 }
 
-LPCTSTR CWaveFile::InstanceDataWav::GetCueComment(DWORD CueId)
+LPCTSTR CWaveFile::InstanceDataWav::GetCueComment(DWORD CueId) const
 {
-	for (LabelVectorIterator i = m_Notes.begin();
+	for (ConstLabelVectorIterator i = m_Notes.begin();
 		i < m_Notes.end(); i++)
 	{
 		if (CueId == i->CuePointID)
@@ -770,12 +789,12 @@ LPCTSTR CWaveFile::InstanceDataWav::GetCueComment(DWORD CueId)
 	return NULL;
 }
 
-LPCTSTR CWaveFile::GetCueText(DWORD CueId)
+LPCTSTR CWaveFile::GetCueText(DWORD CueId) const
 {
 	return GetInstanceData()->GetCueText(CueId);
 }
 
-LPCTSTR CWaveFile::InstanceDataWav::GetCueText(DWORD CueId)
+LPCTSTR CWaveFile::InstanceDataWav::GetCueText(DWORD CueId) const
 {
 	LPCTSTR text = GetCueLabel(CueId);
 	if (NULL != text
@@ -791,7 +810,7 @@ LPCTSTR CWaveFile::InstanceDataWav::GetCueText(DWORD CueId)
 		return text;
 	}
 
-	WaveRegionMarker  * pMarker = GetRegionMarker(CueId);
+	WaveRegionMarker const * pMarker = GetRegionMarker(CueId);
 	if (NULL != pMarker
 		&& ! pMarker->Name.IsEmpty())
 	{
@@ -801,12 +820,12 @@ LPCTSTR CWaveFile::InstanceDataWav::GetCueText(DWORD CueId)
 	return NULL;
 }
 
-LPCTSTR CWaveFile::GetCueTextByIndex(unsigned CueIndex)
+LPCTSTR CWaveFile::GetCueTextByIndex(unsigned CueIndex) const
 {
 	return GetInstanceData()->GetCueTextByIndex(CueIndex);
 }
 
-LPCTSTR CWaveFile::InstanceDataWav::GetCueTextByIndex(unsigned CueIndex)
+LPCTSTR CWaveFile::InstanceDataWav::GetCueTextByIndex(unsigned CueIndex) const
 {
 	if (CueIndex < m_CuePoints.size())
 	{
@@ -821,9 +840,27 @@ WaveRegionMarker * CWaveFile::GetRegionMarker(DWORD CueId)
 	return GetInstanceData()->GetRegionMarker(CueId);
 }
 
+WaveRegionMarker const * CWaveFile::GetRegionMarker(DWORD CueId) const
+{
+	return GetInstanceData()->GetRegionMarker(CueId);
+}
+
 WaveRegionMarker * CWaveFile::InstanceDataWav::GetRegionMarker(DWORD CueId)
 {
 	for (RegionMarkerIterator i = m_RegionMarkers.begin();
+		i < m_RegionMarkers.end(); i++)
+	{
+		if (CueId == i->CuePointID)
+		{
+			return i.operator->();
+		}
+	}
+	return NULL;
+}
+
+WaveRegionMarker const * CWaveFile::InstanceDataWav::GetRegionMarker(DWORD CueId) const
+{
+	for (ConstRegionMarkerIterator i = m_RegionMarkers.begin();
 		i < m_RegionMarkers.end(); i++)
 	{
 		if (CueId == i->CuePointID)
@@ -965,12 +1002,12 @@ BOOL CWaveFile::SetWaveMarker(WAVEREGIONINFO * info)
 	return TRUE;
 }
 
-BOOL CWaveFile::GetWaveMarker(WAVEREGIONINFO * info)
+BOOL CWaveFile::GetWaveMarker(WAVEREGIONINFO * info) const
 {
 	return GetInstanceData()->GetWaveMarker(info);
 }
 
-BOOL CWaveFile::InstanceDataWav::GetWaveMarker(WAVEREGIONINFO * pInfo)
+BOOL CWaveFile::InstanceDataWav::GetWaveMarker(WAVEREGIONINFO * pInfo) const
 {
 	BOOL result = FALSE;
 	if (pInfo->Flags & pInfo->CuePointIndex)
@@ -989,7 +1026,7 @@ BOOL CWaveFile::InstanceDataWav::GetWaveMarker(WAVEREGIONINFO * pInfo)
 	}
 	else
 	{
-		CuePointChunkItem * pCue = GetCuePoint(pInfo->MarkerCueID);
+		CuePointChunkItem const * pCue = GetCuePoint(pInfo->MarkerCueID);
 		if (NULL != pCue)
 		{
 			pInfo->Sample = pCue->dwSampleOffset;
@@ -1004,7 +1041,7 @@ BOOL CWaveFile::InstanceDataWav::GetWaveMarker(WAVEREGIONINFO * pInfo)
 	pInfo->Label = GetCueLabel(pInfo->MarkerCueID);
 	pInfo->Comment = GetCueComment(pInfo->MarkerCueID);
 
-	WaveRegionMarker * pMarker = GetRegionMarker(pInfo->MarkerCueID);
+	WaveRegionMarker const * pMarker = GetRegionMarker(pInfo->MarkerCueID);
 	if (NULL != pMarker)
 	{
 		pInfo->Ltxt = pMarker->Name;
@@ -1670,9 +1707,9 @@ DWORD CWaveFile::SaveMetadata()
 	return DWORD(GetFilePointer() - MetadataBegin);
 }
 
-DWORD CWaveFile::GetMetadataLength()
+DWORD CWaveFile::GetMetadataLength() const
 {
-	InstanceDataWav * inst = GetInstanceData();
+	InstanceDataWav const * inst = GetInstanceData();
 	if (NULL == inst)
 	{
 		return 0;
@@ -1700,7 +1737,7 @@ DWORD CWaveFile::GetMetadataLength()
 		// add 'adtl' LIST header size
 		size += 3 * sizeof (DWORD);
 
-		for (RegionMarkerIterator ri = inst->m_RegionMarkers.begin();
+		for (ConstRegionMarkerIterator ri = inst->m_RegionMarkers.begin();
 			ri < inst->m_RegionMarkers.end();
 			ri++)
 		{
@@ -1711,7 +1748,7 @@ DWORD CWaveFile::GetMetadataLength()
 			size += sizeof LtxtChunk + 2 * sizeof (DWORD);
 		}
 
-		LabelVectorIterator i;
+		ConstLabelVectorIterator i;
 		for (i = inst->m_Labels.begin(); i < inst->m_Labels.end(); i++)
 		{
 			if ( ! i->Text.IsEmpty())
@@ -1733,7 +1770,7 @@ DWORD CWaveFile::GetMetadataLength()
 	{
 		size += 3 * sizeof (DWORD); // INFO list header
 
-		for (InfoListItemIterator i = inst->m_InfoList.begin();
+		for (ConstInfoListItemIterator i = inst->m_InfoList.begin();
 			i < inst->m_InfoList.end(); i++)
 		{
 			size += 3 * sizeof (DWORD) + ((i->Text.GetLength() + 2) & ~1UL);   // zero-terminated
@@ -1744,7 +1781,7 @@ DWORD CWaveFile::GetMetadataLength()
 	{
 		size += 3 * sizeof (DWORD); // INFO list header
 
-		for (InfoListItemIteratorW i = inst->m_InfoListW.begin();
+		for (ConstInfoListItemIteratorW i = inst->m_InfoListW.begin();
 			i < inst->m_InfoListW.end(); i++)
 		{
 			size += 3 * sizeof (DWORD) + sizeof (WCHAR) * ((i->Text.GetLength() + 1));   // zero-terminated
@@ -2023,7 +2060,7 @@ BOOL CWaveFile::SetSourceFile(CWaveFile * const pOriginalFile)
 	return FALSE;
 }
 
-WavePeak CWaveFile::GetPeakMinMax(PEAK_INDEX from, PEAK_INDEX to, NUMBER_OF_CHANNELS stride)
+WavePeak CWaveFile::GetPeakMinMax(PEAK_INDEX from, PEAK_INDEX to, NUMBER_OF_CHANNELS stride) const
 {
 	CWavePeaks * pPeaks = GetWavePeaks();
 	if (NULL != pPeaks)
@@ -2249,9 +2286,8 @@ void CWaveFile::RescanPeaks(SAMPLE_INDEX begin, SAMPLE_INDEX end)
 	}
 }
 
-WavePeak CWavePeaks::GetPeakMinMax(PEAK_INDEX from, PEAK_INDEX to, NUMBER_OF_CHANNELS stride)
+WavePeak CWavePeaks::GetPeakMinMax(PEAK_INDEX from, PEAK_INDEX to, NUMBER_OF_CHANNELS stride) const
 {
-
 	WavePeak peak;
 	peak.high = -0x8000;
 	peak.low = 0x7FFF;
@@ -2676,6 +2712,34 @@ void CWaveFile::CopyMetadata(CWaveFile const & src)
 	{
 		pDst->CopyMetadata(pSrc);
 	}
+}
+
+void CWaveFile::GetSortedMarkers(SAMPLE_INDEX_Vector & markers) const
+{
+	InstanceDataWav * inst = GetInstanceData();
+	if (NULL != inst)
+	{
+		inst->GetSortedMarkers(markers);
+	}
+}
+
+void CWaveFile::InstanceDataWav::GetSortedMarkers(SAMPLE_INDEX_Vector & markers) const
+{
+	markers.reserve(m_CuePoints.size() + m_RegionMarkers.size());
+
+	for (ConstCuePointVectorIterator i = m_CuePoints.begin(); i < m_CuePoints.end(); i++)
+	{
+		markers.push_back(SAMPLE_INDEX(i->dwSampleOffset));
+
+		WaveRegionMarker const * pMarker = GetRegionMarker(i->CuePointID);
+		if (NULL != pMarker)
+		{
+			markers.push_back(SAMPLE_INDEX(i->dwSampleOffset + pMarker->SampleLength));
+		}
+	}
+
+	std::sort(markers.begin(), markers.end());
+	markers.erase(std::unique(markers.begin(), markers.end()), markers.end());
 }
 
 NUMBER_OF_CHANNELS CWaveFile::NumChannelsFromMask(CHANNEL_MASK ChannelMask) const

@@ -282,6 +282,8 @@ enum {
 	CreateWaveFileCreateFact = 0x04000000,
 };
 
+typedef std::vector<SAMPLE_INDEX> SAMPLE_INDEX_Vector;
+
 struct CuePointChunkItem
 {
 	DWORD CuePointID;       // unique ID
@@ -296,6 +298,7 @@ struct CuePointChunkItem
 
 typedef std::vector<CuePointChunkItem> CuePointVector;
 typedef CuePointVector::iterator CuePointVectorIterator;
+typedef CuePointVector::const_iterator ConstCuePointVectorIterator;
 
 struct PlaylistSegment
 {
@@ -306,6 +309,7 @@ struct PlaylistSegment
 
 typedef std::vector<PlaylistSegment> PlaylistVector;
 typedef PlaylistVector::iterator PlaylistVectorIterator;
+typedef PlaylistVector::const_iterator ConstPlaylistVectorIterator;
 
 #pragma pack(push, 1)
 
@@ -342,6 +346,7 @@ struct WaveRegionMarker : public LtxtChunk
 
 typedef std::vector<WaveRegionMarker> RegionMarkerVector;
 typedef RegionMarkerVector::iterator RegionMarkerIterator;
+typedef RegionMarkerVector::const_iterator ConstRegionMarkerIterator;
 
 struct LablNote
 {
@@ -351,6 +356,7 @@ struct LablNote
 
 typedef std::vector<LablNote> LabelVector;
 typedef LabelVector::iterator LabelVectorIterator;
+typedef LabelVector::const_iterator ConstLabelVectorIterator;
 
 // this structure is used to edit region or marker
 struct WAVEREGIONINFO
@@ -393,9 +399,11 @@ struct InfoListItemW
 
 typedef std::vector<InfoListItemA> InfoListItemVector;
 typedef InfoListItemVector::iterator InfoListItemIterator;
+typedef InfoListItemVector::const_iterator ConstInfoListItemIterator;
 
 typedef std::vector<InfoListItemW> InfoListItemVectorW;
 typedef InfoListItemVectorW::iterator InfoListItemIteratorW;
+typedef InfoListItemVectorW::const_iterator ConstInfoListItemIteratorW;
 
 struct WavePeak
 {
@@ -443,13 +451,14 @@ public:
 	{
 		return m_pPeaks;
 	}
-	WavePeak GetPeakMinMax(PEAK_INDEX from, PEAK_INDEX to, NUMBER_OF_CHANNELS stride = 1);
+	WavePeak GetPeakMinMax(PEAK_INDEX from, PEAK_INDEX to, NUMBER_OF_CHANNELS stride = 1) const;
 
 	PEAK_INDEX GetPeaksSize() const
 	{
 		return m_WavePeakSize;
 	}
-	CSimpleCriticalSection & GetLock()
+
+	CSimpleCriticalSection & GetLock() const
 	{
 		return m_PeakLock;
 	}
@@ -461,7 +470,8 @@ protected:
 	PEAK_INDEX m_WavePeakSize;
 	PEAK_INDEX m_AllocatedWavePeakSize;
 	unsigned m_PeakDataGranularity;
-	CSimpleCriticalSection m_PeakLock;
+
+	CSimpleCriticalSection mutable m_PeakLock;
 };
 
 #pragma warning(push)
@@ -503,7 +513,8 @@ public:
 
 	void RescanPeaks(SAMPLE_INDEX begin, SAMPLE_INDEX end);
 	BOOL AllocatePeakData(NUMBER_OF_SAMPLES NewNumberOfSamples);
-	WavePeak GetPeakMinMax(PEAK_INDEX from, PEAK_INDEX to, NUMBER_OF_CHANNELS stride = 1);
+	WavePeak GetPeakMinMax(PEAK_INDEX from, PEAK_INDEX to, NUMBER_OF_CHANNELS stride = 1) const;
+
 	unsigned GetPeaksSize() const;
 	unsigned GetPeakGranularity() const;
 
@@ -604,16 +615,21 @@ public:
 
 		CuePointChunkItem * GetCuePoint(DWORD CueId);
 		WaveRegionMarker * GetRegionMarker(DWORD CueId);
-		LPCTSTR GetCueLabel(DWORD CueId);   // from 'labl' chunk, if any
-		LPCTSTR GetCueComment(DWORD CueId); // from 'note' chunk, if any
+		CuePointChunkItem const * GetCuePoint(DWORD CueId) const;
+		WaveRegionMarker const * GetRegionMarker(DWORD CueId) const;
 
-		LPCTSTR GetCueText(DWORD CueId);    // use either label, or comment, or marker text
-		LPCTSTR GetCueTextByIndex(unsigned CueIndex);   // the same, using cue index
+		LPCTSTR GetCueLabel(DWORD CueId) const;   // from 'labl' chunk, if any
+		LPCTSTR GetCueComment(DWORD CueId) const; // from 'note' chunk, if any
+
+		LPCTSTR GetCueText(DWORD CueId) const;    // use either label, or comment, or marker text
+		LPCTSTR GetCueTextByIndex(unsigned CueIndex) const;   // the same, using cue index
 
 		BOOL SetWaveMarker(WAVEREGIONINFO * info);
-		BOOL GetWaveMarker(WAVEREGIONINFO * info);
+		BOOL GetWaveMarker(WAVEREGIONINFO * info) const;
+
 		BOOL MoveWaveMarker(unsigned long MarkerCueID, SAMPLE_INDEX Sample);
 		BOOL SetMarkerLabel(unsigned long MarkerCueID, LPCTSTR Label);
+		void GetSortedMarkers(SAMPLE_INDEX_Vector & markers) const;
 
 		InstanceDataWav & operator =(InstanceDataWav const & src);
 
@@ -633,6 +649,7 @@ public:
 	{
 		return static_cast<InstanceDataWav *>(CDirectFile::GetInstanceData());
 	}
+
 	CWavePeaks * GetWavePeaks() const
 	{
 		InstanceDataWav * pInstData = GetInstanceData();
@@ -679,7 +696,7 @@ public:
 	BOOL FindData();
 	BOOL LoadMetadata();
 	DWORD SaveMetadata();   // returns total saved length
-	DWORD GetMetadataLength();
+	DWORD GetMetadataLength() const;
 
 	BOOL LoadListMetadata(MMCKINFO & chunk);
 	BOOL ReadCueSheet(MMCKINFO & chunk);
@@ -687,15 +704,21 @@ public:
 
 	CuePointChunkItem * GetCuePoint(DWORD CueId);
 	WaveRegionMarker * GetRegionMarker(DWORD CueId);
-	LPCTSTR GetCueLabel(DWORD CueId);
-	LPCTSTR GetCueComment(DWORD CueId);
-	LPCTSTR GetCueText(DWORD CueId);    // use either label, or comment, or marker text
-	LPCTSTR GetCueTextByIndex(unsigned CueIndex);   // the same, using cue index
+	CuePointChunkItem const * GetCuePoint(DWORD CueId) const;
+	WaveRegionMarker const * GetRegionMarker(DWORD CueId) const;
+
+	LPCTSTR GetCueLabel(DWORD CueId) const;
+	LPCTSTR GetCueComment(DWORD CueId) const;
+	LPCTSTR GetCueText(DWORD CueId) const;    // use either label, or comment, or marker text
+	LPCTSTR GetCueTextByIndex(unsigned CueIndex) const;   // the same, using cue index
 
 	BOOL SetWaveMarker(WAVEREGIONINFO * info);
-	BOOL GetWaveMarker(WAVEREGIONINFO * info);
+	BOOL GetWaveMarker(WAVEREGIONINFO * info) const;
 	BOOL MoveWaveMarker(unsigned long MarkerCueID, SAMPLE_INDEX Sample);
 	BOOL SetMarkerLabel(unsigned long MarkerCueID, LPCTSTR Label);
+
+	// return sorted array of markers
+	void GetSortedMarkers(SAMPLE_INDEX_Vector & markers) const;
 
 	unsigned SampleRate() const
 	{
@@ -736,7 +759,7 @@ public:
 
 	DWORD m_FactSamples;
 private:
-	CPath MakePeakFileName(LPCTSTR FileName);
+	static CPath MakePeakFileName(LPCTSTR FileName);
 	// wrong type of constructor
 	CWaveFile & operator =(CWaveFile const &);
 	CWaveFile(CWaveFile const & f);
