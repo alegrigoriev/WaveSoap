@@ -490,9 +490,18 @@ public:
 						SCSI_SenseInfo * pSense);  // SCSI_IOCTL_DATA_IN, SCSI_IOCTL_DATA_OUT,
 	BOOL ScsiInquiry(SRB_HAInquiry * pInq);
 
-private:
+	BOOL GetSupportedSpeeds(int Speeds[], int * NumSpeeds);
+
+	BOOL SetReadSpeed(int speed);
+
+	BOOL GetEcMode(BOOL * C2ErrorPointersSupported);
+
+	BOOL StartReading(int speed);
+
+	CCdDrive & operator =(CCdDrive & const Drive);
+
+protected:
 	HANDLE m_hDrive;
-	HANDLE m_hDriveAttributes;
 	TCHAR m_DriveLetter;
 
 	SCSI_ADDRESS m_ScsiAddr;
