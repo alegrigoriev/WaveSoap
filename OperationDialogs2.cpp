@@ -230,7 +230,7 @@ CCdGrabbingDialog::CCdGrabbingDialog(CWnd* pParent /*=NULL*/)
 	m_Profile.AddItem(_T("CdRead"), _T("BaseDirectory"), m_sSaveFolder);
 	m_Profile.AddItem(_T("CdRead"), _T("FileType"), m_FileTypeFlags, 0,
 					0, SaveFile_WmaFile);
-	m_FileTypeFlags &= ~SaveFile_NonWavFile;
+	m_FileTypeFlags &= SaveFile_NonWavFile;
 
 	switch (m_FileTypeFlags)
 	{
@@ -249,6 +249,8 @@ CCdGrabbingDialog::CCdGrabbingDialog(CWnd* pParent /*=NULL*/)
 					176400, 0x10000000);
 	m_Profile.AddItem(_T("CdRead"), _T("DriveLetter"),
 					m_PreviousDriveLetter, 'Z', 'A', 'Z');
+	m_Profile.AddItem(_T("CdRead"), _T("DataRate"), m_EncodedDataRate, 0);
+	m_Profile.AddItem(_T("CdRead"), _T("FormatIndex"), m_FormatIndex, 0, 0, 2);
 
 	m_Profile.AddBoolItem(_T("CdRead"),
 						_T("AssignToAllOrSelected"), m_RadioAssignAttributes, FALSE);
@@ -295,7 +297,7 @@ CCdGrabbingDialog::CCdGrabbingDialog(CWnd* pParent /*=NULL*/)
 
 	m_pResizeItems = ResizeItems;
 	m_pResizeItemsCount = countof(ResizeItems);
-	// TODO: restore last format used
+
 	m_Wf.InitCdAudioFormat();
 	m_Acm.m_Wf.InitCdAudioFormat();
 }
@@ -332,6 +334,8 @@ void CCdGrabbingDialog::DoDataExchange(CDataExchange* pDX)
 		if (sel < m_Acm.m_Formats.size())
 		{
 			m_Wf = m_Acm.m_Formats[sel].Wf;
+			m_FormatIndex = sel;
+			m_EncodedDataRate = m_Acm.m_Formats[sel].Wf.BytesPerSec();
 		}
 		else
 		{
@@ -434,8 +438,9 @@ void CCdGrabbingDialog::DoDataExchange(CDataExchange* pDX)
 
 			// check for existing file, ask for replacement!
 			SetLastError(0);
+			ULONG AccessMask = GENERIC_READ | GENERIC_WRITE | DELETE;
 			HANDLE hFile = CreateFile(m_Tracks[t].TrackFileName,
-									GENERIC_READ | GENERIC_WRITE | DELETE, 0, NULL, OPEN_EXISTING, 0, NULL);
+									AccessMask, 0, NULL, OPEN_EXISTING, 0, NULL);
 			if (NULL == hFile || INVALID_HANDLE_VALUE == hFile)
 			{
 				DWORD error = GetLastError();
@@ -445,7 +450,7 @@ void CCdGrabbingDialog::DoDataExchange(CDataExchange* pDX)
 				case ERROR_FILE_NOT_FOUND:
 					// see if we can create a new file
 					hFile = CreateFile(m_Tracks[t].TrackFileName,
-										GENERIC_READ | GENERIC_WRITE | DELETE,
+										AccessMask,
 										0, NULL, CREATE_NEW,
 										FILE_FLAG_DELETE_ON_CLOSE, NULL);
 					if (NULL == hFile || INVALID_HANDLE_VALUE == hFile)
@@ -1716,12 +1721,18 @@ void CCdGrabbingDialog::FillFormatCombo()
 									WaveFormatMatchCnannels | WaveFormatMatchSampleRate);
 		break;
 	}
+	int Selection = 0;
 	for (unsigned i = 0; i < m_Acm.m_Formats.size(); i++)
 	{
 		m_ComboBitrate.AddString(m_Acm.m_Formats[i].Name
 								+ _T(" - ") + m_Acm.m_FormatTags[m_Acm.m_Formats[i].TagIndex].Name);
+		if (i == m_FormatIndex
+			&& m_EncodedDataRate == m_Acm.m_Formats[i].Wf.BytesPerSec())
+		{
+			Selection = i;
+		}
 	}
-	m_ComboBitrate.SetCurSel(0);
+	m_ComboBitrate.SetCurSel(Selection);
 }
 
 

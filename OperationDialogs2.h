@@ -198,6 +198,10 @@ protected:
 	BOOL m_bNeedUpdateControls;
 
 	CAudioCompressionManager m_Acm;
+
+	ULONG m_EncodedDataRate;
+	ULONG m_FormatIndex;
+
 	void FillFormatCombo();
 	// Playback support:
 	BOOL m_bPlayingAudio;
