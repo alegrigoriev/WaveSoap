@@ -2140,6 +2140,13 @@ void CNoiseReductionDialog::OnButtonSetThreshold()
 
 void CExpressionEvaluationDialog::OnSelchangeTabTokens(NMHDR* pNMHDR, LRESULT* pResult)
 {
+	ShowHideTabDialogs();
+
+	*pResult = 0;
+}
+
+void CExpressionEvaluationDialog::ShowHideTabDialogs()
+{
 	int sel = m_TabTokens.GetCurSel();
 
 	m_FunctionsTabDlg.EnableWindow(0 == sel);
@@ -2154,7 +2161,7 @@ void CExpressionEvaluationDialog::OnSelchangeTabTokens(NMHDR* pNMHDR, LRESULT* p
 	m_SavedExprTabDlg.EnableWindow(3 == sel);
 	m_SavedExprTabDlg.ShowWindow((3 == sel) ? SW_SHOWNA : SW_HIDE);
 
-	*pResult = 0;
+	GetApp()->m_ExpressionTabSelected = sel;
 }
 
 BOOL CExpressionEvaluationDialog::OnInitDialog()
@@ -2184,12 +2191,13 @@ BOOL CExpressionEvaluationDialog::OnInitDialog()
 		m_SavedExprTabDlg.EnableToolTips();
 	}
 
-	m_FunctionsTabDlg.EnableWindow();
-	m_FunctionsTabDlg.ShowWindow(SW_SHOWNA);
 	m_TabTokens.InsertItem(0, _T("Functions"));
 	m_TabTokens.InsertItem(1, _T("Operands"));
 	m_TabTokens.InsertItem(2, _T("Operators"));
 	m_TabTokens.InsertItem(3, _T("Saved Expressions"));
+
+	m_TabTokens.SetCurSel(GetApp()->m_ExpressionTabSelected);
+	ShowHideTabDialogs();
 
 	UpdateSelectionStatic();
 
