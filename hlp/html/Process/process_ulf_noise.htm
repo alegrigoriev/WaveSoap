@@ -1,0 +1,44 @@
+<html>
+
+<head>
+<meta name="GENERATOR" content="Microsoft FrontPage 6.0">
+<meta name="ProgId" content="FrontPage.Editor.Document">
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1251">
+<title>Turntable Noise Reduction command</title>
+</head>
+
+<body>
+
+<P><B>Turntable Noise Reduction&nbsp;command (<a href="process_menu.htm">Process menu</a> 
+Sound Cleanup submenu)</B></P>
+
+<P>Use this command to remove low-frequency static from the vinyl LP recording.</P>
+
+<P><B>Shortcuts:</B></P>
+
+<P>Toolbar:<IMG SRC="../../images/ProcessTurntable.png" ALT="" BORDER=0></P>
+
+<p>Two components are considered: ultra-low frequency common mode noise 
+(&quot;horizontal wobble&quot;), and differential mode noise caused by the disk warp 
+(&quot;vertical wobble&quot;). The latter shows up as opposite waves in the left and right 
+channels (the wave view is magnified):</p>
+<p><img border="0" src="../../images/VerticalNoise.png"></p>
+<p>As you can see, the wobble can reach about 3% of the full amplitude range.</p>
+<p>The following dialog is opened as the menu command is selected:</p>
+<p><img border="0" src="../../images/UlfReductionDialog.png"></p>
+<p><b>Suppress &quot;Vertical wobble&quot; noise up to: </b>check mark enables it, and the 
+edit box specifies the frequency range to suppress. Allowed range is from 1 to 
+1000 Hz, default value is 200 Hz.</p>
+<p><b>Suppress low frequencies up to: </b>check mark enables it, and the edit 
+box specifies the frequency range to suppress. Allowed range is from 1 to 1000 
+Hz, default value is 20 Hz.</p>
+<P><b>Save Undo</b> checkbox enables undoing the operation. If it's not checked, 
+you won't be able to undo the operation and all previous operations.</P>
+<P><b>Selection</b> button allows to specify range and channels to perform the 
+operation. It opens a
+<a href="file:///D:/My%20Projects/WaveSoap/hlp/html/Dialogs/Selection/SelectionDialog.htm">
+selection dialog</a>.</P>
+
+</body>
+
+</html>

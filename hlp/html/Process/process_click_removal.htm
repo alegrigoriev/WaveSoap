@@ -1,0 +1,68 @@
+<html>
+
+<head>
+<meta name="GENERATOR" content="Microsoft FrontPage 6.0">
+<meta name="ProgId" content="FrontPage.Editor.Document">
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1251">
+<title>New Page 0</title>
+</head>
+
+<body>
+
+<P><B>Click Removal&nbsp;command (<a href="process_menu.htm">Process menu</a> 
+Sound Cleanup submenu)</B></P>
+
+<P>Use this command to automatically remove click which are part of a vinyl LP 
+record.</P>
+
+<P><B>Shortcuts:</B></P>
+
+<P>Toolbar:<IMG SRC="../../images/ProcessDeclick.png" ALT="" BORDER=0 width="21" height="20"></P>
+
+<P>Not all clicks can be reliably found and removed. It is recommended to 
+manually clean the sound first from the largest clicks, using
+<a href="html/Tools/tools_interpolate.htm">Interpolate</a> command, and only 
+then use automated Click Removal command.</P>
+
+<p>The following dialog is opened as the menu command is selected:</p>
+<p><img border="0" src="../../images/ClickRemovalDialog.png"></p>
+<p>The click detection algorithm uses the following parameters:</p>
+<p><b>&nbsp;Minimum click amplitude</b> - minimum spike height to be considered 
+a click. Valid range is from 50 to 5000, default is 200.</p>
+<p><b>Click to noise ratio</b> - how many times a click amplitude should be more 
+than the filtered noise envelope. The sound is passed through a filter to 
+suppress all data not click-alike. Valid range is from 1.5 to 20, default is 4.</p>
+<p><b>Maximum click length </b>- maximum length that the program will try to 
+interpolate. Valid range is from 6 to 64, default is 32.</p>
+<p><b>Noise attack rate</b> - noise envelope filter constant, used when the 
+noise amplitude increases. Valid range is from 0.001 to 0.99, default is 0.5. 
+Higher values mean the program will accept sharp increases in high frequencies 
+without taking them for a click, but is less likely to detect a click.</p>
+<p><b>Click proximity factor </b>- noise envelope filter constant, used when the 
+noise amplitude decreases. Valid range is from 0.001 to 0.99, default is 0.01. 
+Higher values mean the program will detect clicks that are closer, but false 
+detection is more likely.</p>
+<p><b>Import clicks from a file</b> checkbox and an edit box - when checked, the 
+clicks positions and lengths will be read from a text file, instead of running 
+detection algorithm. The file name should be typed into an edit box, or selected 
+with &quot;Browse&quot; button next to it.</p>
+<p><b>Log all found clicks to a file</b> checkbox and an edit box - when 
+checked, the clicks positions and lengths will be written to a text file. The 
+file name should be typed into an edit box, or selected with &quot;Browse&quot; button 
+next to it. If &quot;<b>Log clicks only, don't change the wave</b>&quot; box is checked, 
+the actual clicks won't be removed. Only detection will run.</p>
+<p><b>Set defaults</b> button reset all values to defaults.</p>
+<p><b>Revert</b> button resets all values to those loaded when the dialog was 
+opened.</p>
+<p><b>Save</b> button saves the current settings to a text file. <b>Load </b>
+button loads previously saved settings.</p>
+<P><b>Save Undo</b> checkbox enables undoing the operation. If it's not checked, 
+you won't be able to undo the operation and all previous operations.</P>
+<P><b>Selection</b> button allows to specify range and channels to perform the 
+operation. It opens a
+<a href="file:///D:/My%20Projects/WaveSoap/hlp/html/Dialogs/Selection/SelectionDialog.htm">
+selection dialog</a>.</P>
+
+</body>
+
+</html>
