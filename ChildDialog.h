@@ -14,11 +14,10 @@ class CChildDialog : public CDialog
 {
 // Construction
 public:
-	CChildDialog(CWnd* pParent = NULL);   // standard constructor
+	CChildDialog(UINT id = 0, CWnd* pParent = NULL);   // standard constructor
 
 // Dialog Data
 	//{{AFX_DATA(CChildDialog)
-	enum { IDD = IDD_FUNCTIONS_TAB };
 	// NOTE: the ClassWizard will add data members here
 	//}}AFX_DATA
 
@@ -32,6 +31,7 @@ protected:
 
 // Implementation
 protected:
+	BOOL OnToolTipText(UINT, NMHDR* pNMHDR, LRESULT* pResult);
 
 	// Generated message map functions
 	//{{AFX_MSG(CChildDialog)

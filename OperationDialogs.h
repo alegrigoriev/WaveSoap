@@ -8,6 +8,7 @@
 //
 #include "NumEdit.h"
 #include "TimeEdit.h"
+#include "ChildDialog.h"
 
 /////////////////////////////////////////////////////////////////////////////
 // CCopyChannelsSelectDlg dialog
@@ -458,11 +459,16 @@ public:
 // Dialog Data
 	//{{AFX_DATA(CExpressionEvaluationDialog)
 	enum { IDD = IDD_DIALOG_EXPRESSION_EVALUATION };
+	CTabCtrl	m_TabTokens;
 	CEdit	m_eExpression;
 	CStatic	m_SelectionStatic;
 	BOOL	m_bUndo;
 	CString m_sExpression;
 	//}}AFX_DATA
+	CChildDialog m_FunctionsTabDlg;
+	CChildDialog m_OperandsTabDlg;
+	CChildDialog m_OperatorsTabDlg;
+	CChildDialog m_SavedExprTabDlg;
 
 	BOOL	m_bLockChannels;
 	long m_Start;
@@ -487,6 +493,8 @@ protected:
 	//{{AFX_MSG(CExpressionEvaluationDialog)
 	afx_msg void OnButtonSelection();
 	virtual void OnOK();
+	afx_msg void OnSelchangeTabTokens(NMHDR* pNMHDR, LRESULT* pResult);
+	virtual BOOL OnInitDialog();
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 };

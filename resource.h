@@ -4,6 +4,7 @@
 //
 #define IDD_ABOUTBOX                    100
 #define IDS_WAV_FILTER                  102
+#define IDD_FUNCTIONS_TAB               102
 #define IDD_PROPPAGE_DECLICK            104
 #define IDD_PROPPAGE_NOISEREDUCT        106
 #define IDR_MAINFRAME                   128
@@ -68,6 +69,9 @@
 #define IDR_MENU_POPUP_HOR_SCALE4096    159
 #define IDR_MENU_POPUP_HOR_SCALE8192    160
 #define IDD_DIALOG_REOPEN_DIRECT        160
+#define IDD_OPERANDS_TAB                161
+#define IDD_OPERATORS_TAB               162
+#define IDD_SAVED_EXPRESSIONS_TAB       163
 #define IDC_EDIT_MIN_CLICK_AMPLITUDE    1000
 #define IDC_TAB_SWITCH_VIEW_MODE        1000
 #define IDC_CHECK_LOG_CLICKS            1001
@@ -184,6 +188,22 @@
 #define IDC_LIST_TRACKS                 1080
 #define IDC_STATIC_SPEED                1081
 #define IDC_STATIC_PROMPT               1083
+#define IDC_BUTTON1                     1084
+#define IDC_BUTTON8                     1091
+#define IDC_BUTTON9                     1092
+#define IDC_BUTTON10                    1093
+#define IDC_BUTTON11                    1094
+#define IDC_BUTTON12                    1095
+#define IDC_BUTTON13                    1096
+#define IDC_BUTTON14                    1097
+#define IDC_BUTTON18                    1101
+#define IDC_BUTTON19                    1102
+#define IDC_BUTTON20                    1103
+#define IDC_BUTTON21                    1104
+#define IDC_TAB_TOKENS                  1105
+#define IDC_STATIC_TAB_INTERIOR         1106
+#define IDC_BUTTON_SAVEAS               1107
+#define IDC_STATIC_DESCRIPTION          1108
 #define IDC_VIEW_RULER_SAMPLES          32771
 #define IDC_VIEW_RULER_HHMMSS           32772
 #define IDC_VIEW_RULER_SECONDS          32773
@@ -259,6 +279,35 @@
 #define IDS_UNABLE_TO_REOPEN_AS         32847
 #define IDS_DIRECTORY_ACCESS_DENIED     32848
 #define IDS_DIRECTORY_NOT_FOUND         32849
+#define IDC_BUTTON_SIN                  32850
+#define IDC_BUTTON_COS                  32851
+#define IDC_BUTTON_SINH                 32852
+#define IDC_BUTTON_COSH                 32853
+#define IDC_BUTTON_TAN                  32854
+#define IDC_BUTTON_TANH                 32855
+#define IDC_BUTTON_EXP                  32856
+#define IDC_BUTTON_LN                   32857
+#define IDC_BUTTON_EXP10                32858
+#define IDC_BUTTON_LOG10                32859
+#define IDC_BUTTON_SQRT                 32860
+#define IDC_BUTTON_ABS                  32861
+#define IDC_BUTTON_INT                  32862
+#define IDC_BUTTON_POW                  32863
+#define IDC_BUTTON_NOISE                32864
+#define IDC_BUTTON_PI                   32865
+#define IDC_BUTTON_T                    32866
+#define IDC_BUTTON_LC_T                 32867
+#define IDC_BUTTON_DT                   32868
+#define IDC_BUTTON_LC_DT                32869
+#define IDC_BUTTON_DN                   32870
+#define IDC_BUTTON_LC_DN                32871
+#define IDC_BUTTON_F                    32872
+#define IDC_BUTTON_LC_F                 32873
+#define IDC_BUTTON_WAVE                 32874
+#define IDC_BUTTON_4                    32875
+#define IDC_BUTTON_5                    32876
+#define IDC_BUTTON_6                    32877
+#define IDC_BUTTON_7                    32878
 #define IDC_VIEW_AMPL_RULER_PERCENT     32900
 #define ID_FILE_PROPERTIES              40000
 #define ID_VIEW_ZOOMVERT_NORMAL         40001
@@ -344,7 +393,7 @@
 #define _APS_3D_CONTROLS                     1
 #define _APS_NEXT_RESOURCE_VALUE        161
 #define _APS_NEXT_COMMAND_VALUE         40088
-#define _APS_NEXT_CONTROL_VALUE         1084
+#define _APS_NEXT_CONTROL_VALUE         1109
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif
