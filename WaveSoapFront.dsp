@@ -180,6 +180,10 @@ SOURCE=.\OperationDialogs2.cpp
 # End Source File
 # Begin Source File
 
+SOURCE=.\PasteResampleModeDlg.cpp
+# End Source File
+# Begin Source File
+
 SOURCE=.\PreferencesPropertySheet.cpp
 # End Source File
 # Begin Source File
@@ -238,6 +242,15 @@ SOURCE=.\TimeRulerView.cpp
 # Begin Source File
 
 SOURCE=.\WaveFftView.cpp
+
+!IF  "$(CFG)" == "WaveSoapFront - Win32 Release"
+
+!ELSEIF  "$(CFG)" == "WaveSoapFront - Win32 Debug"
+
+# SUBTRACT CPP /FA<none>
+
+!ENDIF 
+
 # End Source File
 # Begin Source File
 
@@ -412,6 +425,10 @@ SOURCE=.\OperationDialogs.h
 # Begin Source File
 
 SOURCE=.\OperationDialogs2.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\PasteResampleModeDlg.h
 # End Source File
 # Begin Source File
 

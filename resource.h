@@ -100,6 +100,7 @@
 #define ID_BITMAP_ZOOMINHOR             181
 #define ID_BITMAP_ZOOMOUTHOR            182
 #define IDD_DIALOG_OPEN_AFTER_SAVE_COPY 182
+#define IDD_DIALOG_PASTE_RESAMPLE_MODE  183
 #define IDC_EDIT_MIN_CLICK_AMPLITUDE    1000
 #define IDC_TAB_SWITCH_VIEW_MODE        1000
 #define IDC_CHECK_LOG_CLICKS            1001
@@ -310,6 +311,7 @@
 #define IDC_CHECK_STOPBAND              1191
 #define IDC_STATIC_FORMAT               1191
 #define IDC_STATIC_COMMENTS             1192
+#define IDC_STATIC_TITLE                1193
 #define IDC_VIEW_RULER_SAMPLES          32771
 #define IDC_VIEW_RULER_HHMMSS           32772
 #define IDC_VIEW_RULER_SECONDS          32773
@@ -583,7 +585,7 @@
 #define _APS_3D_CONTROLS                     1
 #define _APS_NEXT_RESOURCE_VALUE        185
 #define _APS_NEXT_COMMAND_VALUE         40109
-#define _APS_NEXT_CONTROL_VALUE         1193
+#define _APS_NEXT_CONTROL_VALUE         1194
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif

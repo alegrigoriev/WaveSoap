@@ -1,6 +1,5 @@
 Known problems and tasks:
 
-Draw checkered background outside file area on FFT
 Add CD grabbing
 Load sound from AVI
 Add options dialog
@@ -91,6 +90,7 @@ Save As dialog is not centered first time (comdlg problem?)
 ??? When time/seconds format is set for status bar, MM:SS is actually shown
 
 Done:
+Draw gray background outside file area on FFT
 Add overflow dialog on resample	and other waveproc
 Test "reload compressed file" dialogs
 Add WMA save

@@ -17,6 +17,8 @@
 #include "ApplicationProfile.h"
 #include "DirectFile.h"
 #include "OperationContext2.h"
+#include "KListEntry.h"
+
 /////////////////////////////////////////////////////////////////////////////
 // CWaveSoapFrontApp:
 // See WaveSoapFront.cpp for the implementation of this class
@@ -114,8 +116,9 @@ public:
 
 	CDirectFile::CDirectFileCache * m_FileCache;
 	CWaveSoapFrontDoc * m_pActiveDocument;
-	COperationContext * m_pFirstOp;
-	COperationContext * m_pLastOp;
+
+	KListEntry<COperationContext> m_OpList;
+
 	CString m_CurrentStatusString;
 	CWaveSoapFrontDoc * m_pLastStatusDocument;
 	CSimpleCriticalSection m_StatusStringLock;

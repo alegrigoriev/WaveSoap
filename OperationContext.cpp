@@ -41,9 +41,7 @@ void COperationContext::PrintElapsedTime()
 COperationContext::COperationContext(class CWaveSoapFrontDoc * pDoc, LPCTSTR OperationName, DWORD Flags)
 	: pDocument(pDoc),
 	m_Flags(Flags),
-	m_pSecondaryContext(NULL),
-	pNext(NULL),
-	pPrev(NULL),
+	m_pChainedContext(NULL),
 	m_pUndoContext(NULL),
 	m_OperationName(OperationName),
 	PercentCompleted(0),
@@ -59,22 +57,17 @@ COperationContext::COperationContext(class CWaveSoapFrontDoc * pDoc, LPCTSTR Ope
 
 COperationContext::~COperationContext()
 {
-	if (m_pSecondaryContext)
+	if (m_pChainedContext)
 	{
-		COperationContext * pContext = m_pSecondaryContext;
-		m_pSecondaryContext = NULL;
+		COperationContext * pContext = m_pChainedContext;
+		m_pChainedContext = NULL;
 		delete pContext;
 	}
 }
 
 CString COperationContext::GetStatusString()
 {
-	if (NULL != m_pSecondaryContext)
-	{
-		return m_pSecondaryContext->GetStatusString();
-	}
-	else
-		return m_OperationString;
+	return m_OperationString;
 }
 
 BOOL COperationContext::InitDestination(CWaveFile & DstFile, long StartSample, long EndSample,
@@ -338,28 +331,16 @@ BOOL COperationContext::OperationProc()
 void COperationContext::Retire()
 {
 	// all context go to retirement list
-	if (m_Flags & OperationContextDontKeepAfterRetire)
-	{
-		InterlockedDecrement( & pDocument->m_OperationInProgress);
-		delete this;
-		return;
-	}
 	// queue it to the Doc
+	if ((m_Flags & OperationContextFinished)
+		&& NULL != m_pChainedContext)
+	{
+		COperationContext * pContext = m_pChainedContext;
+		m_pChainedContext = NULL;
+		pContext->Execute();
+	}
 	CSimpleCriticalSectionLock lock(pDocument->m_cs);
-	COperationContext * pLast = pDocument->m_pRetiredList;
-	pNext = NULL;
-	if (NULL == pLast)
-	{
-		pDocument->m_pRetiredList = this;
-	}
-	else
-	{
-		while (NULL != pLast->pNext)
-		{
-			pLast = pLast->pNext;
-		}
-		pLast->pNext = this;
-	}
+	pDocument->m_RetiredList.InsertTail(this);
 }
 
 void COperationContext::PostRetire(BOOL bChildContext)

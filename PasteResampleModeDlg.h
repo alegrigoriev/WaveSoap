@@ -19,10 +19,12 @@ public:
 // Dialog Data
 	//{{AFX_DATA(CPasteResampleModeDlg)
 	enum { IDD = IDD_DIALOG_PASTE_RESAMPLE_MODE };
-	// NOTE: the ClassWizard will add data members here
+	CStatic	m_Static;
+	int		m_ModeSelect;
 	//}}AFX_DATA
 
-
+	int m_SrcSampleRate;
+	int m_TargetSampleRate;
 // Overrides
 	// ClassWizard generated virtual function overrides
 	//{{AFX_VIRTUAL(CPasteResampleModeDlg)
@@ -35,7 +37,7 @@ protected:
 
 	// Generated message map functions
 	//{{AFX_MSG(CPasteResampleModeDlg)
-	// NOTE: the ClassWizard will add member functions here
+	virtual BOOL OnInitDialog();
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 };

@@ -10,8 +10,9 @@
 #include <msacm.h>
 #include "WaveSupport.h"
 #include "WmaFile.h"
+#include "KListEntry.h"
 
-class COperationContext
+class COperationContext : public KListEntry<COperationContext>
 {
 public:
 	COperationContext(class CWaveSoapFrontDoc * pDoc, LPCTSTR OperationName, DWORD Flags);
@@ -31,9 +32,11 @@ public:
 	virtual CString GetStatusString();
 	CString m_OperationName;
 	CString m_OperationString;
-	COperationContext * pNext;
-	COperationContext * pPrev;
-	COperationContext * m_pSecondaryContext;
+
+	// chained context is executed
+	// after the primary context is successfully completed
+	// but if the primary context is aborted, the chained one is just deleted
+	COperationContext * m_pChainedContext;
 	class CWaveSoapFrontDoc * pDocument;
 	DWORD m_Flags;
 	int PercentCompleted;
@@ -139,7 +142,7 @@ enum {
 	OperationContextInitialized = 0x40,
 	OperationContextCreatingUndo = 0x80,
 	OperationContextNonCritical = 0x100,
-	OperationContextDontKeepAfterRetire = 0x200,
+	//OperationContextDontKeepAfterRetire = 0x200,
 	OperationContextDontAdjustPriority = 0x400,
 	OperationContextInitFailed = 0x800,
 };
