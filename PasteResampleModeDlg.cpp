@@ -16,11 +16,17 @@ static char THIS_FILE[] = __FILE__;
 // CPasteResampleModeDlg dialog
 
 
-CPasteResampleModeDlg::CPasteResampleModeDlg(CWnd* pParent /*=NULL*/)
+CPasteResampleModeDlg::CPasteResampleModeDlg(
+											long SourceSampleRate,
+											long TargetSampleRate,
+											int LastResampleMode,
+											CWnd* pParent /*=NULL*/)
 	: CDialog(CPasteResampleModeDlg::IDD, pParent)
+	, m_SrcSampleRate(SourceSampleRate)
+	, m_TargetSampleRate(TargetSampleRate)
+	, m_ModeSelect(LastResampleMode)
 {
 	//{{AFX_DATA_INIT(CPasteResampleModeDlg)
-	m_ModeSelect = -1;
 	//}}AFX_DATA_INIT
 }
 
