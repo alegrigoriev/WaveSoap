@@ -19,6 +19,7 @@ static char THIS_FILE[]=__FILE__;
 
 CCdDrive::CCdDrive(BOOL UseAspi)
 	: m_hDrive(NULL),
+	m_hDriveAttributes(NULL),
 	m_DriveLetter(0),
 	m_hWinaspi32(NULL),
 	GetASPI32DLLVersion(NULL),
@@ -242,6 +243,23 @@ BOOL CCdDrive::Open(TCHAR letter)
 
 	m_hDrive = Drive;   // we will needit
 
+	Drive = CreateFile(
+						path,
+						0,
+						FILE_SHARE_READ | FILE_SHARE_WRITE,
+						NULL,
+						OPEN_EXISTING,
+						0,
+						NULL);
+
+	if (INVALID_HANDLE_VALUE == Drive || NULL == Drive)
+	{
+		Close();
+		return FALSE;
+	}
+
+	m_hDriveAttributes = Drive;   // we will needit
+
 	m_DriveLetter = letter;
 
 	DWORD bytes =0;
@@ -300,10 +318,16 @@ BOOL CCdDrive::Open(TCHAR letter)
 
 void CCdDrive::Close()
 {
-	if (NULL != m_hDrive)
+	if (NULL != m_hDriveAttributes)
 	{
 		UnlockDoor();
 		EnableMediaChangeDetection();
+		CloseHandle(m_hDriveAttributes);
+		m_hDriveAttributes = NULL;
+	}
+
+	if (NULL != m_hDrive)
+	{
 		CloseHandle(m_hDrive);
 		m_hDrive = NULL;
 	}
@@ -318,14 +342,14 @@ BOOL CCdDrive::EnableMediaChangeDetection()
 		return TRUE;
 	}
 
-	if (NULL == m_hDrive)
+	if (NULL == m_hDriveAttributes)
 	{
 		return FALSE;
 	}
 	DWORD BytesReturned;
 	BOOLEAN McnDisable = FALSE;
 
-	BOOL res = DeviceIoControl(m_hDrive,IOCTL_STORAGE_MCN_CONTROL,
+	BOOL res = DeviceIoControl(m_hDriveAttributes,IOCTL_STORAGE_MCN_CONTROL,
 								& McnDisable, sizeof McnDisable,
 								NULL, 0,
 								&BytesReturned, NULL);
@@ -341,17 +365,18 @@ BOOL CCdDrive::DisableMediaChangeDetection()
 		return TRUE;
 	}
 
-	if (NULL == m_hDrive)
+	if (NULL == m_hDriveAttributes)
 	{
 		return FALSE;
 	}
 	DWORD BytesReturned;
 	BOOLEAN McnDisable = TRUE;
 
-	BOOL res = DeviceIoControl(m_hDrive, IOCTL_STORAGE_MCN_CONTROL,
+	BOOL res = DeviceIoControl(m_hDriveAttributes, IOCTL_STORAGE_MCN_CONTROL,
 								& McnDisable, sizeof McnDisable,
 								NULL, 0,
 								&BytesReturned, NULL);
+	TRACE("DisableMediaChangeDetection IOCTL returned %d\n", res);
 	m_bMediaChangeNotificationDisabled = true;
 
 	return TRUE;
@@ -364,14 +389,14 @@ BOOL CCdDrive::LockDoor()
 		return TRUE;
 	}
 
-	if (NULL == m_hDrive)
+	if (NULL == m_hDriveAttributes)
 	{
 		return FALSE;
 	}
 	DWORD BytesReturned;
 	BOOLEAN LockMedia = TRUE;
 
-	BOOL res = DeviceIoControl(m_hDrive, IOCTL_STORAGE_EJECTION_CONTROL,
+	BOOL res = DeviceIoControl(m_hDriveAttributes, IOCTL_STORAGE_EJECTION_CONTROL,
 								& LockMedia, sizeof LockMedia,
 								NULL, 0,
 								&BytesReturned, NULL);
@@ -388,7 +413,7 @@ BOOL CCdDrive::UnlockDoor()
 		return TRUE;
 	}
 
-	if (NULL == m_hDrive)
+	if (NULL == m_hDriveAttributes)
 	{
 		return FALSE;
 	}
@@ -396,7 +421,7 @@ BOOL CCdDrive::UnlockDoor()
 	DWORD BytesReturned;
 	BOOLEAN LockMedia = FALSE;
 
-	BOOL res = DeviceIoControl(m_hDrive, IOCTL_STORAGE_EJECTION_CONTROL,
+	BOOL res = DeviceIoControl(m_hDriveAttributes, IOCTL_STORAGE_EJECTION_CONTROL,
 								& LockMedia, sizeof LockMedia,
 								NULL, 0,
 								&BytesReturned, NULL);
@@ -542,15 +567,31 @@ BOOL CCdDrive::ScsiInquiry(SRB_HAInquiry * pInq)
 
 BOOL CCdDrive::ReadToc(CDROM_TOC * pToc)
 {
-	DWORD dwReturned;
+	DWORD dwReturned = 0;
 	BOOL res = DeviceIoControl(m_hDrive, IOCTL_CDROM_READ_TOC,
 								NULL, 0,
 								pToc, sizeof *pToc,
 								& dwReturned,
 								NULL);
 
-	TRACE("Get TOC IoControl returned %x, bytes: %d, First track %d, last track: %d, Length:%02X%02X\n",
-		res, dwReturned, pToc->FirstTrack, pToc->LastTrack, pToc->Length[1], pToc->Length[0]);
+	TRACE("Get TOC IoControl returned %x, bytes: %d, last error = %d, First track %d, last track: %d, Length:%02X%02X\n",
+		res, dwReturned, GetLastError(),
+		pToc->FirstTrack, pToc->LastTrack, pToc->Length[1], pToc->Length[0]);
+	return res;
+}
+
+BOOL CCdDrive::ReadSessions(CDROM_TOC * pToc)
+{
+	DWORD dwReturned = 0;
+	BOOL res = DeviceIoControl(m_hDrive, IOCTL_CDROM_GET_LAST_SESSION,
+								NULL, 0,
+								pToc, sizeof *pToc,
+								& dwReturned,
+								NULL);
+
+	TRACE("Get Last Session IoControl returned %x, bytes: %d, last error = %d, First track %d, last track: %d, Length:%02X%02X\n",
+		res, dwReturned, GetLastError(),
+		pToc->FirstTrack, pToc->LastTrack, pToc->Length[1], pToc->Length[0]);
 	return res;
 }
 
@@ -739,6 +780,18 @@ BOOL CCdDrive::GetMaxReadSpeed(int * pMaxSpeed) // bytes/s
 
 		return FALSE;
 
+	}
+}
+
+void CCdDrive::StopAudioPlay()
+{
+	if (NULL != m_hDrive)
+	{
+		DWORD bytes =0;
+		BOOL res = DeviceIoControl(m_hDrive, IOCTL_CDROM_STOP_AUDIO,
+									NULL, 0,
+									NULL, 0,
+									& bytes, NULL);
 	}
 }
 

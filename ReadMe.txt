@@ -1,5 +1,6 @@
 Known problems and tasks:
 
+use CDRALW2K.sys service before trying ASPI
 Add CD grabbing
 Open CDA files
 Load sound from AVI
@@ -48,6 +49,8 @@ Make recording from Internet stream
 
 Problems:
 
+Multisession disk shows only begin of tracks. Read the whole structure.
+
 Expression evaluation selection longer than file length doesn't update file length
 After file length increased to 1 sample from 0, scroll bar set to wrond scale
 Multiline edit box in child dialog eats Esc and Enter (DLGC_WANTALLCHARS)
@@ -58,6 +61,9 @@ samples with 32767, -32768 are not visible
 Log Off query doesn't close the active dialog. Recursion is possible. Make sure to check after Cancel
 
 Fixed:
+No Disk In Drive has a checkmark
+"No Disk in drive" is updated all the time
+CD list combo height too low
 Click on outline view moves the wave view a bit after the button released
 When FFT array is reallocated, it is invalidated (was disabled in the code)
 Paste operation doesn't check if sampling rate is the same. Add dialog to resample

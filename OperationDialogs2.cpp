@@ -218,6 +218,7 @@ CCdGrabbingDialog::CCdGrabbingDialog(CWnd* pParent /*=NULL*/)
 	m_bNeedUpdateControls = TRUE;
 	m_MaxReadSpeed = 0;
 	m_SelectedReadSpeed = 64000000;    // use max available
+	m_DiskReady = DiskStateUnknown;
 }
 
 CCdGrabbingDialog::~CCdGrabbingDialog()
@@ -263,6 +264,7 @@ BEGIN_MESSAGE_MAP(CCdGrabbingDialog, CDialog)
 	ON_EN_CHANGE(IDC_EDIT_ARTIST, OnChangeEditArtist)
 	ON_BN_CLICKED(IDC_RADIO_STORE_MULTIPLE_FILES, OnRadioStoreMultipleFiles)
 	ON_BN_CLICKED(IDC_RADIO_STORE_SINGLE_FILE, OnRadioStoreSingleFile)
+	ON_NOTIFY(NM_CLICK, IDC_LIST_TRACKS, OnClickListTracks)
 	//}}AFX_MSG_MAP
 	ON_WM_DEVICECHANGE()
 	ON_MESSAGE(WM_KICKIDLE, OnKickIdle)
@@ -289,8 +291,24 @@ void CCdGrabbingDialog::FillDriveList(TCHAR SelectDrive)
 
 	if (0 != m_NumberOfDrives)
 	{
+		m_DrivesCombo.EnableWindow(TRUE);
 		m_DrivesCombo.SetCurSel(m_CDDriveSelected);
 		m_DriveLetterSelected = m_CDDrives[m_CDDriveSelected];
+	}
+	else
+	{
+		m_DrivesCombo.EnableWindow(FALSE);
+		if (DiskStateNoCdDrive == m_DiskReady)
+		{
+			return;
+		}
+		m_lbTracks.DeleteAllItems();
+		m_lbTracks.InsertItem(0, "CD drives not found");
+		m_Tracks.clear();
+
+		memzero(m_toc);
+		m_DiskReady = DiskStateNoCdDrive;
+		return;
 	}
 
 }
@@ -331,41 +349,97 @@ void CCdGrabbingDialog::FillTrackList(TCHAR letter)
 
 void CCdGrabbingDialog::ReloadTrackList()
 {
-	m_lbTracks.DeleteAllItems();
+	m_CdDrive.StopAudioPlay();
+	m_CdDrive.ReadSessions( & m_toc);
 	BOOL res = m_CdDrive.ReadToc( & m_toc);
 
-	m_bNeedUpdateControls = TRUE;
 	if ( ! res)
 	{
+		if (DiskStateNotReady == m_DiskReady)
+		{
+			return;
+		}
+		m_lbTracks.DeleteAllItems();
 		m_lbTracks.InsertItem(0, "No disk in the drive");
+		m_Tracks.clear();
+
 		memzero(m_toc);
-		m_bDiskReady = FALSE;
+		m_DiskReady = DiskStateNotReady;
+		m_bNeedUpdateControls = TRUE;
 		return;
 	}
-	m_bDiskReady = TRUE;
+
+	m_bNeedUpdateControls = TRUE;
+	// reset media change count:
+	m_CdDrive.CheckForMediaChange();
+
+	m_DiskReady = DiskStateReady;
+	m_lbTracks.DeleteAllItems();
 
 	int MaxSpeed;
 	m_CdDrive.GetMaxReadSpeed( & MaxSpeed);
 
 	// Get disk ID
 	m_DiskID = m_CdDrive.GetDiskID();
+	CString Album;
+	CString Artist;
+	// TODO: find artist and album info in cdplayer.ini
 
 	m_Tracks.resize(m_toc.LastTrack - m_toc.FirstTrack + 1);
 
-	for (int tr = 0; tr <= m_toc.LastTrack - m_toc.FirstTrack; tr++)
+	int tr;
+	vector<CdTrackInfo>::iterator pTrack;
+	for (tr = 0, pTrack = m_Tracks.begin()
+		; tr <= m_toc.LastTrack - m_toc.FirstTrack; tr++, pTrack++)
 	{
+		CdAddressMSF NextTrackBegin;
+		// track descriptor after last track contains address of the disk end
+		NextTrackBegin.Minute = m_toc.TrackData[tr + 1].Address[1];
+		NextTrackBegin.Second = m_toc.TrackData[tr + 1].Address[2];
+		NextTrackBegin.Frame = m_toc.TrackData[tr + 1].Address[3];
+
 		CString s;
-		s.Format("Track %d", m_toc.TrackData[tr].TrackNumber);
-		LVITEM item = {
+
+		UINT StateImage = 0, StateImageMask = 0;
+		if (m_toc.TrackData[tr].Control & 0xC)
+		{
+			s = _T("Data track");
+			pTrack->IsAudio = false;
+			pTrack->Checked = false;
+		}
+		else
+		{
+			s.Format("Track %d", m_toc.TrackData[tr].TrackNumber);
+			pTrack->Album = Album;
+			pTrack->Artist = Artist;
+			pTrack->IsAudio = true;
+			StateImage = 2;    // checked
+			StateImageMask = LVIS_STATEIMAGEMASK;
+			pTrack->Checked = TRUE;
+		}
+		pTrack->Track = s;
+		pTrack->TrackBegin.Minute = m_toc.TrackData[tr].Address[1];
+		pTrack->TrackBegin.Second = m_toc.TrackData[tr].Address[2];
+		pTrack->TrackBegin.Frame = m_toc.TrackData[tr].Address[3];
+		pTrack->NumSectors =
+			NextTrackBegin.FrameNumber() - pTrack->TrackBegin.FrameNumber();
+
+		LVITEM item1 = {
 			LVIF_TEXT | LVIF_STATE,
 			tr,
 			0,
-			INDEXTOSTATEIMAGEMASK(2),   // checked
-			LVIS_STATEIMAGEMASK,
+			INDEXTOSTATEIMAGEMASK(StateImage),
+			StateImageMask,
 			LPTSTR(LPCTSTR(s)),
 			0, 0, 0, 0};
-		m_lbTracks.InsertItem( & item);
-		m_lbTracks.SetCheck(tr, TRUE);
+		m_lbTracks.InsertItem( & item1);
+
+		s.Format("%d:%02d",
+				(pTrack->NumSectors + 37) / (75 * 60),
+				(pTrack->NumSectors + 37) / 75 % 60);
+
+		m_lbTracks.SetItemText(tr, 1, s);
+
 		TRACE("Track %d, addr: %d:%02d.%02d, Adr:%X, Control: %X\n",
 			m_toc.TrackData[tr].TrackNumber,
 			m_toc.TrackData[tr].Address[1],
@@ -423,7 +497,7 @@ BOOL CCdGrabbingDialog::OnInitDialog()
 {
 	CDialog::OnInitDialog();
 
-	m_lbTracks.SetExtendedStyle(LVS_EX_CHECKBOXES);
+	//m_lbTracks.SetExtendedStyle(LVS_EX_CHECKBOXES);
 
 	CreateImageList();
 	CRect cr;
@@ -858,16 +932,20 @@ void CCdGrabbingDialog::OnRadioStoreSingleFile()
 
 void CCdGrabbingDialog::InitReadSpeedCombobox()
 {
-	m_SpeedCombo.ResetContent();
 	m_MaxReadSpeed = 0;
-	if ( ! m_bDiskReady
+	if (m_DiskReady != DiskStateReady
 		|| ! m_CdDrive.GetMaxReadSpeed( & m_MaxReadSpeed))
 	{
-		m_SpeedCombo.AddString("Default");  // TODO: LoadString
-		m_SpeedCombo.SetCurSel(0);
-		m_SpeedCombo.EnableWindow(FALSE);
+		if (m_SpeedCombo.IsWindowEnabled())
+		{
+			m_SpeedCombo.ResetContent();
+			m_SpeedCombo.AddString("Default");  // TODO: LoadString
+			m_SpeedCombo.SetCurSel(0);
+			m_SpeedCombo.EnableWindow(FALSE);
+		}
 		return;
 	}
+	m_SpeedCombo.ResetContent();
 	m_SpeedCombo.EnableWindow(TRUE);
 	// round MaxReadSpeed to nearest multiple of 176400
 	m_MaxReadSpeed += 44100 * 4 / 2;
@@ -911,4 +989,40 @@ void CCdGrabbingDialog::InitReadSpeedCombobox()
 	{
 		m_SpeedCombo.SetCurSel(i - 1);
 	}
+}
+
+void CCdGrabbingDialog::OnClickListTracks(NMHDR* pNMHDR, LRESULT* pResult)
+{
+	*pResult = 0;
+	UINT flags;
+	NMLISTVIEW * pnmlv = (NMLISTVIEW *) pNMHDR;
+	LVHITTESTINFO hti;
+	hti.pt = pnmlv->ptAction;
+	m_lbTracks.HitTest( & hti);
+	TRACE("NM_CLICK Hittest=%X, item=%d\n", hti.flags, hti.iItem);
+	if (-1 == hti.iItem
+		|| hti.iItem >= m_Tracks.size()
+		|| 0 == (LVHT_ONITEMSTATEICON & hti.flags)
+		|| ! m_Tracks[hti.iItem].IsAudio)
+	{
+		return;
+	}
+
+	LVITEM lvi;
+	lvi.iItem = hti.iItem;
+	lvi.iSubItem = 0;
+	lvi.mask = LVIF_STATE;
+	lvi.stateMask = LVIS_STATEIMAGEMASK;
+	if (m_Tracks[hti.iItem].Checked)
+	{
+		// uncheck
+		lvi.state = INDEXTOSTATEIMAGEMASK(1);
+		m_Tracks[hti.iItem].Checked = false;
+	}
+	else
+	{
+		lvi.state = INDEXTOSTATEIMAGEMASK(2);
+		m_Tracks[hti.iItem].Checked = true;
+	}
+	m_lbTracks.SetItem( & lvi);
 }

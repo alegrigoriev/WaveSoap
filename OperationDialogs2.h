@@ -131,12 +131,13 @@ struct CdTrackInfo
 	CString Artist;
 	CString Album;
 	CString Track;
-	BOOL Selected;
+	bool Checked;
+	bool IsAudio;
 	CdAddressMSF TrackBegin;
 	LONG NumSectors;
 	CdTrackInfo()
 	{
-		Selected = FALSE;
+		Checked = FALSE;
 		NumSectors = 0;
 		TrackBegin.reserved = 0;
 		TrackBegin.Minute = 0;
@@ -179,7 +180,13 @@ public:
 	// speed is in bytes/s, rounded to nearest multiple of 176400
 	int m_MaxReadSpeed;
 	int m_SelectedReadSpeed;
-	BOOL m_bDiskReady;
+	enum DiskState
+	{
+		DiskStateUnknown,
+		DiskStateReady,
+		DiskStateNotReady,
+		DiskStateNoCdDrive,
+	} m_DiskReady;
 
 // Overrides
 	// ClassWizard generated virtual function overrides
@@ -226,6 +233,7 @@ protected:
 	afx_msg void OnChangeEditArtist();
 	afx_msg void OnRadioStoreMultipleFiles();
 	afx_msg void OnRadioStoreSingleFile();
+	afx_msg void OnClickListTracks(NMHDR* pNMHDR, LRESULT* pResult);
 	//}}AFX_MSG
 	void OnMetricsChange();
 	afx_msg LRESULT OnDeviceChange(UINT, DWORD);

@@ -27,6 +27,10 @@ struct CdAddressMSF
 	UCHAR Minute;
 	UCHAR Second;
 	UCHAR Frame;
+	LONG FrameNumber(int FramesPerSecond = 75)
+	{
+		return Frame + (Second + Minute * 60) * FramesPerSecond;
+	}
 };
 
 struct BigEndWord
@@ -713,6 +717,9 @@ public:
 	BOOL LockDoor();
 	BOOL UnlockDoor();
 	BOOL ReadToc(CDROM_TOC * pToc);
+	BOOL ReadSessions(CDROM_TOC * pToc);
+	void StopAudioPlay();
+
 	CdMediaChangeState CheckForMediaChange();
 
 	BOOL SendScsiCommand(CD_CDB * pCdb, void * pData, DWORD * pDataLen,
@@ -728,6 +735,7 @@ public:
 
 protected:
 	HANDLE m_hDrive;
+	HANDLE m_hDriveAttributes;
 	TCHAR m_DriveLetter;
 
 	SCSI_ADDRESS m_ScsiAddr;
