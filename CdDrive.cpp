@@ -19,7 +19,6 @@ static char THIS_FILE[]=__FILE__;
 
 CCdDrive::CCdDrive(BOOL UseAspi)
 	: m_hDrive(NULL),
-	m_hDriveAttributes(NULL),
 	m_DriveLetter(0),
 	m_hWinaspi32(NULL),
 	GetASPI32DLLVersion(NULL),
@@ -226,9 +225,10 @@ BOOL CCdDrive::Open(TCHAR letter)
 	CString path;
 	path.Format("\\\\.\\%c:", letter);
 
+	// access MAXIMUM_ALLOWED is necessary to have READ_ATTRIBUTES privilege
 	HANDLE Drive = CreateFile(
 							path,
-							GENERIC_READ,
+							MAXIMUM_ALLOWED,
 							FILE_SHARE_READ | FILE_SHARE_WRITE,
 							NULL,
 							OPEN_EXISTING,
@@ -242,22 +242,6 @@ BOOL CCdDrive::Open(TCHAR letter)
 
 	m_hDrive = Drive;   // we will needit
 
-	Drive = CreateFile(
-						path,
-						0,  // handle with READ_ATTRIBUTES rights
-						FILE_SHARE_READ | FILE_SHARE_WRITE,
-						NULL,
-						OPEN_EXISTING,
-						0,
-						NULL);
-
-	if (INVALID_HANDLE_VALUE == Drive || NULL == Drive)
-	{
-		Close();
-		return FALSE;
-	}
-
-	m_hDriveAttributes = Drive;
 	m_DriveLetter = letter;
 
 	DWORD bytes =0;
@@ -316,19 +300,14 @@ BOOL CCdDrive::Open(TCHAR letter)
 
 void CCdDrive::Close()
 {
-	if (NULL != m_hDriveAttributes)
+	if (NULL != m_hDrive)
 	{
 		UnlockDoor();
 		EnableMediaChangeDetection();
-		CloseHandle(m_hDriveAttributes);
-		m_hDriveAttributes = NULL;
-	}
-
-	if (NULL != m_hDrive)
-	{
 		CloseHandle(m_hDrive);
 		m_hDrive = NULL;
 	}
+
 	m_DriveLetter = 0;
 }
 
@@ -339,14 +318,14 @@ BOOL CCdDrive::EnableMediaChangeDetection()
 		return TRUE;
 	}
 
-	if (NULL == m_hDriveAttributes)
+	if (NULL == m_hDrive)
 	{
 		return FALSE;
 	}
 	DWORD BytesReturned;
 	BOOLEAN McnDisable = FALSE;
 
-	BOOL res = DeviceIoControl(m_hDriveAttributes,IOCTL_STORAGE_MCN_CONTROL,
+	BOOL res = DeviceIoControl(m_hDrive,IOCTL_STORAGE_MCN_CONTROL,
 								& McnDisable, sizeof McnDisable,
 								NULL, 0,
 								&BytesReturned, NULL);
@@ -361,14 +340,14 @@ BOOL CCdDrive::DisableMediaChangeDetection()
 		return TRUE;
 	}
 
-	if (NULL == m_hDriveAttributes)
+	if (NULL == m_hDrive)
 	{
 		return FALSE;
 	}
 	DWORD BytesReturned;
 	BOOLEAN McnDisable = TRUE;
 
-	BOOL res = DeviceIoControl(m_hDriveAttributes, IOCTL_STORAGE_MCN_CONTROL,
+	BOOL res = DeviceIoControl(m_hDrive, IOCTL_STORAGE_MCN_CONTROL,
 								& McnDisable, sizeof McnDisable,
 								NULL, 0,
 								&BytesReturned, NULL);
@@ -384,14 +363,14 @@ BOOL CCdDrive::LockDoor()
 		return TRUE;
 	}
 
-	if (NULL == m_hDriveAttributes)
+	if (NULL == m_hDrive)
 	{
 		return FALSE;
 	}
 	DWORD BytesReturned;
 	BOOLEAN LockMedia = TRUE;
 
-	BOOL res = DeviceIoControl(m_hDriveAttributes, IOCTL_STORAGE_EJECTION_CONTROL,
+	BOOL res = DeviceIoControl(m_hDrive, IOCTL_STORAGE_EJECTION_CONTROL,
 								& LockMedia, sizeof LockMedia,
 								NULL, 0,
 								&BytesReturned, NULL);
@@ -408,7 +387,7 @@ BOOL CCdDrive::UnlockDoor()
 		return TRUE;
 	}
 
-	if (NULL == m_hDriveAttributes)
+	if (NULL == m_hDrive)
 	{
 		return FALSE;
 	}
@@ -416,7 +395,7 @@ BOOL CCdDrive::UnlockDoor()
 	DWORD BytesReturned;
 	BOOLEAN LockMedia = FALSE;
 
-	BOOL res = DeviceIoControl(m_hDriveAttributes, IOCTL_STORAGE_EJECTION_CONTROL,
+	BOOL res = DeviceIoControl(m_hDrive, IOCTL_STORAGE_EJECTION_CONTROL,
 								& LockMedia, sizeof LockMedia,
 								NULL, 0,
 								&BytesReturned, NULL);
@@ -500,6 +479,74 @@ BOOL CCdDrive::SendScsiCommand(CD_CDB * pCdb,
 	}
 	else
 	{
+		// try to use IOCTL_SCSI_PASS_TROUGH or
+		// IOCTL_SCSI_PASS_TROUGH_DIRECT
+		if (*pDataLen < 256)
+		{
+			// use IOCTL_SCSI_PASS_TROUGH
+			struct OP : SCSI_PASS_THROUGH, SCSI_SenseInfo
+			{
+				char MoreBuffer[256];
+			} spt;
+
+			spt.Length = sizeof SCSI_PASS_THROUGH;
+			spt.PathId = m_ScsiAddr.PathId;
+			spt.TargetId = m_ScsiAddr.TargetId;
+			spt.Lun = m_ScsiAddr.Lun;
+
+			spt.SenseInfoLength = sizeof SCSI_SenseInfo;
+			spt.SenseInfoOffset = sizeof SCSI_PASS_THROUGH;
+
+			GetConfigurationCDB cdb(sizeof spt.CdConfig);
+
+			memcpy(spt.Cdb, & cdb, sizeof cdb);
+
+			spt.CdbLength = CdbLength;
+			spt.DataIn = SCSI_IOCTL_DATA_IN == DataDirection;
+
+			spt.DataTransferLength = * pDataLen;
+			spt.DataBufferOffset = offsetof (OP, MoreBuffer);
+			spt.TimeOutValue = 1000;
+
+			res = DeviceIoControl(hFile, IOCTL_SCSI_PASS_THROUGH,
+								& spt, sizeof spt,
+								& spt, sizeof spt,
+								& bytes, NULL);
+
+			TRACE("IOCTL_SCSI_PASS_THROUGH returned %d, error=%d\n", res, GetLastError());
+		}
+		else
+		{
+			// IOCTL_SCSI_PASS_TROUGH_DIRECT
+			struct OP : SCSI_PASS_THROUGH, SCSI_SenseInfo
+			{
+				char CdConfig[1024];
+			} spt;
+			spt.Length = sizeof spt;
+			spt.PathId = m_ScsiAddr.PathId;
+			spt.TargetId = m_ScsiAddr.TargetId;
+			spt.Lun = m_ScsiAddr.Lun;
+			spt.SenseInfoLength = sizeof SCSI_SenseInfo;
+			spt.SenseInfoOffset = sizeof SCSI_PASS_THROUGH;
+
+			GetConfigurationCDB cdb(sizeof spt.CdConfig);
+
+			memcpy(spt.Cdb, & cdb, sizeof cdb);
+
+			spt.CdbLength = sizeof cdb;
+			spt.DataIn = FALSE;
+
+			spt.DataTransferLength = sizeof spt.CdConfig;
+			spt.DataBufferOffset = sizeof SCSI_PASS_THROUGH + sizeof SCSI_SenseInfo;
+			spt.TimeOutValue = 1000;
+
+			res = DeviceIoControl(hFile, IOCTL_SCSI_PASS_THROUGH,
+								& spt, sizeof spt,
+								& spt, sizeof spt,
+								& bytes, NULL);
+
+			TRACE("IOCTL_SCSI_PASS_THROUGH returned %d, error=%d\n", res, GetLastError());
+		}
 		return FALSE;
 	}
 
@@ -534,7 +581,7 @@ CdMediaChangeState CCdDrive::CheckForMediaChange()
 	{
 		DWORD MediaChangeCount = 0;
 		DWORD BytesReturned;
-		DWORD res = DeviceIoControl(m_hDriveAttributes,
+		DWORD res = DeviceIoControl(m_hDrive,
 									IOCTL_STORAGE_CHECK_VERIFY2,
 									NULL, 0,
 									& MediaChangeCount, sizeof MediaChangeCount,
