@@ -233,7 +233,7 @@ void CVolumeChangeDialog::OnButtonSelection()
 	dlg.m_End = m_End;
 	dlg.m_Length = m_End - m_Start;
 	dlg.m_FileLength = m_FileLength;
-	dlg.m_Chan = m_Chan;
+	dlg.m_Chan = m_Chan + 1;
 	dlg.m_pWf = m_pWf;
 	dlg.m_TimeFormat = m_TimeFormat;
 
@@ -243,7 +243,7 @@ void CVolumeChangeDialog::OnButtonSelection()
 	}
 	m_Start = dlg.m_Start;
 	m_End = dlg.m_End;
-	m_Chan = dlg.m_Chan;
+	m_Chan = dlg.m_Chan - 1;
 	UpdateSelectionStatic();
 }
 
@@ -676,7 +676,7 @@ void CDcOffsetDialog::OnButtonSelection()
 	dlg.m_End = m_End;
 	dlg.m_Length = m_End - m_Start;
 	dlg.m_FileLength = m_FileLength;
-	dlg.m_Chan = m_Chan;
+	dlg.m_Chan = m_Chan + 1;
 	dlg.m_pWf = m_pWf;
 	dlg.m_TimeFormat = m_TimeFormat;
 
@@ -686,7 +686,7 @@ void CDcOffsetDialog::OnButtonSelection()
 	}
 	m_Start = dlg.m_Start;
 	m_End = dlg.m_End;
-	m_Chan = dlg.m_Chan;
+	m_Chan = dlg.m_Chan - 1;
 	GetDlgItem(IDC_STATIC_SELECTION)->SetWindowText(
 													GetSelectionText(m_Start, m_End, m_Chan,
 														m_pWf->nChannels, FALSE,
@@ -1025,7 +1025,7 @@ void CNormalizeSoundDialog::OnButtonSelection()
 	dlg.m_End = m_End;
 	dlg.m_Length = m_End - m_Start;
 	dlg.m_FileLength = m_FileLength;
-	dlg.m_Chan = m_Chan;
+	dlg.m_Chan = m_Chan + 1;
 	dlg.m_pWf = m_pWf;
 	dlg.m_TimeFormat = m_TimeFormat;
 
@@ -1035,7 +1035,7 @@ void CNormalizeSoundDialog::OnButtonSelection()
 	}
 	m_Start = dlg.m_Start;
 	m_End = dlg.m_End;
-	m_Chan = dlg.m_Chan;
+	m_Chan = dlg.m_Chan - 1;
 	UpdateSelectionStatic();
 }
 
@@ -1332,4 +1332,133 @@ int CStatisticsDialog::DoModal()
 		m_lpszTemplateName = MAKEINTRESOURCE(IDD_DIALOG_STATISTICS_MONO);
 	}
 	return CDialog::DoModal();
+}
+/////////////////////////////////////////////////////////////////////////////
+// CLowFrequencySuppressDialog dialog
+
+
+CLowFrequencySuppressDialog::CLowFrequencySuppressDialog(CWnd* pParent /*=NULL*/)
+	: CDialog(CLowFrequencySuppressDialog::IDD, pParent)
+{
+	//{{AFX_DATA_INIT(CLowFrequencySuppressDialog)
+	m_DifferentialModeSuppress = FALSE;
+	m_LowFrequencySuppress = FALSE;
+	m_bUndo = FALSE;
+	//}}AFX_DATA_INIT
+}
+
+
+void CLowFrequencySuppressDialog::DoDataExchange(CDataExchange* pDX)
+{
+	CDialog::DoDataExchange(pDX);
+	//{{AFX_DATA_MAP(CLowFrequencySuppressDialog)
+	DDX_Control(pDX, IDC_STATIC_SELECTION, m_SelectionStatic);
+	DDX_Control(pDX, IDC_EDIT_LF_NOISE_RANGE, m_eLfNoiseRange);
+	DDX_Control(pDX, IDC_EDIT_DIFF_NOISE_RANGE, m_eDiffNoiseRange);
+	DDX_Check(pDX, IDC_CHECK_DIFFERENTIAL_MODE_SUPPRESS, m_DifferentialModeSuppress);
+	DDX_Check(pDX, IDC_CHECK_LOW_FREQUENCY, m_LowFrequencySuppress);
+	DDX_Check(pDX, IDC_CHECK_UNDO, m_bUndo);
+	//}}AFX_DATA_MAP
+	m_eLfNoiseRange.ExchangeData(pDX, m_dLfNoiseRange,
+								"Low frequency suppression range", "Hz", 1., 1000.);
+	m_eDiffNoiseRange.ExchangeData(pDX, m_dDiffNoiseRange,
+									"Differential static suppression range", "Hz", 1., 1000.);
+}
+
+
+BEGIN_MESSAGE_MAP(CLowFrequencySuppressDialog, CDialog)
+	//{{AFX_MSG_MAP(CLowFrequencySuppressDialog)
+	ON_BN_CLICKED(IDC_BUTTON_SELECTION, OnButtonSelection)
+	ON_BN_CLICKED(IDC_CHECK_DIFFERENTIAL_MODE_SUPPRESS, OnCheckDifferentialModeSuppress)
+	ON_BN_CLICKED(IDC_CHECK_LOW_FREQUENCY, OnCheckLowFrequency)
+	//}}AFX_MSG_MAP
+END_MESSAGE_MAP()
+
+/////////////////////////////////////////////////////////////////////////////
+// CLowFrequencySuppressDialog message handlers
+
+void CLowFrequencySuppressDialog::OnButtonSelection()
+{
+	CSelectionDialog dlg;
+	dlg.m_Start = m_Start;
+	dlg.m_End = m_End;
+	dlg.m_Length = m_End - m_Start;
+	dlg.m_FileLength = m_FileLength;
+	dlg.m_Chan = m_Chan + 1;
+	dlg.m_pWf = m_pWf;
+	dlg.m_TimeFormat = m_TimeFormat;
+
+	if (IDOK != dlg.DoModal())
+	{
+		return;
+	}
+	m_Start = dlg.m_Start;
+	m_End = dlg.m_End;
+	m_Chan = dlg.m_Chan - 1;
+	UpdateSelectionStatic();
+}
+
+void CLowFrequencySuppressDialog::OnCheckDifferentialModeSuppress()
+{
+	m_DifferentialModeSuppress = IsDlgButtonChecked(IDC_CHECK_DIFFERENTIAL_MODE_SUPPRESS);
+	m_eDiffNoiseRange.EnableWindow(m_DifferentialModeSuppress);
+	if ( ! m_DifferentialModeSuppress)
+	{
+		// check second button
+		if (m_LowFrequencySuppress)
+		{
+			return;
+		}
+		CButton * pCheck = (CButton *)GetDlgItem(IDC_CHECK_LOW_FREQUENCY);
+		if (pCheck)
+		{
+			pCheck->SetCheck(1);
+			OnCheckLowFrequency();
+		}
+	}
+}
+
+void CLowFrequencySuppressDialog::OnCheckLowFrequency()
+{
+	m_LowFrequencySuppress = IsDlgButtonChecked(IDC_CHECK_LOW_FREQUENCY);
+	m_eLfNoiseRange.EnableWindow(m_LowFrequencySuppress);
+	if ( ! m_LowFrequencySuppress)
+	{
+		// check second button
+		if (m_DifferentialModeSuppress)
+		{
+			return;
+		}
+		CButton * pCheck = (CButton *)GetDlgItem(IDC_CHECK_DIFFERENTIAL_MODE_SUPPRESS);
+		if (pCheck)
+		{
+			pCheck->SetCheck(1);
+			OnCheckDifferentialModeSuppress();
+		}
+	}
+}
+
+void CLowFrequencySuppressDialog::UpdateSelectionStatic()
+{
+	m_SelectionStatic.SetWindowText(GetSelectionText(m_Start, m_End, m_Chan,
+													m_pWf->nChannels, m_bLockChannels,
+													m_pWf->nSamplesPerSec, m_TimeFormat));
+}
+
+
+BOOL CLowFrequencySuppressDialog::OnInitDialog()
+{
+	CDialog::OnInitDialog();
+
+	if (! m_LowFrequencySuppress
+		&& ! m_DifferentialModeSuppress)
+	{
+		m_LowFrequencySuppress = TRUE;
+		m_DifferentialModeSuppress = TRUE;
+	}
+	m_eLfNoiseRange.EnableWindow(m_LowFrequencySuppress);
+	m_eDiffNoiseRange.EnableWindow(m_DifferentialModeSuppress);
+	UpdateSelectionStatic();
+	return TRUE;  // return TRUE unless you set the focus to a control
+	// EXCEPTION: OCX Property Pages should return FALSE
 }
