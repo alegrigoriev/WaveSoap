@@ -42,7 +42,7 @@ CDirectFile::CDirectFile()
 
 CDirectFile::~CDirectFile()
 {
-
+	Close(0);
 }
 
 BOOL CDirectFile::Open(LPCTSTR szName, DWORD flags)
@@ -113,6 +113,26 @@ CDirectFile::File * CDirectFile::CDirectFileCache::Open
 {
 	// find if the file with this name is in the list.
 	// if it is, add a reference
+	if (flags & CreateMemoryFile)
+	{
+		// create memory file of zero length
+		File * pFile = new File("");
+		if (NULL == pFile)
+		{
+			return NULL;
+		}
+		pFile->m_Flags |= FileFlagsMemoryFile;
+		CSimpleCriticalSectionLock lock(m_cs);
+		pFile->pPrev = NULL;
+		pFile->pNext = m_pFileList;
+		if (m_pFileList)
+		{
+			m_pFileList->pPrev = pFile;
+		}
+		m_pFileList = pFile;
+		SetLastError(ERROR_SUCCESS);
+		return pFile;
+	}
 	CString FullName;
 	char * pName = FullName.GetBuffer(512);
 
@@ -293,6 +313,11 @@ CDirectFile::File * CDirectFile::CDirectFileCache::Open
 
 BOOL CDirectFile::File::SetSourceFile(File * pOriginalFile)
 {
+	ASSERT(0 == (m_Flags & FileFlagsMemoryFile));
+	if (m_Flags & FileFlagsMemoryFile)
+	{
+		return FALSE;
+	}
 	if (pOriginalFile->pSourceFile != 0)
 	{
 		// double indirection is not allowed
@@ -309,6 +334,10 @@ BOOL CDirectFile::File::SetSourceFile(File * pOriginalFile)
 
 BOOL CDirectFile::File::Commit(DWORD flags)
 {
+	if (m_Flags & FileFlagsMemoryFile)
+	{
+		return TRUE;
+	}
 	if (m_Flags & FileFlagsReadOnly)
 	{
 		return FALSE;
@@ -378,6 +407,10 @@ BOOL CDirectFile::File::Commit(DWORD flags)
 
 BOOL CDirectFile::File::Rename(LPCTSTR NewName, DWORD flags)
 {
+	if (m_Flags & FileFlagsMemoryFile)
+	{
+		return FALSE;
+	}
 	if (m_Flags & FileFlagsReadOnly)
 	{
 		return FALSE;
@@ -589,7 +622,8 @@ BOOL CDirectFile::File::Close(DWORD flags)
 		// we cannot set arbitrary file length
 		if (0 == (m_Flags & FileFlagsReadOnly))
 		{
-			if (FileLength != RealFileLength)
+			if (0 == (m_Flags & FileFlagsMemoryFile)
+				&& FileLength != RealFileLength)
 			{
 				HANDLE hf = CreateFile(sName,
 										GENERIC_WRITE,
@@ -764,7 +798,8 @@ long CDirectFile::Write(const void *pBuf, long count)
 		m_FilePointer += nWritten;
 		count -= nWritten;
 	}
-	if (m_FilePointer > m_pFile->FileLength)
+	if (TotalWritten != 0
+		&& m_FilePointer > m_pFile->FileLength)
 	{
 		m_pFile->FileLength = m_FilePointer;
 	}
@@ -796,7 +831,8 @@ long CDirectFile::WriteAt(const void *buf, long count, LONGLONG Position)
 		pSrcBuf += nWritten;
 		count -= nWritten;
 	}
-	if (Position > m_pFile->FileLength)
+	if (TotalWritten != 0
+		&& Position > m_pFile->FileLength)
 	{
 		m_pFile->FileLength = Position;
 	}
@@ -1063,9 +1099,46 @@ long CDirectFile::CDirectFileCache::GetDataBuffer(File * pFile,
 		return 0;
 	}
 	long BytesRequested = 0;
-	long BytesReturned;
+	long BytesReturned = 0;
 	int OffsetInBuffer = 0;
-
+	if (pFile->m_Flags & FileFlagsMemoryFile)
+	{
+		if (NULL == pFile->m_pMemoryFileBuffer)
+		{
+			return 0;
+		}
+		*ppBuf = NULL;
+		if (length > 0)
+		{
+			if (position >= pFile->m_MemoryFileBufferSize)
+			{
+				return 0;
+			}
+			long MaxLength = pFile->m_MemoryFileBufferSize - long(position);
+			if (length > MaxLength)
+			{
+				length = MaxLength;
+			}
+		}
+		else if (length < 0)
+		{
+			if (position > pFile->m_MemoryFileBufferSize)
+			{
+				return 0;
+			}
+			if (-length > position)
+			{
+				length = -position;
+			}
+		}
+		else
+		{
+			return 0;
+		}
+		*ppBuf = pFile->m_pMemoryFileBuffer + DWORD(position);
+		pFile->m_MemoryBufferRefCount++;
+		return length;
+	}
 	unsigned long BufferPosition;
 	if (length > 0)
 	{
@@ -1362,6 +1435,11 @@ void CDirectFile::CDirectFileCache::ReturnDataBuffer(File * pFile,
 {
 	if (NULL == pBuffer || 0 == count)
 	{
+		return;
+	}
+	if (pFile->m_Flags & FileFlagsMemoryFile)
+	{
+		pFile->m_MemoryBufferRefCount--;
 		return;
 	}
 	// find the buffer descriptor
@@ -1875,6 +1953,10 @@ void CDirectFile::BufferHeader::FlushDirtyBuffers()
 		}
 void CDirectFile::File::ValidateList() const
 {
+	if (m_Flags & FileFlagsMemoryFile)
+	{
+		return;
+	}
 	CSimpleCriticalSectionLock lock(m_ListLock);
 	BufferHeader const * pBuf = BuffersListHead;
 	VL_ASSERT((NULL == BuffersListHead) == (NULL == BuffersListTail));
@@ -1994,7 +2076,9 @@ unsigned CDirectFile::CDirectFileCache::_ThreadProc()
 					CSimpleCriticalSectionLock lock(m_cs);
 					pFile = m_pFileList;
 					for (int i = 0; pFile != NULL
-						&& (i < nFile || 0 == pFile->DirtyBuffersCount); i++,
+						&& (i < nFile
+							|| 0 == pFile->DirtyBuffersCount
+							|| (pFile->m_Flags & FileFlagsMemoryFile)); i++,
 						pFile = pFile->pNext)
 					{
 						// empty
@@ -2023,7 +2107,9 @@ unsigned CDirectFile::CDirectFileCache::_ThreadProc()
 
 BOOL CDirectFile::File::InitializeTheRestOfFile(int timeout)
 {
-	if (NULL == m_pWrittenMask || (m_Flags & FileFlagsReadOnly))
+	if (NULL == m_pWrittenMask
+		|| (m_Flags & FileFlagsReadOnly)
+		|| (m_Flags & FileFlagsMemoryFile))
 	{
 		return TRUE;
 	}
@@ -2052,12 +2138,42 @@ BOOL CDirectFile::File::InitializeTheRestOfFile(int timeout)
 
 BOOL CDirectFile::File::SetFileLength(LONGLONG NewLength)
 {
+	if (m_Flags & FileFlagsMemoryFile)
+	{
+		// allocate or reallocate memory buffer
+		if (NewLength > 0x100000
+			|| NewLength < 0
+			|| 0 != m_MemoryBufferRefCount)
+		{
+			// limit 1 M
+			return FALSE;
+		}
+		if (long(NewLength) <= m_MemoryFileBufferSize)
+		{
+			if (NewLength > FileLength)
+			{
+				memset(m_pMemoryFileBuffer + FileLength, 0, NewLength - FileLength);
+			}
+			FileLength = NewLength;
+			return TRUE;
+		}
+		char * NewBuf = new char[long(NewLength)];
+		if (NULL == NewBuf)
+		{
+			return FALSE;
+		}
+		if (m_pMemoryFileBuffer)
+		{
+			memcpy(NewBuf, m_pMemoryFileBuffer, FileLength);
+			delete m_pMemoryFileBuffer;
+		}
+		m_MemoryFileBufferSize = NewLength;
+		m_pMemoryFileBuffer = NewBuf;
+		memset(m_pMemoryFileBuffer + FileLength, 0, NewLength - FileLength);
+		FileLength = NewLength;
+		return TRUE;
+	}
 	// if the file becomes shorter, discard all buffers after the trunk point
-#if 0
-	void * p;
-	GetDataBuffer( & p, 1, NewLength - 1, 0);
-	ReturnDataBuffer(p, 1, 0);
-#endif
 	if (NewLength < FileLength)
 	{
 		Flush();
