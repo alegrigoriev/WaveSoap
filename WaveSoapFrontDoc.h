@@ -544,6 +544,8 @@ protected:
 public:
 	afx_msg void OnSaveSaveselectionas();
 	afx_msg void OnUpdateSaveSaveselectionas(CCmdUI *pCmdUI);
+	afx_msg void OnSaveSplitToFiles();
+	afx_msg void OnUpdateSaveSplitToFiles(CCmdUI *pCmdUI);
 };
 
 #pragma pack(push, 1)
