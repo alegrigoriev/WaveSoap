@@ -339,6 +339,16 @@ public:
 	LONGLONG m_EnergyRight;
 	LONGLONG m_SumLeft;
 	LONGLONG m_SumRight;
+	DWORD m_CurrentLeftCrc;
+	DWORD m_CRC32Left;
+	DWORD m_CurrentRightCrc;
+	DWORD m_CRC32Right;
+	DWORD m_CurrentCommonCRC;
+	DWORD m_CRC32Common;
+
+	// sample number is limited at 256. If 0, checksum not started yet
+	int m_ChecksumSampleNumber;
+	DWORD m_Checksum;
 
 	//virtual BOOL OperationProc();
 	virtual BOOL ProcessBuffer(void * buf, size_t BufferLength, DWORD offset, BOOL bBackward = FALSE);

@@ -3387,12 +3387,27 @@ inline BOOL CWaveSoapFrontDoc::IsModified()
 
 void CWaveSoapFrontDoc::IncrementModified(BOOL bDeleteRedo, int KeepPreviousUndo)
 {
-	// bDeleteRedo is FALSE for Redo command
+	// bDeleteRedo is FALSE for Redo command ONLY
 	BOOL OldModified = CWaveSoapFrontDoc::IsModified();
-	m_ModificationSequenceNumber++;
+	// Modification sequence number may become zero only after Redo operation
+	// if bDeleteRedo, don't allow it to become 0 from -1.
 	if (bDeleteRedo)
 	{
+		// make sure it will never become 0, as there is no way anymore
+		// to restore the original
+		if (m_ModificationSequenceNumber < 0)
+		{
+			m_ModificationSequenceNumber = 0x8000;
+		}
+		else
+		{
+			m_ModificationSequenceNumber++;
+		}
 		DeleteRedo();
+	}
+	else
+	{
+		m_ModificationSequenceNumber++;
 	}
 	if (-1 == KeepPreviousUndo)
 	{

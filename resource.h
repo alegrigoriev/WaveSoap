@@ -452,6 +452,8 @@
 #define IDS_EXPRESSIONS_SAVE_TITLE      32919
 #define IDS_EXPRESSIONS_LOAD_TITLE      32920
 #define IDS_CANNOT_OPEN_WMA             32921
+#define IDS_STATISTICS_FORMAT_RIGHT     32922
+#define IDS_STATISTICS_FORMAT_LEFT      32923
 #define ID_FILE_PROPERTIES              40000
 #define ID_VIEW_ZOOMVERT_NORMAL         40001
 #define ID_VIEW_ZOOMIN_HOR_FULL         40002
@@ -541,6 +543,7 @@
 #define ID_PROCESS_EQUALIZER            40100
 #define ID_VIEW_INCREASE_FFT_BANDS      40105
 #define ID_VIEW_DECREASE_FFT_BANDS      40106
+#define ID_PROCESS_SWAPCHANNELS         40107
 #define ID_TOOLS_SYNTHESIS              65535
 
 // Next default values for new objects
@@ -549,7 +552,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_3D_CONTROLS                     1
 #define _APS_NEXT_RESOURCE_VALUE        179
-#define _APS_NEXT_COMMAND_VALUE         40107
+#define _APS_NEXT_COMMAND_VALUE         40108
 #define _APS_NEXT_CONTROL_VALUE         1190
 #define _APS_NEXT_SYMED_VALUE           101
 #endif

@@ -702,6 +702,7 @@ void CDcOffsetDialog::DoDataExchange(CDataExchange* pDX)
 {
 	CDialog::DoDataExchange(pDX);
 	//{{AFX_DATA_MAP(CDcOffsetDialog)
+	DDX_Control(pDX, IDC_SPIN1, m_OffsetSpin);
 	DDX_Check(pDX, IDC_CHECK_5SECONDS, m_b5SecondsDC);
 	DDX_Check(pDX, IDC_CHECK_UNDO, m_bUndo);
 	DDX_Text(pDX, IDC_EDIT_DC_OFFSET, m_nDcOffset);
@@ -811,15 +812,25 @@ BOOL CStatisticsDialog::OnInitDialog()
 	s.Format(_T("File: %s"), LPCTSTR(m_sFilename));
 	m_FileName.SetWindowText(s);
 
+	int nSampleSize = m_pContext->m_DstFile.SampleSize();
 	long nSamples =
 		(m_pContext->m_DstCopyPos - m_pContext->m_DstStart)
-		/ m_pContext->m_DstFile.SampleSize();
+		/ nSampleSize;
 	if (0 == nSamples)
 	{
 		nSamples = 1;
 	}
-	CString format;
-	format.LoadString(IDS_STATISTICS_FORMAT);
+	CString format, formatRight;
+	if (m_pContext->m_DstFile.Channels() > 1)
+	{
+		format.LoadString(IDS_STATISTICS_FORMAT_LEFT);
+		formatRight.LoadString(IDS_STATISTICS_FORMAT_RIGHT);
+	}
+	else
+	{
+		format.LoadString(IDS_STATISTICS_FORMAT);
+	}
+
 	CString AtCursorDb;
 	CString MinDb;
 	CString MaxDb;
@@ -880,18 +891,18 @@ BOOL CStatisticsDialog::OnInitDialog()
 			m_ValueAtCursorLeft / 327.68,
 
 			//"%s (%s)\r\n"
-			LPCTSTR(SampleToString(m_pContext->m_PosMinLeft, m_SamplesPerSec,
+			LPCTSTR(SampleToString(m_pContext->m_PosMinLeft / nSampleSize, m_SamplesPerSec,
 									SampleToString_HhMmSs | TimeToHhMmSs_NeedsMs | TimeToHhMmSs_NeedsHhMm)),
-			LPCTSTR(SampleToString(m_pContext->m_PosMinLeft, m_SamplesPerSec, SampleToString_Sample)),
+			LPCTSTR(SampleToString(m_pContext->m_PosMinLeft / nSampleSize, m_SamplesPerSec, SampleToString_Sample)),
 
 			//"%s (%.2f dB; %.2f%%)\r\n"
 			LPCTSTR(LtoaCS(m_pContext->m_MinLeft)), LPCTSTR(MinDb),
 			m_pContext->m_MinLeft / 327.68,
 
 			//"%s (%s)\r\n"
-			LPCTSTR(SampleToString(m_pContext->m_PosMaxLeft, m_SamplesPerSec,
+			LPCTSTR(SampleToString(m_pContext->m_PosMaxLeft / nSampleSize, m_SamplesPerSec,
 									SampleToString_HhMmSs | TimeToHhMmSs_NeedsMs | TimeToHhMmSs_NeedsHhMm)),
-			LPCTSTR(SampleToString(m_pContext->m_PosMaxLeft, m_SamplesPerSec, SampleToString_Sample)),
+			LPCTSTR(SampleToString(m_pContext->m_PosMaxLeft / nSampleSize, m_SamplesPerSec, SampleToString_Sample)),
 
 			//"%s (%.2f dB; %.2f%%)\r\n"
 			LPCTSTR(LtoaCS(m_pContext->m_MaxLeft)),
@@ -904,9 +915,12 @@ BOOL CStatisticsDialog::OnInitDialog()
 			//"%s (%.2f dB; %.2f%%)\r\n"
 			LPCTSTR(LtoaCS(m_pContext->m_SumLeft / nSamples)),
 			LPCTSTR(DcDb), (m_pContext->m_SumLeft / nSamples) / 327.68,
-			//"%.2f Hz"
+			//"%.2f Hz\r\n\r\n"
 			// zero crossing
-			m_pContext->m_ZeroCrossingLeft / double(nSamples) * m_SamplesPerSec
+			m_pContext->m_ZeroCrossingLeft / double(nSamples) * m_SamplesPerSec,
+			// %08X
+			m_pContext->m_CRC32Left,
+			m_pContext->m_Checksum
 			);
 	s.ReleaseBuffer();
 	SetDlgItemText(IDC_EDIT_LEFT, s);
@@ -957,7 +971,7 @@ BOOL CStatisticsDialog::OnInitDialog()
 			DcDb = "-Inf.";
 		}
 
-		sprintf(s.GetBuffer(1024), format,
+		sprintf(s.GetBuffer(1024), formatRight,
 				//%s (%s)\r\n"
 				LPCTSTR(SampleToString(m_CaretPosition, m_SamplesPerSec,
 										SampleToString_HhMmSs | TimeToHhMmSs_NeedsMs | TimeToHhMmSs_NeedsHhMm)),
@@ -968,18 +982,18 @@ BOOL CStatisticsDialog::OnInitDialog()
 				m_ValueAtCursorRight / 327.68,
 
 				//"%s (%s)\r\n"
-				LPCTSTR(SampleToString(m_pContext->m_PosMinRight, m_SamplesPerSec,
+				LPCTSTR(SampleToString(m_pContext->m_PosMinRight / nSampleSize, m_SamplesPerSec,
 										SampleToString_HhMmSs | TimeToHhMmSs_NeedsMs | TimeToHhMmSs_NeedsHhMm)),
-				LPCTSTR(SampleToString(m_pContext->m_PosMinRight, m_SamplesPerSec, SampleToString_Sample)),
+				LPCTSTR(SampleToString(m_pContext->m_PosMinRight / nSampleSize, m_SamplesPerSec, SampleToString_Sample)),
 
 				//"%s (%.2f dB; %.2f%%)\r\n"
 				LPCTSTR(LtoaCS(m_pContext->m_MinRight)), LPCTSTR(MinDb),
 				m_pContext->m_MinRight / 327.68,
 
 				//"%s (%s)\r\n"
-				LPCTSTR(SampleToString(m_pContext->m_PosMaxRight, m_SamplesPerSec,
+				LPCTSTR(SampleToString(m_pContext->m_PosMaxRight / nSampleSize, m_SamplesPerSec,
 										SampleToString_HhMmSs | TimeToHhMmSs_NeedsMs | TimeToHhMmSs_NeedsHhMm)),
-				LPCTSTR(SampleToString(m_pContext->m_PosMaxRight, m_SamplesPerSec, SampleToString_Sample)),
+				LPCTSTR(SampleToString(m_pContext->m_PosMaxRight / nSampleSize, m_SamplesPerSec, SampleToString_Sample)),
 
 				//"%s (%.2f dB; %.2f%%)\r\n"
 				LPCTSTR(LtoaCS(m_pContext->m_MaxRight)),
@@ -994,7 +1008,11 @@ BOOL CStatisticsDialog::OnInitDialog()
 				LPCTSTR(DcDb), (m_pContext->m_SumRight / nSamples) / 327.68,
 				//"%.2f Hz"
 				// zero crossing
-				m_pContext->m_ZeroCrossingRight / double(nSamples) * m_SamplesPerSec
+				m_pContext->m_ZeroCrossingRight / double(nSamples) * m_SamplesPerSec,
+				// %08X\r\n
+				m_pContext->m_CRC32Right,
+				// %08X
+				m_pContext->m_CRC32Common
 				);
 
 		s.ReleaseBuffer();
@@ -2406,4 +2424,13 @@ int CSelectionDialog::DoModal()
 		m_lpszTemplateName = MAKEINTRESOURCE(IDD_SELECTION_DIALOG_MONO);
 	}
 	return CDialog::DoModal();
+}
+
+BOOL CDcOffsetDialog::OnInitDialog()
+{
+	CDialog::OnInitDialog();
+
+	m_OffsetSpin.SetRange32(-0x8000, 0x7FFF);
+	return TRUE;  // return TRUE unless you set the focus to a control
+	// EXCEPTION: OCX Property Pages should return FALSE
 }

@@ -1,8 +1,12 @@
 Known problems and tasks:
 
-Make "CRC" field for the statristics
+Make "CRC" field for the statistics
+Add Checksum field for the statistics
+
 Save peak info for compressed files, too
-Add low/high frequency filters functions
+Add "Swap Channels" function
+Add low/high frequency and notch filters functions
+Add "phase corrected" stereo to mono conversion
 Test "reload compressed file" dialogs
 Add options dialog
 Put zoom buttons in the static fields in the view
@@ -65,6 +69,8 @@ Save As dialog is not centered first time (comdlg problem?)
 ??? When time/seconds format is set for status bar, MM:SS is actually shown
 
 Fixed:
+Min/Max sample position not divided by the sample size
+Save, Undo, Modify - causes to mark the file as unchanged
 Right-only volume change skipped some samples
 Use document title rather than filename in dialogs
 Drag distance too little in WinME (use resize border size)
@@ -74,6 +80,7 @@ No status bar in WinME
 FFT doesn't invaludate some areas
 
 Done:
+F12 - shortcut for Save As, Shift+F12 - shortcut for Save Copy
 Add "Zero phase" option to the equalizer
 Make shortcuts:
     show waveform: Alt+1

@@ -202,11 +202,11 @@ BEGIN
         MENUITEM "&Open...\tCtrl+O",            ID_FILE_OPEN
         MENUITEM "Read Audio CD Tracks...",     ID_TOOLS_CDGRAB
         MENUITEM "Reopen For Editing",          ID_FILE_REOPENFOREDITING
-        MENUITEM "&Close",                      ID_FILE_CLOSE
+        MENUITEM "&Close\tCtrl+Shift+F4",       ID_FILE_CLOSE
         MENUITEM "&Save\tCtrl+S",               ID_FILE_SAVE
-        MENUITEM "Save &As...",                 ID_FILE_SAVE_AS
-        MENUITEM "Save Cop&y As...\tCtrl+Shift+S", ID_FILE_SAVE_COPY_AS
-        MENUITEM "Save Al&l",                   ID_FILE_SAVE_ALL
+        MENUITEM "Save &As...\tF12",            ID_FILE_SAVE_AS
+        MENUITEM "Save Cop&y As...\tShift+F12", ID_FILE_SAVE_COPY_AS
+        MENUITEM "Save Al&l\tCtrl+Shift+S",     ID_FILE_SAVE_ALL
         MENUITEM SEPARATOR
         MENUITEM "&Print...\tCtrl+P",           ID_FILE_PRINT
         MENUITEM "Print Pre&view",              ID_FILE_PRINT_PREVIEW
@@ -300,6 +300,7 @@ BEGIN
         MENUITEM "&Resample...",                ID_PROCESS_RESAMPLE
         MENUITEM "C&hange Channels...",         ID_PROCESS_CHANNELS
         MENUITEM "E&qualizer...",               ID_PROCESS_EQUALIZER
+        MENUITEM "Swap Channels",               ID_PROCESS_SWAPCHANNELS
         MENUITEM SEPARATOR
         MENUITEM "Stop\tEsc",                   ID_EDIT_STOP
     END
@@ -794,7 +795,7 @@ BEGIN
     "P",            ID_FILE_PRINT,          VIRTKEY, CONTROL, NOINVERT
     "S",            ID_FILE_SAVE,           VIRTKEY, CONTROL, NOINVERT
     "S",            ID_FILE_SAVE_AS,        VIRTKEY, SHIFT, NOINVERT
-    "S",            ID_FILE_SAVE_COPY_AS,   VIRTKEY, SHIFT, CONTROL, 
+    "S",            ID_FILE_SAVE_ALL,       VIRTKEY, SHIFT, CONTROL, 
                                                     NOINVERT
     "V",            ID_EDIT_PASTE,          VIRTKEY, CONTROL, NOINVERT
     VK_ADD,         ID_VIEW_ZOOMINHOR2,     VIRTKEY, NOINVERT
@@ -806,6 +807,8 @@ BEGIN
     VK_ESCAPE,      ID_STOP_ALL,            VIRTKEY, NOINVERT
     VK_F1,          ID_HELP,                VIRTKEY, NOINVERT
     VK_F1,          ID_CONTEXT_HELP,        VIRTKEY, SHIFT, NOINVERT
+    VK_F12,         ID_FILE_SAVE_AS,        VIRTKEY, NOINVERT
+    VK_F12,         ID_FILE_SAVE_COPY_AS,   VIRTKEY, SHIFT, NOINVERT
     VK_F6,          ID_NEXT_PANE,           VIRTKEY, NOINVERT
     VK_F6,          ID_PREV_PANE,           VIRTKEY, SHIFT, NOINVERT
     VK_INSERT,      ID_EDIT_COPY,           VIRTKEY, CONTROL, NOINVERT
@@ -1058,9 +1061,9 @@ BEGIN
     CONTROL         "Adjust DC offset by:",IDC_RADIO2,"Button",
                     BS_AUTORADIOBUTTON,7,32,74,10
     EDITTEXT        IDC_EDIT_DC_OFFSET,131,30,35,14,ES_AUTOHSCROLL | 
-                    ES_NUMBER | WS_GROUP
-    CONTROL         "Spin1",IDC_SPIN1,"msctls_updown32",UDS_SETBUDDYINT | 
-                    UDS_AUTOBUDDY | UDS_ARROWKEYS,166,30,10,14
+                    WS_GROUP
+    CONTROL         "Spin1",IDC_SPIN1,"msctls_updown32",UDS_AUTOBUDDY | 
+                    UDS_ARROWKEYS,166,30,10,14
     CONTROL         "Compute DC offset from 5 seconds only",
                     IDC_CHECK_5SECONDS,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,
                     7,52,150,10
@@ -1073,20 +1076,20 @@ BEGIN
     PUSHBUTTON      "&Help",IDHELP,132,105,50,14
 END
 
-IDD_DIALOG_STATISTICS DIALOG DISCARDABLE  0, 0, 330, 168
+IDD_DIALOG_STATISTICS DIALOG DISCARDABLE  0, 0, 330, 188
 STYLE DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
-CAPTION "File statistics:"
+CAPTION "File statistics"
 FONT 8, "MS Sans Serif"
 BEGIN
-    DEFPUSHBUTTON   "OK",IDOK,140,147,50,14
-    EDITTEXT        IDC_EDIT_LEFT,112,39,100,107,ES_MULTILINE | 
+    DEFPUSHBUTTON   "OK",IDOK,140,167,50,14
+    EDITTEXT        IDC_EDIT_LEFT,112,39,100,124,ES_MULTILINE | 
                     ES_AUTOVSCROLL | ES_AUTOHSCROLL | ES_READONLY | NOT 
                     WS_BORDER
-    EDITTEXT        IDC_EDIT_RIGHT,220,39,100,107,ES_MULTILINE | 
+    EDITTEXT        IDC_EDIT_RIGHT,220,39,100,124,ES_MULTILINE | 
                     ES_AUTOHSCROLL | ES_READONLY | NOT WS_BORDER
-    CONTROL         "Cursor position:\nSample value at cursor:\n\nMax negative peak position:\nMax negative peak value:\n\nMax positive peak position:\nMax positive peak value:\n\nRMS power:\nAverage value (DC offset):\nZero crossings:",
+    CONTROL         "Cursor position:\nSample value at cursor:\n\nMax negative peak position:\nMax negative peak value:\n\nMax positive peak position:\nMax positive peak value:\n\nRMS power:\nAverage value (DC offset):\nZero crossings:\n\nCRC:",
                     IDC_STATIC,"Static",SS_LEFTNOWORDWRAP | WS_GROUP,7,39,
-                    102,107
+                    102,124
     LTEXT           "Left channel: ",IDC_STATIC,112,27,54,8
     LTEXT           "Right channel:",IDC_STATIC,220,27,54,8
     LTEXT           "File:",IDC_STATIC_FILE_NAME,7,7,316,18
@@ -1143,18 +1146,18 @@ BEGIN
     LTEXT           "All the file will be processed",IDC_STATIC,7,83,190,8
 END
 
-IDD_DIALOG_STATISTICS_MONO DIALOG DISCARDABLE  0, 0, 232, 168
+IDD_DIALOG_STATISTICS_MONO DIALOG DISCARDABLE  0, 0, 232, 185
 STYLE DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
-CAPTION "File statistics:"
+CAPTION "File statistics"
 FONT 8, "MS Sans Serif"
 BEGIN
-    DEFPUSHBUTTON   "OK",IDOK,87,147,50,14
-    EDITTEXT        IDC_EDIT_LEFT,113,37,100,105,ES_MULTILINE | 
+    DEFPUSHBUTTON   "OK",IDOK,88,164,50,14
+    EDITTEXT        IDC_EDIT_LEFT,113,37,100,125,ES_MULTILINE | 
                     ES_AUTOVSCROLL | ES_AUTOHSCROLL | ES_READONLY | NOT 
                     WS_BORDER
-    CONTROL         "Cursor position:\nSample value at cursor:\n\nMax negative peak position:\nMax negative peak value:\n\nMax positive peak position:\nMax positive peak value:\n\nRMS power:\nAverage value (DC offset):\nZero crossings:",
+    CONTROL         "Cursor position:\nSample value at cursor:\n\nMax negative peak position:\nMax negative peak value:\n\nMax positive peak position:\nMax positive peak value:\n\nRMS power:\nAverage value (DC offset):\nZero crossings:\n\nCRC:\nChecksum:",
                     IDC_STATIC,"Static",SS_LEFTNOWORDWRAP | WS_GROUP,8,37,
-                    102,105
+                    102,125
     LTEXT           "File:",IDC_STATIC_FILE_NAME,7,7,219,28
 END
 
@@ -2120,7 +2123,7 @@ BEGIN
         LEFTMARGIN, 7
         RIGHTMARGIN, 323
         TOPMARGIN, 7
-        BOTTOMMARGIN, 161
+        BOTTOMMARGIN, 181
     END
 
     IDD_DIALOG_NORMALIZE, DIALOG
@@ -2144,7 +2147,7 @@ BEGIN
         LEFTMARGIN, 7
         RIGHTMARGIN, 226
         TOPMARGIN, 7
-        BOTTOMMARGIN, 161
+        BOTTOMMARGIN, 178
     END
 
     IDD_DIALOG_OPEN_TEMPLATE_V5, DIALOG
@@ -2833,7 +2836,7 @@ BEGIN
     IDS_SOUND_MAY_BE_CLIPPED 
                             "%s:\nAs a result of the operation, some samples may exceed limit and will be clipped. Continue?"
     IDS_M_UNABLE_TO_CREATE_UNDO "Unable to save undo data, continue?"
-    IDS_STATISTICS_FORMAT   "%s (%s)\r\n%s (%s dB; %.2f%%)\r\n\r\n%s (%s)\r\n%s (%s dB; %.2f%%)\r\n\r\n%s (%s)\r\n%s (%s dB; %.2f%%)\r\n\r\n%s dB (%.2f%%)\r\n%s (%s dB; %.2f%%)\r\n%.2f Hz"
+    IDS_STATISTICS_FORMAT   "%s (%s)\r\n%s (%s dB; %.2f%%)\r\n\r\n%s (%s)\r\n%s (%s dB; %.2f%%)\r\n\r\n%s (%s)\r\n%s (%s dB; %.2f%%)\r\n\r\n%s dB (%.2f%%)\r\n%s (%s dB; %.2f%%)\r\n%.2f Hz\r\n\r\n%08X"
     IDS_REOPEN_IN_DIRECT_MODE 
                             "File ""%s"" saved. \nYou can reopen it in either direct or non-direct mode, or close it. If you choose to reopen in non-direct mode, a new temporary file will be created."
     IDS_RELOAD_COMPRESSED_FILE 
@@ -2997,6 +3000,7 @@ BEGIN
     ID_EDIT_CLEAR_REDO      "Erase stored Redo for this sound file\nClear Redo"
     ID_VIEW_SHOW_CROSSHAIR  "Show crosshairs under cursor\nShow cross-hair"
     ID_PROCESS_EQUALIZER    "Change bass/treble balance\nEqualizer"
+    ID_PROCESS_SWAPCHANNELS "Swap left and right channels\nSwap channels"
 END
 
 STRINGTABLE DISCARDABLE 
@@ -3013,6 +3017,10 @@ BEGIN
     IDS_EXPRESSIONS_SAVE_TITLE "Save All Expression"
     IDS_EXPRESSIONS_LOAD_TITLE "Load Expressions"
     IDS_CANNOT_OPEN_WMA     "%s\nThis file cannot be opened because a required DLL is not found in the system folder.\nTo be able to open MP3 and WMA files, you need to install Windows Media Player version 7 or later"
+    IDS_STATISTICS_FORMAT_RIGHT 
+                            "%s (%s)\r\n%s (%s dB; %.2f%%)\r\n\r\n%s (%s)\r\n%s (%s dB; %.2f%%)\r\n\r\n%s (%s)\r\n%s (%s dB; %.2f%%)\r\n\r\n%s dB (%.2f%%)\r\n%s (%s dB; %.2f%%)\r\n%.2f Hz\r\n\r\n%08X\r\nCombined CRC: %08X"
+    IDS_STATISTICS_FORMAT_LEFT 
+                            "%s (%s)\r\n%s (%s dB; %.2f%%)\r\n\r\n%s (%s)\r\n%s (%s dB; %.2f%%)\r\n\r\n%s (%s)\r\n%s (%s dB; %.2f%%)\r\n\r\n%s dB (%.2f%%)\r\n%s (%s dB; %.2f%%)\r\n%.2f Hz\r\n\r\n%08X\r\nChecksum: %08X"
 END
 
 #endif    // English (U.S.) resources
