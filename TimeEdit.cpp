@@ -151,7 +151,7 @@ SAMPLE_INDEX CTimeEdit::GetTimeSample()
 
 void CTimeEdit::OnVScroll(UINT /*nSBCode*/, UINT nPos, CScrollBar* /*pScrollBar*/)
 {
-	TRACE("CTimeEdit::OnVScroll, nPos=%d\n", nPos);
+	if (0) TRACE("CTimeEdit::OnVScroll, nPos=%d\n", nPos);
 	// nPos is actually an increment from CTimeSpinCtrl
 	SAMPLE_INDEX nSample = GetTimeSample();
 	int step = abs(int(nPos));
@@ -254,7 +254,6 @@ END_MESSAGE_MAP()
 
 /////////////////////////////////////////////////////////////////////////////
 // CTimeSpinCtrl message handlers
-
 void CTimeSpinCtrl::OnDeltapos(NMHDR* pNMHDR, LRESULT* pResult)
 {
 	NM_UPDOWN* pNMUpDown = (NM_UPDOWN*)pNMHDR;
@@ -272,6 +271,13 @@ void CTimeSpinCtrl::OnDeltapos(NMHDR* pNMHDR, LRESULT* pResult)
 			SbCode = SB_LINEDOWN;
 		}
 		pBuddy->SendMessage(WM_VSCROLL, SbCode + (pNMUpDown->iDelta << 16), LPARAM(m_hWnd));
+
+		NMHDR nm;
+		nm.hwndFrom = m_hWnd;
+		nm.idFrom = GetDlgCtrlID();
+		nm.code = TSC_BUDDY_CHANGE;
+
+		GetParent()->SendMessage(WM_NOTIFY, nm.idFrom, LPARAM( & nm));
 	}
 	*pResult = 0;
 }

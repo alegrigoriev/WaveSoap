@@ -85,12 +85,12 @@ public:
 public:
 	virtual ~CTimeSpinCtrl();
 
+	static UINT const TSC_BUDDY_CHANGE = UDN_LAST;
 	// Generated message map functions
 protected:
 	//{{AFX_MSG(CTimeSpinCtrl)
 	afx_msg void OnDeltapos(NMHDR* pNMHDR, LRESULT* pResult);
 	//}}AFX_MSG
-
 	DECLARE_MESSAGE_MAP()
 };
 
