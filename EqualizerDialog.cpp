@@ -20,6 +20,8 @@ static char THIS_FILE[] = __FILE__;
 CEqualizerDialog::CEqualizerDialog(CWnd* pParent /*=NULL*/)
 	: CDialog(CEqualizerDialog::IDD, pParent)
 {
+	m_PrevSize.cx = -1;
+	m_PrevSize.cy = -1;
 	//{{AFX_DATA_INIT(CEqualizerDialog)
 	m_bUndo = FALSE;
 	m_bMultiBandEqualizer = -1;
@@ -27,9 +29,9 @@ CEqualizerDialog::CEqualizerDialog(CWnd* pParent /*=NULL*/)
 	//}}AFX_DATA_INIT
 	memset(& m_mmxi, 0, sizeof m_mmxi);
 	m_Profile.AddItem("Equalizer", "NumberOfBands", m_nBands,
-					10, 3, CEqualizerGraphWnd::MaxNumberOfBands);
+					10, 3, MaxNumberOfEqualizerBands);
 	m_Profile.AddBoolItem("Equalizer", "MultiBandEqualizer", m_bMultiBandEqualizer, TRUE);
-	for (int n = 0; n < CEqualizerGraphWnd::MaxNumberOfBands; n++)
+	for (int n = 0; n < MaxNumberOfEqualizerBands; n++)
 	{
 		CString s;
 		s.Format("Gain%d", n + 1);
@@ -49,7 +51,7 @@ void CEqualizerDialog::DoDataExchange(CDataExchange* pDX)
 	DDX_Radio(pDX, IDC_RADIO_EQUALIZER_TYPE, m_bMultiBandEqualizer);
 	DDX_Text(pDX, IDC_EDIT_BANDS, m_nBands);
 	//}}AFX_DATA_MAP
-	DDV_MinMaxUInt(pDX, m_nBands, 3, CEqualizerGraphWnd::MaxNumberOfBands);
+	DDV_MinMaxUInt(pDX, m_nBands, 3, MaxNumberOfEqualizerBands);
 	if (pDX->m_bSaveAndValidate)
 	{
 		m_Profile.UnloadAll();
@@ -68,6 +70,7 @@ BEGIN_MESSAGE_MAP(CEqualizerDialog, CDialog)
 	ON_BN_CLICKED(IDC_BUTTON_LOAD, OnButtonLoad)
 	ON_BN_CLICKED(IDC_BUTTON_RESET_BANDS, OnButtonResetBands)
 	ON_BN_CLICKED(IDC_BUTTON_SAVE_AS, OnButtonSaveAs)
+	ON_EN_KILLFOCUS(IDC_EDIT_BAND_GAIN, OnKillfocusEditBandGain)
 	//}}AFX_MSG_MAP
 	ON_NOTIFY(NM_RETURN, AFX_IDW_PANE_FIRST, OnNotifyGraph)
 END_MESSAGE_MAP()
@@ -129,8 +132,62 @@ void CEqualizerDialog::OnSizing(UINT fwSide, LPRECT pRect)
 void CEqualizerDialog::OnSize(UINT nType, int cx, int cy)
 {
 	CDialog::OnSize(nType, cx, cy);
-	//
-	// move all controls
+	if (m_PrevSize.cx > 0)
+	{
+		// resize graph control
+		if (NULL != m_wGraph.m_hWnd)
+		{
+			CRect r;
+			m_wGraph.GetWindowRect( & r);
+			m_wGraph.SetWindowPos(NULL, 0, 0, r.Width() + cx - m_PrevSize.cx,
+								r.Height() + cy - m_PrevSize.cy,
+								SWP_DRAWFRAME | SWP_NOACTIVATE
+								| SWP_NOMOVE | SWP_NOZORDER | SWP_NOOWNERZORDER);
+		}
+
+		// move all controls
+		static int const MoveDown[] =
+		{
+			IDC_STATIC1, IDC_EDIT_BAND_GAIN, IDC_STATIC2,
+			IDC_RADIO_EQUALIZER_TYPE, IDC_RADIO2, IDC_EDIT_BANDS,
+			IDC_SPIN_BANDS, IDC_STATIC3, IDC_CHECK_UNDO,
+			IDC_STATIC_SELECTION,
+		};
+		for (int i = 0; i < sizeof MoveDown / sizeof MoveDown[0]; i++)
+		{
+			CWnd * pWnd = GetDlgItem(MoveDown[i]);
+			if (pWnd)
+			{
+				CRect r;
+				pWnd->GetWindowRect( & r);
+				ScreenToClient( & r);
+				pWnd->SetWindowPos(NULL, r.left, r.top + cy - m_PrevSize.cy,
+									0, 0, SWP_NOCOPYBITS | SWP_NOACTIVATE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOOWNERZORDER);
+			}
+		}
+		static int const MoveRightDown[] =
+		{
+			IDC_BUTTON_RESET_BANDS, IDC_BUTTON_SAVE_AS,
+			IDC_BUTTON_LOAD, IDC_BUTTON_SELECTION, IDOK, IDCANCEL, IDHELP,
+		};
+		for (i = 0; i < sizeof MoveRightDown / sizeof MoveRightDown[0]; i++)
+		{
+			CWnd * pWnd = GetDlgItem(MoveRightDown[i]);
+			if (pWnd)
+			{
+				CRect r;
+				pWnd->GetWindowRect( & r);
+				ScreenToClient( & r);
+				pWnd->SetWindowPos(NULL, r.left + cx - m_PrevSize.cx,
+									r.top + cy - m_PrevSize.cy,
+									0, 0, SWP_NOCOPYBITS | SWP_NOACTIVATE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOOWNERZORDER);
+			}
+		}
+	}
+
+	m_PrevSize.cx = cx;
+	m_PrevSize.cy = cy;
+
 	// invalidate an area which is (after resizing)
 	// occupied by size grip
 	int size = GetSystemMetrics(SM_CXVSCROLL);
@@ -189,7 +246,7 @@ BOOL CEqualizerDialog::OnInitDialog()
 	OnMetricsChange();
 	UpdateSelectionStatic();
 
-	m_SpinBands.SetRange(3, CEqualizerGraphWnd::MaxNumberOfBands);
+	m_SpinBands.SetRange(3, MaxNumberOfEqualizerBands);
 
 	return TRUE;  // return TRUE unless you set the focus to a control
 	// EXCEPTION: OCX Property Pages should return FALSE
@@ -233,17 +290,21 @@ CEqualizerGraphWnd::CEqualizerGraphWnd()
 	m_bButtonPressed = false;
 	m_bGotFocus = false;
 	m_BandWithFocus = 0;
-	m_NumOfBands = MaxNumberOfBands;
-	ResetBands();
 }
 
 CEqualizerGraphWnd::~CEqualizerGraphWnd()
 {
 }
 
-void CEqualizerGraphWnd::ResetBands()
+Equalizer::Equalizer()
 {
-	for (int i = 0; i < MaxNumberOfBands; i++)
+	m_NumOfBands = MaxNumberOfEqualizerBands;
+	ResetBands();
+}
+
+void Equalizer::ResetBands()
+{
+	for (int i = 0; i < MaxNumberOfEqualizerBands; i++)
 	{
 		m_BandGain[i] = 1;
 		m_BandCoefficients[i][0] = 1.;
@@ -252,10 +313,11 @@ void CEqualizerGraphWnd::ResetBands()
 		m_BandCoefficients[i][3] = 1.;
 		m_BandCoefficients[i][4] = 0.;
 		m_BandCoefficients[i][5] = 0.;
-		m_BandFrequencies[i] = M_PI / 500 * pow(500., i * ( 1. / (MaxNumberOfBands - 0.5)));
+		m_BandFrequencies[i] = M_PI / 500 * pow(500., i * ( 1. / (MaxNumberOfEqualizerBands - 0.5)));
 	}
 }
-typedef void (CEqualizerGraphWnd::*NcPaintFunc)(UINT);
+
+typedef void (CWnd::*NcPaintFunc)(UINT);
 BEGIN_MESSAGE_MAP(CEqualizerGraphWnd, CWnd)
 	//{{AFX_MSG_MAP(CEqualizerGraphWnd)
 	ON_WM_PAINT()
@@ -296,13 +358,19 @@ void CEqualizerGraphWnd::OnPaint()
 	CGdiObject * pOldBrush = dc.SelectStockObject(NULL_BRUSH);
 
 	double coeff = M_PI / pow(500., m_NumOfBands / (m_NumOfBands - 0.5));
-	for (int x = ur.left; x < ur.right; x++)
+	for (int x = ur.left - 1; x < ur.right; x++)
 	{
 		double f = coeff * pow(500., m_NumOfBands * (x + 1) /((m_NumOfBands - 0.5) * cr.Width()));
 		double gain = abs(CalculateResponse(f));
 		int y = (1 - log10(gain)) * cr.Height() / 2;
-		dc.MoveTo(x, y);
-		dc.LineTo(x, y - 1);
+		if (x == ur.left - 1)
+		{
+			dc.MoveTo(x, y);
+		}
+		else
+		{
+			dc.LineTo(x, y);
+		}
 	}
 	int dx = GetSystemMetrics(SM_CXDRAG);
 	int dy = GetSystemMetrics(SM_CYDRAG);
@@ -387,6 +455,7 @@ void CEqualizerGraphWnd::OnLButtonDown(UINT nFlags, CPoint point)
 	m_bButtonPressed = true;
 	DrawDotCaret(true);
 	SetFocusBand(nHit);
+	NotifyParentDlg();
 }
 
 void CEqualizerGraphWnd::OnLButtonUp(UINT nFlags, CPoint point)
@@ -413,7 +482,7 @@ BOOL CEqualizerGraphWnd::PreCreateWindow(CREATESTRUCT& cs)
 }
 
 // frequency is in radians
-complex<float> CEqualizerGraphWnd::CalculateResponse(double Frequency)
+complex<float> Equalizer::CalculateResponse(double Frequency)
 {
 	complex<double> Numerator(1., 0.);
 	complex<double> Denominator(1., 0.);
@@ -503,7 +572,7 @@ void CEqualizerGraphWnd::SetBandGain(int nBand, double Gain)
 	Invalidate();
 }
 
-void CEqualizerGraphWnd::RebuildBandFilters()
+void Equalizer::RebuildBandFilters()
 {
 	// compensate band interference.
 	// Use Newton approximation.
@@ -524,7 +593,7 @@ void CEqualizerGraphWnd::RebuildBandFilters()
 			CalculateCoefficients(m_UsedBandGain[i],
 								m_BandFrequencies[i], m_BandWidth, m_BandCoefficients[i]);
 		}
-		double Gain1[MaxNumberOfBands];   // real gain for m_UsedBandGain
+		double Gain1[MaxNumberOfEqualizerBands];   // real gain for m_UsedBandGain
 		double MaxError = 1.;
 		// calculate reference response and max response error
 		for (i = 0; i < m_NumOfBands; i++)
@@ -541,7 +610,7 @@ void CEqualizerGraphWnd::RebuildBandFilters()
 		{
 			break;
 		}
-		double M[MaxNumberOfBands][MaxNumberOfBands + 1];
+		double M[MaxNumberOfEqualizerBands][MaxNumberOfEqualizerBands + 1];
 		// calculate all derivatives
 		for (i = 0; i < m_NumOfBands; i++)
 		{
@@ -601,13 +670,9 @@ void CEqualizerGraphWnd::RebuildBandFilters()
 		}
 	}
 
-	if (NULL != m_hWnd)
-	{
-		Invalidate();
-	}
 }
 
-void CEqualizerGraphWnd::SetNumberOfBands(int NumBands)
+void Equalizer::SetNumberOfBands(int NumBands)
 {
 	m_NumOfBands = NumBands;
 	TRACE("CEqualizerGraphWnd::SetNumberOfBands n=%d\n", NumBands);
@@ -619,6 +684,11 @@ void CEqualizerGraphWnd::SetNumberOfBands(int NumBands)
 	m_BandWidth = pow(500., 1. / (NumBands - 0.5));
 	TRACE("Quality factor = %f\n", m_BandWidth);
 	RebuildBandFilters();
+}
+
+void CEqualizerGraphWnd::SetNumberOfBands(int NumBands)
+{
+	Equalizer::SetNumberOfBands(NumBands);
 	if (m_BandWithFocus > m_NumOfBands - 1)
 	{
 		m_BandWithFocus = m_NumOfBands - 1;
@@ -868,7 +938,7 @@ void CEqualizerDialog::OnChangeEditBands()
 {
 	BOOL nTrans = FALSE;
 	int nBands = GetDlgItemInt(IDC_EDIT_BANDS, & nTrans, FALSE);
-	if (nTrans && nBands > 1 && nBands <= CEqualizerGraphWnd::MaxNumberOfBands)
+	if (nTrans && nBands > 1 && nBands <= MaxNumberOfEqualizerBands)
 	{
 		m_nBands = nBands;
 		m_wGraph.SetNumberOfBands(nBands);
@@ -1025,4 +1095,14 @@ void CEqualizerDialog::OnOK()
 void CEqualizerDialog::OnNotifyGraph( NMHDR * pNotifyStruct, LRESULT * result )
 {
 	m_BandGain.SetData(m_wGraph.GetCurrentBandGainDb());
+}
+
+void CEqualizerDialog::OnKillfocusEditBandGain()
+{
+	// read the gain
+	double GainDb;
+	if (m_BandGain.GetData(NULL, GainDb, NULL, NULL, -20., 20.))
+	{
+		m_wGraph.SetCurrentBandGainDb(GainDb);
+	}
 }

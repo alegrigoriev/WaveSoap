@@ -770,7 +770,8 @@ void CWaveFftView::CalculateFftRange(int left, int right)
 
 	int i = (FirstSampleRequired - m_FftResultBegin) / m_FftSpacing * m_FftResultArrayHeight;
 	int j = (LastSampleRequired - m_FftResultBegin) / m_FftSpacing * m_FftResultArrayHeight;
-	float * buf = NULL;
+	typedef double DATA;
+	DATA * buf = NULL;
 	double PowerOffset = log(65536. * m_FftOrder * 0.31622) * 2.;
 #ifdef _DEBUG
 	int MaxRes = 0;
@@ -782,7 +783,7 @@ void CWaveFftView::CalculateFftRange(int left, int right)
 		{
 			if (NULL == buf)
 			{
-				buf = new float[m_FftOrder * 2 + 2];
+				buf = new DATA[m_FftOrder * 2 + 2];
 				if (NULL == buf)
 				{
 					break;
@@ -807,7 +808,7 @@ void CWaveFftView::CalculateFftRange(int left, int right)
 				{
 					buf[k] = pWaveSamples[0] * m_pFftWindow[k];
 				}
-				FastFourierTransform(buf, reinterpret_cast<complex<float> *>(buf),
+				FastFourierTransform(buf, reinterpret_cast<complex<DATA> *>(buf),
 									m_FftOrder * 2);
 
 				for (k = 0; k < m_FftOrder * 2; k += 2)

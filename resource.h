@@ -271,6 +271,9 @@
 #define IDC_BUTTON_RESET_BANDS          1172
 #define IDC_BUTTON_LOAD                 1173
 #define IDC_BUTTON_SAVE_AS              1174
+#define IDC_STATIC1                     1175
+#define IDC_STATIC2                     1176
+#define IDC_STATIC3                     1177
 #define IDC_VIEW_RULER_SAMPLES          32771
 #define IDC_VIEW_RULER_HHMMSS           32772
 #define IDC_VIEW_RULER_SECONDS          32773
@@ -510,7 +513,7 @@
 #define _APS_3D_CONTROLS                     1
 #define _APS_NEXT_RESOURCE_VALUE        179
 #define _APS_NEXT_COMMAND_VALUE         40104
-#define _APS_NEXT_CONTROL_VALUE         1174
+#define _APS_NEXT_CONTROL_VALUE         1178
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif

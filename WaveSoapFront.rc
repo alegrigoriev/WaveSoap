@@ -1759,16 +1759,17 @@ BEGIN
 END
 
 IDD_DIALOG_SIMPLE_EQUALIZER DIALOG DISCARDABLE  0, 0, 219, 193
-STYLE WS_POPUP | WS_CAPTION | WS_SYSMENU | WS_THICKFRAME
+STYLE WS_POPUP | WS_CLIPSIBLINGS | WS_CLIPCHILDREN | WS_CAPTION | WS_SYSMENU | 
+    WS_THICKFRAME
 CAPTION "Equalizer"
 FONT 8, "MS Sans Serif"
 BEGIN
     LTEXT           "",IDC_STATIC_RESPONSE_TEMPLATE,7,7,205,77
-    LTEXT           "Frequency response in the selected band:",IDC_STATIC,7,
+    LTEXT           "Frequency response in the selected band:",IDC_STATIC1,7,
                     87,106,18
     EDITTEXT        IDC_EDIT_BAND_GAIN,116,88,21,14,ES_AUTOHSCROLL | 
                     ES_WANTRETURN
-    CTEXT           "dB",IDC_STATIC,143,90,14,8
+    CTEXT           "dB",IDC_STATIC2,143,90,14,8
     CONTROL         "Simple",IDC_RADIO_EQUALIZER_TYPE,"Button",
                     BS_AUTORADIOBUTTON | WS_GROUP | WS_TABSTOP,7,112,39,10
     CONTROL         "Multiband:",IDC_RADIO2,"Button",BS_AUTORADIOBUTTON,54,
@@ -1777,7 +1778,7 @@ BEGIN
     CONTROL         "Spin1",IDC_SPIN_BANDS,"msctls_updown32",UDS_SETBUDDYINT | 
                     UDS_ALIGNRIGHT | UDS_AUTOBUDDY | UDS_ARROWKEYS,123,108,
                     10,14
-    LTEXT           "bands",IDC_STATIC,134,113,27,8
+    LTEXT           "bands",IDC_STATIC3,134,113,27,8
     CONTROL         "Save &Undo",IDC_CHECK_UNDO,"Button",BS_AUTOCHECKBOX | 
                     WS_TABSTOP,7,126,50,10
     LTEXT           "Selection:\nChannels:",IDC_STATIC_SELECTION,7,142,153,
@@ -2551,7 +2552,7 @@ BEGIN
     ID_INDICATOR_SAMPLE_RATE "\nSample Rate"
     ID_INDICATOR_SAMPLE_SIZE "\nSample Size"
     ID_INDICATOR_CHANNELS   "\nChannels"
-    IDS_SOUND_CLIPPED       "%s:\nSome of the samples exceeded limit and were clipped to the appropriate value"
+    IDS_SOUND_CLIPPED       "%s:\nSome of the samples exceeded limit and were clipped to the appropriate value. \nMax peak value has reached %d."
     IDS_SOUND_MAY_BE_CLIPPED 
                             "%s:\nAs a result of the operation, some samples may exceed limit and will be clipped. Continue?"
     IDS_M_UNABLE_TO_CREATE_UNDO "Unable to save undo data, continue?"
