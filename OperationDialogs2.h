@@ -174,14 +174,8 @@ public:
 	int m_MaxReadSpeed;
 	int m_CurrentReadSpeed;
 	int m_SelectedReadSpeed;
-	enum DiskState
-	{
-		DiskStateUnknown,
-		DiskStateReady,
-		DiskStateNotReady,
-		DiskStateNoCdDrive,
-		DiskStateBusy,
-	} m_DiskReady;
+
+	CdMediaChangeState m_DiskReady;
 
 // Overrides
 	// ClassWizard generated virtual function overrides
@@ -215,7 +209,7 @@ protected:
 	CApplicationProfile m_Profile;
 
 	void FillTrackList(TCHAR letter);
-	void ReloadTrackList(CdMediaChangeState NewMediaState = CdMediaStateChanged);
+	void ReloadTrackList(CdMediaChangeState NewMediaState = CdMediaStateDiskChanged);
 	void InitReadSpeedCombobox();
 
 	BOOL OpenDrive(TCHAR letter);
@@ -258,6 +252,7 @@ protected:
 	afx_msg void OnRadioWmaFormat();
 	afx_msg void OnRadioMp3Format();
 	afx_msg void OnRadioWavFormat();
+	afx_msg void OnButtonEject();
 	//}}AFX_MSG
 	void OnMetricsChange();
 	afx_msg LRESULT OnDeviceChange(UINT, DWORD);
