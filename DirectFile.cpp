@@ -10,6 +10,7 @@
 #include "KInterlocked.h"
 #include "resource.h"
 #include "LastError.h"
+#include "ElapsedTime.h"
 
 typedef DWORD BLOCK_INDEX;
 typedef NUM_volatile<DWORD> SUBBLOCK_MASK;
@@ -17,6 +18,7 @@ typedef NUM_volatile<DWORD> SUBBLOCK_MASK;
 #define TRACE_PREFETCH 0
 #define TRACE_READ 1
 #define TRACE_WRITE 1
+#define TRACE_MRU 1
 
 #define BLOCK_SIZE_SHIFT 16
 #define CACHE_BLOCK_SIZE (1UL << BLOCK_SIZE_SHIFT)
@@ -2170,6 +2172,7 @@ BufferHeader * CDirectFileCache::GetFreeBuffer(unsigned MaxMRU)
 		BufferMruEntry * pMru = m_MruList.Last();
 		// find least recent unlocked and non-dirty buffer (with lowest MRU)
 		// whose MRU is at most MaxMRU.
+#if 0
 		while (m_MruList.NotEnd(pMru)
 				&& pMru->MRU_Count < MaxMRU
 				&& (pMru->LockCount > 0
@@ -2177,28 +2180,35 @@ BufferHeader * CDirectFileCache::GetFreeBuffer(unsigned MaxMRU)
 		{
 			pMru = m_MruList.Prev(pMru);
 		}
-
 		// unlocked buffer not found or buffer was too recent
 		if (m_MruList.IsEnd(pMru) || pMru->MRU_Count >= MaxMRU)
+#endif
 		{
 			// try to find a dirty buffer
-			pMru = m_MruList.Last();
-			while (m_MruList.NotEnd(pMru)
-					&& pMru->MRU_Count < MaxMRU
-					&& pMru->LockCount > 0)
+
+			for (pMru = m_MruList.Last();
+				m_MruList.NotEnd(pMru) && pMru->MRU_Count < MaxMRU
+				&& pMru->LockCount > 0;
+				pMru = m_MruList.Prev(pMru))
 			{
-				pMru = m_MruList.Prev(pMru);
 			}
 			if (m_MruList.NotEnd(pMru)
 				&& 0 == pMru->LockCount
 				&& pMru->MRU_Count < MaxMRU)
 			{
-				// only "dirty" buffer available
-				pMru->pFile->FlushDirtyBuffers(static_cast<BufferHeader *>(pMru));
-				// try the loop again
-				continue;
+				if (0 != pMru->DirtyMask)
+				{
+					// oldest buffer is dirty
+					pMru->pFile->FlushDirtyBuffers(static_cast<BufferHeader *>(pMru));
+					// try the loop again
+					continue;
+				}
+				// buffer found
 			}
-			return NULL;  // unable to find a buffer
+			else
+			{
+				return NULL;  // unable to find a buffer
+			}
 		}
 
 		File * pFile = pMru->pFile;
@@ -2214,6 +2224,9 @@ BufferHeader * CDirectFileCache::GetFreeBuffer(unsigned MaxMRU)
 		m_MruList.RemoveEntry(pMru);
 
 		BufferHeader * pBuf = static_cast<BufferHeader *>(pMru);
+
+		if(TRACE_MRU) TRACE("Invalidate buffer: file %X, offset %X0000\n", pFile->hFile, pBuf->PositionKey);
+
 		pFile->BuffersList.RemoveEntryUnsafe(pBuf);
 
 		pFile->BuffersCount--;
@@ -2263,17 +2276,19 @@ BOOL File::ReadFileAt(LONGLONG Position, void * pBuf, DWORD ToRead, DWORD * pWas
 			if (0) TRACE("Stored file pointer: %X, actual: %X\n",
 						long(m_FilePointer), SetFilePointer(hFile, 0, NULL, FILE_CURRENT));
 
+			DebugTimeStamp time;
+
 			if (Position != m_FilePointer)
 			{
 				LONG FilePtrH = LONG(Position >> 32);
 				SetFilePointer(hFile, (ULONG)(Position & 0xFFFFFFFF), & FilePtrH, FILE_BEGIN);
 				m_FilePointer = Position;
 			}
-			if (TRACE_READ) TRACE("ReadFile(%08x, pos=0x%08X, bytes=%X)\n",
-								hFile, (ULONG)(Position & 0xFFFFFFFF), ToRead);
 
 			result = ReadFile(hFile, pBuf, ToRead, pWasRead, NULL);
 
+			if (TRACE_READ) TRACE("ReadFile(%08x, pos=0x%08X, bytes=%X), elapsed time=%d ms/10\n",
+								hFile, (ULONG)(Position & 0xFFFFFFFF), ToRead, time.ElapsedTimeTenthMs());
 			LastError.Get();
 			if (0 == m_LastError)
 			{
@@ -2389,6 +2404,9 @@ void File::ReadDataBuffer(BufferHeader * pBuf, DWORD MaskToRead)
 					}
 
 					CSimpleCriticalSectionLock lock(pSourceFile->m_FileLock);
+
+					DebugTimeStamp time;
+
 					if (StartFilePtr != pSourceFile->m_FilePointer)
 					{
 						LONG FilePtrH = LONG(StartFilePtr >> 32);
@@ -2396,8 +2414,11 @@ void File::ReadDataBuffer(BufferHeader * pBuf, DWORD MaskToRead)
 						pSourceFile->m_FilePointer = StartFilePtr;
 					}
 					// round to sector size! otherwize ReadFile would fail
-					if (TRACE_READ) TRACE("ReadSourceFile(%08x, pos=0x%08X, bytes=%X)\n", hFile, long(StartFilePtr), ToRead);
-					ReadFile(pSourceFile->hFile, buf, (ToRead + 0x1FF) & ~0x1FF, & BytesRead, NULL);
+					ReadFile(pSourceFile->hFile, buf,
+							(ToRead + (CACHE_SUBBLOCK_SIZE - 1)) & ~MASK_OFFSET_IN_SUBBLOCK, & BytesRead, NULL);
+
+					if (TRACE_READ) TRACE("ReadFile(%08x, pos=0x%08X, bytes=%X), elapsed time=%d ms/10\n",
+										hFile, (ULONG)(StartFilePtr & 0xFFFFFFFF), ToRead, time.ElapsedTimeTenthMs());
 #ifdef _DEBUG
 					if (BytesRead < ToRead)
 					{
@@ -2456,6 +2477,8 @@ void File::ReadDataBuffer(BufferHeader * pBuf, DWORD MaskToRead)
 			if (0) TRACE("Stored file pointer: %X, actual: %X\n",
 						long(m_FilePointer), SetFilePointer(hFile, 0, NULL, FILE_CURRENT));
 
+			DebugTimeStamp time;
+
 			if (StartFilePtr != m_FilePointer)
 			{
 				LONG FilePtrH = LONG(StartFilePtr >> 32);
@@ -2463,8 +2486,11 @@ void File::ReadDataBuffer(BufferHeader * pBuf, DWORD MaskToRead)
 				m_FilePointer = StartFilePtr;
 			}
 
-			if (TRACE_READ) TRACE("ReadFile(%08x, pos=0x%08X, bytes=%X)\n", hFile, long(StartFilePtr), ToRead);
 			ReadFile(hFile, buf, ToRead, & BytesRead, NULL);
+
+			if (TRACE_READ) TRACE("ReadFile(%08x, pos=0x%08X, bytes=%X), elapsed time=%d ms/10\n",
+								hFile, (ULONG)(StartFilePtr & 0xFFFFFFFF), ToRead, time.ElapsedTimeTenthMs());
+
 			if (0 == m_LastError)
 			{
 				m_LastError = ::GetLastError();
@@ -2580,6 +2606,8 @@ void File::FlushDirtyBuffers(BufferHeader * pDirtyBuf, BLOCK_INDEX MaxKey)
 				if (0) TRACE("Stored file pointer: %X, actual: %X\n",
 							long(m_FilePointer), SetFilePointer(hFile, 0, NULL, FILE_CURRENT));
 
+				DebugTimeStamp time;
+
 				if (StartFilePtr != m_FilePointer)
 				{
 					LONG FilePtrH = LONG(StartFilePtr >> 32);
@@ -2592,8 +2620,10 @@ void File::FlushDirtyBuffers(BufferHeader * pDirtyBuf, BLOCK_INDEX MaxKey)
 							buf[0], buf[1], buf[2], buf[3], buf[4],
 							buf[5], buf[6], buf[7]);
 
-				if (TRACE_WRITE) TRACE("WriteFile(%08x, pos=0x%08X, bytes=%X)\n", hFile, long(StartFilePtr), ToWrite);
 				BOOL result = WriteFile(hFile, buf, ToWrite, & BytesWritten, NULL);
+
+				if (TRACE_WRITE) TRACE("WriteFile(%08x, pos=0x%08X, bytes=%X), elapsed time=%d ms/10\n",
+										hFile, (ULONG)(StartFilePtr & 0xFFFFFFFF), ToWrite, time.ElapsedTimeTenthMs());
 
 				if (0 == m_LastError)
 				{
