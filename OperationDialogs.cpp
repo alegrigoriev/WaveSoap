@@ -12,6 +12,7 @@
 #include "SaveExpressionDialog.h"
 #include "DialogWithSelection.inl"
 #include <math.h>
+#include ".\operationdialogs.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -1046,6 +1047,7 @@ void CStatisticsDialog::DoDataExchange(CDataExchange* pDX)
 BEGIN_MESSAGE_MAP(CStatisticsDialog, BaseClass)
 	//{{AFX_MSG_MAP(CStatisticsDialog)
 	//}}AFX_MSG_MAP
+	ON_BN_CLICKED(IDC_BUTTON_GOTO_MAX, OnBnClickedButtonGotoMax)
 END_MESSAGE_MAP()
 
 /////////////////////////////////////////////////////////////////////////////
@@ -1101,7 +1103,7 @@ BOOL CStatisticsDialog::OnInitDialog()
 	{
 		MinDb = _T("-Inf.");
 	}
-	if (m_pContext->m_MinLeft != 0)
+	if (m_pContext->m_MaxLeft != 0)
 	{
 		MaxDb.Format(_T("%.2f"), 20. * log10(abs(m_pContext->m_MaxLeft) / 32768.));
 	}
@@ -1186,13 +1188,13 @@ BOOL CStatisticsDialog::OnInitDialog()
 		}
 		if (m_pContext->m_MinRight != 0)
 		{
-			MinDb.Format(_T("%.2f"), 20. * log10(fabs(double(m_pContext->m_MaxRight)) / 32768.));
+			MinDb.Format(_T("%.2f"), 20. * log10(fabs(double(m_pContext->m_MinRight)) / 32768.));
 		}
 		else
 		{
 			MinDb = _T("-Inf.");
 		}
-		if (m_pContext->m_MinRight != 0)
+		if (m_pContext->m_MaxRight != 0)
 		{
 			MaxDb.Format(_T("%.2f"), 20. * log10(fabs(double(m_pContext->m_MaxRight)) / 32768.));
 		}
@@ -1269,6 +1271,64 @@ BOOL CStatisticsDialog::OnInitDialog()
 	return TRUE;  // return TRUE unless you set the focus to a control
 	// EXCEPTION: OCX Property Pages should return FALSE
 }
+
+int CStatisticsDialog::DoModal()
+{
+	if (NULL != m_pContext
+		&& m_pContext->m_DstFile.Channels() == 1)
+	{
+		m_lpszTemplateName = MAKEINTRESOURCE(IDD_DIALOG_STATISTICS_MONO);
+	}
+	return BaseClass::DoModal();
+}
+
+void CStatisticsDialog::OnBnClickedButtonGotoMax()
+{
+	EndDialog(IDC_BUTTON_GOTO_MAX);
+}
+
+SAMPLE_INDEX CStatisticsDialog::GetMaxSamplePosition(CHANNEL_MASK * pChannel) const
+{
+	SAMPLE_INDEX Sample = 0;
+	CHANNEL_MASK Channel = ALL_CHANNELS;
+
+	if (NULL != m_pContext)
+	{
+		Sample = m_pContext->m_MaxLeft;
+		long value = m_pContext->m_PosMaxLeft;
+		Channel = (1 << 0);
+
+		if (-m_pContext->m_MinLeft > value)
+		{
+			value = -m_pContext->m_MinLeft;
+			Sample = m_pContext->m_PosMinLeft;
+		}
+
+		if (m_pContext->m_DstFile.Channels() > 1)
+		{
+			if (m_pContext->m_MaxRight > value)
+			{
+				value = m_pContext->m_MaxRight;
+				Sample = m_pContext->m_PosMaxRight;
+				Channel = (1 << 1);
+			}
+			if (-m_pContext->m_MinRight > value)
+			{
+				value = -m_pContext->m_MinRight;
+				Sample = m_pContext->m_PosMinRight;
+				Channel = (1 << 1);
+			}
+		}
+	}
+
+	if (NULL != pChannel)
+	{
+		*pChannel = Channel;
+	}
+
+	return Sample;
+}
+
 /////////////////////////////////////////////////////////////////////////////
 // CNormalizeSoundDialog dialog
 
@@ -1693,15 +1753,6 @@ BOOL CResampleDialog::OnInitDialog()
 	// EXCEPTION: OCX Property Pages should return FALSE
 }
 
-int CStatisticsDialog::DoModal()
-{
-	if (NULL != m_pContext
-		&& m_pContext->m_DstFile.Channels() == 1)
-	{
-		m_lpszTemplateName = MAKEINTRESOURCE(IDD_DIALOG_STATISTICS_MONO);
-	}
-	return BaseClass::DoModal();
-}
 /////////////////////////////////////////////////////////////////////////////
 // CLowFrequencySuppressDialog dialog
 
@@ -2528,5 +2579,4 @@ CExpressionEvaluationContext * CExpressionEvaluationDialog::GetExpressionContext
 
 	return pContext;
 }
-
 

@@ -375,6 +375,8 @@ public:
 	CStatic	m_FileName;
 	//}}AFX_DATA
 
+	SAMPLE_INDEX GetMaxSamplePosition(CHANNEL_MASK * pChannel = NULL) const;
+
 	class CStatisticsContext * m_pContext;
 	long m_SamplesPerSec;
 	long m_CaretPosition;
@@ -398,6 +400,8 @@ protected:
 	virtual BOOL OnInitDialog();
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
+public:
+	afx_msg void OnBnClickedButtonGotoMax();
 };
 /////////////////////////////////////////////////////////////////////////////
 // CNormalizeSoundDialog dialog

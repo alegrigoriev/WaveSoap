@@ -2833,7 +2833,13 @@ void CStatisticsContext::PostRetire()
 
 		{
 			CDocumentPopup pop(pDocument);
-			dlg.DoModal();
+			if (IDC_BUTTON_GOTO_MAX == dlg.DoModal())
+			{
+				CHANNEL_MASK Channel;
+				SAMPLE_INDEX Sample = dlg.GetMaxSamplePosition( & Channel);
+
+				pDocument->SetSelection(Sample, Sample, Channel, Sample, SetSelection_MoveCaretToCenter);
+			}
 		}
 	}
 	BaseClass::PostRetire();
