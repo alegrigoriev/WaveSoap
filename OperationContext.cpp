@@ -1925,7 +1925,7 @@ BOOL CDecompressContext::Init()
 	WAVEFORMATEX wf =
 	{
 		WAVE_FORMAT_PCM,
-		m_pWf->nChannels,
+		m_Wf.NumChannels(),
 		0,  // nSamplesPerSec
 		0,  // nAvgBytesPerSec
 		0, // nBlockAlign
@@ -1934,18 +1934,18 @@ BOOL CDecompressContext::Init()
 	};
 	m_ash.cbSrcLength = 0x10000;
 	m_ash.cbDstLength = 0x10000;  // 64K
-	if (WAVE_FORMAT_PCM != m_pWf->wFormatTag
-		|| 16 != m_pWf->wBitsPerSample)
+	if (WAVE_FORMAT_PCM != m_Wf.FormatTag()
+		|| 16 != m_Wf.BitsPerSample())
 	{
 		if (0 == m_acmStr)
 		{
-			if (MMSYSERR_NOERROR != (m_MmResult = acmFormatSuggest(m_acmDrv, m_pWf,
+			if (MMSYSERR_NOERROR != (m_MmResult = acmFormatSuggest(m_acmDrv, m_Wf,
 													& wf, sizeof wf,
 													ACM_FORMATSUGGESTF_NCHANNELS
 													| ACM_FORMATSUGGESTF_WBITSPERSAMPLE
 													| ACM_FORMATSUGGESTF_WFORMATTAG))
 				|| MMSYSERR_NOERROR != (m_MmResult = acmStreamOpen( & m_acmStr, m_acmDrv,
-														m_pWf, & wf, NULL, NULL, NULL, ACM_STREAMOPENF_NONREALTIME)))
+														m_Wf, & wf, NULL, NULL, NULL, ACM_STREAMOPENF_NONREALTIME)))
 			{
 				return FALSE;
 			}
