@@ -501,7 +501,7 @@ public:
 
 	CSoundPlayContext(CWaveSoapFrontDoc * pDoc, CWaveFile & WavFile,
 					SAMPLE_INDEX PlaybackStart, SAMPLE_INDEX PlaybackEnd, CHANNEL_MASK Channel,
-					int PlaybackDevice, int PlaybackBuffers, size_t PlaybackBufferSize);
+					INT_PTR PlaybackDevice, int PlaybackBuffers, size_t PlaybackBufferSize);
 
 	CString GetPlaybackTimeString(int TimeFormat) const;
 
@@ -528,7 +528,7 @@ protected:
 	SAMPLE_INDEX m_LastSamplePlayed;
 
 	bool m_bPauseRequested;
-	int m_PlaybackDevice;
+	INT_PTR m_PlaybackDevice;
 	int m_OldThreadPriority;
 	int m_PlaybackBuffers;
 	size_t m_PlaybackBufferSize;
