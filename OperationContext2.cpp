@@ -1553,7 +1553,6 @@ CEqualizerContext::CEqualizerContext(CWaveSoapFrontDoc * pDoc,
 	: COperationContext(pDoc, OperationName, OperationContextDiskIntensive),
 	m_bClipped(FALSE),
 	m_bZeroPhase(FALSE),
-	m_bSecondPass(FALSE),
 	m_MaxClipped(0.)
 {
 	m_OperationString = StatusString;

@@ -10,7 +10,6 @@
 enum { MaxFilterOrder = 16, };
 enum
 {
-	HpfNotchIndex = 0,
 	HpfStopbandIndex,
 	HpfPassbandIndex,
 	NotchBeginIndex,
@@ -108,6 +107,20 @@ public:
 
 	int GetHitCode(POINT point);
 
+	// get pixel where the point is drawn (x coordinate in client area)
+	int GetFilterPointPixel(int FilterPoint);
+	void SetFilterPointPixel(int FilterPoint, int PointPixel);
+	void InvalidateGraphPoint(double Frequency, double Gain);
+	static double PosYToGainDb(int y, int height)
+	{
+		//return 20. * (0.25 - y * 4.5 / height);
+		return 5. - y * 90. / height;
+	}
+	static int GainToPosY(double Gain, int height)
+	{
+		// full range: 5 to -85 db
+		return (0.25 - log10(Gain)) * height / 4.5;
+	}
 	// Operations
 public:
 
