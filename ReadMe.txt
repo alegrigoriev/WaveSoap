@@ -1,7 +1,6 @@
 TODO tasks:
 
 Check if after file extension metadata gets saved again.
-Return selection on click interpolation UNDO
 ULF reduction should be put to disk-intensive queue
 Noise reduction threshold should be independent from FFT order. Max may be over 0 dB.
 Rescale markers on resample
@@ -88,12 +87,10 @@ Find which alignment better for edit box labels: left or right
 
 Problems:
 
+Operation status text is sticky after undo/redo
 Vertical scroll in the wave view makes marker labels blinking
-File resample doesn't tell about overflow
 During exit, asks to reopen the file
 Ctrl+S doesn't always work
-MRU list doesn't show directories
-If a clipboard operation gets stopped, need to cancel all the operations that depend on it.
 Save As adds "Copy of" for direct file
 Save As fails if the file replaced is read-only
 WinXP doesn't have CDRAL
@@ -105,6 +102,10 @@ Windows2000 is trying to zero the allocated file
 Log Off query doesn't close the active dialog. Recursion is possible. Make sure to check after Cancel
 
 Fixed:
+If a clipboard operation gets stopped, need to cancel all the operations that depend on it.
+MRU list doesn't show directories
+Simple sample rate change did not work
+File resample doesn't tell about overflow
 When scrolling during playback, checkered background after EOF is constantly blinking (caused by LCD)
 Reopen after save new file doesn't work	 (test with marker set/change)
 Losing metadata on save
@@ -165,7 +166,6 @@ No Disk In Drive has a checkmark
 CD list combo height too low
 
 Deferred or not confirmed:
-Doesn't show "Undoing" and "Redoing"
 Selection mode in FFT view may not exit on capture loss
 Suggests u-Law when saving a file from clipboard (??)
 Daylight saving time change invalidates peak info timestamp (FAT only??)
@@ -183,6 +183,8 @@ Save As dialog is not centered first time (comdlg problem?)
 ??? When time/seconds format is set for status bar, MM:SS is actually shown
 
 Done:
+Return selection on click interpolation UNDO
+Status string shows full file names for MRU items
 Add support for markers and regions: save on copy and with undo, move and delete on Cut, move on Paste
 InitCopyMarkers should not do immediate copy!
 Fade in/out in Mute command
