@@ -1761,12 +1761,82 @@ BOOL CWaveFile::InstanceDataWav::SetWaveMarker(WAVEREGIONINFO * pInfo)
 		}
 	}
 
+	if (info.Flags & info.ChangeLtxt)
+	{
+		RegionMarkerIterator i;
+		bool Found = false;
+
+		for (i = m_RegionMarkers.begin(); i != m_RegionMarkers.end(); i++)
+		{
+			if (i->CuePointID == info.MarkerCueID)
+			{
+				Found = true;
+				if (0 == i->SampleLength
+					&& (NULL == info.Ltxt || 0 == info.Ltxt[0]))
+				{
+					// delete text
+					i = m_RegionMarkers.erase(i);
+					m_InfoChanged = true;
+					break;
+				}
+			}
+		}
+
+		if ( ! Found
+			&& NULL != info.Ltxt && 0 != info.Ltxt[0])
+		{
+			WaveRegionMarker item;
+
+			item.Codepage = 0;  // TODO
+			item.Country = 0;
+			item.CuePointID = info.MarkerCueID;
+			item.Dialect = 0;
+			item.Language = 0; //0x409;
+			item.Purpose = mmioFOURCC('r', 'g', 'n', ' ');
+			item.SampleLength = 0;
+
+			m_RegionMarkers.push_back(item);
+			m_InfoChanged = true;
+		}
+	}
+
 	if (info.Flags & info.ChangeLength)
 	{
-		WaveRegionMarker * pMarker = GetRegionMarker(info.MarkerCueID);
-		if (NULL != pMarker)
+		RegionMarkerIterator i;
+		bool Found = false;
+
+		for (i = m_RegionMarkers.begin(); i != m_RegionMarkers.end(); i++)
 		{
-			pMarker->SampleLength = info.Length;
+			if (i->CuePointID == info.MarkerCueID)
+			{
+				Found = true;
+				i->SampleLength = info.Length;
+				// if length becomes zero, and it doesn't have text, convert to a marker (delete region item)
+				if (0 == info.Length
+					&& i->Name.IsEmpty())
+				{
+					// delete text
+					i = m_RegionMarkers.erase(i);
+					m_InfoChanged = true;
+					break;
+				}
+			}
+		}
+
+		if (! Found
+			&& 0 != info.Length)
+		{
+			WaveRegionMarker item;
+
+			item.Codepage = 0;  // TODO
+			item.Country = 0;
+			item.CuePointID = info.MarkerCueID;
+			item.Dialect = 0;
+			item.Language = 0; //0x409;
+			item.Purpose = mmioFOURCC('r', 'g', 'n', ' ');
+			item.SampleLength = info.Length;
+
+			m_RegionMarkers.push_back(item);
 			m_InfoChanged = true;
 		}
 	}
