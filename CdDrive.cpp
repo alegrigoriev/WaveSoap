@@ -636,28 +636,37 @@ DWORD CCdDrive::GetDiskID()
 	return DiskId;
 }
 
-BOOL CCdDrive::GetMinMaxReadSpeed(int * MinSpeed, int * MaxSpeed) // bytes/s
+BOOL CCdDrive::GetMaxReadSpeed(int * pMaxSpeed) // bytes/s
 {
 	SCSI_SenseInfo ssi;
 	DWORD DataLen;
-#ifdef _DEBUG
 	BOOL res;
+	// try to use Get Performance command
+	// if the command is not supported, use Set Speed and get the max speed
+	// from mech status mode page (offset 8 / 176.4)
+#if 0//def _DEBUG
 	InquiryData inq;
 	InquiryCDB iqcdb(sizeof inq);
 	DataLen = sizeof inq;
 
 	res = SendScsiCommand( & iqcdb, & inq, & DataLen, SCSI_IOCTL_DATA_IN, & ssi);
 
-	struct FEATURE : FeatureHeader, RealTimeStreamingFeatureDesc
+	struct FEATURE : FeatureHeader
 	{
+		UCHAR MoreData[1024];
 	} feature;
 
 	DataLen = sizeof feature;
-	GetConfigurationCDB ConfigCdb(sizeof feature,
-								feature.Code, GetConfigurationCDB::RequestedTypeOneDescriptor);;
+	GetConfigurationCDB ConfigCdb(sizeof feature);
 
 	res = SendScsiCommand( & ConfigCdb, & feature, & DataLen, SCSI_IOCTL_DATA_IN, & ssi);
 
+
+	ProfileListDesc pld;
+	GetConfigurationCDB GetProfiles(sizeof pld, 0x1E,
+									GetConfigurationCDB::RequestedTypeOneDescriptor);
+	DataLen = sizeof pld;
+	res = SendScsiCommand( & GetProfiles, & pld, & DataLen, SCSI_IOCTL_DATA_IN, & ssi);
 
 #endif
 	struct PERF : CdPerformanceDataHeader
@@ -669,11 +678,67 @@ BOOL CCdDrive::GetMinMaxReadSpeed(int * MinSpeed, int * MaxSpeed) // bytes/s
 
 	if (SendScsiCommand( & cdb, & perf, & DataLen, SCSI_IOCTL_DATA_IN, & ssi))
 	{
+		// check that header is valid
+		const DWORD DataLength = perf.DataLength;
+		if (DataLength > 10 * sizeof (CdNominalPerformanceDescriptor)
+			|| 0 != DataLength % sizeof (CdNominalPerformanceDescriptor)
+			|| 0 != DataLength)
+		{
+			TRACE("Wrong performance data length=%d\n", DataLength);
+			return FALSE;
+		}
+		DWORD MaxPerformance = 0;
+		for (int i = 0; i < DataLength / sizeof (CdNominalPerformanceDescriptor); i++)
+		{
+			DWORD tmp = perf.desc[i].StartPerformance;
+			if (MaxPerformance < tmp)
+			{
+				MaxPerformance = tmp;
+			}
+
+			tmp = perf.desc[i].EndPerformance;
+			if (MaxPerformance < tmp)
+			{
+				MaxPerformance = tmp;
+			}
+		}
+		* pMaxSpeed = MaxPerformance * 1024;
 		return TRUE;
 	}
 	else
 	{
+		// use CD MAE current capabilities page
+		// use mech status mode page
+		struct CdCaps: ModeInfoHeader, CDCapabilitiesMechStatusModePage
+		{
+		} cdmp;
+		ModeSenseCDB msdb(sizeof cdmp, cdmp.Code);
+		DataLen = sizeof cdmp;
+
+		res = SendScsiCommand( & msdb, & cdmp, & DataLen, SCSI_IOCTL_DATA_IN, & ssi);
+
+		if (res)
+		{
+			* pMaxSpeed = cdmp.MaxReadSpeedSupported * 1000;
+			return TRUE;
+		}
+
+		struct CdCaps: ModeInfoHeader, CDCurrentCapabilitiesModePage
+		{
+		} cdcp;
+		ModeSenseCDB msdb2(sizeof cdcp, cdcp.Code);
+		DataLen = sizeof cdcp;
+
+		res = SendScsiCommand( & msdb2, & cdcp, & DataLen, SCSI_IOCTL_DATA_IN, & ssi);
+
+		if (res)
+		{
+			* pMaxSpeed = cdcp.MaximumReadSpeed * 1000;
+			return TRUE;
+		}
+
 		return FALSE;
+
 	}
 }
 
