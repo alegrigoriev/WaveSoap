@@ -53,8 +53,7 @@ BSC32=bscmake.exe
 # ADD BSC32 /nologo
 LINK32=link.exe
 # ADD BASE LINK32 /nologo /subsystem:windows /machine:I386
-# ADD LINK32 winmm.lib msacm32.lib wmstub.lib wmvcore.lib delayimp.lib /nologo /subsystem:windows /map /machine:I386 /out:"Release/WaveSoap.exe" /libpath:"G:\WMSDK\WMFSDK\lib" /delayload:wmvcore.dll
-# SUBTRACT LINK32 /pdb:none /debug
+# ADD LINK32 winmm.lib msacm32.lib wmstub.lib wmvcore.lib delayimp.lib /nologo /subsystem:windows /pdb:none /map /debug /debugtype:coff /machine:I386 /out:"Release/WaveSoap.exe" /libpath:"G:\WMSDK\WMFSDK\lib" /delayload:wmvcore.dll
 
 !ELSEIF  "$(CFG)" == "WaveSoapFront - Win32 Debug"
 

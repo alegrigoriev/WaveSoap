@@ -1658,7 +1658,7 @@ BOOL CDecompressContext::OperationProc()
 		m_ash.cbSrcLengthUsed = 0;
 		m_ash.cbDstLength = m_DstBufSize;
 		m_ash.cbDstLengthUsed = 0;
-		if (0 == acmStreamConvert(m_acmStr, & m_ash, m_ConvertFlags)
+		if (0 == (m_MmResult = acmStreamConvert(m_acmStr, & m_ash, m_ConvertFlags))
 			&& (0 != m_ash.cbDstLengthUsed || 0 != m_ash.cbSrcLengthUsed))
 		{
 			// write the result
@@ -1742,14 +1742,14 @@ BOOL CDecompressContext::Init()
 	m_ash.cbDstLength = 0x10000;  // 64K
 	if (0 == m_acmStr)
 	{
-		if (0 != acmFormatSuggest(m_acmDrv, pSrcFormat, & wf, sizeof wf,
-								ACM_FORMATSUGGESTF_NCHANNELS
-								| ACM_FORMATSUGGESTF_WBITSPERSAMPLE
-								| ACM_FORMATSUGGESTF_WFORMATTAG)
-			|| 0 != acmStreamOpen( & m_acmStr, m_acmDrv, pSrcFormat, & wf, NULL, NULL, NULL,
-									ACM_STREAMOPENF_NONREALTIME))
+		if (MMSYSERR_NOERROR != (m_MmResult = acmFormatSuggest(m_acmDrv, pSrcFormat,
+																& wf, sizeof wf,
+																ACM_FORMATSUGGESTF_NCHANNELS
+																| ACM_FORMATSUGGESTF_WBITSPERSAMPLE
+																| ACM_FORMATSUGGESTF_WFORMATTAG))
+			|| MMSYSERR_NOERROR != (m_MmResult = acmStreamOpen( & m_acmStr, m_acmDrv,
+													pSrcFormat, & wf, NULL, NULL, NULL, ACM_STREAMOPENF_NONREALTIME)))
 		{
-			// todo:error
 			return FALSE;
 		}
 	}
@@ -1757,10 +1757,10 @@ BOOL CDecompressContext::Init()
 	TRACE("acmFormatSuggest:nSamplesPerSec=%d, BytesPerSec=%d, nBlockAlign=%d\n",
 		wf.nSamplesPerSec, wf.nAvgBytesPerSec, wf.nBlockAlign);
 
-	if (0 != acmStreamSize(m_acmStr, m_ash.cbDstLength, & m_ash.cbSrcLength,
-							ACM_STREAMSIZEF_DESTINATION)
-		|| 0 != acmStreamSize(m_acmStr, m_ash.cbSrcLength, & m_ash.cbDstLength,
-							ACM_STREAMSIZEF_SOURCE))
+	if (MMSYSERR_NOERROR != (m_MmResult = acmStreamSize(m_acmStr, m_ash.cbDstLength, & m_ash.cbSrcLength,
+														ACM_STREAMSIZEF_DESTINATION))
+		|| MMSYSERR_NOERROR != (m_MmResult = acmStreamSize(m_acmStr, m_ash.cbSrcLength, & m_ash.cbDstLength,
+															ACM_STREAMSIZEF_SOURCE)))
 	{
 		if (m_acmStr != NULL)
 		{
@@ -1815,6 +1815,27 @@ BOOL CDecompressContext::DeInit()
 		m_acmDrv = NULL;
 	}
 	return TRUE;
+}
+
+void CDecompressContext::PostRetire(BOOL bChildContext)
+{
+	if (m_MmResult != MMSYSERR_NOERROR)
+	{
+		CString s;
+		if (m_Flags & OperationContextInitFailed)
+		{
+			s.Format(IDS_CANT_DECOMPRESS_FILE, LPCTSTR(m_SrcFile.GetName()),
+					m_SrcFile.GetWaveFormat()->wFormatTag, m_MmResult);
+			pDocument->m_bCloseThisDocumentNow = true;
+		}
+		else
+		{
+			s.Format(IDS_ERROR_WHILE_DECOMPRESSING_FILE,
+					LPCTSTR(m_SrcFile.GetName()), m_MmResult);
+		}
+		AfxMessageBox(s, MB_ICONSTOP);
+	}
+	COperationContext::PostRetire(bChildContext);
 }
 
 ////////// CSoundPlayContext

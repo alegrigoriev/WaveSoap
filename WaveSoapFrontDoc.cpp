@@ -393,7 +393,7 @@ BOOL CWaveSoapFrontDoc::OnNewDocument(WAVEFORMATEX * pWfx, long InitialLengthSec
 	}
 
 	if ( FALSE == m_WavFile.CreateWaveFile(NULL, pWfx, ALL_CHANNELS,
-											InitialLengthSeconds * pWfx->nSamplesPerSec,
+											nSamples,
 											CreateWaveFileTempDir
 											| CreateWaveFileDeleteAfterClose
 											| CreateWaveFilePcmFormat
@@ -403,7 +403,12 @@ BOOL CWaveSoapFrontDoc::OnNewDocument(WAVEFORMATEX * pWfx, long InitialLengthSec
 		AfxMessageBox(IDS_UNABLE_TO_CREATE_NEW_FILE, MB_OK | MB_ICONEXCLAMATION);
 		return FALSE;
 	}
-	AllocatePeakData(InitialLengthSeconds * pWfx->nSamplesPerSec);
+	AllocatePeakData(nSamples);
+	// zero wave peak data
+	if (NULL != m_pPeaks)
+	{
+		memset(m_pPeaks, 0, m_AllocatedWavePeakSize * sizeof (WavePeak));
+	}
 	return TRUE;
 }
 
@@ -1682,7 +1687,7 @@ UINT CWaveSoapFrontDoc::_ThreadProc(void)
 			{
 				if ( ! pContext->Init())
 				{
-					pContext->m_Flags |= OperationContextStop;
+					pContext->m_Flags |= OperationContextInitFailed | OperationContextStop;
 				}
 				SetCurrentStatusString(pContext->GetStatusString());
 				pContext->m_Flags |= OperationContextInitialized;
@@ -2235,7 +2240,7 @@ BOOL CWaveSoapFrontDoc::OnOpenDocument(LPCTSTR lpszPathName, int DocOpenFlags)
 		}
 		else
 		{
-			flags = //CreateWaveFileTempDir |
+			flags = // Create in the original file folder
 				// don't keep the file
 				CreateWaveFileDeleteAfterClose
 				| CreateWaveFilePcmFormat

@@ -1,8 +1,6 @@
 Known problems and tasks:
 
 When Open/Save dialog is resized, resize/move the controls
-???? When a file is opened in non-direct mode, peak info is saved with wrong time stamp
-After Save As, peak info is not saved for the new PCM file.
 Verify that FileSave can be canceled
 
 Broadcast UpdateAllViews if settings or metrics changed
@@ -15,7 +13,7 @@ Add splash screen
 Support "Play" in selection dialog
 keep cursor in 10% from the view boundary.
 Make Paste Special command (with Fade In/Fade Out etc)
-Make Undo/redo save the selection
+Make Undo/redo save the selection and regions
 Add support for markers and regions: save on copy and with undo, move and delete on Cut,
 	move on Paste
 Double click selects between two markers
@@ -26,14 +24,18 @@ Support CFSTR_FILECONTENTS clipboard format
 Add options dialog
 Show File Properties
 Save current workspace
+Use secondary stream to keep peak info
 Add decibel view to CAmplitudeRuler
 Add VU meter for playback
 Make tooltips
 Make help file
 
 Problems:
+After Save As, peak info is saved with wrong timestamp for the new PCM file.
+???? When a file is opened in non-direct mode, peak info is saved with wrong time stamp
+When Save As from LLADPCM to PCM, suggests 8 bit
+ 
 Multiline edit box in child dialog eats Esc and Enter (DLGC_WANTALLCHARS)
-If the ACM decoder is not available, the file still can be opened, but is empty
 If there is not enough space on NTFS volume, it will be seen only during flush
 Windows2000 is trying to zero the allocated file
 
@@ -41,10 +43,24 @@ Ctrl-End, Ctrl-Home loses synchronization between FFT and wave
 When selecting to the begin of file, FFT is corrupted
 Expression evaluation selection longer than file length doesn't update file length
 LOg Off query doesn't close the active dialog. Recursion is possible. Make sure to check after Cancel
+
+Deferred:
+
 Save As dialog is not centered first time (comdlg problem?)
 ??? When time/seconds format is set for status bar, MM:SS is actually shown
 
 Fixed:
+If the ACM decoder is not available, the file still can be opened, but is empty
+File New dialog: wrong validation message
+Expression evaluation still crashes in the release version (Wrong OnKickIdle prototype)
+Even though the length is too much, the file is created with non-zero length
+For the new file, peak info is not zeroed
+Set focus to file length in File New dialog, move it to the top
+Noise reduction: "Fft order" label short, "continuous tone detection" clipped, 
+    "Transient area" clipped, 
+    More Settings button small and inactive, Maximum noise clipped,
+ULF reduction: checkbox labels are a bit short
+LP noise reduction button clipped on the lower edge
 For new file, "Copy Of" name is suggested
 File/New with length didn't preallocate peak info
 WS_EX_CONTROLPARENT must not be set for child dialogs!

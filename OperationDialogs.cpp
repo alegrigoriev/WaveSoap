@@ -2244,6 +2244,7 @@ BOOL CExpressionEvaluationDialog::OnInitDialog()
 	m_SavedExprTabDlg.Create(IDD_SAVED_EXPRESSIONS_TAB, this);
 
 	CDialog::OnInitDialog();
+
 	m_OperandsTabDlg.UpdateData(FALSE);
 	m_SavedExprTabDlg.UpdateData(FALSE);
 
@@ -2288,7 +2289,7 @@ void CExpressionEvaluationDialog::OnButtonSaveExpressionAs()
 	m_SavedExprTabDlg.SaveExpressionAs(s);
 }
 
-void CExpressionEvaluationDialog::OnKickIdle()
+LRESULT CExpressionEvaluationDialog::OnKickIdle(WPARAM, LPARAM)
 {
 	if (m_bNeedUpdateControls)
 	{
@@ -2296,6 +2297,7 @@ void CExpressionEvaluationDialog::OnKickIdle()
 	}
 	m_SavedExprTabDlg.UpdateDialogControls( & m_SavedExprTabDlg, FALSE);
 	m_bNeedUpdateControls = FALSE;
+	return 0;
 }
 
 void CExpressionEvaluationDialog::OnUpdateOk(CCmdUI* pCmdUI)

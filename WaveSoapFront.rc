@@ -771,7 +771,7 @@ CAPTION "About WaveSoap"
 FONT 8, "MS Sans Serif"
 BEGIN
     ICON            IDR_MAINFRAME,IDC_STATIC,11,17,20,20
-    CTEXT           "WaveSoap Version 0.5 beta",IDC_STATIC_VERSION,58,8,110,
+    CTEXT           "WaveSoap Version 0.52 beta",IDC_STATIC_VERSION,58,8,110,
                     10,SS_NOPREFIX
     CTEXT           "Copyright (C) Alexander Grigoriev, 2000",IDC_STATIC,41,
                     27,145,12
@@ -1153,17 +1153,17 @@ FONT 8, "MS Sans Serif"
 BEGIN
     CONTROL         "Suppress differential noise up to:",
                     IDC_CHECK_DIFFERENTIAL_MODE_SUPPRESS,"Button",
-                    BS_AUTOCHECKBOX | WS_TABSTOP,7,11,113,10
-    EDITTEXT        IDC_EDIT_DIFF_NOISE_RANGE,123,9,40,14,ES_AUTOHSCROLL
-    LTEXT           "Hz",IDC_STATIC,168,11,14,8
+                    BS_AUTOCHECKBOX | WS_TABSTOP,7,11,118,10
+    EDITTEXT        IDC_EDIT_DIFF_NOISE_RANGE,127,9,40,14,ES_AUTOHSCROLL
+    LTEXT           "Hz",IDC_STATIC,172,11,14,8
     CONTROL         "Suppress low frequencies up to:",
                     IDC_CHECK_LOW_FREQUENCY,"Button",BS_AUTOCHECKBOX | 
-                    WS_TABSTOP,7,27,111,10
-    EDITTEXT        IDC_EDIT_LF_NOISE_RANGE,123,25,40,14,ES_AUTOHSCROLL
-    LTEXT           "Hz",IDC_STATIC,169,27,14,8
+                    WS_TABSTOP,7,27,118,10
+    EDITTEXT        IDC_EDIT_LF_NOISE_RANGE,127,25,40,14,ES_AUTOHSCROLL
+    LTEXT           "Hz",IDC_STATIC,173,27,14,8
     LTEXT           "Selection:\nChannels:",IDC_STATIC_SELECTION,7,49,179,17
     CONTROL         "Save &Undo",IDC_CHECK_UNDO,"Button",BS_AUTOCHECKBOX | 
-                    WS_TABSTOP,7,70,50,10
+                    WS_TABSTOP,7,70,51,10
     PUSHBUTTON      "&Selection...",IDC_BUTTON_SELECTION,132,68,50,14
     DEFPUSHBUTTON   "OK",IDOK,12,86,50,14
     PUSHBUTTON      "Cancel",IDCANCEL,73,86,50,14
@@ -1239,46 +1239,46 @@ CAPTION "Noise Reduction Parameters"
 FONT 8, "MS Sans Serif"
 BEGIN
     LTEXT           "Apply noise reduction to\nfrequencies higher than:",
-                    IDC_STATIC,7,5,77,19
+                    IDC_STATIC,7,5,86,19
     EDITTEXT        IDC_EDIT_LOWER_FREQUENCY,96,7,40,13,ES_AUTOHSCROLL
     LTEXT           "Hz",IDC_STATIC,142,9,12,8
-    LTEXT           "FFT order for analyze:",IDC_STATIC,7,27,67,8
+    LTEXT           "FFT order for analyze:",IDC_STATIC,7,26,87,8
     COMBOBOX        IDC_COMBO_FFT_ORDER,96,24,40,44,CBS_DROPDOWNLIST | 
                     WS_VSCROLL | WS_TABSTOP
-    LTEXT           "Noise floor for higher frequencies:",IDC_STATIC,7,38,70,
+    LTEXT           "Noise floor for higher frequencies:",IDC_STATIC,7,38,84,
                     17
     EDITTEXT        IDC_EDIT_NOISE_AREA_THRESHOLD_HIGH,96,40,40,13,
                     ES_AUTOHSCROLL
     LTEXT           "dB",IDC_STATIC,142,42,12,8
-    LTEXT           "Noise floor for lower frequencies:",IDC_STATIC,7,56,70,
+    LTEXT           "Noise floor for lower frequencies:",IDC_STATIC,7,56,83,
                     17
     EDITTEXT        IDC_EDIT_NOISE_AREA_THRESHOLD_LOW,96,58,40,13,
                     ES_AUTOHSCROLL
     LTEXT           "dB",IDC_STATIC,142,60,12,8
-    LTEXT           "Noise reduction \naggressivness:",IDC_STATIC,7,73,65,18
+    LTEXT           "Noise reduction \naggressivness:",IDC_STATIC,7,73,86,18
     EDITTEXT        IDC_EDIT_AGGRESSIVNESS,96,75,40,14,ES_AUTOHSCROLL
-    LTEXT           "Maximum noise reduction:",IDC_STATIC,7,97,78,8
+    LTEXT           "Maximum noise reduction:",IDC_STATIC,7,97,87,8
     EDITTEXT        IDC_EDIT_NOISE_REDUCTION,96,94,40,14,ES_AUTOHSCROLL
     LTEXT           "dB",IDC_STATIC,142,96,12,8
-    LTEXT           "Tone over noise preference:",IDC_STATIC,7,109,59,19
+    LTEXT           "Tone over noise preference:",IDC_STATIC,7,109,75,19
     EDITTEXT        IDC_EDIT_TONE_PREFERENCE,96,112,40,13,ES_AUTOHSCROLL
     LTEXT           "dB",IDC_STATIC,142,114,12,8
     PUSHBUTTON      "Show spectrum and noise threshold",
                     IDC_BUTTON_SET_THRESHOLD,8,132,88,21,BS_MULTILINE
     LTEXT           "Continuous tone detection\nthreshold:",IDC_STATIC,7,161,
-                    81,18
+                    87,17
     EDITTEXT        IDC_EDIT_NOISE_CRITERION,96,161,40,13,ES_AUTOHSCROLL
-    LTEXT           "Transient area threshold:",IDC_STATIC,7,181,75,8
+    LTEXT           "Transient area threshold:",IDC_STATIC,7,181,87,8
     EDITTEXT        IDC_EDIT_TRANSIENT_THRESHOLD,96,178,40,13,ES_AUTOHSCROLL
     LTEXT           "dB",IDC_STATIC,142,180,12,8
     LTEXT           "Selection:\nChannels:",IDC_STATIC_SELECTION,8,212,215,
                     17
     CONTROL         "Save &Undo",IDC_CHECK_UNDO,"Button",BS_AUTOCHECKBOX | 
-                    WS_TABSTOP,8,233,50,10
+                    WS_TABSTOP,8,233,56,10
     PUSHBUTTON      "Set defaults",IDC_BUTTON_RESET_DEFAULT,173,7,50,14
     PUSHBUTTON      "Revert",IDC_BUTTON_REVERT_INITIAL,173,22,50,14
     PUSHBUTTON      "&Help",IDHELP,173,40,50,14
-    PUSHBUTTON      "More settings...",IDC_BUTTON_MORE_SETTINGS,173,111,50,
+    PUSHBUTTON      "More settings...",IDC_BUTTON_MORE_SETTINGS,168,111,55,
                     14
     PUSHBUTTON      "&Selection...",IDC_BUTTON_SELECTION,8,251,50,14
     DEFPUSHBUTTON   "OK",IDOK,93,251,50,14
@@ -1370,8 +1370,9 @@ BEGIN
     PUSHBUTTON      "&Close the file",IDCANCEL,35,87,115,14
 END
 
-IDD_FUNCTIONS_TAB DIALOG DISCARDABLE  0, 0, 230, 60
-STYLE WS_CHILD | WS_DISABLED
+IDD_FUNCTIONS_TAB DIALOGEX 0, 0, 230, 60
+STYLE DS_CONTROL | WS_CHILD | WS_DISABLED
+EXSTYLE WS_EX_CONTROLPARENT
 FONT 8, "MS Sans Serif"
 BEGIN
     PUSHBUTTON      "sin",IDC_BUTTON_SIN,1,2,27,10,BS_NOTIFY
@@ -1392,8 +1393,9 @@ BEGIN
                     IDC_STATIC,2,48,224,10
 END
 
-IDD_OPERANDS_TAB DIALOG DISCARDABLE  0, 0, 230, 60
+IDD_OPERANDS_TAB DIALOGEX 0, 0, 230, 60
 STYLE DS_CONTROL | WS_CHILD | WS_DISABLED
+EXSTYLE WS_EX_CONTROLPARENT
 FONT 8, "MS Sans Serif"
 BEGIN
     PUSHBUTTON      "noise",IDC_BUTTON_NOISE,1,2,27,10,BS_NOTIFY
@@ -1415,8 +1417,9 @@ BEGIN
                     IDC_STATIC,2,48,224,10
 END
 
-IDD_OPERATORS_TAB DIALOG DISCARDABLE  0, 0, 230, 60
+IDD_OPERATORS_TAB DIALOGEX 0, 0, 230, 60
 STYLE DS_CONTROL | WS_CHILD | WS_DISABLED
+EXSTYLE WS_EX_CONTROLPARENT
 FONT 8, "MS Sans Serif"
 BEGIN
     PUSHBUTTON      "+",IDC_BUTTON_PLUS,1,2,27,10,BS_NOTIFY
@@ -1432,8 +1435,9 @@ BEGIN
                     IDC_STATIC,2,48,224,10
 END
 
-IDD_SAVED_EXPRESSIONS_TAB DIALOG DISCARDABLE  0, 0, 235, 60
+IDD_SAVED_EXPRESSIONS_TAB DIALOGEX 0, 0, 235, 60
 STYLE DS_CONTROL | WS_CHILD | WS_DISABLED
+EXSTYLE WS_EX_CONTROLPARENT
 FONT 8, "MS Sans Serif"
 BEGIN
     COMBOBOX        IDC_COMBO_SAVED_EXPRESSIONS,3,21,172,54,CBS_DROPDOWNLIST | 
@@ -1483,13 +1487,13 @@ STYLE DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
 CAPTION "New File Properties"
 FONT 8, "MS Sans Serif"
 BEGIN
-    LTEXT           "Sampling &rate:",IDC_STATIC,7,9,58,8
-    COMBOBOX        IDC_COMBO_SAMPLING_RATE,69,7,75,70,CBS_DROPDOWN | 
-                    WS_VSCROLL | WS_TABSTOP
-    LTEXT           "I&nitial length:",IDC_STATIC,7,28,61,8
-    EDITTEXT        IDC_EDIT_LENGTH,69,24,75,14,ES_AUTOHSCROLL
+    LTEXT           "I&nitial length:",IDC_STATIC,7,10,61,8
+    EDITTEXT        IDC_EDIT_LENGTH,69,7,75,14,ES_AUTOHSCROLL
     CONTROL         "Spin1",IDC_SPIN_LENGTH,"msctls_updown32",UDS_ALIGNRIGHT | 
-                    UDS_AUTOBUDDY | UDS_ARROWKEYS,142,25,10,14
+                    UDS_AUTOBUDDY | UDS_ARROWKEYS,142,8,10,14
+    LTEXT           "Sampling &rate:",IDC_STATIC,7,27,58,8
+    COMBOBOX        IDC_COMBO_SAMPLING_RATE,69,25,75,70,CBS_DROPDOWN | 
+                    WS_VSCROLL | WS_TABSTOP
     CONTROL         "&Mono",IDC_RADIO_MONO,"Button",BS_AUTORADIOBUTTON | 
                     WS_GROUP,7,46,38,10
     CONTROL         "&Stereo",IDC_RADIO_STEREO,"Button",BS_AUTORADIOBUTTON,
@@ -1565,13 +1569,13 @@ END
 //
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 1,0,0,1
- PRODUCTVERSION 1,0,0,1
+ FILEVERSION 0,52,0,1
+ PRODUCTVERSION 0,52,0,1
  FILEFLAGSMASK 0x3fL
 #ifdef _DEBUG
- FILEFLAGS 0x1L
+ FILEFLAGS 0x9L
 #else
- FILEFLAGS 0x0L
+ FILEFLAGS 0x8L
 #endif
  FILEOS 0x4L
  FILETYPE 0x1L
@@ -1584,14 +1588,14 @@ BEGIN
             VALUE "Comments", "\0"
             VALUE "CompanyName", "Alexandre Grigoriev\0"
             VALUE "FileDescription", "WaveSoap - Sound Cleaning And Editing Application\0"
-            VALUE "FileVersion", "1, 0, 0, 1\0"
+            VALUE "FileVersion", "0, 52, 0, 1\0"
             VALUE "InternalName", "WaveSoap\0"
-            VALUE "LegalCopyright", "Copyright (C) 2000 Alexandre Grigoriev\0"
+            VALUE "LegalCopyright", "Copyright (C) 2000-2001 Alexandre Grigoriev\0"
             VALUE "LegalTrademarks", "\0"
             VALUE "OriginalFilename", "WaveSoap.EXE\0"
-            VALUE "PrivateBuild", "\0"
+            VALUE "PrivateBuild", "Beta 0.52\0"
             VALUE "ProductName", "WaveSoap Application\0"
-            VALUE "ProductVersion", "1, 0, 0, 1\0"
+            VALUE "ProductVersion", "0, 52, 0, 1\0"
             VALUE "SpecialBuild", "\0"
         END
     END
@@ -2217,6 +2221,12 @@ BEGIN
     IDS_COPY_OF             "Copy of "
     IDS_FILE_MAY_GET_TOO_BIG 
                             "Operation cannot be performed because the file size would exceed the WAV format limit"
+    IDS_WRONG_NEW_FILE_LENGTH 
+                            "File length must be from 0 to 80:00 (4800 seconds)"
+    IDS_CANT_DECOMPRESS_FILE 
+                            "Unable to find or initialize codec to load compressed file ""%s"".\nCompression format tag = 0x%04X, MMSYSERR error code=0x%08X"
+    IDS_ERROR_WHILE_DECOMPRESSING_FILE 
+                            "Error occured while decompressing file ""%s""\nThe file may be corrupted or unreadable\nMMSYSERR error code=0x%08X"
 END
 
 STRINGTABLE DISCARDABLE 

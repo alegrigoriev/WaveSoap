@@ -61,6 +61,7 @@ enum {
 	OperationContextNonCritical = 0x100,
 	OperationContextDontKeepAfterRetire = 0x200,
 	OperationContextDontAdjustPriority = 0x400,
+	OperationContextInitFailed = 0x800,
 };
 
 // additional custom flags for the contexts
@@ -216,6 +217,7 @@ class CDecompressContext : public COperationContext
 public:
 	HACMSTREAM m_acmStr;
 	HACMDRIVER m_acmDrv;
+	MMRESULT m_MmResult;
 	CDecompressContext(CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString)
 		: COperationContext(pDoc, "",
 							// operation can be terminated by Close
@@ -223,7 +225,8 @@ public:
 		m_SrcBufSize(0),
 		m_DstBufSize(0),
 		m_acmDrv(NULL),
-		m_acmStr(NULL)
+		m_acmStr(NULL),
+		m_MmResult(MMSYSERR_NOERROR)
 	{
 		m_OperationString = StatusString;
 		memset( & m_ash, 0, sizeof m_ash);
@@ -235,6 +238,7 @@ public:
 	virtual BOOL OperationProc();
 	virtual BOOL Init();
 	virtual BOOL DeInit();
+	virtual void PostRetire(BOOL bChildContext = FALSE);
 };
 
 class CSoundPlayContext : public COperationContext
