@@ -9,9 +9,11 @@
 #if _MSC_VER > 1000
 #pragma once
 #endif // _MSC_VER > 1000
+#include "MessageBoxSynch.h"
 
-class CMainFrame : public CMDIFrameWnd
+class CMainFrame : public DialogProxyWnd<CMDIFrameWnd>
 {
+	typedef DialogProxyWnd<CMDIFrameWnd> BaseClass;
 	DECLARE_DYNAMIC(CMainFrame)
 public:
 	CMainFrame();
@@ -68,7 +70,10 @@ protected:
 	afx_msg void OnUpdateIndicatorSampleRate(CCmdUI* pCmdUI);
 	afx_msg void OnUpdateIndicatorSampleSize(CCmdUI* pCmdUI);
 	afx_msg void OnUpdateIndicatorChannels(CCmdUI* pCmdUI);
+	LRESULT OnRunModalSync(WPARAM, LPARAM);
 	DECLARE_MESSAGE_MAP()
+	// synchronously runs the dialog from a worker thread in the main thread context
+	INT_PTR OnMessageBoxSync(LPCTSTR );
 };
 
 /////////////////////////////////////////////////////////////////////////////
