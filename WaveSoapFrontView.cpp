@@ -48,6 +48,7 @@ BEGIN_MESSAGE_MAP(CWaveSoapFrontView, CScaledScrollView)
 	ON_WM_RBUTTONUP()
 	ON_UPDATE_COMMAND_UI(ID_VIEW_ZOOM_SELECTION, OnUpdateViewZoomSelection)
 	ON_COMMAND(ID_VIEW_ZOOM_SELECTION, OnViewZoomSelection)
+	ON_UPDATE_COMMAND_UI(ID_INDICATOR_SCALE, OnUpdateIndicatorScale)
 	//}}AFX_MSG_MAP
 	// Standard printing commands
 	ON_COMMAND(ID_FILE_PRINT, CScaledScrollView::OnFilePrint)
@@ -67,6 +68,7 @@ CWaveSoapFrontView::CWaveSoapFrontView()
 	m_WaveBufferSize(0),
 	m_PlaybackCursorChannel(-2),
 	m_PlaybackCursorDrawn(false),
+	m_NewSelectionMade(false),
 	m_PlaybackCursorDrawnSamplePos(0),
 	m_WaveDataSizeInBuffer(0)
 {
@@ -950,6 +952,11 @@ void CWaveSoapFrontView::CreateAndShowCaret()
 		return;
 	}
 	CWaveSoapFrontDoc * pDoc = GetDocument();
+	if (pDoc->m_PlayingSound && ! m_NewSelectionMade)
+	{
+		//DestroyCaret();
+		return;
+	}
 	CRect r;
 	GetClientRect( & r);
 
@@ -1260,6 +1267,7 @@ void CWaveSoapFrontView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
 	if (lHint == CWaveSoapFrontDoc::UpdateSelectionChanged
 		&& NULL != pHint)
 	{
+		m_NewSelectionMade = true;
 		CSelectionUpdateInfo * pInfo = (CSelectionUpdateInfo *) pHint;
 		CWaveSoapFrontDoc * pDoc = GetDocument();
 		CRect r;
@@ -1899,7 +1907,9 @@ void CWaveSoapFrontView::UpdatePlaybackCursor(long sample, int channel)
 {
 	if (-2 == m_PlaybackCursorChannel)
 	{
+		// first call after playback start
 		m_PlaybackCursorDrawnSamplePos = sample;
+		m_NewSelectionMade = false; // to hide the caret
 	}
 	int pos = WorldToWindowX(sample);
 	int OldPos = WorldToWindowX(m_PlaybackCursorDrawnSamplePos);
@@ -1916,7 +1926,8 @@ void CWaveSoapFrontView::UpdatePlaybackCursor(long sample, int channel)
 
 	if (-2 == channel)
 	{
-		// not playing
+		// not playing now
+		CreateAndShowCaret();
 		return;
 	}
 	CRect r;
@@ -1944,9 +1955,12 @@ void CWaveSoapFrontView::UpdatePlaybackCursor(long sample, int channel)
 		{
 			NewPos = r.right / 2;
 		}
-		ScrollBy(m_HorizontalScale * (pos - NewPos), 0, TRUE);
-		NotifySlaveViews(CHANGE_HOR_ORIGIN);
-		CreateAndShowCaret();
+		double dScroll = m_HorizontalScale * (pos - NewPos);
+		if (dOrgX + dExtX + dScroll < dMaxRight)
+		{
+			ScrollBy(m_HorizontalScale * (pos - NewPos), 0, TRUE);
+			NotifySlaveViews(CHANGE_HOR_ORIGIN);
+		}
 	}
 	ShowPlaybackCursor();
 	//GdiFlush();
@@ -2032,3 +2046,9 @@ void CWaveSoapFrontView::NotifySlaveViews(DWORD flag)
 	CScaledScrollView::NotifySlaveViews(flag);
 }
 
+void CWaveSoapFrontView::OnUpdateIndicatorScale(CCmdUI* pCmdUI)
+{
+	CString s;
+	s.Format(_T("1:%d"), int(m_HorizontalScale));
+	SetStatusString(pCmdUI, s);
+}
