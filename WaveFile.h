@@ -89,7 +89,7 @@ public:
 	void Flush(UINT flag = 0)   // possible value: MMIO_EMPTYBUF
 	{
 		CSimpleCriticalSectionLock lock(m_cs);
-		mmioFlush(m_hmmio, 0);
+		mmioFlush(m_hmmio, flag);
 	}
 
 	BOOL Ascend(MMCKINFO & ck)
@@ -333,7 +333,7 @@ public:
 	}
 	WavePeak GetPeakMinMax(PEAK_INDEX from, PEAK_INDEX to, NUMBER_OF_CHANNELS stride = 1);
 
-	unsigned GetPeaksSize() const
+	size_t GetPeaksSize() const
 	{
 		return m_WavePeakSize;
 	}
