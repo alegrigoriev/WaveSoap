@@ -1303,6 +1303,44 @@ BOOL CWaveFile::InstanceDataWav::ReverseMarkers(SAMPLE_INDEX BeginSample, NUMBER
 	return HasChanged;
 }
 
+BOOL CWaveFile::InstanceDataWav::RescaleMarkers(long OldSampleRate, long NewSampleRate)
+{
+	BOOL HasChanged = FALSE;
+
+	if (OldSampleRate == NewSampleRate)
+	{
+		return FALSE;
+	}
+
+	for (CuePointVectorIterator i = m_CuePoints.begin();
+		i < m_CuePoints.end(); i++)
+	{
+		WaveRegionMarker * pMarker = GetRegionMarker(i->CuePointID);
+
+		if (NULL != pMarker)
+		{
+			DWORD RegionEnd = i->dwSampleOffset + pMarker->SampleLength;
+
+			i->dwSampleOffset = MulDiv(i->dwSampleOffset, NewSampleRate, OldSampleRate);
+			RegionEnd = MulDiv(RegionEnd, NewSampleRate, OldSampleRate);
+
+			pMarker->SampleLength = RegionEnd - i->dwSampleOffset;
+		}
+		else
+		{
+			i->dwSampleOffset = MulDiv(i->dwSampleOffset, NewSampleRate, OldSampleRate);
+		}
+
+		HasChanged = TRUE;
+	}
+
+	if (HasChanged)
+	{
+		m_InfoChanged = true;
+	}
+	return HasChanged;
+}
+
 CWaveFile::InstanceDataWav::InstanceDataWav()
 	: m_PeakData(512)
 	, m_InfoChanged(false)
@@ -1950,6 +1988,11 @@ BOOL CWaveFile::CreateWaveFile(CWaveFile * pTemplateFile, WAVEFORMATEX * pTempla
 	}
 	Ascend( * pDatachunk);
 	// and copy INFO
+	if (NULL != pTemplateFile
+		&& 0 == (flags & CreateWaveFileDontCopyInfo))
+	{
+		CopyMetadata(*pTemplateFile);
+	}
 	// then update RIFF
 	//Ascend( *GetRiffChunk());
 	return TRUE;
