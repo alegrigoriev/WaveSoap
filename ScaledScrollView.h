@@ -79,7 +79,7 @@ public:
 					double & bottom, double & top) const;
 	virtual void SetExtents(double left, double right,
 							double bottom, double top);
-	void NotifySlaveViews(DWORD flag);
+	virtual void NotifySlaveViews(DWORD flag);
 
 	virtual BOOL ScrollBy(double dx, double dy, BOOL bDoScroll = TRUE);
 	BOOL ScrollTo(double x, double y, BOOL bDoScroll = TRUE)
