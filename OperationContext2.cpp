@@ -2816,6 +2816,67 @@ BOOL CReverseOperation::OperationProc()
 {
 	return FALSE;
 }
+//////////////////////// CMetadataChangeOperation
+
+CMetadataChangeOperation::CMetadataChangeOperation(CWaveSoapFrontDoc * pDoc,
+													unsigned MetadataChangeFlags)
+	: BaseClass(pDoc, OperationContextSynchronous)
+	, m_pMetadata(NULL)
+	, m_pUndoData(NULL)
+	, m_MetadataCopyFlags(MetadataChangeFlags)
+{
+}
+
+CMetadataChangeOperation::~CMetadataChangeOperation()
+{
+	delete m_pMetadata;
+	delete m_pUndoData;
+}
+
+BOOL CMetadataChangeOperation::CreateUndo()
+{
+	m_pUndoData = new ThisClass(pDocument);
+
+//    m_pUndoData->SaveUndoMetadata(m_MetadataCopyFlags);
+
+	return TRUE;
+}
+
+BOOL CMetadataChangeOperation::OperationProc()
+{
+	if (m_MetadataCopyFlags & CWaveFile::InstanceDataWav::MetadataCopyAllCueData)
+	{
+		pDocument->UpdateAllMarkers();
+	}
+
+	pDocument->m_WavFile.SwapMetadata(m_pMetadata, m_MetadataCopyFlags);
+
+	if (NULL != m_pUndoData)
+	{
+		m_pUndoData->m_pMetadata = m_pMetadata;
+		m_pUndoData->m_MetadataCopyFlags = m_MetadataCopyFlags;
+		m_pMetadata = NULL;
+		m_UndoChain.InsertHead(m_pUndoData);
+		m_pUndoData = NULL;
+	}
+
+	if (m_MetadataCopyFlags & CWaveFile::InstanceDataWav::MetadataCopyAllCueData)
+	{
+		pDocument->UpdateAllMarkers();
+	}
+
+	return TRUE;
+}
+
+void CMetadataChangeOperation::SaveUndoMetadata(unsigned ChangeFlags)
+{
+	if (NULL == m_pMetadata)
+	{
+		m_pMetadata = new CWaveFile::InstanceDataWav;
+	}
+	m_MetadataCopyFlags |= ChangeFlags;
+	m_pMetadata->CopyMetadata(pDocument->m_WavFile.GetInstanceData(), ChangeFlags);
+}
 
 ///////////////////////////////////////////////////////////////////////
 BOOL InitExpandOperation(CStagedContext * pContext,
