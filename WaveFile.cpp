@@ -559,7 +559,7 @@ WaveMarker * CWaveFile::GetCueItem(DWORD CueId)
 
 	std::vector<WaveMarker>::iterator mm =
 		pInstData->Markers.insert(pInstData->Markers.end(), marker);
-	return mm.base();
+	return mm.operator->();
 }
 
 BOOL CWaveFile::LoadListMetadata(MMCKINFO & chunk)

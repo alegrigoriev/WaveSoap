@@ -966,7 +966,7 @@ int CClickRemoval::ProcessSoundBuffer(char const * pIn, char * pOut,
 					int NewDeriv =  FftIn[f + 1] - FftIn[f];
 
 					deriv2 = NewDeriv - OldDeriv;
-					deriv3 = int(fabs(deriv2 - OldDeriv2));
+					deriv3 = int(::abs(long(deriv2 - OldDeriv2)));
 					OldDeriv = NewDeriv;
 					OldDeriv2 = deriv2;
 

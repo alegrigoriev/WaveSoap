@@ -2155,7 +2155,7 @@ void CNoiseReductionDialog::SetNoiseReductionData(CNoiseReduction * pNr)
 	pNr->m_LevelThresholdForNoiseLow = float(DB_TO_NEPER * (m_dNoiseThresholdLow +111.));
 	pNr->m_LevelThresholdForNoiseHigh = float(DB_TO_NEPER * (m_dNoiseThresholdHigh +111.));
 	pNr->m_ToneOverNoisePreference = float(DB_TO_NEPER * m_dToneOverNoisePreference);
-	pNr->m_NoiseReductionRatio = float(0.5 * m_dNoiseReductionAggressivness);
+	pNr->m_NoiseReductionRatio = 0.5 * m_dNoiseReductionAggressivness;
 
 	pNr->m_NearMaskingDecayDistanceLow = float(m_NearMaskingDecayDistanceLow);
 	pNr->m_NearMaskingDecayDistanceHigh = float(m_NearMaskingDecayDistanceHigh);

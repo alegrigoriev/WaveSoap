@@ -599,7 +599,7 @@ HRESULT CWmaDecoder::Open(CDirectFile & file)
 	{
 		DWORD nStreamCount = 0;
 		pProfile->GetStreamCount( & nStreamCount);
-		for (int iStream = 0; iStream < nStreamCount; iStream++)
+		for (unsigned iStream = 0; iStream < nStreamCount; iStream++)
 		{
 			IWMStreamConfig * pStreamConfig = NULL;
 			hr = pProfile->GetStream(iStream, & pStreamConfig);

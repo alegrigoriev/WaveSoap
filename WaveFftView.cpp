@@ -305,9 +305,9 @@ void CWaveFftView::OnDraw(CDC* pDC)
 		void * pBits;
 		bool bUsePalette;
 		size_t width = r.right - r.left;
-		size_t height = cr.bottom - cr.top;
+		long height = cr.bottom - cr.top;
 		size_t stride = (width * 3 + 3) & ~3;
-		size_t BmpSize = stride * abs(height);
+		size_t BmpSize = stride * ::abs(height);
 		int BytesPerPixel = 3;
 		struct BM : BITMAPINFO
 		{
@@ -360,7 +360,7 @@ void CWaveFftView::OnDraw(CDC* pDC)
 
 			bmi.bmiHeader.biClrUsed = i;
 			stride = (width + 3) & ~3;
-			BmpSize = stride * abs(height);
+			BmpSize = stride * ::abs(height);
 			pOldPalette = pDC->SelectPalette(GetApp()->GetPalette(), FALSE);
 		}
 		else
@@ -990,9 +990,10 @@ BOOL CWaveFftView::OnEraseBkgnd(CDC* pDC)
 			gr.left = FileEnd;
 			pDC->FillRect(gr, & GrayBrush);
 		}
-		catch (CResourceException)
+		catch (CResourceException * e)
 		{
 			TRACE("CResourceException\n");
+			e->Delete();
 		}
 	}
 	return TRUE;
@@ -1019,9 +1020,10 @@ BOOL CWaveFftView::PreCreateWindow(CREATESTRUCT& cs)
 			CBrush GrayBrush( & bmp);
 			m_Brush = (HBRUSH)GrayBrush.Detach();
 		}
-		catch (CResourceException)
+		catch (CResourceException * e)
 		{
 			TRACE("CResourceException\n");
+			e->Delete();
 		}
 	}
 	cs.lpszClass = AfxRegisterWndClass(CS_VREDRAW | CS_DBLCLKS, NULL,

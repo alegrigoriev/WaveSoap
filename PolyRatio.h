@@ -15,7 +15,7 @@ public:
 		Decompose(int nCellsOrder, polyRoots * DenomRoots,
 				int nFirstRatioOrder = 0);
 	polyRatio(const polyRatio&);
-	polyRatio(const poly& numer,const poly& denom = poly((int)0, 1.));
+	polyRatio(const poly& numer,const poly& denom = poly((int)0, Complex(1.)));
 	polyRatio(Complex first=0., int iMaxOrder=200);
 	polyRatio(Complex *zeros, int nOrder=0,
 			Complex *poles=NULL, int dOrder=0, Complex first=1.);

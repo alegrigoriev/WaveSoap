@@ -572,7 +572,7 @@ int CWaveSoapFileSaveDialog::FillFormatCombo(unsigned SelFormat, int Flags)
 		if (m_SelectedTag.Tag == WAVE_FORMAT_MSAUDIO1
 			|| m_SelectedTag.Tag == WAVE_FORMAT_MSAUDIO1 + 1)
 		{
-			if (abs(m_SelectedWmaBitrate - pwf->nAvgBytesPerSec * 8) < 1000)
+			if (::abs(long(m_SelectedWmaBitrate - pwf->nAvgBytesPerSec * 8)) < 1000)
 			{
 				sel = i;
 			}
@@ -581,7 +581,7 @@ int CWaveSoapFileSaveDialog::FillFormatCombo(unsigned SelFormat, int Flags)
 		else if (m_SelectedTag.Tag == WAVE_FORMAT_MPEGLAYER3
 				|| m_SelectedTag == BladeMp3Encoder::GetTag())
 		{
-			if (abs(m_SelectedMp3Bitrate - pwf->nAvgBytesPerSec * 8) < 1000)
+			if (::abs(long(m_SelectedMp3Bitrate - pwf->nAvgBytesPerSec * 8)) < 1000)
 			{
 				sel = i;
 			}

@@ -405,7 +405,7 @@ BOOL CCdDrive::Open(TCHAR letter)
 		// it is windows9x
 		if (0 && NULL != GetAspi32HaTargetLun)
 		{
-			HaTargetLun Addr = GetAspi32HaTargetLun(letter);
+			HaTargetLun Addr = GetAspi32HaTargetLun(UCHAR(letter));
 			TRACE("Drive %c SCSI addr returned by cdral=%08X\n",
 				letter, Addr);
 			m_ScsiAddr.PortNumber = Addr.HaId;
@@ -495,7 +495,7 @@ BOOL CCdDrive::Open(TCHAR letter)
 		{
 			// find its equivalent in ASPI. The adapter number is supposed to be the same.
 			// use either ASPI or IOCTL to find max transfer length
-			HaTargetLun Addr = GetAspi32HaTargetLun(letter);
+			HaTargetLun Addr = GetAspi32HaTargetLun(UCHAR(letter));
 			TRACE("Drive %c SCSI addr returned by cdral=%08X\n",
 				letter, Addr);
 			m_ScsiAddr.PortNumber = Addr.HaId;
