@@ -367,6 +367,8 @@ IDR_MENU_TIME_RULER MENU
 BEGIN
     POPUP " "
     BEGIN
+        MENUITEM "Marker/Region...",            40128
+        MENUITEM SEPARATOR
         MENUITEM "&Samples",                    IDC_VIEW_RULER_SAMPLES
         MENUITEM "&HH:MM:SS",                   IDC_VIEW_RULER_HHMMSS
         MENUITEM "S&econds",                    IDC_VIEW_RULER_SECONDS
@@ -439,6 +441,7 @@ IDR_MENU_WAVE_VIEW MENU
 BEGIN
     POPUP " "
     BEGIN
+        MENUITEM "Marker...",                   IDC_EDIT_WAVE_MARKER
         MENUITEM "Paste\tCtrl+V",               ID_EDIT_PASTE
         MENUITEM SEPARATOR
         MENUITEM "&Zoom In Time\tGray +",       ID_VIEW_ZOOMINHOR2
@@ -458,6 +461,7 @@ BEGIN
         MENUITEM "Paste\tCtrl+V",               ID_EDIT_PASTE
         MENUITEM "Cut\tCtrl+X",                 ID_EDIT_CUT
         MENUITEM "Delete\tDel",                 ID_EDIT_DELETE
+        MENUITEM "&Region...",                  IDC_EDIT_WAVE_REGION
         MENUITEM SEPARATOR
         MENUITEM "&Zoom In Time",               ID_VIEW_ZOOMINHOR2
         MENUITEM "Zoom &Out Time",              ID_VIEW_ZOOMOUTHOR2
@@ -2294,6 +2298,7 @@ CAPTION "Marker/Region"
 FONT 8, "MS Shell Dlg", 0, 0, 0x0
 BEGIN
     LTEXT           "&Name:",IDC_STATIC,16,10,63,8
+    EDITTEXT        IDC_EDIT_MARKER_NAME,15,22,210,14,ES_AUTOHSCROLL
     LTEXT           "Type:",IDC_STATIC,16,41,51,8
     CONTROL         "&Marker",IDC_RADIO_MARKER,"Button",BS_AUTORADIOBUTTON | 
                     WS_GROUP,71,40,58,10
@@ -2323,7 +2328,6 @@ BEGIN
     PUSHBUTTON      "Cancel",IDCANCEL,252,39,50,14
     PUSHBUTTON      "&Play",IDC_BUTTON_PLAY,252,57,50,14,WS_DISABLED | 
                     WS_GROUP
-    EDITTEXT        IDC_EDIT_MARKER_NAME,15,22,210,14,ES_AUTOHSCROLL
 END
 
 
@@ -3495,6 +3499,7 @@ BEGIN
     IDC_MOVE_MARKER_TO_CURRENT "Move cue mark to the current edit position"
     IDC_EDIT_MARKER         "Edit this cue mark"
     IDC_SELECT_REGION       "Select this region"
+    IDC_EDIT_WAVE_MARKER    "Add or edit a marker in the current position"
 END
 
 STRINGTABLE 
@@ -3660,6 +3665,12 @@ BEGIN
     IDS_INPUT_NAME_FREQUENCY_ARGUMENT3 "Frequency argument f3"
     IDS_INPUT_NAME_FREQUENCY_ARGUMENT1 "Frequency argument f1"
     IDS_MARKER_REGION_CHANGE "Marker/region change"
+END
+
+STRINGTABLE 
+BEGIN
+    IDC_EDIT_MARKER_REGION  "Add or edit marker or region"
+    IDC_EDIT_WAVE_REGION    "Add or edit a region at the current selection"
 END
 
 #endif    // English (U.S.) resources

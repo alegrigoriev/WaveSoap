@@ -826,6 +826,9 @@
 #define ID_Menu                         40121
 #define IDC_EDIT_MARKER                 40123
 #define IDC_SELECT_REGION               40125
+#define IDC_EDIT_WAVE_MARKER            40127
+#define IDC_EDIT_MARKER_REGION          40128
+#define IDC_EDIT_WAVE_REGION            40131
 #define ID_TOOLS_SYNTHESIS              65535
 #define IDC_END_LABEL                   65535
 #define IDC_LENGTH_LABEL                65535
@@ -836,7 +839,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_3D_CONTROLS                     1
 #define _APS_NEXT_RESOURCE_VALUE        195
-#define _APS_NEXT_COMMAND_VALUE         40126
+#define _APS_NEXT_COMMAND_VALUE         40132
 #define _APS_NEXT_CONTROL_VALUE         1264
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
