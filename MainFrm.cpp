@@ -140,6 +140,41 @@ void CMainFrame::GetMessageString(UINT nID, CString& rMessage) const
 	CMDIFrameWnd::GetMessageString(nID, rMessage);
 }
 
+void CMainFrame::OnUpdateFrameTitle(BOOL bAddToTitle)
+{
+	if ((GetStyle() & FWS_ADDTOTITLE) == 0)
+		return;     // leave it alone!
+
+#if 0//ndef _AFX_NO_OLE_SUPPORT
+	// allow hook to set the title (used for OLE support)
+	if (m_pNotifyHook != NULL && m_pNotifyHook->OnUpdateFrameTitle())
+		return;
+#endif
+
+	CMDIChildWnd* pActiveChild = NULL;
+	CDocument* pDocument = GetActiveDocument();
+	if (bAddToTitle &&
+		(pActiveChild = MDIGetActive()) != NULL &&
+		(pActiveChild->GetStyle() & WS_MAXIMIZE) == 0 &&
+		(pDocument != NULL ||
+			(pDocument = pActiveChild->GetActiveDocument()) != NULL))
+		// don't show file name for non-maximized window
+		UpdateFrameTitleForDocument(NULL /* pDocument->GetTitle() */);
+	else
+	{
+		LPCTSTR lpstrTitle = NULL;
+		CString strTitle;
+
+		if (pActiveChild != NULL)
+		{
+			strTitle = pActiveChild->GetTitle();
+			if (!strTitle.IsEmpty())
+				lpstrTitle = strTitle;
+		}
+		UpdateFrameTitleForDocument(lpstrTitle);
+	}
+}
+
 /////////////////////////////////////////////////////////////////////////////
 // CMainFrame diagnostics
 

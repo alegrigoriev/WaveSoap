@@ -39,6 +39,7 @@ public:
 	virtual void AssertValid() const;
 	virtual void Dump(CDumpContext& dc) const;
 #endif
+	virtual void OnUpdateFrameTitle(BOOL bAddToTitle);
 
 protected:  // control bar embedded members
 	CStatusBar  m_wndStatusBar;
