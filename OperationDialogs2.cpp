@@ -1,3 +1,4 @@
+// Copyright Alexander Grigoriev, 1997-2002, All Rights Reserved
 // OperationDialogs2.cpp : implementation file
 //
 
@@ -417,13 +418,13 @@ void CCdGrabbingDialog::DoDataExchange(CDataExchange* pDX)
 			switch (m_FileTypeFlags & OpenDocumentNonWavFile)
 			{
 			case OpenDocumentMp3File:
-				Name += ".mp3";
+				Name += _T(".mp3");
 				break;
 			case OpenDocumentWmaFile:
-				Name += ".wma";
+				Name += _T(".wma");
 				break;
 			default:
-				Name += ".wav";
+				Name += _T(".wav");
 				break;
 			}
 			m_Tracks[t].TrackFileName = m_sSaveFolder + Name;

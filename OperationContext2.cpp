@@ -1,3 +1,4 @@
+// Copyright Alexander Grigoriev, 1997-2002, All Rights Reserved
 // OperationContext2.cpp
 #include "stdafx.h"
 #include "OperationContext2.h"
@@ -115,59 +116,59 @@ CString CExpressionEvaluationContext::GetToken(LPCTSTR * ppStr, TokenType * pTyp
 	// get either delimiter, operand or operator
 	static struct TokenTable
 	{
-		char * token;
+		LPCTSTR token;
 		TokenType type;
 	}
 	Table[] =
 	{
-		"(", eLeftParenthesis,
-		")", eRightParenthesis,
-		"-", eMinusOp,
-		"+", ePlusOp,
-		"/", eDivideOp,
-		"*", eMultiplyOp,
-		"%", eModuloOp,
-		"&", eBinaryAndOp,
-		"|", eBinaryOrOp,
-		"^", eBinaryXorOp,
-		"~", eBinaryNotOp,
-		"int", eInt,
-		"float", eDouble,
-		"double", eDouble,
-		"sinh", eSinusHFunc,
-		"sin", eSinusFunc,
-		"cosh", eCosinusHFunc,
-		"cos", eCosinusFunc,
-		"tanh", eTangensHFunc,
-		"tan", eTangensFunc,
-		"exp10", eExp10Func,
-		"exp", eExpFunc,
-		"log10", eLog10Func,
-		"log", eLogFunc,
-		"sqrt", eSqrtFunc,
-		"abs", eAbsFunc,
-		"noise", eNoiseFunc,
-		"pi", ePiConstant,
-		"T", eAbsoluteTime,
-		"t", eSelectionTime,
-		"dt", eSelectionLengthTime,
-		"DT", eFileLengthTime,
-		"F", eSamplingRate,
-		"dn", eSelectionLengthSamples,
-		"DN", eFileLengthSamples,
-		//"T", eSamplePeriod,
-		"f1", eCurrentFrequencyArgument1,
-		"f2", eCurrentFrequencyArgument2,
-		"f3", eCurrentFrequencyArgument3,
-		"f", eCurrentFrequencyArgument,
-		"wave", eCurrentSampleValue,
+		_T("("), eLeftParenthesis,
+		_T(")"), eRightParenthesis,
+		_T("-"), eMinusOp,
+		_T("+"), ePlusOp,
+		_T("/"), eDivideOp,
+		_T("*"), eMultiplyOp,
+		_T("%"), eModuloOp,
+		_T("&"), eBinaryAndOp,
+		_T("|"), eBinaryOrOp,
+		_T("^"), eBinaryXorOp,
+		_T("~"), eBinaryNotOp,
+		_T("int"), eInt,
+		_T("float"), eDouble,
+		_T("double"), eDouble,
+		_T("sinh"), eSinusHFunc,
+		_T("sin"), eSinusFunc,
+		_T("cosh"), eCosinusHFunc,
+		_T("cos"), eCosinusFunc,
+		_T("tanh"), eTangensHFunc,
+		_T("tan"), eTangensFunc,
+		_T("exp10"), eExp10Func,
+		_T("exp"), eExpFunc,
+		_T("log10"), eLog10Func,
+		_T("log"), eLogFunc,
+		_T("sqrt"), eSqrtFunc,
+		_T("abs"), eAbsFunc,
+		_T("noise"), eNoiseFunc,
+		_T("pi"), ePiConstant,
+		_T("T"), eAbsoluteTime,
+		_T("t"), eSelectionTime,
+		_T("dt"), eSelectionLengthTime,
+		_T("DT"), eFileLengthTime,
+		_T("F"), eSamplingRate,
+		_T("dn"), eSelectionLengthSamples,
+		_T("DN"), eFileLengthSamples,
+		//_T("T", eSamplePeriod,
+		_T("f1"), eCurrentFrequencyArgument1,
+		_T("f2"), eCurrentFrequencyArgument2,
+		_T("f3"), eCurrentFrequencyArgument3,
+		_T("f"), eCurrentFrequencyArgument,
+		_T("wave"), eCurrentSampleValue,
 	};
 	SkipWhitespace(ppStr);
 	LPCTSTR str = *ppStr;
 	if ('\0' == *str)
 	{
 		*pType = eEndOfExpression;
-		return "";
+		return _T("");
 	}
 	for (int i = 0; i < countof(Table);i++)
 	{
