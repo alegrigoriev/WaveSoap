@@ -1,7 +1,9 @@
 Known problems and tasks:
 
+Use document title rather than filename in dialogs
 Add "Simple" equalizer
 Add equalizer and low/high frequency filters functions
+Add "Export", "Import" to Evaluate Expression dialog
 Use list instead of array for FFT data (for performance reason).
 Include MP3 and WMA filters even if there is no WMP, but show warning, if the filter is selected
 Test "reload compressed file" dialogs
@@ -48,7 +50,9 @@ Add Export Settings, Import Settings to Options dialog
 Add splash screen
 
 Problems:
-FFT doesn't invaludate some areas
+ATI card can't draw small circles
+Drag distance too little in WinME (use resize border)
+No non-client painting under WinME
 After file length increased to 1 sample from 0, scroll bar set to wrond scale
 Expression evaluation selection longer than file length doesn't update file length
 Multiline edit box in child dialog eats Esc and Enter (DLGC_WANTALLCHARS)
@@ -64,6 +68,8 @@ Save As dialog is not centered first time (comdlg problem?)
 ??? When time/seconds format is set for status bar, MM:SS is actually shown
 
 Fixed:
+No status bar in WinME
+FFT doesn't invaludate some areas
 Insert silence dialog showing channels for MONO sound
 When switched to/from FFT view, scrollbar is set to wrong range (Suite1.wav)
 Static in the child frame was incorrectly repositioned
