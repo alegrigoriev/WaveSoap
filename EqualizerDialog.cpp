@@ -133,6 +133,7 @@ BOOL CEqualizerDialog::OnInitDialog()
 	pTemplateWnd->DestroyWindow();
 
 	BaseClass::OnInitDialog();
+	SetWindowIcons(this, IDI_ICON_EQIALIZER);
 
 	m_BandGain.SetData(m_wGraph.GetCurrentBandGainDb());
 	// init MINMAXINFO
