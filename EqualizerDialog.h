@@ -43,7 +43,8 @@ public:
 
 	int m_NumOfBands;    // 2-MaxNumberOfBands
 	int m_BandWithFocus;
-	double m_BandGain[MaxNumberOfBands];   // gain in the band
+	double m_BandGain[MaxNumberOfBands];   // target gain in the band
+	double m_UsedBandGain[MaxNumberOfBands];   // gain in the band used to calculate coefficients
 	double m_BandWidth;
 	double m_BandFrequencies[MaxNumberOfBands];
 	// the coefficients are: 3 numerator's coeffs and 3 denominator's coeffs
