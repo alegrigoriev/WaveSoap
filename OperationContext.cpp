@@ -646,6 +646,7 @@ BOOL CThroughProcessOperation::OperationProc()
 	LONG SizeToProcess = 0;
 	LONG WasLockedToWrite = 0;
 	void * pDstBuf;
+
 	if (m_CurrentPass > 0)
 	{
 		if (m_DstPos >= m_DstEnd)
@@ -2927,7 +2928,7 @@ CMaxScanContext::CMaxScanContext(CWaveSoapFrontDoc * pDoc,
 	}
 }
 
-int CMaxScanContext::GetMax(int channel)
+int CMaxScanContext::GetMax(unsigned channel)
 {
 	if (channel >= countof (m_Max))
 	{
@@ -2990,8 +2991,9 @@ BOOL CNormalizeContext::Init()
 	// calculate normalization
 	int nChannels = m_DstFile.Channels();
 
-	float MaxVolume = 0.;
+	float MaxVolume = 1.;
 	bool GotJob = false;
+	long MaxLevel = 0;
 
 	for (int ch = 0; ch < nChannels; ch++)
 	{
@@ -3002,15 +3004,20 @@ BOOL CNormalizeContext::Init()
 			m_Volume[ch] = float(32767. * m_LimitLevel / Max);
 
 			if ((m_DstChan & (1 << ch))
-				&& MaxVolume < m_Volume[ch])
+				&& MaxLevel < Max)
 			{
-				MaxVolume = m_Volume[ch];
+				MaxLevel = Max;
 			}
 		}
 		else
 		{
 			m_Volume[ch] = 0.;
 		}
+	}
+
+	if (0 != MaxLevel)
+	{
+		MaxVolume = float(32767. * m_LimitLevel / MaxLevel);
 	}
 
 	for (int ch = 0; ch < nChannels; ch++)
