@@ -1930,6 +1930,7 @@ BOOL CWaveSoapFrontDoc::OnSaveConvertedFile(int flags, LPCTSTR FullTargetName, W
 	{
 		NewTempFilename += _T(".temp");
 	}
+
 	if (WAVE_FORMAT_PCM == pWf->wFormatTag
 		&& 16 == pWf->wBitsPerSample)
 	{
@@ -1974,14 +1975,10 @@ BOOL CWaveSoapFrontDoc::OnSaveConvertedFile(int flags, LPCTSTR FullTargetName, W
 		sOpId = IDS_SAVING_FILE_COPY_STATUS_PROMPT;
 	}
 
+	NewWaveFile.CopyMetadata(m_WavFile);
+
 	CFileSaveContext::auto_ptr pSaveContext
 	(new CFileSaveContext(this, sOpId, IDS_FILE_SAVE_CONVERT_OPERATION_NAME));
-
-	if (NULL == pSaveContext.get())
-	{
-		NotEnoughMemoryMessageBox();
-		return FALSE;
-	}
 
 	pSaveContext->m_NewName = FullTargetName;
 
@@ -2014,11 +2011,6 @@ BOOL CWaveSoapFrontDoc::OnSaveConvertedFile(int flags, LPCTSTR FullTargetName, W
 		CChannelConvertor * pChConvertor =
 			new CChannelConvertor(OldChannels, NewChannels, dlg.GetChannelToCopy());
 
-		if (NULL == pChConvertor)
-		{
-			NotEnoughMemoryMessageBox();
-			return FALSE;
-		}
 		m_PrevChannelToCopy = dlg.GetChannelToCopy();
 
 		pConvert->AddWaveProc(pChConvertor);
@@ -2027,11 +2019,7 @@ BOOL CWaveSoapFrontDoc::OnSaveConvertedFile(int flags, LPCTSTR FullTargetName, W
 	if (pWf->nSamplesPerSec != WaveSampleRate())
 	{
 		CResampleFilter * pFilter = new CResampleFilter;
-		if (NULL == pFilter)
-		{
-			NotEnoughMemoryMessageBox();
-			return FALSE;
-		}
+
 		// FIX: Wrong conversion if resampling and increasing channels
 		NUMBER_OF_CHANNELS nChannels = NewChannels;
 		if (nChannels > OldChannels)
@@ -2041,6 +2029,8 @@ BOOL CWaveSoapFrontDoc::OnSaveConvertedFile(int flags, LPCTSTR FullTargetName, W
 		pFilter->InitResample(double(pWf->nSamplesPerSec)
 							/ WaveSampleRate(), 40., nChannels);
 		pConvert->AddWaveProc(pFilter);
+
+		NewWaveFile.GetInstanceData()->RescaleMarkers(WaveSampleRate(), pWf->nSamplesPerSec);
 	}
 
 	// if target channels is more than source, convert it after resampling,
@@ -4414,8 +4404,9 @@ BOOL CWaveSoapFrontDoc::OpenRawFileDocument(LPCTSTR lpszPathName)
 	return TRUE;
 }
 
-BOOL CWaveSoapFrontDoc::OpenAviFileDocument(LPCTSTR /*lpszPathName*/)
+BOOL CWaveSoapFrontDoc::OpenAviFileDocument(LPCTSTR lpszPathName)
 {
+	//return OpenWmaFileDocument(lpszPathName);
 	return FALSE;
 }
 
