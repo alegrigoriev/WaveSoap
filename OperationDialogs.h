@@ -443,6 +443,49 @@ protected:
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 };
+/////////////////////////////////////////////////////////////////////////////
+// CExpressionEvaluationDialog dialog
+
+class CExpressionEvaluationDialog : public CDialog
+{
+// Construction
+public:
+	CExpressionEvaluationDialog(CWnd* pParent = NULL);   // standard constructor
+
+// Dialog Data
+	//{{AFX_DATA(CExpressionEvaluationDialog)
+	enum { IDD = IDD_DIALOG_EXPRESSION_EVALUATION };
+	CEdit	m_eExpression;
+	CStatic	m_SelectionStatic;
+	BOOL	m_bUndo;
+	//}}AFX_DATA
+
+	BOOL	m_bLockChannels;
+	long m_Start;
+	long m_End;
+	long m_FileLength;
+	int m_Chan;
+	int m_TimeFormat;
+	const WAVEFORMATEX * m_pWf;
+	class CExpressionEvaluationContext * m_pContext;
+
+	void UpdateSelectionStatic();
+// Overrides
+	// ClassWizard generated virtual function overrides
+	//{{AFX_VIRTUAL(CExpressionEvaluationDialog)
+protected:
+	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV support
+	//}}AFX_VIRTUAL
+// Implementation
+protected:
+
+	// Generated message map functions
+	//{{AFX_MSG(CExpressionEvaluationDialog)
+	afx_msg void OnButtonSelection();
+	virtual void OnOK();
+	//}}AFX_MSG
+	DECLARE_MESSAGE_MAP()
+};
 //{{AFX_INSERT_LOCATION}}
 // Microsoft Visual C++ will insert additional declarations immediately before the previous line.
 

@@ -1462,3 +1462,90 @@ BOOL CLowFrequencySuppressDialog::OnInitDialog()
 	return TRUE;  // return TRUE unless you set the focus to a control
 	// EXCEPTION: OCX Property Pages should return FALSE
 }
+/////////////////////////////////////////////////////////////////////////////
+// CExpressionEvaluationDialog dialog
+
+
+CExpressionEvaluationDialog::CExpressionEvaluationDialog(CWnd* pParent /*=NULL*/)
+	: CDialog(CExpressionEvaluationDialog::IDD, pParent)
+{
+	//{{AFX_DATA_INIT(CExpressionEvaluationDialog)
+	m_bUndo = FALSE;
+	//}}AFX_DATA_INIT
+}
+
+
+void CExpressionEvaluationDialog::DoDataExchange(CDataExchange* pDX)
+{
+	CDialog::DoDataExchange(pDX);
+	//{{AFX_DATA_MAP(CExpressionEvaluationDialog)
+	DDX_Control(pDX, IDC_EDIT_EXPRESSION, m_eExpression);
+	DDX_Control(pDX, IDC_STATIC_SELECTION, m_SelectionStatic);
+	DDX_Check(pDX, IDC_CHECK_UNDO, m_bUndo);
+	//}}AFX_DATA_MAP
+}
+
+
+BEGIN_MESSAGE_MAP(CExpressionEvaluationDialog, CDialog)
+	//{{AFX_MSG_MAP(CExpressionEvaluationDialog)
+	ON_BN_CLICKED(IDC_BUTTON_SELECTION, OnButtonSelection)
+	//}}AFX_MSG_MAP
+END_MESSAGE_MAP()
+
+/////////////////////////////////////////////////////////////////////////////
+// CExpressionEvaluationDialog message handlers
+
+void CExpressionEvaluationDialog::OnButtonSelection()
+{
+	CSelectionDialog dlg;
+	dlg.m_Start = m_Start;
+	dlg.m_End = m_End;
+	dlg.m_Length = m_End - m_Start;
+	dlg.m_FileLength = m_FileLength;
+	dlg.m_Chan = m_Chan + 1;
+	dlg.m_pWf = m_pWf;
+	dlg.m_TimeFormat = m_TimeFormat;
+
+	if (IDOK != dlg.DoModal())
+	{
+		return;
+	}
+	m_Start = dlg.m_Start;
+	m_End = dlg.m_End;
+	m_Chan = dlg.m_Chan - 1;
+	UpdateSelectionStatic();
+}
+
+void CExpressionEvaluationDialog::UpdateSelectionStatic()
+{
+	m_SelectionStatic.SetWindowText(GetSelectionText(m_Start, m_End, m_Chan,
+													m_pWf->nChannels, m_bLockChannels,
+													m_pWf->nSamplesPerSec, m_TimeFormat));
+}
+
+
+void CExpressionEvaluationDialog::OnOK()
+{
+	if (!UpdateData(TRUE))
+	{
+		TRACE("UpdateData failed during dialog termination.\n");
+		// the UpdateData routine will set focus to correct item
+		return;
+	}
+	if (NULL != m_pContext)
+	{
+		CString expr;
+		m_eExpression.GetWindowText(expr);
+		LPCSTR str = expr;
+		LPCSTR str1 = str;
+		if ( ! m_pContext->SetExpression( & str))
+		{
+			AfxMessageBox(m_pContext->m_ErrorString);
+			int pos = str - str1;
+			m_eExpression.SetFocus();
+			m_eExpression.SetSel(pos, pos, FALSE);
+			return;
+		}
+	}
+	EndDialog(IDOK);
+}
