@@ -950,7 +950,7 @@ END
 IDD_DIALOG_MORE_NOISEREDUCTION DIALOGEX 0, 0, 219, 230
 STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | 
     WS_SYSMENU
-CAPTION "Advanced parameters for noise reduction"
+CAPTION "More noise reduction settings"
 FONT 8, "MS Shell Dlg", 0, 0, 0x0
 BEGIN
     LTEXT           "Far noise masking:",IDC_STATIC,12,16,118,8
@@ -1465,8 +1465,8 @@ BEGIN
     LTEXT           "dB",IDC_STATIC,150,104,12,8
     PUSHBUTTON      "Show noise masking",IDC_BUTTON_SET_THRESHOLD,8,123,88,
                     14,BS_MULTILINE
-    LTEXT           "Selection:\nChannels:",IDC_STATIC_SELECTION,8,146,164,
-                    21
+    LTEXT           "Selection:\nChannels:",IDC_STATIC_SELECTION,8,141,164,
+                    29
     CONTROL         "Save &Undo",IDC_CHECK_UNDO,"Button",BS_AUTOCHECKBOX | 
                     WS_TABSTOP,8,177,74,8
     PUSHBUTTON      "Set &defaults",IDC_BUTTON_RESET_DEFAULT,174,7,50,14

@@ -33,12 +33,6 @@ range is from -120 to -10 dB.</span></p>
 aggressive should be noise suppression. The allowed range is from 0.1 to 3.</span></p>
 <p><span lang="en-us">&quot;<b>Maximum noise reduction</b>&quot; - maximum 
 suppression of noise. The allowed range is from 0 to 100 dB. </span></p>
-<p><span lang="en-us">&quot;<b>Tone over noise preference</b>&quot; - how much 
-tonal signal should be given preference over noise-like. The allowed range is 
-from 0 to 20 dB.</span></p>
-<p><span lang="en-us">&quot;<b>Continuous tone detection threshold</b>&quot; - 
-criterion to distinguish tone from noise. The allowed range is from 0 to 1.</span></p>
-<p><span lang="en-us">&quot;<b>Transient area threshold</b>&quot; - TODO.</span></p>
 <p><span lang="en-us">&quot;<b>Set default</b>&quot; button reverts all the values to defaults.</span></p>
 <p><span lang="en-us">&quot;<b>Revert</b>&quot; button returns all values to those when the 
 dialog was open.</span></p>
@@ -76,7 +70,15 @@ allowed range is from 1 to 1000 ms, default is 100.</p>
 <p>&quot;<b>Decay time of noise masking for higher frequencies</b>&quot; - specifies how 
 quickly the masking function decays with time, on the lower frequencies. The 
 allowed range is from 1 to 1000 ms, default is 40.</p>
-<p>&quot;<b>Far masking decay</b>&quot; - TODO</p>
+<p><span lang="en-us">&quot;<b>Tone over noise preference</b>&quot; - how much 
+tonal signal should be given preference over noise-like. The allowed range is 
+from 0 to 20 dB.</span></p>
+<p><span lang="en-us">&quot;<b>Continuous tone detection threshold</b>&quot; - 
+criterion to distinguish tone from noise. The allowed range is from 0 to 1.</span></p>
+<p><span lang="en-us">&quot;<b>Transient area threshold</b>&quot; - change of 
+amplitude from one to another FFT calculation which is considered signal 
+transient. Such point is not considered continuous tone. The allowed range is 
+from 2 to 30 dB.</span></p>
 
 <h4><a name="algorithm"></a>Noise reduction algorithm</h4>
 <P>The noise reduction process involves decomposing the sound to a specified 
@@ -90,10 +92,10 @@ noise, should it be suppressed and for how much. Where the masking function is
 greater than noise threshold, it's considered useful sound; where it's below, 
 it's considered noise and is reduced. Logarithmic difference between masking 
 function and noise threshold is multiplied by aggressiveness factor. This 
-specifies how much the bend power should be suppressed.</P>
+specifies how much the band power should be suppressed. Special care is taken to 
+avoid suppressing sound attack (sudden increase in amplitude).</P>
 <P>Then the signal is synthesized 
-back from the adjusted FFT data. Special care is taken to avoid suppressing 
-attack <span lang="en-us">envelope</span>.</P>
+back from the adjusted FFT data.</P>
 
 </body>
 
