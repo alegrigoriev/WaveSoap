@@ -282,24 +282,28 @@ BEGIN_MESSAGE_MAP(CVolumeChangeDialog, BaseClass)
 	ON_WM_HSCROLL()
 	ON_EN_KILLFOCUS(IDC_EDIT_VOLUME_LEFT, OnKillfocusEditVolumeLeft)
 	ON_EN_KILLFOCUS(IDC_EDIT_VOLUME_RIGHT, OnKillfocusEditVolumeRight)
+
+	ON_UPDATE_COMMAND_UI(IDC_EDIT_VOLUME_LEFT, OnUpdateVolumeLeft)
+	ON_UPDATE_COMMAND_UI(IDC_STATIC_LEFT_CHANNEL, OnUpdateVolumeLeft)
+	ON_UPDATE_COMMAND_UI(IDC_SLIDER_VOLUME_LEFT, OnUpdateVolumeLeft)
+
+	ON_UPDATE_COMMAND_UI(IDC_EDIT_VOLUME_RIGHT, OnUpdateVolumeRight)
+	ON_UPDATE_COMMAND_UI(IDC_STATIC_RIGHT_CHANNEL, OnUpdateVolumeRight)
+	ON_UPDATE_COMMAND_UI(IDC_SLIDER_VOLUME_RIGHT, OnUpdateVolumeRight)
 	//}}AFX_MSG_MAP
 END_MESSAGE_MAP()
 
 /////////////////////////////////////////////////////////////////////////////
 // CVolumeChangeDialog message handlers
 
-void CVolumeChangeDialog::UpdateEnables()
+void CVolumeChangeDialog::OnUpdateVolumeLeft(CCmdUI * pCmdUI)
 {
-	BOOL EnableLeft = m_bLockChannels || 1 != m_Chan;
-	BOOL EnableRight = ! m_bLockChannels && 0 != m_Chan;
+	pCmdUI->Enable(m_bLockChannels || 1 != m_Chan);
+}
 
-	m_eVolumeLeft.EnableWindow(EnableLeft);
-	m_SliderVolumeLeft.EnableWindow(EnableLeft);
-	GetDlgItem(IDC_STATIC_LEFT_CHANNEL)->EnableWindow(EnableLeft);
-
-	m_eVolumeRight.EnableWindow(EnableRight);
-	m_SliderVolumeRight.EnableWindow(EnableRight);
-	GetDlgItem(IDC_STATIC_RIGHT_CHANNEL)->EnableWindow(EnableRight);
+void CVolumeChangeDialog::OnUpdateVolumeRight(CCmdUI * pCmdUI)
+{
+	pCmdUI->Enable(m_bLockChannels || 0 != m_Chan);
 }
 
 void CVolumeChangeDialog::OnSelchangeCombodbPercent()
@@ -497,7 +501,7 @@ BOOL CVolumeChangeDialog::OnInitDialog()
 		{
 			m_SliderVolumeRight.SetPos(int(200. * log10(m_dVolumeLeftPercent / 100.)));
 		}
-		UpdateEnables();
+		NeedUpdateControls();
 	}
 	return TRUE;  // return TRUE unless you set the focus to a control
 	// EXCEPTION: OCX Property Pages should return FALSE
