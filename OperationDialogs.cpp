@@ -2588,25 +2588,37 @@ COperationContext * CExpressionEvaluationDialog::GetExpressionContext()
 		return NULL;
 	}
 
-	NUMBER_OF_SAMPLES NumSamples = m_WaveFile.NumberOfSamples();
+	NUMBER_OF_SAMPLES const NumSamples = m_WaveFile.NumberOfSamples();
+	NUMBER_OF_SAMPLES const Length = GetEnd() - GetStart();
 
 	CStagedContext::auto_ptr pStagedContext(new CStagedContext(m_pContext->pDocument, 0,
 																IDS_EXPRESSION_STATUS_PROMPT, IDS_EXPRESSION_OPERATION_NAME));
 
 	if (GetEnd() > NumSamples)
 	{
-		if ( ! InitExpandOperation(pStagedContext.get(), m_WaveFile, NumSamples, GetEnd() - NumSamples, GetChannel()))
+		// move markers and delete those inside the changed area (only if all channels are changed)
+		{
+			pStagedContext->InitMoveMarkers(m_WaveFile, GetStart(), NumSamples - GetStart(), Length);
+		}
+
+		if ( ! pStagedContext->InitExpandOperation(m_WaveFile, NumSamples, GetEnd() - NumSamples, GetChannel()))
 		{
 			return NULL;
 		}
 
 		m_pContext->SetSaveForUndo(GetStart(), NumSamples);
 		CSaveTrimmedOperation * pSave = new CSaveTrimmedOperation(m_pContext->pDocument,
-											m_pContext->m_DstFile, NumSamples, GetStart() + GetEnd(), GetChannel());
+																m_pContext->m_DstFile, NumSamples, GetEnd(), GetChannel());
 		m_pContext->m_UndoChain.InsertHead(pSave);
 	}
 	else
 	{
+		if (m_WaveFile.AllChannels(GetChannel()))
+		{
+			// delete markers inside the changed area, if all channels are changed
+			pStagedContext->InitMoveMarkers(m_WaveFile, GetStart(), Length, Length);
+		}
+
 		m_pContext->SetSaveForUndo(GetStart(), GetEnd());
 	}
 
