@@ -18,12 +18,26 @@ typedef int PASTE_RESAMPLE_MODE;
 class CSelectionUpdateInfo : public CObject
 {
 public:
-	CSelectionUpdateInfo() {}
+	CSelectionUpdateInfo()
+		: CaretPos(0)
+		, SelBegin(0)
+		, SelEnd(0)
+		, SelChannel(0)
+		, OldCaretPos(0)
+		, OldSelBegin(0)
+		, OldSelEnd(0)
+		, OldSelChannel(0)
+		, Flags(0)
+	{}
 	~CSelectionUpdateInfo() {}
+	SAMPLE_INDEX CaretPos;
 	SAMPLE_INDEX SelBegin;
 	SAMPLE_INDEX SelEnd;
 	CHANNEL_MASK SelChannel;
-	SAMPLE_INDEX CaretPos;
+	SAMPLE_INDEX OldCaretPos;
+	SAMPLE_INDEX OldSelBegin;
+	SAMPLE_INDEX OldSelEnd;
+	CHANNEL_MASK OldSelChannel;
 	int Flags;
 };
 
@@ -197,8 +211,10 @@ public:
 	SAMPLE_INDEX m_SelectionStart;
 	SAMPLE_INDEX m_SelectionEnd;
 
-	CHANNEL_MASK m_SelectedChannel; // 0, 1, 2
+	CHANNEL_MASK m_SelectedChannel;
 	bool m_TimeSelectionMode;
+
+	CHANNEL_MASK GetSelectedChannel() const;
 
 	void SetSelection(SAMPLE_INDEX begin, SAMPLE_INDEX end, CHANNEL_MASK channel,
 					SAMPLE_INDEX caret, int flags = 0);
@@ -293,10 +309,7 @@ protected:
 public:
 	virtual BOOL DoFileSave();
 	void OnActivateDocument(BOOL bActivate);
-	void DoEditPaste()
-	{
-		OnEditPaste();
-	}
+
 	void QueueOperation(COperationContext * pContext);
 	void UpdateFrameTitles()
 	{
@@ -306,11 +319,12 @@ public:
 					LPCTSTR NewName, BOOL SameName);
 
 	BOOL PostCommitFileSave(int flags, LPCTSTR FullTargetName);
+	BOOL DoPaste(SAMPLE_INDEX Start, SAMPLE_INDEX End, CHANNEL_MASK Channel, LPCTSTR FileName);
+
 protected:
 	// save the selected area to the permanent or temporary file
 	BOOL CanCloseFrame(CFrameWnd* pFrameArg);
 	void DoCopy(SAMPLE_INDEX Start, SAMPLE_INDEX End, CHANNEL_MASK Channel, LPCTSTR FileName);
-	void DoPaste(SAMPLE_INDEX Start, SAMPLE_INDEX End, CHANNEL_MASK Channel, LPCTSTR FileName);
 	void DoCut(SAMPLE_INDEX Start, SAMPLE_INDEX End, CHANNEL_MASK Channel);
 	void DoDelete(SAMPLE_INDEX Start, SAMPLE_INDEX End, CHANNEL_MASK Channel);
 	void DeleteUndo();

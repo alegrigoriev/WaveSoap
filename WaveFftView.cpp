@@ -1322,7 +1322,13 @@ void CWaveFftView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
 	else if (lHint == CWaveSoapFrontDoc::UpdateSelectionChanged
 			&& NULL != pHint)
 	{
-		CSelectionUpdateInfo * pInfo = (CSelectionUpdateInfo *) pHint;
+		CSelectionUpdateInfo * pInfo =
+			dynamic_cast<CSelectionUpdateInfo *>(pHint);
+		if (NULL == pInfo)
+		{
+			BaseClass::OnUpdate(pSender, lHint, pHint);
+			return;
+		}
 
 		CFrameWnd * pFrameWnd = GetParentFrame();
 		if (NULL != pFrameWnd
@@ -1330,11 +1336,11 @@ void CWaveFftView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
 		{
 			if (pInfo->Flags & SetSelection_MakeCaretVisible)
 			{
-				MovePointIntoView(pDoc->m_CaretPosition);
+				MovePointIntoView(pInfo->CaretPos);
 			}
 			else if (pInfo->Flags & SetSelection_MoveCaretToCenter)
 			{
-				MovePointIntoView(pDoc->m_CaretPosition, TRUE);
+				MovePointIntoView(pInfo->CaretPos, TRUE);
 			}
 		}
 
@@ -1346,18 +1352,18 @@ void CWaveFftView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
 		{
 			nLowExtent = -0x10000;
 			nHighExtent = 0x10000;
-			if (pDoc->m_SelectedChannel == 0)
+			if (0 == (pInfo->SelChannel & SPEAKER_FRONT_RIGHT))
 			{
 				nLowExtent = 0;
 			}
-			else if (pDoc->m_SelectedChannel == 1)
+			else if (0 == (pInfo->SelChannel & SPEAKER_FRONT_LEFT))
 			{
 				nHighExtent = 0;
 			}
 		}
 
 
-		ChangeSelection(pDoc->m_SelectionStart, pDoc->m_SelectionEnd,
+		ChangeSelection(pInfo->SelBegin, pInfo->SelEnd,
 						nLowExtent, nHighExtent);
 		CreateAndShowCaret();
 		return; // don't call Wave view OnUpdate in this case

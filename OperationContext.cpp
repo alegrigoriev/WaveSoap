@@ -2801,8 +2801,10 @@ BOOL CConversionContext::OperationProc()
 			m_CurrentSamples = TotalSamples;
 
 			m_DstFile.SetFileLengthSamples(TotalSamples);
+			m_DstFile.AllocatePeakData(TotalSamples);
 
 		}
+
 		TRACE("Decompress: sound changed from %d to %d, length=%d\n",
 			nFirstSample, nLastSample, TotalSamples);
 		pDocument->SoundChanged(m_DstFile.GetFileID(), nFirstSample, nLastSample, TotalSamples);

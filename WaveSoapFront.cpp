@@ -695,7 +695,9 @@ CDocument* CWaveSoapDocTemplate::OpenDocumentFile(LPCTSTR lpszPathName,
 	CDocument* pJustDocument = CreateNewDocument();
 	BOOL bMakeVisible = flags & 1;
 	WAVEFORMATEX * pWfx = NULL;
+
 	NewFileParameters * pParams = NULL;
+
 	if (flags & OpenDocumentCreateNewWithParameters)
 	{
 		pParams = (NewFileParameters *) lpszPathName;
@@ -1330,7 +1332,7 @@ void CWaveSoapFrontApp::OnFileNew()
 	if (pTemplate != NULL)
 	{
 		NewFileParameters Params;
-		Params.m_pInitialName = NULL;
+		//Params.m_pInitialName = NULL;
 		Params.pWf = & m_NewFileFormat;
 
 		if (! m_bShowNewFormatDialogWhenShiftOnly
@@ -1370,14 +1372,13 @@ void CWaveSoapFrontApp::OnEditPasteNew()
 	}
 	POSITION pos = m_pDocManager->GetFirstDocTemplatePosition();
 	CDocTemplate* pTemplate = m_pDocManager->GetNextDocTemplate(pos);
+
 	if (pTemplate != NULL)
 	{
-		WAVEFORMATEX * pWfx = m_ClipboardFile.GetWaveFormat();
-
 		NewFileParameters Params;
-		Params.InitialSamples = 0;
-		Params.m_pInitialName = NULL;
-		Params.pWf = pWfx;
+		//Params.InitialSamples = 0;
+		//Params.m_pInitialName = NULL;
+		Params.pWf = m_ClipboardFile.GetWaveFormat();
 
 		CWaveSoapFrontDoc * pDoc =
 			(CWaveSoapFrontDoc *)pTemplate->OpenDocumentFile(
@@ -1388,8 +1389,15 @@ void CWaveSoapFrontApp::OnEditPasteNew()
 		{
 			BOOL TmpUndo = pDoc->UndoEnabled();
 			pDoc->EnableUndo(FALSE);
-			pDoc->DoEditPaste();
-			pDoc->EnableUndo(TmpUndo);
+
+			if ( ! pDoc->DoPaste(0, 0, ALL_CHANNELS, NULL))
+			{
+				pDoc->OnCloseDocument();
+			}
+			else
+			{
+				pDoc->EnableUndo(TmpUndo);
+			}
 		}
 	}
 }

@@ -13,6 +13,7 @@
 
 class CWaveOutlineView : public CView
 {
+	typedef CView BaseClass;
 protected:
 	CWaveOutlineView();           // protected constructor used by dynamic creation
 	DECLARE_DYNCREATE(CWaveOutlineView)

@@ -149,7 +149,7 @@ static int fround(double d)
 void CWaveSoapFrontView::DrawHorizontalWithSelection(CDC * pDC,
 													int left, int right, int Y,
 													CPen * NormalPen, CPen * SelectedPen,
-													int nChannel)
+													CHANNEL_MASK Channel)
 {
 	ThisDoc * pDoc = GetDocument();
 	// find positions of the selection start and and
@@ -157,9 +157,10 @@ void CWaveSoapFrontView::DrawHorizontalWithSelection(CDC * pDC,
 	double XScaleDev = GetXScaleDev();
 	int SelectionLeft = WorldToWindowX(pDoc->m_SelectionStart);
 	int SelectionRight = WorldToWindowX(pDoc->m_SelectionEnd);
-	if (nChannel != ALL_CHANNELS
-		&& pDoc->m_SelectedChannel != ALL_CHANNELS
-		&& nChannel != pDoc->m_SelectedChannel)
+
+	// draw selection if Channel==ALL or all selected, or
+	// this channel is selected
+	if (0 == (Channel & pDoc->m_SelectedChannel))
 	{
 		// don't draw selection
 		SelectionLeft = right;
@@ -206,7 +207,7 @@ void CWaveSoapFrontView::DrawHorizontalWithSelection(CDC * pDC,
 	}
 }
 
-void CWaveSoapFrontView::GetChannelRect(int Channel, RECT * pR)
+void CWaveSoapFrontView::GetChannelRect(int Channel, RECT * pR) const
 {
 	ThisDoc * pDoc = GetDocument();
 	int nChannels = pDoc->WaveChannels();
@@ -223,6 +224,29 @@ void CWaveSoapFrontView::GetChannelRect(int Channel, RECT * pR)
 	// for all channels, the rectangle is of the same height
 	pR->top = h * Channel;
 	pR->bottom = pR->top + h - 1;
+}
+
+int CWaveSoapFrontView::GetChannelFromPoint(int y) const
+{
+	ThisDoc * pDoc = GetDocument();
+	int nChannels = pDoc->WaveChannels();
+
+	CRect r;
+	GetClientRect(r);
+
+	if (y < 0)
+	{
+		return -1;
+	}
+
+	if (y > r.bottom)
+	{
+		return nChannels;
+	}
+
+	int h = (r.Height() + 1) / nChannels;
+	// for all channels, the rectangle is of the same height
+	return y / h;
 }
 
 void CWaveSoapFrontView::OnDraw(CDC* pDC)
@@ -336,7 +360,7 @@ void CWaveSoapFrontView::OnDraw(CDC* pDC)
 						DrawHorizontalWithSelection(pDC, r.left, r.right,
 													ZeroLinePos,
 													& ZeroLinePen,
-													& SelectedZeroLinePen, ch);
+													& SelectedZeroLinePen, 1 << ch);
 					}
 
 					int n6DBLine = WaveToY(16384);
@@ -346,7 +370,7 @@ void CWaveSoapFrontView::OnDraw(CDC* pDC)
 						DrawHorizontalWithSelection(pDC, r.left, r.right,
 													n6DBLine,
 													& SixDBLinePen,
-													& SelectedSixDBLinePen, ch);
+													& SelectedSixDBLinePen, 1 << ch);
 					}
 
 					n6DBLine = WaveToY(-16384);
@@ -357,7 +381,7 @@ void CWaveSoapFrontView::OnDraw(CDC* pDC)
 						DrawHorizontalWithSelection(pDC, r.left, r.right,
 													n6DBLine,
 													& SixDBLinePen,
-													& SelectedSixDBLinePen, ch);
+													& SelectedSixDBLinePen, 1 << ch);
 					}
 
 					int i;
@@ -480,20 +504,22 @@ void CWaveSoapFrontView::OnDraw(CDC* pDC)
 
 							if (pp[0][0].x >= SelBegin
 								&& pp[0][0].x < SelEnd
-								&& (ALL_CHANNELS == pDoc->m_SelectedChannel
-									|| ch == pDoc->m_SelectedChannel))
+								&& 0 != ((1 << ch) & pDoc->m_SelectedChannel))
 							{
 								pPenToDraw = & SelectedWaveformPen;
 							}
+
 							if (pPenToDraw != pLastPen)
 							{
 								pDC->SelectObject(pPenToDraw);
 								pLastPen = pPenToDraw;
 							}
+
 							if (pp[0][1].y < ClipLow)
 							{
 								pp[0][1].y = ClipLow - 1;
 							}
+
 							if (pp[0][0].y > ClipHigh)
 							{
 								pp[0][0].y = ClipHigh;
@@ -662,11 +688,11 @@ void CWaveSoapFrontView::DrawPlaybackCursor(CDC * pDC, SAMPLE_INDEX Sample, CHAN
 		// looks like the display driver can delay the drawing with
 		// WHITE_PEN, it is causing jerkiness in the playback cursor
 		//CGdiObject * pOldPen = pDrawDC->SelectStockObject(WHITE_PEN);
-		if (0 == Channel)
+		if (0 == (SPEAKER_FRONT_RIGHT & Channel))
 		{
 			r.bottom /= 2;
 		}
-		else if (1 == Channel)
+		else if (0 == (SPEAKER_FRONT_LEFT & Channel))
 		{
 			r.top = r.bottom / 2;
 		}
@@ -743,7 +769,7 @@ void CWaveSoapFrontView::Dump(CDumpContext& dc) const
 	BaseClass::Dump(dc);
 }
 
-CWaveSoapFrontDoc* CWaveSoapFrontView::GetDocument() // non-debug version is inline
+CWaveSoapFrontDoc* CWaveSoapFrontView::GetDocument() const// non-debug version is inline
 {
 	ASSERT(m_pDocument->IsKindOf(RUNTIME_CLASS(CWaveSoapFrontDoc)));
 	return static_cast<ThisDoc*>(m_pDocument);
@@ -824,7 +850,7 @@ void CWaveSoapFrontView::OnUpdateViewZoomOutVert(CCmdUI* pCmdUI)
 }
 
 // return client hit test code. 'p' is in client coordinates
-DWORD CWaveSoapFrontView::ClientHitTest(CPoint p)
+DWORD CWaveSoapFrontView::ClientHitTest(CPoint p) const
 {
 	ThisDoc * pDoc = GetDocument();
 	DWORD result = 0;
@@ -838,38 +864,47 @@ DWORD CWaveSoapFrontView::ClientHitTest(CPoint p)
 	}
 
 	int Separator = WorldToWindowY(0.);
-	if (pDoc->m_SelectionStart <= pDoc->m_SelectionEnd
-		&& (pDoc->WaveChannels() == 1
-			|| ALL_CHANNELS == pDoc->m_SelectedChannel
-			|| (0 == pDoc->m_SelectedChannel) == (p.y < Separator)))
+	int ChannelUnderCursor = GetChannelFromPoint(p.y);
+
+	if (ChannelUnderCursor >= 0
+		&& ChannelUnderCursor < pDoc->WaveChannels())
 	{
-		int SelBegin = WorldToWindowX(pDoc->m_SelectionStart);
-		int SelEnd = WorldToWindowX(pDoc->m_SelectionEnd);
-		if (pDoc->m_SelectionEnd != pDoc->m_SelectionStart
-			&& SelEnd == SelBegin)
+		result |= ChannelUnderCursor;
+
+		if (0 != (pDoc->m_SelectedChannel & (1 << ChannelUnderCursor))
+			&& pDoc->m_SelectionStart <= pDoc->m_SelectionEnd)
 		{
-			SelEnd++;
-		}
-		int BorderWidth = GetSystemMetrics(SM_CXEDGE);
-		// check whether the cursor is on the selection boundary
-		if (p.x >= SelBegin - BorderWidth
-			&& p.x < SelBegin + BorderWidth)
-		{
-			result |= VSHT_SEL_BOUNDARY_L;
-		}
-		if (p.x >= SelEnd - BorderWidth
-			&& p.x < SelEnd + BorderWidth)
-		{
-			result |= VSHT_SEL_BOUNDARY_R;
-		}
-		if (p.x >= SelBegin && p.x < SelEnd)
-		{
-			result |= VSHT_SELECTION;
+			int SelBegin = WorldToWindowX(pDoc->m_SelectionStart);
+			int SelEnd = WorldToWindowX(pDoc->m_SelectionEnd);
+
+			if (pDoc->m_SelectionEnd != pDoc->m_SelectionStart
+				&& SelEnd == SelBegin)
+			{
+				SelEnd++;
+			}
+			int BorderWidth = GetSystemMetrics(SM_CXEDGE);
+			// check whether the cursor is on the selection boundary
+			// TODO: separate left edge and right edge for narrow selection
+
+			if (p.x >= SelBegin - BorderWidth
+				&& p.x < SelBegin + BorderWidth)
+			{
+				result |= VSHT_SEL_BOUNDARY_L;
+			}
+			if (p.x >= SelEnd - BorderWidth
+				&& p.x < SelEnd + BorderWidth)
+			{
+				result |= VSHT_SEL_BOUNDARY_R;
+			}
+			if (p.x >= SelBegin && p.x < SelEnd)
+			{
+				result |= VSHT_SELECTION;
+			}
 		}
 	}
 
-	int nCursorOverChannel = ALL_CHANNELS;
 	int DataEnd = WorldToWindowX(pDoc->WaveFileSamples());
+
 	if (p.x < DataEnd)
 	{
 		if (pDoc->WaveChannels() > 1)
@@ -891,6 +926,7 @@ DWORD CWaveSoapFrontView::ClientHitTest(CPoint p)
 		{
 			result |= VSHT_BCKGND;
 		}
+
 		int AutoscrollWidth = GetSystemMetrics(SM_CXVSCROLL);
 		if (r.right > AutoscrollWidth)
 		{
@@ -990,14 +1026,15 @@ void CWaveSoapFrontView::CreateAndShowCaret()
 
 	CPoint p(WorldToWindowX(pDoc->m_CaretPosition), r.top);
 //    TRACE("Client rect height=%d, caret position=%d\n", r.Height(), p.x);
-	if (ALL_CHANNELS == pDoc->m_SelectedChannel || pDoc->WaveChannels() == 1)
+	if (pDoc->m_WavFile.AllChannels(pDoc->m_SelectedChannel))
 	{
 		CreateSolidCaret(1, r.Height());
 	}
 	else
 	{
 		CreateSolidCaret(1, r.Height() / 2);
-		if (1 == pDoc->m_SelectedChannel)
+
+		if (SPEAKER_FRONT_RIGHT & pDoc->m_SelectedChannel)
 		{
 			p.y += r.Height() / 2;
 		}
@@ -1023,6 +1060,7 @@ BOOL CWaveSoapFrontView::OnEraseBkgnd(CDC* pDC)
 	int SelBegin = WorldToWindowX(pDoc->m_SelectionStart);
 	int SelEnd = WorldToWindowX(pDoc->m_SelectionEnd);
 	int FileEnd = WorldToWindowX(pDoc->WaveFileSamples());
+
 	if (FileEnd < r.right)
 	{
 		CBitmap bmp;
@@ -1056,6 +1094,7 @@ BOOL CWaveSoapFrontView::OnEraseBkgnd(CDC* pDC)
 	{
 		SelEnd++;
 	}
+
 	if (SelBegin >= r.right
 		|| SelEnd < r.left
 		|| pDoc->m_SelectionStart >= pDoc->m_SelectionEnd)
@@ -1089,7 +1128,8 @@ BOOL CWaveSoapFrontView::OnEraseBkgnd(CDC* pDC)
 		r.left = SelBegin;
 		r.right = SelEnd;
 		CBrush SelectedBackBrush(pApp->m_SelectedWaveBackground);
-		if (ALL_CHANNELS == pDoc->m_SelectedChannel || pDoc->WaveChannels() == 1)
+
+		if (pDoc->m_WavFile.AllChannels(pDoc->m_SelectedChannel))
 		{
 			pDC->FillRect(r, & SelectedBackBrush);
 		}
@@ -1099,7 +1139,8 @@ BOOL CWaveSoapFrontView::OnEraseBkgnd(CDC* pDC)
 			int Separator = WorldToWindowY(0.);
 			CRect r1 = r;
 			CRect r2 = r;
-			if (0 == pDoc->m_SelectedChannel)
+
+			if (SPEAKER_FRONT_LEFT & pDoc->m_SelectedChannel)
 			{
 				r1.bottom = Separator;
 				r2.top = Separator;
@@ -1165,12 +1206,13 @@ void CWaveSoapFrontView::OnLButtonDown(UINT nFlags, CPoint point)
 		CHANNEL_MASK nChan = ALL_CHANNELS;
 		if (nHit & VSHT_LEFT_CHAN)
 		{
-			nChan = 0;
+			nChan = SPEAKER_FRONT_LEFT;
 		}
 		else if (nHit & VSHT_RIGHT_CHAN)
 		{
-			nChan = 1;
+			nChan = SPEAKER_FRONT_RIGHT;
 		}
+
 		pDoc->SetSelection(SelectionStart, SelectionEnd, nChan, nSampleUnderMouse);
 		OnSetCursor(this, HTCLIENT, WM_LBUTTONDOWN);
 	}
@@ -1356,11 +1398,11 @@ void CWaveSoapFrontView::OnMouseMove(UINT nFlags, CPoint point)
 			}
 			else if (nHit & VSHT_LEFT_CHAN)
 			{
-				nChan = 0;
+				nChan = SPEAKER_FRONT_LEFT;
 			}
 			else if (nHit & VSHT_RIGHT_CHAN)
 			{
-				nChan = 1;
+				nChan = SPEAKER_FRONT_RIGHT;
 			}
 			pDoc->SetSelection(SelectionStart, SelectionEnd, nChan, nSampleUnderMouse);
 		}
@@ -1380,7 +1422,15 @@ void CWaveSoapFrontView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
 		&& NULL != pHint)
 	{
 		m_NewSelectionMade = true;
-		CSelectionUpdateInfo * pInfo = (CSelectionUpdateInfo *) pHint;
+
+		CSelectionUpdateInfo * pInfo =
+			dynamic_cast<CSelectionUpdateInfo *>(pHint);
+		if (NULL == pInfo)
+		{
+			BaseClass::OnUpdate(pSender, lHint, pHint);
+			return;
+		}
+
 		CRect r;
 		// change for foreground frame only
 		CFrameWnd * pFrameWnd = GetParentFrame();
@@ -1389,11 +1439,11 @@ void CWaveSoapFrontView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
 		{
 			if (pInfo->Flags & SetSelection_MakeCaretVisible)
 			{
-				MovePointIntoView(pDoc->m_CaretPosition);
+				MovePointIntoView(pInfo->CaretPos);
 			}
 			else if (pInfo->Flags & SetSelection_MoveCaretToCenter)
 			{
-				MovePointIntoView(pDoc->m_CaretPosition, TRUE);
+				MovePointIntoView(pInfo->CaretPos, TRUE);
 			}
 		}
 
@@ -1410,9 +1460,9 @@ void CWaveSoapFrontView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
 		int Separator = WorldToWindowY(0.);
 
 		// calculate new selection boundaries
-		int SelBegin = WorldToWindowX(pDoc->m_SelectionStart);
-		int SelEnd = WorldToWindowX(pDoc->m_SelectionEnd);
-		if (pDoc->m_SelectionEnd != pDoc->m_SelectionStart
+		int SelBegin = WorldToWindowX(pInfo->SelBegin);
+		int SelEnd = WorldToWindowX(pInfo->SelEnd);
+		if (pInfo->SelEnd != pInfo->SelBegin
 			&& SelEnd == SelBegin)
 		{
 			SelEnd++;
@@ -1420,14 +1470,13 @@ void CWaveSoapFrontView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
 
 		int SelTop = r.top;
 		int SelBottom = r.bottom;
-		if (ALL_CHANNELS != pDoc->m_SelectedChannel
-			&& pDoc->WaveChannels() != 1)
+		if (pDoc->WaveChannels() > 1)
 		{
-			if (0 == pDoc->m_SelectedChannel)
+			if (0 == (pInfo->SelChannel & SPEAKER_FRONT_RIGHT))
 			{
 				SelBottom = Separator;
 			}
-			else
+			else if (0 == (pInfo->SelChannel & SPEAKER_FRONT_LEFT))
 			{
 				SelTop = Separator;
 			}
@@ -1436,22 +1485,22 @@ void CWaveSoapFrontView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
 		// calculate old selection boundaries
 		int OldSelTop = r.top;
 		int OldSelBottom = r.bottom;
-		if (ALL_CHANNELS != pInfo->SelChannel
-			&& pDoc->WaveChannels() != 1)
+
+		if (pDoc->WaveChannels() > 1)
 		{
-			if (0 == pInfo->SelChannel)
+			if (0 == (pInfo->OldSelChannel & SPEAKER_FRONT_RIGHT))
 			{
 				OldSelBottom = Separator;
 			}
-			else
+			else if (0 == (pInfo->OldSelChannel & SPEAKER_FRONT_LEFT))
 			{
 				OldSelTop = Separator;
 			}
 		}
 
-		int OldSelBegin = WorldToWindowX(pInfo->SelBegin);
-		int OldSelEnd = WorldToWindowX(pInfo->SelEnd);
-		if (pInfo->SelEnd != pInfo->SelBegin
+		int OldSelBegin = WorldToWindowX(pInfo->OldSelBegin);
+		int OldSelEnd = WorldToWindowX(pInfo->OldSelEnd);
+		if (pInfo->OldSelEnd != pInfo->OldSelBegin
 			&& OldSelEnd == OldSelBegin)
 		{
 			OldSelEnd++;
@@ -1461,7 +1510,7 @@ void CWaveSoapFrontView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
 		CRect r1(SelBegin, SelTop, SelEnd, SelBottom);
 		CRect r2(OldSelBegin, OldSelTop, OldSelEnd, OldSelBottom);
 		// invalidate the regions with changed selection
-		if (pInfo->SelChannel == pDoc->m_SelectedChannel)
+		if (pInfo->OldSelChannel == pInfo->SelChannel)
 		{
 			// the same channel, different region
 			// sort all 'x' coordinates
@@ -1769,10 +1818,22 @@ void CWaveSoapFrontView::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 		break;
 	case VK_TAB:
 		// toggle selection channel
-		if (pDoc->WaveChannels() > 1)
+		if (pDoc->m_WavFile.AllChannels(nChan))
 		{
-			nChan = ((nChan + 2) % 3) - 1;  // -1, 0, 1
+			nChan = SPEAKER_FRONT_LEFT;
 		}
+		else
+		{
+			if (pDoc->WaveChannels() > 1)
+			{
+				nChan <<= 1;
+				if (0 == (nChan & pDoc->m_WavFile.ChannelsMask()))
+				{
+					nChan = ALL_CHANNELS;
+				}
+			}
+		}
+
 		KeepSelection = TRUE;
 		MakeCaretVisible = FALSE;
 		break;
