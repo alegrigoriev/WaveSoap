@@ -1782,7 +1782,7 @@ void CWaveSoapFileList::Add(LPCTSTR lpszPathName)
 	ASSERT(AfxIsValidString(lpszPathName));
 
 	// fully qualify the path name
-	TCHAR szTemp[_MAX_PATH];
+	TCHAR szTemp[_MAX_PATH+1];
 	szTemp[0] = lpszPathName[0];
 	AfxFullPath(szTemp+1, lpszPathName+1);
 
@@ -1856,7 +1856,9 @@ CDocument* CWaveSoapDocManager::OpenDocumentFile(LPCTSTR lpszFileName, int flags
 	AfxFullPath(szPath, szTemp);
 	TCHAR szLinkName[_MAX_PATH];
 	if (AfxResolveShortcut(AfxGetMainWnd(), szPath, szLinkName, _MAX_PATH))
+	{
 		lstrcpy(szPath, szLinkName);
+	}
 
 	while (pos != NULL)
 	{
