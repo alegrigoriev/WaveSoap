@@ -154,6 +154,10 @@ SOURCE=.\Ruler.cpp
 # End Source File
 # Begin Source File
 
+SOURCE=.\SaveExpressionDialog.cpp
+# End Source File
+# Begin Source File
+
 SOURCE=.\ScaledScrollView.cpp
 # End Source File
 # Begin Source File
@@ -416,6 +420,10 @@ InputPath=.\Resource.h
 # Begin Source File
 
 SOURCE=.\Ruler.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\SaveExpressionDialog.h
 # End Source File
 # Begin Source File
 

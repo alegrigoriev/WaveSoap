@@ -165,6 +165,7 @@ public:
 protected:
 	//{{AFX_MSG(CChildFrame)
 	afx_msg int OnCreate(LPCREATESTRUCT lpCreateStruct);
+	afx_msg void OnDestroy();
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 };

@@ -28,6 +28,7 @@ IMPLEMENT_DYNCREATE(CChildFrame, CMDIChildWnd)
 BEGIN_MESSAGE_MAP(CChildFrame, CMDIChildWnd)
 	//{{AFX_MSG_MAP(CChildFrame)
 	ON_WM_CREATE()
+	ON_WM_DESTROY()
 	//}}AFX_MSG_MAP
 END_MESSAGE_MAP()
 
@@ -60,7 +61,9 @@ BOOL CChildFrame::PreCreateWindow(CREATESTRUCT& cs)
 				| FWS_ADDTOTITLE | WS_THICKFRAME | WS_MINIMIZEBOX | WS_MAXIMIZEBOX;
 
 	CMDIChildWnd * pActive = ((CMDIFrameWnd *)AfxGetMainWnd())->MDIGetActive();
-	if (pActive == NULL || (WS_MAXIMIZE & pActive->GetStyle()))
+
+	if ((pActive == NULL && GetApp()->m_bOpenChildMaximized)
+		|| (pActive != NULL && (WS_MAXIMIZE & pActive->GetStyle())))
 	{
 		cs.style |= WS_MAXIMIZE;
 	}
@@ -935,3 +938,9 @@ void CWaveMDIChildClient::OnViewHideSpectrumsection()
 	RecalcLayout();
 }
 
+
+void CChildFrame::OnDestroy()
+{
+	GetApp()->m_bOpenChildMaximized = (0 != (GetStyle() & WS_MAXIMIZE));
+	CMDIChildWnd::OnDestroy();
+}

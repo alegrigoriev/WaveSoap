@@ -190,6 +190,10 @@ CWaveSoapFrontApp::CWaveSoapFrontApp()
 	m_bUseCountrySpecificNumberAndTime(false),
 	m_bUndoEnabled(true),
 	m_bRedoEnabled(true),
+	m_bShowToolbar(true),
+	m_bShowStatusBar(true),
+	m_bOpenMaximized(true),
+	m_bOpenChildMaximized(true),
 	m_VolumeDialogDbPercents(0),    // dB, 1 - percents
 	m_dVolumeLeftDb(0.),
 	m_dVolumeRightDb(0.),
@@ -352,6 +356,13 @@ BOOL CWaveSoapFrontApp::InitInstance()
 
 	Profile.AddBoolItem(_T("Settings"), _T("SnapMouseSelectionToMax"), m_bSnapMouseSelectionToMax, TRUE);
 
+	Profile.AddItem(_T("Settings"), _T("ShowToolbar"), m_bShowToolbar, true);
+	Profile.AddItem(_T("Settings"), _T("ShowStatusBar"), m_bShowStatusBar, true);
+	Profile.AddItem(_T("Settings"), _T("OpenChildMaximized"), m_bOpenChildMaximized, true);
+	Profile.AddItem(_T("Settings"), _T("OpenMaximized"), m_bOpenMaximized, true);
+
+	LoadSavedExpressions();
+
 	LoadStdProfileSettings(10);  // Load standard INI file options (including MRU)
 
 	if (m_bUseCountrySpecificNumberAndTime)
@@ -439,7 +450,12 @@ BOOL CWaveSoapFrontApp::InitInstance()
 
 	m_pMainWnd->DragAcceptFiles();
 	// The main window has been initialized, so show and update it.
-	pMainFrame->ShowWindow(m_nCmdShow);
+	int nCmdShow = SW_SHOWDEFAULT;
+	if (m_bOpenMaximized)
+	{
+		nCmdShow = SW_SHOWMAXIMIZED;
+	}
+	pMainFrame->ShowWindow(nCmdShow);
 	pMainFrame->UpdateWindow();
 
 	m_NotEnoughMemoryMsg.LoadString(IDS_NOT_ENOUGH_MEMORY);
@@ -675,8 +691,9 @@ int CWaveSoapFrontApp::ExitInstance()
 	{
 		AppColors[i] &= 0x00FFFFFF;
 	}
-	Profile.UnloadSection(_T("Settings"));
-	Profile.UnloadSection(_T("Settings\\Colors"));
+	//Profile.UnloadSection(_T("Settings"));
+	//Profile.UnloadSection(_T("Settings\\Colors"));
+	Profile.UnloadSection(NULL);
 	// must close the file before deleting the cache
 	m_ClipboardFile.Close();
 	delete m_FileCache;
@@ -2462,4 +2479,93 @@ void CWaveSoapFrontApp::SetStatusStringAndDoc(const CString & str, CWaveSoapFron
 	m_pLastStatusDocument = pDoc;
 
 	m_StatusStringLock.Unlock();
+}
+
+void CWaveSoapFrontApp::LoadSavedExpressions()
+{
+	Profile.AddItem(_T("Expressions"), _T("NumberOfGroups"), m_NumOfExprGroups, -1, -1, MaxSavedExpressionGroups);
+	// create items for ALL
+	int i;
+	CString s;
+	for (i = 0; i < MaxSavedExpressionGroups; i++)
+	{
+		s.Format(_T("Group%02d"), i + 1);
+		Profile.AddItem(_T("Expressions"), s, m_ExpressionGroups[i]);
+		s.Format(_T("ExprsInGroup%02d"), i + 1);
+		Profile.AddItem(_T("Expressions"), s, m_NumExpressions[i], 0, 0, MaxSavedTotalExpressions);
+	}
+	for (i = 0; i < MaxSavedTotalExpressions; i++)
+	{
+		s.Format(_T("ExprName%03d"), i + 1);
+		Profile.AddItem(_T("Expressions"), s, m_ExpressionNames[i]);
+		s.Format(_T("ExprComment%03d"), i + 1);
+		Profile.AddItem(_T("Expressions"), s, m_ExpressionComments[i]);
+		s.Format(_T("Expr%03d"), i + 1);
+		Profile.AddItem(_T("Expressions"), s, m_Expressions[i]);
+	}
+	Profile.AddItem(_T("Expressions"), _T("ExpressionGroupSelected"),
+					m_ExpressionGroupSelected, 0, 0, MaxSavedExpressionGroups);
+	Profile.AddItem(_T("Expressions"), _T("ExpressionSelected"),
+					m_ExpressionSelected, 0, 0, m_ExpressionSelected);
+
+	if (-1 == m_NumOfExprGroups)
+	{
+		// load default expressions
+		TCHAR ModuleName[MAX_PATH] = {0};
+		TCHAR FullPathName[MAX_PATH];
+		LPTSTR FilePart = FullPathName;
+		GetModuleFileName(NULL, ModuleName, MAX_PATH);
+		GetFullPathName(ModuleName, MAX_PATH, FullPathName, & FilePart);
+		*FilePart = 0;
+		CString ProfileName(FullPathName);
+		ProfileName += _T("Expressions.ini");
+
+		enum { MaxExprChars = 1024 };
+		TCHAR Buf[MaxExprChars];
+		for (i = 0; i < MaxSavedExpressionGroups; i++)
+		{
+			s.Format(_T("Group%02d"), i + 1);
+			GetPrivateProfileString(_T("Expressions"), s, "", Buf, MaxExprChars, ProfileName);
+			m_ExpressionGroups[i] = Buf;
+
+			s.Format(_T("ExprsInGroup%02d"), i + 1);
+			m_NumExpressions[i] = GetPrivateProfileInt(_T("Expressions"), s, 0, ProfileName);
+			if (m_NumExpressions[i] < 0)
+			{
+				m_NumExpressions[i] = 0;
+			}
+			if (m_NumExpressions[i] > MaxSavedTotalExpressions)
+			{
+				m_NumExpressions[i] = MaxSavedTotalExpressions;
+			}
+			if (m_NumExpressions[i] != 0)
+			{
+				m_NumOfExprGroups = i + 1;
+			}
+		}
+		for (i = 0; i < MaxSavedTotalExpressions; i++)
+		{
+			s.Format(_T("ExprName%03d"), i + 1);
+			GetPrivateProfileString(_T("Expressions"), s, "", Buf, MaxExprChars, ProfileName);
+			m_ExpressionNames[i] = Buf;
+
+			s.Format(_T("ExprComment%03d"), i + 1);
+			GetPrivateProfileString(_T("Expressions"), s, "", Buf, MaxExprChars, ProfileName);
+			m_ExpressionComments[i] = Buf;
+
+			s.Format(_T("Expr%03d"), i + 1);
+			GetPrivateProfileString(_T("Expressions"), s, "", Buf, MaxExprChars, ProfileName);
+			m_Expressions[i] = Buf;
+		}
+	}
+	int index = 0;
+	for (i = 0; i < MaxSavedExpressionGroups; i++)
+	{
+		m_IndexOfGroupBegin[i] = index;
+		if (index + m_NumExpressions[i] > MaxSavedTotalExpressions)
+		{
+			m_NumExpressions[i] = MaxSavedTotalExpressions - index;
+		}
+		index += m_NumExpressions[i];
+	}
 }

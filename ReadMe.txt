@@ -1,12 +1,10 @@
 Known problems and tasks:
 
-Make more integer operations for Expression Evaluation (bit ops, modulo)
-Protect against exceptions during expression exaluation
-Make a few source samples available in expression and a few output samples too
+Show expression descriptions
 Make save presets for Expression Evaluation command
+Make a few source samples available in expression and a few output samples too
+
 Make combobox in selection dialog
-Remember last frame and view maximized state
-Support WAVEFORMATEXTENSIBLE.
 File specified in the command line is not open
 Add CD grabbing
 Add Channels... command to menu
@@ -40,6 +38,8 @@ Make tooltips
 Make help file
 
 Problems:
+LOg Off query doesn't close the active dialog. Recursion is possible. Make sure to check after Cancel
+when "sincos" entered, complains "Right parentheses expected" rather than "syntax"
 Expression evaluation selection longer than file length doesn't update file length
 Doesn't see the document as active
 If number of channels changed, amplitude ruler doesn't update extents
@@ -56,6 +56,10 @@ Multiple MP3 files open: all but one get stuck
 
 
 Done:
+Remember toolbar/status bar toggle
+Remember last frame and view maximized state
+Protect against exceptions during expression exaluation
+Make more integer operations for Expression Evaluation (bit ops, modulo)
 Change file extension in Save As dialog, if the type changed
 Add "Cancel" (don't reopen, but close) to Reopen after save dialog
 Add Hide in spectrum section context menu
@@ -67,6 +71,7 @@ Make all correct error messages and message boxes
 
 
 For Version 2:
+Support WAVEFORMATEXTENSIBLE.
 Make multichannel editing
 allow 24/32 bit data
 Allow "Minimized" channels

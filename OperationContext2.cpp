@@ -137,6 +137,7 @@ BOOL CExpressionEvaluationContext::ProcessBuffer(void * buf, size_t len, DWORD o
 	}
 	catch (const char * pError)
 	{
+		m_ErrorString = pError;
 		return FALSE;
 	}
 	return TRUE;
@@ -187,7 +188,7 @@ CString CExpressionEvaluationContext::GetToken(LPCSTR * ppStr, TokenType * pType
 		"F", eSamplingRate,
 		"dn", eSelectionLengthSamples,
 		"DN", eFileLengthSamples,
-		"T", eSamplePeriod,
+		//"T", eSamplePeriod,
 		"f", eCurrentFrequencyArgument,
 		"wave", eCurrentSampleValue,
 	};

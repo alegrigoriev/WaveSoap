@@ -6,6 +6,7 @@
 #include "resource.h"
 #include "OperationDialogs.h"
 #include "MainFrm.h"
+#include "SaveExpressionDialog.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -1474,7 +1475,6 @@ CExpressionEvaluationDialog::CExpressionEvaluationDialog(CWnd* pParent /*=NULL*/
 	//{{AFX_DATA_INIT(CExpressionEvaluationDialog)
 	m_bUndo = FALSE;
 	//}}AFX_DATA_INIT
-	m_NumSavedExpressions = 0;
 }
 
 
@@ -1492,12 +1492,11 @@ void CExpressionEvaluationDialog::DoDataExchange(CDataExchange* pDX)
 
 
 BEGIN_MESSAGE_MAP(CExpressionEvaluationDialog, CDialog)
-	ON_COMMAND(IDC_BUTTON_INSERT_EXPRESSION, OnButtonInsert)
 	//{{AFX_MSG_MAP(CExpressionEvaluationDialog)
 	ON_BN_CLICKED(IDC_BUTTON_SELECTION, OnButtonSelection)
 	ON_NOTIFY(TCN_SELCHANGE, IDC_TAB_TOKENS, OnSelchangeTabTokens)
+	ON_BN_CLICKED(IDC_BUTTON_SAVEAS, OnButtonSaveExpressionAs)
 	//}}AFX_MSG_MAP
-	ON_CBN_SELCHANGE(IDC_COMBO_SAVED_EXPRESSIONS, OnSelchangeExpression)
 #if 0
 	ON_COMMAND_EX(IDC_BUTTON_SIN, OnButtonText)
 	ON_COMMAND_EX(IDC_BUTTON_COS, OnButtonText)
@@ -1558,36 +1557,6 @@ BOOL CExpressionEvaluationDialog::OnButtonText(UINT id)
 		}
 	}
 	return FALSE;
-}
-
-void CExpressionEvaluationDialog::OnButtonInsert()
-{
-	CComboBox * pCB = (CComboBox *) m_SavedExprTabDlg.GetDlgItem(IDC_COMBO_SAVED_EXPRESSIONS);
-	CEdit * pEdit = (CEdit *) GetDlgItem(IDC_EDIT_EXPRESSION);
-	if (NULL != pCB
-		&& NULL != pEdit)
-	{
-		int sel = pCB->GetCurSel();
-		if (sel >= 0 && sel < m_NumSavedExpressions)
-		{
-			pEdit->ReplaceSel(m_SavedExpressions[sel], TRUE);
-			pEdit->SetFocus();
-		}
-	}
-}
-void CExpressionEvaluationDialog::OnSelchangeExpression()
-{
-	CComboBox * pCB = (CComboBox *) m_SavedExprTabDlg.GetDlgItem(IDC_COMBO_SAVED_EXPRESSIONS);
-	CWnd * pStatic = m_SavedExprTabDlg.GetDlgItem(IDC_STATIC_DESCRIPTION);
-	if (NULL != pCB
-		&& NULL != pStatic)
-	{
-		int sel = pCB->GetCurSel();
-		if (sel >= 0 && sel < m_NumSavedExpressions)
-		{
-			pStatic->SetWindowText(m_SavedExpressionDescriptions[sel]);
-		}
-	}
 }
 
 void CExpressionEvaluationDialog::OnButtonSelection()
@@ -2215,45 +2184,19 @@ BOOL CExpressionEvaluationDialog::OnInitDialog()
 	m_TabTokens.InsertItem(1, _T("Operands"));
 	m_TabTokens.InsertItem(2, _T("Operators"));
 	m_TabTokens.InsertItem(3, _T("Saved Expressions"));
-	// load saved expressions
-	TCHAR ModuleName[MAX_PATH] = {0};
-	TCHAR FullPathName[MAX_PATH];
-	LPTSTR FilePart = FullPathName;
-	GetModuleFileName(NULL, ModuleName, MAX_PATH);
-	GetFullPathName(ModuleName, MAX_PATH, FullPathName, & FilePart);
-	*FilePart = 0;
-	CString ProfileName(FullPathName);
-	ProfileName += _T("Expressions.ini");
-	int ExprCount = ::GetPrivateProfileInt(
-											_T("Expressions"), _T("NumExpressions"),
-											0, ProfileName);
-	if (ExprCount > MaxSavedExpressions)
-	{
-		ExprCount = MaxSavedExpressions;
-	}
-	CComboBox * pCB = (CComboBox *) m_SavedExprTabDlg.GetDlgItem(IDC_COMBO_SAVED_EXPRESSIONS);
-	for (int i = 0; i < ExprCount; i++)
-	{
-		TCHAR Buf[512];
-		CString s;
-		s.Format("expr%d", i + 1);
-		GetPrivateProfileString(_T("Descriptions"), s, "", Buf, 512, ProfileName);
-		m_SavedExpressionDescriptions[i] = Buf;
 
-		GetPrivateProfileString(_T("Expressions"), s, "", Buf, 512, ProfileName);
-		m_SavedExpressions[i] = Buf;
-		if (NULL != pCB)
-		{
-			pCB->AddString(Buf);
-		}
-	}
-	if (NULL != pCB)
-	{
-		pCB->SetCurSel(0);
-	}
-	m_NumSavedExpressions = ExprCount;
+	UpdateSelectionStatic();
 
 	return TRUE;  // return TRUE unless you set the focus to a control
 	// EXCEPTION: OCX Property Pages should return FALSE
 }
 
+
+void CExpressionEvaluationDialog::OnButtonSaveExpressionAs()
+{
+	// query expression name and comment
+	CSaveExpressionDialog dlg;
+	if (IDOK == dlg.DoModal())
+	{
+	}
+}

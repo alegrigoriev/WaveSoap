@@ -2,13 +2,13 @@
 
 [General Info]
 Version=1
-LastClass=
+LastClass=CInsertExpressionDialog
 LastTemplate=CDialog
 NewFileInclude1=#include "stdafx.h"
 NewFileInclude2=#include "WaveSoapFront.h"
 LastPage=0
 
-ClassCount=39
+ClassCount=40
 Class1=CWaveSoapFrontApp
 Class2=CWaveSoapFrontDoc
 Class3=CWaveSoapFrontView
@@ -18,15 +18,15 @@ ResourceCount=119
 Resource1=IDR_MENU_POPUP_CHANNELS
 Resource2=IDD_DIALOG_OPEN_TEMPLATE2
 Resource3=IDD_DIALOG_DC_OFFSET
-Resource8=IDD_DIALOG_RESAMPLE (English (U.S.))
-Resource9=IDD_DIALOG_MUTE_OR_SILENCE (English (U.S.))
+Resource8=IDD_DIALOG_NORMALIZE (English (U.S.))
+Resource9=IDD_DIALOG_INSERT_SILENCE (English (U.S.))
 Resource10=IDD_DIALOGBAR_MDI_CHILD (English (U.S.))
 Class5=CChildFrame
 Class6=CAboutDlg
-Resource4=IDD_DIALOG_NOISE_REDUCTION (English (U.S.))
+Resource4=IDD_DIALOG_EXPRESSION_EVALUATION (English (U.S.))
 Resource5=IDR_MENU_POPUP_HOR_SCALE512 (English (U.S.))
 Resource6=IDD_ABOUTBOX (English (U.S.))
-Resource7=IDR_MAINFRAME (English (U.S.))
+Resource7=IDD_SAVED_EXPRESSIONS_TAB (English (U.S.))
 Class7=CWaveFftView
 Class8=CTimeRulerView
 Class9=CWaveMDIChildClient
@@ -43,16 +43,16 @@ Resource14=IDR_MENU_POPUP_HOR_SCALE1 (English (U.S.))
 Resource15=IDD_DIALOG_MORE_NOISEREDUCTION (English (U.S.))
 Resource16=IDD_PROPPAGE_NOISEREDUCT (English (U.S.))
 Resource17=IDR_MENU_POPUP_HOR_SCALE32 (English (U.S.))
-Resource18=IDD_SAVED_EXPRESSIONS_TAB (English (U.S.))
+Resource18=IDR_MAINFRAME (English (U.S.))
 Resource19=IDR_MENU_POPUP_HOR_SCALE2 (English (U.S.))
 Resource20=IDR_MENU_SPECTRUMSECTION_VIEW (English (U.S.))
 Resource21=IDR_MENU_POPUP_HOR_SCALE16 (English (U.S.))
 Resource22=IDR_MENU_POPUP_HOR_SCALE128 (English (U.S.))
 Resource23=IDR_MENU_POPUP_HOR_SCALE4 (English (U.S.))
 Class16=CCopyChannelsSelectDlg
-Resource24=IDD_DIALOG_INSERT_SILENCE (English (U.S.))
+Resource24=IDD_DIALOG_MUTE_OR_SILENCE (English (U.S.))
 Class17=CPasteModeDialog
-Resource25=IDD_SELECTION_DIALOG (English (U.S.))
+Resource25=IDD_DIALOG_VOLUME_CHANGE (English (U.S.))
 Class18=CVolumeChangeDialog
 Class19=CSelectionDialog
 Resource26=IDR_MENU_POPUP_HOR_SCALE2048 (English (U.S.))
@@ -64,13 +64,13 @@ Resource30=IDR_MENU_POPUP_HOR_SCALE256 (English (U.S.))
 Class21=CGotoDialog
 Resource31=IDR_MENU_FILE_LENGTH (English (U.S.))
 Class22=CDcOffsetDialog
-Resource32=IDD_DIALOG_PASTE_MODE_SELECT (English (U.S.))
+Resource32=IDD_DIALOG_OPEN_TEMPLATE (English (U.S.))
 Class23=CStatisticsDialog
 Resource33=IDD_PROPPAGE_DECLICK (English (U.S.))
 Class24=CNormalizeSoundDialog
 Resource34=IDD_DIALOG_REOPEN_DIRECT (English (U.S.))
 Class25=CResampleDialog
-Resource35=IDD_DIALOG_VOLUME_CHANGE (English (U.S.))
+Resource35=IDD_DIALOG_STATISTICS (English (U.S.))
 Resource36=IDD_DIALOG_INSERT_SILENCE
 Resource37=IDD_DIALOG_SAVE_TEMPLATE
 Resource38=IDR_MENU_WAVE_VIEW_SELECTION
@@ -132,7 +132,7 @@ Resource84=IDR_MENU_POPUP_SAMPLE_RATE
 Resource85=IDR_MENU_POPUP_HOR_SCALE512
 Resource86=IDD_DIALOG_VOLUME_CHANGE_MONO
 Class35=CWmpNotInstalleedWarningDlg
-Resource87=IDD_OPERANDS_TAB (English (U.S.))
+Resource87=IDD_FUNCTIONS_TAB (English (U.S.))
 Resource88=IDR_MENU_POPUP_HOR_SCALE4096 (English (U.S.))
 Resource89=IDR_MENU_POPUP_HOR_SCALE8192 (English (U.S.))
 Resource90=IDR_WAVESOTYPE (English (U.S.))
@@ -148,26 +148,27 @@ Resource99=IDR_MENU_WAVE_VIEW_SELECTION (English (U.S.))
 Resource100=IDR_MENU_FFT_VIEW (English (U.S.))
 Resource101=IDR_MENU_CURRENT_POSITION (English (U.S.))
 Resource102=IDR_MENU_SELECTION_LENGTH (English (U.S.))
-Resource103=IDD_DIALOG_GOTO (English (U.S.))
-Resource104=IDD_DIALOG_STATISTICS (English (U.S.))
-Resource105=IDD_DIALOG_DC_OFFSET (English (U.S.))
-Resource106=IDD_DIALOG_EXPRESSION_EVALUATION (English (U.S.))
-Resource107=IDD_FUNCTIONS_TAB (English (U.S.))
-Resource108=IDD_DIALOG_OPEN_TEMPLATE1 (English (U.S.))
+Resource103=IDD_DIALOG_VOLUME_CHANGE_MONO (English (U.S.))
+Resource104=IDD_DIALOG_DECLICKING (English (U.S.))
+Resource105=IDD_DIALOG_PASTE_MODE_SELECT (English (U.S.))
+Resource106=IDD_DIALOG_SAVE_TEMPLATE (English (U.S.))
+Resource107=IDD_OPERANDS_TAB (English (U.S.))
+Resource108=IDD_DIALOG_STATISTICS_MONO (English (U.S.))
 Resource109=IDD_DIALOG_NO_WINDOWS_MEDIA
-Resource110=IDD_DIALOG_DECLICKING (English (U.S.))
+Resource110=IDD_DIALOG_DC_OFFSET (English (U.S.))
 Resource111=IDD_DIALOG_STATISTICS
 Class36=CCdGrabbingDialog
-Resource112=IDD_DIALOG_ULF_REDUCTION (English (U.S.))
-Resource113=IDD_DIALOG_STATISTICS_MONO (English (U.S.))
+Resource112=IDD_DIALOG_NOISE_REDUCTION (English (U.S.))
+Resource113=IDD_DIALOG_OPEN_TEMPLATE1 (English (U.S.))
 Class37=CReopenDialog
 Resource114=IDD_DIALOG_NO_WINDOWS_MEDIA (English (U.S.))
-Resource115=IDD_DIALOG_SAVE_TEMPLATE (English (U.S.))
-Resource116=IDD_DIALOG_NORMALIZE (English (U.S.))
+Resource115=IDD_DIALOG_ULF_REDUCTION (English (U.S.))
+Resource116=IDD_DIALOG_GOTO (English (U.S.))
 Class38=CChildDialog
-Resource117=IDD_DIALOG_OPEN_TEMPLATE (English (U.S.))
-Resource118=IDD_DIALOG_VOLUME_CHANGE_MONO (English (U.S.))
+Resource117=IDD_SELECTION_DIALOG (English (U.S.))
+Resource118=IDD_DIALOG_RESAMPLE (English (U.S.))
 Class39=CSaveExpressionDialog
+Class40=CInsertExpressionDialog
 Resource119=IDD_DIALOG_SAVE_EXPRESSION (English (U.S.))
 
 [CLS:CWaveSoapFrontApp]
@@ -942,7 +943,7 @@ Type=0
 HeaderFile=operationdialogs.h
 ImplementationFile=operationdialogs.cpp
 BaseClass=CDialog
-LastObject=IDC_RADIO_SELECT
+LastObject=CPasteModeDialog
 Filter=W
 VirtualFilter=dWC
 
@@ -1623,7 +1624,7 @@ HeaderFile=OperationDialogs.h
 ImplementationFile=OperationDialogs.cpp
 BaseClass=CDialog
 Filter=W
-LastObject=IDC_BUTTON_SAVEAS
+LastObject=CExpressionEvaluationDialog
 VirtualFilter=dWC
 
 [DLG:IDD_DIALOG_DECLICKING]
@@ -2475,7 +2476,7 @@ Control11=IDC_BUTTON_LN,button,1342259200
 Control12=IDC_BUTTON_LOG10,button,1342259200
 Control13=IDC_BUTTON_ABS,button,1342259200
 Control14=IDC_BUTTON_POW,button,1342259200
-Control15=IDC_STATIC_DESCRIPTION,static,1342308352
+Control15=IDC_STATIC,static,1342308352
 
 [DLG:IDD_OPERATORS_TAB (English (U.S.))]
 Type=1
@@ -2490,24 +2491,28 @@ Control6=IDC_BUTTON_AND,button,1342259200
 Control7=IDC_BUTTON_OR,button,1342259200
 Control8=IDC_BUTTON_XOR,button,1342259200
 Control9=IDC_BUTTON_INVERSE,button,1342259200
-Control10=IDC_STATIC_DESCRIPTION,static,1342308352
+Control10=IDC_STATIC,static,1342308352
 
 [DLG:IDD_OPERANDS_TAB (English (U.S.))]
 Type=1
 Class=?
-ControlCount=12
+ControlCount=16
 Control1=IDC_BUTTON_NOISE,button,1342259200
 Control2=IDC_BUTTON_T,button,1342259200
-Control3=IDC_BUTTON_DT,button,1342259200
-Control4=IDC_BUTTON_DN,button,1342259200
-Control5=IDC_BUTTON10,button,1342259200
-Control6=IDC_BUTTON_WAVE,button,1342259200
+Control3=IDC_BUTTON_N,button,1342259200
+Control4=IDC_BUTTON_DT,button,1342259200
+Control5=IDC_BUTTON_DN,button,1342259200
+Control6=IDC_BUTTON_F,button,1342259200
 Control7=IDC_BUTTON_PI,button,1342259200
 Control8=IDC_BUTTON_LC_T,button,1342259200
-Control9=IDC_BUTTON_LC_DT,button,1342259200
-Control10=IDC_BUTTON_LC_DN,button,1342259200
-Control11=IDC_BUTTON_LC_F,button,1342259200
-Control12=IDC_STATIC_DESCRIPTION,static,1342308352
+Control9=IDC_BUTTON_LC_N,button,1342259200
+Control10=IDC_BUTTON_LC_DT,button,1342259200
+Control11=IDC_BUTTON_LC_DN,button,1342259200
+Control12=IDC_BUTTON_WAVE,button,1342259200
+Control13=IDC_BUTTON_LC_F,button,1342259200
+Control14=IDC_STATIC,static,1342308353
+Control15=IDC_EDIT_FREQUENCY,edit,1350631552
+Control16=IDC_STATIC,static,1342308352
 
 [CLS:CChildDialog]
 Type=0
@@ -2519,22 +2524,27 @@ LastObject=IDC_STATIC_DESCRIPTION
 
 [DLG:IDD_SAVED_EXPRESSIONS_TAB (English (U.S.))]
 Type=1
-Class=?
-ControlCount=3
+Class=CInsertExpressionDialog
+ControlCount=6
 Control1=IDC_COMBO_SAVED_EXPRESSIONS,combobox,1344339971
 Control2=IDC_BUTTON_INSERT_EXPRESSION,button,1342242816
 Control3=IDC_STATIC_DESCRIPTION,static,1342308352
+Control4=IDC_STATIC,static,1342308352
+Control5=IDC_COMBO_SAVED_EXPRESSION_GROUP,combobox,1344339971
+Control6=IDC_BUTTON_DELETE_EXPRESSION,button,1342242816
 
 [DLG:IDD_DIALOG_SAVE_EXPRESSION (English (U.S.))]
 Type=1
 Class=CSaveExpressionDialog
-ControlCount=6
+ControlCount=8
 Control1=IDC_STATIC,static,1342308352
-Control2=IDC_STATIC,static,1342308352
-Control3=IDC_EDIT_COMMENT,edit,1352728644
-Control4=IDOK,button,1342242817
-Control5=IDCANCEL,button,1342242816
-Control6=IDC_COMBO_NAME,combobox,1344339970
+Control2=IDC_COMBO_NAME,combobox,1344339970
+Control3=IDC_STATIC,static,1342308352
+Control4=IDC_COMBO_GROUP,combobox,1344339970
+Control5=IDC_STATIC,static,1342308352
+Control6=IDC_EDIT_COMMENT,edit,1352728644
+Control7=IDOK,button,1342242817
+Control8=IDCANCEL,button,1342242816
 
 [CLS:CSaveExpressionDialog]
 Type=0
@@ -2544,4 +2554,13 @@ BaseClass=CDialog
 Filter=D
 LastObject=IDC_COMBO_NAME
 VirtualFilter=dWC
+
+[CLS:CInsertExpressionDialog]
+Type=0
+HeaderFile=ChildDialog.h
+ImplementationFile=ChildDialog.cpp
+BaseClass=CDialog
+Filter=D
+VirtualFilter=dWC
+LastObject=IDC_BUTTON_DELETE_EXPRESSION
 
