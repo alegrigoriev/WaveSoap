@@ -5248,15 +5248,31 @@ void CWaveSoapFrontDoc::OnProcessReverse()
 		end = WaveFileSamples();
 	}
 
-	CReverseOperation::auto_ptr pContext(new CReverseOperation(this, IDS_REVERSE_STATUS_PROMPT, IDS_REVERSE_OPERATION_NAME));
+	CStagedContext::auto_ptr pStagedContext(new CStagedContext(this, OperationContextDiskIntensive,
+																IDS_REVERSE_STATUS_PROMPT, IDS_REVERSE_OPERATION_NAME));
+
+	CReverseOperation * pContext = new CReverseOperation(this, 0, 0);
+
+	pStagedContext->AddContext(pContext);
 
 	if ( ! pContext->InitDestination(m_WavFile, start,
-									end, GetSelectedChannel(), UndoEnabled()))
+									end, GetSelectedChannel(), FALSE))
 	{
 		return;
 	}
 
-	pContext.release()->Execute();
+	if (m_WavFile.AllChannels(GetSelectedChannel()))
+	{
+		pStagedContext->AddContext(new CCueReverseOperation(this, m_WavFile, start, end - start));
+	}
+
+	if (UndoEnabled()
+		&& ! pStagedContext->CreateUndo())
+	{
+		return;
+	}
+
+	pStagedContext.release()->Execute();
 	SetModifiedFlag(TRUE);
 }
 
