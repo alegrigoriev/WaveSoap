@@ -21,6 +21,7 @@ typedef NUM_volatile<DWORD> SUBBLOCK_MASK;
 #define TRACE_WRITE 0
 #define TRACE_MRU 0
 #define DO_VALIDATE 0
+#define TRACE_CLOSE 0
 
 #define BLOCK_SIZE_SHIFT 17
 #define CACHE_BLOCK_SIZE (1UL << BLOCK_SIZE_SHIFT)
@@ -861,7 +862,7 @@ BOOL File::Close(DWORD /*flags*/)
 
 	CacheInstance.CancelPrefetch(this);
 
-	TRACE(_T("Closing file %s, flags=%X\n"), LPCTSTR(m_FileName), m_Flags);
+	if (TRACE_CLOSE) TRACE(_T("Closing file %s, flags=%X\n"), LPCTSTR(m_FileName), m_Flags);
 	// If the use count is 0, copy all remaining data
 	// from the source file or init the rest and flush all the buffers,
 	// remove the structure from the list
@@ -965,7 +966,7 @@ BOOL File::Close(DWORD /*flags*/)
 		}
 	}
 
-	TRACE(_T("Closed file %s\n"), LPCTSTR(m_FileName));
+	if (TRACE_CLOSE) TRACE(_T("Closed file %s\n"), LPCTSTR(m_FileName));
 	delete this;
 
 	return TRUE;
