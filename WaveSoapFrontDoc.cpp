@@ -1287,6 +1287,16 @@ BOOL CWaveSoapFrontDoc::DoPaste(SAMPLE_INDEX Start, SAMPLE_INDEX End, CHANNEL_MA
 
 	if (NULL != FileName)
 	{
+		if ( ! OpenWaveFile(SrcFile, FileName,
+							MmioFileOpenExisting | MmioFileOpenReadOnly))
+		{
+			return FALSE;
+		}
+		// TODO: check for non-PCM file
+		if (SrcFile.GetWaveFormat()->wFormatTag != WAVE_FORMAT_PCM)
+		{
+			return FALSE;
+		}
 	}
 	else
 	{
@@ -5220,7 +5230,7 @@ bool CWaveSoapFrontDoc::CanStartOperation(NUMBER_OF_SAMPLES SamplesNecessary,
 CHANNEL_MASK CWaveSoapFrontDoc::GetSelectedChannel() const
 {
 	CHANNEL_MASK Channels = m_SelectedChannel;
-	if ( ! ChannelsLocked())
+	if (ChannelsLocked())
 	{
 		Channels = ALL_CHANNELS;
 	}
