@@ -8,7 +8,10 @@
 #include "ChildFrm.h"
 #include "WaveSoapFrontDoc.h"
 #include "WaveSoapFrontView.h"
+#include "WaveFftView.h"
 #include <float.h>
+#include <afxpriv.h>
+
 #ifdef _DEBUG
 #define new DEBUG_NEW
 #undef THIS_FILE
@@ -35,9 +38,15 @@ END_MESSAGE_MAP()
 // CWaveSoapFrontApp construction
 
 CWaveSoapFrontApp::CWaveSoapFrontApp()
+	: m_FileCache(NULL),
+	m_pFirstOp(NULL),
+	m_pLastOp(NULL),
+	m_Thread(ThreadProc, this),
+	m_RunThread(false),
+	m_pActiveDocument(NULL)
 {
-	// TODO: add construction code here,
 	// Place all significant initialization in InitInstance
+	m_Thread.m_bAutoDelete = FALSE;
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -93,11 +102,12 @@ BOOL CWaveSoapFrontApp::InitInstance()
 	Profile.AddItem(_T("Settings\\Colors"), _T("m_SelectedChannelSeparatorColor"), m_SelectedChannelSeparatorColor,
 					RGB(0x00, 0x00, 0x00));
 	Profile.AddItem(_T("Settings\\Colors"), _T("InterpolatedColor"), m_InterpolatedColor,
-					RGB(0x00, 0x00, 0x00));
+					RGB(72, 0x00, 0x00));
 	Profile.AddItem(_T("Settings\\Colors"), _T("SelectedInterpolatedColor"), m_SelectedInterpolatedColor,
-					RGB(0x00, 0x00, 0x00));
+					RGB(193, 0x00, 0x00));
 
 	LoadStdProfileSettings();  // Load standard INI file options (including MRU)
+	m_FileCache = new CDirectFile::CDirectFileCache(0);
 
 	// Register the application's document templates.  Document templates
 	//  serve as the connection between documents, frame windows and views.
@@ -107,7 +117,8 @@ BOOL CWaveSoapFrontApp::InitInstance()
 											IDR_WAVESOTYPE,
 											RUNTIME_CLASS(CWaveSoapFrontDoc),
 											RUNTIME_CLASS(CChildFrame), // custom MDI child frame
-											RUNTIME_CLASS(CWaveSoapFrontView));
+											RUNTIME_CLASS(CWaveSoapFrontView)
+											);
 	AddDocTemplate(pDocTemplate);
 
 	// create main MDI Frame window
@@ -120,6 +131,11 @@ BOOL CWaveSoapFrontApp::InitInstance()
 	CCommandLineInfo cmdInfo;
 	cmdInfo.m_nShellCommand = CCommandLineInfo::FileNothing;
 	ParseCommandLine(cmdInfo);
+
+	// start the processing thread
+	m_hThreadEvent = CreateEvent(NULL, FALSE, FALSE, NULL);
+	m_RunThread = true;
+	m_Thread.CreateThread(0, 0x10000);
 
 	// Dispatch commands specified on the command line
 	if (!ProcessShellCommand(cmdInfo))
@@ -287,6 +303,18 @@ CDocument* CWaveSoapDocTemplate::OpenDocumentFile(LPCTSTR lpszPathName,
 int CWaveSoapFrontApp::ExitInstance()
 {
 	// TODO: Add your specialized code here and/or call the base class
+	if (m_Thread.m_hThread)
+	{
+		m_RunThread = false;
+		SetEvent(m_hThreadEvent);
+		if (WAIT_TIMEOUT == WaitForSingleObject(m_Thread.m_hThread, 5000))
+		{
+			TerminateThread(m_Thread.m_hThread, -1);
+		}
+	}
+	CloseHandle(m_hThreadEvent);
+	m_hThreadEvent = NULL;
+
 	LPTSTR dirbuf = m_CurrentDir.GetBuffer(MAX_PATH+1);
 	if (dirbuf)
 	{
@@ -295,6 +323,160 @@ int CWaveSoapFrontApp::ExitInstance()
 	}
 	Profile.UnloadSection(_T("Settings"));
 	Profile.UnloadSection(_T("Settings\\Colors"));
-
+	// must close the file before deleting the cache
+	m_ClipboardFile.Close();
+	delete m_FileCache;
+	m_FileCache = NULL;
 	return CWinApp::ExitInstance();
+}
+
+BOOL CWaveSoapFrontApp::QueueOperation(COperationContext * pContext)
+{
+	// add the operation to the tail
+	CSimpleCriticalSectionLock lock(m_cs);
+	pContext->pDocument->m_pQueuedOperation = pContext;
+	pContext->pPrev = m_pLastOp;
+	pContext->pNext = NULL;
+	if (m_pLastOp != NULL)
+	{
+		m_pLastOp->pNext = pContext;
+	}
+	else
+	{
+		m_pFirstOp = pContext;
+	}
+	m_pLastOp = pContext;
+	SetEvent(m_hThreadEvent);
+
+	return TRUE;
+}
+
+unsigned CWaveSoapFrontApp::_ThreadProc()
+{
+	m_Thread.SetThreadPriority(THREAD_PRIORITY_BELOW_NORMAL);
+
+	bool NeedKickIdle = false;
+	COperationContext * pLastContext = NULL;
+	while (m_RunThread)
+	{
+		if (NeedKickIdle)
+		{
+			if (m_pMainWnd)
+			{
+				NeedKickIdle = false;
+				BOOL ret = ::PostMessage(m_pMainWnd->m_hWnd, WM_KICKIDLE, 0, 0);
+				TRACE("Post KICKIDLE returned %d\n", ret);
+			}
+		}
+		COperationContext * pContext = NULL;
+		if (NULL != m_pFirstOp)
+		{
+			CSimpleCriticalSectionLock lock(m_cs);
+			// find if stop requested for any document
+			pContext = m_pFirstOp;
+			while (pContext)
+			{
+				if (pContext->Flags & OperationContextStopRequested)
+				{
+					break;
+				}
+				pContext = pContext->pNext;
+			}
+			if (NULL == pContext)
+			{
+				// Find if there is an operation for the active document
+				pContext = m_pFirstOp;
+				while (pContext)
+				{
+					if (pContext->pDocument == m_pActiveDocument)
+					{
+						break;
+					}
+					pContext = pContext->pNext;
+				}
+				// But if it is clipboard operation,
+				// the first clipboard op will be executed instead
+				if (pContext != NULL
+					&& (pContext->Flags & OperationContextClipboard))
+				{
+					pContext = m_pFirstOp;
+					while (pContext)
+					{
+						if (pContext->Flags & OperationContextClipboard)
+						{
+							break;
+						}
+						pContext = pContext->pNext;
+					}
+				}
+				if (NULL == pContext)
+				{
+					pContext = m_pFirstOp;
+				}
+			}
+		}
+		if (pContext != pLastContext)
+		{
+			pLastContext = pContext;
+			NeedKickIdle = true;
+		}
+		if (pContext != NULL)
+		{
+			int LastPercent = pContext->PercentCompleted;
+			if ( ! pContext->OperationProc())
+			{
+				// execute one step
+				pContext->Flags |= OperationContextStop;
+			}
+			// signal for status update
+			if (LastPercent != pContext->PercentCompleted)
+			{
+				NeedKickIdle = true;
+			}
+			if (pContext->Flags & (OperationContextStop | OperationContextFinished))
+			{
+				// remove the context from the list and delete the context
+				CSimpleCriticalSectionLock lock(m_cs);
+				if (pContext->pPrev != NULL)
+				{
+					pContext->pPrev->pNext = pContext->pNext;
+				}
+				else
+				{
+					m_pFirstOp = pContext->pNext;
+				}
+				if (pContext->pNext != NULL)
+				{
+					pContext->pNext->pPrev = pContext->pPrev;
+				}
+				else
+				{
+					m_pLastOp = pContext->pPrev;
+				}
+				ASSERT(pContext->pDocument->m_pQueuedOperation == pContext);
+				pContext->pDocument->m_pQueuedOperation = NULL;
+				pContext->pDocument->m_OperationInProgress = false;
+				// send a signal to the document, that the operation completed
+				m_CurrentStatusString = pContext->GetStatusString() + _T("Completed");
+				delete pContext;
+				// send a signal to the document, that the operation completed
+				NeedKickIdle = true;    // this will reenable all commands
+			}
+			else
+			{
+				if (NeedKickIdle)
+				{
+					m_CurrentStatusString.Format(_T("%s%d%%"),
+												(LPCTSTR)pContext->GetStatusString(), pContext->PercentCompleted);
+				}
+			}
+			continue;
+		}
+		else
+		{
+			m_CurrentStatusString.Empty();
+		}
+		WaitForSingleObject(m_hThreadEvent, 1000);
+	}
+	return 0;
 }
