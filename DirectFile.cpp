@@ -18,7 +18,7 @@ inline static DWORD InterlockedOr(DWORD * dst, DWORD op2)
 	DWORD tmp;
 	do {
 		tmp = *dst;
-	} while (tmp != DWORD(InterlockedCompareExchange((void **) dst, (void *) (tmp | op2), (void *) tmp)));
+	} while (tmp != InterlockedCompareExchange((long *) dst, tmp | op2, tmp));
 	return tmp | op2;
 }
 inline static DWORD InterlockedAnd(DWORD * dst, DWORD op2)
@@ -26,7 +26,7 @@ inline static DWORD InterlockedAnd(DWORD * dst, DWORD op2)
 	DWORD tmp;
 	do {
 		tmp = *dst;
-	} while (tmp != DWORD(InterlockedCompareExchange((void **) dst, (void *) (tmp & op2), (void *) tmp)));
+	} while (tmp != InterlockedCompareExchange((long *) dst, tmp & op2, tmp));
 	return tmp & op2;
 }
 //////////////////////////////////////////////////////////////////////
