@@ -14,11 +14,10 @@ CResampleContext::CResampleContext(CWaveSoapFrontDoc * pDoc,
 									CWaveFile & SrcFile, CWaveFile &DstFile,
 									double FrequencyRatio, double FilterLength)
 	: BaseClass(pDoc, 0, StatusStringId, OperationNameId)
+	, m_Resample(FrequencyRatio, FilterLength, SrcFile.Channels())
 {
 	InitSource(SrcFile, 0, LAST_SAMPLE, ALL_CHANNELS);
 	InitDestination(DstFile, 0, LAST_SAMPLE, ALL_CHANNELS, FALSE, 0, 0);
-
-	m_Resample.InitResample(FrequencyRatio, FilterLength, SrcFile.Channels());
 }
 
 BOOL CResampleContext::OperationProc()
