@@ -122,13 +122,6 @@ BEGIN_MESSAGE_MAP(CWaveSoapFrontDoc, CDocument)
 	//}}AFX_MSG_MAP
 END_MESSAGE_MAP()
 
-IMPLEMENT_DYNCREATE(CWaveSoapMP3Doc, CWaveSoapFrontDoc)
-
-BEGIN_MESSAGE_MAP(CWaveSoapMP3Doc, CWaveSoapFrontDoc)
-	//{{AFX_MSG_MAP(CWaveSoapMP3Doc)
-	//}}AFX_MSG_MAP
-END_MESSAGE_MAP()
-
 struct SaveFormatTag
 {
 	SaveFormatTag() : dwTag(-1) {}
@@ -281,6 +274,7 @@ CWaveSoapFrontDoc::CWaveSoapFrontDoc()
 	m_OperationInProgress(0),
 	m_PlayingSound(false),
 	m_OperationNonCritical(false),
+	m_StopOperation(false),
 	m_Thread(ThreadProc, this),
 	m_ModificationSequenceNumber(0),
 	m_PrevChannelToCopy(ALL_CHANNELS),
@@ -995,12 +989,12 @@ BOOL CWaveSoapFrontDoc::DoSave(LPCTSTR lpszPathName, BOOL bReplace)
 	// if 'bReplace' is FALSE will not change path name (SaveCopyAs)
 {
 	WAVEFORMATEX * pWf;
-	WAVEFORMATEX * pOriginalWf;
+	WAVEFORMATEX * pOriginalWf = NULL;
 	if (m_OriginalWavFile.IsOpen())
 	{
 		pOriginalWf = m_OriginalWavFile.GetWaveFormat();
 	}
-	else
+	if (NULL == pOriginalWf)
 	{
 		pOriginalWf = m_WavFile.GetWaveFormat();
 	}
@@ -2001,7 +1995,10 @@ BOOL CWaveSoapFrontDoc::OnOpenDocument(LPCTSTR lpszPathName, int DocOpenFlags)
 	}
 
 	m_szWaveFilename = lpszPathName;
-
+	if (DocOpenFlags & OpenDocumentNonWavFile)
+	{
+		return OpenWmaFileDocument(lpszPathName);
+	}
 	DWORD flags = MmioFileOpenReadOnly;
 	if (m_bDirectMode && ! m_bReadOnly)
 	{
@@ -3018,6 +3015,12 @@ BOOL CWaveSoapFrontDoc::SaveModified()
 		if (m_OperationNonCritical)
 		{
 			m_StopOperation = TRUE;
+			DWORD BeginTime = GetTickCount();
+			do {
+				Sleep(50);
+				OnIdle();
+			}
+			while (m_OperationInProgress && GetTickCount() - BeginTime < 5000);
 		}
 		else
 		{
@@ -4155,81 +4158,10 @@ void CWaveSoapFrontDoc::OnFileSaveCopyAs()
 	DoSave(NULL, FALSE);
 }
 
-CWaveSoapMP3Doc::CWaveSoapMP3Doc()
-{
-	memset( & m_MP3Tag, 0, sizeof m_MP3Tag);
-	memset( & m_Format, 0, sizeof m_Format);
-}
-
-CWaveSoapMP3Doc::~CWaveSoapMP3Doc()
-{
-}
-#if 0
-BOOL _stdcall FormatEnum(
-						HACMDRIVERID hadid,
-						LPACMFORMATDETAILS pafd,
-						DWORD dwInstance,
-						DWORD fdwSupport
-						)
-{
-	MPEGLAYER3WAVEFORMAT * pwf = (MPEGLAYER3WAVEFORMAT *) pafd->pwfx;
-	TRACE("\"%s\", cbSize = %d, wID=%X, fdwFlags=%X, nBlockSize=%d, nFramesPerBlock=%d, nCodecDelay=%d\n",
-		pafd->szFormat, pafd->pwfx->cbSize, pwf->wID, pwf->fdwFlags,
-		pwf->nBlockSize, pwf->nFramesPerBlock, pwf->nCodecDelay);
-	return TRUE;
-}
-#endif
-
-BOOL _stdcall CWaveSoapMP3Doc::DriverEnumProc(HACMDRIVERID hadid, DWORD dwInstance, DWORD fdwSupport)
-{
-	if (0 == (ACMDRIVERDETAILS_SUPPORTF_CODEC & fdwSupport))
-	{
-		// not codec, continue with enumeration
-		return TRUE;
-	}
-	ACMDRIVERDETAILS add;
-	add.cbStruct = sizeof add;
-	if (MMSYSERR_NOERROR != acmDriverDetails(hadid, & add, 0))
-	{
-		return TRUE;
-	}
-	if (0 == (ACMDRIVERDETAILS_SUPPORTF_CODEC & add.fdwSupport)
-		|| add.cFormatTags <= 0)
-	{
-		return TRUE;
-	}
-	HACMDRIVER hdrv;
-	if (MMSYSERR_NOERROR != acmDriverOpen(& hdrv, hadid, 0))
-	{
-		return TRUE;
-	}
-	for (int tag = 0; tag < add.cFormatTags; tag++)
-	{
-		ACMFORMATTAGDETAILS aftd;
-		memset( & aftd, 0, sizeof aftd);
-		aftd.cbStruct = sizeof aftd;
-		aftd.dwFormatTagIndex = tag;
-		if (MMSYSERR_NOERROR == acmFormatTagDetails(hdrv, &aftd, ACM_FORMATTAGDETAILSF_INDEX))
-		{
-			if (WAVE_FORMAT_MPEGLAYER3 == aftd.dwFormatTag)
-			{
-				CDecompressContext * pContext = reinterpret_cast<CDecompressContext *>(dwInstance);
-				pContext->m_acmDrv = hdrv;
-				TRACE("MP3 decompressor found\n");
-				return FALSE;   // stop enumeration
-			}
-		}
-	}
-	acmDriverClose(hdrv, 0);
-	return TRUE;
-}
-BOOL CWaveSoapMP3Doc::OnOpenDocument(LPCTSTR lpszPathName, int flags)
+BOOL CWaveSoapFrontDoc::OpenWmaFileDocument(LPCTSTR lpszPathName)
 {
 
-	// TODO: Add your specialized creation code here
-	TRACE("CWaveSoapFrontDoc::OnOpenDocument(%s)\n", lpszPathName);
-	m_WavFile.Close();
-	m_OriginalWavFile.Close();
+	TRACE("CWaveSoapFrontDoc::OpenWmaFileDocument(%s)\n", lpszPathName);
 
 	CWaveSoapFrontApp * pApp = GetApp();
 	m_bDirectMode = FALSE;
@@ -4244,208 +4176,8 @@ BOOL CWaveSoapMP3Doc::OnOpenDocument(LPCTSTR lpszPathName, int flags)
 		// todo: dialog
 		return FALSE;
 	}
-#if 0
-	// read tag, if any
-	DWORD Mp3FileLength = m_OriginalWavFile.GetLength();
-	if (Mp3FileLength <= sizeof (DWORD))
-	{
-		// todo: dialog
-		m_OriginalWavFile.Close();
-		return FALSE;
-	}
-	MP3_IDTAG id3tag;
-	if (Mp3FileLength <= sizeof (MP3_IDTAG)
-		|| sizeof id3tag != m_OriginalWavFile.ReadAt( & id3tag,
-													sizeof id3tag, Mp3FileLength - sizeof id3tag))
-	{
-		if ('T' == id3tag.Tag[0]
-			&& 'A' == id3tag.Tag[1]
-			&& 'G' == id3tag.Tag[2])
-		{
-			// valid tag read
-			Mp3FileLength -= sizeof id3tag;
-		}
-		else
-		{
-			// no tag in the file
-			memset( & id3tag, 0, sizeof id3tag);
-		}
-	}
-	// read the first bytes of the file to check if it is
-	// the MP3 file
-	// 4 bytes of the frame will tell its attributes
-	DWORD hdr;
-
-	if (sizeof hdr != m_OriginalWavFile.ReadAt( & hdr, sizeof hdr, 0)
-		|| (hdr & 0x0000F0FF) != 0x0000F0FF
-		|| 0 == (hdr & 0x600)   // layer
-		|| 0xC0000 == (hdr & 0xC0000)
-		|| 0 == (hdr & 0x0F00000))  // bitrate
-	{
-		// todo: dialog
-		m_OriginalWavFile.Close();
-		return FALSE;
-	}
-	int BitrateIndex = ((hdr & 0xF00000) >> 20) // bitrate
-						| ((hdr & 0x800) >> 7)  // MPEG 1 or 2
-						| (((~hdr) & 0x600) >> 4); // layer
-	static int BitrateTable[16*2*3] =
-	{
-		0,  32,  64,  96, 128, 160, 192, 224, 256, 288, 320, 352, 384, 416, 448, -1,
-		0,  32,  64,  96, 128, 160, 192, 224, 256, 288, 320, 352, 384, 416, 448, -1,
-		0,  32,  48,  56,  64,  80,  96, 112, 128, 160, 192, 224, 256, 320, 384, -1,
-		0,  32,  48,  56,  64,  80,  96, 112, 128, 160, 192, 224, 256, 320, 384, -1,
-		0,   8,  16,  24,  32,  64,  80,  56,  64, 128, 160, 112, 128, 256, 320, -1,
-		0,  32,  40,  48,  56,  64,  80,  96, 112, 128, 160, 192, 224, 256, 320, -1,
-	};
-	MPEGLAYER3WAVEFORMAT m3wf;
-	memset( & m3wf, 0, sizeof m3wf);
-	m3wf.wfx.wFormatTag = WAVE_FORMAT_MPEGLAYER3;
-	m3wf.wfx.cbSize = MPEGLAYER3_WFX_EXTRA_BYTES;
-	m3wf.wID = MPEGLAYER3_ID_CONSTANTFRAMESIZE;
-	m3wf.fdwFlags = MPEGLAYER3_FLAG_PADDING_ISO;
-	m3wf.wfx.nAvgBytesPerSec = BitrateTable[BitrateIndex] * 125;
-	if (0 == m3wf.wfx.nAvgBytesPerSec)
-	{
-		m3wf.wID = MPEGLAYER3_ID_MPEG;
-		m3wf.wfx.nAvgBytesPerSec = 96000/8;
-	}
-	m3wf.wfx.nChannels = 2;
-	if ((hdr & 0xC0000000) == 0xC0000000)
-	{
-		m3wf.wfx.nChannels = 1;
-	}
-	if (hdr & 0x800)
-	{
-		TRACE("MPEG-1 ");
-		switch (hdr & 0x600)
-		{
-		case 0x200:
-			TRACE("Layer 3 ");
-			break;
-		case 0x400:
-			TRACE("Layer 2 ");
-			break;
-		case 0x600:
-			TRACE("Layer 1 ");
-			break;
-		}
-		switch (hdr & 0xC0000)
-		{
-		case 0x00000:
-			m3wf.wfx.nSamplesPerSec = 44100;
-			break;
-		case 0x40000:
-			m3wf.wfx.nSamplesPerSec = 48000;
-			break;
-		case 0x80000:
-			m3wf.wfx.nSamplesPerSec = 32000;
-			break;
-		}
-	}
-	else
-	{
-		TRACE("MPEG-2 ");
-		switch (hdr & 0xC0000)
-		{
-		case 0x00000:
-			m3wf.wfx.nSamplesPerSec = 22050;
-			break;
-		case 0x40000:
-			m3wf.wfx.nSamplesPerSec = 24000;
-			break;
-		case 0x80000:
-			m3wf.wfx.nSamplesPerSec = 16000;
-			break;
-		}
-	}
-	m3wf.nBlockSize = MulDiv(1152, m3wf.wfx.nAvgBytesPerSec, m3wf.wfx.nSamplesPerSec);
-	m3wf.nFramesPerBlock = 1;
-	m3wf.nCodecDelay = 0x571;
-#endif
-#if 0
-	TRACE("Bitrate=%d\n", BitrateTable[BitrateIndex]);
-	ACMFORMATTAGDETAILS atd;
-	memset ( & atd, 0, sizeof atd);
-	atd.cbStruct = sizeof atd;
-	atd.dwFormatTag = WAVE_FORMAT_MPEGLAYER3;
-	atd.fdwSupport = ACMDRIVERDETAILS_SUPPORTF_CODEC;
-	acmFormatTagDetails(NULL, & atd, ACM_FORMATTAGDETAILSF_LARGESTSIZE);
-	TRACE("Largest format size = %d, formats=%d\n",
-		atd.cbFormatSize, atd.cStandardFormats);
-	ACMFORMATDETAILS afd;
-	memset( & afd, 0, sizeof afd);
-	afd.cbStruct = sizeof afd;
-	afd.pwfx = & m3wf.wfx;
-	afd.cbwfx = sizeof m3wf;
-	afd.dwFormatTag = WAVE_FORMAT_MPEGLAYER3;
-	afd.fdwSupport = ACMDRIVERDETAILS_SUPPORTF_CODEC;
-	int retcode= acmFormatEnum(NULL, & afd, ::FormatEnum, NULL, ACM_FORMATENUMF_WFORMATTAG);
-	TRACE("acmFormatEnum returned %X\n", retcode);
-#endif
 	// enum drivers, query which driver suports MP3 format, and open this driver
 	// for decode
-#if 0
-	CDecompressContext * pContext = new CDecompressContext(this, "Loading the compressed file...");
-
-	acmDriverEnum(DriverEnumProc, DWORD(pContext), 0);
-	if (NULL == pContext->m_acmDrv)
-	{
-		TRACE("MP3 decompressor not found\n");
-		m_OriginalWavFile.Close();
-		delete pContext;
-		return FALSE;
-	}
-
-	// calculate approximate number of samples in the file
-	int nSamples = MulDiv(Mp3FileLength,
-						m3wf.wfx.nSamplesPerSec, m3wf.wfx.nAvgBytesPerSec);
-	int FormatSize = sizeof MPEGLAYER3WAVEFORMAT;
-	CWaveFile::COMMON_DATA * pData = (CWaveFile::COMMON_DATA *)
-									m_OriginalWavFile.AllocateCommonData(FormatSize + offsetof (CWaveFile::COMMON_DATA, wf));
-	if (NULL == pData)
-	{
-		// todo: dialog
-		m_OriginalWavFile.Close();
-		delete pContext;
-		return FALSE;
-	}
-	memcpy (& pData->wf, & m3wf, sizeof m3wf);
-	pContext->m_SrcFile = m_OriginalWavFile;
-	if ( FALSE == m_WavFile.CreateWaveFile( & m_OriginalWavFile, NULL, ALL_CHANNELS, // 2 channels
-											nSamples,
-											CreateWaveFileTempDir
-											| CreateWaveFileDeleteAfterClose
-											| CreateWaveFilePcmFormat
-											| CreateWaveFileTemp,
-											NULL))
-	{
-		AfxMessageBox(IDS_UNABLE_TO_CREATE_NEW_FILE, MB_OK | MB_ICONEXCLAMATION);
-		m_OriginalWavFile.Close();
-		delete pContext;
-		return FALSE;
-	}
-	pContext->m_DstFile = m_WavFile;
-	if (MMSYSERR_NOERROR != acmStreamOpen( & pContext->m_acmStr, pContext->m_acmDrv,
-											m_OriginalWavFile.GetWaveFormat(), m_WavFile.GetWaveFormat(),
-											NULL, NULL, NULL, ACM_STREAMOPENF_NONREALTIME))
-	{
-		m_OriginalWavFile.Close();
-		m_WavFile.Close();  // and delete
-		delete pContext;
-		return FALSE;
-	}
-	pContext->m_SrcStart = 0;
-	pContext->m_SrcPos = 0;
-	pContext->m_SrcEnd = Mp3FileLength;
-	pContext->m_DstChan = ALL_CHANNELS;
-	pContext->m_DstStart = m_WavFile.GetDataChunk()->dwDataOffset;
-	pContext->m_DstCopyPos = pContext->m_DstStart;
-	pContext->m_DstEnd = m_WavFile.GetLength();
-	pContext->m_CurrentSamples = m_WavFile.NumberOfSamples();
-	AllocatePeakData(pContext->m_CurrentSamples);
-	pContext->Execute();
-#else
 	CWmaDecodeContext * pWmaContext = new CWmaDecodeContext(this, "Loading the compressed file...");
 	BOOL res = pWmaContext->Open(m_OriginalWavFile);
 	if (res)
@@ -4467,6 +4199,5 @@ BOOL CWaveSoapMP3Doc::OnOpenDocument(LPCTSTR lpszPathName, int flags)
 		delete pWmaContext;
 		return FALSE;
 	}
-#endif
 	return FALSE;
 }

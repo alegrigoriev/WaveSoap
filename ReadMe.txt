@@ -1,15 +1,13 @@
 Known problems and tasks:
 
-If read-only file is saved, name should be different
-
 Add MP3 save
-Add ASF reading
 Add ASF save
 Use waveformat instead of template, for FileNew
+If read-only file is saved, name should be different
 Make "Expression Evaluation" command
 Add spectrum section view
 Sound view jerks during playback of the last screen.
-Add spin support for selection dialog.
+Add spin support for selection and GOTO dialog.
 Rintime error during Undo on some systems
 Make Paste Special command
 When a file is opened in non-direct mode, peak info is saved with wrong time stamp
@@ -36,30 +34,9 @@ Add mouse wheel support
 Add autoscroll during selection
 
 Done:
-Add MP3 reading
-prb: playback stops during FFT draw (could be caused by DirectFile list bug)
-If the file has non-standard sample rate, in Save dialog create two PCM formats with this sample rates,
-  along with format description
-After saving compressed file, update file length and 'fact' chunk
-Make Compressed file save
-Make File Save function
-Prb: When wave background is scrolled, it gets lines.
-Fixed wrong m_pReadMask initialization
-Make mono version of statistics dialog template
-Process fact chunk for the compressed file (fact length in samples).
-Prb: After pause cursor is not in the view center
-Make caret centered after goto commands
-Make faster registry access
-Make Undo for Resampling and for sample rate change
-Add visible area to OutlineView
-Erase playback cursor after stop
-Make Resampling.
-Problem with wave view scroll - garbage left.
-Problem with Wave Update.
-Make zoom to selection command
-Draw OutlineView from the real data if the file is too short
-Add playback cursor to OutlineView
-prb: Zoom In Full command moves to wrong position
+Add ASF reading
+MP3 reading uses Windows Media functions
+Add MP3 and WMA attributes display to the open dialog
 
 File Save/Save As checklist:
 
