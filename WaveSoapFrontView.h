@@ -176,6 +176,8 @@ protected:
 	afx_msg void OnCaptureChanged(CWnd *pWnd);
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
+public:
+	afx_msg void OnLButtonDblClk(UINT nFlags, CPoint point);
 };
 
 #define VSHT_RIGHT_AUTOSCROLL 0x40000    // autoscroll area
