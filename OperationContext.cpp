@@ -1645,14 +1645,9 @@ CSoundPlayContext::CSoundPlayContext(CWaveSoapFrontDoc * pDoc, CWaveFile & WavFi
 	, m_PlaybackBuffers(PlaybackBuffers)
 	, m_PlaybackBufferSize(PlaybackBufferSize)
 {
+
 	m_PercentCompleted = -1;  // no percents
 	m_PlayFile = WavFile;
-}
-
-BOOL CSoundPlayContext::Init()
-{
-	MMCKINFO * pDatack = m_PlayFile.GetDataChunk();
-
 	m_Begin = m_PlayFile.SampleToPosition(m_FirstSamplePlayed);
 
 	m_CurrentPlaybackPos = m_Begin;
@@ -1665,17 +1660,26 @@ BOOL CSoundPlayContext::Init()
 	{
 		m_End = m_PlayFile.SampleToPosition(m_LastSamplePlayed);
 	}
+	// if mono playback requested, open it as mono
+	NUMBER_OF_CHANNELS channels = m_PlayFile.Channels();
+
+	if ( ! m_PlayFile.AllChannels(m_Chan))
+	{
+		channels = 1;
+
+		ASSERT(SPEAKER_FRONT_RIGHT == m_Chan
+				|| SPEAKER_FRONT_LEFT == m_Chan);
+	}
+	m_Wf.InitFormat(WAVE_FORMAT_PCM, m_PlayFile.SampleRate(),
+					channels);
+}
+
+BOOL CSoundPlayContext::Init()
+{
 
 	m_OldThreadPriority = GetThreadPriority(GetCurrentThread());
 
-	// if mono playback requested, open it as mono
-	WAVEFORMATEX wfx = * m_PlayFile.GetWaveFormat();
-
-	if (m_Chan != ALL_CHANNELS) wfx.nChannels = 1;
-	wfx.nBlockAlign = wfx.nChannels * wfx.wBitsPerSample / 8;
-	wfx.nAvgBytesPerSec = wfx.nSamplesPerSec * wfx.nBlockAlign;
-
-	MMRESULT mmres = m_WaveOut.Open(m_PlaybackDevice, & wfx, 0);
+	MMRESULT mmres = m_WaveOut.Open(m_PlaybackDevice, m_Wf, 0);
 
 	if (MMSYSERR_NOERROR != mmres)
 	{
@@ -1708,10 +1712,13 @@ void CSoundPlayContext::PostRetire(BOOL bChildContext)
 	pDocument->m_PlayingSound = false;
 	if (m_bPauseRequested)
 	{
+		// TODO: keep selection and pause cursor inside a selection?
+#if 0
 		if (pDocument->m_SelectionEnd == pDocument->m_SelectionStart)
 		{
 			pDocument->m_SelectionEnd = m_SamplePlayed;
 		}
+#endif
 		pDocument->SetSelection(m_SamplePlayed, m_SamplePlayed,
 								pDocument->m_SelectedChannel, m_SamplePlayed, SetSelection_MoveCaretToCenter);
 	}
@@ -1754,9 +1761,11 @@ BOOL CSoundPlayContext::OperationProc()
 			m_OperationString = _T("Playback Stopped");
 			break;
 		}
+
 		char * pBuf;
 		size_t size;
 		int nBuf = m_WaveOut.GetBuffer( & pBuf, & size, FALSE);
+
 		if (nBuf <= 0)
 		{
 			// buffer not available yet
@@ -1765,65 +1774,30 @@ BOOL CSoundPlayContext::OperationProc()
 		}
 		else
 		{
-			// fill the buffer
-			int TotalInBuf = 0;
-			while (size != 0 && m_CurrentPlaybackPos < m_End)
+			unsigned Samples = size / m_Wf.SampleSize();
+			unsigned SrcSamples =
+				(m_End - m_CurrentPlaybackPos) / m_PlayFile.SampleSize();
+
+			if (0 == SrcSamples)
 			{
-				size_t len = m_End - m_CurrentPlaybackPos;
-				if (ALL_CHANNELS == m_Chan)
-				{
-					if (len > size) len = size;
-				}
-				else
-				{
-					if (len > size * 2) len = size * 2;
-				}
-				void * pFileBuf = NULL;
-				long lRead = m_PlayFile.GetDataBuffer( & pFileBuf,
-														len, m_CurrentPlaybackPos, CDirectFile::GetBufferAndPrefetchNext);
-				if (lRead <= 0)
-				{
-					m_WaveOut.ReturnBuffer(nBuf);
-					return FALSE;
-				}
-				if (ALL_CHANNELS == m_Chan)
-				{
-					memcpy(pBuf, pFileBuf, lRead);
-					m_PlayFile.ReturnDataBuffer(pFileBuf,
-												lRead, CDirectFile::ReturnBufferDiscard);
-					m_CurrentPlaybackPos += lRead;
-					pBuf += lRead;
-					size -= lRead;
-					TotalInBuf += lRead;
-				}
-				else
-				{
-					long const lUsedRead = lRead;
-					WAVE_SAMPLE * pSrcBuf = (WAVE_SAMPLE *) pFileBuf;
-					WAVE_SAMPLE * pDstBuf = (WAVE_SAMPLE *) pBuf;
-
-					if ((m_CurrentPlaybackPos & 2) != m_Chan * 2)
-					{
-						pSrcBuf++;
-					}
-					unsigned SamplesRead = lUsedRead / (2 * sizeof pSrcBuf[0]);
-
-					for (unsigned i = 0; i < SamplesRead; i++)
-					{
-						pDstBuf[i] = pSrcBuf[i * 2];
-					}
-					size -= SamplesRead * 2;
-					TotalInBuf += SamplesRead * 2;
-					pBuf += SamplesRead * 2;
-
-					m_PlayFile.ReturnDataBuffer(pFileBuf,
-												lRead, CDirectFile::ReturnBufferDiscard);
-					m_CurrentPlaybackPos += lRead;
-				}
+				m_CurrentPlaybackPos = m_End;
+				break;
 			}
-			m_WaveOut.Play(nBuf, TotalInBuf, 0);
+			if (Samples > SrcSamples)
+			{
+				Samples = SrcSamples;
+			}
 
+			if (Samples != m_PlayFile.ReadSamples(m_Chan, m_CurrentPlaybackPos,
+												Samples, pBuf))
+			{
+				m_CurrentPlaybackPos = m_End;
+				break;
+			}
 
+			m_WaveOut.Play(nBuf, Samples * m_Wf.SampleSize(), 0);
+
+			m_CurrentPlaybackPos += Samples * m_PlayFile.SampleSize();
 		}
 	}
 	while(0);
