@@ -19,6 +19,7 @@
 #include "DirectFile.h"
 #include "OperationContext2.h"
 #include "KListEntry.h"
+#include "LocaleUtilities.h"
 
 /////////////////////////////////////////////////////////////////////////////
 // CWaveSoapFrontApp:
@@ -98,7 +99,9 @@ protected:
 	DWORD m_OpenDocumentFlags;
 };
 
-class CWaveSoapFrontApp : public CWinApp, public DirectFileParameters
+class CWaveSoapFrontApp : public CWinApp,
+	public DirectFileParameters,
+	public LocaleParameters
 {
 public:
 	CWaveSoapFrontApp();
@@ -116,9 +119,6 @@ public:
 	//}}AFX_VIRTUAL
 
 // Implementation
-	double GetProfileDouble(LPCTSTR Section, LPCTSTR ValueName,
-							double Default, double MinVal, double MaxVal);
-	void WriteProfileDouble(LPCTSTR Section, LPCTSTR ValueName, double value);
 	CApplicationProfile Profile;
 	CString m_CurrentDir;
 	int m_OpenFileDialogFilter;
@@ -127,7 +127,6 @@ public:
 		DefaultOpenDirect = 1,
 		DefaultOpenBuffered = 2, };
 
-	bool m_bOpenMaximized;
 	bool m_bOpenChildMaximized;
 	bool m_bShowToolbar;
 	bool m_bShowStatusBar;
@@ -205,9 +204,6 @@ public:
 	BOOL m_bRememberSelectionInUndo;  // File proppage
 
 	BOOL m_bUseCountrySpecificNumberAndTime;
-	TCHAR m_TimeSeparator;
-	TCHAR m_DecimalPoint;
-	TCHAR m_ThousandSeparator;
 
 	BOOL m_DontShowMediaPlayerWarning;
 
@@ -283,7 +279,6 @@ inline CThisApp * GetApp()
 }
 
 // long to string, thousands separated by commas
-CString LtoaCS(long num);
 void SetStatusString(CCmdUI* pCmdUI, const CString & string,
 					LPCTSTR MaxString = NULL, BOOL bForceSize = FALSE);
 BOOL VerifyCreateDirectory(LPCTSTR pszPath);
