@@ -509,15 +509,15 @@ class CResampleFilter: public CWaveProc
 public:
 	typedef std::auto_ptr<ThisClass> auto_ptr;
 	CResampleFilter();
-	CResampleFilter(double ResampleRatio, int FilterLength,
-					NUMBER_OF_CHANNELS nChannels);
+	CResampleFilter(long OriginalSampleRate, long NewSampleRate,
+					int FilterLength, NUMBER_OF_CHANNELS nChannels);
 
 	virtual ~CResampleFilter();
 
 	virtual size_t ProcessSoundBuffer(char const * pInBuf, char * pOutBuf,
 									size_t nInBytes, size_t nOutBytes, size_t * pUsedBytes);
 	//virtual BOOL SetAndValidateWaveformat(WAVEFORMATEX const * pWf);
-	void InitResample(double ResampleRatio, int FilterLength,
+	void InitResample(long OriginalSampleRate, long NewSampleRate, int FilterLength,
 					NUMBER_OF_CHANNELS nChannels);
 
 private:
@@ -526,12 +526,15 @@ private:
 		WindowTypeNuttall,
 		WindowType = WindowTypeNuttall,
 	};
+
 	double FilterWindow(double arg);
-	double sinc(double arg, double FilterLength);
+	double sinc(double arg);
+	double ResampleFilterTap(double arg, double FilterLength);
 
 	enum {ResampleTableBits = 10,
 		ResampleFilterSize = (1 << ResampleTableBits),
 		ResampleIndexShift = (32 - ResampleTableBits),
+		MaxNumberOfFilterSamples = 200*100,
 		SrcBufSize = 0x4000,
 		DstBufSize = 0x4000 };
 
@@ -551,13 +554,22 @@ private:
 		double deriv1;
 		double deriv2;
 	};
-	FilterCoeff m_FilterTable[ResampleFilterSize];
+
+	ATL::CHeapPtr<FilterCoeff> m_InterpolatedFilterTable;
+	ATL::CHeapPtr<double> m_FilterTable;
 
 	unsigned __int32 m_InputPeriod;
 	unsigned __int32 m_OutputPeriod;
 	unsigned __int32 m_Phase;
-	double m_ResampleRatio;
 
+	long m_OriginalSampleRate;
+	long m_NewSampleRate;
+	unsigned m_SamplesInFilter;
+	unsigned m_FilterArraySize;
+	signed m_RationalResampleFraction;
+	unsigned m_FilterIndex;
+
+	void ResetResample();
 };
 
 class CAudioConvertor : public CWaveProc
