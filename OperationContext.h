@@ -422,7 +422,9 @@ public:
 	BOOL InitUndoCopy(CWaveFile & SrcFile,
 					SAMPLE_POSITION SaveStartPos, // source file position of data needed to save and restore
 					SAMPLE_POSITION SaveEndPos,
-					CHANNEL_MASK SaveChannel);
+					CHANNEL_MASK SaveChannel,
+					SAMPLE_POSITION RedoStartPos = 0, // source file position of data needed to redo
+					SAMPLE_POSITION RedoEndPos = LAST_SAMPLE_POSITION);
 
 	//virtual BOOL CreateUndo();
 	virtual BOOL PrepareUndo();

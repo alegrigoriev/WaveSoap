@@ -2103,16 +2103,15 @@ BOOL CMoveOperation::InitMove(CWaveFile & File,
 	{
 		// shrinking the file
 		InitSource(File, SrcStartSample, SrcStartSample + Length, Channel);
-		InitDestination(File, DstStartSample, DstStartSample + Length, Channel, FALSE);
 
 		SAMPLE_INDEX UndoEnd = min(SrcStartSample, DstStartSample + Length);
-		SetSaveForUndo(DstStartSample, UndoEnd);
+		InitDestination(File, DstStartSample, DstStartSample + Length, Channel, FALSE, DstStartSample, UndoEnd);
 	}
 	else
 	{
 		// expanding the file, start the operation from end
 		InitSource(File, SrcStartSample + Length, SrcStartSample, Channel);
-		InitDestination(File, DstStartSample + Length, DstStartSample, Channel, FALSE);
+		InitDestination(File, DstStartSample + Length, DstStartSample, Channel, FALSE, 0, 0);
 	}
 	return TRUE;
 }
@@ -2491,7 +2490,8 @@ BOOL CSaveTrimmedOperation::CreateUndo()
 	CRestoreTrimmedOperation::auto_ptr
 	pUndo(new CRestoreTrimmedOperation(pDocument));
 
-	if ( ! pUndo->InitUndoCopy(m_SrcFile, m_UndoStartPos, m_UndoEndPos, m_SrcChan))
+	// this operation doesn't require saving REDO data during UNDO
+	if ( ! pUndo->InitUndoCopy(m_SrcFile, m_UndoStartPos, m_UndoEndPos, m_SrcChan, 0, 0))
 	{
 		return FALSE;
 	}
@@ -3190,6 +3190,8 @@ CFadeInOutOperation::CFadeInOutOperation(class CWaveSoapFrontDoc * pDoc, int Fad
 }
 
 // init cross fade
+// When the function creates UNDO, it also calls SetSaveForUndo to initialize range to save.
+// If UNDO should be created later, the UNDO range should be initialized by calling SetSaveForUndo otherwise.
 CFadeInOutOperation::CFadeInOutOperation(class CWaveSoapFrontDoc * pDoc, int FadeCurveType,
 										CWaveFile & SrcFile, SAMPLE_INDEX SrcBegin, CHANNEL_MASK SrcChannel,
 										CWaveFile & DstFile, SAMPLE_INDEX DstBegin, CHANNEL_MASK DstChannel,
@@ -3202,6 +3204,8 @@ CFadeInOutOperation::CFadeInOutOperation(class CWaveSoapFrontDoc * pDoc, int Fad
 }
 
 // init fade in/out
+// When the function creates UNDO, it also calls SetSaveForUndo to initialize range to save.
+// If UNDO should be created later, the UNDO range should be initialized by calling SetSaveForUndo otherwise.
 CFadeInOutOperation::CFadeInOutOperation(class CWaveSoapFrontDoc * pDoc, int FadeCurveType,
 										CWaveFile & DstFile, SAMPLE_INDEX DstBegin, CHANNEL_MASK DstChannel,
 										NUMBER_OF_SAMPLES Length, BOOL UndoEnabled)
