@@ -65,7 +65,9 @@ Save As dialog is not centered first time (comdlg problem?)
 ??? When time/seconds format is set for status bar, MM:SS is actually shown
 
 Fixed:
-Tooltips could be shown only after TTN_GETTEXT failed once, otherwise the tis was inactive
+File dialog didn't open in Win98
+Equalizer and filter views invalidated wrong area (CXDRAG instead of CXSIZEFRAME)
+Tooltips could be shown only after TTN_GETTEXT failed once, otherwise the tips was inactive
 in FFT view, sound modification doesn't invalidate enough FFT data
 in 1:1 scale, need to invalidate 1 more column
 CEqualizerContext didn't set Dirty flag in the buffers

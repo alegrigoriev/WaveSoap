@@ -105,7 +105,8 @@ typedef enum
 
 
 
-typedef struct	{
+typedef struct BE_CONFIG
+{
 	DWORD	dwConfig;			// BE_CONFIG_XXXXX
 	// Currently only BE_CONFIG_MP3 is supported
 	union	{
@@ -170,7 +171,8 @@ typedef struct	{
 } BE_CONFIG, *PBE_CONFIG;
 
 
-typedef struct	{
+typedef struct BE_VERSION
+{
 
 	// BladeEnc DLL Version number
 
@@ -203,12 +205,12 @@ typedef struct	{
 
 #ifndef _BLADEDLL
 
-typedef BE_ERR	(*BEINITSTREAM)			(PBE_CONFIG, PDWORD, PDWORD, PHBE_STREAM);
-typedef BE_ERR	(*BEENCODECHUNK)		(HBE_STREAM, DWORD, PSHORT, PBYTE, PDWORD);
-typedef BE_ERR	(*BEDEINITSTREAM)		(HBE_STREAM, PBYTE, PDWORD);
-typedef BE_ERR	(*BECLOSESTREAM)		(HBE_STREAM);
-typedef VOID	(*BEVERSION)			(PBE_VERSION);
-typedef VOID	(*BEWRITEVBRHEADER)		(LPCSTR);
+typedef BE_ERR	(_cdecl *BEINITSTREAM)			(PBE_CONFIG, PDWORD, PDWORD, PHBE_STREAM);
+typedef BE_ERR	(_cdecl *BEENCODECHUNK)		(HBE_STREAM, DWORD, PSHORT, PBYTE, PDWORD);
+typedef BE_ERR	(_cdecl *BEDEINITSTREAM)		(HBE_STREAM, PBYTE, PDWORD);
+typedef BE_ERR	(_cdecl *BECLOSESTREAM)		(HBE_STREAM);
+typedef VOID	(_cdecl *BEVERSION)			(PBE_VERSION);
+typedef VOID	(_cdecl *BEWRITEVBRHEADER)		(LPCSTR);
 
 #define	TEXT_BEINITSTREAM		"beInitStream"
 #define	TEXT_BEENCODECHUNK		"beEncodeChunk"
@@ -230,5 +232,31 @@ __declspec(dllexport) BE_ERR	beWriteVBRHeader(LPCSTR lpszFileName);
 #endif
 
 #pragma pack(pop)
+// AG:
+class BladeMp3Dll
+{
+public:
+	BladeMp3Dll();
+	~BladeMp3Dll();
+	BOOL Open(LPCTSTR DllName = "LAME_ENC.DLL");
+	BEINITSTREAM InitStream;
+	BEENCODECHUNK EncodeChunk;
+	BEDEINITSTREAM DeinitStream;
+	BECLOSESTREAM CloseStream;
+	BEVERSION GetVersion;
+	BEWRITEVBRHEADER WriteVBRHeader;
+protected:
+	static BE_ERR	_cdecl InitStreamStub(PBE_CONFIG, PDWORD, PDWORD, PHBE_STREAM) { return BE_ERR_NO_MORE_HANDLES; }
+	static BE_ERR	_cdecl EncodeChunkStub		(HBE_STREAM, DWORD, PSHORT, PBYTE, PDWORD) { return BE_ERR_INVALID_HANDLE; }
+	static BE_ERR	_cdecl DeinitStreamStub		(HBE_STREAM, PBYTE, PDWORD) { return BE_ERR_INVALID_HANDLE; }
+	static BE_ERR	_cdecl CloseStreamStub		(HBE_STREAM) { return BE_ERR_INVALID_HANDLE; }
+	static VOID	_cdecl GetVersionStub			(PBE_VERSION) {}
+	static VOID	_cdecl WriteVBRHeaderStub		(LPCSTR) {}
+
+private:
+	HBE_STREAM m_pStream;
+	HMODULE m_DllModule;
+	DWORD m_InBufferSize;
+};
 
 #endif

@@ -1355,8 +1355,8 @@ int CEqualizerGraphWnd::GetHitCode(POINT point)
 	{
 		return -0x100;
 	}
-	int dx = GetSystemMetrics(SM_CXDRAG);
-	int dy = GetSystemMetrics(SM_CYDRAG);
+	int dx = GetSystemMetrics(SM_CXSIZEFRAME);
+	int dy = GetSystemMetrics(SM_CYSIZEFRAME);
 	for (int i = 0; i < m_NumOfBands; i++)
 	{
 		// find if the mouse gets into a focus point
@@ -1413,8 +1413,8 @@ void CEqualizerGraphWnd::DrawDotCaret(bool state)
 			x = cr.Width() * (m_BandWithFocus * 2 + 1) / (2 * m_NumOfBands);
 		}
 		int y = (1 - log10(m_BandGain[m_BandWithFocus])) * cr.Height() / 2;
-		int dx = GetSystemMetrics(SM_CXDRAG);
-		int dy = GetSystemMetrics(SM_CYDRAG);
+		int dx = GetSystemMetrics(SM_CXSIZEFRAME);
+		int dy = GetSystemMetrics(SM_CYSIZEFRAME);
 		CRect r(x - dx, y - dy, x + dx, y + dy);
 		InvalidateRect( & r);
 	}
