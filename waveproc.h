@@ -508,9 +508,8 @@ class CResampleFilter: public CWaveProc
 
 public:
 	typedef std::auto_ptr<ThisClass> auto_ptr;
-	CResampleFilter()
-	{
-	}
+	CResampleFilter();
+
 	virtual ~CResampleFilter();
 
 	virtual size_t ProcessSoundBuffer(char const * pInBuf, char * pOutBuf,
@@ -519,7 +518,14 @@ public:
 	BOOL InitResample(double ResampleRatio, double FilterLength,
 					NUMBER_OF_CHANNELS nChannels);
 
+private:
 	void FilterSoundResample();
+	enum {WindowTypeSquareSine,
+		WindowTypeNuttall,
+		WindowType = WindowTypeNuttall,
+	};
+	double FilterWindow(double arg);
+	double sinc(double arg, double FilterLength);
 
 	enum {ResampleTableBits = 10,
 		ResampleFilterSize = (1 << ResampleTableBits),
@@ -537,9 +543,9 @@ public:
 	size_t m_SrcBufFilled; // position to put new samples converted from __int16
 	size_t m_SrcFilterLength;
 
-	float m_FilterBuf[ResampleFilterSize];
-	float m_FilterDifBuf[ResampleFilterSize];
-	float m_FilterDif2Buf[ResampleFilterSize];
+	double m_FilterBuf[ResampleFilterSize];
+	double m_FilterDifBuf[ResampleFilterSize];
+	double m_FilterDif2Buf[ResampleFilterSize];
 
 	unsigned __int32 m_InputPeriod;
 	unsigned __int32 m_OutputPeriod;
