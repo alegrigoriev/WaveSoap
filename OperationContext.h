@@ -797,6 +797,10 @@ public:
 	{
 	}
 
+	~CFileSaveContext()
+	{
+	}
+
 	CString m_NewName;
 	CWaveFile m_DstFile;
 	CWaveFile m_SrcFile;
@@ -863,6 +867,9 @@ public:
 	{
 	}
 
+	~CWmaSaveContext()
+	{
+	}
 	WmaEncoder m_Enc;
 
 	virtual BOOL Init();
