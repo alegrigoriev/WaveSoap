@@ -59,12 +59,11 @@ CWaveSoapFrontView::CWaveSoapFrontView()
 	m_FirstSampleInBuffer(0),
 	m_pWaveBuffer(NULL),
 	m_WaveBufferSize(0),
-	m_PlaybackChannel(-1),
+	m_PlaybackCursorChannel(-1),
 	m_PlaybackCursorDrawn(false),
-	m_LastPlaybackCursorPos(0),
+	m_PlaybackCursorDrawnSamplePos(0),
 	m_WaveDataSizeInBuffer(0)
 {
-	// TODO: add construction code here
 	TRACE("CWaveSoapFrontView::CWaveSoapFrontView()\n");
 }
 
@@ -80,7 +79,7 @@ CWaveSoapFrontView::~CWaveSoapFrontView()
 
 BOOL CWaveSoapFrontView::PreCreateWindow(CREATESTRUCT& cs)
 {
-	// TODO: Modify the Window class or styles here by modifying
+	// Modify the Window class or styles here by modifying
 	//  the CREATESTRUCT cs
 	cs.lpszClass = AfxRegisterWndClass(CS_VREDRAW | CS_DBLCLKS, NULL, NULL, NULL);
 	TRACE("CWaveSoapFrontView::PreCreateWindow(CREATESTRUCT)\n");
@@ -214,19 +213,10 @@ void CWaveSoapFrontView::OnDraw(CDC* pDC)
 	// number of sample that corresponds to the r.left position
 	int NumOfFirstSample = DWORD(left);
 	int SamplesPerPoint = m_HorizontalScale;
-	// TODO: add draw code here
 
-	// draw 0 line
-
-	// draw the graph
 	// create an array of points
 
 	if (left < 0.) left = 0.;
-	//POINT LeftPoint = DoubleToPointDev(left, 0);
-	//int iSamplesCount = int(right) - int(left);
-	// draw the graph
-	// create an array of points
-	// allocate the array for the view bitmap
 
 	int nChannels = pDoc->WaveChannels();
 	int nNumberOfPoints = r.right - r.left;
@@ -360,13 +350,13 @@ void CWaveSoapFrontView::OnDraw(CDC* pDC)
 						int low = 0x7FFF;
 						int high = -0x8000;
 						if (NULL != m_pWaveBuffer
-							&& pWaveSamples < m_pWaveBuffer + m_WaveBufferSize)
+							&& pWaveSamples < m_pWaveBuffer + m_WaveDataSizeInBuffer)
 						{
 							if (pWaveSamples >= m_pWaveBuffer)
 							{
 								for (int j = 0; j < SamplesPerPoint; j++, pWaveSamples+= nChannels)
 								{
-									if (pWaveSamples >= m_pWaveBuffer + m_WaveBufferSize)
+									if (pWaveSamples >= m_pWaveBuffer + m_WaveDataSizeInBuffer)
 									{
 										break;
 									}
@@ -471,7 +461,7 @@ void CWaveSoapFrontView::OnDraw(CDC* pDC)
 	pDC->SelectObject(pOldPen);
 	if (m_PlaybackCursorDrawn)
 	{
-		DrawPlaybackCursor(pDC, m_LastPlaybackCursorPos, m_PlaybackChannel);
+		DrawPlaybackCursor(pDC, m_PlaybackCursorDrawnSamplePos, m_PlaybackCursorChannel);
 	}
 	CScaledScrollView::OnDraw(pDC);
 }
@@ -506,6 +496,16 @@ void CWaveSoapFrontView::GetWaveSamples(int Position, int NumOfSamples)
 		}
 		m_WaveBufferSize = NumOfSamples;
 		m_WaveDataSizeInBuffer = 0;
+	}
+	int nTotalWaveFileSamples = pDoc->WaveDataChunk()->cksize / sizeof(__int16);
+	if (Position >= nTotalWaveFileSamples)
+	{
+		m_WaveDataSizeInBuffer = 0;
+		return;
+	}
+	if (Position + NumOfSamples > nTotalWaveFileSamples)
+	{
+		NumOfSamples = nTotalWaveFileSamples - Position;
 	}
 	//check if we can reuse some of the data in the buffer
 	// use Position, NumOfSamples, m_FirstSampleInBuffer, m_WaveDataSizeInBuffer
@@ -593,7 +593,7 @@ void CWaveSoapFrontView::AdjustNewScale(double OldScaleX, double OldScaleY,
 
 BOOL CWaveSoapFrontView::PlaybackCursorVisible()
 {
-	int pos = WorldToWindowX(m_LastPlaybackCursorPos);
+	int pos = WorldToWindowX(m_PlaybackCursorDrawnSamplePos);
 	CRect r;
 	GetClientRect( & r);
 	if (pos < r.left || pos >= r.right)
@@ -667,8 +667,8 @@ void CWaveSoapFrontView::ShowPlaybackCursor(CDC * pDC)
 		&& IsWindowVisible()
 		&& ! m_PlaybackCursorDrawn)
 	{
-		//TRACE("Cursor drawn  at %d, time=%d\n", m_LastPlaybackCursorPos, timeGetTime());
-		DrawPlaybackCursor(pDC, m_LastPlaybackCursorPos, m_PlaybackChannel);
+		//TRACE("Cursor drawn  at %d, time=%d\n", m_PlaybackCursorDrawnSamplePos, timeGetTime());
+		DrawPlaybackCursor(pDC, m_PlaybackCursorDrawnSamplePos, m_PlaybackCursorChannel);
 		m_PlaybackCursorDrawn = true;
 	}
 }
@@ -677,8 +677,8 @@ void CWaveSoapFrontView::HidePlaybackCursor(CDC * pDC)
 {
 	if (m_PlaybackCursorDrawn)
 	{
-		//TRACE("Cursor hidden at %d, time=%d\n", m_LastPlaybackCursorPos, timeGetTime());
-		DrawPlaybackCursor(pDC, m_LastPlaybackCursorPos, m_PlaybackChannel);
+		//TRACE("Cursor hidden at %d, time=%d\n", m_PlaybackCursorDrawnSamplePos, timeGetTime());
+		DrawPlaybackCursor(pDC, m_PlaybackCursorDrawnSamplePos, m_PlaybackCursorChannel);
 		m_PlaybackCursorDrawn = false;
 	}
 }
@@ -979,7 +979,7 @@ BOOL CWaveSoapFrontView::OnEraseBkgnd(CDC* pDC)
 	if (FileEnd < r.right)
 	{
 		CBitmap bmp;
-		unsigned char pattern[] =
+		static const unsigned char pattern[] =
 		{
 			0x55, 0,  // aligned to WORD
 			0xAA, 0,
@@ -1246,7 +1246,6 @@ void CWaveSoapFrontView::OnMouseMove(UINT nFlags, CPoint point)
 
 void CWaveSoapFrontView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
 {
-	// TODO: Add your specialized code here and/or call the base class
 	if (lHint == CWaveSoapFrontDoc::UpdateSelectionChanged
 		&& NULL != pHint)
 	{
@@ -1383,6 +1382,7 @@ void CWaveSoapFrontView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
 	else if (lHint == CWaveSoapFrontDoc::UpdateSoundChanged
 			&& NULL != pHint)
 	{
+		m_WaveDataSizeInBuffer = 0; // invalidate the data in draw buffer
 		CSoundUpdateInfo * pInfo = (CSoundUpdateInfo *) pHint;
 		CWaveSoapFrontDoc * pDoc = GetDocument();
 		CRect r;
@@ -1402,6 +1402,7 @@ void CWaveSoapFrontView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
 				nHighExtent = 0x10000;
 			}
 			SetMaxExtents(0, pInfo->Length, nLowExtent, nHighExtent);
+			Invalidate();
 		}
 
 		// calculate update boundaries
@@ -1860,22 +1861,22 @@ BOOL CWaveSoapFrontView::OnScrollBy(CSize sizeScroll, BOOL bDoScroll)
 
 void CWaveSoapFrontView::UpdatePlaybackCursor(long sample, int channel)
 {
-	if (-1 == m_PlaybackChannel)
+	if (-1 == m_PlaybackCursorChannel)
 	{
-		m_LastPlaybackCursorPos = sample;
+		m_PlaybackCursorDrawnSamplePos = sample;
 	}
 	int pos = WorldToWindowX(sample);
-	int OldPos = WorldToWindowX(m_LastPlaybackCursorPos);
+	int OldPos = WorldToWindowX(m_PlaybackCursorDrawnSamplePos);
 	if (pos == OldPos
-		&& channel == m_PlaybackChannel)
+		&& channel == m_PlaybackCursorChannel)
 	{
-		m_LastPlaybackCursorPos = sample;
+		m_PlaybackCursorDrawnSamplePos = sample;
 		return; // no need to change
 	}
 
 	HidePlaybackCursor();
-	m_LastPlaybackCursorPos = sample;
-	m_PlaybackChannel = channel;
+	m_PlaybackCursorDrawnSamplePos = sample;
+	m_PlaybackCursorChannel = channel;
 
 	if (-1 == channel)
 	{

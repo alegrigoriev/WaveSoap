@@ -87,9 +87,9 @@ protected:
 	virtual void HidePlaybackCursor(CDC * pDC = NULL);
 	void UpdatePlaybackCursor(long sample, int channel);
 	BOOL PlaybackCursorVisible();
-	int m_PlaybackChannel;  // -1 = not playing
+	int m_PlaybackCursorChannel;  // -1 = not playing
 	bool m_PlaybackCursorDrawn;
-	long m_LastPlaybackCursorPos;
+	long m_PlaybackCursorDrawnSamplePos;
 	// Generated message map functions
 protected:
 	//{{AFX_MSG(CWaveSoapFrontView)
