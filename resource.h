@@ -125,8 +125,9 @@
 #define IDD_DIALOG_SPLIT_TO_FILES       196
 #define IDI_ICON_SPLIT_TO_FILES         196
 #define IDR_MENU_POPUP_SS_RULER         199
-#define IDI_ICON1                       200
 #define IDI_ICON_EQIALIZER              200
+#define IDI_ICON_FILTRE_DIALOG          201
+#define IDI_ICON_FILTER_DIALOG          201
 #define IDC_EDIT_MIN_CLICK_AMPLITUDE    1000
 #define IDC_TAB_SWITCH_VIEW_MODE        1000
 #define IDC_CHECK_LOG_CLICKS            1001
@@ -902,7 +903,7 @@
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_3D_CONTROLS                     1
-#define _APS_NEXT_RESOURCE_VALUE        201
+#define _APS_NEXT_RESOURCE_VALUE        202
 #define _APS_NEXT_COMMAND_VALUE         40151
 #define _APS_NEXT_CONTROL_VALUE         1285
 #define _APS_NEXT_SYMED_VALUE           101

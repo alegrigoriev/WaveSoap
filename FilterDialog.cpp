@@ -133,6 +133,7 @@ BOOL CFilterDialog::OnInitDialog()
 	pTemplateWnd->DestroyWindow();
 
 	BaseClass::OnInitDialog();
+	SetWindowIcons(this, IDI_ICON_FILTER_DIALOG);
 
 	m_EditGain.SetData(m_wGraph.GetCurrentPointGainDb());
 	m_EditFrequency.SetData(m_wGraph.GetCurrentPointFrequencyHz());
