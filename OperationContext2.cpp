@@ -1333,22 +1333,6 @@ void CCommitFileSaveContext::PostRetire()
 	BaseClass::PostRetire();
 }
 
-void CConversionContext::PostRetire()
-{
-	if (m_DstFile.GetDataChunk()->dwDataOffset != 0)
-	{
-		// update data chunk and number of samples
-		m_DstFile.SetFactNumberOfSamples(
-										(m_SrcPos - m_SrcStart) / m_SrcFile.SampleSize());
-
-		// BUGBUG For non-RIFF file, don't add an extra byte
-		m_DstPos = (m_DstPos + 1) & ~1;
-		m_DstFile.SetDatachunkLength(m_DstPos - m_DstStart);
-	}
-
-	BaseClass::PostRetire();
-}
-
 CEqualizerContext::CEqualizerContext(CWaveSoapFrontDoc * pDoc,
 									UINT StatusStringId, UINT OperationNameId)
 	: BaseClass(pDoc, OperationContextDiskIntensive, StatusStringId, OperationNameId),
