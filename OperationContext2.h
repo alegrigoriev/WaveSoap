@@ -438,10 +438,12 @@ public:
 	CLengthChangeOperation(class CWaveSoapFrontDoc * pDoc,
 							CWaveFile & File, MEDIA_FILE_SIZE NewLength);
 
+protected:
 	virtual BOOL CreateUndo(BOOL IsRedo = FALSE);
 	virtual BOOL OperationProc();
+	virtual BOOL PrepareUndo();
+	virtual void UnprepareUndo();
 
-protected:
 	CWaveFile m_File;
 	MEDIA_FILE_SIZE m_NewLength;
 };
@@ -456,10 +458,12 @@ public:
 	CWaveSamplesChangeOperation(CWaveSoapFrontDoc * pDoc,
 								CWaveFile & File, NUMBER_OF_SAMPLES NewSamples);
 
+protected:
 	virtual BOOL CreateUndo(BOOL IsRedo = FALSE);
 	virtual BOOL OperationProc();
+	virtual BOOL PrepareUndo();
+	virtual void UnprepareUndo();
 
-protected:
 	NUMBER_OF_SAMPLES m_NewSamples;
 	CWaveFile m_File;
 };
@@ -482,13 +486,59 @@ public:
 protected:
 	virtual BOOL PrepareUndo();
 	virtual void UnprepareUndo();
-	virtual ListHead<COperationContext> * GetUndoChain();
+	//virtual ListHead<COperationContext> * GetUndoChain();
 	//virtual void DeleteUndo();
 
 	virtual BOOL CreateUndo(BOOL IsRedo = FALSE);
 	virtual BOOL OperationProc();
 };
 
+// this object saves the data being discarded as a result
+// of trimming the file
+class CSaveTrimmedOperation : public CCopyContext
+{
+	// move data in the same file
+	typedef CSaveTrimmedOperation ThisClass;
+	typedef CCopyContext BaseClass;
+public:
+	typedef std::auto_ptr<ThisClass> auto_ptr;
+
+	CSaveTrimmedOperation(CWaveSoapFrontDoc * pDoc,
+						CWaveFile & SrcFile,
+						SAMPLE_INDEX SrcStartSample,
+						SAMPLE_INDEX SrcEndSample,
+						CHANNEL_MASK Channels);
+
+protected:
+	virtual BOOL PrepareUndo();
+	virtual void UnprepareUndo();
+	virtual void DeInit();
+	//virtual ListHead<COperationContext> * GetUndoChain();
+	class CRestoreTrimmedOperation * m_pRestoreOperation;
+
+	virtual BOOL CreateUndo(BOOL IsRedo = FALSE);
+	virtual BOOL OperationProc();
+};
+
+class CRestoreTrimmedOperation : public CCopyUndoContext
+{
+	// move data in the same file
+	typedef CRestoreTrimmedOperation ThisClass;
+	typedef CCopyUndoContext BaseClass;
+public:
+	typedef std::auto_ptr<ThisClass> auto_ptr;
+
+	CRestoreTrimmedOperation(CWaveSoapFrontDoc * pDoc);
+
+protected:
+	virtual void DeInit();
+
+	class CSaveTrimmedOperation * m_pSaveOperation;
+
+	virtual BOOL CreateUndo(BOOL IsRedo = FALSE);
+};
+
+// zero-fill a file area
 class CInitChannels : public CThroughProcessOperation
 {
 	// Zero some channels. When undone, data is left as is (will be overwritten)
@@ -508,6 +558,7 @@ protected:
 	virtual BOOL ProcessBuffer(void * buf, size_t len, SAMPLE_POSITION offset, BOOL bBackward = FALSE);
 };
 
+// undo zero-fill a file area (does nothing, but produces a redo)
 class CInitChannelsUndo : public COneFileOperation
 {
 	// Zero some channels. When undone, data is left as is (will be overwritten)
