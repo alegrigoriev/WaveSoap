@@ -1289,44 +1289,11 @@ void CStatisticsDialog::OnBnClickedButtonGotoMax()
 
 SAMPLE_INDEX CStatisticsDialog::GetMaxSamplePosition(CHANNEL_MASK * pChannel) const
 {
-	SAMPLE_INDEX Sample = 0;
-	CHANNEL_MASK Channel = ALL_CHANNELS;
-
 	if (NULL != m_pContext)
 	{
-		Sample = m_pContext->m_MaxLeft;
-		long value = m_pContext->m_PosMaxLeft;
-		Channel = (1 << 0);
-
-		if (-m_pContext->m_MinLeft > value)
-		{
-			value = -m_pContext->m_MinLeft;
-			Sample = m_pContext->m_PosMinLeft;
-		}
-
-		if (m_pContext->m_DstFile.Channels() > 1)
-		{
-			if (m_pContext->m_MaxRight > value)
-			{
-				value = m_pContext->m_MaxRight;
-				Sample = m_pContext->m_PosMaxRight;
-				Channel = (1 << 1);
-			}
-			if (-m_pContext->m_MinRight > value)
-			{
-				value = -m_pContext->m_MinRight;
-				Sample = m_pContext->m_PosMinRight;
-				Channel = (1 << 1);
-			}
-		}
+		return m_pContext->GetMaxSamplePosition(pChannel);
 	}
-
-	if (NULL != pChannel)
-	{
-		*pChannel = Channel;
-	}
-
-	return Sample;
+	return 0;
 }
 
 /////////////////////////////////////////////////////////////////////////////

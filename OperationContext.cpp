@@ -2710,7 +2710,8 @@ BOOL CStatisticsContext::ProcessBuffer(void * buf, size_t const BufferLength,
 	}
 	else
 	{
-		for (NUMBER_OF_SAMPLES i = 0; i < nSamples; i += nChannels)
+		for (NUMBER_OF_SAMPLES i = 0; i < nSamples;
+			i += nChannels, offset += nChannels * sizeof (*pSrc))
 		{
 			int sample = pSrc[i];
 
@@ -2843,6 +2844,45 @@ void CStatisticsContext::PostRetire()
 		}
 	}
 	BaseClass::PostRetire();
+}
+
+SAMPLE_INDEX CStatisticsContext::GetMaxSamplePosition(CHANNEL_MASK * pChannel) const
+{
+	SAMPLE_POSITION SamplePos = 0;
+	CHANNEL_MASK Channel = ALL_CHANNELS;
+
+	SamplePos = m_PosMaxLeft;
+	long value = m_MaxLeft;
+	Channel = (1 << 0);
+
+	if (-m_MinLeft > value)
+	{
+		value = -m_MinLeft;
+		SamplePos = m_PosMinLeft;
+	}
+
+	if (m_DstFile.Channels() > 1)
+	{
+		if (m_MaxRight > value)
+		{
+			value = m_MaxRight;
+			SamplePos = m_PosMaxRight;
+			Channel = (1 << 1);
+		}
+		if (-m_MinRight > value)
+		{
+			value = -m_MinRight;
+			SamplePos = m_PosMinRight;
+			Channel = (1 << 1);
+		}
+	}
+
+	if (NULL != pChannel)
+	{
+		*pChannel = Channel;
+	}
+
+	return SamplePos / pDocument->WaveSampleSize();
 }
 
 CMaxScanContext::CMaxScanContext(CWaveSoapFrontDoc * pDoc,

@@ -1,5 +1,7 @@
 TODO tasks:
 
+Complete "Insert silence" command
+Complete "Reverse" command
 If metadata doesn't come as the very last chunk of the file, copy the original file to 
  a file where it does (for non-compressed file, that is)
 
@@ -8,9 +10,9 @@ Add support for markers and regions: save on copy and with undo, move and delete
 Delete/Insert operations can auto add markers and regions
 
 Make Windows/Close All command
+Put copyright notices to all files
 
 When starting playing selection, bring the playback cursor into active view
-Add "Goto" button to the statistics dialog
 Add "Show" button to the selection dialog
 Put "Save As" and "Save Copy As" files to file MRU
 Don't ask to replace the file if Save As with the same name
@@ -88,6 +90,7 @@ Windows2000 is trying to zero the allocated file
 Log Off query doesn't close the active dialog. Recursion is possible. Make sure to check after Cancel
 
 Fixed:
+Wrong CP used for UNICODE->ANSI conversion
 Using up-down controls doesn't cause any "release" notification
 Lines duplicated when scrolling the horizontal ruler
 If delete (shrink) is done with one channel of two, fill the rest with zeros
@@ -150,6 +153,9 @@ Save As dialog is not centered first time (comdlg problem?)
 ??? When time/seconds format is set for status bar, MM:SS is actually shown
 
 Done:
+Add "Goto" button to the statistics dialog
+Save/Load metadata strings in UTF-8 codepage
+Add a new marker/region
 Implement Marker/Region dialog
 Draw markers in the FFT view
 Double click selects between two markers
