@@ -578,9 +578,14 @@ public:
 	BOOL AllocateBuffers(size_t PreferredInBufSize = 0x10000,
 						size_t PreferredOutBufSize = 0x10000);
 
+	// convert data to the internal buffer
 	BOOL Convert(void const * pSrcBuf, size_t SrcBufSize, size_t * pSrcBufUsed,
-				void* * ppDstBuf, size_t * pDstBufFilled,
+				void* * ppDstBuf /*optional*/,
+				size_t * pDstBufFilled /*optional*/,
 				DWORD flags = ACM_STREAMCONVERTF_BLOCKALIGN);
+
+	// read data from the internal buffer
+	size_t GetConvertedData(void * pDstBuf, size_t DstBufSize);
 
 protected:
 	ACMSTREAMHEADER m_ash;
@@ -590,9 +595,16 @@ protected:
 
 	DWORD m_SrcBufSize;
 	DWORD m_DstBufSize;
+	DWORD m_DstBufRead;
 
 	// the class doesn't allow assignment and copy
 private:
+#ifdef _DEBUG
+	size_t m_ProcessedInputBytes;
+	size_t m_SavedOutputBytes;
+	size_t m_GotOutputBytes;
+#endif
+
 	AudioStreamConvertor(const AudioStreamConvertor &);
 	AudioStreamConvertor & operator=(const AudioStreamConvertor &);
 };
