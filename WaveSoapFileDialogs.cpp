@@ -144,7 +144,6 @@ void CWaveSoapFileOpenDialog::OnCheckDirectMode()
 
 BOOL CWaveSoapFileOpenDialog::OnFileNameOK()
 {
-
 	m_WaveFile.Close();
 	return BaseClass::OnFileNameOK();
 }
