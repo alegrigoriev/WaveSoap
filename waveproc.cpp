@@ -1292,7 +1292,7 @@ int CNoiseReduction::ProcessSoundBuffer(char const * pIn, char * pOut,
 			for (int ch = 0; ch < nChans; ch++)
 			{
 				// TODO: use conversion routine
-				*pOutBuf = m_BackBuffer[(m_nStoredSamples + ANALYZE_LAG) & PREV_MASK][ch];
+				*pOutBuf = __int16(m_BackBuffer[(m_nStoredSamples + ANALYZE_LAG) & PREV_MASK][ch]);
 				pOutBuf++;
 			}
 			m_nStoredSamples++;

@@ -34,7 +34,7 @@ CWaveSoapFileOpenDialog::CWaveSoapFileOpenDialog(BOOL bOpenFileDialog, // TRUE f
 			{ IDHELP, MoveRight},
 		};
 		m_pResizeItems = ItemsV5;
-		m_pResizeItemsCount = sizeof ItemsV5 / sizeof ItemsV5[0];
+		m_ResizeItemsCount = sizeof ItemsV5 / sizeof ItemsV5[0];
 	}
 	else
 	{
@@ -48,7 +48,7 @@ CWaveSoapFileOpenDialog::CWaveSoapFileOpenDialog(BOOL bOpenFileDialog, // TRUE f
 			{ IDHELP, MoveRight},
 		};
 		m_pResizeItems = ItemsV4;
-		m_pResizeItemsCount = sizeof ItemsV4 / sizeof ItemsV4[0];
+		m_ResizeItemsCount = sizeof ItemsV4 / sizeof ItemsV4[0];
 	}
 }
 
@@ -402,7 +402,7 @@ CWaveSoapFileSaveDialog::CWaveSoapFileSaveDialog(BOOL bOpenFileDialog, // TRUE f
 		};
 		m_ofn.lpTemplateName = MAKEINTRESOURCE(IDD_DIALOG_SAVE_TEMPLATE_V5);
 		m_pResizeItems = ItemsV5;
-		m_pResizeItemsCount = sizeof ItemsV5 / sizeof ItemsV5[0];
+		m_ResizeItemsCount = sizeof ItemsV5 / sizeof ItemsV5[0];
 	}
 	else
 	{
@@ -419,7 +419,7 @@ CWaveSoapFileSaveDialog::CWaveSoapFileSaveDialog(BOOL bOpenFileDialog, // TRUE f
 		};
 		m_ofn.lpTemplateName = MAKEINTRESOURCE(IDD_DIALOG_SAVE_TEMPLATE_V4);
 		m_pResizeItems = ItemsV4;
-		m_pResizeItemsCount = sizeof ItemsV4 / sizeof ItemsV4[0];
+		m_ResizeItemsCount = sizeof ItemsV4 / sizeof ItemsV4[0];
 	}
 	m_DefExt[1] = _T("wav");
 	m_DefExt[2] = _T("mp3");

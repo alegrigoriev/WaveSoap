@@ -839,12 +839,14 @@ void CWaveFftView::CalculateFftRange(long left, long right)
 				continue;
 			}
 
-			GetWaveSamples(FirstSampleRequired * nChannels, m_FftOrder * 2 * nChannels);
 			for (int ch = 0; ch < nChannels; ch++)
 			{
-				int nIndexOfSample =
-					ch + FirstSampleRequired * nChannels - m_FirstSampleInBuffer;
-				__int16 * pWaveSamples = & m_pWaveBuffer[nIndexOfSample];
+				__int16 * pWaveSamples;
+
+				ASSERT(FirstSampleRequired >= 0);
+				m_WaveBuffer.GetData( & pWaveSamples, FirstSampleRequired * nChannels,
+									m_FftOrder * 2 * nChannels, this);
+
 				int k;
 				for (k = 0; k < m_FftOrder * 2; k++, pWaveSamples += nChannels)
 				{

@@ -93,16 +93,16 @@ CWaveSoapFrontView::CWaveSoapFrontView()
 	: m_HorizontalScale(2048),
 	m_VerticalScale(1.),
 	m_WaveOffsetY(0.),
-	m_FirstSampleInBuffer(0),
-	m_pWaveBuffer(NULL),
-	m_WaveBufferSize(0),
+//m_FirstSampleInBuffer(0),
+//m_pWaveBuffer(NULL),
+//m_WaveBufferSize(0),
 	m_PlaybackCursorChannel(-2),
 	m_PlaybackCursorDrawn(false),
 	m_NewSelectionMade(false),
 	m_bAutoscrollTimerStarted(false),
 	m_PlaybackCursorDrawnSamplePos(0),
-	m_WheelAccumulator(0),
-	m_WaveDataSizeInBuffer(0)
+	m_WheelAccumulator(0)
+//, m_WaveDataSizeInBuffer(0)
 {
 	TRACE("CWaveSoapFrontView::CWaveSoapFrontView()\n");
 }
@@ -110,11 +110,13 @@ CWaveSoapFrontView::CWaveSoapFrontView()
 CWaveSoapFrontView::~CWaveSoapFrontView()
 {
 	TRACE("CWaveSoapFrontView::~CWaveSoapFrontView()\n");
+#if 0
 	if (NULL != m_pWaveBuffer)
 	{
 		delete[] m_pWaveBuffer;
 		m_pWaveBuffer = NULL;
 	}
+#endif
 }
 
 BOOL CWaveSoapFrontView::PreCreateWindow(CREATESTRUCT& cs)
@@ -389,40 +391,52 @@ void CWaveSoapFrontView::OnDraw(CDC* pDC)
 				else
 				{
 					// use wave data for drawing
-
+#if 0
 					GetWaveSamples(NumOfFirstSample * nChannels, nNumberOfPoints * SamplesPerPoint * nChannels);
 
 					int nIndexOfSample =
 						ch + NumOfFirstSample * nChannels - m_FirstSampleInBuffer;
 					__int16 * pWaveSamples = & m_pWaveBuffer[nIndexOfSample];
+#else
+					__int16 * pWaveSamples = NULL;
+					int nSample = 0;
+					if (NumOfFirstSample < 0)
+					{
+						nSample = NumOfFirstSample * nChannels;
+						NumOfFirstSample = 0;
+					}
+					int nCountSamples = m_WaveBuffer.GetData( & pWaveSamples,
+															NumOfFirstSample * nChannels,
+															nNumberOfPoints * SamplesPerPoint * nChannels, this);
+#endif
 					for (i = 0; i < nNumberOfPoints; i++)
 					{
 						int low = 0x7FFF;
 						int high = -0x8000;
-						if (NULL != m_pWaveBuffer
-							&& pWaveSamples < m_pWaveBuffer + m_WaveDataSizeInBuffer)
+						if (NULL != pWaveSamples
+							&& nSample < nCountSamples)
 						{
-							if (pWaveSamples >= m_pWaveBuffer)
+							if (nSample >= 0)
 							{
-								for (int j = 0; j < SamplesPerPoint; j++, pWaveSamples+= nChannels)
+								for (int j = 0; j < SamplesPerPoint; j++, nSample += nChannels)
 								{
-									if (pWaveSamples >= m_pWaveBuffer + m_WaveDataSizeInBuffer)
+									if (nSample >= nCountSamples)
 									{
 										break;
 									}
-									if (high < pWaveSamples[0])
+									if (high < pWaveSamples[nSample])
 									{
-										high = pWaveSamples[0];
+										high = pWaveSamples[nSample];
 									}
-									if (low > pWaveSamples[0])
+									if (low > pWaveSamples[nSample])
 									{
-										low = pWaveSamples[0];
+										low = pWaveSamples[nSample];
 									}
 								}
 							}
 							else
 							{
-								pWaveSamples += SamplesPerPoint * nChannels;
+								nSample += SamplesPerPoint * nChannels;
 							}
 						}
 
@@ -519,7 +533,7 @@ void CWaveSoapFrontView::OnDraw(CDC* pDC)
 	}
 	CScaledScrollView::OnDraw(pDC);
 }
-
+#if 0
 // NumOfSamples - number of 16-bit words needed
 // Position - offset in data chunk in 16-bit words
 void CWaveSoapFrontView::GetWaveSamples(ULONG Position, size_t NumOfSamples)
@@ -595,7 +609,7 @@ void CWaveSoapFrontView::GetWaveSamples(ULONG Position, size_t NumOfSamples)
 	{
 		// move data down
 		unsigned int MoveBy = Position + NumOfSamples -
-							(m_FirstSampleInBuffer + m_WaveBufferSize);
+							(m_FirstSampleInBuffer + m_WaveDataSizeInBuffer);
 		if (MoveBy != 0)
 		{
 			ASSERT(m_WaveDataSizeInBuffer > MoveBy);
@@ -631,6 +645,36 @@ void CWaveSoapFrontView::GetWaveSamples(ULONG Position, size_t NumOfSamples)
 	delete[] pVerBuf;
 #endif
 	return;
+}
+#endif
+
+int CDataSection<__int16, CWaveSoapFrontView>::ReadData(__int16 * pBuf, ULONGLONG nOffset,
+														unsigned int nCount, CWaveSoapFrontView * pSource)
+{
+	CWaveSoapFrontDoc * pDoc = pSource->GetDocument();
+	if (NULL == pDoc
+		|| ! pDoc->m_WavFile.IsOpen())
+	{
+		return 0;
+	}
+	long Read = pDoc->m_WavFile.ReadAt(pBuf, nCount * sizeof (__int16),
+										pDoc->m_WavFile.GetDataChunk()->dwDataOffset + nOffset * sizeof (__int16));
+	if (-1 == Read)
+	{
+		return 0;
+	}
+	return Read / sizeof (__int16);
+}
+
+ULONGLONG CDataSection<__int16, CWaveSoapFrontView>::GetSourceCount(CWaveSoapFrontView * pSource)
+{
+	CWaveSoapFrontDoc * pDoc = pSource->GetDocument();
+	if (NULL == pDoc
+		|| ! pDoc->m_WavFile.IsOpen())
+	{
+		return 0;
+	}
+	return pDoc->m_WavFile.GetDataChunk()->cksize / sizeof (__int16);
 }
 
 void CWaveSoapFrontView::AdjustNewScale(double OldScaleX, double OldScaleY,
@@ -1552,7 +1596,6 @@ void CWaveSoapFrontView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
 	else if (lHint == CWaveSoapFrontDoc::UpdateSoundChanged
 			&& NULL != pHint)
 	{
-		m_WaveDataSizeInBuffer = 0; // invalidate the data in draw buffer
 		CSoundUpdateInfo * pInfo = static_cast<CSoundUpdateInfo *> (pHint);
 		CWaveSoapFrontDoc * pDoc = GetDocument();
 		CRect r;
@@ -1565,6 +1608,7 @@ void CWaveSoapFrontView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
 		r1.bottom = r.bottom;
 		if (pInfo->Length != -1)
 		{
+			m_WaveBuffer.Invalidate(); // invalidate the data in draw buffer
 			// length changed, set new extents and caret position
 			if ((r.Width() - 100) * m_HorizontalScale / 2 > pInfo->Length)
 			{
@@ -1572,6 +1616,11 @@ void CWaveSoapFrontView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
 			}
 			UpdateMaxExtents(pInfo->Length);
 			Invalidate();
+		}
+		else
+		{
+			// TODO: invalidate only if in the range
+			m_WaveBuffer.Invalidate(); // invalidate the data in draw buffer
 		}
 
 		// calculate update boundaries

@@ -24,6 +24,8 @@ template<typename T> inline void memzero(T & obj)
 	memset( & obj, 0, sizeof obj);
 }
 
+#define countof(a) (sizeof (a) / sizeof (a[0]))
+
 #include "resource.h"
 #include "mmsystem.h"
 #include "SimpleCriticalSection.h"
