@@ -62,22 +62,27 @@ public:
 	int m_OpenFileDialogFilter;
 	CString sTempDir;
 	// display colors:
-	DWORD m_WaveBackground;
-	DWORD m_SelectedWaveBackground;
-	DWORD m_WaveColor;
-	DWORD m_6dBLineColor;
-	DWORD m_ZeroLineColor;
-	DWORD m_ChannelSeparatorColor;
-	DWORD m_InterpolatedColor;
-	DWORD m_SelectedWaveColor;
-	DWORD m_Selected6dBLineColor;
-	DWORD m_SelectedZeroLineColor;
-	DWORD m_SelectedChannelSeparatorColor;
-	DWORD m_SelectedInterpolatedColor;
-	DWORD m_MarkerColor;
-	DWORD m_SelectedMarkerColor;
-	DWORD m_RegionColor;
-	DWORD m_SelectedRegionColor;
+	union {
+		struct {
+			DWORD m_WaveBackground;
+			DWORD m_SelectedWaveBackground;
+			DWORD m_WaveColor;
+			DWORD m_6dBLineColor;
+			DWORD m_ZeroLineColor;
+			DWORD m_ChannelSeparatorColor;
+			DWORD m_InterpolatedColor;
+			DWORD m_SelectedWaveColor;
+			DWORD m_Selected6dBLineColor;
+			DWORD m_SelectedZeroLineColor;
+			DWORD m_SelectedChannelSeparatorColor;
+			DWORD m_SelectedInterpolatedColor;
+			DWORD m_MarkerColor;
+			DWORD m_SelectedMarkerColor;
+			DWORD m_RegionColor;
+			DWORD m_SelectedRegionColor;
+		};
+		DWORD AppColors[16];
+	};
 
 	int m_SoundTimeFormat;
 
@@ -87,7 +92,7 @@ public:
 	COperationContext * m_pLastOp;
 	//CString m_CurrentStatusString;
 	CWaveFile m_ClipboardFile;
-	CWaveFile m_NewTemplateFile;
+	WAVEFORMATEX m_NewFileFormat;
 
 	CDocTemplate * m_pAllTypesTemplate;
 	CDocTemplate * m_pMP3TypeTemplate;
@@ -145,6 +150,13 @@ public:
 
 	CDocument* OpenDocumentFile(LPCTSTR lpszPathName, int flags);
 	virtual CDocument* OpenDocumentFile(LPCTSTR lpszPathName);
+
+	CPalette * GetPalette();
+	CPalette   m_Palette;
+	void CreatePalette();
+
+	void BroadcastUpdate(UINT lHint = 0);
+
 	//{{AFX_MSG(CWaveSoapFrontApp)
 	afx_msg void OnAppAbout();
 	afx_msg void OnEditPasteNew();
