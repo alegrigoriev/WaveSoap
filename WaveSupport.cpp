@@ -644,7 +644,7 @@ int CWaveFormat::MatchFormat(WAVEFORMATEX const * pwf)
 struct FormatTagEnumStruct
 {
 	CAudioCompressionManager * pAcm;
-	WAVEFORMATEX * pWf;
+	WAVEFORMATEX const * pWf;
 	WaveFormatTagEx const * pListOfTags;
 	int NumTags;
 	DWORD flags;
@@ -825,8 +825,8 @@ BOOL _stdcall CAudioCompressionManager::FormatTagEnumCallback(
 				// try acmFormatSuggest
 				pwfx.InitFormat(WAVE_FORMAT_PCM,
 								pfts->pWf->nSamplesPerSec, pfts->pWf->nChannels);
-				res = acmFormatSuggest(had, pfts->pWf, pwfx, pwfx.m_AllocatedSize,
-										ACM_FORMATSUGGESTF_WFORMATTAG);
+				res = acmFormatSuggest(had, const_cast<LPWAVEFORMATEX>(pfts->pWf),
+										pwfx, pwfx.m_AllocatedSize, ACM_FORMATSUGGESTF_WFORMATTAG);
 				if (MMSYSERR_NOERROR == res)
 				{
 					TRACE("No format enumerated, but acmSuggestFormat returned one\n");
@@ -847,7 +847,7 @@ BOOL _stdcall CAudioCompressionManager::FormatTagEnumCallback(
 }
 
 void CAudioCompressionManager::FillFormatTagArray
-	(WAVEFORMATEX * pwf, WaveFormatTagEx const ListOfTags[],
+	(WAVEFORMATEX const * pwf, WaveFormatTagEx const ListOfTags[],
 		int NumTags, DWORD flags)
 {
 	m_FormatTags.clear();
@@ -915,7 +915,7 @@ BOOL _stdcall CAudioCompressionManager::FormatEnumCallback(
 	return TRUE;
 }
 
-void CAudioCompressionManager::FillMultiFormatArray(unsigned nSelFrom, unsigned nSelTo, int Flags)
+bool CAudioCompressionManager::FillMultiFormatArray(unsigned nSelFrom, unsigned nSelTo, int Flags)
 {
 	m_Formats.clear();
 
@@ -1051,12 +1051,13 @@ void CAudioCompressionManager::FillMultiFormatArray(unsigned nSelFrom, unsigned 
 	}
 	std::sort(m_Formats.begin(), m_Formats.end(), std::greater<FormatItem>());
 	m_Formats.erase(std::unique(m_Formats.begin(), m_Formats.end()), m_Formats.end());
+	return ! m_Formats.empty();
 }
 
 void CAudioCompressionManager::FillWmaFormatTags()
 {
 	//WAVE_FORMAT_MSAUDIO1+1 - WMA V2
-	static WaveFormatTagEx const format = {WAVE_FORMAT_MSAUDIO1 + 1};
+	static WaveFormatTagEx const format(WAVE_FORMAT_MSAUDIO1 + 1);
 	// fill format tag array with V2 format
 	FillFormatTagArray(m_Wf, & format, 1);
 }
@@ -1066,7 +1067,7 @@ void CAudioCompressionManager::FillMp3EncoderTags(DWORD Flags)
 
 	BladeMp3Encoder Mp3Enc;
 	// check if MP3 ACM encoder presents
-	static WaveFormatTagEx const Mp3Tag = { WAVE_FORMAT_MPEGLAYER3 };
+	static WaveFormatTagEx const Mp3Tag(WAVE_FORMAT_MPEGLAYER3);
 
 	FillFormatTagArray(m_Wf, & Mp3Tag, 1, Flags);
 
@@ -1122,6 +1123,95 @@ void CAudioCompressionManager::FillLameEncoderFormats()
 	}
 }
 
+int CAudioCompressionManager::FillFormatsCombo(CComboBox * pCombo,
+												CWaveFormat & Wf,
+												WaveFormatTagEx SelectedTag,
+												int SelectedBitrate)
+{
+	pCombo->ResetContent();
+	pCombo->LockWindowUpdate();
+
+	unsigned i;
+
+	for (i = 0; i < m_Formats.size(); i++)
+	{
+		pCombo->AddString(m_Formats[i].Name);
+	}
+
+	unsigned sel = -1;
+	int BestMatch = 0;
+	for (i = 0; i < m_Formats.size(); i++)
+	{
+		WAVEFORMATEX * pwf = m_Formats[i].Wf;
+
+		if (SelectedTag.Tag == WAVE_FORMAT_MSAUDIO1
+			|| SelectedTag.Tag == WAVE_FORMAT_MSAUDIO1 + 1)
+		{
+			if (::abs(long(SelectedBitrate - pwf->nAvgBytesPerSec * 8)) < 1000)
+			{
+				sel = i;
+			}
+			continue;
+		}
+		else if (SelectedTag.Tag == WAVE_FORMAT_MPEGLAYER3
+				|| SelectedTag == BladeMp3Encoder::GetTag())
+		{
+			if (::abs(long(SelectedBitrate - pwf->nAvgBytesPerSec * 8)) < 1000)
+			{
+				sel = i;
+			}
+			continue;
+		}
+
+		int match = Wf.MatchFormat(pwf);
+		if (WaveFormatExactMatch & match)
+		{
+			// exact match found
+			sel = i;
+			break;
+		}
+		// select the best match
+		// Sample rate must match, then number of channels might match
+		// If original format is non PCM and the queried format is the same format
+
+		if (match > BestMatch)
+		{
+			BestMatch = match;
+			sel = i;
+			continue;
+		}
+		if (0 == match
+			|| match < BestMatch)
+		{
+			continue;
+		}
+		if (m_Formats[sel].Wf.FormatTag() == WAVE_FORMAT_PCM)
+		{
+			if (-1 == sel
+				|| pwf->wBitsPerSample >= m_Formats[sel].Wf.BitsPerSample())
+			{
+				sel = i;
+			}
+		}
+		else
+		{
+			if (-1 == sel
+				|| pwf->nAvgBytesPerSec >= m_Formats[sel].Wf.BytesPerSec())
+			{
+				sel = i;
+			}
+		}
+	}
+
+	if (-1 == sel)
+	{
+		sel = 0;
+	}
+	pCombo->SetCurSel(sel);
+	pCombo->UnlockWindowUpdate();
+	return sel;
+}
+
 CString CAudioCompressionManager::GetFormatName(HACMDRIVER had, WAVEFORMATEX const * pWf)
 {
 	ACMFORMATDETAILS afd;
@@ -1140,3 +1230,13 @@ CString CAudioCompressionManager::GetFormatName(HACMDRIVER had, WAVEFORMATEX con
 	return CString();
 }
 
+WAVEFORMATEX const CWaveFormat::CdAudioFormat =
+{
+	WAVE_FORMAT_PCM,
+	2,
+	44100,  // nSamplesPerSec
+	44100*4,  // nAvgBytesPerSec
+	4, // nBlockAlign
+	16, // bits per sample
+	0   // cbSize
+};
