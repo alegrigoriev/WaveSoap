@@ -18,10 +18,11 @@ suppress one specified frequency.</P>
 
 <p>The graph shows the frequency response of the filter.</p>
 
-<p>The dialog can be resized by dragging on the border, to enlarge the graph 
-window.</p>
 <p>The frequency scale is logarithmic. This means the ratio between two adjacent 
 dotted lines is the same.</p>
+
+<p>The dialog can be resized by dragging on the border, to enlarge the graph 
+window.</p>
 <p>The filter consists of three components that can be enabled or disabled 
 separately:</p>
 <p><b>Highpass filter</b>: </p>
@@ -49,13 +50,13 @@ separately:</p>
 <p>It suppresses frequencies in the narrow stopband.</p>
 <p>Notch filter is described by two parameters:</p>
 <ul>
-  <li>Center frequency, in Hz. The filter has infinite loss on this frequency;</li>
-  <li>3dB passband width, in Hz. The graph shows lower boundary of the band.</li>
+  <li>Center frequency, in Hz. The filter has theoretical zero transfer on this frequency;</li>
+  <li>passband width on -3dB transfer, in Hz. The graph shows lower boundary of the band.</li>
 </ul>
+<p>Parameters of the filters can be set either by entering them in the edit 
+boxes, or by using the mouse to dragg the reference points on the graph.</p>
 <p>Each filter has two reference pointes. One is on the passband boundary, 
-another is on the stopband. </p>
-<p>Mouse can be used to adjust the filters' parameters, by dragging 
-the reference points on the graph.</p>
+another is on the stopband.</p>
 <p>You can drag them up and down, increasing or 
 decreasing desired signal loss. You can drag them sideways, changing the 
 boundary frequencies. Dragging a reference point while holding <b>Ctrl</b> key 
@@ -66,14 +67,17 @@ small blinking circle. <b>Left arrow</b> and <b>right arrow</b> keys switch the
 focus to the next reference point. <b>Shift+Left Arrow</b> and <b>Shift+Right 
 Arrow </b>keys move a reference point on the frequency axis. <b>Ctrl+Left Arrow</b> 
 and <b>Ctrl+Right Arrow </b>keys move both reference points at the same time, 
-keeping constant ratio between them. <b>Up Arrow </b>&nbsp;and <b>&nbsp;Down 
-Arrow </b>move the reference point by 1 dB at a time.</p>
+keeping constant ratio between them. <b>Up Arrow </b>and <b>&nbsp;Down 
+Arrow </b>keys move the reference point by 1 dB at a time.</p>
 
 <p><b>Highpass filter</b>, <b>Notch Filter</b> and <b>Lowpass Filter</b> 
 checkboxes enable the corresponding filters. </p>
-<p><b>Transfer loss</b> edit box specifies minimum (for stopband) or maximum 
-(for passband) loss at the selected filter point, which is shown as a small 
-black circle. An edit box next to it specifies its corresponding frequency.</p>
+<p><b>Passband transfer </b>edit box specifies maximum 
+loss for the selected filter, whose reference point is shown as a small 
+black circle. Valid range is from -20 dB to 0. An edit box next to it specifies its corresponding frequency.</p>
+<p><b>Stopband transfer</b> edit box specifies minimum loss for the selected filter, 
+whose reference point is shown as a small black circle. Valid range is from -120 
+dB to 0. An edit box next to it specifies its corresponding frequency.</p>
 <p><b>Zero phase shift</b> checkbox selects whether the filter should have no 
 phase distortion. The command then takes more time to execute.</p>
 <p><b>Reset </b>button returns all filters to default parameters..</p>
