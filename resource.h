@@ -11,7 +11,9 @@
 #define IDR_MENU_TIME_RULER             130
 #define IDR_MP3TYPE                     130
 #define IDD_SELECTION_DIALOG            131
+#define IDR_WMATYPE                     131
 #define IDR_POPUP_SCALED_SCROLL_VIEW    132
+#define IDR_ALLTYPES                    132
 #define IDD_DIALOG_MORE_NOISEREDUCTION  133
 #define IDR_MENU_AMPLITUDE_RULER        133
 #define IDD_DIALOG_MORE_DECLICK         134

@@ -128,6 +128,7 @@ protected:
 	//}}AFX_VIRTUAL
 	virtual void OnIdle();
 	virtual BOOL DoSave(LPCTSTR lpszPathName, BOOL bReplace = TRUE);
+	BOOL OpenWmaFileDocument(LPCTSTR lpszPathName);
 public:
 	CString m_szWaveFilename;
 	CString szWaveTitle;
@@ -361,6 +362,7 @@ struct PeakFileHeader
 	WAVEFORMATEX wfFormat;
 };
 
+#pragma pack(1)
 struct MP3_IDTAG
 {
 	char Tag[3];    // "TAG"
@@ -378,23 +380,6 @@ struct MP3_IDTAG
 	char Genre;
 };
 #pragma pack(pop)
-class CWaveSoapMP3Doc : public CWaveSoapFrontDoc
-{
-protected: // create from serialization only
-	CWaveSoapMP3Doc();
-	DECLARE_DYNCREATE(CWaveSoapMP3Doc)
-// Implementation
-public:
-	MP3_IDTAG m_MP3Tag;
-	MPEG1WAVEFORMAT m_Format;
-	virtual ~CWaveSoapMP3Doc();
-	virtual BOOL OnOpenDocument(LPCTSTR lpszPathName, int flags);
-protected:
-	static BOOL _stdcall DriverEnumProc(HACMDRIVERID hadid, DWORD dwInstance, DWORD fdwSupport);
-	//{{AFX_MSG(CWaveSoapMP3Doc)
-	//}}AFX_MSG
-	DECLARE_MESSAGE_MAP()
-};
 
 /////////////////////////////////////////////////////////////////////////////
 
