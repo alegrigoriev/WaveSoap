@@ -143,6 +143,12 @@ CWaveSoapFrontApp::CWaveSoapFrontApp()
 	m_bUseCountrySpecificNumberAndTime(false),
 	m_bUndoEnabled(true),
 	m_bRedoEnabled(true),
+	m_VolumeDialogDbPercents(0),    // dB, 1 - percents
+	m_dVolumeLeftDb(0.),
+	m_dVolumeRightDb(0.),
+	m_dVolumeLeftPercent(100.),
+	m_dVolumeRightPercent(100.),
+	m_SoundTimeFormat(SampleToString_HhMmSs | TimeToHhMmSs_NeedsHhMm | TimeToHhMmSs_NeedsMs),
 	m_pActiveDocument(NULL)
 {
 	// Place all significant initialization in InitInstance
@@ -219,7 +225,7 @@ BOOL CWaveSoapFrontApp::InitInstance()
 	Profile.AddBoolItem(_T("Settings"), _T("UseCountrySpecificNumberAndTime"), m_bUseCountrySpecificNumberAndTime,
 						FALSE);
 
-	LoadStdProfileSettings();  // Load standard INI file options (including MRU)
+	LoadStdProfileSettings(10);  // Load standard INI file options (including MRU)
 	Profile.AddBoolItem(_T("Settings"), _T("OpenAsReadOnly"), m_bReadOnly, FALSE);
 	Profile.AddBoolItem(_T("Settings"), _T("OpenInDirectMode"), m_bDirectMode, FALSE);
 	Profile.AddBoolItem(_T("Settings"), _T("UndoEnabled"), m_bUndoEnabled, TRUE);
@@ -1112,6 +1118,34 @@ CString TimeToHhMmSs(unsigned TimeMs, int Flags)
 	return s;
 }
 
+CString SampleToString(long Sample, const WAVEFORMATEX * pWf, int Flags)
+{
+	switch (Flags & SampleToString_Mask)
+	{
+	case SampleToString_Sample:
+		return LtoaCS(Sample);
+		break;
+	case SampleToString_Seconds:
+	{
+		CString s;
+		unsigned ms = unsigned(Sample * 1000. / pWf->nSamplesPerSec);
+		int sec = ms / 1000;
+		ms = ms % 1000;
+		TCHAR * pFormat = _T("%s%c0");
+		if (Flags & TimeToHhMmSs_NeedsMs)
+		{
+			pFormat = _T("%s%c%03d");
+		}
+		s.Format(pFormat, LtoaCS(sec), GetApp()->m_DecimalPoint, ms);
+		return s;
+	}
+		break;
+	default:
+	case SampleToString_HhMmSs:
+		return TimeToHhMmSs(unsigned(Sample * 1000. / pWf->nSamplesPerSec), Flags);
+		break;
+	}
+}
 
 int CWaveSoapFrontStatusBar::OnToolHitTest(CPoint point, TOOLINFO* pTI) const
 {
@@ -1166,6 +1200,15 @@ void CWaveSoapFrontStatusBar::OnContextMenu(CWnd* pWnd, CPoint point)
 		break;
 	case ID_INDICATOR_CHANNELS:
 		id = IDR_MENU_POPUP_CHANNELS;
+		break;
+	case ID_INDICATOR_FILE_SIZE:
+		id = IDR_MENU_FILE_LENGTH;
+		break;
+	case ID_INDICATOR_CURRENT_POS:
+		id = IDR_MENU_CURRENT_POSITION;
+		break;
+	case ID_INDICATOR_SELECTION_LENGTH:
+		id = IDR_MENU_SELECTION_LENGTH;
 		break;
 	default:
 		Default();

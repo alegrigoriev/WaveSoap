@@ -72,6 +72,8 @@ public:
 	DWORD m_RegionColor;
 	DWORD m_SelectedRegionColor;
 
+	int m_SoundTimeFormat;
+
 	CDirectFile::CDirectFileCache * m_FileCache;
 	CWaveSoapFrontDoc * m_pActiveDocument;
 	COperationContext * m_pFirstOp;
@@ -91,6 +93,11 @@ public:
 	int m_MaxRedoDepth;
 	DWORD m_MaxUndoSize;
 	DWORD m_MaxRedoSize;
+	int m_VolumeDialogDbPercents;
+	double m_dVolumeLeftDb;
+	double m_dVolumeRightDb;
+	double m_dVolumeLeftPercent;
+	double m_dVolumeRightPercent;
 
 	BOOL m_bUseCountrySpecificNumberAndTime;
 	TCHAR m_TimeSeparator;
@@ -124,10 +131,18 @@ typedef CWaveSoapFrontApp CWaveSoapApp;
 CString LtoaCS(long num);
 enum
 {
-	TimeToHhMmSs_NeedsMs = 1,
-	TimeToHhMmSs_NeedsHhMm = 2,
+	SampleToString_Sample = 0,
+	SampleToString_HhMmSs = 1,
+	SampleToString_Seconds = 2,
+	SampleToString_Mask = 0xF,
+	TimeToHhMmSs_NeedsMs = 0x100,
+	TimeToHhMmSs_NeedsHhMm = 0x200,
 };
 CString TimeToHhMmSs(unsigned TimeMs, int Flags = TimeToHhMmSs_NeedsMs);
+CString SampleToString(long Sample, const WAVEFORMATEX * pWf,
+						int Flags = SampleToString_HhMmSs
+									| TimeToHhMmSs_NeedsHhMm
+									| TimeToHhMmSs_NeedsMs);
 void SetStatusString(CCmdUI* pCmdUI, const CString & string,
 					LPCTSTR MaxString = NULL, BOOL bForceSize = FALSE);
 /////////////////////////////////////////////////////////////////////////////
