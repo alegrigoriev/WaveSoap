@@ -197,11 +197,13 @@ BOOL CScaledScrollView::OnScroll(UINT nScrollCode, UINT nPos, BOOL bDoScroll)
 		break;
 	}
 
-//    POINT p = DoubleToPointDev(dX - dOrgX, dY - dOrgY);
+	//    POINT p = DoubleToPointDev(dX - dOrgX, dY - dOrgY);
 
 	BOOL bResult = ScrollTo(dX, dY, bDoScroll);
-	if (bResult /* && bDoScroll */)
+	if (bResult && bDoScroll )
+	{
 		UpdateWindow();
+	}
 	NotifySlaveViews(flag);
 	return bResult;
 }
@@ -540,6 +542,7 @@ void CScaledScrollView::OnChangeOrgExt(double left, double width,
 		if (flag & CHANGE_VERT_ORIGIN)
 			dOrgY = dNewOrgY;
 		InvalidateRgn(NULL);
+		UpdateCaretPosition();
 		UpdateScrollbars(TRUE);
 		NotifySlaveViews(flag);
 	}
@@ -565,6 +568,7 @@ void CScaledScrollView::SetMaxExtents(double left, double right,
 		dMaxTop = top;
 	}
 	ArrangeMaxExtents();
+	NotifySlaveViews(CHANGE_MAX_HOR_EXTENTS | CHANGE_MAX_VERT_EXTENTS);
 	UpdateScrollbars();
 }
 
@@ -654,6 +658,7 @@ BOOL CScaledScrollView::ScrollBy(double dx, double dy, BOOL bDoScroll)
 			Invalidate();
 		}
 		UpdateScrollbars(bDoScroll);
+		UpdateCaretPosition();
 		return TRUE; // view position changed
 	}
 	else
@@ -661,8 +666,8 @@ BOOL CScaledScrollView::ScrollBy(double dx, double dy, BOOL bDoScroll)
 		// move origin to integer count of device units
 		int ddevx = fround(dx * dScaleX * dLogScaleX);
 		int ddevy = fround(dy * dScaleY * dLogScaleY);
-		TRACE("Necessary window scroll=(%g, %g), new org=(%g, %g)\n",
-			dx, dy, dNewOrgX, dNewOrgY);
+		TRACE("Necessary window scroll=(%g, %g), new org=(%g, %g), devx=%d, devy=%d\n",
+			dx, dy, dNewOrgX, dNewOrgY, ddevx, ddevy);
 
 		if (ddevx | ddevy)
 		{
@@ -671,6 +676,7 @@ BOOL CScaledScrollView::ScrollBy(double dx, double dy, BOOL bDoScroll)
 		else
 		{
 			UpdateScrollbars(bDoScroll);
+			UpdateCaretPosition();
 			return FALSE;   // position is not changed
 		}
 	}
@@ -878,6 +884,7 @@ void CScaledScrollView::OnSize(UINT nType, int cx, int cy)
 		dScaleY = dNewScaleY;
 
 		InvalidateRgn(NULL);
+		UpdateCaretPosition();
 		UpdateScrollbars();
 	}
 	NotifySlaveViews(flag);
@@ -919,6 +926,7 @@ BOOL CScaledScrollView::OnScrollBy(CSize sizeScroll, BOOL bDoScroll)
 		ScrollWindow(-sizeScroll.cx, -sizeScroll.cy);
 		RestoreSelectionRect();
 	}
+	UpdateCaretPosition();
 	UpdateScrollbars(bDoScroll);
 	return TRUE;
 }
@@ -1316,12 +1324,31 @@ void CScaledScrollView::NotifySlaveViews(DWORD flag)
 				|| pView->m_pHorMaster == this)
 			{
 				DWORD flag1 = flag;
+				double MinX = dMinLeft;
+				double MaxX = dMaxRight;
+				double MinY = dMinBottom;
+				double MaxY = dMaxTop;
 				if (pView->m_pVertMaster != this)
-					flag1 &= ~CHANGE_VERT_EXTENTS;
+				{
+					flag1 &= ~(CHANGE_VERT_EXTENTS | CHANGE_MAX_VERT_EXTENTS);
+					MinY = 0.;
+					MaxY = 0.;
+				}
 				if (pView->m_pHorMaster != this)
-					flag1 &= ~CHANGE_HOR_EXTENTS;
-				pView->OnChangeOrgExt(dOrgX, dExtX,
-									dOrgY, dExtY, flag1);
+				{
+					flag1 &= ~(CHANGE_HOR_EXTENTS | CHANGE_MAX_HOR_EXTENTS);
+					MinX = 0.;
+					MaxX = 0.;
+				}
+				if (flag1 & (CHANGE_MAX_VERT_EXTENTS | CHANGE_MAX_HOR_EXTENTS))
+				{
+					pView->SetMaxExtents(MinX, MaxX, MinY, MaxY);
+				}
+				if (flag1 & (CHANGE_VERT_EXTENTS | CHANGE_HOR_EXTENTS))
+				{
+					pView->OnChangeOrgExt(dOrgX, dExtX,
+										dOrgY, dExtY, flag1);
+				}
 			}
 		}
 		pWnd = pWnd->GetNextWindow();
