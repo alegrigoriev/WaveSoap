@@ -822,16 +822,8 @@ void CWaveSoapFrontDoc::SetSelection(SAMPLE_INDEX begin, SAMPLE_INDEX end,
 void CWaveSoapFrontDoc::QueueSoundUpdate(int UpdateCode, ULONG_PTR FileID,
 										SAMPLE_INDEX begin, SAMPLE_INDEX end, NUMBER_OF_SAMPLES NewLength, int flags)
 {
-	if (begin > end)
-	{
-		SAMPLE_INDEX tmp = begin;
-		begin = end;
-		end = tmp;
-	}
-
 	CSoundUpdateInfo * pui = new CSoundUpdateInfo(UpdateCode,
 												FileID, begin, end, NewLength);
-
 	{
 		CSimpleCriticalSectionLock lock(m_UpdateList);
 
@@ -860,31 +852,42 @@ void CWaveSoapFrontDoc::QueueSoundUpdate(int UpdateCode, ULONG_PTR FileID,
 					{
 						pEntry->m_End = end;
 					}
+
 					delete pui;
-					pui = NULL;
-					break;
+					return;
 				}
 			}
 		}
-		else if (flags & QueueSoundUpdateReplace)
+
+		m_UpdateList.InsertTailUnsafe(pui);
+	}
+
+	::PostMessage(GetApp()->m_pMainWnd->m_hWnd, WM_KICKIDLE, 0, 0);
+}
+
+void CWaveSoapFrontDoc::QueuePlaybackUpdate(int UpdateCode, ULONG_PTR FileID,
+											SAMPLE_INDEX PlaybackPosition, CHANNEL_MASK PlaybackChannel)
+{
+	CSoundUpdateInfo * pui = new CSoundUpdateInfo(UpdateCode,
+												FileID, PlaybackPosition, PlaybackChannel);
+
+	{
+		CSimpleCriticalSectionLock lock(m_UpdateList);
+
+		for (CSoundUpdateInfo * pEntry = m_UpdateList.First()
+			;  m_UpdateList.NotEnd(pEntry); )
 		{
-			for (CSoundUpdateInfo * pEntry = m_UpdateList.First()
-				;  m_UpdateList.NotEnd(pEntry); )
+			CSoundUpdateInfo * next = m_UpdateList.Next(pEntry);
+			if (FileID == pEntry->m_FileID
+				&& pEntry->m_UpdateCode == UpdateCode)
 			{
-				CSoundUpdateInfo * next = m_UpdateList.Next(pEntry);
-				if (FileID == pEntry->m_FileID
-					&& pEntry->m_UpdateCode == UpdateCode)
-				{
-					m_UpdateList.RemoveEntryUnsafe(pEntry);
-					delete pEntry;
-				}
-				pEntry = next;
+				m_UpdateList.RemoveEntryUnsafe(pEntry);
+				delete pEntry;
 			}
+			pEntry = next;
 		}
-		if (NULL != pui)
-		{
-			m_UpdateList.InsertTailUnsafe(pui);
-		}
+
+		m_UpdateList.InsertTailUnsafe(pui);
 	}
 	::PostMessage(GetApp()->m_pMainWnd->m_hWnd, WM_KICKIDLE, 0, 0);
 }
@@ -3205,9 +3208,9 @@ void CWaveSoapFrontDoc::SetModifiedFlag(BOOL bModified, int KeepPreviousUndo)
 
 void CWaveSoapFrontDoc::PlaybackPositionNotify(SAMPLE_INDEX position, CHANNEL_MASK channel)
 {
-	QueueSoundUpdate(UpdatePlaybackPositionChanged, WaveFileID(),
-					position, channel,
-					-1, QueueSoundUpdateReplace);
+	if (0) TRACE("PlaybackPositionNotify p=%d,c=%d\n", position, channel);
+	QueuePlaybackUpdate(UpdatePlaybackPositionChanged, WaveFileID(),
+						position, channel);
 }
 
 // return TRUE if there was UpdatePlaybackPositionChanged request queued

@@ -1,5 +1,8 @@
 TODO tasks:
 
+Made "percent" through file size
+Fix all operation status prompts
+
 When starting playing selection, bring the playback cursor into view
 Add "Goto" button to the statistics dialog
 Add "Show" button to the selection dialog
@@ -69,9 +72,7 @@ Find which alignment better for edit box labels: left or right
 
 Problems:
 
-Mono file with compression is not fuly saved
 If a clipboard operation gets stopped, need to cancel all the operations that depend on it.
-Saving short file with zeros as u-law doesn't save anything
 Expression evaluation selection longer than file length doesn't update file length
 Save As adds "Copy of" for direct file
 File resample doesn't tell about overflow
@@ -86,6 +87,10 @@ Windows2000 is trying to zero the allocated file
 Log Off query doesn't close the active dialog. Recursion is possible. Make sure to check after Cancel
 
 Fixed:
+Playback cursor not shown properly
+Saving short file with zeros as u-law doesn't save anything
+Mono file with compression is not fuly saved
+When play operation stops, played range is redrawn
 samples with 32767, -32768 are not visible
 Wrong file length if the direct file is not saved. Need Always update RIFF/data
 Scrolling with scrollbar may corrupt sample number on the hor ruler
@@ -141,6 +146,8 @@ Save As dialog is not centered first time (comdlg problem?)
 ??? When time/seconds format is set for status bar, MM:SS is actually shown
 
 Done:
+Add keyboard accelerators to selection dialog
+Interrupted operations: UNDO and REDO
 detach CScanPeaksContext from a document, associate with a file
 Now recognizes ASF files as Windows Media
 Save CD grabbing selected format (WAV/MP3/WMA) and bitrate
