@@ -102,6 +102,18 @@ BOOL CMainFrame::PreCreateWindow(CREATESTRUCT& cs)
 	return TRUE;
 }
 
+void CMainFrame::GetMessageString(UINT nID, CString& rMessage) const
+{
+	if (GetApp()->m_CurrentStatusString.IsEmpty())
+	{
+		CMDIFrameWnd::GetMessageString(nID, rMessage);
+	}
+	else
+	{
+		rMessage = GetApp()->m_CurrentStatusString;
+	}
+}
+
 /////////////////////////////////////////////////////////////////////////////
 // CMainFrame diagnostics
 
