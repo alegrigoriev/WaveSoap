@@ -15,31 +15,17 @@ typedef BOOL (_stdcall * WAVE_OPERATION_PROC)(COperationContext *);
 class COperationContext
 {
 public:
-	COperationContext(class CWaveSoapFrontDoc * pDoc, LPCTSTR OperationName, DWORD Flags)
-		: pDocument(pDoc),
-		m_Flags(Flags),
-		pNextChain(NULL),
-		pNext(NULL),
-		pPrev(NULL),
-		m_pUndoContext(NULL),
-		m_OperationName(OperationName),
-		PercentCompleted(0)
-	{
-	}
-	virtual ~COperationContext()
-	{
-		if (pNextChain)
-		{
-			COperationContext * pContext = pNextChain;
-			pNextChain = NULL;
-			delete pContext;
-		}
-	}
-	virtual BOOL OperationProc() = 0;
+	COperationContext(class CWaveSoapFrontDoc * pDoc, LPCTSTR OperationName, DWORD Flags);
+	virtual ~COperationContext();
+
+	virtual BOOL OperationProc();
+	virtual BOOL ProcessBuffer(void * buf, size_t len, DWORD offset) { return TRUE; }
+
 	virtual BOOL Init() { return TRUE; }
 	virtual BOOL DeInit() { return TRUE; }
 	virtual void Retire();
 	virtual void PostRetire(BOOL bChildContext = FALSE);
+
 	virtual CString GetStatusString() = 0;
 	CString m_OperationName;
 	COperationContext * pNext;
@@ -49,7 +35,19 @@ public:
 	DWORD m_Flags;
 	int PercentCompleted;
 	class CUndoRedoContext * m_pUndoContext;
+
+	int m_GetBufferFlags;
+	int m_ReturnBufferFlags;
+
+	int m_DstChan;
+	CWaveFile m_DstFile;
+	DWORD m_DstStart;
+	DWORD m_DstEnd;
+	DWORD m_DstCopyPos;
+	BOOL InitDestination(CWaveFile & DstFile, long StartSample, long EndSample,
+						int chan, BOOL NeedUndo);
 };
+
 enum {
 	OperationContextClipboard = 1,  // clipboard operations are serialized
 	OperationContextDiskIntensive = 2,  // only one disk intensive can be active
@@ -71,6 +69,9 @@ enum {
 	CopyCreatingUndo = 0x20000000,
 	RedoContext = 0x10000000,
 	UndoContextReplaceWholeFile = 0x08000000,
+	DcContextScanning = 0x04000000,
+	StatisticsContext_DcOnly = 0x02000000,
+	StatisticsContext_MinMaxOnly = 0x01000000,
 };
 
 class CScanPeaksContext : public COperationContext
@@ -97,16 +98,11 @@ public:
 class CResizeContext : public COperationContext
 {
 	friend class CWaveSoapFrontDoc;
-	CWaveFile m_DstFile;
 	// Start, End and position are in bytes
 	DWORD m_SrcStart;
 	DWORD m_SrcEnd;
-	int m_DstChan;
 	DWORD m_SrcCopyPos;
 
-	DWORD m_DstStart;
-	DWORD m_DstCopyPos;
-	DWORD m_DstEnd;
 	BOOL ExpandProc();
 	BOOL ShrinkProc();
 	BOOL InitUndoRedo(CString UndoStatusString);
@@ -131,17 +127,12 @@ class CCopyContext : public COperationContext
 {
 public:
 	CWaveFile m_SrcFile;
-	CWaveFile m_DstFile;
 	// Start, End and position are in bytes
 	DWORD m_SrcStart;
 	DWORD m_SrcEnd;
 	int m_SrcChan;
 	DWORD m_SrcCopyPos;
 
-	DWORD m_DstStart;
-	DWORD m_DstCopyPos;
-	DWORD m_DstEnd;
-	int m_DstChan;
 	class CResizeContext * m_pExpandShrinkContext;
 
 public:
@@ -208,15 +199,10 @@ class CDecompressContext : public COperationContext
 {
 	friend class CWaveSoapFrontDoc;
 	CWaveFile m_SrcFile;
-	CWaveFile m_DstFile;
 	// Start, End and position are in bytes
 	DWORD m_SrcStart;
 	DWORD m_SrcEnd;
 	DWORD m_SrcPos;
-
-	DWORD m_DstStart;
-	DWORD m_DstPos;
-	DWORD m_DstEnd;
 
 	DWORD m_CurrentSamples;
 
@@ -288,21 +274,65 @@ public:
 	CVolumeChangeContext(CWaveSoapFrontDoc * pDoc,
 						LPCTSTR StatusString, LPCTSTR OperationName);
 	~CVolumeChangeContext();
-	CWaveFile m_DstFile;
 	float m_VolumeLeft;
 	float m_VolumeRight;
-	int m_DstChan;
-	DWORD m_DstStart;
-	DWORD m_DstEnd;
-	DWORD m_DstCopyPos;
 	BOOL m_bClipped;
 
 	CString m_ss;
-	virtual BOOL OperationProc();
-//    virtual BOOL Init();
-//    virtual BOOL DeInit();
+	//virtual BOOL OperationProc();
+	virtual BOOL ProcessBuffer(void * buf, size_t len, DWORD offset);
 	virtual void PostRetire(BOOL bChildContext = FALSE);
 	virtual CString GetStatusString() { return m_ss; }
 
 };
+
+class CDcOffsetContext : public COperationContext
+{
+public:
+	CDcOffsetContext(CWaveSoapFrontDoc * pDoc,
+					LPCTSTR StatusString, LPCTSTR OperationName);
+	~CDcOffsetContext();
+	int m_OffsetLeft;
+	int m_OffsetRight;
+	BOOL m_bClipped;
+
+	class CStatisticsContext * m_pScanContext;
+	CString m_ss;
+
+	virtual BOOL OperationProc();
+	virtual BOOL ProcessBuffer(void * buf, size_t len, DWORD offset);
+	virtual void PostRetire(BOOL bChildContext = FALSE);
+	virtual CString GetStatusString() { return m_ss; }
+
+};
+
+class CStatisticsContext : public COperationContext
+{
+public:
+	CStatisticsContext(CWaveSoapFrontDoc * pDoc,
+						LPCTSTR StatusString, LPCTSTR OperationName);
+	~CStatisticsContext() {}
+	int m_ZeroCrossingLeft;
+	int m_ZeroCrossingRight;
+	int m_PrevSampleLeft;
+	int m_PrevSampleRight;
+	int m_MinLeft;
+	int m_MaxLeft;
+	int m_MinRight;
+	int m_MaxRight;
+	DWORD m_PosMinLeft;
+	DWORD m_PosMaxLeft;
+	DWORD m_PosMinRight;
+	DWORD m_PosMaxRight;
+	LONGLONG m_EnergyLeft;
+	LONGLONG m_EnergyRight;
+	LONGLONG m_SumLeft;
+	LONGLONG m_SumRight;
+
+	CString m_ss;
+	//virtual BOOL OperationProc();
+	virtual BOOL ProcessBuffer(void * buf, size_t BufferLength, DWORD offset);
+	virtual CString GetStatusString() { return m_ss; }
+};
+
 #endif // AFX_OPERATIONCONTEXT_H__FFA16C44_2FA7_11D4_9ADD_00C0F0583C4B__INCLUDED_
