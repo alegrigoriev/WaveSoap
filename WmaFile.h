@@ -1,0 +1,182 @@
+#ifndef __WMAFILE_H_INCLUDED
+#define __WMAFILE_H_INCLUDED
+#include <wtypes.h>
+#include <wmsdk.h>
+
+#if _MSC_VER > 1000
+#pragma once
+#endif // _MSC_VER > 1000
+
+class CDirectFileStream: public IStream
+{
+	//
+	//Methods of IUnknown
+	//
+	HRESULT STDMETHODCALLTYPE QueryInterface( REFIID riid,
+											void __RPC_FAR *__RPC_FAR *ppvObject )
+	{
+		if ( riid == IID_IStream )
+		{
+			*ppvObject = ( IStream* )this;
+		}
+		else
+		{
+			return E_NOINTERFACE;
+		}
+		return S_OK;
+	}
+
+	ULONG STDMETHODCALLTYPE AddRef( void ) { return 1; }
+
+	ULONG STDMETHODCALLTYPE Release( void ) { return 1; }
+
+public:
+	virtual /* [local] */ HRESULT STDMETHODCALLTYPE Read(
+														/* [length_is][size_is][out] */ void __RPC_FAR *pv,
+														/* [in] */ ULONG cb,
+														/* [out] */ ULONG __RPC_FAR *pcbRead);
+
+	virtual /* [local] */ HRESULT STDMETHODCALLTYPE Write(
+														/* [size_is][in] */ const void __RPC_FAR *pv,
+														/* [in] */ ULONG cb,
+														/* [out] */ ULONG __RPC_FAR *pcbWritten);
+	virtual /* [local] */ HRESULT STDMETHODCALLTYPE Seek(
+														/* [in] */ LARGE_INTEGER dlibMove,
+														/* [in] */ DWORD dwOrigin,
+														/* [out] */ ULARGE_INTEGER __RPC_FAR *plibNewPosition);
+
+	virtual HRESULT STDMETHODCALLTYPE SetSize(
+											/* [in] */ ULARGE_INTEGER libNewSize);
+
+	virtual /* [local] */ HRESULT STDMETHODCALLTYPE CopyTo(
+															/* [unique][in] */ IStream __RPC_FAR *pstm,
+															/* [in] */ ULARGE_INTEGER cb,
+															/* [out] */ ULARGE_INTEGER __RPC_FAR *pcbRead,
+															/* [out] */ ULARGE_INTEGER __RPC_FAR *pcbWritten);
+
+	virtual HRESULT STDMETHODCALLTYPE Commit(
+											/* [in] */ DWORD grfCommitFlags);
+
+	virtual HRESULT STDMETHODCALLTYPE Revert( void);
+
+	virtual HRESULT STDMETHODCALLTYPE LockRegion(
+												/* [in] */ ULARGE_INTEGER libOffset,
+												/* [in] */ ULARGE_INTEGER cb,
+												/* [in] */ DWORD dwLockType);
+
+	virtual HRESULT STDMETHODCALLTYPE UnlockRegion(
+													/* [in] */ ULARGE_INTEGER libOffset,
+													/* [in] */ ULARGE_INTEGER cb,
+													/* [in] */ DWORD dwLockType);
+
+	virtual HRESULT STDMETHODCALLTYPE Stat(
+											/* [out] */ STATSTG __RPC_FAR *pstatstg,
+											/* [in] */ DWORD grfStatFlag);
+
+	virtual HRESULT STDMETHODCALLTYPE Clone(
+											/* [out] */ IStream __RPC_FAR *__RPC_FAR *ppstm);
+
+	// CWmaRead methods:
+	BOOL Open(LPCTSTR szFilename, DWORD Flags);
+	void Close();
+	void SetFile(CDirectFile & file)
+	{
+		m_File = file;
+	}
+	DWORD GetLength()
+	{
+		return m_File.GetLength();
+	}
+	DWORD GetPos()
+	{
+		return m_File.Seek(0, FILE_CURRENT);
+	}
+
+private:
+	CDirectFile m_File;
+};
+class CWmaDecoder : public IWMReaderCallback//Advanced
+{
+public:
+
+	CWmaDecoder();
+	~CWmaDecoder();
+	//
+	//Methods of IUnknown
+	//
+	HRESULT STDMETHODCALLTYPE QueryInterface( REFIID riid,
+											void __RPC_FAR *__RPC_FAR *ppvObject )
+	{
+		if ( riid == IID_IWMReaderCallback )
+		{
+			*ppvObject = ( IWMReaderCallback* )this;
+		}
+		//else if ( riid == IID_IWMReaderCallbackAdvanced )
+		//{
+		//*ppvObject = ( IWMReaderCallbackAdvanced* )this;
+		//}
+		else if ( riid == IID_IWMStatusCallback )
+		{
+			*ppvObject = ( IWMStatusCallback* )this;
+		}
+		else
+		{
+			return E_NOINTERFACE;
+		}
+		return S_OK;
+	}
+
+	ULONG STDMETHODCALLTYPE AddRef( void ) { return 1; }
+
+	ULONG STDMETHODCALLTYPE Release( void ) { return 1; }
+	//
+	//Methods of IWMReaderCallback
+	//
+	HRESULT STDMETHODCALLTYPE OnSample( /* [in] */ DWORD dwOutputNum,
+													/* [in] */ QWORD cnsSampleTime,
+													/* [in] */ QWORD cnsSampleDuration,
+													/* [in] */ DWORD dwFlags,
+													/* [in] */ INSSBuffer __RPC_FAR *pSample,
+													/* [in] */ void __RPC_FAR *pvContext ) ;
+
+	HRESULT STDMETHODCALLTYPE OnStatus( /* [in] */ WMT_STATUS Status,
+													/* [in] */ HRESULT hr,
+													/* [in] */ WMT_ATTR_DATATYPE dwType,
+													/* [in] */ BYTE __RPC_FAR *pValue,
+													/* [in] */ void __RPC_FAR *pvContext ) ;
+
+
+	HRESULT Open(LPCTSTR szFilename);
+	HRESULT Open(CDirectFile & file);
+	BOOL Init();
+	HRESULT Start();
+	HRESULT Stop();
+	DWORD SrcLength()
+	{
+		return m_InputStream.GetLength();
+	}
+	DWORD SrcPos()
+	{
+		return m_InputStream.GetPos();
+	}
+	CWaveFile m_DstFile;
+	DWORD m_DstCopyPos;
+	long m_DstCopySample;
+	//CWaveFile m_SrcFile;
+	IWMReader * m_Reader;
+	IWMReaderAdvanced2 * m_pAdvReader;
+	CDirectFileStream m_InputStream;
+	CEvent m_SignalEvent;
+	WMT_STATUS ReaderStatus;
+	//DWORD m_DstPosStart;
+	//DWORD m_DstCopyPos;
+	QWORD StreamTime;
+	QWORD m_BufferLengthTime; //32kbytes in 100ns units
+	QWORD m_StreamDuration;
+	LONG m_CurrentSamples;
+	DWORD m_dwAudioOutputNum;
+	WAVEFORMATEX * m_pwfx;
+	WAVEFORMATEX * m_pSrcWf;
+	DWORD m_Bitrate;
+};
+#endif
