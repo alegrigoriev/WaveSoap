@@ -95,16 +95,23 @@ public:
 	int m_MaxRedoDepth;
 	DWORD m_MaxUndoSize;
 	DWORD m_MaxRedoSize;
+
 	// volume change parameters:
 	int m_VolumeDialogDbPercents;
 	double m_dVolumeLeftDb;
 	double m_dVolumeRightDb;
 	double m_dVolumeLeftPercent;
 	double m_dVolumeRightPercent;
+
 	// DC offset parameters:
 	BOOL m_b5SecondsDC;
 	int m_nDcOffset;
 	int m_DcSelectMode;
+
+	// Normalize parameters:
+	int m_NormalizeDialogDbPercents;
+	double m_dNormalizeLevelDb;
+	double m_dNormalizeLevelPercent;
 
 	BOOL m_bUseCountrySpecificNumberAndTime;
 	TCHAR m_TimeSeparator;
