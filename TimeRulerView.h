@@ -20,7 +20,7 @@ protected:
 
 // Attributes
 public:
-	CWaveSoapFrontDoc* GetDocument();
+	CWaveSoapFrontDoc* GetDocument() const;
 
 	static int CalculateHeight();
 
@@ -44,10 +44,10 @@ protected:
 	virtual void AssertValid() const;
 	virtual void Dump(CDumpContext& dc) const;
 #endif
-	unsigned HitTest(POINT p);
+	unsigned HitTest(POINT p, RECT * pHitRect = NULL) const;
 
 	enum {
-		HitTestRuler = 0x00000000,          // non-specific area of the ruler hit - no bits set
+		HitTestNone = 0x00000000,          // non-specific area of the ruler hit - no bits set
 		HitTestRegionBegin = 0x40000000,    // mark of region begin hit
 		HitTestRegionEnd = 0x20000000,      // mark of region begin hit
 		HitTestMarker = 0x10000000,
@@ -67,10 +67,13 @@ protected:
 	DECLARE_MESSAGE_MAP()
 public:
 	afx_msg BOOL OnSetCursor(CWnd* pWnd, UINT nHitTest, UINT message);
+	virtual void OnInitialUpdate();
+	virtual INT_PTR OnToolHitTest(CPoint point, TOOLINFO* pTI) const;
+	void OnToolTipText(UINT /*id*/, NMHDR* pNMHDR, LRESULT* pResult);
 };
 
 #ifndef _DEBUG  // debug version in TimeRulerView.cpp
-inline CWaveSoapFrontDoc* CTimeRulerView::GetDocument()
+inline CWaveSoapFrontDoc* CTimeRulerView::GetDocument() const
 { return (CWaveSoapFrontDoc*)m_pDocument; }
 #endif
 
