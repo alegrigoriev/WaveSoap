@@ -803,6 +803,9 @@ makehm /h /a afxhh.h IDW_,HIDW_,0x50000 &quot;$(InputFileName)&quot; &gt;&gt; &q
 				RelativePath=".\res\icon_cd.ico">
 			</File>
 			<File
+				RelativePath=".\res\icon_split_to_files.ico">
+			</File>
+			<File
 				RelativePath=".\res\id_bitma.bmp">
 			</File>
 			<File
