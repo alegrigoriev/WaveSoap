@@ -709,7 +709,7 @@ BOOL File::Commit(DWORD flags)
 			pSourceFile = NULL;
 		}
 
-		Flush();
+		VERIFY(Flush());
 
 	}
 	if (FileLength != RealFileLength)
@@ -2799,7 +2799,11 @@ unsigned CDirectFileCache::_ThreadProc()
 					// there is no need to add a reference to file
 					// Close() will wait for the loop to suspend
 				}
-				pFile->Flush();
+				if ( ! pFile->Flush())
+				{
+					TRACE(_T("Could not flush idle file %s\n"),
+						LPCTSTR(pFile->m_FileName));
+				}
 			}
 		}
 
@@ -2927,7 +2931,7 @@ BOOL File::InitializeTheRestOfFile(int timeout, int * pPercentCompleted)
 			return FALSE;   // not finished yet
 		}
 	}
-	Flush();
+	VERIFY(Flush());
 	if (pPercentCompleted)
 	{
 		*pPercentCompleted = 100;
