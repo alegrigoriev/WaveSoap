@@ -1985,12 +1985,12 @@ CDocument* CWaveSoapDocManager::OpenDocumentFile(LPCTSTR lpszFileName, int flags
 
 void NotEnoughMemoryMessageBox()
 {
-	AfxMessageBox(GetApp()->m_NotEnoughMemoryMsg, MB_ICONEXCLAMATION | MB_OK);
+	MessageBoxSync(GetApp()->m_NotEnoughMemoryMsg, MB_ICONEXCLAMATION | MB_OK);
 }
 
 void NotEnoughDiskSpaceMessageBox()
 {
-	AfxMessageBox(IDS_NOT_ENOUGH_DISK_SPACE);
+	MessageBoxSync(IDS_NOT_ENOUGH_DISK_SPACE);
 }
 
 void NotEnoughUndoSpaceMessageBox()
