@@ -665,6 +665,7 @@
 #define ID_FILE_BATCHCONVERSION         40109
 #define ID_CDGRAB_SETCHECK              40110
 #define ID_CDGRAB_UNCHECK               40111
+#define ID_PROCESS_REVERSE              40114
 #define ID_TOOLS_SYNTHESIS              65535
 
 // Next default values for new objects
@@ -673,7 +674,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_3D_CONTROLS                     1
 #define _APS_NEXT_RESOURCE_VALUE        194
-#define _APS_NEXT_COMMAND_VALUE         40114
+#define _APS_NEXT_COMMAND_VALUE         40115
 #define _APS_NEXT_CONTROL_VALUE         1258
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
