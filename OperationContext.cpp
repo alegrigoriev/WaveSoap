@@ -118,7 +118,7 @@ BOOL COperationContext::OperationProc()
 	// get buffers from source file and copy them to m_CopyFile
 	if (m_Flags & OperationContextStopRequested)
 	{
-		m_Flags |= OperationContextFinished;
+		m_Flags |= OperationContextStop;
 		return TRUE;
 	}
 
@@ -494,7 +494,7 @@ BOOL CScanPeaksContext::OperationProc()
 {
 	if (m_Flags & OperationContextStopRequested)
 	{
-		m_Flags |= OperationContextFinished;
+		m_Flags |= OperationContextStop;
 		return TRUE;
 	}
 	if (m_Position >= m_End)
@@ -838,7 +838,7 @@ BOOL CResizeContext::OperationProc()
 	// change size of the file
 	if (m_Flags & OperationContextStopRequested)
 	{
-		m_Flags |= OperationContextFinished;
+		m_Flags |= OperationContextStop;
 		return TRUE;
 	}
 	if (m_Flags & CopyExpandFile)
@@ -1403,7 +1403,7 @@ BOOL CCopyContext::OperationProc()
 	// get buffers from source file and copy them to m_CopyFile
 	if (m_Flags & OperationContextStopRequested)
 	{
-		m_Flags |= OperationContextFinished;
+		m_Flags |= OperationContextStop;
 		return TRUE;
 	}
 	if (m_Flags & (CopyExpandFile | CopyShrinkFile))
@@ -2106,7 +2106,7 @@ BOOL CSoundPlayContext::OperationProc()
 	{
 		if (m_Flags & OperationContextStopRequested)
 		{
-			m_Flags |= OperationContextFinished;
+			m_Flags |= OperationContextStop;
 			if (m_bPauseRequested)
 			{
 				m_OperationString = _T("Playback Paused");
@@ -2645,7 +2645,7 @@ BOOL CDcOffsetContext::OperationProc()
 	{
 		if (m_Flags & OperationContextStopRequested)
 		{
-			m_Flags |= OperationContextFinished;
+			m_Flags |= OperationContextStop;
 			return TRUE;
 		}
 		if ( ! m_pScanContext->OperationProc())
@@ -3273,7 +3273,7 @@ BOOL CNormalizeContext::OperationProc()
 	{
 		if (m_Flags & OperationContextStopRequested)
 		{
-			m_Flags |= OperationContextFinished;
+			m_Flags |= OperationContextStop;
 			return TRUE;
 		}
 		if ( ! m_pScanContext->OperationProc())
@@ -3650,7 +3650,7 @@ BOOL CWmaDecodeContext::OperationProc()
 	if (m_Flags & OperationContextStopRequested)
 	{
 		TRACE("CWmaDecodeContext::OperationProc: Stop Requested\n");
-		m_Flags |= OperationContextFinished;
+		m_Flags |= OperationContextStop;
 		return TRUE;
 	}
 
@@ -3791,8 +3791,12 @@ BOOL CWmaSaveContext::OperationProc()
 {
 	// generic procedure working on one file
 	// get buffers from source file and copy them to m_CopyFile
-	if (m_Flags & OperationContextStopRequested
-		|| m_SrcCopyPos >= m_SrcEnd)
+	if (m_Flags & OperationContextStopRequested)
+	{
+		m_Flags |= OperationContextStop;
+		return TRUE;
+	}
+	if (m_SrcCopyPos >= m_SrcEnd)
 	{
 		m_Flags |= OperationContextFinished;
 		return TRUE;

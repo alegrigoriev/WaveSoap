@@ -1,13 +1,11 @@
 Known problems and tasks:
 
-Fill WMA formats combo
-Add WMA save
-Pass saved Raw file parameters back for reopen
 Load sound from AVI
-Test "reload compressed file" dialogs
 Add options dialog
-
+Enter WMA file attributes (title, author, etc)
+Enter MP3 file attributes
 Add CD grabbing
+
 Add noise reduction estimation in spectrum section view
 Add sound recording
 Support "Play" in selection dialog
@@ -35,6 +33,7 @@ When Open/Save dialog is resized, resize/move the controls
 Verify that FileSave can be canceled
 Reconsider Undo All Changes functionality and Redo All Changes
 ??Delete permanent undo: non-permanent file may become permanent after save, move call after save
+Pass saved Raw file parameters back for reopen
 Use ReplaceFile for renaming the file
 Add DELETE premission when creating temp file
 Use GetFileAttributes rather than FindFirst to check whether it's file or directory
@@ -84,6 +83,9 @@ No status bar in WinME
 FFT doesn't invaludate some areas
 
 Done:
+Test "reload compressed file" dialogs
+Add WMA save
+Fill WMA formats combo
 Add RAW format save
 When saving a copy, change the dialog title
 Pass file type flags for MP3 file reopen

@@ -853,7 +853,7 @@ CAPTION "About WaveSoap"
 FONT 8, "MS Sans Serif"
 BEGIN
     ICON            IDR_MAINFRAME,IDC_STATIC,11,17,20,20
-    CTEXT           "WaveSoap Version 0.592 beta",IDC_STATIC_VERSION,58,8,
+    CTEXT           "WaveSoap Version 0.595 beta",IDC_STATIC_VERSION,58,8,
                     110,10,SS_NOPREFIX
     CTEXT           "Copyright (C) Alexander Grigoriev, 2000-2001",
                     IDC_STATIC,41,27,145,12
@@ -2056,8 +2056,8 @@ END
 //
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 0,59,2,1
- PRODUCTVERSION 0,59,2,1
+ FILEVERSION 0,59,5,1
+ PRODUCTVERSION 0,59,5,1
  FILEFLAGSMASK 0x3fL
 #ifdef _DEBUG
  FILEFLAGS 0x9L
@@ -2075,14 +2075,14 @@ BEGIN
             VALUE "Comments", "\0"
             VALUE "CompanyName", "Alexandre Grigoriev\0"
             VALUE "FileDescription", "WaveSoap - Sound Cleaning And Editing Application\0"
-            VALUE "FileVersion", "0, 59, 2, 1\0"
+            VALUE "FileVersion", "0, 59, 5, 1\0"
             VALUE "InternalName", "WaveSoap\0"
             VALUE "LegalCopyright", "Copyright (C) 2000-2001 Alexandre Grigoriev\0"
             VALUE "LegalTrademarks", "\0"
             VALUE "OriginalFilename", "WaveSoap.EXE\0"
-            VALUE "PrivateBuild", "Beta 0.592\0"
+            VALUE "PrivateBuild", "Beta 0.595\0"
             VALUE "ProductName", "WaveSoap Application\0"
-            VALUE "ProductVersion", "0, 59, 2, 1\0"
+            VALUE "ProductVersion", "0, 59, 5, 1\0"
             VALUE "SpecialBuild", "\0"
         END
     END

@@ -1392,7 +1392,7 @@ BOOL CInsertSilenceContext::OperationProc()
 	// get buffers from source file and copy them to m_CopyFile
 	if (m_Flags & OperationContextStopRequested)
 	{
-		m_Flags |= OperationContextFinished;
+		m_Flags |= OperationContextStop;
 		return TRUE;
 	}
 	if (m_Flags & CopyExpandFile)

@@ -680,11 +680,15 @@ BOOL CWaveSoapFrontDoc::DoSave(LPCTSTR lpszPathName, BOOL bReplace)
 				}
 			}
 
-			// replace the extension
+			// If there is no extension, add wav
 			// TODO: Add the extension for the supported type
-			if (! Ext.IsEmpty())
+			if (Ext.IsEmpty())
 			{
 				name += _T(".wav");
+			}
+			else
+			{
+				name += Ext;
 			}
 
 			newName = path + name;
@@ -729,7 +733,7 @@ BOOL CWaveSoapFrontDoc::DoSave(LPCTSTR lpszPathName, BOOL bReplace)
 		// do for all doc template
 		POSITION pos = pApp->m_pDocManager->GetFirstDocTemplatePosition();
 		BOOL bFirst = TRUE;
-		// todo: save of different types (MP3, ASF).
+
 		int nFilterIndex = 1;
 		ULONG TemplateFlags[10] = {0};
 		while (pos != NULL)
@@ -771,7 +775,8 @@ BOOL CWaveSoapFrontDoc::DoSave(LPCTSTR lpszPathName, BOOL bReplace)
 
 		// add the proper file type extension
 		// todo: get from saved in the registry
-		dlg.m_ofn.nFilterIndex = 1;
+		dlg.m_ofn.nFilterIndex = dlg.GetFileTypeForName(newName);
+
 
 		if (IDOK != dlg.DoModal())
 		{
