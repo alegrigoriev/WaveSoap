@@ -5338,3 +5338,64 @@ BOOL CWaveSoapFrontDoc::ChangeWaveMarker(WAVEREGIONINFO * pInfo)
 	}
 	return TRUE;
 }
+
+void CWaveSoapFrontDoc::SelectBetweenMarkers(SAMPLE_INDEX Origin)
+{
+	SAMPLE_INDEX_Vector markers;
+	m_WavFile.GetSortedMarkers(markers, TRUE);
+
+	SAMPLE_INDEX_Vector::iterator i = std::upper_bound(markers.begin(), markers.end(), Origin);
+
+	if (i < markers.end()
+		&& i >= markers.begin() + 1)
+	{
+		SetSelection(*(i - 1), *i, m_SelectedChannel, *i, 0);
+	}
+}
+
+SAMPLE_INDEX CWaveSoapFrontDoc::GetNextMarker() const
+{
+	SAMPLE_INDEX_Vector markers;
+	m_WavFile.GetSortedMarkers(markers, TRUE);
+
+	SAMPLE_INDEX_Vector::iterator i = std::upper_bound(markers.begin(), markers.end(), m_CaretPosition);
+
+	if (i < markers.end())
+	{
+		return *i;
+	}
+	else
+	{
+		return WaveFileSamples();
+	}
+}
+
+SAMPLE_INDEX CWaveSoapFrontDoc::GetPrevMarker() const
+{
+	SAMPLE_INDEX_Vector markers;
+	m_WavFile.GetSortedMarkers(markers, TRUE);
+
+	SAMPLE_INDEX_Vector::iterator i = std::lower_bound(markers.begin(), markers.end(), m_CaretPosition);
+
+	if (i > markers.begin())
+	{
+		return *(i - 1);
+	}
+	else
+	{
+		return 0;
+	}
+}
+
+void CWaveSoapFrontDoc::GotoNextMarker()
+{
+	SAMPLE_INDEX pos = GetNextMarker();
+	SetSelection(pos, pos, m_SelectedChannel, pos, SetSelection_MakeCaretVisible);
+}
+
+void CWaveSoapFrontDoc::GotoPrevMarker()
+{
+	SAMPLE_INDEX pos = GetPrevMarker();
+	SetSelection(pos, pos, m_SelectedChannel, pos, SetSelection_MakeCaretVisible);
+}
+
