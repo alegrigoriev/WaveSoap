@@ -446,6 +446,8 @@ public:
 protected:
 	CWaveOut m_WaveOut;
 	CWaveFile m_PlayFile;
+	CWaveFormat m_Wf;
+
 	SAMPLE_POSITION m_Begin;
 	SAMPLE_POSITION m_End;
 	SAMPLE_POSITION m_CurrentPlaybackPos;
