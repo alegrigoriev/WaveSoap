@@ -1486,11 +1486,11 @@ void CWaveFile::RescanPeaks(SAMPLE_INDEX begin, SAMPLE_INDEX end)
 			unsigned DataToProcess = lRead;
 			WAVE_SAMPLE * pWaveData = (WAVE_SAMPLE *) pBuf;
 			MEDIA_FILE_POSITION DataOffset = Pos - dwDataChunkOffset;
-			unsigned DataForGranule = GranuleSize - DataOffset % GranuleSize;
+			unsigned DataForGranule = GranuleSize - unsigned(DataOffset % GranuleSize);
 
 			if (2 == Channels())
 			{
-				unsigned index = (DataOffset / GranuleSize) * 2;
+				unsigned index = unsigned(DataOffset / GranuleSize) * 2;
 				while (0 != DataToProcess)
 				{
 					int wpl_l;
@@ -1576,7 +1576,8 @@ void CWaveFile::RescanPeaks(SAMPLE_INDEX begin, SAMPLE_INDEX end)
 			}
 			else
 			{
-				unsigned index = DataOffset / GranuleSize;
+				unsigned index = unsigned(DataOffset / GranuleSize);
+
 				while (0 != DataToProcess)
 				{
 					int wp_l;
@@ -1966,3 +1967,364 @@ NUMBER_OF_CHANNELS CWaveFile::NumChannelsFromMask(CHANNEL_MASK ChannelMask) cons
 {
 	return GetInstanceData()->wf.NumChannelsFromMask(ChannelMask);
 }
+
+long CWaveFile::ReadSamples(CHANNEL_MASK SrcChannels,
+							SAMPLE_POSITION Pos,
+							long Samples, void * pBuf, WaveSampleType type)
+{
+	ASSERT(type == SampleType16bit);    // the only one supported yet
+	ASSERT(type == GetSampleType());
+	// it is assumed the buffer is big enough to load all samples
+	// The buffer contains complete samples to process
+	// if Samples > 0, read forward from Pos, Buf points to the buffer begin
+
+	// if Samples < 0, read backward from Pos, Buf points to the buffer end
+
+	// the function returns count how many samples successfully read
+	CHANNEL_MASK const FileChannelsMask = ChannelsMask();
+	SrcChannels &= FileChannelsMask;
+
+	long TotalSamplesRead = 0;
+
+	ASSERT(0 != SrcChannels);
+	int const SrcSampleSize = SampleSize();
+	int const FileChannels = Channels();
+	WAVE_SAMPLE tmp[MAX_NUMBER_OF_CHANNELS];
+
+	if (FileChannelsMask == SrcChannels)
+	{
+		// simply copy the data (TODO: convert sample format)
+		ASSERT(SampleType16bit == type);
+		LONG Read = ReadAt(pBuf, Samples * SrcSampleSize, Pos);
+		return Read / SrcSampleSize;
+	}
+
+	if (Samples > 0)
+	{
+
+		// read some of channels
+		ASSERT(2 == FileChannels);
+		ASSERT(1 == SrcChannels || 2 == SrcChannels);
+
+		while (Samples > 0)
+		{
+			long WasRead = 0;
+			void * pOriginalSrcBuf;
+
+			int SizeToRead = Samples * SrcSampleSize;
+			if (SizeToRead > CDirectFile::CacheBufferSize())
+			{
+				SizeToRead = CDirectFile::CacheBufferSize();
+			}
+
+			WasRead = GetDataBuffer( & pOriginalSrcBuf,
+									SizeToRead, Pos, CDirectFile::GetBufferAndPrefetchNext);
+
+			if (0 == WasRead)
+			{
+				return TotalSamplesRead;
+			}
+
+			unsigned SamplesRead = WasRead / SrcSampleSize;
+			WAVE_SAMPLE const * pSrc = (WAVE_SAMPLE const *) pOriginalSrcBuf;
+
+			if (0 == SamplesRead)
+			{
+				if (SrcSampleSize != ReadAt(tmp, SrcSampleSize, Pos))
+				{
+					ReturnDataBuffer(pOriginalSrcBuf, WasRead,
+									CDirectFile::ReturnBufferDiscard);
+					return TotalSamplesRead;
+				}
+
+				pSrc = tmp;
+				SamplesRead = 1;
+			}
+
+			if (SPEAKER_FRONT_RIGHT == SrcChannels)
+			{
+				// channel #1
+				pSrc++;
+			}
+
+			WAVE_SAMPLE * pDst = (WAVE_SAMPLE *) pBuf;
+
+			for (unsigned i = 0; i < SamplesRead; i++, pSrc += FileChannels)
+			{
+				pDst[i] = *pSrc;
+			}
+
+			TotalSamplesRead += SamplesRead;
+			Pos += SamplesRead * SrcSampleSize;
+			Samples -= SamplesRead;
+			pBuf = pDst + SamplesRead;
+
+			ReturnDataBuffer(pOriginalSrcBuf, WasRead,
+							CDirectFile::ReturnBufferDiscard);
+		}
+		return TotalSamplesRead;
+	}
+	else if (Samples < 0)
+	{
+
+		// read some of channels
+		ASSERT(2 == FileChannels);
+		ASSERT(SPEAKER_FRONT_LEFT == SrcChannels || SPEAKER_FRONT_RIGHT == SrcChannels);
+
+		while (Samples < 0)
+		{
+			long WasRead = 0;
+			void * pOriginalSrcBuf;
+
+			int SizeToRead = Samples * SrcSampleSize;
+			if (SizeToRead < -CDirectFile::CacheBufferSize())
+			{
+				SizeToRead = -CDirectFile::CacheBufferSize();
+			}
+
+			WasRead = GetDataBuffer( & pOriginalSrcBuf,
+									SizeToRead, Pos, CDirectFile::GetBufferAndPrefetchNext);
+
+			if (0 == WasRead)
+			{
+				return TotalSamplesRead;
+			}
+
+			unsigned SamplesRead = -WasRead / SrcSampleSize;
+			WAVE_SAMPLE const * pSrc = (WAVE_SAMPLE const *) pOriginalSrcBuf;
+
+			if (0 == SamplesRead)
+			{
+				if (SrcSampleSize != ReadAt(tmp + FileChannels, -SrcSampleSize, Pos))
+				{
+					ReturnDataBuffer(pOriginalSrcBuf, WasRead,
+									CDirectFile::ReturnBufferDiscard);
+					return TotalSamplesRead;
+				}
+
+				pSrc = tmp + FileChannels;
+				SamplesRead = 1;
+			}
+
+			if (SPEAKER_FRONT_RIGHT == SrcChannels)
+			{
+				// channel #1
+				pSrc++;
+			}
+
+			WAVE_SAMPLE * pDst = (WAVE_SAMPLE *) pBuf;
+			pDst -= SamplesRead;
+			pSrc -= SamplesRead * FileChannels;
+
+			pBuf = pDst;
+
+			for (unsigned i = 0; i < SamplesRead; i++, pSrc += FileChannels)
+			{
+				pDst[i] = *pSrc;
+			}
+
+			TotalSamplesRead -= SamplesRead;
+			Pos -= SamplesRead * SrcSampleSize;
+			Samples += SamplesRead;
+
+			ReturnDataBuffer(pOriginalSrcBuf, WasRead,
+							CDirectFile::ReturnBufferDiscard);
+		}
+	}
+
+	return TotalSamplesRead;
+}
+
+long CWaveFile::WriteSamples(CHANNEL_MASK DstChannels,
+							SAMPLE_POSITION Pos, long Samples,
+							void const * pBuf, CHANNEL_MASK SrcChannels,
+							NUMBER_OF_CHANNELS NumSrcChannels, WaveSampleType type)
+{
+	ASSERT(type == SampleType16bit);    // the only one supported yet
+	ASSERT(type == GetSampleType());
+	// The buffer contains complete samples to process
+	// if Samples > 0, write forward from Pos, Buf points to the buffer begin
+
+	// if Samples < 0, write backward from Pos, Buf points to the buffer end
+
+	// the function returns count how many samples successfully read
+	CHANNEL_MASK const FileChannelsMask = ChannelsMask();
+	DstChannels &= FileChannelsMask;
+
+	CHANNEL_MASK const SrcChannelsMask = ~((~0UL) << NumSrcChannels);
+
+	SrcChannels &= SrcChannelsMask;
+
+	long TotalSamplesWritten = 0;
+
+	ASSERT(0 != DstChannels);
+	ASSERT(0 != SrcChannels);
+	ASSERT(NumSrcChannels <= 2);
+
+	int const DstSampleSize = SampleSize();
+	int const NumFileChannels = Channels();
+	ASSERT(NumFileChannels <= 2);
+
+	if (FileChannelsMask == DstChannels
+		&& SrcChannelsMask == SrcChannels
+		&& DstChannels == SrcChannels)
+	{
+		// simply copy the data (TODO: convert sample format)
+		ASSERT(SampleType16bit == type);
+		LONG Written = WriteAt(pBuf, Samples * DstSampleSize, Pos);
+		return Written / DstSampleSize;
+	}
+
+	WAVE_SAMPLE tmp[MAX_NUMBER_OF_CHANNELS];
+	// write some of channels
+	if (Samples > 0)
+	{
+		while (Samples > 0)
+		{
+			long WasLockedForWrite = 0;
+			void * pOriginalDstBuf;
+
+			long SizeToLock = Samples * DstSampleSize;
+			if (SizeToLock > CDirectFile::CacheBufferSize())
+			{
+				SizeToLock = CDirectFile::CacheBufferSize();
+			}
+
+			ULONG LockFlags = CDirectFile::GetBufferAndPrefetchNext;
+			if (FileChannelsMask == DstChannels)
+			{
+				LockFlags = CDirectFile::GetBufferWriteOnly;
+			}
+
+			WasLockedForWrite = GetDataBuffer( & pOriginalDstBuf,
+												SizeToLock, Pos, LockFlags);
+
+			if (0 == WasLockedForWrite)
+			{
+				return TotalSamplesWritten;
+			}
+
+			unsigned SamplesWritten = WasLockedForWrite / DstSampleSize;
+			WAVE_SAMPLE * pDst = (WAVE_SAMPLE *) pOriginalDstBuf;
+
+			if (0 == SamplesWritten)
+			{
+				ReturnDataBuffer(pOriginalDstBuf, WasLockedForWrite, 0);
+
+				if (DstSampleSize != ReadAt(tmp, DstSampleSize, Pos))
+				{
+					return TotalSamplesWritten;
+				}
+
+				pDst = tmp;
+				SamplesWritten = 1;
+			}
+
+			WAVE_SAMPLE const * pSrc = (WAVE_SAMPLE const *) pBuf;
+			pBuf = pSrc + NumSrcChannels * SamplesWritten;
+
+			CopyWaveSamples(pDst, DstChannels, NumFileChannels,
+							pSrc, SrcChannels, NumSrcChannels, SamplesWritten,
+							GetSampleType(), type);
+
+			if (WasLockedForWrite < DstSampleSize)
+			{
+				LONG Written = WriteAt(pDst, DstSampleSize, Pos);
+
+				if (Written != DstSampleSize)
+				{
+					return TotalSamplesWritten;
+				}
+			}
+			else
+			{
+				ReturnDataBuffer(pOriginalDstBuf, WasLockedForWrite,
+								CDirectFile::ReturnBufferDirty);
+			}
+
+			TotalSamplesWritten += SamplesWritten;
+			Pos += SamplesWritten * DstSampleSize;
+			Samples -= SamplesWritten;
+
+		}
+		return TotalSamplesWritten;
+	}
+	else if (Samples < 0)
+	{
+		while (Samples < 0)
+		{
+			long WasLockedForWrite = 0;
+			void * pOriginalDstBuf;
+
+			long SizeToLock = Samples * DstSampleSize;
+			if (SizeToLock < -CDirectFile::CacheBufferSize())
+			{
+				SizeToLock = -CDirectFile::CacheBufferSize();
+			}
+
+			ULONG LockFlags = CDirectFile::GetBufferAndPrefetchNext;
+			if (FileChannelsMask == DstChannels)
+			{
+				LockFlags = CDirectFile::GetBufferWriteOnly;
+			}
+
+			WasLockedForWrite = GetDataBuffer( & pOriginalDstBuf,
+												SizeToLock, Pos, LockFlags);
+
+			if (0 == WasLockedForWrite)
+			{
+				return TotalSamplesWritten;
+			}
+
+			unsigned SamplesWritten = -WasLockedForWrite / DstSampleSize;
+			WAVE_SAMPLE * pDst = (WAVE_SAMPLE *) pOriginalDstBuf;
+
+			if (0 == SamplesWritten)
+			{
+				ReturnDataBuffer(pOriginalDstBuf, WasLockedForWrite, 0);
+
+				if (DstSampleSize != ReadAt(tmp + NumFileChannels, -DstSampleSize, Pos))
+				{
+					return TotalSamplesWritten;
+				}
+
+				pDst = tmp;
+				SamplesWritten = 1;
+			}
+			else
+			{
+				pDst -= SamplesWritten * NumFileChannels;
+			}
+
+			WAVE_SAMPLE const * pSrc = (WAVE_SAMPLE const *) pBuf;
+			pSrc -= SamplesWritten * NumSrcChannels;
+
+			pBuf = pSrc;
+
+			CopyWaveSamples(pDst, DstChannels, NumFileChannels,
+							pSrc, SrcChannels, NumSrcChannels, SamplesWritten,
+							GetSampleType(), type);
+
+			if (WasLockedForWrite < DstSampleSize)
+			{
+				LONG Written = WriteAt(tmp + NumFileChannels, -DstSampleSize, Pos);
+				if (Written != DstSampleSize)
+				{
+					return TotalSamplesWritten;
+				}
+			}
+			else
+			{
+				ReturnDataBuffer(pOriginalDstBuf, WasLockedForWrite,
+								CDirectFile::ReturnBufferDirty);
+			}
+
+			TotalSamplesWritten -= SamplesWritten;
+			Pos -= SamplesWritten * DstSampleSize;
+			Samples += SamplesWritten;
+
+		}
+	}
+	return TotalSamplesWritten;
+}
+
