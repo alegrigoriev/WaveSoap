@@ -1,5 +1,6 @@
 // Copyright Alexander Grigoriev, 1997-2002, All Rights Reserved
 // DataSection.h
+#define DEBUG_DATASECTION_GETDATA 0
 
 template <typename T, typename C>
 class CDataSection
@@ -16,25 +17,25 @@ public:
 	{
 		delete[] m_pBuffer;
 	}
-	bool Allocate(unsigned nCount);
+	bool Allocate(long nCount);
 	void Invalidate()
 	{
 		m_nCountInBuffer = 0;
 	}
-	void InvalidateRange(ULONGLONG nOffset, unsigned int nCount);
-	int GetData(T ** ppBuf, ULONGLONG nOffset, unsigned int nCount, C * pSource);
+	void InvalidateRange(LONGLONG nOffset, long nCount);
+	int GetData(T ** ppBuf, LONGLONG nOffset, long nCount, C * pSource);
 
 protected:
-	int ReadData(T * pBuf, ULONGLONG nOffset, unsigned int nCount, C * pSource);
+	int ReadData(T * pBuf, LONGLONG nOffset, long nCount, C * pSource);
 	T * m_pBuffer;
-	ULONGLONG GetSourceCount(C * pSource);
-	unsigned m_nBufferSize; // in sizeof(T) units
-	unsigned m_nCountInBuffer;
-	ULONGLONG m_BufferOffset;
+	LONGLONG GetSourceCount(C * pSource);
+	long m_nBufferSize; // in sizeof(T) units
+	long m_nCountInBuffer;
+	LONGLONG m_BufferOffset;
 };
 
 template <typename T, typename C>
-bool CDataSection<T, C>::Allocate(unsigned nCount)
+bool CDataSection<T, C>::Allocate(long nCount)
 {
 	if (m_nBufferSize >= nCount)
 	{
@@ -60,7 +61,7 @@ bool CDataSection<T, C>::Allocate(unsigned nCount)
 }
 
 template <typename T, typename C>
-void CDataSection<T, C>::InvalidateRange(ULONGLONG nOffset, unsigned int nCount)
+void CDataSection<T, C>::InvalidateRange(LONGLONG nOffset, long nCount)
 {
 	if (nOffset < m_BufferOffset + m_nCountInBuffer
 		&& nOffset + nCount > m_BufferOffset)
@@ -70,16 +71,16 @@ void CDataSection<T, C>::InvalidateRange(ULONGLONG nOffset, unsigned int nCount)
 }
 
 template <typename T, typename C>
-int CDataSection<T, C>::GetData(T ** ppBuf, ULONGLONG nOffset, unsigned int nCount, C * pSource)
+int CDataSection<T, C>::GetData(T ** ppBuf, LONGLONG nOffset, long nCount, C * pSource)
 {
-	ULONGLONG TotalSourceCount = GetSourceCount(pSource);
+	LONGLONG TotalSourceCount = GetSourceCount(pSource);
 	if (nOffset >= TotalSourceCount)
 	{
 		return 0;
 	}
 	if (nOffset + nCount > TotalSourceCount)
 	{
-		nCount = unsigned(TotalSourceCount - nOffset);
+		nCount = long(TotalSourceCount - nOffset);
 	}
 
 	if ( ! Allocate(nCount))
@@ -99,7 +100,7 @@ int CDataSection<T, C>::GetData(T ** ppBuf, ULONGLONG nOffset, unsigned int nCou
 	if (nOffset < m_BufferOffset)
 	{
 		// move data up
-		unsigned MoveBy = unsigned(m_BufferOffset) - unsigned(nOffset);
+		long MoveBy = long(m_BufferOffset) - long(nOffset);
 		if (m_nCountInBuffer + MoveBy > m_nBufferSize)
 		{
 			m_nCountInBuffer = m_nBufferSize - MoveBy;
@@ -117,8 +118,8 @@ int CDataSection<T, C>::GetData(T ** ppBuf, ULONGLONG nOffset, unsigned int nCou
 		m_BufferOffset + m_nBufferSize)
 	{
 		// move data down
-		unsigned int MoveBy = unsigned(nOffset) + nCount -
-							(unsigned(m_BufferOffset) + m_nBufferSize);
+		long MoveBy = long(nOffset) + nCount -
+					(long(m_BufferOffset) + m_nBufferSize);
 		if (MoveBy != 0)
 		{
 			ASSERT(m_nCountInBuffer > MoveBy);
@@ -133,28 +134,28 @@ int CDataSection<T, C>::GetData(T ** ppBuf, ULONGLONG nOffset, unsigned int nCou
 		m_BufferOffset + m_nCountInBuffer)
 	{
 		// adjust NumOfSamples:
-		int ReadCount = nCount + unsigned(nOffset) - (unsigned(m_BufferOffset) + m_nCountInBuffer);
+		long ReadCount = nCount + long(nOffset) - (long(m_BufferOffset) + m_nCountInBuffer);
 		ASSERT(m_nCountInBuffer + ReadCount <= m_nBufferSize);
 		ReadCount = ReadData(m_pBuffer + m_nCountInBuffer,
 							m_BufferOffset + m_nCountInBuffer, ReadCount, pSource);
 		m_nCountInBuffer += ReadCount;
-		nCount = unsigned(m_BufferOffset) + m_nCountInBuffer - unsigned(nOffset);
+		nCount = long(m_BufferOffset) + m_nCountInBuffer - long(nOffset);
 	}
 
 	ASSERT (nOffset >= m_BufferOffset
 			&& nOffset + nCount <= m_BufferOffset + m_nCountInBuffer);
-#if 0//def _DEBUG
+#if DEBUG_DATASECTION_GETDATA && defined _DEBUG
 	// verify that the buffer contains the correct data
 	{
 		WAVE_SAMPLE * pVerBuf = new T[nSamples];
-		int ReadSamples = ReadData(pVerBuf, nOffset, nSamples, pSource);
+		int ReadSamples = ReadData(pVerBuf, nOffset, nCount, pSource);
 		ASSERT (0 == memcmp(pVerBuf, m_pBuffer + nOffset - m_BufferOffset,
 							ReadSamples * sizeof(T)));
 		delete[] pVerBuf;
 	}
 #endif
 
-	* ppBuf = m_pBuffer + (unsigned(nOffset) - unsigned(m_BufferOffset));
+	* ppBuf = m_pBuffer + (long(nOffset) - long(m_BufferOffset));
 
 	return nCount;
 }
