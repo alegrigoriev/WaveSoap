@@ -24,6 +24,7 @@ public:
 	int SelEnd;
 	int SelChannel;
 	int CaretPos;
+	BOOL m_bMakeCaretVisible;
 };
 
 class CSoundUpdateInfo : public CObject
@@ -69,6 +70,7 @@ public:
 	virtual void Serialize(CArchive& ar);
 	virtual BOOL OnOpenDocument(LPCTSTR lpszPathName);
 	virtual BOOL OnSaveDocument(LPCTSTR lpszPathName);
+	virtual BOOL OnCmdMsg(UINT nID, int nCode, void* pExtra, AFX_CMDHANDLERINFO* pHandlerInfo);
 protected:
 	virtual BOOL SaveModified();
 	//}}AFX_VIRTUAL
@@ -102,12 +104,14 @@ public:
 	LONG m_SelectionEnd;
 	int m_SelectedChannel; // 0, 1, 2
 	bool m_TimeSelectionMode;
-	void SetSelection(long begin, long end, int channel, int caret);
+	void SetSelection(long begin, long end, int channel, int caret, BOOL bMakeCaretVisible = FALSE);
 	void SoundChanged(DWORD FileID, long begin, long end, int length = -1, DWORD flags = 0);
+	void PlaybackPositionNotify(long position, int channel);
 
 	enum {UpdateSelectionChanged = 1,
 		UpdateSelectionModeChanged,
 		UpdateSoundChanged,
+		UpdatePlaybackPositionChanged,
 	};
 
 // Implementation
@@ -119,9 +123,8 @@ public:
 	void BuildPeakInfo();
 	int CalculatePeakInfoSize() const
 	{
-		size_t WavGranule = m_PeakDataGranularity * WaveChannels() * sizeof(__int16);
-		size_t Granules = (m_SizeOfWaveData + WavGranule - 1) / WavGranule;
-		return Granules * WaveChannels();
+		return (WaveFileSamples() + m_PeakDataGranularity - 1)
+			/ m_PeakDataGranularity * WaveChannels();
 	}
 	int WaveFileSamples() const
 	{
@@ -162,6 +165,9 @@ public:
 	bool volatile m_OperationInProgress;
 	bool volatile m_StopOperation;
 	bool m_OperationNonCritical;
+	bool m_PlayingSound;
+	bool m_bInOnIdle;
+
 	CString m_CurrentStatusString;
 	bool m_bReadOnly;
 	bool m_bDirectMode;
@@ -170,6 +176,7 @@ public:
 	COperationContext * m_pQueuedOperation;
 	COperationContext * m_pUndoList;
 	COperationContext * m_pRedoList;
+	COperationContext * m_pRetiredList;
 	CSoundUpdateInfo * m_pUpdateList;
 
 protected:
@@ -196,6 +203,8 @@ protected:
 	void DoPaste(LONG Start, LONG End, LONG Channel, LPCTSTR FileName);
 	void DoCut(LONG Start, LONG End, LONG Channel, LPCTSTR FileName);
 	void DoDelete(LONG Start, LONG End, LONG Channel);
+	void DeleteUndo();
+	void DeleteRedo();
 
 	//{{AFX_MSG(CWaveSoapFrontDoc)
 	afx_msg void OnEditCopy();
@@ -216,8 +225,16 @@ protected:
 	afx_msg void OnSoundPlay();
 	afx_msg void OnUpdateSoundStop(CCmdUI* pCmdUI);
 	afx_msg void OnSoundStop();
+	afx_msg void OnStopAll();
 	afx_msg void OnSoundPause();
+	afx_msg void OnPlayAndStop();
 	afx_msg void OnUpdateSoundPause(CCmdUI* pCmdUI);
+	afx_msg void OnUpdateIndicatorFileSize(CCmdUI* pCmdUI);
+	afx_msg void OnUpdateIndicatorCurrentPos(CCmdUI* pCmdUI);
+	afx_msg void OnUpdateIndicatorSelectionLength(CCmdUI* pCmdUI);
+	afx_msg void OnUpdateIndicatorSampleRate(CCmdUI* pCmdUI);
+	afx_msg void OnUpdateIndicatorSampleSize(CCmdUI* pCmdUI);
+	afx_msg void OnUpdateIndicatorChannels(CCmdUI* pCmdUI);
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 
