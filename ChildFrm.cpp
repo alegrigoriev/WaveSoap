@@ -1225,7 +1225,7 @@ void CMiniToolbar::OnPaint()
 	CRect cr;
 	GetClientRect( & cr);
 	// draw the bitmaps
-
+	CBrush br(COLORREF(0));
 	for (int i = 0; i < m_Buttons.size(); i++)
 	{
 		BITMAP bmp;
@@ -1237,7 +1237,7 @@ void CMiniToolbar::OnPaint()
 		int flags = DST_BITMAP | DSS_NORMAL | DSS_MONO;
 		if (m_Buttons[i].bEnabled)
 		{
-			if (m_ButtonClicked == m_Buttons[i].nID)
+			if (m_ButtonHilit == m_Buttons[i].nID)
 			{
 				x++;
 				y++;
@@ -1248,7 +1248,7 @@ void CMiniToolbar::OnPaint()
 			flags = DST_BITMAP | DSS_DISABLED | DSS_MONO;
 		}
 		dc.DrawState(CPoint(x, y), CSize(bmp.bmWidth, bmp.bmHeight),
-					m_Buttons[i].pBitmap, flags);
+					m_Buttons[i].pBitmap, flags, & br);
 	}
 }
 
@@ -1326,6 +1326,7 @@ void CMiniToolbar::HiliteButton(UINT nID, bool Hilite)
 
 void CMiniToolbar::RedrawButton(int Index)
 {
+	TRACE("CMiniToolbar::RedrawButton %d\n", Index);
 	CRect cr;
 	GetClientRect( & cr);
 	CRect r = cr;

@@ -260,6 +260,10 @@ SOURCE=.\hlp\WaveSoap.hhp
 # End Source File
 # Begin Source File
 
+SOURCE=.\WaveSoapFileDialogs.cpp
+# End Source File
+# Begin Source File
+
 SOURCE=.\WaveSoapFront.cpp
 # End Source File
 # Begin Source File
@@ -297,6 +301,10 @@ SOURCE=.\AmplitudeRuler.h
 # Begin Source File
 
 SOURCE=.\ApplicationProfile.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\BladeMP3EncDLL.h
 # End Source File
 # Begin Source File
 
@@ -508,6 +516,10 @@ SOURCE=.\WaveOutlineView.h
 # Begin Source File
 
 SOURCE=.\waveproc.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\WaveSoapFileDialogs.h
 # End Source File
 # Begin Source File
 
