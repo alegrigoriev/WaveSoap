@@ -410,6 +410,8 @@ LONGLONG CTwoFilesOperation::GetTempDataSize() const
 	return sum;
 }
 
+// When the function creates UNDO, it also calls SetSaveForUndo to initialize range to save.
+// If UNDO should be created later, the UNDO range should be initialized otherwise.
 BOOL CTwoFilesOperation::InitDestination(CWaveFile & DstFile, SAMPLE_INDEX StartSample, SAMPLE_INDEX EndSample,
 										CHANNEL_MASK chan, BOOL NeedUndo,
 										SAMPLE_INDEX StartUndoSample, SAMPLE_INDEX EndUndoSample)
@@ -427,23 +429,27 @@ BOOL CTwoFilesOperation::InitDestination(CWaveFile & DstFile, SAMPLE_INDEX Start
 	if (0) TRACE("DstStart=%X, DstEnd=%X, DstPos=%X\n",
 				m_DstStart, m_DstEnd, m_DstPos);
 
-	// create undo
-	if (NeedUndo)
+	if (0 == StartUndoSample
+		&& LAST_SAMPLE == EndUndoSample)
 	{
-		if (0 == StartUndoSample
-			&& LAST_SAMPLE == EndUndoSample)
-		{
-			StartUndoSample = StartSample;
-			EndUndoSample = EndSample;
-		}
+		StartUndoSample = StartSample;
+		EndUndoSample = EndSample;
+	}
 
+	if (StartUndoSample != EndUndoSample)
+	{
 		SetSaveForUndo(StartUndoSample, EndUndoSample);
-		return CreateUndo();
 	}
 	else
 	{
 		m_UndoStartPos = 0;
 		m_UndoEndPos = 0;
+	}
+
+	// create undo
+	if (NeedUndo)
+	{
+		return CreateUndo();
 	}
 	return TRUE;
 }
@@ -460,16 +466,13 @@ BOOL CTwoFilesOperation::CreateUndo()
 
 	CCopyUndoContext::auto_ptr pUndo(new CCopyUndoContext(pDocument));
 
+	// by default, save for REDO all undone
 	if ( ! pUndo->InitUndoCopy(m_DstFile, m_UndoStartPos, m_UndoEndPos, m_DstChan))
 	{
 		return FALSE;
 	}
 
 	m_pUndoContext = pUndo.release();
-
-	// by default, save for REDO all undone
-	m_pUndoContext->m_UndoStartPos = m_pUndoContext->m_DstStart;
-	m_pUndoContext->m_UndoEndPos = m_pUndoContext->m_DstEnd;
 
 	TRACE("CreateUndo:\n"), m_pUndoContext->Dump();
 
@@ -1447,6 +1450,7 @@ CCopyContext::CCopyContext(CWaveSoapFrontDoc * pDoc, UINT StatusStringId, UINT O
 {
 }
 
+// The function doesn't create UNDO. You should call SetSaveForUndo before CreateUndo
 BOOL CCopyContext::InitCopy(CWaveFile & DstFile,
 							SAMPLE_INDEX DstStartSample, CHANNEL_MASK DstChannel,
 							CWaveFile & SrcFile,
@@ -1752,7 +1756,9 @@ BOOL CCopyUndoContext::NeedToSaveUndo(SAMPLE_POSITION Position, long length)
 BOOL CCopyUndoContext::InitUndoCopy(CWaveFile & SrcFile,
 									SAMPLE_POSITION SaveStartPos, // source file position of data needed to save and restore
 									SAMPLE_POSITION SaveEndPos,
-									CHANNEL_MASK SaveChannel)
+									CHANNEL_MASK SaveChannel,
+									SAMPLE_POSITION RedoStartPos, // source file position of data needed to redo
+									SAMPLE_POSITION RedoEndPos)
 {
 	ASSERT(SrcFile.IsOpen());
 
@@ -1780,6 +1786,24 @@ BOOL CCopyUndoContext::InitUndoCopy(CWaveFile & SrcFile,
 		m_SrcStart = m_SrcFile.SampleToPosition(0);
 
 		m_SrcEnd = m_SrcFile.SampleToPosition(LAST_SAMPLE);
+
+		if (0 == RedoStartPos
+			&& LAST_SAMPLE_POSITION == RedoEndPos)
+		{
+			m_UndoStartPos = m_DstStart;
+			m_UndoEndPos = m_DstEnd;
+		}
+		else if (RedoStartPos == RedoEndPos)
+		{
+			// make them equal
+			m_UndoStartPos = m_DstStart;
+			m_UndoEndPos = m_DstStart;
+		}
+		else
+		{
+			m_UndoStartPos = RedoStartPos;
+			m_UndoEndPos = RedoEndPos;
+		}
 	}
 	else
 	{
@@ -1801,6 +1825,33 @@ BOOL CCopyUndoContext::InitUndoCopy(CWaveFile & SrcFile,
 		m_SrcStart = m_SrcFile.SampleToPosition(LAST_SAMPLE);
 
 		m_SrcEnd = m_SrcFile.SampleToPosition(0);
+
+		if (0 == RedoStartPos
+			&& LAST_SAMPLE_POSITION == RedoEndPos)
+		{
+			m_UndoStartPos = m_SrcStart;
+			m_UndoEndPos = m_SrcEnd;
+		}
+		else if (RedoStartPos == RedoEndPos)
+		{
+			// make them equal
+			m_UndoStartPos = m_SrcStart;
+			m_UndoEndPos = m_SrcStart;
+		}
+		else
+		{
+			// make sure UndoStartPos > UndoEndPos
+			if (RedoStartPos < RedoEndPos)
+			{
+				m_UndoStartPos = RedoEndPos;
+				m_UndoEndPos = RedoStartPos;
+			}
+			else
+			{
+				m_UndoStartPos = RedoStartPos;
+				m_UndoEndPos = RedoEndPos;
+			}
+		}
 	}
 	m_SrcPos = m_SrcStart;
 	m_SrcChan = ALL_CHANNELS;
@@ -3157,6 +3208,8 @@ CConversionContext::CConversionContext(CWaveSoapFrontDoc * pDoc, UINT StatusStri
 	m_ProcBatch.m_bAutoDeleteProcs = TRUE;
 }
 
+// When the function creates UNDO, it also calls SetSaveForUndo to initialize range to save.
+// If UNDO should be created later, the UNDO range should be initialized by calling SetSaveForUndo otherwise.
 BOOL CWaveProcContext::InitDestination(CWaveFile & DstFile, SAMPLE_INDEX StartSample, SAMPLE_INDEX EndSample,
 										CHANNEL_MASK chan, BOOL NeedUndo)
 {
