@@ -1467,8 +1467,6 @@ BEGIN
     PUSHBUTTON      "f",IDC_BUTTON_LC_F,1,28,27,10,BS_NOTIFY
     CTEXT           "=",IDC_STATIC,31,28,9,8
     EDITTEXT        IDC_EDIT_FREQUENCY,42,26,44,13,ES_AUTOHSCROLL
-    LTEXT           "Hold mouse cursor over the button to see its description",
-                    IDC_STATIC,2,60,224,10
     PUSHBUTTON      "f1",IDC_BUTTON_LC_F1,92,28,27,10,BS_NOTIFY
     CTEXT           "=",IDC_STATIC,122,28,9,8
     EDITTEXT        IDC_EDIT_FREQUENCY1,133,26,44,13,ES_AUTOHSCROLL
@@ -1478,6 +1476,8 @@ BEGIN
     PUSHBUTTON      "f3",IDC_BUTTON_LC_F3,92,44,27,10,BS_NOTIFY
     CTEXT           "=",IDC_STATIC,122,44,9,8
     EDITTEXT        IDC_EDIT_FREQUENCY3,133,42,44,13,ES_AUTOHSCROLL
+    LTEXT           "Hold mouse cursor over the button to see its description",
+                    IDC_STATIC,2,60,224,10
 END
 
 IDD_OPERATORS_TAB DIALOGEX 0, 0, 230, 71
@@ -1780,10 +1780,10 @@ FONT 8, "MS Sans Serif"
 BEGIN
     LTEXT           "",IDC_STATIC_RESPONSE_TEMPLATE,7,7,205,77
     LTEXT           "Frequency response in the selected band:",IDC_STATIC1,7,
-                    87,106,18
-    EDITTEXT        IDC_EDIT_BAND_GAIN,116,88,21,14,ES_AUTOHSCROLL | 
+                    87,105,18
+    EDITTEXT        IDC_EDIT_BAND_GAIN,113,88,31,14,ES_AUTOHSCROLL | 
                     ES_WANTRETURN
-    CTEXT           "dB",IDC_STATIC2,143,90,14,8
+    CTEXT           "dB",IDC_STATIC2,145,90,14,8
     CONTROL         "Simple",IDC_RADIO_EQUALIZER_TYPE,"Button",
                     BS_AUTORADIOBUTTON | WS_GROUP | WS_TABSTOP,7,112,39,10
     CONTROL         "Multiband:",IDC_RADIO2,"Button",BS_AUTORADIOBUTTON,54,
@@ -2837,9 +2837,9 @@ BEGIN
     IDC_BUTTON_INVERSE      "~\nBinary complement"
     IDC_BUTTON_N            "N\nSample number from the beginning of file"
     IDC_BUTTON_LC_N         "n\nSample number from the beginning of the selection"
-    IDC_BUTTON_15           "sin"
-    IDC_BUTTON_2            "sin"
-    IDC_BUTTON_3            "sin"
+    IDC_BUTTON_LC_F1        "f1\nFrequency argument 1"
+    IDC_BUTTON_LC_F2        "f2\nFrequency argument 2"
+    IDC_BUTTON_LC_F3        "f3\nFrequency argument 3"
     IDC_BUTTON_4            "sin"
     IDC_BUTTON_5            "sin"
     IDC_BUTTON_6            "sin"
