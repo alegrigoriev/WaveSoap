@@ -134,6 +134,25 @@ protected:
 
 	DECLARE_MESSAGE_MAP()
 };
+
+/////////////////////////////////////////////////////////////////////////////
+// CFileTimesCombo control
+
+class CFileTimesCombo : public CTimeEditCombo
+{
+	typedef CTimeEditCombo BaseClass;
+
+public:
+	CFileTimesCombo(SAMPLE_INDEX caret,
+					CWaveFile & WaveFile, int TimeFormat);
+
+	void FillFileTimes();
+
+protected:
+	CWaveFile & m_WaveFile;
+	SAMPLE_INDEX const m_CaretPosition;
+};
+
 /////////////////////////////////////////////////////////////////////////////
 //{{AFX_INSERT_LOCATION}}
 // Microsoft Visual C++ will insert additional declarations immediately before the previous line.
