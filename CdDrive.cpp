@@ -333,6 +333,7 @@ BOOL CCdDrive::EnableMediaChangeDetection()
 
 	return TRUE;
 }
+
 BOOL CCdDrive::DisableMediaChangeDetection()
 {
 	if (m_bMediaChangeNotificationDisabled)
@@ -412,6 +413,8 @@ BOOL CCdDrive::SendScsiCommand(CD_CDB * pCdb,
 {
 	// issue IOCTL_SCSI_PASS_THROUGH_DIRECT or IOCTL_SCSI_PASS_THROUGH
 	int CdbLength;
+	DWORD bytes;
+
 	switch (pCdb->Opcode >> 5)  // command group
 	{
 	case 0:
@@ -497,9 +500,7 @@ BOOL CCdDrive::SendScsiCommand(CD_CDB * pCdb,
 			spt.SenseInfoLength = sizeof SCSI_SenseInfo;
 			spt.SenseInfoOffset = sizeof SCSI_PASS_THROUGH;
 
-			GetConfigurationCDB cdb(sizeof spt.CdConfig);
-
-			memcpy(spt.Cdb, & cdb, sizeof cdb);
+			memcpy(spt.Cdb, pCdb, CdbLength);
 
 			spt.CdbLength = CdbLength;
 			spt.DataIn = SCSI_IOCTL_DATA_IN == DataDirection;
@@ -508,44 +509,22 @@ BOOL CCdDrive::SendScsiCommand(CD_CDB * pCdb,
 			spt.DataBufferOffset = offsetof (OP, MoreBuffer);
 			spt.TimeOutValue = 1000;
 
-			res = DeviceIoControl(hFile, IOCTL_SCSI_PASS_THROUGH,
-								& spt, sizeof spt,
-								& spt, sizeof spt,
-								& bytes, NULL);
+			BOOL res = DeviceIoControl(m_hDrive, IOCTL_SCSI_PASS_THROUGH,
+										& spt, sizeof spt,
+										& spt, sizeof spt,
+										& bytes, NULL);
 
 			TRACE("IOCTL_SCSI_PASS_THROUGH returned %d, error=%d\n", res, GetLastError());
+
+			if (res && pSense)
+			{
+				memcpy(pSense, (SCSI_SenseInfo *) & spt, sizeof * pSense);
+			}
+
+			return res;
 		}
 		else
 		{
-			// IOCTL_SCSI_PASS_TROUGH_DIRECT
-			struct OP : SCSI_PASS_THROUGH, SCSI_SenseInfo
-			{
-				char CdConfig[1024];
-			} spt;
-			spt.Length = sizeof spt;
-			spt.PathId = m_ScsiAddr.PathId;
-			spt.TargetId = m_ScsiAddr.TargetId;
-			spt.Lun = m_ScsiAddr.Lun;
-			spt.SenseInfoLength = sizeof SCSI_SenseInfo;
-			spt.SenseInfoOffset = sizeof SCSI_PASS_THROUGH;
-
-			GetConfigurationCDB cdb(sizeof spt.CdConfig);
-
-			memcpy(spt.Cdb, & cdb, sizeof cdb);
-
-			spt.CdbLength = sizeof cdb;
-			spt.DataIn = FALSE;
-
-			spt.DataTransferLength = sizeof spt.CdConfig;
-			spt.DataBufferOffset = sizeof SCSI_PASS_THROUGH + sizeof SCSI_SenseInfo;
-			spt.TimeOutValue = 1000;
-
-			res = DeviceIoControl(hFile, IOCTL_SCSI_PASS_THROUGH,
-								& spt, sizeof spt,
-								& spt, sizeof spt,
-								& bytes, NULL);
-
-			TRACE("IOCTL_SCSI_PASS_THROUGH returned %d, error=%d\n", res, GetLastError());
 		}
 		return FALSE;
 	}
@@ -655,5 +634,46 @@ DWORD CCdDrive::GetDiskID()
 		TRACE("CD Volume label %08X\n", DiskId);
 	}
 	return DiskId;
+}
+
+BOOL CCdDrive::GetMinMaxReadSpeed(int * MinSpeed, int * MaxSpeed) // bytes/s
+{
+	SCSI_SenseInfo ssi;
+	DWORD DataLen;
+#ifdef _DEBUG
+	BOOL res;
+	InquiryData inq;
+	InquiryCDB iqcdb(sizeof inq);
+	DataLen = sizeof inq;
+
+	res = SendScsiCommand( & iqcdb, & inq, & DataLen, SCSI_IOCTL_DATA_IN, & ssi);
+
+	struct FEATURE : FeatureHeader, RealTimeStreamingFeatureDesc
+	{
+	} feature;
+
+	DataLen = sizeof feature;
+	GetConfigurationCDB ConfigCdb(sizeof feature,
+								feature.Code, GetConfigurationCDB::RequestedTypeOneDescriptor);;
+
+	res = SendScsiCommand( & ConfigCdb, & feature, & DataLen, SCSI_IOCTL_DATA_IN, & ssi);
+
+
+#endif
+	struct PERF : CdPerformanceDataHeader
+	{
+		CdNominalPerformanceDescriptor desc[10];
+	} perf;
+	GetPerformanceCDB cdb(10, 0);
+	DataLen = sizeof perf;
+
+	if (SendScsiCommand( & cdb, & perf, & DataLen, SCSI_IOCTL_DATA_IN, & ssi))
+	{
+		return TRUE;
+	}
+	else
+	{
+		return FALSE;
+	}
 }
 
