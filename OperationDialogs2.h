@@ -357,6 +357,7 @@ public:
 	// Dialog Data
 	//{{AFX_DATA(CMarkerRegionDialog)
 	enum { IDD = IDD_REGION_DIALOG };
+	CString m_sName;
 	//}}AFX_DATA
 
 	struct WAVEREGIONINFO * m_pRegionData;
@@ -373,8 +374,13 @@ protected:
 
 	// Generated message map functions
 	//{{AFX_MSG(CMarkerRegionDialog)
+	afx_msg void OnUpdateEditLength(CCmdUI * pCmdUI);
+	afx_msg void OnClickedMarkerRegion();
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
+public:
+	// 0 - marker, 1 - region
+	int m_bMarkerOrRegion;
 };
 
 //{{AFX_INSERT_LOCATION}}
