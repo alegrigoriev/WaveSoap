@@ -160,6 +160,7 @@ CWaveFftView::CWaveFftView()
 	m_FftOrder(512),
 	m_FftSpacing(512),
 	m_pFftWindow(NULL),
+	m_FirstbandVisible(0),
 //m_FftSamplesCalculated(0),
 	m_FftArraySize(0)
 {
@@ -276,9 +277,14 @@ void CWaveFftView::OnDraw(CDC* pDC)
 	int rows = cr.Height() / nChannels;
 	// if all the chart was drawn, how many scans it would have:
 	int TotalRows = rows * m_VerticalScale;
-	int FirstRowInView = m_WaveOffsetY * TotalRows;
-	int FirstFftSample = FirstRowInView * m_FftOrder / TotalRows;
-	int LastFftSample = (FirstRowInView + rows) * m_FftOrder / TotalRows;
+	int LastFftSample = m_FftOrder - m_FirstbandVisible;
+	int FirstFftSample = LastFftSample + (-rows * m_FftOrder) / TotalRows;
+	if (FirstFftSample < 0)
+	{
+		LastFftSample -= FirstFftSample;
+		FirstFftSample = 0;
+	}
+	int FirstRowInView = FirstFftSample * TotalRows / m_FftOrder;
 	int FftSamplesInView = LastFftSample - FirstFftSample + 1;
 
 	int IdxSize = __min(rows, FftSamplesInView);
@@ -298,7 +304,7 @@ void CWaveFftView::OnDraw(CDC* pDC)
 	for (k = 0; k < IdxSize; k++)
 	{
 		if (FirstFftSample >= m_FftOrder
-			&& LastRow >= cr.bottom)
+			|| LastRow >= cr.bottom)
 		{
 			break;
 		}
@@ -332,7 +338,10 @@ void CWaveFftView::OnDraw(CDC* pDC)
 			nColumns = r.right - col;
 		}
 		BYTE * pChBmp = pColBmp;
-		if (pData[0]) for (ff = 0, pId = pIdArray; ff < IdxSize; ff++, pId++)
+		if (pData[0])
+			//if (nColumns != 1)
+		{
+			for (ff = 0, pId = pIdArray; ff < IdxSize; ff++, pId++)
 			{
 				for (int ch = 0, nFftChOffset = 1, nBmpChOffset = 0; ch < nChannels; ch++,
 					nBmpChOffset += nChanOffset, nFftChOffset += m_FftOrder)
@@ -354,6 +363,7 @@ void CWaveFftView::OnDraw(CDC* pDC)
 				}
 				pChBmp += stride * pId->nNumOfRows;
 			}
+		}
 		col += nColumns;
 		pColBmp += nColumns * BytesPerPixel;
 		pData += m_FftResultArrayHeight;
@@ -528,7 +538,9 @@ void CWaveFftView::CalculateFftRange(int left, int right)
 			// Hamming window (sucks!!!)
 			//m_pFftWindow[w] = float(0.54 - 0.46 * cos (w * M_PI /  m_FftOrder));
 			// squared sine
-			m_pFftWindow[w] = float(0.5 - 0.5 * cos (w * M_PI /  m_FftOrder));
+			//m_pFftWindow[w] = float(0.5 - 0.5 * cos ((w + 0.5) * M_PI /  m_FftOrder));
+			// half size is the best so far
+			m_pFftWindow[w] = float(0.707107 * sin (w * M_PI /  (2*m_FftOrder)));
 		}
 	}
 

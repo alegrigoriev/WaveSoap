@@ -45,6 +45,7 @@ protected:
 	int m_FftResultEnd;     // number of the sample after the last
 	//int m_FftSamplesCalculated;
 	double m_FftLogRange;     // what dB zero value corresponds
+	int m_FirstbandVisible;     // how much the chart is scrolled. 0 = DC is visible
 	float * m_pFftWindow;
 	int m_FftOrder;
 	int m_FftSpacing;
