@@ -1,5 +1,9 @@
 *.suo
 *.aps
+*.hhk
+*.hhc
+*.chm
+HTMLDefines.h
 .vs/
 .vscode/
 Debug/

@@ -1,80 +1,19 @@
 //{{NO_DEPENDENCIES}}
-// Microsoft Developer Studio generated include file.
-// Used by WaveSoap.rc
+// Microsoft Visual C++ generated include file.
+// Used by WAVESOAPFRONT.RC
 //
-#define IDM_ABOUTBOX                    0x0010
-#define IDD_ABOUTBOX                    100
-#define IDS_ABOUTBOX                    101
-#define IDD_WAVESOAP_DIALOG             102
-#define IDS_AVI_FILTER                  102
-#define IDD_PROPPAGE_MAIN               103
-#define IDD_PROPPAGE_DECLICK            104
-#define IDD_PROPPAGE_ULF_DENOISE        105
-#define IDD_PROPPAGE_NOISEREDUCT        106
-#define IDD_PROPPAGE_CAMNOISE           107
-#define IDR_MAINFRAME                   128
-#define IDD_DIALOG_WAVE_PROGRESS        130
-#define IDD_DIALOG_MORE_NOISEREDUCTION  133
-#define IDD_DIALOG_MORE_DECLICK         134
-#define IDC_EDIT_MIN_CLICK_AMPLITUDE    1000
-#define IDC_CHECK_LOG_CLICKS            1001
-#define IDC_EDIT_CLICK_LOG_FILENAME     1002
-#define IDC_BUTTON1                     1003
-#define IDC_CLICK_LOG_BROWSE_BUTTON     1003
-#define IDC_CHECK_LOG_CLICKS_ONLY       1004
-#define IDC_BUTTON_BROWSE_TARGET        1004
-#define IDC_EDIT_CLICK_TO_NOISE         1005
-#define IDC_EDIT_MAX_CLICK_LENGTH       1006
-#define IDC_EDIT_ATTACK_RATE            1007
-#define IDC_EDIT_DECAY_RATE             1008
-#define IDC_CHECK_ULF_NOISE             1009
-#define IDC_EDIT_CLICK_IMPORT_FILENAME  1009
-#define IDC_CHECK_DECLICK               1010
-#define IDC_CLICK_IMPORT_BROWSE_BUTTON  1010
-#define IDC_CHECK_NOISE_REDUCTION       1011
-#define IDC_CHECK_IMPORT_CLICKS         1011
-#define IDC_CHECK_CAMERA_NOISE          1012
-#define IDC_EDIT_SOURCE_FILENAME        1013
-#define IDC_EDIT_TARGET_FILENAME        1014
-#define IDC_BUTTON_BROWSE_SOURCE        1015
-#define IDC_PROGRESS1                   1016
-#define IDC_STATIC_ESTIMATED            1017
-#define IDC_EDIT_LOWER_FREQUENCY        1018
-#define IDC_EDIT_TRANSIENT_THRESHOLD    1020
-#define IDC_EDIT_NOISE_CRITERION        1021
-#define IDC_EDIT_NOISE_AREA_THRESHOLD   1022
-#define IDC_EDIT_TONE_PREFERENCE        1022
-#define IDC_EDIT_CONT_AREA_THRESHOLD    1023
-#define IDC_EDIT_NOISE_AREA_THRESHOLD_HIGH 1023
-#define IDC_COMBO_FFT_ORDER             1024
-#define IDC_EDIT_NOISE_REDUCTION        1025
-#define IDC_CHECK_PHASE_FILTER          1026
-#define IDC_EDIT_NOISE_AREA_THRESHOLD_LOW 1026
-#define IDC_BUTTON_MORE                 1027
-#define IDC_CHECK_HIGHPASS              1028
-#define IDC_BUTTON_RESET_DEFAULT        1029
-#define IDC_BUTTON_REVERT_INITIAL       1030
-#define IDC_BUTTON_MORE_SETTINGS        1031
-#define IDC_EDIT_AGGRESSIVNESS          1032
-#define IDC_EDIT_NEAR_MASKING_COEFF     1033
-#define IDC_EDIT_NEAR_MASKING_DISTANCE_HIGH 1034
-#define IDC_EDIT_FAR_MASKING_COEFF      1035
-#define IDC_EDIT4                       1036
-#define IDC_EDIT_NEAR_MASKING_DISTANCE_LOW 1037
-#define IDC_EDIT_MASKING_TIME_HIGH      1038
-#define IDC_EDIT_MASKING_TIME_LOW       1039
-#define IDS_BAD_FLOAT_VALUE             32796
-#define IDS_VALUE_REQUIRED              32797
-#define IDS_VALUE_TOO_LOW               32798
-#define IDS_VALUE_TOO_HIGH              32799
+#define IDD_ABOUTBOX				100
+#define IDR_MAINFRAME				128
+#define IDR_WAVESOTYPE				129
 
 // Next default values for new objects
 //
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE        135
-#define _APS_NEXT_COMMAND_VALUE         32771
-#define _APS_NEXT_CONTROL_VALUE         1034
-#define _APS_NEXT_SYMED_VALUE           101
+#define _APS_3D_CONTROLS			1
+#define _APS_NEXT_RESOURCE_VALUE	130
+#define _APS_NEXT_CONTROL_VALUE		1000
+#define _APS_NEXT_SYMED_VALUE		101
+#define _APS_NEXT_COMMAND_VALUE		32771
 #endif
 #endif
