@@ -1819,12 +1819,12 @@ void CCdReadingContext::DeInit()
 void CCdReadingContext::Execute()
 {
 	// create new document, assign a file to it
-	NewFileParameters Params;
-	Params.InitialSamples = m_NumberOfSectors * (CDDASectorSize / 4);
+	NewFileParameters Params(m_TargetFormat,
+							m_NumberOfSectors * (CDDASectorSize / 4));
+
 	Params.m_pInitialName = m_TrackFileName;
 	Params.m_FileTypeFlags = m_TargetFileType | OpenDocumentCreateNewFromCWaveFile;
 	Params.m_pFile = & m_DstFile;
-	Params.pWf = m_TargetFormat;
 
 	CThisApp * pApp = GetApp();
 	POSITION pos = pApp->m_pDocManager->GetFirstDocTemplatePosition();
