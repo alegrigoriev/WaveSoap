@@ -37,7 +37,7 @@ private:
 class CWaveProc
 {
 public:
-	CWaveProc() : m_Callback(NullCallback),
+	CWaveProc() :
 		m_TmpInBufPut(0),
 		m_TmpInBufGet(0),
 		m_TmpOutBufPut(0),
@@ -71,8 +71,7 @@ public:
 	int m_OutputChannels;
 	int m_ChannelsToProcess;
 	int m_SamplesPerSecond;
-	BOOL (CWaveProc::*m_Callback)(UINT msg,
-								size_t TotalSize, size_t pos);
+
 	BOOL CheckForMinBufferSize(char const * &pInBuf, char * &pOutBuf,
 								int &nInBytes, int &nOutBytes,
 								int * pUsedBytes, int * pSavedBytes,
@@ -123,7 +122,6 @@ public:
 		return m_MaxClipped;
 	}
 
-	BOOL NullCallback(UINT , size_t , size_t ) { return TRUE; }
 	DWORD m_dwCallbackData;
 	char m_TmpInBuf[32];
 	char m_TmpOutBuf[32];
@@ -134,12 +132,6 @@ public:
 	BOOL m_bClipped;
 	double m_MaxClipped;
 };
-
-#define WAVEPROC_MSG_PROGRESS 0
-#define WAVEPROC_MSG_FILE_NOT_FOUND 1
-#define WAVEPROC_MSG_WRONG_FILE 2
-#define WAVEPROC_MSG_WRONG_FILE_FORMAT 3
-#define WAVEPROC_MSG_FINISHED 4
 
 class CHumRemoval: public CWaveProc
 {
