@@ -410,6 +410,13 @@ LONGLONG CTwoFilesOperation::GetTempDataSize() const
 	return sum;
 }
 
+bool CTwoFilesOperation::KeepsPermanentFileReference() const
+{
+	return BaseClass::KeepsPermanentFileReference()
+			|| (m_DstFile.IsOpen()
+				&& ! m_DstFile.IsTemporaryFile());
+}
+
 // When the function creates UNDO, it also calls SetSaveForUndo to initialize range to save.
 // If UNDO should be created later, the UNDO range should be initialized otherwise.
 BOOL CTwoFilesOperation::InitDestination(CWaveFile & DstFile, SAMPLE_INDEX StartSample, SAMPLE_INDEX EndSample,
@@ -559,18 +566,28 @@ void CTwoFilesOperation::SetSaveForUndo(SAMPLE_INDEX StartSample, SAMPLE_INDEX E
 	m_UndoEndPos = m_DstFile.SampleToPosition(EndSample);
 }
 
+// when the operation is completed, UNDO boundary is adjusted
+// This is only used if this operation is base of CUndoCopy context and was used to save UNDO data.
 void CTwoFilesOperation::DeInit()
 {
-	// adjust undo boundaries
-	if (m_DstStart <= m_DstEnd
-		&& m_UndoStartPos != m_UndoEndPos)
+	// adjust undo boundaries, in case the operation will be queued back
+	if (m_UndoStartPos != m_UndoEndPos)
 	{
-		if (m_UndoEndPos < m_DstPos)
+		if (m_DstStart <= m_DstEnd)
 		{
-			m_UndoEndPos = min(m_DstPos, m_UndoStartPos);
+			if (m_UndoStartPos < m_DstPos)
+			{
+				m_UndoStartPos = std::min(m_DstPos, m_UndoEndPos);
+			}
+		}
+		else
+		{
+			if (m_UndoStartPos > m_DstPos)
+			{
+				m_UndoStartPos = std::max(m_DstPos, m_UndoEndPos);
+			}
 		}
 	}
-
 	BaseClass::DeInit();
 }
 
@@ -1470,6 +1487,7 @@ void CCopyContext::DeInit()
 	m_SrcStart = m_SrcPos;
 	if (m_Flags & OperationContextCommitFile)
 	{
+		// TODO: What if it started not from datachink begin?
 		m_DstFile.SetDatachunkLength(m_DstPos - m_DstStart);
 	}
 	m_DstStart = m_DstPos;
