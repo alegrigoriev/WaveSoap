@@ -792,6 +792,7 @@
 #define IDS_SAVING_FILE_PART            33119
 #define IDS_STRING_SPLIT_TO_FILES_OPERATION 33120
 #define IDS_CHANNELS_SHIFT_WARNING_PROMPT 33121
+#define IDS_SEGMENT_NAME_FROM_MARKERS   33122
 #define ID_FILE_PROPERTIES              40000
 #define ID_VIEW_ZOOMVERT_NORMAL         40001
 #define ID_VIEW_ZOOMIN_HOR_FULL         40002
@@ -911,7 +912,7 @@
 #define _APS_3D_CONTROLS                     1
 #define _APS_NEXT_RESOURCE_VALUE        202
 #define _APS_NEXT_COMMAND_VALUE         40151
-#define _APS_NEXT_CONTROL_VALUE         1287
+#define _APS_NEXT_CONTROL_VALUE         1288
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif
