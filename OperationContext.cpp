@@ -1141,7 +1141,7 @@ BOOL CStagedContext::OperationProc()
 	return result;
 }
 
-void CStagedContext::PostRetire()
+void CStagedContext::RetireAllChildren()
 {
 	// collect all undo before done list is emptied
 	// because the current context in m_ContextList can be partially done,
@@ -1159,6 +1159,11 @@ void CStagedContext::PostRetire()
 		COperationContext * pContext = m_DoneList.RemoveHead();
 		pContext->PostRetire();
 	}
+}
+
+void CStagedContext::PostRetire()
+{
+	RetireAllChildren();
 
 	BaseClass::PostRetire();
 }
@@ -3344,6 +3349,7 @@ BOOL CNormalizeContext::Init()
 
 void CFileSaveContext::PostRetire()
 {
+	RetireAllChildren();
 	// rename files, change them
 	if (m_Flags & OperationContextFinished)
 	{
@@ -3406,14 +3412,8 @@ void CFileSaveContext::PostRetire()
 	BaseClass::PostRetire();
 }
 
-CWaveProcContext::CWaveProcContext(CWaveSoapFrontDoc * pDoc, UINT StatusStringId, UINT OperationNameId)
-	: BaseClass(pDoc, 0, StatusStringId, OperationNameId)
-{
-	// delete the procs in the destructor
-	m_Flags &= ~OperationContextDiskIntensive;
-	m_ProcBatch.m_bAutoDeleteProcs = TRUE;
-}
-
+///////////////////////////////////////////////////////////
+///////////////  CConversionContext  //////////////////////
 CConversionContext::CConversionContext(CWaveSoapFrontDoc * pDoc, UINT StatusStringId, UINT OperationNameId)
 	: BaseClass(pDoc, StatusStringId, OperationNameId)
 {
@@ -3447,7 +3447,30 @@ CConversionContext::CConversionContext(CWaveSoapFrontDoc * pDoc, UINT StatusStri
 
 	m_SrcChan = ALL_CHANNELS;
 	m_DstChan = ALL_CHANNELS;
+}
 
+void CConversionContext::PostRetire()
+{
+	// For non-RIFF file, don't do post-pricessing
+	if (m_DstFile.GetDataChunk()->dwDataOffset != 0)
+	{
+		// update data chunk and number of samples
+		m_DstFile.SetFactNumberOfSamples(
+										(m_SrcPos - m_SrcStart) / m_SrcFile.SampleSize());
+
+		m_DstPos = (m_DstPos + 1) & ~1;
+		m_DstFile.SetDatachunkLength(m_DstPos - m_DstStart);
+	}
+
+	BaseClass::PostRetire();
+}
+
+/////////////////////////////////////////////////////////
+///////////////  CWaveProcContext  //////////////////////
+CWaveProcContext::CWaveProcContext(CWaveSoapFrontDoc * pDoc, UINT StatusStringId, UINT OperationNameId)
+	: BaseClass(pDoc, 0, StatusStringId, OperationNameId)
+{
+	// delete the procs in the destructor
 	m_Flags &= ~OperationContextDiskIntensive;
 	m_ProcBatch.m_bAutoDeleteProcs = TRUE;
 }
