@@ -1774,8 +1774,10 @@ BEGIN_MESSAGE_MAP(CMarkerRegionDialog, BaseClass)
 	//}}AFX_MSG_MAP
 	ON_UPDATE_COMMAND_UI(IDC_EDIT_LENGTH, OnUpdateEditLength)
 	ON_UPDATE_COMMAND_UI(IDC_COMBO_END, OnUpdateEditLength)
+	ON_UPDATE_COMMAND_UI(IDC_BUTTON_DELETE, OnUpdateDelete)
 	ON_BN_CLICKED(IDC_RADIO_MARKER, OnClickedMarkerRegion)
 	ON_BN_CLICKED(IDC_RADIO_REGION, OnClickedMarkerRegion)
+	ON_BN_CLICKED(IDC_BUTTON_DELETE, OnClickedDelete)
 
 END_MESSAGE_MAP()
 
@@ -1790,7 +1792,7 @@ void CMarkerRegionDialog::DoDataExchange(CDataExchange* pDX)
 	{
 		m_pRegionData->Label = m_sName;
 		m_pRegionData->Sample = GetStart();
-		m_pRegionData->Flags |= m_pRegionData->ChangeLength;
+		m_pRegionData->Flags |= m_pRegionData->ChangeLength | m_pRegionData->ChangeSample;
 		if (m_bMarkerOrRegion)
 		{
 			m_pRegionData->Length = GetEnd() - GetStart();
@@ -1810,4 +1812,15 @@ void CMarkerRegionDialog::OnUpdateEditLength(CCmdUI * pCmdUI)
 void CMarkerRegionDialog::OnClickedMarkerRegion()
 {
 	NeedUpdateControls();
+}
+
+void CMarkerRegionDialog::OnUpdateDelete(CCmdUI * pCmdUI)
+{
+	pCmdUI->Enable(0 == (m_pRegionData->Flags & m_pRegionData->AddNew));
+}
+
+void CMarkerRegionDialog::OnClickedDelete()
+{
+	m_pRegionData->Flags |= m_pRegionData->Delete;
+	EndDialog(IDOK);
 }
