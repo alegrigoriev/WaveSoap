@@ -11,7 +11,6 @@
 #include "WaveSoapFileDialogs.h"
 #include "GdiObjectSave.h"
 #include <dbt.h>
-//#include <afxpriv.h>
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -1573,6 +1572,7 @@ void CCdGrabbingDialog::OnOK()
 void CCdGrabbingDialog::OnContextMenu(CWnd* pWnd, CPoint point)
 {
 	BaseClass::OnContextMenu(pWnd, point);
+#if 0
 	return;
 	CRect cr;
 	m_lbTracks.GetClientRect( & cr);
@@ -1584,12 +1584,14 @@ void CCdGrabbingDialog::OnContextMenu(CWnd* pWnd, CPoint point)
 	CMenu menu;
 	menu.LoadMenu(IDR_MENU_CDGRAB);
 	CMenu* pPopup = menu.GetSubMenu(0);
+
 	if(pPopup != NULL)
 	{
 		pPopup->TrackPopupMenu(TPM_LEFTALIGN | TPM_RIGHTBUTTON,
 								point.x, point.y,
 								this);
 	}
+#endif
 }
 
 
