@@ -262,19 +262,6 @@ void CWaveSoapFrontView::OnDraw(CDC* pDC)
 	{
 		return;
 	}
-	// pen to draw the waveform
-	CPen WaveformPen;
-	CPen SelectedWaveformPen;
-	// pen to draw zero level
-	CPen ZeroLinePen;
-	CPen SelectedZeroLinePen;
-	// pen do draw 6dB line
-	CPen SixDBLinePen;
-	CPen SelectedSixDBLinePen;
-	// pen to draw left/right channel separator
-	CPen ChannelSeparatorPen;
-	CPen SelectedChannelSeparatorPen;
-
 	CThisApp * pApp = GetApp();
 	POINT (* ppArray)[2] = NULL;
 
@@ -286,46 +273,47 @@ void CWaveSoapFrontView::OnDraw(CDC* pDC)
 			OldPalette.PushPalette(pApp->GetPalette(), FALSE);
 		}
 
-		WaveformPen.CreatePen(PS_SOLID, 1, pApp->m_WaveColor);
-		SelectedWaveformPen.CreatePen(PS_SOLID, 1, pApp->m_SelectedWaveColor);
-
-		ZeroLinePen.CreatePen(PS_SOLID, 1, pApp->m_ZeroLineColor);
-		SelectedZeroLinePen.CreatePen(PS_SOLID, 1, pApp->m_SelectedZeroLineColor);
-
-		SixDBLinePen.CreatePen(PS_SOLID, 1, pApp->m_6dBLineColor);
-		SelectedSixDBLinePen.CreatePen(PS_SOLID, 1, pApp->m_Selected6dBLineColor);
-
-		ChannelSeparatorPen.CreatePen(PS_SOLID, 1, pApp->m_ChannelSeparatorColor);
-		SelectedChannelSeparatorPen.CreatePen(PS_SOLID, 1, pApp->m_SelectedChannelSeparatorColor);
+		// pen to draw the waveform
+		CPen WaveformPen(PS_SOLID, 1, pApp->m_WaveColor);
+		CPen SelectedWaveformPen(PS_SOLID, 1, pApp->m_SelectedWaveColor);
+		// pen to draw zero level
+		CPen ZeroLinePen(PS_SOLID, 1, pApp->m_ZeroLineColor);
+		CPen SelectedZeroLinePen(PS_SOLID, 1, pApp->m_SelectedZeroLineColor);
+		// pen do draw 6dB line
+		CPen SixDBLinePen(PS_SOLID, 1, pApp->m_6dBLineColor);
+		CPen SelectedSixDBLinePen(PS_SOLID, 1, pApp->m_Selected6dBLineColor);
+		// pen to draw left/right channel separator
+		CPen ChannelSeparatorPen(PS_SOLID, 1, pApp->m_ChannelSeparatorColor);
+		CPen SelectedChannelSeparatorPen(PS_SOLID, 1, pApp->m_SelectedChannelSeparatorColor);
 
 		CGdiObjectSaveT<CPen> OldPen(pDC, pDC->SelectObject(& ZeroLinePen));
 
-		CRect r;
+		CRect cr;
 
-		GetClientRect(r);
+		GetClientRect(cr);
 		if (pDC->IsKindOf(RUNTIME_CLASS(CPaintDC)))
 		{
 			RECT r_upd = ((CPaintDC*)pDC)->m_ps.rcPaint;
 			// make intersect by x coordinate
-			if (r.left < r_upd.left) r.left = r_upd.left;
-			if (r.right > r_upd.right) r.right = r_upd.right;
+			if (cr.left < r_upd.left) cr.left = r_upd.left;
+			if (cr.right > r_upd.right) cr.right = r_upd.right;
 		}
 
-		r.left--;   // make additional
-		r.right++;
+		cr.left--;   // make additional
+		cr.right++;
 
-		double left = WindowToWorldX(r.left);
-		//double right = WindowToWorldX(r.right);
+		double left = WindowToWorldX(cr.left);
+		//double right = WindowToWorldX(cr.right);
 		if (left < 0.) left = 0.;
 
-		// number of sample that corresponds to the r.left position
+		// number of sample that corresponds to the cr.left position
 		SAMPLE_INDEX NumOfFirstSample = DWORD(left);
 		unsigned SamplesPerPoint = m_HorizontalScale;
 
 		// create an array of points
 
 		NUMBER_OF_CHANNELS nChannels = pDoc->WaveChannels();
-		int nNumberOfPoints = r.right - r.left;
+		int nNumberOfPoints = cr.right - cr.left;
 
 		int SelBegin = WorldToWindowXfloor(pDoc->m_SelectionStart);
 		int SelEnd = WorldToWindowXfloor(pDoc->m_SelectionEnd);
@@ -362,7 +350,7 @@ void CWaveSoapFrontView::OnDraw(CDC* pDC)
 					{
 						if (TRACE_DRAWING) TRACE("CWaveSoapFrontView Zero pos=%d\n", ZeroLinePos);
 
-						DrawHorizontalWithSelection(pDC, r.left, r.right,
+						DrawHorizontalWithSelection(pDC, cr.left, cr.right,
 													ZeroLinePos,
 													& ZeroLinePen,
 													& SelectedZeroLinePen, 1 << ch);
@@ -372,7 +360,7 @@ void CWaveSoapFrontView::OnDraw(CDC* pDC)
 					if (n6DBLine >= ClipLow &&
 						n6DBLine < ClipHigh)
 					{
-						DrawHorizontalWithSelection(pDC, r.left, r.right,
+						DrawHorizontalWithSelection(pDC, cr.left, cr.right,
 													n6DBLine,
 													& SixDBLinePen,
 													& SelectedSixDBLinePen, 1 << ch);
@@ -383,7 +371,7 @@ void CWaveSoapFrontView::OnDraw(CDC* pDC)
 					if (n6DBLine >= ClipLow &&
 						n6DBLine < ClipHigh)
 					{
-						DrawHorizontalWithSelection(pDC, r.left, r.right,
+						DrawHorizontalWithSelection(pDC, cr.left, cr.right,
 													n6DBLine,
 													& SixDBLinePen,
 													& SelectedSixDBLinePen, 1 << ch);
@@ -417,8 +405,8 @@ void CWaveSoapFrontView::OnDraw(CDC* pDC)
 							WavePeak peak =
 								pDoc->m_WavFile.GetPeakMinMax(index1, index2, nChannels);
 
-							ppArray[i][0] = CPoint(i + r.left, WaveToY(peak.low));
-							ppArray[i][1] = CPoint(i + r.left, WaveToY(peak.high));
+							ppArray[i][0] = CPoint(i + cr.left, WaveToY(peak.low));
+							ppArray[i][1] = CPoint(i + cr.left, WaveToY(peak.high));
 						}
 					}
 					else
@@ -449,8 +437,8 @@ void CWaveSoapFrontView::OnDraw(CDC* pDC)
 								}
 							}
 
-							ppArray[i][0] = CPoint(i + r.left, WaveToY(low));
-							ppArray[i][1] = CPoint(i + r.left, WaveToY(high));
+							ppArray[i][0] = CPoint(i + cr.left, WaveToY(low));
+							ppArray[i][1] = CPoint(i + cr.left, WaveToY(high));
 //                        ASSERT(ppArray[i][0].y >= ppArray[i][1].y);
 						}
 					}
@@ -537,12 +525,56 @@ void CWaveSoapFrontView::OnDraw(CDC* pDC)
 					if (ch + 1 < nChannels)
 					{
 						// draw channel separator line
-						DrawHorizontalWithSelection(pDC, r.left, r.right,
+						DrawHorizontalWithSelection(pDC, cr.left, cr.right,
 													ChanR.bottom,
 													& ChannelSeparatorPen,
 													& SelectedChannelSeparatorPen, ALL_CHANNELS);
 					}
 				}
+		}
+
+		CWaveFile::InstanceDataWav * pInst = pDoc->m_WavFile.GetInstanceData();
+
+		CPen DashedPen(PS_DASH, 1, COLORREF(0));  // black dash
+		pDC->SelectObject( & DashedPen);
+
+		for (CuePointVectorIterator i = pInst->m_CuePoints.begin();
+			i < pInst->m_CuePoints.end(); i++)
+		{
+			long x = WorldToWindowXfloor(i->dwSampleOffset);
+			WaveRegionMarker * pMarker = pInst->GetRegionMarker(i->CuePointID);
+
+			if (x >= cr.left
+				&& x <= cr.right)
+			{
+				if (pMarker != NULL
+					&& pMarker->SampleLength != 0)
+				{
+					// draw mark of the region begin
+					pDC->MoveTo(x, cr.top);
+					pDC->LineTo(x, cr.bottom);
+				}
+				else
+				{
+					// draw marker
+					pDC->MoveTo(x, cr.top);
+					pDC->LineTo(x, cr.bottom);
+				}
+			}
+
+			if (pMarker != NULL
+				&& pMarker->SampleLength != 0)
+			{
+				x = WorldToWindowXfloor(i->dwSampleOffset + pMarker->SampleLength);
+
+				if (x >= cr.left
+					&& x <= cr.right)
+				{
+					// draw mark of the region end
+					pDC->MoveTo(x, cr.top);
+					pDC->LineTo(x, cr.bottom);
+				}
+			}
 		}
 	}
 	catch (CResourceException * e)
@@ -641,10 +673,10 @@ BOOL CWaveSoapFrontView::PlaybackCursorVisible()
 {
 	int pos = WorldToWindowXfloor(m_PlaybackCursorDrawnSamplePos);
 
-	CRect r;
-	GetClientRect(r);
+	CRect cr;
+	GetClientRect(cr);
 
-	if (pos < r.left || pos >= r.right)
+	if (pos < cr.left || pos >= cr.right)
 	{
 		// not in the view;
 		return FALSE;
@@ -1972,6 +2004,7 @@ BOOL CWaveSoapFrontView::MasterScrollBy(double dx, double dy, BOOL bDoScroll)
 		// make sure the new position will be on the multiple of m_HorizontalScale
 		ASSERT(0 == SAMPLE_INDEX(dOrgX) % m_HorizontalScale);
 	}
+
 	if (dy != 0.)
 	{
 		// check for the limits
@@ -2036,6 +2069,7 @@ BOOL CWaveSoapFrontView::MasterScrollBy(double dx, double dy, BOOL bDoScroll)
 									SW_INVALIDATE | SW_ERASE);
 #endif
 				}
+				// TODO: invalidate markers (with erase ?)
 				ShowPlaybackCursor();
 			}
 		}
