@@ -359,6 +359,7 @@ public:
 				NUMBER_OF_SAMPLES SrcDstLength);
 
 protected:
+	virtual void DeInit();
 
 	virtual BOOL OperationProc();
 };
@@ -609,10 +610,10 @@ public:
 	virtual BOOL Init();
 };
 
-class CConversionContext : public CCopyContext
+class CConversionContext : public CTwoFilesOperation
 {
 	typedef CConversionContext ThisClass;
-	typedef CCopyContext BaseClass;
+	typedef CTwoFilesOperation BaseClass;
 public:
 	typedef std::auto_ptr<ThisClass> auto_ptr;
 	CConversionContext(CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString, LPCTSTR OperationName);

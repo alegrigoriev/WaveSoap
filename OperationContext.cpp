@@ -351,9 +351,6 @@ void CTwoFilesOperation::SetSaveForUndo(SAMPLE_INDEX StartSample, SAMPLE_INDEX E
 
 void CTwoFilesOperation::DeInit()
 {
-	m_SrcStart = m_SrcPos;
-	m_DstStart = m_DstPos;
-
 	if (NULL != m_pUndoContext)
 	{
 		m_pUndoContext->m_SrcEnd = m_pUndoContext->m_SrcPos;
@@ -1118,6 +1115,14 @@ BOOL CCopyContext::InitCopy(CWaveFile & DstFile,
 
 	return InitDestination(DstFile, DstStartSample,
 							DstStartSample + SrcDstLength, DstChannel, FALSE);
+}
+
+void CCopyContext::DeInit()
+{
+	BaseClass::DeInit();
+
+	m_SrcStart = m_SrcPos;
+	m_DstStart = m_DstPos;
 }
 
 // copy the actual data, while probably changing number of channels
@@ -2631,7 +2636,7 @@ void CFileSaveContext::PostRetire(BOOL bChildContext)
 }
 
 CConversionContext::CConversionContext(CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString, LPCTSTR OperationName)
-	: CCopyContext(pDoc, StatusString, OperationName),
+	: BaseClass(pDoc, StatusString, 0, OperationName),
 	m_CurrentSamples(0)
 {
 	// delete the procs in the destructor
@@ -2643,7 +2648,7 @@ CConversionContext::CConversionContext(CWaveSoapFrontDoc * pDoc, LPCTSTR StatusS
 										LPCTSTR OperationName,
 										CWaveFile & SrcFile,
 										CWaveFile & DstFile)
-	: CCopyContext(pDoc, StatusString, OperationName)
+	: BaseClass(pDoc, StatusString, 0, OperationName)
 	, m_CurrentSamples(0)
 {
 	// delete the procs in the destructor
