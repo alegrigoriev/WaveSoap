@@ -124,6 +124,7 @@ enum {
 	SaveFile_SameFolder = 0x80,
 	SaveFile_SavePartial = 0x100,
 	SaveFile_SameFormat = 0x200,
+	SaveFile_DontPromptChannelReduction = 0x400,
 	SaveFile_WavFile = 0,
 	SaveFile_Mp3File = OpenDocumentMp3File,  // 0x1000
 	SaveFile_WmaFile = OpenDocumentWmaFile, //0x2000
