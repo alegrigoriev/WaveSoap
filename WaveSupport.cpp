@@ -8,8 +8,8 @@
 // CWaveDevice stuff
 /////////////////////////////////
 
-CWaveDevice::CWaveDevice():
-	m_pwfe(NULL), m_pBufs(NULL), m_id(WAVE_MAPPER-1),
+CWaveDevice::CWaveDevice()
+	: m_pBufs(NULL), m_id(WAVE_MAPPER-1),
 	nBuffers(0),
 	hEvent(CreateEvent(NULL, FALSE, FALSE, NULL))
 {
@@ -20,11 +20,6 @@ CWaveDevice::~CWaveDevice()
 {
 	if (hEvent != NULL) CloseHandle(hEvent);
 	DeleteCriticalSection( & cs);
-	if (NULL != m_pwfe)
-	{
-		delete[] (char*)m_pwfe;
-		m_pwfe = NULL;
-	}
 }
 
 BOOL CWaveDevice::AllocateBuffers(size_t size, int count)
@@ -193,7 +188,7 @@ MMRESULT CWaveOut::Open(UINT id, const WAVEFORMATEX * pwfe, DWORD dwAuxFlags)
 
 	if (MMSYSERR_NOERROR == err)
 	{
-		m_pwfe = CopyWaveformat(pwfe);
+		m_wfe = pwfe;
 		m_id = id;
 	}
 
@@ -234,11 +229,7 @@ MMRESULT CWaveOut::Close()
 		return err;
 	m_hwo = NULL;
 	m_id = WAVE_MAPPER - 1;
-	if (NULL != m_pwfe)
-	{
-		delete[] (char*)m_pwfe;
-		m_pwfe = NULL;
-	}
+
 	return MMSYSERR_NOERROR;
 }
 
@@ -390,27 +381,14 @@ MMRESULT CWaveIn::Open(UINT id, const WAVEFORMATEX * pwfe, DWORD dwAuxFlags)
 	ASSERT(this != NULL);
 	Close();
 
-	size_t size = sizeof (WAVEFORMATEX);
-	if (pwfe->wFormatTag != WAVE_FORMAT_PCM)
-	{
-		size += pwfe->cbSize;
-	}
+	m_wfe = pwfe;
 
-	WAVEFORMATEX * pwfeTmp = (WAVEFORMATEX*) new char[size];
-	if (NULL == pwfeTmp) return MMSYSERR_NOMEM;
-
-	memcpy(pwfeTmp, pwfe, size);
-
-	MMRESULT err = waveInOpen( & m_hwi, id, pwfeTmp, ULONG(waveInProc), (DWORD)this,
+	MMRESULT err = waveInOpen( & m_hwi, id, m_wfe, ULONG(waveInProc), (DWORD)this,
 								CALLBACK_FUNCTION | (dwAuxFlags & (WAVE_ALLOWSYNC | WAVE_FORMAT_QUERY | WAVE_MAPPED)));
+
 	if (MMSYSERR_NOERROR == err)
 	{
-		m_pwfe = pwfeTmp;
 		m_id = id;
-	}
-	else
-	{
-		delete [] (char*) pwfeTmp;
 	}
 
 	return err;
@@ -447,11 +425,7 @@ MMRESULT CWaveIn::Close()
 		return err;
 	m_hwi = NULL;
 	m_id = WAVE_MAPPER - 1;
-	if (NULL != m_pwfe)
-	{
-		delete[] (char*)m_pwfe;
-		m_pwfe = NULL;
-	}
+
 	return MMSYSERR_NOERROR;
 }
 
@@ -617,7 +591,14 @@ int CWaveFormat::MatchFormat(WAVEFORMATEX const * pwf)
 			if (0 == memcmp(pwf, m_pWf, sizeof (PCMWAVEFORMAT)))
 			{
 				// exact match found
-				return WaveFormatExactMatch;
+				if (16 == pwf->wBitsPerSample)
+				{
+					return WaveFormatAllFieldsMatch | WaveFormatMatch16Bits;
+				}
+				else
+				{
+					return WaveFormatAllFieldsMatch;
+				}
 			}
 		}
 		else
@@ -626,23 +607,315 @@ int CWaveFormat::MatchFormat(WAVEFORMATEX const * pwf)
 				&& 0 == memcmp(pwf, m_pWf, pwf->cbSize + sizeof (WAVEFORMATEX)))
 			{
 				// exact match found
-				return WaveFormatExactMatch;
+				return WaveFormatAllFieldsMatch;
 			}
 		}
-		match += WaveFormatMatchFormatTag;
+		match |= WaveFormatMatchFormatTag;
 	}
 	if (pwf->nSamplesPerSec == SampleRate())
 	{
-		match += WaveFormatMatchSampleRate;
+		match |= WaveFormatMatchSampleRate;
 	}
 	if (pwf->nChannels == NumChannels())
 	{
-		match += WaveFormatMatchCnahhels;
+		match |= WaveFormatMatchCnannels;
 	}
 	if (pwf->nAvgBytesPerSec == BytesPerSec())
 	{
-		match += WaveFormatMatchBytesPerSec;
+		match |= WaveFormatMatchBytesPerSec;
+	}
+	if (pwf->wBitsPerSample == BitsPerSample())
+	{
+		match |= WaveFormatMatchBitsPerSample;
 	}
 	return match;
+}
+
+struct FormatTagEnumStruct
+{
+	CAudioCompressionManager * pAcm;
+	WAVEFORMATEX * pWf;
+	WaveFormatTagEx const * pListOfTags;
+	int NumTags;
+	DWORD flags;
+};
+
+struct FormatEnumCallbackStruct
+{
+	CAudioCompressionManager * pAcm;
+	CWaveFormat FormatToMatch;
+	WaveFormatTagEx m_Tag;
+	WaveFormatTagEx const * m_pTagsToCompare; // include or exclude
+	int m_NumTagsToCompare;
+	//CString m_FormatTagName;
+	int flags;
+	BOOL FormatFound;
+};
+
+// if can convert to any format of the tag, add the tag to the table
+BOOL _stdcall CAudioCompressionManager::FormatTestEnumCallback(
+																HACMDRIVERID hadid, LPACMFORMATDETAILS pafd,
+																DWORD dwInstance, DWORD fdwSupport)
+{
+	FormatEnumCallbackStruct * pFcs = (FormatEnumCallbackStruct *) dwInstance;
+
+	TRACE("FormatTestEnumCallback: format=%s, tag=%d, \n", pafd->szFormat, pafd->dwFormatTag);
+
+	// check if the format should be excluded
+	if (0 != pFcs->m_NumTagsToCompare
+		&& NULL != pFcs->m_pTagsToCompare
+		&& (pFcs->flags & WaveFormatExcludeFormats))
+	{
+		for (int i = 0; i < pFcs->m_NumTagsToCompare; i++)
+		{
+			if (pFcs->m_pTagsToCompare[i] == pafd->pwfx)
+			{
+				// format tag should be excluded from enumerated, but keep trying
+				return TRUE;
+			}
+		}
+	}
+
+	int match = pFcs->FormatToMatch.MatchFormat(pafd->pwfx);
+	// include only formats with the same tag.
+	// If MatchCompatibleFormats selected,
+	if (pFcs->m_Tag == pafd->pwfx)
+	{
+		if (pFcs->flags & WaveFormatMatchCompatibleFormats)
+		{
+			// include all non-PCM formats or
+			// PCM formats with the same sample rate and number of channels,
+			// and the same number of bits or 16 bits
+			if (pFcs->m_Tag.Tag == WAVE_FORMAT_PCM
+				&& ((match & (WaveFormatMatchSampleRate | WaveFormatMatchCnannels))
+					!= (WaveFormatMatchSampleRate | WaveFormatMatchCnannels)
+					|| (0 == (match & (WaveFormatMatchBitsPerSample | WaveFormatMatch16Bits)))))
+			{
+				return TRUE;    // enumerate more
+			}
+		}
+		else
+		{
+			// check which flags are specified
+			if (pFcs->flags & ~match
+				& (WaveFormatMatchCnannels
+					| WaveFormatMatchBitsPerSample
+					| WaveFormatMatchSampleRate))
+			{
+				return TRUE;    // enumerate more
+			}
+		}
+		pFcs->m_Tag = pafd->pwfx;
+		pFcs->FormatFound = TRUE;
+		return FALSE;   // no more enumeration required
+	}
+	return TRUE;    // enumerate more
+}
+
+BOOL _stdcall CAudioCompressionManager::FormatTagEnumCallback(
+															HACMDRIVERID hadid, LPACMFORMATTAGDETAILS paftd,
+															DWORD dwInstance, DWORD fdwSupport)
+{
+	FormatTagEnumStruct * pfts = (FormatTagEnumStruct *) dwInstance;
+	CAudioCompressionManager * pAcm = pfts->pAcm;
+
+	if (pfts->NumTags != 0
+		&& pfts->pListOfTags != NULL)
+	{
+		int Include = (pfts->flags & WaveFormatExcludeFormats);
+
+		for (int i = 0; i < pfts->NumTags; i++)
+		{
+			if (paftd->dwFormatTag == pfts->pListOfTags[i].Tag)
+			{
+				if (Include)
+				{
+					if (pfts->pListOfTags[i].Tag != WAVE_FORMAT_EXTENSIBLE)
+					{
+						// format tag should be excluded from enumerated
+						return TRUE;
+					}
+				}
+				Include = TRUE;
+				break;
+			}
+		}
+		if ( ! Include)
+		{
+			return TRUE;
+		}
+	}
+
+	FormatEnumCallbackStruct fcs;
+
+	fcs.FormatFound = FALSE;
+	fcs.pAcm = pAcm;
+	fcs.m_Tag.Tag = paftd->dwFormatTag;
+	fcs.m_pTagsToCompare = pfts->pListOfTags;
+	fcs.m_NumTagsToCompare = pfts->NumTags;
+	fcs.flags = pfts->flags;
+	fcs.FormatToMatch = pfts->pWf;
+
+	CWaveFormat pwfx;
+	pwfx.Allocate(0xFFF0);
+	ACMFORMATDETAILS afd;
+
+	TRACE("FormatTagEnum: name=%s, driverID=%x, tag=%d, formats=%d, max size=%d\n", paftd->szFormatTag,
+		hadid, paftd->dwFormatTag, paftd->cStandardFormats, paftd->cbFormatSize);
+
+	pwfx.InitFormat(WAVE_FORMAT_PCM,
+					pfts->pWf->nSamplesPerSec, pfts->pWf->nChannels);
+
+	memzero(afd);
+	afd.cbStruct = sizeof afd;
+	afd.cbwfx = pwfx.m_AllocatedSize;
+	afd.dwFormatTag = paftd->dwFormatTag;
+	afd.pwfx = pwfx;
+
+	HACMDRIVER had = NULL;
+
+	if (MMSYSERR_NOERROR == acmDriverOpen(&had, hadid, 0))
+	{
+		DWORD flags = 0;
+
+		if (paftd->dwFormatTag != WAVE_FORMAT_PCM
+			&& pfts->flags & WaveFormatMatchCompatibleFormats)
+		{
+			flags = ACM_FORMATENUMF_CONVERT;
+		}
+		int res = acmFormatEnum(had, & afd, FormatTestEnumCallback, DWORD(& fcs), flags);
+		TRACE("acmFormatEnum returned %x\n", res);
+		acmDriverClose(had, 0);
+		if (fcs.FormatFound)
+		{
+			int nIndex = pAcm->m_FormatTags.size();
+			pAcm->m_FormatTags.resize(nIndex + 1);
+			pAcm->m_FormatTags[nIndex].SetData(fcs.m_Tag, paftd->szFormatTag, hadid);
+		}
+	}
+
+	return TRUE;
+}
+
+void CAudioCompressionManager::FillFormatTagArray
+	(WAVEFORMATEX * pwf, WaveFormatTagEx const ListOfTags[],
+		int NumTags, DWORD flags)
+{
+	m_FormatTags.clear();
+
+	FormatTagEnumStruct fts;
+	fts.pAcm = this;
+	fts.pWf = pwf;
+	fts.flags = flags;
+	fts.NumTags = NumTags;
+	fts.pListOfTags = ListOfTags;
+
+	// enum all formats
+	ACMFORMATTAGDETAILS atd;
+	memzero(atd);
+	atd.cbStruct = sizeof atd;
+	atd.dwFormatTag = WAVE_FORMAT_UNKNOWN;
+
+	acmFormatTagEnum(NULL, & atd, FormatTagEnumCallback, DWORD( & fts), 0);
+
+}
+
+// enumerates all formats for the tag
+BOOL _stdcall CAudioCompressionManager::FormatEnumCallback(
+															HACMDRIVERID hadid, LPACMFORMATDETAILS pafd,
+															DWORD dwInstance, DWORD fdwSupport)
+{
+	FormatEnumCallbackStruct * pfcs = (FormatEnumCallbackStruct *) dwInstance;
+
+	CAudioCompressionManager * pAcm = pfcs->pAcm;
+	TRACE("FormatEnum: format=%s, tag=%d\n", pafd->szFormat, pafd->dwFormatTag);
+
+	int match = pfcs->FormatToMatch.MatchFormat(pafd->pwfx);
+	// include only formats with the same tag.
+	// If MatchCompatibleFormats selected,
+	if (pfcs->m_Tag == pafd->pwfx)
+	{
+		if (pfcs->flags & WaveFormatMatchCompatibleFormats)
+		{
+			// include all non-PCM formats or
+			// PCM formats with the same sample rate and number of channels,
+			// and the same number of bits or 16 bits
+			if (pfcs->m_Tag.Tag != WAVE_FORMAT_PCM
+				|| ((match & (WaveFormatMatchSampleRate | WaveFormatMatchCnannels))
+					== (WaveFormatMatchSampleRate | WaveFormatMatchCnannels)
+					&& ((match & (WaveFormatMatchBitsPerSample | WaveFormatMatch16Bits)))))
+			{
+				int nIndex = pAcm->m_Formats.size();
+				pAcm->m_Formats.resize(nIndex+1);
+				pAcm->m_Formats[nIndex].Wf = pafd->pwfx;
+				pAcm->m_Formats[nIndex].Name = pafd->szFormat;
+			}
+		}
+		else
+		{
+			// check which flags are specified
+			if (0 == (pfcs->flags & ~match
+					& (WaveFormatMatchCnannels
+						| WaveFormatMatchBitsPerSample
+						| WaveFormatMatchSampleRate)))
+			{
+				int nIndex = pAcm->m_Formats.size();
+				pAcm->m_Formats.resize(nIndex+1);
+				pAcm->m_Formats[nIndex].Wf = pafd->pwfx;
+				pAcm->m_Formats[nIndex].Name = pafd->szFormat;
+			}
+		}
+	}
+	return TRUE;
+}
+
+void CAudioCompressionManager::FillFormatArray(unsigned SelFormat, int Flags)
+{
+	m_Formats.clear();
+	if (SelFormat >= m_FormatTags.size())
+	{
+		return;
+	}
+
+	DWORD dwFormatTag = m_FormatTags[SelFormat].Tag.Tag;
+	CWaveFormat pwfx;
+	pwfx.Allocate(0xFFF0, true);
+
+	ACMFORMATDETAILS afd;
+
+	pwfx.InitFormat(WAVE_FORMAT_PCM, m_Wf.SampleRate(), m_Wf.NumChannels(),
+					m_Wf.BitsPerSample());
+
+	memzero(afd);
+	afd.cbStruct = sizeof afd;
+	afd.cbwfx = pwfx.m_AllocatedSize;
+	afd.dwFormatTag = dwFormatTag;
+	afd.pwfx = pwfx;
+
+	CWaveFormat FormatToMatch(m_Wf);
+	FormatToMatch.FormatTag() = dwFormatTag;
+
+	HACMDRIVER had = NULL;
+	if (MMSYSERR_NOERROR == acmDriverOpen(&had, m_FormatTags[SelFormat].m_hadid, 0))
+	{
+		DWORD flags = 0;
+		if (dwFormatTag != WAVE_FORMAT_PCM
+			&& (Flags & WaveFormatMatchCompatibleFormats))
+		{
+			flags = ACM_FORMATENUMF_CONVERT;
+		}
+		FormatEnumCallbackStruct fcs;
+
+		fcs.pAcm = this;
+		fcs.flags = Flags;
+		fcs.FormatToMatch = FormatToMatch;
+		fcs.m_Tag = m_FormatTags[SelFormat].Tag;
+		fcs.m_NumTagsToCompare = 0;
+		fcs.m_pTagsToCompare = NULL;
+		// TODO: assign GUID
+		int res = acmFormatEnum(had, & afd, FormatEnumCallback, DWORD( & fcs), flags);
+		TRACE("acmFormatEnum returned %x\n", res);
+		acmDriverClose(had, 0);
+	}
 }
 
