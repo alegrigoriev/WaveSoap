@@ -1,6 +1,9 @@
 // WaveFile.h
 #ifndef WAVE_FILE__H__
 #define WAVE_FILE__H__
+#if _MSC_VER > 1000
+#pragma once
+#endif // _MSC_VER > 1000
 /*
 Class CWaveFile serves as a WAV file input/output
 helper.
@@ -8,6 +11,7 @@ helper.
 #ifndef __AFX_H__
  #include <afx.h>
 #endif
+#include <Afxmt.h>
 /*
   Base class supports:
   Ascend and descend to a chunk
@@ -16,6 +20,7 @@ helper.
 
 */
 #include <mmsystem.h>
+
 class CMmioFile
 {
 public:
@@ -28,63 +33,81 @@ public:
 	// read/write:
 	LONG Read( void* lpBuf, LONG nCount )
 	{
+		CSingleLock( & m_cs, TRUE);
 		return mmioRead(m_hmmio, (HPSTR) lpBuf, nCount);
 	}
 
+	// read data at the specified position
+	// current position won't change after this function
+	LONG ReadAt(void * lpBuf, LONG nCount, LONG Position);
+
 	LONG Write( const void* lpBuf, LONG nCount )
 	{
+		CSingleLock( & m_cs, TRUE);
 		return mmioWrite(m_hmmio, (const char*)lpBuf, nCount);
 	}
+	LONG Seek(LONG lOffset, int iOrigin = SEEK_SET)
+	{
+		CSingleLock( & m_cs, TRUE);
+		return mmioSeek(m_hmmio, lOffset, iOrigin);
+	}
+
 	void Flush(UINT flag = 0)   // possible value: MMIO_EMPTYBUF
 	{
+		CSingleLock( & m_cs, TRUE);
 		mmioFlush(m_hmmio, 0);
 	}
 
-	MMRESULT Ascend(LPMMCKINFO lpck)
+	BOOL Ascend(MMCKINFO & ck)
 	{
-		return mmioAscend(m_hmmio, lpck, 0);
+		CSingleLock( & m_cs, TRUE);
+		return MMSYSERR_NOERROR == mmioAscend(m_hmmio, & ck, 0);
 	}
 
-	MMRESULT Descend(LPMMCKINFO lpck,LPMMCKINFO lpckParent, UINT uFlags = 0)
+	BOOL Descend(MMCKINFO & ck, LPMMCKINFO lpckParent, UINT uFlags = 0)
 	{
-		return mmioDescend(m_hmmio, lpck, lpckParent, uFlags);
+		CSingleLock( & m_cs, TRUE);
+		return MMSYSERR_NOERROR == mmioDescend(m_hmmio, & ck, lpckParent, uFlags);
 	}
 
-	MMRESULT FindChunk(LPMMCKINFO lpck,LPMMCKINFO lpckParent)
+	BOOL FindChunk(MMCKINFO & ck, LPMMCKINFO lpckParent)
 	{
-		return Descend(lpck, lpckParent, MMIO_FINDCHUNK);
+		return Descend(ck, lpckParent, MMIO_FINDCHUNK);
 	}
-	MMRESULT FindList(LPMMCKINFO lpck,LPMMCKINFO lpckParent)
+	BOOL FindList(MMCKINFO & ck, LPMMCKINFO lpckParent)
 	{
-		return Descend(lpck, lpckParent, MMIO_FINDLIST);
+		return Descend(ck, lpckParent, MMIO_FINDLIST);
 	}
-	MMRESULT FindRiff(LPMMCKINFO lpck,LPMMCKINFO lpckParent)
+	BOOL FindRiff()
 	{
-		return Descend(lpck, lpckParent, MMIO_FINDRIFF);
-	}
-
-	MMRESULT Advance(LPMMIOINFO mmio, UINT uFlags)
-	{
-		return mmioAdvance(m_hmmio, mmio, uFlags);
+		return Descend(m_riffck, NULL, MMIO_FINDRIFF);
 	}
 
-	MMRESULT CreateChunk(LPMMCKINFO lpck, UINT wFlags)
+	BOOL Advance(LPMMIOINFO mmio, UINT uFlags)
 	{
-		lpck->cksize = 0;
-		return mmioCreateChunk(m_hmmio, lpck, wFlags);
-	}
-	MMRESULT CreateList(LPMMCKINFO lpck)
-	{
-		return CreateChunk(lpck, MMIO_CREATELIST);
-	}
-	MMRESULT CreateRiff(LPMMCKINFO lpck)
-	{
-		return CreateChunk(lpck, MMIO_CREATERIFF);
+		CSingleLock( & m_cs, TRUE);
+		return MMSYSERR_NOERROR == mmioAdvance(m_hmmio, mmio, uFlags);
 	}
 
-	MMRESULT GetInfo(LPMMIOINFO lpmmioinfo, UINT wFlags = 0)
+	BOOL CreateChunk(MMCKINFO & ck, UINT wFlags)
 	{
-		return mmioGetInfo(m_hmmio, lpmmioinfo, wFlags);
+		CSingleLock( & m_cs, TRUE);
+		ck.cksize = 0;
+		return MMSYSERR_NOERROR == mmioCreateChunk(m_hmmio, & ck, wFlags);
+	}
+	BOOL CreateList(MMCKINFO & ck)
+	{
+		return CreateChunk(ck, MMIO_CREATELIST);
+	}
+	BOOL CreateRiff(MMCKINFO & ck)
+	{
+		return CreateChunk(ck, MMIO_CREATERIFF);
+	}
+
+	BOOL GetInfo(MMIOINFO & mmioinfo, UINT wFlags = 0)
+	{
+		CSingleLock( & m_cs, TRUE);
+		return MMSYSERR_NOERROR == mmioGetInfo(m_hmmio, & mmioinfo, wFlags);
 	}
 
 	virtual ~CMmioFile();
@@ -98,8 +121,10 @@ public:
 	DWORD m_SectorSize;
 	DWORD m_dwSize;
 	MMCKINFO m_riffck;  // RIFF chunk info
+	CCriticalSection m_cs;
 private:
 	size_t BufferedRead(void * pBuf, size_t size);
+	LONG FileRead(void * pBuf, size_t size);
 	void SeekBufferedRead(DWORD position)
 	{
 		m_CurrFileOffset = position;
@@ -111,6 +136,18 @@ private:
 };
 class CWaveFile : public CMmioFile
 {
+public:
+	CWaveFile(HANDLE hFile = NULL);
+	CWaveFile( LPCTSTR lpszFileName, UINT nOpenFlags );
+	~CWaveFile();
+	virtual BOOL Open( LPCTSTR lpszFileName, UINT nOpenFlags);
+	virtual void Close( );
+	MMCKINFO m_datack;
+
+	BOOL LoadWaveformat();
+	BOOL FindData();
+
+	WAVEFORMATEX * m_pWf;
 };
 
 #endif //#ifndef WAVE_FILE__H__
