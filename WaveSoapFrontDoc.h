@@ -58,9 +58,46 @@ protected: // create from serialization only
 
 // Attributes
 public:
+	BOOL UndoEnabled() const
+	{
+		return m_bUndoEnabled;
+	}
+	BOOL ChannelsLocked() const
+	{
+		return m_bChannelsLocked;
+	}
 
+	int WaveFileSamples() const
+	{
+		return m_WavFile.NumberOfSamples();
+	}
+	LPMMCKINFO WaveDataChunk() const
+	{
+		return m_WavFile.GetDataChunk();
+	}
+	LPWAVEFORMATEX WaveFormat() const
+	{
+		return m_WavFile.GetWaveFormat();
+	}
+	int WaveChannels() const
+	{
+		return m_WavFile.Channels();
+	}
+	int WaveSampleSize() const
+	{
+		return m_WavFile.SampleSize();
+	}
+	DWORD WaveFileID() const
+	{
+		return m_WavFile.GetFileID();
+	}
+	virtual BOOL IsModified();
 // Operations
 public:
+	void IncrementModified(BOOL DeleteRedo = TRUE);
+	void DecrementModified();   // called at UNDO
+	virtual void SetModifiedFlag(BOOL bModified = TRUE);
+	void AddUndoRedo(class CUndoRedoContext * pUndo);
 
 // Overrides
 	// ClassWizard generated virtual function overrides
@@ -80,7 +117,7 @@ public:
 	CString m_szWaveFilename;
 	CString szWaveTitle;
 	CWaveFile m_WavFile;
-
+	int m_ModificationSequenceNumber;
 
 	//WAVEFORMATEX WavFileFormat;
 	CString szPeakFilename;
@@ -88,6 +125,7 @@ public:
 
 	WavePeak * m_pPeaks;
 	size_t m_WavePeakSize;
+	size_t m_AllocatedWavePeakSize;
 	int m_PeakDataGranularity;
 	CSimpleCriticalSection m_PeakLock;
 	void RescanPeaks(long begin, long end);
@@ -117,7 +155,6 @@ public:
 // Implementation
 public:
 	virtual ~CWaveSoapFrontDoc();
-	virtual void SetModifiedFlag(BOOL bModified = TRUE);
 	void UpdateDocumentTitle();
 	void LoadPeakFile();
 	void BuildPeakInfo();
@@ -125,30 +162,6 @@ public:
 	{
 		return (WaveFileSamples() + m_PeakDataGranularity - 1)
 			/ m_PeakDataGranularity * WaveChannels();
-	}
-	int WaveFileSamples() const
-	{
-		return m_WavFile.NumberOfSamples();
-	}
-	LPMMCKINFO WaveDataChunk() const
-	{
-		return m_WavFile.GetDataChunk();
-	}
-	LPWAVEFORMATEX WaveFormat() const
-	{
-		return m_WavFile.GetWaveFormat();
-	}
-	int WaveChannels() const
-	{
-		return m_WavFile.Channels();
-	}
-	int WaveSampleSize() const
-	{
-		return m_WavFile.SampleSize();
-	}
-	DWORD WaveFileID() const
-	{
-		return m_WavFile.GetFileID();
 	}
 	BOOL SetThreadPriority(int priority)
 	{
@@ -162,11 +175,13 @@ public:
 	virtual void Dump(CDumpContext& dc) const;
 #endif
 
-	bool volatile m_OperationInProgress;
+	long m_OperationInProgress;
 	bool volatile m_StopOperation;
 	bool m_OperationNonCritical;
 	bool m_PlayingSound;
 	bool m_bInOnIdle;
+	bool m_bUndoEnabled;
+	bool m_bChannelsLocked;
 
 	CString m_CurrentStatusString;
 	bool m_bReadOnly;
@@ -196,12 +211,17 @@ protected:
 
 
 // Generated message map functions
+public:
+	void DoEditPaste()
+	{
+		OnEditPaste();
+	}
 protected:
-	BOOL QueueOperation(COperationContext * pContext);
+	void QueueOperation(COperationContext * pContext);
 	// save the selected area to the permanent or temporary file
 	void DoCopy(LONG Start, LONG End, LONG Channel, LPCTSTR FileName);
 	void DoPaste(LONG Start, LONG End, LONG Channel, LPCTSTR FileName);
-	void DoCut(LONG Start, LONG End, LONG Channel, LPCTSTR FileName);
+	void DoCut(LONG Start, LONG End, LONG Channel);
 	void DoDelete(LONG Start, LONG End, LONG Channel);
 	void DeleteUndo();
 	void DeleteRedo();
@@ -211,7 +231,6 @@ protected:
 	afx_msg void OnUpdateEditCopy(CCmdUI* pCmdUI);
 	afx_msg void OnEditCut();
 	afx_msg void OnUpdateEditCut(CCmdUI* pCmdUI);
-	afx_msg void OnEditPaste();
 	afx_msg void OnUpdateEditPaste(CCmdUI* pCmdUI);
 	afx_msg void OnEditUndo();
 	afx_msg void OnUpdateEditUndo(CCmdUI* pCmdUI);
@@ -235,6 +254,11 @@ protected:
 	afx_msg void OnUpdateIndicatorSampleRate(CCmdUI* pCmdUI);
 	afx_msg void OnUpdateIndicatorSampleSize(CCmdUI* pCmdUI);
 	afx_msg void OnUpdateIndicatorChannels(CCmdUI* pCmdUI);
+	afx_msg void OnEditDelete();
+	afx_msg void OnUpdateEditDelete(CCmdUI* pCmdUI);
+	afx_msg void OnEditPaste();
+	afx_msg void OnEditChannelsLock();
+	afx_msg void OnUpdateEditChannelsLock(CCmdUI* pCmdUI);
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 
