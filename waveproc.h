@@ -370,14 +370,16 @@ class NoiseReductionCore : protected NoiseReductionParameters
 {
 public:
 	typedef float DATA;
-	NoiseReductionCore(int nFftOrder, int nChannels, long SampleRate,
-						NoiseReductionParameters const & nr = NoiseReductionParameters());
+	NoiseReductionCore(int nFftOrder, NUMBER_OF_CHANNELS nChannels, long SampleRate,
+						NoiseReductionParameters const & nr = NoiseReductionParameters(),
+						CHANNEL_MASK ChannelsToProcess = ALL_CHANNELS);
 	~NoiseReductionCore();
 	void Dump(unsigned indent=0) const;
 
 	int FlushSamples(DATA * pBuf, int nOutSamples);
 	int FillInBuffer(WAVE_SAMPLE const * pBuf, int nInSamples);
 	int DrainOutBuffer(DATA * pBuf, int nOutSamples);
+	void ResetOutBuffer();
 
 	// get noise masking
 	void GetAudioMasking(DATA * pBuf);  // nChannels * FftOrder
@@ -402,11 +404,13 @@ public:
 protected:
 	int m_nChannels;
 	long m_SampleRate;
+	CHANNEL_MASK m_ChannelsToProcess;
+
 	unsigned m_nFftOrder;
 	float m_PowerScale;             // to make the values independent of FFT order
 
-	float * m_Window;
-	float * m_pNoiseFloor;
+	std::vector<float> m_Window;
+	std::vector<float> m_pNoiseFloor;
 	// pointer to array of float pairs
 	// for storing input data
 	enum {FAR_MASKING_GRANULARITY = 64};
