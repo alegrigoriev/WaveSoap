@@ -177,10 +177,25 @@ CWaveFftView::~CWaveFftView()
 
 BEGIN_MESSAGE_MAP(CWaveFftView, CWaveSoapFrontView)
 	//{{AFX_MSG_MAP(CWaveFftView)
+	ON_COMMAND(ID_VIEW_ZOOMINVERT, OnViewZoomInVert)
+	ON_COMMAND(ID_VIEW_ZOOMOUTVERT, OnViewZoomOutVert)
+	ON_COMMAND(ID_VIEW_ZOOMVERT_NORMAL, OnViewZoomvertNormal)
 	ON_WM_PAINT()
 	ON_WM_ERASEBKGND()
 	//}}AFX_MSG_MAP
 END_MESSAGE_MAP()
+
+static int fround(double d)
+{
+	if (d >= 0.)
+	{
+		return int(d + 0.5);
+	}
+	else
+	{
+		return int(d - 0.5);
+	}
+}
 
 /////////////////////////////////////////////////////////////////////////////
 // CWaveFftView drawing
@@ -231,7 +246,7 @@ void CWaveFftView::OnDraw(CDC* pDC)
 	BITMAPINFOHEADER bmih = {
 		sizeof bmih,
 		r.right - r.left,
-		-(cr.bottom - cr.top),
+		cr.top - cr.bottom, // <0
 		1,
 		24,
 		BI_RGB,
@@ -294,7 +309,7 @@ void CWaveFftView::OnDraw(CDC* pDC)
 	int FirstRowInView = FirstFftSample * TotalRows / m_FftOrder;
 	int FftSamplesInView = LastFftSample - FirstFftSample + 1;
 
-	int IdxSize = __min(rows, FftSamplesInView);
+	int IdxSize1 = __min(rows, FftSamplesInView);
 
 	// build an array
 	struct S
@@ -303,7 +318,7 @@ void CWaveFftView::OnDraw(CDC* pDC)
 		int nNumOfRows;
 	};
 
-	S * pIdArray = new S[IdxSize];
+	S * pIdArray = new S[IdxSize1];
 
 	if (NULL == pIdArray)
 	{
@@ -313,10 +328,10 @@ void CWaveFftView::OnDraw(CDC* pDC)
 	// fill the array
 	int LastRow = 0;
 	int k;
-	for (k = 0; k < IdxSize; k++)
+	for (k = 0; k < IdxSize1; k++)
 	{
 		if (FirstFftSample >= m_FftOrder
-			|| LastRow >= cr.bottom)
+			|| LastRow >= rows)
 		{
 			break;
 		}
@@ -328,14 +343,16 @@ void CWaveFftView::OnDraw(CDC* pDC)
 			NextRow++;
 			FirstFftSample = (NextRow + FirstRowInView) * m_FftOrder / TotalRows;
 		}
-		if (NextRow > cr.bottom)
+		if (NextRow > rows)
 		{
-			NextRow = cr.bottom;
+			NextRow = rows;
 		}
 		pIdArray[k].nNumOfRows = NextRow - LastRow;
 		LastRow = NextRow;
 	}
-	IdxSize = k;
+	TRACE("LastRow = %d, cr.height=%d\n", LastRow, cr.Height());
+	ASSERT(LastRow <= rows);
+	int IdxSize = k;
 
 	unsigned char * pColBmp = pBmp;
 	int nChanOffset = stride * rows;
@@ -413,6 +430,7 @@ void CWaveFftView::OnDraw(CDC* pDC)
 					width, height,
 					0, 0, 0, height, pBits, (LPBITMAPINFO) & bmih,
 					0);
+	GdiFlush(); // make sure bitmap is drawn before deleting it (NT only)
 	// free resources
 	DeleteObject(hbm);
 }
@@ -730,3 +748,128 @@ BOOL CWaveFftView::PreCreateWindow(CREATESTRUCT& cs)
 	return CScaledScrollView::PreCreateWindow(cs);
 }
 
+void CWaveFftView::OnViewZoomInVert()
+{
+	if (m_VerticalScale < 1024.)
+	{
+		m_VerticalScale	*= sqrt(2.);
+		InvalidateRgn(NULL);
+		NotifySlaveViews(FFT_SCALE_CHANGED);
+	}
+}
+
+void CWaveFftView::OnViewZoomOutVert()
+{
+	// TODO: Add your command handler code here
+	if (m_VerticalScale > 1.)
+	{
+		m_VerticalScale	*= sqrt(0.5);
+		if (m_VerticalScale < 1.001)    // compensate any error
+		{
+			m_VerticalScale = 1.;
+		}
+		// correct the offset, if necessary
+		// find max and min offset for this scale
+		double offset = m_WaveOffsetY;
+		double MaxOffset = 65536. * (1. - 1. / m_VerticalScale);
+		if (offset > MaxOffset)
+		{
+			offset = MaxOffset;
+		}
+		double MinOffset = -MaxOffset;
+		if (offset < MinOffset)
+		{
+			offset = MinOffset;
+		}
+		if (offset != m_WaveOffsetY)
+		{
+			m_WaveOffsetY = offset;
+		}
+		Invalidate();
+		NotifySlaveViews(FFT_SCALE_CHANGED);
+	}
+}
+
+BOOL CWaveFftView::ScrollBy(double dx, double dy, BOOL bDoScroll)
+{
+	if (dx != 0.)
+	{
+		CScaledScrollView::ScrollBy(dx, 0, bDoScroll);
+	}
+	if (dy != 0.)
+	{
+		// check for the limits
+		// ndy is in pixels
+		int ndy = fround(dy * GetYScaleDev());
+		CWaveSoapFrontDoc * pDoc = GetDocument();
+		CRect r;
+		GetClientRect( & r);
+		int nHeight = r.Height() / pDoc->WaveChannels();
+		double offset = m_FirstbandVisible + -m_FftOrder * ndy / (nHeight * m_VerticalScale);
+		// find max and min offset for this scale
+		double MaxOffset = m_FftOrder * (1 - 1. / m_VerticalScale);
+		BOOL NoScroll = false;
+		if (offset > MaxOffset)
+		{
+			offset = MaxOffset;
+			NoScroll = true;
+		}
+		if (offset < 0)
+		{
+			offset = 0;
+			NoScroll = true;
+		}
+		if (offset != m_FirstbandVisible)
+		{
+			TRACE("New offset = %g, MaxOffset=%g, VerticalScale = %g\n",
+				offset, MaxOffset, m_VerticalScale);
+			m_FirstbandVisible = offset;
+			NotifySlaveViews(FFT_OFFSET_CHANGED);
+			// change to scroll
+			if (NoScroll)
+			{
+				Invalidate();
+			}
+			else
+			{
+				CWaveSoapFrontDoc * pDoc = GetDocument();
+				CRect cr;
+				GetClientRect( & cr);
+				if (pDoc->WaveChannels() == 1)
+				{
+					ScrollWindowEx(0, -ndy, NULL, NULL, NULL, NULL,
+									SW_INVALIDATE | SW_ERASE);
+				}
+				else
+				{
+					CRect cr1 = cr, cr2 = cr, r;
+					cr1.bottom = cr.bottom / 2 - 1;
+					cr2.top = cr1.bottom + 2;
+					// invalidated rects
+					CRect ir1, ir2;
+					ScrollWindowEx(0, -ndy, & cr1, & cr1, NULL, & ir1,
+									SW_INVALIDATE);
+					ScrollWindowEx(0, -ndy, & cr2, & cr2, NULL, & ir2,
+									SW_INVALIDATE);
+					cr2.bottom = cr2.top;
+					cr2.top = cr1.bottom;
+					InvalidateRect( & cr2);
+					InvalidateRect( & ir1);
+					InvalidateRect( & ir2);
+				}
+			}
+		}
+	}
+	return TRUE;
+}
+
+void CWaveFftView::OnViewZoomvertNormal()
+{
+	if (m_VerticalScale != 1.)
+	{
+		m_VerticalScale = 1.;
+		m_FirstbandVisible = 0;
+		Invalidate();
+		NotifySlaveViews(FFT_SCALE_CHANGED);
+	}
+}

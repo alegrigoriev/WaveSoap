@@ -12,7 +12,8 @@
 
 #endif
 
-#include <FFT.h>
+#include "FFT.h"
+#if 0
 void __cdecl DoFFT(const float * src, float * dst, int count)
 {
 	complex<float> * tmp = new complex<float>[count /2 + 1];
@@ -28,7 +29,7 @@ void __cdecl DoFFT(const float * src, float * dst, int count)
 	}
 	delete[] tmp;
 }
-
+#endif
 template <class T_ext, class T_int>
 CBackBuffer<T_ext, T_int>::CBackBuffer()
 	: pBuf(NULL),
