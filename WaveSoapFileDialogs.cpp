@@ -722,6 +722,43 @@ void CFileSaveUiSupport::OnComboFormatsChange()
 	}
 }
 
+void CFileSaveUiSupport::FillFileTypes(CDocManager * pDocManager)
+{
+	// do for all doc template
+
+	unsigned nFilterIndex = 0;
+
+	for (POSITION pos = pDocManager->GetFirstDocTemplatePosition();
+		nFilterIndex < countof (m_DefExt) && pos != NULL; )
+	{
+		CDocTemplate* pTemplate = pDocManager->GetNextDocTemplate(pos);
+
+		CWaveSoapDocTemplate * pWaveTemplate =
+			dynamic_cast<CWaveSoapDocTemplate *>(pTemplate);
+
+		if (NULL != pWaveTemplate)
+		{
+			if (DocumentFlagOpenOnly & pWaveTemplate->GetDocumentTypeFlags())
+			{
+				continue;
+			}
+
+			m_TemplateFlags[nFilterIndex] = pWaveTemplate->GetDocumentTypeFlags();
+		}
+		else
+		{
+			m_TemplateFlags[nFilterIndex] = 0;
+		}
+
+		pTemplate->GetDocString(m_DefExt[nFilterIndex], CDocTemplate::filterExt);
+		pTemplate->GetDocString(m_FileTypeStrings[nFilterIndex], CDocTemplate::filterName);
+
+		nFilterIndex++;
+	}
+
+	m_NumOfFileTypes = nFilterIndex;
+}
+
 void CWaveSoapFileSaveDialog::AddAllTypeFilters(CDocManager * pDocManager)
 {
 	// do for all doc template

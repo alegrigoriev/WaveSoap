@@ -146,6 +146,8 @@ protected:
 								: WaveFormatMatchFormatTag);
 	}
 
+	void FillFileTypes(CDocManager * pDocManager);
+
 	void FillFormatTagCombo(WaveFormatTagEx const ListOfTags[] = NULL, int NumTags = 0, DWORD Flags = 0);
 
 	void FillWmaFormatCombo();
