@@ -3993,14 +3993,11 @@ void CWaveSoapFrontDoc::OnProcessInsertsilence()
 	{
 		channel = ALL_CHANNELS;
 	}
-	CInsertSilenceDialog dlg;
-	dlg.m_Start = m_CaretPosition;
-	dlg.m_Length = 0;
-	dlg.m_pWf = WaveFormat();
-	dlg.m_FileLength = WaveFileSamples();
-	dlg.m_nChannel = channel + 1;
-	dlg.m_TimeFormat = GetApp()->m_SoundTimeFormat;
-	dlg.m_CaretPosition = m_CaretPosition;
+
+	CInsertSilenceDialog dlg(m_CaretPosition, 0,
+							channel + 1,
+							WaveFileSamples(), GetApp()->m_SoundTimeFormat,
+							WaveFormat());
 
 	if (IDOK != dlg.DoModal())
 	{
@@ -4318,11 +4315,10 @@ void CWaveSoapFrontDoc::OnEditGoto()
 	{
 		return;
 	}
-	CGotoDialog dlg;
-	dlg.m_Position = m_CaretPosition;
-	dlg.m_pWf = m_WavFile.GetWaveFormat();
-	dlg.m_TimeFormat = GetApp()->m_SoundTimeFormat;
-	dlg.m_FileLength = WaveFileSamples();
+
+	CGotoDialog dlg(m_CaretPosition, WaveFileSamples(),
+					m_WavFile.GetWaveFormat(), GetApp()->m_SoundTimeFormat);
+
 	if (IDOK != dlg.DoModal())
 	{
 		return;
