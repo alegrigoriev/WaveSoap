@@ -10,8 +10,23 @@
 
 /////////////////////////////////////////////////////////////////////////////
 // CRawFileParametersDlg dialog
+struct RawFileParams
+{
+	union
+	{
+		DWORD m_dwParams;
+		struct
+		{
+			DWORD		m_bStereo :1;
+			DWORD		m_bBits16 :1;
+			DWORD		m_Compression :2;
+			DWORD		m_bMsbFirst :1;
 
-class CRawFileParametersDlg : public CDialog
+		} m_Params;
+	};
+};
+
+class CRawFileParametersDlg : public CDialog, RawFileParams
 {
 // Construction
 public:
@@ -30,18 +45,6 @@ public:
 	//}}AFX_DATA
 	long    m_SamplingRate;
 	ULONG   m_SourceFileSize;
-	union
-	{
-		DWORD m_dwParams;
-		struct
-		{
-			DWORD		m_bStereo :1;
-			DWORD		m_bBits16 :1;
-			DWORD		m_Compression :2;
-			DWORD		m_bMsbFirst :1;
-
-		} m_Params;
-	};
 
 	CApplicationProfile m_Profile;
 // Overrides
@@ -66,7 +69,7 @@ protected:
 /////////////////////////////////////////////////////////////////////////////
 // CSaveRawFileDlg dialog
 
-class CSaveRawFileDlg : public CDialog
+class CSaveRawFileDlg : public CDialog, RawFileParams
 {
 // Construction
 public:
@@ -80,6 +83,7 @@ public:
 	int		m_bMsbFirst;
 	//}}AFX_DATA
 
+	CApplicationProfile m_Profile;
 
 // Overrides
 	// ClassWizard generated virtual function overrides

@@ -250,8 +250,8 @@ BEGIN
         MENUITEM "&Toolbar",                    ID_VIEW_TOOLBAR
         MENUITEM "Status &Bar",                 ID_VIEW_STATUS_BAR
         MENUITEM SEPARATOR
-        MENUITEM "&FFT Spectrum",               IDC_VIEW_SHOW_FFT
         MENUITEM "&Waveform",                   IDC_VIEW_WAVEFORM
+        MENUITEM "&FFT Spectrum",               IDC_VIEW_SHOW_FFT
         MENUITEM SEPARATOR
         MENUITEM "&Outline",                    ID_VIEW_OUTLINE
         MENUITEM "Spectrum Section",            ID_VIEW_SPECTRUMSECTION
@@ -820,7 +820,7 @@ CAPTION "About WaveSoap"
 FONT 8, "MS Sans Serif"
 BEGIN
     ICON            IDR_MAINFRAME,IDC_STATIC,11,17,20,20
-    CTEXT           "WaveSoap Version 0.57 beta",IDC_STATIC_VERSION,58,8,110,
+    CTEXT           "WaveSoap Version 0.58 beta",IDC_STATIC_VERSION,58,8,110,
                     10,SS_NOPREFIX
     CTEXT           "Copyright (C) Alexander Grigoriev, 2000-2001",
                     IDC_STATIC,41,27,145,12
@@ -1976,8 +1976,8 @@ END
 //
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 0,57,0,1
- PRODUCTVERSION 0,57,0,1
+ FILEVERSION 0,58,0,1
+ PRODUCTVERSION 0,58,0,1
  FILEFLAGSMASK 0x3fL
 #ifdef _DEBUG
  FILEFLAGS 0x9L
@@ -1995,14 +1995,14 @@ BEGIN
             VALUE "Comments", "\0"
             VALUE "CompanyName", "Alexandre Grigoriev\0"
             VALUE "FileDescription", "WaveSoap - Sound Cleaning And Editing Application\0"
-            VALUE "FileVersion", "0, 57, 0, 1\0"
+            VALUE "FileVersion", "0, 58, 0, 1\0"
             VALUE "InternalName", "WaveSoap\0"
             VALUE "LegalCopyright", "Copyright (C) 2000-2001 Alexandre Grigoriev\0"
             VALUE "LegalTrademarks", "\0"
             VALUE "OriginalFilename", "WaveSoap.EXE\0"
-            VALUE "PrivateBuild", "Beta 0.57\0"
+            VALUE "PrivateBuild", "Beta 0.58\0"
             VALUE "ProductName", "WaveSoap Application\0"
-            VALUE "ProductVersion", "0, 57, 0, 1\0"
+            VALUE "ProductVersion", "0, 58, 0, 1\0"
             VALUE "SpecialBuild", "\0"
         END
     END

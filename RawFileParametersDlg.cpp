@@ -186,6 +186,17 @@ CSaveRawFileDlg::CSaveRawFileDlg(CWnd* pParent /*=NULL*/)
 	m_Compression = -1;
 	m_bMsbFirst = -1;
 	//}}AFX_DATA_INIT
+	m_dwParams = 0;
+	m_Params.m_bStereo = 1;
+	m_Params.m_bBits16 = 1;
+	m_Params.m_Compression = 0;
+	m_Params.m_bMsbFirst = 0;
+
+	m_Profile.AddItem("Settings", "RawFileSettings", m_dwParams, m_dwParams, 0, 0xFFFFFFFF);
+
+	m_b16Bits = m_Params.m_bBits16;
+	m_Compression = m_Params.m_Compression;
+	m_bMsbFirst = m_Params.m_bMsbFirst;
 }
 
 
@@ -197,6 +208,14 @@ void CSaveRawFileDlg::DoDataExchange(CDataExchange* pDX)
 	DDX_Radio(pDX, IDC_RADIO_COMPRESSION_NONE, m_Compression);
 	DDX_Radio(pDX, IDC_RADIO_LSB_FIRST, m_bMsbFirst);
 	//}}AFX_DATA_MAP
+	if (pDX->m_bSaveAndValidate)
+	{
+		m_Params.m_bBits16 = m_b16Bits;
+		m_Params.m_Compression = m_Compression;
+		m_Params.m_bMsbFirst = m_bMsbFirst;
+
+		m_Profile.UnloadAll();
+	}
 }
 
 

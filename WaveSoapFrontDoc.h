@@ -56,6 +56,11 @@ enum {
 	SaveFile_SameName = 4,
 	SaveFile_CloseAfterSave = 8,
 	SaveFile_SaveCopy = 0x10,
+	SaveFile_Mp3File = OpenDocumentMp3File,
+	SaveFile_WmaFile = OpenDocumentWmaFile,
+	SaveFile_RawFile = OpenDocumentRawFile,
+	SaveFile_AviFile = OpenDocumentAviFile,
+	SaveFile_NonWavFile = OpenDocumentNonWavFile,
 };
 enum
 {

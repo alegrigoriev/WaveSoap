@@ -1103,15 +1103,34 @@ BOOL CWaveSoapFrontDoc::DoSave(LPCTSTR lpszPathName, BOOL bReplace)
 		CString strFilter;
 		CString strDefault;
 		// do for all doc template
-		//POSITION pos = m_templateList.GetHeadPosition();
-		//BOOL bFirst = TRUE;
+		POSITION pos = pApp->m_pDocManager->GetFirstDocTemplatePosition();
+		BOOL bFirst = TRUE;
 		// todo: save of different types (MP3, ASF).
-		//while (pos != NULL)
+		int nFilterIndex = 1;
+		ULONG TemplateFlags[10] = {0};
+		while (pos != NULL)
 		{
-			//CDocTemplate* pTemplate = (CDocTemplate*)m_templateList.GetNext(pos);
-			_AfxAppendFilterSuffix(strFilter, dlg.m_ofn, GetDocTemplate(), //pTemplate,
+			CDocTemplate* pTemplate = pApp->m_pDocManager->GetNextDocTemplate(pos);
+			if (pTemplate == GetDocTemplate())
+			{
+				dlg.m_ofn.nFilterIndex = nFilterIndex;
+			}
+#if 0
+			CWaveSoapDocTemplate * pWaveTemplate =
+				dynamic_cast<CWaveSoapDocTemplate *>(pTemplate);
+			if (NULL != pWaveTemplate)
+			{
+				TemplateFlags[nFilterIndex] = pWaveTemplate->m_OpenDocumentFlags;
+			}
+			else
+#endif
+			{
+				TemplateFlags[nFilterIndex] = 0;
+			}
+			_AfxAppendFilterSuffix(strFilter, dlg.m_ofn, pTemplate,
 									&strDefault);
-			//bFirst = FALSE;
+			nFilterIndex++;
+			bFirst = FALSE;
 		}
 
 		// append the "*.*" all files filter
