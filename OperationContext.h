@@ -277,18 +277,15 @@ public:
 	SAMPLE_POSITION m_SrcSavePos;
 	SAMPLE_POSITION m_DstSavePos;
 	CHANNEL_MASK m_SaveChan;
-	WAV_FILE_SIZE m_RestoredLength;
 
-	struct WavePeak * m_pOldPeaks;
-	size_t m_OldWavePeakSize;
-	size_t m_OldAllocatedWavePeakSize;
-	int m_OldPeakDataGranularity;
+	NUMBER_OF_SAMPLES m_RestoredLength;
+
 	bool m_bOldDirectMode;
 	WAVEFORMATEX m_OldWaveFormat;
 
 	CUndoRedoContext(CWaveSoapFrontDoc * pDoc, LPCTSTR OperationName)
-		: CCopyContext(pDoc, _T(""), OperationName),
-		m_pOldPeaks(NULL)
+		: CCopyContext(pDoc, _T(""), OperationName)
+		, m_RestoredLength(0)
 	{
 	}
 
