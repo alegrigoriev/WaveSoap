@@ -47,6 +47,7 @@ void CEqualizerDialog::DoDataExchange(CDataExchange* pDX)
 {
 	CDialog::DoDataExchange(pDX);
 	//{{AFX_DATA_MAP(CEqualizerDialog)
+	DDX_Control(pDX, IDC_EDIT_BANDS, m_eEditBands);
 	DDX_Control(pDX, IDC_EDIT_BAND_GAIN, m_BandGain);
 	DDX_Control(pDX, IDC_SPIN_BANDS, m_SpinBands);
 	DDX_Control(pDX, IDC_STATIC_SELECTION, m_SelectionStatic);
@@ -74,6 +75,8 @@ BEGIN_MESSAGE_MAP(CEqualizerDialog, CDialog)
 	ON_BN_CLICKED(IDC_BUTTON_RESET_BANDS, OnButtonResetBands)
 	ON_BN_CLICKED(IDC_BUTTON_SAVE_AS, OnButtonSaveAs)
 	ON_EN_KILLFOCUS(IDC_EDIT_BAND_GAIN, OnKillfocusEditBandGain)
+	ON_BN_CLICKED(IDC_RADIO_EQUALIZER_TYPE, OnRadioEqualizerType)
+	ON_BN_CLICKED(IDC_RADIO2, OnRadio2)
 	//}}AFX_MSG_MAP
 	ON_NOTIFY(NM_RETURN, AFX_IDW_PANE_FIRST, OnNotifyGraph)
 END_MESSAGE_MAP()
@@ -250,7 +253,14 @@ BOOL CEqualizerDialog::OnInitDialog()
 	UpdateSelectionStatic();
 
 	m_SpinBands.SetRange(3, MaxNumberOfEqualizerBands);
-
+	if (m_bMultiBandEqualizer)
+	{
+		OnRadio2();
+	}
+	else
+	{
+		OnRadioEqualizerType();
+	}
 	// set dialog size
 	if (m_DlgWidth < m_mmxi.ptMinTrackSize.x)
 	{
@@ -392,7 +402,15 @@ void CEqualizerGraphWnd::OnPaint()
 	double coeff = M_PI / pow(500., m_NumOfBands / (m_NumOfBands - 0.5));
 	for (int x = ur.left; x < ur.right; x++)
 	{
-		double f = coeff * pow(500., m_NumOfBands * (x + 1) /((m_NumOfBands - 0.5) * cr.Width()));
+		double f;
+		if (m_NumOfBands > 2)
+		{
+			f = coeff * pow(500., m_NumOfBands * (x + 1) /((m_NumOfBands - 0.5) * cr.Width()));
+		}
+		else
+		{
+			f = M_PI * pow(500., (x + 1. - cr.Width()) / cr.Width());
+		}
 		double gain = abs(CalculateResponse(f));
 		int y = (1 - log10(gain)) * cr.Height() / 2;
 		if (x == ur.left)
@@ -436,7 +454,15 @@ void CEqualizerGraphWnd::OnPaint()
 	for (int i = 0; i < m_NumOfBands; i++)
 	{
 		// draw circles around the reference points
-		int x = cr.Width() * (i * 2 + 1) / (2 * m_NumOfBands);
+		int x;
+		if (m_NumOfBands <= 2)
+		{
+			x = cr.Width() * (i * 38 + 1) / 40;
+		}
+		else
+		{
+			x = cr.Width() * (i * 2 + 1) / (2 * m_NumOfBands);
+		}
 		int y = (1 - log10(m_BandGain[i])) * cr.Height() / 2;
 		int SrcOffset = 0;
 		if (m_DotCaretIsOn && i == m_BandWithFocus)
@@ -542,7 +568,7 @@ complex<float> Equalizer::CalculateResponse(double Frequency)
 	complex<double> Denominator(1., 0.);
 
 	complex<double> z(cos(Frequency), -sin(Frequency));
-	if (m_NumOfBands > 2)
+	if (1 || m_NumOfBands > 2)
 	{
 		complex<double> z2(cos(Frequency * 2), -sin(Frequency * 2));
 
@@ -615,11 +641,60 @@ void CalculateCoefficients(double Gain, double Frequency, double Width, double C
 					Coeffs[5]);
 	}
 }
-void CalculateSimpleEqCoefficients(double f1, double f2, double Gain, BOOL HigherFreqs)
+
+void CalculateSimpleEqCoefficients(double f1, double f2,
+									double Gain1, double Gain2, double Coeffs[6])
 {
-	// f1 - frequency with unity gain,
+	// f1 - frequency with gain 1,
+	// f2 - frequency with gain 2,
+	// F1 < f2
 	// Gain - ><1
-	// if (HigherFreqs) - for higher frequencies
+	// for cutoff frequency F, the pole is (1 - sin(F))/cos(F). if (cos(f) == 0,
+	// the pole is 0.
+	double sin1 = sin(f1);
+	double cos1 = cos(f1);
+	double pole1;
+	if (cos1 != 0)
+	{
+		pole1 = (1 - sin1) / cos1;
+	}
+	else
+	{
+		pole1 = 0;
+	}
+	double sin2 = sin(f2);
+	double cos2 = cos(f2);
+	double pole2;
+	if (cos2 != 0)
+	{
+		pole2 = (1 - sin2) / cos2;
+	}
+	else
+	{
+		pole2 = 0;
+	}
+	TRACE("Target F1=%f, gain1 = %f, pole=%f\n"
+		"Target F2=%f, gain2 = %f, pole=%f\n",
+		f1, Gain1, pole1,
+		f2, Gain2, pole2);
+	Coeffs[3] = 1.;
+	Coeffs[4] = -(pole1 + pole2);
+	Coeffs[5] = pole1 * pole2;
+	// gain1 corresponds to gain on Z==1
+	// norm it
+	Gain1 *= (1. - pole1) / 2;
+	// gain2 corresponds to gain on Z==-1
+	// norm it
+	Gain2 *= (1. + pole2) / 2;
+	Coeffs[0] = Gain1 + Gain2;
+	Coeffs[1] = Gain1 - Gain2 - Gain1 * pole2 - Gain2 * pole1;
+	Coeffs[2] = Gain2 * pole1 - Gain1 * pole2;
+
+	TRACE("Calculated coefficients:\n"
+		"%f, %f, %f,\n"
+		"%f, %f, %f\n",
+		Coeffs[0], Coeffs[1], Coeffs[2],
+		Coeffs[3], Coeffs[4], Coeffs[5]);
 }
 void CEqualizerGraphWnd::SetBandGain(int nBand, double Gain)
 {
@@ -648,6 +723,10 @@ void Equalizer::RebuildBandFilters()
 	if (2 == m_NumOfBands)
 	{
 		// simple equalizer
+		// f1= 50, f2 = 500, gain1 = 5, gain2 = 1
+		CalculateSimpleEqCoefficients(0.0071237928* 4, 0.071237928, .2, 1., m_BandCoefficients[0]);
+		// f1= 2000, f2 = 20000, gain1 = 1, gain2 = 5
+		CalculateSimpleEqCoefficients(0.2849517146 * 2, 2.849517146 * .5, 1., -0.2, m_BandCoefficients[1]);
 		return;
 	}
 
@@ -797,9 +876,14 @@ BOOL CEqualizerGraphWnd::OnEraseBkgnd(CDC* pDC)
 		// draw zero level line
 		pDC->PatBlt(cr.left, (cr.top + cr.bottom) / 2, cr.Width(), 1, PATINVERT);
 		// draw frequency lines
-		for (int i = 0; i < m_NumOfBands; i++)
+		int nNumOfFrequencies = m_NumOfBands;
+		if (nNumOfFrequencies <= 2)
 		{
-			int x = cr.Width() * (i * 2 + 1) / (2 * m_NumOfBands);
+			nNumOfFrequencies = 20;
+		}
+		for (int i = 0; i < nNumOfFrequencies; i++)
+		{
+			int x = cr.Width() * (i * 2 + 1) / (2 * nNumOfFrequencies);
 			pDC->PatBlt(x, cr.top, 1, cr.bottom - cr.top, PATINVERT);
 		}
 		pDC->SelectObject(pOldBrush);
@@ -896,12 +980,27 @@ void CEqualizerGraphWnd::OnNcPaint(UINT wParam)
 
 	int PrevX = ncp.rgrc[0].left;
 
-	for (int i = 0; i < m_NumOfBands; i ++)
+	int nNumOfFrequencies = m_NumOfBands;
+	if (nNumOfFrequencies <= 2)
+	{
+		nNumOfFrequencies = 20;
+	}
+	for (int i = 0; i < nNumOfFrequencies; i ++)
 	{
 		int x = ncp.rgrc[0].left +
-				(ncp.rgrc[0].right - ncp.rgrc[0].left) * (i * 2 + 1) / (2 * m_NumOfBands);
+				(ncp.rgrc[0].right - ncp.rgrc[0].left) * (i * 2 + 1) / (2 * nNumOfFrequencies);
 		CString s;
-		double f = m_BandFrequencies[i] / M_PI * 0.5 * m_SamplingRate;
+		double f;
+		if (m_NumOfBands > 2)
+		{
+			f = m_BandFrequencies[i] / M_PI * 0.5 * m_SamplingRate;
+		}
+		else
+		{
+			f =  0.5 * m_SamplingRate * pow(500.,
+											(x + 1. - ncp.rgrc[0].right) /
+											(ncp.rgrc[0].right - ncp.rgrc[0].left));
+		}
 		int TextWidth;
 		if (f >= 1000.)
 		{
@@ -1026,7 +1125,7 @@ void CEqualizerDialog::OnChangeEditBands()
 {
 	BOOL nTrans = FALSE;
 	int nBands = GetDlgItemInt(IDC_EDIT_BANDS, & nTrans, FALSE);
-	if (nTrans && nBands > 1 && nBands <= MaxNumberOfEqualizerBands)
+	if (nTrans && nBands > 2 && nBands <= MaxNumberOfEqualizerBands)
 	{
 		m_nBands = nBands;
 		m_wGraph.SetNumberOfBands(nBands);
@@ -1158,7 +1257,15 @@ int CEqualizerGraphWnd::GetHitCode(POINT point)
 	for (int i = 0; i < m_NumOfBands; i++)
 	{
 		// find if the mouse gets into a focus point
-		int x = cr.Width() * (i * 2 + 1) / (2 * m_NumOfBands);
+		int x;
+		if (m_NumOfBands <= 2)
+		{
+			x = cr.Width() * (i * 38 + 1) / 40;
+		}
+		else
+		{
+			x = cr.Width() * (i * 2 + 1) / (2 * m_NumOfBands);
+		}
 		int y = (1 - log10(m_BandGain[i])) * cr.Height() / 2;
 		CRect r(x - dx, y - dy, x + dx, y + dy);
 
@@ -1186,7 +1293,15 @@ void CEqualizerGraphWnd::DrawDotCaret(bool state)
 		m_DotCaretIsOn = state;
 		CRect cr;
 		GetClientRect( & cr);
-		int x = cr.Width() * (m_BandWithFocus * 2 + 1) / (2 * m_NumOfBands);
+		int x;
+		if (m_NumOfBands <= 2)
+		{
+			x = cr.Width() * (m_BandWithFocus * 38 + 1) / 40;
+		}
+		else
+		{
+			x = cr.Width() * (m_BandWithFocus * 2 + 1) / (2 * m_NumOfBands);
+		}
 		int y = (1 - log10(m_BandGain[m_BandWithFocus])) * cr.Height() / 2;
 		int dx = GetSystemMetrics(SM_CXDRAG);
 		int dy = GetSystemMetrics(SM_CYDRAG);
@@ -1238,3 +1353,19 @@ void CEqualizerDialog::OnKillfocusEditBandGain()
 	}
 }
 
+
+void CEqualizerDialog::OnRadioEqualizerType()
+{
+	m_bMultiBandEqualizer = 0;
+	m_eEditBands.EnableWindow(FALSE);
+	m_SpinBands.EnableWindow(FALSE);
+	m_wGraph.SetNumberOfBands(2);
+}
+
+void CEqualizerDialog::OnRadio2()
+{
+	m_bMultiBandEqualizer = 1;
+	m_eEditBands.EnableWindow(TRUE);
+	m_SpinBands.EnableWindow(TRUE);
+	m_wGraph.SetNumberOfBands(m_nBands);
+}
