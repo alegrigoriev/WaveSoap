@@ -367,6 +367,8 @@ void CWaveSoapFileOpenDialog::OnTypeChange()
 	}
 }
 
+////////////////////////////////////////////////////////
+////////////////////////
 CFileSaveUiSupport::CFileSaveUiSupport(CWaveFormat const & Wf)
 	: m_Wf(Wf)
 	, m_Acm(Wf)
@@ -376,8 +378,9 @@ CFileSaveUiSupport::CFileSaveUiSupport(CWaveFormat const & Wf)
 	, m_SelectedMp3Bitrate(LameEncBitrate128 * 1000)
 	, m_SelectedWmaBitrate(128000)
 	, m_bCompatibleFormatsOnly(TRUE)
-	, m_FileType(SoundFileTypeUnknown)
+	, m_FileType(SaveFile_NonWavFile)
 	, m_SelectedRawFormat(RawSoundFilePcm16Lsb)
+	, m_NumOfFileTypes(0)
 {
 	FileParameters * pRawParams = PersistentFileParameters::GetData();
 	switch (pRawParams->RawFileFormat.wFormatTag)
@@ -406,12 +409,6 @@ CFileSaveUiSupport::CFileSaveUiSupport(CWaveFormat const & Wf)
 		m_SelectedRawFormat = RawSoundFileULaw8;
 		break;
 	}
-
-	m_DefExt[1] = _T("wav");
-	m_DefExt[2] = _T("mp3");
-	m_DefExt[3] = _T("wma");
-	m_DefExt[4] = _T("raw");
-	m_DefExt[5] = _T("avi");
 
 	m_Profile.AddItem(_T("Settings"), _T("MP3Bitrate"), m_SelectedMp3Bitrate, 128000, 0, 320000);
 	m_Profile.AddItem(_T("Settings"), _T("WmaBitrate"), m_SelectedWmaBitrate, 128000, 0, 160000);
@@ -492,7 +489,8 @@ BOOL CWaveSoapFileSaveDialog::OnFileNameOK()
 	// if the file type is different from the selected type,
 	// set the type and let the user select the parameters
 	CString Name = GetPathName();
-	int type = GetFileTypeForName(Name);
+	unsigned type = GetFileTypeForName(Name);
+
 	if (type != m_FileType)
 	{
 		SetFileType(type);
@@ -522,41 +520,20 @@ UINT CWaveSoapFileSaveDialog::OnShareViolation( LPCTSTR lpszPathName)
 
 int CFileSaveUiSupport::GetFileTypeFlags() const
 {
-	switch (m_FileType)
+	if (SaveFile_RawFile == m_FileType
+		&& m_SelectedRawFormat == RawSoundFilePcm16Msb)
 	{
-	case SoundFileWav:
-		return SaveFile_WavFile;
-		break;
-
-	case SoundFileMp3:
-		return SaveFile_Mp3File;
-		break;
-
-	case SoundFileWma:
-		return SaveFile_WmaFile;
-		break;
-
-	case SoundFileRaw:
-		if (m_SelectedRawFormat == RawSoundFilePcm16Msb)
-		{
-			return SaveFile_RawFile | SaveRawFileMsbFirst;
-		}
-		else
-		{
-			return SaveFile_RawFile;
-		}
-		break;
+		return SaveFile_RawFile | SaveRawFileMsbFirst;
 	}
-	return 0;
+	return m_FileType;
 }
 
 WAVEFORMATEX * CFileSaveUiSupport::GetWaveFormat()
 {
-	WORD FormatTag = WAVE_FORMAT_PCM;
-	WORD BitsPerSample = 16;
-	switch (m_FileType)
+	if (SaveFile_RawFile == m_FileType)
 	{
-	case SoundFileRaw:
+		WORD FormatTag = WAVE_FORMAT_PCM;
+		WORD BitsPerSample = 16;
 		switch (m_SelectedRawFormat)
 		{
 		case RawSoundFilePcm8:
@@ -578,19 +555,13 @@ WAVEFORMATEX * CFileSaveUiSupport::GetWaveFormat()
 		}
 		m_Wf.InitFormat(FormatTag, m_Wf.SampleRate(), m_Wf.NumChannels(), BitsPerSample);
 		return m_Wf;
-		break;
-
-	default:
-	case SoundFileMp3:
-	case SoundFileWma:
-	case SoundFileWav:
-		if (m_SelectedFormat >= m_Acm.m_Formats.size())
-		{
-			return NULL;
-		}
-		return m_Acm.m_Formats[m_SelectedFormat].Wf;
-		break;
 	}
+	// all other formats
+	if (m_SelectedFormat >= m_Acm.m_Formats.size())
+	{
+		return NULL;
+	}
+	return m_Acm.m_Formats[m_SelectedFormat].Wf;
 }
 
 WaveFormatTagEx const CFileSaveUiSupport::ExcludeFormats[] =
@@ -668,31 +639,34 @@ int CFileSaveUiSupport::FillFormatCombo(unsigned SelFormat, int Flags)
 
 void CFileSaveUiSupport::OnCompatibleFormatsClicked()
 {
-	if (SoundFileWav == m_FileType)
+	switch (m_FileType)
 	{
+	case SaveFile_WavFile:
 		FillFormatTagCombo(ExcludeFormats, -1, WaveFormatExcludeFormats);
 		m_SelectedFormat = FillFormatCombo(m_FormatTagCombo.GetCurSel());
-	}
-	else if (SoundFileMp3 == m_FileType)
-	{
+		break;
+
+	case SaveFile_Mp3File:
 		m_SelectedFormat = FillFormatCombo(m_FormatTagCombo.GetCurSel());
-	}
-	else if (SoundFileWma == m_FileType)
-	{
+		break;
+
+	case SaveFile_WmaFile:
 		m_SelectedFormat = FillFormatCombo(0);
+		break;
 	}
 }
 
 void CFileSaveUiSupport::OnComboAttributesChange()
 {
 	unsigned sel = m_AttributesCombo.GetCurSel();
+
 	switch (m_FileType)
 	{
-	case SoundFileWav:
+	case SaveFile_WavFile:
 		// WAV file
 		m_SelectedFormat = sel;
 		break;
-	case SoundFileMp3:
+	case SaveFile_Mp3File:
 		// MP3 file
 		if (sel < m_Acm.m_Formats.size())
 		{
@@ -700,7 +674,7 @@ void CFileSaveUiSupport::OnComboAttributesChange()
 			m_SelectedBitrate = m_SelectedMp3Bitrate;
 		}
 		break;
-	case SoundFileWma:
+	case SaveFile_WmaFile:
 		// WMA file
 		if (sel < m_Acm.m_Formats.size())
 		{
@@ -708,10 +682,10 @@ void CFileSaveUiSupport::OnComboAttributesChange()
 			m_SelectedBitrate = m_SelectedWmaBitrate;
 		}
 		break;
-	case SoundFileRaw:
+	case SaveFile_RawFile:
 		// RAW file
 		break;
-		//case SoundFileAvi:
+		//case SaveFile_AviFile:
 		// RAW file
 		break;
 	}
@@ -722,23 +696,23 @@ void CFileSaveUiSupport::OnComboFormatsChange()
 	int sel = m_FormatTagCombo.GetCurSel();
 	switch (m_FileType)
 	{
-	case SoundFileWav:
+	case SaveFile_WavFile:
 		// WAV file
 		m_SelectedTag = m_Acm.m_FormatTags[sel].Tag;
 		m_SelectedFormat = FillFormatCombo(sel);
 		break;
-	case SoundFileMp3:
+	case SaveFile_Mp3File:
 		// MP3 file
 		m_SelectedTag = m_Acm.m_FormatTags[sel].Tag;
 		m_SelectedMp3Encoder = sel;
 		m_SelectedFormat = FillFormatCombo(sel);
 		break;
-	case SoundFileWma:
+	case SaveFile_WmaFile:
 		// WMA file
 		// never called!
 		//FillFormatCombo(sel, MatchNumChannels | MatchSamplingRate);
 		break;
-	case SoundFileRaw:
+	case SaveFile_RawFile:
 		// RAW file
 		m_SelectedRawFormat = sel;
 		break;
@@ -750,19 +724,17 @@ void CFileSaveUiSupport::OnComboFormatsChange()
 
 void CWaveSoapFileSaveDialog::AddAllTypeFilters(CDocManager * pDocManager)
 {
-	CString strDefault;
 	// do for all doc template
-	POSITION pos = pDocManager->GetFirstDocTemplatePosition();
-	BOOL bFirst = TRUE;
 
-	int nFilterIndex = 1;
-	ULONG TemplateFlags[10] = {0};
-	while (pos != NULL)
+	unsigned nFilterIndex = 0;
+
+	for (POSITION pos = pDocManager->GetFirstDocTemplatePosition();
+		nFilterIndex < countof (m_DefExt) && pos != NULL; )
 	{
 		CDocTemplate* pTemplate = pDocManager->GetNextDocTemplate(pos);
+
 		CWaveSoapDocTemplate * pWaveTemplate =
 			dynamic_cast<CWaveSoapDocTemplate *>(pTemplate);
-
 
 		if (NULL != pWaveTemplate)
 		{
@@ -771,24 +743,30 @@ void CWaveSoapFileSaveDialog::AddAllTypeFilters(CDocManager * pDocManager)
 				continue;
 			}
 
-			TemplateFlags[nFilterIndex] = pWaveTemplate->GetDocumentTypeFlags();
+			m_TemplateFlags[nFilterIndex] = pWaveTemplate->GetDocumentTypeFlags();
 		}
 		else
 		{
-			TemplateFlags[nFilterIndex] = 0;
+			m_TemplateFlags[nFilterIndex] = 0;
 		}
 
+		// BUGBUG: What If the file was opened through "All WMA files" template?
+		CString * pDefaultExtCString = NULL;
 		if (pTemplate == m_pDocument->GetDocTemplate())
 		{
-			m_ofn.nFilterIndex = nFilterIndex;
+			m_ofn.nFilterIndex = nFilterIndex + 1;
+			pDefaultExtCString = & m_strDefaultExt;
 		}
 
 		_AfxAppendFilterSuffix(m_strFilter, m_ofn, pTemplate,
-								&strDefault);
+								pDefaultExtCString);
+
+		pTemplate->GetDocString(m_DefExt[nFilterIndex], CDocTemplate::filterExt);
+
 		nFilterIndex++;
-		bFirst = FALSE;
 	}
 
+	m_NumOfFileTypes = nFilterIndex;
 	// append the "*.*" all files filter
 	CString allFilter;
 	VERIFY(allFilter.LoadString(AFX_IDS_ALLFILTER));
@@ -850,7 +828,25 @@ void CWaveSoapFileSaveDialog::OnInitDone()
 
 	CheckDlgButton(IDC_CHECK_COMPATIBLE_FORMATS, m_bCompatibleFormatsOnly);
 
-	SetFileType(m_ofn.nFilterIndex);
+	if (m_ofn.nFilterIndex <= m_NumOfFileTypes
+		&& 0 != m_ofn.nFilterIndex)
+	{
+		SetFileType(m_TemplateFlags[m_ofn.nFilterIndex - 1] & (SaveFile_NonWavFile & ~ SaveRawFileMsbFirst));
+	}
+	else
+	{
+		unsigned type = GetFileTypeForName(m_ofn.lpstrFile);
+
+		for (unsigned i = 0; i < m_NumOfFileTypes; i++)
+		{
+			if (m_TemplateFlags[i] == type)
+			{
+				m_ofn.nFilterIndex = i + 1;
+				break;
+			}
+		}
+		SetFileType(type);
+	}
 
 	BaseClass::OnInitDone();
 }
@@ -862,7 +858,8 @@ void CWaveSoapFileSaveDialog::OnTypeChange()
 	CString name;
 	// set new default extension
 	CWnd * pParent = GetParent();
-	pParent->SendMessage(CDM_SETDEFEXT, 0, LPARAM(LPCTSTR(m_DefExt[m_ofn.nFilterIndex])));
+	pParent->SendMessage(CDM_SETDEFEXT, 0, LPARAM(LPCTSTR(m_DefExt[m_ofn.nFilterIndex]) + 1));
+
 	CWnd * pTmp = pParent->GetDlgItem(edt1);
 	if (NULL == pTmp)
 	{
@@ -872,8 +869,8 @@ void CWaveSoapFileSaveDialog::OnTypeChange()
 	if (NULL != pTmp)
 	{
 		pTmp->SetFocus();
+		pTmp->GetWindowText(name);
 	}
-	pTmp->GetWindowText(name);
 	// get the extension
 	if ( ! name.IsEmpty())
 	{
@@ -884,13 +881,24 @@ void CWaveSoapFileSaveDialog::OnTypeChange()
 			// need to replace
 			if (idx >= name.GetLength() - 4)
 			{
-				name.Delete(idx + 1, name.GetLength() - idx - 1);
-				name += m_DefExt[m_ofn.nFilterIndex];
+				name.Delete(idx, name.GetLength() - idx);
+				name += m_DefExt[m_ofn.nFilterIndex - 1];
 			}
+
 			pParent->SendMessage(CDM_SETCONTROLTEXT, edt1, LPARAM(LPCTSTR(name)));
 		}
 	}
-	SetFileType(m_ofn.nFilterIndex);
+
+	if (m_ofn.nFilterIndex <= m_NumOfFileTypes
+		&& 0 != m_ofn.nFilterIndex)
+	{
+		SetFileType(m_TemplateFlags[m_ofn.nFilterIndex - 1] & (SaveFile_NonWavFile & ~ SaveRawFileMsbFirst));
+	}
+	else
+	{
+		m_ofn.nFilterIndex = 1;
+		SetFileType(SaveFile_WavFile);
+	}
 }
 
 void CWaveSoapFileSaveDialog::OnFileNameChange()
@@ -898,7 +906,7 @@ void CWaveSoapFileSaveDialog::OnFileNameChange()
 	// if the file type is different from the selected type,
 	// set the type and let the user select the parameters
 	CString Name = GetPathName();
-	int type = GetFileTypeForName(Name);
+	unsigned type = GetFileTypeForName(Name);
 	if (type != m_FileType)
 	{
 		SetFileType(type);
@@ -914,7 +922,7 @@ void CWaveSoapFileSaveDialog::ShowDlgItem(UINT nID, int nCmdShow)
 	}
 }
 
-void CWaveSoapFileSaveDialog::SetFileType(int nType)
+void CWaveSoapFileSaveDialog::SetFileType(ULONG nType)
 {
 	if (m_FileType == nType)
 	{
@@ -923,10 +931,11 @@ void CWaveSoapFileSaveDialog::SetFileType(int nType)
 	// Wav, Mp3, wma, raw...
 	CString s;
 	m_FileType = nType;
+
 	switch (nType)
 	{
 	default:
-	case SoundFileWav:
+	case SaveFile_WavFile:
 		// WAV file
 		// show Comments, fill formats combo box
 		s.LoadString(IDS_FORMAT);
@@ -943,7 +952,8 @@ void CWaveSoapFileSaveDialog::SetFileType(int nType)
 
 		m_SelectedFormat = FillFormatCombo(m_FormatTagCombo.GetCurSel());
 		break;  // go on
-	case SoundFileMp3:
+
+	case SaveFile_Mp3File:
 		// MP3 file
 		// replace Format with Encoder: (LAME, Fraunhofer
 		s.LoadString(IDS_ENCODER);
@@ -961,7 +971,8 @@ void CWaveSoapFileSaveDialog::SetFileType(int nType)
 		// fill formats combo (bitrate, etc)
 		FillMp3EncoderCombo();
 		break;
-	case SoundFileWma:
+
+	case SaveFile_WmaFile:
 		// WMA file
 		if ( ! GetApp()->CanOpenWindowsMedia())
 		{
@@ -970,7 +981,7 @@ void CWaveSoapFileSaveDialog::SetFileType(int nType)
 			{
 				// TODO: show help
 			}
-			SetFileType(SoundFileWav);
+			SetFileType(SaveFile_WavFile);
 			break;
 		}
 
@@ -985,10 +996,10 @@ void CWaveSoapFileSaveDialog::SetFileType(int nType)
 		// fill profiles combo
 		FillWmaFormatCombo();
 		break;
-		//case SoundFileAvi:
+		//case SaveFile_AviFile:
 		// AVI file
 		break;
-	case SoundFileRaw:
+	case SaveFile_RawFile:
 		// RAW file
 		// show formats: 16 bits LSB first, 16 bits MSB first, a-law, u-law, 8 bits, ascii hex, ascii decimal
 		// hide attributes
@@ -1014,22 +1025,19 @@ void CWaveSoapFileSaveDialog::SetFileType(LPCTSTR lpExt)
 	SetFileType(GetFileTypeForExt(lpExt));
 }
 
-int CFileSaveUiSupport::GetFileTypeForExt(LPCTSTR lpExt)
+unsigned CFileSaveUiSupport::GetFileTypeForExt(LPCTSTR lpExt)
 {
-	if (NULL != lpExt && '.' == *lpExt)
-	{
-		lpExt++;
-	}
-	int type = SoundFileRaw;
+	unsigned type = SaveFile_RawFile;    // if not found
+
 	if (NULL != lpExt && 0 != *lpExt)
 	{
 		CString s(lpExt);
 		s.TrimRight();
-		for (int i = SoundFileTypeMin; i <= SoundFileTypeMax; i++)
+		for (unsigned i = 0; i < m_NumOfFileTypes; i++)
 		{
 			if (0 == m_DefExt[i].CompareNoCase(lpExt))
 			{
-				type = i;
+				type = m_TemplateFlags[i];
 				break;
 			}
 		}
@@ -1037,14 +1045,14 @@ int CFileSaveUiSupport::GetFileTypeForExt(LPCTSTR lpExt)
 	return type;
 }
 
-int CFileSaveUiSupport::GetFileTypeForName(LPCTSTR FileName)
+unsigned CFileSaveUiSupport::GetFileTypeForName(LPCTSTR FileName)
 {
 	LPCTSTR ext = _tcsrchr(FileName, '.');
 	if (NULL == ext)
 	{
 		return m_FileType;
 	}
-	return GetFileTypeForExt(ext + 1);
+	return GetFileTypeForExt(ext);
 }
 
 void CFileSaveUiSupport::FillLameEncoderFormats()

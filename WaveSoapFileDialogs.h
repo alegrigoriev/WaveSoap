@@ -56,16 +56,6 @@ public:
 	DECLARE_MESSAGE_MAP()
 };
 
-enum {
-	SoundFileTypeUnknown = 0,
-	SoundFileTypeMin = 1,
-	SoundFileWav = 1,
-	SoundFileMp3 = 2,
-	SoundFileWma = 3,
-	SoundFileRaw = 4,
-	//SoundFileAvi = 5,
-	SoundFileTypeMax = 4,
-};
 enum
 {
 	RawSoundFilePcm16Lsb,
@@ -102,7 +92,7 @@ public:
 
 	CFileSaveUiSupport(CWaveFormat const & Wf);
 	WAVEFORMATEX * GetWaveFormat();
-	int GetFileTypeForName(LPCTSTR FileName);
+	unsigned GetFileTypeForName(LPCTSTR FileName);
 
 	int GetSelectedRawFormat() const
 	{
@@ -123,7 +113,8 @@ protected:
 	CComboBox m_AttributesCombo;
 	WaveFormatTagEx m_SelectedTag;
 	unsigned m_SelectedFormat;
-	int m_FileType;// Wav, Mp3, wma, raw...
+	// m_FileType is one of SaveFile_WavFile, SaveFile_Mp3File, SaveFile_WmaFile
+	ULONG m_FileType;// Wav, Mp3, wma, raw...
 	int m_SelectedRawFormat;
 
 	unsigned m_SelectedMp3Encoder;
@@ -134,7 +125,14 @@ protected:
 	BOOL m_bCompatibleFormatsOnly;
 
 	CString m_FormatTagName;
-	CString m_DefExt[10];
+	static unsigned const MaxFileTypes = 10;
+
+	CString m_DefExt[MaxFileTypes];
+	CString m_FileTypeStrings[MaxFileTypes];
+	CString m_FileTypeFilters[MaxFileTypes];
+	ULONG m_TemplateFlags[MaxFileTypes];
+	unsigned m_NumOfFileTypes;
+
 	CWaveFormat m_Wf; // original format
 	CString WaveFormat;
 
@@ -154,7 +152,7 @@ protected:
 	void FillMp3EncoderCombo();
 	void FillRawFormatsCombo();
 	void FillLameEncoderFormats();
-	int GetFileTypeForExt(LPCTSTR lpExt);
+	unsigned GetFileTypeForExt(LPCTSTR lpExt);
 
 	afx_msg void OnCompatibleFormatsClicked();
 	afx_msg void OnComboFormatsChange();
@@ -187,11 +185,14 @@ public:
 protected:
 	CWaveSoapFrontDoc * m_pDocument;
 	CString m_strFilter;
+	CString m_strDefaultExt;
 
 	virtual void OnInitDone();
 	virtual void OnTypeChange();
 	virtual void OnFileNameChange();
-	void SetFileType(int nType);// Wav, Mp3, wma, raw...
+
+	// the function argument is one of SaveFile_WavFile, SaveFile_Mp3File, SaveFile_WmaFile
+	void SetFileType(ULONG nType);
 	void SetFileType(LPCTSTR lpExt);
 	//void ClearFileInfoDisplay();
 
