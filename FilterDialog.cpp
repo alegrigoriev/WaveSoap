@@ -4,6 +4,8 @@
 #include "stdafx.h"
 #include "WaveSoapFront.h"
 #include "FilterDialog.h"
+#include "OperationDialogs.h"
+#include "FileDialogWithHistory.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -20,10 +22,49 @@ CFilterDialog::CFilterDialog(CWnd* pParent /*=NULL*/)
 {
 	//{{AFX_DATA_INIT(CFilterDialog)
 	m_bUndo = FALSE;
-	m_bZeroPhase = FALSE;
 	//}}AFX_DATA_INIT
-	m_bLowPass = FALSE;
-	m_bHighPass = FALSE;
+	m_PrevSize.cx = -1;
+	m_PrevSize.cy = -1;
+	memset(& m_mmxi, 0, sizeof m_mmxi);
+
+	m_Profile.AddItem("Settings", "FilterDlgWidth", m_DlgWidth, 0, 0, 4096);
+	m_Profile.AddItem("Settings", "FilterDlgHeight", m_DlgHeight, 0, 0, 4096);
+
+	m_Profile.AddBoolItem("Filter", "ZeroPhase", m_wGraph.m_bZeroPhase, FALSE);
+	m_Profile.AddBoolItem("Filter", "LowPassFilter", m_wGraph.m_bLowPass, TRUE);
+	m_Profile.AddBoolItem("Filter", "HighPassFilter", m_wGraph.m_bHighPass, TRUE);
+	m_Profile.AddBoolItem("Filter", "NotchFilter", m_wGraph.m_bNotchFilter, FALSE);
+
+	for (int n = 0; n < MaxFilterFrequencies; n++)
+	{
+		CString s;
+		s.Format("Gain%d", n + 1);
+		m_Profile.AddItem("Filter", s, m_wGraph.m_Gain[n], m_wGraph.m_Gain[n], 0.00003, 1.);
+		s.Format("Frequency%d", n + 1);
+		m_Profile.AddItem("Filter", s, m_wGraph.m_Frequencies[n], m_wGraph.m_Frequencies[n], 0.00314, 3.14);
+	}
+	// check for correct frequencies and gain
+	if (m_wGraph.m_Gain[HpfPassbandIndex] <= m_wGraph.m_Gain[HpfStopbandIndex])
+	{
+		m_wGraph.m_Gain[HpfPassbandIndex] = 0.9;
+		m_wGraph.m_Gain[HpfStopbandIndex] = 0.001;
+	}
+	if (m_wGraph.m_Frequencies[HpfPassbandIndex] <= m_wGraph.m_Frequencies[HpfStopbandIndex])
+	{
+		m_wGraph.m_Frequencies[HpfPassbandIndex] = M_PI / 250.;
+		m_wGraph.m_Frequencies[HpfStopbandIndex] = M_PI / 500.;
+	}
+	// check for correct frequencies and gain
+	if (m_wGraph.m_Gain[LpfPassbandIndex] <= m_wGraph.m_Gain[LpfStopbandIndex])
+	{
+		m_wGraph.m_Gain[LpfPassbandIndex] = 0.9;
+		m_wGraph.m_Gain[LpfStopbandIndex] = 0.001;
+	}
+	if (m_wGraph.m_Frequencies[LpfPassbandIndex] >= m_wGraph.m_Frequencies[LpfStopbandIndex])
+	{
+		m_wGraph.m_Frequencies[LpfPassbandIndex] = M_PI * 0.8;
+		m_wGraph.m_Frequencies[LpfStopbandIndex] = M_PI * 0.9;
+	}
 }
 
 
@@ -31,11 +72,16 @@ void CFilterDialog::DoDataExchange(CDataExchange* pDX)
 {
 	CDialog::DoDataExchange(pDX);
 	//{{AFX_DATA_MAP(CFilterDialog)
+	DDX_Control(pDX, IDC_STATIC_SELECTION, m_SelectionStatic);
 	DDX_Check(pDX, IDC_CHECK_UNDO, m_bUndo);
 	//}}AFX_DATA_MAP
-	DDX_Check(pDX, IDC_CHECK_ZERO_PHASE, m_bZeroPhase);
-	DDX_Check(pDX, IDC_CHECK_LOWPASS, m_bLowPass);
-	DDX_Check(pDX, IDC_CHECK_HIGHPASS, m_bHighPass);
+	DDX_Check(pDX, IDC_CHECK_ZERO_PHASE, m_wGraph.m_bZeroPhase);
+	DDX_Check(pDX, IDC_CHECK_LOWPASS, m_wGraph.m_bLowPass);
+	DDX_Check(pDX, IDC_CHECK_HIGHPASS, m_wGraph.m_bHighPass);
+	if (pDX->m_bSaveAndValidate)
+	{
+		m_Profile.UnloadAll();
+	}
 }
 
 
@@ -53,41 +99,13 @@ BEGIN_MESSAGE_MAP(CFilterDialog, CDialog)
 	ON_WM_NCHITTEST()
 	ON_BN_CLICKED(IDC_CHECK_LOWPASS, OnCheckLowpass)
 	ON_BN_CLICKED(IDC_CHECK_HIGHPASS, OnCheckHighpass)
+	ON_WM_LBUTTONDBLCLK()
 	//}}AFX_MSG_MAP
+	ON_NOTIFY(NM_RETURN, AFX_IDW_PANE_FIRST, OnNotifyGraph)
 END_MESSAGE_MAP()
 
 /////////////////////////////////////////////////////////////////////////////
 // CFilterDialog message handlers
-
-void CFilterDialog::OnButtonLoad()
-{
-	// TODO: Add your control notification handler code here
-
-}
-
-void CFilterDialog::OnButtonResetBands()
-{
-	// TODO: Add your control notification handler code here
-
-}
-
-void CFilterDialog::OnButtonSaveAs()
-{
-	// TODO: Add your control notification handler code here
-
-}
-
-void CFilterDialog::OnButtonSelection()
-{
-	// TODO: Add your control notification handler code here
-
-}
-
-void CFilterDialog::OnCheckZeroPhase()
-{
-	// TODO: Add your control notification handler code here
-
-}
 
 void CFilterDialog::OnSize(UINT nType, int cx, int cy)
 {
@@ -247,7 +265,7 @@ BOOL CFilterDialog::OnInitDialog()
 
 	CDialog::OnInitDialog();
 
-	m_BandGain.SetData(m_wGraph.GetCurrentBandGainDb());
+	m_EditGain.SetData(m_wGraph.GetCurrentPointGainDb());
 	// init MINMAXINFO
 	OnMetricsChange();
 	UpdateSelectionStatic();
@@ -310,8 +328,24 @@ CFilterGraphWnd::CFilterGraphWnd()
 	m_bMouseCaptured = false;
 	m_bButtonPressed = false;
 	m_bGotFocus = false;
-	m_MultiBandEqualizer = true;
-	m_BandWithFocus = 0;
+	m_PointWithFocus = 0;
+
+	m_Gain[HpfNotchIndex] = 0.000003;
+	m_Gain[HpfPassbandIndex] = 0.9;
+	m_Gain[HpfStopbandIndex] = 0.001;
+	m_Frequencies[HpfNotchIndex] = M_PI / 2000.;
+	m_Frequencies[HpfPassbandIndex] = M_PI / 250.;
+	m_Frequencies[HpfStopbandIndex] = M_PI / 500.;
+
+	m_Gain[NotchBeginIndex] = 0.9;
+	m_Gain[NotchEndIndex] = 0.9;
+	m_Frequencies[NotchBeginIndex] = M_PI * 0.48;
+	m_Frequencies[NotchEndIndex] = M_PI * 0.52;
+
+	m_Gain[LpfPassbandIndex] = 0.9;
+	m_Gain[LpfStopbandIndex] = 0.001;
+	m_Frequencies[LpfPassbandIndex] = M_PI * 0.8;
+	m_Frequencies[LpfStopbandIndex] = M_PI * 0.9;
 }
 
 CFilterGraphWnd::~CFilterGraphWnd()
@@ -319,21 +353,48 @@ CFilterGraphWnd::~CFilterGraphWnd()
 }
 
 Filter::Filter()
+	: m_bLowPass(FALSE),
+	m_nLpfOrder(0),
+	m_bHighPass(FALSE),
+	m_nHpfOrder(0),
+	m_bNotchFilter(FALSE),
+	m_nNotchOrder(0),
+	m_bZeroPhase(FALSE)
 {
 	ResetBands();
 }
 
 void Filter::ResetBands()
 {
-	for (int i = 0; i < MaxNumberOfEqualizerBands; i++)
+	int i;
+	for (i = 0; i < MaxFilterFrequencies; i++)
 	{
-		m_BandGain[i] = 1;
-		m_BandCoefficients[i][0] = 1.;
-		m_BandCoefficients[i][1] = 0.;
-		m_BandCoefficients[i][2] = 0.;
-		m_BandCoefficients[i][3] = 1.;
-		m_BandCoefficients[i][4] = 0.;
-		m_BandCoefficients[i][5] = 0.;
+		m_Frequencies[i] = 1.;
+		m_Gain[i] = 1.;
+	}
+
+	for (i = 0; i < MaxFilterOrder; i++)
+	{
+		m_LpfCoeffs[i][0] = 0.;
+		m_LpfCoeffs[i][1] = 0.;
+		m_LpfCoeffs[i][2] = 0.;
+		m_LpfCoeffs[i][3] = 1.;
+		m_LpfCoeffs[i][4] = 0.;
+		m_LpfCoeffs[i][5] = 0.;
+
+		m_HpfCoeffs[i][0] = 0.;
+		m_HpfCoeffs[i][1] = 0.;
+		m_HpfCoeffs[i][2] = 0.;
+		m_HpfCoeffs[i][3] = 1.;
+		m_HpfCoeffs[i][4] = 0.;
+		m_HpfCoeffs[i][5] = 0.;
+
+		m_NotchCoeffs[i][0] = 0.;
+		m_NotchCoeffs[i][1] = 0.;
+		m_NotchCoeffs[i][2] = 0.;
+		m_NotchCoeffs[i][3] = 1.;
+		m_NotchCoeffs[i][4] = 0.;
+		m_NotchCoeffs[i][5] = 0.;
 	}
 }
 
@@ -386,18 +447,10 @@ void CFilterGraphWnd::OnPaint()
 	{
 		ur.right = cr.right;
 	}
-	double coeff = M_PI / pow(500., m_NumOfBands / (m_NumOfBands - 0.5));
 	for (int x = ur.left; x < ur.right; x++)
 	{
 		double f;
-		if (m_NumOfBands > 2)
-		{
-			f = coeff * pow(500., m_NumOfBands * (x + 1) /((m_NumOfBands - 0.5) * cr.Width()));
-		}
-		else
-		{
-			f = M_PI * pow(500., (x + 1. - cr.Width()) / cr.Width());
-		}
+		f = M_PI * pow(1000., (x + 1. - cr.Width()) / cr.Width());
 		double gain = abs(CalculateResponse(f));
 		int y = (1 - log10(gain)) * cr.Height() / 2;
 		if (x == ur.left)
@@ -438,23 +491,37 @@ void CFilterGraphWnd::OnPaint()
 	dc.SetBkColor(0xFFFFFF);
 	dc.SetTextColor(0x000000);
 
-	for (int i = 0; i < m_NumOfBands; i++)
+	for (int i = 0; i < MaxFilterFrequencies; i++)
 	{
 		// draw circles around the reference points
-		int x;
-		if (m_NumOfBands <= 2)
+		int x = (1. + log10(m_Frequencies[i] / M_PI) / 3.) * cr.Width() - 1;
+		// full range: 5 to -85 db
+		int y = (0.25 - log10(m_Gain[i])) * cr.Height() / 9;
+		int SrcOffset = 0;
+		if (m_DotCaretIsOn && i == m_PointWithFocus)
 		{
-			x = cr.Width() * (i * 38 + 1) / 40;
+			SrcOffset = w;
+		}
+		if (i <= HpfPassbandIndex)
+		{
+			if ( ! m_bHighPass)
+			{
+				continue;
+			}
+		}
+		else if (i >= LpfPassbandIndex)
+		{
+			if ( ! m_bLowPass)
+			{
+				continue;
+			}
 		}
 		else
 		{
-			x = cr.Width() * (i * 2 + 1) / (2 * m_NumOfBands);
-		}
-		int y = (1 - log10(m_BandGain[i])) * cr.Height() / 2;
-		int SrcOffset = 0;
-		if (m_DotCaretIsOn && i == m_BandWithFocus)
-		{
-			SrcOffset = w;
+			if ( ! m_bNotchFilter)
+			{
+				continue;
+			}
 		}
 		dc.BitBlt(x - dx, y - dy, w, h, & cdc, SrcOffset, 0, SRCAND);
 	}
@@ -485,7 +552,7 @@ void CFilterGraphWnd::OnMouseMove(UINT nFlags, CPoint point)
 			point.y = cr.bottom - 1;
 		}
 		double gain = pow(10., (cr.Height() - point.y) * 2. / cr.Height() - 1.);
-		SetBandGain(m_BandWithFocus, gain);
+		SetPointGain(m_PointWithFocus, gain);
 		NotifyParentDlg();
 	}
 }
@@ -499,13 +566,13 @@ void CFilterGraphWnd::NotifyParentDlg()
 	GetParent()->SendMessage(WM_NOTIFY, nmhdr.idFrom, (LPARAM) & nmhdr);
 }
 
-void CFilterGraphWnd::SetFocusBand(int nBand)
+void CFilterGraphWnd::SetFocusPoint(int nPoint)
 {
-	if (nBand != m_BandWithFocus)
+	if (nPoint != m_PointWithFocus)
 	{
 		DrawDotCaret(false);
 
-		m_BandWithFocus = nBand;
+		m_PointWithFocus = nPoint;
 	}
 	DrawDotCaret(true);
 }
@@ -521,7 +588,7 @@ void CFilterGraphWnd::OnLButtonDown(UINT nFlags, CPoint point)
 	}
 	m_bButtonPressed = true;
 	DrawDotCaret(true);
-	SetFocusBand(nHit);
+	SetFocusPoint(nHit);
 	NotifyParentDlg();
 }
 
@@ -551,375 +618,69 @@ BOOL CFilterGraphWnd::PreCreateWindow(CREATESTRUCT& cs)
 // frequency is in radians
 complex<float> Filter::CalculateResponse(double Frequency)
 {
-	complex<double> Numerator(1., 0.);
-	complex<double> Denominator(1., 0.);
+	complex<double> Numerator;
+	complex<double> Denominator;
+	complex<double> Result(1., 0.);
 
 	complex<double> z(cos(Frequency), -sin(Frequency));
 	complex<double> z2(cos(Frequency * 2), -sin(Frequency * 2));
 
-	for (int i = 0; i < m_NumOfFilters; i++)
+	if (m_bLowPass)
 	{
-		Numerator *= m_BandCoefficients[i][0] + z * m_BandCoefficients[i][1]
-					+ z2 * m_BandCoefficients[i][2];
-		Denominator *= m_BandCoefficients[i][3] + z * m_BandCoefficients[i][4]
-						+ z2 * m_BandCoefficients[i][5];
+		complex<double> LpfResult(0., 0.);
+		for (int i = 0; i < m_nLpfOrder; i++)
+		{
+			LpfResult += (m_LpfCoeffs[i][0] + z * m_LpfCoeffs[i][1]
+							+ z2 * m_LpfCoeffs[i][2])
+						/ (m_LpfCoeffs[i][3] + z * m_LpfCoeffs[i][4]
+							+ z2 * m_LpfCoeffs[i][5]);
+		}
+		Result *= LpfResult;
 	}
-	Numerator /= Denominator;
+	if (m_bHighPass)
+	{
+		complex<double> HpfResult(0., 0.);
+		for (int i = 0; i < m_nHpfOrder; i++)
+		{
+			HpfResult += (m_HpfCoeffs[i][0] + z * m_HpfCoeffs[i][1]
+							+ z2 * m_HpfCoeffs[i][2])
+						/ (m_HpfCoeffs[i][3] + z * m_HpfCoeffs[i][4]
+							+ z2 * m_HpfCoeffs[i][5]);
+		}
+		Result *= HpfResult;
+	}
+	if (m_bNotchFilter)
+	{
+	}
+
 	if (m_bZeroPhase)
 	{
 		// filter is applied twice
-		Numerator *= conj(Numerator);
+		Result *= conj(Result);
 	}
-	return Numerator;
+	return Result;
 }
 
-void Filter::CalculateCoefficients(double Gain, double Frequency, double Width, double Coeffs[6])
+void CFilterGraphWnd::SetPointGain(int nPoint, double Gain)
 {
-	// given the pole/zero quality, calculate them
-	// on frequency at F - f/Q, gain should get down to sqrt(gain)
-	// first calculate for pole and zero on X axis, then turn them to the required frequency
-	if (1. == Gain)
-	{
-		Coeffs[0] = 1.;
-		Coeffs[1] = 0.;
-		Coeffs[2] = 0.;
-		Coeffs[3] = 1.;
-		Coeffs[4] = 0.;
-		Coeffs[5] = 0.;
-	}
-	else
-	{
-		if (m_bZeroPhase)
-		{
-			Gain = sqrt(Gain);
-		}
-		double Gain2 = sqrt(Gain);
-		double df = Frequency * (1. - 1. / Width);
-		if (0) TRACE("SetBandGain G=%f, freq=%f, df=%f\n",
-					Gain, Frequency, df);
-
-		complex<double> Z1(cos(df), sin(df));
-
-		// use Z-transform
-		double s_pole = -df * sqrt((1.- Gain2*Gain2)/(Gain2*Gain2 - Gain*Gain));
-		double s_zero = -s_pole * Gain;
-		double z_pole = exp(s_pole);
-		double z_zero = exp(s_zero);
-		if (0) TRACE("s_pole = %f, s_zero = %f, z_pole = %f, z_zero = %f\n",
-					s_pole, s_zero, z_pole, z_zero);
-		// rotate the poles to the necessary position and normalize
-		double NormCoeff = (1. + z_pole) / (1. + z_zero);
-		NormCoeff *= NormCoeff;
-
-		double cos_f = cos(Frequency);
-
-		Coeffs[0] = NormCoeff;
-		Coeffs[1] = -2. * NormCoeff * z_zero * cos_f;
-		Coeffs[2] = NormCoeff * z_zero * z_zero;
-		Coeffs[3] = 1.;
-		Coeffs[4] = -2. * z_pole * cos_f;
-		Coeffs[5] = z_pole * z_pole;
-		if (0) TRACE("Coeffs= %f, %f, %f; %f, %f, %f\n",
-					Coeffs[0],
-					Coeffs[1],
-					Coeffs[2],
-					Coeffs[3],
-					Coeffs[4],
-					Coeffs[5]);
-	}
-}
-
-void CalculateSimpleEqCoefficients(double f1, double f2,
-									double Gain1, double Gain2, double Coeffs[6])
-{
-	// f1 - frequency with gain 1,
-	// f2 - frequency with gain 2,
-	// F1 < f2
-	// Gain - ><1
-	// for cutoff frequency F, the pole is (1 - sin(F))/cos(F). if (cos(f) == 0,
-	// the pole is 0.
-	double sin1 = sin(f1);
-	double cos1 = cos(f1);
-	double pole1;
-	if (cos1 != 0)
-	{
-		pole1 = (1 - sin1) / cos1;
-	}
-	else
-	{
-		pole1 = 0;
-	}
-	double sin2 = sin(f2);
-	double cos2 = cos(f2);
-	double pole2;
-	if (cos2 != 0)
-	{
-		pole2 = (1 - sin2) / cos2;
-	}
-	else
-	{
-		pole2 = 0;
-	}
-	TRACE("Target F1=%f, gain1 = %f, pole=%f\n"
-		"Target F2=%f, gain2 = %f, pole=%f\n",
-		f1, Gain1, pole1,
-		f2, Gain2, pole2);
-	Coeffs[3] = 1.;
-	Coeffs[4] = -(pole1 + pole2);
-	Coeffs[5] = pole1 * pole2;
-	// gain1 corresponds to gain on Z==1
-	// norm it
-	Gain1 *= (1. - pole1) / 2;
-	// gain2 corresponds to gain on Z==-1
-	// norm it
-	Gain2 *= (1. + pole2) / 2;
-	Coeffs[0] = Gain1 + Gain2;
-	Coeffs[1] = Gain1 - Gain2 - Gain1 * pole2 - Gain2 * pole1;
-	Coeffs[2] = Gain2 * pole1 - Gain1 * pole2;
-#ifdef _DEBUG
-	{
-		double d2 = Coeffs[1] * Coeffs[1] - 4. * Coeffs[0] * Coeffs[2];
-		if (d2 >= 0)
-		{
-			double d = sqrt(d2);
-			double r1 = (-Coeffs[1] + d) / (2. * Coeffs[0]);
-			double r2 = (-Coeffs[1] - d) / (2. * Coeffs[0]);
-			TRACE("Real zeros: %f, %f\n", r1, r2);
-		}
-		else
-		{
-			double d = sqrt(-d2) / (2. * Coeffs[0]);
-			double r1 = -Coeffs[1] / (2. * Coeffs[0]);
-			TRACE("Complex zeros: %f +- j*%f\n", r1, d);
-		}
-	}
-#endif
-
-	TRACE("Calculated coefficients:\n"
-		"%f, %f, %f,\n"
-		"%f, %f, %f\n",
-		Coeffs[0], Coeffs[1], Coeffs[2],
-		Coeffs[3], Coeffs[4], Coeffs[5]);
-}
-void CFilterGraphWnd::SetBandGain(int nBand, double Gain)
-{
-	if (m_BandGain[nBand] == Gain)
+	if (m_Gain[nPoint] == Gain)
 	{
 		return;
 	}
-	m_BandGain[nBand] = Gain;
-	RebuildBandFilters();
+	m_Gain[nPoint] = Gain;
+	RebuildFilters();
 	Invalidate();
 }
 
-void Filter::RebuildBandFilters()
+void CFilterGraphWnd::SetPointFrequency(int nPoint, double Frequency)
 {
-	int i;
-	// initial approximation
-	for (i = 0; i < m_NumOfFilters; i++)
+	if (m_Frequencies[nPoint] == Frequency)
 	{
-		m_UsedBandGain[i] = m_BandGain[i];
-	}
-	if (2 == m_NumOfFilters)
-	{
-		// simple equalizer
-		double ratio;
-		double gain = m_BandGain[0];
-		ASSERT(gain > 0.);
-		if (gain < 1)
-		{
-			ratio = sqrt(2 * gain);
-			gain = gain;
-		}
-		else
-		{
-			ratio = sqrt(2 / gain);
-			gain = gain;
-		}
-		// f2 = 500
-		if (1. == m_BandGain[0])
-		{
-			m_BandCoefficients[0][0] = 1.;
-			m_BandCoefficients[0][1] = 0.;
-			m_BandCoefficients[0][2] = 0.;
-			m_BandCoefficients[0][3] = 1.;
-			m_BandCoefficients[0][4] = 0.;
-			m_BandCoefficients[0][5] = 0.;
-		}
-		else
-		{
-			CalculateSimpleEqCoefficients(0.07 * ratio, 0.07 / ratio, gain, 1., m_BandCoefficients[0]);
-		}
-		gain = m_BandGain[1];
-		ASSERT(gain > 0.);
-		if (gain > 1)
-		{
-			ratio = 0.5 * gain;
-			gain = -gain;
-		}
-		else
-		{
-			ratio = 0.707 / gain;
-			gain = -gain;
-		}
-		// f1= 2000
-		if (1. == m_BandGain[1])
-		{
-			m_BandCoefficients[1][0] = 1.;
-			m_BandCoefficients[1][1] = 0.;
-			m_BandCoefficients[1][2] = 0.;
-			m_BandCoefficients[1][3] = 1.;
-			m_BandCoefficients[1][4] = 0.;
-			m_BandCoefficients[1][5] = 0.;
-		}
-		else
-		{
-			CalculateSimpleEqCoefficients(0.4, 0.4 * ratio, 1., gain, m_BandCoefficients[1]);
-		}
 		return;
 	}
-
-	// compensate band interference.
-	// Use Newton approximation.
-	// calculate derivatives, solve system of equations,
-	// to find the necessary band coefficients
-	// Make frequency responce error down to 0.1 dB
-	for (int iter = 0; iter < 10; iter++)
-	{
-		// reference coefficients
-		for (i = 0; i < m_NumOfFilters; i++)
-		{
-			CalculateCoefficients(m_UsedBandGain[i],
-								m_BandFrequencies[i], m_BandWidth, m_BandCoefficients[i]);
-		}
-		double Gain1[MaxNumberOfEqualizerBands];   // real gain for m_UsedBandGain
-		double MaxError = 1.;
-		// calculate reference response and max response error
-		for (i = 0; i < m_NumOfFilters; i++)
-		{
-			Gain1[i] = abs(CalculateResponse(m_BandFrequencies[i]));
-			double Error = Gain1[i] / m_BandGain[i];
-			if (Error < 1.) Error = 1./Error;
-			if (Error > MaxError)
-			{
-				MaxError = Error;
-			}
-		}
-		if (MaxError < 1.0116)  // .1 dB
-		{
-			break;
-		}
-		double M[MaxNumberOfEqualizerBands][MaxNumberOfEqualizerBands + 1];
-		// calculate all derivatives
-		for (i = 0; i < m_NumOfFilters; i++)
-		{
-			CalculateCoefficients(m_UsedBandGain[i] * 1.06, // 0.5dB
-								m_BandFrequencies[i], m_BandWidth, m_BandCoefficients[i]);
-
-			for (int j = 0; j < m_NumOfFilters; j++)
-			{
-				M[j][i] = log(abs(CalculateResponse(m_BandFrequencies[j])) / Gain1[j])
-						/ 0.05827; // log(1.06)
-				if (0) TRACE("Deriv[%d][%d]=%f\n", j, i, M[j][i]);
-			}
-			// return back
-			CalculateCoefficients(m_UsedBandGain[i],
-								m_BandFrequencies[i], m_BandWidth, m_BandCoefficients[i]);
-			M[i][m_NumOfFilters] = log(abs(CalculateResponse(m_BandFrequencies[i])) / m_BandGain[i]);
-			if (0) TRACE("Error[%d]=%f\n", i, M[i][m_NumOfFilters]);
-		}
-		// solve system of equations using Gauss reduce
-		for (i = 0; i < m_NumOfFilters - 1; i++)
-		{
-			for (int j = i + 1; j < m_NumOfFilters; j++)
-			{
-				double d = M[j][i] / M[i][i];
-				for (int k = i + 1; k < m_NumOfFilters + 1; k++)
-				{
-					M[j][k] -= M[i][k] * d;
-				}
-#ifdef _DEBUG
-				M[j][i] = 0.;
-#endif
-			}
-		}
-#ifdef _DEBUG
-		for (i = 0; i < m_NumOfFilters; i++)
-		{
-			for (int j = 0; j < m_NumOfFilters + 1; j++)
-			{
-				if (0) TRACE("Reduced M[%d][%d]=%f\n", i, j, M[i][j]);
-			}
-		}
-#endif
-		// matrix reduced to triangular, calculate solution vector
-		for (i = m_NumOfFilters - 1; i >= 0; i--)
-		{
-			M[i][m_NumOfFilters] /= M[i][i];
-			for (int j = 0; j < i; j++)
-			{
-				M[j][m_NumOfFilters] -= M[j][i] * M[i][m_NumOfFilters];
-			}
-		}
-		// the result is in M[*][m_NumOfBands + 1]
-		for (i = 0; i < m_NumOfFilters; i++)
-		{
-			if (0) TRACE("Correction at band %d=%f\n", i, M[i][m_NumOfFilters]);
-			m_UsedBandGain[i] *= exp(-M[i][m_NumOfFilters]);
-		}
-	}
-
-}
-
-void Filter::SetNumberOfBands(int NumBands)
-{
-	m_NumOfFilters = NumBands;
-	TRACE("CEqualizerGraphWnd::SetNumberOfBands n=%d\n", NumBands);
-	for (int i = 0; i < NumBands; i++)
-	{
-		m_BandFrequencies[i] = M_PI / 500 * pow(500., i * ( 1. / (NumBands - 0.5)));
-		TRACE("Band frequency[%d] = %f\n", i, m_BandFrequencies[i] * 22050 / M_PI);
-	}
-	if (m_bZeroPhase)
-	{
-		m_BandWidth = pow(500., .8 / (NumBands - 0.5));
-	}
-	else
-	{
-		m_BandWidth = pow(500., 1. / (NumBands - 0.5));
-	}
-	TRACE("Quality factor = %f\n", m_BandWidth);
-	RebuildBandFilters();
-}
-
-void CFilterGraphWnd::SetNumberOfBands(int NumBands)
-{
-	if (NumBands == 2)
-	{
-		// simple equalizer
-		Equalizer::SetNumberOfBands(3);
-		SetBandGain(2, 1.);
-		m_BandFrequencies[0] = 0.0073685;//M_PI / 500 * pow(500., 0.5 / 19.5);
-		m_BandFrequencies[1] = 2.6788322; //M_PI / 500 * pow(500., 19. / 19.5);
-		m_BandFrequencies[2] = 0.1413716; //M_PI * 0.045;
-		m_MultiBandEqualizer = false;
-		m_BandWidth = 20.;
-		RebuildBandFilters();
-	}
-	else
-	{
-		Equalizer::SetNumberOfBands(NumBands);
-		m_MultiBandEqualizer = true;
-	}
-	m_NumOfBands = NumBands;
-	if (m_BandWithFocus > m_NumOfBands - 1)
-	{
-		m_BandWithFocus = m_NumOfBands - 1;
-	}
-	if (NULL != m_hWnd)
-	{
-		RedrawWindow(NULL, NULL, RDW_FRAME | RDW_ERASE | RDW_INVALIDATE | RDW_ERASENOW);
-	}
+	m_Frequencies[nPoint] = Frequency;
+	RebuildFilters();
+	Invalidate();
 }
 
 BOOL CFilterGraphWnd::OnEraseBkgnd(CDC* pDC)
@@ -954,14 +715,9 @@ BOOL CFilterGraphWnd::OnEraseBkgnd(CDC* pDC)
 		// draw zero level line
 		pDC->PatBlt(cr.left, (cr.top + cr.bottom) / 2, cr.Width(), 1, PATINVERT);
 		// draw frequency lines
-		int nNumOfFrequencies = m_NumOfBands;
-		if (nNumOfFrequencies <= 2)
+		for (int i = 0; i < 20; i++)
 		{
-			nNumOfFrequencies = 20;
-		}
-		for (int i = 0; i < nNumOfFrequencies; i++)
-		{
-			int x = cr.Width() * (i * 2 + 1) / (2 * nNumOfFrequencies);
+			int x = cr.Width() * (i * 2 + 1) / 40;
 			pDC->PatBlt(x, cr.top, 1, cr.bottom - cr.top, PATINVERT);
 		}
 		pDC->SelectObject(pOldBrush);
@@ -1058,27 +814,15 @@ void CFilterGraphWnd::OnNcPaint(UINT wParam)
 
 	int PrevX = ncp.rgrc[0].left;
 
-	int nNumOfFrequencies = m_NumOfBands;
-	if (nNumOfFrequencies <= 2)
-	{
-		nNumOfFrequencies = 20;
-	}
-	for (int i = 0; i < nNumOfFrequencies; i ++)
+	for (int i = 0; i < 20; i ++)
 	{
 		int x = ncp.rgrc[0].left +
-				(ncp.rgrc[0].right - ncp.rgrc[0].left) * (i * 2 + 1) / (2 * nNumOfFrequencies);
+				(ncp.rgrc[0].right - ncp.rgrc[0].left) * (i * 2 + 1) / 40;
 		CString s;
 		double f;
-		if (m_NumOfBands > 2)
-		{
-			f = m_BandFrequencies[i] / M_PI * 0.5 * m_SamplingRate;
-		}
-		else
-		{
-			f =  0.5 * m_SamplingRate * pow(500.,
-											(x + 1. - ncp.rgrc[0].right) /
-											(ncp.rgrc[0].right - ncp.rgrc[0].left));
-		}
+		f =  0.5 * m_SamplingRate * pow(1000.,
+										(x + 1. - ncp.rgrc[0].right) /
+										(ncp.rgrc[0].right - ncp.rgrc[0].left));
 		int TextWidth;
 		if (f >= 1000.)
 		{
@@ -1195,29 +939,10 @@ BOOL CFilterGraphWnd::OnSetCursor(CWnd* pWnd, UINT nHitTest, UINT message)
 	return TRUE;
 }
 
-void CFilterDialog::OnChangeEditBands()
-{
-	BOOL nTrans = FALSE;
-	int nBands = GetDlgItemInt(IDC_EDIT_BANDS, & nTrans, FALSE);
-	if (nTrans && nBands > 2 && nBands <= MaxNumberOfEqualizerBands)
-	{
-		m_nBands = nBands;
-		m_wGraph.SetNumberOfBands(nBands);
-	}
-}
-
 void CFilterDialog::OnButtonResetBands()
 {
 	m_wGraph.ResetBands();
-	if (m_bMultiBandEqualizer)
-	{
-		m_wGraph.SetNumberOfBands(m_nBands);
-	}
-	else
-	{
-		m_wGraph.SetNumberOfBands(2);
-	}
-	m_BandGain.SetData(m_wGraph.GetCurrentBandGainDb());
+	//m_Gain.SetData(m_wGraph.GetCurrentBandGainDb());
 }
 
 void CFilterDialog::OnButtonLoad()
@@ -1241,9 +966,9 @@ void CFilterDialog::OnButtonLoad()
 		return;
 	}
 	FileName = dlg.GetPathName();
-	m_Profile.ImportSection("Equalizer", FileName);
-	m_wGraph.SetNumberOfBands(m_nBands);
-	m_BandGain.SetData(m_wGraph.GetCurrentBandGainDb());
+	m_Profile.ImportSection("Filter", FileName);
+	//m_wGraph.SetNumberOfBands(m_nBands);
+	//m_Gain.SetData(m_wGraph.GetCurrentBandGainDb());
 }
 
 void CFilterDialog::OnButtonSaveAs()
@@ -1281,41 +1006,41 @@ void CFilterGraphWnd::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 	{
 	case VK_UP:
 		// 1 dB up
-		GainDb = 1 + floor(20. * log10(m_BandGain[m_BandWithFocus] * 1.00001));
-		if (GainDb > 20.)
+		GainDb = 1 + floor(20. * log10(m_Gain[m_PointWithFocus] * 1.00001));
+		if (GainDb > 0.)
 		{
-			GainDb = 20.;
+			GainDb = 0.;
 		}
-		SetBandGain(m_BandWithFocus, pow(10., GainDb / 20.));
+		SetPointGain(m_PointWithFocus, pow(10., GainDb / 20.));
 		DrawDotCaret(true);
 		NotifyParentDlg();
 		return;
 		break;
 	case VK_DOWN:
 		// 1 dB down
-		GainDb = ceil(20. * log10(m_BandGain[m_BandWithFocus] / 1.00001)) - 1.;
-		if (GainDb < -20.)
+		GainDb = ceil(20. * log10(m_Gain[m_PointWithFocus] / 1.00001)) - 1.;
+		if (GainDb < -90.)
 		{
-			GainDb = -20.;
+			GainDb = -90.;
 		}
-		SetBandGain(m_BandWithFocus, pow(10., GainDb / 20.));
+		SetPointGain(m_PointWithFocus, pow(10., GainDb / 20.));
 		DrawDotCaret(true);
 		NotifyParentDlg();
 		return;
 		break;
 	case VK_LEFT:
 		// focus to the prev band
-		if (m_BandWithFocus > 0)
+		if (m_PointWithFocus > 0)
 		{
-			SetFocusBand(m_BandWithFocus - 1);
+			SetFocusPoint(m_PointWithFocus - 1);
 		}
 		NotifyParentDlg();
 		break;
 	case VK_RIGHT:
 		// focus to the next band
-		if (m_BandWithFocus < m_NumOfBands - 1)
+		if (m_PointWithFocus < MaxFilterFrequencies - 1)
 		{
-			SetFocusBand(m_BandWithFocus + 1);
+			SetFocusPoint(m_PointWithFocus + 1);
 		}
 		NotifyParentDlg();
 		break;
@@ -1337,21 +1062,36 @@ int CFilterGraphWnd::GetHitCode(POINT point)
 	}
 	int dx = GetSystemMetrics(SM_CXDRAG);
 	int dy = GetSystemMetrics(SM_CYDRAG);
-	for (int i = 0; i < m_NumOfBands; i++)
+	for (int i = 0; i < MaxFilterFrequencies; i++)
 	{
 		// find if the mouse gets into a focus point
-		int x;
-		if (m_NumOfBands <= 2)
+		int x = (1. + log10(m_Frequencies[i] / M_PI) / 3.) * cr.Width() - 1;
+		// full range: 5 to -85 db
+		int y = (0.25 - log10(m_Gain[i])) * cr.Height() / 9;
+		CRect r(x - dx, y - dy, x + dx, y + dy);
+		CRect r1(x - dx, cr.top, x + dx, cr.bottom);
+
+		if (i <= HpfPassbandIndex)
 		{
-			x = cr.Width() * (i * 38 + 1) / 40;
+			if ( ! m_bHighPass)
+			{
+				continue;
+			}
+		}
+		else if (i >= LpfPassbandIndex)
+		{
+			if ( ! m_bLowPass)
+			{
+				continue;
+			}
 		}
 		else
 		{
-			x = cr.Width() * (i * 2 + 1) / (2 * m_NumOfBands);
+			if ( ! m_bNotchFilter)
+			{
+				continue;
+			}
 		}
-		int y = (1 - log10(m_BandGain[i])) * cr.Height() / 2;
-		CRect r(x - dx, y - dy, x + dx, y + dy);
-		CRect r1(x - dx, cr.top, x + dx, cr.bottom);
 
 		// if drag handle hit, return zero-based band index
 		if (r.PtInRect(point))
@@ -1383,16 +1123,11 @@ void CFilterGraphWnd::DrawDotCaret(bool state)
 		m_DotCaretIsOn = state;
 		CRect cr;
 		GetClientRect( & cr);
-		int x;
-		if (m_NumOfBands <= 2)
-		{
-			x = cr.Width() * (m_BandWithFocus * 38 + 1) / 40;
-		}
-		else
-		{
-			x = cr.Width() * (m_BandWithFocus * 2 + 1) / (2 * m_NumOfBands);
-		}
-		int y = (1 - log10(m_BandGain[m_BandWithFocus])) * cr.Height() / 2;
+
+		int x = (1. + log10(m_Frequencies[m_PointWithFocus] / M_PI) / 3.) * cr.Width() - 1;
+		// full range: 5 to -85 db
+		int y = (0.25 - log10(m_Gain[m_PointWithFocus])) * cr.Height() / 9;
+
 		int dx = GetSystemMetrics(SM_CXDRAG);
 		int dy = GetSystemMetrics(SM_CYDRAG);
 		CRect r(x - dx, y - dy, x + dx, y + dy);
@@ -1411,9 +1146,9 @@ void CFilterDialog::OnOK()
 	{
 		// read the gain
 		double GainDb;
-		if (m_BandGain.GetData(NULL, GainDb, NULL, NULL, -20., 20.))
+		if (m_EditGain.GetData(NULL, GainDb, NULL, NULL, -20., 20.))
 		{
-			m_wGraph.SetCurrentBandGainDb(GainDb);
+			m_wGraph.SetCurrentPointGainDb(GainDb);
 			// set focus to the graph
 			m_wGraph.SetFocus();
 		}
@@ -1430,25 +1165,25 @@ void CFilterDialog::OnOK()
 
 void CFilterDialog::OnNotifyGraph( NMHDR * pNotifyStruct, LRESULT * result )
 {
-	m_BandGain.SetData(m_wGraph.GetCurrentBandGainDb());
+	m_EditGain.SetData(m_wGraph.GetCurrentPointGainDb());
 }
 
 void CFilterDialog::OnKillfocusEditBandGain()
 {
 	// read the gain
 	double GainDb;
-	if (m_BandGain.GetData(NULL, GainDb, NULL, NULL, -20., 20.))
+	if (m_EditGain.GetData(NULL, GainDb, NULL, NULL, -20., 20.))
 	{
-		m_wGraph.SetCurrentBandGainDb(GainDb);
+		m_wGraph.SetCurrentPointGainDb(GainDb);
 	}
 }
 
-void CFilterDialog::OnLButtonDblClk(UINT nFlags, CPoint point)
+void CFilterGraphWnd::OnLButtonDblClk(UINT nFlags, CPoint point)
 {
 	// if click on the band, set the gain
 	CWnd::OnLButtonDblClk(nFlags, point);
 	int nHit = GetHitCode(point);
-	if (nHit < int(~MaxNumberOfEqualizerBands))
+	if (nHit < int(~MaxFilterFrequencies))
 	{
 		return;
 	}
@@ -1458,7 +1193,7 @@ void CFilterDialog::OnLButtonDblClk(UINT nFlags, CPoint point)
 	}
 	m_bButtonPressed = true;
 	DrawDotCaret(true);
-	SetFocusBand(nHit);
+	SetFocusPoint(nHit);
 
 	CRect cr;
 	GetClientRect( & cr);
@@ -1470,8 +1205,8 @@ void CFilterDialog::OnLButtonDblClk(UINT nFlags, CPoint point)
 	{
 		point.y = cr.bottom - 1;
 	}
-	double gain = pow(10., (cr.Height() - point.y) * 2. / cr.Height() - 1.);
-	SetBandGain(m_BandWithFocus, gain);
+	double gain = pow(10., 0.25- 9. * point.y / cr.Height());
+	SetPointGain(m_PointWithFocus, gain);
 	NotifyParentDlg();
 }
 
@@ -1486,237 +1221,150 @@ void CFilterDialog::OnCheckZeroPhase()
 		m_wGraph.m_bZeroPhase = FALSE;
 	}
 	// force filter recalculation
-	m_wGraph.SetNumberOfBands(m_nBands);
-	//m_wGraph.RebuildBandFilters();
-	//m_wGraph.Invalidate();
+	//m_wGraph.SetNumberOfBands(m_nBands);
+	m_wGraph.RebuildFilters();
+	m_wGraph.Invalidate();
 }
 
-#define ELLIPTIC_FUNCTION_TERMS 20
-
-void EllipticPolesZeros(double omegaPass,
-						double omegaStop,
-						double &minStopLossDB,
-						double &maxPassLossDB, // 0 - power-symmetric filter
-						int order,
-						POLY_ROOTS &zeros,
-						POLY_ROOTS &poles,
-						COMPLEX &rNormCoeff )
+void Filter::RebuildFilters()
 {
-	ASSERT (&poles != NULL);
-	ASSERT (&zeros != NULL);
-	/* estimating required filter order (odd) */
-	double k, u, q, kk, ww, mu;
-	double sum;
-	double denom, numer, vv, minStopLoss, xx, yy;
-	double maxPassLoss;
-	double CenterFreq = sqrt(omegaPass * omegaStop);
-	int i, m;
-
-	if (minStopLossDB < 0) minStopLossDB = -minStopLossDB;
-	if (maxPassLossDB < 0) maxPassLossDB = -maxPassLossDB;
-
-	minStopLoss = pow(10., -minStopLossDB /10.);  // < 1.
-	maxPassLoss = pow(10., -maxPassLossDB /10.);  // < 1.
-	if(maxPassLoss == double(1.)) maxPassLoss = 1. - minStopLoss;
-	k = omegaPass/omegaStop;				/* Alg. 5.1, step 3 */
-
-	kk = sqrt(sqrt(1.0 - k * k));			/* Eq (5.2) */
-	u = 0.5 * (1.0 - kk) / (1.0 + kk);
-
-	q = 150.0 * ipow(u,13) + 15.0 * ipow(u,9) + 2.0 * ipow(u,5) + u;
-	/* Eq (5.3) */
-	if(order <= 1)
+	if (m_bLowPass)
 	{
-		order &= 1;
-		order |= int(ceil(-log( 16. * (1. / minStopLoss - 1.)/
-								(1. / maxPassLoss - 1.)) / log ( q )));
+		CreateLowpassElliptic(m_Frequencies[LpfPassbandIndex],
+							m_Gain[LpfPassbandIndex],
+							m_Frequencies[LpfStopbandIndex],
+							m_Gain[LpfStopbandIndex]);
 	}
-
-	if(maxPassLossDB == 0.)
+	if (m_bHighPass)
 	{
-		order |=1;
-		minStopLoss = 4. / (pow(q, - order / 2.) + 4.); // in power terms
-		maxPassLoss = 1. - minStopLoss;
-		maxPassLossDB = -10.*log10(maxPassLoss);
-
-		/* Eq (5.12) */
-		//	vv = log( pow(q, - order / 2.) + 3 ) / (2.0 * order);
+		CreateHighpassElliptic(m_Frequencies[HpfPassbandIndex],
+								m_Gain[HpfPassbandIndex],
+								m_Frequencies[HpfStopbandIndex],
+								m_Gain[HpfStopbandIndex]);
 	}
-	else
+	if (m_bNotchFilter)
 	{
-		minStopLoss = 1. / ((1./maxPassLoss - 1.) / (16. *ipow(q, order)) +1.);
 	}
-	poles.SetCount(0);
-	zeros.SetCount(0);
-
-	vv = log((sqrt(maxPassLoss)+1.)/(1.-sqrt(maxPassLoss))) / (2.0 * order);
-	minStopLossDB = -10.*log10(minStopLoss);
-
-	sum = 0.0;					/* Eq (5.13) */
-	for(m = 0; m < ELLIPTIC_FUNCTION_TERMS; m++)
-	{
-		sum += ipow(-1.0, m) * ipow(q, m * (m + 1)) * sinh((2 * m + 1.) * vv);
-	}
-
-	numer = 2.0 * sum * sqrt(sqrt(q));
-
-	sum = 0.0;
-
-	for (m = 1; m < ELLIPTIC_FUNCTION_TERMS; m++)
-	{
-		sum += ipow(-1.0, m) * ipow(q, m * m) * cosh(2.0 * m * vv);
-	}
-
-	denom = 1.0 + 2.0 * sum;
-	COMPLEX cFirstTerm = -fabs(numer / denom);
-
-	mu = 0.5;
-	if (order & 1)
-	{
-		mu = 1.;
-	}
-	/* Eq (5.14) */
-	ww = sqrt((1.0 + k * real(cFirstTerm) * real(cFirstTerm))
-			* (1.0 + real(cFirstTerm) * real(cFirstTerm)/k));
-
-	for (i = order >> 1, mu += i - 1; i > 0 ; i--, mu -= 1.)
-	{
-		sum = 0.0;					/* Eq (5.15) numerator */
-		for(m = 0; m < ELLIPTIC_FUNCTION_TERMS; m++)
-		{
-			sum += ipow(-1.0, m) * ipow(q, m * (m + 1)) *
-					sin((2 * m + 1) * M_PI * mu / order);
-		}
-
-		numer = 2.0 * sum * sqrt(sqrt(q));
-
-		sum = 0.0;					/* Eq (5.15) denominator */
-		for (m = 1; m < ELLIPTIC_FUNCTION_TERMS; m++)
-		{
-			sum += ipow(-1.0, m) * ipow(q, m * m)
-					* cos(2.0 * M_PI * m * mu / order);
-		}
-
-		denom = 1.0 + 2.0 * sum;
-		xx = numer/denom;
-
-		zeros += COMPLEX(0., 1./xx) * CenterFreq;
-		zeros += COMPLEX(0., -1./xx) * CenterFreq;
-		denom = 1.0 + ipow(real(cFirstTerm)*xx, 2);		/* Eq (5.18) */
-		/* Eq (5.16) */
-		yy = sqrt((1.0 - k * xx*xx) * (1.0-(xx * xx / k)))
-			* real(cFirstTerm) /denom;
-		xx = xx * ww / denom;
-		poles += COMPLEX(yy, xx) * CenterFreq;
-		poles += COMPLEX(yy, -xx) * CenterFreq;
-	}
-
-	if (order & 1)
-	{
-		poles += cFirstTerm * CenterFreq;
-	}
-
-	rNormCoeff = poles.eval(0.) / zeros.eval(0.);
-
-	if ( ! (order & 1))
-	{
-		rNormCoeff *= sqrt(maxPassLoss);
-	}
-	return;
 }
 
 BOOL Filter::CreateLowpassElliptic(double PassFreq, double PassLoss,
 									double StopFreq, double StopLoss)
 {
-	dCenterFreq = 0.;
-	double OmegaPass = 2 * tan(PassFreq / 2);
-	double OmegaStop = 2 * tan(StopFreq / 2);
-	double MinStopLossDB = StopLoss;
-	double MaxPassLossDB = PassLoss;
+	double OmegaPass = 2. * tan(PassFreq / 2.);
+	double OmegaStop = 2. * tan(StopFreq / 2.);
+	if (m_bZeroPhase)
+	{
+		PassLoss = sqrt(PassLoss);
+		StopLoss = sqrt(StopLoss);
+	}
 	POLY_ROOTS zeros;
 	POLY_ROOTS poles;
 	COMPLEX NormCoeff;
-	if (pFD->bPowerSymm)
-	{
-		pFD->iOrder |= 1;
-	}
-	EllipticPolesZeros(OmegaPass, OmegaStop, MinStopLossDB,
-						MaxPassLossDB, pFD->iOrder,
-						zeros, poles, NormCoeff);
-	POLY_ROOTS ZPlanePoles, ZPlaneZeros;
-	BilinearLowPass(poles, zeros, 1., ZPlanePoles, ZPlaneZeros);
-	// perform bilinear transform or two allpass
-	// decomposition
-	if (pFD->dPassLoss == 0. || pFD->bPowerSymm)
-	{
-		POLY denom1, denom2, numer1, numer2;
-		TwoAllpassDecompose(poles, 1., denom1, numer1, denom2, numer2);
-		InsertRatio(POLY_RATIO(numer1, denom1));
-		InsertRatio(POLY_RATIO(numer2, denom2));
-		MakeCanonical();
 
-		dwFlags |= FILTER_DECOMPOSABLE;
-	}
-	else
+	EllipticPolesZeros(OmegaPass, OmegaStop, StopLoss,
+						PassLoss, 1, zeros, poles, NormCoeff);
+
+	CArray<polyRatio *, polyRatio *> * pDecomposed
+		= polyRatio(poly(zeros, NormCoeff), poly(poles)).Decompose(2, & poles);
+
+	m_nLpfOrder = pDecomposed->GetSize();
+
+	for (int i = 0; i < pDecomposed->GetSize(); i++)
 	{
-
-		m_prCanonical = POLY_RATIO(
-									POLY(ZPlaneZeros,
-										BilinearNormCoeff(poles, zeros, 1., NormCoeff)),
-									POLY(ZPlanePoles));
-
-		CArray<polyRatio *, polyRatio *> * pDecomposed
-			= polyRatio(poly(zeros, NormCoeff), poly(poles)).Decompose(2, & poles);
-		while (pDecomposed->GetSize() > 0)
-		{
-#if 0 && defined(_DEBUG)
-			pDecomposed->GetAt(0)->Dump();
+#if 1 && defined(_DEBUG)
+		pDecomposed->GetAt(i)->Dump();
 #endif
-			polyRatio pr(poly(zeros, NormCoeff), poly(poles));
-			polyRatio prBil;
-			BilinearTransform( *pDecomposed->GetAt(0), prBil, 1.);
+		polyRatio prBil;
+		BilinearTransform( *pDecomposed->GetAt(i), prBil, 1.);
+		ASSERT(prBil.numer().order() == 0 || prBil.numer().order() == 1);
+		ASSERT(prBil.denom().order() == 2 || prBil.denom().order() == 1);
 
-			InsertRatio(prBil);
-			delete pDecomposed->GetAt(0);
-			pDecomposed->RemoveAt(0);
+		m_LpfCoeffs[i][0] = prBil.numer()[0].real();
+		if (prBil.numer().order() > 0)
+		{
+			m_LpfCoeffs[i][1] = prBil.numer()[1].real();
 		}
-		delete pDecomposed;
-		dwFlags |= FILTER_CANONICAL_KNOWN | FILTER_ZEROS_KNOWN;
+		else
+		{
+			m_LpfCoeffs[i][1] = 0.;
+		}
+		m_LpfCoeffs[i][2] = 0.;
+		m_LpfCoeffs[i][3] = prBil.denom()[0].real();
+		m_LpfCoeffs[i][4] = prBil.denom()[1].real();
+
+		if (prBil.numer().order() > 1)
+		{
+			m_LpfCoeffs[i][5] = prBil.denom()[2].real();
+		}
+		else
+		{
+			m_LpfCoeffs[i][5] = 0.;
+		}
+
+		delete pDecomposed->GetAt(i);
 	}
-	//int trail = TrailLength();
+	delete pDecomposed;
 	return TRUE;
 }
 
-BOOL CreateHighpassElliptic(double PassFreq, double PassLoss,
-							double StopFreq, double StopLoss)
+BOOL Filter::CreateHighpassElliptic(double PassFreq, double PassLoss,
+									double StopFreq, double StopLoss)
 {
-	NewFilterData fd = *pFD;
-	fd.dLowFreq = dSamplingRate * 0.5 - pFD->dHighFreq;
-	fd.dHighFreq = dSamplingRate * 0.5 - pFD->dLowFreq;
-
-	if (CreateLowpassElliptic( & fd) == FALSE)
-		return FALSE;
-
-	dCenterFreq = dSamplingRate * 0.5;
-	// convert all polynoms to z = -z
-	for (int i = 0; i < m_aRatios.GetSize(); i++)
+	double OmegaPass = 2. / tan(PassFreq / 2.);
+	double OmegaStop = 2. / tan(StopFreq / 2.);
+	if (m_bZeroPhase)
 	{
-		m_aRatios[i]->ScaleRoots(COMPLEX(-1., 0.));
-		m_aDerivRatios[i]->ScaleRoots(COMPLEX(-1., 0.));
+		PassLoss = sqrt(PassLoss);
+		StopLoss = sqrt(StopLoss);
 	}
-	m_prCanonical.ScaleRoots(COMPLEX(-1., 0.));
-	// reflect poles and zeros
-	m_Zeros.MakeUnique();
-	m_Poles.MakeUnique();
-	for (i = 0; i < m_Zeros.count(); i++)
-	{
-		m_Zeros[i] = - m_Zeros[i];
-	}
-	for (i = 0; i < m_Poles.count(); i++)
-	{
-		m_Poles[i] = - m_Poles[i];
-	}
+	POLY_ROOTS zeros;
+	POLY_ROOTS poles;
+	COMPLEX NormCoeff;
 
+	EllipticPolesZeros(OmegaPass, OmegaStop, StopLoss,
+						PassLoss, 1, zeros, poles, NormCoeff);
+
+	CArray<polyRatio *, polyRatio *> * pDecomposed
+		= polyRatio(poly(zeros, NormCoeff), poly(poles)).Decompose(2, & poles);
+
+	m_nLpfOrder = pDecomposed->GetSize();
+
+	for (int i = 0; i < pDecomposed->GetSize(); i++)
+	{
+#if 1 && defined(_DEBUG)
+		pDecomposed->GetAt(i)->Dump();
+#endif
+		polyRatio prBil;
+		BilinearTransform( *pDecomposed->GetAt(i), prBil, 1.);
+		ASSERT(prBil.numer().order() == 0 || prBil.numer().order() == 1);
+		ASSERT(prBil.denom().order() == 2 || prBil.denom().order() == 1);
+
+		m_LpfCoeffs[i][0] = prBil.numer()[0].real();
+		if (prBil.numer().order() > 0)
+		{
+			m_LpfCoeffs[i][1] = -prBil.numer()[1].real();
+		}
+		else
+		{
+			m_LpfCoeffs[i][1] = 0.;
+		}
+		m_LpfCoeffs[i][2] = 0.;
+		m_LpfCoeffs[i][3] = prBil.denom()[0].real();
+		m_LpfCoeffs[i][4] = -prBil.denom()[1].real();
+
+		if (prBil.numer().order() > 1)
+		{
+			m_LpfCoeffs[i][5] = prBil.denom()[2].real();
+		}
+		else
+		{
+			m_LpfCoeffs[i][5] = 0.;
+		}
+
+		delete pDecomposed->GetAt(i);
+	}
+	delete pDecomposed;
 	return TRUE;
 }
+
 
