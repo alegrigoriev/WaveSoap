@@ -1677,16 +1677,16 @@ BOOL CDecompressContext::OperationProc()
 
 	int nSampleSize = m_DstFile.SampleSize();
 	int TotalSamples = -1;
-	int nFirstSample = (dwOperationBegin - m_DstFile.GetDataChunk()->dwDataOffset)
+	LPMMCKINFO pck = m_DstFile.GetDataChunk();
+	int nFirstSample = (dwOperationBegin - pck->dwDataOffset)
 						/ nSampleSize;
-	int nLastSample = (m_DstCopyPos - m_DstFile.GetDataChunk()->dwDataOffset)
+	int nLastSample = (m_DstCopyPos - pck->dwDataOffset)
 					/ nSampleSize;
 	// check if we need to change file size
 	if (nLastSample > m_CurrentSamples)
 	{
 		// calculate new length
 		TotalSamples = MulDiv(nLastSample, m_SrcEnd - m_SrcStart, m_SrcPos - m_SrcStart);
-		LPMMCKINFO pck = m_DstFile.GetDataChunk();
 		if (TotalSamples > 0x7FFFFFFF / nSampleSize)
 		{
 			TotalSamples = 0x7FFFFFFF / nSampleSize;
@@ -3175,3 +3175,87 @@ BOOL CConversionContext::OperationProc()
 	return TRUE;
 }
 
+BOOL CWmaDecodeContext::Open(CDirectFile & file)
+{
+	// m_Decoder.m_SrcFile = file;
+	if (m_Decoder.Init()
+		&& S_OK == m_Decoder.Open(file))
+	{
+		m_CurrentSamples = m_Decoder.m_CurrentSamples;
+		return TRUE;
+	}
+	return FALSE;
+}
+
+BOOL CWmaDecodeContext::OperationProc()
+{
+	if (m_Flags & OperationContextStopRequested)
+	{
+		TRACE("CWmaDecodeContext::OperationProc: Stop Requested\n");
+		m_Flags |= OperationContextFinished;
+		return TRUE;
+	}
+
+	DWORD dwStartTime = timeGetTime();
+
+	do
+	{
+		WaitForSingleObject(m_Decoder.m_SignalEvent, 200);
+	}
+	while ((m_Decoder.ReaderStatus == WMT_STARTED
+				|| m_Decoder.ReaderStatus == WMT_OPENED)
+			&& timeGetTime() - dwStartTime < 500);
+
+	// notify the view
+
+	int nFirstSample = m_DstCopySample;
+	int nLastSample = m_Decoder.m_DstCopySample;
+	m_DstCopySample = nLastSample;
+	TRACE("Changed from %d to %d\n", nFirstSample, nLastSample);
+
+	LONG OldSampleCount = m_CurrentSamples;
+	LONG NewSampleCount = m_Decoder.m_CurrentSamples;
+	m_CurrentSamples = NewSampleCount;
+	if (NewSampleCount == OldSampleCount)
+	{
+		NewSampleCount = -1;
+	}
+	if (m_Decoder.ReaderStatus == WMT_STOPPED)
+	{
+		m_Flags |= OperationContextFinished;
+		NewSampleCount = m_CurrentSamples;
+	}
+	if (nFirstSample != nLastSample
+		|| -1 != NewSampleCount)
+	{
+		pDocument->SoundChanged( m_Decoder.m_DstFile.GetFileID(), nFirstSample, nLastSample, NewSampleCount);
+	}
+
+	DWORD SrcLength = m_Decoder.SrcLength();
+	if (SrcLength)
+	{
+		PercentCompleted = MulDiv(100, m_Decoder.SrcPos(), SrcLength);
+	}
+	return TRUE;
+}
+BOOL CWmaDecodeContext::Init()
+{
+	return S_OK == m_Decoder.Start();
+}
+BOOL CWmaDecodeContext::DeInit()
+{
+	m_Decoder.Stop();
+	return TRUE;
+}
+
+void CWmaDecodeContext::SetDstFile(CWaveFile & file)
+{
+	m_DstFile = file;
+	m_DstStart = file.GetDataChunk()->dwDataOffset;
+	m_DstCopyPos = m_DstStart;
+	m_Decoder.m_DstCopyPos = m_DstStart;
+	m_DstCopySample = 0;
+	m_Decoder.m_DstCopySample = 0;
+	m_Decoder.m_DstFile = file;
+	m_Decoder.m_DstFile.CDirectFile::Seek(m_DstStart, FILE_BEGIN);
+}
