@@ -227,300 +227,307 @@ void CWaveSoapFrontView::OnDraw(CDC* pDC)
 	CPen SelectedChannelSeparatorPen;
 
 	CThisApp * pApp = GetApp();
+	POINT (* ppArray)[2] = NULL;
 
-	CPushDcPalette OldPalette(pDC, NULL);
+	try {
+		CPushDcPalette OldPalette(pDC, NULL);
 
-	if (pDC->GetDeviceCaps(RASTERCAPS) & RC_PALETTE)
-	{
-		OldPalette.PushPalette(pApp->GetPalette(), FALSE);
-	}
+		if (pDC->GetDeviceCaps(RASTERCAPS) & RC_PALETTE)
+		{
+			OldPalette.PushPalette(pApp->GetPalette(), FALSE);
+		}
 
-	WaveformPen.CreatePen(PS_SOLID, 1, pApp->m_WaveColor);
-	SelectedWaveformPen.CreatePen(PS_SOLID, 1, pApp->m_SelectedWaveColor);
+		WaveformPen.CreatePen(PS_SOLID, 1, pApp->m_WaveColor);
+		SelectedWaveformPen.CreatePen(PS_SOLID, 1, pApp->m_SelectedWaveColor);
 
-	ZeroLinePen.CreatePen(PS_SOLID, 1, pApp->m_ZeroLineColor);
-	SelectedZeroLinePen.CreatePen(PS_SOLID, 1, pApp->m_SelectedZeroLineColor);
+		ZeroLinePen.CreatePen(PS_SOLID, 1, pApp->m_ZeroLineColor);
+		SelectedZeroLinePen.CreatePen(PS_SOLID, 1, pApp->m_SelectedZeroLineColor);
 
-	SixDBLinePen.CreatePen(PS_SOLID, 1, pApp->m_6dBLineColor);
-	SelectedSixDBLinePen.CreatePen(PS_SOLID, 1, pApp->m_Selected6dBLineColor);
+		SixDBLinePen.CreatePen(PS_SOLID, 1, pApp->m_6dBLineColor);
+		SelectedSixDBLinePen.CreatePen(PS_SOLID, 1, pApp->m_Selected6dBLineColor);
 
-	ChannelSeparatorPen.CreatePen(PS_SOLID, 1, pApp->m_ChannelSeparatorColor);
-	SelectedChannelSeparatorPen.CreatePen(PS_SOLID, 1, pApp->m_SelectedChannelSeparatorColor);
+		ChannelSeparatorPen.CreatePen(PS_SOLID, 1, pApp->m_ChannelSeparatorColor);
+		SelectedChannelSeparatorPen.CreatePen(PS_SOLID, 1, pApp->m_SelectedChannelSeparatorColor);
 
-	CGdiObjectSaveT<CPen> OldPen(pDC, pDC->SelectObject(& ZeroLinePen));
-	RECT r;
-	//double y;
-	double left, right, top, bottom;
+		CGdiObjectSaveT<CPen> OldPen(pDC, pDC->SelectObject(& ZeroLinePen));
+		RECT r;
+		//double y;
+		double left, right, top, bottom;
 
-	GetClientRect(&r);
-	if (pDC->IsKindOf(RUNTIME_CLASS(CPaintDC)))
-	{
-		RECT r_upd = ((CPaintDC*)pDC)->m_ps.rcPaint;
-		// make intersect by x coordinate
-		if (r.left < r_upd.left) r.left = r_upd.left;
-		if (r.right > r_upd.right) r.right = r_upd.right;
-	}
+		GetClientRect(&r);
+		if (pDC->IsKindOf(RUNTIME_CLASS(CPaintDC)))
+		{
+			RECT r_upd = ((CPaintDC*)pDC)->m_ps.rcPaint;
+			// make intersect by x coordinate
+			if (r.left < r_upd.left) r.left = r_upd.left;
+			if (r.right > r_upd.right) r.right = r_upd.right;
+		}
 
-	r.left--;   // make additional
-	r.right++;
-	int iClientWidth = r.right - r.left;
+		r.left--;   // make additional
+		r.right++;
+		int iClientWidth = r.right - r.left;
 
-	PointToDoubleDev(CPoint(r.left, r.top), left, top);
-	PointToDoubleDev(CPoint(r.right, r.bottom), right, bottom);
+		PointToDoubleDev(CPoint(r.left, r.top), left, top);
+		PointToDoubleDev(CPoint(r.right, r.bottom), right, bottom);
 
-	// number of sample that corresponds to the r.left position
-	SAMPLE_INDEX NumOfFirstSample = DWORD(left);
-	unsigned SamplesPerPoint = m_HorizontalScale;
+		// number of sample that corresponds to the r.left position
+		SAMPLE_INDEX NumOfFirstSample = DWORD(left);
+		unsigned SamplesPerPoint = m_HorizontalScale;
 
-	// create an array of points
+		// create an array of points
 
-	if (left < 0.) left = 0.;
+		if (left < 0.) left = 0.;
 
-	NUMBER_OF_CHANNELS nChannels = pDoc->WaveChannels();
-	int nNumberOfPoints = r.right - r.left;
+		NUMBER_OF_CHANNELS nChannels = pDoc->WaveChannels();
+		int nNumberOfPoints = r.right - r.left;
 
-	int ChannelSeparatorY = fround((0 - dOrgY) * GetYScaleDev());
-	double YScaleDev = GetYScaleDev();
-	int SelBegin = WorldToWindowX(pDoc->m_SelectionStart);
-	int SelEnd = WorldToWindowX(pDoc->m_SelectionEnd);
+		int ChannelSeparatorY = fround((0 - dOrgY) * GetYScaleDev());
+		double YScaleDev = GetYScaleDev();
+		int SelBegin = WorldToWindowX(pDoc->m_SelectionStart);
+		int SelEnd = WorldToWindowX(pDoc->m_SelectionEnd);
 
-	if (pDoc->m_SelectionEnd != pDoc->m_SelectionStart
-		&& SelEnd == SelBegin)
-	{
-		SelEnd++;
-	}
-	if (nChannels > 1)
-	{
-		// draw channel separator line
-		DrawHorizontalWithSelection(pDC, r.left, r.right,
-									ChannelSeparatorY,
-									& ChannelSeparatorPen,
-									& SelectedChannelSeparatorPen, ALL_CHANNELS);
-	}
-	if (nNumberOfPoints > 0)
-	{
-		POINT (* ppArray)[2] = new POINT[nNumberOfPoints][2];
-		if (ppArray)
-			for (int ch = 0; ch < nChannels; ch++)
-			{
-				double WaveOffset = m_WaveOffsetY * m_VerticalScale - dOrgY;
-				int ClipHigh = r.bottom;
-				int ClipLow = r.top;
-				if (nChannels > 1)
+		if (pDoc->m_SelectionEnd != pDoc->m_SelectionStart
+			&& SelEnd == SelBegin)
+		{
+			SelEnd++;
+		}
+		if (nChannels > 1)
+		{
+			// draw channel separator line
+			DrawHorizontalWithSelection(pDC, r.left, r.right,
+										ChannelSeparatorY,
+										& ChannelSeparatorPen,
+										& SelectedChannelSeparatorPen, ALL_CHANNELS);
+		}
+		if (nNumberOfPoints > 0)
+		{
+			ppArray = new POINT[nNumberOfPoints][2];
+			if (ppArray)
+				for (int ch = 0; ch < nChannels; ch++)
 				{
-					if (0 == ch)
+					double WaveOffset = m_WaveOffsetY * m_VerticalScale - dOrgY;
+					int ClipHigh = r.bottom;
+					int ClipLow = r.top;
+					if (nChannels > 1)
 					{
-						WaveOffset = m_WaveOffsetY * m_VerticalScale + 32768. - dOrgY;
-						ClipHigh = ChannelSeparatorY;
+						if (0 == ch)
+						{
+							WaveOffset = m_WaveOffsetY * m_VerticalScale + 32768. - dOrgY;
+							ClipHigh = ChannelSeparatorY;
+						}
+						else
+						{
+							WaveOffset = m_WaveOffsetY * m_VerticalScale -32768. - dOrgY;
+							ClipLow = ChannelSeparatorY + 1;
+						}
+					}
+
+					int ZeroLinePos = fround(WaveOffset * YScaleDev);
+					if (ZeroLinePos >= ClipLow &&
+						ZeroLinePos < ClipHigh)
+					{
+						DrawHorizontalWithSelection(pDC, r.left, r.right,
+													ZeroLinePos,
+													& ZeroLinePen,
+													& SelectedZeroLinePen, ch);
+					}
+					int n6DBLine = fround((16384.* m_VerticalScale + WaveOffset) * YScaleDev);
+					if (n6DBLine >= ClipLow &&
+						n6DBLine < ClipHigh)
+					{
+						DrawHorizontalWithSelection(pDC, r.left, r.right,
+													n6DBLine,
+													& SixDBLinePen,
+													& SelectedSixDBLinePen, ch);
+					}
+					n6DBLine = fround((-16384.* m_VerticalScale + WaveOffset) * YScaleDev);
+					if (n6DBLine >= ClipLow &&
+						n6DBLine < ClipHigh)
+					{
+						DrawHorizontalWithSelection(pDC, r.left, r.right,
+													n6DBLine,
+													& SixDBLinePen,
+													& SelectedSixDBLinePen, ch);
+					}
+
+					int i;
+					unsigned PeakDataGranularity = pDoc->m_WavFile.GetPeakGranularity();
+					if (SamplesPerPoint >= PeakDataGranularity)
+					{
+						CSimpleCriticalSectionLock lock(pDoc->m_WavFile.GetPeakLock());
+						// use peak data for drawing
+						DWORD PeakSamplesPerPoint = SamplesPerPoint / PeakDataGranularity * nChannels;
+
+						int nIndexOfPeak =
+							ch + (NumOfFirstSample / int(PeakDataGranularity)) * nChannels;
+
+						for (i = 0; i < nNumberOfPoints; i++, nIndexOfPeak += PeakSamplesPerPoint)
+						{
+							int index1 = nIndexOfPeak;
+							if (index1 < 0)
+							{
+								index1 = 0;
+							}
+
+							int index2 = nIndexOfPeak + PeakSamplesPerPoint;
+							if (index2 < 0)
+							{
+								index2 = 0;
+							}
+
+							WavePeak peak =
+								pDoc->m_WavFile.GetPeakMinMax(index1, index2, nChannels);
+
+							ppArray[i][0] = CPoint(i + r.left,
+													fround((peak.low * m_VerticalScale + WaveOffset) * YScaleDev));
+							ppArray[i][1] = CPoint(i + r.left,
+													fround((peak.high * m_VerticalScale + WaveOffset) * YScaleDev));
+						}
 					}
 					else
 					{
-						WaveOffset = m_WaveOffsetY * m_VerticalScale -32768. - dOrgY;
-						ClipLow = ChannelSeparatorY + 1;
-					}
-				}
+						// use wave data for drawing
+	#if 0
+						GetWaveSamples(NumOfFirstSample * nChannels, nNumberOfPoints * SamplesPerPoint * nChannels);
 
-				int ZeroLinePos = fround(WaveOffset * YScaleDev);
-				if (ZeroLinePos >= ClipLow &&
-					ZeroLinePos < ClipHigh)
-				{
-					DrawHorizontalWithSelection(pDC, r.left, r.right,
-												ZeroLinePos,
-												& ZeroLinePen,
-												& SelectedZeroLinePen, ch);
-				}
-				int n6DBLine = fround((16384.* m_VerticalScale + WaveOffset) * YScaleDev);
-				if (n6DBLine >= ClipLow &&
-					n6DBLine < ClipHigh)
-				{
-					DrawHorizontalWithSelection(pDC, r.left, r.right,
-												n6DBLine,
-												& SixDBLinePen,
-												& SelectedSixDBLinePen, ch);
-				}
-				n6DBLine = fround((-16384.* m_VerticalScale + WaveOffset) * YScaleDev);
-				if (n6DBLine >= ClipLow &&
-					n6DBLine < ClipHigh)
-				{
-					DrawHorizontalWithSelection(pDC, r.left, r.right,
-												n6DBLine,
-												& SixDBLinePen,
-												& SelectedSixDBLinePen, ch);
-				}
-
-				int i;
-				unsigned PeakDataGranularity = pDoc->m_WavFile.GetPeakGranularity();
-				if (SamplesPerPoint >= PeakDataGranularity)
-				{
-					CSimpleCriticalSectionLock lock(pDoc->m_WavFile.GetPeakLock());
-					// use peak data for drawing
-					DWORD PeakSamplesPerPoint = SamplesPerPoint / PeakDataGranularity * nChannels;
-
-					int nIndexOfPeak =
-						ch + (NumOfFirstSample / int(PeakDataGranularity)) * nChannels;
-
-					for (i = 0; i < nNumberOfPoints; i++, nIndexOfPeak += PeakSamplesPerPoint)
-					{
-						int index1 = nIndexOfPeak;
-						if (index1 < 0)
+						int nIndexOfSample =
+							ch + NumOfFirstSample * nChannels - m_FirstSampleInBuffer;
+						WAVE_SAMPLE * pWaveSamples = & m_pWaveBuffer[nIndexOfSample];
+	#else
+						WAVE_SAMPLE * pWaveSamples = NULL;
+						int nSample = 0;
+						if (NumOfFirstSample < 0)
 						{
-							index1 = 0;
+							nSample = NumOfFirstSample * nChannels;
+							NumOfFirstSample = 0;
 						}
-
-						int index2 = nIndexOfPeak + PeakSamplesPerPoint;
-						if (index2 < 0)
+						int nCountSamples = m_WaveBuffer.GetData( & pWaveSamples,
+																NumOfFirstSample * nChannels,
+																nNumberOfPoints * SamplesPerPoint * nChannels, this);
+	#endif
+						for (i = 0; i < nNumberOfPoints; i++)
 						{
-							index2 = 0;
-						}
-
-						WavePeak peak =
-							pDoc->m_WavFile.GetPeakMinMax(index1, index2, nChannels);
-
-						ppArray[i][0] = CPoint(i + r.left,
-												fround((peak.low * m_VerticalScale + WaveOffset) * YScaleDev));
-						ppArray[i][1] = CPoint(i + r.left,
-												fround((peak.high * m_VerticalScale + WaveOffset) * YScaleDev));
-					}
-				}
-				else
-				{
-					// use wave data for drawing
-#if 0
-					GetWaveSamples(NumOfFirstSample * nChannels, nNumberOfPoints * SamplesPerPoint * nChannels);
-
-					int nIndexOfSample =
-						ch + NumOfFirstSample * nChannels - m_FirstSampleInBuffer;
-					WAVE_SAMPLE * pWaveSamples = & m_pWaveBuffer[nIndexOfSample];
-#else
-					WAVE_SAMPLE * pWaveSamples = NULL;
-					int nSample = 0;
-					if (NumOfFirstSample < 0)
-					{
-						nSample = NumOfFirstSample * nChannels;
-						NumOfFirstSample = 0;
-					}
-					int nCountSamples = m_WaveBuffer.GetData( & pWaveSamples,
-															NumOfFirstSample * nChannels,
-															nNumberOfPoints * SamplesPerPoint * nChannels, this);
-#endif
-					for (i = 0; i < nNumberOfPoints; i++)
-					{
-						int low = 0x7FFF;
-						int high = -0x8000;
-						if (NULL != pWaveSamples
-							&& nSample < nCountSamples)
-						{
-							if (nSample >= 0)
+							int low = 0x7FFF;
+							int high = -0x8000;
+							if (NULL != pWaveSamples
+								&& nSample < nCountSamples)
 							{
-								for (unsigned j = 0; j < SamplesPerPoint; j++, nSample += nChannels)
+								if (nSample >= 0)
 								{
-									if (nSample >= nCountSamples)
+									for (unsigned j = 0; j < SamplesPerPoint; j++, nSample += nChannels)
 									{
-										break;
-									}
-									if (high < pWaveSamples[nSample])
-									{
-										high = pWaveSamples[nSample];
-									}
-									if (low > pWaveSamples[nSample])
-									{
-										low = pWaveSamples[nSample];
+										if (nSample >= nCountSamples)
+										{
+											break;
+										}
+										if (high < pWaveSamples[nSample])
+										{
+											high = pWaveSamples[nSample];
+										}
+										if (low > pWaveSamples[nSample])
+										{
+											low = pWaveSamples[nSample];
+										}
 									}
 								}
+								else
+								{
+									nSample += SamplesPerPoint * nChannels;
+								}
 							}
-							else
-							{
-								nSample += SamplesPerPoint * nChannels;
-							}
+
+							ppArray[i][0] = CPoint(i + r.left,
+													fround((low * m_VerticalScale + WaveOffset) * YScaleDev));
+							ppArray[i][1] = CPoint(i + r.left,
+													fround((high * m_VerticalScale + WaveOffset) * YScaleDev));
 						}
-
-						ppArray[i][0] = CPoint(i + r.left,
-												fround((low * m_VerticalScale + WaveOffset) * YScaleDev));
-						ppArray[i][1] = CPoint(i + r.left,
-												fround((high * m_VerticalScale + WaveOffset) * YScaleDev));
 					}
-				}
 
-				pDC->SelectObject(& WaveformPen);
-				// draw by 256 points
-				// make sure the graph is continuous
-				int LastY0 = ppArray[0][0].y;
-				int LastY1 = ppArray[0][1].y;
+					pDC->SelectObject(& WaveformPen);
+					// draw by 256 points
+					// make sure the graph is continuous
+					int LastY0 = ppArray[0][0].y;
+					int LastY1 = ppArray[0][1].y;
 
-				CPen * pLastPen = NULL;
+					CPen * pLastPen = NULL;
 
-				for (i = 0; i < nNumberOfPoints; i ++)
-				{
-					if (ppArray[i][0].y >= ppArray[i][1].y)
+					for (i = 0; i < nNumberOfPoints; i ++)
 					{
-						ppArray[i][1].y--;
-						if (i < nNumberOfPoints - 1
-							&& ppArray[i + 1][0].y >= ppArray[i + 1][1].y)
+						if (ppArray[i][0].y >= ppArray[i][1].y)
 						{
-							if (ppArray[i][0].y < ppArray[i + 1][1].y)
+							ppArray[i][1].y--;
+							if (i < nNumberOfPoints - 1
+								&& ppArray[i + 1][0].y >= ppArray[i + 1][1].y)
 							{
-								ppArray[i][0].y = (ppArray[i + 1][1].y + ppArray[i][0].y) >> 1;
+								if (ppArray[i][0].y < ppArray[i + 1][1].y)
+								{
+									ppArray[i][0].y = (ppArray[i + 1][1].y + ppArray[i][0].y) >> 1;
+								}
+								else if (ppArray[i + 1][0].y < ppArray[i][1].y)
+								{
+									ppArray[i][1].y = (ppArray[i][1].y + ppArray[i + 1][0].y) >> 1;
+								}
 							}
-							else if (ppArray[i + 1][0].y < ppArray[i][1].y)
+							if (LastY0 >= LastY1)
 							{
-								ppArray[i][1].y = (ppArray[i][1].y + ppArray[i + 1][0].y) >> 1;
+								if (ppArray[i][0].y < LastY1)
+								{
+									ppArray[i][0].y = LastY1;
+								}
+								else if (ppArray[i][1].y > LastY0)
+								{
+									ppArray[i][1].y = LastY0;
+								}
 							}
-						}
-						if (LastY0 >= LastY1)
-						{
-							if (ppArray[i][0].y < LastY1)
+
+							LastY0 = ppArray[i][0].y;
+							LastY1 = ppArray[i][1].y;
+
+							if (ppArray[i][0].y < ClipLow)
 							{
-								ppArray[i][0].y = LastY1;
+								continue;
 							}
-							else if (ppArray[i][1].y > LastY0)
+							else if (ppArray[i][0].y > ClipHigh)
 							{
-								ppArray[i][1].y = LastY0;
+								ppArray[i][0].y = ClipHigh;
 							}
-						}
 
-						LastY0 = ppArray[i][0].y;
-						LastY1 = ppArray[i][1].y;
+							if (ppArray[i][1].y < ClipLow)
+							{
+								ppArray[i][1].y = ClipLow-1;
+							}
+							else if (ppArray[i][1].y > ClipHigh)
+							{
+								continue;
+							}
 
-						if (ppArray[i][0].y < ClipLow)
-						{
-							continue;
-						}
-						else if (ppArray[i][0].y > ClipHigh)
-						{
-							ppArray[i][0].y = ClipHigh;
-						}
+							CPen * pPenToDraw = & WaveformPen;
 
-						if (ppArray[i][1].y < ClipLow)
-						{
-							ppArray[i][1].y = ClipLow-1;
+							if (ppArray[i][0].x >= SelBegin
+								&& ppArray[i][0].x < SelEnd
+								&& (ALL_CHANNELS == pDoc->m_SelectedChannel
+									|| ch == pDoc->m_SelectedChannel))
+							{
+								pPenToDraw = & SelectedWaveformPen;
+							}
+							if (pPenToDraw != pLastPen)
+							{
+								pDC->SelectObject(pPenToDraw);
+								pLastPen = pPenToDraw;
+							}
+							pDC->MoveTo(ppArray[i][0]);
+							pDC->LineTo(ppArray[i][1]);
 						}
-						else if (ppArray[i][1].y > ClipHigh)
-						{
-							continue;
-						}
-
-						CPen * pPenToDraw = & WaveformPen;
-
-						if (ppArray[i][0].x >= SelBegin
-							&& ppArray[i][0].x < SelEnd
-							&& (ALL_CHANNELS == pDoc->m_SelectedChannel
-								|| ch == pDoc->m_SelectedChannel))
-						{
-							pPenToDraw = & SelectedWaveformPen;
-						}
-						if (pPenToDraw != pLastPen)
-						{
-							pDC->SelectObject(pPenToDraw);
-							pLastPen = pPenToDraw;
-						}
-						pDC->MoveTo(ppArray[i][0]);
-						pDC->LineTo(ppArray[i][1]);
 					}
 				}
-			}
-		delete[] ppArray;
+		}
+	}
+	catch (CResourceException * e)
+	{
+		e->Delete();
 	}
 
+	delete[] ppArray;
 	if (m_PlaybackCursorDrawn)
 	{
 		DrawPlaybackCursor(pDC, m_PlaybackCursorDrawnSamplePos, m_PlaybackCursorChannel);
@@ -626,7 +633,7 @@ void CWaveSoapFrontView::DrawPlaybackCursor(CDC * pDC, SAMPLE_INDEX Sample, CHAN
 	try
 	{
 		CPushDcMapMode mode(pDrawDC, MM_TEXT);
-		CPushDcRop2(pDrawDC, R2_XORPEN);
+		CPushDcRop2 rop2(pDrawDC, R2_XORPEN);
 
 		CPen pen(PS_SOLID, 0, 0xFFFFFF);
 
