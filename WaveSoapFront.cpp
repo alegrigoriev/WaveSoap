@@ -1395,7 +1395,7 @@ void CWaveSoapFrontApp::OnEditPasteNew()
 			BOOL TmpUndo = pDoc->UndoEnabled();
 			pDoc->EnableUndo(FALSE);
 
-			if ( ! pDoc->DoPaste(0, 0, ALL_CHANNELS, NULL))
+			if ( ! pDoc->DoPaste(0, 0, ALL_CHANNELS, 0))
 			{
 				pDoc->OnCloseDocument();
 			}
