@@ -1737,12 +1737,12 @@ STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION |
 CAPTION "Set custom sample rate"
 FONT 8, "MS Shell Dlg", 0, 0, 0x0
 BEGIN
-    DEFPUSHBUTTON   "OK",IDOK,41,85,50,14
-    PUSHBUTTON      "Cancel",IDCANCEL,103,85,50,14
     LTEXT           "Sample Rate:",IDC_STATIC,46,10,58,8
     EDITTEXT        IDC_EDIT_SAMPLE_RATE,107,7,40,14,ES_AUTOHSCROLL
     LTEXT           "Only playback sample rate (with tempo and pitch) will be changed, the data won't be resampled.\nTo change sample rate while preserving tempo and pitch, use ""Resample"" command.",
                     IDC_STATIC,7,30,181,48,SS_NOPREFIX
+    DEFPUSHBUTTON   "OK",IDOK,41,85,50,14
+    PUSHBUTTON      "Cancel",IDCANCEL,103,85,50,14
 END
 
 IDD_DIALOG_NEW_FILE_PARAMETERS DIALOGEX 0, 0, 159, 113
