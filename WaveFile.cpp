@@ -565,7 +565,40 @@ BOOL CWaveFile::LoadMetadata()
 	return TRUE;
 }
 
-BOOL CMmioFile::ReadChunkString(ULONG Length, CString & String)
+BOOL CMmioFile::ReadChunkString(ULONG Length, CStringA & String)
+{
+	// the string may be unicode or text
+	if (0 == Length)
+	{
+		String.Empty();
+		return TRUE;
+	}
+
+	CStringA s;
+	if (Length != (ULONG)Read(s.GetBuffer(Length), Length))
+	{
+		return FALSE;
+	}
+
+	if (Length >= 4
+		&& UCHAR(s[0]) == 0xFE
+		&& UCHAR(s[1]) == 0xFF)
+	{
+		// UNICODE marker
+		Length &= ~1;
+		s.SetAt(Length - 1, 0);
+		s.SetAt(Length - 2, 0);
+		String = PCWSTR(LPCSTR(s) + 2);
+	}
+	else
+	{
+		s.ReleaseBuffer(Length - 1);
+		String = s;
+	}
+	return TRUE;
+}
+
+BOOL CMmioFile::ReadChunkString(ULONG Length, CStringW & String)
 {
 	// the string may be unicode or text
 	if (0 == Length)
@@ -811,7 +844,7 @@ BOOL CWaveFile::LoadListMetadata(MMCKINFO & chunk)
 	case mmioFOURCC('I', 'N', 'F', 'O'):
 		while(Descend(subchunk, & chunk))
 		{
-			InfoListItem item;
+			InfoListItemA item;
 			item.fccCode = subchunk.ckid;
 			BOOL res = ReadChunkString(subchunk.cksize, item.Text);
 
@@ -829,7 +862,7 @@ BOOL CWaveFile::LoadListMetadata(MMCKINFO & chunk)
 	case mmioFOURCC('U', 'N', 'F', 'O'):    // UNICODE INFO
 		while(Descend(subchunk, & chunk))
 		{
-			InfoListItem item;
+			InfoListItemW item;
 			item.fccCode = subchunk.ckid;
 			BOOL res = ReadChunkStringW(subchunk.cksize, item.Text);
 
@@ -838,7 +871,7 @@ BOOL CWaveFile::LoadListMetadata(MMCKINFO & chunk)
 				return FALSE;
 			}
 
-			pInstData->m_InfoList.push_back(item);
+			pInstData->m_InfoListW.push_back(item);
 
 			Ascend(subchunk);
 		}
@@ -1389,10 +1422,246 @@ BOOL CWaveFile::CreateWaveFile(CWaveFile * pTemplateFile, WAVEFORMATEX * pTempla
 	return TRUE;
 }
 
-BOOL CWaveFile::SaveMetadata()
+DWORD CWaveFile::SaveMetadata()
 {
 	// TODO
-	return FALSE;
+	InstanceDataWav * inst = GetInstanceData();
+	if (NULL == inst)
+	{
+		return 0;
+	}
+
+	DWORD MetadataBegin = (inst->datack.dwDataOffset + inst->datack.cksize + 1) & -2;
+	Seek(MetadataBegin);
+
+	MMCKINFO ck = {0};
+	MMCKINFO list;
+
+	if ( ! inst->m_CuePoints.empty())
+	{
+		// add chunk header and cue count
+		ck.ckid = mmioFOURCC('c', 'u', 'e', ' ');
+		ck.cksize = 0;
+		ck.dwFlags = 0;
+
+		if ( ! CreateChunk(ck))
+		{
+			return 0;
+		}
+
+		DWORD count = inst->m_CuePoints.size();
+		if (sizeof (count) != Write( & count, sizeof count))
+		{
+			return 0;
+		}
+
+		for (CuePointVectorIterator i = inst->m_CuePoints.begin();
+			i < inst->m_CuePoints.end(); i++)
+		{
+			if (sizeof (CuePointChunkItem) != Write(i.operator->(), sizeof (CuePointChunkItem)))
+			{
+				Ascend(ck);
+				return 0;
+			}
+		}
+		Ascend(ck);
+	}
+
+	if ( ! inst->m_Playlist.empty())
+	{
+		// add chunk header and playlist count
+		ck.ckid = mmioFOURCC('p', 'l', 's', 't');
+		ck.cksize = 0;
+		ck.dwFlags = 0;
+
+		if ( ! CreateChunk(ck))
+		{
+			return 0;
+		}
+
+		DWORD count = inst->m_Playlist.size();
+
+		if (sizeof (count) != Write( & count, sizeof count))
+		{
+			return 0;
+		}
+
+		for (PlaylistVectorIterator i = inst->m_Playlist.begin();
+			i < inst->m_Playlist.end(); i++)
+		{
+			if (sizeof (PlaylistSegment) != Write(i.operator->(), sizeof (PlaylistSegment)))
+			{
+				Ascend(ck);
+				return 0;
+			}
+		}
+		Ascend(ck);
+	}
+
+	if ( ! inst->m_Labels.empty()
+		|| ! inst->m_Notes.empty()
+		|| ! inst->m_RegionMarkers.empty())
+	{
+		list.ckid = mmioFOURCC('L', 'I', 'S', 'T');
+		list.cksize = 0;
+		list.dwFlags = 0;
+		list.fccType = mmioFOURCC('a', 'd', 't', 'l');
+
+		// add 'adtl' LIST header size
+		if ( ! CreateChunk(list, MMIO_CREATELIST))
+		{
+			return 0;
+		}
+
+		for (RegionMarkerIterator ri = inst->m_RegionMarkers.begin();
+			ri < inst->m_RegionMarkers.end();
+			ri++)
+		{
+			ck.ckid = mmioFOURCC('l', 't', 'x', 't');
+			ck.cksize = 0;
+			ck.dwFlags = 0;
+
+			if ( ! CreateChunk(ck)
+				|| sizeof (LtxtChunk) != Write(static_cast<LtxtChunk *>(&*ri),
+												sizeof (LtxtChunk)))
+			{
+				return 0;
+			}
+
+			if ( ! ri->Name.IsEmpty())
+			{
+				CStringA name(ri->Name);
+				if ((name.GetLength() + 1) != Write(name, name.GetLength() + 1))
+				{
+					return 0;
+				}
+			}
+			Ascend(ck);
+		}
+
+		LabelVectorIterator i;
+		for (i = inst->m_Labels.begin(); i < inst->m_Labels.end(); i++)
+		{
+			if ( ! i->Text.IsEmpty())
+			{
+				ck.ckid = mmioFOURCC('l', 'a', 'b', 'l');
+				ck.cksize = 0;
+				ck.dwFlags = 0;
+
+				if ( ! CreateChunk(ck)
+					|| sizeof (DWORD) != Write( & i->CuePointID, sizeof (DWORD)))
+				{
+					return 0;
+				}
+
+				CStringA name(i->Text);
+				if ((name.GetLength() + 1) != Write(name, name.GetLength() + 1))
+				{
+					return 0;
+				}
+
+				Ascend(ck);
+			}
+		}
+
+		for (i = inst->m_Notes.begin(); i < inst->m_Notes.end(); i++)
+		{
+			if ( ! i->Text.IsEmpty())
+			{
+				ck.ckid = mmioFOURCC('n', 'o', 't', 'e');
+				ck.cksize = 0;
+				ck.dwFlags = 0;
+
+				if ( ! CreateChunk(ck)
+					|| sizeof (DWORD) != Write( & i->CuePointID, sizeof (DWORD)))
+				{
+					return 0;
+				}
+
+				CStringA name(i->Text);
+				if ((name.GetLength() + 1) != Write(name, name.GetLength() + 1))
+				{
+					return 0;
+				}
+
+				Ascend(ck);
+			}
+		}
+
+		Ascend(list);
+	}
+
+	if ( ! inst->m_InfoList.empty())
+	{
+		list.fccType = mmioFOURCC('I', 'N', 'F', 'O');
+		list.dwFlags = 0;
+		list.cksize = 0;
+
+		if ( ! CreateChunk(list, MMIO_CREATELIST))
+		{
+			return 0;
+		}
+
+		for (InfoListItemIterator i = inst->m_InfoList.begin();
+			i < inst->m_InfoList.end(); i++)
+		{
+			ck.ckid = i->fccCode;
+			ck.cksize = 0;
+			ck.dwFlags = 0;
+
+			if ( ! CreateChunk(ck))
+			{
+				return 0;
+			}
+
+			CStringA name(i->Text);
+			if ((name.GetLength() + 1) != Write(name, name.GetLength() + 1))
+			{
+				return 0;
+			}
+
+			Ascend(ck);
+		}
+
+		Ascend(list);
+	}
+
+	if ( ! inst->m_InfoListW.empty())
+	{
+		list.fccType = mmioFOURCC('U', 'N', 'F', 'O');
+		list.dwFlags = 0;
+		list.cksize = 0;
+
+		if ( ! CreateChunk(list, MMIO_CREATELIST))
+		{
+			return 0;
+		}
+
+		for (InfoListItemIteratorW i = inst->m_InfoListW.begin();
+			i < inst->m_InfoListW.end(); i++)
+		{
+			ck.ckid = i->fccCode;
+			ck.cksize = 0;
+			ck.dwFlags = 0;
+
+			if ( ! CreateChunk(ck))
+			{
+				return 0;
+			}
+
+			if (long((i->Text.GetLength() + 1) * sizeof (WCHAR))
+				!= Write(i->Text, sizeof (WCHAR) * (i->Text.GetLength() + 1)))
+			{
+				return 0;
+			}
+
+			Ascend(ck);
+		}
+
+		Ascend(list);
+	}
+
+	return DWORD(GetFilePointer() - MetadataBegin);
 }
 
 DWORD CWaveFile::GetMetadataLength()
@@ -1451,6 +1720,28 @@ DWORD CWaveFile::GetMetadataLength()
 			{
 				size += 3 * sizeof (DWORD) + ((i->Text.GetLength() + 2) & ~1UL);   // zero-terminated
 			}
+		}
+	}
+
+	if ( ! inst->m_InfoList.empty())
+	{
+		size += 3 * sizeof (DWORD); // INFO list header
+
+		for (InfoListItemIterator i = inst->m_InfoList.begin();
+			i < inst->m_InfoList.end(); i++)
+		{
+			size += 3 * sizeof (DWORD) + ((i->Text.GetLength() + 2) & ~1UL);   // zero-terminated
+		}
+	}
+
+	if ( ! inst->m_InfoListW.empty())
+	{
+		size += 3 * sizeof (DWORD); // INFO list header
+
+		for (InfoListItemIteratorW i = inst->m_InfoListW.begin();
+			i < inst->m_InfoListW.end(); i++)
+		{
+			size += 3 * sizeof (DWORD) + sizeof (WCHAR) * ((i->Text.GetLength() + 1));   // zero-terminated
 		}
 	}
 
@@ -2200,9 +2491,9 @@ SAMPLE_POSITION CWaveFile::SampleToPosition(SAMPLE_INDEX sample) const
 	}
 	if (LAST_SAMPLE == sample)
 	{
-		return datack->dwDataOffset + datack->cksize;
+		return SAMPLE_POSITION(datack->dwDataOffset + datack->cksize);
 	}
-	return datack->dwDataOffset + sample * SampleSize();
+	return SAMPLE_POSITION(datack->dwDataOffset + sample * SampleSize());
 }
 
 SAMPLE_INDEX CWaveFile::PositionToSample(SAMPLE_POSITION position) const
@@ -2234,6 +2525,7 @@ void InstanceDataWav::CopyMetadata(InstanceDataWav const & src)
 	Title = src.Title;
 #else
 	m_InfoList = src.m_InfoList;
+	m_InfoListW = src.m_InfoListW;
 #endif
 
 	m_RegionMarkers = src.m_RegionMarkers;
