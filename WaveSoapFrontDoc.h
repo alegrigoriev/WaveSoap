@@ -15,6 +15,11 @@ struct WavePeak
 	__int16 high;
 };
 
+// Active document have highest priority for disk-intensive operations.
+// while it is executing a disk-intensive command,
+// such operations with non-active documents are suspended.
+// To implement it, App object starts a thread for such operations.
+//
 class CWaveSoapFrontDoc : public CDocument
 {
 protected: // create from serialization only
@@ -33,11 +38,15 @@ public:
 public:
 	virtual BOOL OnNewDocument();
 	virtual void Serialize(CArchive& ar);
+	virtual BOOL OnOpenDocument(LPCTSTR lpszPathName);
+	virtual BOOL OnSaveDocument(LPCTSTR lpszPathName);
 	//}}AFX_VIRTUAL
 	virtual BOOL DoSave(LPCTSTR lpszPathName, BOOL bReplace = TRUE);
 	CString szWaveFilename;
 	CString szWaveTitle;
 	CWaveFile m_WavFile;
+
+
 	//WAVEFORMATEX WavFileFormat;
 	CString szPeakFilename;
 	BY_HANDLE_FILE_INFORMATION WavFileInfo;
@@ -56,7 +65,11 @@ public:
 	int m_SelectedChannel; // 0, 1, 2
 	bool m_TimeSelectionMode;
 	void SetSelection(int begin, int end, int channel, int caret);
-	enum {UpdateSelectionChanged = 1, UpdateSelectionModeChanged = 2};
+	void SoundChanged(int begin, int end);
+	enum {UpdateSelectionChanged = 1,
+		UpdateSelectionModeChanged,
+		UpdateSoundChanged,
+	};
 
 // Implementation
 public:
@@ -94,15 +107,53 @@ public:
 	virtual void Dump(CDumpContext& dc) const;
 #endif
 
+	bool volatile m_OperationInProgress;
+	bool volatile m_StopOperation;
+	bool m_bReadOnly;
+	bool m_bUndoAvailable;
+	COperationContext * m_pCurrentContext;
+	COperationContext * m_pQueuedOperation;
+	COperationContext * m_pUndoList;
+	COperationContext * m_pRedoList;
 protected:
+	HANDLE m_hThreadEvent;
+	bool volatile m_bRunThread;
+	CWinThread m_Thread;
+	UINT _ThreadProc();
+	static UINT AFX_CDECL ThreadProc(LPVOID arg)
+	{
+		CWaveSoapFrontDoc * pDoc = DYNAMIC_DOWNCAST(CWaveSoapFrontDoc, (CObject *)arg);
+		if (NULL == pDoc)
+		{
+			return -1;
+		}
+		return pDoc->_ThreadProc();
+	}
+
 
 // Generated message map functions
 protected:
+	BOOL QueueOperation(COperationContext * pContext);
+	// save the selected area to the permanent or temporary file
+	void DoCopy(LONG Start, LONG End, LONG Channel, LPCTSTR FileName);
+	void DoPaste(LONG Start, LONG End, LONG Channel, LPCTSTR FileName);
+	void DoCut(LONG Start, LONG End, LONG Channel, LPCTSTR FileName);
+	void DoDelete(LONG Start, LONG End, LONG Channel);
+
 	//{{AFX_MSG(CWaveSoapFrontDoc)
-	// NOTE - the ClassWizard will add and remove member functions here.
-	//    DO NOT EDIT what you see in these blocks of generated code !
+	afx_msg void OnEditCopy();
+	afx_msg void OnUpdateEditCopy(CCmdUI* pCmdUI);
+	afx_msg void OnEditCut();
+	afx_msg void OnUpdateEditCut(CCmdUI* pCmdUI);
+	afx_msg void OnEditPaste();
+	afx_msg void OnUpdateEditPaste(CCmdUI* pCmdUI);
+	afx_msg void OnEditUndo();
+	afx_msg void OnUpdateEditUndo(CCmdUI* pCmdUI);
+	afx_msg void OnEditStop();
+	afx_msg void OnUpdateEditStop(CCmdUI* pCmdUI);
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
+
 };
 
 class CSelectionUpdateInfo : public CObject
@@ -114,6 +165,16 @@ public:
 	int SelEnd;
 	int SelChannel;
 	int CaretPos;
+};
+
+class CSoundUpdateInfo : public CObject
+{
+public:
+	CSoundUpdateInfo() {}
+	~CSoundUpdateInfo() {}
+	int Begin;
+	int End;
+	int Length;
 };
 
 #pragma pack(push, 2)
