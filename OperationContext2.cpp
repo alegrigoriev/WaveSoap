@@ -2137,390 +2137,213 @@ BOOL CMoveOperation::OperationProc()
 		return TRUE;
 	}
 
-
 	if (m_SrcStart <= m_SrcEnd)
 	{
 		// normal operation in forward direction
 		return CCopyContext::OperationProc();
 	}
-	else
+
+	// move data from end to begin (reverse direction)
+	if (m_SrcPos <= m_SrcEnd)
 	{
-		// copy data backward
-		if (m_SrcPos <= m_SrcEnd)
+		m_Flags |= OperationContextFinished;
+		return TRUE;
+	}
+
+	if (m_DstPos <= m_DstEnd)
+	{
+		return FALSE;
+	}
+
+	DWORD dwStartTime = GetTickCount();
+	SAMPLE_POSITION dwOperationBegin = m_DstPos;
+
+	long LeftToRead = 0;
+	long LeftToWrite = 0;
+	long WasRead = 0;
+	long WasLockedToWrite = 0;
+	void * pOriginalSrcBuf;
+	char * pSrcBuf;
+	void * pOriginalDstBuf;
+	char * pDstBuf;
+
+	DWORD DstFileFlags = CDirectFile::GetBufferAndPrefetchNext;
+	WAVE_SAMPLE tmp[MAX_NUMBER_OF_CHANNELS];
+	int const SrcSampleSize = m_SrcFile.SampleSize();
+	int const DstSampleSize = m_DstFile.SampleSize();
+	NUMBER_OF_CHANNELS const NumSrcChannels = m_SrcFile.Channels();
+	NUMBER_OF_CHANNELS const NumDstChannels = m_DstFile.Channels();
+
+	do
+	{
+		if (0 == LeftToRead)
 		{
-			m_Flags |= OperationContextFinished;
-			return TRUE;
-		}
-
-		DWORD dwStartTime = GetTickCount();
-		SAMPLE_POSITION dwOperationBegin = m_DstPos;
-
-		DWORD LeftToRead = 0;
-		DWORD LeftToWrite = 0;
-		DWORD WasRead = 0;
-		DWORD WasLockedToWrite = 0;
-		void * pOriginalSrcBuf;
-		char * pSrcBuf;
-		void * pOriginalDstBuf;
-		char * pDstBuf;
-		DWORD DstFileFlags = CDirectFile::GetBufferAndPrefetchNext;
-
-		// reading goes from the end to the begin
-		if (m_DstPos < m_DstEnd)
-		{
-			return FALSE;
-		}
-		do
-		{
-			if (0 == LeftToRead)
+			MEDIA_FILE_SIZE SizeToRead = MEDIA_FILE_SIZE(m_SrcEnd) - MEDIA_FILE_SIZE(m_SrcPos);
+			if (SizeToRead < -CDirectFile::CacheBufferSize())
 			{
-				// SrcEnd < SrcPos
-				MEDIA_FILE_SIZE SizeToRead = MEDIA_FILE_SIZE(m_SrcPos) - MEDIA_FILE_SIZE(m_SrcEnd);
-				if (SizeToRead > CDirectFile::CacheBufferSize())
-				{
-					SizeToRead = CDirectFile::CacheBufferSize();
-				}
-				WasRead = m_SrcFile.GetDataBuffer( & pOriginalSrcBuf,
-													-SizeToRead, m_SrcPos, CDirectFile::GetBufferAndPrefetchNext);
-				if (0 == WasRead)
-				{
-					m_DstFile.ReturnDataBuffer(pOriginalDstBuf, WasLockedToWrite,
-												CDirectFile::ReturnBufferDirty);
-
-					return FALSE;
-				}
-				// it points after the buffer
-				pSrcBuf = (char *) pOriginalSrcBuf;
-				//LeftToRead < 0
-				LeftToRead = WasRead;
+				SizeToRead = -CDirectFile::CacheBufferSize();
 			}
+			WasRead = m_SrcFile.GetDataBuffer( & pOriginalSrcBuf,
+												SizeToRead, m_SrcPos, CDirectFile::GetBufferAndPrefetchNext);
 
-			// DstEnd < DstPos
-			if (0 == LeftToWrite)
-			{
-				DstFileFlags = CDirectFile::GetBufferAndPrefetchNext;
-
-				MEDIA_FILE_SIZE SizeToWrite = MEDIA_FILE_SIZE(m_DstPos) - MEDIA_FILE_SIZE(m_DstEnd);
-				if (SizeToWrite > CDirectFile::CacheBufferSize())
-				{
-					SizeToWrite = CDirectFile::CacheBufferSize();
-				}
-
-				if (ALL_CHANNELS == m_DstChan
-					&& m_SrcFile.GetFileID() != m_DstFile.GetFileID()
-					&& (NULL == m_pUndoContext
-						|| ! m_pUndoContext->NeedToSaveUndo(m_DstPos, size_t(SizeToWrite))))
-				{
-					DstFileFlags = CDirectFile::GetBufferWriteOnly;
-				}
-
-
-				WasLockedToWrite = m_DstFile.GetDataBuffer( & pOriginalDstBuf,
-															-SizeToWrite, m_DstPos, DstFileFlags);
-
-				if (0 == WasLockedToWrite)
-				{
-					m_SrcFile.ReturnDataBuffer(pOriginalSrcBuf, WasRead,
-												CDirectFile::ReturnBufferDiscard);
-					return FALSE;
-				}
-
-				// it points after the buffer
-				pDstBuf = (char *) pOriginalDstBuf;
-				//LeftToWrite < 0
-				LeftToWrite = WasLockedToWrite;
-				// save the changed data to undo buffer
-				if (0 == (DstFileFlags & CDirectFile::GetBufferWriteOnly)
-					&& NULL != m_pUndoContext)
-				{
-					ASSERT(0 == (m_DstPos % m_DstFile.SampleSize()));
-					ASSERT(0 == (WasLockedToWrite % m_DstFile.SampleSize()));
-					m_pUndoContext->SaveUndoData(pOriginalDstBuf, WasLockedToWrite,
-												m_DstPos, m_DstChan);
-				}
-
-			}
-			// copy whatever possible
-			if ((m_DstFile.Channels() == 1
-					&& m_SrcFile.Channels() == 1)
-				|| (m_SrcChan == ALL_CHANNELS
-					&& m_DstFile.Channels() == 2
-					&& m_DstChan == ALL_CHANNELS
-					&& m_SrcFile.Channels() == 2))
-			{
-				size_t ToCopy = __min(LeftToRead, LeftToWrite);
-
-				memmove(pDstBuf, pSrcBuf, ToCopy);
-
-				pDstBuf += ToCopy;
-				pSrcBuf += ToCopy;
-
-				LeftToRead -= ToCopy;
-				LeftToWrite -= ToCopy;
-
-				m_SrcPos += ToCopy;
-				m_DstPos += ToCopy;
-			}
-			else
-			{
-				// copy one channel
-				// sample pair may get across buffer boundary,
-				// we need to account this
-				WAVE_SAMPLE * pSrc = (WAVE_SAMPLE *) pSrcBuf;
-				WAVE_SAMPLE * pDst = (WAVE_SAMPLE *) pDstBuf;
-				unsigned i;
-				if (m_SrcFile.Channels() == 1)
-				{
-					ASSERT(m_DstFile.Channels() == 2);
-					// source is mono, destination is stereo.
-					// copy can go either to one channel, or to both
-					if (ALL_CHANNELS == m_DstChan)
-					{
-						// copy to both channels
-						if ((m_DstPos - m_DstStart) & 2)
-						{
-							// right channel sample left not copied
-							pDst[0] = pSrc[0];
-
-							pDst++;
-							pSrc++;
-
-							LeftToRead -= 2;
-							LeftToWrite -= 2;
-
-							m_DstPos += 2;
-							m_SrcPos += 2;
-						}
-						size_t ToCopy = __min(LeftToRead / sizeof pSrc[0],
-											LeftToWrite / (2 * sizeof pDst[0]));
-
-						for (i = 0; i < ToCopy; i++, pSrc++, pDst += 2)
-						{
-							pDst[0] = pSrc[0];
-							pDst[1] = pSrc[0];
-						}
-
-						LeftToRead -= ToCopy * sizeof pSrc[0];
-						m_SrcPos += ToCopy * sizeof pSrc[0];
-
-						LeftToWrite -= ToCopy * (2 * sizeof pDst[0]);
-						m_DstPos += ToCopy * (2 * sizeof pDst[0]);
-						if (2 == LeftToWrite && LeftToRead != 0)
-						{
-							// only room for left channel sample
-							pDst[0] = pSrc[0];
-							m_DstPos += 2;
-							LeftToWrite -= 2;
-							pDst++;
-							// rigth channel will be copied later
-						}
-					}
-					else
-					{
-						// copy to one channel
-						// source - one channel,
-						// destination - one of two
-						ASSERT(m_DstFile.Channels() == 2);
-						if (((m_DstPos - m_DstStart) & 2)
-							!= m_DstChan * 2)
-						{
-							// skip this word
-							pDst++;
-							m_DstPos += 2;
-							LeftToWrite -= 2;
-						}
-						size_t ToCopy = __min(LeftToRead / sizeof pSrc[0],
-											LeftToWrite / (2 * sizeof pDst[0]));
-						for (i = 0; i < ToCopy; i++, pSrc++, pDst += 2)
-						{
-							pDst[0] = pSrc[0];
-						}
-						LeftToRead -= ToCopy * sizeof pSrc[0];
-						m_SrcPos += ToCopy * sizeof pSrc[0];
-						LeftToWrite -= ToCopy * (2 * sizeof pDst[0]);
-						m_DstPos += ToCopy * (2 * sizeof pDst[0]);
-						if (2 == LeftToWrite && LeftToRead != 0)
-						{
-							// only one channel sample available
-							pDst[0] = pSrc[0];
-							pSrc++;
-							pDst++;
-							m_SrcPos += 2;
-							m_DstPos += 2;
-							LeftToRead -= 2;
-							LeftToWrite -= 2;
-						}
-					}
-				}
-				else if (m_DstFile.Channels() == 1)
-				{
-					ASSERT(m_SrcFile.Channels() == 2);
-					unsigned i;
-					// source is stereo, destination is mono.
-					// copy can go either from one channel, or from both
-					if (ALL_CHANNELS == m_SrcChan)
-					{
-						// copy From both channels (sum)
-						if ((m_SrcPos - m_SrcStart) & 2)
-						{
-							// right channel sample left not copied
-							// left channel sample was copied before to dst[0]
-							pDst[0] = (pDst[0] + pSrc[0]) / 2;
-
-							pDst++;
-							pSrc++;
-
-							LeftToRead -= 2;
-							LeftToWrite -= 2;
-
-							m_DstPos += 2;
-							m_SrcPos += 2;
-						}
-						size_t ToCopy = __min(LeftToRead / (2 * sizeof pSrc[0]),
-											LeftToWrite / sizeof pDst[0]);
-
-						for (i = 0; i < ToCopy; i++, pDst++, pSrc += 2)
-						{
-							pDst[0] = (pSrc[0] + pSrc[1]) / 2;
-						}
-
-						LeftToRead -= ToCopy * (2 * sizeof pSrc[0]);
-						m_SrcPos += ToCopy * (2 * sizeof pSrc[0]);
-
-						LeftToWrite -= ToCopy * sizeof pDst[0];
-						m_DstPos += ToCopy * sizeof pDst[0];
-
-						if (2 == LeftToRead && LeftToWrite != 0)
-						{
-							// only left channel sample available
-							pDst[0] = pSrc[0];
-							m_SrcPos += 2;
-							LeftToRead -= 2;
-							pSrc++;
-							// rigth channel will be added later
-						}
-					}
-					else
-					{
-						// copy from one channel
-						// source - one of two,
-						// destination - one channel
-						ASSERT(m_SrcFile.Channels() == 2);
-						if (((m_SrcPos - m_SrcStart) & 2)
-							!= m_SrcChan * 2)
-						{
-							// skip this word
-							pSrc++;
-							m_SrcPos += 2;
-							LeftToRead -= 2;
-						}
-						size_t ToCopy = __min(LeftToRead / (2 * sizeof pSrc[0]),
-											LeftToWrite / sizeof pDst[0]);
-						for (i = 0; i < ToCopy; i++, pDst++, pSrc += 2)
-						{
-							pDst[0] = pSrc[0];
-						}
-						LeftToRead -= ToCopy * (2 * sizeof pSrc[0]);
-						m_SrcPos += ToCopy * (2 * sizeof pSrc[0]);
-
-						LeftToWrite -= ToCopy * sizeof pDst[0];
-						m_DstPos += ToCopy * sizeof pDst[0];
-
-						if (2 == LeftToRead && LeftToWrite != 0)
-						{
-							// only one channel sample available
-							pDst[0] = pSrc[0];
-							pSrc++;
-							pDst++;
-							m_SrcPos += 2;
-							m_DstPos += 2;
-							LeftToRead -= 2;
-							LeftToWrite -= 2;
-						}
-					}
-				}
-				else
-				{
-					// both are 2 channel
-					if (((m_DstPos - m_DstStart) & 2)
-						!= m_DstChan * 2)
-					{
-						// skip this word
-						pDst++;
-						m_DstPos += 2;
-						LeftToWrite -= 2;
-					}
-					if (((m_SrcPos - m_SrcStart) & 2)
-						!= m_SrcChan * 2)
-					{
-						// skip this word
-						pSrc++;
-						m_SrcPos += 2;
-						LeftToRead -= 2;
-					}
-					size_t ToCopy = __min(LeftToRead / (2 * sizeof pSrc[0]),
-										LeftToWrite / (2 * sizeof pDst[0]));
-
-					for (i = 0; i < ToCopy; i++, pDst += 2, pSrc += 2)
-					{
-						pDst[0] = pSrc[0];
-					}
-
-					LeftToRead -= ToCopy * (2 * sizeof pSrc[0]);
-					m_SrcPos += ToCopy * (2 * sizeof pSrc[0]);
-
-					LeftToWrite -= ToCopy * (2 * sizeof pDst[0]);
-					m_DstPos += ToCopy * (2 * sizeof pDst[0]);
-
-					if (LeftToRead >= 2 && LeftToWrite >= 2)
-					{
-						pDst[0] = pSrc[0];
-						pDst++;
-						pSrc++;
-						m_DstPos += 2;
-						LeftToWrite -= 2;
-						m_SrcPos += 2;
-						LeftToRead -= 2;
-					}
-				}
-
-				pSrcBuf = (char *) pSrc;
-				pDstBuf = (char *) pDst;
-			}
-			ASSERT(pDstBuf + LeftToWrite == WasLockedToWrite + (char*)pOriginalDstBuf);
-			ASSERT(pSrcBuf + LeftToRead == WasRead + (char*)pOriginalSrcBuf);
-			if (0 == LeftToRead)
-			{
-				m_SrcFile.ReturnDataBuffer(pOriginalSrcBuf, WasRead,
-											CDirectFile::ReturnBufferDiscard);
-				WasRead = 0;
-			}
-			if (0 == LeftToWrite)
+			if (0 == WasRead)
 			{
 				m_DstFile.ReturnDataBuffer(pOriginalDstBuf, WasLockedToWrite,
 											CDirectFile::ReturnBufferDirty);
-				WasLockedToWrite = 0;
+
+				return FALSE;
+			}
+			pSrcBuf = (char *) pOriginalSrcBuf;
+			LeftToRead = WasRead;
+		}
+
+		if (0 == LeftToWrite)
+		{
+			DstFileFlags = CDirectFile::GetBufferAndPrefetchNext;
+
+			MEDIA_FILE_SIZE SizeToWrite = MEDIA_FILE_SIZE(m_DstEnd) - MEDIA_FILE_SIZE(m_DstPos);
+
+			if (SizeToWrite < -CDirectFile::CacheBufferSize())
+			{
+				SizeToWrite = -CDirectFile::CacheBufferSize();
+			}
+
+			if (ALL_CHANNELS == m_DstChan
+				&& m_SrcFile.GetFileID() != m_DstFile.GetFileID()
+				&& (NULL == m_pUndoContext
+					|| ! m_pUndoContext->NeedToSaveUndo(m_DstPos, long(SizeToWrite))))
+			{
+				DstFileFlags = CDirectFile::GetBufferWriteOnly;
+			}
+
+			WasLockedToWrite = m_DstFile.GetDataBuffer( & pOriginalDstBuf,
+														SizeToWrite, m_DstPos, DstFileFlags);
+
+			if (0 == WasLockedToWrite)
+			{
+				m_SrcFile.ReturnDataBuffer(pOriginalSrcBuf, WasRead,
+											CDirectFile::ReturnBufferDiscard);
+				return FALSE;
+			}
+
+			pDstBuf = (char *) pOriginalDstBuf;
+			LeftToWrite = WasLockedToWrite;
+
+		}
+
+		unsigned SrcSamples = -LeftToRead / SrcSampleSize;
+		unsigned DstSamples = -LeftToWrite / DstSampleSize;
+
+		if (SrcSamples != 0
+			&& DstSamples != 0)
+		{
+			unsigned Samples = std::min(SrcSamples, DstSamples);
+			// save the changed data to undo buffer
+			if (NULL != m_pUndoContext)
+			{
+				m_pUndoContext->SaveUndoData(pDstBuf,
+											-signed(Samples) * DstSampleSize,
+											m_DstPos, NumDstChannels);
+			}
+			// CopyWaveSamples doesn't work backwards
+			for (unsigned i = 0; i < Samples; i++)
+			{
+				pDstBuf -= DstSampleSize;
+				pSrcBuf -= SrcSampleSize;
+				// copy one by one sample
+				CopyWaveSamples(pDstBuf, m_DstChan, NumDstChannels,
+								pSrcBuf, m_SrcChan, NumSrcChannels,
+								1, m_DstFile.GetSampleType(), m_SrcFile.GetSampleType());
+			}
+
+			unsigned DstCopied = Samples * DstSampleSize;
+			LeftToWrite += DstCopied;
+			m_DstPos -= DstCopied;
+
+			unsigned SrcCopied = Samples * SrcSampleSize;
+			LeftToRead += SrcCopied;
+			m_SrcPos -= SrcCopied;
+		}
+		else
+		{
+			// save the changed data to undo buffer
+			if (NULL != m_pUndoContext
+				&& m_pUndoContext->NeedToSaveUndo(m_DstPos, -DstSampleSize))
+			{
+				m_DstFile.ReadSamples(ALL_CHANNELS,
+									m_DstPos, -1, tmp + NumSrcChannels,
+									m_DstFile.GetSampleType());
+
+				m_pUndoContext->SaveUndoData(tmp + NumSrcChannels,
+											-DstSampleSize, m_DstPos, NumDstChannels);
+			}
+			// read one sample directly
+			if (-1 != m_SrcFile.ReadSamples(ALL_CHANNELS,
+											m_SrcPos, -1, tmp + NumSrcChannels, m_SrcFile.GetSampleType())
+				|| -1 != m_DstFile.WriteSamples(m_DstChan, m_DstPos, -1,
+												tmp + NumSrcChannels, m_SrcChan, NumSrcChannels, m_SrcFile.GetSampleType()))
+			{
+				// error
+				TRACE("Transfering a split sample was unsuccessful!\n");
+				m_Flags |= OperationContextFinished;
+				break;
+			}
+
+			pSrcBuf -= SrcSampleSize;
+			m_SrcPos += SrcSampleSize;
+
+			if (LeftToRead < -SrcSampleSize)
+			{
+				LeftToRead += SrcSampleSize;
+			}
+			else
+			{
+				LeftToRead = 0;
+			}
+
+			pDstBuf -= DstSampleSize;
+			m_DstPos -= DstSampleSize;
+			if (LeftToWrite < -DstSampleSize)
+			{
+				LeftToWrite += DstSampleSize;
+			}
+			else
+			{
+				LeftToWrite = 0;
 			}
 		}
-		while (((DstFileFlags & CDirectFile::GetBufferWriteOnly)
-					// cannot exit while write-only buffer is incomplete
-					&& 0 != WasLockedToWrite)
-				|| (m_SrcPos < m_SrcEnd
-					&& GetTickCount() - dwStartTime < 200)
-				);
 
-		m_SrcFile.ReturnDataBuffer(pOriginalSrcBuf, WasRead,
-									CDirectFile::ReturnBufferDiscard);
-
-		m_DstFile.ReturnDataBuffer(pOriginalDstBuf, WasLockedToWrite,
-									CDirectFile::ReturnBufferDirty);
-
-		// notify the view
-		pDocument->FileChanged(m_DstFile, dwOperationBegin, m_DstPos);
-
-		UpdateCompletedPercent();
-
+		if (0 == LeftToRead)
+		{
+			m_SrcFile.ReturnDataBuffer(pOriginalSrcBuf, WasRead,
+										CDirectFile::ReturnBufferDiscard);
+			WasRead = 0;
+		}
+		if (0 == LeftToWrite)
+		{
+			m_DstFile.ReturnDataBuffer(pOriginalDstBuf, WasLockedToWrite,
+										CDirectFile::ReturnBufferDirty);
+			WasLockedToWrite = 0;
+		}
 	}
+	while (((DstFileFlags & CDirectFile::GetBufferWriteOnly)
+				// cannot exit while write-only buffer is incomplete
+				&& 0 != WasLockedToWrite)
+			|| (m_SrcPos > m_SrcEnd
+				&& GetTickCount() - dwStartTime < 200)
+			);
+
+	m_SrcFile.ReturnDataBuffer(pOriginalSrcBuf, WasRead,
+								CDirectFile::ReturnBufferDiscard);
+
+	m_DstFile.ReturnDataBuffer(pOriginalDstBuf, WasLockedToWrite,
+								CDirectFile::ReturnBufferDirty);
+
+	// notify the view
+	pDocument->FileChanged(m_DstFile, dwOperationBegin, m_DstPos);
+
+	UpdateCompletedPercent();
+
 	return TRUE;
 }
 
