@@ -187,11 +187,11 @@ public:
 	class CWaveSoapDocTemplate * m_pAllWmTypeTemplate;
 	class CWaveSoapDocTemplate * m_pRawTypeTemplate;
 
-	int m_DefaultPlaybackDevice;
+	INT_PTR m_DefaultPlaybackDevice;
 	int m_NumPlaybackBuffers;
 	ULONG m_SizePlaybackBuffers;
 
-	int m_DefaultRecordDevice;
+	INT_PTR m_DefaultRecordDevice;
 	int m_NumRecordBuffers;
 	ULONG m_SizeRecordBuffers;
 
