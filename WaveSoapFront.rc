@@ -237,15 +237,15 @@ BEGIN
     END
     POPUP "Process"
     BEGIN
-        MENUITEM "Click Removal...",            IDC_PROCESS_DO_DECLICKING
-        MENUITEM "Turntable Noise Reduction...", IDC_PROCESS_DO_ULF
-        MENUITEM "White Noise Reduction...",    IDC_PROCESS_NOISE_REDUCTION
-        MENUITEM "Normalize...",                ID_PROCESS_NORMALIZE
-        MENUITEM "Change Volume...",            ID_PROCESS_CHANGEVOLUME
-        MENUITEM "DC Offset...",                ID_PROCESS_DCOFFSET
-        MENUITEM "Resample...",                 ID_PROCESS_RESAMPLE
-        MENUITEM "Mute",                        ID_PROCESS_MUTE
-        MENUITEM "Insert Silence...",           ID_PROCESS_INSERTSILENCE
+        MENUITEM "&Click Removal...",           IDC_PROCESS_DO_DECLICKING
+        MENUITEM "&Turntable Noise Reduction...", IDC_PROCESS_DO_ULF
+        MENUITEM "&White Noise Reduction...",   IDC_PROCESS_NOISE_REDUCTION
+        MENUITEM "&Normalize...",               ID_PROCESS_NORMALIZE
+        MENUITEM "Change &Volume...",           ID_PROCESS_CHANGEVOLUME
+        MENUITEM "DC &Offset...",               ID_PROCESS_DCOFFSET
+        MENUITEM "&Resample...",                ID_PROCESS_RESAMPLE
+        MENUITEM "&Mute",                       ID_PROCESS_MUTE
+        MENUITEM "Insert &Silence...",          ID_PROCESS_INSERTSILENCE
     END
     POPUP "&Window"
     BEGIN
@@ -401,6 +401,40 @@ BEGIN
             MENUITEM "4096",                        ID_FFT_BANDS_4096
             MENUITEM "8192",                        ID_FFT_BANDS_8192
         END
+    END
+END
+
+IDR_MENU_CURRENT_POSITION MENU DISCARDABLE 
+BEGIN
+    POPUP " "
+    BEGIN
+        MENUITEM "&Samples",                    IDC_VIEW_STATUS_SAMPLES
+        MENUITEM "&HH:MM:SS",                   IDC_VIEW_STATUS_HHMMSS
+        MENUITEM "S&econds",                    IDC_VIEW_STATUS_SECONDS
+        MENUITEM SEPARATOR
+        MENUITEM "&Go To...",                   ID_EDIT_GOTO
+    END
+END
+
+IDR_MENU_SELECTION_LENGTH MENU DISCARDABLE 
+BEGIN
+    POPUP " "
+    BEGIN
+        MENUITEM "&Samples",                    IDC_VIEW_STATUS_SAMPLES
+        MENUITEM "&HH:MM:SS",                   IDC_VIEW_STATUS_HHMMSS
+        MENUITEM "S&econds",                    IDC_VIEW_STATUS_SECONDS
+        MENUITEM SEPARATOR
+        MENUITEM "Selection...",                ID_EDIT_SELECTION
+    END
+END
+
+IDR_MENU_FILE_LENGTH MENU DISCARDABLE 
+BEGIN
+    POPUP " "
+    BEGIN
+        MENUITEM "&Samples",                    IDC_VIEW_STATUS_SAMPLES
+        MENUITEM "&HH:MM:SS",                   IDC_VIEW_STATUS_HHMMSS
+        MENUITEM "S&econds",                    IDC_VIEW_STATUS_SECONDS
     END
 END
 
@@ -675,6 +709,52 @@ BEGIN
     PUSHBUTTON      "Cancel",IDCANCEL,72,109,50,14
 END
 
+IDD_DIALOG_VOLUME_CHANGE DIALOG DISCARDABLE  0, 0, 193, 144
+STYLE DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "Volume"
+FONT 8, "MS Sans Serif"
+BEGIN
+    DEFPUSHBUTTON   "OK",IDOK,12,123,50,14
+    PUSHBUTTON      "Cancel",IDCANCEL,73,123,50,14
+    CONTROL         "Slider1",IDC_SLIDER_VOLUME_LEFT,"msctls_trackbar32",
+                    TBS_AUTOTICKS | TBS_BOTH | WS_TABSTOP,54,1,86,21
+    EDITTEXT        IDC_EDIT_VOLUME_LEFT,143,6,35,14,ES_AUTOHSCROLL
+    PUSHBUTTON      "&Selection...",IDC_BUTTON_SELECTION,132,98,50,14
+    LTEXT           "Selection:\nChannels:",IDC_STATIC_SELECTION,7,66,179,25
+    CONTROL         "Save &Undo",IDC_CHECK_UNDO,"Button",BS_AUTOCHECKBOX | 
+                    WS_TABSTOP,7,100,50,10
+    CONTROL         "Slider1",IDC_SLIDER_VOLUME_RIGHT,"msctls_trackbar32",
+                    TBS_AUTOTICKS | TBS_BOTH | WS_TABSTOP,54,37,86,22
+    PUSHBUTTON      "&Help",IDHELP,132,123,50,14
+    COMBOBOX        IDC_COMBODB_PERCENT,143,25,34,59,CBS_DROPDOWNLIST | 
+                    WS_TABSTOP
+    EDITTEXT        IDC_EDIT_VOLUME_RIGHT,143,42,35,14,ES_AUTOHSCROLL
+    CONTROL         "Loc&k channels",IDC_CHECKLOCK_CHANNELS,"Button",
+                    BS_AUTOCHECKBOX | WS_TABSTOP,7,25,59,10
+    LTEXT           "&Left channel:",IDC_STATIC,7,8,44,8
+    LTEXT           "&Right channel:",IDC_STATIC_RIGHT_CHANNEL,7,45,46,8
+END
+
+IDD_DIALOG_VOLUME_CHANGE_MONO DIALOG DISCARDABLE  0, 0, 193, 110
+STYLE DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "Volume"
+FONT 8, "MS Sans Serif"
+BEGIN
+    DEFPUSHBUTTON   "OK",IDOK,12,89,50,14
+    PUSHBUTTON      "Cancel",IDCANCEL,73,89,50,14
+    CONTROL         "Slider1",IDC_SLIDER_VOLUME_LEFT,"msctls_trackbar32",
+                    TBS_AUTOTICKS | TBS_BOTH | WS_TABSTOP,54,1,86,21
+    EDITTEXT        IDC_EDIT_VOLUME_LEFT,143,6,35,14,ES_AUTOHSCROLL
+    PUSHBUTTON      "&Selection...",IDC_BUTTON_SELECTION,132,64,50,14
+    LTEXT           "Selection:\nChannels:",IDC_STATIC_SELECTION,7,45,179,17
+    CONTROL         "Save &Undo",IDC_CHECK_UNDO,"Button",BS_AUTOCHECKBOX | 
+                    WS_TABSTOP,7,66,50,10
+    PUSHBUTTON      "&Help",IDHELP,132,89,50,14
+    COMBOBOX        IDC_COMBODB_PERCENT,143,25,34,59,CBS_DROPDOWNLIST | 
+                    WS_TABSTOP
+    LTEXT           "&Volume:",IDC_STATIC,7,8,44,8
+END
+
 
 #ifndef _MAC
 /////////////////////////////////////////////////////////////////////////////
@@ -798,6 +878,22 @@ BEGIN
         TOPMARGIN, 7
         BOTTOMMARGIN, 123
     END
+
+    IDD_DIALOG_VOLUME_CHANGE, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 186
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 137
+    END
+
+    IDD_DIALOG_VOLUME_CHANGE_MONO, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 186
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 103
+    END
 END
 #endif    // APSTUDIO_INVOKED
 
@@ -838,6 +934,24 @@ BEGIN
     IDC_COMBO_SELECTION, 0x403, 26, 0
 0x7543, 0x7372, 0x726f, 0x5420, 0x206f, 0x6542, 0x6967, 0x206e, 0x664f, 
 0x5320, 0x6d61, 0x6c70, 0x0065, 
+    0
+END
+
+IDD_DIALOG_VOLUME_CHANGE DLGINIT
+BEGIN
+    IDC_COMBODB_PERCENT, 0x403, 3, 0
+0x4264, "\000" 
+    IDC_COMBODB_PERCENT, 0x403, 2, 0
+0x0025, 
+    0
+END
+
+IDD_DIALOG_VOLUME_CHANGE_MONO DLGINIT
+BEGIN
+    IDC_COMBODB_PERCENT, 0x403, 3, 0
+0x4264, "\000" 
+    IDC_COMBODB_PERCENT, 0x403, 2, 0
+0x0025, 
     0
 END
 
@@ -1104,6 +1218,10 @@ BEGIN
     ID_INDICATOR_SAMPLE_RATE "\nSample Rate"
     ID_INDICATOR_SAMPLE_SIZE "\nSample Size"
     ID_INDICATOR_CHANNELS   "\nChannels"
+    IDS_SOUND_CLIPPED       "%s:\nSome of the samples exceeded limit and were clipped to the appropriate value"
+    IDS_SOUND_MAY_BE_CLIPPED 
+                            "%s:\nAs a result of the operation, some samples may exceed limit and will be clipped. Continue?"
+    IDS_M_UNABLE_TO_CREATE_UNDO "Unable to save undo data, continue?"
 END
 
 STRINGTABLE DISCARDABLE 
@@ -1127,6 +1245,13 @@ BEGIN
     ID_CHANNELS_STEREO      "Change the file to stereo\nStereo"
     ID_SAMPLE_16BIT         "Set sample size to 16 bit\n16 bit"
     ID_SAMPLE_8BIT          "Set sample size to 8 bit"
+    IDC_VIEW_STATUS_SAMPLES "Show time in samples\nShow samples"
+END
+
+STRINGTABLE DISCARDABLE 
+BEGIN
+    IDC_VIEW_STATUS_HHMMSS  "Show time as hour:minute:seconds\nShow hh:mm:ss"
+    IDC_VIEW_STATUS_SECONDS "Show time in seconds\nShow seconds"
 END
 
 #endif    // English (U.S.) resources
