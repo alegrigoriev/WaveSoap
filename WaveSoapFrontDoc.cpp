@@ -3,8 +3,9 @@
 
 #include "stdafx.h"
 #include "WaveSoapFront.h"
-
+#include "MainFrm.h"
 #include "WaveSoapFrontDoc.h"
+#include <afxpriv.h>
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -49,6 +50,7 @@ CWaveSoapFrontDoc::CWaveSoapFrontDoc()
 	m_pQueuedOperation(NULL),
 	m_pUndoList(NULL),
 	m_pRedoList(NULL),
+	m_pUpdateList(NULL),
 	m_OperationInProgress(false),
 	m_Thread(ThreadProc, this),
 	m_bUndoAvailable(false),
@@ -101,9 +103,6 @@ BOOL CWaveSoapFrontDoc::OnNewDocument()
 		return FALSE;
 	TRACE("CWaveSoapFrontDoc::OnNewDocument\n");
 	// (SDI documents will reuse this document)
-	// Query for WAV filename and build peaks
-	CString filter;
-	filter.LoadString(IDS_WAV_FILTER);
 
 	m_CaretPosition = 0;
 	m_SelectionStart = 0;
@@ -111,38 +110,22 @@ BOOL CWaveSoapFrontDoc::OnNewDocument()
 	m_SelectedChannel = 2;  // both channels
 	m_TimeSelectionMode = TRUE;
 
-	// allow multiple selection for batch processing
-	CFileDialog fdlg(TRUE, "wav", szWaveFilename,
-					OFN_EXPLORER
-					| OFN_FILEMUSTEXIST
-					| OFN_ENABLESIZING
-					| OFN_HIDEREADONLY,
-					filter);
-	fdlg.m_ofn.lpstrInitialDir = _T(".");
-
-	if (fdlg.DoModal() == IDOK)
-	{
-		szWaveFilename = fdlg.GetPathName();
-		CString szWaveTitle = fdlg.GetFileTitle();
-		if (FALSE == OpenWaveFile())
-		{
-			return FALSE;
-		}
-		// create peak file name
-		// remove WAV extension and add ".wspk" extension
-		// we need the full pathname.
-		szPeakFilename = szWaveFilename;
-		if (0 == szPeakFilename.Right(4).CompareNoCase(_T(".WAV")))
-		{
-			szPeakFilename.Delete(szPeakFilename.GetLength() - 4, 4);
-		}
-		szPeakFilename += _T(".wspk");
-		LoadPeakFile();
-	}
-	else
+	if ( FALSE == m_WavFile.CreateWaveFile(NULL, 2, // 2 channels
+											0, // empty
+											CreateWaveFileTempDir
+											// keep the file for debug
+#if 1 || !defined _DEBUG
+											| CreateWaveFileDeleteAfterClose
+#endif
+											| CreateWaveFilePcmFormat
+											| CreateWaveFileTemp,
+											NULL))
 	{
 		return FALSE;
 	}
+
+	m_SizeOfWaveData = m_WavFile.m_datack.cksize;
+	m_WavFile.GetFileInformationByHandle(& WavFileInfo);
 	return TRUE;
 }
 
@@ -275,6 +258,7 @@ BOOL CScanPeaksContext::OperationProc()
 	if (m_Position < m_End)
 	{
 		DWORD dwStartTime = timeGetTime();
+		DWORD dwOperationBegin = m_Position;
 		do
 		{
 			DWORD SizeToRead = m_End - m_Position;
@@ -289,7 +273,7 @@ BOOL CScanPeaksContext::OperationProc()
 				DWORD DataOffset = m_Position - pDocument->m_WavFile.m_datack.dwDataOffset;
 				unsigned DataForGranule = m_GranuleSize - DataOffset % m_GranuleSize;
 
-				if (2 == pDocument->m_WavFile.m_pWf->nChannels)
+				if (2 == pDocument->m_WavFile.Channels())
 				{
 					WavePeak * pPeak = pDocument->m_pPeaks + (DataOffset / m_GranuleSize) * 2;
 					while (0 != DataToProcess)
@@ -418,6 +402,8 @@ BOOL CScanPeaksContext::OperationProc()
 			}
 			else
 			{
+				Flags |= OperationContextStop;
+				break;
 				return FALSE;
 			}
 		}
@@ -427,6 +413,14 @@ BOOL CScanPeaksContext::OperationProc()
 		{
 			PercentCompleted = 100i64 * (m_Position - m_Start) / (m_End - m_Start);
 		}
+		// notify the view
+		int nSampleSize = pDocument->m_WavFile.Channels() *
+						pDocument->m_WavFile.m_pWf->wBitsPerSample / 8;
+		int nFirstSample = (dwOperationBegin - pDocument->m_WavFile.m_datack.dwDataOffset)
+							/ nSampleSize;
+		int nLastSample = (m_Position - pDocument->m_WavFile.m_datack.dwDataOffset)
+						/ nSampleSize;
+		pDocument->SoundChanged(nFirstSample, nLastSample);
 		return TRUE;
 	}
 	else
@@ -615,11 +609,29 @@ void CWaveSoapFrontDoc::SetSelection(int begin, int end, int channel, int caret)
 
 void CWaveSoapFrontDoc::SoundChanged(int begin, int end)
 {
-	CSoundUpdateInfo ui;
-	ui.Begin = begin;
-	ui.End = end;
-	ui.Length = 0;
-	UpdateAllViews(NULL, UpdateSoundChanged, & ui);
+	// notify all views that the sound appearance changed
+
+	CSoundUpdateInfo * pui = new CSoundUpdateInfo;
+	pui->UpdateCode = UpdateSoundChanged;
+	pui->Begin = begin;
+	pui->End = end;
+	pui->Length = -1;   // not changed
+
+	CSimpleCriticalSectionLock lock(m_cs);
+	if (NULL == m_pUpdateList)
+	{
+		m_pUpdateList = pui;
+	}
+	else
+	{
+		CSoundUpdateInfo *pInfo = m_pUpdateList;
+		while (NULL == pInfo->pNext)
+		{
+			pInfo = pInfo->pNext;
+		}
+		pInfo->pNext = pui;
+	}
+	::PostMessage(GetApp()->m_pMainWnd->m_hWnd, WM_KICKIDLE, 0, 0);
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -699,19 +711,57 @@ void CWaveSoapFrontDoc::OnUpdateEditUndo(CCmdUI* pCmdUI)
 
 UINT CWaveSoapFrontDoc::_ThreadProc(void)
 {
-	SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_BELOW_NORMAL);
+	::SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_BELOW_NORMAL);
+	bool NeedKickIdle = false;
 	while (m_bRunThread)
 	{
+		if (NeedKickIdle)
+		{
+			CWinApp * pApp = GetApp();
+			if (pApp->m_pMainWnd)
+			{
+				((CMainFrame *)pApp->m_pMainWnd)->ResetLastStatusMessage();
+				if(::PostMessage(pApp->m_pMainWnd->m_hWnd, WM_KICKIDLE, 0, 0))
+				{
+					NeedKickIdle = false;    // otherwise keep bugging
+				}
+			}
+		}
 		if (m_pCurrentContext)
 		{
-			while (0 == (m_pCurrentContext->Flags & OperationContextFinished))
+			int LastPercent = m_pCurrentContext->PercentCompleted;
+			// execute one step
+			if (0 == (m_pCurrentContext->Flags &
+					(OperationContextStop | OperationContextFinished)))
 			{
 				if (! m_pCurrentContext->OperationProc())
 				{
-					break;
+					m_pCurrentContext->Flags |= OperationContextStop;
+				}
+				// signal for status update
+				if (LastPercent != m_pCurrentContext->PercentCompleted)
+				{
+					NeedKickIdle = true;
+				}
+				if (NeedKickIdle)
+				{
+					m_CurrentStatusString.Format(_T("%s%d%%"),
+												(LPCTSTR)m_pCurrentContext->GetStatusString(),
+												m_pCurrentContext->PercentCompleted);
 				}
 			}
-
+			if (m_pCurrentContext->Flags &
+				(OperationContextStop | OperationContextFinished))
+			{
+				m_CurrentStatusString =
+					m_pCurrentContext->GetStatusString() + _T("Completed");
+				NeedKickIdle = true;
+				COperationContext * pContext =
+					(COperationContext *)InterlockedExchange(PLONG( & m_pCurrentContext), NULL);
+				m_OperationInProgress = false;
+				delete pContext;
+			}
+			continue;
 		}
 		WaitForSingleObject(m_hThreadEvent, INFINITE);
 	}
@@ -1045,4 +1095,28 @@ BOOL CWaveSoapFrontDoc::OnSaveDocument(LPCTSTR lpszPathName)
 	// TODO: Add your specialized code here and/or call the base class
 
 	return TRUE;
+}
+
+void CWaveSoapFrontDoc::OnIdle()
+{
+	while (m_pUpdateList)
+	{
+		CSoundUpdateInfo * pInfo;
+		{
+			CSimpleCriticalSectionLock lock(m_cs);
+			pInfo = m_pUpdateList;
+			if (NULL == pInfo)
+			{
+				break;
+			}
+			m_pUpdateList = pInfo->pNext;
+		}
+		if (pInfo->Length != -1)
+		{
+			m_SizeOfWaveData = pInfo->Length *
+								(m_WavFile.m_pWf->nChannels * m_WavFile.m_pWf->wBitsPerSample / 8);
+		}
+		UpdateAllViews(NULL, pInfo->UpdateCode, pInfo);
+		delete pInfo;
+	}
 }
