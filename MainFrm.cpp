@@ -21,12 +21,9 @@ IMPLEMENT_DYNAMIC(CMainFrame, CMDIFrameWnd)
 BEGIN_MESSAGE_MAP(CMainFrame, BaseClass)
 	//{{AFX_MSG_MAP(CMainFrame)
 	ON_WM_CREATE()
-	ON_WM_PALETTECHANGED()
-	ON_WM_QUERYNEWPALETTE()
 	ON_COMMAND_EX(ID_VIEW_STATUS_BAR, OnBarCheckStatusBar)
 	ON_COMMAND_EX(ID_VIEW_TOOLBAR, OnBarCheckToolbar)
 	ON_COMMAND_EX(ID_VIEW_REBAR, OnBarCheckRebar)
-	ON_WM_DESTROY()
 	//}}AFX_MSG_MAP
 	// Global help commands
 	ON_COMMAND(ID_HELP_FINDER, BaseClass::OnHelpFinder)
@@ -37,8 +34,6 @@ BEGIN_MESSAGE_MAP(CMainFrame, BaseClass)
 	ON_UPDATE_COMMAND_UI(ID_INDICATOR_SAMPLE_RATE, OnUpdateIndicatorSampleRate)
 	//ON_UPDATE_COMMAND_UI(ID_INDICATOR_SAMPLE_SIZE, OnUpdateIndicatorSampleSize)
 	ON_UPDATE_COMMAND_UI(ID_INDICATOR_CHANNELS, OnUpdateIndicatorChannels)
-	ON_MESSAGE(WM_DISPLAYCHANGE, OnDisplayChange)
-	ON_MESSAGE(WM_SETTINGCHANGE, OnSettingChange)
 
 END_MESSAGE_MAP()
 
@@ -56,25 +51,10 @@ static UINT indicators[] =
 
 CMainFrame::CMainFrame()
 {
-	m_nRotateChildIndex = 0;
 }
 
 CMainFrame::~CMainFrame()
 {
-}
-
-LRESULT CMainFrame::OnSettingChange(WPARAM uFlags, LPARAM lParam)
-{
-	BaseClass::OnSettingChange(uFlags, (LPCTSTR)lParam);
-	RecalcLayout();
-	return 0;
-}
-
-LRESULT CMainFrame::OnDisplayChange(WPARAM wParam, LPARAM lParam)
-{
-	LRESULT result = BaseClass::OnDisplayChange(wParam, lParam);
-	RecalcLayout();
-	return result;
 }
 
 int CMainFrame::OnCreate(LPCREATESTRUCT lpCreateStruct)
@@ -341,146 +321,4 @@ void CMainFrame::Dump(CDumpContext& dc) const
 /////////////////////////////////////////////////////////////////////////////
 // CMainFrame message handlers
 
-
-void CMainFrame::OnPaletteChanged(CWnd* pFocusWnd)
-{
-	TRACE("CMainFrame::OnPaletteChanged\n");
-	if (pFocusWnd != this)
-	{
-		OnQueryNewPalette();
-	}
-}
-
-BOOL CMainFrame::OnQueryNewPalette()
-{
-	TRACE("CMainFrame::OnQueryNewPalette\n");
-	CDC * dc = GetDC();
-	{
-		CPushDcPalette hOldPal(dc, GetApp()->GetPalette(), FALSE);
-		int redraw = dc->RealizePalette();
-		if (redraw)
-		{
-			GetApp()->BroadcastUpdate();
-		}
-	}
-	ReleaseDC(dc);
-	//BaseClass::OnQueryNewPalette();
-	return TRUE;
-}
-
-
-BOOL CMainFrame::PreTranslateMessage(MSG* pMsg)
-{
-	// catch Ctrl key down and up
-	if (WM_KEYDOWN == pMsg->message)
-	{
-		if (VK_CONTROL == pMsg->wParam
-			&& 0 == (0x40000000 & pMsg->lParam))
-		{
-			TRACE("Ctrl key was just pressed\n");
-			m_nRotateChildIndex = 0;
-		}
-		else
-		{
-			if ((VK_TAB == pMsg->wParam || VK_F6 == pMsg->wParam)
-				&& (0x8000 & GetKeyState(VK_CONTROL)))
-			{
-				CMDIChildWnd * pActive = MDIGetActive();
-				if (NULL == pActive)
-				{
-					return TRUE;
-				}
-				CWnd * pBottom = pActive->GetWindow(GW_HWNDLAST);
-
-				if (pBottom != pActive)
-				{
-					CWnd * pPlaceWnd = pActive;
-					CWnd * pFrameToActivate;
-					if (0x8000 & GetKeyState(VK_SHIFT))
-					{
-						if (m_nRotateChildIndex > 0)
-						{
-							for (int i = 0; i < m_nRotateChildIndex - 1; i++)
-							{
-								pPlaceWnd = pPlaceWnd->GetWindow(GW_HWNDNEXT);
-								if (pPlaceWnd == pBottom)
-								{
-									break;
-								}
-							}
-							m_nRotateChildIndex = i;
-							if (pPlaceWnd == pBottom)
-							{
-								pFrameToActivate = pBottom;
-								pPlaceWnd = pBottom->GetWindow(GW_HWNDPREV);
-							}
-							else
-							{
-								pFrameToActivate = pPlaceWnd->GetWindow(GW_HWNDNEXT);
-							}
-						}
-						else
-						{
-							pFrameToActivate = pBottom;
-							pPlaceWnd = pFrameToActivate;
-							m_nRotateChildIndex = 1000;  // arbitrary big
-						}
-					}
-					else
-					{
-						for (int i = 0; i < m_nRotateChildIndex; i++)
-						{
-							pPlaceWnd = pPlaceWnd->GetWindow(GW_HWNDNEXT);
-							if (pPlaceWnd == pBottom)
-							{
-								break;
-							}
-						}
-						m_nRotateChildIndex = i + 1;
-
-						if (pPlaceWnd == pBottom)
-						{
-							pFrameToActivate = pActive->GetWindow(GW_HWNDNEXT);
-							m_nRotateChildIndex = 0;
-						}
-						else
-						{
-							pFrameToActivate = pPlaceWnd->GetWindow(GW_HWNDNEXT);
-						}
-					}
-
-					if (0) TRACE("m_nRotateChildIndex=%d, prev active=%X, pFrameToActivate=%X, pPlaceWnd=%X\n",
-								m_nRotateChildIndex, pActive, pFrameToActivate, pPlaceWnd);
-
-					// first activate new frame
-					((CMDIChildWnd *) pFrameToActivate)->MDIActivate();
-					// then move previously active window under pPlaceWnd
-					pActive->SetWindowPos(pPlaceWnd, 0, 0, 0, 0,
-										SWP_NOACTIVATE
-										| SWP_NOMOVE
-										| SWP_NOOWNERZORDER
-										| SWP_NOSIZE);
-				}
-				return TRUE;  // message eaten
-			}
-		}
-	}
-	else if (WM_KEYUP == pMsg->message
-			&& VK_CONTROL == pMsg->wParam)
-	{
-		m_nRotateChildIndex = 0;
-	}
-
-	return BaseClass::PreTranslateMessage(pMsg);
-}
-
-void CMainFrame::OnDestroy()
-{
-	WINDOWPLACEMENT wp;
-	wp.length = sizeof wp;
-
-	GetWindowPlacement( & wp);
-	GetApp()->m_bOpenMaximized = 0 != (wp.flags & WPF_RESTORETOMAXIMIZED);
-	BaseClass::OnDestroy();
-}
 

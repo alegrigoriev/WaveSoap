@@ -10,10 +10,19 @@
 #pragma once
 #endif // _MSC_VER > 1000
 #include "MessageBoxSynch.h"
+#include "MainFrameEx.h"
 
-class CMainFrame : public DialogProxyWnd<CMDIFrameWnd>
+typedef FrameExParameters<MainFrameRememberMaximized
+						| MainFrameNeatCtrlTab | MainFrameRecalcLayoutOnDisplayChange
+						| MainFrameRecalcLayoutOnSettingChange
+						| MainFrameHandlePaletteChange,
+						DialogProxyWnd<CMDIFrameWnd> >
+
+	MainFrameExParameters;
+
+class CMainFrame : public CMainFrameExT<MainFrameExParameters>
 {
-	typedef DialogProxyWnd<CMDIFrameWnd> BaseClass;
+	typedef CMainFrameExT<MainFrameExParameters> BaseClass;
 	DECLARE_DYNAMIC(CMainFrame)
 public:
 	CMainFrame();
@@ -33,7 +42,6 @@ public:
 	//{{AFX_VIRTUAL(CMainFrame)
 public:
 	virtual BOOL PreCreateWindow(CREATESTRUCT& cs);
-	virtual BOOL PreTranslateMessage(MSG* pMsg);
 	//}}AFX_VIRTUAL
 
 // Implementation
@@ -51,20 +59,14 @@ protected:  // control bar embedded members
 	CToolBar    m_wndToolBar2;
 	CReBar      m_wndReBar;
 	CDialogBar      m_wndDlgBar;
-	int m_nRotateChildIndex;  // used for Ctrl+Tab handling
 
-	afx_msg LRESULT OnDisplayChange(WPARAM, LPARAM);
-	afx_msg LRESULT OnSettingChange(WPARAM, LPARAM);
 // Generated message map functions
 protected:
 	//{{AFX_MSG(CMainFrame)
 	afx_msg int OnCreate(LPCREATESTRUCT lpCreateStruct);
-	afx_msg void OnPaletteChanged(CWnd* pFocusWnd);
-	afx_msg BOOL OnQueryNewPalette();
 	afx_msg BOOL OnBarCheckStatusBar(UINT nID);
 	afx_msg BOOL OnBarCheckToolbar(UINT nID);
 	afx_msg BOOL OnBarCheckRebar(UINT nID);
-	afx_msg void OnDestroy();
 	//}}AFX_MSG
 	afx_msg void OnUpdateIndicatorFileSize(CCmdUI* pCmdUI);
 	afx_msg void OnUpdateIndicatorSampleRate(CCmdUI* pCmdUI);

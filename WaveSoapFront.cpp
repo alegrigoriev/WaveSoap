@@ -124,9 +124,6 @@ CWaveSoapFrontApp::CWaveSoapFrontApp()
 	m_bReadOnly(false),
 	m_bDirectMode(false),
 
-	m_TimeSeparator(':'),
-	m_DecimalPoint('.'),
-	m_ThousandSeparator(','),
 	m_bUseCountrySpecificNumberAndTime(false),
 
 	m_bUndoEnabled(true),
@@ -139,7 +136,6 @@ CWaveSoapFrontApp::CWaveSoapFrontApp()
 
 	m_bShowToolbar(true),
 	m_bShowStatusBar(true),
-	m_bOpenMaximized(true),
 	m_bOpenChildMaximized(true),
 
 	m_bAllow4GbWavFile(false),
@@ -376,7 +372,6 @@ BOOL CWaveSoapFrontApp::InitInstance()
 	Profile.AddItem(_T("Settings"), _T("ShowToolbar"), m_bShowToolbar, true);
 	Profile.AddItem(_T("Settings"), _T("ShowStatusBar"), m_bShowStatusBar, true);
 	Profile.AddItem(_T("Settings"), _T("OpenChildMaximized"), m_bOpenChildMaximized, true);
-	Profile.AddItem(_T("Settings"), _T("OpenMaximized"), m_bOpenMaximized, true);
 	Profile.AddItem(_T("Settings"), _T("ShowNewFormatDialogWhenShiftOnly"), m_bShowNewFormatDialogWhenShiftOnly, false);
 	Profile.AddItem(_T("Settings"), _T("Allow4GbWavFile"), m_bAllow4GbWavFile, false);
 
@@ -408,15 +403,7 @@ BOOL CWaveSoapFrontApp::InitInstance()
 
 	if (m_bUseCountrySpecificNumberAndTime)
 	{
-		TCHAR TimeSeparator[] = _T(": ");
-		TCHAR DecimalPoint[] = _T(". ");
-		TCHAR ThousandSeparator[] = _T(", ");
-		GetLocaleInfo(LOCALE_USER_DEFAULT, LOCALE_SDECIMAL, DecimalPoint, 2);
-		GetLocaleInfo(LOCALE_USER_DEFAULT, LOCALE_STIME, TimeSeparator, 2);
-		GetLocaleInfo(LOCALE_USER_DEFAULT, LOCALE_STHOUSAND, ThousandSeparator, 2);
-		m_TimeSeparator = TimeSeparator[0];
-		m_DecimalPoint = DecimalPoint[0];
-		m_ThousandSeparator = ThousandSeparator[0];
+		LoadLocaleParameters();
 	}
 
 	m_FileCache = new CDirectFileCacheProxy(m_MaxFileCache * 0x100000);
@@ -503,12 +490,8 @@ BOOL CWaveSoapFrontApp::InitInstance()
 
 	m_pMainWnd->DragAcceptFiles();
 	// The main window has been initialized, so show and update it.
-	int nCmdShow = SW_SHOWDEFAULT;
-	if (m_bOpenMaximized)
-	{
-		nCmdShow = SW_SHOWMAXIMIZED;
-	}
-	pMainFrame->ShowWindow(nCmdShow);
+
+	pMainFrame->ShowWindow(SW_SHOWDEFAULT);
 	pMainFrame->UpdateWindow();
 
 	m_NotEnoughMemoryMsg.LoadString(IDS_NOT_ENOUGH_MEMORY);
@@ -597,35 +580,6 @@ void CWaveSoapFrontApp::OnAppAbout()
 {
 	CAboutDlg aboutDlg;
 	aboutDlg.DoModal();
-}
-
-double CWaveSoapFrontApp::GetProfileDouble(LPCTSTR Section, LPCTSTR ValueName,
-											double Default, double MinVal, double MaxVal)
-{
-	CString s = GetProfileString(Section, ValueName, _T(""));
-	double val;
-	TCHAR * endptr;
-
-	if (s.IsEmpty()
-		|| (val = _tcstod(s, & endptr), 0 != *endptr)
-		|| _isnan(val)
-		|| ! _finite(val))
-	{
-		val = Default;
-	}
-
-	if (val < MinVal) val = MinVal;
-	if (val > MaxVal) val = MaxVal;
-
-	return val;
-}
-
-void CWaveSoapFrontApp::WriteProfileDouble(LPCTSTR Section, LPCTSTR ValueName,
-											double value)
-{
-	CString s;
-	s.Format(_T("%g"), value);
-	WriteProfileString(Section, ValueName, s);
 }
 
 CDocument* CWaveSoapFrontApp::OpenDocumentFile(LPCTSTR lpszPathName, int flags)
@@ -1186,48 +1140,6 @@ void CWaveSoapDocManager::OnFileOpen()
 		pApp->OpenDocumentFile(fileName, flags);
 	}
 	fileNameBuf.ReleaseBuffer();
-}
-
-// long to string, thousands separated by commas
-CString LtoaCS(long num)
-{
-	TCHAR s[20];
-	TCHAR s1[30];
-	TCHAR * p = s;
-	TCHAR * p1 = s1;
-	TCHAR ThSep = GetApp()->m_ThousandSeparator;
-	_ltot(num, s, 10);
-	if (0 == ThSep)
-	{
-		return s;
-	}
-	if ('-' == p[0])
-	{
-		p1[0] = '-';
-		p++;
-		p1++;
-	}
-	int len = _tcslen(p);
-	int first = len % 3;
-	if (0 == first && len > 0)
-	{
-		first = 3;
-	}
-	_tcsncpy(p1, p, first);
-	p1 += first;
-	p += first;
-	len -= first;
-	while (p[0])
-	{
-		p1[0] = ThSep;
-		p1[1] = p[0];
-		p1[2] = p[1];
-		p1[3] = p[2];
-		p1 += 4;
-		p += 3;
-	}
-	*p1 = 0;
-	return CString(s1);
 }
 
 int CWaveSoapFrontStatusBar::OnToolHitTest(CPoint point, TOOLINFO* pTI) const
