@@ -154,6 +154,20 @@ protected:
 	SAMPLE_INDEX const m_CaretPosition;
 };
 
+enum
+{
+	SampleToString_Sample = 0,
+	SampleToString_HhMmSs = 1,
+	SampleToString_Seconds = 2,
+	SampleToString_Mask = 0xF,
+	TimeToHhMmSs_NeedsMs = 0x100,
+	TimeToHhMmSs_NeedsHhMm = 0x200,
+};
+CString TimeToHhMmSs(unsigned TimeMs, int Flags = TimeToHhMmSs_NeedsMs);
+CString SampleToString(SAMPLE_INDEX Sample, int nSamplesPerSec,
+						int Flags = SampleToString_HhMmSs
+									| TimeToHhMmSs_NeedsHhMm
+									| TimeToHhMmSs_NeedsMs);
 /////////////////////////////////////////////////////////////////////////////
 //{{AFX_INSERT_LOCATION}}
 // Microsoft Visual C++ will insert additional declarations immediately before the previous line.

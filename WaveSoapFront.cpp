@@ -136,8 +136,6 @@ CWaveSoapFrontApp::CWaveSoapFrontApp()
 	m_bEnableRedoLimit(true),
 	m_bEnableUndoDepthLimit(false),
 	m_bEnableRedoDepthLimit(false),
-	m_bUseMemoryFiles(true),
-	m_MaxMemoryFileSize(64),
 
 	m_bShowToolbar(true),
 	m_bShowStatusBar(true),
@@ -304,11 +302,6 @@ BOOL CWaveSoapFrontApp::InitInstance()
 	// If you are not using these features and wish to reduce the size
 	//  of your final executable, you should remove from the following
 	//  the specific initialization routines you do not need.
-	m_VersionInfo.dwOSVersionInfoSize = sizeof m_VersionInfo;
-	GetVersionEx( & m_VersionInfo);
-#ifdef _DEBUG
-	SupportsV5FileDialog();
-#endif
 	m_hWMVCORE_DLL_Handle = LoadLibrary(_T("WMVCORE.DLL"));
 
 	// Change the registry key under which our settings are stored.
@@ -395,7 +388,7 @@ BOOL CWaveSoapFrontApp::InitInstance()
 	Profile.AddItem(_T("Settings"), _T("FftWindowType"), m_FftWindowType, 0, 0, 2);
 	Profile.AddItem(_T("Settings"), _T("DefaultOpenMode"), m_DefaultOpenMode, DefaultOpenBuffered, 0, 2);
 
-	Profile.AddBoolItem(_T("Settings"), _T("UseMemoryFiles"), m_bUseMemoryFiles, TRUE);
+	Profile.AddItem(_T("Settings"), _T("UseMemoryFiles"), m_bUseMemoryFiles, true);
 	Profile.AddItem(_T("Settings"), _T("MaxMemoryFileSize"), m_MaxMemoryFileSize, 64, 1, 1024);
 	Profile.AddItem(_T("Settings"), _T("Allow4GbWavFile"), m_bAllow4GbWavFile, FALSE);
 
@@ -915,13 +908,8 @@ int CWaveSoapFrontApp::ExitInstance()
 
 void CWaveSoapFrontApp::QueueOperation(COperationContext * pContext)
 {
-	{
-		// add the operation to the tail
-		CSimpleCriticalSectionLock lock(m_cs);
-		m_OpList.InsertTail(pContext);
-	}
+	m_OpList.InsertTail(pContext);
 	SetEvent(m_hThreadEvent);
-
 }
 
 unsigned CWaveSoapFrontApp::_ThreadProc()
@@ -946,7 +934,7 @@ unsigned CWaveSoapFrontApp::_ThreadProc()
 		COperationContext * pContext = NULL;
 		if ( ! m_OpList.IsEmpty())
 		{
-			CSimpleCriticalSectionLock lock(m_cs);
+			CSimpleCriticalSectionLock lock(m_OpList);
 			// find if stop requested for any document
 
 			for (pContext = m_OpList.First();
@@ -998,7 +986,12 @@ unsigned CWaveSoapFrontApp::_ThreadProc()
 		if (pContext != NULL)
 		{
 			// execute one step
-			if (0 == (pContext->m_Flags & OperationContextInitialized))
+			if (pContext->m_Flags & OperationContextSynchronous)
+			{
+				pContext->ExecuteSynch();
+				pContext->m_Flags |= OperationContextFinished;
+			}
+			else if (0 == (pContext->m_Flags & OperationContextInitialized))
 			{
 				if ( ! pContext->Init())
 				{
@@ -1012,7 +1005,7 @@ unsigned CWaveSoapFrontApp::_ThreadProc()
 			{
 				pContext->m_Flags |= OperationContextStopRequested;
 			}
-			int LastPercent = pContext->PercentCompleted;
+			int LastPercent = pContext->m_PercentCompleted;
 			if ( 0 == (pContext->m_Flags & (OperationContextStop | OperationContextFinished)))
 			{
 				if ( ! pContext->OperationProc())
@@ -1021,24 +1014,22 @@ unsigned CWaveSoapFrontApp::_ThreadProc()
 				}
 			}
 			// signal for status update
-			if (LastPercent != pContext->PercentCompleted)
+			if (LastPercent != pContext->m_PercentCompleted)
 			{
 				NeedKickIdle = true;
 			}
 			if (pContext->m_Flags & (OperationContextStop | OperationContextFinished))
 			{
 				// remove the context from the list and delete the context
-				{
-					CSimpleCriticalSectionLock lock(m_cs);
-					pContext->RemoveFromList();
-				}
+				m_OpList.RemoveEntry(pContext);
 
 				// send a signal to the document, that the operation completed
 				SetStatusStringAndDoc(pContext->GetStatusString() + _T("Completed"),
 									pContext->pDocument);
+
 				pContext->DeInit();
 
-				pContext->Retire();     // usually deletes it
+				pContext->Retire();     // puts it in the document queue
 				// send a signal to the document, that the operation completed
 				NeedKickIdle = true;    // this will reenable all commands
 			}
@@ -1048,7 +1039,7 @@ unsigned CWaveSoapFrontApp::_ThreadProc()
 				{
 					CString s;
 					s.Format(_T("%s%d%%"),
-							(LPCTSTR)pContext->GetStatusString(), pContext->PercentCompleted);
+							(LPCTSTR)pContext->GetStatusString(), pContext->m_PercentCompleted);
 					SetStatusStringAndDoc(s, pContext->pDocument);
 				}
 			}
@@ -1237,91 +1228,6 @@ CString LtoaCS(long num)
 	}
 	*p1 = 0;
 	return CString(s1);
-}
-
-CString TimeToHhMmSs(unsigned TimeMs, int Flags)
-{
-	int hh = TimeMs / 3600000;
-	TimeMs -= hh * 3600000;
-	int mm = TimeMs / 60000;
-	TimeMs -= mm * 60000;
-	int ss = TimeMs / 1000;
-	TimeMs -= ss * 1000;
-	int ms = TimeMs;
-	CString s;
-	TCHAR TimeSeparator = GetApp()->m_TimeSeparator;
-	TCHAR DecimalPoint = GetApp()->m_DecimalPoint;
-
-	if (Flags & TimeToHhMmSs_NeedsMs)
-	{
-		if (hh != 0 || (Flags & TimeToHhMmSs_NeedsHhMm))
-		{
-			s.Format(_T("%d%c%02d%c%02d%c%03d"),
-					hh, TimeSeparator,
-					mm, TimeSeparator,
-					ss, DecimalPoint,
-					ms);
-		}
-		else if (mm != 0)
-		{
-			s.Format(_T("%d%c%02d%c%03d"),
-					mm, TimeSeparator,
-					ss, DecimalPoint,
-					ms);
-		}
-		else
-		{
-			s.Format(_T("%d%c%03d"),
-					ss, DecimalPoint,
-					ms);
-		}
-	}
-	else
-	{
-		if (hh != 0 || (Flags & TimeToHhMmSs_NeedsHhMm))
-		{
-			s.Format(_T("%d%c%02d%c%02d"),
-					hh, TimeSeparator,
-					mm, TimeSeparator,
-					ss);
-		}
-		else
-		{
-			s.Format(_T("%d%c%02d"),
-					mm, TimeSeparator,
-					ss);
-		}
-	}
-	return s;
-}
-
-CString SampleToString(SAMPLE_INDEX Sample, int nSamplesPerSec, int Flags)
-{
-	switch (Flags & SampleToString_Mask)
-	{
-	case SampleToString_Sample:
-		return LtoaCS(Sample);
-		break;
-	case SampleToString_Seconds:
-	{
-		CString s;
-		unsigned ms = unsigned(Sample * 1000. / nSamplesPerSec);
-		int sec = ms / 1000;
-		ms = ms % 1000;
-		TCHAR * pFormat = _T("%s%c0");
-		if (Flags & TimeToHhMmSs_NeedsMs)
-		{
-			pFormat = _T("%s%c%03d");
-		}
-		s.Format(pFormat, LtoaCS(sec), GetApp()->m_DecimalPoint, ms);
-		return s;
-	}
-		break;
-	default:
-	case SampleToString_HhMmSs:
-		return TimeToHhMmSs(unsigned(Sample * 1000. / nSamplesPerSec), Flags);
-		break;
-	}
 }
 
 int CWaveSoapFrontStatusBar::OnToolHitTest(CPoint point, TOOLINFO* pTI) const
@@ -1516,28 +1422,22 @@ void CWaveSoapFrontApp::OnFileNew()
 		if (! m_bShowNewFormatDialogWhenShiftOnly
 			|| (0x8000 & GetKeyState(VK_SHIFT)))
 		{
-			CNewFilePropertiesDlg dlg;
-			dlg.m_bShowOnlyWhenShift = m_bShowNewFormatDialogWhenShiftOnly;
-			dlg.m_nSamplingRate = m_NewFileFormat.nSamplesPerSec;
-			dlg.m_MonoStereo = (m_NewFileFormat.nChannels == 2);
-			dlg.m_Length = m_NewFileLength;   // in seconds
+			CNewFilePropertiesDlg dlg(m_NewFileFormat.nSamplesPerSec,
+									m_NewFileFormat.nChannels, m_NewFileLength,
+									m_bShowNewFormatDialogWhenShiftOnly);
+
 			if (IDOK != dlg.DoModal())
 			{
 				return;
 			}
 
-			m_NewFileLength = dlg.m_Length;   // in seconds
+			m_NewFileLength = dlg.GetLengthSeconds();   // in seconds
 
-			m_bShowNewFormatDialogWhenShiftOnly = (dlg.m_bShowOnlyWhenShift != 0);
-			m_NewFileFormat.nSamplesPerSec = dlg.m_nSamplingRate;
-			if (dlg.m_MonoStereo)
-			{
-				m_NewFileFormat.nChannels = 2;
-			}
-			else
-			{
-				m_NewFileFormat.nChannels = 1;
-			}
+			m_bShowNewFormatDialogWhenShiftOnly = dlg.ShowWhenShiftOnly();
+
+			m_NewFileFormat.nSamplesPerSec = dlg.GetSamplingRate();
+
+			m_NewFileFormat.nChannels = dlg.NumberOfChannels();
 		}
 
 		Params.InitialSamples = m_NewFileLength * m_NewFileFormat.nSamplesPerSec;
@@ -2276,29 +2176,6 @@ void CWaveSoapFrontApp::SetStatusStringAndDoc(const CString & str, CWaveSoapFron
 	m_StatusStringLock.Unlock();
 }
 
-OSVERSIONINFO CWaveSoapFrontApp::m_VersionInfo;
-
-bool CWaveSoapFrontApp::SupportsV5FileDialog()
-{
-	TRACE("Major version=%d, minor version=%d, build=%X\n",
-		m_VersionInfo.dwMajorVersion,
-		m_VersionInfo.dwMinorVersion,
-		m_VersionInfo.dwBuildNumber);
-	switch (m_VersionInfo.dwPlatformId)
-	{
-	case VER_PLATFORM_WIN32_NT:
-		return m_VersionInfo.dwMajorVersion >= 5;
-		break;
-	case VER_PLATFORM_WIN32_WINDOWS:
-		return m_VersionInfo.dwMajorVersion > 4
-				|| (m_VersionInfo.dwMajorVersion == 4
-					&& m_VersionInfo.dwMinorVersion >= 90);
-		break;
-	default:
-		return FALSE;
-
-	}
-}
 
 void CWaveSoapFrontApp::OnFileSaveAll()
 {
