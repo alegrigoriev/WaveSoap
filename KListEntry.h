@@ -13,7 +13,7 @@ struct KListEntry
 	// no destructor necessary
 	void Init() volatile
 	{
-		pPrev = const_cast<KListEntry *>(this);
+		pPrev = const_cast<KListEntry<T> *>(this);
 		pNext = pPrev;
 	}
 	KListEntry()
@@ -23,34 +23,38 @@ struct KListEntry
 	void InsertHead(T * entry)
 	{
 		__assume(NULL != entry);
-		static_cast<KListEntry<T> *>(entry)->pPrev = this;
-		static_cast<KListEntry<T> *>(entry)->pNext = pNext;
-		pNext->pPrev = static_cast<KListEntry<T> *>(entry);
-		pNext = static_cast<KListEntry<T> *>(entry);
+		KListEntry<T> * tmp = static_cast<KListEntry<T> *>(entry);
+		tmp->pPrev = this;
+		tmp->pNext = pNext;
+		pNext->pPrev = tmp;
+		pNext = tmp;
 	}
 	void InsertHead(T volatile * entry) volatile
 	{
 		__assume(NULL != entry);
-		static_cast<KListEntry<T> volatile *>(entry)->pPrev = const_cast<KListEntry *>(this);
-		static_cast<KListEntry<T> volatile *>(entry)->pNext = pNext;
-		pNext->pPrev = static_cast<KListEntry<T> volatile *>(entry);
-		pNext = static_cast<KListEntry<T> volatile *>(entry);
+		KListEntry<T> volatile * tmp = static_cast<KListEntry<T> volatile *>(entry);
+		tmp->pPrev = const_cast<KListEntry<T> *>(this);
+		tmp->pNext = pNext;
+		pNext->pPrev = const_cast<KListEntry<T> *>(tmp);
+		pNext = const_cast<KListEntry<T> *>(tmp);
 	}
 	void InsertTail(T * entry)
 	{
 		__assume(NULL != entry);
-		static_cast<KListEntry<T> *>(entry)->pNext = this;
-		static_cast<KListEntry<T> *>(entry)->pPrev = pPrev;
-		pPrev->pNext = static_cast<KListEntry<T> *>(entry);
-		pPrev = static_cast<KListEntry<T> *>(entry);
+		KListEntry<T> * tmp = static_cast<KListEntry<T> *>(entry);
+		tmp->pNext = this;
+		tmp->pPrev = pPrev;
+		pPrev->pNext = tmp;
+		pPrev = tmp;
 	}
 	void InsertTail(T volatile * entry) volatile
 	{
 		__assume(NULL != entry);
-		static_cast<KListEntry<T> volatile *>(entry)->pNext = const_cast<KListEntry *>(this);
-		static_cast<KListEntry<T> volatile *>(entry)->pPrev = pPrev;
-		pPrev->pNext = static_cast<KListEntry<T> volatile *>(entry);
-		pPrev = static_cast<KListEntry<T> volatile *>(entry);
+		KListEntry<T> volatile * tmp = static_cast<KListEntry<T> volatile *>(entry);
+		tmp->pNext = const_cast<KListEntry<T> *>(this);
+		tmp->pPrev = pPrev;
+		pPrev->pNext = const_cast<KListEntry<T> *>(tmp);
+		pPrev = const_cast<KListEntry<T> *>(tmp);
 	}
 
 	bool IsEmpty() const volatile
@@ -69,7 +73,7 @@ struct KListEntry
 	T * RemoveHead() volatile
 	{
 		KListEntry * tmp = pNext;
-		tmp->pNext->pPrev = const_cast<KListEntry *>(this);
+		tmp->pNext->pPrev = const_cast<KListEntry<T> *>(this);
 		pNext = tmp->pNext;
 		tmp->Init();
 		__assume(NULL != tmp);
@@ -87,7 +91,7 @@ struct KListEntry
 	T * RemoveTail() volatile
 	{
 		KListEntry * tmp = pPrev;
-		tmp->pPrev->pNext = const_cast<KListEntry *>(this);
+		tmp->pPrev->pNext = const_cast<KListEntry<T> *>(this);
 		pPrev = tmp->pPrev;
 		tmp->Init();
 		__assume(NULL != tmp);
@@ -108,25 +112,27 @@ struct KListEntry
 	static void RemoveEntry(T * entry)
 	{
 		__assume(NULL != entry);
-		static_cast<KListEntry<T> *>(entry)->pNext->pPrev = static_cast<KListEntry<T> *>(entry)->pPrev;
-		static_cast<KListEntry<T> *>(entry)->pPrev->pNext = static_cast<KListEntry<T> *>(entry)->pNext;
-		static_cast<KListEntry<T> *>(entry)->Init();
+		KListEntry<T> * tmp = static_cast<KListEntry<T> *>(entry);
+		tmp->pNext->pPrev = tmp->pPrev;
+		tmp->pPrev->pNext = tmp->pNext;
+		tmp->Init();
 	}
 
 	static void RemoveEntry(T volatile * entry)
 	{
 		__assume(NULL != entry);
-		static_cast<KListEntry<T> volatile *>(entry)->pNext->pPrev = static_cast<KListEntry<T> volatile *>(entry)->pPrev;
-		static_cast<KListEntry<T> volatile *>(entry)->pPrev->pNext = static_cast<KListEntry<T> volatile *>(entry)->pNext;
-		static_cast<KListEntry<T> volatile *>(entry)->Init();
+		KListEntry<T> volatile * tmp = static_cast<KListEntry<T> volatile *>(entry);
+		tmp->pNext->pPrev = tmp->pPrev;
+		tmp->pPrev->pNext = tmp->pNext;
+		tmp->Init();
 	}
 
 	// move all the list to DstList. The list becomes empty
-	void RemoveAll(KListEntry & DstList)
+	void RemoveAll(KListEntry<T> & DstList)
 	{
 		if ( ! IsEmpty())
 		{
-			KListEntry * pListEntry = pNext;
+			KListEntry<T> * pListEntry = pNext;
 			RemoveFromList();
 			Init();
 			pListEntry->InsertTailList( & DstList);
@@ -137,11 +143,11 @@ struct KListEntry
 		}
 	}
 
-	void RemoveAll(KListEntry & DstList) volatile
+	void RemoveAll(KListEntry<T> & DstList) volatile
 	{
 		if ( ! IsEmpty())
 		{
-			KListEntry * pListEntry = pNext;
+			KListEntry<T> * pListEntry = pNext;
 			RemoveFromList();
 			Init();
 			pListEntry->InsertTailList( & DstList);
@@ -154,6 +160,10 @@ struct KListEntry
 
 	T * Next() const volatile { __assume(NULL != pNext); return static_cast<T *>(pNext); }
 	T * Prev() const volatile { __assume(NULL != pPrev); return static_cast<T *>(pPrev); }
+	KListEntry<T> * Head() { return this; }
+	KListEntry<T> const * Head() const { return this; }
+	KListEntry<T> volatile * Head() volatile { return this; }
+	KListEntry<T> const volatile * Head() const volatile { return this; }
 
 	// call a function with any return type
 	template <class F> void CallForEach(F function) const volatile
@@ -269,10 +279,6 @@ struct KListEntry
 template<class T >
 struct LockedListHead: public KListEntry<T>, public CSimpleCriticalSection
 {
-	KListEntry<T> * Head() { return this; }
-	KListEntry<T> const * Head() const { return this; }
-	KListEntry<T> volatile * Head() volatile { return this; }
-	KListEntry<T> const volatile * Head() const volatile { return this; }
 	void InsertHead(T * entry)
 	{
 		Lock();
@@ -357,13 +363,13 @@ struct LockedListHead: public KListEntry<T>, public CSimpleCriticalSection
 	}
 
 	// move all the list to DstList. The list becomes empty
-	void RemoveAll(KListEntry & DstList)
+	void RemoveAll(KListEntry<T> & DstList)
 	{
 		Lock();
 		KListEntry<T>::RemoveAll(DstList);
 		Unlock();
 	}
-	void RemoveAll(KListEntry & DstList) volatile
+	void RemoveAll(KListEntry<T> & DstList) volatile
 	{
 		Lock();
 		KListEntry<T>::RemoveAll(DstList);

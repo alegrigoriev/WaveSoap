@@ -185,8 +185,27 @@ public:
 class FileWriter : public IWMWriterSink
 {
 
+	//
+	//Methods of IUnknown
+	//
+	HRESULT STDMETHODCALLTYPE QueryInterface( REFIID riid,
+											void __RPC_FAR *__RPC_FAR *ppvObject )
+	{
+		if ( riid == IID_IWMWriterSink )
+		{
+			*ppvObject = ( IWMWriterSink* )this;
+		}
+		else
+		{
+			return E_NOINTERFACE;
+		}
+		return S_OK;
+	}
+
+	ULONG STDMETHODCALLTYPE AddRef( void ) { return 1; }
+
+	ULONG STDMETHODCALLTYPE Release( void ) { return 1; }
 public:
-	FileWriter();
 	virtual HRESULT STDMETHODCALLTYPE OnHeader(
 												/* [in] */ INSSBuffer __RPC_FAR *pHeader);
 
@@ -202,8 +221,13 @@ public:
 
 	virtual HRESULT STDMETHODCALLTYPE OnEndWriting( void);
 
+	FileWriter() {}
+	~FileWriter() {}
 	CDirectFile m_DstFile;
-	BOOL Open(CDirectFile & File);
+	void Open(CDirectFile & File)
+	{
+		m_DstFile = File;
+	}
 };
 
 class WmaEncoder
@@ -211,7 +235,7 @@ class WmaEncoder
 public:
 	WmaEncoder();
 	~WmaEncoder();
-	BOOL OpenWrite(LPCTSTR FileName);
+	BOOL OpenWrite(CDirectFile & File);
 	BOOL Init();
 	void DeInit();
 	void SetArtist(LPCTSTR szArtist);
@@ -225,7 +249,9 @@ protected:
 	IWMProfileManager * m_pProfileManager;
 	IWMProfile * m_pProfile;
 	IWMStreamConfig * m_pStreamConfig;
-	IWMWriterFileSink * m_pFileSink;
+
+	FileWriter m_FileWriter;
+
 	IWMHeaderInfo * m_pHeaderInfo;
 	INSSBuffer * m_pBuffer;
 };

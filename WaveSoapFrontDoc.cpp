@@ -2448,7 +2448,7 @@ BOOL CWaveSoapFrontDoc::OnSaveWmaFile(int flags, LPCTSTR FullTargetName, WAVEFOR
 	{
 		NewTempFilename += _T(".temp");
 	}
-#if 0
+
 	CWaveFile NewWaveFile;
 	DWORD FileSize = MulDiv(pWf->nAvgBytesPerSec, m_WavFile.GetDataChunk()->cksize,
 							m_WavFile.GetWaveFormat()->nAvgBytesPerSec);
@@ -2466,7 +2466,7 @@ BOOL CWaveSoapFrontDoc::OnSaveWmaFile(int flags, LPCTSTR FullTargetName, WAVEFOR
 	{
 		* pNewFormat = * pWf;
 	}
-#endif
+
 	CFileSaveContext * pContext = new CFileSaveContext(this,
 														"Compressing and saving Windows Media file...", "");
 	if (NULL == pContext)
@@ -2476,7 +2476,7 @@ BOOL CWaveSoapFrontDoc::OnSaveWmaFile(int flags, LPCTSTR FullTargetName, WAVEFOR
 	}
 
 	pContext->m_NewName = FullTargetName;
-	pContext->m_TempName = NewTempFilename;
+	pContext->m_DstFile = NewWaveFile;
 	pContext->m_NewFileTypeFlags = OpenDocumentWmaFile;
 	CWmaSaveContext * pConvert = new CWmaSaveContext(this, "", "");
 
@@ -2488,7 +2488,7 @@ BOOL CWaveSoapFrontDoc::OnSaveWmaFile(int flags, LPCTSTR FullTargetName, WAVEFOR
 	}
 	pContext->m_pConvert = pConvert;
 	pConvert->m_SrcFile = m_WavFile;
-	//pConvert->m_DstFile = NewWaveFile;
+	pConvert->m_DstFile = NewWaveFile;
 	pConvert->m_SrcStart = m_WavFile.GetDataChunk()->dwDataOffset;
 	pConvert->m_DstStart = 0;
 	pConvert->m_SrcCopyPos = pConvert->m_SrcStart;
@@ -2512,6 +2512,7 @@ BOOL CWaveSoapFrontDoc::OnSaveWmaFile(int flags, LPCTSTR FullTargetName, WAVEFOR
 	pContext->m_SrcChan = ALL_CHANNELS;
 	pContext->m_DstChan = ALL_CHANNELS;
 
+#if 0
 	WAVEFORMATEX SrcFormat;
 	SrcFormat.nChannels = pWf->nChannels;
 	SrcFormat.nSamplesPerSec = pWf->nSamplesPerSec;
@@ -2520,6 +2521,7 @@ BOOL CWaveSoapFrontDoc::OnSaveWmaFile(int flags, LPCTSTR FullTargetName, WAVEFOR
 	SrcFormat.cbSize = 0;
 	SrcFormat.wFormatTag = WAVE_FORMAT_PCM;
 	SrcFormat.wBitsPerSample = 16;
+#endif
 
 	if (flags & SaveFile_SaveCopy)
 	{

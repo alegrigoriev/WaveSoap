@@ -696,8 +696,7 @@ WmaEncoder::WmaEncoder()
 	m_pProfileManager(NULL),
 	m_pHeaderInfo(NULL),
 	m_pStreamConfig(NULL),
-	m_pBuffer(NULL),
-	m_pFileSink(NULL)
+	m_pBuffer(NULL)
 {
 }
 
@@ -708,16 +707,13 @@ void WmaEncoder::DeInit()
 		m_pWriter->Flush();
 		m_pWriter->EndWriting();
 	}
-	if (NULL != m_pFileSink)
-	{
-		m_pFileSink->Release();
-		m_pFileSink = NULL;
-	}
+
 	if (NULL != m_pBuffer)
 	{
 		m_pBuffer->Release();
 		m_pBuffer = NULL;
 	}
+
 	if (NULL != m_pStreamConfig)
 	{
 		m_pStreamConfig->Release();
@@ -755,28 +751,14 @@ WmaEncoder::~WmaEncoder()
 	DeInit();
 }
 
-BOOL WmaEncoder::OpenWrite(LPCTSTR FileName)
+BOOL WmaEncoder::OpenWrite(CDirectFile & File)
 {
-#ifndef _UNICODE
-	WCHAR Name[MAX_PATH+1] = {0};
-	if (0 == ::MultiByteToWideChar(CP_ACP, MB_PRECOMPOSED, FileName, -1,
-									Name, MAX_PATH))
-	{
-		return FALSE;
-	}
-	if ( ! SUCCEEDED(m_pFileSink->Open(Name)))
-	{
-		return FALSE;
-	}
-#else
-	if ( ! SUCCEEDED(m_pFileSink->Open(FileName)))
-	{
-		return FALSE;
-	}
-#endif
-	m_pWriterAdvanced->AddSink(m_pFileSink);
-	m_pWriter->BeginWriting();
-	HRESULT hr = m_pWriter->AllocateSample(0x10000, & m_pBuffer);
+	m_FileWriter.Open(File);
+
+	HRESULT hr = m_pWriterAdvanced->AddSink( & m_FileWriter);
+
+	hr = m_pWriter->BeginWriting();
+	hr = m_pWriter->AllocateSample(0x10000, & m_pBuffer);
 	if ( ! SUCCEEDED(hr))
 	{
 		return FALSE;
@@ -805,32 +787,7 @@ BOOL WmaEncoder::Init()
 	{
 		return FALSE;
 	}
-#if 0
-	hr = pHeaderInfo->QueryInterface(IID_IWMHeaderInfo2, ( VOID ** )& m_pHeaderInfo);
-	pHeaderInfo->Release();
-	pHeaderInfo = NULL;
-	if ( ! SUCCEEDED(hr))
-	{
-		return FALSE;
-	}
-#endif
 
-	//IWMWriterFileSink * pSink;
-	hr = WMCreateWriterFileSink( & m_pFileSink);
-	if ( ! SUCCEEDED(hr))
-	{
-		return FALSE;
-	}
-
-#if 0
-	hr = pSink->QueryInterface(IID_IWMWriterFileSink2, ( VOID ** )& m_pFileSink);
-	pSink->Release();
-	pSink = NULL;
-	if ( ! SUCCEEDED(hr))
-	{
-		return FALSE;
-	}
-#endif
 	hr = WMCreateProfileManager( & m_pProfileManager);
 	if ( ! SUCCEEDED(hr))
 	{
@@ -895,7 +852,7 @@ BOOL WmaEncoder::Init()
 		return FALSE;
 	}
 	m_pWriter->SetProfile(m_pProfile);
-#if 1
+#if 0
 	DWORD SourceBitrate = 0;
 	m_pStreamConfig->GetBitrate( & SourceBitrate);
 	TRACE("Stream Bitrate = %d\n", SourceBitrate);
@@ -1108,10 +1065,128 @@ HRESULT STDMETHODCALLTYPE FileWriter::IsRealTime(
 	}
 }
 
+class NSSBuffer : public INSSBuffer
+{
+
+	LONG RefCount;
+	DWORD BufLength;
+	DWORD MaxLength;
+	BYTE * pBuf;
+
+public:
+	NSSBuffer(DWORD Length)
+		: RefCount(1),
+		BufLength(0),
+		MaxLength(Length),
+		pBuf(new BYTE[Length])
+	{
+	}
+private:
+	//
+	//Methods of IUnknown
+	//
+	HRESULT STDMETHODCALLTYPE QueryInterface( REFIID riid,
+											void __RPC_FAR *__RPC_FAR *ppvObject )
+	{
+		if ( riid == IID_INSSBuffer )
+		{
+			AddRef();
+			*ppvObject = ( INSSBuffer* )this;
+		}
+		else
+		{
+			return E_NOINTERFACE;
+		}
+		return S_OK;
+	}
+
+	ULONG STDMETHODCALLTYPE AddRef( void )
+	{
+		return InterlockedIncrement( & RefCount);
+	}
+
+	ULONG STDMETHODCALLTYPE Release( void )
+	{
+		LONG Ref = InterlockedDecrement( & RefCount);
+		if (0 == Ref)
+		{
+			delete this;
+		}
+		return Ref;
+	}
+	virtual HRESULT STDMETHODCALLTYPE GetLength(
+												/* [out] */ DWORD __RPC_FAR *pdwLength)
+	{
+		if (NULL == pdwLength)
+		{
+			return E_POINTER;
+		}
+		* pdwLength = BufLength;
+		return S_OK;
+	}
+
+	virtual HRESULT STDMETHODCALLTYPE SetLength(
+												/* [in] */ DWORD dwLength)
+	{
+		if (dwLength > MaxLength)
+		{
+			return E_INVALIDARG;
+		}
+		BufLength = dwLength;
+		return S_OK;
+	}
+
+	virtual HRESULT STDMETHODCALLTYPE GetMaxLength(
+													/* [out] */ DWORD __RPC_FAR *pdwLength)
+	{
+		if (NULL == pdwLength)
+		{
+			return E_POINTER;
+		}
+		* pdwLength = MaxLength;
+		return S_OK;
+	}
+
+	virtual HRESULT STDMETHODCALLTYPE GetBuffer(
+												/* [out] */ BYTE __RPC_FAR *__RPC_FAR *ppdwBuffer)
+	{
+		if (NULL == ppdwBuffer)
+		{
+			return E_POINTER;
+		}
+		* ppdwBuffer = pBuf;
+		return S_OK;
+	}
+
+	virtual HRESULT STDMETHODCALLTYPE GetBufferAndLength(
+														/* [out] */ BYTE __RPC_FAR *__RPC_FAR *ppdwBuffer,
+														/* [out] */ DWORD __RPC_FAR *pdwLength)
+	{
+		if (NULL == ppdwBuffer
+			|| NULL == pdwLength)
+		{
+			return E_POINTER;
+		}
+		* pdwLength = BufLength;
+		* ppdwBuffer = pBuf;
+		return S_OK;
+	}
+	~NSSBuffer()
+	{
+		delete[] pBuf;
+	}
+};
+
 HRESULT STDMETHODCALLTYPE FileWriter::AllocateDataUnit(
 														/* [in] */ DWORD cbDataUnit,
 														/* [out] */ INSSBuffer __RPC_FAR *__RPC_FAR *ppDataUnit)
 {
+	if (NULL == ppDataUnit)
+	{
+		return E_POINTER;
+	}
+	* ppDataUnit = new NSSBuffer(cbDataUnit);
+	return S_OK;
 }
 
 HRESULT STDMETHODCALLTYPE FileWriter::OnDataUnit(
