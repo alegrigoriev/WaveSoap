@@ -53,7 +53,6 @@ COperationContext::COperationContext(class CWaveSoapFrontDoc * pDoc, LPCTSTR Sta
 	m_MaxClipped(0.),
 	m_GetBufferFlags(CDirectFile::GetBufferAndPrefetchNext),
 	m_ReturnBufferFlags(0)
-	, m_pUndoContext(NULL)
 {
 }
 
@@ -255,6 +254,7 @@ CTwoFilesOperation::CTwoFilesOperation(class CWaveSoapFrontDoc * pDoc, LPCTSTR S
 	, m_DstStart(0)
 	, m_DstEnd(0)
 	, m_DstPos(0)
+	, m_pUndoContext(NULL)
 {
 }
 
@@ -1095,44 +1095,6 @@ BOOL CCopyContext::InitCopy(CWaveFile & DstFile,
 
 	TRACE("SrcStart=%X, SrcEnd=%X, SrcPos=%X, DstStart=%X, DstEnd=%X, DstPos=%X\n",
 		m_SrcStart, m_SrcEnd, m_SrcPos, m_DstStart, m_DstEnd, m_DstPos);
-#if 0
-	if (SrcLength > DstLength)
-	{
-		CExpandContext * pExpandContext = new CExpandContext(pDocument, _T("Expanding the file..."), _T(""));
-
-		if (NULL == pExpandContext)
-		{
-			NotEnoughMemoryMessageBox();
-			return FALSE;
-		}
-		if ( ! pExpandContext->InitExpand(DstFile, DstStartSample + DstLength,
-										SrcLength - DstLength, DstChannel))
-		{
-			delete pExpandContext;
-			return FALSE;
-		}
-
-		m_pExpandShrinkContext = pExpandContext;
-	}
-	else if (SrcLength < DstLength)
-	{
-		CShrinkContext * pShrinkContext = new CShrinkContext(pDocument, _T("Shrinking  the file..."), _T(""));
-
-		if (NULL == pShrinkContext)
-		{
-			NotEnoughMemoryMessageBox();
-			return FALSE;
-		}
-		if ( ! pShrinkContext->InitShrink(DstFile, DstStartSample + SrcLength,
-										DstLength - SrcLength, DstChannel))
-		{
-			delete pShrinkContext;
-			return FALSE;
-		}
-
-		m_pExpandShrinkContext = pShrinkContext;
-	}
-#endif
 
 	return TRUE;
 }

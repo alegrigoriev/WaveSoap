@@ -63,7 +63,10 @@ public:
 	}
 
 	// the function is called to create UNDO context before starting the main operation
-	virtual BOOL CreateUndo(BOOL IsRedo = FALSE);
+	virtual BOOL CreateUndo(BOOL IsRedo = FALSE)
+	{
+		return TRUE;
+	}
 
 	// the function prepares the context which is part of UNDO
 	// before doing the UNDO/REDO operation
@@ -97,8 +100,6 @@ public:
 
 	int m_PercentCompleted;
 	ListHead<COperationContext> m_UndoChain;
-
-	class CCopyUndoContext * m_pUndoContext;
 
 	int m_GetBufferFlags;
 	int m_ReturnBufferFlags;
@@ -236,6 +237,9 @@ public:
 	virtual LONGLONG GetTempDataSize() const;
 	BOOL InitDestination(CWaveFile & DstFile, SAMPLE_INDEX StartSample, SAMPLE_INDEX EndSample,
 						CHANNEL_MASK chan, BOOL NeedUndo);
+
+//    protected:
+	class CCopyUndoContext * m_pUndoContext;
 
 	CWaveFile m_DstFile;
 	CHANNEL_MASK m_DstChan;
