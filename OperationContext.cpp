@@ -301,8 +301,7 @@ COneFileOperation::COneFileOperation(class CWaveSoapFrontDoc * pDoc, ULONG Flags
 
 bool COneFileOperation::KeepsPermanentFileReference() const
 {
-	return m_SrcFile.IsOpen()
-			&& ! m_SrcFile.IsTemporaryFile();
+	return m_SrcFile.RefersPermanentFile();
 }
 
 LONGLONG COneFileOperation::GetTempDataSize() const
@@ -438,8 +437,7 @@ LONGLONG CTwoFilesOperation::GetTempDataSize() const
 bool CTwoFilesOperation::KeepsPermanentFileReference() const
 {
 	return BaseClass::KeepsPermanentFileReference()
-			|| (m_DstFile.IsOpen()
-				&& ! m_DstFile.IsTemporaryFile());
+			|| m_DstFile.RefersPermanentFile();
 }
 
 // When the function creates UNDO, it also calls SetSaveForUndo to initialize range to save.

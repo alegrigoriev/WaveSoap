@@ -1900,8 +1900,7 @@ BOOL CReplaceFileContext::CreateUndo()
 
 bool CReplaceFileContext::KeepsPermanentFileReference() const
 {
-	return m_File.IsOpen()
-			&& ! m_File.IsTemporaryFile();
+	return m_File.RefersPermanentFile();
 }
 
 BOOL CReplaceFileContext::OperationProc()
