@@ -19,6 +19,11 @@
 #include <afxcmn.h>			// MFC support for Windows Common Controls
 #endif // _AFX_NO_AFXCMN_SUPPORT
 
+template<typename T> inline void memzero(T & obj)
+{
+	memset( & obj, 0, sizeof obj);
+}
+
 #include "resource.h"
 #include "mmsystem.h"
 #include "SimpleCriticalSection.h"
@@ -30,10 +35,6 @@
 #include "WaveSoapFrontView.h"
 #include "WaveFftView.h"
 
-template<typename T> inline void memzero(T & obj)
-{
-	memset( & obj, 0, sizeof obj);
-}
 //{{AFX_INSERT_LOCATION}}
 // Microsoft Visual C++ will insert additional declarations immediately before the previous line.
 

@@ -178,6 +178,7 @@ public:
 	vector<CdTrackInfo> m_Tracks;
 
 	DWORD m_DiskID;
+	WAVEFORMATEX * m_pWfx;
 
 	// speed is in bytes/s, rounded to nearest multiple of 176400
 	int m_MaxReadSpeed;

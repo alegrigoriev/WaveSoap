@@ -285,13 +285,13 @@ DWORD CWaveSoapFrontDoc::WaveFileID() const
 	return m_WavFile.GetFileID();
 }
 
-BOOL CWaveSoapFrontDoc::OnNewDocument(WAVEFORMATEX * pWfx, long InitialLengthSeconds)
+BOOL CWaveSoapFrontDoc::OnNewDocument(NewFileParameters * pParams)
 {
 	if (!CDocument::OnNewDocument())
 		return FALSE;
 	TRACE("CWaveSoapFrontDoc::OnNewDocument\n");
 	// (SDI documents will reuse this document)
-
+	WAVEFORMATEX * pWfx = pParams->pWf;
 	m_CaretPosition = 0;
 	m_SelectionStart = 0;
 	m_SelectionEnd = 0;
@@ -303,7 +303,21 @@ BOOL CWaveSoapFrontDoc::OnNewDocument(WAVEFORMATEX * pWfx, long InitialLengthSec
 		pWfx = & GetApp()->m_NewFileFormat;
 	}
 
-	LONGLONG nSamples = InitialLengthSeconds * pWfx->nSamplesPerSec;
+	LONG nSamples = pParams->InitialSamples;
+	ULONG flags = CreateWaveFileTempDir
+				| CreateWaveFileDeleteAfterClose
+				| CreateWaveFilePcmFormat
+				| CreateWaveFileTemp;
+	CString FileName;
+	if (NULL != pParams->pInitialTitle
+		&& WAVE_FORMAT_PCM == pWfx->wFormatTag)
+	{
+		flags = CreateWaveFileDeleteAfterClose
+				| CreateWaveFilePcmFormat
+				| CreateWaveFileTemp;
+		FileName = pParams->pInitialTitle;
+		FileName += _T(".tmp");
+	}
 
 	if ( ! CanAllocateWaveFileSamplesDlg(pWfx, nSamples))
 	{
@@ -311,12 +325,7 @@ BOOL CWaveSoapFrontDoc::OnNewDocument(WAVEFORMATEX * pWfx, long InitialLengthSec
 	}
 
 	if (FALSE == m_WavFile.CreateWaveFile(NULL, pWfx, ALL_CHANNELS,
-										nSamples,
-										CreateWaveFileTempDir
-										| CreateWaveFileDeleteAfterClose
-										| CreateWaveFilePcmFormat
-										| CreateWaveFileTemp,
-										NULL))
+										nSamples, flags, FileName))
 	{
 		AfxMessageBox(IDS_UNABLE_TO_CREATE_NEW_FILE, MB_OK | MB_ICONEXCLAMATION);
 		return FALSE;

@@ -906,3 +906,23 @@ void CCdDrive::StopAudioPlay()
 	}
 }
 
+BOOL CCdDrive::ReadCdData(void * pBuf, long Address, int nSectors)
+{
+	DWORD Length = nSectors * 2352;
+	ReadCD_CDB rcd(Address, Length);
+
+	return SendScsiCommand( & rcd, pBuf, & Length,
+							SCSI_IOCTL_DATA_IN, NULL);
+}
+
+BOOL CCdDrive::ReadCdData(void * pBuf, CdAddressMSF Address, int nSectors)
+{
+	DWORD Length = nSectors * 2352;
+	CdAddressMSF EndAddress;
+	EndAddress = LONG(Address) + nSectors;
+	ReadCD_MSF_CDB rcd(Address, EndAddress);
+
+	return SendScsiCommand( & rcd, pBuf, & Length,
+							SCSI_IOCTL_DATA_IN, NULL);
+}
+

@@ -215,6 +215,7 @@ void CFilePreferencesPage::OnButtonBrowseTempFileLocation()
 					TRUE);
 	if (IDOK == dlg.DoModal())
 	{
+		m_sTempFileLocation = dlg.GetFolderPath();
 		// TODO: check permissiong in callback
 		m_eTempFileLocation.SetWindowText(m_sTempFileLocation);
 	}

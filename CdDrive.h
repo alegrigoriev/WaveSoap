@@ -51,9 +51,21 @@ struct CdAddressMSF
 	UCHAR Minute;
 	UCHAR Second;
 	UCHAR Frame;
-	LONG FrameNumber(int FramesPerSecond = 75)
+	LONG SectorNumber(int FramesPerSecond = 75) const
 	{
 		return Frame + (Second + Minute * 60) * FramesPerSecond;
+	}
+	operator LONG() const
+	{
+		return Frame + (Second + Minute * 60) * 75;
+	}
+
+	CdAddressMSF & operator =(LONG sector)
+	{
+		Frame = sector % 75;
+		Second = (sector / 75) % 60;
+		Minute = sector / (75 * 60);
+		return *this;
 	}
 };
 
@@ -109,7 +121,7 @@ struct BigEndDword
 	}
 };
 
-struct ReadCD_Cdb : CD_CDB
+struct ReadCD_CDB : CD_CDB
 {
 	enum { OPCODE = 0xBE};
 	UCHAR Reladdr:1;    // set to 0
@@ -140,9 +152,85 @@ struct ReadCD_Cdb : CD_CDB
 		SubchannelRAW = 1,
 		SubchannelQ = 2,
 		SubchannelPW = 4, };
-	//UCHAR Reserved4:5;
+	UCHAR Reserved4:5;
 
 	UCHAR Control;
+	// constructor:
+	ReadCD_CDB(ULONG ReadLba, ULONG Length,
+				UCHAR SectorType = SectorTypeCDDA,
+				UCHAR Error = ErrorFieldNoError,
+				UCHAR Subchannel = SubchannelNone)
+	{
+		memzero(*this);
+		Opcode = OPCODE;
+		StartLBA = ReadLba;
+		TransferLength = Length;
+		ExpectedSectorType = SectorType;
+		ErrorField = Error;
+		SubchannelSelect = SubchannelNone;
+	}
+};
+
+struct ReadCD_MSF_CDB : CD_CDB
+{
+	enum { OPCODE = 0xB9};
+	UCHAR Reserved1:2;
+	UCHAR ExpectedSectorType:3;
+	enum{ SectorTypeAllTypes = 0,
+		SectorTypeCDDA = 1,
+		SectorTypeMode1 = 2,
+		SectorTypeMode2Formless = 3,
+		SectorTypeMode2Form1 = 4,
+		SectorTypeMode2Form2 = 5};
+	UCHAR Reserved2:3;
+
+	UCHAR reserved3;
+	UCHAR StartMinute;
+	UCHAR StartSecond;
+	UCHAR StartFrame;
+	UCHAR EndMinute;
+	UCHAR EndSecond;
+	UCHAR EndFrame;
+
+	UCHAR Reserved3:1;
+	UCHAR ErrorField:2;
+	enum { ErrorFieldNoError = 0,
+		ErrorFieldC2 = 1,   // return 2352 error bits
+		ErrorFieldC2AndBlockError = 2, };
+	UCHAR EccEdc:1;     // set to 1 if you want ECC EDC for data CD
+	UCHAR UserData:1;   // set to 1 to return data
+	UCHAR HeaderCodes:2;
+	UCHAR Sync:1;       // set to 1 if you want Sync field from the sector
+
+	UCHAR SubchannelSelect:3;
+	enum { SubchannelNone = 0,
+		SubchannelRAW = 1,
+		SubchannelQ = 2,
+		SubchannelPW = 4, };
+	UCHAR Reserved4:5;
+
+	UCHAR Control;
+	// constructor:
+	ReadCD_MSF_CDB(CdAddressMSF StartAddr, CdAddressMSF EndAddr,
+					UCHAR SectorType = SectorTypeCDDA,
+					UCHAR Error = ErrorFieldNoError,
+					UCHAR Subchannel = SubchannelNone)
+	{
+		memzero(*this);
+		Opcode = OPCODE;
+
+		StartMinute = StartAddr.Minute;
+		StartSecond = StartAddr.Second;
+		StartFrame = StartAddr.Frame;
+
+		EndMinute = EndAddr.Minute;
+		EndSecond = EndAddr.Second;
+		EndFrame = EndAddr.Frame;
+
+		ExpectedSectorType = SectorType;
+		ErrorField = Error;
+		SubchannelSelect = SubchannelNone;
+	}
 };
 
 ///////////////////////////////////////////////////////////////////////////
@@ -708,7 +796,8 @@ public:
 	BOOL GetMaxReadSpeed(int * pMaxSpeed); // bytes/s
 
 	BOOL SetReadSpeed(long BytesPerSec);
-	BOOL ReadCdData(void * pBuf, long SectorNum, int nSectors);
+	BOOL ReadCdData(void * pBuf, long Address, int nSectors);
+	BOOL ReadCdData(void * pBuf, CdAddressMSF Address, int nSectors);
 	BOOL SetStreaming(long BytesPerSecond);
 
 	CString GetLastScsiErrorText();

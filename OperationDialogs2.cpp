@@ -219,6 +219,7 @@ CCdGrabbingDialog::CCdGrabbingDialog(CWnd* pParent /*=NULL*/)
 	m_PreviousSize.cx = -1;
 	m_PreviousSize.cy = -1;
 	memzero(m_mmxi);
+	m_pWfx = NULL;
 	m_bNeedUpdateControls = TRUE;
 	m_MaxReadSpeed = 0;
 	m_SelectedReadSpeed = 64000000;    // use max available
@@ -429,7 +430,7 @@ void CCdGrabbingDialog::ReloadTrackList()
 		pTrack->TrackBegin.Second = m_toc.TrackData[tr].Address[2];
 		pTrack->TrackBegin.Frame = m_toc.TrackData[tr].Address[3];
 		pTrack->NumSectors =
-			NextTrackBegin.FrameNumber() - pTrack->TrackBegin.FrameNumber();
+			LONG(NextTrackBegin) - LONG(pTrack->TrackBegin);
 
 		LVITEM item1 = {
 			LVIF_TEXT | LVIF_STATE,
@@ -862,7 +863,7 @@ void CCdGrabbingDialog::OnButtonBrowseSaveFolder()
 	// save file name consists of base folder, album name filename,
 	// if album filename not entered, it is created from CD label
 
-	if (m_RadioStoreMultiple)
+	if (0 == m_RadioStoreMultiple)
 	{
 		// browse for folder
 		m_eSaveFolderOrFile.GetWindowText(m_sSaveFolderOrFile);
@@ -870,6 +871,7 @@ void CCdGrabbingDialog::OnButtonBrowseSaveFolder()
 						m_sSaveFolderOrFile, TRUE);
 		if (IDOK == dlg.DoModal())
 		{
+			m_sSaveFolderOrFile = dlg.GetFolderPath();
 			// TODO: check permissiong in callback
 			m_eSaveFolderOrFile.SetWindowText(m_sSaveFolderOrFile);
 			// TODO: check if the folder exists and create if necessary

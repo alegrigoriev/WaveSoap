@@ -33,33 +33,6 @@ static char THIS_FILE[] = __FILE__;
 BOOL AFXAPI AfxResolveShortcut(CWnd* pWnd, LPCTSTR pszShortcutFile,
 								LPTSTR pszPath, int cchPath);
 // CWaveSoapFrontApp
-class CWaveSoapDocTemplate : public CMultiDocTemplate
-{
-public:
-	CWaveSoapDocTemplate( UINT nIDResource, UINT nIDStringResource,
-						CRuntimeClass* pDocClass,
-						CRuntimeClass* pFrameClass, CRuntimeClass* pViewClass )
-		:CMultiDocTemplate(nIDResource, pDocClass, pFrameClass, pViewClass),
-		m_OpenDocumentFlags(0)
-	{
-		if ( ! m_strDocStrings.LoadString(nIDStringResource))
-		{
-			m_strDocStrings.LoadString(m_nIDResource);
-		}
-	}
-	~CWaveSoapDocTemplate() {}
-	virtual CDocument* OpenDocumentFile( LPCTSTR lpszPathName, int flags = 1
-											//BOOL bMakeVisible = TRUE
-										);
-
-	DWORD m_OpenDocumentFlags;
-	virtual void OnIdle();
-	void BroadcastUpdate(UINT lHint);
-	BOOL IsAnyDocumentModified();
-	BOOL CanSaveAnyDocument();
-	void SaveAll();
-};
-
 class CWaveSoapDocManager : public CDocManager
 {
 public:
@@ -717,11 +690,13 @@ CDocument* CWaveSoapDocTemplate::OpenDocumentFile(LPCTSTR lpszPathName,
 	CDocument* pJustDocument = CreateNewDocument();
 	BOOL bMakeVisible = flags & 1;
 	WAVEFORMATEX * pWfx = NULL;
-	if (flags & OpenDocumentCreateNewWithWaveformat)
+	NewFileParameters * pParams = NULL;
+	if (flags & OpenDocumentCreateNewWithParameters)
 	{
-		pWfx = (WAVEFORMATEX *) lpszPathName;
+		pParams = (NewFileParameters *) lpszPathName;
+		pWfx = pParams->pWf;
 		lpszPathName = NULL;
-		flags &= ~ OpenDocumentCreateNewWithWaveformat;
+		flags &= ~ OpenDocumentCreateNewWithParameters;
 	}
 	if (pJustDocument == NULL)
 	{
@@ -744,7 +719,15 @@ CDocument* CWaveSoapDocTemplate::OpenDocumentFile(LPCTSTR lpszPathName,
 	{
 		// create a new document - with default document name
 		CThisApp * pApp = GetApp();
-		SetDefaultTitle(pDocument);
+		if (NULL != pParams->pInitialTitle)
+		{
+			pDocument->SetTitle(pParams->pInitialTitle);
+		}
+		else
+		{
+			SetDefaultTitle(pDocument);
+		}
+
 		if (flags & OpenDocumentCreateNewQueryFormat
 			&& NULL != pWfx)
 		{
@@ -763,6 +746,8 @@ CDocument* CWaveSoapDocTemplate::OpenDocumentFile(LPCTSTR lpszPathName,
 				}
 
 				pApp->m_NewFileLength = dlg.m_Length;   // in seconds
+				pParams->InitialSamples = dlg.m_Length * pWfx->nSamplesPerSec;
+
 				pApp->m_bShowNewFormatDialogWhenShiftOnly = (dlg.m_bShowOnlyWhenShift != 0);
 				pWfx->nSamplesPerSec = dlg.m_nSamplingRate;
 				if (dlg.m_MonoStereo)
@@ -778,12 +763,7 @@ CDocument* CWaveSoapDocTemplate::OpenDocumentFile(LPCTSTR lpszPathName,
 		// avoid creating temporary compound file when starting up invisible
 		if (!bMakeVisible)
 			pDocument->m_bEmbedded = TRUE;
-		long length = pApp->m_NewFileLength;
-		if (flags & OpenNewDocumentZeroLength)
-		{
-			length = 0;
-		}
-		if (!pDocument->OnNewDocument(pWfx, length))
+		if ( ! pDocument->OnNewDocument(pParams))
 		{
 			// user has be alerted to what failed in OnNewDocument
 			TRACE0("CDocument::OnNewDocument returned FALSE.\n");
@@ -1513,10 +1493,15 @@ void CWaveSoapFrontApp::OnFileNew()
 	CDocTemplate* pTemplate = m_pDocManager->GetNextDocTemplate(pos);
 	if (pTemplate != NULL)
 	{
-		//CWaveSoapFrontDoc * pDoc =
+		NewFileParameters Params;
+		Params.InitialSamples = GetApp()->m_NewFileLength;
+		Params.pInitialTitle = NULL;
+		Params.pWf = & GetApp()->m_NewFileFormat;
+
 		(CWaveSoapFrontDoc *)pTemplate->OpenDocumentFile(
-														(LPCTSTR) & (GetApp()->m_NewFileFormat),
-														OpenDocumentCreateNewWithWaveformat | OpenDocumentCreateNewQueryFormat);
+														(LPCTSTR) & Params,
+														OpenDocumentCreateNewWithParameters | OpenDocumentCreateNewQueryFormat);
+
 		m_NewFileChannels = m_NewFileFormat.nChannels;
 	}
 }
@@ -1533,9 +1518,15 @@ void CWaveSoapFrontApp::OnEditPasteNew()
 	{
 		WAVEFORMATEX * pWfx = m_ClipboardFile.GetWaveFormat();
 
+		NewFileParameters Params;
+		Params.InitialSamples = 0;
+		Params.pInitialTitle = NULL;
+		Params.pWf = pWfx;
+
 		CWaveSoapFrontDoc * pDoc =
-			(CWaveSoapFrontDoc *)pTemplate->OpenDocumentFile((LPCTSTR) pWfx,
-															OpenDocumentCreateNewWithWaveformat | OpenNewDocumentZeroLength);
+			(CWaveSoapFrontDoc *)pTemplate->OpenDocumentFile(
+															(LPCTSTR) & Params,
+															OpenDocumentCreateNewWithParameters);
 
 		if (NULL != pDoc)
 		{
@@ -2137,45 +2128,105 @@ void CWaveSoapDocTemplate::SaveAll()
 void CWaveSoapFrontApp::OnToolsCdgrab()
 {
 	CCdGrabbingDialog dlg;
+	WAVEFORMATEX wfx;
+	wfx.cbSize = 0;
+	wfx.wFormatTag = WAVE_FORMAT_PCM;
+	wfx.nChannels = 2;
+	wfx.nSamplesPerSec = 44100;
+	wfx.wBitsPerSample = 16;
+	wfx.nBlockAlign = 4;
+	wfx.nAvgBytesPerSec = 176400;
+
+	dlg.m_pWfx = & wfx;
+
 	if (IDOK != dlg.DoModal())
 	{
 		return;
 	}
 	const int MaxTracks = 99;
-	CCdReadingContext * pContexts[MaxTracks];
-	CWaveSoapFrontDoc * pDocuments[MaxTracks];
 
+	CCdReadingContext * pContexts[MaxTracks];
+	CCdReadingContext * pContext;
 	memzero(pContexts);
-	memzero(pDocuments);
+
+	POSITION pos = m_pDocManager->GetFirstDocTemplatePosition();
+	CDocTemplate* pTemplate = m_pDocManager->GetNextDocTemplate(pos);
+	if (NULL == pTemplate)
+	{
+		return;
+	}
 
 	int t;
 	for (t = 0; t < dlg.m_Tracks.size() && t < MaxTracks; t++)
 	{
 		// create a new document
-		// allocate a context
-		CCdReadingContext * pContext = new CCdReadingContext
-										(pDocument,
-											_T("Reading CD data..."),
-											_T("CD read"),
-											dlg.m_CdDrive);
-		if (NULL == pContext)
+		if ( ! dlg.m_Tracks[t].Checked)
+		{
+			continue;
+		}
+
+		CString FileName = dlg.m_sSaveFolderOrFile;
+		if (FileName.GetLength() >= 1
+			&& '\\' != FileName[FileName.GetLength() - 1])
+		{
+			FileName += '\\';
+		}
+		FileName += dlg.m_Tracks[t].Track;
+
+		NewFileParameters Params;
+		Params.InitialSamples = dlg.m_Tracks[t].NumSectors * (2352 / 4);
+		Params.pInitialTitle = FileName;
+		Params.pWf = dlg.m_pWfx;
+
+		CWaveSoapFrontDoc * pDoc =
+			(CWaveSoapFrontDoc *)pTemplate->OpenDocumentFile(
+															(LPCTSTR) & Params,
+															OpenDocumentCreateNewWithParameters);
+		if (NULL == pDoc)
 		{
 			break;
 		}
+		// allocate a context
+		CString s;
+		s.Format(_T("Reading CD track %d..."), t + 1);
+
+		pContext = new CCdReadingContext
+					(pDoc, s, _T("CD read"));
+
+		if (NULL == pContext)
+		{
+			delete pDoc;
+			break;
+		}
+
+		pContexts[t] = pContext;
 	}
 
 	if (dlg.m_Tracks.size() == t)
 	{
-		for (t = 0; t < dlg.m_Tracks.size() & t < MaxTracks; t++)
+		for (t = 0; t < dlg.m_Tracks.size() && t < MaxTracks; t++)
 		{
-			pContexts[t]->Execute();
+			pContext = pContexts[t];
+
+			if (NULL != pContext)
+			{
+				pContext->SetTrackInformation(dlg.m_CdDrive,
+											dlg.m_Tracks[t].TrackBegin,
+											dlg.m_Tracks[t].NumSectors);
+				pContext->Execute();
+				pContext->pDocument->SetModifiedFlag();
+			}
 		}
 	}
 	else
 	{
-		for (t = 0; t < dlg.m_Tracks.size() & t < MaxTracks; t++)
+		for (t = 0; t < dlg.m_Tracks.size() && t < MaxTracks; t++)
 		{
-			delete pContexts[t];
+			if (NULL != pContexts[t])
+			{
+				delete pContexts[t]->pDocument;
+				delete pContexts[t];
+			}
 		}
 	}
 	return;
