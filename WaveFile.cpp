@@ -351,15 +351,9 @@ BOOL CWaveFile::LoadWaveformat()
 		return FALSE;
 	}
 	// allocate structure
-	int WaveformatSize = ck.cksize;
-	if (WaveformatSize < sizeof (WAVEFORMATEX))
-	{
-		WaveformatSize = sizeof (WAVEFORMATEX);
-	}
-	COMMON_DATA * pCd = (COMMON_DATA *)AllocateCommonData(offsetof (COMMON_DATA, wf) + WaveformatSize);
-	LPWAVEFORMATEX pWf = & pCd->wf;
+	LPWAVEFORMATEX pWf = AllocateWaveformat(ck.cksize);
 
-	if (NULL != pCd)
+	if (NULL != pWf)
 	{
 		if (ck.cksize == Read(pWf, ck.cksize))
 		{
@@ -741,7 +735,7 @@ BOOL CMmioFile::CommitChanges()
 	// save RIFF header
 	DWORD CurrentLength = (DWORD)GetLength();
 	LPMMCKINFO riff = GetRiffChunk();
-	if (NULL != riff
+	if (NULL != riff && 0 != riff->ckid
 		&& ((riff->dwFlags & MMIO_DIRTY) || riff->dwDataOffset + riff->cksize != CurrentLength))
 	{
 		Seek(CurrentLength);
@@ -763,6 +757,7 @@ BOOL CWaveFile::CommitChanges()
 	// write new fmt chunk
 	MMCKINFO * fmtck = GetFmtChunk();
 	if (NULL != fmtck
+		&& 0 != fmtck->dwDataOffset
 		&& (fmtck->dwFlags & MMIO_DIRTY))
 	{
 		Seek(fmtck->dwDataOffset);
@@ -781,6 +776,7 @@ BOOL CWaveFile::CommitChanges()
 	// update data chunk
 	MMCKINFO * datack = GetDataChunk();
 	if (NULL != datack
+		&& 0 != datack->dwDataOffset
 		&& datack->dwFlags & MMIO_DIRTY)
 	{
 		Seek(datack->dwDataOffset - sizeof datack->cksize);

@@ -2678,6 +2678,14 @@ BOOL BladeMp3Encoder::FlushStream(BYTE * pDst, DWORD * pBytesEncoded)
 	return BE_ERR_SUCCESSFUL == beDeinitStream(m_pStream, pDst, pBytesEncoded);
 }
 
+CLameEncConvertor::~CLameEncConvertor()
+{
+	delete[] m_pInputBuffer;
+	m_pInputBuffer = NULL;
+	delete[] m_pOutputBuffer;
+	m_pOutputBuffer = NULL;
+}
+
 BOOL CLameEncConvertor::Open(WAVEFORMATEX * pWF)
 {
 	BE_CONFIG cfg;

@@ -35,9 +35,14 @@ void CReopenCompressedFileDialog::DoDataExchange(CDataExchange* pDX)
 
 BEGIN_MESSAGE_MAP(CReopenCompressedFileDialog, CDialog)
 	//{{AFX_MSG_MAP(CReopenCompressedFileDialog)
-		// NOTE: the ClassWizard will add message map macros here
+	ON_BN_CLICKED(IDNO, OnNo)
 	//}}AFX_MSG_MAP
 END_MESSAGE_MAP()
 
 /////////////////////////////////////////////////////////////////////////////
 // CReopenCompressedFileDialog message handlers
+
+void CReopenCompressedFileDialog::OnNo()
+{
+	EndDialog(IDNO);
+}

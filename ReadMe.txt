@@ -1,5 +1,6 @@
 Known problems and tasks:
 
+Pass file type flags for MP3 file reopen
 Add RAW format save
 Add MP3 save
 Add WMA save

@@ -507,6 +507,7 @@ void CWaveSoapFrontDoc::SavePeakInfo(CWaveFile & WaveFile, CWaveFile & SavedWave
 
 		PeakFile.Close();
 	}
+
 }
 
 
@@ -2309,8 +2310,14 @@ BOOL CWaveSoapFrontDoc::OnSaveMp3File(int flags, LPCTSTR FullTargetName, WAVEFOR
 		return FALSE;
 	}
 
+	WAVEFORMATEX * pNewFormat = NewWaveFile.AllocateWaveformat();
+	if (NULL != pNewFormat)
+	{
+		* pNewFormat = * pWf;
+	}
+
 	CFileSaveContext * pContext = new CFileSaveContext(this,
-														"Compressing and saving the Mp3 file...", "Mp3 File Compress and Save");
+														"Compressing and saving Mp3 file...", "Mp3 File Compress and Save");
 	if (NULL == pContext)
 	{
 		NotEnoughMemoryMessageBox();
@@ -2815,7 +2822,7 @@ void CWaveSoapFrontDoc::OnUpdateFileSave(CCmdUI* pCmdUI)
 
 void CWaveSoapFrontDoc::OnUpdateFileSaveAs(CCmdUI* pCmdUI)
 {
-	// in direct or readonly mode only Save Copy eommand is allowed
+	// in direct or readonly mode only Save Copy command is allowed
 	pCmdUI->Enable(! m_OperationInProgress && ! m_bDirectMode && ! m_bReadOnly);
 }
 

@@ -1778,7 +1778,7 @@ CAPTION "Reopen File Saved With Conversion"
 FONT 8, "MS Sans Serif"
 BEGIN
     LTEXT           "File ""%s"" saved. ",IDC_STATIC_PROMPT,7,7,173,59
-    DEFPUSHBUTTON   "&Reload compressed file",IDYES,35,72,115,14
+    DEFPUSHBUTTON   "&Reload compressed file",IDOK,35,72,115,14
     PUSHBUTTON      "&Close the file",IDCANCEL,35,88,115,14
 END
 

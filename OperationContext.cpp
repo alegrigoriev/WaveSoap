@@ -3353,7 +3353,7 @@ void CFileSaveContext::PostRetire(BOOL bChildContext)
 	{
 		// update data chunk and number of samples
 		MMCKINFO * datack = m_pConvert->m_DstFile.GetDataChunk();
-		if (NULL != datack)
+		if (NULL != datack && datack->ckid != 0)
 		{
 			datack->dwFlags |= MMIO_DIRTY;
 			datack->cksize = m_pConvert->m_DstCopyPos - datack->dwDataOffset;
@@ -3535,7 +3535,7 @@ BOOL CConversionContext::OperationProc()
 
 	// notify the view
 	MMCKINFO * pDataChunk = m_DstFile.GetDataChunk();
-	if (NULL != pDataChunk)
+	if (NULL != pDataChunk && pDataChunk->ckid != 0)
 	{
 		// pDataChunk is null, if the output file is not in WAV format
 		int nSampleSize = m_DstFile.SampleSize();

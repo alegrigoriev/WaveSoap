@@ -236,6 +236,20 @@ public:
 
 	//MMCKINFO m_datack;
 
+	WAVEFORMATEX * AllocateWaveformat(size_t FormatSize = sizeof (WAVEFORMATEX))
+	{
+		if (FormatSize < sizeof (WAVEFORMATEX))
+		{
+			FormatSize = sizeof (WAVEFORMATEX);
+		}
+		COMMON_DATA * pCd = (COMMON_DATA *)AllocateCommonData(offsetof (COMMON_DATA, wf) + FormatSize);
+		if (NULL == pCd)
+		{
+			return NULL;
+		}
+		return & pCd->wf;
+	}
+
 	BOOL LoadWaveformat();
 	BOOL FindData();
 
