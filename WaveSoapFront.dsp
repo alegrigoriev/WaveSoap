@@ -42,7 +42,7 @@ RSC=rc.exe
 # PROP Intermediate_Dir "Release"
 # PROP Target_Dir ""
 # ADD BASE CPP /nologo /MT /W3 /GX /O2 /D "WIN32" /D "NDEBUG" /D "_WINDOWS" /Yu"stdafx.h" /FD /c
-# ADD CPP /nologo /MT /W3 /GX /O2 /D "WIN32" /D "NDEBUG" /D "_WINDOWS" /D "_MBCS" /Yu"stdafx.h" /FD /c
+# ADD CPP /nologo /G6 /MT /W3 /GX /O2 /D "WIN32" /D "NDEBUG" /D "_WINDOWS" /D "_MBCS" /Yu"stdafx.h" /FD /c
 # ADD BASE MTL /nologo /D "NDEBUG" /mktyplib203 /win32
 # ADD MTL /nologo /D "NDEBUG" /mktyplib203 /win32
 # ADD BASE RSC /l 0x419 /d "NDEBUG"
@@ -52,7 +52,7 @@ BSC32=bscmake.exe
 # ADD BSC32 /nologo
 LINK32=link.exe
 # ADD BASE LINK32 /nologo /subsystem:windows /machine:I386
-# ADD LINK32 /nologo /subsystem:windows /machine:I386
+# ADD LINK32 winmm.lib /nologo /subsystem:windows /machine:I386
 
 !ELSEIF  "$(CFG)" == "WaveSoapFront - Win32 Debug"
 
@@ -66,8 +66,8 @@ LINK32=link.exe
 # PROP Output_Dir "Debug"
 # PROP Intermediate_Dir "Debug"
 # PROP Target_Dir ""
-# ADD BASE CPP /nologo /MTd /W3 /Gm /GX /ZI /Od /D "WIN32" /D "_DEBUG" /D "_WINDOWS" /Yu"stdafx.h" /FD /GZ  /c
-# ADD CPP /nologo /MTd /W3 /Gm /GX /ZI /Od /D "WIN32" /D "_DEBUG" /D "_WINDOWS" /D "_MBCS" /Yu"stdafx.h" /FD /GZ   /c
+# ADD BASE CPP /nologo /MTd /W3 /Gm /GX /ZI /Od /D "WIN32" /D "_DEBUG" /D "_WINDOWS" /Yu"stdafx.h" /FD /GZ /c
+# ADD CPP /nologo /MTd /W3 /Gm /GX /ZI /Od /D "WIN32" /D "_DEBUG" /D "_WINDOWS" /D "_MBCS" /Yu"stdafx.h" /FD /GZ /c
 # ADD BASE MTL /nologo /D "_DEBUG" /mktyplib203 /win32
 # ADD MTL /nologo /D "_DEBUG" /mktyplib203 /win32
 # ADD BASE RSC /l 0x419 /d "_DEBUG"
@@ -77,7 +77,7 @@ BSC32=bscmake.exe
 # ADD BSC32 /nologo
 LINK32=link.exe
 # ADD BASE LINK32 /nologo /subsystem:windows /debug /machine:I386 /pdbtype:sept
-# ADD LINK32 /nologo /subsystem:windows /debug /machine:I386 /pdbtype:sept
+# ADD LINK32 winmm.lib /nologo /subsystem:windows /debug /machine:I386 /pdbtype:sept
 
 !ENDIF 
 
@@ -90,7 +90,23 @@ LINK32=link.exe
 # PROP Default_Filter "cpp;c;cxx;rc;def;r;odl;idl;hpj;bat"
 # Begin Source File
 
+SOURCE=.\AmplitudeRuler.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=.\ApplicationProfile.cpp
+# End Source File
+# Begin Source File
+
 SOURCE=.\ChildFrm.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=.\DeclickPage.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=.\DirectFile.cpp
 # End Source File
 # Begin Source File
 
@@ -98,8 +114,56 @@ SOURCE=.\MainFrm.cpp
 # End Source File
 # Begin Source File
 
+SOURCE=.\NoiseReductionPage.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=.\NumEdit.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=.\Ruler.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=.\ScaledScrollView.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=.\shellink.cpp
+# End Source File
+# Begin Source File
+
 SOURCE=.\StdAfx.cpp
 # ADD CPP /Yc"stdafx.h"
+# End Source File
+# Begin Source File
+
+SOURCE=.\TimeRulerView.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=.\WaveFftView.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=.\WaveFile.cpp
+
+!IF  "$(CFG)" == "WaveSoapFront - Win32 Release"
+
+# SUBTRACT CPP /YX /Yc /Yu
+
+!ELSEIF  "$(CFG)" == "WaveSoapFront - Win32 Debug"
+
+# ADD CPP /Yu
+
+!ENDIF 
+
+# End Source File
+# Begin Source File
+
+SOURCE=.\waveproc.cpp
+# SUBTRACT CPP /YX /Yc /Yu
 # End Source File
 # Begin Source File
 
@@ -112,7 +176,7 @@ SOURCE=.\hlp\WaveSoapFront.hpj
 !IF  "$(CFG)" == "WaveSoapFront - Win32 Release"
 
 # PROP Ignore_Default_Tool 1
-USERDEP__WAVES=hlp\AfxCore.rtf	hlp\AfxPrint.rtf	hlp\$(TargetName).hm
+USERDEP__WAVES="hlp\AfxCore.rtf"	"hlp\AfxPrint.rtf"	"hlp\$(TargetName).hm"	
 # Begin Custom Build - Making help file...
 OutDir=.\Release
 TargetName=WaveSoapFront
@@ -135,7 +199,7 @@ InputName=WaveSoapFront
 !ELSEIF  "$(CFG)" == "WaveSoapFront - Win32 Debug"
 
 # PROP Ignore_Default_Tool 1
-USERDEP__WAVES=hlp\AfxCore.rtf	hlp\AfxPrint.rtf	hlp\$(TargetName).hm
+USERDEP__WAVES="hlp\AfxCore.rtf"	"hlp\AfxPrint.rtf"	"hlp\$(TargetName).hm"	
 # Begin Custom Build - Making help file...
 OutDir=.\Debug
 TargetName=WaveSoapFront
@@ -170,17 +234,57 @@ SOURCE=.\WaveSoapFrontDoc.cpp
 
 SOURCE=.\WaveSoapFrontView.cpp
 # End Source File
+# Begin Source File
+
+SOURCE=.\WaveSupport.cpp
+# End Source File
 # End Group
 # Begin Group "Header Files"
 
 # PROP Default_Filter "h;hpp;hxx;hm;inl"
 # Begin Source File
 
+SOURCE=.\AmplitudeRuler.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\ApplicationProfile.h
+# End Source File
+# Begin Source File
+
 SOURCE=.\ChildFrm.h
 # End Source File
 # Begin Source File
 
+SOURCE=.\Complex.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\DeclickPage.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\DirectFile.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\fft.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\FFT.inl
+# End Source File
+# Begin Source File
+
 SOURCE=.\MainFrm.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\NoiseReductionPage.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\NumEdit.h
 # End Source File
 # Begin Source File
 
@@ -243,7 +347,35 @@ InputPath=.\Resource.h
 # End Source File
 # Begin Source File
 
+SOURCE=.\Ruler.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\ScaledScrollView.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\shellink.h
+# End Source File
+# Begin Source File
+
 SOURCE=.\StdAfx.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\TimeRulerView.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\WaveFftView.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\WaveFile.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\waveproc.h
 # End Source File
 # Begin Source File
 
@@ -257,13 +389,33 @@ SOURCE=.\WaveSoapFrontDoc.h
 
 SOURCE=.\WaveSoapFrontView.h
 # End Source File
+# Begin Source File
+
+SOURCE=.\WaveSupport.h
+# End Source File
 # End Group
 # Begin Group "Resource Files"
 
 # PROP Default_Filter "ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe"
 # Begin Source File
 
+SOURCE=.\res\cur00001.cur
+# End Source File
+# Begin Source File
+
+SOURCE=.\res\cur00002.cur
+# End Source File
+# Begin Source File
+
+SOURCE=.\res\cursor_b.cur
+# End Source File
+# Begin Source File
+
 SOURCE=.\res\Toolbar.bmp
+# End Source File
+# Begin Source File
+
+SOURCE=.\res\WaveSoap.ico
 # End Source File
 # Begin Source File
 
