@@ -296,6 +296,7 @@ void CWaveFftView::OnDraw(CDC* pDC)
 	if (0 == TotalRows)
 	{
 		DeleteObject(hbm);
+		CScaledScrollView::OnDraw(pDC);
 		return;
 	}
 
@@ -433,6 +434,11 @@ void CWaveFftView::OnDraw(CDC* pDC)
 	GdiFlush(); // make sure bitmap is drawn before deleting it (NT only)
 	// free resources
 	DeleteObject(hbm);
+	if (m_PlaybackCursorDrawn)
+	{
+		DrawPlaybackCursor(pDC, m_PlaybackCursorDrawnSamplePos, m_PlaybackCursorChannel);
+	}
+	CScaledScrollView::OnDraw(pDC);
 }
 
 void CWaveFftView::MakeFftArray(int left, int right)
@@ -693,8 +699,6 @@ void CWaveFftView::Dump(CDumpContext& dc) const
 
 void CWaveFftView::OnPaint()
 {
-
-	// TODO: Add your message handler code here
 	CRgn UpdRgn;
 	CRgn InvalidRgn;
 	CRgn RectToDraw;
@@ -735,15 +739,38 @@ void CWaveFftView::OnPaint()
 
 BOOL CWaveFftView::OnEraseBkgnd(CDC* pDC)
 {
-	// TODO: Add your message handler code here and/or call default
 	return CView::OnEraseBkgnd(pDC);       // we don't need to erase background
 //	return CWaveSoapFrontView::OnEraseBkgnd(pDC);
 }
 
 BOOL CWaveFftView::PreCreateWindow(CREATESTRUCT& cs)
 {
+	if (NULL == m_Brush)
+	{
+		CBitmap bmp;
+		static const unsigned char pattern[] =
+		{
+			0x55, 0,  // aligned to WORD
+			0xAA, 0,
+			0x55, 0,
+			0xAA, 0,
+			0x55, 0,
+			0xAA, 0,
+			0x55, 0,
+			0xAA, 0,
+		};
+		try {
+			bmp.CreateBitmap(8, 8, 1, 1, pattern);
+			CBrush GrayBrush( & bmp);
+			m_Brush = (HBRUSH)GrayBrush.Detach();
+		}
+		catch (CResourceException)
+		{
+			TRACE("CResourceException\n");
+		}
+	}
 	cs.lpszClass = AfxRegisterWndClass(CS_VREDRAW | CS_DBLCLKS, NULL,
-										(HBRUSH)GetStockObject(BLACK_BRUSH), NULL);
+										m_Brush, NULL);
 	TRACE("CWaveFftView::PreCreateWindow(CREATESTRUCT)\n");
 	return CScaledScrollView::PreCreateWindow(cs);
 }
@@ -873,3 +900,96 @@ void CWaveFftView::OnViewZoomvertNormal()
 		NotifySlaveViews(FFT_SCALE_CHANGED);
 	}
 }
+
+void CWaveFftView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
+{
+	if (lHint == CWaveSoapFrontDoc::UpdateSoundChanged
+		&& NULL != pHint
+		&& NULL != m_pFftResultArray)
+	{
+		CSoundUpdateInfo * pInfo = (CSoundUpdateInfo *) pHint;
+		CWaveSoapFrontDoc * pDoc = GetDocument();
+
+		// calculate update boundaries
+		int nChannels = pDoc->WaveChannels();
+		int left = pInfo->Begin / nChannels;
+		int right = pInfo->End / nChannels;
+		int FirstSampleChanged = left - left % m_FftSpacing;
+		int LastSampleRequired = right + m_FftSpacing - right % m_FftSpacing;
+		if (LastSampleRequired > m_FftResultBegin
+			&& FirstSampleChanged < m_FftResultEnd)
+		{
+			if (FirstSampleChanged < m_FftResultBegin)
+			{
+				FirstSampleChanged = m_FftResultBegin;
+			}
+			size_t i = (FirstSampleChanged - m_FftResultBegin) / m_FftSpacing * m_FftResultArrayHeight;
+			size_t j = (LastSampleRequired - m_FftResultBegin) / m_FftSpacing * m_FftResultArrayHeight;
+			if (j > m_FftArraySize)
+			{
+				j = m_FftArraySize;
+			}
+			for ( ; i < j; i += m_FftResultArrayHeight)
+			{
+				// invalidate the column
+				m_pFftResultArray[i] = 0;
+			}
+		}
+		if (pInfo->Length != -1)
+		{
+			int samples = pInfo->Length / nChannels;
+			samples -= samples % m_FftSpacing;
+			if (samples < m_FftResultBegin)
+			{
+				samples = m_FftResultBegin;
+			}
+
+			int i = (samples - m_FftResultBegin) / m_FftSpacing * m_FftResultArrayHeight;
+			// invalidate the columns that correspond to the deleted data
+			for ( ; i < m_FftArraySize; i += m_FftResultArrayHeight)
+			{
+				// invalidate the column
+				m_pFftResultArray[i] = 0;
+			}
+		}
+
+	}
+	else if (lHint == CWaveSoapFrontDoc::UpdateSelectionChanged
+			&& NULL != pHint)
+	{
+		CSelectionUpdateInfo * pInfo = (CSelectionUpdateInfo *) pHint;
+		CWaveSoapFrontDoc * pDoc = GetDocument();
+
+		if (pInfo->m_bMakeCaretVisible)
+		{
+			MovePointIntoView(pDoc->m_CaretPosition);
+		}
+
+		int nChannels = GetDocument()->WaveChannels();
+		int nLowExtent = -32768;
+		int nHighExtent = 32767;
+		if (nChannels > 1)
+		{
+			nLowExtent = -0x10000;
+			nHighExtent = 0x10000;
+			if (pInfo->SelChannel == 0)
+			{
+				nLowExtent = 0;
+			}
+			else if (pInfo->SelChannel == 1)
+			{
+				nHighExtent = 0;
+			}
+		}
+
+
+		ChangeSelection(pDoc->m_SelectionStart, pDoc->m_SelectionEnd,
+						nLowExtent, nHighExtent);
+		CreateAndShowCaret();
+		return; // don't call Wave view OnUpdate in this case
+		// we don't want to invalidate
+	}
+	CWaveSoapFrontView::OnUpdate(pSender, lHint, pHint);
+}
+
+HBRUSH CWaveFftView::m_Brush = NULL;
