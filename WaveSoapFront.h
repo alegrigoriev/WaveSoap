@@ -38,6 +38,7 @@ class CWaveSoapFrontApp : public CWinApp
 public:
 	CWaveSoapFrontApp();
 	void QueueOperation(COperationContext * pContext);
+	void LoadStdProfileSettings(UINT nMaxMRU);
 
 // Overrides
 	// ClassWizard generated virtual function overrides
@@ -87,17 +88,23 @@ public:
 	size_t m_SizePlaybackBuffers;
 	BOOL m_bReadOnly;
 	BOOL m_bDirectMode;
+	// Undo/Redo parameters
 	BOOL m_bUndoEnabled;
 	BOOL m_bRedoEnabled;
 	int m_MaxUndoDepth;
 	int m_MaxRedoDepth;
 	DWORD m_MaxUndoSize;
 	DWORD m_MaxRedoSize;
+	// volume change parameters:
 	int m_VolumeDialogDbPercents;
 	double m_dVolumeLeftDb;
 	double m_dVolumeRightDb;
 	double m_dVolumeLeftPercent;
 	double m_dVolumeRightPercent;
+	// DC offset parameters:
+	BOOL m_b5SecondsDC;
+	int m_nDcOffset;
+	int m_DcSelectMode;
 
 	BOOL m_bUseCountrySpecificNumberAndTime;
 	TCHAR m_TimeSeparator;
@@ -139,7 +146,7 @@ enum
 	TimeToHhMmSs_NeedsHhMm = 0x200,
 };
 CString TimeToHhMmSs(unsigned TimeMs, int Flags = TimeToHhMmSs_NeedsMs);
-CString SampleToString(long Sample, const WAVEFORMATEX * pWf,
+CString SampleToString(long Sample, long nSamplesPerSec,
 						int Flags = SampleToString_HhMmSs
 									| TimeToHhMmSs_NeedsHhMm
 									| TimeToHhMmSs_NeedsMs);
