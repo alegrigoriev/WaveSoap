@@ -29,17 +29,12 @@ helper.
 
 typedef long SAMPLE_INDEX;
 typedef long NUMBER_OF_SAMPLES;
+typedef unsigned PEAK_INDEX;
 
-typedef int CHANNEL_MASK;
-#define ALL_CHANNELS ((CHANNEL_MASK)-1)
-
-typedef short NUMBER_OF_CHANNELS;
 typedef DWORD SAMPLE_POSITION;
 typedef DWORD WAV_FILE_SIZE;
 typedef LONGLONG MEDIA_FILE_SIZE;  // to be expanded to 64 bits
 typedef LONGLONG MEDIA_FILE_POSITION;
-typedef unsigned PEAK_INDEX;
-typedef __int16 WAVE_SAMPLE;
 
 #define LAST_SAMPLE (NUMBER_OF_SAMPLES(-1))
 #define LAST_SAMPLE_POSITION (SAMPLE_POSITION(-1))
@@ -414,7 +409,7 @@ public:
 	CWaveFile();
 	~CWaveFile();
 	BOOL CreateWaveFile(CWaveFile * pTemplateFile, WAVEFORMATEX * pTemplateFormat,
-						NUMBER_OF_CHANNELS Channels, WAV_FILE_SIZE SizeOrSamples, DWORD flags, LPCTSTR FileName);
+						CHANNEL_MASK Channels, WAV_FILE_SIZE SizeOrSamples, DWORD flags, LPCTSTR FileName);
 
 	virtual BOOL Open(LPCTSTR lpszFileName, UINT nOpenFlags);
 	virtual void Close();
@@ -532,12 +527,24 @@ public:
 		}
 		return pWf->nChannels;
 	}
+
+	NUMBER_OF_CHANNELS NumChannelsFromMask(CHANNEL_MASK Channels) const;
+
 	NUMBER_OF_SAMPLES NumberOfSamples() const;
 	CWaveFile & operator =(CWaveFile &);
 
 	WAVEFORMATEX * AllocateWaveformat(size_t FormatSize = sizeof (WAVEFORMATEX))
 	{
 		return AllocateInstanceData<InstanceDataWav>()->wf.Allocate(int(FormatSize - sizeof (WAVEFORMATEX)));
+	}
+	bool IsCompressed() const
+	{
+		return GetInstanceData()->wf.IsCompressed();
+	}
+
+	CHANNEL_MASK ChannelsMask() const
+	{
+		return GetInstanceData()->wf.ChannelsMask();
 	}
 
 	BOOL LoadWaveformat();
