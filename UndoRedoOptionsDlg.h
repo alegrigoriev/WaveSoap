@@ -3,10 +3,12 @@
 #include "resource.h"
 #include "ApplicationParameters.h"
 #include "afxcmn.h"
+#include "UiUpdatedDlg.h"
 // CUndoRedoOptionsDlg dialog
 
-class CUndoRedoOptionsDlg : public CDialog, UndoRedoParameters
+class CUndoRedoOptionsDlg : public CUiUpdatedDlg, UndoRedoParameters
 {
+	typedef CUiUpdatedDlg BaseClass;
 	DECLARE_DYNAMIC(CUndoRedoOptionsDlg)
 
 public:
@@ -44,6 +46,15 @@ protected:
 	afx_msg void OnBnClickedCheckLimitRedoSize();
 	afx_msg void OnBnClickedCheckLimitUndoDepth();
 	afx_msg void OnBnClickedCheckLimitUndoSize();
+
+	afx_msg void OnUpdateCheckLimitRedoDepth(CCmdUI * pCmdUI);
+	afx_msg void OnUpdateCheckLimitRedoSize(CCmdUI * pCmdUI);
+	afx_msg void OnUpdateCheckLimitUndoDepth(CCmdUI * pCmdUI);
+	afx_msg void OnUpdateCheckLimitUndoSize(CCmdUI * pCmdUI);
+	afx_msg void OnUpdateEditLimitRedoDepth(CCmdUI * pCmdUI);
+	afx_msg void OnUpdateEditLimitRedoSize(CCmdUI * pCmdUI);
+	afx_msg void OnUpdateEditLimitUndoDepth(CCmdUI * pCmdUI);
+	afx_msg void OnUpdateEditLimitUndoSize(CCmdUI * pCmdUI);
 
 	void SetUndoRedoStatusText();
 

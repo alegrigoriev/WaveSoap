@@ -12,7 +12,7 @@
 IMPLEMENT_DYNAMIC(CUndoRedoOptionsDlg, CDialog)
 
 CUndoRedoOptionsDlg::CUndoRedoOptionsDlg(CWaveSoapFrontDoc * pDoc, CWnd* pParent /*=NULL*/)
-	: CDialog(IDD, pParent)
+	: BaseClass(IDD, pParent)
 	, UndoRedoParameters(*pDoc->GetUndoParameters())
 	, m_pDoc(pDoc)
 {
@@ -24,7 +24,7 @@ CUndoRedoOptionsDlg::~CUndoRedoOptionsDlg()
 
 void CUndoRedoOptionsDlg::DoDataExchange(CDataExchange* pDX)
 {
-	CDialog::DoDataExchange(pDX);
+	BaseClass::DoDataExchange(pDX);
 	DDX_Control(pDX, IDC_STATIC_UNDO_STATUS, m_UndoStatus);
 	DDX_Control(pDX, IDC_STATIC_REDO_STATUS, m_RedoStatus);
 
@@ -51,15 +51,30 @@ void CUndoRedoOptionsDlg::DoDataExchange(CDataExchange* pDX)
 }
 
 
-BEGIN_MESSAGE_MAP(CUndoRedoOptionsDlg, CDialog)
+BEGIN_MESSAGE_MAP(CUndoRedoOptionsDlg, BaseClass)
 	ON_BN_CLICKED(IDC_BUTTON_CLEAR_REDO, OnBnClickedButtonClearRedo)
 	ON_BN_CLICKED(IDC_BUTTON_CLEAR_UNDO, OnBnClickedButtonClearUndo)
 	ON_BN_CLICKED(IDC_CHECK_ENABLE_REDO, OnBnClickedCheckEnableRedo)
 	ON_BN_CLICKED(IDC_CHECK_ENABLE_UNDO, OnBnClickedCheckEnableUndo)
-	ON_BN_CLICKED(IDC_CHECK_LIMIT_REDO_DEPTH, OnBnClickedCheckLimitRedoDepth)
-	ON_BN_CLICKED(IDC_CHECK_LIMIT_REDO_SIZE, OnBnClickedCheckLimitRedoSize)
+
 	ON_BN_CLICKED(IDC_CHECK_LIMIT_UNDO_DEPTH, OnBnClickedCheckLimitUndoDepth)
 	ON_BN_CLICKED(IDC_CHECK_LIMIT_UNDO_SIZE, OnBnClickedCheckLimitUndoSize)
+	ON_UPDATE_COMMAND_UI(IDC_CHECK_LIMIT_UNDO_DEPTH, OnUpdateCheckLimitUndoDepth)
+	ON_UPDATE_COMMAND_UI(IDC_CHECK_LIMIT_UNDO_SIZE, OnUpdateCheckLimitUndoSize)
+	ON_UPDATE_COMMAND_UI(IDC_EDIT_UNDO_SIZE_LIMIT, OnUpdateEditLimitUndoSize)
+	ON_UPDATE_COMMAND_UI(IDC_EDIT_UNDO_DEPTH_LIMIT, OnUpdateEditLimitUndoDepth)
+	ON_UPDATE_COMMAND_UI(IDC_STATIC_UNDO_MB, OnUpdateEditLimitUndoSize)
+	ON_UPDATE_COMMAND_UI(IDC_SPIN_UNDO_DEPTH, OnUpdateEditLimitUndoDepth)
+
+	ON_BN_CLICKED(IDC_CHECK_LIMIT_REDO_DEPTH, OnBnClickedCheckLimitRedoDepth)
+	ON_BN_CLICKED(IDC_CHECK_LIMIT_REDO_SIZE, OnBnClickedCheckLimitRedoSize)
+	ON_UPDATE_COMMAND_UI(IDC_CHECK_LIMIT_REDO_DEPTH, OnUpdateCheckLimitRedoDepth)
+	ON_UPDATE_COMMAND_UI(IDC_CHECK_LIMIT_REDO_SIZE, OnUpdateCheckLimitRedoSize)
+	ON_UPDATE_COMMAND_UI(IDC_EDIT_REDO_SIZE_LIMIT, OnUpdateEditLimitRedoSize)
+	ON_UPDATE_COMMAND_UI(IDC_EDIT_REDO_DEPTH_LIMIT, OnUpdateEditLimitRedoDepth)
+	ON_UPDATE_COMMAND_UI(IDC_STATIC_REDO_MB, OnUpdateEditLimitRedoSize)
+	ON_UPDATE_COMMAND_UI(IDC_SPIN_REDO_DEPTH, OnUpdateEditLimitRedoDepth)
+
 END_MESSAGE_MAP()
 
 
@@ -79,37 +94,79 @@ void CUndoRedoOptionsDlg::OnBnClickedButtonClearRedo()
 
 void CUndoRedoOptionsDlg::OnBnClickedCheckEnableRedo()
 {
-	// TODO: Add your control notification handler code here
+	m_RedoEnabled = IsDlgButtonChecked(IDC_CHECK_ENABLE_REDO);
+	NeedUpdateControls();
 }
 
 void CUndoRedoOptionsDlg::OnBnClickedCheckEnableUndo()
 {
-	// TODO: Add your control notification handler code here
+	m_UndoEnabled = IsDlgButtonChecked(IDC_CHECK_ENABLE_UNDO);
+	NeedUpdateControls();
 }
 
 void CUndoRedoOptionsDlg::OnBnClickedCheckLimitRedoDepth()
 {
-	// TODO: Add your control notification handler code here
+	m_LimitRedoDepth = IsDlgButtonChecked(IDC_CHECK_LIMIT_REDO_DEPTH);
+	NeedUpdateControls();
 }
 
 void CUndoRedoOptionsDlg::OnBnClickedCheckLimitRedoSize()
 {
-	// TODO: Add your control notification handler code here
+	m_LimitRedoSize = IsDlgButtonChecked(IDC_CHECK_LIMIT_REDO_SIZE);
+	NeedUpdateControls();
 }
 
 void CUndoRedoOptionsDlg::OnBnClickedCheckLimitUndoDepth()
 {
-	// TODO: Add your control notification handler code here
+	m_LimitUndoDepth = IsDlgButtonChecked(IDC_CHECK_LIMIT_UNDO_DEPTH);
+	NeedUpdateControls();
 }
 
 void CUndoRedoOptionsDlg::OnBnClickedCheckLimitUndoSize()
 {
-	// TODO: Add your control notification handler code here
+	m_LimitUndoSize = IsDlgButtonChecked(IDC_CHECK_LIMIT_UNDO_SIZE);
+	NeedUpdateControls();
+}
+
+void CUndoRedoOptionsDlg::OnUpdateCheckLimitRedoDepth(CCmdUI * pCmdUI)
+{
+	pCmdUI->Enable(m_RedoEnabled);
+}
+void CUndoRedoOptionsDlg::OnUpdateCheckLimitRedoSize(CCmdUI * pCmdUI)
+{
+	pCmdUI->Enable(m_RedoEnabled);
+}
+void CUndoRedoOptionsDlg::OnUpdateCheckLimitUndoDepth(CCmdUI * pCmdUI)
+{
+	pCmdUI->Enable(m_UndoEnabled);
+}
+void CUndoRedoOptionsDlg::OnUpdateCheckLimitUndoSize(CCmdUI * pCmdUI)
+{
+	pCmdUI->Enable(m_UndoEnabled);
+}
+void CUndoRedoOptionsDlg::OnUpdateEditLimitRedoDepth(CCmdUI * pCmdUI)
+{
+	pCmdUI->Enable(m_RedoEnabled && m_LimitRedoDepth);
+}
+
+void CUndoRedoOptionsDlg::OnUpdateEditLimitRedoSize(CCmdUI * pCmdUI)
+{
+	pCmdUI->Enable(m_RedoEnabled && m_LimitRedoSize);
+}
+
+void CUndoRedoOptionsDlg::OnUpdateEditLimitUndoDepth(CCmdUI * pCmdUI)
+{
+	pCmdUI->Enable(m_UndoEnabled && m_LimitUndoDepth);
+}
+
+void CUndoRedoOptionsDlg::OnUpdateEditLimitUndoSize(CCmdUI * pCmdUI)
+{
+	pCmdUI->Enable(m_UndoEnabled && m_LimitUndoSize);
 }
 
 BOOL CUndoRedoOptionsDlg::OnInitDialog()
 {
-	CDialog::OnInitDialog();
+	BaseClass::OnInitDialog();
 
 	m_UndoDepthSpin.SetRange(0, 1000);
 	m_RedoDepthSpin.SetRange(0, 1000);

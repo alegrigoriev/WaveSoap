@@ -439,6 +439,8 @@
 #define IDC_CHECK_LIMIT_UNDO_SIZE       1292
 #define IDC_SPIN_REDO_DEPTH             1293
 #define IDC_EDIT_UNDO_SIZE_LIMIT        1294
+#define IDC_STATIC_UNDO_MB              1295
+#define IDC_STATIC_REDO_MB              1296
 #define ID_VIEW_RULER_SAMPLES           32771
 #define ID_VIEW_RULER_HHMMSS            32772
 #define ID_VIEW_RULER_SECONDS           32773
@@ -921,7 +923,7 @@
 #define _APS_3D_CONTROLS                     1
 #define _APS_NEXT_RESOURCE_VALUE        203
 #define _APS_NEXT_COMMAND_VALUE         40151
-#define _APS_NEXT_CONTROL_VALUE         1295
+#define _APS_NEXT_CONTROL_VALUE         1297
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif
