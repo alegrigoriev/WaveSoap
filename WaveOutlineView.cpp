@@ -684,9 +684,9 @@ void CWaveOutlineView::OnLButtonDown(UINT nFlags, CPoint point)
 		long nEnd = 0;
 		// round to peak info granularity
 		nBegin = pDoc->m_PeakDataGranularity *
-				MulDiv(point.x, pDoc->m_WavePeakSize, width);
+				MulDiv(point.x, pDoc->m_WavePeakSize / pDoc->WaveChannels(), width);
 		nEnd = pDoc->m_PeakDataGranularity *
-				MulDiv(point.x + 1, pDoc->m_WavePeakSize, width);
+				MulDiv(point.x + 1, pDoc->m_WavePeakSize / pDoc->WaveChannels(), width);
 		pDoc->SetSelection(nBegin, nEnd, ALL_CHANNELS, nBegin,
 							SetSelection_SnapToMaximum | SetSelection_MoveCaretToCenter);
 	}
@@ -706,9 +706,9 @@ void CWaveOutlineView::OnLButtonUp(UINT nFlags, CPoint point)
 	{
 		// round to peak info granularity
 		nBegin = pDoc->m_PeakDataGranularity *
-				MulDiv(point.x, pDoc->m_WavePeakSize, width);
+				MulDiv(point.x, pDoc->m_WavePeakSize / pDoc->WaveChannels(), width);
 		nEnd = pDoc->m_PeakDataGranularity *
-				MulDiv(point.x + 1, pDoc->m_WavePeakSize, width);
+				MulDiv(point.x + 1, pDoc->m_WavePeakSize / pDoc->WaveChannels(), width);
 	}
 
 	if ( ! bIsTrackingSelection
@@ -736,55 +736,82 @@ void CWaveOutlineView::OnMouseMove(UINT nFlags, CPoint point)
 {
 	// point is in client coordinates
 	CWaveSoapFrontDoc * pDoc = GetDocument();
-	CRect r;
-	GetClientRect( & r);
-	if (r.Width() <= 0)
+	CRect cr;
+	GetClientRect( & cr);
+	int width = cr.Width();
+
+	if (width <= 0)
 	{
 		CView::OnMouseMove(nFlags, point);
 		return;
 	}
 
 	long nSamples = pDoc->WaveFileSamples();
-	int nSampleUnderMouse = MulDiv(point.x, nSamples, r.Width());
-	if (nSampleUnderMouse < 0)
+	// round to peak info granularity
+	long nBegin = pDoc->m_PeakDataGranularity *
+				MulDiv(point.x, pDoc->m_WavePeakSize / pDoc->WaveChannels(), width);
+	if (nBegin < 0)
 	{
-		nSampleUnderMouse = 0;
+		nBegin = 0;
 	}
-	if (nSampleUnderMouse > nSamples)
+	if (nBegin > nSamples)
 	{
-		nSampleUnderMouse = nSamples;
+		nBegin = nSamples;
 	}
+
+	long nEnd = pDoc->m_PeakDataGranularity *
+				MulDiv(point.x + 1, pDoc->m_WavePeakSize / pDoc->WaveChannels(), width);
+	if (nEnd < 0)
+	{
+		nEnd = 0;
+	}
+	if (nEnd > nSamples)
+	{
+		nEnd = nSamples;
+	}
+
+
 	int SelectionStart = pDoc->m_SelectionStart;
 	int SelectionEnd = pDoc->m_SelectionEnd;
 
 	CView::OnMouseMove(nFlags, point);
 	if (nKeyPressed != 0)
 	{
-		if ( ! bIsTrackingSelection
-			&& nSampleUnderMouse != pDoc->m_CaretPosition)
+		if ( ! bIsTrackingSelection)
 		{
+			if (pDoc->m_CaretPosition >= nBegin
+				&& pDoc->m_CaretPosition < nEnd)
+			{
+				// mouse didn't move outside this column
+				return;
+			}
 			bIsTrackingSelection = TRUE;
 			SetCapture();
 		}
 
 		// tracked side (where the caret is) is moved,
 		// other side stays
+		int nSampleUnderMouse;
 		if (SelectionStart == pDoc->m_CaretPosition)
 		{
-			SelectionStart = nSampleUnderMouse;
+			SelectionStart = nBegin;
+			nSampleUnderMouse = nBegin;
 		}
 		else if (SelectionEnd == pDoc->m_CaretPosition)
 		{
-			SelectionEnd = nSampleUnderMouse;
+			SelectionEnd = nEnd;
+			nSampleUnderMouse = nEnd;
 		}
-		else if (nSampleUnderMouse <
+		else if (nBegin <
 				(double(SelectionStart) + SelectionEnd) / 2)
 		{
-			SelectionStart = nSampleUnderMouse;
+			SelectionStart = nBegin;
+			nSampleUnderMouse = nBegin;
 		}
 		else
 		{
-			SelectionEnd = nSampleUnderMouse;
+			SelectionEnd = nEnd;
+			nSampleUnderMouse = nEnd;
 		}
 
 		pDoc->SetSelection(SelectionStart, SelectionEnd,

@@ -1,6 +1,7 @@
 Known problems and tasks:
 
 Add file format selection for CD grabbing
+When PCM is selected for CD grabbing, show default format
 When showing a dialog for a document, make the doc active, then restore the previous one.
 If CD recording not supported, SET SPEED WriteSpeed set to zero
 Restore CD speed to max rather than current!
@@ -8,6 +9,7 @@ Set speed doesn't work on Goldstar CDRW	 SetSpeed returned sense 5/24
 Pass wave format to CD grabbing dialog
 Process Loss Of Streaming error
 Add CD grabbing
+Make option to ask for file reopen
 Handle "Save from CD immediately" option
 Read CD text
 Open CDA files
@@ -72,6 +74,8 @@ samples with 32767, -32768 are not visible
 Log Off query doesn't close the active dialog. Recursion is possible. Make sure to check after Cancel
 
 Fixed:
+Wrong calculation of click position in outline view
+Unnecessary selection after click in outline view
 READ CD SCSI command doesn't work for old NEC drive.
 Open WMA file through dialog crashes the app
 ".wav" added one more time in File Save dialog
