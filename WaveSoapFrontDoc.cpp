@@ -1403,9 +1403,9 @@ BOOL CWaveSoapFrontDoc::DoPaste(SAMPLE_INDEX Start, SAMPLE_INDEX End, CHANNEL_MA
 															0,
 															SrcFile, DstFile, ResampleRatio, ResampleQuality));
 
-			pStagedContext->AddContext(pResampleContext.release());
-
 			SrcFile = pResampleContext->m_DstFile;
+
+			pStagedContext->AddContext(pResampleContext.release());
 		}
 	}
 
