@@ -27,7 +27,7 @@ class COperationContext
 public:
 	COperationContext(class CWaveSoapFrontDoc * pDoc, DWORD Flags)
 		: pDocument(pDoc),
-		Flags(Flags),
+		m_Flags(Flags),
 		pNextChain(NULL),
 		PercentCompleted(0)
 	{
@@ -41,7 +41,7 @@ public:
 	COperationContext * pPrev;
 	COperationContext * pNextChain;
 	class CWaveSoapFrontDoc * pDocument;
-	DWORD Flags;
+	DWORD m_Flags;
 	int PercentCompleted;
 };
 enum {
@@ -101,6 +101,13 @@ public:
 	int m_DefaultPlaybackDevice;
 	int m_NumPlaybackBuffers;
 	size_t m_SizePlaybackBuffers;
+	BOOL m_bReadOnly;
+	BOOL m_bDirectMode;
+
+	BOOL m_bUseCountrySpecificNumberAndTime;
+	TCHAR m_TimeSeparator;
+	TCHAR m_DecimalPoint;
+	TCHAR m_ThousandSeparator;
 
 	//{{AFX_MSG(CWaveSoapFrontApp)
 	afx_msg void OnAppAbout();
@@ -125,20 +132,10 @@ inline CWaveSoapFrontApp * GetApp()
 }
 
 typedef CWaveSoapFrontApp CWaveSoapApp;
+// long to string, thousands separated by commas
+CString LtoaCS(long num);
+CString TimeToHhMmSs(unsigned TimeMs, BOOL needMs = TRUE);
 /////////////////////////////////////////////////////////////////////////////
-class CWaveSoapDocTemplate : public CMultiDocTemplate
-{
-public:
-	CWaveSoapDocTemplate( UINT nIDResource, CRuntimeClass* pDocClass,
-						CRuntimeClass* pFrameClass, CRuntimeClass* pViewClass )
-		:CMultiDocTemplate(nIDResource, pDocClass, pFrameClass, pViewClass)
-	{
-	}
-	~CWaveSoapDocTemplate() {}
-	virtual CDocument* OpenDocumentFile( LPCTSTR lpszPathName, BOOL bMakeVisible = TRUE );
-
-};
-
 //{{AFX_INSERT_LOCATION}}
 // Microsoft Visual C++ will insert additional declarations immediately before the previous line.
 #endif // !defined(AFX_WAVESOAPFRONT_H__FFA16C44_2FA7_11D4_9ADD_00C0F0583C4B__INCLUDED_)
