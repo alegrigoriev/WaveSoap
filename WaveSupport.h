@@ -8,6 +8,13 @@
 #include <mmreg.h>
 #include <msacm.h>
 
+typedef long CHANNEL_MASK;
+#define ALL_CHANNELS ((CHANNEL_MASK)-1)
+#define MAX_NUMBER_OF_CHANNELS 32
+
+typedef short NUMBER_OF_CHANNELS;
+typedef __int16 WAVE_SAMPLE;
+
 enum {
 	WaveFormatMatchBitsPerSample = 1,
 	WaveFormatMatchBytesPerSec = 2,
@@ -25,6 +32,25 @@ enum {
 		| WaveFormatMatchFormatTag,
 	WaveFormatMatchCompatibleFormats = 0x10000,
 	WaveFormatExcludeFormats = 0x20000,
+};
+
+enum   // flags for CWaveFormat::ValidateFormat
+{
+	WaveformatInvalidSize = 1,
+	WaveformatInvalidNumberChannels = 2,
+	WaveformatInvalidNumberOfBits = 4,
+	WaveformatInvalidBlockAlign = 8,
+	WaveformatInvalidBytesPerSec = 0x10,
+	WaveformatInvalidChannelsMask = 0x20,
+	WaveformatNoFormatLoaded = 0x40,
+	// warnings
+	WaveformatInvalidExtendedSize = 0x800,   // wrong size for this format
+	WaveformatUnknownTag = 0x1000,
+	WaveformatDataPadded = 0x2000,  // there is byte padding in each sample
+	WaveformatExtendedNumBits = 0x4000, // number of bits is not 8 or 16 for PCM
+	// Information
+	WaveFormatMultichannel = 0x40000000,
+	WaveFormatCompressed = 0x80000000,
 };
 
 struct WaveFormatTagEx
@@ -207,6 +233,13 @@ struct CWaveFormat
 		}
 		return sizeof (WAVEFORMATEX) + m_pWf->cbSize;
 	}
+
+	bool IsCompressed() const;
+	NUMBER_OF_CHANNELS NumChannelsFromMask(CHANNEL_MASK Channels) const;
+	// mask of all channels
+	CHANNEL_MASK ChannelsMask() const;
+
+	ULONG ValidateFormat() const;
 
 	void InitFormat(WORD wFormatTag, DWORD nSampleRate,
 					WORD nNumChannels, WORD nBitsPerSample = 16, WORD Size = 0)
