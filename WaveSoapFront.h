@@ -33,10 +33,13 @@ public:
 	DECLARE_MESSAGE_MAP()
 };
 
-enum {OpenDocumentDirectMode = 2,
+enum
+{
+	OpenDocumentDirectMode = 2,
 	OpenDocumentReadOnly = 4,
 	OpenDocumentCreateNewWithWaveformat = 8, // NAME is actually WAVEFORMATEX *
 	OpenDocumentCreateNewQueryFormat = 0x10,
+	OpenNewDocumentZeroLength = 0x20,
 	OpenDocumentNonWavFile = 0x100,
 };
 class CWaveSoapFrontApp : public CWinApp
@@ -107,6 +110,7 @@ public:
 
 	CWaveFile m_ClipboardFile;
 	WAVEFORMATEX m_NewFileFormat;
+	long m_NewFileLength;
 
 	CDocTemplate * m_pAllTypesTemplate;
 	CDocTemplate * m_pMP3TypeTemplate;

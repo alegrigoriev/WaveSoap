@@ -231,6 +231,7 @@ CWaveSoapFrontApp::CWaveSoapFrontApp()
 	m_hWMVCORE_DLL_Handle(NULL),
 
 	m_bShowNewFormatDialogWhenShiftOnly(false),
+	m_NewFileLength(10),
 
 	m_OpenFileDialogFilter(1)
 {
@@ -363,6 +364,7 @@ BOOL CWaveSoapFrontApp::InitInstance()
 	Profile.AddItem(_T("Settings"), _T("OpenChildMaximized"), m_bOpenChildMaximized, true);
 	Profile.AddItem(_T("Settings"), _T("OpenMaximized"), m_bOpenMaximized, true);
 	Profile.AddItem(_T("Settings"), _T("ShowNewFormatDialogWhenShiftOnly"), m_bShowNewFormatDialogWhenShiftOnly, false);
+	Profile.AddItem(_T("Settings"), _T("m_NewFileLength"), m_NewFileLength, 10, 0, 4800);
 
 	LoadStdProfileSettings(10);  // Load standard INI file options (including MRU)
 
@@ -610,11 +612,11 @@ CDocument* CWaveSoapDocTemplate::OpenDocumentFile(LPCTSTR lpszPathName,
 	if (lpszPathName == NULL)
 	{
 		// create a new document - with default document name
+		CThisApp * pApp = GetApp();
 		SetDefaultTitle(pDocument);
 		if (flags & OpenDocumentCreateNewQueryFormat
 			&& NULL != pWfx)
 		{
-			CThisApp * pApp = GetApp();
 			if (! pApp->m_bShowNewFormatDialogWhenShiftOnly
 				|| (0x8000 & GetKeyState(VK_SHIFT)))
 			{
@@ -622,12 +624,14 @@ CDocument* CWaveSoapDocTemplate::OpenDocumentFile(LPCTSTR lpszPathName,
 				dlg.m_bShowOnlyWhenShift = pApp->m_bShowNewFormatDialogWhenShiftOnly;
 				dlg.m_nSamplingRate = pWfx->nSamplesPerSec;
 				dlg.m_MonoStereo = (pWfx->nChannels == 2);
-				dlg.m_Length = 10 * dlg.m_nSamplingRate;
+				dlg.m_Length = pApp->m_NewFileLength;   // in seconds
 				if (IDOK != dlg.DoModal())
 				{
 					delete pDocument;
 					return NULL;
 				}
+
+				pApp->m_NewFileLength = dlg.m_Length;   // in seconds
 				pApp->m_bShowNewFormatDialogWhenShiftOnly = (dlg.m_bShowOnlyWhenShift != 0);
 				pWfx->nSamplesPerSec = dlg.m_nSamplingRate;
 				if (dlg.m_MonoStereo)
@@ -643,12 +647,15 @@ CDocument* CWaveSoapDocTemplate::OpenDocumentFile(LPCTSTR lpszPathName,
 		// avoid creating temporary compound file when starting up invisible
 		if (!bMakeVisible)
 			pDocument->m_bEmbedded = TRUE;
-
-		if (!pDocument->OnNewDocument())
+		long length = pApp->m_NewFileLength;
+		if (flags & OpenNewDocumentZeroLength)
+		{
+			length = 0;
+		}
+		if (!pDocument->OnNewDocument(pWfx, length))
 		{
 			// user has be alerted to what failed in OnNewDocument
 			TRACE0("CDocument::OnNewDocument returned FALSE.\n");
-			//pFrame->DestroyWindow();
 			delete pDocument;       // explicit delete on error
 			return NULL;
 		}
@@ -666,7 +673,6 @@ CDocument* CWaveSoapDocTemplate::OpenDocumentFile(LPCTSTR lpszPathName,
 		{
 			// user has be alerted to what failed in OnOpenDocument
 			TRACE0("CDocument::OnOpenDocument returned FALSE.\n");
-			//pFrame->DestroyWindow();
 			delete pDocument;       // explicit delete on error
 			return NULL;
 		}
@@ -1857,7 +1863,7 @@ void CWaveSoapFrontApp::OnEditPasteNew()
 
 		CWaveSoapFrontDoc * pDoc =
 			(CWaveSoapFrontDoc *)pTemplate->OpenDocumentFile((LPCTSTR) pWfx,
-															OpenDocumentCreateNewWithWaveformat);
+															OpenDocumentCreateNewWithWaveformat | OpenNewDocumentZeroLength);
 
 		if (NULL != pDoc)
 		{

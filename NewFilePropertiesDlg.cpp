@@ -30,14 +30,15 @@ void CNewFilePropertiesDlg::DoDataExchange(CDataExchange* pDX)
 {
 	CDialog::DoDataExchange(pDX);
 	//{{AFX_DATA_MAP(CNewFilePropertiesDlg)
-	DDX_Control(pDX, IDC_EDIT_LENGTH, m_eLength);
 	DDX_Control(pDX, IDC_SPIN_LENGTH, m_SpinLength);
 	DDX_Text(pDX, IDC_COMBO_SAMPLING_RATE, m_nSamplingRate);
 	DDV_MinMaxInt(pDX, m_nSamplingRate, 1, 1000000);
 	DDX_Check(pDX, IDC_CHECK_SHOW_ONLY_WHEN_SHIFT, m_bShowOnlyWhenShift);
 	DDX_Radio(pDX, IDC_RADIO_MONO, m_MonoStereo);
+	DDX_Control(pDX, IDC_EDIT_LENGTH, m_eLength);
 	//}}AFX_DATA_MAP
 	m_eLength.ExchangeData(pDX, m_Length);
+	DDV_MinMaxInt(pDX, m_Length, 0, 4800);
 }
 
 
@@ -52,7 +53,7 @@ END_MESSAGE_MAP()
 BOOL CNewFilePropertiesDlg::OnInitDialog()
 {
 	m_eLength.SetTimeFormat(SampleToString_HhMmSs | TimeToHhMmSs_NeedsHhMm);
-	m_eLength.SetSamplingRate(m_nSamplingRate);
+	m_eLength.SetSamplingRate(1);
 	CDialog::OnInitDialog();
 
 	return TRUE;  // return TRUE unless you set the focus to a control

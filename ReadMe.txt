@@ -1,22 +1,21 @@
 Known problems and tasks:
 
-Make "New File parameters" dialog
-Support "Play" in selection dialog
 Open files specified in the command line
+If read-only file is saved, name should be different
 Add CD grabbing
 Add noise reduction estimation in spectrum section view
 Add MP3 save
 Add ASF save
 Add sound recording
-If read-only file is saved, name should be different
+Support "Play" in selection dialog
 keep cursor in 10% from the view boundary.
-Make Paste Special command
+Make Paste Special command (with Fade In/Fade Out etc)
 ???? When a file is opened in non-direct mode, peak info is saved with wrong time stamp
 Before Save, delete Undo and REdo which keeps reference to the target file
     (it can be file replacement Undo/Redo)
 After Save As, peak info is not saved for the new PCM file.
 ???? File created from clipboard and saved can't be reopened in direct mode.
-Undo/redo saves the selection
+Make Undo/redo save the selection
 Add support for markers and regions: save on copy and with undo, move and delete on Cut,
 	move on Paste
 Double click selects between two markers
@@ -41,6 +40,7 @@ If there is not enough space on NTFS volume, it will be seen only during flush
 Windows2000 is trying to zero the allocated file
 
 Fixed:
+CTimeEdit increments by 0.1 s even if miliseconds not shown
 If number of channels changed, amplitude ruler doesn't update extents
 Rejected: Statistics: zero crossings shows double the frequency (as supposed??)
 Doesn't detect new active document, when previous closed.
@@ -53,6 +53,9 @@ Insert Silence of zero length still tries to modify the file
 Multiple MP3 files open: all but one get stuck
 
 Done:
+Init file length for new file dialog
+Remember new file length in seconds
+Make "New File parameters" dialog
 Move most persistent dialog parameters to dialogs, to update registry dynamically
 Notify when there is overflow during expression evaluation
 Make group "All Expressions" in expression evaluation dialog
