@@ -82,6 +82,7 @@ LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
 IDR_MAINFRAME           ICON                    "res\\WaveSoap.ico"
 IDR_WAVESOTYPE          ICON                    "res\\WaveSoapFrontDoc.ico"
 IDI_ICON_CD             ICON                    "res\\icon_cd.ico"
+IDI_ICON_SPLIT_TO_FILES ICON                    "res\\icon_split_to_files.ico"
 
 /////////////////////////////////////////////////////////////////////////////
 //
@@ -446,7 +447,7 @@ IDR_MENU_WAVE_VIEW MENU
 BEGIN
     POPUP " "
     BEGIN
-        MENUITEM "Marker...\tM",                40127
+        MENUITEM "Marker...\tM",                IDC_EDIT_WAVE_MARKER
         MENUITEM "Paste\tCtrl+V",               ID_EDIT_PASTE
         MENUITEM SEPARATOR
         MENUITEM "&Zoom In Time\tNum +",        ID_VIEW_ZOOMINHOR2
@@ -3859,6 +3860,7 @@ BEGIN
     IDS_FILE_LIST_END_COLUMN "End"
     IDS_FILE_LIST_LENGTH_COLUMN "Length"
     IDS_SELECT_SAVE_TO_FOLDER "Save Files To Folder"
+    IDS_NEW_FILE_SEGMENT_NAME "New Segment %d"
 END
 
 STRINGTABLE 

@@ -123,6 +123,8 @@
 #define IDD_DIALOG_FADEINOUT            195
 #define IDD_SELECTION_DIALOG_MONO1      196
 #define IDD_DIALOG_SPLIT_TO_FILES       196
+#define IDI_ICON1                       196
+#define IDI_ICON_SPLIT_TO_FILES         196
 #define IDC_EDIT_MIN_CLICK_AMPLITUDE    1000
 #define IDC_TAB_SWITCH_VIEW_MODE        1000
 #define IDC_CHECK_LOG_CLICKS            1001
@@ -777,6 +779,7 @@
 #define IDS_FILE_LIST_END_COLUMN        33115
 #define IDS_FILE_LIST_LENGTH_COLUMN     33116
 #define IDS_SELECT_SAVE_TO_FOLDER       33117
+#define IDS_NEW_FILE_SEGMENT_NAME       33118
 #define ID_FILE_PROPERTIES              40000
 #define ID_VIEW_ZOOMVERT_NORMAL         40001
 #define ID_VIEW_ZOOMIN_HOR_FULL         40002
@@ -893,7 +896,7 @@
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_3D_CONTROLS                     1
-#define _APS_NEXT_RESOURCE_VALUE        196
+#define _APS_NEXT_RESOURCE_VALUE        197
 #define _APS_NEXT_COMMAND_VALUE         40145
 #define _APS_NEXT_CONTROL_VALUE         1284
 #define _APS_NEXT_SYMED_VALUE           101
