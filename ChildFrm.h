@@ -49,6 +49,10 @@ public:
 // Implementation
 	BOOL m_bShowWaveform;
 	BOOL m_bShowFft;
+	BOOL m_bShowOutline;
+	BOOL m_bShowTimeRuler;
+	BOOL m_bShowVerticalRuler;
+
 public:
 	virtual ~CWaveMDIChildClient();
 	void RecalcLayout();
@@ -62,6 +66,12 @@ protected:
 	afx_msg void OnViewWaveform();
 	afx_msg void OnUpdateViewWaveform(CCmdUI* pCmdUI);
 	afx_msg void OnHScroll(UINT nSBCode, UINT nPos, CScrollBar* pScrollBar);
+	afx_msg void OnUpdateViewOutline(CCmdUI* pCmdUI);
+	afx_msg void OnViewOutline();
+	afx_msg void OnViewTimeRuler();
+	afx_msg void OnUpdateViewTimeRuler(CCmdUI* pCmdUI);
+	afx_msg void OnUpdateViewVerticalRuler(CCmdUI* pCmdUI);
+	afx_msg void OnViewVerticalRuler();
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 };

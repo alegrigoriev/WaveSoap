@@ -10,6 +10,7 @@
 #include "AmplitudeRuler.h"
 #include "FftRulerView.h"
 #include "WaveFftView.h"
+#include "WaveOutlineView.h"
 #include <afxpriv.h>
 
 #ifdef _DEBUG
@@ -111,6 +112,9 @@ BOOL CChildFrame::OnCreateClient(LPCREATESTRUCT lpcs, CCreateContext* pContext)
 
 CWaveMDIChildClient::CWaveMDIChildClient()
 	: m_bShowWaveform(TRUE),
+	m_bShowOutline(TRUE),
+	m_bShowTimeRuler(TRUE),
+	m_bShowVerticalRuler(TRUE),
 	m_bShowFft(FALSE)
 {
 }
@@ -124,11 +128,17 @@ BEGIN_MESSAGE_MAP(CWaveMDIChildClient, CWnd)
 	//{{AFX_MSG_MAP(CWaveMDIChildClient)
 	ON_WM_SIZE()
 	ON_WM_CREATE()
-	ON_WM_HSCROLL()
 	ON_COMMAND(IDC_VIEW_SHOW_FFT, OnViewShowFft)
 	ON_UPDATE_COMMAND_UI(IDC_VIEW_SHOW_FFT, OnUpdateViewShowFft)
 	ON_COMMAND(IDC_VIEW_WAVEFORM, OnViewWaveform)
 	ON_UPDATE_COMMAND_UI(IDC_VIEW_WAVEFORM, OnUpdateViewWaveform)
+	ON_WM_HSCROLL()
+	ON_UPDATE_COMMAND_UI(ID_VIEW_OUTLINE, OnUpdateViewOutline)
+	ON_COMMAND(ID_VIEW_OUTLINE, OnViewOutline)
+	ON_COMMAND(ID_VIEW_TIME_RULER, OnViewTimeRuler)
+	ON_UPDATE_COMMAND_UI(ID_VIEW_TIME_RULER, OnUpdateViewTimeRuler)
+	ON_UPDATE_COMMAND_UI(ID_VIEW_VERTICAL_RULER, OnUpdateViewVerticalRuler)
+	ON_COMMAND(ID_VIEW_VERTICAL_RULER, OnViewVerticalRuler)
 	//}}AFX_MSG_MAP
 END_MESSAGE_MAP()
 
@@ -248,6 +258,88 @@ void CWaveMDIChildClient::RecalcLayout()
 	// calculate horizontal ruler width
 	int RulerWidth = CAmplitudeRuler::CalculateWidth();
 	int cyhscroll = GetSystemMetrics(SM_CYHSCROLL);
+	int OutlineHeight = 2 * cyhscroll;
+	CWnd * pOutline = GetDlgItem(OutlineViewID);
+	if ( ! m_bShowVerticalRuler)
+	{
+		RulerWidth = 0;
+	}
+
+	if (pOutline && m_bShowOutline)
+	{
+		r.left = RulerWidth;
+		r.top = 0;
+		r.bottom = OutlineHeight;
+		r.right = cr.right;
+		pOutline->ShowWindow(SW_SHOWNOACTIVATE);
+		DeferClientPos(&layout, pOutline, r, FALSE);
+	}
+	else
+	{
+		OutlineHeight = 0;
+		if (pOutline)
+		{
+			pOutline->ShowWindow(SW_HIDE);
+		}
+	}
+
+	CWnd * pHorRuler = GetDlgItem(HorizontalRulerID);
+
+	if (pHorRuler && m_bShowTimeRuler)
+	{
+		r.left = RulerWidth;
+		r.top = OutlineHeight;
+		r.bottom = OutlineHeight + RulerHeight;
+		r.right = cr.right;
+		pHorRuler->ShowWindow(SW_SHOWNOACTIVATE);
+		DeferClientPos(&layout, pHorRuler, r, FALSE);
+	}
+	else
+	{
+		RulerHeight = 0;
+		if (pHorRuler)
+		{
+			pHorRuler->ShowWindow(SW_HIDE);
+		}
+	}
+
+	CWnd * pVertRuler = GetDlgItem(VerticalWaveRulerID);
+	CWnd * pVertFftRuler = GetDlgItem(VerticalFftRulerID);
+	if (m_bShowVerticalRuler)
+	{
+		if (pVertRuler)
+		{
+			r.left = 0;
+			r.right = RulerWidth;
+			r.top = OutlineHeight + RulerHeight;
+			r.bottom = cr.bottom - cyhscroll;
+			pVertRuler->ShowWindow(SW_SHOWNOACTIVATE);
+			DeferClientPos(&layout, pVertRuler, r, FALSE);
+		}
+
+		if (pVertFftRuler)
+		{
+			r.left = 0;
+			r.right = RulerWidth;
+			r.top = OutlineHeight + RulerHeight;
+			r.bottom = cr.bottom - cyhscroll;
+			pVertFftRuler->ShowWindow(SW_SHOWNOACTIVATE);
+			DeferClientPos(&layout, pVertFftRuler, r, FALSE);
+		}
+	}
+	else
+	{
+		if (pVertRuler)
+		{
+			pVertRuler->ShowWindow(SW_HIDE);
+		}
+		if (pVertFftRuler)
+		{
+			pVertFftRuler->ShowWindow(SW_HIDE);
+		}
+		RulerWidth = 0;
+	}
+
 	CWnd * pScroll = GetDlgItem(AFX_IDW_HSCROLL_FIRST);
 	if (pScroll)
 	{
@@ -258,77 +350,45 @@ void CWaveMDIChildClient::RecalcLayout()
 		DeferClientPos(&layout, pScroll, r, TRUE);
 	}
 
-	CWnd * pHorRuler = GetDlgItem(HorizontalRulerID);
-
-	if (pHorRuler)
+	r.left = 0;
+	r.right = RulerWidth;
+	r.top = cr.bottom - cyhscroll;
+	r.bottom = cr.bottom;
+	if (r.right != 0)
 	{
-		r.left = RulerWidth;
-		r.top = 0;
-		r.bottom = RulerHeight;
-		r.right = cr.right;
-		//pHorRuler->MoveWindow( & r);
-		DeferClientPos(&layout, pHorRuler, r, FALSE);
+		wStatic1.ShowWindow(SW_SHOWNOACTIVATE);
+		DeferClientPos(&layout, & wStatic, r, FALSE);
+	}
+	else
+	{
+		wStatic1.ShowWindow(SW_HIDE);
 	}
 
-	CWnd * pVertRuler = GetDlgItem(VerticalWaveRulerID);
-	if (pVertRuler)
+	r.top = 0;
+	r.bottom = OutlineHeight + RulerHeight;
+	if (r.right != 0 && r.bottom != 0)
 	{
-		r.left = 0;
-		r.right = RulerWidth;
-		r.top = RulerHeight;
-		r.bottom = cr.bottom - cyhscroll;
-		DeferClientPos(&layout, pVertRuler, r, FALSE);
-		//pVertRuler->MoveWindow( & r);
+		wStatic.ShowWindow(SW_SHOWNOACTIVATE);
+		DeferClientPos(&layout, & wStatic1, r, FALSE);
 	}
-
-	pVertRuler = GetDlgItem(VerticalFftRulerID);
-	if (pVertRuler)
+	else
 	{
-		r.left = 0;
-		r.right = RulerWidth;
-		r.top = RulerHeight;
-		r.bottom = cr.bottom - cyhscroll;
-		DeferClientPos(&layout, pVertRuler, r, FALSE);
-		//pVertRuler->MoveWindow( & r);
-	}
-
-	CWnd * pStatic = GetDlgItem(ScaleStaticID);
-	if (pStatic)
-	{
-		r.left = 0;
-		r.right = RulerWidth;
-		r.top = cr.bottom - cyhscroll;
-		r.bottom = cr.bottom;
-		//pStatic->MoveWindow( & r);
-		DeferClientPos(&layout, pStatic, r, FALSE);
-	}
-
-	pStatic = GetDlgItem(Static1ID);
-	if (pStatic)
-	{
-		r.left = 0;
-		r.right = RulerWidth;
-		r.top = 0;
-		r.bottom = RulerHeight;
-		//pStatic->MoveWindow( & r);
-		DeferClientPos(&layout, pStatic, r, FALSE);
+		wStatic.ShowWindow(SW_HIDE);
 	}
 
 	r.left = RulerWidth;
-	r.top = RulerHeight;
+	r.top = OutlineHeight + RulerHeight;
 	r.bottom = cr.bottom - cyhscroll;
 	r.right = cr.right;
 	CWnd * pWaveView = GetDlgItem(WaveViewID);
 	if (pWaveView)
 	{
-		//pWaveView->MoveWindow( & r);
 		DeferClientPos(&layout, pWaveView, r, FALSE);
 	}
 
 	CWnd * pFftView = GetDlgItem(FftViewID);
 	if (pFftView)
 	{
-		//pFftView->MoveWindow( & r);
 		DeferClientPos(&layout, pFftView, r, FALSE);
 	}
 	// move and resize all the windows at once!
@@ -492,6 +552,9 @@ int CWaveMDIChildClient::OnCreate(LPCREATESTRUCT lpCreateStruct)
 	CWnd * pFftRuler = CreateView(RUNTIME_CLASS(CFftRulerView),
 								r, VerticalFftRulerID, pContext, FALSE);    // not visible
 
+	CWnd * pOutlineView = CreateView(RUNTIME_CLASS(CWaveOutlineView),
+									r, OutlineViewID, pContext, TRUE);    // visible
+
 	wStatic.Create("STATIC", "", WS_BORDER | WS_VISIBLE | WS_CHILD | SS_CENTER, r, this, ScaleStaticID, NULL);
 	wStatic1.Create("STATIC", "", WS_BORDER | WS_VISIBLE | WS_CHILD | SS_CENTER, r, this, Static1ID, NULL);
 
@@ -645,4 +708,37 @@ int CChildFrame::OnCreate(LPCREATESTRUCT lpCreateStruct)
 	m_wndStatusBar.EnableToolTips();
 
 	return 0;
+}
+
+void CWaveMDIChildClient::OnUpdateViewOutline(CCmdUI* pCmdUI)
+{
+	pCmdUI->SetCheck(m_bShowOutline);
+}
+
+void CWaveMDIChildClient::OnViewOutline()
+{
+	m_bShowOutline = ! m_bShowOutline;
+	RecalcLayout();
+}
+
+void CWaveMDIChildClient::OnUpdateViewTimeRuler(CCmdUI* pCmdUI)
+{
+	pCmdUI->SetCheck(m_bShowTimeRuler);
+}
+
+void CWaveMDIChildClient::OnViewTimeRuler()
+{
+	m_bShowTimeRuler = ! m_bShowTimeRuler;
+	RecalcLayout();
+}
+
+void CWaveMDIChildClient::OnUpdateViewVerticalRuler(CCmdUI* pCmdUI)
+{
+	pCmdUI->SetCheck(m_bShowVerticalRuler);
+}
+
+void CWaveMDIChildClient::OnViewVerticalRuler()
+{
+	m_bShowVerticalRuler = ! m_bShowVerticalRuler;
+	RecalcLayout();
 }
