@@ -253,14 +253,21 @@ public:
 	BOOL ReadChunkString(ULONG Length, CStringW & String);
 	BOOL ReadChunkStringW(ULONG Length, CStringW & String);
 
+	// the function returns number of bytes written. If -1, means failure
+	int WriteChunkString(CStringW const & String);    // will save as either ANSI, or UTF8 or UTF-16
+	int WriteChunkString(CStringA const & String);
+	int WriteChunkStringW(CString const & String);
+
+	int ChunkStringLength(CStringW const & String) const;
+	int ChunkStringLength(CStringA const & String) const;
+
 	BOOL CommitChanges();
+
+	static int m_TextEncodingInFiles;  // 0 - default ANSI code page, 1 - UTF-8, 2 - UTF-16
 
 private:
 	// wrong type of constructor
-	CMmioFile(const CMmioFile &)
-	{
-		ASSERT(FALSE);
-	}
+	CMmioFile(const CMmioFile &);
 
 #ifndef OVERRIDE_MMLIB_FUNCTIONS
 	static LRESULT PASCAL BufferedIOProc(LPSTR lpmmioinfo, UINT wMsg,
@@ -760,6 +767,7 @@ public:
 	MMCKINFO * GetFactChunk() const;
 
 	DWORD m_FactSamples;
+
 private:
 	static CPath MakePeakFileName(LPCTSTR FileName);
 	// wrong type of constructor

@@ -568,7 +568,7 @@ BOOL CWaveFile::LoadMetadata()
 
 BOOL CMmioFile::ReadChunkString(ULONG Length, CStringA & String)
 {
-	// the string may be unicode or text
+	// the string may be UTF16 or UTF8, or ANSI
 	if (0 == Length)
 	{
 		String.Empty();
@@ -576,7 +576,7 @@ BOOL CMmioFile::ReadChunkString(ULONG Length, CStringA & String)
 	}
 
 	CStringA s;
-	if (Length != (ULONG)Read(s.GetBuffer(Length), Length))
+	if ((long)Length != Read(s.GetBuffer(Length), Length))
 	{
 		return FALSE;
 	}
@@ -590,6 +590,19 @@ BOOL CMmioFile::ReadChunkString(ULONG Length, CStringA & String)
 		s.SetAt(Length - 1, 0);
 		s.SetAt(Length - 2, 0);
 		String = PCWSTR(LPCSTR(s) + 2);
+	}
+	else if (Length >= 5
+			&& UCHAR(s[0]) == 0xEF
+			&& UCHAR(s[1]) == 0xBB
+			&& UCHAR(s[2]) == 0xBF)
+	{
+		// UTF-8
+		s.ReleaseBuffer(Length - 1);
+		CStringW stringW;
+		int result = ::MultiByteToWideChar(CP_UTF8, 0, LPCSTR(s) + 3, Length - 4,
+											stringW.GetBuffer(Length - 4), Length - 4);
+		stringW.ReleaseBuffer(result);
+		String = stringW;
 	}
 	else
 	{
@@ -623,6 +636,18 @@ BOOL CMmioFile::ReadChunkString(ULONG Length, CStringW & String)
 		s.SetAt(Length - 2, 0);
 		String = PCWSTR(LPCSTR(s) + 2);
 	}
+	else if (Length >= 5
+			&& UCHAR(s[0]) == 0xEF
+			&& UCHAR(s[1]) == 0xBB
+			&& UCHAR(s[2]) == 0xBF)
+	{
+		// UTF-8
+		s.ReleaseBuffer(Length - 1);
+
+		int result = ::MultiByteToWideChar(CP_UTF8, 0, LPCSTR(s) + 3, Length - 4,
+											String.GetBuffer(Length - 4), Length - 4);
+		String.ReleaseBuffer(result);
+	}
 	else
 	{
 		s.ReleaseBuffer(Length - 1);
@@ -633,7 +658,7 @@ BOOL CMmioFile::ReadChunkString(ULONG Length, CStringW & String)
 
 BOOL CMmioFile::ReadChunkStringW(ULONG Length, CString & String)
 {
-	// the string may be unicode or text
+	// the string is unicode
 	if (0 == Length)
 	{
 		String.Empty();
@@ -649,6 +674,142 @@ BOOL CMmioFile::ReadChunkStringW(ULONG Length, CString & String)
 	s.ReleaseBuffer(Length - 1);
 	String = s;
 	return TRUE;
+}
+
+// the function returns number of bytes written. If -1, means failure
+int CMmioFile::WriteChunkString(CStringW const & String)    // will save as either ANSI, or UTF8 or UTF-16
+{
+	int StrLen = String.GetLength();
+	switch (m_TextEncodingInFiles)
+	{
+	case 0:
+	default:
+		// ANSI, no BOM
+		return WriteChunkString(CStringA(String));
+		break;
+	case 1:
+		// UTF-8
+	{
+		CStringA s("\xEF\xBB\xBF"); // byte order mark
+		int length = ::WideCharToMultiByte(CP_UTF8, 0, String, StrLen, NULL, 0, NULL, NULL);
+
+		if (length != 0)
+		{
+			length = ::WideCharToMultiByte(CP_UTF8, 0, String, StrLen,
+											3 + s.GetBuffer(length + 3), length, NULL, NULL);
+
+			length += 3;
+			s.ReleaseBuffer(length);
+			length++;   // zero-terminator
+
+			if ((length) != Write(s, length))
+			{
+				return -1;
+			}
+		}
+		return length;
+	}
+		break;
+	case 2:
+		// UTF-16, BOM
+		if (0 != StrLen)
+		{
+			WCHAR BOM = 0xFFFE;
+
+			StrLen = (StrLen + 1) * sizeof (WCHAR);
+			if (sizeof BOM != Write( & BOM, sizeof BOM)
+				|| StrLen != Write(String, StrLen))
+			{
+				return -1;
+			}
+			return StrLen;
+		}
+		else
+		{
+			return 0;
+		}
+		break;
+	}
+}
+
+int CMmioFile::WriteChunkString(CStringA const & String)
+{
+	// will save as ANSI only
+	int Length = String.GetLength();
+	if (0 != Length)
+	{
+		Length++;
+		if (Length != Write(String, Length))
+		{
+			return -1;
+		}
+	}
+	return Length;
+}
+
+// the function returns number of bytes written. If -1, means failure
+int CMmioFile::ChunkStringLength(CStringW const & String) const   // as either ANSI, or UTF8 or UTF-16
+{
+	int StrLen = String.GetLength();
+	switch (m_TextEncodingInFiles)
+	{
+	case 0:
+	default:
+		// ANSI, no BOM
+		return ChunkStringLength(CStringA(String));
+		break;
+
+	case 1:
+		// UTF-8
+	{
+		int length = ::WideCharToMultiByte(CP_UTF8, 0, String, StrLen, NULL, 0, NULL, NULL);
+
+		if (length != 0)
+		{
+			length += 4;
+		}
+		return length;
+	}
+		break;
+	case 2:
+		// UTF-16, BOM
+		if (0 != StrLen)
+		{
+			// BOM and zero-terminator included
+			return (StrLen + 2) * sizeof (WCHAR);
+		}
+		else
+		{
+			return 0;
+		}
+		break;
+	}
+}
+
+int CMmioFile::ChunkStringLength(CStringA const & String) const
+{
+	// will save as ANSI only
+	unsigned Length = String.GetLength();
+	if (0 != Length)
+	{
+		Length++;
+	}
+	return Length;
+}
+
+int CMmioFile::WriteChunkStringW(CString const & String)
+{
+	// write UNICODE string, but without BOM
+	int Length = String.GetLength() * sizeof (WCHAR);
+	if (0 != Length)
+	{
+		Length += sizeof (WCHAR);
+		if (Length != Write(String, Length))
+		{
+			return -1;
+		}
+	}
+	return Length;
 }
 
 BOOL CWaveFile::ReadCueSheet(MMCKINFO & chunk)
@@ -1330,8 +1491,7 @@ BOOL CWaveFile::CreateWaveFile(CWaveFile * pTemplateFile, WAVEFORMATEX * pTempla
 			sizeof (WAVE_SAMPLE) * nNumChannels;
 
 		LONGLONG size = SizeOrSamples * nSampleSize;
-		if ( ! pApp->m_bUseMemoryFiles
-			|| size > pApp->m_MaxMemoryFileSize * 1024)
+		if (size > pApp->m_MaxMemoryFileSize * 1024)
 		{
 			flags &= ~CreateWaveFileAllowMemoryFile;
 		}
@@ -1610,13 +1770,9 @@ DWORD CWaveFile::SaveMetadata()
 				return 0;
 			}
 
-			if ( ! ri->Name.IsEmpty())
+			if (-1 == WriteChunkString(ri->Name))
 			{
-				CStringA name(ri->Name);
-				if ((name.GetLength() + 1) != Write(name, name.GetLength() + 1))
-				{
-					return 0;
-				}
+				return 0;
 			}
 			Ascend(ck);
 		}
@@ -1636,8 +1792,7 @@ DWORD CWaveFile::SaveMetadata()
 					return 0;
 				}
 
-				CStringA name(i->Text);
-				if ((name.GetLength() + 1) != Write(name, name.GetLength() + 1))
+				if (-1 == WriteChunkString(i->Text))
 				{
 					return 0;
 				}
@@ -1660,8 +1815,7 @@ DWORD CWaveFile::SaveMetadata()
 					return 0;
 				}
 
-				CStringA name(i->Text);
-				if ((name.GetLength() + 1) != Write(name, name.GetLength() + 1))
+				if (-1 == WriteChunkString(i->Text))
 				{
 					return 0;
 				}
@@ -1696,8 +1850,7 @@ DWORD CWaveFile::SaveMetadata()
 				return 0;
 			}
 
-			CStringA name(i->Text);
-			if ((name.GetLength() + 1) != Write(name, name.GetLength() + 1))
+			if (-1 == WriteChunkString(i->Text))
 			{
 				return 0;
 			}
@@ -1731,8 +1884,7 @@ DWORD CWaveFile::SaveMetadata()
 				return 0;
 			}
 
-			if (long((i->Text.GetLength() + 1) * sizeof (WCHAR))
-				!= Write(i->Text, sizeof (WCHAR) * (i->Text.GetLength() + 1)))
+			if (-1 == WriteChunkStringW(i->Text))
 			{
 				return 0;
 			}
@@ -1780,10 +1932,7 @@ DWORD CWaveFile::GetMetadataLength() const
 			ri < inst->m_RegionMarkers.end();
 			ri++)
 		{
-			if ( ! ri->Name.IsEmpty())
-			{
-				size += (ri->Name.GetLength() + 2) & ~1UL;   // zero-terminated
-			}
+			size += (ChunkStringLength(ri->Name) + 1) & ~1UL;
 			size += sizeof LtxtChunk + 2 * sizeof (DWORD);
 		}
 
@@ -1792,7 +1941,7 @@ DWORD CWaveFile::GetMetadataLength() const
 		{
 			if ( ! i->Text.IsEmpty())
 			{
-				size += 3 * sizeof (DWORD) + ((i->Text.GetLength() + 2) & ~1UL);   // zero-terminated
+				size += 3 * sizeof (DWORD) + ((ChunkStringLength(i->Text) + 1) & ~1UL);
 			}
 		}
 
@@ -1800,7 +1949,7 @@ DWORD CWaveFile::GetMetadataLength() const
 		{
 			if ( ! i->Text.IsEmpty())
 			{
-				size += 3 * sizeof (DWORD) + ((i->Text.GetLength() + 2) & ~1UL);   // zero-terminated
+				size += 3 * sizeof (DWORD) + ((ChunkStringLength(i->Text) + 1) & ~1UL);
 			}
 		}
 	}
@@ -1812,7 +1961,7 @@ DWORD CWaveFile::GetMetadataLength() const
 		for (ConstInfoListItemIterator i = inst->m_InfoList.begin();
 			i < inst->m_InfoList.end(); i++)
 		{
-			size += 3 * sizeof (DWORD) + ((i->Text.GetLength() + 2) & ~1UL);   // zero-terminated
+			size += 3 * sizeof (DWORD) + ((ChunkStringLength(i->Text) + 1) & ~1UL);
 		}
 	}
 
@@ -3159,3 +3308,4 @@ long CWaveFile::WriteSamples(CHANNEL_MASK DstChannels,
 	return TotalSamplesWritten;
 }
 
+int CMmioFile::m_TextEncodingInFiles = 0;  // 0 - default ANSI code page, 1 - UTF-8, 2 - UTF-16
