@@ -458,6 +458,7 @@ void CWaveFile::Close( )
 
 BOOL CWaveFile::LoadWaveformat()
 {
+
 	MMCKINFO ck = {mmioFOURCC('f', 'm', 't', ' '), 0, 0, 0, 0};
 	if ( ! FindChunk(ck, GetRiffChunk()))
 	{
@@ -470,6 +471,15 @@ BOOL CWaveFile::LoadWaveformat()
 		Ascend(ck);
 		return FALSE;
 	}
+
+	MMCKINFO * pFmtCk = GetFmtChunk();
+	if (NULL == pFmtCk)
+	{
+		return FALSE;
+	}
+	// save format chunk in the instance struct
+	*pFmtCk = ck;
+
 	// allocate structure
 	LPWAVEFORMATEX pWf = AllocateWaveformat(ck.cksize);
 
@@ -2002,11 +2012,17 @@ BOOL CWaveFile::CreateWaveFile(CWaveFile * pTemplateFile, WAVEFORMATEX const * p
 		return FALSE;
 	}
 
-	if ((flags & CreateWaveFilePcmFormat)
-		|| WAVE_FORMAT_PCM == wf.FormatTag())
+	if (flags & CreateWaveFilePcmFormat)
 	{
+		// force 16 bits per sample
 		pInst->wf.InitFormat(WAVE_FORMAT_PCM, wf.SampleRate(),
 							nNumChannels, 16);
+	}
+	else if (WAVE_FORMAT_PCM == wf.FormatTag())
+	{
+		// keep given number of bts per sample
+		pInst->wf.InitFormat(WAVE_FORMAT_PCM, wf.SampleRate(),
+							nNumChannels, wf.BitsPerSample());
 	}
 	else
 	{
@@ -2748,6 +2764,7 @@ BOOL CWaveFile::SetSourceFile(CWaveFile * const pOriginalFile)
 {
 	if (BaseClass::SetSourceFile(pOriginalFile))
 	{
+		// copy all instance info
 		CWavePeaks * pPeaks2 = GetWavePeaks();
 		CWavePeaks * pPeaks1 = pOriginalFile->GetWavePeaks();
 		if (NULL != pPeaks1 && NULL != pPeaks2)
@@ -3186,7 +3203,6 @@ BOOL CWaveFile::LoadPeaksForCompressedFile(CWaveFile & OriginalWaveFile,
 				GetFileInformation().ftLastWriteTime.dwHighDateTime,
 				GetFileInformation().ftLastWriteTime.dwLowDateTime);
 		}
-		PeakFile.Close();
 	}
 	return FALSE;
 }
