@@ -1763,7 +1763,7 @@ CMarkerRegionDialog::CMarkerRegionDialog(struct WAVEREGIONINFO * pRegionInfo, SA
 										CWnd* pParent)
 	: BaseClass(IDD, pParent)
 	, CSelectionUiSupport(pRegionInfo->Sample, pRegionInfo->Sample + pRegionInfo->Length,
-						CaretPos, ALL_CHANNELS, WaveFile, TimeFormat, FALSE)
+						CaretPos, ALL_CHANNELS, WaveFile, TimeFormat, FALSE, FALSE)
 	, m_pRegionData(pRegionInfo)
 	, m_bMarkerOrRegion(0 != pRegionInfo->Length)
 {

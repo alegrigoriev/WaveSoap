@@ -26,7 +26,7 @@ enum
 CSplitToFilesDialog::CSplitToFilesDialog(CWaveFile & WaveFile, int TimeFormat, CWnd* pParent /*=NULL*/)
 	: BaseClass(IDD, pParent)
 	, CFileSaveUiSupport(WaveFile.GetWaveFormat())
-	, CSelectionUiSupport(0, 0, 0, ALL_CHANNELS, WaveFile, TimeFormat, FALSE)
+	, CSelectionUiSupport(0, 0, 0, ALL_CHANNELS, WaveFile, TimeFormat, FALSE, FALSE)
 	, m_FileTypeFlags(0)
 	, m_RecentFolders(& m_Profile, _T("RecentOpenDirs"), _T("Dir%d"), 15)
 	, m_RecentFilenamePrefixes(& m_Profile, _T("RecentFilenamePrefixes"), _T("Prefix%d"), 15,
