@@ -9,6 +9,7 @@
 #include <mmreg.h>
 #include <msacm.h>
 #include "WaveSupport.h"
+#include "WmaFile.h"
 
 class COperationContext;
 typedef BOOL (_stdcall * WAVE_OPERATION_PROC)(COperationContext *);
@@ -212,7 +213,6 @@ public:
 class CDecompressContext : public COperationContext
 {
 	friend class CWaveSoapFrontDoc;
-	friend class CWaveSoapMP3Doc;
 	CWaveFile m_SrcFile;
 	// Start, End and position are in bytes
 	DWORD m_SrcStart;
@@ -426,5 +426,30 @@ public:
 	//virtual BOOL DeInit();
 	BOOL SetTargetFormat(WAVEFORMATEX * pwf);
 
+};
+
+class CWmaDecodeContext: public COperationContext
+{
+public:
+	CWmaDecodeContext(CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString)
+		: COperationContext(pDoc, "",
+							// operation can be terminated by Close
+							OperationContextDiskIntensive | OperationContextNonCritical)
+	{
+		m_OperationString = StatusString;
+	}
+	~CWmaDecodeContext()
+	{
+		DeInit();
+	}
+	CWmaDecoder m_Decoder;
+	// opens m_Decoder, loads wave format to its SrcFile
+	BOOL Open(CDirectFile & file);
+	void SetDstFile(CWaveFile & file);
+	LONG m_CurrentSamples;
+	long m_DstCopySample;
+	virtual BOOL OperationProc();
+	virtual BOOL Init();
+	virtual BOOL DeInit();
 };
 #endif // AFX_OPERATIONCONTEXT_H__FFA16C44_2FA7_11D4_9ADD_00C0F0583C4B__INCLUDED_
