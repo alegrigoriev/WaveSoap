@@ -176,6 +176,8 @@ public:
 
 	void SoundChanged(ULONG_PTR FileID, SAMPLE_INDEX begin, SAMPLE_INDEX end,
 					NUMBER_OF_SAMPLES length = -1, DWORD flags = 0);
+	void FileChanged(CWaveFile & File, SAMPLE_POSITION begin,
+					SAMPLE_POSITION end, NUMBER_OF_SAMPLES length = -1, DWORD flags = 0);
 
 	void PlaybackPositionNotify(SAMPLE_INDEX position, CHANNEL_MASK channel);
 	BOOL ProcessUpdatePlaybackPosition();
