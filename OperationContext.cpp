@@ -113,8 +113,18 @@ CString COperationContext::GetCompletedStatusString() const
 	{
 		s = GetStatusString();
 	}
-
-	s += LoadCString(IDS_STATUS_OPERATION_PROMPT_COMPLETED);
+	if (m_Flags & OperationContextFinished)
+	{
+		s += LoadCString(IDS_STATUS_OPERATION_PROMPT_COMPLETED);
+	}
+	else if (m_Flags & OperationContextStopRequested)
+	{
+		s += LoadCString(IDS_STATUS_OPERATION_PROMPT_STOPPED);
+	}
+	else
+	{
+		s += LoadCString(IDS_STATUS_OPERATION_PROMPT_FAILED);
+	}
 	return s;
 }
 
