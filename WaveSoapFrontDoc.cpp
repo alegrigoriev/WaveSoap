@@ -1869,7 +1869,8 @@ BOOL CWaveSoapFrontDoc::OnSaveBufferedPcmFileCopy(class COperationContext ** ppO
 	if (FALSE == NewWaveFile.CreateWaveFile(& m_OriginalWavFile,
 											WaveFormat(),
 											ALL_CHANNELS, WaveFileSamples(),
-											0, NewTempFilename))
+											CreateWaveFileDeleteAfterClose,
+											NewTempFilename))
 	{
 		FileCreationErrorMessageBox(NewTempFilename);
 		return FALSE;
@@ -2028,7 +2029,6 @@ BOOL CWaveSoapFrontDoc::OnSaveConvertedFile(class COperationContext ** ppOp, int
 		NewWaveFile.CopyMetadata(m_WavFile);
 	}
 
-	// TODO: Operation name may be different from Conversion
 	CFileSaveContext::auto_ptr pSaveContext(new CFileSaveContext(this, sOp, sOpName));
 
 	pSaveContext->m_NewName = FullTargetName;
@@ -2091,8 +2091,6 @@ BOOL CWaveSoapFrontDoc::OnSaveConvertedFile(class COperationContext ** ppOp, int
 			return FALSE;
 		}
 	}
-
-	NewWaveFile.DeleteOnClose(false);
 
 	if (NULL != ppOp)
 	{
@@ -2233,8 +2231,6 @@ BOOL CWaveSoapFrontDoc::OnSaveMp3File(class COperationContext ** ppOp, int flags
 		pContext->m_Flags |= FileSaveContext_SavingCopy;
 	}
 
-	NewWaveFile.DeleteOnClose(false);
-
 	if (NULL != ppOp)
 	{
 		*ppOp = pContext.release();
@@ -2343,8 +2339,6 @@ BOOL CWaveSoapFrontDoc::OnSaveWmaFile(class COperationContext ** ppOp, int flags
 		pContext->m_Flags |= FileSaveContext_SavingCopy;
 	}
 
-	NewWaveFile.DeleteOnClose(false);
-
 	if (NULL != ppOp)
 	{
 		*ppOp = pContext.release();
@@ -2372,7 +2366,9 @@ BOOL CWaveSoapFrontDoc::OnSaveRawFile(class COperationContext ** ppOp, int flags
 							WaveFormat()->nAvgBytesPerSec);
 	if (FALSE == NewWaveFile.CreateWaveFile(& m_OriginalWavFile, pWf, ALL_CHANNELS,
 											FileSize,
-											CreateWaveFileDontInitStructure | CreateWaveFileSizeSpecified,
+											CreateWaveFileDontInitStructure
+											| CreateWaveFileDeleteAfterClose
+											| CreateWaveFileSizeSpecified,
 											NewTempFilename))
 	{
 		FileCreationErrorMessageBox(NewTempFilename);
@@ -2389,7 +2385,7 @@ BOOL CWaveSoapFrontDoc::OnSaveRawFile(class COperationContext ** ppOp, int flags
 															IDS_RAW_SAVE_STATUS_PROMPT, IDS_RAW_SAVE_OPERATION_NAME));
 
 	pContext->m_NewName = FullTargetName;
-	pContext->m_NewFileTypeFlags = OpenDocumentMp3File;
+	pContext->m_NewFileTypeFlags = OpenDocumentRawFile;
 	pContext->m_SrcFile = m_WavFile;
 	pContext->m_DstFile = NewWaveFile;
 
@@ -2825,7 +2821,7 @@ BOOL CWaveSoapFrontDoc::PostCommitFileSave(int flags, LPCTSTR FullTargetName)
 	{
 		// the user was asked about replacing the file in the save file dialog
 
-		DeleteFile(FullTargetName);
+//        DeleteFile(FullTargetName);
 	}
 	m_OriginalWavFile.Close();
 	// delete the original file
@@ -2844,7 +2840,7 @@ BOOL CWaveSoapFrontDoc::PostCommitFileSave(int flags, LPCTSTR FullTargetName)
 			return TRUE;
 		}
 
-		CReopenDialog ReopenDlg(IDS_REOPEN_IN_DIRECT_MODE, m_WavFile.GetName());
+		CReopenDialog ReopenDlg(IDS_REOPEN_IN_DIRECT_MODE, FullTargetName);
 
 		int result = ReopenDlg.DoModalPopDocument(this);
 
@@ -2852,6 +2848,7 @@ BOOL CWaveSoapFrontDoc::PostCommitFileSave(int flags, LPCTSTR FullTargetName)
 		{
 			// keep undo/redo
 			OnOpenDocument(FullTargetName, OpenDocumentDirectMode);
+			SetPathName(FullTargetName, TRUE);
 			return TRUE;
 		}
 		else if (IDCANCEL == result)
@@ -2865,12 +2862,17 @@ BOOL CWaveSoapFrontDoc::PostCommitFileSave(int flags, LPCTSTR FullTargetName)
 			// keep undo/redo
 			if (OnOpenDocument(FullTargetName, 0))
 			{
+				SetPathName(FullTargetName, TRUE);
 				return TRUE;
 			}
 			else
 			{
-				OnOpenDocument(FullTargetName, OpenDocumentReadOnly);
-				return TRUE;
+				if (OnOpenDocument(FullTargetName, OpenDocumentReadOnly))
+				{
+					SetPathName(FullTargetName, TRUE);
+					return TRUE;
+				}
+				return FALSE;
 			}
 		}
 	}
