@@ -6,11 +6,11 @@
 #endif // _MSC_VER > 1000
 // TimeRulerView.h : header file
 //
-
+#include "Ruler.h"
 /////////////////////////////////////////////////////////////////////////////
 // CTimeRulerView view
 
-class CTimeRulerView : public CView
+class CTimeRulerView : public CHorizontalRuler
 {
 protected:
 	CTimeRulerView();           // protected constructor used by dynamic creation
@@ -27,7 +27,6 @@ public:
 	//{{AFX_VIRTUAL(CTimeRulerView)
 protected:
 	virtual void OnDraw(CDC* pDC);      // overridden to draw this view
-	virtual BOOL PreCreateWindow(CREATESTRUCT& cs);
 	//}}AFX_VIRTUAL
 
 // Implementation
@@ -41,11 +40,6 @@ protected:
 	// Generated message map functions
 protected:
 	//{{AFX_MSG(CTimeRulerView)
-	afx_msg void OnSetFocus(CWnd* pOldWnd);
-	afx_msg void OnMouseMove(UINT nFlags, CPoint point);
-	afx_msg void OnLButtonDown(UINT nFlags, CPoint point);
-	afx_msg void OnLButtonUp(UINT nFlags, CPoint point);
-	afx_msg int OnMouseActivate(CWnd* pDesktopWnd, UINT nHitTest, UINT message);
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 };
