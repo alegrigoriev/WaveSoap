@@ -42,11 +42,11 @@ enum
 	OpenDocumentModeFlagsMask = OpenDocumentDirectMode | OpenDocumentReadOnly,
 	OpenDocumentCreateNewWithParameters = 8, // NAME is actually NewFileParameters *
 	OpenDocumentCreateNewFromCWaveFile = 0x10,// use m_pFile from NewFileParameters
-	OpenDocumentMp3File = 0x100,
-	OpenDocumentWmaFile = 0x200,
-	OpenDocumentRawFile = 0x400,
-	OpenDocumentAviFile = 0x800,
-	OpenRawFileMsbFirst = 0x1000,
+	OpenDocumentMp3File = 0x1000,
+	OpenDocumentWmaFile = 0x2000,
+	OpenDocumentRawFile = 0x4000,
+	OpenDocumentAviFile = 0x8000,
+	OpenRawFileMsbFirst = 0x10000,
 	OpenDocumentNonWavFile = OpenDocumentMp3File | OpenRawFileMsbFirst
 							| OpenDocumentWmaFile | OpenDocumentRawFile | OpenDocumentAviFile,
 };
