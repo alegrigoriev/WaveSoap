@@ -9,8 +9,6 @@
 
 // CUndoRedoOptionsDlg dialog
 
-IMPLEMENT_DYNAMIC(CUndoRedoOptionsDlg, CDialog)
-
 CUndoRedoOptionsDlg::CUndoRedoOptionsDlg(CWaveSoapFrontDoc * pDoc, CWnd* pParent /*=NULL*/)
 	: BaseClass(IDD, pParent)
 	, UndoRedoParameters(*pDoc->GetUndoParameters())
@@ -33,16 +31,16 @@ void CUndoRedoOptionsDlg::DoDataExchange(CDataExchange* pDX)
 	DDX_Check(pDX, IDC_CHECK_LIMIT_UNDO_DEPTH, m_LimitUndoDepth);
 	DDX_Check(pDX, IDC_CHECK_LIMIT_UNDO_SIZE, m_LimitUndoSize);
 	DDX_Text(pDX, IDC_EDIT_UNDO_SIZE_LIMIT, m_UndoSizeLimit);
-	DDV_MinMaxUInt(pDX, m_UndoSizeLimit, 0, 4096);
+	DDV_MinMaxUInt(pDX, m_UndoSizeLimit, 1, 4096);
 	DDX_Text(pDX, IDC_EDIT_UNDO_DEPTH_LIMIT, m_UndoDepthLimit);
-	DDV_MinMaxUInt(pDX, m_UndoDepthLimit, 0, 1000);
+	DDV_MinMaxUInt(pDX, m_UndoDepthLimit, 1, 1000);
 
 	DDX_Check(pDX, IDC_CHECK_LIMIT_REDO_DEPTH, m_LimitRedoDepth);
 	DDX_Check(pDX, IDC_CHECK_LIMIT_REDO_SIZE, m_LimitRedoSize);
 	DDX_Text(pDX, IDC_EDIT_REDO_SIZE_LIMIT, m_RedoSizeLimit);
-	DDV_MinMaxUInt(pDX, m_RedoSizeLimit, 0, 4096);
+	DDV_MinMaxUInt(pDX, m_RedoSizeLimit, 1, 4096);
 	DDX_Text(pDX, IDC_EDIT_REDO_DEPTH_LIMIT, m_RedoDepthLimit);
-	DDV_MinMaxUInt(pDX, m_RedoDepthLimit, 0, 1000);
+	DDV_MinMaxUInt(pDX, m_RedoDepthLimit, 1, 1000);
 
 	DDX_Check(pDX, IDC_CHECK_REMEMBER_SELECTION_IN_UNDO, m_RememberSelectionInUndo);
 
