@@ -146,6 +146,8 @@ public:
 
 	BOOL LoadWaveformat();
 	BOOL FindData();
+	unsigned SampleRate() const;
+	int Channels() const;
 
 	WAVEFORMATEX * m_pWf;
 };
