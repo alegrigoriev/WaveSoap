@@ -861,9 +861,7 @@ BOOL CCdGrabbingDialog::OnInitDialog()
 {
 	BaseClass::OnInitDialog();
 
-	HICON hIcon = AfxGetApp()->LoadIcon(IDI_ICON_CD);
-	SetIcon(hIcon, TRUE);			// Set big icon
-	SetIcon(hIcon, FALSE);		// Set small icon
+	SetWindowIcons(this, IDI_ICON_CD);
 
 	m_BmpPlay.LoadBitmap(IDB_BITMAP_PLAY);
 	m_PlayButton.SetBitmap(m_BmpPlay);
