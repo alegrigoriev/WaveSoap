@@ -135,7 +135,8 @@ BOOL CInsertSilenceDialog::OnInitDialog()
 		m_eStart.AddPosition(IDS_CURSOR, m_CaretPosition);
 	}
 	m_eStart.AddPosition(IDS_END_OF_SAMPLE, m_FileLength);
-	((CComboBox*) & m_eStart)->SetExtendedUI(TRUE);
+
+	m_eStart.GetComboBox().SetExtendedUI(TRUE);
 	// TODO: add markers
 
 	return TRUE;  // return TRUE unless you set the focus to a control
