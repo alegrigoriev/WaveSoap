@@ -33,9 +33,9 @@ CScaledScrollView::CScaledScrollView()
 	bKeepOrgOnResizeY(FALSE),
 	dOrgX(0.), dOrgY(0.),
 	dScaleX(72.), dScaleY(72.),
-	dMinLeft(-100.), dMaxRight(100.), dMinBottom(-100.),
-	dMaxTop(100.),
-	dSizeX(100.), dSizeY(100.), dExtX(100.), dExtY(100.),
+	dMinLeft(0.), dMaxRight(65536.), dMinBottom(0.),
+	dMaxTop(65536.),
+	dSizeX(65536.), dSizeY(65536.), dExtX(65536.), dExtY(65536.),
 
 	bIsTrackingSelection(FALSE),
 	bHasSelection(FALSE),
@@ -609,10 +609,17 @@ void CScaledScrollView::OnMasterChangeOrgExt(double left, double width,
 	{
 		dScaleY = dNewScaleY;
 		dScaleX = dNewScaleX;
+
 		if (flag & CHANGE_HOR_ORIGIN)
+		{
 			dOrgX = dNewOrgX;
+		}
 		if (flag & CHANGE_VERT_ORIGIN)
+		{
 			dOrgY = dNewOrgY;
+		}
+		AdjustNewOrigin(dOrgX, dOrgY);
+
 		InvalidateRgn(NULL);
 		UpdateCaretPosition();
 		UpdateScrollbars(TRUE);
@@ -620,6 +627,7 @@ void CScaledScrollView::OnMasterChangeOrgExt(double left, double width,
 	}
 	else if (dNewOrgX != dOrgX || dNewOrgY != dOrgY)
 	{
+		AdjustNewOrigin(dNewOrgX, dNewOrgY);
 		MasterScrollTo(dNewOrgX, dNewOrgY);
 		//NotifySlaveViews(flag);
 	}
