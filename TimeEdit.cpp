@@ -165,7 +165,14 @@ void CTimeEdit::OnVScroll(UINT nSBCode, UINT nPos, CScrollBar* pScrollBar)
 		switch (step)
 		{
 		case 1:
-			increment = m_nSamplesPerSec / 10;
+			if (m_TimeFormat & TimeToHhMmSs_NeedsMs)
+			{
+				increment = m_nSamplesPerSec / 10;
+			}
+			else
+			{
+				increment = m_nSamplesPerSec;
+			}
 			break;
 		case 5:
 			increment = m_nSamplesPerSec;
@@ -180,7 +187,14 @@ void CTimeEdit::OnVScroll(UINT nSBCode, UINT nPos, CScrollBar* pScrollBar)
 		switch (step)
 		{
 		case 1:
-			increment = m_nSamplesPerSec / 10;
+			if (m_TimeFormat & TimeToHhMmSs_NeedsMs)
+			{
+				increment = m_nSamplesPerSec / 10;
+			}
+			else
+			{
+				increment = m_nSamplesPerSec;
+			}
 			break;
 		case 5:
 			increment = m_nSamplesPerSec;

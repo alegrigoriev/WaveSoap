@@ -121,10 +121,10 @@ public:
 	// flags OpenDocumentReadOnly - ReadOnly, 2 - DirectMode
 	virtual BOOL OnOpenDocument(LPCTSTR lpszPathName, int flags);
 // Overrides
+	virtual BOOL OnNewDocument(WAVEFORMATEX * pWfx, long InitialLengthSeconds);
 	// ClassWizard generated virtual function overrides
 	//{{AFX_VIRTUAL(CWaveSoapFrontDoc)
 public:
-	virtual BOOL OnNewDocument();
 	virtual void Serialize(CArchive& ar);
 	virtual BOOL OnCmdMsg(UINT nID, int nCode, void* pExtra, AFX_CMDHANDLERINFO* pHandlerInfo);
 	virtual void SetPathName(LPCTSTR lpszPathName, BOOL bAddToMRU = TRUE);

@@ -363,7 +363,7 @@ CWaveSoapFrontDoc::~CWaveSoapFrontDoc()
 	}
 }
 
-BOOL CWaveSoapFrontDoc::OnNewDocument()
+BOOL CWaveSoapFrontDoc::OnNewDocument(WAVEFORMATEX * pWfx, long InitialLengthSeconds)
 {
 	if (!CDocument::OnNewDocument())
 		return FALSE;
@@ -376,9 +376,13 @@ BOOL CWaveSoapFrontDoc::OnNewDocument()
 	m_SelectedChannel = ALL_CHANNELS;
 	m_TimeSelectionMode = TRUE;
 	m_bReadOnly = false;
+	if (NULL == pWfx)
+	{
+		pWfx = & GetApp()->m_NewFileFormat;
+	}
 
-	if ( FALSE == m_WavFile.CreateWaveFile(NULL, & GetApp()->m_NewFileFormat, ALL_CHANNELS, // 2 channels
-											0, // empty
+	if ( FALSE == m_WavFile.CreateWaveFile(NULL, pWfx, ALL_CHANNELS,
+											InitialLengthSeconds * pWfx->nSamplesPerSec,
 											CreateWaveFileTempDir
 											| CreateWaveFileDeleteAfterClose
 											| CreateWaveFilePcmFormat
@@ -388,7 +392,7 @@ BOOL CWaveSoapFrontDoc::OnNewDocument()
 		AfxMessageBox(IDS_UNABLE_TO_CREATE_NEW_FILE, MB_OK | MB_ICONEXCLAMATION);
 		return FALSE;
 	}
-	//m_OriginalWavFile = m_WavFile;
+
 	return TRUE;
 }
 
