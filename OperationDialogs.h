@@ -156,7 +156,7 @@ class CSelectionDialog : public CDialog
 public:
 	CSelectionDialog(SAMPLE_INDEX Start, SAMPLE_INDEX End, SAMPLE_INDEX CaretPos,
 					CHANNEL_MASK Channel,
-					NUMBER_OF_SAMPLES TotalSamples, const WAVEFORMATEX * pWf, int TimeFormat,
+					CWaveFile & WaveFile, int TimeFormat,
 					CWnd* pParent = NULL);   // standard constructor
 
 	SAMPLE_INDEX GetStart() const
@@ -169,7 +169,7 @@ public:
 	}
 	CHANNEL_MASK GetChannel() const
 	{
-		return m_Chan;
+		return m_Chan - 1;
 	}
 // Dialog Data
 	//{{AFX_DATA(CSelectionDialog)
@@ -179,20 +179,19 @@ public:
 	CTimeSpinCtrl	m_SpinLength;
 	CTimeSpinCtrl	m_SpinEnd;
 	CTimeEdit	m_eLength;
-	CTimeEditCombo	m_eStart;
-	CTimeEditCombo	m_eEnd;
+	CFileTimesCombo	m_eStart;
+	CFileTimesCombo	m_eEnd;
 	int		m_TimeFormatIndex;
 	int		m_SelectionNumber;
 	//}}AFX_DATA
 protected:
+	CWaveFile & m_WaveFile;
 	CHANNEL_MASK m_Chan;
 	int		m_TimeFormat;
 	SAMPLE_INDEX m_Start;
 	SAMPLE_INDEX m_End;
 	SAMPLE_INDEX m_CaretPosition;
 	NUMBER_OF_SAMPLES m_Length;
-	NUMBER_OF_SAMPLES m_FileLength;
-	const WAVEFORMATEX * m_pWf;
 
 	struct Selection
 	{
