@@ -4680,6 +4680,9 @@ void CWaveSoapFrontDoc::OnProcessSynthesisExpressionEvaluation()
 	}
 
 	pContext->m_dFrequencyArgument = dlg.m_OperandsTabDlg.m_dFrequency;
+	pContext->m_dFrequencyArgument1 = dlg.m_OperandsTabDlg.m_dFrequency1;
+	pContext->m_dFrequencyArgument2 = dlg.m_OperandsTabDlg.m_dFrequency2;
+	pContext->m_dFrequencyArgument3 = dlg.m_OperandsTabDlg.m_dFrequency3;
 
 	if ( ! dlg.m_pContext->InitDestination(m_WavFile, dlg.m_Start, dlg.m_End,
 											dlg.m_Chan, dlg.m_bUndo))

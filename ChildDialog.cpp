@@ -51,6 +51,9 @@ COperandsDialog::COperandsDialog(UINT id, CWnd* pParent /*=NULL*/)
 	// NOTE: the ClassWizard will add member initialization here
 	//}}AFX_DATA_INIT
 	m_dFrequency = 0.;
+	m_dFrequency1 = 0.;
+	m_dFrequency2 = 0.;
+	m_dFrequency3 = 0.;
 }
 
 
@@ -58,10 +61,19 @@ void COperandsDialog::DoDataExchange(CDataExchange* pDX)
 {
 	CChildDialog::DoDataExchange(pDX);
 	//{{AFX_DATA_MAP(COperandsDialog)
-	DDX_Control(pDX, IDC_EDIT_FREQUENCY, m_eFrequency);
 	//}}AFX_DATA_MAP
+	DDX_Control(pDX, IDC_EDIT_FREQUENCY, m_eFrequency);
+	DDX_Control(pDX, IDC_EDIT_FREQUENCY1, m_eFrequency1);
+	DDX_Control(pDX, IDC_EDIT_FREQUENCY2, m_eFrequency2);
+	DDX_Control(pDX, IDC_EDIT_FREQUENCY3, m_eFrequency3);
 	m_eFrequency.ExchangeData(pDX, m_dFrequency,
-							"Frequency argument", "", 0., 1000000.);
+							"Frequency argument f", "", 0., 1000000.);
+	m_eFrequency1.ExchangeData(pDX, m_dFrequency1,
+								"Frequency argument f1", "", 0., 1000000.);
+	m_eFrequency2.ExchangeData(pDX, m_dFrequency2,
+								"Frequency argument f2", "", 0., 1000000.);
+	m_eFrequency3.ExchangeData(pDX, m_dFrequency3,
+								"Frequency argument f3", "", 0., 1000000.);
 }
 
 BEGIN_MESSAGE_MAP(COperandsDialog, CChildDialog)
@@ -570,14 +582,9 @@ void CInsertExpressionDialog::OnButtonImportExpressions()
 	LoadExpressions(vExpressions, FileName);
 	// merge with m_Expressions
 	for (vector<ExprGroup>::iterator gr = vExpressions.begin() + 1
-		; gr < m_Expressions.end(); gr++)
+		; gr < vExpressions.end(); gr++)
 	{
-		gr->exprs.size();
-		gr->name;
-		// find the expression group in the original data
-
-		int j = 1;
-		for (vector<Expr>::iterator jj = gr->exprs.begin(); jj < gr->exprs.end(); j++, jj++)
+		for (vector<Expr>::iterator jj = gr->exprs.begin(); jj < gr->exprs.end(); jj++)
 		{
 			if ( ! SaveExpression(jj->expr, jj->name, gr->name, jj->comment, true))
 			{

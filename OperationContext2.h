@@ -70,6 +70,9 @@ private:
 		eSamplingRate,
 		eSamplePeriod,
 		eCurrentFrequencyArgument,
+		eCurrentFrequencyArgument1,
+		eCurrentFrequencyArgument2,
+		eCurrentFrequencyArgument3,
 		eCurrentSampleValue,
 		eConvertDoubleToLong,
 		eConvertLongToDouble,
@@ -142,6 +145,9 @@ private:
 public:
 	virtual void PostRetire(BOOL bChildContext = FALSE);
 	double m_dFrequencyArgument;
+	double m_dFrequencyArgument1;
+	double m_dFrequencyArgument2;
+	double m_dFrequencyArgument3;
 private:
 	double m_dSelectionLengthTime;
 	int m_NumberOfFileSamples;
