@@ -271,8 +271,8 @@ END_MESSAGE_MAP()
 
 void CTimeEditCombo::OnReflectComboSelectionChanged()
 {
-	CComboBox * pCB = (CComboBox *) this;
-	unsigned sel = pCB->GetCurSel();
+	unsigned sel = GetComboBox().GetCurSel();
+
 	if (sel < m_Positions.size())
 	{
 		// repost it to itself
@@ -284,8 +284,8 @@ void CTimeEditCombo::OnReflectComboSelectionChanged()
 
 void CTimeEditCombo::OnComboSelectionChanged()
 {
-	CComboBox * pCB = (CComboBox *) this;
-	unsigned sel = pCB->GetCurSel();
+	unsigned sel = GetComboBox().GetCurSel();
+
 	if (sel < m_Positions.size())
 	{
 		SetTimeSample(m_Positions[sel]);
@@ -294,8 +294,7 @@ void CTimeEditCombo::OnComboSelectionChanged()
 
 void CTimeEditCombo::AddPosition(LPCTSTR name, SAMPLE_INDEX time)
 {
-	CComboBox * pCB = (CComboBox *) this;
-	pCB->AddString(name);
+	GetComboBox().AddString(name);
 	m_Positions.push_back(time);
 }
 
