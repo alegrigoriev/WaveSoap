@@ -1380,36 +1380,38 @@ STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION |
 CAPTION "Click removal parameters"
 FONT 8, "MS Shell Dlg", 0, 0, 0x0
 BEGIN
-    LTEXT           "Min click amplitude:",IDC_STATIC,31,9,71,8
+    LTEXT           "Min click amplitude:",IDC_STATIC,31,9,76,8
     EDITTEXT        IDC_EDIT_MIN_CLICK_AMPLITUDE,110,7,40,14,ES_AUTOHSCROLL
-    LTEXT           "Click to noise ratio:",IDC_STATIC,31,28,71,8
+    LTEXT           "Click to noise ratio:",IDC_STATIC,31,28,77,8
     EDITTEXT        IDC_EDIT_CLICK_TO_NOISE,110,25,40,14,ES_AUTOHSCROLL
-    LTEXT           "Max click length:",IDC_STATIC,31,47,67,8
+    LTEXT           "Max click length:",IDC_STATIC,31,47,75,8
     EDITTEXT        IDC_EDIT_MAX_CLICK_LENGTH,110,43,40,14,ES_AUTOHSCROLL | 
                     ES_NUMBER
-    LTEXT           "Noise attack rate:",IDC_STATIC,31,64,68,8
+    LTEXT           "Noise attack rate:",IDC_STATIC,31,64,76,8
     EDITTEXT        IDC_EDIT_ATTACK_RATE,110,61,40,14,ES_AUTOHSCROLL
-    LTEXT           "Click proximity factor:",IDC_STATIC,31,84,73,8
+    LTEXT           "Click proximity factor:",IDC_STATIC,31,84,78,8
     EDITTEXT        IDC_EDIT_DECAY_RATE,110,80,40,14,ES_AUTOHSCROLL
     CONTROL         "Import clicks from a file:",IDC_CHECK_IMPORT_CLICKS,
-                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,31,102,103,10
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,31,102,126,10
     EDITTEXT        IDC_EDIT_CLICK_IMPORT_FILENAME,31,118,128,14,
                     ES_AUTOHSCROLL
+    PUSHBUTTON      "Browse...",IDC_CLICK_IMPORT_BROWSE_BUTTON,181,118,42,14
     CONTROL         "Log all found clicks to a file:",IDC_CHECK_LOG_CLICKS,
-                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,31,138,112,10
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,31,138,128,10
     EDITTEXT        IDC_EDIT_CLICK_LOG_FILENAME,31,153,128,14,ES_AUTOHSCROLL
+    PUSHBUTTON      "Browse...",IDC_CLICK_LOG_BROWSE_BUTTON,181,153,42,14
     CONTROL         "Log clicks only, don't change the wave",
                     IDC_CHECK_LOG_CLICKS_ONLY,"Button",BS_AUTOCHECKBOX | 
-                    WS_TABSTOP,31,175,136,10
+                    WS_TABSTOP,31,175,167,10
     LTEXT           "Selection:\nChannels:",IDC_STATIC_SELECTION,7,212,216,
                     17
     CONTROL         "Save &Undo",IDC_CHECK_UNDO,"Button",BS_AUTOCHECKBOX | 
                     WS_TABSTOP,7,233,50,10
     PUSHBUTTON      "Set defaults",IDC_BUTTON_RESET_DEFAULT,173,7,50,14
     PUSHBUTTON      "Revert",IDC_BUTTON_REVERT_INITIAL,173,25,50,14
+    PUSHBUTTON      "Save...",IDC_BUTTON_SAVE,173,43,50,14
+    PUSHBUTTON      "Load...",IDC_BUTTON_LOAD,173,61,50,14
     PUSHBUTTON      "More settings...",IDC_BUTTON_MORE_SETTINGS,167,80,56,14
-    PUSHBUTTON      "Browse...",IDC_CLICK_IMPORT_BROWSE_BUTTON,181,118,42,14
-    PUSHBUTTON      "Browse...",IDC_CLICK_LOG_BROWSE_BUTTON,181,153,42,14
     PUSHBUTTON      "&Selection...",IDC_BUTTON_SELECTION,8,251,50,14
     DEFPUSHBUTTON   "OK",IDOK,63,251,50,14
     PUSHBUTTON      "Cancel",IDCANCEL,118,251,50,14
@@ -1422,37 +1424,38 @@ STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION |
 CAPTION "Noise Reduction Parameters"
 FONT 8, "MS Shell Dlg", 0, 0, 0x0
 BEGIN
-    LTEXT           "Apply noise reduction to\nfrequencies higher than:",
+    LTEXT           "A&pply noise reduction to\nfrequencies higher than:",
                     IDC_STATIC,7,5,93,19
     EDITTEXT        IDC_EDIT_LOWER_FREQUENCY,104,7,40,13,ES_AUTOHSCROLL
     LTEXT           "Hz",IDC_STATIC,150,9,12,8
-    LTEXT           "FFT order for analyze:",IDC_STATIC,7,26,90,8
+    LTEXT           "&FFT order for analyze:",IDC_STATIC,7,26,90,8
     COMBOBOX        IDC_COMBO_FFT_ORDER,104,24,40,44,CBS_DROPDOWNLIST | 
                     WS_VSCROLL | WS_TABSTOP
-    LTEXT           "Noise floor for higher frequencies:",IDC_STATIC,7,38,84,
-                    17
+    LTEXT           "&Noise floor for higher frequencies:",IDC_STATIC,7,38,
+                    84,17
     EDITTEXT        IDC_EDIT_NOISE_AREA_THRESHOLD_HIGH,104,40,40,13,
                     ES_AUTOHSCROLL
     LTEXT           "dB",IDC_STATIC,150,42,12,8
-    LTEXT           "Noise floor for lower frequencies:",IDC_STATIC,7,56,92,
+    LTEXT           "N&oise floor for lower frequencies:",IDC_STATIC,7,56,92,
                     17
     EDITTEXT        IDC_EDIT_NOISE_AREA_THRESHOLD_LOW,104,58,40,13,
                     ES_AUTOHSCROLL
     LTEXT           "dB",IDC_STATIC,150,60,12,8
-    LTEXT           "Noise reduction \naggressivness:",IDC_STATIC,7,73,94,18
+    LTEXT           "Noise reduction \n&aggressivness:",IDC_STATIC,7,73,94,
+                    18
     EDITTEXT        IDC_EDIT_AGGRESSIVNESS,104,75,40,14,ES_AUTOHSCROLL
-    LTEXT           "Maximum noise reduction:",IDC_STATIC,7,97,93,8
+    LTEXT           "&Maximum noise reduction:",IDC_STATIC,7,97,94,8
     EDITTEXT        IDC_EDIT_NOISE_REDUCTION,104,94,40,14,ES_AUTOHSCROLL
     LTEXT           "dB",IDC_STATIC,150,96,12,8
-    LTEXT           "Tone over noise preference:",IDC_STATIC,7,109,75,19
+    LTEXT           "&Tone over noise preference:",IDC_STATIC,7,109,75,19
     EDITTEXT        IDC_EDIT_TONE_PREFERENCE,104,112,40,13,ES_AUTOHSCROLL
     LTEXT           "dB",IDC_STATIC,150,114,12,8
     PUSHBUTTON      "Show spectrum and noise threshold",
                     IDC_BUTTON_SET_THRESHOLD,8,132,88,21,BS_MULTILINE
-    LTEXT           "Continuous tone detection\nthreshold:",IDC_STATIC,7,161,
-                    87,17
+    LTEXT           "&Continuous tone detection\nthreshold:",IDC_STATIC,7,
+                    161,87,17
     EDITTEXT        IDC_EDIT_NOISE_CRITERION,104,161,40,13,ES_AUTOHSCROLL
-    LTEXT           "Transient area threshold:",IDC_STATIC,7,181,94,8
+    LTEXT           "T&ransient area threshold:",IDC_STATIC,7,181,94,8
     EDITTEXT        IDC_EDIT_TRANSIENT_THRESHOLD,104,178,40,13,
                     ES_AUTOHSCROLL
     LTEXT           "dB",IDC_STATIC,150,180,12,8
@@ -1460,11 +1463,13 @@ BEGIN
                     21
     CONTROL         "Save &Undo",IDC_CHECK_UNDO,"Button",BS_AUTOCHECKBOX | 
                     WS_TABSTOP,8,233,74,10
-    PUSHBUTTON      "Set defaults",IDC_BUTTON_RESET_DEFAULT,173,7,50,14
-    PUSHBUTTON      "Revert",IDC_BUTTON_REVERT_INITIAL,173,22,50,14
-    PUSHBUTTON      "&Help",IDHELP,173,40,50,14
+    PUSHBUTTON      "Set &defaults",IDC_BUTTON_RESET_DEFAULT,173,7,50,14
+    PUSHBUTTON      "R&evert",IDC_BUTTON_REVERT_INITIAL,173,22,50,14
+    PUSHBUTTON      "Sa&ve...",IDC_BUTTON_SAVE,173,40,50,14
+    PUSHBUTTON      "&Load...",IDC_BUTTON_LOAD,173,58,50,14
     PUSHBUTTON      "More settings...",IDC_BUTTON_MORE_SETTINGS,168,111,55,
                     14
+    PUSHBUTTON      "&Help",IDHELP,173,228,50,14
     PUSHBUTTON      "&Selection...",IDC_BUTTON_SELECTION,8,251,50,14
     DEFPUSHBUTTON   "OK",IDOK,93,251,50,14
     PUSHBUTTON      "Cancel",IDCANCEL,173,251,50,14
@@ -3763,6 +3768,14 @@ BEGIN
     IDS_OPEN_RECENT_FILE_PROMPT_FORMAT "Open ""%s""%s"
     IDS_STATUS_OPERATION_PROMPT_STOPPED " Stopped"
     IDS_STATUS_OPERATION_PROMPT_FAILED " Failed"
+    IDS_FILTER_FILE_NOISE_REDUCTION 
+                            "Noise reduction settings (*.NrIni)|*.NrIni|All Files (*.*)|*||"
+    IDS_FILTER_FILE_CLICK_REMOVAL 
+                            "Click removal settings (*.CrIni)|*.CrIni|All Files (*.*)|*||"
+    IDS_NOISE_REDUCTION_SAVE_TITLE "Save Noise Reduction Settings As"
+    IDS_NOISE_REDUCTION_LOAD_TITLE "Load Noise Reduction Settings"
+    IDS_CLICK_REMOVAL_SAVE_TITLE "Save Click Removal Settings As"
+    IDS_CLICK_REMOVAL_LOAD_TITLE "Load Click Removal Settings"
 END
 
 #endif    // English (U.S.) resources

@@ -692,6 +692,7 @@ protected:
 	//{{AFX_VIRTUAL(CDeclickDialog)
 protected:
 	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV support
+	virtual void OnOK();
 	//}}AFX_VIRTUAL
 
 // Implementation
@@ -707,6 +708,8 @@ protected:
 
 	afx_msg void OnUpdateLogClicks(CCmdUI * pCmdUI);
 	afx_msg void OnUpdateImportClicks(CCmdUI * pCmdUI);
+	afx_msg void OnButtonSaveSettings();
+	afx_msg void OnButtonLoadSettings();
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 	void LoadValuesFromRegistry();
@@ -769,6 +772,7 @@ protected:
 	//{{AFX_VIRTUAL(CNoiseReductionDialog)
 protected:
 	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV support
+	virtual void OnOK();
 	//}}AFX_VIRTUAL
 
 // Implementation
@@ -778,6 +782,8 @@ protected:
 	//{{AFX_MSG(CNoiseReductionDialog)
 	afx_msg void OnButtonMore();
 	afx_msg void OnButtonSetThreshold();
+	afx_msg void OnButtonSaveSettings();
+	afx_msg void OnButtonLoadSettings();
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 };
