@@ -1064,6 +1064,11 @@ void CAudioCompressionManager::FillMp3EncoderTags(DWORD Flags)
 {
 
 	BladeMp3Encoder Mp3Enc;
+	// check if MP3 ACM encoder presents
+	static WaveFormatTagEx const Mp3Tag = { WAVE_FORMAT_MPEGLAYER3 };
+
+	FillFormatTagArray(m_Wf, & Mp3Tag, 1, Flags);
+
 	// check if LAME encoder is available
 	if ((0 == (Flags
 				& (WaveFormatMatchCompatibleFormats
@@ -1080,11 +1085,6 @@ void CAudioCompressionManager::FillMp3EncoderTags(DWORD Flags)
 
 		Mp3Enc.Close();
 	}
-	// check if MP3 ACM encoder presents
-	static WaveFormatTagEx const Mp3Tag = { WAVE_FORMAT_MPEGLAYER3 };
-
-	FillFormatTagArray(m_Wf, & Mp3Tag, 1, Flags);
-
 
 }
 

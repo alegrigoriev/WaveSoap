@@ -522,6 +522,15 @@ HRESULT CWmaDecoder::Open(CDirectFile & file)
 	}
 	else
 	{
+#if 0
+		WCHAR str1[100];
+		WCHAR str2[100];
+		StringFromGUID2(pMedia->majortype, str1, sizeof str1 / sizeof str1[0]);
+		StringFromGUID2(pMedia->subtype, str2, sizeof str2 / sizeof str2[0]);
+		TRACE("Media type = %S, sybtype = %S\n", str1, str2);
+// WMA: Media type = {73647561-0000-0010-8000-00AA00389B71}, sybtype = {00000001-0000-0010-8000-00AA00389B71}
+// MP3: Media type = {73647561-0000-0010-8000-00AA00389B71}, sybtype = {00000001-0000-0010-8000-00AA00389B71}
+#endif
 		m_dwAudioOutputNum = i;
 
 		m_DstWf = ( WAVEFORMATEX * )pMedia->pbFormat;

@@ -671,7 +671,6 @@ void CCdGrabbingDialog::ReloadTrackList(CdMediaChangeState NewMediaState)
 	// Get disk ID
 	m_CdDrive.ForceMountCD();
 	m_DiskID = m_CdDrive.GetDiskID();
-	// TODO: find artist and album info in cdplayer.ini
 
 	CApplicationProfile CdPlayerIni;
 	CdPlayerIni.m_pszProfileName = _T("cdplayer.ini");
@@ -706,16 +705,22 @@ void CCdGrabbingDialog::ReloadTrackList(CdMediaChangeState NewMediaState)
 		UINT State = 0, StateMask = 0;
 		if (m_toc.TrackData[tr].Control & 0xC)
 		{
+			// data track
 			pTrack->Track.LoadString(IDS_DATA_TRACK);
 			pTrack->IsAudio = false;
 			pTrack->Checked = false;
 		}
 		else
 		{
+			// audio track
 			s.Format(IDS_TRACK_NUM_FORMAT, m_toc.TrackData[tr].TrackNumber);
 			TCHAR buf[10];
 			_stprintf(buf, "%d", tr);
 			pTrack->Track = CdPlayerIni.GetProfileString(SectionName, buf, s);
+			if (pTrack->Track.IsEmpty())
+			{
+				pTrack->Track = s;
+			}
 
 			pTrack->Album = m_sAlbum;
 			pTrack->Artist = m_sArtist;
