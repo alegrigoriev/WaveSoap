@@ -647,6 +647,25 @@ public:
 	NUMBER_OF_SAMPLES m_SamplesToInsert;
 };
 
+// This operation is never used as UNDO/REDO
+class CCueReverseOperation : public CMetadataChangeOperation
+{
+	typedef CCueReverseOperation ThisClass;
+	typedef CMetadataChangeOperation BaseClass;
+public:
+	typedef std::auto_ptr<ThisClass> auto_ptr;
+
+	// move markers
+	CCueReverseOperation(CWaveSoapFrontDoc * pDoc, CWaveFile & DstFile, SAMPLE_INDEX StartDstSample,
+						NUMBER_OF_SAMPLES LengthToReverse);
+
+	~CCueReverseOperation();
+	virtual BOOL OperationProc();
+
+	SAMPLE_INDEX m_StartDstSample;
+	NUMBER_OF_SAMPLES m_LengthToReverse;
+};
+
 class CSelectionChangeOperation : public COperationContext
 {
 	typedef CSelectionChangeOperation ThisClass;
