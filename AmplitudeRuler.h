@@ -95,11 +95,11 @@ protected:
 	virtual void OnDraw(CDC* pDC);      // overridden to draw this view
 	//}}AFX_VIRTUAL
 
-// Implementation
+	// Implementation
 protected:
 	void UpdateMaxExtents();
 	virtual ~CSpectrumSectionRuler();
-//    virtual UINT GetPopupMenuID(CPoint) { return IDR_MENU_SPECTRUM_SECTION_RULER; }
+	virtual UINT GetPopupMenuID(CPoint) { return IDR_MENU_POPUP_SS_RULER; }
 #ifdef _DEBUG
 	virtual void AssertValid() const;
 	virtual void Dump(CDumpContext& dc) const;
