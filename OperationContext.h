@@ -36,8 +36,8 @@ class COperationContext : public ListItem<COperationContext>
 	typedef COperationContext ThisClass;
 public:
 	typedef std::auto_ptr<ThisClass> auto_ptr;
-	COperationContext(class CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString, DWORD Flags, LPCTSTR OperationName = _T(""));
-	COperationContext(class CWaveSoapFrontDoc * pDoc, DWORD Flags = 0);
+	COperationContext(class CWaveSoapFrontDoc * pDoc, DWORD Flags, LPCTSTR StatusString, LPCTSTR OperationName = _T(""));
+	COperationContext(class CWaveSoapFrontDoc * pDoc, DWORD Flags, UINT StatusStringId = 0, UINT OperationNameId = 0);
 
 	virtual ~COperationContext();
 
@@ -212,10 +212,10 @@ class COneFileOperation : public COperationContext
 	typedef COperationContext BaseClass;
 	typedef COneFileOperation ThisClass;
 public:
-	COneFileOperation(class CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString,
-					ULONG Flags, LPCTSTR OperationName = _T(""));
-
-	COneFileOperation(class CWaveSoapFrontDoc * pDoc, ULONG Flags = 0);
+	COneFileOperation(class CWaveSoapFrontDoc * pDoc, ULONG Flags, LPCTSTR StatusString,
+					LPCTSTR OperationName = _T(""));
+	COneFileOperation(class CWaveSoapFrontDoc * pDoc, ULONG Flags,
+					UINT StatusStringId = 0, UINT OperationNameId = 0);
 
 	virtual void Dump(unsigned indent=0) const;
 
@@ -241,8 +241,10 @@ class CTwoFilesOperation : public COneFileOperation
 	typedef COneFileOperation BaseClass;
 	typedef CTwoFilesOperation ThisClass;
 public:
-	CTwoFilesOperation(class CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString,
-						ULONG Flags, LPCTSTR OperationName = _T(""));
+	CTwoFilesOperation(class CWaveSoapFrontDoc * pDoc, ULONG Flags, LPCTSTR StatusString,
+						LPCTSTR OperationName = _T(""));
+	CTwoFilesOperation(class CWaveSoapFrontDoc * pDoc, ULONG Flags,
+						UINT StatusStringId, UINT OperationNameId = 0);
 
 	CTwoFilesOperation(class CWaveSoapFrontDoc * pDoc, ULONG Flags);
 
@@ -274,6 +276,10 @@ protected:
 	virtual ListHead<COperationContext> * GetUndoChain();
 	virtual void DeleteUndo();
 	virtual void DeInit();
+
+	virtual MEDIA_FILE_SIZE GetTotalOperationSize() const;
+
+	virtual MEDIA_FILE_SIZE GetCompletedOperationSize() const;
 };
 
 class CThroughProcessOperation : public CTwoFilesOperation
@@ -281,9 +287,10 @@ class CThroughProcessOperation : public CTwoFilesOperation
 	typedef CTwoFilesOperation BaseClass;
 	typedef CThroughProcessOperation ThisClass;
 public:
-	CThroughProcessOperation(class CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString,
-							ULONG Flags, LPCTSTR OperationName = _T(""));
-	CThroughProcessOperation(class CWaveSoapFrontDoc * pDoc, ULONG Flags = 0);
+	CThroughProcessOperation(class CWaveSoapFrontDoc * pDoc, ULONG Flags, LPCTSTR StatusString,
+							LPCTSTR OperationName = _T(""));
+	CThroughProcessOperation(class CWaveSoapFrontDoc * pDoc, ULONG Flags,
+							UINT StatusStringId = 0, UINT OperationNameId = 0);
 
 	typedef std::auto_ptr<ThisClass> auto_ptr;
 
@@ -317,9 +324,11 @@ class CStagedContext : public COperationContext
 	typedef CStagedContext ThisClass;
 public:
 	typedef std::auto_ptr<ThisClass> auto_ptr;
-	CStagedContext(class CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString,
-					DWORD Flags, LPCTSTR OperationName = _T(""));
-	CStagedContext(class CWaveSoapFrontDoc * pDoc, DWORD Flags);
+	CStagedContext(class CWaveSoapFrontDoc * pDoc, DWORD Flags, LPCTSTR StatusString,
+					LPCTSTR OperationName = _T(""));
+	CStagedContext(class CWaveSoapFrontDoc * pDoc, DWORD Flags,
+					UINT StatusStringId = 0, UINT OperationNameId = 0);
+
 	virtual ~CStagedContext();
 
 	virtual BOOL OperationProc();
@@ -381,7 +390,8 @@ class CCopyContext : public CTwoFilesOperation
 
 public:
 	typedef std::auto_ptr<ThisClass> auto_ptr;
-	CCopyContext(CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString = _T(""), LPCTSTR OperationName = _T(""));
+	CCopyContext(CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString, LPCTSTR OperationName = _T(""));
+	CCopyContext(CWaveSoapFrontDoc * pDoc, UINT StatusStringId = 0, UINT OperationNameId = 0);
 
 	BOOL InitCopy(CWaveFile & DstFile,
 				SAMPLE_INDEX DstStartSample, CHANNEL_MASK DstChannel,
@@ -437,6 +447,7 @@ public:
 	}
 
 	CUndoRedoContext(CWaveSoapFrontDoc * pDoc, LPCTSTR OperationName);
+	CUndoRedoContext(CWaveSoapFrontDoc * pDoc, UINT OperationNameId);
 
 	virtual class CUndoRedoContext * GetUndo();
 
@@ -500,10 +511,10 @@ public:
 	typedef std::auto_ptr<ThisClass> auto_ptr;
 
 	CVolumeChangeContext(CWaveSoapFrontDoc * pDoc,
-						LPCTSTR StatusString, LPCTSTR OperationName,
+						UINT StatusStringId, UINT OperationNameId,
 						double const * VolumeArray, int VolumeArraySize = 2);
 	CVolumeChangeContext(CWaveSoapFrontDoc * pDoc,
-						LPCTSTR StatusString, LPCTSTR OperationName,
+						UINT StatusStringId, UINT OperationNameId,
 						float Volume = 1.f);
 
 protected:
@@ -522,7 +533,7 @@ public:
 	typedef std::auto_ptr<ThisClass> auto_ptr;
 
 	CStatisticsContext(CWaveSoapFrontDoc * pDoc,
-						LPCTSTR StatusString, LPCTSTR OperationName);
+						UINT StatusStringId, UINT OperationNameId = 0);
 
 	int m_ZeroCrossingLeft;
 	int m_ZeroCrossingRight;
@@ -564,7 +575,7 @@ public:
 	typedef std::auto_ptr<ThisClass> auto_ptr;
 
 	CDcScanContext(CWaveSoapFrontDoc * pDoc,
-					LPCTSTR StatusString, LPCTSTR OperationName = _T(""));
+					UINT StatusStringId = 0, UINT OperationNameId = 0);
 
 	int GetDc(int channel);
 
@@ -582,11 +593,11 @@ public:
 	typedef std::auto_ptr<ThisClass> auto_ptr;
 
 	CDcOffsetContext(CWaveSoapFrontDoc * pDoc,
-					LPCTSTR StatusString, LPCTSTR OperationName,
+					UINT StatusStringId, UINT OperationNameId,
 					CDcScanContext * pScanContext);
 
 	CDcOffsetContext(CWaveSoapFrontDoc * pDoc,
-					LPCTSTR StatusString, LPCTSTR OperationName,
+					UINT StatusStringId, UINT OperationNameId,
 					int offset[], unsigned OffsetArraySize = 2);
 
 protected:
@@ -607,7 +618,7 @@ public:
 	typedef std::auto_ptr<ThisClass> auto_ptr;
 
 	CMaxScanContext(CWaveSoapFrontDoc * pDoc,
-					LPCTSTR StatusString, LPCTSTR OperationName = _T(""));
+					UINT StatusStringId, UINT OperationNameId = 0);
 
 	int GetMax(int channel);
 
@@ -625,10 +636,10 @@ public:
 	typedef std::auto_ptr<ThisClass> auto_ptr;
 
 	CNormalizeContext(CWaveSoapFrontDoc * pDoc,
-					LPCTSTR StatusString, LPCTSTR OperationName,
+					UINT StatusStringId, UINT OperationNameId,
 					double LimitLevel, BOOL EqualChannels,
 					CMaxScanContext * pScanContext)
-		: BaseClass(pDoc, StatusString, OperationName)
+		: BaseClass(pDoc, StatusStringId, OperationNameId)
 		, m_pScanContext(pScanContext)
 		, m_LimitLevel(LimitLevel)
 		, m_bEqualChannels(EqualChannels)
@@ -648,10 +659,10 @@ class CConversionContext : public CTwoFilesOperation
 	typedef CTwoFilesOperation BaseClass;
 public:
 	typedef std::auto_ptr<ThisClass> auto_ptr;
-	CConversionContext(CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString, LPCTSTR OperationName);
+	CConversionContext(CWaveSoapFrontDoc * pDoc, UINT StatusStringId = 0, UINT OperationNameId = 0);
 
-	CConversionContext(CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString,
-						LPCTSTR OperationName,
+	CConversionContext(CWaveSoapFrontDoc * pDoc, UINT StatusStringId,
+						UINT OperationNameId,
 						CWaveFile & SrcFile,
 						CWaveFile & DstFile);
 
@@ -687,7 +698,7 @@ class CDecompressContext : public CConversionContext
 
 public:
 	typedef std::auto_ptr<ThisClass> auto_ptr;
-	CDecompressContext(CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString,
+	CDecompressContext(CWaveSoapFrontDoc * pDoc, UINT StatusStringId,
 						CWaveFile & SrcFile,
 						CWaveFile & DstFile,
 						SAMPLE_POSITION SrcStart,
@@ -717,8 +728,8 @@ class CFileSaveContext : public CStagedContext
 public:
 	typedef std::auto_ptr<ThisClass> auto_ptr;
 
-	CFileSaveContext(CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString, LPCTSTR OperationName)
-		: BaseClass(pDoc, StatusString, 0, OperationName),
+	CFileSaveContext(CWaveSoapFrontDoc * pDoc, UINT StatusStringId = 0, UINT OperationNameId = 0)
+		: BaseClass(pDoc, 0, StatusStringId, OperationNameId),
 		m_NewFileTypeFlags(0)
 	{
 	}
@@ -737,11 +748,11 @@ class CWmaDecodeContext : public CTwoFilesOperation
 	typedef CTwoFilesOperation BaseClass;
 public:
 	typedef std::auto_ptr<ThisClass> auto_ptr;
-	CWmaDecodeContext(CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString,
+	CWmaDecodeContext(CWaveSoapFrontDoc * pDoc, UINT StatusStringId,
 					CDirectFile & rWmaFile)
-		: BaseClass(pDoc, StatusString,
+		: BaseClass(pDoc,
 					// operation can be terminated by Close
-					OperationContextDiskIntensive | OperationContextNonCritical),
+					OperationContextDiskIntensive | OperationContextNonCritical, StatusStringId),
 		m_WmaFile(rWmaFile)
 	{
 	}
@@ -782,8 +793,8 @@ class CWmaSaveContext : public CConversionContext
 public:
 	typedef std::auto_ptr<ThisClass> auto_ptr;
 
-	CWmaSaveContext(CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString, LPCTSTR OperationName)
-		: BaseClass(pDoc, StatusString, OperationName)
+	CWmaSaveContext(CWaveSoapFrontDoc * pDoc, UINT StatusStringId = 0, UINT OperationNameId = 0)
+		: BaseClass(pDoc, StatusStringId, OperationNameId)
 	{
 	}
 
