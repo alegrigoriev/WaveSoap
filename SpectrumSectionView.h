@@ -10,7 +10,7 @@
 /////////////////////////////////////////////////////////////////////////////
 // CSpectrumSectionView view
 
-class CSpectrumSectionView : public CView
+class CSpectrumSectionView : public CScaledScrollView
 {
 protected:
 	CSpectrumSectionView();           // protected constructor used by dynamic creation
@@ -18,6 +18,7 @@ protected:
 
 // Attributes
 public:
+	CWaveSoapFrontDoc* GetDocument();
 
 // Operations
 public:
@@ -45,8 +46,13 @@ protected:
 	DECLARE_MESSAGE_MAP()
 };
 
+#ifndef _DEBUG  // debug version in WaveSoapFrontView.cpp
+inline CWaveSoapFrontDoc* CSpectrumSectionView::GetDocument()
+{ return (CWaveSoapFrontDoc*)m_pDocument; }
+#endif
 /////////////////////////////////////////////////////////////////////////////
 
+/////////////////////////////////////////////////////////////////////////////
 //{{AFX_INSERT_LOCATION}}
 // Microsoft Visual C++ will insert additional declarations immediately before the previous line.
 

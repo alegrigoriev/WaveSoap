@@ -1,17 +1,18 @@
 Known problems and tasks:
 
-Make save presets for Expression Evaluation command
-When number of channels changed, view parameters are screwed up.
-Add declicking: first dialog
-Add declicking: interpolation
 Add spectrum section view
-Add noise reduction dialog and processing
+Noise reduction doesn't save aggressivness parameter.
+Lost sync between horz ruler scrolling and waveform.
+After zoom in max, cursor jumps to not the view center.
+Make save presets for Expression Evaluation command
+When number of channels changed after save, view parameters are screwed up.
+File created from clipboard and saved can't be reopened in direct mode.
 Add noise reduction estimation in spectrum section view
 Add MP3 save
 Add ASF save
 Use waveformat instead of template, for FileNew
 If read-only file is saved, name should be different
-Sound view jerks during playback of the last screen.
+Sound and FFT view jerks during playback of the last screen.
 Add spin support for selection and GOTO dialog.
 Statistics: zero crossings shows double the frquency
 Make Paste Special command
@@ -39,9 +40,10 @@ Add mouse wheel support
 Add autoscroll during selection
 
 Done:
-Make "Expression Evaluation" command
-Add memory file support (CDirectFile) for short Undo
-Runtime error during Undo on some systems
+Wrong area invalidated in Spectrum View
+Add declicking: first dialog
+Add declicking: interpolation
+Add noise reduction dialog and processing
 
 File Save/Save As checklist:
 

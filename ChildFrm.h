@@ -9,6 +9,44 @@
 #pragma once
 #endif // _MSC_VER > 1000
 #include "resource.h"
+
+/////////////////////////////////////////////////////////////////////////////
+// CVerticalTrackerBar view
+
+class CVerticalTrackerBar : public CWnd
+{
+public:
+	CVerticalTrackerBar();           // protected constructor used by dynamic creation
+	virtual ~CVerticalTrackerBar();
+
+// Attributes
+public:
+
+// Operations
+public:
+
+// Overrides
+	// ClassWizard generated virtual function overrides
+	//{{AFX_VIRTUAL(CVerticalTrackerBar)
+protected:
+	virtual void OnDraw(CDC* pDC);      // overridden to draw this view
+	//}}AFX_VIRTUAL
+
+// Implementation
+protected:
+#ifdef _DEBUG
+	virtual void AssertValid() const;
+	virtual void Dump(CDumpContext& dc) const;
+#endif
+
+	// Generated message map functions
+protected:
+	//{{AFX_MSG(CVerticalTrackerBar)
+	// NOTE - the ClassWizard will add and remove member functions here.
+	//}}AFX_MSG
+	DECLARE_MESSAGE_MAP()
+};
+
 /////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////
 // CWaveMDIChildClient window
@@ -38,12 +76,16 @@ public:
 		VerticalFftRulerID,
 		WaveViewID,
 		FftViewID,
+		SpectrumSectionViewID,
+		VerticalTrackerID,
 		ScaleStaticID,
 		Static1ID,
-		OutlineViewID};
+		OutlineViewID,
+	};
 
 	CWnd wStatic;
 	CWnd wStatic1;
+	CVerticalTrackerBar wTracker;
 	CScrollBar m_sb;
 
 // Implementation

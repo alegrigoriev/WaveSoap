@@ -117,10 +117,6 @@ SOURCE=.\MainFrm.cpp
 # End Source File
 # Begin Source File
 
-SOURCE=.\NoiseReductionPage.cpp
-# End Source File
-# Begin Source File
-
 SOURCE=.\NumEdit.cpp
 # End Source File
 # Begin Source File
@@ -146,6 +142,10 @@ SOURCE=.\ScaledScrollView.cpp
 # Begin Source File
 
 SOURCE=.\shellink.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=.\SpectrumSectionView.cpp
 # End Source File
 # Begin Source File
 
@@ -307,10 +307,6 @@ SOURCE=.\MainFrm.h
 # End Source File
 # Begin Source File
 
-SOURCE=.\NoiseReductionPage.h
-# End Source File
-# Begin Source File
-
 SOURCE=.\NumEdit.h
 # End Source File
 # Begin Source File
@@ -395,6 +391,10 @@ SOURCE=.\ScaledScrollView.h
 # Begin Source File
 
 SOURCE=.\shellink.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\SpectrumSectionView.h
 # End Source File
 # Begin Source File
 
