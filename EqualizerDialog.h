@@ -7,7 +7,6 @@
 #endif // _MSC_VER > 1000
 // EqualizerDialog.h : header file
 //
-#include <complex>
 #include "NumEdit.h"
 #include "ResizableDialog.h"
 #include "UiUpdatedDlg.h"
@@ -17,105 +16,6 @@
 /////////////////////////////////////////////////////////////////////////////
 // CEqualizerGraphWnd window
 enum { MaxNumberOfEqualizerBands = 20, };
-
-class Equalizer
-{
-public:
-	Equalizer();
-	void RebuildBandFilters();
-	void ResetBands();
-	void SetNumberOfBands(int NumBands);
-
-	std::complex<float> CalculateResponse(double Frequency);
-	void CalculateCoefficients(double Gain, double Frequency, double Width, double Coeffs[6]);
-
-	double m_BandGain[MaxNumberOfEqualizerBands];   // target gain in the band
-	double m_UsedBandGain[MaxNumberOfEqualizerBands];   // gain in the band used to calculate coefficients
-	double m_BandWidth;
-	double m_BandFrequencies[MaxNumberOfEqualizerBands];
-	// the coefficients are: 3 numerator's coeffs and 3 denominator's coeffs
-	double m_BandCoefficients[MaxNumberOfEqualizerBands][6];
-	int m_NumOfFilters;    // 2-MaxNumberOfEqualizerBands
-	BOOL	m_bZeroPhase;
-};
-
-class CEqualizerGraphWnd : public CWnd, public Equalizer
-{
-	typedef CWnd BaseClass;
-	// Construction
-public:
-	CEqualizerGraphWnd();
-
-	// Attributes
-public:
-	void SetNumberOfBands(int NumBands);
-	void SetBandGain(int nBand, double Gain);
-	void SetCurrentBandGain(double Gain)
-	{
-		SetBandGain(m_BandWithFocus, Gain);
-	}
-	double GetCurrentBandGain()
-	{
-		return m_BandGain[m_BandWithFocus];
-	}
-	void SetCurrentBandGainDb(double GainDb)
-	{
-		SetBandGain(m_BandWithFocus, pow(10., GainDb / 20.));
-	}
-	double GetCurrentBandGainDb()
-	{
-		return 20. * log10(m_BandGain[m_BandWithFocus]);
-	}
-	void SetFocusBand(int nBand);
-	int GetHitCode(POINT point);
-
-	// Operations
-public:
-
-// Overrides
-	// ClassWizard generated virtual function overrides
-	//{{AFX_VIRTUAL(CEqualizerGraphWnd)
-protected:
-	virtual BOOL PreCreateWindow(CREATESTRUCT& cs);
-	//}}AFX_VIRTUAL
-
-// Implementation
-	void DrawDotCaret(bool state = true);
-//    void ShowDotCaret(bool state = true);
-public:
-	virtual ~CEqualizerGraphWnd();
-	bool m_bMouseCaptured;
-	bool m_bButtonPressed;
-	bool m_bGotFocus;
-	bool m_DotCaretIsOn;
-	bool m_MultiBandEqualizer;
-
-	int m_NumOfBands;    // 2-MaxNumberOfEqualizerBands
-	int m_BandWithFocus;
-	double m_SamplingRate;
-	// Generated message map functions
-protected:
-	void NotifyParentDlg();
-	//{{AFX_MSG(CEqualizerGraphWnd)
-	afx_msg void OnPaint();
-	afx_msg void OnMouseMove(UINT nFlags, CPoint point);
-	afx_msg void OnLButtonDown(UINT nFlags, CPoint point);
-	afx_msg void OnLButtonUp(UINT nFlags, CPoint point);
-	afx_msg BOOL OnEraseBkgnd(CDC* pDC);
-	afx_msg void OnNcCalcSize(BOOL bCalcValidRects, NCCALCSIZE_PARAMS FAR* lpncsp);
-	afx_msg void OnCaptureChanged(CWnd *pWnd);
-	afx_msg int OnMouseActivate(CWnd* pDesktopWnd, UINT nHitTest, UINT message);
-	afx_msg void OnKillFocus(CWnd* pNewWnd);
-	afx_msg void OnSetFocus(CWnd* pOldWnd);
-	afx_msg BOOL OnSetCursor(CWnd* pWnd, UINT nHitTest, UINT message);
-	afx_msg void OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags);
-	afx_msg UINT OnGetDlgCode();
-	afx_msg void OnTimer(UINT nIDEvent);
-	afx_msg void OnLButtonDblClk(UINT nFlags, CPoint point);
-	//}}AFX_MSG
-	afx_msg void OnNcPaint(UINT wParam);
-	DECLARE_MESSAGE_MAP()
-};
 
 /////////////////////////////////////////////////////////////////////////////
 // CEqualizerDialog dialog
@@ -135,18 +35,28 @@ public:
 					BOOL	bUndoEnabled,
 					CWnd* pParent = NULL);   // standard constructor
 
+	~CEqualizerDialog();
+
+	void GetBandCoefficients(double BandCoefficients[MaxNumberOfEqualizerBands][6]) const;
+
+	int GetNumberOfBands() const
+	{
+		return m_nBands;
+	}
+	BOOL IsZeroPhase() const;
+
+protected:
 	CApplicationProfile m_Profile;
 // Dialog Data
 	//{{AFX_DATA(CEqualizerDialog)
 	enum { IDD = IDD_DIALOG_SIMPLE_EQUALIZER };
 	CEdit	m_eEditBands;
-	CNumEdit	m_BandGain;
+	CNumEdit	m_eBandTransfer;
 	CSpinButtonCtrl	m_SpinBands;
 	int		m_bMultiBandEqualizer;
 	int 	m_nBands;
 	//}}AFX_DATA
-
-	CEqualizerGraphWnd m_wGraph;
+	class CEqualizerGraphWnd * m_pEqualizerGraph;
 
 // Overrides
 	// ClassWizard generated virtual function overrides
