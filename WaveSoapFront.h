@@ -303,6 +303,9 @@ CString GetSelectionText(SAMPLE_INDEX Start, SAMPLE_INDEX End, CHANNEL_MASK Chan
 CString LoadCString(UINT id);
 void SetWindowIcons(CWnd * pWnd, UINT id);
 
+void _AfxAppendFilterSuffix(CString& filter, OPENFILENAME& ofn,
+							CDocTemplate* pTemplate, CString* pstrDefaultExt);
+
 /////////////////////////////////////////////////////////////////////////////
 //{{AFX_INSERT_LOCATION}}
 // Microsoft Visual C++ will insert additional declarations immediately before the previous line.
