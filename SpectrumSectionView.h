@@ -14,6 +14,7 @@
 
 class CSpectrumSectionView : public CScaledScrollView
 {
+	typedef CScaledScrollView BaseClass;
 protected:
 	CSpectrumSectionView();           // protected constructor used by dynamic creation
 	DECLARE_DYNCREATE(CSpectrumSectionView)
