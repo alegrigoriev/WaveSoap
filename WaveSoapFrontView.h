@@ -96,6 +96,7 @@ protected:
 	virtual void NotifySlaveViews(DWORD flag);
 
 	int m_HorizontalScale;
+	int m_PrevHorizontalScale;
 	// multiply the wave to get the additional magnification.
 	// m_VerticalScale means all the range is shown, scale 2 means the wave
 	// is magnified 2 times.
@@ -180,6 +181,7 @@ protected:
 	DECLARE_MESSAGE_MAP()
 public:
 	afx_msg void OnLButtonDblClk(UINT nFlags, CPoint point);
+	afx_msg void OnViewZoomprevious();
 };
 
 #define VSHT_RIGHT_AUTOSCROLL 0x40000    // autoscroll area

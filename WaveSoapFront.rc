@@ -449,9 +449,10 @@ BEGIN
         MENUITEM "&Zoom In Time\tGray +",       ID_VIEW_ZOOMINHOR2
         MENUITEM "Zoom &Out Time\tGray -",      ID_VIEW_ZOOMOUTHOR2
         MENUITEM "Zoom In &Full",               ID_VIEW_ZOOMIN_HOR_FULL
+        MENUITEM "Zoom Previous\tCtrl+Gray +",  ID_VIEW_ZOOMPREVIOUS
         MENUITEM SEPARATOR
-        MENUITEM "Zoom In Amplitude",           ID_VIEW_ZOOMINVERT
-        MENUITEM "Zoom Out Amplitude",          ID_VIEW_ZOOMOUTVERT
+        MENUITEM "Zoom In Amplitude\tAlt+Up",   ID_VIEW_ZOOMINVERT
+        MENUITEM "Zoom Out Amplitude\tAlt+Down", ID_VIEW_ZOOMOUTVERT
     END
 END
 
@@ -844,53 +845,55 @@ END
 
 IDR_MAINFRAME ACCELERATORS 
 BEGIN
-    "1",            IDC_VIEW_WAVEFORM,      VIRTKEY, ALT, NOINVERT
-    "2",            IDC_VIEW_SHOW_FFT,      VIRTKEY, ALT, NOINVERT
-    "3",            ID_VIEW_SPECTRUMSECTION, VIRTKEY, ALT, NOINVERT
-    "4",            ID_VIEW_OUTLINE,        VIRTKEY, ALT, NOINVERT
-    "5",            ID_VIEW_TIME_RULER,     VIRTKEY, ALT, NOINVERT
-    "6",            ID_VIEW_VERTICAL_RULER, VIRTKEY, ALT, NOINVERT
-    "A",            ID_EDIT_SELECT_ALL,     VIRTKEY, CONTROL, NOINVERT
+    VK_F1,          ID_CONTEXT_HELP,        VIRTKEY, SHIFT, NOINVERT
     "C",            ID_EDIT_COPY,           VIRTKEY, CONTROL, NOINVERT
-    "D",            ID_EDIT_SELECTION,      VIRTKEY, CONTROL, NOINVERT
-    "E",            ID_EDIT_PASTE_NEW,      VIRTKEY, CONTROL, NOINVERT
+    VK_INSERT,      ID_EDIT_COPY,           VIRTKEY, CONTROL, NOINVERT
+    VK_DELETE,      ID_EDIT_CUT,            VIRTKEY, SHIFT, NOINVERT
+    "X",            ID_EDIT_CUT,            VIRTKEY, CONTROL, NOINVERT
+    VK_DELETE,      ID_EDIT_DELETE,         VIRTKEY, NOINVERT
     "G",            ID_EDIT_GOTO,           VIRTKEY, CONTROL, NOINVERT
+    "V",            ID_EDIT_PASTE,          VIRTKEY, CONTROL, NOINVERT
+    VK_INSERT,      ID_EDIT_PASTE,          VIRTKEY, SHIFT, NOINVERT
+    "E",            ID_EDIT_PASTE_NEW,      VIRTKEY, CONTROL, NOINVERT
+    "Y",            ID_EDIT_REDO,           VIRTKEY, CONTROL, NOINVERT
+    "A",            ID_EDIT_SELECT_ALL,     VIRTKEY, CONTROL, NOINVERT
+    "D",            ID_EDIT_SELECTION,      VIRTKEY, CONTROL, NOINVERT
+    VK_BACK,        ID_EDIT_UNDO,           VIRTKEY, ALT, NOINVERT
+    "Z",            ID_EDIT_UNDO,           VIRTKEY, CONTROL, NOINVERT
     "N",            ID_FILE_NEW,            VIRTKEY, CONTROL, NOINVERT
     "N",            ID_FILE_NEW,            VIRTKEY, SHIFT, CONTROL, 
                                                     NOINVERT
     "O",            ID_FILE_OPEN,           VIRTKEY, CONTROL, NOINVERT
     "P",            ID_FILE_PRINT,          VIRTKEY, CONTROL, NOINVERT
+    VK_RETURN,      ID_FILE_PROPERTIES,     VIRTKEY, ALT, NOINVERT
     "S",            ID_FILE_SAVE,           VIRTKEY, CONTROL, NOINVERT
-    "S",            ID_FILE_SAVE_AS,        VIRTKEY, SHIFT, NOINVERT
     "S",            ID_FILE_SAVE_ALL,       VIRTKEY, SHIFT, CONTROL, 
                                                     NOINVERT
-    "V",            ID_EDIT_PASTE,          VIRTKEY, CONTROL, NOINVERT
-    VK_ADD,         ID_VIEW_ZOOMINHOR2,     VIRTKEY, NOINVERT
-    VK_ADD,         ID_VIEW_INCREASE_FFT_BANDS, VIRTKEY, CONTROL, NOINVERT
-    VK_BACK,        ID_EDIT_UNDO,           VIRTKEY, ALT, NOINVERT
-    VK_DELETE,      ID_EDIT_DELETE,         VIRTKEY, NOINVERT
-    VK_DELETE,      ID_EDIT_CUT,            VIRTKEY, SHIFT, NOINVERT
-    VK_DOWN,        ID_VIEW_ZOOMOUTVERT,    VIRTKEY, ALT, NOINVERT
-    VK_ESCAPE,      ID_STOP_ALL,            VIRTKEY, NOINVERT
-    VK_F1,          ID_HELP,                VIRTKEY, NOINVERT
-    VK_F1,          ID_CONTEXT_HELP,        VIRTKEY, SHIFT, NOINVERT
+    "S",            ID_FILE_SAVE_AS,        VIRTKEY, SHIFT, NOINVERT
     VK_F12,         ID_FILE_SAVE_AS,        VIRTKEY, NOINVERT
     VK_F12,         ID_FILE_SAVE_COPY_AS,   VIRTKEY, SHIFT, NOINVERT
-    VK_F12,         ID_SAVE_SAVESELECTIONAS, VIRTKEY, SHIFT, CONTROL, 
-                                                    NOINVERT
+    VK_F1,          ID_HELP,                VIRTKEY, NOINVERT
     VK_F6,          ID_NEXT_PANE,           VIRTKEY, NOINVERT
     VK_F6,          ID_PREV_PANE,           VIRTKEY, SHIFT, NOINVERT
-    VK_INSERT,      ID_EDIT_COPY,           VIRTKEY, CONTROL, NOINVERT
-    VK_INSERT,      ID_EDIT_PASTE,          VIRTKEY, SHIFT, NOINVERT
-    VK_RETURN,      IDC_SOUND_PAUSE,        VIRTKEY, NOINVERT
-    VK_RETURN,      ID_FILE_PROPERTIES,     VIRTKEY, ALT, NOINVERT
-    VK_SPACE,       IDC_PLAY_AND_STOP,      VIRTKEY, NOINVERT
-    VK_SUBTRACT,    ID_VIEW_ZOOMOUTHOR2,    VIRTKEY, NOINVERT
-    VK_SUBTRACT,    ID_VIEW_DECREASE_FFT_BANDS, VIRTKEY, CONTROL, NOINVERT
+    VK_F12,         ID_SAVE_SAVESELECTIONAS, VIRTKEY, SHIFT, CONTROL, 
+                                                    NOINVERT
+    VK_ESCAPE,      ID_STOP_ALL,            VIRTKEY, NOINVERT
+    VK_SUBTRACT,    ID_VIEW_DECREASE_FFT_BANDS, VIRTKEY, SHIFT, NOINVERT
+    VK_ADD,         ID_VIEW_INCREASE_FFT_BANDS, VIRTKEY, SHIFT, NOINVERT
+    "4",            ID_VIEW_OUTLINE,        VIRTKEY, ALT, NOINVERT
+    "3",            ID_VIEW_SPECTRUMSECTION, VIRTKEY, ALT, NOINVERT
+    "5",            ID_VIEW_TIME_RULER,     VIRTKEY, ALT, NOINVERT
+    "6",            ID_VIEW_VERTICAL_RULER, VIRTKEY, ALT, NOINVERT
+    VK_ADD,         ID_VIEW_ZOOMINHOR2,     VIRTKEY, NOINVERT
     VK_UP,          ID_VIEW_ZOOMINVERT,     VIRTKEY, ALT, NOINVERT
-    "X",            ID_EDIT_CUT,            VIRTKEY, CONTROL, NOINVERT
-    "Y",            ID_EDIT_REDO,           VIRTKEY, CONTROL, NOINVERT
-    "Z",            ID_EDIT_UNDO,           VIRTKEY, CONTROL, NOINVERT
+    VK_SUBTRACT,    ID_VIEW_ZOOMOUTHOR2,    VIRTKEY, NOINVERT
+    VK_DOWN,        ID_VIEW_ZOOMOUTVERT,    VIRTKEY, ALT, NOINVERT
+    VK_SPACE,       IDC_PLAY_AND_STOP,      VIRTKEY, NOINVERT
+    VK_RETURN,      IDC_SOUND_PAUSE,        VIRTKEY, NOINVERT
+    "2",            IDC_VIEW_SHOW_FFT,      VIRTKEY, ALT, NOINVERT
+    "1",            IDC_VIEW_WAVEFORM,      VIRTKEY, ALT, NOINVERT
+    "I",            ID_TOOLS_INTERPOLATE,   VIRTKEY, CONTROL, NOINVERT
+    VK_ADD,         ID_VIEW_ZOOMPREVIOUS,   VIRTKEY, CONTROL, NOINVERT
 END
 
 
@@ -3686,6 +3689,7 @@ BEGIN
     IDC_EDIT_MARKER_REGION  "Add or edit marker or region"
     IDC_EDIT_WAVE_REGION    "Add or edit a region at the current selection"
     ID_SAVE_SAVESELECTIONAS "Save the current selection to a file\nSave selection"
+    ID_VIEW_ZOOMPREVIOUS    "Change to the previous zoom\nPrevious zoom"
 END
 
 #endif    // English (U.S.) resources
