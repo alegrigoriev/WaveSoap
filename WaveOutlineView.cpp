@@ -247,6 +247,29 @@ void CWaveOutlineView::OnDraw(CDC* pDC)
 		}
 	}
 	delete[] pPeaks;
+	// draw markers
+	SAMPLE_INDEX_Vector markers;
+	pDoc->m_WavFile.GetSortedMarkers(markers, FALSE);
+	CPen DotPen(PS_DOT, 1, RGB(255, 255, 255));
+
+	pDC->SelectObject(& DotPen);
+	pDC->SetROP2(R2_XORPEN);
+	pDC->SetBkColor(RGB(0, 0, 0));
+
+	for (SAMPLE_INDEX_Vector::const_iterator i = markers.begin();
+		i < markers.end(); i++)
+	{
+		long x = MulDiv( *i, cr.right, nSamples);
+
+		if (x >= ur.left
+			&& x < ur.right)
+		{
+			// draw marker
+			pDC->MoveTo(x, cr.top);
+			pDC->LineTo(x, cr.bottom);
+		}
+	}
+
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -279,6 +302,7 @@ void CWaveOutlineView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
 	NUMBER_OF_SAMPLES nSamples = pDoc->WaveFileSamples();
 	CRect cr;
 	GetClientRect( & cr);
+	int width = cr.Width();
 
 	if (lHint == CWaveSoapFrontDoc::UpdateSelectionChanged
 		&& NULL != pHint)
@@ -292,8 +316,8 @@ void CWaveOutlineView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
 		}
 
 		// calculate new selection boundaries
-		SAMPLE_INDEX SelBegin = MulDiv(pInfo->SelBegin, cr.Width(), nSamples);
-		SAMPLE_INDEX SelEnd = MulDiv(pInfo->SelEnd, cr.Width(), nSamples);
+		int SelBegin = MulDiv(pInfo->SelBegin, width, nSamples);
+		int SelEnd = MulDiv(pInfo->SelEnd, width, nSamples);
 		if (pInfo->SelEnd != pInfo->SelBegin
 			&& SelEnd == SelBegin)
 		{
@@ -301,8 +325,8 @@ void CWaveOutlineView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
 		}
 
 		// calculate old selection boundaries
-		SAMPLE_INDEX OldSelBegin = MulDiv(pInfo->OldSelBegin, cr.Width(), nSamples);
-		SAMPLE_INDEX OldSelEnd = MulDiv(pInfo->OldSelEnd, cr.Width(), nSamples);
+		int OldSelBegin = MulDiv(pInfo->OldSelBegin, width, nSamples);
+		int OldSelEnd = MulDiv(pInfo->OldSelEnd, width, nSamples);
 
 		if (pInfo->OldSelEnd != pInfo->OldSelBegin
 			&& OldSelEnd == OldSelBegin)
@@ -314,7 +338,7 @@ void CWaveOutlineView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
 		CRect r1(SelBegin, cr.top, SelEnd, cr.bottom);
 		CRect r2(OldSelBegin, cr.top, OldSelEnd, cr.bottom);
 		// invalidate the regions with changed selection
-		SAMPLE_INDEX x[4] = {SelBegin, OldSelBegin, SelEnd, OldSelEnd };
+		int x[4] = {SelBegin, OldSelBegin, SelEnd, OldSelEnd };
 		if (SelBegin > OldSelBegin)
 		{
 			x[0] = OldSelBegin;
@@ -327,7 +351,7 @@ void CWaveOutlineView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
 		}
 		if (x[1] > x[2])
 		{
-			SAMPLE_INDEX tmp = x[1];
+			int tmp = x[1];
 			x[1] = x[2];
 			x[2] = tmp;
 		}
@@ -415,8 +439,8 @@ void CWaveOutlineView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
 		r1.top = cr.top;
 		r1.bottom = cr.bottom;
 		// calculate update boundaries
-		r1.left = MulDiv(pInfo->m_Begin, cr.Width(), nSamples) - 1;
-		r1.right = 1 + MulDiv(pInfo->m_End, cr.Width(), nSamples);
+		r1.left = MulDiv(pInfo->m_Begin, width, nSamples) - 1;
+		r1.right = 1 + MulDiv(pInfo->m_End, width, nSamples);
 
 		if (r1.left != r1.right
 			// limit the rectangles with the window boundaries
@@ -440,8 +464,8 @@ void CWaveOutlineView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
 			&& NULL != pHint)
 	{
 		CSoundUpdateInfo * pInfo = static_cast<CSoundUpdateInfo *>(pHint);
-		SAMPLE_INDEX OldPosition = MulDiv(m_PlaybackCursorPosition, cr.Width(), nSamples);
-		SAMPLE_INDEX NewPosition = MulDiv(pInfo->m_PlaybackPosition, cr.Width(), nSamples);
+		int OldPosition = MulDiv(m_PlaybackCursorPosition, width, nSamples);
+		int NewPosition = MulDiv(pInfo->m_PlaybackPosition, width, nSamples);
 
 		if (NewPosition != OldPosition)
 		{
@@ -464,6 +488,45 @@ void CWaveOutlineView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
 		}
 
 		m_PlaybackCursorPosition = pInfo->m_PlaybackPosition;
+	}
+	else if (lHint == CWaveSoapFrontDoc::UpdateMarkerRegionChanged
+			&& NULL != pHint)
+	{
+		WAVEREGIONINFO * pInfo = & static_cast<MarkerRegionUpdateInfo *> (pHint)->info;
+
+		CRect r;
+
+		long x = MulDiv(pInfo->Sample, width, nSamples);
+
+		if (0 != (pInfo->Flags & (pInfo->ChangeSample | pInfo->Delete))
+			&& x < cr.right && x >= cr.left)
+		{
+			// invalidate region begin marker
+			r.left = x;
+			r.right = x + 1;
+			r.top = cr.top;
+			r.bottom = cr.bottom;
+
+			InvalidateRect(r);
+		}
+
+		if (0 != pInfo->Length
+			&& 0 != (pInfo->Flags
+				& (pInfo->ChangeSample | pInfo->ChangeLength | pInfo->Delete)))
+		{
+			// invalidate end marker
+			x = MulDiv(pInfo->Sample + pInfo->Length, width, nSamples);
+
+			if (x < cr.right && x >= cr.left)
+			{
+				r.left = x;
+				r.right = x + 1;
+				r.top = cr.top;
+				r.bottom = cr.bottom;
+
+				InvalidateRect(r);
+			}
+		}
 	}
 	else if (0 == lHint
 			|| pDoc->UpdateWholeFileChanged == lHint)
@@ -704,8 +767,28 @@ void CWaveOutlineView::OnLButtonUp(UINT /*nFlags*/, CPoint point)
 			// the whole area wasn't selected
 			&& pDoc->m_SelectionStart == pDoc->m_SelectionEnd)
 		{
+			// see is there is a marker
+
+			SAMPLE_INDEX_Vector markers;
+			pDoc->m_WavFile.GetSortedMarkers(markers, FALSE);
+
+			unsigned Flags = SetSelection_SnapToMaximum | SetSelection_MoveCaretToCenter;
+			for (SAMPLE_INDEX_Vector::const_iterator i = markers.begin(); i < markers.end(); i++)
+			{
+				long x = MulDiv( *i, cr.right, nSamples);
+
+				if (x == point.x)
+				{
+					// goto marker
+					nBegin = *i;
+					nEnd = nBegin;
+					Flags = SetSelection_KeepCaretVisible;
+					break;
+				}
+			}
+
 			pDoc->SetSelection(nBegin, nEnd, ALL_CHANNELS, nBegin,
-								SetSelection_SnapToMaximum | SetSelection_MoveCaretToCenter);
+								Flags);
 		}
 	}
 
