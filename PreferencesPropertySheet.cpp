@@ -64,7 +64,6 @@ CFilePreferencesPage::CFilePreferencesPage() : CPropertyPage(CFilePreferencesPag
 	m_bLimitUndoSize = FALSE;
 	m_bLimitUndoDepth = FALSE;
 	m_bRememberSelectionInUndo = FALSE;
-	m_UseMemoryFiles = FALSE;
 	m_RedoDepthLimit = 0;
 	m_RedoSizeLimit = 0;
 	m_sTempFileLocation = _T("");
@@ -74,6 +73,7 @@ CFilePreferencesPage::CFilePreferencesPage() : CPropertyPage(CFilePreferencesPag
 	m_DefaultFileOpenMode = -1;
 	m_bEnable4GbWavFile = -1;
 	m_MaxFileCache = 0;
+	m_FileTextEncoding = 0;
 	//}}AFX_DATA_INIT
 }
 
@@ -95,7 +95,6 @@ void CFilePreferencesPage::DoDataExchange(CDataExchange* pDX)
 	DDX_Check(pDX, IDC_CHECK_LIMIT_UNDO, m_bLimitUndoSize);
 	DDX_Check(pDX, IDC_CHECK_LIMIT_UNDO_DEPTH, m_bLimitUndoDepth);
 	DDX_Check(pDX, IDC_CHECK_REMEMBER_SELECTION_IN_UNDO, m_bRememberSelectionInUndo);
-	DDX_Check(pDX, IDC_CHECK_TEMP_MEMORY_FILES, m_UseMemoryFiles);
 	DDX_Text(pDX, IDC_EDIT_REDO_DEPTH_LIMIT, m_RedoDepthLimit);
 	DDV_MinMaxUInt(pDX, m_RedoDepthLimit, 1, 200);
 	DDX_Text(pDX, IDC_EDIT_REDO_SIZE_LIMIT, m_RedoSizeLimit);
@@ -111,6 +110,7 @@ void CFilePreferencesPage::DoDataExchange(CDataExchange* pDX)
 	DDX_Radio(pDX, IDC_RADIO_WAV_SIZE, m_bEnable4GbWavFile);
 	DDX_Text(pDX, IDC_EDIT_MAX_FILE_CACHE, m_MaxFileCache);
 	DDV_MinMaxUInt(pDX, m_MaxFileCache, 1, 512);
+	DDX_Radio(pDX, IDC_RADIO_TEXT_ANSI, m_FileTextEncoding);
 	//}}AFX_DATA_MAP
 }
 

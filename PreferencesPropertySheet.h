@@ -36,7 +36,6 @@ public:
 	BOOL	m_bLimitUndoSize;
 	BOOL	m_bLimitUndoDepth;
 	BOOL	m_bRememberSelectionInUndo;
-	BOOL	m_UseMemoryFiles;
 	UINT	m_RedoDepthLimit;
 	UINT	m_RedoSizeLimit;
 	CString	m_sTempFileLocation;
@@ -46,6 +45,7 @@ public:
 	int		m_DefaultFileOpenMode;
 	int		m_bEnable4GbWavFile;
 	UINT	m_MaxFileCache;
+	int     m_FileTextEncoding;
 	//}}AFX_DATA
 
 
