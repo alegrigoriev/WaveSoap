@@ -221,16 +221,16 @@ CCdGrabbingDialog::CCdGrabbingDialog(CWnd* pParent /*=NULL*/)
 	m_pWfx = NULL;
 	m_bNeedUpdateControls = TRUE;
 	m_MaxReadSpeed = 0;
+	m_CurrentReadSpeed = 0;
 	m_DiskReady = DiskStateUnknown;
 	m_bPlayingAudio = FALSE;
+	m_FileTypeFlags = 0;
 
 	m_Profile.AddItem(_T("CdRead"), _T("BaseDirectory"), m_sSaveFolderOrFile);
 	m_Profile.AddItem(_T("CdRead"), _T("Speed"), m_SelectedReadSpeed, 64000000,
 					176400, 0x10000000);
 	m_Profile.AddItem(_T("CdRead"), _T("DriveLetter"),
 					m_PreviousDriveLetter, 'Z', 'A', 'Z');
-	m_Profile.AddItem(_T("CdRead"), _T("Speed"), m_SelectedReadSpeed, 64000000,
-					176400, 0x10000000);
 
 	m_Profile.AddBoolItem(_T("CdRead"),
 						_T("AssignToAllOrSelected"), m_RadioAssignAttributes, FALSE);
@@ -314,6 +314,15 @@ void CCdGrabbingDialog::DoDataExchange(CDataExchange* pDX)
 				pDX->Fail();
 			}
 			// create valid file names, ask for file replace
+			if (! m_sSaveFolderOrFile.IsEmpty())
+			{
+				TCHAR c = m_sSaveFolderOrFile[m_sSaveFolderOrFile.GetLength() - 1];
+				if (c != '\\'
+					&& c != '/')
+				{
+					m_sSaveFolderOrFile += '\\';
+				}
+			}
 			for (int t = 0; t < m_Tracks.size(); t++)
 			{
 				if ( ! m_Tracks[t].Checked)
@@ -341,18 +350,21 @@ void CCdGrabbingDialog::DoDataExchange(CDataExchange* pDX)
 
 					pName++;
 				}
-				m_Tracks[t].TrackFileName = m_sSaveFolderOrFile;
-				if (! m_sSaveFolderOrFile.IsEmpty())
-				{
-					TCHAR c = m_sSaveFolderOrFile[m_sSaveFolderOrFile.GetLength() - 1];
-					if (c != '\\'
-						&& c != '/')
-					{
-						m_Tracks[t].TrackFileName += '\\';
-					}
-				}
 				Name.ReleaseBuffer();
-				m_Tracks[t].TrackFileName += Name;
+
+				switch (m_FileTypeFlags & OpenDocumentNonWavFile)
+				{
+				case OpenDocumentMp3File:
+					Name += ".mp3";
+					break;
+				case OpenDocumentWmaFile:
+					Name += ".wma";
+					break;
+				default:
+					Name += ".wav";
+					break;
+				}
+				m_Tracks[t].TrackFileName = m_sSaveFolderOrFile + Name;
 			}
 		}
 		m_PreviousDriveLetter = m_DriveLetterSelected;
@@ -382,6 +394,7 @@ BEGIN_MESSAGE_MAP(CCdGrabbingDialog, CResizableDialog)
 	ON_EN_CHANGE(IDC_EDIT_FOLDER_OR_FILE, OnChangeEditFolderOrFile)
 	ON_BN_CLICKED(IDC_BUTTON_PLAY, OnButtonPlay)
 	ON_BN_CLICKED(IDC_BUTTON_STOP, OnButtonStop)
+	ON_CBN_SELCHANGE(IDC_COMBO_SPEED, OnSelchangeComboSpeed)
 	//}}AFX_MSG_MAP
 	ON_WM_DEVICECHANGE()
 	ON_MESSAGE(WM_KICKIDLE, OnKickIdle)
@@ -982,11 +995,25 @@ void CCdGrabbingDialog::OnRadioStoreSingleFile()
 
 }
 
+static int const CdSpeeds[] =
+{
+	1,
+	2,
+	4,
+	8,
+	12,
+	16,
+	24,
+	32,
+	40,
+	48,
+	64,
+};
 void CCdGrabbingDialog::InitReadSpeedCombobox()
 {
 	m_MaxReadSpeed = 0;
 	if (m_DiskReady != DiskStateReady
-		|| ! m_CdDrive.GetMaxReadSpeed( & m_MaxReadSpeed))
+		|| ! m_CdDrive.GetMaxReadSpeed( & m_MaxReadSpeed, & m_CurrentReadSpeed))
 	{
 		if (m_SpeedCombo.IsWindowEnabled())
 		{
@@ -1003,36 +1030,22 @@ void CCdGrabbingDialog::InitReadSpeedCombobox()
 	m_MaxReadSpeed += 44100 * 4 / 2;
 	m_MaxReadSpeed -= m_MaxReadSpeed % (44100 * 4);
 
-	static int const Speeds[] =
+	for (int i = 0; i < sizeof CdSpeeds / sizeof CdSpeeds[0]; i++)
 	{
-		1,
-		2,
-		4,
-		8,
-		12,
-		16,
-		24,
-		32,
-		40,
-		48,
-		64,
-	};
-	for (int i = 0; i < sizeof Speeds / sizeof Speeds[0]; i++)
-	{
-		if (m_MaxReadSpeed < Speeds[i] * 176400)
+		if (m_MaxReadSpeed < CdSpeeds[i] * 176400)
 		{
 			break;
 		}
 		CString s;
-		s.Format("%dx", Speeds[i]);
+		s.Format("%dx", CdSpeeds[i]);
 		m_SpeedCombo.AddString(s);
-		if (m_SelectedReadSpeed == Speeds[i] * 176400)
+		if (m_SelectedReadSpeed == CdSpeeds[i] * 176400)
 		{
 			m_SpeedCombo.SetCurSel(i);
 		}
 	}
-	if (i == sizeof Speeds / sizeof Speeds[0]
-		|| m_MaxReadSpeed > Speeds[i] * 176400)
+	if (i == sizeof CdSpeeds / sizeof CdSpeeds[0]
+		|| m_MaxReadSpeed > CdSpeeds[i] * 176400)
 	{
 		m_SpeedCombo.AddString("Default");  // TODO: LoadString
 		m_SpeedCombo.SetCurSel(i);
@@ -1158,7 +1171,9 @@ void CCdGrabbingDialog::OnEndlabeleditListTracks(NMHDR* pNMHDR, LRESULT* pResult
 		CString s(pDispInfo->item.pszText);
 		s.TrimLeft();
 		s.TrimRight();
-		if (s.IsEmpty())
+		if (s.IsEmpty()
+			|| pDispInfo->item.iItem >= m_Tracks.size()
+			|| ! m_Tracks[pDispInfo->item.iItem].IsAudio)
 		{
 			*pResult = FALSE;
 			return;
@@ -1177,6 +1192,7 @@ void CCdGrabbingDialog::OnEndlabeleditListTracks(NMHDR* pNMHDR, LRESULT* pResult
 			}
 		}
 		strcpy(pDispInfo->item.pszText, s);
+		m_Tracks[pDispInfo->item.iItem].Track = s;
 	}
 	*pResult = TRUE;
 }
@@ -1285,4 +1301,9 @@ void CCdGrabbingDialog::OnUpdateDeselectAll(CCmdUI* pCmdUI)
 		}
 	}
 	pCmdUI->Enable(bEnable);
+}
+
+void CCdGrabbingDialog::OnSelchangeComboSpeed()
+{
+	m_SelectedReadSpeed = 176400 * CdSpeeds[m_SpeedCombo.GetCurSel()];
 }

@@ -1832,7 +1832,13 @@ BOOL CCdReadingContext::Init()
 
 	m_hEvent = CreateEvent(NULL, FALSE, FALSE, NULL);
 	m_pCdBuffer = VirtualAlloc(NULL, m_CdBufferSize, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
-	return NULL != m_pCdBuffer;
+	if (NULL == m_pCdBuffer)
+	{
+		return FALSE;
+	}
+
+	m_Drive.SetReadSpeed(m_RequiredReadSpeed, m_CdAddress - 150, m_NumberOfSectors);
+	return TRUE;
 }
 
 void CCdReadingContext::DeInit()
@@ -1848,4 +1854,9 @@ void CCdReadingContext::DeInit()
 		m_hEvent = NULL;
 	}
 	timeEndPeriod(2);
+	if (0 == (m_Flags & OperationContextFinished)
+		|| m_bLastTrack)
+	{
+		m_Drive.SetReadSpeed(m_OriginalReadSpeed);
+	}
 }

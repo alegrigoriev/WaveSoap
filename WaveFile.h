@@ -196,7 +196,7 @@ enum {
 	CreateWaveFileTempDir = 0x00100000,
 	CreateWaveFileDontCopyInfo = 0x00200000,
 	CreateWaveFilePcmFormat = 0x00400000,
-	CreateWaveFileTemp = 0x00800000,
+	CreateWaveFileTemp = 0x00800000, // create temporary name
 	CreateWaveFileAttachTemplateAsSource = 0x01000000,
 	CreateWaveFileSizeSpecified = 0x02000000,
 	CreateWaveFileCreateFact = 0x04000000,

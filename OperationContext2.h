@@ -323,6 +323,7 @@ public:
 		m_CdBufferFilled(0),
 		m_hEvent(NULL),
 		m_CdDataOffset(0),
+		m_bLastTrack(false),
 		m_CdBufferSize(0)
 	{
 		m_GetBufferFlags = CDirectFile::GetBufferWriteOnly | CDirectFile::GetBufferNoPrefetch;
@@ -333,6 +334,9 @@ public:
 	void SetTrackInformation(CCdDrive const & Drive,
 							CdAddressMSF StartAddr, LONG NumSectors);
 
+	int m_RequiredReadSpeed;
+	int m_OriginalReadSpeed;
+	bool m_bLastTrack;
 protected:
 	CCdDrive m_Drive;
 	CdAddressMSF m_CdAddress;
@@ -342,6 +346,7 @@ protected:
 	size_t m_CdBufferSize;
 	size_t m_CdBufferFilled;
 	size_t m_CdDataOffset;
+
 
 	virtual BOOL ProcessBuffer(void * buf, size_t len, DWORD offset, BOOL bBackward = FALSE);
 	virtual BOOL Init();

@@ -2290,7 +2290,7 @@ void CDirectFile::File::FlushRequestedRange()
 			}
 			if (0 != pBuf->DirtyMask)
 			{
-				TRACE("Block %d flushed\n", key);
+				if (0) TRACE("Block %d flushed\n", key);
 				pBuf->FlushDirtyBuffers(key);
 			}
 		}

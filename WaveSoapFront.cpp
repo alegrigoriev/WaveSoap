@@ -2141,6 +2141,7 @@ void CWaveSoapFrontApp::OnToolsCdgrab()
 
 	CCdReadingContext * pContexts[MaxTracks];
 	CCdReadingContext * pContext;
+	CCdReadingContext * pLastContext = NULL;
 	memzero(pContexts);
 
 	POSITION pos = m_pDocManager->GetFirstDocTemplatePosition();
@@ -2162,6 +2163,7 @@ void CWaveSoapFrontApp::OnToolsCdgrab()
 		NewFileParameters Params;
 		Params.InitialSamples = dlg.m_Tracks[t].NumSectors * (CDDASectorSize / 4);
 		Params.pInitialTitle = dlg.m_Tracks[t].TrackFileName;
+		Params.m_FileTypeFlags = dlg.m_FileTypeFlags;
 		Params.pWf = dlg.m_pWfx;
 
 		CWaveSoapFrontDoc * pDoc =
@@ -2176,8 +2178,7 @@ void CWaveSoapFrontApp::OnToolsCdgrab()
 		CString s;
 		s.Format(_T("Reading CD track %d..."), t + 1);
 
-		pContext = new CCdReadingContext
-					(pDoc, s, _T("CD read"));
+		pContext = new CCdReadingContext(pDoc, s, _T("CD read"));
 
 		if (NULL == pContext)
 		{
@@ -2185,7 +2186,15 @@ void CWaveSoapFrontApp::OnToolsCdgrab()
 			break;
 		}
 
+		pContext->m_RequiredReadSpeed = dlg.m_SelectedReadSpeed;
+		pContext->m_OriginalReadSpeed = dlg.m_CurrentReadSpeed;
 		pContexts[t] = pContext;
+		pLastContext = pContext;
+	}
+
+	if (NULL != pLastContext)
+	{
+		pLastContext->m_bLastTrack = true;
 	}
 
 	if (dlg.m_Tracks.size() == t)
@@ -2216,24 +2225,6 @@ void CWaveSoapFrontApp::OnToolsCdgrab()
 		}
 	}
 	return;
-#if 0
-	// can't read more than 65536 bytes
-	const int SectorSize = 2352;
-	const int NumberOfSectors = 0x10000 / SectorSize;
-	void * data1 = VirtualAlloc(NULL, 0x10000, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
-	RAW_READ_INFO rri = {{0, 0}, NumberOfSectors, CDDA};
-	rri.DiskOffset.QuadPart = SectorSize*75*30;
-	BYTE * data = (BYTE *)data1;
-	res = DeviceIoControl(hCD, IOCTL_CDROM_RAW_READ,
-						& rri, sizeof rri,
-						data1, SectorSize*NumberOfSectors,
-						& dwReturned,
-						NULL);
-	TRACE("Raw read IoControl returned %x, bytes: %d, last error=%d, data=%02X%02X%02X%02X\n",
-		res, dwReturned, GetLastError(), data[3], data[2], data[1], data[0]);
-	VirtualFree(data1, 0, MEM_RELEASE);
-	CloseHandle(hCD);
-#endif
 }
 
 void CWaveSoapFrontApp::OnActivateDocument(CWaveSoapFrontDoc *pDocument, BOOL bActivate)

@@ -440,7 +440,8 @@ BOOL CWaveFile::CreateWaveFile(CWaveFile * pTemplateFile, WAVEFORMATEX * pTempla
 		OpenFlags |= MmioFileMemoryFile;
 	}
 	else if (NULL != FileName
-			&& FileName[0] != 0)
+			&& FileName[0] != 0
+			&& 0 == (flags & CreateWaveFileTemp))
 	{
 		name = FileName;
 	}
@@ -449,11 +450,23 @@ BOOL CWaveFile::CreateWaveFile(CWaveFile * pTemplateFile, WAVEFORMATEX * pTempla
 		CString dir;
 		if (0 == (flags & CreateWaveFileTempDir))
 		{
-			// get directory name from template file
+			// get directory name from template file or FileName
+			LPCTSTR OriginalName = NULL;
+			if ((flags & CreateWaveFileTemp)
+				&& NULL != FileName
+				&& FileName[0] != 0)
+			{
+				OriginalName = FileName;
+			}
+			else if (NULL != pTemplateFile
+					&& pTemplateFile->IsOpen())
+			{
+				OriginalName = pTemplateFile->GetName();
+			}
 			LPTSTR pFilePart = NULL;
-			if (NULL != pTemplateFile
-				&& pTemplateFile->IsOpen()
-				&& 0 != GetFullPathName(pTemplateFile->GetName(),
+			if (NULL != OriginalName
+				&& 0 != OriginalName[0]
+				&& 0 != GetFullPathName(OriginalName,
 										sizeof NameBuf, NameBuf, & pFilePart)
 				&& pFilePart != NULL)
 			{
@@ -461,7 +474,8 @@ BOOL CWaveFile::CreateWaveFile(CWaveFile * pTemplateFile, WAVEFORMATEX * pTempla
 				dir = NameBuf;
 			}
 		}
-		else
+
+		if (dir.IsEmpty())
 		{
 			dir = GetApp()->m_sTempDir;
 			if (dir.IsEmpty())

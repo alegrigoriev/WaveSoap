@@ -187,9 +187,11 @@ public:
 
 	DWORD m_DiskID;
 	WAVEFORMATEX * m_pWfx;
+	DWORD m_FileTypeFlags;
 
 	// speed is in bytes/s, rounded to nearest multiple of 176400
 	int m_MaxReadSpeed;
+	int m_CurrentReadSpeed;
 	int m_SelectedReadSpeed;
 	enum DiskState
 	{
@@ -262,6 +264,7 @@ protected:
 	afx_msg void OnChangeEditFolderOrFile();
 	afx_msg void OnButtonPlay();
 	afx_msg void OnButtonStop();
+	afx_msg void OnSelchangeComboSpeed();
 	//}}AFX_MSG
 	void OnMetricsChange();
 	afx_msg LRESULT OnDeviceChange(UINT, DWORD);
