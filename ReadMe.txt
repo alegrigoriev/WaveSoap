@@ -1,5 +1,6 @@
 Known problems and tasks:
 
+Add "Simple" equalizer
 Add equalizer and low/high frequency filters functions
 Use list instead of array for FFT data (for performance reason).
 Include MP3 and WMA filters even if there is no WMP, but show warning, if the filter is selected
@@ -11,9 +12,10 @@ Put buttons for the view commands to the wave window status bar
 Add CD grabbing
 Add noise reduction estimation in spectrum section view
 Add MP3 save
-Add ASF save
+Add ASF (WMA) save
+Add RAW format open
+Add RAW format save
 Add sound recording
-Add splash screen
 Support "Play" in selection dialog
 Make Paste Special command (with Fade In/Fade Out etc)
 Make Undo/redo save the selection and regions
@@ -43,6 +45,7 @@ Use ReplaceFile for renaming the file
 Add DELETE premission when creating temp file
 Use GetFileAttributes rather than FindFirst to check whether it's file or directory
 Add Export Settings, Import Settings to Options dialog
+Add splash screen
 
 Problems:
 Selection dialog shows channels for MONO sound
@@ -86,6 +89,7 @@ Wrong minimum/maximum valies shown for a zero length file in Statistics (command
 ???? When a file is opened in non-direct mode, peak info is saved with wrong time stamp
 
 Done:
+EQ window: hide dot-caret if no focus, draw without blink, when dragging
 In CSelectionDialog: replace combobox strings with LoadString
 Show file names in PostRetire dialogs, because they can be shown for background DOC.
 Show file name in Statistics Dialog

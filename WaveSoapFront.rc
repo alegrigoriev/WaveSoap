@@ -292,7 +292,7 @@ BEGIN
         MENUITEM "Inv&ert",                     ID_PROCESS_INVERT
         MENUITEM "&Resample...",                ID_PROCESS_RESAMPLE
         MENUITEM "C&hange Channels...",         ID_PROCESS_CHANNELS
-        MENUITEM "&Equalizer...",               ID_PROCESS_EQUALIZER
+        MENUITEM "E&qualizer...",               ID_PROCESS_EQUALIZER
     END
     POPUP "&Tools"
     BEGIN
@@ -1758,36 +1758,36 @@ BEGIN
                     WS_VSCROLL | WS_TABSTOP
 END
 
-IDD_DIALOG_SIMPLE_EQUALIZER DIALOG DISCARDABLE  0, 0, 195, 233
+IDD_DIALOG_SIMPLE_EQUALIZER DIALOG DISCARDABLE  0, 0, 232, 193
 STYLE WS_POPUP | WS_CAPTION | WS_SYSMENU | WS_THICKFRAME
 CAPTION "Equalizer"
 FONT 8, "MS Sans Serif"
 BEGIN
-    LTEXT           "",IDC_STATIC_RESPONSE_TEMPLATE,7,7,181,77
+    LTEXT           "",IDC_STATIC_RESPONSE_TEMPLATE,7,7,218,77
     LTEXT           "Amplification in the selected band:",IDC_STATIC,7,88,
                     115,8
     EDITTEXT        IDC_EDIT_BAND_GAIN,129,86,21,14,ES_AUTOHSCROLL
     CTEXT           "dB",IDC_STATIC,156,88,14,8
     CONTROL         "Simple",IDC_RADIO_EQUALIZER_TYPE,"Button",
-                    BS_AUTORADIOBUTTON | WS_GROUP | WS_TABSTOP,7,142,39,10
+                    BS_AUTORADIOBUTTON | WS_GROUP | WS_TABSTOP,7,110,39,10
     CONTROL         "Multiband:",IDC_RADIO2,"Button",BS_AUTORADIOBUTTON,54,
-                    142,47,10
-    EDITTEXT        IDC_EDIT_BANDS,107,140,23,14,ES_AUTOHSCROLL | WS_GROUP
+                    110,47,10
+    EDITTEXT        IDC_EDIT_BANDS,107,108,23,14,ES_AUTOHSCROLL | WS_GROUP
     CONTROL         "Spin1",IDC_SPIN_BANDS,"msctls_updown32",UDS_SETBUDDYINT | 
-                    UDS_ALIGNRIGHT | UDS_AUTOBUDDY | UDS_ARROWKEYS,123,140,
+                    UDS_ALIGNRIGHT | UDS_AUTOBUDDY | UDS_ARROWKEYS,123,108,
                     10,14
-    LTEXT           "bands",IDC_STATIC,134,143,27,8
-    LTEXT           "Selection:\nChannels:",IDC_STATIC_SELECTION,7,157,179,
-                    25
+    LTEXT           "bands",IDC_STATIC,134,111,27,8
     CONTROL         "Save &Undo",IDC_CHECK_UNDO,"Button",BS_AUTOCHECKBOX | 
-                    WS_TABSTOP,7,187,50,10
-    PUSHBUTTON      "&Selection...",IDC_BUTTON_SELECTION,133,186,50,14
-    DEFPUSHBUTTON   "OK",IDOK,13,212,50,14
-    PUSHBUTTON      "Cancel",IDCANCEL,73,212,50,14
-    PUSHBUTTON      "&Help",IDHELP,133,212,50,14
-    PUSHBUTTON      "Reset",IDC_BUTTON_RESET_BANDS,7,105,50,14
-    PUSHBUTTON      "Load...",IDC_BUTTON_LOAD,72,105,50,14
-    PUSHBUTTON      "Save As...",IDC_BUTTON_SAVE_AS,137,105,50,14
+                    WS_TABSTOP,7,125,50,10
+    LTEXT           "Selection:\nChannels:",IDC_STATIC_SELECTION,7,142,217,
+                    25
+    PUSHBUTTON      "Reset all",IDC_BUTTON_RESET_BANDS,175,87,50,14
+    PUSHBUTTON      "Save As...",IDC_BUTTON_SAVE_AS,175,105,50,14
+    PUSHBUTTON      "Load...",IDC_BUTTON_LOAD,175,123,50,14
+    PUSHBUTTON      "&Selection...",IDC_BUTTON_SELECTION,7,172,50,14
+    DEFPUSHBUTTON   "OK",IDOK,63,172,50,14
+    PUSHBUTTON      "Cancel",IDCANCEL,119,172,50,14
+    PUSHBUTTON      "&Help",IDHELP,175,172,50,14
 END
 
 
@@ -2121,9 +2121,9 @@ BEGIN
     IDD_DIALOG_SIMPLE_EQUALIZER, DIALOG
     BEGIN
         LEFTMARGIN, 7
-        RIGHTMARGIN, 188
+        RIGHTMARGIN, 225
         TOPMARGIN, 7
-        BOTTOMMARGIN, 226
+        BOTTOMMARGIN, 186
     END
 END
 #endif    // APSTUDIO_INVOKED
