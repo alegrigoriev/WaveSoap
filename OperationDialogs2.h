@@ -21,10 +21,10 @@ public:
 // Dialog Data
 	//{{AFX_DATA(CInsertSilenceDialog)
 	enum { IDD = IDD_DIALOG_INSERT_SILENCE };
-	CSpinButtonCtrl	m_SpinStart;
+	CTimeSpinCtrl	m_SpinStart;
 	CTimeSpinCtrl	m_SpinLength;
 	CTimeEdit	m_eLength;
-	CTimeEdit	m_eStart;
+	CTimeEditCombo	m_eStart;
 	int		m_nChannel;
 	int		m_TimeFormatIndex;
 	//}}AFX_DATA
@@ -32,6 +32,7 @@ public:
 	int		m_TimeFormat;
 	long    m_Length;
 	long    m_Start;
+	long    m_FileLength;
 	WAVEFORMATEX * m_pWf;
 
 // Overrides

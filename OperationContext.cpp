@@ -72,6 +72,7 @@ BOOL COperationContext::InitDestination(CWaveFile & DstFile, long StartSample, l
 									m_DstEnd, m_DstChan))
 		{
 			m_pUndoContext = pUndo;
+			// TODO: add shrink context to undo, if necessary
 		}
 		else
 		{
@@ -245,7 +246,6 @@ void CUndoRedoContext::Execute()
 			m_Flags ^= RedoContext;
 			pDocument->AddUndoRedo(this);
 			pDocument->UpdateFrameTitles();        // will cause name change in views
-			return;
 		}
 		else
 		{
@@ -268,8 +268,9 @@ void CUndoRedoContext::Execute()
 
 			pDocument->UpdateFrameTitles();        // will cause name change in views
 			delete this;
-			return;
 		}
+		pDocument->UpdateAllViews(NULL, CWaveSoapFrontDoc::UpdateWholeFileChanged);
+		return;
 	}
 	else if (m_Flags & UndoContextReplaceFormat)
 	{
@@ -1977,7 +1978,7 @@ BOOL CUndoRedoContext::InitUndoCopy(CWaveFile & SrcFile,
 	m_DstStart = SaveStartPos;
 	m_DstCopyPos = SaveStartPos;
 	m_DstEnd = SaveEndPos;
-
+	// TODO: Check if file is expanded as a result of operation
 	if (SaveEndPos > SaveStartPos)
 	{
 		if ( ! m_SrcFile.CreateWaveFile( & SrcFile, NULL,

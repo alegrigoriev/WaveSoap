@@ -338,12 +338,13 @@ void CSelectionDialog::DoDataExchange(CDataExchange* pDX)
 {
 	CDialog::DoDataExchange(pDX);
 	//{{AFX_DATA_MAP(CSelectionDialog)
+	DDX_Control(pDX, IDC_COMBO_SELECTION, m_SelectionCombo);
 	DDX_Control(pDX, IDC_SPIN_START, m_SpinStart);
 	DDX_Control(pDX, IDC_SPIN_LENGTH, m_SpinLength);
 	DDX_Control(pDX, IDC_SPIN_END, m_SpinEnd);
 	DDX_Control(pDX, IDC_EDIT_LENGTH, m_eLength);
-	DDX_Control(pDX, IDC_EDIT_START, m_eStart);
-	DDX_Control(pDX, IDC_EDIT_END, m_eEnd);
+	DDX_Control(pDX, IDC_COMBO_START, m_eStart);
+	DDX_Control(pDX, IDC_COMBO_END, m_eEnd);
 	DDX_Radio(pDX, IDC_RADIO_CHANNEL, m_Chan);
 	DDX_CBIndex(pDX, IDC_COMBO_TIME_FORMAT, m_TimeFormatIndex);
 	DDX_CBIndex(pDX, IDC_COMBO_SELECTION, m_SelectionNumber);
@@ -357,9 +358,10 @@ void CSelectionDialog::DoDataExchange(CDataExchange* pDX)
 BEGIN_MESSAGE_MAP(CSelectionDialog, CDialog)
 //{{AFX_MSG_MAP(CSelectionDialog)
 	ON_CBN_SELCHANGE(IDC_COMBO_TIME_FORMAT, OnSelchangeComboTimeFormat)
-	ON_EN_KILLFOCUS(IDC_EDIT_END, OnKillfocusEditEnd)
+	ON_CBN_KILLFOCUS(IDC_COMBO_END, OnKillfocusEditEnd)
 	ON_EN_KILLFOCUS(IDC_EDIT_LENGTH, OnKillfocusEditLength)
-	ON_EN_KILLFOCUS(IDC_EDIT_START, OnKillfocusEditStart)
+	ON_CBN_KILLFOCUS(IDC_COMBO_START, OnKillfocusEditStart)
+	ON_CBN_SELCHANGE(IDC_COMBO_SELECTION, OnSelchangeComboSelection)
 	//}}AFX_MSG_MAP
 END_MESSAGE_MAP()
 
@@ -527,6 +529,28 @@ BOOL CSelectionDialog::OnInitDialog()
 	}
 	CDialog::OnInitDialog();
 
+	m_eStart.AddPosition("Begin Of Sample", 0);
+	m_eEnd.AddPosition("Begin Of Sample", 0);
+	m_eStart.AddPosition("End Of Sample", m_FileLength);
+	m_eEnd.AddPosition("End Of Sample", m_FileLength);
+	// TODO: add markers
+	((CComboBox*) & m_eStart)->SetExtendedUI(TRUE);
+	((CComboBox*) & m_eEnd)->SetExtendedUI(TRUE);
+
+	AddSelection("(current selection)", m_Start, m_End);
+	AddSelection("All Sample Data", 0, m_FileLength);
+
+	if (0 != m_Start)
+	{
+		AddSelection("From Begin To Cursor", 0, m_Start);
+	}
+	if (m_FileLength != m_End)
+	{
+		AddSelection("From Cursor To End", m_Start, m_FileLength);
+	}
+
+	m_SelectionCombo.SetCurSel(0);
+	// TODO: add regions
 	return TRUE;  // return TRUE unless you set the focus to a control
 	// EXCEPTION: OCX Property Pages should return FALSE
 }
@@ -589,6 +613,30 @@ void CSelectionDialog::OnKillfocusEditStart()
 	if (m_Length < 0) m_Length = 0;
 	m_eLength.SetTimeSample(m_Length);
 }
+
+void CSelectionDialog::OnSelchangeComboSelection()
+{
+	int sel = m_SelectionCombo.GetCurSel();
+	if (sel >= 0
+		&& sel < m_Selections.size())
+	{
+		m_Start = m_Selections[sel].begin;
+		m_eStart.SetTimeSample(m_Start);
+		m_End = m_Selections[sel].end;
+		m_eEnd.SetTimeSample(m_End);
+		m_Length = m_End - m_Start;
+		if (m_Length < 0) m_Length = 0;
+		m_eLength.SetTimeSample(m_Length);
+	}
+}
+
+void CSelectionDialog::AddSelection(LPCTSTR Name, long begin, long end)
+{
+	m_SelectionCombo.AddString(Name);
+	Selection s = {begin, end};
+	m_Selections.push_back(s);
+}
+
 /////////////////////////////////////////////////////////////////////////////
 // CGotoDialog dialog
 
@@ -610,7 +658,7 @@ void CGotoDialog::DoDataExchange(CDataExchange* pDX)
 	CDialog::DoDataExchange(pDX);
 	//{{AFX_DATA_MAP(CGotoDialog)
 	DDX_Control(pDX, IDC_SPIN_START, m_StartSpin);
-	DDX_Control(pDX, IDC_EDIT_START, m_eStart);
+	DDX_Control(pDX, IDC_COMBO_START, m_eStart);
 	DDX_CBIndex(pDX, IDC_COMBO_TIME_FORMAT, m_TimeFormatIndex);
 	//}}AFX_DATA_MAP
 	m_eStart.ExchangeData(pDX, m_Position);
@@ -1188,7 +1236,10 @@ BOOL CGotoDialog::OnInitDialog()
 	}
 	CDialog::OnInitDialog();
 
-
+	m_eStart.AddPosition("Begin Of Sample", 0);
+	m_eStart.AddPosition("End Of Sample", m_FileLength);
+	((CComboBox*) & m_eStart)->SetExtendedUI(TRUE);
+	// TODO: add markers
 	return TRUE;  // return TRUE unless you set the focus to a control
 	// EXCEPTION: OCX Property Pages should return FALSE
 }
@@ -1596,7 +1647,9 @@ void CExpressionEvaluationDialog::UpdateSelectionStatic()
 
 void CExpressionEvaluationDialog::OnOK()
 {
-	if (!UpdateData(TRUE))
+	if (!UpdateData(TRUE)
+		|| ! m_OperandsTabDlg.UpdateData(TRUE)
+		|| ! m_SavedExprTabDlg.UpdateData(TRUE))
 	{
 		TRACE("UpdateData failed during dialog termination.\n");
 		// the UpdateData routine will set focus to correct item
@@ -2172,6 +2225,9 @@ BOOL CExpressionEvaluationDialog::OnInitDialog()
 	m_SavedExprTabDlg.Create(IDD_SAVED_EXPRESSIONS_TAB, this);
 
 	CDialog::OnInitDialog();
+	m_OperandsTabDlg.UpdateData(FALSE);
+	m_SavedExprTabDlg.UpdateData(FALSE);
+
 	CRect r;
 	CWnd * pWnd = GetDlgItem(IDC_STATIC_TAB_INTERIOR);
 	if (pWnd)
@@ -2238,3 +2294,4 @@ void CExpressionEvaluationDialog::OnChangeEditExpression()
 {
 	m_bNeedUpdateControls = TRUE;
 }
+

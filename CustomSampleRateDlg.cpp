@@ -19,7 +19,7 @@ CCustomSampleRateDlg::CCustomSampleRateDlg(CWnd* pParent /*=NULL*/)
 	: CDialog(CCustomSampleRateDlg::IDD, pParent)
 {
 	//{{AFX_DATA_INIT(CCustomSampleRateDlg)
-	// NOTE: the ClassWizard will add member initialization here
+	m_SampleRate = 0;
 	//}}AFX_DATA_INIT
 }
 
@@ -28,7 +28,8 @@ void CCustomSampleRateDlg::DoDataExchange(CDataExchange* pDX)
 {
 	CDialog::DoDataExchange(pDX);
 	//{{AFX_DATA_MAP(CCustomSampleRateDlg)
-	// NOTE: the ClassWizard will add DDX and DDV calls here
+	DDX_Text(pDX, IDC_EDIT_SAMPLE_RATE, m_SampleRate);
+	DDV_MinMaxInt(pDX, m_SampleRate, 1, 1000000);
 	//}}AFX_DATA_MAP
 }
 

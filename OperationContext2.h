@@ -136,7 +136,9 @@ private:
 	int m_nFileSampleArgument;
 	double m_dSelectionTimeArgument;
 	double m_dFileTimeArgument;
+public:
 	double m_dFrequencyArgument;
+private:
 	double m_dSelectionLengthTime;
 	double m_dFileLengthTime;
 	double m_dCurrentSample;
@@ -182,9 +184,15 @@ private:
 	static void _fastcall Sqrt(Operation *t);
 	static void _fastcall Noise(Operation *t);
 	static void _fastcall Abs(Operation *t)  { *t->dDst = abs(*t->dSrc1); }
-	static void _fastcall DoubleToInt(Operation *t)  { *t->nDst = *t->dSrc1; }
+	static void _fastcall DoubleToInt(Operation *t)
+	{
+		*t->nDst = *t->dSrc1;
+	}
 	static void _fastcall IntToDouble(Operation *t)  { *t->dDst = *t->nSrc1; }
-	static void _fastcall AndInt(Operation *t) { *t->nDst = *t->nSrc1 & *t->nSrc2; }
+	static void _fastcall AndInt(Operation *t)
+	{
+		*t->nDst = *t->nSrc1 & *t->nSrc2;
+	}
 	static void _fastcall OrInt(Operation *t) { *t->nDst = *t->nSrc1 | *t->nSrc2; }
 	static void _fastcall XorInt(Operation *t) { *t->nDst = *t->nSrc1 ^ *t->nSrc2; }
 	//static void _fastcall (Operation *t)  { *t->Dst = *t->Src1  *t->Src2; }

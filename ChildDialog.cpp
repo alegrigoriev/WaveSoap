@@ -43,6 +43,32 @@ BEGIN_MESSAGE_MAP(CChildDialog, CDialog)
 	ON_NOTIFY_EX_RANGE(TTN_NEEDTEXTA, 0, 0xFFFF, OnToolTipText)
 END_MESSAGE_MAP()
 
+COperandsDialog::COperandsDialog(UINT id, CWnd* pParent /*=NULL*/)
+	: CChildDialog(id, pParent)
+{
+	//{{AFX_DATA_INIT(COperandsDialog)
+	// NOTE: the ClassWizard will add member initialization here
+	//}}AFX_DATA_INIT
+	m_dFrequency = 0.;
+}
+
+
+void COperandsDialog::DoDataExchange(CDataExchange* pDX)
+{
+	CChildDialog::DoDataExchange(pDX);
+	//{{AFX_DATA_MAP(COperandsDialog)
+	DDX_Control(pDX, IDC_EDIT_FREQUENCY, m_eFrequency);
+	//}}AFX_DATA_MAP
+	m_eFrequency.ExchangeData(pDX, m_dFrequency,
+							"Frequency argument", "", 0., 1000000.);
+}
+
+BEGIN_MESSAGE_MAP(COperandsDialog, CChildDialog)
+	//{{AFX_MSG_MAP(COperandsDialog)
+		// NOTE: the ClassWizard will add message map macros here
+	//}}AFX_MSG_MAP
+END_MESSAGE_MAP()
+
 /////////////////////////////////////////////////////////////////////////////
 // CChildDialog message handlers
 BOOL CChildDialog::OnToolTipText(UINT, NMHDR* pNMHDR, LRESULT* pResult)
@@ -50,6 +76,7 @@ BOOL CChildDialog::OnToolTipText(UINT, NMHDR* pNMHDR, LRESULT* pResult)
 	//TRACE("CChildDialog::OnToolTipText\n");
 	return ((CMainFrame*)AfxGetMainWnd())->OnToolTipText(0, pNMHDR, pResult);
 }
+
 
 /////////////////////////////////////////////////////////////////////////////
 // CInsertExpressionDialog dialog

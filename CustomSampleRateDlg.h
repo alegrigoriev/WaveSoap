@@ -19,7 +19,7 @@ public:
 // Dialog Data
 	//{{AFX_DATA(CCustomSampleRateDlg)
 	enum { IDD = IDD_DIALOG_CUSTOM_SAMPLERATE };
-	// NOTE: the ClassWizard will add data members here
+	int		m_SampleRate;
 	//}}AFX_DATA
 
 

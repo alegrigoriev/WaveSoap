@@ -114,6 +114,10 @@ SOURCE=.\ChildFrm.cpp
 # End Source File
 # Begin Source File
 
+SOURCE=.\CustomSampleRateDlg.cpp
+# End Source File
+# Begin Source File
+
 SOURCE=.\DirectFile.cpp
 # End Source File
 # Begin Source File
@@ -313,6 +317,10 @@ SOURCE=.\ChildFrm.h
 # Begin Source File
 
 SOURCE=.\Complex.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\CustomSampleRateDlg.h
 # End Source File
 # Begin Source File
 
