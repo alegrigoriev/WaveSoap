@@ -1,17 +1,32 @@
 TODO tasks:
 
-Allow dragging NR threshold points
-Show FFT of NR result in spectrum view
+Check if after file extension metadata gets saved again.
+Return selection on click interpolation UNDO
+ULF reduction should be put to disk-intensive queue
+Noise reduction threshold should be independent from FFT order. Max may be over 0 dB.
+Rescale markers on resample
+Delete markers on expression evaluation
+Modify markers for reverse operation
+Add Marker command to FFT view context menu
+Add Marker command to the main menu
+Make an accelerator for Marker/Region command
 Check all loading/saving of compressed files
-Add support for markers and regions: save on copy and with undo, move and delete on Cut, move on Paste
 Make Fade In/Out command
 Make Paste Special command (with Fade In/Fade Out etc)
 Delete/Insert operations can auto add markers and regions
 If metadata doesn't come as the very last chunk of the file, copy the original file to 
  a file where it does (for non-compressed file, that is)
+Allow dragging NR threshold points
+Show FFT of NR result in spectrum view
+Show/edit markers as a table
+Show tooltip on a marker in outline view
+Make context menu for outline view
+
+Fix GetBufferWriteOnly flag support (do zero instead of read)
+Do rewriting from a source file to the work file in background thread.
 
 Unnamed region name is composed from its boundaries
-
+Move "Import/Export clicks" to "Advanced" dialog
 Make Windows/Close All command
 Put copyright notices to all files
 
@@ -73,15 +88,14 @@ Find which alignment better for edit box labels: left or right
 
 Problems:
 
-New file conversion: mono to stereo - does not work
-When scrolling FFT view during playback, checkered background after EOF is constantly blinking
-Reopen after save new file doesn't work
 Vertical scroll in the wave view makes marker labels blinking
+File resample doesn't tell about overflow
+During exit, asks to reopen the file
+Ctrl+S doesn't always work
+MRU list doesn't show directories
 If a clipboard operation gets stopped, need to cancel all the operations that depend on it.
 Save As adds "Copy of" for direct file
-File resample doesn't tell about overflow
 Save As fails if the file replaced is read-only
-During exit, asks to reopen the file
 WinXP doesn't have CDRAL
 Multisession disk shows only begin of tracks. Read the whole structure.
 Multiline edit box in child dialog eats Esc and Enter (DLGC_WANTALLCHARS) (MFC CDialog::PreTranslateMessage() bug
@@ -91,6 +105,14 @@ Windows2000 is trying to zero the allocated file
 Log Off query doesn't close the active dialog. Recursion is possible. Make sure to check after Cancel
 
 Fixed:
+When scrolling during playback, checkered background after EOF is constantly blinking (caused by LCD)
+Reopen after save new file doesn't work	 (test with marker set/change)
+Losing metadata on save
+Click interpolation: selection 2 samples long causes overflow
+No redo after "Undo Interpolate"
+New file conversion: mono to stereo - does not work
+Wrong normalization coefficient
+Click interpolation: divide by zero could occur
 FFT view - last (incomplete) column is drawn from the first
 Spectrum section: if FFT is zoomed vertically, section is not redrawn
 Last WavePeak is not rescanned when file length is cut
@@ -142,7 +164,9 @@ No Disk In Drive has a checkmark
 "No Disk in drive" is updated all the time
 CD list combo height too low
 
-Deferred:
+Deferred or not confirmed:
+Doesn't show "Undoing" and "Redoing"
+Selection mode in FFT view may not exit on capture loss
 Suggests u-Law when saving a file from clipboard (??)
 Daylight saving time change invalidates peak info timestamp (FAT only??)
 doesn't show caret on the outline (as designed)
@@ -159,6 +183,9 @@ Save As dialog is not centered first time (comdlg problem?)
 ??? When time/seconds format is set for status bar, MM:SS is actually shown
 
 Done:
+Add support for markers and regions: save on copy and with undo, move and delete on Cut, move on Paste
+InitCopyMarkers should not do immediate copy!
+Fade in/out in Mute command
 Add noise reduction estimation in spectrum section view
 When noise threshold is shown, fix the FFT resolution to the NR
 Make WSPK file hidden (optional)
@@ -238,6 +265,7 @@ Test "reload compressed file" dialogs
 
 
 For Version 2:
+Make customizable context menu in views
 Make middle button scroll (drop anchor window)
 Add Undo/Redo drop list
 Make a few source samples available in expression and a few output samples too
@@ -248,7 +276,6 @@ Support WAVEFORMATEXTENSIBLE.
 Make multichannel editing
 allow 24/32 bit data
 Allow "Minimized" channels
-Use UNICODE
 
 File Save/Save As checklist:
 
