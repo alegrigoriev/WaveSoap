@@ -139,15 +139,15 @@ public:
 	CComboBox	m_ComboBitrate;
 	CButton	m_StopButton;
 	CButton	m_PlayButton;
-	CEdit	m_eArtist;
-	CEdit	m_eAlbum;
-	CEdit	m_eSaveFolderOrFile;
+	CComboBox	m_eArtist;
+	CComboBox	m_eAlbum;
+	CComboBox	m_eSaveFolder;
 	CComboBox	m_SpeedCombo;
 	CComboBox	m_DrivesCombo;
 	CListCtrl	m_lbTracks;
 	int		m_RadioAssignAttributes;
 	int		m_RadioStoreImmediately;
-	CString	m_sSaveFolderOrFile;
+	CString	m_sSaveFolder;
 	CString	m_sAlbum;
 	CString	m_sArtist;
 	int		m_RadioFileFormat;
@@ -194,6 +194,11 @@ protected:
 
 // Implementation
 protected:
+
+	CString m_AlbumHistory[15];
+	CString m_ArtistHistory[15];
+	CString m_FolderHistory[10];
+
 	BOOL m_bNeedUpdateControls;
 
 	// Playback support:

@@ -1963,7 +1963,7 @@ void FileCreationErrorMessageBox(LPCTSTR name)
 	else if (error == ERROR_ACCESS_DENIED
 			|| error == ERROR_FILE_READ_ONLY)
 	{
-		FormatId = IDS_OVERWRITE_SHARING_VIOLATION;
+		FormatId = IDS_OVERWRITE_ACCESS_DENIED;
 		if (NULL == name)
 		{
 			FormatId = IDS_OVERWRITE_ACCESS_DENIED_TEMP;
