@@ -36,15 +36,26 @@ void BladeMp3Encoder::Close()
 }
 BOOL BladeMp3Encoder::OpenStream(PBE_CONFIG pConfig)
 {
-	DWORD dwSamples;
+	int OpenCount = InterlockedIncrement( & m_StreamCount);
+	ASSERT (1 == OpenCount);
+
+	if (OpenCount != 1)
+	{
+		InterlockedDecrement( & m_StreamCount);
+		return FALSE;
+	}
+
 	if (NULL != m_pStream)
 	{
 		return FALSE;
 	}
+
+	DWORD dwSamples;
 	if (BE_ERR_SUCCESSFUL != beInitStream(pConfig, & dwSamples, & m_OutBufferSize, & m_pStream))
 	{
 		return FALSE;
 	}
+
 	m_bFlushStreamCalled = false;
 
 	m_InBufferSize = dwSamples * 2;
@@ -53,6 +64,19 @@ BOOL BladeMp3Encoder::OpenStream(PBE_CONFIG pConfig)
 		m_InBufferSize *= 2;
 	}
 	return TRUE;
+}
+
+void BladeMp3Encoder::CloseStream()
+{
+	if (NULL != m_pStream)
+	{
+		beCloseStream(m_pStream);
+		m_pStream = NULL;
+
+		ASSERT(1 == m_StreamCount);
+
+		InterlockedDecrement( & m_StreamCount);
+	}
 }
 
 BOOL BladeMp3Encoder::Open(LPCTSTR DllName)
@@ -128,3 +152,5 @@ CString BladeMp3Encoder::GetVersionString()
 	return s;
 }
 
+// LAME encoder supports only 1 stream! Truly lame
+LONG BladeMp3Encoder::m_StreamCount = 0;
