@@ -633,7 +633,9 @@ int CWaveFormat::MatchFormat(WAVEFORMATEX const * pwf)
 	{
 		if (WAVE_FORMAT_PCM == pwf->wFormatTag)
 		{
-			if (0 == memcmp(pwf, m_pWf, sizeof (PCMWAVEFORMAT)))
+			if (pwf->wBitsPerSample == m_pWf->wBitsPerSample
+				&& pwf->nSamplesPerSec == m_pWf->nSamplesPerSec
+				&& pwf->nChannels == m_pWf->nChannels)
 			{
 				// exact match found
 				if (16 == pwf->wBitsPerSample)
