@@ -334,9 +334,7 @@ CCdGrabbingDialog::CCdGrabbingDialog(CWnd* pParent /*=NULL*/)
 
 	};
 
-	m_pResizeItems = ResizeItems;
-	m_pResizeItemsCount = countof(ResizeItems);
-
+	SetResizeableItems(ResizeItems, countof(ResizeItems));
 }
 
 CCdGrabbingDialog::~CCdGrabbingDialog()
@@ -1749,12 +1747,14 @@ void CCdGrabbingDialog::OnSysColorChange()
 	CreateImageList();
 }
 
+//////////////////////////////////////////////////////////////////////
+
 CMarkerRegionDialog::CMarkerRegionDialog(struct WAVEREGIONINFO * pRegionInfo, SAMPLE_INDEX CaretPos,
 										CWaveFile & WaveFile, int TimeFormat,
 										CWnd* pParent)
-	: BaseClass(pRegionInfo->Sample, pRegionInfo->Sample + pRegionInfo->Length,
-				CaretPos, ALL_CHANNELS, WaveFile, TimeFormat, FALSE,
-				IDD, pParent)
+	: BaseClass(IDD, pParent)
+	, CSelectionUiSupport(pRegionInfo->Sample, pRegionInfo->Sample + pRegionInfo->Length,
+						CaretPos, ALL_CHANNELS, WaveFile, TimeFormat, FALSE)
 	, m_pRegionData(pRegionInfo)
 	, m_bMarkerOrRegion(0 != pRegionInfo->Length)
 {
@@ -1774,11 +1774,67 @@ BEGIN_MESSAGE_MAP(CMarkerRegionDialog, BaseClass)
 	ON_BN_CLICKED(IDC_RADIO_REGION, OnClickedMarkerRegion)
 	ON_BN_CLICKED(IDC_BUTTON_DELETE, OnClickedDelete)
 
+// CSelectionSupport
+	ON_CBN_SELCHANGE(IDC_COMBO_TIME_FORMAT, OnSelchangeComboTimeFormat)
+	ON_CBN_KILLFOCUS(IDC_COMBO_END, OnKillfocusEditEnd)
+	ON_NOTIFY(CTimeSpinCtrl::TSC_BUDDY_CHANGE, IDC_SPIN_END, OnBuddyChangeSpinEnd)
+	ON_EN_KILLFOCUS(IDC_EDIT_LENGTH, OnKillfocusEditLength)
+	ON_NOTIFY(CTimeSpinCtrl::TSC_BUDDY_CHANGE, IDC_SPIN_LENGTH, OnBuddyChangeSpinLength)
+	ON_CBN_KILLFOCUS(IDC_COMBO_START, OnKillfocusEditStart)
+	ON_NOTIFY(CTimeSpinCtrl::TSC_BUDDY_CHANGE, IDC_SPIN_START, OnBuddyChangeSpinStart)
+	ON_CBN_SELCHANGE(IDC_COMBO_SELECTION, OnSelchangeComboSelection)
 END_MESSAGE_MAP()
+
+void CMarkerRegionDialog::OnSelchangeComboTimeFormat()
+{
+	CSelectionUiSupport::OnSelchangeComboTimeFormat();
+}
+
+void CMarkerRegionDialog::OnBuddyChangeSpinEnd(NMHDR * pNmHdr, LRESULT * pResult)
+{
+	CSelectionUiSupport::OnBuddyChangeSpinEnd(pNmHdr, pResult);
+}
+
+void CMarkerRegionDialog::OnKillfocusEditEnd()
+{
+	CSelectionUiSupport::OnKillfocusEditEnd();
+}
+
+void CMarkerRegionDialog::OnBuddyChangeSpinLength(NMHDR * pNmHdr, LRESULT * pResult)
+{
+	CSelectionUiSupport::OnBuddyChangeSpinLength(pNmHdr, pResult);
+}
+
+void CMarkerRegionDialog::OnKillfocusEditLength()
+{
+	CSelectionUiSupport::OnKillfocusEditLength();
+}
+
+void CMarkerRegionDialog::OnBuddyChangeSpinStart(NMHDR * pNmHdr, LRESULT * pResult)
+{
+	CSelectionUiSupport::OnBuddyChangeSpinStart(pNmHdr, pResult);
+}
+
+void CMarkerRegionDialog::OnKillfocusEditStart()
+{
+	CSelectionUiSupport::OnKillfocusEditStart();
+}
+
+void CMarkerRegionDialog::OnSelchangeComboSelection()
+{
+	CSelectionUiSupport::OnSelchangeComboSelection();
+}
+
+void CMarkerRegionDialog::OnOK()
+{
+	AdjustSelection(m_eStart.GetTimeSample(), m_eEnd.GetTimeSample(), m_eLength.GetTimeSample());
+	BaseClass::OnOK();
+}
 
 void CMarkerRegionDialog::DoDataExchange(CDataExchange* pDX)
 {
 	BaseClass::DoDataExchange(pDX);
+	CSelectionUiSupport::DoDataExchange(pDX, this);
 
 	DDX_Radio(pDX, IDC_RADIO_MARKER, m_bMarkerOrRegion);
 	DDX_Text(pDX, IDC_EDIT_MARKER_NAME, m_sName);
@@ -1797,6 +1853,15 @@ void CMarkerRegionDialog::DoDataExchange(CDataExchange* pDX)
 			m_pRegionData->Length = 0;
 		}
 	}
+}
+
+BOOL CMarkerRegionDialog::OnInitDialog()
+{
+	BaseClass::OnInitDialog();
+
+	InitSelectionUi();
+
+	return TRUE;  // return TRUE unless you set the focus to a control
 }
 
 void CMarkerRegionDialog::OnUpdateEditLength(CCmdUI * pCmdUI)

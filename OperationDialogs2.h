@@ -347,9 +347,9 @@ protected:
 };
 
 struct WAVEREGIONINFO;
-class CMarkerRegionDialog : public CSelectionDialog
+class CMarkerRegionDialog : public CUiUpdatedDlg, public CSelectionUiSupport
 {
-	typedef CSelectionDialog BaseClass;
+	typedef CUiUpdatedDlg BaseClass;
 public:
 	CMarkerRegionDialog(struct WAVEREGIONINFO * pRegionInfo, SAMPLE_INDEX CaretPos,
 						CWaveFile & WaveFile, int TimeFormat,
@@ -367,6 +367,8 @@ public:
 	//{{AFX_VIRTUAL(CMarkerRegionDialog)
 protected:
 	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV support
+	virtual BOOL OnInitDialog();
+	virtual void OnOK();
 	//}}AFX_VIRTUAL
 
 	// Implementation
@@ -379,6 +381,16 @@ protected:
 	afx_msg void OnClickedDelete();
 	afx_msg void OnUpdateDelete(CCmdUI * pCmdUI);
 	//}}AFX_MSG
+	// CSelectionSupport handlers:
+	afx_msg void OnSelchangeComboTimeFormat();
+	afx_msg void OnKillfocusEditEnd();
+	afx_msg void OnKillfocusEditLength();
+	afx_msg void OnKillfocusEditStart();
+	afx_msg void OnBuddyChangeSpinEnd(NMHDR * pNmHdr, LRESULT * pResult);
+	afx_msg void OnBuddyChangeSpinLength(NMHDR * pNmHdr, LRESULT * pResult);
+	afx_msg void OnBuddyChangeSpinStart(NMHDR * pNmHdr, LRESULT * pResult);
+	afx_msg void OnSelchangeComboSelection();
+
 	DECLARE_MESSAGE_MAP()
 public:
 	// 0 - marker, 1 - region
