@@ -171,6 +171,78 @@
 			<Tool
 				Name="VCAuxiliaryManagedWrapperGeneratorTool"/>
 		</Configuration>
+		<Configuration
+			Name="Debug ANSI|Win32"
+			OutputDirectory="$(ConfigurationName)"
+			IntermediateDirectory="$(ConfigurationName)"
+			ConfigurationType="1"
+			UseOfMFC="1"
+			ATLMinimizesCRunTimeLibraryUsage="FALSE"
+			CharacterSet="2">
+			<Tool
+				Name="VCCLCompilerTool"
+				Optimization="0"
+				AdditionalIncludeDirectories=".;&quot;C:\Program Files\WMSDK\WMFSDK\include&quot;;C:\WINDDK\2600\inc\ddk\w2k"
+				PreprocessorDefinitions="_DEBUG,WIN32,_WINDOWS,_WIN32_WINNT=0x0500,OEMRESOURCE,USE_MMCKINFO64"
+				GeneratePreprocessedFile="0"
+				StringPooling="FALSE"
+				BasicRuntimeChecks="3"
+				SmallerTypeCheck="TRUE"
+				RuntimeLibrary="1"
+				BufferSecurityCheck="TRUE"
+				RuntimeTypeInfo="TRUE"
+				UsePrecompiledHeader="3"
+				PrecompiledHeaderThrough="stdafx.h"
+				WarningLevel="4"
+				SuppressStartupBanner="TRUE"
+				DebugInformationFormat="4"
+				CompileAs="0"
+				ShowIncludes="FALSE"/>
+			<Tool
+				Name="VCCustomBuildTool"/>
+			<Tool
+				Name="VCLinkerTool"
+				AdditionalOptions="/MACHINE:I386 /NODEFAULTLIB:msvcrt.lib"
+				AdditionalDependencies="winmm.lib msacm32.lib wmstub.lib wmvcore.lib setupapi.lib Imagehlp.lib"
+				ShowProgress="0"
+				OutputFile="$(OutDir)/WaveSoap.exe"
+				LinkIncremental="2"
+				SuppressStartupBanner="TRUE"
+				AdditionalLibraryDirectories="&quot;C:\Program Files\WMSDK\WMFSDK\lib&quot;"
+				IgnoreAllDefaultLibraries="FALSE"
+				IgnoreDefaultLibraryNames=""
+				DelayLoadDLLs="wmvcore.dll"
+				GenerateDebugInformation="TRUE"
+				GenerateMapFile="TRUE"
+				SubSystem="2"/>
+			<Tool
+				Name="VCMIDLTool"
+				PreprocessorDefinitions="_DEBUG"
+				MkTypLibCompatible="TRUE"
+				SuppressStartupBanner="TRUE"
+				TargetEnvironment="1"
+				TypeLibraryName=".\Debug/WaveSoapFront.tlb"/>
+			<Tool
+				Name="VCPostBuildEventTool"/>
+			<Tool
+				Name="VCPreBuildEventTool"/>
+			<Tool
+				Name="VCPreLinkEventTool"/>
+			<Tool
+				Name="VCResourceCompilerTool"
+				PreprocessorDefinitions="_DEBUG"
+				Culture="1033"/>
+			<Tool
+				Name="VCWebServiceProxyGeneratorTool"/>
+			<Tool
+				Name="VCXMLDataGeneratorTool"/>
+			<Tool
+				Name="VCWebDeploymentTool"/>
+			<Tool
+				Name="VCManagedWrapperGeneratorTool"/>
+			<Tool
+				Name="VCAuxiliaryManagedWrapperGeneratorTool"/>
+		</Configuration>
 	</Configurations>
 	<References>
 	</References>
@@ -303,6 +375,12 @@
 						Name="VCCLCompilerTool"
 						UsePrecompiledHeader="1"/>
 				</FileConfiguration>
+				<FileConfiguration
+					Name="Debug ANSI|Win32">
+					<Tool
+						Name="VCCLCompilerTool"
+						UsePrecompiledHeader="1"/>
+				</FileConfiguration>
 			</File>
 			<File
 				RelativePath=".\TimeEdit.cpp">
@@ -329,6 +407,12 @@
 					<Tool
 						Name="VCCLCompilerTool"
 						UsePrecompiledHeader="0"/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Debug ANSI|Win32">
+					<Tool
+						Name="VCCLCompilerTool"
+						UsePrecompiledHeader="3"/>
 				</FileConfiguration>
 			</File>
 			<File
@@ -530,6 +614,29 @@ makehm IDW_,HIDW_,0x50000 resource.h &gt;&gt;&quot;hlp\$(TargetName).hm&quot;
 				</FileConfiguration>
 				<FileConfiguration
 					Name="Release|Win32">
+					<Tool
+						Name="VCCustomBuildTool"
+						Description="Making help include file..."
+						CommandLine="echo. &gt;&quot;hlp\$(TargetName).hm&quot;
+echo // Commands (ID_* and IDM_*) &gt;&gt;&quot;hlp\$(TargetName).hm&quot;
+makehm ID_,HID_,0x10000 IDM_,HIDM_,0x10000 resource.h &gt;&gt;&quot;hlp\$(TargetName).hm&quot;
+echo. &gt;&gt;&quot;hlp\$(TargetName).hm&quot;
+echo // Prompts (IDP_*) &gt;&gt;&quot;hlp\$(TargetName).hm&quot;
+makehm IDP_,HIDP_,0x30000 resource.h &gt;&gt;&quot;hlp\$(TargetName).hm&quot;
+echo. &gt;&gt;&quot;hlp\$(TargetName).hm&quot;
+echo // Resources (IDR_*) &gt;&gt;&quot;hlp\$(TargetName).hm&quot;
+makehm IDR_,HIDR_,0x20000 resource.h &gt;&gt;&quot;hlp\$(TargetName).hm&quot;
+echo. &gt;&gt;&quot;hlp\$(TargetName).hm&quot;
+echo // Dialogs (IDD_*) &gt;&gt;&quot;hlp\$(TargetName).hm&quot;
+makehm IDD_,HIDD_,0x20000 resource.h &gt;&gt;&quot;hlp\$(TargetName).hm&quot;
+echo. &gt;&gt;&quot;hlp\$(TargetName).hm&quot;
+echo // Frame Controls (IDW_*) &gt;&gt;&quot;hlp\$(TargetName).hm&quot;
+makehm IDW_,HIDW_,0x50000 resource.h &gt;&gt;&quot;hlp\$(TargetName).hm&quot;
+"
+						Outputs="hlp\$(TargetName).hm"/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Debug ANSI|Win32">
 					<Tool
 						Name="VCCustomBuildTool"
 						Description="Making help include file..."
