@@ -159,8 +159,8 @@ CSoundPreferencesPage::CSoundPreferencesPage()
 	: BaseClass(CSoundPreferencesPage::IDD)
 {
 	//{{AFX_DATA_INIT(CSoundPreferencesPage)
-	m_PlaybackDevice = -1;
-	m_RecordingDevice = -1;
+	m_PlaybackDevice = WAVE_MAPPER;
+	m_RecordingDevice = WAVE_MAPPER;
 	m_NumPlaybackBuffers = 0;
 	m_NumRecordingBuffers = 0;
 	m_PlaybackBufferSize = 0;
