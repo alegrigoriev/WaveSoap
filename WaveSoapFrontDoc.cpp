@@ -4016,11 +4016,6 @@ void CWaveSoapFrontDoc::OnProcessNormalize()
 	CNormalizeSoundDialog dlg(start, end, m_CaretPosition, GetSelectedChannel(),
 							m_WavFile, ChannelsLocked(), UndoEnabled(), GetApp()->m_SoundTimeFormat);
 
-	//if (1 == WaveChannels())
-	//{
-	//dlg.SetTemplate(IDD_DIALOG_VOLUME_CHANGE_MONO);
-	//}
-
 	if (IDOK != dlg.DoModal())
 	{
 		return;
@@ -4028,11 +4023,6 @@ void CWaveSoapFrontDoc::OnProcessNormalize()
 
 	CStagedContext::auto_ptr pContext(new CStagedContext(this,
 										0, IDS_NORMALIZE_VOLUME_STATUS_PROMPT, IDS_NORMALIZE_VOLUME_OPERATION_NAME));
-	if (NULL == pContext.get())
-	{
-		NotEnoughMemoryMessageBox();
-		return;
-	}
 
 	CMaxScanContext * pStatContext =
 		new CMaxScanContext(this, IDS_MAX_SCAN_STATUS_PROMPT);
@@ -4040,11 +4030,6 @@ void CWaveSoapFrontDoc::OnProcessNormalize()
 	pStatContext->InitDestination(m_WavFile, dlg.GetStart(),
 								dlg.GetEnd(), dlg.GetChannel(), FALSE);
 
-	if (NULL == pStatContext)
-	{
-		NotEnoughMemoryMessageBox();
-		return;
-	}
 	pContext->AddContext(pStatContext);
 
 	CNormalizeContext * pNormContext =
