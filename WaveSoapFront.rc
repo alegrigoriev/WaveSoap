@@ -326,6 +326,7 @@ BEGIN
         MENUITEM "&Resample...",                ID_PROCESS_RESAMPLE
         MENUITEM "C&hange Channels...",         ID_PROCESS_CHANNELS
         MENUITEM "Swap Channels",               ID_PROCESS_SWAPCHANNELS
+        MENUITEM "Reverse",                     ID_PROCESS_REVERSE
         MENUITEM SEPARATOR
         MENUITEM "Stop\tEsc",                   ID_EDIT_STOP
     END
@@ -3390,6 +3391,11 @@ BEGIN
                             "Windows Media Audio (WMA) encoder is not available. To encode to WMA format, you need to install Windows Media Player."
     IDS_REPLACEYESNO        "%s\nThis file already exists.\nReplace existing file?"
     IDC_FILE_READ_ERROR     "Error occured while reading file ""%s"":\n\n%s"
+END
+
+STRINGTABLE 
+BEGIN
+    ID_PROCESS_REVERSE      "Reverse sound - make it go backwards"
 END
 
 #endif    // English (U.S.) resources
