@@ -205,6 +205,7 @@ BEGIN
         MENUITEM "&Paste\tCtrl+V",              ID_EDIT_PASTE
         MENUITEM "Paste As &New File\tCtrl+E",  ID_EDIT_PASTE_NEW
         MENUITEM "Past&e Special...",           ID_EDIT_PASTE_SPECIAL
+        MENUITEM "&Insert Silence...",          ID_PROCESS_INSERTSILENCE
         MENUITEM SEPARATOR
         MENUITEM "&Go To...\tCtrl+G",           ID_EDIT_GOTO
         MENUITEM "Select &All\tCtrl+A",         ID_EDIT_SELECT_ALL
@@ -260,7 +261,6 @@ BEGIN
         MENUITEM "Change &Volume...",           ID_PROCESS_CHANGEVOLUME
         MENUITEM "&Mute",                       ID_PROCESS_MUTE
         MENUITEM "Inv&ert",                     ID_PROCESS_INVERT
-        MENUITEM "Insert &Silence...",          ID_PROCESS_INSERTSILENCE
         MENUITEM "&Resample...",                ID_PROCESS_RESAMPLE
     END
     POPUP "&Tools"
@@ -464,6 +464,33 @@ BEGIN
     END
 END
 
+IDR_MENU_SPECTRUMSECTION_VIEW MENU DISCARDABLE 
+BEGIN
+    POPUP " "
+    BEGIN
+        MENUITEM "&Zoom In",                    ID_VIEW_SS_ZOOMINHOR2
+        MENUITEM "Zoom &Out",                   ID_VIEW_SS_ZOOMOUTHOR2
+        MENUITEM SEPARATOR
+        MENUITEM "Zoom In Frequency",           ID_VIEW_SS_ZOOMINVERT
+        MENUITEM "Zoom Out Frequency",          ID_VIEW_SS_ZOOMOUTVERT
+        MENUITEM SEPARATOR
+        POPUP "Number of FFT bands"
+        BEGIN
+            MENUITEM "64",                          ID_FFT_BANDS_64
+            MENUITEM "128",                         ID_FFT_BANDS_128
+            MENUITEM "256",                         ID_FFT_BANDS_256
+            MENUITEM "512",                         ID_FFT_BANDS_512
+            MENUITEM "1024",                        ID_FFT_BANDS_1024
+            MENUITEM "2048",                        ID_FFT_BANDS_2048
+            MENUITEM "4096",                        ID_FFT_BANDS_4096
+            MENUITEM "8192",                        ID_FFT_BANDS_8192
+        END
+        MENUITEM "Show Noise Reduction Threshold", 
+                                                ID_VIEW_SS_SHOW_NOISE_THRESHOLD
+
+    END
+END
+
 
 /////////////////////////////////////////////////////////////////////////////
 //
@@ -512,16 +539,16 @@ END
 // Dialog
 //
 
-IDD_ABOUTBOX DIALOG DISCARDABLE  0, 0, 235, 55
+IDD_ABOUTBOX DIALOG DISCARDABLE  0, 0, 235, 87
 STYLE DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
 CAPTION "About WaveSoap"
 FONT 8, "MS Sans Serif"
 BEGIN
     ICON            IDR_MAINFRAME,IDC_STATIC,11,17,20,20
-    LTEXT           "WaveSoap Version 1.0",IDC_STATIC,40,10,119,8,
+    LTEXT           "WaveSoap Version 0.9 beta",IDC_STATIC,40,10,119,8,
                     SS_NOPREFIX
-    LTEXT           "Copyright (C) Alexander Grigoriev, 2000",IDC_STATIC,40,
-                    25,119,8
+    LTEXT           "Copyright (C) Alexander Grigoriev, 2000\nalegr@earthlink.net\nhttp://www.home.earthlink.net/~alegr",
+                    IDC_STATIC,40,25,167,33
     DEFPUSHBUTTON   "OK",IDOK,178,7,50,14,WS_GROUP
 END
 
@@ -537,30 +564,30 @@ STYLE DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
 CAPTION "Advanced parameters for noise reduction"
 FONT 8, "MS Sans Serif"
 BEGIN
-    DEFPUSHBUTTON   "OK",IDOK,31,199,50,14
-    PUSHBUTTON      "Cancel",IDCANCEL,101,199,50,14
     LTEXT           "Near noise masking:",IDC_STATIC,7,16,63,8
-    LTEXT           "Near masking decay distance:",IDC_STATIC,7,34,111,9
-    LTEXT           "Far noise masking:",IDC_STATIC,7,152,58,8
-    LTEXT           "Far masking decay:",IDC_STATIC,7,170,60,8
     EDITTEXT        IDC_EDIT_NEAR_MASKING_COEFF,102,14,40,14,ES_AUTOHSCROLL
+    LTEXT           "Near masking decay distance:",IDC_STATIC,7,34,111,9
+    LTEXT           "For lower frequencies:",IDC_STATIC,7,50,67,8
     EDITTEXT        IDC_EDIT_NEAR_MASKING_DISTANCE_HIGH,102,47,40,14,
                     ES_AUTOHSCROLL
-    EDITTEXT        IDC_EDIT_FAR_MASKING_COEFF,102,149,40,14,ES_AUTOHSCROLL
-    EDITTEXT        IDC_EDIT4,102,167,40,14,ES_AUTOHSCROLL
     LTEXT           "Hz",IDC_STATIC,146,50,9,8
-    LTEXT           "For lower frequencies:",IDC_STATIC,7,50,67,8
+    LTEXT           "For higher frequencies:",IDC_STATIC,7,69,69,8
     EDITTEXT        IDC_EDIT_NEAR_MASKING_DISTANCE_LOW,102,66,40,14,
                     ES_AUTOHSCROLL
     LTEXT           "Hz",IDC_STATIC,146,69,9,8
-    LTEXT           "For higher frequencies:",IDC_STATIC,7,69,69,8
     LTEXT           "Decay time of noise masking:",IDC_STATIC,7,88,89,8
+    LTEXT           "For lower frequencies:",IDC_STATIC,7,105,67,8
     EDITTEXT        IDC_EDIT_MASKING_TIME_HIGH,102,102,40,14,ES_AUTOHSCROLL
     LTEXT           "ms",IDC_STATIC,146,105,10,8
-    LTEXT           "For lower frequencies:",IDC_STATIC,7,105,67,8
+    LTEXT           "For higher frequencies:",IDC_STATIC,7,124,69,8
     EDITTEXT        IDC_EDIT_MASKING_TIME_LOW,102,121,40,14,ES_AUTOHSCROLL
     LTEXT           "ms",IDC_STATIC,146,124,10,8
-    LTEXT           "For higher frequencies:",IDC_STATIC,7,124,69,8
+    LTEXT           "Far noise masking:",IDC_STATIC,7,152,58,8
+    EDITTEXT        IDC_EDIT_FAR_MASKING_COEFF,102,149,40,14,ES_AUTOHSCROLL
+    LTEXT           "Far masking decay:",IDC_STATIC,7,170,60,8
+    EDITTEXT        IDC_EDIT4,102,167,40,14,ES_AUTOHSCROLL
+    DEFPUSHBUTTON   "OK",IDOK,31,199,50,14
+    PUSHBUTTON      "Cancel",IDCANCEL,101,199,50,14
 END
 
 IDD_SELECTION_DIALOG DIALOG DISCARDABLE  0, 0, 177, 165
@@ -781,6 +808,8 @@ BEGIN
     EDITTEXT        IDC_EDIT_LEVEL,143,4,35,14,ES_AUTOHSCROLL
     COMBOBOX        IDC_COMBODB_PERCENT,143,25,34,59,CBS_DROPDOWNLIST | 
                     WS_TABSTOP
+    CONTROL         "&Equally adjust both channels",IDC_CHECK_LOCK_CHANNELS,
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,7,31,101,10
     LTEXT           "Selection:\nChannels:",IDC_STATIC_SELECTION,7,45,179,17
     CONTROL         "Save &Undo",IDC_CHECK_UNDO,"Button",BS_AUTOCHECKBOX | 
                     WS_TABSTOP,7,66,50,10
@@ -788,8 +817,6 @@ BEGIN
     DEFPUSHBUTTON   "OK",IDOK,12,89,50,14
     PUSHBUTTON      "Cancel",IDCANCEL,73,89,50,14
     PUSHBUTTON      "&Help",IDHELP,132,89,50,14
-    CONTROL         "&Equally adjust both channels",IDC_CHECK_LOCK_CHANNELS,
-                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,7,31,101,10
 END
 
 IDD_DIALOG_RESAMPLE DIALOG DISCARDABLE  0, 0, 224, 120
@@ -933,34 +960,34 @@ FONT 8, "MS Sans Serif"
 BEGIN
     LTEXT           "Min click amplitude:",IDC_STATIC,31,9,71,8
     EDITTEXT        IDC_EDIT_MIN_CLICK_AMPLITUDE,110,7,40,14,ES_AUTOHSCROLL
-    LTEXT           "Selection:\nChannels:",IDC_STATIC_SELECTION,7,212,216,
-                    17
-    EDITTEXT        IDC_EDIT_CLICK_TO_NOISE,110,25,40,14,ES_AUTOHSCROLL
     LTEXT           "Click to noise ratio:",IDC_STATIC,31,28,71,8
+    EDITTEXT        IDC_EDIT_CLICK_TO_NOISE,110,25,40,14,ES_AUTOHSCROLL
+    LTEXT           "Max click length:",IDC_STATIC,31,47,67,8
     EDITTEXT        IDC_EDIT_MAX_CLICK_LENGTH,110,43,40,14,ES_AUTOHSCROLL | 
                     ES_NUMBER
-    LTEXT           "Max click length:",IDC_STATIC,31,47,67,8
-    EDITTEXT        IDC_EDIT_ATTACK_RATE,110,61,40,14,ES_AUTOHSCROLL
     LTEXT           "Noise attack rate:",IDC_STATIC,31,64,68,8
-    EDITTEXT        IDC_EDIT_DECAY_RATE,110,80,40,14,ES_AUTOHSCROLL
+    EDITTEXT        IDC_EDIT_ATTACK_RATE,110,61,40,14,ES_AUTOHSCROLL
     LTEXT           "Click proximity factor:",IDC_STATIC,31,84,73,8
+    EDITTEXT        IDC_EDIT_DECAY_RATE,110,80,40,14,ES_AUTOHSCROLL
     CONTROL         "Import clicks from a file:",IDC_CHECK_IMPORT_CLICKS,
                     "Button",BS_AUTOCHECKBOX | WS_TABSTOP,31,102,85,10
-    PUSHBUTTON      "Browse...",IDC_CLICK_IMPORT_BROWSE_BUTTON,181,118,42,14
     EDITTEXT        IDC_EDIT_CLICK_IMPORT_FILENAME,31,118,128,14,
                     ES_AUTOHSCROLL
     CONTROL         "Log all found clicks to a file:",IDC_CHECK_LOG_CLICKS,
                     "Button",BS_AUTOCHECKBOX | WS_TABSTOP,31,138,97,10
-    PUSHBUTTON      "Browse...",IDC_CLICK_LOG_BROWSE_BUTTON,181,153,42,14
     EDITTEXT        IDC_EDIT_CLICK_LOG_FILENAME,31,153,128,14,ES_AUTOHSCROLL
     CONTROL         "Log clicks only, don't change the wave",
                     IDC_CHECK_LOG_CLICKS_ONLY,"Button",BS_AUTOCHECKBOX | 
                     WS_TABSTOP,31,175,136,10
+    LTEXT           "Selection:\nChannels:",IDC_STATIC_SELECTION,7,212,216,
+                    17
+    CONTROL         "Save &Undo",IDC_CHECK_UNDO,"Button",BS_AUTOCHECKBOX | 
+                    WS_TABSTOP,7,233,50,10
     PUSHBUTTON      "Set defaults",IDC_BUTTON_RESET_DEFAULT,173,7,50,14
     PUSHBUTTON      "Revert",IDC_BUTTON_REVERT_INITIAL,173,25,50,14
     PUSHBUTTON      "More settings...",IDC_BUTTON_MORE_SETTINGS,173,80,50,14
-    CONTROL         "Save &Undo",IDC_CHECK_UNDO,"Button",BS_AUTOCHECKBOX | 
-                    WS_TABSTOP,7,233,50,10
+    PUSHBUTTON      "Browse...",IDC_CLICK_IMPORT_BROWSE_BUTTON,181,118,42,14
+    PUSHBUTTON      "Browse...",IDC_CLICK_LOG_BROWSE_BUTTON,181,153,42,14
     PUSHBUTTON      "&Selection...",IDC_BUTTON_SELECTION,8,251,50,14
     DEFPUSHBUTTON   "OK",IDOK,63,251,50,14
     PUSHBUTTON      "Cancel",IDCANCEL,118,251,50,14
@@ -972,17 +999,6 @@ STYLE DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
 CAPTION "Noise Reduction Parameters"
 FONT 8, "MS Sans Serif"
 BEGIN
-    PUSHBUTTON      "Set defaults",IDC_BUTTON_RESET_DEFAULT,173,7,50,14
-    PUSHBUTTON      "Revert",IDC_BUTTON_REVERT_INITIAL,173,25,50,14
-    PUSHBUTTON      "More settings...",IDC_BUTTON_MORE_SETTINGS,173,80,50,14
-    LTEXT           "Selection:\nChannels:",IDC_STATIC_SELECTION,8,212,215,
-                    17
-    CONTROL         "Save &Undo",IDC_CHECK_UNDO,"Button",BS_AUTOCHECKBOX | 
-                    WS_TABSTOP,8,233,50,10
-    PUSHBUTTON      "&Selection...",IDC_BUTTON_SELECTION,8,251,50,14
-    DEFPUSHBUTTON   "OK",IDOK,63,251,50,14
-    PUSHBUTTON      "Cancel",IDCANCEL,118,251,50,14
-    PUSHBUTTON      "&Help",IDHELP,173,251,50,14
     LTEXT           "Apply noise reduction to\nfrequencies higher than:",
                     IDC_STATIC,7,5,77,19
     EDITTEXT        IDC_EDIT_LOWER_FREQUENCY,96,7,40,13,ES_AUTOHSCROLL
@@ -990,30 +1006,83 @@ BEGIN
     LTEXT           "FFT order for analyze:",IDC_STATIC,7,27,67,8
     COMBOBOX        IDC_COMBO_FFT_ORDER,96,24,40,44,CBS_DROPDOWNLIST | 
                     WS_VSCROLL | WS_TABSTOP
-    LTEXT           "Tone over noise preference:",IDC_STATIC,7,109,59,19
-    EDITTEXT        IDC_EDIT_TONE_PREFERENCE,96,112,40,13,ES_AUTOHSCROLL
-    LTEXT           "dB",IDC_STATIC,142,114,12,8
     LTEXT           "Noise floor for higher frequencies:",IDC_STATIC,7,38,70,
                     17
     EDITTEXT        IDC_EDIT_NOISE_AREA_THRESHOLD_HIGH,96,40,40,13,
                     ES_AUTOHSCROLL
     LTEXT           "dB",IDC_STATIC,142,42,12,8
+    LTEXT           "Noise floor for lower frequencies:",IDC_STATIC,7,56,70,
+                    17
+    EDITTEXT        IDC_EDIT_NOISE_AREA_THRESHOLD_LOW,96,58,40,13,
+                    ES_AUTOHSCROLL
+    LTEXT           "dB",IDC_STATIC,142,60,12,8
+    LTEXT           "Noise reduction \naggressivness:",IDC_STATIC,7,73,65,18
+    EDITTEXT        IDC_EDIT_AGGRESSIVNESS,96,75,40,14,ES_AUTOHSCROLL
+    LTEXT           "Maximum noise reduction:",IDC_STATIC,7,97,78,8
+    EDITTEXT        IDC_EDIT_NOISE_REDUCTION,96,94,40,14,ES_AUTOHSCROLL
+    LTEXT           "dB",IDC_STATIC,142,96,12,8
+    LTEXT           "Tone over noise preference:",IDC_STATIC,7,109,59,19
+    EDITTEXT        IDC_EDIT_TONE_PREFERENCE,96,112,40,13,ES_AUTOHSCROLL
+    LTEXT           "dB",IDC_STATIC,142,114,12,8
+    PUSHBUTTON      "Show spectrum and noise threshold",
+                    IDC_BUTTON_SET_THRESHOLD,8,132,88,21,BS_MULTILINE
     LTEXT           "Continuous tone detection\nthreshold:",IDC_STATIC,7,161,
                     81,18
     EDITTEXT        IDC_EDIT_NOISE_CRITERION,96,161,40,13,ES_AUTOHSCROLL
     LTEXT           "Transient area threshold:",IDC_STATIC,7,181,75,8
     EDITTEXT        IDC_EDIT_TRANSIENT_THRESHOLD,96,178,40,13,ES_AUTOHSCROLL
     LTEXT           "dB",IDC_STATIC,142,180,12,8
-    LTEXT           "Noise reduction \naggressivness:",IDC_STATIC,7,73,65,18
-    EDITTEXT        IDC_EDIT_AGGRESSIVNESS,96,75,40,14,ES_AUTOHSCROLL
-    LTEXT           "Maximum noise reduction:",IDC_STATIC,7,97,78,8
-    EDITTEXT        IDC_EDIT_NOISE_REDUCTION,96,94,40,14,ES_AUTOHSCROLL
-    LTEXT           "dB",IDC_STATIC,142,96,12,8
-    LTEXT           "Noise floor for lower frequencies:",IDC_STATIC,7,56,70,
+    LTEXT           "Selection:\nChannels:",IDC_STATIC_SELECTION,8,212,215,
                     17
-    EDITTEXT        IDC_EDIT_NOISE_AREA_THRESHOLD_LOW,96,58,40,13,
-                    ES_AUTOHSCROLL
-    LTEXT           "dB",IDC_STATIC,142,60,12,8
+    CONTROL         "Save &Undo",IDC_CHECK_UNDO,"Button",BS_AUTOCHECKBOX | 
+                    WS_TABSTOP,8,233,50,10
+    PUSHBUTTON      "Set defaults",IDC_BUTTON_RESET_DEFAULT,173,7,50,14
+    PUSHBUTTON      "Revert",IDC_BUTTON_REVERT_INITIAL,173,22,50,14
+    PUSHBUTTON      "&Help",IDHELP,173,40,50,14
+    PUSHBUTTON      "More settings...",IDC_BUTTON_MORE_SETTINGS,173,111,50,
+                    14
+    PUSHBUTTON      "&Selection...",IDC_BUTTON_SELECTION,8,251,50,14
+    DEFPUSHBUTTON   "OK",IDOK,93,251,50,14
+    PUSHBUTTON      "Cancel",IDCANCEL,173,251,50,14
+END
+
+IDD_DIALOG_INSERT_SILENCE DIALOG DISCARDABLE  0, 0, 162, 121
+STYLE DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "Insert Silence..."
+FONT 8, "MS Sans Serif"
+BEGIN
+    LTEXT           "Length:",IDC_STATIC,7,10,41,8
+    EDITTEXT        IDC_EDIT_LENGTH,52,7,82,14,ES_AUTOHSCROLL
+    CONTROL         "Spin1",IDC_SPIN_LENGTH,"msctls_updown32",UDS_ALIGNRIGHT | 
+                    UDS_AUTOBUDDY | UDS_ARROWKEYS,136,7,10,14
+    LTEXT           "Position:",IDC_STATIC,7,31,41,8
+    EDITTEXT        IDC_EDIT_START,52,28,82,14,ES_AUTOHSCROLL
+    CONTROL         "Spin1",IDC_SPIN_START,"msctls_updown32",UDS_ALIGNRIGHT | 
+                    UDS_AUTOBUDDY | UDS_ARROWKEYS,136,28,10,14
+    LTEXT           "&Time format: ",IDC_STATIC,7,52,43,8
+    COMBOBOX        IDC_COMBO_TIME_FORMAT,52,50,83,53,CBS_DROPDOWNLIST | 
+                    WS_VSCROLL | WS_TABSTOP
+    GROUPBOX        "Channel",IDC_STATIC,7,69,148,26
+    CONTROL         "Both",IDC_RADIO_CHANNEL,"Button",BS_AUTORADIOBUTTON | 
+                    WS_GROUP,115,80,30,10
+    CONTROL         "Left ",IDC_RADIO1,"Button",BS_AUTORADIOBUTTON,13,80,28,
+                    10
+    CONTROL         "Right",IDC_RADIO2,"Button",BS_AUTORADIOBUTTON,66,80,32,
+                    10
+    DEFPUSHBUTTON   "OK",IDOK,14,100,50,14
+    PUSHBUTTON      "Cancel",IDCANCEL,98,100,50,14
+END
+
+IDD_DIALOG_MUTE_OR_SILENCE DIALOG DISCARDABLE  0, 0, 172, 68
+STYLE DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "Mute or Insert Silence..."
+FONT 8, "MS Sans Serif"
+BEGIN
+    DEFPUSHBUTTON   "&Mute",IDOK,7,47,50,14
+    PUSHBUTTON      "Cancel",IDCANCEL,115,47,50,14
+    LTEXT           "Do you want to mute the selected area or insert silence at the cursor position?",
+                    IDC_STATIC,7,7,158,30
+    PUSHBUTTON      "Insert &silence",IDC_BUTTON_SILENCE,61,47,50,14
 END
 
 
@@ -1076,7 +1145,7 @@ BEGIN
         LEFTMARGIN, 7
         RIGHTMARGIN, 228
         TOPMARGIN, 7
-        BOTTOMMARGIN, 48
+        BOTTOMMARGIN, 80
     END
 
     IDD_DIALOG_MORE_NOISEREDUCTION, DIALOG
@@ -1221,6 +1290,22 @@ BEGIN
         TOPMARGIN, 7
         BOTTOMMARGIN, 265
     END
+
+    IDD_DIALOG_INSERT_SILENCE, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 155
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 114
+    END
+
+    IDD_DIALOG_MUTE_OR_SILENCE, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 165
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 61
+    END
 END
 #endif    // APSTUDIO_INVOKED
 
@@ -1311,6 +1396,17 @@ BEGIN
 0x3138, 0x3239, "\000" 
     IDC_COMBO_FFT_ORDER, 0x403, 6, 0
 0x3631, 0x3833, 0x0034, 
+    0
+END
+
+IDD_DIALOG_INSERT_SILENCE DLGINIT
+BEGIN
+    IDC_COMBO_TIME_FORMAT, 0x403, 8, 0
+0x6153, 0x706d, 0x656c, 0x0073, 
+    IDC_COMBO_TIME_FORMAT, 0x403, 13, 0
+0x6868, 0x6d3a, 0x3a6d, 0x7373, 0x732e, 0x7373, "\000" 
+    IDC_COMBO_TIME_FORMAT, 0x403, 8, 0
+0x6553, 0x6f63, 0x646e, 0x0073, 
     0
 END
 
@@ -1590,6 +1686,7 @@ BEGIN
                             "File ""%s"" saved. Reopen it in direct mode?\nIf ""No"", a new temporary file will be created."
     IDS_RELOAD_COMPRESSED_FILE 
                             "Sound data might change because of compression loss, reload it?"
+    ID_INDICATOR_SCALE      "\nHorizontal Scale"
 END
 
 STRINGTABLE DISCARDABLE 
@@ -1639,6 +1736,12 @@ END
 STRINGTABLE DISCARDABLE 
 BEGIN
     ID_VIEW_SPECTRUMSECTION "Show FFT spectrum of the current location or selection\nShow spectrum section"
+    ID_VIEW_SS_ZOOMINHOR2   "Horizontal zoom in\nZoom In"
+    ID_VIEW_SS_ZOOMOUTHOR2  "Horizontal zoom out\nZoom Out"
+    ID_VIEW_SS_SHOW_NOISE_THRESHOLD 
+                            "Show noise threshold set for noise reduction\nShow noise threshold"
+    ID_VIEW_SS_ZOOMINVERT   "Zoom in vertical\nZoom In vertical"
+    ID_VIEW_SS_ZOOMOUTVERT  "Zoom out vertical\nZoom out vertical"
 END
 
 #endif    // English (U.S.) resources

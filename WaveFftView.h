@@ -23,6 +23,7 @@ public:
 	{
 		FFT_OFFSET_CHANGED = 0x00300000,
 		FFT_SCALE_CHANGED = 0x00400000,
+		FFT_BANDS_CHANGED = 0x00500000,
 	};
 // Operations
 public:
@@ -88,6 +89,7 @@ protected:
 	//}}AFX_MSG
 	void OnUpdateBands(CCmdUI* pCmdUI, int number);
 	void OnSetBands(int number);
+	friend class CSpectrumSectionView;
 	DECLARE_MESSAGE_MAP()
 };
 

@@ -199,6 +199,8 @@ BEGIN_MESSAGE_MAP(CWaveFftView, CWaveSoapFrontView)
 	ON_COMMAND(ID_FFT_BANDS_8192, OnFftBands8192)
 	ON_UPDATE_COMMAND_UI(ID_FFT_BANDS_8192, OnUpdateFftBands8192)
 	//}}AFX_MSG_MAP
+	ON_COMMAND(ID_VIEW_SS_ZOOMINVERT, OnViewZoomInVert)
+	ON_COMMAND(ID_VIEW_SS_ZOOMOUTVERT, OnViewZoomOutVert)
 END_MESSAGE_MAP()
 
 static int fround(double d)
@@ -493,7 +495,6 @@ void CWaveFftView::MakeFftArray(int left, int right)
 			return;
 		}
 
-		m_FftArraySize = NecessaryArraySize;
 		unsigned char * pTmp = m_pFftResultArray;
 		int i;
 		int FirstFftSample = left - left % FftSpacing;
@@ -518,6 +519,7 @@ void CWaveFftView::MakeFftArray(int left, int right)
 			}
 		}
 
+		m_FftArraySize = NecessaryArraySize;
 		m_FftResultEnd = FftSample;
 		m_FftResultBegin = FirstFftSample;
 		delete[] pOldArray;
@@ -916,12 +918,12 @@ void CWaveFftView::OnViewZoomvertNormal()
 
 void CWaveFftView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
 {
+	CWaveSoapFrontDoc * pDoc = GetDocument();
 	if (lHint == CWaveSoapFrontDoc::UpdateSoundChanged
 		&& NULL != pHint
 		&& NULL != m_pFftResultArray)
 	{
 		CSoundUpdateInfo * pInfo = (CSoundUpdateInfo *) pHint;
-		CWaveSoapFrontDoc * pDoc = GetDocument();
 
 		// calculate update boundaries
 		int nChannels = pDoc->WaveChannels();
@@ -971,7 +973,6 @@ void CWaveFftView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
 			&& NULL != pHint)
 	{
 		CSelectionUpdateInfo * pInfo = (CSelectionUpdateInfo *) pHint;
-		CWaveSoapFrontDoc * pDoc = GetDocument();
 
 		if (pInfo->Flags & SetSelection_MakeCaretVisible)
 		{
@@ -982,18 +983,18 @@ void CWaveFftView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
 			MovePointIntoView(pDoc->m_CaretPosition, TRUE);
 		}
 
-		int nChannels = GetDocument()->WaveChannels();
+		int nChannels = pDoc->WaveChannels();
 		int nLowExtent = -32768;
 		int nHighExtent = 32767;
 		if (nChannels > 1)
 		{
 			nLowExtent = -0x10000;
 			nHighExtent = 0x10000;
-			if (pInfo->SelChannel == 0)
+			if (pDoc->m_SelectedChannel == 0)
 			{
 				nLowExtent = 0;
 			}
-			else if (pInfo->SelChannel == 1)
+			else if (pDoc->m_SelectedChannel == 1)
 			{
 				nHighExtent = 0;
 			}
@@ -1026,6 +1027,7 @@ void CWaveFftView::OnSetBands(int number)
 		delete[] m_pFftWindow;
 		m_pFftWindow = NULL;
 		Invalidate();
+		NotifySlaveViews(FFT_BANDS_CHANGED);
 	}
 }
 
