@@ -51,6 +51,7 @@ BEGIN_MESSAGE_MAP(CTimeRulerView, CHorizontalRuler)
 	ON_COMMAND(IDC_VIEW_RULER_SECONDS, OnViewRulerSeconds)
 	ON_UPDATE_COMMAND_UI(IDC_VIEW_RULER_SECONDS, OnUpdateViewRulerSeconds)
 	//}}AFX_MSG_MAP
+	ON_WM_SETCURSOR()
 END_MESSAGE_MAP()
 
 /////////////////////////////////////////////////////////////////////////////
@@ -545,13 +546,127 @@ int CTimeRulerView::CalculateHeight()
 	CWindowDC dc(GetDesktopWindow());
 	CGdiObjectSave OldFont(dc, dc.SelectStockObject(ANSI_VAR_FONT));
 
-	int height = dc.GetTextExtent(_T("0"), 1).cy;
+	TEXTMETRIC tm;
+	dc.GetTextMetrics( & tm);
+	// text height plus tmAveCharWidth (for the marks) plus 7 pixels for overhead
+	return tm.tmHeight + tm.tmAveCharWidth + 7;
+}
+
+unsigned CTimeRulerView::HitTest(POINT p)
+{
+	unsigned result = 0;
+
+	CWindowDC dc(GetDesktopWindow());
+	CGdiObjectSave OldFont(dc, dc.SelectStockObject(ANSI_VAR_FONT));
 
 	TEXTMETRIC tm;
 	dc.GetTextMetrics( & tm);
 
-	int MarkerHeight = tm.tmAveCharWidth;
+	int const MarkerHeight = tm.tmAveCharWidth;
 
-	return height + 7 + MarkerHeight;
+	CRect cr;
+	GetClientRect(cr);
+
+	CWaveFile::InstanceDataWav * pInst = GetDocument()->m_WavFile.GetInstanceData();
+
+	if (p.y >= cr.bottom - tm.tmAveCharWidth)
+	{
+		int n;
+		CuePointVectorIterator i;
+
+		for (n = 0, i = pInst->m_CuePoints.begin();
+			i < pInst->m_CuePoints.end(); i++, n++)
+		{
+			long x = WorldToWindowXfloor(i->dwSampleOffset);
+			WaveRegionMarker * pMarker = pInst->GetRegionMarker(i->CuePointID);
+
+			if (NULL == pMarker
+				|| 0 == pMarker->SampleLength)
+			{
+				if (p.x <= x + MarkerHeight - 1
+					&& p.x >= x - (MarkerHeight - 1))
+				{
+					// marker
+					POINT p[] = {
+						x, cr.bottom - 1,
+						x + (MarkerHeight >> 1), cr.bottom - (MarkerHeight >> 1) - 1,
+						x + (MarkerHeight >> 1), cr.bottom - MarkerHeight,
+						x - (MarkerHeight >> 1), cr.bottom - MarkerHeight,
+						x - (MarkerHeight >> 1), cr.bottom - (MarkerHeight >> 1) - 1,
+					};
+
+					result = HitTestMarker | n;
+					break;
+				}
+			}
+			else
+			{
+				if (p.x <= x + MarkerHeight
+					&& p.x >= x)
+				{
+					// mark of the region begin
+					POINT p[] = {
+						x, cr.bottom - 1,
+						x, cr.bottom - MarkerHeight,
+						x + MarkerHeight - 2, cr.bottom - MarkerHeight,
+						x + MarkerHeight - 2, cr.bottom - MarkerHeight + 1,
+					};
+
+					result = HitTestRegionBegin | n;
+					break;
+				}
+
+				x = WorldToWindowXfloor(i->dwSampleOffset + pMarker->SampleLength);
+
+				if (p.x >= x - MarkerHeight
+					&& p.x <= x)
+				{
+					// mark of the region end
+					POINT p[] = {
+						x, cr.bottom - 1,
+						x, cr.bottom - MarkerHeight,
+						x - MarkerHeight + 2, cr.bottom - MarkerHeight,
+						x - MarkerHeight + 2, cr.bottom - MarkerHeight + 1,
+					};
+
+					result = HitTestRegionEnd | n;
+					break;
+				}
+			}
+		}
+	}
+	return result;
 }
 
+BOOL CTimeRulerView::OnSetCursor(CWnd* pWnd, UINT nHitTest, UINT message)
+{
+	if (pWnd == this
+		&& HTCLIENT == nHitTest)
+	{
+		CPoint p;
+
+		GetCursorPos( & p);
+		ScreenToClient( & p);
+
+		unsigned hit = HitTest(p);
+
+		//
+		if (hit & HitTestRegionBegin)
+		{
+			SetCursor(AfxGetApp()->LoadStandardCursor(IDC_HAND));
+			return TRUE;
+		}
+		else if (hit & HitTestRegionEnd)
+		{
+			SetCursor(AfxGetApp()->LoadStandardCursor(IDC_HAND));
+			return TRUE;
+		}
+		else if (hit & HitTestMarker)
+		{
+			SetCursor(AfxGetApp()->LoadStandardCursor(IDC_HAND));
+			return TRUE;
+		}
+	}
+
+	return BaseClass::OnSetCursor(pWnd, nHitTest, message);
+}
