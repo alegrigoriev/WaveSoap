@@ -149,9 +149,16 @@ void COperationContext::PostRetire()
 
 	// save undo context
 	CUndoRedoContext * pUndo = GetUndo();
+
 	if (pUndo)
 	{
 		m_pDocument->AddUndoRedo(pUndo);
+	}
+	else if (0 != (m_Flags & OperationContextUndoCreated)
+			&& 0 != (m_Flags & OperationContextModifyCountIncremented))
+	{
+		// undo was created and modify count incremented, but no changes were made (no undo returned)
+		m_pDocument->DecrementModified();
 	}
 
 	delete this;
@@ -2784,6 +2791,7 @@ BOOL CDcOffsetContext::Init()
 		{
 			// all offsets are zero, nothing to change
 			m_Flags |= OperationContextFinished;
+			DeleteUndo();
 		}
 	}
 
@@ -3291,6 +3299,11 @@ BOOL CNormalizeContext::Init()
 		MaxVolume = float(32767. * m_LimitLevel / MaxLevel);
 	}
 
+	if (MaxLevel == DoubleToShort(MaxVolume * MaxLevel))
+	{
+		MaxVolume = 1.;
+	}
+
 	for (int ch = 0; ch < nChannels; ch++)
 	{
 		if (m_DstChan & (1 << ch))
@@ -3314,6 +3327,7 @@ BOOL CNormalizeContext::Init()
 	{
 		// nothing to change
 		m_Flags |= OperationContextFinished;
+		DeleteUndo();
 	}
 	return TRUE;
 }
