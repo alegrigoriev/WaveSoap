@@ -16,22 +16,27 @@ void FFTPostProc(complex<T> * x, const int count)
 {
 	ASSERT(count > 0 && count % 2 == 0);
 	double angle = -M_PI / count;
-	T rot_r = (T)(cos(angle));
-	T rot_i = (T)(-sin(angle));
-	T u_r = 0., u_i = 1.;
+	double rot_r = cos(angle);
+	double rot_i = -sin(angle);
+	double u_r = 0., u_i = 1.;
+
 	x[count] = x[0];
+
 	for (int i = 0, k = count; i <= count / 2; i++, k--)
 	{
-		T tmp_r = real(x[k]) + real(x[i]);
-		T tmp_i = imag(x[k]) - imag(x[i]); // -sign omitted
-		T tmp2_r = real(x[k]) - real(x[i]);
-		T tmp2_i = imag(x[k]) + imag(x[i]); // -sign omitted
-		T tmp3 = u_r * tmp2_r + u_i * tmp2_i;   // tmp2_r
+		double tmp_r = real(x[k]) + real(x[i]);
+		double tmp_i = imag(x[k]) - imag(x[i]); // -sign omitted
+		double tmp2_r = real(x[k]) - real(x[i]);
+		double tmp2_i = imag(x[k]) + imag(x[i]); // -sign omitted
+		double tmp3 = u_r * tmp2_r + u_i * tmp2_i;   // tmp2_r
+
 		tmp2_i = u_i * tmp2_r - u_r * tmp2_i;
-		x[i].real(T(0.5) * (tmp3 + tmp_r));
-		x[i].imag(T(0.5) * (tmp2_i - tmp_i));
-		x[k].real(T(0.5) * (tmp_r - tmp3));
-		x[k].imag(T(0.5) * (tmp2_i + tmp_i));
+
+		x[i].real(T(0.5 * (tmp3 + tmp_r)));
+		x[i].imag(T(0.5 * (tmp2_i - tmp_i)));
+		x[k].real(T(0.5 * (tmp_r - tmp3)));
+		x[k].imag(T(0.5 * (tmp2_i + tmp_i)));
+
 		tmp_r = u_r * rot_r - u_i * rot_i;
 		u_i = u_r * rot_i + u_i * rot_r;
 		u_r = tmp_r;
@@ -46,24 +51,29 @@ void IFFTPreProc(const complex<T> * src, complex<T> * dst, const int count)
 {
 	ASSERT(count > 0 && count % 2 == 0);
 	double angle = -M_PI / count;
-	T rot_r = (T)(cos(angle)), rot_i = (T)(sin(angle));
-	T u_r = 0., u_i = -1.;
+	double rot_r = cos(angle), rot_i = sin(angle);
+	double u_r = 0., u_i = -1.;
+
 	dst[0] = T(0.5) * (src[0] + conj(src[count]) + complex<T>(0., -1.) * (conj(src[count]) - src[0]));
+
 	for (int i = 1, k = count - 1; i <= count / 2; i++, k--)
 	{
-		T tmp_r = u_r * rot_r - u_i * rot_i;
+		double tmp_r = u_r * rot_r - u_i * rot_i;
 		u_i = u_r * rot_i + u_i * rot_r;
 		u_r = tmp_r;
 		tmp_r = real(src[i]) + real(src[k]);
-		T tmp_i = imag(src[k]) - imag(src[i]); // -sign omitted
-		T tmp2_r = real(src[k]) - real(src[i]);
-		T tmp2_i = imag(src[k]) + imag(src[i]); // -sign omitted
-		T tmp3 = u_r * tmp2_r + u_i * tmp2_i;   // tmp2_r
+
+		double tmp_i = imag(src[k]) - imag(src[i]); // -sign omitted
+		double tmp2_r = real(src[k]) - real(src[i]);
+		double tmp2_i = imag(src[k]) + imag(src[i]); // -sign omitted
+		double tmp3 = u_r * tmp2_r + u_i * tmp2_i;   // tmp2_r
+
 		tmp2_i = u_i * tmp2_r - u_r * tmp2_i;
-		dst[i].real(T(0.5) * (tmp3 + tmp_r));
-		dst[i].imag(T(0.5) * (tmp2_i - tmp_i));
-		dst[k].real(T(0.5) * (tmp_r - tmp3));
-		dst[k].imag(T(0.5) * (tmp2_i + tmp_i));
+
+		dst[i].real(T(0.5 * (tmp3 + tmp_r)));
+		dst[i].imag(T(0.5 * (tmp2_i - tmp_i)));
+		dst[k].real(T(0.5 * (tmp_r - tmp3)));
+		dst[k].imag(T(0.5 * (tmp2_i + tmp_i)));
 	}
 }
 
