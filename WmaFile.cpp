@@ -755,19 +755,10 @@ BOOL WmaEncoder::OpenWrite(CDirectFile & File)
 {
 	m_FileWriter.Open(File);
 	HRESULT hr;
-#if 1
-	hr = m_pWriterAdvanced->AddSink( & m_FileWriter);
-#elif 1
-	hr = m_pWriter->SetOutputFilename(L"D:\\My Sounds\\Greatest Rock & Roll Hits 1960's Disk 3\\MrBassman.wma");
-#else
-	IWMWriterFileSink * pFileSink = NULL;
-	hr = WMCreateWriterFileSink( & pFileSink);
-	hr = pFileSink->Open(L"D:\\My Sounds\\Greatest Rock & Roll Hits 1960's Disk 3\\MrBassman.wma");
-	hr = m_pWriterAdvanced->AddSink(pFileSink);
-	hr = pFileSink->Release();
-#endif
 
-	m_pWriter->SetProfileByID(WMProfile_V70_128Audio);
+	hr = m_pWriterAdvanced->AddSink( & m_FileWriter);
+
+#if 0
 
 	hr = m_pWriter->QueryInterface(IID_IWMHeaderInfo, ( VOID ** )& m_pHeaderInfo);
 	if ( ! SUCCEEDED(hr))
@@ -782,7 +773,7 @@ BOOL WmaEncoder::OpenWrite(CDirectFile & File)
 		m_pHeaderInfo->Release();
 		m_pHeaderInfo = NULL;
 	}
-
+#endif
 	// open input properties
 	IWMInputMediaProps * pMediaProps = NULL;
 	hr = m_pWriter->GetInputProps(0, & pMediaProps);
@@ -818,12 +809,11 @@ BOOL WmaEncoder::OpenWrite(CDirectFile & File)
 	m_SampleTimeMs = 0;
 
 	hr = m_pWriter->BeginWriting();
-	hr = m_pWriter->AllocateSample(m_SrcWfx.nAvgBytesPerSec, & m_pBuffer);
+
 	if ( ! SUCCEEDED(hr))
 	{
 		return FALSE;
 	}
-	m_pBuffer->SetLength(0);
 
 	return TRUE;
 }
@@ -848,53 +838,7 @@ BOOL WmaEncoder::Init()
 	{
 		return FALSE;
 	}
-#if 0//def _DEBUG
-	IWMProfileManager2 * pProfManager = NULL;
-	hr = m_pProfileManager->QueryInterface(IID_IWMProfileManager2, ( VOID ** )& pProfManager);
-	if (SUCCEEDED(hr))
-	{
-		pProfManager->SetSystemProfileVersion(WMT_VER_7_0);
-		DWORD count = 0;
-		pProfManager->GetSystemProfileCount( & count);
-		TRACE("Number of system profiles = %d\n", count);
-		for (int i = 0; i < count; i++)
-		{
-			IWMProfile * pSysProfile = NULL;
-			hr = pProfManager->LoadSystemProfile(i, & pSysProfile);
-			if (SUCCEEDED(hr))
-			{
-				DWORD StreamCount = 0;
-				pSysProfile->GetStreamCount( & StreamCount);
-				TRACE("Profile %d, num of streams = %d\n", i, StreamCount);
-				for (int j = 0; j < StreamCount; j++)
-				{
-					IWMStreamConfig * pStream = NULL;
-					hr = pSysProfile->GetStream(j, & pStream);
-					if (SUCCEEDED(hr))
-					{
-						GUID type;
-						DWORD bitrate;
-						pStream->GetStreamType( & type);
-						pStream->GetBitrate( & bitrate);
-						if (0 == memcmp( & type, & WMMEDIATYPE_Audio, sizeof type))
-						{
-							TRACE("Audio stream %d, bitrate=%d\n", j, bitrate);
-						}
-						else if (0 == memcmp( & type, & WMMEDIATYPE_Video, sizeof type))
-						{
-							TRACE("Video stream %d, bitrate=%d\n", j, bitrate);
-						}
-						pStream->Release();
-					}
-				}
 
-				pSysProfile->Release();
-			}
-		}
-		pProfManager->Release();
-	}
-#endif
-#if 0
 	hr = m_pProfileManager->LoadProfileByID(WMProfile_V70_128Audio, & m_pProfile);
 	if ( ! SUCCEEDED(hr))
 	{
@@ -907,7 +851,7 @@ BOOL WmaEncoder::Init()
 		return FALSE;
 	}
 	m_pWriter->SetProfile(m_pProfile);
-#endif
+
 	return TRUE;
 }
 
@@ -962,9 +906,11 @@ void WmaEncoder::SetGenre(LPCTSTR szGenre)
 								(LPBYTE)Genre, (nChars + 1) * sizeof(TCHAR));
 #endif
 }
-BOOL WmaEncoder::SetBitrate(int Bitrate)
-{
 
+BOOL WmaEncoder::SetFormat(WAVEFORMATEX * pDstWfx)
+{
+// pDstWfx points to the destination format (but with wFormatTag = WAVE_FORMAT_PCM
+// the function must replace wFormatTag
 	IWMMediaProps * pProps = NULL;
 	HRESULT hr = m_pStreamConfig->QueryInterface(IID_IWMMediaProps, (void**) & pProps);
 	if ( ! SUCCEEDED(hr))
@@ -985,12 +931,15 @@ BOOL WmaEncoder::SetBitrate(int Bitrate)
 	hr = pProps -> GetMediaType(pType, & cbType);
 	WAVEFORMATEX * pwfx = (WAVEFORMATEX *) pType->pbFormat;
 
+	pDstWfx->wFormatTag = pwfx->wFormatTag;
+
+	pwfx->nSamplesPerSec = pDstWfx->nSamplesPerSec;
+	pwfx->nAvgBytesPerSec = pDstWfx->nAvgBytesPerSec;
+
 	TRACE("MediaType: wFormatTag=%x, BytesPerSec = %d\n",
 		pwfx->wFormatTag, pwfx->nAvgBytesPerSec);
 
-	hr = m_pStreamConfig->SetBitrate(Bitrate);
-
-	pwfx->nAvgBytesPerSec = Bitrate / 8;
+	hr = m_pStreamConfig->SetBitrate(pwfx->nAvgBytesPerSec * 8);
 
 	pProps->SetMediaType(pType);
 
@@ -1014,6 +963,15 @@ BOOL WmaEncoder::Write(void * Buf, size_t size)
 	do
 	{
 
+		if (NULL == m_pBuffer)
+		{
+			HRESULT hr = m_pWriter->AllocateSample(m_SrcWfx.nAvgBytesPerSec, & m_pBuffer);
+			if (! SUCCEEDED(hr))
+			{
+				return FALSE;
+			}
+			m_pBuffer->SetLength(0);
+		}
 		DWORD BufLength = 0;
 		DWORD MaxLength = 0;
 		BYTE * pBuf;
@@ -1049,7 +1007,8 @@ BOOL WmaEncoder::Write(void * Buf, size_t size)
 				return FALSE;
 			}
 			m_SampleTimeMs += MulDiv(1000, BufLength, m_SrcWfx.nAvgBytesPerSec);
-			m_pBuffer->SetLength(0);
+			m_pBuffer->Release();
+			m_pBuffer = NULL;
 		}
 	} while(size != 0);
 

@@ -257,7 +257,7 @@ public:
 	void SetArtist(LPCTSTR szArtist);
 	void SetAlbum(LPCTSTR szAlbum);
 	void SetGenre(LPCTSTR szGenre);
-	BOOL SetBitrate(int Bitrate);
+	BOOL SetFormat(WAVEFORMATEX * pDstWfx);
 	BOOL Write(void * Buf, size_t size);
 	WAVEFORMATEX m_SrcWfx;
 protected:
