@@ -87,8 +87,8 @@ public:
 	CSpinButtonCtrl	m_SpinPlaybackBufs;
 	CComboBox	m_RecordingDeviceCombo;
 	CComboBox	m_PlaybackDeviceCombo;
-	int		m_PlaybackDevice;
-	int		m_RecordingDevice;
+	INT_PTR		m_PlaybackDevice;
+	INT_PTR		m_RecordingDevice;
 	UINT	m_NumPlaybackBuffers;
 	UINT	m_NumRecordingBuffers;
 	UINT	m_PlaybackBufferSize;
