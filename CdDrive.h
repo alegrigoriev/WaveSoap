@@ -64,9 +64,9 @@ struct CdAddressMSF
 
 	CdAddressMSF & operator =(LONG sector)
 	{
-		Frame = UCHAR(sector % 75);
-		Second = UCHAR((sector / 75) % 60);
-		Minute = UCHAR(sector / (75 * 60));
+		Frame = UCHAR((sector % 75) & 0xFF);
+		Second = UCHAR(((sector / 75) % 60) & 0xFF);
+		Minute = UCHAR((sector / (75 * 60)) & 0xFF);
 		return *this;
 	}
 };
@@ -77,8 +77,8 @@ struct BigEndWord
 
 	BigEndWord & operator =(USHORT src)
 	{
-		num[0] = UCHAR(src >> 8);
-		num[1] = UCHAR(src);
+		num[0] = UCHAR((src >> 8) & 0xFF);
+		num[1] = UCHAR(src & 0xFF);
 		return * this;
 	}
 	operator USHORT() { return num[1] | (num[0] << 8); }
@@ -89,9 +89,9 @@ struct BigEndTriple
 	UCHAR num[3];
 	BigEndTriple & operator =(ULONG src)
 	{
-		num[0] = UCHAR(src >> 16);
-		num[1] = UCHAR(src >> 8);
-		num[2] = UCHAR(src);
+		num[0] = UCHAR((src >> 16) & 0xFF);
+		num[1] = UCHAR((src >> 8) & 0xFF);
+		num[2] = UCHAR(src & 0xFF);
 		return * this;
 	}
 	operator ULONG()
@@ -108,10 +108,10 @@ struct BigEndDword
 
 	BigEndDword & operator =(ULONG src)
 	{
-		num[0] = UCHAR(src >> 24);
-		num[1] = UCHAR(src >> 16);
-		num[2] = UCHAR(src >> 8);
-		num[3] = UCHAR(src);
+		num[0] = UCHAR((src >> 24) & 0xFF);
+		num[1] = UCHAR((src >> 16) & 0xFF);
+		num[2] = UCHAR((src >> 8) & 0xFF);
+		num[3] = UCHAR(src & 0xFF);
 		return * this;
 	}
 	operator ULONG()
