@@ -2209,23 +2209,6 @@ void CWaveSoapFrontApp::OnToolsCdgrab()
 	TRACE("Raw read IoControl returned %x, bytes: %d, last error=%d, data=%02X%02X%02X%02X\n",
 		res, dwReturned, GetLastError(), data[3], data[2], data[1], data[0]);
 	VirtualFree(data1, 0, MEM_RELEASE);
-#if 0
-	POSITION pos = m_pDocManager->GetFirstDocTemplatePosition();
-	CDocTemplate* pTemplate = m_pDocManager->GetNextDocTemplate(pos);
-	if (pTemplate != NULL)
-	{
-		//m_NewFileFormat = *m_ClipboardFile.GetWaveFormat();
-
-		CWaveSoapFrontDoc * pDoc = (CWaveSoapFrontDoc *)pTemplate->OpenDocumentFile(NULL);
-		if (NULL != pDoc)
-		{
-			BOOL TmpUndo = pDoc->UndoEnabled();
-			pDoc->EnableUndo(FALSE);
-			//pDoc->DoEditPaste();
-			pDoc->EnableUndo(TmpUndo);
-		}
-	}
-#endif
 	CloseHandle(hCD);
 #endif
 }
@@ -2575,3 +2558,4 @@ CString GetSelectionText(long Start, long End, int Chan,
 	}
 	return s;
 }
+

@@ -4,6 +4,7 @@
 #include "stdafx.h"
 #include "WaveSoapFront.h"
 #include "OperationDialogs2.h"
+#include <dbt.h>
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -204,8 +205,18 @@ CCdGrabbingDialog::CCdGrabbingDialog(CWnd* pParent /*=NULL*/)
 	//{{AFX_DATA_INIT(CCdGrabbingDialog)
 	// NOTE: the ClassWizard will add member initialization here
 	//}}AFX_DATA_INIT
+	m_DiskID = -1;
+	m_DriveHandle = NULL;
+	m_DriveAttributesHandle = NULL;
+	m_PreviousSize.cx = -1;
+	m_PreviousSize.cy = -1;
+	memzero(m_mmxi);
 }
 
+CCdGrabbingDialog::~CCdGrabbingDialog()
+{
+	CloseDrive();
+}
 
 void CCdGrabbingDialog::DoDataExchange(CDataExchange* pDX)
 {
@@ -216,10 +227,19 @@ void CCdGrabbingDialog::DoDataExchange(CDataExchange* pDX)
 	//}}AFX_DATA_MAP
 }
 
-
 BEGIN_MESSAGE_MAP(CCdGrabbingDialog, CDialog)
 	//{{AFX_MSG_MAP(CCdGrabbingDialog)
+	ON_WM_ERASEBKGND()
+	ON_WM_SIZE()
+	ON_WM_SIZING()
+	ON_WM_NCHITTEST()
+	ON_WM_GETMINMAXINFO()
+	ON_WM_TIMER()
+	ON_BN_CLICKED(IDC_BUTTON_MORE, OnButtonMore)
+	ON_CBN_SELCHANGE(IDC_COMBO_DRIVES, OnSelchangeComboDrives)
+	ON_WM_DESTROY()
 	//}}AFX_MSG_MAP
+   ON_WM_DEVICECHANGE()
 END_MESSAGE_MAP()
 
 void CCdGrabbingDialog::FillDriveList()
@@ -239,25 +259,100 @@ void CCdGrabbingDialog::FillDriveList()
 	}
 }
 
-void CCdGrabbingDialog::FillTrackList(TCHAR letter)
+void CCdGrabbingDialog::CloseDrive()
 {
+	if (NULL != m_DriveAttributesHandle)
+	{
+		DWORD BytesReturned;
+		BOOLEAN McnDisable = FALSE;
+
+		BOOL res = DeviceIoControl(m_DriveAttributesHandle,IOCTL_STORAGE_MCN_CONTROL,
+									& McnDisable, sizeof McnDisable,
+									& McnDisable, sizeof McnDisable,
+									&BytesReturned, NULL);
+		TRACE("IOCTL_STORAGE_MCN_CONTROL returned %d, last error=%d\n",
+			res, GetLastError());
+
+		CloseHandle(m_DriveAttributesHandle);
+		m_DriveAttributesHandle = NULL;
+	}
+	if (NULL != m_DriveHandle)
+	{
+		CloseHandle(m_DriveHandle);
+		m_DriveHandle = NULL;
+	}
+}
+
+BOOL CCdGrabbingDialog::OpenDrive(TCHAR letter)
+{
+	CloseDrive();
+
 	CString path;
 	path.Format("\\\\.\\%c:", letter);
+
 	HANDLE hCD = CreateFile(path,
-							GENERIC_READ,
+							0,
 							FILE_SHARE_READ | FILE_SHARE_WRITE,
 							NULL,
 							OPEN_EXISTING,
 							FILE_ATTRIBUTE_NORMAL,
 							NULL);
+
+	if (INVALID_HANDLE_VALUE == hCD || NULL == hCD)
+	{
+		TRACE("Couldn't open CD to read attributes,error=%d\n",GetLastError());
+		return FALSE;
+	}
+
+	m_DriveAttributesHandle = hCD;
+
+	hCD = CreateFile(path,
+					GENERIC_READ,
+					FILE_SHARE_READ | FILE_SHARE_WRITE,
+					NULL,
+					OPEN_EXISTING,
+					FILE_ATTRIBUTE_NORMAL,
+					NULL);
+
 	if (INVALID_HANDLE_VALUE == hCD || NULL == hCD)
 	{
 		TRACE("Couldn't open CD,error=%d\n",GetLastError());
+		return FALSE;
+	}
+
+	m_DriveHandle = hCD;
+	m_MediaChangeCount = -1;
+
+	DWORD BytesReturned;
+	BOOLEAN McnDisable = TRUE;
+
+	BOOL res = DeviceIoControl(m_DriveAttributesHandle,IOCTL_STORAGE_MCN_CONTROL,
+								& McnDisable, sizeof McnDisable,
+								NULL, 0,
+								&BytesReturned, NULL);
+	TRACE("IOCTL_STORAGE_MCN_CONTROL returned %d, last error=%d\n",
+		res, GetLastError());
+
+	return TRUE;
+}
+
+void CCdGrabbingDialog::FillTrackList(TCHAR letter)
+{
+	if ( ! OpenDrive(letter))
+	{
+		TRACE("Couldn't open CD,error=%d\n",GetLastError());
+		m_lbTracks.DeleteAllItems();
 		m_lbTracks.InsertItem(0, "Invalid drive letter");
 		return;
 	}
+	ReloadTrackList();
+}
+
+void CCdGrabbingDialog::ReloadTrackList()
+{
+	m_lbTracks.DeleteAllItems();
 	DWORD dwReturned;
-	BOOL res = DeviceIoControl(hCD, IOCTL_CDROM_READ_TOC,
+	BOOL res = DeviceIoControl(m_DriveHandle, IOCTL_CDROM_READ_TOC,
 								NULL, 0,
 								& m_toc, sizeof m_toc,
 								& dwReturned,
@@ -268,9 +363,18 @@ void CCdGrabbingDialog::FillTrackList(TCHAR letter)
 	if ( ! res)
 	{
 		m_lbTracks.InsertItem(0, "No disk in the drive");
-		CloseHandle(hCD);
 		return;
 	}
+	// Get disk ID
+	DWORD MaxCompLength, FilesysFlags;
+	CString root;
+	root.Format("%c:\\", m_CDDrives[m_CDDriveSelected]);
+	if (GetVolumeInformation(root, NULL, 0, & m_DiskID,
+							& MaxCompLength, & FilesysFlags, NULL, 0))
+	{
+		TRACE("CD Volume label %08X\n", m_DiskID);
+	}
+
 	for (int tr = 0; tr <= m_toc.LastTrack - m_toc.FirstTrack; tr++)
 	{
 		CString s;
@@ -292,7 +396,6 @@ void CCdGrabbingDialog::FillTrackList(TCHAR letter)
 			m_toc.TrackData[tr].Adr,
 			m_toc.TrackData[tr].Control);
 	}
-	CloseHandle(hCD);
 }
 
 void CCdGrabbingDialog::CreateImageList()
@@ -356,9 +459,15 @@ BOOL CCdGrabbingDialog::OnInitDialog()
 	m_lbTracks.InsertColumn(0, "Track name", LVCFMT_LEFT, width - nLengthColumnWidth, 0);
 	m_lbTracks.DeleteColumn(1);
 	m_lbTracks.InsertColumn(1, "Length", LVCFMT_LEFT, nLengthColumnWidth, 1);
-	FillDriveList();
-	FillTrackList(m_CDDrives[m_CDDriveSelected]);
 
+	FillDriveList();
+	if (m_NumberOfDrives > 0)
+	{
+		m_DrivesCombo.SetCurSel(m_CDDriveSelected);
+		FillTrackList(m_CDDrives[m_CDDriveSelected]);
+	}
+
+	SetTimer(1, 200, NULL);
 	return TRUE;  // return TRUE unless you set the focus to a control
 	// EXCEPTION: OCX Property Pages should return FALSE
 }
@@ -368,11 +477,15 @@ void CCdGrabbingDialog::OnSize(UINT nType, int cx, int cy)
 	CDialog::OnSize(nType, cx, cy);
 
 	// invalidate an area which is (after resizing) occupied by size grip
-	int size = GetSystemMetrics(SM_CXVSCROLL);
-	CRect r(cx - size, cy - size, cx, cy);
-	InvalidateRect( & r, TRUE);
+	if (m_PreviousSize.cx < 0)
+	{
+		m_PreviousSize.cx = cx;
+		m_PreviousSize.cy = cy;
+		return;
+	}
 
 	// reposition controls
+
 	int dx = cx - m_PreviousSize.cx;
 	int dy = cy - m_PreviousSize.cy;
 	m_PreviousSize.cx = cx;
@@ -410,37 +523,41 @@ void CCdGrabbingDialog::OnSize(UINT nType, int cx, int cy)
 		hWnd = ::GetDlgItem(GetSafeHwnd(), Controls[i]);
 		if (NULL == hWnd) continue;
 
-		::GetWindowRect(hWnd, r);
-		ScreenToClient(r);
+		CRect cr;
+		::GetWindowRect(hWnd, cr);
+		ScreenToClient(cr);
 		if (i < MoveXItems)
 		{
-			r.left += dx;
-			r.right += dx;
+			cr.left += dx;
+			cr.right += dx;
 		}
 
 		if (i >= NoMoveYItems)
 		{
-			r.top += dy;
-			r.bottom += dy;
+			cr.top += dy;
+			cr.bottom += dy;
 		}
 
-		hdwp = ::DeferWindowPos(hdwp, hWnd, NULL, r.left, r.top,
-								r.Width(), r.Height(),
+		hdwp = ::DeferWindowPos(hdwp, hWnd, NULL, cr.left, cr.top,
+								cr.Width(), cr.Height(),
 								SWP_NOZORDER | SWP_NOOWNERZORDER// | SWP_NOACTIVATE | SWP_NOSENDCHANGING
 								);
 		TRACE("DeferWindowPos hwnd=%x dw=%d dy=%d x=%d, y=%d returned %X\n",
-			hWnd, dx, dy, r.left, r.top, hdwp);
+			hWnd, dx, dy, cr.left, cr.top, hdwp);
 		if (NULL == hdwp)
 		{
 			break;
 		}
 	}
 
-	if (NULL != hdwp)
+	if (NULL != hdwp
+		&& m_lbTracks.m_hWnd != NULL)
 	{
-		m_lbTracks.GetWindowRect(r);
-		ScreenToClient(r);
-		hdwp = ::DeferWindowPos(hdwp, m_lbTracks.GetSafeHwnd(), NULL, r.left, r.top, r.Width() + dx, r.Height() + dy,
+		CRect cr;
+		m_lbTracks.GetWindowRect(cr);
+		ScreenToClient(cr);
+		hdwp = ::DeferWindowPos(hdwp, m_lbTracks.GetSafeHwnd(), NULL,
+								cr.left, cr.top, cr.Width() + dx, cr.Height() + dy,
 								SWP_NOZORDER | SWP_NOOWNERZORDER//|SWP_NOACTIVATE | SWP_NOSENDCHANGING
 								);
 		m_lbTracks.SetColumnWidth(0, m_lbTracks.GetColumnWidth(0) + dx);
@@ -453,6 +570,11 @@ void CCdGrabbingDialog::OnSize(UINT nType, int cx, int cy)
 		m_PreviousSize.cx -= dx;
 		m_PreviousSize.cy -= dy;
 	}
+	// invalidate an area which is (after resizing)
+	// occupied by size grip
+	int size = GetSystemMetrics(SM_CXVSCROLL);
+	CRect r(cx - size, cy - size, cx, cy);
+	InvalidateRect( & r, TRUE);
 }
 
 void CCdGrabbingDialog::OnSizing(UINT fwSide, LPRECT pRect)
@@ -558,4 +680,120 @@ int CInsertSilenceDialog::DoModal()
 		m_lpszTemplateName = MAKEINTRESOURCE(IDD_DIALOG_INSERT_SILENCE_MONO);
 	}
 	return CDialog::DoModal();
+}
+
+BOOL CCdGrabbingDialog::OnEraseBkgnd(CDC* pDC)
+{
+	if (CDialog::OnEraseBkgnd(pDC))
+	{
+		// draw size grip
+		CRect r;
+		GetClientRect( & r);
+		int size = GetSystemMetrics(SM_CXVSCROLL);
+		r.left = r.right - size;
+		r.top = r.bottom - size;
+		pDC->DrawFrameControl( & r, DFC_SCROLL, DFCS_SCROLLSIZEGRIP);
+		return TRUE;
+	}
+	else
+	{
+		return FALSE;
+	}
+}
+
+void CCdGrabbingDialog::OnTimer(UINT nIDEvent)
+{
+	// check CD status
+	CheckForDiskChanged();
+}
+
+void CCdGrabbingDialog::OnButtonMore()
+{
+	// TODO: Add your control notification handler code here
+
+}
+
+void CCdGrabbingDialog::CheckForDiskChanged()
+{
+	if (NULL != m_DriveHandle)
+	{
+		DWORD MediaChangeCount = 0;
+		DWORD BytesReturned;
+		DWORD res = DeviceIoControl(m_DriveAttributesHandle,
+									IOCTL_STORAGE_CHECK_VERIFY2,
+									NULL, 0,
+									& MediaChangeCount, sizeof MediaChangeCount,
+									& BytesReturned, NULL);
+
+		TRACE("GetLastError=%d, MediaChange=%d\n",
+			GetLastError(),
+			MediaChangeCount);
+
+		if (! res && GetLastError() != ERROR_NOT_READY)
+		{
+			res = DeviceIoControl(m_DriveHandle,
+								IOCTL_STORAGE_CHECK_VERIFY,
+								NULL, 0,
+								& MediaChangeCount, sizeof MediaChangeCount,
+								& BytesReturned, NULL);
+			TRACE("GetLastError=%d, MediaChange=%d\n",
+				GetLastError(),
+				MediaChangeCount);
+		}
+
+		if (! res)
+		{
+			if (-1 != m_MediaChangeCount)
+			{
+				m_MediaChangeCount = -1;
+				TRACE("device not ready\n");
+				ReloadTrackList();
+			}
+		}
+		else if (MediaChangeCount != m_MediaChangeCount)
+		{
+			TRACE("Updating track list\n");
+			m_MediaChangeCount = MediaChangeCount;
+			ReloadTrackList();
+		}
+	}
+}
+
+void CCdGrabbingDialog::OnSelchangeComboDrives()
+{
+	int sel = m_DrivesCombo.GetCurSel();
+	if (sel != m_CDDriveSelected)
+	{
+		m_CDDriveSelected = sel;
+		FillTrackList(m_CDDrives[sel]);
+	}
+}
+
+LRESULT CCdGrabbingDialog::OnDeviceChange(UINT event, DWORD data)
+{
+	DEV_BROADCAST_HDR * pdbh = (DEV_BROADCAST_HDR *) data;;
+	switch (event)
+	{
+	case DBT_DEVICEARRIVAL:
+		if (DBT_DEVTYP_VOLUME == pdbh->dbch_devicetype)
+		{
+			CheckForDiskChanged();
+		}
+		break;
+	case DBT_DEVICEREMOVEPENDING:
+		if (DBT_DEVTYP_VOLUME == pdbh->dbch_devicetype)
+		{
+			CheckForDiskChanged();
+		}
+		break;
+	}
+	return TRUE;
+}
+
+
+void CCdGrabbingDialog::OnDestroy()
+{
+	KillTimer(1);
+	CDialog::OnDestroy();
+
 }
