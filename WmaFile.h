@@ -3,6 +3,7 @@
 #define __WMAFILE_H_INCLUDED
 #include <wtypes.h>
 #include <wmsdk.h>
+#include <atlsync.h>
 
 #if _MSC_VER > 1000
 #pragma once
@@ -265,9 +266,9 @@ protected:
 	bool m_bOpened;
 	bool m_bStarted;
 
-	CEvent m_OpenedEvent;
-	CEvent m_StartedEvent;
-	CEvent m_SampleEvent;
+	ATL::CEvent m_OpenedEvent;
+	ATL::CEvent m_StartedEvent;
+	ATL::CEvent m_SampleEvent;
 
 	//WMT_STATUS ReaderStatus;
 	QWORD m_CurrentStreamTime;
