@@ -617,6 +617,7 @@ protected:
 	afx_msg void OnButtonSelection();
 	virtual BOOL OnInitDialog();
 	virtual void OnOK();
+	afx_msg void OnButtonSetThreshold();
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 };

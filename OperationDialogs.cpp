@@ -521,8 +521,6 @@ BOOL CSelectionDialog::OnInitDialog()
 	}
 	CDialog::OnInitDialog();
 
-	// TODO: Add extra initialization here
-
 	return TRUE;  // return TRUE unless you set the focus to a control
 	// EXCEPTION: OCX Property Pages should return FALSE
 }
@@ -1748,8 +1746,14 @@ void CDeclickDialog::UpdateSelectionStatic()
 
 void CDeclickDialog::OnOK()
 {
-	CDialog::OnOK();
+	if (!UpdateData(TRUE))
+	{
+		TRACE0("UpdateData failed during dialog termination.\n");
+		// the UpdateData routine will set focus to correct item
+		return;
+	}
 	GetApp()->Profile.FlushSection(_T("Declicker"));
+	EndDialog(IDOK);
 }
 
 void CDeclickDialog::SetDeclickData(CClickRemoval * pCr)
@@ -1838,6 +1842,7 @@ BEGIN_MESSAGE_MAP(CNoiseReductionDialog, CDialog)
 	//{{AFX_MSG_MAP(CNoiseReductionDialog)
 	ON_BN_CLICKED(IDC_BUTTON_MORE, OnButtonMore)
 	ON_BN_CLICKED(IDC_BUTTON_SELECTION, OnButtonSelection)
+	ON_BN_CLICKED(IDC_BUTTON_SET_THRESHOLD, OnButtonSetThreshold)
 	//}}AFX_MSG_MAP
 END_MESSAGE_MAP()
 
@@ -1894,6 +1899,7 @@ void CNoiseReductionDialog::LoadValuesFromRegistry()
 	pApp->Profile.AddItem(_T("NoiseReduction"), _T("NearMaskingDecayTimeHigh"), m_NearMaskingDecayTimeHigh, 40., 1., 1000.);
 	pApp->Profile.AddItem(_T("NoiseReduction"), _T("NearMaskingDecayTimeLow"), m_NearMaskingDecayTimeLow, 100., 1., 1000.);
 	pApp->Profile.AddItem(_T("NoiseReduction"), _T("NearMaskingCoeff"), m_NearMaskingCoeff, 1., 0., 1.);
+	pApp->Profile.AddItem(_T("NoiseReduction"), _T("Aggressivness"), m_dNoiseReductionAggressivness, 1., 0.1, 3.);
 }
 
 void CNoiseReductionDialog::StoreValuesToRegistry()
@@ -2038,6 +2044,24 @@ BOOL CNoiseReductionDialog::OnInitDialog()
 
 void CNoiseReductionDialog::OnOK()
 {
-	CDialog::OnOK();
+	if (!UpdateData(TRUE))
+	{
+		TRACE0("UpdateData failed during dialog termination.\n");
+		// the UpdateData routine will set focus to correct item
+		return;
+	}
 	GetApp()->Profile.FlushSection(_T("NoiseReduction"));
+	EndDialog(IDOK);
+}
+
+void CNoiseReductionDialog::OnButtonSetThreshold()
+{
+	if (!UpdateData(TRUE))
+	{
+		TRACE0("UpdateData failed during dialog termination.\n");
+		// the UpdateData routine will set focus to correct item
+		return;
+	}
+	GetApp()->Profile.FlushSection(_T("NoiseReduction"));
+	EndDialog(IDC_BUTTON_SET_THRESHOLD);
 }
