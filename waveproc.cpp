@@ -3123,10 +3123,14 @@ size_t CChannelConvertor::ProcessSoundBuffer(char const * pIn, char * pOut,
 	if (2 == m_InputChannels
 		&& 1 == m_OutputChannels)
 	{
-		if ((1 << 0) == m_ChannelsToProcess
-			|| (1 << 1) == m_ChannelsToProcess)
+		if (SPEAKER_FRONT_LEFT == m_ChannelsToProcess
+			|| SPEAKER_FRONT_RIGHT == m_ChannelsToProcess)
 		{
-			pInBuf += m_ChannelsToProcess;
+			if (SPEAKER_FRONT_RIGHT == m_ChannelsToProcess)
+			{
+				pInBuf++;
+			}
+
 			for (i = 0; i < nSamples; i++,
 				pInBuf += 2, pOutBuf ++)
 			{
