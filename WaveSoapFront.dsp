@@ -535,6 +535,18 @@ SOURCE=.\WmaFile.h
 # PROP Default_Filter "ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe"
 # Begin Source File
 
+SOURCE=.\res\bmp00001.bmp
+# End Source File
+# Begin Source File
+
+SOURCE=.\res\bmp00002.bmp
+# End Source File
+# Begin Source File
+
+SOURCE=.\res\bmp00003.bmp
+# End Source File
+# Begin Source File
+
 SOURCE=.\res\cur00001.cur
 # End Source File
 # Begin Source File
@@ -544,6 +556,14 @@ SOURCE=.\res\cur00002.cur
 # Begin Source File
 
 SOURCE=.\res\cursor_b.cur
+# End Source File
+# Begin Source File
+
+SOURCE=.\res\id_bitma.bmp
+# End Source File
+# Begin Source File
+
+SOURCE=.\res\idc_zoom.bmp
 # End Source File
 # Begin Source File
 

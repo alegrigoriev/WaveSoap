@@ -749,16 +749,23 @@ int CWaveMDIChildClient::OnCreate(LPCREATESTRUCT lpCreateStruct)
 							WS_VISIBLE | WS_CHILD | BS_PUSHBUTTON | BS_BITMAP | BS_CENTER | BS_FLAT,
 							r, & wStaticFftL, ID_VIEW_SS_ZOOMOUTVERT);
 	m_btZoomOutVertFft.SetBitmap(m_bmZoomOutVert);
-#else
+#elif 0
 	m_FftZoomBar.Create(this,
 						WS_CHILD
 						| WS_VISIBLE
 						| CBRS_NOALIGN
 						| CBRS_TOOLTIPS | CBRS_FLYBY
-						| CBRS_SIZE_FIXED, FftStaticUID);
+						| CBRS_SIZE_FIXED, FftStaticLID);
 
 	m_FftZoomBar.LoadToolBar(IDR_TOOLBAR_ZOOMVERT);
 	m_FftZoomBar.SetBarStyle(m_FftZoomBar.GetBarStyle() & ~(CBRS_BORDER_ANY | CBRS_BORDER_3D));
+#else
+	m_FftZoomBar.Create(AfxRegisterWndClass(CS_HREDRAW | CS_VREDRAW,
+											AfxGetApp()->LoadStandardCursor(IDC_ARROW), NULL, NULL), "",
+						WS_CHILD | WS_VISIBLE | WS_BORDER, r, this, FftStaticLID, NULL);
+	m_FftZoomBar.AddButton( & m_bmZoomInVert, ID_VIEW_SS_ZOOMINVERT);
+	m_FftZoomBar.AddButton( & m_bmZoomOutVert, ID_VIEW_SS_ZOOMOUTVERT);
+
 #endif
 	// create scrollbar
 	m_sb.Create(SBS_HORZ | WS_VISIBLE | WS_CHILD, r, this, AFX_IDW_HSCROLL_FIRST);
@@ -1057,7 +1064,10 @@ void CVerticalTrackerBar::OnMouseMove(UINT nFlags, CPoint point)
 
 void CVerticalTrackerBar::OnCaptureChanged(CWnd *pWnd)
 {
-	m_bTracking = FALSE;
+	if (pWnd != this)
+	{
+		m_bTracking = FALSE;
+	}
 	CWnd::OnCaptureChanged(pWnd);
 }
 
@@ -1094,57 +1104,216 @@ void CChildFrame::OnDestroy()
 	CMDIChildWnd::OnDestroy();
 }
 
-using CWaveMDIChildClient::CNoFocusButton;
+/////////////////////////////////////////////////////////////////////////////
+// CMiniToolbar
 
-BEGIN_MESSAGE_MAP(CNoFocusButton, CButton)
-	//{{AFX_MSG_MAP(CNoFocusButton)
-	ON_WM_MOUSEACTIVATE()
-	ON_WM_SETFOCUS()
-	//}}AFX_MSG_MAP
+CMiniToolbar::CMiniToolbar()
+{
+	m_ButtonClicked = 0;
+	m_MouseCaptured = false;
+	m_LButtonPressed = false;
+	m_ButtonHilit = 0;
+}
+
+CMiniToolbar::~CMiniToolbar()
+{
+}
+
+
+BEGIN_MESSAGE_MAP(CMiniToolbar, CWnd)
+//{{AFX_MSG_MAP(CMiniToolbar)
+ON_WM_CAPTURECHANGED()
+ON_WM_ERASEBKGND()
+ON_WM_LBUTTONDOWN()
+ON_WM_LBUTTONUP()
+ON_WM_MOUSEACTIVATE()
+ON_WM_MOUSEMOVE()
+ON_WM_PAINT()
+//}}AFX_MSG_MAP
 END_MESSAGE_MAP()
 
-int CNoFocusButton::OnMouseActivate(CWnd* pDesktopWnd, UINT nHitTest, UINT message)
+
+/////////////////////////////////////////////////////////////////////////////
+// CMiniToolbar message handlers
+
+void CMiniToolbar::OnCaptureChanged(CWnd *pWnd)
 {
-	//int nResult = CWnd::OnMouseActivate(pDesktopWnd, nHitTest, message);
-	//if (nResult == MA_NOACTIVATE || nResult == MA_NOACTIVATEANDEAT)
-	//return nResult;   // parent does not want to activate
+	if (pWnd != this)
+	{
+		m_LButtonPressed = false;
+		m_ButtonClicked = 0;
+		m_MouseCaptured = 0;
+		if (m_ButtonHilit)
+		{
+			HiliteButton(m_ButtonHilit, false);
+		}
+	}
+	CWnd::OnCaptureChanged(pWnd);
+}
+
+BOOL CMiniToolbar::OnEraseBkgnd(CDC* pDC)
+{
+	CBrush brush(GetSysColor(COLOR_3DFACE));
+	CRect cr;
+	GetClientRect( & cr);
+	pDC->FillRect( & cr, & brush);
+
+	return TRUE;
+}
+
+void CMiniToolbar::OnLButtonDown(UINT nFlags, CPoint point)
+{
+	m_LButtonPressed = true;
+	m_ButtonClicked = GetHitCode(point);
+	if (0 != m_ButtonClicked)
+	{
+		HiliteButton(m_ButtonClicked, true);
+	}
+	CWnd::OnLButtonDown(nFlags, point);
+}
+
+void CMiniToolbar::OnLButtonUp(UINT nFlags, CPoint point)
+{
+	int nID = 0;
+	if (m_ButtonClicked)
+	{
+		nID = GetHitCode(point);
+		if (nID != m_ButtonClicked)
+		{
+			nID = 0;
+		}
+		HiliteButton(m_ButtonHilit, false);
+	}
+	if (m_MouseCaptured)
+	{
+		ReleaseCapture();
+	}
+	m_LButtonPressed = false;
+	m_ButtonClicked = 0;
+	CWnd::OnLButtonUp(nFlags, point);
+	if (nID != 0)
+	{
+		GetParent()->PostMessage(WM_COMMAND, nID | (BN_CLICKED << 16), LPARAM(m_hWnd));
+	}
+}
+
+int CMiniToolbar::OnMouseActivate(CWnd* pDesktopWnd, UINT nHitTest, UINT message)
+{
 	return MA_NOACTIVATE;
 }
 
-void CNoFocusButton::OnSetFocus(CWnd* pOldWnd)
+void CMiniToolbar::OnMouseMove(UINT nFlags, CPoint point)
 {
-	if (pOldWnd
-		&& pOldWnd->GetParentFrame() == GetParentFrame())
+	if (m_LButtonPressed)
 	{
-		// reject focus
-		pOldWnd->SetFocus();
-	}
-	else
-	{
-		CWnd * pWnd = GetParent()->GetDlgItem(1);
-		if (pWnd)
+		if ( ! m_MouseCaptured)
 		{
-			pWnd->SetFocus();
+			SetCapture();
+		}
+		if (GetHitCode(point) != m_ButtonClicked)
+		{
+			HiliteButton(m_ButtonClicked, false);
 		}
 		else
 		{
-			pOldWnd->SetFocus();
+			HiliteButton(m_ButtonClicked, true);
 		}
+	}
+
+	CWnd::OnMouseMove(nFlags, point);
+}
+
+void CMiniToolbar::OnPaint()
+{
+	CPaintDC dc(this); // device context for painting
+	CRect cr;
+	GetClientRect( & cr);
+	// draw the bitmaps
+	CDC cdc;
+	cdc.CreateCompatibleDC( & dc);
+
+	for (int i = 0; i < m_Buttons.size(); i++)
+	{
+		BITMAP bmp;
+		m_Buttons[i].pBitmap->GetBitmap( & bmp);
+		// center the bitmap
+		int x = cr.Width() * i / m_Buttons.size()
+				+ (cr.Width() / m_Buttons.size() - bmp.bmWidth) / 2;
+		int y = (cr.Height() - bmp.bmHeight) / 2;
+		if (m_ButtonClicked == m_Buttons[i].nID)
+		{
+			x++;
+			y++;
+		}
+
+		CBitmap * pOldBitmap = cdc.SelectObject( m_Buttons[i].pBitmap);
+		dc.BitBlt(x, y, bmp.bmWidth, bmp.bmHeight, & cdc, 0, 0, SRCAND);
+		cdc.SelectObject(pOldBitmap);
 	}
 }
 
-using CWaveMDIChildClient::CNoFocusWnd;
-
-BEGIN_MESSAGE_MAP(CNoFocusWnd, CWnd)
-	//{{AFX_MSG_MAP(CNoFocusWnd)
-	ON_WM_MOUSEACTIVATE()
-	//}}AFX_MSG_MAP
-END_MESSAGE_MAP()
-
-int CNoFocusWnd::OnMouseActivate(CWnd* pDesktopWnd, UINT nHitTest, UINT message)
+int CMiniToolbar::GetHitCode(POINT point)
 {
-	int nResult = CWnd::OnMouseActivate(pDesktopWnd, nHitTest, message);
-	if (nResult == MA_NOACTIVATE || nResult == MA_NOACTIVATEANDEAT)
-		return nResult;   // parent does not want to activate
-	return MA_NOACTIVATE;
+	CRect cr;
+	GetClientRect( & cr);
+	if (point.y < cr.top || point.y >= cr.bottom
+		|| point.x < cr.left || point.x >= cr.right
+		|| m_Buttons.size() == 0
+		|| cr.Width() == 0)
+	{
+		return 0;
+	}
+	return m_Buttons[point.x * m_Buttons.size() / cr.Width()].nID;
+}
+
+void CMiniToolbar::HiliteButton(int nID, bool Hilite)
+{
+	if (m_ButtonHilit != 0 && nID != m_ButtonHilit)
+	{
+		HiliteButton(m_ButtonHilit, false);
+	}
+	if (Hilite)
+	{
+		if (m_ButtonHilit == nID)
+		{
+			return;
+		}
+		m_ButtonHilit = nID;
+	}
+	else
+	{
+		if (m_ButtonHilit == 0)
+		{
+			return;
+		}
+		m_ButtonHilit = 0;
+	}
+	CRect cr;
+	GetClientRect( & cr);
+	CRect r = cr;
+	for (int i = 0; i < m_Buttons.size(); i++)
+	{
+		if (m_Buttons[i].nID == nID)
+		{
+			break;
+		}
+	}
+	if (i == m_Buttons.size())
+	{
+		m_ButtonHilit = 0;
+		return;
+	}
+	r.left = cr.Width() * i / m_Buttons.size();
+	r.right = cr.Width() * (i + 1) / m_Buttons.size();
+	InvalidateRect( & r);
+}
+
+void CMiniToolbar::AddButton(CBitmap * pBitmap, int nID)
+{
+	// not checking for duplicate ID
+	Button btn;
+	btn.nID = nID;
+	btn.pBitmap = pBitmap;
+	btn.bEnabled = true;
+	m_Buttons.push_back(btn);
 }

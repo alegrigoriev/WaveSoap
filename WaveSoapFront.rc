@@ -59,6 +59,18 @@ END
 
 #endif    // APSTUDIO_INVOKED
 
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// String Table
+//
+
+STRINGTABLE DISCARDABLE 
+BEGIN
+    ID_VIEW_ZOOMINVERT      "Zoom in vertical\nZoom in vertical"
+    ID_VIEW_ZOOMOUTVERT     "Zoom out vertical\nZoom out vertical"
+END
+
 #endif    // Russian resources
 /////////////////////////////////////////////////////////////////////////////
 
@@ -89,6 +101,11 @@ IDR_WAVESOTYPE          ICON    DISCARDABLE     "res\\WaveSoapFrontDoc.ico"
 
 IDR_MAINFRAME           BITMAP  MOVEABLE PURE   "res\\Toolbar.bmp"
 IDR_CHILDFRAME          BITMAP  DISCARDABLE     "res\\toolbar1.bmp"
+ID_BITMAP_ZOOMINVERT    BITMAP  DISCARDABLE     "res\\idc_zoom.bmp"
+ID_BITMAP_ZOOMOUTVERT   BITMAP  DISCARDABLE     "res\\id_bitma.bmp"
+ID_BITMAP_ZOOMINHOR     BITMAP  DISCARDABLE     "res\\bmp00001.bmp"
+ID_BITMAP_ZOOMOUTHOR    BITMAP  DISCARDABLE     "res\\bmp00002.bmp"
+IDR_TOOLBAR_ZOOMVERT    BITMAP  DISCARDABLE     "res\\bmp00003.bmp"
 
 /////////////////////////////////////////////////////////////////////////////
 //
@@ -156,6 +173,12 @@ BEGIN
     BUTTON      ID_PROCESS_SYNTHESIS_EXPRESSION_EVALUATION
     BUTTON      ID_PROCESS_EQUALIZER
     BUTTON      ID_PROCESS_DCOFFSET
+END
+
+IDR_TOOLBAR_ZOOMVERT TOOLBAR DISCARDABLE  16, 15
+BEGIN
+    BUTTON      ID_VIEW_ZOOMINVERT
+    BUTTON      ID_VIEW_ZOOMOUTVERT
 END
 
 
