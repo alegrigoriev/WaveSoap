@@ -329,7 +329,6 @@ public:
 		: BaseClass(pDoc, StatusString,
 					OperationContextDiskIntensive, OperationName)
 	{
-		m_ReturnBufferFlags = CDirectFile::ReturnBufferDirty;
 	}
 
 	virtual BOOL ProcessBuffer(void * buf, size_t len, SAMPLE_POSITION offset, BOOL bBackward = FALSE);
@@ -483,6 +482,7 @@ public:
 				SAMPLE_INDEX SrcStartSample,
 				SAMPLE_INDEX DstStartSample,
 				NUMBER_OF_SAMPLES Length, CHANNEL_MASK Channel);
+	virtual void Dump(unsigned indent=0) const;
 
 protected:
 	virtual BOOL PrepareUndo();
@@ -513,6 +513,7 @@ public:
 						SAMPLE_INDEX SrcEndSample,
 						CHANNEL_MASK Channels);
 	~CSaveTrimmedOperation();
+	virtual void Dump(unsigned indent=0) const;
 
 protected:
 	class CRestoreTrimmedOperation * m_pRestoreOperation;
@@ -537,6 +538,7 @@ public:
 
 	CRestoreTrimmedOperation(CWaveSoapFrontDoc * pDoc);
 	~CRestoreTrimmedOperation();
+	virtual void Dump(unsigned indent=0) const;
 
 protected:
 
