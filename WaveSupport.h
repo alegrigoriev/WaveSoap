@@ -11,7 +11,7 @@ public:
 
 	virtual BOOL IsOpen() = 0;
 	BOOL AllocateBuffers(size_t size = 8192, int count = 4);
-	UINT GetBuffer(char ** ppbuf, size_t * pSize, BOOL bWait = TRUE);
+	int GetBuffer(char ** ppbuf, size_t * pSize, BOOL bWait = TRUE);
 	BOOL ReturnBuffer(UINT hBuffer);    // return unused buffer
 	BOOL ResetBuffers();
 	BOOL WaitForQueueEmpty(DWORD timeout);
@@ -54,7 +54,7 @@ public:
 	MMRESULT BreakLoop();
 	DWORD GetPosition(UINT type=TIME_SAMPLES);
 
-	MMRESULT Play(UINT hBuffer, size_t UsedSize, DWORD AuxFlags);
+	MMRESULT Play(UINT hBuffer, size_t UsedSize, DWORD AuxFlags = 0);
 
 private:
 	HWAVEOUT m_hwo;

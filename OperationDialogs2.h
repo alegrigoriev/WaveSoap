@@ -215,6 +215,7 @@ protected:
 	BOOL m_bNeedUpdateControls;
 
 	BOOL m_bPlayingAudio;
+	int m_PlayingTrack;
 	CWaveOut m_WaveOut;
 	CdAddressMSF m_PlaybackAddress;
 	LONG m_PlaybackSectors;
@@ -224,7 +225,7 @@ protected:
 	CApplicationProfile m_Profile;
 
 	void FillTrackList(TCHAR letter);
-	void ReloadTrackList();
+	void ReloadTrackList(CdMediaChangeState NewMediaState = CdMediaStateChanged);
 	void InitReadSpeedCombobox();
 
 	BOOL OpenDrive(TCHAR letter);
@@ -265,6 +266,8 @@ protected:
 	afx_msg void OnButtonPlay();
 	afx_msg void OnButtonStop();
 	afx_msg void OnSelchangeComboSpeed();
+	afx_msg void OnItemchangedListTracks(NMHDR* pNMHDR, LRESULT* pResult);
+	virtual void OnCancel();
 	//}}AFX_MSG
 	void OnMetricsChange();
 	afx_msg LRESULT OnDeviceChange(UINT, DWORD);
