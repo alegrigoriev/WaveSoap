@@ -11,9 +11,11 @@ HRESULT STDMETHODCALLTYPE CDirectFileStream::Read(
 												/* [in] */ ULONG cb,
 												/* [out] */ ULONG __RPC_FAR *pcbRead)
 {
-	if (0 || TRACE_WMA_DECODER) TRACE(_T("CDirectFileStream::Read %d bytes at pos %d, length=%d\n"),
-									cb, (DWORD)m_File.Seek(0, FILE_CURRENT), (DWORD)m_File.GetLength());
+	if (TRACE_WMA_DECODER) TRACE(_T("CDirectFileStream::Read %d bytes at pos %d, length=%d\n"),
+								cb, (DWORD)m_File.Seek(0, FILE_CURRENT), (DWORD)m_File.GetLength());
+
 	LONG lRead = m_File.Read(pv, cb);
+
 	if (lRead != -1)
 	{
 		if (NULL != pcbRead)
@@ -285,8 +287,8 @@ HRESULT STDMETHODCALLTYPE CWmaDecoder::OnStatus( /* [in] */ WMT_STATUS Status,
 															/* [in] */ BYTE __RPC_FAR *pValue,
 															/* [in] */ void __RPC_FAR * /*pvContext*/ )
 {
-	if (0 || TRACE_WMA_DECODER) TRACE(_T("CWmaDecoder::OnStatus Status=%X, hr=%08X, DataType=%X, pValue=%X\n"),
-									Status, hr, dwType, pValue);
+	if (TRACE_WMA_DECODER) TRACE(_T("CWmaDecoder::OnStatus Status=%X, hr=%08X, DataType=%X, pValue=%X\n"),
+								Status, hr, dwType, pValue);
 	// The following values are used:
 	// WMT_OPENED
 	// WMT_STOPPED
