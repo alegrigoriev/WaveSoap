@@ -34,7 +34,9 @@ CSplitToFilesDialog::CSplitToFilesDialog(CWaveFile & WaveFile, int TimeFormat, C
 {
 	// fill the files list
 	WaveFile.GetSortedFileSegments(m_Files);
-	m_Profile.AddItem(_T("Settings"), _T("SplitToFileType"), m_FileType, SoundFileWav, SoundFileWav, SoundFileWma);
+
+	m_Profile.AddItem(_T("Settings"), _T("SplitToFileType"),
+					m_FileType, SaveFile_WavFile, SaveFile_WavFile, SaveFile_WmaFile);
 
 	// resizable dialog support:
 	static const ResizableDlgItem items[] =
@@ -165,18 +167,7 @@ void CSplitToFilesDialog::DoDataExchange(CDataExchange* pDX)
 
 	if (pDX->m_bSaveAndValidate)
 	{
-		switch (m_FileType)
-		{
-		case SoundFileMp3:
-			m_FileTypeFlags = SaveFile_Mp3File;
-			break;
-		case SoundFileWma:
-			m_FileTypeFlags = SaveFile_WmaFile;
-			break;
-		default:
-			m_FileTypeFlags = SaveFile_WavFile;
-			break;
-		}
+		m_FileTypeFlags = m_FileType;
 
 		m_sFilenamePrefix.TrimLeft();
 		m_RecentFilenamePrefixes.AddString(m_sFilenamePrefix);
@@ -326,10 +317,10 @@ void CSplitToFilesDialog::DoDataExchange(CDataExchange* pDX)
 
 			switch (m_FileType)
 			{
-			case SoundFileMp3:
+			case SaveFile_Mp3File:
 				Name += _T(".mp3");
 				break;
-			case SoundFileWma:
+			case SaveFile_WmaFile:
 				Name += _T(".wma");
 				break;
 			default:
@@ -482,14 +473,12 @@ void CSplitToFilesDialog::OnComboAttributesChange()
 
 void CSplitToFilesDialog::OnComboFileTypeSelChange()
 {
-	int FileType = m_SaveAsTypesCombo.GetCurSel();
-	if (FileType < 0
-		|| FileType > SoundFileWma - SoundFileTypeMin)
+	unsigned FileType = m_SaveAsTypesCombo.GetCurSel();
+	if (FileType < m_NumOfFileTypes)
 	{
-		return;
+		SetFileType(m_TemplateFlags[FileType]);
+		//CFileSaveUiSupport::OnComboAttributesChange();
 	}
-	SetFileType(FileType + SoundFileTypeMin);
-	//CFileSaveUiSupport::OnComboAttributesChange();
 }
 
 // CSplitToFilesDialog message handlers
@@ -577,7 +566,7 @@ void CSplitToFilesDialog::OnLvnEndlabeleditListFiles(NMHDR *pNMHDR, LRESULT *pRe
 	}
 }
 
-void CSplitToFilesDialog::SetFileType(int nType, BOOL Force)
+void CSplitToFilesDialog::SetFileType(unsigned nType, BOOL Force)
 {
 	if (! Force && m_FileType == nType)
 	{
@@ -589,7 +578,7 @@ void CSplitToFilesDialog::SetFileType(int nType, BOOL Force)
 	switch (nType)
 	{
 	default:
-	case SoundFileWav:
+	case SaveFile_WavFile:
 		// WAV file
 		// show Comments, fill formats combo box
 		s.LoadString(IDS_FORMAT);
@@ -605,7 +594,8 @@ void CSplitToFilesDialog::SetFileType(int nType, BOOL Force)
 
 		m_SelectedFormat = FillFormatCombo(m_FormatTagCombo.GetCurSel());
 		break;  // go on
-	case SoundFileMp3:
+
+	case SaveFile_Mp3File:
 		// MP3 file
 		// replace Format with Encoder: (LAME, Fraunhofer
 		s.LoadString(IDS_ENCODER);
@@ -622,7 +612,8 @@ void CSplitToFilesDialog::SetFileType(int nType, BOOL Force)
 		// fill formats combo (bitrate, etc)
 		FillMp3EncoderCombo();
 		break;
-	case SoundFileWma:
+
+	case SaveFile_WmaFile:
 		// WMA file
 		if ( ! GetApp()->CanOpenWindowsMedia())
 		{
@@ -631,7 +622,7 @@ void CSplitToFilesDialog::SetFileType(int nType, BOOL Force)
 			{
 				// TODO: show help
 			}
-			SetFileType(SoundFileWav);
+			SetFileType(SaveFile_WavFile);
 			break;
 		}
 
@@ -659,6 +650,7 @@ BOOL CSplitToFilesDialog::OnInitDialog()
 	SetWindowIcons(this, IDI_ICON_SPLIT_TO_FILES);
 
 	InitSelectionUi();
+
 
 	m_eSaveToFolder.SetExtendedUI();
 	m_RecentFolders.LoadCombo(& m_eSaveToFolder);
@@ -715,23 +707,35 @@ BOOL CSplitToFilesDialog::OnInitDialog()
 		m_FilesList.SetItemState(0, LVIS_SELECTED, LVIS_SELECTED);
 	}
 
-	static int const FileTypeIds[] =
+	static unsigned const FileTypeIds[][2] =
 	{
-		IDR_WAVESOTYPE,
-		IDR_MP3TYPE,
-		IDR_WMATYPE,
+		{IDR_WAVESOTYPE, SaveFile_WavFile},
+		{IDR_MP3TYPE, SaveFile_Mp3File},
+		{IDR_WMATYPE, SaveFile_WmaFile}
 	};
 
 	CString filter;
+	unsigned sel = 0;
 	for (unsigned i = 0; i < countof(FileTypeIds); i++)
 	{
-		VERIFY(s.LoadString(FileTypeIds[i]));
+		VERIFY(s.LoadString(FileTypeIds[i][0]));
 		AfxExtractSubString(filter, s, CDocTemplate::filterName);
 
 		m_SaveAsTypesCombo.AddString(filter);
+		AfxExtractSubString(filter, m_DefExt[i], CDocTemplate::filterExt);
+
+		m_TemplateFlags[i] = FileTypeIds[i][1];
+		if (FileTypeIds[i][1] == m_FileType)
+		{
+			sel = i;
+		}
 	}
 
-	m_SaveAsTypesCombo.SetCurSel(m_FileType - 1);
+	m_NumOfFileTypes = countof(FileTypeIds);
+
+	m_SaveAsTypesCombo.SetCurSel(sel);
+	m_FileType = m_TemplateFlags[sel];
+
 	SetFileType(m_FileType, TRUE); // force file type set
 
 	return TRUE;  // return TRUE unless you set the focus to a control
