@@ -1,4 +1,5 @@
 // AmplitudeRuler.cpp : implementation file
+// Copyright Alexander Grigoriev, 1997-2002, All Rights Reserved
 //
 
 #include "stdafx.h"

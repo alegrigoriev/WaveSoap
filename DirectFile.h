@@ -1,3 +1,4 @@
+// Copyright Alexander Grigoriev, 1997-2002, All Rights Reserved
 // DirectFile.h: interface for the CDirectFile class.
 //
 //////////////////////////////////////////////////////////////////////
