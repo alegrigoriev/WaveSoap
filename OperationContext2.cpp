@@ -55,82 +55,89 @@ BOOL CExpressionEvaluationContext::ProcessBuffer(void * buf, size_t len, DWORD o
 	int nChannels = m_DstFile.Channels();
 	int nSample = (offset - m_DstStart) / nSampleSize;
 	__int16 * pDst = (__int16 *) buf;
-	if (1 == nChannels)
+	try
 	{
-		while (len >= sizeof (__int16))
+		if (1 == nChannels)
 		{
-			m_dCurrentSample = *pDst * 0.00003051850947599719229;
-			Evaluate();
-			int result = * m_pResultAddress;
-			if (result > 0x7FFF)
+			while (len >= sizeof (__int16))
 			{
-				result = 0x7FFF;
+				m_dCurrentSample = *pDst * 0.00003051850947599719229;
+				Evaluate();
+				int result = * m_pResultAddress;
+				if (result > 0x7FFF)
+				{
+					result = 0x7FFF;
+				}
+				else if (result < -0x8000)
+				{
+					result = -0x8000;
+				}
+				*pDst = result;
+				pDst++;
+				len -= sizeof (__int16);
+				m_nSelectionSampleArgument++;
+				m_nFileSampleArgument++;
+				m_dSelectionTimeArgument += m_SamplePeriod;
+				m_dFileTimeArgument += m_SamplePeriod;
 			}
-			else if (result < -0x8000)
+		}
+		else
+		{
+			while (len >= sizeof (__int16))
 			{
-				result = -0x8000;
+				if (0 == (offset & sizeof (__int16)))
+				{
+					if (m_DstChan != 1) // not right only
+					{
+						m_dCurrentSample = *pDst * 0.00003051850947599719229;
+						Evaluate();
+						int result = * m_pResultAddress;
+						if (result > 0x7FFF)
+						{
+							result = 0x7FFF;
+						}
+						else if (result < -0x8000)
+						{
+							result = -0x8000;
+						}
+						*pDst = result;
+					}
+					offset += sizeof (__int16);
+					pDst++;
+					len -= sizeof (__int16);
+				}
+				if (len >= sizeof (__int16))
+				{
+					if (m_DstChan != 0) // not left only
+					{
+						m_dCurrentSample = *pDst * 0.00003051850947599719229;
+						Evaluate();
+						int result = * m_pResultAddress;
+						if (result > 0x7FFF)
+						{
+							result = 0x7FFF;
+						}
+						else if (result < -0x8000)
+						{
+							result = -0x8000;
+						}
+						*pDst = result;
+					}
+					offset += sizeof (__int16);
+					pDst++;
+					len -= sizeof (__int16);
+				}
+
+				m_nSelectionSampleArgument++;
+				m_nFileSampleArgument++;
+				m_dSelectionTimeArgument += m_SamplePeriod;
+				m_dFileTimeArgument += m_SamplePeriod;
 			}
-			*pDst = result;
-			pDst++;
-			len -= sizeof (__int16);
-			m_nSelectionSampleArgument++;
-			m_nFileSampleArgument++;
-			m_dSelectionTimeArgument += m_SamplePeriod;
-			m_dFileTimeArgument += m_SamplePeriod;
 		}
 	}
-	else
+	catch (const char * pError)
 	{
-		while (len >= sizeof (__int16))
-		{
-			if (0 == (offset & sizeof (__int16)))
-			{
-				if (m_DstChan != 1) // not right only
-				{
-					m_dCurrentSample = *pDst * 0.00003051850947599719229;
-					Evaluate();
-					int result = * m_pResultAddress;
-					if (result > 0x7FFF)
-					{
-						result = 0x7FFF;
-					}
-					else if (result < -0x8000)
-					{
-						result = -0x8000;
-					}
-					*pDst = result;
-				}
-				offset += sizeof (__int16);
-				pDst++;
-				len -= sizeof (__int16);
-			}
-			if (len >= sizeof (__int16))
-			{
-				if (m_DstChan != 0) // not left only
-				{
-					m_dCurrentSample = *pDst * 0.00003051850947599719229;
-					Evaluate();
-					int result = * m_pResultAddress;
-					if (result > 0x7FFF)
-					{
-						result = 0x7FFF;
-					}
-					else if (result < -0x8000)
-					{
-						result = -0x8000;
-					}
-					*pDst = result;
-				}
-				offset += sizeof (__int16);
-				pDst++;
-				len -= sizeof (__int16);
-			}
-
-			m_nSelectionSampleArgument++;
-			m_nFileSampleArgument++;
-			m_dSelectionTimeArgument += m_SamplePeriod;
-			m_dFileTimeArgument += m_SamplePeriod;
-		}
+		return FALSE;
 	}
 	return TRUE;
 }
@@ -151,6 +158,14 @@ CString CExpressionEvaluationContext::GetToken(LPCSTR * ppStr, TokenType * pType
 		"+", ePlusOp,
 		"/", eDivideOp,
 		"*", eMultiplyOp,
+		"%", eModuloOp,
+		"&", eBinaryAndOp,
+		"|", eBinaryOrOp,
+		"^", eBinaryXorOp,
+		"~", eBinaryNotOp,
+		"int", eInt,
+		"float", eDouble,
+		"double", eDouble,
 		"sinh", eSinusHFunc,
 		"sin", eSinusFunc,
 		"cosh", eCosinusHFunc,
@@ -215,6 +230,17 @@ CExpressionEvaluationContext::CompileParenthesedExpression(LPCSTR * ppStr)
 	return eRightParenthesis;
 }
 
+void CExpressionEvaluationContext::CompileFunctionOfDouble(void (_fastcall * Function)(Operation * t), LPCSTR * ppStr)
+{
+	CompileParenthesedExpression( ppStr);
+	// can't put those right to the function call, because
+	// order of evaluation would be unpredicted
+	double * pArg = PopDouble();
+	double * pDst = PushDouble();
+
+	AddOperation(Function, pDst, pArg, NULL);
+}
+
 CExpressionEvaluationContext::TokenType
 	CExpressionEvaluationContext::CompileTerm(LPCSTR * ppStr)
 {
@@ -224,7 +250,6 @@ CExpressionEvaluationContext::TokenType
 	int IntConstant;
 	double DoubleConstant;
 	char * endptr;
-	void (_fastcall * Function)(Operation * t);
 
 	LPCSTR prevStr = *ppStr;
 	CString token = GetToken( ppStr, & type);
@@ -266,61 +291,108 @@ CExpressionEvaluationContext::TokenType
 		}
 		break;
 
+	case eBinaryNotOp:
+		type = CompileTerm(ppStr);
+		type = GetTopOfStackType();
+		if (eIntConstant == type)
+		{
+			PushConstant( ~ *PopInt());
+		}
+		else if (eIntExpression == type)
+		{
+			int * pSrc = PopInt();
+			int * pDst = PushInt();
+			AddOperation(ComplementInt, pDst, pSrc, NULL);
+		}
+		else
+		{
+			throw "Binary complement operation arguments must be integer, use int() function";
+		}
+		break;
+
 	case eLeftParenthesis:
 		*ppStr = prevStr;
 		return CompileParenthesedExpression( ppStr);
 		break;
 
 	case eSinusFunc:
-		do
-		{
-			Function = Sin;
-			continue;
-	case eCosinusFunc:
-			Function = Cos;
-			continue;
-	case eTangensFunc:
-			Function = Tan;
-			continue;
-	case eSinusHFunc:
-			Function = SinH;
-			continue;
-	case eCosinusHFunc:
-			Function = CosH;
-			continue;
-	case eTangensHFunc:
-			Function = TanH;
-			continue;
-	case eExpFunc:
-			Function = Exp;
-			continue;
-	case eExp10Func:
-			Function = Exp10;
-			continue;
-	case eLogFunc:
-			Function = Log;
-			continue;
-	case eLog10Func:
-			Function = Log10;
-			continue;
-	case eSqrtFunc:
-			Function = Sqrt;
-			continue;
-	case eAbsFunc:
-			Function = Abs;
-			continue;
-		}
-		while(0);
-		CompileParenthesedExpression( ppStr);
-		// put function call to the token
-		{
-			// can't put those right to the function call, because
-			// order of evaluation would be unpredicted
-			double * pArg = PopDouble();
-			double * pDst = PushDouble();
+		CompileFunctionOfDouble(Sin, ppStr);
+		break;
 
-			AddOperation(Function, pDst, pArg, NULL);
+	case eCosinusFunc:
+		CompileFunctionOfDouble(Cos, ppStr);
+		break;
+
+	case eTangensFunc:
+		CompileFunctionOfDouble(Tan, ppStr);
+		break;
+
+	case eSinusHFunc:
+		CompileFunctionOfDouble(SinH, ppStr);
+		break;
+
+	case eCosinusHFunc:
+		CompileFunctionOfDouble(CosH, ppStr);
+		break;
+
+	case eTangensHFunc:
+		CompileFunctionOfDouble(TanH, ppStr);
+		break;
+
+	case eExpFunc:
+		CompileFunctionOfDouble(Exp, ppStr);
+		break;
+
+	case eExp10Func:
+		CompileFunctionOfDouble(Exp10, ppStr);
+		break;
+
+	case eLogFunc:
+		CompileFunctionOfDouble(Log, ppStr);
+		break;
+
+	case eLog10Func:
+		CompileFunctionOfDouble(Log10, ppStr);
+		break;
+
+	case eSqrtFunc:
+		CompileFunctionOfDouble(Sqrt, ppStr);
+		break;
+
+	case eAbsFunc:
+		CompileFunctionOfDouble(Abs, ppStr);
+		break;
+
+	case eInt:
+	{
+		CompileParenthesedExpression( ppStr);
+		// can't put those right to the function call, because
+		// order of evaluation would be unpredicted
+		TokenType type = GetTopOfStackType();
+		if (type != eIntConstant
+			&& type != eIntExpression
+			&& type != eIntVariable)
+		{
+			PopInt();
+			PushInt();
 		}
+	}
+		break;
+
+	case eDouble:
+	{
+		CompileParenthesedExpression( ppStr);
+		// can't put those right to the function call, because
+		// order of evaluation would be unpredicted
+		TokenType type = GetTopOfStackType();
+		if (type != eDoubleConstant
+			&& type != eDoubleExpression
+			&& type != eDoubleVariable)
+		{
+			PopDouble();
+			PushDouble();
+		}
+	}
 		break;
 
 	case eNoiseFunc:
@@ -387,6 +459,66 @@ CExpressionEvaluationContext::TokenType
 		break;
 	}
 	return type;
+}
+
+void CExpressionEvaluationContext::CompileAnd()
+{
+	TokenType type = GetTopOfStackType();
+	if (eIntConstant == type
+		|| eIntExpression == type)
+	{
+		int * pSrc2 = PopInt();
+		type = GetTopOfStackType();
+		if (eIntConstant == type
+			|| eIntExpression == type)
+		{
+			int * pSrc1 = PopInt();
+			int * pDst = PushInt();
+			AddOperation(AndInt, pDst, pSrc1, pSrc2);
+			return;
+		}
+	}
+	throw "Bitwise ""and"" operation arguments must be integer, use int() function";
+}
+
+void CExpressionEvaluationContext::CompileOr()
+{
+	TokenType type = GetTopOfStackType();
+	if (eIntConstant == type
+		|| eIntExpression == type)
+	{
+		int * pSrc2 = PopInt();
+		type = GetTopOfStackType();
+		if (eIntConstant == type
+			|| eIntExpression == type)
+		{
+			int * pSrc1 = PopInt();
+			int * pDst = PushInt();
+			AddOperation(OrInt, pDst, pSrc1, pSrc2);
+			return;
+		}
+	}
+	throw "Bitwise ""or"" operation arguments must be integer, use int() function";
+}
+
+void CExpressionEvaluationContext::CompileXor()
+{
+	TokenType type = GetTopOfStackType();
+	if (eIntConstant == type
+		|| eIntExpression == type)
+	{
+		int * pSrc2 = PopInt();
+		type = GetTopOfStackType();
+		if (eIntConstant == type
+			|| eIntExpression == type)
+		{
+			int * pSrc1 = PopInt();
+			int * pDst = PushInt();
+			AddOperation(XorInt, pDst, pSrc1, pSrc2);
+			return;
+		}
+	}
+	throw "Bitwise ""xor"" operation arguments must be integer, use int() function";
 }
 
 void CExpressionEvaluationContext::CompileAdd()
@@ -503,6 +635,105 @@ void CExpressionEvaluationContext::CompileSubtract()
 	}
 }
 
+void _fastcall CExpressionEvaluationContext::DivideDouble(Operation *t)
+{
+	if (0 == *t->dSrc2)
+	{
+		throw "Divide by zero";
+	}
+	*t->dDst = *t->dSrc1 / *t->dSrc2;
+}
+
+void _fastcall CExpressionEvaluationContext::DivideInt(Operation *t)
+{
+	if (0 == *t->nSrc2)
+	{
+		throw "Divide by zero";
+	}
+	*t->nDst = *t->nSrc1 / *t->nSrc2;
+}
+
+void _fastcall CExpressionEvaluationContext::DivideDoubleInt(Operation *t)
+{
+	if (0 == *t->nSrc2)
+	{
+		throw "Divide by zero";
+	}
+	*t->dDst = *t->dSrc1 / *t->nSrc2;
+}
+
+void _fastcall CExpressionEvaluationContext::DivideIntDouble(Operation *t)
+{
+	if (0 == *t->dSrc2)
+	{
+		throw "Divide by zero";
+	}
+	*t->dDst = *t->nSrc1 / *t->dSrc2;
+}
+
+void _fastcall CExpressionEvaluationContext::ModuloDouble(Operation *t)
+{
+	if (0 == *t->dSrc2)
+	{
+		throw "Divide by zero";
+	}
+	*t->dDst = fmod(*t->dSrc1, *t->dSrc2);
+}
+
+void _fastcall CExpressionEvaluationContext::ModuloInt(Operation *t)
+{
+	if (0 == *t->nSrc2)
+	{
+		throw "Divide by zero";
+	}
+	*t->nDst = *t->nSrc1 % *t->nSrc2;
+}
+
+void _fastcall CExpressionEvaluationContext::ModuloDoubleInt(Operation *t)
+{
+	if (0 == *t->nSrc2)
+	{
+		throw "Divide by zero";
+	}
+	*t->dDst = fmod(*t->dSrc1, *t->nSrc2);
+}
+
+void _fastcall CExpressionEvaluationContext::ModuloIntDouble(Operation *t)
+{
+	if (0 == *t->dSrc2)
+	{
+		throw "Divide by zero";
+	}
+	*t->dDst = fmod(*t->nSrc1, *t->dSrc2);
+}
+
+void _fastcall CExpressionEvaluationContext::Log(Operation *t)
+{
+	if (*t->dSrc1 <= 0)
+	{
+		throw "Logarithm argument <= 0";
+	}
+	*t->dDst = log(*t->dSrc1);
+}
+
+void _fastcall CExpressionEvaluationContext::Log10(Operation *t)
+{
+	if (*t->dSrc1 <= 0)
+	{
+		throw "Logarithm argument <= 0";
+	}
+	*t->dDst = log(*t->dSrc1) * 0.434294481903251827651;
+}
+
+void _fastcall CExpressionEvaluationContext::Sqrt(Operation *t)
+{
+	if (*t->dSrc1 < 0)
+	{
+		throw "Square root argument < 0";
+	}
+	*t->dDst = sqrt(*t->dSrc1);
+}
+
 void CExpressionEvaluationContext::CompileMultiply()
 {
 	TokenType type = GetTopOfStackType();
@@ -548,6 +779,63 @@ void CExpressionEvaluationContext::CompileMultiply()
 			double * pSrc1 = PopDouble();
 			double * pDst = PushDouble();
 			AddOperation(MultiplyDouble, pDst, pSrc1, pSrc2);
+		}
+		else
+		{
+			throw "Internal Error";
+		}
+	}
+	else
+	{
+		throw "Internal Error";
+	}
+}
+
+void CExpressionEvaluationContext::CompileModulo()
+{
+	TokenType type = GetTopOfStackType();
+	if (eIntConstant == type
+		|| eIntExpression == type)
+	{
+		int * pSrc2 = PopInt();
+		type = GetTopOfStackType();
+		if (eIntConstant == type
+			|| eIntExpression == type)
+		{
+			int * pSrc1 = PopInt();
+			int * pDst = PushInt();
+			AddOperation(ModuloInt, pDst, pSrc1, pSrc2);
+		}
+		else if (eDoubleConstant == type
+				|| eDoubleExpression == type)
+		{
+			double * pSrc1 = PopDouble();
+			double * pDst = PushDouble();
+			AddOperation(ModuloDoubleInt, pDst, pSrc1, pSrc2);
+		}
+		else
+		{
+			throw "Internal Error";
+		}
+	}
+	else if (eDoubleConstant == type
+			|| eDoubleExpression == type)
+	{
+		double * pSrc2 = PopDouble();
+		type = GetTopOfStackType();
+		if (eIntConstant == type
+			|| eIntExpression == type)
+		{
+			int * pSrc1 = PopInt();
+			double * pDst = PushDouble();
+			AddOperation(ModuloIntDouble, pDst, pSrc1, pSrc2);
+		}
+		else if (eDoubleConstant == type
+				|| eDoubleExpression == type)
+		{
+			double * pSrc1 = PopDouble();
+			double * pDst = PushDouble();
+			AddOperation(ModuloDouble, pDst, pSrc1, pSrc2);
 		}
 		else
 		{
@@ -642,6 +930,7 @@ CExpressionEvaluationContext::TokenType
 
 		case ePlusOp:
 		case eMinusOp:
+		case eBinaryOrOp:
 			type1 = CompileTerm(ppStr);
 			if (eEndOfExpression == type1)
 			{
@@ -664,11 +953,33 @@ CExpressionEvaluationContext::TokenType
 					CompileTerm(ppStr);
 					CompileMultiply();
 				}
+				else if (eModuloOp == type1)
+				{
+					*ppStr = str;
+					CompileTerm(ppStr);
+					CompileModulo();
+				}
+				else if (eBinaryAndOp == type1)
+				{
+					*ppStr = str;
+					CompileTerm(ppStr);
+					CompileAnd();
+				}
+				else if (eBinaryXorOp == type1)
+				{
+					*ppStr = str;
+					CompileTerm(ppStr);
+					CompileXor();
+				}
 				else
 				{
 					if (ePlusOp == type)
 					{
 						CompileAdd();
+					}
+					else  if (eBinaryOrOp == type)
+					{
+						CompileOr();
 					}
 					else
 					{
@@ -684,9 +995,25 @@ CExpressionEvaluationContext::TokenType
 			CompileTerm(ppStr);
 			CompileDivide();
 			break;
+
 		case eMultiplyOp:
 			CompileTerm(ppStr);
 			CompileMultiply();
+			break;
+
+		case eModuloOp:
+			CompileTerm(ppStr);
+			CompileModulo();
+			break;
+
+		case eBinaryAndOp:
+			CompileTerm(ppStr);
+			CompileAnd();
+			break;
+
+		case eBinaryXorOp:
+			CompileTerm(ppStr);
+			CompileXor();
 			break;
 
 		case eRightParenthesis:
@@ -906,7 +1233,7 @@ double * CExpressionEvaluationContext::PopDouble()
 	{
 		m_DataTypeStackIndex--;
 		m_DataStackIndex -= 2;
-		TRACE("Pop double constant, data index = %d, type index = %d\n",
+		TRACE("Pop double expression, data index = %d, type index = %d\n",
 			m_DataStackIndex, m_DataTypeStackIndex);
 		return (double *) & m_DataStack[m_DataStackIndex];
 	}

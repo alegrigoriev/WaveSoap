@@ -27,6 +27,11 @@ private:
 		eMinusOp,
 		eDivideOp,
 		eMultiplyOp,
+		eModuloOp,
+		eBinaryAndOp,
+		eBinaryOrOp,
+		eBinaryXorOp,
+		eBinaryNotOp,
 		eLeftParenthesis,
 		eRightParenthesis,
 		eSinusFunc,
@@ -94,6 +99,7 @@ private:
 	TokenType CompileParenthesedExpression(LPCSTR * ppStr);
 	void AddOperation(void (_fastcall * Function)(Operation * t),
 					void * pDst, void * pSrc1, void * pSrc2);
+	void CompileFunctionOfDouble(void (_fastcall * Function)(Operation * t), LPCSTR * ppStr);
 	TokenType GetTopOfStackType();
 	void PushConstant(int data);
 	void PushConstant(double data);
@@ -107,7 +113,12 @@ private:
 	void CompileAdd();
 	void CompileSubtract();
 	void CompileMultiply();
+	void CompileModulo();
 	void CompileDivide();
+	void CompileAnd();
+	void CompileOr();
+	void CompileXor();
+
 	enum { ExpressionStackSize = 64,
 		NumberOfIntConstants = 128,
 		NumberOfDoubleConstants = 64,
@@ -135,18 +146,28 @@ private:
 	static void _fastcall AddDouble(Operation *t) { *t->dDst = *t->dSrc1 + *t->dSrc2; }
 	static void _fastcall AddInt(Operation *t) { *t->nDst = *t->nSrc1 + *t->nSrc2; }
 	static void _fastcall AddDoubleInt(Operation *t) { *t->dDst = *t->dSrc1 + *t->nSrc2; }
+
 	static void _fastcall SubtractDouble(Operation *t) { *t->dDst = *t->dSrc1 - *t->dSrc2; }
 	static void _fastcall SubtractInt(Operation *t) { *t->dDst = *t->dSrc1 - *t->dSrc2; }
 	static void _fastcall SubtractDoubleInt(Operation *t) { *t->dDst = *t->dSrc1 - *t->nSrc2; }
 	static void _fastcall SubtractIntDouble(Operation *t) { *t->dDst = *t->nSrc1 - *t->dSrc2; }
+
 	static void _fastcall MultiplyDouble(Operation *t) { *t->dDst = *t->dSrc1 * *t->dSrc2; }
 	static void _fastcall MultiplyInt(Operation *t) { *t->nDst = *t->nSrc1 * *t->nSrc2; }
 	static void _fastcall MultiplyDoubleInt(Operation *t)  { *t->dDst = *t->dSrc1 * *t->nSrc2; }
-	static void _fastcall DivideDouble(Operation *t)  { *t->dDst = *t->dSrc1 / *t->dSrc2; }
-	static void _fastcall DivideInt(Operation *t)  { *t->nDst = *t->nSrc1 / *t->nSrc2; }
-	static void _fastcall DivideDoubleInt(Operation *t)  { *t->dDst = *t->dSrc1 / *t->nSrc2; }
-	static void _fastcall DivideIntDouble(Operation *t)  { *t->dDst = *t->nSrc1 / *t->dSrc2; }
+
+	static void _fastcall DivideDouble(Operation *t);
+	static void _fastcall DivideInt(Operation *t);
+	static void _fastcall DivideDoubleInt(Operation *t);
+	static void _fastcall DivideIntDouble(Operation *t);
+
+	static void _fastcall ModuloDouble(Operation *t);
+	static void _fastcall ModuloInt(Operation *t);
+	static void _fastcall ModuloDoubleInt(Operation *t);
+	static void _fastcall ModuloIntDouble(Operation *t);
+
 	static void _fastcall NegateInt(Operation *t)  { *t->nDst = - *t->nSrc1; }
+	static void _fastcall ComplementInt(Operation *t)  { *t->nDst = ~ *t->nSrc1; }
 	static void _fastcall NegateDouble(Operation *t)  { *t->dDst = - *t->dSrc1; }
 	static void _fastcall Sin(Operation *t)  { *t->dDst = sin(*t->dSrc1); }
 	static void _fastcall Cos(Operation *t)  { *t->dDst = cos(*t->dSrc1); }
@@ -156,13 +177,16 @@ private:
 	static void _fastcall TanH(Operation *t)  { *t->dDst = tanh(*t->dSrc1); }
 	static void _fastcall Exp(Operation *t)  { *t->dDst = exp(*t->dSrc1); }
 	static void _fastcall Exp10(Operation *t)  { *t->dDst = exp(*t->dSrc1 * 2.3025850929940456840); }
-	static void _fastcall Log(Operation *t)  { *t->dDst = log(*t->dSrc1); }
-	static void _fastcall Log10(Operation *t)  { *t->dDst = log(*t->dSrc1) * 0.434294481903251827651; }
-	static void _fastcall Sqrt(Operation *t)  { *t->dDst = sqrt(*t->dSrc1); }
+	static void _fastcall Log(Operation *t);
+	static void _fastcall Log10(Operation *t);
+	static void _fastcall Sqrt(Operation *t);
 	static void _fastcall Noise(Operation *t)  { *t->dDst = (rand() - RAND_MAX / 2) / double(RAND_MAX / 2); }
 	static void _fastcall Abs(Operation *t)  { *t->dDst = abs(*t->dSrc1); }
 	static void _fastcall DoubleToInt(Operation *t)  { *t->nDst = *t->dSrc1; }
 	static void _fastcall IntToDouble(Operation *t)  { *t->dDst = *t->nSrc1; }
+	static void _fastcall AndInt(Operation *t) { *t->nDst = *t->nSrc1 & *t->nSrc2; }
+	static void _fastcall OrInt(Operation *t) { *t->nDst = *t->nSrc1 | *t->nSrc2; }
+	static void _fastcall XorInt(Operation *t) { *t->nDst = *t->nSrc1 ^ *t->nSrc2; }
 	//static void _fastcall (Operation *t)  { *t->Dst = *t->Src1  *t->Src2; }
 	//static void _fastcall (Operation *t)  { *t->Dst = *t->Src1  *t->Src2; }
 	virtual BOOL Init();

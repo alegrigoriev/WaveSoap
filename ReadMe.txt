@@ -1,11 +1,14 @@
 Known problems and tasks:
 
+Make more integer operations for Expression Evaluation (bit ops, modulo)
+Protect against exceptions during expression exaluation
+Make a few source samples available in expression and a few output samples too
+Make save presets for Expression Evaluation command
 Make combobox in selection dialog
+Remember last frame and view maximized state
 Support WAVEFORMATEXTENSIBLE.
 File specified in the command line is not open
 Add CD grabbing
-Make save presets for Expression Evaluation command
-Make more integer operations for Expression Evaluation (bit ops, modulo)
 Add Channels... command to menu
 Add Resample... command to sample rate context menu
 Add noise reduction estimation in spectrum section view
