@@ -130,6 +130,7 @@ BEGIN_MESSAGE_MAP(CWaveSoapFrontDoc, CDocument)
 	ON_COMMAND(IDC_PROCESS_DO_DECLICKING, OnProcessDoDeclicking)
 	ON_UPDATE_COMMAND_UI(IDC_PROCESS_NOISE_REDUCTION, OnUpdateProcessNoiseReduction)
 	ON_COMMAND(IDC_PROCESS_NOISE_REDUCTION, OnProcessNoiseReduction)
+	ON_COMMAND(ID_FILE_CLOSE, OnFileClose)
 	//}}AFX_MSG_MAP
 END_MESSAGE_MAP()
 
@@ -273,6 +274,8 @@ CWaveSoapFrontDoc::CWaveSoapFrontDoc()
 	m_bRunThread(false),
 	m_bReadOnly(true),
 	m_bClosing(false),
+	m_bClosePending(false),
+	m_bCloseThisDocumentNow(false),
 	m_bDirectMode(false),
 	m_bInOnIdle(false),
 	m_bChannelsLocked(true),
@@ -2185,10 +2188,12 @@ BOOL CWaveSoapFrontDoc::OnOpenDocument(LPCTSTR lpszPathName, int DocOpenFlags)
 BOOL CWaveSoapFrontDoc::OnSaveDocument(LPCTSTR lpszPathName, DWORD flags, WAVEFORMATEX * pWf)
 {
 
-	if (m_bClosing)
+	if (m_bClosePending)
 	{
-		return TRUE;
+		return false;   // don't continue
 	}
+	m_bClosePending = m_bClosing;
+
 	// file where the data is currently kept
 	TCHAR SourceDir[MAX_PATH];
 	TCHAR FullSourceName[MAX_PATH];
@@ -2289,81 +2294,24 @@ BOOL CWaveSoapFrontDoc::OnSaveDocument(LPCTSTR lpszPathName, DWORD flags, WAVEFO
 		{
 			// non-direct PCM file, the same directory, not saving a copy,
 			// the same format
-			m_WavFile.DeleteOnClose(false);
 			// todo: InitializeTheRestOfFile in the thread
-			m_WavFile.InitializeTheRestOfFile();
-			m_WavFile.DetachSourceFile();
-			if (flags & SaveFile_SameName)
+			if (m_WavFile.InitializeTheRestOfFile(500))
 			{
-				// copy security descriptor
-				if (m_OriginalWavFile.IsOpen())
-				{
-					// it isn't a new file
-					DWORD dwLength = 0;
-					PSECURITY_DESCRIPTOR pSecurityDescriptor = NULL;
-					if ( ! GetFileSecurity(m_OriginalWavFile.GetName(), DACL_SECURITY_INFORMATION,
-											NULL, 0, &dwLength)
-						&& ERROR_INSUFFICIENT_BUFFER == GetLastError())
-					{
-						pSecurityDescriptor = (PSECURITY_DESCRIPTOR) new BYTE[dwLength];
-						if (NULL != pSecurityDescriptor
-							&& ::GetFileSecurity(m_OriginalWavFile.GetName(),
-												DACL_SECURITY_INFORMATION,
-												pSecurityDescriptor, dwLength, &dwLength))
-						{
-							SetFileSecurity(m_WavFile.GetName(), DACL_SECURITY_INFORMATION, pSecurityDescriptor);
-						}
-						delete[] (BYTE*)pSecurityDescriptor;
-					}
-				}
-				m_OriginalWavFile.DeleteOnClose(true);
+				return PostCommitFileSave(flags, FullTargetName);
 			}
 			else
 			{
-				// the user was asked about replacing the file in the save file dialog
-				// TODO: first get the original security descriptor
-				DeleteFile(FullTargetName);
-			}
-			m_OriginalWavFile.Close();
-			// delete the original file
-			DeleteFile(FullTargetName);
-			// TODO: set security descriptor for new file
-			if (m_WavFile.Rename(FullTargetName, 0))
-			{
-				// if PCM format and non-direct, ask about reopening as direct
-				SavePeakInfo(m_WavFile);
-				CString s;
-				s.Format(IDS_REOPEN_IN_DIRECT_MODE, m_WavFile.GetName());
-				SetModifiedFlag(FALSE);
-				if (IDYES == AfxMessageBox(s,
-											MB_ICONQUESTION | MB_YESNO))
+				//prepare context and queue it
+				CCommitFileSaveContext * pContext = new CCommitFileSaveContext(this, "Saving the file...");
+				if (NULL == pContext)
 				{
-					// keep undo/redo
-					OnOpenDocument(FullTargetName, OpenDocumentDirectMode);
-					return TRUE;
+					return FALSE;
 				}
-				else
-				{
-					m_WavFile.Close();
-					// keep undo/redo
-					if (OnOpenDocument(FullTargetName, 0))
-					{
-						return TRUE;
-					}
-					else
-					{
-						OnOpenDocument(FullTargetName, OpenDocumentReadOnly);
-						return TRUE;
-					}
-				}
-			}
-			else
-			{
-				// error
-				// todo: dialog
-				// unable to rename temporary file
-				// query new name
-				return FALSE;
+				pContext->m_DstFile = m_WavFile;
+				pContext->m_FileSaveFlags = flags;
+				pContext->m_TargetName = FullTargetName;
+				pContext->Execute();
+				return FALSE;   // not saved yet
 			}
 		}
 		// the same file attributes, but different folder or saving a copy.
@@ -2410,11 +2358,7 @@ BOOL CWaveSoapFrontDoc::OnSaveDocument(LPCTSTR lpszPathName, DWORD flags, WAVEFO
 		// copy 1:1
 		pContext->m_SrcChan = ALL_CHANNELS;
 		pContext->m_DstChan = ALL_CHANNELS;
-		if (flags & SaveFile_CloseAfterSave)
-		{
-			m_bClosing = true;
-		}
-		else if (flags & SaveFile_SaveCopy)
+		if (flags & SaveFile_SaveCopy)
 		{
 			pContext->m_Flags |= FileSaveContext_SavingCopy;
 		}
@@ -2580,11 +2524,7 @@ BOOL CWaveSoapFrontDoc::OnSaveDocument(LPCTSTR lpszPathName, DWORD flags, WAVEFO
 		//return FALSE;
 		//}
 
-		if (flags & SaveFile_CloseAfterSave)
-		{
-			m_bClosing = true;
-		}
-		else if (flags & SaveFile_SaveCopy)
+		if (flags & SaveFile_SaveCopy)
 		{
 			pContext->m_Flags |= FileSaveContext_SavingCopy;
 		}
@@ -2634,6 +2574,7 @@ void CWaveSoapFrontDoc::PostFileSave(CFileSaveContext * pContext)
 	// rename the new file
 	if ( ! pContext->m_DstFile.Rename(pContext->m_NewName, 0))
 	{
+		m_bClosePending = false;
 		// todo: show message box and try to ask for a different name
 		return;
 	}
@@ -2641,12 +2582,12 @@ void CWaveSoapFrontDoc::PostFileSave(CFileSaveContext * pContext)
 	{
 		SetModifiedFlag(FALSE);
 		SavePeakInfo(pContext->m_DstFile);
-		if (m_bClosing)
+		if (m_bClosePending)
 		{
 			pContext->m_DstFile.Close();
-			//SetModifiedFlag(FALSE);
+			SetModifiedFlag(FALSE);
 			// not too good place to call OnFileClose:
-			OnFileClose();
+			m_bCloseThisDocumentNow = true; // the document will be deleted
 			return;
 		}
 		// we always reopen the document
@@ -2723,6 +2664,88 @@ void CWaveSoapFrontDoc::PostFileSave(CFileSaveContext * pContext)
 	SetPathName(pContext->m_NewName);
 }
 
+BOOL CWaveSoapFrontDoc::PostCommitFileSave(int flags, LPCTSTR FullTargetName)
+{
+	m_WavFile.DetachSourceFile();
+	m_WavFile.DeleteOnClose(false);
+	if (flags & SaveFile_SameName)
+	{
+		// copy security descriptor
+		if (m_OriginalWavFile.IsOpen())
+		{
+			// it isn't a new file
+			DWORD dwLength = 0;
+			PSECURITY_DESCRIPTOR pSecurityDescriptor = NULL;
+			if ( ! GetFileSecurity(m_OriginalWavFile.GetName(), DACL_SECURITY_INFORMATION,
+									NULL, 0, &dwLength)
+				&& ERROR_INSUFFICIENT_BUFFER == GetLastError())
+			{
+				pSecurityDescriptor = (PSECURITY_DESCRIPTOR) new BYTE[dwLength];
+				if (NULL != pSecurityDescriptor
+					&& ::GetFileSecurity(m_OriginalWavFile.GetName(),
+										DACL_SECURITY_INFORMATION,
+										pSecurityDescriptor, dwLength, &dwLength))
+				{
+					SetFileSecurity(m_WavFile.GetName(), DACL_SECURITY_INFORMATION, pSecurityDescriptor);
+				}
+				delete[] (BYTE*)pSecurityDescriptor;
+			}
+		}
+		m_OriginalWavFile.DeleteOnClose(true);
+	}
+	else
+	{
+		// the user was asked about replacing the file in the save file dialog
+
+		DeleteFile(FullTargetName);
+	}
+	m_OriginalWavFile.Close();
+	// delete the original file
+	DeleteFile(FullTargetName);
+
+	if (m_WavFile.Rename(FullTargetName, 0))
+	{
+		// if PCM format and non-direct, ask about reopening as direct
+		SavePeakInfo(m_WavFile);
+		CString s;
+		s.Format(IDS_REOPEN_IN_DIRECT_MODE, m_WavFile.GetName());
+		SetModifiedFlag(FALSE);
+		if (m_bClosePending)
+		{
+			m_WavFile.Close();
+			return TRUE;
+		}
+		if (IDYES == AfxMessageBox(s,
+									MB_ICONQUESTION | MB_YESNO))
+		{
+			// keep undo/redo
+			OnOpenDocument(FullTargetName, OpenDocumentDirectMode);
+			return TRUE;
+		}
+		else
+		{
+			m_WavFile.Close();
+			// keep undo/redo
+			if (OnOpenDocument(FullTargetName, 0))
+			{
+				return TRUE;
+			}
+			else
+			{
+				OnOpenDocument(FullTargetName, OpenDocumentReadOnly);
+				return TRUE;
+			}
+		}
+	}
+	else
+	{
+		// error
+		// todo: dialog
+		// unable to rename temporary file
+		// query new name
+		return FALSE;
+	}
+}
 
 void CWaveSoapFrontDoc::OnIdle()
 {
@@ -2754,7 +2777,7 @@ void CWaveSoapFrontDoc::OnIdle()
 			pContext = m_pRetiredList;
 			m_pRetiredList = pContext->pNext;
 		}
-		pContext->PostRetire();     // deletes it usually
+		pContext->PostRetire(FALSE);     // deletes it usually
 	}
 	m_bInOnIdle = false;
 }
@@ -3086,6 +3109,10 @@ void CWaveSoapFrontDoc::DeleteRedo()
 BOOL CWaveSoapFrontDoc::OnCmdMsg(UINT nID, int nCode, void* pExtra, AFX_CMDHANDLERINFO* pHandlerInfo)
 {
 	OnIdle();   // retire all contexts
+	if (m_bCloseThisDocumentNow)
+	{
+		return FALSE;   // we are dead, don't accept anything
+	}
 	return CDocument::OnCmdMsg(nID, nCode, pExtra, pHandlerInfo);
 }
 
@@ -4308,6 +4335,11 @@ BOOL CWaveSoapFrontDoc::OpenWmaFileDocument(LPCTSTR lpszPathName)
 	TRACE("CWaveSoapFrontDoc::OpenWmaFileDocument(%s)\n", lpszPathName);
 
 	CWaveSoapFrontApp * pApp = GetApp();
+	if ( ! pApp->CanOpenWindowsMedia())
+	{
+		// todo: dialog
+		return FALSE;
+	}
 	m_bDirectMode = FALSE;
 	m_bReadOnly = FALSE;
 
@@ -4749,4 +4781,59 @@ void CWaveSoapFrontDoc::OnProcessNoiseReduction()
 	pContext->Execute();
 	SetModifiedFlag(TRUE, dlg.m_bUndo);
 
+}
+
+void CWaveSoapFrontDoc::OnFileClose()
+{
+	if (m_bClosePending)
+	{
+		return;
+	}
+	m_bClosing = true;
+	// close may be pending
+	if (!SaveModified())
+	{
+		// m_bClosePEnding may be set to eventually destroy the document
+		m_bClosing = false;
+		return;
+	}
+	m_bClosing = false;
+
+	// shut it down
+	OnCloseDocument();
+	// this should destroy the document
+}
+
+BOOL CWaveSoapFrontDoc::CanCloseFrame(CFrameWnd* pFrameArg)
+	// permission to close all views using this frame
+	//  (at least one of our views must be in this frame)
+{
+	ASSERT_VALID(pFrameArg);
+	UNUSED(pFrameArg);   // unused in release builds
+
+	POSITION pos = GetFirstViewPosition();
+	while (pos != NULL)
+	{
+		CView* pView = GetNextView(pos);
+		ASSERT_VALID(pView);
+		CFrameWnd* pFrame = pView->GetParentFrame();
+		// assume frameless views are ok to close
+		if (pFrame != NULL)
+		{
+			// assumes 1 document per frame
+			ASSERT_VALID(pFrame);
+			if (pFrame->m_nWindow > 0)
+				return TRUE;        // more than one frame refering to us
+		}
+	}
+
+	// otherwise only one frame that we know about
+	if (m_bClosePending)
+	{
+		return FALSE;
+	}
+	m_bClosing = true;
+	BOOL res = SaveModified();
+	m_bClosing = false;
+	return res;
 }
