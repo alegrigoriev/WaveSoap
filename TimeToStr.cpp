@@ -35,7 +35,7 @@ CString TimeToHhMmSs(unsigned TimeMs, int Flags)
 					ss, DecimalPoint,
 					StrMs);
 		}
-		else if (mm != 0)
+		else if (mm != 0 || (Flags & TimeToHhMmSs_NeedsMm))
 		{
 			s.Format(_T("%d%c%02d%c%s"),
 					mm, TimeSeparator,
