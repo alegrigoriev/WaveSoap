@@ -128,6 +128,19 @@ public:
 		m_pDocument(NULL)
 	{
 		memset(m_Mp3Encoders, 0, sizeof m_Mp3Encoders);
+		if (CThisApp::SupportsV5FileDialog())
+		{
+			m_ofn.lpTemplateName = MAKEINTRESOURCE(IDD_DIALOG_SAVE_TEMPLATE_V5);
+		}
+		else
+		{
+			m_ofn.lpTemplateName = MAKEINTRESOURCE(IDD_DIALOG_SAVE_TEMPLATE_V4);
+		}
+		m_DefExt[1] = _T("wav");
+		m_DefExt[2] = _T("mp3");
+		m_DefExt[3] = _T("wma");
+		m_DefExt[4] = _T("raw");
+		m_DefExt[5] = _T("avi");
 	}
 	~CWaveSoapFileSaveDialog() {}
 

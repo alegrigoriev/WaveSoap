@@ -731,21 +731,8 @@ BOOL CWaveSoapFrontDoc::DoSave(LPCTSTR lpszPathName, BOOL bReplace)
 			dlg.m_ofn.lpstrTitle = DlgTitle;
 		}
 
-		if (CThisApp::SupportsV5FileDialog())
-		{
-			dlg.m_ofn.lpTemplateName = MAKEINTRESOURCE(IDD_DIALOG_SAVE_TEMPLATE_V5);
-		}
-		else
-		{
-			dlg.m_ofn.lpTemplateName = MAKEINTRESOURCE(IDD_DIALOG_SAVE_TEMPLATE_V4);
-		}
 		dlg.m_pWf = pWf;
 		dlg.m_pDocument = this;
-		dlg.m_DefExt[1] = _T("wav");
-		dlg.m_DefExt[2] = _T("mp3");
-		dlg.m_DefExt[3] = _T("wma");
-		dlg.m_DefExt[4] = _T("raw");
-		dlg.m_DefExt[5] = _T("avi");
 
 		CString strFilter;
 		CString strDefault;
@@ -789,8 +776,6 @@ BOOL CWaveSoapFrontDoc::DoSave(LPCTSTR lpszPathName, BOOL bReplace)
 		strFilter += (TCHAR)'\0';   // last string
 		dlg.m_ofn.nMaxCustFilter++;
 		dlg.m_ofn.lpstrFilter = strFilter;
-		//dlg.m_ofn.lpstrTitle = title;
-//	dlgFile.m_ofn.lpstrFile = fileName.GetBuffer(_MAX_PATH);
 
 		// add the proper file type extension
 		// todo: get from saved in the registry

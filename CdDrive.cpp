@@ -17,29 +17,72 @@ static char THIS_FILE[]=__FILE__;
 // Construction/Destruction
 //////////////////////////////////////////////////////////////////////
 
-CCdDrive::CCdDrive(BOOL UseAspi)
-	: m_hDrive(NULL),
-	m_hDriveAttributes(NULL),
-	m_DriveLetter(0),
-	m_hWinaspi32(NULL),
-	GetASPI32DLLVersion(NULL),
-	GetASPI32SupportInfo(NULL),
-	SendASPI32Command(NULL),
-	m_bMediaChangeNotificationDisabled(false),
-	m_bDoorLocked(false)
+void CCdDrive::LoadAspi()
 {
-	memset( & m_ScsiAddr, 0, sizeof m_ScsiAddr);
-	if (UseAspi)
+	m_hWinaspi32 = LoadLibrary(_T("wnaspi32.dll"));
+	if (NULL != m_hWinaspi32)
 	{
-		m_hWinaspi32 = LoadLibrary("wnaspi32.dll");
+		GetASPI32DLLVersion = (DWORD (_cdecl * )())
+							GetProcAddress(m_hWinaspi32, "GetASPI32DLLVersion");
+
+		GetASPI32SupportInfo = (DWORD (_cdecl * )())
+								GetProcAddress(m_hWinaspi32, "GetASPI32SupportInfo");
+
+		SendASPI32Command = (DWORD (_cdecl * )(SRB * ))
+							GetProcAddress(m_hWinaspi32, "SendASPI32Command");
+
+		GetAspi32Buffer = (GETASPI32BUFFER)
+						GetProcAddress(m_hWinaspi32, "GetASPI32Buffer");
+
+		FreeAspi32Buffer = (FREEASPI32BUFFER)
+							GetProcAddress(m_hWinaspi32, "FreeASPI32Buffer");
+
+		TranslateAspi32Address = (TRANSLATEASPI32ADDRESS)
+								GetProcAddress(m_hWinaspi32, "TranslateAspi32Address");
+
+		if (NULL == GetASPI32DLLVersion
+			|| NULL == GetASPI32SupportInfo
+			|| NULL == SendASPI32Command
+			|| 1 != ((0xFF00 & GetASPI32SupportInfo()) >> 8))
+		{
+			SendASPI32Command = NULL;
+			GetASPI32SupportInfo = NULL;
+			GetASPI32DLLVersion = NULL;
+
+			FreeLibrary(m_hWinaspi32);
+			m_hWinaspi32 = NULL;
+		}
+	}
+
+	if (NULL == m_hWinaspi32)
+	{
+		m_hWinaspi32 = LoadLibrary(_T("cdral.dll"));
 		if (NULL != m_hWinaspi32)
 		{
 			GetASPI32DLLVersion = (DWORD (_cdecl * )())
 								GetProcAddress(m_hWinaspi32, "GetASPI32DLLVersion");
+
 			GetASPI32SupportInfo = (DWORD (_cdecl * )())
 									GetProcAddress(m_hWinaspi32, "GetASPI32SupportInfo");
+
 			SendASPI32Command = (DWORD (_cdecl * )(SRB * ))
 								GetProcAddress(m_hWinaspi32, "SendASPI32Command");
+
+			GetAspi32Buffer = (GETASPI32BUFFER)
+							GetProcAddress(m_hWinaspi32, "GetASPI32Buffer");
+
+			FreeAspi32Buffer = (FREEASPI32BUFFER)
+								GetProcAddress(m_hWinaspi32, "FreeASPI32Buffer");
+
+			TranslateAspi32Address = (TRANSLATEASPI32ADDRESS)
+									GetProcAddress(m_hWinaspi32, "TranslateAspi32Address");
+
+			GetAspi32DriveLetter = (GETASPI32DRIVELETTER)
+									GetProcAddress(m_hWinaspi32, "GetAspi32DriveLetter");
+
+			GetAspi32HaTargetLun = (GETASPI32HATARGETLUN)
+									GetProcAddress(m_hWinaspi32, "GetAspi32HaTargetLun");
+
 			if (NULL == GetASPI32DLLVersion
 				|| NULL == GetASPI32SupportInfo
 				|| NULL == SendASPI32Command
@@ -53,6 +96,72 @@ CCdDrive::CCdDrive(BOOL UseAspi)
 				m_hWinaspi32 = NULL;
 			}
 		}
+	}
+}
+
+CCdDrive::CCdDrive(CCdDrive const & Drive, BOOL UseAspi)
+	: m_hDrive(NULL),
+	m_hDriveAttributes(NULL),
+	m_DriveLetter(0),
+	m_hWinaspi32(NULL),
+
+	GetASPI32DLLVersion(NULL),
+	GetASPI32SupportInfo(NULL),
+	SendASPI32Command(NULL),
+	GetAspi32Buffer(NULL),
+	FreeAspi32Buffer(NULL),
+	TranslateAspi32Address(NULL),
+	GetAspi32DriveLetter(NULL),
+	GetAspi32HaTargetLun(NULL),
+	m_MediaChangeCount(-1),
+	m_bMediaChangeNotificationDisabled(false),
+	m_bDoorLocked(false)
+{
+	if (UseAspi)
+	{
+		LoadAspi();
+	}
+	*this = Drive;
+}
+
+CCdDrive & CCdDrive::operator =(CCdDrive const & Drive)
+{
+	m_DriveLetter = Drive.m_DriveLetter;
+	m_MediaChangeCount = Drive.m_MediaChangeCount;
+	m_ScsiAddr = Drive.m_ScsiAddr;
+
+	DuplicateHandle(GetCurrentProcess(), Drive.m_hDrive,
+					GetCurrentProcess(), & m_hDrive,
+					0, FALSE, DUPLICATE_SAME_ACCESS);
+	DuplicateHandle(GetCurrentProcess(), Drive.m_hDriveAttributes,
+					GetCurrentProcess(), & m_hDriveAttributes,
+					0, FALSE, DUPLICATE_SAME_ACCESS);
+	return *this;
+}
+
+CCdDrive::CCdDrive(BOOL UseAspi)
+	: m_hDrive(NULL),
+	m_hDriveAttributes(NULL),
+	m_DriveLetter(0),
+	m_hWinaspi32(NULL),
+	GetASPI32DLLVersion(NULL),
+	GetASPI32SupportInfo(NULL),
+	SendASPI32Command(NULL),
+	GetAspi32Buffer(NULL),
+	FreeAspi32Buffer(NULL),
+	TranslateAspi32Address(NULL),
+	GetAspi32DriveLetter(NULL),
+	GetAspi32HaTargetLun(NULL),
+	m_MaxTransferSize(0x10000),
+	m_BufferAlignment(1),
+	m_MediaChangeCount(-1),
+	m_bMediaChangeNotificationDisabled(false),
+	m_bDoorLocked(false)
+{
+	memzero(m_ScsiAddr);
+	if (UseAspi)
+	{
+		LoadAspi();
 	}
 #if 0//def _DEBUG
 	SetLastError(0);
@@ -259,6 +368,7 @@ BOOL CCdDrive::Open(TCHAR letter)
 	}
 
 	m_hDriveAttributes = Drive;   // we will needit
+	m_MediaChangeCount = -1;
 
 	m_DriveLetter = letter;
 
@@ -292,7 +402,8 @@ BOOL CCdDrive::Open(TCHAR letter)
 	}
 	else
 	{
-		memzero(m_ScsiCaps);
+		IO_SCSI_CAPABILITIES ScsiCaps;
+		memzero(ScsiCaps);
 		memzero(m_ScsiAddr);
 
 		BOOL res = DeviceIoControl(m_hDrive, IOCTL_SCSI_GET_ADDRESS,
@@ -302,11 +413,11 @@ BOOL CCdDrive::Open(TCHAR letter)
 
 		res = DeviceIoControl(m_hDrive, IOCTL_SCSI_GET_CAPABILITIES,
 							NULL, 0,
-							& m_ScsiCaps, sizeof m_ScsiCaps,
+							& ScsiCaps, sizeof ScsiCaps,
 							& bytes, NULL);
 
-		m_MaxTransferSize = m_ScsiCaps.MaximumTransferLength;
-		m_BufferAlignment = m_ScsiCaps.AlignmentMask;
+		m_MaxTransferSize = ScsiCaps.MaximumTransferLength;
+		m_BufferAlignment = ScsiCaps.AlignmentMask;
 
 		TRACE("MaxTransferSize = %d, buffer alignment = %x, \n",
 			m_MaxTransferSize, m_BufferAlignment
@@ -546,7 +657,7 @@ BOOL CCdDrive::SendScsiCommand(CD_CDB * pCdb,
 				memcpy(pSense, (SCSI_SenseInfo *) & spt, sizeof * pSense);
 			}
 
-			return res;
+			return res && SS_COMP == spt.ScsiStatus;
 		}
 		else
 		{

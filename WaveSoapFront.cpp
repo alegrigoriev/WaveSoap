@@ -2136,66 +2136,50 @@ void CWaveSoapDocTemplate::SaveAll()
 
 void CWaveSoapFrontApp::OnToolsCdgrab()
 {
-#ifdef _DEBUG
 	CCdGrabbingDialog dlg;
-	dlg.DoModal();
-	return;
-	HANDLE hCD = NULL;
-	hCD = CreateFile(
-					"G:\\TRACK01.CDA",
-					//"R:",
-					GENERIC_READ,
-					FILE_SHARE_READ | FILE_SHARE_WRITE,
-					NULL,
-					OPEN_EXISTING,
-					FILE_ATTRIBUTE_NORMAL,
-					NULL);
-	if (INVALID_HANDLE_VALUE == hCD || NULL == hCD)
+	if (IDOK != dlg.DoModal())
 	{
-		TRACE("Couldn't open CD,error=%d\n",GetLastError());
 		return;
 	}
-	TRACE("Handle %x opened, device type=%d\n", hCD, GetFileType(hCD));
-	CDROM_TOC toc;
-	DWORD dwReturned;
-	BOOL res = DeviceIoControl(hCD, IOCTL_CDROM_READ_TOC,
-								NULL, 0,
-								& toc, sizeof toc,
-								& dwReturned,
-								NULL);
-	TRACE("Get TOC IoControl returned %x, bytes: %d, First track %d, last track: %d\n",
-		res, dwReturned, toc.FirstTrack, toc.LastTrack);
+	const int MaxTracks = 99;
+	CCdReadingContext * pContexts[MaxTracks];
+	CWaveSoapFrontDoc * pDocuments[MaxTracks];
 
-	STORAGE_DEVICE_NUMBER devnum;
-	res = DeviceIoControl(hCD, IOCTL_STORAGE_GET_DEVICE_NUMBER,
-						NULL, 0,
-						& devnum, sizeof devnum,
-						& dwReturned,
-						NULL);
-	TRACE("Get device number IoControl returned %x, bytes: %d, devtype=%d, DeviceNumber=%d, partitionNumber=%d\n",
-		res, dwReturned, devnum.DeviceType, devnum.DeviceNumber, devnum.PartitionNumber);
+	memzero(pContexts);
+	memzero(pDocuments);
 
+	int t;
+	for (t = 0; t < dlg.m_Tracks.size() && t < MaxTracks; t++)
+	{
+		// create a new document
+		// allocate a context
+		CCdReadingContext * pContext = new CCdReadingContext
+										(pDocument,
+											_T("Reading CD data..."),
+											_T("CD read"),
+											dlg.m_CdDrive);
+		if (NULL == pContext)
+		{
+			break;
+		}
+	}
+
+	if (dlg.m_Tracks.size() == t)
+	{
+		for (t = 0; t < dlg.m_Tracks.size() & t < MaxTracks; t++)
+		{
+			pContexts[t]->Execute();
+		}
+	}
+	else
+	{
+		for (t = 0; t < dlg.m_Tracks.size() & t < MaxTracks; t++)
+		{
+			delete pContexts[t];
+		}
+	}
+	return;
 #if 0
-	CDROM_AUDIO_CONTROL cac;
-	res = DeviceIoControl(hCD, IOCTL_CDROM_GET_CONTROL,
-						NULL, 0,
-						& cac, sizeof cac,
-						& dwReturned,
-						NULL);
-	TRACE("Get control IoControl returned %x, bytes: %d, Format=%d, Bloskc per second=%d\n",
-		res, dwReturned, cac.LbaFormat, cac.LogicalBlocksPerSecond);
-	DISK_GEOMETRY dg;
-	res = DeviceIoControl(hCD, IOCTL_CDROM_GET_DRIVE_GEOMETRY,
-						NULL, 0,
-						& dg, sizeof dg,
-						& dwReturned,
-						NULL);
-	TRACE("Get geometry IoControl returned %x, bytes: %d, cylinders=%d, media type=%d"
-		"tracks per cyl=%d, spt=%d, sector size=%d\n",
-		res, dwReturned, long(dg.Cylinders.QuadPart), dg.MediaType, dg.TracksPerCylinder,
-		dg.SectorsPerTrack, dg.BytesPerSector);
-#endif
-
 	// can't read more than 65536 bytes
 	const int SectorSize = 2352;
 	const int NumberOfSectors = 0x10000 / SectorSize;

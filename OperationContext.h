@@ -134,6 +134,7 @@ public:
 
 enum {
 	OperationContextClipboard = 1,  // clipboard operations are serialized
+	OperationContextSerialized = 1,  // clipboard operations are serialized
 	OperationContextDiskIntensive = 2,  // only one disk intensive can be active
 	OperationContextStopRequested = 4,    // cancel button pressed (set by the main thread)
 	OperationContextStop = 8,  // the procedure is canceling
