@@ -89,6 +89,11 @@ public:
 	NUMBER_OF_SAMPLES m_NewLength;
 };
 
+struct MarkerRegionUpdateInfo : public CObject
+{
+	WAVEREGIONINFO info;
+};
+
 // Active document have highest priority for disk-intensive operations.
 // while it is executing a disk-intensive command,
 // such operations with non-active documents are suspended.
@@ -262,6 +267,7 @@ public:
 		UpdateSampleRateChanged,
 		UpdateWholeFileChanged,
 		UpdatePlaybackPositionChanged,
+		UpdateMarkerRegionChanged,
 	};
 
 // Implementation
@@ -355,6 +361,8 @@ public:
 				ULONG PasteFlags = 0, LPCTSTR FileName = NULL);
 
 	enum { PasteFlagSetNewSelection = 1, };
+
+	BOOL ChangeWaveMarker(WAVEREGIONINFO * pInfo);
 
 protected:
 	// save the selected area to the permanent or temporary file

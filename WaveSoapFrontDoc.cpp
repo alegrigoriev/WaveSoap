@@ -5273,3 +5273,32 @@ void CWaveSoapFrontDoc::OnUpdateProcessReverse(CCmdUI *pCmdUI)
 {
 	pCmdUI->Enable(CanStartOperation(2, false, true));
 }
+
+// returns TRUE if marker actually changed?
+BOOL CWaveSoapFrontDoc::ChangeWaveMarker(WAVEREGIONINFO * pInfo)
+{
+	if (IsReadOnly())
+	{
+		return FALSE;
+	}
+	// 1. Invalidate old marker area in the view
+	MarkerRegionUpdateInfo ui;
+	ui.info.Flags = pInfo->Flags;
+	ui.info.MarkerCueID = pInfo->MarkerCueID;
+
+	if (m_WavFile.GetWaveMarker( & ui.info))
+	{
+		UpdateAllViews(NULL, UpdateMarkerRegionChanged, & ui);
+	}
+
+	if (m_WavFile.SetWaveMarker(pInfo))
+	{
+		ui.info = *pInfo;
+		UpdateAllViews(NULL, UpdateMarkerRegionChanged, & ui);
+	}
+	if (pInfo->Flags & pInfo->CommitChanges)
+	{
+		// TODO: commit undo
+	}
+	return TRUE;
+}
