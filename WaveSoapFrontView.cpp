@@ -107,7 +107,7 @@ CWaveSoapFrontView::CWaveSoapFrontView()
 	m_PlaybackCursorChannel(0),
 	m_PlaybackCursorDrawn(false),
 	m_NewSelectionMade(false),
-	m_bAutoscrollTimerStarted(false),
+	m_AutoscrollTimerID(0),
 	m_PlaybackCursorDrawnSamplePos(0),
 	m_WheelAccumulator(0)
 //, m_WaveDataSizeInBuffer(0)
@@ -564,12 +564,18 @@ void CWaveSoapFrontView::OnDraw(CDC* pDC)
 
 					// Raster OP: Destination AND brush pattern
 					DWORD const DstAndBrushRop = 0x00A000C9;
+					DWORD const DstOrBrushRop = 0x00AF0229;
 
 					pDC->SetBrushOrg(0, WaveToY(-32768) % DashLength);
 
 					//TRACE("BrushOrg = %d\n", long((m_WaveOffsetY + 0x10000) * m_VerticalScale) % DashLength);
 
 					CGdiObjectSaveT<CBrush> OldBrush(pDC, pDC->SelectObject( & DashBrush));
+					CGdiObjectSave OldFont(pDC, pDC->SelectStockObject(ANSI_VAR_FONT));
+
+					pDC->SetTextColor(RGB(0, 0, 0));
+					pDC->SetBkColor(pApp->m_WaveBackground);
+					pDC->SetBkMode(OPAQUE);
 
 					for (CuePointVectorIterator i = pInst->m_CuePoints.begin();
 						i < pInst->m_CuePoints.end(); i++)
@@ -577,19 +583,41 @@ void CWaveSoapFrontView::OnDraw(CDC* pDC)
 						long x = WorldToWindowXfloor(i->dwSampleOffset);
 						WaveRegionMarker * pMarker = pInst->GetRegionMarker(i->CuePointID);
 
+						// draw text
+						if (x < cr.right)
+						{
+							LPCTSTR txt = pInst->GetCueText(i->CuePointID);
+							if (NULL != txt)
+							{
+								int count = _tcslen(txt);
+								CPoint size = pDC->GetTextExtent(txt, count);
+								if (x + size.x > cr.left)
+								{
+									pDC->DrawText(txt, count, CRect(x, cr.top, x + size.x, cr.top + size.y),
+												DT_LEFT | DT_NOPREFIX | DT_SINGLELINE | DT_TOP);
+								}
+							}
+						}
+
 						if (x >= cr.left
 							&& x <= cr.right)
 						{
+							DWORD BrushRop = DstAndBrushRop;    // black dashes
+							if (x >= SelBegin && x <=SelEnd)
+							{
+								BrushRop = DstOrBrushRop; // white dashes
+							}
+
 							if (pMarker != NULL
 								&& pMarker->SampleLength != 0)
 							{
 								// draw mark of the region begin
-								pDC->PatBlt(x, ChanR.top, 1, ChanR.bottom - ChanR.top, DstAndBrushRop);
+								pDC->PatBlt(x, ChanR.top, 1, ChanR.bottom - ChanR.top, BrushRop);
 							}
 							else
 							{
 								// draw marker
-								pDC->PatBlt(x, ChanR.top, 1, ChanR.bottom - ChanR.top, DstAndBrushRop);
+								pDC->PatBlt(x, ChanR.top, 1, ChanR.bottom - ChanR.top, BrushRop);
 							}
 						}
 
@@ -601,8 +629,13 @@ void CWaveSoapFrontView::OnDraw(CDC* pDC)
 							if (x >= cr.left
 								&& x <= cr.right)
 							{
+								DWORD BrushRop = DstAndBrushRop;
+								if (x >= SelBegin && x <=SelEnd)
+								{
+									BrushRop = DstOrBrushRop;
+								}
 								// draw mark of the region end
-								pDC->PatBlt(x, ChanR.top, 1, ChanR.bottom - ChanR.top, DstAndBrushRop);
+								pDC->PatBlt(x, ChanR.top, 1, ChanR.bottom - ChanR.top, BrushRop);
 							}
 						}
 					}
@@ -997,7 +1030,7 @@ DWORD CWaveSoapFrontView::ClientHitTest(CPoint p) const
 			result |= VSHT_BCKGND;
 		}
 
-		int AutoscrollWidth = GetSystemMetrics(SM_CXVSCROLL);
+		int const AutoscrollWidth = GetSystemMetrics(SM_CXVSCROLL);
 		if (r.right > AutoscrollWidth)
 		{
 			if (p.x > r.right - AutoscrollWidth)
@@ -1085,6 +1118,11 @@ void CWaveSoapFrontView::CreateAndShowCaret()
 		return;
 	}
 	ThisDoc * pDoc = GetDocument();
+	if (! pDoc->m_WavFile.IsOpen())
+	{
+		return;
+	}
+
 	if (pDoc->m_PlayingSound && ! m_NewSelectionMade)
 	{
 		DestroyCaret();
@@ -1419,25 +1457,22 @@ void CWaveSoapFrontView::OnMouseMove(UINT nFlags, CPoint point)
 			}
 			else
 			{
-				//CancelSelection();
 				bIsTrackingSelection = TRUE;
 				SetCapture();
 			}
 
 			if (nHit & (VSHT_LEFT_AUTOSCROLL | VSHT_RIGHT_AUTOSCROLL))
 			{
-				if (! m_bAutoscrollTimerStarted)
+				if (NULL == m_AutoscrollTimerID)
 				{
-					m_bAutoscrollTimerStarted = true;
-					m_TimerID = SetTimer(DWORD(this) + sizeof *this, 50, NULL);
-					if (TRACE_CARET) TRACE("Timer %X started\n", m_TimerID);
+					m_AutoscrollTimerID = SetTimer(UINT_PTR(this) + sizeof *this, 50, NULL);
+					if (TRACE_CARET) TRACE("Timer %X started\n", m_AutoscrollTimerID);
 				}
 			}
-			else if (m_bAutoscrollTimerStarted)
+			else if (NULL != m_AutoscrollTimerID)
 			{
-				m_bAutoscrollTimerStarted = false;
-				KillTimer(m_TimerID);
-				m_TimerID = NULL;
+				KillTimer(m_AutoscrollTimerID);
+				m_AutoscrollTimerID = NULL;
 			}
 			// tracked side (where the caret is) is moved,
 			// other side stays
@@ -1459,7 +1494,7 @@ void CWaveSoapFrontView::OnMouseMove(UINT nFlags, CPoint point)
 				SelectionEnd = nSampleUnderMouse;
 			}
 
-			int nChan = ALL_CHANNELS;
+			CHANNEL_MASK nChan = ALL_CHANNELS;
 			if (nHit & (VSHT_NOWAVE | VSHT_NONCLIENT))
 			{
 				// don't change the channel
@@ -1652,6 +1687,7 @@ void CWaveSoapFrontView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
 			&& NULL != pHint)
 	{
 		CSoundUpdateInfo * pInfo = static_cast<CSoundUpdateInfo *> (pHint);
+		ASSERT(NULL != pInfo);
 
 		CRect r;
 		GetClientRect(r);
@@ -1706,6 +1742,7 @@ void CWaveSoapFrontView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
 			&& NULL != pHint)
 	{
 		CSoundUpdateInfo * pInfo = static_cast<CSoundUpdateInfo *> (pHint);
+		ASSERT(NULL != pInfo);
 
 		UpdatePlaybackCursor(pInfo->m_PlaybackPosition, pInfo->m_PlaybackChannel);
 	}
@@ -1722,6 +1759,14 @@ void CWaveSoapFrontView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
 		UpdateMaxHorExtents(GetDocument()->WaveFileSamples());
 		UpdateVertExtents();
 	}
+	else if (lHint == ThisDoc::UpdateMarkerRegionChanged
+			&& NULL != pHint)
+	{
+		MarkerRegionUpdateInfo * pInfo = static_cast<MarkerRegionUpdateInfo *> (pHint);
+		ASSERT(NULL != pInfo);
+
+		InvalidateMarkerRegion( & pInfo->info);
+	}
 	else
 	{
 		BaseClass::OnUpdate(pSender, lHint, pHint);
@@ -1733,6 +1778,95 @@ void CWaveSoapFrontView::InvalidateRect( LPCRECT lpRect, BOOL bErase)
 	HideCaret();
 	BaseClass::InvalidateRect(lpRect, bErase);
 	ShowCaret();
+}
+
+void CWaveSoapFrontView::InvalidateMarkerRegion(WAVEREGIONINFO const * pInfo)
+{
+	CRect cr;
+	GetClientRect(cr);
+	CRect r;
+
+	long x = WorldToWindowXfloor(pInfo->Sample);
+	if (0 != (pInfo->Flags & (pInfo->ChangeSample | pInfo->Delete))
+		&& x < cr.right && x >= cr.left)
+	{
+		// invalidate region begin marker
+		r.left = x;
+		r.right = x + 1;
+		r.top = cr.top;
+		r.bottom = cr.bottom;
+
+		InvalidateRect(r);
+	}
+
+	if (x < cr.right
+		&& 0 != (pInfo->Flags &
+			(pInfo->ChangeSample | pInfo->Delete | pInfo->ChangeLabel
+				| pInfo->ChangeComment | pInfo->ChangeLtxt)))
+	{
+		// invalidate text area
+		LPCTSTR str = NULL;
+
+		if (NULL != pInfo->Label
+			&& 0 != pInfo->Label[0])
+		{
+			if (pInfo->Flags & (pInfo->ChangeSample | pInfo->ChangeLabel | pInfo->Delete))
+			{
+				str = pInfo->Label;
+			}
+		}
+		else if (NULL != pInfo->Comment
+				&& 0 != pInfo->Comment[0])
+		{
+			if (pInfo->Flags & (pInfo->ChangeSample | pInfo->ChangeComment | pInfo->Delete))
+			{
+				str = pInfo->Comment;
+			}
+		}
+		else if (NULL != pInfo->Ltxt
+				&& 0 != pInfo->Ltxt[0])
+		{
+			if (pInfo->Flags & (pInfo->ChangeSample | pInfo->ChangeLtxt | pInfo->Delete))
+			{
+				str = pInfo->Ltxt;
+			}
+		}
+
+		if (NULL != str)
+		{
+			CWindowDC dc(this);
+			CGdiObjectSave OldFont(dc, dc.SelectStockObject(ANSI_VAR_FONT));
+
+			CPoint p(dc.GetTextExtent(str, _tcslen(str)));
+
+			r.left = x;
+			r.top = cr.top;
+			r.bottom = r.top + p.y;
+			r.right = r.left + p.x;
+
+			if (r.right > cr.left)
+			{
+				InvalidateRect(r);
+			}
+		}
+	}
+
+	if (0 != pInfo->Length
+		&& 0 != (pInfo->Flags
+			& (pInfo->ChangeSample | pInfo->ChangeLength | pInfo->Delete)))
+	{
+		// invalidate end marker
+		x = WorldToWindowXfloor(pInfo->Sample + pInfo->Length);
+		if (x < cr.right && x >= cr.left)
+		{
+			r.left = x;
+			r.right = x + 1;
+			r.top = cr.top;
+			r.bottom = cr.bottom;
+
+			InvalidateRect(r);
+		}
+	}
 }
 
 POINT CWaveSoapFrontView::GetZoomCenter()
@@ -2082,23 +2216,89 @@ BOOL CWaveSoapFrontView::MasterScrollBy(double dx, double dy, BOOL bDoScroll)
 			}
 			else
 			{
-				int nChannels = GetDocument()->WaveChannels();
+				CWaveSoapFrontDoc * pDoc = GetDocument();
+				int nChannels = pDoc->WaveChannels();
 
 				HidePlaybackCursor();
+				// invalidate marker labels
+				CWindowDC dc(this);
+				CGdiObjectSave OldFont(dc, dc.SelectStockObject(ANSI_VAR_FONT));
+
+				CRect cr;
+				GetClientRect(cr);
+
+				CRect ir;
+				CuePointVectorIterator i;
+				CWaveFile::InstanceDataWav * pInst = pDoc->m_WavFile.GetInstanceData();
+
+				if (ndy > 0)    // moving down
+					for (i = pInst->m_CuePoints.begin();
+						i < pInst->m_CuePoints.end(); i++)
+					{
+						long x = WorldToWindowXfloor(i->dwSampleOffset);
+
+						// invalidate text
+						if (x < cr.right)
+						{
+							LPCTSTR txt = pInst->GetCueText(i->CuePointID);
+							if (NULL != txt)
+							{
+								CPoint p(dc.GetTextExtent(txt, _tcslen(txt)));
+
+								ir.left = x;
+								ir.top = cr.top;
+								ir.bottom = ir.top + p.y;
+								ir.right = ir.left + p.x;
+
+								if (ir.left + p.x > cr.left)
+								{
+									InvalidateRect(CRect(x, cr.top, ir.left + p.x, ir.top + p.y));
+								}
+							}
+						}
+					}
+
 				for (int ch = 0; ch < nChannels; ch++)
 				{
-					CRect cr, ir;
-					GetChannelRect(ch, cr);
+					CRect chr;
+					GetChannelRect(ch, chr);
 #if 1
-					ScrollWindowEx(0, ndy, & cr, & cr, NULL, & ir,
+					ScrollWindowEx(0, ndy, chr, chr, NULL, ir,
 									SW_INVALIDATE);
-					InvalidateRect( & ir);
+					InvalidateRect(ir);
 #else
 					ScrollWindowEx(0, ndy, NULL, NULL, NULL, NULL,
 									SW_INVALIDATE | SW_ERASE);
 #endif
 				}
-				// TODO: invalidate markers (with erase ?)
+
+				// invalidate text area again, after scroll
+				for (i = pInst->m_CuePoints.begin();
+					i < pInst->m_CuePoints.end(); i++)
+				{
+					long x = WorldToWindowXfloor(i->dwSampleOffset);
+
+					// invalidate text
+					if (x < cr.right)
+					{
+						LPCTSTR txt = pInst->GetCueText(i->CuePointID);
+						if (NULL != txt)
+						{
+							CPoint p(dc.GetTextExtent(txt, _tcslen(txt)));
+
+							ir.left = x;
+							ir.top = cr.top;
+							ir.bottom = ir.top + p.y;
+							ir.right = ir.left + p.x;
+
+							if (ir.left + p.x > cr.left)
+							{
+								InvalidateRect(CRect(x, cr.top, ir.left + p.x, ir.top + p.y));
+							}
+						}
+					}
+				}
+
 				ShowPlaybackCursor();
 			}
 		}
@@ -2498,19 +2698,20 @@ void CWaveSoapFrontView::OnViewHorScale8192()
 void CWaveSoapFrontView::OnTimer(UINT nIDEvent)
 {
 	// get mouse position and hit code
-	if (m_bAutoscrollTimerStarted
-		&& nIDEvent == m_TimerID)
+	if (NULL != m_AutoscrollTimerID
+		&& nIDEvent == m_AutoscrollTimerID)
 	{
 		CPoint p;
 		GetCursorPos( & p);
 		ScreenToClient( & p);
-		double scroll;
 		DWORD nHit = ClientHitTest(p);
+
 		if (nHit & ( VSHT_RIGHT_AUTOSCROLL | VSHT_LEFT_AUTOSCROLL))
 		{
 			//TRACE("OnTimer: VSHT_RIGHT_AUTOSCROLL\n");
-			scroll = -m_HorizontalScale;
+			double scroll;
 			int nDistance;
+
 			if (nHit & VSHT_RIGHT_AUTOSCROLL)
 			{
 				CRect r;
@@ -2521,6 +2722,7 @@ void CWaveSoapFrontView::OnTimer(UINT nIDEvent)
 			}
 			else
 			{
+				scroll = -m_HorizontalScale;
 				nDistance = GetSystemMetrics(SM_CXVSCROLL) - p.x - 1;
 			}
 
@@ -2562,9 +2764,8 @@ void CWaveSoapFrontView::OnTimer(UINT nIDEvent)
 		}
 		else
 		{
-			m_bAutoscrollTimerStarted = false;
-			KillTimer(m_TimerID);
-			m_TimerID = NULL;
+			KillTimer(m_AutoscrollTimerID);
+			m_AutoscrollTimerID = NULL;
 		}
 	}
 	else
@@ -2578,12 +2779,11 @@ void CWaveSoapFrontView::OnTimer(UINT nIDEvent)
 void CWaveSoapFrontView::OnCaptureChanged(CWnd *pWnd)
 {
 	if (pWnd != this
-		&& m_bAutoscrollTimerStarted)
+		&& NULL != m_AutoscrollTimerID)
 	{
 		if (TRACE_SCROLL) TRACE("Killing timer in CWaveSoapFrontView::OnCaptureChanged\n");
-		m_bAutoscrollTimerStarted = false;
-		KillTimer(m_TimerID);
-		m_TimerID = NULL;
+		KillTimer(m_AutoscrollTimerID);
+		m_AutoscrollTimerID = NULL;
 	}
 	BaseClass::OnCaptureChanged(pWnd);
 }
