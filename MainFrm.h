@@ -17,6 +17,7 @@ public:
 
 // Attributes
 public:
+	void GetMessageString(UINT nID, CString& rMessage) const;
 
 // Operations
 public:
