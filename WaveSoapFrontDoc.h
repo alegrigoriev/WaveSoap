@@ -374,6 +374,9 @@ public:
 	void OnActivateDocument(BOOL bActivate);
 
 	void QueueOperation(COperationContext * pContext);
+
+	void ExecuteOperation(COperationContext * pContext, BOOL SetModify = FALSE, int UndoCreated = -1, int KeepPreviousUndo = -1);
+
 	void UpdateFrameTitles()
 	{
 		UpdateFrameCounts();
