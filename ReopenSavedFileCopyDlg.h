@@ -19,10 +19,10 @@ public:
 // Dialog Data
 	//{{AFX_DATA(CReopenSavedFileCopyDlg)
 	enum { IDD = IDD_DIALOG_OPEN_AFTER_SAVE_COPY };
-	// NOTE: the ClassWizard will add data members here
+	CString	m_Prompt;
 	//}}AFX_DATA
 
-
+	BOOL m_bDisableDirect;
 // Overrides
 	// ClassWizard generated virtual function overrides
 	//{{AFX_VIRTUAL(CReopenSavedFileCopyDlg)
@@ -35,7 +35,8 @@ protected:
 
 	// Generated message map functions
 	//{{AFX_MSG(CReopenSavedFileCopyDlg)
-	// NOTE: the ClassWizard will add member functions here
+	afx_msg void OnNo();
+	virtual BOOL OnInitDialog();
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 };

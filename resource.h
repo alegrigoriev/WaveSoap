@@ -99,6 +99,7 @@
 #define IDD_DIALOG_FILTER               181
 #define ID_BITMAP_ZOOMINHOR             181
 #define ID_BITMAP_ZOOMOUTHOR            182
+#define IDD_DIALOG_OPEN_AFTER_SAVE_COPY 182
 #define IDC_EDIT_MIN_CLICK_AMPLITUDE    1000
 #define IDC_TAB_SWITCH_VIEW_MODE        1000
 #define IDC_CHECK_LOG_CLICKS            1001
@@ -478,6 +479,9 @@
 #define IDS_MONO                        32934
 #define IDS_STEREO                      32935
 #define IDS_LAMEENC_FORMAT              32936
+#define IDS_OPEN_SAVED_FILE_COPY        32937
+#define IDS_OPEN_SAVED_FILE_COPY_NONDIRECT 32938
+#define IDS_STRING_UNABLE_TO_CONVERT    32939
 #define ID_FILE_PROPERTIES              40000
 #define ID_VIEW_ZOOMVERT_NORMAL         40001
 #define ID_VIEW_ZOOMIN_HOR_FULL         40002

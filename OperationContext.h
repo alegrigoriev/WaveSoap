@@ -406,6 +406,7 @@ class CFileSaveContext : public CCopyContext
 public:
 	CFileSaveContext(CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString, LPCTSTR OperationName)
 		: CCopyContext(pDoc, StatusString, OperationName),
+		m_NewFileTypeFlags(0),
 		m_pConvert(NULL)
 	{
 	}
@@ -415,6 +416,7 @@ public:
 		delete m_pConvert;
 	}
 	CString m_NewName;
+	DWORD m_NewFileTypeFlags;
 	virtual BOOL OperationProc();
 	virtual void PostRetire(BOOL bChildContext = FALSE);
 };

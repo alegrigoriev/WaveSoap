@@ -2,6 +2,7 @@
 #include "stdafx.h"
 #include "OperationContext.h"
 #include "OperationDialogs.h"
+#include "ReopenSavedFileCopyDlg.h"
 
 static int fround(double d)
 {
@@ -3379,11 +3380,38 @@ void CFileSaveContext::PostRetire(BOOL bChildContext)
 			// will be closed by the destructor
 			m_DstFile.CommitChanges();
 			pDocument->SavePeakInfo(pDocument->m_WavFile, m_DstFile);
-			// todo: ask about opening the file
+
+			// ask about opening the file
+			CReopenSavedFileCopyDlg dlg;
+			UINT fmt = IDS_OPEN_SAVED_FILE_COPY;
+			if (m_NewFileTypeFlags != 0
+				|| m_DstFile.GetWaveFormat()->wFormatTag != WAVE_FORMAT_PCM
+				|| m_DstFile.GetWaveFormat()->wBitsPerSample != 16)
+			{
+				fmt = IDS_OPEN_SAVED_FILE_COPY_NONDIRECT;
+				dlg.m_bDisableDirect = TRUE;
+			}
+			CString NewName = m_DstFile.GetName();
+			dlg.m_Prompt.Format(fmt, LPCTSTR(pDocument->GetTitle()),
+								LPCTSTR(NewName));
+			int res = dlg.DoModal();
+			if (IDCANCEL != res)
+			{
+				m_DstFile.Close();  // to allow open
+				int OpenFlags = 0;
+				if (IDOK == res)
+				{
+					// direct mode
+					OpenFlags = OpenDocumentDirectMode;
+				}
+				// file type will be determined there
+				GetApp()->OpenDocumentFile(NewName, OpenFlags);
+			}
 		}
 		else
 		{
 			// exchange files, close and delete old ones, rename new ones
+			pDocument->m_FileTypeFlags = m_NewFileTypeFlags;
 			pDocument->PostFileSave(this);
 		}
 	}
