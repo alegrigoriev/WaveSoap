@@ -61,17 +61,6 @@ protected:
 	BOOL	m_bUndo;
 	BOOL	m_bLockChannels;
 
-	struct Selection
-	{
-		SAMPLE_INDEX begin;
-		SAMPLE_INDEX end;
-	};
-
-	std::vector<Selection> m_Selections;
-
-	void AddSelection(LPCTSTR Name, SAMPLE_INDEX begin, SAMPLE_INDEX end);
-	void AddSelection(UINT id, SAMPLE_INDEX begin, SAMPLE_INDEX end);
-	int FindSelection(SAMPLE_INDEX begin, SAMPLE_INDEX end);
 // Overrides
 
 // Implementation
