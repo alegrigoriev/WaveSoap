@@ -2436,7 +2436,14 @@ CSaveTrimmedOperation::CSaveTrimmedOperation(CWaveSoapFrontDoc * pDoc,
 	m_SrcFile = SrcFile;
 
 	m_UndoStartPos = SrcFile.SampleToPosition(SrcStartSample);
+	m_DstStart = m_UndoStartPos;
+	m_SrcStart = m_UndoStartPos;
+	m_DstPos = m_UndoStartPos;
+	m_SrcPos = m_UndoStartPos;
+
 	m_UndoEndPos = SrcFile.SampleToPosition(SrcEndSample);
+	m_DstEnd = m_UndoEndPos;
+	m_SrcEnd = m_UndoEndPos;
 
 	m_SrcChan = Channels;
 	m_DstChan = ALL_CHANNELS;
