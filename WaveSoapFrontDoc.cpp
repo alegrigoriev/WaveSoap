@@ -169,6 +169,8 @@ BEGIN_MESSAGE_MAP(CWaveSoapFrontDoc, CDocument)
 	ON_UPDATE_COMMAND_UI(IDC_EDIT_MARKER_REGION, OnUpdateEditWaveMarker)
 	ON_COMMAND(IDC_EDIT_WAVE_REGION, OnEditWaveMarker)
 	ON_UPDATE_COMMAND_UI(IDC_EDIT_WAVE_REGION, OnUpdateEditWaveMarker)
+	ON_COMMAND(ID_SAVE_SAVESELECTIONAS, OnSaveSaveselectionas)
+	ON_UPDATE_COMMAND_UI(ID_SAVE_SAVESELECTIONAS, OnUpdateSaveSaveselectionas)
 	END_MESSAGE_MAP()
 
 /////////////////////////////////////////////////////////////////////////////
@@ -1241,8 +1243,8 @@ void CWaveSoapFrontDoc::DoCopy(SAMPLE_INDEX Start, SAMPLE_INDEX End,
 	{
 		OpName.Format(IDS_COPY_TO_FILE_STATUS_PROMPT_FORMAT, FileName);
 
-		OpenFlags = 0;  // default options
-		OperationFlags = 0; // default
+		OpenFlags = MmioFileOpenCreateAlways | CreateWaveFileDontCopyInfo;  // default options
+		OperationFlags = OperationContextCommitFile; // default
 	}
 	else
 	{
@@ -5434,4 +5436,33 @@ void CWaveSoapFrontDoc::OnEditWaveMarker()
 void CWaveSoapFrontDoc::OnUpdateEditWaveMarker(CCmdUI *pCmdUI)
 {
 	pCmdUI->Enable( ! IsReadOnly());
+}
+
+void CWaveSoapFrontDoc::OnSaveSaveselectionas()
+{
+	CString Filter;
+	Filter.LoadString(IDS_WAV_FILTER);
+
+	CString Title;
+	Title.LoadString(IDS_SAVE_SELECTION_TITLE);
+
+	CFileDialogWithHistory dlg(FALSE,
+								_T("wav"), NULL,
+								OFN_HIDEREADONLY | OFN_OVERWRITEPROMPT
+								| OFN_EXPLORER | OFN_NONETWORKBUTTON | OFN_PATHMUSTEXIST,
+								Filter);
+
+	dlg.m_ofn.lpstrTitle = Title;
+
+	if (IDOK != dlg.DoModal())
+	{
+		return;
+	}
+
+	DoCopy(m_SelectionStart, m_SelectionEnd, m_SelectedChannel, dlg.GetPathName());
+}
+
+void CWaveSoapFrontDoc::OnUpdateSaveSaveselectionas(CCmdUI *pCmdUI)
+{
+	pCmdUI->Enable(CanReadSelection());
 }

@@ -223,6 +223,8 @@ BEGIN
             MENUITEM "Save &As...\tF12",            ID_FILE_SAVE_AS
             MENUITEM "Save &Copy As...\tShift+F12", ID_FILE_SAVE_COPY_AS
             MENUITEM "Save Al&l\tCtrl+Shift+S",     ID_FILE_SAVE_ALL
+            MENUITEM "Save &Selection As...\tCtrl+Shift+F12", 
+                                                    ID_SAVE_SAVESELECTIONAS
         END
         MENUITEM "&Close\tCtrl+Shift+F4",       ID_FILE_CLOSE
         MENUITEM SEPARATOR
@@ -874,6 +876,8 @@ BEGIN
     VK_F1,          ID_CONTEXT_HELP,        VIRTKEY, SHIFT, NOINVERT
     VK_F12,         ID_FILE_SAVE_AS,        VIRTKEY, NOINVERT
     VK_F12,         ID_FILE_SAVE_COPY_AS,   VIRTKEY, SHIFT, NOINVERT
+    VK_F12,         ID_SAVE_SAVESELECTIONAS, VIRTKEY, SHIFT, CONTROL, 
+                                                    NOINVERT
     VK_F6,          ID_NEXT_PANE,           VIRTKEY, NOINVERT
     VK_F6,          ID_PREV_PANE,           VIRTKEY, SHIFT, NOINVERT
     VK_INSERT,      ID_EDIT_COPY,           VIRTKEY, CONTROL, NOINVERT
@@ -3665,12 +3669,14 @@ BEGIN
     IDS_INPUT_NAME_FREQUENCY_ARGUMENT3 "Frequency argument f3"
     IDS_INPUT_NAME_FREQUENCY_ARGUMENT1 "Frequency argument f1"
     IDS_MARKER_REGION_CHANGE "Marker/region change"
+    IDS_SAVE_SELECTION_TITLE "Save selection as file..."
 END
 
 STRINGTABLE 
 BEGIN
     IDC_EDIT_MARKER_REGION  "Add or edit marker or region"
     IDC_EDIT_WAVE_REGION    "Add or edit a region at the current selection"
+    ID_SAVE_SAVESELECTIONAS "Save the current selection to a file\nSave selection"
 END
 
 #endif    // English (U.S.) resources
