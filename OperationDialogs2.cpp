@@ -65,8 +65,12 @@ CInsertSilenceDialog::CInsertSilenceDialog(SAMPLE_INDEX Start,
 	case SampleToString_HhMmSs:
 		m_TimeFormatIndex = 1;
 		break;
-	case SampleToString_Seconds: default:
+	case SampleToString_Seconds:
+	default:
 		m_TimeFormatIndex = 2;
+		break;
+	case SampleToString_HhMmSsFf:
+		m_TimeFormatIndex = 3;
 		break;
 	}
 	if (WaveFile.Channels() < 2)
@@ -122,7 +126,11 @@ void CInsertSilenceDialog::OnSelchangeComboTimeFormat()
 	default:
 		Format = SampleToString_Seconds | TimeToHhMmSs_NeedsMs;
 		break;
+	case 3:
+		Format = SampleToString_HhMmSsFf | TimeToHhMmSs_NeedsHhMm;
+		break;
 	}
+
 	if (Format == m_TimeFormat)
 	{
 		return;

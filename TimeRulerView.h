@@ -10,6 +10,7 @@
 #include "Ruler.h"
 /////////////////////////////////////////////////////////////////////////////
 // CTimeRulerView view
+#include "TimeToStr.h"
 
 class CTimeRulerView : public CHorizontalRuler
 {
@@ -26,7 +27,11 @@ public:
 
 // Operations
 public:
-	enum {ShowSamples, ShowHhMmSs, ShowSeconds };
+	enum {ShowSamples = SampleToString_Sample,
+		ShowHhMmSs = SampleToString_HhMmSs/* | TimeToHhMmSs_NeedsHhMm | TimeToHhMmSs_NeedsMs*/,
+		ShowSeconds = SampleToString_Seconds/* | TimeToHhMmSs_NeedsMs*/,
+		ShowHhMmSsFf = SampleToString_HhMmSsFf,
+	};
 // Overrides
 	// ClassWizard generated virtual function overrides
 	//{{AFX_VIRTUAL(CTimeRulerView)
@@ -76,6 +81,9 @@ protected:
 	afx_msg void OnUpdateViewRulerSamples(CCmdUI* pCmdUI);
 	afx_msg void OnViewRulerSeconds();
 	afx_msg void OnUpdateViewRulerSeconds(CCmdUI* pCmdUI);
+	afx_msg void OnViewRulerHhmmssFf();
+	afx_msg void OnUpdateViewRulerHhmmssFf(CCmdUI* pCmdUI);
+
 	afx_msg void OnTimer(UINT nIDEvent);
 	afx_msg BOOL OnSetCursor(CWnd* pWnd, UINT nHitTest, UINT message);
 	virtual void OnInitialUpdate();

@@ -104,9 +104,12 @@ BEGIN_MESSAGE_MAP(CWaveSoapFrontDoc, CDocument)
 	ON_UPDATE_COMMAND_UI(ID_CHANNELS_STEREO, OnUpdateChannelsStereo)
 	ON_COMMAND(ID_PROCESS_CHANGEVOLUME, OnProcessChangevolume)
 	ON_UPDATE_COMMAND_UI(ID_PROCESS_CHANGEVOLUME, OnUpdateProcessChangevolume)
+
 	ON_COMMAND(IDC_VIEW_STATUS_HHMMSS, OnViewStatusHhmmss)
 	ON_COMMAND(IDC_VIEW_STATUS_SAMPLES, OnViewStatusSamples)
 	ON_COMMAND(IDC_VIEW_STATUS_SECONDS, OnViewStatusSeconds)
+	ON_COMMAND(IDC_VIEW_STATUS_HHMMSSFF, OnViewStatusHhmmssFf)
+
 	ON_UPDATE_COMMAND_UI(ID_PROCESS_DCOFFSET, OnUpdateProcessDcoffset)
 	ON_COMMAND(ID_PROCESS_DCOFFSET, OnProcessDcoffset)
 	ON_UPDATE_COMMAND_UI(ID_PROCESS_INSERTSILENCE, OnUpdateProcessInsertsilence)
@@ -127,9 +130,12 @@ BEGIN_MESSAGE_MAP(CWaveSoapFrontDoc, CDocument)
 	ON_COMMAND(ID_VIEW_RESCAN_PEAKS, OnViewRescanPeaks)
 	ON_UPDATE_COMMAND_UI(ID_PROCESS_SYNTHESIS_EXPRESSION_EVALUATION, OnUpdateProcessSynthesisExpressionEvaluation)
 	ON_COMMAND(ID_PROCESS_SYNTHESIS_EXPRESSION_EVALUATION, OnProcessSynthesisExpressionEvaluation)
+
 	ON_UPDATE_COMMAND_UI(IDC_VIEW_STATUS_HHMMSS, OnUpdateViewStatusHhmmss)
 	ON_UPDATE_COMMAND_UI(IDC_VIEW_STATUS_SAMPLES, OnUpdateViewStatusSamples)
 	ON_UPDATE_COMMAND_UI(IDC_VIEW_STATUS_SECONDS, OnUpdateViewStatusSeconds)
+	ON_UPDATE_COMMAND_UI(IDC_VIEW_STATUS_HHMMSSFF, OnUpdateViewStatusHhmmssFf)
+
 	ON_UPDATE_COMMAND_UI(ID_FILE_SAVE_AS, OnUpdateFileSaveAs)
 	ON_UPDATE_COMMAND_UI(ID_FILE_SAVE_COPY_AS, OnUpdateFileSaveCopyAs)
 	ON_COMMAND(ID_FILE_SAVE_COPY_AS, OnFileSaveCopyAs)
@@ -3738,6 +3744,12 @@ void CWaveSoapFrontDoc::OnViewStatusSeconds()
 		SampleToString_Seconds | TimeToHhMmSs_NeedsMs;
 }
 
+void CWaveSoapFrontDoc::OnViewStatusHhmmssFf()
+{
+	GetApp()->m_SoundTimeFormat =
+		SampleToString_HhMmSsFf | TimeToHhMmSs_NeedsHhMm;
+}
+
 void CWaveSoapFrontDoc::SetPathName(LPCTSTR lpszPathName, BOOL bAddToMRU)
 {
 	// store the path fully qualified
@@ -4329,6 +4341,12 @@ void CWaveSoapFrontDoc::OnUpdateViewStatusSeconds(CCmdUI* pCmdUI)
 {
 	pCmdUI->SetRadio((GetApp()->m_SoundTimeFormat & SampleToString_Mask)
 					== SampleToString_Seconds);
+}
+
+void CWaveSoapFrontDoc::OnUpdateViewStatusHhmmssFf(CCmdUI* pCmdUI)
+{
+	pCmdUI->SetRadio((GetApp()->m_SoundTimeFormat & SampleToString_Mask)
+					== SampleToString_HhMmSsFf);
 }
 
 void CWaveSoapFrontDoc::OnFileSaveCopyAs()

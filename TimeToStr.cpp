@@ -14,33 +14,45 @@ CString TimeToHhMmSs(unsigned TimeMs, int Flags)
 	TCHAR TimeSeparator = GetApp()->m_TimeSeparator;
 	TCHAR DecimalPoint = GetApp()->m_DecimalPoint;
 
-	if (Flags & TimeToHhMmSs_NeedsMs)
+	TCHAR StrMs[16];
+
+	if (Flags & TimeToHhMmSs_Frames75)
+	{
+		_stprintf(StrMs, _T("%02df"), ms);
+	}
+	else
+	{
+		_stprintf(StrMs, _T("%03d"), ms);
+	}
+
+	if (Flags & (TimeToHhMmSs_NeedsMs | TimeToHhMmSs_Frames75))
 	{
 		if (hh != 0 || (Flags & TimeToHhMmSs_NeedsHhMm))
 		{
-			s.Format(_T("%d%c%02d%c%02d%c%03d"),
+			s.Format(_T("%d%c%02d%c%02d%c%s"),
 					hh, TimeSeparator,
 					mm, TimeSeparator,
 					ss, DecimalPoint,
-					ms);
+					StrMs);
 		}
 		else if (mm != 0)
 		{
-			s.Format(_T("%d%c%02d%c%03d"),
+			s.Format(_T("%d%c%02d%c%s"),
 					mm, TimeSeparator,
 					ss, DecimalPoint,
-					ms);
+					StrMs);
 		}
 		else
 		{
-			s.Format(_T("%d%c%03d"),
+			s.Format(_T("%d%c%s"),
 					ss, DecimalPoint,
-					ms);
+					StrMs);
 		}
 	}
 	else
 	{
-		if (hh != 0 || (Flags & TimeToHhMmSs_NeedsHhMm))
+		if (hh != 0
+			|| 0 != (Flags & TimeToHhMmSs_NeedsHhMm))
 		{
 			s.Format(_T("%d%c%02d%c%02d"),
 					hh, TimeSeparator,
@@ -79,9 +91,18 @@ CString SampleToString(SAMPLE_INDEX Sample, int nSamplesPerSec, int Flags)
 		return s;
 	}
 		break;
+
 	default:
 	case SampleToString_HhMmSs:
 		return TimeToHhMmSs(unsigned(Sample * 1000. / nSamplesPerSec), Flags);
+		break;
+
+	case SampleToString_HhMmSsFf:
+	{
+		unsigned Seconds = Sample / nSamplesPerSec;
+		unsigned Frames = (Sample % nSamplesPerSec) / (nSamplesPerSec / 75);
+		return TimeToHhMmSs(Seconds * 1000 + Frames, Flags | TimeToHhMmSs_Frames75);
+	}
 		break;
 	}
 }
