@@ -1,0 +1,27 @@
+// DirectFile.cpp: implementation of the CDirectFile class.
+//
+//////////////////////////////////////////////////////////////////////
+
+#include "stdafx.h"
+#include "WaveSoapFront.h"
+#include "DirectFile.h"
+
+#ifdef _DEBUG
+#undef THIS_FILE
+static char THIS_FILE[]=__FILE__;
+#define new DEBUG_NEW
+#endif
+
+//////////////////////////////////////////////////////////////////////
+// Construction/Destruction
+//////////////////////////////////////////////////////////////////////
+
+CDirectFile::CDirectFile()
+{
+
+}
+
+CDirectFile::~CDirectFile()
+{
+
+}
