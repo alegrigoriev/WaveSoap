@@ -78,7 +78,8 @@ protected:
 
 	afx_msg void OnUpdateSelectionStatic(CCmdUI * pCmdUI)
 	{
-		pCmdUI->SetText(GetSelectionText(m_Start, m_End, m_Chan,
+		pCmdUI->SetText(GetSelectionText(m_Start, m_End,
+										m_Chan & m_WaveFile.ChannelsMask(),
 										m_WaveFile.Channels(), m_bLockChannels,
 										m_WaveFile.SampleRate(), m_TimeFormat));
 	}
