@@ -26,7 +26,8 @@ void CWaveSoapFileOpenDialog::ShowWmaFileInfo(CDirectFile & File)
 		return;
 	}
 
-	CoInitializeEx(NULL, COINIT_MULTITHREADED );
+	HRESULT CoInitResult = CoInitializeEx(NULL, COINIT_APARTMENTTHREADED);
+	TRACE("CWaveSoapFileOpenDialog::ShowWmaFileInfo CoInitializeEx=%x\n", CoInitResult);
 	CWmaDecoder WmaFile;
 	if (WmaFile.Init()
 		&& SUCCEEDED(WmaFile.Open(File)))
@@ -72,7 +73,11 @@ void CWaveSoapFileOpenDialog::ShowWmaFileInfo(CDirectFile & File)
 	{
 		ClearFileInfoDisplay();
 	}
-	CoUninitialize();
+
+	if (SUCCEEDED(CoInitResult))
+	{
+		CoUninitialize();
+	}
 }
 
 void CWaveSoapFileOpenDialog::OnCheckReadOnly()
