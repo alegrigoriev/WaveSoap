@@ -124,41 +124,6 @@ void CVolumeChangeDialog::UpdateVolumeData(CDataExchange* pDX, BOOL InPercents)
 		}
 	}
 }
-static CString GetSelectionText(long Start, long End, int Chan,
-								int nChannels, BOOL bLockChannels,
-								long nSamplesPerSec, int TimeFormat)
-{
-	CString s;
-	if (nChannels > 1)
-	{
-		LPCTSTR sChans = _T("Stereo");
-		if (! bLockChannels)
-		{
-			if (0 == Chan)
-			{
-				sChans = _T("Left");
-			}
-			else if (1 == Chan)
-			{
-				sChans = _T("Right");
-			}
-		}
-		s.Format("Selection : %s to %s (%s)\n"
-				"Channels: %s",
-				SampleToString(Start, nSamplesPerSec, TimeFormat),
-				SampleToString(End, nSamplesPerSec, TimeFormat),
-				SampleToString(End - Start, nSamplesPerSec, TimeFormat),
-				sChans);
-	}
-	else
-	{
-		s.Format("Selection : %s to %s (%s)",
-				SampleToString(Start, nSamplesPerSec, TimeFormat),
-				SampleToString(End, nSamplesPerSec, TimeFormat),
-				SampleToString(End - Start, nSamplesPerSec, TimeFormat));
-	}
-	return s;
-}
 
 void CVolumeChangeDialog::UpdateSelectionStatic()
 {
@@ -535,10 +500,9 @@ BOOL CSelectionDialog::OnInitDialog()
 	}
 	CDialog::OnInitDialog();
 
-	m_eStart.AddPosition("Begin Of Sample", 0);
-	m_eEnd.AddPosition("Begin Of Sample", 0);
-	m_eStart.AddPosition("End Of Sample", m_FileLength);
-	m_eEnd.AddPosition("End Of Sample", m_FileLength);
+	m_eStart.AddPosition(IDS_BEGIN_OF_SAMPLE, 0);
+	m_eEnd.AddPosition(IDS_BEGIN_OF_SAMPLE, 0);
+
 	// TODO: add markers
 	((CComboBox*) & m_eStart)->SetExtendedUI(TRUE);
 	((CComboBox*) & m_eEnd)->SetExtendedUI(TRUE);
@@ -547,18 +511,24 @@ BOOL CSelectionDialog::OnInitDialog()
 		&& (0 != m_Start || m_CaretPosition != m_End)
 		&& (m_CaretPosition != m_Start || m_FileLength != m_End))
 	{
-		AddSelection("(current selection)", m_Start, m_End);
+		AddSelection(IDS_CURRENT_SELECTION, m_Start, m_End);
 	}
-	AddSelection("All Sample Data", 0, m_FileLength);
+
+	AddSelection(IDS_ALL_SAMPLE_DATA, 0, m_FileLength);
 
 	if (0 != m_CaretPosition
 		&& m_FileLength != m_CaretPosition)
 	{
-		AddSelection("From Begin To Cursor", 0, m_CaretPosition);
-		AddSelection("From Cursor To End", m_CaretPosition, m_FileLength);
-		m_eStart.AddPosition("Cursor", m_CaretPosition);
-		m_eEnd.AddPosition("Cursor", m_CaretPosition);
+		AddSelection(IDS_FROM_BEGIN_TO_CURSOR, 0, m_CaretPosition);
+
+		AddSelection(IDS_FROM_CURSOR_TO_END, m_CaretPosition, m_FileLength);
+
+		m_eStart.AddPosition(IDS_CURSOR, m_CaretPosition);
+		m_eEnd.AddPosition(IDS_CURSOR, m_CaretPosition);
 	}
+
+	m_eStart.AddPosition(IDS_END_OF_SAMPLE, m_FileLength);
+	m_eEnd.AddPosition(IDS_END_OF_SAMPLE, m_FileLength);
 
 	m_SelectionCombo.SetCurSel(FindSelection(m_Start, m_End));
 	// TODO: add regions
@@ -646,6 +616,13 @@ void CSelectionDialog::AddSelection(LPCTSTR Name, long begin, long end)
 	m_SelectionCombo.AddString(Name);
 	Selection s = {begin, end};
 	m_Selections.push_back(s);
+}
+
+void CSelectionDialog::AddSelection(UINT id, long begin, long end)
+{
+	CString s;
+	s.LoadString(id);
+	AddSelection(s, begin, end);
 }
 
 int CSelectionDialog::FindSelection(long begin, long end)
@@ -809,7 +786,7 @@ void CStatisticsDialog::DoDataExchange(CDataExchange* pDX)
 {
 	CDialog::DoDataExchange(pDX);
 	//{{AFX_DATA_MAP(CStatisticsDialog)
-	// NOTE: the ClassWizard will add DDX and DDV calls here
+	DDX_Control(pDX, IDC_STATIC_FILE_NAME, m_FileName);
 	//}}AFX_DATA_MAP
 }
 
@@ -827,6 +804,10 @@ BOOL CStatisticsDialog::OnInitDialog()
 	CDialog::OnInitDialog();
 
 	CString s;
+
+	s.Format(_T("File: %s"), LPCTSTR(m_sFilename));
+	m_FileName.SetWindowText(s);
+
 	long nSamples =
 		(m_pContext->m_DstCopyPos - m_pContext->m_DstStart)
 		/ m_pContext->m_DstFile.SampleSize();
@@ -1282,8 +1263,8 @@ BOOL CGotoDialog::OnInitDialog()
 	}
 	CDialog::OnInitDialog();
 
-	m_eStart.AddPosition("Begin Of Sample", 0);
-	m_eStart.AddPosition("End Of Sample", m_FileLength);
+	m_eStart.AddPosition(IDS_BEGIN_OF_SAMPLE, 0);
+	m_eStart.AddPosition(IDS_END_OF_SAMPLE, m_FileLength);
 	((CComboBox*) & m_eStart)->SetExtendedUI(TRUE);
 	// TODO: add markers
 	return TRUE;  // return TRUE unless you set the focus to a control
@@ -2375,6 +2356,7 @@ BOOL CExpressionEvaluationDialog::OnInitDialog()
 	ShowHideTabDialogs();
 
 	UpdateSelectionStatic();
+	m_bNeedUpdateControls = TRUE;
 
 	return TRUE;  // return TRUE unless you set the focus to a control
 	// EXCEPTION: OCX Property Pages should return FALSE

@@ -1,14 +1,10 @@
 Known problems and tasks:
 
-Add decibel view to CAmplitudeRuler
-Add options dialog
-Show File Properties
-Add equalizer and low/high frequency filters functions
 Use list instead of array for FFT data (for performance reason).
+Add equalizer and low/high frequency filters functions
 Include MP3 and WMA filters even if there is no WMP, but show warning, if the filter is selected
 Test "reload compressed file" dialogs
-Show file name in Statistics Dialog
-Show file names in PostRetire dialogs, because they can be shown for background DOC.
+Add options dialog
 
 Add CD grabbing
 Add noise reduction estimation in spectrum section view
@@ -16,7 +12,6 @@ Add MP3 save
 Add ASF save
 Add sound recording
 Add splash screen
-In CSelectionDialog: replace combobox strings with LoadString
 Support "Play" in selection dialog
 Make Paste Special command (with Fade In/Fade Out etc)
 Make Undo/redo save the selection and regions
@@ -33,6 +28,7 @@ Support filenames with stream extension
 Add VU meter for playback
 Add Application Close Pending flag
 Make tooltips in wave view and other important views
+Show File Properties
 Make help file
 Add "Favorite formats" combobox to Save dialog
 "Save selection as" in selection dialog
@@ -44,9 +40,9 @@ Reconsider Undo All Changes functionality and Redo All Changes
 Use ReplaceFile for renaming the file
 Add DELETE premission when creating temp file
 Use GetFileAttributes rather than FindFirst to check whether it's file or directory
+Add Export Settings, Import Settings to Options dialog
 
 Problems:
-Expression dialog: OK not disabled on the beginning, if expression is empty
 After file length increased to 1 sample from 0, scroll bar set to wrond scale
 Expression evaluation selection longer than file length doesn't update file length
 Multiline edit box in child dialog eats Esc and Enter (DLGC_WANTALLCHARS)
@@ -61,6 +57,8 @@ Save As dialog is not centered first time (comdlg problem?)
 ??? When time/seconds format is set for status bar, MM:SS is actually shown
 
 Fixed:
+Backward file prefetch from position 0 would cause memory overallocation (500 MB) and hang
+Expression dialog: OK not disabled on the beginning, if expression is empty
 If there is no selection, Selection button dialog doesn't give option From Cursor, To Cursor
 "Interpolate" command not disabled properly
 Last 64 KB block is not read from the master file (need to round read length to sector size
@@ -84,6 +82,10 @@ Wrong minimum/maximum valies shown for a zero length file in Statistics (command
 ???? When a file is opened in non-direct mode, peak info is saved with wrong time stamp
 
 Done:
+In CSelectionDialog: replace combobox strings with LoadString
+Show file names in PostRetire dialogs, because they can be shown for background DOC.
+Show file name in Statistics Dialog
+Add decibel view to CAmplitudeRuler
 Result of FFT normalized to maximum for max square wave, fro FFT view and spectrum section
 FFT ruler menu command changed to frequency-related
 Draw decibels in Spectrum Section view

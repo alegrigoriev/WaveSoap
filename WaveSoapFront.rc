@@ -274,6 +274,7 @@ BEGIN
         MENUITEM "Inv&ert",                     ID_PROCESS_INVERT
         MENUITEM "&Resample...",                ID_PROCESS_RESAMPLE
         MENUITEM "C&hange Channels...",         ID_PROCESS_CHANNELS
+        MENUITEM "&Equalizer...",               ID_PROCESS_EQUALIZER
     END
     POPUP "&Tools"
     BEGIN
@@ -1037,22 +1038,23 @@ BEGIN
     PUSHBUTTON      "&Help",IDHELP,132,105,50,14
 END
 
-IDD_DIALOG_STATISTICS DIALOG DISCARDABLE  0, 0, 330, 192
+IDD_DIALOG_STATISTICS DIALOG DISCARDABLE  0, 0, 330, 168
 STYLE DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
 CAPTION "File statistics:"
 FONT 8, "MS Sans Serif"
 BEGIN
-    DEFPUSHBUTTON   "OK",IDOK,140,171,50,14
-    EDITTEXT        IDC_EDIT_LEFT,112,25,100,114,ES_MULTILINE | 
+    DEFPUSHBUTTON   "OK",IDOK,140,147,50,14
+    EDITTEXT        IDC_EDIT_LEFT,112,39,100,107,ES_MULTILINE | 
                     ES_AUTOVSCROLL | ES_AUTOHSCROLL | ES_READONLY | NOT 
                     WS_BORDER
-    EDITTEXT        IDC_EDIT_RIGHT,220,25,100,114,ES_MULTILINE | 
+    EDITTEXT        IDC_EDIT_RIGHT,220,39,100,107,ES_MULTILINE | 
                     ES_AUTOHSCROLL | ES_READONLY | NOT WS_BORDER
     CONTROL         "Cursor position:\nSample value at cursor:\n\nMax negative peak position:\nMax negative peak value:\n\nMax positive peak position:\nMax positive peak value:\n\nRMS power:\nAverage value (DC offset):\nZero crossings:",
-                    IDC_STATIC,"Static",SS_LEFTNOWORDWRAP | WS_GROUP,7,25,
-                    102,114
-    LTEXT           "Left channel: ",IDC_STATIC,112,13,54,8
-    LTEXT           "Right channel:",IDC_STATIC,220,13,54,8
+                    IDC_STATIC,"Static",SS_LEFTNOWORDWRAP | WS_GROUP,7,39,
+                    102,107
+    LTEXT           "Left channel: ",IDC_STATIC,112,27,54,8
+    LTEXT           "Right channel:",IDC_STATIC,220,27,54,8
+    LTEXT           "File:",IDC_STATIC_FILE_NAME,7,7,316,18
 END
 
 IDD_DIALOG_NORMALIZE DIALOG DISCARDABLE  0, 0, 193, 110
@@ -1106,18 +1108,19 @@ BEGIN
     LTEXT           "All the file will be processed",IDC_STATIC,7,83,190,8
 END
 
-IDD_DIALOG_STATISTICS_MONO DIALOG DISCARDABLE  0, 0, 225, 152
+IDD_DIALOG_STATISTICS_MONO DIALOG DISCARDABLE  0, 0, 232, 168
 STYLE DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
 CAPTION "File statistics:"
 FONT 8, "MS Sans Serif"
 BEGIN
-    DEFPUSHBUTTON   "OK",IDOK,87,131,50,14
-    EDITTEXT        IDC_EDIT_LEFT,113,8,100,114,ES_MULTILINE | 
+    DEFPUSHBUTTON   "OK",IDOK,87,147,50,14
+    EDITTEXT        IDC_EDIT_LEFT,113,37,100,105,ES_MULTILINE | 
                     ES_AUTOVSCROLL | ES_AUTOHSCROLL | ES_READONLY | NOT 
                     WS_BORDER
     CONTROL         "Cursor position:\nSample value at cursor:\n\nMax negative peak position:\nMax negative peak value:\n\nMax positive peak position:\nMax positive peak value:\n\nRMS power:\nAverage value (DC offset):\nZero crossings:",
-                    IDC_STATIC,"Static",SS_LEFTNOWORDWRAP | WS_GROUP,8,8,102,
-                    114
+                    IDC_STATIC,"Static",SS_LEFTNOWORDWRAP | WS_GROUP,8,37,
+                    102,105
+    LTEXT           "File:",IDC_STATIC_FILE_NAME,7,7,219,28
 END
 
 IDD_DIALOG_OPEN_TEMPLATE_V5 DIALOG DISCARDABLE  0, 0, 372, 136
@@ -1737,6 +1740,35 @@ BEGIN
                     WS_VSCROLL | WS_TABSTOP
 END
 
+IDD_DIALOG_SIMPLE_EQUALIZER DIALOG DISCARDABLE  0, 0, 195, 212
+STYLE WS_POPUP | WS_CAPTION | WS_SYSMENU | WS_THICKFRAME
+CAPTION "Equalizer"
+FONT 8, "MS Sans Serif"
+BEGIN
+    DEFPUSHBUTTON   "OK",IDOK,13,191,50,14
+    PUSHBUTTON      "Cancel",IDCANCEL,73,191,50,14
+    EDITTEXT        IDC_EDIT1,129,86,21,14,ES_AUTOHSCROLL
+    CTEXT           "dB",IDC_STATIC,156,88,14,8
+    LTEXT           "Selection:\nChannels:",IDC_STATIC_SELECTION,7,136,179,
+                    25
+    CONTROL         "Save &Undo",IDC_CHECK_UNDO,"Button",BS_AUTOCHECKBOX | 
+                    WS_TABSTOP,7,166,50,10
+    CONTROL         "Simple",IDC_RADIO_EQUALIZER_TYPE,"Button",
+                    BS_AUTORADIOBUTTON | WS_GROUP | WS_TABSTOP,7,121,39,10
+    CONTROL         "Multiband:",IDC_RADIO2,"Button",BS_AUTORADIOBUTTON,54,
+                    121,47,10
+    LTEXT           "",IDC_STATIC_RESPONSE_TEMPLATE,7,7,181,77
+    EDITTEXT        IDC_EDIT_BANDS,107,119,23,14,ES_AUTOHSCROLL | WS_GROUP
+    LTEXT           "bands",IDC_STATIC,134,122,27,8
+    CONTROL         "Spin1",IDC_SPIN_BANDS,"msctls_updown32",UDS_SETBUDDYINT | 
+                    UDS_ALIGNRIGHT | UDS_AUTOBUDDY | UDS_ARROWKEYS,123,119,
+                    10,14
+    LTEXT           "Amplification in the selected band:",IDC_STATIC,7,88,
+                    115,8
+    PUSHBUTTON      "&Selection...",IDC_BUTTON_SELECTION,117,163,50,14
+    PUSHBUTTON      "&Help",IDHELP,133,191,50,14
+END
+
 
 #ifndef _MAC
 /////////////////////////////////////////////////////////////////////////////
@@ -1874,7 +1906,7 @@ BEGIN
         LEFTMARGIN, 7
         RIGHTMARGIN, 323
         TOPMARGIN, 7
-        BOTTOMMARGIN, 185
+        BOTTOMMARGIN, 161
     END
 
     IDD_DIALOG_NORMALIZE, DIALOG
@@ -1896,9 +1928,9 @@ BEGIN
     IDD_DIALOG_STATISTICS_MONO, DIALOG
     BEGIN
         LEFTMARGIN, 7
-        RIGHTMARGIN, 219
+        RIGHTMARGIN, 226
         TOPMARGIN, 7
-        BOTTOMMARGIN, 145
+        BOTTOMMARGIN, 161
     END
 
     IDD_DIALOG_OPEN_TEMPLATE_V5, DIALOG
@@ -2063,6 +2095,14 @@ BEGIN
         RIGHTMARGIN, 205
         TOPMARGIN, 7
         BOTTOMMARGIN, 146
+    END
+
+    IDD_DIALOG_SIMPLE_EQUALIZER, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 188
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 205
     END
 END
 #endif    // APSTUDIO_INVOKED
@@ -2455,6 +2495,10 @@ BEGIN
     IDS_SHOULD_RELOAD_COMPRESSED_FILE 
                             "File ""%s"" saved with channel or sample rate conversion.\nYou can reload the saved file, or close it."
     IDS_OPTIONS_CAPTION     "Preferences"
+    IDS_ALL_SAMPLE_DATA     "All Sample Data"
+    IDS_BEGIN_OF_SAMPLE     "Begin Of Sample"
+    IDS_CURRENT_SELECTION   "(current selection)"
+    IDS_END_OF_SAMPLE       "End Of Sample"
 END
 
 STRINGTABLE DISCARDABLE 
@@ -2652,6 +2696,14 @@ BEGIN
     ID_EDIT_CLEAR_UNDO      "Erase stored Undo for this sound file\nClear Undo"
     ID_EDIT_CLEAR_REDO      "Erase stored Redo for this sound file\nClear Redo"
     ID_VIEW_SHOW_CROSSHAIR  "Show crosshairs under cursor\nShow cross-hair"
+    ID_PROCESS_EQUALIZER    "Change bass/treble balance\nEqualizer"
+END
+
+STRINGTABLE DISCARDABLE 
+BEGIN
+    IDS_FROM_BEGIN_TO_CURSOR "From Begin To Cursor"
+    IDS_FROM_CURSOR_TO_END  "From Cursor To End"
+    IDS_CURSOR              "Cursor"
 END
 
 #endif    // English (U.S.) resources

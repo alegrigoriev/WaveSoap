@@ -240,6 +240,9 @@ BOOL CanExpandWaveFile(const CWaveFile & WaveFile, long NumOfSamplesToAdd);
 BOOL CanExpandWaveFileDlg(const CWaveFile & WaveFile, long NumOfSamplesToAdd);
 BOOL CanAllocateWaveFileSamples(const WAVEFORMATEX * pWf, LONGLONG NumOfSamples);
 BOOL CanAllocateWaveFileSamplesDlg(const WAVEFORMATEX * pWf, LONGLONG NumOfSamples);
+CString GetSelectionText(long Start, long End, int Chan,
+						int nChannels, BOOL bLockChannels,
+						long nSamplesPerSec, int TimeFormat);
 /////////////////////////////////////////////////////////////////////////////
 //{{AFX_INSERT_LOCATION}}
 // Microsoft Visual C++ will insert additional declarations immediately before the previous line.

@@ -2889,3 +2889,39 @@ void CWaveSoapFrontApp::OnToolsOptions()
 
 	}
 }
+
+CString GetSelectionText(long Start, long End, int Chan,
+						int nChannels, BOOL bLockChannels,
+						long nSamplesPerSec, int TimeFormat)
+{
+	CString s;
+	if (nChannels > 1)
+	{
+		LPCTSTR sChans = _T("Stereo");
+		if (! bLockChannels)
+		{
+			if (0 == Chan)
+			{
+				sChans = _T("Left");
+			}
+			else if (1 == Chan)
+			{
+				sChans = _T("Right");
+			}
+		}
+		s.Format("Selection : %s to %s (%s)\n"
+				"Channels: %s",
+				SampleToString(Start, nSamplesPerSec, TimeFormat),
+				SampleToString(End, nSamplesPerSec, TimeFormat),
+				SampleToString(End - Start, nSamplesPerSec, TimeFormat),
+				sChans);
+	}
+	else
+	{
+		s.Format("Selection : %s to %s (%s)",
+				SampleToString(Start, nSamplesPerSec, TimeFormat),
+				SampleToString(End, nSamplesPerSec, TimeFormat),
+				SampleToString(End - Start, nSamplesPerSec, TimeFormat));
+	}
+	return s;
+}

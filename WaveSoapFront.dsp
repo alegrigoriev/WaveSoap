@@ -127,6 +127,10 @@ SOURCE=.\DlgFileNew.cpp
 # End Source File
 # Begin Source File
 
+SOURCE=.\EqualizerDialog.cpp
+# End Source File
+# Begin Source File
+
 SOURCE=.\FftRulerView.cpp
 # End Source File
 # Begin Source File
@@ -354,6 +358,10 @@ SOURCE=.\CustomSampleRateDlg.h
 # Begin Source File
 
 SOURCE=.\DirectFile.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\EqualizerDialog.h
 # End Source File
 # Begin Source File
 

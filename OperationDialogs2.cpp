@@ -109,8 +109,13 @@ BOOL CInsertSilenceDialog::OnInitDialog()
 	}
 	CDialog::OnInitDialog();
 
-	m_eStart.AddPosition("Begin Of Sample", 0);
-	m_eStart.AddPosition("End Of Sample", m_FileLength);
+	m_eStart.AddPosition(IDS_BEGIN_OF_SAMPLE, 0);
+	if (m_CaretPosition != 0
+		&& m_CaretPosition != m_FileLength)
+	{
+		m_eStart.AddPosition(IDS_CURSOR, m_CaretPosition);
+	}
+	m_eStart.AddPosition(IDS_END_OF_SAMPLE, m_FileLength);
 	((CComboBox*) & m_eStart)->SetExtendedUI(TRUE);
 	// TODO: add markers
 

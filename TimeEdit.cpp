@@ -307,3 +307,10 @@ void CTimeEditCombo::AddPosition(LPCTSTR name, long time)
 	pCB->AddString(name);
 	m_Positions.push_back(time);
 }
+
+void CTimeEditCombo::AddPosition(UINT id, long time)
+{
+	CString s;
+	s.LoadString(id);
+	AddPosition(s, time);
+}

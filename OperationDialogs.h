@@ -178,6 +178,7 @@ public:
 	std::vector<Selection> m_Selections;
 
 	void AddSelection(LPCTSTR Name, long begin, long end);
+	void AddSelection(UINT id, long begin, long end);
 	int FindSelection(long begin, long end);
 // Overrides
 	// ClassWizard generated virtual function overrides
@@ -295,7 +296,7 @@ public:
 // Dialog Data
 	//{{AFX_DATA(CStatisticsDialog)
 	enum { IDD = IDD_DIALOG_STATISTICS };
-	// NOTE: the ClassWizard will add data members here
+	CStatic	m_FileName;
 	//}}AFX_DATA
 
 	CStatisticsContext * m_pContext;
@@ -303,6 +304,7 @@ public:
 	long m_CaretPosition;
 	int m_ValueAtCursorLeft;
 	int m_ValueAtCursorRight;
+	CString m_sFilename;
 // Overrides
 	// ClassWizard generated virtual function overrides
 	//{{AFX_VIRTUAL(CStatisticsDialog)

@@ -19,9 +19,18 @@ public:
 // Dialog Data
 	//{{AFX_DATA(CEqualizerDialog)
 	enum { IDD = IDD_DIALOG_SIMPLE_EQUALIZER };
-	// NOTE: the ClassWizard will add data members here
+	CStatic	m_SelectionStatic;
 	//}}AFX_DATA
-
+	MINMAXINFO m_mmxi;
+	BOOL	m_bLockChannels;
+	long m_Start;
+	long m_End;
+	long m_CaretPosition;
+	long m_FileLength;
+	int m_Chan;
+	int m_TimeFormat;
+	const WAVEFORMATEX * m_pWf;
+	CApplicationProfile m_Profile;
 
 // Overrides
 	// ClassWizard generated virtual function overrides
@@ -33,9 +42,17 @@ protected:
 // Implementation
 protected:
 
+	void UpdateSelectionStatic();
+	void OnMetricsChange();
 	// Generated message map functions
 	//{{AFX_MSG(CEqualizerDialog)
-	// NOTE: the ClassWizard will add member functions here
+	afx_msg BOOL OnEraseBkgnd(CDC* pDC);
+	afx_msg UINT OnNcHitTest(CPoint point);
+	afx_msg void OnSizing(UINT fwSide, LPRECT pRect);
+	afx_msg void OnSize(UINT nType, int cx, int cy);
+	afx_msg void OnGetMinMaxInfo(MINMAXINFO FAR* lpMMI);
+	virtual BOOL OnInitDialog();
+	afx_msg void OnButtonSelection();
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 };
