@@ -1402,48 +1402,39 @@ BEGIN
                     WS_DISABLED | NOT WS_GROUP
 END
 
-IDD_DIALOG_DECLICKING DIALOGEX 0, 0, 230, 272
+IDD_DIALOG_DECLICKING DIALOGEX 0, 0, 231, 174
 STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | 
     WS_SYSMENU
+EXSTYLE WS_EX_CONTEXTHELP
 CAPTION "Click Removal"
 FONT 8, "MS Shell Dlg", 0, 0, 0x0
 BEGIN
-    LTEXT           "Min click amplitude:",IDC_STATIC,31,9,76,8
+    LTEXT           "&Min click amplitude:",IDC_STATIC,31,9,76,8
     EDITTEXT        IDC_EDIT_MIN_CLICK_AMPLITUDE,110,7,40,14,ES_AUTOHSCROLL
-    LTEXT           "Click to noise ratio:",IDC_STATIC,31,28,77,8
+    LTEXT           "&Click to noise ratio:",IDC_STATIC,31,28,77,8
     EDITTEXT        IDC_EDIT_CLICK_TO_NOISE,110,25,40,14,ES_AUTOHSCROLL
-    LTEXT           "Max click length:",IDC_STATIC,31,47,75,8
+    LTEXT           "Ma&x click length:",IDC_STATIC,31,47,75,8
     EDITTEXT        IDC_EDIT_MAX_CLICK_LENGTH,110,43,40,14,ES_AUTOHSCROLL | 
                     ES_NUMBER
-    LTEXT           "Noise attack rate:",IDC_STATIC,31,64,76,8
+    LTEXT           "&Noise attack rate:",IDC_STATIC,31,64,76,8
     EDITTEXT        IDC_EDIT_ATTACK_RATE,110,61,40,14,ES_AUTOHSCROLL
-    LTEXT           "Click proximity factor:",IDC_STATIC,31,84,78,8
+    LTEXT           "Click &proximity factor:",IDC_STATIC,31,84,78,8
     EDITTEXT        IDC_EDIT_DECAY_RATE,110,80,40,14,ES_AUTOHSCROLL
-    CONTROL         "Import clicks from a file:",IDC_CHECK_IMPORT_CLICKS,
-                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,31,102,126,10
-    EDITTEXT        IDC_EDIT_CLICK_IMPORT_FILENAME,31,118,128,14,
-                    ES_AUTOHSCROLL
-    PUSHBUTTON      "Browse...",IDC_CLICK_IMPORT_BROWSE_BUTTON,181,118,42,14
-    CONTROL         "Log all found clicks to a file:",IDC_CHECK_LOG_CLICKS,
-                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,31,138,128,10
-    EDITTEXT        IDC_EDIT_CLICK_LOG_FILENAME,31,153,128,14,ES_AUTOHSCROLL
-    PUSHBUTTON      "Browse...",IDC_CLICK_LOG_BROWSE_BUTTON,181,153,42,14
-    CONTROL         "Log clicks only, don't change the wave",
-                    IDC_CHECK_LOG_CLICKS_ONLY,"Button",BS_AUTOCHECKBOX | 
-                    WS_TABSTOP,31,175,167,10
-    LTEXT           "Selection:\nChannels:",IDC_STATIC_SELECTION,7,212,216,
-                    17
+    LTEXT           "Selection:\nChannels:",IDC_STATIC_SELECTION,7,116,217,
+                    18
     CONTROL         "Save &Undo",IDC_CHECK_UNDO,"Button",BS_AUTOCHECKBOX | 
-                    WS_TABSTOP,7,233,50,10
-    PUSHBUTTON      "Set defaults",IDC_BUTTON_RESET_DEFAULT,173,7,50,14
-    PUSHBUTTON      "Revert",IDC_BUTTON_REVERT_INITIAL,173,25,50,14
-    PUSHBUTTON      "Save...",IDC_BUTTON_SAVE,173,43,50,14
-    PUSHBUTTON      "Load...",IDC_BUTTON_LOAD,173,61,50,14
-    PUSHBUTTON      "More settings...",IDC_BUTTON_MORE_SETTINGS,167,80,56,14
-    PUSHBUTTON      "&Selection...",IDC_BUTTON_SELECTION,8,251,50,14
-    DEFPUSHBUTTON   "OK",IDOK,63,251,50,14
-    PUSHBUTTON      "Cancel",IDCANCEL,118,251,50,14
-    PUSHBUTTON      "&Help",IDHELP,173,251,50,14
+                    WS_TABSTOP,7,138,50,10
+    PUSHBUTTON      "Set &defaults",IDC_BUTTON_RESET_DEFAULT,174,7,50,14
+    PUSHBUTTON      "&Revert",IDC_BUTTON_REVERT_INITIAL,174,25,50,14
+    PUSHBUTTON      "Sa&ve...",IDC_BUTTON_SAVE,174,43,50,14
+    PUSHBUTTON      "&Load...",IDC_BUTTON_LOAD,174,61,50,14
+    PUSHBUTTON      "More se&ttings...",IDC_BUTTON_MORE_SETTINGS,161,80,63,
+                    14
+    PUSHBUTTON      "&Selection...",IDC_BUTTON_SELECTION,8,153,50,14
+    DEFPUSHBUTTON   "OK",IDOK,63,153,50,14
+    PUSHBUTTON      "Cancel",IDCANCEL,118,153,50,14
+    PUSHBUTTON      "&Help",IDHELP,174,153,50,14
+    LTEXT           "",IDC_STATIC_MORE_IN_EFFECT,7,101,217,11
 END
 
 IDD_DIALOG_NOISE_REDUCTION DIALOGEX 0, 0, 231, 195
@@ -2563,6 +2554,33 @@ BEGIN
     PUSHBUTTON      "Help",IDHELP,136,43,50,14
 END
 
+IDD_DIALOG_MORE_DECLICK DIALOGEX 0, 0, 231, 138
+STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | 
+    WS_SYSMENU
+EXSTYLE WS_EX_CONTEXTHELP
+CAPTION "More click removal settings..."
+FONT 8, "MS Shell Dlg", 400, 0, 0x1
+BEGIN
+    DEFPUSHBUTTON   "OK",IDOK,58,117,50,14
+    PUSHBUTTON      "Cancel",IDCANCEL,123,117,50,14
+    CONTROL         "&Import click positions from a file:",
+                    IDC_CHECK_IMPORT_CLICKS,"Button",BS_AUTOCHECKBOX | 
+                    WS_TABSTOP,7,8,137,10
+    EDITTEXT        IDC_EDIT_CLICK_IMPORT_FILENAME,7,24,159,14,
+                    ES_AUTOHSCROLL
+    PUSHBUTTON      "...",IDC_CLICK_IMPORT_BROWSE_BUTTON,172,24,27,14
+    CONTROL         "D&on't autodetect clicks",
+                    IDC_CHECK_IMPORTED_CLICKS_ONLY,"Button",BS_AUTOCHECKBOX | 
+                    WS_TABSTOP,7,42,159,10
+    CONTROL         "Lo&g all found clicks to a file:",IDC_CHECK_LOG_CLICKS,
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,7,58,128,10
+    EDITTEXT        IDC_EDIT_CLICK_LOG_FILENAME,7,73,159,14,ES_AUTOHSCROLL
+    PUSHBUTTON      "...",IDC_CLICK_LOG_BROWSE_BUTTON,172,73,27,14
+    CONTROL         "Log clicks only, don't change the &wave",
+                    IDC_CHECK_LOG_CLICKS_ONLY,"Button",BS_AUTOCHECKBOX | 
+                    WS_TABSTOP,7,95,167,10
+END
+
 
 /////////////////////////////////////////////////////////////////////////////
 //
@@ -2750,9 +2768,9 @@ BEGIN
     IDD_DIALOG_DECLICKING, DIALOG
     BEGIN
         LEFTMARGIN, 7
-        RIGHTMARGIN, 223
+        RIGHTMARGIN, 224
         TOPMARGIN, 7
-        BOTTOMMARGIN, 265
+        BOTTOMMARGIN, 167
     END
 
     IDD_DIALOG_NOISE_REDUCTION, DIALOG
@@ -3030,6 +3048,14 @@ BEGIN
         RIGHTMARGIN, 186
         TOPMARGIN, 7
         BOTTOMMARGIN, 88
+    END
+
+    IDD_DIALOG_MORE_DECLICK, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 224
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 131
     END
 END
 #endif    // APSTUDIO_INVOKED
@@ -4020,6 +4046,8 @@ BEGIN
     IDS_CHANNELS_SHIFT_WARNING_PROMPT 
                             "One channel will get moved from another, continue?"
     IDS_SEGMENT_NAME_FROM_MARKERS "From '%s' to '%s'"
+    IDS_MORE_CLICK_SETTINGS_IN_EFFECT 
+                            "Click logging settings are in effect, click [More settings] button"
 END
 
 #endif    // English (U.S.) resources
