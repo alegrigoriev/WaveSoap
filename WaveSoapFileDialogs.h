@@ -101,12 +101,14 @@ class CWaveSoapFileSaveDialog : public CFileDialogWithHistory
 	typedef CFileDialogWithHistory BaseClass;
 public:
 	CWaveSoapFileSaveDialog(BOOL bOpenFileDialog, // TRUE for FileOpen, FALSE for FileSaveAs
+							CWaveFormat const & Wf,
+							CWaveSoapFrontDoc * pDoc,
 							LPCTSTR lpszDefExt = NULL,
 							LPCTSTR lpszFileName = NULL,
 							DWORD dwFlags = OFN_HIDEREADONLY | OFN_OVERWRITEPROMPT,
 							LPCTSTR lpszFilter = NULL,
 							CWnd* pParentWnd = NULL);
-	~CWaveSoapFileSaveDialog() {}
+	//~CWaveSoapFileSaveDialog() {}
 
 	CWaveFile m_WaveFile;
 	CComboBox m_FormatTagCombo;
@@ -120,6 +122,7 @@ public:
 	unsigned m_SelectedMp3Encoder;
 	int m_SelectedMp3Bitrate;
 	int m_SelectedWmaBitrate;
+	int m_SelectedBitrate;
 
 	BOOL m_bCompatibleFormatsOnly;
 
@@ -152,6 +155,7 @@ public:
 
 	void FillWmaFormatCombo();
 	void FillMp3EncoderCombo();
+	void FillRawFormatsCombo();
 	void FillLameEncoderFormats();
 
 	WAVEFORMATEX * GetWaveFormat();

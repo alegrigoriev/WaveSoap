@@ -563,7 +563,10 @@ BOOL CWaveSoapFrontDoc::DoSave(LPCTSTR lpszPathName, BOOL bReplace)
 		}
 
 
-		CWaveSoapFileSaveDialog dlg(FALSE, _T("wav"), newName,
+		CWaveSoapFileSaveDialog dlg(FALSE,
+									Wf, this,
+									_T("wav"),
+									newName,
 									OFN_HIDEREADONLY
 									| OFN_PATHMUSTEXIST
 									| OFN_EXPLORER
@@ -579,9 +582,6 @@ BOOL CWaveSoapFrontDoc::DoSave(LPCTSTR lpszPathName, BOOL bReplace)
 			DlgTitle.LoadString(IDS_SAVE_COPY_AS_TITLE);
 			dlg.m_ofn.lpstrTitle = DlgTitle;
 		}
-
-		dlg.m_Wf = Wf;
-		dlg.m_pDocument = this;
 
 		CString strFilter;
 		CString strDefault;
