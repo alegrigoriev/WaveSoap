@@ -129,6 +129,12 @@ public:
 	int m_ResampleSamplingRate;
 	double m_ResampleTempoPercents;
 
+	// Low Frequency suppression params:
+	BOOL m_bSuppressDifferential;
+	BOOL m_bSuppressLowFrequency;
+	double m_dSuppressDifferentialRange;
+	double m_dSuppressLowFreqRange;
+
 	BOOL m_bUseCountrySpecificNumberAndTime;
 	TCHAR m_TimeSeparator;
 	TCHAR m_DecimalPoint;
