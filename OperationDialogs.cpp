@@ -808,12 +808,17 @@ END_MESSAGE_MAP()
 // CDcOffsetDialog dialog
 
 
-CDcOffsetDialog::CDcOffsetDialog(CWnd* pParent /*=NULL*/)
-	: BaseClass(CDcOffsetDialog::IDD, pParent)
+CDcOffsetDialog::CDcOffsetDialog(SAMPLE_INDEX begin, SAMPLE_INDEX end, SAMPLE_INDEX caret,
+								CHANNEL_MASK Channels,
+								CWaveFile & File,
+								BOOL ChannelsLocked, BOOL UndoEnabled,
+								int TimeFormat,
+								CWnd* pParent /*=NULL*/)
+	: BaseClass(begin, end, caret, Channels, File, TimeFormat,
+				IDD, pParent)
 {
 	//{{AFX_DATA_INIT(CDcOffsetDialog)
 	m_b5SecondsDC = FALSE;
-	m_bUndo = FALSE;
 	m_nDcOffset = 0;
 	m_DcSelectMode = -1;
 	//}}AFX_DATA_INIT
@@ -846,21 +851,12 @@ void CDcOffsetDialog::DoDataExchange(CDataExchange* pDX)
 	}
 	else
 	{
-		UpdateSelectionStatic();
+		NeedUpdateControls();
 	}
-}
-
-void CDcOffsetDialog::UpdateSelectionStatic()
-{
-	GetDlgItem(IDC_STATIC_SELECTION)->SetWindowText(
-													GetSelectionText(m_Start, m_End, m_Chan,
-														m_pWf->nChannels, FALSE,
-														m_pWf->nSamplesPerSec, m_TimeFormat));
 }
 
 BEGIN_MESSAGE_MAP(CDcOffsetDialog, BaseClass)
 	//{{AFX_MSG_MAP(CDcOffsetDialog)
-	ON_BN_CLICKED(IDC_BUTTON_SELECTION, OnButtonSelection)
 	ON_BN_CLICKED(IDC_RADIO_DC_SELECT, OnRadioDcSelect)
 	ON_BN_CLICKED(IDC_RADIO2, OnRadioAdjustSelectEdit)
 	//}}AFX_MSG_MAP
@@ -868,21 +864,6 @@ END_MESSAGE_MAP()
 
 /////////////////////////////////////////////////////////////////////////////
 // CDcOffsetDialog message handlers
-
-void CDcOffsetDialog::OnButtonSelection()
-{
-	CSelectionDialog dlg(m_Start, m_End, m_CaretPosition, m_Chan + 1, m_FileLength, m_pWf, m_TimeFormat);
-
-	if (IDOK != dlg.DoModal())
-	{
-		return;
-	}
-	m_Start = dlg.GetStart();
-	m_End = dlg.GetEnd();
-	m_Chan = dlg.GetChannel() - 1;
-
-	UpdateSelectionStatic();
-}
 
 void CDcOffsetDialog::OnRadioDcSelect()
 {
