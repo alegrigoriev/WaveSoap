@@ -39,6 +39,7 @@ static UINT indicators[] =
 	ID_SEPARATOR,           // status line indicator
 	ID_INDICATOR_DUMMY,
 	ID_INDICATOR_DUMMY,
+	ID_INDICATOR_DUMMY,
 };
 
 CChildFrame::CChildFrame()
@@ -456,33 +457,41 @@ void CWaveMDIChildClient::RecalcLayout()
 	CWnd * pWaveView = GetDlgItem(WaveViewID);
 	if (pWaveView)
 	{
-		if (m_bShowWaveform)
-		{
-			pWaveView->ShowWindow(SW_SHOW);
-		}
-		else
-		{
-			pWaveView->ShowWindow(SW_HIDE);
-		}
 		DeferClientPos(&layout, pWaveView, r, FALSE);
 	}
 
 	CWnd * pFftView = GetDlgItem(FftViewID);
 	if (pFftView)
 	{
-		if (m_bShowFft)
-		{
-			pFftView->ShowWindow(SW_SHOW);
-		}
-		else
-		{
-			pFftView->ShowWindow(SW_HIDE);
-		}
 		DeferClientPos(&layout, pFftView, r, FALSE);
 	}
 	// move and resize all the windows at once!
 	if (layout.hDWP == NULL || !::EndDeferWindowPos(layout.hDWP))
 		TRACE0("Warning: DeferWindowPos failed - low system resources.\n");
+
+	if (NULL != pFftView
+		&& NULL != pWaveView)
+	{
+		if (m_bShowWaveform)
+		{
+			pFftView->ShowWindow(SW_HIDE);
+		}
+		else
+		{
+			pWaveView->ShowWindow(SW_HIDE);
+		}
+
+		if (m_bShowFft)
+		{
+			pFftView->ShowWindow(SW_SHOW);
+			GetParentFrame()->SetActiveView(DYNAMIC_DOWNCAST(CView, pFftView));
+		}
+		else
+		{
+			pWaveView->ShowWindow(SW_SHOW);
+			GetParentFrame()->SetActiveView(DYNAMIC_DOWNCAST(CView, pWaveView));
+		}
+	}
 }
 
 void CChildFrame::OnUpdateFrameTitle(BOOL bAddToTitle)
@@ -619,6 +628,13 @@ BOOL CWaveMDIChildClient::OnCmdMsg(UINT nID, int nCode, void* pExtra, AFX_CMDHAN
 		return TRUE;
 	}
 
+	pView = GetDlgItem(SpectrumSectionViewID);
+	if (pView != NULL && pView != pActiveView
+		&& pView->OnCmdMsg(nID, nCode, pExtra, pHandlerInfo))
+	{
+		return TRUE;
+	}
+
 	return FALSE;
 }
 
@@ -645,6 +661,7 @@ int CWaveMDIChildClient::OnCreate(LPCREATESTRUCT lpCreateStruct)
 									r, OutlineViewID, pContext, TRUE);    // visible
 
 	wStatic.Create("STATIC", "", WS_BORDER | WS_VISIBLE | WS_CHILD | SS_CENTER, r, this, ScaleStaticID, NULL);
+	wStatic.SetFont(CFont::FromHandle((HFONT)GetStockObject(ANSI_VAR_FONT)));
 	wStatic1.Create("STATIC", "", WS_BORDER | WS_VISIBLE | WS_CHILD | SS_CENTER, r, this, Static1ID, NULL);
 
 	// create scrollbar
@@ -765,8 +782,9 @@ int CChildFrame::OnCreate(LPCREATESTRUCT lpCreateStruct)
 	// to avoid setting width to the string length,
 	// the status bar is created with dummy IDs
 	m_wndStatusBar.GetPaneInfo(1, id, style, width);
-	m_wndStatusBar.SetPaneInfo(1, ID_INDICATOR_CURRENT_POS, style, width);
-	m_wndStatusBar.SetPaneInfo(2, ID_INDICATOR_SELECTION_LENGTH, style, width);
+	m_wndStatusBar.SetPaneInfo(1, ID_INDICATOR_SCALE, style, width);
+	m_wndStatusBar.SetPaneInfo(2, ID_INDICATOR_CURRENT_POS, style, width);
+	m_wndStatusBar.SetPaneInfo(3, ID_INDICATOR_SELECTION_LENGTH, style, width);
 	m_wndStatusBar.EnableToolTips();
 
 	return 0;
