@@ -24,6 +24,7 @@ enum {
 	OperationContextFinished = 0x10,    // the operation finished
 	OperationContextSynchronous = 0x20,    // need to run in a main thread
 	OperationContextInitialized = 0x40,
+	OperationContextCommitFile = 0x80,
 	OperationContextNonCritical = 0x100,
 
 	OperationContextDontAdjustPriority = 0x400,
@@ -401,6 +402,7 @@ public:
 
 protected:
 	virtual void DeInit();
+	virtual void PostRetire();
 
 	virtual BOOL OperationProc();
 };
