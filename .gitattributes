@@ -2,18 +2,16 @@
 *.c     text
 *.h     text
 *.cpp   text
-*.CPP   text
 *.hpp   text
+*.hh?   text
 *.xml   text
-*.dsp   text
-*.DSP   text
-*.dsw   text
-*.vcproj* text
-*.vcxproj* text
+*.rc    text working-tree-encoding=WINDOWS-1252
+*.dsp   text eol=crlf
+*.dsw   text eol=crlf
+*.vcproj* text eol=crlf
+*.vcxproj* text eol=crlf
 *.exe   binary
-*.EXE   binary
 *.zip   binary
-*.ZIP   binary
 *.lib   binary
 *.doc   binary
 *.docx  binary
