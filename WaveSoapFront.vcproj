@@ -284,6 +284,9 @@
 				RelativePath=".\EqualizerDialog.cpp">
 			</File>
 			<File
+				RelativePath=".\FadeInOutDialog.cpp">
+			</File>
+			<File
 				RelativePath=".\FftRulerView.cpp">
 			</File>
 			<File
@@ -496,6 +499,9 @@
 			</File>
 			<File
 				RelativePath=".\EqualizerDialog.h">
+			</File>
+			<File
+				RelativePath=".\FadeInOutDialog.h">
 			</File>
 			<File
 				RelativePath=".\fft.h">
