@@ -34,6 +34,8 @@ public:
 	}
 	virtual ~COperationContext() {}
 	virtual BOOL OperationProc() = 0;
+	virtual BOOL Init() { return TRUE; }
+	virtual BOOL DeInit() { return TRUE; }
 	virtual CString GetStatusString() = 0;
 	COperationContext * pNext;
 	COperationContext * pPrev;
@@ -49,6 +51,8 @@ enum {
 	OperationContextStop = 8,  // the procedure is canceling
 	OperationContextFinished = 0x10,    // the operation finished
 	OperationContextInterventionRequired = 0x20,    // need to run a modal dialog
+	OperationContextInitialized = 0x40,
+	OperationContextCreatingUndo = 0x80,
 };
 
 class CWaveSoapFrontApp : public CWinApp
