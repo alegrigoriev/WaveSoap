@@ -735,6 +735,11 @@ protected:
 	double m_dClickToNoise;
 	double m_dEnvelopDecayRate;
 
+	CButton m_LogClicksCheck;
+	CButton m_ImportClicksCheck;
+	CEdit m_eLogFilename;
+	CEdit m_eImportFilename;
+
 // Overrides
 	// ClassWizard generated virtual function overrides
 	//{{AFX_VIRTUAL(CDeclickDialog)
@@ -749,10 +754,12 @@ protected:
 	//{{AFX_MSG(CDeclickDialog)
 	afx_msg void OnCheckLogClicks();
 	afx_msg void OnCheckImportClicks();
-	virtual BOOL OnInitDialog();
 	afx_msg void OnClickLogBrowseButton();
 	afx_msg void OnClickImportBrowseButton();
 	afx_msg void OnButtonMoreSettings();
+
+	afx_msg void OnUpdateLogClicks(CCmdUI * pCmdUI);
+	afx_msg void OnUpdateImportClicks(CCmdUI * pCmdUI);
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 	void LoadValuesFromRegistry();
@@ -760,18 +767,39 @@ protected:
 /////////////////////////////////////////////////////////////////////////////
 // CNoiseReductionDialog dialog
 
-class CNoiseReductionDialog : public CDialog
+class CNoiseReductionDialog : public CDialogWithSelection
 {
-	typedef CDialog BaseClass;
+	typedef CDialogWithSelection BaseClass;
 // Construction
 public:
-	CNoiseReductionDialog(CWnd* pParent = NULL);   // standard constructor
-	~CNoiseReductionDialog();
+	CNoiseReductionDialog(SAMPLE_INDEX begin, SAMPLE_INDEX end, SAMPLE_INDEX caret,
+						CHANNEL_MASK Channels,
+						CWaveFile & File,
+						BOOL ChannelsLocked, BOOL UndoEnabled,
+						int TimeFormat,
+						CWnd* pParent = NULL);   // standard constructor
 
+	double GetNoiseThresholdLow() const
+	{
+		return m_dNoiseThresholdLow;
+	}
+
+	double GetNoiseThresholdHigh() const
+	{
+		return m_dNoiseThresholdHigh;
+	}
+
+	double GetLowerFrequency() const
+	{
+		return m_dLowerFrequency;
+	}
+	void SetNoiseReductionData(CNoiseReduction * pNr);
+
+protected:
 // Dialog Data
+	CApplicationProfile Profile;
 	//{{AFX_DATA(CNoiseReductionDialog)
 	enum { IDD = IDD_DIALOG_NOISE_REDUCTION };
-	CStatic	m_SelectionStatic;
 	CNumEdit	m_eToneOverNoisePreference;
 	CNumEdit	m_EditAggressivness;
 	CNumEdit	m_eNoiseReduction;
@@ -780,7 +808,6 @@ public:
 	CNumEdit	m_eNoiseThresholdLow;
 	CNumEdit	m_eLowerFrequency;
 	int		m_nFftOrderExp;
-	BOOL	m_bUndo;
 	//}}AFX_DATA
 
 	double	m_dTransientThreshold;
@@ -799,18 +826,7 @@ public:
 	int m_FftOrder;
 
 	void LoadValuesFromRegistry();
-	void StoreValuesToRegistry();
-	void SetNoiseReductionData(CNoiseReduction * pNr);
-	void UpdateSelectionStatic();
 
-	BOOL	m_bLockChannels;
-	long m_Start;
-	long m_End;
-	long m_CaretPosition;
-	long m_FileLength;
-	int m_Chan;
-	int m_TimeFormat;
-	const WAVEFORMATEX * m_pWf;
 // Overrides
 	// ClassWizard generated virtual function overrides
 	//{{AFX_VIRTUAL(CNoiseReductionDialog)
@@ -824,9 +840,6 @@ protected:
 	// Generated message map functions
 	//{{AFX_MSG(CNoiseReductionDialog)
 	afx_msg void OnButtonMore();
-	afx_msg void OnButtonSelection();
-	virtual BOOL OnInitDialog();
-	virtual void OnOK();
 	afx_msg void OnButtonSetThreshold();
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()

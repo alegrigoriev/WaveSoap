@@ -1897,6 +1897,8 @@ CDeclickDialog::CDeclickDialog(SAMPLE_INDEX begin, SAMPLE_INDEX end, SAMPLE_INDE
 	m_dAttackRate = .06;
 	m_dClickToNoise = 5.;
 	m_dEnvelopDecayRate = 0.02;
+
+	LoadValuesFromRegistry();
 }
 
 void CDeclickDialog::DoDataExchange(CDataExchange* pDX)
@@ -1906,6 +1908,13 @@ void CDeclickDialog::DoDataExchange(CDataExchange* pDX)
 	DDX_Control(pDX, IDC_EDIT_DECAY_RATE, m_EnvelopDecayRate);
 	DDX_Control(pDX, IDC_EDIT_CLICK_TO_NOISE, m_ClickToNoise);
 	DDX_Control(pDX, IDC_EDIT_ATTACK_RATE, m_AttackRate);
+
+	DDX_Control(pDX, IDC_CHECK_LOG_CLICKS, m_LogClicksCheck);
+	DDX_Control(pDX, IDC_CHECK_IMPORT_CLICKS, m_ImportClicksCheck);
+
+	DDX_Control(pDX, IDC_EDIT_CLICK_LOG_FILENAME, m_eLogFilename);
+	DDX_Control(pDX, IDC_EDIT_CLICK_IMPORT_FILENAME, m_eImportFilename);
+
 	DDX_Text(pDX, IDC_EDIT_CLICK_LOG_FILENAME, m_ClickLogFilename);
 	DDX_Text(pDX, IDC_EDIT_MAX_CLICK_LENGTH, m_MaxClickLength);
 	DDV_MinMaxInt(pDX, m_MaxClickLength, 6, 64);
@@ -1938,6 +1947,13 @@ BEGIN_MESSAGE_MAP(CDeclickDialog, BaseClass)
 	ON_BN_CLICKED(IDC_CLICK_LOG_BROWSE_BUTTON, OnClickLogBrowseButton)
 	ON_BN_CLICKED(IDC_CLICK_IMPORT_BROWSE_BUTTON, OnClickImportBrowseButton)
 	ON_BN_CLICKED(IDC_BUTTON_MORE_SETTINGS, OnButtonMoreSettings)
+
+	ON_UPDATE_COMMAND_UI(IDC_EDIT_CLICK_LOG_FILENAME, OnUpdateLogClicks)
+	ON_UPDATE_COMMAND_UI(IDC_CLICK_LOG_BROWSE_BUTTON, OnUpdateLogClicks)
+	ON_UPDATE_COMMAND_UI(IDC_CHECK_LOG_CLICKS_ONLY, OnUpdateLogClicks)
+
+	ON_UPDATE_COMMAND_UI(IDC_EDIT_CLICK_IMPORT_FILENAME, OnUpdateImportClicks)
+	ON_UPDATE_COMMAND_UI(IDC_CLICK_IMPORT_BROWSE_BUTTON, OnUpdateImportClicks)
 	//}}AFX_MSG_MAP
 END_MESSAGE_MAP()
 
@@ -1945,24 +1961,19 @@ END_MESSAGE_MAP()
 // CDeclickDialog message handlers
 void CDeclickDialog::OnCheckLogClicks()
 {
-	BOOL Enable = IsDlgButtonChecked(IDC_CHECK_LOG_CLICKS);
-	GetDlgItem(IDC_EDIT_CLICK_LOG_FILENAME)->EnableWindow(Enable);
-	GetDlgItem(IDC_CLICK_LOG_BROWSE_BUTTON)->EnableWindow(Enable);
-	GetDlgItem(IDC_CHECK_LOG_CLICKS_ONLY)->EnableWindow(Enable);
+	NeedUpdateControls();
 }
 
 void CDeclickDialog::OnCheckImportClicks()
 {
-	BOOL Enable = IsDlgButtonChecked(IDC_CHECK_IMPORT_CLICKS);
-	GetDlgItem(IDC_EDIT_CLICK_IMPORT_FILENAME)->EnableWindow(Enable);
-	GetDlgItem(IDC_CLICK_IMPORT_BROWSE_BUTTON)->EnableWindow(Enable);
+	NeedUpdateControls();
 }
 
 void CDeclickDialog::OnClickLogBrowseButton()
 {
 	CString filter(_T("Text files (*.txt)|*.txt|All Files (*.*)|*.*||"));
 
-	GetDlgItem(IDC_EDIT_CLICK_LOG_FILENAME)->GetWindowText(m_ClickLogFilename);
+	m_eLogFilename.GetWindowText(m_ClickLogFilename);
 
 	CFileDialog fdlg(TRUE, _T("txt"), m_ClickLogFilename,
 					OFN_EXPLORER
@@ -1974,7 +1985,7 @@ void CDeclickDialog::OnClickLogBrowseButton()
 	if (fdlg.DoModal() == IDOK)
 	{
 		m_ClickLogFilename = fdlg.GetPathName();
-		GetDlgItem(IDC_EDIT_CLICK_LOG_FILENAME)->SetWindowText(m_ClickLogFilename);
+		m_eLogFilename.SetWindowText(m_ClickLogFilename);
 	}
 
 }
@@ -1983,7 +1994,7 @@ void CDeclickDialog::OnClickImportBrowseButton()
 {
 	CString filter(_T("Text files (*.txt)|*.txt|All Files (*.*)|*.*||"));
 
-	GetDlgItem(IDC_EDIT_CLICK_IMPORT_FILENAME)->GetWindowText(m_ClickImportFilename);
+	m_eImportFilename.GetWindowText(m_ClickImportFilename);
 
 	CFileDialog fdlg(TRUE, _T("txt"), m_ClickImportFilename,
 					OFN_EXPLORER
@@ -1995,10 +2006,10 @@ void CDeclickDialog::OnClickImportBrowseButton()
 	if (fdlg.DoModal() == IDOK)
 	{
 		m_ClickImportFilename = fdlg.GetPathName();
-		GetDlgItem(IDC_EDIT_CLICK_IMPORT_FILENAME)->SetWindowText(m_ClickImportFilename);
+		m_eImportFilename.SetWindowText(m_ClickImportFilename);
 	}
-
 }
+
 void CDeclickDialog::OnButtonMoreSettings()
 {
 	// TODO: Add your control notification handler code here
@@ -2025,20 +2036,14 @@ void CDeclickDialog::LoadValuesFromRegistry()
 
 }
 
-BOOL CDeclickDialog::OnInitDialog()
+void CDeclickDialog::OnUpdateLogClicks(CCmdUI * pCmdUI)
 {
-	LoadValuesFromRegistry();
-	BaseClass::OnInitDialog();
+	pCmdUI->Enable(m_LogClicksCheck.GetCheck());
+}
 
-	GetDlgItem(IDC_EDIT_CLICK_LOG_FILENAME)->EnableWindow(m_bLogClicks);
-	GetDlgItem(IDC_CLICK_LOG_BROWSE_BUTTON)->EnableWindow(m_bLogClicks);
-	GetDlgItem(IDC_CHECK_LOG_CLICKS_ONLY)->EnableWindow(m_bLogClicks);
-
-	GetDlgItem(IDC_EDIT_CLICK_IMPORT_FILENAME)->EnableWindow(m_bImportClicks);
-	GetDlgItem(IDC_CLICK_IMPORT_BROWSE_BUTTON)->EnableWindow(m_bImportClicks);
-
-	return TRUE;  // return TRUE unless you set the focus to a control
-	// EXCEPTION: OCX Property Pages should return FALSE
+void CDeclickDialog::OnUpdateImportClicks(CCmdUI * pCmdUI)
+{
+	pCmdUI->Enable(m_ImportClicksCheck.GetCheck());
 }
 
 void CDeclickDialog::SetDeclickData(CClickRemoval * pCr)
@@ -2048,6 +2053,7 @@ void CDeclickDialog::SetDeclickData(CClickRemoval * pCr)
 	pCr->m_MeanPowerAttackRate = float(m_dAttackRate);
 	pCr->m_nMaxClickLength = m_MaxClickLength;
 	pCr->m_MinDeriv3Threshold = float(m_MinClickAmplitude * m_MinClickAmplitude);
+
 	if (m_bImportClicks)
 	{
 		pCr->SetClickSourceFile(m_ClickImportFilename);
@@ -2062,12 +2068,19 @@ void CDeclickDialog::SetDeclickData(CClickRemoval * pCr)
 // CNoiseReductionDialog dialog
 
 
-CNoiseReductionDialog::CNoiseReductionDialog(CWnd* pParent /*=NULL*/)
-	: BaseClass(CNoiseReductionDialog::IDD, pParent)
+CNoiseReductionDialog::CNoiseReductionDialog(SAMPLE_INDEX begin, SAMPLE_INDEX end, SAMPLE_INDEX caret,
+											CHANNEL_MASK Channels,
+											CWaveFile & File,
+											BOOL ChannelsLocked, BOOL UndoEnabled,
+											int TimeFormat,
+											CWnd* pParent /*=NULL*/)
+	: BaseClass(begin, end, caret, Channels, File,
+				TimeFormat, IDD, pParent)
 {
+	m_bUndo = UndoEnabled;
+	m_bLockChannels = ChannelsLocked;
 	//{{AFX_DATA_INIT(CNoiseReductionDialog)
 	m_nFftOrderExp = -1;
-	m_bUndo = -1;
 	//}}AFX_DATA_INIT
 	m_dTransientThreshold = 2;
 	m_dNoiseReduction = 10.;
@@ -2078,19 +2091,14 @@ CNoiseReductionDialog::CNoiseReductionDialog(CWnd* pParent /*=NULL*/)
 	m_FftOrder = 128;
 	m_dNoiseReductionAggressivness = 1.;
 	m_NearMaskingCoeff = 1.;
-}
 
-CNoiseReductionDialog::~CNoiseReductionDialog()
-{
-	CThisApp * pApp = GetApp();
-	pApp->Profile.RemoveSection(_T("NoiseReduction"));
+	LoadValuesFromRegistry();
 }
 
 void CNoiseReductionDialog::DoDataExchange(CDataExchange* pDX)
 {
 	BaseClass::DoDataExchange(pDX);
 	//{{AFX_DATA_MAP(CNoiseReductionDialog)
-	DDX_Control(pDX, IDC_STATIC_SELECTION, m_SelectionStatic);
 	DDX_Control(pDX, IDC_EDIT_TONE_PREFERENCE, m_eToneOverNoisePreference);
 	DDX_Control(pDX, IDC_EDIT_AGGRESSIVNESS, m_EditAggressivness);
 	DDX_Control(pDX, IDC_EDIT_NOISE_REDUCTION, m_eNoiseReduction);
@@ -2120,13 +2128,18 @@ void CNoiseReductionDialog::DoDataExchange(CDataExchange* pDX)
 											_T("Tone over noise preference"), _T("dB"), 0., 20.);
 	m_eLowerFrequency.ExchangeData(pDX, m_dLowerFrequency,
 									_T("Frequency"), _T("Hz"), 100., 48000.);
+
+	if (pDX->m_bSaveAndValidate)
+	{
+		m_FftOrder = 256 << m_nFftOrderExp;
+		Profile.FlushSection(_T("NoiseReduction"));
+	}
 }
 
 
 BEGIN_MESSAGE_MAP(CNoiseReductionDialog, BaseClass)
 	//{{AFX_MSG_MAP(CNoiseReductionDialog)
 	ON_BN_CLICKED(IDC_BUTTON_MORE, OnButtonMore)
-	ON_BN_CLICKED(IDC_BUTTON_SELECTION, OnButtonSelection)
 	ON_BN_CLICKED(IDC_BUTTON_SET_THRESHOLD, OnButtonSetThreshold)
 	//}}AFX_MSG_MAP
 END_MESSAGE_MAP()
@@ -2138,10 +2151,9 @@ END_MESSAGE_MAP()
 // CNoiseReductionPage message handlers
 void CNoiseReductionDialog::LoadValuesFromRegistry()
 {
-	CThisApp * pApp = GetApp();
 	//m_bPhaseFilter = (FALSE != pApp->GetProfileInt(_T("NoiseReduction"), _T("PhaseFilter"), FALSE));
 
-	pApp->Profile.AddItem(_T("NoiseReduction"), _T("FftOrder"), m_FftOrder, 2048, 256, 16384);
+	Profile.AddItem(_T("NoiseReduction"), _T("FftOrder"), m_FftOrder, 2048, 256, 16384);
 
 	if (m_FftOrder >= 16384)
 	{
@@ -2172,27 +2184,21 @@ void CNoiseReductionDialog::LoadValuesFromRegistry()
 		m_nFftOrderExp = 0;
 	}
 
-	pApp->Profile.AddItem(_T("NoiseReduction"), _T("TransientThreshold"), m_dTransientThreshold, 1., 0.3, 2);
-	pApp->Profile.AddItem(_T("NoiseReduction"), _T("NoiseReduction"), m_dNoiseReduction, 10., 0., 100.);
-	pApp->Profile.AddItem(_T("NoiseReduction"), _T("NoiseCriterion"), m_dNoiseCriterion, 0.25, 0., 1.);
-	pApp->Profile.AddItem(_T("NoiseReduction"), _T("NoiseThresholdLow"), m_dNoiseThresholdLow, -70., -100., -10.);
-	pApp->Profile.AddItem(_T("NoiseReduction"), _T("NoiseThresholdHigh"), m_dNoiseThresholdHigh, -65., -100., -10.);
-	pApp->Profile.AddItem(_T("NoiseReduction"), _T("LowerFrequency"), m_dLowerFrequency, 1000., 100., 48000.);
-	pApp->Profile.AddItem(_T("NoiseReduction"), _T("ToneOverNoisePreference"), m_dToneOverNoisePreference, 10., 0., 20.);
-	pApp->Profile.AddItem(_T("NoiseReduction"), _T("NearMaskingDecayDistanceHigh"), m_NearMaskingDecayDistanceHigh, 500., 1., 2000.);
-	pApp->Profile.AddItem(_T("NoiseReduction"), _T("NearMaskingDecayDistanceLow"), m_NearMaskingDecayDistanceLow, 30., 1., 2000.);
-	pApp->Profile.AddItem(_T("NoiseReduction"), _T("NearMaskingDecayTimeHigh"), m_NearMaskingDecayTimeHigh, 40., 1., 1000.);
-	pApp->Profile.AddItem(_T("NoiseReduction"), _T("NearMaskingDecayTimeLow"), m_NearMaskingDecayTimeLow, 100., 1., 1000.);
-	pApp->Profile.AddItem(_T("NoiseReduction"), _T("NearMaskingCoeff"), m_NearMaskingCoeff, 1., 0., 1.);
-	pApp->Profile.AddItem(_T("NoiseReduction"), _T("Aggressivness"), m_dNoiseReductionAggressivness, 1., 0.1, 3.);
+	Profile.AddItem(_T("NoiseReduction"), _T("TransientThreshold"), m_dTransientThreshold, 1., 0.3, 2);
+	Profile.AddItem(_T("NoiseReduction"), _T("NoiseReduction"), m_dNoiseReduction, 10., 0., 100.);
+	Profile.AddItem(_T("NoiseReduction"), _T("NoiseCriterion"), m_dNoiseCriterion, 0.25, 0., 1.);
+	Profile.AddItem(_T("NoiseReduction"), _T("NoiseThresholdLow"), m_dNoiseThresholdLow, -70., -100., -10.);
+	Profile.AddItem(_T("NoiseReduction"), _T("NoiseThresholdHigh"), m_dNoiseThresholdHigh, -65., -100., -10.);
+	Profile.AddItem(_T("NoiseReduction"), _T("LowerFrequency"), m_dLowerFrequency, 1000., 100., 48000.);
+	Profile.AddItem(_T("NoiseReduction"), _T("ToneOverNoisePreference"), m_dToneOverNoisePreference, 10., 0., 20.);
+	Profile.AddItem(_T("NoiseReduction"), _T("NearMaskingDecayDistanceHigh"), m_NearMaskingDecayDistanceHigh, 500., 1., 2000.);
+	Profile.AddItem(_T("NoiseReduction"), _T("NearMaskingDecayDistanceLow"), m_NearMaskingDecayDistanceLow, 30., 1., 2000.);
+	Profile.AddItem(_T("NoiseReduction"), _T("NearMaskingDecayTimeHigh"), m_NearMaskingDecayTimeHigh, 40., 1., 1000.);
+	Profile.AddItem(_T("NoiseReduction"), _T("NearMaskingDecayTimeLow"), m_NearMaskingDecayTimeLow, 100., 1., 1000.);
+	Profile.AddItem(_T("NoiseReduction"), _T("NearMaskingCoeff"), m_NearMaskingCoeff, 1., 0., 1.);
+	Profile.AddItem(_T("NoiseReduction"), _T("Aggressivness"), m_dNoiseReductionAggressivness, 1., 0.1, 3.);
 }
 
-void CNoiseReductionDialog::StoreValuesToRegistry()
-{
-	CThisApp * pApp = GetApp();
-	m_FftOrder = 256 << m_nFftOrderExp;
-	pApp->Profile.FlushSection(_T("NoiseReduction"));
-}
 
 #define DB_TO_NEPER 0.115129254
 #define M_PI        3.14159265358979323846
@@ -2253,6 +2259,7 @@ void CMoreNoiseDialog::DoDataExchange(CDataExchange* pDX)
 										_T("Near masking time in lower frequencies"), _T("ms"), 1., 1000.);
 	m_eNearMaskingCoeff.ExchangeData(pDX, m_NearMaskingCoeff,
 									_T("Near masking coefficient"), _T(""), 0., 1.);
+
 }
 
 
@@ -2287,51 +2294,6 @@ void CNoiseReductionDialog::OnButtonMore()
 	}
 }
 
-void CNoiseReductionDialog::OnButtonSelection()
-{
-	CSelectionDialog dlg(m_Start, m_End, m_CaretPosition, m_Chan + 1, m_FileLength, m_pWf, m_TimeFormat);
-
-	if (IDOK != dlg.DoModal())
-	{
-		return;
-	}
-	m_Start = dlg.GetStart();
-	m_End = dlg.GetEnd();
-	m_Chan = dlg.GetChannel() - 1;
-	UpdateSelectionStatic();
-}
-
-void CNoiseReductionDialog::UpdateSelectionStatic()
-{
-	m_SelectionStatic.SetWindowText(GetSelectionText(m_Start, m_End, m_Chan,
-													m_pWf->nChannels, m_bLockChannels,
-													m_pWf->nSamplesPerSec, m_TimeFormat));
-}
-
-
-BOOL CNoiseReductionDialog::OnInitDialog()
-{
-	LoadValuesFromRegistry();
-	BaseClass::OnInitDialog();
-
-	UpdateSelectionStatic();
-
-	return TRUE;  // return TRUE unless you set the focus to a control
-	// EXCEPTION: OCX Property Pages should return FALSE
-}
-
-void CNoiseReductionDialog::OnOK()
-{
-	if (!UpdateData(TRUE))
-	{
-		TRACE0("UpdateData failed during dialog termination.\n");
-		// the UpdateData routine will set focus to correct item
-		return;
-	}
-	GetApp()->Profile.FlushSection(_T("NoiseReduction"));
-	EndDialog(IDOK);
-}
-
 void CNoiseReductionDialog::OnButtonSetThreshold()
 {
 	if (!UpdateData(TRUE))
@@ -2340,7 +2302,6 @@ void CNoiseReductionDialog::OnButtonSetThreshold()
 		// the UpdateData routine will set focus to correct item
 		return;
 	}
-	GetApp()->Profile.FlushSection(_T("NoiseReduction"));
 	EndDialog(IDC_BUTTON_SET_THRESHOLD);
 }
 
