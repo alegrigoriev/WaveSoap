@@ -2039,14 +2039,26 @@ void CWaveSamplesChangeOperation::UnprepareUndo()
 
 BOOL CWaveSamplesChangeOperation::OperationProc()
 {
+	DWORD Flags = UpdateSoundDontRescanPeaks;
+	SAMPLE_INDEX UpdateBegin = 0;
+	SAMPLE_INDEX UpdateEnd = 0;
+
+	if (m_NewSamples < m_File.NumberOfSamples()
+		&& m_NewSamples != 0)
+	{
+		Flags = 0;
+		// rescan last peak granule
+		UpdateBegin = m_NewSamples - 1;
+		UpdateEnd = m_NewSamples;
+	}
+
 	if ( ! m_File.SetFileLengthSamples(m_NewSamples))
 	{
 		NotEnoughDiskSpaceMessageBox();
 		return FALSE;
 	}
 
-	pDocument->SoundChanged(m_File.GetFileID(), 0, 0, m_NewSamples,
-							UpdateSoundDontRescanPeaks);
+	pDocument->SoundChanged(m_File.GetFileID(), UpdateBegin, UpdateEnd, m_NewSamples, Flags);
 
 	return TRUE;
 }
