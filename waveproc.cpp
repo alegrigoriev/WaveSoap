@@ -2459,8 +2459,8 @@ BOOL CResampleFilter::InitResample(double ResampleRatio,
 	// if < 1 it is downsampling
 	// FilterLength is how many Sin periods are in the array
 	double PrevVal = 0.;
-	unsigned i;
-	for (i = 0; i < ResampleFilterSize; i++)
+
+	for (signed i = 0; i < ResampleFilterSize; i++)
 	{
 		double arg = M_PI * FilterLength / ResampleFilterSize * (i + 1 - ResampleFilterSize / 2);
 		double Window = sin(M_PI * (i +1) / ResampleFilterSize);
@@ -2489,6 +2489,7 @@ BOOL CResampleFilter::InitResample(double ResampleRatio,
 		m_FilterDif2Buf[i] = float(sqrdif / (1 << ResampleIndexShift) / (1 << ResampleIndexShift));
 		PrevVal = val;
 	}
+
 	if (ResampleRatio >= 1.)
 	{
 		// upsampling.
@@ -2516,21 +2517,24 @@ BOOL CResampleFilter::InitResample(double ResampleRatio,
 	m_InputChannels = nChannels;
 	// compute normalization coefficient
 	// apply DC to the filter
-	for (i = 0; i < SrcBufSize; i++)
+	for (int i = 0; i < SrcBufSize; i++)
 	{
 		m_pSrcBuf[i] = 1.;
 	}
+
 	m_SrcBufFilled = SrcBufSize;
 	FilterSoundResample();
+
 	float Max = 0;
-	for (i = 2; i < m_DstBufUsed; i++)
+	for (unsigned i = 2; i < m_DstBufUsed; i++)
 	{
 		if (Max < m_pDstBuf[i])
 		{
 			Max = m_pDstBuf[i];
 		}
 	}
-	for (i = 0; i < ResampleFilterSize; i++)
+
+	for (int i = 0; i < ResampleFilterSize; i++)
 	{
 		m_FilterBuf[i] /= Max;
 		m_FilterDifBuf[i] /= Max;
@@ -2571,10 +2575,12 @@ void CResampleFilter::FilterSoundResample()
 			{
 				int TableIndex = Phase1 >> ResampleIndexShift;
 				double PhaseFraction = int(Phase1 & ~(0xFFFFFFFF << ResampleIndexShift));
+
 				ASSERT(src + j + ch < m_pSrcBuf + SrcBufSize);
 				OutSample += src[j+ch] * (m_FilterBuf[TableIndex] +
 										PhaseFraction * (m_FilterDifBuf[TableIndex]
 											+ PhaseFraction * m_FilterDif2Buf[TableIndex]));
+
 				unsigned __int32 Phase2 = Phase1 + m_InputPeriod;
 				if (Phase2 < Phase1)
 				{
@@ -2593,6 +2599,7 @@ void CResampleFilter::FilterSoundResample()
 			SrcSamples -= m_InputChannels;
 			m_SrcBufUsed += m_InputChannels;
 		}
+
 		if (SrcSamples < m_InputChannels)
 		{
 			return;
@@ -2603,12 +2610,11 @@ void CResampleFilter::FilterSoundResample()
 size_t CResampleFilter::ProcessSoundBuffer(char const * pIn, char * pOut,
 											size_t nInBytes, size_t nOutBytes, size_t * pUsedBytes)
 {
-	size_t nSavedBytes = 0;
 	*pUsedBytes = 0;
 
 	unsigned nInSamples = nInBytes / sizeof (WAVE_SAMPLE);
 	unsigned nOutSamples = nOutBytes / sizeof (WAVE_SAMPLE);
-	WAVE_SAMPLE const * pInBuf = (WAVE_SAMPLE *) pIn;
+	WAVE_SAMPLE const * pInBuf = (WAVE_SAMPLE const*) pIn;
 	WAVE_SAMPLE * pOutBuf = (WAVE_SAMPLE *) pOut;
 
 	unsigned nUsedSamples = 0;
@@ -2698,7 +2704,7 @@ size_t CResampleFilter::ProcessSoundBuffer(char const * pIn, char * pOut,
 	}
 
 	* pUsedBytes += nUsedSamples * sizeof(WAVE_SAMPLE);
-	return nSavedBytes + nSavedSamples * sizeof(WAVE_SAMPLE);
+	return nSavedSamples * sizeof(WAVE_SAMPLE);
 }
 
 CAudioConvertor::CAudioConvertor(HACMDRIVER had)
@@ -2842,22 +2848,23 @@ size_t CChannelConvertor::ProcessSoundBuffer(char const * pIn, char * pOut,
 	size_t nSavedBytes = 0;
 	*pUsedBytes = 0;
 
-	int nInSamples = nInBytes / (m_InputChannels * sizeof (WAVE_SAMPLE));
-	int nOutSamples = nOutBytes / (m_OutputChannels * sizeof (WAVE_SAMPLE));
-	WAVE_SAMPLE const * pInBuf = (WAVE_SAMPLE *) pIn;
+	WAVE_SAMPLE const * pInBuf = (WAVE_SAMPLE const *) pIn;
 	WAVE_SAMPLE * pOutBuf = (WAVE_SAMPLE *) pOut;
+	int nInSamples = nInBytes / (m_InputChannels * sizeof *pInBuf);
+	int nOutSamples = nOutBytes / (m_OutputChannels * sizeof *pOutBuf);
 
-	int nSamples = __min(nInSamples, nOutSamples);
+	int nSamples = std::min(nInSamples, nOutSamples);
+
 	int i;
 	if (2 == m_InputChannels
 		&& 1 == m_OutputChannels)
 	{
-		if (0 == m_ChannelsToProcess
-			|| 1 == m_ChannelsToProcess)
+		if ((1 << 0) == m_ChannelsToProcess
+			|| (1 << 1) == m_ChannelsToProcess)
 		{
 			pInBuf += m_ChannelsToProcess;
 			for (i = 0; i < nSamples; i++,
-				pInBuf += 2, pOutBuf += 1)
+				pInBuf += 2, pOutBuf ++)
 			{
 				*pOutBuf = * pInBuf;
 			}
