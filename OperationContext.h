@@ -356,6 +356,25 @@ public:
 
 	virtual MEDIA_FILE_SIZE GetCompletedOperationSize() const;
 
+	BOOL InitInsertCopy(CWaveFile & DstFile, SAMPLE_INDEX StartDstSample,
+						NUMBER_OF_SAMPLES LengthToReplace, CHANNEL_MASK DstChannel,
+						CWaveFile & SrcFile, SAMPLE_INDEX StartSrcSample,
+						NUMBER_OF_SAMPLES SamplesToInsert, CHANNEL_MASK SrcChannel);
+
+	BOOL InitExpandOperation(CWaveFile & File, SAMPLE_INDEX StartSample,
+							NUMBER_OF_SAMPLES Length, CHANNEL_MASK Channel);
+	// delete area from StartSample to StartSample+Length
+	BOOL InitShrinkOperation(CWaveFile & File, SAMPLE_INDEX StartSample, NUMBER_OF_SAMPLES Length, CHANNEL_MASK Channel);
+
+	void InitCopyMarkers(CWaveFile & DstFile, SAMPLE_INDEX StartDstSample,
+						NUMBER_OF_SAMPLES LengthToReplace,
+						CWaveFile & SrcFile, SAMPLE_INDEX StartSrcSample,
+						NUMBER_OF_SAMPLES SamplesToInsert);
+
+	void InitMoveMarkers(CWaveFile & DstFile, SAMPLE_INDEX StartDstSample,
+						NUMBER_OF_SAMPLES LengthToReplace,
+						NUMBER_OF_SAMPLES SamplesToInsert);
+
 protected:
 	// This list keeps items to execute. First() is executed first
 	ListHead<COperationContext> m_ContextList;

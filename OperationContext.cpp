@@ -2,6 +2,7 @@
 // OperationContext.cpp
 #include "stdafx.h"
 #include "OperationContext.h"
+#include "OperationContext2.h"
 #include "OperationDialogs.h"
 #include "ReopenSavedFileCopyDlg.h"
 #include "MessageBoxSynch.h"
@@ -1252,6 +1253,200 @@ ListHead<COperationContext> * CStagedContext::GetUndoChain()
 	}
 
 	return & m_UndoChain;
+}
+
+///////////////////////////////////////////////////////////////////////
+BOOL CStagedContext::InitExpandOperation(CWaveFile & File, SAMPLE_INDEX StartSample,
+										NUMBER_OF_SAMPLES Length, CHANNEL_MASK Channel)
+{
+	NUMBER_OF_SAMPLES NumberOfSamples = File.NumberOfSamples();
+
+	NUMBER_OF_SAMPLES NewSamples = NumberOfSamples + Length;
+
+	// 1. expand the file
+	AddContext(new
+				CWaveSamplesChangeOperation(pDocument, File, NewSamples));
+
+	// 2. if not all channels moved, zero the expanded part
+	CHANNEL_MASK ChannelsToZero = File.ChannelsMask() & ~Channel;
+
+	if (0 != ChannelsToZero)
+	{
+		// special zero context used, with empty undo
+		AddContext(new CInitChannels(pDocument, File, NumberOfSamples,
+									NewSamples, ChannelsToZero));
+	}
+	else
+	{
+		// 3. Move all markers and regions (TODO)
+	}
+	// 4. CMoveContext moves all wave data toward the end
+	if (NumberOfSamples > StartSample)
+	{
+		CMoveOperation::auto_ptr pMove(new
+										CMoveOperation(pDocument, IDS_STATUS_PROMPT_EXPANDING_FILE));
+		pMove->InitMove(File, StartSample, StartSample + Length, NumberOfSamples - StartSample,
+						Channel);
+		AddContext(pMove.release());
+	}
+	return TRUE;
+}
+
+// StartSample - from where the removed part starts
+// Length - how much to remove
+BOOL CStagedContext::InitShrinkOperation(CWaveFile & File,
+										SAMPLE_INDEX StartSample, NUMBER_OF_SAMPLES Length, CHANNEL_MASK Channel)
+{
+	NUMBER_OF_SAMPLES NumberOfSamples = File.NumberOfSamples();
+
+	NUMBER_OF_SAMPLES NewSamples = NumberOfSamples - Length;
+
+	// 1. Move all wave data
+	if (NewSamples > StartSample)
+	{
+		CMoveOperation::auto_ptr pMove(new
+										CMoveOperation(pDocument,
+														IDS_STATUS_PROMPT_SHRINKING_FILE));
+
+		pMove->InitMove(File, StartSample + Length, StartSample,
+						NumberOfSamples - StartSample - Length,
+						Channel);
+
+		AddContext(pMove.release());
+	}
+
+	// 2. If partial channels moved: add special operation, to zero the area on undo
+
+	if (NewSamples < StartSample + Length)
+	{
+		// because some data (not moved by CMoveOperation)
+		// will be discarded by WaveSampleChange or by InitChannels,
+		// we need to save it
+		AddContext(new
+					CSaveTrimmedOperation(pDocument, File,
+										NewSamples, StartSample + Length, Channel));
+	}
+
+	if ( ! File.AllChannels(Channel))
+	{
+		// not all channels are moved
+		// special zero context used, with empty undo
+		AddContext(new CInitChannels(pDocument, File, NewSamples, NumberOfSamples,
+									Channel));
+	}
+	else
+	{
+		// 3. If all channels moved: Move all markers and regions
+		// TODO
+
+		// 4. If all channels moved: Change number of samples
+		AddContext(new
+					CWaveSamplesChangeOperation(pDocument, File, NewSamples));
+	}
+	return TRUE;
+}
+
+void CStagedContext::InitCopyMarkers(CWaveFile & DstFile, SAMPLE_INDEX StartDstSample,
+									NUMBER_OF_SAMPLES LengthToReplace,
+									CWaveFile & SrcFile, SAMPLE_INDEX StartSrcSample,
+									NUMBER_OF_SAMPLES SamplesToInsert)
+{
+	AddContext(new CCueEditOperation(pDocument, DstFile, StartDstSample,
+									LengthToReplace, SrcFile, StartSrcSample, SamplesToInsert));
+}
+
+void CStagedContext::InitMoveMarkers(CWaveFile & DstFile, SAMPLE_INDEX StartDstSample,
+									NUMBER_OF_SAMPLES LengthToReplace,
+									NUMBER_OF_SAMPLES SamplesToInsert)
+{
+	AddContext(new CCueEditOperation(pDocument, DstFile, StartDstSample,
+									LengthToReplace, SamplesToInsert));
+}
+
+BOOL CStagedContext::InitInsertCopy(CWaveFile & DstFile, SAMPLE_INDEX StartDstSample,
+									NUMBER_OF_SAMPLES LengthToReplace, CHANNEL_MASK DstChannel,
+									CWaveFile & SrcFile, SAMPLE_INDEX StartSrcSample,
+									NUMBER_OF_SAMPLES SamplesToInsert, CHANNEL_MASK SrcChannel)
+{
+	if (LengthToReplace < SamplesToInsert)
+	{
+		// Expanding the file
+		if ( ! InitExpandOperation(DstFile, StartDstSample + LengthToReplace,
+									SamplesToInsert - LengthToReplace, DstChannel))
+		{
+			return FALSE;
+		}
+
+		// only copy markers if all channels are modified
+		if (DstFile.AllChannels(DstChannel))
+		{
+			InitCopyMarkers(DstFile, StartDstSample, LengthToReplace,
+							SrcFile, StartSrcSample, SamplesToInsert);
+		}
+		// the copied data outside of old data chunk length should be handled by
+		// CRestoreTrimmedOperation
+		NUMBER_OF_SAMPLES NumberOfSamples = DstFile.NumberOfSamples();
+		if (StartDstSample + SamplesToInsert > NumberOfSamples)
+		{
+			CRestoreTrimmedOperation * pCopy = new CRestoreTrimmedOperation(pDocument);
+
+			ASSERT(StartDstSample <= NumberOfSamples);
+			TRACE(_T("Copying some samples with CRestoreTrimmedOperation:\n")
+				_T("SRC: start=%s, end=%s, DST: start=%s, end=%s\n"),
+				LPCTSTR(SampleToString(StartSrcSample + (NumberOfSamples - StartDstSample), 44100)),
+				LPCTSTR(SampleToString(StartSrcSample + SamplesToInsert, 44100)),
+				LPCTSTR(SampleToString(NumberOfSamples, 44100)),
+				LPCTSTR(SampleToString(StartDstSample + SamplesToInsert, 44100)));
+
+			pCopy->InitCopy(DstFile, NumberOfSamples, DstChannel, SrcFile,
+							StartSrcSample + (NumberOfSamples - StartDstSample), SrcChannel,
+							StartDstSample + SamplesToInsert - NumberOfSamples);
+
+			AddContext(pCopy);
+
+			SamplesToInsert = NumberOfSamples - StartDstSample;
+		}
+	}
+	else if (LengthToReplace > SamplesToInsert)
+	{
+		// only copy markers if all channels are modified
+		if (DstFile.AllChannels(DstChannel))
+		{
+			InitCopyMarkers(DstFile, StartDstSample, LengthToReplace,
+							SrcFile, StartSrcSample, SamplesToInsert);
+		}
+
+		if ( ! InitShrinkOperation(DstFile, StartDstSample + SamplesToInsert,
+									LengthToReplace - SamplesToInsert, DstChannel))
+		{
+			return FALSE;
+		}
+	}
+	else if (DstFile.AllChannels(DstChannel))
+	{
+		// only copy markers if all channels are modified
+		InitCopyMarkers(DstFile, StartDstSample, LengthToReplace,
+						SrcFile, StartSrcSample, SamplesToInsert);
+	}
+
+	if (0 != SamplesToInsert)
+	{
+		// now copy data
+		CCopyContext::auto_ptr pCopy(new CCopyContext(pDocument,
+													IDS_STATUS_PROMPT_INSERTING_DATA));
+
+		if ( ! pCopy->InitCopy(DstFile, StartDstSample, DstChannel,
+								SrcFile, StartSrcSample, SrcChannel, SamplesToInsert))
+		{
+			return FALSE;
+		}
+
+		pCopy->SetSaveForUndo(StartDstSample, StartDstSample + LengthToReplace);
+
+		AddContext(pCopy.release());
+	}
+
+	return TRUE;
 }
 
 ///////////////// CScanPeaksContext
