@@ -46,10 +46,10 @@ enum
 class CWaveSoapFrontApp : public CWinApp
 {
 public:
-	void OnActivateDocument(CWaveSoapFrontDoc * pDocument, BOOL bActivate);
 	CWaveSoapFrontApp();
 	void QueueOperation(COperationContext * pContext);
 	void LoadStdProfileSettings(UINT nMaxMRU);
+	void OnActivateDocument(CWaveSoapFrontDoc * pDocument, BOOL bActivate);
 
 	BOOL CanOpenWindowsMedia() const { return NULL != m_hWMVCORE_DLL_Handle; }
 // Overrides
@@ -75,6 +75,7 @@ public:
 	bool m_bShowToolbar;
 	bool m_bShowStatusBar;
 	bool m_bShowNewFormatDialogWhenShiftOnly;
+	bool m_bAllow4GbWavFile;
 	// display colors:
 	union {
 		struct {
@@ -113,6 +114,7 @@ public:
 
 	CWaveFile m_ClipboardFile;
 	WAVEFORMATEX m_NewFileFormat;
+	int m_NewFileChannels;
 	long m_NewFileLength;
 
 	CDocTemplate * m_pAllTypesTemplate;
@@ -181,6 +183,8 @@ public:
 	void CreatePalette();
 
 	void BroadcastUpdate(UINT lHint = 0);
+	BOOL IsAnyDocumentModified();
+	BOOL CanSaveAnyDocument();
 
 	CString m_NotEnoughMemoryMsg;
 
@@ -191,6 +195,8 @@ public:
 	afx_msg void OnUpdateEditPasteNew(CCmdUI* pCmdUI);
 	afx_msg BOOL OnOpenRecentFile(UINT nID);
 	afx_msg void OnToolsCdgrab();
+	afx_msg void OnFileSaveAll();
+	afx_msg void OnUpdateFileSaveAll(CCmdUI* pCmdUI);
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 	CWinThread m_Thread;
@@ -236,6 +242,10 @@ void NotEnoughDiskSpaceMessageBox();
 void NotEnoughUndoSpaceMessageBox();
 void FileCreationErrorMessageBox(LPCTSTR name);
 void AddStringToHistory(const CString & str, CString history[], int NumItems, bool CaseSensitive = false);
+BOOL CanExpandWaveFile(const CWaveFile & WaveFile, long NumOfSamplesToAdd);
+BOOL CanExpandWaveFileDlg(const CWaveFile & WaveFile, long NumOfSamplesToAdd);
+BOOL CanAllocateWaveFileSamples(const WAVEFORMATEX * pWf, LONGLONG NumOfSamples);
+BOOL CanAllocateWaveFileSamplesDlg(const WAVEFORMATEX * pWf, LONGLONG NumOfSamples);
 /////////////////////////////////////////////////////////////////////////////
 //{{AFX_INSERT_LOCATION}}
 // Microsoft Visual C++ will insert additional declarations immediately before the previous line.

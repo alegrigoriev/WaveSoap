@@ -107,6 +107,10 @@ public:
 		return m_WavFile.GetFileID();
 	}
 	virtual BOOL IsModified();
+	BOOL IsBusy() const
+	{
+		return m_OperationInProgress != 0;
+	}
 // Operations
 public:
 	void IncrementModified(BOOL DeleteRedo = TRUE, int KeepPreviousUndo = -1);
@@ -191,6 +195,7 @@ public:
 
 	void SavePeakInfo(CWaveFile & WaveFile);
 	BOOL OpenWaveFile(CWaveFile & WaveFile, LPCTSTR szName, DWORD flags);
+
 #ifdef _DEBUG
 	virtual void AssertValid() const;
 	virtual void Dump(CDumpContext& dc) const;
