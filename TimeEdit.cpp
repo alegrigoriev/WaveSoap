@@ -171,7 +171,7 @@ SAMPLE_INDEX CTimeEdit::GetTimeSample()
 
 		if (UseFrames)
 		{
-			m_Sample = SAMPLE_INDEX(ceil(time / 1000.) * m_nSamplesPerSec + fmod(time, 1000.) * m_nSamplesPerSec / 75);
+			m_Sample = SAMPLE_INDEX(floor(time / 1000.) * m_nSamplesPerSec + fmod(time, 1000.) * m_nSamplesPerSec / 75);
 		}
 		else
 		{
