@@ -69,7 +69,7 @@ enum {
 	CopyCreatingUndo = 0x20000000,
 	RedoContext = 0x10000000,
 	UndoContextReplaceWholeFile = 0x08000000,
-	DcContextScanning = 0x04000000,
+	ContextScanning = 0x04000000,
 	StatisticsContext_DcOnly = 0x02000000,
 	StatisticsContext_MinMaxOnly = 0x01000000,
 };
@@ -302,7 +302,7 @@ public:
 	virtual BOOL OperationProc();
 	virtual BOOL ProcessBuffer(void * buf, size_t len, DWORD offset);
 	virtual void PostRetire(BOOL bChildContext = FALSE);
-	virtual CString GetStatusString() { return m_ss; }
+	virtual CString GetStatusString();
 
 };
 
@@ -333,6 +333,28 @@ public:
 	//virtual BOOL OperationProc();
 	virtual BOOL ProcessBuffer(void * buf, size_t BufferLength, DWORD offset);
 	virtual CString GetStatusString() { return m_ss; }
+
+	virtual void PostRetire(BOOL bChildContext = FALSE);
+};
+
+class CNormalizeContext : public CVolumeChangeContext
+{
+public:
+	CNormalizeContext(CWaveSoapFrontDoc * pDoc,
+					LPCTSTR StatusString, LPCTSTR OperationName)
+		: CVolumeChangeContext(pDoc, StatusString, OperationName),
+		m_pScanContext(NULL)
+	{
+	}
+	virtual ~CNormalizeContext()
+	{
+		delete m_pScanContext;
+	}
+	double m_LimitLevel;
+	BOOL m_bEqualChannels;
+	CStatisticsContext * m_pScanContext;
+	virtual BOOL OperationProc();
+	virtual CString GetStatusString();
 };
 
 #endif // AFX_OPERATIONCONTEXT_H__FFA16C44_2FA7_11D4_9ADD_00C0F0583C4B__INCLUDED_
