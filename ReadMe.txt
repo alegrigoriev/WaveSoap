@@ -44,7 +44,6 @@ Add splash screen
 Make recording from Internet stream
 
 Problems:
-When FFT array is reallocated, it is invalidated
 
 Click on outline view moves the wave view a bit after the button released
 After file length increased to 1 sample from 0, scroll bar set to wrond scale
@@ -57,6 +56,7 @@ samples with 32767, -32768 are not visible
 Log Off query doesn't close the active dialog. Recursion is possible. Make sure to check after Cancel
 
 Fixed:
+When FFT array is reallocated, it is invalidated (was disabled in the code)
 Paste operation doesn't check if sampling rate is the same. Add dialog to resample
 Notch filter initial setting is weird
 Originally selected filter point may be hidden because the filter is disabled

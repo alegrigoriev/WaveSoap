@@ -661,21 +661,21 @@ void CWaveFftView::MakeFftArray(long left, long right)
 			pTmp += NewFftArrayHeight, FftSample += FftSpacing)
 		{
 			pTmp[0] = 0;    // invalidate
-			if (0) if (pOldArray != NULL
-						&& 0 == FftSample % m_FftSpacing
-						&& FftSample >= m_FftResultBegin
-						&& FftSample < m_FftResultEnd)
+			if (pOldArray != NULL
+				&& 0 == FftSample % m_FftSpacing
+				&& FftSample >= m_FftResultBegin
+				&& FftSample < m_FftResultEnd)
+			{
+				long offset = m_IndexOfFftBegin + (FftSample - m_FftResultBegin) / m_FftSpacing;
+				offset %= m_FftResultArrayWidth;
+				unsigned char * p = pOldArray + offset * NewFftArrayHeight;
+				ASSERT(p >= pOldArray && p + NewFftArrayHeight <= pOldArray + m_FftArraySize);
+				if (p[0] != 0)
 				{
-					long offset = m_IndexOfFftBegin + (FftSample - m_FftResultBegin) / m_FftSpacing;
-					offset %= m_FftResultArrayWidth;
-					unsigned char * p = pOldArray + offset * NewFftArrayHeight;
-					ASSERT(p >= pOldArray && p + NewFftArrayHeight <= pOldArray + m_FftArraySize);
-					if (p[0] != 0)
-					{
-						ASSERT(1 == p[0]);
-						memcpy(pTmp, p, NewFftArrayHeight);
-					}
+					ASSERT(1 == p[0]);
+					memcpy(pTmp, p, NewFftArrayHeight);
 				}
+			}
 		}
 
 		m_FftArraySize = NecessaryArraySize;
