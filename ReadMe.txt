@@ -1,10 +1,12 @@
 Known problems and tasks:
 
-Use list instead of array for FFT data (for performance reason).
 Add equalizer and low/high frequency filters functions
+Use list instead of array for FFT data (for performance reason).
 Include MP3 and WMA filters even if there is no WMP, but show warning, if the filter is selected
 Test "reload compressed file" dialogs
 Add options dialog
+Try to load sound from AVI with WM functions
+Put buttons for the view commands to the wave window status bar
 
 Add CD grabbing
 Add noise reduction estimation in spectrum section view
@@ -43,6 +45,7 @@ Use GetFileAttributes rather than FindFirst to check whether it's file or direct
 Add Export Settings, Import Settings to Options dialog
 
 Problems:
+When switched to/from FFT view, scrollbar is set to wrong range (Suite1.wav)
 After file length increased to 1 sample from 0, scroll bar set to wrond scale
 Expression evaluation selection longer than file length doesn't update file length
 Multiline edit box in child dialog eats Esc and Enter (DLGC_WANTALLCHARS)

@@ -6,6 +6,66 @@
 #endif // _MSC_VER > 1000
 // EqualizerDialog.h : header file
 //
+#include <complex>
+
+/////////////////////////////////////////////////////////////////////////////
+// CEqualizerGraphWnd window
+
+class CEqualizerGraphWnd : public CWnd
+{
+	// Construction
+public:
+	CEqualizerGraphWnd();
+
+	// Attributes
+public:
+	enum { MaxNumberOfBands = 15, };
+	void SetNumberOfBands(int NumBands);
+	complex<float> CalculateResponse(double Frequency);
+	void SetBandGain(int nBand, double Gain);
+
+	// Operations
+public:
+
+// Overrides
+	// ClassWizard generated virtual function overrides
+	//{{AFX_VIRTUAL(CEqualizerGraphWnd)
+protected:
+	virtual BOOL PreCreateWindow(CREATESTRUCT& cs);
+	//}}AFX_VIRTUAL
+
+// Implementation
+public:
+	virtual ~CEqualizerGraphWnd();
+	bool m_bMouseCaptured;
+	bool m_bButtonPressed;
+	bool m_bGotFocus;
+
+	int m_NumOfBands;    // 2-MaxNumberOfBands
+	int m_BandWithFocus;
+	double m_BandGain[MaxNumberOfBands];   // gain in the band
+	double m_BandWidth;
+	double m_BandFrequencies[MaxNumberOfBands];
+	// the coefficients are: 3 numerator's coeffs and 3 denominator's coeffs
+	double m_BandCoefficients[MaxNumberOfBands][6];
+	// Generated message map functions
+protected:
+	//{{AFX_MSG(CEqualizerGraphWnd)
+	afx_msg void OnPaint();
+	afx_msg void OnMouseMove(UINT nFlags, CPoint point);
+	afx_msg void OnLButtonDown(UINT nFlags, CPoint point);
+	afx_msg void OnLButtonUp(UINT nFlags, CPoint point);
+	afx_msg BOOL OnEraseBkgnd(CDC* pDC);
+	afx_msg void OnNcCalcSize(BOOL bCalcValidRects, NCCALCSIZE_PARAMS FAR* lpncsp);
+	afx_msg void OnNcPaint();
+	afx_msg void OnCaptureChanged(CWnd *pWnd);
+	afx_msg int OnMouseActivate(CWnd* pDesktopWnd, UINT nHitTest, UINT message);
+	afx_msg void OnKillFocus(CWnd* pNewWnd);
+	afx_msg void OnSetFocus(CWnd* pOldWnd);
+	afx_msg BOOL OnSetCursor(CWnd* pWnd, UINT nHitTest, UINT message);
+	//}}AFX_MSG
+	DECLARE_MESSAGE_MAP()
+};
 
 /////////////////////////////////////////////////////////////////////////////
 // CEqualizerDialog dialog
@@ -19,7 +79,9 @@ public:
 // Dialog Data
 	//{{AFX_DATA(CEqualizerDialog)
 	enum { IDD = IDD_DIALOG_SIMPLE_EQUALIZER };
+	CSpinButtonCtrl	m_SpinBands;
 	CStatic	m_SelectionStatic;
+	BOOL	m_bUndo;
 	//}}AFX_DATA
 	MINMAXINFO m_mmxi;
 	BOOL	m_bLockChannels;
@@ -31,6 +93,8 @@ public:
 	int m_TimeFormat;
 	const WAVEFORMATEX * m_pWf;
 	CApplicationProfile m_Profile;
+
+	CEqualizerGraphWnd m_wGraph;
 
 // Overrides
 	// ClassWizard generated virtual function overrides
@@ -53,10 +117,12 @@ protected:
 	afx_msg void OnGetMinMaxInfo(MINMAXINFO FAR* lpMMI);
 	virtual BOOL OnInitDialog();
 	afx_msg void OnButtonSelection();
+	afx_msg void OnChangeEditBands();
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 };
 
+/////////////////////////////////////////////////////////////////////////////
 //{{AFX_INSERT_LOCATION}}
 // Microsoft Visual C++ will insert additional declarations immediately before the previous line.
 

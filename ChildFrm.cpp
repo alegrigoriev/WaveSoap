@@ -828,23 +828,39 @@ int CChildFrame::OnCreate(LPCREATESTRUCT lpCreateStruct)
 	if (CMDIChildWnd::OnCreate(lpCreateStruct) == -1)
 		return -1;
 
-	if (!m_wndStatusBar.Create(this) ||
-		!m_wndStatusBar.SetIndicators(indicators,
-									sizeof(indicators)/sizeof(UINT)))
+	if ( ! m_wndToolBar.CreateEx(this, WS_CHILD | WS_VISIBLE | CBRS_SIZE_FIXED /*| CBRS_BOTTOM */)
+		|| ! m_wndToolBar.LoadToolBar(IDR_CHILDFRAME))
+	{
+		TRACE0("Failed to create toolbar\n");
+		return -1;      // fail to create
+	}
+	// to avoid setting width to the string length,
+	// the status bar is created with dummy IDs
+
+	if (!m_wndReBar.Create(this, RBS_BANDBORDERS, WS_CHILD | WS_VISIBLE
+							| WS_CLIPSIBLINGS | WS_CLIPCHILDREN | CBRS_BOTTOM)
+		|| !m_wndReBar.AddBar(&m_wndToolBar)
+		)
+	{
+		TRACE0("Failed to create rebar\n");
+		return -1;      // fail to create
+	}
+
+	if (!m_wndStatusBar.Create( & m_wndReBar)
+		|| !m_wndReBar.AddBar(&m_wndStatusBar)
+		|| !m_wndStatusBar.SetIndicators(indicators,
+										sizeof(indicators)/sizeof(UINT)))
 	{
 		TRACE0("Failed to create status bar\n");
 		return -1;      // fail to create
 	}
 	int width;
 	unsigned id, style;
-	// to avoid setting width to the string length,
-	// the status bar is created with dummy IDs
 	m_wndStatusBar.GetPaneInfo(1, id, style, width);
 	m_wndStatusBar.SetPaneInfo(1, ID_INDICATOR_SCALE, style, width);
 	m_wndStatusBar.SetPaneInfo(2, ID_INDICATOR_CURRENT_POS, style, width);
 	m_wndStatusBar.SetPaneInfo(3, ID_INDICATOR_SELECTION_LENGTH, style, width);
 	m_wndStatusBar.EnableToolTips();
-
 	return 0;
 }
 
