@@ -126,7 +126,6 @@
 #define IDI_ICON_SPLIT_TO_FILES         196
 #define IDR_MENU_POPUP_SS_RULER         199
 #define IDI_ICON_EQIALIZER              200
-#define IDI_ICON_FILTRE_DIALOG          201
 #define IDI_ICON_FILTER_DIALOG          201
 #define IDC_EDIT_MIN_CLICK_AMPLITUDE    1000
 #define IDC_TAB_SWITCH_VIEW_MODE        1000
@@ -270,6 +269,7 @@
 #define IDC_EDIT_FREQUENCY              1113
 #define IDC_EDIT_SAMPLE_RATE            1114
 #define IDC_EDIT_FREQUENCY1             1114
+#define IDC_EDIT_FILTER_STOP_FREQUENCY  1114
 #define IDC_RADIO_MONO                  1115
 #define IDC_EDIT_FREQUENCY2             1115
 #define IDC_RADIO_STEREO                1116
@@ -319,6 +319,7 @@
 #define IDC_EDIT_MAX_FILE_CACHE         1158
 #define IDC_STATIC_FILE_NAME            1159
 #define IDC_EDIT_BAND_GAIN              1161
+#define IDC_EDIT_FILTER_STOPBAND_LOSS   1162
 #define IDC_STATIC_RESPONSE_TEMPLATE    1168
 #define IDC_SPIN_BANDS                  1169
 #define IDC_EDIT_BANDS                  1170
@@ -332,7 +333,9 @@
 #define IDC_BUTTON_EXPORT_EXPRESSIONS   1178
 #define IDC_STATIC4                     1178
 #define IDC_BUTTON_IMPORT_EXPRESSIONS   1179
+#define IDC_STATIC9                     1179
 #define IDC_EDIT_HEADER_LENGTH          1180
+#define IDC_STATIC10                    1180
 #define IDC_EDIT_TRAILER_LENGTH         1181
 #define IDC_RADIO_LSB_FIRST             1182
 #define IDC_RADIO_MSB_FIRST             1183
@@ -424,6 +427,9 @@
 #define IDC_STATIC7                     1282
 #define IDC_STATIC8                     1283
 #define IDC_RADIO_DC_EDIT               1284
+#define IDC_EDIT_FILTER_PASSBAND_LOSS   1285
+#define IDC_EDIT_FILTER_PASSBAND_FREQUENCY 1286
+#define IDC_EDIT_FILTER_PASS_FREQUENCY  1286
 #define ID_VIEW_RULER_SAMPLES           32771
 #define ID_VIEW_RULER_HHMMSS            32772
 #define ID_VIEW_RULER_SECONDS           32773
@@ -905,7 +911,7 @@
 #define _APS_3D_CONTROLS                     1
 #define _APS_NEXT_RESOURCE_VALUE        202
 #define _APS_NEXT_COMMAND_VALUE         40151
-#define _APS_NEXT_CONTROL_VALUE         1285
+#define _APS_NEXT_CONTROL_VALUE         1287
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif
