@@ -55,7 +55,7 @@ BOOL CExpressionEvaluationContext::Init()
 	return TRUE;
 }
 
-BOOL CExpressionEvaluationContext::ProcessBuffer(void * buf, size_t len, DWORD offset, BOOL bBackward)
+BOOL CExpressionEvaluationContext::ProcessBuffer(void * buf, size_t len, SAMPLE_POSITION offset, BOOL bBackward)
 {
 	// calculate number of sample, and time
 	int nSampleSize = m_DstFile.SampleSize();
@@ -1348,7 +1348,7 @@ BOOL CInsertSilenceContext::OperationProc()
 	return COperationContext::OperationProc();
 }
 
-BOOL CInsertSilenceContext::ProcessBuffer(void * buf, size_t BufferLength, DWORD offset, BOOL bBackward)
+BOOL CInsertSilenceContext::ProcessBuffer(void * buf, size_t BufferLength, SAMPLE_POSITION offset, BOOL bBackward)
 {
 	__int16 * pDst = (__int16 *) buf;
 	if (m_DstFile.Channels() == 1
@@ -1433,7 +1433,7 @@ void CConversionContext::PostRetire(BOOL bChildContext)
 				pDocument->m_bDirectMode = false;
 				pDocument->UpdateFrameTitles();        // will cause name change in views
 			}
-			long nSamples = pDocument->WaveFileSamples();
+			NUMBER_OF_SAMPLES nSamples = pDocument->WaveFileSamples();
 			pDocument->SoundChanged(pDocument->WaveFileID(),
 									0, nSamples, nSamples, UpdateSoundDontRescanPeaks);
 			pDocument->BuildPeakInfo(FALSE);    // don't save it yet
@@ -1511,7 +1511,7 @@ double CEqualizerContext::CalculateResult(int ch, int Input)
 	return tmp;
 }
 
-BOOL CEqualizerContext::ProcessBuffer(void * buf, size_t len, DWORD offset, BOOL bBackward)
+BOOL CEqualizerContext::ProcessBuffer(void * buf, size_t len, SAMPLE_POSITION offset, BOOL bBackward)
 {
 	// calculate number of sample, and time
 	int nSampleSize = m_DstFile.SampleSize();
@@ -1571,7 +1571,7 @@ BOOL CEqualizerContext::ProcessBuffer(void * buf, size_t len, DWORD offset, BOOL
 	return TRUE;
 }
 
-BOOL CSwapChannelsContext::ProcessBuffer(void * buf, size_t len, DWORD offset, BOOL bBackward)
+BOOL CSwapChannelsContext::ProcessBuffer(void * buf, size_t len, SAMPLE_POSITION offset, BOOL bBackward)
 {
 	__int16 * pDst = (__int16 *) buf;
 	// channels are always 2
@@ -1685,7 +1685,7 @@ double CFilterContext::CalculateResult(int ch, int Input)
 	return in;
 }
 
-BOOL CFilterContext::ProcessBuffer(void * buf, size_t len, DWORD offset, BOOL bBackward)
+BOOL CFilterContext::ProcessBuffer(void * buf, size_t len, SAMPLE_POSITION offset, BOOL bBackward)
 {
 	// calculate number of sample, and time
 	int nSampleSize = m_DstFile.SampleSize();
@@ -1800,7 +1800,7 @@ BOOL CCdReadingContext::InitTrackInformation(CCdDrive const & Drive,
 	return TRUE;
 }
 
-BOOL CCdReadingContext::ProcessBuffer(void * buf, size_t len, DWORD offset, BOOL bBackward)
+BOOL CCdReadingContext::ProcessBuffer(void * buf, size_t len, SAMPLE_POSITION offset, BOOL bBackward)
 {
 	char * pBuf = (char*) buf;
 	while (len != 0)
