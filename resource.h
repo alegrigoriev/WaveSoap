@@ -257,6 +257,8 @@
 #define ID_PROCESS_SYNTHESIS_EXPRESSIONEVALUATION 40058
 #define ID_PROCESS_SYNTHESIS_EXPRESSION_EVALUATION 40059
 #define ID_VIEW_ZOOM_SELECTION          40060
+#define ID_TOOLS_OPTIONS                40062
+#define ID_TOOLS_INTERPOLATE            40063
 
 // Next default values for new objects
 //
@@ -264,7 +266,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_3D_CONTROLS                     1
 #define _APS_NEXT_RESOURCE_VALUE        147
-#define _APS_NEXT_COMMAND_VALUE         40062
+#define _APS_NEXT_COMMAND_VALUE         40064
 #define _APS_NEXT_CONTROL_VALUE         1056
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
