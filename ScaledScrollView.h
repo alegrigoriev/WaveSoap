@@ -180,6 +180,7 @@ protected:
 		CHANGE_VERT_EXTENTS = CHANGE_HEIGHT | CHANGE_VERT_ORIGIN};
 
 	void RecalcScale();
+	virtual CScrollBar* GetScrollBarCtrl(int nBar) const;
 
 	virtual ~CScaledScrollView();
 #ifdef _DEBUG

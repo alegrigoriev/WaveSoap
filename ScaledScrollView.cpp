@@ -341,6 +341,36 @@ double CScaledScrollView::LogToWorldY(int y) const
 	return y / dScaleY + dOrgY;
 }
 
+CScrollBar* CScaledScrollView::GetScrollBarCtrl(int nBar) const
+{
+	ASSERT(nBar == SB_HORZ || nBar == SB_VERT);
+	if (GetStyle() & ((nBar == SB_HORZ) ? WS_HSCROLL : WS_VSCROLL))
+	{
+		// it has a regular windows style scrollbar (no control)
+		return NULL;
+	}
+
+	CWnd* pParent = GetParent();
+	if (pParent == NULL)
+		return NULL;            // no parent
+
+	UINT nID = GetDlgCtrlID();
+	if (nID < AFX_IDW_PANE_FIRST || nID > AFX_IDW_PANE_LAST)
+	{
+		nID = AFX_IDW_PANE_FIRST;
+	}
+
+	// appropriate PANE id - look for sibling (splitter, or just frame)
+	UINT nIDScroll;
+	if (nBar == SB_HORZ)
+		nIDScroll = AFX_IDW_HSCROLL_FIRST + (nID - AFX_IDW_PANE_FIRST) % 16;
+	else
+		nIDScroll = AFX_IDW_VSCROLL_FIRST + (nID - AFX_IDW_PANE_FIRST) / 16;
+
+	// return shared scroll bars that are immediate children of splitter
+	return (CScrollBar*)pParent->GetDlgItem(nIDScroll);
+}
+
 void CScaledScrollView::OnHScroll(UINT nSBCode, UINT nPos, CScrollBar* pScrollBar)
 {
 	// TODO: Add your message handler code here and/or call default
@@ -350,11 +380,17 @@ void CScaledScrollView::OnHScroll(UINT nSBCode, UINT nPos, CScrollBar* pScrollBa
 		return;
 
 	if (pScrollBar != NULL && pScrollBar->SendChildNotifyLastMsg())
+	{
+		TRACE("WM_HSCROLL eaten by SendChildNotifyLastMsg\n");
 		return;     // eat it
+	}
 
 	// ignore scroll bar msgs from other controls
 	if (pScrollBar != GetScrollBarCtrl(SB_HORZ))
+	{
+		TRACE("pScrollBar=%X, ScrollBarCtrl=%X\n", pScrollBar, GetScrollBarCtrl(SB_HORZ));
 		return;
+	}
 
 	OnScroll(MAKEWORD(nSBCode, -1), nPos);
 }
@@ -1220,6 +1256,12 @@ void CScaledScrollView::OnContextMenu(CWnd* pWnd, CPoint point)
 
 BOOL CScaledScrollView::SyncHorizontal(CScaledScrollView * pSView)
 {
+	if (pSView == this)
+	{
+		UnsyncHorizontal();
+		return TRUE;
+	}
+
 	ASSERT_VALID(this);
 	ASSERT_VALID(pSView);
 	ASSERT(GetParent() == pSView->GetParent());
@@ -1229,6 +1271,10 @@ BOOL CScaledScrollView::SyncHorizontal(CScaledScrollView * pSView)
 	{
 		ShowScrollBar(SB_HORZ, FALSE);
 	}
+	// sync origin and extents with the master
+	SetMaxExtents(pSView->dMinLeft, pSView->dMaxRight, 0., 0.);
+	OnChangeOrgExt(pSView->dOrgX, pSView->dExtX,
+					dOrgY, dExtY, CHANGE_HOR_EXTENTS);
 	return TRUE;
 }
 
@@ -1254,6 +1300,11 @@ void CScaledScrollView::UnsyncHorizontal()
 
 BOOL CScaledScrollView::SyncVertical(CScaledScrollView * pSView)
 {
+	if (pSView == this)
+	{
+		UnsyncVertical();
+		return TRUE;
+	}
 	ASSERT_VALID(this);
 	ASSERT_VALID(pSView);
 	ASSERT(GetParent() == pSView->GetParent());
@@ -1263,6 +1314,9 @@ BOOL CScaledScrollView::SyncVertical(CScaledScrollView * pSView)
 	{
 		ShowScrollBar(SB_VERT, FALSE);
 	}
+	SetMaxExtents(0., 0., pSView->dMinBottom, pSView->dMaxTop);
+	OnChangeOrgExt(dOrgX, dExtX,
+					pSView->dOrgY, pSView->dExtY, CHANGE_VERT_EXTENTS);
 	return TRUE;
 }
 
