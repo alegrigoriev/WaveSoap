@@ -14,6 +14,7 @@
 #include <ntddcdrm.h>
 #include <winioctl.h>
 #include <ntddscsi.h>
+#include "KInterlocked.h"
 
 #define SRB_HAInquiry    _SRB_HAInquiry
 #define PSRB_HAInquiry   _PSRB_HAInquiry
@@ -1217,9 +1218,6 @@ protected:
 	TRANSLATEASPI32ADDRESS TranslateAspi32Address;
 	GETASPI32DRIVELETTER GetAspi32DriveLetter;
 	GETASPI32HATARGETLUN GetAspi32HaTargetLun;
-private:
-	static LONG m_DriveBusyCount['Z' - 'A' + 1];
-	static LONG m_MediaLockCount['Z' - 'A' + 1];
 };
 
 #pragma pack(pop)
