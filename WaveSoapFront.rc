@@ -263,6 +263,11 @@ BEGIN
         MENUITEM "Paste As &New File\tCtrl+E",  ID_EDIT_PASTE_NEW
         MENUITEM "Insert from &file...",        ID_EDIT_INSERTFROMFILE
         MENUITEM "&Insert Silence...",          ID_PROCESS_INSERTSILENCE
+        POPUP "Fade"
+        BEGIN
+            MENUITEM "In",                          ID_EDIT_FADE_IN
+            MENUITEM "Out",                         ID_EDIT_FADE_OUT
+        END
         MENUITEM SEPARATOR
         MENUITEM "&Go To...\tCtrl+G",           ID_EDIT_GOTO
         MENUITEM "Select &All\tCtrl+A",         ID_EDIT_SELECT_ALL
@@ -465,6 +470,11 @@ BEGIN
         MENUITEM "Paste\tCtrl+V",               ID_EDIT_PASTE
         MENUITEM "Cut\tCtrl+X",                 ID_EDIT_CUT
         MENUITEM "Delete\tDel",                 ID_EDIT_DELETE
+        POPUP "Fade"
+        BEGIN
+            MENUITEM "In",                          40154
+            MENUITEM "Out",                         40155
+        END
         MENUITEM "&Region...\tR",               ID_EDIT_WAVE_REGION
         MENUITEM SEPARATOR
         MENUITEM "&Zoom In Time\tNum +",        ID_VIEW_ZOOMINHOR2
@@ -2357,9 +2367,10 @@ BEGIN
     PUSHBUTTON      "Delete",IDC_BUTTON_DELETE,252,21,50,14
 END
 
-IDD_DIALOG_FADEINOUT DIALOGEX 0, 0, 183, 131
+IDD_DIALOG_FADEINOUT DIALOGEX 0, 0, 234, 113
 STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | 
     WS_SYSMENU
+EXSTYLE WS_EX_CONTEXTHELP
 CAPTION "Fade In/Out"
 FONT 8, "MS Shell Dlg", 400, 0, 0x1
 BEGIN
@@ -2369,15 +2380,16 @@ BEGIN
     EDITTEXT        IDC_EDIT_TRANSITION_LENGTH,101,29,40,14,ES_AUTOHSCROLL | 
                     ES_NUMBER
     LTEXT           "ms",IDC_STATIC2,145,31,19,8
-    GROUPBOX        "Transition type",IDC_STATIC3,15,46,148,55
+    GROUPBOX        "Transition type",IDC_STATIC3,15,46,147,56
     CONTROL         "Linear",IDC_RADIO_LINEAR,"Button",BS_AUTORADIOBUTTON | 
-                    WS_GROUP,18,58,117,10
+                    WS_GROUP | WS_TABSTOP,18,58,117,10
     CONTROL         "Squared sine",IDC_RADIO_SQUARED_SINE,"Button",
-                    BS_AUTORADIOBUTTON,18,71,135,10
+                    BS_AUTORADIOBUTTON,18,72,135,10
     CONTROL         "Sine/Cosine",IDC_RADIO_SINE_COSINE,"Button",
-                    BS_AUTORADIOBUTTON,18,85,141,10
-    DEFPUSHBUTTON   "OK",IDOK,31,110,50,14,WS_GROUP
-    PUSHBUTTON      "Cancel",IDCANCEL,101,110,50,14
+                    BS_AUTORADIOBUTTON,18,86,141,10
+    DEFPUSHBUTTON   "OK",IDOK,177,12,50,14,WS_GROUP
+    PUSHBUTTON      "Cancel",IDCANCEL,177,30,50,14
+    PUSHBUTTON      "Help",IDHELP,177,48,50,14
 END
 
 IDD_DIALOG_SPLIT_TO_FILES DIALOGEX 0, 0, 358, 303
@@ -2524,6 +2536,29 @@ BEGIN
                     BS_AUTOCHECKBOX | WS_TABSTOP,7,190,170,10
     DEFPUSHBUTTON   "OK",IDOK,54,210,50,14
     PUSHBUTTON      "Cancel",IDCANCEL,118,210,50,14
+END
+
+IDD_DIALOG_EDIT_FADE_IN_OUT DIALOGEX 0, 0, 193, 95
+STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | 
+    WS_SYSMENU
+EXSTYLE WS_EX_CONTEXTHELP
+CAPTION "Fade In/Out"
+FONT 8, "MS Shell Dlg", 400, 0, 0x1
+BEGIN
+    CONTROL         "Fade In",IDC_RADIO_FADE_IN,"Button",BS_AUTORADIOBUTTON | 
+                    WS_GROUP | WS_TABSTOP,7,15,54,10
+    CONTROL         "Fade Out",IDC_RADIO_FADE_OUT,"Button",
+                    BS_AUTORADIOBUTTON,66,15,60,10
+    GROUPBOX        "Transition type",IDC_STATIC3,7,31,120,55,WS_GROUP
+    CONTROL         "Linear",IDC_RADIO_LINEAR,"Button",BS_AUTORADIOBUTTON | 
+                    WS_GROUP | WS_TABSTOP,10,42,106,10
+    CONTROL         "Squared sine",IDC_RADIO_SQUARED_SINE,"Button",
+                    BS_AUTORADIOBUTTON,10,56,106,10
+    CONTROL         "Sine/Cosine",IDC_RADIO_SINE_COSINE,"Button",
+                    BS_AUTORADIOBUTTON,10,70,106,10
+    DEFPUSHBUTTON   "OK",IDOK,136,7,50,14,WS_GROUP
+    PUSHBUTTON      "Cancel",IDCANCEL,136,25,50,14
+    PUSHBUTTON      "Help",IDHELP,136,43,50,14
 END
 
 
@@ -2958,9 +2993,9 @@ BEGIN
     IDD_DIALOG_FADEINOUT, DIALOG
     BEGIN
         LEFTMARGIN, 7
-        RIGHTMARGIN, 176
+        RIGHTMARGIN, 227
         TOPMARGIN, 7
-        BOTTOMMARGIN, 124
+        BOTTOMMARGIN, 106
     END
 
     IDD_DIALOG_SPLIT_TO_FILES, DIALOG
@@ -2985,6 +3020,14 @@ BEGIN
         RIGHTMARGIN, 215
         TOPMARGIN, 7
         BOTTOMMARGIN, 224
+    END
+
+    IDD_DIALOG_EDIT_FADE_IN_OUT, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 186
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 88
     END
 END
 #endif    // APSTUDIO_INVOKED
@@ -3967,6 +4010,8 @@ STRINGTABLE
 BEGIN
     ID_SAVE_SPLIT_TO_FILES  "Save as multiple files, split by default on the markers"
     ID_FFT_WINDOW_NUTTALL   "Apply Nuttall window to the data before FFT"
+    ID_EDIT_FADE_IN         "Fade the sound from silence to full volume (hold Shift for options)\nFade In"
+    ID_EDIT_FADE_OUT        "Fade the sound from full volume to silence (hold Shift for options)\nFade Out"
 END
 
 STRINGTABLE 
