@@ -517,7 +517,7 @@ void CFilterGraphWnd::OnMouseMove(UINT nFlags, CPoint point)
 		{
 			point.x = cr.right - 1;
 		}
-		// TODO: process Ctrl and Shift
+
 		SetCurrentPointGainDb(PosYToGainDb(point.y, cr.Height()));
 		if (GetFilterPointPixel(m_PointWithFocus) != point.x)
 		{
