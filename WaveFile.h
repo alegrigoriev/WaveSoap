@@ -281,48 +281,36 @@ enum {
 	CreateWaveFileCreateFact = 0x04000000,
 };
 
-struct WaveMarker
-{
-	CString Name;
-	CString Comment;
-	ULONG CueId;
-	SAMPLE_INDEX StartSample;
-	FOURCC fccRgn;  // 'rgn '
-	NUMBER_OF_SAMPLES LengthSamples;  // >1 if it is region
-	bool operator <(WaveMarker const & op)
-	{
-		return StartSample < op.StartSample;
-	}
-};
-
-struct WavePlaylistItem
-{
-	unsigned MarkerIndex;
-	DWORD Length;   // samples
-	DWORD NumLoops;
-};
-
 struct CuePointChunkItem
 {
-	DWORD NameId;   // unique ID
-	DWORD SamplePosition; // ordinal sample position in the file
-	FOURCC fccChunk;    // 'data'
-	DWORD dwChunkStart;
-	DWORD dwBlockStart;
-	DWORD dwSampleOffset;
+	DWORD CuePointID;       // unique ID
+	DWORD SamplePosition;   // ordinal sample position in the playlist order (not used)
+	FOURCC fccChunk;        // 'data'
+	DWORD dwChunkStart;     // zero for 'data' chunk
+	DWORD dwBlockStart;     // position of the sample in 'data' chunk'
+	// for a compressed file, dwBlockStart should be a beginning of a compressed block containing that sample
+	// but how we figure out the cue sample position?
+	DWORD dwSampleOffset;   // sample position of the cue (NOT byte offset) from the block
 };
+
+typedef std::vector<CuePointChunkItem> CuePointVector;
+typedef CuePointVector::iterator CuePointVectorIterator;
 
 struct PlaylistSegment
 {
-	DWORD NameId;   // CuePoint ID
+	DWORD CuePointID;   // CuePoint ID
 	DWORD Length;   // in samples
-	DWORD Loops;    // number of loops
+	DWORD NumLoops;    // number of loops
 };
+
+typedef std::vector<PlaylistSegment> PlaylistVector;
+typedef PlaylistVector::iterator PlaylistVectorIterator;
+
 #pragma pack(push, 1)
 
 struct LtxtChunk  // in LIST adtl
 {
-	DWORD NameId;   // CuePoint ID
+	DWORD CuePointID;
 	DWORD SampleLength; // length in samples. For cue point - 0 or 1
 	DWORD Purpose;  //'rgn '
 	WORD Country;
@@ -334,6 +322,44 @@ struct LtxtChunk  // in LIST adtl
 };
 
 #pragma pack(pop)
+
+struct WaveRegionMarker : public LtxtChunk
+{
+	CString Name;
+
+	WaveRegionMarker()
+	{
+		CuePointID = ~0UL;
+		SampleLength = 0;
+		Purpose = 0;
+		Country = 0;
+		Language = 0;
+		Dialect = 0;
+		Codepage = 0;
+	}
+};
+
+typedef std::vector<WaveRegionMarker> RegionMarkerVector;
+typedef RegionMarkerVector::iterator RegionMarkerIterator;
+
+struct LablNote
+{
+	DWORD CuePointID;
+	CString Text;
+};
+
+typedef std::vector<LablNote> LabelVector;
+typedef LabelVector::iterator LabelVectorIterator;
+
+struct InfoListItem
+{
+	FOURCC fccCode;
+	CStringA Tag;   // as in WMA
+	CString Text;
+};
+
+typedef std::vector<InfoListItem> InfoListItemVector;
+typedef InfoListItemVector::iterator InfoListItemIterator;
 
 struct WavePeak
 {
@@ -476,11 +502,13 @@ public:
 		MMCKINFO datack;
 		MMCKINFO fmtck;
 		MMCKINFO factck;
+
 		CWaveFormat wf;
 		CWavePeaks m_PeakData;
 
+		CString DisplayTitle;   // DISP, WM/Title
+#if 0
 		CString Author;         // WM/Author
-		CString DisplayTitle;   // WM/Title
 		CString Album;          // WM/AlbumTitle
 		CString Copyright;      // ICOP
 		CString RecordingEngineer;  // IENG
@@ -496,22 +524,35 @@ public:
 		CString Source; // ISRC
 		CString Digitizer; // ITCH
 		CString DigitizationSource; // ISRF
+#endif
 
-		std::vector<WaveMarker> Markers;
-		std::vector<WavePlaylistItem> Playlist;
-		bool InfoChanged;
+		RegionMarkerVector m_RegionMarkers;  // markers and regions
+		CuePointVector m_CuePoints;
+
+		PlaylistVector m_Playlist;
+		LabelVector m_Labels;   // labels for the cue points
+		LabelVector m_Notes;     // comments for the cue points
+
+		InfoListItemVector m_InfoList;
+
+		bool m_InfoChanged;
 
 		InstanceDataWav()
 			: m_PeakData(512)
+			, m_InfoChanged(false)
 		{
 			memzero(datack);
 			memzero(fmtck);
 			memzero(factck);
 			m_size = sizeof *this;
-			InfoChanged = false;
 		}
 		// move all data to a derived (bigger) type
 		virtual void CopyMetadata(InstanceDataWav const & src);
+
+		CuePointChunkItem * GetCuePoint(DWORD CueId);
+		WaveRegionMarker * GetRegionMarker(DWORD CueId);
+		LPCTSTR GetCueLabel(DWORD CueId);
+		LPCTSTR GetCueComment(DWORD CueId);
 
 		InstanceDataWav & operator =(InstanceDataWav const & src);
 
@@ -539,6 +580,7 @@ public:
 		}
 		return & pInstData->m_PeakData;
 	}
+
 	void SetPeaks(PEAK_INDEX from, PEAK_INDEX to, NUMBER_OF_CHANNELS stride, WavePeak value);
 
 	NUMBER_OF_CHANNELS Channels() const
@@ -581,7 +623,10 @@ public:
 	BOOL ReadCueSheet(MMCKINFO & chunk);
 	BOOL ReadPlaylist(MMCKINFO & chunk);
 
-	WaveMarker * GetCueItem(DWORD CueId);
+	CuePointChunkItem * GetCuePoint(DWORD CueId);
+	WaveRegionMarker * GetRegionMarker(DWORD CueId);
+	LPCTSTR GetCueLabel(DWORD CueId);
+	LPCTSTR GetCueComment(DWORD CueId);
 
 	unsigned SampleRate() const
 	{
