@@ -248,7 +248,7 @@ public:
 	CString m_TargetName;
 	//~CCommitFileSaveContext() { }
 	virtual BOOL OperationProc();
-	virtual void PostRetire(BOOL bChildContext = FALSE);
+	virtual void PostRetire();
 
 	CWaveFile m_File;
 };
@@ -390,7 +390,7 @@ protected:
 	virtual BOOL ProcessBuffer(void * buf, size_t len, SAMPLE_POSITION offset, BOOL bBackward = FALSE);
 	virtual BOOL Init();
 	virtual void DeInit();
-	virtual void PostRetire(BOOL bChildContext = FALSE);
+	virtual void PostRetire();
 };
 
 class CReplaceFileContext : public COperationContext
@@ -403,7 +403,7 @@ public:
 	CReplaceFileContext(CWaveSoapFrontDoc * pDoc, LPCTSTR OperationName,
 						CWaveFile & NewFile, bool bNewDirectMode = false);
 
-	virtual BOOL CreateUndo(BOOL IsRedo = FALSE);
+	virtual BOOL CreateUndo();
 
 	virtual BOOL OperationProc();
 protected:
@@ -421,7 +421,7 @@ public:
 	CReplaceFormatContext(CWaveSoapFrontDoc * pDoc, LPCTSTR OperationName,
 						WAVEFORMATEX const * pNewFormat);
 
-	virtual BOOL CreateUndo(BOOL IsRedo = FALSE);
+	virtual BOOL CreateUndo();
 	virtual BOOL OperationProc();
 
 protected:
@@ -439,7 +439,7 @@ public:
 							CWaveFile & File, MEDIA_FILE_SIZE NewLength);
 
 protected:
-	virtual BOOL CreateUndo(BOOL IsRedo = FALSE);
+	virtual BOOL CreateUndo();
 	virtual BOOL OperationProc();
 	virtual BOOL PrepareUndo();
 	virtual void UnprepareUndo();
@@ -459,7 +459,7 @@ public:
 								CWaveFile & File, NUMBER_OF_SAMPLES NewSamples);
 
 protected:
-	virtual BOOL CreateUndo(BOOL IsRedo = FALSE);
+	virtual BOOL CreateUndo();
 	virtual BOOL OperationProc();
 	virtual BOOL PrepareUndo();
 	virtual void UnprepareUndo();
@@ -477,6 +477,7 @@ public:
 	typedef std::auto_ptr<ThisClass> auto_ptr;
 
 	CMoveOperation(CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString, LPCTSTR OperationName);
+	~CMoveOperation();
 
 	BOOL InitMove(CWaveFile & File,
 				SAMPLE_INDEX SrcStartSample,
@@ -486,11 +487,14 @@ public:
 protected:
 	virtual BOOL PrepareUndo();
 	virtual void UnprepareUndo();
-	//virtual ListHead<COperationContext> * GetUndoChain();
-	//virtual void DeleteUndo();
+	virtual ListHead<COperationContext> * GetUndoChain();
+	virtual void DeleteUndo();
+	virtual void DeInit();
 
-	virtual BOOL CreateUndo(BOOL IsRedo = FALSE);
+	virtual BOOL CreateUndo();
 	virtual BOOL OperationProc();
+
+	CMoveOperation * m_pUndoMove;
 };
 
 // this object saves the data being discarded as a result
@@ -508,15 +512,17 @@ public:
 						SAMPLE_INDEX SrcStartSample,
 						SAMPLE_INDEX SrcEndSample,
 						CHANNEL_MASK Channels);
+	~CSaveTrimmedOperation();
 
 protected:
-	virtual BOOL PrepareUndo();
-	virtual void UnprepareUndo();
-	virtual void DeInit();
-	//virtual ListHead<COperationContext> * GetUndoChain();
 	class CRestoreTrimmedOperation * m_pRestoreOperation;
 
-	virtual BOOL CreateUndo(BOOL IsRedo = FALSE);
+	virtual BOOL PrepareUndo();
+	virtual void UnprepareUndo();
+
+	virtual ListHead<COperationContext> * GetUndoChain();
+
+	virtual BOOL CreateUndo();
 	virtual void DeleteUndo();
 	virtual BOOL OperationProc();
 };
@@ -530,13 +536,14 @@ public:
 	typedef std::auto_ptr<ThisClass> auto_ptr;
 
 	CRestoreTrimmedOperation(CWaveSoapFrontDoc * pDoc);
+	~CRestoreTrimmedOperation();
 
 protected:
-	virtual void DeInit();
 
 	class CSaveTrimmedOperation * m_pSaveOperation;
 
-	virtual BOOL CreateUndo(BOOL IsRedo = FALSE);
+	virtual BOOL CreateUndo();
+	virtual ListHead<COperationContext> * GetUndoChain();
 	virtual void DeleteUndo();
 };
 
@@ -556,7 +563,7 @@ protected:
 	virtual BOOL PrepareUndo();
 	virtual void UnprepareUndo();
 
-	virtual BOOL CreateUndo(BOOL IsRedo = FALSE);
+	virtual BOOL CreateUndo();
 	virtual BOOL ProcessBuffer(void * buf, size_t len, SAMPLE_POSITION offset, BOOL bBackward = FALSE);
 };
 
@@ -574,7 +581,7 @@ public:
 
 protected:
 
-	virtual BOOL CreateUndo(BOOL IsRedo = FALSE);
+	virtual BOOL CreateUndo();
 	virtual BOOL OperationProc();
 };
 
@@ -587,7 +594,7 @@ public:
 
 	CMetadataChangeOperation(CWaveSoapFrontDoc * pDoc);
 
-	virtual BOOL CreateUndo(BOOL IsRedo = FALSE);
+	virtual BOOL CreateUndo();
 	virtual BOOL OperationProc();
 
 protected:
@@ -604,7 +611,7 @@ public:
 							SAMPLE_INDEX Start, SAMPLE_INDEX End, SAMPLE_INDEX Caret,
 							CHANNEL_MASK Channels);
 
-	virtual BOOL CreateUndo(BOOL IsRedo = FALSE);
+	virtual BOOL CreateUndo();
 	virtual BOOL OperationProc();
 
 protected:
@@ -612,6 +619,29 @@ protected:
 	SAMPLE_INDEX m_End;
 	SAMPLE_INDEX m_Caret;
 	CHANNEL_MASK m_Channels;
+};
+
+class CReverseOperation : public CTwoFilesOperation
+{
+	typedef CReverseOperation ThisClass;
+	typedef CTwoFilesOperation BaseClass;
+
+public:
+	typedef std::auto_ptr<ThisClass> auto_ptr;
+	CReverseOperation(CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString, LPCTSTR OperationName);
+	~CReverseOperation();
+
+protected:
+
+	CCopyUndoContext * m_pUndoLow;
+	CCopyUndoContext * m_pUndoHigh;
+
+	SAMPLE_POSITION m_HighDstPos;
+
+	virtual BOOL CreateUndo();
+	virtual ListHead<COperationContext> * GetUndoChain();
+	virtual void DeleteUndo();
+	virtual BOOL OperationProc();
 };
 
 BOOL InitInsertCopy(CStagedContext * pContext,
