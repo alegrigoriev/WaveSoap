@@ -427,29 +427,30 @@ void CCdGrabbingDialog::DoDataExchange(CDataExchange* pDX)
 			m_ArtistHistory.AddString(m_sArtist);
 		}
 
-		for (unsigned t = 0; t < m_Tracks.size(); t++)
+		for (CdTrackInfoVector::iterator t = m_Tracks.begin(); t < m_Tracks.end(); t++)
 		{
-			if ( ! m_Tracks[t].Checked)
+			if ( ! t->Checked)
 			{
 				continue;
 			}
-			CString Name = m_Tracks[t].Track;
+			CString Name = t->Track;
 			LPTSTR pName = Name.GetBuffer(0);
 			while (*pName != 0)
 			{
 				TCHAR c= *pName;
 				if ('\\' == c
+					|| '/' == c
 					|| '"' == c
 					|| '?' == c
 					|| '*' == c
 					|| ':' == c
-					|| ';' == c
-					|| ',' == c
+					//|| ';' == c
+					//|| ',' == c
 					|| '#' == c
-					|| '&' == c
+					//|| '&' == c
 					|| '%' == c)
 				{
-					*pName = '_';
+					*pName = '-';
 				}
 
 				pName++;
@@ -468,12 +469,13 @@ void CCdGrabbingDialog::DoDataExchange(CDataExchange* pDX)
 				Name += _T(".wav");
 				break;
 			}
-			m_Tracks[t].TrackFileName = m_sSaveFolder + Name;
+
+			t->TrackFileName = m_sSaveFolder + Name;
 
 			// check for existing file, ask for replacement!
 			SetLastError(0);
 			ULONG AccessMask = GENERIC_READ | GENERIC_WRITE | DELETE;
-			HANDLE hFile = CreateFile(m_Tracks[t].TrackFileName,
+			HANDLE hFile = CreateFile(t->TrackFileName,
 									AccessMask, 0, NULL, OPEN_EXISTING, 0, NULL);
 			if (NULL == hFile || INVALID_HANDLE_VALUE == hFile)
 			{
@@ -483,7 +485,7 @@ void CCdGrabbingDialog::DoDataExchange(CDataExchange* pDX)
 				{
 				case ERROR_FILE_NOT_FOUND:
 					// see if we can create a new file
-					hFile = CreateFile(m_Tracks[t].TrackFileName,
+					hFile = CreateFile(t->TrackFileName,
 										AccessMask,
 										0, NULL, CREATE_NEW,
 										FILE_FLAG_DELETE_ON_CLOSE, NULL);
@@ -497,16 +499,18 @@ void CCdGrabbingDialog::DoDataExchange(CDataExchange* pDX)
 						CloseHandle(hFile);
 					}
 					continue;
+
 				case ERROR_ACCESS_DENIED:
 				case ERROR_FILE_READ_ONLY:
 					id = IDS_OVERWRITE_ACCESS_DENIED;
 					break;
+
 				case ERROR_SHARING_VIOLATION:
 					id = IDS_OVERWRITE_SHARING_VIOLATION;
 					break;
 				}
 				CString s;
-				s.Format(id, LPCTSTR(m_Tracks[t].TrackFileName));
+				s.Format(id, LPCTSTR(t->TrackFileName));
 				AfxMessageBox(s, MB_OK | MB_ICONEXCLAMATION);
 				pDX->PrepareCtrl(IDC_LIST_TRACKS);
 				pDX->Fail();
@@ -516,7 +520,7 @@ void CCdGrabbingDialog::DoDataExchange(CDataExchange* pDX)
 				CloseHandle(hFile);
 				// file already exists
 				CString s;
-				s.Format(IDS_REPLACEYESNO, LPCTSTR(m_Tracks[t].TrackFileName));
+				s.Format(IDS_REPLACEYESNO, LPCTSTR(t->TrackFileName));
 				if (IDYES != AfxMessageBox(s, MB_YESNO | MB_ICONEXCLAMATION))
 				{
 					pDX->PrepareCtrl(IDC_LIST_TRACKS);
@@ -525,7 +529,7 @@ void CCdGrabbingDialog::DoDataExchange(CDataExchange* pDX)
 			}
 		}
 		m_PreviousDriveLetter = m_DriveLetterSelected;
-		m_Profile.UnloadAll();
+		m_Profile.FlushAll();
 	}
 }
 
