@@ -395,6 +395,7 @@ BEGIN_MESSAGE_MAP(CCdGrabbingDialog, CResizableDialog)
 	ON_BN_CLICKED(IDC_BUTTON_PLAY, OnButtonPlay)
 	ON_BN_CLICKED(IDC_BUTTON_STOP, OnButtonStop)
 	ON_CBN_SELCHANGE(IDC_COMBO_SPEED, OnSelchangeComboSpeed)
+	ON_NOTIFY(LVN_ITEMCHANGED, IDC_LIST_TRACKS, OnItemchangedListTracks)
 	//}}AFX_MSG_MAP
 	ON_WM_DEVICECHANGE()
 	ON_MESSAGE(WM_KICKIDLE, OnKickIdle)
@@ -487,11 +488,16 @@ void CCdGrabbingDialog::FillTrackList(TCHAR letter)
 	InitReadSpeedCombobox();
 }
 
-void CCdGrabbingDialog::ReloadTrackList()
+void CCdGrabbingDialog::ReloadTrackList(CdMediaChangeState NewMediaState)
 {
-	m_CdDrive.StopAudioPlay();
-	m_CdDrive.ReadSessions( & m_toc);
-	BOOL res = m_CdDrive.ReadToc( & m_toc);
+	BOOL res = FALSE;
+
+	if (NewMediaState != CdMediaStateNotReady)
+	{
+		m_CdDrive.StopAudioPlay();
+		m_CdDrive.ReadSessions( & m_toc);
+		res = m_CdDrive.ReadToc( & m_toc);
+	}
 
 	if ( ! res)
 	{
@@ -750,6 +756,10 @@ void CCdGrabbingDialog::OnTimer(UINT nIDEvent)
 {
 	// check CD status
 	CheckForDiskChanged();
+	if (m_bPlayingAudio)
+	{
+		FillPlaybackBuffers();
+	}
 }
 
 void CCdGrabbingDialog::OnButtonMore()
@@ -763,14 +773,14 @@ void CCdGrabbingDialog::CheckForDiskChanged()
 	switch (CdChange)
 	{
 	case CdMediaStateNotReady:
-		ReloadTrackList();
+		ReloadTrackList(CdChange);
 		InitReadSpeedCombobox();
 		break;
 	case CdMediaStateSameMedia:
 		return;
 		break;
 	case CdMediaStateChanged:
-		ReloadTrackList();
+		ReloadTrackList(CdChange);
 		InitReadSpeedCombobox();
 		break;
 	}
@@ -817,6 +827,7 @@ LRESULT CCdGrabbingDialog::OnDeviceChange(UINT event, DWORD data)
 void CCdGrabbingDialog::OnDestroy()
 {
 	KillTimer(1);
+	StopCdPlayback();
 	CResizableDialog::OnDestroy();
 
 }
@@ -1204,6 +1215,26 @@ void CCdGrabbingDialog::OnChangeEditFolderOrFile()
 
 void CCdGrabbingDialog::OnButtonPlay()
 {
+	if (m_bPlayingAudio)
+	{
+		StopCdPlayback();
+		return;
+	}
+	int tr = m_lbTracks.GetNextItem(-1, LVNI_SELECTED);
+	if (-1 == tr)
+	{
+		tr = m_lbTracks.GetNextItem(-1, LVNI_FOCUSED);
+	}
+	if (-1 == tr
+		|| tr >= m_Tracks.size()
+		|| ! m_Tracks[tr].IsAudio)
+	{
+		return;
+	}
+	m_PlaybackAddress = m_Tracks[tr].TrackBegin;
+	m_PlaybackSectors = m_Tracks[tr].NumSectors;
+	m_PlayingTrack = tr;
+
 	WAVEFORMATEX wfx;
 	wfx.cbSize = 0;
 	wfx.nChannels = 2;
@@ -1226,21 +1257,13 @@ void CCdGrabbingDialog::OnButtonPlay()
 	}
 	m_bPlayingAudio = TRUE;
 	m_bNeedUpdateControls = TRUE;
-	if ( ! FillPlaybackBuffers())
-	{
-		StopCdPlayback();
-	}
+	m_CdDrive.SetReadSpeed(176400 * 4);
+	FillPlaybackBuffers();
 }
 
 void CCdGrabbingDialog::OnButtonStop()
 {
-	if (m_bPlayingAudio)
-	{
-		m_WaveOut.Reset();
-	}
-	m_bPlayingAudio = FALSE;
-	m_bNeedUpdateControls = TRUE;
-
+	StopCdPlayback();
 }
 
 void CCdGrabbingDialog::OnUpdatePlay(CCmdUI* pCmdUI)
@@ -1263,11 +1286,51 @@ void CCdGrabbingDialog::OnUpdatePlay(CCmdUI* pCmdUI)
 BOOL CCdGrabbingDialog::FillPlaybackBuffers()
 {
 	// get sound buffers, fill from CD
+	char * pBuffer;
+	size_t BufSize;
+	int hBuffer;
+	while (0 != m_PlaybackSectors
+			&& (hBuffer = m_WaveOut.GetBuffer( & pBuffer, & BufSize, FALSE)) > 0)
+	{
+		int NumSectors = BufSize / CDDASectorSize;
+		if (NumSectors > m_PlaybackSectors)
+		{
+			NumSectors = m_PlaybackSectors;
+		}
+		if ( ! m_CdDrive.ReadCdData(pBuffer, m_PlaybackAddress, NumSectors))
+		{
+			m_WaveOut.ReturnBuffer(hBuffer);
+			StopCdPlayback();
+			return FALSE;
+		}
+
+		m_PlaybackAddress = m_PlaybackAddress + NumSectors;
+		m_WaveOut.Play(hBuffer, NumSectors * CDDASectorSize);
+
+	}
+	if (0 == m_PlaybackSectors)
+	{
+		// wait until all buffers are returned
+		if (m_WaveOut.WaitForQueueEmpty(0))
+		{
+			StopCdPlayback();
+			return FALSE;
+		}
+	}
 	return TRUE;
 }
 
 void CCdGrabbingDialog::StopCdPlayback()
 {
+	if (m_bPlayingAudio)
+	{
+		m_WaveOut.Reset();
+		m_bNeedUpdateControls = TRUE;
+		m_WaveOut.WaitForQueueEmpty(1000);
+		m_WaveOut.DeallocateBuffers();
+		m_WaveOut.Close();
+	}
+	m_bPlayingAudio = FALSE;
 }
 
 void CCdGrabbingDialog::OnUpdateStop(CCmdUI* pCmdUI)
@@ -1306,4 +1369,25 @@ void CCdGrabbingDialog::OnUpdateDeselectAll(CCmdUI* pCmdUI)
 void CCdGrabbingDialog::OnSelchangeComboSpeed()
 {
 	m_SelectedReadSpeed = 176400 * CdSpeeds[m_SpeedCombo.GetCurSel()];
+}
+
+void CCdGrabbingDialog::OnItemchangedListTracks(NMHDR* pNMHDR, LRESULT* pResult)
+{
+	NM_LISTVIEW* pNMListView = (NM_LISTVIEW*)pNMHDR;
+	if (m_bPlayingAudio
+		&& pNMListView->iItem == m_PlayingTrack)
+	{
+		if (0 == (pNMListView->uNewState & (LVIS_SELECTED | LVIS_FOCUSED)))
+		{
+			StopCdPlayback();
+		}
+	}
+	*pResult = 0;
+}
+
+void CCdGrabbingDialog::OnCancel()
+{
+	m_CdDrive.SetReadSpeed(m_CurrentReadSpeed);
+
+	CResizableDialog::OnCancel();
 }

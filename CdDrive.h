@@ -863,7 +863,7 @@ enum CdMediaChangeState
 	CdMediaStateSameMedia,
 	CdMediaStateChanged,
 };
-int const CDDASectorSize = 2352;
+enum { CDDASectorSize = 2352} ;
 
 class CCdDrive
 {

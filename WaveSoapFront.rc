@@ -1432,8 +1432,9 @@ FONT 8, "MS Sans Serif"
 BEGIN
     LTEXT           "&Tracks:",IDC_STATIC,7,23,38,8
     CONTROL         "List1",IDC_LIST_TRACKS,"SysListView32",LVS_REPORT | 
-                    LVS_EDITLABELS | LVS_ALIGNLEFT | LVS_NOSORTHEADER | 
-                    WS_BORDER | WS_TABSTOP,7,34,299,117,WS_EX_CLIENTEDGE
+                    LVS_SHOWSELALWAYS | LVS_EDITLABELS | LVS_ALIGNLEFT | 
+                    LVS_NOSORTHEADER | WS_BORDER | WS_TABSTOP,7,34,299,117,
+                    WS_EX_CLIENTEDGE
     CONTROL         "Assign to all tracks:",IDC_RADIO_ASSIGN_ATTRIBUTES,
                     "Button",BS_AUTORADIOBUTTON | WS_GROUP | WS_TABSTOP,7,
                     155,94,10

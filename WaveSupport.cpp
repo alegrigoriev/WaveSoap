@@ -69,7 +69,7 @@ void CWaveDevice::DeallocateBuffers()
 	m_pBufs = NULL;
 }
 
-UINT CWaveDevice::GetBuffer(char ** ppbuf, size_t * pSize, BOOL bWait)
+int CWaveDevice::GetBuffer(char ** ppbuf, size_t * pSize, BOOL bWait)
 {
 	ASSERT(this && ppbuf && pSize);
 
@@ -147,6 +147,10 @@ BOOL CWaveDevice::WaitForQueueEmpty(DWORD timeout)
 		if (0 == (flag & WHDR_INQUEUE))
 		{
 			return TRUE;
+		}
+		if (0 == timeout)
+		{
+			return FALSE;
 		}
 
 		WaitForSingleObject(hEvent, timeout);

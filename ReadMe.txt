@@ -1,8 +1,5 @@
 Known problems and tasks:
 
-Use temporary filename for CD temp files
-Add file extension to CD track file name
-Set CD reading speed !
 Pass wave format to CD grabbing dialog
 Process Loss Of Streaming error
 Add CD grabbing
@@ -54,7 +51,7 @@ Make recording from Internet stream
 
 Problems:
 
-During playback, horizontal ruler and outline is invalidated.
+During playback, outline is invalidated.
 IOCTL_CDROM_RAW_READ doesn't work on old Panasonic
 WinXP doesn't have CDRAL
 Multisession disk shows only begin of tracks. Read the whole structure.
@@ -69,37 +66,13 @@ samples with 32767, -32768 are not visible
 Log Off query doesn't close the active dialog. Recursion is possible. Make sure to check after Cancel
 
 Fixed:
+During playback, horizontal ruler is invalidated.
 Track names are not updated in the program.
 No status string during CD reading?
 When opening CD drive, set its media state to undefined
 No Disk In Drive has a checkmark
 "No Disk in drive" is updated all the time
 CD list combo height too low
-Click on outline view moves the wave view a bit after the button released
-When FFT array is reallocated, it is invalidated (was disabled in the code)
-Paste operation doesn't check if sampling rate is the same. Add dialog to resample
-Notch filter initial setting is weird
-Originally selected filter point may be hidden because the filter is disabled
-Too many digits in filter/equalizer dialogs number boxes
-FFT zoom out doesn't put the range to the proper limits
-After resample, frequency ruler not updated
-Save copy reopen file dialog has "Close" instead of "Cancel"
-OpenWmaFile crashes if the temporary file couldn't be created
-File dialog didn't open in Win98
-Equalizer and filter views invalidated wrong area (CXDRAG instead of CXSIZEFRAME)
-Tooltips could be shown only after TTN_GETTEXT failed once, otherwise the tips was inactive
-in FFT view, sound modification doesn't invalidate enough FFT data
-in 1:1 scale, need to invalidate 1 more column
-CEqualizerContext didn't set Dirty flag in the buffers
-Min/Max sample position not divided by the sample size
-Save, Undo, Modify - causes to mark the file as unchanged
-Right-only volume change skipped some samples
-Use document title rather than filename in dialogs
-Drag distance too little in WinME (use resize border size)
-No non-client painting under WinME
-ATI card can't draw small circles (use memory bitmap)
-No status bar in WinME
-FFT doesn't invaludate some areas
 
 Deferred:
 16 and 20 kbit/s WMA save is incomplete (not reproduced)
@@ -110,6 +83,9 @@ Save As dialog is not centered first time (comdlg problem?)
 ??? When time/seconds format is set for status bar, MM:SS is actually shown
 
 Done:
+Use temporary filename for CD temp files
+Add file extension to CD track file name
+Set CD reading speed !
 use CDRALW2K.sys service before trying ASPI
 check file length param on new file creation
 Add flush control to CDirectFile
@@ -118,50 +94,6 @@ Disable label edit, if the track is not audio
 Draw gray background outside file area on FFT
 Add overflow dialog on resample	and other waveproc
 Test "reload compressed file" dialogs
-Add WMA save
-Fill WMA formats combo
-Add RAW format save
-When saving a copy, change the dialog title
-Pass file type flags for MP3 file reopen
-Add MP3 save
-Save Copy As asks for file reopen
-File/New and File/Save items moved to submenus
-Put zoom buttons instead of the static fields in the view:
-  On top static: horizontal zoom,
-  On Bottom static: vertical zoom
-Save peak info for compressed files, too, but recalculate it when loading
-Add low/high frequency and notch filters functions
-Add "Swap Channels" function
-Make "CRC" field for the statistics
-Add Checksum field for the statistics
-F12 - shortcut for Save As, Shift+F12 - shortcut for Save Copy
-Add "Zero phase" option to the equalizer
-Make shortcuts:
-    show waveform: Alt+1
-    Show FFT: Alt+2
-    Toggle Spectrum section: Alt+3
-    Toggle outline view:Alt+4
-    Toggle horizontal ruler: Alt+5
-    Toggle vertical ruler: Alt+6
-    Increase number of FFT bands: Ctrl+Gray+
-    Decrease number of FFT bands: Ctrl+Gray-
-Add RAW format open
-Include MP3 and WMA filters even if there is no WMP, but show warning, if the filter is selected
-Use circular array for FFT data (for performance reason).
-Add "Simple" equalizer. Multiband equalizer done.
-Support f1, f2, f3 in Evaluate expr
-Put line breaks to the replace expression message
-Add "Export", "Import" to Evaluate Expression dialog
-Add Save/Load to equalizer
-Remember Equalizer dialog size
-Process Enter on EDIT_GAIN edit box
-EQ window: draw dot-caret if no focus, draw without blink, when dragging
-In CSelectionDialog: replace combobox strings with LoadString
-Show file names in PostRetire dialogs, because they can be shown for background DOC.
-Show file name in Statistics Dialog
-Add decibel view to CAmplitudeRuler
-Result of FFT normalized to maximum for max square wave, fro FFT view and spectrum section
-FFT ruler menu command changed to frequency-related
 
 
 For Version 2:
