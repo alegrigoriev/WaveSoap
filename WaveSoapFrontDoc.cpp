@@ -193,6 +193,7 @@ CWaveSoapFrontDoc::CWaveSoapFrontDoc()
 	m_ModificationSequenceNumber(0),
 	m_PrevChannelToCopy(ALL_CHANNELS),
 	m_DefaultPasteMode(0),
+	m_FileTypeFlags(0),
 	m_SelectedChannel(ALL_CHANNELS)
 {
 	m_bUndoEnabled = (FALSE != GetApp()->m_bUndoEnabled);
@@ -613,7 +614,7 @@ BOOL CWaveSoapFrontDoc::DoSave(LPCTSTR lpszPathName, BOOL bReplace)
 	pWf->nChannels = m_WavFile.GetWaveFormat()->nChannels;
 
 	CString newName = lpszPathName;
-	int SaveFlags = 0;
+	int SaveFlags = m_FileTypeFlags;
 	if ( ! bReplace)
 	{
 		SaveFlags |= SaveFile_SaveCopy;
@@ -782,6 +783,8 @@ BOOL CWaveSoapFrontDoc::DoSave(LPCTSTR lpszPathName, BOOL bReplace)
 		{
 			memcpy(pWf, pNewWf, pNewWf->cbSize + sizeof (WAVEFORMATEX));
 		}
+		SaveFlags &= ~SaveFile_NonWavFile;
+
 		switch (dlg.m_FileType)
 		{
 		case SoundFileWav:
@@ -2272,6 +2275,7 @@ BOOL CWaveSoapFrontDoc::OnSaveConvertedFile(int flags, LPCTSTR FullTargetName, W
 			delete pContext;
 			//todo: enable to convert dialog
 			//NotEnoughMemoryMessageBox();
+			AfxMessageBox(IDS_STRING_UNABLE_TO_CONVERT);
 			return FALSE;
 		}
 	}
@@ -2325,6 +2329,7 @@ BOOL CWaveSoapFrontDoc::OnSaveMp3File(int flags, LPCTSTR FullTargetName, WAVEFOR
 	}
 
 	pContext->m_NewName = FullTargetName;
+	pContext->m_NewFileTypeFlags = OpenDocumentMp3File;
 	CConversionContext * pConvert = new CConversionContext(this, "", "");
 
 	if (NULL == pConvert)
@@ -2359,12 +2364,40 @@ BOOL CWaveSoapFrontDoc::OnSaveMp3File(int flags, LPCTSTR FullTargetName, WAVEFOR
 	pContext->m_SrcChan = ALL_CHANNELS;
 	pContext->m_DstChan = ALL_CHANNELS;
 
-	CLameEncConvertor * pMp3Convertor = new CLameEncConvertor;
-	pConvert->m_ProcBatch.AddWaveProc(pMp3Convertor);
-	if ( ! pMp3Convertor->Open(pWf))
+	if (WAVE_FORMAT_MPEGLAYER3 == pWf->wFormatTag)
 	{
-		delete pContext;
-		return FALSE;
+		CAudioConvertor * pAcmConvertor = new CAudioConvertor;
+		if (NULL == pAcmConvertor)
+		{
+			delete pContext;    // pConvert will be deleted
+			NotEnoughMemoryMessageBox();
+			return FALSE;
+		}
+		pConvert->m_ProcBatch.AddWaveProc(pAcmConvertor);
+		WAVEFORMATEX SrcFormat;
+		SrcFormat.nChannels = pWf->nChannels;
+		SrcFormat.nSamplesPerSec = pWf->nSamplesPerSec;
+		SrcFormat.nBlockAlign = SrcFormat.nChannels * sizeof (__int16);
+		SrcFormat.nAvgBytesPerSec = SrcFormat.nBlockAlign * SrcFormat.nSamplesPerSec;
+		SrcFormat.cbSize = 0;
+		SrcFormat.wFormatTag = WAVE_FORMAT_PCM;
+		SrcFormat.wBitsPerSample = 16;
+		if (! pAcmConvertor->InitConversion( & SrcFormat, pWf))
+		{
+			delete pContext;
+			//todo: enable to convert dialog
+			return FALSE;
+		}
+	}
+	else
+	{
+		CLameEncConvertor * pMp3Convertor = new CLameEncConvertor;
+		pConvert->m_ProcBatch.AddWaveProc(pMp3Convertor);
+		if ( ! pMp3Convertor->Open(pWf))
+		{
+			delete pContext;
+			return FALSE;
+		}
 	}
 
 	if (flags & SaveFile_SaveCopy)
@@ -2609,7 +2642,7 @@ void CWaveSoapFrontDoc::PostFileSave(CFileSaveContext * pContext)
 				CReopenCompressedFileDialog dlg;
 				dlg.m_Text.Format(IDS_RELOAD_COMPRESSED_FILE, LPCTSTR(pContext->m_NewName));
 				int result = dlg.DoModal();
-				if (IDYES == result)
+				if (IDOK == result)
 				{
 					// set new title
 					SetPathName(pContext->m_NewName);
@@ -2676,7 +2709,7 @@ void CWaveSoapFrontDoc::PostFileSave(CFileSaveContext * pContext)
 		DeleteRedo();
 		m_SelectedChannel = ALL_CHANNELS;
 	}
-	if ( ! OnOpenDocument(pContext->m_NewName, ReopenDocumentFlags))
+	if ( ! OnOpenDocument(pContext->m_NewName, ReopenDocumentFlags | m_FileTypeFlags))
 	{
 		// message box, then close the document
 		CString s;
@@ -4561,18 +4594,22 @@ BOOL CWaveSoapFrontDoc::OpenNonWavFileDocument(LPCTSTR lpszPathName, int flags)
 {
 	if (flags & OpenDocumentWmaFile)
 	{
+		m_FileTypeFlags = OpenDocumentWmaFile;
 		return OpenWmaFileDocument(lpszPathName);
 	}
 	if (flags & OpenDocumentMp3File)
 	{
+		m_FileTypeFlags = OpenDocumentMp3File;
 		return OpenMp3FileDocument(lpszPathName);
 	}
 	if (flags & OpenDocumentRawFile)
 	{
+		m_FileTypeFlags = OpenDocumentRawFile;
 		return OpenRawFileDocument(lpszPathName);
 	}
 	if (flags & OpenDocumentAviFile)
 	{
+		m_FileTypeFlags = OpenDocumentAviFile;
 		return OpenAviFileDocument(lpszPathName);
 	}
 	return FALSE;

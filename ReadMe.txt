@@ -83,6 +83,7 @@ No status bar in WinME
 FFT doesn't invaludate some areas
 
 Done:
+Save Copy As asks for file reopen
 File/New and File/Save items moved to submenus
 Put zoom buttons instead of the static fields in the view:
   On top static: horizontal zoom,

@@ -163,6 +163,7 @@ protected:
 public:
 	CString m_szWaveFilename;
 	CString szWaveTitle;
+	int m_FileTypeFlags; // OpenFileWav, ...
 	// wave file currently containing the data (it could be the temp file)
 	CWaveFile m_WavFile;
 	// original file with the name which was open

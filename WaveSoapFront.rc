@@ -1761,15 +1761,15 @@ BEGIN
                     UDS_ARROWKEYS,116,138,8,14
 END
 
-IDD_DIALOG_REOPEN_COMPRESSED DIALOG DISCARDABLE  0, 0, 187, 127
+IDD_DIALOG_REOPEN_COMPRESSED DIALOG DISCARDABLE  0, 0, 218, 127
 STYLE DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
 CAPTION "Reopen Saved Compressed File"
 FONT 8, "MS Sans Serif"
 BEGIN
-    LTEXT           "File ""%s"" saved. ",IDC_STATIC_PROMPT,7,7,173,60
-    DEFPUSHBUTTON   "Keep working on the current copy",IDOK,35,71,115,14
-    PUSHBUTTON      "&Reload compressed file",IDNO,35,88,115,14
-    PUSHBUTTON      "&Close the file",IDCANCEL,35,106,115,14
+    LTEXT           "File ""%s"" saved. ",IDC_STATIC_PROMPT,7,7,204,60
+    DEFPUSHBUTTON   "Keep working on the current copy",IDOK,46,71,127,14
+    PUSHBUTTON      "&Reload compressed file",IDNO,46,88,127,14
+    PUSHBUTTON      "&Close the file",IDCANCEL,46,106,127,14
 END
 
 IDD_DIALOG_SHOULD_RELOAD_CONVERTED DIALOG DISCARDABLE  0, 0, 187, 109
@@ -2035,6 +2035,17 @@ BEGIN
     DEFPUSHBUTTON   "OK",IDOK,64,187,50,14
     PUSHBUTTON      "Cancel",IDCANCEL,121,187,50,14
     PUSHBUTTON      "&Help",IDHELP,196,187,50,14
+END
+
+IDD_DIALOG_OPEN_AFTER_SAVE_COPY DIALOG DISCARDABLE  0, 0, 187, 116
+STYLE DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "Open Saved File Copy"
+FONT 8, "MS Sans Serif"
+BEGIN
+    LTEXT           "File ""%s"" saved. ",IDC_STATIC_PROMPT,7,7,173,46
+    DEFPUSHBUTTON   "&Open for direct editing",IDOK,35,61,115,14
+    PUSHBUTTON      "Open in &buffered mode",IDNO,35,78,115,14
+    PUSHBUTTON      "&Close the file",IDCANCEL,35,95,115,14
 END
 
 
@@ -2344,7 +2355,7 @@ BEGIN
     IDD_DIALOG_REOPEN_COMPRESSED, DIALOG
     BEGIN
         LEFTMARGIN, 7
-        RIGHTMARGIN, 180
+        RIGHTMARGIN, 211
         TOPMARGIN, 7
         BOTTOMMARGIN, 120
     END
@@ -2419,6 +2430,14 @@ BEGIN
         RIGHTMARGIN, 246
         TOPMARGIN, 7
         BOTTOMMARGIN, 201
+    END
+
+    IDD_DIALOG_OPEN_AFTER_SAVE_COPY, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 180
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 109
     END
 END
 #endif    // APSTUDIO_INVOKED
@@ -2897,7 +2916,7 @@ BEGIN
     IDS_M_UNABLE_TO_CREATE_UNDO "Unable to save undo data, continue?"
     IDS_STATISTICS_FORMAT   "%s (%s)\r\n%s (%s dB; %.2f%%)\r\n\r\n%s (%s)\r\n%s (%s dB; %.2f%%)\r\n\r\n%s (%s)\r\n%s (%s dB; %.2f%%)\r\n\r\n%s dB (%.2f%%)\r\n%s (%s dB; %.2f%%)\r\n%.2f Hz\r\n\r\n%08X"
     IDS_REOPEN_IN_DIRECT_MODE 
-                            "File ""%s"" saved. \nYou can reopen it in either direct or non-direct mode, or close it. If you choose to reopen in non-direct mode, a new temporary file will be created."
+                            "File ""%s"" saved. \nYou can reopen it in either direct or buffered mode, or close it. If you choose to reopen in buffered mode, a new temporary file will be created."
     IDS_RELOAD_COMPRESSED_FILE 
                             "File ""%s"" saved. \nSound data might change because of compression loss. You can keep working on the current data (recommended), or reload the compressed file, or close it. If you choose to reload, keep in mind that multiple save/reloads adds more ""compression loss""."
     ID_INDICATOR_SCALE      "\nHorizontal Scale"
@@ -3098,6 +3117,12 @@ BEGIN
     IDS_MONO                "Mono"
     IDS_STEREO              "Stereo"
     IDS_LAMEENC_FORMAT      "%d kbit/s, %s"
+    IDS_OPEN_SAVED_FILE_COPY 
+                            "Copy of file ""%s"" saved as new file ""%s"". \nYou can open it if you like, in a new window, in either direct or buffered mode."
+    IDS_OPEN_SAVED_FILE_COPY_NONDIRECT 
+                            "Copy of file ""%s"" saved as new file ""%s"". \nYou can open it if you like, in a new window."
+    IDS_STRING_UNABLE_TO_CONVERT 
+                            "The program was unable to initialize sound format conversion"
 END
 
 #endif    // English (U.S.) resources

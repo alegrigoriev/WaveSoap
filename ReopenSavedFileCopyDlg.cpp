@@ -19,8 +19,9 @@ CReopenSavedFileCopyDlg::CReopenSavedFileCopyDlg(CWnd* pParent /*=NULL*/)
 	: CDialog(CReopenSavedFileCopyDlg::IDD, pParent)
 {
 	//{{AFX_DATA_INIT(CReopenSavedFileCopyDlg)
-	// NOTE: the ClassWizard will add member initialization here
+	m_Prompt = _T("");
 	//}}AFX_DATA_INIT
+	m_bDisableDirect = FALSE;
 }
 
 
@@ -28,16 +29,33 @@ void CReopenSavedFileCopyDlg::DoDataExchange(CDataExchange* pDX)
 {
 	CDialog::DoDataExchange(pDX);
 	//{{AFX_DATA_MAP(CReopenSavedFileCopyDlg)
-	// NOTE: the ClassWizard will add DDX and DDV calls here
+	DDX_Text(pDX, IDC_STATIC_PROMPT, m_Prompt);
 	//}}AFX_DATA_MAP
 }
 
 
 BEGIN_MESSAGE_MAP(CReopenSavedFileCopyDlg, CDialog)
 	//{{AFX_MSG_MAP(CReopenSavedFileCopyDlg)
-		// NOTE: the ClassWizard will add message map macros here
+	ON_BN_CLICKED(IDNO, OnNo)
 	//}}AFX_MSG_MAP
 END_MESSAGE_MAP()
 
 /////////////////////////////////////////////////////////////////////////////
 // CReopenSavedFileCopyDlg message handlers
+
+void CReopenSavedFileCopyDlg::OnNo()
+{
+	EndDialog(IDNO);
+}
+
+BOOL CReopenSavedFileCopyDlg::OnInitDialog()
+{
+	CDialog::OnInitDialog();
+
+	if (m_bDisableDirect)
+	{
+		GetDlgItem(IDOK)->EnableWindow(FALSE);
+	}
+	return TRUE;  // return TRUE unless you set the focus to a control
+	// EXCEPTION: OCX Property Pages should return FALSE
+}
