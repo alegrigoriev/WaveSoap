@@ -168,6 +168,15 @@ void CMainFrame::GetMessageString(UINT nID, CString& rMessage) const
 	// or status string from application thread, or status string from one of other documents
 	// find, starting with the topmost frame,
 	// a document which performs an operation
+	if (nID != AFX_IDS_IDLEMESSAGE)
+	{
+		if (! GetApp()->GetMessageString(nID, rMessage))
+		{
+			BaseClass::GetMessageString(nID, rMessage);
+		}
+		return;
+	}
+
 	CFrameWnd * pFrameWnd = const_cast<CMainFrame *>(this)->GetActiveFrame();
 	CString str;
 	CWaveSoapFrontDoc * pDoc = NULL;
