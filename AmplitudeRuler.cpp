@@ -16,6 +16,7 @@
 static char THIS_FILE[] = __FILE__;
 #endif
 
+#define TRACE_DRAWING 0
 /////////////////////////////////////////////////////////////////////////////
 // CAmplitudeRuler
 
@@ -145,7 +146,10 @@ void CAmplitudeRuler::DrawSamples(CDC * pDC)
 		{
 			int yDev = WaveToY(y);
 
-			if (0 == y) TRACE("CAmplitudeRuler Zero pos=%d\n", yDev);
+			if (0 == y)
+			{
+				if (TRACE_DRAWING) TRACE("CAmplitudeRuler Zero pos=%d\n", yDev);
+			}
 
 			pDC->MoveTo(cr.right - 3, yDev);
 			pDC->LineTo(cr.right, yDev);
@@ -233,7 +237,10 @@ void CAmplitudeRuler::DrawPercents(CDC * pDC)
 		{
 			int yDev= WaveToY(int(fround(y * 32768. / 100.)));
 
-			if (0 == y) TRACE("CAmplitudeRuler Zero pos=%d\n", yDev);
+			if (0 == y)
+			{
+				if (TRACE_DRAWING) TRACE("CAmplitudeRuler Zero pos=%d\n", yDev);
+			}
 
 			pDC->MoveTo(cr.right - 3, yDev);
 			pDC->LineTo(cr.right, yDev);

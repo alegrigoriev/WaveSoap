@@ -22,6 +22,7 @@
 static char THIS_FILE[] = __FILE__;
 #endif
 
+#define TRACE_DRAWING 0
 /////////////////////////////////////////////////////////////////////////////
 // CChildFrame
 
@@ -1317,7 +1318,7 @@ void CMiniToolbar::HiliteButton(UINT nID, bool Hilite)
 
 void CMiniToolbar::RedrawButton(int Index)
 {
-	TRACE("CMiniToolbar::RedrawButton %d\n", Index);
+	if (TRACE_DRAWING) TRACE("CMiniToolbar::RedrawButton %d\n", Index);
 	CRect cr;
 	GetClientRect( & cr);
 	CRect r = cr;
