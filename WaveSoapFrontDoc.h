@@ -66,6 +66,7 @@ enum
 {
 	MaxInterpolatedLength = 128,
 };
+
 class CWaveSoapFrontDoc : public CDocument
 {
 protected: // create from serialization only
@@ -126,7 +127,15 @@ public:
 	void EnableRedo(BOOL bEnable = TRUE);
 	void DeletePermanentUndoRedo();
 	BOOL InitUndoRedo(class CUndoRedoContext * pContext);
+
 	BOOL OnSaveDocument(LPCTSTR lpszPathName, DWORD flags, WAVEFORMATEX * pWf);
+	BOOL OnSaveDirectFile();
+	BOOL OnSaveBufferedPcmFile(int flags, LPCTSTR FullTargetName);
+	BOOL OnSaveBufferedPcmFileCopy(int flags, LPCTSTR FullTargetName);
+	BOOL OnSaveConvertedFile(int flags, LPCTSTR FullTargetName, WAVEFORMATEX * pWf);
+	BOOL OnSaveMp3File(int flags, LPCTSTR FullTargetName, WAVEFORMATEX * pWf);
+	BOOL OnSaveWmaFile(int flags, LPCTSTR FullTargetName, WAVEFORMATEX * pWf);
+	BOOL OnSaveRawFile(int flags, LPCTSTR FullTargetName, WAVEFORMATEX * pWf);
 
 	// flags OpenDocumentReadOnly - ReadOnly, 2 - DirectMode
 	virtual BOOL OnOpenDocument(LPCTSTR lpszPathName, int flags);

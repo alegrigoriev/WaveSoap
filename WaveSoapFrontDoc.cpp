@@ -2000,6 +2000,321 @@ BOOL CWaveSoapFrontDoc::OnOpenDocument(LPCTSTR lpszPathName, int DocOpenFlags)
 	return TRUE;
 }
 
+BOOL CWaveSoapFrontDoc::OnSaveDirectFile()
+{
+	//Close and reopen the file
+	if ( ! m_WavFile.Commit())
+	{
+		SavePeakInfo(m_WavFile, m_WavFile);
+		AfxMessageBox(IDS_CANT_COMMIT_FILE_DATA, MB_OK | MB_ICONEXCLAMATION);
+		SetModifiedFlag(FALSE);
+		m_bCloseThisDocumentNow = true;
+		return FALSE;
+	}
+	SetModifiedFlag(FALSE);
+	SavePeakInfo(m_WavFile, m_WavFile);
+	// direct file saved with the same format and name
+	// information committed, peak info saved, file remains open
+	return TRUE;
+}
+
+BOOL CWaveSoapFrontDoc::OnSaveBufferedPcmFile(int flags, LPCTSTR FullTargetName)
+{
+	// non-direct PCM file, the same directory, not saving a copy,
+	// the same format
+	// todo: InitializeTheRestOfFile in the thread
+	if (m_WavFile.InitializeTheRestOfFile(500))
+	{
+		return PostCommitFileSave(flags, FullTargetName);
+	}
+	//prepare context and queue it
+	CCommitFileSaveContext * pContext = new CCommitFileSaveContext(this, "Saving the file...");
+	if (NULL == pContext)
+	{
+		NotEnoughMemoryMessageBox();
+		return FALSE;
+	}
+	pContext->m_DstFile = m_WavFile;
+	pContext->m_FileSaveFlags = flags;
+	pContext->m_TargetName = FullTargetName;
+	pContext->Execute();
+	return FALSE;   // not saved yet, in process
+}
+
+BOOL CWaveSoapFrontDoc::OnSaveBufferedPcmFileCopy(int flags, LPCTSTR FullTargetName)
+{
+	CWaveFile NewWaveFile;
+	// the same file attributes, but different folder or saving a copy.
+	// Create a new file and copy everything there
+	if (m_bDirectMode && ! m_bReadOnly)
+	{
+		// file open in direct mode
+		flags |= SaveFile_SaveCopy;
+	}
+
+	CString NewTempFilename(FullTargetName);
+	if (0 == (flags & SaveFile_SaveCopy))
+	{
+		NewTempFilename += _T(".temp");
+	}
+	if (FALSE == NewWaveFile.CreateWaveFile(& m_OriginalWavFile,
+											m_WavFile.GetWaveFormat(),
+											ALL_CHANNELS, m_WavFile.NumberOfSamples(),
+											0, NewTempFilename))
+	{
+		FileCreationErrorMessageBox(NewTempFilename);
+		return FALSE;
+	}
+	LPCTSTR sOp = "Saving the file...";
+	if (flags & SaveFile_SaveCopy)
+	{
+		sOp = "Saving the file copy...";
+	}
+	CFileSaveContext * pContext = new CFileSaveContext(this, sOp, "File Save");
+	if (NULL == pContext)
+	{
+		NotEnoughMemoryMessageBox();
+		return FALSE;
+	}
+
+	pContext->m_NewName = FullTargetName;
+
+	pContext->m_SrcFile = m_WavFile;
+	pContext->m_DstFile = NewWaveFile;
+	pContext->m_SrcStart = 0;
+	pContext->m_DstStart = 0;
+	pContext->m_SrcCopyPos = 0;
+	pContext->m_DstCopyPos = 0;
+	pContext->m_SrcEnd = m_WavFile.GetLength();
+	pContext->m_DstEnd = pContext->m_SrcEnd;
+	// copy 1:1
+	pContext->m_SrcChan = ALL_CHANNELS;
+	pContext->m_DstChan = ALL_CHANNELS;
+	if (flags & SaveFile_SaveCopy)
+	{
+		pContext->m_Flags |= FileSaveContext_SavingCopy;
+	}
+	if (flags & SaveFile_SameName)
+	{
+		pContext->m_Flags |= FileSaveContext_SameName;
+	}
+	pContext->Execute();
+	return FALSE;   // not saved yet
+}
+
+BOOL CWaveSoapFrontDoc::OnSaveConvertedFile(int flags, LPCTSTR FullTargetName, WAVEFORMATEX * pWf)
+{
+	CWaveFile NewWaveFile;
+	// conversion or compression required
+	CString NewTempFilename = FullTargetName;
+	if (0 == (flags & SaveFile_SaveCopy))
+	{
+		NewTempFilename += _T(".temp");
+	}
+	if (WAVE_FORMAT_PCM == pWf->wFormatTag
+		&& 16 == pWf->wBitsPerSample)
+	{
+		LONGLONG nNewSamples = MulDiv(m_WavFile.NumberOfSamples(), pWf->nSamplesPerSec, m_WavFile.SampleRate());
+		if ( ! CanAllocateWaveFileSamplesDlg(pWf, nNewSamples))
+		{
+			return FALSE;
+		}
+
+		if (FALSE == NewWaveFile.CreateWaveFile(& m_OriginalWavFile, pWf, ALL_CHANNELS, nNewSamples,
+												CreateWaveFilePcmFormat | CreateWaveFileDontCopyInfo,
+												NewTempFilename))
+		{
+			FileCreationErrorMessageBox(NewTempFilename);
+			return FALSE;
+		}
+	}
+	else
+	{
+		// saving compressed file
+		// if number of channels changes, ask about it
+		// sample rate change may be also required
+		unsigned long NewSize = m_WavFile.NumberOfSamples() * pWf->wBitsPerSample * pWf->nChannels / 8;
+		if (NewSize < 0x100000) NewSize = 0x100000; // 1 meg
+		if (NewSize > 0x100 * 0x100000) NewSize = 0x100 * 0x100000; // 256 meg
+		if (FALSE == NewWaveFile.CreateWaveFile(& m_OriginalWavFile, pWf, ALL_CHANNELS, NewSize,
+												CreateWaveFileDontCopyInfo
+												| CreateWaveFileCreateFact
+												| CreateWaveFileSizeSpecified,
+												NewTempFilename))
+		{
+			FileCreationErrorMessageBox(NewTempFilename);
+			return FALSE;
+		}
+	}
+	LPCTSTR sOp = "Converting and saving the file...";
+	if (flags & SaveFile_SaveCopy)
+	{
+		sOp = "Saving the file copy...";
+	}
+
+	CFileSaveContext * pContext = new CFileSaveContext(this, sOp, "File Convert and Save");
+	if (NULL == pContext)
+	{
+		NotEnoughMemoryMessageBox();
+		return FALSE;
+	}
+
+	pContext->m_NewName = FullTargetName;
+
+	CConversionContext * pConvert = new CConversionContext(this, "", "");
+	if (NULL == pConvert)
+	{
+		delete pContext;
+		NotEnoughMemoryMessageBox();
+		return FALSE;
+	}
+	pContext->m_pConvert = pConvert;
+	pConvert->m_SrcFile = m_WavFile;
+	pConvert->m_DstFile = NewWaveFile;
+	pConvert->m_SrcStart = m_WavFile.GetDataChunk()->dwDataOffset;
+	pConvert->m_DstStart = NewWaveFile.GetDataChunk()->dwDataOffset;
+	pConvert->m_SrcCopyPos = pConvert->m_SrcStart;
+	pConvert->m_DstCopyPos = pConvert->m_DstStart;
+	pConvert->m_SrcEnd = pConvert->m_SrcStart + m_WavFile.GetDataChunk()->cksize;
+	pConvert->m_DstEnd = pConvert->m_DstStart;
+
+	pConvert->m_SrcChan = ALL_CHANNELS;
+	pConvert->m_DstChan = ALL_CHANNELS;
+
+	pContext->m_SrcFile = pConvert->m_SrcFile;
+	pContext->m_DstFile = pConvert->m_DstFile;
+	// fill unused data members:
+	pContext->m_SrcStart = pConvert->m_SrcStart;
+	pContext->m_DstStart = pConvert->m_DstStart;
+	pContext->m_SrcCopyPos = pContext->m_SrcStart;
+	pContext->m_DstCopyPos = pContext->m_DstCopyPos;
+	pContext->m_SrcEnd = m_WavFile.GetLength();
+	pContext->m_DstEnd = pContext->m_SrcEnd;
+
+	pContext->m_SrcChan = ALL_CHANNELS;
+	pContext->m_DstChan = ALL_CHANNELS;
+	// if target channels is less than source, convert it before resampling,
+	if (pWf->nChannels < m_WavFile.GetWaveFormat()->nChannels)
+	{
+		// ask which channels to save
+		CCopyChannelsSelectDlg dlg;
+		dlg.m_ChannelToCopy = m_PrevChannelToCopy + 1;
+		if (IDOK != dlg.DoModal())
+		{
+			delete pContext;    // pConvert will be deleted
+			return FALSE;
+		}
+		CChannelConvertor * pChConvertor = new CChannelConvertor;
+		if (NULL == pChConvertor)
+		{
+			delete pContext;    // pConvert will be deleted
+			NotEnoughMemoryMessageBox();
+			return FALSE;
+		}
+		m_PrevChannelToCopy = dlg.m_ChannelToCopy - 1;
+		pChConvertor->m_ChannelsToProcess = dlg.m_ChannelToCopy - 1;
+		pChConvertor->m_InputChannels =  m_WavFile.GetWaveFormat()->nChannels;
+		pChConvertor->m_OutputChannels =  pWf->nChannels;
+
+		pConvert->m_ProcBatch.AddWaveProc(pChConvertor);
+	}
+	if (pWf->nSamplesPerSec != m_WavFile.GetWaveFormat()->nSamplesPerSec)
+	{
+		CResampleFilter * pFilter = new CResampleFilter;
+		if (NULL == pFilter)
+		{
+			delete pContext;    // pConvert will be deleted
+			NotEnoughMemoryMessageBox();
+			return FALSE;
+		}
+		pFilter->InitResample(double(pWf->nSamplesPerSec)
+							/ m_WavFile.GetWaveFormat()->nSamplesPerSec, 40., pWf->nChannels);
+		pConvert->m_ProcBatch.AddWaveProc(pFilter);
+	}
+	// if target channels is more than source, convert it after resampling,
+	if (pWf->nChannels > m_WavFile.GetWaveFormat()->nChannels)
+	{
+		CChannelConvertor * pChConvertor = new CChannelConvertor;
+		if (NULL == pChConvertor)
+		{
+			delete pContext;    // pConvert will be deleted
+			NotEnoughMemoryMessageBox();
+			return FALSE;
+		}
+		pChConvertor->m_InputChannels =  m_WavFile.GetWaveFormat()->nChannels;
+		pChConvertor->m_OutputChannels =  pWf->nChannels;
+		pChConvertor->m_ChannelsToProcess = ALL_CHANNELS;
+		pConvert->m_ProcBatch.AddWaveProc(pChConvertor);
+	}
+
+	if (pWf->wFormatTag != WAVE_FORMAT_PCM
+		|| pWf->wBitsPerSample != 16)
+	{
+		CAudioConvertor * pAcmConvertor = new CAudioConvertor;
+		if (NULL == pAcmConvertor)
+		{
+			delete pContext;    // pConvert will be deleted
+			NotEnoughMemoryMessageBox();
+			return FALSE;
+		}
+		pConvert->m_ProcBatch.AddWaveProc(pAcmConvertor);
+		WAVEFORMATEX SrcFormat;
+		SrcFormat.nChannels = pWf->nChannels;
+		SrcFormat.nSamplesPerSec = pWf->nSamplesPerSec;
+		SrcFormat.nBlockAlign = SrcFormat.nChannels * sizeof (__int16);
+		SrcFormat.nAvgBytesPerSec = SrcFormat.nBlockAlign * SrcFormat.nSamplesPerSec;
+		SrcFormat.cbSize = 0;
+		SrcFormat.wFormatTag = WAVE_FORMAT_PCM;
+		SrcFormat.wBitsPerSample = 16;
+		if (! pAcmConvertor->InitConversion( & SrcFormat, pWf))
+		{
+			delete pContext;
+			//todo: enable to convert dialog
+			//NotEnoughMemoryMessageBox();
+			return FALSE;
+		}
+	}
+	//pContext->m_pWf = CopyWaveformat(pWf);
+	//if (NULL == pContext->m_pWf)
+	//{
+	//delete pContext;
+	//return FALSE;
+	//}
+
+	if (flags & SaveFile_SaveCopy)
+	{
+		pContext->m_Flags |= FileSaveContext_SavingCopy;
+	}
+	pContext->Execute();
+	return FALSE;   // not saved yet
+}
+
+BOOL CWaveSoapFrontDoc::OnSaveMp3File(int flags, LPCTSTR FullTargetName, WAVEFORMATEX * pWf)
+{
+	// create output file
+	CWaveFile NewWaveFile;
+	DWORD FileSize = MulDiv(pWf->nAvgBytesPerSec, m_WavFile.GetDataChunk()->cksize,
+							m_WavFile.GetWaveFormat()->nAvgBytesPerSec);
+	if (FALSE == NewWaveFile.CreateWaveFile(& m_OriginalWavFile, pWf, ALL_CHANNELS,
+											FileSize,
+											CreateWaveFileDontInitStructure | CreateWaveFileSizeSpecified,
+											FullTargetName))
+	{
+		FileCreationErrorMessageBox(FullTargetName);
+		return FALSE;
+	}
+
+}
+
+BOOL CWaveSoapFrontDoc::OnSaveWmaFile(int flags, LPCTSTR FullTargetName, WAVEFORMATEX * pWf)
+{
+	return FALSE;
+}
+
+BOOL CWaveSoapFrontDoc::OnSaveRawFile(int flags, LPCTSTR FullTargetName, WAVEFORMATEX * pWf)
+{
+}
+
 BOOL CWaveSoapFrontDoc::OnSaveDocument(LPCTSTR lpszPathName, DWORD flags, WAVEFORMATEX * pWf)
 {
 
@@ -2069,7 +2384,19 @@ BOOL CWaveSoapFrontDoc::OnSaveDocument(LPCTSTR lpszPathName, DWORD flags, WAVEFO
 
 	DeletePermanentUndoRedo();
 
-	CWaveFile NewWaveFile;
+	if (flags & SaveFile_Mp3File)
+	{
+		return OnSaveMp3File(flags, FullTargetName, pWf);
+	}
+	else if (flags & SaveFile_WmaFile)
+	{
+		return OnSaveWmaFile(flags, FullTargetName, pWf);
+	}
+	else if (flags & SaveFile_RawFile)
+	{
+		return OnSaveRawFile(flags, FullTargetName, pWf);
+	}
+
 	if (WAVE_FORMAT_PCM == pWf->wFormatTag
 		// the same format
 		&& 16 == pWf->wBitsPerSample
@@ -2081,20 +2408,7 @@ BOOL CWaveSoapFrontDoc::OnSaveDocument(LPCTSTR lpszPathName, DWORD flags, WAVEFO
 			&& (flags & SaveFile_SameName)
 			&& 0 == (flags & SaveFile_SaveCopy))
 		{
-			//Close and reopen the file
-			if ( ! m_WavFile.Commit())
-			{
-				SavePeakInfo(m_WavFile, m_WavFile);
-				AfxMessageBox(IDS_CANT_COMMIT_FILE_DATA, MB_OK | MB_ICONEXCLAMATION);
-				SetModifiedFlag(FALSE);
-				m_bCloseThisDocumentNow = true;
-				return FALSE;
-			}
-			SetModifiedFlag(FALSE);
-			SavePeakInfo(m_WavFile, m_WavFile);
-			// direct file saved with the same format and name
-			// information committed, peak info saved, file remains open
-			return TRUE;
+			return OnSaveDirectFile();
 		}
 // non-direct PCM file:
 // commit all changes. If the file is saved to the same directory as the temporary file,
@@ -2103,265 +2417,21 @@ BOOL CWaveSoapFrontDoc::OnSaveDocument(LPCTSTR lpszPathName, DWORD flags, WAVEFO
 // otherwise create a new file and copy old one to the new.
 // if directory is different,
 // create temp file, copy the data to it, rename old file if exists,
-		if (0 == (flags & SaveFile_SaveCopy)
-			&& ! m_bDirectMode
-			&& 0 == _tcsicmp(SourceDir, TargetDir))
+		else if (0 == (flags & SaveFile_SaveCopy)
+				&& ! m_bDirectMode
+				&& 0 == _tcsicmp(SourceDir, TargetDir))
 		{
-			// non-direct PCM file, the same directory, not saving a copy,
-			// the same format
-			// todo: InitializeTheRestOfFile in the thread
-			if (m_WavFile.InitializeTheRestOfFile(500))
-			{
-				return PostCommitFileSave(flags, FullTargetName);
-			}
-			else
-			{
-				//prepare context and queue it
-				CCommitFileSaveContext * pContext = new CCommitFileSaveContext(this, "Saving the file...");
-				if (NULL == pContext)
-				{
-					NotEnoughMemoryMessageBox();
-					return FALSE;
-				}
-				pContext->m_DstFile = m_WavFile;
-				pContext->m_FileSaveFlags = flags;
-				pContext->m_TargetName = FullTargetName;
-				pContext->Execute();
-				return FALSE;   // not saved yet
-			}
-		}
-		// the same file attributes, but different folder or saving a copy.
-		// Create a new file and copy everything there
-		if (m_bDirectMode && ! m_bReadOnly)
-		{
-			// file open in direct mode
-			flags |= SaveFile_SaveCopy;
-		}
-
-		CString NewTempFilename(FullTargetName);
-		if (0 == (flags & SaveFile_SaveCopy))
-		{
-			NewTempFilename += _T(".temp");
-		}
-		if (FALSE == NewWaveFile.CreateWaveFile(& m_OriginalWavFile, pWf, ALL_CHANNELS, m_WavFile.NumberOfSamples(),
-												0,
-												NewTempFilename))
-		{
-			FileCreationErrorMessageBox(NewTempFilename);
-			return FALSE;
-		}
-		LPCTSTR sOp = "Saving the file...";
-		if (flags & SaveFile_SaveCopy)
-		{
-			sOp = "Saving the file copy...";
-		}
-		CFileSaveContext * pContext = new CFileSaveContext(this, sOp, "File Save");
-		if (NULL == pContext)
-		{
-			NotEnoughMemoryMessageBox();
-			return FALSE;
-		}
-
-		pContext->m_NewName = FullTargetName;
-
-		pContext->m_SrcFile = m_WavFile;
-		pContext->m_DstFile = NewWaveFile;
-		pContext->m_SrcStart = 0;
-		pContext->m_DstStart = 0;
-		pContext->m_SrcCopyPos = 0;
-		pContext->m_DstCopyPos = 0;
-		pContext->m_SrcEnd = m_WavFile.GetLength();
-		pContext->m_DstEnd = pContext->m_SrcEnd;
-		// copy 1:1
-		pContext->m_SrcChan = ALL_CHANNELS;
-		pContext->m_DstChan = ALL_CHANNELS;
-		if (flags & SaveFile_SaveCopy)
-		{
-			pContext->m_Flags |= FileSaveContext_SavingCopy;
-		}
-		if (flags & SaveFile_SameName)
-		{
-			pContext->m_Flags |= FileSaveContext_SameName;
-		}
-		pContext->Execute();
-		return FALSE;   // not saved yet
-	}
-	else
-	{
-		// conversion or compression required
-		CString NewTempFilename = FullTargetName;
-		if (0 == (flags & SaveFile_SaveCopy))
-		{
-			NewTempFilename += _T(".temp");
-		}
-		if (WAVE_FORMAT_PCM == pWf->wFormatTag
-			&& 16 == pWf->wBitsPerSample)
-		{
-			LONGLONG nNewSamples = MulDiv(m_WavFile.NumberOfSamples(), pWf->nSamplesPerSec, m_WavFile.SampleRate());
-			if ( ! CanAllocateWaveFileSamplesDlg(pWf, nNewSamples))
-			{
-				return FALSE;
-			}
-
-			if (FALSE == NewWaveFile.CreateWaveFile(& m_OriginalWavFile, pWf, ALL_CHANNELS, nNewSamples,
-													CreateWaveFilePcmFormat | CreateWaveFileDontCopyInfo,
-													NewTempFilename))
-			{
-				FileCreationErrorMessageBox(NewTempFilename);
-				return FALSE;
-			}
+			return OnSaveBufferedPcmFile(flags, FullTargetName);
 		}
 		else
 		{
-			// saving compressed file
-			// if number of channels changes, ask about it
-			// sample rate change may be also required
-			unsigned long NewSize = m_WavFile.NumberOfSamples() * pWf->wBitsPerSample * pWf->nChannels / 8;
-			if (NewSize < 0x100000) NewSize = 0x100000; // 1 meg
-			if (NewSize > 0x100 * 0x100000) NewSize = 0x100 * 0x100000; // 256 meg
-			if (FALSE == NewWaveFile.CreateWaveFile(& m_OriginalWavFile, pWf, ALL_CHANNELS, NewSize,
-													CreateWaveFileDontCopyInfo
-													| CreateWaveFileCreateFact
-													| CreateWaveFileSizeSpecified,
-													NewTempFilename))
-			{
-				FileCreationErrorMessageBox(NewTempFilename);
-				return FALSE;
-			}
+			return OnSaveBufferedPcmFileCopy(flags, FullTargetName);
 		}
-		LPCTSTR sOp = "Converting and saving the file...";
-		if (flags & SaveFile_SaveCopy)
-		{
-			sOp = "Saving the file copy...";
-		}
-
-		CFileSaveContext * pContext = new CFileSaveContext(this, sOp, "File Convert and Save");
-		if (NULL == pContext)
-		{
-			NotEnoughMemoryMessageBox();
-			return FALSE;
-		}
-
-		pContext->m_NewName = FullTargetName;
-
-		CConversionContext * pConvert = new CConversionContext(this, "", "");
-		if (NULL == pConvert)
-		{
-			delete pContext;
-			NotEnoughMemoryMessageBox();
-			return FALSE;
-		}
-		pContext->m_pConvert = pConvert;
-		pConvert->m_SrcFile = m_WavFile;
-		pConvert->m_DstFile = NewWaveFile;
-		pConvert->m_SrcStart = m_WavFile.GetDataChunk()->dwDataOffset;
-		pConvert->m_DstStart = NewWaveFile.GetDataChunk()->dwDataOffset;
-		pConvert->m_SrcCopyPos = pConvert->m_SrcStart;
-		pConvert->m_DstCopyPos = pConvert->m_DstStart;
-		pConvert->m_SrcEnd = pConvert->m_SrcStart + m_WavFile.GetDataChunk()->cksize;
-		pConvert->m_DstEnd = pConvert->m_DstStart;
-
-		pConvert->m_SrcChan = ALL_CHANNELS;
-		pConvert->m_DstChan = ALL_CHANNELS;
-
-		pContext->m_SrcFile = pConvert->m_SrcFile;
-		pContext->m_DstFile = pConvert->m_DstFile;
-		// fill unused data members:
-		pContext->m_SrcStart = pConvert->m_SrcStart;
-		pContext->m_DstStart = pConvert->m_DstStart;
-		pContext->m_SrcCopyPos = pContext->m_SrcStart;
-		pContext->m_DstCopyPos = pContext->m_DstCopyPos;
-		pContext->m_SrcEnd = m_WavFile.GetLength();
-		pContext->m_DstEnd = pContext->m_SrcEnd;
-
-		pContext->m_SrcChan = ALL_CHANNELS;
-		pContext->m_DstChan = ALL_CHANNELS;
-		// if target channels is less than source, convert it before resampling,
-		if (pWf->nChannels < m_WavFile.GetWaveFormat()->nChannels)
-		{
-			CChannelConvertor * pChConvertor = new CChannelConvertor;
-			if (NULL == pChConvertor)
-			{
-				delete pContext;    // pConvert will be deleted
-				NotEnoughMemoryMessageBox();
-				return FALSE;
-			}
-			pChConvertor->m_InputChannels =  m_WavFile.GetWaveFormat()->nChannels;
-			pChConvertor->m_OutputChannels =  pWf->nChannels;
-			pChConvertor->m_ChannelsToProcess = ALL_CHANNELS;
-			pConvert->m_ProcBatch.AddWaveProc(pChConvertor);
-		}
-		if (pWf->nSamplesPerSec != m_WavFile.GetWaveFormat()->nSamplesPerSec)
-		{
-			CResampleFilter * pFilter = new CResampleFilter;
-			if (NULL == pFilter)
-			{
-				delete pContext;    // pConvert will be deleted
-				NotEnoughMemoryMessageBox();
-				return FALSE;
-			}
-			pFilter->InitResample(double(pWf->nSamplesPerSec)
-								/ m_WavFile.GetWaveFormat()->nSamplesPerSec, 40., pWf->nChannels);
-			pConvert->m_ProcBatch.AddWaveProc(pFilter);
-		}
-		// if target channels is more than source, convert it after resampling,
-		if (pWf->nChannels > m_WavFile.GetWaveFormat()->nChannels)
-		{
-			CChannelConvertor * pChConvertor = new CChannelConvertor;
-			if (NULL == pChConvertor)
-			{
-				delete pContext;    // pConvert will be deleted
-				NotEnoughMemoryMessageBox();
-				return FALSE;
-			}
-			pChConvertor->m_InputChannels =  m_WavFile.GetWaveFormat()->nChannels;
-			pChConvertor->m_OutputChannels =  pWf->nChannels;
-			pChConvertor->m_ChannelsToProcess = ALL_CHANNELS;
-			pConvert->m_ProcBatch.AddWaveProc(pChConvertor);
-		}
-
-		if (pWf->wFormatTag != WAVE_FORMAT_PCM
-			|| pWf->wBitsPerSample != 16)
-		{
-			CAudioConvertor * pAcmConvertor = new CAudioConvertor;
-			if (NULL == pAcmConvertor)
-			{
-				delete pContext;    // pConvert will be deleted
-				NotEnoughMemoryMessageBox();
-				return FALSE;
-			}
-			pConvert->m_ProcBatch.AddWaveProc(pAcmConvertor);
-			WAVEFORMATEX SrcFormat;
-			SrcFormat.nChannels = pWf->nChannels;
-			SrcFormat.nSamplesPerSec = pWf->nSamplesPerSec;
-			SrcFormat.nBlockAlign = SrcFormat.nChannels * sizeof (__int16);
-			SrcFormat.nAvgBytesPerSec = SrcFormat.nBlockAlign * SrcFormat.nSamplesPerSec;
-			SrcFormat.cbSize = 0;
-			SrcFormat.wFormatTag = WAVE_FORMAT_PCM;
-			SrcFormat.wBitsPerSample = 16;
-			if (! pAcmConvertor->InitConversion( & SrcFormat, pWf))
-			{
-				delete pContext;
-				//todo: enable to convert dialog
-				//NotEnoughMemoryMessageBox();
-				return FALSE;
-			}
-		}
-		//pContext->m_pWf = CopyWaveformat(pWf);
-		//if (NULL == pContext->m_pWf)
-		//{
-		//delete pContext;
-		//return FALSE;
-		//}
-
-		if (flags & SaveFile_SaveCopy)
-		{
-			pContext->m_Flags |= FileSaveContext_SavingCopy;
-		}
-		pContext->Execute();
-		return FALSE;   // not saved yet
 	}
-	return TRUE;
+	else
+	{
+		return OnSaveConvertedFile(flags, FullTargetName, pWf);
+	}
 }
 
 void CWaveSoapFrontDoc::PostFileSave(CFileSaveContext * pContext)

@@ -252,7 +252,7 @@ SOURCE=.\WaveOutlineView.cpp
 # Begin Source File
 
 SOURCE=.\waveproc.cpp
-# SUBTRACT CPP /YX /Yc /Yu
+# ADD CPP /Yu
 # End Source File
 # Begin Source File
 
