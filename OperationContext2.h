@@ -9,6 +9,7 @@
 #include "OperationContext.h"
 #include "EqualizerDialog.h"
 #include "FilterDialog.h"
+#include "CdDrive.h"
 
 class CExpressionEvaluationContext : public COperationContext
 {
@@ -316,26 +317,33 @@ class CCdReadingContext : public COperationContext
 {
 public:
 	CCdReadingContext(CWaveSoapFrontDoc * pDoc,
-					LPCTSTR StatusString, LPCTSTR OperationName, CCdDrive const & Drive)
+					LPCTSTR StatusString, LPCTSTR OperationName)
 		: COperationContext(pDoc, OperationName,
 							OperationContextDiskIntensive | OperationContextSerialized),
-		m_Drive(Drive)
+		m_pCdBuffer(NULL),
+		m_CdBufferFilled(0),
+		m_CdDataOffset(0),
+		m_CdBufferSize(0)
 	{
-		m_GetBufferFlags = GetBufferWriteOnly | GetBufferNoPrefetch;
-		m_ReturnBufferFlags = ReturnBufferDirty | ReturnBufferFlush;
-		m_bCdBuffer = NULL;
-		m_CdBufferSize = 0;
+		m_GetBufferFlags = CDirectFile::GetBufferWriteOnly | CDirectFile::GetBufferNoPrefetch;
+		m_ReturnBufferFlags = CDirectFile::ReturnBufferDirty | CDirectFile::ReturnBufferFlush;
 	}
 
 	virtual ~CCdReadingContext() {}
+	void SetTrackInformation(CCdDrive const & Drive,
+							CdAddressMSF StartAddr, LONG NumSectors);
+
 protected:
 	CCdDrive m_Drive;
 	CdAddressMSF m_CdAddress;
 	LONG m_NumberOfSectors;
-	void * m_bCdBuffer;
-	int m_CdBufferSize;
+	void * m_pCdBuffer;
+	size_t m_CdBufferSize;
+	size_t m_CdBufferFilled;
+	size_t m_CdDataOffset;
+
 	virtual BOOL ProcessBuffer(void * buf, size_t len, DWORD offset, BOOL bBackward = FALSE);
 	virtual BOOL Init();
 	virtual void DeInit();
-}
+};
 #endif // AFX_OPERATIONCONTEXT2_H__FFA16C44_2FA7_11D4_9ADD_00C0F0583C4B__INCLUDED_

@@ -1761,3 +1761,77 @@ BOOL CFilterContext::ProcessBuffer(void * buf, size_t len, DWORD offset, BOOL bB
 	return TRUE;
 }
 
+void CCdReadingContext::SetTrackInformation(CCdDrive const & Drive,
+											CdAddressMSF StartAddr, LONG NumSectors)
+{
+	m_Drive = Drive;
+	m_CdAddress = StartAddr;
+	m_NumberOfSectors = NumSectors;
+	InitDestination(pDocument->m_WavFile, 0, NumSectors * (2352 / 4), 2, FALSE);
+	m_Drive.DisableMediaChangeDetection();
+	m_Drive.LockDoor();
+}
+
+BOOL CCdReadingContext::ProcessBuffer(void * buf, size_t len, DWORD offset, BOOL bBackward)
+{
+	char * pBuf = (char*) buf;
+	while (len != 0)
+	{
+		if (0 == m_CdBufferFilled)
+		{
+			size_t SectorsToRead = m_CdBufferSize / 2352;
+			if (SectorsToRead > m_NumberOfSectors)
+			{
+				SectorsToRead = m_NumberOfSectors;
+			}
+			if (0 == SectorsToRead)
+			{
+				memset(pBuf, 0, len);
+				return TRUE;
+			}
+
+			if ( ! m_Drive.ReadCdData(m_pCdBuffer, m_CdAddress, SectorsToRead))
+			{
+				return FALSE;
+			}
+			m_NumberOfSectors -= SectorsToRead;
+			m_CdAddress = LONG(m_CdAddress) + SectorsToRead;
+			m_CdDataOffset = 0;
+			m_CdBufferFilled = SectorsToRead * 2352;
+		}
+
+		size_t ToCopy = m_CdBufferFilled;
+		if (ToCopy > len)
+		{
+			ToCopy = len;
+		}
+		memcpy(pBuf, m_CdDataOffset + (char*)m_pCdBuffer, ToCopy);
+
+		len -= ToCopy;
+		m_CdBufferFilled -= ToCopy;
+
+		pBuf += ToCopy;
+		m_CdDataOffset += ToCopy;
+	}
+	return TRUE;
+}
+
+BOOL CCdReadingContext::Init()
+{
+	// allocate buffer. Round to sector size multiple
+	m_CdBufferFilled = 0;
+	m_CdDataOffset = 0;
+	m_CdBufferSize = 0x10000 - 0x10000 % 2352;
+
+	m_pCdBuffer = VirtualAlloc(NULL, m_CdBufferSize, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+	return NULL != m_pCdBuffer;
+}
+
+void CCdReadingContext::DeInit()
+{
+	if (NULL != m_pCdBuffer)
+	{
+		VirtualFree(m_pCdBuffer, 0, MEM_RELEASE);
+		m_pCdBuffer = NULL;
+	}
+}

@@ -1,5 +1,8 @@
 Known problems and tasks:
 
+Pass wave format to CD grabbing dialog
+check file length param on new file creation
+Add flush control to CDirectFile
 Add CD grabbing
 use CDRALW2K.sys service before trying ASPI
 Open CDA files

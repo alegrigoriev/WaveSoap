@@ -120,6 +120,7 @@ void CBatchSaveTargetDlg::OnButtonBrowseDstFolder()
 	if (IDOK == dlg.DoModal())
 	{
 		// TODO: check permissiong in callback
+		m_sSaveFolder = dlg.GetFolderPath();
 		m_eSaveFolder.SetWindowText(m_sSaveFolder);
 		// TODO: check if the folder exists and create if necessary
 	}

@@ -39,9 +39,8 @@ enum
 {
 	OpenDocumentDirectMode = 2,
 	OpenDocumentReadOnly = 4,
-	OpenDocumentCreateNewWithWaveformat = 8, // NAME is actually WAVEFORMATEX *
+	OpenDocumentCreateNewWithParameters = 8, // NAME is actually NewFileParameters *
 	OpenDocumentCreateNewQueryFormat = 0x10,
-	OpenNewDocumentZeroLength = 0x20,
 	OpenDocumentMp3File = 0x100,
 	OpenDocumentWmaFile = 0x200,
 	OpenDocumentRawFile = 0x400,
@@ -49,6 +48,40 @@ enum
 	OpenRawFileMsbFirst = 0x1000,
 	OpenDocumentNonWavFile = OpenDocumentMp3File | OpenRawFileMsbFirst
 							| OpenDocumentWmaFile | OpenDocumentRawFile | OpenDocumentAviFile,
+};
+
+struct NewFileParameters
+{
+	WAVEFORMATEX * pWf;
+	LPCTSTR pInitialTitle;
+	LONG InitialSamples;
+};
+
+class CWaveSoapDocTemplate : public CMultiDocTemplate
+{
+public:
+	CWaveSoapDocTemplate( UINT nIDResource, UINT nIDStringResource,
+						CRuntimeClass* pDocClass,
+						CRuntimeClass* pFrameClass, CRuntimeClass* pViewClass )
+		:CMultiDocTemplate(nIDResource, pDocClass, pFrameClass, pViewClass),
+		m_OpenDocumentFlags(0)
+	{
+		if ( ! m_strDocStrings.LoadString(nIDStringResource))
+		{
+			m_strDocStrings.LoadString(m_nIDResource);
+		}
+	}
+	~CWaveSoapDocTemplate() {}
+	virtual CDocument* OpenDocumentFile( LPCTSTR lpszPathName, int flags = 1
+											//BOOL bMakeVisible = TRUE
+										);
+
+	DWORD m_OpenDocumentFlags;
+	virtual void OnIdle();
+	void BroadcastUpdate(UINT lHint);
+	BOOL IsAnyDocumentModified();
+	BOOL CanSaveAnyDocument();
+	void SaveAll();
 };
 
 class CWaveSoapFrontApp : public CWinApp

@@ -123,7 +123,7 @@ public:
 	// flags OpenDocumentReadOnly - ReadOnly, 2 - DirectMode
 	virtual BOOL OnOpenDocument(LPCTSTR lpszPathName, int flags);
 // Overrides
-	virtual BOOL OnNewDocument(WAVEFORMATEX * pWfx, long InitialLengthSeconds);
+	virtual BOOL OnNewDocument(NewFileParameters * pParams);
 	// ClassWizard generated virtual function overrides
 	//{{AFX_VIRTUAL(CWaveSoapFrontDoc)
 public:
