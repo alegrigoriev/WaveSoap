@@ -154,6 +154,7 @@ struct CWaveFormat
 	{
 		WAVEFORMATEX * pwf = m_pWf;
 		m_pWf = NULL;
+		m_AllocatedSize = 0;
 		return pwf;
 	}
 
