@@ -23,7 +23,7 @@ static char THIS_FILE[] = __FILE__;
 
 IMPLEMENT_DYNCREATE(CWaveSoapFrontView, CScaledScrollView)
 
-BEGIN_MESSAGE_MAP(CWaveSoapFrontView, CScaledScrollView)
+BEGIN_MESSAGE_MAP(CWaveSoapFrontView, BaseClass)
 	//{{AFX_MSG_MAP(CWaveSoapFrontView)
 	ON_UPDATE_COMMAND_UI(ID_VIEW_ZOOMINHOR, OnUpdateViewZoominhor)
 	ON_UPDATE_COMMAND_UI(ID_VIEW_ZOOMINHOR2, OnUpdateViewZoominhor2)
@@ -83,9 +83,9 @@ BEGIN_MESSAGE_MAP(CWaveSoapFrontView, CScaledScrollView)
 	ON_WM_CAPTURECHANGED()
 	//}}AFX_MSG_MAP
 	// Standard printing commands
-	ON_COMMAND(ID_FILE_PRINT, CScaledScrollView::OnFilePrint)
-	ON_COMMAND(ID_FILE_PRINT_DIRECT, CScaledScrollView::OnFilePrint)
-	ON_COMMAND(ID_FILE_PRINT_PREVIEW, CScaledScrollView::OnFilePrintPreview)
+	//ON_COMMAND(ID_FILE_PRINT, OnFilePrint)
+	//ON_COMMAND(ID_FILE_PRINT_DIRECT, OnFilePrint)
+	//ON_COMMAND(ID_FILE_PRINT_PREVIEW, OnFilePrintPreview)
 END_MESSAGE_MAP()
 
 /////////////////////////////////////////////////////////////////////////////
@@ -127,7 +127,7 @@ BOOL CWaveSoapFrontView::PreCreateWindow(CREATESTRUCT& cs)
 	//  the CREATESTRUCT cs
 	cs.lpszClass = AfxRegisterWndClass(CS_VREDRAW | CS_DBLCLKS, NULL, NULL, NULL);
 	TRACE("CWaveSoapFrontView::PreCreateWindow(CREATESTRUCT)\n");
-	return CScaledScrollView::PreCreateWindow(cs);
+	return BaseClass::PreCreateWindow(cs);
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -532,7 +532,7 @@ void CWaveSoapFrontView::OnDraw(CDC* pDC)
 	{
 		DrawPlaybackCursor(pDC, m_PlaybackCursorDrawnSamplePos, m_PlaybackCursorChannel);
 	}
-	CScaledScrollView::OnDraw(pDC);
+	BaseClass::OnDraw(pDC);
 }
 
 int CDataSection<WAVE_SAMPLE, CWaveSoapFrontView>::ReadData(WAVE_SAMPLE * pBuf, ULONGLONG nOffset,
@@ -714,12 +714,12 @@ void CWaveSoapFrontView::OnEndPrinting(CDC* /*pDC*/, CPrintInfo* /*pInfo*/)
 #ifdef _DEBUG
 void CWaveSoapFrontView::AssertValid() const
 {
-	CScaledScrollView::AssertValid();
+	BaseClass::AssertValid();
 }
 
 void CWaveSoapFrontView::Dump(CDumpContext& dc) const
 {
-	CScaledScrollView::Dump(dc);
+	BaseClass::Dump(dc);
 }
 
 CWaveSoapFrontDoc* CWaveSoapFrontView::GetDocument() // non-debug version is inline
@@ -736,7 +736,7 @@ void CWaveSoapFrontView::OnInitialUpdate()
 {
 	if (0) TRACE("OnInitialUpdate style = %08X\n", GetStyle());
 
-	CScaledScrollView::OnInitialUpdate();
+	BaseClass::OnInitialUpdate();
 	UpdateScrollbars();
 	if (0) TRACE("OnInitialUpdate final style = %08X\n", GetStyle());
 }
@@ -932,19 +932,19 @@ BOOL CWaveSoapFrontView::OnSetCursor(CWnd* pWnd, UINT nHitTest, UINT message)
 		}
 	}
 
-	return CScaledScrollView::OnSetCursor(pWnd, nHitTest, message);
+	return BaseClass::OnSetCursor(pWnd, nHitTest, message);
 }
 
 void CWaveSoapFrontView::OnKillFocus(CWnd* pNewWnd)
 {
 	DestroyCaret();
-	CScaledScrollView::OnKillFocus(pNewWnd);
+	BaseClass::OnKillFocus(pNewWnd);
 
 }
 
 void CWaveSoapFrontView::OnSetFocus(CWnd* pOldWnd)
 {
-	CScaledScrollView::OnSetFocus(pOldWnd);
+	BaseClass::OnSetFocus(pOldWnd);
 	CreateAndShowCaret();
 }
 
@@ -1150,7 +1150,7 @@ void CWaveSoapFrontView::OnLButtonDown(UINT nFlags, CPoint point)
 	}
 	else
 	{
-		CScaledScrollView::OnLButtonDown(nFlags, point);
+		BaseClass::OnLButtonDown(nFlags, point);
 	}
 }
 
@@ -1184,7 +1184,7 @@ void CWaveSoapFrontView::OnLButtonUp(UINT nFlags, CPoint point)
 	}
 	else
 	{
-		CScaledScrollView::OnLButtonUp(nFlags, point);
+		BaseClass::OnLButtonUp(nFlags, point);
 	}
 }
 
@@ -1340,18 +1340,19 @@ void CWaveSoapFrontView::OnMouseMove(UINT nFlags, CPoint point)
 	else
 	{
 
-		CScaledScrollView::OnMouseMove(nFlags, point);
+		BaseClass::OnMouseMove(nFlags, point);
 	}
 }
 
 void CWaveSoapFrontView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
 {
+	CWaveSoapFrontDoc * pDoc = GetDocument();
+
 	if (lHint == CWaveSoapFrontDoc::UpdateSelectionChanged
 		&& NULL != pHint)
 	{
 		m_NewSelectionMade = true;
 		CSelectionUpdateInfo * pInfo = (CSelectionUpdateInfo *) pHint;
-		CWaveSoapFrontDoc * pDoc = GetDocument();
 		CRect r;
 		// change for foreground frame only
 		CFrameWnd * pFrameWnd = GetParentFrame();
@@ -1365,6 +1366,15 @@ void CWaveSoapFrontView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
 			else if (pInfo->Flags & SetSelection_MoveCaretToCenter)
 			{
 				MovePointIntoView(pDoc->m_CaretPosition, TRUE);
+			}
+		}
+
+		if (pInfo->Flags & SetSelection_MakeFileVisible)
+		{
+			SAMPLE_INDEX LastSample = pDoc->WaveFileSamples();
+			if (WindowToWorldX(0) > LastSample)
+			{
+				MovePointIntoView(LastSample, TRUE);
 			}
 		}
 
@@ -1512,7 +1522,7 @@ void CWaveSoapFrontView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
 			{
 				SetExtents(0, pInfo->m_NewLength, 0, 0);
 			}
-			UpdateMaxExtents(pInfo->m_NewLength);
+			UpdateMaxHorExtents(pInfo->m_NewLength);
 			Invalidate();
 		}
 		else
@@ -1559,18 +1569,19 @@ void CWaveSoapFrontView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
 			)
 	{
 		// recalculate the extents
-		UpdateMaxExtents(GetDocument()->WaveFileSamples());
+		UpdateMaxHorExtents(GetDocument()->WaveFileSamples());
+		UpdateVertExtents();
 	}
 	else
 	{
-		CScaledScrollView::OnUpdate(pSender, lHint, pHint);
+		BaseClass::OnUpdate(pSender, lHint, pHint);
 	}
 }
 
 void CWaveSoapFrontView::InvalidateRect( LPCRECT lpRect, BOOL bErase)
 {
 	HideCaret();
-	CScaledScrollView::InvalidateRect(lpRect, bErase);
+	BaseClass::InvalidateRect(lpRect, bErase);
 	ShowCaret();
 }
 
@@ -1821,13 +1832,13 @@ void CWaveSoapFrontView::OnActivateView(BOOL bActivate, CView* pActivateView, CV
 	{
 		GetApp()->OnActivateDocument(pDoc, FALSE);
 	}
-	CScaledScrollView::OnActivateView(bActivate, pActivateView, pDeactiveView);
+	BaseClass::OnActivateView(bActivate, pActivateView, pDeactiveView);
 }
 
 
 int CWaveSoapFrontView::OnCreate(LPCREATESTRUCT lpCreateStruct)
 {
-	if (CScaledScrollView::OnCreate(lpCreateStruct) == -1)
+	if (BaseClass::OnCreate(lpCreateStruct) == -1)
 		return -1;
 	KeepAspectRatio(FALSE);
 	KeepScaleOnResizeX(TRUE);
@@ -1837,11 +1848,12 @@ int CWaveSoapFrontView::OnCreate(LPCREATESTRUCT lpCreateStruct)
 
 	CRect r;
 	GetClientRect( r);
-	// set m_HorizontalScale to stretch the file in the view
-	NUMBER_OF_SAMPLES nSamples = GetDocument()->WaveFileSamples();
 
 	SetExtents(0., double(r.Width()) * m_HorizontalScale, 0., 0.);
-	UpdateMaxExtents(nSamples);
+
+	UpdateMaxHorExtents(GetDocument()->WaveFileSamples());
+	UpdateVertExtents();
+
 	ShowScrollBar(SB_VERT, FALSE);
 	ShowScrollBar(SB_HORZ, FALSE);
 	return 0;
@@ -1851,7 +1863,7 @@ BOOL CWaveSoapFrontView::MasterScrollBy(double dx, double dy, BOOL bDoScroll)
 {
 	if (dx != 0.)
 	{
-		CScaledScrollView::MasterScrollBy(dx, 0, bDoScroll);
+		BaseClass::MasterScrollBy(dx, 0, bDoScroll);
 	}
 	if (dy != 0.)
 	{
@@ -1941,7 +1953,7 @@ void CWaveSoapFrontView::OnSize(UINT nType, int cx, int cy)
 		SetExtents(0, nSamples, 0, 0);
 		Invalidate();
 	}
-	CScaledScrollView::OnSize(nType, cx, cy);
+	BaseClass::OnSize(nType, cx, cy);
 
 	UpdateVertExtents();
 	CreateAndShowCaret();
@@ -1982,7 +1994,7 @@ BOOL CWaveSoapFrontView::OnScrollBy(CSize sizeScroll, BOOL bDoScroll)
 		HidePlaybackCursor();
 	}
 
-	BOOL bRet = CScaledScrollView::OnScrollBy(sizeScroll, bDoScroll);
+	BOOL bRet = BaseClass::OnScrollBy(sizeScroll, bDoScroll);
 	if (bDoScroll)
 	{
 		ShowPlaybackCursor();
@@ -2052,24 +2064,25 @@ void CWaveSoapFrontView::UpdatePlaybackCursor(SAMPLE_INDEX sample, CHANNEL_MASK 
 	//GdiFlush();
 }
 
-void CWaveSoapFrontView::UpdateMaxExtents(NUMBER_OF_SAMPLES Length)
+void CWaveSoapFrontView::UpdateMaxHorExtents(NUMBER_OF_SAMPLES Length)
 {
 	CRect r;
 	GetClientRect( & r);
-	if (0 == r.Height())
+	long nRightMaxExtent = long(Length - Length % m_HorizontalScale + 100. * m_HorizontalScale);
+	long MinWidth = r.Width() * m_HorizontalScale;
+	long nRightExtent = 0;
+
+	if (nRightMaxExtent < MinWidth)
 	{
-		return;
+		nRightMaxExtent = MinWidth;
+		nRightExtent = nRightMaxExtent;
 	}
-	int nLowExtent = -32768 - 32767 / r.Height();
-	int nHighExtent = 32767;
-	if (GetDocument()->WaveChannels() > 1)
-	{
-		nLowExtent = -0x10000 - 0x20000 / r.Height();
-		nHighExtent = 0x10000;
-	}
-	SetMaxExtents(0, Length - Length % m_HorizontalScale + 100. * m_HorizontalScale,
-				nLowExtent, nHighExtent);
-	SetExtents(0., 0., nLowExtent, nHighExtent);
+
+	// if the file fits into the view, adjust the horizontal scale
+	// if the previous view l
+	SetMaxExtents(0, nRightMaxExtent, 0, 0);
+	SetExtents(0., nRightExtent, 0, 0);
+	UpdateScrollbars();
 }
 
 void CWaveSoapFrontView::UpdateVertExtents()
@@ -2097,12 +2110,12 @@ void CWaveSoapFrontView::OnMasterChangeOrgExt(double left, double width,
 {
 	int OldHorScale = m_HorizontalScale;
 
-	CScaledScrollView::OnMasterChangeOrgExt(left, width,
-											top, height, flag);
+	BaseClass::OnMasterChangeOrgExt(left, width,
+									top, height, flag);
 
 	if (OldHorScale != m_HorizontalScale)
 	{
-		UpdateMaxExtents(GetDocument()->WaveFileSamples());
+		UpdateMaxHorExtents(GetDocument()->WaveFileSamples());
 	}
 }
 
@@ -2156,7 +2169,7 @@ void CWaveSoapFrontView::NotifySlaveViews(DWORD flag)
 			pOutlineView->NotifyViewExtents(SAMPLE_INDEX(left), SAMPLE_INDEX(right));
 		}
 	}
-	CScaledScrollView::NotifySlaveViews(flag);
+	BaseClass::NotifySlaveViews(flag);
 }
 
 void CWaveSoapFrontView::OnUpdateIndicatorScale(CCmdUI* pCmdUI)
@@ -2387,7 +2400,7 @@ void CWaveSoapFrontView::OnTimer(UINT nIDEvent)
 		TRACE("Timer ID=%X\n", nIDEvent);
 	}
 
-	CScaledScrollView::OnTimer(nIDEvent);
+	BaseClass::OnTimer(nIDEvent);
 }
 
 void CWaveSoapFrontView::OnCaptureChanged(CWnd *pWnd)
@@ -2400,5 +2413,5 @@ void CWaveSoapFrontView::OnCaptureChanged(CWnd *pWnd)
 		KillTimer(m_TimerID);
 		m_TimerID = NULL;
 	}
-	CScaledScrollView::OnCaptureChanged(pWnd);
+	BaseClass::OnCaptureChanged(pWnd);
 }
