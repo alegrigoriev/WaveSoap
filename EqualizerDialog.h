@@ -10,6 +10,8 @@
 #include <complex>
 #include "NumEdit.h"
 #include "ResizableDialog.h"
+#include "UiUpdatedDlg.h"
+#include "DialogWithSelection.h"
 
 /////////////////////////////////////////////////////////////////////////////
 // CEqualizerGraphWnd window
@@ -116,45 +118,34 @@ protected:
 /////////////////////////////////////////////////////////////////////////////
 // CEqualizerDialog dialog
 
-class CEqualizerDialog : public CResizableDialog
+class CEqualizerDialog : public CDialogWithSelectionT<CResizableDialog>
 {
-	typedef CResizableDialog BaseClass;
+	typedef CDialogWithSelectionT<CResizableDialog> BaseClass;
 // Construction
 public:
 	CEqualizerDialog(SAMPLE_INDEX Start,
 					SAMPLE_INDEX End,
 					SAMPLE_INDEX CaretPosition,
 					CHANNEL_MASK Channels,
-					NUMBER_OF_SAMPLES FileLength,
-					const WAVEFORMATEX * pWf,
+					CWaveFile & WaveFile,
 					int m_TimeFormat,
 					BOOL bLockChannels,
 					BOOL	bUndoEnabled,
 					CWnd* pParent = NULL);   // standard constructor
 
+	CApplicationProfile m_Profile;
 // Dialog Data
 	//{{AFX_DATA(CEqualizerDialog)
 	enum { IDD = IDD_DIALOG_SIMPLE_EQUALIZER };
 	CEdit	m_eEditBands;
 	CNumEdit	m_BandGain;
 	CSpinButtonCtrl	m_SpinBands;
-	CStatic	m_SelectionStatic;
-	BOOL	m_bUndo;
 	int		m_bMultiBandEqualizer;
 	int 	m_nBands;
 	//}}AFX_DATA
-	BOOL	m_bLockChannels;
-	SAMPLE_INDEX m_Start;
-	SAMPLE_INDEX m_End;
-	SAMPLE_INDEX m_CaretPosition;
-	NUMBER_OF_SAMPLES m_FileLength;
-	CHANNEL_MASK m_Chan;
-	int m_TimeFormat;
-	const WAVEFORMATEX * m_pWf;
 
 	CEqualizerGraphWnd m_wGraph;
 
-	CApplicationProfile m_Profile;
 // Overrides
 	// ClassWizard generated virtual function overrides
 	//{{AFX_VIRTUAL(CEqualizerDialog)
@@ -164,13 +155,11 @@ protected:
 
 // Implementation
 protected:
-	void UpdateSelectionStatic();
 	afx_msg void OnNotifyGraph( NMHDR * pNotifyStruct, LRESULT * result );
 
 	// Generated message map functions
 	//{{AFX_MSG(CEqualizerDialog)
 	virtual BOOL OnInitDialog();
-	afx_msg void OnButtonSelection();
 	afx_msg void OnChangeEditBands();
 	afx_msg void OnButtonLoad();
 	afx_msg void OnButtonResetBands();
