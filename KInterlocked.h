@@ -101,7 +101,7 @@ inline T InterlockedCompareExchangePointerT(T * src, PVOID exchange, PVOID compa
 template <typename T>
 static T InterlockedIncrementModulo(T * src, LONG modulo)
 {
-	LONG tmp;
+	T tmp;
 	do
 	{
 		tmp = *src;
@@ -114,7 +114,7 @@ static T InterlockedIncrementModulo(T * src, LONG modulo)
 template <typename T>
 static T InterlockedAddModulo(T * src, LONG Addend, LONG modulo)
 {
-	LONG tmp;
+	T tmp;
 	do
 	{
 		tmp = *src;
@@ -127,7 +127,7 @@ static T InterlockedAddModulo(T * src, LONG Addend, LONG modulo)
 template <typename T>
 static T InterlockedOr(T * src, LONG operand)
 {
-	LONG tmp;
+	T tmp;
 	do
 	{
 		tmp = *src;
@@ -140,7 +140,7 @@ template <typename T>
 // the function returns previous contents of the memory location being modified
 static T InterlockedAnd(T * src, LONG operand)
 {
-	LONG tmp;
+	T tmp;
 	do
 	{
 		tmp = *src;
@@ -153,7 +153,7 @@ static T InterlockedAnd(T * src, LONG operand)
 template <typename T>
 static T InterlockedXor(T * src, LONG operand)
 {
-	LONG tmp;
+	T tmp;
 	do
 	{
 		tmp = *src;

@@ -7,6 +7,7 @@
 #include "BladeMP3EncDLL.h"
 #include <algorithm>
 #include <functional>
+#include "resource.h"
 
 /////////////////////////////////
 // CWaveDevice stuff
@@ -187,7 +188,7 @@ MMRESULT CWaveOut::Open(UINT id, const WAVEFORMATEX * pwfe, DWORD dwAuxFlags)
 	ASSERT(this != NULL);
 	Close();
 
-	MMRESULT err = waveOutOpen( & m_hwo, id, pwfe, ULONG(waveOutProc), (DWORD)this,
+	MMRESULT err = waveOutOpen( & m_hwo, id, pwfe, DWORD_PTR(waveOutProc), (DWORD_PTR)this,
 								CALLBACK_FUNCTION | (dwAuxFlags & (WAVE_ALLOWSYNC | WAVE_FORMAT_QUERY | WAVE_MAPPED)));
 
 	if (MMSYSERR_NOERROR == err)
@@ -237,7 +238,7 @@ MMRESULT CWaveOut::Close()
 	return MMSYSERR_NOERROR;
 }
 
-MMRESULT CWaveOut::Play(UINT hBuffer, size_t UsedSize, DWORD AuxFlags)
+MMRESULT CWaveOut::Play(UINT hBuffer, unsigned UsedSize, DWORD AuxFlags)
 {
 	ASSERT(this != NULL);
 	ASSERT(m_hwo != NULL);
@@ -249,7 +250,7 @@ MMRESULT CWaveOut::Play(UINT hBuffer, size_t UsedSize, DWORD AuxFlags)
 	m_pBufs[hBuffer - 1].whd.lpData = m_pBufs[hBuffer - 1].pBuf;
 	m_pBufs[hBuffer - 1].whd.dwBufferLength = UsedSize;
 	m_pBufs[hBuffer - 1].whd.dwBytesRecorded = UsedSize;
-	m_pBufs[hBuffer - 1].whd.dwUser = (DWORD) & m_pBufs[hBuffer - 1];
+	m_pBufs[hBuffer - 1].whd.dwUser = (DWORD_PTR) & m_pBufs[hBuffer - 1];
 	m_pBufs[hBuffer - 1].whd.dwFlags = 0;
 
 	waveOutPrepareHeader(m_hwo, & m_pBufs[hBuffer - 1].whd,
@@ -321,8 +322,8 @@ MMRESULT CWaveOut::Unprepare(UINT hBuffer)
 }
 
 void CALLBACK CWaveOut::waveOutProc(HWAVEOUT hwo,
-									UINT uMsg,	DWORD dwInstance, DWORD dwParam1,
-									DWORD dwParam2	)
+									UINT uMsg,	DWORD_PTR dwInstance, DWORD_PTR dwParam1,
+									DWORD /*dwParam2*/)
 {
 	CWaveOut * pWo = (CWaveOut *) dwInstance;
 	// can't use ASSERT in wave out callback
@@ -387,7 +388,7 @@ MMRESULT CWaveIn::Open(UINT id, const WAVEFORMATEX * pwfe, DWORD dwAuxFlags)
 
 	m_wfe = pwfe;
 
-	MMRESULT err = waveInOpen( & m_hwi, id, m_wfe, ULONG(waveInProc), (DWORD)this,
+	MMRESULT err = waveInOpen( & m_hwi, id, m_wfe, DWORD_PTR(waveInProc), DWORD_PTR(this),
 								CALLBACK_FUNCTION | (dwAuxFlags & (WAVE_ALLOWSYNC | WAVE_FORMAT_QUERY | WAVE_MAPPED)));
 
 	if (MMSYSERR_NOERROR == err)
@@ -433,7 +434,7 @@ MMRESULT CWaveIn::Close()
 	return MMSYSERR_NOERROR;
 }
 
-MMRESULT CWaveIn::Record(UINT hBuffer, size_t UsedSize)
+MMRESULT CWaveIn::Record(UINT hBuffer, unsigned UsedSize)
 {
 	ASSERT(this != NULL);
 	ASSERT(m_hwi != NULL);
@@ -445,7 +446,7 @@ MMRESULT CWaveIn::Record(UINT hBuffer, size_t UsedSize)
 	m_pBufs[hBuffer - 1].whd.lpData = m_pBufs[hBuffer - 1].pBuf;
 	m_pBufs[hBuffer - 1].whd.dwBufferLength = UsedSize;
 	m_pBufs[hBuffer - 1].whd.dwBytesRecorded = UsedSize;
-	m_pBufs[hBuffer - 1].whd.dwUser = (DWORD) & m_pBufs[hBuffer - 1];
+	m_pBufs[hBuffer - 1].whd.dwUser = (DWORD_PTR) & m_pBufs[hBuffer - 1];
 	m_pBufs[hBuffer - 1].whd.dwFlags = 0;
 	return waveInAddBuffer(m_hwi, & m_pBufs[hBuffer - 1].whd,
 							sizeof m_pBufs[hBuffer - 1].whd);
@@ -502,9 +503,9 @@ MMRESULT CWaveIn::Unprepare(UINT hBuffer)
 								sizeof m_pBufs[0].whd);
 }
 
-void CALLBACK CWaveIn::waveInProc(HWAVEIN hwi,
-								UINT uMsg,	DWORD dwInstance, DWORD dwParam1,
-								DWORD dwParam2	)
+void CALLBACK CWaveIn::waveInProc(HWAVEIN /*hwi*/,
+								UINT /*uMsg*/,	DWORD_PTR /*dwInstance*/, DWORD /*dwParam1*/,
+								DWORD /*dwParam2*/	)
 {
 }
 
@@ -533,9 +534,9 @@ CWaveFormat::~CWaveFormat()
 	delete[] (char*) m_pWf;
 }
 
-WAVEFORMATEX * CWaveFormat::Allocate(int ExtraSize, bool bCopy)
+WAVEFORMATEX * CWaveFormat::Allocate(unsigned ExtraSize, bool bCopy)
 {
-	if (ExtraSize < 0)
+	if (ExtraSize > 0xFFF0)
 	{
 		ExtraSize = 0;
 	}
@@ -665,8 +666,8 @@ struct FormatEnumCallbackStruct
 
 // if can convert to any format of the tag, add the tag to the table
 BOOL _stdcall CAudioCompressionManager::FormatTestEnumCallback(
-																HACMDRIVERID hadid, LPACMFORMATDETAILS pafd,
-																DWORD dwInstance, DWORD fdwSupport)
+																HACMDRIVERID /*hadid*/, LPACMFORMATDETAILS pafd,
+																DWORD_PTR dwInstance, DWORD /*fdwSupport*/)
 {
 	FormatEnumCallbackStruct * pFcs = (FormatEnumCallbackStruct *) dwInstance;
 
@@ -725,7 +726,7 @@ BOOL _stdcall CAudioCompressionManager::FormatTestEnumCallback(
 
 BOOL _stdcall CAudioCompressionManager::FormatTagEnumCallback(
 															HACMDRIVERID hadid, LPACMFORMATTAGDETAILS paftd,
-															DWORD dwInstance, DWORD fdwSupport)
+															DWORD_PTR dwInstance, DWORD /*fdwSupport*/)
 {
 	FormatTagEnumStruct * pfts = (FormatTagEnumStruct *) dwInstance;
 	CAudioCompressionManager * pAcm = pfts->pAcm;
@@ -761,7 +762,7 @@ BOOL _stdcall CAudioCompressionManager::FormatTagEnumCallback(
 
 	fcs.FormatFound = FALSE;
 	fcs.pAcm = pAcm;
-	fcs.m_Tag.Tag = paftd->dwFormatTag;
+	fcs.m_Tag.Tag = WORD(paftd->dwFormatTag & 0xFFFF);
 	fcs.m_pTagsToCompare = pfts->pListOfTags;
 	fcs.m_NumTagsToCompare = pfts->NumTags;
 	fcs.flags = pfts->flags;
@@ -809,14 +810,14 @@ BOOL _stdcall CAudioCompressionManager::FormatTagEnumCallback(
 				flags |= ACM_FORMATENUMF_NSAMPLESPERSEC;
 			}
 
-			int res = acmFormatEnum(had, & afd, FormatTestEnumCallback, DWORD(& fcs), flags);
+			int res = acmFormatEnum(had, & afd, FormatTestEnumCallback, DWORD_PTR(& fcs), flags);
 			TRACE("acmFormatEnum returned %x\n", res);
 			if ( ! fcs.FormatFound)
 			{
 				pwfx.InitFormat(WAVE_FORMAT_PCM,
 								pfts->pWf->nSamplesPerSec, pfts->pWf->nChannels);
 				res = acmFormatEnum(had, & afd, FormatTestEnumCallback,
-									DWORD(& fcs), ACM_FORMATENUMF_CONVERT);
+									DWORD_PTR(& fcs), ACM_FORMATENUMF_CONVERT);
 				TRACE("acmFormatEnum returned %x\n", res);
 			}
 			if ( ! fcs.FormatFound
@@ -839,7 +840,7 @@ BOOL _stdcall CAudioCompressionManager::FormatTagEnumCallback(
 
 	if (fcs.FormatFound)
 	{
-		int nIndex = pAcm->m_FormatTags.size();
+		unsigned nIndex = (unsigned)pAcm->m_FormatTags.size();
 		pAcm->m_FormatTags.resize(nIndex + 1);
 		pAcm->m_FormatTags[nIndex].SetData(fcs.m_Tag, paftd->szFormatTag, hadid);
 	}
@@ -865,14 +866,14 @@ void CAudioCompressionManager::FillFormatTagArray
 	atd.cbStruct = sizeof atd;
 	atd.dwFormatTag = WAVE_FORMAT_UNKNOWN;
 
-	acmFormatTagEnum(NULL, & atd, FormatTagEnumCallback, DWORD( & fts), 0);
+	acmFormatTagEnum(NULL, & atd, FormatTagEnumCallback, DWORD_PTR( & fts), 0);
 
 }
 
 // enumerates all formats for the tag
 BOOL _stdcall CAudioCompressionManager::FormatEnumCallback(
-															HACMDRIVERID hadid, LPACMFORMATDETAILS pafd,
-															DWORD dwInstance, DWORD fdwSupport)
+															HACMDRIVERID /*hadid*/, LPACMFORMATDETAILS pafd,
+															DWORD_PTR dwInstance, DWORD /*fdwSupport*/)
 {
 	FormatEnumCallbackStruct * pfcs = (FormatEnumCallbackStruct *) dwInstance;
 
@@ -977,7 +978,7 @@ bool CAudioCompressionManager::FillMultiFormatArray(unsigned nSelFrom, unsigned 
 			fcs.FormatFound = FALSE;
 			fcs.TagIndex = sel;
 
-			int res = acmFormatEnum(had, & afd, FormatEnumCallback, DWORD( & fcs), EnumFlags);
+			int res = acmFormatEnum(had, & afd, FormatEnumCallback, DWORD_PTR( & fcs), EnumFlags);
 			TRACE("acmFormatEnum returned %x\n", res);
 
 			for (int i = 0, ch = m_Wf.NumChannels()
@@ -985,7 +986,7 @@ bool CAudioCompressionManager::FillMultiFormatArray(unsigned nSelFrom, unsigned 
 				; i <= 0 + (0 == (Flags & (WaveFormatMatchCompatibleFormats | WaveFormatMatchCnannels)))
 				; i++, ch ^= 3)
 			{
-				pwfx.InitFormat(WAVE_FORMAT_PCM, m_Wf.SampleRate(), ch,
+				pwfx.InitFormat(WAVE_FORMAT_PCM, m_Wf.SampleRate(), WORD(ch),
 								m_Wf.BitsPerSample());
 				if (WAVE_FORMAT_PCM == wFormatTag)
 				{
@@ -1013,8 +1014,8 @@ bool CAudioCompressionManager::FillMultiFormatArray(unsigned nSelFrom, unsigned 
 						}
 
 						// make sure 16 bits format is on the list
-						pwfx.InitFormat(WAVE_FORMAT_PCM, m_Wf.SampleRate(), ch,
-										16);
+						pwfx.InitFormat(WAVE_FORMAT_PCM, m_Wf.SampleRate(),
+										WORD(ch), 16);
 					}
 				}
 				else
@@ -1026,7 +1027,7 @@ bool CAudioCompressionManager::FillMultiFormatArray(unsigned nSelFrom, unsigned 
 					afd.pwfx = pwfx;
 					fcs.FormatFound = FALSE;
 					res = acmFormatEnum(had, & afd, FormatEnumCallback,
-										DWORD(& fcs), ACM_FORMATENUMF_CONVERT);
+										DWORD_PTR(& fcs), ACM_FORMATENUMF_CONVERT);
 
 					if ( ! fcs.FormatFound
 						&& (Flags & WaveFormatMatchCompatibleFormats))
@@ -1079,7 +1080,7 @@ void CAudioCompressionManager::FillMp3EncoderTags(DWORD Flags)
 
 	BladeMp3Encoder Mp3Enc;
 	// check if MP3 ACM encoder presents
-	static WaveFormatTagEx const Mp3Tag(WAVE_FORMAT_MPEGLAYER3);
+	WaveFormatTagEx const Mp3Tag(WAVE_FORMAT_MPEGLAYER3);
 
 	FillFormatTagArray(m_Wf, & Mp3Tag, 1, Flags);
 
@@ -1121,7 +1122,6 @@ void CAudioCompressionManager::FillLameEncoderFormats()
 
 	m_Formats.resize(sizeof Mp3Bitrates / sizeof Mp3Bitrates[0]);
 
-	unsigned sel = 0;
 	for (unsigned i = 0; i < m_Formats.size(); i++)
 	{
 		m_Formats[i].Name.Format(f, Mp3Bitrates[i], LPCTSTR(ms));
@@ -1150,7 +1150,7 @@ int CAudioCompressionManager::FillFormatsCombo(CComboBox * pCombo,
 		pCombo->AddString(m_Formats[i].Name);
 	}
 
-	unsigned sel = -1;
+	unsigned sel = ~0U;
 	int BestMatch = 0;
 	for (i = 0; i < m_Formats.size(); i++)
 	{
@@ -1262,7 +1262,7 @@ AudioStreamConvertor::~AudioStreamConvertor()
 }
 
 BOOL AudioStreamConvertor::SuggestFormat(WAVEFORMATEX const * pWf1,
-										WAVEFORMATEX * pWf2, size_t MaxFormat2Size, DWORD flags)
+										WAVEFORMATEX * pWf2, unsigned MaxFormat2Size, DWORD flags)
 {
 	m_MmResult = acmFormatSuggest(m_acmDrv,
 								const_cast<LPWAVEFORMATEX>(pWf1),
@@ -1360,8 +1360,8 @@ BOOL AudioStreamConvertor::AllocateBuffers(size_t PreferredInBufSize,
 	ASSERT(NULL == m_ash.pbSrc);
 	ASSERT(NULL == m_ash.pbDst);
 
-	m_SrcBufSize = PreferredInBufSize;
-	m_DstBufSize = PreferredOutBufSize;
+	m_SrcBufSize = DWORD(PreferredInBufSize);
+	m_DstBufSize = DWORD(PreferredOutBufSize);
 
 	if (0 == PreferredInBufSize)
 	{
@@ -1407,11 +1407,11 @@ BOOL AudioStreamConvertor::Convert(void const * pSrc, size_t SrcSize, size_t * p
 {
 	ASSERT(NULL != m_acmStr);
 	// fill input buffer
-	size_t ToCopy = m_SrcBufSize - m_ash.cbSrcLength;
+	unsigned ToCopy = m_SrcBufSize - m_ash.cbSrcLength;
 
 	if (ToCopy > SrcSize)
 	{
-		ToCopy = SrcSize;
+		ToCopy = unsigned(SrcSize);
 	}
 
 	* pDstBufFilled = 0;

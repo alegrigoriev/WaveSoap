@@ -58,6 +58,23 @@ enum
 	MmioFileMemoryFile = CDirectFile::CreateMemoryFile,
 };
 
+#pragma pack(push, 2)
+struct PeakFileHeader
+{
+	enum { pfhSignature = 'KPSW', pfhMaxVersion = 3};
+	DWORD dwSignature;
+	WORD wSize;
+	WORD dwVersion;
+	FILETIME WaveFileTime;
+	WAV_FILE_SIZE dwWaveFileSize;   // WAV file is less than 4G
+	DWORD Granularity;      // number of WAV samples for each PeakFile value
+	DWORD PeakInfoSize;
+	NUMBER_OF_SAMPLES NumOfSamples;
+	WAVEFORMATEX wfFormat;
+};
+
+#pragma pack(pop)
+
 class CMmioFile : public CDirectFile
 {
 	typedef CDirectFile BaseClass;
@@ -333,7 +350,7 @@ public:
 	}
 	WavePeak GetPeakMinMax(PEAK_INDEX from, PEAK_INDEX to, NUMBER_OF_CHANNELS stride = 1);
 
-	size_t GetPeaksSize() const
+	PEAK_INDEX GetPeaksSize() const
 	{
 		return m_WavePeakSize;
 	}
@@ -346,8 +363,8 @@ public:
 	CWavePeaks & operator =(CWavePeaks const & src);
 protected:
 	WavePeak * m_pPeaks;
-	size_t m_WavePeakSize;
-	size_t m_AllocatedWavePeakSize;
+	PEAK_INDEX m_WavePeakSize;
+	PEAK_INDEX m_AllocatedWavePeakSize;
 	unsigned m_PeakDataGranularity;
 	CSimpleCriticalSection m_PeakLock;
 };
@@ -482,7 +499,7 @@ public:
 
 	WAVEFORMATEX * AllocateWaveformat(size_t FormatSize = sizeof (WAVEFORMATEX))
 	{
-		return AllocateInstanceData<InstanceDataWav>()->wf.Allocate(FormatSize - sizeof (WAVEFORMATEX));
+		return AllocateInstanceData<InstanceDataWav>()->wf.Allocate(int(FormatSize - sizeof (WAVEFORMATEX)));
 	}
 
 	BOOL LoadWaveformat();

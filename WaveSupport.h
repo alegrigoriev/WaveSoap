@@ -29,10 +29,10 @@ enum {
 struct WaveFormatTagEx
 {
 	WaveFormatTagEx() {}
-	WaveFormatTagEx(int tag, GUID const & guid)
+	WaveFormatTagEx(WORD tag, GUID const & guid)
 		: Tag(tag), SubFormat(guid)
 	{}
-	WaveFormatTagEx(int tag)
+	WaveFormatTagEx(WORD tag)
 		: Tag(tag)
 	{
 		ASSERT(tag != WAVE_FORMAT_EXTENSIBLE);
@@ -52,7 +52,7 @@ struct WaveFormatTagEx
 		}
 	}
 
-	int Tag;
+	WORD Tag;
 	GUID SubFormat;
 	bool operator ==(WaveFormatTagEx const & wfx) const
 	{
@@ -129,7 +129,7 @@ struct CWaveFormat
 
 	void FormatTag(WaveFormatTagEx const & tag)
 	{
-		m_pWf->wFormatTag = tag.Tag;
+		m_pWf->wFormatTag = WORD(tag.Tag);
 		if (WAVE_FORMAT_EXTENSIBLE == tag.Tag
 			&& m_AllocatedSize >= sizeof (WAVEFORMATEXTENSIBLE))
 		{
@@ -302,14 +302,14 @@ public:
 	MMRESULT BreakLoop();
 	DWORD GetPosition(UINT type=TIME_SAMPLES);
 
-	MMRESULT Play(UINT hBuffer, size_t UsedSize, DWORD AuxFlags = 0);
+	MMRESULT Play(UINT hBuffer, unsigned UsedSize, DWORD AuxFlags = 0);
 
 private:
 	HWAVEOUT m_hwo;
 	virtual MMRESULT Unprepare(UINT index);
 	static void CALLBACK waveOutProc(HWAVEOUT hwo,
-									UINT uMsg,	DWORD dwInstance, DWORD dwParam1,
-									DWORD dwParam2	);
+									UINT uMsg,	DWORD_PTR dwInstance, DWORD_PTR dwParam1,
+									DWORD dwParam2);
 
 	// the class doesn't allow assignment and copy
 	CWaveOut(const CWaveOut &) {ASSERT(FALSE);}
@@ -330,14 +330,14 @@ public:
 	MMRESULT Start();
 	MMRESULT Stop();
 
-	MMRESULT Record(UINT hBuffer, size_t UsedSize);
+	MMRESULT Record(UINT hBuffer, unsigned UsedSize);
 
 private:
 	virtual MMRESULT Unprepare(UINT index);
 	HWAVEIN m_hwi;
 	DWORD GetPosition(UINT type=TIME_SAMPLES);
 	static void CALLBACK waveInProc(HWAVEIN hwi,
-									UINT uMsg,	DWORD dwInstance, DWORD dwParam1,
+									UINT uMsg,	DWORD_PTR dwInstance, DWORD dwParam1,
 									DWORD dwParam2	);
 	// the class doesn't allow assignment and copy
 	CWaveIn(const CWaveIn &) {ASSERT(FALSE);}
@@ -418,13 +418,13 @@ public:
 protected:
 	static BOOL _stdcall FormatTestEnumCallback(
 												HACMDRIVERID hadid, LPACMFORMATDETAILS pafd,
-												DWORD dwInstance, DWORD fdwSupport);
+												DWORD_PTR dwInstance, DWORD fdwSupport);
 	static BOOL _stdcall FormatTagEnumCallback(
 												HACMDRIVERID hadid, LPACMFORMATTAGDETAILS paftd,
-												DWORD dwInstance, DWORD fdwSupport);
+												DWORD_PTR dwInstance, DWORD fdwSupport);
 	static BOOL _stdcall FormatEnumCallback(
 											HACMDRIVERID hadid, LPACMFORMATDETAILS pafd,
-											DWORD dwInstance, DWORD fdwSupport);
+											DWORD_PTR dwInstance, DWORD fdwSupport);
 	// source wave format for comparing:
 	CWaveFormat m_Wf;
 };
@@ -440,7 +440,7 @@ public:
 	~AudioStreamConvertor();
 
 	BOOL SuggestFormat(WAVEFORMATEX const * pWf1,
-						WAVEFORMATEX * pWf2, size_t MaxFormat2Size, DWORD flags);
+						WAVEFORMATEX * pWf2, unsigned MaxFormat2Size, DWORD flags);
 
 	BOOL QueryOpen(WAVEFORMATEX const * pWfSrc,
 					WAVEFORMATEX const * pWfDst, DWORD flags = ACM_STREAMOPENF_NONREALTIME);

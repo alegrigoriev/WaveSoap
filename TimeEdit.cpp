@@ -5,6 +5,8 @@
 #include "stdafx.h"
 //#include "WaveSoapFront.h"
 #include "TimeEdit.h"
+#include "resource.h"
+#include "LocaleUtilities.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -146,7 +148,7 @@ SAMPLE_INDEX CTimeEdit::GetTimeSample()
 	return m_Sample;
 }
 
-void CTimeEdit::OnVScroll(UINT nSBCode, UINT nPos, CScrollBar* pScrollBar)
+void CTimeEdit::OnVScroll(UINT /*nSBCode*/, UINT nPos, CScrollBar* /*pScrollBar*/)
 {
 	TRACE("CTimeEdit::OnVScroll, nPos=%d\n", nPos);
 	// nPos is actually an increment from CTimeSpinCtrl
@@ -268,7 +270,7 @@ void CTimeSpinCtrl::OnDeltapos(NMHDR* pNMHDR, LRESULT* pResult)
 		{
 			SbCode = SB_LINEDOWN;
 		}
-		pBuddy->SendMessage(WM_VSCROLL, SbCode + (pNMUpDown->iDelta << 16), long(m_hWnd));
+		pBuddy->SendMessage(WM_VSCROLL, SbCode + (pNMUpDown->iDelta << 16), LPARAM(m_hWnd));
 	}
 	*pResult = 0;
 }

@@ -138,13 +138,14 @@ BOOL WaitForSingleObjectAcceptSends(HANDLE handle, ULONG timeout)
 			&& WM_QUIT == msg.message)
 		{
 			QuitMessageFetched = TRUE;
-			QuitCode = msg.wParam;
+			QuitCode = int(msg.wParam);
 		}
 
 		if (timeout != INFINITE)
 		{
 			DWORD NewTime = GetTickCount();
 			DWORD Elapsed = NewTime - StartTime;
+
 			if (Elapsed < 0x8000000)
 			{
 				if (Elapsed >= WaitTimeout)
