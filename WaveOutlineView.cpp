@@ -82,7 +82,7 @@ void CWaveOutlineView::OnDraw(CDC* pDC)
 	{
 		return;
 	}
-	long nSamples = pDoc->WaveFileSamples();
+	NUMBER_OF_SAMPLES nSamples = pDoc->WaveFileSamples();
 
 	WavePeak * pPeaks = new WavePeak[width];
 	if (NULL == pPeaks)
@@ -90,7 +90,7 @@ void CWaveOutlineView::OnDraw(CDC* pDC)
 		return;
 	}
 
-	int channels = pDoc->WaveChannels();
+	NUMBER_OF_CHANNELS channels = pDoc->WaveChannels();
 
 	CThisApp * pApp = GetApp();
 
@@ -136,7 +136,7 @@ void CWaveOutlineView::OnDraw(CDC* pDC)
 		// use data from the file
 		int SampleSize = pDoc->WaveSampleSize();
 		size_t BufSize = (nSamples / width + 2) * SampleSize;
-		__int16 * pBuf = new __int16[BufSize / sizeof(__int16)];
+		WAVE_SAMPLE * pBuf = new WAVE_SAMPLE[BufSize / sizeof(WAVE_SAMPLE)];
 		if (NULL == pBuf)
 		{
 			pDC->SelectObject(pOldPen);
@@ -148,7 +148,7 @@ void CWaveOutlineView::OnDraw(CDC* pDC)
 			return;
 		}
 		int PrevIdx = MulDiv(ur.left, nSamples, width);
-		size_t DataOffset = pDoc->WaveDataChunk()->dwDataOffset;
+		size_t DataOffset = pDoc->m_WavFile.SampleToPosition(0);
 
 		for (i = ur.left; i < ur.right; i++)
 		{
@@ -165,7 +165,7 @@ void CWaveOutlineView::OnDraw(CDC* pDC)
 					TRACE("Miscalculation: ToRead > BufSize\n");
 				}
 				ToRead = pDoc->m_WavFile.ReadAt(pBuf, ToRead, Offset);
-				for (unsigned j = 0; j < ToRead / sizeof (__int16); j++)
+				for (unsigned j = 0; j < ToRead / sizeof (WAVE_SAMPLE); j++)
 				{
 					if (pPeaks[i].low > pBuf[j])
 					{
@@ -280,7 +280,7 @@ CWaveSoapFrontDoc* CWaveOutlineView::GetDocument() // non-debug version is inlin
 void CWaveOutlineView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
 {
 	CWaveSoapFrontDoc * pDoc = GetDocument();
-	long nSamples = pDoc->WaveFileSamples();
+	NUMBER_OF_SAMPLES nSamples = pDoc->WaveFileSamples();
 	CRect cr;
 	GetClientRect( & cr);
 
@@ -493,9 +493,9 @@ BOOL CWaveOutlineView::EraseBkgnd(CDC* pDC)
 	CRect r;
 	GetClientRect( & r);
 
-	long nSamples = pDoc->WaveFileSamples();
-	SAMPLE_INDEX SelBegin = MulDiv(pDoc->m_SelectionStart, r.Width(), nSamples);
-	SAMPLE_INDEX SelEnd = MulDiv(pDoc->m_SelectionEnd, r.Width(), nSamples);
+	NUMBER_OF_SAMPLES nSamples = pDoc->WaveFileSamples();
+	int SelBegin = MulDiv(pDoc->m_SelectionStart, r.Width(), nSamples);
+	int SelEnd = MulDiv(pDoc->m_SelectionEnd, r.Width(), nSamples);
 
 	if (pDoc->m_SelectionEnd != pDoc->m_SelectionStart
 		&& SelEnd == SelBegin)
@@ -543,7 +543,7 @@ BOOL CWaveOutlineView::EraseBkgnd(CDC* pDC)
 void CWaveOutlineView::NotifyViewExtents(long left, long right)
 {
 	CWaveSoapFrontDoc * pDoc = GetDocument();
-	long nSamples = pDoc->WaveFileSamples();
+	NUMBER_OF_SAMPLES nSamples = pDoc->WaveFileSamples();
 
 	if (0 == nSamples)
 	{
@@ -556,8 +556,8 @@ void CWaveOutlineView::NotifyViewExtents(long left, long right)
 	r.top = cr.top;
 	r.bottom = cr.bottom;
 
-	SAMPLE_INDEX OldLPosition = MulDiv(m_LeftViewBoundary, cr.Width(), nSamples);
-	SAMPLE_INDEX NewLPosition = MulDiv(left, cr.Width(), nSamples);
+	int OldLPosition = MulDiv(m_LeftViewBoundary, cr.Width(), nSamples);
+	int NewLPosition = MulDiv(left, cr.Width(), nSamples);
 
 	if (NewLPosition != OldLPosition)
 	{
@@ -577,6 +577,7 @@ void CWaveOutlineView::NotifyViewExtents(long left, long right)
 
 	int OldRPosition = MulDiv(m_RightViewBoundary, cr.Width(), nSamples);
 	int NewRPosition = MulDiv(right, cr.Width(), nSamples);
+
 	if (NewRPosition != OldRPosition)
 	{
 		if (-1 != m_RightViewBoundary)
@@ -622,7 +623,7 @@ void CWaveOutlineView::OnLButtonDown(UINT nFlags, CPoint point)
 {
 	// set cursor and view to the clicked position
 	CWaveSoapFrontDoc * pDoc = GetDocument();
-	long nSamples = pDoc->WaveFileSamples();
+	NUMBER_OF_SAMPLES nSamples = pDoc->WaveFileSamples();
 	CRect cr;
 	GetClientRect( & cr);
 	int width = cr.Width();
@@ -671,7 +672,8 @@ void CWaveOutlineView::OnLButtonDown(UINT nFlags, CPoint point)
 void CWaveOutlineView::OnLButtonUp(UINT nFlags, CPoint point)
 {
 	CWaveSoapFrontDoc * pDoc = GetDocument();
-	long nSamples = pDoc->WaveFileSamples();
+	NUMBER_OF_SAMPLES nSamples = pDoc->WaveFileSamples();
+
 	CRect cr;
 	GetClientRect( & cr);
 
@@ -718,7 +720,7 @@ void CWaveOutlineView::OnMouseMove(UINT nFlags, CPoint point)
 	GetClientRect( & cr);
 	int width = cr.Width();
 
-	long nSamples = pDoc->WaveFileSamples();
+	NUMBER_OF_SAMPLES nSamples = pDoc->WaveFileSamples();
 	if (width <= 0 || 0 == nSamples)
 	{
 		CView::OnMouseMove(nFlags, point);

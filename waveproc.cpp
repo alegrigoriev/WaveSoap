@@ -556,10 +556,10 @@ int CHumRemoval::ProcessSoundBuffer(char const * pIn, char * pOut,
 	int nSavedBytes = 0;
 	*pUsedBytes = 0;
 
-	int nInSamples = nInBytes / sizeof (__int16);
-	int nOutSamples = nOutBytes / sizeof (__int16);
-	__int16 const * pInBuf = (__int16 *) pIn;
-	__int16 * pOutBuf = (__int16 *) pOut;
+	int nInSamples = nInBytes / sizeof (WAVE_SAMPLE);
+	int nOutSamples = nOutBytes / sizeof (WAVE_SAMPLE);
+	WAVE_SAMPLE const * pInBuf = (WAVE_SAMPLE *) pIn;
+	WAVE_SAMPLE * pOutBuf = (WAVE_SAMPLE *) pOut;
 
 
 	// process the data
@@ -639,8 +639,8 @@ int CHumRemoval::ProcessSoundBuffer(char const * pIn, char * pOut,
 		}
 	}
 
-	*pUsedBytes += nSamples * m_InputChannels * sizeof (__int16);
-	return nSavedBytes + nSamples * m_InputChannels * sizeof (__int16);
+	*pUsedBytes += nSamples * m_InputChannels * sizeof (WAVE_SAMPLE);
+	return nSavedBytes + nSamples * m_InputChannels * sizeof (WAVE_SAMPLE);
 }
 
 void CClickRemoval::InterpolateGap(CBackBuffer<int, int> & data, int nLeftIndex, int InterpolateSamples, bool BigGap)
@@ -662,7 +662,7 @@ void CClickRemoval::InterpolateGap(CBackBuffer<int, int> & data, int nLeftIndex,
 		InterpolationOverlap = 5 * InterpolateSamples;
 	}
 
-	__int16 TempBuf[BufferSamples];
+	WAVE_SAMPLE TempBuf[BufferSamples];
 	const int InterpolateOffset = InterpolationOverlap;
 	const int ReadStartOffset = nLeftIndex - InterpolationOverlap;
 	const int WriteStartOffset = nLeftIndex - PreInterpolateSamples;
@@ -671,7 +671,7 @@ void CClickRemoval::InterpolateGap(CBackBuffer<int, int> & data, int nLeftIndex,
 	int i;
 	for (i = 0; i < InterpolateSamples + 2 * InterpolationOverlap; i++)
 	{
-		TempBuf[i] = __int16(data[ReadStartOffset + i]);
+		TempBuf[i] = WAVE_SAMPLE(data[ReadStartOffset + i]);
 	}
 
 	InterpolateGap(TempBuf, InterpolateOffset, InterpolateSamples, 1, BigGap);
@@ -682,7 +682,7 @@ void CClickRemoval::InterpolateGap(CBackBuffer<int, int> & data, int nLeftIndex,
 	}
 }
 
-void CClickRemoval::InterpolateBigGap(__int16 data[], int nLeftIndex, int ClickLength, int nChans)
+void CClickRemoval::InterpolateBigGap(WAVE_SAMPLE data[], int nLeftIndex, int ClickLength, int nChans)
 {
 	const int MAX_FFT_ORDER = 2048;
 	float x[MAX_FFT_ORDER + MAX_FFT_ORDER / 4];
@@ -764,7 +764,7 @@ void CClickRemoval::InterpolateBigGap(__int16 data[], int nLeftIndex, int ClickL
 	}
 }
 
-void CClickRemoval::InterpolateGap(__int16 data[], int nLeftIndex, int ClickLength, int nChans, bool BigGap)
+void CClickRemoval::InterpolateGap(WAVE_SAMPLE data[], int nLeftIndex, int ClickLength, int nChans, bool BigGap)
 {
 	if (BigGap)
 	{
@@ -833,10 +833,10 @@ int CClickRemoval::ProcessSoundBuffer(char const * pIn, char * pOut,
 	int nSavedBytes = 0;
 	*pUsedBytes = 0;
 
-	int nInSamples = nInBytes / (m_InputChannels * sizeof (__int16));
-	int nOutSamples = nOutBytes / (m_InputChannels * sizeof (__int16));
-	__int16 const * pInBuf = (__int16 *) pIn;
-	__int16 * pOutBuf = (__int16 *) pOut;
+	int nInSamples = nInBytes / (m_InputChannels * sizeof (WAVE_SAMPLE));
+	int nOutSamples = nOutBytes / (m_InputChannels * sizeof (WAVE_SAMPLE));
+	WAVE_SAMPLE const * pInBuf = (WAVE_SAMPLE *) pIn;
+	WAVE_SAMPLE * pOutBuf = (WAVE_SAMPLE *) pOut;
 
 	// process the data
 
@@ -864,7 +864,7 @@ int CClickRemoval::ProcessSoundBuffer(char const * pIn, char * pOut,
 		m_prev[0].Advance(nBackSamples);
 		m_prev[1].Advance(nBackSamples);
 		m_nStoredSamples += nBackSamples;
-		return nSavedBytes + nBackSamples * m_InputChannels * sizeof (__int16);
+		return nSavedBytes + nBackSamples * m_InputChannels * sizeof (WAVE_SAMPLE);
 	}
 
 	int nClickIndex;
@@ -1054,11 +1054,11 @@ int CClickRemoval::ProcessSoundBuffer(char const * pIn, char * pOut,
 			{
 #if 1
 				pOutBuf[nStoreIndex * m_InputChannels] =
-					__int16(m_prev[ch][ 1-ANALYZE_LAG /*m_nStoredSamples + nStoreIndex - PrevIndex + ANALYZE_LAG*/]);
+					WAVE_SAMPLE(m_prev[ch][ 1-ANALYZE_LAG /*m_nStoredSamples + nStoreIndex - PrevIndex + ANALYZE_LAG*/]);
 #else
 				// store 3rd derivative
 				pOutBuf[nStoreIndex * m_InputChannels] =
-					__int16(m_prev3[ch][1-ANALYZE_LAG]);
+					WAVE_SAMPLE(m_prev3[ch][1-ANALYZE_LAG]);
 #endif
 				nStoreIndex++;
 			}
@@ -1076,8 +1076,8 @@ int CClickRemoval::ProcessSoundBuffer(char const * pIn, char * pOut,
 	int nStoredSamples = nStoreIndex;
 	m_PrevIndex = PrevIndex;
 	m_nStoredSamples += nStoredSamples;
-	*pUsedBytes += nSamples * (m_InputChannels * sizeof (__int16));
-	return nSavedBytes + m_InputChannels * sizeof(__int16) * nStoredSamples;
+	*pUsedBytes += nSamples * (m_InputChannels * sizeof (WAVE_SAMPLE));
+	return nSavedBytes + m_InputChannels * sizeof(WAVE_SAMPLE) * nStoredSamples;
 }
 
 // smp - source FFT sample
@@ -1264,10 +1264,10 @@ int CNoiseReduction::ProcessSoundBuffer(char const * pIn, char * pOut,
 	*pUsedBytes = 0;
 	int nChans = m_InputChannels;
 
-	int nInSamples = nInBytes / (nChans * sizeof (__int16));
-	int nOutSamples = nOutBytes / (nChans * sizeof (__int16));
-	__int16 const * pInBuf = (__int16 *) pIn;
-	__int16 * pOutBuf = (__int16 *) pOut;
+	int nInSamples = nInBytes / (nChans * sizeof (WAVE_SAMPLE));
+	int nOutSamples = nOutBytes / (nChans * sizeof (WAVE_SAMPLE));
+	WAVE_SAMPLE const * pInBuf = (WAVE_SAMPLE *) pIn;
+	WAVE_SAMPLE * pOutBuf = (WAVE_SAMPLE *) pOut;
 
 	// process the data
 	int nSamples = __min(nInSamples, nOutSamples);
@@ -1293,12 +1293,12 @@ int CNoiseReduction::ProcessSoundBuffer(char const * pIn, char * pOut,
 			for (int ch = 0; ch < nChans; ch++)
 			{
 				// TODO: use conversion routine
-				*pOutBuf = __int16(m_BackBuffer[(m_nStoredSamples + ANALYZE_LAG) & PREV_MASK][ch]);
+				*pOutBuf = WAVE_SAMPLE(m_BackBuffer[(m_nStoredSamples + ANALYZE_LAG) & PREV_MASK][ch]);
 				pOutBuf++;
 			}
 			m_nStoredSamples++;
 		}
-		return nSavedBytes + nChans * sizeof(__int16) * nBackSamples;
+		return nSavedBytes + nChans * sizeof(WAVE_SAMPLE) * nBackSamples;
 	}
 
 	int ch;
@@ -1609,8 +1609,8 @@ int CNoiseReduction::ProcessSoundBuffer(char const * pIn, char * pOut,
 	}
 
 	m_nBackSampleCount += nSamples;
-	*pUsedBytes += nSamples * (nChans * sizeof (__int16));
-	return nSavedBytes + nChans * sizeof(__int16) * nStoredSamples;
+	*pUsedBytes += nSamples * (nChans * sizeof (WAVE_SAMPLE));
+	return nSavedBytes + nChans * sizeof(WAVE_SAMPLE) * nStoredSamples;
 }
 
 CBatchProcessing::~CBatchProcessing()
@@ -2010,10 +2010,10 @@ int CResampleFilter::ProcessSoundBuffer(char const * pIn, char * pOut,
 	int nSavedBytes = 0;
 	*pUsedBytes = 0;
 
-	int nInSamples = nInBytes / sizeof (__int16);
-	int nOutSamples = nOutBytes / sizeof (__int16);
-	__int16 const * pInBuf = (__int16 *) pIn;
-	__int16 * pOutBuf = (__int16 *) pOut;
+	int nInSamples = nInBytes / sizeof (WAVE_SAMPLE);
+	int nOutSamples = nOutBytes / sizeof (WAVE_SAMPLE);
+	WAVE_SAMPLE const * pInBuf = (WAVE_SAMPLE *) pIn;
+	WAVE_SAMPLE * pOutBuf = (WAVE_SAMPLE *) pOut;
 
 	int nUsedSamples = 0;
 	int nSavedSamples = 0;
@@ -2101,8 +2101,8 @@ int CResampleFilter::ProcessSoundBuffer(char const * pIn, char * pOut,
 		}
 	}
 
-	* pUsedBytes += nUsedSamples * sizeof(__int16);
-	return nSavedBytes + nSavedSamples * sizeof(__int16);
+	* pUsedBytes += nUsedSamples * sizeof(WAVE_SAMPLE);
+	return nSavedBytes + nSavedSamples * sizeof(WAVE_SAMPLE);
 }
 
 CAudioConvertor::CAudioConvertor()
@@ -2323,10 +2323,10 @@ int CChannelConvertor::ProcessSoundBuffer(char const * pIn, char * pOut,
 	int nSavedBytes = 0;
 	*pUsedBytes = 0;
 
-	int nInSamples = nInBytes / (m_InputChannels * sizeof (__int16));
-	int nOutSamples = nOutBytes / (m_OutputChannels * sizeof (__int16));
-	__int16 const * pInBuf = (__int16 *) pIn;
-	__int16 * pOutBuf = (__int16 *) pOut;
+	int nInSamples = nInBytes / (m_InputChannels * sizeof (WAVE_SAMPLE));
+	int nOutSamples = nOutBytes / (m_OutputChannels * sizeof (WAVE_SAMPLE));
+	WAVE_SAMPLE const * pInBuf = (WAVE_SAMPLE *) pIn;
+	WAVE_SAMPLE * pOutBuf = (WAVE_SAMPLE *) pOut;
 
 	int nSamples = __min(nInSamples, nOutSamples);
 	int i;
@@ -2351,8 +2351,8 @@ int CChannelConvertor::ProcessSoundBuffer(char const * pIn, char * pOut,
 				*pOutBuf = (pInBuf[0] + pInBuf[1]) / 2;
 			}
 		}
-		nSavedBytes += i * sizeof(__int16);
-		*pUsedBytes += 2 * i * sizeof(__int16);
+		nSavedBytes += i * sizeof(WAVE_SAMPLE);
+		*pUsedBytes += 2 * i * sizeof(WAVE_SAMPLE);
 	}
 	else if (1 == m_InputChannels
 			&& 2 == m_OutputChannels)
@@ -2363,8 +2363,8 @@ int CChannelConvertor::ProcessSoundBuffer(char const * pIn, char * pOut,
 			pOutBuf[0] = * pInBuf;
 			pOutBuf[1] = * pInBuf;
 		}
-		nSavedBytes += 2 * i * sizeof(__int16);
-		*pUsedBytes += i * sizeof(__int16);
+		nSavedBytes += 2 * i * sizeof(WAVE_SAMPLE);
+		*pUsedBytes += i * sizeof(WAVE_SAMPLE);
 	}
 	else
 	{
@@ -2594,7 +2594,7 @@ int CLameEncConvertor::ProcessSound(char const * pInBuf, char * pOutBuf,
 		{
 			DWORD OutFilled = 0;
 			m_Enc.EncodeChunk((short*)m_pInputBuffer,
-							m_InputBufferFilled / (sizeof (__int16) * m_InputChannels),
+							m_InputBufferFilled / (sizeof (WAVE_SAMPLE) * m_InputChannels),
 							(BYTE*)m_pOutputBuffer, & OutFilled);
 			m_OutputBufferFilled = OutFilled;
 			m_InputBufferFilled = 0;    // all used up
@@ -2625,7 +2625,7 @@ int CByteSwapConvertor::ProcessSoundBuffer(char const * pIn, char * pOut,
 		return 0;
 	}
 	int nBytes = __min(nInBytes, nOutBytes);
-	for (int i = 0; i < nBytes; i+= sizeof (__int16))
+	for (int i = 0; i < nBytes; i+= sizeof (WAVE_SAMPLE))
 	{
 		pOut[i + 1] = pIn[i];
 		pOut[i] = pIn[i + 1];
