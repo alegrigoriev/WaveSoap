@@ -835,10 +835,11 @@ void CWaveSoapFrontDoc::QueueSoundUpdate(int UpdateCode, ULONG_PTR FileID,
 	{
 		CSimpleCriticalSectionLock lock(m_UpdateList);
 
-		if (flags & QueueSoundUpdateMerge)
+		if ((flags & QueueSoundUpdateMerge)
+			&& -1 == NewLength)
 		{
-			for (CSoundUpdateInfo * pEntry = m_UpdateList.First()
-				;  m_UpdateList.NotEnd(pEntry); pEntry = m_UpdateList.Next(pEntry))
+			for (CSoundUpdateInfo * pEntry = m_UpdateList.Last()
+				;  m_UpdateList.NotEnd(pEntry); pEntry = m_UpdateList.Prev(pEntry))
 			{
 				// see if the ranges overlap
 				if (FileID == pEntry->m_FileID
@@ -2822,6 +2823,13 @@ void CWaveSoapFrontDoc::OnIdle()
 	while (NULL != (pInfo = m_UpdateList.RemoveHead()))
 	{
 		UpdateAllViews(NULL, pInfo->m_UpdateCode, pInfo);
+		if (pInfo->m_NewLength != -1)
+		{
+			// check if the selection fits in the new length
+			SetSelection(min(pInfo->m_NewLength, m_SelectionStart),
+						min(pInfo->m_NewLength, m_SelectionEnd), m_SelectedChannel,
+						min(pInfo->m_NewLength, m_CaretPosition), SetSelection_MakeFileVisible);
+		}
 		delete pInfo;
 	}
 	while ( ! m_RetiredList.IsEmpty())
