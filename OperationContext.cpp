@@ -118,6 +118,7 @@ BOOL COperationContext::OperationProc()
 		return TRUE;
 	}
 
+	BOOL res = TRUE;    // function result
 	DWORD dwStartTime = timeGetTime();
 	DWORD dwOperationBegin = m_DstCopyPos;
 	int SampleSize = m_DstFile.SampleSize();
@@ -184,7 +185,9 @@ BOOL COperationContext::OperationProc()
 					m_pUndoContext->m_DstEnd = m_pUndoContext->m_SrcSavePos;
 					m_pUndoContext->m_SrcEnd = m_pUndoContext->m_DstSavePos;
 				}
-				ProcessBuffer(TempBuf, SampleSize, m_DstCopyPos - m_DstStart, FALSE);
+
+				res = ProcessBuffer(TempBuf, SampleSize, m_DstCopyPos - m_DstStart, FALSE);
+
 				if (m_ReturnBufferFlags & CDirectFile::ReturnBufferDirty)
 				{
 					m_DstFile.WriteAt(TempBuf, SampleSize, m_DstCopyPos);
@@ -203,13 +206,13 @@ BOOL COperationContext::OperationProc()
 				m_pUndoContext->m_SrcEnd = m_pUndoContext->m_DstSavePos;
 			}
 			// virtual function which modifies the actual data:
-			ProcessBuffer(pDstBuf, SizeToProcess, m_DstCopyPos - m_DstStart, FALSE);
+			res = ProcessBuffer(pDstBuf, SizeToProcess, m_DstCopyPos - m_DstStart, FALSE);
 
 			m_DstFile.ReturnDataBuffer(pDstBuf, WasLockedToWrite,
 										m_ReturnBufferFlags);
 			m_DstCopyPos += SizeToProcess;
 		}
-		while (m_DstCopyPos < m_DstEnd
+		while (res && m_DstCopyPos < m_DstEnd
 				&& timeGetTime() - dwStartTime < 200);
 
 		if (m_ReturnBufferFlags & CDirectFile::ReturnBufferDirty)
@@ -278,7 +281,7 @@ BOOL COperationContext::OperationProc()
 					m_pUndoContext->m_DstEnd = m_pUndoContext->m_SrcSavePos;
 					m_pUndoContext->m_SrcEnd = m_pUndoContext->m_DstSavePos;
 				}
-				ProcessBuffer(TempBuf, SampleSize, m_DstCopyPos - m_DstStart, TRUE);
+				res = ProcessBuffer(TempBuf, SampleSize, m_DstCopyPos - m_DstStart, TRUE);
 				if (m_ReturnBufferFlags & CDirectFile::ReturnBufferDirty)
 				{
 					m_DstFile.WriteAt(TempBuf, SampleSize, m_DstCopyPos - SampleSize);
@@ -298,14 +301,14 @@ BOOL COperationContext::OperationProc()
 				m_pUndoContext->m_SrcEnd = m_pUndoContext->m_DstSavePos;
 			}
 			// virtual function which modifies the actual data:
-			ProcessBuffer(-SizeToProcess + (PCHAR)pDstBuf, SizeToProcess, m_DstCopyPos - m_DstStart, TRUE);   // backward=TRUE
+			res = ProcessBuffer(-SizeToProcess + (PCHAR)pDstBuf, SizeToProcess, m_DstCopyPos - m_DstStart, TRUE);   // backward=TRUE
 
 			m_DstFile.ReturnDataBuffer(pDstBuf, WasLockedToWrite,
 										m_ReturnBufferFlags);
 			// length requested and length returned are <0,
 			m_DstCopyPos -= SizeToProcess;
 		}
-		while (m_DstCopyPos > m_DstStart
+		while (res && m_DstCopyPos > m_DstStart
 				&& timeGetTime() - dwStartTime < 200);
 
 		if (m_ReturnBufferFlags & CDirectFile::ReturnBufferDirty)
@@ -326,7 +329,7 @@ BOOL COperationContext::OperationProc()
 									/ (double(m_DstEnd - m_DstStart) * (m_NumberOfForwardPasses + m_NumberOfBackwardPasses)));
 		}
 	}
-	return TRUE;
+	return res;
 }
 
 void COperationContext::Retire()

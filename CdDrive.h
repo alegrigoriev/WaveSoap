@@ -839,6 +839,7 @@ protected:
 	USHORT m_BufferAlignment;
 
 	DWORD m_MediaChangeCount;
+	ULONG m_OffsetBytesPerSector;
 
 	bool m_bScsiCommandsAvailable;
 	bool m_bMediaChangeNotificationDisabled;
