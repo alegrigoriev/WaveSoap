@@ -1476,7 +1476,7 @@ void CWaveFile::RescanPeaks(SAMPLE_INDEX begin, SAMPLE_INDEX end)
 
 	while (Pos < EndPos)
 	{
-		DWORD SizeToRead = EndPos - Pos;
+		MEDIA_FILE_SIZE SizeToRead = EndPos - Pos;
 		void * pBuf;
 		long lRead = GetDataBuffer( & pBuf, SizeToRead, Pos, 0);
 
