@@ -465,7 +465,8 @@ void CWaveOutlineView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
 
 		m_PlaybackCursorPosition = pInfo->m_PlaybackPosition;
 	}
-	else
+	else if (0 == lHint
+			|| pDoc->UpdateWholeFileChanged == lHint)
 	{
 		CView::OnUpdate(pSender, lHint, pHint);
 	}
