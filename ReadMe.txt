@@ -1,5 +1,8 @@
 Known problems and tasks:
 
+Rintime error during Undo on some systems
+Make Volume Change dialog
+Make check for clipping in VolumeChange command
 Make Paste Special command
 When a file is opened in non-direct mode, peak info is saved with wrong time stamp
 support copy from a file (FileName) in DoCopy
@@ -34,14 +37,7 @@ Add mouse wheel support
 Add autoscroll during selection
 
 Done:
-Make Paste with selection
-Make paste with channel selection
-Make Undo consistent with changes, if the operation was interrupted
-Update max extents to reserve 100 pixels after end of file
-Add Zoom buttons to the toolbar
-Add undo/redo operation contexts
-Add context menu to FFT view, switches number of analyse bands
-Make context menu for wave views
-Add undo/redo operation contexts for replace operations
-
-
+Horizontal scale is automatically changed to stretch the sound to the view
+Fixed vertical scroll problem with FFT view
+Ruler background made consistent with menu color.
+Time ruler height calculated from the font height

@@ -1396,6 +1396,10 @@ void CWaveSoapFrontView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
 		if (pInfo->Length != -1)
 		{
 			// length changed, set new extents and caret position
+			if ((r.Width() - 100) * m_HorizontalScale / 2 > pInfo->Length)
+			{
+				SetExtents(0, pInfo->Length, 0, 0);
+			}
 			UpdateMaxExtents(pInfo->Length);
 			Invalidate();
 		}
@@ -1722,8 +1726,10 @@ int CWaveSoapFrontView::OnCreate(LPCREATESTRUCT lpCreateStruct)
 		nLowExtent = -0x10000;
 		nHighExtent = 0x10000;
 	}
+	// set m_HorizontalScale to stretch the file in the view
+	long nSamples = GetDocument()->WaveFileSamples();
 
-	UpdateMaxExtents(GetDocument()->WaveFileSamples());
+	UpdateMaxExtents(nSamples);
 	SetExtents(0., double(r.Width()) * m_HorizontalScale, nLowExtent, nHighExtent);
 	ShowScrollBar(SB_VERT, FALSE);
 	ShowScrollBar(SB_HORZ, FALSE);
@@ -1808,6 +1814,14 @@ BOOL CWaveSoapFrontView::ScrollBy(double dx, double dy, BOOL bDoScroll)
 
 void CWaveSoapFrontView::OnSize(UINT nType, int cx, int cy)
 {
+	// set m_HorizontalScale to stretch the file in the view
+	long nSamples = GetDocument()->WaveFileSamples();
+	if (nSamples != 0
+		&& (cx - 100) * m_HorizontalScale / 2 > nSamples)
+	{
+		SetExtents(0, nSamples, 0, 0);
+		Invalidate();
+	}
 	CScaledScrollView::OnSize(nType, cx, cy);
 
 	CreateAndShowCaret();
