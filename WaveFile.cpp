@@ -1,18 +1,19 @@
 // WaveFile.cpp
 #include "stdafx.h"
+#include "DirectFile.h"
 #include "WaveFile.h"
 
-CMmioFile::CMmioFile(HANDLE hFile)
-	: m_hFile(hFile), m_hmmio(NULL),
-	m_dwSize(0),
-	m_pReadBuffer(NULL)
+CMmioFile::CMmioFile()
+	: m_hmmio(NULL),
+	m_dwSize(0)
+//m_pReadBuffer(NULL)
 {
 }
 
 CMmioFile::CMmioFile( LPCTSTR lpszFileName, UINT nOpenFlags )
-	: m_hFile(NULL), m_hmmio(NULL),
-	m_dwSize(0),
-	m_pReadBuffer(NULL)
+	: m_hmmio(NULL),
+	m_dwSize(0)
+//m_pReadBuffer(NULL)
 {
 	Open(lpszFileName, nOpenFlags);
 }
@@ -20,8 +21,8 @@ CMmioFile::CMmioFile( LPCTSTR lpszFileName, UINT nOpenFlags )
 CMmioFile::~CMmioFile()
 {
 	Close();
-	if (m_pReadBuffer != NULL) VirtualFree(m_pReadBuffer, 0, MEM_RELEASE);
-	m_pReadBuffer = NULL;
+	//if (m_pReadBuffer != NULL) VirtualFree(m_pReadBuffer, 0, MEM_RELEASE);
+	//m_pReadBuffer = NULL;
 
 }
 
@@ -94,20 +95,18 @@ BOOL CMmioFile::Open( LPCTSTR szFileName, UINT nOpenFlags)
 {
 	Close();
 
-	m_hFile = CreateFile(szFileName, GENERIC_READ, FILE_SHARE_READ,
-						NULL, OPEN_EXISTING, FILE_FLAG_NO_BUFFERING | FILE_FLAG_SEQUENTIAL_SCAN, NULL);
-
-	m_BufFileOffset = 0xFFFFFFFF;
-	m_SectorSize = GetSectorSize(szFileName);
-
-	if(INVALID_HANDLE_VALUE == m_hFile)
+	if ( ! m_File.Open(szFileName, CDirectFile::OpenReadOnly))
 	{
-		m_hFile = NULL;
 		return FALSE;
 	}
 
+#if 0
+	m_BufFileOffset = 0xFFFFFFFF;
+	m_SectorSize = GetSectorSize(szFileName);
+#endif
+
 	DWORD dwSizeHigh = 0;
-	m_dwSize = GetFileSize(m_hFile, & dwSizeHigh);
+	m_dwSize = m_File.GetFileSize(& dwSizeHigh);
 
 	if (dwSizeHigh != 0 ||
 		(0xFFFFFFFF == m_dwSize && GetLastError() != NO_ERROR))
@@ -163,8 +162,8 @@ LRESULT PASCAL CMmioFile::BufferedIOProc(LPSTR lpmmioinfo, UINT wMsg,
 		break;
 	case MMIOM_READ:
 	{
-		pFile->SeekBufferedRead(pmmi->lDiskOffset);
-		DWORD cbRead = pFile->BufferedRead((LPVOID) lParam1, lParam2);
+		DWORD cbRead = pFile->m_File.ReadAt((LPVOID) lParam1, lParam2, pmmi->lDiskOffset);
+		//pFile->BufferedRead();
 		if (-1 == cbRead)
 			return -1;
 		pmmi->lDiskOffset += cbRead;
@@ -202,14 +201,11 @@ LRESULT PASCAL CMmioFile::BufferedIOProc(LPSTR lpmmioinfo, UINT wMsg,
 	// current position won't change after this function
 LONG CMmioFile::ReadAt(void * lpBuf, LONG nCount, LONG Position)
 {
-	CSingleLock( & m_cs, TRUE);
-	LONG OldPosition = Seek(0, SEEK_CUR);
-	Seek(Position);
-	LONG cRead = Read(lpBuf, nCount);
-	Seek(OldPosition);
-	return cRead;
+	//CSimpleCriticalSectionLock(m_cs);
+	return m_File.ReadAt(lpBuf, nCount, Position);
 }
 
+#if 0
 size_t CMmioFile::BufferedRead(void * pBuf, size_t size)
 {
 	char * buf = (char *) pBuf;
@@ -265,6 +261,7 @@ LONG CMmioFile::FileRead(void * pBuf, size_t size)
 		return 0;
 	}
 }
+#endif
 
 void CMmioFile::Close( )
 {
@@ -273,16 +270,12 @@ void CMmioFile::Close( )
 		mmioClose(m_hmmio, 0);
 		m_hmmio = NULL;
 	}
-	if (m_hFile != NULL)
-	{
-		CloseHandle(m_hFile);
-		m_hFile = NULL;
-	}
+	m_File.Close(0);
 }
 
 
-CWaveFile::CWaveFile(HANDLE hFile)
-	: CMmioFile(hFile), m_pWf(NULL)
+CWaveFile::CWaveFile()
+	: m_pWf(NULL)
 {
 }
 
@@ -301,6 +294,7 @@ CWaveFile::~CWaveFile()
 	}
 }
 
+#if 0
 BOOL CWaveFile::Open( LPCTSTR lpszFileName, UINT nOpenFlags)
 {
 	return CMmioFile::Open(lpszFileName, nOpenFlags);
@@ -310,6 +304,7 @@ void CWaveFile::Close( )
 {
 	CMmioFile::Close();
 }
+#endif
 
 BOOL CWaveFile::LoadWaveformat()
 {
