@@ -52,7 +52,7 @@ BOOL CDirectFile::Open(LPCTSTR szName, DWORD flags)
 	// only read only is currently supported
 	ASSERT(flags == OpenReadOnly);
 	ASSERT(NULL != CDirectFileCache::SingleInstance);
-	CDirectFileCache::File * pFile = CDirectFileCache::SingleInstance->Open(szName, flags);
+	File * pFile = CDirectFileCache::SingleInstance->Open(szName, flags);
 	if (NULL == pFile)
 	{
 		return FALSE;
@@ -62,7 +62,7 @@ BOOL CDirectFile::Open(LPCTSTR szName, DWORD flags)
 	return TRUE;
 }
 
-CDirectFile::CDirectFileCache::File * CDirectFile::CDirectFileCache::Open
+CDirectFile::File * CDirectFile::CDirectFileCache::Open
 	(LPCTSTR szName, DWORD flags)
 {
 	// find if the file with this name is in the list.
@@ -155,9 +155,9 @@ BOOL CDirectFile::CDirectFileCache::Close(File * pFile, DWORD flags)
 	// If the use count is 0, flush all the buffers,
 	{
 		CSimpleCriticalSectionLock lock(pFile->m_ListLock);
-		while (NULL != pFile->BuffersList)
+		while (NULL != pFile->BuffersListHead)
 		{
-			BufferHeader * pBuf = pFile->BuffersList;
+			BufferHeader * pBuf = pFile->BuffersListHead;
 			ASSERT(0 == pBuf->LockCount);
 			// something strange: buffer not released
 			if (pBuf->LockCount != 0)
@@ -168,13 +168,17 @@ BOOL CDirectFile::CDirectFileCache::Close(File * pFile, DWORD flags)
 			{
 				FlushDirtyBuffers(pBuf);
 			}
-			ASSERT(pBuf == pFile->BuffersList);
+			ASSERT(pBuf == pFile->BuffersListHead);
 			ASSERT(0 == pBuf->DirtyMask);
-			pFile->BuffersList = pBuf->pNext;
-			if (NULL != pFile->BuffersList)
+			pFile->BuffersListHead = pBuf->pNext;
+			if (NULL != pFile->BuffersListHead)
 			{
-				ASSERT(pFile->BuffersList->pPrev == pBuf);
-				pFile->BuffersList->pPrev = NULL;
+				ASSERT(pFile->BuffersListHead->pPrev == pBuf);
+				pFile->BuffersListHead->pPrev = NULL;
+			}
+			else
+			{
+				pFile->BuffersListTail = NULL;
 			}
 			CSimpleCriticalSectionLock lock1(m_cs);
 			pBuf->pNext = m_pFreeBuffers;
@@ -185,6 +189,23 @@ BOOL CDirectFile::CDirectFileCache::Close(File * pFile, DWORD flags)
 			pBuf->pPrev = NULL;
 			m_pFreeBuffers = pBuf;
 			pBuf->pFile = NULL;
+			// remove the buffer also from MRU list
+			if (pBuf->pMruPrev)
+			{
+				pBuf->pMruPrev->pMruNext = pBuf->pMruNext;
+			}
+			else
+			{
+				m_pMruListHead = pBuf->pMruNext;
+			}
+			if (pBuf->pMruNext)
+			{
+				pBuf->pMruNext->pMruPrev = pBuf->pMruPrev;
+			}
+			else
+			{
+				m_pMruListTail = pBuf->pMruPrev;
+			}
 		}
 	}
 	// close the handle and delete the structure
@@ -303,10 +324,12 @@ CDirectFile::CDirectFileCache::CDirectFileCache(size_t CacheSize)
 	m_Flags(0),
 	m_NumberOfBuffers(0),
 	m_bRunThread(FALSE),
-	m_pPrefetchFile(0),
+	m_pPrefetchFile(NULL),
 	m_PrefetchPosition(0),
 	m_PrefetchLength(0),
 	m_MinPrefetchMRU(0),
+	m_pMruListHead(NULL),
+	m_pMruListTail(NULL),
 	m_pFreeBuffers(NULL)
 {
 	if (SingleInstance != NULL)
@@ -343,7 +366,7 @@ CDirectFile::CDirectFileCache::CDirectFileCache(size_t CacheSize)
 		m_pHeaders[i].MRU_Count = 0;
 		m_pHeaders[i].pBuf = i * 0x10000 + (char *) m_pBuffersArray;
 		m_pHeaders[i].pFile = NULL;
-		m_pHeaders[i].Position = 0;
+		m_pHeaders[i].PositionKey = 0;
 	}
 	m_pFreeBuffers = Next;  // address of the last descriptor
 
@@ -358,6 +381,7 @@ CDirectFile::CDirectFileCache::CDirectFileCache(size_t CacheSize)
 			&& m_pHeaders != NULL)
 		{
 			SingleInstance = this;
+			SetThreadPriority(m_hThread, THREAD_PRIORITY_ABOVE_NORMAL);
 			ResumeThread(m_hThread);
 		}
 		else
@@ -409,31 +433,144 @@ CDirectFile::CDirectFileCache::~CDirectFileCache()
 	}
 }
 
-long CDirectFile::CDirectFileCache::GetDataBuffer(CDirectFile * pDirectFile,
+// Insert a buffer to the list with the specified key
+// m_FileLock should be locked around this function call
+void CDirectFile::File::InsertBuffer(BufferHeader * pBuf)
+{
+	unsigned long const key = pBuf->PositionKey;
+	if (NULL == BuffersListHead)
+	{
+		// insert to the empty list
+		pBuf->pPrev = NULL;
+		pBuf->pNext = NULL;
+		BuffersListHead = pBuf;
+		BuffersListTail = pBuf;
+		return;
+	}
+	else if (BuffersListHead->PositionKey > key)
+	{
+		// insert to the head
+		pBuf->pPrev = NULL;
+		pBuf->pNext = BuffersListHead;
+		BuffersListHead->pPrev = pBuf;
+		BuffersListHead = pBuf;
+		return;
+	}
+	else if (BuffersListTail->PositionKey < key)
+	{
+		// insert to the tail
+		pBuf->pNext = NULL;
+		pBuf->pPrev = BuffersListTail;
+		BuffersListTail->pNext = pBuf;
+		BuffersListTail = pBuf;
+		return;
+	}
+	// find which side may be closer to the key
+	BufferHeader * pBufAfter;
+	if (key - BuffersListHead->PositionKey > BuffersListTail->PositionKey - key)
+	{
+		// search from tail
+		pBufAfter = BuffersListTail;
+		while (pBufAfter->PositionKey > key)
+		{
+			pBufAfter = pBufAfter->pPrev;
+			ASSERT(pBufAfter != NULL);
+		}
+		// skip one more position
+		pBufAfter = pBufAfter->pPrev;
+		ASSERT(pBufAfter != NULL);
+	}
+	else
+	{
+		// search from head
+		pBufAfter = BuffersListHead;
+		while (pBufAfter->PositionKey < key)
+		{
+			pBufAfter = pBufAfter->pNext;
+			ASSERT(pBufAfter != NULL);
+		}
+	}
+	pBuf->pNext = pBufAfter->pNext;
+	pBuf->pPrev = pBufAfter;
+	pBufAfter->pNext = pBuf;
+	ASSERT(pBuf->pNext != NULL);
+	pBuf->pNext->pPrev = pBuf;
+}
+
+// find a buffer in the list with the specified key
+// m_FileLock should be locked around this function call
+CDirectFile::BufferHeader * CDirectFile::File::FindBuffer(unsigned long key) const
+{
+	// the buffers are ordered: BuffersListHead has lowest key, BuffersListTail has the highest key
+	BufferHeader * pBuf;
+	if (NULL == BuffersListHead
+		|| BuffersListHead->PositionKey > key
+		|| BuffersListTail->PositionKey < key)
+	{
+		return NULL;
+	}
+	// find which side may be closer to the key
+	if (key - BuffersListHead->PositionKey > BuffersListTail->PositionKey - key)
+	{
+		// search from tail
+		pBuf = BuffersListTail;
+		while (pBuf != NULL && pBuf->PositionKey >= key)
+		{
+			if (pBuf->PositionKey == key)
+			{
+				return pBuf;
+			}
+			pBuf = pBuf->pPrev;
+		}
+	}
+	else
+	{
+		// search from head
+		pBuf = BuffersListHead;
+		while (pBuf != NULL && pBuf->PositionKey <= key)
+		{
+			if (pBuf->PositionKey == key)
+			{
+				return pBuf;
+			}
+			pBuf = pBuf->pNext;
+		}
+	}
+	return NULL;    // buffer not found
+}
+
+long CDirectFile::CDirectFileCache::GetDataBuffer(File * pFile,
 	void * * ppBuf, LONGLONG length, LONGLONG position, DWORD flags, unsigned MaxMRU)
 {
-	File * pFile = pDirectFile->m_pFile;
 	ASSERT(pFile);
+	ASSERT(ppBuf);
 	if (NULL == pFile)
 	{
 		return 0;
 	}
 	long BytesRequested = 0;
+	long BytesReturned;
 	int OffsetInBuffer = 0;
 
-	LONGLONG BufferPosition = 0;
-	LONGLONG PrefetchPosition = 0;
+	unsigned long BufferPosition;
 	if (length > 0)
 	{
-		BufferPosition = position & ~(__int64)0xFFFF;
+		BufferPosition = long(position >> 16);
 		OffsetInBuffer = int(position) & 0xFFFF;
 		if (OffsetInBuffer + length > 0x10000)
 		{
 			BytesRequested = 0x10000 - OffsetInBuffer;
+			BytesReturned = BytesRequested;
 		}
 		else
 		{
 			BytesRequested = long(length);
+			BytesReturned = BytesRequested;
+			if (flags & GetBufferAndPrefetchNext)
+			{
+				// read the rest of the buffer
+				BytesRequested = 0x10000 - OffsetInBuffer;
+			}
 		}
 	}
 	else if (length < 0)
@@ -443,12 +580,19 @@ long CDirectFile::CDirectFileCache::GetDataBuffer(CDirectFile * pDirectFile,
 		if (OffsetInBuffer + length < 0)    // length < 0
 		{
 			BytesRequested = long(position) & 0xFFFF;
+			BytesReturned = BytesRequested;
 		}
 		else
 		{
 			BytesRequested = -long(length);
+			BytesReturned = BytesRequested;
+			if (flags & GetBufferAndPrefetchNext)
+			{
+				// read the rest of the buffer
+				BytesRequested = long(position) & 0xFFFF;
+			}
 		}
-		BufferPosition = (position - BytesRequested) & ~(__int64)0xFFFF;
+		BufferPosition = long((position - BytesRequested) >> 16);
 		OffsetInBuffer = (long(position) - BytesRequested) & 0xFFFF;
 	}
 	else
@@ -480,10 +624,9 @@ long CDirectFile::CDirectFileCache::GetDataBuffer(CDirectFile * pDirectFile,
 	BufferHeader * pFreeBuf = NULL;
 
 	{
-		CSimpleCriticalSectionLock lock(CDirectFileCache::SingleInstance->m_cs);
-		m_MRU_Count++;
-		if (0 == m_MRU_Count)
+		if (0 == InterlockedIncrement( (PLONG) & m_MRU_Count))
 		{
+			CSimpleCriticalSectionLock lock(CDirectFileCache::SingleInstance->m_cs);
 			// change it to 0x80000000, subtract 0x80000000 from all counters
 			for (int i = 0; i < m_NumberOfBuffers; i++)
 			{
@@ -499,71 +642,103 @@ long CDirectFile::CDirectFileCache::GetDataBuffer(CDirectFile * pDirectFile,
 			m_MRU_Count = 0x80000000u;
 		}
 	}
+
 	{
 		CSimpleCriticalSectionLock lock(pFile->m_ListLock);
-		pBuf = pFile->BuffersList;
-		// find if the buffer is already available
-		while (NULL != pBuf)
+		pBuf = pFile->FindBuffer(BufferPosition);
+		if (NULL != pBuf)
 		{
-			ASSERT(pBuf->pFile == pFile);
-			if (pBuf->Position == BufferPosition)
-			{
-				InterlockedIncrement( & pBuf->LockCount);
-				pBuf->MRU_Count = m_MRU_Count;
-				break;
-			}
-			pBuf = pBuf->pNext;
+			InterlockedIncrement( & pBuf->LockCount);
+			pBuf->MRU_Count = m_MRU_Count;
 		}
 	}
+
 	if (NULL == pBuf)
 	{
+		// the buffer is not found, get another free one
 		pFreeBuf = GetFreeBuffer(MaxMRU);
-		CSimpleCriticalSectionLock lock(pFile->m_ListLock);
-		// make sure the buffer with the same position was not added in the meanwhile
-		pBuf = pFile->BuffersList;
-		while (NULL != pBuf)
+		if (NULL == pFreeBuf)
 		{
-			ASSERT(pBuf->pFile == pFile);
-			if (pBuf->Position == BufferPosition)
-			{
-				InterlockedIncrement( & pBuf->LockCount);
-				pBuf->MRU_Count = m_MRU_Count;
-				break;
-			}
-			pBuf = pBuf->pNext;
+			// unable to find an available  buffer
+			*ppBuf = NULL;
+			return 0;
 		}
-		if (NULL == pBuf)
+		CSimpleCriticalSectionLock lock(pFile->m_ListLock);
+		// make sure the buffer with the same position was not added
+		// while we might flush the buffers
+		pBuf = pFile->FindBuffer(BufferPosition);
+
+		if (NULL != pBuf)
+		{
+			InterlockedIncrement( & pBuf->LockCount);
+		}
+		else
 		{
 			pBuf = pFreeBuf;
 			pFreeBuf = NULL;
-			pBuf->pPrev = NULL;
-			pBuf->pNext = pFile->BuffersList;
-			if (NULL != pBuf->pNext)
-			{
-				pBuf->pNext->pPrev = pBuf;
-			}
+			pBuf->pMruPrev = NULL;
+			pBuf->pMruNext = NULL;
 
-			pFile->BuffersList = pBuf;
 			pBuf->LockCount = 1;
-			pBuf->MRU_Count = m_MRU_Count;
 			pBuf->ReadMask = 0;
 			pBuf->DirtyMask = 0;
 			pBuf->pFile = pFile;
-			pBuf->Position = BufferPosition;
+			pBuf->PositionKey = BufferPosition;
+			// insert the buffer to the list for file,
+			// to the correct position
+			pFile->InsertBuffer(pBuf);
 		}
+		pBuf->MRU_Count = m_MRU_Count;
 	}
-	// since we already have the required buffer,
-	// return the free buffer back
-	if (NULL != pFreeBuf)
 	{
+		// extract the buffer from MRU list
 		CSimpleCriticalSectionLock lock(m_cs);
-		pFreeBuf->pNext = m_pFreeBuffers;
-		pFreeBuf->pPrev = NULL;
-		if (NULL != pFreeBuf->pNext)
+		// if they are equal (0), the buffer is not in the list
+		if (pBuf->pMruPrev != pBuf->pMruNext)
 		{
-			pFreeBuf->pNext->pPrev = pFreeBuf;
+			if (pBuf->pMruPrev)
+			{
+				pBuf->pMruPrev->pMruNext = pBuf->pMruNext;
+			}
+			else
+			{
+				m_pMruListHead = pBuf->pMruNext;
+			}
+
+			if (pBuf->pMruNext)
+			{
+				pBuf->pMruNext->pMruPrev = pBuf->pMruPrev;
+			}
+			else
+			{
+				m_pMruListTail = pBuf->pMruPrev;
+			}
 		}
-		m_pFreeBuffers = pFreeBuf;
+		// since we already have the required buffer,
+		// return the free buffer back
+		if (NULL != pFreeBuf)
+		{
+			pFreeBuf->pNext = m_pFreeBuffers;
+			pFreeBuf->pPrev = NULL;
+			if (NULL != pFreeBuf->pNext)
+			{
+				pFreeBuf->pNext->pPrev = pFreeBuf;
+			}
+			m_pFreeBuffers = pFreeBuf;
+		}
+		// insert the buffer to the list head
+		pBuf->pMruNext = m_pMruListHead;
+		pBuf->pMruPrev = NULL;
+		if (NULL != m_pMruListHead)
+		{
+			m_pMruListHead->pMruPrev = pBuf;
+		}
+		else
+		{
+			// the list was empty
+			m_pMruListTail = pBuf;
+		}
+		m_pMruListHead = pBuf;
 	}
 
 	if (MaskToRead != (pBuf->ReadMask & MaskToRead))
@@ -579,22 +754,22 @@ long CDirectFile::CDirectFileCache::GetDataBuffer(CDirectFile * pDirectFile,
 		if (0 == (flags & (GetBufferNoPrefetch | GetBufferWriteOnly))
 			&& (BytesRequested < length || (flags & GetBufferAndPrefetchNext)))
 		{
-			if ((flags & GetBufferAndPrefetchNext)
-				&& length < BytesRequested)
+			if (flags & GetBufferAndPrefetchNext)
 			{
-				// prefetch the next buffer
-				length = (position & ~(LONGLONG) 0xFFFF) + 0x20000 - position;
+				if (length <= BytesRequested)
+				{
+					// prefetch the next buffer
+					length = (long(position) & ~0xFFFFL) + 0x20000 - long(position);
+				}
+				else
+				{
+					// round the length to make it prefetch the whole buffer
+					length += 0xFFFF & -(long(position) + BytesRequested);
+				}
 			}
-			{
-				CSimpleCriticalSectionLock lock(CDirectFileCache::SingleInstance->m_cs);
-				CDirectFileCache::SingleInstance->m_pPrefetchFile = pDirectFile;
-				CDirectFileCache::SingleInstance->m_PrefetchPosition = position + BytesRequested;
-				CDirectFileCache::SingleInstance->m_PrefetchLength = length - BytesRequested;
-				CDirectFileCache::SingleInstance->m_MinPrefetchMRU = m_MRU_Count;
-			}
-			SetEvent(CDirectFileCache::SingleInstance->m_hEvent);
+			RequestPrefetch(pFile, position + BytesRequested, length - BytesRequested, m_MRU_Count);
 		}
-		return BytesRequested;
+		return BytesReturned;
 	}
 	else
 	{
@@ -602,33 +777,46 @@ long CDirectFile::CDirectFileCache::GetDataBuffer(CDirectFile * pDirectFile,
 		if (0 == (flags & (GetBufferNoPrefetch | GetBufferWriteOnly))
 			&& (BytesRequested < -length || (flags & GetBufferAndPrefetchNext)))
 		{
-			if ((flags & GetBufferAndPrefetchNext)
-				&& -length < BytesRequested)
+			if (flags & GetBufferAndPrefetchNext)
 			{
-				// prefetch the next buffer
-				length = (position | 0xFFFF) + 1 - 0x20000 - position;
+				if (-length <= BytesRequested)
+				{
+					// prefetch the next buffer
+					length = (position | 0xFFFF) + 1 - 0x20000 - position;
+				}
+				else
+				{
+					// round the length to make it prefetch the whole buffer
+					length -= 0xFFFF & (long(position) - BytesRequested);
+				}
 			}
-			{
-				CSimpleCriticalSectionLock lock(CDirectFileCache::SingleInstance->m_cs);
-				CDirectFileCache::SingleInstance->m_pPrefetchFile = pDirectFile;
-				CDirectFileCache::SingleInstance->m_PrefetchPosition = position - BytesRequested;
-				CDirectFileCache::SingleInstance->m_PrefetchLength = length + BytesRequested;
-				CDirectFileCache::SingleInstance->m_MinPrefetchMRU = m_MRU_Count;
-			}
-			SetEvent(CDirectFileCache::SingleInstance->m_hEvent);
+			RequestPrefetch(pFile, position - BytesRequested, length + BytesRequested, m_MRU_Count);
 		}
-		return -BytesRequested;
+		return -BytesReturned;
 	}
 }
 
-void CDirectFile::CDirectFileCache::ReturnDataBuffer(CDirectFile * pDirectFile,
+void CDirectFile::CDirectFileCache::RequestPrefetch(File * pFile,
+													LONGLONG PrefetchPosition,
+													LONGLONG PrefetchLength, unsigned MaxMRU)
+{
+	{
+		CSimpleCriticalSectionLock lock(m_cs);
+		m_pPrefetchFile = pFile;
+		m_PrefetchPosition = PrefetchPosition;
+		m_PrefetchLength = PrefetchLength;
+		m_MinPrefetchMRU = MaxMRU;
+	}
+	SetEvent(m_hEvent);
+}
+
+void CDirectFile::CDirectFileCache::ReturnDataBuffer(File * pFile,
 													void * pBuffer, long count, DWORD flags)
 {
 	if (NULL == pBuffer || 0 == count)
 	{
 		return;
 	}
-	File * pFile = pDirectFile->m_pFile;
 	// find the buffer descriptor
 	DWORD dwBuffer = DWORD(pBuffer);
 	if (count < 0)
@@ -659,18 +847,48 @@ void CDirectFile::CDirectFileCache::ReturnDataBuffer(CDirectFile * pDirectFile,
 			InterlockedOr( & pBuf->DirtyMask, RequestedMask);
 			InterlockedOr( & pBuf->ReadMask, RequestedMask);
 		}
-		if (flags & CDirectFile::ReturnBufferDiscard)
+	}
+	if (flags & CDirectFile::ReturnBufferDiscard)
+	{
+		// move the buffer to MRU tail
+		// extract the buffer from MRU list
+		CSimpleCriticalSectionLock lock(m_cs);
+		// if they are equal (0), the buffer is not in the list
+		if (pBuf->pMruPrev != pBuf->pMruNext)
 		{
-			// reduce buffer priority
-			if (pBuf->MRU_Count > 0x100)
+			if (pBuf->pMruPrev)
 			{
-				pBuf->MRU_Count -= 0x100;
+				pBuf->pMruPrev->pMruNext = pBuf->pMruNext;
 			}
 			else
 			{
-				pBuf->MRU_Count = 0;
+				m_pMruListHead = pBuf->pMruNext;
+			}
+
+			if (pBuf->pMruNext)
+			{
+				pBuf->pMruNext->pMruPrev = pBuf->pMruPrev;
+			}
+			else
+			{
+				m_pMruListTail = pBuf->pMruPrev;
 			}
 		}
+		// insert the buffer to the list tail
+		pBuf->pMruPrev = m_pMruListTail;
+		pBuf->pMruNext = NULL;
+		if (NULL != m_pMruListTail)
+		{
+			m_pMruListTail->pMruNext= pBuf;
+		}
+		else
+		{
+			// the list was empty
+			m_pMruListHead = pBuf;
+		}
+		m_pMruListTail = pBuf;
+		pBuf->MRU_Count = 1;
+		// to do: insert the buffer before the first with MRU_Count==1
 	}
 	// decrement lock count
 	InterlockedDecrement( & pBuf->LockCount);
@@ -680,7 +898,7 @@ void CDirectFile::CDirectFileCache::ReturnDataBuffer(CDirectFile * pDirectFile,
 	}
 }
 
-CDirectFile::CDirectFileCache::BufferHeader
+CDirectFile::BufferHeader
 	* CDirectFile::CDirectFileCache::GetFreeBuffer(unsigned MaxMRU)
 {
 	while (1) {
@@ -704,66 +922,89 @@ CDirectFile::CDirectFileCache::BufferHeader
 		{
 			MaxMRU = m_MRU_Count;
 		}
-		unsigned OldestMRU = MaxMRU;
-		unsigned OldestDirtyMRU = MaxMRU;
-		BufferHeader * pDirtyBuf = NULL;
-		for (int i = 0; i < m_NumberOfBuffers; i++)
+
+		pBuf = m_pMruListTail;
+		while (NULL != pBuf
+				&& pBuf->MRU_Count <= MaxMRU
+				&& (pBuf->LockCount > 0
+					|| 0 != pBuf->DirtyMask))
 		{
-			if (0 == m_pHeaders[i].LockCount)
-			{
-				if (0 != m_pHeaders[i].DirtyMask)
-				{
-					if (m_pHeaders[i].MRU_Count < OldestDirtyMRU)
-					{
-						OldestDirtyMRU = m_pHeaders[i].MRU_Count;
-						pDirtyBuf = & m_pHeaders[i];
-					}
-				}
-				else
-				{
-					if (m_pHeaders[i].MRU_Count < OldestMRU)
-					{
-						OldestMRU = m_pHeaders[i].MRU_Count;
-						pBuf = & m_pHeaders[i];
-					}
-				}
-			}
+			pBuf = pBuf->pPrev;
 		}
-		if (pBuf != NULL)
+
+		// unlocked buffer not found or buffer was too recent
+		if (NULL == pBuf || pBuf->MRU_Count > MaxMRU)
 		{
-			File * pFile = pBuf->pFile;
-			CSimpleCriticalSectionLock(pFile->m_ListLock);
-			// check if the buffer changed
-			if (0 != pBuf->LockCount
-				|| 0 != pBuf->DirtyMask
-				|| pBuf->MRU_Count != OldestMRU)
+			// try to find a dirty buffer
+			pBuf = m_pMruListTail;
+			while (NULL != pBuf
+					&& pBuf->MRU_Count <= MaxMRU
+					&& pBuf->LockCount > 0)
 			{
-				continue;   // try again
+				pBuf = pBuf->pPrev;
 			}
-			// get the buffer from the list
-			if (pBuf->pNext)
+			if (pBuf != NULL && pBuf->MRU_Count <= MaxMRU)
 			{
-				pBuf->pNext->pPrev = pBuf->pPrev;
+				// only "dirty" buffer available
+				FlushDirtyBuffers(pBuf);
+				// try the loop again
+				continue;
 			}
-			if (pBuf->pPrev)
-			{
-				pBuf->pPrev->pNext = pBuf->pNext;
-			}
-			else
-			{
-				ASSERT(pFile->BuffersList == pBuf);
-				pFile->BuffersList = pBuf->pNext;
-			}
-			pBuf->ReadMask = 0;
-			pBuf->DirtyMask = 0;
-			return pBuf;
+			return NULL;  // unable to find a buffer
 		}
-		if (pDirtyBuf != NULL)
+
+
+		File * pFile = pBuf->pFile;
+		CSimpleCriticalSectionLock lock1(pFile->m_ListLock);
+		// check if the buffer changed
+		if (0 != pBuf->LockCount
+			|| 0 != pBuf->DirtyMask)
 		{
-			// only "dirty" buffer available
-			FlushDirtyBuffers(pBuf);
-			continue;
+			continue;   // try again
 		}
+
+		// get the buffer from the MRU list
+		if (pBuf->pMruNext)
+		{
+			pBuf->pMruNext->pMruPrev = pBuf->pMruPrev;
+		}
+		else
+		{
+			m_pMruListTail = pBuf->pMruPrev;
+		}
+
+		if (pBuf->pMruPrev)
+		{
+			pBuf->pMruPrev->pMruNext = pBuf->pMruNext;
+		}
+		else
+		{
+			m_pMruListHead = pBuf->pMruNext;
+		}
+		// get the buffer from the file list
+		if (pBuf->pNext)
+		{
+			pBuf->pNext->pPrev = pBuf->pPrev;
+		}
+		else
+		{
+			ASSERT(pFile->BuffersListTail == pBuf);
+			pFile->BuffersListTail = pBuf->pPrev;
+		}
+
+		if (pBuf->pPrev)
+		{
+			pBuf->pPrev->pNext = pBuf->pNext;
+		}
+		else
+		{
+			ASSERT(pFile->BuffersListHead == pBuf);
+			pFile->BuffersListHead = pBuf->pNext;
+		}
+		pBuf->ReadMask = 0;
+		pBuf->DirtyMask = 0;
+		pBuf->pFile = NULL;
+		return pBuf;
 	}
 	return NULL;
 }
@@ -786,7 +1027,7 @@ void CDirectFile::CDirectFileCache::ReadDataBuffer(BufferHeader * pBuf, DWORD Ma
 	}
 	// read the required data
 	File * pFile = pBuf->pFile;
-	LONGLONG StartFilePtr = pBuf->Position;
+	LONGLONG StartFilePtr = LONGLONG(pBuf->PositionKey) << 16;
 	char * buf = (char *) pBuf->pBuf;
 	DWORD mask = MaskToRead;
 	while (mask != 0)
@@ -841,7 +1082,7 @@ unsigned CDirectFile::CDirectFileCache::_ThreadProc()
 			LONGLONG PrefetchPosition;
 			LONGLONG PrefetchLength;
 			unsigned PrefetchMRU;
-			CDirectFile * pPrefetchFile;
+			File * pPrefetchFile;
 			if (NULL == m_pPrefetchFile)
 			{
 				break;

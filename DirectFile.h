@@ -59,7 +59,12 @@ public:
 	void ReturnDataBuffer(void * pBuffer, long count, DWORD flags = 0)
 	{
 		ASSERT(NULL != CDirectFileCache::SingleInstance);
-		CDirectFileCache::SingleInstance->ReturnDataBuffer(this, pBuffer, count, flags);
+		ASSERT(m_pFile != NULL);
+		if (NULL == m_pFile)
+		{
+			return;
+		}
+		CDirectFileCache::SingleInstance->ReturnDataBuffer(m_pFile, pBuffer, count, flags);
 	}
 
 	enum {GetBufferWriteOnly = 1,
@@ -71,7 +76,12 @@ public:
 	long GetDataBuffer(void * * ppBuf, LONGLONG length, LONGLONG position, DWORD flags = 0)
 	{
 		ASSERT(NULL != CDirectFileCache::SingleInstance);
-		return CDirectFileCache::SingleInstance->GetDataBuffer(this, ppBuf, length, position, flags);
+		ASSERT(m_pFile != NULL);
+		if (NULL == m_pFile)
+		{
+			return 0;
+		}
+		return CDirectFileCache::SingleInstance->GetDataBuffer(m_pFile, ppBuf, length, position, flags);
 	}
 
 	CDirectFile();
@@ -114,51 +124,61 @@ public:
 		}
 	}
 
+protected:
+	struct BufferHeader;
+	struct File
+	{
+		File * pPrev;   // prev link
+		File * pNext;   // next link
+		HANDLE hFile;
+		DWORD Flags;
+		long RefCount;
+		struct BufferHeader * volatile BuffersListHead;
+		struct BufferHeader * volatile BuffersListTail;
+		LONGLONG FilePointer;
+		CSimpleCriticalSection m_ListLock;    // synchronize BufferList changes
+		CSimpleCriticalSection m_FileLock;    // synchronize FileRead, FileWrite
+		CString sName;
+		BufferHeader * FindBuffer(unsigned long key) const;
+		void InsertBuffer(BufferHeader * pBuf);
+
+		File(CString name) : hFile(NULL),
+			sName(name),
+			Flags(0),
+			FilePointer(0),
+			BuffersListHead(NULL),
+			BuffersListTail(NULL),
+			RefCount(1),
+			pPrev(NULL),
+			pNext(NULL) {}
+	};
+	struct BufferHeader
+	{
+		// pointer in the common list
+		BufferHeader * pPrev;   // prev link for file
+		BufferHeader * pNext;
+		BufferHeader * pMruPrev;    // prev link for all buffers in MRU order
+		BufferHeader * pMruNext;    // next link for all buffers in MRU order
+		void * pBuf;        // corresponding buffer
+		long LockCount;
+		unsigned MRU_Count;
+		DWORD Flags;
+		DWORD ReadMask;     // 32 bits for data available (a bit per 2K)
+		DWORD DirtyMask;    // 32 bits for dirty data
+		File * pFile;
+		unsigned long PositionKey;   // position / 0x10000
+	};
+	friend struct File;
+
+public:
 	class CDirectFileCache
 	{
 		friend class CDirectFile;
-	protected:
-		struct BufferHeader;
-		struct File
-		{
-			File * pPrev;
-			File * pNext;
-			HANDLE hFile;
-			DWORD Flags;
-			long RefCount;
-			struct BufferHeader * volatile BuffersList;
-			LONGLONG FilePointer;
-			CSimpleCriticalSection m_ListLock;    // synchronize BufferList changes
-			CSimpleCriticalSection m_FileLock;    // synchronize FileRead, FileWrite
-			CString sName;
-			File(CString name) : hFile(NULL),
-				sName(name),
-				Flags(0),
-				FilePointer(0),
-				BuffersList(NULL),
-				RefCount(1),
-				pPrev(NULL),
-				pNext(NULL) {}
-		};
-		struct BufferHeader
-		{
-			// pointer in the common list
-			BufferHeader * pPrev;
-			BufferHeader * pNext;
-			void * pBuf;        // corresponding buffer
-			long LockCount;
-			unsigned MRU_Count;
-			DWORD Flags;
-			DWORD ReadMask;     // 32 bits for data available (a bit per 2K)
-			DWORD DirtyMask;    // 32 bits for dirty data
-			File * pFile;
-			LONGLONG Position;
-		};
 
-		long GetDataBuffer(CDirectFile * pFile, void * * ppBuf,
+		long GetDataBuffer(File * pFile, void * * ppBuf,
 							LONGLONG length, LONGLONG position, DWORD flags = 0,
 							unsigned MaxMRU = 0);
-		void ReturnDataBuffer(CDirectFile * pFile, void * pBuffer,
+		void ReturnDataBuffer(File * pFile, void * pBuffer,
 							long count, DWORD flags);
 
 		BufferHeader * GetFreeBuffer(unsigned MaxMRU = 0xFFFFFFFFu);
@@ -166,6 +186,8 @@ public:
 		void FlushDirtyBuffers(BufferHeader * pBuf);
 		File * Open(LPCTSTR szName, DWORD flags);
 		BOOL Close(File * pFile, DWORD flags);
+		void RequestPrefetch(File * pFile, LONGLONG PrefetchPosition,
+							LONGLONG PrefetchLength, unsigned MaxMRU);
 
 	public:
 		CDirectFileCache(size_t CacheSize);
@@ -174,9 +196,11 @@ public:
 		// points to the only instance of the class
 		static CDirectFileCache * SingleInstance;
 		BufferHeader * m_pHeaders;    // address of array
+		BufferHeader * m_pMruListHead;
+		BufferHeader * m_pMruListTail;
 		void * m_pBuffersArray;    // allocated area
 		int m_NumberOfBuffers; // number of allocated buffers
-		BufferHeader * volatile m_pFreeBuffers;
+		BufferHeader * m_pFreeBuffers;
 		File * m_pFileList;
 		DWORD m_Flags;
 		unsigned volatile m_MRU_Count;
@@ -185,7 +209,7 @@ public:
 		HANDLE m_hEvent;
 		BOOL m_bRunThread;
 
-		CDirectFile * volatile m_pPrefetchFile;
+		File * volatile m_pPrefetchFile;
 		LONGLONG volatile m_PrefetchPosition;
 		LONGLONG volatile m_PrefetchLength;
 		unsigned volatile m_MinPrefetchMRU;
@@ -199,7 +223,7 @@ public:
 	};
 	friend class CDirectFileCache;
 protected:
-	CDirectFileCache::File * m_pFile;
+	File * m_pFile;
 	LONGLONG m_FilePointer;
 	//LONGLONG m_FileLength;
 };
