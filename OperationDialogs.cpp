@@ -7,6 +7,7 @@
 #include "OperationDialogs.h"
 #include "MainFrm.h"
 #include "SaveExpressionDialog.h"
+#include <afxpriv.h>
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -1475,6 +1476,7 @@ CExpressionEvaluationDialog::CExpressionEvaluationDialog(CWnd* pParent /*=NULL*/
 	//{{AFX_DATA_INIT(CExpressionEvaluationDialog)
 	m_bUndo = FALSE;
 	//}}AFX_DATA_INIT
+	m_bNeedUpdateControls = false;
 }
 
 
@@ -1496,6 +1498,7 @@ BEGIN_MESSAGE_MAP(CExpressionEvaluationDialog, CDialog)
 	ON_BN_CLICKED(IDC_BUTTON_SELECTION, OnButtonSelection)
 	ON_NOTIFY(TCN_SELCHANGE, IDC_TAB_TOKENS, OnSelchangeTabTokens)
 	ON_BN_CLICKED(IDC_BUTTON_SAVEAS, OnButtonSaveExpressionAs)
+	ON_EN_CHANGE(IDC_EDIT_EXPRESSION, OnChangeEditExpression)
 	//}}AFX_MSG_MAP
 #if 0
 	ON_COMMAND_EX(IDC_BUTTON_SIN, OnButtonText)
@@ -1536,6 +1539,9 @@ BEGIN_MESSAGE_MAP(CExpressionEvaluationDialog, CDialog)
 #else
 	ON_COMMAND_EX_RANGE(IDC_BUTTON_SIN, IDC_BUTTON_INVERSE, OnButtonText)
 #endif
+	ON_UPDATE_COMMAND_UI(IDOK, OnUpdateOk)
+	ON_UPDATE_COMMAND_UI(IDC_BUTTON_SAVEAS, OnUpdateSaveAs)
+	ON_MESSAGE(WM_KICKIDLE, OnKickIdle)
 END_MESSAGE_MAP()
 
 /////////////////////////////////////////////////////////////////////////////
@@ -2194,9 +2200,33 @@ BOOL CExpressionEvaluationDialog::OnInitDialog()
 
 void CExpressionEvaluationDialog::OnButtonSaveExpressionAs()
 {
-	// query expression name and comment
-	CSaveExpressionDialog dlg;
-	if (IDOK == dlg.DoModal())
+	CString s;
+	m_eExpression.GetWindowText(s);
+	m_SavedExprTabDlg.SaveExpressionAs(s);
+}
+
+void CExpressionEvaluationDialog::OnKickIdle()
+{
+	if (m_bNeedUpdateControls)
 	{
+		UpdateDialogControls(this, FALSE);
 	}
+	m_SavedExprTabDlg.UpdateDialogControls( & m_SavedExprTabDlg, FALSE);
+	m_bNeedUpdateControls = FALSE;
+}
+
+void CExpressionEvaluationDialog::OnUpdateOk(CCmdUI* pCmdUI)
+{
+	pCmdUI->Enable(m_eExpression.GetWindowTextLength() != 0);
+}
+
+void CExpressionEvaluationDialog::OnUpdateSaveAs(CCmdUI* pCmdUI)
+{
+	pCmdUI->Enable(m_eExpression.GetWindowTextLength() != 0);
+}
+
+
+void CExpressionEvaluationDialog::OnChangeEditExpression()
+{
+	m_bNeedUpdateControls = TRUE;
 }

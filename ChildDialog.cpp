@@ -5,6 +5,7 @@
 #include "WaveSoapFront.h"
 #include "ChildDialog.h"
 #include "MainFrm.h"
+#include "SaveExpressionDialog.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -63,8 +64,6 @@ CInsertExpressionDialog::CInsertExpressionDialog(CWnd* pParent /*=NULL*/)
 	m_ExpressionGroupSelected = 0;
 	m_ExpressionSelected = 0;
 	m_CurrExpressionGroupSelected = -1;
-	m_NumSavedExpressions = 0;
-	m_NumExprGroups = 0;
 }
 
 
@@ -86,6 +85,8 @@ BEGIN_MESSAGE_MAP(CInsertExpressionDialog, CDialog)
 	ON_BN_CLICKED(IDC_BUTTON_INSERT_EXPRESSION, OnButtonInsertExpression)
 	ON_BN_CLICKED(IDC_BUTTON_DELETE_EXPRESSION, OnButtonDeleteExpression)
 	//}}AFX_MSG_MAP
+	ON_UPDATE_COMMAND_UI(IDC_BUTTON_DELETE_EXPRESSION, OnUpdateDeleteExpression)
+	ON_UPDATE_COMMAND_UI(IDC_BUTTON_INSERT_EXPRESSION, OnUpdateInsertExpression)
 END_MESSAGE_MAP()
 
 /////////////////////////////////////////////////////////////////////////////
@@ -96,40 +97,66 @@ BOOL CInsertExpressionDialog::OnInitDialog()
 	CDialog::OnInitDialog();
 	// load expressions
 	CThisApp * pApp = GetApp();
+	BuildExpressionGroupCombobox(m_ExpressionGroupSelected, m_ExpressionSelected);
+	return TRUE;  // return TRUE unless you set the focus to a control
+	// EXCEPTION: OCX Property Pages should return FALSE
+}
 
+void CInsertExpressionDialog::BuildExpressionGroupCombobox(int nGroupSelected, int nExprSelected)
+{
+	CThisApp * pApp = GetApp();
+	m_ExpressionGroupCombo.ResetContent();
 	for (int i = 0; i < pApp->m_NumOfExprGroups; i++)
 	{
 		m_ExpressionGroupCombo.AddString(pApp->m_ExpressionGroups[i]);
 	}
-	m_CurrExpressionGroupSelected = -1;
-	m_ExpressionGroupCombo.SetCurSel(0);
-	OnSelchangeComboSavedExpressionGroup();
-	return TRUE;  // return TRUE unless you set the focus to a control
-	// EXCEPTION: OCX Property Pages should return FALSE
+	if (nGroupSelected >= pApp->m_NumOfExprGroups)
+	{
+		nGroupSelected = pApp->m_NumOfExprGroups - 1;
+	}
+	m_ExpressionGroupSelected = nGroupSelected;
+	m_CurrExpressionGroupSelected = nGroupSelected;
+	m_ExpressionGroupCombo.SetCurSel(m_ExpressionGroupSelected);
+	LoadExpressionCombobox(nGroupSelected, nExprSelected);
+}
+
+void CInsertExpressionDialog::LoadExpressionCombobox(int nGroupSelected, int nExprSelected)
+{
+	CThisApp * pApp = GetApp();
+	m_ExpressionGroupSelected = nGroupSelected;
+	m_CurrExpressionGroupSelected = nGroupSelected;
+
+	m_SavedExpressionCombo.ResetContent();
+	if (nGroupSelected < 0
+		|| nGroupSelected >= pApp->m_NumOfExprGroups)
+	{
+		m_CurrExpressionGroupSelected = -1;
+		m_SavedExpressionCombo.SetCurSel(-1);
+		OnSelchangeComboSavedExpressions();
+		return;
+	}
+
+	for (int i = 0; i < pApp->m_NumExpressions[nGroupSelected]; i++)
+	{
+		m_SavedExpressionCombo.AddString(
+										pApp->m_ExpressionNames[i + pApp->m_IndexOfGroupBegin[nGroupSelected]]);
+	}
+	if (nExprSelected >= i)
+	{
+		nExprSelected = i - 1;
+	}
+	m_SavedExpressionCombo.SetCurSel(nExprSelected);
+	OnSelchangeComboSavedExpressions();
 }
 
 void CInsertExpressionDialog::OnSelchangeComboSavedExpressionGroup()
 {
 	int sel = m_ExpressionGroupCombo.GetCurSel();
-	CThisApp * pApp = GetApp();
-	if (sel < 0
-		|| sel >= pApp->m_NumOfExprGroups
-		|| sel == m_CurrExpressionGroupSelected)
+	if (sel == m_CurrExpressionGroupSelected)
 	{
 		return;
 	}
-	m_SavedExpressionCombo.ResetContent();
-
-	m_ExpressionGroupSelected = sel;
-	m_CurrExpressionGroupSelected = sel;
-
-	for (int i = 0; i < pApp->m_NumExpressions[sel]; i++)
-	{
-		m_SavedExpressionCombo.AddString(
-										pApp->m_ExpressionNames[i + pApp->m_IndexOfGroupBegin[sel]]);
-	}
-	m_SavedExpressionCombo.SetCurSel(0);
-	OnSelchangeComboSavedExpressions();
+	LoadExpressionCombobox(sel, 0);
 }
 
 void CInsertExpressionDialog::OnSelchangeComboSavedExpressions()
@@ -143,6 +170,10 @@ void CInsertExpressionDialog::OnSelchangeComboSavedExpressions()
 		s.Format("%s - %s", LPCTSTR(pApp->m_Expressions[ExprIndex]),
 				LPCTSTR(pApp->m_ExpressionComments[ExprIndex]));
 		m_Description.SetWindowText(s);
+	}
+	else
+	{
+		m_Description.SetWindowText("");
 	}
 }
 
@@ -165,10 +196,152 @@ void CInsertExpressionDialog::OnButtonInsertExpression()
 void CInsertExpressionDialog::OnButtonDeleteExpression()
 {
 	CString s;
-	int GroupSel = m_ExpressionGroupCombo.GetCurSel();
+	CThisApp * pApp = GetApp();
 	int ExprSel = m_SavedExpressionCombo.GetCurSel();
-	s.Format(IDS_DELETE_EXPRESSION, LPCTSTR(
-	if (IDOK == AfxMessageBox(s, MB_YESNO | MB_ICONQUESTION | MB_DEFBUTTON2))
+	if (m_ExpressionGroupSelected < 0
+		|| m_ExpressionGroupSelected >= pApp->m_NumOfExprGroups
+		|| ExprSel < 0
+		|| ExprSel >= pApp->m_NumExpressions[m_ExpressionGroupSelected])
 	{
+		return;
+	}
+	int ExprIndex = ExprSel + pApp->m_IndexOfGroupBegin[m_ExpressionGroupSelected];
+	s.Format(IDS_DELETE_EXPRESSION, LPCTSTR(pApp->m_ExpressionNames[ExprIndex]),
+			LPCTSTR(pApp->m_ExpressionGroups[m_ExpressionGroupSelected]));
+	if (IDYES == AfxMessageBox(s, MB_YESNO | MB_ICONQUESTION | MB_DEFBUTTON2))
+	{
+		int i;
+		// delete this line from the list
+		for (i = ExprIndex; i < CThisApp::MaxSavedTotalExpressions - 1; i++)
+		{
+			pApp->m_Expressions[i] = pApp->m_Expressions[i + 1];
+			pApp->m_ExpressionComments[i] = pApp->m_ExpressionComments[i + 1];
+			pApp->m_ExpressionNames[i] = pApp->m_ExpressionNames[i + 1];
+		}
+
+		pApp->m_Expressions[CThisApp::MaxSavedTotalExpressions - 1].Empty();
+		pApp->m_ExpressionComments[CThisApp::MaxSavedTotalExpressions - 1].Empty();
+		pApp->m_ExpressionNames[CThisApp::MaxSavedTotalExpressions - 1].Empty();
+
+		pApp->m_NumExpressions[m_ExpressionGroupSelected]--;
+		if (0 == pApp->m_NumExpressions[m_ExpressionGroupSelected])
+		{
+			// remove group
+			for (i = m_ExpressionGroupSelected; i < pApp->m_NumOfExprGroups - 1; i++)
+			{
+				pApp->m_IndexOfGroupBegin[i] = pApp->m_IndexOfGroupBegin[i + 1] - 1;
+				pApp->m_NumExpressions[i] = pApp->m_NumExpressions[i + 1];
+				pApp->m_ExpressionGroups[i] = pApp->m_ExpressionGroups[i + 1];
+			}
+			pApp->m_NumOfExprGroups--;
+			pApp->m_ExpressionGroups[pApp->m_NumOfExprGroups].Empty();
+			// rebuild combobox
+			BuildExpressionGroupCombobox(m_CurrExpressionGroupSelected, 0);
+		}
+		else
+		{
+			for (i = m_ExpressionGroupSelected + 1; i < pApp->m_NumOfExprGroups; i++)
+			{
+				pApp->m_IndexOfGroupBegin[i]--;
+			}
+			LoadExpressionCombobox(m_CurrExpressionGroupSelected, ExprSel);
+		}
 	}
 }
+
+void CInsertExpressionDialog::SaveExpressionAs(const CString & expr)
+{
+	// query expression name and comment
+	CThisApp * pApp = GetApp();
+	CSaveExpressionDialog dlg;
+	if (IDOK == dlg.DoModal())
+	{
+		// find if there is such group
+		int i, j;
+		for (i = 0; i < pApp->m_NumOfExprGroups; i++)
+		{
+			if (pApp->m_ExpressionGroups[i] == dlg.m_GroupName)
+			{
+				break;
+			}
+		}
+		if (i >= pApp->m_NumOfExprGroups)
+		{
+			// add a new group
+			if (pApp->m_NumOfExprGroups >= pApp->MaxSavedExpressionGroups)
+			{
+				// too many groups
+				AfxMessageBox("Can't add a new group, there are already too many");
+				// return for now
+				return;
+			}
+			pApp->m_ExpressionGroups[i] = dlg.m_GroupName;
+			if (i > 0)
+			{
+				pApp->m_IndexOfGroupBegin[i] = pApp->m_IndexOfGroupBegin[i - 1]
+												+ pApp->m_NumExpressions[i - 1];
+			}
+			else
+			{
+				pApp->m_IndexOfGroupBegin[i] = 0;
+			}
+			pApp->m_NumExpressions[i] = 0;
+		}
+		// check if there is already an expression with the same name
+		for (j = 0; j < pApp->m_NumExpressions[i]; j++)
+		{
+			if (pApp->m_ExpressionNames[j + pApp->m_IndexOfGroupBegin[i]] == dlg.m_Name)
+			{
+				break;
+			}
+		}
+		if (j < pApp->m_NumExpressions[i])
+		{
+			CString s;
+			s.Format(IDS_REPLACE_EXPRESSION, LPCTSTR(dlg.m_Name), LPCTSTR(dlg.m_GroupName));
+			if (IDYES != AfxMessageBox(s, MB_YESNO | MB_ICONQUESTION | MB_DEFBUTTON2))
+			{
+				return;
+			}
+			pApp->m_Expressions[j + pApp->m_IndexOfGroupBegin[i]] = expr;
+			pApp->m_ExpressionComments[j + pApp->m_IndexOfGroupBegin[i]] =
+				dlg.m_Comment;
+		}
+		else
+		{
+			if (pApp->m_NumOfExprGroups != 0
+				&& pApp->m_IndexOfGroupBegin[pApp->m_NumOfExprGroups - 1]
+				+ pApp->m_NumExpressions[pApp->m_NumOfExprGroups - 1] >= pApp->MaxSavedTotalExpressions)
+			{
+				AfxMessageBox("Too many saved expressions");
+				return;
+			}
+			for (int n = i + 1; n < pApp->m_NumOfExprGroups; n++)
+			{
+				pApp->m_IndexOfGroupBegin[n]++;
+			}
+			pApp->m_NumExpressions[i]++;
+			for (int m = pApp->MaxSavedTotalExpressions - 1; m > j + pApp->m_IndexOfGroupBegin[i]; m--)
+			{
+				pApp->m_Expressions[m] = pApp->m_Expressions[m - 1];
+				pApp->m_ExpressionComments[m] = pApp->m_ExpressionComments[m - 1];
+				pApp->m_ExpressionNames[m] = pApp->m_ExpressionNames[m - 1];
+			}
+			pApp->m_Expressions[m] = expr;
+			pApp->m_ExpressionComments[m] = dlg.m_Comment;
+			pApp->m_ExpressionNames[m] = dlg.m_Name;
+		}
+		BuildExpressionGroupCombobox(i, j);
+	}
+}
+
+void CInsertExpressionDialog::OnUpdateDeleteExpression(CCmdUI* pCmdUI)
+{
+	pCmdUI->Enable(GetApp()->m_NumOfExprGroups != 0);
+}
+
+void CInsertExpressionDialog::OnUpdateInsertExpression(CCmdUI* pCmdUI)
+{
+	pCmdUI->Enable(GetApp()->m_NumOfExprGroups != 0);
+}
+

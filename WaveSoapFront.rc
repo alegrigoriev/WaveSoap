@@ -2015,6 +2015,7 @@ BEGIN
     IDS_NOT_ENOUGH_DISK_SPACE 
                             "Not enough disk space to create or expand a file"
     IDS_DELETE_EXPRESSION   "Are you sure you want to delete expression ""%s"" from group ""%s"" ?"
+    IDS_REPLACE_EXPRESSION  "Are you sure you want to replace expression ""%s"" in group ""%s"" ?"
     ID_VIEW_ZOOMINVERT      "Zoom in vertical\nZoom In vertical"
     ID_VIEW_ZOOMOUTHOR      "Zoom out time\nZoom out time"
     ID_VIEW_ZOOMOUTVERT     "Zoom out vertical\nZoom out vertical"

@@ -1,10 +1,14 @@
 Known problems and tasks:
 
-Show expression descriptions
 Make save presets for Expression Evaluation command
 Make a few source samples available in expression and a few output samples too
+Keep selected tab number in ExprEvaluation dialog
+Noise function has only 15 bit resolution
+Make group "All Expressions"
 
+Move most persistent dialog parameters to dialogs, to update registry dynamically
 Make combobox in selection dialog
+Make "Begin" and "End" comboboxes in selection dialog
 File specified in the command line is not open
 Add CD grabbing
 Add Channels... command to menu
@@ -56,6 +60,7 @@ Multiple MP3 files open: all but one get stuck
 
 
 Done:
+Show expression descriptions
 Remember toolbar/status bar toggle
 Remember last frame and view maximized state
 Protect against exceptions during expression exaluation

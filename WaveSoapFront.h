@@ -166,13 +166,13 @@ public:
 	enum { MaxSavedExpressionGroups = 32,
 		MaxSavedTotalExpressions = 512, };
 	CString m_ExpressionGroups[MaxSavedExpressionGroups];
+	int m_IndexOfGroupBegin[MaxSavedExpressionGroups];
+	int m_NumExpressions[MaxSavedExpressionGroups];
 	int m_NumOfExprGroups;
+
 	CString m_Expressions[MaxSavedTotalExpressions];
 	CString m_ExpressionComments[MaxSavedTotalExpressions];
 	CString m_ExpressionNames[MaxSavedTotalExpressions];
-
-	int m_IndexOfGroupBegin[MaxSavedExpressionGroups];
-	int m_NumExpressions[MaxSavedExpressionGroups];
 
 	int m_ExpressionGroupSelected;
 	int m_ExpressionSelected;

@@ -488,8 +488,13 @@ protected:
 	//}}AFX_VIRTUAL
 // Implementation
 protected:
-
+	bool m_bNeedUpdateControls;
+	//afx_msg LONG OnIdleUpdateCmdUI(UINT wParam, LONG);
+	void OnKickIdle();
 	afx_msg BOOL OnButtonText(UINT id);
+	afx_msg void OnUpdateOk(CCmdUI* pCmdUI);
+	afx_msg void OnUpdateSaveAs(CCmdUI* pCmdUI);
+
 	// Generated message map functions
 	//{{AFX_MSG(CExpressionEvaluationDialog)
 	afx_msg void OnButtonSelection();
@@ -497,6 +502,7 @@ protected:
 	afx_msg void OnSelchangeTabTokens(NMHDR* pNMHDR, LRESULT* pResult);
 	virtual BOOL OnInitDialog();
 	afx_msg void OnButtonSaveExpressionAs();
+	afx_msg void OnChangeEditExpression();
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 };
