@@ -53,8 +53,8 @@ BSC32=bscmake.exe
 # ADD BSC32 /nologo
 LINK32=link.exe
 # ADD BASE LINK32 /nologo /subsystem:windows /machine:I386
-# ADD LINK32 winmm.lib msacm32.lib wmstub.lib wmvcore.lib /nologo /subsystem:windows /map /machine:I386 /out:"Release/WaveSoap.exe" /libpath:"G:\WMSDK\WMFSDK\lib"
-# SUBTRACT LINK32 /debug
+# ADD LINK32 winmm.lib msacm32.lib wmstub.lib wmvcore.lib delayimp.lib /nologo /subsystem:windows /map /machine:I386 /out:"Release/WaveSoap.exe" /libpath:"G:\WMSDK\WMFSDK\lib" /delayload:wmvcore.dll
+# SUBTRACT LINK32 /pdb:none
 
 !ELSEIF  "$(CFG)" == "WaveSoapFront - Win32 Debug"
 
@@ -80,7 +80,8 @@ BSC32=bscmake.exe
 # ADD BSC32 /nologo
 LINK32=link.exe
 # ADD BASE LINK32 /nologo /subsystem:windows /debug /machine:I386 /pdbtype:sept
-# ADD LINK32 winmm.lib msacm32.lib wmstub.lib wmvcore.lib /nologo /subsystem:windows /map /debug /machine:I386 /out:"Debug/WaveSoap.exe" /pdbtype:sept /libpath:"G:\WMSDK\WMFSDK\lib"
+# ADD LINK32 winmm.lib msacm32.lib wmstub.lib wmvcore.lib delayimp.lib /nologo /subsystem:windows /map /debug /machine:I386 /out:"Debug/WaveSoap.exe" /pdbtype:sept /libpath:"G:\WMSDK\WMFSDK\lib" /delayload:wmvcore.dll
+# SUBTRACT LINK32 /pdb:none
 
 !ENDIF 
 
@@ -125,7 +126,15 @@ SOURCE=.\OperationContext.cpp
 # End Source File
 # Begin Source File
 
+SOURCE=.\OperationContext2.cpp
+# End Source File
+# Begin Source File
+
 SOURCE=.\OperationDialogs.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=.\OperationDialogs2.cpp
 # End Source File
 # Begin Source File
 
@@ -315,7 +324,15 @@ SOURCE=.\OperationContext.h
 # End Source File
 # Begin Source File
 
+SOURCE=.\OperationContext2.h
+# End Source File
+# Begin Source File
+
 SOURCE=.\OperationDialogs.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\OperationDialogs2.h
 # End Source File
 # Begin Source File
 

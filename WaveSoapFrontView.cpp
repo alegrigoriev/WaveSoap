@@ -49,6 +49,36 @@ BEGIN_MESSAGE_MAP(CWaveSoapFrontView, CScaledScrollView)
 	ON_UPDATE_COMMAND_UI(ID_VIEW_ZOOM_SELECTION, OnUpdateViewZoomSelection)
 	ON_COMMAND(ID_VIEW_ZOOM_SELECTION, OnViewZoomSelection)
 	ON_UPDATE_COMMAND_UI(ID_INDICATOR_SCALE, OnUpdateIndicatorScale)
+	ON_UPDATE_COMMAND_UI(ID_VIEW_HOR_SCALE_1, OnUpdateViewHorScale1)
+	ON_COMMAND(ID_VIEW_HOR_SCALE_1, OnViewHorScale1)
+	ON_UPDATE_COMMAND_UI(ID_VIEW_HOR_SCALE_2, OnUpdateViewHorScale2)
+	ON_COMMAND(ID_VIEW_HOR_SCALE_2, OnViewHorScale2)
+	ON_UPDATE_COMMAND_UI(ID_VIEW_HOR_SCALE_4, OnUpdateViewHorScale4)
+	ON_COMMAND(ID_VIEW_HOR_SCALE_4, OnViewHorScale4)
+	ON_UPDATE_COMMAND_UI(ID_VIEW_HOR_SCALE_8, OnUpdateViewHorScale8)
+	ON_COMMAND(ID_VIEW_HOR_SCALE_8, OnViewHorScale8)
+	ON_UPDATE_COMMAND_UI(ID_VIEW_HOR_SCALE_16, OnUpdateViewHorScale16)
+	ON_COMMAND(ID_VIEW_HOR_SCALE_16, OnViewHorScale16)
+	ON_UPDATE_COMMAND_UI(ID_VIEW_HOR_SCALE_32, OnUpdateViewHorScale32)
+	ON_COMMAND(ID_VIEW_HOR_SCALE_32, OnViewHorScale32)
+	ON_UPDATE_COMMAND_UI(ID_VIEW_HOR_SCALE_64, OnUpdateViewHorScale64)
+	ON_COMMAND(ID_VIEW_HOR_SCALE_64, OnViewHorScale64)
+	ON_UPDATE_COMMAND_UI(ID_VIEW_HOR_SCALE_128, OnUpdateViewHorScale128)
+	ON_COMMAND(ID_VIEW_HOR_SCALE_128, OnViewHorScale128)
+	ON_UPDATE_COMMAND_UI(ID_VIEW_HOR_SCALE_256, OnUpdateViewHorScale256)
+	ON_COMMAND(ID_VIEW_HOR_SCALE_256, OnViewHorScale256)
+	ON_UPDATE_COMMAND_UI(ID_VIEW_HOR_SCALE_512, OnUpdateViewHorScale512)
+	ON_COMMAND(ID_VIEW_HOR_SCALE_512, OnViewHorScale512)
+	ON_UPDATE_COMMAND_UI(ID_VIEW_HOR_SCALE_1024, OnUpdateViewHorScale1024)
+	ON_COMMAND(ID_VIEW_HOR_SCALE_1024, OnViewHorScale1024)
+	ON_UPDATE_COMMAND_UI(ID_VIEW_HOR_SCALE_2048, OnUpdateViewHorScale2048)
+	ON_COMMAND(ID_VIEW_HOR_SCALE_2048, OnViewHorScale2048)
+	ON_UPDATE_COMMAND_UI(ID_VIEW_HOR_SCALE_4096, OnUpdateViewHorScale4096)
+	ON_COMMAND(ID_VIEW_HOR_SCALE_4096, OnViewHorScale4096)
+	ON_UPDATE_COMMAND_UI(ID_VIEW_HOR_SCALE_8192, OnUpdateViewHorScale8192)
+	ON_COMMAND(ID_VIEW_HOR_SCALE_8192, OnViewHorScale8192)
+	ON_WM_TIMER()
+	ON_WM_CAPTURECHANGED()
 	//}}AFX_MSG_MAP
 	// Standard printing commands
 	ON_COMMAND(ID_FILE_PRINT, CScaledScrollView::OnFilePrint)
@@ -69,6 +99,7 @@ CWaveSoapFrontView::CWaveSoapFrontView()
 	m_PlaybackCursorChannel(-2),
 	m_PlaybackCursorDrawn(false),
 	m_NewSelectionMade(false),
+	m_bAutoscrollTimerStarted(false),
 	m_PlaybackCursorDrawnSamplePos(0),
 	m_WaveDataSizeInBuffer(0)
 {
@@ -195,6 +226,12 @@ void CWaveSoapFrontView::OnDraw(CDC* pDC)
 	CWaveSoapFrontApp * pApp = GetApp();
 	//if (pDC->GetDeviceCaps(TECHNOLOGY) == DT_RASDISPLAY)
 	//{
+	CPalette * pOldPalette = NULL;
+
+	if (pDC->GetDeviceCaps(RASTERCAPS) & RC_PALETTE)
+	{
+		pOldPalette = pDC->SelectPalette(pApp->GetPalette(), FALSE);
+	}
 	WaveformPen.CreatePen(PS_SOLID, 1, pApp->m_WaveColor);
 	SelectedWaveformPen.CreatePen(PS_SOLID, 1, pApp->m_SelectedWaveColor);
 	ZeroLinePen.CreatePen(PS_SOLID, 1, pApp->m_ZeroLineColor);
@@ -203,7 +240,7 @@ void CWaveSoapFrontView::OnDraw(CDC* pDC)
 	SelectedSixDBLinePen.CreatePen(PS_SOLID, 1, pApp->m_Selected6dBLineColor);
 	ChannelSeparatorPen.CreatePen(PS_SOLID, 1, pApp->m_ChannelSeparatorColor);
 	SelectedChannelSeparatorPen.CreatePen(PS_SOLID, 1, pApp->m_SelectedChannelSeparatorColor);
-	//}
+
 	CGdiObject * pOldPen = pDC->SelectObject(& ZeroLinePen);
 	RECT r;
 	//double y;
@@ -226,6 +263,7 @@ void CWaveSoapFrontView::OnDraw(CDC* pDC)
 	// number of sample that corresponds to the r.left position
 	int NumOfFirstSample = DWORD(left);
 	int SamplesPerPoint = m_HorizontalScale;
+
 
 	// create an array of points
 
@@ -472,6 +510,10 @@ void CWaveSoapFrontView::OnDraw(CDC* pDC)
 		delete[] ppArray;
 	}
 	pDC->SelectObject(pOldPen);
+	if (pOldPalette)
+	{
+		pDC->SelectPalette(pOldPalette, FALSE);
+	}
 	if (m_PlaybackCursorDrawn)
 	{
 		DrawPlaybackCursor(pDC, m_PlaybackCursorDrawnSamplePos, m_PlaybackCursorChannel);
@@ -876,6 +918,18 @@ DWORD CWaveSoapFrontView::ClientHitTest(CPoint p)
 		{
 			result |= VSHT_BCKGND;
 		}
+		int AutoscrollWidth = GetSystemMetrics(SM_CXVSCROLL);
+		if (r.right > AutoscrollWidth)
+		{
+			if (p.x > r.right - AutoscrollWidth)
+			{
+				result |= VSHT_RIGHT_AUTOSCROLL;
+			}
+			if (p.x < AutoscrollWidth)
+			{
+				result |= VSHT_LEFT_AUTOSCROLL;
+			}
+		}
 	}
 	else
 	{
@@ -954,7 +1008,7 @@ void CWaveSoapFrontView::CreateAndShowCaret()
 	CWaveSoapFrontDoc * pDoc = GetDocument();
 	if (pDoc->m_PlayingSound && ! m_NewSelectionMade)
 	{
-		//DestroyCaret();
+		DestroyCaret();
 		return;
 	}
 	CRect r;
@@ -1167,15 +1221,39 @@ void CWaveSoapFrontView::OnLButtonUp(UINT nFlags, CPoint point)
 
 BOOL CWaveSoapFrontView::OnMouseWheel(UINT nFlags, short zDelta, CPoint pt)
 {
-	// TODO: Add your message handler code here and/or call default
-
-	return CScaledScrollView::OnMouseWheel(nFlags, zDelta, pt);
+	// without control or shift:
+	// just scrolls 1/20th of the window width
+	if (0 == (nFlags & (MK_CONTROL | MK_SHIFT)))
+	{
+		// todo: accumulate the delta until WHEEL_DELTA is reached
+		if (WHEEL_DELTA == zDelta)
+		{
+			OnScroll(MAKEWORD(SB_LINEUP, -1), 0);
+		}
+		else if ( - WHEEL_DELTA == zDelta)
+		{
+			OnScroll(MAKEWORD(SB_LINEDOWN, -1), 0);
+		}
+	}
+	else if (nFlags & MK_CONTROL)
+	{
+		if (WHEEL_DELTA == zDelta)
+		{
+			OnViewZoominHor2();
+		}
+		else if ( - WHEEL_DELTA == zDelta)
+		{
+			OnViewZoomOutHor2();
+		}
+	}
+	return TRUE;
 }
 
-void CWaveSoapFrontView::OnMouseMove(UINT nFlags, CPoint point)
+void CWaveSoapFrontView::OnMouseMove(UINT nFlags, CPoint OriginalPoint)
 {
 	// point is in client coordinates
 	CWaveSoapFrontDoc * pDoc = GetDocument();
+	CPoint point = OriginalPoint;
 	DWORD nHit = ClientHitTest(point);
 	CRect r;
 	GetClientRect( & r);
@@ -1218,6 +1296,21 @@ void CWaveSoapFrontView::OnMouseMove(UINT nFlags, CPoint point)
 				SetCapture();
 			}
 
+			if (nHit & (VSHT_LEFT_AUTOSCROLL | VSHT_RIGHT_AUTOSCROLL))
+			{
+				if (! m_bAutoscrollTimerStarted)
+				{
+					m_bAutoscrollTimerStarted = true;
+					m_TimerID = SetTimer(DWORD(this) + sizeof *this, 50, NULL);
+					TRACE("Timer %X started\n", m_TimerID);
+				}
+			}
+			else if (m_bAutoscrollTimerStarted)
+			{
+				m_bAutoscrollTimerStarted = false;
+				KillTimer(m_TimerID);
+				m_TimerID = NULL;
+			}
 			// tracked side (where the caret is) is moved,
 			// other side stays
 			if (SelectionStart == pDoc->m_CaretPosition)
@@ -1751,19 +1844,11 @@ int CWaveSoapFrontView::OnCreate(LPCREATESTRUCT lpCreateStruct)
 
 	CRect r;
 	GetClientRect( r);
-	int nChannels = GetDocument()->WaveChannels();
-	int nLowExtent = -32768;
-	int nHighExtent = 32767;
-	if (nChannels > 1)
-	{
-		nLowExtent = -0x10000;
-		nHighExtent = 0x10000;
-	}
 	// set m_HorizontalScale to stretch the file in the view
 	long nSamples = GetDocument()->WaveFileSamples();
 
+	SetExtents(0., double(r.Width()) * m_HorizontalScale, 0., 0.);
 	UpdateMaxExtents(nSamples);
-	SetExtents(0., double(r.Width()) * m_HorizontalScale, nLowExtent, nHighExtent);
 	ShowScrollBar(SB_VERT, FALSE);
 	ShowScrollBar(SB_HORZ, FALSE);
 	return 0;
@@ -1977,6 +2062,7 @@ void CWaveSoapFrontView::UpdateMaxExtents(unsigned Length)
 	}
 	SetMaxExtents(0, Length - Length % m_HorizontalScale + 100. * m_HorizontalScale,
 				nLowExtent, nHighExtent);
+	SetExtents(0., 0., nLowExtent, nHighExtent);
 }
 
 void CWaveSoapFrontView::OnChangeOrgExt(double left, double width,
@@ -2051,4 +2137,241 @@ void CWaveSoapFrontView::OnUpdateIndicatorScale(CCmdUI* pCmdUI)
 	CString s;
 	s.Format(_T("1:%d"), int(m_HorizontalScale));
 	SetStatusString(pCmdUI, s);
+}
+
+void CWaveSoapFrontView::SetHorizontalScale(int HorScale)
+{
+	Zoom(double(m_HorizontalScale) / HorScale, 1., CPoint(INT_MAX, INT_MAX));
+	MovePointIntoView(GetDocument()->m_CaretPosition, TRUE);
+}
+
+void CWaveSoapFrontView::OnUpdateViewHorScale1(CCmdUI* pCmdUI)
+{
+	pCmdUI->SetRadio(1 == m_HorizontalScale);
+}
+
+void CWaveSoapFrontView::OnViewHorScale1()
+{
+	SetHorizontalScale(1);
+}
+
+void CWaveSoapFrontView::OnUpdateViewHorScale2(CCmdUI* pCmdUI)
+{
+	pCmdUI->SetRadio(2 == m_HorizontalScale);
+}
+
+void CWaveSoapFrontView::OnViewHorScale2()
+{
+	SetHorizontalScale(2);
+}
+
+void CWaveSoapFrontView::OnUpdateViewHorScale4(CCmdUI* pCmdUI)
+{
+	pCmdUI->SetRadio(4 == m_HorizontalScale);
+}
+
+void CWaveSoapFrontView::OnViewHorScale4()
+{
+	SetHorizontalScale(4);
+}
+
+void CWaveSoapFrontView::OnUpdateViewHorScale8(CCmdUI* pCmdUI)
+{
+	pCmdUI->SetRadio(8 == m_HorizontalScale);
+}
+
+void CWaveSoapFrontView::OnViewHorScale8()
+{
+	SetHorizontalScale(8);
+}
+
+void CWaveSoapFrontView::OnUpdateViewHorScale16(CCmdUI* pCmdUI)
+{
+	pCmdUI->SetRadio(16 == m_HorizontalScale);
+}
+
+void CWaveSoapFrontView::OnViewHorScale16()
+{
+	SetHorizontalScale(16);
+}
+
+void CWaveSoapFrontView::OnUpdateViewHorScale32(CCmdUI* pCmdUI)
+{
+	pCmdUI->SetRadio(32 == m_HorizontalScale);
+}
+
+void CWaveSoapFrontView::OnViewHorScale32()
+{
+	SetHorizontalScale(32);
+}
+
+void CWaveSoapFrontView::OnUpdateViewHorScale64(CCmdUI* pCmdUI)
+{
+	pCmdUI->SetRadio(64 == m_HorizontalScale);
+}
+
+void CWaveSoapFrontView::OnViewHorScale64()
+{
+	SetHorizontalScale(64);
+}
+
+void CWaveSoapFrontView::OnUpdateViewHorScale128(CCmdUI* pCmdUI)
+{
+	pCmdUI->SetRadio(128 == m_HorizontalScale);
+}
+
+void CWaveSoapFrontView::OnViewHorScale128()
+{
+	SetHorizontalScale(128);
+}
+
+void CWaveSoapFrontView::OnUpdateViewHorScale256(CCmdUI* pCmdUI)
+{
+	pCmdUI->SetRadio(256 == m_HorizontalScale);
+}
+
+void CWaveSoapFrontView::OnViewHorScale256()
+{
+	SetHorizontalScale(256);
+}
+
+void CWaveSoapFrontView::OnUpdateViewHorScale512(CCmdUI* pCmdUI)
+{
+	pCmdUI->SetRadio(512 == m_HorizontalScale);
+}
+
+void CWaveSoapFrontView::OnViewHorScale512()
+{
+	SetHorizontalScale(512);
+}
+
+void CWaveSoapFrontView::OnUpdateViewHorScale1024(CCmdUI* pCmdUI)
+{
+	pCmdUI->SetRadio(1024 == m_HorizontalScale);
+}
+
+void CWaveSoapFrontView::OnViewHorScale1024()
+{
+	SetHorizontalScale(1024);
+}
+
+void CWaveSoapFrontView::OnUpdateViewHorScale2048(CCmdUI* pCmdUI)
+{
+	pCmdUI->SetRadio(2048 == m_HorizontalScale);
+}
+
+void CWaveSoapFrontView::OnViewHorScale2048()
+{
+	SetHorizontalScale(2048);
+}
+
+void CWaveSoapFrontView::OnUpdateViewHorScale4096(CCmdUI* pCmdUI)
+{
+	pCmdUI->SetRadio(4096 == m_HorizontalScale);
+}
+
+void CWaveSoapFrontView::OnViewHorScale4096()
+{
+	SetHorizontalScale(4096);
+}
+
+void CWaveSoapFrontView::OnUpdateViewHorScale8192(CCmdUI* pCmdUI)
+{
+	pCmdUI->SetRadio(8192 == m_HorizontalScale);
+}
+
+void CWaveSoapFrontView::OnViewHorScale8192()
+{
+	SetHorizontalScale(8192);
+}
+
+void CWaveSoapFrontView::OnTimer(UINT nIDEvent)
+{
+	// get mouse position and hit code
+	if (m_bAutoscrollTimerStarted
+		&& nIDEvent == m_TimerID)
+	{
+		CPoint p;
+		GetCursorPos( & p);
+		ScreenToClient( & p);
+		double scroll;
+		DWORD nHit = ClientHitTest(p);
+		if (nHit & ( VSHT_RIGHT_AUTOSCROLL | VSHT_LEFT_AUTOSCROLL))
+		{
+			//TRACE("OnTimer: VSHT_RIGHT_AUTOSCROLL\n");
+			scroll = -m_HorizontalScale;
+			int nDistance;
+			if (nHit & VSHT_RIGHT_AUTOSCROLL)
+			{
+				RECT r;
+				GetClientRect( & r);
+				nDistance = p.x - r.right + GetSystemMetrics(SM_CXVSCROLL) - 1;
+				scroll = m_HorizontalScale;
+			}
+			else
+			{
+				nDistance = GetSystemMetrics(SM_CXVSCROLL) - p.x - 1;
+			}
+			TRACE("nDistance = %d\n", nDistance);
+			if (nDistance > 14)
+			{
+				nDistance = 14;
+			}
+			if (nDistance > 0)
+			{
+				scroll *= 1 << nDistance;
+			}
+			ScrollBy(scroll, 0, TRUE);
+			NotifySlaveViews(CHANGE_HOR_ORIGIN);
+			CreateAndShowCaret();
+			UINT flags = 0;
+			if (0x8000 & GetKeyState(VK_CONTROL))
+			{
+				flags |= MK_CONTROL;
+			}
+			if (0x8000 & GetKeyState(VK_SHIFT))
+			{
+				flags |= MK_SHIFT;
+			}
+			if (0x8000 & GetKeyState(VK_LBUTTON))
+			{
+				flags |= MK_LBUTTON;
+			}
+			if (0x8000 & GetKeyState(VK_RBUTTON))
+			{
+				flags |= MK_RBUTTON;
+			}
+			if (0x8000 & GetKeyState(VK_MBUTTON))
+			{
+				flags |= MK_MBUTTON;
+			}
+			OnMouseMove(flags, p);
+			return;
+		}
+		else
+		{
+			m_bAutoscrollTimerStarted = false;
+			KillTimer(m_TimerID);
+			m_TimerID = NULL;
+		}
+	}
+	else
+	{
+		TRACE("Timer ID=%X\n", nIDEvent);
+	}
+
+	CScaledScrollView::OnTimer(nIDEvent);
+}
+
+void CWaveSoapFrontView::OnCaptureChanged(CWnd *pWnd)
+{
+	if (pWnd != this
+		&& m_bAutoscrollTimerStarted)
+	{
+		TRACE("Killing timer in CWaveSoapFrontView::OnCaptureChanged\n");
+		m_bAutoscrollTimerStarted = false;
+		KillTimer(m_TimerID);
+		m_TimerID = NULL;
+	}
+	CScaledScrollView::OnCaptureChanged(pWnd);
 }

@@ -491,6 +491,225 @@ BEGIN
     END
 END
 
+IDR_MENU_POPUP_HOR_SCALE1 MENU DISCARDABLE 
+BEGIN
+    POPUP " "
+    BEGIN
+        MENUITEM "1:1",                         ID_VIEW_HOR_SCALE_1
+        MENUITEM "1:2",                         ID_VIEW_HOR_SCALE_2
+        MENUITEM "1:8",                         ID_VIEW_HOR_SCALE_8
+        MENUITEM "1:32",                        ID_VIEW_HOR_SCALE_32
+        MENUITEM "1:128",                       ID_VIEW_HOR_SCALE_128
+        MENUITEM "1:512",                       ID_VIEW_HOR_SCALE_512
+        MENUITEM "1:2048",                      ID_VIEW_HOR_SCALE_2048
+        MENUITEM "1:8192",                      ID_VIEW_HOR_SCALE_8192
+    END
+END
+
+IDR_MENU_POPUP_HOR_SCALE2 MENU DISCARDABLE 
+BEGIN
+    POPUP " "
+    BEGIN
+        MENUITEM "1:1",                         ID_VIEW_HOR_SCALE_1
+        MENUITEM "1:2",                         ID_VIEW_HOR_SCALE_2
+        MENUITEM "1:4",                         ID_VIEW_HOR_SCALE_4
+        MENUITEM "1:8",                         ID_VIEW_HOR_SCALE_8
+        MENUITEM "1:16",                        ID_VIEW_HOR_SCALE_16
+        MENUITEM "1:64",                        ID_VIEW_HOR_SCALE_64
+        MENUITEM "1:256",                       ID_VIEW_HOR_SCALE_256
+        MENUITEM "1:1024",                      ID_VIEW_HOR_SCALE_1024
+        MENUITEM "1:4096",                      ID_VIEW_HOR_SCALE_4096
+        MENUITEM "1:8192",                      ID_VIEW_HOR_SCALE_8192
+    END
+END
+
+IDR_MENU_POPUP_HOR_SCALE256 MENU DISCARDABLE 
+BEGIN
+    POPUP " "
+    BEGIN
+        MENUITEM "1:1",                         ID_VIEW_HOR_SCALE_1
+        MENUITEM "1:4",                         ID_VIEW_HOR_SCALE_4
+        MENUITEM "1:16",                        ID_VIEW_HOR_SCALE_16
+        MENUITEM "1:64",                        ID_VIEW_HOR_SCALE_64
+        MENUITEM "1:256",                       ID_VIEW_HOR_SCALE_256
+        MENUITEM "1:1024",                      ID_VIEW_HOR_SCALE_1024
+        MENUITEM "1:4096",                      ID_VIEW_HOR_SCALE_4096
+        MENUITEM "1:8192",                      ID_VIEW_HOR_SCALE_8192
+    END
+END
+
+IDR_MENU_POPUP_HOR_SCALE4 MENU DISCARDABLE 
+BEGIN
+    POPUP " "
+    BEGIN
+        MENUITEM "1:1",                         ID_VIEW_HOR_SCALE_1
+        MENUITEM "1:2",                         ID_VIEW_HOR_SCALE_2
+        MENUITEM "1:4",                         ID_VIEW_HOR_SCALE_4
+        MENUITEM "1:8",                         ID_VIEW_HOR_SCALE_8
+        MENUITEM "1:16",                        ID_VIEW_HOR_SCALE_16
+        MENUITEM "1:64",                        ID_VIEW_HOR_SCALE_64
+        MENUITEM "1:256",                       ID_VIEW_HOR_SCALE_256
+        MENUITEM "1:1024",                      ID_VIEW_HOR_SCALE_1024
+        MENUITEM "1:8192",                      ID_VIEW_HOR_SCALE_8192
+    END
+END
+
+IDR_MENU_POPUP_HOR_SCALE128 MENU DISCARDABLE 
+BEGIN
+    POPUP " "
+    BEGIN
+        MENUITEM "1:1",                         ID_VIEW_HOR_SCALE_1
+        MENUITEM "1:8",                         ID_VIEW_HOR_SCALE_8
+        MENUITEM "1:64",                        ID_VIEW_HOR_SCALE_64
+        MENUITEM "1:128",                       ID_VIEW_HOR_SCALE_128
+        MENUITEM "1:256",                       ID_VIEW_HOR_SCALE_256
+        MENUITEM "1:1024",                      ID_VIEW_HOR_SCALE_1024
+        MENUITEM "1:4096",                      ID_VIEW_HOR_SCALE_4096
+        MENUITEM "1:8192",                      ID_VIEW_HOR_SCALE_8192
+    END
+END
+
+IDR_MENU_POPUP_HOR_SCALE64 MENU DISCARDABLE 
+BEGIN
+    POPUP " "
+    BEGIN
+        MENUITEM "1:1",                         ID_VIEW_HOR_SCALE_1
+        MENUITEM "1:4",                         ID_VIEW_HOR_SCALE_4
+        MENUITEM "1:32",                        ID_VIEW_HOR_SCALE_32
+        MENUITEM "1:64",                        ID_VIEW_HOR_SCALE_64
+        MENUITEM "1:128",                       ID_VIEW_HOR_SCALE_128
+        MENUITEM "1:512",                       ID_VIEW_HOR_SCALE_512
+        MENUITEM "1:2048",                      ID_VIEW_HOR_SCALE_2048
+        MENUITEM "1:8192",                      ID_VIEW_HOR_SCALE_8192
+    END
+END
+
+IDR_MENU_POPUP_HOR_SCALE32 MENU DISCARDABLE 
+BEGIN
+    POPUP " "
+    BEGIN
+        MENUITEM "1:1",                         ID_VIEW_HOR_SCALE_1
+        MENUITEM "1:4",                         ID_VIEW_HOR_SCALE_4
+        MENUITEM "1:16",                        ID_VIEW_HOR_SCALE_16
+        MENUITEM "1:32",                        ID_VIEW_HOR_SCALE_32
+        MENUITEM "1:64",                        ID_VIEW_HOR_SCALE_64
+        MENUITEM "1:256",                       ID_VIEW_HOR_SCALE_256
+        MENUITEM "1:1024",                      ID_VIEW_HOR_SCALE_1024
+        MENUITEM "1:8192",                      ID_VIEW_HOR_SCALE_8192
+    END
+END
+
+IDR_MENU_POPUP_HOR_SCALE8 MENU DISCARDABLE 
+BEGIN
+    POPUP " "
+    BEGIN
+        MENUITEM "1:1",                         ID_VIEW_HOR_SCALE_1
+        MENUITEM "1:4",                         ID_VIEW_HOR_SCALE_4
+        MENUITEM "1:8",                         ID_VIEW_HOR_SCALE_8
+        MENUITEM "1:16",                        ID_VIEW_HOR_SCALE_16
+        MENUITEM "1:32",                        ID_VIEW_HOR_SCALE_32
+        MENUITEM "1:128",                       ID_VIEW_HOR_SCALE_128
+        MENUITEM "1:512",                       ID_VIEW_HOR_SCALE_512
+        MENUITEM "1:2048",                      ID_VIEW_HOR_SCALE_2048
+        MENUITEM "1:8192",                      ID_VIEW_HOR_SCALE_8192
+    END
+END
+
+IDR_MENU_POPUP_HOR_SCALE16 MENU DISCARDABLE 
+BEGIN
+    POPUP " "
+    BEGIN
+        MENUITEM "1:1",                         ID_VIEW_HOR_SCALE_1
+        MENUITEM "1:4",                         ID_VIEW_HOR_SCALE_4
+        MENUITEM "1:16",                        ID_VIEW_HOR_SCALE_16
+        MENUITEM "1:32",                        ID_VIEW_HOR_SCALE_32
+        MENUITEM "1:128",                       ID_VIEW_HOR_SCALE_128
+        MENUITEM "1:512",                       ID_VIEW_HOR_SCALE_512
+        MENUITEM "1:2048",                      ID_VIEW_HOR_SCALE_2048
+        MENUITEM "1:8192",                      ID_VIEW_HOR_SCALE_8192
+    END
+END
+
+IDR_MENU_POPUP_HOR_SCALE1024 MENU DISCARDABLE 
+BEGIN
+    POPUP " "
+    BEGIN
+        MENUITEM "1:1",                         ID_VIEW_HOR_SCALE_1
+        MENUITEM "1:4",                         ID_VIEW_HOR_SCALE_4
+        MENUITEM "1:16",                        ID_VIEW_HOR_SCALE_16
+        MENUITEM "1:64",                        ID_VIEW_HOR_SCALE_64
+        MENUITEM "1:256",                       ID_VIEW_HOR_SCALE_256
+        MENUITEM "1:1024",                      ID_VIEW_HOR_SCALE_1024
+        MENUITEM "1:2048",                      ID_VIEW_HOR_SCALE_2048
+        MENUITEM "1:8192",                      ID_VIEW_HOR_SCALE_8192
+    END
+END
+
+IDR_MENU_POPUP_HOR_SCALE2048 MENU DISCARDABLE 
+BEGIN
+    POPUP " "
+    BEGIN
+        MENUITEM "1:1",                         ID_VIEW_HOR_SCALE_1
+        MENUITEM "1:2",                         ID_VIEW_HOR_SCALE_2
+        MENUITEM "1:4",                         ID_VIEW_HOR_SCALE_4
+        MENUITEM "1:8",                         ID_VIEW_HOR_SCALE_8
+        MENUITEM "1:16",                        ID_VIEW_HOR_SCALE_16
+        MENUITEM "1:32",                        ID_VIEW_HOR_SCALE_32
+        MENUITEM "1:64",                        ID_VIEW_HOR_SCALE_64
+        MENUITEM "1:128",                       ID_VIEW_HOR_SCALE_128
+        MENUITEM "1:256",                       ID_VIEW_HOR_SCALE_256
+        MENUITEM "1:512",                       ID_VIEW_HOR_SCALE_512
+        MENUITEM "1:1024",                      ID_VIEW_HOR_SCALE_1024
+        MENUITEM "1:2048",                      ID_VIEW_HOR_SCALE_2048
+        MENUITEM "1:4096",                      ID_VIEW_HOR_SCALE_4096
+        MENUITEM "1:8192",                      ID_VIEW_HOR_SCALE_8192
+    END
+END
+
+IDR_MENU_POPUP_HOR_SCALE512 MENU DISCARDABLE 
+BEGIN
+    POPUP " "
+    BEGIN
+        MENUITEM "1:1",                         ID_VIEW_HOR_SCALE_1
+        MENUITEM "1:2",                         ID_VIEW_HOR_SCALE_2
+        MENUITEM "1:8",                         ID_VIEW_HOR_SCALE_8
+        MENUITEM "1:32",                        ID_VIEW_HOR_SCALE_32
+        MENUITEM "1:128",                       ID_VIEW_HOR_SCALE_128
+        MENUITEM "1:512",                       ID_VIEW_HOR_SCALE_512
+        MENUITEM "1:2048",                      ID_VIEW_HOR_SCALE_2048
+        MENUITEM "1:8192",                      ID_VIEW_HOR_SCALE_8192
+    END
+END
+
+IDR_MENU_POPUP_HOR_SCALE4096 MENU DISCARDABLE 
+BEGIN
+    POPUP " "
+    BEGIN
+        MENUITEM "1:1",                         ID_VIEW_HOR_SCALE_1
+        MENUITEM "1:4",                         ID_VIEW_HOR_SCALE_4
+        MENUITEM "1:16",                        ID_VIEW_HOR_SCALE_16
+        MENUITEM "1:64",                        ID_VIEW_HOR_SCALE_64
+        MENUITEM "1:256",                       ID_VIEW_HOR_SCALE_256
+        MENUITEM "1:1024",                      ID_VIEW_HOR_SCALE_1024
+        MENUITEM "1:4096",                      ID_VIEW_HOR_SCALE_4096
+        MENUITEM "1:8192",                      ID_VIEW_HOR_SCALE_8192
+    END
+END
+
+IDR_MENU_POPUP_HOR_SCALE8192 MENU DISCARDABLE 
+BEGIN
+    POPUP " "
+    BEGIN
+        MENUITEM "1:1",                         ID_VIEW_HOR_SCALE_1
+        MENUITEM "1:8",                         ID_VIEW_HOR_SCALE_8
+        MENUITEM "1:32",                        ID_VIEW_HOR_SCALE_32
+        MENUITEM "1:128",                       ID_VIEW_HOR_SCALE_128
+        MENUITEM "1:512",                       ID_VIEW_HOR_SCALE_512
+        MENUITEM "1:2048",                      ID_VIEW_HOR_SCALE_2048
+        MENUITEM "1:8192",                      ID_VIEW_HOR_SCALE_8192
+    END
+END
+
 
 /////////////////////////////////////////////////////////////////////////////
 //
@@ -539,17 +758,21 @@ END
 // Dialog
 //
 
-IDD_ABOUTBOX DIALOG DISCARDABLE  0, 0, 235, 87
+IDD_ABOUTBOX DIALOG DISCARDABLE  0, 0, 235, 111
 STYLE DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
 CAPTION "About WaveSoap"
 FONT 8, "MS Sans Serif"
 BEGIN
     ICON            IDR_MAINFRAME,IDC_STATIC,11,17,20,20
-    LTEXT           "WaveSoap Version 0.9 beta",IDC_STATIC,40,10,119,8,
+    CTEXT           "WaveSoap Version 0.9 beta",IDC_STATIC,62,7,110,13,
                     SS_NOPREFIX
-    LTEXT           "Copyright (C) Alexander Grigoriev, 2000\nalegr@earthlink.net\nhttp://www.home.earthlink.net/~alegr",
-                    IDC_STATIC,40,25,167,33
-    DEFPUSHBUTTON   "OK",IDOK,178,7,50,14,WS_GROUP
+    CTEXT           "Copyright (C) Alexander Grigoriev, 2000",IDC_STATIC,45,
+                    27,145,14
+    DEFPUSHBUTTON   "OK",IDOK,92,52,50,14,WS_GROUP
+    PUSHBUTTON      "mailto:alegr@earthlink.net",IDC_BUTTON_MAILTO,52,72,128,
+                    14
+    PUSHBUTTON      "http://www.home.earthlink.net/~alegr",
+                    IDC_BUTTON_HOMEPAGE,52,90,128,14
 END
 
 IDR_MAINFRAME DIALOG DISCARDABLE  0, 0, 330, 16
@@ -659,12 +882,12 @@ FONT 8, "MS Sans Serif"
 BEGIN
     LTEXT           "Copying stereo data to single channel. Select a channel to copy from",
                     IDC_STATIC,7,7,117,23
-    CONTROL         "Left",IDC_RADIO_LEFT,"Button",BS_AUTORADIOBUTTON | 
-                    WS_GROUP,9,32,27,10
+    CONTROL         "Left+Right",IDC_RADIO_CHANNEL_BOTH,"Button",
+                    BS_AUTORADIOBUTTON | WS_GROUP,85,32,46,10
+    CONTROL         "Left",IDC_RADIO_LEFT,"Button",BS_AUTORADIOBUTTON,9,32,
+                    27,10
     CONTROL         "Right",IDC_RADIO_RIGHT,"Button",BS_AUTORADIOBUTTON,45,
                     32,32,10
-    CONTROL         "Left+Right",IDC_RADIO_CHANNEL_BOTH,"Button",
-                    BS_AUTORADIOBUTTON,85,32,46,10
     DEFPUSHBUTTON   "OK",IDOK,13,51,50,14
     PUSHBUTTON      "Cancel",IDCANCEL,72,51,50,14
 END
@@ -1145,7 +1368,7 @@ BEGIN
         LEFTMARGIN, 7
         RIGHTMARGIN, 228
         TOPMARGIN, 7
-        BOTTOMMARGIN, 80
+        BOTTOMMARGIN, 104
     END
 
     IDD_DIALOG_MORE_NOISEREDUCTION, DIALOG
@@ -1742,6 +1965,24 @@ BEGIN
                             "Show noise threshold set for noise reduction\nShow noise threshold"
     ID_VIEW_SS_ZOOMINVERT   "Zoom in vertical\nZoom In vertical"
     ID_VIEW_SS_ZOOMOUTVERT  "Zoom out vertical\nZoom out vertical"
+    ID_VIEW_HOR_SCALE_1     "Show 1 sample per pixel\n1:1"
+    ID_VIEW_HOR_SCALE_2     "Show 2 samples per pixel\n1:2"
+    ID_VIEW_HOR_SCALE_4     "Show 4 samples per pixel\n1:4"
+    ID_VIEW_HOR_SCALE_8     "Show 8 samples per pixel\n1:8"
+    ID_VIEW_HOR_SCALE_16    "Show 16 samples per pixel\n1:16"
+    ID_VIEW_HOR_SCALE_32    "Show 32 samples per pixel\n1:32"
+    ID_VIEW_HOR_SCALE_64    "Show 64 samples per pixel\n1:64"
+    ID_VIEW_HOR_SCALE_128   "Show 128 samples per pixel\n1:128"
+END
+
+STRINGTABLE DISCARDABLE 
+BEGIN
+    ID_VIEW_HOR_SCALE_256   "Show 256 samples per pixel\n1:256"
+    ID_VIEW_HOR_SCALE_512   "Show 512 samples per pixel\n1:512"
+    ID_VIEW_HOR_SCALE_1024  "Show 1024 samples per pixel\n1:1024"
+    ID_VIEW_HOR_SCALE_2048  "Show 2048 samples per pixel\n1:2048"
+    ID_VIEW_HOR_SCALE_4096  "Show 4096 samples per pixel\n1:4096"
+    ID_VIEW_HOR_SCALE_8192  "Show 8192 samples per pixel\n1:8192"
 END
 
 #endif    // English (U.S.) resources
