@@ -493,7 +493,7 @@ BOOL CWaveSoapFrontApp::InitInstance()
 	m_pMainWnd->DragAcceptFiles();
 	// The main window has been initialized, so show and update it.
 
-	pMainFrame->ShowWindow(SW_SHOWDEFAULT);
+	pMainFrame->InitialShowWindow(SW_SHOWDEFAULT);
 	pMainFrame->UpdateWindow();
 
 	m_NotEnoughMemoryMsg.LoadString(IDS_NOT_ENOUGH_MEMORY);
