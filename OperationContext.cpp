@@ -3925,7 +3925,6 @@ BOOL CWmaDecodeContext::Init()
 		return FALSE;
 	}
 
-	m_pDocument->m_OriginalWaveFormat = m_Decoder.GetDstFormat();
 	SetDstFile(m_pDocument->m_WavFile);
 
 	m_pDocument->SoundChanged(m_pDocument->WaveFileID(), 0, m_CurrentSamples, m_CurrentSamples, UpdateSoundDontRescanPeaks);
@@ -3984,6 +3983,8 @@ void CWmaDecodeContext::PostRetire()
 	else
 	{
 		// set the file length, according to the actual number of samples decompressed
+		m_pDocument->m_OriginalWaveFormat = m_Decoder.GetDstFormat();
+
 		m_DstFile.SetFileLengthSamples(m_DstCopySample);
 
 		m_pDocument->SoundChanged(m_DstFile.GetFileID(), 0, 0, m_DstCopySample, UpdateSoundDontRescanPeaks);
