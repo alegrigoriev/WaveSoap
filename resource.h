@@ -387,6 +387,10 @@
 #define IDC_RADIO_REGION                1261
 #define IDC_EDIT1                       1263
 #define IDC_EDIT_MARKER_NAME            1263
+#define IDC_RADIO5                      1264
+#define IDC_RADIO6                      1265
+#define IDC_RADIO_TEXT_ANSI             1266
+#define IDC_BUTTON_GOTO_MAX             1267
 #define IDC_VIEW_RULER_SAMPLES          32771
 #define IDC_VIEW_RULER_HHMMSS           32772
 #define IDC_VIEW_RULER_SECONDS          32773
@@ -842,7 +846,7 @@
 #define _APS_3D_CONTROLS                     1
 #define _APS_NEXT_RESOURCE_VALUE        195
 #define _APS_NEXT_COMMAND_VALUE         40135
-#define _APS_NEXT_CONTROL_VALUE         1264
+#define _APS_NEXT_CONTROL_VALUE         1268
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif
