@@ -570,20 +570,18 @@ void CWaveSoapFrontView::OnDraw(CDC* pDC)
 
 					pDC->SetBrushOrg(0, WaveToY(-32768) % DashLength);
 
-					//TRACE("BrushOrg = %d\n", long((m_WaveOffsetY + 0x10000) * m_VerticalScale) % DashLength);
-
 					CGdiObjectSaveT<CBrush> OldBrush(pDC, pDC->SelectObject( & DashBrush));
 					CGdiObjectSave OldFont(pDC, pDC->SelectStockObject(ANSI_VAR_FONT));
 
-					pDC->SetTextColor(RGB(0, 0, 0));
+					pDC->SetTextColor(0xFFFFFF ^ pApp->m_WaveBackground);
 					pDC->SetBkColor(pApp->m_WaveBackground);
 					pDC->SetBkMode(OPAQUE);
 
-					for (CuePointVectorIterator i = pInst->m_CuePoints.begin();
+					for (ConstCuePointVectorIterator i = pInst->m_CuePoints.begin();
 						i < pInst->m_CuePoints.end(); i++)
 					{
 						long x = WorldToWindowXfloor(i->dwSampleOffset);
-						WaveRegionMarker * pMarker = pInst->GetRegionMarker(i->CuePointID);
+						WaveRegionMarker const * pMarker = pInst->GetRegionMarker(i->CuePointID);
 
 						// draw text
 						if (0 == ch
