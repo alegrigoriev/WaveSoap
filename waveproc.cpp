@@ -16,6 +16,8 @@
 
 #include "FFT.h"
 
+#define TRACE_WAVEPROC 0
+
 template <typename T = UCHAR, unsigned s = 512>
 struct FixedRingBufferBase
 {
@@ -218,15 +220,21 @@ typename RingBufferT<L>::Type RingBufferT<L>::Read()
 //////////////////////////////////////////////////////////////
 /////////// CWaveProc
 CWaveProc::CWaveProc()
-	: m_TmpInBufPut(0),
-	m_TmpInBufGet(0),
-	m_TmpOutBufPut(0),
-	m_TmpOutBufGet(0),
+	: //m_TmpInBufPut(0),
+	//m_TmpInBufGet(0),
+	//m_TmpOutBufPut(0),
+	//m_TmpOutBufGet(0),
 	m_InputChannels(1),
 	m_OutputChannels(1),
 	m_bClipped(FALSE),
 	m_MaxClipped(0),
 	m_ChannelsToProcess(-1)
+	, m_SavedOutputSamples(0)
+	, m_ProcessedInputSamples(0)
+#ifdef _DEBUG
+	, m_ProcessedInputBytes(0)
+	, m_SavedOutputBytes(0)
+#endif
 {}
 
 size_t CWaveProc::ProcessSoundBuffer(char const * /*pInBuf*/, char * /*pOutBuf*/,
@@ -252,112 +260,33 @@ size_t CWaveProc::ProcessSound(char const * pInBuf, char * pOutBuf,
 {
 	size_t nSavedBytes = 0;
 	*pUsedBytes = 0;
-	if ( ! CheckForMinBufferSize(pInBuf, pOutBuf, nInBytes, nOutBytes,
-								pUsedBytes, & nSavedBytes,
-								GetMinInputBufSize(), GetMinOutputBufSize()))
-	{
-		return nSavedBytes;
-	}
-	return ProcessSoundBuffer(pInBuf, pOutBuf, nInBytes, nOutBytes, pUsedBytes);
-}
 
-BOOL CWaveProc::CheckForMinBufferSize(char const * &pIn, char * &pOut,
-									size_t &nInBytes, size_t &nOutBytes,
-									size_t * pUsedBytes, size_t * pSavedBytes,
-									size_t nMinInBytes, size_t nMinOutBytes)
-{
-	size_t nSavedBytes = 0;
-	*pSavedBytes = 0;
-	*pUsedBytes = 0;
+	size_t const InputSampleSize = GetInputSampleSize();
+	// input buffer is always multiple of sample size
+	ASSERT(0 == InputSampleSize || 0 == nInBytes % InputSampleSize);
 
-	if (m_TmpOutBufPut != m_TmpOutBufGet)
+	size_t const OutputSampleSize = GetOutputSampleSize();
+	// output buffer is always multiple of sample size
+	ASSERT(0 == OutputSampleSize || 0 == nOutBytes % OutputSampleSize);
+
+	nSavedBytes = ProcessSoundBuffer(pInBuf, pOutBuf, nInBytes, nOutBytes, pUsedBytes);
+
+	if (InputSampleSize != 0)
 	{
-		for ( ;m_TmpOutBufPut > m_TmpOutBufGet
-			&& nOutBytes > 0; m_TmpOutBufGet++, pOut++, nOutBytes--, nSavedBytes++)
-		{
-			*pOut = m_TmpOutBuf[m_TmpOutBufGet];
-		}
-		if (m_TmpOutBufPut == m_TmpOutBufGet)
-		{
-			m_TmpOutBufPut = 0;
-			m_TmpOutBufGet = 0;
-		}
-	}
-	if (nOutBytes <= 0)
-	{
-		*pSavedBytes = nSavedBytes;
-		return FALSE;
+		ASSERT(0 == *pUsedBytes % InputSampleSize);
+		m_ProcessedInputSamples += *pUsedBytes / InputSampleSize;
 	}
 
-	if (NULL != pIn
-		&& m_TmpInBufPut > 0
-		&& m_TmpInBufPut < nMinInBytes)
+	if (OutputSampleSize != 0)
 	{
-		for (; nInBytes > 0 && m_TmpInBufPut < nMinInBytes; nInBytes--,
-			m_TmpInBufPut++, *pUsedBytes++, pIn++)
-		{
-			m_TmpInBuf[m_TmpInBufPut] = *pIn;
-		}
-		if (nMinInBytes == m_TmpInBufPut)
-		{
-			size_t nUsed = 0;
-			size_t nSaved = ProcessSoundBuffer(m_TmpInBuf, pOut, nMinInBytes, nOutBytes, & nUsed);
-
-			if (nUsed != nMinInBytes)
-			{
-				TRACE("Couldn't process min bytes!\n");
-				return FALSE;  // error!!
-			}
-			m_TmpInBufPut = 0;
-			nSavedBytes += nSaved;
-			pOut += nSaved;
-			nOutBytes -= nSaved;
-		}
-		else
-		{
-			*pSavedBytes = nSavedBytes;
-			return FALSE;
-		}
+		ASSERT(0 == nSavedBytes % OutputSampleSize);
+		m_SavedOutputSamples += nSavedBytes / OutputSampleSize;
 	}
-	// if there is too little input data, save it in the temp buffer and return
-	// if there is too little space for output data,
-	if (NULL != pIn
-		&& nInBytes != 0 && nInBytes < nMinInBytes)
-	{
-		for (; nInBytes > 0 && m_TmpInBufPut < nMinInBytes; nInBytes--,
-			m_TmpInBufPut++, *pUsedBytes++, pIn++)
-		{
-			m_TmpInBuf[m_TmpInBufPut] = *pIn;
-		}
-		*pSavedBytes = nSavedBytes;
-		return FALSE;
-	}
-
-	if (nOutBytes < nMinOutBytes)
-	{
-		size_t nUsed = 0;
-		m_TmpOutBufGet = 0;
-		m_TmpOutBufPut = 0;
-
-		size_t nSaved = ProcessSoundBuffer(pIn, m_TmpOutBuf, nInBytes, nMinOutBytes, & nUsed);
-
-		m_TmpOutBufPut = nSaved;
-		* pUsedBytes += nUsed;
-
-		for ( ; nOutBytes > 0 && m_TmpOutBufGet < m_TmpOutBufPut; m_TmpOutBufGet++,
-			nOutBytes--, nSavedBytes++, pOut++)
-		{
-			*pOut = m_TmpOutBuf[m_TmpOutBufGet];
-		}
-		if (m_TmpOutBufGet == m_TmpOutBufPut)
-		{
-			m_TmpOutBufGet = 0;
-			m_TmpOutBufPut = 0;
-		}
-		*pSavedBytes = nSavedBytes;
-		return FALSE;
-	}
-	return TRUE;
+#ifdef _DEBUG
+	m_ProcessedInputBytes += *pUsedBytes;
+	m_SavedOutputBytes += nSavedBytes;
+#endif
+	return nSavedBytes;
 }
 
 void CWaveProc::Dump(unsigned indent) const
@@ -398,11 +327,19 @@ __int16 CWaveProc::DoubleToShort(double x)
 
 BOOL CWaveProc::Init()
 {
+	m_ProcessedInputSamples = 0;
+	m_SavedOutputSamples = 0;
 	return TRUE;
 }
 
 void CWaveProc::DeInit()
 {
+#ifdef _DEBUG
+	if (TRACE_WAVEPROC) TRACE("%s: Processed input samples=%d, bytes=%d\n",
+							typeid(*this).name(), m_ProcessedInputSamples, m_ProcessedInputBytes);
+	if (TRACE_WAVEPROC) TRACE("         Saved output samples=%d, bytes=%d\n",
+							m_SavedOutputSamples, m_SavedOutputBytes);
+#endif
 }
 
 
@@ -2471,8 +2408,8 @@ BOOL CBatchProcessing::SetAndValidateWaveformat(WAVEFORMATEX const * pWf)
 	return TRUE;
 }
 
-size_t CBatchProcessing::ProcessSound(char const * pIn, char * pOut,
-									size_t nInBytes, size_t nOutBytes, size_t * pUsedBytes)
+size_t CBatchProcessing::ProcessSoundBuffer(char const * pIn, char * pOut,
+											size_t nInBytes, size_t nOutBytes, size_t * pUsedBytes)
 {
 	size_t nSavedBytes = 0;
 	*pUsedBytes = 0;
@@ -2488,6 +2425,7 @@ size_t CBatchProcessing::ProcessSound(char const * pIn, char * pOut,
 			* pUsedBytes = ToCopy;
 			return ToCopy;
 		}
+
 		bool bDataWasProcessed;
 		do
 		{
@@ -2500,6 +2438,7 @@ size_t CBatchProcessing::ProcessSound(char const * pIn, char * pOut,
 				char const * inbuf;
 				char * outbuf;
 				Item * pItem = & m_Stages[i];
+
 				if (i != 0)
 				{
 					inbuf = pItem->Buf + pItem->BufGetIndex;
@@ -2659,6 +2598,28 @@ size_t CBatchProcessing::ProcessSound(char const * pIn, char * pOut,
 	return nSavedBytes;
 }
 
+// if input data is compressed and not sample-aligned, this could be 0
+// it can be multiple of block size for compressed format
+size_t CBatchProcessing::GetInputSampleSize() const
+{
+	if (m_Stages.IsEmpty())
+	{
+		return 0;
+	}
+	return m_Stages[0].Proc->GetInputSampleSize();
+}
+
+// if output data is compressed and not sample-aligned, this could be 0
+// it can be multiple of block size for compressed format
+size_t CBatchProcessing::GetOutputSampleSize() const
+{
+	if (m_Stages.IsEmpty())
+	{
+		return 0;
+	}
+	return m_Stages[m_Stages.GetSize() - 1].Proc->GetOutputSampleSize();
+}
+
 void CBatchProcessing::AddWaveProc(CWaveProc * pProc, int index)
 {
 	Item item;
@@ -2708,6 +2669,26 @@ void CBatchProcessing::DeInit()
 		m_Stages[i].Proc->DeInit();
 	}
 	BaseClass::DeInit();
+}
+
+NUMBER_OF_SAMPLES CBatchProcessing::GetInputNumberOfSamples() const
+{
+	if (m_Stages.IsEmpty())
+	{
+		return 0;
+	}
+
+	return m_Stages[0].Proc->GetInputNumberOfSamples();
+}
+
+NUMBER_OF_SAMPLES CBatchProcessing::GetOutputNumberOfSamples() const
+{
+	if (m_Stages.IsEmpty())
+	{
+		return 0;
+	}
+
+	return m_Stages[m_Stages.GetSize() - 1].Proc->GetOutputNumberOfSamples();
 }
 
 ////////////////////////////////////////
@@ -2813,9 +2794,6 @@ BOOL CResampleFilter::InitResample(double ResampleRatio,
 	m_SrcBufFilled = (0x80000000u / m_InputPeriod) * m_InputChannels;
 	m_Phase = 0x80000000u % m_InputPeriod;
 
-	m_TotalProcessedSamples = 0;
-	m_TotalSavedSamples = 0;
-
 	return TRUE;
 }
 
@@ -2876,73 +2854,83 @@ size_t CResampleFilter::ProcessSoundBuffer(char const * pIn, char * pOut,
 {
 	*pUsedBytes = 0;
 
+	// raw samples, multiplied by number of channels
 	unsigned nInSamples = nInBytes / sizeof (WAVE_SAMPLE);
 	unsigned nOutSamples = nOutBytes / sizeof (WAVE_SAMPLE);
+
 	WAVE_SAMPLE const * pInBuf = (WAVE_SAMPLE const*) pIn;
 	WAVE_SAMPLE * pOutBuf = (WAVE_SAMPLE *) pOut;
 
 	unsigned nUsedSamples = 0;
 	unsigned nSavedSamples = 0;
+
 	if (0 == pInBuf)
 	{
 		// adjust nOutSamples
-		LONGLONG MaxOutSamples = LONGLONG(m_ResampleRatio * m_TotalProcessedSamples);
-		if (2 == m_InputChannels)
+		LONGLONG MaxOutSamples = LONGLONG(m_ResampleRatio * m_ProcessedInputSamples);
+
+		if (MaxOutSamples <= m_SavedOutputSamples)
 		{
-			MaxOutSamples &= ~1;
+			nOutSamples = 0;
 		}
-		MaxOutSamples -= m_TotalSavedSamples;
-		if (MaxOutSamples <= 0)
+		else
 		{
-			MaxOutSamples = 0;
-		}
-		if (nOutSamples > MaxOutSamples)
-		{
-			nOutSamples = int(MaxOutSamples);
+			MaxOutSamples -= m_SavedOutputSamples;
+
+			MaxOutSamples *= m_OutputChannels;
+
+			if (nOutSamples > MaxOutSamples)
+			{
+				nOutSamples = unsigned(MaxOutSamples);
+			}
 		}
 	}
 
-	while(nOutSamples > 0)
+	while(nOutSamples != 0)
 	{
 		// move data in the internal buffer, if necessary
 		if ((m_SrcBufFilled - m_SrcBufUsed) / m_InputChannels
 			<= m_SrcFilterLength * 2)
 		{
-			for (unsigned i = 0, j = m_SrcBufUsed; j < m_SrcBufFilled; i++, j++)
+			for (unsigned i = 0, j = m_SrcBufUsed; j != m_SrcBufFilled; i++, j++)
 			{
 				m_pSrcBuf[i] = m_pSrcBuf[j];
 			}
+
+			m_SrcBufFilled -= m_SrcBufUsed;
 			m_SrcBufUsed = 0;
-			m_SrcBufFilled = i;
 		}
+
 		if (m_SrcBufFilled < SrcBufSize)
 		{
+			unsigned ToCopy = std::min(SrcBufSize - m_SrcBufFilled, nInSamples);
 
-			unsigned ToCopy = __min(SrcBufSize - m_SrcBufFilled, nInSamples);
 			if (0 == pInBuf)
 			{
 				// fill the rest of the input buffer with zeros
-				for (unsigned j = m_SrcBufFilled; j < SrcBufSize; j++)
+				for (unsigned j = m_SrcBufFilled; j != SrcBufSize; j++)
 				{
-					m_pSrcBuf[j] = 0.;
+					m_pSrcBuf[j] = 0.f;
 				}
-				m_SrcBufFilled = j;
+				m_SrcBufFilled = SrcBufSize;
 			}
 			else
 			{
-				for (unsigned i = 0, j = m_SrcBufFilled; i < ToCopy; i++, j++)
+				for (unsigned i = 0, j = m_SrcBufFilled; i != ToCopy; i++, j++)
 				{
 					m_pSrcBuf[j] = pInBuf[i];
 				}
-				m_SrcBufFilled = j;
-				pInBuf += i;
-				nInSamples -= i;
-				nUsedSamples += i;
-				m_TotalProcessedSamples += i;
+
+				m_SrcBufFilled += ToCopy;
+				pInBuf += ToCopy;
+
+				nInSamples -= ToCopy;
+				nUsedSamples += ToCopy;
 			}
 		}
 
 		FilterSoundResample();
+
 		if (m_DstBufSaved == m_DstBufUsed)
 		{
 			m_DstBufSaved = 0;
@@ -2950,16 +2938,19 @@ size_t CResampleFilter::ProcessSoundBuffer(char const * pIn, char * pOut,
 			break;
 		}
 
-		int ToCopy = __min(m_DstBufUsed - m_DstBufSaved, nOutSamples);
-		for (int i = 0, j = m_DstBufSaved; i < ToCopy; i++, j++)
+		unsigned const ToCopy = std::min(m_DstBufUsed - m_DstBufSaved, nOutSamples);
+
+		for (unsigned i = 0, j = m_DstBufSaved; i != ToCopy; i++, j++)
 		{
 			pOutBuf[i] = DoubleToShort(m_pDstBuf[j]);
 		}
-		m_DstBufSaved = j;
-		pOutBuf += i;
-		nOutSamples -= i;
-		nSavedSamples += i;
-		m_TotalSavedSamples += i;
+
+		m_DstBufSaved += ToCopy;
+
+		pOutBuf += ToCopy;
+		nOutSamples -= ToCopy;
+		nSavedSamples += ToCopy;
+
 		if (m_DstBufSaved == m_DstBufUsed)
 		{
 			m_DstBufSaved = 0;
@@ -2971,10 +2962,12 @@ size_t CResampleFilter::ProcessSoundBuffer(char const * pIn, char * pOut,
 	return nSavedSamples * sizeof(WAVE_SAMPLE);
 }
 
+////////////////////////////////////////////////////////////////////
+////////// CAudioConvertor
 CAudioConvertor::CAudioConvertor(HACMDRIVER had)
 	: m_AcmConvertor(had)
-	, m_LeftInDstBuffer(0)
-	, m_DstBufPtr(NULL)
+	, m_InputSampleSize(0)
+	, m_OutputSampleSize(0)
 {
 }
 
@@ -3000,6 +2993,17 @@ BOOL CAudioConvertor::InitConversion(WAVEFORMATEX const * SrcFormat, WAVEFORMATE
 		{
 			return FALSE;
 		}
+
+		m_InputSampleSize = SrcFormat->nBlockAlign;
+
+		if (WAVE_FORMAT_PCM == DstFormat->wFormatTag)
+		{
+			m_OutputSampleSize = DstFormat->nBlockAlign;
+		}
+		else
+		{
+			m_OutputSampleSize = 0;
+		}
 	}
 	else if (WAVE_FORMAT_PCM == DstFormat->wFormatTag)
 	{
@@ -3017,8 +3021,8 @@ BOOL CAudioConvertor::InitConversion(WAVEFORMATEX const * SrcFormat, WAVEFORMATE
 									ACM_FORMATSUGGESTF_NCHANNELS
 									| ACM_FORMATSUGGESTF_WBITSPERSAMPLE
 									| ACM_FORMATSUGGESTF_WFORMATTAG);
-		TRACE("acmFormatSuggest:nSamplesPerSec=%d, BytesPerSec=%d, nBlockAlign=%d\n",
-			wf.nSamplesPerSec, wf.nAvgBytesPerSec, wf.nBlockAlign);
+		if (TRACE_WAVEPROC) TRACE("acmFormatSuggest:nSamplesPerSec=%d, BytesPerSec=%d, nBlockAlign=%d\n",
+								wf.nSamplesPerSec, wf.nAvgBytesPerSec, wf.nBlockAlign);
 		if (wf.nChannels != DstFormat->nChannels
 			|| wf.nSamplesPerSec != DstFormat->nSamplesPerSec)
 		{
@@ -3031,6 +3035,9 @@ BOOL CAudioConvertor::InitConversion(WAVEFORMATEX const * SrcFormat, WAVEFORMATE
 		{
 			return FALSE;
 		}
+
+		m_OutputSampleSize = DstFormat->nBlockAlign;
+		m_InputSampleSize = 0;
 	}
 	else
 	{
@@ -3038,40 +3045,27 @@ BOOL CAudioConvertor::InitConversion(WAVEFORMATEX const * SrcFormat, WAVEFORMATE
 	}
 
 	m_ConvertFlags = ACM_STREAMCONVERTF_START | ACM_STREAMCONVERTF_BLOCKALIGN;
-	m_DstSaved = 0;
 	return TRUE;
 }
 
-size_t CAudioConvertor::ProcessSound(char const * pIn, char * pOut,
-									size_t nInBytes, size_t nOutBytes, size_t * pUsedBytes)
+size_t CAudioConvertor::ProcessSoundBuffer(char const * pIn, char * pOut,
+											size_t nInBytes, size_t nOutBytes, size_t * pUsedBytes)
 {
 	size_t nSavedBytes = 0;
 	*pUsedBytes = 0;
-	while (1)
+
+	while (nOutBytes != 0 || nInBytes != 0)
 	{
 		// empty the output buffer
-		if (0 != m_LeftInDstBuffer)
+		size_t const WasCopied = m_AcmConvertor.GetConvertedData(pOut, nOutBytes);
+
+		nOutBytes -= WasCopied;
+		pOut += WasCopied;
+		nSavedBytes += WasCopied;
+
+		if (0 == nOutBytes)
 		{
-			size_t ToCopy = m_LeftInDstBuffer;
-
-			if (nOutBytes < ToCopy)
-			{
-				ToCopy = nOutBytes;
-			}
-			memmove(pOut, m_DstBufPtr, ToCopy);
-			pOut += ToCopy;
-
-			nSavedBytes += ToCopy;
-			nOutBytes -= ToCopy;
-			m_DstSaved += ToCopy;
-
-			m_DstBufPtr += ToCopy;
-			m_LeftInDstBuffer -= ToCopy;
-
-			if (0 != m_LeftInDstBuffer)
-			{
-				break;
-			}
+			break;
 		}
 
 		if (NULL == pIn)
@@ -3081,31 +3075,70 @@ size_t CAudioConvertor::ProcessSound(char const * pIn, char * pOut,
 		}
 		// do the conversion
 		size_t InUsed = 0;
-		void * pDstBuf = NULL;
+		size_t OutUsed = 0;
 
-		if ( ! m_AcmConvertor.Convert(pIn, nInBytes, & InUsed, & pDstBuf,
-									& m_LeftInDstBuffer, m_ConvertFlags))
+		if ( ! m_AcmConvertor.Convert(pIn, nInBytes, & InUsed, NULL,
+									& OutUsed, m_ConvertFlags))
 		{
 			// error
-			nSavedBytes = 0;
+			nSavedBytes = 0;  // BUGBUG?
 			break;
 		}
+
+		if (TRACE_WAVEPROC) TRACE("m_AcmConvertor.Convert InUsed=%d, OutUsed=%d\n", InUsed, OutUsed);
+
 		if (0 == InUsed
-			&& 0 == m_LeftInDstBuffer)
+			&& 0 == OutUsed)
 		{
 			break;
 		}
 
-		m_DstBufPtr = (PUCHAR) pDstBuf;
 		nInBytes -= InUsed;
 		*pUsedBytes += InUsed;
 		pIn += InUsed;
 
 		m_ConvertFlags &= ~ACM_STREAMCONVERTF_START;
 	}
+
 	return nSavedBytes;
 }
 
+// if input data is compressed and not sample-aligned, this could be 0
+size_t CAudioConvertor::GetInputSampleSize() const
+{
+	return m_InputSampleSize;
+}
+
+// if input data is compressed and not sample-aligned, this could be 0
+size_t CAudioConvertor::GetOutputSampleSize() const
+{
+	return m_OutputSampleSize;
+}
+
+// if input sample size is known, return exact number of processed samples,
+// otherwise return output number.
+NUMBER_OF_SAMPLES CAudioConvertor::GetInputNumberOfSamples() const
+{
+	if (0 != m_InputSampleSize)
+	{
+		return BaseClass::GetInputNumberOfSamples();
+	}
+	return BaseClass::GetOutputNumberOfSamples();
+}
+
+// if output sample size is known, return exact number of produced samples,
+// otherwise return input number.
+NUMBER_OF_SAMPLES CAudioConvertor::GetOutputNumberOfSamples() const
+{
+	if (0 != m_OutputSampleSize)
+	{
+		return BaseClass::GetOutputNumberOfSamples();
+	}
+	return BaseClass::GetInputNumberOfSamples();
+}
+
+///////////////////////////////////////////////////////
+//////////////// CChannelConvertor
 size_t CChannelConvertor::ProcessSoundBuffer(char const * pIn, char * pOut,
 											size_t nInBytes, size_t nOutBytes, size_t * pUsedBytes)
 {
@@ -3178,8 +3211,8 @@ BOOL CLameEncConvertor::SetFormat(WAVEFORMATEX const * pWF)
 	return TRUE;
 }
 
-size_t CLameEncConvertor::ProcessSound(char const * pInBuf, char * pOutBuf,
-										size_t nInBytes, size_t nOutBytes, size_t * pUsedBytes)
+size_t CLameEncConvertor::ProcessSoundBuffer(char const * pInBuf, char * pOutBuf,
+											size_t nInBytes, size_t nOutBytes, size_t * pUsedBytes)
 {
 	// save extra data from the output buffer
 	*pUsedBytes = 0;
