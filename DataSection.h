@@ -132,22 +132,23 @@ int CDataSection<T, C>::GetData(T ** ppBuf, ULONGLONG nOffset, unsigned int nCou
 		m_BufferOffset + m_nCountInBuffer)
 	{
 		// adjust NumOfSamples:
-		int ReadCount = nCount - unsigned(m_BufferOffset) + m_nCountInBuffer - unsigned(nOffset);
+		int ReadCount = nCount + unsigned(nOffset) - (unsigned(m_BufferOffset) + m_nCountInBuffer);
 		ASSERT(m_nCountInBuffer + ReadCount <= m_nBufferSize);
 		ReadCount = ReadData(m_pBuffer + m_nCountInBuffer,
 							m_BufferOffset + m_nCountInBuffer, ReadCount, pSource);
 		m_nCountInBuffer += ReadCount;
 		nCount = unsigned(m_BufferOffset) + m_nCountInBuffer - unsigned(nOffset);
 	}
+
+	ASSERT (nOffset >= m_BufferOffset
+			&& nOffset + nCount <= m_BufferOffset + m_nCountInBuffer);
 #if 0//def _DEBUG
 	// verify that the buffer contains the correct data
 	{
 		__int16 * pVerBuf = new T[nSamples];
 		int ReadSamples = ReadData(pVerBuf, nOffset, nSamples, pSource);
-		ASSERT (nOffset >= m_BufferOffset
-				&& nOffset + ReadSamples <= m_BufferOffset + m_nCountInBuffer
-				&& 0 == memcmp(pVerBuf, m_pBuffer + nOffset - m_BufferOffset,
-								ReadSamples * sizeof(T)));
+		ASSERT (0 == memcmp(pVerBuf, m_pBuffer + nOffset - m_BufferOffset,
+							ReadSamples * sizeof(T)));
 		delete[] pVerBuf;
 	}
 #endif

@@ -1,6 +1,5 @@
 Known problems and tasks:
 
-If main window is minimized, save its state before minimization
 Enter WMA file attributes (title, author, etc)
 Enter MP3 file attributes
 Make WSPK file hidden (optional)
@@ -61,6 +60,9 @@ Find which alignment better for edit box labels: left or right
 
 Problems:
 
+"Operate Directly On the sound file" truncated
+Crash with old wspk file?
+During exit, asks to reopen the file
 "Save as" from LLADPCM: PCM16 is not shown when "Compatible only" selected
 During playback, outline is invalidated. (??)
 WinXP doesn't have CDRAL
@@ -76,6 +78,7 @@ samples with 32767, -32768 are not visible
 Log Off query doesn't close the active dialog. Recursion is possible. Make sure to check after Cancel
 
 Fixed:
+If there is a selection, Ctrl+Shift+End, Ctrl+Shift+Home doesn't work as expected
 Undo/redo order was wrong
 Path change doesn't update OK
 checkmark draw with gray background - all black drawn
@@ -107,6 +110,7 @@ Save As dialog is not centered first time (comdlg problem?)
 ??? When time/seconds format is set for status bar, MM:SS is actually shown
 
 Done:
+If main window is minimized, save its state before minimization
 When Open/Save dialog is resized, resize/move the controls
 Handle "Save from CD immediately" option
 Pass wave format to CD grabbing dialog

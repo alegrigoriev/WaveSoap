@@ -414,6 +414,16 @@ protected:
 
 	struct BufferMruEntry : public KListEntry<BufferMruEntry>
 	{
+		BufferMruEntry()
+		{
+			DirtyMask = 0;
+			ReadMask = 0;
+			m_Flags = 0;
+			LockCount = 0;
+			MRU_Count = 0;
+			pFile = NULL;
+			PositionKey = 0;
+		}
 		long LockCount;
 		unsigned MRU_Count;
 		DWORD m_Flags;
