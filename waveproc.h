@@ -121,37 +121,47 @@ public:
 	virtual ~CWaveProc() {}
 
 	virtual void Dump(unsigned indent=0) const;
-	// the function returns number of returned samples
+	// the function returns number of returned bytes
 	// if NULL == pInBuf, the function should flush back stored samples
-	// and return their number, or 0 if no more samples
-	// any latency should be compensated in the function
+	// and return their number, or 0 if no more samples.
+	// Any latency should be compensated in the function
 	// The function checks for minimum buffer size
-	// and calls ProcessSoundBuffer with at least MinInBytes()
-	// and MinOutBytes()
+	// and calls ProcessSoundBuffer with at least GetInputSampleSize()
+	// and GetOutputSampleSize()
 	virtual size_t ProcessSound(char const * pInBuf, char * pOutBuf,
 								size_t nInBytes, size_t nOutBytes, size_t * pUsedBytes);
-	virtual size_t ProcessSoundBuffer(char const * pInBuf, char * pOutBuf,
-									size_t nInBytes, size_t nOutBytes, size_t * pUsedBytes);
+
 	// SetAndValidateWaveformat returns FALSE if the wave cannot be
 	// processed
 	virtual BOOL SetAndValidateWaveformat(WAVEFORMATEX const * pWf);
+
 	NUMBER_OF_CHANNELS m_InputChannels;
 	NUMBER_OF_CHANNELS m_OutputChannels;
 	CHANNEL_MASK m_ChannelsToProcess;
 	long m_SamplesPerSecond;
 
-	BOOL CheckForMinBufferSize(char const * &pInBuf, char * &pOutBuf,
-								size_t & nInBytes, size_t & nOutBytes,
-								size_t * pUsedBytes, size_t * pSavedBytes,
-								size_t nMinInBytes, size_t nMinOutBytes);
-
-	virtual size_t GetMinInputBufSize() const
+	// if input data is compressed and not sample-aligned, this should be 0
+	// it can be multiple of block size for compressed format
+	virtual size_t GetInputSampleSize() const
 	{
 		return m_InputChannels * sizeof (WAVE_SAMPLE);
 	}
-	virtual size_t GetMinOutputBufSize() const
+
+	// if output data is compressed and not sample-aligned, this should be 0
+	// it can be multiple of block size for compressed format
+	virtual size_t GetOutputSampleSize() const
 	{
 		return m_OutputChannels * sizeof (WAVE_SAMPLE);
+	}
+
+	virtual NUMBER_OF_SAMPLES GetInputNumberOfSamples() const
+	{
+		return m_ProcessedInputSamples;
+	}
+
+	virtual NUMBER_OF_SAMPLES GetOutputNumberOfSamples() const
+	{
+		return m_SavedOutputSamples;
 	}
 
 	__int16 DoubleToShort(double x);
@@ -168,14 +178,31 @@ public:
 	virtual BOOL Init();
 	virtual void DeInit();
 
-	char m_TmpInBuf[32];
-	char m_TmpOutBuf[32];
-	size_t m_TmpInBufPut;
-	size_t m_TmpInBufGet;
-	size_t m_TmpOutBufPut;
-	size_t m_TmpOutBufGet;
+protected:
+
+	//char m_TmpInBuf[32];
+	//char m_TmpOutBuf[32];
+	//size_t m_TmpInBufPut;
+	//size_t m_TmpInBufGet;
+	//size_t m_TmpOutBufPut;
+	//size_t m_TmpOutBufGet;
 	BOOL m_bClipped;
 	double m_MaxClipped;
+
+	NUMBER_OF_SAMPLES m_ProcessedInputSamples;
+	NUMBER_OF_SAMPLES m_SavedOutputSamples;
+
+	// this function always gets whole samples on input
+	virtual size_t ProcessSoundBuffer(char const * pInBuf, char * pOutBuf,
+									size_t nInBytes, size_t nOutBytes, size_t * pUsedBytes);
+private:
+#ifdef _DEBUG
+	size_t m_ProcessedInputBytes;
+	size_t m_SavedOutputBytes;
+#endif
+	// assignment guard
+	CWaveProc(const CWaveProc &);
+	CWaveProc & operator =(const CWaveProc &);
 };
 
 class CHumRemoval : public CWaveProc
@@ -252,6 +279,13 @@ public:
 	BOOL SetClickSourceFile(LPCTSTR szFilename);
 	BOOL SetClickLogFile(LPCTSTR szFilename);
 
+	float m_MeanPowerDecayRate;
+	float m_MeanPowerAttackRate;
+	float m_PowerToDeriv3RatioThreshold;
+	int m_nMaxClickLength;
+	float m_MinDeriv3Threshold;
+	BOOL m_PassTrough;
+protected:
 	enum {PREV_BUF_SIZE = 2048,
 		PREV_MASK = PREV_BUF_SIZE-1,
 		CLICK_LENGTH = 64,
@@ -260,13 +294,10 @@ public:
 	CBackBuffer<int, int> m_prev3[2];
 //    int m_prev[2][PREV_BUF_SIZE];
 //    int m_prev3[2][PREV_BUF_SIZE];
-	float m_PowerToDeriv3RatioThreshold;
-	float m_MinDeriv3Threshold;
 	float m_ClickDeriv3ThresholdScale;  // is used to find click boundary
 	float m_MinClickDeriv3BoundThreshold;
 	float m_NoiseFloorThresholdScale;
 
-	int m_nMaxClickLength;
 	int m_nMinClickLength;
 
 	int m_NextPossibleClickPosition[2];
@@ -276,12 +307,9 @@ public:
 
 	int m_nStoredSamples;
 	float m_MeanPower[2];
-	float m_MeanPowerDecayRate;
-	float m_MeanPowerAttackRate;
-	// array for the clicks defined in a file
-	BOOL m_PassTrough;
 
-protected:
+private:
+	// array for the clicks defined in a file
 	CArray<StoredClickData, StoredClickData&> PredefinedClicks;
 	int PredefinedClickCurrentIndex;
 	CString InClickFilename;
@@ -437,9 +465,21 @@ public:
 	virtual ~CBatchProcessing();
 	virtual void Dump(unsigned indent=0) const;
 
-	virtual size_t ProcessSound(char const * pInBuf, char * pOutBuf,
-								size_t nInBytes, size_t nOutBytes, size_t * pUsedBytes);
+	virtual size_t ProcessSoundBuffer(char const * pInBuf, char * pOutBuf,
+									size_t nInBytes, size_t nOutBytes, size_t * pUsedBytes);
 	virtual BOOL SetAndValidateWaveformat(WAVEFORMATEX const * pWf);
+
+	// if input data is compressed and not sample-aligned, this could be 0
+	// it can be multiple of block size for compressed format
+	virtual size_t GetInputSampleSize() const;
+
+	// if output data is compressed and not sample-aligned, this could be 0
+	// it can be multiple of block size for compressed format
+	virtual size_t GetOutputSampleSize() const;
+
+	virtual NUMBER_OF_SAMPLES GetInputNumberOfSamples() const;
+
+	virtual NUMBER_OF_SAMPLES GetOutputNumberOfSamples() const;
 
 	void AddWaveProc(CWaveProc * pProc, int index = -1);
 	virtual BOOL WasClipped() const;
@@ -460,8 +500,6 @@ protected:
 	enum {IntermediateBufSize = 0x1000};
 	CArray<Item, Item&> m_Stages;
 };
-
-int ProcessWaveFile(LPCTSTR NameIn, LPCTSTR NameOut, CWaveProc * pProc);
 
 class CResampleFilter: public CWaveProc
 {
@@ -508,9 +546,6 @@ public:
 	unsigned __int32 m_Phase;
 	double m_ResampleRatio;
 
-	NUMBER_OF_SAMPLES m_TotalProcessedSamples;
-	NUMBER_OF_SAMPLES m_TotalSavedSamples;
-
 };
 
 class CAudioConvertor : public CWaveProc
@@ -523,17 +558,31 @@ public:
 
 	CAudioConvertor(HACMDRIVER had = NULL);
 	virtual ~CAudioConvertor();
+	BOOL InitConversion(WAVEFORMATEX const * SrcFormat, WAVEFORMATEX const * DstFormat);
 
+	// if input data is compressed and not sample-aligned, this should be 0
+	// it can be multiple of block size for compressed format
+	virtual size_t GetInputSampleSize() const;
+
+	// if input data is compressed and not sample-aligned, this should be 0
+	// it can be multiple of block size for compressed format
+	virtual size_t GetOutputSampleSize() const;
+
+	virtual NUMBER_OF_SAMPLES GetInputNumberOfSamples() const;
+
+	virtual NUMBER_OF_SAMPLES GetOutputNumberOfSamples() const;
+
+private:
 	AudioStreamConvertor m_AcmConvertor;
 
-	DWORD m_DstSaved;
 	DWORD m_ConvertFlags;
-	size_t m_LeftInDstBuffer;
-	UCHAR const * m_DstBufPtr;
+	size_t m_InputSampleSize;
+	size_t m_OutputSampleSize;
 
-	BOOL InitConversion(WAVEFORMATEX const * SrcFormat, WAVEFORMATEX const * DstFormat);
-	virtual size_t ProcessSound(char const * pInBuf, char * pOutBuf,
-								size_t nInBytes, size_t nOutBytes, size_t * pUsedBytes);
+protected:
+
+	virtual size_t ProcessSoundBuffer(char const * pInBuf, char * pOutBuf,
+									size_t nInBytes, size_t nOutBytes, size_t * pUsedBytes);
 };
 
 class CChannelConvertor : public CWaveProc
@@ -551,7 +600,6 @@ public:
 		m_ChannelsToProcess = ChannelsToProcess;
 	}
 
-	//virtual ~CChannelConvertor() {}
 	// conversion either mono->stereo, or stereo->mono.
 	// if converting stereo->mono, the data can be left, right, or average
 	virtual size_t ProcessSoundBuffer(char const * pInBuf, char * pOutBuf,
@@ -602,8 +650,8 @@ protected:
 	BYTE * m_pOutputBuffer;
 	size_t m_OutputBufferFilled;
 	size_t m_OutputBufferSize;
-	virtual size_t ProcessSound(char const * pInBuf, char * pOutBuf,
-								size_t nInBytes, size_t nOutBytes, size_t * pUsedBytes);
+	virtual size_t ProcessSoundBuffer(char const * pInBuf, char * pOutBuf,
+									size_t nInBytes, size_t nOutBytes, size_t * pUsedBytes);
 
 	virtual BOOL Init();
 	virtual void DeInit();
