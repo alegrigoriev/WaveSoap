@@ -662,7 +662,7 @@ void CSelectionDialog::AdjustSelection()
 {
 	if (m_bAllowFileExtension)
 	{
-		if (m_Start < m_End)
+		if (m_Start > m_End)
 		{
 			SAMPLE_INDEX tmp = m_Start;
 			m_Start = m_End;
@@ -674,7 +674,7 @@ void CSelectionDialog::AdjustSelection()
 		// force the values into the file length
 		NUMBER_OF_SAMPLES FileLength = m_WaveFile.NumberOfSamples();
 
-		if (m_Start < m_End)
+		if (m_Start > m_End)
 		{
 			SAMPLE_INDEX tmp = m_Start;
 			m_Start = m_End;
@@ -709,7 +709,11 @@ void CSelectionDialog::OnKillfocusEditEnd()
 	m_End = m_eEnd.UpdateTimeSample();
 	m_Length = m_End - m_Start;
 
-	if (m_Length < 0) m_Length = 0;
+	if (m_Length < 0)
+	{
+		m_Length = 0;
+	}
+
 	m_eLength.SetTimeSample(m_Length);
 	AdjustSelection();
 	m_SelectionCombo.SetCurSel(FindSelection(m_Start, m_End));
@@ -731,7 +735,11 @@ void CSelectionDialog::OnKillfocusEditStart()
 
 	m_Length = m_End - m_Start;
 
-	if (m_Length < 0) m_Length = 0;
+	if (m_Length < 0)
+	{
+		m_Length = 0;
+	}
+
 	m_eLength.SetTimeSample(m_Length);
 	AdjustSelection();
 	m_SelectionCombo.SetCurSel(FindSelection(m_Start, m_End));
