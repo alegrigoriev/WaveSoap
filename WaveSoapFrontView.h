@@ -9,8 +9,9 @@
 #pragma once
 #endif // _MSC_VER > 1000
 
+#include "ScaledGraphView.h"
 
-class CWaveSoapFrontView : public CView
+class CWaveSoapFrontView : public CScaledGraphView
 {
 protected: // create from serialization only
 	CWaveSoapFrontView();
@@ -29,6 +30,7 @@ public:
 public:
 	virtual void OnDraw(CDC* pDC);  // overridden to draw this view
 	virtual BOOL PreCreateWindow(CREATESTRUCT& cs);
+	virtual void OnInitialUpdate();
 protected:
 	virtual BOOL OnPreparePrinting(CPrintInfo* pInfo);
 	virtual void OnBeginPrinting(CDC* pDC, CPrintInfo* pInfo);
@@ -42,8 +44,15 @@ public:
 	virtual void AssertValid() const;
 	virtual void Dump(CDumpContext& dc) const;
 #endif
-
 protected:
+	int m_HorizontalScale;
+	virtual void AdjustNewScale(double OldScaleX, double OldScaleY,
+								double & NewScaleX, double & NewScaleY);
+	DWORD m_FirstSampleInBuffer;    // in 16-bit numbers
+	__int16 * m_pWaveBuffer;
+	size_t m_WaveBufferSize;    // in 16-bit samples
+	size_t m_WaveDataSizeInBuffer;  // in 16-bit samples
+	void GetWaveSamples(int Position, int NumOfSamples);
 
 // Generated message map functions
 protected:
