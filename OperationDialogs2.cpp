@@ -33,11 +33,25 @@ CInsertSilenceDialog::CInsertSilenceDialog(SAMPLE_INDEX Start,
 	, m_Start(Start)
 	, m_CaretPosition(Start)
 	, m_WaveFile(WaveFile)
-	, m_nChannel(Channel + 1)
+	, m_nChannel(-1)
 	, m_TimeFormat(TimeFormat)
 	, m_eLength(TimeFormat)
 	, m_eStart(Start, WaveFile, TimeFormat)
 {
+	CHANNEL_MASK AllChannels = WaveFile.ChannelsMask();
+
+	if ((Channel & AllChannels) == AllChannels)
+	{
+		m_nChannel = 0;
+	}
+	else if (Channel & 1)
+	{
+		m_nChannel = 1;
+	}
+	else if (Channel & 2)
+	{
+		m_nChannel = 2;
+	}
 
 	m_eLength.SetSamplingRate(WaveFile.SampleRate());
 	//{{AFX_DATA_INIT(CInsertSilenceDialog)
