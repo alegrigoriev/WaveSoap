@@ -6,6 +6,7 @@
 #include "stdafx.h"
 #include <complex>
 #include "Waveproc.h"
+#include <float.h>
 
 #ifndef _CONSOLE
 #define puts(t) AfxMessageBox(_T(t), MB_OK | MB_ICONEXCLAMATION)
@@ -878,7 +879,7 @@ NoiseReductionCore::NoiseReductionCore(int nFftOrder, int nChannels,
 	}
 
 	// calculate noise floor profile:
-	unsigned const MinFrequencyBandToProcess = unsigned(m_MinFrequencyToProcess * m_nFftOrder / m_SampleRate);
+	unsigned const MinFrequencyBandToProcess = unsigned(m_MinFrequencyToProcess * m_nFftOrder * 2 / m_SampleRate);
 	double const NoiseFloorDelta = exp((m_LevelThresholdForNoiseHigh - m_LevelThresholdForNoiseLow)
 										/ (m_nFftOrder / 2 - MinFrequencyBandToProcess));
 
@@ -1575,26 +1576,26 @@ void NoiseReductionCore::ProcessInputFft()
 
 void NoiseReductionCore::AnalyseFft()
 {
-	unsigned const MinFrequencyBandToProcess = unsigned(m_MinFrequencyToProcess * m_nFftOrder / m_SampleRate);
+	unsigned const MinFrequencyBandToProcess = unsigned(m_MinFrequencyToProcess * m_nFftOrder * 2 / m_SampleRate);
 
 	double const SuppressionLimit = exp(-m_MaxNoiseSuppression);
 
 	double const MaskingTemporalDecayNormHigh =
 		// coeff to filter masking function in time
-		std::max<double>(m_NearMaskingDecayTimeHigh * 0.001 * m_SampleRate / m_nFftOrder, 1.);
+		std::max<double>(m_NearMaskingDecayTimeHigh * 0.001 * m_SampleRate / (m_nFftOrder * 2), 1.);
 
 	double const MaskingTemporalDecayNormLow =
 		// coeff to filter masking function in time
 		//m_NearMaskingDecayTimeLow * 0.001 * m_SampleRate / (m_nFftOrder / 2);
-		std::max<double>(m_NearMaskingDecayTimeLow * 0.001 * m_SampleRate / m_nFftOrder, 1.);
+		std::max<double>(m_NearMaskingDecayTimeLow * 0.001 * m_SampleRate / (m_nFftOrder * 2), 1.);
 
 	double const MaskingSpectralDecayNormLow =
 		// coeff to filter masking function in frequencies
-		std::max<double>(m_NearMaskingDecayDistanceLow / m_SampleRate * m_nFftOrder, 1.);
+		std::max<double>(m_NearMaskingDecayDistanceLow / m_SampleRate * (m_nFftOrder * 2), 1.);
 
 	double const MaskingSpectralDecayNormHigh =
 		// coeff to filter masking function in frequencies
-		std::max<double>(m_NearMaskingDecayDistanceHigh / m_SampleRate * m_nFftOrder, 1.);
+		std::max<double>(m_NearMaskingDecayDistanceHigh / m_SampleRate * (m_nFftOrder * 2), 1.);
 
 	double const ToneEmphasis = exp(m_ToneOverNoisePreference);
 
@@ -1841,10 +1842,13 @@ void CClickRemoval::InterpolateBigGap(WAVE_SAMPLE data[], int nLeftIndex, int Cl
 
 	for (i = 1; i <= FftOrder/2; i++)
 	{
-		if (y1[i].real() != 0.
-			|| y1[i].imag() != 0.)
+		if ((y1[i].real() != 0.
+				|| y1[i].imag() != 0.)
+			&& (y2[i].real() != 0.
+				|| y2[i].imag() != 0.))
 		{
 			complex<float> rot = y2[i] / y1[i];
+
 			y2[i] *= rot / abs(rot);
 		}
 	}
@@ -1854,30 +1858,35 @@ void CClickRemoval::InterpolateBigGap(WAVE_SAMPLE data[], int nLeftIndex, int Cl
 	// ClickLength is copied to the extrapolated area,
 	for (i = 0; i < ClickLength; i++)
 	{
-		data[nChans * (nLeftIndex + i)] =
-			DoubleToShort(
-						x[FftOrder - (ClickLength + ClickLength / 2) + i]);
+		double tmp = x[FftOrder - (ClickLength + ClickLength / 2) + i];
+
+		ASSERT(tmp >= -32768. && tmp <= 32767.);
+
+		data[nChans * (nLeftIndex + i)] = DoubleToShort(tmp);
 	}
 
 	// ClickLength/2 are merged with the samples before the extrapolation,
 	for (i = 0; i < ClickLength / 2; i++)
 	{
-		data[nChans * (nLeftIndex + ClickLength + i)] =
-			DoubleToShort(
-						(x[FftOrder - ClickLength / 2 + i] * (ClickLength / 2 - i - 0.5)
-							+ data[nChans * (nLeftIndex + ClickLength + i)] * (i + 0.5))
-						/ float(ClickLength / 2));
+		double tmp = (x[FftOrder - ClickLength / 2 + i] * (ClickLength / 2 - i - 0.5)
+						+ data[nChans * (nLeftIndex + ClickLength + i)] * (i + 0.5))
+					/ float(ClickLength / 2);
+
+		ASSERT(tmp >= -32768. && tmp <= 32767.);
+
+		data[nChans * (nLeftIndex + ClickLength + i)] = DoubleToShort(tmp);
 	}
 
 	// ClickLength/2 are merged with the samples after the extrapolation,
 	int ClickLen1 = ClickLength - ClickLength / 2;
 	for (i = 0; i < ClickLen1; i++)
 	{
-		data[nChans * (nLeftIndex - ClickLen1 + i)] =
-			DoubleToShort(
-						(x[FftOrder - ClickLength * 2 + i] * (i + 0.5)
-							+ data[nChans * (nLeftIndex - ClickLen1 + i)] * (ClickLen1 - i - 0.5))
-						/ float(ClickLen1));
+		double tmp = (x[FftOrder - ClickLength * 2 + i] * (i + 0.5)
+						+ data[nChans * (nLeftIndex - ClickLen1 + i)] * (ClickLen1 - i - 0.5))
+					/ float(ClickLen1);
+		ASSERT(tmp >= -32768. && tmp <= 32767.);
+
+		data[nChans * (nLeftIndex - ClickLen1 + i)] = DoubleToShort(tmp);
 	}
 }
 
