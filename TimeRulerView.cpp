@@ -14,7 +14,7 @@ static char THIS_FILE[] = __FILE__;
 /////////////////////////////////////////////////////////////////////////////
 // CTimeRulerView
 
-IMPLEMENT_DYNCREATE(CTimeRulerView, CView)
+IMPLEMENT_DYNCREATE(CTimeRulerView, CHorizontalRuler)
 
 CTimeRulerView::CTimeRulerView()
 {
@@ -25,13 +25,8 @@ CTimeRulerView::~CTimeRulerView()
 }
 
 
-BEGIN_MESSAGE_MAP(CTimeRulerView, CView)
+BEGIN_MESSAGE_MAP(CTimeRulerView, CHorizontalRuler)
 	//{{AFX_MSG_MAP(CTimeRulerView)
-	ON_WM_SETFOCUS()
-	ON_WM_MOUSEMOVE()
-	ON_WM_LBUTTONDOWN()
-	ON_WM_LBUTTONUP()
-	ON_WM_MOUSEACTIVATE()
 	//}}AFX_MSG_MAP
 END_MESSAGE_MAP()
 
@@ -44,10 +39,51 @@ void CTimeRulerView::OnDraw(CDC* pDC)
 
 	// background is erased by gray brush.
 	// draw horizontal line with ticks and numbers
-	CGdiObject * pOldFont = (CFont *) pDC->SelectStockObject(SYSTEM_FONT);
+	CGdiObject * pOldFont = (CFont *) pDC->SelectStockObject(ANSI_VAR_FONT);
 	CPen DarkGrayPen(PS_SOLID, 0, 0x808080);
 	CRect cr;
 	GetClientRect( & cr);
+
+	// calculate position string length
+	int nLength = pDC->GetTextExtent("0000000000", 10).cx;
+	// calculate how much samples can be between the numbers
+	unsigned nSamples = 1.5 * nLength / GetXScaleDev();
+	if (nSamples > INT_MAX / 10)
+	{
+		nSamples = INT_MAX / 10;
+	}
+	// find the closest bigger 1,2,5 * 10^x
+	int dist, nTickDist;
+	for (unsigned k = 1; k <= INT_MAX / 10; k *= 10)
+	{
+		dist = k;
+		nTickDist = k;
+		if (dist >= nSamples)
+		{
+			if (dist > 10)
+			{
+				nTickDist = dist / 10;
+			}
+			break;
+		}
+		dist = k * 2;
+		if (dist >= nSamples)
+		{
+			break;
+		}
+		dist = k * 5;
+		if (dist >= nSamples)
+		{
+			break;
+		}
+	}
+
+	int nFirstSample = WindowToWorldX(cr.left);
+	// round it
+	nFirstSample -= nFirstSample % dist;
+	pDC->SetTextAlign(TA_BOTTOM | TA_LEFT);
+	pDC->SetTextColor(0x000000);   // black
+	pDC->SetBkMode(TRANSPARENT);
 
 	CGdiObject * pOldPen = pDC->SelectStockObject(BLACK_PEN);
 	pDC->MoveTo(cr.left, cr.bottom - 5);
@@ -61,6 +97,44 @@ void CTimeRulerView::OnDraw(CDC* pDC)
 	pDC->MoveTo(cr.left, cr.bottom - 6);
 	pDC->LineTo(cr.right, cr.bottom - 6);
 
+	for(;; nFirstSample += nTickDist)
+	{
+		int x = WorldToWindowX(nFirstSample);
+		if (x < cr.left)
+		{
+			continue;
+		}
+		if (x > cr.right)
+		{
+			break;
+		}
+		pDC->SelectStockObject(BLACK_PEN);
+		pDC->MoveTo(x - 1, cr.bottom - 6);
+
+		if (0 == nFirstSample % dist)
+		{
+			// draw bigger tick (6 pixels high) and the number
+			pDC->LineTo(x - 1, cr.bottom - 12);
+			char s[16];
+			ltoa(nFirstSample, s, 10);
+
+			pDC->TextOut(x + 2, cr.bottom - 9, s, strlen(s));
+
+			pDC->SelectStockObject(WHITE_PEN);
+			pDC->MoveTo(x, cr.bottom - 6);
+			pDC->LineTo(x, cr.bottom - 12);
+		}
+		else
+		{
+			// draw small tick (2 pixels high)
+			pDC->LineTo(x - 1, cr.bottom - 8);
+
+			pDC->SelectStockObject(WHITE_PEN);
+			pDC->MoveTo(x, cr.bottom - 6);
+			pDC->LineTo(x, cr.bottom - 8);
+		}
+	}
+
 	pDC->SelectObject(pOldPen);
 	pDC->SelectObject(pOldFont);
 }
@@ -71,69 +145,15 @@ void CTimeRulerView::OnDraw(CDC* pDC)
 #ifdef _DEBUG
 void CTimeRulerView::AssertValid() const
 {
-	CView::AssertValid();
+	CScaledScrollView::AssertValid();
 }
 
 void CTimeRulerView::Dump(CDumpContext& dc) const
 {
-	CView::Dump(dc);
+	CScaledScrollView::Dump(dc);
 }
 #endif //_DEBUG
 
 /////////////////////////////////////////////////////////////////////////////
 // CTimeRulerView message handlers
 
-void CTimeRulerView::OnSetFocus(CWnd* pOldWnd)
-{
-	TRACE("CTimeRulerView %X::OnSetFocus(%X)\n", this, pOldWnd);
-	if (pOldWnd
-		&& pOldWnd->GetParentFrame() == GetParentFrame())
-	{
-		// reject focus
-		pOldWnd->SetFocus();
-	}
-	else
-	{
-		CWnd * pWnd = GetParent()->GetDlgItem(1);
-		//pWnd->BringWindowToTop();
-		pWnd->SetFocus();
-		// set focus to window with
-		//CView::OnSetFocus(pOldWnd);
-	}
-}
-
-BOOL CTimeRulerView::PreCreateWindow(CREATESTRUCT& cs)
-{
-	cs.lpszClass = AfxRegisterWndClass(CS_VREDRAW | CS_DBLCLKS, AfxGetApp()->LoadStandardCursor(IDC_SIZEWE),
-										(HBRUSH)GetStockObject(LTGRAY_BRUSH), NULL);
-
-	return CView::PreCreateWindow(cs);
-}
-
-void CTimeRulerView::OnMouseMove(UINT nFlags, CPoint point)
-{
-	// TODO: Add your message handler code here and/or call default
-
-	CView::OnMouseMove(nFlags, point);
-}
-
-void CTimeRulerView::OnLButtonDown(UINT nFlags, CPoint point)
-{
-	// TODO: Add your message handler code here and/or call default
-
-	CView::OnLButtonDown(nFlags, point);
-}
-
-void CTimeRulerView::OnLButtonUp(UINT nFlags, CPoint point)
-{
-	// TODO: Add your message handler code here and/or call default
-
-	CView::OnLButtonUp(nFlags, point);
-}
-
-int CTimeRulerView::OnMouseActivate(CWnd* pDesktopWnd, UINT nHitTest, UINT message)
-{
-	// TODO: Add your message handler code here and/or call default
-
-	return CWnd::OnMouseActivate(pDesktopWnd, nHitTest, message);
-}
