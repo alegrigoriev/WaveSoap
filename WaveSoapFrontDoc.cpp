@@ -2383,6 +2383,11 @@ BOOL CWaveSoapFrontDoc::OnSaveDocument(LPCTSTR lpszPathName, DWORD flags, WAVEFO
 
 	DeletePermanentUndoRedo();
 
+	ASSERT((m_WavFile.GetFileID() == m_OriginalWavFile.GetFileID()
+				&& 2 == m_WavFile.GetFileRefCount())
+			|| (m_WavFile.GetFileID() != m_OriginalWavFile.GetFileID()
+				&& 1 == m_WavFile.GetFileRefCount()));
+
 	if (flags & SaveFile_Mp3File)
 	{
 		return OnSaveMp3File(flags, FullTargetName, pWf);
@@ -2831,6 +2836,9 @@ static void LimitUndoRedo(ListHead<COperationContext> * pEntry, int MaxNum, size
 void CWaveSoapFrontDoc::AddUndoRedo(CUndoRedoContext * pContext)
 {
 	CThisApp * pApp = GetApp();
+	// detach from the work file:
+	pContext->UnprepareUndo();
+
 	if (pContext->IsUndoOperation())
 	{
 		m_UndoList.InsertHead(pContext);
@@ -3771,7 +3779,7 @@ void CWaveSoapFrontDoc::OnProcessDcoffset()
 		}
 
 		pScanContext->InitDestination(m_WavFile, dlg.GetStart(),
-									EndScanSample, dlg.GetChannel(), FALSE);
+									EndScanSample, dlg.GetChannel(), FALSE, 0, 0);
 
 		pDcContext.reset(new CDcOffsetContext(this, IDS_DC_ADJUST_STATUS_PROMPT,
 											IDS_DC_ADJUST_OPERATION_NAME, pScanContext));
@@ -4469,7 +4477,7 @@ BOOL CWaveSoapFrontDoc::OpenWmaFileDocument(LPCTSTR lpszPathName)
 	return TRUE;
 }
 
-static int const BigGapLength = 16;
+static int const BigGapLength = 32;
 void CWaveSoapFrontDoc::OnUpdateToolsInterpolate(CCmdUI* pCmdUI)
 {
 	// the area must be at least 5* length away from the file beginning and from the end
@@ -4501,6 +4509,8 @@ void CWaveSoapFrontDoc::OnToolsInterpolate()
 	int PreInterpolateSamples = 0;
 	int PostInterpolateSamples = 0;
 	int InterpolationOverlap;
+
+	CClickRemoval crm;
 
 	bool BigGap = (InterpolateSamples >= BigGapLength);
 	if (BigGap)
@@ -4571,7 +4581,6 @@ void CWaveSoapFrontDoc::OnToolsInterpolate()
 	}
 
 	// now, do the interpolation
-	CClickRemoval crm;
 	if (m_SelectedChannel & SPEAKER_FRONT_LEFT) // mono or not right channel only
 	{
 		crm.InterpolateGap(pBuf, InterpolateOffset, InterpolateSamples, nChannels, BigGap);
