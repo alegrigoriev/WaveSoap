@@ -2750,10 +2750,12 @@ CSelectionChangeOperation::CSelectionChangeOperation(CWaveSoapFrontDoc * pDoc,
 
 BOOL CSelectionChangeOperation::CreateUndo()
 {
-	m_UndoChain.InsertHead(new CSelectionChangeOperation(m_pDocument,
-														m_pDocument->m_SelectionStart, m_pDocument->m_SelectionEnd,
-														m_pDocument->m_CaretPosition, m_pDocument->m_SelectedChannel));
-
+	if (m_UndoChain.IsEmpty())
+	{
+		m_UndoChain.InsertHead(new CSelectionChangeOperation(m_pDocument,
+															m_pDocument->m_SelectionStart, m_pDocument->m_SelectionEnd,
+															m_pDocument->m_CaretPosition, m_pDocument->m_SelectedChannel));
+	}
 	return TRUE;
 }
 
