@@ -18,7 +18,7 @@ static char THIS_FILE[] = __FILE__;
 
 CSaveExpressionDialog::CSaveExpressionDialog(const vector<ExprGroup> & Exprs,
 											CWnd* pParent /*=NULL*/)
-	: CDialog(CSaveExpressionDialog::IDD, pParent),
+	: BaseClass(IDD, pParent),
 	m_Expressions(Exprs)
 {
 	//{{AFX_DATA_INIT(CSaveExpressionDialog)
@@ -35,7 +35,7 @@ CSaveExpressionDialog::CSaveExpressionDialog(const vector<ExprGroup> & Exprs,
 
 void CSaveExpressionDialog::DoDataExchange(CDataExchange* pDX)
 {
-	CDialog::DoDataExchange(pDX);
+	BaseClass::DoDataExchange(pDX);
 	//{{AFX_DATA_MAP(CSaveExpressionDialog)
 	DDX_Control(pDX, IDC_COMBO_NAME, m_SavedExpressionCombo);
 	DDX_Text(pDX, IDC_COMBO_NAME, m_Name);
@@ -52,7 +52,7 @@ void CSaveExpressionDialog::DoDataExchange(CDataExchange* pDX)
 	}
 }
 
-BEGIN_MESSAGE_MAP(CSaveExpressionDialog, CDialog)
+BEGIN_MESSAGE_MAP(CSaveExpressionDialog, BaseClass)
 	//{{AFX_MSG_MAP(CSaveExpressionDialog)
 	ON_CBN_SELCHANGE(IDC_COMBO_GROUP, OnSelchangeComboGroup)
 	ON_CBN_SELCHANGE(IDC_COMBO_NAME, OnSelchangeComboName)
@@ -65,7 +65,7 @@ END_MESSAGE_MAP()
 
 BOOL CSaveExpressionDialog::OnInitDialog()
 {
-	CDialog::OnInitDialog();
+	BaseClass::OnInitDialog();
 
 	BuildExpressionGroupCombobox(m_ExpressionGroupSelected, m_ExpressionSelected);
 
