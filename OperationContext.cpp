@@ -1956,10 +1956,10 @@ BOOL CUndoRedoContext::InitUndoCopy(CWaveFile & SrcFile,
 	//m_DstFile = SrcFile;
 
 	m_SrcSaveStart = SaveStartPos;
-	m_DstStart = SaveStartPos;
-	m_DstCopyPos = SaveStartPos;
 	m_SrcSavePos = SaveStartPos;
 	m_SrcSaveEnd = SaveEndPos;
+	m_DstStart = SaveStartPos;
+	m_DstCopyPos = SaveStartPos;
 	m_DstEnd = SaveEndPos;
 
 	if (SaveEndPos > SaveStartPos)
@@ -1971,6 +1971,7 @@ BOOL CUndoRedoContext::InitUndoCopy(CWaveFile & SrcFile,
 										| CreateWaveFileDeleteAfterClose
 										| CreateWaveFileDontCopyInfo
 										| CreateWaveFilePcmFormat
+										| CreateWaveFileAllowMemoryFile
 										| CreateWaveFileTemp,
 										NULL))
 		{
@@ -1982,7 +1983,8 @@ BOOL CUndoRedoContext::InitUndoCopy(CWaveFile & SrcFile,
 		m_SrcChan = ALL_CHANNELS;
 		m_DstChan = SaveChannel;
 		m_SaveChan = SaveChannel;
-		m_SrcEnd = m_DstSavePos + (SaveEndPos - SaveStartPos);
+		m_SrcEnd = m_DstSavePos + (SaveEndPos - SaveStartPos)
+					/ SrcFile.SampleSize() * m_SrcFile.SampleSize();
 	}
 	return TRUE;
 }
@@ -2030,7 +2032,7 @@ BOOL CUndoRedoContext::SaveUndoData(void * pBuf, long BufSize, DWORD Position, i
 
 		if (Channel != ALL_CHANNELS)
 		{
-			SizeToLock = (BufSize & ~3) / 2;
+			SizeToLock = ((BufSize + 2) & ~3)/ sizeof (__int16);
 		}
 		long LockedToWrite = m_SrcFile.GetDataBuffer( & buf, SizeToLock,
 													m_DstSavePos, CDirectFile::GetBufferWriteOnly);
@@ -2061,6 +2063,7 @@ BOOL CUndoRedoContext::SaveUndoData(void * pBuf, long BufSize, DWORD Position, i
 			m_SrcSavePos += LockedToWrite * 2;
 			Position += LockedToWrite * 2;
 			m_DstSavePos += LockedToWrite;
+#if 0
 			if (2 == BufSize)
 			{
 				BufSize = 0;
@@ -2068,6 +2071,7 @@ BOOL CUndoRedoContext::SaveUndoData(void * pBuf, long BufSize, DWORD Position, i
 				m_SrcSavePos += 2;
 				Position += 2;
 			}
+#endif
 		}
 		m_SrcFile.ReturnDataBuffer(buf, LockedToWrite, CDirectFile::ReturnBufferDirty);
 	}
