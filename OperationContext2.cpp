@@ -1899,6 +1899,22 @@ double CFilterContext::CalculateResult(int ch, int Input)
 		}
 		in = out;
 	}
+	if (0 != m_nNotchOrder)
+	{
+		for (int i = 0; i < m_nNotchOrder; i++)
+		{
+			double tmp = in * m_NotchCoeffs[i][0]
+						+ m_PrevNotchSamples[ch][i][0] * m_NotchCoeffs[i][1]
+						+ m_PrevNotchSamples[ch][i][1] * m_NotchCoeffs[i][2]
+						- m_PrevNotchSamples[ch][i][2] * m_NotchCoeffs[i][4]
+						- m_PrevNotchSamples[ch][i][3] * m_NotchCoeffs[i][5];
+			m_PrevNotchSamples[ch][i][1] = m_PrevNotchSamples[ch][i][0];
+			m_PrevNotchSamples[ch][i][0] = in;
+			m_PrevNotchSamples[ch][i][3] = m_PrevNotchSamples[ch][i][2];
+			m_PrevNotchSamples[ch][i][2] = tmp;
+			in = tmp;
+		}
+	}
 	return in;
 }
 

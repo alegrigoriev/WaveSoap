@@ -1,7 +1,6 @@
 Known problems and tasks:
 
-Save peak info for compressed files, too
-Add "phase corrected" stereo to mono conversion
+Save peak info for compressed files, too, but recalculate it when loading
 Test "reload compressed file" dialogs
 Add options dialog
 Put zoom buttons in the static fields in the view
@@ -26,6 +25,7 @@ Support CFSTR_FILECONTENTS clipboard format
 Save current workspace
 Use secondary stream to keep peak info
 Support filenames with stream extension
+Add "phase corrected" stereo to mono conversion
 Add VU meter for playback
 Add Application Close Pending flag
 Make tooltips in wave view and other important views
@@ -46,6 +46,8 @@ Add splash screen
 Make recording from Internet stream
 
 Problems:
+in 1:1 scale, need to invalidate 1 more row
+in FFT view, sound modification doesn't invalidate enough FFT data
 Paste operation doesn't check if sampling rate is the same. Add dialog to resample
 Click on outline view moves the wave view a bit after the button released
 After file length increased to 1 sample from 0, scroll bar set to wrond scale
