@@ -1,25 +1,27 @@
 TODO tasks:
 
-Remove "Arrange Icons" from the window menu
+When starting playing selection, bring the playback cursor into view
+
+Put "Save As" and "Save Copy As" files to file MRU
 Don't ask to replace the file if Save As with the same name
 Add "Retry" to error dialog boxes
-Save CD grabbing dialog position
-Save CD grabbing selected format (WAV/MP3/WMA)
 Enter WMA file attributes (title, author, etc)
 Enter MP3 file attributes
 Make WSPK file hidden (optional)
-Put "Save As" files to file MRU
+
 Support CD grabbing under Win9x
 If CD recording not supported, SET SPEED WriteSpeed set to zero
 Restore CD speed to max rather than current!
 Set speed doesn't work on Goldstar CDRW	 SetSpeed returned sense 5/24
 Process Loss Of Streaming error
+
 Make option to ask for file reopen
 Read CD text
 Open CDA files
 Raw file: make format tag and save attributes
 Handle "Compatible/All" formats for MP3, WMA
 Set icons to all resizable dialogs (for XP)
+
 Load sound from AVI
 Add options dialog
 In outline view, change mouse cursor over caret and view and selection boundaries
@@ -66,7 +68,10 @@ Find which alignment better for edit box labels: left or right
 
 Problems:
 
-Save As fails if the file replaced is is read-only
+Wrong dialog when saving/loading filter file.
+
+File resample doesn't tell about overflow
+Save As fails if the file replaced is read-only
 doesn't show caret on the outline (short file, all in view)
 Undo/Redo doesn't update FFT
 Crash with old wspk file?
@@ -86,6 +91,12 @@ samples with 32767, -32768 are not visible
 Log Off query doesn't close the active dialog. Recursion is possible. Make sure to check after Cancel
 
 Fixed:
+WMA vertical ruler is not updated
+Cache buffers discarded too early.
+File outline doesn't scale properly
+Cache prefetch goes way ahead
+Playback position notification does invalidate. playback cursor is not moving.
+Resampling AND mono->stereo change breaks the conversion!
 Non-direct file: Save As with compression and the same name failed
 "Operate Directly On the sound file" truncated
 If there is a selection, Ctrl+Shift+End, Ctrl+Shift+Home doesn't work as expected
@@ -109,6 +120,8 @@ No Disk In Drive has a checkmark
 CD list combo height too low
 
 Deferred:
+32 kbps file reading does too much read ahead (1.wma)
+
 Add context menu to track list (check/uncheck all/selected)
 Add check/uncheck icons to the header
 Move WMA error dialog to PostRetire, all initialization to Init()
@@ -120,6 +133,10 @@ Save As dialog is not centered first time (comdlg problem?)
 ??? When time/seconds format is set for status bar, MM:SS is actually shown
 
 Done:
+Now recognizes ASF files as Windows Media
+Save CD grabbing selected format (WAV/MP3/WMA) and bitrate
+Save CD grabbing dialog position
+Remove "Arrange Icons" from the window menu
 If main window is minimized, save its state before minimization
 When Open/Save dialog is resized, resize/move the controls
 Handle "Save from CD immediately" option
@@ -244,8 +261,8 @@ LIST INFO
     INAM    Name
     ISRC    Source supplier
     ITCH    Digitizer
-    ISBJ    Subjest
-    ISRF    Digitiization source
+    ISBJ    Subject
+    ISRF    Digitization source
 cue     Cue sheet
 LIST adtl
     ltxt
