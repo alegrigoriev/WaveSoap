@@ -79,3 +79,47 @@ private:
 	CDC * const m_pDC;
 	CPalette * m_pSavedPalette;
 };
+
+class CPushDcMapMode
+{
+public:
+	CPushDcMapMode(CDC * pDC, int MapMode)
+		: m_pDC(pDC), m_SavedMapMode(pDC->SetMapMode(MapMode))
+	{
+	}
+
+	CPushDcMapMode(CDC & DC, int MapMode)
+		: m_pDC( & DC), m_SavedMapMode(DC.SetMapMode(MapMode))
+	{
+	}
+
+	~CPushDcMapMode()
+	{
+		m_pDC->SetMapMode(m_SavedMapMode);
+	}
+private:
+	CDC * const m_pDC;
+	int m_SavedMapMode;
+};
+
+class CPushDcRop2
+{
+public:
+	CPushDcRop2(CDC * pDC, int DrawMode)
+		: m_pDC(pDC), m_SavedMode(pDC->SetROP2(DrawMode))
+	{
+	}
+
+	CPushDcRop2(CDC & DC, int DrawMode)
+		: m_pDC( & DC), m_SavedMode(DC.SetROP2(DrawMode))
+	{
+	}
+
+	~CPushDcRop2()
+	{
+		m_pDC->SetROP2(m_SavedMode);
+	}
+private:
+	CDC * const m_pDC;
+	int m_SavedMode;
+};

@@ -431,7 +431,8 @@ void CFilterGraphWnd::OnPaint()
 
 	GetClientRect( & cr);
 	dc.GetClipBox( & ur);
-	dc.SetMapMode(MM_TEXT);
+
+	CPushDcMapMode mode(dc, MM_TEXT);
 	CGdiObjectSave OldPenDc(dc, dc.SelectStockObject(BLACK_PEN));
 
 	ur.left -= 2;

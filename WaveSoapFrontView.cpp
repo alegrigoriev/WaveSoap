@@ -622,11 +622,12 @@ void CWaveSoapFrontView::DrawPlaybackCursor(CDC * pDC, SAMPLE_INDEX Sample, CHAN
 		}
 		pDrawDC->ExcludeUpdateRgn(this);
 	}
-	int OldMap = pDrawDC->SetMapMode(MM_TEXT);
-	int OldRop = pDrawDC->SetROP2(R2_XORPEN);
 
 	try
 	{
+		CPushDcMapMode mode(pDrawDC, MM_TEXT);
+		CPushDcRop2(pDrawDC, R2_XORPEN);
+
 		CPen pen(PS_SOLID, 0, 0xFFFFFF);
 
 		CGdiObjectSaveT<CPen> OldPen(pDrawDC, pDrawDC->SelectObject( & pen));
@@ -650,9 +651,6 @@ void CWaveSoapFrontView::DrawPlaybackCursor(CDC * pDC, SAMPLE_INDEX Sample, CHAN
 	{
 		e->Delete();
 	}
-
-	pDrawDC->SetROP2(OldRop);
-	pDrawDC->SetMapMode(OldMap);
 
 	if (NULL == pDC)
 	{
