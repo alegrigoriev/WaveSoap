@@ -25,11 +25,19 @@ IMPLEMENT_DYNCREATE(CChildFrame, CMDIChildWnd)
 
 BEGIN_MESSAGE_MAP(CChildFrame, CMDIChildWnd)
 	//{{AFX_MSG_MAP(CChildFrame)
+	ON_WM_CREATE()
 	//}}AFX_MSG_MAP
 END_MESSAGE_MAP()
 
 /////////////////////////////////////////////////////////////////////////////
 // CChildFrame construction/destruction
+
+static UINT indicators[] =
+{
+	ID_SEPARATOR,           // status line indicator
+	ID_INDICATOR_DUMMY,
+	ID_INDICATOR_DUMMY,
+};
 
 CChildFrame::CChildFrame()
 {
@@ -328,14 +336,6 @@ void CWaveMDIChildClient::RecalcLayout()
 		TRACE0("Warning: DeferWindowPos failed - low system resources.\n");
 }
 
-void CChildFrame::RecalcLayout(BOOL bNotify)
-{
-	// TODO: Add your specialized code here and/or call the base class
-	CRect r, r1, dr;
-	GetClientRect( & r);
-	m_wClient.MoveWindow( & r);
-}
-
 void CChildFrame::OnUpdateFrameTitle(BOOL bAddToTitle)
 {
 	// update our parent window first
@@ -621,4 +621,28 @@ void CWaveMDIChildClient::OnHScroll(UINT nSBCode, UINT nPos, CScrollBar* pScroll
 							MAKELONG(nSBCode, nPos), (LPARAM)pScrollBar->m_hWnd);
 	}
 
+}
+
+int CChildFrame::OnCreate(LPCREATESTRUCT lpCreateStruct)
+{
+	if (CMDIChildWnd::OnCreate(lpCreateStruct) == -1)
+		return -1;
+
+	if (!m_wndStatusBar.Create(this) ||
+		!m_wndStatusBar.SetIndicators(indicators,
+									sizeof(indicators)/sizeof(UINT)))
+	{
+		TRACE0("Failed to create status bar\n");
+		return -1;      // fail to create
+	}
+	int width;
+	unsigned id, style;
+	// to avoid setting width to the string length,
+	// the status bar is created with dummy IDs
+	m_wndStatusBar.GetPaneInfo(1, id, style, width);
+	m_wndStatusBar.SetPaneInfo(1, ID_INDICATOR_CURRENT_POS, style, width);
+	m_wndStatusBar.SetPaneInfo(2, ID_INDICATOR_SELECTION_LENGTH, style, width);
+	m_wndStatusBar.EnableToolTips();
+
+	return 0;
 }
