@@ -94,27 +94,29 @@ void CResizableDialog::OnSize(UINT nType, int cx, int cy)
 			::GetWindowRect(hWnd, cr);
 			ScreenToClient(cr);
 
-			if ( m_pResizeItems[i].flags & CenterHorizontally)
+			if (m_pResizeItems[i].flags & CenterHorizontally)
 			{
+				cr.right += (dx + (cx & 1)) >> 1;
+				cr.left += (dx + (cx & 1)) >> 1;
 			}
 			else
 			{
-				if ( m_pResizeItems[i].flags & (ExpandRight | MoveRight))
+				if (m_pResizeItems[i].flags & (ExpandRight | MoveRight))
 				{
 					cr.right += dx;
 				}
-				if ( m_pResizeItems[i].flags & MoveRight)
+				if (m_pResizeItems[i].flags & MoveRight)
 				{
 					cr.left += dx;
 				}
 			}
 
-			if ( m_pResizeItems[i].flags & (ExpandDown | MoveDown))
+			if (m_pResizeItems[i].flags & (ExpandDown | MoveDown))
 			{
 				cr.bottom += dy;
 			}
 
-			if ( m_pResizeItems[i].flags & MoveDown)
+			if (m_pResizeItems[i].flags & MoveDown)
 			{
 				cr.top += dy;
 			}
