@@ -147,7 +147,7 @@ public:
 	CComboBox	m_DrivesCombo;
 	CListCtrl	m_lbTracks;
 	int		m_RadioAssignAttributes;
-	int		m_RadioStoreImmediately;
+	int		m_RadioOpenInEditor;
 	CString	m_sSaveFolder;
 	CString	m_sAlbum;
 	CString	m_sArtist;
@@ -260,6 +260,7 @@ protected:
 	afx_msg void OnRadioMp3Format();
 	afx_msg void OnRadioWavFormat();
 	afx_msg void OnButtonEject();
+	afx_msg void OnSysColorChange();
 	//}}AFX_MSG
 	void OnMetricsChange();
 	afx_msg LRESULT OnDeviceChange(UINT, DWORD);

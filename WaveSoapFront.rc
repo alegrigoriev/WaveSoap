@@ -872,7 +872,7 @@ CAPTION "About WaveSoap"
 FONT 8, "MS Sans Serif"
 BEGIN
     ICON            IDR_MAINFRAME,IDC_STATIC,11,17,20,20
-    CTEXT           "WaveSoap Version 0.599.2 beta",IDC_STATIC_VERSION,58,8,
+    CTEXT           "WaveSoap Version 0.599.3 beta",IDC_STATIC_VERSION,58,8,
                     110,10,SS_NOPREFIX
     CTEXT           "Copyright (C) Alexander Grigoriev, 2000-2001",
                     IDC_STATIC,41,27,145,12
@@ -1488,8 +1488,8 @@ BEGIN
     CONTROL         "Open files in the editor first",
                     IDC_RADIO_LOAD_FOR_EDITING,"Button",BS_AUTORADIOBUTTON,
                     141,256,97,10
-    LTEXT           "Format:",IDC_STATIC_BITRATE,11,287,36,8
-    COMBOBOX        IDC_COMBO_BITRATE,51,285,174,48,CBS_DROPDOWNLIST | 
+    LTEXT           "Format:",IDC_STATIC_BITRATE,11,287,34,8
+    COMBOBOX        IDC_COMBO_BITRATE,47,285,194,48,CBS_DROPDOWNLIST | 
                     WS_VSCROLL | WS_TABSTOP
     DEFPUSHBUTTON   "OK",IDOK,256,252,50,14,WS_GROUP
     PUSHBUTTON      "Cancel",IDCANCEL,256,270,50,14
@@ -2186,8 +2186,8 @@ END
 //
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 0,59,9,2
- PRODUCTVERSION 0,59,9,2
+ FILEVERSION 0,59,9,3
+ PRODUCTVERSION 0,59,9,3
  FILEFLAGSMASK 0x3fL
 #ifdef _DEBUG
  FILEFLAGS 0x9L
@@ -2205,14 +2205,14 @@ BEGIN
             VALUE "Comments", "\0"
             VALUE "CompanyName", "Alexandre Grigoriev\0"
             VALUE "FileDescription", "WaveSoap - Sound Cleaning And Editing Application\0"
-            VALUE "FileVersion", "0, 59, 9, 2\0"
+            VALUE "FileVersion", "0, 59, 9, 3\0"
             VALUE "InternalName", "WaveSoap\0"
             VALUE "LegalCopyright", "Copyright (C) 2000-2001 Alexandre Grigoriev\0"
             VALUE "LegalTrademarks", "\0"
             VALUE "OriginalFilename", "WaveSoap.EXE\0"
-            VALUE "PrivateBuild", "Beta 0.599.2\0"
+            VALUE "PrivateBuild", "Beta 0.599.3\0"
             VALUE "ProductName", "WaveSoap Application\0"
-            VALUE "ProductVersion", "0, 59, 9, 2\0"
+            VALUE "ProductVersion", "0, 59, 9, 3\0"
             VALUE "SpecialBuild", "\0"
         END
     END

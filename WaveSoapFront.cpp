@@ -2170,6 +2170,7 @@ void CWaveSoapFrontApp::OnToolsCdgrab()
 			delete pContexts[0];    // will delete all of them
 			return;
 		}
+		pContext->m_bSaveImmediately = ! dlg.m_RadioOpenInEditor;
 	}
 
 	if (n > 0)

@@ -1,9 +1,8 @@
 Known problems and tasks:
 
-For WMA format: When saving from non-WMA file, remember selected bitrate, restore
-For MP3 format: When saving from non-MP3 file, remember selected bitrate, restore
-Raw file: make format tag and save attributes
 Add file format selection for CD grabbing
+Handle "Compatible/All" formats for MP3, WMA
+Raw file: make format tag and save attributes
 When PCM is selected for CD grabbing, show default format
 When showing a dialog for a document, make the doc active, then restore the previous one.
 If CD recording not supported, SET SPEED WriteSpeed set to zero
@@ -62,7 +61,6 @@ Make recording from Internet stream
 
 Problems:
 
-FFT view seems to read much more than necessary (prefetch?)
 During playback, outline is invalidated. (??)
 WinXP doesn't have CDRAL
 Multisession disk shows only begin of tracks. Read the whole structure.
@@ -77,6 +75,8 @@ samples with 32767, -32768 are not visible
 Log Off query doesn't close the active dialog. Recursion is possible. Make sure to check after Cancel
 
 Fixed:
+Path change doesn't update OK
+checkmark draw with gray background - all black drawn
 Wrong calculation of click position in outline view
 Unnecessary selection after click in outline view
 READ CD SCSI command doesn't work for old NEC drive.
@@ -105,6 +105,8 @@ Save As dialog is not centered first time (comdlg problem?)
 ??? When time/seconds format is set for status bar, MM:SS is actually shown
 
 Done:
+For WMA format: When saving from non-WMA file, remember selected bitrate, restore
+For MP3 format: When saving from non-MP3 file, remember selected bitrate, restore
 Include PCM format always
 If there is no compatible PCM format, add one
 Enumerate format tags (filter by tag)

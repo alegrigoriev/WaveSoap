@@ -325,6 +325,7 @@ public:
 		m_CdDataOffset(0),
 		m_pNextTrackContext(NULL),
 		m_TargetFileType(0),
+		m_bSaveImmediately(FALSE),
 		m_CdBufferSize(0)
 	{
 		m_GetBufferFlags = CDirectFile::GetBufferWriteOnly | CDirectFile::GetBufferNoPrefetch;
@@ -341,6 +342,7 @@ public:
 	CCdReadingContext * m_pNextTrackContext;
 	int m_RequiredReadSpeed;
 	int m_OriginalReadSpeed;
+	BOOL m_bSaveImmediately;
 protected:
 	CCdDrive m_Drive;
 	CdAddressMSF m_CdAddress;
