@@ -196,6 +196,14 @@ struct CWaveFormat
 	}
 };
 
+inline bool operator ==(WAVEFORMATEX const & wf1, WAVEFORMATEX const & wf2)
+{
+	return wf1.cbSize == wf2.cbSize
+			&& 0 == memcmp( & wf1, & wf2,
+							(WAVE_FORMAT_PCM == wf1.wFormatTag) ?
+								sizeof (PCMWAVEFORMAT) : sizeof (WAVEFORMATEX) + wf1.cbSize);
+}
+
 class CWaveDevice
 {
 public:
