@@ -1745,3 +1745,29 @@ void CCdGrabbingDialog::OnSysColorChange()
 
 	CreateImageList();
 }
+
+CMarkerRegionDialog::CMarkerRegionDialog(struct WAVEREGIONINFO * pRegionInfo, SAMPLE_INDEX CaretPos,
+										CWaveFile & WaveFile, int TimeFormat,
+										CWnd* pParent)
+	: BaseClass(pRegionInfo->Sample, pRegionInfo->Sample + pRegionInfo->Length,
+				CaretPos, ALL_CHANNELS, WaveFile, TimeFormat, FALSE,
+				IDD, pParent)
+	, m_pRegionData(pRegionInfo)
+{
+}
+
+BEGIN_MESSAGE_MAP(CMarkerRegionDialog, BaseClass)
+//{{AFX_MSG_MAP(CMarkerRegionDialog)
+	//}}AFX_MSG_MAP
+	//ON_CBN_SELCHANGE(IDC_COMBO_TIME_FORMAT, OnSelchangeComboTimeFormat)
+	//ON_CBN_KILLFOCUS(IDC_COMBO_END, OnKillfocusEditEnd)
+	//ON_EN_KILLFOCUS(IDC_EDIT_LENGTH, OnKillfocusEditLength)
+	//ON_CBN_KILLFOCUS(IDC_COMBO_START, OnKillfocusEditStart)
+	//ON_CBN_SELCHANGE(IDC_COMBO_SELECTION, OnSelchangeComboSelection)
+END_MESSAGE_MAP()
+
+void CMarkerRegionDialog::DoDataExchange(CDataExchange* pDX)
+{
+	BaseClass::DoDataExchange(pDX);
+}
+
