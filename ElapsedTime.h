@@ -51,6 +51,26 @@ struct CElapsedTimeDummy
 	}
 };
 
+class Win32TimeTraits
+{
+public:
+	typedef DWORD TimeType;
+	typedef DWORD TimeDifferenceType;
+	static DWORD ToMs(TimeDifferenceType diff)
+	{
+		return diff;
+	}
+	static DWORD ToTenthMs(TimeDifferenceType diff)
+	{
+		return diff * 10;
+	}
+	static TimeType GetTime()
+	{
+		return GetTickCount();
+	}
+
+};
+
 class MmTimeTraits
 {
 public:
@@ -109,6 +129,7 @@ public:
 };
 }
 
+typedef ElapsedTime::CElapsedTimeT<ElapsedTime::Win32TimeTraits> ElapsedTimeStamp;
 typedef ElapsedTime::CElapsedTimeT<ElapsedTime::MmTimeTraits> ElapsedTimeStampMm;
 typedef ElapsedTime::CElapsedTimeT<ElapsedTime::PerfCounterTimeTraits> ElapsedTimeStampPerf;
 
