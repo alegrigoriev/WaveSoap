@@ -329,6 +329,11 @@ BOOL CDirectFile::File::SetSourceFile(File * pOriginalFile)
 		pSourceFile->Close(0);
 	}
 	pSourceFile = pOriginalFile;
+	if (NULL != pOriginalFile
+		&& SetFileLength(pOriginalFile->FileLength))
+	{
+		UseSourceFileLength = pOriginalFile->FileLength;
+	}
 	return TRUE;
 }
 
@@ -1718,7 +1723,7 @@ void CDirectFile::CDirectFileCache::ReadDataBuffer(BufferHeader * pBuf, DWORD Ma
 	{
 		return;
 	}
-	int OldPriority = GetThreadPriority(GetCurrentThread());
+	int OldPriority;
 	{
 		CSimpleCriticalSectionLock lock(pBuf->pFile->m_FileLock);
 		// the operation in progress might change the mask
@@ -1760,11 +1765,17 @@ void CDirectFile::CDirectFileCache::ReadDataBuffer(BufferHeader * pBuf, DWORD Ma
 				pFile->m_pWrittenMask[WrittenMaskOffset] |= 1 << (pBuf->PositionKey & 7);
 
 				File * pSourceFile = pFile->pSourceFile;
-				if (NULL != pSourceFile)
+				DWORD BytesRead = 0;
+				int ToZero = 0x10000;
+				if (NULL != pSourceFile
+					&& StartFilePtr < pFile->UseSourceFileLength)
 				{
 					// read the data from the source file
-					DWORD BytesRead = 0;
 					int ToRead = 0x10000;
+					if (pFile->UseSourceFileLength - StartFilePtr < 0x10000)
+					{
+						ToRead = int(pFile->UseSourceFileLength) - int(StartFilePtr);
+					}
 
 					CSimpleCriticalSectionLock lock(pSourceFile->m_FileLock);
 					if (StartFilePtr != pSourceFile->FilePointer)
@@ -1776,24 +1787,19 @@ void CDirectFile::CDirectFileCache::ReadDataBuffer(BufferHeader * pBuf, DWORD Ma
 					TRACE("ReadFile(%08x, pos=0x%08X, bytes=%X)\n", pFile->hFile, long(StartFilePtr), ToRead);
 					ReadFile(pSourceFile->hFile, buf, ToRead, & BytesRead, NULL);
 					pSourceFile->FilePointer += BytesRead;
-					buf += BytesRead;
-					ToRead -= BytesRead;
-					if (ToRead)
-					{
-						memset(buf, 0, ToRead);
-					}
+					ToZero -= BytesRead;
 				}
-				else
+
+				if (ToZero)
 				{
-					memset(pBuf->pBuf, 0, 0x10000);
+					memset(buf + BytesRead, 0, ToZero);
 				}
 
 				pBuf->ReadMask = 0xFFFFFFFF;
-				if (0 == pBuf->DirtyMask)
+				if (0 == InterlockedExchange( & reinterpret_cast<long &>(pBuf->DirtyMask), 0xFFFFFFFF))
 				{
 					InterlockedIncrement((PLONG) & pFile->DirtyBuffersCount);
 				}
-				pBuf->DirtyMask = 0xFFFFFFFF;
 				return;
 			}
 		}
@@ -1854,6 +1860,7 @@ void CDirectFile::CDirectFileCache::ReadDataBuffer(BufferHeader * pBuf, DWORD Ma
 			InterlockedDecrement((PLONG) & pFile->DirtyBuffersCount);
 		}
 		OldPriority = ::GetThreadPriority(GetCurrentThread());
+		// yield execution to the waiting thread by lowering priority
 		::SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_BELOW_NORMAL);
 	}
 	::SetThreadPriority(GetCurrentThread(), OldPriority);
@@ -2204,6 +2211,8 @@ BOOL CDirectFile::File::SetFileLength(LONGLONG NewLength)
 	if (NewLength < FileLength)
 	{
 		Flush();
+		UseSourceFileLength = NewLength;
+		// todo: clear written mask
 	}
 	else if (NewLength > FileLength)
 	{

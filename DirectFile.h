@@ -329,6 +329,7 @@ protected:
 		// pointer to the source file. The information is copied from there
 		// when it is read first time.
 		File * pSourceFile;
+		LONGLONG UseSourceFileLength;
 		LONGLONG FilePointer;
 		LONGLONG RealFileLength;
 		LONGLONG FileLength;
@@ -382,6 +383,7 @@ protected:
 			m_pWrittenMask(NULL),
 			WrittenMaskSize(0),
 			pSourceFile(NULL),
+			UseSourceFileLength(0),
 			m_pCommonData(NULL),
 			m_CommonDataSize(0),
 			pPrev(NULL),
