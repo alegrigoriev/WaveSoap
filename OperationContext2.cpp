@@ -1342,6 +1342,16 @@ BOOL CInsertSilenceContext::InitExpand(CWaveFile & DstFile,
 	return TRUE;
 }
 
+/////////////////  CCommitFileSaveContext
+CCommitFileSaveContext::CCommitFileSaveContext(CWaveSoapFrontDoc * pDoc,
+												LPCTSTR StatusString, CWaveFile & WavFile, int flags, LPCTSTR TargetName)
+	: COperationContext(pDoc, StatusString, OperationContextDiskIntensive)
+	, m_FileSaveFlags(flags)
+	, m_TargetName(TargetName)
+	, m_File(WavFile)
+{
+}
+
 BOOL CCommitFileSaveContext::OperationProc()
 {
 	if (m_Flags & OperationContextStopRequested)
@@ -1349,7 +1359,7 @@ BOOL CCommitFileSaveContext::OperationProc()
 		m_Flags |= OperationContextStop;
 		return TRUE;
 	}
-	if (m_DstFile.InitializeTheRestOfFile(500, & m_PercentCompleted))
+	if (m_File.InitializeTheRestOfFile(500, & m_PercentCompleted))
 	{
 		m_Flags |= OperationContextFinished;
 	}
@@ -1358,7 +1368,7 @@ BOOL CCommitFileSaveContext::OperationProc()
 
 void CCommitFileSaveContext::PostRetire(BOOL bChildContext)
 {
-	m_DstFile.Close();
+	m_File.Close();
 	if ((m_Flags & OperationContextFinished)
 		&& pDocument->PostCommitFileSave(m_FileSaveFlags, m_TargetName))
 	{
@@ -1928,12 +1938,13 @@ CCdReadingContext::~CCdReadingContext()
 	delete m_pNextTrackContext;
 }
 
+/////////////// CReplaceFileContext ////////////////
 CReplaceFileContext::CReplaceFileContext(CWaveSoapFrontDoc * pDoc, LPCTSTR OperationName,
 										CWaveFile & NewFile, bool bNewDirectMode)
-	: BaseClass(pDoc, OperationName, OperationContextSynchronous, OperationName),
-	m_bNewDirectMode(bNewDirectMode)
+	: BaseClass(pDoc, OperationName, OperationContextSynchronous, OperationName)
+	, m_File(NewFile)
+	, m_bNewDirectMode(bNewDirectMode)
 {
-	m_SrcFile = NewFile;
 }
 
 BOOL CReplaceFileContext::CreateUndo(BOOL IsRedo)
@@ -1951,7 +1962,7 @@ BOOL CReplaceFileContext::CreateUndo(BOOL IsRedo)
 
 BOOL CReplaceFileContext::OperationProc()
 {
-	pDocument->m_WavFile = m_SrcFile;
+	pDocument->m_WavFile = m_File;
 
 	NUMBER_OF_SAMPLES nSamples = pDocument->WaveFileSamples();
 
@@ -1965,6 +1976,7 @@ BOOL CReplaceFileContext::OperationProc()
 	return TRUE;
 }
 
+///////////// CReplaceFormatContext //////////////////
 CReplaceFormatContext::CReplaceFormatContext(CWaveSoapFrontDoc * pDoc, LPCTSTR OperationName,
 											WAVEFORMATEX const * pNewFormat)
 	: BaseClass(pDoc, OperationName, OperationContextSynchronous, OperationName),

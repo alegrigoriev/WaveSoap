@@ -47,7 +47,10 @@ public:
 	virtual void PostRetire(BOOL bChildContext = FALSE);
 	virtual void Execute();
 	virtual void ExecuteSynch();
-	virtual LONGLONG GetTempDataSize() const;
+	virtual LONGLONG GetTempDataSize() const
+	{
+		return 0;
+	}
 
 	// The function returns UNDO context to store in the document list after
 	// the main operation is completed
@@ -79,8 +82,7 @@ public:
 
 	virtual bool KeepsPermanentFileReference() const
 	{
-		return m_SrcFile.IsOpen()
-				&& ! m_SrcFile.IsTemporaryFile();
+		return false;
 	}
 
 	virtual CString GetStatusString();
@@ -95,25 +97,10 @@ public:
 	int m_PercentCompleted;
 	ListHead<COperationContext> m_UndoChain;
 
-	class CCopyContext * m_pUndoContext;
+	class CCopyUndoContext * m_pUndoContext;
 
 	int m_GetBufferFlags;
 	int m_ReturnBufferFlags;
-	int m_NumberOfForwardPasses;
-	int m_NumberOfBackwardPasses;
-	int m_CurrentPass;
-
-	CWaveFile m_DstFile;
-	CHANNEL_MASK m_DstChan;
-	SAMPLE_POSITION m_DstStart;
-	SAMPLE_POSITION m_DstEnd;
-	SAMPLE_POSITION m_DstPos;
-
-	CWaveFile m_SrcFile;
-	CHANNEL_MASK m_SrcChan;
-	SAMPLE_POSITION m_SrcStart;
-	SAMPLE_POSITION m_SrcEnd;
-	SAMPLE_POSITION m_SrcPos;
 
 	bool m_bClipped;
 	double m_MaxClipped;
@@ -180,12 +167,6 @@ public:
 		return m_MaxClipped;
 	}
 
-	BOOL InitDestination(CWaveFile & DstFile, SAMPLE_INDEX StartSample, SAMPLE_INDEX EndSample,
-						CHANNEL_MASK chan, BOOL NeedUndo);
-	void InitSource(CWaveFile & SrcFile, SAMPLE_INDEX StartSample,
-					SAMPLE_INDEX EndSample, CHANNEL_MASK chan);
-
-	void UpdateCompletedPercent();
 	void UpdateCompletedPercent(SAMPLE_INDEX CurrentSample,
 								SAMPLE_INDEX StartSample, SAMPLE_INDEX EndSample);
 	void UpdateCompletedPercent(SAMPLE_POSITION CurrentPos,
@@ -214,13 +195,49 @@ public:
 
 };
 
-class CTwoFilesOperation : public COperationContext
+class COneFileOperation : public COperationContext
 {
 	typedef COperationContext BaseClass;
+	typedef COneFileOperation ThisClass;
+public:
+	COneFileOperation(class CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString,
+					ULONG Flags, LPCTSTR OperationName = _T(""));
+
+	virtual bool KeepsPermanentFileReference() const;
+	virtual LONGLONG GetTempDataSize() const;
+
+	void InitSource(CWaveFile & SrcFile, SAMPLE_INDEX StartSample,
+					SAMPLE_INDEX EndSample, CHANNEL_MASK chan);
+
+	using BaseClass::UpdateCompletedPercent;
+	// add another overload
+	void UpdateCompletedPercent();
+
+	CWaveFile m_SrcFile;
+	CHANNEL_MASK m_SrcChan;
+	SAMPLE_POSITION m_SrcStart;
+	SAMPLE_POSITION m_SrcEnd;
+	SAMPLE_POSITION m_SrcPos;
+};
+
+class CTwoFilesOperation : public COneFileOperation
+{
+	typedef COneFileOperation BaseClass;
 	typedef CTwoFilesOperation ThisClass;
 public:
 	CTwoFilesOperation(class CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString,
 						ULONG Flags, LPCTSTR OperationName = _T(""));
+
+	virtual LONGLONG GetTempDataSize() const;
+	BOOL InitDestination(CWaveFile & DstFile, SAMPLE_INDEX StartSample, SAMPLE_INDEX EndSample,
+						CHANNEL_MASK chan, BOOL NeedUndo);
+
+	CWaveFile m_DstFile;
+	CHANNEL_MASK m_DstChan;
+	SAMPLE_POSITION m_DstStart;
+	SAMPLE_POSITION m_DstEnd;
+	SAMPLE_POSITION m_DstPos;
+
 };
 
 class CThroughProcessOperation : public CTwoFilesOperation
@@ -231,14 +248,21 @@ public:
 	CThroughProcessOperation(class CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString,
 							ULONG Flags, LPCTSTR OperationName = _T(""))
 		: BaseClass(pDoc, StatusString, Flags, OperationName)
+		, m_NumberOfForwardPasses(1)
+		, m_NumberOfBackwardPasses(0)
+		, m_CurrentPass(1)
 	{
 	}
+
 	typedef std::auto_ptr<ThisClass> auto_ptr;
 
 	virtual BOOL Init() { return InitPass(1); }
 	virtual BOOL InitPass(int nPass) { return TRUE; }
 	virtual BOOL OperationProc();
 	virtual BOOL ProcessBuffer(void * buf, size_t len, SAMPLE_POSITION offset, BOOL bBackward = FALSE) = 0;
+	int m_NumberOfForwardPasses;
+	int m_NumberOfBackwardPasses;
+	int m_CurrentPass;
 };
 
 // additional custom flags for the contexts
@@ -282,10 +306,10 @@ protected:
 	ListHead<COperationContext> m_DoneList;
 };
 
-class CScanPeaksContext : public COperationContext
+class CScanPeaksContext : public COneFileOperation
 {
 	typedef CScanPeaksContext ThisClass;
-	typedef COperationContext BaseClass;
+	typedef COneFileOperation BaseClass;
 public:
 	typedef std::auto_ptr<ThisClass> auto_ptr;
 
@@ -293,7 +317,7 @@ public:
 					CWaveFile & WavFile,
 					CWaveFile & OriginalFile,
 					BOOL bSavePeaks)
-		: COperationContext(pDoc, _T("Scanning the file for peaks..."), OperationContextDiskIntensive, _T("Peak Scan"))
+		: BaseClass(pDoc, _T("Scanning the file for peaks..."), OperationContextDiskIntensive, _T("Peak Scan"))
 		, m_GranuleSize(WavFile.SampleSize() * WavFile.GetPeakGranularity())
 		, m_bSavePeakFile(bSavePeaks)
 	{
@@ -357,10 +381,10 @@ public:
 	virtual BOOL OperationProc();
 };
 
-class CCopyContext : public COperationContext
+class CCopyContext : public CTwoFilesOperation
 {
 	typedef CCopyContext ThisClass;
-	typedef COperationContext BaseClass;
+	typedef CTwoFilesOperation BaseClass;
 
 public:
 	typedef std::auto_ptr<ThisClass> auto_ptr;
@@ -374,17 +398,35 @@ public:
 				CWaveFile & SrcFile,
 				SAMPLE_INDEX SrcStartSample, CHANNEL_MASK SrcChannel,
 				NUMBER_OF_SAMPLES SrcDstLength);
+
+	virtual BOOL CreateUndo(BOOL IsRedo = FALSE);
+	//virtual void DeleteUndo();
+
+	virtual BOOL OperationProc();
+};
+
+class CCopyUndoContext : public CCopyContext
+{
+	typedef CCopyUndoContext ThisClass;
+	typedef CCopyContext BaseClass;
+
+public:
+	typedef std::auto_ptr<ThisClass> auto_ptr;
+	CCopyUndoContext(CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString, LPCTSTR OperationName)
+		: BaseClass(pDoc, StatusString, OperationName)
+	{
+	}
+
 	BOOL InitUndoCopy(CWaveFile & SrcFile,
 					SAMPLE_POSITION SaveStartPos, // source file position of data needed to save and restore
 					SAMPLE_POSITION SaveEndPos,
 					CHANNEL_MASK SaveChannel);
 
-	virtual BOOL CreateUndo(BOOL IsRedo = FALSE);
+	//virtual BOOL CreateUndo(BOOL IsRedo = FALSE);
 	virtual BOOL PrepareUndo();
 	virtual void UnprepareUndo();
-	virtual void DeleteUndo();
+	//virtual void DeleteUndo();
 
-	virtual BOOL OperationProc();
 	virtual BOOL SaveUndoData(void const * pBuf, long BufSize,
 							SAMPLE_POSITION Position,
 							NUMBER_OF_CHANNELS NumSrcChannels);
@@ -687,15 +729,17 @@ public:
 	}
 
 	CString m_NewName;
+	CWaveFile m_DstFile;
+	CWaveFile m_SrcFile;
 	DWORD m_NewFileTypeFlags;
 
 	virtual void PostRetire(BOOL bChildContext = FALSE);
 };
 
-class CWmaDecodeContext: public COperationContext
+class CWmaDecodeContext : public CTwoFilesOperation
 {
 	typedef CWmaDecodeContext ThisClass;
-	typedef COperationContext BaseClass;
+	typedef CTwoFilesOperation BaseClass;
 public:
 	typedef std::auto_ptr<ThisClass> auto_ptr;
 	CWmaDecodeContext(CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString,

@@ -240,19 +240,17 @@ class CCommitFileSaveContext :public COperationContext
 	typedef COperationContext BaseClass;
 public:
 	typedef std::auto_ptr<ThisClass> auto_ptr;
+
 	CCommitFileSaveContext(CWaveSoapFrontDoc * pDoc,
-							LPCTSTR StatusString, CWaveFile & WavFile, int flags, LPCTSTR TargetName)
-		: COperationContext(pDoc, StatusString, OperationContextDiskIntensive)
-		, m_FileSaveFlags(flags)
-		, m_TargetName(TargetName)
-	{
-		m_DstFile = WavFile;
-	}
+							LPCTSTR StatusString, CWaveFile & WavFile, int flags, LPCTSTR TargetName);
+
 	int m_FileSaveFlags;
 	CString m_TargetName;
 	//~CCommitFileSaveContext() { }
 	virtual BOOL OperationProc();
 	virtual void PostRetire(BOOL bChildContext = FALSE);
+
+	CWaveFile m_File;
 };
 
 class CEqualizerContext: public CThroughProcessOperation
@@ -274,6 +272,7 @@ public:
 	// 2 channels, 2 prev input samples for each filter
 	// and 2 prev output samples
 	double m_PrevSamples[2][MaxNumberOfEqualizerBands][4];
+
 	virtual BOOL ProcessBuffer(void * buf, size_t len, SAMPLE_POSITION offset, BOOL bBackward = FALSE);
 	virtual BOOL Init();
 	virtual BOOL InitPass(int nPass);
@@ -409,6 +408,7 @@ public:
 	virtual BOOL OperationProc();
 protected:
 	bool m_bNewDirectMode;
+	CWaveFile m_File;
 };
 
 class CReplaceFormatContext : public COperationContext

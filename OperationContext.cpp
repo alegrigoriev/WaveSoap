@@ -48,21 +48,10 @@ COperationContext::COperationContext(class CWaveSoapFrontDoc * pDoc, LPCTSTR Sta
 	m_OperationName(OperationName),
 	sOp(StatusString),
 	m_PercentCompleted(0),
-	m_NumberOfForwardPasses(1),
-	m_NumberOfBackwardPasses(0),
-	m_CurrentPass(1),
 	m_bClipped(false),
 	m_MaxClipped(0.),
 	m_GetBufferFlags(CDirectFile::GetBufferAndPrefetchNext),
 	m_ReturnBufferFlags(0)
-	, m_DstChan(ALL_CHANNELS)
-	, m_DstStart(0)
-	, m_DstEnd(0)
-	, m_DstPos(0)
-	, m_SrcChan(ALL_CHANNELS)
-	, m_SrcStart(0)
-	, m_SrcEnd(0)
-	, m_SrcPos(0)
 	, m_pUndoContext(NULL)
 {
 }
@@ -77,73 +66,12 @@ CString COperationContext::GetStatusString()
 	return sOp;
 }
 
-LONGLONG COperationContext::GetTempDataSize() const
-{
-	LONGLONG sum = 0;
-	if (m_SrcFile.IsOpen()
-		&& m_SrcFile.IsTemporaryFile())
-	{
-		sum = m_SrcFile.GetLength();
-	}
-	if (m_DstFile.IsOpen()
-		&& m_DstFile.IsTemporaryFile()
-		&& m_DstFile.GetFileID() != m_SrcFile.GetFileID())
-	{
-		sum += m_DstFile.GetLength();
-	}
-	return sum;
-}
-
 void COperationContext::DeleteUndo()
 {
 	while ( ! m_UndoChain.IsEmpty())
 	{
 		delete m_UndoChain.RemoveTail();
 	}
-}
-
-BOOL COperationContext::InitDestination(CWaveFile & DstFile, SAMPLE_INDEX StartSample, SAMPLE_INDEX EndSample,
-										CHANNEL_MASK chan, BOOL NeedUndo)
-{
-	m_DstFile = DstFile;
-	// set begin and end offsets
-
-	m_DstPos = m_DstFile.SampleToPosition(StartSample);
-	m_DstStart = m_DstPos;
-
-	m_DstEnd = m_DstFile.SampleToPosition(EndSample);
-
-	m_DstChan = chan;
-	// create undo
-	if (NeedUndo)
-	{
-		CCopyContext::auto_ptr pUndo(new CCopyContext(pDocument, m_OperationName, _T("")));
-
-		if (NULL != pUndo.get()
-			&& pUndo->InitUndoCopy(m_DstFile, m_DstStart,
-									m_DstEnd, m_DstChan))
-		{
-			m_pUndoContext = pUndo.release();
-			m_UndoChain.InsertTail(m_pUndoContext);
-		}
-		else
-		{
-			return FALSE;
-		}
-	}
-	return TRUE;
-}
-
-void COperationContext::InitSource(CWaveFile & SrcFile, SAMPLE_INDEX StartSample,
-									SAMPLE_INDEX EndSample, CHANNEL_MASK SrcChannel)
-{
-	m_SrcFile = SrcFile;
-
-	m_SrcChan = SrcChannel;
-
-	m_SrcStart = m_SrcFile.SampleToPosition(StartSample);
-	m_SrcPos = m_SrcStart;
-	m_SrcEnd = m_SrcFile.SampleToPosition(EndSample);
 }
 
 void COperationContext::UpdateCompletedPercent(SAMPLE_INDEX CurrentSample,
@@ -166,11 +94,191 @@ void COperationContext::UpdateCompletedPercent(SAMPLE_POSITION CurrentPos,
 	}
 }
 
-void COperationContext::UpdateCompletedPercent()
+void COperationContext::Retire()
+{
+	// all context go to retirement list
+	// queue it to the Doc
+	PrintElapsedTime();
+
+	pDocument->m_RetiredList.InsertTail(this);
+}
+
+void COperationContext::PostRetire(BOOL bChildContext)
+{
+	if (WasClipped())
+	{
+		// bring document frame to the top, then return
+		CDocumentPopup pop(pDocument);
+
+		CString s;
+		s.Format(IDS_SOUND_CLIPPED, pDocument->GetTitle(), int(GetMaxClipped() * (100. / 32678)));
+		AfxMessageBox(s, MB_OK | MB_ICONEXCLAMATION);
+	}
+
+	// save undo context
+	CUndoRedoContext * pUndo = GetUndo();
+	if (pUndo)
+	{
+		pDocument->AddUndoRedo(pUndo);
+	}
+
+	delete this;
+}
+
+void COperationContext::Execute()
+{
+	SetBeginTime();
+	pDocument->QueueOperation(this);
+}
+
+void COperationContext::ExecuteSynch()
+{
+	class SynchExec: public MainThreadCall
+	{
+	public:
+		SynchExec(COperationContext * pContext)
+			: m_pContext(pContext)
+		{
+		}
+	protected:
+		virtual LRESULT Exec()
+		{
+			LRESULT result = m_pContext->Init();
+			if (result)
+			{
+				result = m_pContext->OperationProc();
+			}
+			m_pContext->DeInit();
+			return result;
+		}
+		COperationContext * const m_pContext;
+	} call(this);
+
+	call.Call();
+}
+
+CUndoRedoContext * COperationContext::GetUndo()
+{
+	ListHead<COperationContext> * pUndoChain =
+		GetUndoChain();
+	if (NULL == pUndoChain
+		|| pUndoChain->IsEmpty())
+	{
+		return NULL;
+	}
+
+	CUndoRedoContext::auto_ptr pUndo(new CUndoRedoContext(pDocument,
+														m_OperationName));
+
+	while ( ! pUndoChain->IsEmpty())
+	{
+		pUndo->AddContext(pUndoChain->RemoveHead());
+	}
+
+	return pUndo.release();
+}
+
+//////////// COneFileOperation
+COneFileOperation::COneFileOperation(class CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString,
+									ULONG Flags, LPCTSTR OperationName)
+	: BaseClass(pDoc, StatusString, Flags, OperationName)
+	, m_SrcChan(ALL_CHANNELS)
+	, m_SrcStart(0)
+	, m_SrcEnd(0)
+	, m_SrcPos(0)
+{
+}
+
+bool COneFileOperation::KeepsPermanentFileReference() const
+{
+	return m_SrcFile.IsOpen()
+			&& ! m_SrcFile.IsTemporaryFile();
+}
+
+LONGLONG COneFileOperation::GetTempDataSize() const
+{
+	if (m_SrcFile.IsOpen()
+		&& m_SrcFile.IsTemporaryFile())
+	{
+		return m_SrcFile.GetLength();
+	}
+	return 0;
+}
+
+void COneFileOperation::InitSource(CWaveFile & SrcFile, SAMPLE_INDEX StartSample,
+									SAMPLE_INDEX EndSample, CHANNEL_MASK SrcChannel)
+{
+	m_SrcFile = SrcFile;
+
+	m_SrcChan = SrcChannel;
+
+	m_SrcStart = m_SrcFile.SampleToPosition(StartSample);
+	m_SrcPos = m_SrcStart;
+	m_SrcEnd = m_SrcFile.SampleToPosition(EndSample);
+}
+
+void COneFileOperation::UpdateCompletedPercent()
 {
 	UpdateCompletedPercent(m_SrcPos, m_SrcStart, m_SrcEnd);
 }
 
+//////////// CTwoFilesOperation
+CTwoFilesOperation::CTwoFilesOperation(class CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString,
+										ULONG Flags, LPCTSTR OperationName)
+	: BaseClass(pDoc, StatusString, Flags, OperationName)
+	, m_DstChan(ALL_CHANNELS)
+	, m_DstStart(0)
+	, m_DstEnd(0)
+	, m_DstPos(0)
+{
+}
+
+LONGLONG CTwoFilesOperation::GetTempDataSize() const
+{
+	LONGLONG sum = BaseClass::GetTempDataSize();
+
+	if (m_DstFile.IsOpen()
+		&& m_DstFile.IsTemporaryFile()
+		&& m_DstFile.GetFileID() != m_SrcFile.GetFileID())
+	{
+		sum += m_DstFile.GetLength();
+	}
+	return sum;
+}
+
+BOOL CTwoFilesOperation::InitDestination(CWaveFile & DstFile, SAMPLE_INDEX StartSample, SAMPLE_INDEX EndSample,
+										CHANNEL_MASK chan, BOOL NeedUndo)
+{
+	m_DstFile = DstFile;
+	// set begin and end offsets
+
+	m_DstPos = m_DstFile.SampleToPosition(StartSample);
+	m_DstStart = m_DstPos;
+
+	m_DstEnd = m_DstFile.SampleToPosition(EndSample);
+
+	m_DstChan = chan;
+	// create undo
+	if (NeedUndo)
+	{
+		CCopyUndoContext::auto_ptr pUndo(new CCopyUndoContext(pDocument, m_OperationName, _T("")));
+
+		if (NULL != pUndo.get()
+			&& pUndo->InitUndoCopy(m_DstFile, m_DstStart,
+									m_DstEnd, m_DstChan))
+		{
+			m_pUndoContext = pUndo.release();
+			m_UndoChain.InsertTail(m_pUndoContext);
+		}
+		else
+		{
+			return FALSE;
+		}
+	}
+	return TRUE;
+}
+
+/////////// CThroughProcessOperation
 BOOL CThroughProcessOperation::OperationProc()
 {
 	// generic procedure working on one file
@@ -392,90 +500,6 @@ BOOL CThroughProcessOperation::OperationProc()
 		}
 	}
 	return res;
-}
-
-void COperationContext::Retire()
-{
-	// all context go to retirement list
-	// queue it to the Doc
-	PrintElapsedTime();
-
-	pDocument->m_RetiredList.InsertTail(this);
-}
-
-void COperationContext::PostRetire(BOOL bChildContext)
-{
-	if (WasClipped())
-	{
-		// bring document frame to the top, then return
-		CDocumentPopup pop(pDocument);
-
-		CString s;
-		s.Format(IDS_SOUND_CLIPPED, pDocument->GetTitle(), int(GetMaxClipped() * (100. / 32678)));
-		AfxMessageBox(s, MB_OK | MB_ICONEXCLAMATION);
-	}
-
-	// save undo context
-	CUndoRedoContext * pUndo = GetUndo();
-	if (pUndo)
-	{
-		pDocument->AddUndoRedo(pUndo);
-	}
-
-	delete this;
-}
-
-void COperationContext::Execute()
-{
-	SetBeginTime();
-	pDocument->QueueOperation(this);
-}
-
-void COperationContext::ExecuteSynch()
-{
-	class SynchExec: public MainThreadCall
-	{
-	public:
-		SynchExec(COperationContext * pContext)
-			: m_pContext(pContext)
-		{
-		}
-	protected:
-		virtual LRESULT Exec()
-		{
-			LRESULT result = m_pContext->Init();
-			if (result)
-			{
-				result = m_pContext->OperationProc();
-			}
-			m_pContext->DeInit();
-			return result;
-		}
-		COperationContext * const m_pContext;
-	} call(this);
-
-	call.Call();
-}
-
-CUndoRedoContext * COperationContext::GetUndo()
-{
-	ListHead<COperationContext> * pUndoChain =
-		GetUndoChain();
-	if (NULL == pUndoChain
-		|| pUndoChain->IsEmpty())
-	{
-		return NULL;
-	}
-
-	CUndoRedoContext::auto_ptr pUndo(new CUndoRedoContext(pDocument,
-														m_OperationName));
-
-	while ( ! pUndoChain->IsEmpty())
-	{
-		pUndo->AddContext(pUndoChain->RemoveHead());
-	}
-
-	return pUndo.release();
 }
 
 CStagedContext::CStagedContext(CWaveSoapFrontDoc * pDoc,
@@ -888,6 +912,7 @@ BOOL CScanPeaksContext::Init()
 	return TRUE;
 }
 
+#if 0
 BOOL CExpandContext::InitExpand(CWaveFile & File, SAMPLE_INDEX StartSample, NUMBER_OF_SAMPLES Length, CHANNEL_MASK Channel)
 {
 	TRACE("CExpandContext::InitExpand: StartSample=%d, length=%d, Channel=%x\n", StartSample, Length, Channel);
@@ -960,7 +985,9 @@ BOOL CShrinkContext::CreateUndo(BOOL IsRedo)
 	m_pUndoContext = pUndo;
 	return TRUE;
 }
+#endif
 
+#if 0
 BOOL CExpandContext::CreateUndo(BOOL IsRedo)
 {
 	CShrinkContext * pResize = new CShrinkContext(pDocument, _T("File Resize"), _T("File Resize"));
@@ -1426,7 +1453,7 @@ BOOL CExpandContext::OperationProc()
 
 	return TRUE;
 }
-
+#endif
 ///////// CCopyContext
 BOOL CCopyContext::CreateUndo(BOOL IsRedo)
 {
@@ -1436,7 +1463,7 @@ BOOL CCopyContext::CreateUndo(BOOL IsRedo)
 		return TRUE;
 	}
 
-	CCopyContext::auto_ptr pUndo(new CCopyContext(pDocument, _T(""), m_OperationName));
+	CCopyUndoContext::auto_ptr pUndo(new CCopyUndoContext(pDocument, _T(""), m_OperationName));
 
 	if ( ! pUndo->InitUndoCopy(m_DstFile, m_DstStart, m_DstEnd, m_DstChan))
 	{
@@ -1449,7 +1476,7 @@ BOOL CCopyContext::CreateUndo(BOOL IsRedo)
 	return TRUE;
 }
 
-BOOL CCopyContext::PrepareUndo()
+BOOL CCopyUndoContext::PrepareUndo()
 {
 	m_Flags &= ~(OperationContextStop | OperationContextFinished);
 	m_DstFile = pDocument->m_WavFile;
@@ -1458,14 +1485,14 @@ BOOL CCopyContext::PrepareUndo()
 	return TRUE;
 }
 
-void CCopyContext::UnprepareUndo()
+void CCopyUndoContext::UnprepareUndo()
 {
 	m_DstFile.Close();
 }
 
 // check if any part of the (Position, Position + length) range
 // is inside range to be saved
-BOOL CCopyContext::NeedToSaveUndo(SAMPLE_POSITION Position, long length)
+BOOL CCopyUndoContext::NeedToSaveUndo(SAMPLE_POSITION Position, long length)
 {
 	if (length < 0)
 	{
@@ -1578,10 +1605,10 @@ BOOL CCopyContext::InitCopy(CWaveFile & DstFile,
 
 // init pointers and allocate a file to save the undo information
 // is called for a UNDO context when it's created
-BOOL CCopyContext::InitUndoCopy(CWaveFile & SrcFile,
-								SAMPLE_POSITION SaveStartPos, // source file position of data needed to save and restore
-								SAMPLE_POSITION SaveEndPos,
-								CHANNEL_MASK SaveChannel)
+BOOL CCopyUndoContext::InitUndoCopy(CWaveFile & SrcFile,
+									SAMPLE_POSITION SaveStartPos, // source file position of data needed to save and restore
+									SAMPLE_POSITION SaveEndPos,
+									CHANNEL_MASK SaveChannel)
 {
 	// don't keep reference to the file
 	//m_DstFile = SrcFile;
@@ -1623,9 +1650,9 @@ BOOL CCopyContext::InitUndoCopy(CWaveFile & SrcFile,
 // save the data being overwritten by other operation
 // Position is source position. It goes to DstPos of this context.
 // Channels saved from buffer are specified in m_DstChan
-BOOL CCopyContext::SaveUndoData(void const * pBuf, long BufSize,
-								SAMPLE_POSITION Position,
-								NUMBER_OF_CHANNELS NumSrcChannels)
+BOOL CCopyUndoContext::SaveUndoData(void const * pBuf, long BufSize,
+									SAMPLE_POSITION Position,
+									NUMBER_OF_CHANNELS NumSrcChannels)
 {
 	int const SrcSampleSize = m_SrcFile.BitsPerSample() / 8 * NumSrcChannels;
 	NUMBER_OF_SAMPLES Samples = BufSize / SrcSampleSize;
@@ -1907,6 +1934,8 @@ BOOL CCopyContext::OperationProc()
 
 	return TRUE;
 }
+
+////////////// CCopyUndoContext
 
 ///////////// CDecompressContext
 CDecompressContext::CDecompressContext(CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString,
