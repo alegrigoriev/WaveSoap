@@ -80,26 +80,35 @@ BOOL WaitForSingleObjectAcceptSends(HANDLE handle, ULONG timeout)
 {
 	DWORD StartTime = GetTickCount();
 	DWORD WaitTimeout = timeout;
+
+	BOOL QuitMessageFetched = FALSE;
+	int QuitCode = 0;
+
+	BOOL result = FALSE;
+
 	while (1)
 	{
 		DWORD WaitResult = MsgWaitForMultipleObjectsEx(1, & handle, WaitTimeout,
-														QS_SENDMESSAGE, 0);
+														QS_SENDMESSAGE, MWMO_INPUTAVAILABLE);
 
-		if (WAIT_TIMEOUT == WaitResult)
+		if (WAIT_OBJECT_0 == WaitResult)
 		{
-			return FALSE;
+			result = TRUE;
+			break;
 		}
-		else if (WAIT_OBJECT_0 == WaitResult)
+		else if (//WAIT_TIMEOUT == WaitResult ||
+				WAIT_OBJECT_0 + 1 != WaitResult)    // error or timeout occured
 		{
-			return TRUE;
-		}
-		else if (WAIT_OBJECT_0 + 1 != WaitResult)
-		{
-			return FALSE;
+			break;
 		}
 		// execute messages
 		MSG msg;
-		PeekMessage( & msg, NULL, 0, 0, PM_NOREMOVE | PM_QS_SENDMESSAGE);
+		if (PeekMessage( & msg, NULL, 0, 0, PM_NOREMOVE | PM_QS_SENDMESSAGE)
+			&& WM_QUIT == msg.message)
+		{
+			QuitMessageFetched = TRUE;
+			QuitCode = msg.wParam;
+		}
 
 		if (timeout != INFINITE)
 		{
@@ -123,4 +132,12 @@ BOOL WaitForSingleObjectAcceptSends(HANDLE handle, ULONG timeout)
 			StartTime = NewTime;
 		}
 	}
+
+	if (QuitMessageFetched)
+	{
+		// repost WM_QUIT back
+		PostQuitMessage(QuitCode);
+	}
+
+	return result;
 }
