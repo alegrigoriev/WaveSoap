@@ -628,61 +628,8 @@ void CStringN::OemToAnsi()
 ///////////////////////////////////////////////////////////////////////////////
 // CStringN conversion helpers (these use the current system locale)
 
-int AFX_CDECL _wcstombsz(char* mbstr, const wchar_t* wcstr, size_t count)
-{
-	if (count == 0 && mbstr != NULL)
-		return 0;
-
-	int result = ::WideCharToMultiByte(CP_ACP, 0, wcstr, -1,
-										mbstr, count, NULL, NULL);
-	ASSERT(mbstr == NULL || result <= (int)count);
-	if (result > 0)
-		mbstr[result-1] = 0;
-	return result;
-}
-
-int AFX_CDECL _mbstowcsz(wchar_t* wcstr, const char* mbstr, size_t count)
-{
-	if (count == 0 && wcstr != NULL)
-		return 0;
-
-	int result = ::MultiByteToWideChar(CP_ACP, 0, mbstr, -1,
-										wcstr, count);
-	ASSERT(wcstr == NULL || result <= (int)count);
-	if (result > 0)
-		wcstr[result-1] = 0;
-	return result;
-}
-
-LPWSTR AFXAPI AfxA2WHelper(LPWSTR lpw, LPCSTR lpa, int nChars)
-{
-	if (lpa == NULL)
-		return NULL;
-	ASSERT(lpw != NULL);
-	// verify that no illegal character present
-	// since lpw was allocated based on the size of lpa
-	// don't worry about the number of chars
-	lpw[0] = '\0';
-	VERIFY(MultiByteToWideChar(CP_ACP, 0, lpa, -1, lpw, nChars));
-	return lpw;
-}
-
-LPSTR AFXAPI AfxW2AHelper(LPSTR lpa, LPCWSTR lpw, int nChars)
-{
-	if (lpw == NULL)
-		return NULL;
-	ASSERT(lpa != NULL);
-	// verify that no illegal character present
-	// since lpa was allocated based on the size of lpw
-	// don't worry about the number of chars
-	lpa[0] = '\0';
-	VERIFY(WideCharToMultiByte(CP_ACP, 0, lpw, -1, lpa, nChars, NULL, NULL));
-	return lpa;
-}
-
 ///////////////////////////////////////////////////////////////////////////////
 
-//#include <strex.cpp>
 // This is a part of the Microsoft Foundation Classes C++ library.
 // Copyright (C) 1992-1998 Microsoft Corporation
 // All rights reserved.
@@ -1623,32 +1570,6 @@ void AFXAPI CopyElements(CStringN* pDest, const CStringN* pSrc, int nCount)
 
 	for (; nCount--; ++pDest, ++pSrc)
 		*pDest = *pSrc;
-}
-
-#ifndef OLE2ANSI
-#if _MSC_VER >= 1100
-template<> UINT AFXAPI HashKey<LPCWSTR> (LPCWSTR key)
-#else
-UINT AFXAPI HashKey(LPCWSTR key)
-#endif
-{
-	UINT nHash = 0;
-	while (*key)
-		nHash = (nHash<<5) + nHash + *key++;
-	return nHash;
-}
-#endif
-
-#if _MSC_VER >= 1100
-template<> UINT AFXAPI HashKey<LPCSTR> (LPCSTR key)
-#else
-UINT AFXAPI HashKey(LPCSTR key)
-#endif
-{
-	UINT nHash = 0;
-	while (*key)
-		nHash = (nHash<<5) + nHash + *key++;
-	return nHash;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
