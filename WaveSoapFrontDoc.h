@@ -363,6 +363,10 @@ public:
 	enum { PasteFlagSetNewSelection = 1, };
 
 	BOOL ChangeWaveMarker(WAVEREGIONINFO * pInfo);
+	void UpdateAllMarkers();
+
+	void BeginMarkerChange(unsigned ChangeFlags);   // create undo, increment change count
+	void EndMarkerChange(BOOL bCommitChanges = TRUE);
 
 protected:
 	// save the selected area to the permanent or temporary file

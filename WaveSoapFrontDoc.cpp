@@ -5274,6 +5274,41 @@ void CWaveSoapFrontDoc::OnUpdateProcessReverse(CCmdUI *pCmdUI)
 	pCmdUI->Enable(CanStartOperation(2, false, true));
 }
 
+void CWaveSoapFrontDoc::BeginMarkerChange(unsigned ChangeFlags)   // create undo, increment change count ?
+{
+	CUndoRedoContext::auto_ptr pUndo(new CUndoRedoContext(this, IDS_MARKER_REGION_CHANGE));
+	CMetadataChangeOperation::auto_ptr pChange(new CMetadataChangeOperation(this, ChangeFlags));
+
+	pChange->SaveUndoMetadata(ChangeFlags);
+
+	pUndo->AddContext(pChange.release());
+
+	AddUndoRedo(pUndo.release());
+}
+
+void CWaveSoapFrontDoc::EndMarkerChange(BOOL bCommitChanges)
+{
+	SetModifiedFlag(TRUE, TRUE);
+	// put Undo
+}
+
+void CWaveSoapFrontDoc::UpdateAllMarkers()
+{
+	MarkerRegionUpdateInfo ui;
+	for (unsigned index = 0; ; index ++)
+	{
+		ui.info.Flags = ui.info.CuePointIndex;
+
+		ui.info.MarkerCueID = index;
+
+		if ( ! m_WavFile.GetWaveMarker( & ui.info))
+		{
+			break;
+		}
+		UpdateAllViews(NULL, UpdateMarkerRegionChanged, & ui);
+	}
+}
+
 // returns TRUE if marker actually changed?
 BOOL CWaveSoapFrontDoc::ChangeWaveMarker(WAVEREGIONINFO * pInfo)
 {
@@ -5296,9 +5331,10 @@ BOOL CWaveSoapFrontDoc::ChangeWaveMarker(WAVEREGIONINFO * pInfo)
 		ui.info = *pInfo;
 		UpdateAllViews(NULL, UpdateMarkerRegionChanged, & ui);
 	}
+
 	if (pInfo->Flags & pInfo->CommitChanges)
 	{
-		// TODO: commit undo
+		EndMarkerChange();
 	}
 	return TRUE;
 }
