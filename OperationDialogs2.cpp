@@ -502,3 +502,33 @@ void CCdGrabbingDialog::OnMetricsChange()
 	m_mmxi.ptMinTrackSize.y = r.Height();
 }
 
+/////////////////////////////////////////////////////////////////////////////
+// CReopenDialog dialog
+
+
+CReopenDialog::CReopenDialog(CWnd* pParent /*=NULL*/)
+	: CDialog(CReopenDialog::IDD, pParent)
+{
+	//{{AFX_DATA_INIT(CReopenDialog)
+	m_Prompt = _T("");
+	//}}AFX_DATA_INIT
+}
+
+
+void CReopenDialog::DoDataExchange(CDataExchange* pDX)
+{
+	CDialog::DoDataExchange(pDX);
+	//{{AFX_DATA_MAP(CReopenDialog)
+	DDX_Text(pDX, IDC_STATIC_PROMPT, m_Prompt);
+	//}}AFX_DATA_MAP
+}
+
+
+BEGIN_MESSAGE_MAP(CReopenDialog, CDialog)
+	//{{AFX_MSG_MAP(CReopenDialog)
+		// NOTE: the ClassWizard will add message map macros here
+	//}}AFX_MSG_MAP
+END_MESSAGE_MAP()
+
+/////////////////////////////////////////////////////////////////////////////
+// CReopenDialog message handlers

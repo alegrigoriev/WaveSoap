@@ -223,7 +223,7 @@ void CWaveSoapFrontView::OnDraw(CDC* pDC)
 	CPen ChannelSeparatorPen;
 	CPen SelectedChannelSeparatorPen;
 
-	CWaveSoapFrontApp * pApp = GetApp();
+	CThisApp * pApp = GetApp();
 	//if (pDC->GetDeviceCaps(TECHNOLOGY) == DT_RASDISPLAY)
 	//{
 	CPalette * pOldPalette = NULL;
@@ -1037,7 +1037,7 @@ void CWaveSoapFrontView::CreateAndShowCaret()
 
 BOOL CWaveSoapFrontView::OnEraseBkgnd(CDC* pDC)
 {
-	CWaveSoapFrontApp * pApp = (CWaveSoapFrontApp *) AfxGetApp();
+	CThisApp * pApp = GetApp();
 	CWaveSoapFrontDoc * pDoc = GetDocument();
 	RemoveSelectionRect();
 	CBrush backBrush(pApp->m_WaveBackground);
@@ -1823,28 +1823,13 @@ void CWaveSoapFrontView::OnActivateView(BOOL bActivate, CView* pActivateView, CV
 {
 	CWaveSoapFrontDoc * pDoc = GetDocument();
 	if (bActivate
-		&& pActivateView == this
-		&& (pActivateView == pDeactiveView
-			|| pDeactiveView == NULL
-			|| pDoc != pDeactiveView->GetDocument()))
+		&& pActivateView == this)
 	{
-		GetApp()->m_pActiveDocument = pDoc;
-//        TRACE("App::m_pActiveDocument set to %X\n", pDoc);
-		if (pDoc && ! pDoc->m_PlayingSound)
-		{
-//            TRACE("Document %x thread priority increased\n", pDoc);
-			pDoc->SetThreadPriority(THREAD_PRIORITY_BELOW_NORMAL);
-		}
+		GetApp()->OnActivateDocument(pDoc, TRUE);
 	}
 	if (pDeactiveView == this && ! bActivate)
 	{
-		GetApp()->m_pActiveDocument = NULL;
-//        TRACE("App::m_pActiveDocument set to NULL\n");
-		if (pDoc && ! pDoc->m_PlayingSound)
-		{
-//            TRACE("Document %x thread priority lowered\n", pDoc);
-			pDoc->SetThreadPriority(THREAD_PRIORITY_LOWEST);
-		}
+		GetApp()->OnActivateDocument(pDoc, FALSE);
 	}
 	CScaledScrollView::OnActivateView(bActivate, pActivateView, pDeactiveView);
 }

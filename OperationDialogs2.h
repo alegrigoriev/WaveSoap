@@ -130,8 +130,8 @@ public:
 // Dialog Data
 	//{{AFX_DATA(CCdGrabbingDialog)
 	enum { IDD = IDD_DIALOG_CD_GRABBING };
-	CListCtrl	m_lbTracks;
 	CComboBox	m_DrivesCombo;
+	CListCtrl	m_lbTracks;
 	//}}AFX_DATA
 	TCHAR m_CDDrives['Z' - 'A' + 1];
 	int m_NumberOfDrives;
@@ -162,6 +162,38 @@ protected:
 	afx_msg void OnGetMinMaxInfo(MINMAXINFO FAR* lpMMI);
 	//}}AFX_MSG
 	void OnMetricsChange();
+	DECLARE_MESSAGE_MAP()
+};
+/////////////////////////////////////////////////////////////////////////////
+// CReopenDialog dialog
+
+class CReopenDialog : public CDialog
+{
+// Construction
+public:
+	CReopenDialog(CWnd* pParent = NULL);   // standard constructor
+
+// Dialog Data
+	//{{AFX_DATA(CReopenDialog)
+	enum { IDD = IDD_DIALOG_REOPEN_DIRECT };
+	CString	m_Prompt;
+	//}}AFX_DATA
+
+
+// Overrides
+	// ClassWizard generated virtual function overrides
+	//{{AFX_VIRTUAL(CReopenDialog)
+protected:
+	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV support
+	//}}AFX_VIRTUAL
+
+// Implementation
+protected:
+
+	// Generated message map functions
+	//{{AFX_MSG(CReopenDialog)
+	// NOTE: the ClassWizard will add member functions here
+	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 };
 //{{AFX_INSERT_LOCATION}}

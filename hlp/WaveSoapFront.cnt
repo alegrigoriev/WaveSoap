@@ -3,6 +3,8 @@
 2 File menu=menu_file
 2 Edit menu=menu_edit
 2 View menu=menu_view
+2 Process menu=menu_process
+2 Tools menu=menu_tools
 2 Window menu=menu_window
 2 Help menu=menu_help
 1 <<add your application-specific topics here>>

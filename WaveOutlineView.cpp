@@ -91,7 +91,7 @@ void CWaveOutlineView::OnDraw(CDC* pDC)
 
 	int channels = pDoc->WaveChannels();
 
-	CWaveSoapFrontApp * pApp = GetApp();
+	CThisApp * pApp = GetApp();
 
 	CPalette * pOldPalette = NULL;
 
@@ -515,7 +515,7 @@ BOOL CWaveOutlineView::OnEraseBkgnd(CDC* pDC)
 
 BOOL CWaveOutlineView::EraseBkgnd(CDC* pDC)
 {
-	CWaveSoapFrontApp * pApp = (CWaveSoapFrontApp *) AfxGetApp();
+	CThisApp * pApp = GetApp();
 	CWaveSoapFrontDoc * pDoc = GetDocument();
 	CBrush backBrush(GetSysColor(COLOR_MENU));
 	CRect r;

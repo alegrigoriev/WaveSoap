@@ -1688,7 +1688,7 @@ void CDeclickDialog::OnButtonMoreSettings()
 
 void CDeclickDialog::LoadValuesFromRegistry()
 {
-	CWaveSoapApp * pApp = (CWaveSoapApp *)AfxGetApp();
+	CThisApp * pApp = GetApp();
 	pApp->Profile.AddBoolItem(_T("Declicker"), _T("LogClicks"), m_bLogClicks, FALSE);
 	pApp->Profile.AddBoolItem(_T("Declicker"), _T("ImportClicks"), m_bImportClicks, FALSE);
 	pApp->Profile.AddBoolItem(_T("Declicker"), _T("LogClicksOnly"), m_bLogClicksOnly, FALSE);
@@ -1801,7 +1801,7 @@ CNoiseReductionDialog::CNoiseReductionDialog(CWnd* pParent /*=NULL*/)
 
 CNoiseReductionDialog::~CNoiseReductionDialog()
 {
-	CWaveSoapApp * pApp = (CWaveSoapApp *)AfxGetApp();
+	CThisApp * pApp = GetApp();
 	pApp->Profile.RemoveSection(_T("NoiseReduction"));
 }
 
@@ -1857,7 +1857,7 @@ END_MESSAGE_MAP()
 // CNoiseReductionPage message handlers
 void CNoiseReductionDialog::LoadValuesFromRegistry()
 {
-	CWaveSoapApp * pApp = (CWaveSoapApp *)AfxGetApp();
+	CThisApp * pApp = GetApp();
 	//m_bPhaseFilter = (FALSE != pApp->GetProfileInt(_T("NoiseReduction"), _T("PhaseFilter"), FALSE));
 
 	pApp->Profile.AddItem(_T("NoiseReduction"), _T("FftOrder"), m_FftOrder, 2048, 256, 16384);
@@ -1908,7 +1908,7 @@ void CNoiseReductionDialog::LoadValuesFromRegistry()
 
 void CNoiseReductionDialog::StoreValuesToRegistry()
 {
-	CWaveSoapApp * pApp = (CWaveSoapApp *)AfxGetApp();
+	CThisApp * pApp = GetApp();
 	m_FftOrder = 256 << m_nFftOrderExp;
 	pApp->Profile.FlushSection(_T("NoiseReduction"));
 }

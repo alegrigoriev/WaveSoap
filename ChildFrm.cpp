@@ -54,28 +54,19 @@ CChildFrame::~CChildFrame()
 
 BOOL CChildFrame::PreCreateWindow(CREATESTRUCT& cs)
 {
-	// TODO: Modify the Window class or styles here by modifying
-	//  the CREATESTRUCT cs
-	TRACE("CChildFrame::PreCreateWindow()\n");
-
 	if( !CMDIChildWnd::PreCreateWindow(cs) )
 		return FALSE;
-
 	cs.style = WS_CHILD | WS_VISIBLE | WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU
 				| FWS_ADDTOTITLE | WS_THICKFRAME | WS_MINIMIZEBOX | WS_MAXIMIZEBOX;
 
+	CMDIChildWnd * pActive = ((CMDIFrameWnd *)AfxGetMainWnd())->MDIGetActive();
+	if (pActive == NULL || (WS_MAXIMIZE & pActive->GetStyle()))
+	{
+		cs.style |= WS_MAXIMIZE;
+	}
+
 	return TRUE;
 }
-
-void CChildFrame::ActivateFrame(int nCmdShow)
-{
-	// TODO: Modify this function to change how the frame is activated.
-
-	TRACE("CChildFrame::ActivateFrame(%d)\n", nCmdShow);
-	nCmdShow = SW_SHOWMAXIMIZED;
-	CMDIChildWnd::ActivateFrame(nCmdShow);
-}
-
 
 /////////////////////////////////////////////////////////////////////////////
 // CChildFrame diagnostics
@@ -145,6 +136,8 @@ BEGIN_MESSAGE_MAP(CWaveMDIChildClient, CWnd)
 	ON_COMMAND(ID_VIEW_VERTICAL_RULER, OnViewVerticalRuler)
 	ON_UPDATE_COMMAND_UI(ID_VIEW_SPECTRUMSECTION, OnUpdateViewSpectrumsection)
 	ON_COMMAND(ID_VIEW_SPECTRUMSECTION, OnViewSpectrumsection)
+	ON_UPDATE_COMMAND_UI(ID_VIEW_HIDE_SPECTRUMSECTION, OnUpdateViewHideSpectrumsection)
+	ON_COMMAND(ID_VIEW_HIDE_SPECTRUMSECTION, OnViewHideSpectrumsection)
 	//}}AFX_MSG_MAP
 END_MESSAGE_MAP()
 
@@ -929,3 +922,16 @@ void CVerticalTrackerBar::OnCaptureChanged(CWnd *pWnd)
 	m_bTracking = FALSE;
 	CWnd::OnCaptureChanged(pWnd);
 }
+
+
+void CWaveMDIChildClient::OnUpdateViewHideSpectrumsection(CCmdUI* pCmdUI)
+{
+	pCmdUI->Enable(m_bShowSpectrumSection);
+}
+
+void CWaveMDIChildClient::OnViewHideSpectrumsection()
+{
+	m_bShowSpectrumSection = FALSE;
+	RecalcLayout();
+}
+

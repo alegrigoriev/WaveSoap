@@ -2798,6 +2798,7 @@ BOOL CStatisticsContext::ProcessBuffer(void * buf, size_t BufferLength, DWORD of
 				m_SumLeft += pSrc[i * 2];
 				m_SumRight += pSrc[i * 2 + 1];
 			}
+			BufferLength -= i * (2 * sizeof pSrc[0]);
 			if (BufferLength >= 2)
 			{
 				m_SumLeft += pSrc[i * 2];
@@ -3230,6 +3231,7 @@ BOOL CWmaDecodeContext::OperationProc()
 
 	do
 	{
+		m_Decoder.DeliverNextSample();
 		WaitForSingleObject(m_Decoder.m_SignalEvent, 200);
 	}
 	while ((m_Decoder.ReaderStatus == WMT_STARTED

@@ -49,6 +49,7 @@ class CDirectFile
 public:
 	CDirectFile();
 	virtual ~CDirectFile();
+	CDirectFile const & operator=(CDirectFile & file);
 	enum {
 		OpenReadOnly = 1,
 		CreateNew = 2,
@@ -289,6 +290,18 @@ public:
 	{
 		return m_pFile->m_FileInfo;
 	}
+	int GetLastError() const
+	{
+		if (m_pFile != NULL)
+			return m_pFile->m_LastError;
+		else
+			return 0;
+	}
+	void ResetLastError()
+	{
+		if (m_pFile != NULL)
+			m_pFile->m_LastError = 0;
+	}
 
 protected:
 	struct BufferHeader;
@@ -329,6 +342,7 @@ protected:
 		// pointer to the source file. The information is copied from there
 		// when it is read first time.
 		File * pSourceFile;
+		int m_LastError;
 		LONGLONG UseSourceFileLength;
 		LONGLONG m_FilePointer;
 		LONGLONG RealFileLength;

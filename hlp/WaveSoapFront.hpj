@@ -7,12 +7,12 @@ LCID=0x409 0x0 0x0 ; English (United States)
 REPORT=Yes
 CONTENTS=main_index
 TITLE=WAVESOAPFRONT Application Help
-CNT=WaveSoapFront.cnt
+CNT=WaveSoap.cnt
 BMROOT=.
 BMROOT=..
 ROOT=..
 ROOT=.
-HLP=WaveSoapFront.HLP
+HLP=WaveSoap.HLP
 
 [FILES]
 afxcore.rtf

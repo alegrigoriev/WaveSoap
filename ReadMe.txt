@@ -1,11 +1,16 @@
 Known problems and tasks:
 
+Make combobox in selection dialog
+Add "Cancel" (don't reopen, but close) to Reopen after save dialog
+Change file extension in Save As dialog, if the type changed
+File specified in the command line is not open
+Add CD grabbing
 Make save presets for Expression Evaluation command
+Make more integer operations for Expression Evaluation (bit ops, modulo)
 Add noise reduction estimation in spectrum section view
 Add MP3 save
 Add ASF save
 Add sound recording
-Add CD grabbing
 If read-only file is saved, name should be different
 Statistics: zero crossings shows double the frequency (as supposed??)
 Make Paste Special command
@@ -14,44 +19,46 @@ Before Save, delete Undo and REdo which keeps reference to the target file
     (it can be file replacement Undo/Redo)
 After Save As, peak info is not saved for the new PCM file.
 ???? File created from clipboard and saved can't be reopened in direct mode.
+Undo/redo saves the selection
 Add support for markers and regions: save on copy and with undo, move and delete on Cut,
 	move on Paste
 Double click selects between two markers
 Delete/Insert operations can auto add markers and regions
 If delete (shrink) is done with one channel of two, fill the rest with zeros
 If displaying data without peak info, call RescanPeaks for this range.
+Check if the file size will exceed 2 GB
 Add options dialog
 Save current workspace
 Add decibel view to CAmplitudeRuler
 Add VU meter for playback
-Make all correct error messages and message boxes
 Make tooltips
 Make help file
+
+Problems:
+Ctrl-End, Ctrl-Home loses synchronization between FFT and wave
+When selecting to the begin of file, FFT is corrupted
+Doesn't detect new active document, when previous closed.
+MP3 open, WAV save as - can't reopen in direct until 2 seconds passed.
+If there is not enough space on NTFS volume, it will be seen only during flush
+
+Fixed:
+Insert Silence of zero length still tries to modify the file
+Multiple MP3 files open: all but one get stuck
+
+
+Done:
+Add Hide in spectrum section context menu
+Make more convesient Ctrl+Tab
+add CDirectFile::operator= (WMA open crash)
+Mouse selection for outline view and snap to maximum.
+Mouse selection snaps to the max amplitude
+Make all correct error messages and message boxes
+
 
 For Version 2:
 Make multichannel editing
 allow 24/32 bit data
 Allow "Minimized" channels
-
-Done:
-Add support for 256 color display (palette)
-Add mouse wheel support
-Add autoscroll during selection
-Spectrum section view: drawing on the edges.
-Add spin support for selection, insert silence and GOTO dialog.
-Channel conversion
-Prb: GetBufferWriteOnly can conflict with SourceFile and WrittenMask
-Wrong caret size after window resize during playback
-Prb: After file expansion, the new area may not contain zeros, 
-	if the file has a SourceFile and the operation was interrupted 
-Draw zero line in outline view for empty wave file
-Use waveformat instead of template, for FileNew
-prb: time ruler is blinking when scrolled
-Make delay load for Windows Media DLL, to work on systems without WMP installed
-Document closed now after long save operation
-Make status string and percent for CCommitFileSaveContext
-Make context for background WriteRestOfTheFile
-
 
 File Save/Save As checklist:
 

@@ -122,6 +122,8 @@ protected:
 	afx_msg void OnViewVerticalRuler();
 	afx_msg void OnUpdateViewSpectrumsection(CCmdUI* pCmdUI);
 	afx_msg void OnViewSpectrumsection();
+	afx_msg void OnUpdateViewHideSpectrumsection(CCmdUI* pCmdUI);
+	afx_msg void OnViewHideSpectrumsection();
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 };
@@ -145,7 +147,6 @@ public:
 	//{{AFX_VIRTUAL(CChildFrame)
 public:
 	virtual BOOL PreCreateWindow(CREATESTRUCT& cs);
-	virtual void ActivateFrame(int nCmdShow);
 	virtual BOOL OnCmdMsg(UINT nID, int nCode, void* pExtra, AFX_CMDHANDLERINFO* pHandlerInfo);
 protected:
 	virtual BOOL OnCreateClient(LPCREATESTRUCT lpcs, CCreateContext* pContext);

@@ -206,6 +206,10 @@ public:
 	int m_DefaultPasteMode;
 
 	CString m_CurrentStatusString;
+	CSimpleCriticalSection m_StatusStringLock;
+	void GetCurrentStatusString(CString & str);
+	void SetCurrentStatusString(const CString & str);
+
 	bool m_bReadOnly;
 	bool m_bDirectMode;
 	bool m_bClosing;    // tells OnSaveDocument that it is called in close context
@@ -237,6 +241,7 @@ protected:
 
 // Generated message map functions
 public:
+	void OnActivateDocument(BOOL bActivate);
 	void DoEditPaste()
 	{
 		OnEditPaste();

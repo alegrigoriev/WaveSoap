@@ -235,8 +235,8 @@ CDirectFile::File * CDirectFile::CDirectFileCache::Open
 						NULL);
 		if (INVALID_HANDLE_VALUE == hf)
 		{
-			if ((GetLastError() == ERROR_SHARING_VIOLATION
-					|| GetLastError() == ERROR_ACCESS_DENIED)
+			if ((::GetLastError() == ERROR_SHARING_VIOLATION
+					|| ::GetLastError() == ERROR_ACCESS_DENIED)
 				&& (flags & OpenExisting)
 				&& (flags & OpenAllowReadOnlyFallback))
 			{
@@ -376,7 +376,7 @@ BOOL CDirectFile::File::Commit(DWORD flags)
 		if (hf != INVALID_HANDLE_VALUE)
 		{
 			SetFilePointer(hf, long(FileLength), & MoveHigh, FILE_BEGIN);
-			if (GetLastError() == ERROR_SUCCESS)
+			if (::GetLastError() == ERROR_SUCCESS)
 			{
 				SetEndOfFile(hf);
 			}
@@ -440,7 +440,7 @@ BOOL CDirectFile::File::Rename(LPCTSTR NewName, DWORD flags)
 	else
 	{
 		TRACE("Couldn't rename the file from %s to %s, last error=%X\n",
-			LPCTSTR(sName), LPCTSTR(NewName), GetLastError());
+			LPCTSTR(sName), LPCTSTR(NewName), ::GetLastError());
 	}
 	if (flags & CommitFileDontReopen)
 	{
@@ -465,7 +465,7 @@ BOOL CDirectFile::File::Rename(LPCTSTR NewName, DWORD flags)
 	if (INVALID_HANDLE_VALUE == hf)
 	{
 		// couldnt reopen!!
-		TRACE("Couldn't reopen the file, last error=%X\n", GetLastError());
+		TRACE("Couldn't reopen the file, last error=%X\n", ::GetLastError());
 		return FALSE;
 	}
 	hFile = hf;
@@ -619,7 +619,7 @@ BOOL CDirectFile::File::Close(DWORD flags)
 		if (NULL != hFile)
 		{
 			SetFilePointer(hFile, 0, NULL, FILE_BEGIN);
-			if (GetLastError() == ERROR_SUCCESS)
+			if (::GetLastError() == ERROR_SUCCESS)
 			{
 				SetEndOfFile(hFile);
 			}
@@ -656,7 +656,7 @@ BOOL CDirectFile::File::Close(DWORD flags)
 				if (hf != INVALID_HANDLE_VALUE)
 				{
 					SetFilePointer(hf, long(FileLength), & MoveHigh, FILE_BEGIN);
-					if (GetLastError() == ERROR_SUCCESS)
+					if (::GetLastError() == ERROR_SUCCESS)
 					{
 						SetEndOfFile(hf);
 					}
@@ -1746,11 +1746,12 @@ void CDirectFile::File::ReadDataBuffer(BufferHeader * pBuf, DWORD MaskToRead)
 				char * NewWrittenMask = new char[NewWrittenMaskSize];
 				if (NULL == NewWrittenMask)
 				{
+					TRACE("NewWrittenMask == NULL\n");
 					memset(pBuf->pBuf, 0, 0x10000);
 					pBuf->ReadMask = 0xFFFFFFFF;
 					return;
 				}
-
+				TRACE("Allocated NewWrittenMask, size=%d\n", NewWrittenMaskSize);
 				memset(NewWrittenMask, 0, NewWrittenMaskSize);
 				memcpy(NewWrittenMask, m_pWrittenMask, WrittenMaskSize);
 				delete[] m_pWrittenMask;
@@ -1785,6 +1786,10 @@ void CDirectFile::File::ReadDataBuffer(BufferHeader * pBuf, DWORD MaskToRead)
 					}
 					TRACE("ReadFile(%08x, pos=0x%08X, bytes=%X)\n", hFile, long(StartFilePtr), ToRead);
 					ReadFile(pSourceFile->hFile, buf, ToRead, & BytesRead, NULL);
+					if (0 == m_LastError)
+					{
+						m_LastError = ::GetLastError();
+					}
 					pSourceFile->m_FilePointer += BytesRead;
 					ToZero -= BytesRead;
 				}
@@ -1840,6 +1845,16 @@ void CDirectFile::File::ReadDataBuffer(BufferHeader * pBuf, DWORD MaskToRead)
 			}
 			TRACE("ReadFile(%08x, pos=0x%08X, bytes=%X)\n", hFile, long(StartFilePtr), ToRead);
 			ReadFile(hFile, buf, ToRead, & BytesRead, NULL);
+			if (0 == m_LastError)
+			{
+				m_LastError = ::GetLastError();
+			}
+#ifdef _DEBUG
+			if (BytesRead < ToRead)
+			{
+				TRACE("ToRead=%x, BytesRead=%x\n", ToRead, BytesRead);
+			}
+#endif
 			m_FilePointer += BytesRead;
 			buf += BytesRead;
 			StartFilePtr += BytesRead;
@@ -1949,13 +1964,26 @@ void CDirectFile::BufferHeader::FlushDirtyBuffers()
 							buf[0], buf[1], buf[2], buf[3], buf[4],
 							buf[5], buf[6], buf[7]);
 				TRACE("WriteFile(%08x, pos=0x%08X, bytes=%X)\n", pFile->hFile, long(StartFilePtr), ToWrite);
-				WriteFile(pFile->hFile, buf, ToWrite, & BytesWritten, NULL);
+				BOOL result = WriteFile(pFile->hFile, buf, ToWrite, & BytesWritten, NULL);
+				if (0 == pFile->m_LastError)
+				{
+					pFile->m_LastError = ::GetLastError();
+				}
+				if (BytesWritten != ToWrite)
+				{
+					// run a message box in the main thread
+					// if it is a secondary thread, post a command
+				}
 				pFile->m_FilePointer += BytesWritten;
 				buf += ToWrite;
 				StartFilePtr += ToWrite;
 				if (StartFilePtr > pFile->RealFileLength)
 				{
 					pFile->RealFileLength = StartFilePtr;
+				}
+				if (BytesWritten != ToWrite)
+				{
+					break;
 				}
 			}
 		}
@@ -2230,12 +2258,12 @@ BOOL CDirectFile::File::SetFileLength(LONGLONG NewLength)
 	SetLastError(0);
 	m_FilePointer = -1i64;  // invalidate file pointer
 	if ((0xFFFFFFFF != SetFilePointer(hFile, LONG(NewLength), & MoveHigh, FILE_BEGIN)
-			|| GetLastError() == NO_ERROR)
+			|| ::GetLastError() == NO_ERROR)
 		&& SetEndOfFile(hFile)
 		&& FlushFileBuffers(hFile))
 	{
 		SizeLow = ::GetFileSize(hFile, & SizeHigh);
-		if (GetLastError() == NO_ERROR)
+		if (::GetLastError() == NO_ERROR)
 		{
 			RealFileLength = SizeLow | (LONGLONG(SizeHigh) << 32);
 			return TRUE;
@@ -2248,7 +2276,7 @@ BOOL CDirectFile::File::SetFileLength(LONGLONG NewLength)
 	else
 	{
 		SizeLow = ::GetFileSize(hFile, & SizeHigh);
-		if (GetLastError() == NO_ERROR)
+		if (::GetLastError() == NO_ERROR)
 		{
 			RealFileLength = SizeLow | (LONGLONG(SizeHigh) << 32);
 		}
@@ -2315,4 +2343,12 @@ void * CDirectFile::File::AllocateCommonData(size_t size)
 	m_CommonDataSize = size;
 	m_pCommonData = tmp;
 	return tmp;
+}
+
+CDirectFile const & CDirectFile::operator=(CDirectFile & file)
+{
+	Close(0);
+	m_FilePointer = 0;
+	Attach( & file);
+	return *this;
 }

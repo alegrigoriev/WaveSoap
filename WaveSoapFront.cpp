@@ -15,7 +15,7 @@
 #include <mmreg.h>
 #include <msacm.h>
 #include "OperationDialogs2.h"
-
+#include <Dlgs.h>
 #define _countof(array) (sizeof(array)/sizeof(array[0]))
 
 #ifdef _DEBUG
@@ -101,7 +101,10 @@ public:
 		: CFileDialog(bOpenFileDialog, lpszDefExt, lpszFileName, dwFlags,
 					lpszFilter, pParentWnd), m_bReadOnly(false), m_bDirectMode(false)
 	{}
-	~CWaveSoapFileOpenDialog() {}
+	~CWaveSoapFileOpenDialog()
+	{
+		GetApp()->Profile.RemoveSection(_T("RecentOpenDirs"));
+	}
 
 	CWaveFile m_WaveFile;
 	CString GetNextPathName(POSITION& pos) const;
@@ -114,6 +117,7 @@ public:
 	int nSamplingRate;
 	int nSamples;
 	CString WaveFormat;
+	CString m_RecentFolders[10];
 
 	virtual BOOL OnFileNameOK();
 	//virtual void OnLBSelChangedNotify(UINT nIDBox, UINT iCurSel, UINT nCode);
@@ -128,7 +132,7 @@ public:
 	//{{AFX_MSG(CWaveSoapFileOpenDialog)
 	afx_msg void OnCheckReadOnly();
 	afx_msg void OnCheckDirectMode();
-	afx_msg void OnComboClosed();
+	afx_msg void OnComboSelendOK();
 	// NOTE - the ClassWizard will add and remove member functions here.
 	//    DO NOT EDIT what you see in these blocks of generated code !
 	//}}AFX_MSG
@@ -138,7 +142,7 @@ BEGIN_MESSAGE_MAP(CWaveSoapFileOpenDialog, CFileDialog)
 	//{{AFX_MSG_MAP(CWaveSoapFileOpenDialog)
 	ON_BN_CLICKED(IDC_CHECK_READONLY, OnCheckReadOnly)
 	ON_BN_CLICKED(IDC_CHECK_DIRECT, OnCheckDirectMode)
-	ON_CBN_CLOSEUP(IDC_COMBO_RECENT, OnComboClosed)
+	ON_CBN_SELENDOK(IDC_COMBO_RECENT, OnComboSelendOK)
 	//}}AFX_MSG_MAP
 END_MESSAGE_MAP()
 
@@ -207,6 +211,7 @@ CWaveSoapFrontApp::CWaveSoapFrontApp()
 	m_nDcOffset(0),
 	m_DcSelectMode(0),
 	m_pActiveDocument(NULL),
+	m_pLastStatusDocument(NULL),
 
 	m_pAllTypesTemplate(NULL),
 	m_pMP3TypeTemplate(NULL),
@@ -418,6 +423,10 @@ BOOL CWaveSoapFrontApp::InitInstance()
 	CCommandLineInfo cmdInfo;
 	cmdInfo.m_nShellCommand = CCommandLineInfo::FileNothing;
 	ParseCommandLine(cmdInfo);
+	if ( ! cmdInfo.m_strFileName.IsEmpty())
+	{
+		cmdInfo.m_nShellCommand = CCommandLineInfo::FileOpen;
+	}
 
 	// start the processing thread
 	m_hThreadEvent = CreateEvent(NULL, FALSE, FALSE, NULL);
@@ -598,7 +607,7 @@ CDocument* CWaveSoapDocTemplate::OpenDocumentFile(LPCTSTR lpszPathName,
 	else
 	{
 		// open an existing document
-		CWaveSoapFrontApp * pApp = GetApp();
+		CThisApp * pApp = GetApp();
 		CWaitCursor wait;
 
 		if (!pDocument->OnOpenDocument(lpszPathName, flags))
@@ -833,9 +842,10 @@ unsigned CWaveSoapFrontApp::_ThreadProc()
 				ASSERT(pContext->pDocument->m_pQueuedOperation == pContext);
 				pContext->pDocument->m_pQueuedOperation = NULL;
 				// send a signal to the document, that the operation completed
-				pContext->pDocument->m_CurrentStatusString =
-					pContext->GetStatusString() + _T("Completed");
+				SetStatusStringAndDoc(pContext->GetStatusString() + _T("Completed"),
+									pContext->pDocument);
 				pContext->DeInit();
+				TRACE("Retire context %X, queue entry=%X\n", pContext, m_pFirstOp);
 				pContext->Retire();     // usually deletes it
 				// send a signal to the document, that the operation completed
 				NeedKickIdle = true;    // this will reenable all commands
@@ -844,8 +854,10 @@ unsigned CWaveSoapFrontApp::_ThreadProc()
 			{
 				if (NeedKickIdle)
 				{
-					pContext->pDocument->m_CurrentStatusString.Format(_T("%s%d%%"),
-						(LPCTSTR)pContext->GetStatusString(), pContext->PercentCompleted);
+					CString s;
+					s.Format(_T("%s%d%%"),
+							(LPCTSTR)pContext->GetStatusString(), pContext->PercentCompleted);
+					SetStatusStringAndDoc(s, pContext->pDocument);
 				}
 			}
 			continue;
@@ -906,12 +918,12 @@ void CWaveSoapDocManager::OnFileOpen()
 		| OFN_ENABLESIZING
 		| OFN_ENABLETEMPLATE
 		| OFN_ALLOWMULTISELECT;
-	dlgFile.m_ofn.lpTemplateName = MAKEINTRESOURCE(IDD_DIALOG_OPEN_TEMPLATE);
+	dlgFile.m_ofn.lpTemplateName = MAKEINTRESOURCE(IDD_DIALOG_OPEN_TEMPLATE1);
 
 	CString strFilter;
 	CString strDefault;
 	// do for all doc template
-	CWaveSoapFrontApp * pApp = GetApp();
+	CThisApp * pApp = GetApp();
 	if (pApp->m_pAllTypesTemplate)
 	{
 		_AfxAppendFilterSuffix(strFilter, dlgFile.m_ofn, pApp->m_pAllTypesTemplate, & strDefault);
@@ -984,8 +996,73 @@ void CWaveSoapDocManager::OnFileOpen()
 	fileNameBuf.ReleaseBuffer();
 }
 
-void CWaveSoapFileOpenDialog::OnComboClosed()
+void CWaveSoapFileOpenDialog::OnComboSelendOK()
 {
+	TRACE("CWaveSoapFileOpenDialog::OnComboSelendOK()\n");
+	CString str;
+	CComboBox * pCb = static_cast<CComboBox *>(GetDlgItem(IDC_COMBO_RECENT));
+	if (NULL != pCb)
+	{
+		int sel = pCb->GetCurSel();
+		if (-1 == sel
+			|| sel >= pCb->GetCount())
+		{
+			return;
+		}
+		pCb->GetLBText(sel, str);
+		TRACE("CWaveSoapFileOpenDialog::OnComboSelendOK: %s selected\n", str);
+		if (str.IsEmpty())
+		{
+			return;
+		}
+		// check if the selected text is a folder
+		// make sure we can find a file in the folder
+		CString dir(str);
+		TCHAR c = dir[dir.GetLength() - 1];
+		if (c != ':'
+			&& c != '\\'
+			&& c != '/')
+		{
+			dir += '\\';
+		}
+		dir += '*';
+
+		WIN32_FIND_DATA wfd;
+		HANDLE hFind = FindFirstFile(dir, & wfd);
+		if (INVALID_HANDLE_VALUE == hFind)
+		{
+			DWORD error = GetLastError();
+			TRACE("FindFirstFile failed, last error = %d\n", error);
+			CString s;
+			if (ERROR_ACCESS_DENIED == error)
+			{
+				s.Format(IDS_DIRECTORY_ACCESS_DENIED, LPCTSTR(str));
+			}
+			else if (1 || ERROR_DIRECTORY == error
+					|| ERROR_PATH_NOT_FOUND == error
+					|| ERROR_INVALID_NAME == error
+					|| ERROR_BAD_NETPATH)
+			{
+				s.Format(IDS_DIRECTORY_NOT_FOUND, LPCTSTR(str));
+			}
+			AfxMessageBox(s);
+			// delete the string from combobox
+			pCb->DeleteString(sel);
+			pCb->SetCurSel(-1); // no selection
+			return;
+		}
+		else
+		{
+			TRACE("FindFirstFile success\n");
+			FindClose(hFind);
+			CWnd * pParent = GetParent();
+			pParent->SendMessage(CDM_SETCONTROLTEXT, edt1, LPARAM(LPCTSTR(str)));
+			pParent->SendMessage(WM_COMMAND, IDOK, 0);
+			pParent->SendMessage(CDM_SETCONTROLTEXT, edt1, LPARAM(LPCTSTR("")));
+			pParent->GetDlgItem(edt1)->SetFocus();
+		}
+
+	}
 }
 
 void CWaveSoapFileOpenDialog::ShowWmaFileInfo(CDirectFile & File)
@@ -1067,6 +1144,38 @@ void CWaveSoapFileOpenDialog::OnCheckDirectMode()
 
 BOOL CWaveSoapFileOpenDialog::OnFileNameOK()
 {
+	// add the current directory name to MRU
+	int i, j;
+	CString sCurrDir;
+	GetParent()->SendMessage(CDM_GETFOLDERPATH, MAX_PATH, LPARAM(sCurrDir.GetBuffer(MAX_PATH)));
+	sCurrDir.ReleaseBuffer();
+	TRACE("CWaveSoapFileOpenDialog::OnFileNameOK Folder Path=%s\n", sCurrDir);
+
+	for (i = 0, j = 0; i < sizeof m_RecentFolders / sizeof m_RecentFolders[0]; i++)
+	{
+		if (m_RecentFolders[i].IsEmpty()
+			|| 0 == sCurrDir.CompareNoCase(m_RecentFolders[i]))
+		{
+			continue;
+		}
+		if (i != j)
+		{
+			m_RecentFolders[j] = m_RecentFolders[i];
+		}
+		j++;
+	}
+	for ( ; j < sizeof m_RecentFolders / sizeof m_RecentFolders[0]; j++)
+	{
+		m_RecentFolders[j].Empty();
+	}
+	// remove the last dir from the list
+	for (i = (sizeof m_RecentFolders / sizeof m_RecentFolders[0]) - 1; i >= 1; i--)
+	{
+		m_RecentFolders[i] = m_RecentFolders[i - 1];
+	}
+	m_RecentFolders[0] = sCurrDir;
+	GetApp()->Profile.FlushSection(_T("RecentOpenDirs"));
+
 	m_WaveFile.Close();
 	return CFileDialog::OnFileNameOK();
 }
@@ -1092,6 +1201,25 @@ void CWaveSoapFileOpenDialog::OnInitDone()
 	{
 		pDirect->SetCheck(m_bDirectMode);
 		pDirect->EnableWindow( ! m_bReadOnly);
+	}
+	CComboBox * pCb = static_cast<CComboBox *>(GetDlgItem(IDC_COMBO_RECENT));
+	if (NULL != pCb)
+	{
+		pCb->SetExtendedUI();
+		CThisApp * pApp = GetApp();
+		for (int i = 0; i < sizeof m_RecentFolders / sizeof m_RecentFolders[0]; i++)
+		{
+			CString s;
+			s.Format("Dir%d", i);
+			TRACE("Added reg item %s\n", LPCTSTR(s));
+			pApp->Profile.AddItem(_T("RecentOpenDirs"), s, m_RecentFolders[i]);
+			m_RecentFolders[i].TrimLeft();
+			m_RecentFolders[i].TrimRight();
+			if ( ! m_RecentFolders[i].IsEmpty())
+			{
+				pCb->AddString(m_RecentFolders[i]);
+			}
+		}
 	}
 }
 
@@ -2294,4 +2422,44 @@ void CWaveSoapFrontApp::OnToolsCdgrab()
 #endif
 	CloseHandle(hCD);
 #endif
+}
+
+void CWaveSoapFrontApp::OnActivateDocument(CWaveSoapFrontDoc *pDocument, BOOL bActivate)
+{
+	if (bActivate)
+	{
+		if (pDocument != m_pActiveDocument)
+		{
+			m_pActiveDocument = pDocument;
+			pDocument->OnActivateDocument(TRUE);
+		}
+	}
+	else
+	{
+		if (pDocument == m_pActiveDocument)
+		{
+			m_pActiveDocument = NULL;
+			pDocument->OnActivateDocument(FALSE);
+		}
+	}
+}
+
+void CWaveSoapFrontApp::GetStatusStringAndDoc(CString & str, CWaveSoapFrontDoc ** ppDoc)
+{
+	m_StatusStringLock.Lock();
+
+	str = m_CurrentStatusString;
+	*ppDoc = m_pLastStatusDocument;
+
+	m_StatusStringLock.Unlock();
+}
+
+void CWaveSoapFrontApp::SetStatusStringAndDoc(const CString & str, CWaveSoapFrontDoc * pDoc)
+{
+	m_StatusStringLock.Lock();
+
+	m_CurrentStatusString = str;
+	m_pLastStatusDocument = pDoc;
+
+	m_StatusStringLock.Unlock();
 }
