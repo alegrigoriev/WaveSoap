@@ -118,9 +118,19 @@ protected:
 
 class CEqualizerDialog : public CResizableDialog
 {
+	typedef CResizableDialog BaseClass;
 // Construction
 public:
-	CEqualizerDialog(CWnd* pParent = NULL);   // standard constructor
+	CEqualizerDialog(SAMPLE_INDEX Start,
+					SAMPLE_INDEX End,
+					SAMPLE_INDEX CaretPosition,
+					CHANNEL_MASK Channels,
+					NUMBER_OF_SAMPLES FileLength,
+					const WAVEFORMATEX * pWf,
+					int m_TimeFormat,
+					BOOL bLockChannels,
+					BOOL	bUndoEnabled,
+					CWnd* pParent = NULL);   // standard constructor
 
 // Dialog Data
 	//{{AFX_DATA(CEqualizerDialog)
