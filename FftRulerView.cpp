@@ -66,7 +66,7 @@ void CFftRulerView::OnDraw(CDC* pDC)
 
 
 	int nVertStep = GetSystemMetrics(SM_CYMENU);
-	int nChannels = pDoc->WaveChannels();
+	NUMBER_OF_CHANNELS nChannels = pDoc->WaveChannels();
 	int nHeight = cr.Height() / nChannels;
 
 	double VerticalScale = pMasterView->m_VerticalScale;
@@ -97,7 +97,7 @@ void CFftRulerView::OnDraw(CDC* pDC)
 	pDC->SetTextColor(0x000000);   // black
 	pDC->SetBkMode(TRANSPARENT);
 
-	int nSampleUnits = int(nVertStep * pDoc->WaveFormat()->nSamplesPerSec / (nHeight * VerticalScale));
+	int nSampleUnits = int(nVertStep * pDoc->WaveSampleRate() / (nHeight * VerticalScale));
 	// round sample units to 10 or 5
 	int step;
 	for (step = 1; step < nSampleUnits; step *= 10)
@@ -140,16 +140,16 @@ void CFftRulerView::OnDraw(CDC* pDC)
 		ClipLow += tm.tmHeight / 2;
 		ClipHigh -= tm.tmHeight / 2;
 		int yLow = int(pMasterView->m_FirstbandVisible *
-						0.5 * pDoc->WaveFormat()->nSamplesPerSec / pMasterView->m_FftOrder);
+						0.5 * pDoc->WaveSampleRate() / pMasterView->m_FftOrder);
 		// round to the next multiple of step
 		yLow += (step*0x10000-yLow) % step;
-		int yHigh = int(yLow + 0.5 * pDoc->WaveFormat()->nSamplesPerSec / VerticalScale);
+		int yHigh = int(yLow + 0.5 * pDoc->WaveSampleRate() / VerticalScale);
 		yHigh -= (step*0x10000+yHigh) % step;
 		ASSERT(yLow <= yHigh);
 		for (int y = yLow; y <= yHigh; y += step)
 		{
 			// y is frequency
-			double band = double(y) / (0.5 * pDoc->WaveFormat()->nSamplesPerSec)
+			double band = double(y) / (0.5 * pDoc->WaveSampleRate())
 						* pMasterView->m_FftOrder;
 			int yDev= int(Offset - fround((band - pMasterView->m_FirstbandVisible)
 										/ pMasterView->m_FftOrder * nHeight * VerticalScale));
