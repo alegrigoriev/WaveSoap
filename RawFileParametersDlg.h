@@ -29,12 +29,12 @@ struct RawFileParams
 	};
 };
 
-class CRawFileParametersDlg : public CUiUpdatedDlg, protected RawFileParams
+class CRawFileParametersDlg : public CUiUpdatedDlg
 {
 	typedef CUiUpdatedDlg BaseClass;
 // Construction
 public:
-	CRawFileParametersDlg(LONGLONG Length, CWnd* pParent = NULL);   // standard constructor
+	CRawFileParametersDlg(ULONGLONG Length, CWnd* pParent = NULL);   // standard constructor
 
 	DWORD HeaderLength() const
 	{
@@ -51,45 +51,11 @@ public:
 		return m_bMsbFirst;
 	}
 
-	NUMBER_OF_CHANNELS NumberOfChannels() const
+	WAVEFORMATEX const * GetWaveFormat() const
 	{
-		if (m_bStereo)
-		{
-			return 2;
-		}
-		else
-		{
-			return 1;
-		}
+		return & m_WaveFormat;
 	}
 
-	WORD NumberOfBits() const
-	{
-		return WORD(8 + 8 * (0 != m_bBits16));
-	}
-
-	unsigned long SamplingRate() const
-	{
-		return m_SamplingRate;
-	}
-
-	WORD GetFormatTag() const
-	{
-		if (m_bBits16)
-		{
-			return WAVE_FORMAT_PCM;
-		}
-		switch(m_Compression)
-		{
-		case 0:
-		default:
-			return WAVE_FORMAT_PCM;
-		case 1:
-			return WAVE_FORMAT_ALAW;
-		case 2:
-			return WAVE_FORMAT_MULAW;
-		}
-	}
 
 // Dialog Data
 	//{{AFX_DATA(CRawFileParametersDlg)
@@ -104,9 +70,10 @@ protected:
 	int		m_bMsbFirst;
 	//}}AFX_DATA
 	unsigned long    m_SamplingRate;
-	LONGLONG  m_SourceFileSize;
+	ULONGLONG  m_SourceFileSize;
 
-	CApplicationProfile m_Profile;
+	WAVEFORMATEX m_WaveFormat;
+
 // Overrides
 	// ClassWizard generated virtual function overrides
 	//{{AFX_VIRTUAL(CRawFileParametersDlg)
@@ -139,12 +106,17 @@ public:
 // Dialog Data
 	//{{AFX_DATA(CSaveRawFileDlg)
 	enum { IDD = IDD_DIALOG_SAVE_RAW_FILE };
-	int		m_b16Bits;
-	int		m_Compression;
-	int		m_bMsbFirst;
 	//}}AFX_DATA
 
-	CApplicationProfile m_Profile;
+	BOOL MsbFirst() const
+	{
+		return m_bMsbFirst;
+	}
+
+	WAVEFORMATEX const * GetWaveFormat() const
+	{
+		return & m_WaveFormat;
+	}
 
 // Overrides
 	// ClassWizard generated virtual function overrides
@@ -155,6 +127,10 @@ protected:
 
 // Implementation
 protected:
+	WAVEFORMATEX m_WaveFormat;
+	int		m_b16Bits;
+	int		m_Compression;
+	int		m_bMsbFirst;
 
 	// Generated message map functions
 	//{{AFX_MSG(CSaveRawFileDlg)

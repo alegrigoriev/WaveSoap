@@ -5,6 +5,7 @@
 #include "stdafx.h"
 #include "WaveSoapFront.h"
 #include "RawFileParametersDlg.h"
+#include "ApplicationParameters.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -15,33 +16,44 @@ static char THIS_FILE[] = __FILE__;
 /////////////////////////////////////////////////////////////////////////////
 // CRawFileParametersDlg dialog
 
-CRawFileParametersDlg::CRawFileParametersDlg(LONGLONG Length, CWnd* pParent /*=NULL*/)
+CRawFileParametersDlg::CRawFileParametersDlg(ULONGLONG Length,
+											CWnd* pParent /*=NULL*/)
 	: BaseClass(IDD, pParent)
 	, m_SourceFileSize(Length)
 {
-	//{{AFX_DATA_INIT(CRawFileParametersDlg)
-	m_HeaderLength = 0;
-	m_TrailerLength = 0;
-	m_bStereo = -1;
-	m_bBits16 = -1;
-	m_Compression = -1;
-	m_bMsbFirst = -1;
-	//}}AFX_DATA_INIT
-	m_dwParams = 0;
-	m_Params.m_bStereo = 1;
-	m_Params.m_bBits16 = 1;
-	m_Params.m_Compression = 0;
-	m_Params.m_bMsbFirst = 0;
+	FileParameters * pParams = PersistentFileParameters::GetData();
+	m_WaveFormat = pParams->RawFileFormat;
 
-	m_Profile.AddItem(_T("Settings"), _T("RawFileSamplingRate"), m_SamplingRate, 44100, 1, 1000000);
-	m_Profile.AddItem(_T("Settings"), _T("RawFileHeaderLength"), m_HeaderLength, 0, 0, 0x20000000);
-	m_Profile.AddItem(_T("Settings"), _T("RawFileTrailerLength"), m_TrailerLength, 0, 0, 0x20000000);
-	m_Profile.AddItem(_T("Settings"), _T("RawFileSettings"), m_dwParams, m_dwParams, 0, 0xFFFFFFFF);
+	m_HeaderLength = pParams->RawFileHeaderLength;
+	if (Length < 4)
+	{
+		m_HeaderLength = 0;
+	}
+	else if (m_HeaderLength > Length - 4)
+	{
+		m_HeaderLength = Length - 4;
+	}
 
-	m_bStereo = m_Params.m_bStereo;
-	m_bBits16 = m_Params.m_bBits16;
-	m_Compression = m_Params.m_Compression;
-	m_bMsbFirst = m_Params.m_bMsbFirst;
+	m_TrailerLength = DWORD(std::min<ULONGLONG>(pParams->RawFileTrailerLength, Length - 4 - m_HeaderLength));
+
+	m_bStereo = (2 == m_WaveFormat.nChannels);
+	m_bBits16 = (16 == m_WaveFormat.wBitsPerSample);
+
+	m_bMsbFirst = pParams->RawFileBigEnded;
+	m_SamplingRate = m_WaveFormat.nSamplesPerSec;
+
+	if (WAVE_FORMAT_PCM == m_WaveFormat.wFormatTag)
+	{
+		m_Compression = 0;
+	}
+	else if (WAVE_FORMAT_ALAW == m_WaveFormat.wFormatTag)
+	{
+		m_Compression = 1;
+	}
+	else if (WAVE_FORMAT_MULAW == m_WaveFormat.wFormatTag)
+	{
+		m_Compression = 2;
+	}
 }
 
 static void AFXAPI FailMinMaxWithFormat(CDataExchange* pDX,
@@ -110,22 +122,69 @@ void CRawFileParametersDlg::DoDataExchange(CDataExchange* pDX)
 	DDX_Radio(pDX, IDC_RADIO_LSB_FIRST, m_bMsbFirst);
 	//}}AFX_DATA_MAP
 	DWORD MaxHeaderLength = 0xFFFFFFFC;
-	if (m_SourceFileSize < 0x100000000i64)
+	if (m_SourceFileSize < 4)
+	{
+		MaxHeaderLength = 0;
+	}
+	else if (m_SourceFileSize < 0x100000000i64)
 	{
 		MaxHeaderLength = DWORD(m_SourceFileSize) - 4;
 	}
+
 	DDV_MinMaxDWordHex(pDX, m_HeaderLength, 0, MaxHeaderLength);
 	DDV_MinMaxDWordHex(pDX, m_TrailerLength, 0, MaxHeaderLength - m_HeaderLength);
 	DDX_Text(pDX, IDC_COMBO_SAMPLING_RATE, m_SamplingRate);
 
 	if (pDX->m_bSaveAndValidate)
 	{
-		m_Params.m_bStereo = m_bStereo;
-		m_Params.m_bBits16 = m_bBits16;
-		m_Params.m_Compression = m_Compression;
-		m_Params.m_bMsbFirst = m_bMsbFirst;
+		FileParameters * pParams = PersistentFileParameters::GetData();
 
-		m_Profile.FlushAll();
+		pParams->RawFileHeaderLength = m_HeaderLength;
+
+		pParams->RawFileTrailerLength = m_TrailerLength;
+
+		if (m_bStereo)
+		{
+			m_WaveFormat.nChannels = 2;
+		}
+		else
+		{
+			m_WaveFormat.nChannels = 1;
+		}
+
+		if (m_bBits16)
+		{
+			m_WaveFormat.wBitsPerSample = 16;
+		}
+		else
+		{
+			m_WaveFormat.wBitsPerSample = 8;
+		}
+
+		pParams->RawFileBigEnded = m_bMsbFirst;
+
+		if (m_bBits16)
+		{
+			m_WaveFormat.wFormatTag = WAVE_FORMAT_PCM;
+		}
+		else switch(m_Compression)
+		{
+		case 0:
+		default:
+			m_WaveFormat.wFormatTag = WAVE_FORMAT_PCM;
+			break;
+		case 1:
+			m_WaveFormat.wFormatTag = WAVE_FORMAT_ALAW;
+			break;
+		case 2:
+			m_WaveFormat.wFormatTag = WAVE_FORMAT_MULAW;
+			break;
+		}
+
+		m_WaveFormat.nBlockAlign = m_WaveFormat.wBitsPerSample * m_WaveFormat.nChannels / 8;
+		m_WaveFormat.nAvgBytesPerSec = m_WaveFormat.nBlockAlign * m_WaveFormat.nSamplesPerSec;
+
+		pParams->RawFileFormat = m_WaveFormat;
 	}
 }
 
@@ -175,24 +234,27 @@ void CRawFileParametersDlg::OnUpdate8bitsOnly(CCmdUI * pCmdUI)
 
 
 CSaveRawFileDlg::CSaveRawFileDlg(CWnd* pParent /*=NULL*/)
-	: CDialog(CSaveRawFileDlg::IDD, pParent)
+	: CDialog(IDD, pParent)
 {
-	//{{AFX_DATA_INIT(CSaveRawFileDlg)
-	m_b16Bits = -1;
-	m_Compression = -1;
-	m_bMsbFirst = -1;
-	//}}AFX_DATA_INIT
-	m_dwParams = 0;
-	m_Params.m_bStereo = 1;
-	m_Params.m_bBits16 = 1;
-	m_Params.m_Compression = 0;
-	m_Params.m_bMsbFirst = 0;
+	FileParameters * pParams = PersistentFileParameters::GetData();
+	m_WaveFormat = pParams->RawFileFormat;
 
-	m_Profile.AddItem(_T("Settings"), _T("RawFileSettings"), m_dwParams, m_dwParams, 0, 0xFFFFFFFF);
+	m_b16Bits = (16 == m_WaveFormat.wBitsPerSample);
 
-	m_b16Bits = m_Params.m_bBits16;
-	m_Compression = m_Params.m_Compression;
-	m_bMsbFirst = m_Params.m_bMsbFirst;
+	m_bMsbFirst = pParams->RawFileBigEnded;
+
+	if (WAVE_FORMAT_PCM == m_WaveFormat.wFormatTag)
+	{
+		m_Compression = 0;
+	}
+	else if (WAVE_FORMAT_ALAW == m_WaveFormat.wFormatTag)
+	{
+		m_Compression = 1;
+	}
+	else if (WAVE_FORMAT_MULAW == m_WaveFormat.wFormatTag)
+	{
+		m_Compression = 2;
+	}
 }
 
 
@@ -206,11 +268,38 @@ void CSaveRawFileDlg::DoDataExchange(CDataExchange* pDX)
 	//}}AFX_DATA_MAP
 	if (pDX->m_bSaveAndValidate)
 	{
-		m_Params.m_bBits16 = m_b16Bits;
-		m_Params.m_Compression = m_Compression;
-		m_Params.m_bMsbFirst = m_bMsbFirst;
+		FileParameters * pParams = PersistentFileParameters::GetData();
 
-		m_Profile.FlushAll();
+		if (m_b16Bits)
+		{
+			m_WaveFormat.wBitsPerSample = 16;
+		}
+		else
+		{
+			m_WaveFormat.wBitsPerSample = 8;
+		}
+
+		pParams->RawFileBigEnded = m_bMsbFirst;
+
+		if (m_b16Bits)
+		{
+			m_WaveFormat.wFormatTag = WAVE_FORMAT_PCM;
+		}
+		else switch(m_Compression)
+		{
+		case 0:
+		default:
+			m_WaveFormat.wFormatTag = WAVE_FORMAT_PCM;
+		case 1:
+			m_WaveFormat.wFormatTag = WAVE_FORMAT_ALAW;
+		case 2:
+			m_WaveFormat.wFormatTag = WAVE_FORMAT_MULAW;
+		}
+
+		m_WaveFormat.nBlockAlign = m_WaveFormat.wBitsPerSample * m_WaveFormat.nChannels / 8;
+		m_WaveFormat.nAvgBytesPerSec = m_WaveFormat.nBlockAlign * m_WaveFormat.nSamplesPerSec;
+
+		pParams->RawFileFormat = m_WaveFormat;
 	}
 }
 
