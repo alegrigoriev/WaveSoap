@@ -2382,11 +2382,13 @@ BOOL CWaveSoapFrontView::MasterScrollBy(double dx, double dy, BOOL bDoScroll)
 						if (ndx != 0
 							&& x + p.x > NewFileEnd)
 						{
+							InvalidateRect(ir, FALSE);
 							if (ndx < 0)
 							{
+								ir.left = ir.right;
 								ir.right -= ndx;
+								InvalidateRect(ir, TRUE);
 							}
-							InvalidateRect(ir);
 						}
 					}
 				}
