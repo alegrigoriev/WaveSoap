@@ -840,6 +840,15 @@ BEGIN
     END
 END
 
+IDR_MENU_POPUP_SS_RULER MENU 
+BEGIN
+    POPUP ""
+    BEGIN
+        MENUITEM "Zoom In",                     ID_VIEW_SS_ZOOMINHOR2
+        MENUITEM "Zoom Out",                    ID_VIEW_SS_ZOOMOUTHOR2
+    END
+END
+
 
 /////////////////////////////////////////////////////////////////////////////
 //
@@ -3873,6 +3882,8 @@ END
 STRINGTABLE 
 BEGIN
     IDS_STRING_SPLIT_TO_FILES_OPERATION "Split to files"
+    IDS_CHANNELS_SHIFT_WARNING_PROMPT 
+                            "One channel will get moved from another, continue?"
 END
 
 #endif    // English (U.S.) resources
