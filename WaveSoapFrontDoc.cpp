@@ -27,7 +27,6 @@ BEGIN_MESSAGE_MAP(CWaveSoapFrontDoc, CDocument)
 	ON_UPDATE_COMMAND_UI(ID_EDIT_COPY, OnUpdateEditCopy)
 	ON_COMMAND(ID_EDIT_CUT, OnEditCut)
 	ON_UPDATE_COMMAND_UI(ID_EDIT_CUT, OnUpdateEditCut)
-	ON_COMMAND(ID_EDIT_PASTE, OnEditPaste)
 	ON_UPDATE_COMMAND_UI(ID_EDIT_PASTE, OnUpdateEditPaste)
 	ON_COMMAND(ID_EDIT_UNDO, OnEditUndo)
 	ON_UPDATE_COMMAND_UI(ID_EDIT_UNDO, OnUpdateEditUndo)
@@ -42,8 +41,8 @@ BEGIN_MESSAGE_MAP(CWaveSoapFrontDoc, CDocument)
 	ON_UPDATE_COMMAND_UI(IDC_SOUND_STOP, OnUpdateSoundStop)
 	ON_COMMAND(IDC_SOUND_STOP, OnSoundStop)
 	ON_COMMAND(ID_STOP_ALL, OnStopAll)
-	ON_COMMAND(IDC_PLAY_AND_STOP, OnPlayAndStop)
 	ON_COMMAND(IDC_SOUND_PAUSE, OnSoundPause)
+	ON_COMMAND(IDC_PLAY_AND_STOP, OnPlayAndStop)
 	ON_UPDATE_COMMAND_UI(IDC_SOUND_PAUSE, OnUpdateSoundPause)
 	ON_UPDATE_COMMAND_UI(ID_INDICATOR_FILE_SIZE, OnUpdateIndicatorFileSize)
 	ON_UPDATE_COMMAND_UI(ID_INDICATOR_CURRENT_POS, OnUpdateIndicatorCurrentPos)
@@ -51,6 +50,11 @@ BEGIN_MESSAGE_MAP(CWaveSoapFrontDoc, CDocument)
 	ON_UPDATE_COMMAND_UI(ID_INDICATOR_SAMPLE_RATE, OnUpdateIndicatorSampleRate)
 	ON_UPDATE_COMMAND_UI(ID_INDICATOR_SAMPLE_SIZE, OnUpdateIndicatorSampleSize)
 	ON_UPDATE_COMMAND_UI(ID_INDICATOR_CHANNELS, OnUpdateIndicatorChannels)
+	ON_COMMAND(ID_EDIT_DELETE, OnEditDelete)
+	ON_UPDATE_COMMAND_UI(ID_EDIT_DELETE, OnUpdateEditDelete)
+	ON_COMMAND(ID_EDIT_PASTE, OnEditPaste)
+	ON_COMMAND(ID_EDIT_CHANNELS_LOCK, OnEditChannelsLock)
+	ON_UPDATE_COMMAND_UI(ID_EDIT_CHANNELS_LOCK, OnUpdateEditChannelsLock)
 	//}}AFX_MSG_MAP
 END_MESSAGE_MAP()
 
@@ -58,8 +62,10 @@ END_MESSAGE_MAP()
 // CWaveSoapFrontDoc construction/destruction
 
 CWaveSoapFrontDoc::CWaveSoapFrontDoc()
-	:m_pPeaks(NULL), m_WavePeakSize(0), m_PeakDataGranularity(512),
-//m_pWaveBuffer(NULL), m_WaveBufferSize(0),
+	:m_pPeaks(NULL),
+	m_WavePeakSize(0),
+	m_AllocatedWavePeakSize(0),
+	m_PeakDataGranularity(512),
 	m_CaretPosition(0),
 	m_TimeSelectionMode(TRUE),
 	m_SelectionStart(0),
@@ -69,19 +75,21 @@ CWaveSoapFrontDoc::CWaveSoapFrontDoc()
 	m_bReadOnly(true),
 	m_bDirectMode(false),
 	m_bInOnIdle(false),
+	m_bChannelsLocked(true),
 	m_pCurrentContext(NULL),
 	m_pQueuedOperation(NULL),
 	m_pUndoList(NULL),
 	m_pRedoList(NULL),
 	m_pUpdateList(NULL),
 	m_pRetiredList(NULL),
-	m_OperationInProgress(false),
+	m_OperationInProgress(0),
 	m_PlayingSound(false),
 	m_OperationNonCritical(false),
 	m_Thread(ThreadProc, this),
+	m_ModificationSequenceNumber(0),
 	m_SelectedChannel(2)
 {
-	// TODO: add one-time construction code here
+	m_bUndoEnabled = (FALSE != GetApp()->m_bUndoEnabled);
 	m_Thread.m_bAutoDelete = FALSE;
 	m_hThreadEvent = CreateEvent(NULL, FALSE, FALSE, NULL);
 	TRACE("CWaveSoapFrontDoc::CWaveSoapFrontDoc()\n");
@@ -94,7 +102,7 @@ CWaveSoapFrontDoc::CWaveSoapFrontDoc()
 CWaveSoapFrontDoc::~CWaveSoapFrontDoc()
 {
 	TRACE("CWaveSoapFrontDoc::~CWaveSoapFrontDoc()\n");
-	ASSERT( ! m_OperationInProgress);
+	ASSERT(0 == m_OperationInProgress);
 	// free RetiredList and UpdateList
 	while (m_pRetiredList)
 	{
@@ -156,8 +164,13 @@ BOOL CWaveSoapFrontDoc::OnNewDocument()
 	m_SelectedChannel = 2;  // both channels
 	m_TimeSelectionMode = TRUE;
 	m_bReadOnly = false;
+	CWaveFile * pTemplateFile = & GetApp()->m_NewTemplateFile;
+	if ( ! pTemplateFile->IsOpen())
+	{
+		pTemplateFile = NULL;
+	}
 
-	if ( FALSE == m_WavFile.CreateWaveFile(NULL, 2, // 2 channels
+	if ( FALSE == m_WavFile.CreateWaveFile(pTemplateFile, 2, // 2 channels
 											0, // empty
 											CreateWaveFileTempDir
 											// keep the file for debug
@@ -672,10 +685,10 @@ BOOL CWaveSoapFrontDoc::AllocatePeakData(long NewNumberOfSamples)
 	// change m_pPeaks size
 	// need to synchronize with OnDraw
 	int NewWavePeakSize = WaveChannels() * ((NewNumberOfSamples + m_PeakDataGranularity - 1) / m_PeakDataGranularity);
-	if (NewWavePeakSize > m_WavePeakSize)
+	if (NewWavePeakSize > m_AllocatedWavePeakSize)
 	{
-		NewWavePeakSize += 1024;  // reserve more
-		WavePeak * NewPeaks = new WavePeak[NewWavePeakSize];
+		int NewAllocatedWavePeakSize = NewWavePeakSize + 1024;  // reserve more
+		WavePeak * NewPeaks = new WavePeak[NewAllocatedWavePeakSize];
 		if (NULL == NewPeaks)
 		{
 			return FALSE;
@@ -694,13 +707,19 @@ BOOL CWaveSoapFrontDoc::AllocatePeakData(long NewNumberOfSamples)
 			NewPeaks[i].high = -0x8000;
 			NewPeaks[i].low = 0x7FFF;
 		}
-		WavePeak * OldPeaks = m_pPeaks;
+		WavePeak * OldPeaks;
 		{
 			CSimpleCriticalSectionLock lock(m_PeakLock);
+			OldPeaks = m_pPeaks;
 			m_pPeaks = NewPeaks;
 			m_WavePeakSize = NewWavePeakSize;
+			m_AllocatedWavePeakSize = NewAllocatedWavePeakSize;
 		}
 		delete[] OldPeaks;
+	}
+	else
+	{
+		m_WavePeakSize = NewWavePeakSize;
 	}
 	return TRUE;
 }
@@ -743,9 +762,10 @@ void CWaveSoapFrontDoc::SoundChanged(DWORD FileID, long begin, long end,
 			{
 				// see if the ranges overlap
 				if (FileID == pInfo->FileID
+					&& pInfo->UpdateCode == UpdateSoundChanged
+					&& pInfo->Length == FileLength
 					&& begin <= pInfo->End
-					&& end >= pInfo->Begin
-					&& pInfo->UpdateCode == UpdateSoundChanged)
+					&& end >= pInfo->Begin)
 				{
 					if (begin < pInfo->Begin)
 					{
@@ -775,13 +795,19 @@ void CWaveSoapFrontDoc::RescanPeaks(long begin, long end)
 	// if called immediately after data modification, it will get
 	// the data directly from the cache
 	int nSampleSize = WaveSampleSize();
-	DWORD dwDataOffset = WaveDataChunk()->dwDataOffset;
+	LPMMCKINFO datack = WaveDataChunk();
+	DWORD dwDataChunkOffset = datack->dwDataOffset;
 	unsigned GranuleSize = WaveChannels() * m_PeakDataGranularity * sizeof(__int16);
 
-	DWORD Pos = nSampleSize * (begin & -m_PeakDataGranularity) + dwDataOffset;
+	DWORD Pos = nSampleSize * (begin & -m_PeakDataGranularity) + dwDataChunkOffset;
 
-	DWORD EndPos = nSampleSize * ((end + m_PeakDataGranularity - 1) & -m_PeakDataGranularity)
-					+ dwDataOffset;
+	DWORD EndPos = nSampleSize * ((end | (m_PeakDataGranularity - 1)) + 1);
+	if (EndPos > datack->cksize)
+	{
+		EndPos = datack->cksize;
+	}
+	EndPos += dwDataChunkOffset;
+
 	while (Pos < EndPos)
 	{
 		DWORD SizeToRead = EndPos - Pos;
@@ -793,7 +819,7 @@ void CWaveSoapFrontDoc::RescanPeaks(long begin, long end)
 			unsigned i;
 			long DataToProcess = lRead;
 			__int16 * pWaveData = (__int16 *) pBuf;
-			DWORD DataOffset = Pos - dwDataOffset;
+			DWORD DataOffset = Pos - dwDataChunkOffset;
 			unsigned DataForGranule = GranuleSize - DataOffset % GranuleSize;
 
 			if (2 == WaveChannels())
@@ -876,22 +902,10 @@ void CWaveSoapFrontDoc::RescanPeaks(long begin, long end)
 					}
 
 					ASSERT(pPeak - m_pPeaks < m_WavePeakSize);
-					if (pPeak[0].low > wpl_l)
-					{
-						pPeak[0].low = wpl_l;
-					}
-					if (pPeak[0].high < wpl_h)
-					{
-						pPeak[0].high = wpl_h;
-					}
-					if (pPeak[1].low > wpr_l)
-					{
-						pPeak[1].low = wpr_l;
-					}
-					if (pPeak[1].high < wpr_h)
-					{
-						pPeak[1].high = wpr_h;
-					}
+					pPeak[0].low = wpl_l;
+					pPeak[0].high = wpl_h;
+					pPeak[1].low = wpr_l;
+					pPeak[1].high = wpr_h;
 					pPeak += 2;
 					DataForGranule = GranuleSize;
 				}
@@ -934,14 +948,8 @@ void CWaveSoapFrontDoc::RescanPeaks(long begin, long end)
 					}
 
 					ASSERT(pPeak - m_pPeaks < m_WavePeakSize);
-					if (pPeak[0].low > wp_l)
-					{
-						pPeak[0].low = wp_l;
-					}
-					if (pPeak[0].high < wp_h)
-					{
-						pPeak[0].high = wp_h;
-					}
+					pPeak[0].low = wp_l;
+					pPeak[0].high = wp_h;
 					pPeak ++;
 					DataForGranule = GranuleSize;
 				}
@@ -992,11 +1000,18 @@ void CWaveSoapFrontDoc::OnUpdateEditCopy(CCmdUI* pCmdUI)
 
 void CWaveSoapFrontDoc::OnEditCut()
 {
-	if (m_OperationInProgress)
+	if (m_OperationInProgress
+		|| m_bReadOnly
+		|| m_SelectionStart == m_SelectionEnd)
 	{
 		return;
 	}
-	DoCut(m_SelectionStart, m_SelectionEnd, m_SelectedChannel, NULL);
+	int ch = m_SelectedChannel;
+	if (ChannelsLocked())
+	{
+		ch = 2;
+	}
+	DoCut(m_SelectionStart, m_SelectionEnd, ch);
 	SetModifiedFlag(TRUE);
 }
 
@@ -1006,13 +1021,42 @@ void CWaveSoapFrontDoc::OnUpdateEditCut(CCmdUI* pCmdUI)
 					&& ! (m_OperationInProgress || m_bReadOnly));
 }
 
+void CWaveSoapFrontDoc::OnEditDelete()
+{
+	if (m_OperationInProgress
+		|| m_bReadOnly
+		|| m_SelectionStart == WaveFileSamples())
+	{
+		return;
+	}
+	int ch = m_SelectedChannel;
+	if (ChannelsLocked())
+	{
+		ch = 2;
+	}
+	DoDelete(m_SelectionStart, m_SelectionEnd, ch);
+	SetModifiedFlag(TRUE);
+}
+
+void CWaveSoapFrontDoc::OnUpdateEditDelete(CCmdUI* pCmdUI)
+{
+	pCmdUI->Enable( ! (m_OperationInProgress
+						|| m_bReadOnly
+						|| m_SelectionStart == WaveFileSamples()));
+}
+
 void CWaveSoapFrontDoc::OnEditPaste()
 {
 	if (m_OperationInProgress)
 	{
 		return;
 	}
-	DoPaste(m_SelectionStart, m_SelectionEnd, m_SelectedChannel, NULL);
+	int ch = m_SelectedChannel;
+	if (ChannelsLocked())
+	{
+		ch = 2;
+	}
+	DoPaste(m_SelectionStart, m_SelectionEnd, ch, NULL);
 	SetModifiedFlag(TRUE);
 }
 
@@ -1020,16 +1064,6 @@ void CWaveSoapFrontDoc::OnUpdateEditPaste(CCmdUI* pCmdUI)
 {
 	pCmdUI->Enable(GetApp()->m_ClipboardFile.IsOpen()
 					&& ! (m_OperationInProgress || m_bReadOnly));
-}
-
-void CWaveSoapFrontDoc::OnEditUndo()
-{
-	if (m_OperationInProgress
-		|| NULL == m_pUndoList)
-	{
-		return;
-	}
-	SetModifiedFlag(TRUE);
 }
 
 void CWaveSoapFrontDoc::OnUpdateEditUndo(CCmdUI* pCmdUI)
@@ -1113,7 +1147,6 @@ UINT CWaveSoapFrontDoc::_ThreadProc(void)
 				COperationContext * pContext =
 					(COperationContext *)InterlockedExchange(PLONG( & m_pCurrentContext), NULL);
 				pContext->DeInit();
-				m_OperationInProgress = false;
 				pContext->Retire();     // usually deletes it
 			}
 			continue;
@@ -1123,9 +1156,13 @@ UINT CWaveSoapFrontDoc::_ThreadProc(void)
 	return 0;
 }
 
+// additional custom flags for the contexts
 enum {
 	CopyExpandFile = 0x80000000,
 	CopyShrinkFile = 0x40000000,
+	CopyCreatingUndo = 0x20000000,
+	RedoContext = 0x10000000,
+	UndoContextReplaceWholeFile = 0x08000000,
 };
 
 class CResizeContext : public COperationContext
@@ -1143,25 +1180,29 @@ class CResizeContext : public COperationContext
 	DWORD m_DstEnd;
 	BOOL ExpandProc();
 	BOOL ShrinkProc();
-
+	BOOL InitUndo(CString UndoStatusString);
 public:
+	class CUndoRedoContext * m_pUndoContext;
+
 	CString sOp;
 	CResizeContext(CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString)
 		: COperationContext(pDoc, OperationContextDiskIntensive),
-		sOp(StatusString)
+		sOp(StatusString),
+		m_pUndoContext(NULL)
 	{
 
 	}
-	~CResizeContext() {}
+	~CResizeContext();
 	BOOL InitExpand(CWaveFile & File, LONG StartSample, LONG Length, int Channel);
 	BOOL InitShrink(CWaveFile & File, LONG StartSample, LONG Length, int Channel);
 	virtual BOOL OperationProc();
-	virtual CString GetStatusString() { return sOp; }
+	virtual void PostRetire();
+	virtual CString GetStatusString();
 };
 
 class CCopyContext : public COperationContext
 {
-	friend class CWaveSoapFrontDoc;
+public:
 	CWaveFile m_SrcFile;
 	CWaveFile m_DstFile;
 	// Start, End and position are in bytes
@@ -1175,12 +1216,14 @@ class CCopyContext : public COperationContext
 	DWORD m_DstEnd;
 	int m_DstChan;
 	class CResizeContext * m_pExpandShrinkContext;
+	class CUndoRedoContext * m_pUndoContext;
 
 public:
 	CString sOp;
 	CCopyContext(CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString)
 		: COperationContext(pDoc, OperationContextDiskIntensive),
 		sOp(StatusString),
+		m_pUndoContext(NULL),
 		m_pExpandShrinkContext(NULL)
 	{
 
@@ -1193,15 +1236,107 @@ public:
 				);
 	BOOL InitExpand(LONG StartSample, LONG Length, int Channel);
 	virtual BOOL OperationProc();
-	virtual CString GetStatusString()
-	{
-		if (m_pExpandShrinkContext)
-		{
-			return m_pExpandShrinkContext->GetStatusString();
-		}
-		return sOp;
-	}
+	virtual CString GetStatusString();
 };
+
+class CUndoRedoContext : public CCopyContext
+{
+public:
+	DWORD m_SrcSaveStart;
+	DWORD m_SrcSaveEnd;
+	DWORD m_SrcSavePos;
+	DWORD m_DstSavePos;
+	int m_SaveChan;
+	size_t m_RestoredLength;
+	CString sOp;
+	CUndoRedoContext(CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString)
+		: CCopyContext(pDoc, "Undoing..."),
+		sOp(StatusString)
+	{
+
+	}
+	BOOL InitUndoCopy(CWaveFile & SrcFile,
+					DWORD SaveStartPos, // source file position of data needed to save and restore
+					DWORD SaveEndPos,
+					int SaveChannel);
+	BOOL SaveUndoData(void * pBuf, long BufSize, DWORD Position, int Channel);
+	BOOL NeedToSave(DWORD Position, size_t length);
+	virtual void PostRetire();
+	~CUndoRedoContext() {}
+};
+
+CResizeContext::~CResizeContext()
+{
+	if (m_pUndoContext)
+	{
+		delete m_pUndoContext;
+		m_pUndoContext = NULL;
+	}
+}
+
+void CWaveSoapFrontDoc::OnEditUndo()
+{
+	if (m_OperationInProgress
+		|| NULL == m_pUndoList)
+	{
+		return;
+	}
+	// no critical section lock needed
+	CUndoRedoContext * pUndo = (CUndoRedoContext *) m_pUndoList;
+
+	// see what is necessary to restore
+	if (pUndo->m_Flags & CopyShrinkFile)
+	{
+		// shrink the file
+		// todo: create redo
+	}
+	else if (pUndo->m_Flags & CopyExpandFile)
+	{
+		if (FALSE == pUndo->m_DstFile.m_File.SetFileLength(pUndo->m_RestoredLength))
+		{
+			return;
+		}
+		MMCKINFO * pDatachunk = pUndo->m_DstFile.GetDataChunk();
+		pDatachunk->cksize = pUndo->m_RestoredLength - pDatachunk->dwDataOffset;
+		long NewLength = pDatachunk->cksize / pUndo->m_DstFile.SampleSize();
+		SoundChanged(pUndo->m_DstFile.GetFileID(), 0, 0, NewLength);
+		// todo: create redo
+	}
+	else
+	{
+		// just copy
+		// todo: create redo
+	}
+
+	m_pUndoList = pUndo->pNext;
+	pUndo->pNext = NULL;
+
+	QueueOperation(pUndo);
+}
+
+CString CResizeContext::GetStatusString() {
+	if (NULL != m_pUndoContext
+		&& (m_Flags & CopyCreatingUndo))
+	{
+		return m_pUndoContext->GetStatusString();
+	}
+	else
+		return sOp;
+}
+
+CString CCopyContext::GetStatusString()
+{
+	if (NULL != m_pUndoContext
+		&& (m_Flags & CopyCreatingUndo))
+	{
+		return m_pUndoContext->GetStatusString();
+	}
+	else if (m_pExpandShrinkContext)
+	{
+		return m_pExpandShrinkContext->GetStatusString();
+	}
+	return sOp;
+}
 
 BOOL CResizeContext::InitExpand(CWaveFile & File, LONG StartSample, LONG Length, int Channel)
 {
@@ -1240,26 +1375,128 @@ BOOL CResizeContext::InitExpand(CWaveFile & File, LONG StartSample, LONG Length,
 	return TRUE;
 }
 
-BOOL CWaveSoapFrontDoc::QueueOperation(COperationContext * pContext)
+BOOL CResizeContext::InitUndo(CString UndoStatusString)
 {
-	if (m_OperationInProgress)
+	if (! pDocument->UndoEnabled())
 	{
-		delete pContext;
-		AfxMessageBox(IDS_STRING_OPERATION_IN_PROGRESS,
-					MB_OK | MB_ICONEXCLAMATION);
+		return TRUE;
+	}
+	CUndoRedoContext * pUndo = new CUndoRedoContext(pDocument, UndoStatusString);
+	if (NULL == pUndo)
+	{
 		return FALSE;
 	}
+	CResizeContext * pResize = new CResizeContext(pDocument, _T("Undoing file resize..."));
+	if (NULL == pResize)
+	{
+		delete pUndo;
+		return FALSE;
+	}
+	pResize->m_DstChan = m_DstChan;
+	pResize->m_DstFile = m_DstFile;
+	pUndo->m_pExpandShrinkContext = pResize;
+
+	pResize->m_DstStart = m_SrcStart;
+	pResize->m_DstEnd = m_SrcEnd;
+
+	pResize->m_SrcStart = m_DstStart;
+	pResize->m_SrcEnd = m_DstEnd;
+
+	if (m_Flags & CopyShrinkFile)
+	{
+		pResize->m_DstCopyPos = m_SrcStart;
+		pResize->m_SrcCopyPos = m_DstStart;
+		pResize->m_Flags |= CopyExpandFile;
+		pUndo->m_Flags |= CopyExpandFile;
+
+		// Init undo to expand the file at position DstStart, expand by
+		if ( ! pUndo->InitUndoCopy(m_DstFile,
+									m_DstStart,
+									m_SrcStart, // expand by
+									m_DstChan))
+		{
+			delete pUndo;   // will delete m_pExpandShrinkContext, too
+			return FALSE;
+		}
+	}
+	else
+	{
+		pResize->m_Flags |= CopyShrinkFile;
+		pUndo->m_Flags |= CopyShrinkFile;
+
+		pResize->m_DstCopyPos = m_SrcEnd;
+		pResize->m_SrcCopyPos = m_DstEnd;
+		pUndo->m_SrcStart = 0;
+		pUndo->m_SrcEnd = 0;
+		pUndo->m_SrcCopyPos = 0;
+		pUndo->m_DstStart = 0;
+		pUndo->m_DstEnd = 0;
+		pUndo->m_DstCopyPos = 0;
+	}
+	pUndo->m_RestoredLength = pDocument->m_WavFile.m_File.GetLength();
+	m_pUndoContext = pUndo;
+	return TRUE;
+}
+
+BOOL CResizeContext::InitShrink(CWaveFile & File, LONG StartSample, LONG Length, int Channel)
+{
+	m_DstFile = File;
+	DWORD SampleSize = m_DstFile.SampleSize();
+	m_DstChan = Channel;
+	LPMMCKINFO pDatachunk = m_DstFile.GetDataChunk();
+	if (NULL == pDatachunk)
+	{
+		return FALSE;
+	}
+
+	m_SrcEnd = pDatachunk->dwDataOffset + pDatachunk->cksize;
+	m_SrcStart = pDatachunk->dwDataOffset +
+				(StartSample + Length) * SampleSize;
+	m_SrcCopyPos = m_SrcStart;
+
+	// when shrinking, data is moved starting from the begin of the file,
+	// but I use SrcStart as begin of the moved area and SrcEns as end (SrcStart <= SrcEnd)
+
+	m_DstStart = pDatachunk->dwDataOffset + StartSample * SampleSize;
+
+	m_DstEnd = m_SrcEnd - Length * SampleSize;
+	m_DstCopyPos = m_DstStart;
+
+	m_Flags |= CopyShrinkFile;
+
+	return TRUE;
+}
+
+void CWaveSoapFrontDoc::QueueOperation(COperationContext * pContext)
+{
 	m_StopOperation = false;
 	m_OperationNonCritical = (0 != (pContext->m_Flags & OperationContextNonCritical));
-	m_OperationInProgress = TRUE;
+	InterlockedIncrement( & m_OperationInProgress);
 	if (pContext->m_Flags & (OperationContextDiskIntensive | OperationContextClipboard))
 	{
-		return GetApp()->QueueOperation(pContext);
+		GetApp()->QueueOperation(pContext);
 	}
 	// the operation is performed by the document thread
-	m_pCurrentContext = pContext;
-	SetEvent(m_hThreadEvent);
-	return TRUE;
+	else
+	{
+		{
+			CSimpleCriticalSectionLock lock(m_cs);
+			if (NULL == m_pCurrentContext)
+			{
+				m_pCurrentContext = pContext;
+			}
+			else
+			{
+				COperationContext * pLast = m_pCurrentContext;
+				while (pLast->pNext != NULL)
+				{
+					pLast = pLast->pNext;
+				}
+				pLast->pNext = pContext;
+			}
+		}
+		SetEvent(m_hThreadEvent);
+	}
 }
 
 BOOL CCopyContext::InitCopy(CWaveFile & DstFile,
@@ -1324,9 +1561,7 @@ void CWaveSoapFrontDoc::DoCopy(LONG Start, LONG End, LONG Channel, LPCTSTR FileN
 										m_SelectionEnd - m_SelectionStart,
 										CreateWaveFileTempDir
 										// keep the file for debug
-#if 1 || !defined _DEBUG
 										| CreateWaveFileDeleteAfterClose
-#endif
 										| CreateWaveFileDontCopyInfo
 										| CreateWaveFilePcmFormat
 										| CreateWaveFileTemp,
@@ -1353,6 +1588,11 @@ CCopyContext::~CCopyContext()
 	{
 		delete m_pExpandShrinkContext;
 		m_pExpandShrinkContext = NULL;
+	}
+	if (m_pUndoContext)
+	{
+		delete m_pUndoContext;
+		m_pUndoContext = NULL;
 	}
 }
 
@@ -1406,6 +1646,13 @@ BOOL CCopyContext::OperationProc()
 	char * pSrcBuf;
 	void * pOriginalDstBuf;
 	char * pDstBuf;
+	DWORD DstFileFlags = CDirectFile::GetBufferAndPrefetchNext;
+	if (2 == m_DstChan
+		&& m_SrcFile.GetFileID() != m_DstFile.GetFileID()
+		&& NULL == m_pUndoContext)
+	{
+		DstFileFlags = CDirectFile::GetBufferWriteOnly;
+	}
 
 	if (m_SrcCopyPos > m_SrcEnd
 		|| m_DstCopyPos > m_DstEnd)
@@ -1437,14 +1684,17 @@ BOOL CCopyContext::OperationProc()
 		}
 		if (0 == LeftToWrite)
 		{
-			DWORD flags = CDirectFile::GetBufferAndPrefetchNext;
-			if (2 == m_DstChan)
+			DstFileFlags = CDirectFile::GetBufferAndPrefetchNext;
+			if (2 == m_DstChan
+				&& m_SrcFile.GetFileID() != m_DstFile.GetFileID()
+				&& (NULL == m_pUndoContext
+					|| ! m_pUndoContext->NeedToSave(m_DstCopyPos, 0x10000)))
 			{
-				flags = CDirectFile::GetBufferWriteOnly;
+				DstFileFlags = CDirectFile::GetBufferWriteOnly;
 			}
 			DWORD SizeToWrite = m_DstEnd - m_DstCopyPos;
 			WasLockedToWrite = m_DstFile.m_File.GetDataBuffer( & pOriginalDstBuf,
-																SizeToWrite, m_DstCopyPos, flags);
+																SizeToWrite, m_DstCopyPos, DstFileFlags);
 
 			if (0 == WasLockedToWrite)
 			{
@@ -1457,6 +1707,14 @@ BOOL CCopyContext::OperationProc()
 			}
 			pDstBuf = (char *) pOriginalDstBuf;
 			LeftToWrite = WasLockedToWrite;
+			// save the changed data to undo buffer
+			if (0 == (DstFileFlags & CDirectFile::GetBufferWriteOnly)
+				&& NULL != m_pUndoContext)
+			{
+				m_pUndoContext->SaveUndoData(pOriginalDstBuf, WasLockedToWrite,
+											m_DstCopyPos, m_DstChan);
+			}
+
 		}
 		// copy whatever possible
 		if ((m_DstFile.Channels() == 1
@@ -1676,8 +1934,11 @@ BOOL CCopyContext::OperationProc()
 			WasLockedToWrite = 0;
 		}
 	}
-	while (m_SrcCopyPos < m_SrcEnd
-			&& timeGetTime() - dwStartTime < 200
+	while (((DstFileFlags & CDirectFile::GetBufferWriteOnly)
+				// cannot exit while write-only buffer is incomplete
+				&& 0 != WasLockedToWrite)
+			|| (m_SrcCopyPos < m_SrcEnd
+				&& timeGetTime() - dwStartTime < 200)
 			);
 	if (0 != WasRead)
 	{
@@ -1705,6 +1966,17 @@ BOOL CCopyContext::OperationProc()
 
 }
 
+void CResizeContext::PostRetire()
+{
+	// save undo context
+	if (m_pUndoContext)
+	{
+		pDocument->AddUndoRedo(m_pUndoContext);
+		m_pUndoContext = NULL;
+	}
+	COperationContext::PostRetire();
+}
+
 BOOL CResizeContext::OperationProc()
 {
 	// change size of the file
@@ -1726,8 +1998,62 @@ BOOL CResizeContext::OperationProc()
 
 BOOL CResizeContext::ShrinkProc()
 {
+	if (NULL != m_pUndoContext
+		&& m_pUndoContext->m_SrcSavePos < m_pUndoContext->m_SrcSaveEnd)
+	{
+		// copy data to undo file
+		DWORD dwStartTime = timeGetTime();
+		DWORD dwOperationBegin = m_pUndoContext->m_SrcSavePos;
+
+		while (m_pUndoContext->m_SrcSavePos < m_pUndoContext->m_SrcSaveEnd
+				&& timeGetTime() - dwStartTime < 200)
+		{
+			void * pSrcBuf;
+			DWORD SizeToRead = m_pUndoContext->m_SrcSaveEnd - m_pUndoContext->m_SrcSavePos;
+			long WasRead = m_DstFile.m_File.GetDataBuffer( & pSrcBuf,
+															SizeToRead, m_pUndoContext->m_SrcSavePos, 0);
+			if (0 == WasRead)
+			{
+				return FALSE;
+			}
+
+			m_pUndoContext->SaveUndoData(pSrcBuf, WasRead,
+										m_pUndoContext->m_SrcSavePos, m_DstChan);
+
+			m_DstFile.m_File.ReturnDataBuffer(pSrcBuf, WasRead,
+											CDirectFile::ReturnBufferDiscard);
+			//m_pUndoContext->m_SrcSavePos += WasRead;
+		}
+
+		if (m_pUndoContext->m_SrcSaveEnd > m_pUndoContext->m_SrcSaveStart)
+		{
+			PercentCompleted = 100i64 * (m_pUndoContext->m_SrcSavePos - m_pUndoContext->m_SrcSaveStart)
+								/ (m_pUndoContext->m_SrcSaveEnd - m_pUndoContext->m_SrcSaveStart);
+		}
+		// set undo flag
+		m_Flags |= CopyCreatingUndo;
+		return TRUE;
+	}
+
+	// reset undo flag
+	m_Flags &= ~CopyCreatingUndo;
 	if (m_DstCopyPos >= m_DstEnd)
 	{
+		// file size is changed only if all channels are moved
+		if (0 == (m_Flags & OperationContextFinished)
+			&& 2 == m_DstChan)
+		{
+			MMCKINFO * pDatachunk = pDocument->WaveDataChunk();
+			pDatachunk->cksize = m_DstEnd - pDatachunk->dwDataOffset;
+			long NewLength = pDatachunk->cksize / pDocument->WaveSampleSize();
+			// first, expand the file itself
+			if (FALSE == m_DstFile.m_File.SetFileLength(m_DstEnd))
+			{
+				m_Flags |= OperationContextFinished;
+				return FALSE;
+			}
+			pDocument->SoundChanged(m_DstFile.GetFileID(), 0, 0, NewLength);
+		}
 		m_Flags |= OperationContextFinished;
 		return TRUE;
 	}
@@ -1748,7 +2074,7 @@ BOOL CResizeContext::ShrinkProc()
 	{
 		DstFlags = CDirectFile::GetBufferWriteOnly;
 	}
-	if (m_SrcCopyPos > m_DstEnd
+	if (m_SrcCopyPos > m_SrcEnd
 		|| m_DstCopyPos > m_DstEnd)
 	{
 		return FALSE;
@@ -1870,8 +2196,11 @@ BOOL CResizeContext::ShrinkProc()
 			WasRead = 0;
 		}
 	}
-	while (m_SrcCopyPos < m_SrcEnd
-			&& timeGetTime() - dwStartTime < 200
+	while (((DstFlags & CDirectFile::GetBufferWriteOnly)
+				// cannot exit while write-only buffer is incomplete
+				&& 0 != WasLockedToWrite)
+			|| (m_SrcCopyPos < m_SrcEnd
+				&& timeGetTime() - dwStartTime < 200)
 			);
 	if (0 != WasRead)
 	{
@@ -1882,6 +2211,14 @@ BOOL CResizeContext::ShrinkProc()
 	{
 		m_DstFile.m_File.ReturnDataBuffer(pOriginalDstBuf, WasLockedToWrite,
 										CDirectFile::ReturnBufferDirty);
+	}
+
+	if (NULL != m_pUndoContext
+		&& NULL != m_pUndoContext->m_pExpandShrinkContext)
+	{
+		// update the position to begin operation
+		m_pUndoContext->m_pExpandShrinkContext->m_SrcCopyPos = m_DstCopyPos;
+		m_pUndoContext->m_pExpandShrinkContext->m_DstCopyPos = m_SrcCopyPos;
 	}
 	// notify the view
 	int nSampleSize = m_DstFile.SampleSize();
@@ -2050,8 +2387,11 @@ BOOL CResizeContext::ExpandProc()
 			WasLockedToWrite = 0;
 		}
 	}
-	while (m_SrcCopyPos > m_SrcStart
-			&& timeGetTime() - dwStartTime < 200
+	while (((DstFlags & CDirectFile::GetBufferWriteOnly)
+				// cannot exit while write-only buffer is incomplete
+				&& 0 != WasLockedToWrite)
+			|| (m_SrcCopyPos > m_SrcStart
+				&& timeGetTime() - dwStartTime < 200)
 			);
 	if (0 != WasRead)
 	{
@@ -2062,6 +2402,14 @@ BOOL CResizeContext::ExpandProc()
 	{
 		m_DstFile.m_File.ReturnDataBuffer(pOriginalDstBuf, WasLockedToWrite,
 										CDirectFile::ReturnBufferDirty);
+	}
+
+	if (NULL != m_pUndoContext
+		&& NULL != m_pUndoContext->m_pExpandShrinkContext)
+	{
+		// update the position to begin operation
+		m_pUndoContext->m_pExpandShrinkContext->m_SrcCopyPos = m_DstCopyPos;
+		m_pUndoContext->m_pExpandShrinkContext->m_DstCopyPos = m_SrcCopyPos;
 	}
 	// notify the view
 	int nSampleSize = m_DstFile.SampleSize();
@@ -2118,12 +2466,56 @@ void CWaveSoapFrontDoc::DoPaste(LONG Start, LONG End, LONG Channel, LPCTSTR File
 	QueueOperation(pContext);
 }
 
-void CWaveSoapFrontDoc::DoCut(LONG Start, LONG End, LONG Channel, LPCTSTR FileName)
+void CWaveSoapFrontDoc::DoCut(LONG Start, LONG End, LONG Channel)
 {
+	// save the cut area to Undo context, then shrink the file
+	// the same file can be used as clipboard
+	// create a operation context
+	CCopyContext * pContext = new CCopyContext(this, _T("Copying data to clipboard..."));
+
+	CWaveFile DstFile;
+	// create a temporary clipboard WAV file
+	if (FALSE == DstFile.CreateWaveFile( & m_WavFile, Channel,
+										End - Start,
+										CreateWaveFileTempDir
+										// keep the file for debug
+										| CreateWaveFileDeleteAfterClose
+										| CreateWaveFileDontCopyInfo
+										| CreateWaveFilePcmFormat
+										| CreateWaveFileTemp,
+										NULL))
+	{
+		delete pContext;
+		AfxMessageBox(IDS_STRING_UNABLE_TO_CREATE_CLIPBOARD, MB_OK | MB_ICONEXCLAMATION);
+		return;
+	}
+
+	pContext->m_Flags |= OperationContextClipboard;
+
+	pContext->InitCopy(DstFile, 0, End - Start, 2,
+						m_WavFile, Start, End - Start,
+						Channel);
+	GetApp()->m_ClipboardFile = DstFile;
+	// set operation context to the queue
+	QueueOperation(pContext);
+	CResizeContext * pResizeContext = new CResizeContext(this, _T("Shrinking the file..."));
+	pResizeContext->InitShrink(m_WavFile, Start, End - Start, Channel);
+	pResizeContext->InitUndo("Undoing Cut...");
+	SetSelection(Start, Start, Channel, Start);
+	QueueOperation(pResizeContext);
 }
 
 void CWaveSoapFrontDoc::DoDelete(LONG Start, LONG End, LONG Channel)
 {
+	if (End == Start)
+	{
+		End++;
+	}
+	CResizeContext * pResizeContext = new CResizeContext(this, _T("Deleting the selection..."));
+	pResizeContext->InitShrink(m_WavFile, Start, End - Start, Channel);
+	pResizeContext->InitUndo("Undoing Delete...");
+	SetSelection(Start, Start, Channel, Start);
+	QueueOperation(pResizeContext);
 }
 
 void CWaveSoapFrontDoc::OnEditStop()
@@ -2369,8 +2761,8 @@ BOOL CWaveSoapFrontDoc::OnOpenDocument(LPCTSTR lpszPathName)
 	m_SelectedChannel = 2;  // both channels
 	m_TimeSelectionMode = TRUE;
 	CWaveSoapFrontApp * pApp = GetApp();
-	m_bDirectMode = pApp->m_bDirectMode;
-	m_bReadOnly = pApp->m_bReadOnly;
+	m_bDirectMode = (pApp->m_bDirectMode != 0);
+	m_bReadOnly = (pApp->m_bReadOnly != 0);
 	if (m_bReadOnly)
 	{
 		m_bDirectMode = TRUE;
@@ -2584,16 +2976,6 @@ void CWaveSoapFrontDoc::OnUpdateFileSave(CCmdUI* pCmdUI)
 	pCmdUI->Enable(IsModified() && ! m_bReadOnly);
 }
 
-void CWaveSoapFrontDoc::SetModifiedFlag(BOOL bModified)
-{
-	BOOL OldModified = m_bModified;
-	CDocument::SetModifiedFlag(bModified);
-	if ((bModified != 0) != (OldModified != 0))
-	{
-		UpdateFrameCounts();        // will cause name change in views
-	}
-}
-
 void CWaveSoapFrontDoc::OnEditSelectAll()
 {
 	long len = WaveFileSamples();
@@ -2627,7 +3009,7 @@ public:
 	CString m_ss;
 
 public:
-	CSoundPlayContext(class CWaveSoapFrontDoc * pDoc)
+	CSoundPlayContext(CWaveSoapFrontDoc * pDoc)
 		: COperationContext(pDoc,
 							OperationContextDontAdjustPriority),
 		m_ss(_T("Playing")),
@@ -2786,6 +3168,169 @@ BOOL CSoundPlayContext::OperationProc()
 					/ pDocument->WaveSampleSize();
 	pDocument->PlaybackPositionNotify(m_SamplePlayed, m_Chan);
 	return TRUE;
+}
+
+BOOL CUndoRedoContext::InitUndoCopy(CWaveFile & SrcFile,
+									DWORD SaveStartPos, // source file position of data needed to save and restore
+									DWORD SaveEndPos,
+									int SaveChannel)
+{
+	m_DstFile = SrcFile;
+
+	m_SrcSaveStart = SaveStartPos;
+	m_DstStart = SaveStartPos;
+	m_DstCopyPos = SaveStartPos;
+	m_SrcSavePos = SaveStartPos;
+	m_SrcSaveEnd = SaveEndPos;
+	m_DstEnd = SaveEndPos;
+
+	if (SaveEndPos > SaveStartPos)
+	{
+		if ( ! m_SrcFile.CreateWaveFile( & SrcFile,
+										SaveChannel,
+										(SaveEndPos - SaveStartPos) / SrcFile.SampleSize(),
+										CreateWaveFileTempDir
+										| CreateWaveFileDeleteAfterClose
+										| CreateWaveFileDontCopyInfo
+										| CreateWaveFilePcmFormat
+										| CreateWaveFileTemp,
+										NULL))
+		{
+			return FALSE;
+		}
+		m_DstSavePos = m_DstFile.GetDataChunk()->dwDataOffset;
+		m_SrcStart = m_DstSavePos;
+		m_SrcCopyPos = m_SrcStart;
+		m_SrcChan = 2;
+		m_DstChan = SaveChannel;
+		m_SaveChan = SaveChannel;
+		m_SrcEnd = m_DstSavePos + (SaveEndPos - SaveStartPos);
+	}
+	return TRUE;
+}
+
+void CWaveSoapFrontDoc::AddUndoRedo(CUndoRedoContext * pContext)
+{
+	if (pContext->m_Flags & RedoContext)
+	{
+		pContext->pNext = m_pRedoList;
+		m_pRedoList = pContext;
+		// to do: free extra undo, if count or size limit is exceeded
+	}
+	else
+	{
+		pContext->pNext = m_pUndoList;
+		m_pUndoList = pContext;
+		// to do: free extra undo, if count or size limit is exceeded
+	}
+}
+
+inline BOOL CUndoRedoContext::NeedToSave(DWORD Position, size_t length)
+{
+	if (Position >= m_SrcSaveEnd
+		|| Position + length <= m_SrcSavePos
+		|| length <= 0)
+	{
+		return FALSE;
+	}
+	return TRUE;
+}
+
+BOOL CUndoRedoContext::SaveUndoData(void * pBuf, long BufSize, DWORD Position, int Channel)
+{
+	if (Position >= m_SrcSaveEnd
+		|| Position + BufSize <= m_SrcSavePos
+		|| BufSize <= 0)
+	{
+		return FALSE;
+	}
+
+	char * pSrcBuf = (char*) pBuf;
+	if (Position + BufSize > m_SrcSaveEnd)
+	{
+		BufSize = m_SrcSaveEnd - Position;
+	}
+	if (Position < m_SrcSavePos)
+	{
+		BufSize -= m_SrcSavePos - Position;
+		pSrcBuf += m_SrcSavePos - Position;
+		Position = m_SrcSavePos;
+	}
+	else
+	{
+		ASSERT(Position == m_SrcSavePos);
+	}
+	while (BufSize > 0)
+	{
+		void * buf;
+		long SizeToLock = BufSize;
+		if (Channel != 2
+			&& (Position & 2) != Channel * 2
+			&& BufSize >= 2)
+		{
+			BufSize -= 2;
+			Position += 2;
+			m_SrcSavePos += 2;
+			pSrcBuf += 2;
+		}
+
+		if (Channel != 2)
+		{
+			SizeToLock = BufSize / 2;
+		}
+		long LockedToWrite = m_SrcFile.m_File.GetDataBuffer( & buf, SizeToLock,
+															m_DstSavePos, CDirectFile::GetBufferWriteOnly);
+		if (LockedToWrite <= 0)
+		{
+			TRACE("Unable to lock buffer in SaveUndoSata\n");
+			return FALSE;
+		}
+		if (2 == Channel)
+		{
+			memmove(buf, pSrcBuf, LockedToWrite);
+			pSrcBuf += LockedToWrite;
+			BufSize -= LockedToWrite;
+			m_DstSavePos += LockedToWrite;
+			m_SrcSavePos += LockedToWrite;
+			Position += LockedToWrite;
+		}
+		else
+		{
+			__int16 * pSrc = (__int16 *) pSrcBuf;
+			__int16 * pDst = (__int16 *) buf;
+			for (int i = 0; i < LockedToWrite / 2; i++)
+			{
+				pDst[i] = pSrc[i * 2];
+			}
+			pSrcBuf += LockedToWrite * 2;
+			BufSize -= LockedToWrite * 2;
+			m_SrcSavePos += LockedToWrite * 2;
+			Position += LockedToWrite * 2;
+			m_DstSavePos += LockedToWrite;
+			if (2 == BufSize)
+			{
+				BufSize = 0;
+				pSrcBuf += 2;
+				m_SrcSavePos += 2;
+				Position += 2;
+			}
+		}
+		m_SrcFile.m_File.ReturnDataBuffer(buf, LockedToWrite, CDirectFile::ReturnBufferDirty);
+	}
+	return TRUE;
+}
+
+void CUndoRedoContext::PostRetire()
+{
+	if (m_Flags & RedoContext)
+	{
+		pDocument->IncrementModified(FALSE);    // bDeleteRedo=FALSE
+	}
+	else
+	{
+		pDocument->DecrementModified();
+	}
+	CCopyContext::PostRetire();
 }
 
 void CWaveSoapFrontDoc::OnUpdateSoundPlay(CCmdUI* pCmdUI)
@@ -2988,6 +3533,53 @@ BOOL CWaveSoapFrontDoc::OnCmdMsg(UINT nID, int nCode, void* pExtra, AFX_CMDHANDL
 	return CDocument::OnCmdMsg(nID, nCode, pExtra, pHandlerInfo);
 }
 
+inline BOOL CWaveSoapFrontDoc::IsModified()
+{
+	return m_ModificationSequenceNumber != 0;
+}
+
+void CWaveSoapFrontDoc::IncrementModified(BOOL bDeleteRedo)
+{
+	// bDeleteRedo is FALSE for Redo command
+	BOOL OldModified = CWaveSoapFrontDoc::IsModified();
+	m_ModificationSequenceNumber++;
+	if (bDeleteRedo)
+	{
+		DeleteRedo();
+	}
+	if (CWaveSoapFrontDoc::IsModified() != OldModified)
+	{
+		UpdateFrameCounts();        // will cause name change in views
+	}
+}
+
+void CWaveSoapFrontDoc::DecrementModified()   // called at UNDO
+{
+	BOOL OldModified = CWaveSoapFrontDoc::IsModified();
+	m_ModificationSequenceNumber--;
+	if (CWaveSoapFrontDoc::IsModified() != OldModified)
+	{
+		UpdateFrameCounts();        // will cause name change in views
+	}
+}
+
+void CWaveSoapFrontDoc::SetModifiedFlag(BOOL bModified)
+{
+	if (bModified)
+	{
+		IncrementModified();
+	}
+	else
+	{
+		BOOL OldModified = CWaveSoapFrontDoc::IsModified();
+		m_ModificationSequenceNumber = 0;
+		if (OldModified)
+		{
+			UpdateFrameCounts();        // will cause name change in views
+		}
+	}
+}
+
 void CWaveSoapFrontDoc::PlaybackPositionNotify(long position, int channel)
 {
 	CSoundUpdateInfo * pui = new CSoundUpdateInfo;
@@ -3027,4 +3619,28 @@ void CWaveSoapFrontDoc::PlaybackPositionNotify(long position, int channel)
 		}
 	}
 	::PostMessage(GetApp()->m_pMainWnd->m_hWnd, WM_KICKIDLE, 0, 0);
+}
+
+
+void CWaveSoapFrontDoc::OnEditChannelsLock()
+{
+	if (WaveChannels() < 2)
+	{
+		return;
+	}
+	m_bChannelsLocked = ! m_bChannelsLocked;
+}
+
+void CWaveSoapFrontDoc::OnUpdateEditChannelsLock(CCmdUI* pCmdUI)
+{
+	if (WaveChannels() < 2)
+	{
+		pCmdUI->Enable(FALSE);
+		pCmdUI->SetCheck(FALSE);
+	}
+	else
+	{
+		pCmdUI->Enable(TRUE);
+		pCmdUI->SetCheck(m_bChannelsLocked);
+	}
 }
