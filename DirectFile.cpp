@@ -8,6 +8,32 @@
 #include <process.h>
 #include "MessageBoxSynch.h"
 #include "KInterlocked.h"
+#include "resource.h"
+#include "LastError.h"
+
+typedef DWORD BLOCK_INDEX;
+typedef NUM_volatile<DWORD> SUBBLOCK_MASK;
+
+#define TRACE_PREFETCH 0
+#define TRACE_READ 1
+#define TRACE_WRITE 1
+
+#define BLOCK_SIZE_SHIFT 16
+#define CACHE_BLOCK_SIZE (1UL << BLOCK_SIZE_SHIFT)
+#define SUBBLOCK_SIZE_SHIFT (BLOCK_SIZE_SHIFT - 5)
+#define CACHE_SUBBLOCK_SIZE (1UL << SUBBLOCK_SIZE_SHIFT)
+#define MASK_OFFSET_IN_BLOCK (CACHE_BLOCK_SIZE - 1)
+#define MASK_OFFSET_IN_SUBBLOCK (CACHE_SUBBLOCK_SIZE - 1)
+#define FILE_OFFSET_TO_BLOCK_NUMBER(offset) \
+	(size_t((offset) >> BLOCK_SIZE_SHIFT))
+#define FILE_OFFSET_TO_WRITTEN_MASK_OFFSET(offset) \
+	(size_t((offset) >> (BLOCK_SIZE_SHIFT + 3)))
+
+#define FILE_LENGTH_TO_WRITTEN_MASK_LENGTH(length) \
+	(size_t((length + (1 << (BLOCK_SIZE_SHIFT + 3)) - 1) >> (BLOCK_SIZE_SHIFT + 3)))
+
+#define MEMORY_FILE_SIZE_LIMIT 0x100000UL
+#define MAX_PREFETCH_REGIONS    6
 
 #ifdef _DEBUG
 #undef THIS_FILE
@@ -22,6 +48,32 @@ struct BufferHeader;
 }
 using namespace DirectFileCache;
 
+static BOOL UseOverlappedIo = FALSE;
+
+struct PrefetchDescriptor : ListItem<PrefetchDescriptor>
+{
+	// prefetch control
+	// shows last prefetched range (in 64K units
+	// The manager prefetches a max range block,
+	// then it won't continue prefetching until half of the data is used
+	// while it's prefetching, it only allows non-prefetchable requests
+	// to go through (sound playback?).
+	PrefetchDescriptor()
+		: m_pFile(NULL),
+		m_PrefetchedBeginBlock(0),
+		m_PrefetchedEndBlock(0),
+		m_PrefetchPosition(0),
+		m_LastPrefetchTick(0)
+	{
+	}
+	File * m_pFile;
+	BLOCK_INDEX m_PrefetchedBeginBlock;
+	BLOCK_INDEX m_PrefetchedEndBlock;
+	BLOCK_INDEX m_PrefetchPosition;
+	// the ranges expire after 5 seconds
+	DWORD m_LastPrefetchTick;
+	enum { PrefetchRangeExpirationTimeout = 5000, };
+};
 
 class DirectFileCache::CDirectFileCache
 {
@@ -39,17 +91,27 @@ protected:
 	long GetDataBuffer(File * pFile, void * * ppBuf,
 						LONGLONG length, LONGLONG position, DWORD flags = 0,
 						unsigned MaxMRU = 0);
-	void ReturnDataBuffer(File * pFile, void * pBuffer,
-						long count, DWORD flags);
 
 	BufferHeader * GetFreeBuffer(unsigned MaxMRU = 0xFFFFFFFFu);
+	// get a buffer header by its buffer addr
+	BufferHeader * GetBufferHeader(void * pAddr);
+	size_t GetOffsetInBuffer(void * pAddr);
+
+	void MakeBufferMostRecent(BufferHeader * pBuf);
+
 	File * Open(LPCTSTR szName, DWORD flags);
+
 	void RequestPrefetch(File * pFile, LONGLONG PrefetchPosition,
 						LONGLONG PrefetchLength, unsigned MaxMRU);
-	void RequestFlush(File * pFile, LONGLONG FlushPosition,
-					LONG FlushLength);
+	void CancelPrefetch(File const * pFile);
+
 	void FlushRequestedFiles();
 
+	void SetFlushRequest()
+	{
+		m_FlushRequest = TRUE;
+		SetEvent(m_hEvent);
+	}
 
 private:
 	// points to the only instance of the class
@@ -63,13 +125,22 @@ private:
 	int m_NumberOfBuffers; // number of allocated buffers
 	ListHead<BufferHeader> m_FreeBuffers;
 	ListHead<File> m_FileList;
-	DWORD m_Flags;
+
+	// access to the list is protected by m_cs
+	ListHead<PrefetchDescriptor> m_ListToPrefetch;
+	ListHead<PrefetchDescriptor> m_ListPrefetched;  // or empty
+
+	// max number of 64K block allowed to read ahead
+	DWORD m_MaxBlocksToPrefetch;
+
+	//DWORD m_Flags;
 	ULONG_volatile m_MRU_Count;
 
 	HANDLE m_hThread;
 	HANDLE m_hEvent;
+
+protected:
 	HANDLE m_hThreadSuspendedEvent;
-	BOOL m_bRunThread;
 
 	LONG_volatile m_ThreadRunState;
 	LONG_volatile m_InitCount;
@@ -80,31 +151,66 @@ private:
 	// 0x800000xx - thread executing, suspend requested xx times
 	// ~0 (0xFFFFFFFF) - exit requested
 
-	File * volatile m_pPrefetchFile;
 	BOOL volatile m_FlushRequest;
-	LONGLONG volatile m_PrefetchPosition;
-	LONGLONG volatile m_PrefetchLength;
-	unsigned volatile m_MinPrefetchMRU;
 
-	CSimpleCriticalSection m_cs;
+	//unsigned volatile m_MinPrefetchMRU;
+
 	static unsigned __stdcall ThreadProc(void * arg)
 	{
 		return ((CDirectFileCache *) arg)->_ThreadProc();
 	}
 	unsigned _ThreadProc();
+
+public:
+	CSimpleCriticalSection m_cs;
+	void StopPrefetchThread()
+	{
+		if (++m_ThreadRunState < 0)
+		{
+			while (m_ThreadRunState < 0)
+			{
+				WaitForSingleObject(m_hThreadSuspendedEvent, 2000);
+			}
+		}
+	}
+
+	void ResumePrefetchThread()
+	{
+		// allow background thread to run along
+		if (--m_ThreadRunState == 0)
+		{
+			SetEvent(m_hEvent);
+		}
+	}
 };
 
 static CDirectFileCache CacheInstance;
+
+class CacheThreadLock
+{
+public:
+	CacheThreadLock(//DirectFileCache & Cache = CacheInstance
+					)
+	{
+		CacheInstance.StopPrefetchThread();
+	}
+	~CacheThreadLock()
+	{
+		CacheInstance.ResumePrefetchThread();
+	}
+};
 
 struct DirectFileCache::File : public ListItem<DirectFileCache::File>
 {
 	typedef CDirectFile::InstanceData InstanceData;
 	HANDLE hFile;
+	bool m_UseOverlappedIo;
+
 	DWORD m_Flags;
 	long RefCount;
 	LockedListHead<BufferHeader> mutable BuffersList;
 	// number of buffers in the list
-	int BuffersCount;
+	unsigned BuffersCount;
 	LONG_volatile DirtyBuffersCount;
 	LONG_volatile m_MemoryBufferRefCount;
 	// bitmask of 64K blocks that were once initialized.
@@ -115,8 +221,8 @@ struct DirectFileCache::File : public ListItem<DirectFileCache::File>
 		char * m_pMemoryFileBuffer;
 	};
 	union {
-		long WrittenMaskSize;
-		long m_MemoryFileBufferSize;
+		size_t WrittenMaskSize;
+		size_t m_MemoryFileBufferSize;
 	};
 	// data common for all CDirectFile instances, attached to this File
 	InstanceData * m_pInstanceData;
@@ -132,29 +238,22 @@ struct DirectFileCache::File : public ListItem<DirectFileCache::File>
 	File * pSourceFile;
 	int m_LastError;
 	LONGLONG UseSourceFileLength;
-	LONGLONG m_FilePointer;
-	LONGLONG RealFileLength;
-	LONGLONG FileLength;
-	LONGLONG m_FlushBegin;
-	LONG m_FlushLength;
-
-	// prefetch control
-	// shows last prefetched range (in 64K units
-	DWORD m_PrefetchedBeginBlock;
-	DWORD m_PrefetchedEndBlock;
-	// max number of 64K block allowed to read ahead
-	DWORD m_MaxBlocksToPrefetch;
-
-	// the ranges expire after 1 second
-	DWORD m_LastPrefetchTick;
-	enum { PrefetchRangeExpirationTimeout = 1000, };
+	LONGLONG m_FilePointer;     // current file pointer (in synch with the handle's pointer)
+	LONGLONG RealFileLength;    // actual length of the written file (may be rounded to a sector boundary)
+	LONGLONG FileLength;        // assumed file length
+	LONGLONG m_FlushBegin;      // position from where to flush buffers
+	LONG m_FlushLength;         // how much to flush
 
 	CSimpleCriticalSection mutable m_FileLock;    // synchronize FileRead, FileWrite
 	BY_HANDLE_FILE_INFORMATION m_FileInfo;
-	CString sName;
-	BufferHeader * FindBuffer(unsigned long key) const;
+
+	CString m_FileName;
+
+	BufferHeader * FindBuffer(BLOCK_INDEX key) const;
+
 	void InsertBuffer(BufferHeader * pBuf);
 	BOOL SetFileLength(LONGLONG NewLength);
+
 	BOOL Flush();
 	BOOL InitializeTheRestOfFile(int timeout = 0, int * pPercentCompleted = NULL);
 	BOOL SetSourceFile(File * pOriginalFile);
@@ -164,15 +263,19 @@ struct DirectFileCache::File : public ListItem<DirectFileCache::File>
 		return m_pInstanceData;
 	}
 
-	void ReturnDataBuffer(void * pBuffer, long count, DWORD flags = 0)
-	{
-		CacheInstance.ReturnDataBuffer(this, pBuffer, count, flags);
-	}
+	void ReturnDataBuffer(void * pBuffer, long count, DWORD flags = 0);
+
+	bool RequestFlush(LONGLONG FlushPosition, LONG FlushLength);
+
 	BOOL Close(DWORD flags);
 	BOOL Commit(DWORD flags);
 	BOOL Rename(LPCTSTR NewName, DWORD flags);
 
 	void ReadDataBuffer(BufferHeader * pBuf, DWORD MaskToRead);
+	BOOL ReadFileAt(LONGLONG Position, void * pBuf,
+					DWORD ToRead, DWORD * pWasRead);
+	BOOL WriteFileAt(LONGLONG Position, void const * pBuf,
+					DWORD ToWrite, DWORD * pWasWritten);
 	void FlushRequestedRange();
 	void FlushDirtyBuffers(BufferHeader * pBuf, unsigned long MaxKey = 0xFFFFFFFF);
 	// read data, lock the buffer
@@ -181,8 +284,9 @@ struct DirectFileCache::File : public ListItem<DirectFileCache::File>
 	{
 		return CacheInstance.GetDataBuffer(this, ppBuf, length, position, flags);
 	}
+
 	File(CString name) : hFile(NULL),
-		sName(name),
+		m_FileName(name),
 		m_Flags(0),
 		m_FilePointer(0),
 		FileLength(0),
@@ -195,13 +299,10 @@ struct DirectFileCache::File : public ListItem<DirectFileCache::File>
 		pSourceFile(NULL),
 		UseSourceFileLength(0),
 		m_pInstanceData(new CDirectFile::InstanceData),
-		m_PrefetchedBeginBlock(-1),
-		m_PrefetchedEndBlock(-1),
-		m_LastPrefetchTick(0),
 		m_FlushBegin(0),
 		m_FlushLength(0),
+		m_UseOverlappedIo(0 != UseOverlappedIo),
 		// one sixth of cache size is allowed to prefetch
-		m_MaxBlocksToPrefetch(CacheInstance.m_NumberOfBuffers / 6),
 		m_LastError(0)
 	{
 		memzero(m_FileInfo);
@@ -232,10 +333,10 @@ struct DirectFileCache::BufferMruEntry : public ListItem<DirectFileCache::Buffer
 	LONG_volatile LockCount;
 	unsigned MRU_Count;
 	DWORD m_Flags;
-	ULONG_volatile ReadMask;     // 32 bits for data available (a bit per 2K)
-	ULONG_volatile DirtyMask;    // 32 bits for dirty data
+	SUBBLOCK_MASK ReadMask;     // 32 bits for data available (a bit per 2K)
+	SUBBLOCK_MASK DirtyMask;    // 32 bits for dirty data
 	File * pFile;
-	unsigned long PositionKey;   // position / 0x10000
+	BLOCK_INDEX PositionKey;   // position / 0x10000
 };
 
 struct DirectFileCache::BufferHeader : public ListItem<DirectFileCache::BufferHeader>, public BufferMruEntry
@@ -361,6 +462,7 @@ File * CDirectFileCache::Open(LPCTSTR szName, DWORD flags)
 					OPEN_EXISTING,
 					FILE_ATTRIBUTE_NORMAL,
 					NULL);
+
 	if (hf != INVALID_HANDLE_VALUE)
 	{
 		if (FILE_TYPE_DISK != GetFileType(hf))
@@ -438,12 +540,19 @@ File * CDirectFileCache::Open(LPCTSTR szName, DWORD flags)
 			}
 		}
 
+		DWORD FileFlags = FILE_FLAG_NO_BUFFERING | FILE_ATTRIBUTE_NORMAL;
+
+		if (pFile->m_UseOverlappedIo)
+		{
+			FileFlags |= FILE_FLAG_OVERLAPPED;
+		}
+
 		hf = CreateFile(FullName,
 						access,
 						ShareMode,
 						NULL, // lpSecurity
 						Disposition,
-						FILE_FLAG_NO_BUFFERING | FILE_ATTRIBUTE_NORMAL,
+						FileFlags,
 						NULL);
 		if (INVALID_HANDLE_VALUE == hf)
 		{
@@ -477,7 +586,8 @@ File * CDirectFileCache::Open(LPCTSTR szName, DWORD flags)
 
 	if (0 == (flags & CDirectFile::OpenReadOnly))
 	{
-		int WrittenMaskLength = 512 + int((pFile->FileLength + 0x7FFFF) >> 19);
+		int WrittenMaskLength = 512 + FILE_LENGTH_TO_WRITTEN_MASK_LENGTH(pFile->FileLength);
+
 		pFile->m_pWrittenMask = new char[WrittenMaskLength];
 		if (NULL == pFile->m_pWrittenMask)
 		{
@@ -489,9 +599,14 @@ File * CDirectFileCache::Open(LPCTSTR szName, DWORD flags)
 
 		pFile->WrittenMaskSize = WrittenMaskLength;
 		memset(pFile->m_pWrittenMask, 0, WrittenMaskLength);
-		memset(pFile->m_pWrittenMask, 0xFF, size_t((pFile->FileLength +0xFFFF) >> 19));
-		pFile->m_pWrittenMask[(pFile->FileLength +0xFFFF) >> 19] =
-			0xFF >> (8 - (((pFile->FileLength +0xFFFF) >> 16) & 7));
+		size_t const LastByteOffset =
+			FILE_OFFSET_TO_WRITTEN_MASK_OFFSET(pFile->FileLength +
+												CACHE_BLOCK_SIZE - 1);
+
+		memset(pFile->m_pWrittenMask, 0xFF, LastByteOffset);
+
+		pFile->m_pWrittenMask[LastByteOffset] =
+			0xFF >> (8 - (((pFile->FileLength + MASK_OFFSET_IN_BLOCK) >> BLOCK_SIZE_SHIFT) & 7));
 	}
 	else
 	{
@@ -582,7 +697,7 @@ BOOL File::Commit(DWORD flags)
 		CloseHandle(hFile);
 		hFile = NULL;
 
-		HANDLE hf = CreateFile(sName,
+		HANDLE hf = CreateFile(m_FileName,
 								GENERIC_WRITE,
 								0,
 								NULL, // lpSecurity
@@ -605,7 +720,7 @@ BOOL File::Commit(DWORD flags)
 		}
 		if (0 == (flags & CDirectFile::CommitFileDontReopen))
 		{
-			hf = CreateFile(sName,
+			hf = CreateFile(m_FileName,
 							GENERIC_WRITE | GENERIC_READ,
 							0,
 							NULL, // lpSecurity
@@ -657,15 +772,15 @@ BOOL File::Rename(LPCTSTR NewName, DWORD flags)
 		hFile = NULL;
 	}
 	BOOL result = FALSE;
-	if (MoveFile(sName, NewName))
+	if (MoveFile(m_FileName, NewName))
 	{
-		sName = NewName;
+		m_FileName = NewName;
 		result = TRUE;
 	}
 	else
 	{
 		TRACE(_T("Couldn't rename the file from %s to %s, last error=%X\n"),
-			LPCTSTR(sName), LPCTSTR(NewName), ::GetLastError());
+			LPCTSTR(m_FileName), LPCTSTR(NewName), ::GetLastError());
 	}
 	if (flags & CDirectFile::CommitFileDontReopen)
 	{
@@ -680,7 +795,7 @@ BOOL File::Rename(LPCTSTR NewName, DWORD flags)
 		m_Flags |= CDirectFile::FileFlagsReadOnly;
 	}
 
-	HANDLE hf = CreateFile(sName,
+	HANDLE hf = CreateFile(m_FileName,
 							access,
 							0,
 							NULL, // lpSecurity
@@ -712,27 +827,17 @@ BOOL File::Close(DWORD flags)
 
 	// if the file in prefetch is ours, then wait for the operation to finish
 	// last Close operation is always synchronous, there is no parallel activity
-	if (++CacheInstance.m_ThreadRunState < 0)
-	{
-		while (CacheInstance.m_ThreadRunState < 0)
-		{
-			WaitForSingleObject(CacheInstance.m_hThreadSuspendedEvent, 2000);
-		}
-	}
 
 	if (--RefCount > 0)
 	{
-		// allow background thread to run along
-		if (--CacheInstance.m_ThreadRunState == 0)
-		{
-			SetEvent(CacheInstance.m_hEvent);
-		}
 		return TRUE;
 	}
-	// if this file was set to prefetch, cancel prefetch
-	InterlockedCompareExchange( & CacheInstance.m_pPrefetchFile, (File*)NULL, this);
 
-	TRACE(_T("Closing file %s, flags=%X\n"), LPCTSTR(sName), m_Flags);
+	CacheThreadLock CacheLock;
+	// if this file was set to prefetch, cancel prefetch
+	CacheInstance.CancelPrefetch(this);
+
+	TRACE(_T("Closing file %s, flags=%X\n"), LPCTSTR(m_FileName), m_Flags);
 	// If the use count is 0, copy all remaining data
 	// from the source file or init the rest and flush all the buffers,
 	if (0 == (m_Flags & CDirectFile::FileFlagsDeleteAfterClose))
@@ -753,11 +858,6 @@ BOOL File::Close(DWORD flags)
 			if (pBuf->LockCount != 0)
 			{
 				TRACE("File::Close: Buffer not released!\n");
-				// allow background thread to run along
-				if (--CacheInstance.m_ThreadRunState == 0)
-				{
-					SetEvent(CacheInstance.m_hEvent);
-				}
 				return FALSE;
 			}
 
@@ -808,7 +908,7 @@ BOOL File::Close(DWORD flags)
 			CloseHandle(hFile);
 			hFile = NULL;
 		}
-		DeleteFile(sName);
+		DeleteFile(m_FileName);
 	}
 	else
 	{
@@ -826,7 +926,7 @@ BOOL File::Close(DWORD flags)
 			if (0 == (m_Flags & CDirectFile::FileFlagsMemoryFile)
 				&& FileLength != RealFileLength)
 			{
-				HANDLE hf = CreateFile(sName,
+				HANDLE hf = CreateFile(m_FileName,
 										GENERIC_WRITE,
 										0,
 										NULL, // lpSecurity
@@ -848,14 +948,8 @@ BOOL File::Close(DWORD flags)
 		}
 	}
 
-	TRACE(_T("Closed file %s\n"), LPCTSTR(sName));
+	TRACE(_T("Closed file %s\n"), LPCTSTR(m_FileName));
 	delete this;
-
-	// allow background thread to run along
-	if (--CacheInstance.m_ThreadRunState == 0)
-	{
-		SetEvent(CacheInstance.m_hEvent);
-	}
 
 	return TRUE;
 }
@@ -934,6 +1028,7 @@ long CDirectFile::Read(void *buf, long count)
 		}
 		memmove(pDstBuf, pSrcBuf, nRead);
 		ReturnDataBuffer(pSrcBuf, nRead, 0);
+
 		TotalRead += nRead;
 		pDstBuf += nRead;
 		m_FilePointer += nRead;
@@ -973,6 +1068,7 @@ long CDirectFile::ReadAt(void *buf, long count, LONGLONG Position)
 		}
 		memmove(pDstBuf, pSrcBuf, nRead);
 		ReturnDataBuffer(pSrcBuf, nRead, 0);
+
 		Position += nRead;
 		TotalRead += nRead;
 		pDstBuf += nRead;
@@ -1002,6 +1098,7 @@ long CDirectFile::Write(const void *pBuf, long count)
 		}
 		memmove(pDstBuf, pSrcBuf, nWritten);
 		ReturnDataBuffer(pDstBuf, nWritten, ReturnBufferDirty);
+
 		TotalWritten += nWritten;
 		pSrcBuf += nWritten;
 		m_FilePointer += nWritten;
@@ -1035,6 +1132,7 @@ long CDirectFile::WriteAt(const void *buf, long count, LONGLONG Position)
 		}
 		memmove(pDstBuf, pSrcBuf, nWritten);
 		ReturnDataBuffer(pDstBuf, nWritten, ReturnBufferDirty);
+
 		Position += nWritten;
 		TotalWritten += nWritten;
 		pSrcBuf += nWritten;
@@ -1054,14 +1152,15 @@ CDirectFileCache::CDirectFileCache()
 	m_pHeaders(NULL),
 	m_pBuffersArray(NULL),
 	m_MRU_Count(1),
-	m_Flags(0),
 	m_NumberOfBuffers(0),
-	m_pPrefetchFile(NULL),
-	m_PrefetchPosition(0),
-	m_PrefetchLength(0),
-	m_MinPrefetchMRU(0),
+//m_MinPrefetchMRU(0),
+	m_MaxBlocksToPrefetch(2),
 	m_FlushRequest(0)
 {
+	if (0 == (GetVersion() & 0x80000000))
+	{
+//        UseOverlappedIo = TRUE;
+	}
 	m_hEvent = CreateEvent(NULL, FALSE, FALSE, NULL);
 	// this is manual reset event
 	m_hThreadSuspendedEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
@@ -1085,17 +1184,25 @@ void CDirectFileCache::InitCache(size_t MaxCacheSize)
 	}
 
 	TRACE("Direct file CacheSize = %d MB\n", CacheSize / 0x100000);
-	CacheSize = (CacheSize + 0xFFFF) & ~0xFFFF;
+	CacheSize = (CacheSize + CACHE_BLOCK_SIZE - 1) & ~MASK_OFFSET_IN_BLOCK;
 	m_pBuffersArray = VirtualAlloc(NULL, CacheSize, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
 	m_NumberOfBuffers = CacheSize / 0x10000;
 
 	m_pHeaders = new BufferHeader[m_NumberOfBuffers];
 
-	for (int i = 0; i < m_NumberOfBuffers; i++)
+	unsigned i;
+	for (i = 0; i != m_NumberOfBuffers; i++)
 	{
 		m_FreeBuffers.InsertHead( & m_pHeaders[i]);
 
-		m_pHeaders[i].pBuf = i * 0x10000 + (char *) m_pBuffersArray;
+		m_pHeaders[i].pBuf = i * CACHE_BLOCK_SIZE + (char *) m_pBuffersArray;
+	}
+
+	m_MaxBlocksToPrefetch = m_NumberOfBuffers / (MAX_PREFETCH_REGIONS + 1);
+
+	for (i = 0; i != MAX_PREFETCH_REGIONS; i++)
+	{
+		m_ListPrefetched.InsertTail(new PrefetchDescriptor);
 	}
 
 	unsigned ThreadID = NULL;
@@ -1110,7 +1217,7 @@ void CDirectFileCache::InitCache(size_t MaxCacheSize)
 			&& m_pHeaders != NULL)
 		{
 			SetThreadPriority(m_hThread, THREAD_PRIORITY_ABOVE_NORMAL);
-			ResumeThread(m_hThread);
+			::ResumeThread(m_hThread);
 		}
 		else
 		{
@@ -1175,6 +1282,11 @@ void CDirectFileCache::DeInitCache()
 		m_FreeBuffers.RemoveHead();
 	}
 
+	while ( ! m_ListPrefetched.IsEmpty())
+	{
+		delete m_ListPrefetched.RemoveTail();
+	}
+
 	if (NULL != m_pHeaders)
 	{
 		delete[] m_pHeaders;
@@ -1183,11 +1295,51 @@ void CDirectFileCache::DeInitCache()
 
 }
 
+// get a buffer header by its buffer addr
+BufferHeader * CDirectFileCache::GetBufferHeader(void * pAddr)
+{
+	int BufferNumber = (PUCHAR(pAddr) - PUCHAR(m_pBuffersArray)) / CACHE_BLOCK_SIZE;
+	ASSERT(BufferNumber >= 0 && BufferNumber < m_NumberOfBuffers);
+
+	BufferHeader * pBuf = m_pHeaders + BufferNumber;
+
+	ASSERT(pBuf->LockCount > 0);
+	ASSERT((DWORD)pBuf->pBuf == (DWORD(pAddr) & ~MASK_OFFSET_IN_BLOCK));
+
+	return pBuf;
+}
+
+inline size_t CDirectFileCache::GetOffsetInBuffer(void * pAddr)
+{
+	return (PUCHAR(pAddr) - PUCHAR(m_pBuffersArray)) % CACHE_BLOCK_SIZE;
+}
+
+void CDirectFileCache::MakeBufferMostRecent(BufferHeader * pBuf)
+{
+	// move the buffer to MRU tail
+	// extract the buffer from MRU list
+	CSimpleCriticalSectionLock lock(m_cs);
+
+	m_MruList.RemoveEntry(pBuf);
+	// insert the buffer to the list tail
+	// to do: insert the buffer before the first with MRU_Count==1
+	pBuf->MRU_Count = 1;
+
+	BufferMruEntry * pBufAfter = m_MruList.Last();
+	while (m_MruList.NotEnd(pBufAfter)
+			&& 1 == pBufAfter->MRU_Count)
+	{
+		pBufAfter = m_MruList.Prev(pBufAfter);
+	}
+
+	pBufAfter->InsertNextItem(pBuf);
+}
+
 // Insert a buffer to the list with the specified key
 // m_FileLock should be locked around this function call
 void File::InsertBuffer(BufferHeader * pBuf)
 {
-	unsigned long const key = pBuf->PositionKey;
+	BLOCK_INDEX const key = pBuf->PositionKey;
 	BuffersCount++;
 	if (BuffersList.IsEmpty()
 		|| BuffersList.First()->PositionKey > key)
@@ -1233,7 +1385,7 @@ void File::InsertBuffer(BufferHeader * pBuf)
 
 // find a buffer in the list with the specified key
 // m_FileLock should be locked around this function call
-BufferHeader * File::FindBuffer(unsigned long key) const
+BufferHeader * File::FindBuffer(BLOCK_INDEX key) const
 {
 	// the buffers are ordered: BuffersListHead has lowest key, BuffersListTail has the highest key
 	BufferHeader * pBuf;
@@ -1278,7 +1430,7 @@ BufferHeader * File::FindBuffer(unsigned long key) const
 }
 
 long CDirectFileCache::GetDataBuffer(File * pFile,
-									void * * ppBuf, LONGLONG length, LONGLONG position, DWORD flags, unsigned MaxMRU)
+									void * * ppBuf, LONGLONG long_length, LONGLONG position, DWORD flags, unsigned MaxMRU)
 {
 	ASSERT(pFile);
 	ASSERT(ppBuf);
@@ -1299,27 +1451,27 @@ long CDirectFileCache::GetDataBuffer(File * pFile,
 			return 0;
 		}
 		*ppBuf = NULL;
-		if (length > 0)
+		if (long_length > 0)
 		{
 			if (position >= pFile->m_MemoryFileBufferSize)
 			{
 				return 0;
 			}
 			long MaxLength = pFile->m_MemoryFileBufferSize - long(position);
-			if (length > MaxLength)
+			if (long_length > MaxLength)
 			{
-				length = MaxLength;
+				long_length = MaxLength;
 			}
 		}
-		else if (length < 0)
+		else if (long_length < 0)
 		{
 			if (position > pFile->m_MemoryFileBufferSize)
 			{
 				return 0;
 			}
-			if (-length > position)
+			if (-long_length > position)
 			{
-				length = -position;
+				long_length = -position;
 			}
 		}
 		else
@@ -1328,42 +1480,64 @@ long CDirectFileCache::GetDataBuffer(File * pFile,
 		}
 		*ppBuf = pFile->m_pMemoryFileBuffer + DWORD(position);
 		pFile->m_MemoryBufferRefCount++;
-		return long(length);
+		return long(long_length);
 	}
 
-	unsigned long BufferPosition;
-	if (length > 0)
+	BLOCK_INDEX BufferPosition;
+	long length;
+
+	if (long_length > 0)
 	{
-		BufferPosition = long(position >> 16);
-		OffsetInBuffer = int(position) & 0xFFFF;
-		if (OffsetInBuffer + length > 0x10000)
+		if (long_length > (m_MaxBlocksToPrefetch << BLOCK_SIZE_SHIFT))
 		{
-			BytesRequested = 0x10000 - OffsetInBuffer;
+			length = m_MaxBlocksToPrefetch << BLOCK_SIZE_SHIFT;
+		}
+		else
+		{
+			length = long(long_length);
+		}
+
+		BufferPosition = FILE_OFFSET_TO_BLOCK_NUMBER(position);
+		OffsetInBuffer = long(position) & MASK_OFFSET_IN_BLOCK;
+
+		if (OffsetInBuffer + length > CACHE_BLOCK_SIZE)
+		{
+			BytesRequested = CACHE_BLOCK_SIZE - OffsetInBuffer;
 			BytesReturned = BytesRequested;
 		}
 		else
 		{
-			BytesRequested = long(length);
+			BytesRequested = length;
 			BytesReturned = BytesRequested;
 			if (flags & CDirectFile::GetBufferAndPrefetchNext)
 			{
 				// read the rest of the buffer
-				BytesRequested = 0x10000 - OffsetInBuffer;
+				BytesRequested = CACHE_BLOCK_SIZE - OffsetInBuffer;
 			}
 		}
 	}
-	else if (length < 0)
+	else if (long_length < 0)
 	{
-		if (-length > position)
+		if (-long_length > position)
 		{
-			length = -position;
-			if (0 == length)
+			long_length = -position;
+			if (0 == long_length)
 			{
 				*ppBuf = NULL;
 				return 0;
 			}
 		}
-		OffsetInBuffer = 0x10000 - ((-long(position)) & 0xFFFF);
+
+		if (long_length < -long(m_MaxBlocksToPrefetch << BLOCK_SIZE_SHIFT))
+		{
+			length = -long(m_MaxBlocksToPrefetch << BLOCK_SIZE_SHIFT);
+		}
+		else
+		{
+			length = long(long_length);
+		}
+
+		OffsetInBuffer = CACHE_BLOCK_SIZE - ((-long(position)) & MASK_OFFSET_IN_BLOCK);
 		if (OffsetInBuffer + length <= 0)    // length < 0
 		{
 			BytesRequested = OffsetInBuffer;
@@ -1371,7 +1545,7 @@ long CDirectFileCache::GetDataBuffer(File * pFile,
 		}
 		else
 		{
-			BytesRequested = -long(length);
+			BytesRequested = -length;
 			BytesReturned = BytesRequested;
 			if (flags & CDirectFile::GetBufferAndPrefetchNext)
 			{
@@ -1379,8 +1553,9 @@ long CDirectFileCache::GetDataBuffer(File * pFile,
 				BytesRequested = OffsetInBuffer;
 			}
 		}
-		BufferPosition = long((position - BytesRequested) >> 16);
-		OffsetInBuffer = (long(position) - BytesRequested) & 0xFFFF;
+
+		BufferPosition = BLOCK_INDEX((position - BytesRequested) >> BLOCK_SIZE_SHIFT);
+		OffsetInBuffer = (BLOCK_INDEX(position) - BytesRequested) & MASK_OFFSET_IN_BLOCK;
 	}
 	else
 	{
@@ -1388,22 +1563,23 @@ long CDirectFileCache::GetDataBuffer(File * pFile,
 		return 0;
 	}
 
-	DWORD RequestedMask = (0xFFFFFFFFu << (OffsetInBuffer >> 11));
-	if (OffsetInBuffer + BytesRequested <= 0xF800)
+	DWORD RequestedMask = (0xFFFFFFFFu << (OffsetInBuffer >> SUBBLOCK_SIZE_SHIFT));
+	if (OffsetInBuffer + BytesRequested <= (CACHE_BLOCK_SIZE - CACHE_SUBBLOCK_SIZE))
 	{
-		RequestedMask &= ~(0xFFFFFFFFu << ((OffsetInBuffer + BytesRequested + 0x7FF) >> 11));
+		RequestedMask &= ~(0xFFFFFFFFu << ((OffsetInBuffer + BytesRequested + MASK_OFFSET_IN_SUBBLOCK) >> SUBBLOCK_SIZE_SHIFT));
 	}
+
 	DWORD MaskToRead = RequestedMask;
 	if (flags & CDirectFile::GetBufferWriteOnly)
 	{
 		MaskToRead = ~RequestedMask;
 		if (OffsetInBuffer & 0x7FF)
 		{
-			MaskToRead |= (1L << (OffsetInBuffer >> 11));
+			MaskToRead |= (1L << (OffsetInBuffer >> SUBBLOCK_SIZE_SHIFT));
 		}
-		if ((OffsetInBuffer + BytesRequested) & 0x7FF)
+		if ((OffsetInBuffer + BytesRequested) & MASK_OFFSET_IN_SUBBLOCK)
 		{
-			MaskToRead |= (1L << ((OffsetInBuffer + BytesRequested) >> 11));
+			MaskToRead |= (1L << ((OffsetInBuffer + BytesRequested) >> SUBBLOCK_SIZE_SHIFT));
 		}
 	}
 
@@ -1463,7 +1639,7 @@ long CDirectFileCache::GetDataBuffer(File * pFile,
 		{
 			pBuf = pFreeBuf;
 			pFreeBuf = NULL;
-			pBuf->BufferMruEntry::Init();
+			//pBuf->BufferMruEntry::Init();  // ???
 
 			pBuf->LockCount = 1;
 			pBuf->ReadMask = 0;
@@ -1507,15 +1683,15 @@ long CDirectFileCache::GetDataBuffer(File * pFile,
 		{
 			if (flags & CDirectFile::GetBufferAndPrefetchNext)
 			{
-				if (0 || length <= BytesRequested)
+				if (0 || length <= BytesRequested) // ??? BUGBUG
 				{
 					// prefetch the next buffer
-					length = (long(position) & ~0xFFFFL) + 0x20000 - long(position);
+					length = (long(position) & ~MASK_OFFSET_IN_BLOCK) + (CACHE_BLOCK_SIZE*2) - long(position);
 				}
 				else
 				{
 					// round the length to make it prefetch the whole buffer
-					length += 0xFFFF & -(long(position) + long(length));
+					length += MASK_OFFSET_IN_BLOCK & -(long(position) + length);
 				}
 			}
 			RequestPrefetch(pFile, position + BytesRequested, length - BytesRequested, m_MRU_Count);
@@ -1534,7 +1710,7 @@ long CDirectFileCache::GetDataBuffer(File * pFile,
 				if ( 0 || -length <= BytesRequested)
 				{
 					// prefetch the next buffer
-					length = (position | 0xFFFF) + 1 - 0x20000 - position;
+					length = (long(position) | MASK_OFFSET_IN_BLOCK)  - (CACHE_BLOCK_SIZE*2 - 1) - long(position);
 				}
 				else
 				{
@@ -1549,72 +1725,332 @@ long CDirectFileCache::GetDataBuffer(File * pFile,
 	}
 }
 
+void CDirectFileCache::CancelPrefetch(File const * pFile)
+{
+	// the thread must be in waiting state
+	ASSERT(m_ThreadRunState > 0);
+	if (TRACE_PREFETCH) TRACE("Cancel prefetch for file %X\n", pFile->hFile);
+
+	CSimpleCriticalSectionLock lock(m_cs);
+	PrefetchDescriptor * pDesc;
+
+	for (pDesc = m_ListPrefetched.First(); m_ListPrefetched.NotEnd(pDesc);
+		pDesc = m_ListPrefetched.Next(pDesc))
+	{
+		if (pDesc->m_pFile == pFile)
+		{
+			pDesc->m_pFile = NULL;
+		}
+	}
+
+	for (pDesc = m_ListToPrefetch.First(); m_ListToPrefetch.NotEnd(pDesc); )
+	{
+		PrefetchDescriptor * next = m_ListToPrefetch.Next(pDesc);
+
+		if (pDesc->m_pFile == pFile)
+		{
+			m_ListToPrefetch.RemoveEntry(pDesc);
+			pDesc->m_pFile = NULL;
+			m_ListPrefetched.InsertHead(pDesc);
+		}
+		pDesc = next;
+	}
+}
+
+// for prefetching forward:
+// find an existing prefetch item.
+// If the prefetch begin falls into an active item, just return.
+// If the prefetch falls into a pending item, adjust its beginning
+// If the prefetch begin falls into a done item, reactivate it if reached middle of the range.
+CString DumpQueue(ListHead<PrefetchDescriptor> & list, File * pFile)
+{
+	CString s, s1;
+	for (PrefetchDescriptor * pDesc = list.First(); list.NotEnd(pDesc);
+		pDesc = list.Next(pDesc))
+	{
+		if (pDesc->m_pFile != pFile)
+		{
+			continue;
+		}
+		s1.Format(_T("(%x %x %x) "),
+				pDesc->m_PrefetchedBeginBlock,
+				pDesc->m_PrefetchedEndBlock,
+				pDesc->m_PrefetchPosition);
+		s += s1;
+	}
+	return s;
+}
+
 void CDirectFileCache::RequestPrefetch(File * pFile,
 										LONGLONG PrefetchPosition,
 										LONGLONG PrefetchLength, unsigned MaxMRU)
 {
-	if (PrefetchLength > 0)
+	BLOCK_INDEX PrefetchBlockBegin;
+	BLOCK_INDEX PrefetchBlockEnd;
+
+	if (PrefetchLength >= 0)
 	{
+		// the range should not go outside the file length
 		if (PrefetchPosition + PrefetchLength > pFile->FileLength)
 		{
 			PrefetchLength = pFile->FileLength - PrefetchPosition;
-			if (PrefetchLength <= 0)
+		}
+		if (PrefetchLength <= 0)
+		{
+			return;
+		}
+		// FIRST block to prefetch
+		PrefetchBlockBegin = FILE_OFFSET_TO_BLOCK_NUMBER(PrefetchPosition);
+		// LAST block to prefetch
+		PrefetchBlockEnd = FILE_OFFSET_TO_BLOCK_NUMBER(
+														PrefetchPosition + PrefetchLength + (CACHE_BLOCK_SIZE - 1)) - 1;
+
+		if (PrefetchBlockEnd - PrefetchBlockBegin >= m_MaxBlocksToPrefetch)
+		{
+			PrefetchBlockEnd = PrefetchBlockBegin + m_MaxBlocksToPrefetch - 1;
+		}
+	}
+	else
+	{
+		if (PrefetchPosition + PrefetchLength < 0)
+		{
+			PrefetchLength = -PrefetchPosition;
+		}
+		if (PrefetchPosition > pFile->FileLength)
+		{
+			PrefetchLength += pFile->FileLength - PrefetchPosition;
+		}
+		if (PrefetchLength >= 0)
+		{
+			return;
+		}
+		// FIRST block to prefetch
+		PrefetchBlockBegin = FILE_OFFSET_TO_BLOCK_NUMBER(PrefetchPosition - 1);
+		// LAST block to prefetch
+		PrefetchBlockEnd = FILE_OFFSET_TO_BLOCK_NUMBER(
+														PrefetchPosition + PrefetchLength);
+
+		if (PrefetchBlockBegin - PrefetchBlockEnd >= m_MaxBlocksToPrefetch)
+		{
+			PrefetchBlockEnd = PrefetchBlockBegin - (m_MaxBlocksToPrefetch - 1);
+		}
+	}
+
+
+	{
+		CSimpleCriticalSectionLock lock(m_cs);
+
+		if (TRACE_PREFETCH) TRACE(_T("RequestPrefetch for file %x: block 0x%x to 0x%x, Q1: %s, Q2: %s\n"),
+								pFile->hFile, PrefetchBlockBegin, PrefetchBlockEnd,
+								LPCTSTR(DumpQueue(m_ListToPrefetch, pFile)),
+								LPCTSTR(DumpQueue(m_ListPrefetched, pFile)));
+		// find a prefetched range which falls into
+		PrefetchDescriptor * pDesc;
+
+		for (pDesc = m_ListToPrefetch.First(); m_ListToPrefetch.NotEnd(pDesc);
+			pDesc = m_ListToPrefetch.Next(pDesc))
+		{
+			if (pDesc->m_pFile != pFile)
+			{
+				continue;
+			}
+
+			if (pDesc->m_PrefetchedEndBlock >= pDesc->m_PrefetchedBeginBlock
+				&& PrefetchBlockEnd >= PrefetchBlockBegin)
+			{
+				// non-empty "forward" prefetch block
+				// chehck if the first block falls into the present range
+				if (PrefetchBlockBegin >= pDesc->m_PrefetchedBeginBlock
+					&& PrefetchBlockBegin <= pDesc->m_PrefetchedEndBlock + 1)
+				{
+					// if it's not _first_ item in the queue, adjust the begin pointers
+					if (m_ListToPrefetch.First() != pDesc)
+					{
+						pDesc->m_PrefetchedBeginBlock = PrefetchBlockBegin;
+						pDesc->m_PrefetchPosition = PrefetchBlockBegin;
+					}
+					// allow extending the range
+					if (pDesc->m_PrefetchedEndBlock < PrefetchBlockEnd)
+					{
+						pDesc->m_PrefetchedEndBlock = PrefetchBlockEnd;
+						// limit the range with m_MaxBlocksToPrefetch
+						if (pDesc->m_PrefetchedEndBlock
+							- pDesc->m_PrefetchedBeginBlock
+							> m_MaxBlocksToPrefetch - 1)
+						{
+							pDesc->m_PrefetchedEndBlock =
+								pDesc->m_PrefetchedBeginBlock + m_MaxBlocksToPrefetch - 1;
+						}
+					}
+					if (TRACE_PREFETCH) TRACE("Item modified: %x: block 0x%x to 0x%x, current %x\n",
+											pFile->hFile, pDesc->m_PrefetchedBeginBlock, pDesc->m_PrefetchedEndBlock,
+											pDesc->m_PrefetchPosition);
+					return;
+				}
+			}
+			else if (pDesc->m_PrefetchedEndBlock <= pDesc->m_PrefetchedBeginBlock
+					&& PrefetchBlockEnd <= PrefetchBlockBegin)
+			{
+				// non-empty "backward" prefetch block
+				if (PrefetchBlockBegin <= pDesc->m_PrefetchedBeginBlock
+					&& PrefetchBlockBegin + 1 >= pDesc->m_PrefetchedEndBlock)
+				{
+					if (m_ListToPrefetch.First() != pDesc)
+					{
+						pDesc->m_PrefetchedBeginBlock = PrefetchBlockBegin;
+						pDesc->m_PrefetchPosition = PrefetchBlockBegin;
+					}
+
+					// allow extending the range
+					if (pDesc->m_PrefetchedEndBlock > PrefetchBlockEnd)
+					{
+						pDesc->m_PrefetchedEndBlock = PrefetchBlockEnd;
+						// limit the range with m_MaxBlocksToPrefetch
+						if (pDesc->m_PrefetchedBeginBlock
+							- pDesc->m_PrefetchedEndBlock
+							> m_MaxBlocksToPrefetch - 1)
+						{
+							pDesc->m_PrefetchedEndBlock =
+								pDesc->m_PrefetchedBeginBlock - (m_MaxBlocksToPrefetch - 1);
+						}
+					}
+					if (TRACE_PREFETCH) TRACE("Item modified: %x: block %x to %x, current %x\n",
+											pFile->hFile, pDesc->m_PrefetchedBeginBlock, pDesc->m_PrefetchedEndBlock,
+											pDesc->m_PrefetchPosition);
+					return;
+				}
+			}
+		}
+
+		PrefetchDescriptor * pUseDesc = NULL;
+		// now check "done" list
+		for (pDesc = m_ListPrefetched.First(); m_ListPrefetched.NotEnd(pDesc);
+			pDesc = m_ListPrefetched.Next(pDesc))
+		{
+			if (pDesc->m_pFile != pFile)
+			{
+				continue;
+			}
+
+			if (pDesc->m_PrefetchedBeginBlock <= pDesc->m_PrefetchedEndBlock
+				&& PrefetchBlockBegin <= PrefetchBlockEnd)
+			{
+				if (PrefetchBlockBegin >= pDesc->m_PrefetchedBeginBlock
+					// extend the "done" range, if the new block begins just after the existing item
+					&& PrefetchBlockBegin <= pDesc->m_PrefetchedEndBlock + 1)
+				{
+					// begin is in inside range
+					if (PrefetchBlockBegin < (pDesc->m_PrefetchedBeginBlock + pDesc->m_PrefetchedEndBlock) / 2
+						|| PrefetchBlockEnd <= pDesc->m_PrefetchedEndBlock)
+					{
+						// too early or not necessary to start another prefetch
+						return;
+					}
+
+					pDesc->m_PrefetchPosition = pDesc->m_PrefetchedEndBlock + 1;
+					pDesc->m_PrefetchedEndBlock = PrefetchBlockEnd;
+
+					// limit the _back_ range with m_MaxBlocksToPrefetch
+					if (pDesc->m_PrefetchedEndBlock
+						- pDesc->m_PrefetchedBeginBlock
+						> m_MaxBlocksToPrefetch - 1)
+					{
+						pDesc->m_PrefetchedBeginBlock =
+							pDesc->m_PrefetchedEndBlock - (m_MaxBlocksToPrefetch - 1);
+					}
+
+					m_ListPrefetched.RemoveEntry(pDesc);
+					pUseDesc = pDesc;
+					break;
+				}
+			}
+
+			if (pDesc->m_PrefetchedBeginBlock >= pDesc->m_PrefetchedEndBlock
+				&& PrefetchBlockBegin >= PrefetchBlockEnd)
+			{
+				if (PrefetchBlockBegin <= pDesc->m_PrefetchedBeginBlock
+					&& PrefetchBlockBegin + 1 >= pDesc->m_PrefetchedEndBlock)
+				{
+					// begin is in inside range
+					if (PrefetchBlockBegin > (pDesc->m_PrefetchedBeginBlock + pDesc->m_PrefetchedEndBlock) / 2
+						|| PrefetchBlockEnd >= pDesc->m_PrefetchedEndBlock)
+					{
+						// too early or not necessary to start another prefetch
+						return;
+					}
+
+					pDesc->m_PrefetchPosition = pDesc->m_PrefetchedEndBlock - 1;
+					pDesc->m_PrefetchedEndBlock = PrefetchBlockEnd;
+
+					// limit the _back_ range with m_MaxBlocksToPrefetch
+					if (pDesc->m_PrefetchedBeginBlock
+						- pDesc->m_PrefetchedEndBlock
+						> m_MaxBlocksToPrefetch - 1)
+					{
+						pDesc->m_PrefetchedBeginBlock =
+							pDesc->m_PrefetchedEndBlock + (m_MaxBlocksToPrefetch - 1);
+					}
+					m_ListPrefetched.RemoveEntry(pDesc);
+					pUseDesc = pDesc;
+					break;
+				}
+			}
+		}
+
+		if (NULL == pUseDesc)
+		{
+			if (m_ListPrefetched.IsEmpty())
 			{
 				return;
 			}
+
+			pUseDesc = m_ListPrefetched.RemoveHead();
+			pUseDesc->m_PrefetchPosition = PrefetchBlockBegin;
+			pUseDesc->m_PrefetchedBeginBlock = PrefetchBlockBegin;
+			pUseDesc->m_PrefetchedEndBlock = PrefetchBlockEnd;
 		}
-	}
-	if (0) TRACE("RequestPrefetch: 0x%X bytes at 0x%X\n", long(PrefetchLength),
-				long(PrefetchPosition));
-	{
-		CSimpleCriticalSectionLock lock(m_cs);
-		if (m_pPrefetchFile != pFile
-			&& PrefetchPosition + PrefetchLength !=
-			m_PrefetchPosition + m_PrefetchLength)
-		{
-			m_pPrefetchFile = pFile;
-			m_PrefetchPosition = PrefetchPosition;
-			m_PrefetchLength = PrefetchLength;
-		}
-		m_MinPrefetchMRU = MaxMRU;
+		pUseDesc->m_pFile = pFile;
+
+
+		m_ListToPrefetch.InsertTail(pUseDesc);
+		if (TRACE_PREFETCH) TRACE("Item inserted: %x: block %x to %x, current %x\n",
+								pFile->hFile, pUseDesc->m_PrefetchedBeginBlock, pUseDesc->m_PrefetchedEndBlock,
+								pUseDesc->m_PrefetchPosition);
+
+//        m_MinPrefetchMRU = MaxMRU;
 	}
 	SetEvent(m_hEvent);
 }
 
-void CDirectFileCache::RequestFlush(File * pFile, LONGLONG FlushPosition,
-									LONG FlushLength)
+bool File::RequestFlush(LONGLONG FlushPosition, LONG FlushLength)
 {
 	// flush only whole buffers
-	if (0 == pFile->m_FlushLength)
+	if (0 == m_FlushLength)
 	{
-		pFile->m_FlushBegin = FlushPosition;
-		pFile->m_FlushLength = FlushLength;
+		m_FlushBegin = FlushPosition;
+		m_FlushLength = FlushLength;
 	}
 	else
 	{
-		if (FlushPosition == pFile->m_FlushBegin + pFile->m_FlushLength)
+		if (FlushPosition == m_FlushBegin + m_FlushLength)
 		{
-			pFile->m_FlushLength += FlushLength;
+			m_FlushLength += FlushLength;
 		}
 		else
 		{
-			if (pFile->m_FlushBegin > FlushPosition)
+			if (m_FlushBegin > FlushPosition)
 			{
-				pFile->m_FlushLength += LONG(pFile->m_FlushBegin) - LONG(FlushPosition);
-				pFile->m_FlushBegin = FlushPosition;
+				m_FlushLength += LONG(m_FlushBegin) - LONG(FlushPosition);
+				m_FlushBegin = FlushPosition;
 			}
-			if (pFile->m_FlushBegin + pFile->m_FlushLength < FlushPosition + FlushLength)
+			if (m_FlushBegin + m_FlushLength < FlushPosition + FlushLength)
 			{
-				pFile->m_FlushLength = LONG(FlushPosition) - LONG(pFile->m_FlushBegin) + FlushLength;
+				m_FlushLength = LONG(FlushPosition) - LONG(m_FlushBegin) + FlushLength;
 			}
 		}
 	}
 	// if flush boundary ends or crosses 64 boundary, request flush
-	if ((LONG(pFile->m_FlushBegin) & 0xFFFF) + pFile->m_FlushLength >= 0x10000)
-	{
-		m_FlushRequest = TRUE;
-		SetEvent(m_hEvent);
-	}
+	return LONG(m_FlushBegin & MASK_OFFSET_IN_BLOCK) + m_FlushLength >= CACHE_BLOCK_SIZE;
 }
 
 void CDirectFileCache::FlushRequestedFiles()
@@ -1628,45 +2064,45 @@ void CDirectFileCache::FlushRequestedFiles()
 	}
 }
 
-void CDirectFileCache::ReturnDataBuffer(File * pFile,
-										void * pBuffer, long count, DWORD flags)
+void File::ReturnDataBuffer(void * pBuffer, long count, DWORD flags)
 {
 	if (NULL == pBuffer || 0 == count)
 	{
 		return;
 	}
-	if (pFile->m_Flags & CDirectFile::FileFlagsMemoryFile)
+	if (m_Flags & CDirectFile::FileFlagsMemoryFile)
 	{
-		pFile->m_MemoryBufferRefCount--;
+		m_MemoryBufferRefCount--;
 		return;
 	}
 	// find the buffer descriptor
-	DWORD dwBuffer = DWORD(pBuffer);
+	PUCHAR pucBuffer = PUCHAR(pBuffer);
+
 	if (count < 0)
 	{
-		dwBuffer += count;
+		pucBuffer += count;
 		count = -count;
 	}
-	int BufferNumber = (dwBuffer - DWORD(m_pBuffersArray)) / 0x10000;
-	BufferHeader * pBuf = & m_pHeaders[BufferNumber];
-	ASSERT(BufferNumber >= 0 && BufferNumber < m_NumberOfBuffers);
-	ASSERT(pBuf->pFile == pFile);
-	ASSERT(pBuf->LockCount > 0);
-	ASSERT((DWORD)pBuf->pBuf == (dwBuffer & ~0xFFFF));
-	// mark the buffer dirty, if necessary
-	int OffsetInBuffer = dwBuffer & 0xFFFF;
-	LONGLONG FileOffset = OffsetInBuffer + (LONGLONG(pBuf->PositionKey) << 16);
 
-	ASSERT(OffsetInBuffer + count <= 0x10000);
+	BufferHeader * pBuf = CacheInstance.GetBufferHeader(pucBuffer);
+
+	ASSERT(pBuf->pFile == this);
+
+	// mark the buffer dirty, if necessary
+	int OffsetInBuffer = CacheInstance.GetOffsetInBuffer(pucBuffer);
+
+	LONGLONG FileOffset = OffsetInBuffer + (LONGLONG(pBuf->PositionKey) << BLOCK_SIZE_SHIFT);
+
+	ASSERT(OffsetInBuffer + count <= CACHE_BLOCK_SIZE);
 
 	{
-		CSimpleCriticalSectionLock lock(pFile->BuffersList);
+		CSimpleCriticalSectionLock lock(BuffersList);
 		if (flags & CDirectFile::ReturnBufferDirty)
 		{
-			DWORD RequestedMask = (0xFFFFFFFFu << (OffsetInBuffer >> 11));
-			if (OffsetInBuffer + count <= 0xF800)
+			DWORD RequestedMask = (0xFFFFFFFFu << (OffsetInBuffer >> SUBBLOCK_SIZE_SHIFT));
+			if (OffsetInBuffer + count <= CACHE_BLOCK_SIZE - CACHE_SUBBLOCK_SIZE)
 			{
-				RequestedMask &= ~(0xFFFFFFFFu << ((OffsetInBuffer + count + 0x7FF) >> 11));
+				RequestedMask &= ~(0xFFFFFFFFu << ((OffsetInBuffer + count + CACHE_SUBBLOCK_SIZE - 1) >> SUBBLOCK_SIZE_SHIFT));
 			}
 
 			DWORD OldDirtyMask = pBuf->DirtyMask.Exchange_Or(RequestedMask);
@@ -1674,48 +2110,36 @@ void CDirectFileCache::ReturnDataBuffer(File * pFile,
 			pBuf->ReadMask |= RequestedMask;
 			if (0 == OldDirtyMask && 0 != RequestedMask)
 			{
-				pFile->DirtyBuffersCount++;
+				DirtyBuffersCount++;
 			}
 		}
 	}
 
-	BufferMruEntry * pMru = pBuf;
-
-	if (0 == ((count + dwBuffer) & 0xFFFF)
+	if (0 == ((count + OffsetInBuffer) & MASK_OFFSET_IN_BLOCK)
 		&& (flags & CDirectFile::ReturnBufferDiscard))
 	{
-		// move the buffer to MRU tail
-		// extract the buffer from MRU list
-		CSimpleCriticalSectionLock lock(m_cs);
-
-		m_MruList.RemoveEntry(pMru);
-		// insert the buffer to the list tail
-		// to do: insert the buffer before the first with MRU_Count==1
-		pMru->MRU_Count = 1;
-
-		BufferMruEntry * pBufAfter = m_MruList.Last();
-		while (m_MruList.NotEnd(pBufAfter)
-				&& 1 == pBufAfter->MRU_Count)
-		{
-			pBufAfter = m_MruList.Prev(pBufAfter);
-		}
-
-		pBufAfter->InsertNextItem(pMru);
-
+		CacheInstance.MakeBufferMostRecent(pBuf);
 	}
+
 	// decrement lock count
 	if (0 == --pBuf->LockCount)
 	{
 		// set a request for writing
 		if (flags & CDirectFile::ReturnBufferFlush)
 		{
+			bool result;
 			if (count >= 0)
 			{
-				RequestFlush(pFile, FileOffset, count);
+				result = RequestFlush(FileOffset, count);
 			}
 			else
 			{
-				RequestFlush(pFile, FileOffset + count, -count);
+				result = RequestFlush(FileOffset + count, -count);
+			}
+
+			if (result)
+			{
+				CacheInstance.SetFlushRequest();
 			}
 		}
 	}
@@ -1804,6 +2228,104 @@ BufferHeader * CDirectFileCache::GetFreeBuffer(unsigned MaxMRU)
 
 // read the data by 32-bit MaskToRead (each bit corresponds to 2K)
 // to the buffer defined by BufferHeader *pBuf
+BOOL File::ReadFileAt(LONGLONG Position, void * pBuf, DWORD ToRead, DWORD * pWasRead)
+{
+	BOOL result;
+	CLastError LastError;
+	while (1)
+	{
+		if (m_UseOverlappedIo)
+		{
+			OVERLAPPED ov;
+			ov.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
+			// no need to use m_FilePointer
+			ov.Offset = (ULONG)(Position & 0xFFFFFFFF);
+			ov.OffsetHigh = (ULONG)(Position >> 32);
+			ov.Internal = 0;
+			ov.InternalHigh = 0;
+
+			result = ReadFile(hFile, pBuf, ToRead, pWasRead, &ov);
+			if (FALSE == result
+				&& ERROR_IO_PENDING == GetLastError())
+			{
+				result = GetOverlappedResult(hFile, & ov, pWasRead, TRUE);
+			}
+
+			LastError.Get();
+			if (0 == m_LastError)
+			{
+				m_LastError = LastError;
+			}
+		}
+		else    // using synchronous I/O
+		{
+			CSimpleCriticalSectionLock lock(m_FileLock);
+			if (0) TRACE("Stored file pointer: %X, actual: %X\n",
+						long(m_FilePointer), SetFilePointer(hFile, 0, NULL, FILE_CURRENT));
+
+			if (Position != m_FilePointer)
+			{
+				LONG FilePtrH = LONG(Position >> 32);
+				SetFilePointer(hFile, (ULONG)(Position & 0xFFFFFFFF), & FilePtrH, FILE_BEGIN);
+				m_FilePointer = Position;
+			}
+			if (TRACE_READ) TRACE("ReadFile(%08x, pos=0x%08X, bytes=%X)\n",
+								hFile, (ULONG)(Position & 0xFFFFFFFF), ToRead);
+
+			result = ReadFile(hFile, pBuf, ToRead, pWasRead, NULL);
+
+			LastError.Get();
+			if (0 == m_LastError)
+			{
+				m_LastError = LastError;
+			}
+#ifdef _DEBUG
+			if (*pWasRead < ToRead)
+			{
+				if (0) TRACE("ToRead=%x, BytesRead=%x\n", ToRead, *pWasRead);
+			}
+#endif
+			m_FilePointer += *pWasRead;
+		}
+		if (result)
+		{
+			break;
+		}
+
+		CString s;
+		CHeapPtr<TCHAR, CLocalAllocator > pszTemp(NULL);
+
+		DWORD dwResult = FormatMessage(
+										FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_ALLOCATE_BUFFER,
+										NULL, LastError, 0, reinterpret_cast<LPTSTR>( & pszTemp),
+										0, NULL);
+
+		s.Format(IDC_FILE_READ_ERROR, LPCTSTR(m_FileName), LPCTSTR(pszTemp));
+
+		DWORD flags = MB_DEFBUTTON2 | MB_ICONERROR | MB_CANCELTRYCONTINUE | MB_SETFOREGROUND;
+		if (0x80000000 & GetVersion())
+		{
+			// Win9x
+			flags = MB_DEFBUTTON2 | MB_ICONERROR | MB_RETRYCANCEL | MB_SETFOREGROUND;
+		}
+
+		INT_PTR retcode = MessageBoxSync(s, flags);
+		if (IDRETRY != retcode)
+		{
+			break;
+		}
+	}
+
+	return result;
+}
+
+BOOL File::WriteFileAt(LONGLONG Position, void const * pBuf,
+						DWORD ToWrite, DWORD * pWasWritten)
+{
+	//TODO
+	return 0;
+}
+
 void File::ReadDataBuffer(BufferHeader * pBuf, DWORD MaskToRead)
 {
 	// check if the required data is already in the buffer
@@ -1823,12 +2345,12 @@ void File::ReadDataBuffer(BufferHeader * pBuf, DWORD MaskToRead)
 		}
 		MaskToRead &= ~ pBuf->ReadMask;
 		// read the required data
-		LONGLONG StartFilePtr = ULONGLONG(pBuf->PositionKey) << 16;
+		LONGLONG StartFilePtr = ULONGLONG(pBuf->PositionKey) << BLOCK_SIZE_SHIFT;
 		char * buf = (char *) pBuf->pBuf;
 		// check if the buffer is in the initialized part of the file
 		if (0 == (m_Flags & CDirectFile::FileFlagsReadOnly))
 		{
-			int WrittenMaskOffset = pBuf->PositionKey >> 3;
+			size_t WrittenMaskOffset = pBuf->PositionKey >> 3;
 			if (WrittenMaskOffset >= WrittenMaskSize)
 			{
 				int NewWrittenMaskSize = WrittenMaskOffset + 512;   // 256 more megs
@@ -1836,7 +2358,7 @@ void File::ReadDataBuffer(BufferHeader * pBuf, DWORD MaskToRead)
 				if (NULL == NewWrittenMask)
 				{
 					if (0) TRACE("NewWrittenMask == NULL\n");
-					memset(pBuf->pBuf, 0, 0x10000);
+					memset(pBuf->pBuf, 0, CACHE_BLOCK_SIZE);
 					pBuf->ReadMask = 0xFFFFFFFF;
 					return;
 				}
@@ -1854,14 +2376,14 @@ void File::ReadDataBuffer(BufferHeader * pBuf, DWORD MaskToRead)
 				m_pWrittenMask[WrittenMaskOffset] |= 1 << (pBuf->PositionKey & 7);
 
 				DWORD BytesRead = 0;
-				int ToZero = 0x10000;
+				int ToZero = CACHE_BLOCK_SIZE;
 				if (NULL != pSourceFile
 					&& StartFilePtr < UseSourceFileLength
 					&& MaskToRead != 0)
 				{
 					// read the data from the source file
-					DWORD ToRead = 0x10000;
-					if (UseSourceFileLength - StartFilePtr < 0x10000)
+					DWORD ToRead = CACHE_BLOCK_SIZE;
+					if (UseSourceFileLength - StartFilePtr < CACHE_BLOCK_SIZE)
 					{
 						ToRead = DWORD(UseSourceFileLength) - DWORD(StartFilePtr);
 					}
@@ -1874,7 +2396,7 @@ void File::ReadDataBuffer(BufferHeader * pBuf, DWORD MaskToRead)
 						pSourceFile->m_FilePointer = StartFilePtr;
 					}
 					// round to sector size! otherwize ReadFile would fail
-					if (1) TRACE("ReadSourceFile(%08x, pos=0x%08X, bytes=%X)\n", hFile, long(StartFilePtr), ToRead);
+					if (TRACE_READ) TRACE("ReadSourceFile(%08x, pos=0x%08X, bytes=%X)\n", hFile, long(StartFilePtr), ToRead);
 					ReadFile(pSourceFile->hFile, buf, (ToRead + 0x1FF) & ~0x1FF, & BytesRead, NULL);
 #ifdef _DEBUG
 					if (BytesRead < ToRead)
@@ -1912,21 +2434,21 @@ void File::ReadDataBuffer(BufferHeader * pBuf, DWORD MaskToRead)
 			if (mask == 0xFFFFFFFF)
 			{
 				mask = 0;
-				ToRead = 0x10000;
+				ToRead = CACHE_BLOCK_SIZE;
 			}
 			else
 			{
 				while (0 == (mask & 1))
 				{
 					mask >>= 1;
-					StartFilePtr += 0x800;
-					buf += 0x800;
+					StartFilePtr += CACHE_SUBBLOCK_SIZE;
+					buf += CACHE_SUBBLOCK_SIZE;
 				}
 				ToRead = 0;
 				while (mask & 1)
 				{
 					mask >>= 1;
-					ToRead += 0x800;
+					ToRead += CACHE_SUBBLOCK_SIZE;
 				}
 			}
 			DWORD BytesRead = 0;
@@ -1940,7 +2462,8 @@ void File::ReadDataBuffer(BufferHeader * pBuf, DWORD MaskToRead)
 				SetFilePointer(hFile, (LONG)StartFilePtr, & FilePtrH, FILE_BEGIN);
 				m_FilePointer = StartFilePtr;
 			}
-			if (1) TRACE("ReadFile(%08x, pos=0x%08X, bytes=%X)\n", hFile, long(StartFilePtr), ToRead);
+
+			if (TRACE_READ) TRACE("ReadFile(%08x, pos=0x%08X, bytes=%X)\n", hFile, long(StartFilePtr), ToRead);
 			ReadFile(hFile, buf, ToRead, & BytesRead, NULL);
 			if (0 == m_LastError)
 			{
@@ -1953,15 +2476,15 @@ void File::ReadDataBuffer(BufferHeader * pBuf, DWORD MaskToRead)
 			}
 #endif
 			m_FilePointer += BytesRead;
+
 			buf += BytesRead;
-			StartFilePtr += BytesRead;
+			StartFilePtr += ToRead;
 			ToRead -= BytesRead;
 			if (ToRead)
 			{
 				memset(buf, 0, ToRead);
 			}
 			buf += ToRead;
-			StartFilePtr += ToRead;
 		}
 
 		pBuf->ReadMask |= MaskToRead;
@@ -1980,11 +2503,11 @@ void File::ReadDataBuffer(BufferHeader * pBuf, DWORD MaskToRead)
 	::SetThreadPriority(GetCurrentThread(), OldPriority);
 }
 
-void File::FlushDirtyBuffers(BufferHeader * pDirtyBuf, unsigned long MaxKey)
+void File::FlushDirtyBuffers(BufferHeader * pDirtyBuf, BLOCK_INDEX MaxKey)
 {
 	// flush all unlocked dirty buffers in sequence with pBuf;
 
-	unsigned key = pDirtyBuf->PositionKey;
+	BLOCK_INDEX key = pDirtyBuf->PositionKey;
 	ASSERT(NULL != pDirtyBuf);
 
 	CSimpleCriticalSectionLock lock(BuffersList);
@@ -2015,17 +2538,20 @@ void File::FlushDirtyBuffers(BufferHeader * pDirtyBuf, unsigned long MaxKey)
 			key = pBuf->PositionKey;
 
 			CSimpleCriticalSectionLock lock(m_FileLock);
-			LONGLONG StartFilePtr = ULONGLONG(pBuf->PositionKey) << 16;
+			LONGLONG StartFilePtr = ULONGLONG(pBuf->PositionKey) << BLOCK_SIZE_SHIFT;
 
 			unsigned char * buf = (unsigned char *) pBuf->pBuf;
 
-			int WrittenMaskOffset = pBuf->PositionKey >> 3;
+			size_t WrittenMaskOffset = pBuf->PositionKey >> 3;
 
 			ASSERT(WrittenMaskOffset < WrittenMaskSize);
 			ASSERT(m_pWrittenMask);
 
 			DWORD mask = pBuf->DirtyMask.Exchange(0);
-			if (mask) --DirtyBuffersCount;
+			if (mask)
+			{
+				--DirtyBuffersCount;
+			}
 
 			while (mask != 0)
 			{
@@ -2033,21 +2559,21 @@ void File::FlushDirtyBuffers(BufferHeader * pDirtyBuf, unsigned long MaxKey)
 				if (mask == 0xFFFFFFFF)
 				{
 					mask = 0;
-					ToWrite = 0x10000;
+					ToWrite = CACHE_BLOCK_SIZE;
 				}
 				else
 				{
 					while (0 == (mask & 1))
 					{
 						mask >>= 1;
-						StartFilePtr += 0x800;
-						buf += 0x800;
+						StartFilePtr += CACHE_SUBBLOCK_SIZE;
+						buf += CACHE_SUBBLOCK_SIZE;
 					}
 					ToWrite = 0;
 					while (mask & 1)
 					{
 						mask >>= 1;
-						ToWrite += 0x800;
+						ToWrite += CACHE_SUBBLOCK_SIZE;
 					}
 				}
 				DWORD BytesWritten = 0;
@@ -2065,20 +2591,21 @@ void File::FlushDirtyBuffers(BufferHeader * pDirtyBuf, unsigned long MaxKey)
 							long(StartFilePtr), ToWrite,
 							buf[0], buf[1], buf[2], buf[3], buf[4],
 							buf[5], buf[6], buf[7]);
-				if (0) TRACE("WriteFile(%08x, pos=0x%08X, bytes=%X)\n", hFile, long(StartFilePtr), ToWrite);
+
+				if (TRACE_WRITE) TRACE("WriteFile(%08x, pos=0x%08X, bytes=%X)\n", hFile, long(StartFilePtr), ToWrite);
 				BOOL result = WriteFile(hFile, buf, ToWrite, & BytesWritten, NULL);
 
 				if (0 == m_LastError)
 				{
 					m_LastError = ::GetLastError();
 				}
+				m_FilePointer += BytesWritten;
 				if (BytesWritten != ToWrite)
 				{
 					// TODO: run a message box in the main thread
 					// if it is a secondary thread, post a command
 				}
 
-				m_FilePointer += BytesWritten;
 				buf += ToWrite;
 				StartFilePtr += ToWrite;
 
@@ -2153,10 +2680,11 @@ unsigned CDirectFileCache::_ThreadProc()
 			ResetEvent(m_hThreadSuspendedEvent);
 			continue;
 		}
+
 		if (WAIT_TIMEOUT == WaitStatus)
 		{
 			// flush the files
-			for (int nFile = 0 ; NULL == m_pPrefetchFile && 0x80000000 == m_ThreadRunState
+			for (int nFile = 0 ; m_ListToPrefetch.IsEmpty() && 0x80000000 == m_ThreadRunState
 				; nFile++)
 			{
 				File * pFile = 0;
@@ -2173,6 +2701,7 @@ unsigned CDirectFileCache::_ThreadProc()
 					{
 						// empty
 					}
+
 					nFile = i;
 					if (m_FileList.IsEnd(pFile))
 					{
@@ -2188,6 +2717,7 @@ unsigned CDirectFileCache::_ThreadProc()
 				pFile->Flush();
 			}
 		}
+
 		while(0x80000000 == m_ThreadRunState)
 		{
 			// flush the files
@@ -2196,147 +2726,80 @@ unsigned CDirectFileCache::_ThreadProc()
 				m_FlushRequest = FALSE;
 				FlushRequestedFiles();
 			}
-			LONGLONG PrefetchPosition;
-			LONGLONG PrefetchLength;
-			unsigned PrefetchMRU;
-			File * pPrefetchFile;
-			if (NULL == m_pPrefetchFile)
+
+			// prune the prefetched queue from expired ranges
+
+			PrefetchDescriptor * pPrefetch;
+
+			for (pPrefetch = m_ListPrefetched.First(); m_ListPrefetched.NotEnd(pPrefetch);
+				pPrefetch = m_ListPrefetched.Next(pPrefetch))
+			{
+				if (NULL != pPrefetch->m_pFile
+					&& GetTickCount() - pPrefetch->m_LastPrefetchTick
+					> pPrefetch->PrefetchRangeExpirationTimeout)
+				{
+					if (TRACE_PREFETCH) TRACE("Item expired: %x: block 0x%x to 0x%x\n",
+						pPrefetch->m_pFile->hFile, pPrefetch->m_PrefetchedBeginBlock, pPrefetch->m_PrefetchedEndBlock);
+					pPrefetch->m_pFile = NULL;
+				}
+			}
+
+			if (m_ListToPrefetch.IsEmpty())
 			{
 				break;
 			}
-			{
-				CSimpleCriticalSectionLock lock(m_cs);
-				pPrefetchFile = m_pPrefetchFile;
-				PrefetchPosition = m_PrefetchPosition;
-				PrefetchLength = m_PrefetchLength;
-				PrefetchMRU = m_MinPrefetchMRU;
-			}
-			if (NULL == pPrefetchFile)
-			{
-				break;
-			}
 
-			// check for prefetch range expiration
-			DWORD CurrentTick = GetTickCount();
-			LONGLONG OriginalPrefetchPosition = PrefetchPosition;
-			LONGLONG OriginalPrefetchLength = PrefetchLength;
-
-			if (CurrentTick - pPrefetchFile->m_LastPrefetchTick
-				> pPrefetchFile->PrefetchRangeExpirationTimeout)
-			{
-				pPrefetchFile->m_PrefetchedBeginBlock = -1;
-				pPrefetchFile->m_PrefetchedEndBlock = -1;
-			}
-			pPrefetchFile->m_LastPrefetchTick = CurrentTick;
-
-			// limit prefetch length
-			if (PrefetchLength >= 0)
-			{
-				if (DWORD(PrefetchLength >> 16) > pPrefetchFile->m_MaxBlocksToPrefetch)
-				{
-					PrefetchLength = LONGLONG(pPrefetchFile->m_MaxBlocksToPrefetch) << 16;
-				}
-			}
-			else
-			{
-				if (DWORD(( - PrefetchLength) >> 16) > pPrefetchFile->m_MaxBlocksToPrefetch)
-				{
-					PrefetchLength = -LONGLONG(pPrefetchFile->m_MaxBlocksToPrefetch) << 16;
-				}
-			}
+			pPrefetch = m_ListToPrefetch.First();
 
 			// if prefetch area is active
 			// check already prefetched ranges
-			if (pPrefetchFile->m_PrefetchedEndBlock != -1)
-			{
-				if (PrefetchLength >= 0)
-				{
-					if (DWORD(PrefetchPosition >> 16) < pPrefetchFile->m_PrefetchedEndBlock)
-					{
-						PrefetchLength -= (LONGLONG(pPrefetchFile->m_PrefetchedEndBlock) << 16)
-										- PrefetchPosition;
-						PrefetchPosition = LONGLONG(pPrefetchFile->m_PrefetchedEndBlock) << 16;
+			LONGLONG PrefetchPosition = LONGLONG(pPrefetch->m_PrefetchPosition) << BLOCK_SIZE_SHIFT;
 
-					}
-					pPrefetchFile->m_PrefetchedBeginBlock = DWORD(PrefetchPosition >> 16);
-					if (PrefetchLength < 0)
-					{
-						PrefetchLength = 0;
-					}
-				}
-				else
-				{
-					if (DWORD(PrefetchPosition >> 16) > pPrefetchFile->m_PrefetchedBeginBlock)
-					{
-						PrefetchLength -= (LONGLONG(pPrefetchFile->m_PrefetchedBeginBlock) << 16)
-										- PrefetchPosition;
-						PrefetchPosition = LONGLONG(pPrefetchFile->m_PrefetchedBeginBlock) << 16;
+			LONG PrefetchLength = CACHE_BLOCK_SIZE;
 
-					}
-					pPrefetchFile->m_PrefetchedEndBlock = DWORD(PrefetchPosition >> 16);
-					if (PrefetchLength >= 0)
-					{
-						PrefetchLength = 0;
-					}
-				}
-			}
-			else
-			{
-				// set prefetch area
-				pPrefetchFile->m_PrefetchedBeginBlock = DWORD(PrefetchPosition >> 16);
-				pPrefetchFile->m_PrefetchedEndBlock = pPrefetchFile->m_PrefetchedBeginBlock;
-			}
-
-			if (0 == PrefetchLength)
-			{
-				break;
-			}
 			void * pBuf = NULL;
-			long ReadLength = GetDataBuffer(pPrefetchFile, & pBuf, PrefetchLength,
-											PrefetchPosition, CDirectFile::GetBufferNoPrefetch, PrefetchMRU);
-			//TRACE("Prefetched buffer at 0x%X\n", long(PrefetchPosition));
+
+			long ReadLength = GetDataBuffer(pPrefetch->m_pFile,
+											& pBuf, CACHE_BLOCK_SIZE,
+											PrefetchPosition, CDirectFile::GetBufferNoPrefetch);
+
+			if (TRACE_PREFETCH) TRACE("Prefetched block 0x%X file %x\n",
+									pPrefetch->m_PrefetchPosition, pPrefetch->m_pFile->hFile);
+
 			if (pBuf)
 			{
-				ReturnDataBuffer(pPrefetchFile, pBuf, ReadLength, 0);
+				pPrefetch->m_pFile->ReturnDataBuffer(pBuf, ReadLength, 0);
 			}
-			// prefetch was canceled for this file
+
 			{
 				CSimpleCriticalSectionLock lock(m_cs);
-				if (m_pPrefetchFile != pPrefetchFile
-					|| OriginalPrefetchPosition != m_PrefetchPosition
-					|| OriginalPrefetchLength != m_PrefetchLength
-					)
+				if (pPrefetch->m_PrefetchedBeginBlock <= pPrefetch->m_PrefetchedEndBlock)
 				{
-					// prefetch assignment changed
-					continue;
-				}
-
-				m_PrefetchLength -= ReadLength;
-				if (0 != ReadLength
-					&& 0 != m_PrefetchLength)
-				{
-					m_PrefetchPosition = PrefetchPosition + ReadLength;
-					if (ReadLength >= 0)
+					if (pPrefetch->m_PrefetchPosition < pPrefetch->m_PrefetchedEndBlock)
 					{
-						pPrefetchFile->m_PrefetchedEndBlock = DWORD(PrefetchPosition >> 16);
+						pPrefetch->m_PrefetchPosition++;
+						continue;
 					}
-					else
-					{
-						pPrefetchFile->m_PrefetchedBeginBlock = DWORD(PrefetchPosition >> 16);
-					}
-					continue;
 				}
 				else
 				{
-					m_pPrefetchFile = NULL;
-					m_PrefetchLength = 0;
-					break;
+					if (pPrefetch->m_PrefetchPosition > pPrefetch->m_PrefetchedEndBlock)
+					{
+						pPrefetch->m_PrefetchPosition--;
+						continue;
+					}
 				}
+				// retire the prefetch item
+				m_ListToPrefetch.RemoveEntry(pPrefetch);
+
+				pPrefetch->m_LastPrefetchTick = GetTickCount();
+
+				m_ListPrefetched.InsertTail(pPrefetch);
 			}
 		}
 		// reset bit 0x80000000, but only if not equal ~0
 		long tmp;
-		while ((tmp = m_ThreadRunState) != ~0
+		while ((tmp = m_ThreadRunState) != ~0UL
 				&& tmp != m_ThreadRunState.CompareExchange(tmp & ~ 0x80000000, tmp));
 	}
 #ifdef _DEBUG
@@ -2361,15 +2824,15 @@ BOOL File::InitializeTheRestOfFile(int timeout, int * pPercentCompleted)
 	}
 	// find uninitialized buffer
 	DWORD BeginTime = timeGetTime();
-	for (unsigned i = 0; i < unsigned((FileLength + 0xFFFF) >> 16); i++)
+	for (unsigned i = 0; i < unsigned((FileLength + CACHE_BLOCK_SIZE - 1) >> BLOCK_SIZE_SHIFT); i++)
 	{
 		if (0 == (m_pWrittenMask[i / 8] & (1 << (i & 7))))
 		{
 			void * ptr;
-			LONG count = GetDataBuffer( & ptr, 0x10000, LONGLONG(i) << 16, 0);
+			LONG count = GetDataBuffer( & ptr, CACHE_BLOCK_SIZE, LONGLONG(i) << BLOCK_SIZE_SHIFT, 0);
 			if (count)
 			{
-				ReturnDataBuffer(ptr, 0x10000, CDirectFile::ReturnBufferDiscard);
+				ReturnDataBuffer(ptr, CACHE_BLOCK_SIZE, CDirectFile::ReturnBufferDiscard);
 			}
 		}
 		if (timeout != 0
@@ -2377,7 +2840,7 @@ BOOL File::InitializeTheRestOfFile(int timeout, int * pPercentCompleted)
 		{
 			if (pPercentCompleted)
 			{
-				*pPercentCompleted = MulDiv(100, i, int((FileLength + 0xFFFF) >> 16));
+				*pPercentCompleted = MulDiv(100, i, int((FileLength + CACHE_BLOCK_SIZE - 1) >> BLOCK_SIZE_SHIFT));
 			}
 			return FALSE;   // not finished yet
 		}
@@ -2395,23 +2858,25 @@ BOOL File::SetFileLength(LONGLONG NewLength)
 	if (m_Flags & CDirectFile::FileFlagsMemoryFile)
 	{
 		// allocate or reallocate memory buffer
-		if (NewLength > 0x100000
+		if (NewLength > MEMORY_FILE_SIZE_LIMIT
 			|| NewLength < 0
 			|| 0 != m_MemoryBufferRefCount)
 		{
 			// limit 1 M
 			return FALSE;
 		}
-		if (long(NewLength) <= m_MemoryFileBufferSize)
+
+		ULONG MemofyFileLength = ULONG(NewLength);
+		if (MemofyFileLength <= m_MemoryFileBufferSize)
 		{
-			if (NewLength > FileLength)
+			if (MemofyFileLength > FileLength)
 			{
-				memset(m_pMemoryFileBuffer + FileLength, 0, size_t(NewLength - FileLength));
+				memset(m_pMemoryFileBuffer + FileLength, 0, size_t(MemofyFileLength - FileLength));
 			}
-			FileLength = NewLength;
+			FileLength = MemofyFileLength;
 			return TRUE;
 		}
-		char * NewBuf = new char[long(NewLength)];
+		char * NewBuf = new char[MemofyFileLength];
 		if (NULL == NewBuf)
 		{
 			return FALSE;
@@ -2421,18 +2886,26 @@ BOOL File::SetFileLength(LONGLONG NewLength)
 			memcpy(NewBuf, m_pMemoryFileBuffer, size_t(FileLength));
 			delete m_pMemoryFileBuffer;
 		}
-		m_MemoryFileBufferSize = long(NewLength);
+		m_MemoryFileBufferSize = MemofyFileLength;
 		m_pMemoryFileBuffer = NewBuf;
-		memset(m_pMemoryFileBuffer + FileLength, 0, size_t(NewLength - FileLength));
-		FileLength = NewLength;
+
+		memset(m_pMemoryFileBuffer + FileLength, 0, size_t(MemofyFileLength - FileLength));
+		FileLength = MemofyFileLength;
+
 		return TRUE;
 	}
+
 	if (m_Flags & CDirectFile::FileFlagsReadOnly)
 	{
 		SetLastError(ERROR_FILE_READ_ONLY);
 		return FALSE;
 	}
 	// if the file becomes shorter, discard all buffers after the trunk point
+	// disable all prefetch for the file
+	CacheThreadLock CacheLock;
+
+	CacheInstance.CancelPrefetch(this);
+
 	if (NewLength < FileLength)
 	{
 		Flush();
@@ -2450,7 +2923,7 @@ BOOL File::SetFileLength(LONGLONG NewLength)
 	CSimpleCriticalSectionLock lock(m_FileLock);
 	FileLength = NewLength;
 	// set the length to the multiple of 2K
-	NewLength = (NewLength + 0x7FF) & ~0x7FF;
+	NewLength = (NewLength + CACHE_SUBBLOCK_SIZE - 1) & ~MASK_OFFSET_IN_SUBBLOCK;
 	LONG MoveHigh = LONG(NewLength>> 32);
 	DWORD SizeLow, SizeHigh;
 	SetLastError(0);
@@ -2517,10 +2990,10 @@ BOOL File::Flush()
 void File::FlushRequestedRange()
 {
 	// flush all the buffers
-	while((LONG(m_FlushBegin) & 0xFFFF) + m_FlushLength >= 0x10000)
+	while((LONG(m_FlushBegin) & MASK_OFFSET_IN_BLOCK) + m_FlushLength >= CACHE_BLOCK_SIZE)
 	{
 		CSimpleCriticalSectionLock lock(m_FileLock);
-		ULONG key = ULONG(m_FlushBegin >> 16);
+		ULONG key = ULONG(m_FlushBegin >> BLOCK_SIZE_SHIFT);
 		BufferHeader * pBuf = FindBuffer(key);
 
 		if (NULL != pBuf)
@@ -2535,7 +3008,7 @@ void File::FlushRequestedRange()
 				FlushDirtyBuffers(pBuf, key);
 			}
 		}
-		LONG Flushed = 0x10000 - (LONG(m_FlushBegin) & 0xFFFF);
+		LONG Flushed = CACHE_BLOCK_SIZE - (LONG(m_FlushBegin) & MASK_OFFSET_IN_BLOCK);
 		m_FlushBegin += Flushed;
 		m_FlushLength -= Flushed;
 	}
@@ -2570,7 +3043,7 @@ bool CDirectFile::IsReadOnly() const
 {
 	if (NULL == m_pFile)
 	{
-		return FALSE;
+		return false;
 	}
 
 	return 0 != (m_pFile->m_Flags & FileFlagsReadOnly);
@@ -2669,7 +3142,7 @@ void CDirectFile::ReturnDataBuffer(void * pBuffer, long count, DWORD flags)
 	{
 		return;
 	}
-	CacheInstance.ReturnDataBuffer(m_pFile, pBuffer, count, flags);
+	m_pFile->ReturnDataBuffer(pBuffer, count, flags);
 }
 
 long CDirectFile::GetDataBuffer(void * * ppBuf, LONGLONG length, LONGLONG position, DWORD flags)
@@ -2724,7 +3197,7 @@ LPCTSTR CDirectFile::GetName() const
 	}
 	else
 	{
-		return m_pFile->sName;
+		return m_pFile->m_FileName;
 	}
 }
 
