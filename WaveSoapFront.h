@@ -310,8 +310,8 @@ void FileCreationErrorMessageBox(LPCTSTR name);
 
 BOOL CanExpandWaveFile(const CWaveFile & WaveFile, NUMBER_OF_SAMPLES NumOfSamplesToAdd);
 BOOL CanExpandWaveFileDlg(const CWaveFile & WaveFile, NUMBER_OF_SAMPLES NumOfSamplesToAdd);
-BOOL CanAllocateWaveFileSamples(const WAVEFORMATEX * pWf, NUMBER_OF_SAMPLES NumOfSamples);
-BOOL CanAllocateWaveFileSamplesDlg(const WAVEFORMATEX * pWf, NUMBER_OF_SAMPLES NumOfSamples);
+BOOL CanAllocateWaveFileSamples(const WAVEFORMATEX * pWf, LONGLONG NumOfSamples);
+BOOL CanAllocateWaveFileSamplesDlg(const WAVEFORMATEX * pWf, LONGLONG NumOfSamples);
 CString GetSelectionText(SAMPLE_INDEX Start, SAMPLE_INDEX End, CHANNEL_MASK Chan,
 						NUMBER_OF_CHANNELS nChannels, BOOL bLockChannels,
 						long nSamplesPerSec, int TimeFormat);

@@ -2404,10 +2404,10 @@ BOOL CWaveSoapFrontApp::CanSaveAnyDocument()
 	}
 }
 
-BOOL CanAllocateWaveFileSamples(const WAVEFORMATEX * pWf, NUMBER_OF_SAMPLES NumOfSamples)
+BOOL CanAllocateWaveFileSamples(const WAVEFORMATEX * pWf, LONGLONG NumOfSamples)
 {
 	int SampleSize = pWf->wBitsPerSample * pWf->nChannels / 8;
-	LONGLONG NewSize = LONGLONG(NumOfSamples) * SampleSize;
+	LONGLONG NewSize = NumOfSamples * SampleSize;
 	// reserve 1 megabyte of overhead
 	LONGLONG MaxLength = 0x7FFFFFFEi64 - 0x100000;
 	if (GetApp()->m_bAllow4GbWavFile)
@@ -2417,7 +2417,7 @@ BOOL CanAllocateWaveFileSamples(const WAVEFORMATEX * pWf, NUMBER_OF_SAMPLES NumO
 	return NewSize <= MaxLength;
 }
 
-BOOL CanAllocateWaveFileSamplesDlg(const WAVEFORMATEX * pWf, NUMBER_OF_SAMPLES NumOfSamples)
+BOOL CanAllocateWaveFileSamplesDlg(const WAVEFORMATEX * pWf, LONGLONG NumOfSamples)
 {
 	if (CanAllocateWaveFileSamples(pWf, NumOfSamples))
 	{
@@ -2437,7 +2437,7 @@ BOOL CanExpandWaveFile(const CWaveFile & WaveFile, NUMBER_OF_SAMPLES NumOfSample
 	LONGLONG MaxLength = 0x7FFFFFFEi64;
 	if (GetApp()->m_bAllow4GbWavFile)
 	{
-		MaxLength = 0xFFFFFFFEi64;
+		MaxLength = 0xFFFFFFFEi64 - 0x100000;
 	}
 	return NewLength <= MaxLength;
 }
