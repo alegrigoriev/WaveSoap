@@ -34,6 +34,7 @@ public:
 	{}
 	~CSoundUpdateInfo() {}
 	CSoundUpdateInfo * pNext;
+	DWORD FileID;
 	int UpdateCode;
 	int Begin;
 	int End;
@@ -45,6 +46,9 @@ public:
 // such operations with non-active documents are suspended.
 // To implement it, App object starts a thread for such operations.
 //
+enum {
+	UpdateSoundDontRescanPeaks = 1,
+};
 class CWaveSoapFrontDoc : public CDocument
 {
 protected: // create from serialization only
@@ -76,10 +80,14 @@ public:
 	//WAVEFORMATEX WavFileFormat;
 	CString szPeakFilename;
 	BY_HANDLE_FILE_INFORMATION WavFileInfo;
+
 	WavePeak * m_pPeaks;
 	size_t m_WavePeakSize;
-	DWORD m_SizeOfWaveData;
 	int m_PeakDataGranularity;
+	CSimpleCriticalSection m_PeakLock;
+	void RescanPeaks(long begin, long end);
+
+	DWORD m_SizeOfWaveData;
 	__int16 * m_pWaveBuffer;
 	size_t m_WaveBufferSize;
 	BOOL AllocateWaveBuffer(size_t size = 0x100000);    // 1M default
@@ -90,8 +98,9 @@ public:
 	LONG m_SelectionEnd;
 	int m_SelectedChannel; // 0, 1, 2
 	bool m_TimeSelectionMode;
-	void SetSelection(int begin, int end, int channel, int caret);
-	void SoundChanged(int begin, int end);
+	void SetSelection(long begin, long end, int channel, int caret);
+	void SoundChanged(DWORD FileID, long begin, long end, int length = -1, DWORD flags = 0);
+
 	enum {UpdateSelectionChanged = 1,
 		UpdateSelectionModeChanged,
 		UpdateSoundChanged,
@@ -105,25 +114,33 @@ public:
 	BOOL AllocatePeakInfo();
 	int CalculatePeakInfoSize() const
 	{
-		size_t WavGranule = m_PeakDataGranularity * m_WavFile.m_pWf->nChannels * sizeof(__int16);
+		size_t WavGranule = m_PeakDataGranularity * WaveChannels() * sizeof(__int16);
 		size_t Granules = (m_SizeOfWaveData + WavGranule - 1) / WavGranule;
-		return Granules * m_WavFile.m_pWf->nChannels;
+		return Granules * WaveChannels();
 	}
 	int WaveFileSamples() const
 	{
-		if (m_WavFile.m_pWf != NULL)
-		{
-			return m_SizeOfWaveData /
-					(m_WavFile.m_pWf->nChannels * m_WavFile.m_pWf->wBitsPerSample / 8);
-		}
-		else
-		{
-			return 0;
-		}
+		return m_WavFile.NumberOfSamples();
+	}
+	LPMMCKINFO WaveDataChunk() const
+	{
+		return m_WavFile.GetDataChunk();
+	}
+	LPWAVEFORMATEX WaveFormat() const
+	{
+		return m_WavFile.GetWaveFormat();
 	}
 	int WaveChannels() const
 	{
-		return m_WavFile.m_pWf->nChannels;
+		return m_WavFile.Channels();
+	}
+	int WaveSampleSize() const
+	{
+		return m_WavFile.SampleSize();
+	}
+	DWORD WaveFileID() const
+	{
+		return m_WavFile.GetFileID();
 	}
 	BOOL SetThreadPriority(int priority)
 	{
@@ -141,7 +158,6 @@ public:
 	bool volatile m_StopOperation;
 	CString m_CurrentStatusString;
 	bool m_bReadOnly;
-	bool m_bUndoAvailable;
 	CSimpleCriticalSection m_cs;
 	COperationContext * m_pCurrentContext;
 	COperationContext * m_pQueuedOperation;
@@ -185,6 +201,7 @@ protected:
 	afx_msg void OnUpdateEditUndo(CCmdUI* pCmdUI);
 	afx_msg void OnEditStop();
 	afx_msg void OnUpdateEditStop(CCmdUI* pCmdUI);
+	afx_msg void OnUpdateFileSave(CCmdUI* pCmdUI);
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 
