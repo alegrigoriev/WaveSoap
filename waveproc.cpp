@@ -16,7 +16,7 @@
 
 #include "FFT.h"
 
-#define TRACE_WAVEPROC 1
+#define TRACE_WAVEPROC 0
 
 template <typename T = UCHAR, unsigned s = 512>
 struct FixedRingBufferBase
@@ -220,9 +220,7 @@ typename RingBufferT<L>::Type RingBufferT<L>::Read()
 //////////////////////////////////////////////////////////////
 /////////// CWaveProc
 CWaveProc::CWaveProc()
-	: m_InputChannels(1),
-	m_OutputChannels(1),
-	m_bClipped(FALSE),
+	: m_bClipped(FALSE),
 	m_MaxClipped(0),
 	m_ChannelsToProcess(-1)
 	, m_SavedOutputSamples(0)
@@ -231,7 +229,10 @@ CWaveProc::CWaveProc()
 	, m_ProcessedInputBytes(0)
 	, m_SavedOutputBytes(0)
 #endif
-{}
+{
+	m_InputFormat.InitCdAudioFormat();
+	m_OutputFormat.InitCdAudioFormat();
+}
 
 size_t CWaveProc::ProcessSoundBuffer(char const * /*pInBuf*/, char * /*pOutBuf*/,
 									size_t nInBytes, size_t nOutBytes, size_t * pUsedBytes)
@@ -240,15 +241,25 @@ size_t CWaveProc::ProcessSoundBuffer(char const * /*pInBuf*/, char * /*pOutBuf*/
 	return nOutBytes;
 }
 
-BOOL CWaveProc::SetAndValidateWaveformat(WAVEFORMATEX const * pWf)
+BOOL CWaveProc::SetInputWaveformat(WAVEFORMATEX const * pWf)
 {
-	m_SamplesPerSecond = pWf->nSamplesPerSec;
-	m_InputChannels = pWf->nChannels;
-	m_OutputChannels = pWf->nChannels;
+	m_InputFormat = pWf;
+	m_OutputFormat = pWf;   // by default, the format doesn't change
+
 	return pWf->wFormatTag == WAVE_FORMAT_PCM
 			&& pWf->wBitsPerSample == 16
 			&& pWf->nBlockAlign == pWf->nChannels * 2 //pWf->wBitsPerSample / 8
 			&& pWf->nAvgBytesPerSec == pWf->nSamplesPerSec * pWf->nBlockAlign;
+}
+
+WAVEFORMATEX const * CWaveProc::GetInputWaveformat() const
+{
+	return m_InputFormat;
+}
+
+WAVEFORMATEX const * CWaveProc::GetOutputWaveformat() const
+{
+	return m_OutputFormat;
 }
 
 size_t CWaveProc::ProcessSound(char const * pInBuf, char * pOutBuf,
@@ -290,7 +301,7 @@ void CWaveProc::Dump(unsigned indent) const
 	TRACE("%*.s%s\n", indent, "", typeid(*this).name());
 	TRACE(_T(" %*.sSamples per second=%d, Input channels=%d, Output channels=%d\n")
 		_T(" %*.sChannels to process=%x, Max clipped=%f\n"),
-		indent, "", m_SamplesPerSecond, m_InputChannels, m_OutputChannels,
+		indent, "", m_InputFormat.SampleRate(), m_InputFormat.NumChannels(), m_OutputFormat.NumChannels(),
 		indent, "", m_ChannelsToProcess, m_MaxClipped);
 }
 
@@ -340,39 +351,45 @@ void CWaveProc::DeInit()
 
 
 ////////////////// CHumRemoval ///////////////////////
-CHumRemoval::CHumRemoval()
+CHumRemoval::CHumRemoval(WAVEFORMATEX const * pWf, CHANNEL_MASK ChannelsToProcess)
 {
 	m_ApplyHighpassFilter = FALSE;
 	m_ApplyCommonModeFilter = TRUE;
-	m_prev_outl = 0;
-	m_prev_outr = 0;
-	m_prev_inl = 0;
-	m_prev_inr = 0;
-	m_PrevHpfR[0] = 0;
-	m_PrevHpfR[1] = 0;
-	m_PrevHpfL[0] = 0;
-	m_PrevHpfL[1] = 0;
-	m_PrevHpOutL[0] = 0.;
-	m_PrevHpOutL[1] = 0.;
-	m_PrevHpOutR[0] = 0.;
-	m_PrevHpOutR[1] = 0.;
+
+	m_prev_out[0] = 0.;
+	m_prev_out[1] = 0.;
+	m_prev_in[0] = 0;
+	m_prev_in[1] = 0;
+
+	m_PrevHpf[0][0] = 0.;
+	m_PrevHpf[1][0] = 0.;
+	m_PrevHpf[0][1] = 0.;
+	m_PrevHpf[1][1] = 0.;
+
+	m_PrevHpOut[0][0] = 0.;
+	m_PrevHpOut[1][0] = 0.;
+	m_PrevHpOut[0][1] = 0.;
+	m_PrevHpOut[1][1] = 0.;
+
 	m_DiffCutoffCoeffs[0] = 0.003575f;
 	m_DiffCutoffCoeffs[1] = 0.9857f;
+
 	m_HighpassCoeffs[0] = 1.99636f;
 	m_HighpassCoeffs[1] = 0.996363312f;
 	m_HighpassCoeffs[2] = 1.;
+
+	m_ChannelsToProcess = ChannelsToProcess;
+	SetInputWaveformat(pWf);
 }
 
-BOOL CHumRemoval::SetAndValidateWaveformat(WAVEFORMATEX const * pWf)
+BOOL CHumRemoval::SetInputWaveformat(WAVEFORMATEX const * pWf)
 {
-	return CWaveProc::SetAndValidateWaveformat(pWf);
-	//&& pWf->nChannels == 2
-	//&& pWf->nSamplesPerSec == 44100;
+	return CWaveProc::SetInputWaveformat(pWf);
 }
 
 void CHumRemoval::SetDifferentialCutoff(double frequency)
 {
-	m_DiffCutoffCoeffs[1] = 1. - M_PI * frequency / m_SamplesPerSecond;
+	m_DiffCutoffCoeffs[1] = 1. - M_PI * frequency / m_InputFormat.SampleRate();
 	m_DiffCutoffCoeffs[0] = 0.25 * (1. - m_DiffCutoffCoeffs[1]);
 	TRACE("m_DiffCutoffCoeffs=%.6f, %.6f\n", m_DiffCutoffCoeffs[0],
 		m_DiffCutoffCoeffs[1]);
@@ -381,11 +398,14 @@ void CHumRemoval::SetDifferentialCutoff(double frequency)
 void CHumRemoval::SetHighpassCutoff(double frequency)
 {
 	// pole for second order filter
-	double a = 1. - 1.5537739 * M_PI * frequency / m_SamplesPerSecond;
+	double a = 1. - 1.5537739 * M_PI * frequency / m_InputFormat.SampleRate();
+
 	m_HighpassCoeffs[0] = 2. * a;
 	m_HighpassCoeffs[1] = a * a;
+
 	// norm coefficient
 	m_HighpassCoeffs[2] = (m_HighpassCoeffs[0] + m_HighpassCoeffs[1] + 1.) * 0.25;
+
 	TRACE("m_HighpassCoeffs=%.6f, %.6f, %.6f\n", m_HighpassCoeffs[0],
 		m_HighpassCoeffs[1],  m_HighpassCoeffs[2]);
 }
@@ -396,99 +416,99 @@ size_t CHumRemoval::ProcessSoundBuffer(char const * pIn, char * pOut,
 	size_t nSavedBytes = 0;
 	*pUsedBytes = 0;
 
-	size_t nInSamples = nInBytes / sizeof (WAVE_SAMPLE);
-	size_t nOutSamples = nOutBytes / sizeof (WAVE_SAMPLE);
+	unsigned const SampleSize = m_InputFormat.SampleSize();
+	size_t nInSamples = nInBytes / SampleSize;
+	size_t nOutSamples = nOutBytes / SampleSize;
 
 	WAVE_SAMPLE const * pInBuf = (WAVE_SAMPLE *) pIn;
 	WAVE_SAMPLE * pOutBuf = (WAVE_SAMPLE *) pOut;
 
-
 	// process the data
-	int nSamples = __min(nInSamples, nOutSamples) / m_InputChannels;
+	unsigned nSamples = std::min(nInSamples, nOutSamples);
+
 	if (0 == nSamples || NULL == pInBuf)
 	{
 		return nSavedBytes;   // no delayed samples in history
 	}
-	float curr_l;
-	float curr_r = 0.;
-	for (int i = 0; i < nSamples * m_InputChannels; i += m_InputChannels)
+
+	ASSERT(m_InputFormat.NumChannels() == m_OutputFormat.NumChannels());
+	for (unsigned i = 0; i < nSamples; i ++,
+		pInBuf += m_InputFormat.NumChannels(), pOutBuf += m_OutputFormat.NumChannels())
 	{
-		if (m_ApplyHighpassFilter)
+		double curr[MAX_NUMBER_OF_CHANNELS];
+
+		if (m_ApplyCommonModeFilter
+			&& 2 == m_InputFormat.NumChannels())
 		{
-			// apply additional highpass 2nd order filter to both channels
-			// with cutoff frequency 50 Hz
-			// (1-2z + z^2)/(a^2 -2az + z^2)
-			double outL = (float(pInBuf[i] - m_PrevHpfL[0] - m_PrevHpfL[0] + m_PrevHpfL[1])
-							+ m_HighpassCoeffs[0] * m_PrevHpOutL[0] - m_HighpassCoeffs[1] * m_PrevHpOutL[1]);
-			m_PrevHpOutL[1] = m_PrevHpOutL[0];
-			m_PrevHpOutL[0] = float(outL);
-			curr_l = float(outL * m_HighpassCoeffs[2]);
-			m_PrevHpfL[1] = m_PrevHpfL[0];
-			m_PrevHpfL[0] = pInBuf[i];
+			m_prev_out[0] = (pInBuf[0] + m_prev_in[0]) * m_DiffCutoffCoeffs[0]
+							+ m_DiffCutoffCoeffs[1] * m_prev_out[0];
 
-			if (2 == m_InputChannels)
+			m_prev_out[1] = (pInBuf[1] + m_prev_in[1]) * m_DiffCutoffCoeffs[0]
+							+ m_DiffCutoffCoeffs[1] * m_prev_out[1];
+
+			double hpf_l = m_prev_in[0] - m_prev_out[0];
+			double hpf_r = m_prev_in[1] - m_prev_out[1];
+
+			m_prev_in[0] = pInBuf[0];
+			m_prev_in[1] = pInBuf[1];
+
+			curr[0] = hpf_l + m_prev_out[1];
+			curr[1] = hpf_r + m_prev_out[0];
+		}
+		else
+		{
+			for (unsigned ch = 0; ch < m_InputFormat.NumChannels(); ch++)
 			{
-				double outR = (float(pInBuf[i+1] - m_PrevHpfR[0] - m_PrevHpfR[0] + m_PrevHpfR[1])
-								+ m_HighpassCoeffs[0] * m_PrevHpOutR[0] - m_HighpassCoeffs[1] * m_PrevHpOutR[1]);
-				m_PrevHpOutR[1] = m_PrevHpOutR[0];
-				m_PrevHpOutR[0] = float(outR);
-				curr_r = float(outR * m_HighpassCoeffs[2]);
-
-				m_PrevHpfR[1] = m_PrevHpfR[0];
-				m_PrevHpfR[0] = pInBuf[i + 1];
+				curr[ch] = pInBuf[ch];
 			}
 		}
-		else
+
+		for (unsigned ch = 0; ch < m_InputFormat.NumChannels(); ch++)
 		{
-			curr_l = pInBuf[i];
-			curr_r = pInBuf[i + 1];
-		}
-		if (m_ApplyCommonModeFilter
-			&& 2 == m_InputChannels)
-		{
-			m_prev_outl = float(
-								(curr_l + m_prev_inl) * m_DiffCutoffCoeffs[0]
-								+ m_DiffCutoffCoeffs[1] * m_prev_outl);
-			m_prev_outr = float(
-								(curr_r + m_prev_inr) * m_DiffCutoffCoeffs[0]
-								+ m_DiffCutoffCoeffs[1] * m_prev_outr);
-			float hpf_l = m_prev_inl - m_prev_outl;
-			float hpf_r = m_prev_inr - m_prev_outr;
-			m_prev_inl = curr_l;
-			m_prev_inr = curr_r;
-			curr_l = (float)floor(hpf_l + m_prev_outr + 0.5);
-			curr_r = (float)floor(hpf_r + m_prev_outl + 0.5);
-		}
-		if (m_ChannelsToProcess != 1)
-		{
-			pOutBuf[i] = DoubleToShort (curr_l);
-		}
-		else
-		{
-			pOutBuf[i] = pInBuf[i];
-		}
-		if (2 == m_InputChannels)
-		{
-			if (m_ChannelsToProcess != 0)
+			if (m_ApplyHighpassFilter
+				&& 0 != (m_ChannelsToProcess & (1 << ch)))
 			{
-				pOutBuf[i + 1] = DoubleToShort(curr_r);
+				double out = ((curr[ch] - m_PrevHpf[0][ch] - m_PrevHpf[0][ch] + m_PrevHpf[1][ch])
+								+ m_HighpassCoeffs[0] * m_PrevHpOut[0][ch] - m_HighpassCoeffs[1] * m_PrevHpOut[1][ch]);
+
+				m_PrevHpOut[1][ch] = m_PrevHpOut[0][ch];
+				m_PrevHpOut[0][ch] = out;
+
+				curr[ch] = out * m_HighpassCoeffs[2];
+				m_PrevHpf[1][ch] = m_PrevHpf[0][ch];
+				m_PrevHpf[0][ch] = curr[ch];
+
+				// apply additional highpass 2nd order filter to both channels
+				// with cutoff frequency 50 Hz
+				// (1-2z + z^2)/(a^2 -2az + z^2)
+
+			}
+		}
+
+		for (unsigned ch = 0; ch < m_InputFormat.NumChannels(); ch++)
+		{
+			if (m_ChannelsToProcess & (1 << ch))
+			{
+				pOutBuf[ch] = DoubleToShort(curr[ch]);
 			}
 			else
 			{
-				pOutBuf[i + 1] = pInBuf[i + 1];
+				pOutBuf[ch] = pInBuf[ch];
 			}
 		}
+
 	}
 
-	*pUsedBytes += nSamples * m_InputChannels * sizeof (WAVE_SAMPLE);
-	return nSavedBytes + nSamples * m_InputChannels * sizeof (WAVE_SAMPLE);
+	*pUsedBytes += nSamples * SampleSize;
+	return nSavedBytes + nSamples * SampleSize;
 }
 
 /////////// CClickRemoval ////////////////////////////////////////////
-CClickRemoval::CClickRemoval()
+CClickRemoval::CClickRemoval(WAVEFORMATEX const * pWf, CHANNEL_MASK ChannelsToProcess)
 {
 //    memset(m_prev, 0, sizeof m_prev);
 //    memset(m_prev3, 0, sizeof m_prev3);
+
 	m_prev[0].Allocate(PREV_BUF_SIZE);
 	m_prev[1].Allocate(PREV_BUF_SIZE);
 	m_prev3[0].Allocate(PREV_BUF_SIZE);
@@ -501,10 +521,12 @@ CClickRemoval::CClickRemoval()
 	//m_Deriv2Threshold = 60.;
 	m_NextPossibleClickPosition[0] = 16 * CLICK_LENGTH;
 	m_NextPossibleClickPosition[1] = 16 * CLICK_LENGTH;
+
 	m_PrevDeriv[0] = 0;
 	m_PrevDeriv[1] = 0;
 	m_PrevDeriv2[0] = 0;
 	m_PrevDeriv2[1] = 0;
+
 	m_ClickDeriv3ThresholdScale = 0.1f;
 	m_PowerToDeriv3RatioThreshold = 30.;
 	m_MinDeriv3Threshold = 200*200;
@@ -513,20 +535,17 @@ CClickRemoval::CClickRemoval()
 	m_nMinClickLength = 4;
 	m_MeanPowerDecayRate = float(1./100.);  // 1 ms
 	m_MeanPowerAttackRate = float(1./15.);  // 1 ms
-	pInClicksFile = NULL;
 	pOutClicksFile = NULL;
-	PredefinedClickCurrentIndex = 0;
 	m_PassTrough = FALSE;
 	m_NoiseFloorThresholdScale = 3.;
+
+	m_ChannelsToProcess = ChannelsToProcess;
+	SetInputWaveformat(pWf);
 }
 
 CClickRemoval::~CClickRemoval()
 {
-	if (pInClicksFile)
-	{
-		fclose(pInClicksFile);
-		pInClicksFile = NULL;
-	}
+
 	if (pOutClicksFile)
 	{
 		fclose(pOutClicksFile);
@@ -534,75 +553,83 @@ CClickRemoval::~CClickRemoval()
 	}
 }
 
+bool operator <(StoredClickData const & r1,
+				StoredClickData const & r2)
+{
+	return r1.Position < r2.Position;
+}
+
+bool operator <(StoredClickData const & r1,
+				SAMPLE_INDEX i)
+{
+	return r1.Position < i;
+}
+
 BOOL CClickRemoval::SetClickSourceFile(LPCTSTR szFilename)
 {
-	if (pInClicksFile)
-	{
-		fclose(pInClicksFile);
-		pInClicksFile = NULL;
-	}
-	PredefinedClicks.RemoveAll();
-	InClickFilename = szFilename;
-	pInClicksFile = _tfopen(szFilename, _T("rt"));
+	PredefinedClicks.clear();
+
+	FILE * const pInClicksFile = _tfopen(szFilename, _T("rt"));
+
 	if (NULL == pInClicksFile)
 	{
-		InClickFilename.Empty();
 		return FALSE;
 	}
 	// read the file
-	// every line contains 3 numbers: click position (in samples),
-	//      Click length in the left channel, click length in the right
 
 	// set allocation increment in 256 items
-	PredefinedClicks.SetSize(0, 256);
+	PredefinedClicks.reserve(256);
 
-	char line[256];
+	char line[256] = {0};
+
 	while (NULL != fgets(line, 255, pInClicksFile))
 	{
 		StoredClickData data;
-		int pos = 0, length_r = 0, length_l = 0;
+		unsigned pos = 0, length_r = 0, length_l = 0;
+		// every line contains 3 numbers: click position (in samples),
+		//      Click length in the left channel, click length in the right
 		if ( 2 > sscanf(line, "%d %d %d", &pos, &length_l, &length_r))
 		{
 			continue;
 		}
+
 		data.Position = pos;
 		data.Length[0] = short(length_l);
 		data.Length[1] = short(length_r);
-		// find position to add the data
-		int i;
-		for (i = PredefinedClicks.GetUpperBound() ; i >= 0; i--)
-		{
-			if (PredefinedClicks[i].Position <= data.Position)
-			{
-				break;
-			}
-		}
-		if (i < 0 || PredefinedClicks[i].Position < data.Position)
-		{
-			TRACE("Inserting Item Pos=%d at %d\n", data.Position, i+1);
-			PredefinedClicks.InsertAt(i + 1, data);
-		}
-		else if (PredefinedClicks[i].Position == data.Position)
-		{
-			// merge
-			if (PredefinedClicks[i].Length[0] < data.Length[0])
-			{
-				PredefinedClicks[i].Length[0] = data.Length[0];
-			}
-			if (PredefinedClicks[i].Length[1] < data.Length[1])
-			{
-				PredefinedClicks[i].Length[1] = data.Length[1];
-			}
-		}
-		else
-		{
-			TRACE("Inserting Item Pos=%d at %d\n", data.Position, i);
-			PredefinedClicks.InsertAt(i, data);
-		}
+
+		PredefinedClicks.push_back(data);
 	}
-	PredefinedClickCurrentIndex = 0;
+
+	if ( ! PredefinedClicks.empty())
+	{
+		// merge duplicates
+		for (ClicksVectorIterator i1 = PredefinedClicks.begin(), i2 = i1 + 1;
+			i2 != PredefinedClicks.end(); i2++)
+		{
+			if (i1->Position == i2->Position)
+			{
+				// merge
+				if (i1->Length[0] < i2->Length[0])
+				{
+					i1->Length[0] = i2->Length[0];
+				}
+
+				if (i1->Length[1] < i2->Length[1])
+				{
+					i1->Length[1] = i2->Length[1];
+				}
+			}
+			else
+			{
+				i1++;
+			}
+		}
+
+		PredefinedClicks.erase(i1 + 1, PredefinedClicks.end());
+		std::sort(PredefinedClicks.begin(), PredefinedClicks.end());
+	}
+
 	fclose(pInClicksFile);
-	pInClicksFile = NULL;
 	return TRUE;
 }
 
@@ -1143,11 +1170,13 @@ void NoiseReductionCore::ProcessInverseFft()
 
 ////////////////////////////////////////////////////////////////////////
 ///////////////  CNoiseReduction
-CNoiseReduction::CNoiseReduction(unsigned nFftOrder, NoiseReductionParameters const & nr)
-	: m_pNrCore(NULL)//NoiseReductionCore(nFftOrder, nChannels, 0, nr)
+CNoiseReduction::CNoiseReduction(WAVEFORMATEX const * pWf, CHANNEL_MASK ChannelsToProcess, unsigned nFftOrder, NoiseReductionParameters const & nr)
+	: m_pNrCore(NULL)
 	, m_NrParms(nr)
 	, m_FftOrder(nFftOrder)
 {
+	m_ChannelsToProcess = ChannelsToProcess;
+	SetInputWaveformat(pWf);
 }
 
 CNoiseReduction::~CNoiseReduction()
@@ -1164,9 +1193,9 @@ void CNoiseReduction::Dump(unsigned indent) const
 	}
 }
 
-BOOL CNoiseReduction::SetAndValidateWaveformat(WAVEFORMATEX const * pWf)
+BOOL CNoiseReduction::SetInputWaveformat(WAVEFORMATEX const * pWf)
 {
-	if (CWaveProc::SetAndValidateWaveformat(pWf))
+	if (CWaveProc::SetInputWaveformat(pWf))
 	{
 		delete m_pNrCore;
 		m_pNrCore = NULL;
@@ -1185,7 +1214,7 @@ size_t CNoiseReduction::ProcessSoundBuffer(char const * pIn, char * pOut,
 											size_t nInBytes, size_t nOutBytes, size_t * pUsedBytes)
 {
 	*pUsedBytes = 0;
-	NUMBER_OF_CHANNELS nChans = m_InputChannels;
+	NUMBER_OF_CHANNELS nChans = m_InputFormat.NumChannels();
 	DATA tmp[256];
 
 	unsigned nInSamples = nInBytes / (nChans * sizeof (WAVE_SAMPLE));
@@ -1220,7 +1249,7 @@ size_t CNoiseReduction::ProcessSoundBuffer(char const * pIn, char * pOut,
 				*pOutBuf = DoubleToShort(tmp[i]);
 			}
 		}
-		return nStoredSamples * nChans * sizeof(WAVE_SAMPLE);
+		return nStoredSamples * nChans * sizeof pOutBuf[0];
 	}
 
 	if (NULL == m_pNrCore)
@@ -1276,7 +1305,7 @@ size_t CNoiseReduction::ProcessSoundBuffer(char const * pIn, char * pOut,
 		}
 	}
 
-	return nChans * sizeof(WAVE_SAMPLE) * nStoredSamples;
+	return nChans * sizeof pOutBuf[0] * nStoredSamples;
 }
 
 ////////////////////////////////////////////
@@ -1839,11 +1868,9 @@ void SIGNAL_PARAMS::AnalyzeFftSample(complex<DATA> smp, NoiseReductionCore * pNr
 }
 
 ///////////////////////////////////////////////////////////
-BOOL CClickRemoval::SetAndValidateWaveformat(WAVEFORMATEX const * pWf)
+BOOL CClickRemoval::SetInputWaveformat(WAVEFORMATEX const * pWf)
 {
-	return CWaveProc::SetAndValidateWaveformat(pWf)
-			//&& pWf->nSamplesPerSec == 44100
-	;
+	return CWaveProc::SetInputWaveformat(pWf);
 }
 
 void CClickRemoval::InterpolateGap(CBackBuffer<int, int> & data, int nLeftIndex, int InterpolateSamples, bool BigGap)
@@ -1904,13 +1931,15 @@ void CClickRemoval::InterpolateBigGap(WAVE_SAMPLE data[], int nLeftIndex, int Cl
 	int FftOrder = 512;
 	while (FftOrder < ClickLength * 8)
 	{
-		FftOrder +=FftOrder;
+		FftOrder += FftOrder;
 	}
+
 	TRACE("FFtOrder used for interpolation: %d\n", FftOrder);
 	if (FftOrder > MAX_FFT_ORDER)
 	{
 		return;
 	}
+
 	// extrapolate ClickLength + ClickLength / 2 - the gap and
 	// the right neighborhood
 	int const ExtrapolatedLength = ClickLength + ClickLength / 2;
@@ -2105,9 +2134,9 @@ size_t CClickRemoval::ProcessSoundBuffer(char const * pIn, char * pOut,
 	int nSavedBytes = 0;
 	*pUsedBytes = 0;
 
-	int nInSamples = nInBytes / (m_InputChannels * sizeof (WAVE_SAMPLE));
-	int nOutSamples = nOutBytes / (m_InputChannels * sizeof (WAVE_SAMPLE));
-	WAVE_SAMPLE const * pInBuf = (WAVE_SAMPLE *) pIn;
+	int nInSamples = nInBytes / (m_InputFormat.SampleSize());
+	int nOutSamples = nOutBytes / (m_InputFormat.SampleSize());
+	WAVE_SAMPLE const * pInBuf = (WAVE_SAMPLE const *) pIn;
 	WAVE_SAMPLE * pOutBuf = (WAVE_SAMPLE *) pOut;
 
 	// process the data
@@ -2127,230 +2156,236 @@ size_t CClickRemoval::ProcessSoundBuffer(char const * pIn, char * pOut,
 		}
 		for (int i = 0; i < nBackSamples; i++)
 		{
-			for (int ch = 0; ch < m_InputChannels; ch++)
+			for (int ch = 0; ch < m_InputFormat.NumChannels(); ch++)
 			{
-				*pOutBuf = WAVE_SAMPLE(m_prev[ch][i-1]);
+				*pOutBuf = WAVE_SAMPLE(m_prev[ch][1 + i - ANALYZE_LAG]);
 				pOutBuf++;
 			}
 		}
 		m_prev[0].Advance(nBackSamples);
 		m_prev[1].Advance(nBackSamples);
 		m_nStoredSamples += nBackSamples;
-		return nSavedBytes + nBackSamples * m_InputChannels * sizeof (WAVE_SAMPLE);
+		return nSavedBytes + nBackSamples * m_InputFormat.SampleSize();
 	}
 
-	int nClickIndex = 0;
 	int nStoreIndex = 0;
 	int PrevIndex = m_PrevIndex;
 	int nSamples = std::min(nInSamples, nOutSamples);
 
-	for (int ch = 0; ch < m_InputChannels; ch++)
+	for (int ch = 0; ch < m_InputFormat.NumChannels(); ch++, pInBuf++, pOutBuf++)
 	{
 		int FftIn[CLICK_LENGTH];   // additional space for click length search
 		//float FftOut[FFT_ORDER / 2];
 		PrevIndex = m_PrevIndex;
 		nStoreIndex = 0;
-		nClickIndex = PredefinedClickCurrentIndex;
-		for (int i = 0; i < nSamples * m_InputChannels; i += m_InputChannels)
+
+		for (int i = 0; i < nSamples * m_InputFormat.NumChannels(); i += m_InputFormat.NumChannels())
 		{
 			m_prev[ch][ANALYZE_LAG] = pInBuf[i];
-			// FFT is performed for every FFT_ORDER/2 samples
-			int f;
-			int deriv = m_prev[ch][CLICK_LENGTH / 2] - m_prev[ch][CLICK_LENGTH / 2 - 1];
-			int deriv2 = deriv - m_PrevDeriv[ch];
-			m_PrevDeriv[ch] = deriv;
-			int deriv3 = deriv2 - m_PrevDeriv2[ch];
-			m_PrevDeriv2[ch] = deriv2;
-			m_prev3[ch][CLICK_LENGTH / 2] = deriv3;
-			int Deriv3Threshold = int(m_MeanPower[ch] * m_PowerToDeriv3RatioThreshold);
 
-			float power = float(m_prev3[ch][0]);
-			power = power * power;
-
-			if (power > m_MeanPower[ch])
+			if (0 != (m_ChannelsToProcess & (1 << ch)))
 			{
-				m_MeanPower[ch] += (power - m_MeanPower[ch])
-									* m_MeanPowerAttackRate;
-			}
-			else
-			{
-				m_MeanPower[ch] += (power - m_MeanPower[ch])
-									* m_MeanPowerDecayRate;
-			}
 
-			BOOL ClickFound = FALSE;
-			int nLeftIndex = CLICK_LENGTH;
-			int nRightIndex = 0;
-			int ClickLength = 0;
-			// check predefined click list
-			while(nClickIndex <= PredefinedClicks.GetUpperBound()
-				&& PredefinedClicks[nClickIndex].Position < PrevIndex - ANALYZE_LAG)
-			{
-				nClickIndex++;
-			}
-			if (nClickIndex <= PredefinedClicks.GetUpperBound())
-			{
-				if (PredefinedClicks[nClickIndex].Position == PrevIndex - ANALYZE_LAG
-					&& 0 != PredefinedClicks[nClickIndex].Length[ch])
+				// FFT is performed for every FFT_ORDER/2 samples
+				int f;
+				int deriv = m_prev[ch][CLICK_LENGTH / 2] - m_prev[ch][CLICK_LENGTH / 2 - 1];
+				int deriv2 = deriv - m_PrevDeriv[ch];
+
+				m_PrevDeriv[ch] = deriv;
+
+				int deriv3 = deriv2 - m_PrevDeriv2[ch];
+
+				m_PrevDeriv2[ch] = deriv2;
+				m_prev3[ch][CLICK_LENGTH / 2] = deriv3;
+
+				int Deriv3Threshold = int(m_MeanPower[ch] * m_PowerToDeriv3RatioThreshold);
+
+				float power = float(m_prev3[ch][0]);
+				power = power * power;
+
+				if (power > m_MeanPower[ch])
 				{
-					nLeftIndex = 0;
-					ClickLength = PredefinedClicks[nClickIndex].Length[ch];
-					nRightIndex = nLeftIndex + ClickLength;
-					// force interpolation on this position
-					ClickFound = TRUE;
-					m_NextPossibleClickPosition[ch] = PrevIndex + ClickLength * 2;
-					nClickIndex++;
-				}
-			}
-
-			if (!ClickFound) do
-			{
-				nLeftIndex = CLICK_LENGTH;
-				nRightIndex = 0;
-				ClickLength = 0;
-				if (Deriv3Threshold < m_MinDeriv3Threshold)
-				{
-					Deriv3Threshold = (int)m_MinDeriv3Threshold;
-				}
-
-				if (PrevIndex < m_NextPossibleClickPosition[ch]
-					//&& deriv2 > m_MaxDeriv2Estimate[ch]
-					//&& deriv3 > m_MaxDeriv2Estimate[ch] * 0.7
-					|| deriv3 * deriv3 < Deriv3Threshold
-					)
-				{
-					break;
-				}
-				// spike detected
-				// find its exact position as max of
-				// third derivative
-				for (f = 0; f < CLICK_LENGTH; f++)
-				{
-					FftIn[f] = m_prev[ch][f];
-				}
-				int nMaxDeriv3Pos = 0;
-				int OldDeriv = FftIn[2] - FftIn[1];
-				int deriv3, OldDeriv2 = FftIn[2] - 2 * FftIn[1] + FftIn[0];
-				int deriv2, MaxDeriv3 = 0;
-
-				// find max abs third derivative point,
-				for (f = 2; f < CLICK_LENGTH-1; f++)
-				{
-					int NewDeriv =  FftIn[f + 1] - FftIn[f];
-
-					deriv2 = NewDeriv - OldDeriv;
-					deriv3 = int(::abs(long(deriv2 - OldDeriv2)));
-					OldDeriv = NewDeriv;
-					OldDeriv2 = deriv2;
-
-					if (deriv3 > MaxDeriv3)
-					{
-						MaxDeriv3 = deriv3;
-						nMaxDeriv3Pos = f;
-					}
-				}
-				// only points with deriv3 > threshold are considered clicks
-				// find click length
-
-				int Deriv3Threshold = int(MaxDeriv3 * m_ClickDeriv3ThresholdScale);
-
-				if (Deriv3Threshold < m_MinClickDeriv3BoundThreshold)
-				{
-					Deriv3Threshold = int(m_MinClickDeriv3BoundThreshold);
-				}
-				int NoiseFloorThreshold = int(sqrt(m_MeanPower[ch]) * m_NoiseFloorThresholdScale);
-				if (Deriv3Threshold < NoiseFloorThreshold)
-				{
-					Deriv3Threshold = NoiseFloorThreshold;
-				}
-
-				OldDeriv = FftIn[2] - FftIn[1];
-				OldDeriv2 = FftIn[2] - 2 * FftIn[1] + FftIn[0];
-
-				// find max abs third derivative point,
-				for (f = 2; f < CLICK_LENGTH-1; f++)
-				{
-					int NewDeriv =  FftIn[f + 1] - FftIn[f];
-
-					deriv2 = NewDeriv - OldDeriv;
-					deriv3 = abs(deriv2 - OldDeriv2);
-					OldDeriv = NewDeriv;
-					OldDeriv2 = deriv2;
-
-					if (abs(deriv3) >= Deriv3Threshold)
-					{
-						if (nLeftIndex >= f) nLeftIndex = f - 2;
-						if (nRightIndex <= f) nRightIndex = f+2;
-					}
-				}
-
-				ClickLength = (nRightIndex - nLeftIndex + 1) & ~1;
-				m_NextPossibleClickPosition[ch] = PrevIndex + 2 * ClickLength;
-				if (ClickLength > m_nMaxClickLength)
-				{
-					break;  // too wide clicks are ignored
-					//ClickLength = m_nMaxClickLength;
-					//nLeftIndex = nMaxDeriv3Pos - ClickLength/2;
-				}
-				else if (ClickLength < m_nMinClickLength)
-				{
-					ClickLength = m_nMinClickLength;
-					nLeftIndex = nMaxDeriv3Pos - ClickLength/2;
-				}
-
-				nRightIndex = nLeftIndex + ClickLength;
-				ClickFound = TRUE;
-			}
-			while(0);
-
-			if (ClickFound && pOutClicksFile)
-			{
-				if (0 == ch)
-				{
-					fprintf(pOutClicksFile, "%d %d 0\n",
-							PrevIndex + nLeftIndex - ANALYZE_LAG, ClickLength);
+					m_MeanPower[ch] += (power - m_MeanPower[ch])
+										* m_MeanPowerAttackRate;
 				}
 				else
 				{
-					fprintf(pOutClicksFile, "%d 0 %d\n",
-							PrevIndex + nLeftIndex - ANALYZE_LAG, ClickLength);
+					m_MeanPower[ch] += (power - m_MeanPower[ch])
+										* m_MeanPowerDecayRate;
 				}
-			}
 
-			if (ClickFound && ! m_PassTrough)
-			{
-				InterpolateGap(m_prev[ch], nLeftIndex, ClickLength,
-								ClickLength > 16);
+				BOOL ClickFound = FALSE;
+				int nLeftIndex = CLICK_LENGTH;
+				int nRightIndex = 0;
+				int ClickLength = 0;
+
+				// check predefined click list
+				// TODO: use binary search
+				ClicksVectorIterator it = std::lower_bound(PredefinedClicks.begin(),
+															PredefinedClicks.end(), PrevIndex - ANALYZE_LAG);
+
+				if (it < PredefinedClicks.end()
+					&& it->Position == PrevIndex - ANALYZE_LAG
+					&& 0 != it->Length[ch])
+				{
+					nLeftIndex = 0;
+					ClickLength = it->Length[ch];
+					nRightIndex = nLeftIndex + ClickLength;
+
+					// force interpolation on this position
+					ClickFound = TRUE;
+					m_NextPossibleClickPosition[ch] = PrevIndex + ClickLength * 2;
+				}
+
+				if (!ClickFound)
+				{
+					do
+					{
+						nLeftIndex = CLICK_LENGTH;
+						nRightIndex = 0;
+						ClickLength = 0;
+						if (Deriv3Threshold < m_MinDeriv3Threshold)
+						{
+							Deriv3Threshold = (int)m_MinDeriv3Threshold;
+						}
+
+						if (PrevIndex < m_NextPossibleClickPosition[ch]
+							//&& deriv2 > m_MaxDeriv2Estimate[ch]
+							//&& deriv3 > m_MaxDeriv2Estimate[ch] * 0.7
+							|| deriv3 * deriv3 < Deriv3Threshold
+							)
+						{
+							break;
+						}
+						// spike detected
+						// find its exact position as max of
+						// third derivative
+						for (f = 0; f < CLICK_LENGTH; f++)
+						{
+							FftIn[f] = m_prev[ch][f];
+						}
+						int nMaxDeriv3Pos = 0;
+						int OldDeriv = FftIn[2] - FftIn[1];
+						int deriv3, OldDeriv2 = FftIn[2] - 2 * FftIn[1] + FftIn[0];
+						int deriv2, MaxDeriv3 = 0;
+
+						// find max abs third derivative point,
+						for (f = 2; f < CLICK_LENGTH-1; f++)
+						{
+							int NewDeriv =  FftIn[f + 1] - FftIn[f];
+
+							deriv2 = NewDeriv - OldDeriv;
+							deriv3 = int(::abs(long(deriv2 - OldDeriv2)));
+							OldDeriv = NewDeriv;
+							OldDeriv2 = deriv2;
+
+							if (deriv3 > MaxDeriv3)
+							{
+								MaxDeriv3 = deriv3;
+								nMaxDeriv3Pos = f;
+							}
+						}
+						// only points with deriv3 > threshold are considered clicks
+						// find click length
+
+						int Deriv3Threshold = int(MaxDeriv3 * m_ClickDeriv3ThresholdScale);
+
+						if (Deriv3Threshold < m_MinClickDeriv3BoundThreshold)
+						{
+							Deriv3Threshold = int(m_MinClickDeriv3BoundThreshold);
+						}
+						int NoiseFloorThreshold = int(sqrt(m_MeanPower[ch]) * m_NoiseFloorThresholdScale);
+						if (Deriv3Threshold < NoiseFloorThreshold)
+						{
+							Deriv3Threshold = NoiseFloorThreshold;
+						}
+
+						OldDeriv = FftIn[2] - FftIn[1];
+						OldDeriv2 = FftIn[2] - 2 * FftIn[1] + FftIn[0];
+
+						// find max abs third derivative point,
+						for (f = 2; f < CLICK_LENGTH-1; f++)
+						{
+							int NewDeriv =  FftIn[f + 1] - FftIn[f];
+
+							deriv2 = NewDeriv - OldDeriv;
+							deriv3 = abs(deriv2 - OldDeriv2);
+							OldDeriv = NewDeriv;
+							OldDeriv2 = deriv2;
+
+							if (abs(deriv3) >= Deriv3Threshold)
+							{
+								if (nLeftIndex >= f) nLeftIndex = f - 2;
+								if (nRightIndex <= f) nRightIndex = f+2;
+							}
+						}
+
+						ClickLength = (nRightIndex - nLeftIndex + 1) & ~1;
+						m_NextPossibleClickPosition[ch] = PrevIndex + 2 * ClickLength;
+						if (ClickLength > m_nMaxClickLength)
+						{
+							break;  // too wide clicks are ignored
+							//ClickLength = m_nMaxClickLength;
+							//nLeftIndex = nMaxDeriv3Pos - ClickLength/2;
+						}
+						else if (ClickLength < m_nMinClickLength)
+						{
+							ClickLength = m_nMinClickLength;
+							nLeftIndex = nMaxDeriv3Pos - ClickLength/2;
+						}
+
+						nRightIndex = nLeftIndex + ClickLength;
+						ClickFound = TRUE;
+					}
+					while(0);
+				}
+
+				if (ClickFound && pOutClicksFile)
+				{
+					if (0 == ch)
+					{
+						fprintf(pOutClicksFile, "%d %d 0\n",
+								PrevIndex + nLeftIndex - ANALYZE_LAG, ClickLength);
+					}
+					else
+					{
+						fprintf(pOutClicksFile, "%d 0 %d\n",
+								PrevIndex + nLeftIndex - ANALYZE_LAG, ClickLength);
+					}
+				}
+
+				if (ClickFound && ! m_PassTrough)
+				{
+					InterpolateGap(m_prev[ch], nLeftIndex, ClickLength,
+									ClickLength > 16);
+				}
+
 			}
 			// output is delayed by 64 samples
 			if (PrevIndex > ANALYZE_LAG*2-2)
 			{
 #if 1
-				pOutBuf[nStoreIndex * m_InputChannels] =
-					WAVE_SAMPLE(m_prev[ch][ 1-ANALYZE_LAG /*m_nStoredSamples + nStoreIndex - PrevIndex + ANALYZE_LAG*/]);
+				pOutBuf[nStoreIndex * m_InputFormat.NumChannels()] =
+					WAVE_SAMPLE(m_prev[ch][1 - ANALYZE_LAG /*m_nStoredSamples + nStoreIndex - PrevIndex + ANALYZE_LAG*/]);
 #else
 				// store 3rd derivative
-				pOutBuf[nStoreIndex * m_InputChannels] =
-					WAVE_SAMPLE(m_prev3[ch][1-ANALYZE_LAG]);
+				pOutBuf[nStoreIndex * m_InputFormat.NumChannels()] =
+					WAVE_SAMPLE(m_prev3[ch][1 - ANALYZE_LAG]);
 #endif
 				nStoreIndex++;
 			}
+
 			m_prev[ch].Advance();
 			m_prev3[ch].Advance();
-			//pOutBuf[i] = pInBuf[i];
 			PrevIndex++;
 		}
-		pInBuf++;
-		pOutBuf++;
 	}
 
-	PredefinedClickCurrentIndex = nClickIndex;
-
-	int nStoredSamples = nStoreIndex;
 	m_PrevIndex = PrevIndex;
-	m_nStoredSamples += nStoredSamples;
-	*pUsedBytes += nSamples * (m_InputChannels * sizeof (WAVE_SAMPLE));
-	return nSavedBytes + m_InputChannels * sizeof(WAVE_SAMPLE) * nStoredSamples;
+	m_nStoredSamples += nStoreIndex;
+
+	*pUsedBytes += nSamples * (m_InputFormat.SampleSize());
+	return nSavedBytes + m_InputFormat.SampleSize() * nStoreIndex;
 }
 
 ////////////////////////////
@@ -2394,11 +2429,11 @@ double CBatchProcessing::GetMaxClipped() const
 	return MaxClipped;
 }
 
-BOOL CBatchProcessing::SetAndValidateWaveformat(WAVEFORMATEX const * pWf)
+BOOL CBatchProcessing::SetInputWaveformat(WAVEFORMATEX const * pWf)
 {
 	for (int i = 0; i < m_Stages.GetSize(); i++)
 	{
-		if (FALSE == m_Stages[i].Proc->SetAndValidateWaveformat(pWf))
+		if (FALSE == m_Stages[i].Proc->SetInputWaveformat(pWf))
 			return FALSE;
 	}
 	return TRUE;
@@ -2695,8 +2730,6 @@ CResampleFilter::CResampleFilter()
 	, m_DstBufSaved(0)
 	, m_SrcBufFilled(0)
 	, m_SrcFilterLength(0)
-	, m_OriginalSampleRate(1)
-	, m_NewSampleRate(1)
 	, m_Phase(0)
 	, m_InputPeriod(0x80000000)
 	, m_OutputPeriod(0x80000000)
@@ -2710,8 +2743,6 @@ CResampleFilter::CResampleFilter(long OriginalSampleRate, long NewSampleRate,
 	, m_DstBufSaved(0)
 	, m_SrcBufFilled(0)
 	, m_SrcFilterLength(0)
-	, m_OriginalSampleRate(1)
-	, m_NewSampleRate(1)
 	, m_bUseInterpolatedFilter(FALSE)
 	, m_Phase(0)
 	, m_SamplesInFilter(1)
@@ -2798,16 +2829,16 @@ void CResampleFilter::InitSlidingFilter(int FilterLength, unsigned long NumberOf
 		for (unsigned j = 0; j < m_SamplesInFilter; j++, p++)
 		{
 			double arg = double(j + 0.5 +
-								(InputOffset - double(i) * m_OriginalSampleRate / m_NewSampleRate)) / m_SamplesInFilter - 0.5;
+					(InputOffset - double(i) * m_InputFormat.SampleRate() / m_OutputFormat.SampleRate())) / m_SamplesInFilter - 0.5;
 			*p = ResampleFilterTap(arg, NumSincWaves);
 
 			if (0) TRACE("Filter[%d][%d]=%f\n", i, j, *p);
 		}
 
-		Accumulator += m_OriginalSampleRate;
+		Accumulator += m_InputFormat.SampleRate();
 		while (Accumulator > 0)
 		{
-			Accumulator -= m_NewSampleRate;
+			Accumulator -= m_OutputFormat.SampleRate();
 			InputOffset++;
 		}
 	}
@@ -2847,7 +2878,7 @@ void CResampleFilter::InitSlidingFilter(int FilterLength, unsigned long NumberOf
 		m_pSrcBuf[i] = 0.;
 	}
 
-	m_SrcBufFilled = m_SamplesInFilter * m_InputChannels;
+	m_SrcBufFilled = m_SamplesInFilter * m_InputFormat.NumChannels();
 
 	ResetResample();
 }
@@ -2856,20 +2887,20 @@ void CResampleFilter::InitSlidingInterpolatedFilter(int FilterLength)
 {
 	m_bUseInterpolatedFilter = TRUE;
 
-	if (m_NewSampleRate >= m_OriginalSampleRate)
+	if (m_OutputFormat.SampleRate() >= m_InputFormat.SampleRate())
 	{
 		// upsampling.
 		//
 		double InputPeriod = 0x100000000i64 / (FilterLength + 1.);
 		m_InputPeriod = unsigned __int32(InputPeriod);
-		m_OutputPeriod = unsigned __int32(InputPeriod * m_OriginalSampleRate / m_NewSampleRate);
+		m_OutputPeriod = unsigned __int32(InputPeriod * m_InputFormat.SampleRate() / m_OutputFormat.SampleRate());
 	}
 	else
 	{
 		// downsampling
 		double OutputPeriod = 0x100000000i64 / (FilterLength + 1.);
 		m_OutputPeriod = unsigned __int32(OutputPeriod);
-		m_InputPeriod = unsigned __int32(OutputPeriod * m_NewSampleRate / m_OriginalSampleRate);
+		m_InputPeriod = unsigned __int32(OutputPeriod * m_OutputFormat.SampleRate() / m_InputFormat.SampleRate());
 	}
 	//TRACE("InputPeriod=%08x, OutputPeriod=%08x\n", m_InputPeriod, m_OutputPeriod);
 #ifdef _DEBUG
@@ -2962,7 +2993,7 @@ void CResampleFilter::InitSlidingInterpolatedFilter(int FilterLength)
 		m_pSrcBuf[i] = 0.;
 	}
 	// prefill at 1/2 filter length
-	m_SrcBufFilled = (0x80000000u / m_InputPeriod) * m_InputChannels;
+	m_SrcBufFilled = (0x80000000u / m_InputPeriod) * m_InputFormat.NumChannels();
 
 	ResetResample();
 }
@@ -2972,10 +3003,10 @@ void CResampleFilter::InitResample(long OriginalSampleRate, long NewSampleRate,
 {
 	// FilterLength is how many Sin periods are in the array
 
-	m_OriginalSampleRate = OriginalSampleRate;
-	m_NewSampleRate = NewSampleRate;
-	m_InputChannels = nChannels;
-	m_OutputChannels = nChannels;
+	m_OutputFormat.SampleRate() = NewSampleRate;
+
+	m_InputFormat.InitFormat(WAVE_FORMAT_PCM, OriginalSampleRate, nChannels);
+	m_OutputFormat.InitFormat(WAVE_FORMAT_PCM, NewSampleRate, nChannels);
 
 	// find greatest common factor of the sampling rates
 	unsigned long common = GreatestCommonFactor(NewSampleRate, OriginalSampleRate);
@@ -3012,7 +3043,7 @@ void CResampleFilter::ResetResample()
 
 void CResampleFilter::DoSlidingInterpolatedFilterResample()
 {
-	int SrcSamples = m_SrcBufFilled - m_SrcBufUsed - m_InputChannels * m_SrcFilterLength;
+	int SrcSamples = m_SrcBufFilled - m_SrcBufUsed - m_InputFormat.NumChannels() * m_SrcFilterLength;
 
 	if (SrcSamples <= 0)
 	{
@@ -3023,18 +3054,18 @@ void CResampleFilter::DoSlidingInterpolatedFilterResample()
 
 	int i;
 	for (i = m_DstBufUsed;
-		SrcSamples >= m_InputChannels && i < DstBufSize;
-		i+= m_InputChannels)
+		SrcSamples >= m_InputFormat.NumChannels() && i < DstBufSize;
+		i+= m_InputFormat.NumChannels())
 	{
 		const float * src = m_pSrcBuf + m_SrcBufUsed;
 		unsigned __int32 Phase1 = m_Phase;
 		double OutSample[MAX_NUMBER_OF_CHANNELS];
-		for (int ch = 0; ch < m_InputChannels; ch++)
+		for (int ch = 0; ch < m_InputFormat.NumChannels(); ch++)
 		{
 			OutSample[ch] = 0;
 		}
 
-		for (int j = 0; ; j+= m_InputChannels)
+		for (int j = 0; ; j+= m_InputFormat.NumChannels())
 		{
 			ASSERT(src + j < m_pSrcBuf + SrcBufSize);
 
@@ -3045,7 +3076,7 @@ void CResampleFilter::DoSlidingInterpolatedFilterResample()
 									PhaseFraction * (pTable[TableIndex].deriv1
 										+ PhaseFraction * pTable[TableIndex].deriv2));
 
-			for (int ch = 0; ch < m_InputChannels; ch++)
+			for (int ch = 0; ch < m_InputFormat.NumChannels(); ch++)
 			{
 				OutSample[ch] += src[j + ch] * coeff;
 			}
@@ -3058,18 +3089,18 @@ void CResampleFilter::DoSlidingInterpolatedFilterResample()
 			Phase1 = Phase2;
 		}
 
-		for (int ch = 0; ch < m_InputChannels; ch++)
+		for (int ch = 0; ch < m_InputFormat.NumChannels(); ch++)
 		{
 			m_pDstBuf[i + ch] = float(OutSample[ch]);
 		}
-		m_DstBufUsed += m_InputChannels;
+		m_DstBufUsed += m_InputFormat.NumChannels();
 		m_Phase -= m_OutputPeriod;
 
 		while (m_Phase & 0x80000000)
 		{
 			m_Phase += m_InputPeriod;
-			SrcSamples -= m_InputChannels;
-			m_SrcBufUsed += m_InputChannels;
+			SrcSamples -= m_InputFormat.NumChannels();
+			m_SrcBufUsed += m_InputFormat.NumChannels();
 		}
 	}
 }
@@ -3077,7 +3108,7 @@ void CResampleFilter::DoSlidingInterpolatedFilterResample()
 void CResampleFilter::DoSlidingFilterResample()
 {
 	int SrcSamples = m_SrcBufFilled - m_SrcBufUsed -
-					m_InputChannels * m_SamplesInFilter;
+					m_InputFormat.NumChannels() * m_SamplesInFilter;
 
 	if (SrcSamples <= 0)
 	{
@@ -3088,18 +3119,18 @@ void CResampleFilter::DoSlidingFilterResample()
 
 	int i;
 	for (i = m_DstBufUsed;
-		SrcSamples >= m_InputChannels && i < DstBufSize;
-		i += m_InputChannels)
+		SrcSamples >= m_InputFormat.NumChannels() && i < DstBufSize;
+		i += m_InputFormat.NumChannels())
 	{
 		double const * p = m_FilterIndex + m_FilterTable;
 
 		const float * src = m_pSrcBuf + m_SrcBufUsed;
-		for (int ch = 0; ch < m_InputChannels; ch++, dst++)
+		for (int ch = 0; ch < m_InputFormat.NumChannels(); ch++, dst++)
 		{
 			double OutSample = 0.;
 			float const * FilterSrc = src + ch;
 
-			for (unsigned j = 0; j != m_SamplesInFilter; j++, FilterSrc += m_InputChannels)
+			for (unsigned j = 0; j != m_SamplesInFilter; j++, FilterSrc += m_InputFormat.NumChannels())
 			{
 				OutSample += *FilterSrc * p[j];
 			}
@@ -3107,12 +3138,12 @@ void CResampleFilter::DoSlidingFilterResample()
 			*dst = float(OutSample);
 		}
 
-		m_RationalResampleFraction += m_OriginalSampleRate;
+		m_RationalResampleFraction += m_InputFormat.SampleRate();
 		while (m_RationalResampleFraction > 0)
 		{
-			m_RationalResampleFraction -= m_NewSampleRate;
-			SrcSamples -= m_InputChannels;
-			m_SrcBufUsed += m_InputChannels;
+			m_RationalResampleFraction -= m_OutputFormat.SampleRate();
+			SrcSamples -= m_InputFormat.NumChannels();
+			m_SrcBufUsed += m_InputFormat.NumChannels();
 		}
 
 		m_FilterIndex += m_SamplesInFilter;
@@ -3155,7 +3186,7 @@ size_t CResampleFilter::ProcessSoundBuffer(char const * pIn, char * pOut,
 	{
 		// adjust nOutSamples
 		unsigned long MaxOutSamples =
-			MulDiv(m_ProcessedInputSamples, m_NewSampleRate, m_OriginalSampleRate);
+			MulDiv(m_ProcessedInputSamples, m_OutputFormat.SampleRate(), m_InputFormat.SampleRate());
 
 		if (MaxOutSamples <= (unsigned long)m_SavedOutputSamples)
 		{
@@ -3164,14 +3195,14 @@ size_t CResampleFilter::ProcessSoundBuffer(char const * pIn, char * pOut,
 		else
 		{
 			nOutSamples = std::min<unsigned long>(nOutSamples,
-												(MaxOutSamples - m_SavedOutputSamples) * m_OutputChannels);
+												(MaxOutSamples - m_SavedOutputSamples) * m_OutputFormat.NumChannels());
 		}
 	}
 
 	while(nOutSamples != 0)
 	{
 		// move data in the internal buffer, if necessary
-		if (0 && (m_SrcBufFilled - m_SrcBufUsed) / m_InputChannels
+		if (0 && (m_SrcBufFilled - m_SrcBufUsed) / m_InputFormat.NumChannels()
 			<= m_SrcFilterLength * 2)
 		{
 			for (unsigned i = 0, j = m_SrcBufUsed; j != m_SrcBufFilled; i++, j++)
@@ -3254,8 +3285,8 @@ size_t CResampleFilter::ProcessSoundBuffer(char const * pIn, char * pOut,
 		}
 	}
 
-	* pUsedBytes += nUsedSamples * sizeof(WAVE_SAMPLE);
-	return nSavedSamples * sizeof(WAVE_SAMPLE);
+	* pUsedBytes += nUsedSamples * sizeof pInBuf[0];
+	return nSavedSamples * sizeof pOutBuf[0];
 }
 
 ////////////////////////////////////////////////////////////////////
@@ -3443,14 +3474,14 @@ size_t CChannelConvertor::ProcessSoundBuffer(char const * pIn, char * pOut,
 
 	WAVE_SAMPLE const * pInBuf = (WAVE_SAMPLE const *) pIn;
 	WAVE_SAMPLE * pOutBuf = (WAVE_SAMPLE *) pOut;
-	int nInSamples = nInBytes / (m_InputChannels * sizeof *pInBuf);
-	int nOutSamples = nOutBytes / (m_OutputChannels * sizeof *pOutBuf);
+	int nInSamples = nInBytes / m_InputFormat.SampleSize();
+	int nOutSamples = nOutBytes / m_OutputFormat.SampleSize();
 
 	int nSamples = std::min(nInSamples, nOutSamples);
 
 	int i;
-	if (2 == m_InputChannels
-		&& 1 == m_OutputChannels)
+	if (2 == m_InputFormat.NumChannels()
+		&& 1 == m_OutputFormat.NumChannels())
 	{
 		if (SPEAKER_FRONT_LEFT == m_ChannelsToProcess
 			|| SPEAKER_FRONT_RIGHT == m_ChannelsToProcess)
@@ -3474,11 +3505,11 @@ size_t CChannelConvertor::ProcessSoundBuffer(char const * pIn, char * pOut,
 				*pOutBuf = (pInBuf[0] + pInBuf[1]) / 2;
 			}
 		}
-		nSavedBytes += i * sizeof(WAVE_SAMPLE);
-		*pUsedBytes += 2 * i * sizeof(WAVE_SAMPLE);
+		nSavedBytes += i * sizeof pOutBuf[0];
+		*pUsedBytes += i * 2 * sizeof pInBuf[0];
 	}
-	else if (1 == m_InputChannels
-			&& 2 == m_OutputChannels)
+	else if (1 == m_InputFormat.NumChannels()
+			&& 2 == m_OutputFormat.NumChannels())
 	{
 		for (i = 0; i < nSamples; i++,
 			pInBuf += 1, pOutBuf += 2)
@@ -3486,8 +3517,8 @@ size_t CChannelConvertor::ProcessSoundBuffer(char const * pIn, char * pOut,
 			pOutBuf[0] = * pInBuf;
 			pOutBuf[1] = * pInBuf;
 		}
-		nSavedBytes += 2 * i * sizeof(WAVE_SAMPLE);
-		*pUsedBytes += i * sizeof(WAVE_SAMPLE);
+		nSavedBytes += 2 * i * sizeof pOutBuf[0];
+		*pUsedBytes += i * sizeof pInBuf[0];
 	}
 	else
 	{
@@ -3561,7 +3592,7 @@ size_t CLameEncConvertor::ProcessSoundBuffer(char const * pInBuf, char * pOutBuf
 		{
 			DWORD OutFilled = 0;
 			m_Enc.EncodeChunk((short*)m_pInputBuffer,
-							m_InputBufferFilled / (sizeof (WAVE_SAMPLE) * m_InputChannels),
+							m_InputBufferFilled / (sizeof (WAVE_SAMPLE) * m_InputFormat.NumChannels()),
 							m_pOutputBuffer, & OutFilled);
 			m_OutputBufferFilled = OutFilled;
 			m_InputBufferFilled = 0;    // all used up
