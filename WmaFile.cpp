@@ -256,6 +256,9 @@ CWmaDecoder::CWmaDecoder()
 	m_Bitrate(1),
 	m_bOpened(false),
 	m_bStarted(false),
+	m_OpenedEvent(FALSE, FALSE),
+	m_StartedEvent(FALSE, FALSE),
+	m_SampleEvent(FALSE, FALSE),
 	m_dwAudioOutputNum(0)
 {
 }
@@ -276,8 +279,6 @@ HRESULT STDMETHODCALLTYPE CWmaDecoder::OnStatus( /* [in] */ WMT_STATUS Status,
 															/* [in] */ BYTE __RPC_FAR *pValue,
 															/* [in] */ void __RPC_FAR * /*pvContext*/ )
 {
-	if (TRACE_WMA_DECODER) TRACE(_T("CWmaDecoder::OnStatus Status=%X, hr=%08X, DataType=%X, pValue=%X\n"),
-								Status, hr, dwType, pValue);
 	// The following values are used:
 	// WMT_OPENED
 	// WMT_STOPPED
@@ -287,34 +288,54 @@ HRESULT STDMETHODCALLTYPE CWmaDecoder::OnStatus( /* [in] */ WMT_STATUS Status,
 	switch (Status)
 	{
 	case WMT_OPENED:
+		TRACE(_T("CWmaDecoder::OnStatus WMT_OPENED\n"));
 		m_bOpened = true;
-		m_OpenedEvent.SetEvent();
+		m_OpenedEvent.Set();
 		break;
 	case WMT_STARTED:
+		TRACE(_T("CWmaDecoder::OnStatus WMT_STARTED\n"));
 		m_bStarted = true;
-		m_StartedEvent.SetEvent();
+		m_StartedEvent.Set();
 		break;
+
 	case WMT_STOPPED:
+		TRACE(_T("CWmaDecoder::OnStatus WMT_STOPPED\n"));
 		m_bStarted = false;
-		m_StartedEvent.SetEvent();
+		m_StartedEvent.Set();
 		break;
+
 	case WMT_ERROR:
+		TRACE(_T("CWmaDecoder::OnStatus WMT_ERROR\n"));
 		m_bStarted = false;
-		m_StartedEvent.SetEvent();
+		m_StartedEvent.Set();
 		break;
+
 	case WMT_END_OF_FILE:
-		m_bStarted = false;
-		m_StartedEvent.SetEvent();
-		m_OpenedEvent.SetEvent();
+		if (TRACE_WMA_DECODER) TRACE(_T("CWmaDecoder::OnStatus WMT_END_OF_FILE\n"));
+		//m_bStarted = false;
+		m_StartedEvent.Set();
+		m_OpenedEvent.Set();
 		if (m_Reader)
 		{
 			m_Reader->Stop();
 		}
 		break;
-	}
-	if (WMT_END_OF_STREAMING == Status)
-	{
-		m_bStarted = false;
+
+	case WMT_END_OF_STREAMING:
+		if (TRACE_WMA_DECODER) TRACE(_T("CWmaDecoder::OnStatus WMT_END_OF_STREAMING\n"));
+//            m_bStarted = false;
+		m_StartedEvent.Set();
+		m_OpenedEvent.Set();
+		if (m_Reader)
+		{
+			m_Reader->Stop();
+		}
+		break;
+
+	default:
+		if (TRACE_WMA_DECODER) TRACE(_T("CWmaDecoder::OnStatus Status=%X, hr=%08X, DataType=%X, pValue=%X\n"),
+									Status, hr, dwType, pValue);
+		;
 	}
 	return S_OK;
 }
@@ -349,6 +370,7 @@ HRESULT STDMETHODCALLTYPE CWmaDecoder::OnSample( /* [in] */ DWORD dwOutputNum,
 
 	if (TRACE_WMA_DECODER) TRACE(_T("CWmaDecoder::OnSample, time=%d ms, %d bytes, hr=%X\n"),
 								DWORD(cnsSampleTime/10000), cbData, hr);
+
 	if( FAILED( hr ) )
 	{
 		return hr;
@@ -386,7 +408,7 @@ HRESULT STDMETHODCALLTYPE CWmaDecoder::OnSample( /* [in] */ DWORD dwOutputNum,
 	m_CurrentStreamTime = cnsSampleTime + cnsSampleDuration;
 
 	m_bNeedNextSample = true;
-	m_SampleEvent.SetEvent();
+	m_SampleEvent.Set();
 	return S_OK;
 }
 
@@ -399,7 +421,7 @@ HRESULT STDMETHODCALLTYPE CWmaDecoder::OnTime(
 	m_CurrentStreamTime = cnsCurrentTime;
 
 	m_bNeedNextSample = true;
-	m_SampleEvent.SetEvent();
+	m_SampleEvent.Set();
 	return S_OK;
 }
 
@@ -599,6 +621,27 @@ HRESULT CWmaDecoder::Open(CDirectFile & file)
 		WORD SizeofStreamLength = sizeof StreamLength;
 		WMT_ATTR_DATATYPE type = WMT_TYPE_QWORD;
 
+#ifdef _DEBUG
+		WORD AttributeCount = 0;
+
+		pHeaderInfo->GetAttributeCount(stream, & AttributeCount);
+		TRACE("HeaderInfo::stream=%d, %d attributes\n", stream, AttributeCount);
+		for (WORD i = 0; i < AttributeCount; i++)
+		{
+			WCHAR name[1024];
+			name[0] = 0;
+			WORD NameLen = 1024;
+			WMT_ATTR_DATATYPE Type;
+			BYTE value[1024];
+			WORD Length=1024;
+			if (SUCCEEDED(pHeaderInfo->GetAttributeByIndex(i,
+															&stream, name, & NameLen, & Type, value, & Length)))
+			{
+				TRACE(L"Attribute %d name=%s\n", i, name);
+			}
+		}
+#endif
+
 		hr = pHeaderInfo->GetAttributeByName( & stream, g_wszWMDuration,
 											& type, (BYTE *) & StreamLength, & SizeofStreamLength);
 
@@ -676,8 +719,10 @@ HRESULT CWmaDecoder::Start()
 	if (m_Reader)
 	{
 		HRESULT hr = m_Reader->Start(0, 0, 1.0, NULL);
+
 		if (1 || TRACE_WMA_DECODER) TRACE(_T("m_Reader->Start=%X, Immediately after Start: IsStarted()=%X\n"),
 										hr, IsStarted());
+
 		WaitForSingleObject(m_StartedEvent, 5000);
 		if ( ! IsStarted())
 		{
@@ -720,6 +765,8 @@ void CWmaDecoder::SetDstFile(CWaveFile & file)
 	m_DstFile.CDirectFile::Seek(m_DstPos, FILE_BEGIN);
 }
 
+////////////////////////////////////////////////////////////////////////////////
+//////// WmaEncoder
 WmaEncoder::WmaEncoder()
 	:m_SampleTime100ns(0)
 {
@@ -730,9 +777,29 @@ void WmaEncoder::DeInit()
 	TRACE("WmaEncoder::DeInit\n");
 	if (m_pWriter)
 	{
-		Write(NULL, 0);
+		Write(NULL, 0); // make sure buffer gets written
 		m_pWriter->Flush();
+
 		m_pWriter->EndWriting();
+
+		if (m_pHeaderInfo)
+		{
+#if 0
+			// WM bug: Duration property is set incorrect, seems rounded to multiple of 32 KB wave buffers.
+			//m_pHeaderInfo->SetAttribute();    // Writer doesn't support after the file is written?
+			QWORD StreamLength = 0;
+			WORD SizeofStreamLength = sizeof StreamLength;
+			WMT_ATTR_DATATYPE type = WMT_TYPE_QWORD;
+			WORD stream = 0;
+			HRESULT hr = m_pHeaderInfo->GetAttributeByName( & stream, g_wszWMDuration,
+															& type, (BYTE *) & StreamLength, & SizeofStreamLength);
+			if (SUCCEEDED(hr))
+			{
+				if (TRACE_WMA_DECODER) TRACE(_T("AFter write Stream Length = %08X%08X (%d seconds)\n"),
+					DWORD(StreamLength >> 32), DWORD(StreamLength & 0xFFFFFFFF), DWORD(StreamLength / 10000000));
+			}
+#endif
+		}
 	}
 	m_pWriter.Release();
 	m_pWriterAdvanced.Release();
@@ -752,9 +819,9 @@ BOOL WmaEncoder::OpenWrite(CDirectFile & File)
 
 	hr = m_pWriterAdvanced->AddSink( & m_FileWriter);
 
+	m_pHeaderInfo = m_pWriter;
 #if 0
 
-	m_pHeaderInfo = m_pWriter;
 	if ( ! m_pHeaderInfo)
 	{
 		return FALSE;
@@ -1016,7 +1083,9 @@ BOOL WmaEncoder::SetDestinationFormat(WAVEFORMATEX const * pDstWfx)
 	hr = pProps->SetMediaType(pType);
 
 	hr = pProfile->ReconfigStream(pStreamConfig);
+
 	if (TRACE_WMA_DECODER) TRACE(_T("ReconfigStream returned %X\n"), hr);
+
 	hr = m_pWriter->SetProfile(pProfile);
 	delete[] pBuf;
 
@@ -1030,6 +1099,10 @@ BOOL WmaEncoder::Write(void const * Buf, size_t size)
 	if (0 == size)
 	{
 		pSrcBuf = NULL;
+		if ( ! m_pBuffer)
+		{
+			return TRUE;
+		}
 	}
 	do
 	{
@@ -1070,12 +1143,13 @@ BOOL WmaEncoder::Write(void const * Buf, size_t size)
 			|| BufLength == MaxLength
 			)
 		{
+#ifdef _DEBUG
 			QWORD ActualWriterTime;
 			m_pWriterAdvanced->GetWriterTime( & ActualWriterTime);
 
 			if (TRACE_WMA_DECODER) TRACE(_T("Writing src buf %p, time=%d ms, ActualWriterTime=%d ms\n"),
 										m_pBuffer, DWORD(m_SampleTime100ns / 10000), DWORD(ActualWriterTime / 10000));
-
+#endif
 			if (! SUCCEEDED(m_pWriter->WriteSample(0, m_SampleTime100ns, 0, m_pBuffer)))
 			{
 				return FALSE;
