@@ -214,6 +214,10 @@ END_MESSAGE_MAP()
 /////////////////////////////////////////////////////////////////////////
 CCdGrabbingDialog::CCdGrabbingDialog(CWnd* pParent /*=NULL*/)
 	: CResizableDialog(CCdGrabbingDialog::IDD, pParent)
+	, m_Profile()
+	, m_AlbumHistory( & m_Profile, _T("CdRead"), _T("Album%d"), 15, CStringHistory::CaseSensitive)
+	, m_ArtistHistory( & m_Profile, _T("CdRead"), _T("Artist%d"), 15, CStringHistory::CaseSensitive)
+	, m_FolderHistory( & m_Profile, _T("CdRead"), _T("SaveFolder%d"), 10)
 {
 	//{{AFX_DATA_INIT(CCdGrabbingDialog)
 	m_RadioAssignAttributes = -1;
@@ -386,20 +390,17 @@ void CCdGrabbingDialog::DoDataExchange(CDataExchange* pDX)
 			{
 				m_sSaveFolder += '\\';
 			}
-			AddStringToHistory(m_sSaveFolder, m_FolderHistory,
-								countof(m_FolderHistory), false);
+			m_FolderHistory.AddString(m_sSaveFolder);
 		}
 
-		if (! m_sAlbum.IsEmpty())
+		if ( ! m_sAlbum.IsEmpty())
 		{
-			AddStringToHistory(m_sAlbum, m_AlbumHistory,
-								countof(m_AlbumHistory), true);
+			m_AlbumHistory.AddString(m_sAlbum);
 		}
 
-		if (! m_sArtist.IsEmpty())
+		if ( ! m_sArtist.IsEmpty())
 		{
-			AddStringToHistory(m_sArtist, m_ArtistHistory,
-								countof(m_ArtistHistory), true);
+			m_ArtistHistory.AddString(m_sArtist);
 		}
 
 		for (unsigned t = 0; t < m_Tracks.size(); t++)
@@ -871,45 +872,14 @@ BOOL CCdGrabbingDialog::OnInitDialog()
 	FillDriveList(m_PreviousDriveLetter);
 	FillTrackList(m_DriveLetterSelected);
 
-	int i;
-	for (i = 0; i < countof(m_FolderHistory); i++)
-	{
-		CString s;
-		s.Format(_T("SaveFolder%d"), i);
-		m_Profile.AddItem(_T("CdRead"), s, m_FolderHistory[i]);
-		m_FolderHistory[i].TrimLeft();
-		m_FolderHistory[i].TrimRight();
-		if ( ! m_FolderHistory[i].IsEmpty())
-		{
-			m_eSaveFolder.AddString(m_FolderHistory[i]);
-		}
-	}
+	m_FolderHistory.Load(); // TODO: set default first folder
+	m_FolderHistory.LoadCombo( & m_eSaveFolder);
 
-	for (i = 0; i < countof(m_AlbumHistory); i++)
-	{
-		CString s;
-		s.Format(_T("Album%d"), i);
-		m_Profile.AddItem(_T("CdRead"), s, m_AlbumHistory[i]);
-		m_AlbumHistory[i].TrimLeft();
-		m_AlbumHistory[i].TrimRight();
-		if ( ! m_AlbumHistory[i].IsEmpty())
-		{
-			m_eAlbum.AddString(m_AlbumHistory[i]);
-		}
-	}
+	m_AlbumHistory.Load();
+	m_AlbumHistory.LoadCombo(& m_eAlbum);
 
-	for (i = 0; i < countof(m_ArtistHistory); i++)
-	{
-		CString s;
-		s.Format(_T("Artist%d"), i);
-		m_Profile.AddItem(_T("CdRead"), s, m_ArtistHistory[i]);
-		m_ArtistHistory[i].TrimLeft();
-		m_ArtistHistory[i].TrimRight();
-		if ( ! m_ArtistHistory[i].IsEmpty())
-		{
-			m_eArtist.AddString(m_ArtistHistory[i]);
-		}
-	}
+	m_ArtistHistory.Load();
+	m_ArtistHistory.LoadCombo( & m_eArtist);
 
 	FillFormatCombo();
 	SetTimer(1, 200, NULL);

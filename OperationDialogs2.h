@@ -198,9 +198,11 @@ protected:
 // Implementation
 protected:
 
-	CString m_AlbumHistory[15];
-	CString m_ArtistHistory[15];
-	CString m_FolderHistory[10];
+	CApplicationProfile m_Profile;
+
+	CStringHistory m_AlbumHistory;
+	CStringHistory m_ArtistHistory;
+	CStringHistory m_FolderHistory;
 
 	BOOL m_bNeedUpdateControls;
 
@@ -221,7 +223,6 @@ protected:
 	void StopCdPlayback();
 	void StartCdPlayback(unsigned track);
 
-	CApplicationProfile m_Profile;
 
 	void FillTrackList(TCHAR letter);
 	void ReloadTrackList(CdMediaChangeState NewMediaState = CdMediaStateDiskChanged);
