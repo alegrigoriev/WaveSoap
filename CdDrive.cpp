@@ -14,6 +14,9 @@ static char THIS_FILE[]=__FILE__;
 #define new DEBUG_NEW
 #endif
 
+static LONG_volatile m_DriveBusyCount['Z' - 'A' + 1];
+static LONG_volatile m_MediaLockCount['Z' - 'A' + 1];
+
 //////////////////////////////////////////////////////////////////////
 // Construction/Destruction
 //////////////////////////////////////////////////////////////////////
@@ -624,14 +627,14 @@ BOOL CCdDrive::LockDoor(bool Lock)
 		// maintain global lock count
 		if (Lock)
 		{
-			if (InterlockedIncrement( & m_MediaLockCount[DriveIndex]) > 1)
+			if (++m_MediaLockCount[DriveIndex] > 1)
 			{
 				return TRUE;
 			}
 		}
 		else
 		{
-			if (InterlockedDecrement( & m_MediaLockCount[DriveIndex]) != 0)
+			if (--m_MediaLockCount[DriveIndex] != 0)
 			{
 				return TRUE;
 			}
@@ -1394,7 +1397,7 @@ void CCdDrive::SetDriveBusy(bool Busy)
 		{
 			return;
 		}
-		InterlockedIncrement( & m_DriveBusyCount[DrvIndex]);
+		++m_DriveBusyCount[DrvIndex];
 	}
 	else
 	{
@@ -1402,7 +1405,7 @@ void CCdDrive::SetDriveBusy(bool Busy)
 		{
 			return;
 		}
-		InterlockedDecrement( & m_DriveBusyCount[DrvIndex]);
+		--m_DriveBusyCount[DrvIndex];
 	}
 	m_bDriveBusy = Busy;
 }
@@ -1517,8 +1520,4 @@ CdMediaChangeState TestUnitReadyCdb::TranslateSenseInfo(SCSI_SenseInfo * pSense)
 	}
 	return CdMediaStateNotReady;
 }
-
-LONG CCdDrive::m_DriveBusyCount['Z' - 'A' + 1]; // zero-initialized
-
-LONG CCdDrive::m_MediaLockCount['Z' - 'A' + 1]; // zero-initialized
 
