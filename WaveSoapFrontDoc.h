@@ -131,7 +131,7 @@ enum {
 	SaveFile_Mp3File = OpenDocumentMp3File,  // 0x1000
 	SaveFile_WmaFile = OpenDocumentWmaFile, //0x2000
 	SaveFile_RawFile = OpenDocumentRawFile, //0x4000
-	SaveFile_AviFile = OpenDocumentAviFile, //0x8000
+	//SaveFile_AviFile = OpenDocumentAviFile, //0x8000
 	SaveRawFileMsbFirst = OpenRawFileMsbFirst,   //0x10000
 	SaveFile_NonWavFile = OpenDocumentNonWavFile,
 
