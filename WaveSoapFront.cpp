@@ -939,7 +939,6 @@ void CWaveSoapFrontApp::QueueOperation(COperationContext * pContext)
 	{
 		// add the operation to the tail
 		CSimpleCriticalSectionLock lock(m_cs);
-		pContext->pDocument->m_pQueuedOperation = pContext;
 		pContext->pPrev = m_pLastOp;
 		pContext->pNext = NULL;
 		if (m_pLastOp != NULL)
@@ -1078,8 +1077,6 @@ unsigned CWaveSoapFrontApp::_ThreadProc()
 				{
 					m_pLastOp = pContext->pPrev;
 				}
-				ASSERT(pContext->pDocument->m_pQueuedOperation == pContext);
-				pContext->pDocument->m_pQueuedOperation = NULL;
 				// send a signal to the document, that the operation completed
 				SetStatusStringAndDoc(pContext->GetStatusString() + _T("Completed"),
 									pContext->pDocument);
@@ -2843,10 +2840,10 @@ BOOL CanAllocateWaveFileSamples(const WAVEFORMATEX * pWf, LONGLONG NumOfSamples)
 	int SampleSize = pWf->wBitsPerSample * pWf->nChannels / 8;
 	LONGLONG NewSize = NumOfSamples * SampleSize;
 	// reserve 1 megabyte of overhead
-	LONGLONG MaxLength = 0x7FFFFFEi64 - 0x100000;
+	LONGLONG MaxLength = 0x7FFFFFFEi64 - 0x100000;
 	if (GetApp()->m_bAllow4GbWavFile)
 	{
-		MaxLength = 0xFFFFFFEi64 - 0x100000;
+		MaxLength = 0xFFFFFFFEi64 - 0x100000;
 	}
 	return NewSize <= MaxLength;
 }
@@ -2868,10 +2865,10 @@ BOOL CanExpandWaveFile(const CWaveFile & WaveFile, long NumOfSamplesToAdd)
 		return TRUE;
 	}
 	LONGLONG NewLength = WaveFile.GetLength() + LONGLONG(NumOfSamplesToAdd) * WaveFile.SampleSize();
-	LONGLONG MaxLength = 0x7FFFFFEi64;
+	LONGLONG MaxLength = 0x7FFFFFFEi64;
 	if (GetApp()->m_bAllow4GbWavFile)
 	{
-		MaxLength = 0xFFFFFFEi64;
+		MaxLength = 0xFFFFFFFEi64;
 	}
 	return NewLength <= MaxLength;
 }

@@ -38,10 +38,28 @@ void CNewFilePropertiesDlg::DoDataExchange(CDataExchange* pDX)
 	DDX_Control(pDX, IDC_EDIT_LENGTH, m_eLength);
 	//}}AFX_DATA_MAP
 	m_eLength.ExchangeData(pDX, m_Length);
-	if (m_Length < 0 || m_Length > 4800)
+	if (pDX->m_bSaveAndValidate)
 	{
-		AfxMessageBox(IDS_WRONG_NEW_FILE_LENGTH);
-		pDX->Fail();
+		int channels = 1;
+		if (m_MonoStereo)
+		{
+			channels = 2;
+		}
+		unsigned long MaxLength = 0x7FFFFFFFu - 0x100000u;
+		if (GetApp()->m_bAllow4GbWavFile)
+		{
+			MaxLength = 0xFFFFFFFFu - 0x100000u;
+		}
+		MaxLength /= channels * m_nSamplingRate * 2;
+
+		if (m_Length < 0
+			|| m_Length > MaxLength)
+		{
+			CString s;
+			s.Format(IDS_WRONG_NEW_FILE_LENGTH, MaxLength);
+			AfxMessageBox(s);
+			pDX->Fail();
+		}
 	}
 }
 

@@ -771,7 +771,7 @@ CAPTION "About WaveSoap"
 FONT 8, "MS Sans Serif"
 BEGIN
     ICON            IDR_MAINFRAME,IDC_STATIC,11,17,20,20
-    CTEXT           "WaveSoap Version 0.52 beta",IDC_STATIC_VERSION,58,8,110,
+    CTEXT           "WaveSoap Version 0.53 beta",IDC_STATIC_VERSION,58,8,110,
                     10,SS_NOPREFIX
     CTEXT           "Copyright (C) Alexander Grigoriev, 2000",IDC_STATIC,41,
                     27,145,12
@@ -1146,28 +1146,28 @@ BEGIN
     RTEXT           "",1119,0,20,272,8,NOT WS_VISIBLE
 END
 
-IDD_DIALOG_ULF_REDUCTION DIALOG DISCARDABLE  0, 0, 193, 107
+IDD_DIALOG_ULF_REDUCTION DIALOG DISCARDABLE  0, 0, 193, 102
 STYLE DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
 CAPTION "Ultra low frequency suppression"
 FONT 8, "MS Sans Serif"
 BEGIN
-    CONTROL         "Suppress differential noise up to:",
+    CONTROL         "Suppress ""vertical wobble"" noise up to:",
                     IDC_CHECK_DIFFERENTIAL_MODE_SUPPRESS,"Button",
-                    BS_AUTOCHECKBOX | WS_TABSTOP,7,11,118,10
-    EDITTEXT        IDC_EDIT_DIFF_NOISE_RANGE,127,9,40,14,ES_AUTOHSCROLL
-    LTEXT           "Hz",IDC_STATIC,172,11,14,8
+                    BS_AUTOCHECKBOX | BS_MULTILINE | WS_TABSTOP,7,5,100,19
+    EDITTEXT        IDC_EDIT_DIFF_NOISE_RANGE,127,7,40,14,ES_AUTOHSCROLL
+    LTEXT           "Hz",IDC_STATIC,172,10,14,8
     CONTROL         "Suppress low frequencies up to:",
                     IDC_CHECK_LOW_FREQUENCY,"Button",BS_AUTOCHECKBOX | 
-                    WS_TABSTOP,7,27,118,10
-    EDITTEXT        IDC_EDIT_LF_NOISE_RANGE,127,25,40,14,ES_AUTOHSCROLL
-    LTEXT           "Hz",IDC_STATIC,173,27,14,8
-    LTEXT           "Selection:\nChannels:",IDC_STATIC_SELECTION,7,49,179,17
+                    WS_TABSTOP,7,26,118,10
+    EDITTEXT        IDC_EDIT_LF_NOISE_RANGE,127,24,40,14,ES_AUTOHSCROLL
+    LTEXT           "Hz",IDC_STATIC,173,26,14,8
+    LTEXT           "Selection:\nChannels:",IDC_STATIC_SELECTION,7,44,179,17
     CONTROL         "Save &Undo",IDC_CHECK_UNDO,"Button",BS_AUTOCHECKBOX | 
-                    WS_TABSTOP,7,70,51,10
-    PUSHBUTTON      "&Selection...",IDC_BUTTON_SELECTION,132,68,50,14
-    DEFPUSHBUTTON   "OK",IDOK,12,86,50,14
-    PUSHBUTTON      "Cancel",IDCANCEL,73,86,50,14
-    PUSHBUTTON      "&Help",IDHELP,132,86,50,14
+                    WS_TABSTOP,7,65,51,10
+    PUSHBUTTON      "&Selection...",IDC_BUTTON_SELECTION,132,63,50,14
+    DEFPUSHBUTTON   "OK",IDOK,12,81,50,14
+    PUSHBUTTON      "Cancel",IDCANCEL,73,81,50,14
+    PUSHBUTTON      "&Help",IDHELP,132,81,50,14
 END
 
 IDD_DIALOG_EXPRESSION_EVALUATION DIALOG DISCARDABLE  0, 0, 252, 241
@@ -1410,7 +1410,7 @@ BEGIN
     PUSHBUTTON      "dt",IDC_BUTTON_LC_DT,88,14,27,10,BS_NOTIFY
     PUSHBUTTON      "dn",IDC_BUTTON_LC_DN,117,14,27,10,BS_NOTIFY
     PUSHBUTTON      "wave",IDC_BUTTON_WAVE,146,14,27,10,BS_NOTIFY
-    PUSHBUTTON      "f",IDC_BUTTON_LC_F,1,26,27,10,BS_NOTIFY
+    PUSHBUTTON      "f",IDC_BUTTON_LC_F,1,28,27,10,BS_NOTIFY
     CTEXT           "=",IDC_STATIC,31,28,9,8
     EDITTEXT        IDC_EDIT_FREQUENCY,42,26,44,13,ES_AUTOHSCROLL
     LTEXT           "Hold mouse cursor over the button to see its description",
@@ -1740,7 +1740,7 @@ BEGIN
         LEFTMARGIN, 7
         RIGHTMARGIN, 186
         TOPMARGIN, 7
-        BOTTOMMARGIN, 100
+        BOTTOMMARGIN, 95
     END
 
     IDD_DIALOG_EXPRESSION_EVALUATION, DIALOG
@@ -2151,7 +2151,7 @@ BEGIN
                             "Not enough disk space to create or expand a file"
     IDS_DELETE_EXPRESSION   "Are you sure you want to delete expression ""%s"" from group ""%s"" ?"
     IDS_REPLACE_EXPRESSION  "Are you sure you want to replace expression ""%s"" in group ""%s"" ?"
-    ID_VIEW_ZOOMINVERT      "Zoom in vertical\nZoom In vertical"
+    ID_VIEW_ZOOMINVERT      "Zoom in vertical\nZoom in vertical"
     ID_VIEW_ZOOMOUTHOR      "Zoom out time\nZoom out time"
     ID_VIEW_ZOOMOUTVERT     "Zoom out vertical\nZoom out vertical"
     ID_VIEW_ZOOMINVERT2     "Zoom in vertical"
@@ -2192,7 +2192,8 @@ BEGIN
     IDS_UNABLE_TO_FIND_DATA_CHUNK 
                             "Wave file ""%s"" doesn't contain valid sound data chunk"
     IDS_UNABLE_TO_OPEN_WAVE_FILE "Wave file ""%s"" couldn't be opened"
-    IDS_FILE_OPEN_ACCESS_DENIED "Access to file ""%s"" is denied"
+    IDS_FILE_OPEN_ACCESS_DENIED 
+                            "Access to file ""%s"" is denied or the file might have been just deleted"
     IDS_FILE_OPEN_SHARING_VIOLATION 
                             "File ""%s"" couldn't be opened because it is in use by another application"
     IDS_FILE_OPENED_NONDIRECT 
@@ -2222,7 +2223,7 @@ BEGIN
     IDS_FILE_MAY_GET_TOO_BIG 
                             "Operation cannot be performed because the file size would exceed the WAV format limit"
     IDS_WRONG_NEW_FILE_LENGTH 
-                            "File length must be from 0 to 80:00 (4800 seconds)"
+                            "File length must be from 0 to %d seconds, otherwise it would exceed WAV format length limit"
     IDS_CANT_DECOMPRESS_FILE 
                             "Unable to find or initialize codec to load compressed file ""%s"".\nCompression format tag = 0x%04X, MMSYSERR error code=0x%08X"
     IDS_ERROR_WHILE_DECOMPRESSING_FILE 

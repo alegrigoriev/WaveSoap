@@ -224,7 +224,6 @@ public:
 	bool m_bCloseThisDocumentNow;   // CDocTemplate should close it in OnIdle
 	CSimpleCriticalSection m_cs;
 	COperationContext * m_pCurrentContext;
-	COperationContext * m_pQueuedOperation;
 	COperationContext * m_pUndoList;
 	COperationContext * m_pRedoList;
 	COperationContext * m_pRetiredList;

@@ -387,6 +387,7 @@ public:
 	double m_TempoChange;
 	int m_NewSampleRate;
 	int m_OldSampleRate;
+	bool m_bCanOnlyChangeSamplerate;    // if the file have zero length
 // Overrides
 	// ClassWizard generated virtual function overrides
 	//{{AFX_VIRTUAL(CResampleDialog)
