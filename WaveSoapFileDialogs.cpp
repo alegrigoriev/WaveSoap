@@ -91,13 +91,13 @@ void CWaveSoapFileOpenDialog::ShowWmaFileInfo(CDirectFile & File)
 		}
 		if (WmaFile.GetSrcFormat().FormatTag() == WAVE_FORMAT_MPEGLAYER3)
 		{
-			SetDlgItemText(IDC_STATIC_FILE_TYPE, _T("MP3 Audio File"));
-			SetDlgItemText(IDC_STATIC_FILE_FORMAT, _T("MPEG Layer III"));
+			SetDlgItemText(IDC_STATIC_FILE_TYPE, LoadCString(IDS_MP3_FILE_TYPE));
+			SetDlgItemText(IDC_STATIC_FILE_FORMAT, LoadCString(IDS_MP3_FILE_FORMAT));
 		}
 		else
 		{
-			SetDlgItemText(IDC_STATIC_FILE_TYPE, _T("Windows Media File"));
-			SetDlgItemText(IDC_STATIC_FILE_FORMAT, _T("Windows Media Audio"));
+			SetDlgItemText(IDC_STATIC_FILE_TYPE, LoadCString(IDS_WMA_FILE_TYPE));
+			SetDlgItemText(IDC_STATIC_FILE_FORMAT, LoadCString(IDS_WMA_FILE_FORMAT));
 		}
 		// length
 		CString s;
@@ -107,9 +107,20 @@ void CWaveSoapFileOpenDialog::ShowWmaFileInfo(CDirectFile & File)
 				LPCTSTR(LtoaCS(WmaFile.GetTotalSamples())));
 		SetDlgItemText(IDC_STATIC_FILE_LENGTH, s);
 		// num of channels, bitrate, sampling rate
-		s.Format(_T("%s bps, %s Hz, %s"), LPCTSTR(LtoaCS(WmaFile.GetBitRate())),
+
+		CString ch;
+		if (1 == WmaFile.GetSrcFormat().NumChannels())
+		{
+			ch.LoadString(IDS_MONO);
+		}
+		else
+		{
+			ch.LoadString(IDS_STEREO);
+		}
+
+		s.Format(IDS_MP3_FORMAT_STR, LPCTSTR(LtoaCS(WmaFile.GetBitRate())),
 				LPCTSTR(LtoaCS(WmaFile.GetSrcFormat().SampleRate())),
-				1 == WmaFile.GetSrcFormat().NumChannels() ? _T("Mono") : _T("Stereo"));
+				LPCTSTR(ch));
 		SetDlgItemText(IDC_STATIC_ATTRIBUTES, s);
 	}
 	else
@@ -278,7 +289,9 @@ void CWaveSoapFileOpenDialog::OnFileNameChange()
 			{
 				nSamples = m_WaveFile.NumberOfSamples();
 			}
-			SetDlgItemText(IDC_STATIC_FILE_TYPE, _T("Microsoft RIFF Wave"));
+
+			SetDlgItemText(IDC_STATIC_FILE_TYPE, LoadCString(IDS_WAV_FILE_TYPE));
+
 			CString s;
 			CString s2;
 
@@ -303,7 +316,7 @@ void CWaveSoapFileOpenDialog::OnFileNameChange()
 			}
 			else
 			{
-				SetDlgItemText(IDC_STATIC_FILE_FORMAT, _T("Unknown"));
+				SetDlgItemText(IDC_STATIC_FILE_FORMAT, LoadCString(IDS_UNKNOWN_FILE_TYPE_FORMAT));
 			}
 		}
 		else
@@ -321,7 +334,7 @@ void CWaveSoapFileOpenDialog::OnFileNameChange()
 
 void CWaveSoapFileOpenDialog::ClearFileInfoDisplay()
 {
-	SetDlgItemText(IDC_STATIC_FILE_TYPE, _T("Unknown"));
+	SetDlgItemText(IDC_STATIC_FILE_TYPE, LoadCString(IDS_UNKNOWN_FILE_TYPE_FORMAT));
 	SetDlgItemText(IDC_STATIC_FILE_FORMAT, _T(""));
 	SetDlgItemText(IDC_STATIC_FILE_LENGTH, _T(""));
 	SetDlgItemText(IDC_STATIC_ATTRIBUTES, _T(""));

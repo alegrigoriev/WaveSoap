@@ -3391,11 +3391,188 @@ BEGIN
                             "Windows Media Audio (WMA) encoder is not available. To encode to WMA format, you need to install Windows Media Player."
     IDS_REPLACEYESNO        "%s\nThis file already exists.\nReplace existing file?"
     IDC_FILE_READ_ERROR     "Error occured while reading file ""%s"":\n\n%s"
+    IDS_SUFFIX_READ_ONLY    " (Read Only)"
+    IDS_SUFFIX_DIRECT       " (Direct)"
+    IDS_STATUS_STRING16BIT  "16-bit"
+    IDS_STATUS_STRING_STEREO "Stereo"
+    IDS_STATUS_OPERATION_PROMPT_COMPLETED " Completed"
+    IDS_PEAK_SCAN_STATUS_PROMPT "Scanning the file for peaks"
+    IDS_PEAK_SCAN_OPERATION_NAME "Peak Scan"
+    IDS_PLAYBACK_STATUS_PROMPT "Playing"
+    IDS_PLAYBACK_OPERATION_NAME "Play"
+    IDS_PLAYBACK_PAUSED_STATUS "Playback Paused"
+    IDS_PLAYBACK_STOPPED_STATUS "Playback Stopped"
+    IDS_OPERATION_PREFIX_UNDO "Undo "
+    IDS_OPERATION_PREFIX_REDO "Redo "
 END
 
 STRINGTABLE 
 BEGIN
     ID_PROCESS_REVERSE      "Reverse sound - make it go backwards"
+END
+
+STRINGTABLE 
+BEGIN
+    IDS_STATUS_PREFIX_UNDOING "Undoing "
+    IDS_STATUS_PREFIX_REDOING "Redoing "
+    IDS_STATUS_PROMPT_CHANGE_LENGTH "Changing the file length"
+    IDS_OPERATION_NAME_CHANGE_LENGTH "File length change"
+    IDS_STATUS_PROMPT_EXPANDING_FILE "Expanding the file"
+    IDS_STATUS_PROMPT_SHRINKING_FILE "Shrinking the file"
+    IDS_STATUS_PROMPT_INSERTING_DATA "Inserting data"
+    IDS_INPUT_NAME_VOLUME_CHANGE "Volume change"
+    IDS_INPUT_NAME_TARGET_LEVEL "Target level"
+    IDS_INPUT_NAME_TEMPO_CHANGE "Tempo/pitch change"
+    IDS_INPUT_NAME_LF_SUPPRESSION_RANGE "Low frequency suppression range"
+    IDS_INPUT_NAME_DIFFERENTIAL_SUPPRESSION_RANGE 
+                            "Differential static suppression range"
+    IDS_INPUT_NAME_ATTACK_RATE "Attack rate"
+    IDS_INPUT_NAME_CLICK_TO_NOISE_RATE "Click to noise rate"
+    IDS_INPUT_NAME_ENVELOP_DECAY_RATE "Envelop decay rate"
+    IDS_FILE_FILTER_TXT     "Text files (*.txt)|*.txt|All Files (*.*)|*.*||"""
+END
+
+STRINGTABLE 
+BEGIN
+    IDS_INPUT_NAME_NOISE_REDUCTION "Noise reduction"
+    IDS_INPUT_NAME_NOISE_VS_CONTINUOUS "Noise/continuous criterion"
+    IDS_INPUT_NAME_NOISE_FLOOR_HIGH 
+                            "Noise floor for noise in higher frequencies"
+    IDS_INPUT_NAME_NOISE_FLOOR_LOW 
+                            "Noise floor for noise in lower frequencies"
+    IDS_INPUT_NAME_NOISE_SUPPRESSION_AGGR "Noise suppression aggressiveness"
+    IDS_INPUT_NAME_TONE_OVER_NOISE "Tone over noise preference"
+    IDS_INPUT_NAME_FREQUENCY "Frequency"
+    IDS_INPUT_NAME_NEAR_MASK_DISTANCE_HIGH 
+                            "Near masking distance in higher frequencies"
+    IDS_INPUT_NAME_NEAR_MASK_DISTANCE_LOW 
+                            "Near masking distance in lower frequencies"
+    IDS_INPUT_NAME_NEAR_MASK_TIME_HIGH 
+                            "Near masking time in higher frequencies"
+    IDS_INPUT_NAME_NEAR_MASK_TIME_LOW "Near masking time in lower frequencies"
+    IDS_INPUT_NAME_HEAR_MASK_COEFF "Near masking coefficient"
+    IDS_TAB_TITLE_FUNCTIONS_AND_OPS "Functions And Operators"
+    IDS_TAB_TITLE_OPERANDS  "Operands"
+    IDS_TAB_TITLE_SAVED_EXPRESSIONS "Saved Expressions"
+    IDS_CDGRAB_FOLDER_DIALOG_TITLE "Save Files To Folder"
+END
+
+STRINGTABLE 
+BEGIN
+    IDS_CDGRAB_DEFAULT_SPEED "Default"
+    IDS_TEMP_FOLDER_DIALOG_TITLE "Temporary File Folder"
+    IDS_MSG_GROUP_CANT_BE_ALL_EXPRESSION 
+                            "Group name cannot be ""All Expressions"""
+    IDS_MP3_FILE_TYPE       "MP3 Audio File"
+    IDS_MP3_FILE_FORMAT     "MPEG Layer III"
+    IDS_WMA_FILE_TYPE       "Windows Media File"
+    IDS_WMA_FILE_FORMAT     "Windows Media Audio"
+    IDS_MP3_FORMAT_STR      "%s bps, %s Hz, %s"
+    IDS_WAV_FILE_TYPE       "Microsoft RIFF Wave"
+    IDS_UNKNOWN_FILE_TYPE_FORMAT "Unknown"
+    IDS_MRU_LIST_RO_SUFFIX  " (RO)"
+    IDS_MRU_LIST_DIRECT_SUFFIX " (D)"
+    IDS_READING_CD_TRACK_STATUS_PROMPT "Reading CD track %d..."
+    IDS_READING_CD_TRACK_OPERATION_NAME "CD read"
+    IDS_SELECTION_STRING_FORMAT_STEREO 
+                            "Selection : %s to %s (%s)\nChannels: %s"
+    IDS_CHANNELS_STRING_FORMAT_MONO "Selection : %s to %s (%s)"
+END
+
+STRINGTABLE 
+BEGIN
+    IDS_COPY_TO_FILE_STATUS_PROMPT_FORMAT "Copying the selection to ""%s"""
+    IDS_COPY_TO_CLIPBOARD_STATUS_PROMPT "Copying data to clipboard"
+    IDS_PASTE_FROM_FILE_STATUS_PROMPT "Paste from ""%s"""
+    IDS_PASTE_STATUS_PROMPT "Paste from clipboard"
+    IDS_PASTE_OPERATION_NAME "Paste"
+    IDS_RESAMPLE_CLIPBOARD_STATUS_PROMPT 
+                            "Changing sample rate of clipboard data"
+    IDS_CUT_STATUS_PROMPT   "Cut"
+    IDS_CUT_OPERATION_NAME  "Cut"
+    IDS_DELETING_SELECTION_STATUS_PROMPT "Deleting the selection"
+    IDS_DELETE_OPERATION_NAME "Delete"
+    IDS_LOADING_COMPRESSED_FILE_STATUS_PROMPT "Loading the compressed file"
+    IDS_SAVE_FILE_COMMIT_STATUS_PROMPT "Saving the file"
+    IDS_SAVING_FILE_STATUS_PROMPT "Saving the file"
+    IDS_SAVING_FILE_COPY_STATUS_PROMPT "Saving the file copy"
+    IDS_FILE_SAVE_OPERATION_NAME "File Save"
+    IDS_SAVING_FILE_WITH_CONVERSION_STATUS "Converting and saving the file"
+END
+
+STRINGTABLE 
+BEGIN
+    IDS_FILE_SAVE_CONVERT_OPERATION_NAME "File Convert and Save"
+    IDS_MP3_SAVE_STATUS_PROMPT "Compressing and saving Mp3 file"
+    IDS_MP3_SAVE_OPERATION_NAME "Mp3 File Compress and Save"
+    IDS_WMA_SAVE_STATUS_PROMPT "Compressing and saving Windows Media file"
+    IDS_WMA_SAVE_OPERATION_NAME "Windows Media file save"
+    IDS_RAW_SAVE_STATUS_PROMPT "Saving the file in raw binary format"
+    IDS_RAW_SAVE_OPERATION_NAME "Raw File Save"
+    IDS_SAMPLE_RATE_CHANGE_OPERATION_NAME "Sample Rate Change"
+    IDS_CHANNELS_CHANGE_OPERATION_NAME "Number Of Channels Change"
+    IDS_CHANNELS_CHANGE_STATUS_PROMPT "Changing number of channels"
+    IDS_VOLUME_CHANGE_STATUS_PROMPT "Changing volume"
+    IDS_VOLUME_CHANGE_OPERATION_NAME "Volume Change"
+    IDS_DC_ADJUST_STATUS_PROMPT "Adjusting DC"
+    IDS_DC_ADJUST_OPERATION_NAME "DC Adjust"
+    IDS_DC_SCAN_STATUS_PROMPT "Scanning for DC offset"
+    IDS_INSERT_SILENCE_STATUS_PROMPT "Inserting silence"
+END
+
+STRINGTABLE 
+BEGIN
+    IDS_INSERT_SILENCE_OPERATION_NAME "Insert Silence"
+    IDS_MUTING_STATUS_PROMPT "Muting the selection"
+    IDS_MUTING_OPERATION_NAME "Mute"
+    IDS_NORMALIZE_VOLUME_STATUS_PROMPT "Normalizing sound level"
+    IDS_NORMALIZE_VOLUME_OPERATION_NAME "Normalize"
+    IDS_MAX_SCAN_STATUS_PROMPT "Scanning for maximum amplitude"
+    IDS_RESAMPLE_STATUS_PROMPT "Changing sample rate"
+    IDS_RESAMPLE_OPERATION_NAME "Resample"
+    IDS_SCANNING_STATISTICS_STATUS_PROMPT "Scanning the file for statistics"
+    IDS_INVERSION_STATUS_PROMPT "Inverting the waveform"
+    IDS_INVERSION_OPERATION_NAME "Inversion"
+    IDS_EXPRESSION_STATUS_PROMPT "Calculating the waveform"
+    IDS_EXPRESSION_OPERATION_NAME "Expression evaluation"
+    IDS_LOAD_RAW_STATUS_PROMPT "Loading the raw sound file"
+    IDS_LOAD_COMPRESSED_STATUS_PROMPT "Loading the compressed file"
+    IDS_INTERPOLATE_OPERATION_NAME "Interpolate"
+END
+
+STRINGTABLE 
+BEGIN
+    IDS_ULF_REDUCTION_STATUS_PROMPT "Reducing low frequency static"
+    IDS_ULF_REDUCTION_OPERATION_NAME "Low Frequency Suppression"
+    IDS_DECLICK_STATUS_PROMPT "Removing vinyl disk clicks"
+    IDS_DECLICK_OPERATION_NAME "Declicking"
+    IDS_DENOISE_STATUS_PROMPT "Removing background noise"
+    IDS_DENOISE_OPERATION_NAME "Noise Reduction"
+    IDS_EQUALIZER_STATUS_PROMPT "Applying equalizer"
+    IDS_EQUALIZER_OPERATION_NAME "Equalizer"
+    IDS_CHANNELS_SWAP_STATUS_PROMPT "Swapping the channels"
+    IDS_CHANNELS_SWAP_OPERATION_NAME "Swap channels"
+    IDS_FILTER_STATUS_PROMPT "Applying filter"
+    IDS_FILTER_OPERATION_NAME "Filter"
+    IDS_REVERSE_STATUS_PROMPT "Reversing"
+    IDS_REVERSE_OPERATION_NAME "Reverse"
+    IDS_STAT_DIALOG_FILE_NAME_FORMAT "File: %s"
+    IDS_ALL_EXPRESSIONS_GROUP "All Expressions"
+END
+
+STRINGTABLE 
+BEGIN
+    IDS_LEFT                "Left"
+    IDS_RIGHT               "Right"
+    IDS_DECIBEL             "dB"
+    IDS_INPUT_NAME_NORMALIZE_LEVEL "Normalize level"
+    IDS_PERCENT_CHAR        "%"
+    IDS_HERTZ               "Hz"
+    IDS_MILISECOND          "ms"
+    IDS_INPUT_NAME_FREQUENCY_ARGUMENT "Frequency argument f"
+    IDS_INPUT_NAME_FREQUENCY_ARGUMENT2 "Frequency argument f2"
+    IDS_INPUT_NAME_FREQUENCY_ARGUMENT3 "Frequency argument f3"
+    IDS_INPUT_NAME_FREQUENCY_ARGUMENT1 "Frequency argument f1"
 END
 
 #endif    // English (U.S.) resources

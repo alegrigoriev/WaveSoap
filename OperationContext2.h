@@ -18,7 +18,7 @@ class CExpressionEvaluationContext : public CThroughProcessOperation
 	typedef CThroughProcessOperation BaseClass;
 public:
 	typedef std::auto_ptr<ThisClass> auto_ptr;
-	CExpressionEvaluationContext(CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString, LPCTSTR OperationName);
+	CExpressionEvaluationContext(CWaveSoapFrontDoc * pDoc, UINT StatusStringId, UINT OperationNameId);
 
 	virtual BOOL ProcessBuffer(void * buf, size_t len, SAMPLE_POSITION offset, BOOL bBackward = FALSE);
 	BOOL SetExpression(LPCTSTR * ppszExpression);
@@ -226,10 +226,11 @@ class CInsertSilenceContext : public CStagedContext
 public:
 	typedef std::auto_ptr<ThisClass> auto_ptr;
 
-	CInsertSilenceContext(CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString, LPCTSTR OperationName)
-		: BaseClass(pDoc, StatusString, 0, OperationName)
+	CInsertSilenceContext(CWaveSoapFrontDoc * pDoc, UINT StatusStringId, UINT OperationNameId)
+		: BaseClass(pDoc, 0, StatusStringId, OperationNameId)
 	{
 	}
+
 	BOOL InitExpand(CWaveFile & DstFile, SAMPLE_INDEX StartSample, SAMPLE_INDEX length,
 					CHANNEL_MASK chan, BOOL NeedUndo);
 };
@@ -242,7 +243,7 @@ public:
 	typedef std::auto_ptr<ThisClass> auto_ptr;
 
 	CCommitFileSaveContext(CWaveSoapFrontDoc * pDoc,
-							LPCTSTR StatusString, CWaveFile & WavFile, int flags, LPCTSTR TargetName);
+							UINT StatusStringId, CWaveFile & WavFile, int flags, LPCTSTR TargetName);
 
 	//~CCommitFileSaveContext() { }
 	virtual BOOL OperationProc();
@@ -273,7 +274,7 @@ public:
 	typedef std::auto_ptr<ThisClass> auto_ptr;
 
 	CEqualizerContext(CWaveSoapFrontDoc * pDoc,
-					LPCTSTR StatusString, LPCTSTR OperationName);
+					UINT StatusStringId, UINT OperationNameId);
 	~CEqualizerContext();
 
 	BOOL m_bZeroPhase;
@@ -300,7 +301,7 @@ public:
 	typedef std::auto_ptr<ThisClass> auto_ptr;
 
 	CFilterContext(CWaveSoapFrontDoc * pDoc,
-					LPCTSTR StatusString, LPCTSTR OperationName);
+					UINT StatusStringId, UINT OperationNameId);
 	~CFilterContext();
 
 	BOOL m_bZeroPhase;
@@ -337,9 +338,9 @@ public:
 	typedef std::auto_ptr<ThisClass> auto_ptr;
 
 	CSwapChannelsContext(CWaveSoapFrontDoc * pDoc,
-						LPCTSTR StatusString, LPCTSTR OperationName)
-		: BaseClass(pDoc, StatusString,
-					OperationContextDiskIntensive, OperationName)
+						UINT StatusStringId, UINT OperationNameId)
+		: BaseClass(pDoc, OperationContextDiskIntensive, StatusStringId,
+					OperationNameId)
 	{
 	}
 
@@ -354,21 +355,7 @@ public:
 	typedef std::auto_ptr<ThisClass> auto_ptr;
 
 	CCdReadingContext(CWaveSoapFrontDoc * pDoc,
-					LPCTSTR StatusString, LPCTSTR OperationName)
-		: BaseClass(pDoc, StatusString,
-					OperationContextDiskIntensive | OperationContextSerialized, OperationName),
-		m_pCdBuffer(NULL),
-		m_CdBufferFilled(0),
-		m_hEvent(NULL),
-		m_CdDataOffset(0),
-		m_pNextTrackContext(NULL),
-		m_TargetFileType(0),
-		m_bSaveImmediately(FALSE),
-		m_CdBufferSize(0)
-	{
-		m_GetBufferFlags = CDirectFile::GetBufferWriteOnly | CDirectFile::GetBufferNoPrefetch;
-		m_ReturnBufferFlags = CDirectFile::ReturnBufferDirty | CDirectFile::ReturnBufferFlush;
-	}
+					LPCTSTR StatusString, LPCTSTR OperationName);
 
 	virtual ~CCdReadingContext();
 	virtual void Execute();
@@ -431,6 +418,8 @@ public:
 
 	CReplaceFormatContext(CWaveSoapFrontDoc * pDoc, LPCTSTR OperationName,
 						WAVEFORMATEX const * pNewFormat);
+	CReplaceFormatContext(CWaveSoapFrontDoc * pDoc, UINT OperationNameId,
+						WAVEFORMATEX const * pNewFormat);
 
 	virtual BOOL CreateUndo();
 	virtual BOOL OperationProc();
@@ -488,7 +477,7 @@ public:
 	typedef std::auto_ptr<ThisClass> auto_ptr;
 
 	CMoveOperation(CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString, LPCTSTR OperationName = _T(""));
-	CMoveOperation(CWaveSoapFrontDoc * pDoc);
+	CMoveOperation(CWaveSoapFrontDoc * pDoc, UINT StatusStringId = 0, UINT OperationNameId = 0);
 
 	~CMoveOperation();
 
@@ -644,7 +633,7 @@ class CReverseOperation : public CTwoFilesOperation
 
 public:
 	typedef std::auto_ptr<ThisClass> auto_ptr;
-	CReverseOperation(CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString, LPCTSTR OperationName);
+	CReverseOperation(CWaveSoapFrontDoc * pDoc, UINT StatusStringId, UINT OperationNameId);
 	~CReverseOperation();
 
 protected:

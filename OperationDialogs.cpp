@@ -172,22 +172,22 @@ void CVolumeChangeDialog::UpdateVolumeData(CDataExchange* pDX, BOOL InPercents)
 	{
 		// decibels
 		m_eVolumeLeft.ExchangeData(pDX, m_dVolumeLeftDb,
-									_T("Volume change"), _T("dB"), -40., 40.);
+									IDS_INPUT_NAME_VOLUME_CHANGE, IDS_DECIBEL, -40., 40.);
 		if (m_WaveFile.Channels() > 1)
 		{
 			m_eVolumeRight.ExchangeData(pDX, m_dVolumeRightDb,
-										_T("Volume change"), _T("dB"), -40., 40.);
+										IDS_INPUT_NAME_VOLUME_CHANGE, IDS_DECIBEL, -40., 40.);
 		}
 	}
 	else
 	{
 		// percents
 		m_eVolumeLeft.ExchangeData(pDX, m_dVolumeLeftPercent,
-									_T("Volume change"), _T("%"), 1., 10000.);
+									IDS_INPUT_NAME_VOLUME_CHANGE, IDS_PERCENT_CHAR, 1., 10000.);
 		if (m_WaveFile.Channels() > 1)
 		{
 			m_eVolumeRight.ExchangeData(pDX, m_dVolumeRightPercent,
-										_T("Volume change"), _T("%"), 1., 10000.);
+										IDS_INPUT_NAME_VOLUME_CHANGE, IDS_PERCENT_CHAR, 1., 10000.);
 		}
 	}
 }
@@ -1003,7 +1003,7 @@ BOOL CStatisticsDialog::OnInitDialog()
 
 	CString s;
 
-	s.Format(_T("File: %s"), LPCTSTR(m_sFilename));
+	s.Format(IDS_STAT_DIALOG_FILE_NAME_FORMAT, LPCTSTR(m_sFilename));
 	m_FileName.SetWindowText(s);
 
 	int nSampleSize = m_pContext->m_DstFile.SampleSize();
@@ -1253,13 +1253,13 @@ void CNormalizeSoundDialog::DoDataExchange(CDataExchange* pDX)
 	{
 		// decibels
 		m_eLevel.ExchangeData(pDX, m_dLevelDb,
-							_T("Target level"), _T("dB"), -40., 0.);
+							IDS_INPUT_NAME_TARGET_LEVEL, IDS_DECIBEL, -40., 0.);
 	}
 	else
 	{
 		// percents
 		m_eLevel.ExchangeData(pDX, m_dLevelPercent,
-							_T("Target level"), _T("%"), 1., 100.);
+							IDS_INPUT_NAME_TARGET_LEVEL, IDS_PERCENT_CHAR, 1., 100.);
 	}
 	DDX_CBIndex(pDX, IDC_COMBODB_PERCENT, m_DbPercent);
 	if ( ! pDX->m_bSaveAndValidate)
@@ -1495,8 +1495,10 @@ void CResampleDialog::DoDataExchange(CDataExchange* pDX)
 	DDX_Text(pDX, IDC_EDIT_RATE, m_NewSampleRate);
 	//}}AFX_DATA_MAP
 	DDV_MinMaxUInt(pDX, m_NewSampleRate, m_OldSampleRate / 4, m_OldSampleRate * 4);
+
 	m_EditTempo.ExchangeData(pDX, m_TempoChange,
-							_T("Tempo/pitch change"), _T("%"), 25., 400.);
+							IDS_INPUT_NAME_TEMPO_CHANGE, IDS_PERCENT_CHAR, 25., 400.);
+
 	if (pDX->m_bSaveAndValidate)
 	{
 		if (m_bCanOnlyChangeSamplerate)
@@ -1689,9 +1691,9 @@ void CLowFrequencySuppressDialog::DoDataExchange(CDataExchange* pDX)
 	DDX_Check(pDX, IDC_CHECK_UNDO, m_bUndo);
 
 	m_eLfNoiseRange.ExchangeData(pDX, m_dLfNoiseRange,
-								_T("Low frequency suppression range"), _T("Hz"), 1., 1000.);
+								IDS_INPUT_NAME_LF_SUPPRESSION_RANGE, IDS_HERTZ, 1., 1000.);
 	m_eDiffNoiseRange.ExchangeData(pDX, m_dDiffNoiseRange,
-									_T("Differential static suppression range"), _T("Hz"), 1., 1000.);
+									IDS_INPUT_NAME_DIFFERENTIAL_SUPPRESSION_RANGE, IDS_HERTZ, 1., 1000.);
 
 	if (pDX->m_bSaveAndValidate)
 	{
@@ -1968,11 +1970,11 @@ void CDeclickDialog::DoDataExchange(CDataExchange* pDX)
 	DDX_Check(pDX, IDC_CHECK_UNDO, m_bUndo);
 	//}}AFX_DATA_MAP
 	m_AttackRate.ExchangeData(pDX, m_dAttackRate,
-							_T("Attack rate"), _T(""), 0.01, 0.9);
+							IDS_INPUT_NAME_ATTACK_RATE, 0, 0.01, 0.9);
 	m_ClickToNoise.ExchangeData(pDX, m_dClickToNoise,
-								_T("Click to noise rate"), _T(""), 1., 10.);
+								IDS_INPUT_NAME_CLICK_TO_NOISE_RATE, 0, 1., 10.);
 	m_EnvelopDecayRate.ExchangeData(pDX, m_dEnvelopDecayRate,
-									_T("Envelop decay rate"), _T(""), 0.01, 0.99);
+									IDS_INPUT_NAME_ENVELOP_DECAY_RATE, 0, 0.01, 0.99);
 
 	if (pDX->m_bSaveAndValidate)
 	{
@@ -2012,7 +2014,7 @@ void CDeclickDialog::OnCheckImportClicks()
 
 void CDeclickDialog::OnClickLogBrowseButton()
 {
-	CString filter(_T("Text files (*.txt)|*.txt|All Files (*.*)|*.*||"));
+	CString filter(MAKEINTRESOURCE(IDS_FILE_FILTER_TXT));
 
 	m_eLogFilename.GetWindowText(m_ClickLogFilename);
 
@@ -2033,7 +2035,7 @@ void CDeclickDialog::OnClickLogBrowseButton()
 
 void CDeclickDialog::OnClickImportBrowseButton()
 {
-	CString filter(_T("Text files (*.txt)|*.txt|All Files (*.*)|*.*||"));
+	CString filter(MAKEINTRESOURCE(IDS_FILE_FILTER_TXT));
 
 	m_eImportFilename.GetWindowText(m_ClickImportFilename);
 
@@ -2156,19 +2158,19 @@ void CNoiseReductionDialog::DoDataExchange(CDataExchange* pDX)
 										"Transient threshold", "", 0.3, 2);
 #endif
 	m_eNoiseReduction.ExchangeData(pDX, m_dNoiseReduction,
-									_T("Noise reduction"), _T("dB"), 0., 100.);
+									IDS_INPUT_NAME_NOISE_REDUCTION, IDS_DECIBEL, 0., 100.);
 	m_eNoiseCriterion.ExchangeData(pDX, m_dNoiseCriterion,
-									_T("Noise/continuous criterion"), _T(""), 0.0, 1.);
+									IDS_INPUT_NAME_NOISE_VS_CONTINUOUS, 0, 0.0, 1.);
 	m_eNoiseThresholdHigh.ExchangeData(pDX, m_dNoiseThresholdHigh,
-										_T("Noise floor for noise in higher frequencies"), _T("dB"), -100., -10.);
+										IDS_INPUT_NAME_NOISE_FLOOR_HIGH, IDS_DECIBEL, -100., -10.);
 	m_eNoiseThresholdLow.ExchangeData(pDX, m_dNoiseThresholdLow,
-									_T("Noise floor for noise in lower frequencies"), _T("dB"), -100., -10.);
+									IDS_INPUT_NAME_NOISE_FLOOR_LOW, IDS_DECIBEL, -100., -10.);
 	m_EditAggressivness.ExchangeData(pDX, m_dNoiseReductionAggressivness,
-									_T("Noise suppression aggressiveness"), _T(""), 0.1, 3.);
+									IDS_INPUT_NAME_NOISE_SUPPRESSION_AGGR, 0, 0.1, 3.);
 	m_eToneOverNoisePreference.ExchangeData(pDX, m_dToneOverNoisePreference,
-											_T("Tone over noise preference"), _T("dB"), 0., 20.);
+											IDS_INPUT_NAME_TONE_OVER_NOISE, IDS_DECIBEL, 0., 20.);
 	m_eLowerFrequency.ExchangeData(pDX, m_dLowerFrequency,
-									_T("Frequency"), _T("Hz"), 100., 48000.);
+									IDS_INPUT_NAME_FREQUENCY, IDS_HERTZ, 100., 48000.);
 
 	if (pDX->m_bSaveAndValidate)
 	{
@@ -2291,15 +2293,15 @@ void CMoreNoiseDialog::DoDataExchange(CDataExchange* pDX)
 	DDX_Control(pDX, IDC_EDIT_NEAR_MASKING_DISTANCE_HIGH, m_eNearMaskingDistanceHigh);
 	//}}AFX_DATA_MAP
 	m_eNearMaskingDistanceHigh.ExchangeData(pDX, m_NearMaskingDecayDistanceHigh,
-											_T("Near masking distance in higher frequencies"), _T("Hz"), 1., 2000.);
+											IDS_INPUT_NAME_NEAR_MASK_DISTANCE_HIGH, IDS_HERTZ, 1., 2000.);
 	m_eNearMaskingDistanceLow.ExchangeData(pDX, m_NearMaskingDecayDistanceLow,
-											_T("Near masking distance in lower frequencies"), _T("Hz"), 1., 2000.);
+											IDS_INPUT_NAME_NEAR_MASK_DISTANCE_LOW, IDS_HERTZ, 1., 2000.);
 	m_eNearMaskingTimeHigh.ExchangeData(pDX, m_NearMaskingDecayTimeHigh,
-										_T("Near masking time in higher frequencies"), _T("ms"), 1., 1000.);
+										IDS_INPUT_NAME_NEAR_MASK_TIME_HIGH, IDS_MILISECOND, 1., 1000.);
 	m_eNearMaskingTimeLow.ExchangeData(pDX, m_NearMaskingDecayTimeLow,
-										_T("Near masking time in lower frequencies"), _T("ms"), 1., 1000.);
+										IDS_INPUT_NAME_NEAR_MASK_TIME_LOW, IDS_MILISECOND, 1., 1000.);
 	m_eNearMaskingCoeff.ExchangeData(pDX, m_NearMaskingCoeff,
-									_T("Near masking coefficient"), _T(""), 0., 1.);
+									IDS_INPUT_NAME_HEAR_MASK_COEFF, 0, 0., 1.);
 
 }
 
@@ -2413,9 +2415,9 @@ BOOL CExpressionEvaluationDialog::OnInitDialog()
 		m_SavedExprTabDlg.EnableToolTips();
 	}
 
-	m_TabTokens.InsertItem(0, _T("Functions And Operators"));
-	m_TabTokens.InsertItem(1, _T("Operands"));
-	m_TabTokens.InsertItem(2, _T("Saved Expressions"));
+	m_TabTokens.InsertItem(0, LoadCString(IDS_TAB_TITLE_FUNCTIONS_AND_OPS));
+	m_TabTokens.InsertItem(1, LoadCString(IDS_TAB_TITLE_OPERANDS));
+	m_TabTokens.InsertItem(2, LoadCString(IDS_TAB_TITLE_SAVED_EXPRESSIONS));
 
 	m_TabTokens.SetCurSel(m_ExpressionTabSelected);
 	ShowHideTabDialogs();
