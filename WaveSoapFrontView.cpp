@@ -36,6 +36,7 @@ BEGIN_MESSAGE_MAP(CWaveSoapFrontView, CScaledScrollView)
 	ON_WM_MOUSEWHEEL()
 	ON_WM_MOUSEMOVE()
 	ON_WM_KEYDOWN()
+	ON_WM_CREATE()
 	//}}AFX_MSG_MAP
 	// Standard printing commands
 	ON_COMMAND(ID_FILE_PRINT, CScaledScrollView::OnFilePrint)
@@ -621,28 +622,11 @@ CWaveSoapFrontDoc* CWaveSoapFrontView::GetDocument() // non-debug version is inl
 
 void CWaveSoapFrontView::OnInitialUpdate()
 {
+	TRACE("OnInitialUpdate style = %08X\n", GetStyle());
+
 	CScaledScrollView::OnInitialUpdate();
 
-	KeepAspectRatio(FALSE);
-	KeepScaleOnResizeX(TRUE);
-	KeepScaleOnResizeY(FALSE);
-	KeepOrgOnResizeX(TRUE);
-	KeepOrgOnResizeY(FALSE);
-	// TODO: Add your specialized code here and/or call the base class
-	CRect r;
-	GetClientRect( r);
-	int nChannels = GetDocument()->WaveChannels();
-	int nLowExtent = -32768;
-	int nHighExtent = 32767;
-	if (nChannels > 1)
-	{
-		nLowExtent = -0x10000;
-		nHighExtent = 0x10000;
-	}
-
-	SetMaxExtents(0., GetDocument()->WaveFileSamples(), nLowExtent, nHighExtent);
-	SetExtents(0., double(r.Width()) * m_HorizontalScale, nLowExtent, nHighExtent);
-	ShowScrollBar(SB_VERT, FALSE);
+	TRACE("OnInitialUpdate final style = %08X\n", GetStyle());
 }
 
 void CWaveSoapFrontView::OnUpdateViewZoominhor(CCmdUI* pCmdUI)
@@ -1565,3 +1549,31 @@ void CWaveSoapFrontView::OnActivateView(BOOL bActivate, CView* pActivateView, CV
 	CScaledScrollView::OnActivateView(bActivate, pActivateView, pDeactiveView);
 }
 
+
+int CWaveSoapFrontView::OnCreate(LPCREATESTRUCT lpCreateStruct)
+{
+	if (CScaledScrollView::OnCreate(lpCreateStruct) == -1)
+		return -1;
+	KeepAspectRatio(FALSE);
+	KeepScaleOnResizeX(TRUE);
+	KeepScaleOnResizeY(FALSE);
+	KeepOrgOnResizeX(TRUE);
+	KeepOrgOnResizeY(FALSE);
+
+	CRect r;
+	GetClientRect( r);
+	int nChannels = GetDocument()->WaveChannels();
+	int nLowExtent = -32768;
+	int nHighExtent = 32767;
+	if (nChannels > 1)
+	{
+		nLowExtent = -0x10000;
+		nHighExtent = 0x10000;
+	}
+
+	SetMaxExtents(0., GetDocument()->WaveFileSamples(), nLowExtent, nHighExtent);
+	SetExtents(0., double(r.Width()) * m_HorizontalScale, nLowExtent, nHighExtent);
+	ShowScrollBar(SB_VERT, FALSE);
+	ShowScrollBar(SB_HORZ, FALSE);
+	return 0;
+}
