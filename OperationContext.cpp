@@ -103,7 +103,7 @@ void COperationContext::Retire()
 	pDocument->m_RetiredList.InsertTail(this);
 }
 
-void COperationContext::PostRetire(BOOL /*bChildContext*/)
+void COperationContext::PostRetire()
 {
 	if (WasClipped())
 	{
@@ -179,7 +179,7 @@ CUndoRedoContext * COperationContext::GetUndo()
 	return pUndo.release();
 }
 
-BOOL COperationContext::CreateUndo(BOOL /*IsRedo*/)
+BOOL COperationContext::CreateUndo()
 {
 	return TRUE;
 }
@@ -269,6 +269,11 @@ CTwoFilesOperation::CTwoFilesOperation(class CWaveSoapFrontDoc * pDoc, LPCTSTR S
 {
 }
 
+CTwoFilesOperation::~CTwoFilesOperation()
+{
+	delete m_pUndoContext;
+}
+
 LONGLONG CTwoFilesOperation::GetTempDataSize() const
 {
 	LONGLONG sum = BaseClass::GetTempDataSize();
@@ -320,7 +325,7 @@ BOOL CTwoFilesOperation::InitDestination(CWaveFile & DstFile, SAMPLE_INDEX Start
 	return TRUE;
 }
 
-BOOL CTwoFilesOperation::CreateUndo(BOOL /*IsRedo*/)
+BOOL CTwoFilesOperation::CreateUndo()
 {
 	if (NULL != m_pUndoContext
 		|| ! m_DstFile.IsOpen()
@@ -338,15 +343,29 @@ BOOL CTwoFilesOperation::CreateUndo(BOOL /*IsRedo*/)
 	}
 
 	m_pUndoContext = pUndo.release();
-	m_UndoChain.InsertTail(m_pUndoContext);
 
 	return TRUE;
 }
 
+ListHead<COperationContext> * CTwoFilesOperation::GetUndoChain()
+{
+	if (NULL != m_pUndoContext)
+	{
+		m_pUndoContext->m_SrcEnd = m_pUndoContext->m_SrcPos;
+		m_pUndoContext->m_DstEnd = m_pUndoContext->m_DstPos;
+
+		m_UndoChain.InsertHead(m_pUndoContext);
+
+		m_pUndoContext = NULL;
+	}
+
+	return BaseClass::GetUndoChain();
+}
+
 void CTwoFilesOperation::DeleteUndo()
 {
+	delete m_pUndoContext;
 	m_pUndoContext = NULL;
-	BaseClass::DeleteUndo();
 }
 
 void CTwoFilesOperation::SetSaveForUndo(SAMPLE_INDEX StartSample, SAMPLE_INDEX EndSample)
@@ -357,12 +376,14 @@ void CTwoFilesOperation::SetSaveForUndo(SAMPLE_INDEX StartSample, SAMPLE_INDEX E
 
 void CTwoFilesOperation::DeInit()
 {
-	if (NULL != m_pUndoContext)
+	// adjust undo boundaries
+	if (m_DstStart <= m_DstEnd
+		&& m_UndoStartPos != m_UndoEndPos)
 	{
-		m_pUndoContext->m_SrcEnd = m_pUndoContext->m_SrcPos;
-		m_pUndoContext->m_DstEnd = m_pUndoContext->m_DstPos;
-
-		m_pUndoContext = NULL;
+		if (m_UndoStartPos < m_DstPos)
+		{
+			m_UndoStartPos = min(m_DstPos, m_UndoEndPos);
+		}
 	}
 
 	BaseClass::DeInit();
@@ -695,13 +716,13 @@ bool CStagedContext::KeepsPermanentFileReference() const
 	return false;
 }
 
-BOOL CStagedContext::CreateUndo(BOOL IsRedo)
+BOOL CStagedContext::CreateUndo()
 {
 	for (COperationContext * pContext = m_ContextList.First();
 		m_ContextList.NotEnd(pContext);
 		pContext = m_ContextList.Next(pContext))
 	{
-		if ( ! pContext->CreateUndo(IsRedo))
+		if ( ! pContext->CreateUndo())
 		{
 			return FALSE;
 		}
@@ -790,15 +811,17 @@ BOOL CStagedContext::OperationProc()
 
 	if (0 != (pContext->m_Flags & (OperationContextStop | OperationContextFinished)))
 	{
-		m_DoneList.InsertTail(m_ContextList.RemoveHead());
+		COperationContext * pDone = m_ContextList.RemoveHead();
+		m_DoneSize += pDone->GetTotalOperationSize();
 
-		m_DoneSize += m_DoneList.Last()->GetTotalOperationSize();
+		pDone->DeInit();
+		m_DoneList.InsertTail(pDone);
 	}
 
 	return result;
 }
 
-void CStagedContext::PostRetire(BOOL bChildContext)
+void CStagedContext::PostRetire()
 {
 	// collect all undo before done list is emptied
 	// because the current context in m_ContextList can be partially done,
@@ -817,7 +840,7 @@ void CStagedContext::PostRetire(BOOL bChildContext)
 		pContext->PostRetire();
 	}
 
-	BaseClass::PostRetire(bChildContext);
+	BaseClass::PostRetire();
 }
 
 CString CStagedContext::GetStatusString()
@@ -1082,7 +1105,7 @@ BOOL CScanPeaksContext::OperationProc()
 	return TRUE;
 }
 
-void CScanPeaksContext::PostRetire(BOOL bChildContext)
+void CScanPeaksContext::PostRetire()
 {
 	if (m_bSavePeakFile
 		&& (m_Flags & OperationContextFinished)
@@ -1090,7 +1113,7 @@ void CScanPeaksContext::PostRetire(BOOL bChildContext)
 	{
 		m_SrcFile.SavePeakInfo(m_OriginalFile);
 	}
-	BaseClass::PostRetire(bChildContext);
+	BaseClass::PostRetire();
 }
 
 BOOL CScanPeaksContext::Init()
@@ -1587,7 +1610,7 @@ BOOL CDecompressContext::Init()
 	return TRUE;
 }
 
-void CDecompressContext::PostRetire(BOOL bChildContext)
+void CDecompressContext::PostRetire()
 {
 	if (m_MmResult != MMSYSERR_NOERROR)
 	{
@@ -1609,7 +1632,7 @@ void CDecompressContext::PostRetire(BOOL bChildContext)
 	{
 		m_DstFile.SavePeakInfo(pDocument->m_OriginalWavFile);
 	}
-	BaseClass::PostRetire(bChildContext);
+	BaseClass::PostRetire();
 }
 
 ////////// CSoundPlayContext
@@ -1684,7 +1707,7 @@ void CSoundPlayContext::DeInit()
 	m_WaveOut.Reset();
 }
 
-void CSoundPlayContext::PostRetire(BOOL bChildContext)
+void CSoundPlayContext::PostRetire()
 {
 	pDocument->m_PlayingSound = false;
 	if (m_bPauseRequested)
@@ -1705,7 +1728,7 @@ void CSoundPlayContext::PostRetire(BOOL bChildContext)
 		pDocument->SetSelection(pDocument->m_SelectionStart, pDocument->m_SelectionEnd,
 								pDocument->m_SelectedChannel, pDocument->m_SelectionEnd, SetSelection_MoveCaretToCenter);
 	}
-	BaseClass::PostRetire(bChildContext);
+	BaseClass::PostRetire();
 }
 
 BOOL CSoundPlayContext::OperationProc()
@@ -1808,12 +1831,13 @@ CString CSoundPlayContext::GetPlaybackTimeString(int TimeFormat) const
 	}
 }
 
-void CUndoRedoContext::PostRetire(BOOL bChildContext)
+void CUndoRedoContext::PostRetire()
 {
 	// check if the operation completed
 	if (m_Flags & OperationContextFinished)
 	{
-		BaseClass::PostRetire(bChildContext);
+		// everything is done, can do it normal way
+		BaseClass::PostRetire();
 		return;
 	}
 
@@ -1830,6 +1854,7 @@ void CUndoRedoContext::PostRetire(BOOL bChildContext)
 		pContext->PostRetire();
 	}
 
+	// delete all UNDO created when this context was executed
 	DeleteUndo();
 	// modify modification number, depending on operation
 	if (IsUndoOperation())
@@ -1846,7 +1871,8 @@ void CUndoRedoContext::PostRetire(BOOL bChildContext)
 			pDocument->DecrementModified();
 		}
 	}
-	//BUGBUG: UnprepareUndo(); to release file references
+
+	UnprepareUndo(); //to release file references
 	// put the context back to undo/redo list
 	pDocument->AddUndoRedo(this);
 }
@@ -2423,7 +2449,7 @@ BOOL CStatisticsContext::ProcessBuffer(void * buf, size_t const BufferLength,
 	return TRUE;
 }
 
-void CStatisticsContext::PostRetire(BOOL bChildContext)
+void CStatisticsContext::PostRetire()
 {
 	// read sample value at cursor
 	WAVE_SAMPLE Value[2] = {0, 0};
@@ -2451,7 +2477,7 @@ void CStatisticsContext::PostRetire(BOOL bChildContext)
 		CDocumentPopup pop(pDocument);
 		dlg.DoModal();
 	}
-	BaseClass::PostRetire(bChildContext);
+	BaseClass::PostRetire();
 }
 
 CMaxScanContext::CMaxScanContext(CWaveSoapFrontDoc * pDoc,
@@ -2577,7 +2603,7 @@ BOOL CNormalizeContext::Init()
 	return TRUE;
 }
 
-void CFileSaveContext::PostRetire(BOOL bChildContext)
+void CFileSaveContext::PostRetire()
 {
 	// rename files, change them
 	if (m_Flags & OperationContextFinished)
@@ -2638,7 +2664,7 @@ void CFileSaveContext::PostRetire(BOOL bChildContext)
 		m_DstFile.DeleteOnClose();
 		m_DstFile.Close();
 	}
-	BaseClass::PostRetire(bChildContext);
+	BaseClass::PostRetire();
 }
 
 CConversionContext::CConversionContext(CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString, LPCTSTR OperationName)
@@ -2982,7 +3008,7 @@ void CWmaDecodeContext::SetDstFile(CWaveFile & file)
 	m_Decoder.SetDstFile(file);
 }
 
-void CWmaDecodeContext::PostRetire(BOOL bChildContext)
+void CWmaDecodeContext::PostRetire()
 {
 	if (0
 		//&& m_MmResult != MMSYSERR_NOERROR  // TODO
@@ -3006,7 +3032,7 @@ void CWmaDecodeContext::PostRetire(BOOL bChildContext)
 	{
 		m_DstFile.SavePeakInfo(pDocument->m_OriginalWavFile);
 	}
-	BaseClass::PostRetire(bChildContext);
+	BaseClass::PostRetire();
 }
 
 BOOL CWmaSaveContext::Init()
@@ -3033,11 +3059,6 @@ void CWmaSaveContext::DeInit()
 	m_Enc.DeInit();
 	m_CoInit.UninitializeCom();
 	m_DstPos = m_Enc.GetWrittenLength();
-}
-
-void CWmaSaveContext::PostRetire(BOOL bChildContext)
-{
-	CConversionContext::PostRetire(bChildContext);
 }
 
 BOOL CWmaSaveContext::ProcessBuffer(void * buf, size_t len,

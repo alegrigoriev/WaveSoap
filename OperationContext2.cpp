@@ -1312,7 +1312,7 @@ BOOL CCommitFileSaveContext::OperationProc()
 	return TRUE;
 }
 
-void CCommitFileSaveContext::PostRetire(BOOL bChildContext)
+void CCommitFileSaveContext::PostRetire()
 {
 	m_File.Close();
 	if ((m_Flags & OperationContextFinished)
@@ -1327,10 +1327,10 @@ void CCommitFileSaveContext::PostRetire(BOOL bChildContext)
 	{
 		pDocument->m_bClosePending = false;
 	}
-	BaseClass::PostRetire(bChildContext);
+	BaseClass::PostRetire();
 }
 
-void CConversionContext::PostRetire(BOOL bChildContext)
+void CConversionContext::PostRetire()
 {
 	if (m_DstFile.GetDataChunk()->dwDataOffset != 0)
 	{
@@ -1343,7 +1343,7 @@ void CConversionContext::PostRetire(BOOL bChildContext)
 		m_DstFile.SetDatachunkLength(m_DstPos - m_DstStart);
 	}
 
-	BaseClass::PostRetire(bChildContext);
+	BaseClass::PostRetire();
 }
 
 CEqualizerContext::CEqualizerContext(CWaveSoapFrontDoc * pDoc,
@@ -1814,7 +1814,7 @@ void CCdReadingContext::Execute()
 	BaseClass::Execute();
 }
 
-void CCdReadingContext::PostRetire(BOOL bChildContext)
+void CCdReadingContext::PostRetire()
 {
 	// if the operation was not successfully completed, truncate the file.
 
@@ -1852,7 +1852,7 @@ void CCdReadingContext::PostRetire(BOOL bChildContext)
 			pContext->Execute();
 		}
 	}
-	BaseClass::PostRetire(bChildContext);
+	BaseClass::PostRetire();
 }
 
 CCdReadingContext::~CCdReadingContext()
@@ -1869,7 +1869,7 @@ CReplaceFileContext::CReplaceFileContext(CWaveSoapFrontDoc * pDoc, LPCTSTR Opera
 {
 }
 
-BOOL CReplaceFileContext::CreateUndo(BOOL /*IsRedo*/)
+BOOL CReplaceFileContext::CreateUndo()
 {
 	CReplaceFileContext * pUndo =
 		new CReplaceFileContext(pDocument, m_OperationName, pDocument->m_WavFile,
@@ -1907,7 +1907,7 @@ CReplaceFormatContext::CReplaceFormatContext(CWaveSoapFrontDoc * pDoc, LPCTSTR O
 {
 }
 
-BOOL CReplaceFormatContext::CreateUndo(BOOL /*IsRedo*/)
+BOOL CReplaceFormatContext::CreateUndo()
 {
 	CReplaceFormatContext * pUndo =
 		new CReplaceFormatContext(pDocument, m_OperationName, pDocument->WaveFormat());
@@ -1936,7 +1936,7 @@ CLengthChangeOperation::CLengthChangeOperation(CWaveSoapFrontDoc * pDoc,
 {
 }
 
-BOOL CLengthChangeOperation::CreateUndo(BOOL /*IsRedo*/)
+BOOL CLengthChangeOperation::CreateUndo()
 {
 	if ( ! m_File.IsOpen()
 		|| m_File.GetFileID() != pDocument->WaveFileID())
@@ -1984,7 +1984,7 @@ CWaveSamplesChangeOperation::CWaveSamplesChangeOperation(CWaveSoapFrontDoc * pDo
 {
 }
 
-BOOL CWaveSamplesChangeOperation::CreateUndo(BOOL /*IsRedo*/)
+BOOL CWaveSamplesChangeOperation::CreateUndo()
 {
 	if ( ! m_File.IsOpen()
 		|| m_File.GetFileID() != pDocument->WaveFileID())
@@ -2029,7 +2029,13 @@ BOOL CWaveSamplesChangeOperation::OperationProc()
 ////////////// CMoveOperation ///////////////
 CMoveOperation::CMoveOperation(CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString, LPCTSTR OperationName)
 	: BaseClass(pDoc, StatusString, OperationName)
+	, m_pUndoMove(NULL)
 {
+}
+
+CMoveOperation::~CMoveOperation()
+{
+	delete m_pUndoMove;
 }
 
 BOOL CMoveOperation::InitMove(CWaveFile & File,
@@ -2057,10 +2063,11 @@ BOOL CMoveOperation::InitMove(CWaveFile & File,
 	return TRUE;
 }
 
-BOOL CMoveOperation::CreateUndo(BOOL /*IsRedo*/)
+BOOL CMoveOperation::CreateUndo()
 {
 	if ( ! m_DstFile.IsOpen()
-		|| m_DstFile.GetFileID() != pDocument->WaveFileID())
+		|| m_DstFile.GetFileID() != pDocument->WaveFileID()
+		|| NULL != m_pUndoMove)
 	{
 		return TRUE;
 	}
@@ -2077,29 +2084,62 @@ BOOL CMoveOperation::CreateUndo(BOOL /*IsRedo*/)
 	pUndo->m_DstStart = m_SrcEnd;
 	pUndo->m_DstChan = m_SrcChan;
 
-	if (pUndo->m_DstStart < pUndo->m_SrcStart)
-	{
-		// it will need REDO creation
-		pUndo->m_UndoStartPos = pUndo->m_DstStart;
-		pUndo->m_UndoEndPos = pUndo->m_SrcStart;
+	m_pUndoMove = pUndo;
 
-		if (pUndo->m_SrcStart > pUndo->m_DstEnd)
-		{
-			pUndo->m_UndoEndPos = pUndo->m_DstEnd;
-		}
+	if ( ! BaseClass::CreateUndo())
+	{
+		return FALSE;
 	}
 
-	m_UndoChain.InsertTail(pUndo);
-
-	if (BaseClass::CreateUndo()
-		&& NULL != m_pUndoContext)
+	if (NULL != m_pUndoContext)
 	{
-		// don't create REDO for that
+		// don't allow REDO for that
 		m_pUndoContext->m_UndoStartPos = 0;
 		m_pUndoContext->m_UndoEndPos = 0;
-		return TRUE;
 	}
 	return TRUE;
+}
+
+ListHead<COperationContext> * CMoveOperation::GetUndoChain()
+{
+	if (NULL != m_pUndoMove)
+	{
+		// adjust positions!
+		m_pUndoMove->m_SrcStart = m_DstPos;
+		m_pUndoMove->m_SrcPos = m_DstPos;
+
+		m_pUndoMove->m_DstStart = m_SrcPos;
+		m_pUndoMove->m_DstPos = m_SrcPos;
+
+		if (m_pUndoMove->m_DstStart < m_pUndoMove->m_SrcStart)
+		{
+			// it will need REDO creation
+			m_pUndoMove->m_UndoStartPos = m_pUndoMove->m_DstStart;
+			m_pUndoMove->m_UndoEndPos = min(m_pUndoMove->m_SrcStart, m_pUndoMove->m_DstEnd);
+		}
+
+		m_UndoChain.InsertHead(m_pUndoMove);
+
+		m_pUndoMove = NULL;
+	}
+
+	return BaseClass::GetUndoChain();
+}
+
+void CMoveOperation::DeInit()
+{
+	m_SrcStart = m_SrcPos;
+	m_DstStart = m_DstPos;
+
+	BaseClass::DeInit();
+}
+
+void CMoveOperation::DeleteUndo()
+{
+	delete m_pUndoMove;
+	m_pUndoMove = NULL;
+
+	BaseClass::DeleteUndo();
 }
 
 BOOL CMoveOperation::PrepareUndo()
@@ -2107,11 +2147,6 @@ BOOL CMoveOperation::PrepareUndo()
 	m_SrcFile = pDocument->m_WavFile;
 	m_DstFile = pDocument->m_WavFile;
 
-	m_SrcEnd = m_SrcPos;
-	m_DstEnd = m_DstPos;
-
-	m_SrcPos = m_SrcStart;
-	m_DstPos = m_DstStart;
 
 	return TRUE;
 }
@@ -2120,9 +2155,6 @@ void CMoveOperation::UnprepareUndo()
 {
 	m_SrcFile.Close();
 	m_DstFile.Close();
-
-	m_SrcPos = m_SrcEnd;
-	m_DstPos = m_DstEnd;    //??
 }
 
 BOOL CMoveOperation::OperationProc()
@@ -2344,7 +2376,10 @@ BOOL CMoveOperation::OperationProc()
 	return TRUE;
 }
 
-//////////////
+////////////// CSaveTrimmedOperation
+// This operation context saves the data being later trimmed, for
+// later UNDO.
+
 CSaveTrimmedOperation::CSaveTrimmedOperation(CWaveSoapFrontDoc * pDoc,
 											CWaveFile & SrcFile,
 											SAMPLE_INDEX SrcStartSample,
@@ -2362,7 +2397,12 @@ CSaveTrimmedOperation::CSaveTrimmedOperation(CWaveSoapFrontDoc * pDoc,
 	m_DstChan = ALL_CHANNELS;
 }
 
-BOOL CSaveTrimmedOperation::CreateUndo(BOOL /*IsRedo*/)
+CSaveTrimmedOperation::~CSaveTrimmedOperation()
+{
+	delete m_pRestoreOperation;
+}
+
+BOOL CSaveTrimmedOperation::CreateUndo()
 {
 	// Only create undo, if the source file is the main document file
 	if (NULL != m_pRestoreOperation
@@ -2393,14 +2433,28 @@ BOOL CSaveTrimmedOperation::CreateUndo(BOOL /*IsRedo*/)
 	m_SrcPos = m_SrcStart;
 	m_SrcEnd = m_pRestoreOperation->m_DstEnd;
 
-	m_UndoChain.InsertTail(m_pRestoreOperation);
-
 	return TRUE;
+}
+
+ListHead<COperationContext> * CSaveTrimmedOperation::GetUndoChain()
+{
+	if (NULL != m_pRestoreOperation)
+	{
+		m_pRestoreOperation->m_SrcEnd = m_DstPos;
+		m_pRestoreOperation->m_DstEnd = m_SrcPos;
+		m_UndoStartPos = m_SrcPos;
+
+		m_UndoChain.InsertHead(m_pRestoreOperation);
+		m_pRestoreOperation = NULL;
+	}
+	return BaseClass::GetUndoChain();
 }
 
 void CSaveTrimmedOperation::DeleteUndo()
 {
+	delete m_pRestoreOperation;
 	m_pRestoreOperation = NULL;
+
 	BaseClass::DeleteUndo();
 }
 
@@ -2428,19 +2482,6 @@ void CSaveTrimmedOperation::UnprepareUndo()
 	m_SrcFile.Close();
 }
 
-void CSaveTrimmedOperation::DeInit()
-{
-	if (NULL != m_pRestoreOperation)
-	{
-		m_pRestoreOperation->m_SrcEnd = m_DstPos;
-		m_pRestoreOperation->m_DstEnd = m_SrcPos;
-
-		m_pRestoreOperation = NULL;
-	}
-
-	BaseClass::DeInit();
-}
-
 /////////////// CRestoreTrimmedOperation
 CRestoreTrimmedOperation::CRestoreTrimmedOperation(CWaveSoapFrontDoc * pDoc)
 	: BaseClass(pDoc, _T(""), _T(""))
@@ -2448,51 +2489,55 @@ CRestoreTrimmedOperation::CRestoreTrimmedOperation(CWaveSoapFrontDoc * pDoc)
 {
 }
 
-BOOL CRestoreTrimmedOperation::CreateUndo(BOOL /*IsRedo*/)
+CRestoreTrimmedOperation::~CRestoreTrimmedOperation()
+{
+	delete m_pSaveOperation;
+}
+
+BOOL CRestoreTrimmedOperation::CreateUndo()
 {
 	// Only create undo, if the source file is the main document file
 	if (NULL != m_pSaveOperation
 		|| ! m_DstFile.IsOpen()
 		|| m_DstFile.GetFileID() != pDocument->WaveFileID()
-		|| m_UndoStartPos == m_UndoEndPos)
+		|| m_DstStart == m_DstEnd)
 	{
 		return TRUE;
 	}
 
-	CSaveTrimmedOperation::auto_ptr pSave(
-										new CSaveTrimmedOperation(pDocument,
-																m_DstFile,
-																m_DstFile.PositionToSample(m_DstStart),
-																m_DstFile.PositionToSample(m_DstEnd),
-																m_DstChan));
+	m_pSaveOperation = new CSaveTrimmedOperation(pDocument,
+												m_DstFile,
+												m_DstFile.PositionToSample(m_DstStart),
+												m_DstFile.PositionToSample(m_DstEnd),
+												m_DstChan);
 
 	// should not keep a reference on the main document file
-	pSave->m_SrcFile.Close();
-
-	m_pSaveOperation = pSave.release();
-
-	m_UndoChain.InsertTail(m_pSaveOperation);
+	m_pSaveOperation->m_SrcFile.Close();
 
 	return TRUE;
 }
 
-void CRestoreTrimmedOperation::DeleteUndo()
-{
-	m_pSaveOperation = NULL;
-	BaseClass::DeleteUndo();
-}
-
-void CRestoreTrimmedOperation::DeInit()
+ListHead<COperationContext> * CRestoreTrimmedOperation::GetUndoChain()
 {
 	if (NULL != m_pSaveOperation)
 	{
+		m_pSaveOperation->m_UndoEndPos = m_DstPos;
 		m_pSaveOperation->m_SrcEnd = m_DstPos;
 		m_pSaveOperation->m_DstEnd = m_SrcPos;
+		m_DstStart = m_DstPos;
 
+		m_UndoChain.InsertHead(m_pSaveOperation);
 		m_pSaveOperation = NULL;
 	}
+	return BaseClass::GetUndoChain();
+}
 
-	BaseClass::DeInit();
+void CRestoreTrimmedOperation::DeleteUndo()
+{
+	delete m_pSaveOperation;
+	m_pSaveOperation = NULL;
+
+	BaseClass::DeleteUndo();
 }
 
 ////////////// CInitChannels
@@ -2523,7 +2568,7 @@ void CInitChannels::UnprepareUndo()
 	m_DstPos = m_DstEnd;    //??
 }
 
-BOOL CInitChannels::CreateUndo(BOOL /*IsRedo*/)
+BOOL CInitChannels::CreateUndo()
 {
 	if ( ! m_DstFile.IsOpen()
 		|| m_DstFile.GetFileID() != pDocument->WaveFileID())
@@ -2585,7 +2630,7 @@ CInitChannelsUndo::CInitChannelsUndo(CWaveSoapFrontDoc * pDoc,
 	m_SrcChan = Channels;
 }
 
-BOOL CInitChannelsUndo::CreateUndo(BOOL /*IsRedo*/)
+BOOL CInitChannelsUndo::CreateUndo()
 {
 	m_UndoChain.InsertTail(new CInitChannels(pDocument,
 											pDocument->m_WavFile,
@@ -2612,7 +2657,7 @@ CSelectionChangeOperation::CSelectionChangeOperation(CWaveSoapFrontDoc * pDoc,
 {
 }
 
-BOOL CSelectionChangeOperation::CreateUndo(BOOL /*IsRedo*/)
+BOOL CSelectionChangeOperation::CreateUndo()
 {
 	m_UndoChain.InsertTail(new CSelectionChangeOperation(pDocument,
 														pDocument->m_SelectionStart, pDocument->m_SelectionEnd,
@@ -2625,6 +2670,88 @@ BOOL CSelectionChangeOperation::OperationProc()
 {
 	pDocument->SetSelection(m_Start, m_End, m_Channels, m_Caret);
 	return TRUE;
+}
+
+///////////////////////////////////////////////////////////////////////
+CReverseOperation::CReverseOperation(CWaveSoapFrontDoc * pDoc,
+									LPCTSTR StatusString, LPCTSTR OperationName)
+	: BaseClass(pDoc, StatusString, OperationContextDiskIntensive, OperationName)
+	, m_pUndoLow(NULL)
+	, m_pUndoHigh(NULL)
+{
+}
+
+CReverseOperation::~CReverseOperation()
+{
+	delete m_pUndoLow;
+	delete m_pUndoHigh;
+}
+
+BOOL CReverseOperation::CreateUndo()
+{
+	if (NULL != m_pUndoLow
+		|| ! m_DstFile.IsOpen()
+		|| m_DstFile.GetFileID() != pDocument->WaveFileID())
+	{
+		return TRUE;
+	}
+
+	CCopyUndoContext::auto_ptr pUndo1(new CCopyUndoContext(pDocument, _T(""), m_OperationName));
+	CCopyUndoContext::auto_ptr pUndo2(new CCopyUndoContext(pDocument, _T(""), m_OperationName));
+
+	if ( ! pUndo1->InitUndoCopy(m_DstFile, m_DstStart, m_DstStart + (m_DstEnd - m_DstStart) / 2, m_DstChan))
+	{
+		return FALSE;
+	}
+
+	if ( ! pUndo2->InitUndoCopy(m_DstFile, m_DstEnd, m_DstStart + (m_DstEnd - m_DstStart) / 2, m_DstChan))
+	{
+		return FALSE;
+	}
+
+	m_pUndoLow = pUndo1.release();
+	m_pUndoHigh = pUndo2.release();
+
+	return TRUE;
+}
+
+ListHead<COperationContext> * CReverseOperation::GetUndoChain()
+{
+	if (NULL != m_pUndoLow)
+	{
+		m_pUndoLow->m_DstEnd = m_pUndoLow->m_DstPos;
+		m_pUndoLow->m_SrcEnd = m_pUndoLow->m_SrcPos;
+
+		m_UndoChain.InsertHead(m_pUndoLow);
+		m_pUndoLow = NULL;
+	}
+
+	if (NULL != m_pUndoHigh)
+	{
+		m_pUndoLow->m_DstEnd = m_pUndoLow->m_DstPos;
+		m_pUndoLow->m_SrcEnd = m_pUndoLow->m_SrcPos;
+
+		m_UndoChain.InsertHead(m_pUndoHigh);
+		m_pUndoHigh = NULL;
+	}
+
+	return BaseClass::GetUndoChain();
+}
+
+void CReverseOperation::DeleteUndo()
+{
+	delete m_pUndoLow;
+	m_pUndoLow = NULL;
+
+	delete m_pUndoHigh;
+	m_pUndoHigh = NULL;
+
+	BaseClass::DeleteUndo();
+}
+
+BOOL CReverseOperation::OperationProc()
+{
+	return FALSE;
 }
 
 ///////////////////////////////////////////////////////////////////////
