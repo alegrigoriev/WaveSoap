@@ -2086,6 +2086,10 @@ void CWaveSoapFrontView::UpdateMaxExtents(unsigned Length)
 {
 	CRect r;
 	GetClientRect( & r);
+	if (0 == r.Height())
+	{
+		return;
+	}
 	int nLowExtent = -32768 - 32767 / r.Height();
 	int nHighExtent = 32767;
 	if (GetDocument()->WaveChannels() > 1)
@@ -2102,6 +2106,10 @@ void CWaveSoapFrontView::UpdateVertExtents()
 {
 	CRect r;
 	GetClientRect( & r);
+	if (0 == r.Height())
+	{
+		return;
+	}
 	int nLowExtent = -32768 - 32768 / r.Height();
 	int nHighExtent = 32767;
 	if (GetDocument()->WaveChannels() > 1)
