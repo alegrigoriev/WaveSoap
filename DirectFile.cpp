@@ -888,7 +888,7 @@ long CDirectFile::WriteAt(const void *buf, long count, LONGLONG Position)
 CDirectFile::CDirectFileCache *
 	CDirectFile::CDirectFileCache::SingleInstance = NULL;
 
-CDirectFile::CDirectFileCache::CDirectFileCache(size_t CacheSize)
+CDirectFile::CDirectFileCache::CDirectFileCache(size_t MaxCacheSize)
 	: m_hThread(NULL),
 	m_hEvent(NULL),
 	m_pHeaders(NULL),
@@ -914,12 +914,16 @@ CDirectFile::CDirectFileCache::CDirectFileCache(size_t CacheSize)
 	// this is manual reset event
 	m_hThreadSuspendedEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
 	// round up to 64K
-	if (0 == CacheSize)
+	size_t CacheSize;
+	MEMORYSTATUS st;
+	GlobalMemoryStatus( & st);
+	CacheSize = st.dwTotalPhys / 8;
+	if (MaxCacheSize != 0
+		&& CacheSize > MaxCacheSize)
 	{
-		MEMORYSTATUS st;
-		GlobalMemoryStatus( & st);
-		CacheSize = st.dwTotalPhys / 16;
+		CacheSize = MaxCacheSize;
 	}
+
 	TRACE("Direct file CacheSize = %d MB\n", CacheSize / 0x100000);
 	CacheSize = (CacheSize + 0xFFFF) & ~0xFFFF;
 	m_pBuffersArray = VirtualAlloc(NULL, CacheSize, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);

@@ -1370,9 +1370,24 @@ void CResampleDialog::OnRadioChangeTempo()
 
 void CResampleDialog::OnHScroll(UINT nSBCode, UINT nPos, CScrollBar* pScrollBar)
 {
-	// TODO: Add your message handler code here and/or call default
-
 	CDialog::OnHScroll(nSBCode, nPos, pScrollBar);
+	int nId = pScrollBar->GetDlgCtrlID();
+	if (IDC_SLIDER_TEMPO == nId
+		&& m_SliderTempo.m_hWnd != NULL)
+	{
+		int pos = m_SliderTempo.GetPos();
+		CString s;
+		s.Format("%d", pos);
+		SetDlgItemText(IDC_EDIT_TEMPO, s);
+	}
+	else if (IDC_SLIDER_RATE == nId
+			&& m_SliderRate.m_hWnd != NULL)
+	{
+		int pos = m_SliderRate.GetPos();
+		CString s;
+		s.Format("%d", pos);
+		SetDlgItemText(IDC_EDIT_RATE, s);
+	}
 }
 
 void CResampleDialog::OnKillfocusEditRate()
@@ -1389,7 +1404,7 @@ void CResampleDialog::OnKillfocusEditRate()
 			return;
 		}
 		SliderPos = val;
-		m_SliderTempo.SetPos(SliderPos);
+		m_SliderRate.SetPos(SliderPos);
 	}
 
 }
@@ -1425,11 +1440,13 @@ BOOL CResampleDialog::OnInitDialog()
 	m_SliderTempo.SetTicFreq(25);
 	m_SliderTempo.SetLineSize(5);
 	m_SliderTempo.SetPageSize(25);
+	m_SliderTempo.SetPos(100);
 
 	m_SliderRate.SetRange(m_OldSampleRate / 4, m_OldSampleRate * 4);
 	m_SliderRate.SetTicFreq(m_OldSampleRate / 4);
 	m_SliderRate.SetLineSize(m_OldSampleRate / 20);
 	m_SliderRate.SetPageSize(m_OldSampleRate / 4);
+	m_SliderRate.SetPos(m_OldSampleRate);
 
 	if (m_bChangeSamplingRate)
 	{

@@ -129,11 +129,11 @@ public:
 
 	int m_DefaultPlaybackDevice;
 	int m_NumPlaybackBuffers;
-	size_t m_SizePlaybackBuffers;
+	ULONG m_SizePlaybackBuffers;
 
 	int m_DefaultRecordDevice;
 	int m_NumRecordBuffers;
-	size_t m_SizeRecordBuffers;
+	ULONG m_SizeRecordBuffers;
 
 	BOOL m_bReadOnly;
 	BOOL m_bDirectMode;
@@ -151,6 +151,7 @@ public:
 	BOOL m_bRememberSelectionInUndo;  // File proppage
 	BOOL m_bUseMemoryFiles;  // File proppage
 	int m_MaxMemoryFileSize;    // in Kbytes
+	int m_MaxFileCache;
 
 	BOOL m_bUseCountrySpecificNumberAndTime;
 	TCHAR m_TimeSeparator;

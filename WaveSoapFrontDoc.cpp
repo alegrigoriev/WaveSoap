@@ -3142,9 +3142,12 @@ void CWaveSoapFrontDoc::OnSoundPlay()
 	}
 	pContext->m_CurrentPlaybackPos = pContext->m_Begin;
 	pContext->m_Chan = m_SelectedChannel;
-	pContext->m_PlaybackDevice = GetApp()->m_DefaultPlaybackDevice;
-	if (false == pContext->m_WaveOut.AllocateBuffers(GetApp()->m_SizePlaybackBuffers,
-													GetApp()->m_NumPlaybackBuffers))
+
+	// TODO: move Open, Allocate to the Context->Init(), error messages to PostRetire
+	CThisApp * pApp = GetApp();
+	pContext->m_PlaybackDevice = pApp->m_DefaultPlaybackDevice;
+	if (false == pContext->m_WaveOut.AllocateBuffers(pApp->m_SizePlaybackBuffers,
+													pApp->m_NumPlaybackBuffers))
 	{
 		AfxMessageBox(IDS_STRING_UNABLE_TO_ALLOCATE_AUDIO_BUFFERS,
 					MB_OK | MB_ICONEXCLAMATION);
