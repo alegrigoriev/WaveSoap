@@ -264,8 +264,6 @@ protected:
 	IWMWriter * m_pWriter;
 	IWMWriterAdvanced * m_pWriterAdvanced;
 	IWMProfileManager * m_pProfileManager;
-	IWMProfile * m_pProfile;
-	IWMStreamConfig * m_pStreamConfig;
 
 	FileWriter m_FileWriter;
 	DWORD m_SampleTimeMs;

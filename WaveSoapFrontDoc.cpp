@@ -2461,7 +2461,6 @@ BOOL CWaveSoapFrontDoc::OnSaveWmaFile(int flags, LPCTSTR FullTargetName, WAVEFOR
 
 	CWaveFile NewWaveFile;
 
-	pWf->nAvgBytesPerSec = 128016 / 8;
 	DWORD FileSize = MulDiv(pWf->nAvgBytesPerSec, m_WavFile.GetDataChunk()->cksize,
 							m_WavFile.GetWaveFormat()->nAvgBytesPerSec);
 	if (FALSE == NewWaveFile.CreateWaveFile(& m_OriginalWavFile, pWf, ALL_CHANNELS,
@@ -2473,10 +2472,10 @@ BOOL CWaveSoapFrontDoc::OnSaveWmaFile(int flags, LPCTSTR FullTargetName, WAVEFOR
 		return FALSE;
 	}
 
-	WAVEFORMATEX * pNewFormat = NewWaveFile.AllocateWaveformat();
+	WAVEFORMATEX * pNewFormat = NewWaveFile.AllocateWaveformat(sizeof (WAVEFORMATEX) + pWf->cbSize);
 	if (NULL != pNewFormat)
 	{
-		* pNewFormat = * pWf;
+		memcpy(pNewFormat, pWf, sizeof (WAVEFORMATEX) + pWf->cbSize);
 	}
 
 	CFileSaveContext * pContext = new CFileSaveContext(this,

@@ -3760,13 +3760,12 @@ BOOL CWmaSaveContext::Init()
 	{
 		return FALSE;
 	}
-	// TODO: load the proper profile
+
 	m_Enc.SetFormat(m_DstFile.GetWaveFormat());
 	if ( ! m_Enc.OpenWrite(m_DstFile))
 	{
 		return FALSE;
 	}
-	//m_Enc.SetBitrate(128016);
 	return TRUE;
 }
 

@@ -345,16 +345,14 @@ BOOL CWaveSoapFileSaveDialog::OnFileNameOK()
 	}
 	CFileDialogWithHistory::OnFileNameOK();
 	// save format selection
-	if (m_FileType == SoundFileWav)
+	if (m_FileType == SoundFileWav
+		|| m_FileType == SoundFileWma)
 	{
 		m_SelectedFormat = m_AttributesCombo.GetCurSel();
 	}
 	else if (m_FileType == SoundFileMp3)
 	{
 		m_SelectedLameMp3Bitrate = Mp3Bitrates[m_AttributesCombo.GetCurSel()];
-	}
-	else if (m_FileType == SoundFileWma)
-	{
 	}
 
 	return 0;   // OK to close dialog
@@ -376,9 +374,6 @@ WAVEFORMATEX * CWaveSoapFileSaveDialog::GetWaveFormat()
 {
 	switch (m_FileType)
 	{
-	case SoundFileWma:
-		return NULL;
-		break;
 	case SoundFileRaw:
 		return NULL;
 		break;
@@ -389,6 +384,7 @@ WAVEFORMATEX * CWaveSoapFileSaveDialog::GetWaveFormat()
 			return NULL;
 		}
 	default:
+	case SoundFileWma:
 	case SoundFileWav:
 		if (m_SelectedFormat >= m_Formats.GetSize()
 			|| m_SelectedFormat < 0)
@@ -550,6 +546,7 @@ BOOL _stdcall CWaveSoapFileSaveDialog::FormatEnumCallback(
 
 	CWaveSoapFileSaveDialog * pDlg = pfcs->pDlg;
 	TRACE("FormatEnum: format=%s, tag=%d\n", pafd->szFormat, pafd->dwFormatTag);
+#ifdef _DEBUG
 	if (WAVE_FORMAT_MPEGLAYER3 == pafd->dwFormatTag)
 	{
 		MPEGLAYER3WAVEFORMAT * pwf = (MPEGLAYER3WAVEFORMAT *) pafd->pwfx;
@@ -557,6 +554,7 @@ BOOL _stdcall CWaveSoapFileSaveDialog::FormatEnumCallback(
 			pafd->szFormat, pafd->pwfx->cbSize, pwf->wID, pwf->fdwFlags,
 			pwf->nBlockSize, pwf->nFramesPerBlock, pwf->nCodecDelay);
 	}
+#endif
 	if (pDlg->m_CurrentEnumeratedTag == pafd->dwFormatTag)
 	{
 		if (pfcs->Flags & MatchCompatibleFormats)
@@ -582,6 +580,18 @@ BOOL _stdcall CWaveSoapFileSaveDialog::FormatEnumCallback(
 				&& (0 == (pfcs->Flags & MatchSamplingRate)
 					|| pafd->pwfx->nSamplesPerSec == pDlg->m_pWf->nSamplesPerSec))
 			{
+#ifdef _DEBUG
+				if (WAVE_FORMAT_MSAUDIO1 == pafd->dwFormatTag
+					|| WAVE_FORMAT_MSAUDIO1+1 == pafd->dwFormatTag)
+				{
+					WAVEFORMATEX * pWfx = pafd->pwfx;
+					DWORD * pExt = (DWORD *) (pWfx + 1);
+					TRACE("Format: %d, BytesPerSec: %d, BlockAlign: %d, cbSize: %d\n",
+						pWfx->wFormatTag, pWfx->nAvgBytesPerSec,
+						pWfx->nBlockAlign, pWfx->cbSize);
+					TRACE("FormatExtension: %08X, %08X, %08X\n", pExt[0], pExt[1], pExt[2]);
+				}
+#endif
 				int nIndex = pDlg->m_Formats.GetSize();
 				pDlg->m_Formats.SetSize(nIndex+1);
 				pDlg->m_Formats[nIndex].SetData(pafd->pwfx, pafd->szFormat);
@@ -648,32 +658,73 @@ void CWaveSoapFileSaveDialog::FillFormatCombo(int SelFormat, int Flags)
 
 	m_AttributesCombo.ResetContent();
 	DWORD dwFormatTag = m_FormatTags[SelFormat].dwTag;
+	int i;
+
+	for (i = 0; i < m_Formats.GetSize(); i++)
+	{
+		m_AttributesCombo.AddString(m_Formats[i].Name);
+	}
+
 	int sel = -1;
-	for (int i = 0; i < m_Formats.GetSize(); i++)
+	int BestMatch = 0;
+	for (i = 0; i < m_Formats.GetSize(); i++)
 	{
 		WAVEFORMATEX * pwf = m_Formats[i].pWf;
 		if (dwFormatTag == m_pWf->wFormatTag)
 		{
-			// select exact match
+			// exact match found
 			if (0 == memcmp(pwf, m_pWf, m_pWf->cbSize + sizeof (WAVEFORMATEX)))
+			{
+				sel = i;
+				break;
+			}
+		}
+		// select the best match
+		// Sample rate must match, then number of channels might match
+		// If original format is non PCM and the queried format is the same format
+		int match = 0;
+		if (pwf->nSamplesPerSec == m_pWf->nSamplesPerSec)
+		{
+			match += 8;
+		}
+		if (pwf->nChannels == m_pWf->nChannels)
+		{
+			match += 4;
+		}
+		if (pwf->nAvgBytesPerSec == m_pWf->nAvgBytesPerSec)
+		{
+			match += 1;
+		}
+
+		if (match > BestMatch)
+		{
+			BestMatch = match;
+			sel = i;
+			continue;
+		}
+		if (0 == match
+			|| match < BestMatch)
+		{
+			continue;
+		}
+		if (dwFormatTag == WAVE_FORMAT_PCM)
+		{
+			if (-1 == sel
+				|| pwf->wBitsPerSample >= m_Formats[sel].pWf->wBitsPerSample)
 			{
 				sel = i;
 			}
 		}
 		else
 		{
-			// select the best match
-			// Sample rate must match, then number of channels might match
-			// If original format is non PCM and the queried format is the same format
-			if (pwf->nSamplesPerSec == m_pWf->nSamplesPerSec
-				&& (-1 == sel || (pwf->nChannels == m_pWf->nChannels
-						&& pwf->wBitsPerSample >= m_Formats[sel].pWf->wBitsPerSample)))
+			if (-1 == sel
+				|| pwf->nAvgBytesPerSec >= m_Formats[sel].pWf->nAvgBytesPerSec)
 			{
 				sel = i;
 			}
 		}
-		m_AttributesCombo.AddString(m_Formats[i].Name);
 	}
+
 	if (-1 == sel)
 	{
 		if (dwFormatTag != WAVE_FORMAT_PCM)
@@ -705,6 +756,7 @@ void CWaveSoapFileSaveDialog::FillFormatCombo(int SelFormat, int Flags)
 				acmFormatDetails(NULL, & afd, ACM_FORMATDETAILSF_FORMAT);
 				m_Formats.InsertAt(0, SaveFormat());
 				m_Formats[0].SetData( & wf, afd.szFormat);
+
 				m_AttributesCombo.InsertString(0, afd.szFormat);
 			}
 			if (m_pWf->nChannels == m_Formats[0].pWf->nChannels)
