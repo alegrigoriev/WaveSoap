@@ -2119,7 +2119,7 @@ void CUndoRedoContext::PostRetire(BOOL bChildContext)
 	{
 		if (pDocument->m_ModificationSequenceNumber >= 0)
 		{
-			pDocument->IncrementModified(FALSE);    // bDeleteRedo=FALSE
+			pDocument->IncrementModified(FALSE, TRUE);    // bDeleteRedo=FALSE
 		}
 	}
 }
@@ -3116,24 +3116,33 @@ BOOL CConversionContext::OperationProc()
 				}
 				return FALSE;
 			}
+			// save UNDO
+			// save the changed data to undo buffer
 			pDstBuf = (char *) pOriginalDstBuf;
 			LeftToWrite = WasLockedToWrite;
+			if (NULL != m_pUndoContext)
+			{
+				m_pUndoContext->SaveUndoData(pDstBuf, WasLockedToWrite,
+											m_DstCopyPos, m_DstChan);
+				m_pUndoContext->m_DstEnd = m_pUndoContext->m_SrcSavePos;
+				m_pUndoContext->m_SrcEnd = m_pUndoContext->m_DstSavePos;
+			}
 
 		}
 
 		int SrcBufUsed = 0;
 
 		int DstBufUsed = m_ProcBatch.ProcessSound(pSrcBuf, pDstBuf, LeftToRead,
-												LeftToWrite, & SrcBufUsed, m_SrcFile.Channels());
+												LeftToWrite, & SrcBufUsed);
 
 		if (0 == SrcBufUsed && 0 == DstBufUsed)
 		{
 			m_Flags |= OperationContextFinished;
 			break;
 		}
-		TRACE("ResampleContext: SrcPos=%d (0x%X), DstPos=%d (0x%X), src: %d bytes, dst: %d bytes\n",
-			m_SrcCopyPos, m_SrcCopyPos, m_DstCopyPos, m_DstCopyPos,
-			SrcBufUsed, DstBufUsed);
+		if (0) TRACE("ResampleContext: SrcPos=%d (0x%X), DstPos=%d (0x%X), src: %d bytes, dst: %d bytes\n",
+					m_SrcCopyPos, m_SrcCopyPos, m_DstCopyPos, m_DstCopyPos,
+					SrcBufUsed, DstBufUsed);
 		LeftToRead -= SrcBufUsed;
 		m_SrcCopyPos += SrcBufUsed;
 		pSrcBuf += SrcBufUsed;
@@ -3171,6 +3180,14 @@ BOOL CConversionContext::OperationProc()
 		m_DstFile.ReturnDataBuffer(pOriginalDstBuf, WasLockedToWrite,
 									CDirectFile::ReturnBufferDirty);
 	}
+
+	// notify the view
+	int nSampleSize = m_DstFile.SampleSize();
+	int nFirstSample = (dwOperationBegin - m_DstFile.GetDataChunk()->dwDataOffset)
+						/ nSampleSize;
+	int nLastSample = (m_DstCopyPos - m_DstFile.GetDataChunk()->dwDataOffset)
+					/ nSampleSize;
+	pDocument->SoundChanged(m_DstFile.GetFileID(), nFirstSample, nLastSample);
 
 	if (m_SrcEnd > m_SrcStart)
 	{
