@@ -50,6 +50,14 @@ public:
 	BOOL AllocateWaveBuffer(size_t size = 0x100000);    // 1M default
 	void FreeWaveBuffer();
 
+	LONG m_CaretPosition;
+	LONG m_SelectionStart;
+	LONG m_SelectionEnd;
+	int m_SelectedChannel; // 0, 1, 2
+	bool m_TimeSelectionMode;
+	void SetSelection(int begin, int end, int channel, int caret);
+	enum {UpdateSelectionChanged = 1, UpdateSelectionModeChanged = 2};
+
 // Implementation
 public:
 	virtual ~CWaveSoapFrontDoc();
@@ -74,6 +82,10 @@ public:
 			return 0;
 		}
 	}
+	int WaveChannels() const
+	{
+		return m_WavFile.m_pWf->nChannels;
+	}
 
 	void SavePeakInfo();
 	BOOL OpenWaveFile();
@@ -91,6 +103,17 @@ protected:
 	//    DO NOT EDIT what you see in these blocks of generated code !
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
+};
+
+class CSelectionUpdateInfo : public CObject
+{
+public:
+	CSelectionUpdateInfo() {}
+	~CSelectionUpdateInfo() {}
+	int SelBegin;
+	int SelEnd;
+	int SelChannel;
+	int CaretPos;
 };
 
 struct PeakFileHeader
