@@ -2,14 +2,25 @@
 
 #ifndef WAVESUPPORT_H__
 #define WAVESUPPORT_H__
+#include <vector>
 
 enum {
-	WaveFormatMatchBytesPerSec = 1,
-	WaveFormatMatchCnahhels = 2,
-	WaveFormatMatchSampleRate = 4,
-	WaveFormatMatch16Bits = 8,
-	WaveFormatMatchFormatTag = 0x20,
+	WaveFormatMatchBitsPerSample = 1,
+	WaveFormatMatchBytesPerSec = 2,
+	WaveFormatMatchCnannels = 4,
+	WaveFormatMatchSampleRate = 8,
+	WaveFormatMatch16Bits = 0x10,
+	WaveFormatMatchFormatTag = 0x40,
 	WaveFormatExactMatch = 0x100,
+	WaveFormatAllFieldsMatch =
+		WaveFormatExactMatch
+		| WaveFormatMatchBytesPerSec
+		| WaveFormatMatchCnannels
+		| WaveFormatMatchSampleRate
+		| WaveFormatMatchBitsPerSample
+		| WaveFormatMatchFormatTag,
+	WaveFormatMatchCompatibleFormats = 0x10000,
+	WaveFormatExcludeFormats = 0x20000,
 };
 struct CWaveFormat
 {
@@ -107,8 +118,9 @@ struct CWaveFormat
 		return m_pWf + 1;
 	}
 	void InitFormat(WORD wFormatTag, DWORD nSampleRate,
-					WORD nNumChannels, WORD nBitsPerSample = 16)
+					WORD nNumChannels, WORD nBitsPerSample = 16, WORD Size = 0)
 	{
+		m_pWf->cbSize = Size;
 		m_pWf->wFormatTag = wFormatTag;
 		m_pWf->nSamplesPerSec = nSampleRate;
 		m_pWf->nChannels = nNumChannels;
@@ -147,7 +159,7 @@ protected:
 	enum {BUF_USED = 1 };
 
 	UINT m_id;
-	WAVEFORMATEX * m_pwfe;
+	CWaveFormat m_wfe;
 	CRITICAL_SECTION cs;
 	HANDLE hEvent;
 	BUFFER_STRUCT * m_pBufs;
@@ -215,6 +227,83 @@ private:
 class CAudioMixer
 {
 	HMIXER m_hmix;
+};
+
+struct WaveFormatTagEx
+{
+	int Tag;
+	GUID SubFormat;
+	bool operator ==(WaveFormatTagEx const & wfx) const
+	{
+		return Tag == wfx.Tag
+				&& (Tag != WAVE_FORMAT_EXTENSIBLE || SubFormat == wfx.SubFormat);
+	}
+
+	bool operator ==(WAVEFORMATEX const * wfx) const
+	{
+		return Tag == wfx->wFormatTag
+				&& (Tag != WAVE_FORMAT_EXTENSIBLE
+					|| SubFormat == ((PWAVEFORMATEXTENSIBLE)wfx)->SubFormat);
+	}
+
+	operator =(WAVEFORMATEX const * pwf)
+	{
+		Tag = pwf->wFormatTag;
+		if (Tag != WAVE_FORMAT_EXTENSIBLE)
+		{
+			memzero(SubFormat);
+		}
+		else
+		{
+			SubFormat = ((PWAVEFORMATEXTENSIBLE)pwf)->SubFormat;
+		}
+	}
+};
+class CAudioCompressionManager
+{
+public:
+	struct FormatTagItem
+	{
+		FormatTagItem() : m_hadid(NULL) {}
+
+		void SetData(WaveFormatTagEx & pwf, CString const & name, HACMDRIVERID hadid)
+		{
+			Tag = pwf;
+			Name = name;
+			m_hadid = hadid;
+		}
+
+		WaveFormatTagEx Tag;
+		HACMDRIVERID m_hadid;
+		CString Name;
+	};
+
+	struct FormatItem
+	{
+		CWaveFormat Wf;
+		CString Name;
+	};
+
+	std::vector<FormatTagItem> m_FormatTags;
+	std::vector<FormatItem> m_Formats;
+
+	void FillFormatArray(unsigned nSel, int Flags);
+	void FillFormatTagArray(WAVEFORMATEX * pwf,
+							WaveFormatTagEx const ListOfTags[],
+							int NumTags, DWORD flags = 0);
+	void FillWmaFormatArray();
+	void FillMp3EncoderArray();
+	void FillMp3FormatArray();
+	static BOOL _stdcall FormatTestEnumCallback(
+												HACMDRIVERID hadid, LPACMFORMATDETAILS pafd,
+												DWORD dwInstance, DWORD fdwSupport);
+	static BOOL _stdcall FormatTagEnumCallback(
+												HACMDRIVERID hadid, LPACMFORMATTAGDETAILS paftd,
+												DWORD dwInstance, DWORD fdwSupport);
+	static BOOL _stdcall FormatEnumCallback(
+											HACMDRIVERID hadid, LPACMFORMATDETAILS pafd,
+											DWORD dwInstance, DWORD fdwSupport);
+	CWaveFormat m_Wf;
 };
 WAVEFORMATEX * CopyWaveformat(const WAVEFORMATEX * src);
 #endif // #ifndef WAVESUPPORT_H__

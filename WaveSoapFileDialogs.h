@@ -146,8 +146,8 @@ public:
 	CWaveFile m_WaveFile;
 	CComboBox m_FormatCombo;
 	CComboBox m_AttributesCombo;
-	DWORD m_CurrentEnumeratedTag;
-	DWORD m_SelectedTag;
+
+	WaveFormatTagEx m_SelectedTag;
 	int m_SelectedFormat;
 	int m_FileType;// Wav, Mp3, wma, raw...
 	int m_SelectedRawFormat;
@@ -163,71 +163,27 @@ public:
 	CString m_FormatTagName;
 	CString m_DefExt[10];
 
-	struct SaveFormatTag
-	{
-		SaveFormatTag() : dwTag(-1) {}
-		~SaveFormatTag() {}
-		void SetData(DWORD tag, LPCTSTR name, HACMDRIVERID hadid)
-		{
-			dwTag = tag;
-			Name = name;
-			m_hadid = hadid;
-		}
-
-		DWORD dwTag;
-		HACMDRIVERID m_hadid;
-		CString Name;
-	};
-
-	struct SaveFormat
-	{
-		SaveFormat() : pWf(NULL) {}
-		~SaveFormat()
-		{
-			if (NULL != pWf)
-			{
-				delete[] (char*) pWf;
-			}
-		}
-
-		void SetData(WAVEFORMATEX * wf, LPCTSTR name)
-		{
-			pWf = CopyWaveformat(wf);
-			Name = name;
-		}
-
-		WAVEFORMATEX * pWf;
-		CString Name;
-	};
-
-	CArray<SaveFormatTag, SaveFormatTag&> m_FormatTags;
-	CArray<SaveFormat, SaveFormat&> m_Formats;
-
 	CWaveFormat m_Wf; // original format
 	CString WaveFormat;
 	CWaveSoapFrontDoc * m_pDocument;
+
+	CAudioCompressionManager m_Acm;
 
 	virtual BOOL OnFileNameOK();
 	virtual UINT OnShareViolation( LPCTSTR lpszPathName );
 
 	void ShowDlgItem(UINT nID, int nCmdShow);
-	enum {
-		MatchNumChannels = 0x01,
-		MatchBitsPerSample = 0x02,
-		MatchSamplingRate = 0x04,
-		MatchCompatibleFormats = 0x08,
-		MatchFormatTag = 0x08,
 
-	};
-	void FillFormatArray(int nSel, int Flags);
 	void FillFormatCombo(int nSel, int Flags);
 	void FillFormatCombo(int nSel)
 	{
 		FillFormatCombo(nSel,
-						m_bCompatibleFormatsOnly ? MatchCompatibleFormats : MatchFormatTag);
+						m_bCompatibleFormatsOnly ?
+							WaveFormatMatchCompatibleFormats
+						: WaveFormatMatchFormatTag);
 	}
-	void FillFormatTagArray(int const ListOfTags[], int NumTags);
-	void FillFormatTagCombo(int const ListOfTags[] = NULL, int NumTags = 0);
+
+	void FillFormatTagCombo(WaveFormatTagEx const ListOfTags[] = NULL, int NumTags = 0, DWORD Flags = 0);
 
 	void FillWmaFormatArray();
 	void FillMp3EncoderArray();
@@ -249,15 +205,6 @@ public:
 	afx_msg void OnComboFormatsChange();
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
-private:
-	static BOOL _stdcall FormatEnumCallback(HACMDRIVERID hadid,
-											LPACMFORMATDETAILS pafd, DWORD dwInstance, DWORD fdwSupport);
-
-	static BOOL _stdcall FormatTestEnumCallback(HACMDRIVERID hadid,
-												LPACMFORMATDETAILS pafd, DWORD dwInstance, DWORD fdwSupport);
-
-	static BOOL _stdcall FormatTagEnumCallback(HACMDRIVERID hadid,
-												LPACMFORMATTAGDETAILS paftd, DWORD dwInstance, DWORD fdwSupport);
 };
 
 
