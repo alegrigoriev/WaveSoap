@@ -553,7 +553,7 @@ BOOL CWaveFile::LoadMetadata()
 			}
 			if (CF_TEXT == id
 				|| ! ReadChunkString(chunk.cksize - sizeof id,
-									pInstData->DisplayTitle))
+									pInstData->m_DisplayTitle))
 			{
 				return FALSE;
 			}
@@ -2513,28 +2513,89 @@ SAMPLE_INDEX CWaveFile::PositionToSample(SAMPLE_POSITION position) const
 }
 
 using CWaveFile::InstanceDataWav;
-void InstanceDataWav::CopyMetadata(InstanceDataWav const & src)
+void InstanceDataWav::CopyMetadata(InstanceDataWav const * pSrc, unsigned CopyFlags)
 {
-	DisplayTitle = src.DisplayTitle;
-#if 0
-	Album = src.Album;
-	Author = src.Author;
-	Date = src.Date;
-	Genre = src.Genre;
-	Comment = src.Comment;
-	Title = src.Title;
-#else
-	m_InfoList = src.m_InfoList;
-	m_InfoListW = src.m_InfoListW;
-#endif
+	if (CopyFlags & MetadataCopyDisp)
+	{
+		m_DisplayTitle = pSrc->m_DisplayTitle;
+	}
 
-	m_RegionMarkers = src.m_RegionMarkers;
-	m_CuePoints = src.m_CuePoints;
-	m_Playlist = src.m_Playlist;
-	m_Labels = src.m_Labels;
-	m_Notes = src.m_Notes;
+	if (CopyFlags & MetadataCopyInfo)
+	{
+		m_InfoList = pSrc->m_InfoList;
+		m_InfoListW = pSrc->m_InfoListW;
+	}
 
-	m_PeakData = src.m_PeakData;
+	if (CopyFlags & MetadataCopyLtxt)
+	{
+		m_RegionMarkers = pSrc->m_RegionMarkers;
+	}
+
+	if (CopyFlags & MetadataCopyCue)
+	{
+		m_CuePoints = pSrc->m_CuePoints;
+	}
+
+	if (CopyFlags & MetadataCopyPlaylist)
+	{
+		m_Playlist = pSrc->m_Playlist;
+	}
+
+	if (CopyFlags & MetadataCopyLabels)
+	{
+		m_Labels = pSrc->m_Labels;
+		m_Notes = pSrc->m_Notes;
+	}
+
+	if (CopyFlags & MetadataCopyPeakData)
+	{
+		m_PeakData = pSrc->m_PeakData;
+	}
+
+	m_InfoChanged = true;
+}
+
+void CWaveFile::InstanceDataWav::SwapMetadata(InstanceDataWav * pSrc, unsigned CopyFlags)
+{
+	if (CopyFlags & MetadataCopyDisp)
+	{
+		CString tmp(m_DisplayTitle);
+		m_DisplayTitle = pSrc->m_DisplayTitle;
+		pSrc->m_DisplayTitle = tmp;
+	}
+
+	if (CopyFlags & MetadataCopyInfo)
+	{
+		m_InfoList.swap(pSrc->m_InfoList);
+		m_InfoListW.swap(pSrc->m_InfoListW);
+	}
+
+	if (CopyFlags & MetadataCopyLtxt)
+	{
+		m_RegionMarkers.swap(pSrc->m_RegionMarkers);
+	}
+
+	if (CopyFlags & MetadataCopyCue)
+	{
+		m_CuePoints.swap(pSrc->m_CuePoints);
+	}
+
+	if (CopyFlags & MetadataCopyPlaylist)
+	{
+		m_Playlist.swap(pSrc->m_Playlist);
+	}
+
+	if (CopyFlags & MetadataCopyLabels)
+	{
+		m_Labels.swap(pSrc->m_Labels);
+		m_Notes.swap(pSrc->m_Notes);
+	}
+
+	if (CopyFlags & MetadataCopyPeakData)
+	{
+		m_PeakData = pSrc->m_PeakData;
+	}
+
 	m_InfoChanged = true;
 }
 
@@ -2549,7 +2610,7 @@ InstanceDataWav & InstanceDataWav::operator =(InstanceDataWav const & src)
 	factck = src.factck;
 	wf = src.wf;
 
-	CopyMetadata(src);
+	CopyMetadata( & src);
 
 	BaseInstanceClass::operator =(src);
 	return *this;
@@ -2557,7 +2618,7 @@ InstanceDataWav & InstanceDataWav::operator =(InstanceDataWav const & src)
 
 void InstanceDataWav::ResetMetadata()
 {
-	DisplayTitle.Empty();
+	m_DisplayTitle.Empty();
 #if 0
 	Author.Empty();
 	Album.Empty();
@@ -2576,6 +2637,7 @@ void InstanceDataWav::ResetMetadata()
 	DigitizationSource.Empty();
 #else
 	m_InfoList.clear();
+	m_InfoListW.clear();
 #endif
 
 	m_RegionMarkers.clear();
@@ -2588,6 +2650,15 @@ void InstanceDataWav::ResetMetadata()
 
 }
 
+void CWaveFile::SwapMetadata(InstanceDataWav * pSrc, unsigned SwapFlags)
+{
+	InstanceDataWav * pDst = GetInstanceData();
+	if (NULL != pDst)
+	{
+		pDst->SwapMetadata(pSrc, SwapFlags );
+	}
+}
+
 void CWaveFile::CopyMetadata(CWaveFile const & src)
 {
 	InstanceDataWav * pDst = GetInstanceData();
@@ -2595,7 +2666,7 @@ void CWaveFile::CopyMetadata(CWaveFile const & src)
 	if (NULL != pDst
 		&& NULL != pSrc)
 	{
-		pDst->CopyMetadata(*pSrc);
+		pDst->CopyMetadata(pSrc);
 	}
 }
 

@@ -540,7 +540,7 @@ public:
 		CWaveFormat wf;
 		CWavePeaks m_PeakData;
 
-		CString DisplayTitle;   // DISP, WM/Title
+		CString m_DisplayTitle;   // DISP, WM/Title
 #if 0
 		CString Author;         // WM/Author
 		CString Album;          // WM/AlbumTitle
@@ -582,7 +582,21 @@ public:
 			m_size = sizeof *this;
 		}
 		// move all data to a derived (bigger) type
-		virtual void CopyMetadata(InstanceDataWav const & src);
+		virtual void CopyMetadata(InstanceDataWav const * pSrc, unsigned CopyFlags = MetadataCopyAll);
+		virtual void SwapMetadata(InstanceDataWav * pSrc, unsigned SwapFlags = MetadataCopyAll);
+
+		enum {
+			MetadataCopyDisp = 0x001,
+			MetadataCopyInfo = 0x002,
+			MetadataCopyCue = 0x004,
+			MetadataCopyLabels = 0x008,
+			MetadataCopyPeakData = 0x010,
+			MetadataCopyLtxt = 0x020,
+			MetadataCopyPlaylist = 0x040,
+
+			MetadataCopyAllCueData = MetadataCopyCue | MetadataCopyLabels | MetadataCopyLtxt,
+			MetadataCopyAll = 0xFFFF,
+		};
 
 		CuePointChunkItem * GetCuePoint(DWORD CueId);
 		WaveRegionMarker * GetRegionMarker(DWORD CueId);
@@ -609,6 +623,7 @@ public:
 	};
 
 	void CopyMetadata(CWaveFile const & src);
+	void SwapMetadata(InstanceDataWav * pSrc, unsigned SwapFlags = InstanceDataWav::MetadataCopyAll);
 
 	InstanceDataWav * GetInstanceData() const
 	{
