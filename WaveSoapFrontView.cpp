@@ -105,30 +105,18 @@ CWaveSoapFrontView::CWaveSoapFrontView()
 	m_PrevHorizontalScale(-1),
 	m_VerticalScale(1.),
 	m_WaveOffsetY(0.),
-//m_FirstSampleInBuffer(0),
-//m_pWaveBuffer(NULL),
-//m_WaveBufferSize(0),
 	m_PlaybackCursorChannel(0),
 	m_PlaybackCursorDrawn(false),
 	m_NewSelectionMade(false),
 	m_AutoscrollTimerID(0),
 	m_PlaybackCursorDrawnSamplePos(0),
 	m_WheelAccumulator(0)
-//, m_WaveDataSizeInBuffer(0)
 {
 	TRACE("CWaveSoapFrontView::CWaveSoapFrontView()\n");
 }
 
 CWaveSoapFrontView::~CWaveSoapFrontView()
 {
-	TRACE("CWaveSoapFrontView::~CWaveSoapFrontView()\n");
-#if 0
-	if (NULL != m_pWaveBuffer)
-	{
-		delete[] m_pWaveBuffer;
-		m_pWaveBuffer = NULL;
-	}
-#endif
 }
 
 BOOL CWaveSoapFrontView::PreCreateWindow(CREATESTRUCT& cs)
@@ -136,7 +124,7 @@ BOOL CWaveSoapFrontView::PreCreateWindow(CREATESTRUCT& cs)
 	// Modify the Window class or styles here by modifying
 	//  the CREATESTRUCT cs
 	cs.lpszClass = AfxRegisterWndClass(CS_VREDRAW | CS_DBLCLKS, NULL, NULL, NULL);
-	TRACE("CWaveSoapFrontView::PreCreateWindow(CREATESTRUCT)\n");
+	//TRACE("CWaveSoapFrontView::PreCreateWindow(CREATESTRUCT)\n");
 	return BaseClass::PreCreateWindow(cs);
 }
 
