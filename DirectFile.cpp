@@ -2370,7 +2370,7 @@ BOOL File::ReadFileAt(LONGLONG Position, void * pBuf, DWORD ToRead, DWORD * pWas
 										NULL, LastError, 0, reinterpret_cast<LPTSTR>( & pszTemp),
 										0, NULL);
 
-		s.Format(IDC_FILE_READ_ERROR, LPCTSTR(m_FileName), LPCTSTR(pszTemp));
+		s.Format(IDS_FILE_READ_ERROR, LPCTSTR(m_FileName), LPCTSTR(pszTemp));
 
 		DWORD flags = MB_DEFBUTTON2 | MB_ICONERROR | MB_CANCELTRYCONTINUE | MB_SETFOREGROUND;
 		if (0x80000000 & GetVersion())
