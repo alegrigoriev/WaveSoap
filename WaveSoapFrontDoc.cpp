@@ -10,6 +10,7 @@
 #include "OperationDialogs.h"
 #include "OperationDialogs2.h"
 #include <afxpriv.h>
+#include <Dlgs.h>
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -212,6 +213,7 @@ public:
 	int m_SelectedFormat;
 	BOOL m_bCompatibleFormatsOnly;
 	CString m_FormatTagName;
+	CString m_DefExt[10];
 
 	CArray<SaveFormatTag, SaveFormatTag&> m_FormatTags;
 	CArray<SaveFormat, SaveFormat&> m_Formats;
@@ -232,7 +234,7 @@ public:
 	void FillFormatTagArray();
 	WAVEFORMATEX * GetWaveFormat();
 	virtual void OnInitDone();
-	//virtual void OnTypeChange();
+	virtual void OnTypeChange();
 	//void ClearFileInfoDisplay();
 
 	//{{AFX_MSG(CWaveSoapFileSaveDialog)
@@ -868,14 +870,45 @@ void CWaveSoapFileSaveDialog::OnInitDone()
 	FillFormatTagArray();
 	FillFormatArray();
 }
-BOOL CWaveSoapFrontDoc::DoSave(LPCTSTR lpszPathName, BOOL bReplace)
-	// Save the document data to a file
-	// lpszPathName = path name where to save document file
-	// if lpszPathName is NULL then the user will be prompted (SaveAs)
-	// note: lpszPathName can be different than 'm_strPathName'
-	// if 'bReplace' is TRUE will change file name if successful (SaveAs)
-	// if 'bReplace' is FALSE will not change path name (SaveCopyAs)
+
+void CWaveSoapFileSaveDialog::OnTypeChange()
 {
+	TRACE("Current type = %d\n", m_ofn.nFilterIndex);
+	// get file name
+	CString name;
+	// set new default extension
+	CWnd * pParent = GetParent();
+	pParent->SendMessage(CDM_SETDEFEXT, 0, LPARAM(LPCTSTR(m_DefExt[m_ofn.nFilterIndex])));
+	pParent->GetDlgItem(edt1)->GetWindowText(name);
+	// get the extension
+	if (name.IsEmpty())
+	{
+		return;
+	}
+	int idx = name.ReverseFind('.');
+	// replace the extension
+	if (idx == -1)
+	{
+		// no need to replace ???
+		return;
+	}
+	else if (idx >= name.GetLength() - 4)
+	{
+		name.Delete(idx + 1, name.GetLength() - idx - 1);
+		name += m_DefExt[m_ofn.nFilterIndex];
+	}
+	pParent->SendMessage(CDM_SETCONTROLTEXT, edt1, LPARAM(LPCTSTR(name)));
+}
+
+// Save the document data to a file
+// lpszPathName = path name where to save document file
+// if lpszPathName is NULL then the user will be prompted (SaveAs)
+// note: lpszPathName can be different than 'm_strPathName'
+// if 'bReplace' is TRUE will change file name if successful (SaveAs)
+// if 'bReplace' is FALSE will not change path name (SaveCopyAs)
+BOOL CWaveSoapFrontDoc::DoSave(LPCTSTR lpszPathName, BOOL bReplace)
+{
+	CThisApp * pApp = GetApp();
 	WAVEFORMATEX * pWf;
 	WAVEFORMATEX * pOriginalWf = NULL;
 	if (m_OriginalWavFile.IsOpen())
@@ -931,6 +964,16 @@ BOOL CWaveSoapFrontDoc::DoSave(LPCTSTR lpszPathName, BOOL bReplace)
 			}
 		}
 
+		int idx = newName.ReverseFind('.');
+		// replace the extension
+		if (idx != -1
+			&& idx >= newName.GetLength() - 4
+			&& 0 != stricmp(LPCTSTR(newName) + idx+1, "wav"))
+		{
+			newName.Delete(idx + 1, newName.GetLength() - idx - 1);
+			newName += "wav";
+		}
+
 		CWaveSoapFileSaveDialog dlg(FALSE, "wav", newName,
 									OFN_HIDEREADONLY
 									| OFN_PATHMUSTEXIST
@@ -944,6 +987,8 @@ BOOL CWaveSoapFrontDoc::DoSave(LPCTSTR lpszPathName, BOOL bReplace)
 		dlg.m_ofn.lpTemplateName = MAKEINTRESOURCE(IDD_DIALOG_SAVE_TEMPLATE);
 		dlg.m_pWf = pWf;
 		dlg.m_pDocument = this;
+		dlg.m_DefExt[1] = _T("wav");
+		dlg.m_DefExt[2] = _T("mp3");
 
 		CString strFilter;
 		CString strDefault;
@@ -971,7 +1016,9 @@ BOOL CWaveSoapFrontDoc::DoSave(LPCTSTR lpszPathName, BOOL bReplace)
 		//dlg.m_ofn.lpstrTitle = title;
 //	dlgFile.m_ofn.lpstrFile = fileName.GetBuffer(_MAX_PATH);
 
-		CThisApp * pApp = GetApp();
+		// add the proper file type extension
+		// todo: get from saved in the registry
+		dlg.m_ofn.nFilterIndex = 1;
 
 		if (IDOK != dlg.DoModal())
 		{

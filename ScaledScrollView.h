@@ -38,19 +38,20 @@ protected:
 	virtual CMenu * ModifyPopupMenu(CMenu * pMenu);
 	virtual CMenu * GetPopupMenu(CMenu * pMenu, CPoint point);
 // Operations
+	virtual void DoZoom(double dHorScale, double dVertScale, CPoint ptCenter);
 public:
-	virtual BOOL Zoom(double dHorScale, double dVertScale,
+	virtual void Zoom(double dHorScale, double dVertScale,
 					CPoint ptCenter = CPoint(INT_MAX, INT_MAX));
 	// ptCenter - Client coordinates
-	BOOL ZoomIn(double dScale = 2.,
+	void ZoomIn(double dScale = 2.,
 				CPoint ptCenter = CPoint(INT_MAX, INT_MAX))
 	{
-		return Zoom(dScale, dScale, ptCenter);
+		Zoom(dScale, dScale, ptCenter);
 	}
-	BOOL ZoomOut(double dScale = 2.,
+	void ZoomOut(double dScale = 2.,
 				CPoint ptCenter = CPoint(INT_MAX, INT_MAX))
 	{
-		return Zoom(1. / dScale, 1. / dScale, ptCenter);
+		Zoom(1. / dScale, 1. / dScale, ptCenter);
 	}
 	void ZoomInSelection(DWORD flags);
 	void ZoomOutSelection(DWORD flags);

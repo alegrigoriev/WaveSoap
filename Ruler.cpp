@@ -145,12 +145,13 @@ int CHorizontalRuler::OnMouseActivate(CWnd* pDesktopWnd, UINT nHitTest, UINT mes
 
 BOOL CHorizontalRuler::OnScrollBy(CSize sizeScroll, BOOL bDoScroll)
 {
-	// TODO: Add your specialized code here and/or call the base class
 
+// the function scrolls the real image, and modifies dOrgX, dOrgY.
 	CScaledScrollView::OnScrollBy(sizeScroll, TRUE);
 	if (//sizeScroll.cx != 0 ||
 		sizeScroll.cy != 0)
 	{
+		// force window redraw, but don't erase it
 		Invalidate(FALSE);
 	}
 	return TRUE;
@@ -158,7 +159,6 @@ BOOL CHorizontalRuler::OnScrollBy(CSize sizeScroll, BOOL bDoScroll)
 
 void CHorizontalRuler::OnCaptureChanged(CWnd *pWnd)
 {
-	// TODO: Add your message handler code here
 	bIsTrackingSelection = FALSE;
 	ButtonPressed = 0;
 
@@ -297,11 +297,12 @@ int CVerticalRuler::OnMouseActivate(CWnd* pDesktopWnd, UINT nHitTest, UINT messa
 
 BOOL CVerticalRuler::OnScrollBy(CSize sizeScroll, BOOL bDoScroll)
 {
-	// TODO: Add your specialized code here and/or call the base class
 
+// the function scrolls the real image, and modifies dOrgX, dOrgY.
 	CScaledScrollView::OnScrollBy(sizeScroll, TRUE);
 	if (sizeScroll.cx != 0 || sizeScroll.cy != 0)
 	{
+		// force window redraw, but don't erase it
 		Invalidate(FALSE);
 	}
 	return TRUE;
@@ -309,7 +310,6 @@ BOOL CVerticalRuler::OnScrollBy(CSize sizeScroll, BOOL bDoScroll)
 
 void CVerticalRuler::OnCaptureChanged(CWnd *pWnd)
 {
-	// TODO: Add your message handler code here
 	bIsTrackingSelection = FALSE;
 	ButtonPressed = 0;
 

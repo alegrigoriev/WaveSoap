@@ -13,6 +13,12 @@ static char THIS_FILE[] = __FILE__;
 
 /////////////////////////////////////////////////////////////////////////////
 // CScaledScrollView
+// slave views copy origins and extents from the master view,
+// and never modify them.
+// As the slave view receives change notification, it updates its coordinates.
+// Slave view doesn't process scroll messages, but does scroll when notified.
+// Slave view doesn't process size messages.
+// When slave view wants to set its origin, it calls a function of master view.
 
 IMPLEMENT_DYNCREATE(CScaledScrollView, CView)
 
@@ -208,42 +214,40 @@ BOOL CScaledScrollView::OnScroll(UINT nScrollCode, UINT nPos, BOOL bDoScroll)
 	return bResult;
 }
 
-BOOL CScaledScrollView::Zoom(double dHorScale, double dVertScale,
+void CScaledScrollView::Zoom(double dHorScale, double dVertScale,
 							CPoint ptCenter)
 {
-	DWORD flag = CHANGE_HOR_EXTENTS | CHANGE_VERT_EXTENTS;
-	if (IsSlaveHor())
+	// if the view is a complete slave of one view, forward the request there
+	if (m_pHorMaster == m_pVertMaster)
 	{
-		// if the view is a complete slave of one view, forward the request there
-		if (m_pHorMaster == m_pVertMaster)
-		{
-			return m_pHorMaster->Zoom(dHorScale, dVertScale, ptCenter);
-		}
-		// otherwise forward the request separately to masters
-		m_pHorMaster->Zoom(dHorScale, 1., CPoint(ptCenter.x, INT_MAX));
-		flag &= ~CHANGE_WIDTH;
-		dHorScale = 1.;
-		ptCenter.x = INT_MAX;
+		m_pHorMaster->DoZoom(dHorScale, dVertScale, ptCenter);
+		return;
 	}
-	if (IsSlaveVert())
-	{
-		m_pVertMaster->Zoom(1., dVertScale, CPoint(INT_MAX, ptCenter.y));
-		flag &= ~CHANGE_HEIGHT;
-		dVertScale = 1.;
-		ptCenter.y = INT_MAX;
-	}
+	// otherwise forward the request separately to masters
+	m_pHorMaster->DoZoom(dHorScale, 1., CPoint(ptCenter.x, INT_MAX));
+	m_pVertMaster->DoZoom(1., dVertScale, CPoint(INT_MAX, ptCenter.y));
+}
 
+void CScaledScrollView::DoZoom(double dHorScale, double dVertScale, CPoint ptCenter)
+{
+	DWORD flag = CHANGE_HOR_EXTENTS | CHANGE_VERT_EXTENTS;
 	RECT r;
 	GetClientRect( & r);
 	if (1. == dHorScale)
+	{
 		flag &= ~CHANGE_WIDTH;
+	}
 	if (1. == dVertScale)
+	{
 		flag &= ~CHANGE_HEIGHT;
+	}
 	if (INT_MAX == ptCenter.x)
 	{
 		ptCenter.x = (r.left + r.right) / 2;
 		if (1. == dHorScale)
+		{
 			flag &= ~CHANGE_HOR_ORIGIN;
+		}
 	}
 	if (INT_MAX == ptCenter.y)
 	{
@@ -258,7 +262,6 @@ BOOL CScaledScrollView::Zoom(double dHorScale, double dVertScale,
 					dExtX / dHorScale,
 					dCenterY + dExtY / (dVertScale * 2.),
 					dExtY / dVertScale, flag);
-	return TRUE;
 }
 
 static int fround(double d)
@@ -379,8 +382,6 @@ CScrollBar* CScaledScrollView::GetScrollBarCtrl(int nBar) const
 
 void CScaledScrollView::OnHScroll(UINT nSBCode, UINT nPos, CScrollBar* pScrollBar)
 {
-	// TODO: Add your message handler code here and/or call default
-
 	// is this a slave window?
 	if (IsSlaveHor())
 		return;
@@ -619,18 +620,41 @@ void CScaledScrollView::SetMaxExtents(double left, double right,
 									double bottom, double top)
 {
 	// if the view is slave, these values will be ignored
-	if (left != right)
+	DWORD flags = 0;
+	if (! IsSlaveHor())
 	{
-		dMinLeft = left;
-		dMaxRight = right;
+		if (left != right)
+		{
+			dMinLeft = left;
+			dMaxRight = right;
+			flags |= CHANGE_MAX_HOR_EXTENTS;
+		}
 	}
-	if (top != bottom)
+	else
 	{
-		dMinBottom = bottom;
-		dMaxTop = top;
+		dMinLeft = m_pHorMaster->dMinLeft;
+		dMaxRight = m_pHorMaster->dMaxRight;
+	}
+
+	if ( ! IsSlaveVert())
+	{
+		if (top != bottom)
+		{
+			dMinBottom = bottom;
+			dMaxTop = top;
+			flags |= CHANGE_MAX_VERT_EXTENTS;
+		}
+	}
+	else
+	{
+		dMinBottom = m_pVertMaster->dMinBottom;
+		dMaxTop = m_pVertMaster->dMaxTop;
 	}
 	ArrangeMaxExtents();
-	NotifySlaveViews(CHANGE_MAX_HOR_EXTENTS | CHANGE_MAX_VERT_EXTENTS);
+	if (flags != 0)
+	{
+		NotifySlaveViews(flags);
+	}
 	UpdateScrollbars();
 }
 
@@ -710,6 +734,9 @@ BOOL CScaledScrollView::ScrollBy(double dx, double dy, BOOL bDoScroll)
 		}
 	}
 	// scroll the view or just invalidate it
+	// move origin to integer count of device units
+	int ddevx = fround(dx * dScaleX * dLogScaleX);
+	int ddevy = fround(dy * dScaleY * dLogScaleY);
 	if (fabs(dx) > (dSizeX * 0.89) || fabs(dy) > (dSizeY * 0.89))
 	{
 //        TRACE("Invalidate instead of scroll\n");
@@ -725,14 +752,12 @@ BOOL CScaledScrollView::ScrollBy(double dx, double dy, BOOL bDoScroll)
 	}
 	else
 	{
-		// move origin to integer count of device units
-		int ddevx = fround(dx * dScaleX * dLogScaleX);
-		int ddevy = fround(dy * dScaleY * dLogScaleY);
 		if (0) TRACE("Necessary window scroll=(%g, %g), new org=(%g, %g), devx=%d, devy=%d\n",
 					dx, dy, dNewOrgX, dNewOrgY, ddevx, ddevy);
 
 		if (ddevx | ddevy)
 		{
+			// the function scrolls the real image, and modifies dOrgX, dOrgY.
 			return OnScrollBy(CSize(ddevx, ddevy), bDoScroll);
 		}
 		else
@@ -974,6 +999,7 @@ int CScaledScrollView::GetMappingInfo()
 	return 0;
 }
 
+// the function scrolls the real image, and modifies dOrgX, dOrgY.
 BOOL CScaledScrollView::OnScrollBy(CSize sizeScroll, BOOL bDoScroll)
 {
 	if (bDoScroll)
@@ -984,7 +1010,14 @@ BOOL CScaledScrollView::OnScrollBy(CSize sizeScroll, BOOL bDoScroll)
 	dOrgY += sizeScroll.cy / (dScaleY * dLogScaleY);
 	if (bDoScroll)
 	{
-		ScrollWindow(-sizeScroll.cx, -sizeScroll.cy);
+		if (0 != sizeScroll.cy)
+		{
+			ScrollWindow(0, -sizeScroll.cy);
+		}
+		if (0 != sizeScroll.cx)
+		{
+			ScrollWindow(-sizeScroll.cx, 0);
+		}
 		RestoreSelectionRect();
 	}
 	UpdateCaretPosition();
@@ -1440,7 +1473,7 @@ void CScaledScrollView::NotifySlaveViews(DWORD flag)
 
 // synced ScaledScrollView's maintain common size (current
 // and maximum) and scroll position. When master view
-// changes its word size and/or origin, it notifies slave views.
+// changes its world size and/or origin, it notifies slave views.
 // When slave view needs to change its state, it forwards
 // the request to the master view.
 // Slave view ignores scrollbar messages. It should be created
@@ -1705,4 +1738,5 @@ int CScaledScrollView::OnToolHitTest( CPoint point, TOOLINFO* pTI ) const
 	}
 	return -1;
 }
+
 
