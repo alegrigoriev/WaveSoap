@@ -121,6 +121,8 @@ BEGIN_MESSAGE_MAP(CWaveSoapFrontDoc, CDocument)
 	ON_COMMAND(ID_FILE_SAVE_COPY_AS, OnFileSaveCopyAs)
 	ON_UPDATE_COMMAND_UI(ID_TOOLS_INTERPOLATE, OnUpdateToolsInterpolate)
 	ON_COMMAND(ID_TOOLS_INTERPOLATE, OnToolsInterpolate)
+	ON_UPDATE_COMMAND_UI(IDC_PROCESS_DO_ULF, OnUpdateProcessDoUlf)
+	ON_COMMAND(IDC_PROCESS_DO_ULF, OnProcessDoUlf)
 	//}}AFX_MSG_MAP
 END_MESSAGE_MAP()
 
@@ -2488,8 +2490,8 @@ BOOL CWaveSoapFrontDoc::OnSaveDocument(LPCTSTR lpszPathName, DWORD flags, WAVEFO
 				delete pContext;    // pConvert will be deleted
 				return FALSE;
 			}
-			pChConvertor->nSourceChannels =  m_WavFile.GetWaveFormat()->nChannels;
-			pChConvertor->nTargetChannels =  pWf->nChannels;
+			pChConvertor->m_InputChannels =  m_WavFile.GetWaveFormat()->nChannels;
+			pChConvertor->m_OutputChannels =  pWf->nChannels;
 			pChConvertor->nSrcChannel = 2;
 			pConvert->m_ProcBatch.AddWaveProc(pChConvertor);
 		}
@@ -2514,8 +2516,8 @@ BOOL CWaveSoapFrontDoc::OnSaveDocument(LPCTSTR lpszPathName, DWORD flags, WAVEFO
 				delete pContext;    // pConvert will be deleted
 				return FALSE;
 			}
-			pChConvertor->nSourceChannels =  m_WavFile.GetWaveFormat()->nChannels;
-			pChConvertor->nTargetChannels =  pWf->nChannels;
+			pChConvertor->m_InputChannels =  m_WavFile.GetWaveFormat()->nChannels;
+			pChConvertor->m_OutputChannels =  pWf->nChannels;
 			pChConvertor->nSrcChannel = 2;
 			pConvert->m_ProcBatch.AddWaveProc(pChConvertor);
 		}
@@ -3065,7 +3067,7 @@ inline BOOL CWaveSoapFrontDoc::IsModified()
 	return m_ModificationSequenceNumber != 0;
 }
 
-void CWaveSoapFrontDoc::IncrementModified(BOOL bDeleteRedo)
+void CWaveSoapFrontDoc::IncrementModified(BOOL bDeleteRedo, int KeepPreviousUndo)
 {
 	// bDeleteRedo is FALSE for Redo command
 	BOOL OldModified = CWaveSoapFrontDoc::IsModified();
@@ -3074,7 +3076,11 @@ void CWaveSoapFrontDoc::IncrementModified(BOOL bDeleteRedo)
 	{
 		DeleteRedo();
 	}
-	if (! UndoEnabled())
+	if (-1 == KeepPreviousUndo)
+	{
+		KeepPreviousUndo = UndoEnabled();
+	}
+	if (! KeepPreviousUndo)
 	{
 		// since it is unable to restore undo, delete all previous undo
 		DeleteUndo();
@@ -3103,11 +3109,11 @@ void CWaveSoapFrontDoc::DecrementModified()   // called at UNDO
 	}
 }
 
-void CWaveSoapFrontDoc::SetModifiedFlag(BOOL bModified)
+void CWaveSoapFrontDoc::SetModifiedFlag(BOOL bModified, int KeepPreviousUndo)
 {
 	if (bModified)
 	{
-		IncrementModified();
+		IncrementModified(TRUE, KeepPreviousUndo);  // don't keep redo
 	}
 	else
 	{
@@ -3411,7 +3417,7 @@ void CWaveSoapFrontDoc::OnProcessChangevolume()
 	dlg.m_dVolumeRightPercent = pApp->m_dVolumeRightPercent;
 	dlg.m_Start = start;
 	dlg.m_End = end;
-	dlg.m_Chan = channel + 1;
+	dlg.m_Chan = channel;
 	dlg.m_pWf = m_WavFile.GetWaveFormat();
 	dlg.m_bLockChannels = m_bChannelsLocked;
 	dlg.m_bUndo = UndoEnabled();
@@ -3427,7 +3433,6 @@ void CWaveSoapFrontDoc::OnProcessChangevolume()
 	{
 		return;
 	}
-	dlg.m_Chan--;   // make correction
 	pApp->m_VolumeDialogDbPercents = dlg.m_DbPercent;
 	pApp->m_dVolumeLeftDb = dlg.m_dVolumeLeftDb;
 	pApp->m_dVolumeRightDb = dlg.m_dVolumeRightDb;
@@ -3518,7 +3523,7 @@ void CWaveSoapFrontDoc::OnProcessChangevolume()
 		return;
 	}
 	pContext->Execute();
-	SetModifiedFlag();
+	SetModifiedFlag(TRUE, dlg.m_bUndo);
 }
 
 void CWaveSoapFrontDoc::GetSoundMinMax(int & MinL, int & MaxL,
@@ -3684,7 +3689,7 @@ void CWaveSoapFrontDoc::OnProcessDcoffset()
 	CWaveSoapFrontApp * pApp = GetApp();
 	dlg.m_Start = start;
 	dlg.m_End = end;
-	dlg.m_Chan = channel + 1;
+	dlg.m_Chan = channel;
 	dlg.m_pWf = m_WavFile.GetWaveFormat();
 	dlg.m_bUndo = UndoEnabled();
 	dlg.m_TimeFormat = GetApp()->m_SoundTimeFormat;
@@ -3696,7 +3701,6 @@ void CWaveSoapFrontDoc::OnProcessDcoffset()
 	{
 		return;
 	}
-	dlg.m_Chan--;
 	GetApp()->m_b5SecondsDC = dlg.m_b5SecondsDC;
 	GetApp()->m_DcSelectMode = dlg.m_DcSelectMode;
 	GetApp()->m_nDcOffset = dlg.m_nDcOffset;
@@ -3776,7 +3780,7 @@ void CWaveSoapFrontDoc::OnProcessDcoffset()
 		return;
 	}
 	pContext->Execute();
-	SetModifiedFlag();
+	SetModifiedFlag(TRUE, dlg.m_bUndo);
 }
 
 void CWaveSoapFrontDoc::OnUpdateProcessInsertsilence(CCmdUI* pCmdUI)
@@ -3831,7 +3835,7 @@ void CWaveSoapFrontDoc::OnProcessMute()
 		return;
 	}
 	pContext->Execute();
-	SetModifiedFlag();
+	SetModifiedFlag(TRUE);
 }
 
 void CWaveSoapFrontDoc::OnUpdateProcessNormalize(CCmdUI* pCmdUI)
@@ -3866,7 +3870,7 @@ void CWaveSoapFrontDoc::OnProcessNormalize()
 	dlg.m_dLevelPercent = pApp->m_dNormalizeLevelPercent;
 	dlg.m_Start = start;
 	dlg.m_End = end;
-	dlg.m_Chan = channel + 1;
+	dlg.m_Chan = channel;
 	dlg.m_pWf = m_WavFile.GetWaveFormat();
 	dlg.m_bLockChannels = m_bChannelsLocked;
 	dlg.m_bUndo = UndoEnabled();
@@ -3882,7 +3886,6 @@ void CWaveSoapFrontDoc::OnProcessNormalize()
 	{
 		return;
 	}
-	dlg.m_Chan--;
 	pApp->m_NormalizeDialogDbPercents = dlg.m_DbPercent;
 	pApp->m_dNormalizeLevelDb = dlg.m_dLevelDb;
 	pApp->m_dNormalizeLevelPercent = dlg.m_dLevelPercent;
@@ -3929,7 +3932,7 @@ void CWaveSoapFrontDoc::OnProcessNormalize()
 	pContext->m_Flags |= ContextScanning;
 
 	pContext->Execute();
-	SetModifiedFlag();
+	SetModifiedFlag(TRUE, dlg.m_bUndo);
 }
 
 void CWaveSoapFrontDoc::OnUpdateProcessResample(CCmdUI* pCmdUI)
@@ -4108,7 +4111,7 @@ void CWaveSoapFrontDoc::OnProcessInvert()
 		return;
 	}
 	pContext->Execute();
-	SetModifiedFlag();
+	SetModifiedFlag(TRUE);
 }
 
 void CWaveSoapFrontDoc::OnUpdateViewRescanPeaks(CCmdUI* pCmdUI)
@@ -4314,8 +4317,105 @@ void CWaveSoapFrontDoc::OnToolsInterpolate()
 	}
 	// write the data back
 	m_WavFile.WriteAt(pBuf + WriteBufferOffset * nChannels, WriteBytes, WriteStartOffset);
-	SetModifiedFlag();
+	SetModifiedFlag(TRUE);
 	SoundChanged(m_WavFile.GetFileID(), m_SelectionStart - PreInterpolateSamples,
 				m_SelectionEnd + PostInterpolateSamples);
 	delete[] pBuf;
+}
+
+void CWaveSoapFrontDoc::OnUpdateProcessDoUlf(CCmdUI* pCmdUI)
+{
+	pCmdUI->Enable( ! m_bReadOnly
+					&& ! m_OperationInProgress
+					&& m_WavFile.IsOpen()
+					&& (m_SelectionEnd - m_SelectionStart > 16
+						|| m_SelectionEnd == m_SelectionStart));
+
+}
+
+void CWaveSoapFrontDoc::OnProcessDoUlf()
+{
+	if (m_bReadOnly
+		|| m_OperationInProgress)
+	{
+		return;
+	}
+	long start = m_SelectionStart;
+	long end = m_SelectionEnd;
+	if (start == end)
+	{
+		// select all
+		start = 0;
+		end = WaveFileSamples();
+	}
+	int channel = m_SelectedChannel;
+	if (ChannelsLocked())
+	{
+		channel = ALL_CHANNELS;
+	}
+
+	CLowFrequencySuppressDialog dlg;
+	CWaveSoapFrontApp * pApp = GetApp();
+	dlg.m_DifferentialModeSuppress = pApp->m_bSuppressDifferential;
+	dlg.m_LowFrequencySuppress = pApp->m_bSuppressLowFrequency;
+	dlg.m_bUndo = UndoEnabled();
+	dlg.m_dDiffNoiseRange = pApp->m_dSuppressDifferentialRange;
+	dlg.m_dLfNoiseRange = pApp->m_dSuppressLowFreqRange;
+	dlg.m_Start = start;
+	dlg.m_End = end;
+	dlg.m_Chan = channel;
+	dlg.m_pWf = m_WavFile.GetWaveFormat();
+	dlg.m_bLockChannels = m_bChannelsLocked;
+	dlg.m_bUndo = UndoEnabled();
+	dlg.m_TimeFormat = pApp->m_SoundTimeFormat;
+	dlg.m_FileLength = WaveFileSamples();
+	if (IDOK != dlg.DoModal())
+	{
+		return;
+	}
+
+	pApp->m_bSuppressDifferential = dlg.m_DifferentialModeSuppress;
+	pApp->m_bSuppressLowFrequency = dlg.m_LowFrequencySuppress;
+	pApp->m_dSuppressDifferentialRange = dlg.m_dDiffNoiseRange;
+	pApp->m_dSuppressLowFreqRange = dlg.m_dLfNoiseRange;
+
+	CConversionContext * pContext = new CConversionContext(this, "Reducing low frequency static...",
+															"Low Frequency Suppression");
+	if (NULL == pContext)
+	{
+		// todo: dialog
+		return;
+	}
+	if ( ! pContext->InitDestination(m_WavFile, dlg.m_Start,
+									dlg.m_End, dlg.m_Chan, dlg.m_bUndo))
+	{
+		delete pContext;
+		// todo: dialog
+		return;
+	}
+	pContext->m_SrcFile = m_WavFile;
+	pContext->m_SrcStart = pContext->m_DstStart;
+	pContext->m_SrcCopyPos = pContext->m_SrcStart;
+	pContext->m_SrcEnd = pContext->m_DstEnd;
+
+	pContext->m_SrcChan = dlg.m_Chan;
+
+	CHumRemoval * pUlfProc = new CHumRemoval;
+	if (NULL == pUlfProc)
+	{
+		delete pContext;
+		// todo: dialog
+		return;
+	}
+	pUlfProc->SetAndValidateWaveformat(WaveFormat());
+	pUlfProc->m_ChannelsToProcess = dlg.m_Chan;
+	pUlfProc->EnableDifferentialSuppression(dlg.m_DifferentialModeSuppress);
+	pUlfProc->EnableLowFrequencySuppression(dlg.m_LowFrequencySuppress);
+	pUlfProc->SetDifferentialCutoff(dlg.m_dDiffNoiseRange);
+	pUlfProc->SetHighpassCutoff(dlg.m_dLfNoiseRange);
+
+	pContext->m_ProcBatch.AddWaveProc(pUlfProc);
+
+	pContext->Execute();
+	SetModifiedFlag(TRUE, dlg.m_bUndo);
 }
