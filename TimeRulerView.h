@@ -62,6 +62,7 @@ protected:
 	int m_MarkerHeight;
 
 	void EndMarkerDrag();
+	void BeginMarkerDrag();
 
 	//{{AFX_MSG(CTimeRulerView)
 	afx_msg void OnViewRulerHhmmss();

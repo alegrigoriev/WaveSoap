@@ -810,6 +810,18 @@ void CTimeRulerView::OnLButtonUp(UINT nFlags, CPoint point)
 	BaseClass::OnLButtonUp(nFlags, point);
 }
 
+void CTimeRulerView::BeginMarkerDrag()
+{
+	CWaveSoapFrontDoc * pDoc = GetDocument();
+	if (0 != m_DraggedMarkerHitTest
+		&& bIsTrackingSelection
+		&& ! pDoc->IsReadOnly())
+	{
+		pDoc->BeginMarkerChange(CWaveFile::InstanceDataWav::MetadataCopyCue
+								| CWaveFile::InstanceDataWav::MetadataCopyLtxt);
+	}
+}
+
 void CTimeRulerView::EndMarkerDrag()
 {
 	CWaveSoapFrontDoc * pDoc = GetDocument();
@@ -855,6 +867,7 @@ void CTimeRulerView::OnMouseMove(UINT nFlags, CPoint point)
 			}
 			SetCapture();
 			bIsTrackingSelection = TRUE;
+			BeginMarkerDrag();
 		}
 
 		CRect cr;
