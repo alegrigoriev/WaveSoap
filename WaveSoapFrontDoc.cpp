@@ -1382,6 +1382,10 @@ void CWaveSoapFrontDoc::OnUpdateEditUndo(CCmdUI* pCmdUI)
 
 UINT CWaveSoapFrontDoc::_ThreadProc(void)
 {
+#ifdef _DEBUG
+	FILETIME UserTime, EndTime, tmp;
+	GetThreadTimes(GetCurrentThread(), & tmp, & tmp, & tmp, & UserTime);
+#endif
 	::SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_BELOW_NORMAL);
 	bool NeedKickIdle = false;
 	while (m_bRunThread)
@@ -1467,6 +1471,11 @@ UINT CWaveSoapFrontDoc::_ThreadProc(void)
 		}
 		WaitForSingleObject(m_hThreadEvent, INFINITE);
 	}
+#ifdef _DEBUG
+	GetThreadTimes(GetCurrentThread(), & tmp, & tmp, & tmp, & EndTime);
+	TRACE("Document thread used time=%d ms\n",
+		(EndTime.dwLowDateTime - UserTime.dwLowDateTime) / 10000);
+#endif
 	return 0;
 }
 

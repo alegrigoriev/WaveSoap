@@ -950,6 +950,9 @@ BOOL WmaEncoder::SetFormat(WAVEFORMATEX * pDstWfx)
 
 	pProps->Release();
 	pProps = NULL;
+
+	//m_pWriter->SetProfileByID(WMProfile_V70_128Audio);
+	m_pWriter->SetProfileByID(WMProfile_V40_128Audio);
 	return SUCCEEDED(hr);
 }
 
@@ -998,14 +1001,18 @@ BOOL WmaEncoder::Write(void * Buf, size_t size)
 			|| BufLength == MaxLength
 			)
 		{
+			QWORD ActualWriterTime;
+			m_pWriterAdvanced->GetWriterTime( & ActualWriterTime);
+
 			QWORD WriterTime = m_SampleTimeMs * 10000i64;
 
-			TRACE("Writing src buf %p, time=%d ms\n",
-				m_pBuffer, DWORD(WriterTime / 10000));
+			TRACE("Writing src buf %p, time=%d ms, ActualWriterTime=%d ms\n",
+				m_pBuffer, DWORD(WriterTime / 10000), DWORD(ActualWriterTime / 10000));
 			if (! SUCCEEDED(m_pWriter->WriteSample(0, WriterTime, 0, m_pBuffer)))
 			{
 				return FALSE;
 			}
+			Sleep(50);
 			m_SampleTimeMs += MulDiv(1000, BufLength, m_SrcWfx.nAvgBytesPerSec);
 			m_pBuffer->Release();
 			m_pBuffer = NULL;

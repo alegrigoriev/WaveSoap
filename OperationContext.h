@@ -52,6 +52,15 @@ public:
 	DWORD m_DstCopyPos;
 	BOOL InitDestination(CWaveFile & DstFile, long StartSample, long EndSample,
 						int chan, BOOL NeedUndo);
+#ifdef _DEBUG
+	FILETIME m_ThreadUserTime;
+	DWORD m_SystemTime;
+	void SetBeginTime();
+	void PrintElapsedTime();
+#else
+	void SetBeginTime() {}
+	void PrintElapsedTime() {}
+#endif
 };
 
 enum {
