@@ -45,6 +45,7 @@ Use GetFileAttributes rather than FindFirst to check whether it's file or direct
 Add Export Settings, Import Settings to Options dialog
 
 Problems:
+Selection dialog shows channels for MONO sound
 When switched to/from FFT view, scrollbar is set to wrong range (Suite1.wav)
 After file length increased to 1 sample from 0, scroll bar set to wrond scale
 Expression evaluation selection longer than file length doesn't update file length
