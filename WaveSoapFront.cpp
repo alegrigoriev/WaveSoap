@@ -23,17 +23,26 @@ static char THIS_FILE[] = __FILE__;
 #endif
 
 /////////////////////////////////////////////////////////////////////////////
+BOOL AFXAPI AfxResolveShortcut(CWnd* pWnd, LPCTSTR pszShortcutFile,
+								LPTSTR pszPath, int cchPath);
 // CWaveSoapFrontApp
 class CWaveSoapDocTemplate : public CMultiDocTemplate
 {
 public:
-	CWaveSoapDocTemplate( UINT nIDResource, CRuntimeClass* pDocClass,
+	CWaveSoapDocTemplate( UINT nIDResource, UINT nIDStringResource,
+						CRuntimeClass* pDocClass,
 						CRuntimeClass* pFrameClass, CRuntimeClass* pViewClass )
 		:CMultiDocTemplate(nIDResource, pDocClass, pFrameClass, pViewClass)
 	{
+		if ( ! m_strDocStrings.LoadString(nIDStringResource))
+		{
+			m_strDocStrings.LoadString(m_nIDResource);
+		}
 	}
 	~CWaveSoapDocTemplate() {}
-	virtual CDocument* OpenDocumentFile( LPCTSTR lpszPathName, BOOL bMakeVisible = TRUE );
+	virtual CDocument* OpenDocumentFile( LPCTSTR lpszPathName, int flags = 1
+											//BOOL bMakeVisible = TRUE
+										);
 
 };
 
@@ -41,28 +50,25 @@ class CWaveSoapDocManager : public CDocManager
 {
 public:
 	CWaveSoapDocManager()
-		:m_bReadOnly(FALSE),
-		m_bDirectMode(FALSE)
 	{}
 	~CWaveSoapDocManager() {}
 	virtual void OnFileOpen();
-	BOOL m_bReadOnly;
-	BOOL m_bDirectMode;
+	CDocument* OpenDocumentFile(LPCTSTR lpszFileName, int flags);
 };
 
-class CWaveSoapFileDialog : public CFileDialog
+class CWaveSoapFileOpenDialog : public CFileDialog
 {
 public:
-	CWaveSoapFileDialog(BOOL bOpenFileDialog, // TRUE for FileOpen, FALSE for FileSaveAs
-						LPCTSTR lpszDefExt = NULL,
-						LPCTSTR lpszFileName = NULL,
-						DWORD dwFlags = OFN_HIDEREADONLY | OFN_OVERWRITEPROMPT,
-						LPCTSTR lpszFilter = NULL,
-						CWnd* pParentWnd = NULL)
+	CWaveSoapFileOpenDialog(BOOL bOpenFileDialog, // TRUE for FileOpen, FALSE for FileSaveAs
+							LPCTSTR lpszDefExt = NULL,
+							LPCTSTR lpszFileName = NULL,
+							DWORD dwFlags = OFN_HIDEREADONLY | OFN_OVERWRITEPROMPT,
+							LPCTSTR lpszFilter = NULL,
+							CWnd* pParentWnd = NULL)
 		: CFileDialog(bOpenFileDialog, lpszDefExt, lpszFileName, dwFlags,
 					lpszFilter, pParentWnd), m_bReadOnly(false), m_bDirectMode(false)
 	{}
-	~CWaveSoapFileDialog() {}
+	~CWaveSoapFileOpenDialog() {}
 
 	CWaveFile m_WaveFile;
 	CString GetNextPathName(POSITION& pos) const;
@@ -85,7 +91,7 @@ public:
 	virtual void OnTypeChange();
 	void ClearFileInfoDisplay();
 
-	//{{AFX_MSG(CWaveSoapFileDialog)
+	//{{AFX_MSG(CWaveSoapFileOpenDialog)
 	afx_msg void OnCheckReadOnly();
 	afx_msg void OnCheckDirectMode();
 	afx_msg void OnComboClosed();
@@ -94,8 +100,8 @@ public:
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 };
-BEGIN_MESSAGE_MAP(CWaveSoapFileDialog, CFileDialog)
-	//{{AFX_MSG_MAP(CWaveSoapFileDialog)
+BEGIN_MESSAGE_MAP(CWaveSoapFileOpenDialog, CFileDialog)
+	//{{AFX_MSG_MAP(CWaveSoapFileOpenDialog)
 	ON_BN_CLICKED(IDC_CHECK_READONLY, OnCheckReadOnly)
 	ON_BN_CLICKED(IDC_CHECK_DIRECT, OnCheckDirectMode)
 	ON_CBN_CLOSEUP(IDC_COMBO_RECENT, OnComboClosed)
@@ -113,6 +119,7 @@ BEGIN_MESSAGE_MAP(CWaveSoapFrontApp, CWinApp)
 	ON_COMMAND(ID_APP_ABOUT, OnAppAbout)
 	ON_COMMAND(ID_EDIT_PASTE_NEW, OnEditPasteNew)
 	ON_UPDATE_COMMAND_UI(ID_EDIT_PASTE_NEW, OnUpdateEditPasteNew)
+	ON_COMMAND_EX_RANGE(ID_FILE_MRU_FILE1, ID_FILE_MRU_FILE16, OnOpenRecentFile)
 	//}}AFX_MSG_MAP
 	// if no documents, Paste will create a new file
 	ON_COMMAND(ID_EDIT_PASTE, OnEditPasteNew)
@@ -150,6 +157,11 @@ CWaveSoapFrontApp::CWaveSoapFrontApp()
 	m_dVolumeLeftPercent(100.),
 	m_dVolumeRightPercent(100.),
 	m_SoundTimeFormat(SampleToString_HhMmSs | TimeToHhMmSs_NeedsHhMm | TimeToHhMmSs_NeedsMs),
+
+	m_bResampleChangeRateOnly(FALSE),
+	m_bResampleRate(TRUE),
+	m_ResampleSamplingRate(44100),
+	m_ResampleTempoPercents(100.),
 
 	m_b5SecondsDC(TRUE),
 	m_nDcOffset(0),
@@ -279,10 +291,21 @@ BOOL CWaveSoapFrontApp::InitInstance()
 	// Register the application's document templates.  Document templates
 	//  serve as the connection between documents, frame windows and views.
 
-	CWaveSoapDocTemplate* pDocTemplate;
+	// register WAV document
+	CMultiDocTemplate * pDocTemplate;
 	pDocTemplate = new CWaveSoapDocTemplate(
-											IDR_WAVESOTYPE,
+											// second ID - template string
+											IDR_WAVESOTYPE, IDR_WAVESOTYPE,
 											RUNTIME_CLASS(CWaveSoapFrontDoc),
+											RUNTIME_CLASS(CChildFrame), // custom MDI child frame
+											RUNTIME_CLASS(CWaveSoapFrontView)
+											);
+	AddDocTemplate(pDocTemplate);
+
+	// register MP3 document
+	pDocTemplate = new CWaveSoapDocTemplate(
+											IDR_WAVESOTYPE, IDR_MP3TYPE,
+											RUNTIME_CLASS(CWaveSoapMP3Doc),
 											RUNTIME_CLASS(CChildFrame), // custom MDI child frame
 											RUNTIME_CLASS(CWaveSoapFrontView)
 											);
@@ -399,14 +422,54 @@ void CWaveSoapFrontApp::WriteProfileDouble(LPCTSTR Section, LPCTSTR ValueName,
 	WriteProfileString(Section, ValueName, s);
 }
 
-CDocument* CWaveSoapDocTemplate::OpenDocumentFile(LPCTSTR lpszPathName,
-												BOOL bMakeVisible)
+CDocument* CWaveSoapFrontApp::OpenDocumentFile(LPCTSTR lpszPathName, int flags)
 {
-	CDocument* pDocument = CreateNewDocument();
-	if (pDocument == NULL)
+	ASSERT(m_pDocManager != NULL);
+	CWaveSoapDocManager * pMyDocMan =
+		dynamic_cast<CWaveSoapDocManager *>(m_pDocManager);
+	if (NULL != pMyDocMan)
+	{
+		TRACE("Using CWaveSoapDocManager::OpenDocumentFile(lpszPathName)\n");
+		return pMyDocMan->OpenDocumentFile(lpszPathName, flags);
+	}
+	else
+	{
+		TRACE("Using m_pDocManager->OpenDocumentFile(lpszPathName)\n");
+		return m_pDocManager->OpenDocumentFile(lpszPathName);
+	}
+}
+
+CDocument* CWaveSoapFrontApp::OpenDocumentFile(LPCTSTR lpszPathName)
+{
+	int flags = 1;
+	if (m_bReadOnly)
+	{
+		flags |= OpenDocumentReadOnly;
+	}
+	if (m_bDirectMode)
+	{
+		flags |= OpenDocumentDirectMode;
+	}
+	return OpenDocumentFile(lpszPathName, flags);
+}
+
+CDocument* CWaveSoapDocTemplate::OpenDocumentFile(LPCTSTR lpszPathName,
+												int flags/* BOOL bMakeVisible */)
+{
+	CDocument* pJustDocument = CreateNewDocument();
+	BOOL bMakeVisible = flags & 1;
+	if (pJustDocument == NULL)
 	{
 		TRACE0("CDocTemplate::CreateNewDocument returned NULL.\n");
 		AfxMessageBox(AFX_IDP_FAILED_TO_CREATE_DOC);
+		return NULL;
+	}
+	CWaveSoapFrontDoc * pDocument =
+		dynamic_cast<CWaveSoapFrontDoc *>(pJustDocument);
+	if (NULL == pDocument)
+	{
+		TRACE("CWaveSoapDocTemplate::OpenDocumentFile: Wrong document class created\n");
+		delete pJustDocument;
 		return NULL;
 	}
 	ASSERT_VALID(pDocument);
@@ -438,26 +501,15 @@ CDocument* CWaveSoapDocTemplate::OpenDocumentFile(LPCTSTR lpszPathName,
 		// open an existing document
 		CWaveSoapFrontApp * pApp = GetApp();
 		CWaitCursor wait;
-		BOOL ReadOnly = pApp->m_bReadOnly;
-		BOOL DirectMode = pApp->m_bDirectMode;
-		if (lpszPathName[0] <= 7)
+
+		if (!pDocument->OnOpenDocument(lpszPathName, flags))
 		{
-			pApp->m_bReadOnly = (0 != (lpszPathName[0] & 4));
-			pApp->m_bDirectMode = (0 != (lpszPathName[0] & 2));
-			lpszPathName++;
-		}
-		if (!pDocument->OnOpenDocument(lpszPathName))
-		{
-			pApp->m_bReadOnly = ReadOnly;
-			pApp->m_bDirectMode = DirectMode;
 			// user has be alerted to what failed in OnOpenDocument
 			TRACE0("CDocument::OnOpenDocument returned FALSE.\n");
 			//pFrame->DestroyWindow();
 			delete pDocument;       // explicit delete on error
 			return NULL;
 		}
-		pApp->m_bReadOnly = ReadOnly;
-		pApp->m_bDirectMode = DirectMode;
 		pDocument->SetPathName(lpszPathName);
 	}
 
@@ -487,11 +539,18 @@ int CWaveSoapFrontApp::ExitInstance()
 	if (m_Thread.m_hThread)
 	{
 		m_RunThread = false;
+#ifdef _DEBUG
+		DWORD Time = timeGetTime();
+#endif
 		SetEvent(m_hThreadEvent);
 		if (WAIT_TIMEOUT == WaitForSingleObject(m_Thread.m_hThread, 5000))
 		{
 			TerminateThread(m_Thread.m_hThread, -1);
 		}
+#ifdef _DEBUG
+		TRACE("App Thread finished in %d ms\n",
+			timeGetTime() - Time);
+#endif
 	}
 	CloseHandle(m_hThreadEvent);
 	m_hThreadEvent = NULL;
@@ -513,20 +572,22 @@ int CWaveSoapFrontApp::ExitInstance()
 
 void CWaveSoapFrontApp::QueueOperation(COperationContext * pContext)
 {
-	// add the operation to the tail
-	CSimpleCriticalSectionLock lock(m_cs);
-	pContext->pDocument->m_pQueuedOperation = pContext;
-	pContext->pPrev = m_pLastOp;
-	pContext->pNext = NULL;
-	if (m_pLastOp != NULL)
 	{
-		m_pLastOp->pNext = pContext;
+		// add the operation to the tail
+		CSimpleCriticalSectionLock lock(m_cs);
+		pContext->pDocument->m_pQueuedOperation = pContext;
+		pContext->pPrev = m_pLastOp;
+		pContext->pNext = NULL;
+		if (m_pLastOp != NULL)
+		{
+			m_pLastOp->pNext = pContext;
+		}
+		else
+		{
+			m_pFirstOp = pContext;
+		}
+		m_pLastOp = pContext;
 	}
-	else
-	{
-		m_pFirstOp = pContext;
-	}
-	m_pLastOp = pContext;
 	SetEvent(m_hThreadEvent);
 
 }
@@ -681,8 +742,8 @@ unsigned CWaveSoapFrontApp::_ThreadProc()
 	return 0;
 }
 
-static void _AfxAppendFilterSuffix(CString& filter, OPENFILENAME& ofn,
-									CDocTemplate* pTemplate, CString* pstrDefaultExt)
+void _AfxAppendFilterSuffix(CString& filter, OPENFILENAME& ofn,
+							CDocTemplate* pTemplate, CString* pstrDefaultExt)
 {
 	ASSERT_VALID(pTemplate);
 	ASSERT_KINDOF(CDocTemplate, pTemplate);
@@ -716,9 +777,9 @@ static void _AfxAppendFilterSuffix(CString& filter, OPENFILENAME& ofn,
 
 void CWaveSoapDocManager::OnFileOpen()
 {
-	CWaveSoapFileDialog dlgFile(TRUE);
+	CWaveSoapFileOpenDialog dlgFile(TRUE);
 
-	CString title("Open");;
+	CString title("Open");
 	CString fileNameBuf;
 	//VERIFY(title.LoadString(nIDSTitle));
 
@@ -753,6 +814,10 @@ void CWaveSoapDocManager::OnFileOpen()
 	strFilter += (TCHAR)'\0';   // last string
 	dlgFile.m_ofn.nMaxCustFilter++;
 
+	CWaveSoapFrontApp * pApp = GetApp();
+
+	dlgFile.m_bReadOnly = (pApp->m_bReadOnly != 0);
+	dlgFile.m_bDirectMode = (pApp->m_bDirectMode != 0);
 	dlgFile.m_ofn.lpstrFilter = strFilter;
 	dlgFile.m_ofn.lpstrTitle = title;
 	dlgFile.m_ofn.lpstrFile = fileNameBuf.GetBuffer(0x2000);   // 8K
@@ -764,11 +829,18 @@ void CWaveSoapDocManager::OnFileOpen()
 		fileNameBuf.ReleaseBuffer(0x2000-1);
 		return;
 	}
-	m_bReadOnly = dlgFile.m_bReadOnly;
-	m_bDirectMode = dlgFile.m_bDirectMode;
-	CWaveSoapFrontApp * pApp = GetApp();
-	pApp->m_bReadOnly = m_bReadOnly;
-	pApp->m_bDirectMode = m_bDirectMode;
+
+	pApp->m_bReadOnly = dlgFile.m_bReadOnly;
+	pApp->m_bDirectMode = dlgFile.m_bDirectMode;
+	int flags = 1;
+	if (dlgFile.m_bReadOnly)
+	{
+		flags |= OpenDocumentReadOnly;
+	}
+	if (dlgFile.m_bDirectMode)
+	{
+		flags |= OpenDocumentDirectMode;
+	}
 
 	pos = dlgFile.GetStartPosition();
 	while (pos != NULL)
@@ -777,16 +849,16 @@ void CWaveSoapDocManager::OnFileOpen()
 		// open all of selected files
 		CString fileName = dlgFile.GetNextPathName(pos);
 		TRACE("Opening file: %s\n", LPCTSTR(fileName));
-		AfxGetApp()->OpenDocumentFile(fileName);
+		pApp->OpenDocumentFile(fileName, flags);
 	}
 	fileNameBuf.ReleaseBuffer();
 }
 
-void CWaveSoapFileDialog::OnComboClosed()
+void CWaveSoapFileOpenDialog::OnComboClosed()
 {
 }
 
-void CWaveSoapFileDialog::OnCheckReadOnly()
+void CWaveSoapFileOpenDialog::OnCheckReadOnly()
 {
 	CButton * pRO = (CButton *)GetDlgItem(IDC_CHECK_READONLY);
 	CWnd * pDirect = GetDlgItem(IDC_CHECK_DIRECT);
@@ -800,7 +872,7 @@ void CWaveSoapFileDialog::OnCheckReadOnly()
 	}
 }
 
-void CWaveSoapFileDialog::OnCheckDirectMode()
+void CWaveSoapFileOpenDialog::OnCheckDirectMode()
 {
 	CButton * pDirect = (CButton *)GetDlgItem(IDC_CHECK_DIRECT);
 	if (NULL != pDirect)
@@ -809,25 +881,22 @@ void CWaveSoapFileDialog::OnCheckDirectMode()
 	}
 }
 
-BOOL CWaveSoapFileDialog::OnFileNameOK()
+BOOL CWaveSoapFileOpenDialog::OnFileNameOK()
 {
 	m_WaveFile.Close();
 	return CFileDialog::OnFileNameOK();
 }
 
 #if 0
-void CWaveSoapFileDialog::OnLBSelChangedNotify(UINT nIDBox, UINT iCurSel, UINT nCode)
+void CWaveSoapFileOpenDialog::OnLBSelChangedNotify(UINT nIDBox, UINT iCurSel, UINT nCode)
 {
 }
 #endif
 
-void CWaveSoapFileDialog::OnInitDone()
+void CWaveSoapFileOpenDialog::OnInitDone()
 {
 	CFileDialog::OnInitDone();
 	ClearFileInfoDisplay();
-	CWaveSoapFrontApp * pApp = GetApp();
-	m_bReadOnly = pApp->m_bReadOnly != 0;
-	m_bDirectMode = pApp->m_bDirectMode != 0;
 
 	CButton * pRO = (CButton *)GetDlgItem(IDC_CHECK_READONLY);
 	CButton * pDirect = (CButton *)GetDlgItem(IDC_CHECK_DIRECT);
@@ -842,7 +911,7 @@ void CWaveSoapFileDialog::OnInitDone()
 	}
 }
 
-void CWaveSoapFileDialog::OnFileNameChange()
+void CWaveSoapFileOpenDialog::OnFileNameChange()
 {
 	// get the file info
 	CString sName;
@@ -858,7 +927,7 @@ void CWaveSoapFileDialog::OnFileNameChange()
 		ClearFileInfoDisplay();
 		return;
 	}
-	TRACE("CWaveSoapFileDialog::OnFileNameChange=%s\n", LPCTSTR(sName));
+	TRACE("CWaveSoapFileOpenDialog::OnFileNameChange=%s\n", LPCTSTR(sName));
 	// if one file selected, its name will be in the buffer.
 	// If multiple files selected, the buffer will contain directory name,
 	// then file name surrounded with double quotes,
@@ -917,7 +986,16 @@ void CWaveSoapFileDialog::OnFileNameChange()
 				}
 			}
 			nSamplingRate = pWf->nSamplesPerSec;
-			nSamples = m_WaveFile.NumberOfSamples();
+			if (m_WaveFile.m_FactSamples != -1
+				&& (pWf->wFormatTag != WAVE_FORMAT_PCM
+					|| (pWf->wBitsPerSample != 16 && pWf->wBitsPerSample != 8)))
+			{
+				nSamples = m_WaveFile.m_FactSamples;
+			}
+			else
+			{
+				nSamples = m_WaveFile.NumberOfSamples();
+			}
 			SetDlgItemText(IDC_STATIC_FILE_TYPE, _T("Microsoft RIFF Wave"));
 			CString s;
 			CString s2;
@@ -967,10 +1045,11 @@ void CWaveSoapFileDialog::OnFileNameChange()
 		ClearFileInfoDisplay();
 	}
 	sName.ReleaseBuffer();
+	m_WaveFile.Close(); // don't want to keep it in use
 	//POSITION pos = Get
 }
 
-void CWaveSoapFileDialog::ClearFileInfoDisplay()
+void CWaveSoapFileOpenDialog::ClearFileInfoDisplay()
 {
 	SetDlgItemText(IDC_STATIC_FILE_TYPE, _T("Unknown"));
 	SetDlgItemText(IDC_STATIC_FILE_FORMAT, _T(""));
@@ -979,15 +1058,15 @@ void CWaveSoapFileDialog::ClearFileInfoDisplay()
 	SetDlgItemText(IDC_EDIT_FILE_COMMENTS, _T(""));
 }
 
-void CWaveSoapFileDialog::OnFolderChange()
+void CWaveSoapFileOpenDialog::OnFolderChange()
 {
 }
 
-void CWaveSoapFileDialog::OnTypeChange()
+void CWaveSoapFileOpenDialog::OnTypeChange()
 {
 }
 
-CString CWaveSoapFileDialog::GetNextPathName(POSITION& pos) const
+CString CWaveSoapFileOpenDialog::GetNextPathName(POSITION& pos) const
 {
 	ASSERT(m_ofn.Flags & OFN_EXPLORER);
 
@@ -1467,14 +1546,14 @@ BOOL CWaveSoapFileList::GetDisplayName(CString& strName, int nIndex,
 	lpch[_MAX_PATH] = 0;
 	CString suffix;
 	TCHAR flags = m_arrNames[nIndex][0];
-	TRACE("First byte of name #%d = %02x\n", nIndex, flags);
-	if (flags <= 7)
+	//TRACE("First byte of name #%d = %02x\n", nIndex, flags);
+	if (flags <= 0x1F)
 	{
-		if (flags & 4)
+		if (flags & OpenDocumentReadOnly)
 		{
 			suffix = " (RO)";
 		}
-		else if (flags & 2)
+		else if (flags & OpenDocumentDirectMode)
 		{
 			suffix = " (D)";
 		}
@@ -1540,7 +1619,7 @@ void CWaveSoapFileList::UpdateMenu(CCmdUI* pCmdUI)
 	for (int iMRU = 0; iMRU < m_nSize; iMRU++)
 		pCmdUI->m_pMenu->DeleteMenu(pCmdUI->m_nID + iMRU, MF_BYCOMMAND);
 
-	TCHAR szCurDir[_MAX_PATH];
+	TCHAR szCurDir[_MAX_PATH + 2];
 	GetCurrentDirectory(_MAX_PATH, szCurDir);
 	int nCurDir = lstrlen(szCurDir);
 	ASSERT(nCurDir >= 0);
@@ -1597,7 +1676,10 @@ void CWaveSoapFileList::Add(LPCTSTR lpszPathName)
 	// update the MRU list, if an existing MRU string matches file name
 	for (int iMRU = 0; iMRU < m_nSize-1; iMRU++)
 	{
-		if (AfxComparePath(LPCTSTR(m_arrNames[iMRU])+1, szTemp+1))
+		CString MruName = m_arrNames[iMRU];
+		if (MruName.GetLength() > 1
+			&& szTemp[0] == MruName[0]
+			&& AfxComparePath(LPCTSTR(MruName)+1, szTemp+1))
 			break;      // iMRU will point to matching entry
 	}
 	// move MRU strings before this one down
@@ -1609,5 +1691,109 @@ void CWaveSoapFileList::Add(LPCTSTR lpszPathName)
 	}
 	// place this one at the beginning
 	m_arrNames[0] = szTemp;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+// MRU file list default implementation
+
+BOOL CWaveSoapFrontApp::OnOpenRecentFile(UINT nID)
+{
+	ASSERT_VALID(this);
+	ASSERT(m_pRecentFileList != NULL);
+
+	ASSERT(nID >= ID_FILE_MRU_FILE1);
+	ASSERT(nID < ID_FILE_MRU_FILE1 + (UINT)m_pRecentFileList->GetSize());
+	int nIndex = nID - ID_FILE_MRU_FILE1;
+	CString name = (*m_pRecentFileList)[nIndex];
+	ASSERT(name.GetLength() > 1);
+	if (name.GetLength() <= 1)
+	{
+		m_pRecentFileList->Remove(nIndex);
+		return FALSE;
+	}
+
+	TRACE2("MRU: open file (%d) '%s'.\n", (nIndex) + 1,
+			1 + (LPCTSTR)(name));
+	int flags = 1 | name[0];
+	if (OpenDocumentFile(1 + LPCTSTR(name), flags) == NULL)
+	{
+		m_pRecentFileList->Remove(nIndex);
+	}
+
+	return TRUE;
+}
+
+CDocument* CWaveSoapDocManager::OpenDocumentFile(LPCTSTR lpszFileName, int flags)
+{
+	// find the highest confidence
+	POSITION pos = m_templateList.GetHeadPosition();
+	CDocTemplate::Confidence bestMatch = CDocTemplate::noAttempt;
+	CDocTemplate* pBestTemplate = NULL;
+	CDocument* pOpenDocument = NULL;
+
+	TCHAR szPath[_MAX_PATH];
+	ASSERT(lstrlen(lpszFileName) < _countof(szPath));
+	TCHAR szTemp[_MAX_PATH];
+	if (lpszFileName[0] == '\"')
+		++lpszFileName;
+	lstrcpyn(szTemp, lpszFileName, _MAX_PATH);
+	LPTSTR lpszLast = _tcsrchr(szTemp, '\"');
+	if (lpszLast != NULL)
+		*lpszLast = 0;
+	AfxFullPath(szPath, szTemp);
+	TCHAR szLinkName[_MAX_PATH];
+	if (AfxResolveShortcut(AfxGetMainWnd(), szPath, szLinkName, _MAX_PATH))
+		lstrcpy(szPath, szLinkName);
+
+	while (pos != NULL)
+	{
+		CDocTemplate* pTemplate = (CDocTemplate*)m_templateList.GetNext(pos);
+		ASSERT_KINDOF(CDocTemplate, pTemplate);
+
+		CDocTemplate::Confidence match;
+		ASSERT(pOpenDocument == NULL);
+		match = pTemplate->MatchDocType(szPath, pOpenDocument);
+		if (match > bestMatch)
+		{
+			bestMatch = match;
+			pBestTemplate = pTemplate;
+		}
+		if (match == CDocTemplate::yesAlreadyOpen)
+			break;      // stop here
+	}
+
+	if (pOpenDocument != NULL)
+	{
+		POSITION pos = pOpenDocument->GetFirstViewPosition();
+		if (pos != NULL)
+		{
+			CView* pView = pOpenDocument->GetNextView(pos); // get first one
+			ASSERT_VALID(pView);
+			CFrameWnd* pFrame = pView->GetParentFrame();
+			if (pFrame != NULL)
+				pFrame->ActivateFrame();
+			else
+				TRACE0("Error: Can not find a frame for document to activate.\n");
+			CFrameWnd* pAppFrame;
+			if (pFrame != (pAppFrame = (CFrameWnd*)AfxGetApp()->m_pMainWnd))
+			{
+				ASSERT_KINDOF(CFrameWnd, pAppFrame);
+				pAppFrame->ActivateFrame();
+			}
+		}
+		else
+		{
+			TRACE0("Error: Can not find a view for document to activate.\n");
+		}
+		return pOpenDocument;
+	}
+
+	if (pBestTemplate == NULL)
+	{
+		AfxMessageBox(AFX_IDP_FAILED_TO_OPEN_DOC);
+		return NULL;
+	}
+
+	return pBestTemplate->OpenDocumentFile(szPath, flags);
 }
 

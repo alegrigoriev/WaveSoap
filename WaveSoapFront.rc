@@ -100,6 +100,7 @@ BEGIN
     BUTTON      ID_FILE_OPEN
     BUTTON      ID_FILE_SAVE
     BUTTON      ID_FILE_SAVE_AS
+    BUTTON      ID_FILE_SAVE_COPY_AS
     BUTTON      ID_FILE_SAVE_ALL
     BUTTON      ID_FILE_PRINT
     SEPARATOR
@@ -175,6 +176,7 @@ BEGIN
         MENUITEM "&Close",                      ID_FILE_CLOSE
         MENUITEM "&Save\tCtrl+S",               ID_FILE_SAVE
         MENUITEM "Save &As...",                 ID_FILE_SAVE_AS
+        MENUITEM "Save Copy As...\tCtrl+Shift+S", ID_FILE_SAVE_COPY_AS
         MENUITEM "Save Al&l",                   ID_FILE_SAVE_ALL
         MENUITEM SEPARATOR
         MENUITEM "&Print...\tCtrl+P",           ID_FILE_PRINT
@@ -205,7 +207,7 @@ BEGIN
         MENUITEM "&Go To...\tCtrl+G",           ID_EDIT_GOTO
         MENUITEM "Select &All\tCtrl+A",         ID_EDIT_SELECT_ALL
         MENUITEM "&Selection...\tCtrl+D",       ID_EDIT_SELECTION
-        MENUITEM "Channels Lock",               ID_EDIT_CHANNELS_LOCK
+        MENUITEM "Lock Channels",               ID_EDIT_CHANNELS_LOCK
     END
     POPUP "&View"
     BEGIN
@@ -218,6 +220,7 @@ BEGIN
         MENUITEM SEPARATOR
         MENUITEM "Zoom In Time\tGray +",        ID_VIEW_ZOOMINHOR2
         MENUITEM "Zoom Out Time\tGray -",       ID_VIEW_ZOOMOUTHOR2
+        MENUITEM "Zoom To Selection",           ID_VIEW_ZOOM_SELECTION
         POPUP "Time Ruler"
         BEGIN
             MENUITEM "Enable",                      ID_VIEW_TIME_RULER
@@ -255,6 +258,11 @@ BEGIN
         MENUITEM "Invert",                      ID_PROCESS_INVERT
         MENUITEM "Insert &Silence...",          ID_PROCESS_INSERTSILENCE
         MENUITEM "&Resample...",                ID_PROCESS_RESAMPLE
+        POPUP "Synthesis"
+        BEGIN
+            MENUITEM "Expression Evaluation...",    ID_PROCESS_SYNTHESIS_EXPRESSION_EVALUATION
+
+        END
     END
     POPUP "&Window"
     BEGIN
@@ -357,10 +365,10 @@ IDR_MENU_WAVE_VIEW MENU DISCARDABLE
 BEGIN
     POPUP " "
     BEGIN
-        MENUITEM "Paste",                       ID_EDIT_PASTE
+        MENUITEM "Paste\tCtrl+V",               ID_EDIT_PASTE
         MENUITEM SEPARATOR
-        MENUITEM "&Zoom In Time",               ID_VIEW_ZOOMINHOR2
-        MENUITEM "Zoom &Out Time",              ID_VIEW_ZOOMOUTHOR2
+        MENUITEM "&Zoom In Time\tGray +",       ID_VIEW_ZOOMINHOR2
+        MENUITEM "Zoom &Out Time\tGray -",      ID_VIEW_ZOOMOUTHOR2
         MENUITEM "Zoom In &Full",               ID_VIEW_ZOOMIN_HOR_FULL
         MENUITEM SEPARATOR
         MENUITEM "Zoom In Amplitude",           ID_VIEW_ZOOMINVERT
@@ -372,14 +380,15 @@ IDR_MENU_WAVE_VIEW_SELECTION MENU DISCARDABLE
 BEGIN
     POPUP " "
     BEGIN
-        MENUITEM "Copy",                        ID_EDIT_COPY
-        MENUITEM "Paste",                       ID_EDIT_PASTE
-        MENUITEM "Cut",                         ID_EDIT_CUT
-        MENUITEM "Delete",                      ID_EDIT_DELETE
+        MENUITEM "Copy\tCtrl+C",                ID_EDIT_COPY
+        MENUITEM "Paste\tCtrl+V",               ID_EDIT_PASTE
+        MENUITEM "Cut\tCtrl+X",                 ID_EDIT_CUT
+        MENUITEM "Delete\tDel",                 ID_EDIT_DELETE
         MENUITEM SEPARATOR
         MENUITEM "&Zoom In Time",               ID_VIEW_ZOOMINHOR2
         MENUITEM "Zoom &Out Time",              ID_VIEW_ZOOMOUTHOR2
         MENUITEM "Zoom In &Full",               ID_VIEW_ZOOMIN_HOR_FULL
+        MENUITEM "Zoom To Selection",           ID_VIEW_ZOOM_SELECTION
         MENUITEM SEPARATOR
         MENUITEM "Zoom In Amplitude",           ID_VIEW_ZOOMINVERT
         MENUITEM "Zoom Out Amplitude",          ID_VIEW_ZOOMOUTVERT
@@ -395,6 +404,7 @@ BEGIN
         MENUITEM "&Zoom In Time",               ID_VIEW_ZOOMINHOR2
         MENUITEM "Zoom &Out Time",              ID_VIEW_ZOOMOUTHOR2
         MENUITEM "Zoom In &Full",               ID_VIEW_ZOOMIN_HOR_FULL
+        MENUITEM "Zoom To Selection",           ID_VIEW_ZOOM_SELECTION
         MENUITEM SEPARATOR
         MENUITEM "Zoom In Frequency",           ID_VIEW_ZOOMINVERT
         MENUITEM "Zoom Out Frequency",          ID_VIEW_ZOOMOUTVERT
@@ -463,6 +473,9 @@ BEGIN
     "O",            ID_FILE_OPEN,           VIRTKEY, CONTROL, NOINVERT
     "P",            ID_FILE_PRINT,          VIRTKEY, CONTROL, NOINVERT
     "S",            ID_FILE_SAVE,           VIRTKEY, CONTROL, NOINVERT
+    "S",            ID_FILE_SAVE_AS,        VIRTKEY, SHIFT, NOINVERT
+    "S",            ID_FILE_SAVE_COPY_AS,   VIRTKEY, SHIFT, CONTROL, 
+                                                    NOINVERT
     "V",            ID_EDIT_PASTE,          VIRTKEY, CONTROL, NOINVERT
     VK_ADD,         ID_VIEW_ZOOMINHOR2,     VIRTKEY, NOINVERT
     VK_BACK,        ID_EDIT_UNDO,           VIRTKEY, ALT, NOINVERT
@@ -659,35 +672,31 @@ BEGIN
                     WS_VSCROLL | WS_TABSTOP
 END
 
-IDD_DIALOG_OPEN_TEMPLATE DIALOG DISCARDABLE  0, 0, 279, 136
+IDD_DIALOG_OPEN_TEMPLATE DIALOG DISCARDABLE  0, 0, 279, 111
 STYLE DS_3DLOOK | DS_CONTROL | WS_CHILD | WS_CLIPSIBLINGS
 FONT 8, "MS Sans Serif"
 BEGIN
-    RTEXT           "Re&cent: ",IDC_STATIC,3,9,26,8
-    COMBOBOX        IDC_COMBO_RECENT,36,7,228,68,CBS_DROPDOWN | CBS_SORT | 
-                    WS_VSCROLL | WS_TABSTOP
-    RTEXT           "",1119,0,22,272,8,NOT WS_VISIBLE
     CONTROL         "Open as &read-only",IDC_CHECK_READONLY,"Button",
-                    BS_AUTOCHECKBOX | WS_TABSTOP,3,31,78,10
+                    BS_AUTOCHECKBOX | WS_TABSTOP,3,5,78,10
     CONTROL         "Operate directly on the sound file",IDC_CHECK_DIRECT,
-                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,89,31,113,10
-    PUSHBUTTON      "Help",IDHELP,222,30,50,14
-    RTEXT           "File type:",IDC_STATIC,4,58,30,8
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,89,5,113,10
+    PUSHBUTTON      "Help",IDHELP,222,4,50,14
+    RTEXT           "File type:",IDC_STATIC,4,32,30,8
     CONTROL         "Unknown",IDC_STATIC_FILE_TYPE,"Static",
-                    SS_LEFTNOWORDWRAP | SS_NOPREFIX | WS_GROUP,37,58,73,8
-    RTEXT           "Length: ",IDC_STATIC,3,83,31,8
+                    SS_LEFTNOWORDWRAP | SS_NOPREFIX | WS_GROUP,37,32,73,8
+    RTEXT           "Length: ",IDC_STATIC,3,57,31,8
     CONTROL         "Static",IDC_STATIC_FILE_LENGTH,"Static",
-                    SS_LEFTNOWORDWRAP | SS_NOPREFIX | WS_GROUP,37,83,98,8
-    RTEXT           "Format: ",IDC_STATIC,4,71,30,8
+                    SS_LEFTNOWORDWRAP | SS_NOPREFIX | WS_GROUP,37,57,98,8
+    RTEXT           "Format: ",IDC_STATIC,4,45,30,8
     CONTROL         "Unknown",IDC_STATIC_FILE_FORMAT,"Static",
-                    SS_LEFTNOWORDWRAP | SS_NOPREFIX | WS_GROUP,37,71,118,8
-    RTEXT           "Attributes: ",IDC_STATIC,2,96,32,8
-    LTEXT           "Attr",IDC_STATIC_ATTRIBUTES,38,96,103,23,SS_NOPREFIX
-    RTEXT           "Comments: ",IDC_STATIC,109,58,49,8
-    EDITTEXT        IDC_EDIT_FILE_COMMENTS,161,57,114,54,ES_MULTILINE | 
+                    SS_LEFTNOWORDWRAP | SS_NOPREFIX | WS_GROUP,37,45,118,8
+    RTEXT           "Attributes: ",IDC_STATIC,2,70,32,8
+    LTEXT           "Attr",IDC_STATIC_ATTRIBUTES,38,70,103,23,SS_NOPREFIX
+    RTEXT           "Comments: ",IDC_STATIC,109,32,49,8
+    EDITTEXT        IDC_EDIT_FILE_COMMENTS,161,31,114,54,ES_MULTILINE | 
                     ES_AUTOVSCROLL | ES_READONLY | WS_VSCROLL
-    GROUPBOX        "",IDC_STATIC,0,45,276,90
-    PUSHBUTTON      "More...",IDC_BUTTON_MORE,222,115,50,14
+    GROUPBOX        "",IDC_STATIC,0,19,276,90
+    PUSHBUTTON      "More...",IDC_BUTTON_MORE,222,89,50,14
 END
 
 IDD_DIALOG_COPY_CHANNELS_SELECT DIALOG DISCARDABLE  0, 0, 135, 72
@@ -857,6 +866,98 @@ BEGIN
                     "Button",BS_AUTOCHECKBOX | WS_TABSTOP,7,31,101,10
 END
 
+IDD_DIALOG_RESAMPLE DIALOG DISCARDABLE  0, 0, 224, 120
+STYLE DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "Resample"
+FONT 8, "MS Sans Serif"
+BEGIN
+    EDITTEXT        IDC_EDIT_RATE,164,7,35,14,ES_AUTOHSCROLL | ES_NUMBER
+    LTEXT           "Hz",IDC_STATIC,207,10,12,8
+    CONTROL         "Slider1",IDC_SLIDER_TEMPO,"msctls_trackbar32",
+                    TBS_AUTOTICKS | TBS_BOTH | WS_TABSTOP,96,28,64,21
+    EDITTEXT        IDC_EDIT_TEMPO,164,32,35,14,ES_AUTOHSCROLL
+    LTEXT           "%",IDC_STATIC,208,35,11,8
+    CONTROL         "Change sampling rate only, do not resample data",
+                    IDC_CHECK_CHANGE_RATE_ONLY,"Button",BS_AUTOCHECKBOX | 
+                    BS_MULTILINE | WS_TABSTOP,7,56,102,21
+    CONTROL         "Save &Undo",IDC_CHECK_UNDO,"Button",BS_AUTOCHECKBOX | 
+                    WS_TABSTOP,163,64,50,10
+    DEFPUSHBUTTON   "OK",IDOK,57,99,50,14
+    PUSHBUTTON      "Cancel",IDCANCEL,111,99,50,14
+    PUSHBUTTON      "&Help",IDHELP,167,99,50,14
+    CONTROL         "Change tempo and pitch:",IDC_RADIO_CHANGE_PITCH,"Button",
+                    BS_AUTORADIOBUTTON | WS_GROUP,7,34,90,10
+    CONTROL         "Change sampling rate:",IDC_RADIO_CHANGE_RATE,"Button",
+                    BS_AUTORADIOBUTTON,7,9,83,10
+    CONTROL         "Slider1",IDC_SLIDER_RATE,"msctls_trackbar32",
+                    TBS_AUTOTICKS | TBS_BOTH | WS_GROUP | WS_TABSTOP,96,3,64,
+                    21
+    LTEXT           "All the file will be processed",IDC_STATIC,7,83,190,8
+END
+
+IDD_DIALOG_STATISTICS_MONO DIALOG DISCARDABLE  0, 0, 211, 133
+STYLE DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "File statistics:"
+FONT 8, "MS Sans Serif"
+BEGIN
+    DEFPUSHBUTTON   "OK",IDOK,80,112,50,14
+    EDITTEXT        IDC_EDIT_LEFT,99,25,100,83,ES_MULTILINE | ES_AUTOVSCROLL | 
+                    ES_AUTOHSCROLL | ES_READONLY | NOT WS_BORDER
+    CONTROL         "Cursor position:\nSample value at cursor:\nMinimum sample position:\nMinimum sample value:\nMaximum sample position:\nMaximum sample value:\nRMS power:\nAverage value (DC offset):\nZero crossings:",
+                    -1,"Static",SS_LEFTNOWORDWRAP | WS_GROUP,7,25,91,80
+END
+
+IDD_DIALOG_OPEN_TEMPLATE1 DIALOG DISCARDABLE  0, 0, 279, 136
+STYLE DS_3DLOOK | DS_CONTROL | WS_CHILD | WS_CLIPSIBLINGS
+FONT 8, "MS Sans Serif"
+BEGIN
+    RTEXT           "Re&cent: ",IDC_STATIC,3,9,26,8
+    COMBOBOX        IDC_COMBO_RECENT,36,7,228,68,CBS_DROPDOWN | CBS_SORT | 
+                    WS_VSCROLL | WS_TABSTOP
+    RTEXT           "",1119,0,22,272,8,NOT WS_VISIBLE
+    CONTROL         "Open as &read-only",IDC_CHECK_READONLY,"Button",
+                    BS_AUTOCHECKBOX | WS_TABSTOP,3,31,78,10
+    CONTROL         "Operate directly on the sound file",IDC_CHECK_DIRECT,
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,89,31,113,10
+    PUSHBUTTON      "Help",IDHELP,222,30,50,14
+    RTEXT           "File type:",IDC_STATIC,4,58,30,8
+    CONTROL         "Unknown",IDC_STATIC_FILE_TYPE,"Static",
+                    SS_LEFTNOWORDWRAP | SS_NOPREFIX | WS_GROUP,37,58,73,8
+    RTEXT           "Length: ",IDC_STATIC,3,83,31,8
+    CONTROL         "Static",IDC_STATIC_FILE_LENGTH,"Static",
+                    SS_LEFTNOWORDWRAP | SS_NOPREFIX | WS_GROUP,37,83,98,8
+    RTEXT           "Format: ",IDC_STATIC,4,71,30,8
+    CONTROL         "Unknown",IDC_STATIC_FILE_FORMAT,"Static",
+                    SS_LEFTNOWORDWRAP | SS_NOPREFIX | WS_GROUP,37,71,118,8
+    RTEXT           "Attributes: ",IDC_STATIC,2,96,32,8
+    LTEXT           "Attr",IDC_STATIC_ATTRIBUTES,38,96,103,23,SS_NOPREFIX
+    RTEXT           "Comments: ",IDC_STATIC,109,58,49,8
+    EDITTEXT        IDC_EDIT_FILE_COMMENTS,161,57,114,54,ES_MULTILINE | 
+                    ES_AUTOVSCROLL | ES_READONLY | WS_VSCROLL
+    GROUPBOX        "",IDC_STATIC,0,45,276,90
+    PUSHBUTTON      "More...",IDC_BUTTON_MORE,222,115,50,14
+END
+
+IDD_DIALOG_SAVE_TEMPLATE DIALOG DISCARDABLE  0, 0, 279, 182
+STYLE DS_3DLOOK | DS_CONTROL | WS_CHILD | WS_CLIPSIBLINGS
+FONT 8, "MS Sans Serif"
+BEGIN
+    PUSHBUTTON      "Help",IDHELP,222,4,50,14
+    RTEXT           "Format: ",IDC_STATIC,0,7,30,8
+    RTEXT           "Comments: ",IDC_STATIC,2,73,49,8
+    EDITTEXT        IDC_EDIT_FILE_COMMENTS,5,85,270,45,ES_MULTILINE | 
+                    ES_AUTOVSCROLL | ES_WANTRETURN | WS_VSCROLL
+    GROUPBOX        "",IDC_STATIC,0,64,276,90
+    PUSHBUTTON      "More...",IDC_BUTTON_MORE,222,134,50,14
+    COMBOBOX        IDC_COMBO_FORMAT,40,4,174,91,CBS_DROPDOWNLIST | 
+                    WS_VSCROLL | WS_TABSTOP
+    CONTROL         "Compatible formats only",IDC_CHECK_COMPATIBLE_FORMATS,
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,6,44,88,10
+    LTEXT           "Attributes:",IDC_STATIC,6,23,30,8
+    COMBOBOX        IDC_COMBO_ATTRIBUTES,40,21,174,91,CBS_DROPDOWNLIST | 
+                    WS_VSCROLL | WS_TABSTOP
+END
+
 
 #ifndef _MAC
 /////////////////////////////////////////////////////////////////////////////
@@ -883,12 +984,12 @@ BEGIN
         BEGIN
             VALUE "Comments", "\0"
             VALUE "CompanyName", "Alexandre Grigoriev\0"
-            VALUE "FileDescription", "WaveSoap - WAV file cleanup\0"
+            VALUE "FileDescription", "WaveSoap - Sound Cleaning And Editing Application\0"
             VALUE "FileVersion", "1, 0, 0, 1\0"
             VALUE "InternalName", "WaveSoap\0"
             VALUE "LegalCopyright", "Copyright (C) 2000 Alexandre Grigoriev\0"
             VALUE "LegalTrademarks", "\0"
-            VALUE "OriginalFilename", "WaveSoapFront.EXE\0"
+            VALUE "OriginalFilename", "WaveSoap.EXE\0"
             VALUE "PrivateBuild", "\0"
             VALUE "ProductName", "WaveSoap Application\0"
             VALUE "ProductVersion", "1, 0, 0, 1\0"
@@ -1028,6 +1129,32 @@ BEGIN
         TOPMARGIN, 7
         BOTTOMMARGIN, 103
     END
+
+    IDD_DIALOG_RESAMPLE, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 217
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 113
+    END
+
+    IDD_DIALOG_STATISTICS_MONO, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 204
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 126
+    END
+
+    IDD_DIALOG_OPEN_TEMPLATE1, DIALOG
+    BEGIN
+        RIGHTMARGIN, 275
+    END
+
+    IDD_DIALOG_SAVE_TEMPLATE, DIALOG
+    BEGIN
+        RIGHTMARGIN, 275
+    END
 END
 #endif    // APSTUDIO_INVOKED
 
@@ -1140,11 +1267,12 @@ STRINGTABLE PRELOAD DISCARDABLE
 BEGIN
     IDR_MAINFRAME           "WaveSoap"
     IDR_WAVESOTYPE          "\nSound\nWindowsSound file\nWindows Sound files (*.wav)\n.wav\nWaveSoap.Document\nWaveSoap Document"
+    IDR_MP3TYPE             "\nSound\nMPEG Layer3 file\nMPEG Audio files (*.mp3)\n.mp3\nWaveSoap.Document\nWaveSoap Document"
 END
 
 STRINGTABLE PRELOAD DISCARDABLE 
 BEGIN
-    AFX_IDS_APP_TITLE       "WaveSoapFront"
+    AFX_IDS_APP_TITLE       "WaveSoap"
     AFX_IDS_IDLEMESSAGE     "For Help, press F1"
     AFX_IDS_HELPMODEMESSAGE "Select an object on which to get Help"
 END
@@ -1170,6 +1298,7 @@ BEGIN
     ID_FILE_PRINT_SETUP     "Change the printer and printing options\nPrint Setup"
     ID_FILE_PRINT           "Print the active document\nPrint"
     ID_FILE_PRINT_PREVIEW   "Display full pages\nPrint Preview"
+    ID_FILE_SAVE_COPY_AS    "Saving a copy of the file, keeping the original file open\nSave Copy"
 END
 
 STRINGTABLE DISCARDABLE 
@@ -1389,11 +1518,15 @@ BEGIN
                             "%s:\nAs a result of the operation, some samples may exceed limit and will be clipped. Continue?"
     IDS_M_UNABLE_TO_CREATE_UNDO "Unable to save undo data, continue?"
     IDS_STATISTICS_FORMAT   "%s (%s)\r\n%s (%s dB; %.2f%%)\r\n%s (%s)\r\n%s (%s dB; %.2f%%)\r\n%s (%s)\r\n%s (%s dB; %.2f%%)\r\n%s dB (%.2f%%)\r\n%s (%s dB; %.2f%%)\r\n%.2f Hz"
+    IDS_REOPEN_IN_DIRECT_MODE 
+                            "File ""%s"" saved. Reopen it in direct mode?\nIf ""No"", a new temporary file will be created."
+    IDS_RELOAD_COMPRESSED_FILE 
+                            "Sound data might change because of compression loss, reload it?"
 END
 
 STRINGTABLE DISCARDABLE 
 BEGIN
-    ID_EDIT_CHANNELS_LOCK   "If checked, disables operations on individual stereo channel\nChannels lock"
+    ID_EDIT_CHANNELS_LOCK   "Always process both stereo channels\nLock channels"
     ID_SAMPLERATE_7200      "Set file sample rate to 7200 Hz"
     ID_SAMPLERATE_8000      "Set file sample rate to 8000 Hz"
     ID_SAMPLERATE_11025     "Set file sample rate to 11025 Hz"
@@ -1426,6 +1559,9 @@ BEGIN
     ID_VIEW_TIME_RULER      "Toggle time ruler\nTime ruler"
     ID_VIEW_VERTICAL_RULER  "Toggle vertical ruler\nVertical ruler"
     ID_VIEW_RESCAN_PEAKS    "Scan the wave file for peaks\nRescan peaks"
+    ID_PROCESS_SYNTHESIS_EXPRESSIONEVALUATION 
+                            "Create waveform from expression\nExpression evaluation"
+    ID_VIEW_ZOOM_SELECTION  "Zoom to the selected area\nZoom selection"
 END
 
 #endif    // English (U.S.) resources
