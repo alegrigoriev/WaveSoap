@@ -10,38 +10,6 @@
 
 using namespace std;
 
-#if 0
-template <class T_ext, class T_int, int SIZE> class CBackBuffer
-{
-public:
-	CBackBuffer() : nCurrIndex(0) {}
-	~CBackBuffer() {}
-	int GetCounter() { return nCurrIndex; }
-	void SetCounter(int index) { nCurrIndex = index; }
-	void Advance(int n = 1)
-	{
-		nCurrIndex += n;
-	}
-	T_ext Get(int index)
-	{
-		return pBuf[(index + nCurrIndex) & (SIZE - 1)];
-	}
-
-	void Put(int index, T_ext data)
-	{
-		pBuf[(index + nCurrIndex) & (SIZE - 1)] = data;
-	}
-
-	T_int& operator[](int index)
-	{
-		return pBuf[(index + nCurrIndex) & (SIZE - 1)];
-	}
-
-private:
-	T_int Buf[SIZE];
-	int nCurrIndex;
-};
-#endif
 template <class T_ext, class T_int=T_ext> class CBackBuffer
 {
 public:
@@ -75,6 +43,8 @@ public:
 		m_TmpOutBufGet(0),
 		m_InputChannels(1),
 		m_OutputChannels(1),
+		m_bClipped(FALSE),
+		m_MaxClipped(0),
 		m_ChannelsToProcess(-1)
 	{}
 	virtual ~CWaveProc() {}
@@ -116,6 +86,41 @@ public:
 		return m_OutputChannels * sizeof (__int16);
 	}
 
+	__int16 DoubleToShort(double x)
+	{
+		long tmp = (long) floor(x + 0.5);
+		if (tmp < -0x8000)
+		{
+			if (m_MaxClipped < -x)
+			{
+				m_MaxClipped = -x;
+			}
+			m_bClipped = TRUE;
+			return -0x8000;
+		}
+		else if (tmp > 0x7FFF)
+		{
+			if (m_MaxClipped < x)
+			{
+				m_MaxClipped = x;
+			}
+			m_bClipped = TRUE;
+			return 0x7FFF;
+		}
+		else
+		{
+			return __int16(tmp);
+		}
+	}
+
+	virtual BOOL WasClipped() const
+	{
+		return m_bClipped;
+	}
+	virtual double GetMaxClipped() const
+	{
+		return m_MaxClipped;
+	}
 
 	BOOL NullCallback(UINT , size_t , size_t ) { return TRUE; }
 	DWORD m_dwCallbackData;
@@ -125,6 +130,8 @@ public:
 	int m_TmpInBufGet;
 	int m_TmpOutBufPut;
 	int m_TmpOutBufGet;
+	BOOL m_bClipped;
+	double m_MaxClipped;
 };
 
 #define WAVEPROC_MSG_PROGRESS 0
@@ -170,6 +177,9 @@ public:
 	virtual int ProcessSoundBuffer(char const * pInBuf, char * pOutBuf,
 									int nInBytes, int nOutBytes, int * pUsedBytes);
 	virtual BOOL SetAndValidateWaveformat(WAVEFORMATEX const * pWf);
+	void InterpolateGap(CBackBuffer<int, int> & data, int nLeftIndex, int InterpolateSamples, bool BigGap);
+	void InterpolateGap(__int16 data[], int nLeftIndex, int ClickLength, int nChans, bool BigGap);
+	void InterpolateBigGap(__int16 data[], int nLeftIndex, int ClickLength, int nChans);
 
 	BOOL SetClickSourceFile(LPCTSTR szFilename);
 	BOOL SetClickLogFile(LPCTSTR szFilename);
@@ -207,8 +217,6 @@ protected:
 	FILE * pInClicksFile;
 	FILE * pOutClicksFile;
 };
-
-void InterpolateGap(CBackBuffer<int, int> & data, int nLeft, int n_Right);
 
 class CNoiseReduction: public CWaveProc
 {
@@ -330,7 +338,11 @@ public:
 	virtual int ProcessSound(char const * pInBuf, char * pOutBuf,
 							int nInBytes, int nOutBytes, int * pUsedBytes);
 	virtual BOOL SetAndValidateWaveformat(WAVEFORMATEX const * pWf);
+
 	void AddWaveProc(CWaveProc * pProc, int index = -1);
+	virtual BOOL WasClipped() const;
+	virtual double GetMaxClipped() const;
+
 	BOOL m_bAutoDeleteProcs;
 protected:
 	struct Item
@@ -464,6 +476,4 @@ public:
 							int nInBytes, int nOutBytes, int * pUsedBytes);
 };
 
-void InterpolateGap(__int16 data[], int nLeftIndex, int ClickLength, int nChans);
-void InterpolateBigGap(__int16 data[], int nLeftIndex, int ClickLength, int nChans);
 #endif //#ifndef __WAVEPROC_H_

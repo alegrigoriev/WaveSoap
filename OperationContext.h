@@ -50,6 +50,72 @@ public:
 	DWORD m_DstStart;
 	DWORD m_DstEnd;
 	DWORD m_DstCopyPos;
+
+	bool m_bClipped;
+	double m_MaxClipped;
+
+	__int16 DoubleToShort(double x)
+	{
+		long tmp = (long) floor(x + 0.5);
+		if (tmp < -0x8000)
+		{
+			if (m_MaxClipped < -x)
+			{
+				m_MaxClipped = -x;
+			}
+			m_bClipped = TRUE;
+			return -0x8000;
+		}
+		else if (tmp > 0x7FFF)
+		{
+			if (m_MaxClipped < x)
+			{
+				m_MaxClipped = x;
+			}
+			m_bClipped = TRUE;
+			return 0x7FFF;
+		}
+		else
+		{
+			return __int16(tmp);
+		}
+	}
+
+	__int16 LongToShort(long x)
+	{
+		if (x < -0x8000)
+		{
+			if (m_MaxClipped < -x)
+			{
+				m_MaxClipped = -x;
+			}
+			m_bClipped = TRUE;
+			return -0x8000;
+		}
+		else if (x > 0x7FFF)
+		{
+			if (m_MaxClipped < x)
+			{
+				m_MaxClipped = x;
+			}
+			m_bClipped = TRUE;
+			return 0x7FFF;
+		}
+		else
+		{
+			return __int16(x);
+		}
+	}
+
+	virtual BOOL WasClipped() const
+	{
+		return m_bClipped;
+	}
+	virtual double GetMaxClipped() const
+	{
+		return m_MaxClipped;
+	}
+
 	BOOL InitDestination(CWaveFile & DstFile, long StartSample, long EndSample,
 						int chan, BOOL NeedUndo);
 #ifdef _DEBUG
@@ -299,12 +365,9 @@ public:
 	~CVolumeChangeContext();
 	float m_VolumeLeft;
 	float m_VolumeRight;
-	BOOL m_bClipped;
-	double m_MaxClipped;
 
 	//virtual BOOL OperationProc();
 	virtual BOOL ProcessBuffer(void * buf, size_t len, DWORD offset, BOOL bBackward = FALSE);
-	virtual void PostRetire(BOOL bChildContext = FALSE);
 
 };
 
@@ -316,14 +379,11 @@ public:
 	~CDcOffsetContext();
 	int m_OffsetLeft;
 	int m_OffsetRight;
-	BOOL m_bClipped;
-	double m_MaxClipped;
 
 	class CStatisticsContext * m_pScanContext;
 
 	virtual BOOL OperationProc();
 	virtual BOOL ProcessBuffer(void * buf, size_t len, DWORD offset, BOOL bBackward = FALSE);
-	virtual void PostRetire(BOOL bChildContext = FALSE);
 	virtual CString GetStatusString();
 
 };
@@ -404,6 +464,14 @@ public:
 	}
 	//virtual BOOL Init();
 	//virtual BOOL DeInit();
+	virtual BOOL WasClipped() const
+	{
+		return m_ProcBatch.WasClipped();
+	}
+	virtual double GetMaxClipped() const
+	{
+		return m_ProcBatch.GetMaxClipped();
+	}
 	CBatchProcessing m_ProcBatch;
 	WAVEFORMATEX * m_pWf;
 	virtual BOOL OperationProc();

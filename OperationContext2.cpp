@@ -37,8 +37,6 @@ CExpressionEvaluationContext::CExpressionEvaluationContext(CWaveSoapFrontDoc * p
 	m_OperationString = StatusString;
 	m_OperationName = OperationName;
 	m_ReturnBufferFlags = CDirectFile::ReturnBufferDirty;
-	m_bClipped = false;
-	m_MaxClipped = 0;
 }
 
 BOOL CExpressionEvaluationContext::Init()
@@ -70,32 +68,12 @@ BOOL CExpressionEvaluationContext::ProcessBuffer(void * buf, size_t len, DWORD o
 	{
 		if (1 == nChannels)
 		{
-			while (len >= sizeof (__int16))
+			for (int i = 0; i < len / sizeof pDst[0]; i ++)
 			{
-				m_dCurrentSample = *pDst * 0.00003051850947599719229;
+				m_dCurrentSample = pDst[i] * 0.00003051850947599719229;
 				Evaluate();
-				int result = fround(* m_pResultAddress);
-				if (result > 0x7FFF)
-				{
-					m_bClipped = true;
-					if (m_MaxClipped < result)
-					{
-						m_MaxClipped = result;
-					}
-					result = 0x7FFF;
-				}
-				else if (result < -0x8000)
-				{
-					if (m_MaxClipped < -result)
-					{
-						m_MaxClipped = -result;
-					}
-					result = -0x8000;
-					m_bClipped = true;
-				}
-				*pDst = result;
-				pDst++;
-				len -= sizeof (__int16);
+				pDst[i] = DoubleToShort(* m_pResultAddress);
+
 				m_nSelectionSampleArgument++;
 				m_nFileSampleArgument++;
 				m_dSelectionTimeArgument += m_SamplePeriod;
@@ -104,69 +82,20 @@ BOOL CExpressionEvaluationContext::ProcessBuffer(void * buf, size_t len, DWORD o
 		}
 		else
 		{
-			while (len >= sizeof (__int16))
+			for (int i = 0; i < len / sizeof pDst[0]; i += 2)
 			{
-				if (0 == (offset & sizeof (__int16)))
+				if (m_DstChan != 1) // not right only
 				{
-					if (m_DstChan != 1) // not right only
-					{
-						m_dCurrentSample = *pDst * 0.00003051850947599719229;
-						Evaluate();
-						int result = fround(* m_pResultAddress);
-						if (result > 0x7FFF)
-						{
-							if (m_MaxClipped < result)
-							{
-								m_MaxClipped = result;
-							}
-							result = 0x7FFF;
-							m_bClipped = true;
-						}
-						else if (result < -0x8000)
-						{
-							if (m_MaxClipped < -result)
-							{
-								m_MaxClipped = -result;
-							}
-							result = -0x8000;
-							m_bClipped = true;
-						}
-						*pDst = result;
-					}
-					offset += sizeof (__int16);
-					pDst++;
-					len -= sizeof (__int16);
+					m_dCurrentSample = pDst[i] * 0.00003051850947599719229;
+					Evaluate();
+					pDst[i] = DoubleToShort(* m_pResultAddress);
 				}
-				if (len >= sizeof (__int16))
+
+				if (m_DstChan != 0) // not left only
 				{
-					if (m_DstChan != 0) // not left only
-					{
-						m_dCurrentSample = *pDst * 0.00003051850947599719229;
-						Evaluate();
-						int result = * m_pResultAddress;
-						if (result > 0x7FFF)
-						{
-							if (m_MaxClipped < result)
-							{
-								m_MaxClipped = result;
-							}
-							result = 0x7FFF;
-							m_bClipped = true;
-						}
-						else if (result < -0x8000)
-						{
-							if (m_MaxClipped < -result)
-							{
-								m_MaxClipped = -result;
-							}
-							result = -0x8000;
-							m_bClipped = true;
-						}
-						*pDst = result;
-					}
-					offset += sizeof (__int16);
-					pDst++;
-					len -= sizeof (__int16);
+					m_dCurrentSample = pDst[i + 1] * 0.00003051850947599719229;
+					Evaluate();
+					pDst[i + 1] = DoubleToShort(* m_pResultAddress);
 				}
 
 				m_nSelectionSampleArgument++;
@@ -1537,24 +1466,10 @@ void CConversionContext::PostRetire(BOOL bChildContext)
 	CCopyContext::PostRetire(bChildContext);
 }
 
-
-void CExpressionEvaluationContext::PostRetire(BOOL bChildContext)
-{
-	if (m_bClipped)
-	{
-		CString s;
-		s.Format(IDS_SOUND_CLIPPED, pDocument->GetTitle(), int(m_MaxClipped * 100. / 32678));
-		AfxMessageBox(s, MB_OK | MB_ICONEXCLAMATION);
-	}
-	COperationContext::PostRetire(bChildContext);
-}
-
 CEqualizerContext::CEqualizerContext(CWaveSoapFrontDoc * pDoc,
 									LPCTSTR StatusString, LPCTSTR OperationName)
 	: COperationContext(pDoc, OperationName, OperationContextDiskIntensive),
-	m_bClipped(FALSE),
-	m_bZeroPhase(FALSE),
-	m_MaxClipped(0.)
+	m_bZeroPhase(FALSE)
 {
 	m_OperationString = StatusString;
 	//m_GetBufferFlags = 0; // leave CDirectFile::GetBufferAndPrefetchNext flag
@@ -1611,17 +1526,6 @@ double CEqualizerContext::CalculateResult(int ch, int Input)
 	return tmp;
 }
 
-void CEqualizerContext::PostRetire(BOOL bChildContext)
-{
-	if (m_bClipped)
-	{
-		CString s;
-		s.Format(IDS_SOUND_CLIPPED, pDocument->GetTitle(), int(m_MaxClipped * 100. / 32678));
-		AfxMessageBox(s, MB_OK | MB_ICONEXCLAMATION);
-	}
-	COperationContext::PostRetire(bChildContext);
-}
-
 BOOL CEqualizerContext::ProcessBuffer(void * buf, size_t len, DWORD offset, BOOL bBackward)
 {
 	// calculate number of sample, and time
@@ -1635,54 +1539,14 @@ BOOL CEqualizerContext::ProcessBuffer(void * buf, size_t len, DWORD offset, BOOL
 		{
 			for (int i = 0; i < len / sizeof (__int16); i ++)
 			{
-				double dResult = CalculateResult(0, pDst[i]);
-				int result = fround(dResult);
-				if (result > 0x7FFF)
-				{
-					if (m_MaxClipped < dResult)
-					{
-						m_MaxClipped = dResult;
-					}
-					m_bClipped = true;
-					result = 0x7FFF;
-				}
-				else if (result < -0x8000)
-				{
-					if (m_MaxClipped < -dResult)
-					{
-						m_MaxClipped = -dResult;
-					}
-					result = -0x8000;
-					m_bClipped = true;
-				}
-				pDst[i] = result;
+				pDst[i] = DoubleToShort(CalculateResult(0, pDst[i]));
 			}
 		}
 		else
 		{
 			for (int i = len / sizeof (__int16) - 1; i >=0; i --)
 			{
-				double dResult = CalculateResult(0, pDst[i]);
-				int result = fround(dResult);
-				if (result > 0x7FFF)
-				{
-					if (m_MaxClipped < dResult)
-					{
-						m_MaxClipped = dResult;
-					}
-					m_bClipped = true;
-					result = 0x7FFF;
-				}
-				else if (result < -0x8000)
-				{
-					if (m_MaxClipped < -dResult)
-					{
-						m_MaxClipped = -dResult;
-					}
-					result = -0x8000;
-					m_bClipped = true;
-				}
-				pDst[i] = result;
+				pDst[i] = DoubleToShort(CalculateResult(0, pDst[i]));
 			}
 		}
 	}
@@ -1694,52 +1558,12 @@ BOOL CEqualizerContext::ProcessBuffer(void * buf, size_t len, DWORD offset, BOOL
 			{
 				if (m_DstChan != 1) // not right only
 				{
-					double dResult = CalculateResult(0, pDst[i]);
-					int result = fround(dResult);
-					if (result > 0x7FFF)
-					{
-						if (m_MaxClipped < dResult)
-						{
-							m_MaxClipped = dResult;
-						}
-						m_bClipped = true;
-						result = 0x7FFF;
-					}
-					else if (result < -0x8000)
-					{
-						if (m_MaxClipped < -dResult)
-						{
-							m_MaxClipped = -dResult;
-						}
-						result = -0x8000;
-						m_bClipped = true;
-					}
-					pDst[i] = result;
+					pDst[i] = DoubleToShort(CalculateResult(0, pDst[i]));
 				}
 
 				if (m_DstChan != 0) // not left only
 				{
-					double dResult = CalculateResult(1, pDst[i + 1]);
-					int result = fround(dResult);
-					if (result > 0x7FFF)
-					{
-						if (m_MaxClipped < dResult)
-						{
-							m_MaxClipped = dResult;
-						}
-						m_bClipped = true;
-						result = 0x7FFF;
-					}
-					else if (result < -0x8000)
-					{
-						if (m_MaxClipped < -dResult)
-						{
-							m_MaxClipped = -dResult;
-						}
-						result = -0x8000;
-						m_bClipped = true;
-					}
-					pDst[i + 1] = result;
+					pDst[i + 1] = DoubleToShort(CalculateResult(1, pDst[i + 1]));
 				}
 			}
 		}
@@ -1749,52 +1573,12 @@ BOOL CEqualizerContext::ProcessBuffer(void * buf, size_t len, DWORD offset, BOOL
 			{
 				if (m_DstChan != 1) // not right only
 				{
-					double dResult = CalculateResult(0, pDst[i]);
-					int result = fround(dResult);
-					if (result > 0x7FFF)
-					{
-						if (m_MaxClipped < dResult)
-						{
-							m_MaxClipped = dResult;
-						}
-						m_bClipped = true;
-						result = 0x7FFF;
-					}
-					else if (result < -0x8000)
-					{
-						if (m_MaxClipped < -dResult)
-						{
-							m_MaxClipped = -dResult;
-						}
-						result = -0x8000;
-						m_bClipped = true;
-					}
-					pDst[i] = result;
+					pDst[i] = DoubleToShort(CalculateResult(0, pDst[i]));
 				}
 
 				if (m_DstChan != 0) // not left only
 				{
-					double dResult = CalculateResult(1, pDst[i + 1]);
-					int result = fround(dResult);
-					if (result > 0x7FFF)
-					{
-						if (m_MaxClipped < dResult)
-						{
-							m_MaxClipped = dResult;
-						}
-						m_bClipped = true;
-						result = 0x7FFF;
-					}
-					else if (result < -0x8000)
-					{
-						if (m_MaxClipped < -dResult)
-						{
-							m_MaxClipped = -dResult;
-						}
-						result = -0x8000;
-						m_bClipped = true;
-					}
-					pDst[i + 1] = result;
+					pDst[i + 1] = DoubleToShort(CalculateResult(1, pDst[i + 1]));
 				}
 			}
 		}
@@ -1818,9 +1602,7 @@ BOOL CSwapChannelsContext::ProcessBuffer(void * buf, size_t len, DWORD offset, B
 CFilterContext::CFilterContext(CWaveSoapFrontDoc * pDoc,
 								LPCTSTR StatusString, LPCTSTR OperationName)
 	: COperationContext(pDoc, OperationName, OperationContextDiskIntensive),
-	m_bClipped(FALSE),
-	m_bZeroPhase(FALSE),
-	m_MaxClipped(0.)
+	m_bZeroPhase(FALSE)
 {
 	m_OperationString = StatusString;
 	//m_GetBufferFlags = 0; // leave CDirectFile::GetBufferAndPrefetchNext flag
@@ -1919,17 +1701,6 @@ double CFilterContext::CalculateResult(int ch, int Input)
 	return in;
 }
 
-void CFilterContext::PostRetire(BOOL bChildContext)
-{
-	if (m_bClipped)
-	{
-		CString s;
-		s.Format(IDS_SOUND_CLIPPED, pDocument->GetTitle(), int(m_MaxClipped * 100. / 32678));
-		AfxMessageBox(s, MB_OK | MB_ICONEXCLAMATION);
-	}
-	COperationContext::PostRetire(bChildContext);
-}
-
 BOOL CFilterContext::ProcessBuffer(void * buf, size_t len, DWORD offset, BOOL bBackward)
 {
 	// calculate number of sample, and time
@@ -1943,54 +1714,14 @@ BOOL CFilterContext::ProcessBuffer(void * buf, size_t len, DWORD offset, BOOL bB
 		{
 			for (int i = 0; i < len / sizeof (__int16); i ++)
 			{
-				double dResult = CalculateResult(0, pDst[i]);
-				int result = fround(dResult);
-				if (result > 0x7FFF)
-				{
-					if (m_MaxClipped < dResult)
-					{
-						m_MaxClipped = dResult;
-					}
-					m_bClipped = true;
-					result = 0x7FFF;
-				}
-				else if (result < -0x8000)
-				{
-					if (m_MaxClipped < -dResult)
-					{
-						m_MaxClipped = -dResult;
-					}
-					result = -0x8000;
-					m_bClipped = true;
-				}
-				pDst[i] = result;
+				pDst[i] = DoubleToShort(CalculateResult(0, pDst[i]));
 			}
 		}
 		else
 		{
 			for (int i = len / sizeof (__int16) - 1; i >=0; i --)
 			{
-				double dResult = CalculateResult(0, pDst[i]);
-				int result = fround(dResult);
-				if (result > 0x7FFF)
-				{
-					if (m_MaxClipped < dResult)
-					{
-						m_MaxClipped = dResult;
-					}
-					m_bClipped = true;
-					result = 0x7FFF;
-				}
-				else if (result < -0x8000)
-				{
-					if (m_MaxClipped < -dResult)
-					{
-						m_MaxClipped = -dResult;
-					}
-					result = -0x8000;
-					m_bClipped = true;
-				}
-				pDst[i] = result;
+				pDst[i] = DoubleToShort(CalculateResult(0, pDst[i]));
 			}
 		}
 	}
@@ -2002,52 +1733,12 @@ BOOL CFilterContext::ProcessBuffer(void * buf, size_t len, DWORD offset, BOOL bB
 			{
 				if (m_DstChan != 1) // not right only
 				{
-					double dResult = CalculateResult(0, pDst[i]);
-					int result = fround(dResult);
-					if (result > 0x7FFF)
-					{
-						if (m_MaxClipped < dResult)
-						{
-							m_MaxClipped = dResult;
-						}
-						m_bClipped = true;
-						result = 0x7FFF;
-					}
-					else if (result < -0x8000)
-					{
-						if (m_MaxClipped < -dResult)
-						{
-							m_MaxClipped = -dResult;
-						}
-						result = -0x8000;
-						m_bClipped = true;
-					}
-					pDst[i] = result;
+					pDst[i] = DoubleToShort(CalculateResult(0, pDst[i]));
 				}
 
 				if (m_DstChan != 0) // not left only
 				{
-					double dResult = CalculateResult(1, pDst[i + 1]);
-					int result = fround(dResult);
-					if (result > 0x7FFF)
-					{
-						if (m_MaxClipped < dResult)
-						{
-							m_MaxClipped = dResult;
-						}
-						m_bClipped = true;
-						result = 0x7FFF;
-					}
-					else if (result < -0x8000)
-					{
-						if (m_MaxClipped < -dResult)
-						{
-							m_MaxClipped = -dResult;
-						}
-						result = -0x8000;
-						m_bClipped = true;
-					}
-					pDst[i + 1] = result;
+					pDst[i + 1] = DoubleToShort(CalculateResult(1, pDst[i + 1]));
 				}
 			}
 		}
@@ -2057,52 +1748,12 @@ BOOL CFilterContext::ProcessBuffer(void * buf, size_t len, DWORD offset, BOOL bB
 			{
 				if (m_DstChan != 1) // not right only
 				{
-					double dResult = CalculateResult(0, pDst[i]);
-					int result = fround(dResult);
-					if (result > 0x7FFF)
-					{
-						if (m_MaxClipped < dResult)
-						{
-							m_MaxClipped = dResult;
-						}
-						m_bClipped = true;
-						result = 0x7FFF;
-					}
-					else if (result < -0x8000)
-					{
-						if (m_MaxClipped < -dResult)
-						{
-							m_MaxClipped = -dResult;
-						}
-						result = -0x8000;
-						m_bClipped = true;
-					}
-					pDst[i] = result;
+					pDst[i] = DoubleToShort(CalculateResult(0, pDst[i]));
 				}
 
 				if (m_DstChan != 0) // not left only
 				{
-					double dResult = CalculateResult(1, pDst[i + 1]);
-					int result = fround(dResult);
-					if (result > 0x7FFF)
-					{
-						if (m_MaxClipped < dResult)
-						{
-							m_MaxClipped = dResult;
-						}
-						m_bClipped = true;
-						result = 0x7FFF;
-					}
-					else if (result < -0x8000)
-					{
-						if (m_MaxClipped < -dResult)
-						{
-							m_MaxClipped = -dResult;
-						}
-						result = -0x8000;
-						m_bClipped = true;
-					}
-					pDst[i + 1] = result;
+					pDst[i + 1] = DoubleToShort(CalculateResult(1, pDst[i + 1]));
 				}
 			}
 		}

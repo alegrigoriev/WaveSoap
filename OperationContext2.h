@@ -18,8 +18,6 @@ public:
 	BOOL SetExpression(LPCSTR * ppszExpression);
 	CString m_ErrorString;
 	void Evaluate();
-	bool m_bClipped;
-	double m_MaxClipped;
 
 private:
 	enum TokenType
@@ -144,7 +142,6 @@ private:
 	double m_dSelectionTimeArgument;
 	double m_dFileTimeArgument;
 public:
-	virtual void PostRetire(BOOL bChildContext = FALSE);
 	double m_dFrequencyArgument;
 	double m_dFrequencyArgument1;
 	double m_dFrequencyArgument2;
@@ -253,9 +250,7 @@ public:
 					LPCTSTR StatusString, LPCTSTR OperationName);
 	~CEqualizerContext();
 
-	BOOL m_bClipped;
 	BOOL m_bZeroPhase;
-	double m_MaxClipped;
 
 	// the coefficients are: 3 numerator's coeffs and 3 denominator's coeffs
 	double m_BandCoefficients[MaxNumberOfEqualizerBands][6];
@@ -264,7 +259,6 @@ public:
 	// and 2 prev output samples
 	double m_PrevSamples[2][MaxNumberOfEqualizerBands][4];
 	virtual BOOL ProcessBuffer(void * buf, size_t len, DWORD offset, BOOL bBackward = FALSE);
-	virtual void PostRetire(BOOL bChildContext = FALSE);
 	virtual BOOL Init();
 	virtual BOOL InitPass(int nPass);
 private:
@@ -278,9 +272,7 @@ public:
 					LPCTSTR StatusString, LPCTSTR OperationName);
 	~CFilterContext();
 
-	BOOL m_bClipped;
 	BOOL m_bZeroPhase;
-	double m_MaxClipped;
 
 	// the coefficients are: 3 numerator's coeffs and 3 denominator's coeffs
 	// results of the filter sections are ADDED
@@ -300,7 +292,6 @@ public:
 	double m_PrevNotchSamples[2][MaxFilterOrder][4];
 
 	virtual BOOL ProcessBuffer(void * buf, size_t len, DWORD offset, BOOL bBackward = FALSE);
-	virtual void PostRetire(BOOL bChildContext = FALSE);
 	virtual BOOL Init();
 	virtual BOOL InitPass(int nPass);
 private:
