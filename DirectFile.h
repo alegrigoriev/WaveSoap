@@ -9,12 +9,199 @@
 #pragma once
 #endif // _MSC_VER > 1000
 
-class CDirectFile : public CFile
+class CDirectFile
 {
+	class CSimpleCriticalSection
+	{
+		CRITICAL_SECTION m_cs;
+	public:
+		CSimpleCriticalSection()
+		{
+			InitializeCriticalSection( & m_cs);
+		}
+		~CSimpleCriticalSection()
+		{
+			DeleteCriticalSection( & m_cs);
+		}
+		void Lock()
+		{
+			EnterCriticalSection( & m_cs);
+		}
+		void Unlock()
+		{
+			LeaveCriticalSection( & m_cs);
+		}
+	};
+	class CSimpleCriticalSectionLock
+	{
+		CSimpleCriticalSection & m_cs;
+	public:
+		CSimpleCriticalSectionLock(CSimpleCriticalSection & cs)
+			: m_cs(cs)
+		{
+			cs.Lock();
+		}
+		~CSimpleCriticalSectionLock()
+		{
+			m_cs.Unlock();
+		}
+	};
 public:
+	long Write(const void * pBuf, long count);
+	long Read(void * buf, long count);
+	long ReadAt(void * buf, long count, LONGLONG Position);
+	LONGLONG Seek(LONGLONG position, int flag);
+
+	enum { ReturnBufferDirty = 1, // buffer contains changed data
+		ReturnBufferDiscard = 2 // make the buffer lower priority
+	};
+	// unlock the buffer, mark dirty if necessary
+	void ReturnDataBuffer(void * pBuffer, long count, DWORD flags = 0)
+	{
+		ASSERT(NULL != CDirectFileCache::SingleInstance);
+		CDirectFileCache::SingleInstance->ReturnDataBuffer(this, pBuffer, count, flags);
+	}
+
+	enum {GetBufferWriteOnly = 1,
+		GetBufferNoPrefetch = 2,
+		GetBufferAndPrefetchNext = 4,
+	};
+	// read data, lock the buffer
+	// and return the buffer address
+	long GetDataBuffer(void * * ppBuf, LONGLONG length, LONGLONG position, DWORD flags = 0)
+	{
+		ASSERT(NULL != CDirectFileCache::SingleInstance);
+		return CDirectFileCache::SingleInstance->GetDataBuffer(this, ppBuf, length, position, flags);
+	}
+
 	CDirectFile();
 	virtual ~CDirectFile();
+	enum {
+		OpenReadOnly = 1,
+		CreateNew = 2,
+		OpenToTemporary = 4,
+		OpenDirect = 8
+	};
+	BOOL Open(LPCTSTR szName, DWORD flags);
+	BOOL Close(DWORD flags);
+	DWORD GetFileSize(LPDWORD lpFileSizeHigh)
+	{
+		if (m_pFile != NULL
+			&& m_pFile->hFile != NULL)
+		{
+			return ::GetFileSize(m_pFile->hFile, lpFileSizeHigh);
+		}
+		else
+		{
+			if (lpFileSizeHigh)
+			{
+				*lpFileSizeHigh = 0xFFFFFFFF;
+			}
+			return 0xFFFFFFFF;
+		}
+	}
 
+	BOOL GetFileInformationByHandle(LPBY_HANDLE_FILE_INFORMATION lpFileInformation)
+	{
+		if (m_pFile != NULL
+			&& m_pFile->hFile != NULL)
+		{
+			return ::GetFileInformationByHandle(m_pFile->hFile, lpFileInformation);
+		}
+		else
+		{
+			return FALSE;
+		}
+	}
+
+	class CDirectFileCache
+	{
+		friend class CDirectFile;
+	protected:
+		struct BufferHeader;
+		struct File
+		{
+			File * pPrev;
+			File * pNext;
+			HANDLE hFile;
+			DWORD Flags;
+			long RefCount;
+			struct BufferHeader * volatile BuffersList;
+			LONGLONG FilePointer;
+			CSimpleCriticalSection m_ListLock;    // synchronize BufferList changes
+			CSimpleCriticalSection m_FileLock;    // synchronize FileRead, FileWrite
+			CString sName;
+			File(CString name) : hFile(NULL),
+				sName(name),
+				Flags(0),
+				FilePointer(0),
+				BuffersList(NULL),
+				RefCount(1),
+				pPrev(NULL),
+				pNext(NULL) {}
+		};
+		struct BufferHeader
+		{
+			// pointer in the common list
+			BufferHeader * pPrev;
+			BufferHeader * pNext;
+			void * pBuf;        // corresponding buffer
+			long LockCount;
+			unsigned MRU_Count;
+			DWORD Flags;
+			DWORD ReadMask;     // 32 bits for data available (a bit per 2K)
+			DWORD DirtyMask;    // 32 bits for dirty data
+			File * pFile;
+			LONGLONG Position;
+		};
+
+		long GetDataBuffer(CDirectFile * pFile, void * * ppBuf,
+							LONGLONG length, LONGLONG position, DWORD flags = 0,
+							unsigned MaxMRU = 0);
+		void ReturnDataBuffer(CDirectFile * pFile, void * pBuffer,
+							long count, DWORD flags);
+
+		BufferHeader * GetFreeBuffer(unsigned MaxMRU = 0xFFFFFFFFu);
+		void ReadDataBuffer(BufferHeader * pBuf, DWORD MaskToRead);
+		void FlushDirtyBuffers(BufferHeader * pBuf);
+		File * Open(LPCTSTR szName, DWORD flags);
+		BOOL Close(File * pFile, DWORD flags);
+
+	public:
+		CDirectFileCache(size_t CacheSize);
+		~CDirectFileCache();
+	private:
+		// points to the only instance of the class
+		static CDirectFileCache * SingleInstance;
+		BufferHeader * m_pHeaders;    // address of array
+		void * m_pBuffersArray;    // allocated area
+		int m_NumberOfBuffers; // number of allocated buffers
+		BufferHeader * volatile m_pFreeBuffers;
+		File * m_pFileList;
+		DWORD m_Flags;
+		unsigned volatile m_MRU_Count;
+
+		HANDLE m_hThread;
+		HANDLE m_hEvent;
+		BOOL m_bRunThread;
+
+		CDirectFile * volatile m_pPrefetchFile;
+		LONGLONG volatile m_PrefetchPosition;
+		LONGLONG volatile m_PrefetchLength;
+		unsigned volatile m_MinPrefetchMRU;
+
+		CSimpleCriticalSection m_cs;
+		static unsigned __stdcall ThreadProc(void * arg)
+		{
+			return ((CDirectFileCache *) arg)->_ThreadProc();
+		}
+		unsigned _ThreadProc();
+	};
+	friend class CDirectFileCache;
+protected:
+	CDirectFileCache::File * m_pFile;
+	LONGLONG m_FilePointer;
+	//LONGLONG m_FileLength;
 };
 
 #endif // !defined(AFX_DIRECTFILE_H__B7AA7401_4036_11D4_9ADD_00C0F0583C4B__INCLUDED_)
