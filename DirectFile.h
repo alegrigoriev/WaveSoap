@@ -237,6 +237,14 @@ public:
 		if (m_pFile != NULL
 			&& m_pFile->hFile != NULL)
 		{
+			if (m_pFile->m_Flags & FileFlagsMemoryFile)
+			{
+				if (NULL != lpFileSizeHigh)
+				{
+					*lpFileSizeHigh = 0;
+					return DWORD(m_pFile->FileLength);
+				}
+			}
 			return ::GetFileSize(m_pFile->hFile, lpFileSizeHigh);
 		}
 		else
@@ -250,6 +258,10 @@ public:
 	}
 	LONGLONG GetLength() const
 	{
+		if (NULL == m_pFile)
+		{
+			return 0;
+		}
 		return m_pFile->FileLength;
 	}
 
@@ -283,6 +295,7 @@ protected:
 	enum {
 		FileFlagsDeleteAfterClose = OpenDeleteAfterClose,
 		FileFlagsReadOnly = OpenReadOnly,
+		FileFlagsMemoryFile = CreateMemoryFile,
 	};
 	struct File
 	{
@@ -295,12 +308,21 @@ protected:
 		struct BufferHeader * volatile BuffersListTail;
 		// number of buffers in the list
 		int BuffersCount;
-		int DirtyBuffersCount;
+		union {
+			long DirtyBuffersCount;
+			long m_MemoryBufferRefCount;
+		};
 		// bitmask of 64K blocks that were once initialized.
 		// if the bit is 0, the block contains garbage and it should be
 		// zeroed or read from the source file
-		char * m_pWrittenMask;
-		int WrittenMaskSize;
+		union {
+			char * m_pWrittenMask;
+			char * m_pMemoryFileBuffer;
+		};
+		union {
+			long WrittenMaskSize;
+			long m_MemoryFileBufferSize;
+		};
 		// data common for all CDirectFile instances, attached to this File
 		void * m_pCommonData;
 		size_t m_CommonDataSize;
