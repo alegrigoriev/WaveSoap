@@ -202,9 +202,9 @@ CWaveFftView::CWaveFftView()
 	m_FftResultArrayWidth(0),
 	m_FftResultArrayHeight(0),
 	m_FftResultBegin(0),
-	m_FftLogRange(4.34294481903251827651128918916605),
+	m_FftLogRange(10. * M_LOG10E),
 	m_FirstbandVisible(0),
-	m_FftWindowType(WindowTypeSquaredSine),
+	m_FftWindowType(WindowTypeNuttall),
 	m_IndexOfFftBegin(0),
 	m_FftArraySize(0)
 {
