@@ -2036,7 +2036,10 @@ BOOL CWaveSoapFrontDoc::OnSaveConvertedFile(class COperationContext ** ppOp, int
 	{
 		CPath p(FullTargetName);
 		p.CompactPathEx(40, 0);
-		sOp.Format(IDS_SAVING_FILE_PART, LPCTSTR(p));
+		sOp.Format(IDS_SAVING_FILE_PART,
+			LPCTSTR(SampleToString(Begin, WaveSampleRate(), SampleToString_HhMmSs | TimeToHhMmSs_NeedsMm | TimeToHhMmSs_NeedsMs)),
+			LPCTSTR(SampleToString(End, WaveSampleRate(), SampleToString_HhMmSs | TimeToHhMmSs_NeedsMm | TimeToHhMmSs_NeedsMs)),
+			LPCTSTR(p));
 		// sOpName left empty
 	}
 	else
@@ -2179,7 +2182,10 @@ BOOL CWaveSoapFrontDoc::OnSaveMp3File(class COperationContext ** ppOp, int flags
 	{
 		CPath p(FullTargetName);
 		p.CompactPathEx(40, 0);
-		sOp.Format(IDS_SAVING_FILE_PART, LPCTSTR(p));
+		sOp.Format(IDS_SAVING_FILE_PART,
+			LPCTSTR(SampleToString(Begin, WaveSampleRate(), SampleToString_HhMmSs | TimeToHhMmSs_NeedsMm | TimeToHhMmSs_NeedsMs)),
+			LPCTSTR(SampleToString(End, WaveSampleRate(), SampleToString_HhMmSs | TimeToHhMmSs_NeedsMm | TimeToHhMmSs_NeedsMs)),
+			LPCTSTR(p));
 		// sOpName left empty
 	}
 	else
@@ -2319,7 +2325,10 @@ BOOL CWaveSoapFrontDoc::OnSaveWmaFile(class COperationContext ** ppOp, int flags
 	{
 		CPath p(FullTargetName);
 		p.CompactPathEx(40, 0);
-		sOp.Format(IDS_SAVING_FILE_PART, LPCTSTR(p));
+		sOp.Format(IDS_SAVING_FILE_PART,
+			LPCTSTR(SampleToString(Begin, WaveSampleRate(), SampleToString_HhMmSs | TimeToHhMmSs_NeedsMm | TimeToHhMmSs_NeedsMs)),
+			LPCTSTR(SampleToString(End, WaveSampleRate(), SampleToString_HhMmSs | TimeToHhMmSs_NeedsMm | TimeToHhMmSs_NeedsMs)),
+			LPCTSTR(p));
 		// sOpName left empty
 	}
 	else
@@ -5755,7 +5764,7 @@ void CWaveSoapFrontDoc::OnSaveSplitToFiles()
 		return;
 	}
 
-	CStagedContext::auto_ptr pContext(new CStagedContext(this, 0, IDS_STRING_SPLIT_TO_FILES_OPERATION));
+	CStagedContext::auto_ptr pContext(new CStagedContext(this, UINT(0), UINT(0 * IDS_STRING_SPLIT_TO_FILES_OPERATION)));
 	// TODO: Add your command handler code here
 	CString Title;
 	CString FileName;

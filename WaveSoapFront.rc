@@ -3885,7 +3885,7 @@ BEGIN
     IDS_FILE_LIST_LENGTH_COLUMN "Length"
     IDS_SELECT_SAVE_TO_FOLDER "Save Files To Folder"
     IDS_NEW_FILE_SEGMENT_NAME "New Segment %d"
-    IDS_SAVING_FILE_PART    "Saving data region to ""%s"""
+    IDS_SAVING_FILE_PART    "Saving from %s to %s as ""%s"""
 END
 
 STRINGTABLE 
@@ -3896,7 +3896,7 @@ END
 
 STRINGTABLE 
 BEGIN
-    IDS_STRING_SPLIT_TO_FILES_OPERATION "Split to files"
+    IDS_STRING_SPLIT_TO_FILES_OPERATION "Save to multiple files"
     IDS_CHANNELS_SHIFT_WARNING_PROMPT 
                             "One channel will get moved from another, continue?"
 END
