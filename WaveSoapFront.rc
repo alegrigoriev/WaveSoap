@@ -99,6 +99,8 @@ BEGIN
     BUTTON      ID_FILE_NEW
     BUTTON      ID_FILE_OPEN
     BUTTON      ID_FILE_SAVE
+    BUTTON      ID_FILE_SAVE_AS
+    BUTTON      ID_FILE_SAVE_ALL
     SEPARATOR
     BUTTON      ID_EDIT_CUT
     BUTTON      ID_EDIT_COPY
@@ -164,6 +166,7 @@ BEGIN
         MENUITEM "&Close",                      ID_FILE_CLOSE
         MENUITEM "&Save\tCtrl+S",               ID_FILE_SAVE
         MENUITEM "Save &As...",                 ID_FILE_SAVE_AS
+        MENUITEM "Save Al&l",                   ID_FILE_SAVE_ALL
         MENUITEM SEPARATOR
         MENUITEM "&Print...\tCtrl+P",           ID_FILE_PRINT
         MENUITEM "Print Pre&view",              ID_FILE_PRINT_PREVIEW
@@ -171,16 +174,21 @@ BEGIN
         MENUITEM SEPARATOR
         MENUITEM "Recent File",                 ID_FILE_MRU_FILE1, GRAYED
         MENUITEM SEPARATOR
-        MENUITEM "E&xit",                       ID_APP_EXIT
+        MENUITEM "E&xit\tAlt+F4",               ID_APP_EXIT
     END
     POPUP "&Edit"
     BEGIN
         MENUITEM "&Undo\tCtrl+Z",               ID_EDIT_UNDO
+        MENUITEM "Redo\tCtrl+Y",                ID_EDIT_REDO
         MENUITEM SEPARATOR
         MENUITEM "&Copy\tCtrl+C",               ID_EDIT_COPY
         MENUITEM "Cu&t\tCtrl+X",                ID_EDIT_CUT
         MENUITEM "&Paste\tCtrl+V",              ID_EDIT_PASTE
         MENUITEM "&Delete\tDel",                ID_EDIT_DELETE
+        MENUITEM "Paste As New File\tCtrl+E",   ID_EDIT_PASTE_NEW
+        MENUITEM SEPARATOR
+        MENUITEM "Go To...\tCtrl+G",            ID_EDIT_GOTO
+        MENUITEM "Select All\tCtrl+A",          ID_EDIT_SELECT_ALL
     END
     POPUP "&View"
     BEGIN
@@ -194,6 +202,12 @@ BEGIN
         MENUITEM "Samples",                     IDC_VIEW_RULER_SAMPLES
         MENUITEM "HH:MM:SS",                    IDC_VIEW_RULER_HHMMSS
         MENUITEM "Seconds",                     IDC_VIEW_RULER_SECONDS
+    END
+    POPUP "Process"
+    BEGIN
+        MENUITEM "Click removal...",            IDC_PROCESS_DO_DECLICKING
+        MENUITEM "Turntable noise reduction...", IDC_PROCESS_DO_ULF
+        MENUITEM "White noise reduction...",    IDC_PROCESS_NOISE_REDUCTION
     END
     POPUP "&Window"
     BEGIN
@@ -237,7 +251,10 @@ END
 
 IDR_MAINFRAME ACCELERATORS PRELOAD MOVEABLE PURE 
 BEGIN
+    "A",            ID_EDIT_SELECT_ALL,     VIRTKEY, CONTROL, NOINVERT
     "C",            ID_EDIT_COPY,           VIRTKEY, CONTROL, NOINVERT
+    "E",            ID_EDIT_PASTE_NEW,      VIRTKEY, CONTROL, NOINVERT
+    "G",            ID_EDIT_GOTO,           VIRTKEY, CONTROL, NOINVERT
     "N",            ID_FILE_NEW,            VIRTKEY, CONTROL, NOINVERT
     "O",            ID_FILE_OPEN,           VIRTKEY, CONTROL, NOINVERT
     "P",            ID_FILE_PRINT,          VIRTKEY, CONTROL, NOINVERT
@@ -245,6 +262,7 @@ BEGIN
     "V",            ID_EDIT_PASTE,          VIRTKEY, CONTROL, NOINVERT
     VK_ADD,         ID_VIEW_ZOOMINHOR2,     VIRTKEY, NOINVERT
     VK_BACK,        ID_EDIT_UNDO,           VIRTKEY, ALT, NOINVERT
+    VK_DELETE,      ID_EDIT_DELETE,         VIRTKEY, NOINVERT
     VK_DELETE,      ID_EDIT_CUT,            VIRTKEY, SHIFT, NOINVERT
     VK_DOWN,        ID_VIEW_ZOOMOUTVERT,    VIRTKEY, ALT, NOINVERT
     VK_F1,          ID_HELP,                VIRTKEY, NOINVERT
@@ -563,7 +581,7 @@ IDC_CURSOR_BEAM         CURSOR  FIXED IMPURE    "res\\cur00002.cur"
 STRINGTABLE PRELOAD DISCARDABLE 
 BEGIN
     IDR_MAINFRAME           "WaveSoap"
-    IDR_WAVESOTYPE          "\nWaveSo\nWindowsSound file\nWindows Sound files (*.wav)\n.wav\nWaveSoap.Document\nWaveSoap Document"
+    IDR_WAVESOTYPE          "\nSound\nWindowsSound file\nWindows Sound files (*.wav)\n.wav\nWaveSoap.Document\nWaveSoap Document"
 END
 
 STRINGTABLE PRELOAD DISCARDABLE 
@@ -585,11 +603,11 @@ END
 
 STRINGTABLE DISCARDABLE 
 BEGIN
-    ID_FILE_NEW             "Create a new document\nNew"
-    ID_FILE_OPEN            "Open an existing document\nOpen"
+    ID_FILE_NEW             "Create an empty sound file\nNew"
+    ID_FILE_OPEN            "Open an existing sound file\nOpen"
     ID_FILE_CLOSE           "Close the active document\nClose"
-    ID_FILE_SAVE            "Save the active document\nSave"
-    ID_FILE_SAVE_AS         "Save the active document with a new name\nSave As"
+    ID_FILE_SAVE            "Save the current file\nSave"
+    ID_FILE_SAVE_AS         "Save the file with a new name\nSave As"
     ID_FILE_PAGE_SETUP      "Change the printing options\nPage Setup"
     ID_FILE_PRINT_SETUP     "Change the printer and printing options\nPrint Setup"
     ID_FILE_PRINT           "Print the active document\nPrint"
@@ -653,7 +671,7 @@ BEGIN
     ID_EDIT_PASTE           "Insert Clipboard contents\nPaste"
     ID_EDIT_REPEAT          "Repeat the last action\nRepeat"
     ID_EDIT_REPLACE         "Replace specific text with different text\nReplace"
-    ID_EDIT_SELECT_ALL      "Select the entire document\nSelect All"
+    ID_EDIT_SELECT_ALL      "Select the entire file\nSelect All"
     ID_EDIT_UNDO            "Undo the last action\nUndo"
     ID_EDIT_REDO            "Redo the previously undone action\nRedo"
 END
@@ -695,6 +713,9 @@ END
 STRINGTABLE DISCARDABLE 
 BEGIN
     ID_EDIT_STOP            "Stop the current operation\nStop"
+    ID_FILE_SAVE_ALL        "Save all open files\nSave all"
+    ID_EDIT_PASTE_NEW       "Create a new file from the clipboard contents\nPaste as new"
+    ID_EDIT_GOTO            "Go to specified position\nGo to"
     ID_VIEW_ZOOMIN          "Magnify the view"
     ID_VIEW_ZOOMOUT         "Diminish the view"
     ID_VIEW_ZOOM_OUT2       "Zoom out x2"
@@ -726,16 +747,16 @@ BEGIN
     IDC_VIEW_RULER_SAMPLES  "Show time in samples\nShow samples"
     IDC_VIEW_RULER_HHMMSS   "Show time as hour:minute:seconds\nShow hh:mm:ss"
     IDC_VIEW_RULER_SECONDS  "Show time in seconds\nShow seconds"
-    IDC_SOUND_PLAY          "Plays from the current cursor position\nPlay"
-    IDC_SOUND_PAUSE         "Stops playback and leaves the cursor at the current position\nPause"
-    IDC_SOUND_STOP          "Stops playback and returns to the last known cursor position\nStop"
+    IDC_SOUND_PLAY          "Play from the current cursor position\nPlay"
+    IDC_SOUND_PAUSE         "Stop playback and leave the cursor at the current position\nPause"
+    IDC_SOUND_STOP          "Stop playback and return to the last known cursor position\nStop"
     IDC_VIEW_SHOW_FFT       "Show the wave spectrum\nSpectral view"
     IDC_VIEW_WAVEFORM       "Show the sound as waveform\nShow waveform"
-    IDC_PROCESS_DO_ULF      "Enables ultra-low frequency noise suppression (required for vinyl recordings)\nTurntable noise suppression"
+    IDC_PROCESS_DO_ULF      "Ultra-low frequency noise suppression (for vinyl recordings)\nTurntable noise suppression"
     IDC_PROCESS_DO_DECLICKING 
-                            "Enables click removal required for vinyl recordings\nClick removal"
+                            "Click removal (for vinyl recordings)\nClick removal"
     IDC_PROCESS_NOISE_REDUCTION 
-                            "Enables noise (hiss) suppression\nNoise reduction"
+                            "White noise (hiss) reduction\nNoise reduction"
     ID_EDIT_DELETE          "Delete the selection\nDelete"
 END
 
