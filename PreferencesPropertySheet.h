@@ -9,6 +9,7 @@
 //
 #include "resource.h"       // main symbols
 #include "ApplicationParameters.h"
+#include "UiUpdatedDlg.h"
 /////////////////////////////////////////////////////////////////////////////
 
 /////////////////////////////////////////////////////////////////////////////
@@ -138,10 +139,10 @@ protected:
 /////////////////////////////////////////////////
 // CUndoPropertyPage dialog
 
-class CUndoPropertyPage : public CPropertyPage, protected UndoRedoParameters
+class CUndoPropertyPage : public CUiUpdatedDlgT<CPropertyPage>,
+	protected UndoRedoParameters
 {
-	typedef CPropertyPage BaseClass;
-	DECLARE_DYNAMIC(CUndoPropertyPage)
+	typedef CUiUpdatedDlgT<CPropertyPage> BaseClass;
 
 public:
 	CUndoPropertyPage(UndoRedoParameters const * pParams);
@@ -158,6 +159,22 @@ public:
 protected:
 	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV support
 	virtual BOOL OnInitDialog();
+
+	afx_msg void OnBnClickedCheckEnableRedo();
+	afx_msg void OnBnClickedCheckEnableUndo();
+	afx_msg void OnBnClickedCheckLimitRedoDepth();
+	afx_msg void OnBnClickedCheckLimitRedoSize();
+	afx_msg void OnBnClickedCheckLimitUndoDepth();
+	afx_msg void OnBnClickedCheckLimitUndoSize();
+
+	afx_msg void OnUpdateCheckLimitRedoDepth(CCmdUI * pCmdUI);
+	afx_msg void OnUpdateCheckLimitRedoSize(CCmdUI * pCmdUI);
+	afx_msg void OnUpdateCheckLimitUndoDepth(CCmdUI * pCmdUI);
+	afx_msg void OnUpdateCheckLimitUndoSize(CCmdUI * pCmdUI);
+	afx_msg void OnUpdateEditLimitRedoDepth(CCmdUI * pCmdUI);
+	afx_msg void OnUpdateEditLimitRedoSize(CCmdUI * pCmdUI);
+	afx_msg void OnUpdateEditLimitUndoDepth(CCmdUI * pCmdUI);
+	afx_msg void OnUpdateEditLimitUndoSize(CCmdUI * pCmdUI);
 
 	DECLARE_MESSAGE_MAP()
 };
