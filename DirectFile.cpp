@@ -1212,6 +1212,15 @@ long CDirectFile::CDirectFileCache::GetDataBuffer(File * pFile,
 	}
 	else if (length < 0)
 	{
+		if (-length > position)
+		{
+			length = -position;
+			if (0 == length)
+			{
+				*ppBuf = NULL;
+				return 0;
+			}
+		}
 		OffsetInBuffer = 0x10000 - ((-long(position)) & 0xFFFF);
 		if (OffsetInBuffer + length <= 0)    // length < 0
 		{

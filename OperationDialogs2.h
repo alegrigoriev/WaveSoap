@@ -33,6 +33,7 @@ public:
 	long    m_Length;
 	long    m_Start;
 	long    m_FileLength;
+	long    m_CaretPosition;
 	WAVEFORMATEX * m_pWf;
 
 // Overrides

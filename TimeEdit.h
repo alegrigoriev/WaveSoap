@@ -98,6 +98,7 @@ public:
 	std::vector<long> m_Positions;
 // Operations
 	void AddPosition(LPCTSTR name, long time);
+	void AddPosition(UINT id, long time);
 public:
 // Overrides
 	// ClassWizard generated virtual function overrides

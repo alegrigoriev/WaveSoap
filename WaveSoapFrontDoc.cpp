@@ -15,6 +15,7 @@
 #include <Dlgs.h>
 #include "ReopenCompressedFileDialog.h"
 #include "ReopenConvertedFileDlg.h"
+#include "EqualizerDialog.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -147,6 +148,8 @@ BEGIN_MESSAGE_MAP(CWaveSoapFrontDoc, CDocument)
 	ON_UPDATE_COMMAND_UI(ID_EDIT_CLEAR_UNDO, OnUpdateEditClearUndo)
 	ON_COMMAND(ID_EDIT_CLEAR_REDO, OnEditClearRedo)
 	ON_UPDATE_COMMAND_UI(ID_EDIT_CLEAR_REDO, OnUpdateEditClearRedo)
+	ON_COMMAND(ID_PROCESS_EQUALIZER, OnProcessEqualizer)
+	ON_UPDATE_COMMAND_UI(ID_PROCESS_EQUALIZER, OnUpdateProcessEqualizer)
 	//}}AFX_MSG_MAP
 END_MESSAGE_MAP()
 
@@ -4224,12 +4227,13 @@ void CWaveSoapFrontDoc::OnProcessInsertsilence()
 		channel = ALL_CHANNELS;
 	}
 	CInsertSilenceDialog dlg;
-	dlg.m_Start = m_SelectionEnd;
+	dlg.m_Start = m_CaretPosition;
 	dlg.m_Length = 0;
 	dlg.m_pWf = WaveFormat();
 	dlg.m_FileLength = WaveFileSamples();
 	dlg.m_nChannel = channel + 1;
 	dlg.m_TimeFormat = GetApp()->m_SoundTimeFormat;
+	dlg.m_CaretPosition = m_CaretPosition;
 
 	if (IDOK != dlg.DoModal())
 	{
@@ -5470,4 +5474,26 @@ void CWaveSoapFrontDoc::OnEditClearRedo()
 void CWaveSoapFrontDoc::OnUpdateEditClearRedo(CCmdUI* pCmdUI)
 {
 	pCmdUI->Enable(! m_OperationInProgress && NULL != m_pRedoList);
+}
+
+void CWaveSoapFrontDoc::OnProcessEqualizer()
+{
+	if (m_bReadOnly
+		|| m_OperationInProgress
+		|| ! m_WavFile.IsOpen()
+		|| WaveFileSamples() <= 2)
+	{
+		return;
+	}
+	CEqualizerDialog dlg;
+	if (IDOK == dlg.DoModal())
+	{
+	}
+}
+
+void CWaveSoapFrontDoc::OnUpdateProcessEqualizer(CCmdUI* pCmdUI)
+{
+	pCmdUI->Enable( ! m_bReadOnly
+					&& ! m_OperationInProgress
+					&& m_WavFile.IsOpen() && WaveFileSamples() > 2 );
 }

@@ -386,6 +386,8 @@ protected:
 	afx_msg void OnUpdateEditClearUndo(CCmdUI* pCmdUI);
 	afx_msg void OnEditClearRedo();
 	afx_msg void OnUpdateEditClearRedo(CCmdUI* pCmdUI);
+	afx_msg void OnProcessEqualizer();
+	afx_msg void OnUpdateProcessEqualizer(CCmdUI* pCmdUI);
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 
