@@ -193,7 +193,7 @@ protected:
 
 	// Generated message map functions
 	//{{AFX_MSG(CReopenDialog)
-	// NOTE: the ClassWizard will add member functions here
+	afx_msg void OnNo();
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 };

@@ -73,6 +73,18 @@ public:
 	{
 		return m_pFile != 0;
 	}
+	int GetFileRefCount() const
+	{
+		if (NULL != m_pFile)
+		{
+			return m_pFile->RefCount;
+		}
+		else
+		{
+			return 0;
+		}
+	}
+
 	BOOL IsReadOnly() const
 	{
 		if (NULL == m_pFile)
@@ -302,6 +314,11 @@ public:
 		if (m_pFile != NULL)
 			m_pFile->m_LastError = 0;
 	}
+	bool IsTemporaryFile() const
+	{
+		return IsOpen()
+				&& 0 == (Flags() & (FileFlagsDeleteAfterClose | FileFlagsMemoryFile));
+	}
 
 protected:
 	struct BufferHeader;
@@ -401,6 +418,7 @@ protected:
 			UseSourceFileLength(0),
 			m_pCommonData(NULL),
 			m_CommonDataSize(0),
+			m_LastError(0),
 			pPrev(NULL),
 			pNext(NULL)
 		{
@@ -484,11 +502,18 @@ public:
 
 		HANDLE m_hThread;
 		HANDLE m_hEvent;
+		HANDLE m_hThreadSuspendedEvent;
 		BOOL m_bRunThread;
 
+		volatile LONG m_ThreadRunState;
+		// Run State:
+		// 0 - free running, waiting for operations
+		// 0x80000000 - executing prefetch or flush, no suspend requested
+		// > 0 - suspend requested n times, thread waiting for m_hEvent
+		// 0x800000xx - thread executing, suspend requested xx times
+		// ~0 (0xFFFFFFFF) - exit requested
+
 		File * volatile m_pPrefetchFile;
-		void * m_pCurrentPrefetchFile;
-		HANDLE m_hStopPrefetchEvent;
 		LONGLONG volatile m_PrefetchPosition;
 		LONGLONG volatile m_PrefetchLength;
 		unsigned volatile m_MinPrefetchMRU;

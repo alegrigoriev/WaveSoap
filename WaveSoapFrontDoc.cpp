@@ -361,6 +361,14 @@ CWaveSoapFrontDoc::~CWaveSoapFrontDoc()
 		delete[] m_pPeaks;
 		m_pPeaks = NULL;
 	}
+	CWaveSoapFrontDoc * pTmpDoc = NULL;
+	CString str;
+	CThisApp * pApp = GetApp();
+	pApp->GetStatusStringAndDoc(str, & pTmpDoc);
+	if (this == pTmpDoc)
+	{
+		pApp->SetStatusStringAndDoc("", NULL);
+	}
 }
 
 BOOL CWaveSoapFrontDoc::OnNewDocument(WAVEFORMATEX * pWfx, long InitialLengthSeconds)
@@ -917,6 +925,10 @@ void CWaveSoapFileSaveDialog::OnTypeChange()
 // if 'bReplace' is FALSE will not change path name (SaveCopyAs)
 BOOL CWaveSoapFrontDoc::DoSave(LPCTSTR lpszPathName, BOOL bReplace)
 {
+	if (m_bClosePending)
+	{
+		return false;   // don't continue
+	}
 	CThisApp * pApp = GetApp();
 	WAVEFORMATEX * pWf;
 	WAVEFORMATEX * pOriginalWf = NULL;
@@ -946,6 +958,12 @@ BOOL CWaveSoapFrontDoc::DoSave(LPCTSTR lpszPathName, BOOL bReplace)
 	pWf->nChannels = m_WavFile.GetWaveFormat()->nChannels;
 
 	CString newName = lpszPathName;
+	int SaveFlags = 0;
+	if ( ! bReplace)
+	{
+		SaveFlags |= SaveFile_SaveCopy;
+	}
+
 	if (newName.IsEmpty())
 	{
 		CDocTemplate* pTemplate = GetDocTemplate();
@@ -975,12 +993,25 @@ BOOL CWaveSoapFrontDoc::DoSave(LPCTSTR lpszPathName, BOOL bReplace)
 
 		int idx = newName.ReverseFind('.');
 		// replace the extension
+		// TODO: Add the extension for the supported type
 		if (idx != -1
 			&& idx >= newName.GetLength() - 4
 			&& 0 != stricmp(LPCTSTR(newName) + idx+1, "wav"))
 		{
 			newName.Delete(idx + 1, newName.GetLength() - idx - 1);
 			newName += "wav";
+		}
+
+		if (SaveFlags & SaveFile_SaveCopy)
+		{
+			// add Copy Of
+			// Get filename
+			TCHAR Buf[MAX_PATH * 2] = {0};
+			LPTSTR FilePart = Buf;
+			GetFullPathName(newName, MAX_PATH * 2, Buf, & FilePart);
+			CString path(Buf, FilePart - Buf);
+			CString name(FilePart);
+
 		}
 
 		CWaveSoapFileSaveDialog dlg(FALSE, "wav", newName,
@@ -1035,6 +1066,13 @@ BOOL CWaveSoapFrontDoc::DoSave(LPCTSTR lpszPathName, BOOL bReplace)
 			return FALSE;       // don't even attempt to save
 		}
 		newName = dlg.GetPathName();
+		// convert to long name
+		TCHAR LongPath[512];
+		if (GetLongPathName(newName, LongPath, 512))
+		{
+			newName = LongPath;
+		}
+
 		WAVEFORMATEX * pNewWf = dlg.GetWaveFormat();
 		if (pNewWf)
 		{
@@ -1043,13 +1081,7 @@ BOOL CWaveSoapFrontDoc::DoSave(LPCTSTR lpszPathName, BOOL bReplace)
 	}
 
 	CWaitCursor wait;
-	int flags = 0;
-	if ( ! bReplace)
-	{
-		flags |= SaveFile_SaveCopy;
-	}
-
-	if (!OnSaveDocument(newName, flags, pWf))
+	if (!OnSaveDocument(newName, SaveFlags, pWf))
 	{
 		delete[] (char*) pWf;
 		return FALSE;
@@ -1769,6 +1801,10 @@ void CWaveSoapFrontDoc::OnEditUndo()
 	}
 
 	m_pUndoList = pUndo->pNext;
+	if (m_pUndoList)
+	{
+		m_pUndoList->pPrev = NULL;
+	}
 	pUndo->pNext = NULL;
 
 	DecrementModified();
@@ -1791,6 +1827,10 @@ void CWaveSoapFrontDoc::OnEditRedo()
 	}
 
 	m_pRedoList = pRedo->pNext;
+	if (m_pRedoList)
+	{
+		m_pRedoList->pPrev = NULL;
+	}
 	pRedo->pNext = NULL;
 
 	IncrementModified(FALSE);   // don't delete redo
@@ -2219,10 +2259,6 @@ BOOL CWaveSoapFrontDoc::OnOpenDocument(LPCTSTR lpszPathName, int DocOpenFlags)
 BOOL CWaveSoapFrontDoc::OnSaveDocument(LPCTSTR lpszPathName, DWORD flags, WAVEFORMATEX * pWf)
 {
 
-	if (m_bClosePending)
-	{
-		return false;   // don't continue
-	}
 	m_bClosePending = m_bClosing;
 
 	// file where the data is currently kept
@@ -2286,6 +2322,9 @@ BOOL CWaveSoapFrontDoc::OnSaveDocument(LPCTSTR lpszPathName, DWORD flags, WAVEFO
 		flags |= SaveFile_SameName;
 	}
 	m_WavFile.CommitChanges();
+
+	DeletePermanentUndoRedo();
+
 	CWaveFile NewWaveFile;
 	if (WAVE_FORMAT_PCM == pWf->wFormatTag
 		// the same format
@@ -2364,7 +2403,7 @@ BOOL CWaveSoapFrontDoc::OnSaveDocument(LPCTSTR lpszPathName, DWORD flags, WAVEFO
 												0,
 												NewTempFilename))
 		{
-			NotEnoughDiskSpaceMessageBox();
+			FileCreationErrorMessageBox(NewTempFilename);
 			return FALSE;
 		}
 		LPCTSTR sOp = "Saving the file...";
@@ -2419,7 +2458,7 @@ BOOL CWaveSoapFrontDoc::OnSaveDocument(LPCTSTR lpszPathName, DWORD flags, WAVEFO
 													CreateWaveFilePcmFormat | CreateWaveFileDontCopyInfo,
 													NewTempFilename))
 			{
-				NotEnoughDiskSpaceMessageBox();
+				FileCreationErrorMessageBox(NewTempFilename);
 				return FALSE;
 			}
 		}
@@ -2437,7 +2476,7 @@ BOOL CWaveSoapFrontDoc::OnSaveDocument(LPCTSTR lpszPathName, DWORD flags, WAVEFO
 													| CreateWaveFileSizeSpecified,
 													NewTempFilename))
 			{
-				NotEnoughDiskSpaceMessageBox();
+				FileCreationErrorMessageBox(NewTempFilename);
 				return FALSE;
 			}
 		}
@@ -2641,7 +2680,7 @@ void CWaveSoapFrontDoc::PostFileSave(CFileSaveContext * pContext)
 			{
 				// if PCM format and read-only or non-direct, ask about reopening as direct
 				CReopenDialog ReopenDlg;
-				ReopenDlg.m_Prompt.Format(IDS_REOPEN_IN_DIRECT_MODE, m_WavFile.GetName());
+				ReopenDlg.m_Prompt.Format(IDS_REOPEN_IN_DIRECT_MODE, pContext->m_NewName);
 				int result = ReopenDlg.DoModal();
 				if (IDOK == result)
 				{
@@ -2673,6 +2712,7 @@ void CWaveSoapFrontDoc::PostFileSave(CFileSaveContext * pContext)
 				//todo
 				return; //??
 			}
+			// TODO: reconsider keeping undo/redo,
 			DeleteUndo();
 			DeleteRedo();
 		}
@@ -2927,6 +2967,10 @@ void CWaveSoapFrontDoc::AddUndoRedo(CUndoRedoContext * pContext)
 	if (pContext->m_Flags & RedoContext)
 	{
 		pContext->pNext = m_pRedoList;
+		if (m_pRedoList)
+		{
+			m_pRedoList->pPrev = pContext;
+		}
 		m_pRedoList = pContext;
 		// free extra redo, if count or size limit is exceeded
 		LimitUndoRedo( & m_pRedoList, GetApp()->m_MaxRedoDepth, GetApp()->m_MaxRedoSize);
@@ -2934,6 +2978,10 @@ void CWaveSoapFrontDoc::AddUndoRedo(CUndoRedoContext * pContext)
 	else
 	{
 		pContext->pNext = m_pUndoList;
+		if (m_pUndoList)
+		{
+			m_pUndoList->pPrev = pContext;
+		}
 		m_pUndoList = pContext;
 		// free extra undo, if count or size limit is exceeded
 		LimitUndoRedo( & m_pUndoList, GetApp()->m_MaxUndoDepth, GetApp()->m_MaxUndoSize);
@@ -3566,7 +3614,7 @@ void CWaveSoapFrontDoc::ChangeChannels(int nChannels)
 									NULL))
 	{
 		delete pContext;
-		NotEnoughDiskSpaceMessageBox();
+		FileCreationErrorMessageBox(NULL);
 		return;
 	}
 	pContext->InitDestination(DstFile, 0, SampleCount, ALL_CHANNELS, FALSE);
@@ -4306,7 +4354,7 @@ void CWaveSoapFrontDoc::OnProcessResample()
 									NULL))
 	{
 		delete pContext;
-		NotEnoughDiskSpaceMessageBox();
+		FileCreationErrorMessageBox(NULL);
 		return;
 	}
 	if (dlg.m_bChangeSamplingRate)
@@ -4582,7 +4630,7 @@ BOOL CWaveSoapFrontDoc::OpenWmaFileDocument(LPCTSTR lpszPathName)
 		NotEnoughMemoryMessageBox();
 		return FALSE;
 	}
-
+	CoInitializeEx(NULL, COINIT_MULTITHREADED );
 	BOOL res = pWmaContext->Open(m_OriginalWavFile);
 	if (res)
 	{
@@ -4595,11 +4643,14 @@ BOOL CWaveSoapFrontDoc::OpenWmaFileDocument(LPCTSTR lpszPathName)
 										| CreateWaveFileTemp, NULL))
 		{
 			AfxMessageBox(IDS_UNABLE_TO_CREATE_TEMPORARY_FILE, MB_OK | MB_ICONEXCLAMATION);
+			delete pWmaContext;
+			CoUninitialize();
 			return FALSE;
 		}
 		pWmaContext->SetDstFile(m_WavFile);
 		AllocatePeakData(pWmaContext->m_CurrentSamples);
 		pWmaContext->Execute();
+		CoUninitialize();
 		return TRUE;
 	}
 	else
@@ -4608,6 +4659,7 @@ BOOL CWaveSoapFrontDoc::OpenWmaFileDocument(LPCTSTR lpszPathName)
 		CString s;
 		s.Format(IDS_CANT_OPEN_WMA_DECODER, lpszPathName);
 		AfxMessageBox(s, MB_ICONEXCLAMATION | MB_OK);
+		CoUninitialize();
 		return FALSE;
 	}
 	return FALSE;
@@ -5149,4 +5201,62 @@ void CWaveSoapFrontDoc::OnSamplerateCustom()
 void CWaveSoapFrontDoc::OnUpdateSamplerateCustom(CCmdUI* pCmdUI)
 {
 	pCmdUI->Enable(m_WavFile.IsOpen() && ! (m_OperationInProgress || m_bReadOnly));
+}
+
+void CWaveSoapFrontDoc::DeletePermanentUndoRedo()
+{
+	CUndoRedoContext * pUndo = static_cast<CUndoRedoContext *>(m_pUndoList);
+	while (NULL != pUndo)
+	{
+		if ((pUndo->m_Flags & UndoContextReplaceWholeFile)
+			&& ! pUndo->m_SrcFile.IsTemporaryFile())
+		{
+			break;
+		}
+		pUndo = static_cast<CUndoRedoContext *>(pUndo->pNext);
+	}
+	if (NULL != pUndo)
+	{
+		if (pUndo->pPrev != NULL)
+		{
+			pUndo->pPrev->pNext = NULL;
+		}
+		else
+		{
+			m_pUndoList = NULL;
+		}
+		while (NULL != pUndo)
+		{
+			CUndoRedoContext * pTmp = pUndo;
+			pUndo = static_cast<CUndoRedoContext *>(pUndo->pNext);
+			delete pTmp;
+		}
+	}
+	CUndoRedoContext * pRedo = static_cast<CUndoRedoContext *>(m_pRedoList);
+	while (NULL != pRedo)
+	{
+		if ((pRedo->m_Flags & UndoContextReplaceWholeFile)
+			&& ! pRedo->m_SrcFile.IsTemporaryFile())
+		{
+			break;
+		}
+		pRedo = static_cast<CUndoRedoContext *>(pRedo->pNext);
+	}
+	if (NULL != pRedo)
+	{
+		if (pRedo->pPrev != NULL)
+		{
+			pRedo->pPrev->pNext = NULL;
+		}
+		else
+		{
+			m_pRedoList = NULL;
+		}
+		while (NULL != pRedo)
+		{
+			CUndoRedoContext * pTmp = pRedo;
+			pRedo = static_cast<CUndoRedoContext *>(pRedo->pNext);
+			delete pTmp;
+		}
+	}
 }

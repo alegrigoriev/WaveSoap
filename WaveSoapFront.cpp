@@ -109,7 +109,7 @@ public:
 	}
 
 	CWaveFile m_WaveFile;
-	CString GetNextPathName(POSITION& pos) const;
+	//CString GetNextPathName(POSITION& pos) const;
 
 	bool m_bReadOnly;
 	bool m_bDirectMode;
@@ -139,7 +139,9 @@ public:
 	//    DO NOT EDIT what you see in these blocks of generated code !
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
+	virtual BOOL OnWndMsg(UINT message, WPARAM wParam, LPARAM lParam, LRESULT* pResult);
 };
+
 BEGIN_MESSAGE_MAP(CWaveSoapFileOpenDialog, CFileDialog)
 	//{{AFX_MSG_MAP(CWaveSoapFileOpenDialog)
 	ON_BN_CLICKED(IDC_CHECK_READONLY, OnCheckReadOnly)
@@ -362,7 +364,6 @@ BOOL CWaveSoapFrontApp::InitInstance()
 	//  the specific initialization routines you do not need.
 	m_hWMVCORE_DLL_Handle = LoadLibrary(_T("WMVCORE.DLL"));
 
-	CoInitializeEx(NULL, COINIT_MULTITHREADED);
 #ifdef _AFXDLL
 	Enable3dControls();			// Call this when using MFC in a shared DLL
 #else
@@ -377,10 +378,10 @@ BOOL CWaveSoapFrontApp::InitInstance()
 	// this must be the first item to add. It will become the last item in the list
 	Profile.AddItem(_T("Settings"), _T("ProductKey"), m_UserKey, _T("Unregistered"));
 	Profile.AddItem(_T("Settings"), _T("CurrentDir"), m_CurrentDir, _T("."));
-	if (m_CurrentDir != ".")
-	{
-		SetCurrentDirectory(m_CurrentDir);
-	}
+	if (0) if (m_CurrentDir != ".")
+		{
+			SetCurrentDirectory(m_CurrentDir);
+		}
 
 	Profile.AddItem(_T("Settings\\Colors"), _T("WaveBackground"), m_WaveBackground,
 					RGB(0xFF, 0xFF, 0xFF));
@@ -541,7 +542,6 @@ BOOL CWaveSoapFrontApp::InitInstance()
 	m_RunThread = true;
 	m_Thread.CreateThread(0, 0x10000);
 
-
 	m_pMainWnd->DragAcceptFiles();
 	// The main window has been initialized, so show and update it.
 	int nCmdShow = SW_SHOWDEFAULT;
@@ -553,6 +553,7 @@ BOOL CWaveSoapFrontApp::InitInstance()
 	pMainFrame->UpdateWindow();
 
 	m_NotEnoughMemoryMsg.LoadString(IDS_NOT_ENOUGH_MEMORY);
+
 
 	// Dispatch commands specified on the command line
 	if (!ProcessShellCommand(cmdInfo))
@@ -783,6 +784,33 @@ CDocument* CWaveSoapDocTemplate::OpenDocumentFile(LPCTSTR lpszPathName,
 	}
 	else
 	{
+		// convert the name to full long pathname
+		TCHAR LongPath[512];
+		TCHAR FullPath[512];
+		LPTSTR pFilePart;
+		if (GetFullPathName(lpszPathName, 512, FullPath, &pFilePart)
+			&& GetLongPathName(FullPath, LongPath, 512))
+		{
+			lpszPathName = LongPath;
+		}
+		// TODO: Check if the document is already open
+		POSITION pos = GetFirstDocPosition();
+		while (pos != NULL)
+		{
+			CDocument * pTmpDoc = GetNextDoc(pos);
+			if (0 == pTmpDoc->GetPathName().CompareNoCase(lpszPathName))
+			{
+				POSITION viewpos = pTmpDoc->GetFirstViewPosition();
+				if (viewpos)
+				{
+					CView * pView = pTmpDoc->GetNextView(viewpos);
+					((CMDIChildWnd*)pView->GetParentFrame())->MDIActivate();
+				}
+				delete pDocument;   // don't need it anymore
+				return pTmpDoc;
+			}
+		}
+
 		// open an existing document
 		CThisApp * pApp = GetApp();
 		CWaitCursor wait;
@@ -858,7 +886,7 @@ int CWaveSoapFrontApp::ExitInstance()
 	m_ClipboardFile.Close();
 	delete m_FileCache;
 	m_FileCache = NULL;
-	CoUninitialize();
+
 	if (NULL != m_hWMVCORE_DLL_Handle)
 	{
 		FreeLibrary(m_hWMVCORE_DLL_Handle);
@@ -1173,6 +1201,21 @@ void CWaveSoapDocManager::OnFileOpen()
 	fileNameBuf.ReleaseBuffer();
 }
 
+BOOL CWaveSoapFileOpenDialog::OnWndMsg(UINT message, WPARAM wParam, LPARAM lParam, LRESULT* pResult)
+{
+	if (WM_COMMAND == message)
+	{
+		TRACE("OnWndMsg WM_COMMAND=%X, %X\n", wParam, lParam);
+	}
+	else if (WM_NOTIFY == message)
+	{
+		NMHDR * pnmh = (NMHDR *) lParam;
+		TRACE("OnWndMsg WM_NOTIFY idctrl=%X, hWndFrom=%X, idFrom=%X, code=%X\n",
+			wParam, pnmh->hwndFrom, pnmh->idFrom, pnmh->code);
+	}
+	return CFileDialog::OnWndMsg(message, wParam, lParam, pResult);
+}
+
 void CWaveSoapFileOpenDialog::OnComboSelendOK()
 {
 	TRACE("CWaveSoapFileOpenDialog::OnComboSelendOK()\n");
@@ -1236,7 +1279,16 @@ void CWaveSoapFileOpenDialog::OnComboSelendOK()
 			pParent->SendMessage(CDM_SETCONTROLTEXT, edt1, LPARAM(LPCTSTR(str)));
 			pParent->SendMessage(WM_COMMAND, IDOK, 0);
 			pParent->SendMessage(CDM_SETCONTROLTEXT, edt1, LPARAM(LPCTSTR("")));
-			pParent->GetDlgItem(edt1)->SetFocus();
+			CWnd * pTmp = pParent->GetDlgItem(edt1);
+			if (NULL == pTmp)
+			{
+				// new style dialog
+				pTmp = pParent->GetDlgItem(cmb13);
+			}
+			if (NULL != pTmp)
+			{
+				pTmp->SetFocus();
+			}
 		}
 
 	}
@@ -1250,6 +1302,7 @@ void CWaveSoapFileOpenDialog::ShowWmaFileInfo(CDirectFile & File)
 		return;
 	}
 
+	CoInitializeEx(NULL, COINIT_MULTITHREADED );
 	CWmaDecoder WmaFile;
 	if (WmaFile.Init()
 		&& SUCCEEDED(WmaFile.Open(File)))
@@ -1295,7 +1348,9 @@ void CWaveSoapFileOpenDialog::ShowWmaFileInfo(CDirectFile & File)
 	{
 		ClearFileInfoDisplay();
 	}
+	CoUninitialize();
 }
+
 void CWaveSoapFileOpenDialog::OnCheckReadOnly()
 {
 	CButton * pRO = (CButton *)GetDlgItem(IDC_CHECK_READONLY);
@@ -1580,6 +1635,7 @@ void CWaveSoapFileOpenDialog::OnTypeChange()
 {
 }
 
+#if 0
 CString CWaveSoapFileOpenDialog::GetNextPathName(POSITION& pos) const
 {
 	ASSERT(m_ofn.Flags & OFN_EXPLORER);
@@ -1649,7 +1705,7 @@ CString CWaveSoapFileOpenDialog::GetNextPathName(POSITION& pos) const
 		return strPath + '\\' + strFileName;
 	}
 }
-
+#endif
 // long to string, thousands separated by commas
 CString LtoaCS(long num)
 {
@@ -2405,6 +2461,40 @@ void NotEnoughDiskSpaceMessageBox()
 void NotEnoughUndoSpaceMessageBox()
 {
 	AfxMessageBox(IDS_NOT_ENOUGH_UNDO_SPACE);
+}
+
+void FileCreationErrorMessageBox(LPCTSTR name)
+{
+	DWORD error = GetLastError();
+	CString s;
+	UINT FormatId = 0;
+	if (error == ERROR_DISK_FULL)
+	{
+		FormatId = IDS_NOT_ENOUGH_DISK_SPACE;
+	}
+	else if (error == ERROR_SHARING_VIOLATION)
+	{
+		FormatId = IDS_OVERWRITE_SHARING_VIOLATION;
+	}
+	else if (error == ERROR_ACCESS_DENIED
+			|| error == ERROR_FILE_READ_ONLY)
+	{
+		FormatId = IDS_OVERWRITE_SHARING_VIOLATION;
+		if (NULL == name)
+		{
+			FormatId = IDS_OVERWRITE_ACCESS_DENIED_TEMP;
+		}
+	}
+	else
+	{
+		FormatId = IDS_UNKNOWN_FILE_CREATION_ERROR;
+		if (NULL == name)
+		{
+			FormatId = IDS_UNKNOWN_FILE_CREATION_ERROR_TEMP;
+		}
+	}
+	s.Format(FormatId, name);
+	AfxMessageBox(s);
 }
 
 void CWaveSoapFrontApp::CreatePalette()

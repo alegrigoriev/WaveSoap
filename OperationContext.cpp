@@ -3273,11 +3273,18 @@ BOOL CWmaDecodeContext::OperationProc()
 }
 BOOL CWmaDecodeContext::Init()
 {
-	return S_OK == m_Decoder.Start();
+	CoInitializeEx(NULL, COINIT_MULTITHREADED );
+	if (S_OK == m_Decoder.Start())
+	{
+		return TRUE;
+	}
+	CoUninitialize();
+	return FALSE;
 }
 BOOL CWmaDecodeContext::DeInit()
 {
 	m_Decoder.Stop();
+	CoUninitialize();
 	return TRUE;
 }
 

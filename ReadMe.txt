@@ -1,6 +1,17 @@
 Known problems and tasks:
 
+
 If read-only file is saved, name should be different
+If saving copy, assign different file name in the Save dialog
+Show current folder name in "Recent"
+???? When a file is opened in non-direct mode, peak info is saved with wrong time stamp
+After Save As, peak info is not saved for the new PCM file.
+Check if the file size will exceed 2 GB
+Verify that FileSave can be canceled
+
+Keep Save File name when switching folders on Recent Folders
+Remember Open and Save As folders
+Broadcast UpdateAllViews if settings or metrics changed
 Add CD grabbing
 Add noise reduction estimation in spectrum section view
 Add MP3 save
@@ -10,11 +21,6 @@ Add splash screen
 Support "Play" in selection dialog
 keep cursor in 10% from the view boundary.
 Make Paste Special command (with Fade In/Fade Out etc)
-???? When a file is opened in non-direct mode, peak info is saved with wrong time stamp
-Before Save, delete Undo and REdo which keeps reference to the target file
-    (it can be file replacement Undo/Redo)
-After Save As, peak info is not saved for the new PCM file.
-???? File created from clipboard and saved can't be reopened in direct mode.
 Make Undo/redo save the selection
 Add support for markers and regions: save on copy and with undo, move and delete on Cut,
 	move on Paste
@@ -22,7 +28,7 @@ Double click selects between two markers
 Delete/Insert operations can auto add markers and regions
 If delete (shrink) is done with one channel of two, fill the rest with zeros
 If displaying data without peak info, call RescanPeaks for this range.
-Check if the file size will exceed 2 GB
+Support CFSTR_FILECONTENTS clipboard format
 Add options dialog
 Show File Properties
 Save current workspace
@@ -32,15 +38,23 @@ Make tooltips
 Make help file
 
 Problems:
-Expression evaluation selection longer than file length doesn't update file length
-LOg Off query doesn't close the active dialog. Recursion is possible. Make sure to check after Cancel
-Ctrl-End, Ctrl-Home loses synchronization between FFT and wave
-When selecting to the begin of file, FFT is corrupted
-MP3 open, WAV save as - can't reopen in direct until 2 seconds passed.
+
+If the ACM decoder is not available, the file still can be opened, but is empty
 If there is not enough space on NTFS volume, it will be seen only during flush
 Windows2000 is trying to zero the allocated file
 
+Ctrl-End, Ctrl-Home loses synchronization between FFT and wave
+When selecting to the begin of file, FFT is corrupted
+Expression evaluation selection longer than file length doesn't update file length
+LOg Off query doesn't close the active dialog. Recursion is possible. Make sure to check after Cancel
+Save As dialog is not centered first time (comdlg problem?)
+??? When time/seconds format is set for status bar, MM:SS is actually shown
+
 Fixed:
+File opened for read-only can only be reopened for read only too
+Read only file cannot change length (File::SetFileLength disabled)
+MP3 open, WAV save as - can't reopen in direct until 2 seconds passed.
+Name in reopen dialog is incorrect
 CTimeEdit increments by 0.1 s even if miliseconds not shown
 If number of channels changed, amplitude ruler doesn't update extents
 Rejected: Statistics: zero crossings shows double the frequency (as supposed??)
@@ -54,6 +68,13 @@ Insert Silence of zero length still tries to modify the file
 Multiple MP3 files open: all but one get stuck
 
 Done:
+Make Percent default setting for amplitude ruler
+Ctrl+Shift+N is also accelerator for File New
+Before Save, delete Undo and REdo which keeps reference to the target file
+    (it can be file replacement Undo/Redo) or rename the file
+    When the file is about to be saved,
+    scan all undo/redo for the document and delete items which refer to non-temporary file
+If a file is already open, activate its view
 Open files specified in the command line
 Init file length for new file dialog
 Remember new file length in seconds
@@ -87,8 +108,9 @@ Make all correct error messages and message boxes
 
 For Version 2:
 Make a few source samples available in expression and a few output samples too
-    use wave(1...63) and wave(-1...-63)
-    wave_ch(1, 1...63)
+    use wave[-63...63]
+    wave(1)
+    wave_ch[1, 1...63]
 Support WAVEFORMATEXTENSIBLE.
 Make multichannel editing
 allow 24/32 bit data

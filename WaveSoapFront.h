@@ -232,6 +232,7 @@ void SetStatusString(CCmdUI* pCmdUI, const CString & string,
 void NotEnoughMemoryMessageBox();
 void NotEnoughDiskSpaceMessageBox();
 void NotEnoughUndoSpaceMessageBox();
+void FileCreationErrorMessageBox(LPCTSTR name);
 /////////////////////////////////////////////////////////////////////////////
 //{{AFX_INSERT_LOCATION}}
 // Microsoft Visual C++ will insert additional declarations immediately before the previous line.

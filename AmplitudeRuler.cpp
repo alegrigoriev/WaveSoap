@@ -17,7 +17,7 @@ static char THIS_FILE[] = __FILE__;
 IMPLEMENT_DYNCREATE(CAmplitudeRuler, CVerticalRuler)
 
 CAmplitudeRuler::CAmplitudeRuler()
-	:m_DrawMode(SampleView)
+	:m_DrawMode(PercentView)
 {
 }
 

@@ -531,9 +531,14 @@ void CReopenDialog::DoDataExchange(CDataExchange* pDX)
 
 BEGIN_MESSAGE_MAP(CReopenDialog, CDialog)
 	//{{AFX_MSG_MAP(CReopenDialog)
-		// NOTE: the ClassWizard will add message map macros here
+	ON_BN_CLICKED(IDNO, OnNo)
 	//}}AFX_MSG_MAP
 END_MESSAGE_MAP()
 
 /////////////////////////////////////////////////////////////////////////////
 // CReopenDialog message handlers
+
+void CReopenDialog::OnNo()
+{
+	EndDialog(IDNO);
+}
