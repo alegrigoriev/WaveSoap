@@ -61,29 +61,33 @@ class CMiniToolbar : public CWnd
 // Construction
 public:
 	CMiniToolbar();
-
+	BOOL Create(CWnd * pParent, UINT nID, RECT const & rect,
+				DWORD dwStyle = WS_CHILD | WS_VISIBLE | WS_BORDER);
 // Attributes
 public:
 
 // Operations
 public:
-	void AddButton(CBitmap * pBitmap, int nID);
+	void AddButton(CBitmap * pBitmap, UINT nID);
+	void AddButton(UINT nBitmapID, UINT nID);
 
 	struct Button
 	{
 		CBitmap * pBitmap;
-		int nID;
+		UINT nID;
 		bool bEnabled;
+		bool bDeleteBitmap;
 	};
 	vector<Button> m_Buttons;
-	int GetHitCode(POINT point);
-	void HiliteButton(int nID, bool Hilite);
+	int GetHitCode(POINT point) const;
+	void GetItemRect(UINT nID, RECT & rect) const;
+	void HiliteButton(UINT nID, bool Hilite);
 	void EnableButton(int Index, BOOL bEnable);
 
-	int m_ButtonClicked;
+	UINT m_ButtonClicked;
+	UINT m_ButtonHilit;
 	bool m_MouseCaptured;
 	bool m_LButtonPressed;
-	int m_ButtonHilit;
 // Overrides
 	// ClassWizard generated virtual function overrides
 	//{{AFX_VIRTUAL(CMiniToolbar)
@@ -98,6 +102,8 @@ public:
 	LRESULT OnIdleUpdateCmdUI(WPARAM wParam, LPARAM);
 	void RedrawButton(int Index);
 protected:
+	int OnToolHitTest(CPoint point, TOOLINFO* pTI) const;
+	BOOL OnToolTipText(UINT, NMHDR* pNMHDR, LRESULT* pResult);
 	//{{AFX_MSG(CMiniToolbar)
 	afx_msg void OnCaptureChanged(CWnd *pWnd);
 	afx_msg BOOL OnEraseBkgnd(CDC* pDC);
@@ -106,6 +112,7 @@ protected:
 	afx_msg int OnMouseActivate(CWnd* pDesktopWnd, UINT nHitTest, UINT message);
 	afx_msg void OnMouseMove(UINT nFlags, CPoint point);
 	afx_msg void OnPaint();
+	afx_msg int OnCreate(LPCREATESTRUCT lpCreateStruct);
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 };
@@ -138,41 +145,20 @@ public:
 		VerticalFftRulerID,
 		SpectrumSectionViewID,
 		VerticalTrackerID,
-		ScaleStaticID,
-		Static1ID,
-		FftStaticLID,
-		FftStaticUID,
+		FftZoomBarID,
+		SsZoomBarID,
+		AmplZoomBarID,
+		TimeZoomBarID,
 		OutlineViewID,
 		SpectrumSectionRulerID,
 		WaveViewID = AFX_IDW_PANE_FIRST,
 		FftViewID = AFX_IDW_PANE_FIRST + 16,
 	};
 
-
-	CWnd wStatic;
-	CWnd wStatic1;
-	CWnd wStaticFftU;
-	CWnd wStaticFftL;
-
-	CButton m_btZoomInVert;
-	CButton m_btZoomInHor;
-	CButton m_btZoomOutVert;
-	CButton m_btZoomOutHor;
-	CButton m_btZoomInVertFft;
-	CButton m_btZoomInHorSpSec;
-	CButton m_btZoomOutVertFft;
-	CButton m_btZoomOutHorSpSec;
-
-	CBitmap m_bmZoomInVert;
-	CBitmap m_bmZoomInHor;
-	CBitmap m_bmZoomOutVert;
-	CBitmap m_bmZoomOutHor;
-	CBitmap m_bmZoomInVertFft;
-	CBitmap m_bmZoomInHorSpSec;
-	CBitmap m_bmZoomOutVertFft;
-	CBitmap m_bmZoomOutHorSpSec;
-
 	CMiniToolbar m_FftZoomBar;
+	CMiniToolbar m_SsZoomBar;
+	CMiniToolbar m_AmplZoomBar;
+	CMiniToolbar m_TimeZoomBar;
 
 	CVerticalTrackerBar wTracker;
 	CScrollBar m_sb;
@@ -227,7 +213,7 @@ public:
 // Operations
 public:
 	virtual void OnUpdateFrameTitle(BOOL bAddToTitle);
-
+	using CMDIChildWnd::OnToolTipText;
 // Overrides
 	// ClassWizard generated virtual function overrides
 	//{{AFX_VIRTUAL(CChildFrame)

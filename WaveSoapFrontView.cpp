@@ -796,11 +796,11 @@ CWaveSoapFrontDoc* CWaveSoapFrontView::GetDocument() // non-debug version is inl
 
 void CWaveSoapFrontView::OnInitialUpdate()
 {
-	TRACE("OnInitialUpdate style = %08X\n", GetStyle());
+	if (0) TRACE("OnInitialUpdate style = %08X\n", GetStyle());
 
 	CScaledScrollView::OnInitialUpdate();
 	UpdateScrollbars();
-	TRACE("OnInitialUpdate final style = %08X\n", GetStyle());
+	if (0) TRACE("OnInitialUpdate final style = %08X\n", GetStyle());
 }
 
 void CWaveSoapFrontView::OnUpdateViewZoominhor(CCmdUI* pCmdUI)
