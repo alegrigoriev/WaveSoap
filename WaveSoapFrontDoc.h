@@ -320,7 +320,10 @@ public:
 					LPCTSTR NewName, BOOL SameName);
 
 	BOOL PostCommitFileSave(int flags, LPCTSTR FullTargetName);
-	BOOL DoPaste(SAMPLE_INDEX Start, SAMPLE_INDEX End, CHANNEL_MASK Channel, LPCTSTR FileName);
+	BOOL DoPaste(SAMPLE_INDEX Start, SAMPLE_INDEX End, CHANNEL_MASK Channel,
+				ULONG PasteFlags = 0, LPCTSTR FileName = NULL);
+
+	enum { PasteFlagSetNewSelection = 1, };
 
 protected:
 	// save the selected area to the permanent or temporary file
@@ -457,6 +460,9 @@ protected:
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 
+public:
+	afx_msg void OnProcessReverse();
+	afx_msg void OnUpdateProcessReverse(CCmdUI *pCmdUI);
 };
 
 #pragma pack(push, 1)
