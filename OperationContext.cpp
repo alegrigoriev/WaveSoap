@@ -55,6 +55,14 @@ COperationContext::COperationContext(class CWaveSoapFrontDoc * pDoc, LPCTSTR Sta
 	m_MaxClipped(0.),
 	m_GetBufferFlags(CDirectFile::GetBufferAndPrefetchNext),
 	m_ReturnBufferFlags(0)
+	, m_DstChan(ALL_CHANNELS)
+	, m_DstStart(0)
+	, m_DstEnd(0)
+	, m_DstPos(0)
+	, m_SrcChan(ALL_CHANNELS)
+	, m_SrcStart(0)
+	, m_SrcEnd(0)
+	, m_SrcPos(0)
 {
 }
 
@@ -79,8 +87,8 @@ BOOL COperationContext::InitDestination(CWaveFile & DstFile, SAMPLE_INDEX StartS
 	m_DstFile = DstFile;
 	// set begin and end offsets
 
-	m_DstCopyPos = m_DstFile.SampleToPosition(StartSample);
-	m_DstStart = m_DstCopyPos;
+	m_DstPos = m_DstFile.SampleToPosition(StartSample);
+	m_DstStart = m_DstPos;
 
 	m_DstEnd = m_DstFile.SampleToPosition(EndSample);
 
@@ -107,6 +115,43 @@ BOOL COperationContext::InitDestination(CWaveFile & DstFile, SAMPLE_INDEX StartS
 	return TRUE;
 }
 
+void COperationContext::InitSource(CWaveFile & SrcFile, SAMPLE_INDEX StartSample,
+									SAMPLE_INDEX EndSample, CHANNEL_MASK SrcChannel)
+{
+	m_SrcFile = SrcFile;
+
+	m_SrcChan = SrcChannel;
+
+	m_SrcStart = m_SrcFile.SampleToPosition(StartSample);
+	m_SrcPos = m_SrcStart;
+	m_SrcEnd = m_SrcFile.SampleToPosition(EndSample);
+}
+
+void COperationContext::UpdateCompletedPercent(SAMPLE_INDEX CurrentSample,
+												SAMPLE_INDEX StartSample, SAMPLE_INDEX EndSample)
+{
+	if (EndSample != StartSample)
+	{
+		PercentCompleted = MulDiv(100, CurrentSample - StartSample,
+								EndSample - StartSample);
+	}
+}
+
+void COperationContext::UpdateCompletedPercent(SAMPLE_POSITION CurrentPos,
+												SAMPLE_POSITION StartPos, SAMPLE_POSITION EndPos)
+{
+	if (EndPos != StartPos)
+	{
+		PercentCompleted = int(100 * (MEDIA_FILE_SIZE(CurrentPos) - StartPos)
+								/ (MEDIA_FILE_SIZE(EndPos) - StartPos));
+	}
+}
+
+void COperationContext::UpdateCompletedPercent()
+{
+	UpdateCompletedPercent(m_SrcPos, m_SrcStart, m_SrcEnd);
+}
+
 BOOL COperationContext::OperationProc()
 {
 	// generic procedure working on one file
@@ -119,7 +164,7 @@ BOOL COperationContext::OperationProc()
 
 	BOOL res = TRUE;    // function result
 	DWORD dwStartTime = timeGetTime();
-	SAMPLE_POSITION dwOperationBegin = m_DstCopyPos;
+	SAMPLE_POSITION dwOperationBegin = m_DstPos;
 	int SampleSize = m_DstFile.SampleSize();
 
 	LONG SizeToProcess = 0;
@@ -127,10 +172,10 @@ BOOL COperationContext::OperationProc()
 	void * pDstBuf;
 	if (m_CurrentPass > 0)
 	{
-		if (m_DstCopyPos >= m_DstEnd)
+		if (m_DstPos >= m_DstEnd)
 		{
 			m_CurrentPass++;
-			m_DstCopyPos = m_DstStart;
+			m_DstPos = m_DstStart;
 			if (m_CurrentPass <= m_NumberOfForwardPasses)
 			{
 				if ( ! InitPass(m_CurrentPass))
@@ -141,7 +186,7 @@ BOOL COperationContext::OperationProc()
 		}
 		if (m_CurrentPass > m_NumberOfForwardPasses)
 		{
-			m_DstCopyPos = m_DstEnd;
+			m_DstPos = m_DstEnd;
 			m_CurrentPass = -1;
 			if (m_CurrentPass >= -m_NumberOfBackwardPasses)
 			{
@@ -160,9 +205,9 @@ BOOL COperationContext::OperationProc()
 		{
 			// make sure ProcessBuffer gets integer number of complete samples, from sample boundary
 
-			MEDIA_FILE_SIZE SizeToWrite = MEDIA_FILE_SIZE(m_DstEnd) - MEDIA_FILE_SIZE(m_DstCopyPos);
+			MEDIA_FILE_SIZE SizeToWrite = MEDIA_FILE_SIZE(m_DstEnd) - MEDIA_FILE_SIZE(m_DstPos);
 			WasLockedToWrite = m_DstFile.GetDataBuffer( & pDstBuf,
-														SizeToWrite, m_DstCopyPos, m_GetBufferFlags);
+														SizeToWrite, m_DstPos, m_GetBufferFlags);
 
 			if (0 == WasLockedToWrite)
 			{
@@ -172,7 +217,7 @@ BOOL COperationContext::OperationProc()
 			if (WasLockedToWrite < SampleSize)
 			{
 				m_DstFile.ReturnDataBuffer(pDstBuf, WasLockedToWrite, 0);
-				if (SampleSize != m_DstFile.ReadAt(TempBuf, SampleSize, m_DstCopyPos))
+				if (SampleSize != m_DstFile.ReadAt(TempBuf, SampleSize, m_DstPos))
 				{
 					return FALSE;
 				}
@@ -180,18 +225,18 @@ BOOL COperationContext::OperationProc()
 					&& NULL != m_pUndoContext)
 				{
 					m_pUndoContext->SaveUndoData(TempBuf, SampleSize,
-												m_DstCopyPos, m_DstChan);
+												m_DstPos, m_DstChan);
 					m_pUndoContext->m_DstEnd = m_pUndoContext->m_SrcSavePos;
 					m_pUndoContext->m_SrcEnd = m_pUndoContext->m_DstSavePos;
 				}
 
-				res = ProcessBuffer(TempBuf, SampleSize, m_DstCopyPos - m_DstStart, FALSE);
+				res = ProcessBuffer(TempBuf, SampleSize, m_DstPos - m_DstStart, FALSE);
 
 				if (m_ReturnBufferFlags & CDirectFile::ReturnBufferDirty)
 				{
-					m_DstFile.WriteAt(TempBuf, SampleSize, m_DstCopyPos);
+					m_DstFile.WriteAt(TempBuf, SampleSize, m_DstPos);
 				}
-				m_DstCopyPos += SampleSize;
+				m_DstPos += SampleSize;
 				continue;
 			}
 			SizeToProcess = WasLockedToWrite - WasLockedToWrite % SampleSize;
@@ -200,38 +245,38 @@ BOOL COperationContext::OperationProc()
 				&& NULL != m_pUndoContext)
 			{
 				m_pUndoContext->SaveUndoData(pDstBuf, WasLockedToWrite,
-											m_DstCopyPos, m_DstChan);
+											m_DstPos, m_DstChan);
 				m_pUndoContext->m_DstEnd = m_pUndoContext->m_SrcSavePos;
 				m_pUndoContext->m_SrcEnd = m_pUndoContext->m_DstSavePos;
 			}
 			// virtual function which modifies the actual data:
-			res = ProcessBuffer(pDstBuf, SizeToProcess, m_DstCopyPos - m_DstStart, FALSE);
+			res = ProcessBuffer(pDstBuf, SizeToProcess, m_DstPos - m_DstStart, FALSE);
 
 			m_DstFile.ReturnDataBuffer(pDstBuf, WasLockedToWrite,
 										m_ReturnBufferFlags);
-			m_DstCopyPos += SizeToProcess;
+			m_DstPos += SizeToProcess;
 		}
-		while (res && m_DstCopyPos < m_DstEnd
+		while (res && m_DstPos < m_DstEnd
 				&& timeGetTime() - dwStartTime < 200);
 
 		if (m_ReturnBufferFlags & CDirectFile::ReturnBufferDirty)
 		{
 			// notify the view
-			pDocument->FileChanged(m_DstFile, dwOperationBegin, m_DstCopyPos);
+			pDocument->FileChanged(m_DstFile, dwOperationBegin, m_DstPos);
 		}
 
 		if (m_DstEnd > m_DstStart)
 		{
-			PercentCompleted = int(100. * (m_DstCopyPos - m_DstStart + double(m_DstEnd - m_DstStart) * (m_CurrentPass - 1))
+			PercentCompleted = int(100. * (m_DstPos + double(m_DstEnd - m_DstStart) * (m_CurrentPass - 1) - m_DstStart)
 									/ (double(m_DstEnd - m_DstStart) * (m_NumberOfForwardPasses + m_NumberOfBackwardPasses)));
 		}
 	}
 	else
 	{
 		// backward pass
-		if (m_DstCopyPos <= m_DstStart)
+		if (m_DstPos <= m_DstStart)
 		{
-			m_DstCopyPos = m_DstEnd;
+			m_DstPos = m_DstEnd;
 			m_CurrentPass--;
 			if (m_CurrentPass >= -m_NumberOfBackwardPasses)
 			{
@@ -249,12 +294,12 @@ BOOL COperationContext::OperationProc()
 
 		do
 		{
-			MEDIA_FILE_SIZE SizeToWrite = MEDIA_FILE_SIZE(m_DstStart) - MEDIA_FILE_SIZE(m_DstCopyPos);
+			MEDIA_FILE_SIZE SizeToWrite = MEDIA_FILE_SIZE(m_DstStart) - MEDIA_FILE_SIZE(m_DstPos);
 
 			// length requested and length returned are <0,
 			// pointer returned points on the end of the buffer
 			WasLockedToWrite = m_DstFile.GetDataBuffer( & pDstBuf,
-														SizeToWrite, m_DstCopyPos, m_GetBufferFlags);
+														SizeToWrite, m_DstPos, m_GetBufferFlags);
 
 			if (0 == WasLockedToWrite)
 			{
@@ -265,7 +310,7 @@ BOOL COperationContext::OperationProc()
 			{
 				m_DstFile.ReturnDataBuffer(pDstBuf, WasLockedToWrite, 0);
 
-				if (SampleSize != m_DstFile.ReadAt(TempBuf, SampleSize, m_DstCopyPos - SampleSize))
+				if (SampleSize != m_DstFile.ReadAt(TempBuf, SampleSize, m_DstPos - SampleSize))
 				{
 					return FALSE;
 				}
@@ -274,18 +319,18 @@ BOOL COperationContext::OperationProc()
 					&& NULL != m_pUndoContext)
 				{
 					m_pUndoContext->SaveUndoData(TempBuf, SampleSize,
-												m_DstCopyPos, m_DstChan);
+												m_DstPos, m_DstChan);
 					m_pUndoContext->m_DstEnd = m_pUndoContext->m_SrcSavePos;
 					m_pUndoContext->m_SrcEnd = m_pUndoContext->m_DstSavePos;
 				}
 
-				res = ProcessBuffer(TempBuf, SampleSize, m_DstCopyPos - m_DstStart, TRUE);
+				res = ProcessBuffer(TempBuf, SampleSize, m_DstPos - m_DstStart, TRUE);
 
 				if (m_ReturnBufferFlags & CDirectFile::ReturnBufferDirty)
 				{
-					m_DstFile.WriteAt(TempBuf, SampleSize, m_DstCopyPos - SampleSize);
+					m_DstFile.WriteAt(TempBuf, SampleSize, m_DstPos - SampleSize);
 				}
-				m_DstCopyPos -= SampleSize;
+				m_DstPos -= SampleSize;
 				continue;
 			}
 			SizeToProcess = -WasLockedToWrite - (-WasLockedToWrite) % SampleSize;
@@ -295,32 +340,32 @@ BOOL COperationContext::OperationProc()
 				&& NULL != m_pUndoContext)
 			{
 				m_pUndoContext->SaveUndoData(pDstBuf, SizeToProcess,
-											m_DstCopyPos, m_DstChan);
+											m_DstPos, m_DstChan);
 				m_pUndoContext->m_DstEnd = m_pUndoContext->m_SrcSavePos;
 				m_pUndoContext->m_SrcEnd = m_pUndoContext->m_DstSavePos;
 			}
 			// virtual function which modifies the actual data:
-			res = ProcessBuffer(-SizeToProcess + (PCHAR)pDstBuf, SizeToProcess, m_DstCopyPos - m_DstStart, TRUE);   // backward=TRUE
+			res = ProcessBuffer(-SizeToProcess + (PCHAR)pDstBuf, SizeToProcess, m_DstPos - m_DstStart, TRUE);   // backward=TRUE
 
 			m_DstFile.ReturnDataBuffer(pDstBuf, WasLockedToWrite,
 										m_ReturnBufferFlags);
 			// length requested and length returned are <0,
-			m_DstCopyPos -= SizeToProcess;
+			m_DstPos -= SizeToProcess;
 		}
-		while (res && m_DstCopyPos > m_DstStart
+		while (res && m_DstPos > m_DstStart
 				&& timeGetTime() - dwStartTime < 200);
 
 		if (m_ReturnBufferFlags & CDirectFile::ReturnBufferDirty)
 		{
 			// notify the view
-			pDocument->FileChanged(m_DstFile, dwOperationBegin, m_DstCopyPos);
+			pDocument->FileChanged(m_DstFile, dwOperationBegin, m_DstPos);
 		}
 
 		if (m_DstEnd > m_DstStart)
 		{
-			PercentCompleted = int(100. * (m_DstEnd - m_DstCopyPos + double(m_DstEnd - m_DstStart)
-										* (- 1 - m_CurrentPass + m_NumberOfForwardPasses))
-									/ (double(m_DstEnd - m_DstStart) * (m_NumberOfForwardPasses + m_NumberOfBackwardPasses)));
+			PercentCompleted = int(100. * (m_DstEnd + double(m_DstEnd - m_DstStart)
+										* (- 1 - m_CurrentPass + m_NumberOfForwardPasses) - m_DstPos)
+									/ ((double(m_DstEnd) - m_DstStart) * (m_NumberOfForwardPasses + m_NumberOfBackwardPasses)));
 		}
 	}
 	return res;
@@ -613,11 +658,9 @@ BOOL CScanPeaksContext::OperationProc()
 			&& timeGetTime() - dwStartTime < 200);
 
 	TRACE("CScanPeaksContext current position=%X\n", m_Position);
-	if (m_End > m_Start)
-	{
 
-		PercentCompleted = 100i64 * (m_Position - m_Start) / (m_End - m_Start);
-	}
+	UpdateCompletedPercent(m_Position, m_Start, m_End);
+
 	// notify the view
 	SAMPLE_INDEX nFirstSample = pDocument->m_WavFile.PositionToSample(dwOperationBegin);
 	SAMPLE_INDEX nLastSample = pDocument->m_WavFile.PositionToSample(m_Position);
@@ -670,7 +713,7 @@ BOOL CResizeContext::InitExpand(CWaveFile & File, SAMPLE_INDEX StartSample, NUMB
 	}
 
 	m_SrcEnd = m_DstFile.SampleToPosition(LAST_SAMPLE);
-	m_SrcCopyPos = m_SrcEnd;
+	m_SrcPos = m_SrcEnd;
 	m_SrcStart = m_DstFile.SampleToPosition(StartSample);
 
 	WAV_FILE_SIZE NewDataLength = m_DstFile.SampleToPosition(m_DstFile.NumberOfSamples() + Length);
@@ -688,7 +731,7 @@ BOOL CResizeContext::InitExpand(CWaveFile & File, SAMPLE_INDEX StartSample, NUMB
 	m_DstStart = m_DstFile.SampleToPosition(StartSample + Length);
 
 	m_DstEnd = pDatachunk->dwDataOffset + NewDataLength;
-	m_DstCopyPos = m_DstEnd;
+	m_DstPos = m_DstEnd;
 
 	m_Flags |= CopyExpandFile;
 	return TRUE;
@@ -724,8 +767,8 @@ BOOL CResizeContext::InitUndoRedo(CString UndoOperationString)
 
 	if (m_Flags & CopyShrinkFile)
 	{
-		pResize->m_DstCopyPos = m_SrcStart;
-		pResize->m_SrcCopyPos = m_DstStart;
+		pResize->m_DstPos = m_SrcStart;
+		pResize->m_SrcPos = m_DstStart;
 		pResize->m_Flags |= CopyExpandFile;
 		pUndo->m_Flags |= CopyExpandFile;
 
@@ -744,14 +787,14 @@ BOOL CResizeContext::InitUndoRedo(CString UndoOperationString)
 		pResize->m_Flags |= CopyShrinkFile;
 		pUndo->m_Flags |= CopyShrinkFile;
 
-		pResize->m_DstCopyPos = m_SrcEnd;
-		pResize->m_SrcCopyPos = m_DstEnd;
+		pResize->m_DstPos = m_SrcEnd;
+		pResize->m_SrcPos = m_DstEnd;
 		pUndo->m_SrcStart = 0;
 		pUndo->m_SrcEnd = 0;
-		pUndo->m_SrcCopyPos = 0;
+		pUndo->m_SrcPos = 0;
 		pUndo->m_DstStart = 0;
 		pUndo->m_DstEnd = 0;
-		pUndo->m_DstCopyPos = 0;
+		pUndo->m_DstPos = 0;
 	}
 	pUndo->m_RestoredLength = pDocument->m_WavFile.GetLength();
 	m_pUndoContext = pUndo;
@@ -768,13 +811,13 @@ BOOL CResizeContext::InitShrink(CWaveFile & File, SAMPLE_INDEX StartSample,
 	m_SrcEnd = m_DstFile.SampleToPosition(LAST_SAMPLE);
 	m_SrcStart = m_DstFile.SampleToPosition(StartSample + Length);
 
-	m_SrcCopyPos = m_SrcStart;
+	m_SrcPos = m_SrcStart;
 
 	// when shrinking, data is moved starting from the begin of the file,
 	// but I use SrcStart as begin of the moved area and SrcEns as end (SrcStart <= SrcEnd)
 
 	m_DstStart = m_DstFile.SampleToPosition(StartSample);
-	m_DstCopyPos = m_DstStart;
+	m_DstPos = m_DstStart;
 
 	ASSERT(m_DstFile.NumberOfSamples() >= Length);
 
@@ -835,11 +878,8 @@ BOOL CResizeContext::ShrinkProc()
 			//m_pUndoContext->m_SrcSavePos += WasRead;
 		}
 
-		if (m_pUndoContext->m_SrcSaveEnd > m_pUndoContext->m_SrcSaveStart)
-		{
-			PercentCompleted = 100i64 * (m_pUndoContext->m_SrcSavePos - m_pUndoContext->m_SrcSaveStart)
-								/ (m_pUndoContext->m_SrcSaveEnd - m_pUndoContext->m_SrcSaveStart);
-		}
+		UpdateCompletedPercent(m_pUndoContext->m_SrcSavePos, m_pUndoContext->m_SrcSaveStart, m_pUndoContext->m_SrcSaveEnd);
+
 		// set undo flag
 		m_Flags |= CopyCreatingUndo;
 		return TRUE;
@@ -847,7 +887,7 @@ BOOL CResizeContext::ShrinkProc()
 
 	// reset undo flag
 	m_Flags &= ~CopyCreatingUndo;
-	if (m_DstCopyPos >= m_DstEnd)
+	if (m_DstPos >= m_DstEnd)
 	{
 		// file size is changed only if all channels are moved
 		if (0 == (m_Flags & OperationContextFinished)
@@ -871,7 +911,7 @@ BOOL CResizeContext::ShrinkProc()
 	}
 	DWORD dwStartTime = timeGetTime();
 
-	SAMPLE_POSITION dwOperationBegin = m_DstCopyPos;
+	SAMPLE_POSITION dwOperationBegin = m_DstPos;
 
 	DWORD LeftToRead = 0;
 	DWORD LeftToWrite = 0;
@@ -883,12 +923,12 @@ BOOL CResizeContext::ShrinkProc()
 	char * pDstBuf;
 	DWORD DstFlags = 0;
 	if (m_DstChan == ALL_CHANNELS // all data is copied
-		&& m_SrcCopyPos - m_DstCopyPos >= 0x10000)
+		&& m_SrcPos - m_DstPos >= 0x10000)
 	{
 		DstFlags = CDirectFile::GetBufferWriteOnly;
 	}
-	if (m_SrcCopyPos > m_SrcEnd
-		|| m_DstCopyPos > m_DstEnd)
+	if (m_SrcPos > m_SrcEnd
+		|| m_DstPos > m_DstEnd)
 	{
 		return FALSE;
 	}
@@ -896,13 +936,13 @@ BOOL CResizeContext::ShrinkProc()
 	{
 		if (0 == LeftToRead)
 		{
-			MEDIA_FILE_SIZE SizeToRead = MEDIA_FILE_SIZE(m_SrcEnd) - MEDIA_FILE_SIZE(m_SrcCopyPos);
+			MEDIA_FILE_SIZE SizeToRead = MEDIA_FILE_SIZE(m_SrcEnd) - MEDIA_FILE_SIZE(m_SrcPos);
 			if (SizeToRead > 0x10000)
 			{
 				SizeToRead = 0x10000;
 			}
 			WasRead = m_DstFile.GetDataBuffer( & pOriginalSrcBuf,
-												SizeToRead, m_SrcCopyPos, CDirectFile::GetBufferAndPrefetchNext);
+												SizeToRead, m_SrcPos, CDirectFile::GetBufferAndPrefetchNext);
 			if (0 == WasRead)
 			{
 				m_DstFile.ReturnDataBuffer(pOriginalDstBuf, WasLockedToWrite,
@@ -915,10 +955,10 @@ BOOL CResizeContext::ShrinkProc()
 		}
 		if (0 == LeftToWrite)
 		{
-			MEDIA_FILE_SIZE SizeToWrite = MEDIA_FILE_SIZE(m_DstEnd) - MEDIA_FILE_SIZE(m_DstCopyPos);
+			MEDIA_FILE_SIZE SizeToWrite = MEDIA_FILE_SIZE(m_DstEnd) - MEDIA_FILE_SIZE(m_DstPos);
 
 			WasLockedToWrite = m_DstFile.GetDataBuffer( & pOriginalDstBuf,
-														SizeToWrite, m_DstCopyPos, DstFlags);
+														SizeToWrite, m_DstPos, DstFlags);
 
 			if (0 == WasLockedToWrite)
 			{
@@ -939,8 +979,8 @@ BOOL CResizeContext::ShrinkProc()
 			pSrcBuf += ToCopy;
 			LeftToRead -= ToCopy;
 			LeftToWrite -= ToCopy;
-			m_SrcCopyPos += ToCopy;
-			m_DstCopyPos += ToCopy;
+			m_SrcPos += ToCopy;
+			m_DstPos += ToCopy;
 		}
 		else
 		{
@@ -950,20 +990,20 @@ BOOL CResizeContext::ShrinkProc()
 			WAVE_SAMPLE * pSrc = (WAVE_SAMPLE *) pSrcBuf;
 			WAVE_SAMPLE * pDst = (WAVE_SAMPLE *) pDstBuf;
 			// both are 2 channel
-			if (((m_DstCopyPos - m_DstStart) & 2)
+			if (((m_DstPos - m_DstStart) & 2)
 				!= m_DstChan * 2)
 			{
 				// skip this word
 				pDst++;
-				m_DstCopyPos += 2;
+				m_DstPos += 2;
 				LeftToWrite -= 2;
 			}
-			if (((m_SrcCopyPos - m_SrcStart) & 2)
+			if (((m_SrcPos - m_SrcStart) & 2)
 				!= m_DstChan * 2)
 			{
 				// skip this word
 				pSrc++;
-				m_SrcCopyPos += 2;
+				m_SrcPos += 2;
 				LeftToRead -= 2;
 			}
 			unsigned i;
@@ -975,19 +1015,19 @@ BOOL CResizeContext::ShrinkProc()
 				pDst[0] = pSrc[0];
 			}
 			LeftToRead -= ToCopy * (2 * sizeof pSrc[0]);
-			m_SrcCopyPos += ToCopy * (2 * sizeof pSrc[0]);
+			m_SrcPos += ToCopy * (2 * sizeof pSrc[0]);
 
 			LeftToWrite -= ToCopy * (2 * sizeof pDst[0]);
-			m_DstCopyPos += ToCopy * (2 * sizeof pDst[0]);
+			m_DstPos += ToCopy * (2 * sizeof pDst[0]);
 
 			if (LeftToRead >= 2 && LeftToWrite >= 2)
 			{
 				pDst[0] = pSrc[0];
 				pDst++;
 				pSrc++;
-				m_DstCopyPos += 2;
+				m_DstPos += 2;
 				LeftToWrite -= 2;
-				m_SrcCopyPos += 2;
+				m_SrcPos += 2;
 				LeftToRead -= 2;
 			}
 
@@ -1014,7 +1054,7 @@ BOOL CResizeContext::ShrinkProc()
 	while (((DstFlags & CDirectFile::GetBufferWriteOnly)
 				// cannot exit while write-only buffer is incomplete
 				&& 0 != WasLockedToWrite)
-			|| (m_SrcCopyPos < m_SrcEnd
+			|| (m_SrcPos < m_SrcEnd
 				&& timeGetTime() - dwStartTime < 200)
 			);
 
@@ -1028,39 +1068,36 @@ BOOL CResizeContext::ShrinkProc()
 		&& NULL != m_pUndoContext->m_pExpandShrinkContext)
 	{
 		// update the position to begin operation
-		m_pUndoContext->m_pExpandShrinkContext->m_SrcCopyPos = m_DstCopyPos;
-		m_pUndoContext->m_pExpandShrinkContext->m_DstCopyPos = m_SrcCopyPos;
+		m_pUndoContext->m_pExpandShrinkContext->m_SrcPos = m_DstPos;
+		m_pUndoContext->m_pExpandShrinkContext->m_DstPos = m_SrcPos;
 	}
 	// notify the view
 
-	pDocument->FileChanged(m_DstFile, dwOperationBegin, m_DstCopyPos);
+	pDocument->FileChanged(m_DstFile, dwOperationBegin, m_DstPos);
 
-	if (m_SrcEnd > m_SrcStart)
-	{
-		PercentCompleted = 100i64 * (m_SrcCopyPos - m_SrcStart) / (m_SrcEnd - m_SrcStart);
-	}
+	UpdateCompletedPercent();
+
 	return TRUE;
-
 }
 
 BOOL CResizeContext::ExpandProc()
 {
 	// copying is done from end backward
-	if (m_SrcCopyPos <= m_SrcStart)
+	if (m_SrcPos <= m_SrcStart)
 	{
 		m_Flags |= OperationContextFinished;
 		return TRUE;
 	}
 	DWORD DstFlags = 0;
 	if (m_DstChan == ALL_CHANNELS // all data is copied
-		&& m_SrcCopyPos - m_DstCopyPos >= 0x10000)
+		&& m_SrcPos - m_DstPos >= 0x10000)
 	{
 		DstFlags = CDirectFile::GetBufferWriteOnly;
 	}
 
 	DWORD dwStartTime = timeGetTime();
 
-	SAMPLE_POSITION dwOperationBegin = m_DstCopyPos;
+	SAMPLE_POSITION dwOperationBegin = m_DstPos;
 
 	LONG LeftToRead = 0;
 	LONG LeftToWrite = 0;
@@ -1070,8 +1107,8 @@ BOOL CResizeContext::ExpandProc()
 	char * pSrcBuf;
 	void * pOriginalDstBuf;
 	char * pDstBuf;
-	if (m_SrcCopyPos < m_SrcStart
-		|| m_DstCopyPos < m_DstStart)
+	if (m_SrcPos < m_SrcStart
+		|| m_DstPos < m_DstStart)
 	{
 		return FALSE;
 	}
@@ -1079,7 +1116,7 @@ BOOL CResizeContext::ExpandProc()
 	{
 		if (0 == LeftToRead)
 		{
-			MEDIA_FILE_SIZE SizeToRead = MEDIA_FILE_SIZE(m_SrcStart) - MEDIA_FILE_SIZE(m_SrcCopyPos);
+			MEDIA_FILE_SIZE SizeToRead = MEDIA_FILE_SIZE(m_SrcStart) - MEDIA_FILE_SIZE(m_SrcPos);
 			ASSERT(SizeToRead < 0);
 
 			// SizeToRead < 0 - reading backward
@@ -1088,7 +1125,7 @@ BOOL CResizeContext::ExpandProc()
 				SizeToRead = -0x10000;
 			}
 			WasRead = m_DstFile.GetDataBuffer( & pOriginalSrcBuf,
-												SizeToRead, m_SrcCopyPos, CDirectFile::GetBufferAndPrefetchNext);
+												SizeToRead, m_SrcPos, CDirectFile::GetBufferAndPrefetchNext);
 			if (0 == WasRead)
 			{
 				m_DstFile.ReturnDataBuffer(pOriginalDstBuf, WasLockedToWrite,
@@ -1101,10 +1138,10 @@ BOOL CResizeContext::ExpandProc()
 		}
 		if (0 == LeftToWrite)
 		{
-			MEDIA_FILE_SIZE SizeToWrite = MEDIA_FILE_SIZE(m_DstStart) - MEDIA_FILE_SIZE(m_DstCopyPos);
+			MEDIA_FILE_SIZE SizeToWrite = MEDIA_FILE_SIZE(m_DstStart) - MEDIA_FILE_SIZE(m_DstPos);
 
 			WasLockedToWrite = m_DstFile.GetDataBuffer( & pOriginalDstBuf,
-														SizeToWrite, m_DstCopyPos, DstFlags);
+														SizeToWrite, m_DstPos, DstFlags);
 
 			if (0 == WasLockedToWrite)
 			{
@@ -1127,8 +1164,8 @@ BOOL CResizeContext::ExpandProc()
 			LeftToRead += ToCopy;
 			LeftToWrite += ToCopy;
 
-			m_SrcCopyPos -= ToCopy;
-			m_DstCopyPos -= ToCopy;
+			m_SrcPos -= ToCopy;
+			m_DstPos -= ToCopy;
 		}
 		else
 		{
@@ -1139,20 +1176,20 @@ BOOL CResizeContext::ExpandProc()
 			WAVE_SAMPLE * pDst = (WAVE_SAMPLE *) pDstBuf;
 			unsigned i;
 			// both are 2 channel
-			if (((m_DstCopyPos - m_DstStart) & 2)
+			if (((m_DstPos - m_DstStart) & 2)
 				!= m_DstChan * 2)
 			{
 				// skip this word
 				pDst++;
-				m_DstCopyPos += 2;
+				m_DstPos += 2;
 				LeftToWrite -= 2;
 			}
-			if (((m_SrcCopyPos - m_SrcStart) & 2)
+			if (((m_SrcPos - m_SrcStart) & 2)
 				!= m_DstChan * 2)
 			{
 				// skip this word
 				pSrc++;
-				m_SrcCopyPos += 2;
+				m_SrcPos += 2;
 				LeftToRead -= 2;
 			}
 			size_t ToCopy = __min(( -LeftToRead) / (2 * sizeof pSrc[0]),
@@ -1165,19 +1202,19 @@ BOOL CResizeContext::ExpandProc()
 			}
 
 			LeftToRead += ToCopy * (2 * sizeof pSrc[0]);
-			m_SrcCopyPos -= ToCopy * (2 * sizeof pSrc[0]);
+			m_SrcPos -= ToCopy * (2 * sizeof pSrc[0]);
 
 			LeftToWrite += ToCopy * (2 * sizeof pDst[0]);
-			m_DstCopyPos -= ToCopy * (2 * sizeof pDst[0]);
+			m_DstPos -= ToCopy * (2 * sizeof pDst[0]);
 
 			if (LeftToRead <= -2 && LeftToWrite <= -2)
 			{
 				pDst--;
 				pSrc--;
 				pDst[0] = pSrc[0];
-				m_DstCopyPos -= 2;
+				m_DstPos -= 2;
 				LeftToWrite += 2;
-				m_SrcCopyPos -= 2;
+				m_SrcPos -= 2;
 				LeftToRead += 2;
 			}
 
@@ -1204,7 +1241,7 @@ BOOL CResizeContext::ExpandProc()
 	while (((DstFlags & CDirectFile::GetBufferWriteOnly)
 				// cannot exit while write-only buffer is incomplete
 				&& 0 != WasLockedToWrite)
-			|| (m_SrcCopyPos > m_SrcStart
+			|| (m_SrcPos > m_SrcStart
 				&& timeGetTime() - dwStartTime < 200)
 			);
 
@@ -1218,18 +1255,15 @@ BOOL CResizeContext::ExpandProc()
 		&& NULL != m_pUndoContext->m_pExpandShrinkContext)
 	{
 		// update the position to begin operation
-		m_pUndoContext->m_pExpandShrinkContext->m_SrcCopyPos = m_DstCopyPos;
-		m_pUndoContext->m_pExpandShrinkContext->m_DstCopyPos = m_SrcCopyPos;
+		m_pUndoContext->m_pExpandShrinkContext->m_SrcPos = m_DstPos;
+		m_pUndoContext->m_pExpandShrinkContext->m_DstPos = m_SrcPos;
 	}
 	// notify the view
-	pDocument->FileChanged(m_DstFile, dwOperationBegin, m_DstCopyPos);
+	pDocument->FileChanged(m_DstFile, dwOperationBegin, m_DstPos);
 
-	if (m_SrcEnd > m_SrcStart)
-	{
-		PercentCompleted = 100i64 * (m_SrcEnd - m_SrcCopyPos) / (m_SrcEnd - m_SrcStart);
-	}
+	UpdateCompletedPercent();
+
 	return TRUE;
-
 }
 
 ///////// CCopyContext
@@ -1248,18 +1282,6 @@ CString CCopyContext::GetStatusString()
 	return sOp;
 }
 
-void CCopyContext::InitSource(CWaveFile & SrcFile, SAMPLE_INDEX StartSample,
-							SAMPLE_INDEX EndSample, CHANNEL_MASK SrcChannel)
-{
-	m_SrcFile = SrcFile;
-
-	m_SrcChan = SrcChannel;
-
-	m_SrcStart = m_SrcFile.SampleToPosition(StartSample);
-	m_SrcCopyPos = m_SrcStart;
-	m_SrcEnd = m_SrcFile.SampleToPosition(EndSample);
-}
-
 BOOL CCopyContext::InitCopy(CWaveFile & DstFile,
 							SAMPLE_INDEX DstStartSample, NUMBER_OF_SAMPLES DstLength, CHANNEL_MASK DstChannel,
 							CWaveFile & SrcFile,
@@ -1272,11 +1294,11 @@ BOOL CCopyContext::InitCopy(CWaveFile & DstFile,
 	m_SrcChan = SrcChannel;
 
 	m_SrcStart = m_SrcFile.SampleToPosition(SrcStartSample);
-	m_SrcCopyPos = m_SrcStart;
+	m_SrcPos = m_SrcStart;
 	m_SrcEnd = m_SrcFile.SampleToPosition(SrcStartSample + SrcLength);
 
-	m_DstCopyPos = m_DstFile.SampleToPosition(DstStartSample);
-	m_DstStart = m_DstCopyPos;
+	m_DstPos = m_DstFile.SampleToPosition(DstStartSample);
+	m_DstStart = m_DstPos;
 
 	m_DstEnd = m_DstFile.SampleToPosition(DstStartSample + SrcLength);
 	m_DstChan = DstChannel;
@@ -1353,6 +1375,7 @@ BOOL CCopyContext::OperationProc()
 					m_pExpandShrinkContext->m_Flags |= OperationContextStop;
 				}
 			}
+
 			PercentCompleted = m_pExpandShrinkContext->PercentCompleted;
 			if (m_pExpandShrinkContext->m_Flags &
 				(OperationContextStop | OperationContextFinished))
@@ -1365,14 +1388,14 @@ BOOL CCopyContext::OperationProc()
 		PercentCompleted = 0;
 	}
 
-	if (m_SrcCopyPos >= m_SrcEnd)
+	if (m_SrcPos >= m_SrcEnd)
 	{
 		m_Flags |= OperationContextFinished;
 		return TRUE;
 	}
 
 	DWORD dwStartTime = timeGetTime();
-	SAMPLE_POSITION dwOperationBegin = m_DstCopyPos;
+	SAMPLE_POSITION dwOperationBegin = m_DstPos;
 
 	DWORD LeftToRead = 0;
 	DWORD LeftToWrite = 0;
@@ -1390,8 +1413,8 @@ BOOL CCopyContext::OperationProc()
 		DstFileFlags = CDirectFile::GetBufferWriteOnly;
 	}
 
-	if (m_SrcCopyPos > m_SrcEnd
-		|| m_DstCopyPos > m_DstEnd)
+	if (m_SrcPos > m_SrcEnd
+		|| m_DstPos > m_DstEnd)
 	{
 		return FALSE;
 	}
@@ -1399,13 +1422,13 @@ BOOL CCopyContext::OperationProc()
 	{
 		if (0 == LeftToRead)
 		{
-			MEDIA_FILE_SIZE SizeToRead = MEDIA_FILE_SIZE(m_SrcEnd) - MEDIA_FILE_SIZE(m_SrcCopyPos);
+			MEDIA_FILE_SIZE SizeToRead = MEDIA_FILE_SIZE(m_SrcEnd) - MEDIA_FILE_SIZE(m_SrcPos);
 			if (SizeToRead > 0x10000)
 			{
 				SizeToRead = 0x10000;
 			}
 			WasRead = m_SrcFile.GetDataBuffer( & pOriginalSrcBuf,
-												SizeToRead, m_SrcCopyPos, CDirectFile::GetBufferAndPrefetchNext);
+												SizeToRead, m_SrcPos, CDirectFile::GetBufferAndPrefetchNext);
 			if (0 == WasRead)
 			{
 				m_DstFile.ReturnDataBuffer(pOriginalDstBuf, WasLockedToWrite,
@@ -1422,15 +1445,15 @@ BOOL CCopyContext::OperationProc()
 			if (ALL_CHANNELS == m_DstChan
 				&& m_SrcFile.GetFileID() != m_DstFile.GetFileID()
 				&& (NULL == m_pUndoContext
-					|| ! m_pUndoContext->NeedToSave(m_DstCopyPos, 0x10000)))
+					|| ! m_pUndoContext->NeedToSave(m_DstPos, 0x10000)))
 			{
 				DstFileFlags = CDirectFile::GetBufferWriteOnly;
 			}
 
-			MEDIA_FILE_SIZE SizeToWrite = MEDIA_FILE_SIZE(m_DstEnd) - MEDIA_FILE_SIZE(m_DstCopyPos);
+			MEDIA_FILE_SIZE SizeToWrite = MEDIA_FILE_SIZE(m_DstEnd) - MEDIA_FILE_SIZE(m_DstPos);
 
 			WasLockedToWrite = m_DstFile.GetDataBuffer( & pOriginalDstBuf,
-														SizeToWrite, m_DstCopyPos, DstFileFlags);
+														SizeToWrite, m_DstPos, DstFileFlags);
 
 			if (0 == WasLockedToWrite)
 			{
@@ -1445,7 +1468,7 @@ BOOL CCopyContext::OperationProc()
 				&& NULL != m_pUndoContext)
 			{
 				m_pUndoContext->SaveUndoData(pOriginalDstBuf, WasLockedToWrite,
-											m_DstCopyPos, m_DstChan);
+											m_DstPos, m_DstChan);
 				m_pUndoContext->m_DstEnd = m_pUndoContext->m_SrcSavePos;
 				m_pUndoContext->m_SrcEnd = m_pUndoContext->m_DstSavePos;
 			}
@@ -1468,8 +1491,8 @@ BOOL CCopyContext::OperationProc()
 			LeftToRead -= ToCopy;
 			LeftToWrite -= ToCopy;
 
-			m_SrcCopyPos += ToCopy;
-			m_DstCopyPos += ToCopy;
+			m_SrcPos += ToCopy;
+			m_DstPos += ToCopy;
 		}
 		else
 		{
@@ -1487,7 +1510,7 @@ BOOL CCopyContext::OperationProc()
 				if (ALL_CHANNELS == m_DstChan)
 				{
 					// copy to both channels
-					if ((m_DstCopyPos - m_DstStart) & 2)
+					if ((m_DstPos - m_DstStart) & 2)
 					{
 						// right channel sample left not copied
 						pDst[0] = pSrc[0];
@@ -1498,8 +1521,8 @@ BOOL CCopyContext::OperationProc()
 						LeftToRead -= 2;
 						LeftToWrite -= 2;
 
-						m_DstCopyPos += 2;
-						m_SrcCopyPos += 2;
+						m_DstPos += 2;
+						m_SrcPos += 2;
 					}
 					size_t ToCopy = __min(LeftToRead / sizeof pSrc[0],
 										LeftToWrite / (2 * sizeof pDst[0]));
@@ -1511,15 +1534,15 @@ BOOL CCopyContext::OperationProc()
 					}
 
 					LeftToRead -= ToCopy * sizeof pSrc[0];
-					m_SrcCopyPos += ToCopy * sizeof pSrc[0];
+					m_SrcPos += ToCopy * sizeof pSrc[0];
 
 					LeftToWrite -= ToCopy * (2 * sizeof pDst[0]);
-					m_DstCopyPos += ToCopy * (2 * sizeof pDst[0]);
+					m_DstPos += ToCopy * (2 * sizeof pDst[0]);
 					if (2 == LeftToWrite && LeftToRead != 0)
 					{
 						// only room for left channel sample
 						pDst[0] = pSrc[0];
-						m_DstCopyPos += 2;
+						m_DstPos += 2;
 						LeftToWrite -= 2;
 						pDst++;
 						// rigth channel will be copied later
@@ -1531,12 +1554,12 @@ BOOL CCopyContext::OperationProc()
 					// source - one channel,
 					// destination - one of two
 					ASSERT(m_DstFile.Channels() == 2);
-					if (((m_DstCopyPos - m_DstStart) & 2)
+					if (((m_DstPos - m_DstStart) & 2)
 						!= m_DstChan * 2)
 					{
 						// skip this word
 						pDst++;
-						m_DstCopyPos += 2;
+						m_DstPos += 2;
 						LeftToWrite -= 2;
 					}
 					size_t ToCopy = __min(LeftToRead / sizeof pSrc[0],
@@ -1546,17 +1569,17 @@ BOOL CCopyContext::OperationProc()
 						pDst[0] = pSrc[0];
 					}
 					LeftToRead -= ToCopy * sizeof pSrc[0];
-					m_SrcCopyPos += ToCopy * sizeof pSrc[0];
+					m_SrcPos += ToCopy * sizeof pSrc[0];
 					LeftToWrite -= ToCopy * (2 * sizeof pDst[0]);
-					m_DstCopyPos += ToCopy * (2 * sizeof pDst[0]);
+					m_DstPos += ToCopy * (2 * sizeof pDst[0]);
 					if (2 == LeftToWrite && LeftToRead != 0)
 					{
 						// only one channel sample available
 						pDst[0] = pSrc[0];
 						pSrc++;
 						pDst++;
-						m_SrcCopyPos += 2;
-						m_DstCopyPos += 2;
+						m_SrcPos += 2;
+						m_DstPos += 2;
 						LeftToRead -= 2;
 						LeftToWrite -= 2;
 					}
@@ -1571,7 +1594,7 @@ BOOL CCopyContext::OperationProc()
 				if (ALL_CHANNELS == m_SrcChan)
 				{
 					// copy From both channels (sum)
-					if ((m_SrcCopyPos - m_SrcStart) & 2)
+					if ((m_SrcPos - m_SrcStart) & 2)
 					{
 						// right channel sample left not copied
 						// left channel sample was copied before to dst[0]
@@ -1583,8 +1606,8 @@ BOOL CCopyContext::OperationProc()
 						LeftToRead -= 2;
 						LeftToWrite -= 2;
 
-						m_DstCopyPos += 2;
-						m_SrcCopyPos += 2;
+						m_DstPos += 2;
+						m_SrcPos += 2;
 					}
 					size_t ToCopy = __min(LeftToRead / (2 * sizeof pSrc[0]),
 										LeftToWrite / sizeof pDst[0]);
@@ -1595,16 +1618,16 @@ BOOL CCopyContext::OperationProc()
 					}
 
 					LeftToRead -= ToCopy * (2 * sizeof pSrc[0]);
-					m_SrcCopyPos += ToCopy * (2 * sizeof pSrc[0]);
+					m_SrcPos += ToCopy * (2 * sizeof pSrc[0]);
 
 					LeftToWrite -= ToCopy * sizeof pDst[0];
-					m_DstCopyPos += ToCopy * sizeof pDst[0];
+					m_DstPos += ToCopy * sizeof pDst[0];
 
 					if (2 == LeftToRead && LeftToWrite != 0)
 					{
 						// only left channel sample available
 						pDst[0] = pSrc[0];
-						m_SrcCopyPos += 2;
+						m_SrcPos += 2;
 						LeftToRead -= 2;
 						pSrc++;
 						// rigth channel will be added later
@@ -1616,12 +1639,12 @@ BOOL CCopyContext::OperationProc()
 					// source - one of two,
 					// destination - one channel
 					ASSERT(m_SrcFile.Channels() == 2);
-					if (((m_SrcCopyPos - m_SrcStart) & 2)
+					if (((m_SrcPos - m_SrcStart) & 2)
 						!= m_SrcChan * 2)
 					{
 						// skip this word
 						pSrc++;
-						m_SrcCopyPos += 2;
+						m_SrcPos += 2;
 						LeftToRead -= 2;
 					}
 					size_t ToCopy = __min(LeftToRead / (2 * sizeof pSrc[0]),
@@ -1631,10 +1654,10 @@ BOOL CCopyContext::OperationProc()
 						pDst[0] = pSrc[0];
 					}
 					LeftToRead -= ToCopy * (2 * sizeof pSrc[0]);
-					m_SrcCopyPos += ToCopy * (2 * sizeof pSrc[0]);
+					m_SrcPos += ToCopy * (2 * sizeof pSrc[0]);
 
 					LeftToWrite -= ToCopy * sizeof pDst[0];
-					m_DstCopyPos += ToCopy * sizeof pDst[0];
+					m_DstPos += ToCopy * sizeof pDst[0];
 
 					if (2 == LeftToRead && LeftToWrite != 0)
 					{
@@ -1642,8 +1665,8 @@ BOOL CCopyContext::OperationProc()
 						pDst[0] = pSrc[0];
 						pSrc++;
 						pDst++;
-						m_SrcCopyPos += 2;
-						m_DstCopyPos += 2;
+						m_SrcPos += 2;
+						m_DstPos += 2;
 						LeftToRead -= 2;
 						LeftToWrite -= 2;
 					}
@@ -1652,20 +1675,20 @@ BOOL CCopyContext::OperationProc()
 			else
 			{
 				// both are 2 channel
-				if (((m_DstCopyPos - m_DstStart) & 2)
+				if (((m_DstPos - m_DstStart) & 2)
 					!= m_DstChan * 2)
 				{
 					// skip this word
 					pDst++;
-					m_DstCopyPos += 2;
+					m_DstPos += 2;
 					LeftToWrite -= 2;
 				}
-				if (((m_SrcCopyPos - m_SrcStart) & 2)
+				if (((m_SrcPos - m_SrcStart) & 2)
 					!= m_SrcChan * 2)
 				{
 					// skip this word
 					pSrc++;
-					m_SrcCopyPos += 2;
+					m_SrcPos += 2;
 					LeftToRead -= 2;
 				}
 				size_t ToCopy = __min(LeftToRead / (2 * sizeof pSrc[0]),
@@ -1677,19 +1700,19 @@ BOOL CCopyContext::OperationProc()
 				}
 
 				LeftToRead -= ToCopy * (2 * sizeof pSrc[0]);
-				m_SrcCopyPos += ToCopy * (2 * sizeof pSrc[0]);
+				m_SrcPos += ToCopy * (2 * sizeof pSrc[0]);
 
 				LeftToWrite -= ToCopy * (2 * sizeof pDst[0]);
-				m_DstCopyPos += ToCopy * (2 * sizeof pDst[0]);
+				m_DstPos += ToCopy * (2 * sizeof pDst[0]);
 
 				if (LeftToRead >= 2 && LeftToWrite >= 2)
 				{
 					pDst[0] = pSrc[0];
 					pDst++;
 					pSrc++;
-					m_DstCopyPos += 2;
+					m_DstPos += 2;
 					LeftToWrite -= 2;
-					m_SrcCopyPos += 2;
+					m_SrcPos += 2;
 					LeftToRead -= 2;
 				}
 			}
@@ -1715,7 +1738,7 @@ BOOL CCopyContext::OperationProc()
 	while (((DstFileFlags & CDirectFile::GetBufferWriteOnly)
 				// cannot exit while write-only buffer is incomplete
 				&& 0 != WasLockedToWrite)
-			|| (m_SrcCopyPos < m_SrcEnd
+			|| (m_SrcPos < m_SrcEnd
 				&& timeGetTime() - dwStartTime < 200)
 			);
 
@@ -1726,14 +1749,11 @@ BOOL CCopyContext::OperationProc()
 								CDirectFile::ReturnBufferDirty);
 
 	// notify the view
-	pDocument->FileChanged(m_DstFile, dwOperationBegin, m_DstCopyPos);
+	pDocument->FileChanged(m_DstFile, dwOperationBegin, m_DstPos);
 
-	if (m_SrcEnd > m_SrcStart)
-	{
-		PercentCompleted = 100i64 * (m_SrcCopyPos - m_SrcStart) / (m_SrcEnd - m_SrcStart);
-	}
+	UpdateCompletedPercent();
+
 	return TRUE;
-
 }
 
 void CCopyContext::PostRetire(BOOL bChildContext)
@@ -1757,7 +1777,7 @@ void CCopyContext::PostRetire(BOOL bChildContext)
 BOOL CDecompressContext::OperationProc()
 {
 
-	SAMPLE_POSITION dwOperationBegin = m_DstCopyPos;
+	SAMPLE_POSITION dwOperationBegin = m_DstPos;
 	DWORD StartTime = GetTickCount();
 	while (GetTickCount() - StartTime < 200)
 	{
@@ -1812,8 +1832,8 @@ BOOL CDecompressContext::OperationProc()
 					}
 				}
 				long written = m_DstFile.WriteAt(m_ash.pbDst,
-												m_ash.cbDstLengthUsed, m_DstCopyPos);
-				m_DstCopyPos += written;
+												m_ash.cbDstLengthUsed, m_DstPos);
+				m_DstPos += written;
 				if (written != m_ash.cbDstLengthUsed)
 				{
 					// error
@@ -1837,7 +1857,7 @@ BOOL CDecompressContext::OperationProc()
 	// notify the view
 
 	SAMPLE_INDEX nFirstSample = m_DstFile.PositionToSample(dwOperationBegin);
-	SAMPLE_INDEX nLastSample = m_DstFile.PositionToSample(m_DstCopyPos);
+	SAMPLE_INDEX nLastSample = m_DstFile.PositionToSample(m_DstPos);
 	// check if we need to change file size
 	NUMBER_OF_SAMPLES TotalSamples = -1;
 
@@ -1865,10 +1885,8 @@ BOOL CDecompressContext::OperationProc()
 		nFirstSample, nLastSample, TotalSamples);
 	pDocument->SoundChanged(m_DstFile.GetFileID(), nFirstSample, nLastSample, TotalSamples);
 
-	if (m_SrcEnd > m_SrcStart)
-	{
-		PercentCompleted = 100i64 * (m_SrcPos - m_SrcStart) / (m_SrcEnd - m_SrcStart);
-	}
+	UpdateCompletedPercent();
+
 	return TRUE;
 }
 
@@ -2219,7 +2237,7 @@ BOOL CUndoRedoContext::InitUndoCopy(CWaveFile & SrcFile,
 	m_SrcSavePos = SaveStartPos;
 	m_SrcSaveEnd = SaveEndPos;
 	m_DstStart = SaveStartPos;
-	m_DstCopyPos = SaveStartPos;
+	m_DstPos = SaveStartPos;
 	m_DstEnd = SaveEndPos;
 	// TODO: Check if file is expanded as a result of operation
 	if (SaveEndPos > SaveStartPos)
@@ -2241,7 +2259,7 @@ BOOL CUndoRedoContext::InitUndoCopy(CWaveFile & SrcFile,
 
 		m_DstSavePos = SrcFile.SampleToPosition(0);
 		m_SrcStart = m_DstSavePos;
-		m_SrcCopyPos = m_SrcStart;
+		m_SrcPos = m_SrcStart;
 		m_SrcChan = ALL_CHANNELS;
 		m_DstChan = SaveChannel;
 		m_SaveChan = SaveChannel;
@@ -2545,7 +2563,7 @@ BOOL CDcOffsetContext::OperationProc()
 		m_Flags &= ~ ContextScanning;
 		// calculate DC offset
 		NUMBER_OF_SAMPLES nSamples =
-			(m_pScanContext->m_DstCopyPos - m_pScanContext->m_DstStart)
+			(m_pScanContext->m_DstPos - m_pScanContext->m_DstStart)
 			/ m_pScanContext->m_DstFile.SampleSize();
 		if (0 == nSamples)
 		{
@@ -3080,17 +3098,17 @@ void CFileSaveContext::PostRetire(BOOL bChildContext)
 		if (NULL != datack && datack->ckid != 0)
 		{
 			datack->dwFlags |= MMIO_DIRTY;
-			datack->cksize = m_pConvert->m_DstCopyPos - datack->dwDataOffset;
+			datack->cksize = m_pConvert->m_DstPos - datack->dwDataOffset;
 			//MMCKINFO * fact = m_pConvert->m_DstFile.GetFactChunk();
 			m_DstFile.GetFactChunk()->dwFlags |= MMIO_DIRTY;
 			// save number of samples in the main context
 			m_DstFile.m_FactSamples =
-				(m_pConvert->m_SrcCopyPos - m_pConvert->m_SrcStart)
+				(m_pConvert->m_SrcPos - m_pConvert->m_SrcStart)
 				/ m_pConvert->m_SrcFile.SampleSize();
-			m_pConvert->m_DstCopyPos = (m_pConvert->m_DstCopyPos + 1) & ~1;
+			m_pConvert->m_DstPos = (m_pConvert->m_DstPos + 1) & ~1;
 		}
 		// set length of file (even)
-		m_DstFile.SetFileLength(m_pConvert->m_DstCopyPos);
+		m_DstFile.SetFileLength(m_pConvert->m_DstPos);
 		// release references
 		m_pConvert->PostRetire(TRUE);
 		m_pConvert = NULL;
@@ -3175,7 +3193,7 @@ void CFileSaveContext::DeInit()
 
 BOOL CConversionContext::OperationProc()
 {
-	SAMPLE_POSITION dwOperationBegin = m_DstCopyPos;
+	SAMPLE_POSITION dwOperationBegin = m_DstPos;
 	DWORD dwStartTime = GetTickCount();
 	if (m_Flags & OperationContextStopRequested)
 	{
@@ -3195,7 +3213,7 @@ BOOL CConversionContext::OperationProc()
 	{
 		if (0 == LeftToRead)
 		{
-			MEDIA_FILE_SIZE SizeToRead = m_SrcEnd - m_SrcCopyPos;
+			MEDIA_FILE_SIZE SizeToRead = m_SrcEnd - m_SrcPos;
 			if (SizeToRead > 0x10000)
 			{
 				SizeToRead = 0x10000;
@@ -3203,7 +3221,7 @@ BOOL CConversionContext::OperationProc()
 			if (SizeToRead != 0)
 			{
 				WasRead = m_SrcFile.GetDataBuffer( & pOriginalSrcBuf,
-													SizeToRead, m_SrcCopyPos, CDirectFile::GetBufferAndPrefetchNext);
+													SizeToRead, m_SrcPos, CDirectFile::GetBufferAndPrefetchNext);
 				if (0 == WasRead)
 				{
 					m_DstFile.ReturnDataBuffer(pOriginalDstBuf, WasLockedToWrite,
@@ -3223,14 +3241,14 @@ BOOL CConversionContext::OperationProc()
 
 		if (0 == LeftToWrite)
 		{
-			MEDIA_FILE_SIZE SizeToWrite = m_DstEnd - m_DstCopyPos;
+			MEDIA_FILE_SIZE SizeToWrite = m_DstEnd - m_DstPos;
 			if (0 == SizeToWrite)
 			{
-				m_DstEnd = m_DstCopyPos + 0x10000;
+				m_DstEnd = m_DstPos + 0x10000;
 				SizeToWrite = 0x10000;
 			}
 			WasLockedToWrite = m_DstFile.GetDataBuffer( & pOriginalDstBuf,
-														SizeToWrite, m_DstCopyPos, m_GetBufferFlags);
+														SizeToWrite, m_DstPos, m_GetBufferFlags);
 
 			if (0 == WasLockedToWrite)
 			{
@@ -3246,7 +3264,7 @@ BOOL CConversionContext::OperationProc()
 			if (NULL != m_pUndoContext)
 			{
 				m_pUndoContext->SaveUndoData(pDstBuf, WasLockedToWrite,
-											m_DstCopyPos, m_DstChan);
+											m_DstPos, m_DstChan);
 				m_pUndoContext->m_DstEnd = m_pUndoContext->m_SrcSavePos;
 				m_pUndoContext->m_SrcEnd = m_pUndoContext->m_DstSavePos;
 			}
@@ -3264,10 +3282,10 @@ BOOL CConversionContext::OperationProc()
 			break;
 		}
 		if (0) TRACE("ConversionContext: SrcPos=%d (0x%X), DstPos=%d (0x%X), src: %d bytes, dst: %d bytes\n",
-					m_SrcCopyPos, m_SrcCopyPos, m_DstCopyPos, m_DstCopyPos,
+					m_SrcPos, m_SrcPos, m_DstPos, m_DstPos,
 					SrcBufUsed, DstBufUsed);
 		LeftToRead -= SrcBufUsed;
-		m_SrcCopyPos += SrcBufUsed;
+		m_SrcPos += SrcBufUsed;
 		pSrcBuf += SrcBufUsed;
 
 		if (0 == LeftToRead)
@@ -3278,7 +3296,7 @@ BOOL CConversionContext::OperationProc()
 		}
 
 		LeftToWrite -= DstBufUsed;
-		m_DstCopyPos += DstBufUsed;
+		m_DstPos += DstBufUsed;
 		pDstBuf += DstBufUsed;
 
 		if (0 == LeftToWrite)
@@ -3289,7 +3307,7 @@ BOOL CConversionContext::OperationProc()
 		}
 
 	}
-	while (m_SrcCopyPos < m_SrcEnd
+	while (m_SrcPos < m_SrcEnd
 			&& timeGetTime() - dwStartTime < 500
 			);
 
@@ -3300,12 +3318,10 @@ BOOL CConversionContext::OperationProc()
 								CDirectFile::ReturnBufferDirty);
 
 	// notify the view
-	pDocument->FileChanged(m_DstFile, dwOperationBegin, m_DstCopyPos);
+	pDocument->FileChanged(m_DstFile, dwOperationBegin, m_DstPos);
 
-	if (m_SrcEnd > m_SrcStart)
-	{
-		PercentCompleted = 100i64 * (m_SrcCopyPos - m_SrcStart) / (m_SrcEnd - m_SrcStart);
-	}
+	UpdateCompletedPercent();
+
 	return TRUE;
 }
 
@@ -3423,7 +3439,7 @@ void CWmaDecodeContext::SetDstFile(CWaveFile & file)
 {
 	m_DstFile = file;
 	m_DstStart = m_DstFile.SampleToPosition(0);
-	m_DstCopyPos = m_DstStart;
+	m_DstPos = m_DstStart;
 	m_DstCopySample = 0;
 
 	m_Decoder.SetDstFile(file);
@@ -3480,7 +3496,7 @@ void CWmaSaveContext::DeInit()
 {
 	m_Enc.DeInit();
 	m_CoInit.UninitializeCom();
-	m_DstCopyPos = m_Enc.GetWrittenLength();
+	m_DstPos = m_Enc.GetWrittenLength();
 }
 
 void CWmaSaveContext::PostRetire(BOOL bChildContext)
@@ -3503,14 +3519,14 @@ BOOL CWmaSaveContext::OperationProc()
 		m_Flags |= OperationContextStop;
 		return TRUE;
 	}
-	if (m_SrcCopyPos >= m_SrcEnd)
+	if (m_SrcPos >= m_SrcEnd)
 	{
 		m_Flags |= OperationContextFinished;
 		return TRUE;
 	}
 
 	DWORD dwStartTime = timeGetTime();
-	SAMPLE_POSITION dwOperationBegin = m_DstCopyPos;
+	SAMPLE_POSITION dwOperationBegin = m_DstPos;
 	int SampleSize = m_SrcFile.SampleSize();
 
 	LONG SizeToProcess = 0;
@@ -3522,9 +3538,9 @@ BOOL CWmaSaveContext::OperationProc()
 	{
 		// make sure ProcessBuffer gets integer number of complete samples, from sample boundary
 
-		LONGLONG SizeToWrite = m_SrcEnd - m_SrcCopyPos;
+		LONGLONG SizeToWrite = m_SrcEnd - m_SrcPos;
 		WasLockedToWrite = m_SrcFile.GetDataBuffer( & pSrcBuf,
-													SizeToWrite, m_SrcCopyPos, m_GetBufferFlags);
+													SizeToWrite, m_SrcPos, m_GetBufferFlags);
 
 		if (0 == WasLockedToWrite)
 		{
@@ -3534,29 +3550,26 @@ BOOL CWmaSaveContext::OperationProc()
 		if (WasLockedToWrite < SampleSize)
 		{
 			m_SrcFile.ReturnDataBuffer(pSrcBuf, WasLockedToWrite, 0);
-			if (SampleSize != m_SrcFile.ReadAt(TempBuf, SampleSize, m_SrcCopyPos))
+			if (SampleSize != m_SrcFile.ReadAt(TempBuf, SampleSize, m_SrcPos))
 			{
 				return FALSE;
 			}
-			ProcessBuffer(TempBuf, SampleSize, m_SrcCopyPos - m_SrcStart, FALSE);
-			m_SrcCopyPos += SampleSize;
+			ProcessBuffer(TempBuf, SampleSize, m_SrcPos - m_SrcStart, FALSE);
+			m_SrcPos += SampleSize;
 			continue;
 		}
 		SizeToProcess = WasLockedToWrite - WasLockedToWrite % SampleSize;
 		// save the data to be changed to undo buffer, but only on the first forward pass
 		// virtual function which modifies the actual data:
-		ProcessBuffer(pSrcBuf, SizeToProcess, m_SrcCopyPos - m_SrcStart, FALSE);
+		ProcessBuffer(pSrcBuf, SizeToProcess, m_SrcPos - m_SrcStart, FALSE);
 
 		m_SrcFile.ReturnDataBuffer(pSrcBuf, WasLockedToWrite, 0);
-		m_SrcCopyPos += SizeToProcess;
+		m_SrcPos += SizeToProcess;
 	}
-	while (m_SrcCopyPos < m_SrcEnd
+	while (m_SrcPos < m_SrcEnd
 			&& timeGetTime() - dwStartTime < 1000);
 
-	if (m_SrcEnd > m_SrcStart)
-	{
-		PercentCompleted = int(100. * (m_SrcCopyPos - m_SrcStart)
-								/ double(m_SrcEnd - m_SrcStart));
-	}
+	UpdateCompletedPercent();
+
 	return TRUE;
 }

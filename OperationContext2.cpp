@@ -1947,7 +1947,7 @@ void CCdReadingContext::PostRetire(BOOL bChildContext)
 		}
 
 		MMCKINFO * pDatachunk = m_DstFile.GetDataChunk();
-		pDatachunk->cksize = m_DstCopyPos - pDatachunk->dwDataOffset;
+		pDatachunk->cksize = m_DstPos - pDatachunk->dwDataOffset;
 		pDatachunk->dwFlags |= MMIO_DIRTY;
 		long NewLength = pDatachunk->cksize / m_DstFile.SampleSize();
 		// if no data has been read, delete the document
@@ -1955,7 +1955,7 @@ void CCdReadingContext::PostRetire(BOOL bChildContext)
 		{
 			pDocument->m_bCloseThisDocumentNow = true;
 		}
-		else if (m_DstFile.SetFileLength(m_DstCopyPos))
+		else if (m_DstFile.SetFileLength(m_DstPos))
 		{
 			pDocument->SoundChanged(m_DstFile.GetFileID(), 0, 0, NewLength);
 		}

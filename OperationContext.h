@@ -50,11 +50,17 @@ public:
 	int m_NumberOfBackwardPasses;
 	int m_CurrentPass;
 
-	CHANNEL_MASK m_DstChan;
 	CWaveFile m_DstFile;
+	CHANNEL_MASK m_DstChan;
 	SAMPLE_POSITION m_DstStart;
 	SAMPLE_POSITION m_DstEnd;
-	SAMPLE_POSITION m_DstCopyPos;
+	SAMPLE_POSITION m_DstPos;
+
+	CWaveFile m_SrcFile;
+	CHANNEL_MASK m_SrcChan;
+	SAMPLE_POSITION m_SrcStart;
+	SAMPLE_POSITION m_SrcEnd;
+	SAMPLE_POSITION m_SrcPos;
 
 	bool m_bClipped;
 	double m_MaxClipped;
@@ -123,6 +129,14 @@ public:
 
 	BOOL InitDestination(CWaveFile & DstFile, SAMPLE_INDEX StartSample, SAMPLE_INDEX EndSample,
 						CHANNEL_MASK chan, BOOL NeedUndo);
+	void InitSource(CWaveFile & SrcFile, SAMPLE_INDEX StartSample,
+					SAMPLE_INDEX EndSample, CHANNEL_MASK chan);
+
+	void UpdateCompletedPercent();
+	void UpdateCompletedPercent(SAMPLE_INDEX CurrentSample,
+								SAMPLE_INDEX StartSample, SAMPLE_INDEX EndSample);
+	void UpdateCompletedPercent(SAMPLE_POSITION CurrentPos,
+								SAMPLE_POSITION StartPos, SAMPLE_POSITION EndPos);
 #ifdef _DEBUG
 	FILETIME m_ThreadUserTime;
 	DWORD m_SystemTime;
@@ -190,9 +204,6 @@ class CResizeContext : public COperationContext
 {
 	friend class CWaveSoapFrontDoc;
 	// Start, End and position are in bytes
-	SAMPLE_POSITION m_SrcStart;
-	SAMPLE_POSITION m_SrcEnd;
-	SAMPLE_POSITION m_SrcCopyPos;
 
 	BOOL ExpandProc();
 	BOOL ShrinkProc();
@@ -216,12 +227,7 @@ public:
 class CCopyContext : public COperationContext
 {
 public:
-	CWaveFile m_SrcFile;
 	// Start, End and position are in bytes
-	SAMPLE_POSITION m_SrcStart;
-	SAMPLE_POSITION m_SrcEnd;
-	CHANNEL_MASK m_SrcChan;
-	SAMPLE_POSITION m_SrcCopyPos;
 
 	class CResizeContext * m_pExpandShrinkContext;
 
@@ -240,8 +246,6 @@ public:
 				CWaveFile & SrcFile,
 				SAMPLE_INDEX SrcStartSample, NUMBER_OF_SAMPLES SrcLength, CHANNEL_MASK SrcChannel
 				);
-	void InitSource(CWaveFile & SrcFile, SAMPLE_INDEX StartSample,
-					SAMPLE_INDEX EndSample, CHANNEL_MASK chan);
 	//BOOL InitExpand(LONG StartSample, NUMBER_OF_SAMPLES Length, CHANNEL_MASK Channel);
 	virtual BOOL OperationProc();
 	virtual void PostRetire(BOOL bChildContext = FALSE);
@@ -287,11 +291,7 @@ public:
 class CDecompressContext : public COperationContext
 {
 	friend class CWaveSoapFrontDoc;
-	CWaveFile m_SrcFile;
 	// Start, End and position are in bytes
-	SAMPLE_POSITION m_SrcStart;
-	SAMPLE_POSITION m_SrcEnd;
-	SAMPLE_POSITION m_SrcPos;
 
 	NUMBER_OF_SAMPLES m_CurrentSamples;
 
@@ -338,10 +338,13 @@ public:
 	SAMPLE_POSITION m_Begin;
 	SAMPLE_POSITION m_End;
 	SAMPLE_POSITION m_CurrentPlaybackPos;
+
 	CHANNEL_MASK m_Chan;
+
 	SAMPLE_INDEX m_SamplePlayed;
 	SAMPLE_INDEX m_FirstSamplePlayed;
 	SAMPLE_INDEX m_LastSamplePlayed;
+
 	bool m_bPauseRequested;
 	int m_PlaybackDevice;
 	int m_OldThreadPriority;
