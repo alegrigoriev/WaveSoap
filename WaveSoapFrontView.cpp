@@ -1555,7 +1555,8 @@ void CWaveSoapFrontView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
 		// don't do anything
 	}
 	else if (lHint == CWaveSoapFrontDoc::UpdateWholeFileChanged
-			&& NULL == pHint)
+			&& NULL == pHint
+			)
 	{
 		// recalculate the extents
 		UpdateMaxExtents(GetDocument()->WaveFileSamples());
@@ -2144,7 +2145,7 @@ void CWaveSoapFrontView::OnViewZoomSelection()
 
 void CWaveSoapFrontView::NotifySlaveViews(DWORD flag)
 {
-	if (flag & CHANGE_HOR_EXTENTS)
+	if (flag & (CHANGE_HOR_EXTENTS | CHANGE_MAX_HOR_EXTENTS))
 	{
 		CWnd * pOutlineWnd = GetParent()->GetDlgItem(CWaveMDIChildClient::OutlineViewID);
 		CWaveOutlineView * pOutlineView = dynamic_cast<CWaveOutlineView *>(pOutlineWnd);
