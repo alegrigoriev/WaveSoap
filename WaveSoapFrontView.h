@@ -68,6 +68,7 @@ protected:
 	// how many samples in the display point
 	virtual void AdjustNewScale(double OldScaleX, double OldScaleY,
 								double & NewScaleX, double & NewScaleY);
+	virtual void AdjustNewOrigin(double & NewOrgX, double & NewOrgY);
 	virtual BOOL MasterScrollBy(double dx, double dy, BOOL bDoScroll = TRUE);
 	void DrawHorizontalWithSelection(CDC * pDC,
 									int left, int right, int Y,
