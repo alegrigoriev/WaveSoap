@@ -71,7 +71,7 @@ protected:
 	virtual BOOL OnInitDialog();
 	virtual BOOL PreTranslateMessage(MSG* pMsg);
 
-	void SetFileType(int nType, BOOL Force = FALSE);
+	void SetFileType(unsigned nType, BOOL Force = FALSE);
 	void ShowDlgItem(UINT nID, int nCmdShow);
 
 	// sets the data to the array and also to the list view
