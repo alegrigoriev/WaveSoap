@@ -90,7 +90,7 @@ public:
 	CWaveSoapFrontDoc * m_pActiveDocument;
 	COperationContext * m_pFirstOp;
 	COperationContext * m_pLastOp;
-	CString m_CurrentStatusString;
+	//CString m_CurrentStatusString;
 	CWaveFile m_ClipboardFile;
 
 	//{{AFX_MSG(CWaveSoapFrontApp)

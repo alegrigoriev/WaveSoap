@@ -363,9 +363,11 @@ unsigned CWaveSoapFrontApp::_ThreadProc()
 		{
 			if (m_pMainWnd)
 			{
-				NeedKickIdle = false;
-				BOOL ret = ::PostMessage(m_pMainWnd->m_hWnd, WM_KICKIDLE, 0, 0);
-				TRACE("Post KICKIDLE returned %d\n", ret);
+				((CMainFrame *)m_pMainWnd)->ResetLastStatusMessage();
+				if (::PostMessage(m_pMainWnd->m_hWnd, WM_KICKIDLE, 0, 0))
+				{
+					NeedKickIdle = false;    // otherwise keep bugging
+				}
 			}
 		}
 		COperationContext * pContext = NULL;
@@ -423,9 +425,9 @@ unsigned CWaveSoapFrontApp::_ThreadProc()
 		if (pContext != NULL)
 		{
 			int LastPercent = pContext->PercentCompleted;
+			// execute one step
 			if ( ! pContext->OperationProc())
 			{
-				// execute one step
 				pContext->Flags |= OperationContextStop;
 			}
 			// signal for status update
@@ -457,7 +459,8 @@ unsigned CWaveSoapFrontApp::_ThreadProc()
 				pContext->pDocument->m_pQueuedOperation = NULL;
 				pContext->pDocument->m_OperationInProgress = false;
 				// send a signal to the document, that the operation completed
-				m_CurrentStatusString = pContext->GetStatusString() + _T("Completed");
+				pContext->pDocument->m_CurrentStatusString =
+					pContext->GetStatusString() + _T("Completed");
 				delete pContext;
 				// send a signal to the document, that the operation completed
 				NeedKickIdle = true;    // this will reenable all commands
@@ -466,15 +469,14 @@ unsigned CWaveSoapFrontApp::_ThreadProc()
 			{
 				if (NeedKickIdle)
 				{
-					m_CurrentStatusString.Format(_T("%s%d%%"),
-												(LPCTSTR)pContext->GetStatusString(), pContext->PercentCompleted);
+					pContext->pDocument->m_CurrentStatusString.Format(_T("%s%d%%"),
+						(LPCTSTR)pContext->GetStatusString(), pContext->PercentCompleted);
 				}
 			}
 			continue;
 		}
 		else
 		{
-			m_CurrentStatusString.Empty();
 		}
 		WaitForSingleObject(m_hThreadEvent, 1000);
 	}
