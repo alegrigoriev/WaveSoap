@@ -25,7 +25,7 @@ void COperationContext::SetBeginTime()
 	FILETIME tmp;
 	GetThreadTimes(GetCurrentThread(),
 					& tmp, & tmp, & tmp, & m_ThreadUserTime);
-	m_SystemTime = GetTickCount();
+	m_BeginSystemTime = GetTickCount();
 }
 
 void COperationContext::PrintElapsedTime()
@@ -36,7 +36,7 @@ void COperationContext::PrintElapsedTime()
 	DWORD TickCount = GetTickCount();
 	TRACE("Elapsed thread time : %d ms, elapsed real time=%d\n",
 		(UserTime.dwLowDateTime - m_ThreadUserTime.dwLowDateTime) / 10000,
-		TickCount - m_SystemTime);
+		TickCount - m_BeginSystemTime);
 }
 
 #endif
@@ -376,6 +376,7 @@ void COperationContext::Retire()
 {
 	// all context go to retirement list
 	// queue it to the Doc
+	PrintElapsedTime();
 	if ((m_Flags & OperationContextFinished)
 		&& NULL != m_pChainedContext)
 	{
@@ -415,6 +416,7 @@ void COperationContext::PostRetire(BOOL bChildContext)
 void COperationContext::Execute()
 {
 	pDocument->QueueOperation(this);
+	SetBeginTime();
 }
 
 void CUndoRedoContext::Execute()
@@ -925,10 +927,12 @@ BOOL CResizeContext::ShrinkProc()
 	char * pDstBuf;
 	DWORD DstFlags = 0;
 	if (m_DstChan == ALL_CHANNELS // all data is copied
-		&& m_SrcPos - m_DstPos >= 0x10000)
+		//&& m_SrcPos - m_DstPos >= CDirectFile::CacheBufferSize()
+		)
 	{
 		DstFlags = CDirectFile::GetBufferWriteOnly;
 	}
+
 	if (m_SrcPos > m_SrcEnd
 		|| m_DstPos > m_DstEnd)
 	{
@@ -939,9 +943,9 @@ BOOL CResizeContext::ShrinkProc()
 		if (0 == LeftToRead)
 		{
 			MEDIA_FILE_SIZE SizeToRead = MEDIA_FILE_SIZE(m_SrcEnd) - MEDIA_FILE_SIZE(m_SrcPos);
-			if (SizeToRead > 0x10000)
+			if (SizeToRead > CDirectFile::CacheBufferSize())
 			{
-				SizeToRead = 0x10000;
+				SizeToRead = CDirectFile::CacheBufferSize();
 			}
 			WasRead = m_DstFile.GetDataBuffer( & pOriginalSrcBuf,
 												SizeToRead, m_SrcPos, CDirectFile::GetBufferAndPrefetchNext);
@@ -1092,7 +1096,8 @@ BOOL CResizeContext::ExpandProc()
 	}
 	DWORD DstFlags = 0;
 	if (m_DstChan == ALL_CHANNELS // all data is copied
-		&& m_SrcPos - m_DstPos >= 0x10000)
+		//&& m_SrcPos - m_DstPos >= CDirectFile::CacheBufferSize()
+		)
 	{
 		DstFlags = CDirectFile::GetBufferWriteOnly;
 	}
@@ -1122,9 +1127,9 @@ BOOL CResizeContext::ExpandProc()
 			ASSERT(SizeToRead < 0);
 
 			// SizeToRead < 0 - reading backward
-			if (SizeToRead < -0x10000)
+			if (SizeToRead < -CDirectFile::CacheBufferSize())
 			{
-				SizeToRead = -0x10000;
+				SizeToRead = -CDirectFile::CacheBufferSize();
 			}
 			WasRead = m_DstFile.GetDataBuffer( & pOriginalSrcBuf,
 												SizeToRead, m_SrcPos, CDirectFile::GetBufferAndPrefetchNext);
@@ -1430,9 +1435,9 @@ BOOL CCopyContext::OperationProc()
 		if (0 == LeftToRead)
 		{
 			MEDIA_FILE_SIZE SizeToRead = MEDIA_FILE_SIZE(m_SrcEnd) - MEDIA_FILE_SIZE(m_SrcPos);
-			if (SizeToRead > 0x10000)
+			if (SizeToRead > CDirectFile::CacheBufferSize())
 			{
-				SizeToRead = 0x10000;
+				SizeToRead = CDirectFile::CacheBufferSize();
 			}
 			WasRead = m_SrcFile.GetDataBuffer( & pOriginalSrcBuf,
 												SizeToRead, m_SrcPos, CDirectFile::GetBufferAndPrefetchNext);
@@ -1452,7 +1457,7 @@ BOOL CCopyContext::OperationProc()
 			if (ALL_CHANNELS == m_DstChan
 				&& m_SrcFile.GetFileID() != m_DstFile.GetFileID()
 				&& (NULL == m_pUndoContext
-					|| ! m_pUndoContext->NeedToSave(m_DstPos, 0x10000)))
+					|| ! m_pUndoContext->NeedToSave(m_DstPos, 1)))
 			{
 				DstFileFlags = CDirectFile::GetBufferWriteOnly;
 			}
@@ -1831,9 +1836,9 @@ BOOL CDecompressContext::OperationProc()
 		{
 			MEDIA_FILE_SIZE SizeToRead = m_SrcEnd - m_SrcPos;
 
-			if (SizeToRead > 0x10000)
+			if (SizeToRead > CDirectFile::CacheBufferSize())
 			{
-				SizeToRead = 0x10000;
+				SizeToRead = CDirectFile::CacheBufferSize();
 			}
 
 			if (SizeToRead != 0)
@@ -3196,9 +3201,9 @@ BOOL CConversionContext::OperationProc()
 		if (0 == LeftToRead)
 		{
 			MEDIA_FILE_SIZE SizeToRead = m_SrcEnd - m_SrcPos;
-			if (SizeToRead > 0x10000)
+			if (SizeToRead > CDirectFile::CacheBufferSize())
 			{
-				SizeToRead = 0x10000;
+				SizeToRead = CDirectFile::CacheBufferSize();
 			}
 			if (SizeToRead != 0)
 			{
@@ -3226,9 +3231,10 @@ BOOL CConversionContext::OperationProc()
 			MEDIA_FILE_SIZE SizeToWrite = m_DstEnd - m_DstPos;
 			if (0 == SizeToWrite)
 			{
-				m_DstEnd = m_DstPos + 0x10000;
-				SizeToWrite = 0x10000;
+				m_DstEnd = (m_DstPos + CDirectFile::CacheBufferSize()) & -CDirectFile::CacheBufferSize();
+				SizeToWrite = m_DstEnd - m_DstPos;
 			}
+
 			WasLockedToWrite = m_DstFile.GetDataBuffer( & pOriginalDstBuf,
 														SizeToWrite, m_DstPos, m_GetBufferFlags);
 
@@ -3487,7 +3493,6 @@ void CWmaDecodeContext::PostRetire(BOOL bChildContext)
 
 BOOL CWmaSaveContext::Init()
 {
-	SetBeginTime();
 	m_Enc.m_SrcWfx = * m_SrcFile.GetWaveFormat();
 
 	m_CoInit.InitializeCom(COINIT_APARTMENTTHREADED);
@@ -3514,7 +3519,6 @@ void CWmaSaveContext::DeInit()
 
 void CWmaSaveContext::PostRetire(BOOL bChildContext)
 {
-	PrintElapsedTime();
 	CConversionContext::PostRetire(bChildContext);
 }
 
