@@ -23,6 +23,7 @@ CMmioFile & CMmioFile::operator=(CMmioFile & SourceFile)
 	Close();
 	Attach( & SourceFile);
 
+#ifndef OVERRIDE_MMLIB_FUNCTIONS
 	MMIOINFO mmii;
 	memzero(mmii);
 	mmii.fccIOProc = 0;
@@ -31,7 +32,8 @@ CMmioFile & CMmioFile::operator=(CMmioFile & SourceFile)
 	mmii.adwInfo[0] = (DWORD)(DWORD_PTR)this;   // TODO
 	m_hmmio = mmioOpen(NULL, & mmii, MMIO_READ //| MMIO_ALLOCBUF
 						);
-	Seek(0);
+#endif
+	Seek(0, FILE_BEGIN);
 	return *this;
 }
 
@@ -144,6 +146,7 @@ BOOL CMmioFile::Open(LPCTSTR szFileName, UINT nOpenFlags)
 	if (0 == (nOpenFlags & (MmioFileOpenCreateNew | MmioFileOpenCreateAlways)))
 	{
 
+#ifndef OVERRIDE_MMLIB_FUNCTIONS
 		MMIOINFO mmii;
 		memzero(mmii);
 		mmii.fccIOProc = 0;
@@ -160,6 +163,7 @@ BOOL CMmioFile::Open(LPCTSTR szFileName, UINT nOpenFlags)
 			Close();
 			return FALSE;
 		}
+#endif
 
 		AllocateInstanceData<InstanceDataMm>();
 
@@ -177,6 +181,8 @@ BOOL CMmioFile::Open(LPCTSTR szFileName, UINT nOpenFlags)
 		{
 			SetFileLength(0x40);
 		}
+
+#ifndef OVERRIDE_MMLIB_FUNCTIONS
 		MMIOINFO mmii;
 		memzero(mmii);
 		mmii.fccIOProc = 0;
@@ -193,7 +199,7 @@ BOOL CMmioFile::Open(LPCTSTR szFileName, UINT nOpenFlags)
 			Close();
 			return FALSE;
 		}
-
+#endif
 		LPMMCKINFO pRiffck = & AllocateInstanceData<InstanceDataMm>()->riffck;
 
 		if (0 == (nOpenFlags & MmioFileOpenDontCreateRiff))
@@ -308,14 +314,164 @@ LRESULT PASCAL CMmioFile::BufferedIOProc(LPSTR lpmmioinfo, UINT wMsg,
 
 void CMmioFile::Close( )
 {
+#ifndef OVERRIDE_MMLIB_FUNCTIONS
 	if (m_hmmio != NULL)
 	{
 		mmioClose(m_hmmio, 0);
 		m_hmmio = NULL;
 	}
-	CDirectFile::Close(0);
+#endif
+	BaseClass::Close(0);
 }
 
+#ifdef OVERRIDE_MMLIB_FUNCTIONS
+BOOL CMmioFile::Descend(MMCKINFO & ck, LPMMCKINFO lpckParent, UINT uFlags)
+{
+	if ( ! IsOpen()
+		|| (NULL != lpckParent && GetFilePointer() < lpckParent->dwDataOffset))
+	{
+		return FALSE;
+	}
+
+	FOURCC TypeToFind = 0;
+	if (uFlags & MMIO_FINDRIFF)
+	{
+		TypeToFind = FOURCC_RIFF;
+	}
+	else if (uFlags & MMIO_FINDLIST)
+	{
+		TypeToFind = FOURCC_LIST;
+	}
+	else if (uFlags & MMIO_FINDCHUNK)
+	{
+		TypeToFind = ck.ckid;
+	}
+
+	// uFlags can be: MMIO_FINDCHUNK, MMIO_FINDLIST, MMIO_FINDRIFF
+	while (NULL == lpckParent
+			|| GetFilePointer() + 8 <= lpckParent->dwDataOffset + lpckParent->cksize)
+	{
+		DWORD ckhdr[2];
+		if (sizeof (ckhdr) != Read(ckhdr, sizeof ckhdr))
+		{
+			return FALSE;
+		}
+
+		if (0 == TypeToFind || TypeToFind == ckhdr[0])
+		{
+
+			if (0 == (uFlags & (MMIO_FINDRIFF | MMIO_FINDLIST)))
+			{
+				ck.cksize = ckhdr[1];
+				ck.dwDataOffset = GetFilePointer();
+				ck.ckid = ckhdr[0];
+				ck.dwFlags = 0;
+				ck.fccType = 0;
+
+				return TRUE;
+			}
+			// RIFF or LIST
+			if (ckhdr[0] < sizeof (DWORD))
+			{
+				return FALSE;
+			}
+
+			DWORD fccType;
+			if (sizeof (fccType) != Read(& fccType, sizeof fccType))
+			{
+				return FALSE;
+			}
+
+			if (0 == ck.fccType
+				|| ck.fccType == fccType)
+			{
+				ck.cksize = ckhdr[1];
+				ck.dwDataOffset = GetFilePointer() - sizeof (fccType);
+				ck.ckid = ckhdr[0];
+				ck.dwFlags = 0;
+				ck.fccType = fccType;
+				return TRUE;
+			}
+			ckhdr[1] -= sizeof (fccType);
+		}
+		// skip the chunk (align to even boundary)
+		Seek((ckhdr[1] + 1) & -2i64, FILE_CURRENT);
+	}
+	return FALSE;
+}
+
+BOOL CMmioFile::Ascend(MMCKINFO & ck)
+{
+	if (ck.dwFlags & MMIO_DIRTY)
+	{
+		// pad the chunk, update the length
+		LONGLONG Length = GetFilePointer() - ck.dwDataOffset;
+		if (Length < 0 || Length >= 0xFFFFFFFFUi64)
+		{
+			return FALSE;
+		}
+		DWORD ckhdr[2];
+
+		if (ck.dwDataOffset < sizeof ckhdr)
+		{
+			return FALSE;
+		}
+		// update the chunk header
+		ckhdr[0] = ck.ckid;
+		ckhdr[1] = DWORD(Length & 0xFFFFFFFF);
+		if (sizeof ckhdr != WriteAt(ckhdr, sizeof ckhdr, ck.dwDataOffset - sizeof ckhdr))
+		{
+			return FALSE;
+		}
+		ck.cksize = ckhdr[1];
+		UCHAR pad = 0;
+		// pad data, if necessary
+		if ((ck.cksize & 1)
+			&& 1 != Write( & pad, 1))
+		{
+			return FALSE;
+		}
+		ck.dwFlags &= ~MMIO_DIRTY;
+		// the current position is already set
+		return TRUE;
+	}
+	Seek((ck.dwDataOffset + ck.cksize + 1) & -2i64);
+	return TRUE;
+}
+
+BOOL CMmioFile::CreateChunk(MMCKINFO & ck, UINT wFlags)
+{
+	ck.dwFlags |= MMIO_DIRTY;
+	// align to an even boundary?
+	if (GetFilePointer() & 1)
+	{
+		Seek(1, FILE_CURRENT);
+	}
+
+	DWORD ckhdr[2] = { ck.ckid, ck.cksize};
+	if (wFlags & MMIO_CREATERIFF)
+	{
+		ck.ckid = FOURCC_RIFF;
+	}
+	else if (wFlags & MMIO_CREATELIST)
+	{
+		ck.ckid = FOURCC_LIST;
+	}
+	if (sizeof ckhdr != Write(ckhdr, sizeof ckhdr))
+	{
+		return FALSE;
+	}
+	ck.dwDataOffset = GetFilePointer();
+	if (wFlags & (MMIO_CREATERIFF | MMIO_CREATELIST))
+	{
+		if (sizeof ck.fccType != Write( & ck.fccType, sizeof ck.fccType))
+		{
+			return FALSE;
+		}
+	}
+	return TRUE;
+}
+#endif
 
 CWaveFile::CWaveFile()
 {
@@ -376,7 +532,7 @@ BOOL CWaveFile::LoadWaveformat()
 			MMCKINFO * pFact = GetFactChunk();
 			pFact->ckid = mmioFOURCC('f', 'a', 'c', 't');
 			// save current position
-			DWORD CurrPos = Seek(0, SEEK_CUR);
+			MEDIA_FILE_POSITION CurrPos = Seek(0, SEEK_CUR);
 			m_FactSamples = ~0LU;
 			if (FindChunk(* pFact, GetRiffChunk()))
 			{
@@ -1367,13 +1523,13 @@ void CWaveFile::RescanPeaks(SAMPLE_INDEX begin, SAMPLE_INDEX end)
 
 	int nSampleSize = SampleSize();
 	LPMMCKINFO datack = GetDataChunk();
-	DWORD dwDataChunkOffset = datack->dwDataOffset;
+	MEDIA_FILE_POSITION dwDataChunkOffset = datack->dwDataOffset;
 
 	unsigned GranuleSize = Channels() * Granularity * sizeof(WAVE_SAMPLE);
 
-	DWORD Pos = nSampleSize * (begin & -int(Granularity)) + dwDataChunkOffset;
+	MEDIA_FILE_POSITION Pos = nSampleSize * (begin & -int(Granularity)) + dwDataChunkOffset;
 
-	DWORD EndPos = nSampleSize * ((end | (Granularity - 1)) + 1);
+	MEDIA_FILE_POSITION EndPos = nSampleSize * ((end | (Granularity - 1)) + 1);
 	if (EndPos > datack->cksize)
 	{
 		EndPos = datack->cksize;
@@ -1391,7 +1547,7 @@ void CWaveFile::RescanPeaks(SAMPLE_INDEX begin, SAMPLE_INDEX end)
 			unsigned i;
 			unsigned DataToProcess = lRead;
 			WAVE_SAMPLE * pWaveData = (WAVE_SAMPLE *) pBuf;
-			DWORD DataOffset = Pos - dwDataChunkOffset;
+			MEDIA_FILE_POSITION DataOffset = Pos - dwDataChunkOffset;
 			unsigned DataForGranule = GranuleSize - DataOffset % GranuleSize;
 
 			if (2 == Channels())
