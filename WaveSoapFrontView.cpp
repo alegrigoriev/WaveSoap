@@ -189,22 +189,16 @@ void CWaveSoapFrontView::OnDraw(CDC* pDC)
 	double left, right, top, bottom;
 
 	GetClientRect(&r);
-	r.left--;   // make additional
-	r.right++;
-	if (0 && pDC->IsKindOf(RUNTIME_CLASS(CPaintDC)))
+	if (pDC->IsKindOf(RUNTIME_CLASS(CPaintDC)))
 	{
 		RECT r_upd = ((CPaintDC*)pDC)->m_ps.rcPaint;
-#if 0
-		CString s;
-		s.Format("r_upd: l=%d, r=%d, t=%d, b=%d\n", r_upd.left,
-				r_upd.right, r_upd.top, r_upd.bottom);
-		AfxOutputDebugString(s);
-#endif
 		// make intersect by x coordinate
 		if (r.left < r_upd.left) r.left = r_upd.left;
 		if (r.right > r_upd.right) r.right = r_upd.right;
 	}
 
+	r.left--;   // make additional
+	r.right++;
 	int iClientWidth = r.right - r.left;
 	PointToDoubleDev(CPoint(r.left, r.top), left, top);
 	PointToDoubleDev(CPoint(r.right, r.bottom), right, bottom);
@@ -1470,5 +1464,6 @@ void CWaveSoapFrontView::MovePointIntoView(int nCaret)
 	TRACE("MovePointIntoView: DesiredPos=%d, left=%d, right=%d, scroll=%d\n",
 		nDesiredPos, r.left, r.right, scroll);
 	ScrollBy(scroll, 0, TRUE);
+	NotifySlaveViews(CHANGE_HOR_ORIGIN);
 	CreateAndShowCaret();
 }
