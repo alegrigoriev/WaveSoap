@@ -183,7 +183,7 @@ enum {
 
 class CScanPeaksContext : public COperationContext
 {
-	//friend class CWaveSoapFrontDoc;
+	typedef COperationContext BaseClass;
 public:
 
 	CScanPeaksContext(CWaveSoapFrontDoc * pDoc,
@@ -216,6 +216,7 @@ protected:
 
 class CResizeContext : public COperationContext
 {
+	typedef COperationContext BaseClass;
 	friend class CWaveSoapFrontDoc;
 	// Start, End and position are in bytes
 
@@ -240,6 +241,7 @@ public:
 
 class CCopyContext : public COperationContext
 {
+	typedef COperationContext BaseClass;
 public:
 	// Start, End and position are in bytes
 
@@ -268,6 +270,7 @@ public:
 
 class CUndoRedoContext : public CCopyContext
 {
+	typedef CCopyContext BaseClass;
 public:
 	SAMPLE_POSITION m_SrcSaveStart;
 	SAMPLE_POSITION m_SrcSaveEnd;
@@ -302,45 +305,9 @@ public:
 	~CUndoRedoContext();
 };
 
-class CDecompressContext : public COperationContext
-{
-	friend class CWaveSoapFrontDoc;
-
-public:
-	CDecompressContext(CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString,
-						CWaveFile & SrcFile,
-						CWaveFile & DstFile,
-						SAMPLE_POSITION SrcStart,
-						SAMPLE_POSITION SrcEnd,
-						NUMBER_OF_SAMPLES NumSamples,
-						WAVEFORMATEX const * pWf,
-						BOOL SwapBytes = FALSE);
-
-	~CDecompressContext()
-	{
-		DeInit();
-	}
-	virtual BOOL OperationProc();
-	virtual BOOL Init();
-	virtual void DeInit();
-	virtual void PostRetire(BOOL bChildContext = FALSE);
-
-protected:
-	NUMBER_OF_SAMPLES m_CurrentSamples;
-
-	size_t m_SrcBufSize;
-	size_t m_DstBufSize;
-	ACMSTREAMHEADER m_ash;
-	DWORD m_ConvertFlags;
-	CWaveFormat m_Wf;
-	HACMSTREAM m_acmStr;
-	HACMDRIVER m_acmDrv;
-	MMRESULT m_MmResult;
-	BOOL m_bSwapBytes;
-};
-
 class CSoundPlayContext : public COperationContext
 {
+	typedef COperationContext BaseClass;
 public:
 	CWaveOut m_WaveOut;
 	CWaveFile m_PlayFile;
@@ -374,6 +341,7 @@ public:
 
 class CVolumeChangeContext : public COperationContext
 {
+	typedef COperationContext BaseClass;
 public:
 	CVolumeChangeContext(CWaveSoapFrontDoc * pDoc,
 						LPCTSTR StatusString, LPCTSTR OperationName);
@@ -388,6 +356,7 @@ public:
 
 class CDcOffsetContext : public COperationContext
 {
+	typedef COperationContext BaseClass;
 public:
 	CDcOffsetContext(CWaveSoapFrontDoc * pDoc,
 					LPCTSTR StatusString, LPCTSTR OperationName);
@@ -405,6 +374,7 @@ public:
 
 class CStatisticsContext : public COperationContext
 {
+	typedef COperationContext BaseClass;
 public:
 	CStatisticsContext(CWaveSoapFrontDoc * pDoc,
 						LPCTSTR StatusString, LPCTSTR OperationName);
@@ -444,10 +414,11 @@ public:
 
 class CNormalizeContext : public CVolumeChangeContext
 {
+	typedef CVolumeChangeContext BaseClass;
 public:
 	CNormalizeContext(CWaveSoapFrontDoc * pDoc,
 					LPCTSTR StatusString, LPCTSTR OperationName)
-		: CVolumeChangeContext(pDoc, StatusString, OperationName),
+		: BaseClass(pDoc, StatusString, OperationName),
 		m_pScanContext(NULL)
 	{
 	}
@@ -464,26 +435,22 @@ public:
 
 class CConversionContext : public CCopyContext
 {
+	typedef CCopyContext BaseClass;
 public:
-	CConversionContext(CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString, LPCTSTR OperationName)
-		: CCopyContext(pDoc, StatusString, OperationName),
-		m_pWf(NULL)
-	{
-		// delete the procs in the destructor
-		m_Flags &= ~OperationContextDiskIntensive;
-		m_ProcBatch.m_bAutoDeleteProcs = TRUE;
-	}
-	~CConversionContext()
-	{
-		delete[] (char*) m_pWf;
-	}
+	CConversionContext(CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString, LPCTSTR OperationName);
+
+	CConversionContext(CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString,
+						LPCTSTR OperationName,
+						CWaveFile & SrcFile,
+						CWaveFile & DstFile);
+
+	//~CConversionContext() {}
 
 	void AddWaveProc(CWaveProc * pProc, int index = -1)
 	{
 		m_ProcBatch.AddWaveProc(pProc, index);
 	}
-	//virtual BOOL Init();
-	//virtual BOOL DeInit();
+
 	virtual BOOL WasClipped() const
 	{
 		return m_ProcBatch.WasClipped();
@@ -492,19 +459,49 @@ public:
 	{
 		return m_ProcBatch.GetMaxClipped();
 	}
-	WAVEFORMATEX * m_pWf;
 	virtual BOOL OperationProc();
-	//BOOL SetTargetFormat(WAVEFORMATEX * pwf);
+
 	virtual void PostRetire(BOOL bChildContext = FALSE);
 protected:
 	CBatchProcessing m_ProcBatch;
+	NUMBER_OF_SAMPLES m_CurrentSamples;
+};
+
+class CDecompressContext : public CConversionContext
+{
+	typedef CConversionContext BaseClass;
+	friend class CWaveSoapFrontDoc;
+
+public:
+	CDecompressContext(CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString,
+						CWaveFile & SrcFile,
+						CWaveFile & DstFile,
+						SAMPLE_POSITION SrcStart,
+						SAMPLE_POSITION SrcEnd,
+						NUMBER_OF_SAMPLES NumSamples,
+						WAVEFORMATEX const * pWf,
+						BOOL SwapBytes = FALSE);
+
+	~CDecompressContext()
+	{
+		DeInit();
+	}
+//    virtual BOOL OperationProc();
+	virtual BOOL Init();
+	virtual void PostRetire(BOOL bChildContext = FALSE);
+
+protected:
+
+	MMRESULT m_MmResult;
+	CWaveFormat m_Wf;
 };
 
 class CFileSaveContext : public CCopyContext
 {
+	typedef CCopyContext BaseClass;
 public:
 	CFileSaveContext(CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString, LPCTSTR OperationName)
-		: CCopyContext(pDoc, StatusString, OperationName),
+		: BaseClass(pDoc, StatusString, OperationName),
 		m_NewFileTypeFlags(0),
 		m_pConvert(NULL)
 	{
@@ -526,12 +523,13 @@ public:
 
 class CWmaDecodeContext: public COperationContext
 {
+	typedef COperationContext BaseClass;
 public:
 	CWmaDecodeContext(CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString,
 					CDirectFile & rWmaFile)
-		: COperationContext(pDoc, StatusString,
-							// operation can be terminated by Close
-							OperationContextDiskIntensive | OperationContextNonCritical),
+		: BaseClass(pDoc, StatusString,
+					// operation can be terminated by Close
+					OperationContextDiskIntensive | OperationContextNonCritical),
 		m_WmaFile(rWmaFile)
 	{
 	}
@@ -557,9 +555,10 @@ private:
 
 class CWmaSaveContext : public CConversionContext
 {
+	typedef CConversionContext BaseClass;
 public:
 	CWmaSaveContext(CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString, LPCTSTR OperationName)
-		: CConversionContext(pDoc, StatusString, OperationName)
+		: BaseClass(pDoc, StatusString, OperationName)
 	{
 	}
 	~CWmaSaveContext()
