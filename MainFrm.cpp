@@ -28,14 +28,19 @@ BEGIN_MESSAGE_MAP(CMainFrame, CMDIFrameWnd)
 	ON_COMMAND(ID_HELP, CMDIFrameWnd::OnHelp)
 	ON_COMMAND(ID_CONTEXT_HELP, CMDIFrameWnd::OnContextHelp)
 	ON_COMMAND(ID_DEFAULT_HELP, CMDIFrameWnd::OnHelpFinder)
+	ON_UPDATE_COMMAND_UI(ID_INDICATOR_FILE_SIZE, OnUpdateIndicatorFileSize)
+	ON_UPDATE_COMMAND_UI(ID_INDICATOR_SAMPLE_RATE, OnUpdateIndicatorSampleRate)
+	ON_UPDATE_COMMAND_UI(ID_INDICATOR_SAMPLE_SIZE, OnUpdateIndicatorSampleSize)
+	ON_UPDATE_COMMAND_UI(ID_INDICATOR_CHANNELS, OnUpdateIndicatorChannels)
 END_MESSAGE_MAP()
 
 static UINT indicators[] =
 {
 	ID_SEPARATOR,           // status line indicator
-	ID_INDICATOR_CAPS,
-	ID_INDICATOR_NUM,
-	ID_INDICATOR_SCRL,
+	ID_INDICATOR_SAMPLE_RATE,
+	ID_INDICATOR_SAMPLE_SIZE,
+	ID_INDICATOR_CHANNELS,
+	ID_INDICATOR_FILE_SIZE,
 };
 
 /////////////////////////////////////////////////////////////////////////////
@@ -84,6 +89,7 @@ int CMainFrame::OnCreate(LPCREATESTRUCT lpCreateStruct)
 		TRACE0("Failed to create status bar\n");
 		return -1;      // fail to create
 	}
+	m_wndStatusBar.EnableToolTips();
 
 	// TODO: Remove this if you don't want tool tips
 	m_wndToolBar.SetBarStyle(m_wndToolBar.GetBarStyle() |
@@ -173,6 +179,26 @@ void CMainFrame::OnUpdateFrameTitle(BOOL bAddToTitle)
 		}
 		UpdateFrameTitleForDocument(lpstrTitle);
 	}
+}
+
+void CMainFrame::OnUpdateIndicatorFileSize(CCmdUI* pCmdUI)
+{
+	SetStatusString(pCmdUI, _T(""), _T("00:00:00.000"), TRUE);
+}
+
+void CMainFrame::OnUpdateIndicatorSampleRate(CCmdUI* pCmdUI)
+{
+	SetStatusString(pCmdUI, _T(""), _T("44,100"), TRUE);
+}
+
+void CMainFrame::OnUpdateIndicatorSampleSize(CCmdUI* pCmdUI)
+{
+	SetStatusString(pCmdUI, _T(""), _T("16-bit"), TRUE);
+}
+
+void CMainFrame::OnUpdateIndicatorChannels(CCmdUI* pCmdUI)
+{
+	SetStatusString(pCmdUI, _T(""), _T("Stereo"), TRUE);
 }
 
 /////////////////////////////////////////////////////////////////////////////

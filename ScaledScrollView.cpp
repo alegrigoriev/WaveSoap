@@ -950,7 +950,6 @@ int CScaledScrollView::GetMappingInfo()
 
 BOOL CScaledScrollView::OnScrollBy(CSize sizeScroll, BOOL bDoScroll)
 {
-	// TODO: Add your specialized code here and/or call the base class
 	if (bDoScroll)
 	{
 		RemoveSelectionRect();

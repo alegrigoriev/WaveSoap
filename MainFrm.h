@@ -42,7 +42,7 @@ public:
 	virtual void OnUpdateFrameTitle(BOOL bAddToTitle);
 
 protected:  // control bar embedded members
-	CStatusBar  m_wndStatusBar;
+	CWaveSoapFrontStatusBar  m_wndStatusBar;
 	CToolBar    m_wndToolBar;
 	CReBar      m_wndReBar;
 	CDialogBar      m_wndDlgBar;
@@ -53,6 +53,10 @@ protected:
 	afx_msg int OnCreate(LPCREATESTRUCT lpCreateStruct);
 	// NOTE - the ClassWizard will add and remove member functions here.
 	//    DO NOT EDIT what you see in these blocks of generated code!
+	afx_msg void OnUpdateIndicatorFileSize(CCmdUI* pCmdUI);
+	afx_msg void OnUpdateIndicatorSampleRate(CCmdUI* pCmdUI);
+	afx_msg void OnUpdateIndicatorSampleSize(CCmdUI* pCmdUI);
+	afx_msg void OnUpdateIndicatorChannels(CCmdUI* pCmdUI);
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 };
