@@ -271,6 +271,12 @@ void COperationContext::SetStatusPrompt(UINT id)
 	m_StatusPrompt.LoadString(id);
 }
 
+void COperationContext::AddSelectionUndo(SAMPLE_INDEX Start, SAMPLE_INDEX End, SAMPLE_INDEX Caret,
+										CHANNEL_MASK Channels)
+{
+	m_UndoChain.InsertHead(new CSelectionChangeOperation(m_pDocument, Start, End, Caret, Channels));
+}
+
 //////////// COneFileOperation
 COneFileOperation::COneFileOperation(class CWaveSoapFrontDoc * pDoc, ULONG Flags,
 									LPCTSTR StatusString,

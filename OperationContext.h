@@ -76,7 +76,9 @@ public:
 
 	// the function is called to create UNDO context before starting the main operation
 	virtual BOOL CreateUndo();
-
+	// this function adds CSelectionChangeOperation UNDO context
+	void AddSelectionUndo(SAMPLE_INDEX Start, SAMPLE_INDEX End, SAMPLE_INDEX Caret,
+						CHANNEL_MASK Channels);
 	// the function prepares the context which is part of UNDO
 	// before doing the UNDO/REDO operation
 	virtual BOOL PrepareUndo()
