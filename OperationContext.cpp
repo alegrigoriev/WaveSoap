@@ -3351,23 +3351,20 @@ void CFileSaveContext::PostRetire(BOOL bChildContext)
 	if (NULL != m_pConvert)
 	{
 		// update data chunk and number of samples
-		if (m_pConvert->m_DstFile.IsOpen())
+		MMCKINFO * datack = m_pConvert->m_DstFile.GetDataChunk();
+		if (NULL != datack && datack->ckid != 0)
 		{
-			MMCKINFO * datack = m_pConvert->m_DstFile.GetDataChunk();
-			if (NULL != datack && datack->ckid != 0)
-			{
-				datack->dwFlags |= MMIO_DIRTY;
-				datack->cksize = m_pConvert->m_DstCopyPos - datack->dwDataOffset;
-				//MMCKINFO * fact = m_pConvert->m_DstFile.GetFactChunk();
-				m_DstFile.GetFactChunk()->dwFlags |= MMIO_DIRTY;
-				// save number of samples in the main context
-				m_DstFile.m_FactSamples =
-					(m_pConvert->m_SrcCopyPos - m_pConvert->m_SrcStart)
-					/ m_pConvert->m_SrcFile.SampleSize();
-			}
-			// set length of file (even)
-			m_DstFile.SetFileLength((m_pConvert->m_DstCopyPos + 1) & ~1);
+			datack->dwFlags |= MMIO_DIRTY;
+			datack->cksize = m_pConvert->m_DstCopyPos - datack->dwDataOffset;
+			//MMCKINFO * fact = m_pConvert->m_DstFile.GetFactChunk();
+			m_DstFile.GetFactChunk()->dwFlags |= MMIO_DIRTY;
+			// save number of samples in the main context
+			m_DstFile.m_FactSamples =
+				(m_pConvert->m_SrcCopyPos - m_pConvert->m_SrcStart)
+				/ m_pConvert->m_SrcFile.SampleSize();
 		}
+		// set length of file (even)
+		m_DstFile.SetFileLength((m_pConvert->m_DstCopyPos + 1) & ~1);
 		// release references
 		m_pConvert->PostRetire(TRUE);
 		m_pConvert = NULL;
@@ -3727,10 +3724,10 @@ BOOL CWmaSaveContext::Init()
 	{
 		return FALSE;
 	}
-	return FALSE;
 	// TODO: load the proper profile
 	// TODO: Open the destination file
-	if ( ! m_Enc.OpenWrite(m_SaveFilename))
+	m_Enc.SetBitrate(128016);
+	if ( ! m_Enc.OpenWrite(m_DstFile))
 	{
 		return FALSE;
 	}

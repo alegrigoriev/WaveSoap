@@ -416,8 +416,8 @@ public:
 		delete m_pConvert;
 	}
 	CString m_NewName;
-	CString m_TempName;
 	DWORD m_NewFileTypeFlags;
+
 	virtual BOOL Init();
 	virtual void DeInit();
 	virtual BOOL OperationProc();
@@ -456,15 +456,13 @@ public:
 	CWmaSaveContext(CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString, LPCTSTR OperationName)
 		: CConversionContext(pDoc, StatusString, OperationName)
 	{
-		// delete the procs in the destructor
 	}
 	~CWmaSaveContext()
 	{
 	}
 
 	WmaEncoder m_Enc;
-	CString m_SaveFilename;
-	CString m_TargetFilename;
+
 	virtual BOOL Init();
 	virtual void DeInit();
 	virtual BOOL ProcessBuffer(void * buf, size_t len, DWORD offset, BOOL bBackward = FALSE);

@@ -524,7 +524,7 @@ BOOL CDirectFile::File::Close(DWORD flags)
 	}
 	{
 		BufferHeader * pBuf;
-		while (NULL != (pBuf = BuffersList.KListEntry<BufferHeader>::RemoveHead()))
+		while (NULL != (pBuf = BuffersList.RemoveHead()))
 		{
 			ASSERT(0 == pBuf->LockCount);
 			// something strange: buffer not released
@@ -1859,7 +1859,7 @@ unsigned CDirectFile::CDirectFileCache::_ThreadProc()
 				{
 					CSimpleCriticalSectionLock lock(m_cs);
 					pFile = m_FileList.Next();
-					for (int i = 0; pFile != & m_FileList
+					for (int i = 0; pFile != m_FileList.Head()
 						&& (i < nFile
 							|| 0 == pFile->DirtyBuffersCount
 							|| (pFile->m_Flags & FileFlagsMemoryFile)); i++,
@@ -1868,7 +1868,7 @@ unsigned CDirectFile::CDirectFileCache::_ThreadProc()
 						// empty
 					}
 					nFile = i;
-					if (NULL == pFile)
+					if (pFile == m_FileList.Head())
 					{
 						break;
 					}
