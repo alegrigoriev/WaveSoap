@@ -288,6 +288,7 @@ protected:
 	afx_msg void OnBuddyChangeSpinLength(NMHDR * pNmHdr, LRESULT * pResult);
 	afx_msg void OnBuddyChangeSpinStart(NMHDR * pNmHdr, LRESULT * pResult);
 	afx_msg void OnSelchangeComboSelection();
+	afx_msg void OnSelchangeComboStartEnd();
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 };

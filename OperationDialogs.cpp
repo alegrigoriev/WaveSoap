@@ -571,7 +571,6 @@ void CSelectionUiSupport::InitSelectionUi()
 	m_eStart.GetComboBox().SetExtendedUI(TRUE);
 	m_eEnd.GetComboBox().SetExtendedUI(TRUE);
 
-	CWaveFile::InstanceDataWav * pInst = m_WaveFile.GetInstanceData();
 	NUMBER_OF_SAMPLES FileLength = m_WaveFile.NumberOfSamples();
 
 	if ((0 != m_Start || FileLength != m_End)
@@ -594,6 +593,8 @@ void CSelectionUiSupport::InitSelectionUi()
 
 	CString s;
 
+#if 0
+	CWaveFile::InstanceDataWav * pInst = m_WaveFile.GetInstanceData();
 	for (RegionMarkerIterator i = pInst->m_RegionMarkers.begin();
 		i < pInst->m_RegionMarkers.end(); i++)
 	{
@@ -633,6 +634,22 @@ void CSelectionUiSupport::InitSelectionUi()
 			AddSelection(pTitle, StartSample, EndSample);
 		}
 	}
+#else
+	WaveFileSegmentVector Segments;
+	m_WaveFile.GetSortedFileSegments(Segments, true);
+
+	for (WaveFileSegmentVector::iterator i = Segments.begin();
+		i < Segments.end(); i++)
+	{
+		if (i->Begin > 0
+			&& i->Begin < i->End
+			&& i->Begin < FileLength
+			&& i->End <= FileLength)
+		{
+			AddSelection(i->Name, i->Begin, i->End);
+		}
+	}
+#endif
 
 	UpdateComboSelection();
 }
@@ -945,6 +962,8 @@ BEGIN_MESSAGE_MAP(CSelectionDialog, BaseClass)
 	ON_CBN_KILLFOCUS(IDC_COMBO_START, OnKillfocusEditStart)
 	ON_NOTIFY(CTimeSpinCtrl::TSC_BUDDY_CHANGE, IDC_SPIN_START, OnBuddyChangeSpinStart)
 	ON_CBN_SELCHANGE(IDC_COMBO_SELECTION, OnSelchangeComboSelection)
+	ON_CBN_SELCHANGE(IDC_COMBO_END, OnSelchangeComboStartEnd)
+	ON_CBN_SELCHANGE(IDC_COMBO_START, OnSelchangeComboStartEnd)
 	//}}AFX_MSG_MAP
 END_MESSAGE_MAP()
 
@@ -997,6 +1016,11 @@ void CSelectionDialog::OnKillfocusEditStart()
 void CSelectionDialog::OnSelchangeComboSelection()
 {
 	CSelectionUiSupport::OnSelchangeComboSelection();
+}
+
+void CSelectionDialog::OnSelchangeComboStartEnd()
+{
+	UpdateComboSelection();
 }
 
 /////////////////////////////////////////////////////////////////////////////
