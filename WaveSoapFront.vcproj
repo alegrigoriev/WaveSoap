@@ -348,9 +348,6 @@
 				RelativePath=".\Resample.cpp">
 			</File>
 			<File
-				RelativePath=".\ResizableDialog.cpp">
-			</File>
-			<File
 				RelativePath=".\Ruler.cpp">
 			</File>
 			<File
