@@ -183,7 +183,7 @@ void CResampleContext::PostRetire(BOOL bChildContext)
 				pDocument->m_bDirectMode = false;
 				pDocument->UpdateFrameTitles();        // will cause name change in views
 			}
-			long nSamples = pDocument->WaveFileSamples();
+			NUMBER_OF_SAMPLES nSamples = pDocument->WaveFileSamples();
 			pDocument->SoundChanged(pDocument->WaveFileID(),
 									0, nSamples, nSamples,
 									UpdateSoundDontRescanPeaks
