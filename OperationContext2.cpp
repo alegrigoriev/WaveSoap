@@ -1916,7 +1916,7 @@ void CCdReadingContext::Execute()
 	// create new document, assign a file to it
 	NewFileParameters Params;
 	Params.InitialSamples = m_NumberOfSectors * (CDDASectorSize / 4);
-	Params.pInitialTitle = m_TrackFileName;
+	Params.m_pInitialName = m_TrackFileName;
 	Params.m_FileTypeFlags = m_TargetFileType | OpenDocumentCreateNewFromCWaveFile;
 	Params.m_pFile = & m_DstFile;
 	Params.pWf = m_TargetFormat;

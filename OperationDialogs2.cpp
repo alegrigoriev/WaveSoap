@@ -1686,7 +1686,7 @@ void CCdGrabbingDialog::FillFormatCombo()
 									WaveFormatMatchCnannels | WaveFormatMatchSampleRate);
 		break;
 	case 2:
-		m_Acm.FillMp3EncoderTags();
+		m_Acm.FillMp3EncoderTags(WaveFormatMatchCnannels | WaveFormatMatchSampleRate);
 		m_Acm.FillMultiFormatArray(0, m_Acm.m_FormatTags.size() - 1,
 									WaveFormatMatchCnannels | WaveFormatMatchSampleRate);
 		break;

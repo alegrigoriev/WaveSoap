@@ -1,17 +1,15 @@
 Known problems and tasks:
 
-Add saved from CD files to the MRU list
 Handle "Compatible/All" formats for MP3, WMA
-Raw file: make format tag and save attributes
 If CD recording not supported, SET SPEED WriteSpeed set to zero
 Restore CD speed to max rather than current!
 Set speed doesn't work on Goldstar CDRW	 SetSpeed returned sense 5/24
-Pass wave format to CD grabbing dialog
 Process Loss Of Streaming error
 Make option to ask for file reopen
-Handle "Save from CD immediately" option
 Read CD text
 Open CDA files
+Raw file: make format tag and save attributes
+Support CD grabbing under Win9x
 Set icons to all resizable dialogs (for XP)
 Load sound from AVI
 Add options dialog
@@ -33,7 +31,7 @@ If delete (shrink) is done with one channel of two, fill the rest with zeros
 If displaying data without peak info, call RescanPeaks for this range.
 Support CFSTR_FILECONTENTS clipboard format
 Save current workspace
-Use secondary stream to keep peak info
+Use temp directory to keep peak info
 Support filenames with stream extension
 Add "phase corrected" stereo to mono conversion
 Add VU meter for playback
@@ -104,6 +102,9 @@ Save As dialog is not centered first time (comdlg problem?)
 ??? When time/seconds format is set for status bar, MM:SS is actually shown
 
 Done:
+Handle "Save from CD immediately" option
+Pass wave format to CD grabbing dialog
+Add saved from CD files to the MRU list
 When showing a dialog for a document, make the doc active, then restore the previous one.
 Add file format selection for CD grabbing
 When PCM is selected for CD grabbing, show default format

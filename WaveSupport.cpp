@@ -812,7 +812,8 @@ BOOL _stdcall CAudioCompressionManager::FormatTagEnumCallback(
 									DWORD(& fcs), ACM_FORMATENUMF_CONVERT);
 				TRACE("acmFormatEnum returned %x\n", res);
 			}
-			if ( ! fcs.FormatFound)
+			if ( ! fcs.FormatFound
+				&& (pfts->flags & WaveFormatMatchCompatibleFormats))
 			{
 				// try acmFormatSuggest
 				pwfx.InitFormat(WAVE_FORMAT_PCM,
@@ -1012,7 +1013,8 @@ void CAudioCompressionManager::FillMultiFormatArray(unsigned nSelFrom, unsigned 
 					res = acmFormatEnum(had, & afd, FormatEnumCallback,
 										DWORD(& fcs), ACM_FORMATENUMF_CONVERT);
 
-					if ( ! fcs.FormatFound)
+					if ( ! fcs.FormatFound
+						&& (Flags & WaveFormatMatchCompatibleFormats))
 					{
 						// try acmFormatSuggest
 						res = 0;
@@ -1058,19 +1060,19 @@ void CAudioCompressionManager::FillWmaFormatTags()
 	FillFormatTagArray(m_Wf, & format, 1);
 }
 
-void CAudioCompressionManager::FillMp3EncoderTags()
+void CAudioCompressionManager::FillMp3EncoderTags(DWORD Flags)
 {
-
-	// check if MP3 ACM encoder presents
-	static WaveFormatTagEx const Mp3Tag = { WAVE_FORMAT_MPEGLAYER3 };
-
-	FillFormatTagArray(m_Wf, & Mp3Tag, 1);
-	FormatTagItem TagItem;
 
 	BladeMp3Encoder Mp3Enc;
 	// check if LAME encoder is available
-	if (Mp3Enc.Open())
+	if ((0 == (Flags
+				& (WaveFormatMatchCompatibleFormats
+					| WaveFormatMatchCnannels
+					| WaveFormatMatchSampleRate))
+			|| (m_Wf.SampleRate() == 44100 && m_Wf.NumChannels() == 2))
+		&& Mp3Enc.Open())
 	{
+		FormatTagItem TagItem;
 		TagItem.Name = Mp3Enc.GetVersionString();
 		TagItem.Tag = Mp3Enc.GetTag();
 
@@ -1078,6 +1080,11 @@ void CAudioCompressionManager::FillMp3EncoderTags()
 
 		Mp3Enc.Close();
 	}
+	// check if MP3 ACM encoder presents
+	static WaveFormatTagEx const Mp3Tag = { WAVE_FORMAT_MPEGLAYER3 };
+
+	FillFormatTagArray(m_Wf, & Mp3Tag, 1, Flags);
+
 
 }
 

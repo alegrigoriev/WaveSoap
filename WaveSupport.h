@@ -341,8 +341,8 @@ public:
 							WaveFormatTagEx const ListOfTags[],
 							int NumTags, DWORD flags = 0);
 	void FillWmaFormatTags();
-	void FillMp3EncoderTags();
-	void FillMp3FormatArray();
+	void FillMp3EncoderTags(DWORD Flags);
+	void FillMp3FormatArray(DWORD Flags);
 	void FillLameEncoderFormats();
 
 	static CString GetFormatName(HACMDRIVER had, WAVEFORMATEX const * pWf);

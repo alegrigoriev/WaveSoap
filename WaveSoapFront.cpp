@@ -730,9 +730,9 @@ CDocument* CWaveSoapDocTemplate::OpenDocumentFile(LPCTSTR lpszPathName,
 		}
 
 		// create a new document - with default document name
-		if (NULL != pParams->pInitialTitle)
+		if (NULL != pParams->m_pInitialName)
 		{
-			pDocument->SetPathName(pParams->pInitialTitle, FALSE);
+			pDocument->SetPathName(pParams->m_pInitialName, TRUE);
 		}
 		else
 		{
@@ -1463,7 +1463,7 @@ void CWaveSoapFrontApp::OnFileNew()
 	if (pTemplate != NULL)
 	{
 		NewFileParameters Params;
-		Params.pInitialTitle = NULL;
+		Params.m_pInitialName = NULL;
 		Params.pWf = & m_NewFileFormat;
 
 		if (! m_bShowNewFormatDialogWhenShiftOnly
@@ -1515,7 +1515,7 @@ void CWaveSoapFrontApp::OnEditPasteNew()
 
 		NewFileParameters Params;
 		Params.InitialSamples = 0;
-		Params.pInitialTitle = NULL;
+		Params.m_pInitialName = NULL;
 		Params.pWf = pWfx;
 
 		CWaveSoapFrontDoc * pDoc =
