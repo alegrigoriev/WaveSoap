@@ -107,6 +107,8 @@ void CHorizontalRuler::OnMouseMove(UINT nFlags, CPoint point)
 		}
 		// do scroll
 		double dx = (PrevMouseX - point.x) / GetXScaleDev();
+		if (0) TRACE("OnMouseMove: Scroll by % d points (%f)\n", PrevMouseX - point.x, dx);
+
 		PrevMouseX = point.x;
 		ScrollBy(dx, 0, TRUE);
 	}
