@@ -199,9 +199,23 @@ public:
 	virtual UINT OnShareViolation( LPCTSTR lpszPathName );
 
 	void ShowDlgItem(UINT nID, int nCmdShow);
-	void FillFormatArray(int nSel);
-	void FillFormatTagArray();
-	void FillFormatTagCombo();
+	enum {
+		MatchNumChannels = 0x01,
+		MatchBitsPerSample = 0x02,
+		MatchSamplingRate = 0x04,
+		MatchCompatibleFormats = 0x08,
+		MatchFormatTag = 0x08,
+
+	};
+	void FillFormatArray(int nSel, int Flags);
+	void FillFormatCombo(int nSel, int Flags);
+	void FillFormatCombo(int nSel)
+	{
+		FillFormatCombo(nSel,
+						m_bCompatibleFormatsOnly ? MatchCompatibleFormats : MatchFormatTag);
+	}
+	void FillFormatTagArray(int const ListOfTags[], int NumTags);
+	void FillFormatTagCombo(int const ListOfTags[] = NULL, int NumTags = 0);
 
 	void FillWmaFormatArray();
 	void FillMp3EncoderArray();

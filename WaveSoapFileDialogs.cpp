@@ -332,35 +332,6 @@ BEGIN_MESSAGE_MAP(CWaveSoapFileSaveDialog, CFileDialogWithHistory)
 	//}}AFX_MSG_MAP
 END_MESSAGE_MAP()
 
-// enumerates all formats for the tag
-BOOL _stdcall CWaveSoapFileSaveDialog::FormatEnumCallback(
-														HACMDRIVERID hadid, LPACMFORMATDETAILS pafd,
-														DWORD dwInstance, DWORD fdwSupport)
-{
-	CWaveSoapFileSaveDialog * pDlg = (CWaveSoapFileSaveDialog *) dwInstance;
-	TRACE("FormatEnum: format=%s, tag=%d\n", pafd->szFormat, pafd->dwFormatTag);
-	if (WAVE_FORMAT_MPEGLAYER3 == pafd->dwFormatTag)
-	{
-		MPEGLAYER3WAVEFORMAT * pwf = (MPEGLAYER3WAVEFORMAT *) pafd->pwfx;
-		TRACE("\"%s\", cbSize = %d, wID=%X, fdwFlags=%X, nBlockSize=%d, nFramesPerBlock=%d, nCodecDelay=%d\n",
-			pafd->szFormat, pafd->pwfx->cbSize, pwf->wID, pwf->fdwFlags,
-			pwf->nBlockSize, pwf->nFramesPerBlock, pwf->nCodecDelay);
-	}
-	if (pDlg->m_CurrentEnumeratedTag == pafd->dwFormatTag
-		&& (! pDlg->m_bCompatibleFormatsOnly
-			|| pDlg->m_CurrentEnumeratedTag != WAVE_FORMAT_PCM
-			|| (pafd->pwfx->nSamplesPerSec == pDlg->m_pWf->nSamplesPerSec
-				&& pafd->pwfx->nChannels == pDlg->m_pWf->nChannels
-				&& (pafd->pwfx->wBitsPerSample == pDlg->m_pWf->wBitsPerSample
-					|| 16 == pafd->pwfx->wBitsPerSample))))
-	{
-		int nIndex = pDlg->m_Formats.GetSize();
-		pDlg->m_Formats.SetSize(nIndex+1);
-		pDlg->m_Formats[nIndex].SetData(pafd->pwfx, pafd->szFormat);
-	}
-	return TRUE;
-}
-
 BOOL CWaveSoapFileSaveDialog::OnFileNameOK()
 {
 	// if the file type is different from the selected type,
@@ -435,7 +406,7 @@ BOOL _stdcall CWaveSoapFileSaveDialog::FormatTestEnumCallback(
 															DWORD dwInstance, DWORD fdwSupport)
 {
 	CWaveSoapFileSaveDialog * pDlg = (CWaveSoapFileSaveDialog *) dwInstance;
-	TRACE("FormatTestEnumCallback: format=%s, tag=%d\n", pafd->szFormat, pafd->dwFormatTag);
+	TRACE("FormatTestEnumCallback: format=%s, tag=%d, \n", pafd->szFormat, pafd->dwFormatTag);
 	if (pDlg->m_CurrentEnumeratedTag == pafd->dwFormatTag)
 	{
 		int nIndex = pDlg->m_FormatTags.GetSize();
@@ -449,11 +420,37 @@ BOOL _stdcall CWaveSoapFileSaveDialog::FormatTestEnumCallback(
 	}
 }
 
+struct FormatTagEnumStruct
+{
+	int const * pListOfTags;
+	int NumTags;
+	CWaveSoapFileSaveDialog * pDlg;
+};
+
 BOOL _stdcall CWaveSoapFileSaveDialog::FormatTagEnumCallback(
 															HACMDRIVERID hadid, LPACMFORMATTAGDETAILS paftd,
 															DWORD dwInstance, DWORD fdwSupport)
 {
-	CWaveSoapFileSaveDialog * pDlg = (CWaveSoapFileSaveDialog *) dwInstance;
+	FormatTagEnumStruct * pfts = (FormatTagEnumStruct *) dwInstance;
+	CWaveSoapFileSaveDialog * pDlg = pfts->pDlg;
+
+	if (pfts->NumTags != 0
+		&& pfts->pListOfTags != NULL)
+	{
+		for (int i = 0; i < pfts->NumTags; i++)
+		{
+			if (paftd->dwFormatTag == pfts->pListOfTags[i])
+			{
+				break;
+			}
+		}
+		if (i == pfts->NumTags)
+		{
+			// skip this tag
+			return TRUE;
+		}
+	}
+
 	WAVEFORMATEX * pwfx = (WAVEFORMATEX *)new char[0xFFFF];
 	ACMFORMATDETAILS afd;
 	TRACE("FormatTagEnum: name=%s, driverID=%x, tag=%d, formats=%d, max size=%d\n", paftd->szFormatTag,
@@ -483,7 +480,7 @@ BOOL _stdcall CWaveSoapFileSaveDialog::FormatTagEnumCallback(
 		{
 			flags = ACM_FORMATENUMF_CONVERT;
 		}
-		int res = acmFormatEnum(had, & afd, FormatTestEnumCallback, dwInstance, flags);
+		int res = acmFormatEnum(had, & afd, FormatTestEnumCallback, DWORD(pDlg), flags);
 		TRACE("acmFormatEnum returned %x\n", res);
 		acmDriverClose(had, 0);
 	}
@@ -491,9 +488,27 @@ BOOL _stdcall CWaveSoapFileSaveDialog::FormatTagEnumCallback(
 	return TRUE;
 }
 
-void CWaveSoapFileSaveDialog::FillFormatTagCombo()
+void CWaveSoapFileSaveDialog::FillFormatTagArray(int const ListOfTags[], int NumTags)
 {
-	FillFormatTagArray();
+
+	m_FormatTags.RemoveAll();
+	ACMFORMATTAGDETAILS atd;
+	FormatTagEnumStruct fts;
+	fts.pDlg = this;
+	fts.NumTags = NumTags;
+	fts.pListOfTags = ListOfTags;
+
+	// enum all formats
+	memset( & atd, 0, sizeof atd);
+	atd.cbStruct = sizeof atd;
+	atd.dwFormatTag = WAVE_FORMAT_UNKNOWN;
+	acmFormatTagEnum(NULL, & atd, FormatTagEnumCallback, DWORD( & fts), 0);
+
+}
+
+void CWaveSoapFileSaveDialog::FillFormatTagCombo(int const ListOfTags[], int NumTags)
+{
+	FillFormatTagArray(ListOfTags, NumTags);
 
 	if (m_FormatCombo.m_hWnd == NULL
 		&& ! m_FormatCombo.SubclassDlgItem(IDC_COMBO_FORMAT, this))
@@ -521,28 +536,64 @@ void CWaveSoapFileSaveDialog::FillFormatTagCombo()
 	m_FormatCombo.SetCurSel(sel);
 }
 
-void CWaveSoapFileSaveDialog::FillFormatTagArray()
+struct FormatEnumCallbackStruct
 {
+	CWaveSoapFileSaveDialog * pDlg;
+	int Flags;
+};
+// enumerates all formats for the tag
+BOOL _stdcall CWaveSoapFileSaveDialog::FormatEnumCallback(
+														HACMDRIVERID hadid, LPACMFORMATDETAILS pafd,
+														DWORD dwInstance, DWORD fdwSupport)
+{
+	FormatEnumCallbackStruct * pfcs = (FormatEnumCallbackStruct *) dwInstance;
 
-	m_FormatTags.RemoveAll();
-	ACMFORMATTAGDETAILS atd;
-	// enum all formats
-	memset( & atd, 0, sizeof atd);
-	atd.cbStruct = sizeof atd;
-	atd.dwFormatTag = WAVE_FORMAT_UNKNOWN;
-	acmFormatTagEnum(NULL, & atd, FormatTagEnumCallback, DWORD(this), 0);
-
+	CWaveSoapFileSaveDialog * pDlg = pfcs->pDlg;
+	TRACE("FormatEnum: format=%s, tag=%d\n", pafd->szFormat, pafd->dwFormatTag);
+	if (WAVE_FORMAT_MPEGLAYER3 == pafd->dwFormatTag)
+	{
+		MPEGLAYER3WAVEFORMAT * pwf = (MPEGLAYER3WAVEFORMAT *) pafd->pwfx;
+		TRACE("\"%s\", cbSize = %d, wID=%X, fdwFlags=%X, nBlockSize=%d, nFramesPerBlock=%d, nCodecDelay=%d\n",
+			pafd->szFormat, pafd->pwfx->cbSize, pwf->wID, pwf->fdwFlags,
+			pwf->nBlockSize, pwf->nFramesPerBlock, pwf->nCodecDelay);
+	}
+	if (pDlg->m_CurrentEnumeratedTag == pafd->dwFormatTag)
+	{
+		if (pfcs->Flags & MatchCompatibleFormats)
+		{
+			if (pDlg->m_CurrentEnumeratedTag != WAVE_FORMAT_PCM
+				|| (pafd->pwfx->nSamplesPerSec == pDlg->m_pWf->nSamplesPerSec
+					&& pafd->pwfx->nChannels == pDlg->m_pWf->nChannels
+					&& (pafd->pwfx->wBitsPerSample == pDlg->m_pWf->wBitsPerSample
+						|| 16 == pafd->pwfx->wBitsPerSample)))
+			{
+				int nIndex = pDlg->m_Formats.GetSize();
+				pDlg->m_Formats.SetSize(nIndex+1);
+				pDlg->m_Formats[nIndex].SetData(pafd->pwfx, pafd->szFormat);
+			}
+		}
+		else
+		{
+			// check which flags are specified
+			if ((0 == (pfcs->Flags & MatchNumChannels)
+					|| pafd->pwfx->nChannels == pDlg->m_pWf->nChannels)
+				&& (0 == (pfcs->Flags & MatchBitsPerSample)
+					|| pafd->pwfx->wBitsPerSample == pDlg->m_pWf->wBitsPerSample)
+				&& (0 == (pfcs->Flags & MatchSamplingRate)
+					|| pafd->pwfx->nSamplesPerSec == pDlg->m_pWf->nSamplesPerSec))
+			{
+				int nIndex = pDlg->m_Formats.GetSize();
+				pDlg->m_Formats.SetSize(nIndex+1);
+				pDlg->m_Formats[nIndex].SetData(pafd->pwfx, pafd->szFormat);
+			}
+		}
+	}
+	return TRUE;
 }
 
-void CWaveSoapFileSaveDialog::FillFormatArray(int SelFormat)
+void CWaveSoapFileSaveDialog::FillFormatArray(int SelFormat, int Flags)
 {
-	if (m_AttributesCombo.m_hWnd == NULL
-		&& ! m_AttributesCombo.SubclassDlgItem(IDC_COMBO_ATTRIBUTES, this))
-	{
-		return;
-	}
 	m_Formats.RemoveAll();
-
 	if (-1 == SelFormat || SelFormat >= m_FormatTags.GetSize())
 	{
 		return;
@@ -571,17 +622,32 @@ void CWaveSoapFileSaveDialog::FillFormatArray(int SelFormat)
 	{
 		DWORD flags = 0;
 		if (dwFormatTag != WAVE_FORMAT_PCM
-			&& m_bCompatibleFormatsOnly)
+			&& (Flags & MatchCompatibleFormats))
 		{
 			flags = ACM_FORMATENUMF_CONVERT;
 		}
-		int res = acmFormatEnum(had, & afd, FormatEnumCallback, DWORD(this), flags);
+		FormatEnumCallbackStruct fcs;
+		fcs.pDlg = this;
+		fcs.Flags = Flags;
+		int res = acmFormatEnum(had, & afd, FormatEnumCallback, DWORD( & fcs), flags);
 		TRACE("acmFormatEnum returned %x\n", res);
 		acmDriverClose(had, 0);
 	}
 	delete [] (char*)pwfx;
+}
+
+void CWaveSoapFileSaveDialog::FillFormatCombo(int SelFormat, int Flags)
+{
+	FillFormatArray(SelFormat, Flags);
+
+	if (m_AttributesCombo.m_hWnd == NULL
+		&& ! m_AttributesCombo.SubclassDlgItem(IDC_COMBO_ATTRIBUTES, this))
+	{
+		return;
+	}
 
 	m_AttributesCombo.ResetContent();
+	DWORD dwFormatTag = m_FormatTags[SelFormat].dwTag;
 	int sel = -1;
 	for (int i = 0; i < m_Formats.GetSize(); i++)
 	{
@@ -661,7 +727,7 @@ void CWaveSoapFileSaveDialog::OnCompatibleFormatsClicked()
 	if (SoundFileWav == m_FileType)
 	{
 		FillFormatTagCombo();
-		FillFormatArray(m_FormatCombo.GetCurSel());
+		FillFormatCombo(m_FormatCombo.GetCurSel());
 	}
 }
 
@@ -673,7 +739,7 @@ void CWaveSoapFileSaveDialog::OnComboFormatsChange()
 	case SoundFileWav:
 		// WAV file
 		m_SelectedTag = m_FormatTags[sel].dwTag;
-		FillFormatArray(sel);
+		FillFormatCombo(sel);
 		break;
 	case SoundFileMp3:
 		// MP3 file
@@ -681,7 +747,8 @@ void CWaveSoapFileSaveDialog::OnComboFormatsChange()
 		break;
 	case SoundFileWma:
 		// WMA file
-		FillWmaFormatArray();
+		FillFormatCombo(sel,
+						MatchNumChannels | MatchSamplingRate);
 		break;
 	case SoundFileRaw:
 		// RAW file
@@ -814,7 +881,7 @@ void CWaveSoapFileSaveDialog::SetFileType(int nType)
 		ShowDlgItem(IDC_EDIT_COMMENT, SW_SHOWNOACTIVATE);
 
 		FillFormatTagCombo();
-		FillFormatArray(m_FormatCombo.GetCurSel());
+		FillFormatCombo(m_FormatCombo.GetCurSel());
 		break;  // go on
 	case SoundFileMp3:
 		// MP3 file
@@ -837,14 +904,15 @@ void CWaveSoapFileSaveDialog::SetFileType(int nType)
 	case SoundFileWma:
 		// WMA file
 		// remove Format: combo
-		ShowDlgItem(IDC_STATIC_FORMAT, SW_HIDE);
-		ShowDlgItem(IDC_COMBO_FORMAT, SW_HIDE);
+		ShowDlgItem(IDC_STATIC_FORMAT, SW_SHOWNOACTIVATE);
+		ShowDlgItem(IDC_COMBO_FORMAT, SW_SHOWNOACTIVATE);
 		ShowDlgItem(IDC_COMBO_ATTRIBUTES, SW_SHOWNOACTIVATE);
 		ShowDlgItem(IDC_STATIC_ATTRIBUTES, SW_SHOWNOACTIVATE);
 		ShowDlgItem(IDC_CHECK_COMPATIBLE_FORMATS, SW_HIDE);
 		ShowDlgItem(IDC_STATIC_COMMENTS, SW_HIDE);
 		ShowDlgItem(IDC_EDIT_COMMENT, SW_HIDE);
 		// fill profiles combo
+		FillWmaFormatArray();
 		break;
 		//case SoundFileAvi:
 		// AVI file
@@ -950,7 +1018,16 @@ void CWaveSoapFileSaveDialog::FillLameEncoderFormats()
 
 void CWaveSoapFileSaveDialog::FillWmaFormatArray()
 {
+	// if WmaOnly, only tags 352 and 353 are used
+	// WAVE_FORMAT_MSAUDIO1 and WAVE_FORMAT_MSAUDIO1+1
+	int formats[2] = { WAVE_FORMAT_MSAUDIO1, WAVE_FORMAT_MSAUDIO1 + 1};
 	// enum VMA V1 and V2 formats
+	// V1 format: 352
+	// V2 format: 353
+	// filter the formats by tag, sampling rate, number of channels
+	// fill format tag array with V1 and V2 formats
+	FillFormatTagCombo(formats, 2);
+	FillFormatCombo(m_FormatCombo.GetCurSel(), MatchNumChannels | MatchSamplingRate);
 }
 
 void CWaveSoapFileSaveDialog::FillMp3FormatArray()
@@ -980,12 +1057,9 @@ void CWaveSoapFileSaveDialog::FillMp3FormatArray()
 		{
 			if (WAVE_FORMAT_MPEGLAYER3 == m_FormatTags[nSel].dwTag)
 			{
+				FillFormatCombo(nSel);
 				break;
 			}
-		}
-		if (nSel < m_FormatTags.GetSize())
-		{
-			FillFormatArray(nSel);
 		}
 		m_bCompatibleFormatsOnly = bSaveCompFormat;
 		m_SelectedTag = SaveSelectedTag;
@@ -1030,18 +1104,17 @@ void CWaveSoapFileSaveDialog::FillMp3EncoderArray()
 	}
 
 	// check if MP3 ACM encoder presents
+	int Mp3Tag = WAVE_FORMAT_MPEGLAYER3;
+	FillFormatTagArray( & Mp3Tag, 1);
 	for (int i = 0; i < m_FormatTags.GetSize(); i++)
 	{
 		if (WAVE_FORMAT_MPEGLAYER3 == m_FormatTags[i].dwTag)
 		{
+			m_FormatCombo.AddString(m_FormatTags[i].Name);
+			m_Mp3Encoders[m_NumOfMp3Encoders] = Mp3EncoderAcm;
+			m_NumOfMp3Encoders++;
 			break;
 		}
-	}
-	if (i < m_FormatTags.GetSize())
-	{
-		m_FormatCombo.AddString(m_FormatTags[i].Name);
-		m_Mp3Encoders[m_NumOfMp3Encoders] = Mp3EncoderAcm;
-		m_NumOfMp3Encoders++;
 	}
 	m_FormatCombo.SetCurSel(m_SelectedMp3Encoder);
 	FillMp3FormatArray();
