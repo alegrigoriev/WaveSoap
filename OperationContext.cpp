@@ -217,7 +217,8 @@ BOOL CThroughProcessOperation::OperationProc()
 		}
 	}
 
-	WAVE_SAMPLE TempBuf[4];
+	WAVE_SAMPLE TempBuf[MAX_NUMBER_OF_CHANNELS];
+
 	if (m_CurrentPass > 0)
 	{
 		ASSERT(0 == ((m_DstEnd - m_DstPos) % SampleSize));
@@ -244,12 +245,12 @@ BOOL CThroughProcessOperation::OperationProc()
 				{
 					return FALSE;
 				}
+
 				if (1 == m_CurrentPass
 					&& NULL != m_pUndoContext)
 				{
-					ASSERT(0 == (m_DstPos % m_DstFile.SampleSize()));
 					m_pUndoContext->SaveUndoData(TempBuf, SampleSize,
-												m_DstPos, m_DstChan);
+												m_DstPos, m_DstFile.Channels());
 				}
 
 				res = ProcessBuffer(TempBuf, SampleSize, m_DstPos - m_DstStart, FALSE);
@@ -267,10 +268,8 @@ BOOL CThroughProcessOperation::OperationProc()
 			if (1 == m_CurrentPass
 				&& NULL != m_pUndoContext)
 			{
-				ASSERT(0 == (m_DstPos % m_DstFile.SampleSize()));
-				ASSERT(0 == (SizeToProcess % m_DstFile.SampleSize()));
 				m_pUndoContext->SaveUndoData(pDstBuf, SizeToProcess,
-											m_DstPos, m_DstChan);
+											m_DstPos, m_DstFile.Channels());
 			}
 			// virtual function which modifies the actual data:
 			res = ProcessBuffer(pDstBuf, SizeToProcess, m_DstPos - m_DstStart, FALSE);
@@ -340,25 +339,33 @@ BOOL CThroughProcessOperation::OperationProc()
 					return FALSE;
 				}
 
+				// save the data to be changed to undo buffer, but only on the first forward pass
+				if (1 == m_CurrentPass
+					&& NULL != m_pUndoContext)
+				{
+					m_pUndoContext->SaveUndoData(TempBuf + m_DstFile.Channels(),
+												SampleSize,
+												m_DstPos, m_DstFile.Channels());
+				}
+
 				res = ProcessBuffer(TempBuf, SampleSize, m_DstPos - m_DstStart, TRUE);
 
 				if (m_ReturnBufferFlags & CDirectFile::ReturnBufferDirty)
 				{
 					m_DstFile.WriteAt(TempBuf, SampleSize, m_DstPos - SampleSize);
 				}
+
 				m_DstPos -= SampleSize;
 				continue;
 			}
+
 			SizeToProcess = -WasLockedToWrite - (-WasLockedToWrite) % SampleSize;
 			// save the data to be changed to undo buffer, but only on the first forward pass
-			// TODO: make for backward pass only
-			if (0 && 1 == m_CurrentPass
+			if (1 == m_CurrentPass
 				&& NULL != m_pUndoContext)
 			{
-				ASSERT(0 == (m_DstPos % m_DstFile.SampleSize()));
-				ASSERT(0 == (SizeToProcess % m_DstFile.SampleSize()));
 				m_pUndoContext->SaveUndoData(pDstBuf, SizeToProcess,
-											m_DstPos, m_DstChan);
+											m_DstPos, m_DstFile.Channels());
 			}
 			// virtual function which modifies the actual data:
 			res = ProcessBuffer(-SizeToProcess + (PCHAR)pDstBuf, SizeToProcess, m_DstPos - m_DstStart, TRUE);   // backward=TRUE
@@ -1029,11 +1036,9 @@ BOOL CShrinkContext::OperationProc()
 			{
 				return FALSE;
 			}
-
-			ASSERT(0 == (m_pUndoContext->m_DstPos % m_DstFile.SampleSize()));
-			ASSERT(0 == (WasRead % m_DstFile.SampleSize()));
+			// TODO?
 			m_pUndoContext->SaveUndoData(pSrcBuf, WasRead,
-										m_pUndoContext->m_DstPos, m_DstChan);
+										m_pUndoContext->m_DstPos, m_DstFile.Channels());
 
 			m_DstFile.ReturnDataBuffer(pSrcBuf, WasRead,
 										CDirectFile::ReturnBufferDiscard);
@@ -1430,16 +1435,17 @@ BOOL CCopyContext::CreateUndo(BOOL IsRedo)
 	{
 		return TRUE;
 	}
-	CCopyContext * pUndo = new CCopyContext(pDocument, _T(""), m_OperationName);
-	if (NULL == pUndo)
+
+	CCopyContext::auto_ptr pUndo(new CCopyContext(pDocument, _T(""), m_OperationName));
+
+	if ( ! pUndo->InitUndoCopy(m_DstFile, m_DstStart, m_DstEnd, m_DstChan))
 	{
 		return FALSE;
 	}
 
-	pUndo->InitUndoCopy(m_DstFile, m_DstStart, m_DstEnd, m_DstChan);
+	m_pUndoContext = pUndo.release();
+	m_UndoChain.InsertTail(m_pUndoContext);
 
-	m_pUndoContext = pUndo;
-	m_UndoChain.InsertTail(pUndo);
 	return TRUE;
 }
 
@@ -1457,17 +1463,47 @@ void CCopyContext::UnprepareUndo()
 	m_DstFile.Close();
 }
 
-BOOL CCopyContext::NeedToSaveUndo(SAMPLE_POSITION Position, size_t length)
+// check if any part of the (Position, Position + length) range
+// is inside range to be saved
+BOOL CCopyContext::NeedToSaveUndo(SAMPLE_POSITION Position, long length)
 {
-	ASSERT(m_DstPos <= m_DstEnd);
-
-	if (Position >= m_DstEnd
-		|| Position + length <= m_DstPos
-		|| length <= 0)
+	if (length < 0)
 	{
-		return FALSE;
+		if (Position > unsigned long(-length))
+		{
+			Position += length;
+			length = -length;
+		}
+		else
+		{
+			length = Position;
+			Position = 0;
+		}
 	}
-	return TRUE;
+
+	if (m_DstEnd >= m_DstStart)
+	{
+		ASSERT(m_DstPos <= m_DstEnd);
+
+		if (Position >= m_DstEnd
+			|| Position + length <= m_DstPos
+			|| length == 0)
+		{
+			return FALSE;
+		}
+		return TRUE;
+	}
+	else
+	{
+		ASSERT(m_DstPos >= m_DstEnd);
+
+		if (Position >= m_DstPos
+			|| Position + length <= m_DstEnd)
+		{
+			return FALSE;
+		}
+		return TRUE;
+	}
 }
 
 // is called for a CCopyContext which is actually Undo/Redo context
@@ -1585,20 +1621,29 @@ BOOL CCopyContext::InitUndoCopy(CWaveFile & SrcFile,
 }
 
 // save the data being overwritten by other operation
-BOOL CCopyContext::SaveUndoData(void * pBuf, long BufSize, SAMPLE_POSITION Position, CHANNEL_MASK Channel)
+// Position is source position. It goes to DstPos of this context.
+// Channels saved from buffer are specified in m_DstChan
+BOOL CCopyContext::SaveUndoData(void const * pBuf, long BufSize,
+								SAMPLE_POSITION Position,
+								NUMBER_OF_CHANNELS NumSrcChannels)
 {
-	if (m_DstEnd < m_DstStart
-		&& BufSize < 0)
+	int const SrcSampleSize = m_SrcFile.BitsPerSample() / 8 * NumSrcChannels;
+	NUMBER_OF_SAMPLES Samples = BufSize / SrcSampleSize;
+	ASSERT(0 == BufSize % SrcSampleSize);
+
+	char const * pSrcBuf = (char const*) pBuf;
+
+	if (m_DstEnd < m_DstStart)
 	{
 		// pBuf points after the buffer.
 		// Position is the block end
-		if (Position <= m_DstEnd
+		if (BufSize >= 0
+			|| Position <= m_DstEnd
 			|| Position >= m_DstPos + -BufSize)
 		{
 			return FALSE;   // no need to save
 		}
 
-		char * pSrcBuf = (char*) pBuf;
 		if (Position < m_DstEnd + -BufSize)
 		{
 			BufSize = m_DstEnd - Position;
@@ -1614,134 +1659,47 @@ BOOL CCopyContext::SaveUndoData(void * pBuf, long BufSize, SAMPLE_POSITION Posit
 		{
 			ASSERT(Position == m_DstPos);
 		}
-
-		if (ALL_CHANNELS == Channel)
-		{
-			if (BufSize == m_SrcFile.WriteAt(pBuf, BufSize, m_SrcPos))
-			{
-				m_DstPos += BufSize;
-				m_SrcPos += BufSize;
-				return TRUE;
-			}
-			else
-			{
-				return FALSE;
-			}
-		}
-
-		ASSERT(0 == Channel || 1 == Channel);
-		// only the buffer with whole samples should be given
-		while (BufSize < 0)
-		{
-			void * buf;
-			long SizeToLock = BufSize / 2;
-
-			long const LockedToWrite = m_SrcFile.GetDataBuffer( & buf, SizeToLock,
-																m_SrcPos, CDirectFile::GetBufferWriteOnly);
-
-			if (LockedToWrite >= 0)
-			{
-				TRACE("Unable to lock buffer in SaveUndoSata\n");
-				return FALSE;
-			}
-
-
-			WAVE_SAMPLE * pSrc = Channel + (WAVE_SAMPLE *) pSrcBuf;
-
-			unsigned Samples = (-LockedToWrite) / sizeof pSrc[0];
-			pSrc -= Samples * 2;
-
-			WAVE_SAMPLE * pDst = (WAVE_SAMPLE *) buf;
-			pDst -= Samples;
-
-			for (unsigned i = 0; i < Samples; i++)
-			{
-				pDst[i] = pSrc[i * 2];
-			}
-
-			pSrcBuf += LockedToWrite * 2;
-			BufSize -= LockedToWrite * 2;
-
-			m_DstPos += LockedToWrite * 2;
-			m_SrcPos += LockedToWrite;
-			Position += LockedToWrite * 2;
-			m_SrcFile.ReturnDataBuffer(buf, LockedToWrite, CDirectFile::ReturnBufferDirty);
-		}
-	}
-	else if (m_DstEnd < m_DstStart
-			|| Position >= m_DstEnd
-			|| Position + BufSize <= m_DstPos
-			|| BufSize <= 0)
-	{
-		return FALSE;
-	}
-	ASSERT(Position == m_DstPos);
-	//ASSERT(0 == (Position % m_DstFile.SampleSize()));
-	//ASSERT(0 == (BufSize % m_DstFile.SampleSize()));
-
-	// saving data from the beginning to the end
-	char * pSrcBuf = (char*) pBuf;
-	if (Position + BufSize > m_DstEnd)
-	{
-		BufSize = m_DstEnd - Position;
-	}
-	if (Position < m_DstPos)
-	{
-		BufSize -= m_DstPos - Position;
-		pSrcBuf += m_DstPos - Position;
-		Position = m_DstPos;
+		ASSERT(0 == (m_DstStart - Position) % SrcSampleSize);
 	}
 	else
 	{
-		ASSERT(Position == m_DstPos);
-	}
-
-	if (ALL_CHANNELS == Channel)
-	{
-		if (BufSize == m_SrcFile.WriteAt(pBuf, BufSize, m_SrcPos))
+		if (Position >= m_DstEnd
+			|| Position + BufSize <= m_DstPos
+			|| BufSize <= 0)
 		{
-			m_DstPos += BufSize;
-			m_SrcPos += BufSize;
-			return TRUE;
+			return FALSE;
+		}
+
+		ASSERT(Position == m_DstPos);
+
+		// saving data from the beginning to the end
+		if (Position + BufSize > m_DstEnd)
+		{
+			BufSize = m_DstEnd - Position;
+		}
+		if (Position < m_DstPos)
+		{
+			BufSize -= m_DstPos - Position;
+			pSrcBuf += m_DstPos - Position;
+			Position = m_DstPos;
 		}
 		else
 		{
-			return FALSE;
+			ASSERT(Position == m_DstPos);
 		}
+		ASSERT(0 == (Position - m_DstStart) % SrcSampleSize);
 	}
 
-	ASSERT(0 == Channel || 1 == Channel);
+	ASSERT(0 == (BufSize % SrcSampleSize));
 
-	while (BufSize > 0)
-	{
-		void * buf;
-		long SizeToLock = BufSize / 2;
+	long SamplesWritten = m_SrcFile.WriteSamples(ALL_CHANNELS,
+												m_SrcPos, Samples, pSrcBuf, m_DstChan, NumSrcChannels,
+												m_DstFile.GetSampleType());
 
-		long const LockedToWrite = m_SrcFile.GetDataBuffer( & buf, SizeToLock,
-															m_SrcPos, CDirectFile::GetBufferWriteOnly);
+	m_DstPos += SamplesWritten * SrcSampleSize;
+	m_SrcPos += SamplesWritten * m_SrcFile.SampleSize();
 
-		if (LockedToWrite <= 0)
-		{
-			TRACE("Unable to lock buffer in SaveUndoSata\n");
-			return FALSE;
-		}
-
-		WAVE_SAMPLE * pSrc = Channel + (WAVE_SAMPLE *) pSrcBuf;
-		WAVE_SAMPLE * pDst = (WAVE_SAMPLE *) buf;
-		for (unsigned i = 0; i < LockedToWrite / sizeof pSrc[0]; i++)
-		{
-			pDst[i] = pSrc[i * 2];
-		}
-
-		pSrcBuf += LockedToWrite * 2;
-		BufSize -= LockedToWrite * 2;
-
-		m_DstPos += LockedToWrite * 2;
-		m_SrcPos += LockedToWrite;
-		Position += LockedToWrite * 2;
-		m_SrcFile.ReturnDataBuffer(buf, LockedToWrite, CDirectFile::ReturnBufferDirty);
-	}
-	return TRUE;
+	return SamplesWritten == Samples;
 }
 
 // copy the actual data, while probably changing number of channels
@@ -1820,7 +1778,7 @@ BOOL CCopyContext::OperationProc()
 			if (ALL_CHANNELS == m_DstChan
 				&& m_SrcFile.GetFileID() != m_DstFile.GetFileID()
 				&& (NULL == m_pUndoContext
-					|| ! m_pUndoContext->NeedToSaveUndo(m_DstPos, size_t(SizeToWrite))))
+					|| ! m_pUndoContext->NeedToSaveUndo(m_DstPos, long(SizeToWrite))))
 			{
 				DstFileFlags = CDirectFile::GetBufferWriteOnly;
 			}
@@ -1837,15 +1795,6 @@ BOOL CCopyContext::OperationProc()
 			pDstBuf = (char *) pOriginalDstBuf;
 			LeftToWrite = WasLockedToWrite;
 
-			// save the changed data to undo buffer
-			if (0 == (DstFileFlags & CDirectFile::GetBufferWriteOnly)
-				&& NULL != m_pUndoContext)
-			{
-				ASSERT(0 == (WasLockedToWrite % DstSampleSize));
-				m_pUndoContext->SaveUndoData(pOriginalDstBuf, WasLockedToWrite,
-											m_DstPos, m_DstChan);
-			}
-
 		}
 
 		unsigned SrcSamples = LeftToRead / SrcSampleSize;
@@ -1855,8 +1804,16 @@ BOOL CCopyContext::OperationProc()
 			&& DstSamples != 0)
 		{
 			unsigned Samples = std::min(SrcSamples, DstSamples);
-			CopyWaveSamples(pDstBuf, m_DstChan, m_DstFile.Channels(),
-							pSrcBuf, m_SrcChan, m_SrcFile.Channels(),
+
+			// save the changed data to undo buffer
+			if (NULL != m_pUndoContext)
+			{
+				m_pUndoContext->SaveUndoData(pDstBuf,
+											Samples * DstSampleSize, m_DstPos, NumDstChannels);
+			}
+
+			CopyWaveSamples(pDstBuf, m_DstChan, NumDstChannels,
+							pSrcBuf, m_SrcChan, NumSrcChannels,
 							Samples, m_DstFile.GetSampleType(), m_SrcFile.GetSampleType());
 
 			unsigned DstCopied = Samples * DstSampleSize;
@@ -1872,6 +1829,17 @@ BOOL CCopyContext::OperationProc()
 		else
 		{
 			// read one sample directly
+			// save the changed data to undo buffer
+			if (NULL != m_pUndoContext
+				&& m_pUndoContext->NeedToSaveUndo(m_DstPos, DstSampleSize))
+			{
+				m_DstFile.ReadSamples(ALL_CHANNELS,
+									m_DstPos, 1, tmp, m_DstFile.GetSampleType());
+
+				m_pUndoContext->SaveUndoData(tmp,
+											DstSampleSize, m_DstPos, NumDstChannels);
+			}
+
 			if (1 != m_SrcFile.ReadSamples(ALL_CHANNELS,
 											m_SrcPos, 1, tmp, m_SrcFile.GetSampleType())
 				|| 1 != m_DstFile.WriteSamples(m_DstChan, m_DstPos, 1,
@@ -3194,12 +3162,13 @@ BOOL CConversionContext::OperationProc()
 		return TRUE;
 	}
 
-	DWORD LeftToRead = 0;
-	DWORD LeftToWrite = 0;
-	DWORD WasRead = 0;
-	DWORD WasLockedToWrite = 0;
+	long LeftToRead = 0;
+	long LeftToWrite = 0;
+	long WasRead = 0;
+	long WasLockedToWrite = 0;
+
 	void * pOriginalSrcBuf = 0;
-	char * pSrcBuf;
+	char const * pSrcBuf;
 	void * pOriginalDstBuf = NULL;
 	char * pDstBuf;
 	do
@@ -3221,7 +3190,7 @@ BOOL CConversionContext::OperationProc()
 												CDirectFile::ReturnBufferDirty);
 					return FALSE;
 				}
-				pSrcBuf = (char *) pOriginalSrcBuf;
+				pSrcBuf = (char const *) pOriginalSrcBuf;
 				LeftToRead = WasRead;
 			}
 			else
@@ -3255,14 +3224,13 @@ BOOL CConversionContext::OperationProc()
 			// save the changed data to undo buffer
 			pDstBuf = (char *) pOriginalDstBuf;
 			LeftToWrite = WasLockedToWrite;
+#if 0
 			if (NULL != m_pUndoContext)
 			{
-				ASSERT(0 == (m_DstPos % m_DstFile.SampleSize()));
-				ASSERT(0 == (WasLockedToWrite % m_DstFile.SampleSize()));
 				m_pUndoContext->SaveUndoData(pDstBuf, WasLockedToWrite,
-											m_DstPos, m_DstChan);
+											m_DstPos, m_DstFile.Channels());
 			}
-
+#endif
 		}
 
 		size_t SrcBufUsed = 0;
@@ -3275,6 +3243,7 @@ BOOL CConversionContext::OperationProc()
 			m_Flags |= OperationContextFinished;
 			break;
 		}
+
 		if (0) TRACE("ConversionContext: SrcPos=%d (0x%X), DstPos=%d (0x%X), src: %d bytes, dst: %d bytes\n",
 					m_SrcPos, m_SrcPos, m_DstPos, m_DstPos,
 					SrcBufUsed, DstBufUsed);
