@@ -3899,6 +3899,7 @@ BEGIN
     IDS_STRING_SPLIT_TO_FILES_OPERATION "Save to multiple files"
     IDS_CHANNELS_SHIFT_WARNING_PROMPT 
                             "One channel will get moved from another, continue?"
+    IDS_SEGMENT_NAME_FROM_MARKERS "From '%s' to '%s'"
 END
 
 #endif    // English (U.S.) resources
