@@ -24,7 +24,7 @@ CWaveSoapFileOpenDialog::CWaveSoapFileOpenDialog(BOOL bOpenFileDialog, // TRUE f
 	m_PrevFilter(-1),
 	m_bDirectMode(false)
 {
-	if (CThisApp::SupportsV5FileDialog())
+	if (SupportsV5FileDialog())
 	{
 		m_ofn.lpTemplateName = MAKEINTRESOURCE(IDD_DIALOG_OPEN_TEMPLATE_V5);
 		static ResizableDlgItem const ItemsV5[] =
@@ -374,7 +374,7 @@ CWaveSoapFileSaveDialog::CWaveSoapFileSaveDialog(BOOL bOpenFileDialog, // TRUE f
 	m_SelectedRawFormat(RawSoundFilePcm16Lsb),
 	m_pDocument(pDoc)
 {
-	if (CThisApp::SupportsV5FileDialog())
+	if (SupportsV5FileDialog())
 	{
 		static ResizableDlgItem const ItemsV5[] =
 		{

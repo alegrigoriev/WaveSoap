@@ -287,6 +287,20 @@ public:
 					int TimeFormat = SampleToString_HhMmSs | TimeToHhMmSs_NeedsHhMm | TimeToHhMmSs_NeedsMs,
 					CWnd* pParent = NULL);   // standard constructor
 
+	bool NeedToCalculateDcOffset() const
+	{
+		return 0 == m_DcSelectMode;
+	}
+	bool ScanOnly5Seconds() const
+	{
+		return 0 != m_b5SecondsDC;
+	}
+	int GetDcOffset() const
+	{
+		return m_nDcOffset;
+	}
+protected:
+	CApplicationProfile m_Profile;
 // Dialog Data
 	//{{AFX_DATA(CDcOffsetDialog)
 	enum { IDD = IDD_DIALOG_DC_OFFSET };
@@ -296,7 +310,6 @@ public:
 	int		m_DcSelectMode;
 	//}}AFX_DATA
 
-	CApplicationProfile m_Profile;
 // Overrides
 	// ClassWizard generated virtual function overrides
 	//{{AFX_VIRTUAL(CDcOffsetDialog)

@@ -107,6 +107,7 @@
 				PreprocessorDefinitions="NDEBUG,WIN32,_WINDOWS,_WIN32_WINNT=0x0500,OEMRESOURCE"
 				StringPooling="TRUE"
 				RuntimeLibrary="0"
+				BufferSecurityCheck="FALSE"
 				EnableFunctionLevelLinking="TRUE"
 				RuntimeTypeInfo="TRUE"
 				UsePrecompiledHeader="3"
@@ -183,6 +184,9 @@
 				RelativePath=".\BatchSaveTargetDlg.cpp">
 			</File>
 			<File
+				RelativePath=".\BladeMp3Encoder.cpp">
+			</File>
+			<File
 				RelativePath=".\CdDrive.cpp">
 			</File>
 			<File
@@ -211,6 +215,12 @@
 			</File>
 			<File
 				RelativePath=".\FolderDialog.cpp">
+			</File>
+			<File
+				RelativePath=".\LocaleUtilities.cpp">
+			</File>
+			<File
+				RelativePath=".\LocaleUtilities.h">
 			</File>
 			<File
 				RelativePath=".\MainFrm.cpp">
@@ -427,6 +437,9 @@
 				RelativePath=".\LastError.h">
 			</File>
 			<File
+				RelativePath=".\MainFrameEx.h">
+			</File>
+			<File
 				RelativePath=".\MainFrm.h">
 			</File>
 			<File
@@ -455,6 +468,9 @@
 			</File>
 			<File
 				RelativePath=".\PasteResampleModeDlg.h">
+			</File>
+			<File
+				RelativePath=".\PathEx.h">
 			</File>
 			<File
 				RelativePath=".\PreferencesPropertySheet.h">
