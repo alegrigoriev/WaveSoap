@@ -3371,7 +3371,7 @@ BEGIN
     ID_PROCESS_CHANGEVOLUME "Change the sound volume\nVolume"
     ID_PROCESS_DCOFFSET     "Add or compensate DC offset"
     ID_PROCESS_RESAMPLE     "Change sample rate while preserving the duration\nResample"
-    ID_PROCESS_MUTE         "Replace the selected area with silence\nMute"
+    ID_PROCESS_MUTE         "Replace the selected area with silence (hold Shift for Fade In/Out options)\nMute"
     ID_PROCESS_INSERTSILENCE 
                             "Insert silence of specified length\nInsert silence"
     ID_FILE_REOPENFOREDITING 
