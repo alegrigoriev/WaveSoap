@@ -788,6 +788,12 @@ public:
 	{
 	}
 
+	CFileSaveContext(CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString, LPCTSTR OperationName)
+		: BaseClass(pDoc, 0, StatusString, OperationName),
+		m_NewFileTypeFlags(0)
+	{
+	}
+
 	CString m_NewName;
 	CWaveFile m_DstFile;
 	CWaveFile m_SrcFile;
