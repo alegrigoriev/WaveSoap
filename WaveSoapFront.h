@@ -275,6 +275,7 @@ CString SampleToString(long Sample, long nSamplesPerSec,
 									| TimeToHhMmSs_NeedsMs);
 void SetStatusString(CCmdUI* pCmdUI, const CString & string,
 					LPCTSTR MaxString = NULL, BOOL bForceSize = FALSE);
+BOOL VerifyCreateDirectory(LPCTSTR pszPath);
 void NotEnoughMemoryMessageBox();
 void NotEnoughDiskSpaceMessageBox();
 void NotEnoughUndoSpaceMessageBox();

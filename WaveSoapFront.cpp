@@ -20,6 +20,7 @@
 #include "PreferencesPropertySheet.h"
 #include "WaveSoapFileDialogs.h"
 #include "BatchConvertDlg.h"
+#include <imagehlp.h>
 
 #define _countof(array) (sizeof(array)/sizeof(array[0]))
 
@@ -2165,17 +2166,9 @@ void CWaveSoapFrontApp::OnToolsCdgrab()
 			continue;
 		}
 
-		CString FileName = dlg.m_sSaveFolderOrFile;
-		if (FileName.GetLength() >= 1
-			&& '\\' != FileName[FileName.GetLength() - 1])
-		{
-			FileName += '\\';
-		}
-		FileName += dlg.m_Tracks[t].Track;
-
 		NewFileParameters Params;
 		Params.InitialSamples = dlg.m_Tracks[t].NumSectors * (2352 / 4);
-		Params.pInitialTitle = FileName;
+		Params.pInitialTitle = dlg.m_Tracks[t].TrackFileName;
 		Params.pWf = dlg.m_pWfx;
 
 		CWaveSoapFrontDoc * pDoc =
@@ -2605,3 +2598,27 @@ void CWaveSoapFrontApp::OnFileBatchconversion()
 		return;
 	}
 }
+
+BOOL VerifyCreateDirectory(LPCTSTR pszPath)
+{
+	// try to use SHCreateDirectoryEx
+	static BOOL (_stdcall * SHCreateDirectoryEx)(HWND, LPCTSTR, SECURITY_ATTRIBUTES *)
+		= (BOOL (_stdcall * )(HWND, LPCTSTR, SECURITY_ATTRIBUTES *))
+			GetProcAddress(GetModuleHandle(_T("Shell32.dll")),
+#ifdef _UNICODE
+							_T("SHCreateDirectoryExW")
+#else
+							_T("SHCreateDirectoryExA")
+#endif
+							);
+	if (NULL != SHCreateDirectoryEx)
+	{
+		return SHCreateDirectoryEx(AfxGetMainWnd()->GetSafeHwnd(),
+									pszPath, NULL);
+	}
+	else
+	{
+		return MakeSureDirectoryPathExists(pszPath);
+	}
+}
+

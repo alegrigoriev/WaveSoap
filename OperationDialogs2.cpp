@@ -247,7 +247,63 @@ void CCdGrabbingDialog::DoDataExchange(CDataExchange* pDX)
 
 	if (pDX->m_bSaveAndValidate)
 	{
+		// save album and track names to CDPLAYER.INI
 		// get selected tracks
+		// check for valid file names
+		// get base folder
+		// check if the folder exists
+		if (0 == m_RadioStoreMultiple)
+		{
+			m_sSaveFolderOrFile.TrimLeft();
+			m_sSaveFolderOrFile.TrimRight();
+
+			if ( ! VerifyCreateDirectory(m_sSaveFolderOrFile))
+			{
+				pDX->PrepareEditCtrl(IDC_EDIT_FOLDER_OR_FILE);
+				pDX->Fail();
+			}
+			// create valid file names, ask for file replace
+			for (int t = 0; t < m_Tracks.size(); t++)
+			{
+				if ( ! m_Tracks[t].Checked)
+				{
+					continue;
+				}
+				CString Name = m_Tracks[t].Track;
+				LPTSTR pName = Name.GetBuffer(0);
+				while (*pName != 0)
+				{
+					char c= *pName;
+					if ('\\' == c
+						|| '"' == c
+						|| '?' == c
+						|| '*' == c
+						|| ':' == c
+						|| ';' == c
+						|| ',' == c
+						|| '#' == c
+						|| '&' == c
+						|| '%' == c)
+					{
+						*pName = '_';
+					}
+
+					pName++;
+				}
+				m_Tracks[t].TrackFileName = m_sSaveFolderOrFile;
+				if (! m_sSaveFolderOrFile.IsEmpty())
+				{
+					TCHAR c = m_sSaveFolderOrFile[m_sSaveFolderOrFile.GetLength() - 1];
+					if (c != '\\'
+						&& c != '/')
+					{
+						m_Tracks[t].TrackFileName += '\\';
+					}
+				}
+				Name.ReleaseBuffer();
+				m_Tracks[t].TrackFileName += Name;
+			}
+		}
 	}
 }
 
@@ -274,6 +330,7 @@ BEGIN_MESSAGE_MAP(CCdGrabbingDialog, CDialog)
 	ON_NOTIFY(NM_CLICK, IDC_LIST_TRACKS, OnClickListTracks)
 	ON_NOTIFY(LVN_BEGINLABELEDIT, IDC_LIST_TRACKS, OnBeginlabeleditListTracks)
 	ON_NOTIFY(LVN_ENDLABELEDIT, IDC_LIST_TRACKS, OnEndlabeleditListTracks)
+	ON_EN_CHANGE(IDC_EDIT_FOLDER_OR_FILE, OnChangeEditFolderOrFile)
 	//}}AFX_MSG_MAP
 	ON_WM_DEVICECHANGE()
 	ON_MESSAGE(WM_KICKIDLE, OnKickIdle)
@@ -1126,6 +1183,7 @@ void CCdGrabbingDialog::OnClickListTracks(NMHDR* pNMHDR, LRESULT* pResult)
 		m_Tracks[hti.iItem].Checked = true;
 	}
 	m_lbTracks.SetItem( & lvi);
+	m_bNeedUpdateControls = TRUE;
 }
 
 void CCdGrabbingDialog::OnBeginlabeleditListTracks(NMHDR* pNMHDR, LRESULT* pResult)
@@ -1227,4 +1285,9 @@ void CCdGrabbingDialog::OnEndlabeleditListTracks(NMHDR* pNMHDR, LRESULT* pResult
 		strcpy(pDispInfo->item.pszText, s);
 	}
 	*pResult = TRUE;
+}
+
+void CCdGrabbingDialog::OnChangeEditFolderOrFile()
+{
+	m_bNeedUpdateControls = TRUE;
 }
