@@ -404,8 +404,8 @@ void EllipticHilbertPoles(double omegaPass,
 {
 	/* estimating required filter order (odd) */
 	double k, u, q, kk, ww, mu;
-	long double sum, denom, numer, minStopLoss, xx, yy;
-	long double maxPassLoss;
+	/*long*/ double sum, denom, numer, minStopLoss, xx, yy;
+	/*long*/ double maxPassLoss;
 	int i, m;
 
 	if (minStopLossDB < 0) minStopLossDB = -minStopLossDB;
