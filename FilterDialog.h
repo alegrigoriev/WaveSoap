@@ -149,6 +149,7 @@ public:
 		}
 	}
 
+	void ValidateFilterSettings();
 	void SetPointGainDb(int nPoint, double Gain);
 	void SetPointFrequency(int nPoint, double Frequency);
 	void SetPointFrequencyHz(int nPoint, double Frequency)
@@ -319,11 +320,13 @@ protected:
 	//{{AFX_VIRTUAL(CFilterDialog)
 protected:
 	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV support
+	virtual void OnOK();
 	//}}AFX_VIRTUAL
 
 // Implementation
 
 	CApplicationProfile m_Profile;  // goes before m_wGraph
+
 	CNumEdit m_EditGain;
 	CNumEdit m_EditFrequency;
 	CFilterGraphWnd m_wGraph;
@@ -338,7 +341,6 @@ protected:
 	afx_msg void OnCheckLowpass();
 	afx_msg void OnCheckHighpass();
 	virtual BOOL OnInitDialog();
-	virtual void OnOK();
 	afx_msg void OnKillfocusEditFrequency();
 	afx_msg void OnCheckStopband();
 	//}}AFX_MSG

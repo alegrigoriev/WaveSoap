@@ -100,10 +100,6 @@ void CEqualizerDialog::DoDataExchange(CDataExchange* pDX)
 	//}}AFX_DATA_MAP
 	DDX_Check(pDX, IDC_CHECK_ZERO_PHASE, m_wGraph.m_bZeroPhase);
 	DDV_MinMaxUInt(pDX, m_nBands, 3, MaxNumberOfEqualizerBands);
-	if (pDX->m_bSaveAndValidate)
-	{
-		m_Profile.UnloadAll();
-	}
 }
 
 BEGIN_MESSAGE_MAP(CEqualizerDialog, BaseClass)
@@ -1083,6 +1079,8 @@ void CEqualizerDialog::OnButtonResetBands()
 
 void CEqualizerDialog::OnButtonLoad()
 {
+	UpdateData(TRUE);
+
 	CString FileName;
 	CString Filter;
 	Filter.LoadString(IDS_EQUALIZER_FILE_FILTER);
@@ -1103,12 +1101,22 @@ void CEqualizerDialog::OnButtonLoad()
 	}
 	FileName = dlg.GetPathName();
 	m_Profile.ImportSection(_T("Equalizer"), FileName);
+
+	UpdateData(FALSE);
+
 	m_wGraph.SetNumberOfBands(m_nBands);
 	m_BandGain.SetData(m_wGraph.GetCurrentBandGainDb());
 }
 
 void CEqualizerDialog::OnButtonSaveAs()
 {
+	if (!UpdateData(TRUE))
+	{
+		TRACE("UpdateData failed.\n");
+		// the UpdateData routine will set focus to correct item
+		return;
+	}
+
 	CString FileName;
 	CString Filter;
 	Filter.LoadString(IDS_EQUALIZER_FILE_FILTER);
@@ -1283,12 +1291,8 @@ void CEqualizerDialog::OnOK()
 		return;
 	}
 
-	CRect r;
-	GetWindowRect( & r);
-	m_DlgWidth = r.Width();
-	m_DlgHeight = r.Height();
-
 	BaseClass::OnOK();
+	m_Profile.FlushAll();
 }
 
 void CEqualizerDialog::OnNotifyGraph( NMHDR * /*pNotifyStruct*/, LRESULT * /*result*/ )
@@ -1370,3 +1374,4 @@ void CEqualizerDialog::OnCheckZeroPhase()
 	// force filter recalculation
 	m_wGraph.SetNumberOfBands(m_nBands);
 }
+

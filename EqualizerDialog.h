@@ -153,6 +153,7 @@ public:
 	//{{AFX_VIRTUAL(CEqualizerDialog)
 protected:
 	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV support
+	virtual void OnOK();
 	//}}AFX_VIRTUAL
 
 // Implementation
@@ -166,7 +167,6 @@ protected:
 	afx_msg void OnButtonLoad();
 	afx_msg void OnButtonResetBands();
 	afx_msg void OnButtonSaveAs();
-	virtual void OnOK();
 	afx_msg void OnKillfocusEditBandGain();
 	afx_msg void OnRadioEqualizerType();
 	afx_msg void OnRadio2();
