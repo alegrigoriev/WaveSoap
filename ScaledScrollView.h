@@ -34,9 +34,9 @@ public:
 protected:
 	virtual UINT GetFormatStringID() const;
 	virtual CString GetString(double x, double y);
-	virtual UINT GetPopupMenuID();
+	virtual UINT GetPopupMenuID(CPoint point);
 	virtual CMenu * ModifyPopupMenu(CMenu * pMenu);
-	virtual CMenu * GetPopupMenu(CMenu * pMenu);
+	virtual CMenu * GetPopupMenu(CMenu * pMenu, CPoint point);
 // Operations
 public:
 	virtual BOOL Zoom(double dHorScale, double dVertScale,
