@@ -2113,35 +2113,23 @@ size_t CResampleFilter::ProcessSoundBuffer(char const * pIn, char * pOut,
 	return nSavedBytes + nSavedSamples * sizeof(WAVE_SAMPLE);
 }
 
-CAudioConvertor::CAudioConvertor()
-	:m_SrcBufSize(0),
-	m_DstBufSize(0),
-	m_SrcFormat(NULL),
-	m_DstFormat(NULL),
-	m_acmStr(NULL)
+CAudioConvertor::CAudioConvertor(HACMDRIVER had)
+	: m_AcmConvertor(had)
+	, m_LeftInDstBuffer(0)
+	, m_DstBufPtr(NULL)
 {
-	memzero(m_ash);
 }
 
 CAudioConvertor::~CAudioConvertor()
 {
-	if (NULL != m_acmStr)
-	{
-		acmStreamClose(m_acmStr, 0);
-		m_acmStr = NULL;
-	}
-	delete[] m_ash.pbSrc;
-	delete[] m_ash.pbDst;
-	delete[] (char*) m_SrcFormat;
-	delete[] (char*) m_DstFormat;
-
 }
 
-BOOL CAudioConvertor::InitConversion(WAVEFORMATEX * SrcFormat, WAVEFORMATEX * DstFormat,
-									HACMDRIVER had)
+BOOL CAudioConvertor::InitConversion(WAVEFORMATEX * SrcFormat, WAVEFORMATEX * DstFormat)
 {
 	if (WAVE_FORMAT_PCM == SrcFormat->wFormatTag)
 	{
+		ASSERT(NULL != DstFormat);
+
 		if (SrcFormat->nChannels != DstFormat->nChannels
 			|| SrcFormat->nSamplesPerSec != DstFormat->nSamplesPerSec)
 		{
@@ -2149,20 +2137,9 @@ BOOL CAudioConvertor::InitConversion(WAVEFORMATEX * SrcFormat, WAVEFORMATEX * Ds
 			return FALSE;
 		}
 
-		m_ash.cbDstLength = 0;
-		m_ash.cbSrcLength = 0x10000;  // 64K
-		if (0 != acmStreamOpen( & m_acmStr, had, SrcFormat, DstFormat, NULL, NULL, NULL,
-								ACM_STREAMOPENF_NONREALTIME)
-			|| 0 != acmStreamSize(m_acmStr, m_ash.cbSrcLength, & m_ash.cbDstLength,
-								ACM_STREAMSIZEF_SOURCE)
-			|| 0 != acmStreamSize(m_acmStr, m_ash.cbDstLength, & m_ash.cbSrcLength,
-								ACM_STREAMSIZEF_DESTINATION))
+		if ( ! m_AcmConvertor.Open(SrcFormat, DstFormat)
+			|| ! m_AcmConvertor.AllocateBuffers(0x10000, 0))
 		{
-			if (m_acmStr != NULL)
-			{
-				acmStreamClose(m_acmStr, 0);
-				m_acmStr = NULL;
-			}
 			return FALSE;
 		}
 	}
@@ -2178,10 +2155,10 @@ BOOL CAudioConvertor::InitConversion(WAVEFORMATEX * SrcFormat, WAVEFORMATEX * Ds
 			16, // bits per sample
 			0   // cbSize
 		};
-		acmFormatSuggest(had, SrcFormat, & wf, sizeof wf,
-						ACM_FORMATSUGGESTF_NCHANNELS
-						| ACM_FORMATSUGGESTF_WBITSPERSAMPLE
-						| ACM_FORMATSUGGESTF_WFORMATTAG);
+		m_AcmConvertor.SuggestFormat(SrcFormat, & wf, sizeof wf,
+									ACM_FORMATSUGGESTF_NCHANNELS
+									| ACM_FORMATSUGGESTF_WBITSPERSAMPLE
+									| ACM_FORMATSUGGESTF_WFORMATTAG);
 		TRACE("acmFormatSuggest:nSamplesPerSec=%d, BytesPerSec=%d, nBlockAlign=%d\n",
 			wf.nSamplesPerSec, wf.nAvgBytesPerSec, wf.nBlockAlign);
 		if (wf.nChannels != DstFormat->nChannels
@@ -2191,20 +2168,9 @@ BOOL CAudioConvertor::InitConversion(WAVEFORMATEX * SrcFormat, WAVEFORMATEX * Ds
 			return FALSE;
 		}
 
-		m_ash.cbSrcLength = 0;
-		m_ash.cbDstLength = 0x10000;  // 64K
-		if (0 != acmStreamOpen( & m_acmStr, had, SrcFormat, & wf, NULL, NULL, NULL,
-								ACM_STREAMOPENF_NONREALTIME)
-			|| 0 != acmStreamSize(m_acmStr, m_ash.cbDstLength, & m_ash.cbSrcLength,
-								ACM_STREAMSIZEF_DESTINATION)
-			|| 0 != acmStreamSize(m_acmStr, m_ash.cbSrcLength, & m_ash.cbDstLength,
-								ACM_STREAMSIZEF_SOURCE))
+		if ( ! m_AcmConvertor.Open(SrcFormat, & wf)
+			|| ! m_AcmConvertor.AllocateBuffers(0, 0x10000))
 		{
-			if (m_acmStr != NULL)
-			{
-				acmStreamClose(m_acmStr, 0);
-				m_acmStr = NULL;
-			}
 			return FALSE;
 		}
 	}
@@ -2213,32 +2179,8 @@ BOOL CAudioConvertor::InitConversion(WAVEFORMATEX * SrcFormat, WAVEFORMATEX * Ds
 		return FALSE;
 	}
 
-	// allocate buffers
-	m_SrcBufSize = m_ash.cbSrcLength;
-	m_DstBufSize = m_ash.cbDstLength;
-	m_ash.pbSrc = new BYTE[m_SrcBufSize];
-	m_ash.pbDst = new BYTE[m_DstBufSize];
-
-	m_ash.cbStruct = sizeof m_ash;
-	if (0 == m_SrcBufSize
-		|| 0 == m_DstBufSize
-		|| NULL == m_ash.pbSrc
-		|| NULL == m_ash.pbDst
-		// prepare the buffer
-		|| 0 != acmStreamPrepareHeader(m_acmStr, & m_ash, 0))
-	{
-		delete m_ash.pbSrc;
-		m_ash.pbSrc = NULL;
-		delete m_ash.pbDst;
-		m_ash.pbDst = NULL;
-		acmStreamClose(m_acmStr, 0);
-		m_acmStr = NULL;
-		return FALSE;
-	}
-	m_ConvertFlags = ACM_STREAMCONVERTF_START;
+	m_ConvertFlags = ACM_STREAMCONVERTF_START | ACM_STREAMCONVERTF_BLOCKALIGN;
 	m_DstSaved = 0;
-	m_ash.cbSrcLength = 0;  // buffer is empty
-	m_ash.cbDstLengthUsed = 0;  // buffer is empty
 	return TRUE;
 }
 
@@ -2250,81 +2192,57 @@ size_t CAudioConvertor::ProcessSound(char const * pIn, char * pOut,
 	while (1)
 	{
 		// empty the output buffer
-		if (m_ash.cbDstLengthUsed > m_DstSaved)
+		if (0 != m_LeftInDstBuffer)
 		{
-			size_t ToCopy = m_ash.cbDstLengthUsed - m_DstSaved;
+			size_t ToCopy = m_LeftInDstBuffer;
 
 			if (nOutBytes < ToCopy)
 			{
 				ToCopy = nOutBytes;
 			}
-			memmove(pOut, m_ash.pbDst + m_DstSaved, ToCopy);
+			memmove(pOut, m_DstBufPtr, ToCopy);
 			pOut += ToCopy;
 
 			nSavedBytes += ToCopy;
 			nOutBytes -= ToCopy;
 			m_DstSaved += ToCopy;
-		}
-		// fill the source buffer
-		if (m_ash.cbSrcLength < m_SrcBufSize && NULL != pIn)
-		{
-			size_t ToCopy = m_SrcBufSize - m_ash.cbSrcLength;
-			if (ToCopy > nInBytes)
+
+			m_DstBufPtr += ToCopy;
+			m_LeftInDstBuffer -= ToCopy;
+
+			if (0 != m_LeftInDstBuffer)
 			{
-				ToCopy = nInBytes;
-			}
-
-			memmove(m_ash.pbSrc + m_ash.cbSrcLength, pIn, ToCopy);
-
-			m_ash.cbSrcLength += ToCopy;
-			pIn += ToCopy;
-			nInBytes -= ToCopy;
-			* pUsedBytes += ToCopy;
-
-			if (m_ash.cbSrcLength < m_SrcBufSize)
-			{
-				break;  // still not enough data
+				break;
 			}
 		}
-		if (m_DstSaved < m_ash.cbDstLengthUsed)
-		{
-			break;  // not enough space
-		}
-		m_DstSaved = 0;
-		m_ash.cbDstLengthUsed = 0;
-		m_ash.cbDstLength = m_DstBufSize;
+
 		if (NULL == pIn)
 		{
 			m_ConvertFlags |= ACM_STREAMCONVERTF_END;
 			m_ConvertFlags &= ~ACM_STREAMCONVERTF_BLOCKALIGN;
 		}
 		// do the conversion
-		m_ash.cbSrcLengthUsed = 0;
+		size_t InUsed = 0;
+		void * pDstBuf = NULL;
 
-		if (0 == acmStreamConvert(m_acmStr, & m_ash, m_ConvertFlags))
-		{
-			if (0 == m_ash.cbSrcLengthUsed
-				&& 0 == m_ash.cbDstLengthUsed)
-			{
-				break;
-			}
-			// move data in the source buffer
-			if (m_ash.cbSrcLengthUsed != 0)
-			{
-				if (m_ash.cbSrcLength > m_ash.cbSrcLengthUsed)
-				{
-					memmove(m_ash.pbSrc, m_ash.pbSrc + m_ash.cbSrcLengthUsed,
-							m_ash.cbSrcLength - m_ash.cbSrcLengthUsed);
-				}
-				m_ash.cbSrcLength -= m_ash.cbSrcLengthUsed;
-				m_ash.cbSrcLengthUsed = 0;
-			}
-		}
-		else
+		if ( ! m_AcmConvertor.Convert(pIn, nInBytes, & InUsed, & pDstBuf,
+									& m_LeftInDstBuffer, m_ConvertFlags))
 		{
 			// error
-			return -1;
+			nSavedBytes = 0;
+			break;
 		}
+		if (0 == InUsed
+			&& 0 == m_LeftInDstBuffer)
+		{
+			break;
+		}
+
+		m_DstBufPtr = (PUCHAR) pDstBuf;
+		nInBytes -= InUsed;
+		*pUsedBytes += InUsed;
+		pIn += InUsed;
+
 		m_ConvertFlags &= ~ACM_STREAMCONVERTF_START;
 	}
 	return nSavedBytes;
