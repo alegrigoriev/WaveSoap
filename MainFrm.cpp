@@ -6,6 +6,7 @@
 #include "WaveSoapFront.h"
 
 #include "MainFrm.h"
+#include "GdiObjectSave.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -358,13 +359,14 @@ BOOL CMainFrame::OnQueryNewPalette()
 {
 	TRACE("CMainFrame::OnQueryNewPalette\n");
 	CDC * dc = GetDC();
-	CPalette* hOldPal = dc->SelectPalette(GetApp()->GetPalette(), FALSE);
-	int redraw = dc->RealizePalette();
-	if (redraw)
 	{
-		GetApp()->BroadcastUpdate();
+		CPushDcPalette hOldPal(dc, GetApp()->GetPalette(), FALSE);
+		int redraw = dc->RealizePalette();
+		if (redraw)
+		{
+			GetApp()->BroadcastUpdate();
+		}
 	}
-	dc->SelectPalette(hOldPal, FALSE);
 	ReleaseDC(dc);
 	//BaseClass::OnQueryNewPalette();
 	return TRUE;

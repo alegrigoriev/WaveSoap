@@ -8,6 +8,7 @@
 #include "WaveFftView.h"
 #include "fft.h"
 #include "MainFrm.h"
+#include "GdiObjectSave.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -301,7 +302,6 @@ void CWaveFftView::OnDraw(CDC* pDC)
 
 		MakeFftArray(long(left), long(right));
 
-		HBITMAP hbm;
 		void * pBits;
 		bool bUsePalette;
 		size_t width = r.right - r.left;
@@ -324,7 +324,7 @@ void CWaveFftView::OnDraw(CDC* pDC)
 		bmi.bmiHeader.biClrUsed = 0;
 		bmi.bmiHeader.biClrImportant = 0;
 
-		CPalette * pOldPalette = NULL;
+		CPushDcPalette OldPalette(pDC, NULL);
 
 		if ((pDC->GetDeviceCaps(RASTERCAPS) & RC_PALETTE)
 			&& 8 == pDC->GetDeviceCaps(BITSPIXEL))
@@ -361,7 +361,7 @@ void CWaveFftView::OnDraw(CDC* pDC)
 			bmi.bmiHeader.biClrUsed = i;
 			stride = (width + 3) & ~3;
 			BmpSize = stride * ::abs(height);
-			pOldPalette = pDC->SelectPalette(GetApp()->GetPalette(), FALSE);
+			OldPalette.PushPalette(GetApp()->GetPalette(), FALSE);
 		}
 		else
 		{
@@ -371,14 +371,13 @@ void CWaveFftView::OnDraw(CDC* pDC)
 
 			//hbm = CreateDIBSection(pDC->GetSafeHdc(), (LPBITMAPINFO) & bmih, 0, & pBits, NULL, 0);
 		}
-		hbm = CreateDIBSection(pDC->GetSafeHdc(), & bmi, DIB_RGB_COLORS,
-								& pBits, NULL, 0);
-		if (hbm == NULL)
+
+		CBitmap hbm;
+		hbm.Attach(CreateDIBSection(pDC->GetSafeHdc(), & bmi, DIB_RGB_COLORS,
+									& pBits, NULL, 0));
+
+		if (HGDIOBJ(hbm) == NULL)
 		{
-			if (pOldPalette)
-			{
-				pDC->SelectPalette(pOldPalette, FALSE);
-			}
 			return;
 		}
 
@@ -406,11 +405,6 @@ void CWaveFftView::OnDraw(CDC* pDC)
 
 		if (0 == TotalRows)
 		{
-			DeleteObject(hbm);
-			if (pOldPalette)
-			{
-				pDC->SelectPalette(pOldPalette, FALSE);
-			}
 			CScaledScrollView::OnDraw(pDC);
 			return;
 		}
@@ -438,11 +432,6 @@ void CWaveFftView::OnDraw(CDC* pDC)
 
 		if (NULL == pIdArray)
 		{
-			DeleteObject(hbm);
-			if (pOldPalette)
-			{
-				pDC->SelectPalette(pOldPalette, FALSE);
-			}
 			return;
 		}
 		// fill the array
@@ -600,11 +589,6 @@ void CWaveFftView::OnDraw(CDC* pDC)
 						DIB_RGB_COLORS);
 		GdiFlush(); // make sure bitmap is drawn before deleting it (NT only)
 		// free resources
-		DeleteObject(hbm);
-		if (pOldPalette)
-		{
-			pDC->SelectPalette(pOldPalette, FALSE);
-		}
 	}
 	if (m_PlaybackCursorDrawn)
 	{

@@ -95,11 +95,11 @@ void CWaveOutlineView::OnDraw(CDC* pDC)
 
 	CThisApp * pApp = GetApp();
 
-	CPalette * pOldPalette = NULL;
+	CPushDcPalette OldPalette(pDC, NULL);
 
 	if (pDC->GetDeviceCaps(RASTERCAPS) & RC_PALETTE)
 	{
-		pOldPalette = pDC->SelectPalette(pApp->GetPalette(), FALSE);
+		OldPalette.PushPalette(pApp->GetPalette(), FALSE);
 	}
 
 	CPen BlackPen;
@@ -143,10 +143,6 @@ void CWaveOutlineView::OnDraw(CDC* pDC)
 
 		if (NULL == pBuf)
 		{
-			if (pOldPalette)
-			{
-				pDC->SelectPalette(pOldPalette, FALSE);
-			}
 			delete[] pPeaks;
 			return;
 		}
@@ -248,10 +244,6 @@ void CWaveOutlineView::OnDraw(CDC* pDC)
 			pDC->MoveTo(nCursorPos, 0);
 			pDC->LineTo(nCursorPos, cr.bottom - 1);
 		}
-	}
-	if (pOldPalette)
-	{
-		pDC->SelectPalette(pOldPalette, FALSE);
 	}
 	delete[] pPeaks;
 }
