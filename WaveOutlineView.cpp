@@ -258,7 +258,7 @@ void CWaveOutlineView::OnDraw(CDC* pDC)
 	pDC->SetROP2(R2_XORPEN);
 	pDC->SetBkColor(RGB(0, 0, 0));
 
-	long prev_x = -0x80000000;
+	long prev_x = 0x7FFFFFFF;
 
 	for (SAMPLE_INDEX_Vector::const_iterator i = markers.begin();
 		i < markers.end(); i++)
