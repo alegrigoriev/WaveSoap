@@ -23,10 +23,24 @@ static char THIS_FILE[] = __FILE__;
 
 CCopyChannelsSelectDlg::CCopyChannelsSelectDlg(CHANNEL_MASK Channels, CWnd* pParent /*=NULL*/)
 	: BaseClass(CCopyChannelsSelectDlg::IDD, pParent)
-	, m_ChannelToCopy(Channels + 1)
+	, m_ChannelToCopy(-1)
 {
 	//{{AFX_DATA_INIT(CCopyChannelsSelectDlg)
 	//}}AFX_DATA_INIT
+	CHANNEL_MASK AllChannels = 3; //WaveFile.ChannelsMask();
+
+	if ((Channels & AllChannels) == AllChannels)
+	{
+		m_ChannelToCopy = 0;
+	}
+	else if (Channels & 1)
+	{
+		m_ChannelToCopy = 1;
+	}
+	else if (Channels & 2)
+	{
+		m_ChannelToCopy = 2;
+	}
 }
 
 void CCopyChannelsSelectDlg::DoDataExchange(CDataExchange* pDX)
@@ -318,7 +332,7 @@ CSelectionDialog::CSelectionDialog(SAMPLE_INDEX Start, SAMPLE_INDEX End,
 									BOOL bAllowFileExtension,
 									CWnd* pParent /*=NULL*/)
 	: BaseClass(IDD, pParent)
-	, m_Chan(Channel + 1)
+	, m_Chan(-1)
 	, m_Start(Start)
 	, m_End(End)
 	, m_CaretPosition(CaretPos)
@@ -333,6 +347,24 @@ CSelectionDialog::CSelectionDialog(SAMPLE_INDEX Start, SAMPLE_INDEX End,
 	if (WaveFile.Channels() < 2)
 	{
 		m_lpszTemplateName = MAKEINTRESOURCE(IDD_SELECTION_DIALOG_MONO);
+		m_Chan = SPEAKER_FRONT_LEFT;
+	}
+	else
+	{
+		CHANNEL_MASK AllChannels = WaveFile.ChannelsMask();
+
+		if ((Channel & AllChannels) == AllChannels)
+		{
+			m_Chan = 0;
+		}
+		else if (Channel & 1)
+		{
+			m_Chan = 1;
+		}
+		else if (Channel & 2)
+		{
+			m_Chan = 2;
+		}
 	}
 	//{{AFX_DATA_INIT(CSelectionDialog)
 	m_TimeFormatIndex = 0;
