@@ -18,10 +18,12 @@ protected:
 
 // Attributes
 public:
+	CWaveSoapFrontDoc* GetDocument();
 
 // Operations
 public:
-
+	enum {ShowSamples, ShowHhMmSs, ShowSeconds };
+	int m_CurrentDisplayMode;
 // Overrides
 	// ClassWizard generated virtual function overrides
 	//{{AFX_VIRTUAL(CTimeRulerView)
@@ -32,17 +34,32 @@ protected:
 // Implementation
 protected:
 	virtual ~CTimeRulerView();
+	virtual UINT GetPopupMenuID() { return IDR_MENU_TIME_RULER; }
 #ifdef _DEBUG
 	virtual void AssertValid() const;
 	virtual void Dump(CDumpContext& dc) const;
 #endif
+	void DrawRulerSamples(CDC* pDC);
+	void DrawRulerHhMmSs(CDC* pDC);
+	void DrawRulerSeconds(CDC* pDC);
 
 	// Generated message map functions
 protected:
 	//{{AFX_MSG(CTimeRulerView)
+	afx_msg void OnViewRulerHhmmss();
+	afx_msg void OnUpdateViewRulerHhmmss(CCmdUI* pCmdUI);
+	afx_msg void OnViewRulerSamples();
+	afx_msg void OnUpdateViewRulerSamples(CCmdUI* pCmdUI);
+	afx_msg void OnViewRulerSeconds();
+	afx_msg void OnUpdateViewRulerSeconds(CCmdUI* pCmdUI);
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 };
+
+#ifndef _DEBUG  // debug version in TimeRulerView.cpp
+inline CWaveSoapFrontDoc* CTimeRulerView::GetDocument()
+{ return (CWaveSoapFrontDoc*)m_pDocument; }
+#endif
 
 /////////////////////////////////////////////////////////////////////////////
 
