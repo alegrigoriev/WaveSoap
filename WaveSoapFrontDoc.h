@@ -257,6 +257,10 @@ public:
 
 	CHANNEL_MASK m_SelectedChannel;
 	bool m_TimeSelectionMode;
+	BOOL m_UseFadeInOut;
+	int m_FadeInOutLengthMs;
+	int m_FadeInEnvelope;
+	int m_FadeOutEnvelope;
 
 	CHANNEL_MASK GetSelectedChannel() const;
 

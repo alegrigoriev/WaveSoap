@@ -22,7 +22,7 @@
 #include "FilterDialog.h"
 #include "WaveSoapFileDialogs.h"
 #include "PasteResampleModeDlg.h"
-#include ".\wavesoapfrontdoc.h"
+#include "FadeInOutDialog.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -207,6 +207,10 @@ CWaveSoapFrontDoc::CWaveSoapFrontDoc()
 	m_PasteResampleMode(0),
 	m_FileTypeFlags(0),
 	m_SelectedChannel(ALL_CHANNELS)
+	, m_UseFadeInOut(false)
+	, m_FadeInOutLengthMs(100)
+	, m_FadeInEnvelope(FadeInSinSquared)
+	, m_FadeOutEnvelope(FadeOutSinSquared)
 {
 	m_bUndoEnabled = (FALSE != GetApp()->m_bUndoEnabled);
 	m_bRedoEnabled = (FALSE != GetApp()->m_bRedoEnabled);
@@ -3893,6 +3897,25 @@ void CWaveSoapFrontDoc::OnProcessMute()
 	{
 		// don't do anything
 		return;
+	}
+
+	if (0x8000 & GetAsyncKeyState(VK_SHIFT))
+	{
+		CFadeInOutDialog dlg(m_UseFadeInOut, m_FadeInEnvelope, m_FadeInOutLengthMs);
+
+		if (IDOK != dlg.DoModal())
+		{
+			return;
+		}
+
+		m_UseFadeInOut = dlg.IsFadeEnabled();
+		m_FadeInEnvelope = dlg.GetTransitionType();
+		m_FadeOutEnvelope = -m_FadeInEnvelope;
+		m_FadeInOutLengthMs = dlg.GetTransitionLengthMs();
+	}
+
+	if (m_UseFadeInOut)
+	{
 	}
 
 	CVolumeChangeContext::auto_ptr pContext
