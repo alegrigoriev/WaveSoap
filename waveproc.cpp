@@ -1940,14 +1940,15 @@ void CClickRemoval::InterpolateBigGap(WAVE_SAMPLE data[], int nLeftIndex, int Cl
 	}
 	// extrapolate ClickLength + ClickLength / 2 - the gap and
 	// the right neighborhood
-	int ExtrapolatedLength = ClickLength + ClickLength / 2;
+	int const ExtrapolatedLength = ClickLength + ClickLength / 2;
 	int i;
 	for (i = 0; i < FftOrder + ExtrapolatedLength; i++)
 	{
 		x[i] = float(data[nChans * (nLeftIndex - FftOrder - ExtrapolatedLength+ i)]);
 	}
-	FastFourierTransform(x, y2, FftOrder);
-	FastFourierTransform(x + ExtrapolatedLength, y1, FftOrder);
+
+	FastFourierTransform(x, y1, FftOrder);
+	FastFourierTransform(x + ExtrapolatedLength, y2, FftOrder);
 	// calculate another set of coefficients
 	// leave only those frequencies with up to ClickLength/10 period
 	//if (nMaxFreq > FftOrder/2)
@@ -1960,46 +1961,99 @@ void CClickRemoval::InterpolateBigGap(WAVE_SAMPLE data[], int nLeftIndex, int Cl
 				|| y2[i].imag() != 0.))
 		{
 			complex<float> rot = y2[i] / y1[i];
+			float Abs = abs(rot);
 
-			y2[i] *= rot / abs(rot);
+			//if (Abs <= 2.)
+			{
+				y2[i] *= rot / Abs;
+			}
 		}
 	}
+
+	// extrapolate DC
+	//y2[0].real(y2[0].real() * 2 - y1[0].real());
+
 	FastInverseFourierTransform(y2, x, FftOrder);
 	// last ClickLength*2 samples are of interest
 	// save the result
-	// ClickLength is copied to the extrapolated area,
-	for (i = 0; i < ClickLength; i++)
+
+	int const ClickLen1 = ClickLength - ClickLength / 2;
+
+	// calculate DC adjustment
+	double DcAdjustLeft = 0.; // difference from the previous data and the calculated data
+	for (i = 0; i < ClickLen1; i++)
 	{
-		double tmp = x[FftOrder - (ClickLength + ClickLength / 2) + i];
-
-		ASSERT(tmp >= -32768. && tmp <= 32767.);
-
-		data[nChans * (nLeftIndex + i)] = DoubleToShort(tmp);
+		DcAdjustLeft += data[nChans * (nLeftIndex - ClickLen1 + i)] - x[FftOrder - ClickLength * 2 + i];
 	}
+	DcAdjustLeft /= ClickLen1;
 
-	// ClickLength/2 are merged with the samples before the extrapolation,
+	double DcAdjustRight = 0.; // difference from the previous data and the calculated data
 	for (i = 0; i < ClickLength / 2; i++)
 	{
-		double tmp = (x[FftOrder - ClickLength / 2 + i] * (ClickLength / 2 - i - 0.5)
-						+ data[nChans * (nLeftIndex + ClickLength + i)] * (i + 0.5))
-					/ float(ClickLength / 2);
+		DcAdjustRight += data[nChans * (nLeftIndex + ClickLength + i)]
+						- x[FftOrder - ClickLength / 2 + i];
+	}
+	DcAdjustRight /= ClickLength / 2;
 
-		ASSERT(tmp >= -32768. && tmp <= 32767.);
+	double DcAdjustDelta = (DcAdjustRight - DcAdjustLeft) / (ClickLength + ClickLength / 2);
+	DcAdjustLeft -= DcAdjustDelta * (ClickLength / 4);
 
-		data[nChans * (nLeftIndex + ClickLength + i)] = DoubleToShort(tmp);
+	bool const ShowExtrapolatedFft = false;
+	// ClickLength-ClickLength/2 are merged with the samples before the extrapolation,
+	float const * pFftResult = & x[FftOrder - ClickLength * 2];
+	WAVE_SAMPLE * pWaveData = & data[nChans * (nLeftIndex - ClickLen1)];
+
+	for (i = 0; i < ClickLen1; i++, DcAdjustLeft += DcAdjustDelta,
+		pWaveData += nChans, pFftResult ++)
+	{
+		if ( ! ShowExtrapolatedFft)
+		{
+			double tmp = (( *pFftResult + DcAdjustLeft) * (i + 0.5)
+							+ *pWaveData * (ClickLen1 - i - 0.5))
+						/ float(ClickLen1);
+			*pWaveData = DoubleToShort(tmp);
+		}
+		else
+		{
+			*pWaveData =
+				DoubleToShort( *pFftResult);
+		}
+	}
+
+	ASSERT((FftOrder - ClickLength * 2 + ClickLen1) == FftOrder - ExtrapolatedLength);
+	// ClickLength is copied to the extrapolated area,
+	for (i = 0; i < ClickLength; i++, DcAdjustLeft += DcAdjustDelta,
+		pWaveData += nChans, pFftResult ++)
+	{
+		if ( ! ShowExtrapolatedFft)
+		{
+			double tmp =  *pFftResult + DcAdjustLeft;
+			*pWaveData = DoubleToShort(tmp);
+		}
+		else
+		{
+			*pWaveData = DoubleToShort( *pFftResult);
+		}
 	}
 
 	// ClickLength/2 are merged with the samples after the extrapolation,
-	int ClickLen1 = ClickLength - ClickLength / 2;
-	for (i = 0; i < ClickLen1; i++)
+	for (i = 0; i < ClickLength / 2; i++, DcAdjustLeft += DcAdjustDelta,
+		pWaveData += nChans, pFftResult ++)
 	{
-		double tmp = (x[FftOrder - ClickLength * 2 + i] * (i + 0.5)
-						+ data[nChans * (nLeftIndex - ClickLen1 + i)] * (ClickLen1 - i - 0.5))
-					/ float(ClickLen1);
-		ASSERT(tmp >= -32768. && tmp <= 32767.);
+		if ( ! ShowExtrapolatedFft)
+		{
+			double tmp = (( *pFftResult + DcAdjustLeft) * (ClickLength / 2 - i - 0.5)
+							+ *pWaveData * (i + 0.5))
+						/ float(ClickLength / 2);
 
-		data[nChans * (nLeftIndex - ClickLen1 + i)] = DoubleToShort(tmp);
+			*pWaveData = DoubleToShort(tmp);
+		}
+		else
+		{
+			*pWaveData = DoubleToShort( *pFftResult);
+		}
 	}
+	ASSERT(pFftResult == x + FftOrder);
 }
 
 void CClickRemoval::InterpolateGap(WAVE_SAMPLE data[], int nLeftIndex, int ClickLength, int nChans, bool BigGap)
