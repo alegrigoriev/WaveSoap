@@ -56,7 +56,8 @@ BOOL CExpressionEvaluationContext::Init()
 	return TRUE;
 }
 
-BOOL CExpressionEvaluationContext::ProcessBuffer(void * buf, size_t BufferLength, SAMPLE_POSITION offset, BOOL bBackward)
+BOOL CExpressionEvaluationContext::ProcessBuffer(void * buf,
+												size_t BufferLength, SAMPLE_POSITION offset, BOOL bBackward)
 {
 	// calculate number of sample, and time
 	int nSampleSize = m_DstFile.SampleSize();
@@ -68,44 +69,22 @@ BOOL CExpressionEvaluationContext::ProcessBuffer(void * buf, size_t BufferLength
 
 	try
 	{
-		if (1 == nChannels)
+		for (NUMBER_OF_SAMPLES i = 0; i < NumSamples; i += nChannels)
 		{
-			for (NUMBER_OF_SAMPLES i = 0; i < NumSamples; i ++)
+			for (int ch = 0; ch < nChannels; ch++)
 			{
-				m_dCurrentSample = pDst[i] * 0.00003051850947599719229;
-				Evaluate();
-				pDst[i] = DoubleToShort(* m_pResultAddress);
-
-				m_nSelectionSampleArgument++;
-				m_nFileSampleArgument++;
-				m_dSelectionTimeArgument += m_SamplePeriod;
-				m_dFileTimeArgument += m_SamplePeriod;
-			}
-		}
-		else
-		{
-			ASSERT(2 == nChannels);
-			for (NUMBER_OF_SAMPLES i = 0; i < NumSamples; i += 2)
-			{
-				if (m_DstChan != 1) // not right only
+				if (m_DstChan & (1 << ch))
 				{
-					m_dCurrentSample = pDst[i] * 0.00003051850947599719229;
+					m_dCurrentSample = pDst[i + ch] * 0.00003051850947599719229;
 					Evaluate();
-					pDst[i] = DoubleToShort(* m_pResultAddress);
+					pDst[i + ch] = DoubleToShort(* m_pResultAddress);
 				}
-
-				if (m_DstChan != 0) // not left only
-				{
-					m_dCurrentSample = pDst[i + 1] * 0.00003051850947599719229;
-					Evaluate();
-					pDst[i + 1] = DoubleToShort(* m_pResultAddress);
-				}
-
-				m_nSelectionSampleArgument++;
-				m_nFileSampleArgument++;
-				m_dSelectionTimeArgument += m_SamplePeriod;
-				m_dFileTimeArgument += m_SamplePeriod;
 			}
+
+			m_nSelectionSampleArgument++;
+			m_nFileSampleArgument++;
+			m_dSelectionTimeArgument += m_SamplePeriod;
+			m_dFileTimeArgument += m_SamplePeriod;
 		}
 	}
 	catch (const char * pError)
@@ -1094,10 +1073,13 @@ void CExpressionEvaluationContext::PushConstant(int data)
 	}
 	m_DataTypeStack[m_DataTypeStackIndex] = eIntConstant;
 	m_DataTypeStackIndex++;
+
 	m_DataStack[m_DataStackIndex] = int(m_ConstantBuffer + m_ConstantBufferIndex);  // store pointer to data
 	m_DataStackIndex++;
+
 	m_ConstantBuffer[m_ConstantBufferIndex] = data;
 	m_ConstantBufferIndex++;
+
 	TRACE("Push int constant %d, constant index = %d, type index = %d\n", data,
 		m_ConstantBufferIndex, m_DataTypeStackIndex);
 }
@@ -1108,6 +1090,7 @@ void CExpressionEvaluationContext::PushConstant(double data)
 	{
 		throw "Expression too complex: too many constants";
 	}
+
 	if (m_DataStackIndex >= ExpressionStackSize * 2
 		|| m_DataTypeStackIndex >= ExpressionStackSize)
 	{
@@ -1115,10 +1098,13 @@ void CExpressionEvaluationContext::PushConstant(double data)
 	}
 	m_DataTypeStack[m_DataTypeStackIndex] = eDoubleConstant;
 	m_DataTypeStackIndex++;
+
 	m_DataStack[m_DataStackIndex] = int(m_ConstantBuffer + m_ConstantBufferIndex);  // store pointer to data
 	m_DataStackIndex++;
+
 	*(double*)(m_ConstantBuffer + m_ConstantBufferIndex) = data;
 	m_ConstantBufferIndex += sizeof (double) / sizeof m_ConstantBuffer[0];
+
 	TRACE("Push Double constant %f, constant index = %d, type index = %d\n", data,
 		m_ConstantBufferIndex, m_DataTypeStackIndex);
 }
@@ -1132,8 +1118,10 @@ void CExpressionEvaluationContext::PushVariable(int * pData)
 	}
 	m_DataTypeStack[m_DataTypeStackIndex] = eIntVariable;
 	m_DataTypeStackIndex++;
+
 	m_DataStack[m_DataStackIndex] = int(pData);  // store pointer to data
 	m_DataStackIndex++;
+
 	TRACE("Push int variable, data index = %d, type index = %d\n",
 		m_DataStackIndex, m_DataTypeStackIndex);
 }
@@ -1147,8 +1135,10 @@ void CExpressionEvaluationContext::PushVariable(double * pData)
 	}
 	m_DataTypeStack[m_DataTypeStackIndex] = eDoubleVariable;
 	m_DataTypeStackIndex++;
+
 	m_DataStack[m_DataStackIndex] = int(pData);  // store pointer to data
 	m_DataStackIndex++;
+
 	TRACE("Push Double variable, data index = %d, type index = %d\n",
 		m_DataStackIndex, m_DataTypeStackIndex);
 }
@@ -1163,6 +1153,7 @@ int * CExpressionEvaluationContext::PushInt()
 	m_DataTypeStack[m_DataTypeStackIndex] = eIntExpression;
 	m_DataTypeStackIndex++;
 	m_DataStackIndex++;
+
 	TRACE("Push int, data index = %d, type index = %d\n",
 		m_DataStackIndex, m_DataTypeStackIndex);
 	return (int*)& m_DataStack[m_DataStackIndex - 1];
@@ -1177,6 +1168,7 @@ double * CExpressionEvaluationContext::PushDouble()
 	}
 	m_DataTypeStack[m_DataTypeStackIndex] = eDoubleExpression;
 	m_DataTypeStackIndex++;
+
 	m_DataStackIndex += sizeof (double) / sizeof m_ConstantBuffer[0];
 	TRACE("Push Double, data index = %d, type index = %d\n",
 		m_DataStackIndex, m_DataTypeStackIndex);
@@ -1382,16 +1374,15 @@ BOOL CEqualizerContext::Init()
 BOOL CEqualizerContext::InitPass(int nPass)
 {
 	TRACE("CEqualizerContext::InitPass %d\n", nPass);
-	for (int i = 0; i < MaxNumberOfEqualizerBands; i++)
+	for (int ch = 0; ch < countof (m_PrevSamples); ch++)
 	{
-		m_PrevSamples[0][i][0] = 0.;
-		m_PrevSamples[1][i][0] = 0.;
-		m_PrevSamples[0][i][1] = 0.;
-		m_PrevSamples[1][i][1] = 0.;
-		m_PrevSamples[0][i][2] = 0.;
-		m_PrevSamples[1][i][2] = 0.;
-		m_PrevSamples[0][i][3] = 0.;
-		m_PrevSamples[1][i][3] = 0.;
+		for (int i = 0; i < MaxNumberOfEqualizerBands; i++)
+		{
+			m_PrevSamples[ch][i][0] = 0.;
+			m_PrevSamples[ch][i][1] = 0.;
+			m_PrevSamples[ch][i][2] = 0.;
+			m_PrevSamples[ch][i][3] = 0.;
+		}
 	}
 	return TRUE;
 }
@@ -1426,58 +1417,33 @@ BOOL CEqualizerContext::ProcessBuffer(void * buf, size_t BufferLength, SAMPLE_PO
 	ASSERT(0 == (offset % m_DstFile.SampleSize()));
 	ASSERT(0 == (BufferLength % nChannels));
 
-	if (1 == nChannels)
+	if ( ! bBackward)
 	{
-		if ( ! bBackward)
+		for (NUMBER_OF_SAMPLES i = 0; i < nSamples; i += nChannels)
 		{
-			for (NUMBER_OF_SAMPLES i = 0; i < nSamples; i ++)
+			for (int ch = 0; ch < nChannels; ch++)
 			{
-				pDst[i] = DoubleToShort(CalculateResult(0, pDst[i]));
-			}
-		}
-		else
-		{
-			for (NUMBER_OF_SAMPLES i = nSamples - 1; i >=0; i --)
-			{
-				pDst[i] = DoubleToShort(CalculateResult(0, pDst[i]));
+				if (m_DstChan & (1 << ch))
+				{
+					pDst[i + ch] = DoubleToShort(CalculateResult(ch, pDst[i + ch]));
+				}
 			}
 		}
 	}
 	else
 	{
-		ASSERT(2 == nChannels);
-
-		if ( ! bBackward)
+		for (NUMBER_OF_SAMPLES i = nSamples - nChannels; i >=0; i -= nChannels)
 		{
-			for (NUMBER_OF_SAMPLES i = 0; i < nSamples; i += 2)
+			for (int ch = 0; ch < nChannels; ch++)
 			{
-				if (m_DstChan != 1) // not right only
+				if (m_DstChan & (1 << ch))
 				{
-					pDst[i] = DoubleToShort(CalculateResult(0, pDst[i]));
-				}
-
-				if (m_DstChan != 0) // not left only
-				{
-					pDst[i + 1] = DoubleToShort(CalculateResult(1, pDst[i + 1]));
-				}
-			}
-		}
-		else
-		{
-			for (NUMBER_OF_SAMPLES i = nSamples - 2; i >=0; i -= 2)
-			{
-				if (m_DstChan != 1) // not right only
-				{
-					pDst[i] = DoubleToShort(CalculateResult(0, pDst[i]));
-				}
-
-				if (m_DstChan != 0) // not left only
-				{
-					pDst[i + 1] = DoubleToShort(CalculateResult(1, pDst[i + 1]));
+					pDst[i + ch] = DoubleToShort(CalculateResult(ch, pDst[i + ch]));
 				}
 			}
 		}
 	}
+
 	return TRUE;
 }
 
@@ -1522,19 +1488,18 @@ BOOL CFilterContext::Init()
 BOOL CFilterContext::InitPass(int nPass)
 {
 	TRACE("CFilterContext::InitPass %d\n", nPass);
-	for (int i = 0; i < MaxFilterOrder; i++)
+	for (int ch = 0; ch < countof (m_PrevLpfSamples); ch++)
 	{
-		for (int j = 0; j < 4; j++)
+		for (int i = 0; i < MaxFilterOrder; i++)
 		{
-			m_PrevLpfSamples[0][i][j] = 0.;
-			m_PrevLpfSamples[1][i][j] = 0.;
+			for (int j = 0; j < 4; j++)
+			{
+				m_PrevLpfSamples[ch][i][j] = 0.;
 
-			m_PrevHpfSamples[0][i][j] = 0.;
-			m_PrevHpfSamples[1][i][j] = 0.;
+				m_PrevHpfSamples[ch][i][j] = 0.;
 
-			m_PrevNotchSamples[0][i][j] = 0.;
-			m_PrevNotchSamples[1][i][j] = 0.;
-
+				m_PrevNotchSamples[ch][i][j] = 0.;
+			}
 		}
 	}
 	return TRUE;
@@ -1553,6 +1518,13 @@ double CFilterContext::CalculateResult(int ch, int Input)
 						+ m_PrevLpfSamples[ch][i][1] * m_LpfCoeffs[i][2]
 						- m_PrevLpfSamples[ch][i][2] * m_LpfCoeffs[i][4]
 						- m_PrevLpfSamples[ch][i][3] * m_LpfCoeffs[i][5];
+
+			// protect against underflow (it slows the calculations tremendously)
+			if (fabs(tmp) < 1E-32)
+			{
+				tmp = 0;
+			}
+
 			m_PrevLpfSamples[ch][i][1] = m_PrevLpfSamples[ch][i][0];
 			m_PrevLpfSamples[ch][i][0] = in;
 			m_PrevLpfSamples[ch][i][3] = m_PrevLpfSamples[ch][i][2];
@@ -1571,6 +1543,13 @@ double CFilterContext::CalculateResult(int ch, int Input)
 						+ m_PrevHpfSamples[ch][i][1] * m_HpfCoeffs[i][2]
 						- m_PrevHpfSamples[ch][i][2] * m_HpfCoeffs[i][4]
 						- m_PrevHpfSamples[ch][i][3] * m_HpfCoeffs[i][5];
+
+			// protect against underflow (it slows the calculations tremendously)
+			if (fabs(tmp) < 1E-32)
+			{
+				tmp = 0;
+			}
+
 			m_PrevHpfSamples[ch][i][1] = m_PrevHpfSamples[ch][i][0];
 			m_PrevHpfSamples[ch][i][0] = in;
 			m_PrevHpfSamples[ch][i][3] = m_PrevHpfSamples[ch][i][2];
@@ -1588,6 +1567,13 @@ double CFilterContext::CalculateResult(int ch, int Input)
 						+ m_PrevNotchSamples[ch][i][1] * m_NotchCoeffs[i][2]
 						- m_PrevNotchSamples[ch][i][2] * m_NotchCoeffs[i][4]
 						- m_PrevNotchSamples[ch][i][3] * m_NotchCoeffs[i][5];
+
+			// protect against underflow (it slows the calculations tremendously)
+			if (fabs(tmp) < 1E-32)
+			{
+				tmp = 0;
+			}
+
 			m_PrevNotchSamples[ch][i][1] = m_PrevNotchSamples[ch][i][0];
 			m_PrevNotchSamples[ch][i][0] = in;
 			m_PrevNotchSamples[ch][i][3] = m_PrevNotchSamples[ch][i][2];
@@ -1606,58 +1592,33 @@ BOOL CFilterContext::ProcessBuffer(void * buf, size_t BufferLength, SAMPLE_POSIT
 	WAVE_SAMPLE * pDst = (WAVE_SAMPLE *) buf;
 	NUMBER_OF_SAMPLES nSamples = BufferLength / sizeof pDst[0];
 
-	if (1 == nChannels)
+	if ( ! bBackward)
 	{
-		if ( ! bBackward)
+		for (NUMBER_OF_SAMPLES i = 0; i < nSamples; i += nChannels)
 		{
-			for (NUMBER_OF_SAMPLES i = 0; i < nSamples; i ++)
+			for (int ch = 0; ch < nChannels; ch++)
 			{
-				pDst[i] = DoubleToShort(CalculateResult(0, pDst[i]));
-			}
-		}
-		else
-		{
-			for (NUMBER_OF_SAMPLES i = nSamples - 1; i >=0; i --)
-			{
-				pDst[i] = DoubleToShort(CalculateResult(0, pDst[i]));
+				if (m_DstChan & (1 << ch))
+				{
+					pDst[i + ch] = DoubleToShort(CalculateResult(ch, pDst[i + ch]));
+				}
 			}
 		}
 	}
 	else
 	{
-		ASSERT(2 == nChannels);
-
-		if ( ! bBackward)
+		for (NUMBER_OF_SAMPLES i = nSamples - nChannels; i >=0; i -= nChannels)
 		{
-			for (NUMBER_OF_SAMPLES i = 0; i < nSamples; i += 2)
+			for (int ch = 0; ch < nChannels; ch++)
 			{
-				if (m_DstChan != 1) // not right only
+				if (m_DstChan & (1 << ch))
 				{
-					pDst[i] = DoubleToShort(CalculateResult(0, pDst[i]));
-				}
-
-				if (m_DstChan != 0) // not left only
-				{
-					pDst[i + 1] = DoubleToShort(CalculateResult(1, pDst[i + 1]));
-				}
-			}
-		}
-		else
-		{
-			for (NUMBER_OF_SAMPLES i = nSamples - 2; i >=0; i -= 2)
-			{
-				if (m_DstChan != 1) // not right only
-				{
-					pDst[i] = DoubleToShort(CalculateResult(0, pDst[i]));
-				}
-
-				if (m_DstChan != 0) // not left only
-				{
-					pDst[i + 1] = DoubleToShort(CalculateResult(1, pDst[i + 1]));
+					pDst[i + ch] = DoubleToShort(CalculateResult(ch, pDst[i + ch]));
 				}
 			}
 		}
 	}
+
 	return TRUE;
 }
 
@@ -1930,6 +1891,7 @@ BOOL CReplaceFileContext::OperationProc()
 
 	pDocument->UpdateFrameTitles();        // will cause name change in views
 	pDocument->UpdateAllViews(NULL, CWaveSoapFrontDoc::UpdateWholeFileChanged);
+
 	return TRUE;
 }
 
@@ -1946,12 +1908,8 @@ BOOL CReplaceFormatContext::CreateUndo(BOOL IsRedo)
 	CReplaceFormatContext * pUndo =
 		new CReplaceFormatContext(pDocument, m_OperationName, pDocument->WaveFormat());
 
-	if (NULL != pUndo)
-	{
-		m_UndoChain.InsertTail(pUndo);
-		return TRUE;
-	}
-	return FALSE;
+	m_UndoChain.InsertTail(pUndo);
+	return TRUE;
 }
 
 BOOL CReplaceFormatContext::OperationProc()
@@ -2019,7 +1977,9 @@ BOOL CWaveSamplesChangeOperation::OperationProc()
 		return FALSE;
 	}
 
-	m_File.AllocatePeakData(m_NewSamples);
+	pDocument->SoundChanged(pDocument->WaveFileID(), 0, 0, m_NewSamples,
+							UpdateSoundDontRescanPeaks);
+
 	return TRUE;
 }
 
@@ -2191,7 +2151,8 @@ BOOL CMoveOperation::OperationProc()
 				SizeToWrite = -CDirectFile::CacheBufferSize();
 			}
 
-			if (ALL_CHANNELS == m_DstChan
+			// TODO
+			if (m_DstFile.AllChannels(m_DstChan)
 				&& m_SrcFile.GetFileID() != m_DstFile.GetFileID()
 				&& (NULL == m_pUndoContext
 					|| ! m_pUndoContext->NeedToSaveUndo(m_DstPos, long(SizeToWrite))))
@@ -2409,17 +2370,19 @@ BOOL CInitChannels::ProcessBuffer(void * buf, size_t BufferLength, SAMPLE_POSITI
 		{
 			pDst[i] = 0;
 		}
-		return TRUE;
 	}
-	ASSERT(m_DstFile.Channels() == 2);
-	if (SPEAKER_FRONT_RIGHT == m_DstChan)
+	else
 	{
-		pDst++;
-	}
-	// change one channel
-	for (i = 0; i < nSamples; i += 2)
-	{
-		pDst[i] = 0;
+		for (i = 0; i < nSamples; i += nChannels)
+		{
+			for (long ch = 0, mask = 1; ch < nChannels; ch++, mask <<= 1)
+			{
+				if (m_DstChan & mask)
+				{
+					pDst[i + ch] = 0;
+				}
+			}
+		}
 	}
 
 	return TRUE;
@@ -2556,49 +2519,4 @@ BOOL InitInsertCopy(CStagedContext * pContext,
 
 	return TRUE;
 }
-
-#if 0
-
-BOOL CShrinkContext::CreateUndo(BOOL IsRedo)
-{
-	CCopyContext * pUndo = new CCopyContext(pDocument, m_OperationName, m_OperationName);
-	if (NULL == pUndo)
-	{
-		return FALSE;
-	}
-	m_UndoChain.InsertHead(pUndo);
-
-	CExpandContext * pResize = new CExpandContext(pDocument, _T("File Resize"), _T("File Resize"));
-
-	if (NULL == pResize)
-	{
-		return FALSE;
-	}
-	pResize->m_DstChan = m_DstChan;
-	// don't keep a reference to the file
-
-	pResize->m_DstStart = m_SrcStart;
-	pResize->m_DstEnd = m_SrcEnd;
-
-	pResize->m_SrcStart = m_DstStart;
-	pResize->m_SrcEnd = m_DstEnd;
-
-	pResize->m_DstPos = m_SrcStart;
-	pResize->m_SrcPos = m_DstStart;
-
-	m_UndoChain.InsertHead(pResize);
-	// Init undo to expand the file at position DstStart, expand by
-	if ( ! pUndo->InitUndoCopy(pDocument->m_WavFile,
-								m_DstStart,
-								m_SrcStart, // expand by
-								m_DstChan))
-	{
-		return FALSE;
-	}
-
-//    pUndo->m_RestoredLength = pDocument->WaveFileSamples(); // BUGBUG
-	m_pUndoContext = pUndo;
-	return TRUE;
-}
-#endif
 
