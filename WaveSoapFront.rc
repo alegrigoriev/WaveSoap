@@ -101,14 +101,14 @@ BEGIN
     BUTTON      ID_FILE_SAVE
     BUTTON      ID_FILE_SAVE_AS
     BUTTON      ID_FILE_SAVE_ALL
+    BUTTON      ID_FILE_PRINT
     SEPARATOR
     BUTTON      ID_EDIT_CUT
     BUTTON      ID_EDIT_COPY
     BUTTON      ID_EDIT_PASTE
     BUTTON      ID_EDIT_UNDO
     BUTTON      ID_EDIT_REDO
-    SEPARATOR
-    BUTTON      ID_FILE_PRINT
+    BUTTON      ID_EDIT_STOP
     SEPARATOR
     BUTTON      ID_APP_ABOUT
     BUTTON      ID_CONTEXT_HELP
@@ -124,7 +124,12 @@ BEGIN
     BUTTON      IDC_PROCESS_DO_DECLICKING
     BUTTON      IDC_PROCESS_NOISE_REDUCTION
     SEPARATOR
-    BUTTON      ID_EDIT_STOP
+    BUTTON      ID_VIEW_ZOOMINVERT
+    BUTTON      ID_VIEW_ZOOMOUTVERT
+    BUTTON      ID_VIEW_ZOOMVERT_NORMAL
+    SEPARATOR
+    BUTTON      ID_VIEW_ZOOMINHOR2
+    BUTTON      ID_VIEW_ZOOMOUTHOR2
 END
 
 
@@ -164,6 +169,7 @@ BEGIN
     POPUP "&File"
     BEGIN
         MENUITEM "&New\tCtrl+N",                ID_FILE_NEW
+        MENUITEM "New From Clipboard\tCtrl+E",  ID_EDIT_PASTE_NEW
         MENUITEM "&Open...\tCtrl+O",            ID_FILE_OPEN
         MENUITEM "Reopen For Editing",          ID_FILE_REOPENFOREDITING
         MENUITEM "&Close",                      ID_FILE_CLOSE
@@ -208,8 +214,8 @@ BEGIN
         MENUITEM "Spectral View",               IDC_VIEW_SHOW_FFT
         MENUITEM "Waveform View",               IDC_VIEW_WAVEFORM
         MENUITEM SEPARATOR
-        MENUITEM "Zoom In Time\tGray +",        ID_VIEW_ZOOMINHOR
-        MENUITEM "Zoom Out Time\tGray -",       ID_VIEW_ZOOMOUTHOR
+        MENUITEM "Zoom In Time\tGray +",        ID_VIEW_ZOOMINHOR2
+        MENUITEM "Zoom Out Time\tGray -",       ID_VIEW_ZOOMOUTHOR2
         POPUP "Time Ruler"
         BEGIN
             MENUITEM "Samples",                     IDC_VIEW_RULER_SAMPLES
@@ -300,6 +306,101 @@ BEGIN
         MENUITEM "&Zoom In",                    ID_VIEW_ZOOMINVERT
         MENUITEM "Zoom &Out",                   ID_VIEW_ZOOMOUTVERT
         MENUITEM "Zoom Out &Full",              ID_VIEW_ZOOMVERT_NORMAL
+    END
+END
+
+IDR_MENU_POPUP_SAMPLE_RATE MENU DISCARDABLE 
+BEGIN
+    POPUP " "
+    BEGIN
+        MENUITEM "7200",                        ID_SAMPLERATE_7200
+        MENUITEM "8000",                        ID_SAMPLERATE_8000
+        MENUITEM "11025",                       ID_SAMPLERATE_11025
+        MENUITEM "16000",                       ID_SAMPLERATE_16000
+        MENUITEM "22050",                       ID_SAMPLERATE_22050
+        MENUITEM "32000",                       ID_SAMPLERATE_32000
+        MENUITEM "44100",                       ID_SAMPLERATE_44100
+        MENUITEM "48000",                       ID_SAMPLERATE_48K
+        MENUITEM "96000",                       ID_SAMPLERATE_96K
+        MENUITEM "Custom...",                   ID_SAMPLERATE_CUSTOM
+    END
+END
+
+IDR_MENU_POPUP_CHANNELS MENU DISCARDABLE 
+BEGIN
+    POPUP " "
+    BEGIN
+        MENUITEM "Mono",                        ID_CHANNELS_MONO
+        MENUITEM "Stereo",                      ID_CHANNELS_STEREO
+    END
+END
+
+IDR_MENU_POPUP_SAMPLE_SIZE MENU DISCARDABLE 
+BEGIN
+    POPUP " "
+    BEGIN
+        MENUITEM "16 bit",                      ID_SAMPLE_16BIT
+        MENUITEM "8 bit",                       ID_SAMPLE_8BIT
+    END
+END
+
+IDR_MENU_WAVE_VIEW MENU DISCARDABLE 
+BEGIN
+    POPUP " "
+    BEGIN
+        MENUITEM "Paste",                       ID_EDIT_PASTE
+        MENUITEM SEPARATOR
+        MENUITEM "&Zoom In Time",               ID_VIEW_ZOOMINHOR2
+        MENUITEM "Zoom &Out Time",              ID_VIEW_ZOOMOUTHOR2
+        MENUITEM "Zoom In &Full",               ID_VIEW_ZOOMIN_HOR_FULL
+        MENUITEM SEPARATOR
+        MENUITEM "Zoom In Amplitude",           ID_VIEW_ZOOMINVERT
+        MENUITEM "Zoom Out Amplitude",          ID_VIEW_ZOOMOUTVERT
+    END
+END
+
+IDR_MENU_WAVE_VIEW_SELECTION MENU DISCARDABLE 
+BEGIN
+    POPUP " "
+    BEGIN
+        MENUITEM "Copy",                        ID_EDIT_COPY
+        MENUITEM "Paste",                       ID_EDIT_PASTE
+        MENUITEM "Cut",                         ID_EDIT_CUT
+        MENUITEM "Delete",                      ID_EDIT_DELETE
+        MENUITEM SEPARATOR
+        MENUITEM "&Zoom In Time",               ID_VIEW_ZOOMINHOR2
+        MENUITEM "Zoom &Out Time",              ID_VIEW_ZOOMOUTHOR2
+        MENUITEM "Zoom In &Full",               ID_VIEW_ZOOMIN_HOR_FULL
+        MENUITEM SEPARATOR
+        MENUITEM "Zoom In Amplitude",           ID_VIEW_ZOOMINVERT
+        MENUITEM "Zoom Out Amplitude",          ID_VIEW_ZOOMOUTVERT
+    END
+END
+
+IDR_MENU_FFT_VIEW MENU DISCARDABLE 
+BEGIN
+    POPUP " "
+    BEGIN
+        MENUITEM "Paste",                       ID_EDIT_PASTE
+        MENUITEM SEPARATOR
+        MENUITEM "&Zoom In Time",               ID_VIEW_ZOOMINHOR2
+        MENUITEM "Zoom &Out Time",              ID_VIEW_ZOOMOUTHOR2
+        MENUITEM "Zoom In &Full",               ID_VIEW_ZOOMIN_HOR_FULL
+        MENUITEM SEPARATOR
+        MENUITEM "Zoom In Frequency",           ID_VIEW_ZOOMINVERT
+        MENUITEM "Zoom Out Frequency",          ID_VIEW_ZOOMOUTVERT
+        MENUITEM SEPARATOR
+        POPUP "Number of FFT bands"
+        BEGIN
+            MENUITEM "64",                          ID_FFT_BANDS_64
+            MENUITEM "128",                         ID_FFT_BANDS_128
+            MENUITEM "256",                         ID_FFT_BANDS_256
+            MENUITEM "512",                         ID_FFT_BANDS_512
+            MENUITEM "1024",                        ID_FFT_BANDS_1024
+            MENUITEM "2048",                        ID_FFT_BANDS_2048
+            MENUITEM "4096",                        ID_FFT_BANDS_4096
+            MENUITEM "8192",                        ID_FFT_BANDS_8192
+        END
     END
 END
 
@@ -538,6 +639,42 @@ BEGIN
     PUSHBUTTON      "More...",IDC_BUTTON_MORE,222,115,50,14
 END
 
+IDD_DIALOG_COPY_CHANNELS_SELECT DIALOG DISCARDABLE  0, 0, 135, 72
+STYLE DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "Select Source Channel"
+FONT 8, "MS Sans Serif"
+BEGIN
+    LTEXT           "Copying stereo data to single channel. Select a channel to copy from",
+                    IDC_STATIC,7,7,117,23
+    CONTROL         "Left",IDC_RADIO_LEFT,"Button",BS_AUTORADIOBUTTON | 
+                    WS_GROUP,9,32,27,10
+    CONTROL         "Right",IDC_RADIO_RIGHT,"Button",BS_AUTORADIOBUTTON,45,
+                    32,32,10
+    CONTROL         "Left+Right",IDC_RADIO_CHANNEL_BOTH,"Button",
+                    BS_AUTORADIOBUTTON,85,32,46,10
+    DEFPUSHBUTTON   "OK",IDOK,13,51,50,14
+    PUSHBUTTON      "Cancel",IDCANCEL,72,51,50,14
+END
+
+IDD_DIALOG_PASTE_MODE_SELECT DIALOG DISCARDABLE  0, 0, 135, 130
+STYLE DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "Select Paste Destination"
+FONT 8, "MS Sans Serif"
+BEGIN
+    LTEXT           "What do you want to do with selection?",IDC_STATIC,7,7,
+                    117,16
+    CONTROL         "Replace selection with the clipboard contents",
+                    IDC_RADIO_SELECT,"Button",BS_AUTORADIOBUTTON | 
+                    BS_MULTILINE | WS_GROUP,7,27,121,23
+    CONTROL         "Paste as much as selection length",IDC_RADIO_RIGHT,
+                    "Button",BS_AUTORADIOBUTTON,7,52,121,19
+    CONTROL         "Insert clipboard data at current caret position",
+                    IDC_RADIO_CHANNEL_BOTH,"Button",BS_AUTORADIOBUTTON | 
+                    BS_MULTILINE,7,75,121,22
+    DEFPUSHBUTTON   "OK",IDOK,13,109,50,14
+    PUSHBUTTON      "Cancel",IDCANCEL,72,109,50,14
+END
+
 
 #ifndef _MAC
 /////////////////////////////////////////////////////////////////////////////
@@ -644,6 +781,22 @@ BEGIN
     IDD_DIALOG_OPEN_TEMPLATE, DIALOG
     BEGIN
         RIGHTMARGIN, 275
+    END
+
+    IDD_DIALOG_COPY_CHANNELS_SELECT, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 128
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 65
+    END
+
+    IDD_DIALOG_PASTE_MODE_SELECT, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 128
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 123
     END
 END
 #endif    // APSTUDIO_INVOKED
@@ -848,7 +1001,7 @@ BEGIN
     IDC_VIEW_AMPL_RULER_DECIBELS "Show sample value in decibels\nDecibels"
     ID_VIEW_ZOOM_OUT2       "Zoom out x2"
     ID_VIEW_ZOOMIN2         "Zoom in x2"
-    ID_VIEW_ZOOMINHOR       "Zoom in time"
+    ID_VIEW_ZOOMINHOR       "Zoom in time\nZoom in time"
     IDS_BAD_FLOAT_VALUE     "%1 Invalid value entered"
     IDS_VALUE_REQUIRED      "%1 Non-empty value required"
     IDS_VALUE_TOO_LOW       "%1 Value is less than allowed (%2)"
@@ -860,13 +1013,13 @@ BEGIN
     IDS_INI_FILTER          "Initialization settings (*.ini)|*.ini|All Files (*.*)|*.*||"
     ID_VIEW_ZOOM_OUT3       "Zoom out x2"
     ID_VIEW_ZOOMIN3         "Zoom in x2"
-    ID_VIEW_ZOOMINHOR2      "Zoom in horizontal"
+    ID_VIEW_ZOOMINHOR2      "Zoom in time\nZoom in time"
     ID_INDICATOR_MOUSE_POSITION "X=%1, Y=%2"
-    ID_VIEW_ZOOMINVERT      "Zoom in vertical"
-    ID_VIEW_ZOOMOUTHOR      "Zoom out time"
-    ID_VIEW_ZOOMOUTVERT     "Zoom out vertical"
+    ID_VIEW_ZOOMINVERT      "Zoom in vertical\nZoom In vertical"
+    ID_VIEW_ZOOMOUTHOR      "Zoom out time\nZoom out time"
+    ID_VIEW_ZOOMOUTVERT     "Zoom out vertical\nZoom out vertical"
     ID_VIEW_ZOOMINVERT2     "Zoom in vertical"
-    ID_VIEW_ZOOMOUTHOR2     "Zoom out horizontal"
+    ID_VIEW_ZOOMOUTHOR2     "Zoom out time\nZoom out time"
     ID_VIEW_ZOOMOUTVERT2    "Zoom out vertical"
 END
 
@@ -926,7 +1079,7 @@ END
 STRINGTABLE DISCARDABLE 
 BEGIN
     ID_FILE_PROPERTIES      "Inspect and modify sound properties\nProperties"
-    ID_VIEW_ZOOMVERT_NORMAL "Full zoom out"
+    ID_VIEW_ZOOMVERT_NORMAL "Full zoom out\nZoom out full"
     ID_VIEW_ZOOMIN_HOR_FULL "Maximum zoom in"
     ID_EDIT_SELECTION       "Select range of sound data\nSelect"
     ID_PROCESS_NORMALIZE    "Normalize the sound amplitude\nNormalize"
@@ -956,6 +1109,24 @@ END
 STRINGTABLE DISCARDABLE 
 BEGIN
     ID_EDIT_CHANNELS_LOCK   "If checked, disables operations on individual stereo channel\nChannels lock"
+    ID_SAMPLERATE_7200      "Set file sample rate to 7200 Hz"
+    ID_SAMPLERATE_8000      "Set file sample rate to 8000 Hz"
+    ID_SAMPLERATE_11025     "Set file sample rate to 11025 Hz"
+    ID_SAMPLERATE_16000     "Set file sample rate to 16000 Hz"
+    ID_SAMPLERATE_22050     "Set file sample rate to 22050 Hz"
+    ID_SAMPLERATE_32000     "Set file sample rate to 32000 Hz"
+    ID_SAMPLERATE_44100     "Set file sample rate to 44100 Hz"
+    ID_SAMPLERATE_48K       "Set file sample rate to 48000 Hz"
+    ID_SAMPLERATE_96K       "Set file sample rate to 96000 Hz"
+END
+
+STRINGTABLE DISCARDABLE 
+BEGIN
+    ID_SAMPLERATE_CUSTOM    "Set other sample rate"
+    ID_CHANNELS_MONO        "Change the file to mono\nMono"
+    ID_CHANNELS_STEREO      "Change the file to stereo\nStereo"
+    ID_SAMPLE_16BIT         "Set sample size to 16 bit\n16 bit"
+    ID_SAMPLE_8BIT          "Set sample size to 8 bit"
 END
 
 #endif    // English (U.S.) resources

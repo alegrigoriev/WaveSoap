@@ -17,6 +17,14 @@
 #define IDR_MENU_FFT_RULER              134
 #define IDD_DIALOGBAR_MDI_CHILD         135
 #define IDD_DIALOG_OPEN_TEMPLATE        136
+#define IDR_MENU_POPUP_SAMPLE_RATE      137
+#define IDR_MENU_POPUP_CHANNELS         138
+#define IDD_DIALOG_COPY_CHANNELS_SELECT 138
+#define IDR_MENU_POPUP_SAMPLE_SIZE      139
+#define IDD_DIALOG_PASTE_MODE_SELECT    139
+#define IDR_MENU_WAVE_VIEW              140
+#define IDR_MENU_WAVE_VIEW_SELECTION    141
+#define IDR_MENU_FFT_VIEW               142
 #define IDC_CURSOR_BEAM                 150
 #define IDC_CURSOR_BEAM_LEFT            151
 #define IDC_CURSOR_BEAM_RIGHT           152
@@ -57,9 +65,13 @@
 #define IDC_EDIT_NOISE_AREA_THRESHOLD_HIGH 1023
 #define IDC_STATIC_FILE_LENGTH          1023
 #define IDC_COMBO_FFT_ORDER             1024
+#define IDC_RADIO_LEFT                  1024
 #define IDC_EDIT_NOISE_REDUCTION        1025
+#define IDC_RADIO_RIGHT                 1025
 #define IDC_EDIT_NOISE_AREA_THRESHOLD_LOW 1026
+#define IDC_RADIO_CHANNEL_BOTH          1026
 #define IDC_BUTTON_MORE                 1027
+#define IDC_RADIO_SELECT                1027
 #define IDC_BUTTON_RESET_DEFAULT        1029
 #define IDC_BUTTON_REVERT_INITIAL       1030
 #define IDC_BUTTON_MORE_SETTINGS        1031
@@ -150,15 +162,37 @@
 #define IDC_PLAY_AND_STOP               -25522
 #define ID_EDIT_MORE_UNDO_REDO          40015
 #define ID_EDIT_CHANNELS_LOCK           40016
+#define ID_SAMPLERATE_7200              40023
+#define ID_SAMPLERATE_8000              40024
+#define ID_SAMPLERATE_11025             40025
+#define ID_SAMPLERATE_16000             40026
+#define ID_SAMPLERATE_22050             40027
+#define ID_SAMPLERATE_32000             40028
+#define ID_SAMPLERATE_44100             40029
+#define ID_SAMPLERATE_48K               40030
+#define ID_SAMPLERATE_96K               40031
+#define ID_SAMPLERATE_CUSTOM            40032
+#define ID_CHANNELS_MONO                40033
+#define ID_CHANNELS_STEREO              40034
+#define ID_SAMPLE_16BIT                 40035
+#define ID_SAMPLE_8BIT                  40036
+#define ID_FFT_BANDS_64                 40037
+#define ID_FFT_BANDS_128                40038
+#define ID_FFT_BANDS_256                40039
+#define ID_FFT_BANDS_512                40040
+#define ID_FFT_BANDS_1024               40041
+#define ID_FFT_BANDS_2048               40042
+#define ID_FFT_BANDS_4096               40043
+#define ID_FFT_BANDS_8192               40044
 
 // Next default values for new objects
 //
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_3D_CONTROLS                     1
-#define _APS_NEXT_RESOURCE_VALUE        137
-#define _APS_NEXT_COMMAND_VALUE         40017
-#define _APS_NEXT_CONTROL_VALUE         1024
+#define _APS_NEXT_RESOURCE_VALUE        139
+#define _APS_NEXT_COMMAND_VALUE         40045
+#define _APS_NEXT_CONTROL_VALUE         1028
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif
