@@ -31,6 +31,11 @@ enum {
 	OperationContextDontAdjustPriority = 0x400,
 	OperationContextInitFailed = 0x800,
 	OperationContextUndoing = 0x1000,
+
+	// CreateUndo was called
+	OperationContextUndoCreated = 0x2000,
+	// when this operation was queued, modify count was incremented
+	OperationContextModifyCountIncremented = 0x4000,
 };
 
 class COperationContext : public ListItem<COperationContext>
@@ -316,9 +321,9 @@ public:
 
 // additional custom flags for the contexts
 enum {
-	FileSaveContext_SavingCopy    = 0x00400000,
-	FileSaveContext_SameName    =   0x00200000,
-	DecompressSavePeakFile = 0x00200000,
+	FileSaveContext_SavingCopy    = 0x40000000,
+	FileSaveContext_SameName    =   0x20000000,
+	DecompressSavePeakFile = 0x20000000,
 };
 
 class CStagedContext : public COperationContext
