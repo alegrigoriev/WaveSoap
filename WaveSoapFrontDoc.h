@@ -207,7 +207,9 @@ public:
 	CString m_CurrentStatusString;
 	bool m_bReadOnly;
 	bool m_bDirectMode;
-	bool m_bClosing;
+	bool m_bClosing;    // tells OnSaveDocument that it is called in close context
+	bool m_bClosePending;   // Save is in progress, request close afterwards
+	bool m_bCloseThisDocumentNow;   // CDocTemplate should close it in OnIdle
 	CSimpleCriticalSection m_cs;
 	COperationContext * m_pCurrentContext;
 	COperationContext * m_pQueuedOperation;
@@ -244,8 +246,10 @@ public:
 		UpdateFrameCounts();
 	}
 	void PostFileSave(CFileSaveContext * pContext);
+	BOOL PostCommitFileSave(int flags, LPCTSTR FullTargetName);
 protected:
 	// save the selected area to the permanent or temporary file
+	BOOL CanCloseFrame(CFrameWnd* pFrameArg);
 	void DoCopy(LONG Start, LONG End, LONG Channel, LPCTSTR FileName);
 	void DoPaste(LONG Start, LONG End, LONG Channel, LPCTSTR FileName);
 	void DoCut(LONG Start, LONG End, LONG Channel);
@@ -355,6 +359,7 @@ protected:
 	afx_msg void OnProcessDoDeclicking();
 	afx_msg void OnUpdateProcessNoiseReduction(CCmdUI* pCmdUI);
 	afx_msg void OnProcessNoiseReduction();
+	afx_msg void OnFileClose();
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 
