@@ -658,6 +658,47 @@ protected:
 	virtual BOOL OperationProc();
 };
 
+class CWaveMixOperation : public CThroughProcessOperation
+{
+	typedef CThroughProcessOperation BaseClass;
+	typedef CWaveMixOperation ThisClass;
+
+public:
+
+	typedef std::auto_ptr<ThisClass> auto_ptr;
+	CWaveMixOperation(class CWaveSoapFrontDoc * pDoc, ULONG Flags = 0,
+					UINT StatusStringId = 0, UINT OperationNameId = 0);
+
+protected:
+	virtual BOOL ProcessBuffer(void * buf, size_t BufferLength, SAMPLE_POSITION offset, BOOL bBackward);
+	virtual double GetSrcMixCoefficient(SAMPLE_INDEX Sample, int Channel) const = 0;
+	virtual double GetDstMixCoefficient(SAMPLE_INDEX Sample, int Channel) const = 0;
+};
+
+enum { FadeInLinear = 1,
+	FadeOutLinear = -FadeInLinear,
+	FadeInSinSquared = 2,
+	FadeOutSinSquared = -FadeInSinSquared,
+	FadeInSine = 3,
+	FadeOutCosine = -FadeInSine,
+};
+
+class CFadeInOutOperation : public CWaveMixOperation
+{
+	typedef CWaveMixOperation BaseClass;
+	typedef CFadeInOutOperation ThisClass;
+
+public:
+
+	typedef std::auto_ptr<ThisClass> auto_ptr;
+	CFadeInOutOperation(class CWaveSoapFrontDoc * pDoc, int FadeCurveType);
+
+protected:
+	virtual double GetSrcMixCoefficient(SAMPLE_INDEX Sample, int Channel) const;
+	virtual double GetDstMixCoefficient(SAMPLE_INDEX Sample, int Channel) const;
+	int m_FadeCurveType;
+};
+
 BOOL InitInsertCopy(CStagedContext * pContext,
 					CWaveFile & DstFile, SAMPLE_INDEX StartDstSample,
 					NUMBER_OF_SAMPLES LengthToReplace, CHANNEL_MASK DstChannel,

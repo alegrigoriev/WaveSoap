@@ -3059,6 +3059,130 @@ BOOL CInsertSilenceContext::InitExpand(CWaveFile & DstFile, SAMPLE_INDEX StartSa
 	}
 	return TRUE;
 }
+/////////////   CWaveMixOperation  /////////////////////////////////////////////
+CWaveMixOperation::CWaveMixOperation(class CWaveSoapFrontDoc * pDoc, ULONG Flags,
+									UINT StatusStringId, UINT OperationNameId)
+	: BaseClass(pDoc, Flags, StatusStringId, OperationNameId)
+{
+}
+
+BOOL CWaveMixOperation::ProcessBuffer(void * buf, size_t BufferLength, SAMPLE_POSITION offset, BOOL /*bBackward*/)
+{
+	int const nChannels = m_DstFile.Channels();
+	ASSERT(m_DstFile.GetSampleType() == SampleType16bit);
+
+	WAVE_SAMPLE * pDst = (WAVE_SAMPLE *) buf;
+	unsigned const SampleSize = m_DstFile.SampleSize();
+
+	NUMBER_OF_SAMPLES nSamples = BufferLength / sizeof pDst[0];
+	SAMPLE_INDEX SampleIndex = offset / SampleSize;
+
+	ASSERT(0 == (offset % m_DstFile.SampleSize()));
+	ASSERT(0 == (BufferLength % m_DstFile.SampleSize()));
+
+	NUMBER_OF_SAMPLES i;
+	bool UseSrc = (m_SrcStart != 0
+					&& m_SrcEnd > m_SrcStart
+					&& m_SrcFile.IsOpen());
+
+	for (i = 0; i < nSamples; i += nChannels, SampleIndex++)
+	{
+		WAVE_SAMPLE tmp[MAX_NUMBER_OF_CHANNELS];
+
+		if (UseSrc)
+		{
+			if (1 != m_SrcFile.ReadSamples(ALL_CHANNELS, offset + m_SrcStart, 1, tmp))
+			{
+				UseSrc = false;
+			}
+		}
+
+		for (long ch = 0, mask = 1; ch < nChannels; ch++, mask <<= 1)
+		{
+			if (m_DstChan & mask)
+			{
+				if (UseSrc)
+				{
+					pDst[i + ch] = DoubleToShort(
+												pDst[i + ch] * GetDstMixCoefficient(SampleIndex, ch)
+												+ tmp[ch] * GetSrcMixCoefficient(SampleIndex, ch));
+				}
+				else
+				{
+					pDst[i + ch] = DoubleToShort(pDst[i + ch] * GetDstMixCoefficient(SampleIndex, ch));
+				}
+			}
+		}
+		offset += SampleSize;
+	}
+
+	return TRUE;
+}
+
+///////////// CFadeInOutOperation /////////////////////////////////////////////
+
+CFadeInOutOperation::CFadeInOutOperation(class CWaveSoapFrontDoc * pDoc, int FadeCurveType)
+	: BaseClass(pDoc)
+	, m_FadeCurveType(FadeCurveType)
+{
+}
+
+double CFadeInOutOperation::GetSrcMixCoefficient(SAMPLE_INDEX Sample, int /*Channel*/) const
+{
+	double const Fraction = (Sample + 0.5) * m_DstFile.SampleSize() / (m_DstStart - m_DstEnd);
+
+	switch (m_FadeCurveType)
+	{
+	case FadeOutLinear:
+		return Fraction;
+		break;
+	case FadeInLinear:
+		return 1. - Fraction;
+		break;
+	case FadeOutSinSquared:
+		return 0.5 * (1. - cos(M_PI * Fraction));
+		break;
+	case FadeInSinSquared:
+		return 0.5 * (1. + cos(M_PI * Fraction));
+		break;
+	case FadeOutCosine:
+		return sin(M_PI * 0.5 * Fraction);
+		break;
+	case FadeInSine:
+		return cos(M_PI * 0.5 * Fraction);
+		break;
+	}
+	return 0.;
+}
+
+double CFadeInOutOperation::GetDstMixCoefficient(SAMPLE_INDEX Sample, int /*Channel*/) const
+{
+	double const Fraction = (Sample + 0.5) * m_DstFile.SampleSize() / (m_DstStart - m_DstEnd);
+
+	switch (m_FadeCurveType)
+	{
+	case FadeInLinear:
+		return Fraction;
+		break;
+	case FadeOutLinear:
+		return 1. - Fraction;
+		break;
+	case FadeInSinSquared:
+		return 0.5 * (1. - cos(M_PI * Fraction));
+		break;
+	case FadeOutSinSquared:
+		return 0.5 * (1. + cos(M_PI * Fraction));
+		break;
+	case FadeInSine:
+		return sin(M_PI * 0.5 * Fraction);
+		break;
+	case FadeOutCosine:
+		return cos(M_PI * 0.5 * Fraction);
+		break;
+	}
+	return 1.;
+}
+
 ///////////////////////////////////////////////////////////////////////
 BOOL InitExpandOperation(CStagedContext * pContext,
 						CWaveFile & File, SAMPLE_INDEX StartSample,
