@@ -225,6 +225,7 @@ BEGIN
             MENUITEM "Save Al&l\tCtrl+Shift+S",     ID_FILE_SAVE_ALL
             MENUITEM "Save &Selection As...\tCtrl+Shift+F12", 
                                                     ID_SAVE_SAVESELECTIONAS
+            MENUITEM "Split to files...",           ID_SAVE_SPLIT_TO_FILES
         END
         MENUITEM "&Close\tCtrl+Shift+F4",       ID_FILE_CLOSE
         MENUITEM SEPARATOR
@@ -2390,6 +2391,59 @@ BEGIN
     PUSHBUTTON      "Cancel",IDCANCEL,101,110,50,14
 END
 
+IDD_DIALOG_SPLIT_TO_FILES DIALOGEX 0, 0, 359, 339
+STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | 
+    WS_SYSMENU
+CAPTION "Split to files"
+FONT 8, "MS Shell Dlg", 0, 0, 0x0
+BEGIN
+    CONTROL         "",IDC_LIST_FILES,"SysListView32",LVS_REPORT | 
+                    LVS_SINGLESEL | LVS_SHOWSELALWAYS | LVS_EDITLABELS | 
+                    LVS_ALIGNLEFT | LVS_NOSORTHEADER | WS_BORDER | 
+                    WS_TABSTOP,7,7,277,119
+    LTEXT           "Save to:",IDC_STATIC,17,239,58,8
+    COMBOBOX        IDC_COMBO_SAVE_DIR,77,237,209,71,CBS_DROPDOWN | 
+                    WS_VSCROLL | WS_TABSTOP
+    PUSHBUTTON      "...",IDC_BUTTON_BROWSE_FOLDER,291,236,23,14
+    LTEXT           "Save as type:",IDC_STATIC,17,256,58,8
+    COMBOBOX        IDC_COMBO_FILE_TYPE,77,254,209,62,CBS_DROPDOWNLIST | 
+                    CBS_SORT | WS_VSCROLL | WS_TABSTOP
+    LTEXT           "&Format: ",IDC_STATIC_FORMAT,17,273,58,8
+    COMBOBOX        IDC_COMBO_FORMAT_TAG,77,271,165,91,CBS_DROPDOWNLIST | 
+                    WS_VSCROLL | WS_TABSTOP
+    CONTROL         "&Compatible formats only",IDC_CHECK_COMPATIBLE_FORMATS,
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,247,272,94,10
+    LTEXT           "Attributes:",IDC_STATIC_FORMAT_ATTRIBUTES,17,289,58,8
+    COMBOBOX        IDC_COMBO_FORMAT_ATTRIBUTES,77,287,209,91,
+                    CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+    LTEXT           "Selectio&n:",IDC_STATIC,18,136,58,8
+    COMBOBOX        IDC_COMBO_SELECTION,78,134,209,72,CBS_DROPDOWNLIST | 
+                    WS_VSCROLL | WS_TABSTOP
+    LTEXT           "&Start:",IDC_STATIC,18,155,58,8
+    COMBOBOX        IDC_COMBO_START,78,153,192,39,CBS_DROPDOWN | WS_VSCROLL | 
+                    WS_TABSTOP
+    CONTROL         "Spin1",IDC_SPIN_START,"msctls_updown32",UDS_ALIGNRIGHT | 
+                    UDS_AUTOBUDDY | UDS_ARROWKEYS,273,152,12,14
+    LTEXT           "&End:",IDC_STATIC,18,172,58,8
+    COMBOBOX        IDC_COMBO_END,78,170,192,39,CBS_DROPDOWN | WS_VSCROLL | 
+                    WS_TABSTOP
+    CONTROL         "Spin1",IDC_SPIN_END,"msctls_updown32",UDS_ALIGNRIGHT | 
+                    UDS_AUTOBUDDY | UDS_ARROWKEYS,273,169,12,14
+    LTEXT           "&Length:",IDC_STATIC,18,190,58,8
+    EDITTEXT        IDC_EDIT_LENGTH,78,187,192,14,ES_AUTOHSCROLL
+    CONTROL         "Spin1",IDC_SPIN_LENGTH,"msctls_updown32",UDS_ALIGNRIGHT | 
+                    UDS_AUTOBUDDY | UDS_ARROWKEYS,273,187,12,14
+    LTEXT           "&Time format: ",IDC_STATIC,18,208,53,8
+    COMBOBOX        IDC_COMBO_TIME_FORMAT,78,206,140,53,CBS_DROPDOWNLIST | 
+                    WS_VSCROLL | WS_TABSTOP
+    PUSHBUTTON      "&Play",IDC_BUTTON_PLAY,68,313,50,14,WS_DISABLED | 
+                    WS_GROUP
+    DEFPUSHBUTTON   "OK",IDOK,154,313,50,14
+    PUSHBUTTON      "Cancel",IDCANCEL,240,313,50,14
+    PUSHBUTTON      "New",IDC_BUTTON3,302,18,50,14
+    PUSHBUTTON      "Delete",IDC_BUTTON4,302,36,50,14
+END
+
 
 /////////////////////////////////////////////////////////////////////////////
 //
@@ -2826,6 +2880,14 @@ BEGIN
         TOPMARGIN, 7
         BOTTOMMARGIN, 124
     END
+
+    IDD_DIALOG_SPLIT_TO_FILES, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 352
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 332
+    END
 END
 #endif    // APSTUDIO_INVOKED
 
@@ -2993,6 +3055,19 @@ BEGIN
 END
 
 IDD_REGION_DIALOG DLGINIT
+BEGIN
+    IDC_COMBO_TIME_FORMAT, 0x403, 8, 0
+0x6153, 0x706d, 0x656c, 0x0073, 
+    IDC_COMBO_TIME_FORMAT, 0x403, 13, 0
+0x6868, 0x6d3a, 0x3a6d, 0x7373, 0x732e, 0x7373, "\000" 
+    IDC_COMBO_TIME_FORMAT, 0x403, 8, 0
+0x6553, 0x6f63, 0x646e, 0x0073, 
+    IDC_COMBO_TIME_FORMAT, 0x403, 17, 0
+0x6868, 0x6d3a, 0x3a6d, 0x7373, 0x432e, 0x6644, 0x6172, 0x656d, "\000" 
+    0
+END
+
+IDD_DIALOG_SPLIT_TO_FILES DLGINIT
 BEGIN
     IDC_COMBO_TIME_FORMAT, 0x403, 8, 0
 0x6153, 0x706d, 0x656c, 0x0073, 
@@ -3776,6 +3851,16 @@ BEGIN
     IDS_NOISE_REDUCTION_LOAD_TITLE "Load Noise Reduction Settings"
     IDS_CLICK_REMOVAL_SAVE_TITLE "Save Click Removal Settings As"
     IDS_CLICK_REMOVAL_LOAD_TITLE "Load Click Removal Settings"
+    IDS_FILE_LIST_NAME_COLUMN "Name"
+    IDS_FILE_LIST_BEGIN_COLUMN "Begin"
+    IDS_FILE_LIST_END_COLUMN "End"
+    IDS_FILE_LIST_LENGTH_COLUMN "Length"
+    IDS_SELECT_SAVE_TO_FOLDER "Save Files To Folder"
+END
+
+STRINGTABLE 
+BEGIN
+    ID_SAVE_SPLIT_TO_FILES  "Save as multiple files, split by default on the markers"
 END
 
 #endif    // English (U.S.) resources

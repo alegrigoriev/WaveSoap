@@ -121,6 +121,8 @@
 #define IDR_MENU_TIME_RULER_MARKER1     195
 #define IDR_MENU_TIME_RULER_REGION      195
 #define IDD_DIALOG_FADEINOUT            195
+#define IDD_SELECTION_DIALOG_MONO1      196
+#define IDD_DIALOG_SPLIT_TO_FILES       196
 #define IDC_EDIT_MIN_CLICK_AMPLITUDE    1000
 #define IDC_TAB_SWITCH_VIEW_MODE        1000
 #define IDC_CHECK_LOG_CLICKS            1001
@@ -158,6 +160,7 @@
 #define IDC_COMBO_ATTRIBUTES            1011
 #define IDC_COMBO_END                   1011
 #define IDC_CHECK_DIRECT                1012
+#define IDC_COMBO_FORMAT_TAG            1012
 #define IDC_COMBO1                      1013
 #define IDC_COMBO_RECENT                1013
 #define IDC_COMBODB_PERCENT             1013
@@ -167,6 +170,8 @@
 #define IDC_COMBO_SAVED_EXPRESSION_GROUP 1013
 #define IDC_COMBO_SAMPLING_RATE         1013
 #define IDC_COMBO_GROUP                 1014
+#define IDC_COMBO_ATTRIBUTES2           1014
+#define IDC_COMBO_FORMAT_ATTRIBUTES     1014
 #define IDC_STATIC_FILE_TYPE            1016
 #define IDC_STATIC_FILE_FORMAT          1017
 #define IDC_EDIT_LOWER_FREQUENCY        1018
@@ -386,6 +391,7 @@
 #define IDC_STATIC_GROUPBOX             1257
 #define IDC_COMBO3                      1258
 #define IDC_COMBO_TRIGGER               1258
+#define IDC_COMBO_SAVE_DIR              1258
 #define IDC_COMBO_MARKER_NAME           1259
 #define IDC_RADIO_MARKER                1260
 #define IDC_RADIO_REGION                1261
@@ -401,6 +407,10 @@
 #define IDC_RADIO_SQUARED_SINE          1270
 #define IDC_BUTTON_DELETE               1271
 #define IDC_BUTTON_SAVE                 1272
+#define IDC_LIST_FILES                  1273
+#define IDC_BUTTON_BROWSE_FOLDER        1274
+#define IDC_COMBO_FILE_TYPE             1276
+#define IDC_STATIC_FORMAT_ATTRIBUTES    1277
 #define IDC_VIEW_RULER_SAMPLES          32771
 #define IDC_VIEW_RULER_HHMMSS           32772
 #define IDC_VIEW_RULER_SECONDS          32773
@@ -755,6 +765,11 @@
 #define IDS_CLICK_REMOVAL_SAVE_TITLE    33111
 #define IDS_NOISE_REDUCTION_LOAD_TITLE2 33112
 #define IDS_CLICK_REMOVAL_LOAD_TITLE    33112
+#define IDS_FILE_LIST_NAME_COLUMN       33113
+#define IDS_FILE_LIST_BEGIN_COLUMN      33114
+#define IDS_FILE_LIST_END_COLUMN        33115
+#define IDS_FILE_LIST_LENGTH_COLUMN     33116
+#define IDS_SELECT_SAVE_TO_FOLDER       33117
 #define ID_FILE_PROPERTIES              40000
 #define ID_VIEW_ZOOMVERT_NORMAL         40001
 #define ID_VIEW_ZOOMIN_HOR_FULL         40002
@@ -864,6 +879,7 @@
 #define IDC_VIEW_STATUS_HHMMSSFF        40140
 #define IDC_VIEW_RULER_HHMMSSFF         40141
 #define ID_TOOLS_SYNTHESIS              40142
+#define ID_SAVE_SPLIT_TO_FILES          40144
 
 // Next default values for new objects
 //
@@ -871,8 +887,8 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_3D_CONTROLS                     1
 #define _APS_NEXT_RESOURCE_VALUE        196
-#define _APS_NEXT_COMMAND_VALUE         40143
-#define _APS_NEXT_CONTROL_VALUE         1273
+#define _APS_NEXT_COMMAND_VALUE         40145
+#define _APS_NEXT_CONTROL_VALUE         1278
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif
