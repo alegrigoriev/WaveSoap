@@ -322,7 +322,12 @@ void CTimeRulerView::DrawRulerHhMmSs(CDC* pDC)
 		{
 			// draw bigger tick (6 pixels high) and the number
 			pDC->LineTo(x - 1, cr.bottom - 12);
-			CString s = TimeToHhMmSs((time + 0.0005) * 1000, DistTime < 1.);
+			int flags = TimeToHhMmSs_NeedsHhMm;
+			if (DistTime < 1.)
+			{
+				flags = TimeToHhMmSs_NeedsHhMm | TimeToHhMmSs_NeedsMs;
+			}
+			CString s = TimeToHhMmSs((time + 0.0005) * 1000, flags);
 
 			pDC->TextOut(x + 2, cr.bottom - 9, s);
 
@@ -546,4 +551,12 @@ void CTimeRulerView::OnViewRulerSeconds()
 void CTimeRulerView::OnUpdateViewRulerSeconds(CCmdUI* pCmdUI)
 {
 	pCmdUI->SetRadio(m_CurrentDisplayMode == ShowSeconds);
+}
+
+void CTimeRulerView::OnUpdate( CView* pSender, LPARAM lHint, CObject* pHint )
+{
+	if (NULL == pHint)
+	{
+		Invalidate();
+	}
 }
