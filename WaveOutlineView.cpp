@@ -489,8 +489,8 @@ BOOL CWaveOutlineView::EraseBkgnd(CDC* pDC)
 	GetClientRect( & r);
 
 	NUMBER_OF_SAMPLES nSamples = pDoc->WaveFileSamples();
-	int SelBegin = MulDiv(pDoc->m_SelectionStart, r.Width(), nSamples);
-	int SelEnd = MulDiv(pDoc->m_SelectionEnd, r.Width(), nSamples);
+	long SelBegin = MulDiv(pDoc->m_SelectionStart, r.Width(), nSamples);
+	long SelEnd = MulDiv(pDoc->m_SelectionEnd, r.Width(), nSamples);
 
 	if (pDoc->m_SelectionEnd != pDoc->m_SelectionStart
 		&& SelEnd == SelBegin)
