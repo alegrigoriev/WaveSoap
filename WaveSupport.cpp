@@ -926,6 +926,7 @@ bool CAudioCompressionManager::FillMultiFormatArray(unsigned nSelFrom, unsigned 
 
 		if (BladeMp3Encoder::GetTag() == m_FormatTags[sel].Tag)
 		{
+			// todo: handle "Compatible formats" flag
 			FillLameEncoderFormats();
 			continue;
 		}
@@ -990,19 +991,30 @@ bool CAudioCompressionManager::FillMultiFormatArray(unsigned nSelFrom, unsigned 
 				{
 					// if PCM format, add exact format to the list, and its
 					// mono/stereo counterpart (if compatible not selected).
-					ACMFORMATDETAILS afd;
-					afd.cbStruct = sizeof afd;
-					afd.dwFormatIndex = 0;
-					afd.dwFormatTag = pwfx.FormatTag();
-					afd.fdwSupport = 0;
-					afd.pwfx = pwfx;
-					afd.cbwfx = sizeof (WAVEFORMATEX) + pwfx.m_pWf->cbSize;
-
-					res = acmFormatDetails(had, & afd, ACM_FORMATDETAILSF_FORMAT);
-					if (MMSYSERR_NOERROR == res)
+					for (int j = 0; j != 2; j++)
 					{
-						m_Formats.insert(m_Formats.end(),
-										FormatItem(afd.pwfx, afd.szFormat, sel));
+						ACMFORMATDETAILS afd;
+						afd.cbStruct = sizeof afd;
+						afd.dwFormatIndex = 0;
+						afd.dwFormatTag = WAVE_FORMAT_PCM;
+						afd.fdwSupport = 0;
+						afd.pwfx = pwfx;
+						afd.cbwfx = sizeof (PCMWAVEFORMAT);
+
+						res = acmFormatDetails(had, & afd, ACM_FORMATDETAILSF_FORMAT);
+						if (MMSYSERR_NOERROR == res)
+						{
+							m_Formats.insert(m_Formats.end(),
+											FormatItem(afd.pwfx, afd.szFormat, sel));
+						}
+						if (16 == pwfx.BitsPerSample())
+						{
+							break;
+						}
+
+						// make sure 16 bits format is on the list
+						pwfx.InitFormat(WAVE_FORMAT_PCM, m_Wf.SampleRate(), ch,
+										16);
 					}
 				}
 				else
