@@ -1486,6 +1486,11 @@ long CDirectFileCache::GetDataBuffer(File * pFile,
 		return 0;
 	}
 
+	// BUGBUG: If the buffer is requested for write only, it may be re-read!. We don't want
+	// that, unless we have file locking (which may be prone to deadlocks)
+	// For now, we ingore such flag.
+	flags &= ~CDirectFile::GetBufferWriteOnly;
+
 	long BytesRequested = 0;
 	long BytesReturned = 0;
 	int OffsetInBuffer = 0;
@@ -1619,6 +1624,8 @@ long CDirectFileCache::GetDataBuffer(File * pFile,
 	DWORD MaskToRead = RequestedMask;
 	if (flags & CDirectFile::GetBufferWriteOnly)
 	{
+		// BUGBUG: If the buffer is requested for write only,
+		// make sure to not reread those pages!
 		MaskToRead = ~RequestedMask;
 		if (OffsetInBuffer & MASK_OFFSET_IN_SUBBLOCK)
 		{
