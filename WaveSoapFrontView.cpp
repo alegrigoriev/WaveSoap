@@ -88,12 +88,13 @@ BEGIN_MESSAGE_MAP(CWaveSoapFrontView, BaseClass)
 	ON_COMMAND(ID_VIEW_HOR_SCALE_8192, OnViewHorScale8192)
 	ON_WM_TIMER()
 	ON_WM_CAPTURECHANGED()
+	ON_WM_LBUTTONDBLCLK()
+	ON_COMMAND(ID_VIEW_ZOOMPREVIOUS, OnViewZoomprevious)
 	//}}AFX_MSG_MAP
 	// Standard printing commands
 	//ON_COMMAND(ID_FILE_PRINT, OnFilePrint)
 	//ON_COMMAND(ID_FILE_PRINT_DIRECT, OnFilePrint)
 	//ON_COMMAND(ID_FILE_PRINT_PREVIEW, OnFilePrintPreview)
-	ON_WM_LBUTTONDBLCLK()
 END_MESSAGE_MAP()
 
 /////////////////////////////////////////////////////////////////////////////
@@ -101,6 +102,7 @@ END_MESSAGE_MAP()
 
 CWaveSoapFrontView::CWaveSoapFrontView()
 	: m_HorizontalScale(2048),
+	m_PrevHorizontalScale(-1),
 	m_VerticalScale(1.),
 	m_WaveOffsetY(0.),
 //m_FirstSampleInBuffer(0),
@@ -720,6 +722,7 @@ void CWaveSoapFrontView::AdjustNewScale(double OldScaleX, double OldScaleY,
 										double & NewScaleX, double & NewScaleY)
 {
 	//NewScaleY = OldScaleY;  // vertical scale never changes
+	int PreviousScaleX = m_HorizontalScale;
 
 	m_HorizontalScale = int(1. / NewScaleX);
 	if (m_HorizontalScale < 1)
@@ -737,6 +740,11 @@ void CWaveSoapFrontView::AdjustNewScale(double OldScaleX, double OldScaleY,
 	}
 	m_HorizontalScale = 1L <<i;
 	NewScaleX = 1. / m_HorizontalScale;
+
+	if (PreviousScaleX != m_HorizontalScale)
+	{
+		m_PrevHorizontalScale = PreviousScaleX;
+	}
 
 	if (TRACE_DRAWING) TRACE("Old scale X=%g, New scale X=%g, Old scale Y=%g, New scale Y=%g\n",
 							OldScaleX, NewScaleX, OldScaleY, NewScaleY);
@@ -1459,11 +1467,14 @@ void CWaveSoapFrontView::OnMouseMove(UINT nFlags, CPoint point)
 		CView::OnMouseMove(nFlags, point);
 		if (nKeyPressed != 0)
 		{
-			if (bIsTrackingSelection)
+			if ( ! bIsTrackingSelection)
 			{
-			}
-			else
-			{
+				if (pDoc->m_CaretPosition >= nSampleUnderMouse
+					&& pDoc->m_CaretPosition < SAMPLE_INDEX(WindowToWorldX(point.x + 1)))
+				{
+					// mouse didn't move outside this column
+					return;
+				}
 				bIsTrackingSelection = TRUE;
 				SetCapture();
 			}
@@ -1520,7 +1531,6 @@ void CWaveSoapFrontView::OnMouseMove(UINT nFlags, CPoint point)
 	}
 	else
 	{
-
 		BaseClass::OnMouseMove(nFlags, point);
 	}
 }
@@ -2887,5 +2897,18 @@ void CWaveSoapFrontView::AdjustCaretVisibility(SAMPLE_INDEX CaretPos, SAMPLE_IND
 		{
 			MovePointIntoView(LastSample, TRUE);
 		}
+	}
+}
+
+void CWaveSoapFrontView::OnViewZoomprevious()
+{
+	// TODO: Add your command handler code here
+	if (m_PrevHorizontalScale >= 1)
+	{
+		double zoom = double(m_HorizontalScale) / m_PrevHorizontalScale;
+		m_PrevHorizontalScale = m_HorizontalScale;
+
+		Zoom(zoom, 1., CPoint(INT_MAX, INT_MAX));
+		MovePointIntoView(GetDocument()->m_CaretPosition, TRUE);
 	}
 }
