@@ -2544,23 +2544,56 @@ LRESULT CExpressionEvaluationDialog::OnKickIdle(WPARAM w, LPARAM l)
 	return BaseClass::OnKickIdle(w, l);
 }
 
-CExpressionEvaluationContext * CExpressionEvaluationDialog::GetExpressionContext()
+COperationContext * CExpressionEvaluationDialog::GetExpressionContext()
 {
-	CExpressionEvaluationContext * pContext = m_pContext;
-
-	pContext->m_dFrequencyArgument = m_OperandsTabDlg.m_dFrequency;
-	pContext->m_dFrequencyArgument1 = m_OperandsTabDlg.m_dFrequency1;
-	pContext->m_dFrequencyArgument2 = m_OperandsTabDlg.m_dFrequency2;
-	pContext->m_dFrequencyArgument3 = m_OperandsTabDlg.m_dFrequency3;
-
-	if ( ! pContext->InitDestination(m_WaveFile,
-									GetStart(), GetEnd(), GetChannel(), UndoEnabled()))
+	if (NULL == m_pContext)
 	{
 		return NULL;
 	}
 
+	m_pContext->m_dFrequencyArgument = m_OperandsTabDlg.m_dFrequency;
+	m_pContext->m_dFrequencyArgument1 = m_OperandsTabDlg.m_dFrequency1;
+	m_pContext->m_dFrequencyArgument2 = m_OperandsTabDlg.m_dFrequency2;
+	m_pContext->m_dFrequencyArgument3 = m_OperandsTabDlg.m_dFrequency3;
+
+	if ( ! m_pContext->InitDestination(m_WaveFile,
+										GetStart(), GetEnd(), GetChannel(), FALSE))
+	{
+		return NULL;
+	}
+
+	NUMBER_OF_SAMPLES NumSamples = m_WaveFile.NumberOfSamples();
+
+	CStagedContext::auto_ptr pStagedContext(new CStagedContext(m_pContext->pDocument, 0,
+																IDS_EXPRESSION_STATUS_PROMPT, IDS_EXPRESSION_OPERATION_NAME));
+
+	if (GetEnd() > NumSamples)
+	{
+		if ( ! InitExpandOperation(pStagedContext.get(), m_WaveFile, NumSamples, GetEnd() - NumSamples, GetChannel()))
+		{
+			return NULL;
+		}
+
+		m_pContext->SetSaveForUndo(GetStart(), NumSamples);
+		CSaveTrimmedOperation * pSave = new CSaveTrimmedOperation(m_pContext->pDocument,
+											m_pContext->m_DstFile, NumSamples, GetStart() + GetEnd(), GetChannel());
+		m_pContext->m_UndoChain.InsertHead(pSave);
+	}
+	else
+	{
+		m_pContext->SetSaveForUndo(GetStart(), GetEnd());
+	}
+
+	pStagedContext->AddContext(m_pContext);
+
 	m_pContext = NULL;
 
-	return pContext;
+	if (UndoEnabled()
+		&& ! pStagedContext->CreateUndo())
+	{
+		return NULL;
+	}
+
+	return pStagedContext.release();
 }
 

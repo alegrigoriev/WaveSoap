@@ -599,7 +599,7 @@ public:
 								class CExpressionEvaluationContext * pContext,
 								CWnd* pParent = NULL);   // standard constructor
 	~CExpressionEvaluationDialog();
-	class CExpressionEvaluationContext * GetExpressionContext();
+	class COperationContext * GetExpressionContext();
 
 protected:
 // Dialog Data
