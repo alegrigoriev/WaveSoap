@@ -1401,6 +1401,13 @@ void CWaveFile::RescanPeaks(SAMPLE_INDEX begin, SAMPLE_INDEX end)
 
 	unsigned GranuleSize = Channels() * Granularity * sizeof(WAVE_SAMPLE);
 
+	if (begin > end)
+	{
+		SAMPLE_INDEX tmp = begin;
+		begin = end;
+		end = tmp;
+	}
+
 	MEDIA_FILE_POSITION Pos = nSampleSize * (begin & -int(Granularity)) + dwDataChunkOffset;
 
 	MEDIA_FILE_POSITION EndPos = nSampleSize * ((end | (Granularity - 1)) + 1);
