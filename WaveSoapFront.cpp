@@ -1086,23 +1086,45 @@ void _AfxAppendFilterSuffix(CString& filter, OPENFILENAME& ofn,
 		pTemplate->GetDocString(strFilterName, CDocTemplate::filterName) &&
 		!strFilterName.IsEmpty())
 	{
-		// a file based document template - add to filter list
-		ASSERT(strFilterExt[0] == '.');
 		if (pstrDefaultExt != NULL)
-		{
-			// set the default extension
-			*pstrDefaultExt = ((LPCTSTR)strFilterExt) + 1;  // skip the '.'
-			ofn.lpstrDefExt = (LPTSTR)(LPCTSTR)(*pstrDefaultExt);
-			ofn.nFilterIndex = ofn.nMaxCustFilter + 1;  // 1 based number
-		}
+			pstrDefaultExt->Empty();
 
 		// add to filter
 		filter += strFilterName;
 		ASSERT(!filter.IsEmpty());  // must have a file type name
 		filter += (TCHAR)'\0';  // next string please
-		filter += (TCHAR)'*';
-		filter += strFilterExt;
-		filter += (TCHAR)'\0';  // next string please
+
+		CString strExtension;
+
+		for (int iStart = 0; strExtension = strFilterExt.Tokenize( _T( ";" ), iStart ), iStart != -1; )
+		{
+
+			// a file based document template - add to filter list
+
+			// If you hit the following ASSERT, your document template
+			// string is formatted incorrectly.  The section of your
+			// document template string that specifies the allowable file
+			// extensions should be formatted as follows:
+			//    .<ext1>;.<ext2>;.<ext3>
+			// Extensions may contain wildcards (e.g. '?', '*'), but must
+			// begin with a '.' and be separated from one another by a ';'.
+			// Example:
+			//    .jpg;.jpeg
+			ASSERT(strExtension[0] == '.');
+			if ((pstrDefaultExt != NULL) && pstrDefaultExt->IsEmpty())
+			{
+				// set the default extension
+				*pstrDefaultExt = strExtension.Mid( 1 );  // skip the '.'
+				ofn.lpstrDefExt = const_cast< LPTSTR >((LPCTSTR)(*pstrDefaultExt));
+				ofn.nFilterIndex = ofn.nMaxCustFilter + 1;  // 1 based number
+			}
+
+			filter += (TCHAR)'*';
+			filter += strExtension;
+			filter += (TCHAR)';';  // Always append a ';'.  The last ';' will get replaced with a '\0' later.
+		}
+
+		filter.SetAt( filter.GetLength()-1, '\0' );;  // Replace the last ';' with a '\0'
 		ofn.nMaxCustFilter++;
 	}
 }
