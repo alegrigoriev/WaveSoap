@@ -510,6 +510,7 @@
 #define ID_VIEW_SHOW_CROSSHAIR          40098
 #define ID_VIEW_SS_ZOOMVERT_NORMAL      40099
 #define ID_PROCESS_EQUALIZER            40100
+#define ID_TOOLS_SYNTHESIS              65535
 
 // Next default values for new objects
 //
@@ -517,7 +518,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_3D_CONTROLS                     1
 #define _APS_NEXT_RESOURCE_VALUE        179
-#define _APS_NEXT_COMMAND_VALUE         40104
+#define _APS_NEXT_COMMAND_VALUE         40105
 #define _APS_NEXT_CONTROL_VALUE         1178
 #define _APS_NEXT_SYMED_VALUE           101
 #endif

@@ -379,7 +379,6 @@ void CEqualizerGraphWnd::OnPaint()
 	dc.GetClipBox( & ur);
 	dc.SetMapMode(MM_TEXT);
 	CGdiObject * pOldPen = dc.SelectStockObject(BLACK_PEN);
-	CGdiObject * pOldBrush = dc.SelectStockObject(NULL_BRUSH);
 	ur.left -= 2;
 	if (ur.left < 0)
 	{
@@ -405,26 +404,48 @@ void CEqualizerGraphWnd::OnPaint()
 			dc.LineTo(x, y);
 		}
 	}
-	int dx = GetSystemMetrics(SM_CXDRAG);
-	int dy = GetSystemMetrics(SM_CYDRAG);
+	int dx = GetSystemMetrics(SM_CXSIZEFRAME);
+	int dy = GetSystemMetrics(SM_CYSIZEFRAME);
+	// ATI drivers can't draw small circles, use intermediate memory bitmap
+	CBitmap bmp;
+	// bitmap width and height
+	int w = dx * 2 + 4;
+	int h = dy * 2 + 4;
+	bmp.CreateBitmap(2 * w, h, 1, 1, NULL);
+	CDC cdc;
+	cdc.CreateCompatibleDC( & dc);
+	CBitmap * pOldBitmap = cdc.SelectObject( & bmp);
+
+	CGdiObject * pOldBrush = cdc.SelectStockObject(WHITE_BRUSH);
+	CGdiObject * pOldCdcPen = cdc.SelectStockObject(WHITE_PEN);
+	cdc.Rectangle(0, 0, 2 * w, h);
+	cdc.SelectStockObject(BLACK_PEN);
+
+	cdc.Ellipse(0, 0, 2 * dx, 2 * dy);
+
+	cdc.SelectStockObject(WHITE_BRUSH);
+	cdc.Ellipse(w, 0, w + 2 * dx, 2 * dy);
+
+	cdc.SelectObject(pOldCdcPen);
+	cdc.SelectObject(pOldBrush);
+
+	pOldBrush = dc.SelectStockObject(NULL_BRUSH);
+	dc.SetBkColor(0xFFFFFF);
+	dc.SetTextColor(0x000000);
 
 	for (int i = 0; i < m_NumOfBands; i++)
 	{
 		// draw circles around the reference points
 		int x = cr.Width() * (i * 2 + 1) / (2 * m_NumOfBands);
 		int y = (1 - log10(m_BandGain[i])) * cr.Height() / 2;
-		CRect r(x - dx, y - dy, x + dx, y + dy);
-
+		int SrcOffset = 0;
 		if (m_DotCaretIsOn && i == m_BandWithFocus)
 		{
-			dc.SelectStockObject(BLACK_BRUSH);
+			SrcOffset = w;
 		}
-		else
-		{
-			dc.SelectStockObject(NULL_BRUSH);
-		}
-		dc.Ellipse(& r);
+		dc.BitBlt(x - dx, y - dy, w, h, & cdc, SrcOffset, 0, SRCAND);
 	}
+	cdc.SelectObject(pOldBitmap);
 	dc.SelectObject(pOldBrush);
 	dc.SelectObject(pOldPen);
 }
@@ -847,11 +868,10 @@ void CEqualizerGraphWnd::OnNcPaint(UINT wParam)
 	wr.bottom = wr.Height();
 	wr.top = 0;
 	ncp.rgrc[0] = wr;
-	//OnNcCalcSize(FALSE, & ncp);
-	SendMessage(WM_NCCALCSIZE, FALSE, (LPARAM) & ncp);
-	//CRgn ClientRgn;
-	//ClientRgn.CreateRectRgnIndirect( & ncp.rgrc[0]);
+	OnNcCalcSize(FALSE, & ncp);
+	//SendMessage(WM_NCCALCSIZE, FALSE, (LPARAM) & ncp);
 	pDC->ExcludeClipRect( & ncp.rgrc[0]);
+
 	// Paint into this DC
 	CBrush BkBrush;
 	CWnd * pParentDlg = GetParent();

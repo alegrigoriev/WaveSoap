@@ -152,6 +152,10 @@ BEGIN
     BUTTON      ID_VIEW_ZOOMINHOR2
     BUTTON      ID_VIEW_ZOOMOUTHOR2
     BUTTON      ID_VIEW_ZOOM_SELECTION
+    SEPARATOR
+    BUTTON      ID_PROCESS_SYNTHESIS_EXPRESSION_EVALUATION
+    BUTTON      ID_PROCESS_EQUALIZER
+    BUTTON      ID_PROCESS_DCOFFSET
 END
 
 
@@ -299,7 +303,7 @@ BEGIN
         MENUITEM "I&nterpolate",                ID_TOOLS_INTERPOLATE
         MENUITEM "&Expression Evaluation...",   ID_PROCESS_SYNTHESIS_EXPRESSION_EVALUATION
 
-        MENUITEM "&Synthesis",                  65535
+        MENUITEM "&Synthesis",                  ID_TOOLS_SYNTHESIS
         MENUITEM "CD &Grabber..",               ID_TOOLS_CDGRAB
         MENUITEM SEPARATOR
         MENUITEM "&Preferences...",             ID_TOOLS_OPTIONS
