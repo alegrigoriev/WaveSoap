@@ -257,10 +257,6 @@ public:
 
 	CHANNEL_MASK m_SelectedChannel;
 	bool m_TimeSelectionMode;
-	BOOL m_UseFadeInOut;
-	int m_FadeInOutLengthMs;
-	int m_FadeInEnvelope;
-	int m_FadeOutEnvelope;
 
 	CHANNEL_MASK GetSelectedChannel() const;
 
@@ -329,6 +325,11 @@ public:
 	CHANNEL_MASK m_PrevChannelToCopy;
 	PASTE_MODE m_DefaultPasteMode;
 	PASTE_RESAMPLE_MODE m_PasteResampleMode;
+
+	BOOL m_UseFadeInOut;
+	int m_FadeInOutLengthMs;
+	int m_FadeInEnvelope;
+	int m_FadeOutEnvelope;
 
 	CString m_CurrentStatusString;
 	CSimpleCriticalSection m_StatusStringLock;
