@@ -201,23 +201,16 @@ void CVolumeChangeDialog::UpdateEnables()
 
 void CVolumeChangeDialog::OnButtonSelection()
 {
-	CSelectionDialog dlg;
-	dlg.m_Start = m_Start;
-	dlg.m_End = m_End;
-	dlg.m_CaretPosition = m_CaretPosition;
-	dlg.m_Length = m_End - m_Start;
-	dlg.m_FileLength = m_FileLength;
-	dlg.m_Chan = m_Chan + 1;
-	dlg.m_pWf = m_pWf;
-	dlg.m_TimeFormat = m_TimeFormat;
+	CSelectionDialog dlg(m_Start, m_End, m_CaretPosition, m_Chan + 1, m_FileLength, m_pWf, m_TimeFormat);
 
 	if (IDOK != dlg.DoModal())
 	{
 		return;
 	}
-	m_Start = dlg.m_Start;
-	m_End = dlg.m_End;
-	m_Chan = dlg.m_Chan - 1;
+	m_Start = dlg.GetStart();
+	m_End = dlg.GetEnd();
+	m_Chan = dlg.GetChannel() - 1;
+
 	UpdateSelectionStatic();
 }
 
@@ -295,14 +288,25 @@ void CVolumeChangeDialog::OnSelchangeCombodbPercent()
 // CSelectionDialog dialog
 
 
-CSelectionDialog::CSelectionDialog(CWnd* pParent /*=NULL*/)
+CSelectionDialog::CSelectionDialog(SAMPLE_INDEX Start, SAMPLE_INDEX End,
+									SAMPLE_INDEX CaretPos, CHANNEL_MASK Channel,
+									NUMBER_OF_SAMPLES TotalSamples,
+									const WAVEFORMATEX * pWf, int TimeFormat,
+									CWnd* pParent /*=NULL*/)
 	: CDialog(CSelectionDialog::IDD, pParent)
+	, m_Chan(Channel)
+	, m_Start(Start)
+	, m_End(End)
+	, m_CaretPosition(CaretPos)
+	, m_Length(End - Start)
+	, m_FileLength(TotalSamples)
+	, m_pWf(pWf)
+	, m_TimeFormat(TimeFormat)
 {
 	//{{AFX_DATA_INIT(CSelectionDialog)
 	m_TimeFormatIndex = 0;
 	m_SelectionNumber = 0;
 	//}}AFX_DATA_INIT
-	m_Chan = -1;
 }
 
 
@@ -613,21 +617,21 @@ void CSelectionDialog::OnSelchangeComboSelection()
 	}
 }
 
-void CSelectionDialog::AddSelection(LPCTSTR Name, long begin, long end)
+void CSelectionDialog::AddSelection(LPCTSTR Name, SAMPLE_INDEX begin, SAMPLE_INDEX end)
 {
 	m_SelectionCombo.AddString(Name);
 	Selection s = {begin, end};
 	m_Selections.push_back(s);
 }
 
-void CSelectionDialog::AddSelection(UINT id, long begin, long end)
+void CSelectionDialog::AddSelection(UINT id, SAMPLE_INDEX begin, SAMPLE_INDEX end)
 {
 	CString s;
 	s.LoadString(id);
 	AddSelection(s, begin, end);
 }
 
-int CSelectionDialog::FindSelection(long begin, long end)
+int CSelectionDialog::FindSelection(SAMPLE_INDEX begin, SAMPLE_INDEX end)
 {
 	for (unsigned i = 0; i < m_Selections.size(); i++)
 	{
@@ -743,23 +747,16 @@ END_MESSAGE_MAP()
 
 void CDcOffsetDialog::OnButtonSelection()
 {
-	CSelectionDialog dlg;
-	dlg.m_Start = m_Start;
-	dlg.m_End = m_End;
-	dlg.m_CaretPosition = m_CaretPosition;
-	dlg.m_Length = m_End - m_Start;
-	dlg.m_FileLength = m_FileLength;
-	dlg.m_Chan = m_Chan + 1;
-	dlg.m_pWf = m_pWf;
-	dlg.m_TimeFormat = m_TimeFormat;
+	CSelectionDialog dlg(m_Start, m_End, m_CaretPosition, m_Chan + 1, m_FileLength, m_pWf, m_TimeFormat);
 
 	if (IDOK != dlg.DoModal())
 	{
 		return;
 	}
-	m_Start = dlg.m_Start;
-	m_End = dlg.m_End;
-	m_Chan = dlg.m_Chan - 1;
+	m_Start = dlg.GetStart();
+	m_End = dlg.GetEnd();
+	m_Chan = dlg.GetChannel() - 1;
+
 	UpdateSelectionStatic();
 }
 
@@ -1118,23 +1115,16 @@ void CNormalizeSoundDialog::OnKillfocusEditLevel()
 
 void CNormalizeSoundDialog::OnButtonSelection()
 {
-	CSelectionDialog dlg;
-	dlg.m_Start = m_Start;
-	dlg.m_End = m_End;
-	dlg.m_CaretPosition = m_CaretPosition;
-	dlg.m_Length = m_End - m_Start;
-	dlg.m_FileLength = m_FileLength;
-	dlg.m_Chan = m_Chan + 1;
-	dlg.m_pWf = m_pWf;
-	dlg.m_TimeFormat = m_TimeFormat;
+	CSelectionDialog dlg(m_Start, m_End, m_CaretPosition, m_Chan + 1, m_FileLength, m_pWf, m_TimeFormat);
 
 	if (IDOK != dlg.DoModal())
 	{
 		return;
 	}
-	m_Start = dlg.m_Start;
-	m_End = dlg.m_End;
-	m_Chan = dlg.m_Chan - 1;
+	m_Start = dlg.GetStart();
+	m_End = dlg.GetEnd();
+	m_Chan = dlg.GetChannel() - 1;
+
 	UpdateSelectionStatic();
 }
 
@@ -1529,23 +1519,16 @@ END_MESSAGE_MAP()
 
 void CLowFrequencySuppressDialog::OnButtonSelection()
 {
-	CSelectionDialog dlg;
-	dlg.m_Start = m_Start;
-	dlg.m_End = m_End;
-	dlg.m_CaretPosition = m_CaretPosition;
-	dlg.m_Length = m_End - m_Start;
-	dlg.m_FileLength = m_FileLength;
-	dlg.m_Chan = m_Chan + 1;
-	dlg.m_pWf = m_pWf;
-	dlg.m_TimeFormat = m_TimeFormat;
+	CSelectionDialog dlg(m_Start, m_End, m_CaretPosition, m_Chan + 1, m_FileLength, m_pWf, m_TimeFormat);
 
 	if (IDOK != dlg.DoModal())
 	{
 		return;
 	}
-	m_Start = dlg.m_Start;
-	m_End = dlg.m_End;
-	m_Chan = dlg.m_Chan - 1;
+	m_Start = dlg.GetStart();
+	m_End = dlg.GetEnd();
+	m_Chan = dlg.GetChannel() - 1;
+
 	UpdateSelectionStatic();
 }
 
@@ -1722,23 +1705,15 @@ BOOL CExpressionEvaluationDialog::OnButtonText(UINT id)
 
 void CExpressionEvaluationDialog::OnButtonSelection()
 {
-	CSelectionDialog dlg;
-	dlg.m_Start = m_Start;
-	dlg.m_End = m_End;
-	dlg.m_CaretPosition = m_CaretPosition;
-	dlg.m_Length = m_End - m_Start;
-	dlg.m_FileLength = m_FileLength;
-	dlg.m_Chan = m_Chan + 1;
-	dlg.m_pWf = m_pWf;
-	dlg.m_TimeFormat = m_TimeFormat;
+	CSelectionDialog dlg(m_Start, m_End, m_CaretPosition, m_Chan + 1, m_FileLength, m_pWf, m_TimeFormat);
 
 	if (IDOK != dlg.DoModal())
 	{
 		return;
 	}
-	m_Start = dlg.m_Start;
-	m_End = dlg.m_End;
-	m_Chan = dlg.m_Chan - 1;
+	m_Start = dlg.GetStart();
+	m_End = dlg.GetEnd();
+	m_Chan = dlg.GetChannel() - 1;
 	UpdateSelectionStatic();
 }
 
@@ -1947,23 +1922,15 @@ BOOL CDeclickDialog::OnInitDialog()
 
 void CDeclickDialog::OnButtonSelection()
 {
-	CSelectionDialog dlg;
-	dlg.m_Start = m_Start;
-	dlg.m_End = m_End;
-	dlg.m_CaretPosition = m_CaretPosition;
-	dlg.m_Length = m_End - m_Start;
-	dlg.m_FileLength = m_FileLength;
-	dlg.m_Chan = m_Chan + 1;
-	dlg.m_pWf = m_pWf;
-	dlg.m_TimeFormat = m_TimeFormat;
+	CSelectionDialog dlg(m_Start, m_End, m_CaretPosition, m_Chan + 1, m_FileLength, m_pWf, m_TimeFormat);
 
 	if (IDOK != dlg.DoModal())
 	{
 		return;
 	}
-	m_Start = dlg.m_Start;
-	m_End = dlg.m_End;
-	m_Chan = dlg.m_Chan - 1;
+	m_Start = dlg.GetStart();
+	m_End = dlg.GetEnd();
+	m_Chan = dlg.GetChannel() - 1;
 	UpdateSelectionStatic();
 }
 
@@ -2235,23 +2202,15 @@ void CNoiseReductionDialog::OnButtonMore()
 
 void CNoiseReductionDialog::OnButtonSelection()
 {
-	CSelectionDialog dlg;
-	dlg.m_Start = m_Start;
-	dlg.m_End = m_End;
-	dlg.m_CaretPosition = m_CaretPosition;
-	dlg.m_Length = m_End - m_Start;
-	dlg.m_FileLength = m_FileLength;
-	dlg.m_Chan = m_Chan + 1;
-	dlg.m_pWf = m_pWf;
-	dlg.m_TimeFormat = m_TimeFormat;
+	CSelectionDialog dlg(m_Start, m_End, m_CaretPosition, m_Chan + 1, m_FileLength, m_pWf, m_TimeFormat);
 
 	if (IDOK != dlg.DoModal())
 	{
 		return;
 	}
-	m_Start = dlg.m_Start;
-	m_End = dlg.m_End;
-	m_Chan = dlg.m_Chan - 1;
+	m_Start = dlg.GetStart();
+	m_End = dlg.GetEnd();
+	m_Chan = dlg.GetChannel() - 1;
 	UpdateSelectionStatic();
 }
 
