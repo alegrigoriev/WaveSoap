@@ -38,6 +38,7 @@
 #define IDR_MENU_FILE_LENGTH            145
 #define IDD_DIALOG_NORMALIZE            145
 #define IDD_DIALOG_RESAMPLE             146
+#define IDR_MENU_SPECTRUMSECTION_VIEW   146
 #define IDD_DIALOG_STATISTICS_MONO      147
 #define IDD_DIALOG_OPEN_TEMPLATE1       148
 #define IDD_DIALOG_SAVE_TEMPLATE        149
@@ -48,6 +49,8 @@
 #define IDC_CURSOR_BEAM_RIGHT           152
 #define IDD_DIALOG_DECLICKING           152
 #define IDD_DIALOG_NOISE_REDUCTION      153
+#define IDD_DIALOG_INSERT_SILENCE       154
+#define IDD_DIALOG_MUTE_OR_SILENCE      155
 #define IDC_EDIT_MIN_CLICK_AMPLITUDE    1000
 #define IDC_TAB_SWITCH_VIEW_MODE        1000
 #define IDC_CHECK_LOG_CLICKS            1001
@@ -152,6 +155,8 @@
 #define IDC_EDIT_EXPRESSION             1059
 #define IDC_BUTTON_REVERT_INITIAL       1061
 #define IDC_BUTTON_MORE_SETTINGS        1062
+#define IDC_BUTTON_SET_THRESHOLD        1070
+#define IDC_BUTTON_SILENCE              1071
 #define IDC_VIEW_RULER_SAMPLES          32771
 #define IDC_VIEW_RULER_HHMMSS           32772
 #define IDC_VIEW_RULER_SECONDS          32773
@@ -216,6 +221,7 @@
 #define IDS_STATISTICS_FORMAT           32839
 #define IDS_REOPEN_IN_DIRECT_MODE       32840
 #define IDS_RELOAD_COMPRESSED_FILE      32841
+#define ID_INDICATOR_SCALE              32842
 #define IDC_VIEW_AMPL_RULER_PERCENT     32900
 #define ID_FILE_PROPERTIES              40000
 #define ID_VIEW_ZOOMVERT_NORMAL         40001
@@ -272,6 +278,11 @@
 #define ID_TOOLS_OPTIONS                40062
 #define ID_TOOLS_INTERPOLATE            40063
 #define ID_VIEW_SPECTRUMSECTION         40066
+#define ID_VIEW_SS_ZOOMINHOR2           40067
+#define ID_VIEW_SS_ZOOMOUTHOR2          40068
+#define ID_VIEW_SS_SHOW_NOISE_THRESHOLD 40069
+#define ID_VIEW_SS_ZOOMINVERT           40070
+#define ID_VIEW_SS_ZOOMOUTVERT          40071
 
 // Next default values for new objects
 //
@@ -279,8 +290,8 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_3D_CONTROLS                     1
 #define _APS_NEXT_RESOURCE_VALUE        149
-#define _APS_NEXT_COMMAND_VALUE         40067
-#define _APS_NEXT_CONTROL_VALUE         1070
+#define _APS_NEXT_COMMAND_VALUE         40072
+#define _APS_NEXT_CONTROL_VALUE         1072
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif

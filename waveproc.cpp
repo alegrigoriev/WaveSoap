@@ -1559,13 +1559,6 @@ int CNoiseReduction::ProcessSound(char const * pIn, char * pOut,
 				}
 				FastFourierTransform(m_FftInBuffer[ch], m_FftOutBuffer[ch], m_nFftOrder);
 
-#if 1
-				// null the high frequencies (test)
-				if (0) for (n = m_nFftOrder/4; n < m_nFftOrder/2+1; n++)
-					{
-						m_FftOutBuffer[ch][n]= 0;
-					}
-#endif
 			}
 
 			// process FFT result

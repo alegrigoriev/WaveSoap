@@ -1,24 +1,19 @@
 Known problems and tasks:
 
-Show playback position spectrum in Spectrum Section View
-Make horizontal zoom for Spectrum Section View.
-Noise reduction doesn't save aggressivness parameter.
-Lost sync between horz ruler scrolling and waveform.
-After zoom in max, cursor jumps to not the view center.
+Make context for background WriteRestOfTheFile
 Make save presets for Expression Evaluation command
-When number of channels changed after save, view parameters are screwed up.
-File created from clipboard and saved can't be reopened in direct mode.
 Add noise reduction estimation in spectrum section view
+Make delay load for Windows Media DLL, to work on systems without WMP installed
 Add MP3 save
 Add ASF save
 Use waveformat instead of template, for FileNew
 If read-only file is saved, name should be different
-Sound and FFT view jerks during playback of the last screen.
-Add spin support for selection and GOTO dialog.
-Statistics: zero crossings shows double the frquency
+Add spin support for selection, insert silence and GOTO dialog.
+Statistics: zero crossings shows double the frequency (as supposed??)
 Make Paste Special command
-When a file is opened in non-direct mode, peak info is saved with wrong time stamp
-support copy from a file (FileName) in DoCopy
+???? When a file is opened in non-direct mode, peak info is saved with wrong time stamp
+After Save As, peak info is not saved for the new PCM file.
+???? File created from clipboard and saved can't be reopened in direct mode.
 Add support for markers and regions: save on copy and with undo, move and delete on Cut,
 	move on Paste
 Double click selects between two markers
@@ -29,7 +24,6 @@ Prb: After file expansion, the new area may not contain zeros,
 prb: time ruler is blinking when scrolled
 Add support for 256 color display (palette)
 If displaying data without peak info, call RescanPeaks for this range.
-Show current scale in the "static" child control.
 Add options dialog
 Save current workspace
 Add decibel view to CAmplitudeRuler
@@ -37,15 +31,24 @@ Add VU meter for playback
 Make all correct error messages and message boxes
 Allow "Minimized" channels
 Add sound recording
+Add CD grabbing
 Add mouse wheel support
 Add autoscroll during selection
 
 Done:
-Wrong area invalidated in Spectrum View
-Add declicking: first dialog
-Add declicking: interpolation
-Add noise reduction dialog and processing
-Add spectrum section view
+Make Insert Silence command
+Show current scale in the status bar.
+Fft view didn't get focus after switch
+support copy from a file (FileName) in DoCopy
+When number of channels changed after save, view parameters are screwed up.
+Sound and FFT view jerks during playback of the last screen.
+Lost sync between horz ruler scrolling and waveform.
+After zoom in max, cursor jumps to not the view center.
+Noise reduction doesn't save aggressivness parameter.
+Make horizontal zoom and context menu for Spectrum Section View.
+Show playback position spectrum in Spectrum Section View
+Wrong selection display in FFT view.
+
 
 File Save/Save As checklist:
 
