@@ -219,11 +219,11 @@ public:
 	HRESULT Start();
 	HRESULT Stop();
 
-	DWORD SrcLength()
+	MEDIA_FILE_SIZE SrcLength()
 	{
 		return m_InputStream.GetLength();
 	}
-	DWORD SrcPos()
+	MEDIA_FILE_POSITION SrcPos()
 	{
 		return m_InputStream.GetPos();
 	}
@@ -262,8 +262,9 @@ public:
 protected:
 	BOOL volatile m_bNeedNextSample;
 	CWaveFile m_DstFile;
-	DWORD m_DstCopyPos;
-	long m_DstCopySample;
+
+	SAMPLE_POSITION m_DstCopyPos;
+	SAMPLE_INDEX m_DstCopySample;
 
 	IWMReader * m_Reader;
 	IWMReaderAdvanced2 * m_pAdvReader;
@@ -275,11 +276,13 @@ protected:
 	CEvent m_OpenedEvent;
 	CEvent m_StartedEvent;
 	CEvent m_SampleEvent;
+
 	//WMT_STATUS ReaderStatus;
 	QWORD m_CurrentStreamTime;
 	QWORD m_BufferLengthTime; //32kbytes in 100ns units
 	QWORD m_StreamDuration;
-	ULONG m_CurrentSamples;
+
+	NUMBER_OF_SAMPLES m_CurrentSamples;
 	DWORD m_dwAudioOutputNum;
 	CWaveFormat m_DstWf;
 	CWaveFormat m_SrcWf;
