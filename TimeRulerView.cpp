@@ -7,6 +7,7 @@
 #include "TimeRulerView.h"
 #include "WaveSoapFrontView.h"
 #include "GdiObjectSave.h"
+#include "TimeToStr.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
