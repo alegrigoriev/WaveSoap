@@ -1717,6 +1717,9 @@ void CWaveSoapFrontDoc::DoPaste(LONG Start, LONG End, LONG Channel, LPCTSTR File
 	// check if the sampling rate matches the clipboard
 	int SrcSampleRate = pSrcFile->SampleRate();
 	int TargetSampleRate = WaveSampleRate();
+
+	CResampleContext * pResampleContext = NULL;
+
 	if (SrcSampleRate != TargetSampleRate)
 	{
 		CPasteResampleModeDlg dlg;
@@ -1727,12 +1730,45 @@ void CWaveSoapFrontDoc::DoPaste(LONG Start, LONG End, LONG Channel, LPCTSTR File
 		{
 			return;
 		}
+		LONGLONG NumSamplesToPasteFrom64;
 		if (0 == dlg.m_ModeSelect)
 		{
 			// resample
-			NumSamplesToPasteFrom =
-				MulDiv(NumSamplesToPasteFrom, TargetSampleRate, SrcSampleRate);
+			NumSamplesToPasteFrom64 =
+				UInt32x32To64(NumSamplesToPasteFrom, TargetSampleRate) / SrcSampleRate;
 		}
+		if ( ! CanAllocateWaveFileSamplesDlg(m_WavFile.GetWaveFormat(), NumSamplesToPasteFrom64))
+		{
+			return;
+		}
+
+		NumSamplesToPasteFrom = NumSamplesToPasteFrom64;
+		pResampleContext = new CResampleContext(this, "Changing sample rate of clipboard data...", "Resample");
+		if (NULL == pResampleContext)
+		{
+			NotEnoughMemoryMessageBox();
+			return;
+		}
+		// create new temporary file
+		CWaveFile DstFile;
+		double ResampleQuality = 40.;
+		double ResampleRatio = double(TargetSampleRate) / SrcSampleRate;
+
+		if ( ! DstFile.CreateWaveFile(pSrcFile, NULL, ALL_CHANNELS, NumSamplesToPasteFrom,
+									CreateWaveFileTempDir
+									| CreateWaveFileDeleteAfterClose
+									| CreateWaveFilePcmFormat
+									| CreateWaveFileTemp,
+									NULL))
+		{
+			delete pResampleContext;
+			FileCreationErrorMessageBox(NULL);
+			return;
+		}
+
+		DstFile.GetWaveFormat()->nSamplesPerSec = TargetSampleRate;
+		pResampleContext->InitResample(*pSrcFile, DstFile, ResampleRatio, ResampleQuality);
+		pSrcFile = & pResampleContext->m_DstFile;
 	}
 
 	if (End > Start)
@@ -1741,6 +1777,7 @@ void CWaveSoapFrontDoc::DoPaste(LONG Start, LONG End, LONG Channel, LPCTSTR File
 		dlg.m_PasteMode = m_DefaultPasteMode;
 		if (dlg.DoModal() != IDOK)
 		{
+			delete pResampleContext;
 			return;
 		}
 		m_DefaultPasteMode = dlg.m_PasteMode;
@@ -1762,6 +1799,7 @@ void CWaveSoapFrontDoc::DoPaste(LONG Start, LONG End, LONG Channel, LPCTSTR File
 			break;
 		}
 	}
+
 	int nCopiedChannels = 2;
 	if (Channel != ALL_CHANNELS || WaveChannels() < 2)
 	{
@@ -1774,6 +1812,7 @@ void CWaveSoapFrontDoc::DoPaste(LONG Start, LONG End, LONG Channel, LPCTSTR File
 		dlg.m_ChannelToCopy = m_PrevChannelToCopy + 1;
 		if (IDOK != dlg.DoModal())
 		{
+			delete pResampleContext;
 			return;
 		}
 		ChannelToCopyFrom = dlg.m_ChannelToCopy - 1;
@@ -1782,12 +1821,14 @@ void CWaveSoapFrontDoc::DoPaste(LONG Start, LONG End, LONG Channel, LPCTSTR File
 
 	if ( ! CanExpandWaveFileDlg(m_WavFile, NumSamplesToPasteFrom - (End - Start)))
 	{
+		delete pResampleContext;
 		return;
 	}
 
 	CCopyContext * pContext = new CCopyContext(this, _T("Inserting data from clipboard..."), "Paste");
 	if (NULL == pContext)
 	{
+		delete pResampleContext;
 		NotEnoughMemoryMessageBox();
 		return;
 	}
@@ -1797,6 +1838,7 @@ void CWaveSoapFrontDoc::DoPaste(LONG Start, LONG End, LONG Channel, LPCTSTR File
 	if ( ! pContext->InitCopy(m_WavFile, Start, End - Start, Channel,
 							* pSrcFile, 0, NumSamplesToPasteFrom, ChannelToCopyFrom))
 	{
+		delete pResampleContext;
 		delete pContext;
 		return;
 	}
@@ -1804,7 +1846,7 @@ void CWaveSoapFrontDoc::DoPaste(LONG Start, LONG End, LONG Channel, LPCTSTR File
 	if (NULL != pContext->m_pExpandShrinkContext)
 	{
 		pContext->m_pExpandShrinkContext->InitUndoRedo("Paste");
-		// if the source selection is not empty,
+		// TODO?? if the source selection is not empty,
 		// init undo copy
 	}
 	else
@@ -1812,7 +1854,15 @@ void CWaveSoapFrontDoc::DoPaste(LONG Start, LONG End, LONG Channel, LPCTSTR File
 	}
 	// set operation context to the queue
 	SoundChanged(WaveFileID(), 0, 0, WaveFileSamples());
-	pContext->Execute();
+	if (NULL != pResampleContext)
+	{
+		pResampleContext->m_pChainedContext = pContext;
+		pResampleContext->Execute();
+	}
+	else
+	{
+		pContext->Execute();
+	}
 }
 
 void CWaveSoapFrontDoc::DoCut(LONG Start, LONG End, LONG Channel)
@@ -4581,7 +4631,8 @@ void CWaveSoapFrontDoc::OnProcessResample()
 		return;
 	}
 
-	LONGLONG NewSampleCount = MulDiv(WaveFileSamples(), NewSamplingRate, OldSamplingRate);
+	LONGLONG NewSampleCount =
+		UInt32x32To64(WaveFileSamples(), NewSamplingRate) / OldSamplingRate;
 	if ( ! CanAllocateWaveFileSamplesDlg(m_WavFile.GetWaveFormat(), NewSampleCount))
 	{
 		return;
@@ -4612,7 +4663,10 @@ void CWaveSoapFrontDoc::OnProcessResample()
 		DstFile.GetWaveFormat()->nSamplesPerSec = NewSamplingRate;
 	}
 	pContext->InitResample(m_WavFile, DstFile, ResampleRatio, ResampleQuality);
-	// todo: Add Undo
+	// mark for whole file conversion
+	pContext->m_Flags |= ConvertContextReplaceWholeFile;
+
+	// add UNDO
 	if (UndoEnabled())
 	{
 		CUndoRedoContext * pUndo = new CUndoRedoContext(this, "Resample");

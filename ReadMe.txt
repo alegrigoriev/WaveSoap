@@ -46,7 +46,6 @@ Make recording from Internet stream
 Problems:
 When FFT array is reallocated, it is invalidated
 
-Paste operation doesn't check if sampling rate is the same. Add dialog to resample
 Click on outline view moves the wave view a bit after the button released
 After file length increased to 1 sample from 0, scroll bar set to wrond scale
 Expression evaluation selection longer than file length doesn't update file length
@@ -58,6 +57,7 @@ samples with 32767, -32768 are not visible
 Log Off query doesn't close the active dialog. Recursion is possible. Make sure to check after Cancel
 
 Fixed:
+Paste operation doesn't check if sampling rate is the same. Add dialog to resample
 Notch filter initial setting is weird
 Originally selected filter point may be hidden because the filter is disabled
 Too many digits in filter/equalizer dialogs number boxes
