@@ -140,6 +140,8 @@ public:
 	TCHAR m_DecimalPoint;
 	TCHAR m_ThousandSeparator;
 
+	CString m_ExpressionToEvaluate;
+
 	CDocument* OpenDocumentFile(LPCTSTR lpszPathName, int flags);
 	virtual CDocument* OpenDocumentFile(LPCTSTR lpszPathName);
 	//{{AFX_MSG(CWaveSoapFrontApp)

@@ -289,6 +289,7 @@ BOOL CWaveSoapFrontApp::InitInstance()
 	Profile.AddBoolItem(_T("Settings"), _T("SuppressDifferential"), m_bSuppressDifferential, TRUE);
 	Profile.AddBoolItem(_T("Settings"), _T("SuppressLowFrequency"), m_bSuppressLowFrequency, TRUE);
 
+	Profile.AddItem(_T("Settings"), _T("EvaluateExpression"), m_ExpressionToEvaluate);
 	LoadStdProfileSettings(10);  // Load standard INI file options (including MRU)
 
 	if (m_bUseCountrySpecificNumberAndTime)
