@@ -191,6 +191,10 @@ SOURCE=.\ReopenConvertedFileDlg.cpp
 # End Source File
 # Begin Source File
 
+SOURCE=.\ReopenSavedFileCopyDlg.cpp
+# End Source File
+# Begin Source File
+
 SOURCE=.\Resample.cpp
 # End Source File
 # Begin Source File
@@ -401,6 +405,10 @@ SOURCE=.\ReopenCompressedFileDialog.h
 # Begin Source File
 
 SOURCE=.\ReopenConvertedFileDlg.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\ReopenSavedFileCopyDlg.h
 # End Source File
 # Begin Source File
 

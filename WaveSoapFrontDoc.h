@@ -60,6 +60,7 @@ enum {
 	SaveFile_WmaFile = OpenDocumentWmaFile,
 	SaveFile_RawFile = OpenDocumentRawFile,
 	SaveFile_AviFile = OpenDocumentAviFile,
+	SaveRawFileMsbFirst = OpenRawFileMsbFirst,
 	SaveFile_NonWavFile = OpenDocumentNonWavFile,
 };
 enum

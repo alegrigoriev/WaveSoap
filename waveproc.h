@@ -425,6 +425,17 @@ public:
 									int nInBytes, int nOutBytes, int * pUsedBytes);
 };
 
+class CByteSwapConvertor : public CWaveProc
+{
+public:
+	CByteSwapConvertor()
+	{
+	}
+	virtual ~CByteSwapConvertor() {}
+	virtual int ProcessSoundBuffer(char const * pIn, char * pOut,
+									int nInBytes, int nOutBytes, int * pUsedBytes);
+};
+
 class CLameEncConvertor : public CWaveProc
 {
 public:

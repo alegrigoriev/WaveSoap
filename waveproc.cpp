@@ -1865,6 +1865,14 @@ int CBatchProcessing::ProcessSound(char const * pIn, char * pOut,
 	if (NULL != pIn)
 	{
 		// regular processing of input data
+		if (0 == m_Stages.GetSize())
+		{
+			// just pass through
+			int ToCopy = __min(nInBytes, nOutBytes);
+			memcpy(pOut, pIn, ToCopy);
+			* pUsedBytes = ToCopy;
+			return ToCopy;
+		}
 		bool bDataWasProcessed;
 		do
 		{
@@ -1951,6 +1959,11 @@ int CBatchProcessing::ProcessSound(char const * pIn, char * pOut,
 	else
 	{
 		// flush the data
+		if (0 == m_Stages.GetSize())
+		{
+			*pUsedBytes = 0;
+			return 0;
+		}
 		bool bDataWasProcessed;
 		do
 		{
@@ -2029,7 +2042,6 @@ int CBatchProcessing::ProcessSound(char const * pIn, char * pOut,
 
 	}
 	return nSavedBytes;
-	//return nTotalOutputSamples;
 }
 
 void CBatchProcessing::AddWaveProc(CWaveProc * pProc, int index)
@@ -2792,4 +2804,22 @@ int CLameEncConvertor::ProcessSound(char const * pInBuf, char * pOutBuf,
 		}
 	}
 	return nSavedBytes;
+}
+
+int CByteSwapConvertor::ProcessSoundBuffer(char const * pIn, char * pOut,
+											int nInBytes, int nOutBytes, int * pUsedBytes)
+{
+	if (NULL == pIn)
+	{
+		*pUsedBytes = 0;
+		return 0;
+	}
+	int nBytes = __min(nInBytes, nOutBytes);
+	for (int i = 0; i < nBytes; i+= sizeof (__int16))
+	{
+		pOut[i + 1] = pIn[i];
+		pOut[i] = pIn[i + 1];
+	}
+	*pUsedBytes = nBytes;
+	return nBytes;
 }
