@@ -1353,7 +1353,11 @@ void CWaveSoapFrontApp::OnFileNew()
 			m_NewFileFormat.nChannels = dlg.NumberOfChannels();
 		}
 
-		NewFileParameters Params( & m_NewFileFormat,
+		CWaveFormat wf;
+		wf.InitFormat(WAVE_FORMAT_PCM, m_NewFileFormat.nSamplesPerSec,
+					m_NewFileFormat.nChannels);
+
+		NewFileParameters Params(wf,
 								m_NewFileLength * m_NewFileFormat.nSamplesPerSec);
 
 		pTemplate->OpenDocumentFile((LPCTSTR) & Params,
