@@ -538,27 +538,13 @@ void CSpectrumSectionRuler::OnDraw(CDC* pDC)
 	double ExtDiff = fabs(RightExt - LeftExt);
 	LPCTSTR MaxText;
 	LPCTSTR FormatText;
-	if (MaxExt > 99.)
+	if (ExtDiff < 2)
 	{
-		if (ExtDiff < 2)
-		{
-			MaxText = "-100.0";
-		}
-		else
-		{
-			MaxText = "-100";
-		}
+		MaxText = "-100.0";
 	}
 	else
 	{
-		if (ExtDiff < 2)
-		{
-			MaxText = "-10.0";
-		}
-		else
-		{
-			MaxText = "-10";
-		}
+		MaxText = "-100";
 	}
 
 	int nLength = pDC->GetTextExtent(MaxText, strlen(MaxText)).cx;

@@ -1958,6 +1958,7 @@ void CWaveSoapFrontView::OnSize(UINT nType, int cx, int cy)
 	}
 	CScaledScrollView::OnSize(nType, cx, cy);
 
+	UpdateVertExtents();
 	CreateAndShowCaret();
 }
 
@@ -2068,16 +2069,34 @@ void CWaveSoapFrontView::UpdatePlaybackCursor(long sample, int channel)
 
 void CWaveSoapFrontView::UpdateMaxExtents(unsigned Length)
 {
-	int nLowExtent = -32768;
+	CRect r;
+	GetClientRect( & r);
+	int nLowExtent = -32768 - 32767 / r.Height();
 	int nHighExtent = 32767;
 	if (GetDocument()->WaveChannels() > 1)
 	{
-		nLowExtent = -0x10000;
+		nLowExtent = -0x10000 - 0x20000 / r.Height();
 		nHighExtent = 0x10000;
 	}
 	SetMaxExtents(0, Length - Length % m_HorizontalScale + 100. * m_HorizontalScale,
 				nLowExtent, nHighExtent);
 	SetExtents(0., 0., nLowExtent, nHighExtent);
+}
+
+void CWaveSoapFrontView::UpdateVertExtents()
+{
+	CRect r;
+	GetClientRect( & r);
+	int nLowExtent = -32768 - 32768 / r.Height();
+	int nHighExtent = 32767;
+	if (GetDocument()->WaveChannels() > 1)
+	{
+		nLowExtent = -0x10000 - 0x20000 / r.Height();
+		nHighExtent = 0x10000;
+	}
+	SetMaxExtents(0, 0, nLowExtent, nHighExtent);
+	SetExtents(0., 0., nLowExtent, nHighExtent);
+	//ShowScrollBar(SB_VERT, FALSE);
 }
 
 void CWaveSoapFrontView::OnMasterChangeOrgExt(double left, double width,

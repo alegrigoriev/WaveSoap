@@ -21,8 +21,8 @@ CInsertSilenceDialog::CInsertSilenceDialog(CWnd* pParent /*=NULL*/)
 	m_pWf = NULL;
 	//{{AFX_DATA_INIT(CInsertSilenceDialog)
 	m_TimeFormatIndex = -1;
-	m_nChannel = -1;
 	//}}AFX_DATA_INIT
+	m_nChannel = -1;
 	m_Length = 0;
 	m_Start = 0;
 }
@@ -36,9 +36,12 @@ void CInsertSilenceDialog::DoDataExchange(CDataExchange* pDX)
 	DDX_Control(pDX, IDC_SPIN_LENGTH, m_SpinLength);
 	DDX_Control(pDX, IDC_EDIT_LENGTH, m_eLength);
 	DDX_Control(pDX, IDC_COMBO_START, m_eStart);
-	DDX_Radio(pDX, IDC_RADIO_CHANNEL, m_nChannel);
 	DDX_CBIndex(pDX, IDC_COMBO_TIME_FORMAT, m_TimeFormatIndex);
 	//}}AFX_DATA_MAP
+	if (m_pWf->nChannels > 1)
+	{
+		DDX_Radio(pDX, IDC_RADIO_CHANNEL, m_nChannel);
+	}
 	m_eLength.ExchangeData(pDX, m_Length);
 	m_eStart.ExchangeData(pDX, m_Start);
 }
@@ -546,4 +549,13 @@ END_MESSAGE_MAP()
 void CReopenDialog::OnNo()
 {
 	EndDialog(IDNO);
+}
+
+int CInsertSilenceDialog::DoModal()
+{
+	if (m_pWf->nChannels < 2)
+	{
+		m_lpszTemplateName = MAKEINTRESOURCE(IDD_DIALOG_INSERT_SILENCE_MONO);
+	}
+	return CDialog::DoModal();
 }

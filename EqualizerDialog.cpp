@@ -594,6 +594,12 @@ void CalculateCoefficients(double Gain, double Frequency, double Width, double C
 					Coeffs[5]);
 	}
 }
+void CalculateSimpleEqCoefficients(double f1, double f2, double Gain, BOOL HigherFreqs)
+{
+	// f1 - frequency with unity gain,
+	// Gain - ><1
+	// if (HigherFreqs) - for higher frequencies
+}
 void CEqualizerGraphWnd::SetBandGain(int nBand, double Gain)
 {
 	if (m_BandGain[nBand] == Gain)
@@ -618,6 +624,12 @@ void Equalizer::RebuildBandFilters()
 	{
 		m_UsedBandGain[i] = m_BandGain[i];
 	}
+	if (2 == m_NumOfBands)
+	{
+		// simple equalizer
+		return;
+	}
+
 	for (int iter = 0; iter < 10; iter++)
 	{
 		// reference coefficients
@@ -1212,3 +1224,4 @@ void CEqualizerDialog::OnKillfocusEditBandGain()
 		m_wGraph.SetCurrentBandGainDb(GainDb);
 	}
 }
+
