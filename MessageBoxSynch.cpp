@@ -7,73 +7,104 @@
 #include "MessageBoxSynch.h"
 #include "SimpleCriticalSection.h"
 
-static CSimpleCriticalSection DialogProxyCriticalSection;
-
-INT_PTR RunModalDialogSync(CDialog & dlg)
+LRESULT MainThreadCall::Call(CSimpleCriticalSection * pLock)
 {
 	CWnd * pWnd = AfxGetApp()->m_pMainWnd;
 	if (NULL == pWnd
 		|| NULL == pWnd->m_hWnd)
 	{
-		return -1;
+		return Exec();
 	}
-	if (GetCurrentThreadId() == ::GetWindowThreadProcessId(pWnd->m_hWnd, NULL))
+
+	if (NULL != pLock)
 	{
-		return dlg.DoModal();
+		if (GetCurrentThreadId() == ::GetWindowThreadProcessId(pWnd->m_hWnd, NULL))
+		{
+			return Exec();
+		}
+
+		pLock->Lock();
 	}
 
-	CSimpleCriticalSectionLock lock(DialogProxyCriticalSection);
+	LRESULT result = ::SendMessage(pWnd->m_hWnd, WM_USER_CALL_MAIN_THREAD, 0,
+									reinterpret_cast<LPARAM>(this));
 
-	return ::SendMessage(pWnd->m_hWnd, WM_USER_RUN_MODAL_SYNC, 0,
-						reinterpret_cast<LPARAM>( & dlg));
+	if (NULL != pLock)
+	{
+		pLock->Unlock();
+	}
+
+	return result;
+}
+
+namespace
+{
+CSimpleCriticalSection DialogProxyCriticalSection;
+
+class CDialogCall : public MainThreadCall
+{
+public:
+	CDialogCall(CDialog & dlg)
+		: m_dlg(dlg)
+	{
+	}
+protected:
+	virtual LRESULT Exec()
+	{
+		return m_dlg.DoModal();
+	}
+	CDialog & m_dlg;
+};
+
+class AfxDialogCall : public MainThreadCall
+{
+public:
+	AfxDialogCall(LPCTSTR lpszText, UINT nType, UINT nIDHelp)
+		: m_Text(lpszText), m_Type(nType), m_IDHelp(nIDHelp)
+	{
+	}
+protected:
+	virtual LRESULT Exec()
+	{
+		return AfxMessageBox(m_Text, m_Type, m_IDHelp);
+	}
+	LPCTSTR const m_Text;
+	UINT const m_Type;
+	UINT const m_IDHelp;
+};
+
+class AfxDialogCallId : public MainThreadCall
+{
+public:
+	AfxDialogCallId(UINT nIDPrompt, UINT nType, UINT nIDHelp)
+		: m_IDPrompt(nIDPrompt), m_Type(nType), m_IDHelp(nIDHelp)
+	{
+	}
+
+protected:
+	virtual LRESULT Exec()
+	{
+		return AfxMessageBox(m_IDPrompt, m_Type, m_IDHelp);
+	}
+	UINT const m_IDPrompt;
+	UINT const m_Type;
+	UINT const m_IDHelp;
+};
+}
+
+INT_PTR RunModalDialogSync(CDialog & dlg)
+{
+	return CDialogCall(dlg).Call( & DialogProxyCriticalSection);
 }
 
 INT_PTR MessageBoxSync(LPCTSTR lpszText, UINT nType, UINT nIDHelp)
 {
-	CWnd * pWnd = AfxGetApp()->m_pMainWnd;
-	if (NULL == pWnd
-		|| NULL == pWnd->m_hWnd)
-	{
-		return -1;
-	}
-	if (GetCurrentThreadId() == ::GetWindowThreadProcessId(pWnd->m_hWnd, NULL))
-	{
-		return AfxMessageBox(lpszText, nType, nIDHelp);
-	}
-
-	CSimpleCriticalSectionLock lock(DialogProxyCriticalSection);
-
-	MSGBOXPARAMS Params;
-	Params.dwStyle = nType;
-	Params.lpszText = lpszText;
-	Params.dwContextHelpId = nIDHelp;
-
-	return ::SendMessage(pWnd->m_hWnd, WM_USER_RUN_MSGBOX_SYNC, 0,
-						reinterpret_cast<LPARAM>( & Params));
+	return AfxDialogCall(lpszText, nType, nIDHelp).Call( & DialogProxyCriticalSection);
 }
 
 INT_PTR MessageBoxSync(UINT nIDPrompt, UINT nType, UINT nIDHelp)
 {
-	CWnd * pWnd = AfxGetApp()->m_pMainWnd;
-	if (NULL == pWnd
-		|| NULL == pWnd->m_hWnd)
-	{
-		return -1;
-	}
-	if (GetCurrentThreadId() == ::GetWindowThreadProcessId(pWnd->m_hWnd, NULL))
-	{
-		return AfxMessageBox(nIDPrompt, nType, nIDHelp);
-	}
-
-	CSimpleCriticalSectionLock lock(DialogProxyCriticalSection);
-
-	MSGBOXPARAMS Params;
-	Params.dwStyle = nType;
-	Params.lpszText = 0;
-	Params.dwContextHelpId = nIDHelp;
-
-	return ::SendMessage(pWnd->m_hWnd, WM_USER_RUN_MSGBOX_SYNC, nIDPrompt,
-						reinterpret_cast<LPARAM>( & Params));
+	return AfxDialogCallId(nIDPrompt, nType, nIDHelp).Call( & DialogProxyCriticalSection);
 }
 
 BOOL WaitForSingleObjectAcceptSends(HANDLE handle, ULONG timeout)
