@@ -28,7 +28,7 @@ CTimeEdit::~CTimeEdit()
 
 BEGIN_MESSAGE_MAP(CTimeEdit, CEdit)
 	//{{AFX_MSG_MAP(CTimeEdit)
-		// NOTE - the ClassWizard will add and remove mapping macros here.
+	ON_WM_VSCROLL()
 	//}}AFX_MSG_MAP
 END_MESSAGE_MAP()
 
@@ -40,7 +40,7 @@ void CTimeEdit::ExchangeData(CDataExchange* pDX, long & sample)
 	{
 		UINT ID = GetDlgCtrlID( );
 		(void)pDX->PrepareEditCtrl(ID);
-		m_Sample = GetTimeSample(NULL);
+		m_Sample = GetTimeSample();
 		sample = m_Sample;
 		return;
 	}
@@ -69,7 +69,7 @@ void CTimeEdit::UpdateEditControl()
 	SetWindowText(m_OriginalString);
 }
 
-long CTimeEdit::GetTimeSample(LPCTSTR str)
+long CTimeEdit::GetTimeSample()
 {
 	CString s;
 	GetWindowText(s);
@@ -134,4 +134,117 @@ long CTimeEdit::GetTimeSample(LPCTSTR str)
 		m_Sample = long(time * m_nSamplesPerSec / 1000.);
 	}
 	return m_Sample;
+}
+
+void CTimeEdit::OnVScroll(UINT nSBCode, UINT nPos, CScrollBar* pScrollBar)
+{
+	TRACE("CTimeEdit::OnVScroll, nPos=%d\n", nPos);
+	// nPos is actually an increment from CTimeSpinCtrl
+	long nSample = GetTimeSample();
+	int step = abs(int(nPos));
+	int increment = 0;
+	switch (m_TimeFormat & SampleToString_Mask)
+	{
+	default:
+	case SampleToString_Sample:
+		switch (step)
+		{
+		case 1:
+			increment = 1;
+			break;
+		case 5:
+			increment = 10;
+			break;
+		case 20:
+		default:
+			increment = 100;
+			break;
+		}
+		break;
+	case SampleToString_HhMmSs:
+		switch (step)
+		{
+		case 1:
+			increment = m_nSamplesPerSec / 10;
+			break;
+		case 5:
+			increment = m_nSamplesPerSec;
+			break;
+		case 20:
+		default:
+			increment = m_nSamplesPerSec * 60;
+			break;
+		}
+		break;
+	case SampleToString_Seconds:
+		switch (step)
+		{
+		case 1:
+			increment = m_nSamplesPerSec / 10;
+			break;
+		case 5:
+			increment = m_nSamplesPerSec;
+			break;
+		case 20:
+		default:
+			increment = m_nSamplesPerSec * 10;
+			break;
+		}
+		break;
+	}
+
+	if (int(nPos) < 0)
+	{
+		nSample += increment - nSample % increment;
+	}
+	else
+	{
+		nSample -= increment + nSample % -increment;
+	}
+	if (nSample < 0)
+	{
+		nSample = 0;
+	}
+	SetTimeSample(nSample);
+}
+/////////////////////////////////////////////////////////////////////////////
+// CTimeSpinCtrl
+
+CTimeSpinCtrl::CTimeSpinCtrl()
+{
+}
+
+CTimeSpinCtrl::~CTimeSpinCtrl()
+{
+}
+
+
+BEGIN_MESSAGE_MAP(CTimeSpinCtrl, CSpinButtonCtrl)
+	//{{AFX_MSG_MAP(CTimeSpinCtrl)
+	ON_NOTIFY_REFLECT(UDN_DELTAPOS, OnDeltapos)
+	//}}AFX_MSG_MAP
+END_MESSAGE_MAP()
+
+/////////////////////////////////////////////////////////////////////////////
+// CTimeSpinCtrl message handlers
+
+void CTimeSpinCtrl::OnDeltapos(NMHDR* pNMHDR, LRESULT* pResult)
+{
+	NM_UPDOWN* pNMUpDown = (NM_UPDOWN*)pNMHDR;
+	//TRACE("CTimeSpinCtrl::OnDeltapos Delta=%d\n", pNMUpDown->iDelta);
+	CTimeEdit * pBuddy = dynamic_cast<CTimeEdit *>(GetBuddy());
+	if (pBuddy)
+	{
+		int SbCode = -1;
+		if (pNMUpDown->iDelta < 0)
+		{
+			SbCode = SB_LINEUP;
+		}
+		else
+		{
+			SbCode = SB_LINEDOWN;
+		}
+		pBuddy->SendMessage(WM_VSCROLL, SbCode + (pNMUpDown->iDelta << 16), long(m_hWnd));
+	}
+	*pResult = 0;
 }
