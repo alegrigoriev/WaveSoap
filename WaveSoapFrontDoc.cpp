@@ -3849,15 +3849,8 @@ void CWaveSoapFrontDoc::OnProcessDcoffset()
 	}
 
 	CThisApp * pApp = GetApp();
-	CDcOffsetDialog dlg;
-	dlg.m_Start = start;
-	dlg.m_End = end;
-	dlg.m_CaretPosition = m_CaretPosition;
-	dlg.m_Chan = channel;
-	dlg.m_pWf = WaveFormat();
-	dlg.m_bUndo = UndoEnabled();
-	dlg.m_TimeFormat = GetApp()->m_SoundTimeFormat;
-	dlg.m_FileLength = WaveFileSamples();
+	CDcOffsetDialog dlg(start, end, m_CaretPosition, channel,
+						m_WavFile, ChannelsLocked(), UndoEnabled(), GetApp()->m_SoundTimeFormat);
 
 	if (IDOK != dlg.DoModal())
 	{
@@ -3866,6 +3859,7 @@ void CWaveSoapFrontDoc::OnProcessDcoffset()
 
 	CDcOffsetContext * pContext =
 		new CDcOffsetContext(this, _T("Adjusting DC..."), _T("DC Adjust"));
+
 	if (NULL == pContext)
 	{
 		NotEnoughMemoryMessageBox();
@@ -3885,19 +3879,19 @@ void CWaveSoapFrontDoc::OnProcessDcoffset()
 		}
 		pContext->m_pScanContext->m_Flags |= StatisticsContext_DcOnly;
 
-		SAMPLE_INDEX EndScanSample = dlg.m_End;
+		SAMPLE_INDEX EndScanSample = dlg.GetEnd();
 		if (dlg.m_b5SecondsDC)
 		{
 			// 5.4 seconds is actually scanned, to compensate for turntable rotation
-			EndScanSample = dlg.m_Start
+			EndScanSample = dlg.GetStart()
 							+ 54 * WaveSampleRate() / 10;
-			if (EndScanSample > dlg.m_End)
+			if (EndScanSample > dlg.GetEnd())
 			{
-				EndScanSample = dlg.m_End;
+				EndScanSample = dlg.GetEnd();
 			}
 		}
-		pContext->m_pScanContext->InitDestination(m_WavFile, dlg.m_Start,
-												EndScanSample, dlg.m_Chan, FALSE);
+		pContext->m_pScanContext->InitDestination(m_WavFile, dlg.GetStart(),
+												EndScanSample, dlg.GetChannel(), FALSE);
 		pContext->m_Flags |= ContextScanning;
 	}
 	else // Use specified DC offset
@@ -3913,15 +3907,15 @@ void CWaveSoapFrontDoc::OnProcessDcoffset()
 		}
 
 		WavePeak LeftPeak, RightPeak;
-		GetSoundMinMax(LeftPeak, RightPeak, dlg.m_Start, dlg.m_End);
+		GetSoundMinMax(LeftPeak, RightPeak, dlg.GetStart(), dlg.GetEnd());
 
 		long MinL = LeftPeak.low + dlg.m_nDcOffset;
 		long MaxL = LeftPeak.high + dlg.m_nDcOffset;
 		long MinR = RightPeak.low + dlg.m_nDcOffset;
 		long MaxR = RightPeak.high + dlg.m_nDcOffset;
 
-		if ((dlg.m_Chan != 1 && (MaxL > 0x7FFF || MinL < -0x8000))
-			|| (WaveChannels() > 1 && dlg.m_Chan != 0
+		if ((dlg.GetChannel() != 1 && (MaxL > 0x7FFF || MinL < -0x8000))
+			|| (WaveChannels() > 1 && dlg.GetChannel() != 0
 				&& (MaxR > 0x7FFF || MinR < -0x8000)))
 		{
 			CString s;
@@ -3935,14 +3929,14 @@ void CWaveSoapFrontDoc::OnProcessDcoffset()
 	}
 
 
-	if ( ! pContext->InitDestination(m_WavFile, dlg.m_Start,
-									dlg.m_End, dlg.m_Chan, dlg.m_bUndo))
+	if ( ! pContext->InitDestination(m_WavFile, dlg.GetStart(),
+									dlg.GetEnd(), dlg.GetChannel(), dlg.UndoEnabled()))
 	{
 		delete pContext;
 		return;
 	}
 	pContext->Execute();
-	SetModifiedFlag(TRUE, dlg.m_bUndo);
+	SetModifiedFlag(TRUE, dlg.UndoEnabled());
 }
 
 void CWaveSoapFrontDoc::OnUpdateProcessInsertsilence(CCmdUI* pCmdUI)
