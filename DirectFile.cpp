@@ -270,6 +270,8 @@ struct DirectFileCache::File : public ListItem<DirectFileCache::File>
 	BOOL Flush();
 	BOOL InitializeTheRestOfFile(int timeout = 0, LONGLONG * pSizeCompleted = NULL);
 	BOOL SetSourceFile(File * pOriginalFile);
+	BOOL DetachSourceFile();
+	bool RefersPermanentFile();
 
 	CDirectFile::InstanceData * GetInstanceData() const
 	{
@@ -425,15 +427,23 @@ BOOL CDirectFile::SetSourceFile(CDirectFile * const pOriginalFile)
 // We need to call it before saving the data back to the main file
 BOOL CDirectFile::DetachSourceFile()
 {
-	if (NULL == m_pFile
-		|| ! m_pFile->InitializeTheRestOfFile())
+	if (NULL == m_pFile)
+	{
+		return TRUE;
+	}
+	return m_pFile->DetachSourceFile();
+}
+
+BOOL File::DetachSourceFile()
+{
+	if ( ! InitializeTheRestOfFile())
 	{
 		return FALSE;
 	}
 	// all data from the source file is copied to the target,
 	// we can detach it
-	File * pFile = m_pFile->m_pSourceFile;
-	m_pFile->m_pSourceFile = NULL;
+	File * pFile = InterlockedExchange( & m_pSourceFile, NULL);
+
 	if (pFile)
 	{
 		return pFile->Close(0);
@@ -776,6 +786,33 @@ BOOL File::Commit(DWORD flags)
 		}
 	}
 	return TRUE;
+}
+
+bool CDirectFile::RefersPermanentFile() const
+{
+	if (NULL == m_pFile)
+	{
+		return false;
+	}
+	return m_pFile->RefersPermanentFile();
+}
+
+bool File::RefersPermanentFile()
+{
+	if (0 == (m_Flags & (CDirectFile::FileFlagsDeleteAfterClose | CDirectFile::FileFlagsMemoryFile)))
+	{
+		return true;
+	}
+	if (NULL != m_pSourceFile)
+	{
+		if (0 == (m_pSourceFile->m_Flags & (CDirectFile::FileFlagsDeleteAfterClose | CDirectFile::FileFlagsMemoryFile))
+			&& ! DetachSourceFile())
+		{
+			// still keeps a reference to the
+			return true;
+		}
+	}
+	return false;
 }
 
 BOOL File::Rename(LPCTSTR NewName, DWORD flags)
