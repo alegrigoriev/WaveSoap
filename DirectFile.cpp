@@ -397,7 +397,7 @@ BOOL CDirectFile::File::Commit(DWORD flags)
 				return FALSE;
 			}
 			hFile = hf;
-			FilePointer = 0;
+			m_FilePointer = 0;
 
 		}
 		if (NULL != hFile)
@@ -469,7 +469,7 @@ BOOL CDirectFile::File::Rename(LPCTSTR NewName, DWORD flags)
 		return FALSE;
 	}
 	hFile = hf;
-	FilePointer = 0;
+	m_FilePointer = 0;
 
 	if (NULL != hFile)
 	{
@@ -1363,7 +1363,7 @@ long CDirectFile::CDirectFileCache::GetDataBuffer(File * pFile,
 	if (MaskToRead != (pBuf->ReadMask & MaskToRead)
 		|| (flags & GetBufferWriteOnly))
 	{
-		ReadDataBuffer(pBuf, MaskToRead);
+		pFile->ReadDataBuffer(pBuf, MaskToRead);
 	}
 	// start prefetch for the rest of the data, if GetBufferWriteOnly is not set
 	// return number of bytes available
@@ -1715,7 +1715,7 @@ CDirectFile::BufferHeader
 
 // read the data by 32-bit MaskToRead (each bit corresponds to 2K)
 // to the buffer defined by BufferHeader *pBuf
-void CDirectFile::CDirectFileCache::ReadDataBuffer(BufferHeader * pBuf, DWORD MaskToRead)
+void CDirectFile::File::ReadDataBuffer(BufferHeader * pBuf, DWORD MaskToRead)
 {
 	// check if the required data is already in the buffer
 	if (0 != MaskToRead
@@ -1725,7 +1725,7 @@ void CDirectFile::CDirectFileCache::ReadDataBuffer(BufferHeader * pBuf, DWORD Ma
 	}
 	int OldPriority;
 	{
-		CSimpleCriticalSectionLock lock(pBuf->pFile->m_FileLock);
+		CSimpleCriticalSectionLock lock(m_FileLock);
 		// the operation in progress might change the mask
 		if (0 != MaskToRead
 			&& (pBuf->ReadMask & MaskToRead) == MaskToRead)
@@ -1734,14 +1734,13 @@ void CDirectFile::CDirectFileCache::ReadDataBuffer(BufferHeader * pBuf, DWORD Ma
 		}
 		MaskToRead &= ~ pBuf->ReadMask;
 		// read the required data
-		File * pFile = pBuf->pFile;
 		LONGLONG StartFilePtr = ULONGLONG(pBuf->PositionKey) << 16;
 		char * buf = (char *) pBuf->pBuf;
 		// check if the buffer is in the initialized part of the file
-		if (0 == (pFile->m_Flags & FileFlagsReadOnly))
+		if (0 == (m_Flags & FileFlagsReadOnly))
 		{
 			int WrittenMaskOffset = pBuf->PositionKey >> 3;
-			if (WrittenMaskOffset >= pFile->WrittenMaskSize)
+			if (WrittenMaskOffset >= WrittenMaskSize)
 			{
 				int NewWrittenMaskSize = WrittenMaskOffset + 512;   // 256 more megs
 				char * NewWrittenMask = new char[NewWrittenMaskSize];
@@ -1753,40 +1752,40 @@ void CDirectFile::CDirectFileCache::ReadDataBuffer(BufferHeader * pBuf, DWORD Ma
 				}
 
 				memset(NewWrittenMask, 0, NewWrittenMaskSize);
-				memcpy(NewWrittenMask, pFile->m_pWrittenMask, pFile->WrittenMaskSize);
-				delete[] pFile->m_pWrittenMask;
-				pFile->m_pWrittenMask = NewWrittenMask;
-				pFile->WrittenMaskSize = NewWrittenMaskSize;
+				memcpy(NewWrittenMask, m_pWrittenMask, WrittenMaskSize);
+				delete[] m_pWrittenMask;
+				m_pWrittenMask = NewWrittenMask;
+				WrittenMaskSize = NewWrittenMaskSize;
 			}
-			ASSERT(pFile->m_pWrittenMask);
-			if (0 == (pFile->m_pWrittenMask[WrittenMaskOffset]
+			ASSERT(m_pWrittenMask);
+			if (0 == (m_pWrittenMask[WrittenMaskOffset]
 					& (1 << (pBuf->PositionKey & 7))))
 			{
-				pFile->m_pWrittenMask[WrittenMaskOffset] |= 1 << (pBuf->PositionKey & 7);
+				m_pWrittenMask[WrittenMaskOffset] |= 1 << (pBuf->PositionKey & 7);
 
-				File * pSourceFile = pFile->pSourceFile;
 				DWORD BytesRead = 0;
 				int ToZero = 0x10000;
 				if (NULL != pSourceFile
-					&& StartFilePtr < pFile->UseSourceFileLength)
+					&& StartFilePtr < UseSourceFileLength
+					&& MaskToRead != 0)
 				{
 					// read the data from the source file
 					int ToRead = 0x10000;
-					if (pFile->UseSourceFileLength - StartFilePtr < 0x10000)
+					if (UseSourceFileLength - StartFilePtr < 0x10000)
 					{
-						ToRead = int(pFile->UseSourceFileLength) - int(StartFilePtr);
+						ToRead = int(UseSourceFileLength) - int(StartFilePtr);
 					}
 
 					CSimpleCriticalSectionLock lock(pSourceFile->m_FileLock);
-					if (StartFilePtr != pSourceFile->FilePointer)
+					if (StartFilePtr != pSourceFile->m_FilePointer)
 					{
 						LONG FilePtrH = LONG(StartFilePtr >> 32);
 						SetFilePointer(pSourceFile->hFile, (LONG)StartFilePtr, & FilePtrH, FILE_BEGIN);
-						pSourceFile->FilePointer = StartFilePtr;
+						pSourceFile->m_FilePointer = StartFilePtr;
 					}
-					TRACE("ReadFile(%08x, pos=0x%08X, bytes=%X)\n", pFile->hFile, long(StartFilePtr), ToRead);
+					TRACE("ReadFile(%08x, pos=0x%08X, bytes=%X)\n", hFile, long(StartFilePtr), ToRead);
 					ReadFile(pSourceFile->hFile, buf, ToRead, & BytesRead, NULL);
-					pSourceFile->FilePointer += BytesRead;
+					pSourceFile->m_FilePointer += BytesRead;
 					ToZero -= BytesRead;
 				}
 
@@ -1798,7 +1797,7 @@ void CDirectFile::CDirectFileCache::ReadDataBuffer(BufferHeader * pBuf, DWORD Ma
 				pBuf->ReadMask = 0xFFFFFFFF;
 				if (0 == InterlockedExchange( & reinterpret_cast<long &>(pBuf->DirtyMask), 0xFFFFFFFF))
 				{
-					InterlockedIncrement((PLONG) & pFile->DirtyBuffersCount);
+					InterlockedIncrement((PLONG) & DirtyBuffersCount);
 				}
 				return;
 			}
@@ -1831,17 +1830,17 @@ void CDirectFile::CDirectFileCache::ReadDataBuffer(BufferHeader * pBuf, DWORD Ma
 			DWORD BytesRead = 0;
 
 			if (0) TRACE("Stored file pointer: %X, actual: %X\n",
-						long(pFile->FilePointer), SetFilePointer(pFile->hFile, 0, NULL, FILE_CURRENT));
+						long(m_FilePointer), SetFilePointer(hFile, 0, NULL, FILE_CURRENT));
 
-			if (StartFilePtr != pFile->FilePointer)
+			if (StartFilePtr != m_FilePointer)
 			{
 				LONG FilePtrH = LONG(StartFilePtr >> 32);
-				SetFilePointer(pFile->hFile, (LONG)StartFilePtr, & FilePtrH, FILE_BEGIN);
-				pFile->FilePointer = StartFilePtr;
+				SetFilePointer(hFile, (LONG)StartFilePtr, & FilePtrH, FILE_BEGIN);
+				m_FilePointer = StartFilePtr;
 			}
-			TRACE("ReadFile(%08x, pos=0x%08X, bytes=%X)\n", pFile->hFile, long(StartFilePtr), ToRead);
-			ReadFile(pFile->hFile, buf, ToRead, & BytesRead, NULL);
-			pFile->FilePointer += BytesRead;
+			TRACE("ReadFile(%08x, pos=0x%08X, bytes=%X)\n", hFile, long(StartFilePtr), ToRead);
+			ReadFile(hFile, buf, ToRead, & BytesRead, NULL);
+			m_FilePointer += BytesRead;
 			buf += BytesRead;
 			StartFilePtr += BytesRead;
 			ToRead -= BytesRead;
@@ -1857,7 +1856,7 @@ void CDirectFile::CDirectFileCache::ReadDataBuffer(BufferHeader * pBuf, DWORD Ma
 		InterlockedAnd(& pBuf->DirtyMask, ~MaskToRead);
 		if (0 != OldDirtyMask && 0 == pBuf->DirtyMask)
 		{
-			InterlockedDecrement((PLONG) & pFile->DirtyBuffersCount);
+			InterlockedDecrement((PLONG) & DirtyBuffersCount);
 		}
 		OldPriority = ::GetThreadPriority(GetCurrentThread());
 		// yield execution to the waiting thread by lowering priority
@@ -1936,13 +1935,13 @@ void CDirectFile::BufferHeader::FlushDirtyBuffers()
 				}
 				DWORD BytesWritten = 0;
 				if (0) TRACE("Stored file pointer: %X, actual: %X\n",
-							long(pFile->FilePointer), SetFilePointer(pFile->hFile, 0, NULL, FILE_CURRENT));
+							long(pFile->m_FilePointer), SetFilePointer(pFile->hFile, 0, NULL, FILE_CURRENT));
 
-				if (StartFilePtr != pFile->FilePointer)
+				if (StartFilePtr != pFile->m_FilePointer)
 				{
 					LONG FilePtrH = LONG(StartFilePtr >> 32);
 					SetFilePointer(pFile->hFile, (LONG)StartFilePtr, & FilePtrH, FILE_BEGIN);
-					pFile->FilePointer = StartFilePtr;
+					pFile->m_FilePointer = StartFilePtr;
 				}
 				if (0) TRACE("Writing h=%X, pos=%X, len=%X, "
 							"data=%02X %02X %02X %02X %02X %02X %02X %02X\n", pFile->hFile,
@@ -1951,7 +1950,7 @@ void CDirectFile::BufferHeader::FlushDirtyBuffers()
 							buf[5], buf[6], buf[7]);
 				TRACE("WriteFile(%08x, pos=0x%08X, bytes=%X)\n", pFile->hFile, long(StartFilePtr), ToWrite);
 				WriteFile(pFile->hFile, buf, ToWrite, & BytesWritten, NULL);
-				pFile->FilePointer += BytesWritten;
+				pFile->m_FilePointer += BytesWritten;
 				buf += ToWrite;
 				StartFilePtr += ToWrite;
 				if (StartFilePtr > pFile->RealFileLength)
@@ -2229,7 +2228,7 @@ BOOL CDirectFile::File::SetFileLength(LONGLONG NewLength)
 	LONG MoveHigh = LONG(NewLength>> 32);
 	DWORD SizeLow, SizeHigh;
 	SetLastError(0);
-	FilePointer = -1i64;  // invalidate file pointer
+	m_FilePointer = -1i64;  // invalidate file pointer
 	if ((0xFFFFFFFF != SetFilePointer(hFile, LONG(NewLength), & MoveHigh, FILE_BEGIN)
 			|| GetLastError() == NO_ERROR)
 		&& SetEndOfFile(hFile)
