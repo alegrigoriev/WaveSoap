@@ -267,7 +267,7 @@ struct DirectFileCache::File : public ListItem<DirectFileCache::File>
 	BOOL SetFileLength(LONGLONG NewLength);
 
 	BOOL Flush();
-	BOOL InitializeTheRestOfFile(int timeout = 0, int * pPercentCompleted = NULL);
+	BOOL InitializeTheRestOfFile(int timeout = 0, LONGLONG * pSizeCompleted = NULL);
 	BOOL SetSourceFile(File * pOriginalFile);
 
 	CDirectFile::InstanceData * GetInstanceData() const
@@ -2897,15 +2897,15 @@ unsigned CDirectFileCache::_ThreadProc()
 	return 0;
 }
 
-BOOL File::InitializeTheRestOfFile(int timeout, int * pPercentCompleted)
+BOOL File::InitializeTheRestOfFile(int timeout, LONGLONG * pSizeCompleted)
 {
 	if (NULL == m_pWrittenMask
 		|| (m_Flags & CDirectFile::FileFlagsReadOnly)
 		|| (m_Flags & CDirectFile::FileFlagsMemoryFile))
 	{
-		if (pPercentCompleted)
+		if (pSizeCompleted)
 		{
-			*pPercentCompleted = 100;
+			*pSizeCompleted = FileLength;
 		}
 		return TRUE;
 	}
@@ -2925,17 +2925,19 @@ BOOL File::InitializeTheRestOfFile(int timeout, int * pPercentCompleted)
 		if (timeout != 0
 			&& int(timeGetTime() - BeginTime) > timeout)
 		{
-			if (pPercentCompleted)
+			if (pSizeCompleted)
 			{
-				*pPercentCompleted = MulDiv(100, i, int((FileLength + CACHE_BLOCK_SIZE - 1) >> BLOCK_SIZE_SHIFT));
+				*pSizeCompleted = i * ULONGLONG(CACHE_BLOCK_SIZE);
 			}
 			return FALSE;   // not finished yet
 		}
 	}
+
 	VERIFY(Flush());
-	if (pPercentCompleted)
+
+	if (pSizeCompleted)
 	{
-		*pPercentCompleted = 100;
+		*pSizeCompleted = FileLength;
 	}
 	return TRUE;
 }
@@ -3201,11 +3203,11 @@ BOOL CDirectFile::Rename(LPCTSTR NewName, DWORD flags)
 		return FALSE;
 }
 
-BOOL CDirectFile::InitializeTheRestOfFile(int timeout, int * pPercentCompleted)
+BOOL CDirectFile::InitializeTheRestOfFile(int timeout, LONGLONG * pSizeCompleted)
 {
 	if (NULL != m_pFile)
 	{
-		return m_pFile->InitializeTheRestOfFile(timeout, pPercentCompleted);
+		return m_pFile->InitializeTheRestOfFile(timeout, pSizeCompleted);
 	}
 	else
 		return TRUE;    // operation completed

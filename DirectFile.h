@@ -117,7 +117,7 @@ public:
 
 	BOOL Rename(LPCTSTR NewName, DWORD flags);
 
-	BOOL InitializeTheRestOfFile(int timeout = 0, int * pPercentCompleted = NULL);
+	BOOL InitializeTheRestOfFile(int timeout = 0, LONGLONG * pSizeCompleted = NULL);
 
 	DWORD Flags() const;
 
