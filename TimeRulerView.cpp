@@ -573,14 +573,12 @@ void CTimeRulerView::OnUpdateViewRulerSeconds(CCmdUI* pCmdUI)
 void CTimeRulerView::OnUpdate( CView* pSender, LPARAM lHint, CObject* pHint )
 {
 	CSoundUpdateInfo * pInfo = dynamic_cast<CSoundUpdateInfo *>(pHint);
-	if (CWaveSoapFrontView::WAVE_OFFSET_CHANGED == lHint
-		|| CWaveSoapFrontView::WAVE_SCALE_CHANGED == lHint
-		|| CHANGE_HOR_ORIGIN == lHint)
-		if (NULL == pHint
-			|| (lHint == CWaveSoapFrontDoc::UpdateSoundChanged
-				&& pInfo != NULL && pInfo->Length != -1))
-		{
-			// either unknown notification or length changed
-			Invalidate();
-		}
+	if (0 != ((CHANGE_HOR_EXTENTS | CHANGE_MAX_HOR_EXTENTS) & lHint)
+		|| lHint == CWaveSoapFrontDoc::UpdateSampleRateChanged
+		|| (lHint == CWaveSoapFrontDoc::UpdateSoundChanged
+			&& pInfo != NULL && pInfo->Length != -1))
+	{
+		// either unknown notification or length changed
+		Invalidate();
+	}
 }

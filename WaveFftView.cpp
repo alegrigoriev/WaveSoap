@@ -950,6 +950,7 @@ void CWaveFftView::OnPaint()
 
 BOOL CWaveFftView::OnEraseBkgnd(CDC* pDC)
 {
+// TODO: draw checkered background outside wave area
 	return CView::OnEraseBkgnd(pDC);       // we don't need to erase background
 //	return CWaveSoapFrontView::OnEraseBkgnd(pDC);
 }
@@ -1008,8 +1009,8 @@ void CWaveFftView::OnViewZoomOutVert()
 		}
 		// correct the offset, if necessary
 		// find max and min offset for this scale
-		double offset = m_WaveOffsetY;
-		double MaxOffset = 65536. * (1. - 1. / m_VerticalScale);
+		double offset = m_FirstbandVisible;
+		double MaxOffset = m_FftOrder * (1. - 1. / m_VerticalScale);
 		if (offset > MaxOffset)
 		{
 			offset = MaxOffset;
@@ -1019,9 +1020,9 @@ void CWaveFftView::OnViewZoomOutVert()
 		{
 			offset = MinOffset;
 		}
-		if (offset != m_WaveOffsetY)
+		if (offset != m_FirstbandVisible)
 		{
-			m_WaveOffsetY = offset;
+			m_FirstbandVisible = offset;
 		}
 		Invalidate();
 		NotifySlaveViews(FFT_SCALE_CHANGED);
@@ -1121,7 +1122,7 @@ void CWaveFftView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
 		&& NULL != pHint
 		&& NULL != m_pFftResultArray)
 	{
-		CSoundUpdateInfo * pInfo = (CSoundUpdateInfo *) pHint;
+		CSoundUpdateInfo * pInfo = static_cast<CSoundUpdateInfo *>(pHint);
 
 		// calculate update boundaries
 		int nChannels = pDoc->WaveChannels();

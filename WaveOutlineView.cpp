@@ -397,7 +397,7 @@ void CWaveOutlineView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
 	else if (lHint == CWaveSoapFrontDoc::UpdateSoundChanged
 			&& NULL != pHint)
 	{
-		CSoundUpdateInfo * pInfo = (CSoundUpdateInfo *) pHint;
+		CSoundUpdateInfo * pInfo = static_cast<CSoundUpdateInfo *>(pHint);
 		CRect r1;
 
 		if (pInfo->Length != -1)
@@ -465,7 +465,7 @@ void CWaveOutlineView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
 	else if (lHint == CWaveSoapFrontDoc::UpdatePlaybackPositionChanged
 			&& NULL != pHint)
 	{
-		CSoundUpdateInfo * pInfo = (CSoundUpdateInfo *) pHint;
+		CSoundUpdateInfo * pInfo = static_cast<CSoundUpdateInfo *>(pHint);
 		int OldPosition = MulDiv(m_PlaybackCursorPosition, cr.Width(), nSamples);
 		int NewPosition = MulDiv(pInfo->Begin, cr.Width(), nSamples);
 		if (NewPosition != OldPosition)

@@ -727,6 +727,8 @@ void CWaveSoapFrontView::DrawPlaybackCursor(CDC * pDC, long Sample, int Channel)
 	{
 		ReleaseDC(pDrawDC);
 	}
+	//GdiFlush();
+	Sleep(0);
 }
 
 void CWaveSoapFrontView::ShowPlaybackCursor(CDC * pDC)
@@ -1536,7 +1538,7 @@ void CWaveSoapFrontView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
 			&& NULL != pHint)
 	{
 		m_WaveDataSizeInBuffer = 0; // invalidate the data in draw buffer
-		CSoundUpdateInfo * pInfo = (CSoundUpdateInfo *) pHint;
+		CSoundUpdateInfo * pInfo = static_cast<CSoundUpdateInfo *> (pHint);
 		CWaveSoapFrontDoc * pDoc = GetDocument();
 		CRect r;
 		GetClientRect( & r);
@@ -1582,7 +1584,7 @@ void CWaveSoapFrontView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
 	else if (lHint == CWaveSoapFrontDoc::UpdatePlaybackPositionChanged
 			&& NULL != pHint)
 	{
-		CSoundUpdateInfo * pInfo = (CSoundUpdateInfo *) pHint;
+		CSoundUpdateInfo * pInfo = static_cast<CSoundUpdateInfo *> (pHint);
 		UpdatePlaybackCursor(pInfo->Begin, pInfo->End);
 	}
 	else if (lHint == CWaveSoapFrontDoc::UpdateSampleRateChanged

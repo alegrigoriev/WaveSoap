@@ -492,7 +492,7 @@ void CSpectrumSectionView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint
 	if (lHint == CWaveSoapFrontDoc::UpdateSoundChanged
 		&& NULL != pHint)
 	{
-		CSoundUpdateInfo * pInfo = (CSoundUpdateInfo *) pHint;
+		CSoundUpdateInfo * pInfo = static_cast<CSoundUpdateInfo *>(pHint);
 
 		if ((pDoc->m_SelectionStart <= pInfo->End
 				&& pDoc->m_SelectionEnd + 2 * m_FftOrder >= pInfo->Begin)
@@ -509,7 +509,7 @@ void CSpectrumSectionView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint
 	else if (lHint == CWaveSoapFrontDoc::UpdatePlaybackPositionChanged
 			&& NULL != pHint)
 	{
-		CSoundUpdateInfo * pInfo = (CSoundUpdateInfo *) pHint;
+		CSoundUpdateInfo * pInfo = static_cast<CSoundUpdateInfo *>(pHint);
 		m_PlaybackSample = pInfo->Begin;
 		Invalidate();
 		return;

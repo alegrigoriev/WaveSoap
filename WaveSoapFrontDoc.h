@@ -9,6 +9,8 @@
 #pragma once
 #endif // _MSC_VER > 1000
 #include "WmaFile.h"
+#include "KListEntry.h"
+
 struct WavePeak
 {
 	__int16 low;
@@ -28,14 +30,9 @@ public:
 	int Flags;
 };
 
-class CSoundUpdateInfo : public CObject
+class CSoundUpdateInfo : public KListEntry<CSoundUpdateInfo>, public CObject
 {
 public:
-	CSoundUpdateInfo()
-		: pNext(NULL)
-	{}
-	~CSoundUpdateInfo() {}
-	CSoundUpdateInfo * pNext;
 	DWORD FileID;
 	int UpdateCode;
 	int Begin;
@@ -50,6 +47,7 @@ public:
 //
 enum {
 	UpdateSoundDontRescanPeaks = 1,
+	UpdateSoundSamplingRateChanged = 2,
 	SetSelection_MakeCaretVisible = 1,
 	SetSelection_MoveCaretToCenter = 2,
 	SetSelection_SnapToMaximum = 4,
@@ -190,6 +188,7 @@ public:
 	void SetSelection(long begin, long end, int channel, int caret, int flags = 0);
 	void SoundChanged(DWORD FileID, long begin, long end, int length = -1, DWORD flags = 0);
 	void PlaybackPositionNotify(long position, int channel);
+	BOOL ProcessUpdatePlaybackPosition();
 
 	enum {UpdateSelectionChanged = 1,
 		UpdateSelectionModeChanged,
@@ -251,7 +250,7 @@ public:
 	COperationContext * m_pUndoList;
 	COperationContext * m_pRedoList;
 	COperationContext * m_pRetiredList;
-	CSoundUpdateInfo * m_pUpdateList;
+	KListEntry<CSoundUpdateInfo> m_UpdateList;
 
 protected:
 	HANDLE m_hThreadEvent;

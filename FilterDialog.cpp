@@ -25,6 +25,7 @@ CFilterDialog::CFilterDialog(CWnd* pParent /*=NULL*/)
 	//}}AFX_DATA_INIT
 	m_PrevSize.cx = -1;
 	m_PrevSize.cy = -1;
+
 	memset(& m_mmxi, 0, sizeof m_mmxi);
 
 	m_Profile.AddItem("Settings", "FilterDlgWidth", m_DlgWidth, 0, 0, 4096);
@@ -64,6 +65,32 @@ CFilterDialog::CFilterDialog(CWnd* pParent /*=NULL*/)
 	{
 		m_wGraph.m_Frequencies[LpfPassbandIndex] = M_PI * 0.8;
 		m_wGraph.m_Frequencies[LpfStopbandIndex] = M_PI * 0.9;
+	}
+	// check for correct frequencies and gain
+	if (m_wGraph.m_Gain[NotchBeginIndex] <= m_wGraph.m_Gain[NotchZeroIndex])
+	{
+		m_wGraph.m_Gain[NotchBeginIndex] = 0.9;
+		m_wGraph.m_Gain[NotchZeroIndex] = 0.001;
+	}
+	if (m_wGraph.m_Frequencies[NotchBeginIndex] >= m_wGraph.m_Frequencies[NotchZeroIndex])
+	{
+		m_wGraph.m_Frequencies[NotchBeginIndex] = M_PI * 0.5;
+		m_wGraph.m_Frequencies[NotchZeroIndex] = M_PI * 0.6;
+	}
+	m_EditGain.SetPrecision(2);
+	m_EditFrequency.SetPrecision(1);
+
+	if ( ! m_wGraph.m_bHighPass)
+	{
+		m_wGraph.m_PointWithFocus = NotchBeginIndex;
+		if ( ! m_wGraph.m_bNotchFilter)
+		{
+			m_wGraph.m_PointWithFocus = LpfPassbandIndex;
+			if ( ! m_wGraph.m_bLowPass)
+			{
+				m_wGraph.m_PointWithFocus = HpfPassbandIndex;
+			}
+		}
 	}
 }
 
@@ -267,6 +294,14 @@ void CFilterDialog::OnCheckLowpass()
 	else
 	{
 		m_wGraph.m_bLowPass = FALSE;
+		if (m_wGraph.m_PointWithFocus >= LpfPassbandIndex)
+		{
+			m_wGraph.m_PointWithFocus = HpfPassbandIndex;
+			if ( ! m_wGraph.m_bHighPass)
+			{
+				m_wGraph.m_PointWithFocus = NotchBeginIndex;
+			}
+		}
 	}
 	m_wGraph.RebuildFilters();
 	m_wGraph.Invalidate();
@@ -281,6 +316,14 @@ void CFilterDialog::OnCheckHighpass()
 	else
 	{
 		m_wGraph.m_bHighPass = FALSE;
+		if (m_wGraph.m_PointWithFocus <= HpfPassbandIndex)
+		{
+			m_wGraph.m_PointWithFocus = LpfPassbandIndex;
+			if ( ! m_wGraph.m_bLowPass)
+			{
+				m_wGraph.m_PointWithFocus = NotchBeginIndex;
+			}
+		}
 	}
 	m_wGraph.RebuildFilters();
 	m_wGraph.Invalidate();
@@ -295,10 +338,20 @@ void CFilterDialog::OnCheckStopband()
 	else
 	{
 		m_wGraph.m_bNotchFilter = FALSE;
+		if (m_wGraph.m_PointWithFocus == NotchBeginIndex
+			|| m_wGraph.m_PointWithFocus == NotchZeroIndex)
+		{
+			m_wGraph.m_PointWithFocus = LpfPassbandIndex;
+			if ( ! m_wGraph.m_bLowPass)
+			{
+				m_wGraph.m_PointWithFocus = HpfPassbandIndex;
+			}
+		}
 	}
 	m_wGraph.RebuildFilters();
 	m_wGraph.Invalidate();
 }
+
 BOOL CFilterDialog::OnInitDialog()
 {
 	m_wGraph.m_SamplingRate = m_pWf->nSamplesPerSec;
@@ -388,7 +441,7 @@ CFilterGraphWnd::CFilterGraphWnd()
 	m_Frequencies[HpfStopbandIndex] = M_PI / 500.;
 
 	m_Gain[NotchBeginIndex] = 0.9;
-	m_Gain[NotchZeroIndex] = 0.00001;
+	m_Gain[NotchZeroIndex] = 0.0001;
 	m_Frequencies[NotchBeginIndex] = M_PI * 0.48;
 	m_Frequencies[NotchZeroIndex] = M_PI * 0.52;
 

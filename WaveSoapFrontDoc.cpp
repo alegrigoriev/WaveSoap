@@ -183,7 +183,6 @@ CWaveSoapFrontDoc::CWaveSoapFrontDoc()
 	m_pCurrentContext(NULL),
 	m_pUndoList(NULL),
 	m_pRedoList(NULL),
-	m_pUpdateList(NULL),
 	m_pRetiredList(NULL),
 	m_OperationInProgress(0),
 	m_PlayingSound(false),
@@ -221,12 +220,11 @@ CWaveSoapFrontDoc::~CWaveSoapFrontDoc()
 		}
 		delete pContext;
 	}
-	while (m_pUpdateList)
+	while ( ! m_UpdateList.IsEmpty())
 	{
-		CSoundUpdateInfo * pUpdate = m_pUpdateList;
-		m_pUpdateList = pUpdate->pNext;
-		delete pUpdate;
+		delete m_UpdateList.RemoveHead();
 	}
+
 	DeleteUndo();
 	DeleteRedo();
 	// stop the thread
@@ -1052,6 +1050,12 @@ void CWaveSoapFrontDoc::SoundChanged(DWORD FileID, long begin, long end,
 		// rescan peaks
 		RescanPeaks(begin, end);
 	}
+
+	if (flags & UpdateSoundSamplingRateChanged)
+	{
+		UpdateAllViews(NULL, UpdateSampleRateChanged);
+	}
+
 	CSoundUpdateInfo * pui = new CSoundUpdateInfo;
 	pui->FileID = FileID;
 	pui->UpdateCode = UpdateSoundChanged;
@@ -1060,40 +1064,33 @@ void CWaveSoapFrontDoc::SoundChanged(DWORD FileID, long begin, long end,
 	pui->Length = FileLength;
 	{
 		CSimpleCriticalSectionLock lock(m_cs);
-		if (NULL == m_pUpdateList)
+
+		for (CSoundUpdateInfo * pEntry = m_UpdateList.Next()
+			; pEntry != m_UpdateList.Head(); pEntry = pEntry->Next())
 		{
-			m_pUpdateList = pui;
-		}
-		else
-		{
-			CSoundUpdateInfo *pInfo = m_pUpdateList;
-			while (1)
+			// see if the ranges overlap
+			if (FileID == pEntry->FileID
+				&& pEntry->UpdateCode == UpdateSoundChanged
+				&& pEntry->Length == FileLength
+				&& begin <= pEntry->End
+				&& end >= pEntry->Begin)
 			{
-				// see if the ranges overlap
-				if (FileID == pInfo->FileID
-					&& pInfo->UpdateCode == UpdateSoundChanged
-					&& pInfo->Length == FileLength
-					&& begin <= pInfo->End
-					&& end >= pInfo->Begin)
+				if (begin < pEntry->Begin)
 				{
-					if (begin < pInfo->Begin)
-					{
-						pInfo->Begin = begin;
-					}
-					if (pInfo->End < end)
-					{
-						pInfo->End = end;
-					}
-					delete pui;
-					break;
+					pEntry->Begin = begin;
 				}
-				if (NULL == pInfo->pNext)
+				if (pEntry->End < end)
 				{
-					pInfo->pNext = pui;
-					break;
+					pEntry->End = end;
 				}
-				pInfo = pInfo->pNext;
+				delete pui;
+				pui = NULL;
+				break;
 			}
+		}
+		if (NULL != pui)
+		{
+			m_UpdateList.InsertTail(pui);
 		}
 	}
 	::PostMessage(GetApp()->m_pMainWnd->m_hWnd, WM_KICKIDLE, 0, 0);
@@ -3059,17 +3056,12 @@ void CWaveSoapFrontDoc::OnIdle()
 		return;
 	}
 	m_bInOnIdle = true;
-	while (m_pUpdateList)
+	while ( ! m_UpdateList.IsEmpty())
 	{
 		CSoundUpdateInfo * pInfo;
 		{
 			CSimpleCriticalSectionLock lock(m_cs);
-			pInfo = m_pUpdateList;
-			if (NULL == pInfo)
-			{
-				break;
-			}
-			m_pUpdateList = pInfo->pNext;
+			pInfo = m_UpdateList.RemoveHead();
 		}
 		UpdateAllViews(NULL, pInfo->UpdateCode, pInfo);
 		delete pInfo;
@@ -3544,42 +3536,53 @@ void CWaveSoapFrontDoc::PlaybackPositionNotify(long position, int channel)
 	}
 	pui->UpdateCode = UpdatePlaybackPositionChanged;
 	pui->FileID = m_WavFile.GetFileID();
-	pui->UpdateCode = UpdatePlaybackPositionChanged;
 	pui->Begin = position;
 	pui->End = channel;
 
 	pui->Length = -1;
 	{
 		CSimpleCriticalSectionLock lock(m_cs);
-		if (NULL == m_pUpdateList)
+
+		for (CSoundUpdateInfo * pEntry = m_UpdateList.Next()
+			; pEntry != m_UpdateList.Head(); pEntry = pEntry->Next())
 		{
-			m_pUpdateList = pui;
-		}
-		else
-		{
-			CSoundUpdateInfo *pInfo = m_pUpdateList;
-			while (1)
+			if (pEntry->UpdateCode == UpdatePlaybackPositionChanged)
 			{
-				if (pInfo->UpdateCode == UpdatePlaybackPositionChanged)
-				{
-					pInfo->Begin = position;
-					pInfo->End = channel;
-					delete pui;
-					break;
-				}
-				if (NULL == pInfo->pNext)
-				{
-					pInfo->pNext = pui;
-					break;
-				}
-				pInfo = pInfo->pNext;
+				CSoundUpdateInfo * pTmpEntry = pEntry->Prev();
+				m_UpdateList.RemoveEntry(pEntry);
+				delete pEntry;
+				pEntry = pTmpEntry;
 			}
 		}
+		m_UpdateList.InsertTail(pui);
 	}
 	::PostMessage(GetApp()->m_pMainWnd->m_hWnd, WM_KICKIDLE, 0, 0);
 }
 
+// return TRUE if there was UpdatePlaybackPositionChanged request queued
+// return FALSE otherwise
+BOOL CWaveSoapFrontDoc::ProcessUpdatePlaybackPosition()
+{
+	m_cs.Lock();
 
+	for (CSoundUpdateInfo * pEntry = m_UpdateList.Next()
+		; pEntry != m_UpdateList.Head(); pEntry = pEntry->Next())
+	{
+		if (pEntry->UpdateCode == UpdatePlaybackPositionChanged)
+		{
+			m_UpdateList.RemoveEntry(pEntry);
+			m_cs.Unlock();
+
+			UpdateAllViews(NULL, pEntry->UpdateCode, pEntry);
+
+			delete pEntry;
+			return TRUE;
+		}
+	}
+
+	m_cs.Unlock();
+	return FALSE;
+}
 void CWaveSoapFrontDoc::OnEditChannelsLock()
 {
 	if (WaveChannels() < 2)
