@@ -24,12 +24,6 @@ public:
 	static int CalculateWidth();
 // Operations
 public:
-	enum
-	{
-		SampleView = 0,
-		PercentView = 1,
-		DecibelView = 2,
-	};
 
 // Overrides
 	// ClassWizard generated virtual function overrides
@@ -48,19 +42,28 @@ protected:
 	virtual void AssertValid() const;
 	virtual void Dump(CDumpContext& dc) const;
 #endif
-	int m_DrawMode;
+protected:
+	enum eDrawMode
+	{
+		SampleView = 0,
+		PercentView = 1,
+		DecibelView = 2,
+	};
+	eDrawMode m_DrawMode;
 	void DrawSamples(CDC * pDC);
 	void DrawPercents(CDC * pDC);
 	void DrawDecibels(CDC * pDC);
 
 	// Generated message map functions
-protected:
 	//{{AFX_MSG(CAmplitudeRuler)
 	afx_msg int OnCreate(LPCREATESTRUCT lpCreateStruct);
 	afx_msg void OnLButtonDblClk(UINT nFlags, CPoint point);
 	afx_msg void OnViewAmplRulerSamples();
 	afx_msg void OnViewAmplRulerPercent();
 	afx_msg void OnViewAmplRulerDecibels();
+	afx_msg void OnUpdateAmplRulerSamples(CCmdUI * pCmdUI);
+	afx_msg void OnUpdateAmplRulerPercent(CCmdUI * pCmdUI);
+	afx_msg void OnUpdateAmplRulerDecibels(CCmdUI * pCmdUI);
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 };
