@@ -28,6 +28,7 @@ public:
 	BOOL	m_bDoUlfNoiseReduction;
 	CString	m_InFile;
 	CString	m_OutFile;
+	BOOL	m_HighpassFilter;
 	//}}AFX_DATA
 
 	void LoadValuesFromRegistry();

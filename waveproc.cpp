@@ -278,12 +278,15 @@ CNoiseReduction::CNoiseReduction(int nFftOrder)
 	m_LevelThresholdForNoise(8.),   // Nepers
 	m_LevelThresholdForStationary(6.),   // Nepers
 	m_MaxNoiseSuppression(2.),      // Nepers
-	m_FarMaskingFactor(0.003f),
-	m_NearMaskingDecayRate(0.7f),
-	m_NoiseReductionRatio(1.),
-	m_NearMaskingCoeff(2.),
-	m_MaskingTemporalDecayRate(0.1f),
 
+	m_NearMaskingDecayDistanceHigh(500f),
+	m_NearMaskingDecayDistanceLow(30f),
+
+	m_NoiseReductionRatio(1.),
+	m_FarMaskingCoeff(0.),
+	m_MaskingTemporalDecayRate(0.1f),
+	m_NearMaskingDecayTimeHigh(40.),    // miliseconds
+	m_NearMaskingDecayTimeLow(100.),    // miliseconds
 #ifdef _DEBUG
 	m_TotalBandProcessed(0),
 	m_TransientBandFound(0),
@@ -333,7 +336,8 @@ CNoiseReduction::CNoiseReduction(int nFftOrder)
 		memset(m_pParams[1], 0, (nFftOrder /2 + 1) * sizeof m_pParams[1][0]);
 	}
 	// norm masking factor to make it independent of FFT order
-	double MaskingFactor = m_FarMaskingFactor * FAR_MASKING_GRANULARITY * 2 / nFftOrder;
+	m_PowerScale = 1. / nFftOrder;
+	double MaskingFactor = FAR_MASKING_GRANULARITY * 2. * m_PowerScale;
 
 	for (int i = 0; i < FAR_MASKING_GRANULARITY; i++)
 	{
@@ -763,28 +767,12 @@ int CClickRemoval::ProcessSound(__int16 const * pInBuf, __int16 * pOutBuf,
 	return nStoredSamples;
 }
 
-void ShuffleFrequencies(complex<float> * pData, int nCount)
-{
-	ASSERT( 0 == (nCount & 3));
-
-	for (int f = 0; f < nCount; f+=4)
-	{
-		complex<float> tmp1(pData[f] + pData[f + 1]),
-		tmp2(pData[f] - pData[f + 1]),
-		tmp3(pData[f + 2] + pData[f + 3]),
-		tmp4(pData[f + 2] - pData[f + 3]);
-		pData[f] = (tmp1 + tmp3) * 0.5f;
-		pData[f + 1] = (tmp1 - tmp3) * 0.5f;
-		pData[f + 2] = (tmp2 + tmp4) * 0.5f;
-		pData[f + 3] = (tmp2 - tmp4) * 0.5f;
-	}
-}
-
 complex<CNoiseReduction::DATA> CNoiseReduction::SIGNAL_PARAMS::ProcessFftSample(complex<DATA> smp, CNoiseReduction * pNr)
 {
 	// find momentary frequency
 	complex<DATA> cZero(0., 0.);
-	double nrm = real(smp) * real(smp) + imag(smp) * imag(smp);
+	double nrm = pNr->m_PowerScale *
+				(real(smp) * real(smp) + imag(smp) * imag(smp));
 	sp_PrevPower = sp_Power;
 	sp_Power = nrm;
 	if (cZero  == sp_PrevFftIn
@@ -926,27 +914,6 @@ complex<CNoiseReduction::DATA> CNoiseReduction::SIGNAL_PARAMS::ProcessFftSample(
 
 	}
 
-	if (StationarySignal)
-	{
-		if (dLevel < pNr->m_LevelThresholdForStationary)
-		{
-			dLevel = - pNr->m_NoiseReductionRatio; // Nepers
-#ifdef _DEBUG
-			pNr->m_StationaryBandCancelled++;
-#endif
-		}
-	}
-	else
-	{
-		if (sp_FilteredLevel /*dLevel*/ < pNr->m_LevelThresholdForNoise)
-		{
-			dLevel -= pNr->m_NoiseReductionRatio; // Nepers
-#ifdef _DEBUG
-			pNr->m_NoiselikeBandCancelled++;
-#endif
-		}
-	}
-
 	sp_PrevFftOut = std::polar(float(exp(dLevel)), dPhase);
 #endif
 	sp_PrevFftIn = smp;
@@ -1025,8 +992,8 @@ int CNoiseReduction::ProcessSound(__int16 const * pInBuf, __int16 * pOutBuf,
 
 			// process FFT result
 			int f;
-			float FarMasking[FAR_MASKING_GRANULARITY][2];
-			float SubbandPower[FAR_MASKING_GRANULARITY][2];
+			float FarMasking[FAR_MASKING_GRANULARITY];
+			float SubbandPower[FAR_MASKING_GRANULARITY];
 
 			for (f = 0; f < m_nFftOrder / 2 + 1; f++)
 			{
@@ -1045,55 +1012,72 @@ int CNoiseReduction::ProcessSound(__int16 const * pInBuf, __int16 * pOutBuf,
 				// (using L/R correlation)
 			}
 
-			for (ch = 0; ch < nChans; ch++)
+			f = 0;
+			int n;
+			for (n = 0; n < FAR_MASKING_GRANULARITY; n++)
 			{
-				f = 0;
-				int n;
+				FarMasking[n] = 0.;
+				SubbandPower[n] = 0.;
+				for (int k = 0; k < m_nFftOrder / (FAR_MASKING_GRANULARITY*2); k++, f++)
+				{
+					for (ch = 0; ch < nChans; ch++)
+					{
+						SubbandPower[n] += m_pParams[ch][f].sp_Power;
+					}
+				}
+			}
+			for (f = 0; f < FAR_MASKING_GRANULARITY; f++)
+			{
+				FarMasking[f] = 0.;
 				for (n = 0; n < FAR_MASKING_GRANULARITY; n++)
 				{
-					FarMasking[n][ch] = 0.;
-					SubbandPower[n][ch] = 0.;
-					for (int k = 0; k < m_nFftOrder / (FAR_MASKING_GRANULARITY*2); k++, f++)
-					{
-						SubbandPower[n][ch] += m_pParams[ch][f].sp_Power;
-					}
+					FarMasking[f] +=
+						SubbandPower[n] * m_FarMaskingCoeffs[f][n];
 				}
-				for (f = 0; f < FAR_MASKING_GRANULARITY; f++)
-				{
-					FarMasking[f][ch] = 0.;
-					for (n = 0; n < FAR_MASKING_GRANULARITY; n++)
-					{
-						FarMasking[f][ch] +=
-							SubbandPower[n][ch] * m_FarMaskingCoeffs[f][n];
-					}
-				}
-				// calculate fine masking function, using far masking table
-				// and near masking factors. Just filter the power in frequency and time
-				// add far masking value
-				for (f = 0; f < m_nFftOrder / 2; f++)
+				FarMasking[f] /= nChans;
+			}
+			// calculate fine masking function, using far masking table
+			// and near masking factors. Just filter the power in frequency and time
+			// add far masking value
+			for (f = 0; f < m_nFftOrder / 2; f++)
+			{
+				for (ch = 0; ch < nChans; ch++)
 				{
 					m_pParams[ch][f].sp_MaskingPower =
-						m_pParams[ch][f].sp_Power * m_NearMaskingCoeff
-						//+ FarMasking[f * FAR_MASKING_GRANULARITY*2 / m_nFftOrder][ch]
+						m_pParams[ch][f].sp_Power * m_FarMaskingCoeff
+						+ (1. - m_FarMaskingCoeff) * FarMasking[f * FAR_MASKING_GRANULARITY*2 / m_nFftOrder]
 					;
 				}
-				// filter in prequency in two directions
-				double PrevFilteredPower = 0.;
-				for (f = 0; f < m_nFftOrder / 2+1; f++)
+			}
+			// filter in prequency in two directions
+			double PrevFilteredPower = 0.;
+			// those are calculated from m_NearMaskingDecayTime* :
+			float m_MaskingTemporalDecayNormLow =
+				// coeff to filter masking function in time
+				m_NearMaskingDecayDistanceLow / m_SamplesPerSec * m_nFftOrder;
+			float m_MaskingTemporalDecayNormHigh =
+				// coeff to filter masking function in time
+				m_NearMaskingDecayDistanceHigh / m_SamplesPerSec * m_nFftOrder;
+			for (f = m_nFftOrder / 2; f >= 0; f--)
+			{
+				PrevFilteredPower += m_NearMaskingDecayRate *
+									(m_pParams[ch][f].sp_MaskingPower - PrevFilteredPower);
+				m_pParams[ch][f].sp_MaskingPower = PrevFilteredPower;
+			}
+			PrevFilteredPower = 0.;
+			for (f = 0; f < m_nFftOrder / 2+1; f++)
+			{
+				for (ch = 0; ch < nChans; ch++)
 				{
 					PrevFilteredPower += m_NearMaskingDecayRate *
 										(m_pParams[ch][f].sp_MaskingPower - PrevFilteredPower);
 					m_pParams[ch][f].sp_MaskingPower = PrevFilteredPower;
 				}
-				PrevFilteredPower = 0.;
-				for (f = m_nFftOrder / 2; f >= 0; f--)
-				{
-					PrevFilteredPower += m_NearMaskingDecayRate *
-										(m_pParams[ch][f].sp_MaskingPower - PrevFilteredPower);
-					m_pParams[ch][f].sp_MaskingPower = PrevFilteredPower;
-				}
-				// filter in time
-				for (f = 0; f < m_nFftOrder / 2 + 1; f++)
+			}
+			// filter in time
+			for (f = 0; f < m_nFftOrder / 2 + 1; f++)
+			{
+				for (ch = 0; ch < nChans; ch++)
 				{
 					if (m_pParams[ch][f].sp_MaskingPower < m_pParams[ch][f].sp_PrevMaskingPower)
 					{
@@ -1112,7 +1096,7 @@ int CNoiseReduction::ProcessSound(__int16 const * pInBuf, __int16 * pOutBuf,
 			// total power (original and after processing)
 			// max power in band, min power in band,
 			// max masking, min masking
-			if (1) {
+			if (0) {
 				double TotalPower1=0, TotalPower2=0;
 				double MaxBandPower1=0, MaxBandPower2=0;
 				double MinBandPower1=1.e10,MinBandPower2=1.e10;

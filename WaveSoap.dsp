@@ -43,7 +43,7 @@ RSC=rc.exe
 # PROP Ignore_Export_Lib 0
 # PROP Target_Dir ""
 # ADD BASE CPP /nologo /MT /W3 /GX /O2 /D "WIN32" /D "NDEBUG" /D "_WINDOWS" /Yu"stdafx.h" /FD /c
-# ADD CPP /nologo /MT /W3 /GX /O2 /I "." /I ".." /I "../../common sources" /D "WIN32" /D "NDEBUG" /D "_WINDOWS" /Yu"stdafx.h" /FD /c
+# ADD CPP /nologo /MT /W3 /GX /O2 /I "." /I ".." /D "WIN32" /D "NDEBUG" /D "_WINDOWS" /Yu"stdafx.h" /FD /c
 # ADD BASE MTL /nologo /D "NDEBUG" /mktyplib203 /o "NUL" /win32
 # ADD MTL /nologo /D "NDEBUG" /mktyplib203 /o "NUL" /win32
 # ADD BASE RSC /l 0x409 /d "NDEBUG"
@@ -69,7 +69,7 @@ LINK32=link.exe
 # PROP Ignore_Export_Lib 0
 # PROP Target_Dir ""
 # ADD BASE CPP /nologo /MTd /W3 /Gm /GX /Zi /Od /D "WIN32" /D "_DEBUG" /D "_WINDOWS" /Yu"stdafx.h" /FD /c
-# ADD CPP /nologo /MTd /W3 /Gm /GX /ZI /Od /I "." /I ".." /I "../../common sources" /D "WIN32" /D "_DEBUG" /D "_WINDOWS" /Yu"stdafx.h" /FD /c
+# ADD CPP /nologo /MTd /W3 /Gm /GX /ZI /Od /I "." /I ".." /D "WIN32" /D "_DEBUG" /D "_WINDOWS" /Yu"stdafx.h" /FD /c
 # ADD BASE MTL /nologo /D "_DEBUG" /mktyplib203 /o "NUL" /win32
 # ADD MTL /nologo /D "_DEBUG" /mktyplib203 /o "NUL" /win32
 # ADD BASE RSC /l 0x409 /d "_DEBUG"
@@ -92,6 +92,10 @@ LINK32=link.exe
 # PROP Default_Filter "cpp;c;cxx;rc;def;r;odl;idl;hpj;bat"
 # Begin Source File
 
+SOURCE=".\ApplicationProfile.cpp"
+# End Source File
+# Begin Source File
+
 SOURCE=.\DeclickPage.cpp
 # End Source File
 # Begin Source File
@@ -104,12 +108,17 @@ SOURCE=.\NoiseReductionPage.cpp
 # End Source File
 # Begin Source File
 
-SOURCE="..\Common Sources\NumEdit.cpp"
+SOURCE=".\NumEdit.cpp"
 # End Source File
 # Begin Source File
 
 SOURCE=.\StdAfx.cpp
 # ADD CPP /Yc"stdafx.h"
+# End Source File
+# Begin Source File
+
+SOURCE=.\waveproc.cpp
+# SUBTRACT CPP /YX /Yc /Yu
 # End Source File
 # Begin Source File
 
@@ -133,7 +142,19 @@ SOURCE=.\WaveSoapSheet.cpp
 # PROP Default_Filter "h;hpp;hxx;hm;inl"
 # Begin Source File
 
+SOURCE=".\ApplicationProfile.h"
+# End Source File
+# Begin Source File
+
 SOURCE=.\DeclickPage.h
+# End Source File
+# Begin Source File
+
+SOURCE=".\fft.h"
+# End Source File
+# Begin Source File
+
+SOURCE=".\FFT.inl"
 # End Source File
 # Begin Source File
 
@@ -145,7 +166,7 @@ SOURCE=.\NoiseReductionPage.h
 # End Source File
 # Begin Source File
 
-SOURCE="..\..\Common Sources\NumEdit.h"
+SOURCE=.\NumEdit.h
 # End Source File
 # Begin Source File
 
@@ -157,7 +178,7 @@ SOURCE=.\StdAfx.h
 # End Source File
 # Begin Source File
 
-SOURCE=..\waveproc.h
+SOURCE=.\waveproc.h
 # End Source File
 # Begin Source File
 

@@ -14,10 +14,13 @@
 #define IDD_PROPPAGE_CAMNOISE           107
 #define IDR_MAINFRAME                   128
 #define IDD_DIALOG_WAVE_PROGRESS        130
+#define IDD_DIALOG_MORE_NOISEREDUCTION  133
+#define IDD_DIALOG_MORE_DECLICK         134
 #define IDC_EDIT_MIN_CLICK_AMPLITUDE    1000
 #define IDC_CHECK_LOG_CLICKS            1001
 #define IDC_EDIT_CLICK_LOG_FILENAME     1002
 #define IDC_BUTTON1                     1003
+#define IDC_CLICK_LOG_BROWSE_BUTTON     1003
 #define IDC_CHECK_LOG_CLICKS_ONLY       1004
 #define IDC_BUTTON_BROWSE_TARGET        1004
 #define IDC_EDIT_CLICK_TO_NOISE         1005
@@ -25,8 +28,11 @@
 #define IDC_EDIT_ATTACK_RATE            1007
 #define IDC_EDIT_DECAY_RATE             1008
 #define IDC_CHECK_ULF_NOISE             1009
+#define IDC_EDIT_CLICK_IMPORT_FILENAME  1009
 #define IDC_CHECK_DECLICK               1010
+#define IDC_CLICK_IMPORT_BROWSE_BUTTON  1010
 #define IDC_CHECK_NOISE_REDUCTION       1011
+#define IDC_CHECK_IMPORT_CLICKS         1011
 #define IDC_CHECK_CAMERA_NOISE          1012
 #define IDC_EDIT_SOURCE_FILENAME        1013
 #define IDC_EDIT_TARGET_FILENAME        1014
@@ -42,6 +48,15 @@
 #define IDC_EDIT_NOISE_REDUCTION        1025
 #define IDC_CHECK_PHASE_FILTER          1026
 #define IDC_BUTTON_MORE                 1027
+#define IDC_CHECK_HIGHPASS              1028
+#define IDC_BUTTON_RESET_DEFAULT        1029
+#define IDC_BUTTON_REVERT_INITIAL       1030
+#define IDC_BUTTON_MORE_SETTINGS        1031
+#define IDC_EDIT_AGGRESSIVNESS          1032
+#define IDC_EDIT1                       1033
+#define IDC_EDIT2                       1034
+#define IDC_EDIT3                       1035
+#define IDC_EDIT4                       1036
 #define IDS_BAD_FLOAT_VALUE             32796
 #define IDS_VALUE_REQUIRED              32797
 #define IDS_VALUE_TOO_LOW               32798
@@ -51,9 +66,9 @@
 //
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE        132
+#define _APS_NEXT_RESOURCE_VALUE        135
 #define _APS_NEXT_COMMAND_VALUE         32771
-#define _APS_NEXT_CONTROL_VALUE         1028
+#define _APS_NEXT_CONTROL_VALUE         1034
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif

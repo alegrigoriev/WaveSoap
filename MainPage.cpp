@@ -27,11 +27,14 @@ CMainPage::CMainPage() : CPropertyPage(CMainPage::IDD)
 	m_bDoUlfNoiseReduction = FALSE;
 	m_InFile = _T("");
 	m_OutFile = _T("");
+	m_HighpassFilter = FALSE;
 	//}}AFX_DATA_INIT
 }
 
 CMainPage::~CMainPage()
 {
+	CWaveSoapApp * pApp = (CWaveSoapApp *)AfxGetApp();
+	pApp->Profile.RemoveSection(_T("Options"));
 }
 
 void CMainPage::DoDataExchange(CDataExchange* pDX)
@@ -45,6 +48,7 @@ void CMainPage::DoDataExchange(CDataExchange* pDX)
 	DDX_Text(pDX, IDC_EDIT_SOURCE_FILENAME, m_InFile);
 	DDV_MaxChars(pDX, m_InFile, 256);
 	DDX_Text(pDX, IDC_EDIT_TARGET_FILENAME, m_OutFile);
+	DDX_Check(pDX, IDC_CHECK_HIGHPASS, m_HighpassFilter);
 	//}}AFX_DATA_MAP
 }
 
@@ -63,23 +67,17 @@ END_MESSAGE_MAP()
 void CMainPage::LoadValuesFromRegistry()
 {
 	CWaveSoapApp * pApp = (CWaveSoapApp *)AfxGetApp();
-	m_bDoDeclick =
-		(FALSE != pApp->GetProfileInt(_T("Options"), _T("Declick"), TRUE));
-	m_bDoNoiseReduction =
-		(FALSE != pApp->GetProfileInt(_T("Options"), _T("NoiseReduction"), TRUE));
-	m_bDoUlfNoiseReduction =
-		(FALSE != pApp->GetProfileInt(_T("Options"), _T("UlfNoiseReduction"), TRUE));
-	m_bDoCameraNoiseReduction =
-		(FALSE != pApp->GetProfileInt(_T("Options"), _T("CameraNoiseReduction"), FALSE));
+	pApp->Profile.AddBoolItem(_T("Options"), _T("Declick"), m_bDoDeclick, TRUE);
+	pApp->Profile.AddBoolItem(_T("Options"), _T("NoiseReduction"), m_bDoNoiseReduction, TRUE);
+	pApp->Profile.AddBoolItem(_T("Options"), _T("UlfNoiseReduction"), m_bDoUlfNoiseReduction, TRUE);
+	pApp->Profile.AddBoolItem(_T("Options"), _T("HighpassFilter"), m_HighpassFilter, TRUE);
+	pApp->Profile.AddBoolItem(_T("Options"), _T("CameraNoiseReduction"), m_bDoCameraNoiseReduction, FALSE);
 }
 
 void CMainPage::StoreValuesToRegistry()
 {
 	CWaveSoapApp * pApp = (CWaveSoapApp *)AfxGetApp();
-	pApp->WriteProfileInt(_T("Options"), _T("Declick"), m_bDoDeclick);
-	pApp->WriteProfileInt(_T("Options"), _T("NoiseReduction"), m_bDoNoiseReduction);
-	pApp->WriteProfileInt(_T("Options"), _T("UlfNoiseReduction"), m_bDoUlfNoiseReduction);
-	pApp->WriteProfileInt(_T("Options"), _T("CameraNoiseReduction"), m_bDoCameraNoiseReduction);
+	pApp->Profile.FlushSection(_T("Options"));
 }
 
 void CMainPage::OnOK()
@@ -180,12 +178,13 @@ unsigned __stdcall WaveProcThread(void * arg)
 	CClickRemoval cr;
 	CHumRemoval hr;
 	CBatchProcessing bp;
-	CNoiseReduction nr;
+	CNoiseReduction nr(pNoise->m_FftOrder);
 	bp.m_Callback = WaveProcCallback;
 	bp.m_dwCallbackData = (DWORD)pWaveDlg;
 
 	if (pMain->m_bDoUlfNoiseReduction)
 	{
+		hr.m_ApplyHighpassFilter = pMain->m_HighpassFilter;
 		bp.AddWaveProc( & hr);
 	}
 
@@ -203,6 +202,7 @@ unsigned __stdcall WaveProcThread(void * arg)
 
 	pWaveDlg->pProc = & bp;
 	ProcessWaveFile(pMain->m_InFile, pMain->m_OutFile, & bp);
+	bp.m_Callback( & bp, WAVEPROC_MSG_FINISHED, 0, 0);
 	return 0;
 }
 
@@ -240,9 +240,12 @@ void CMainPage::OnButtonBrowseSource()
 
 	GetDlgItem(IDC_EDIT_SOURCE_FILENAME)->GetWindowText(m_InFile);
 
+	// allow multiple selection for batch processing
 	CFileDialog fdlg(TRUE, "wav", m_InFile,
 					OFN_EXPLORER
 					| OFN_FILEMUSTEXIST
+					//| OFN_ALLOWMULTISELECT
+					| OFN_ENABLESIZING
 					| OFN_HIDEREADONLY,
 					filter);
 	fdlg.m_ofn.lpstrInitialDir = _T(".");

@@ -14,6 +14,7 @@
 
 #include "resource.h"		// main symbols
 #include "WaveSoapSheet.h"
+#include "ApplicationProfile.h"
 /////////////////////////////////////////////////////////////////////////////
 // CWaveSoapApp:
 // See WaveSoap.cpp for the implementation of this class
@@ -37,7 +38,7 @@ public:
 	double GetProfileDouble(LPCTSTR Section, LPCTSTR ValueName,
 							double Default, double MinVal, double MaxVal);
 	void WriteProfileDouble(LPCTSTR Section, LPCTSTR ValueName, double value);
-
+	CApplicationProfile Profile;
 	//{{AFX_MSG(CWaveSoapApp)
 	// NOTE - the ClassWizard will add and remove member functions here.
 	//    DO NOT EDIT what you see in these blocks of generated code !

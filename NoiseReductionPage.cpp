@@ -19,7 +19,6 @@ IMPLEMENT_DYNCREATE(CNoiseReductionPage, CPropertyPage)
 CNoiseReductionPage::CNoiseReductionPage() : CPropertyPage(CNoiseReductionPage::IDD)
 {
 	//{{AFX_DATA_INIT(CNoiseReductionPage)
-	m_bPhaseFilter = FALSE;
 	m_nFftOrderExp = -1;
 	//}}AFX_DATA_INIT
 	m_dTransientThreshold = 2;
@@ -28,6 +27,7 @@ CNoiseReductionPage::CNoiseReductionPage() : CPropertyPage(CNoiseReductionPage::
 	m_dNoiseThreshold = -70.;
 	m_dContinuousThreshold = -80.;
 	m_dLowerFrequency = 4000.;
+	m_FftOrder = 128;
 }
 
 CNoiseReductionPage::~CNoiseReductionPage()
@@ -38,17 +38,19 @@ void CNoiseReductionPage::DoDataExchange(CDataExchange* pDX)
 {
 	CPropertyPage::DoDataExchange(pDX);
 	//{{AFX_DATA_MAP(CNoiseReductionPage)
-	DDX_Control(pDX, IDC_EDIT_TRANSIENT_THRESHOLD, m_eTransientThreshold);
+	DDX_Control(pDX, IDC_EDIT_AGGRESSIVNESS, m_EditAggressivness);
 	DDX_Control(pDX, IDC_EDIT_NOISE_REDUCTION, m_eNoiseReduction);
 	DDX_Control(pDX, IDC_EDIT_NOISE_CRITERION, m_eNoiseCriterion);
 	DDX_Control(pDX, IDC_EDIT_NOISE_AREA_THRESHOLD, m_eNoiseThreshold);
 	DDX_Control(pDX, IDC_EDIT_LOWER_FREQUENCY, m_eLowerFrequency);
 	DDX_Control(pDX, IDC_EDIT_CONT_AREA_THRESHOLD, m_eContinuousThreshold);
-	DDX_Check(pDX, IDC_CHECK_PHASE_FILTER, m_bPhaseFilter);
 	DDX_CBIndex(pDX, IDC_COMBO_FFT_ORDER, m_nFftOrderExp);
 	//}}AFX_DATA_MAP
+	m_FftOrder = 256 << m_nFftOrderExp;
+#if 0
 	m_eTransientThreshold.ExchangeData(pDX, m_dTransientThreshold,
 										"Transient threshold", "", 0.3, 2);
+#endif
 	m_eNoiseReduction.ExchangeData(pDX, m_dNoiseReduction,
 									"Noise reduction", "dB", 0., 100.);
 	m_eNoiseCriterion.ExchangeData(pDX, m_dNoiseCriterion,
@@ -65,7 +67,7 @@ void CNoiseReductionPage::DoDataExchange(CDataExchange* pDX)
 
 BEGIN_MESSAGE_MAP(CNoiseReductionPage, CPropertyPage)
 	//{{AFX_MSG_MAP(CNoiseReductionPage)
-		// NOTE: the ClassWizard will add message map macros here
+	ON_BN_CLICKED(IDC_BUTTON_MORE, OnButtonMore)
 	//}}AFX_MSG_MAP
 END_MESSAGE_MAP()
 
@@ -74,29 +76,31 @@ END_MESSAGE_MAP()
 void CNoiseReductionPage::LoadValuesFromRegistry()
 {
 	CWaveSoapApp * pApp = (CWaveSoapApp *)AfxGetApp();
-	m_bPhaseFilter =
-		(FALSE != pApp->GetProfileInt(_T("NoiseReduction"), _T("PhaseFilter"), FALSE));
+	//m_bPhaseFilter = (FALSE != pApp->GetProfileInt(_T("NoiseReduction"), _T("PhaseFilter"), FALSE));
 
-	int FftOrder =
-		pApp->GetProfileInt(_T("NoiseReduction"), _T("FftOrder"), 2048);
+	pApp->Profile.AddItem(_T("NoiseReduction"), _T("FftOrder"), m_FftOrder, 2048, 256, 16384);
 
-	if (FftOrder >= 16384)
+	if (m_FftOrder >= 16384)
+	{
+		m_nFftOrderExp = 6;
+	}
+	else if (m_FftOrder >= 8192)
 	{
 		m_nFftOrderExp = 5;
 	}
-	else if (FftOrder >= 8192)
+	else if (m_FftOrder >= 4096)
 	{
 		m_nFftOrderExp = 4;
 	}
-	else if (FftOrder >= 4096)
+	else if (m_FftOrder >= 2048)
 	{
 		m_nFftOrderExp = 3;
 	}
-	else if (FftOrder >= 2048)
+	else if (m_FftOrder >= 1024)
 	{
 		m_nFftOrderExp = 2;
 	}
-	else if (FftOrder >= 1024)
+	else if (m_FftOrder >= 512)
 	{
 		m_nFftOrderExp = 1;
 	}
@@ -105,33 +109,19 @@ void CNoiseReductionPage::LoadValuesFromRegistry()
 		m_nFftOrderExp = 0;
 	}
 
-	m_dTransientThreshold =
-		pApp->GetProfileDouble(_T("NoiseReduction"), _T("TransientThreshold"), 1., 0.3, 2);
-	m_dNoiseReduction =
-		pApp->GetProfileDouble(_T("NoiseReduction"), _T("NoiseReduction"), 10., 0., 100.);
-	m_dNoiseCriterion =
-		pApp->GetProfileDouble(_T("NoiseReduction"), _T("NoiseCriterion"), 0.25, 0., 1.);
-	m_dNoiseThreshold =
-		pApp->GetProfileDouble(_T("NoiseReduction"), _T("NoiseThreshold"), -70., -100., -10.);
-	m_dLowerFrequency =
-		pApp->GetProfileDouble(_T("NoiseReduction"), _T("LowerFrequency"), 4000., 100., 48000.);
-	m_dContinuousThreshold =
-		pApp->GetProfileDouble(_T("NoiseReduction"), _T("ContinuousThreshold"), -80., -100., -10.);
+	pApp->Profile.AddItem(_T("NoiseReduction"), _T("TransientThreshold"), m_dTransientThreshold, 1., 0.3, 2);
+	pApp->Profile.AddItem(_T("NoiseReduction"), _T("NoiseReduction"), m_dNoiseReduction, 10., 0., 100.);
+	pApp->Profile.AddItem(_T("NoiseReduction"), _T("NoiseCriterion"), m_dNoiseCriterion, 0.25, 0., 1.);
+	pApp->Profile.AddItem(_T("NoiseReduction"), _T("NoiseThreshold"), m_dNoiseThreshold, -70., -100., -10.);
+	pApp->Profile.AddItem(_T("NoiseReduction"), _T("LowerFrequency"), m_dLowerFrequency, 4000., 100., 48000.);
+	pApp->Profile.AddItem(_T("NoiseReduction"), _T("ContinuousThreshold"), m_dContinuousThreshold, -80., -100., -10.);
 }
 
 void CNoiseReductionPage::StoreValuesToRegistry()
 {
 	CWaveSoapApp * pApp = (CWaveSoapApp *)AfxGetApp();
-	pApp->WriteProfileInt(_T("NoiseReduction"), _T("PhaseFilter"), m_bPhaseFilter);
-
-	pApp->WriteProfileInt(_T("NoiseReduction"), _T("FftOrder"), 512 << m_nFftOrderExp);
-
-	pApp->WriteProfileDouble(_T("NoiseReduction"), _T("TransientThreshold"), m_dTransientThreshold);
-	pApp->WriteProfileDouble(_T("NoiseReduction"), _T("NoiseReduction"), m_dNoiseReduction);
-	pApp->WriteProfileDouble(_T("NoiseReduction"), _T("NoiseCriterion"), m_dNoiseCriterion);
-	pApp->WriteProfileDouble(_T("NoiseReduction"), _T("NoiseThreshold"), m_dNoiseThreshold);
-	pApp->WriteProfileDouble(_T("NoiseReduction"), _T("LowerFrequency"), m_dLowerFrequency);
-	pApp->WriteProfileDouble(_T("NoiseReduction"), _T("ContinuousThreshold"), m_dContinuousThreshold);
+	m_FftOrder = 256 << m_nFftOrderExp;
+	pApp->Profile.FlushSection(_T("NoiseReduction"));
 }
 
 #define DB_TO_NEPER 0.115129254
@@ -141,13 +131,13 @@ void CNoiseReductionPage::StoreValuesToRegistry()
 
 void CNoiseReductionPage::SetWaveprocData(CNoiseReduction * pNr)
 {
-	pNr->m_bApplyPhaseFilter = m_bPhaseFilter;
+	//pNr->m_bApplyPhaseFilter = m_bPhaseFilter;
 	pNr->m_MinFrequencyToProcess = m_dLowerFrequency;
 	pNr->m_ThresholdOfTransient = m_dTransientThreshold;
 	pNr->m_FreqThresholdOfNoiselike = M_PI_2 * M_PI_2 * m_dNoiseCriterion * m_dNoiseCriterion;
-	pNr->m_NoiseReductionRatio = DB_TO_NEPER * m_dNoiseReduction;
-	pNr->m_LevelThresholdForNoise = DB_TO_NEPER * m_dNoiseThreshold + 14.5;
-	pNr->m_LevelThresholdForStationary = DB_TO_NEPER * m_dContinuousThreshold + 14.5;
+	pNr->m_MaxNoiseSuppression = DB_TO_NEPER * m_dNoiseReduction;
+	pNr->m_LevelThresholdForNoise = DB_TO_NEPER * m_dNoiseThreshold + 22.;
+	pNr->m_LevelThresholdForStationary = DB_TO_NEPER * m_dContinuousThreshold + 22.;
 }
 
 void CNoiseReductionPage::OnOK()
@@ -158,4 +148,45 @@ void CNoiseReductionPage::OnOK()
 BOOL CNoiseReductionPage::OnSetActive()
 {
 	return TRUE;
+}
+/////////////////////////////////////////////////////////////////////////////
+// CMoreNoiseDialog dialog
+
+
+CMoreNoiseDialog::CMoreNoiseDialog(CWnd* pParent /*=NULL*/)
+	: CDialog(CMoreNoiseDialog::IDD, pParent)
+{
+	//{{AFX_DATA_INIT(CMoreNoiseDialog)
+	// NOTE: the ClassWizard will add member initialization here
+	//}}AFX_DATA_INIT
+}
+
+
+void CMoreNoiseDialog::DoDataExchange(CDataExchange* pDX)
+{
+	CDialog::DoDataExchange(pDX);
+	//{{AFX_DATA_MAP(CMoreNoiseDialog)
+	// NOTE: the ClassWizard will add DDX and DDV calls here
+	//}}AFX_DATA_MAP
+}
+
+
+BEGIN_MESSAGE_MAP(CMoreNoiseDialog, CDialog)
+	//{{AFX_MSG_MAP(CMoreNoiseDialog)
+		// NOTE: the ClassWizard will add message map macros here
+	//}}AFX_MSG_MAP
+END_MESSAGE_MAP()
+
+/////////////////////////////////////////////////////////////////////////////
+// CMoreNoiseDialog message handlers
+
+void CNoiseReductionPage::OnButtonMore()
+{
+	CMoreNoiseDialog dlg;
+	// set the data to dlg
+	if (IDOK == dlg.DoModal())
+	{
+		// return the data from dlg
+	}
+
 }

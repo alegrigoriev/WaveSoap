@@ -52,21 +52,29 @@ BOOL CWaveSoapApp::InitInstance()
 #endif
 
 	SetRegistryKey(_T("AleGr SoftWare"));
-
+	CString CurrentDir;
+	theApp.Profile.AddItem(_T("Settings"), _T("CurrentDir"), CurrentDir, _T("."));
+	if (CurrentDir != ".")
+	{
+		SetCurrentDirectory(CurrentDir);
+	}
 	pDlg = new CWaveSoapSheet("AleGr Wave Soap");
 	m_pMainWnd = pDlg;
 	pDlg->LoadValuesFromRegistry();
-#if 1
-	if (IDCANCEL != pDlg->DoModal() || 1)
+
+	pDlg->DoModal();
+	pDlg->StoreValuesToRegistry();
+	LPTSTR dirbuf = CurrentDir.GetBuffer(MAX_PATH+1);
+	if (dirbuf)
 	{
-		pDlg->StoreValuesToRegistry();
+		GetCurrentDirectory(MAX_PATH+1, dirbuf);
+		CurrentDir.ReleaseBuffer();
+		theApp.Profile.FlushItem(_T("Settings"), _T("CurrentDir"));
 	}
+	// CurrentDir is not valid anymore
+	theApp.Profile.RemoveSection(_T("Settings"));
 
 	return FALSE;
-#else
-	return pDlg->Create( /*NULL, WS_SYSMENU | DS_MODALFRAME | DS_3DLOOK | DS_CONTEXTHELP |
-								DS_SETFONT | WS_POPUP | WS_VISIBLE | WS_CAPTION*/);
-#endif
 }
 
 int CWaveSoapApp::ExitInstance()

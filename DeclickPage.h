@@ -31,6 +31,8 @@ public:
 	int		m_MinClickAmplitude;
 	BOOL	m_bLogClicks;
 	BOOL	m_bLogClicksOnly;
+	BOOL	m_bImportClicks;
+	CString	m_ClickImportFilename;
 	//}}AFX_DATA
 	double m_dAttackRate;
 	double m_dClickToNoise;
@@ -55,12 +57,49 @@ protected:
 protected:
 	// Generated message map functions
 	//{{AFX_MSG(CDeclickPage)
-	// NOTE: the ClassWizard will add member functions here
+	afx_msg void OnCheckLogClicks();
+	afx_msg void OnCheckImportClicks();
+	virtual BOOL OnInitDialog();
+	afx_msg void OnClickLogBrowseButton();
+	afx_msg void OnClickImportBrowseButton();
+	afx_msg void OnButtonMoreSettings();
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 
 };
 
+/////////////////////////////////////////////////////////////////////////////
+// CMoreDeclickDialog dialog
+
+class CMoreDeclickDialog : public CDialog
+{
+// Construction
+public:
+	CMoreDeclickDialog(CWnd* pParent = NULL);   // standard constructor
+
+// Dialog Data
+	//{{AFX_DATA(CMoreDeclickDialog)
+	enum { IDD = IDD_DIALOG_MORE_DECLICK };
+	// NOTE: the ClassWizard will add data members here
+	//}}AFX_DATA
+
+
+// Overrides
+	// ClassWizard generated virtual function overrides
+	//{{AFX_VIRTUAL(CMoreDeclickDialog)
+protected:
+	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV support
+	//}}AFX_VIRTUAL
+
+// Implementation
+protected:
+
+	// Generated message map functions
+	//{{AFX_MSG(CMoreDeclickDialog)
+	// NOTE: the ClassWizard will add member functions here
+	//}}AFX_MSG
+	DECLARE_MESSAGE_MAP()
+};
 //{{AFX_INSERT_LOCATION}}
 // Microsoft Developer Studio will insert additional declarations immediately before the previous line.
 

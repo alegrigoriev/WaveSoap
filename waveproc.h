@@ -180,14 +180,33 @@ public:
 
 	float m_ThresholdOfTransient;
 	float m_FreqThresholdOfNoiselike; // compare with SIGNAL_PARAMS::sp_FreqDev
-	float m_LevelThresholdForNoise;
-	float m_LevelThresholdForStationary;
 
-	float m_NoiseReductionRatio;    // how much to suppress below noise floor
+	float m_LevelThresholdForNoiseLow;     // for low frequencies
+	float m_LevelThresholdForNoiseHigh;    // for high frequencies
+
+	// we multiply the band power to tone preservation factor
+	// for tonal bands
+	float m_TonePreservationFactor;
+
+	float m_NoiseReductionRatio;    // aggressivness of noise suppression
 	float m_MaxNoiseSuppression;    // how much FFT band can be suppressed (in dB)
+
+	// DecayDistance is frequency distance where masking decays by 1/e
+	// it is different for high and low frequencies
+	float m_NearMaskingDecayDistanceHigh;  // for high frequencies
+	float m_NearMaskingDecayDistanceLow;   // for low frequencies
+
 	float m_NearMaskingDecayRate;   // coeff to filter near masking function
-	float m_MaskingTemporalDecayRate; // coeff to filter masking function in time
-	float m_NearMaskingCoeff;
+
+	// DecayTime is time interval where masking decays by 1/e
+	// it is different for high and low frequencies
+	// Specified in miliseconds
+	float m_NearMaskingDecayTimeHigh;   // for high frequencies
+	float m_NearMaskingDecayTimeLow;   // for low frequencies
+
+	float m_FarMaskingCoeff;  // weights far masking against near masking
+
+	float m_PowerScale;             // to make the values independent of FFT order
 	int m_nBackSampleCount;
 	int m_nStoredSamples;
 	float * m_Window;
@@ -200,7 +219,7 @@ public:
 	DATA * m_FftInBuffer[2];
 	enum {FAR_MASKING_GRANULARITY = 64};
 	float m_FarMaskingCoeffs[FAR_MASKING_GRANULARITY][FAR_MASKING_GRANULARITY];
-	float m_FarMaskingFactor;
+
 	struct SIGNAL_PARAMS
 	{
 		complex<DATA> sp_PrevFftIn;
