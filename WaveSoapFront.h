@@ -161,10 +161,10 @@ public:
 
 	int m_SoundTimeFormat;
 
-	CDirectFile::CDirectFileCache * m_FileCache;
+	CDirectFileCacheProxy * m_FileCache;
 	CWaveSoapFrontDoc * m_pActiveDocument;
 
-	KListEntry<COperationContext> m_OpList;
+	ListHead<COperationContext> m_OpList;
 
 	CString m_CurrentStatusString;
 	CWaveSoapFrontDoc * m_pLastStatusDocument;
@@ -262,8 +262,8 @@ public:
 	}
 
 	HINSTANCE m_hWMVCORE_DLL_Handle;
+public:
 };
-
 
 // this class brings a document frame temporary to the top,
 // then restores it back
