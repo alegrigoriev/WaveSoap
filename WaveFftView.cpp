@@ -6,6 +6,7 @@
 #include "WaveSoapFrontView.h"
 #include "WaveFftView.h"
 #include "fft.h"
+#include "MainFrm.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -146,6 +147,26 @@ static const unsigned char palette[128 * 3] =
 
 };
 
+void CWaveFftView::FillLogPalette(LOGPALETTE * pal, int nEntries)
+{
+	pal->palVersion = 0x300;
+	for (int i = 0; i < 10; i++)
+	{
+		pal->palPalEntry[i].peFlags = PC_EXPLICIT;
+		pal->palPalEntry[i].peRed = i;
+		pal->palPalEntry[i].peGreen = 0;
+		pal->palPalEntry[i].peBlue = 0;
+	}
+	for (int j = 0; j < sizeof palette && i < nEntries; j += 3, i++)
+	{
+		pal->palPalEntry[i].peFlags = PC_NOCOLLAPSE;
+		pal->palPalEntry[i].peRed = palette[j];
+		pal->palPalEntry[i].peGreen = palette[j + 1];
+		pal->palPalEntry[i].peBlue = palette[j + 2];
+	}
+	pal->palNumEntries = i;
+}
+
 /////////////////////////////////////////////////////////////////////////////
 // CWaveFftView
 
@@ -258,49 +279,102 @@ void CWaveFftView::OnDraw(CDC* pDC)
 
 	MakeFftArray(left, right);
 
-	BITMAPINFOHEADER bmih = {
-		sizeof bmih,
-		r.right - r.left,
-		cr.top - cr.bottom, // <0
-		1,
-		24,
-		BI_RGB,
-		0,
-		0,
-		0,
-		0,
-		0
-	};
-	const int BytesPerPixel = 3;
+	HBITMAP hbm;
 	void * pBits;
-	HBITMAP hbm = CreateDIBSection(pDC->GetSafeHdc(), (LPBITMAPINFO) & bmih, 0, & pBits, NULL, 0);
+	bool bUsePalette;
+	size_t width = r.right - r.left;
+	size_t height = cr.bottom - cr.top;
+	size_t stride = (width * 3 + 3) & ~3;
+	size_t BmpSize = stride * abs(height);
+	int BytesPerPixel = 3;
+	struct BM : BITMAPINFO
+	{
+		RGBQUAD MorebmiColors[256];
+	} bmi;
+	bmi.bmiHeader.biSize = sizeof BITMAPINFOHEADER;
+	bmi.bmiHeader.biWidth = r.right - r.left;
+	bmi.bmiHeader.biHeight = cr.top - cr.bottom; // <0
+	bmi.bmiHeader.biPlanes = 1;
+	bmi.bmiHeader.biCompression = BI_RGB;
+	bmi.bmiHeader.biSizeImage = 0;
+	bmi.bmiHeader.biXPelsPerMeter = 0;
+	bmi.bmiHeader.biYPelsPerMeter = 0;
+	bmi.bmiHeader.biClrUsed = 0;
+	bmi.bmiHeader.biClrImportant = 0;
+
+	CPalette * pOldPalette = NULL;
+
+	if ((pDC->GetDeviceCaps(RASTERCAPS) & RC_PALETTE)
+		&& 8 == pDC->GetDeviceCaps(BITSPIXEL))
+	{
+		BytesPerPixel = 1;
+		bUsePalette = true;
+		bmi.bmiHeader.biBitCount = 8;
+
+		int i;
+		PALETTEENTRY SysPalette[256];
+		GetSystemPaletteEntries(*pDC, 0, 256, SysPalette);
+		for (i = 0; i < 10; i++)
+		{
+			bmi.bmiColors[i].rgbReserved = 0;
+			bmi.bmiColors[i].rgbRed = SysPalette[i].peRed;
+			bmi.bmiColors[i].rgbGreen = SysPalette[i].peGreen;
+			bmi.bmiColors[i].rgbBlue = SysPalette[i].peBlue;
+		}
+		for (int j = 0; j < sizeof palette && i < 255; j += 3, i++)
+		{
+			bmi.bmiColors[i].rgbReserved = 0;
+			bmi.bmiColors[i].rgbRed = palette[j];
+			bmi.bmiColors[i].rgbGreen = palette[j + 1];
+			bmi.bmiColors[i].rgbBlue = palette[j + 2];
+		}
+		for ( ; i < 256; i++)
+		{
+			bmi.bmiColors[i].rgbReserved = 0;
+			bmi.bmiColors[i].rgbRed = SysPalette[i].peRed;
+			bmi.bmiColors[i].rgbGreen = SysPalette[i].peGreen;
+			bmi.bmiColors[i].rgbBlue = SysPalette[i].peBlue;
+		}
+
+		bmi.bmiHeader.biClrUsed = i;
+		stride = (width + 3) & ~3;
+		BmpSize = stride * abs(height);
+		pOldPalette = pDC->SelectPalette(GetApp()->GetPalette(), FALSE);
+	}
+	else
+	{
+		BytesPerPixel = 3;
+		bUsePalette = false;
+		bmi.bmiHeader.biBitCount = 24;
+
+		//hbm = CreateDIBSection(pDC->GetSafeHdc(), (LPBITMAPINFO) & bmih, 0, & pBits, NULL, 0);
+	}
+	hbm = CreateDIBSection(pDC->GetSafeHdc(), & bmi, DIB_RGB_COLORS,
+							& pBits, NULL, 0);
 	if (hbm == NULL)
 	{
+		if (pOldPalette)
+		{
+			pDC->SelectPalette(pOldPalette, FALSE);
+		}
 		return;
 	}
 
 	// get windowed samples with 50% overlap
 	LPBYTE pBmp = LPBYTE(pBits);
 
-	size_t width = r.right - r.left;
-	size_t height = cr.bottom - cr.top;
-	size_t stride = (width * 3 + 3) & ~3;
-	size_t BmpSize = stride * abs(height);
 	memset(pBmp, 0, BmpSize);
-//    int i;
 
 	// fill the array
-	int x;
-	x = WindowToWorldX(r.left);
-	//y = WindowToWorldY(r.top);
 
 	int nChannels = pDoc->WaveChannels();
 	// find offset in the FFT result array for 'left' point
 	// and how many columns to fill with this color
 	int ColsPerFftPoint = m_FftSpacing / m_HorizontalScale;
-	int nFirstCol = (x - m_FftResultBegin) / m_FftSpacing;
+	int nFirstCol = (long(left) - m_FftResultBegin) / m_FftSpacing;
+	ASSERT(nFirstCol >= 0);
 	int FirstCols = ColsPerFftPoint -
-					((x - m_FftResultBegin) % m_FftSpacing) / m_HorizontalScale;
+					((long(left) - m_FftResultBegin) % m_FftSpacing) / m_HorizontalScale;
 
 	// find vertical offset in the result array and how many
 	// rows to fill with this color
@@ -311,6 +385,10 @@ void CWaveFftView::OnDraw(CDC* pDC)
 	if (0 == TotalRows)
 	{
 		DeleteObject(hbm);
+		if (pOldPalette)
+		{
+			pDC->SelectPalette(pOldPalette, FALSE);
+		}
 		CScaledScrollView::OnDraw(pDC);
 		return;
 	}
@@ -339,6 +417,10 @@ void CWaveFftView::OnDraw(CDC* pDC)
 	if (NULL == pIdArray)
 	{
 		DeleteObject(hbm);
+		if (pOldPalette)
+		{
+			pDC->SelectPalette(pOldPalette, FALSE);
+		}
 		return;
 	}
 	// fill the array
@@ -385,24 +467,46 @@ void CWaveFftView::OnDraw(CDC* pDC)
 		if (pData[0])
 		{
 			pData++;
-			for (int ch = 0, nFftChOffset = 1, nBmpChOffset = 0; ch < nChannels; ch++,
-				nBmpChOffset += nChanOffset, pData += m_FftOrder)
+			if ( ! bUsePalette)
 			{
-				BYTE * pRgb = pColBmp + nBmpChOffset;
-				if (nColumns != 1)
+				for (int ch = 0, nFftChOffset = 1, nBmpChOffset = 0; ch < nChannels; ch++,
+					nBmpChOffset += nChanOffset, pData += m_FftOrder)
 				{
-					for (ff = 0, pId = pIdArray; ff < IdxSize; ff++, pId++)
+					BYTE * pRgb = pColBmp + nBmpChOffset;
+					if (nColumns != 1)
 					{
-						unsigned char const * pColor = & palette[pData[pId->nFftOffset] * 3];
-						// set the color to pId->nNumOfRows rows
-						unsigned char r = pColor[0];
-						unsigned char g = pColor[1];
-						unsigned char b = pColor[2];
-						for (int y = 0; y < pId->nNumOfRows; y++, pRgb += stride - nColumns * 3)
+						for (ff = 0, pId = pIdArray; ff < IdxSize; ff++, pId++)
 						{
-							// set the color to nColumns pixels across
-							for (int x = 0; x < nColumns; x++, pRgb += 3)
+							unsigned char const * pColor = & palette[pData[pId->nFftOffset] * 3];
+							// set the color to pId->nNumOfRows rows
+							unsigned char r = pColor[0];
+							unsigned char g = pColor[1];
+							unsigned char b = pColor[2];
+							for (int y = 0; y < pId->nNumOfRows; y++, pRgb += stride - nColumns * 3)
 							{
+								// set the color to nColumns pixels across
+								for (int x = 0; x < nColumns; x++, pRgb += 3)
+								{
+									ASSERT(pRgb >= pBmp && pRgb + 3 <= pBmp + BmpSize);
+									pRgb[0] = b;    // B
+									pRgb[1] = g;    // G
+									pRgb[2] = r;    // R
+								}
+							}
+						}
+					}
+					else
+					{
+						for (ff = 0, pId = pIdArray; ff < IdxSize; ff++, pId++)
+						{
+							unsigned char const * pColor = & palette[pData[pId->nFftOffset] * 3];
+							// set the color to pId->nNumOfRows rows
+							unsigned char r = pColor[0];
+							unsigned char g = pColor[1];
+							unsigned char b = pColor[2];
+							for (int y = 0; y < pId->nNumOfRows; y++, pRgb += stride)
+							{
+								// set the color
 								ASSERT(pRgb >= pBmp && pRgb + 3 <= pBmp + BmpSize);
 								pRgb[0] = b;    // B
 								pRgb[1] = g;    // G
@@ -411,22 +515,43 @@ void CWaveFftView::OnDraw(CDC* pDC)
 						}
 					}
 				}
-				else
+
+			}
+			else
+			{   // use palette
+				for (int ch = 0, nFftChOffset = 1, nBmpChOffset = 0; ch < nChannels; ch++,
+					nBmpChOffset += nChanOffset, pData += m_FftOrder)
 				{
-					for (ff = 0, pId = pIdArray; ff < IdxSize; ff++, pId++)
+					BYTE * pPalIndex = pColBmp + nBmpChOffset;
+					if (nColumns != 1)
 					{
-						unsigned char const * pColor = & palette[pData[pId->nFftOffset] * 3];
-						// set the color to pId->nNumOfRows rows
-						unsigned char r = pColor[0];
-						unsigned char g = pColor[1];
-						unsigned char b = pColor[2];
-						for (int y = 0; y < pId->nNumOfRows; y++, pRgb += stride)
+						for (ff = 0, pId = pIdArray; ff < IdxSize; ff++, pId++)
 						{
-							// set the color
-							ASSERT(pRgb >= pBmp && pRgb + 3 <= pBmp + BmpSize);
-							pRgb[0] = b;    // B
-							pRgb[1] = g;    // G
-							pRgb[2] = r;    // R
+							unsigned char ColorIndex = 10 + pData[pId->nFftOffset];
+							// set the color to pId->nNumOfRows rows
+							for (int y = 0; y < pId->nNumOfRows; y++, pPalIndex += stride - nColumns)
+							{
+								// set the color to nColumns pixels across
+								for (int x = 0; x < nColumns; x++, pPalIndex ++)
+								{
+									ASSERT(pPalIndex >= pBmp && pPalIndex < pBmp + BmpSize);
+									pPalIndex[0] = ColorIndex;
+								}
+							}
+						}
+					}
+					else
+					{
+						for (ff = 0, pId = pIdArray; ff < IdxSize; ff++, pId++)
+						{
+							unsigned char ColorIndex = 10 + pData[pId->nFftOffset];
+							// set the color to pId->nNumOfRows rows
+							for (int y = 0; y < pId->nNumOfRows; y++, pPalIndex += stride)
+							{
+								// set the color
+								ASSERT(pPalIndex >= pBmp && pPalIndex < pBmp + BmpSize);
+								pPalIndex[0] = ColorIndex;
+							}
 						}
 					}
 				}
@@ -444,11 +569,15 @@ void CWaveFftView::OnDraw(CDC* pDC)
 	// stretch bitmap to output window
 	SetDIBitsToDevice(pDC->GetSafeHdc(), r.left, cr.top,
 					width, height,
-					0, 0, 0, height, pBits, (LPBITMAPINFO) & bmih,
-					0);
+					0, 0, 0, height, pBits, & bmi,
+					DIB_RGB_COLORS);
 	GdiFlush(); // make sure bitmap is drawn before deleting it (NT only)
 	// free resources
 	DeleteObject(hbm);
+	if (pOldPalette)
+	{
+		pDC->SelectPalette(pOldPalette, FALSE);
+	}
 	if (m_PlaybackCursorDrawn)
 	{
 		DrawPlaybackCursor(pDC, m_PlaybackCursorDrawnSamplePos, m_PlaybackCursorChannel);

@@ -434,6 +434,7 @@ BOOL CWaveFile::CreateWaveFile(CWaveFile * pTemplateFile, WAVEFORMATEX * pTempla
 			// get directory name from template file
 			LPTSTR pFilePart = NULL;
 			if (NULL != pTemplateFile
+				&& pTemplateFile->IsOpen()
 				&& 0 != GetFullPathName(pTemplateFile->GetName(),
 										sizeof NameBuf, NameBuf, & pFilePart)
 				&& pFilePart != NULL)
@@ -503,7 +504,8 @@ BOOL CWaveFile::CreateWaveFile(CWaveFile * pTemplateFile, WAVEFORMATEX * pTempla
 	// create new WAVEFORMATEX
 	WAVEFORMATEX * pWF = NULL;
 	if (NULL == pTemplateFormat
-		&& NULL != pTemplateFile)
+		&& NULL != pTemplateFile
+		&& pTemplateFile->IsOpen())
 	{
 		pTemplateFormat = pTemplateFile->GetWaveFormat();
 	}
