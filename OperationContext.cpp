@@ -16,6 +16,28 @@ static int fround(double d)
 	}
 }
 
+#ifdef _DEBUG
+void COperationContext::SetBeginTime()
+{
+	FILETIME tmp;
+	GetThreadTimes(GetCurrentThread(),
+					& tmp, & tmp, & tmp, & m_ThreadUserTime);
+	m_SystemTime = GetTickCount();
+}
+
+void COperationContext::PrintElapsedTime()
+{
+	FILETIME tmp, UserTime;
+	GetThreadTimes(GetCurrentThread(),
+					& tmp, & tmp, & tmp, & UserTime);
+	DWORD TickCount = GetTickCount();
+	TRACE("Elapsed thread time : %d ms, elapsed real time=%d\n",
+		(UserTime.dwLowDateTime - m_ThreadUserTime.dwLowDateTime) / 10000,
+		TickCount - m_SystemTime);
+}
+
+#endif
+
 COperationContext::COperationContext(class CWaveSoapFrontDoc * pDoc, LPCTSTR OperationName, DWORD Flags)
 	: pDocument(pDoc),
 	m_Flags(Flags),
@@ -3720,8 +3742,9 @@ void CWmaDecodeContext::PostRetire(BOOL bChildContext)
 
 BOOL CWmaSaveContext::Init()
 {
+	SetBeginTime();
 	m_Enc.m_SrcWfx = * m_SrcFile.GetWaveFormat();
-	CoInitializeEx(NULL, COINIT_MULTITHREADED);
+	CoInitializeEx(NULL, COINIT_APARTMENTTHREADED);
 	if (! m_Enc.Init())
 	{
 		return FALSE;
@@ -3745,6 +3768,7 @@ void CWmaSaveContext::DeInit()
 
 void CWmaSaveContext::PostRetire(BOOL bChildContext)
 {
+	PrintElapsedTime();
 	CConversionContext::PostRetire(bChildContext);
 }
 

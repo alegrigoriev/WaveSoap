@@ -1833,6 +1833,10 @@ void CDirectFile::File::ValidateList() const
 
 unsigned CDirectFile::CDirectFileCache::_ThreadProc()
 {
+#ifdef _DEBUG
+	FILETIME UserTime, EndTime, tmp;
+	GetThreadTimes(GetCurrentThread(), & tmp, & tmp, & tmp, & UserTime);
+#endif
 	while (m_ThreadRunState != ~0)
 	{
 		int WaitStatus = WaitForSingleObject(m_hEvent, 2000);
@@ -1945,6 +1949,11 @@ unsigned CDirectFile::CDirectFileCache::_ThreadProc()
 				&& tmp != InterlockedCompareExchange(const_cast<long *>( & m_ThreadRunState),
 													tmp & ~ 0x80000000, tmp));
 	}
+#ifdef _DEBUG
+	GetThreadTimes(GetCurrentThread(), & tmp, & tmp, & tmp, & EndTime);
+	TRACE("File cache thread used time=%d ms\n",
+		(EndTime.dwLowDateTime - UserTime.dwLowDateTime) / 10000);
+#endif
 	return 0;
 }
 

@@ -456,7 +456,7 @@ BOOL _stdcall CWaveSoapFileSaveDialog::FormatTagEnumCallback(
 	CWaveSoapFileSaveDialog * pDlg = (CWaveSoapFileSaveDialog *) dwInstance;
 	WAVEFORMATEX * pwfx = (WAVEFORMATEX *)new char[0xFFFF];
 	ACMFORMATDETAILS afd;
-	TRACE("FormatTagEnum: name=%s, driverID=%x, tag=%x, formats=%d, max size=%d\n", paftd->szFormatTag,
+	TRACE("FormatTagEnum: name=%s, driverID=%x, tag=%d, formats=%d, max size=%d\n", paftd->szFormatTag,
 		hadid, paftd->dwFormatTag, paftd->cStandardFormats, paftd->cbFormatSize);
 	pwfx->cbSize = 0;
 	pwfx->wFormatTag = WAVE_FORMAT_PCM;
