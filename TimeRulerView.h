@@ -105,6 +105,8 @@ public:
 	afx_msg void OnEditMarker();
 	afx_msg void OnUpdateEditMarker(CCmdUI *pCmdUI);
 	afx_msg void OnSelectRegion();
+protected:
+	virtual BOOL OnNotify(WPARAM wParam, LPARAM lParam, LRESULT* pResult);
 };
 
 #ifndef _DEBUG  // debug version in TimeRulerView.cpp
