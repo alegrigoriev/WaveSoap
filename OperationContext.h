@@ -45,7 +45,7 @@ public:
 
 	virtual void DeInit() { }
 	virtual void Retire();
-	virtual void PostRetire(BOOL bChildContext = FALSE);
+	virtual void PostRetire();
 	virtual void Execute();
 	virtual void ExecuteSynch();
 	virtual LONGLONG GetTempDataSize() const
@@ -63,7 +63,7 @@ public:
 	}
 
 	// the function is called to create UNDO context before starting the main operation
-	virtual BOOL CreateUndo(BOOL IsRedo = FALSE);
+	virtual BOOL CreateUndo();
 
 	// the function prepares the context which is part of UNDO
 	// before doing the UNDO/REDO operation
@@ -231,6 +231,7 @@ class CTwoFilesOperation : public COneFileOperation
 public:
 	CTwoFilesOperation(class CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString,
 						ULONG Flags, LPCTSTR OperationName = _T(""));
+	~CTwoFilesOperation();
 
 	virtual LONGLONG GetTempDataSize() const;
 	BOOL InitDestination(CWaveFile & DstFile, SAMPLE_INDEX StartSample, SAMPLE_INDEX EndSample,
@@ -252,7 +253,8 @@ public:
 protected:
 	class CCopyUndoContext * m_pUndoContext;
 
-	virtual BOOL CreateUndo(BOOL IsRedo = FALSE);
+	virtual BOOL CreateUndo();
+	virtual ListHead<COperationContext> * GetUndoChain();
 	virtual void DeleteUndo();
 	virtual void DeInit();
 };
@@ -301,10 +303,10 @@ public:
 	virtual BOOL OperationProc();
 	virtual ListHead<COperationContext> * GetUndoChain();
 
-	virtual void PostRetire(BOOL bChildContext = FALSE);
+	virtual void PostRetire();
 	virtual CString GetStatusString();
 	virtual void Execute();
-	virtual BOOL CreateUndo(BOOL IsRedo = FALSE);
+	virtual BOOL CreateUndo();
 	virtual BOOL PrepareUndo();
 	virtual void UnprepareUndo();
 	virtual void DeleteUndo();
@@ -341,7 +343,7 @@ protected:
 	int m_GranuleSize;
 	BOOL m_bSavePeakFile;
 	virtual BOOL OperationProc();
-	virtual void PostRetire(BOOL bChildContext = FALSE);
+	virtual void PostRetire();
 	virtual BOOL Init();
 };
 
@@ -383,7 +385,7 @@ public:
 					SAMPLE_POSITION SaveEndPos,
 					CHANNEL_MASK SaveChannel);
 
-	//virtual BOOL CreateUndo(BOOL IsRedo = FALSE);
+	//virtual BOOL CreateUndo();
 	virtual BOOL PrepareUndo();
 	virtual void UnprepareUndo();
 	//virtual void DeleteUndo();
@@ -415,7 +417,7 @@ public:
 
 	virtual class CUndoRedoContext * GetUndo();
 
-	virtual void PostRetire(BOOL bChildContext = FALSE);
+	virtual void PostRetire();
 	virtual CString GetStatusString();
 };
 
@@ -459,7 +461,7 @@ protected:
 	virtual BOOL OperationProc();
 	virtual BOOL Init();
 	virtual void DeInit();
-	virtual void PostRetire(BOOL bChildContext = FALSE);
+	virtual void PostRetire();
 };
 
 class CVolumeChangeContext : public CThroughProcessOperation
@@ -523,7 +525,7 @@ public:
 
 	virtual BOOL ProcessBuffer(void * buf, size_t BufferLength, SAMPLE_POSITION offset, BOOL bBackward = FALSE);
 
-	virtual void PostRetire(BOOL bChildContext = FALSE);
+	virtual void PostRetire();
 };
 
 class CDcScanContext : public CThroughProcessOperation
@@ -642,7 +644,7 @@ public:
 	}
 	virtual BOOL OperationProc();
 
-	virtual void PostRetire(BOOL bChildContext = FALSE);
+	virtual void PostRetire();
 protected:
 	CBatchProcessing m_ProcBatch;
 	NUMBER_OF_SAMPLES m_CurrentSamples;
@@ -671,7 +673,7 @@ public:
 	}
 //    virtual BOOL OperationProc();
 	virtual BOOL Init();
-	virtual void PostRetire(BOOL bChildContext = FALSE);
+	virtual void PostRetire();
 
 protected:
 
@@ -697,7 +699,7 @@ public:
 	CWaveFile m_SrcFile;
 	DWORD m_NewFileTypeFlags;
 
-	virtual void PostRetire(BOOL bChildContext = FALSE);
+	virtual void PostRetire();
 };
 
 class CWmaDecodeContext : public CTwoFilesOperation
@@ -727,7 +729,7 @@ protected:
 	virtual BOOL OperationProc();
 	virtual BOOL Init();
 	virtual void DeInit();
-	virtual void PostRetire(BOOL bChildContext = FALSE);
+	virtual void PostRetire();
 
 private:
 	CDirectFile & m_WmaFile;
@@ -753,7 +755,7 @@ public:
 	virtual BOOL ProcessBuffer(void * buf, size_t len, SAMPLE_POSITION offset, BOOL bBackward = FALSE);
 	virtual BOOL OperationProc();
 	//BOOL SetTargetFormat(WAVEFORMATEX * pwf);
-	virtual void PostRetire(BOOL bChildContext = FALSE);
+	virtual void PostRetire();
 private:
 	CoInitHelper m_CoInit;
 };
