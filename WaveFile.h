@@ -30,12 +30,16 @@ helper.
 typedef long SAMPLE_INDEX;
 typedef long NUMBER_OF_SAMPLES;
 typedef int CHANNEL_MASK;
-typedef int NUMBER_OF_CHANNELS;
+typedef short NUMBER_OF_CHANNELS;
 typedef DWORD SAMPLE_POSITION;
 typedef DWORD WAV_FILE_SIZE;
 typedef DWORD MEDIA_FILE_SIZE;  // to be expanded to 64 bits
+typedef DWORD MEDIA_FILE_POSITION;
 typedef unsigned PEAK_INDEX;
 typedef __int16 WAVE_SAMPLE;
+
+#define LAST_SAMPLE (NUMBER_OF_SAMPLES(-1))
+#define LAST_SAMPLE_POSITION (SAMPLE_POSITION(-1))
 
 enum
 {
@@ -502,7 +506,7 @@ public:
 		}
 		return pWf->nChannels;
 	}
-	LONG NumberOfSamples() const;
+	NUMBER_OF_SAMPLES NumberOfSamples() const;
 	CWaveFile & operator =(CWaveFile &);
 
 	WAVEFORMATEX * AllocateWaveformat(size_t FormatSize = sizeof (WAVEFORMATEX))
