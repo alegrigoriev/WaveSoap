@@ -996,11 +996,12 @@ LONGLONG CDirectFile::Seek(LONGLONG position, int origin)
 		m_FilePointer = position;
 		break;
 	case FILE_CURRENT:
-		if (m_FilePointer + position < 0)
+		position += m_FilePointer;
+		if (position < 0)
 		{
 			return -1i64;
 		}
-		m_FilePointer += position;
+		m_FilePointer = position;
 		break;
 	case FILE_END:
 		position += GetLength();
