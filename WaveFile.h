@@ -555,6 +555,9 @@ public:
 	private:
 		typedef CMmioFile::InstanceDataMm BaseInstanceClass;
 	public:
+		typedef std::auto_ptr<InstanceDataWav> auto_ptr;
+		InstanceDataWav();
+
 		MMCKINFO datack;
 		MMCKINFO fmtck;
 		MMCKINFO factck;
@@ -595,16 +598,6 @@ public:
 
 		bool m_InfoChanged;
 
-		InstanceDataWav()
-			: m_PeakData(512)
-			, m_InfoChanged(false)
-			, m_FreeCuePointNumber(0)
-		{
-			memzero(datack);
-			memzero(fmtck);
-			memzero(factck);
-			m_size = sizeof *this;
-		}
 		// move all data to a derived (bigger) type
 		virtual void CopyMetadata(InstanceDataWav const * pSrc, unsigned CopyFlags = MetadataCopyAll);
 		virtual void SwapMetadata(InstanceDataWav * pSrc, unsigned SwapFlags = MetadataCopyAll);
@@ -639,6 +632,11 @@ public:
 		BOOL MoveWaveMarker(unsigned long MarkerCueID, SAMPLE_INDEX Sample);
 		BOOL SetMarkerLabel(unsigned long MarkerCueID, LPCTSTR Label);
 		void GetSortedMarkers(SAMPLE_INDEX_Vector & markers) const;
+
+		BOOL MoveMarkers(SAMPLE_INDEX SampleBegin, NUMBER_OF_SAMPLES SrcLength, NUMBER_OF_SAMPLES DstLength);
+
+		BOOL CopyMarkers(InstanceDataWav const * pSrc,
+						SAMPLE_INDEX SrcBegin, SAMPLE_INDEX DstBegin, NUMBER_OF_SAMPLES Length);
 
 		InstanceDataWav & operator =(InstanceDataWav const & src);
 
