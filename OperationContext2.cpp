@@ -33,8 +33,9 @@ void SkipWhitespace(LPCTSTR * ppStr)
 	*ppStr = str;
 }
 
-CExpressionEvaluationContext::CExpressionEvaluationContext(CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString, LPCTSTR OperationName)
-	:BaseClass(pDoc, StatusString, 0, OperationName)
+CExpressionEvaluationContext::CExpressionEvaluationContext(CWaveSoapFrontDoc * pDoc,
+															UINT StatusStringId, UINT OperationNameId)
+	:BaseClass(pDoc, 0, StatusStringId, OperationNameId)
 {
 }
 
@@ -1290,8 +1291,8 @@ void CExpressionEvaluationContext::Evaluate()
 
 /////////////////  CCommitFileSaveContext
 CCommitFileSaveContext::CCommitFileSaveContext(CWaveSoapFrontDoc * pDoc,
-												LPCTSTR StatusString, CWaveFile & WavFile, int flags, LPCTSTR TargetName)
-	: COperationContext(pDoc, StatusString, OperationContextDiskIntensive)
+												UINT StatusStringId, CWaveFile & WavFile, int flags, LPCTSTR TargetName)
+	: COperationContext(pDoc, OperationContextDiskIntensive, StatusStringId)
 	, m_FileSaveFlags(flags)
 	, m_TargetName(TargetName)
 	, m_File(WavFile)
@@ -1348,8 +1349,8 @@ void CConversionContext::PostRetire()
 }
 
 CEqualizerContext::CEqualizerContext(CWaveSoapFrontDoc * pDoc,
-									LPCTSTR StatusString, LPCTSTR OperationName)
-	: BaseClass(pDoc, StatusString, OperationContextDiskIntensive, OperationName),
+									UINT StatusStringId, UINT OperationNameId)
+	: BaseClass(pDoc, OperationContextDiskIntensive, StatusStringId, OperationNameId),
 	m_bZeroPhase(FALSE)
 {
 }
@@ -1463,8 +1464,8 @@ BOOL CSwapChannelsContext::ProcessBuffer(void * buf, size_t BufferLength,
 }
 
 CFilterContext::CFilterContext(CWaveSoapFrontDoc * pDoc,
-								LPCTSTR StatusString, LPCTSTR OperationName)
-	: BaseClass(pDoc, StatusString, OperationContextDiskIntensive, OperationName),
+								UINT StatusStringId, UINT OperationNameId)
+	: BaseClass(pDoc, OperationContextDiskIntensive, StatusStringId, OperationNameId),
 	m_bZeroPhase(FALSE)
 {
 }
@@ -1619,6 +1620,24 @@ BOOL CFilterContext::ProcessBuffer(void * buf, size_t BufferLength,
 	}
 
 	return TRUE;
+}
+
+//////////////////////////////////////////////////
+CCdReadingContext::CCdReadingContext(CWaveSoapFrontDoc * pDoc,
+									LPCTSTR StatusString, LPCTSTR OperationName)
+	: BaseClass(pDoc, OperationContextDiskIntensive | OperationContextSerialized,
+				StatusString, OperationName),
+	m_pCdBuffer(NULL),
+	m_CdBufferFilled(0),
+	m_hEvent(NULL),
+	m_CdDataOffset(0),
+	m_pNextTrackContext(NULL),
+	m_TargetFileType(0),
+	m_bSaveImmediately(FALSE),
+	m_CdBufferSize(0)
+{
+	m_GetBufferFlags = CDirectFile::GetBufferWriteOnly | CDirectFile::GetBufferNoPrefetch;
+	m_ReturnBufferFlags = CDirectFile::ReturnBufferDirty | CDirectFile::ReturnBufferFlush;
 }
 
 BOOL CCdReadingContext::InitTrackInformation(CCdDrive const & Drive,
@@ -1861,7 +1880,7 @@ CCdReadingContext::~CCdReadingContext()
 /////////////// CReplaceFileContext ////////////////
 CReplaceFileContext::CReplaceFileContext(CWaveSoapFrontDoc * pDoc, LPCTSTR OperationName,
 										CWaveFile & NewFile, bool bNewDirectMode)
-	: BaseClass(pDoc, OperationName, OperationContextSynchronous, OperationName)
+	: BaseClass(pDoc, OperationContextSynchronous, OperationName, OperationName)
 	, m_File(NewFile)
 	, m_bNewDirectMode(bNewDirectMode)
 {
@@ -1900,7 +1919,14 @@ BOOL CReplaceFileContext::OperationProc()
 ///////////// CReplaceFormatContext //////////////////
 CReplaceFormatContext::CReplaceFormatContext(CWaveSoapFrontDoc * pDoc, LPCTSTR OperationName,
 											WAVEFORMATEX const * pNewFormat)
-	: BaseClass(pDoc, OperationName, OperationContextSynchronous, OperationName),
+	: BaseClass(pDoc, OperationContextSynchronous, OperationName, OperationName),
+	m_NewWaveFormat(pNewFormat)
+{
+}
+
+CReplaceFormatContext::CReplaceFormatContext(CWaveSoapFrontDoc * pDoc, UINT OperationNameId,
+											WAVEFORMATEX const * pNewFormat)
+	: BaseClass(pDoc, OperationContextSynchronous, OperationNameId, OperationNameId),
 	m_NewWaveFormat(pNewFormat)
 {
 }
@@ -1927,8 +1953,8 @@ BOOL CReplaceFormatContext::OperationProc()
 ///////////////// CLengthChangeOperation
 CLengthChangeOperation::CLengthChangeOperation(CWaveSoapFrontDoc * pDoc,
 												CWaveFile & File, MEDIA_FILE_SIZE NewLength)
-	: BaseClass(pDoc, _T("Changing the file length"), OperationContextSynchronous,
-				_T("File length change"))
+	: BaseClass(pDoc, OperationContextSynchronous,
+				IDS_STATUS_PROMPT_CHANGE_LENGTH, IDS_OPERATION_NAME_CHANGE_LENGTH)
 	, m_NewLength(NewLength)
 	, m_File(File)
 {
@@ -1975,8 +2001,8 @@ void CLengthChangeOperation::UnprepareUndo()
 //////////////// CWaveSamplesChangeOperation /////////
 CWaveSamplesChangeOperation::CWaveSamplesChangeOperation(CWaveSoapFrontDoc * pDoc,
 														CWaveFile & File, NUMBER_OF_SAMPLES NewSamples)
-	: BaseClass(pDoc, _T("Changing the file length"),
-				OperationContextSynchronous, _T("File length change"))
+	: BaseClass(pDoc, OperationContextSynchronous, IDS_STATUS_PROMPT_CHANGE_LENGTH,
+				IDS_OPERATION_NAME_CHANGE_LENGTH)
 	, m_NewSamples(NewSamples)
 	, m_File(File)
 {
@@ -2031,8 +2057,8 @@ CMoveOperation::CMoveOperation(CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString, L
 {
 }
 
-CMoveOperation::CMoveOperation(CWaveSoapFrontDoc * pDoc)
-	: BaseClass(pDoc)
+CMoveOperation::CMoveOperation(CWaveSoapFrontDoc * pDoc, UINT StatusStringId, UINT OperationNameId)
+	: BaseClass(pDoc, StatusStringId, OperationNameId)
 	, m_pUndoMove(NULL)
 {
 }
@@ -2087,7 +2113,7 @@ BOOL CMoveOperation::CreateUndo()
 		return TRUE;
 	}
 
-	CMoveOperation * pUndo = new CMoveOperation(pDocument, _T(""), _T(""));
+	CMoveOperation * pUndo = new CMoveOperation(pDocument);
 
 	pUndo->m_SrcPos = m_DstPos;
 	pUndo->m_SrcEnd = m_DstStart;
@@ -2583,7 +2609,7 @@ void CRestoreTrimmedOperation::DeleteUndo()
 ////////////// CInitChannels
 CInitChannels::CInitChannels(CWaveSoapFrontDoc * pDoc,
 							CWaveFile & File, SAMPLE_INDEX Start, SAMPLE_INDEX End, CHANNEL_MASK Channels)
-	: BaseClass(pDoc)
+	: BaseClass(pDoc, 0)
 {
 	InitDestination(File, Start, End, Channels, FALSE);
 }
@@ -2661,7 +2687,7 @@ BOOL CInitChannels::ProcessBuffer(void * buf, size_t BufferLength,
 ////////////////// CInitChannelsUndo
 CInitChannelsUndo::CInitChannelsUndo(CWaveSoapFrontDoc * pDoc,
 									SAMPLE_POSITION Start, SAMPLE_POSITION End, CHANNEL_MASK Channels)
-	: BaseClass(pDoc)
+	: BaseClass(pDoc, 0)
 {
 	m_SrcStart = Start;
 	m_SrcEnd = End;
@@ -2711,8 +2737,8 @@ BOOL CSelectionChangeOperation::OperationProc()
 
 ///////////////////////////////////////////////////////////////////////
 CReverseOperation::CReverseOperation(CWaveSoapFrontDoc * pDoc,
-									LPCTSTR StatusString, LPCTSTR OperationName)
-	: BaseClass(pDoc, StatusString, OperationContextDiskIntensive, OperationName)
+									UINT StatusStringId, UINT OperationNameId)
+	: BaseClass(pDoc, OperationContextDiskIntensive, StatusStringId, OperationNameId)
 	, m_pUndoLow(NULL)
 	, m_pUndoHigh(NULL)
 {
@@ -2821,7 +2847,7 @@ BOOL InitExpandOperation(CStagedContext * pContext,
 	if (NumberOfSamples > StartSample)
 	{
 		CMoveOperation::auto_ptr pMove(new
-										CMoveOperation(pContext->pDocument, _T("Expanding the file")));
+										CMoveOperation(pContext->pDocument, IDS_STATUS_PROMPT_EXPANDING_FILE));
 		pMove->InitMove(File, StartSample, StartSample + Length, NumberOfSamples - StartSample,
 						Channel);
 		pContext->AddContext(pMove.release());
@@ -2844,7 +2870,7 @@ BOOL InitShrinkOperation(CStagedContext * pContext,
 	{
 		CMoveOperation::auto_ptr pMove(new
 										CMoveOperation(pContext->pDocument,
-														_T("Shrinking the file")));
+														IDS_STATUS_PROMPT_SHRINKING_FILE));
 
 		pMove->InitMove(File, StartSample + Length, StartSample,
 						NumberOfSamples - StartSample - Length,
@@ -2936,7 +2962,7 @@ BOOL InitInsertCopy(CStagedContext * pContext,
 	{
 		// now copy data and replace regions/markers
 		CCopyContext::auto_ptr pCopy(new CCopyContext(pContext->pDocument,
-													_T("Inserting data")));
+													IDS_STATUS_PROMPT_INSERTING_DATA));
 
 		if ( ! pCopy->InitCopy(DstFile, StartDstSample, DstChannel,
 								SrcFile, StartSrcSample, SrcChannel, SamplesToInsert))

@@ -1073,8 +1073,9 @@ void CCdGrabbingDialog::OnButtonBrowseSaveFolder()
 
 	// browse for folder
 	m_eSaveFolder.GetWindowText(m_sSaveFolder);
-	CFolderDialog dlg(_T("Save Files To Folder"),
+	CFolderDialog dlg(IDS_CDGRAB_FOLDER_DIALOG_TITLE,
 					m_sSaveFolder, TRUE);
+
 	if (IDOK == dlg.DoModal())
 	{
 		m_sSaveFolder = dlg.GetFolderPath();
@@ -1126,7 +1127,7 @@ void CCdGrabbingDialog::InitReadSpeedCombobox()
 		if (m_SpeedCombo.IsWindowEnabled())
 		{
 			m_SpeedCombo.ResetContent();
-			m_SpeedCombo.AddString(_T("Default"));  // TODO: LoadString
+			m_SpeedCombo.AddString(LoadCString(IDS_CDGRAB_DEFAULT_SPEED));
 			m_SpeedCombo.SetCurSel(0);
 			m_SpeedCombo.EnableWindow(FALSE);
 		}

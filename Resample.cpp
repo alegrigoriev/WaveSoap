@@ -8,10 +8,10 @@
 #define M_PI_4      0.785398163397448309616
 
 CResampleContext::CResampleContext(CWaveSoapFrontDoc * pDoc,
-									LPCTSTR StatusString, LPCTSTR OperationName,
+									UINT StatusStringId, UINT OperationNameId,
 									CWaveFile & SrcFile, CWaveFile &DstFile,
 									double FrequencyRatio, double FilterLength)
-	: BaseClass(pDoc, StatusString, 0, OperationName)
+	: BaseClass(pDoc, 0, StatusStringId, OperationNameId)
 {
 
 	m_SrcFile = SrcFile;

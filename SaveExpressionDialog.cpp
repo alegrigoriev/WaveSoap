@@ -45,9 +45,9 @@ void CSaveExpressionDialog::DoDataExchange(CDataExchange* pDX)
 	DDX_Text(pDX, IDC_COMBO_GROUP, m_GroupName);
 	//}}AFX_DATA_MAP
 	if (pDX->m_bSaveAndValidate
-		&& m_GroupName == _T("All Expressions"))
+		&& m_GroupName == LoadCString(IDS_ALL_EXPRESSIONS_GROUP))
 	{
-		AfxMessageBox(_T("Group name cannot be \"All Expressions\""));
+		AfxMessageBox(IDS_MSG_GROUP_CANT_BE_ALL_EXPRESSION);
 		pDX->Fail();
 	}
 }

@@ -19,7 +19,7 @@ public:
 	typedef std::auto_ptr<ThisClass> auto_ptr;
 
 	CResampleContext(CWaveSoapFrontDoc * pDoc,
-					LPCTSTR StatusString, LPCTSTR OperationName,
+					UINT StatusStringId, UINT OperationNameId,
 					CWaveFile & SrcFile, CWaveFile & DstFile,
 					double FrequencyRatio, double FilterLength);
 
