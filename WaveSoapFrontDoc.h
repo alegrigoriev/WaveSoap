@@ -74,6 +74,7 @@ enum
 
 class CWaveSoapFrontDoc : public CDocument
 {
+	typedef CDocument BaseClass;
 protected: // create from serialization only
 	CWaveSoapFrontDoc();
 	DECLARE_DYNCREATE(CWaveSoapFrontDoc)
@@ -103,9 +104,40 @@ public:
 	ULONG_PTR WaveFileID() const;
 
 	virtual BOOL IsModified();
-	BOOL IsBusy() const
+	bool IsReadOnly() const
+	{
+		return m_bReadOnly;
+	}
+	bool IsBusy() const
 	{
 		return m_OperationInProgress != 0;
+	}
+
+	bool CanReadSelection() const
+	{
+		return CanStartOperation(1, true, false);
+	}
+	bool CanModifySelection() const
+	{
+		return CanStartOperation(1, true, true);
+	}
+
+	bool CanReadFile() const
+	{
+		return CanStartOperation(1, false, false);
+	}
+
+	bool CanPlayFile() const;
+
+	bool CanStartOperation(NUMBER_OF_SAMPLES SamplesNecessary, bool SelectionNecessary, bool Modify) const;
+	bool CanModifyFile() const
+	{
+		return CanStartOperation(1, false, true);
+	}
+
+	bool CanWriteFile() const
+	{
+		return CanStartOperation(0, false, true);
 	}
 // Operations
 public:
@@ -116,7 +148,7 @@ public:
 	void EnableUndo(BOOL bEnable = TRUE);
 	void EnableRedo(BOOL bEnable = TRUE);
 	void DeletePermanentUndoRedo();
-	BOOL InitUndoRedo(class CUndoRedoContext * pContext);
+	//BOOL InitUndoRedo(class CUndoRedoContext * pContext, BOOL IsRedo);
 
 	BOOL OnSaveDocument(LPCTSTR lpszPathName, DWORD flags, WAVEFORMATEX * pWf);
 	BOOL OnSaveDirectFile();
@@ -238,12 +270,11 @@ public:
 	bool m_bClosing;    // tells OnSaveDocument that it is called in close context
 	bool m_bClosePending;   // Save is in progress, request close afterwards
 	bool m_bCloseThisDocumentNow;   // CDocTemplate should close it in OnIdle
-	CSimpleCriticalSection m_cs;
 
 	LockedListHead<COperationContext> m_OpList;
 	ListHead<COperationContext> m_UndoList;
 	ListHead<COperationContext> m_RedoList;
-	ListHead<COperationContext> m_RetiredList;
+	LockedListHead<COperationContext> m_RetiredList;
 	LockedListHead<CSoundUpdateInfo> m_UpdateList;
 
 protected:
@@ -275,7 +306,9 @@ public:
 	{
 		UpdateFrameCounts();
 	}
-	void PostFileSave(CFileSaveContext * pContext);
+	void PostFileSave(CWaveFile & DstFile,
+					LPCTSTR NewName, BOOL SameName);
+
 	BOOL PostCommitFileSave(int flags, LPCTSTR FullTargetName);
 protected:
 	// save the selected area to the permanent or temporary file
@@ -415,22 +448,7 @@ protected:
 
 };
 
-#pragma pack(push, 2)
-struct PeakFileHeader
-{
-	enum { pfhSignature = 'KPSW', pfhMaxVersion = 3};
-	DWORD dwSignature;
-	WORD wSize;
-	WORD dwVersion;
-	FILETIME WaveFileTime;
-	WAV_FILE_SIZE dwWaveFileSize;   // WAV file is less than 4G
-	DWORD Granularity;      // number of WAV samples for each PeakFile value
-	DWORD PeakInfoSize;
-	NUMBER_OF_SAMPLES NumOfSamples;
-	WAVEFORMATEX wfFormat;
-};
-
-#pragma pack(1)
+#pragma pack(push, 1)
 struct MP3_IDTAG
 {
 	char Tag[3];    // "TAG"

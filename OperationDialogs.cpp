@@ -847,10 +847,6 @@ void CDcOffsetDialog::DoDataExchange(CDataExchange* pDX)
 	{
 		m_Profile.UnloadAll();
 	}
-	else
-	{
-		NeedUpdateControls();
-	}
 }
 
 BEGIN_MESSAGE_MAP(CDcOffsetDialog, BaseClass)
@@ -886,7 +882,7 @@ BOOL CDcOffsetDialog::OnInitDialog()
 
 
 CStatisticsDialog::CStatisticsDialog(CWnd* pParent /*=NULL*/)
-	: BaseClass(CStatisticsDialog::IDD, pParent)
+	: BaseClass(IDD, pParent)
 {
 	//{{AFX_DATA_INIT(CStatisticsDialog)
 	// NOTE: the ClassWizard will add member initialization here

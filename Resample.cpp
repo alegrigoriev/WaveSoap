@@ -6,9 +6,15 @@
 #define M_PI        3.14159265358979323846
 #define M_PI_2      1.57079632679489661923
 #define M_PI_4      0.785398163397448309616
-BOOL CResampleContext::InitResample(CWaveFile & SrcFile, CWaveFile &DstFile,
+
+CResampleContext::CResampleContext(CWaveSoapFrontDoc * pDoc,
+									LPCTSTR StatusString, LPCTSTR OperationName,
+									CWaveFile & SrcFile, CWaveFile &DstFile,
 									double FrequencyRatio, double FilterLength)
+	: BaseClass(pDoc, StatusString, OperationName)
 {
+	m_GetBufferFlags = CDirectFile::GetBufferWriteOnly;
+
 	m_SrcFile = SrcFile;
 	m_DstFile = DstFile;
 
@@ -21,8 +27,6 @@ BOOL CResampleContext::InitResample(CWaveFile & SrcFile, CWaveFile &DstFile,
 	m_DstStart = m_DstFile.SampleToPosition(0);
 	m_DstPos = m_DstStart;
 	m_DstEnd = m_DstFile.SampleToPosition(LAST_SAMPLE);
-
-	return TRUE;
 }
 
 BOOL CResampleContext::OperationProc()
@@ -147,46 +151,3 @@ BOOL CResampleContext::OperationProc()
 	return TRUE;
 }
 
-void CResampleContext::PostRetire(BOOL bChildContext)
-{
-	if (m_Flags & ConvertContextReplaceWholeFile)
-	{
-		if (m_Flags & OperationContextFinished)
-		{
-			pDocument->m_WavFile.DetachSourceFile();
-			pDocument->m_WavFile = m_DstFile;
-			// since we replaced the file, it's no more direct
-			pDocument->SetModifiedFlag(TRUE, m_pUndoContext != NULL);
-			if (NULL != m_pUndoContext)
-			{
-				m_pUndoContext->m_bOldDirectMode = pDocument->m_bDirectMode;
-
-				pDocument->AddUndoRedo(m_pUndoContext);
-				m_pUndoContext = NULL;
-			}
-			if (pDocument->m_bDirectMode)
-			{
-				pDocument->m_bDirectMode = false;
-				pDocument->UpdateFrameTitles();        // will cause name change in views
-			}
-			NUMBER_OF_SAMPLES nSamples = pDocument->WaveFileSamples();
-			pDocument->SoundChanged(pDocument->WaveFileID(),
-									0, nSamples, nSamples,
-									UpdateSoundDontRescanPeaks
-									| UpdateSoundSamplingRateChanged);
-			// TODO: change selection
-			pDocument->BuildPeakInfo(FALSE);    // don't save it yet
-			//pDocument->UpdateAllViews(NULL);
-		}
-		else
-		{
-			// we don't replace the file, nothing changed
-			if (NULL != m_pUndoContext)
-			{
-				delete m_pUndoContext;
-				m_pUndoContext = NULL;
-			}
-		}
-	}
-	CCopyContext::PostRetire(bChildContext);
-}
