@@ -5254,7 +5254,7 @@ void CWaveSoapFrontDoc::OnProcessEqualizer()
 	}
 
 	CEqualizerDialog dlg(start, end, m_CaretPosition,
-						channel, WaveFileSamples(), WaveFormat(),
+						channel, m_WavFile,
 						GetApp()->m_SoundTimeFormat, m_bChannelsLocked, UndoEnabled());
 
 	if (IDOK != dlg.DoModal())
@@ -5281,14 +5281,14 @@ void CWaveSoapFrontDoc::OnProcessEqualizer()
 	pContext->m_NumOfBands = dlg.m_nBands;
 	pContext->m_bZeroPhase = dlg.m_wGraph.m_bZeroPhase;
 
-	if ( ! pContext->InitDestination(m_WavFile, dlg.m_Start,
-									dlg.m_End, dlg.m_Chan, dlg.m_bUndo))
+	if ( ! pContext->InitDestination(m_WavFile, dlg.GetStart(),
+									dlg.GetEnd(), dlg.GetChannel(), dlg.UndoEnabled()))
 	{
 		delete pContext;
 		return;
 	}
 	pContext->Execute();
-	SetModifiedFlag(TRUE, dlg.m_bUndo);
+	SetModifiedFlag(TRUE, dlg.UndoEnabled());
 }
 
 void CWaveSoapFrontDoc::OnUpdateProcessEqualizer(CCmdUI* pCmdUI)
@@ -5369,7 +5369,7 @@ void CWaveSoapFrontDoc::OnProcessFilter()
 
 	CThisApp * pApp = GetApp();
 	CFilterDialog dlg(start, end, m_CaretPosition,
-					channel, WaveFileSamples(), WaveFormat(),
+					channel, m_WavFile,
 					pApp->m_SoundTimeFormat, m_bChannelsLocked, UndoEnabled());
 
 	if (IDOK != dlg.DoModal())
@@ -5422,14 +5422,14 @@ void CWaveSoapFrontDoc::OnProcessFilter()
 		pContext->m_nNotchOrder = 0;
 	}
 
-	if ( ! pContext->InitDestination(m_WavFile, dlg.m_Start,
-									dlg.m_End, dlg.m_Chan, dlg.m_bUndo))
+	if ( ! pContext->InitDestination(m_WavFile, dlg.GetStart(),
+									dlg.GetEnd(), dlg.GetChannel(), dlg.UndoEnabled()))
 	{
 		delete pContext;
 		return;
 	}
 	pContext->Execute();
-	SetModifiedFlag(TRUE, dlg.m_bUndo);
+	SetModifiedFlag(TRUE, dlg.UndoEnabled());
 }
 
 void CWaveSoapFrontDoc::OnUpdateProcessFilter(CCmdUI* pCmdUI)
