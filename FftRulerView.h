@@ -7,10 +7,12 @@
 // FftRulerView.h : header file
 //
 
+#include "Ruler.h"
+#include "resource.h"
 /////////////////////////////////////////////////////////////////////////////
 // CFftRulerView view
 
-class CFftRulerView : public CView
+class CFftRulerView : public CVerticalRuler
 {
 protected:
 	CFftRulerView();           // protected constructor used by dynamic creation
@@ -18,6 +20,7 @@ protected:
 
 // Attributes
 public:
+	CWaveSoapFrontDoc* GetDocument();
 
 // Operations
 public:
@@ -25,6 +28,7 @@ public:
 // Overrides
 	// ClassWizard generated virtual function overrides
 	//{{AFX_VIRTUAL(CFftRulerView)
+	void OnUpdate( CView* pSender, LPARAM lHint, CObject* pHint );
 protected:
 	virtual void OnDraw(CDC* pDC);      // overridden to draw this view
 	//}}AFX_VIRTUAL
@@ -32,6 +36,7 @@ protected:
 // Implementation
 protected:
 	virtual ~CFftRulerView();
+	virtual UINT GetPopupMenuID() { return IDR_MENU_FFT_RULER; }
 #ifdef _DEBUG
 	virtual void AssertValid() const;
 	virtual void Dump(CDumpContext& dc) const;
@@ -41,10 +46,15 @@ protected:
 protected:
 	//{{AFX_MSG(CFftRulerView)
 	// NOTE - the ClassWizard will add and remove member functions here.
+	afx_msg void OnLButtonDblClk(UINT nFlags, CPoint point);
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 };
 
+#ifndef _DEBUG  // debug version in FftRulerView.cpp
+inline CWaveSoapFrontDoc* CFftRulerView::GetDocument()
+{ return (CWaveSoapFrontDoc*)m_pDocument; }
+#endif
 /////////////////////////////////////////////////////////////////////////////
 
 //{{AFX_INSERT_LOCATION}}
