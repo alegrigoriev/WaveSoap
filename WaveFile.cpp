@@ -1651,6 +1651,10 @@ SAMPLE_POSITION CWaveFile::SampleToPosition(SAMPLE_INDEX sample) const
 	{
 		return 0;
 	}
+	if (LAST_SAMPLE == sample)
+	{
+		return datack->dwDataOffset + datack->cksize;
+	}
 	return datack->dwDataOffset + sample * SampleSize();
 }
 
@@ -1661,6 +1665,11 @@ SAMPLE_INDEX CWaveFile::PositionToSample(SAMPLE_POSITION position) const
 	{
 		return 0;
 	}
+	if (LAST_SAMPLE_POSITION == position)
+	{
+		return datack->cksize / SampleSize();
+	}
+
 	ASSERT(position >= datack->dwDataOffset);
 	return (position - datack->dwDataOffset) / SampleSize();
 }
