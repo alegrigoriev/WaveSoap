@@ -18,13 +18,14 @@ class CWaveSoapFrontView : public CScaledScrollView
 {
 	typedef CScaledScrollView BaseClass;
 protected: // create from serialization only
+	typedef CWaveSoapFrontDoc ThisDoc;
 	CWaveSoapFrontView();
 	DECLARE_DYNCREATE(CWaveSoapFrontView);
 
 // Attributes
 public:
 	friend class CAmplitudeRuler;
-	CWaveSoapFrontDoc* GetDocument();
+	ThisDoc * GetDocument();
 	int GetHorizontalScale() const { return m_HorizontalScale; }
 	void SetHorizontalScale(int HorScale);
 
@@ -74,6 +75,8 @@ protected:
 									int left, int right, int Y,
 									CPen * NormalPen, CPen * SelectedPen,
 									int nChannel);
+	void GetChannelRect(int Channel, RECT * r);
+
 	void CreateAndShowCaret();
 	DWORD ClientHitTest(CPoint p);
 	virtual POINT GetZoomCenter();
@@ -185,9 +188,59 @@ protected:
 
 #ifndef _DEBUG  // debug version in WaveSoapFrontView.cpp
 inline CWaveSoapFrontDoc* CWaveSoapFrontView::GetDocument()
-{ return (CWaveSoapFrontDoc*)m_pDocument; }
+{
+	return static_cast<ThisDoc *>(m_pDocument);
+}
 #endif
 
+class WaveCalculate
+{
+public:
+	WaveCalculate(double offset, double scale, int bottom, int top)
+	{
+		m_Scale = -((top - bottom) * scale) / 65536.;
+
+		double MaxOffset = 65535.99 * (1. - 1. / scale);
+
+		if (offset >= MaxOffset)
+		{
+			m_Offset = 65536. * (1. - 1. / scale);
+		}
+		else if (offset <= -MaxOffset)
+		{
+			m_Offset = -65536. * (1. - 1. / scale);
+		}
+		else
+		{
+			m_Offset = offset;
+		}
+		m_Offset = m_Offset * m_Scale + (bottom + top) / 2.;
+	}
+
+	int operator()(int w)
+	{
+		return (int)floor((w + 1) * m_Scale + m_Offset);
+	}
+
+	int ConvertToSample(int y)
+	{
+		return (int)floor((y - m_Offset) / m_Scale - 1);
+	}
+
+	double operator()(double w)
+	{
+		return (w + 1.) * m_Scale + m_Offset;
+	}
+
+	double ConvertToSample(double y)
+	{
+		return (y - m_Offset) / m_Scale - 1.;
+	}
+
+protected:
+	double m_Offset;
+	double m_Scale;
+};
 /////////////////////////////////////////////////////////////////////////////
 
 //{{AFX_INSERT_LOCATION}}
