@@ -402,12 +402,18 @@ protected:
 	CSimpleCriticalSection m_PeakLock;
 };
 
+#pragma warning(push)
+#pragma warning(disable : 4521 4522)
+
 class CWaveFile : public CMmioFile
 {
 	typedef CMmioFile BaseClass;
 public:
 	CWaveFile();
+
+	CWaveFile(CWaveFile & f);
 	~CWaveFile();
+
 	BOOL CreateWaveFile(CWaveFile * pTemplateFile, WAVEFORMATEX * pTemplateFormat,
 						CHANNEL_MASK Channels, WAV_FILE_SIZE SizeOrSamples, DWORD flags, LPCTSTR FileName);
 
@@ -616,10 +622,10 @@ public:
 private:
 	CPath MakePeakFileName(LPCTSTR FileName);
 	// wrong type of constructor
-	CWaveFile(const CWaveFile &)
-	{
-		ASSERT(FALSE);
-	}
+	CWaveFile & operator =(CWaveFile const &);
+	CWaveFile(CWaveFile const & f);
 };
+
+#pragma warning( pop )
 
 #endif //#ifndef WAVE_FILE__H__

@@ -415,6 +415,12 @@ CWaveFile::CWaveFile()
 	m_RiffckType = mmioFOURCC('W', 'A', 'V', 'E');
 }
 
+CWaveFile::CWaveFile(CWaveFile & f)
+{
+	m_RiffckType = mmioFOURCC('W', 'A', 'V', 'E');
+	*this = f;
+}
+
 CWaveFile & CWaveFile::operator =(CWaveFile & SourceFile)
 {
 	CMmioFile::operator=(SourceFile);
