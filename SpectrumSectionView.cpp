@@ -622,9 +622,9 @@ void CSpectrumSectionView::DrawCrossHair(POINT point, CDC * pDC)
 		}
 		pDrawDC->ExcludeUpdateRgn(this);
 	}
-	int OldMap = pDrawDC->SetMapMode(MM_TEXT);
 
 	try {
+		CPushDcMapMode mode(pDrawDC, MM_TEXT);
 		RECT cr;
 
 		GetClientRect( & cr);
@@ -656,7 +656,6 @@ void CSpectrumSectionView::DrawCrossHair(POINT point, CDC * pDC)
 		e->Delete();
 	}
 
-	pDrawDC->SetMapMode(OldMap);
 	if (NULL == pDC)
 	{
 		ReleaseDC(pDrawDC);

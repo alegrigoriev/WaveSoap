@@ -263,7 +263,8 @@ void CEqualizerGraphWnd::OnPaint()
 	CRect ur;
 	GetClientRect( & cr);
 	dc.GetClipBox( & ur);
-	dc.SetMapMode(MM_TEXT);
+
+	CPushDcMapMode mode(dc, MM_TEXT);
 
 	CGdiObjectSave OldPenDc(dc, dc.SelectStockObject(BLACK_PEN));
 

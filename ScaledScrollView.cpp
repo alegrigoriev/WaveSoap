@@ -1020,7 +1020,8 @@ int CScaledScrollView::OnCreate(LPCREATESTRUCT lpCreateStruct)
 int CScaledScrollView::GetMappingInfo()
 {
 	CClientDC wDC(this);
-	wDC.SetMapMode(MM_TEXT);
+	CPushDcMapMode mode(wDC, MM_TEXT);
+
 	CSize wndext = wDC.GetWindowExt();
 	CSize viewext = wDC.GetViewportExt();
 
