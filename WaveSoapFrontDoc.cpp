@@ -163,6 +163,12 @@ BEGIN_MESSAGE_MAP(CWaveSoapFrontDoc, CDocument)
 	//}}AFX_MSG_MAP
 	ON_COMMAND(ID_PROCESS_REVERSE, OnProcessReverse)
 	ON_UPDATE_COMMAND_UI(ID_PROCESS_REVERSE, OnUpdateProcessReverse)
+	ON_COMMAND(IDC_EDIT_WAVE_MARKER, OnEditWaveMarker)
+	ON_UPDATE_COMMAND_UI(IDC_EDIT_WAVE_MARKER, OnUpdateEditWaveMarker)
+	ON_COMMAND(IDC_EDIT_MARKER_REGION, OnEditWaveMarker)
+	ON_UPDATE_COMMAND_UI(IDC_EDIT_MARKER_REGION, OnUpdateEditWaveMarker)
+	ON_COMMAND(IDC_EDIT_WAVE_REGION, OnEditWaveMarker)
+	ON_UPDATE_COMMAND_UI(IDC_EDIT_WAVE_REGION, OnUpdateEditWaveMarker)
 	END_MESSAGE_MAP()
 
 /////////////////////////////////////////////////////////////////////////////
@@ -5399,3 +5405,33 @@ void CWaveSoapFrontDoc::GotoPrevMarker()
 	SetSelection(pos, pos, m_SelectedChannel, pos, SetSelection_MakeCaretVisible);
 }
 
+void CWaveSoapFrontDoc::OnEditWaveMarker()
+{
+	WAVEREGIONINFO info;
+
+	info.Flags = info.FindCue | info.ChangeAll;
+	info.MarkerCueID = 0;
+
+	info.Sample = m_SelectionStart;
+	info.Length = m_SelectionEnd - m_SelectionStart;
+
+	m_WavFile.GetWaveMarker( & info);
+
+	CMarkerRegionDialog dlg( & info, m_CaretPosition,
+							m_WavFile, GetApp()->m_SoundTimeFormat);
+
+	if (IDOK != dlg.DoModal())
+	{
+		return;
+	}
+
+	BeginMarkerChange(CWaveFile::InstanceDataWav::MetadataCopyAllCueData);
+	info.Flags |= info.CommitChanges;
+
+	ChangeWaveMarker( & info);
+}
+
+void CWaveSoapFrontDoc::OnUpdateEditWaveMarker(CCmdUI *pCmdUI)
+{
+	pCmdUI->Enable( ! IsReadOnly());
+}

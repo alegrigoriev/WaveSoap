@@ -507,12 +507,14 @@ protected:
 	afx_msg void OnUpdateProcessSwapchannels(CCmdUI* pCmdUI);
 	afx_msg void OnProcessFilter();
 	afx_msg void OnUpdateProcessFilter(CCmdUI* pCmdUI);
+	afx_msg void OnProcessReverse();
+	afx_msg void OnUpdateProcessReverse(CCmdUI *pCmdUI);
+	afx_msg void OnEditWaveMarker();
+	afx_msg void OnUpdateEditWaveMarker(CCmdUI *pCmdUI);
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 
 public:
-	afx_msg void OnProcessReverse();
-	afx_msg void OnUpdateProcessReverse(CCmdUI *pCmdUI);
 };
 
 #pragma pack(push, 1)
