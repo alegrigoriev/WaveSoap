@@ -606,7 +606,7 @@ File * CDirectFileCache::Open(LPCTSTR szName, DWORD flags)
 
 	::GetFileInformationByHandle(hf, & pFile->m_FileInfo);
 	pFile->FileLength = pFile->m_FileInfo.nFileSizeLow
-						| (ULONGLONG(pFile->m_FileInfo.nFileSizeHigh << 32));
+						| (ULONGLONG(pFile->m_FileInfo.nFileSizeHigh) << 32);
 	pFile->RealFileLength = pFile->FileLength;
 
 	if (0 == (flags & CDirectFile::OpenReadOnly))
