@@ -1608,7 +1608,7 @@ void CWaveSoapFrontApp::LoadStdProfileSettings(UINT nMaxMRU)
 	{
 		// create file MRU since nMaxMRU not zero
 		m_pRecentFileList = new CWaveSoapFileList(0, _T("Recent File List"), _T("File%d"),
-												nMaxMRU);
+												nMaxMRU, 45);
 		m_pRecentFileList->ReadList();
 	}
 	// 0 by default means not set
