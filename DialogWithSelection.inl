@@ -6,7 +6,7 @@ template<typename B>
 void CDialogWithSelectionT<B>::OnButtonSelection()
 {
 	CSelectionDialog dlg(m_Start, m_End, m_CaretPosition, m_Chan,
-						m_WaveFile, m_TimeFormat);
+						m_WaveFile, m_TimeFormat, m_bAllowFileExtension);
 
 	if (IDOK != dlg.DoModal())
 	{
@@ -26,7 +26,7 @@ CDialogWithSelectionT<B>::CDialogWithSelectionT(SAMPLE_INDEX Start,
 												CHANNEL_MASK Channel,
 												CWaveFile & File, int TimeFormat,
 												UINT TemplateID,
-												CWnd* pParent)   // standard constructor
+												CWnd* pParent, BOOL AllowFileExtension)   // standard constructor
 	: BaseClass(TemplateID, pParent)
 	, m_Start(Start)
 	, m_End(End)
@@ -36,5 +36,6 @@ CDialogWithSelectionT<B>::CDialogWithSelectionT(SAMPLE_INDEX Start,
 	, m_TimeFormat(TimeFormat)
 	, m_bUndo(FALSE)
 	, m_bLockChannels(FALSE)
+	, m_bAllowFileExtension(AllowFileExtension)
 {
 }

@@ -157,6 +157,7 @@ public:
 	CSelectionDialog(SAMPLE_INDEX Start, SAMPLE_INDEX End, SAMPLE_INDEX CaretPos,
 					CHANNEL_MASK Channel,
 					CWaveFile & WaveFile, int TimeFormat,
+					BOOL bAllowFileExtension = FALSE,
 					CWnd* pParent = NULL);   // standard constructor
 
 	SAMPLE_INDEX GetStart() const
@@ -192,6 +193,9 @@ protected:
 	SAMPLE_INDEX m_End;
 	SAMPLE_INDEX m_CaretPosition;
 	NUMBER_OF_SAMPLES m_Length;
+
+	BOOL const m_bAllowFileExtension;
+	void AdjustSelection();
 
 	struct Selection
 	{

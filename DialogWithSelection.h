@@ -19,7 +19,7 @@ public:
 						CHANNEL_MASK Channel,
 						CWaveFile & File, int TimeFormat,
 						UINT TemplateID,
-						CWnd* pParent = NULL);   // standard constructor
+						CWnd* pParent = NULL, BOOL AllowFileExtension = FALSE);
 
 // Dialog Data
 
@@ -60,6 +60,7 @@ protected:
 
 	BOOL	m_bUndo;
 	BOOL	m_bLockChannels;
+	BOOL    m_bAllowFileExtension;
 
 // Overrides
 

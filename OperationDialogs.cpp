@@ -315,6 +315,7 @@ CSelectionDialog::CSelectionDialog(SAMPLE_INDEX Start, SAMPLE_INDEX End,
 									SAMPLE_INDEX CaretPos, CHANNEL_MASK Channel,
 									CWaveFile & WaveFile,
 									int TimeFormat,
+									BOOL bAllowFileExtension,
 									CWnd* pParent /*=NULL*/)
 	: BaseClass(IDD, pParent)
 	, m_Chan(Channel + 1)
@@ -327,6 +328,7 @@ CSelectionDialog::CSelectionDialog(SAMPLE_INDEX Start, SAMPLE_INDEX End,
 	, m_eEnd(CaretPos, WaveFile, TimeFormat)
 	, m_eLength(TimeFormat)
 	, m_WaveFile(WaveFile)
+	, m_bAllowFileExtension(bAllowFileExtension)
 {
 	if (WaveFile.Channels() < 2)
 	{
@@ -375,6 +377,7 @@ void CSelectionDialog::DoDataExchange(CDataExchange* pDX)
 	m_eStart.ExchangeData(pDX, m_Start);
 	m_eEnd.ExchangeData(pDX, m_End);
 	m_eLength.ExchangeData(pDX, m_Length);
+	AdjustSelection();
 }
 
 
@@ -560,7 +563,7 @@ BOOL CSelectionDialog::OnInitDialog()
 	}
 
 	CString s;
-	// TODO: add regions
+
 	for (std::vector<WaveMarker>::iterator i = pInst->Markers.begin();
 		i < pInst->Markers.end(); i++)
 	{
@@ -621,34 +624,83 @@ void CSelectionDialog::OnSelchangeComboTimeFormat()
 	m_eLength.SetTimeSample(m_Length);
 }
 
+void CSelectionDialog::AdjustSelection()
+{
+	if (m_bAllowFileExtension)
+	{
+		if (m_Start < m_End)
+		{
+			SAMPLE_INDEX tmp = m_Start;
+			m_Start = m_End;
+			m_End = tmp;
+		}
+	}
+	else
+	{
+		// force the values into the file length
+		NUMBER_OF_SAMPLES FileLength = m_WaveFile.NumberOfSamples();
+
+		if (m_Start < m_End)
+		{
+			SAMPLE_INDEX tmp = m_Start;
+			m_Start = m_End;
+			m_End = tmp;
+		}
+		else if (m_Start <= FileLength
+				&& m_End <= FileLength)
+		{
+			return;
+		}
+
+		if (m_Start > FileLength)
+		{
+			m_Start = FileLength;
+		}
+		if (m_End > FileLength)
+		{
+			m_End = FileLength;
+		}
+	}
+
+
+	m_Length = m_End - m_Start;
+
+	m_eStart.SetTimeSample(m_Start);
+	m_eEnd.SetTimeSample(m_End);
+	m_eLength.SetTimeSample(m_Length);
+}
+
 void CSelectionDialog::OnKillfocusEditEnd()
 {
-	m_End = m_eEnd.GetTimeSample();
-	m_eEnd.SetTimeSample(m_End);
+	m_End = m_eEnd.UpdateTimeSample();
 	m_Length = m_End - m_Start;
 
 	if (m_Length < 0) m_Length = 0;
 	m_eLength.SetTimeSample(m_Length);
+	AdjustSelection();
+	m_SelectionCombo.SetCurSel(FindSelection(m_Start, m_End));
 }
 
 void CSelectionDialog::OnKillfocusEditLength()
 {
-	m_Length = m_eLength.GetTimeSample();
-	m_eLength.SetTimeSample(m_Length);
+	m_Length = m_eLength.UpdateTimeSample();
 
 	m_End = m_Start + m_Length;
 	m_eEnd.SetTimeSample(m_End);
+	AdjustSelection();
+	m_SelectionCombo.SetCurSel(FindSelection(m_Start, m_End));
 }
 
 void CSelectionDialog::OnKillfocusEditStart()
 {
-	m_Start = m_eStart.GetTimeSample();
-	m_eStart.SetTimeSample(m_Start);
+	m_Start = m_eStart.UpdateTimeSample();
 
 	m_Length = m_End - m_Start;
 
 	if (m_Length < 0) m_Length = 0;
 	m_eLength.SetTimeSample(m_Length);
+	AdjustSelection();
+	m_SelectionCombo.SetCurSel(FindSelection(m_Start, m_End));
 }
 
 void CSelectionDialog::OnSelchangeComboSelection()
@@ -659,13 +711,15 @@ void CSelectionDialog::OnSelchangeComboSelection()
 	{
 		m_Start = m_Selections[sel].begin;
 		m_eStart.SetTimeSample(m_Start);
-		m_End = m_Selections[sel].end;
 
+		m_End = m_Selections[sel].end;
 		m_eEnd.SetTimeSample(m_End);
+
 		m_Length = m_End - m_Start;
 
 		if (m_Length < 0) m_Length = 0;
 		m_eLength.SetTimeSample(m_Length);
+		AdjustSelection();
 	}
 }
 
@@ -1642,7 +1696,7 @@ CExpressionEvaluationDialog::CExpressionEvaluationDialog(SAMPLE_INDEX begin,
 														CWnd* pParent /*=NULL*/)
 	: BaseClass(begin, end, caret, Channels, File,
 				TimeFormat,
-				IDD, pParent),
+				IDD, pParent, TRUE),
 	m_ExpressionGroupSelected(0),
 	m_ExpressionSelected(0),
 	m_ExpressionTabSelected(0),
