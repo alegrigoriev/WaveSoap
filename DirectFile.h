@@ -160,6 +160,8 @@ public:
 				&& 0 != (Flags() & (FileFlagsDeleteAfterClose | FileFlagsMemoryFile));
 	}
 
+	bool RefersPermanentFile() const;
+
 protected:
 	enum {
 		FileFlagsDeleteAfterClose = OpenDeleteAfterClose,
