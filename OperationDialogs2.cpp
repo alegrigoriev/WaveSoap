@@ -304,13 +304,13 @@ CCdGrabbingDialog::CCdGrabbingDialog(CWnd* pParent /*=NULL*/)
 		{IDC_RADIO_ASSIGN_SELECTED_TRACK, MoveDown},
 
 		{IDC_STATIC_ALBUM, MoveDown},
-		{IDC_COMBO_ALBUM, MoveDown | ExpandRight},
+		{IDC_COMBO_ALBUM, MoveDown | ExpandRight | ThisIsDropCombobox},
 
 		{IDC_STATIC_ARTIST, MoveDown},
-		{IDC_COMBO_ARTIST, MoveDown | ExpandRight},
+		{IDC_COMBO_ARTIST, MoveDown | ExpandRight | ThisIsDropCombobox},
 
 		{IDC_STATIC_STORE_FOLDER, MoveDown},
-		{IDC_COMBO_FOLDER, MoveDown | ExpandRight},
+		{IDC_COMBO_FOLDER, MoveDown | ExpandRight | ThisIsDropCombobox},
 		{IDC_BUTTON_BROWSE_SAVE_FOLDER, MoveRight | MoveDown},
 
 		{IDC_STATIC_SAVE_AS, MoveDown},
