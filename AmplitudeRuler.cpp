@@ -39,6 +39,9 @@ BEGIN_MESSAGE_MAP(CAmplitudeRuler, CVerticalRuler)
 	ON_COMMAND(ID_VIEW_AMPL_RULER_SAMPLES, OnViewAmplRulerSamples)
 	ON_COMMAND(ID_VIEW_AMPL_RULER_PERCENT, OnViewAmplRulerPercent)
 	ON_COMMAND(ID_VIEW_AMPL_RULER_DECIBELS, OnViewAmplRulerDecibels)
+	ON_UPDATE_COMMAND_UI(ID_VIEW_AMPL_RULER_SAMPLES, OnUpdateAmplRulerSamples)
+	ON_UPDATE_COMMAND_UI(ID_VIEW_AMPL_RULER_PERCENT, OnUpdateAmplRulerPercent)
+	ON_UPDATE_COMMAND_UI(ID_VIEW_AMPL_RULER_DECIBELS, OnUpdateAmplRulerDecibels)
 	//}}AFX_MSG_MAP
 END_MESSAGE_MAP()
 
@@ -480,6 +483,21 @@ void CAmplitudeRuler::OnViewAmplRulerDecibels()
 {
 	m_DrawMode = DecibelView;
 	Invalidate();
+}
+
+void CAmplitudeRuler::OnUpdateAmplRulerSamples(CCmdUI * pCmdUI)
+{
+	pCmdUI->SetRadio(SampleView == m_DrawMode);
+}
+
+void CAmplitudeRuler::OnUpdateAmplRulerPercent(CCmdUI * pCmdUI)
+{
+	pCmdUI->SetRadio(PercentView == m_DrawMode);
+}
+
+void CAmplitudeRuler::OnUpdateAmplRulerDecibels(CCmdUI * pCmdUI)
+{
+	pCmdUI->SetRadio(DecibelView == m_DrawMode);
 }
 
 /////////////////////////////////////////////////////////////////////////////
