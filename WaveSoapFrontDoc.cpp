@@ -1474,6 +1474,7 @@ void CWaveSoapFrontDoc::DoCut(SAMPLE_INDEX Start, SAMPLE_INDEX End, CHANNEL_MASK
 
 	CCopyContext * pCopyContext = new CCopyContext(this, _T("Copying data to clipboard..."), _T("Cut"));
 
+	pCopyContext->m_Flags |= OperationContextClipboard;
 	pContext->AddContext(pCopyContext);
 
 	CWaveFile DstFile;
@@ -1492,15 +1493,10 @@ void CWaveSoapFrontDoc::DoCut(SAMPLE_INDEX Start, SAMPLE_INDEX End, CHANNEL_MASK
 		return;
 	}
 
-	pCopyContext->m_Flags |= OperationContextClipboard;
-
 	pCopyContext->InitCopy(DstFile, 0, ALL_CHANNELS,
 							m_WavFile, Start, Channel, End - Start);
 
 	GetApp()->m_ClipboardFile = DstFile;
-
-	// set operation context to the queue
-	pContext->AddContext(pCopyContext);
 
 	pContext->AddContext(new CSelectionChangeOperation(this, Start, Start, Start, m_SelectedChannel));
 
@@ -1515,7 +1511,7 @@ void CWaveSoapFrontDoc::DoCut(SAMPLE_INDEX Start, SAMPLE_INDEX End, CHANNEL_MASK
 		return;
 	}
 
-
+	// set operation context to the queue
 	pContext.release()->Execute();
 	SetModifiedFlag(TRUE);
 }
