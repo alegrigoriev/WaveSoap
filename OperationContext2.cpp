@@ -1319,16 +1319,16 @@ void CCommitFileSaveContext::PostRetire()
 {
 	m_File.Close();
 	if ((m_Flags & OperationContextFinished)
-		&& pDocument->PostCommitFileSave(m_FileSaveFlags, m_TargetName))
+		&& m_pDocument->PostCommitFileSave(m_FileSaveFlags, m_TargetName))
 	{
-		if (pDocument->m_bClosePending)
+		if (m_pDocument->m_bClosePending)
 		{
-			pDocument->m_bCloseThisDocumentNow = true;
+			m_pDocument->m_bCloseThisDocumentNow = true;
 		}
 	}
 	else
 	{
-		pDocument->m_bClosePending = false;
+		m_pDocument->m_bClosePending = false;
 	}
 	BaseClass::PostRetire();
 }
@@ -1819,16 +1819,16 @@ void CCdReadingContext::Execute()
 		return;
 	}
 
-	pDocument = (CWaveSoapFrontDoc *)pTemplate->OpenDocumentFile(
-																(LPCTSTR) & Params,
-																OpenDocumentCreateNewWithParameters);
-	if (NULL == pDocument)
+	m_pDocument = (CWaveSoapFrontDoc *)pTemplate->OpenDocumentFile(
+					(LPCTSTR) & Params,
+					OpenDocumentCreateNewWithParameters);
+	if (NULL == m_pDocument)
 	{
 		delete this;
 		return;
 	}
 
-	pDocument->SetModifiedFlag();
+	m_pDocument->SetModifiedFlag();
 	BaseClass::Execute();
 }
 
@@ -1849,19 +1849,19 @@ void CCdReadingContext::PostRetire()
 		// if no data has been read, delete the document
 		if (m_DstPos == m_DstStart)
 		{
-			pDocument->m_bCloseThisDocumentNow = true;
+			m_pDocument->m_bCloseThisDocumentNow = true;
 		}
 		else if (m_DstFile.SetDatachunkLength(m_DstPos - m_DstStart))
 		{
-			pDocument->SoundChanged(m_DstFile.GetFileID(), 0, 0, m_DstFile.NumberOfSamples());
+			m_pDocument->SoundChanged(m_DstFile.GetFileID(), 0, 0, m_DstFile.NumberOfSamples());
 		}
 	}
 	else
 	{
 		if (m_bSaveImmediately)
 		{
-			pDocument->m_bClosing = true;
-			pDocument->DoFileSave();
+			m_pDocument->m_bClosing = true;
+			m_pDocument->DoFileSave();
 		}
 		if (NULL != m_pNextTrackContext)
 		{
@@ -1890,8 +1890,8 @@ CReplaceFileContext::CReplaceFileContext(CWaveSoapFrontDoc * pDoc, LPCTSTR Opera
 BOOL CReplaceFileContext::CreateUndo()
 {
 	CReplaceFileContext * pUndo =
-		new CReplaceFileContext(pDocument, m_OperationName, pDocument->m_WavFile,
-								pDocument->m_bDirectMode);
+		new CReplaceFileContext(m_pDocument, m_OperationName, m_pDocument->m_WavFile,
+								m_pDocument->m_bDirectMode);
 	if (NULL != pUndo)
 	{
 		m_UndoChain.InsertHead(pUndo);
@@ -1908,17 +1908,17 @@ bool CReplaceFileContext::KeepsPermanentFileReference() const
 
 BOOL CReplaceFileContext::OperationProc()
 {
-	pDocument->m_WavFile = m_File;
+	m_pDocument->m_WavFile = m_File;
 
-	NUMBER_OF_SAMPLES nSamples = pDocument->WaveFileSamples();
+	NUMBER_OF_SAMPLES nSamples = m_pDocument->WaveFileSamples();
 
-	pDocument->SoundChanged(pDocument->WaveFileID(),
+	m_pDocument->SoundChanged(m_pDocument->WaveFileID(),
 							0, nSamples, nSamples, UpdateSoundDontRescanPeaks);
 	// save/restore "Direct" flag and update title
-	pDocument->m_bDirectMode = m_bNewDirectMode;
+	m_pDocument->m_bDirectMode = m_bNewDirectMode;
 
-	pDocument->UpdateFrameTitles();        // will cause name change in views
-	pDocument->UpdateAllViews(NULL, CWaveSoapFrontDoc::UpdateWholeFileChanged);
+	m_pDocument->UpdateFrameTitles();        // will cause name change in views
+	m_pDocument->UpdateAllViews(NULL, CWaveSoapFrontDoc::UpdateWholeFileChanged);
 
 	return TRUE;
 }
@@ -1941,7 +1941,7 @@ CReplaceFormatContext::CReplaceFormatContext(CWaveSoapFrontDoc * pDoc, UINT Oper
 BOOL CReplaceFormatContext::CreateUndo()
 {
 	CReplaceFormatContext * pUndo =
-		new CReplaceFormatContext(pDocument, m_OperationName, pDocument->WaveFormat());
+		new CReplaceFormatContext(m_pDocument, m_OperationName, m_pDocument->WaveFormat());
 
 	m_UndoChain.InsertHead(pUndo);
 	return TRUE;
@@ -1950,10 +1950,10 @@ BOOL CReplaceFormatContext::CreateUndo()
 BOOL CReplaceFormatContext::OperationProc()
 {
 	// replace format to the one in m_NewWaveFormat
-	pDocument->SetWaveFormat(m_NewWaveFormat);
+	m_pDocument->SetWaveFormat(m_NewWaveFormat);
 
-//    pDocument->UpdateFrameTitles();        // will cause name change in views
-	pDocument->UpdateAllViews(NULL, CWaveSoapFrontDoc::UpdateSampleRateChanged);
+//    m_pDocument->UpdateFrameTitles();        // will cause name change in views
+	m_pDocument->UpdateAllViews(NULL, CWaveSoapFrontDoc::UpdateSampleRateChanged);
 	return TRUE;
 }
 
@@ -1970,12 +1970,12 @@ CLengthChangeOperation::CLengthChangeOperation(CWaveSoapFrontDoc * pDoc,
 BOOL CLengthChangeOperation::CreateUndo()
 {
 	if ( ! m_File.IsOpen()
-		|| m_File.GetFileID() != pDocument->WaveFileID())
+		|| m_File.GetFileID() != m_pDocument->WaveFileID())
 	{
 		return TRUE;
 	}
 
-	CLengthChangeOperation * pUndo = new CLengthChangeOperation(pDocument,
+	CLengthChangeOperation * pUndo = new CLengthChangeOperation(m_pDocument,
 																m_File, m_File.GetLength());
 
 	m_UndoChain.InsertHead(pUndo);
@@ -1994,7 +1994,7 @@ BOOL CLengthChangeOperation::OperationProc()
 
 BOOL CLengthChangeOperation::PrepareUndo()
 {
-	m_File = pDocument->m_WavFile;
+	m_File = m_pDocument->m_WavFile;
 	return TRUE;
 }
 
@@ -2016,12 +2016,12 @@ CWaveSamplesChangeOperation::CWaveSamplesChangeOperation(CWaveSoapFrontDoc * pDo
 BOOL CWaveSamplesChangeOperation::CreateUndo()
 {
 	if ( ! m_File.IsOpen()
-		|| m_File.GetFileID() != pDocument->WaveFileID())
+		|| m_File.GetFileID() != m_pDocument->WaveFileID())
 	{
 		return TRUE;
 	}
 
-	CWaveSamplesChangeOperation * pUndo = new CWaveSamplesChangeOperation(pDocument,
+	CWaveSamplesChangeOperation * pUndo = new CWaveSamplesChangeOperation(m_pDocument,
 											m_File, m_File.NumberOfSamples());
 
 	m_UndoChain.InsertHead(pUndo);
@@ -2030,7 +2030,7 @@ BOOL CWaveSamplesChangeOperation::CreateUndo()
 
 BOOL CWaveSamplesChangeOperation::PrepareUndo()
 {
-	m_File = pDocument->m_WavFile;
+	m_File = m_pDocument->m_WavFile;
 	return TRUE;
 }
 
@@ -2060,7 +2060,7 @@ BOOL CWaveSamplesChangeOperation::OperationProc()
 		return FALSE;
 	}
 
-	pDocument->SoundChanged(m_File.GetFileID(), UpdateBegin, UpdateEnd, m_NewSamples, Flags);
+	m_pDocument->SoundChanged(m_File.GetFileID(), UpdateBegin, UpdateEnd, m_NewSamples, Flags);
 
 	return TRUE;
 }
@@ -2121,13 +2121,13 @@ BOOL CMoveOperation::InitMove(CWaveFile & File,
 BOOL CMoveOperation::CreateUndo()
 {
 	if ( ! m_DstFile.IsOpen()
-		|| m_DstFile.GetFileID() != pDocument->WaveFileID()
+		|| m_DstFile.GetFileID() != m_pDocument->WaveFileID()
 		|| NULL != m_pUndoMove)
 	{
 		return TRUE;
 	}
 
-	CMoveOperation * pUndo = new CMoveOperation(pDocument);
+	CMoveOperation * pUndo = new CMoveOperation(m_pDocument);
 
 	pUndo->m_SrcPos = m_DstPos;
 	pUndo->m_SrcEnd = m_DstStart;
@@ -2205,8 +2205,8 @@ void CMoveOperation::DeleteUndo()
 BOOL CMoveOperation::PrepareUndo()
 {
 	m_Flags &= ~(OperationContextStop | OperationContextFinished);
-	m_SrcFile = pDocument->m_WavFile;
-	m_DstFile = pDocument->m_WavFile;
+	m_SrcFile = m_pDocument->m_WavFile;
+	m_DstFile = m_pDocument->m_WavFile;
 	return TRUE;
 }
 
@@ -2431,7 +2431,7 @@ BOOL CMoveOperation::OperationProc()
 								CDirectFile::ReturnBufferDirty);
 
 	// notify the view
-	pDocument->FileChanged(m_DstFile, dwOperationBegin, m_DstPos);
+	m_pDocument->FileChanged(m_DstFile, dwOperationBegin, m_DstPos);
 
 	return TRUE;
 }
@@ -2485,14 +2485,14 @@ BOOL CSaveTrimmedOperation::CreateUndo()
 	// Only create undo, if the source file is the main document file
 	if (NULL != m_pRestoreOperation
 		|| ! m_SrcFile.IsOpen()
-		|| m_SrcFile.GetFileID() != pDocument->WaveFileID()
+		|| m_SrcFile.GetFileID() != m_pDocument->WaveFileID()
 		|| m_UndoStartPos == m_UndoEndPos)
 	{
 		return TRUE;
 	}
 
 	CRestoreTrimmedOperation::auto_ptr
-	pUndo(new CRestoreTrimmedOperation(pDocument));
+	pUndo(new CRestoreTrimmedOperation(m_pDocument));
 
 	// this operation doesn't require saving REDO data during UNDO
 	if ( ! pUndo->InitUndoCopy(m_SrcFile, m_UndoStartPos, m_UndoEndPos, m_SrcChan, 0, 0))
@@ -2552,7 +2552,7 @@ BOOL CSaveTrimmedOperation::OperationProc()
 BOOL CSaveTrimmedOperation::PrepareUndo()
 {
 	m_Flags &= ~(OperationContextStop | OperationContextFinished);
-	m_SrcFile = pDocument->m_WavFile;
+	m_SrcFile = m_pDocument->m_WavFile;
 	return TRUE;
 }
 
@@ -2589,14 +2589,14 @@ BOOL CRestoreTrimmedOperation::CreateUndo()
 	// Only create undo, if the source file is the main document file
 	if (NULL != m_pSaveOperation
 		|| ! m_DstFile.IsOpen()
-		|| m_DstFile.GetFileID() != pDocument->WaveFileID()
+		|| m_DstFile.GetFileID() != m_pDocument->WaveFileID()
 		|| m_DstStart == m_DstEnd)
 	{
 		return TRUE;
 	}
 
 	// a reference on the main document file will be closed in UnprepareUndo
-	m_pSaveOperation = new CSaveTrimmedOperation(pDocument,
+	m_pSaveOperation = new CSaveTrimmedOperation(m_pDocument,
 												m_DstFile,
 												m_DstFile.PositionToSample(m_DstStart),
 												m_DstFile.PositionToSample(m_DstEnd),
@@ -2645,7 +2645,7 @@ CInitChannels::CInitChannels(CWaveSoapFrontDoc * pDoc,
 BOOL CInitChannels::PrepareUndo()
 {
 	m_Flags &= ~(OperationContextStop | OperationContextFinished);
-	m_DstFile = pDocument->m_WavFile;
+	m_DstFile = m_pDocument->m_WavFile;
 	m_SrcPos = m_SrcStart;
 	m_DstPos = m_DstStart;
 	return TRUE;
@@ -2664,12 +2664,12 @@ void CInitChannels::UnprepareUndo()
 BOOL CInitChannels::CreateUndo()
 {
 	if ( ! m_DstFile.IsOpen()
-		|| m_DstFile.GetFileID() != pDocument->WaveFileID())
+		|| m_DstFile.GetFileID() != m_pDocument->WaveFileID())
 	{
 		return TRUE;
 	}
 
-	m_UndoChain.InsertHead(new CInitChannelsUndo(pDocument,
+	m_UndoChain.InsertHead(new CInitChannelsUndo(m_pDocument,
 												m_DstStart, m_DstEnd, m_DstChan));
 	return TRUE;
 }
@@ -2726,8 +2726,8 @@ CInitChannelsUndo::CInitChannelsUndo(CWaveSoapFrontDoc * pDoc,
 
 BOOL CInitChannelsUndo::CreateUndo()
 {
-	m_UndoChain.InsertHead(new CInitChannels(pDocument,
-											pDocument->m_WavFile,
+	m_UndoChain.InsertHead(new CInitChannels(m_pDocument,
+											m_pDocument->m_WavFile,
 											m_SrcStart, m_SrcEnd, m_SrcChan));
 	return TRUE;
 }
@@ -2752,16 +2752,16 @@ CSelectionChangeOperation::CSelectionChangeOperation(CWaveSoapFrontDoc * pDoc,
 
 BOOL CSelectionChangeOperation::CreateUndo()
 {
-	m_UndoChain.InsertHead(new CSelectionChangeOperation(pDocument,
-														pDocument->m_SelectionStart, pDocument->m_SelectionEnd,
-														pDocument->m_CaretPosition, pDocument->m_SelectedChannel));
+	m_UndoChain.InsertHead(new CSelectionChangeOperation(m_pDocument,
+														m_pDocument->m_SelectionStart, m_pDocument->m_SelectionEnd,
+														m_pDocument->m_CaretPosition, m_pDocument->m_SelectedChannel));
 
 	return TRUE;
 }
 
 BOOL CSelectionChangeOperation::OperationProc()
 {
-	pDocument->SetSelection(m_Start, m_End, m_Channels, m_Caret);
+	m_pDocument->SetSelection(m_Start, m_End, m_Channels, m_Caret);
 	return TRUE;
 }
 
@@ -2803,13 +2803,13 @@ BOOL CReverseOperation::CreateUndo()
 {
 	if (NULL != m_pUndoLow
 		|| ! m_DstFile.IsOpen()
-		|| m_DstFile.GetFileID() != pDocument->WaveFileID())
+		|| m_DstFile.GetFileID() != m_pDocument->WaveFileID())
 	{
 		return TRUE;
 	}
 
-	CCopyUndoContext::auto_ptr pUndo1(new CCopyUndoContext(pDocument));
-	CCopyUndoContext::auto_ptr pUndo2(new CCopyUndoContext(pDocument));
+	CCopyUndoContext::auto_ptr pUndo1(new CCopyUndoContext(m_pDocument));
+	CCopyUndoContext::auto_ptr pUndo2(new CCopyUndoContext(m_pDocument));
 
 	if ( ! pUndo1->InitUndoCopy(m_DstFile, m_DstStart, m_DstEnd, m_DstChan))
 	{
@@ -2978,8 +2978,8 @@ BOOL CReverseOperation::OperationProc()
 			);
 
 	// notify the view
-	pDocument->FileChanged(m_DstFile, dwOperationBeginBottom, m_DstPos);
-	pDocument->FileChanged(m_DstFile, m_SrcPos, dwOperationBeginTop);
+	m_pDocument->FileChanged(m_DstFile, dwOperationBeginBottom, m_DstPos);
+	m_pDocument->FileChanged(m_DstFile, m_SrcPos, dwOperationBeginTop);
 
 	return TRUE;
 }
@@ -3003,9 +3003,9 @@ CMetadataChangeOperation::~CMetadataChangeOperation()
 
 BOOL CMetadataChangeOperation::CreateUndo()
 {
-	if (pDocument->WaveFileID() == m_WaveFile.GetFileID())
+	if (m_pDocument->WaveFileID() == m_WaveFile.GetFileID())
 	{
-		m_pUndoData = new ThisClass(pDocument, m_WaveFile);
+		m_pUndoData = new ThisClass(m_pDocument, m_WaveFile);
 	}
 
 //    m_pUndoData->SaveUndoMetadata(m_MetadataCopyFlags);
@@ -3017,7 +3017,7 @@ BOOL CMetadataChangeOperation::OperationProc()
 {
 	if (m_MetadataCopyFlags & CWaveFile::InstanceDataWav::MetadataCopyAllCueData)
 	{
-		pDocument->UpdateAllMarkers();
+		m_pDocument->UpdateAllMarkers();
 	}
 
 	m_WaveFile.SwapMetadata(m_pMetadata, m_MetadataCopyFlags);
@@ -3033,7 +3033,7 @@ BOOL CMetadataChangeOperation::OperationProc()
 
 	if (m_MetadataCopyFlags & CWaveFile::InstanceDataWav::MetadataCopyAllCueData)
 	{
-		pDocument->UpdateAllMarkers();
+		m_pDocument->UpdateAllMarkers();
 	}
 
 	return TRUE;
@@ -3046,12 +3046,12 @@ void CMetadataChangeOperation::SaveUndoMetadata(unsigned ChangeFlags)
 		m_pMetadata = new CWaveFile::InstanceDataWav;
 	}
 	m_MetadataCopyFlags |= ChangeFlags;
-	m_pMetadata->CopyMetadata(pDocument->m_WavFile.GetInstanceData(), ChangeFlags);
+	m_pMetadata->CopyMetadata(m_pDocument->m_WavFile.GetInstanceData(), ChangeFlags);
 }
 
 BOOL CMetadataChangeOperation::PrepareUndo()
 {
-	m_WaveFile = pDocument->m_WavFile;
+	m_WaveFile = m_pDocument->m_WavFile;
 	return TRUE;
 }
 
@@ -3131,7 +3131,7 @@ BOOL CInsertSilenceContext::InitExpand(CWaveFile & DstFile, SAMPLE_INDEX StartSa
 		return FALSE;
 	}
 
-	AddContext(new CInitChannels(pDocument, DstFile, StartSample,
+	AddContext(new CInitChannels(m_pDocument, DstFile, StartSample,
 								StartSample + length, chan));
 
 	if (NeedUndo

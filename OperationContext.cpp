@@ -49,7 +49,7 @@ void COperationContext::PrintElapsedTime()
 #endif
 
 COperationContext::COperationContext(class CWaveSoapFrontDoc * pDoc, DWORD Flags, LPCTSTR StatusString, LPCTSTR OperationName)
-	: pDocument(pDoc),
+	: m_pDocument(pDoc),
 	m_Flags(Flags),
 	m_OperationName(OperationName),
 	m_StatusPrompt(StatusString),
@@ -60,7 +60,7 @@ COperationContext::COperationContext(class CWaveSoapFrontDoc * pDoc, DWORD Flags
 
 COperationContext::COperationContext(class CWaveSoapFrontDoc * pDoc, DWORD Flags,
 									UINT StatusStringId, UINT OperationNameId)
-	: pDocument(pDoc),
+	: m_pDocument(pDoc),
 	m_Flags(Flags),
 	m_bClipped(false),
 	m_MaxClipped(0.)
@@ -132,7 +132,7 @@ void COperationContext::Retire()
 	// queue it to the Doc
 	PrintElapsedTime();
 
-	pDocument->m_RetiredList.InsertTail(this);
+	m_pDocument->m_RetiredList.InsertTail(this);
 }
 
 void COperationContext::PostRetire()
@@ -140,10 +140,10 @@ void COperationContext::PostRetire()
 	if (WasClipped())
 	{
 		// bring document frame to the top, then return
-		CDocumentPopup pop(pDocument);
+		CDocumentPopup pop(m_pDocument);
 
 		CString s;
-		s.Format(IDS_SOUND_CLIPPED, pDocument->GetTitle(), int(GetMaxClipped() * (100. / 32678)));
+		s.Format(IDS_SOUND_CLIPPED, m_pDocument->GetTitle(), int(GetMaxClipped() * (100. / 32678)));
 		AfxMessageBox(s, MB_OK | MB_ICONEXCLAMATION);
 	}
 
@@ -151,7 +151,7 @@ void COperationContext::PostRetire()
 	CUndoRedoContext * pUndo = GetUndo();
 	if (pUndo)
 	{
-		pDocument->AddUndoRedo(pUndo);
+		m_pDocument->AddUndoRedo(pUndo);
 	}
 
 	delete this;
@@ -166,7 +166,7 @@ void COperationContext::Execute()
 	}
 
 	SetBeginTime();
-	pDocument->QueueOperation(this);
+	m_pDocument->QueueOperation(this);
 }
 
 void COperationContext::ExecuteSynch()
@@ -205,7 +205,7 @@ CUndoRedoContext * COperationContext::GetUndo()
 		return NULL;
 	}
 
-	CUndoRedoContext::auto_ptr pUndo(new CUndoRedoContext(pDocument,
+	CUndoRedoContext::auto_ptr pUndo(new CUndoRedoContext(m_pDocument,
 														m_OperationName));
 
 	while ( ! pUndoChain->IsEmpty())
@@ -466,13 +466,13 @@ BOOL CTwoFilesOperation::CreateUndo()
 {
 	if (NULL != m_pUndoContext
 		|| ! m_DstFile.IsOpen()
-		|| m_DstFile.GetFileID() != pDocument->WaveFileID()
+		|| m_DstFile.GetFileID() != m_pDocument->WaveFileID()
 		|| m_UndoStartPos == m_UndoEndPos)
 	{
 		return TRUE;
 	}
 
-	CCopyUndoContext::auto_ptr pUndo(new CCopyUndoContext(pDocument));
+	CCopyUndoContext::auto_ptr pUndo(new CCopyUndoContext(m_pDocument));
 
 	// by default, save for REDO all undone
 	if ( ! pUndo->InitUndoCopy(m_DstFile, m_UndoStartPos, m_UndoEndPos, m_DstChan))
@@ -763,7 +763,7 @@ BOOL CThroughProcessOperation::OperationProc()
 		if (m_ReturnBufferFlags & CDirectFile::ReturnBufferDirty)
 		{
 			// notify the view
-			pDocument->FileChanged(m_DstFile, dwOperationBegin, m_DstPos);
+			m_pDocument->FileChanged(m_DstFile, dwOperationBegin, m_DstPos);
 		}
 
 	}
@@ -855,7 +855,7 @@ BOOL CThroughProcessOperation::OperationProc()
 		if (m_ReturnBufferFlags & CDirectFile::ReturnBufferDirty)
 		{
 			// notify the view
-			pDocument->FileChanged(m_DstFile, dwOperationBegin, m_DstPos);
+			m_pDocument->FileChanged(m_DstFile, dwOperationBegin, m_DstPos);
 		}
 
 	}
@@ -1265,7 +1265,7 @@ BOOL CStagedContext::InitExpandOperation(CWaveFile & File, SAMPLE_INDEX StartSam
 
 	// 1. expand the file
 	AddContext(new
-				CWaveSamplesChangeOperation(pDocument, File, NewSamples));
+				CWaveSamplesChangeOperation(m_pDocument, File, NewSamples));
 
 	// 2. if not all channels moved, zero the expanded part
 	CHANNEL_MASK ChannelsToZero = File.ChannelsMask() & ~Channel;
@@ -1273,7 +1273,7 @@ BOOL CStagedContext::InitExpandOperation(CWaveFile & File, SAMPLE_INDEX StartSam
 	if (0 != ChannelsToZero)
 	{
 		// special zero context used, with empty undo
-		AddContext(new CInitChannels(pDocument, File, NumberOfSamples,
+		AddContext(new CInitChannels(m_pDocument, File, NumberOfSamples,
 									NewSamples, ChannelsToZero));
 	}
 	else
@@ -1284,7 +1284,7 @@ BOOL CStagedContext::InitExpandOperation(CWaveFile & File, SAMPLE_INDEX StartSam
 	if (NumberOfSamples > StartSample)
 	{
 		CMoveOperation::auto_ptr pMove(new
-										CMoveOperation(pDocument, IDS_STATUS_PROMPT_EXPANDING_FILE));
+										CMoveOperation(m_pDocument, IDS_STATUS_PROMPT_EXPANDING_FILE));
 		pMove->InitMove(File, StartSample, StartSample + Length, NumberOfSamples - StartSample,
 						Channel);
 		AddContext(pMove.release());
@@ -1305,7 +1305,7 @@ BOOL CStagedContext::InitShrinkOperation(CWaveFile & File,
 	if (NewSamples > StartSample)
 	{
 		CMoveOperation::auto_ptr pMove(new
-										CMoveOperation(pDocument,
+										CMoveOperation(m_pDocument,
 														IDS_STATUS_PROMPT_SHRINKING_FILE));
 
 		pMove->InitMove(File, StartSample + Length, StartSample,
@@ -1323,7 +1323,7 @@ BOOL CStagedContext::InitShrinkOperation(CWaveFile & File,
 		// will be discarded by WaveSampleChange or by InitChannels,
 		// we need to save it
 		AddContext(new
-					CSaveTrimmedOperation(pDocument, File,
+					CSaveTrimmedOperation(m_pDocument, File,
 										NewSamples, StartSample + Length, Channel));
 	}
 
@@ -1331,7 +1331,7 @@ BOOL CStagedContext::InitShrinkOperation(CWaveFile & File,
 	{
 		// not all channels are moved
 		// special zero context used, with empty undo
-		AddContext(new CInitChannels(pDocument, File, NewSamples, NumberOfSamples,
+		AddContext(new CInitChannels(m_pDocument, File, NewSamples, NumberOfSamples,
 									Channel));
 	}
 	else
@@ -1341,7 +1341,7 @@ BOOL CStagedContext::InitShrinkOperation(CWaveFile & File,
 
 		// 4. If all channels moved: Change number of samples
 		AddContext(new
-					CWaveSamplesChangeOperation(pDocument, File, NewSamples));
+					CWaveSamplesChangeOperation(m_pDocument, File, NewSamples));
 	}
 	return TRUE;
 }
@@ -1351,7 +1351,7 @@ void CStagedContext::InitCopyMarkers(CWaveFile & DstFile, SAMPLE_INDEX StartDstS
 									CWaveFile & SrcFile, SAMPLE_INDEX StartSrcSample,
 									NUMBER_OF_SAMPLES SamplesToInsert)
 {
-	AddContext(new CCueEditOperation(pDocument, DstFile, StartDstSample,
+	AddContext(new CCueEditOperation(m_pDocument, DstFile, StartDstSample,
 									LengthToReplace, SrcFile, StartSrcSample, SamplesToInsert));
 }
 
@@ -1359,7 +1359,7 @@ void CStagedContext::InitMoveMarkers(CWaveFile & DstFile, SAMPLE_INDEX StartDstS
 									NUMBER_OF_SAMPLES LengthToReplace,
 									NUMBER_OF_SAMPLES SamplesToInsert)
 {
-	AddContext(new CCueEditOperation(pDocument, DstFile, StartDstSample,
+	AddContext(new CCueEditOperation(m_pDocument, DstFile, StartDstSample,
 									LengthToReplace, SamplesToInsert));
 }
 
@@ -1388,7 +1388,7 @@ BOOL CStagedContext::InitInsertCopy(CWaveFile & DstFile, SAMPLE_INDEX StartDstSa
 		NUMBER_OF_SAMPLES NumberOfSamples = DstFile.NumberOfSamples();
 		if (StartDstSample + SamplesToInsert > NumberOfSamples)
 		{
-			CRestoreTrimmedOperation * pCopy = new CRestoreTrimmedOperation(pDocument);
+			CRestoreTrimmedOperation * pCopy = new CRestoreTrimmedOperation(m_pDocument);
 
 			ASSERT(StartDstSample <= NumberOfSamples);
 			TRACE(_T("Copying some samples with CRestoreTrimmedOperation:\n")
@@ -1432,7 +1432,7 @@ BOOL CStagedContext::InitInsertCopy(CWaveFile & DstFile, SAMPLE_INDEX StartDstSa
 	if (0 != SamplesToInsert)
 	{
 		// now copy data
-		CCopyContext::auto_ptr pCopy(new CCopyContext(pDocument,
+		CCopyContext::auto_ptr pCopy(new CCopyContext(m_pDocument,
 													IDS_STATUS_PROMPT_INSERTING_DATA));
 
 		if ( ! pCopy->InitCopy(DstFile, StartDstSample, DstChannel,
@@ -1629,7 +1629,7 @@ BOOL CScanPeaksContext::OperationProc()
 	TRACE("CScanPeaksContext current position=%X\n", m_SrcPos);
 
 	// notify the view
-	pDocument->FileChanged(m_SrcFile, dwOperationBegin,
+	m_pDocument->FileChanged(m_SrcFile, dwOperationBegin,
 							m_SrcPos, -1, UpdateSoundDontRescanPeaks);
 
 	return TRUE;
@@ -1907,7 +1907,7 @@ BOOL CCopyContext::OperationProc()
 								CDirectFile::ReturnBufferDirty);
 
 	// notify the view
-	pDocument->FileChanged(m_DstFile, dwOperationBegin, m_DstPos);
+	m_pDocument->FileChanged(m_DstFile, dwOperationBegin, m_DstPos);
 
 	return TRUE;
 }
@@ -1917,7 +1917,7 @@ BOOL CCopyContext::OperationProc()
 BOOL CCopyUndoContext::PrepareUndo()
 {
 	m_Flags &= ~(OperationContextStop | OperationContextFinished);
-	m_DstFile = pDocument->m_WavFile;
+	m_DstFile = m_pDocument->m_WavFile;
 	m_SrcPos = m_SrcStart;
 	m_DstPos = m_DstStart;
 	return TRUE;
@@ -2242,7 +2242,7 @@ void CDecompressContext::PostRetire()
 		{
 			s.Format(IDS_CANT_DECOMPRESS_FILE, LPCTSTR(m_SrcFile.GetName()),
 					m_SrcFile.GetWaveFormat()->wFormatTag, m_MmResult);
-			pDocument->m_bCloseThisDocumentNow = true;
+			m_pDocument->m_bCloseThisDocumentNow = true;
 		}
 		else
 		{
@@ -2253,7 +2253,7 @@ void CDecompressContext::PostRetire()
 	}
 	else if (m_Flags & DecompressSavePeakFile)
 	{
-		m_DstFile.SavePeakInfo(pDocument->m_OriginalWavFile);
+		m_DstFile.SavePeakInfo(m_pDocument->m_OriginalWavFile);
 	}
 	BaseClass::PostRetire();
 }
@@ -2318,7 +2318,7 @@ BOOL CSoundPlayContext::Init()
 		return FALSE;
 	}
 
-	pDocument->PlaybackPositionNotify(-1, 0);// sample=-1, channel=0
+	m_pDocument->PlaybackPositionNotify(-1, 0);// sample=-1, channel=0
 
 	SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_ABOVE_NORMAL);
 	return TRUE;
@@ -2326,31 +2326,31 @@ BOOL CSoundPlayContext::Init()
 
 void CSoundPlayContext::DeInit()
 {
-	pDocument->PlaybackPositionNotify(-1, 0);// sample=-1, channel=0
+	m_pDocument->PlaybackPositionNotify(-1, 0);// sample=-1, channel=0
 	SetThreadPriority(GetCurrentThread(), m_OldThreadPriority);
 	m_WaveOut.Reset();
 }
 
 void CSoundPlayContext::PostRetire()
 {
-	pDocument->m_PlayingSound = false;
+	m_pDocument->m_PlayingSound = false;
 	if (m_bPauseRequested)
 	{
 		// TODO: keep selection and pause cursor inside a selection?
 #if 0
-		if (pDocument->m_SelectionEnd == pDocument->m_SelectionStart)
+		if (m_pDocument->m_SelectionEnd == m_pDocument->m_SelectionStart)
 		{
-			pDocument->m_SelectionEnd = m_SamplePlayed;
+			m_pDocument->m_SelectionEnd = m_SamplePlayed;
 		}
 #endif
-		pDocument->SetSelection(m_SamplePlayed, m_SamplePlayed,
-								pDocument->m_SelectedChannel, m_SamplePlayed, SetSelection_MoveCaretToCenter);
+		m_pDocument->SetSelection(m_SamplePlayed, m_SamplePlayed,
+								m_pDocument->m_SelectedChannel, m_SamplePlayed, SetSelection_MoveCaretToCenter);
 	}
 	else
 	{
 		// return caret to the end of selected area
-		pDocument->SetSelection(pDocument->m_SelectionStart, pDocument->m_SelectionEnd,
-								pDocument->m_SelectedChannel, pDocument->m_SelectionEnd, SetSelection_MoveCaretToCenter);
+		m_pDocument->SetSelection(m_pDocument->m_SelectionStart, m_pDocument->m_SelectionEnd,
+								m_pDocument->m_SelectedChannel, m_pDocument->m_SelectionEnd, SetSelection_MoveCaretToCenter);
 	}
 	BaseClass::PostRetire();
 }
@@ -2418,7 +2418,7 @@ BOOL CSoundPlayContext::OperationProc()
 	// notify the document
 	m_SamplePlayed = m_WaveOut.GetPosition() + m_FirstSamplePlayed;
 
-	pDocument->PlaybackPositionNotify(m_SamplePlayed, m_Chan);
+	m_pDocument->PlaybackPositionNotify(m_SamplePlayed, m_Chan);
 	return TRUE;
 }
 
@@ -2495,7 +2495,7 @@ void CUndoRedoContext::PostRetire()
 	CUndoRedoContext * pUndo = GetUndo();
 	if (pUndo)
 	{
-		pDocument->AddUndoRedo(pUndo);
+		m_pDocument->AddUndoRedo(pUndo);
 	}
 
 	while( ! m_DoneList.IsEmpty())
@@ -2509,22 +2509,22 @@ void CUndoRedoContext::PostRetire()
 	// modify modification number, depending on operation
 	if (IsUndoOperation())
 	{
-		if (pDocument->m_ModificationSequenceNumber >= 0)
+		if (m_pDocument->m_ModificationSequenceNumber >= 0)
 		{
-			pDocument->IncrementModified(FALSE, TRUE);    // bDeleteRedo=FALSE
+			m_pDocument->IncrementModified(FALSE, TRUE);    // bDeleteRedo=FALSE
 		}
 	}
 	else
 	{
-		if (pDocument->m_ModificationSequenceNumber <= 0)
+		if (m_pDocument->m_ModificationSequenceNumber <= 0)
 		{
-			pDocument->DecrementModified();
+			m_pDocument->DecrementModified();
 		}
 	}
 
 	UnprepareUndo(); //to release file references
 	// put the context back to undo/redo list
-	pDocument->AddUndoRedo(this);
+	m_pDocument->AddUndoRedo(this);
 }
 
 CUndoRedoContext * CUndoRedoContext::GetUndo()
@@ -3114,34 +3114,34 @@ void CStatisticsContext::PostRetire()
 	{
 		// read sample value at cursor
 		WAVE_SAMPLE Value[2] = {0, 0};
-		if (pDocument->m_CaretPosition < pDocument->WaveFileSamples())
+		if (m_pDocument->m_CaretPosition < m_pDocument->WaveFileSamples())
 		{
-			int SampleSize = pDocument->WaveSampleSize();
-			SAMPLE_POSITION offset = pDocument->m_WavFile.SampleToPosition(pDocument->m_CaretPosition);
+			int SampleSize = m_pDocument->WaveSampleSize();
+			SAMPLE_POSITION offset = m_pDocument->m_WavFile.SampleToPosition(m_pDocument->m_CaretPosition);
 
 			if (SampleSize > sizeof Value)
 			{
 				SampleSize = sizeof Value;
 			}
-			pDocument->m_WavFile.ReadAt(Value, SampleSize, offset);
+			m_pDocument->m_WavFile.ReadAt(Value, SampleSize, offset);
 		}
 		// show dialog
 		CStatisticsDialog dlg;
 		dlg.m_pContext = this;
-		dlg.m_SamplesPerSec = pDocument->WaveSampleRate();
-		dlg.m_CaretPosition = pDocument->m_CaretPosition;
+		dlg.m_SamplesPerSec = m_pDocument->WaveSampleRate();
+		dlg.m_CaretPosition = m_pDocument->m_CaretPosition;
 		dlg.m_ValueAtCursorLeft = Value[0];
 		dlg.m_ValueAtCursorRight = Value[1];
-		dlg.m_sFilename = pDocument->GetTitle();
+		dlg.m_sFilename = m_pDocument->GetTitle();
 
 		{
-			CDocumentPopup pop(pDocument);
+			CDocumentPopup pop(m_pDocument);
 			if (IDC_BUTTON_GOTO_MAX == dlg.DoModal())
 			{
 				CHANNEL_MASK Channel;
 				SAMPLE_INDEX Sample = dlg.GetMaxSamplePosition( & Channel);
 
-				pDocument->SetSelection(Sample, Sample, Channel, Sample, SetSelection_MoveCaretToCenter);
+				m_pDocument->SetSelection(Sample, Sample, Channel, Sample, SetSelection_MoveCaretToCenter);
 			}
 		}
 	}
@@ -3184,7 +3184,7 @@ SAMPLE_INDEX CStatisticsContext::GetMaxSamplePosition(CHANNEL_MASK * pChannel) c
 		*pChannel = Channel;
 	}
 
-	return SamplePos / pDocument->WaveSampleSize();
+	return SamplePos / m_pDocument->WaveSampleSize();
 }
 
 CMaxScanContext::CMaxScanContext(CWaveSoapFrontDoc * pDoc,
@@ -3328,7 +3328,7 @@ void CFileSaveContext::PostRetire()
 		{
 			// will be closed by the destructor
 			m_DstFile.CommitChanges();
-			pDocument->m_WavFile.SavePeakInfo(m_DstFile);
+			m_pDocument->m_WavFile.SavePeakInfo(m_DstFile);
 
 			// ask about opening the file
 			CReopenSavedFileCopyDlg dlg;
@@ -3341,12 +3341,12 @@ void CFileSaveContext::PostRetire()
 				dlg.m_bDisableDirect = TRUE;
 			}
 
-			dlg.m_Prompt.Format(fmt, LPCTSTR(pDocument->GetTitle()),
+			dlg.m_Prompt.Format(fmt, LPCTSTR(m_pDocument->GetTitle()),
 								LPCTSTR(m_NewName));
 
 			int res;
 			{
-				CDocumentPopup pop(pDocument);
+				CDocumentPopup pop(m_pDocument);
 				res = dlg.DoModal();
 			}
 			if (IDCANCEL != res)
@@ -3365,17 +3365,17 @@ void CFileSaveContext::PostRetire()
 		else
 		{
 			// exchange files, close and delete old ones, rename new ones
-			pDocument->m_FileTypeFlags = m_NewFileTypeFlags;
+			m_pDocument->m_FileTypeFlags = m_NewFileTypeFlags;
 
 			m_SrcFile.Close();
-			pDocument->PostFileSave(m_DstFile, m_NewName,
+			m_pDocument->PostFileSave(m_DstFile, m_NewName,
 									0 != (m_Flags & FileSaveContext_SameName));
 		}
 	}
 	else
 	{
 		// Operation canceled, discard the file
-		pDocument->m_bClosePending = false;
+		m_pDocument->m_bClosePending = false;
 		m_DstFile.DeleteOnClose();
 		m_DstFile.Close();
 	}
@@ -3591,7 +3591,7 @@ BOOL CWaveProcContext::OperationProc()
 								CDirectFile::ReturnBufferDirty);
 
 	// notify the view
-	pDocument->FileChanged(m_DstFile, dwOperationBegin, m_DstPos);
+	m_pDocument->FileChanged(m_DstFile, dwOperationBegin, m_DstPos);
 
 	return TRUE;
 }
@@ -3630,7 +3630,7 @@ BOOL CDecompressContext::OperationProc()
 
 		TRACE("Decompress: sound changed from %d to %d, length=%d\n",
 			nFirstSample, nLastSample, TotalSamples);
-		pDocument->SoundChanged(m_DstFile.GetFileID(), nFirstSample, nLastSample, TotalSamples);
+		m_pDocument->SoundChanged(m_DstFile.GetFileID(), nFirstSample, nLastSample, TotalSamples);
 	}
 	return TRUE;
 }
@@ -3678,7 +3678,7 @@ BOOL CWmaDecodeContext::OperationProc()
 	{
 		TRACE("Changed from %d to %d, length=%d\n", nFirstSample, nLastSample, NewSampleCount);
 
-		pDocument->SoundChanged(m_DstFile.GetFileID(), nFirstSample, nLastSample, NewSampleCount);
+		m_pDocument->SoundChanged(m_DstFile.GetFileID(), nFirstSample, nLastSample, NewSampleCount);
 	}
 
 	return TRUE;
@@ -3696,14 +3696,14 @@ BOOL CWmaDecodeContext::Init()
 		s.Format(IDS_CANT_OPEN_WMA_DECODER, m_WmaFile.GetName());
 		MessageBoxSync(s, MB_ICONEXCLAMATION | MB_OK);
 
-		pDocument->m_bCloseThisDocumentNow = true;
+		m_pDocument->m_bCloseThisDocumentNow = true;
 		return FALSE;
 	}
 
 	m_CurrentSamples = m_Decoder.GetTotalSamples();
 
 	// create a wave file in the document
-	if ( ! pDocument->m_WavFile.CreateWaveFile(NULL, m_Decoder.GetDstFormat(),
+	if ( ! m_pDocument->m_WavFile.CreateWaveFile(NULL, m_Decoder.GetDstFormat(),
 												ALL_CHANNELS, m_CurrentSamples,  // initial sample count
 												CreateWaveFileTempDir
 												| CreateWaveFileDeleteAfterClose
@@ -3712,19 +3712,19 @@ BOOL CWmaDecodeContext::Init()
 	{
 		MessageBoxSync(IDS_UNABLE_TO_CREATE_TEMPORARY_FILE, MB_OK | MB_ICONEXCLAMATION);
 
-		pDocument->m_bCloseThisDocumentNow = true;
+		m_pDocument->m_bCloseThisDocumentNow = true;
 		return FALSE;
 	}
 
-	pDocument->m_OriginalWaveFormat = m_Decoder.GetDstFormat();
-	SetDstFile(pDocument->m_WavFile);
+	m_pDocument->m_OriginalWaveFormat = m_Decoder.GetDstFormat();
+	SetDstFile(m_pDocument->m_WavFile);
 
-	pDocument->SoundChanged(pDocument->WaveFileID(), 0, m_CurrentSamples, m_CurrentSamples, UpdateSoundDontRescanPeaks);
+	m_pDocument->SoundChanged(m_pDocument->WaveFileID(), 0, m_CurrentSamples, m_CurrentSamples, UpdateSoundDontRescanPeaks);
 
-	pDocument->QueueSoundUpdate(pDocument->UpdateWholeFileChanged,
-								pDocument->WaveFileID(), 0, 0, m_CurrentSamples);
+	m_pDocument->QueueSoundUpdate(m_pDocument->UpdateWholeFileChanged,
+								m_pDocument->WaveFileID(), 0, 0, m_CurrentSamples);
 
-	pDocument->m_WavFile.LoadPeaksForCompressedFile(pDocument->m_OriginalWavFile, m_CurrentSamples);
+	m_pDocument->m_WavFile.LoadPeaksForCompressedFile(m_pDocument->m_OriginalWavFile, m_CurrentSamples);
 
 	if (S_OK == m_Decoder.Start())
 	{
@@ -3761,20 +3761,20 @@ void CWmaDecodeContext::PostRetire()
 		CString s;
 		if (m_Flags & OperationContextInitFailed)
 		{
-			s.Format(IDS_CANT_DECOMPRESS_FILE, LPCTSTR(pDocument->m_OriginalWavFile.GetName()),
+			s.Format(IDS_CANT_DECOMPRESS_FILE, LPCTSTR(m_pDocument->m_OriginalWavFile.GetName()),
 					-1, 0);
-			pDocument->m_bCloseThisDocumentNow = true;
+			m_pDocument->m_bCloseThisDocumentNow = true;
 		}
 		else
 		{
 			s.Format(IDS_ERROR_WHILE_DECOMPRESSING_FILE,
-					LPCTSTR(pDocument->m_OriginalWavFile.GetName()), 0);
+					LPCTSTR(m_pDocument->m_OriginalWavFile.GetName()), 0);
 			AfxMessageBox(s, MB_ICONSTOP);
 		}
 	}
 	else if (m_Flags & DecompressSavePeakFile)
 	{
-		m_DstFile.SavePeakInfo(pDocument->m_OriginalWavFile);
+		m_DstFile.SavePeakInfo(m_pDocument->m_OriginalWavFile);
 	}
 	BaseClass::PostRetire();
 }

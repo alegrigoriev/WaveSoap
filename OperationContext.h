@@ -109,7 +109,7 @@ public:
 	// it is status prompt. It is shown during operation execution
 	CString m_StatusPrompt;
 
-	class CWaveSoapFrontDoc * pDocument;
+	class CWaveSoapFrontDoc * m_pDocument;
 	DWORD m_Flags;
 
 	// This list keeps all UNDO operations for this operation context.

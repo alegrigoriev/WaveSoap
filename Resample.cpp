@@ -164,10 +164,10 @@ void CResampleContext::DeInit()
 		virtual LRESULT Exec()
 		{
 			// bring document frame to the top, then return
-			CDocumentPopup pop(m_pContext->pDocument);
+			CDocumentPopup pop(m_pContext->m_pDocument);
 
 			CString s;
-			s.Format(IDS_SOUND_CLIPPED, m_pContext->pDocument->GetTitle(),
+			s.Format(IDS_SOUND_CLIPPED, m_pContext->m_pDocument->GetTitle(),
 					int(m_pContext->m_Resample.GetMaxClipped() * (100. / 32678)));
 
 			CString s1;

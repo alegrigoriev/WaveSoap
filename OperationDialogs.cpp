@@ -2591,7 +2591,7 @@ COperationContext * CExpressionEvaluationDialog::GetExpressionContext()
 	NUMBER_OF_SAMPLES const NumSamples = m_WaveFile.NumberOfSamples();
 	NUMBER_OF_SAMPLES const Length = GetEnd() - GetStart();
 
-	CStagedContext::auto_ptr pStagedContext(new CStagedContext(m_pContext->pDocument, 0,
+	CStagedContext::auto_ptr pStagedContext(new CStagedContext(m_pContext->m_pDocument, 0,
 																IDS_EXPRESSION_STATUS_PROMPT, IDS_EXPRESSION_OPERATION_NAME));
 
 	if (GetEnd() > NumSamples)
@@ -2607,7 +2607,7 @@ COperationContext * CExpressionEvaluationDialog::GetExpressionContext()
 		}
 
 		m_pContext->SetSaveForUndo(GetStart(), NumSamples);
-		CSaveTrimmedOperation * pSave = new CSaveTrimmedOperation(m_pContext->pDocument,
+		CSaveTrimmedOperation * pSave = new CSaveTrimmedOperation(m_pContext->m_pDocument,
 																m_pContext->m_DstFile, NumSamples, GetEnd(), GetChannel());
 		m_pContext->m_UndoChain.InsertHead(pSave);
 	}
