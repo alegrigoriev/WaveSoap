@@ -87,6 +87,12 @@ int CMainFrame::OnCreate(LPCREATESTRUCT lpCreateStruct)
 		TRACE0("Failed to create toolbar\n");
 		return -1;      // fail to create
 	}
+	if (!m_wndToolBar2.CreateEx(this) ||
+		!m_wndToolBar2.LoadToolBar(IDR_CHILDFRAME))
+	{
+		TRACE0("Failed to create toolbar\n");
+		return -1;      // fail to create
+	}
 #if 0
 	if (!m_wndDlgBar.Create(this, IDR_MAINFRAME,
 							CBRS_ALIGN_TOP, AFX_IDW_DIALOGBAR))
@@ -97,6 +103,7 @@ int CMainFrame::OnCreate(LPCREATESTRUCT lpCreateStruct)
 #endif
 	if (!m_wndReBar.Create(this)
 		|| !m_wndReBar.AddBar(&m_wndToolBar)
+		|| !m_wndReBar.AddBar(&m_wndToolBar2)
 #if 0
 		|| !m_wndReBar.AddBar(&m_wndDlgBar)
 #endif
@@ -115,8 +122,9 @@ int CMainFrame::OnCreate(LPCREATESTRUCT lpCreateStruct)
 	}
 	m_wndStatusBar.EnableToolTips();
 
-	// TODO: Remove this if you don't want tool tips
 	m_wndToolBar.SetBarStyle(m_wndToolBar.GetBarStyle() |
+							CBRS_TOOLTIPS | CBRS_FLYBY);
+	m_wndToolBar2.SetBarStyle(m_wndToolBar2.GetBarStyle() |
 							CBRS_TOOLTIPS | CBRS_FLYBY);
 
 	CThisApp * pApp = GetApp();
@@ -127,6 +135,7 @@ int CMainFrame::OnCreate(LPCREATESTRUCT lpCreateStruct)
 	if ( ! pApp->m_bShowToolbar)
 	{
 		ShowControlBar( & m_wndToolBar, FALSE, FALSE);
+		ShowControlBar( & m_wndToolBar2, FALSE, FALSE);
 	}
 
 	return 0;

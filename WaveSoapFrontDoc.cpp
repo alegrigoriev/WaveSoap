@@ -16,6 +16,7 @@
 #include "ReopenCompressedFileDialog.h"
 #include "ReopenConvertedFileDlg.h"
 #include "EqualizerDialog.h"
+#include "RawFileParametersDlg.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -2176,7 +2177,7 @@ BOOL CWaveSoapFrontDoc::OnOpenDocument(LPCTSTR lpszPathName, int DocOpenFlags)
 	m_szWaveFilename = lpszPathName;
 	if (DocOpenFlags & OpenDocumentNonWavFile)
 	{
-		return OpenWmaFileDocument(lpszPathName);
+		return OpenNonWavFileDocument(lpszPathName, DocOpenFlags);
 	}
 	DWORD flags = MmioFileOpenReadOnly;
 	if (m_bDirectMode && ! m_bReadOnly)
@@ -2278,7 +2279,7 @@ BOOL CWaveSoapFrontDoc::OnOpenDocument(LPCTSTR lpszPathName, int DocOpenFlags)
 		if (bNeedConversion)
 		{
 			CDecompressContext * pContext =
-				new CDecompressContext(this, "Loading the compressed file...");
+				new CDecompressContext(this, "Loading the compressed file...", m_OriginalWavFile.GetWaveFormat());
 			pContext->m_SrcFile = m_OriginalWavFile;
 			pContext->m_DstFile = m_WavFile;
 			pContext->m_SrcStart = m_OriginalWavFile.GetDataChunk()->dwDataOffset;
@@ -4719,6 +4720,136 @@ void CWaveSoapFrontDoc::OnFileSaveCopyAs()
 {
 	DoSave(NULL, FALSE);
 }
+BOOL CWaveSoapFrontDoc::OpenNonWavFileDocument(LPCTSTR lpszPathName, int flags)
+{
+	if (flags & OpenDocumentWmaFile)
+	{
+		return OpenWmaFileDocument(lpszPathName);
+	}
+	if (flags & OpenDocumentMp3File)
+	{
+		return OpenMp3FileDocument(lpszPathName);
+	}
+	if (flags & OpenDocumentRawFile)
+	{
+		return OpenRawFileDocument(lpszPathName);
+	}
+	if (flags & OpenDocumentAviFile)
+	{
+		return OpenAviFileDocument(lpszPathName);
+	}
+	return FALSE;
+}
+
+BOOL CWaveSoapFrontDoc::OpenRawFileDocument(LPCTSTR lpszPathName)
+{
+	// open source file,
+	if ( ! m_OriginalWavFile.Open(lpszPathName,
+								MmioFileOpenExisting
+								| MmioFileOpenReadOnly
+								| MmioFileOpenDontLoadRiff))
+	{
+		CString s;
+		UINT format;
+		switch(GetLastError())
+		{
+		case ERROR_ACCESS_DENIED:
+			format = IDS_FILE_OPEN_ACCESS_DENIED;
+			break;
+		case ERROR_SHARING_VIOLATION:
+			format = IDS_FILE_OPEN_SHARING_VIOLATION;
+			break;
+		default:
+			format = IDS_UNABLE_TO_OPEN_WMA_FILE;
+			break;
+		}
+		s.Format(format, lpszPathName);
+		AfxMessageBox(s, MB_ICONEXCLAMATION | MB_OK);
+		return FALSE;
+	}
+	CRawFileParametersDlg dlg;
+	dlg.m_SourceFileSize = m_OriginalWavFile.GetFileSize(NULL);
+	if (IDOK != dlg.DoModal())
+	{
+		return FALSE;
+	}
+
+	WAVEFORMATEX wf;
+	wf.cbSize = 0;
+	wf.nChannels = 1;
+	if (dlg.m_bStereo)
+	{
+		wf.nChannels = 2;
+	}
+
+	wf.wBitsPerSample = 8;
+	if (dlg.m_bBits16)
+	{
+		wf.wBitsPerSample = 16;
+	}
+
+	wf.nSamplesPerSec = dlg.m_SamplingRate;
+	if (8 == wf.wBitsPerSample
+		&& dlg.m_Compression != 0)
+	{
+		if (1 == dlg.m_Compression)
+		{
+			wf.wFormatTag = WAVE_FORMAT_ALAW;
+		}
+		else
+		{
+			wf.wFormatTag = WAVE_FORMAT_MULAW;
+		}
+	}
+	else
+	{
+		wf.wFormatTag = WAVE_FORMAT_PCM;
+	}
+	wf.nBlockAlign = wf.wBitsPerSample * wf.nChannels / 8;
+	wf.nAvgBytesPerSec = wf.nBlockAlign * wf.nSamplesPerSec;
+	LONG nNewFileSamples = (dlg.m_SourceFileSize - dlg.m_HeaderLength - dlg.m_TrailerLength)
+							/ wf.nBlockAlign;
+
+	if (! m_WavFile.CreateWaveFile( NULL, & wf, ALL_CHANNELS,
+									nNewFileSamples,
+									CreateWaveFileDeleteAfterClose
+									| CreateWaveFileTempDir
+									| CreateWaveFileTemp
+									| CreateWaveFilePcmFormat,
+									NULL))
+	{
+		AfxMessageBox(IDS_UNABLE_TO_CREATE_TEMPORARY_FILE, MB_OK | MB_ICONEXCLAMATION);
+		return FALSE;
+	}
+	CDecompressContext * pContext =
+		new CDecompressContext(this, "Loading the raw sound file...", & wf);
+
+	pContext->m_SrcFile = m_OriginalWavFile;
+	pContext->m_DstFile = m_WavFile;
+
+	pContext->m_SrcStart = dlg.m_HeaderLength;
+	pContext->m_SrcPos = pContext->m_SrcStart;
+	pContext->m_SrcEnd = dlg.m_SourceFileSize - dlg.m_TrailerLength;
+
+	pContext->m_DstStart = m_WavFile.GetDataChunk()->dwDataOffset;
+	pContext->m_DstCopyPos = pContext->m_DstStart;
+
+	pContext->m_CurrentSamples = nNewFileSamples;
+	if (16 == wf.wBitsPerSample)
+	{
+		pContext->m_bSwapBytes = dlg.m_bMsbFirst;
+	}
+
+	AllocatePeakData(nNewFileSamples);
+	// peak data will be created during decompression
+	pContext->Execute();
+	return TRUE;
+}
+
+BOOL CWaveSoapFrontDoc::OpenAviFileDocument(LPCTSTR lpszPathName)
+{
+	return FALSE;
+}
 
 BOOL CWaveSoapFrontDoc::OpenWmaFileDocument(LPCTSTR lpszPathName)
 {
@@ -4728,14 +4859,9 @@ BOOL CWaveSoapFrontDoc::OpenWmaFileDocument(LPCTSTR lpszPathName)
 	CThisApp * pApp = GetApp();
 	if ( ! pApp->CanOpenWindowsMedia())
 	{
-		if (pApp->m_DontShowMediaPlayerWarning)
-		{
-			return FALSE;
-		}
-		CWmpNotInstalleedWarningDlg dlg;
-		//dlg.m_DontShowAnymore = true;
-		dlg.DoModal();
-		//pApp->m_DontShowMediaPlayerWarning = dlg.m_DontShowAnymore;
+		CString s;
+		s.Format(IDS_CANNOT_OPEN_WMA, lpszPathName);
+		AfxMessageBox(s, MB_OK);
 		return FALSE;
 	}
 	m_bDirectMode = FALSE;

@@ -1,11 +1,9 @@
 Known problems and tasks:
 
 Add low/high frequency filters functions
-Include MP3 and WMA filters even if there is no WMP, but show warning, if the filter is selected
 Test "reload compressed file" dialogs
 Add options dialog
 Try to load sound from AVI with WM functions
-Put buttons for the view commands to the wave window status bar
 
 Add CD grabbing
 Add noise reduction estimation in spectrum section view
@@ -14,7 +12,6 @@ Add WMA save
 Add RAW format open
 Add RAW format save
 Add sound recording
-Make recording from Internet stream
 Support "Play" in selection dialog
 Make Paste Special command (with Fade In/Fade Out etc)
 Make Undo/redo save the selection and regions
@@ -34,8 +31,6 @@ Make tooltips in wave view and other important views
 Show File Properties
 Make help file
 Add "Favorite formats" combobox to Save dialog
-"Save selection as" in selection dialog
-"Save As" in most process dialogs
 When Open/Save dialog is resized, resize/move the controls
 Verify that FileSave can be canceled
 Reconsider Undo All Changes functionality and Redo All Changes
@@ -45,6 +40,9 @@ Add DELETE premission when creating temp file
 Use GetFileAttributes rather than FindFirst to check whether it's file or directory
 Add Export Settings, Import Settings to Options dialog
 Add splash screen
+"Save selection as" in selection dialog
+"Save As" in most process dialogs
+Make recording from Internet stream
 
 Problems:
 Click on outline view moves the wave view a bit after the button released
@@ -58,6 +56,7 @@ samples with 32767, -32768 are not visible
 LOg Off query doesn't close the active dialog. Recursion is possible. Make sure to check after Cancel
 
 Deferred:
+Put buttons for the view commands to the wave window status bar
 CWmaNotInstalledDlg doesn't save "Don't show" flag
 Save As dialog is not centered first time (comdlg problem?)
 ??? When time/seconds format is set for status bar, MM:SS is actually shown
@@ -71,6 +70,7 @@ No status bar in WinME
 FFT doesn't invaludate some areas
 
 Done:
+Include MP3 and WMA filters even if there is no WMP, but show warning, if the filter is selected
 Use circular array for FFT data (for performance reason).
 Add "Simple" equalizer. Multiband equalizer done.
 Support f1, f2, f3 in Evaluate expr

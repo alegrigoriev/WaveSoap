@@ -212,13 +212,14 @@ class CDecompressContext : public COperationContext
 	size_t m_DstBufSize;
 	ACMSTREAMHEADER m_ash;
 	DWORD m_ConvertFlags;
-
+	WAVEFORMATEX * m_pWf;
 
 public:
 	HACMSTREAM m_acmStr;
 	HACMDRIVER m_acmDrv;
 	MMRESULT m_MmResult;
-	CDecompressContext(CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString)
+	BOOL m_bSwapBytes;
+	CDecompressContext(CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString, WAVEFORMATEX * pWf)
 		: COperationContext(pDoc, "",
 							// operation can be terminated by Close
 							OperationContextDiskIntensive | OperationContextNonCritical),
@@ -226,6 +227,8 @@ public:
 		m_DstBufSize(0),
 		m_acmDrv(NULL),
 		m_acmStr(NULL),
+		m_bSwapBytes(FALSE),
+		m_pWf(CopyWaveformat(pWf)),
 		m_MmResult(MMSYSERR_NOERROR)
 	{
 		m_OperationString = StatusString;
@@ -234,6 +237,7 @@ public:
 	~CDecompressContext()
 	{
 		DeInit();
+		delete m_pWf;
 	}
 	virtual BOOL OperationProc();
 	virtual BOOL Init();

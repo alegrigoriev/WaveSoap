@@ -181,7 +181,7 @@ BEGIN
     END
     POPUP "&View"
     BEGIN
-        MENUITEM "&Toolbar",                    ID_VIEW_TOOLBAR
+        MENUITEM "&Toolbar",                    ID_VIEW_REBAR
         MENUITEM "&Status Bar",                 ID_VIEW_STATUS_BAR
     END
     POPUP "&Help"
@@ -1385,7 +1385,7 @@ CAPTION "Cannot open non-WAV file"
 FONT 8, "MS Sans Serif"
 BEGIN
     DEFPUSHBUTTON   "OK",IDOK,130,48,50,14
-    LTEXT           "This file cannot be open because a required DLL is not found in the system folder. To be able to open MP3 and WMA files, you need to install Windows Media Player 7",
+    LTEXT           "This file cannot be opened because a required DLL is not found in the system folder.\nTo be able to open MP3 and WMA files, you need to install Windows Media Player version 7 or later",
                     IDC_STATIC,7,7,173,36
     CONTROL         "Don't show this in the future",IDC_CHECK_DONT_SHOW_THIS,
                     "Button",BS_AUTOCHECKBOX | WS_TABSTOP,7,52,110,10
@@ -1890,6 +1890,84 @@ BEGIN
     PUSHBUTTON      "~",IDC_BUTTON_INVERSE,88,38,27,10,BS_NOTIFY
 END
 
+IDD_DIALOG_NO_WINDOWS_MEDIA_TYPE DIALOG DISCARDABLE  0, 0, 187, 69
+STYLE DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "Cannot open non-WAV files"
+FONT 8, "MS Sans Serif"
+BEGIN
+    DEFPUSHBUTTON   "OK",IDOK,130,48,50,14
+    LTEXT           "The files of the selected type cannot be opened because a required DLL is not found in the system folder.\nTo be able to open MP3 and WMA files, you need to install Windows Media Player version 7 or later",
+                    IDC_STATIC,7,7,173,36
+    CONTROL         "Don't show this in the future",IDC_CHECK_DONT_SHOW_THIS,
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,7,52,110,10
+END
+
+IDD_DIALOG_RAW_FILE_PARAMETERS DIALOG DISCARDABLE  0, 0, 180, 176
+STYLE DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "Raw Sound File Parameters"
+FONT 8, "MS Sans Serif"
+BEGIN
+    LTEXT           "H&eader length:",IDC_STATIC,7,10,61,8
+    EDITTEXT        IDC_EDIT_HEADER_LENGTH,69,7,43,14,ES_AUTOHSCROLL
+    LTEXT           "&Trailer length:",IDC_STATIC,7,28,61,8
+    EDITTEXT        IDC_EDIT_TRAILER_LENGTH,69,25,43,14,ES_AUTOHSCROLL
+    LTEXT           "Sampling &rate:",IDC_STATIC,7,49,58,8
+    COMBOBOX        IDC_COMBO_SAMPLING_RATE,69,47,44,70,CBS_DROPDOWN | 
+                    WS_VSCROLL | WS_TABSTOP
+    GROUPBOX        "Bits per sample:",IDC_STATIC,7,68,66,27
+    CONTROL         "&8",IDC_RADIO_8BITS,"Button",BS_AUTORADIOBUTTON | 
+                    WS_GROUP | WS_TABSTOP,15,80,20,10
+    CONTROL         "&16",IDC_RADIO_16BITS,"Button",BS_AUTORADIOBUTTON,40,80,
+                    23,10
+    GROUPBOX        "Compression",IDC_STATIC_COMPRESSION,7,100,66,48
+    CONTROL         "&None",IDC_RADIO_COMPRESSION_NONE,"Button",
+                    BS_AUTORADIOBUTTON | WS_GROUP | WS_TABSTOP,12,110,33,10
+    CONTROL         "&a-Law",IDC_RADIO_COMPRESSION_ALAW,"Button",
+                    BS_AUTORADIOBUTTON,12,122,34,10
+    CONTROL         "&u-Law",IDC_RADIO_COMPRESSION_ULAW,"Button",
+                    BS_AUTORADIOBUTTON,12,134,34,10
+    CONTROL         "&Mono",IDC_RADIO_MONO,"Button",BS_AUTORADIOBUTTON | 
+                    WS_GROUP | WS_TABSTOP,93,78,38,10
+    CONTROL         "&Stereo",IDC_RADIO_STEREO,"Button",BS_AUTORADIOBUTTON,
+                    93,90,38,10
+    GROUPBOX        "Byte order",IDC_STATIC_BYTE_ORDER,88,111,65,37
+    CONTROL         "&Low byte first",IDC_RADIO_LSB_FIRST,"Button",
+                    BS_AUTORADIOBUTTON | WS_GROUP | WS_TABSTOP,93,121,56,10
+    CONTROL         "&High byte first",IDC_RADIO_MSB_FIRST,"Button",
+                    BS_AUTORADIOBUTTON,93,133,58,10
+    DEFPUSHBUTTON   "OK",IDOK,7,155,50,14
+    PUSHBUTTON      "Cancel",IDCANCEL,65,155,50,14
+    GROUPBOX        "Channels",IDC_STATIC,88,68,64,37
+    PUSHBUTTON      "Help",IDHELP,123,155,50,14
+END
+
+IDD_DIALOG_SAVE_RAW_FILE DIALOG DISCARDABLE  0, 0, 180, 104
+STYLE DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "Save Raw Sound File"
+FONT 8, "MS Sans Serif"
+BEGIN
+    GROUPBOX        "Bits per sample:",IDC_STATIC,7,7,66,27
+    CONTROL         "&8",IDC_RADIO_8BITS,"Button",BS_AUTORADIOBUTTON | 
+                    WS_GROUP | WS_TABSTOP,15,19,20,10
+    CONTROL         "&16",IDC_RADIO_16BITS,"Button",BS_AUTORADIOBUTTON,40,19,
+                    23,10
+    GROUPBOX        "Compression",IDC_STATIC_COMPRESSION,84,7,66,48
+    CONTROL         "&None",IDC_RADIO_COMPRESSION_NONE,"Button",
+                    BS_AUTORADIOBUTTON | WS_GROUP | WS_TABSTOP,89,17,33,10
+    CONTROL         "&a-Law",IDC_RADIO_COMPRESSION_ALAW,"Button",
+                    BS_AUTORADIOBUTTON,89,29,34,10
+    CONTROL         "&u-Law",IDC_RADIO_COMPRESSION_ULAW,"Button",
+                    BS_AUTORADIOBUTTON,89,41,34,10
+    GROUPBOX        "Byte order",IDC_STATIC_BYTE_ORDER,7,40,65,37
+    CONTROL         "&Low byte first",IDC_RADIO_LSB_FIRST,"Button",
+                    BS_AUTORADIOBUTTON | WS_GROUP | WS_TABSTOP,12,50,56,10
+    CONTROL         "&High byte first",IDC_RADIO_MSB_FIRST,"Button",
+                    BS_AUTORADIOBUTTON,12,62,58,10
+    DEFPUSHBUTTON   "OK",IDOK,7,83,50,14
+    PUSHBUTTON      "Cancel",IDCANCEL,65,83,50,14
+    PUSHBUTTON      "Help",IDHELP,123,83,50,14
+END
+
 
 #ifndef _MAC
 /////////////////////////////////////////////////////////////////////////////
@@ -2241,6 +2319,30 @@ BEGIN
         TOPMARGIN, 7
         BOTTOMMARGIN, 83
     END
+
+    IDD_DIALOG_NO_WINDOWS_MEDIA_TYPE, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 180
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 62
+    END
+
+    IDD_DIALOG_RAW_FILE_PARAMETERS, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 173
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 169
+    END
+
+    IDD_DIALOG_SAVE_RAW_FILE, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 173
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 97
+    END
 END
 #endif    // APSTUDIO_INVOKED
 
@@ -2389,6 +2491,29 @@ BEGIN
     0
 END
 
+IDD_DIALOG_RAW_FILE_PARAMETERS DLGINIT
+BEGIN
+    IDC_COMBO_SAMPLING_RATE, 0x403, 5, 0
+0x3237, 0x3030, "\000" 
+    IDC_COMBO_SAMPLING_RATE, 0x403, 5, 0
+0x3038, 0x3030, "\000" 
+    IDC_COMBO_SAMPLING_RATE, 0x403, 6, 0
+0x3131, 0x3230, 0x0035, 
+    IDC_COMBO_SAMPLING_RATE, 0x403, 6, 0
+0x3631, 0x3030, 0x0030, 
+    IDC_COMBO_SAMPLING_RATE, 0x403, 6, 0
+0x3232, 0x3530, 0x0030, 
+    IDC_COMBO_SAMPLING_RATE, 0x403, 6, 0
+0x3233, 0x3030, 0x0030, 
+    IDC_COMBO_SAMPLING_RATE, 0x403, 6, 0
+0x3434, 0x3031, 0x0030, 
+    IDC_COMBO_SAMPLING_RATE, 0x403, 6, 0
+0x3834, 0x3030, 0x0030, 
+    IDC_COMBO_SAMPLING_RATE, 0x403, 6, 0
+0x3639, 0x3030, 0x0030, 
+    0
+END
+
 
 /////////////////////////////////////////////////////////////////////////////
 //
@@ -2411,6 +2536,7 @@ BEGIN
     IDR_MP3TYPE             "\nSound\nMPEG Layer3 file\nMPEG Audio files (*.mp3)\n.mp3\nWaveSoap.Document\nWaveSoap Document"
     IDR_WMATYPE             "\nSound\nWindows Media file\nWindows Media files (*.wma)\n.wma\nWaveSoap.Document\nWaveSoap Document"
     IDR_ALLTYPES            "\nSound\nWindows Audio file\nAll Supported Types (*.wav, *.mp3, *.wma)\n.wav;*.mp3;*.wma\nWaveSoap.Document\nWaveSoap Document"
+    IDR_RAWTYPE             "\nSound\nRaw sound file\nRaw sound files (*.raw)\n.raw\nWaveSoap.Document\nWaveSoap Document"
 END
 
 STRINGTABLE PRELOAD DISCARDABLE 
@@ -2871,6 +2997,7 @@ BEGIN
                             "Saved Expression files (*.Expr)|*.Expr|All Files (*.*)|*||"
     IDS_EXPRESSIONS_SAVE_TITLE "Save All Expression"
     IDS_EXPRESSIONS_LOAD_TITLE "Load Expressions"
+    IDS_CANNOT_OPEN_WMA     "%s\nThis file cannot be opened because a required DLL is not found in the system folder.\nTo be able to open MP3 and WMA files, you need to install Windows Media Player version 7 or later"
 END
 
 #endif    // English (U.S.) resources

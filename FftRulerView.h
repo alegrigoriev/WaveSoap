@@ -29,7 +29,7 @@ public:
 // Overrides
 	// ClassWizard generated virtual function overrides
 	//{{AFX_VIRTUAL(CFftRulerView)
-	void OnUpdate( CView* pSender, LPARAM lHint, CObject* pHint );
+	virtual void OnUpdate( CView* pSender, LPARAM lHint, CObject* pHint );
 protected:
 	virtual void OnDraw(CDC* pDC);      // overridden to draw this view
 	//}}AFX_VIRTUAL

@@ -139,6 +139,13 @@ protected:
 	virtual void OnIdle();
 	virtual BOOL DoSave(LPCTSTR lpszPathName, BOOL bReplace = TRUE);
 	BOOL OpenWmaFileDocument(LPCTSTR lpszPathName);
+	BOOL OpenRawFileDocument(LPCTSTR lpszPathName);
+	BOOL OpenMp3FileDocument(LPCTSTR lpszPathName)
+	{
+		return OpenWmaFileDocument(lpszPathName);
+	}
+	BOOL OpenAviFileDocument(LPCTSTR lpszPathName);
+	BOOL OpenNonWavFileDocument(LPCTSTR lpszPathName, int flags);
 public:
 	CString m_szWaveFilename;
 	CString szWaveTitle;

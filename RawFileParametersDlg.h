@@ -6,6 +6,7 @@
 #endif // _MSC_VER > 1000
 // RawFileParametersDlg.h : header file
 //
+#include "ApplicationProfile.h"
 
 /////////////////////////////////////////////////////////////////////////////
 // CRawFileParametersDlg dialog
@@ -19,10 +20,30 @@ public:
 // Dialog Data
 	//{{AFX_DATA(CRawFileParametersDlg)
 	enum { IDD = IDD_DIALOG_RAW_FILE_PARAMETERS };
-	// NOTE: the ClassWizard will add data members here
+	CComboBox	m_cbSamplingRate;
+	DWORD	m_HeaderLength;
+	DWORD	m_TrailerLength;
+	int		m_bStereo;
+	int		m_bBits16;
+	int		m_Compression;
+	int		m_bMsbFirst;
 	//}}AFX_DATA
+	long    m_SamplingRate;
+	ULONG   m_SourceFileSize;
+	union
+	{
+		DWORD m_dwParams;
+		struct
+		{
+			DWORD		m_bStereo :1;
+			DWORD		m_bBits16 :1;
+			DWORD		m_Compression :2;
+			DWORD		m_bMsbFirst :1;
 
+		} m_Params;
+	};
 
+	CApplicationProfile m_Profile;
 // Overrides
 	// ClassWizard generated virtual function overrides
 	//{{AFX_VIRTUAL(CRawFileParametersDlg)
@@ -35,6 +56,43 @@ protected:
 
 	// Generated message map functions
 	//{{AFX_MSG(CRawFileParametersDlg)
+	afx_msg void OnClicked8bits();
+	afx_msg void OnClicked16bits();
+	virtual BOOL OnInitDialog();
+	//}}AFX_MSG
+	DECLARE_MESSAGE_MAP()
+};
+
+/////////////////////////////////////////////////////////////////////////////
+// CSaveRawFileDlg dialog
+
+class CSaveRawFileDlg : public CDialog
+{
+// Construction
+public:
+	CSaveRawFileDlg(CWnd* pParent = NULL);   // standard constructor
+
+// Dialog Data
+	//{{AFX_DATA(CSaveRawFileDlg)
+	enum { IDD = IDD_DIALOG_SAVE_RAW_FILE };
+	int		m_b16Bits;
+	int		m_Compression;
+	int		m_bMsbFirst;
+	//}}AFX_DATA
+
+
+// Overrides
+	// ClassWizard generated virtual function overrides
+	//{{AFX_VIRTUAL(CSaveRawFileDlg)
+protected:
+	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV support
+	//}}AFX_VIRTUAL
+
+// Implementation
+protected:
+
+	// Generated message map functions
+	//{{AFX_MSG(CSaveRawFileDlg)
 	// NOTE: the ClassWizard will add member functions here
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()

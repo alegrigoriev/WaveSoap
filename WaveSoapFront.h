@@ -40,7 +40,12 @@ enum
 	OpenDocumentCreateNewWithWaveformat = 8, // NAME is actually WAVEFORMATEX *
 	OpenDocumentCreateNewQueryFormat = 0x10,
 	OpenNewDocumentZeroLength = 0x20,
-	OpenDocumentNonWavFile = 0x100,
+	OpenDocumentMp3File = 0x100,
+	OpenDocumentWmaFile = 0x200,
+	OpenDocumentRawFile = 0x400,
+	OpenDocumentAviFile = 0x800,
+	OpenDocumentNonWavFile = OpenDocumentMp3File
+							| OpenDocumentWmaFile | OpenDocumentRawFile | OpenDocumentAviFile,
 };
 
 class CWaveSoapFrontApp : public CWinApp
@@ -122,10 +127,11 @@ public:
 	int m_NewFileChannels;
 	long m_NewFileLength;
 
-	CDocTemplate * m_pAllTypesTemplate;
-	CDocTemplate * m_pMP3TypeTemplate;
-	CDocTemplate * m_pWavTypeTemplate;
-	CDocTemplate * m_pWmaTypeTemplate;
+	class CWaveSoapDocTemplate * m_pAllTypesTemplate;
+	class CWaveSoapDocTemplate * m_pMP3TypeTemplate;
+	class CWaveSoapDocTemplate * m_pWavTypeTemplate;
+	class CWaveSoapDocTemplate * m_pWmaTypeTemplate;
+	class CWaveSoapDocTemplate * m_pRawTypeTemplate;
 
 	int m_DefaultPlaybackDevice;
 	int m_NumPlaybackBuffers;
@@ -243,6 +249,16 @@ BOOL CanAllocateWaveFileSamplesDlg(const WAVEFORMATEX * pWf, LONGLONG NumOfSampl
 CString GetSelectionText(long Start, long End, int Chan,
 						int nChannels, BOOL bLockChannels,
 						long nSamplesPerSec, int TimeFormat);
+
+inline void _EnableDlgItem(CWnd * pParent, int id, BOOL bEnable)
+{
+	CWnd * tmp = pParent->GetDlgItem(id);
+	if (tmp)
+	{
+		tmp->EnableWindow(bEnable);
+	}
+}
+#define EnableDlgItem(id, bEnable) _EnableDlgItem(this, id, bEnable)
 /////////////////////////////////////////////////////////////////////////////
 //{{AFX_INSERT_LOCATION}}
 // Microsoft Visual C++ will insert additional declarations immediately before the previous line.
