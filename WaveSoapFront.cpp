@@ -214,6 +214,8 @@ CWaveSoapFrontApp::CWaveSoapFrontApp()
 
 	m_Thread.m_bAutoDelete = FALSE;
 	m_pDocManager = new CWaveSoapDocManager;
+
+	EnableHtmlHelp();
 }
 
 /////////////////////////////////////////////////////////////////////////////
