@@ -252,60 +252,11 @@ SOURCE=.\waveproc.cpp
 # End Source File
 # Begin Source File
 
-SOURCE=.\WaveSoapFront.cpp
+SOURCE=.\hlp\WaveSoap.hhp
 # End Source File
 # Begin Source File
 
-SOURCE=.\hlp\WaveSoapFront.hpj
-
-!IF  "$(CFG)" == "WaveSoapFront - Win32 Release"
-
-# PROP Ignore_Default_Tool 1
-USERDEP__WAVES="hlp\AfxCore.rtf"	"hlp\AfxPrint.rtf"	"hlp\$(TargetName).hm"	
-# Begin Custom Build - Making help file...
-OutDir=.\Release
-TargetName=WaveSoap
-InputPath=.\hlp\WaveSoapFront.hpj
-InputName=WaveSoapFront
-
-"$(OutDir)\WaveSoap.hlp" : $(SOURCE) "$(INTDIR)" "$(OUTDIR)"
-	start /wait hcw /C /E /M "hlp\$(InputName).hpj" 
-	if errorlevel 1 goto :Error 
-	if not exist "hlp\WaveSoap.hlp" goto :Error 
-	copy "hlp\WaveSoap.hlp" $(OutDir) 
-	goto :done 
-	:Error 
-	echo hlp\$(InputName).hpj(1) : error: 
-	type "hlp\$(InputName).log" 
-	:done 
-	
-# End Custom Build
-
-!ELSEIF  "$(CFG)" == "WaveSoapFront - Win32 Debug"
-
-# PROP Ignore_Default_Tool 1
-USERDEP__WAVES="hlp\AfxCore.rtf"	"hlp\AfxPrint.rtf"	"hlp\$(TargetName).hm"	
-# Begin Custom Build - Making help file...
-OutDir=.\Debug
-TargetName=WaveSoap
-InputPath=.\hlp\WaveSoapFront.hpj
-InputName=WaveSoapFront
-
-"$(OutDir)\WaveSoap.hlp" : $(SOURCE) "$(INTDIR)" "$(OUTDIR)"
-	start /wait hcw /C /E /M "hlp\$(InputName).hpj" 
-	if errorlevel 1 goto :Error 
-	if not exist "hlp\WaveSoap.hlp" goto :Error 
-	copy "hlp\WaveSoap.hlp" $(OutDir) 
-	goto :done 
-	:Error 
-	echo hlp\$(InputName).hpj(1) : error: 
-	type "hlp\$(InputName).log" 
-	:done 
-	
-# End Custom Build
-
-!ENDIF 
-
+SOURCE=.\WaveSoapFront.cpp
 # End Source File
 # Begin Source File
 
@@ -620,144 +571,367 @@ SOURCE=.\res\WaveSoapFrontDoc.ico
 # PROP Default_Filter "cnt;rtf"
 # Begin Source File
 
-SOURCE=.\hlp\AfxCore.rtf
+SOURCE=.\hlp\html\afxc0085.htm
 # End Source File
 # Begin Source File
 
-SOURCE=.\hlp\AfxPrint.rtf
+SOURCE=.\hlp\html\afxc0853.htm
 # End Source File
 # Begin Source File
 
-SOURCE=.\hlp\AppExit.bmp
+SOURCE=.\hlp\html\afxc0c4l.htm
 # End Source File
 # Begin Source File
 
-SOURCE=.\hlp\Bullet.bmp
+SOURCE=.\hlp\html\afxc0l7p.htm
 # End Source File
 # Begin Source File
 
-SOURCE=.\hlp\CurArw2.bmp
+SOURCE=.\hlp\html\afxc0wc8.htm
 # End Source File
 # Begin Source File
 
-SOURCE=.\hlp\CurArw4.bmp
+SOURCE=.\hlp\html\afxc0xpz.htm
 # End Source File
 # Begin Source File
 
-SOURCE=.\hlp\CurHelp.bmp
+SOURCE=.\hlp\html\afxc1304.htm
 # End Source File
 # Begin Source File
 
-SOURCE=.\hlp\EditCopy.bmp
+SOURCE=.\hlp\html\afxc181c.htm
 # End Source File
 # Begin Source File
 
-SOURCE=.\hlp\EditCut.bmp
+SOURCE=.\hlp\html\afxc1cof.htm
 # End Source File
 # Begin Source File
 
-SOURCE=.\hlp\EditPast.bmp
+SOURCE=.\hlp\html\afxc1g4z.htm
 # End Source File
 # Begin Source File
 
-SOURCE=.\hlp\EditUndo.bmp
+SOURCE=.\hlp\html\afxc1tk7.htm
 # End Source File
 # Begin Source File
 
-SOURCE=.\hlp\FileNew.bmp
+SOURCE=.\hlp\html\afxc1vqd.htm
 # End Source File
 # Begin Source File
 
-SOURCE=.\hlp\FileOpen.bmp
+SOURCE=.\hlp\html\afxc214i.htm
 # End Source File
 # Begin Source File
 
-SOURCE=.\hlp\FilePrnt.bmp
+SOURCE=.\hlp\html\afxc2fsc.htm
 # End Source File
 # Begin Source File
 
-SOURCE=.\hlp\FileSave.bmp
+SOURCE=.\hlp\html\afxc30hf.htm
 # End Source File
 # Begin Source File
 
-SOURCE=.\hlp\FileSaveAll.bmp
+SOURCE=.\hlp\html\afxc31id.htm
 # End Source File
 # Begin Source File
 
-SOURCE=.\hlp\FileSaveAs.bmp
+SOURCE=.\hlp\html\afxc31ym.htm
 # End Source File
 # Begin Source File
 
-SOURCE=.\hlp\FileSaveCopy.bmp
+SOURCE=.\hlp\html\afxc33uf.htm
 # End Source File
 # Begin Source File
 
-SOURCE=.\hlp\HlpSBar.bmp
+SOURCE=.\hlp\html\afxc3at6.htm
 # End Source File
 # Begin Source File
 
-SOURCE=.\hlp\HlpTBar.bmp
+SOURCE=.\hlp\html\afxc3ewk.htm
 # End Source File
 # Begin Source File
 
-SOURCE=.\hlp\RecFirst.bmp
+SOURCE=.\hlp\html\afxc3zz9.htm
 # End Source File
 # Begin Source File
 
-SOURCE=.\hlp\RecLast.bmp
+SOURCE=.\hlp\html\afxc45r9.htm
 # End Source File
 # Begin Source File
 
-SOURCE=.\hlp\RecNext.bmp
+SOURCE=.\hlp\html\afxc48h1.htm
 # End Source File
 # Begin Source File
 
-SOURCE=.\hlp\RecPrev.bmp
+SOURCE=.\hlp\html\afxc48o5.htm
 # End Source File
 # Begin Source File
 
-SOURCE=.\hlp\Scmax.bmp
+SOURCE=.\hlp\html\afxc49x0.htm
 # End Source File
 # Begin Source File
 
-SOURCE=.\hlp\ScMenu.bmp
+SOURCE=.\hlp\html\afxc4mn9.htm
 # End Source File
 # Begin Source File
 
-SOURCE=.\hlp\Scmin.bmp
+SOURCE=.\hlp\html\afxc4r72.htm
 # End Source File
 # Begin Source File
 
-SOURCE=.\hlp\WaveSoapFront.cnt
+SOURCE=.\hlp\html\afxc56lw.htm
+# End Source File
+# Begin Source File
 
-!IF  "$(CFG)" == "WaveSoapFront - Win32 Release"
+SOURCE=.\hlp\html\afxc57j9.htm
+# End Source File
+# Begin Source File
 
-# PROP Ignore_Default_Tool 1
-# Begin Custom Build - Copying contents file...
-OutDir=.\Release
-InputPath=.\hlp\WaveSoapFront.cnt
-InputName=WaveSoapFront
+SOURCE=.\hlp\html\afxc590x.htm
+# End Source File
+# Begin Source File
 
-"$(OutDir)\$(InputName).cnt" : $(SOURCE) "$(INTDIR)" "$(OUTDIR)"
-	copy "hlp\$(InputName).cnt" $(OutDir)
+SOURCE=.\hlp\html\afxc5tr9.htm
+# End Source File
+# Begin Source File
 
-# End Custom Build
+SOURCE=.\hlp\html\afxc5zol.htm
+# End Source File
+# Begin Source File
 
-!ELSEIF  "$(CFG)" == "WaveSoapFront - Win32 Debug"
+SOURCE=.\hlp\html\afxc67ad.htm
+# End Source File
+# Begin Source File
 
-# PROP Ignore_Default_Tool 1
-# Begin Custom Build - Copying contents file...
-OutDir=.\Debug
-InputPath=.\hlp\WaveSoapFront.cnt
-InputName=WaveSoapFront
+SOURCE=.\hlp\html\afxc6t2v.htm
+# End Source File
+# Begin Source File
 
-"$(OutDir)\$(InputName).cnt" : $(SOURCE) "$(INTDIR)" "$(OUTDIR)"
-	copy "hlp\$(InputName).cnt" $(OutDir)
+SOURCE=.\hlp\html\afxc6tv6.htm
+# End Source File
+# Begin Source File
 
-# End Custom Build
+SOURCE=.\hlp\html\afxc6ztx.htm
+# End Source File
+# Begin Source File
 
-!ENDIF 
+SOURCE=.\hlp\html\afxc71o2.htm
+# End Source File
+# Begin Source File
 
+SOURCE=.\hlp\html\afxc72d3.htm
+# End Source File
+# Begin Source File
+
+SOURCE=.\hlp\html\afxc72ya.htm
+# End Source File
+# Begin Source File
+
+SOURCE=.\hlp\html\afxc7d4k.htm
+# End Source File
+# Begin Source File
+
+SOURCE=.\hlp\html\afxc7yt5.htm
+# End Source File
+# Begin Source File
+
+SOURCE=.\hlp\html\afxc85dk.htm
+# End Source File
+# Begin Source File
+
+SOURCE=.\hlp\html\afxc8ble.htm
+# End Source File
+# Begin Source File
+
+SOURCE=.\hlp\html\afxc8eed.htm
+# End Source File
+# Begin Source File
+
+SOURCE=.\hlp\html\afxc8rhq.htm
+# End Source File
+# Begin Source File
+
+SOURCE=.\hlp\html\afxc8zxr.htm
+# End Source File
+# Begin Source File
+
+SOURCE=.\hlp\html\afxc9b3o.htm
+# End Source File
+# Begin Source File
+
+SOURCE=.\hlp\html\afxc9ctz.htm
+# End Source File
+# Begin Source File
+
+SOURCE=.\hlp\html\afxc9jci.htm
+# End Source File
+# Begin Source File
+
+SOURCE=.\hlp\html\afxc9sz0.htm
+# End Source File
+# Begin Source File
+
+SOURCE=.\hlp\html\afxc9u5h.htm
+# End Source File
+# Begin Source File
+
+SOURCE=.\hlp\html\afxc9vp0.htm
+# End Source File
+# Begin Source File
+
+SOURCE=.\hlp\html\afxc9y05.htm
+# End Source File
+# Begin Source File
+
+SOURCE=.\hlp\html\afxc9ysw.htm
+# End Source File
+# Begin Source File
+
+SOURCE=.\hlp\html\afxp0434.htm
+# End Source File
+# Begin Source File
+
+SOURCE=.\hlp\html\afxp0vjk.htm
+# End Source File
+# Begin Source File
+
+SOURCE=.\hlp\html\afxp225w.htm
+# End Source File
+# Begin Source File
+
+SOURCE=.\hlp\html\afxp3i9e.htm
+# End Source File
+# Begin Source File
+
+SOURCE=.\hlp\html\afxp42b4.htm
+# End Source File
+# Begin Source File
+
+SOURCE=.\hlp\html\afxp5hf8.htm
+# End Source File
+# Begin Source File
+
+SOURCE=.\hlp\html\afxp7q2f.htm
+# End Source File
+# Begin Source File
+
+SOURCE=.\hlp\html\afxp86av.htm
+# End Source File
+# Begin Source File
+
+SOURCE=.\hlp\images\AppExit.png
+# End Source File
+# Begin Source File
+
+SOURCE=.\hlp\images\Bullet.png
+# End Source File
+# Begin Source File
+
+SOURCE=.\hlp\images\CurArw4.png
+# End Source File
+# Begin Source File
+
+SOURCE=.\hlp\images\CurHelp.png
+# End Source File
+# Begin Source File
+
+SOURCE=.\hlp\images\DlgResizeHandle.png
+# End Source File
+# Begin Source File
+
+SOURCE=.\hlp\images\EditCopy.png
+# End Source File
+# Begin Source File
+
+SOURCE=.\hlp\images\EditCut.png
+# End Source File
+# Begin Source File
+
+SOURCE=.\hlp\images\EditPast.png
+# End Source File
+# Begin Source File
+
+SOURCE=.\hlp\images\EditUndo.png
+# End Source File
+# Begin Source File
+
+SOURCE=.\hlp\images\FileCloseButton.png
+# End Source File
+# Begin Source File
+
+SOURCE=.\hlp\images\FileCloseIcon.png
+# End Source File
+# Begin Source File
+
+SOURCE=.\hlp\images\FileNew.png
+# End Source File
+# Begin Source File
+
+SOURCE=.\hlp\images\FileOpen.png
+# End Source File
+# Begin Source File
+
+SOURCE=.\hlp\images\FileOpenDlg.png
+# End Source File
+# Begin Source File
+
+SOURCE=.\hlp\images\FilePrnt.png
+# End Source File
+# Begin Source File
+
+SOURCE=.\hlp\images\FileSave.png
+# End Source File
+# Begin Source File
+
+SOURCE=.\hlp\images\HlpSBar.png
+# End Source File
+# Begin Source File
+
+SOURCE=.\hlp\images\HlpTBar.png
+# End Source File
+# Begin Source File
+
+SOURCE=.\hlp\images\NewFileDlg.png
+# End Source File
+# Begin Source File
+
+SOURCE=.\hlp\images\RecFirst.png
+# End Source File
+# Begin Source File
+
+SOURCE=.\hlp\images\RecLast.png
+# End Source File
+# Begin Source File
+
+SOURCE=.\hlp\images\RecNext.png
+# End Source File
+# Begin Source File
+
+SOURCE=.\hlp\images\RecPrev.png
+# End Source File
+# Begin Source File
+
+SOURCE=.\hlp\images\Scmax.png
+# End Source File
+# Begin Source File
+
+SOURCE=.\hlp\images\ScMenu.png
+# End Source File
+# Begin Source File
+
+SOURCE=.\hlp\images\Scmin.png
+# End Source File
+# Begin Source File
+
+SOURCE=.\hlp\images\ViewMenu.png
+# End Source File
+# Begin Source File
+
+SOURCE=.\hlp\wavesoap.hhc
+# End Source File
+# Begin Source File
+
+SOURCE=.\hlp\WaveSoapFront.hhk
 # End Source File
 # End Group
 # Begin Source File
