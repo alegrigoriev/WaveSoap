@@ -7,17 +7,18 @@
 #include "afxcmn.h"
 #include "afxwin.h"
 #include "resource.h"
+#include "ResizableDialog.h"
 #include "WaveSoapFileDialogs.h"
-//#include "ResizableDialog.h"
 #include <vector>
+#include "OperationDialogs.h"
 
 // CSplitToFilesDialog dialog
 class CWaveFile;
-class CSplitToFilesDialog : public CDialog, public CFileSaveUiSupport
+class CSplitToFilesDialog : public CResizableDialog, public CFileSaveUiSupport, public CSelectionUiSupport
 {
-	typedef CDialog BaseClass;
+	typedef CResizableDialog BaseClass;
 public:
-	CSplitToFilesDialog(CWaveFile & WaveFile, CWnd* pParent = NULL);   // standard constructor
+	CSplitToFilesDialog(CWaveFile & WaveFile, int TimeFormat, CWnd* pParent = NULL);   // standard constructor
 	virtual ~CSplitToFilesDialog();
 
 	// return result: Full file name, begin, end
@@ -38,16 +39,24 @@ protected:
 	WaveFileSegmentVector m_Files;
 	// List of all files to write
 	CListCtrl m_FilesList;
-	CWaveFile & m_WaveFile;
 	int m_FileTypeFlags;
 
 	afx_msg void OnBnClickedButtonBrowseFolder();
-	afx_msg void OnLvnBeginlabeleditListFiles(NMHDR *pNMHDR, LRESULT *pResult);
+	afx_msg void OnLvnItemChangedListFiles(NMHDR *pNMHDR, LRESULT *pResult);
 	afx_msg void OnLvnEndlabeleditListFiles(NMHDR *pNMHDR, LRESULT *pResult);
 	afx_msg void OnCompatibleFormatsClicked();
 	afx_msg void OnComboFormatsChange();
 	afx_msg void OnComboAttributesChange();
 	afx_msg void OnComboFileTypeSelChange();
+	// CSelectionSupport handlers:
+	afx_msg void OnSelchangeComboTimeFormat();
+	afx_msg void OnKillfocusEditEnd();
+	afx_msg void OnKillfocusEditLength();
+	afx_msg void OnKillfocusEditStart();
+	afx_msg void OnBuddyChangeSpinEnd(NMHDR * pNmHdr, LRESULT * pResult);
+	afx_msg void OnBuddyChangeSpinLength(NMHDR * pNmHdr, LRESULT * pResult);
+	afx_msg void OnBuddyChangeSpinStart(NMHDR * pNmHdr, LRESULT * pResult);
+	afx_msg void OnSelchangeComboSelection();
 
 	virtual void OnOK();
 	virtual BOOL PreTranslateMessage(MSG* pMsg);
