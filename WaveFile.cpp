@@ -412,6 +412,7 @@ BOOL CMmioFile::CreateChunk(MMCKINFO & ck, UINT wFlags)
 #endif
 
 CWaveFile::CWaveFile()
+	: m_FactSamples(~0UL)
 {
 	m_RiffckType = mmioFOURCC('W', 'A', 'V', 'E');
 }
