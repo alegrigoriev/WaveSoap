@@ -346,30 +346,33 @@ protected:
 	DECLARE_MESSAGE_MAP()
 };
 
+struct WAVEREGIONINFO;
 class CMarkerRegionDialog : public CSelectionDialog
 {
 	typedef CSelectionDialog BaseClass;
 public:
-	CMarkerRegionDialog(SAMPLE_INDEX Start, SAMPLE_INDEX End, SAMPLE_INDEX CaretPos,
+	CMarkerRegionDialog(struct WAVEREGIONINFO * pRegionInfo, SAMPLE_INDEX CaretPos,
 						CWaveFile & WaveFile, int TimeFormat,
 						CWnd* pParent = NULL);   // standard constructor
 	// Dialog Data
-	//{{AFX_DATA(CSelectionDialog)
+	//{{AFX_DATA(CMarkerRegionDialog)
 	enum { IDD = IDD_REGION_DIALOG };
 	//}}AFX_DATA
 
-// Overrides
+	struct WAVEREGIONINFO * m_pRegionData;
+
+	// Overrides
 	// ClassWizard generated virtual function overrides
-	//{{AFX_VIRTUAL(CSelectionDialog)
+	//{{AFX_VIRTUAL(CMarkerRegionDialog)
 protected:
 	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV support
 	//}}AFX_VIRTUAL
 
-// Implementation
+	// Implementation
 protected:
 
 	// Generated message map functions
-	//{{AFX_MSG(CSelectionDialog)
+	//{{AFX_MSG(CMarkerRegionDialog)
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 };
