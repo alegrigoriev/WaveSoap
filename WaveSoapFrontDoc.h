@@ -116,6 +116,7 @@ public:
 	int CaretPos;
 };
 
+#pragma pack(push, 2)
 struct PeakFileHeader
 {
 	DWORD dwSize;
@@ -124,10 +125,11 @@ struct PeakFileHeader
 	DWORD dwVersion;
 	FILETIME WaveFileTime;
 	DWORD dwWaveFileSize;   // WAV file is less than 4G
-	WAVEFORMATEX wfFormat;
 	DWORD Granularity;      // number of WAV samples for each PeakFile value
 	DWORD PeakInfoSize;
+	WAVEFORMATEX wfFormat;
 };
+#pragma pack(pop)
 
 /////////////////////////////////////////////////////////////////////////////
 
