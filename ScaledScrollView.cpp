@@ -921,8 +921,8 @@ void CScaledScrollView::OnSize(UINT nType, int cx, int cy)
 
 		InvalidateRgn(NULL);
 		UpdateCaretPosition();
-		UpdateScrollbars();
 	}
+	UpdateScrollbars();
 	NotifySlaveViews(flag);
 }
 
@@ -1377,7 +1377,7 @@ void CScaledScrollView::NotifySlaveViews(DWORD flag)
 			if (pView->m_pVertMaster == this
 				|| pView->m_pHorMaster == this)
 			{
-				DWORD flag1 = flag;
+				DWORD flag1 = flag & 0xFFFF;
 				double MinX = dMinLeft;
 				double MaxX = dMaxRight;
 				double MinY = dMinBottom;
@@ -1402,6 +1402,10 @@ void CScaledScrollView::NotifySlaveViews(DWORD flag)
 				{
 					pView->OnChangeOrgExt(dOrgX, dExtX,
 										dOrgY, dExtY, flag1);
+				}
+				if (flag & 0xFFFF0000)
+				{
+					pView->OnUpdate(this, flag & 0xFFFF0000, NULL);
 				}
 			}
 		}
