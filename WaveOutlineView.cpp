@@ -39,6 +39,7 @@ BEGIN_MESSAGE_MAP(CWaveOutlineView, CView)
 	ON_WM_LBUTTONUP()
 	ON_WM_MOUSEMOVE()
 	ON_WM_CAPTURECHANGED()
+	ON_WM_SETCURSOR()
 	//}}AFX_MSG_MAP
 END_MESSAGE_MAP()
 
@@ -496,7 +497,7 @@ void CWaveOutlineView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
 
 BOOL CWaveOutlineView::PreCreateWindow(CREATESTRUCT& cs)
 {
-	cs.lpszClass = AfxRegisterWndClass(CS_HREDRAW | CS_DBLCLKS, AfxGetApp()->LoadStandardCursor(IDC_ARROW),
+	cs.lpszClass = AfxRegisterWndClass(CS_HREDRAW | CS_DBLCLKS, NULL,
 										NULL, NULL);
 
 	return CView::PreCreateWindow(cs);
@@ -650,11 +651,12 @@ void CWaveOutlineView::OnLButtonDown(UINT nFlags, CPoint point)
 	long nSamples = pDoc->WaveFileSamples();
 	CRect cr;
 	GetClientRect( & cr);
-	if (0 == cr.Width())
+	int width = cr.Width();
+	if (0 == width)
 	{
 		return;
 	}
-	int nSampleUnderMouse = MulDiv(point.x, nSamples, cr.Width());
+	int nSampleUnderMouse = MulDiv(point.x, nSamples, width);
 	int SelectionStart = pDoc->m_SelectionStart;
 	int SelectionEnd = pDoc->m_SelectionEnd;
 
@@ -672,45 +674,62 @@ void CWaveOutlineView::OnLButtonDown(UINT nFlags, CPoint point)
 		{
 			SelectionEnd = nSampleUnderMouse;
 		}
+		pDoc->SetSelection(SelectionStart, SelectionEnd,
+							ALL_CHANNELS, nSampleUnderMouse,
+							SetSelection_MoveCaretToCenter);
 	}
 	else
 	{
-		SelectionStart = nSampleUnderMouse;
-		SelectionEnd = SelectionStart;
+		long nBegin = 0;
+		long nEnd = 0;
+		// round to peak info granularity
+		nBegin = pDoc->m_PeakDataGranularity *
+				MulDiv(point.x, pDoc->m_WavePeakSize, width);
+		nEnd = pDoc->m_PeakDataGranularity *
+				MulDiv(point.x + 1, pDoc->m_WavePeakSize, width);
+		pDoc->SetSelection(nBegin, nEnd, ALL_CHANNELS, nBegin,
+							SetSelection_SnapToMaximum | SetSelection_MoveCaretToCenter);
 	}
-	pDoc->SetSelection(SelectionStart, SelectionEnd,
-						ALL_CHANNELS, nSampleUnderMouse, SetSelection_MoveCaretToCenter);
 
-	//CView::OnLButtonDown(nFlags, point);
 }
 
 void CWaveOutlineView::OnLButtonUp(UINT nFlags, CPoint point)
 {
 	CWaveSoapFrontDoc * pDoc = GetDocument();
+	long nSamples = pDoc->WaveFileSamples();
+	CRect cr;
+	GetClientRect( & cr);
+	long nBegin = 0;
+	long nEnd = 0;
+	int width = cr.Width();
+	if (0 != width)
+	{
+		// round to peak info granularity
+		nBegin = pDoc->m_PeakDataGranularity *
+				MulDiv(point.x, pDoc->m_WavePeakSize, width);
+		nEnd = pDoc->m_PeakDataGranularity *
+				MulDiv(point.x + 1, pDoc->m_WavePeakSize, width);
+	}
 
 	if ( ! bIsTrackingSelection
 		&&  nKeyPressed == WM_LBUTTONDOWN)
 	{
-		long nSamples = pDoc->WaveFileSamples();
-		CRect cr;
-		GetClientRect( & cr);
-		if (0 != cr.Width())
+		// mouse hasn't moved after click
+		if (GetApp()->m_bSnapMouseSelectionToMax
+			// the whole area wasn't selected
+			&& pDoc->m_SelectionStart == pDoc->m_SelectionEnd)
 		{
-			// mouse hasn't moved after click
-			if (GetApp()->m_bSnapMouseSelectionToMax
-				// the whole area wasn't selected
-				&& pDoc->m_SelectionStart == pDoc->m_SelectionEnd)
-			{
-				long nBegin = MulDiv(point.x, nSamples, cr.Width());
-				long nEnd = MulDiv(point.x + 1, nSamples, cr.Width());
-				pDoc->SetSelection(nBegin, nEnd, ALL_CHANNELS, nBegin,
-									SetSelection_SnapToMaximum | SetSelection_MoveCaretToCenter);
-			}
+			pDoc->SetSelection(nBegin, nEnd, ALL_CHANNELS, nBegin,
+								SetSelection_SnapToMaximum | SetSelection_MoveCaretToCenter);
 		}
 	}
-	ReleaseCapture();
-	bIsTrackingSelection = FALSE;
+
 	nKeyPressed = 0;
+	if (bIsTrackingSelection)
+	{
+		ReleaseCapture();
+		bIsTrackingSelection = FALSE;
+	}
 }
 
 void CWaveOutlineView::OnMouseMove(UINT nFlags, CPoint point)
@@ -741,10 +760,8 @@ void CWaveOutlineView::OnMouseMove(UINT nFlags, CPoint point)
 	CView::OnMouseMove(nFlags, point);
 	if (nKeyPressed != 0)
 	{
-		if (bIsTrackingSelection)
-		{
-		}
-		else
+		if ( ! bIsTrackingSelection
+			&& nSampleUnderMouse != pDoc->m_CaretPosition)
 		{
 			bIsTrackingSelection = TRUE;
 			SetCapture();
@@ -784,4 +801,11 @@ void CWaveOutlineView::OnCaptureChanged(CWnd *pWnd)
 	}
 
 	CView::OnCaptureChanged(pWnd);
+}
+
+BOOL CWaveOutlineView::OnSetCursor(CWnd* pWnd, UINT nHitTest, UINT message)
+{
+	// TODO: Add your message handler code here and/or call default
+	SetCursor(AfxGetApp()->LoadStandardCursor(IDC_ARROW));
+	return TRUE;
 }
