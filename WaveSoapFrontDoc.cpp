@@ -3975,20 +3975,14 @@ void CWaveSoapFrontDoc::OnProcessInsertsilence()
 		return;
 	}
 
-	CStagedContext::auto_ptr pContext(new CStagedContext(this,
-														OperationContextDiskIntensive, IDS_INSERT_SILENCE_STATUS_PROMPT,
-														IDS_INSERT_SILENCE_OPERATION_NAME));
+	CInsertSilenceContext::auto_ptr pContext(new CInsertSilenceContext(this,
+												IDS_INSERT_SILENCE_STATUS_PROMPT, IDS_INSERT_SILENCE_OPERATION_NAME));
 
-	if ( ! InitExpandOperation(pContext.get(), m_WavFile, dlg.GetStart(),
-								dlg.GetLength(), dlg.GetChannel()))
+	if ( ! pContext->InitExpand(m_WavFile, dlg.GetStart(),
+								dlg.GetLength(), dlg.GetChannel(), TRUE))
 	{
 		return;
 	}
-
-	pContext->AddContext(new CInitChannelsUndo(this, dlg.GetStart(),
-												dlg.GetLength(), dlg.GetChannel()));
-
-	pContext->CreateUndo();
 
 	pContext.release()->Execute();
 	SetModifiedFlag(TRUE, TRUE);    // keep previous undo

@@ -227,7 +227,7 @@ public:
 	typedef std::auto_ptr<ThisClass> auto_ptr;
 
 	CInsertSilenceContext(CWaveSoapFrontDoc * pDoc, UINT StatusStringId, UINT OperationNameId)
-		: BaseClass(pDoc, 0, StatusStringId, OperationNameId)
+		: BaseClass(pDoc, OperationContextDiskIntensive, StatusStringId, OperationNameId)
 	{
 	}
 
