@@ -1736,7 +1736,7 @@ long CDirectFileCache::GetDataBuffer(File * pFile,
 				else
 				{
 					// round the length to make it prefetch the whole buffer
-					length += MASK_OFFSET_IN_BLOCK & -(long(position) + length);
+					length += CACHE_BLOCK_SIZE + (MASK_OFFSET_IN_BLOCK & -(long(position) + length));
 				}
 			}
 			RequestPrefetch(pFile, position + BytesRequested, length - BytesRequested, m_MRU_Count);
@@ -1760,7 +1760,7 @@ long CDirectFileCache::GetDataBuffer(File * pFile,
 				else
 				{
 					// round the length to make it prefetch the whole buffer
-					length -= MASK_OFFSET_IN_BLOCK & (long(position) - length);
+					length -= CACHE_BLOCK_SIZE + (MASK_OFFSET_IN_BLOCK & (long(position) - length));
 				}
 			}
 			RequestPrefetch(pFile, position - BytesRequested, length + BytesRequested, m_MRU_Count);
@@ -2881,13 +2881,14 @@ unsigned CDirectFileCache::_ThreadProc()
 			//LONG PrefetchLength = CACHE_BLOCK_SIZE;
 
 			void * pBuf = NULL;
+			DebugTimeStamp time;
 
 			long ReadLength = GetDataBuffer(pPrefetch->m_pFile,
 											& pBuf, CACHE_BLOCK_SIZE,
 											PrefetchPosition, CDirectFile::GetBufferNoPrefetch);
 
-			if (TRACE_PREFETCH) TRACE("Prefetched block 0x%X file %x\n",
-									pPrefetch->m_PrefetchPosition, pPrefetch->m_pFile->m_hFile);
+			if (0 || TRACE_PREFETCH) TRACE("Prefetched block 0x%X file %x, time %d/10 ms\n",
+				pPrefetch->m_PrefetchPosition, pPrefetch->m_pFile->m_hFile, time.ElapsedTimeTenthMs());
 
 			pPrefetch->m_pFile->ReturnDataBuffer(pBuf, ReadLength, 0);
 
