@@ -550,12 +550,12 @@ WAVEFORMATEX * CopyWaveformat(const WAVEFORMATEX * src)
 	return dst;
 }
 
-WaveFormat::~WaveFormat()
+CWaveFormat::~CWaveFormat()
 {
 	delete[] (char*) m_pWf;
 }
 
-void WaveFormat::Allocate(int ExtraSize, bool bCopy)
+void CWaveFormat::Allocate(int ExtraSize, bool bCopy)
 {
 	int SizeToAllocate = ExtraSize + sizeof (WAVEFORMATEX);
 	if (m_AllocatedSize >= SizeToAllocate)
@@ -569,14 +569,14 @@ void WaveFormat::Allocate(int ExtraSize, bool bCopy)
 	}
 	if (m_pWf)
 	{
-		if (bCopy) memcpy(NewBuf, m_pWf, AllocatedSize);
+		if (bCopy) memcpy(NewBuf, m_pWf, m_AllocatedSize);
 		delete[] (char*) m_pWf;
 	}
 	m_pWf = (WAVEFORMATEX *)NewBuf;
 	m_AllocatedSize = SizeToAllocate;
 }
 
-void WaveFormat::InitCdAudioFormat()
+void CWaveFormat::InitCdAudioFormat()
 {
 	Allocate(0);
 	m_pWf->cbSize = 0;
@@ -588,22 +588,61 @@ void WaveFormat::InitCdAudioFormat()
 	m_pWf->nAvgBytesPerSec = 176400;
 }
 
-WaveFormat & WaveFormat::operator =(WAVEFORMATEX const * pWf)
+CWaveFormat & CWaveFormat::operator =(WAVEFORMATEX const * pWf)
 {
-	if (pWf == m_pWf)
+	if (pWf != m_pWf)
 	{
-		return *this;
+		if (WAVE_FORMAT_PCM == pWf->wFormatTag)
+		{
+			Allocate(0);
+			memcpy(m_pWf, pWf, sizeof (PCMWAVEFORMAT));
+			m_pWf->cbSize = 0;
+		}
+		else
+		{
+			Allocate(pWf->cbSize);
+			memcpy(m_pWf, pWf, pWf->cbSize + sizeof WAVEFORMATEX);
+		}
 	}
-	if (WAVE_FORMAT_PCM == pWf->wFormatTag)
+	return *this;
+}
+
+int CWaveFormat::MatchFormat(WAVEFORMATEX const * pwf)
+{
+	int match = 0;
+	if (pwf->wFormatTag == FormatTag())
 	{
-		Allocate(0);
-		memcpy(m_pWf, pWf, sizeof (WAVEFORMATPCM));
-		m_pWf->cbSize = 0;
+		if (WAVE_FORMAT_PCM == pwf->wFormatTag)
+		{
+			if (0 == memcmp(pwf, m_pWf, sizeof (PCMWAVEFORMAT)))
+			{
+				// exact match found
+				return WaveFormatExactMatch;
+			}
+		}
+		else
+		{
+			if (pwf->cbSize == m_pWf->cbSize
+				&& 0 == memcmp(pwf, m_pWf, pwf->cbSize + sizeof (WAVEFORMATEX)))
+			{
+				// exact match found
+				return WaveFormatExactMatch;
+			}
+		}
+		match += WaveFormatMatchFormatTag;
 	}
-	else
+	if (pwf->nSamplesPerSec == SampleRate())
 	{
-		Allocate(pWf->cbSize);
-		memcpy(m_pWf, pWf, pWf->cbSize + sizeof WAVEFORMATEX);
+		match += WaveFormatMatchSampleRate;
 	}
+	if (pwf->nChannels == NumChannels())
+	{
+		match += WaveFormatMatchCnahhels;
+	}
+	if (pwf->nAvgBytesPerSec == BytesPerSec())
+	{
+		match += WaveFormatMatchBytesPerSec;
+	}
+	return match;
 }
 
