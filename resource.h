@@ -81,7 +81,7 @@
 #define IDD_DIALOG_OPEN_TEMPLATE_V4     167
 #define IDD_DIALOG_SAVE_TEMPLATE_V5     168
 #define IDD_PROPPAGE_VIEW_PREFERENCES   169
-#define IDD_PROPPAGE_PLAYBACK_PREFERENCES 170
+#define IDD_PROPPAGE_SOUND_PREFERENCES  170
 #define IDD_DIALOG_REOPEN_COMPRESSED    171
 #define IDD_DIALOG_SHOULD_RELOAD_CONVERTED 172
 #define IDC_EDIT_MIN_CLICK_AMPLITUDE    1000
@@ -97,6 +97,7 @@
 #define IDC_EDIT3                       1005
 #define IDC_EDIT_LENGTH                 1005
 #define IDC_EDIT_MAX_CLICK_LENGTH       1006
+#define IDC_EDIT6                       1006
 #define IDC_EDIT_ATTACK_RATE            1007
 #define IDC_SPIN1                       1007
 #define IDC_SPIN_START                  1007
@@ -219,6 +220,19 @@
 #define IDC_CHECK_24BIT                 1117
 #define IDC_CHECK_SHOW_ONLY_WHEN_SHIFT  1119
 #define IDC_STATIC_VERSION              1120
+#define IDC_EDIT2                       1123
+#define IDC_EDIT1                       1124
+#define IDC_EDIT7                       1124
+#define IDC_BUTTON1                     1125
+#define IDC_CHECK1                      1126
+#define IDC_CHECK2                      1127
+#define IDC_CHECK3                      1128
+#define IDC_CHECK4                      1129
+#define IDC_EDIT5                       1130
+#define IDC_CHECK5                      1131
+#define IDC_CHECK6                      1132
+#define IDC_CHECK7                      1133
+#define IDC_RADIO3                      1136
 #define IDC_VIEW_RULER_SAMPLES          32771
 #define IDC_VIEW_RULER_HHMMSS           32772
 #define IDC_VIEW_RULER_SECONDS          32773
@@ -355,6 +369,7 @@
 #define IDS_CANT_DECOMPRESS_FILE        32904
 #define IDS_ERROR_WHILE_DECOMPRESSING_FILE 32905
 #define IDS_SHOULD_RELOAD_COMPRESSED_FILE 32906
+#define IDS_OPTIONS_CAPTION             32907
 #define ID_FILE_PROPERTIES              40000
 #define ID_VIEW_ZOOMVERT_NORMAL         40001
 #define ID_VIEW_ZOOMIN_HOR_FULL         40002
@@ -447,7 +462,7 @@
 #define _APS_3D_CONTROLS                     1
 #define _APS_NEXT_RESOURCE_VALUE        168
 #define _APS_NEXT_COMMAND_VALUE         40098
-#define _APS_NEXT_CONTROL_VALUE         1122
+#define _APS_NEXT_CONTROL_VALUE         1137
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif

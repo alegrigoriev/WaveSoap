@@ -172,6 +172,7 @@ public:
 	afx_msg void OnToolsCdgrab();
 	afx_msg void OnFileSaveAll();
 	afx_msg void OnUpdateFileSaveAll(CCmdUI* pCmdUI);
+	afx_msg void OnToolsOptions();
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 	CWinThread m_Thread;
