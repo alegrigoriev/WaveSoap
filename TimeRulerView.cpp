@@ -969,10 +969,11 @@ void CTimeRulerView::OnLButtonDblClk(UINT nFlags, CPoint point)
 
 	BaseClass::OnLButtonDblClk(nFlags, point);
 
-	if (hit & (HitTestRegionBegin | HitTestRegionEnd | HitTestMarker))
+	if (! pDoc->IsReadOnly()
+		&& 0 != (hit & (HitTestRegionBegin | HitTestRegionEnd | HitTestMarker)))
 	{
 		// if the marker or region is double-clicked, open the marker editing dialog
-		if ( ! GetDocument()->m_WavFile.GetWaveMarker( & info))
+		if ( ! pDoc->m_WavFile.GetWaveMarker( & info))
 		{
 			info.Flags = 0;
 		}
