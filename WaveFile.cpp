@@ -1010,6 +1010,45 @@ BOOL CWaveFile::GetWaveMarker(WAVEREGIONINFO * info) const
 BOOL CWaveFile::InstanceDataWav::GetWaveMarker(WAVEREGIONINFO * pInfo) const
 {
 	BOOL result = FALSE;
+	if (pInfo->Flags & pInfo->FindCue)
+	{
+		// either find an existing cue, or mark it as new
+		pInfo->Flags |= pInfo->AddNew;
+		pInfo->Flags &= ~pInfo->FindCue;
+
+		for (ConstCuePointVectorIterator i = m_CuePoints.begin();
+			i < m_CuePoints.end(); i++)
+		{
+			if (pInfo->Sample == i->dwSampleOffset)
+			{
+				pInfo->Flags &= ~(pInfo->AddNew | pInfo->CuePointIndex);
+				pInfo->MarkerCueID = i->CuePointID;
+
+				WaveRegionMarker const * pMarker = GetRegionMarker(pInfo->MarkerCueID);
+				if (NULL != pMarker)
+				{
+					if (pMarker->SampleLength == pInfo->Length)
+					{
+						// found exact match
+						break;
+					}
+				}
+				else if (pInfo->Length == 0)
+				{
+					break;
+				}
+			}
+		}
+		if (pInfo->Flags & pInfo->AddNew)
+		{
+			pInfo->Comment = NULL;
+			pInfo->Label = NULL;
+			pInfo->Ltxt = NULL;
+			return FALSE;
+		}
+		// continue filling data
+	}
+
 	if (pInfo->Flags & pInfo->CuePointIndex)
 	{
 		if (pInfo->MarkerCueID >= m_CuePoints.size())
