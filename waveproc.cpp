@@ -752,6 +752,174 @@ void InterpolateBigGap(CBackBuffer<int, int> & data, int nLeftIndex, int ClickLe
 #endif
 }
 
+void InterpolateBigGap(__int16 data[], int nLeftIndex, int ClickLength, int nChans)
+{
+	const int MAX_FFT_ORDER = 2048;
+	float x[MAX_FFT_ORDER + MAX_FFT_ORDER / 4];
+	// FFT order is >=64 and >= ClickLength * 4
+	// take 2 FFT in [nLeftIndex-FftOrder... nLeftIndex-1] range
+	// and [nLeftIndex-FftOrder-ClickLength...nLeftIndex-ClickLength-1] offset
+	// Find next FFT estimation as FFT2*(FFT2/FFT1/abs(FFT2/FFT1))
+	// Then take 2 FFT in [nLeftIndex+ClickLength...nLeftIndex+ClickLength+FftOrder-1]
+	// and [nLeftIndex+2*ClickLength...nLeftIndex+2*ClickLength+FftOrder-1]
+	// and find another FFT estimation. Perform backward FFT and combine source and
+	// FFT results using squared-sine window
+	complex<float> y1[MAX_FFT_ORDER/2+1];
+	complex<float> y2[MAX_FFT_ORDER/2+1];
+	//float xl[MAX_FFT_ORDER];  // to save extrapolation from the left neighborhood
+
+	int FftOrder = 512;
+	if (1) while (FftOrder < ClickLength * 8)
+		{
+			FftOrder +=FftOrder;
+		}
+	TRACE("FFtOrder used for interpolation: %d\n", FftOrder);
+	if (FftOrder > MAX_FFT_ORDER)
+	{
+		return;
+	}
+	// extrapolate ClickLength + ClickLength / 2 - the gap and
+	// the right neighborhood
+	int ExtrapolatedLength = ClickLength + ClickLength / 2;
+	int i;
+	for (i = 0; i < FftOrder + ExtrapolatedLength; i++)
+	{
+		x[i] = float(data[nChans * (nLeftIndex - FftOrder - ExtrapolatedLength+ i)]);
+	}
+	FastFourierTransform(x, y2, FftOrder);
+	FastFourierTransform(x + ExtrapolatedLength, y1, FftOrder);
+	// calculate another set of coefficients
+	// leave only those frequencies with up to ClickLength/10 period
+	//if (nMaxFreq > FftOrder/2)
+
+	for (i = 1; i <= FftOrder/2; i++)
+	{
+		if (y1[i].real() != 0.
+			|| y1[i].imag() != 0.)
+		{
+			complex<float> rot = y2[i] / y1[i];
+			y2[i] *= rot / abs(rot);
+		}
+	}
+	FastInverseFourierTransform(y2, x, FftOrder);
+	// last ClickLength*2 samples are of interest
+	// ClickLength/2 are merged with the samples after the extrapolation,
+	// ClickLength is copied to the extrapolated area,
+	// ClickLength/2 are merged with the samples before the extrapolation,
+	// save the result
+	for (i = 0; i < ClickLength; i++)
+	{
+		long tmp = long(x[FftOrder - (ClickLength + ClickLength / 2) + i]);
+		if (tmp < -0x8000)
+		{
+			tmp = -0x8000;
+		}
+		else if (tmp > 0x7FFF)
+		{
+			tmp = 0x7FFF;
+		}
+		data[nChans * (nLeftIndex + i)] = __int16(tmp);
+	}
+	for (i = 0; i < ClickLength / 2; i++)
+	{
+		long tmp = long((x[FftOrder - ClickLength / 2 + i] * (ClickLength / 2 - i - 0.5)
+							+ data[nChans * (nLeftIndex + ClickLength + i)] * (i + 0.5))
+						/ float(ClickLength / 2));
+		if (tmp < -0x8000)
+		{
+			tmp = -0x8000;
+		}
+		else if (tmp > 0x7FFF)
+		{
+			tmp = 0x7FFF;
+		}
+		data[nChans * (nLeftIndex + ClickLength + i)] = __int16(tmp);
+	}
+	int ClickLen1 = ClickLength - ClickLength / 2;
+	for (i = 0; i < ClickLen1; i++)
+	{
+		long tmp = long((x[FftOrder - ClickLength * 2 + i] * (i + 0.5)
+							+ data[nChans * (nLeftIndex - ClickLen1 + i)] * (ClickLen1 - i - 0.5))
+						/ float(ClickLen1));
+		if (tmp < -0x8000)
+		{
+			tmp = -0x8000;
+		}
+		else if (tmp > 0x7FFF)
+		{
+			tmp = 0x7FFF;
+		}
+		data[nChans * (nLeftIndex - ClickLen1 + i)] = __int16(tmp);
+	}
+}
+
+void InterpolateGap(__int16 data[], int nLeftIndex, int ClickLength, int nChans)
+{
+	// nChan (1 or 2) is used as step between samples
+	// to interpolate stereo, call the function twice
+	// Perform spike interpolation
+	// Use interpolating polynom by Lagrange
+	// Zero point == nLeftIndex
+	// Take 5 points to left with ClickLength/2 step
+	// and 5 points to right
+	// 2 farthest points to the left are spaced by ClickLength
+	double Y[20], X[20];
+	int n;
+	int InterpolationOrder;
+	if (ClickLength <= 32)
+	{
+		InterpolationOrder = 10;
+		ASSERT(nLeftIndex - (ClickLength / 2 * (InterpolationOrder - 2) + 1) >= 0);
+		for (n = 0; n < InterpolationOrder - 1; n += 2)
+		{
+			X[n] = - (ClickLength / 2 * n + 1);
+			Y[n] = data[nChans * (nLeftIndex - (ClickLength / 2 * n + 1))];
+			X[n + 1] = ClickLength + ClickLength / 2 * n;
+			Y[n + 1] = data[nChans * (nLeftIndex + ClickLength + ClickLength / 2 * n)];
+		}
+	}
+	else
+	{
+		InterpolationOrder = 20;
+		ASSERT(nLeftIndex - (ClickLength / 4 * (InterpolationOrder - 2) + 1) >= 0);
+		for (n = 0; n < InterpolationOrder - 1; n += 2)
+		{
+			X[n] = - (ClickLength / 4 * n + 1);
+			Y[n] = data[nChans * (nLeftIndex - (ClickLength / 4 * n + 1))];
+			X[n + 1] = ClickLength + ClickLength / 4 * n;
+			Y[n + 1] = data[nChans * (nLeftIndex + ClickLength + ClickLength / 4 * n)];
+		}
+	}
+	// perform Lagrange interpolation
+	for (n = 0; n < ClickLength; n++)
+	{
+		double x = n;
+		double y = 0;
+		for (int k = 0; k < InterpolationOrder; k++)
+		{
+			double a = Y[k];
+			for (int j = 0; j < InterpolationOrder; j++)
+			{
+				if (j != k)
+				{
+					a *= (x - X[j]) / (X[k] - X[j]);
+				}
+			}
+			y += a;
+		}
+		long ly = long(y);
+		if (ly < -0x8000)
+		{
+			ly = -0x8000;
+		}
+		else if (ly > 0x7FFF)
+		{
+			ly = 0x7FFF;
+		}
+		data[nChans * (nLeftIndex + n)] = __int16(ly);
+	}
+}
+
 void InterpolateGap(CBackBuffer<int, int> & data, int nLeftIndex, int ClickLength)
 {
 	// Perform spike interpolation

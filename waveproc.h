@@ -397,4 +397,6 @@ public:
 	virtual int ProcessSound(char const * pIn, char * pOut,
 							int nInBytes, int nOutBytes, int * pUsedBytes, int nChans);
 };
+void InterpolateGap(__int16 data[], int nLeftIndex, int ClickLength, int nChans);
+void InterpolateBigGap(__int16 data[], int nLeftIndex, int ClickLength, int nChans);
 #endif //#ifndef __WAVEPROC_H_
