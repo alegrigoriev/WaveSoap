@@ -2975,11 +2975,12 @@ BOOL CReverseOperation::OperationProc()
 }
 //////////////////////// CMetadataChangeOperation
 
-CMetadataChangeOperation::CMetadataChangeOperation(CWaveSoapFrontDoc * pDoc,
+CMetadataChangeOperation::CMetadataChangeOperation(CWaveSoapFrontDoc * pDoc, CWaveFile & WaveFile,
 													unsigned MetadataChangeFlags)
 	: BaseClass(pDoc, OperationContextSynchronous)
 	, m_pMetadata(NULL)
 	, m_pUndoData(NULL)
+	, m_WaveFile(WaveFile)
 	, m_MetadataCopyFlags(MetadataChangeFlags)
 {
 }
@@ -2992,7 +2993,10 @@ CMetadataChangeOperation::~CMetadataChangeOperation()
 
 BOOL CMetadataChangeOperation::CreateUndo()
 {
-	m_pUndoData = new ThisClass(pDocument);
+	if (pDocument->WaveFileID() == m_WaveFile.GetFileID())
+	{
+		m_pUndoData = new ThisClass(pDocument, m_WaveFile);
+	}
 
 //    m_pUndoData->SaveUndoMetadata(m_MetadataCopyFlags);
 
@@ -3006,7 +3010,7 @@ BOOL CMetadataChangeOperation::OperationProc()
 		pDocument->UpdateAllMarkers();
 	}
 
-	pDocument->m_WavFile.SwapMetadata(m_pMetadata, m_MetadataCopyFlags);
+	m_WaveFile.SwapMetadata(m_pMetadata, m_MetadataCopyFlags);
 
 	if (NULL != m_pUndoData)
 	{
@@ -3035,6 +3039,64 @@ void CMetadataChangeOperation::SaveUndoMetadata(unsigned ChangeFlags)
 	m_pMetadata->CopyMetadata(pDocument->m_WavFile.GetInstanceData(), ChangeFlags);
 }
 
+/////////////  CCueEditOperation      //////////////////////////////////////////////
+
+// move markers
+CCueEditOperation::CCueEditOperation(CWaveSoapFrontDoc * pDoc, CWaveFile & DstFile, SAMPLE_INDEX StartDstSample,
+									NUMBER_OF_SAMPLES LengthToReplace, NUMBER_OF_SAMPLES SamplesToInsert)
+	: BaseClass(pDoc, DstFile, CWaveFile::InstanceDataWav::MetadataCopyAllCueData)
+	, m_StartDstSample(StartDstSample)
+	, m_LengthToReplace(LengthToReplace)
+	, m_StartSrcSample(0)
+	, m_SamplesToInsert(SamplesToInsert)
+{
+}
+
+// copy markers
+CCueEditOperation::CCueEditOperation(CWaveSoapFrontDoc * pDoc, CWaveFile & DstFile, SAMPLE_INDEX StartDstSample,
+									NUMBER_OF_SAMPLES LengthToReplace,
+									CWaveFile & SrcFile, SAMPLE_INDEX StartSrcSample,
+									NUMBER_OF_SAMPLES SamplesToInsert)
+	: BaseClass(pDoc, DstFile, CWaveFile::InstanceDataWav::MetadataCopyAllCueData)
+	, m_StartDstSample(StartDstSample)
+	, m_LengthToReplace(LengthToReplace)
+	, m_StartSrcSample(StartSrcSample)
+	, m_SamplesToInsert(SamplesToInsert)
+{
+	m_SrcFile = SrcFile;
+}
+
+CCueEditOperation::~CCueEditOperation()
+{
+}
+
+BOOL CCueEditOperation::OperationProc()
+{
+	if (NULL == m_pMetadata)
+	{
+		m_pMetadata = new CWaveFile::InstanceDataWav;
+	}
+
+	m_pMetadata->CopyMetadata(m_WaveFile.GetInstanceData(), m_pMetadata->MetadataCopyAllCueData);
+
+	BOOL HasChanged = m_pMetadata->MoveMarkers(m_StartDstSample, m_LengthToReplace, m_SamplesToInsert);
+
+	if (m_SrcFile.IsOpen()
+		&& m_pMetadata->CopyMarkers(m_SrcFile.GetInstanceData(), m_StartSrcSample,
+									m_StartDstSample, m_SamplesToInsert))
+	{
+		HasChanged = TRUE;
+	}
+
+	if ( ! HasChanged)
+	{
+		return TRUE;
+	}
+
+	return BaseClass::OperationProc();
+}
+
+/////////////  CInsertSilenceContext      //////////////////////////////////////////////
 BOOL CInsertSilenceContext::InitExpand(CWaveFile & DstFile, SAMPLE_INDEX StartSample, SAMPLE_INDEX length,
 										CHANNEL_MASK chan, BOOL NeedUndo)
 {
@@ -3298,6 +3360,25 @@ BOOL InitShrinkOperation(CStagedContext * pContext,
 	return TRUE;
 }
 
+void InitCopyMarkers(CStagedContext * pContext,
+					CWaveFile & DstFile, SAMPLE_INDEX StartDstSample,
+					NUMBER_OF_SAMPLES LengthToReplace,
+					CWaveFile & SrcFile, SAMPLE_INDEX StartSrcSample,
+					NUMBER_OF_SAMPLES SamplesToInsert)
+{
+	pContext->AddContext(new CCueEditOperation(pContext->pDocument, DstFile, StartDstSample,
+												LengthToReplace, SrcFile, StartSrcSample, SamplesToInsert));
+}
+
+void InitMoveMarkers(CStagedContext * pContext,
+					CWaveFile & DstFile, SAMPLE_INDEX StartDstSample,
+					NUMBER_OF_SAMPLES LengthToReplace,
+					NUMBER_OF_SAMPLES SamplesToInsert)
+{
+	pContext->AddContext(new CCueEditOperation(pContext->pDocument, DstFile, StartDstSample,
+												LengthToReplace, SamplesToInsert));
+}
+
 BOOL InitInsertCopy(CStagedContext * pContext,
 					CWaveFile & DstFile, SAMPLE_INDEX StartDstSample,
 					NUMBER_OF_SAMPLES LengthToReplace, CHANNEL_MASK DstChannel,
@@ -3311,6 +3392,13 @@ BOOL InitInsertCopy(CStagedContext * pContext,
 									SamplesToInsert - LengthToReplace, DstChannel))
 		{
 			return FALSE;
+		}
+
+		// only copy markers if all channels are modified
+		if (DstFile.AllChannels(DstChannel))
+		{
+			InitCopyMarkers(pContext, DstFile, StartDstSample, LengthToReplace,
+							SrcFile, StartSrcSample, SamplesToInsert);
 		}
 		// the copied data outside of old data chunk length should be handled by
 		// CRestoreTrimmedOperation
@@ -3339,16 +3427,29 @@ BOOL InitInsertCopy(CStagedContext * pContext,
 	}
 	else if (LengthToReplace > SamplesToInsert)
 	{
+		// only copy markers if all channels are modified
+		if (DstFile.AllChannels(DstChannel))
+		{
+			InitCopyMarkers(pContext, DstFile, StartDstSample, LengthToReplace,
+							SrcFile, StartSrcSample, SamplesToInsert);
+		}
+
 		if ( ! InitShrinkOperation(pContext, DstFile, StartDstSample + SamplesToInsert,
 									LengthToReplace - SamplesToInsert, DstChannel))
 		{
 			return FALSE;
 		}
 	}
+	else if (DstFile.AllChannels(DstChannel))
+	{
+		// only copy markers if all channels are modified
+		InitCopyMarkers(pContext, DstFile, StartDstSample, LengthToReplace,
+						SrcFile, StartSrcSample, SamplesToInsert);
+	}
 
 	if (0 != SamplesToInsert)
 	{
-		// now copy data and replace regions/markers
+		// now copy data
 		CCopyContext::auto_ptr pCopy(new CCopyContext(pContext->pDocument,
 													IDS_STATUS_PROMPT_INSERTING_DATA));
 

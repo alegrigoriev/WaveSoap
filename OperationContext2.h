@@ -597,7 +597,8 @@ class CMetadataChangeOperation : public COperationContext
 public:
 	typedef std::auto_ptr<ThisClass> auto_ptr;
 
-	CMetadataChangeOperation(CWaveSoapFrontDoc * pDoc, unsigned MetadataChangeFlags = 0);
+	CMetadataChangeOperation(CWaveSoapFrontDoc * pDoc, CWaveFile & WaveFile,
+							unsigned MetadataChangeFlags = 0);
 	~CMetadataChangeOperation();
 
 	virtual BOOL CreateUndo();
@@ -609,6 +610,34 @@ protected:
 	CWaveFile::InstanceDataWav * m_pMetadata;
 	unsigned m_MetadataCopyFlags;
 	CMetadataChangeOperation * m_pUndoData;
+	CWaveFile m_WaveFile;
+};
+
+class CCueEditOperation : public CMetadataChangeOperation
+{
+	typedef CCueEditOperation ThisClass;
+	typedef CMetadataChangeOperation BaseClass;
+public:
+	typedef std::auto_ptr<ThisClass> auto_ptr;
+
+	// move markers
+	CCueEditOperation(CWaveSoapFrontDoc * pDoc, CWaveFile & DstFile, SAMPLE_INDEX StartDstSample,
+					NUMBER_OF_SAMPLES LengthToReplace, NUMBER_OF_SAMPLES SamplesToInsert);
+
+	// copy markers
+	CCueEditOperation(CWaveSoapFrontDoc * pDoc, CWaveFile & DstFile, SAMPLE_INDEX StartDstSample,
+					NUMBER_OF_SAMPLES LengthToReplace,
+					CWaveFile & SrcFile, SAMPLE_INDEX StartSrcSample,
+					NUMBER_OF_SAMPLES SamplesToInsert);
+
+	~CCueEditOperation();
+	virtual BOOL OperationProc();
+
+	CWaveFile m_SrcFile;
+	SAMPLE_INDEX m_StartDstSample;
+	NUMBER_OF_SAMPLES m_LengthToReplace;
+	SAMPLE_INDEX m_StartSrcSample;
+	NUMBER_OF_SAMPLES m_SamplesToInsert;
 };
 
 class CSelectionChangeOperation : public COperationContext
@@ -721,5 +750,16 @@ BOOL InitExpandOperation(CStagedContext * pContext,
 // delete area from StartSample to StartSample+Length
 BOOL InitShrinkOperation(CStagedContext * pContext,
 						CWaveFile & File, SAMPLE_INDEX StartSample, NUMBER_OF_SAMPLES Length, CHANNEL_MASK Channel);
+
+void InitCopyMarkers(CStagedContext * pContext,
+					CWaveFile & DstFile, SAMPLE_INDEX StartDstSample,
+					NUMBER_OF_SAMPLES LengthToReplace,
+					CWaveFile & SrcFile, SAMPLE_INDEX StartSrcSample,
+					NUMBER_OF_SAMPLES SamplesToInsert);
+
+void InitMoveMarkers(CStagedContext * pContext,
+					CWaveFile & DstFile, SAMPLE_INDEX StartDstSample,
+					NUMBER_OF_SAMPLES LengthToReplace,
+					NUMBER_OF_SAMPLES SamplesToInsert);
 
 #endif // AFX_OPERATIONCONTEXT2_H__FFA16C44_2FA7_11D4_9ADD_00C0F0583C4B__INCLUDED_
