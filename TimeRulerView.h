@@ -13,6 +13,7 @@
 
 class CTimeRulerView : public CHorizontalRuler
 {
+	typedef CHorizontalRuler BaseClass;
 protected:
 	CTimeRulerView();           // protected constructor used by dynamic creation
 	DECLARE_DYNCREATE(CTimeRulerView)
@@ -43,7 +44,16 @@ protected:
 	virtual void AssertValid() const;
 	virtual void Dump(CDumpContext& dc) const;
 #endif
+	unsigned HitTest(POINT p);
 
+	enum {
+		HitTestRuler = 0x00000000,          // non-specific area of the ruler hit - no bits set
+		HitTestRegionBegin = 0x40000000,    // mark of region begin hit
+		HitTestRegionEnd = 0x20000000,      // mark of region begin hit
+		HitTestMarker = 0x10000000,
+
+		HitTestCueIndexMask = 0x0000FFF,    // these bits contain index of the region/marker hit
+	};
 	// Generated message map functions
 protected:
 	//{{AFX_MSG(CTimeRulerView)
@@ -55,6 +65,8 @@ protected:
 	afx_msg void OnUpdateViewRulerSeconds(CCmdUI* pCmdUI);
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
+public:
+	afx_msg BOOL OnSetCursor(CWnd* pWnd, UINT nHitTest, UINT message);
 };
 
 #ifndef _DEBUG  // debug version in TimeRulerView.cpp
