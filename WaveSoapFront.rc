@@ -258,6 +258,11 @@ BEGIN
         MENUITEM "Invert",                      ID_PROCESS_INVERT
         MENUITEM "Insert &Silence...",          ID_PROCESS_INSERTSILENCE
         MENUITEM "&Resample...",                ID_PROCESS_RESAMPLE
+    END
+    POPUP "Tools"
+    BEGIN
+        MENUITEM "Options",                     ID_TOOLS_OPTIONS
+        MENUITEM "Interpolate",                 ID_TOOLS_INTERPOLATE
         POPUP "Synthesis"
         BEGIN
             MENUITEM "Expression Evaluation...",    ID_PROCESS_SYNTHESIS_EXPRESSION_EVALUATION
@@ -1564,6 +1569,8 @@ BEGIN
     ID_PROCESS_SYNTHESIS_EXPRESSIONEVALUATION 
                             "Create waveform from expression\nExpression evaluation"
     ID_VIEW_ZOOM_SELECTION  "Zoom to the selected area\nZoom selection"
+    ID_TOOLS_OPTIONS        "Change various settings for the application\nOptions"
+    ID_TOOLS_INTERPOLATE    "Interpolate the selected area (up to 128 samples)\nInterpolate"
 END
 
 #endif    // English (U.S.) resources

@@ -56,6 +56,10 @@ enum {
 	SaveFile_CloseAfterSave = 8,
 	SaveFile_SaveCopy = 0x10,
 };
+enum
+{
+	MaxInterpolatedLength = 128,
+};
 class CWaveSoapFrontDoc : public CDocument
 {
 protected: // create from serialization only
@@ -343,6 +347,8 @@ protected:
 	afx_msg void OnUpdateFileSaveAs(CCmdUI* pCmdUI);
 	afx_msg void OnUpdateFileSaveCopyAs(CCmdUI* pCmdUI);
 	afx_msg void OnFileSaveCopyAs();
+	afx_msg void OnUpdateToolsInterpolate(CCmdUI* pCmdUI);
+	afx_msg void OnToolsInterpolate();
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 

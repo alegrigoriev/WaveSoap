@@ -119,6 +119,8 @@ BEGIN_MESSAGE_MAP(CWaveSoapFrontDoc, CDocument)
 	ON_UPDATE_COMMAND_UI(ID_FILE_SAVE_AS, OnUpdateFileSaveAs)
 	ON_UPDATE_COMMAND_UI(ID_FILE_SAVE_COPY_AS, OnUpdateFileSaveCopyAs)
 	ON_COMMAND(ID_FILE_SAVE_COPY_AS, OnFileSaveCopyAs)
+	ON_UPDATE_COMMAND_UI(ID_TOOLS_INTERPOLATE, OnUpdateToolsInterpolate)
+	ON_COMMAND(ID_TOOLS_INTERPOLATE, OnToolsInterpolate)
 	//}}AFX_MSG_MAP
 END_MESSAGE_MAP()
 
@@ -1813,6 +1815,7 @@ void CWaveSoapFrontDoc::DoCopy(LONG Start, LONG End, LONG Channel, LPCTSTR FileN
 										m_SelectionEnd - m_SelectionStart,
 										CreateWaveFileTempDir
 										| CreateWaveFileDeleteAfterClose
+										| CreateWaveFileAllowMemoryFile
 										| CreateWaveFileDontCopyInfo
 										| CreateWaveFilePcmFormat
 										| CreateWaveFileTemp,
@@ -1927,6 +1930,7 @@ void CWaveSoapFrontDoc::DoCut(LONG Start, LONG End, LONG Channel)
 										End - Start,
 										CreateWaveFileTempDir
 										| CreateWaveFileDeleteAfterClose
+										| CreateWaveFileAllowMemoryFile
 										| CreateWaveFileDontCopyInfo
 										| CreateWaveFilePcmFormat
 										| CreateWaveFileTemp,
@@ -4200,4 +4204,118 @@ BOOL CWaveSoapFrontDoc::OpenWmaFileDocument(LPCTSTR lpszPathName)
 		return FALSE;
 	}
 	return FALSE;
+}
+
+void CWaveSoapFrontDoc::OnUpdateToolsInterpolate(CCmdUI* pCmdUI)
+{
+	// the area must be at least 5* length away from the file beginning and from the end
+	pCmdUI->Enable(m_SelectionStart != m_SelectionEnd
+					&& m_SelectionEnd - m_SelectionStart <= MaxInterpolatedLength   // 128
+					&& m_SelectionStart >= 5 * (m_SelectionEnd - m_SelectionStart)
+					&& m_WavFile.IsOpen()
+					&& m_SelectionEnd + 5 * (m_SelectionEnd - m_SelectionStart) < WaveFileSamples()
+					&& ! (m_OperationInProgress || m_bReadOnly));
+}
+
+void CWaveSoapFrontDoc::OnToolsInterpolate()
+{
+	int InterpolateSamples = m_SelectionEnd - m_SelectionStart;
+	int PreInterpolateSamples = 0;
+	int PostInterpolateSamples = 0;
+	int InterpolationOverlap;
+	bool BigGap = (InterpolateSamples > 32);
+	if (BigGap)
+	{
+		InterpolationOverlap = 2048 + InterpolateSamples + InterpolateSamples / 2;
+		PostInterpolateSamples = InterpolateSamples / 2;
+		PreInterpolateSamples = InterpolateSamples - InterpolateSamples / 2;
+	}
+	else
+	{
+		InterpolationOverlap = 5 * InterpolateSamples;
+	}
+	if (0 == InterpolateSamples
+		|| InterpolateSamples > MaxInterpolatedLength   // 128
+		|| m_SelectionStart < InterpolationOverlap
+		|| ! m_WavFile.IsOpen()
+		|| m_SelectionEnd + InterpolationOverlap >= WaveFileSamples()
+		|| m_OperationInProgress
+		|| m_bReadOnly)
+	{
+		return;
+	}
+	// interpolate the selected area.
+	int SampleSize = WaveSampleSize();
+	int nChannels = WaveChannels();
+	MMCKINFO * datack = WaveDataChunk();
+	DWORD ReadStartOffset = datack->dwDataOffset +
+							SampleSize * (m_SelectionStart - InterpolationOverlap);
+	DWORD WriteStartOffset = datack->dwDataOffset
+							+ SampleSize * (m_SelectionStart - PreInterpolateSamples);
+	// allocate the buffer
+	int BufferSamples = InterpolateSamples + 2 * InterpolationOverlap;
+	int InterpolateOffset = InterpolationOverlap;
+	int WriteBufferOffset = InterpolationOverlap  - PreInterpolateSamples;
+
+	__int16 * pBuf = new __int16[BufferSamples * nChannels];
+	if (NULL == pBuf)
+	{
+		return;
+	}
+
+	int ReadBytes = BufferSamples * SampleSize;
+	int WriteBytes = (InterpolateSamples + PreInterpolateSamples + PostInterpolateSamples)
+					* SampleSize;
+	if (ReadBytes != m_WavFile.ReadAt(pBuf, ReadBytes, ReadStartOffset))
+	{
+		delete[] pBuf;
+		return;
+	}
+	// create undo
+	if (UndoEnabled())
+	{
+		CUndoRedoContext * pUndo = new CUndoRedoContext(this, _T("Interpolate"));
+		if ( ! pUndo->InitUndoCopy(m_WavFile,
+									WriteStartOffset,
+									WriteStartOffset + WriteBytes,
+									m_SelectedChannel))
+		{
+			delete pUndo;
+			delete[] pBuf;
+			return;
+		}
+		pUndo->SaveUndoData(pBuf + WriteBufferOffset * nChannels, WriteBytes,
+							WriteStartOffset, m_SelectedChannel);
+		AddUndoRedo(pUndo);
+	}
+	// now, do the interpolation
+	if (m_SelectedChannel != 1) // mono or not right channel only
+	{
+		if (BigGap)
+		{
+			InterpolateBigGap(pBuf, InterpolateOffset, InterpolateSamples, nChannels);
+		}
+		else
+		{
+			InterpolateGap(pBuf, InterpolateOffset, InterpolateSamples, nChannels);
+		}
+	}
+	if (nChannels == 2
+		&& m_SelectedChannel != 0) // mono or not right channel only
+	{
+		if (BigGap)
+		{
+			InterpolateBigGap(pBuf + 1, InterpolateOffset, InterpolateSamples, nChannels);
+		}
+		else
+		{
+			InterpolateGap(pBuf + 1, InterpolateOffset, InterpolateSamples, nChannels);
+		}
+	}
+	// write the data back
+	m_WavFile.WriteAt(pBuf + WriteBufferOffset * nChannels, WriteBytes, WriteStartOffset);
+	SetModifiedFlag();
+	SoundChanged(m_WavFile.GetFileID(), m_SelectionStart - PreInterpolateSamples,
+				m_SelectionEnd + PostInterpolateSamples);
+	delete[] pBuf;
 }
