@@ -388,12 +388,6 @@ void CWaveSoapFrontDoc::BuildPeakInfo(BOOL bSavePeakFile)
 	CScanPeaksContext * pContext =
 		new CScanPeaksContext(this, m_WavFile, m_OriginalWavFile, bSavePeakFile);
 
-	if (NULL == pContext)
-	{
-		NotEnoughMemoryMessageBox();
-		return;
-	}
-
 	pContext->Execute();
 }
 
@@ -3448,17 +3442,14 @@ void CWaveSoapFrontDoc::ChangeChannels(NUMBER_OF_CHANNELS nChannels)
 
 	CConversionContext * pConversionContext = new CConversionContext(this, 0, 0, m_WavFile, DstFile, FALSE);
 
+	// for exaception safety, add pConversionContext immediately
 	pContext->AddContext(pConversionContext);
 
-	CChannelConvertor * pConvert =
-		new CChannelConvertor(WaveChannels(), nChannels, nSrcChan);
+	pConversionContext->AddWaveProc(new CChannelConvertor(WaveChannels(), nChannels, nSrcChan));
 
-	pConversionContext->AddWaveProc(pConvert);
+	pContext->AddContext(new CReplaceFileContext(this, _T(""), DstFile, false));
 
-	CReplaceFileContext * pReplaceFile =
-		new CReplaceFileContext(this, _T(""), m_WavFile, false);
-
-	pContext->AddContext(pReplaceFile);
+	pContext->AddContext(new CScanPeaksContext(this, DstFile, m_OriginalWavFile, FALSE));
 
 	if (UndoEnabled())
 	{
@@ -4062,17 +4053,17 @@ void CWaveSoapFrontDoc::OnProcessResample()
 	(new CStagedContext(this, 0, IDS_RESAMPLE_STATUS_PROMPT, IDS_RESAMPLE_OPERATION_NAME));
 
 	CResampleContext * pResampleContext = new CResampleContext(this,
-																0, 0,
-																m_WavFile, DstFile, ResampleRatio, ResampleQuality);
+																0, 0, m_WavFile, DstFile, ResampleRatio, ResampleQuality);
 
 	pContext->AddContext(pResampleContext);
 
-	CReplaceFileContext * pReplace = new CReplaceFileContext(this, _T(""), m_WavFile, false);
+	pContext->AddContext(new CReplaceFileContext(this, _T(""), DstFile, false));
 
-	pContext->AddContext(pReplace);
+	pContext->AddContext(new CScanPeaksContext(this, DstFile, m_OriginalWavFile, FALSE));
+
 	if (dlg.UndoEnabled())
 	{
-		pReplace->CreateUndo();
+		pContext->CreateUndo();
 	}
 
 	pContext.release()->Execute();
