@@ -5,6 +5,7 @@
 #include "resource.h"
 #include "MainFrm.h"
 #include "OperationContext.h"
+#include "Resample.h"
 
 #include "OperationDialogs.h"
 #include <afxpriv.h>
@@ -16,6 +17,12 @@ static char THIS_FILE[] = __FILE__;
 
 /////////////////////////////////////////////////////////////////////////////
 // CWaveSoapFrontDoc
+
+BOOL AFXAPI AfxFullPath(LPTSTR lpszPathOut, LPCTSTR lpszFileIn);
+UINT AFXAPI AfxGetFileTitle(LPCTSTR lpszPathName, LPTSTR lpszTitle, UINT nMax);
+UINT AFXAPI AfxGetFileName(LPCTSTR lpszPathName, LPTSTR lpszTitle, UINT nMax);
+BOOL AFXAPI AfxComparePath(LPCTSTR lpszPath1, LPCTSTR lpszPath2);
+
 
 IMPLEMENT_DYNCREATE(CWaveSoapFrontDoc, CDocument)
 
@@ -104,9 +111,148 @@ BEGIN_MESSAGE_MAP(CWaveSoapFrontDoc, CDocument)
 	ON_COMMAND(ID_PROCESS_INVERT, OnProcessInvert)
 	ON_UPDATE_COMMAND_UI(ID_VIEW_RESCAN_PEAKS, OnUpdateViewRescanPeaks)
 	ON_COMMAND(ID_VIEW_RESCAN_PEAKS, OnViewRescanPeaks)
+	ON_UPDATE_COMMAND_UI(ID_PROCESS_SYNTHESIS_EXPRESSION_EVALUATION, OnUpdateProcessSynthesisExpressionEvaluation)
+	ON_COMMAND(ID_PROCESS_SYNTHESIS_EXPRESSION_EVALUATION, OnProcessSynthesisExpressionEvaluation)
+	ON_UPDATE_COMMAND_UI(IDC_VIEW_STATUS_HHMMSS, OnUpdateViewStatusHhmmss)
+	ON_UPDATE_COMMAND_UI(IDC_VIEW_STATUS_SAMPLES, OnUpdateViewStatusSamples)
+	ON_UPDATE_COMMAND_UI(IDC_VIEW_STATUS_SECONDS, OnUpdateViewStatusSeconds)
+	ON_UPDATE_COMMAND_UI(ID_FILE_SAVE_AS, OnUpdateFileSaveAs)
+	ON_UPDATE_COMMAND_UI(ID_FILE_SAVE_COPY_AS, OnUpdateFileSaveCopyAs)
+	ON_COMMAND(ID_FILE_SAVE_COPY_AS, OnFileSaveCopyAs)
 	//}}AFX_MSG_MAP
 END_MESSAGE_MAP()
 
+IMPLEMENT_DYNCREATE(CWaveSoapMP3Doc, CWaveSoapFrontDoc)
+
+BEGIN_MESSAGE_MAP(CWaveSoapMP3Doc, CWaveSoapFrontDoc)
+	//{{AFX_MSG_MAP(CWaveSoapMP3Doc)
+	//}}AFX_MSG_MAP
+END_MESSAGE_MAP()
+
+struct SaveFormatTag
+{
+	SaveFormatTag() : dwTag(-1) {}
+	~SaveFormatTag() {}
+	void SetData(DWORD tag, LPCTSTR name, HACMDRIVERID hadid)
+	{
+		dwTag = tag;
+		Name = name;
+		m_hadid = hadid;
+	}
+
+	DWORD dwTag;
+	HACMDRIVERID m_hadid;
+	CString Name;
+};
+
+struct SaveFormat
+{
+	SaveFormat() : pWf(NULL) {}
+	~SaveFormat();
+	void SetData(WAVEFORMATEX * wf, LPCTSTR name);
+
+	WAVEFORMATEX * pWf;
+	CString Name;
+};
+
+void SaveFormat::SetData(WAVEFORMATEX * wf, LPCTSTR name)
+{
+	int size = sizeof WAVEFORMATEX + wf->cbSize;
+	if (WAVE_FORMAT_PCM == wf->wFormatTag)
+	{
+		size = sizeof WAVEFORMATEX;
+	}
+	pWf = (WAVEFORMATEX *) new char[size];
+	if (NULL != pWf)
+	{
+		memcpy(pWf, wf, size);
+		if (WAVE_FORMAT_PCM == wf->wFormatTag)
+		{
+			pWf->cbSize = 0;
+		}
+	}
+	Name = name;
+}
+
+SaveFormat::~SaveFormat()
+{
+	if (NULL != pWf)
+	{
+		delete[] (char*) pWf;
+	}
+}
+
+class CWaveSoapFileSaveDialog : public CFileDialog
+{
+public:
+	CWaveSoapFileSaveDialog(BOOL bOpenFileDialog, // TRUE for FileOpen, FALSE for FileSaveAs
+							LPCTSTR lpszDefExt = NULL,
+							LPCTSTR lpszFileName = NULL,
+							DWORD dwFlags = OFN_HIDEREADONLY | OFN_OVERWRITEPROMPT,
+							LPCTSTR lpszFilter = NULL,
+							CWnd* pParentWnd = NULL)
+		: CFileDialog(bOpenFileDialog, lpszDefExt, lpszFileName, dwFlags,
+					lpszFilter, pParentWnd),
+		m_pWf(NULL),
+		m_SelectedFormat(-1),
+		m_bCompatibleFormatsOnly(TRUE),
+		m_pDocument(NULL)
+	{}
+	~CWaveSoapFileSaveDialog() {}
+
+	CWaveFile m_WaveFile;
+	CComboBox m_FormatCombo;
+	CComboBox m_AttributesCombo;
+	DWORD m_CurrentEnumeratedTag;
+	DWORD m_SelectedTag;
+	int m_SelectedFormat;
+	BOOL m_bCompatibleFormatsOnly;
+	CString m_FormatTagName;
+
+	CArray<SaveFormatTag, SaveFormatTag&> m_FormatTags;
+	CArray<SaveFormat, SaveFormat&> m_Formats;
+
+	WAVEFORMATEX * m_pWf; // original format
+	//int nChannels;
+	//int nBitsPerSample;
+	//int nSamplingRate;
+	//int nSamples;
+	CString WaveFormat;
+	CWaveSoapFrontDoc * m_pDocument;
+
+	virtual BOOL OnFileNameOK();
+	virtual UINT OnShareViolation( LPCTSTR lpszPathName );
+	//virtual void OnLBSelChangedNotify(UINT nIDBox, UINT iCurSel, UINT nCode);
+
+	void FillFormatArray();
+	void FillFormatTagArray();
+	WAVEFORMATEX * GetWaveFormat();
+	virtual void OnInitDone();
+	//virtual void OnTypeChange();
+	//void ClearFileInfoDisplay();
+
+	//{{AFX_MSG(CWaveSoapFileSaveDialog)
+	afx_msg void OnCompatibleFormatsClicked();
+	afx_msg void OnComboFormatsChange();
+	//}}AFX_MSG
+	DECLARE_MESSAGE_MAP()
+private:
+	static BOOL _stdcall FormatEnumCallback(HACMDRIVERID hadid,
+											LPACMFORMATDETAILS pafd, DWORD dwInstance, DWORD fdwSupport);
+
+	static BOOL _stdcall FormatTestEnumCallback(HACMDRIVERID hadid,
+												LPACMFORMATDETAILS pafd, DWORD dwInstance, DWORD fdwSupport);
+
+	static BOOL _stdcall FormatTagEnumCallback(HACMDRIVERID hadid,
+												LPACMFORMATTAGDETAILS paftd, DWORD dwInstance, DWORD fdwSupport);
+};
+
+BEGIN_MESSAGE_MAP(CWaveSoapFileSaveDialog, CFileDialog)
+	//{{AFX_MSG_MAP(CWaveSoapFileSaveDialog)
+	ON_BN_CLICKED(IDC_CHECK_COMPATIBLE_FORMATS, OnCompatibleFormatsClicked)
+	ON_CBN_SELCHANGE(IDC_COMBO_FORMAT, OnComboFormatsChange)
+	//}}AFX_MSG_MAP
+END_MESSAGE_MAP()
 /////////////////////////////////////////////////////////////////////////////
 // CWaveSoapFrontDoc construction/destruction
 
@@ -122,6 +268,7 @@ CWaveSoapFrontDoc::CWaveSoapFrontDoc()
 	m_hThreadEvent(NULL),
 	m_bRunThread(false),
 	m_bReadOnly(true),
+	m_bClosing(false),
 	m_bDirectMode(false),
 	m_bInOnIdle(false),
 	m_bChannelsLocked(true),
@@ -136,16 +283,15 @@ CWaveSoapFrontDoc::CWaveSoapFrontDoc()
 	m_OperationNonCritical(false),
 	m_Thread(ThreadProc, this),
 	m_ModificationSequenceNumber(0),
-	m_PrevChannelToCopy(2),
+	m_PrevChannelToCopy(ALL_CHANNELS),
 	m_DefaultPasteMode(0),
-	m_SelectedChannel(2)
+	m_SelectedChannel(ALL_CHANNELS)
 {
 	m_bUndoEnabled = (FALSE != GetApp()->m_bUndoEnabled);
 	m_bRedoEnabled = (FALSE != GetApp()->m_bRedoEnabled);
 	m_Thread.m_bAutoDelete = FALSE;
 	m_hThreadEvent = CreateEvent(NULL, FALSE, FALSE, NULL);
 	TRACE("CWaveSoapFrontDoc::CWaveSoapFrontDoc()\n");
-	memset(& WavFileInfo, 0, sizeof WavFileInfo);
 	m_bRunThread = TRUE;
 	m_Thread.CreateThread(0, 0x10000);
 
@@ -178,11 +324,18 @@ CWaveSoapFrontDoc::~CWaveSoapFrontDoc()
 	if (NULL != m_Thread.m_hThread)
 	{
 		m_bRunThread = FALSE;
+#ifdef _DEBUG
+		DWORD Time = timeGetTime();
+#endif
 		SetEvent(m_hThreadEvent);
 		if (WAIT_TIMEOUT == WaitForSingleObject(m_Thread.m_hThread, 5000))
 		{
 			TerminateThread(m_Thread.m_hThread, -1);
 		}
+#ifdef _DEBUG
+		TRACE("Doc Thread finished in %d ms\n",
+			timeGetTime() - Time);
+#endif
 	}
 	if (m_hThreadEvent != NULL)
 	{
@@ -206,7 +359,7 @@ BOOL CWaveSoapFrontDoc::OnNewDocument()
 	m_CaretPosition = 0;
 	m_SelectionStart = 0;
 	m_SelectionEnd = 0;
-	m_SelectedChannel = 2;  // both channels
+	m_SelectedChannel = ALL_CHANNELS;
 	m_TimeSelectionMode = TRUE;
 	m_bReadOnly = false;
 	CWaveFile * pTemplateFile = & GetApp()->m_NewTemplateFile;
@@ -215,13 +368,10 @@ BOOL CWaveSoapFrontDoc::OnNewDocument()
 		pTemplateFile = NULL;
 	}
 
-	if ( FALSE == m_WavFile.CreateWaveFile(pTemplateFile, 2, // 2 channels
+	if ( FALSE == m_WavFile.CreateWaveFile(pTemplateFile, NULL, ALL_CHANNELS, // 2 channels
 											0, // empty
 											CreateWaveFileTempDir
-											// keep the file for debug
-#if 1 || !defined _DEBUG
 											| CreateWaveFileDeleteAfterClose
-#endif
 											| CreateWaveFilePcmFormat
 											| CreateWaveFileTemp,
 											NULL))
@@ -229,19 +379,24 @@ BOOL CWaveSoapFrontDoc::OnNewDocument()
 		AfxMessageBox(IDS_UNABLE_TO_CREATE_NEW_FILE, MB_OK | MB_ICONEXCLAMATION);
 		return FALSE;
 	}
-
-	m_SizeOfWaveData = WaveDataChunk()->cksize;
-	m_WavFile.GetFileInformationByHandle(& WavFileInfo);
+	m_OriginalWavFile = m_WavFile;
 	return TRUE;
 }
 
-void CWaveSoapFrontDoc::LoadPeakFile()
+void CWaveSoapFrontDoc::LoadPeakFile(CWaveFile & WaveFile)
 {
 	// if peak file exists and the wav file length/date/time matches the stored
 	// length/date/time, then use this peak file.
 	// otherwise scan the wav file and build the new peak file
 	CFile PeakFile;
 	PeakFileHeader pfh;
+	CString szPeakFilename(WaveFile.GetName());
+
+	if (0 == szPeakFilename.Right(4).CompareNoCase(_T(".WAV")))
+	{
+		szPeakFilename.Delete(szPeakFilename.GetLength() - 4, 4);
+	}
+	szPeakFilename += _T(".wspk");
 	if (PeakFile.Open(szPeakFilename,
 					CFile::modeRead | CFile::shareDenyWrite | CFile::typeBinary))
 	{
@@ -253,17 +408,17 @@ void CWaveSoapFrontDoc::LoadPeakFile()
 			// read the rest of the header
 			&& pfh.dwSize - offsetof(PeakFileHeader, WaveFileTime)
 			== PeakFile.Read( & pfh.WaveFileTime, pfh.dwSize - offsetof(PeakFileHeader, WaveFileTime))
-			&& pfh.WaveFileTime.dwHighDateTime == WavFileInfo.ftLastWriteTime.dwHighDateTime
-			&& pfh.WaveFileTime.dwLowDateTime == WavFileInfo.ftLastWriteTime.dwLowDateTime
-			&& pfh.dwWaveFileSize == WavFileInfo.nFileSizeLow
-			&& 0 == memcmp(& pfh.wfFormat, WaveFormat(), sizeof pfh.wfFormat)
+			&& pfh.WaveFileTime.dwHighDateTime == WaveFile.GetFileInformation().ftLastWriteTime.dwHighDateTime
+			&& pfh.WaveFileTime.dwLowDateTime == WaveFile.GetFileInformation().ftLastWriteTime.dwLowDateTime
+			&& pfh.dwWaveFileSize == WaveFile.GetFileInformation().nFileSizeLow
+			&& 0 == memcmp(& pfh.wfFormat, WaveFile.GetWaveFormat(), sizeof pfh.wfFormat)
 			&& pfh.PeakInfoSize
 			== CalculatePeakInfoSize() * sizeof (WavePeak)
 			)
 		{
 			// allocate data and read it
 			m_WavePeakSize = 0;
-			if ( ! AllocatePeakData(m_WavFile.NumberOfSamples()))
+			if ( ! AllocatePeakData(WaveFile.NumberOfSamples()))
 			{
 				TRACE("Unable to allocate peak info buffer\n");
 				return;
@@ -278,10 +433,10 @@ void CWaveSoapFrontDoc::LoadPeakFile()
 		}
 		PeakFile.Close();
 	}
-	BuildPeakInfo();
+	BuildPeakInfo(TRUE);
 }
 
-void CWaveSoapFrontDoc::BuildPeakInfo()
+void CWaveSoapFrontDoc::BuildPeakInfo(BOOL bSavePeakFile)
 {
 	// read the DATA chunk of wavefile
 	if ( ! AllocatePeakData(m_WavFile.NumberOfSamples()))
@@ -299,6 +454,10 @@ void CWaveSoapFrontDoc::BuildPeakInfo()
 	{
 		return;
 	}
+	if (bSavePeakFile)
+	{
+		pContext->m_Flags |= ScanPeaksSavePeakFile;
+	}
 	pContext->m_Start = WaveDataChunk()->dwDataOffset;
 	pContext->m_Position = pContext->m_Start;
 	pContext->m_End = pContext->m_Start + WaveDataChunk()->cksize;
@@ -309,24 +468,32 @@ void CWaveSoapFrontDoc::BuildPeakInfo()
 		delete pContext;
 		return;
 	}
-	QueueOperation(pContext);
+	pContext->Execute();
 }
 
-void CWaveSoapFrontDoc::SavePeakInfo()
+void CWaveSoapFrontDoc::SavePeakInfo(CWaveFile & WaveFile)
 {
 	CFile PeakFile;
 	PeakFileHeader pfh;
+	CString szPeakFilename(WaveFile.GetName());
+
+	if (0 == szPeakFilename.Right(4).CompareNoCase(_T(".WAV")))
+	{
+		szPeakFilename.Delete(szPeakFilename.GetLength() - 4, 4);
+	}
+	szPeakFilename += _T(".wspk");
+
 	if (PeakFile.Open(szPeakFilename,
 					CFile::modeCreate | CFile::modeWrite | CFile::shareExclusive | CFile::typeBinary))
 	{
 		pfh.dwSize = sizeof PeakFileHeader;
 		pfh.dwSignature = PeakFileHeader::pfhSignature;
 		pfh.dwVersion = PeakFileHeader::pfhMaxVersion;
-		pfh.dwWaveFileSize = m_WavFile.m_File.GetFileSize(NULL);
+		pfh.dwWaveFileSize = WaveFile.GetFileSize(NULL);
 		pfh.Granularity = m_PeakDataGranularity;
 		pfh.PeakInfoSize = CalculatePeakInfoSize() * sizeof (WavePeak);
-		pfh.WaveFileTime = WavFileInfo.ftLastWriteTime;
-		pfh.wfFormat = * WaveFormat();
+		pfh.WaveFileTime = WaveFile.GetFileInformation().ftLastWriteTime;
+		pfh.wfFormat = * WaveFile.GetWaveFormat();
 
 		PeakFile.Write( & pfh, sizeof pfh);
 		PeakFile.Write(m_pPeaks, pfh.PeakInfoSize);
@@ -368,7 +535,7 @@ BOOL CWaveSoapFrontDoc::AllocateWaveBuffer(size_t size)
 }
 #endif
 
-BOOL CWaveSoapFrontDoc::OpenWaveFile(LPCTSTR szName, DWORD flags)
+BOOL CWaveSoapFrontDoc::OpenWaveFile(CWaveFile & WaveFile, LPCTSTR szName, DWORD flags)
 {
 	CString s;
 	UINT format = 0;
@@ -378,7 +545,6 @@ BOOL CWaveSoapFrontDoc::OpenWaveFile(LPCTSTR szName, DWORD flags)
 		{
 			if (m_WavFile.FindData())
 			{
-				m_SizeOfWaveData = WaveDataChunk()->cksize;
 				return TRUE;
 			}
 			else
@@ -420,17 +586,406 @@ void CWaveSoapFrontDoc::Serialize(CArchive& ar)
 	if (ar.IsStoring())
 	{
 		// TODO: add storing code here
-		ar << m_szWaveFilename;
-		ar << szPeakFilename;
 	}
 	else
 	{
 		// TODO: add loading code here
-		ar >> m_szWaveFilename;
-		ar >> szPeakFilename;
 	}
 }
 
+void _AfxAppendFilterSuffix(CString& filter, OPENFILENAME& ofn,
+							CDocTemplate* pTemplate, CString* pstrDefaultExt);
+
+// enumerates all formats for the tag
+BOOL _stdcall CWaveSoapFileSaveDialog::FormatEnumCallback(
+														HACMDRIVERID hadid, LPACMFORMATDETAILS pafd,
+														DWORD dwInstance, DWORD fdwSupport)
+{
+	CWaveSoapFileSaveDialog * pDlg = (CWaveSoapFileSaveDialog *) dwInstance;
+	TRACE("FormatEnum: format=%s, tag=%d\n", pafd->szFormat, pafd->dwFormatTag);
+	if (WAVE_FORMAT_MPEGLAYER3 == pafd->dwFormatTag)
+	{
+		MPEGLAYER3WAVEFORMAT * pwf = (MPEGLAYER3WAVEFORMAT *) pafd->pwfx;
+		TRACE("\"%s\", cbSize = %d, wID=%X, fdwFlags=%X, nBlockSize=%d, nFramesPerBlock=%d, nCodecDelay=%d\n",
+			pafd->szFormat, pafd->pwfx->cbSize, pwf->wID, pwf->fdwFlags,
+			pwf->nBlockSize, pwf->nFramesPerBlock, pwf->nCodecDelay);
+	}
+	if (pDlg->m_CurrentEnumeratedTag == pafd->dwFormatTag
+		&& (! pDlg->m_bCompatibleFormatsOnly
+			|| pDlg->m_CurrentEnumeratedTag != WAVE_FORMAT_PCM
+			|| (pafd->pwfx->nSamplesPerSec == pDlg->m_pWf->nSamplesPerSec
+				&& pafd->pwfx->nChannels == pDlg->m_pWf->nChannels
+				&& (pafd->pwfx->wBitsPerSample == pDlg->m_pWf->wBitsPerSample
+					|| 16 == pafd->pwfx->wBitsPerSample))))
+	{
+		int nIndex = pDlg->m_Formats.GetSize();
+		pDlg->m_Formats.SetSize(nIndex+1);
+		pDlg->m_Formats[nIndex].SetData(pafd->pwfx, pafd->szFormat);
+	}
+	return TRUE;
+}
+
+BOOL CWaveSoapFileSaveDialog::OnFileNameOK()
+{
+	// save format selection
+	m_SelectedFormat = m_AttributesCombo.GetCurSel();
+	return 0;   // OK to close dialog
+}
+
+UINT CWaveSoapFileSaveDialog::OnShareViolation( LPCTSTR lpszPathName)
+{
+	// if the name is the same as current document name, just return
+	// if it's different, display warning
+	if (m_pDocument->m_OriginalWavFile.IsOpen()
+		&& AfxComparePath(m_pDocument->m_OriginalWavFile.GetName(), lpszPathName))
+	{
+		return OFN_SHAREFALLTHROUGH;
+	}
+	return OFN_SHAREWARN;
+}
+
+WAVEFORMATEX * CWaveSoapFileSaveDialog::GetWaveFormat()
+{
+	if (m_SelectedFormat >= m_Formats.GetSize()
+		|| m_SelectedFormat < 0)
+	{
+		return NULL;
+	}
+	return m_Formats[m_SelectedFormat].pWf;
+}
+
+// if can convert to any format of the tag, add the tag to the table
+BOOL _stdcall CWaveSoapFileSaveDialog::FormatTestEnumCallback(
+															HACMDRIVERID hadid, LPACMFORMATDETAILS pafd,
+															DWORD dwInstance, DWORD fdwSupport)
+{
+	CWaveSoapFileSaveDialog * pDlg = (CWaveSoapFileSaveDialog *) dwInstance;
+	TRACE("FormatTestEnumCallback: format=%s, tag=%d\n", pafd->szFormat, pafd->dwFormatTag);
+	if (pDlg->m_CurrentEnumeratedTag == pafd->dwFormatTag)
+	{
+		int nIndex = pDlg->m_FormatTags.GetSize();
+		pDlg->m_FormatTags.SetSize(nIndex+1);
+		pDlg->m_FormatTags[nIndex].SetData(pafd->dwFormatTag, pDlg->m_FormatTagName, hadid);
+		return FALSE;   // no more enumeration required
+	}
+	else
+	{
+		return TRUE;    // enumerate more
+	}
+}
+
+BOOL _stdcall CWaveSoapFileSaveDialog::FormatTagEnumCallback(
+															HACMDRIVERID hadid, LPACMFORMATTAGDETAILS paftd,
+															DWORD dwInstance, DWORD fdwSupport)
+{
+	CWaveSoapFileSaveDialog * pDlg = (CWaveSoapFileSaveDialog *) dwInstance;
+	WAVEFORMATEX * pwfx = (WAVEFORMATEX *)new char[0xFFFF];
+	ACMFORMATDETAILS afd;
+	TRACE("FormatTagEnum: name=%s, driverID=%x, tag=%x, formats=%d, max size=%d\n", paftd->szFormatTag,
+		hadid, paftd->dwFormatTag, paftd->cStandardFormats, paftd->cbFormatSize);
+	pwfx->cbSize = 0;
+	pwfx->wFormatTag = WAVE_FORMAT_PCM;
+	pwfx->nChannels = pDlg->m_pWf->nChannels;
+	pwfx->nSamplesPerSec = pDlg->m_pWf->nSamplesPerSec;
+	pwfx->wBitsPerSample = 16;
+	pwfx->nBlockAlign = pDlg->m_pWf->nChannels * 2;
+	pwfx->nAvgBytesPerSec = pwfx->nSamplesPerSec * pwfx->nBlockAlign;
+	memset( & afd, 0, sizeof afd);
+	afd.cbStruct = sizeof afd;
+	afd.cbwfx = 0xFFFF;
+	afd.dwFormatTag = paftd->dwFormatTag;
+	afd.pwfx = pwfx;
+	pDlg->m_CurrentEnumeratedTag = afd.dwFormatTag;
+
+	HACMDRIVER had = NULL;
+	if (MMSYSERR_NOERROR == acmDriverOpen(&had, hadid, 0))
+	{
+		DWORD flags = 0;
+		pDlg->m_FormatTagName = paftd->szFormatTag;
+		//pDlg->m_FormatTagName += " ";
+		if (paftd->dwFormatTag != WAVE_FORMAT_PCM
+			&& pDlg->m_bCompatibleFormatsOnly)
+		{
+			flags = ACM_FORMATENUMF_CONVERT;
+		}
+		int res = acmFormatEnum(had, & afd, FormatTestEnumCallback, dwInstance, flags);
+		TRACE("acmFormatEnum returned %x\n", res);
+#ifdef _DEBUG
+		if (WAVE_FORMAT_MPEGLAYER3 == afd.dwFormatTag)
+		{
+			for (int i = 0; i < paftd->cStandardFormats; i++)
+			{
+				memset( & afd, 0, sizeof afd);
+				afd.cbStruct = sizeof afd;
+				afd.cbwfx = 0xFFFF;
+				afd.dwFormatTag = paftd->dwFormatTag;
+				afd.pwfx = pwfx;
+				afd.dwFormatIndex = i;
+				if (MMSYSERR_NOERROR == acmFormatDetails(had, & afd, ACM_FORMATDETAILSF_INDEX))
+				{
+					MPEGLAYER3WAVEFORMAT * wf = (MPEGLAYER3WAVEFORMAT *) pwfx;
+					TRACE("MP3 format: %d ch, %d sps, %d bytes/s, wID=%d, nBlockSize=%d, nFramesPerBlock=%d, nCodecDelay=%X\n",
+						pwfx->nChannels, pwfx->nSamplesPerSec, pwfx->nAvgBytesPerSec,
+						wf->wID, wf->nBlockSize, wf->nFramesPerBlock, wf->nCodecDelay);
+				}
+			}
+			WAVEFORMATEX wfx;
+			wfx.wFormatTag = WAVE_FORMAT_PCM;
+			wfx.nChannels = 2;
+			wfx.nSamplesPerSec = 44100;
+			wfx.wBitsPerSample = 16;
+			wfx.nBlockAlign = 4;
+			wfx.nAvgBytesPerSec = 44100 * 4;
+			wfx.cbSize = 0;
+			MPEGLAYER3WAVEFORMAT mwf;
+			mwf.wfx.wFormatTag = WAVE_FORMAT_MPEGLAYER3;
+			mwf.wfx.nChannels = 2;
+			mwf.wfx.nSamplesPerSec = 44100;
+			mwf.wfx.wBitsPerSample = 0;
+			mwf.wfx.nBlockAlign = 1;
+			mwf.wfx.nAvgBytesPerSec = 128000/8;
+			mwf.wfx.cbSize = 12;
+			mwf.wID = MPEGLAYER3_ID_MPEG;
+			mwf.nBlockSize = 156;
+			mwf.nFramesPerBlock = 1;
+			mwf.nCodecDelay=0x5B4;
+			HACMSTREAM has= 0;
+			if (0 == acmStreamOpen( & has, had, & mwf.wfx, &wfx, 0, 0, 0,ACM_STREAMOPENF_NONREALTIME))
+			{
+				acmStreamClose(has, 0);
+				TRACE("Conversion from MP3 to PCM is possible\n");
+			}
+			else
+			{
+				TRACE("Conversion from MP3 to PCM is NOT possible\n");
+			}
+			if (0) if (0 == acmFormatSuggest(had, &wfx, & mwf.wfx, sizeof mwf,
+											ACM_FORMATSUGGESTF_WFORMATTAG|
+											ACM_FORMATSUGGESTF_NCHANNELS
+											|ACM_FORMATSUGGESTF_NSAMPLESPERSEC
+						))
+				{
+					TRACE("Succested format: %d sps, %d bytes/s, wID=%d, nBlockSize=%d, nFramesPerBlock=%d, nCodecDelay=%X\n",
+						mwf.wfx.nSamplesPerSec, mwf.wfx.nAvgBytesPerSec,
+						mwf.wID, mwf.nBlockSize, mwf.nFramesPerBlock, mwf.nCodecDelay);
+				}
+				else
+				{
+					TRACE("No format suggested\n");
+				}
+
+			if (0 == acmFormatSuggest(had, & mwf.wfx, &wfx, sizeof mwf,
+									ACM_FORMATSUGGESTF_WFORMATTAG|
+									ACM_FORMATSUGGESTF_NCHANNELS
+									|ACM_FORMATSUGGESTF_NSAMPLESPERSEC
+				))
+			{
+				TRACE("Succested source MP3 format: %d sps, %d bytes/s, wID=%d, nBlockSize=%d, nFramesPerBlock=%d, nCodecDelay=%X\n",
+					mwf.wfx.nSamplesPerSec, mwf.wfx.nAvgBytesPerSec,
+					mwf.wID, mwf.nBlockSize, mwf.nFramesPerBlock, mwf.nCodecDelay);
+			}
+			else
+			{
+				TRACE("No source MP3format suggested\n");
+			}
+
+			if (0 == acmStreamOpen( & has, had, &wfx, & mwf.wfx, 0, 0, 0, ACM_STREAMOPENF_NONREALTIME))
+			{
+				acmStreamClose(has, 0);
+				TRACE("Conversion from PCM to MP3 is possible\n");
+			}
+			else
+			{
+				TRACE("Conversion from PCM to MP3 is NOT possible\n");
+			}
+		}
+#endif
+		acmDriverClose(had, 0);
+	}
+	delete [] (char*)pwfx;
+	return TRUE;
+}
+
+void CWaveSoapFileSaveDialog::FillFormatTagArray()
+{
+	if (m_FormatCombo.m_hWnd == NULL
+		&& ! m_FormatCombo.SubclassDlgItem(IDC_COMBO_FORMAT, this))
+	{
+		return;
+	}
+	m_FormatTags.RemoveAll();
+
+	ACMFORMATTAGDETAILS atd;
+	// enum all formats
+	memset( & atd, 0, sizeof atd);
+	atd.cbStruct = sizeof atd;
+	atd.dwFormatTag = WAVE_FORMAT_UNKNOWN;
+	acmFormatTagEnum(NULL, & atd, FormatTagEnumCallback, DWORD(this), 0);
+
+	m_FormatCombo.ResetContent();
+	int sel = -1;
+	for (int i = 0; i < m_FormatTags.GetSize(); i++)
+	{
+		if (m_FormatTags[i].dwTag == m_SelectedTag)
+		{
+			sel = i;
+		}
+		m_FormatCombo.AddString(m_FormatTags[i].Name);
+	}
+
+	if (-1 == sel
+		&& m_FormatTags.GetSize() > 0)
+	{
+		sel = 0;
+		m_SelectedTag = m_FormatTags[0].dwTag;
+	}
+	m_FormatCombo.SetCurSel(sel);
+}
+
+void CWaveSoapFileSaveDialog::FillFormatArray()
+{
+	if (m_AttributesCombo.m_hWnd == NULL
+		&& ! m_AttributesCombo.SubclassDlgItem(IDC_COMBO_ATTRIBUTES, this))
+	{
+		return;
+	}
+	m_Formats.RemoveAll();
+
+	int SelFormat = m_FormatCombo.GetCurSel();
+	if (-1 == SelFormat || SelFormat >= m_FormatTags.GetSize())
+	{
+		return;
+	}
+
+	DWORD dwFormatTag = m_FormatTags[SelFormat].dwTag;
+	WAVEFORMATEX * pwfx = (WAVEFORMATEX *)new char[0xFFFF];
+	ACMFORMATDETAILS afd;
+
+	pwfx->cbSize = 0;
+	pwfx->wFormatTag = WAVE_FORMAT_PCM;
+	pwfx->nChannels = m_pWf->nChannels;
+	pwfx->nSamplesPerSec = m_pWf->nSamplesPerSec;
+	pwfx->wBitsPerSample = 16;
+	pwfx->nBlockAlign = m_pWf->nChannels * 2;
+	pwfx->nAvgBytesPerSec = pwfx->nSamplesPerSec * pwfx->nBlockAlign;
+	memset( & afd, 0, sizeof afd);
+	afd.cbStruct = sizeof afd;
+	afd.cbwfx = 0xFFFF;
+	afd.dwFormatTag = dwFormatTag;
+	afd.pwfx = pwfx;
+	m_CurrentEnumeratedTag = dwFormatTag;
+
+	HACMDRIVER had = NULL;
+	if (MMSYSERR_NOERROR == acmDriverOpen(&had, m_FormatTags[SelFormat].m_hadid, 0))
+	{
+		DWORD flags = 0;
+		if (dwFormatTag != WAVE_FORMAT_PCM
+			&& m_bCompatibleFormatsOnly)
+		{
+			flags = ACM_FORMATENUMF_CONVERT;
+		}
+		int res = acmFormatEnum(had, & afd, FormatEnumCallback, DWORD(this), flags);
+		TRACE("acmFormatEnum returned %x\n", res);
+		acmDriverClose(had, 0);
+	}
+	delete [] (char*)pwfx;
+
+	m_AttributesCombo.ResetContent();
+	int sel = -1;
+	for (int i = 0; i < m_Formats.GetSize(); i++)
+	{
+		WAVEFORMATEX * pwf = m_Formats[i].pWf;
+		if (dwFormatTag == m_pWf->wFormatTag)
+		{
+			// select exact match
+			if (0 == memcmp(pwf, m_pWf, m_pWf->cbSize + sizeof (WAVEFORMATEX)))
+			{
+				sel = i;
+			}
+		}
+		else
+		{
+			// select the best match
+			if (pwf->nSamplesPerSec == m_pWf->nSamplesPerSec
+				&& (-1 == sel || pwf->nChannels == m_pWf->nChannels)
+				&& (dwFormatTag != WAVE_FORMAT_PCM
+					|| pwf->wBitsPerSample == m_pWf->wBitsPerSample))
+			{
+				sel = i;
+			}
+		}
+		m_AttributesCombo.AddString(m_Formats[i].Name);
+	}
+	if (-1 == sel)
+	{
+		if (dwFormatTag != WAVE_FORMAT_PCM)
+		{
+			sel = 0;
+		}
+		else
+		{
+			// sample rate is non standard
+			// add two formats to the list for mono and stereo
+			for (int ch = 2; ch >= 1; ch--)
+			{
+				WAVEFORMATEX wf =
+				{
+					WAVE_FORMAT_PCM,
+					ch,
+					m_pWf->nSamplesPerSec,
+					m_pWf->nSamplesPerSec * ch * 2,  // avg bytes per sec
+					ch * 2,  // block align
+					16, // wBitsPerSample
+					0
+				};
+				ACMFORMATDETAILS afd;
+				memset (& afd, 0, sizeof afd);
+				afd.cbStruct = sizeof afd;
+				afd.pwfx = & wf;
+				afd.cbwfx = sizeof (WAVEFORMATEX);
+				afd.dwFormatTag = WAVE_FORMAT_PCM;
+				acmFormatDetails(NULL, & afd, ACM_FORMATDETAILSF_FORMAT);
+				m_Formats.InsertAt(0, SaveFormat());
+				m_Formats[0].SetData( & wf, afd.szFormat);
+				m_AttributesCombo.InsertString(0, afd.szFormat);
+			}
+			if (m_pWf->nChannels == m_Formats[0].pWf->nChannels)
+			{
+				sel = 0;
+			}
+			else
+			{
+				sel = 1;
+			}
+		}
+	}
+	m_SelectedFormat = sel;
+	m_AttributesCombo.SetCurSel(sel);
+}
+
+void CWaveSoapFileSaveDialog::OnCompatibleFormatsClicked()
+{
+	m_bCompatibleFormatsOnly = ((CButton*)GetDlgItem(IDC_CHECK_COMPATIBLE_FORMATS))->GetCheck();
+	FillFormatTagArray();
+	FillFormatArray();
+}
+
+void CWaveSoapFileSaveDialog::OnComboFormatsChange()
+{
+	int sel = m_FormatCombo.GetCurSel();
+	m_SelectedTag = m_FormatTags[sel].dwTag;
+	//FillFormatTagArray();
+	FillFormatArray();
+}
+
+void CWaveSoapFileSaveDialog::OnInitDone()
+{
+	//fill format combo box.
+	m_SelectedTag = m_pWf->wFormatTag;
+	((CButton*)GetDlgItem(IDC_CHECK_COMPATIBLE_FORMATS))->SetCheck(m_bCompatibleFormatsOnly);
+	FillFormatTagArray();
+	FillFormatArray();
+}
 BOOL CWaveSoapFrontDoc::DoSave(LPCTSTR lpszPathName, BOOL bReplace)
 	// Save the document data to a file
 	// lpszPathName = path name where to save document file
@@ -439,6 +994,32 @@ BOOL CWaveSoapFrontDoc::DoSave(LPCTSTR lpszPathName, BOOL bReplace)
 	// if 'bReplace' is TRUE will change file name if successful (SaveAs)
 	// if 'bReplace' is FALSE will not change path name (SaveCopyAs)
 {
+	WAVEFORMATEX * pWf;
+	WAVEFORMATEX * pOriginalWf;
+	if (m_OriginalWavFile.IsOpen())
+	{
+		pOriginalWf = m_OriginalWavFile.GetWaveFormat();
+	}
+	else
+	{
+		pOriginalWf = m_WavFile.GetWaveFormat();
+	}
+	if (NULL == pOriginalWf)
+	{
+		return FALSE;
+	}
+
+	pWf = (WAVEFORMATEX*) new char[0xFFFF]; // max size
+	if (NULL == pWf)
+	{
+		return FALSE;
+	}
+	memcpy(pWf, pOriginalWf, pOriginalWf->cbSize + sizeof (WAVEFORMATEX));
+	// sample rate and number of channels might change from the original file
+	// new format may not be quite valid for some convertors!!
+	pWf->nSamplesPerSec = m_WavFile.GetWaveFormat()->nSamplesPerSec;
+	pWf->nChannels = m_WavFile.GetWaveFormat()->nChannels;
+
 	CString newName = lpszPathName;
 	if (newName.IsEmpty())
 	{
@@ -450,7 +1031,7 @@ BOOL CWaveSoapFrontDoc::DoSave(LPCTSTR lpszPathName, BOOL bReplace)
 		{
 			newName = m_strTitle;
 			// check for dubious filename
-			// AGr: the only change from the original CDocument::
+			// AGr: changed from the original CDocument::
 			// space and # are allowed characters, and '?*":' are illegal
 			// in the file title
 			int iBad = newName.FindOneOf(_T("?*%:;/\\\""));
@@ -467,33 +1048,75 @@ BOOL CWaveSoapFrontDoc::DoSave(LPCTSTR lpszPathName, BOOL bReplace)
 			}
 		}
 
-		if (!AfxGetApp()->DoPromptFileName(newName,
-											bReplace ? AFX_IDS_SAVEFILE : AFX_IDS_SAVEFILECOPY,
-											OFN_HIDEREADONLY | OFN_PATHMUSTEXIST, FALSE, pTemplate))
+		CWaveSoapFileSaveDialog dlg(FALSE, "wav", newName,
+									OFN_HIDEREADONLY
+									| OFN_PATHMUSTEXIST
+									| OFN_EXPLORER
+									| OFN_ENABLESIZING
+									| OFN_ENABLETEMPLATE
+									| OFN_OVERWRITEPROMPT
+									//| OFN_SHAREAWARE
+									);
+
+		dlg.m_ofn.lpTemplateName = MAKEINTRESOURCE(IDD_DIALOG_SAVE_TEMPLATE);
+		dlg.m_pWf = pWf;
+		dlg.m_pDocument = this;
+
+		CString strFilter;
+		CString strDefault;
+		// do for all doc template
+		//POSITION pos = m_templateList.GetHeadPosition();
+		//BOOL bFirst = TRUE;
+		// todo: save of different types (MP3, ASF).
+		//while (pos != NULL)
+		{
+			//CDocTemplate* pTemplate = (CDocTemplate*)m_templateList.GetNext(pos);
+			_AfxAppendFilterSuffix(strFilter, dlg.m_ofn, GetDocTemplate(), //pTemplate,
+									&strDefault);
+			//bFirst = FALSE;
+		}
+
+		// append the "*.*" all files filter
+		CString allFilter;
+		VERIFY(allFilter.LoadString(AFX_IDS_ALLFILTER));
+		strFilter += allFilter;
+		strFilter += (TCHAR)'\0';   // next string please
+		strFilter += _T("*.*");
+		strFilter += (TCHAR)'\0';   // last string
+		dlg.m_ofn.nMaxCustFilter++;
+		dlg.m_ofn.lpstrFilter = strFilter;
+		//dlg.m_ofn.lpstrTitle = title;
+//	dlgFile.m_ofn.lpstrFile = fileName.GetBuffer(_MAX_PATH);
+
+		CWaveSoapFrontApp * pApp = GetApp();
+
+		if (IDOK != dlg.DoModal())
+		{
+			delete[] (char*) pWf;
 			return FALSE;       // don't even attempt to save
+		}
+		newName = dlg.GetPathName();
+		WAVEFORMATEX * pNewWf = dlg.GetWaveFormat();
+		if (pNewWf)
+		{
+			memcpy(pWf, pNewWf, pNewWf->cbSize + sizeof (WAVEFORMATEX));
+		}
 	}
 
 	CWaitCursor wait;
-
-	if (!OnSaveDocument(newName))
+	int flags = 0;
+	if ( ! bReplace)
 	{
-		if (lpszPathName == NULL)
-		{
-			// be sure to delete the file
-			TRY
-			{
-				CFile::Remove(newName);
-			}
-			CATCH_ALL(e)
-			{
-				TRACE0("Warning: failed to delete file after failed SaveAs.\n");
-				//DELETE_EXCEPTION(e);
-			}
-			END_CATCH_ALL
-		}
+		flags |= SaveFile_SaveCopy;
+	}
+
+	if (!OnSaveDocument(newName, flags, pWf))
+	{
+		delete[] (char*) pWf;
 		return FALSE;
 	}
 
+	delete[] (char*) pWf;
 	// reset the title and change the document name
 	if (bReplace)
 		SetPathName(newName);
@@ -501,7 +1124,7 @@ BOOL CWaveSoapFrontDoc::DoSave(LPCTSTR lpszPathName, BOOL bReplace)
 	return TRUE;        // success
 }
 
-void CWaveSoapFrontDoc::SetSelection(long begin, long end, int channel, int caret, BOOL bMakeCaretVisible)
+void CWaveSoapFrontDoc::SetSelection(long begin, long end, int channel, int caret, int flags)
 {
 	CSelectionUpdateInfo ui;
 	ui.SelBegin = m_SelectionStart;
@@ -513,7 +1136,7 @@ void CWaveSoapFrontDoc::SetSelection(long begin, long end, int channel, int care
 	if (end > length) end = length;
 	if (caret < 0) caret = 0;
 	if (caret > length) caret = length;
-	if (channel < 0 || channel > 2) channel = 2;
+	if (channel < 0 || channel > 1) channel = ALL_CHANNELS;
 
 	if (begin <= end)
 	{
@@ -529,7 +1152,7 @@ void CWaveSoapFrontDoc::SetSelection(long begin, long end, int channel, int care
 	m_SelectedChannel = channel;
 	ui.CaretPos = m_CaretPosition;
 	m_CaretPosition = caret;
-	ui.m_bMakeCaretVisible = bMakeCaretVisible;
+	ui.Flags = flags;
 	UpdateAllViews(NULL, UpdateSelectionChanged, & ui);
 }
 
@@ -538,7 +1161,8 @@ BOOL CWaveSoapFrontDoc::AllocatePeakData(long NewNumberOfSamples)
 	// change m_pPeaks size
 	// need to synchronize with OnDraw
 	int NewWavePeakSize = WaveChannels() * ((NewNumberOfSamples + m_PeakDataGranularity - 1) / m_PeakDataGranularity);
-	if (NewWavePeakSize > m_AllocatedWavePeakSize)
+	if (NULL == m_pPeaks
+		|| NewWavePeakSize > m_AllocatedWavePeakSize)
 	{
 		int NewAllocatedWavePeakSize = NewWavePeakSize + 1024;  // reserve more
 		WavePeak * NewPeaks = new WavePeak[NewAllocatedWavePeakSize];
@@ -652,6 +1276,7 @@ void CWaveSoapFrontDoc::RescanPeaks(long begin, long end)
 {
 	// if called immediately after data modification, it will get
 	// the data directly from the cache
+	TRACE("RescanPeaks from %d to %d\n", begin, end);
 	int nSampleSize = WaveSampleSize();
 	LPMMCKINFO datack = WaveDataChunk();
 	DWORD dwDataChunkOffset = datack->dwDataOffset;
@@ -670,8 +1295,8 @@ void CWaveSoapFrontDoc::RescanPeaks(long begin, long end)
 	{
 		DWORD SizeToRead = EndPos - Pos;
 		void * pBuf;
-		long lRead = m_WavFile.m_File.GetDataBuffer( & pBuf,
-													SizeToRead, Pos, 0);
+		long lRead = m_WavFile.GetDataBuffer( & pBuf,
+											SizeToRead, Pos, 0);
 		if (lRead > 0)
 		{
 			unsigned i;
@@ -814,7 +1439,7 @@ void CWaveSoapFrontDoc::RescanPeaks(long begin, long end)
 			}
 
 			Pos += lRead;
-			m_WavFile.m_File.ReturnDataBuffer(pBuf, lRead, 0);
+			m_WavFile.ReturnDataBuffer(pBuf, lRead, 0);
 		}
 		else
 		{
@@ -867,7 +1492,7 @@ void CWaveSoapFrontDoc::OnEditCut()
 	int ch = m_SelectedChannel;
 	if (ChannelsLocked())
 	{
-		ch = 2;
+		ch = ALL_CHANNELS;
 	}
 	DoCut(m_SelectionStart, m_SelectionEnd, ch);
 	SetModifiedFlag(TRUE);
@@ -890,7 +1515,7 @@ void CWaveSoapFrontDoc::OnEditDelete()
 	int ch = m_SelectedChannel;
 	if (ChannelsLocked())
 	{
-		ch = 2;
+		ch = ALL_CHANNELS;
 	}
 	DoDelete(m_SelectionStart, m_SelectionEnd, ch);
 	SetModifiedFlag(TRUE);
@@ -898,6 +1523,10 @@ void CWaveSoapFrontDoc::OnEditDelete()
 
 void CWaveSoapFrontDoc::OnUpdateEditDelete(CCmdUI* pCmdUI)
 {
+	if ( ! m_WavFile.IsOpen())
+	{
+		return;
+	}
 	pCmdUI->Enable( ! (m_OperationInProgress
 						|| m_bReadOnly
 						|| m_SelectionStart == WaveFileSamples()));
@@ -912,7 +1541,7 @@ void CWaveSoapFrontDoc::OnEditPaste()
 	int ch = m_SelectedChannel;
 	if (ChannelsLocked())
 	{
-		ch = 2;
+		ch = ALL_CHANNELS;
 	}
 	DoPaste(m_SelectionStart, m_SelectionEnd, ch, NULL);
 	SetModifiedFlag(TRUE);
@@ -947,63 +1576,66 @@ UINT CWaveSoapFrontDoc::_ThreadProc(void)
 				}
 			}
 		}
-		if (m_pCurrentContext)
+		COperationContext * pContext = m_pCurrentContext;
+		if (pContext)
 		{
-			if (0 == (m_pCurrentContext->m_Flags & OperationContextInitialized))
+			if (0 == (pContext->m_Flags & OperationContextInitialized))
 			{
-				if ( ! m_pCurrentContext->Init())
+				if ( ! pContext->Init())
 				{
-					m_pCurrentContext->m_Flags |= OperationContextStop;
+					pContext->m_Flags |= OperationContextStop;
 				}
-				m_CurrentStatusString = m_pCurrentContext->GetStatusString();
-				m_pCurrentContext->m_Flags |= OperationContextInitialized;
+				m_CurrentStatusString = pContext->GetStatusString();
+				pContext->m_Flags |= OperationContextInitialized;
 				NeedKickIdle = true;
 			}
 
 			if (m_StopOperation)
 			{
-				m_pCurrentContext->m_Flags |= OperationContextStopRequested;
+				pContext->m_Flags |= OperationContextStopRequested;
 			}
 
-			int LastPercent = m_pCurrentContext->PercentCompleted;
+			int LastPercent = pContext->PercentCompleted;
 			// execute one step
-			if (0 == (m_pCurrentContext->m_Flags &
+			if (0 == (pContext->m_Flags &
 					(OperationContextStop | OperationContextFinished)))
 			{
-				if (! m_pCurrentContext->OperationProc())
+				if (! pContext->OperationProc())
 				{
-					m_pCurrentContext->m_Flags |= OperationContextStop;
+					pContext->m_Flags |= OperationContextStop;
 				}
 				// signal for status update
-				if (LastPercent != m_pCurrentContext->PercentCompleted)
+				if (LastPercent != pContext->PercentCompleted)
 				{
 					NeedKickIdle = true;
 				}
 				if (NeedKickIdle)
 				{
-					if (m_pCurrentContext->PercentCompleted >= 0)
+					if (pContext->PercentCompleted >= 0)
 					{
 						m_CurrentStatusString.Format(_T("%s%d%%"),
-													(LPCTSTR)m_pCurrentContext->GetStatusString(),
-													m_pCurrentContext->PercentCompleted);
+													(LPCTSTR)pContext->GetStatusString(),
+													pContext->PercentCompleted);
 					}
 					else
 					{
-						m_CurrentStatusString = m_pCurrentContext->GetStatusString();
+						m_CurrentStatusString = pContext->GetStatusString();
 					}
 				}
 			}
-			if (m_pCurrentContext->m_Flags &
+			if (pContext->m_Flags &
 				(OperationContextStop | OperationContextFinished))
 			{
-				if (m_pCurrentContext->PercentCompleted >= 0)
+				if (pContext->PercentCompleted >= 0)
 				{
 					m_CurrentStatusString =
-						m_pCurrentContext->GetStatusString() + _T("Completed");
+						pContext->GetStatusString() + _T("Completed");
 				}
 				NeedKickIdle = true;
-				COperationContext * pContext =
-					(COperationContext *)InterlockedExchange(PLONG( & m_pCurrentContext), NULL);
+				{
+					CSimpleCriticalSectionLock lock(m_cs);
+					m_pCurrentContext = pContext->pNext;
+				}
 				pContext->DeInit();
 				pContext->Retire();     // usually deletes it
 			}
@@ -1017,11 +1649,16 @@ UINT CWaveSoapFrontDoc::_ThreadProc(void)
 BOOL CWaveSoapFrontDoc::InitUndoRedo(CUndoRedoContext * pContext)
 {
 	// see what is necessary to restore
+	if (pContext->m_Flags
+		& (UndoContextReplaceWholeFile | UndoContextReplaceFormat))
+	{
+		// nothing to do
+		return TRUE;
+	}
 	CResizeContext * pResize = pContext->m_pExpandShrinkContext;
 	if (pContext->m_Flags & CopyShrinkFile)
 	{
 		// shrink the file
-		// todo: create redo
 		if (NULL != pResize
 			&& ((pContext->m_Flags & RedoContext)
 				? UndoEnabled() : RedoEnabled())
@@ -1043,7 +1680,7 @@ BOOL CWaveSoapFrontDoc::InitUndoRedo(CUndoRedoContext * pContext)
 		{
 			pResize->m_pUndoContext->m_Flags |= RedoContext;
 		}
-		if (FALSE == pContext->m_DstFile.m_File.SetFileLength(pContext->m_RestoredLength))
+		if (FALSE == pContext->m_DstFile.SetFileLength(pContext->m_RestoredLength))
 		{
 			delete pResize->m_pUndoContext;
 			pResize->m_pUndoContext = NULL;
@@ -1051,14 +1688,13 @@ BOOL CWaveSoapFrontDoc::InitUndoRedo(CUndoRedoContext * pContext)
 		}
 		MMCKINFO * pDatachunk = pContext->m_DstFile.GetDataChunk();
 		pDatachunk->cksize = pContext->m_RestoredLength - pDatachunk->dwDataOffset;
+		pDatachunk->dwFlags |= MMIO_DIRTY;
 		long NewLength = pDatachunk->cksize / pContext->m_DstFile.SampleSize();
 		SoundChanged(pContext->m_DstFile.GetFileID(), 0, 0, NewLength);
-		// todo: create redo
 	}
 	else
 	{
 		// just copy
-		// todo: create redo
 		if ((pContext->m_Flags & RedoContext)
 			? UndoEnabled() : RedoEnabled())
 		{
@@ -1080,6 +1716,13 @@ BOOL CWaveSoapFrontDoc::InitUndoRedo(CUndoRedoContext * pContext)
 
 			pContext->m_pUndoContext = pUndoRedo;
 		}
+	}
+	// set destination file. It is not set when Undo is just created,
+	// to avoid having any hanging references to the work file.
+	pContext->m_DstFile = m_WavFile;
+	if (NULL != pContext->m_pExpandShrinkContext)
+	{
+		pContext->m_pExpandShrinkContext->m_DstFile = m_WavFile;
 	}
 	return TRUE;
 }
@@ -1103,7 +1746,7 @@ void CWaveSoapFrontDoc::OnEditUndo()
 
 	DecrementModified();
 
-	QueueOperation(pUndo);
+	pUndo->Execute();
 }
 
 void CWaveSoapFrontDoc::OnEditRedo()
@@ -1125,7 +1768,7 @@ void CWaveSoapFrontDoc::OnEditRedo()
 
 	IncrementModified(FALSE);   // don't delete redo
 
-	QueueOperation(pRedo);
+	pRedo->Execute();
 }
 
 void CWaveSoapFrontDoc::OnUpdateEditRedo(CCmdUI* pCmdUI)
@@ -1172,10 +1815,9 @@ void CWaveSoapFrontDoc::DoCopy(LONG Start, LONG End, LONG Channel, LPCTSTR FileN
 
 	CWaveFile DstFile;
 	// create a temporary clipboard WAV file
-	if (FALSE == DstFile.CreateWaveFile( & m_WavFile, m_SelectedChannel,
+	if (FALSE == DstFile.CreateWaveFile( & m_WavFile, NULL, m_SelectedChannel,
 										m_SelectionEnd - m_SelectionStart,
 										CreateWaveFileTempDir
-										// keep the file for debug
 										| CreateWaveFileDeleteAfterClose
 										| CreateWaveFileDontCopyInfo
 										| CreateWaveFilePcmFormat
@@ -1188,13 +1830,13 @@ void CWaveSoapFrontDoc::DoCopy(LONG Start, LONG End, LONG Channel, LPCTSTR FileN
 	}
 	pContext->m_Flags |= OperationContextClipboard;
 
-	pContext->InitCopy(DstFile, 0, m_SelectionEnd - m_SelectionStart, 2,
+	pContext->InitCopy(DstFile, 0, m_SelectionEnd - m_SelectionStart, ALL_CHANNELS,
 						m_WavFile, m_SelectionStart, m_SelectionEnd - m_SelectionStart,
 						m_SelectedChannel);
 
 	GetApp()->m_ClipboardFile = DstFile;
 	// set operation context to the queue
-	QueueOperation(pContext);
+	pContext->Execute();
 }
 
 void CWaveSoapFrontDoc::DoPaste(LONG Start, LONG End, LONG Channel, LPCTSTR FileName)
@@ -1235,11 +1877,11 @@ void CWaveSoapFrontDoc::DoPaste(LONG Start, LONG End, LONG Channel, LPCTSTR File
 		}
 	}
 	int nCopiedChannels = 2;
-	if (Channel < 2 || WaveChannels() < 2)
+	if (Channel != ALL_CHANNELS || WaveChannels() < 2)
 	{
 		nCopiedChannels = 1;
 	}
-	int ChannelToCopyFrom = 2;
+	int ChannelToCopyFrom = ALL_CHANNELS;
 	if (nCopiedChannels < pSrcFile->Channels())
 	{
 		CCopyChannelsSelectDlg dlg;
@@ -1276,7 +1918,7 @@ void CWaveSoapFrontDoc::DoPaste(LONG Start, LONG End, LONG Channel, LPCTSTR File
 	}
 	// set operation context to the queue
 	SoundChanged(WaveFileID(), 0, 0, WaveFileSamples());
-	QueueOperation(pContext);
+	pContext->Execute();
 }
 
 void CWaveSoapFrontDoc::DoCut(LONG Start, LONG End, LONG Channel)
@@ -1287,10 +1929,9 @@ void CWaveSoapFrontDoc::DoCut(LONG Start, LONG End, LONG Channel)
 
 	CWaveFile DstFile;
 	// create a temporary clipboard WAV file
-	if (FALSE == DstFile.CreateWaveFile( & m_WavFile, Channel,
+	if (FALSE == DstFile.CreateWaveFile( & m_WavFile, NULL, Channel,
 										End - Start,
 										CreateWaveFileTempDir
-										// keep the file for debug
 										| CreateWaveFileDeleteAfterClose
 										| CreateWaveFileDontCopyInfo
 										| CreateWaveFilePcmFormat
@@ -1304,17 +1945,17 @@ void CWaveSoapFrontDoc::DoCut(LONG Start, LONG End, LONG Channel)
 
 	pContext->m_Flags |= OperationContextClipboard;
 
-	pContext->InitCopy(DstFile, 0, End - Start, 2,
+	pContext->InitCopy(DstFile, 0, End - Start, ALL_CHANNELS,
 						m_WavFile, Start, End - Start,
 						Channel);
 	GetApp()->m_ClipboardFile = DstFile;
 	// set operation context to the queue
-	QueueOperation(pContext);
+	pContext->Execute();
 	CResizeContext * pResizeContext = new CResizeContext(this, _T("Shrinking the file..."), "File Resize");
 	pResizeContext->InitShrink(m_WavFile, Start, End - Start, Channel);
 	pResizeContext->InitUndoRedo("Cut");
 	SetSelection(Start, Start, Channel, Start);
-	QueueOperation(pResizeContext);
+	pResizeContext->Execute();
 }
 
 void CWaveSoapFrontDoc::DoDelete(LONG Start, LONG End, LONG Channel)
@@ -1327,7 +1968,7 @@ void CWaveSoapFrontDoc::DoDelete(LONG Start, LONG End, LONG Channel)
 	pResizeContext->InitShrink(m_WavFile, Start, End - Start, Channel);
 	pResizeContext->InitUndoRedo("Delete");
 	SetSelection(Start, Start, Channel, Start);
-	QueueOperation(pResizeContext);
+	pResizeContext->Execute();
 }
 
 void CWaveSoapFrontDoc::OnEditStop()
@@ -1343,20 +1984,17 @@ void CWaveSoapFrontDoc::OnUpdateEditStop(CCmdUI* pCmdUI)
 	pCmdUI->Enable(m_OperationInProgress && ! m_PlayingSound);
 }
 
-BOOL CWaveSoapFrontDoc::OnOpenDocument(LPCTSTR lpszPathName)
+BOOL CWaveSoapFrontDoc::OnOpenDocument(LPCTSTR lpszPathName, int DocOpenFlags)
 {
 
 	// TODO: Add your specialized creation code here
 	TRACE("CWaveSoapFrontDoc::OnOpenDocument(%s)\n", lpszPathName);
+	m_WavFile.Close();
+	m_OriginalWavFile.Close();
 
-	m_CaretPosition = 0;
-	m_SelectionStart = 0;
-	m_SelectionEnd = 0;
-	m_SelectedChannel = 2;  // both channels
-	m_TimeSelectionMode = TRUE;
 	CWaveSoapFrontApp * pApp = GetApp();
-	m_bDirectMode = (pApp->m_bDirectMode != 0);
-	m_bReadOnly = (pApp->m_bReadOnly != 0);
+	m_bDirectMode = ((DocOpenFlags & OpenDocumentDirectMode) != 0);
+	m_bReadOnly = ((DocOpenFlags & OpenDocumentReadOnly) != 0);
 	if (m_bReadOnly)
 	{
 		m_bDirectMode = TRUE;
@@ -1370,11 +2008,10 @@ BOOL CWaveSoapFrontDoc::OnOpenDocument(LPCTSTR lpszPathName)
 		flags = MmioFileOpenExisting | MmioFileAllowReadOnlyFallback;
 	}
 
-	if (FALSE == OpenWaveFile(lpszPathName, flags))
+	if (FALSE == OpenWaveFile(m_WavFile, lpszPathName, flags))
 	{
 		return FALSE;
 	}
-	m_WavFile.GetFileInformationByHandle(& WavFileInfo);
 	// check if the file can be opened in direct mode
 	WAVEFORMATEX * pWf = m_WavFile.GetWaveFormat();
 	bool bNeedConversion = FALSE;
@@ -1402,7 +2039,7 @@ BOOL CWaveSoapFrontDoc::OnOpenDocument(LPCTSTR lpszPathName)
 		&& m_bDirectMode
 		&& ! m_bReadOnly)
 	{
-		if (m_WavFile.m_File.IsReadOnly())
+		if (m_WavFile.IsReadOnly())
 		{
 			CString s;
 			s.Format(IDS_FILE_OPENED_NONDIRECT, lpszPathName);
@@ -1423,18 +2060,12 @@ BOOL CWaveSoapFrontDoc::OnOpenDocument(LPCTSTR lpszPathName)
 	// remove WAV extension and add ".wspk" extension
 	// we need the full pathname.
 	SetModifiedFlag(FALSE);     // start off with unmodified
-	szPeakFilename = m_szWaveFilename;
-	if (0 == szPeakFilename.Right(4).CompareNoCase(_T(".WAV")))
-	{
-		szPeakFilename.Delete(szPeakFilename.GetLength() - 4, 4);
-	}
-	szPeakFilename += _T(".wspk");
+	m_OriginalWavFile = m_WavFile;
 	// if non-direct mode, create a temp file.
 	if ( ! m_bDirectMode)
 	{
-		CWaveFile SrcFile;
-		SrcFile = m_WavFile;
 		m_WavFile.Close();
+		int nNewFileSamples = m_OriginalWavFile.NumberOfSamples();
 		if (bNeedConversion)
 		{
 			flags = CreateWaveFileTempDir
@@ -1442,18 +2073,25 @@ BOOL CWaveSoapFrontDoc::OnOpenDocument(LPCTSTR lpszPathName)
 					| CreateWaveFileDeleteAfterClose
 					| CreateWaveFilePcmFormat
 					| CreateWaveFileTemp;
+			// if the file contains 'fact' chunk, get number of samples
+			if (m_OriginalWavFile.m_FactSamples != -1
+				&& (pWf->wFormatTag != WAVE_FORMAT_PCM
+					|| (pWf->wBitsPerSample != 16 && pWf->wBitsPerSample != 8)))
+			{
+				nNewFileSamples = m_OriginalWavFile.m_FactSamples;
+			}
 		}
 		else
 		{
-			flags = CreateWaveFileTempDir
-					// don't keep the file
-					| CreateWaveFileDeleteAfterClose
-					| CreateWaveFilePcmFormat
-					| CreateWaveFileDontInitStructure
-					| CreateWaveFileTemp;
+			flags = //CreateWaveFileTempDir |
+				// don't keep the file
+				CreateWaveFileDeleteAfterClose
+				| CreateWaveFilePcmFormat
+				| CreateWaveFileDontInitStructure
+				| CreateWaveFileTemp;
 		}
-		if (! m_WavFile.CreateWaveFile( & SrcFile, pWf->nChannels,
-										SrcFile.NumberOfSamples(), flags, NULL))
+		if (! m_WavFile.CreateWaveFile( & m_OriginalWavFile, NULL, ALL_CHANNELS,
+										nNewFileSamples, flags, NULL))
 		{
 			AfxMessageBox(IDS_UNABLE_TO_CREATE_TEMPORARY_FILE, MB_OK | MB_ICONEXCLAMATION);
 			return FALSE;
@@ -1464,66 +2102,597 @@ BOOL CWaveSoapFrontDoc::OnOpenDocument(LPCTSTR lpszPathName)
 		{
 			CDecompressContext * pContext =
 				new CDecompressContext(this, "Loading the compressed file...");
-			pContext->m_SrcFile = SrcFile;
+			pContext->m_SrcFile = m_OriginalWavFile;
 			pContext->m_DstFile = m_WavFile;
-			pContext->m_SrcStart = SrcFile.GetDataChunk()->dwDataOffset;
+			pContext->m_SrcStart = m_OriginalWavFile.GetDataChunk()->dwDataOffset;
 			pContext->m_SrcPos = pContext->m_SrcStart;
 			pContext->m_SrcEnd = pContext->m_SrcStart +
-								SrcFile.GetDataChunk()->cksize;
+								m_OriginalWavFile.GetDataChunk()->cksize;
 			pContext->m_DstStart = m_WavFile.GetDataChunk()->dwDataOffset;
 			pContext->m_DstCopyPos = pContext->m_DstStart;
 			pContext->m_CurrentSamples = m_WavFile.NumberOfSamples();
 			AllocatePeakData(pContext->m_CurrentSamples);
 			// peak data will be created during decompression
-			QueueOperation(pContext);
+			pContext->Execute();
 		}
 		else
 		{
 			// just link the files
-			UINT format = 0;
-			if (m_WavFile.m_File.SetSourceFile( & SrcFile.m_File)
-				&& m_WavFile.m_File.SetFileLength(SrcFile.m_File.GetLength())
+			UINT ErrorFormatID = 0;
+			if (m_WavFile.SetSourceFile( & m_OriginalWavFile)
+				&& m_WavFile.SetFileLength(m_OriginalWavFile.GetLength())
 				&& m_WavFile.LoadRiffChunk()
 				&& m_WavFile.LoadWaveformat())
 			{
-				if (m_WavFile.FindData())
+				if ( ! m_WavFile.FindData())
 				{
-					m_SizeOfWaveData = WaveDataChunk()->cksize;
-				}
-				else
-				{
-					format = IDS_UNABLE_TO_FIND_DATA_CHUNK;
+					ErrorFormatID = IDS_UNABLE_TO_FIND_DATA_CHUNK;
 				}
 			}
 			else
 			{
-				format = IDS_UNABLE_TO_LOAD_WAVEFORMAT;
+				ErrorFormatID = IDS_UNABLE_TO_LOAD_WAVEFORMAT;
 			}
-			if (format)
+			if (ErrorFormatID)
 			{
 				CString s;
-				s.Format(format, lpszPathName);
+				s.Format(ErrorFormatID, lpszPathName);
 				AfxMessageBox(s, MB_OK | MB_ICONEXCLAMATION);
 				return FALSE;
 			}
-			LoadPeakFile();
+			LoadPeakFile(m_OriginalWavFile);
 		}
 	}
 	else
 	{
-		LoadPeakFile();
+		LoadPeakFile(m_WavFile);
 	}
 	// if file is open in direct mode or read-only, leave it as is,
 	// otherwise open
 	return TRUE;
 }
 
-BOOL CWaveSoapFrontDoc::OnSaveDocument(LPCTSTR lpszPathName)
+BOOL CWaveSoapFrontDoc::OnSaveDocument(LPCTSTR lpszPathName, DWORD flags, WAVEFORMATEX * pWf)
 {
-	// TODO: Add your specialized code here and/or call the base class
 
+	if (m_bClosing)
+	{
+		return TRUE;
+	}
+	// file where the data is currently kept
+	TCHAR SourceDir[MAX_PATH];
+	TCHAR FullSourceName[MAX_PATH];
+	// Original file where the data is currently kept
+	TCHAR OriginalDir[MAX_PATH] = {0};
+	TCHAR FullOriginalName[MAX_PATH] = {0};
+	// file where to copy the data
+	TCHAR TargetDir[MAX_PATH];
+	TCHAR FullTargetName[MAX_PATH];
+	if ( ! AfxFullPath(FullTargetName, lpszPathName)
+		|| ! AfxFullPath(FullSourceName, m_WavFile.GetName())
+		|| (m_OriginalWavFile.IsOpen()
+			&& ! AfxFullPath(FullOriginalName, m_OriginalWavFile.GetName())))
+	{
+		// incorrect name
+		return FALSE;
+	}
+	LPTSTR pTargetFilePart = _tcsrchr(FullTargetName, '\\');
+	if (pTargetFilePart)
+	{
+		int TargetDirChars = pTargetFilePart - FullTargetName;
+		_tcsncpy(TargetDir, FullTargetName, TargetDirChars);
+		TargetDir[TargetDirChars] = 0;
+	}
+	else
+	{
+		_tcsncpy(TargetDir, FullTargetName, MAX_PATH);
+		TargetDir[MAX_PATH - 1] = 0;
+	}
+
+	LPTSTR pOriginalFilePart = _tcsrchr(FullOriginalName, '\\');
+	if (pOriginalFilePart)
+	{
+		int DirChars = pOriginalFilePart - FullOriginalName;
+		_tcsncpy(OriginalDir, FullOriginalName, DirChars);
+		OriginalDir[DirChars] = 0;
+	}
+	else
+	{
+		_tcsncpy(OriginalDir, FullOriginalName, MAX_PATH);
+		OriginalDir[MAX_PATH - 1] = 0;
+	}
+
+	LPTSTR pSourceFilePart = _tcsrchr(FullSourceName, '\\');
+	if (pSourceFilePart)
+	{
+		int SourceDirChars = pSourceFilePart - FullSourceName;
+		_tcsncpy(SourceDir, FullSourceName, SourceDirChars);
+		SourceDir[SourceDirChars] = 0;
+	}
+	else
+	{
+		_tcsncpy(SourceDir, FullSourceName, MAX_PATH);
+		SourceDir[MAX_PATH - 1] = 0;
+	}
+
+	if (AfxComparePath(FullTargetName, FullOriginalName))
+	{
+		flags |= SaveFile_SameName;
+	}
+	m_WavFile.CommitChanges();
+	CWaveFile NewWaveFile;
+	if (WAVE_FORMAT_PCM == pWf->wFormatTag
+		// the same format
+		&& 16 == pWf->wBitsPerSample
+		&& pWf->nSamplesPerSec == m_WavFile.GetWaveFormat()->nSamplesPerSec
+		&& pWf->nChannels == m_WavFile.GetWaveFormat()->nChannels)
+	{
+// if direct file: commit all changes (including format change)
+		if (m_bDirectMode
+			&& (flags & SaveFile_SameName)
+			&& 0 == (flags & SaveFile_SaveCopy))
+		{
+			//Close and reopen the file
+			if ( ! m_WavFile.Commit())
+			{
+				SavePeakInfo(m_WavFile);
+				// todo: dialog box
+				// close the document
+				return FALSE;
+			}
+			SetModifiedFlag(FALSE);
+			SavePeakInfo(m_WavFile);
+			// direct file saved with the same format and name
+			// information committed, peak info saved, file remains open
+			return TRUE;
+		}
+// non-direct PCM file:
+// commit all changes. If the file is saved to the same directory as the temporary file,
+// clear Temp flag and DeleteAfterClose, rename the old file,
+// rename the new file, delete the old file, open new temp file.
+// otherwise create a new file and copy old one to the new.
+// if directory is different,
+// create temp file, copy the data to it, rename old file if exists,
+		if (0 == (flags & SaveFile_SaveCopy)
+			&& ! m_bDirectMode
+			&& 0 == _tcsicmp(SourceDir, TargetDir))
+		{
+			// non-direct PCM file, the same directory, not saving a copy,
+			// the same format
+			m_WavFile.DeleteOnClose(false);
+			// todo: InitializeTheRestOfFile in the thread
+			m_WavFile.InitializeTheRestOfFile();
+			m_WavFile.DetachSourceFile();
+			if (flags & SaveFile_SameName)
+			{
+				// copy security descriptor
+				if (m_OriginalWavFile.IsOpen())
+				{
+					// it isn't a new file
+					DWORD dwLength = 0;
+					PSECURITY_DESCRIPTOR pSecurityDescriptor = NULL;
+					if ( ! GetFileSecurity(m_OriginalWavFile.GetName(), DACL_SECURITY_INFORMATION,
+											NULL, 0, &dwLength)
+						&& ERROR_INSUFFICIENT_BUFFER == GetLastError())
+					{
+						pSecurityDescriptor = (PSECURITY_DESCRIPTOR) new BYTE[dwLength];
+						if (NULL != pSecurityDescriptor
+							&& ::GetFileSecurity(m_OriginalWavFile.GetName(),
+												DACL_SECURITY_INFORMATION,
+												pSecurityDescriptor, dwLength, &dwLength))
+						{
+							SetFileSecurity(m_WavFile.GetName(), DACL_SECURITY_INFORMATION, pSecurityDescriptor);
+						}
+						delete[] (BYTE*)pSecurityDescriptor;
+					}
+				}
+				m_OriginalWavFile.DeleteOnClose(true);
+			}
+			else
+			{
+				// the user was asked about replacing the file in the save file dialog
+				// TODO: first get the original security descriptor
+				DeleteFile(FullTargetName);
+			}
+			m_OriginalWavFile.Close();
+			// delete the original file
+			DeleteFile(FullTargetName);
+			// TODO: set security descriptor for new file
+			if (m_WavFile.Rename(FullTargetName, 0))
+			{
+				// if PCM format and non-direct, ask about reopening as direct
+				SavePeakInfo(m_WavFile);
+				CString s;
+				s.Format(IDS_REOPEN_IN_DIRECT_MODE, m_WavFile.GetName());
+				SetModifiedFlag(FALSE);
+				if (IDYES == AfxMessageBox(s,
+											MB_ICONQUESTION | MB_YESNO))
+				{
+					// keep undo/redo
+					OnOpenDocument(FullTargetName, OpenDocumentDirectMode);
+					return TRUE;
+				}
+				else
+				{
+					m_WavFile.Close();
+					// keep undo/redo
+					if (OnOpenDocument(FullTargetName, 0))
+					{
+						return TRUE;
+					}
+					else
+					{
+						OnOpenDocument(FullTargetName, OpenDocumentReadOnly);
+						return TRUE;
+					}
+				}
+			}
+			else
+			{
+				// error
+				// todo: dialog
+				// unable to rename temporary file
+				// query new name
+				return FALSE;
+			}
+		}
+		// the same file attributes, but different folder or saving a copy.
+		// Create a new file and copy everything there
+		if (m_bDirectMode && ! m_bReadOnly)
+		{
+			// file open in direct mode
+			flags |= SaveFile_SaveCopy;
+		}
+
+		CString NewTempFilename(FullTargetName);
+		if (0 == (flags & SaveFile_SaveCopy))
+		{
+			NewTempFilename += _T(".temp");
+		}
+		if (FALSE == NewWaveFile.CreateWaveFile(& m_OriginalWavFile, pWf, ALL_CHANNELS, m_WavFile.NumberOfSamples(),
+												0,
+												NewTempFilename))
+		{
+			// todo: dialog
+			return FALSE;
+		}
+		LPCTSTR sOp = "Saving the file...";
+		if (flags & SaveFile_SaveCopy)
+		{
+			sOp = "Saving the file copy...";
+		}
+		CFileSaveContext * pContext = new CFileSaveContext(this, sOp, "File Save");
+		if (NULL == pContext)
+		{
+			return FALSE;
+		}
+
+		pContext->m_NewName = FullTargetName;
+
+		pContext->m_SrcFile = m_WavFile;
+		pContext->m_DstFile = NewWaveFile;
+		pContext->m_SrcStart = 0;
+		pContext->m_DstStart = 0;
+		pContext->m_SrcCopyPos = 0;
+		pContext->m_DstCopyPos = 0;
+		pContext->m_SrcEnd = m_WavFile.GetLength();
+		pContext->m_DstEnd = pContext->m_SrcEnd;
+		// copy 1:1
+		pContext->m_SrcChan = ALL_CHANNELS;
+		pContext->m_DstChan = ALL_CHANNELS;
+		if (flags & SaveFile_CloseAfterSave)
+		{
+			m_bClosing = true;
+		}
+		else if (flags & SaveFile_SaveCopy)
+		{
+			pContext->m_Flags |= FileSaveContext_SavingCopy;
+		}
+		if (flags & SaveFile_SameName)
+		{
+			pContext->m_Flags |= FileSaveContext_SameName;
+		}
+		pContext->Execute();
+		return FALSE;   // not saved yet
+	}
+	else
+	{
+		// conversion or compression required
+		CString NewTempFilename = FullTargetName;
+		if (0 == (flags & SaveFile_SaveCopy))
+		{
+			NewTempFilename += _T(".temp");
+		}
+		if (WAVE_FORMAT_PCM == pWf->wFormatTag
+			&& 16 == pWf->wBitsPerSample)
+		{
+			int nNewSamples = MulDiv(m_WavFile.NumberOfSamples(), pWf->nSamplesPerSec, m_WavFile.SampleRate());
+			if (FALSE == NewWaveFile.CreateWaveFile(& m_OriginalWavFile, pWf, ALL_CHANNELS, nNewSamples,
+													CreateWaveFilePcmFormat | CreateWaveFileDontCopyInfo,
+													NewTempFilename))
+			{
+				// todo: dialog
+				return FALSE;
+			}
+		}
+		else
+		{
+			// saving compressed file
+			// if number of channels changes, ask about it
+			// sample rate change may be also required
+			unsigned long NewSize = m_WavFile.NumberOfSamples() * pWf->wBitsPerSample * pWf->nChannels / 8;
+			if (NewSize < 0x100000) NewSize = 0x100000; // 1 meg
+			if (NewSize > 0x100 * 0x100000) NewSize = 0x100 * 0x100000; // 256 meg
+			if (FALSE == NewWaveFile.CreateWaveFile(& m_OriginalWavFile, pWf, ALL_CHANNELS, NewSize,
+													CreateWaveFileDontCopyInfo
+													| CreateWaveFileCreateFact
+													| CreateWaveFileSizeSpecified,
+													NewTempFilename))
+			{
+				// todo: dialog
+				return FALSE;
+			}
+		}
+		LPCTSTR sOp = "Converting and saving the file...";
+		if (flags & SaveFile_SaveCopy)
+		{
+			sOp = "Saving the file copy...";
+		}
+
+		CFileSaveContext * pContext = new CFileSaveContext(this, sOp, "File Convert and Save");
+		if (NULL == pContext)
+		{
+			return FALSE;
+		}
+
+		pContext->m_NewName = FullTargetName;
+
+		CConversionContext * pConvert = new CConversionContext(this, "", "");
+		if (NULL == pConvert)
+		{
+			delete pContext;
+			return FALSE;
+		}
+		pContext->m_pConvert = pConvert;
+		pConvert->m_SrcFile = m_WavFile;
+		pConvert->m_DstFile = NewWaveFile;
+		pConvert->m_SrcStart = m_WavFile.GetDataChunk()->dwDataOffset;
+		pConvert->m_DstStart = NewWaveFile.GetDataChunk()->dwDataOffset;
+		pConvert->m_SrcCopyPos = pConvert->m_SrcStart;
+		pConvert->m_DstCopyPos = pConvert->m_DstStart;
+		pConvert->m_SrcEnd = pConvert->m_SrcStart + m_WavFile.GetDataChunk()->cksize;
+		pConvert->m_DstEnd = pConvert->m_DstStart;
+
+		pConvert->m_SrcChan = ALL_CHANNELS;
+		pConvert->m_DstChan = ALL_CHANNELS;
+
+		pContext->m_SrcFile = pConvert->m_SrcFile;
+		pContext->m_DstFile = pConvert->m_DstFile;
+		// fill unused data members:
+		pContext->m_SrcStart = pConvert->m_SrcStart;
+		pContext->m_DstStart = pConvert->m_DstStart;
+		pContext->m_SrcCopyPos = pContext->m_SrcStart;
+		pContext->m_DstCopyPos = pContext->m_DstCopyPos;
+		pContext->m_SrcEnd = m_WavFile.GetLength();
+		pContext->m_DstEnd = pContext->m_SrcEnd;
+
+		pContext->m_SrcChan = ALL_CHANNELS;
+		pContext->m_DstChan = ALL_CHANNELS;
+		// if target channels is less than source, convert it before resampling,
+		if (pWf->nChannels < m_WavFile.GetWaveFormat()->nChannels)
+		{
+			CChannelConvertor * pChConvertor = new CChannelConvertor;
+			if (NULL == pChConvertor)
+			{
+				delete pContext;    // pConvert will be deleted
+				return FALSE;
+			}
+			pChConvertor->nSourceChannels =  m_WavFile.GetWaveFormat()->nChannels;
+			pChConvertor->nTargetChannels =  pWf->nChannels;
+			pChConvertor->nSrcChannel = 2;
+			pConvert->m_ProcBatch.AddWaveProc(pChConvertor);
+		}
+		if (pWf->nSamplesPerSec != m_WavFile.GetWaveFormat()->nSamplesPerSec)
+		{
+			CResampleFilter * pFilter = new CResampleFilter;
+			if (NULL == pFilter)
+			{
+				delete pContext;    // pConvert will be deleted
+				return FALSE;
+			}
+			pFilter->InitResample(double(pWf->nSamplesPerSec)
+								/ m_WavFile.GetWaveFormat()->nSamplesPerSec, 40., pWf->nChannels);
+			pConvert->m_ProcBatch.AddWaveProc(pFilter);
+		}
+		// if target channels is more than source, convert it after resampling,
+		if (pWf->nChannels > m_WavFile.GetWaveFormat()->nChannels)
+		{
+			CChannelConvertor * pChConvertor = new CChannelConvertor;
+			if (NULL == pChConvertor)
+			{
+				delete pContext;    // pConvert will be deleted
+				return FALSE;
+			}
+			pChConvertor->nSourceChannels =  m_WavFile.GetWaveFormat()->nChannels;
+			pChConvertor->nTargetChannels =  pWf->nChannels;
+			pChConvertor->nSrcChannel = 2;
+			pConvert->m_ProcBatch.AddWaveProc(pChConvertor);
+		}
+
+		if (pWf->wFormatTag != WAVE_FORMAT_PCM
+			|| pWf->wBitsPerSample != 16)
+		{
+			CAudioConvertor * pAcmConvertor = new CAudioConvertor;
+			if (NULL == pAcmConvertor)
+			{
+				delete pContext;    // pConvert will be deleted
+				return FALSE;
+			}
+			pConvert->m_ProcBatch.AddWaveProc(pAcmConvertor);
+			WAVEFORMATEX SrcFormat;
+			SrcFormat.nChannels = pWf->nChannels;
+			SrcFormat.nSamplesPerSec = pWf->nSamplesPerSec;
+			SrcFormat.nBlockAlign = SrcFormat.nChannels * sizeof (__int16);
+			SrcFormat.nAvgBytesPerSec = SrcFormat.nBlockAlign * SrcFormat.nSamplesPerSec;
+			SrcFormat.cbSize = 0;
+			SrcFormat.wFormatTag = WAVE_FORMAT_PCM;
+			SrcFormat.wBitsPerSample = 16;
+			if (! pAcmConvertor->InitConversion( & SrcFormat, pWf))
+			{
+				delete pContext;
+				return FALSE;
+			}
+		}
+		//pContext->m_pWf = CopyWaveformat(pWf);
+		//if (NULL == pContext->m_pWf)
+		//{
+		//delete pContext;
+		//return FALSE;
+		//}
+
+		if (flags & SaveFile_CloseAfterSave)
+		{
+			m_bClosing = true;
+		}
+		else if (flags & SaveFile_SaveCopy)
+		{
+			pContext->m_Flags |= FileSaveContext_SavingCopy;
+		}
+		pContext->Execute();
+		return FALSE;   // not saved yet
+	}
 	return TRUE;
 }
+
+void CWaveSoapFrontDoc::PostFileSave(CFileSaveContext * pContext)
+{
+	WAVEFORMATEX OldFormat = * m_WavFile.GetWaveFormat();
+	WAVEFORMATEX NewFormat = * pContext->m_DstFile.GetWaveFormat();
+
+	pContext->m_SrcFile.Close();
+	// copy security descriptor
+	if (m_OriginalWavFile.IsOpen()
+		&& (pContext->m_Flags & FileSaveContext_SameName))
+	{
+		// it isn't a new file
+		DWORD dwLength = 0;
+		PSECURITY_DESCRIPTOR pSecurityDescriptor = NULL;
+		if ( ! GetFileSecurity(pContext->m_NewName, DACL_SECURITY_INFORMATION,
+								NULL, 0, &dwLength)
+			&& ERROR_INSUFFICIENT_BUFFER == GetLastError())
+		{
+			pSecurityDescriptor = (PSECURITY_DESCRIPTOR) new BYTE[dwLength];
+			if (NULL != pSecurityDescriptor
+				&& ::GetFileSecurity(pContext->m_NewName,
+									DACL_SECURITY_INFORMATION,
+									pSecurityDescriptor, dwLength, &dwLength))
+			{
+				SetFileSecurity(pContext->m_DstFile.GetName(), DACL_SECURITY_INFORMATION, pSecurityDescriptor);
+			}
+			delete[] (BYTE*)pSecurityDescriptor;
+		}
+	}
+	m_OriginalWavFile.Close();  // close to allow delete and rename
+	if (m_bDirectMode || m_bReadOnly)
+	{
+		m_WavFile.Close();   // close to allow delete and rename
+	}
+	// delete the old file
+	DeleteFile(pContext->m_NewName);
+	pContext->m_DstFile.CommitChanges();
+	int ReopenDocumentFlags = 0;
+	// rename the new file
+	if ( ! pContext->m_DstFile.Rename(pContext->m_NewName, 0))
+	{
+		// todo: show message box and try to ask for a different name
+		return;
+	}
+	else
+	{
+		SetModifiedFlag(FALSE);
+		SavePeakInfo(pContext->m_DstFile);
+		if (m_bClosing)
+		{
+			pContext->m_DstFile.Close();
+			//SetModifiedFlag(FALSE);
+			// not too good place to call OnFileClose:
+			OnFileClose();
+			return;
+		}
+		// we always reopen the document
+		if (WAVE_FORMAT_PCM == NewFormat.wFormatTag
+			&& 16 == NewFormat.wBitsPerSample)
+		{
+			if (! m_bDirectMode || m_bReadOnly)
+			{
+				// if PCM format and read-only or non-direct, ask about reopening as direct
+				CString s;
+				s.Format(IDS_REOPEN_IN_DIRECT_MODE, pContext->m_NewName);
+				if (IDYES == AfxMessageBox(s,
+											MB_ICONQUESTION | MB_YESNO))
+				{
+					ReopenDocumentFlags = OpenDocumentDirectMode;
+				}
+			}
+		}
+		else
+		{
+			// if non-PCM format, ask about reloading the file
+			// if format changed, always reload
+			if (OldFormat.nSamplesPerSec == NewFormat.nSamplesPerSec
+				&& OldFormat.nChannels == NewFormat.nChannels
+				&& IDYES != AfxMessageBox(IDS_RELOAD_COMPRESSED_FILE,
+										MB_ICONQUESTION | MB_YESNO))
+			{
+				// set new title
+				SetPathName(pContext->m_NewName);
+				m_OriginalWavFile = pContext->m_DstFile;
+				pContext->m_DstFile.Close();
+				ASSERT(m_WavFile.IsOpen());
+				//todo
+				return; //??
+			}
+			DeleteUndo();
+			DeleteRedo();
+		}
+		// todo
+	}
+
+	pContext->m_DstFile.Close();
+	// file will be reopened
+	if (OldFormat.nSamplesPerSec != NewFormat.nSamplesPerSec)
+	{
+		DeleteUndo();
+		DeleteRedo();
+		// recalculate selection
+		long SelStart = MulDiv(m_SelectionStart, NewFormat.nSamplesPerSec,
+								OldFormat.nSamplesPerSec);
+		long SelEnd = MulDiv(m_SelectionEnd, NewFormat.nSamplesPerSec,
+							OldFormat.nSamplesPerSec);
+		long Caret = MulDiv(m_CaretPosition, NewFormat.nSamplesPerSec,
+							OldFormat.nSamplesPerSec);
+		int Chan = m_SelectedChannel;
+		if (OldFormat.nChannels != NewFormat.nChannels)
+		{
+			Chan = ALL_CHANNELS;
+		}
+		SetSelection(SelStart, SelEnd, Chan, Caret, SetSelection_MakeCaretVisible);
+		// view length will be adjusted in OpenDocument?
+	}
+	else if (OldFormat.nChannels != NewFormat.nChannels)
+	{
+		DeleteUndo();
+		DeleteRedo();
+		m_SelectedChannel = ALL_CHANNELS;
+	}
+	if ( ! OnOpenDocument(pContext->m_NewName, ReopenDocumentFlags))
+	{
+		// message box, then close the document
+		return;
+	}
+	SetPathName(pContext->m_NewName);
+}
+
 
 void CWaveSoapFrontDoc::OnIdle()
 {
@@ -1544,10 +2713,6 @@ void CWaveSoapFrontDoc::OnIdle()
 			}
 			m_pUpdateList = pInfo->pNext;
 		}
-		if (pInfo->Length != -1)
-		{
-			m_SizeOfWaveData = pInfo->Length * WaveSampleSize();
-		}
 		UpdateAllViews(NULL, pInfo->UpdateCode, pInfo);
 		delete pInfo;
 	}
@@ -1567,13 +2732,23 @@ void CWaveSoapFrontDoc::OnIdle()
 
 void CWaveSoapFrontDoc::OnUpdateFileSave(CCmdUI* pCmdUI)
 {
-	pCmdUI->Enable(IsModified() && ! m_bReadOnly);
+	pCmdUI->Enable(IsModified() && ! m_bReadOnly && ! m_OperationInProgress);
 }
 
+void CWaveSoapFrontDoc::OnUpdateFileSaveAs(CCmdUI* pCmdUI)
+{
+	// in direct or readonly mode only Save Copy eommand is allowed
+	pCmdUI->Enable(! m_OperationInProgress && ! m_bDirectMode && ! m_bReadOnly);
+}
+
+void CWaveSoapFrontDoc::OnUpdateFileSaveCopyAs(CCmdUI* pCmdUI)
+{
+	pCmdUI->Enable(! m_OperationInProgress);
+}
 void CWaveSoapFrontDoc::OnEditSelectAll()
 {
 	long len = WaveFileSamples();
-	SetSelection(0, len, 2, len, true);
+	SetSelection(0, len, ALL_CHANNELS, len, SetSelection_MakeCaretVisible);
 }
 
 void CWaveSoapFrontDoc::OnEditSelection()
@@ -1583,7 +2758,7 @@ void CWaveSoapFrontDoc::OnEditSelection()
 	dlg.m_End = m_SelectionEnd;
 	dlg.m_Length = m_SelectionEnd - m_SelectionStart;
 	dlg.m_FileLength = WaveFileSamples();
-	dlg.m_Chan = m_SelectedChannel;
+	dlg.m_Chan = m_SelectedChannel + 1;
 	dlg.m_pWf = WaveFormat();
 	dlg.m_TimeFormat = GetApp()->m_SoundTimeFormat;
 
@@ -1591,7 +2766,7 @@ void CWaveSoapFrontDoc::OnEditSelection()
 	{
 		return;
 	}
-	SetSelection(dlg.m_Start, dlg.m_End, dlg.m_Chan, dlg.m_End, true);
+	SetSelection(dlg.m_Start, dlg.m_End, dlg.m_Chan - 1, dlg.m_End, true);
 
 }
 
@@ -1612,7 +2787,7 @@ static void LimitUndoRedo(COperationContext ** ppContext, int MaxNum, size_t Max
 		if (NULL != pUndoRedo
 			&& pUndoRedo->m_SrcFile.IsOpen())
 		{
-			Size += pUndoRedo->m_SrcFile.m_File.GetLength();
+			Size += pUndoRedo->m_SrcFile.GetLength();
 		}
 		ppContext = & pContext->pNext;
 		if (Num > MaxNum
@@ -1694,7 +2869,7 @@ void CWaveSoapFrontDoc::OnSoundPlay()
 		return;
 	}
 	m_PlayingSound = true;
-	QueueOperation(pContext);
+	pContext->Execute();
 }
 
 void CWaveSoapFrontDoc::OnUpdateSoundStop(CCmdUI* pCmdUI)
@@ -1704,6 +2879,10 @@ void CWaveSoapFrontDoc::OnUpdateSoundStop(CCmdUI* pCmdUI)
 
 void CWaveSoapFrontDoc::OnUpdateIndicatorFileSize(CCmdUI* pCmdUI)
 {
+	if ( ! m_WavFile.IsOpen())
+	{
+		return;
+	}
 	SetStatusString(pCmdUI,
 					SampleToString(WaveFileSamples(), WaveFormat()->nSamplesPerSec,
 									GetApp()->m_SoundTimeFormat));
@@ -1711,6 +2890,10 @@ void CWaveSoapFrontDoc::OnUpdateIndicatorFileSize(CCmdUI* pCmdUI)
 
 void CWaveSoapFrontDoc::OnUpdateIndicatorSelectionLength(CCmdUI* pCmdUI)
 {
+	if ( ! m_WavFile.IsOpen())
+	{
+		return;
+	}
 	if (m_SelectionStart != m_SelectionEnd)
 	{
 		SetStatusString(pCmdUI,
@@ -1728,6 +2911,10 @@ void CWaveSoapFrontDoc::OnUpdateIndicatorCurrentPos(CCmdUI* pCmdUI)
 	unsigned TimeMs;
 	int TimeFormat = GetApp()->m_SoundTimeFormat;
 	CSoundPlayContext * pCx = dynamic_cast<CSoundPlayContext *>(m_pCurrentContext);
+	if ( ! m_WavFile.IsOpen())
+	{
+		return;
+	}
 	if (m_PlayingSound && NULL != pCx)
 	{
 		if ((TimeFormat & SampleToString_Mask) == SampleToString_Sample)
@@ -1742,7 +2929,7 @@ void CWaveSoapFrontDoc::OnUpdateIndicatorCurrentPos(CCmdUI* pCmdUI)
 					/ m_WavFile.GetWaveFormat()->nSamplesPerSec * 1000.;
 			TimeMs -= TimeMs % 100;
 			int BeginTimeMs = double(pCx->m_FirstSamplePlayed)
-							/ m_WavFile.GetWaveFormat()->nSamplesPerSec * 1000.;
+							/ WaveFormat()->nSamplesPerSec * 1000.;
 			if (TimeMs < BeginTimeMs)
 			{
 				TimeMs = BeginTimeMs;
@@ -1759,6 +2946,10 @@ void CWaveSoapFrontDoc::OnUpdateIndicatorCurrentPos(CCmdUI* pCmdUI)
 
 void CWaveSoapFrontDoc::OnUpdateIndicatorSampleRate(CCmdUI* pCmdUI)
 {
+	if ( ! m_WavFile.IsOpen())
+	{
+		return;
+	}
 	SetStatusString(pCmdUI, LtoaCS(WaveFormat()->nSamplesPerSec));
 }
 
@@ -1769,6 +2960,10 @@ void CWaveSoapFrontDoc::OnUpdateIndicatorSampleSize(CCmdUI* pCmdUI)
 
 void CWaveSoapFrontDoc::OnUpdateIndicatorChannels(CCmdUI* pCmdUI)
 {
+	if ( ! m_WavFile.IsOpen())
+	{
+		return;
+	}
 	SetStatusString(pCmdUI,
 					(WaveChannels() == 1) ? _T("Mono") : _T("Stereo"));
 }
@@ -1880,7 +3075,7 @@ void CWaveSoapFrontDoc::IncrementModified(BOOL bDeleteRedo)
 
 	if (CWaveSoapFrontDoc::IsModified() != OldModified)
 	{
-		UpdateFrameCounts();        // will cause name change in views
+		UpdateFrameTitles();        // will cause name change in views
 	}
 }
 
@@ -1897,7 +3092,7 @@ void CWaveSoapFrontDoc::DecrementModified()   // called at UNDO
 
 	if (CWaveSoapFrontDoc::IsModified() != OldModified)
 	{
-		UpdateFrameCounts();        // will cause name change in views
+		UpdateFrameTitles();        // will cause name change in views
 	}
 }
 
@@ -1913,7 +3108,7 @@ void CWaveSoapFrontDoc::SetModifiedFlag(BOOL bModified)
 		m_ModificationSequenceNumber = 0;
 		if (OldModified)
 		{
-			UpdateFrameCounts();        // will cause name change in views
+			UpdateFrameTitles();        // will cause name change in views
 		}
 	}
 }
@@ -1939,7 +3134,6 @@ void CWaveSoapFrontDoc::PlaybackPositionNotify(long position, int channel)
 			CSoundUpdateInfo *pInfo = m_pUpdateList;
 			while (1)
 			{
-				// see if the ranges overlap
 				if (pInfo->UpdateCode == UpdatePlaybackPositionChanged)
 				{
 					pInfo->Begin = position;
@@ -1971,6 +3165,10 @@ void CWaveSoapFrontDoc::OnEditChannelsLock()
 
 void CWaveSoapFrontDoc::OnUpdateEditChannelsLock(CCmdUI* pCmdUI)
 {
+	if ( ! m_WavFile.IsOpen())
+	{
+		return;
+	}
 	if (WaveChannels() < 2)
 	{
 		pCmdUI->Enable(FALSE);
@@ -2018,15 +3216,48 @@ void CWaveSoapFrontDoc::OnUpdateSample8bit(CCmdUI* pCmdUI)
 
 }
 
+void CWaveSoapFrontDoc::SetSampleRate(unsigned SampleRate)
+{
+	if (m_bReadOnly)
+	{
+		return;
+	}
+	WAVEFORMATEX * pWf = WaveFormat();
+	if (pWf->nSamplesPerSec == SampleRate)
+	{
+		return;
+	}
+	if (UndoEnabled())
+	{
+		CUndoRedoContext * pContext = new CUndoRedoContext(this, "Sample Rate Change");
+		if (NULL == pContext)
+		{
+		}
+		else
+		{
+			pContext->m_Flags |= UndoContextReplaceFormat;
+			pContext->m_OldWaveFormat = * pWf;
+			AddUndoRedo(pContext);
+		}
+	}
+	pWf->nSamplesPerSec = SampleRate;
+	m_WavFile.GetFmtChunk()->dwFlags |= MMIO_DIRTY;
+	SetModifiedFlag();
+	UpdateAllViews(NULL, UpdateSampleRateChanged);
+}
+
 void CWaveSoapFrontDoc::OnUpdateSampleRate(CCmdUI* pCmdUI, unsigned SampleRate)
 {
+	if ( ! m_WavFile.IsOpen())
+	{
+		return;
+	}
 	pCmdUI->SetRadio(m_WavFile.SampleRate() == SampleRate);
 }
 
 void CWaveSoapFrontDoc::OnSamplerate11025()
 {
-	// TODO: Add your command handler code here
-
+	SetSampleRate(11025);
 }
 
 void CWaveSoapFrontDoc::OnUpdateSamplerate11025(CCmdUI* pCmdUI)
@@ -2036,8 +3267,7 @@ void CWaveSoapFrontDoc::OnUpdateSamplerate11025(CCmdUI* pCmdUI)
 
 void CWaveSoapFrontDoc::OnSamplerate16000()
 {
-	// TODO: Add your command handler code here
-
+	SetSampleRate(16000);
 }
 
 void CWaveSoapFrontDoc::OnUpdateSamplerate16000(CCmdUI* pCmdUI)
@@ -2047,6 +3277,7 @@ void CWaveSoapFrontDoc::OnUpdateSamplerate16000(CCmdUI* pCmdUI)
 
 void CWaveSoapFrontDoc::OnSamplerate22050()
 {
+	SetSampleRate(22050);
 }
 
 void CWaveSoapFrontDoc::OnUpdateSamplerate22050(CCmdUI* pCmdUI)
@@ -2056,8 +3287,7 @@ void CWaveSoapFrontDoc::OnUpdateSamplerate22050(CCmdUI* pCmdUI)
 
 void CWaveSoapFrontDoc::OnSamplerate32000()
 {
-	// TODO: Add your command handler code here
-
+	SetSampleRate(32000);
 }
 
 void CWaveSoapFrontDoc::OnUpdateSamplerate32000(CCmdUI* pCmdUI)
@@ -2067,8 +3297,7 @@ void CWaveSoapFrontDoc::OnUpdateSamplerate32000(CCmdUI* pCmdUI)
 
 void CWaveSoapFrontDoc::OnSamplerate44100()
 {
-	// TODO: Add your command handler code here
-
+	SetSampleRate(44100);
 }
 
 void CWaveSoapFrontDoc::OnUpdateSamplerate44100(CCmdUI* pCmdUI)
@@ -2078,8 +3307,7 @@ void CWaveSoapFrontDoc::OnUpdateSamplerate44100(CCmdUI* pCmdUI)
 
 void CWaveSoapFrontDoc::OnSamplerate48k()
 {
-	// TODO: Add your command handler code here
-
+	SetSampleRate(48000);
 }
 
 void CWaveSoapFrontDoc::OnUpdateSamplerate48k(CCmdUI* pCmdUI)
@@ -2089,8 +3317,7 @@ void CWaveSoapFrontDoc::OnUpdateSamplerate48k(CCmdUI* pCmdUI)
 
 void CWaveSoapFrontDoc::OnSamplerate7200()
 {
-	// TODO: Add your command handler code here
-
+	SetSampleRate(7200);
 }
 
 void CWaveSoapFrontDoc::OnUpdateSamplerate7200(CCmdUI* pCmdUI)
@@ -2100,8 +3327,7 @@ void CWaveSoapFrontDoc::OnUpdateSamplerate7200(CCmdUI* pCmdUI)
 
 void CWaveSoapFrontDoc::OnSamplerate8000()
 {
-	// TODO: Add your command handler code here
-
+	SetSampleRate(8000);
 }
 
 void CWaveSoapFrontDoc::OnUpdateSamplerate8000(CCmdUI* pCmdUI)
@@ -2111,8 +3337,7 @@ void CWaveSoapFrontDoc::OnUpdateSamplerate8000(CCmdUI* pCmdUI)
 
 void CWaveSoapFrontDoc::OnSamplerate96k()
 {
-	// TODO: Add your command handler code here
-
+	SetSampleRate(96000);
 }
 
 void CWaveSoapFrontDoc::OnUpdateSamplerate96k(CCmdUI* pCmdUI)
@@ -2128,6 +3353,10 @@ void CWaveSoapFrontDoc::OnChannelsMono()
 
 void CWaveSoapFrontDoc::OnUpdateChannelsMono(CCmdUI* pCmdUI)
 {
+	if ( ! m_WavFile.IsOpen())
+	{
+		return;
+	}
 	pCmdUI->SetRadio(WaveChannels() == 1);
 }
 
@@ -2139,6 +3368,10 @@ void CWaveSoapFrontDoc::OnChannelsStereo()
 
 void CWaveSoapFrontDoc::OnUpdateChannelsStereo(CCmdUI* pCmdUI)
 {
+	if ( ! m_WavFile.IsOpen())
+	{
+		return;
+	}
 	pCmdUI->SetRadio(WaveChannels() == 2);
 }
 
@@ -2159,7 +3392,7 @@ void CWaveSoapFrontDoc::OnProcessChangevolume()
 	int channel = m_SelectedChannel;
 	if (ChannelsLocked())
 	{
-		channel = 2;
+		channel = ALL_CHANNELS;
 	}
 
 	CVolumeChangeDialog dlg;
@@ -2171,7 +3404,7 @@ void CWaveSoapFrontDoc::OnProcessChangevolume()
 	dlg.m_dVolumeRightPercent = pApp->m_dVolumeRightPercent;
 	dlg.m_Start = start;
 	dlg.m_End = end;
-	dlg.m_Chan = channel;
+	dlg.m_Chan = channel + 1;
 	dlg.m_pWf = m_WavFile.GetWaveFormat();
 	dlg.m_bLockChannels = m_bChannelsLocked;
 	dlg.m_bUndo = UndoEnabled();
@@ -2187,6 +3420,7 @@ void CWaveSoapFrontDoc::OnProcessChangevolume()
 	{
 		return;
 	}
+	dlg.m_Chan--;   // make correction
 	pApp->m_VolumeDialogDbPercents = dlg.m_DbPercent;
 	pApp->m_dVolumeLeftDb = dlg.m_dVolumeLeftDb;
 	pApp->m_dVolumeRightDb = dlg.m_dVolumeRightDb;
@@ -2205,7 +3439,7 @@ void CWaveSoapFrontDoc::OnProcessChangevolume()
 		pContext->m_VolumeLeft = pow(10., dlg.m_dVolumeLeftDb / 20.);
 		if (dlg.m_bLockChannels || WaveChannels() == 1)
 		{
-			dlg.m_Chan = 2;
+			dlg.m_Chan = ALL_CHANNELS;
 			pContext->m_VolumeRight = pContext->m_VolumeLeft;
 		}
 		else
@@ -2218,7 +3452,7 @@ void CWaveSoapFrontDoc::OnProcessChangevolume()
 		pContext->m_VolumeLeft = 0.01 * dlg.m_dVolumeLeftPercent;
 		if (dlg.m_bLockChannels || WaveChannels() == 1)
 		{
-			dlg.m_Chan = 2;
+			dlg.m_Chan = ALL_CHANNELS;
 			pContext->m_VolumeRight = pContext->m_VolumeLeft;
 		}
 		else
@@ -2276,7 +3510,7 @@ void CWaveSoapFrontDoc::OnProcessChangevolume()
 		delete pContext;
 		return;
 	}
-	QueueOperation(pContext);
+	pContext->Execute();
 	SetModifiedFlag();
 }
 
@@ -2381,9 +3615,6 @@ void CWaveSoapFrontDoc::OnViewStatusSeconds()
 		SampleToString_Seconds | TimeToHhMmSs_NeedsMs;
 }
 
-BOOL AFXAPI AfxFullPath(LPTSTR lpszPathOut, LPCTSTR lpszFileIn);
-UINT AFXAPI AfxGetFileTitle(LPCTSTR lpszPathName, LPTSTR lpszTitle, UINT nMax);
-
 void CWaveSoapFrontDoc::SetPathName(LPCTSTR lpszPathName, BOOL bAddToMRU)
 {
 	// store the path fully qualified
@@ -2404,11 +3635,11 @@ void CWaveSoapFrontDoc::SetPathName(LPCTSTR lpszPathName, BOOL bAddToMRU)
 	char flag = 1;
 	if (m_bDirectMode)
 	{
-		flag |= 2;
+		flag |= OpenDocumentDirectMode;
 	}
 	if (m_bReadOnly)
 	{
-		flag |= 4;
+		flag |= OpenDocumentReadOnly;
 	}
 
 	if (bAddToMRU)
@@ -2439,14 +3670,14 @@ void CWaveSoapFrontDoc::OnProcessDcoffset()
 	int channel = m_SelectedChannel;
 	if (ChannelsLocked())
 	{
-		channel = 2;
+		channel = ALL_CHANNELS;
 	}
 
 	CDcOffsetDialog dlg;
 	CWaveSoapFrontApp * pApp = GetApp();
 	dlg.m_Start = start;
 	dlg.m_End = end;
-	dlg.m_Chan = channel;
+	dlg.m_Chan = channel + 1;
 	dlg.m_pWf = m_WavFile.GetWaveFormat();
 	dlg.m_bUndo = UndoEnabled();
 	dlg.m_TimeFormat = GetApp()->m_SoundTimeFormat;
@@ -2458,6 +3689,7 @@ void CWaveSoapFrontDoc::OnProcessDcoffset()
 	{
 		return;
 	}
+	dlg.m_Chan--;
 	GetApp()->m_b5SecondsDC = dlg.m_b5SecondsDC;
 	GetApp()->m_DcSelectMode = dlg.m_DcSelectMode;
 	GetApp()->m_nDcOffset = dlg.m_nDcOffset;
@@ -2536,7 +3768,7 @@ void CWaveSoapFrontDoc::OnProcessDcoffset()
 		delete pContext;
 		return;
 	}
-	QueueOperation(pContext);
+	pContext->Execute();
 	SetModifiedFlag();
 }
 
@@ -2572,7 +3804,7 @@ void CWaveSoapFrontDoc::OnProcessMute()
 	int channel = m_SelectedChannel;
 	if (ChannelsLocked())
 	{
-		channel = 2;
+		channel = ALL_CHANNELS;
 	}
 
 	CVolumeChangeContext * pContext =
@@ -2591,7 +3823,7 @@ void CWaveSoapFrontDoc::OnProcessMute()
 		delete pContext;
 		return;
 	}
-	QueueOperation(pContext);
+	pContext->Execute();
 	SetModifiedFlag();
 }
 
@@ -2617,7 +3849,7 @@ void CWaveSoapFrontDoc::OnProcessNormalize()
 	int channel = m_SelectedChannel;
 	if (ChannelsLocked())
 	{
-		channel = 2;
+		channel = ALL_CHANNELS;
 	}
 
 	CNormalizeSoundDialog dlg;
@@ -2627,7 +3859,7 @@ void CWaveSoapFrontDoc::OnProcessNormalize()
 	dlg.m_dLevelPercent = pApp->m_dNormalizeLevelPercent;
 	dlg.m_Start = start;
 	dlg.m_End = end;
-	dlg.m_Chan = channel;
+	dlg.m_Chan = channel + 1;
 	dlg.m_pWf = m_WavFile.GetWaveFormat();
 	dlg.m_bLockChannels = m_bChannelsLocked;
 	dlg.m_bUndo = UndoEnabled();
@@ -2643,6 +3875,7 @@ void CWaveSoapFrontDoc::OnProcessNormalize()
 	{
 		return;
 	}
+	dlg.m_Chan--;
 	pApp->m_NormalizeDialogDbPercents = dlg.m_DbPercent;
 	pApp->m_dNormalizeLevelDb = dlg.m_dLevelDb;
 	pApp->m_dNormalizeLevelPercent = dlg.m_dLevelPercent;
@@ -2656,7 +3889,7 @@ void CWaveSoapFrontDoc::OnProcessNormalize()
 
 	if (dlg.m_bLockChannels || WaveChannels() == 1)
 	{
-		dlg.m_Chan = 2;
+		dlg.m_Chan = ALL_CHANNELS;
 	}
 	if (0 == dlg.m_DbPercent)   // dBs
 	{
@@ -2688,20 +3921,97 @@ void CWaveSoapFrontDoc::OnProcessNormalize()
 	pContext->m_pScanContext = pStatContext;
 	pContext->m_Flags |= ContextScanning;
 
-	QueueOperation(pContext);
+	pContext->Execute();
 	SetModifiedFlag();
 }
 
 void CWaveSoapFrontDoc::OnUpdateProcessResample(CCmdUI* pCmdUI)
 {
-	// TODO: Add your command update UI handler code here
-
+	pCmdUI->Enable( ! m_bReadOnly && ! m_OperationInProgress);
 }
 
 void CWaveSoapFrontDoc::OnProcessResample()
 {
-	// TODO: Add your command handler code here
+	if (m_bReadOnly || m_OperationInProgress)
+	{
+		return;
+	}
 
+	CResampleDialog dlg;
+	CWaveSoapFrontApp * pApp = GetApp();
+	dlg.m_bUndo = UndoEnabled();
+	dlg.m_bChangeRateOnly = pApp->m_bResampleChangeRateOnly;
+	dlg.m_bChangeSamplingRate = pApp->m_bResampleRate;
+	dlg.m_TempoChange = pApp->m_ResampleTempoPercents;
+	dlg.m_NewSampleRate = pApp->m_ResampleSamplingRate;
+	dlg.m_bChangeSamplingRate = pApp->m_bResampleRate;
+	dlg.m_OldSampleRate = WaveFormat()->nSamplesPerSec;
+
+	if (IDOK != dlg.DoModal())
+	{
+		return;
+	}
+
+	pApp->m_bResampleChangeRateOnly = dlg.m_bChangeRateOnly;
+	pApp->m_bResampleRate    = dlg.m_bChangeSamplingRate;
+	pApp->m_ResampleTempoPercents   = dlg.m_TempoChange;
+	pApp->m_ResampleSamplingRate    = dlg.m_NewSampleRate;
+	pApp->m_bResampleRate           = dlg.m_bChangeSamplingRate;
+
+	double ResampleQuality = 40.;
+
+	long OldSamplingRate = WaveFormat()->nSamplesPerSec;
+	long NewSamplingRate;
+	double ResampleRatio;
+	if (dlg.m_bChangeSamplingRate)
+	{
+		NewSamplingRate = dlg.m_NewSampleRate;
+		ResampleRatio = double(NewSamplingRate) / OldSamplingRate;
+	}
+	else
+	{
+		NewSamplingRate = WaveFormat()->nSamplesPerSec * dlg.m_TempoChange;
+		ResampleRatio = dlg.m_TempoChange;
+	}
+	if (dlg.m_bChangeRateOnly)
+	{
+		SetSampleRate(NewSamplingRate);
+		return;
+	}
+	CResampleContext * pContext = new CResampleContext(this, "Changing sample rate...", "Resample");
+	if (NULL == pContext)
+	{
+		return;
+	}
+	// create new temporary file
+	CWaveFile DstFile;
+	int NewSampleCount = MulDiv(WaveFileSamples(), NewSamplingRate, OldSamplingRate);
+	if ( ! DstFile.CreateWaveFile( & m_WavFile, NULL, ALL_CHANNELS, NewSampleCount,
+									//CreateWaveFileTempDir |
+									CreateWaveFileDeleteAfterClose
+									| CreateWaveFilePcmFormat
+									| CreateWaveFileTemp,
+									NULL))
+	{
+		delete pContext;
+		return;
+	}
+	if (dlg.m_bChangeSamplingRate)
+	{
+		DstFile.GetWaveFormat()->nSamplesPerSec = NewSamplingRate;
+	}
+	pContext->InitResample(m_WavFile, DstFile, ResampleRatio, ResampleQuality);
+	// todo: Add Undo
+	if (UndoEnabled())
+	{
+		CUndoRedoContext * pUndo = new CUndoRedoContext(this, "Resample");
+		pUndo->m_Flags |= UndoContextReplaceWholeFile;
+		pUndo->m_SrcFile = m_WavFile;
+		pContext->m_pUndoContext = pUndo;
+	}
+	pContext->Execute();
+	// don't mark the file as modified yet
+	//SetModifiedFlag();
 }
 
 void CWaveSoapFrontDoc::OnFileStatistics()
@@ -2719,8 +4029,8 @@ void CWaveSoapFrontDoc::OnFileStatistics()
 		begin = 0;
 		end = WaveFileSamples();
 	}
-	pContext->InitDestination(m_WavFile, begin, end, 2, FALSE);
-	QueueOperation(pContext);
+	pContext->InitDestination(m_WavFile, begin, end, ALL_CHANNELS, FALSE);
+	pContext->Execute();
 }
 
 void CWaveSoapFrontDoc::OnUpdateFileStatistics(CCmdUI* pCmdUI)
@@ -2746,7 +4056,7 @@ void CWaveSoapFrontDoc::OnEditGoto()
 	}
 	GetApp()->m_SoundTimeFormat = dlg.m_TimeFormat;
 	SetSelection(dlg.m_Position, dlg.m_Position,
-				m_SelectedChannel, dlg.m_Position, TRUE);
+				m_SelectedChannel, dlg.m_Position, SetSelection_MoveCaretToCenter);
 }
 
 void CWaveSoapFrontDoc::OnUpdateProcessInvert(CCmdUI* pCmdUI)
@@ -2771,7 +4081,7 @@ void CWaveSoapFrontDoc::OnProcessInvert()
 	int channel = m_SelectedChannel;
 	if (ChannelsLocked())
 	{
-		channel = 2;
+		channel = ALL_CHANNELS;
 	}
 
 	CVolumeChangeContext * pContext =
@@ -2790,7 +4100,7 @@ void CWaveSoapFrontDoc::OnProcessInvert()
 		delete pContext;
 		return;
 	}
-	QueueOperation(pContext);
+	pContext->Execute();
 	SetModifiedFlag();
 }
 
@@ -2801,5 +4111,337 @@ void CWaveSoapFrontDoc::OnUpdateViewRescanPeaks(CCmdUI* pCmdUI)
 
 void CWaveSoapFrontDoc::OnViewRescanPeaks()
 {
-	BuildPeakInfo();
+	if (m_OperationInProgress)
+	{
+		return;
+	}
+	BuildPeakInfo(FALSE);   // don't save it right now
+}
+
+void CWaveSoapFrontDoc::OnUpdateProcessSynthesisExpressionEvaluation(CCmdUI* pCmdUI)
+{
+	// TODO: Add your command update UI handler code here
+
+}
+
+void CWaveSoapFrontDoc::OnProcessSynthesisExpressionEvaluation()
+{
+	// TODO: Add your command handler code here
+
+}
+
+void CWaveSoapFrontDoc::OnUpdateViewStatusHhmmss(CCmdUI* pCmdUI)
+{
+	pCmdUI->SetRadio((GetApp()->m_SoundTimeFormat & SampleToString_Mask)
+					== SampleToString_HhMmSs);
+}
+
+void CWaveSoapFrontDoc::OnUpdateViewStatusSamples(CCmdUI* pCmdUI)
+{
+	pCmdUI->SetRadio((GetApp()->m_SoundTimeFormat & SampleToString_Mask)
+					== SampleToString_Sample);
+}
+
+void CWaveSoapFrontDoc::OnUpdateViewStatusSeconds(CCmdUI* pCmdUI)
+{
+	pCmdUI->SetRadio((GetApp()->m_SoundTimeFormat & SampleToString_Mask)
+					== SampleToString_Seconds);
+}
+
+
+
+void CWaveSoapFrontDoc::OnFileSaveCopyAs()
+{
+	DoSave(NULL, FALSE);
+}
+
+CWaveSoapMP3Doc::CWaveSoapMP3Doc()
+{
+	memset( & m_MP3Tag, 0, sizeof m_MP3Tag);
+	memset( & m_Format, 0, sizeof m_Format);
+}
+
+CWaveSoapMP3Doc::~CWaveSoapMP3Doc()
+{
+}
+#if 0
+BOOL _stdcall FormatEnum(
+						HACMDRIVERID hadid,
+						LPACMFORMATDETAILS pafd,
+						DWORD dwInstance,
+						DWORD fdwSupport
+						)
+{
+	MPEGLAYER3WAVEFORMAT * pwf = (MPEGLAYER3WAVEFORMAT *) pafd->pwfx;
+	TRACE("\"%s\", cbSize = %d, wID=%X, fdwFlags=%X, nBlockSize=%d, nFramesPerBlock=%d, nCodecDelay=%d\n",
+		pafd->szFormat, pafd->pwfx->cbSize, pwf->wID, pwf->fdwFlags,
+		pwf->nBlockSize, pwf->nFramesPerBlock, pwf->nCodecDelay);
+	return TRUE;
+}
+#endif
+
+BOOL _stdcall CWaveSoapMP3Doc::DriverEnumProc(HACMDRIVERID hadid, DWORD dwInstance, DWORD fdwSupport)
+{
+	if (0 == (ACMDRIVERDETAILS_SUPPORTF_CODEC & fdwSupport))
+	{
+		// not codec, continue with enumeration
+		return TRUE;
+	}
+	ACMDRIVERDETAILS add;
+	add.cbStruct = sizeof add;
+	if (MMSYSERR_NOERROR != acmDriverDetails(hadid, & add, 0))
+	{
+		return TRUE;
+	}
+	if (0 == (ACMDRIVERDETAILS_SUPPORTF_CODEC & add.fdwSupport)
+		|| add.cFormatTags <= 0)
+	{
+		return TRUE;
+	}
+	HACMDRIVER hdrv;
+	if (MMSYSERR_NOERROR != acmDriverOpen(& hdrv, hadid, 0))
+	{
+		return TRUE;
+	}
+	for (int tag = 0; tag < add.cFormatTags; tag++)
+	{
+		ACMFORMATTAGDETAILS aftd;
+		memset( & aftd, 0, sizeof aftd);
+		aftd.cbStruct = sizeof aftd;
+		aftd.dwFormatTagIndex = tag;
+		if (MMSYSERR_NOERROR == acmFormatTagDetails(hdrv, &aftd, ACM_FORMATTAGDETAILSF_INDEX))
+		{
+			if (WAVE_FORMAT_MPEGLAYER3 == aftd.dwFormatTag)
+			{
+				CDecompressContext * pContext = reinterpret_cast<CDecompressContext *>(dwInstance);
+				pContext->m_acmDrv = hdrv;
+				TRACE("MP3 decompressor found\n");
+				return FALSE;   // stop enumeration
+			}
+		}
+	}
+	acmDriverClose(hdrv, 0);
+	return TRUE;
+}
+BOOL CWaveSoapMP3Doc::OnOpenDocument(LPCTSTR lpszPathName, int flags)
+{
+
+	// TODO: Add your specialized creation code here
+	TRACE("CWaveSoapFrontDoc::OnOpenDocument(%s)\n", lpszPathName);
+	m_WavFile.Close();
+	m_OriginalWavFile.Close();
+
+	CWaveSoapFrontApp * pApp = GetApp();
+	m_bDirectMode = FALSE;
+	m_bReadOnly = FALSE;
+
+	m_szWaveFilename = lpszPathName;
+	if ( !m_OriginalWavFile.Open(lpszPathName,
+								MmioFileOpenExisting
+								| MmioFileOpenReadOnly
+								| MmioFileOpenDontLoadRiff))
+	{
+		// todo: dialog
+		return FALSE;
+	}
+	// read tag, if any
+	DWORD Mp3FileLength = m_OriginalWavFile.GetLength();
+	if (Mp3FileLength <= sizeof (DWORD))
+	{
+		// todo: dialog
+		m_OriginalWavFile.Close();
+		return FALSE;
+	}
+	MP3_IDTAG id3tag;
+	if (Mp3FileLength <= sizeof (MP3_IDTAG)
+		|| sizeof id3tag != m_OriginalWavFile.ReadAt( & id3tag,
+													sizeof id3tag, Mp3FileLength - sizeof id3tag))
+	{
+		if ('T' == id3tag.Tag[0]
+			&& 'A' == id3tag.Tag[1]
+			&& 'G' == id3tag.Tag[2])
+		{
+			// valid tag read
+			Mp3FileLength -= sizeof id3tag;
+		}
+		else
+		{
+			// no tag in the file
+			memset( & id3tag, 0, sizeof id3tag);
+		}
+	}
+	// read the first bytes of the file to check if it is
+	// the MP3 file
+	// 4 bytes of the frame will tell its attributes
+	DWORD hdr;
+
+	if (sizeof hdr != m_OriginalWavFile.ReadAt( & hdr, sizeof hdr, 0)
+		|| (hdr & 0x0000F0FF) != 0x0000F0FF
+		|| 0 == (hdr & 0x600)   // layer
+		|| 0xC0000 == (hdr & 0xC0000)
+		|| 0 == (hdr & 0x0F00000))  // bitrate
+	{
+		// todo: dialog
+		m_OriginalWavFile.Close();
+		return FALSE;
+	}
+	int BitrateIndex = ((hdr & 0xF00000) >> 20) // bitrate
+						| ((hdr & 0x800) >> 7)  // MPEG 1 or 2
+						| (((~hdr) & 0x600) >> 4); // layer
+	static int BitrateTable[16*2*3] =
+	{
+		0,  32,  64,  96, 128, 160, 192, 224, 256, 288, 320, 352, 384, 416, 448, -1,
+		0,  32,  64,  96, 128, 160, 192, 224, 256, 288, 320, 352, 384, 416, 448, -1,
+		0,  32,  48,  56,  64,  80,  96, 112, 128, 160, 192, 224, 256, 320, 384, -1,
+		0,  32,  48,  56,  64,  80,  96, 112, 128, 160, 192, 224, 256, 320, 384, -1,
+		0,   8,  16,  24,  32,  64,  80,  56,  64, 128, 160, 112, 128, 256, 320, -1,
+		0,  32,  40,  48,  56,  64,  80,  96, 112, 128, 160, 192, 224, 256, 320, -1,
+	};
+	MPEGLAYER3WAVEFORMAT m3wf;
+	memset( & m3wf, 0, sizeof m3wf);
+	m3wf.wfx.wFormatTag = WAVE_FORMAT_MPEGLAYER3;
+	m3wf.wfx.cbSize = MPEGLAYER3_WFX_EXTRA_BYTES;
+	m3wf.wID = MPEGLAYER3_ID_CONSTANTFRAMESIZE;
+	m3wf.fdwFlags = MPEGLAYER3_FLAG_PADDING_ISO;
+	m3wf.wfx.nAvgBytesPerSec = BitrateTable[BitrateIndex] * 125;
+	if (0 == m3wf.wfx.nAvgBytesPerSec)
+	{
+		m3wf.wID = MPEGLAYER3_ID_MPEG;
+		m3wf.wfx.nAvgBytesPerSec = 96000/8;
+	}
+	m3wf.wfx.nChannels = 2;
+	if ((hdr & 0xC0000000) == 0xC0000000)
+	{
+		m3wf.wfx.nChannels = 1;
+	}
+	if (hdr & 0x800)
+	{
+		TRACE("MPEG-1 ");
+		switch (hdr & 0x600)
+		{
+		case 0x200:
+			TRACE("Layer 3 ");
+			break;
+		case 0x400:
+			TRACE("Layer 2 ");
+			break;
+		case 0x600:
+			TRACE("Layer 1 ");
+			break;
+		}
+		switch (hdr & 0xC0000)
+		{
+		case 0x00000:
+			m3wf.wfx.nSamplesPerSec = 44100;
+			break;
+		case 0x40000:
+			m3wf.wfx.nSamplesPerSec = 48000;
+			break;
+		case 0x80000:
+			m3wf.wfx.nSamplesPerSec = 32000;
+			break;
+		}
+	}
+	else
+	{
+		TRACE("MPEG-2 ");
+		switch (hdr & 0xC0000)
+		{
+		case 0x00000:
+			m3wf.wfx.nSamplesPerSec = 22050;
+			break;
+		case 0x40000:
+			m3wf.wfx.nSamplesPerSec = 24000;
+			break;
+		case 0x80000:
+			m3wf.wfx.nSamplesPerSec = 16000;
+			break;
+		}
+	}
+	m3wf.nBlockSize = MulDiv(1152, m3wf.wfx.nAvgBytesPerSec, m3wf.wfx.nSamplesPerSec);
+	m3wf.nFramesPerBlock = 1;
+	m3wf.nCodecDelay = 0x571;
+
+#if 0
+	TRACE("Bitrate=%d\n", BitrateTable[BitrateIndex]);
+	ACMFORMATTAGDETAILS atd;
+	memset ( & atd, 0, sizeof atd);
+	atd.cbStruct = sizeof atd;
+	atd.dwFormatTag = WAVE_FORMAT_MPEGLAYER3;
+	atd.fdwSupport = ACMDRIVERDETAILS_SUPPORTF_CODEC;
+	acmFormatTagDetails(NULL, & atd, ACM_FORMATTAGDETAILSF_LARGESTSIZE);
+	TRACE("Largest format size = %d, formats=%d\n",
+		atd.cbFormatSize, atd.cStandardFormats);
+	ACMFORMATDETAILS afd;
+	memset( & afd, 0, sizeof afd);
+	afd.cbStruct = sizeof afd;
+	afd.pwfx = & m3wf.wfx;
+	afd.cbwfx = sizeof m3wf;
+	afd.dwFormatTag = WAVE_FORMAT_MPEGLAYER3;
+	afd.fdwSupport = ACMDRIVERDETAILS_SUPPORTF_CODEC;
+	int retcode= acmFormatEnum(NULL, & afd, ::FormatEnum, NULL, ACM_FORMATENUMF_WFORMATTAG);
+	TRACE("acmFormatEnum returned %X\n", retcode);
+#endif
+	// enum drivers, query which driver suports MP3 format, and open this driver
+	// for decode
+	CDecompressContext * pContext = new CDecompressContext(this, "Loading the compressed file...");
+
+	acmDriverEnum(DriverEnumProc, DWORD(pContext), 0);
+	if (NULL == pContext->m_acmDrv)
+	{
+		TRACE("MP3 decompressor not found\n");
+		m_OriginalWavFile.Close();
+		delete pContext;
+		return FALSE;
+	}
+
+	// calculate approximate number of samples in the file
+	int nSamples = MulDiv(Mp3FileLength,
+						m3wf.wfx.nSamplesPerSec, m3wf.wfx.nAvgBytesPerSec);
+	int FormatSize = sizeof MPEGLAYER3WAVEFORMAT;
+	CWaveFile::COMMON_DATA * pData = (CWaveFile::COMMON_DATA *)
+									m_OriginalWavFile.AllocateCommonData(FormatSize + offsetof (CWaveFile::COMMON_DATA, wf));
+	if (NULL == pData)
+	{
+		// todo: dialog
+		m_OriginalWavFile.Close();
+		delete pContext;
+		return FALSE;
+	}
+	memcpy (& pData->wf, & m3wf, sizeof m3wf);
+	pContext->m_SrcFile = m_OriginalWavFile;
+	if ( FALSE == m_WavFile.CreateWaveFile( & m_OriginalWavFile, NULL, ALL_CHANNELS, // 2 channels
+											nSamples,
+											CreateWaveFileTempDir
+											| CreateWaveFileDeleteAfterClose
+											| CreateWaveFilePcmFormat
+											| CreateWaveFileTemp,
+											NULL))
+	{
+		AfxMessageBox(IDS_UNABLE_TO_CREATE_NEW_FILE, MB_OK | MB_ICONEXCLAMATION);
+		m_OriginalWavFile.Close();
+		delete pContext;
+		return FALSE;
+	}
+	pContext->m_DstFile = m_WavFile;
+	if (MMSYSERR_NOERROR != acmStreamOpen( & pContext->m_acmStr, pContext->m_acmDrv,
+											m_OriginalWavFile.GetWaveFormat(), m_WavFile.GetWaveFormat(),
+											NULL, NULL, NULL, ACM_STREAMOPENF_NONREALTIME))
+	{
+		m_OriginalWavFile.Close();
+		m_WavFile.Close();  // and delete
+		delete pContext;
+		return FALSE;
+	}
+	pContext->m_SrcStart = 0;
+	pContext->m_SrcPos = 0;
+	pContext->m_SrcEnd = Mp3FileLength;
+	pContext->m_DstChan = ALL_CHANNELS;
+	pContext->m_DstStart = m_WavFile.GetDataChunk()->dwDataOffset;
+	pContext->m_DstCopyPos = pContext->m_DstStart;
+	pContext->m_DstEnd = m_WavFile.GetLength();
+	pContext->m_CurrentSamples = m_WavFile.NumberOfSamples();
+	AllocatePeakData(pContext->m_CurrentSamples);
+	QueueOperation(pContext);
+	return TRUE;
 }
