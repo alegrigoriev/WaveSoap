@@ -953,6 +953,9 @@ makehm IDW_,HIDW_,0x50000 resource.h &gt;&gt;&quot;hlp\$(TargetName).hm&quot;
 			RelativePath=".\aspi_w32.txt">
 		</File>
 		<File
+			RelativePath=".\Project Classes.doc">
+		</File>
+		<File
 			RelativePath=".\ReadMe.txt">
 		</File>
 	</Files>
