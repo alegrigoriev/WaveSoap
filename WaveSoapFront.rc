@@ -1419,14 +1419,14 @@ END
 IDD_DIALOG_NOISE_REDUCTION DIALOGEX 0, 0, 230, 272
 STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | 
     WS_SYSMENU
-CAPTION "Noise Reduction Parameters"
+CAPTION "Noise Reduction"
 FONT 8, "MS Shell Dlg", 0, 0, 0x0
 BEGIN
     LTEXT           "A&pply noise reduction to\nfrequencies higher than:",
                     IDC_STATIC,7,5,93,19
     EDITTEXT        IDC_EDIT_LOWER_FREQUENCY,104,7,40,13,ES_AUTOHSCROLL
     LTEXT           "Hz",IDC_STATIC,150,9,12,8
-    LTEXT           "&FFT order for analyze:",IDC_STATIC,7,26,90,8
+    LTEXT           "Number of frequency bins:",IDC_STATIC,7,26,95,8
     COMBOBOX        IDC_COMBO_FFT_ORDER,104,24,40,44,CBS_DROPDOWNLIST | 
                     WS_VSCROLL | WS_TABSTOP
     LTEXT           "&Noise floor for higher frequencies:",IDC_STATIC,7,38,
