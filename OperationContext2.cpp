@@ -1785,10 +1785,20 @@ BOOL CCdReadingContext::ProcessBuffer(void * buf, size_t len, DWORD offset, BOOL
 				return TRUE;
 			}
 
+			DWORD ReadBeginTime = timeGetTime();
 			if ( ! m_Drive.ReadCdData(m_pCdBuffer, m_CdAddress, SectorsToRead))
 			{
 				return FALSE;
 			}
+			DWORD ElapsedReadTime = timeGetTime() - ReadBeginTime;
+			// pace the reading process
+			DWORD delay;
+			if (0 && ElapsedReadTime < 500)
+			{
+				timeSetEvent(delay, 2, LPTIMECALLBACK(m_hEvent), NULL, TIME_CALLBACK_EVENT_SET);
+				WaitForSingleObject(m_hEvent, INFINITE);
+			}
+
 			m_NumberOfSectors -= SectorsToRead;
 			m_CdAddress = LONG(m_CdAddress) + SectorsToRead;
 			m_CdDataOffset = 0;
@@ -1818,6 +1828,9 @@ BOOL CCdReadingContext::Init()
 	m_CdDataOffset = 0;
 	m_CdBufferSize = 0x10000 - 0x10000 % 2352;
 
+	timeBeginPeriod(2);
+
+	m_hEvent = CreateEvent(NULL, FALSE, FALSE, NULL);
 	m_pCdBuffer = VirtualAlloc(NULL, m_CdBufferSize, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
 	return NULL != m_pCdBuffer;
 }
@@ -1829,4 +1842,10 @@ void CCdReadingContext::DeInit()
 		VirtualFree(m_pCdBuffer, 0, MEM_RELEASE);
 		m_pCdBuffer = NULL;
 	}
+	if (NULL != m_hEvent)
+	{
+		CloseHandle(m_hEvent);
+		m_hEvent = NULL;
+	}
+	timeEndPeriod(2);
 }
