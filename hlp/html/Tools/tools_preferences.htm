@@ -16,7 +16,7 @@ command (<a href="tools_menu.htm">Tools menu</a>)</B></h3>
 <P>Use this command to change user preferences.</P>
 
 <p>A property sheet dialog of 3 tabs is open.</p>
-<p><b>File</b> page:</p>
+<p><b><a name="File"></a>File</b> page:</p>
 <p><img border="0" src="../../images/PreferencesFileDialog.png"></p>
 <p>&quot;<b>Temporary file location</b>&quot; edit box allows to specify where to place 
 any temporary files the program creates.</p>
@@ -45,6 +45,19 @@ be saved in WAV files.</p>
 </ul>
 <p>&quot;<b>Max file cache size</b>&quot; - specifies upper limit of memory allocated to 
 cache the files. Default is 64 MB.</p>
+<p>&quot;<b>Open files from command line and drag-and-drop as</b>&quot; option chooses how 
+such files are opened:</p>
+<ul>
+  <li>Read only - the file(s) can only be viewed and listened to;</li>
+  <li>Direct edit - the file(s) will be opened for direct editing: any changes 
+  are saved immediately in the original copy;</li>
+  <li>Buffered - the file(s) will be opened in buffered mode: any changes will 
+  go to a temporary copy and commited to the permanent file only on
+  <a href="../File/hid_file_save.htm">File/Save command</a>.</li>
+</ul>
+<p><b><a name="Undo"></a>Undo/Redo</b> page:</p>
+<p>
+<img border="0" src="../../images/PreferencesUndoDialog.png"></p>
 <p><b>Undo</b> group:</p>
 <p>&quot;<b>Enable</b>&quot; - enables saving Undo information. This allows to return to 
 the state before editing. This option can also be changed in More Undo/Redo 
@@ -59,19 +72,9 @@ undone operation. This option can also be changed in More Undo/Redo submenu of
 <p>&quot;<b>Limit total size</b>&quot; - sets limit for the size of saved Redo 
 information.</p>
 <p>&quot;<b>Limit depth</b>&quot; - sets maximum number of Redo steps saved.</p>
-<p>&quot;Remember current selection in Undo/Redo&quot; - if checked, Undo/Redo operation 
+<p>&quot;<b>Remember current selection in Undo/Redo</b>&quot; - if checked, Undo/Redo operation 
 will also restore the selection.</p>
-<p>&quot;<b>Open files from command line and drag-and-drop as</b>&quot; option chooses how 
-such files are opened:</p>
-<ul>
-  <li>Read only - the file(s) can only be viewed and listened to;</li>
-  <li>Direct edit - the file(s) will be opened for direct editing: any changes 
-  are saved immediately in the original copy;</li>
-  <li>Buffered - the file(s) will be opened in buffered mode: any changes will 
-  go to a temporary copy and commited to the permanent file only on
-  <a href="../File/hid_file_save.htm">File/Save command</a>.</li>
-</ul>
-<p><b>Sound</b> page:</p>
+<p><b><a name="Sound"></a>Sound</b> page:</p>
 <p><img border="0" src="../../images/PreferencesSoundDialog.png"></p>
 <p>Playback group:</p>
 <p><b>Device</b> drop-down box selects an audio output device to use for 
@@ -85,7 +88,7 @@ recording. If &quot;<b>Microsoft Sound Mapper</b>&quot; is selected, a device se
 &quot;Sounds audio devices&quot; control panel applet will be used.</p>
 <p>&quot;<b>Buffer size</b>&quot; and &quot;<b>Number of buffers</b>&quot; select depth of buffering. Some low-end systems may require more buffers for steady audio 
 recording.</p>
-<p><b>View</b> page:</p>
+<p><b><a name="View"></a>View</b> page:</p>
 <p>
 <img border="0" src="../../images/PreferencesViewDialog.png"></p>
 
