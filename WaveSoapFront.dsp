@@ -584,6 +584,10 @@ SOURCE=.\res\Toolbar.bmp
 # End Source File
 # Begin Source File
 
+SOURCE=.\res\toolbar1.bmp
+# End Source File
+# Begin Source File
+
 SOURCE=.\res\WaveSoap.ico
 # End Source File
 # Begin Source File

@@ -144,7 +144,6 @@ public:
 
 // Attributes
 public:
-	CWaveMDIChildClient m_wClient;
 // Operations
 public:
 	virtual void OnUpdateFrameTitle(BOOL bAddToTitle);
@@ -160,8 +159,11 @@ protected:
 	//}}AFX_VIRTUAL
 
 // Implementation
+	CReBar      m_wndReBar;
+	CToolBar    m_wndToolBar;
 	CWaveSoapFrontStatusBar  m_wndStatusBar;
 public:
+	CWaveMDIChildClient m_wClient;
 	virtual ~CChildFrame();
 #ifdef _DEBUG
 	virtual void AssertValid() const;

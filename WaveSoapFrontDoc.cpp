@@ -5485,7 +5485,32 @@ void CWaveSoapFrontDoc::OnProcessEqualizer()
 	{
 		return;
 	}
+
+	long start = m_SelectionStart;
+	long end = m_SelectionEnd;
+	if (start == end)
+	{
+		// select all
+		start = 0;
+		end = WaveFileSamples();
+	}
+	int channel = m_SelectedChannel;
+	if (ChannelsLocked())
+	{
+		channel = ALL_CHANNELS;
+	}
+
 	CEqualizerDialog dlg;
+	CThisApp * pApp = GetApp();
+	dlg.m_bUndo = UndoEnabled();
+	dlg.m_Start = start;
+	dlg.m_End = end;
+	dlg.m_CaretPosition = m_CaretPosition;
+	dlg.m_Chan = channel;
+	dlg.m_pWf = m_WavFile.GetWaveFormat();
+	dlg.m_bLockChannels = m_bChannelsLocked;
+	dlg.m_TimeFormat = pApp->m_SoundTimeFormat;
+	dlg.m_FileLength = WaveFileSamples();
 	if (IDOK == dlg.DoModal())
 	{
 	}
