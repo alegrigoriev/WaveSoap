@@ -99,7 +99,7 @@ protected:
 	BufferHeader * GetBufferHeader(void * pAddr);
 	size_t GetOffsetInBuffer(void * pAddr);
 
-	void MakeBufferMostRecent(BufferHeader * pBuf);
+	void MakeBufferLeastRecent(BufferHeader * pBuf);
 
 	File * Open(LPCTSTR szName, DWORD flags);
 
@@ -431,6 +431,10 @@ File * CDirectFileCache::Open(LPCTSTR szName, DWORD flags)
 {
 	// find if the file with this name is in the list.
 	// if it is, add a reference
+	CLastError err;
+
+	CSimpleCriticalSectionLock lock(m_cs);
+
 	if (flags & CDirectFile::CreateMemoryFile)
 	{
 		// create memory file of zero length
@@ -440,13 +444,14 @@ File * CDirectFileCache::Open(LPCTSTR szName, DWORD flags)
 			return NULL;
 		}
 		pFile->m_Flags |= CDirectFile::FileFlagsMemoryFile;
-		CSimpleCriticalSectionLock lock(m_cs);
+
 
 		m_FileList.InsertHead(pFile);
 
-		SetLastError(ERROR_SUCCESS);
+		err.Set(ERROR_SUCCESS);
 		return pFile;
 	}
+
 	CString FullName;
 	TCHAR * pName = FullName.GetBuffer(512);
 
@@ -471,9 +476,10 @@ File * CDirectFileCache::Open(LPCTSTR szName, DWORD flags)
 		if (FILE_TYPE_DISK != GetFileType(hf))
 		{
 			CloseHandle(hf);
-			SetLastError(ERROR_INVALID_FUNCTION);
+			err.Set(ERROR_INVALID_FUNCTION);
 			return NULL;
 		}
+
 		if (::GetFileInformationByHandle(hf, & info))
 		{
 			CloseHandle(hf);
@@ -481,7 +487,6 @@ File * CDirectFileCache::Open(LPCTSTR szName, DWORD flags)
 				info.dwVolumeSerialNumber, info.nFileIndexHigh,
 				info.nFileIndexLow);
 			// find a File struct with the same parameters
-			CSimpleCriticalSectionLock lock(m_cs);
 
 			for (File * pFile = m_FileList.First();
 				m_FileList.NotEnd(pFile); pFile = pFile->Next())
@@ -494,11 +499,11 @@ File * CDirectFileCache::Open(LPCTSTR szName, DWORD flags)
 					if ((pFile->m_Flags & CDirectFile::FileFlagsReadOnly)
 						&& 0 == (flags & CDirectFile::OpenReadOnly))
 					{
-						SetLastError(ERROR_SHARING_VIOLATION);
+						err.Set(ERROR_SHARING_VIOLATION);
 						return NULL;
 					}
 
-					SetLastError(ERROR_ALREADY_EXISTS);
+					err.Set(ERROR_ALREADY_EXISTS);
 					pFile->RefCount++;
 					return pFile;
 				}
@@ -514,7 +519,7 @@ File * CDirectFileCache::Open(LPCTSTR szName, DWORD flags)
 	File * pFile = new File(FullName);
 	if (NULL == pFile)
 	{
-		SetLastError(ERROR_NOT_ENOUGH_MEMORY);
+		err.Set(ERROR_NOT_ENOUGH_MEMORY);
 		return NULL;
 	}
 
@@ -524,22 +529,29 @@ File * CDirectFileCache::Open(LPCTSTR szName, DWORD flags)
 		DWORD Disposition = OPEN_EXISTING;
 		if (0 == (flags & CDirectFile::OpenReadOnly))
 		{
+			ShareMode = 0;
+			access = GENERIC_WRITE | GENERIC_READ;
+
 			if (flags & (CDirectFile::OpenDirect | CDirectFile::OpenExisting))
 			{
-				ShareMode = 0;
-				access = GENERIC_WRITE | GENERIC_READ;
+				//ShareMode = 0;
+				//access = GENERIC_WRITE | GENERIC_READ;
 			}
 			else if (flags & CDirectFile::CreateAlways)
 			{
-				ShareMode = 0;
-				access = GENERIC_WRITE | GENERIC_READ;
+				//ShareMode = 0;
+				//access = GENERIC_WRITE | GENERIC_READ;
 				Disposition = CREATE_ALWAYS;
 			}
 			else if (flags & CDirectFile::CreateNew)
 			{
-				ShareMode = 0;
-				access = GENERIC_WRITE | GENERIC_READ;
+				//ShareMode = 0;
+				//access = GENERIC_WRITE | GENERIC_READ;
 				Disposition = CREATE_NEW;
+			}
+			else
+			{
+				ASSERT(0);
 			}
 		}
 
@@ -576,7 +588,7 @@ File * CDirectFileCache::Open(LPCTSTR szName, DWORD flags)
 
 	if (FILE_TYPE_DISK != GetFileType(hf))
 	{
-		SetLastError(ERROR_INVALID_FUNCTION);
+		err.Set(ERROR_INVALID_FUNCTION);
 		CloseHandle(hf);
 		pFile->Close(0); // delete
 		return NULL;
@@ -594,7 +606,7 @@ File * CDirectFileCache::Open(LPCTSTR szName, DWORD flags)
 		pFile->m_pWrittenMask = new char[WrittenMaskLength];
 		if (NULL == pFile->m_pWrittenMask)
 		{
-			SetLastError(ERROR_NOT_ENOUGH_MEMORY);
+			err.Set(ERROR_NOT_ENOUGH_MEMORY);
 			CloseHandle(hf);
 			pFile->Close(0); // delete
 			return NULL;
@@ -629,10 +641,9 @@ File * CDirectFileCache::Open(LPCTSTR szName, DWORD flags)
 
 	pFile->hFile = hf;
 
-	CSimpleCriticalSectionLock lock(m_cs);
 	m_FileList.InsertHead(pFile);
 
-	SetLastError(ERROR_SUCCESS);
+	err.Set(ERROR_SUCCESS);
 	return pFile;
 }
 
@@ -831,18 +842,23 @@ BOOL File::Close(DWORD flags)
 	// if the file in prefetch is ours, then wait for the operation to finish
 	// last Close operation is always synchronous, there is no parallel activity
 
+	CacheThreadLock CacheLock;
+	// if this file was set to prefetch, cancel prefetch
+
+	CSimpleCriticalSectionLock lock1(CacheInstance.m_cs);
 	if (--RefCount > 0)
 	{
 		return TRUE;
 	}
 
-	CacheThreadLock CacheLock;
-	// if this file was set to prefetch, cancel prefetch
 	CacheInstance.CancelPrefetch(this);
 
 	TRACE(_T("Closing file %s, flags=%X\n"), LPCTSTR(m_FileName), m_Flags);
 	// If the use count is 0, copy all remaining data
 	// from the source file or init the rest and flush all the buffers,
+	// remove the structure from the list
+	CacheInstance.m_FileList.RemoveEntry(this);
+
 	if (0 == (m_Flags & CDirectFile::FileFlagsDeleteAfterClose))
 	{
 		InitializeTheRestOfFile();
@@ -852,48 +868,42 @@ BOOL File::Close(DWORD flags)
 		pSourceFile->Close(0);
 		pSourceFile = NULL;
 	}
-	{
-		BufferHeader * pBuf;
-		while (NULL != (pBuf = BuffersList.RemoveHead()))
-		{
-			ASSERT(0 == pBuf->LockCount);
-			// something strange: buffer not released
-			if (pBuf->LockCount != 0)
-			{
-				TRACE("File::Close: Buffer not released!\n");
-				return FALSE;
-			}
 
-			if (0 != pBuf->DirtyMask)
-			{
-				if (0 == (m_Flags & CDirectFile::FileFlagsDeleteAfterClose))
-				{
-					FlushDirtyBuffers(pBuf);
-				}
-				else
-				{
-					DirtyBuffersCount--;
-					pBuf->DirtyMask = 0;
-				}
-			}
-			ASSERT(0 == pBuf->DirtyMask);
-
-			BuffersCount--;
-
-			CSimpleCriticalSectionLock lock1(CacheInstance.m_cs);
-
-			CacheInstance.m_MruList.RemoveEntry(pBuf);
-
-			pBuf->pFile = NULL;
-
-			CacheInstance.m_FreeBuffers.InsertHead(pBuf);
-		}
-	}
 	// close the handle and delete the structure
+	BufferHeader * pBuf;
+	while (NULL != (pBuf = BuffersList.RemoveHead()))
 	{
-		CSimpleCriticalSectionLock lock(CacheInstance.m_cs);
-		// remove the structure from the list
-		CacheInstance.m_FileList.RemoveEntry(this);
+		ASSERT(0 == pBuf->LockCount);
+		// something strange: buffer not released
+		if (pBuf->LockCount != 0)
+		{
+			TRACE("File::Close: Buffer not released!\n");
+			return FALSE;
+		}
+
+		if (0 != pBuf->DirtyMask)
+		{
+			if (0 == (m_Flags & CDirectFile::FileFlagsDeleteAfterClose))
+			{
+				FlushDirtyBuffers(pBuf);
+			}
+			else
+			{
+				DirtyBuffersCount--;
+				pBuf->DirtyMask = 0;
+			}
+		}
+		ASSERT(0 == pBuf->DirtyMask);
+
+		BuffersCount--;
+		// TODO: add function
+//        CSimpleCriticalSectionLock lock1(CacheInstance.m_cs); // already locked
+
+		CacheInstance.m_MruList.RemoveEntry(pBuf);
+
+		pBuf->pFile = NULL;
+
+		CacheInstance.m_FreeBuffers.InsertHead(pBuf);
 	}
 
 	if (m_Flags & CDirectFile::FileFlagsDeleteAfterClose)
@@ -1317,7 +1327,7 @@ inline size_t CDirectFileCache::GetOffsetInBuffer(void * pAddr)
 	return (PUCHAR(pAddr) - PUCHAR(m_pBuffersArray)) % CACHE_BLOCK_SIZE;
 }
 
-void CDirectFileCache::MakeBufferMostRecent(BufferHeader * pBuf)
+void CDirectFileCache::MakeBufferLeastRecent(BufferHeader * pBuf)
 {
 	// move the buffer to MRU tail
 	// extract the buffer from MRU list
@@ -1335,7 +1345,7 @@ void CDirectFileCache::MakeBufferMostRecent(BufferHeader * pBuf)
 		pBufAfter = m_MruList.Prev(pBufAfter);
 	}
 
-	pBufAfter->InsertNextItem(pBuf);
+	pBufAfter->InsertAsNextItem(pBuf);
 }
 
 // Insert a buffer to the list with the specified key
@@ -1363,7 +1373,7 @@ void File::InsertBuffer(BufferHeader * pBuf)
 	if (key - BuffersList.First()->PositionKey > BuffersList.Last()->PositionKey - key)
 	{
 		// search from tail
-		pBufAfter = BuffersList.First();
+		pBufAfter = BuffersList.Last();
 		while (pBufAfter->PositionKey > key)
 		{
 			pBufAfter = BuffersList.Prev(pBufAfter);
@@ -1383,7 +1393,10 @@ void File::InsertBuffer(BufferHeader * pBuf)
 	}
 
 	// pBufAfter->PositionKey < pBuf->PositionKey
-	pBufAfter->ListItem<BufferHeader>::InsertNextItem(pBuf);
+	pBufAfter->ListItem<BufferHeader>::InsertAsNextItem(pBuf);
+#ifdef _DEBUG
+	ValidateList();
+#endif
 }
 
 // find a buffer in the list with the specified key
@@ -1576,7 +1589,7 @@ long CDirectFileCache::GetDataBuffer(File * pFile,
 	if (flags & CDirectFile::GetBufferWriteOnly)
 	{
 		MaskToRead = ~RequestedMask;
-		if (OffsetInBuffer & 0x7FF)
+		if (OffsetInBuffer & MASK_OFFSET_IN_SUBBLOCK)
 		{
 			MaskToRead |= (1L << (OffsetInBuffer >> SUBBLOCK_SIZE_SHIFT));
 		}
@@ -1625,7 +1638,7 @@ long CDirectFileCache::GetDataBuffer(File * pFile,
 		pFreeBuf = GetFreeBuffer(MaxMRU);
 		if (NULL == pFreeBuf)
 		{
-			// unable to find an available  buffer
+			TRACE("unable to find an available  buffer\n");
 			*ppBuf = NULL;
 			return 0;
 		}
@@ -2120,7 +2133,7 @@ void File::ReturnDataBuffer(void * pBuffer, long count, DWORD flags)
 	if (0 == ((count + OffsetInBuffer) & MASK_OFFSET_IN_BLOCK)
 		&& (flags & CDirectFile::ReturnBufferDiscard))
 	{
-		CacheInstance.MakeBufferMostRecent(pBuf);
+		CacheInstance.MakeBufferLeastRecent(pBuf);
 	}
 
 	// decrement lock count
@@ -2670,6 +2683,7 @@ void File::ValidateList() const
 		return;
 	}
 	CSimpleCriticalSectionLock lock(BuffersList);
+
 	BufferHeader * pBuf = BuffersList.First();
 
 	int BufCount = 0;
@@ -2683,6 +2697,10 @@ void File::ValidateList() const
 		if (pBuf->DirtyMask)
 		{
 			DirtyBufCount++;
+		}
+		if (BuffersList.NotEnd(BuffersList.Next(pBuf)))
+		{
+			VL_ASSERT(pBuf->PositionKey < BuffersList.Next(pBuf)->PositionKey);
 		}
 		pBuf = BuffersList.Next(pBuf);
 	}
