@@ -1713,7 +1713,7 @@ void CopyWaveSamples(void * pDstBuf, CHANNEL_MASK DstChannels,
 	int const SrcSampleSize = sizeof (WAVE_SAMPLE) * NumSrcChannels;
 
 	ASSERT(NumDstChannels <= 2 && NumDstChannels > 0);
-	int const DstSampleSize = sizeof (WAVE_SAMPLE) * NumDstChannels;
+	//int const DstSampleSize = sizeof (WAVE_SAMPLE) * NumDstChannels;
 
 	if (DstType == SrcType
 		&& DstChannelsMask == DstChannels

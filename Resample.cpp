@@ -31,8 +31,9 @@ CResampleContext::CResampleContext(CWaveSoapFrontDoc * pDoc,
 
 BOOL CResampleContext::OperationProc()
 {
-	SAMPLE_POSITION dwOperationBegin = m_DstPos;
+	//SAMPLE_POSITION dwOperationBegin = m_DstPos;
 	DWORD dwStartTime = GetTickCount();
+
 	if (m_Flags & OperationContextStopRequested)
 	{
 		m_Flags |= OperationContextStop;
@@ -48,10 +49,11 @@ BOOL CResampleContext::OperationProc()
 	DWORD LeftToWrite = 0;
 	DWORD WasRead = 0;
 	DWORD WasLockedToWrite = 0;
-	void * pOriginalSrcBuf;
-	char * pSrcBuf;
+	void * pOriginalSrcBuf = NULL;
+	char * pSrcBuf = NULL;
 	void * pOriginalDstBuf = NULL;
-	char * pDstBuf;
+	char * pDstBuf = NULL;
+
 	do
 	{
 		if (0 == LeftToRead)

@@ -771,7 +771,8 @@ BOOL CFilterGraphWnd::OnEraseBkgnd(CDC* pDC)
 	return TRUE;
 }
 
-void CFilterGraphWnd::OnNcCalcSize(BOOL bCalcValidRects, NCCALCSIZE_PARAMS * lpncsp)
+void CFilterGraphWnd::OnNcCalcSize(BOOL /*bCalcValidRects*/,
+									NCCALCSIZE_PARAMS * lpncsp)
 {
 	CWindowDC wDC(GetDesktopWindow());
 	CGdiObjectSave Old(wDC, wDC.SelectStockObject(ANSI_VAR_FONT));
@@ -817,7 +818,7 @@ void CFilterGraphWnd::OnNcPaint(UINT wParam)
 
 		// Paint into this DC
 		CBrush BkBrush;
-		CWnd * pParentDlg = GetParent();
+		//CWnd * pParentDlg = GetParent();
 		BkBrush.Attach(GetSysColorBrush(COLOR_BTNFACE));
 		//BkBrush.Attach((HBRUSH) pParentDlg->SendMessage(WM_CTLCOLORDLG, (WPARAM)(pParentDlg->m_hWnd), LPARAM(wDC.m_hDC)));
 
@@ -941,7 +942,7 @@ void CFilterGraphWnd::OnSetFocus(CWnd* pOldWnd)
 
 }
 
-BOOL CFilterGraphWnd::OnSetCursor(CWnd* pWnd, UINT nHitTest, UINT message)
+BOOL CFilterGraphWnd::OnSetCursor(CWnd* /*pWnd*/, UINT nHitTest, UINT /*message*/)
 {
 	POINT p;
 	GetCursorPos( & p);
@@ -1319,6 +1320,8 @@ void CFilterGraphWnd::OnTimer(UINT nIDEvent)
 	{
 		DrawDotCaret( ! m_DotCaretIsOn);
 	}
+
+	BaseClass::OnTimer(nIDEvent);
 }
 
 void CFilterGraphWnd::InvalidateGraphPoint(double Frequency, double Gain)
@@ -1379,7 +1382,8 @@ void CFilterDialog::OnOK()
 	CResizableDialog::OnOK();
 }
 
-void CFilterDialog::OnNotifyGraph( NMHDR * pNotifyStruct, LRESULT * result )
+void CFilterDialog::OnNotifyGraph(NMHDR * /*pNotifyStruct*/,
+								LRESULT * /*result*/)
 {
 	m_EditGain.SetData(m_wGraph.GetCurrentPointGainDb());
 	m_EditFrequency.SetData(m_wGraph.GetCurrentPointFrequencyHz());

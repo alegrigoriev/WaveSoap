@@ -446,7 +446,7 @@ class CResampleDialog : public CDialog
 // Construction
 public:
 	CResampleDialog(BOOL bUndoEnabled,
-					long OldSampleRate,
+					unsigned long OldSampleRate,
 					bool CanOnlyChangeSampleRate,
 					CWnd* pParent = NULL);   // standard constructor
 
@@ -464,7 +464,7 @@ public:
 	{
 		return m_bUndo;
 	}
-	long NewSampleRate() const
+	unsigned long NewSampleRate() const
 	{
 		if (m_bChangeSamplingRate)
 		{
@@ -472,7 +472,7 @@ public:
 		}
 		else
 		{
-			return long(m_OldSampleRate * m_TempoChange);
+			return unsigned long(m_OldSampleRate * m_TempoChange);
 		}
 	}
 
@@ -511,8 +511,8 @@ protected:
 	int		m_bChangeSamplingRate; // set new rate for resampling. Otherwise the sound is just stretched.
 	BOOL	m_bUndo;
 	double m_TempoChange;
-	long m_NewSampleRate;
-	long m_OldSampleRate;
+	unsigned long m_NewSampleRate;
+	unsigned long m_OldSampleRate;
 	bool m_bCanOnlyChangeSamplerate;    // if the file have zero length
 	// Generated message map functions
 	//{{AFX_MSG(CResampleDialog)

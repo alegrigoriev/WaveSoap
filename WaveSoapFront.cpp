@@ -780,7 +780,6 @@ CDocument* CWaveSoapDocTemplate::OpenDocumentFile(LPCTSTR lpszPathName,
 		}
 
 		// open an existing document
-		CThisApp * pApp = GetApp();
 		CWaitCursor wait;
 
 		if (!pDocument->OnOpenDocument(lpszPathName, flags))
@@ -795,8 +794,10 @@ CDocument* CWaveSoapDocTemplate::OpenDocumentFile(LPCTSTR lpszPathName,
 
 	BOOL bAutoDelete = pDocument->m_bAutoDelete;
 	pDocument->m_bAutoDelete = FALSE;   // don't destroy if something goes wrong
+
 	CFrameWnd* pFrame = CreateNewFrame(pDocument, NULL);
 	pDocument->m_bAutoDelete = bAutoDelete;
+
 	if (pFrame == NULL)
 	{
 		AfxMessageBox(AFX_IDP_FAILED_TO_CREATE_DOC);
@@ -826,7 +827,7 @@ int CWaveSoapFrontApp::ExitInstance()
 		if (WAIT_TIMEOUT == WaitForSingleObjectAcceptSends(m_Thread.m_hThread, 20000))
 		{
 			TRACE("Terminating App Thread\n");
-			TerminateThread(m_Thread.m_hThread, -1);
+			TerminateThread(m_Thread.m_hThread, ~0UL);
 		}
 #ifdef _DEBUG
 		TRACE("App Thread finished in %d ms\n",
@@ -1169,7 +1170,7 @@ int CWaveSoapFrontStatusBar::OnToolHitTest(CPoint point, TOOLINFO* pTI) const
 	return -1;
 }
 
-void CWaveSoapFrontStatusBar::OnContextMenu(CWnd* pWnd, CPoint point)
+void CWaveSoapFrontStatusBar::OnContextMenu(CWnd* /*pWnd*/, CPoint point)
 {
 	// make sure window is active
 	GetParentFrame()->ActivateFrame();
@@ -1189,6 +1190,7 @@ void CWaveSoapFrontStatusBar::OnContextMenu(CWnd* pWnd, CPoint point)
 	}
 	UINT id;
 	CMenu menu;
+
 	switch(nHit)
 	{
 	case ID_INDICATOR_SAMPLE_RATE:
@@ -1209,6 +1211,7 @@ void CWaveSoapFrontStatusBar::OnContextMenu(CWnd* pWnd, CPoint point)
 	case ID_INDICATOR_SELECTION_LENGTH:
 		id = IDR_MENU_SELECTION_LENGTH;
 		break;
+
 	case ID_INDICATOR_SCALE:
 	{
 		CFrameWnd * pFrame = GetParentFrame();
@@ -1273,11 +1276,14 @@ void CWaveSoapFrontStatusBar::OnContextMenu(CWnd* pWnd, CPoint point)
 		}
 	}
 		Default();
+		return;
 		break;
+
 	default:
 		Default();
 		return;
 	}
+
 	menu.LoadMenu(id);
 	CMenu* pPopup = menu.GetSubMenu(0);
 	if(pPopup != NULL)

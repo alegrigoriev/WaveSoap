@@ -169,7 +169,7 @@ struct ReadCD_CDB : CD_CDB
 		TransferLength = Length;
 		ExpectedSectorType = SectorType;
 		ErrorField = Error;
-		SubchannelSelect = SubchannelNone;
+		SubchannelSelect = Subchannel;
 		UserData = 1;
 	}
 };
@@ -273,7 +273,7 @@ struct ReadCD_MSF_CDB : CD_CDB
 
 		ExpectedSectorType = SectorType;
 		ErrorField = Error;
-		SubchannelSelect = SubchannelNone;
+		SubchannelSelect = Subchannel;
 		UserData = 1;
 	}
 };
@@ -314,7 +314,7 @@ struct GetPerformanceCDB : CD_CDB
 	UCHAR Reserved3;
 	UCHAR Control;
 
-	GetPerformanceCDB(int nNumDescriptors,
+	GetPerformanceCDB(USHORT nNumDescriptors,
 					long lStartLba = 0,
 					int nExcept = 0,
 					BOOL bWrite = FALSE)
@@ -349,8 +349,8 @@ struct InquiryCDB : CD_CDB
 		Opcode = OPCODE;
 		EnableVitalProductData = EVPD;
 		CmdData = CmdDt;
-		PageOrOpcode = nPageOrOpcode;
-		AllocationLength = AllocLength;
+		PageOrOpcode = UCHAR(nPageOrOpcode);
+		AllocationLength = UCHAR(AllocLength);
 	}
 };
 
@@ -898,7 +898,7 @@ struct ReadTocCdb : CD_CDB
 		Opcode = OPCODE;
 		MSF = msf;
 		DataFormat = nFormat;
-		TrackSessionNumber = TrackNum;
+		TrackSessionNumber = UCHAR(TrackNum);
 		AllocationLength = AllocLen;
 	}
 };

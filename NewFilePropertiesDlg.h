@@ -35,9 +35,16 @@ public:
 	{
 		return m_nSamplingRate;
 	}
-	int NumberOfChannels() const
+	WORD NumberOfChannels() const
 	{
-		return 1 + (m_MonoStereo != 0);
+		if (m_MonoStereo)
+		{
+			return 2;
+		}
+		else
+		{
+			return 1;
+		}
 	}
 protected:
 // Dialog Data

@@ -118,17 +118,7 @@ inline T_int& CBackBuffer<T_ext, T_int>::operator[](int index)
 class CWaveProc
 {
 public:
-	CWaveProc() :
-		m_TmpInBufPut(0),
-		m_TmpInBufGet(0),
-		m_TmpOutBufPut(0),
-		m_TmpOutBufGet(0),
-		m_InputChannels(1),
-		m_OutputChannels(1),
-		m_bClipped(FALSE),
-		m_MaxClipped(0),
-		m_ChannelsToProcess(-1)
-	{}
+	CWaveProc();
 	virtual ~CWaveProc() {}
 	// the function returns number of returned samples
 	// if NULL == pInBuf, the function should flush back stored samples
@@ -140,11 +130,7 @@ public:
 	virtual size_t ProcessSound(char const * pInBuf, char * pOutBuf,
 								size_t nInBytes, size_t nOutBytes, size_t * pUsedBytes);
 	virtual size_t ProcessSoundBuffer(char const * pInBuf, char * pOutBuf,
-									size_t nInBytes, size_t nOutBytes, size_t * pUsedBytes)
-	{
-		* pUsedBytes = nInBytes;
-		return nOutBytes;
-	}
+									size_t nInBytes, size_t nOutBytes, size_t * pUsedBytes);
 	// SetAndValidateWaveformat returns FALSE if the wave cannot be
 	// processed
 	virtual BOOL SetAndValidateWaveformat(WAVEFORMATEX const * pWf);
@@ -492,7 +478,9 @@ public:
 	virtual size_t ProcessSoundBuffer(char const * pInBuf, char * pOutBuf,
 									size_t nInBytes, size_t nOutBytes, size_t * pUsedBytes);
 	//virtual BOOL SetAndValidateWaveformat(WAVEFORMATEX const * pWf);
-	BOOL InitResample(double ResampleRatio, double FilterLength, int nChannels);
+	BOOL InitResample(double ResampleRatio, double FilterLength,
+					NUMBER_OF_CHANNELS nChannels);
+
 	void FilterSoundResample();
 
 	enum {ResampleTableBits = 10,

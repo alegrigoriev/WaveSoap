@@ -79,9 +79,6 @@ void CTimeRulerView::DrawRulerSamples(CDC* pDC)
 
 	// calculate position string length
 	CString s;
-	int dist;
-	unsigned nTickDist;
-	unsigned k;
 
 	int nLength = pDC->GetTextExtent(_T("0,000,000,000"), 13).cx;
 
@@ -91,8 +88,11 @@ void CTimeRulerView::DrawRulerSamples(CDC* pDC)
 	{
 		nSamples = INT_MAX / 10;
 	}
+
+	int dist = 1;
+	unsigned nTickDist = 1;
 	// find the closest bigger 1,2,5 * 10^x
-	for (k = 1; k <= INT_MAX / 10; k *= 10)
+	for (unsigned k = 1; k <= INT_MAX / 10; k *= 10)
 	{
 		dist = k;
 		nTickDist = k;
@@ -574,7 +574,7 @@ void CTimeRulerView::OnUpdateViewRulerSeconds(CCmdUI* pCmdUI)
 	pCmdUI->SetRadio(m_CurrentDisplayMode == ShowSeconds);
 }
 
-void CTimeRulerView::OnUpdate( CView* pSender, LPARAM lHint, CObject* pHint )
+void CTimeRulerView::OnUpdate( CView* /*pSender*/, LPARAM lHint, CObject* pHint )
 {
 	CSoundUpdateInfo * pInfo = dynamic_cast<CSoundUpdateInfo *>(pHint);
 	if (lHint == CWaveSoapFrontDoc::UpdateSampleRateChanged

@@ -63,10 +63,7 @@ public:
 	}
 
 	// the function is called to create UNDO context before starting the main operation
-	virtual BOOL CreateUndo(BOOL IsRedo = FALSE)
-	{
-		return TRUE;
-	}
+	virtual BOOL CreateUndo(BOOL IsRedo = FALSE);
 
 	// the function prepares the context which is part of UNDO
 	// before doing the UNDO/REDO operation
@@ -266,8 +263,9 @@ public:
 
 	typedef std::auto_ptr<ThisClass> auto_ptr;
 
-	virtual BOOL Init() { return InitPass(1); }
-	virtual BOOL InitPass(int nPass) { return TRUE; }
+	virtual BOOL Init();
+	virtual BOOL InitPass(int nPass);
+
 	virtual BOOL OperationProc();
 	virtual BOOL ProcessBuffer(void * buf, size_t len, SAMPLE_POSITION offset, BOOL bBackward = FALSE) = 0;
 

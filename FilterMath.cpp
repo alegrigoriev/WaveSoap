@@ -483,14 +483,25 @@ void EllipticPassbandPolesZeros(POLY_ROOTS &poles,
 				(PassFreqLow-StopFreqLow)/(StopFreqHigh-PassFreqHigh+
 											PassFreqLow-StopFreqLow);
 
-	double p1a, p1b, p1c, PassFreq1, StopFreq1, PassFreq2, StopFreq2, f0c;
+	double p1a = 0, p1b, p1c, PassFreq1, StopFreq1, PassFreq2, StopFreq2, f0c;
 	int order1, order2, i;
 	POLY_ROOTS poles1, zeros1;
+
 	for(int iter=0; iter < 15;iter++)
 	{
-		if(iter == 0) f0c=f0a;
-		else if (iter == 1) f0c = f0b;
-		else f0c = (f0a + f0b) /2;
+		if(iter == 0)
+		{
+			f0c=f0a;
+		}
+		else if (iter == 1)
+		{
+			f0c = f0b;
+		}
+		else
+		{
+			f0c = (f0a + f0b) /2;
+		}
+
 		if(bilinear)
 		{
 			PassFreq1=2*tan(M_PI*(PassFreqHigh-f0c)*T)/T;
@@ -520,15 +531,22 @@ void EllipticPassbandPolesZeros(POLY_ROOTS &poles,
 							maxPassLossDB,
 							CopyMinStopLossDB,
 							order2);
-		if (order1 < order2) order1 = order2;
+
+		if (order1 < order2)
+		{
+			order1 = order2;
+		}
+
 		CopyMinStopLossDB = minStopLossDB;
 		COMPLEX dNormCoef;
+
 		EllipticPolesZeros(PassFreq1,
 							StopFreq1,
 							CopyMinStopLossDB,
 							maxPassLossDB,
 							order1, zeros, poles, dNormCoef);
 		p1c = real(poles[1]);
+
 		CopyMinStopLossDB = minStopLossDB;
 		EllipticPolesZeros(PassFreq2,
 							StopFreq2,
@@ -536,10 +554,25 @@ void EllipticPassbandPolesZeros(POLY_ROOTS &poles,
 							maxPassLossDB,
 							order1, zeros, poles, dNormCoef);
 		p1c -= real(poles1[1]);
-		if(iter ==0 ) p1a = p1c;
-		else if (iter == 1) p1b = p1c;
-		else if (p1a * p1c < 0) p1b = p1c, f0b = f0c;
-		else p1a = p1c, f0a = f0c;
+
+		if(iter ==0 )
+		{
+			p1a = p1c;
+		}
+		else if (iter == 1)
+		{
+			p1b = p1c;
+		}
+		else if (p1a * p1c < 0)
+		{
+			p1b = p1c;
+			f0b = f0c;
+		}
+		else
+		{
+			p1a = p1c;
+			f0a = f0c;
+		}
 	}
 	CenterFreq = f0a;
 	order = poles1.count();
@@ -1047,7 +1080,7 @@ void bilinearPassBand(Complex pole[],
 	double beta1, gamma1;
 	Complex beta, gamma;
 	Complex work, hC;
-	double cosW0T = 2 * cos(W0 * T);
+//    double cosW0T = 2 * cos(W0 * T);
 	Complex rot = exp (Complex(0., W0 * T));
 	/*-------------------------------------*/
 	/*  compute constant gain factor       */
@@ -1577,34 +1610,43 @@ double findSbPeak(	int bandConfig[],
 
 	filterType=bandConfig[0];
 
-	switch (filterType) {
+	switch (filterType)
+	{
 	case 1:				/* lowpass */
-		nBeg = 2*numPts*bandConfig[2]/bandConfig[5];
+		nBeg = 2 * numPts * bandConfig[2] / bandConfig[5];
 		nEnd = numPts-1;
 		break;
 	case 2:				/* highpass */
 	case 3:				/* bandpass */
 		nBeg = 0;
-		nEnd = 2*numPts*bandConfig[1]/bandConfig[5];
+		nEnd = 2 * numPts * bandConfig[1] / bandConfig[5];
 		break;
 	case 4:				/* bandstop */
-		nBeg = 2*numPts*bandConfig[2]/bandConfig[5];
-		nEnd = 2*numPts*bandConfig[3]/bandConfig[5];
+		nBeg = 2 * numPts * bandConfig[2] / bandConfig[5];
+		nEnd = 2 * numPts * bandConfig[3] / bandConfig[5];
 		break;
+	default:
+		return -9999.0;
 	}
 
 	peak = -9999.0;
-	for(n=nBeg; n<nEnd; n++) {
-		if(H[n]>peak) {
+	for(n=nBeg; n<nEnd; n++)
+	{
+		if(H[n]>peak)
+		{
 			peak=H[n];
 			indexOfPeak = n;
 		}
 	}
-	if(filterType == 4) {		/* bandpass has second stopband */
+
+	if(filterType == 4)
+	{		/* bandpass has second stopband */
 		nBeg = 2*numPts*bandConfig[4]/bandConfig[5];
 		nEnd = numPts;
-		for(n=nBeg; n<nEnd; n++) {
-			if(H[n]>peak) {
+		for(n=nBeg; n<nEnd; n++)
+		{
+			if(H[n]>peak)
+			{
 				peak=H[n];
 				indexOfPeak = n;
 			}
@@ -2193,7 +2235,7 @@ double computeRemezA(	double gridParam[],
 	static double freq, denom, numer, alpha, delta;
 	static double absDelta, xCont, term;
 	static double x[50], beta[50], gamma[50];
-	double aa;
+	double aa = 0.;
 
 	if(initFlag)
 	{
@@ -2317,7 +2359,7 @@ int remezStop2(	double ee[],
 /*                                */
 /**********************************/
 
-void remezFinish(	double extFreq[],
+void remezFinish(	double /*extFreq*/[],
 					int nn,
 					int r,
 					double freqP,
@@ -2384,7 +2426,7 @@ void remezSearch(	double ee[],
 					int iFF[],
 					int gridMax,
 					int r,
-					double gridParam[])
+					double /*gridParam*/[])
 {
 	int i,j,k,extras,indexOfSmallest;
 	double smallestVal;

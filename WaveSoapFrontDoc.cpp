@@ -220,7 +220,7 @@ CWaveSoapFrontDoc::~CWaveSoapFrontDoc()
 		SetEvent(m_hThreadEvent);
 		if (WAIT_TIMEOUT == WaitForSingleObjectAcceptSends(m_Thread.m_hThread, 20000))
 		{
-			TerminateThread(m_Thread.m_hThread, -1);
+			TerminateThread(m_Thread.m_hThread, ~0UL);
 		}
 #ifdef _DEBUG
 		TRACE("Doc Thread finished in %d ms\n",
@@ -275,7 +275,7 @@ NUMBER_OF_CHANNELS CWaveSoapFrontDoc::WaveChannels() const
 {
 	return m_WavFile.Channels();
 }
-int CWaveSoapFrontDoc::WaveSampleRate() const
+unsigned int CWaveSoapFrontDoc::WaveSampleRate() const
 {
 	return m_WavFile.SampleRate();
 }
@@ -1545,7 +1545,7 @@ BOOL CWaveSoapFrontDoc::OnOpenDocument(LPCTSTR lpszPathName, int DocOpenFlags)
 		return OpenNonWavFileDocument(lpszPathName, DocOpenFlags);
 	}
 
-	DWORD flags = MmioFileOpenReadOnly;
+	LONG flags = MmioFileOpenReadOnly;
 	if (m_bDirectMode && ! m_bReadOnly)
 	{
 		flags = MmioFileOpenExisting | MmioFileAllowReadOnlyFallback;
@@ -2017,8 +2017,10 @@ BOOL CWaveSoapFrontDoc::OnSaveMp3File(int flags, LPCTSTR FullTargetName, WAVEFOR
 	{
 		NewTempFilename += _T(".temp");
 	}
+
 	DWORD FileSize = MulDiv(pWf->nAvgBytesPerSec, m_WavFile.GetDataChunk()->cksize,
 							WaveFormat()->nAvgBytesPerSec);
+
 	if (FALSE == NewWaveFile.CreateWaveFile(& m_OriginalWavFile, pWf, ALL_CHANNELS,
 											FileSize,
 											CreateWaveFileDontInitStructure | CreateWaveFileSizeSpecified,
@@ -3245,7 +3247,7 @@ void CWaveSoapFrontDoc::OnSample16bit()
 
 }
 
-void CWaveSoapFrontDoc::OnUpdateSample16bit(CCmdUI* pCmdUI)
+void CWaveSoapFrontDoc::OnUpdateSample16bit(CCmdUI* /*pCmdUI*/)
 {
 	// TODO: Add your command update UI handler code here
 
@@ -3257,7 +3259,7 @@ void CWaveSoapFrontDoc::OnSample8bit()
 
 }
 
-void CWaveSoapFrontDoc::OnUpdateSample8bit(CCmdUI* pCmdUI)
+void CWaveSoapFrontDoc::OnUpdateSample8bit(CCmdUI* /*pCmdUI*/)
 {
 	// TODO: Add your command update UI handler code here
 
@@ -3394,7 +3396,8 @@ void CWaveSoapFrontDoc::ChangeChannels(NUMBER_OF_CHANNELS nChannels)
 	{
 		return;
 	}
-	WAVEFORMATEX * pWf = WaveFormat();
+
+	//WAVEFORMATEX * pWf = WaveFormat();
 	NUMBER_OF_SAMPLES SampleCount = WaveFileSamples();
 
 	CWaveFormat NewFormat;
@@ -3750,7 +3753,7 @@ void CWaveSoapFrontDoc::OnProcessDcoffset()
 
 	CThisApp * pApp = GetApp();
 	CDcOffsetDialog dlg(start, end, m_CaretPosition, GetSelectedChannel(),
-						m_WavFile, ChannelsLocked(), UndoEnabled(), GetApp()->m_SoundTimeFormat);
+						m_WavFile, ChannelsLocked(), UndoEnabled(), pApp->m_SoundTimeFormat);
 
 	if (IDOK != dlg.DoModal())
 	{
@@ -4060,8 +4063,8 @@ void CWaveSoapFrontDoc::OnProcessResample()
 
 	double ResampleQuality = 40.;
 
-	long OldSamplingRate = WaveSampleRate();
-	long NewSamplingRate;
+	unsigned long OldSamplingRate = WaveSampleRate();
+	unsigned long NewSamplingRate;
 	double ResampleRatio;
 
 	NewSamplingRate = dlg.NewSampleRate();
@@ -4421,7 +4424,7 @@ BOOL CWaveSoapFrontDoc::OpenRawFileDocument(LPCTSTR lpszPathName)
 	return TRUE;
 }
 
-BOOL CWaveSoapFrontDoc::OpenAviFileDocument(LPCTSTR lpszPathName)
+BOOL CWaveSoapFrontDoc::OpenAviFileDocument(LPCTSTR /*lpszPathName*/)
 {
 	return FALSE;
 }
@@ -4552,7 +4555,7 @@ void CWaveSoapFrontDoc::OnToolsInterpolate()
 		return;
 	}
 
-	int const ReadBytes = BufferSamples * SampleSize;
+//    int const ReadBytes = BufferSamples * SampleSize;
 	int const WrittenSamples = InterpolateSamples + PreInterpolateSamples + PostInterpolateSamples;
 	int const WriteBytes = WrittenSamples * SampleSize;
 

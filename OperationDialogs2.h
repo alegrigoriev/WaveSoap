@@ -196,7 +196,7 @@ public:
 	TCHAR m_DriveLetterSelected;
 	int m_NumberOfDrives;
 	int m_CDDriveSelected;
-	int m_PreviousDriveLetter;
+	TCHAR m_PreviousDriveLetter;
 
 	CDROM_TOC m_toc;
 	std::vector<CdTrackInfo> m_Tracks;
@@ -233,6 +233,7 @@ protected:
 	CStringHistory m_FolderHistory;
 
 	BOOL m_bNeedUpdateControls;
+	UINT_PTR m_TimerId;
 
 	CAudioCompressionManager m_Acm;
 

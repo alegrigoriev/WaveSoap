@@ -23,7 +23,7 @@ CWaveSoapFileOpenDialog::CWaveSoapFileOpenDialog(BOOL bOpenFileDialog, // TRUE f
 	m_bReadOnly(false),
 	m_MinWmaFilter(0),
 	m_MaxWmaFilter(0),
-	m_PrevFilter(-1),
+	m_PrevFilter(~0u),
 	m_bDirectMode(false)
 {
 	if (SupportsV5FileDialog())
@@ -338,7 +338,9 @@ void CWaveSoapFileOpenDialog::OnTypeChange()
 	{
 		return;
 	}
+
 	m_PrevFilter = m_ofn.nFilterIndex;
+
 	if (m_ofn.nFilterIndex >= m_MinWmaFilter + 1
 		&& m_ofn.nFilterIndex < m_MaxWmaFilter + 1
 		&& ! pApp->CanOpenWindowsMedia()
@@ -366,7 +368,7 @@ CWaveSoapFileSaveDialog::CWaveSoapFileSaveDialog(BOOL bOpenFileDialog, // TRUE f
 	m_Wf(Wf),
 	m_Acm(Wf),
 	m_SelectedTag(Wf),
-	m_SelectedFormat(-1),
+	m_SelectedFormat(~0U),
 	m_SelectedMp3Encoder(0),
 	m_SelectedMp3Bitrate(LameEncBitrate128 * 1000),
 	m_SelectedWmaBitrate(128000),
@@ -863,10 +865,11 @@ void CWaveSoapFileSaveDialog::FillLameEncoderFormats()
 	m_Acm.FillLameEncoderFormats();
 	m_AttributesCombo.ResetContent();
 	unsigned sel = 0;
+
 	for (unsigned i = 0; i < m_Acm.m_Formats.size(); i++)
 	{
 		m_AttributesCombo.AddString(m_Acm.m_Formats[i].Name);
-		if (m_Acm.m_Formats[i].Wf.m_pWf->nAvgBytesPerSec / 125 == m_SelectedMp3Bitrate)
+		if (int(m_Acm.m_Formats[i].Wf.m_pWf->nAvgBytesPerSec / 125) == m_SelectedMp3Bitrate)
 		{
 			sel = i;
 		}

@@ -154,7 +154,7 @@ void CWaveSoapFrontView::DrawHorizontalWithSelection(CDC * pDC,
 	ThisDoc * pDoc = GetDocument();
 	// find positions of the selection start and and
 	// and check whether the selected area is visible
-	double XScaleDev = GetXScaleDev();
+	//double XScaleDev = GetXScaleDev();
 	int SelectionLeft = WorldToWindowX(pDoc->m_SelectionStart);
 	int SelectionRight = WorldToWindowX(pDoc->m_SelectionEnd);
 
@@ -310,7 +310,7 @@ void CWaveSoapFrontView::OnDraw(CDC* pDC)
 		r.right++;
 
 		double left = WindowToWorldX(r.left);
-		double right = WindowToWorldX(r.right);
+		//double right = WindowToWorldX(r.right);
 		if (left < 0.) left = 0.;
 
 		// number of sample that corresponds to the r.left position
@@ -600,7 +600,7 @@ LONGLONG CDataSection<WAVE_SAMPLE, CWaveSoapFrontView>::GetSourceCount(CWaveSoap
 	return pDoc->m_WavFile.GetDataChunk()->cksize / sizeof (WAVE_SAMPLE);
 }
 
-void CWaveSoapFrontView::AdjustNewOrigin(double & NewOrgX, double & NewOrgY)
+void CWaveSoapFrontView::AdjustNewOrigin(double & NewOrgX, double & /*NewOrgY*/)
 {
 	// make sure the screen is aligned by a multiple of m_HorizontalScale
 	NewOrgX -= SAMPLE_INDEX(NewOrgX) % m_HorizontalScale;
@@ -863,7 +863,7 @@ DWORD CWaveSoapFrontView::ClientHitTest(CPoint p) const
 		return VSHT_NONCLIENT;
 	}
 
-	int Separator = WorldToWindowY(0.);
+	//int Separator = WorldToWindowY(0.);
 	int ChannelUnderCursor = GetChannelFromPoint(p.y);
 
 	if (ChannelUnderCursor >= 0
@@ -1256,7 +1256,7 @@ void CWaveSoapFrontView::OnLButtonUp(UINT nFlags, CPoint point)
 	}
 }
 
-BOOL CWaveSoapFrontView::OnMouseWheel(UINT nFlags, short zDelta, CPoint pt)
+BOOL CWaveSoapFrontView::OnMouseWheel(UINT nFlags, short zDelta, CPoint /*pt*/)
 {
 	// without control or shift:
 	// just scrolls 1/20th of the window width
@@ -1283,6 +1283,7 @@ BOOL CWaveSoapFrontView::OnMouseWheel(UINT nFlags, short zDelta, CPoint pt)
 	}
 	else if (nFlags & MK_CONTROL)
 	{
+		// TODO: use pt.x as zoom center
 		if (m_WheelAccumulator >= 0)
 		{
 			while (m_WheelAccumulator >= WHEEL_DELTA)

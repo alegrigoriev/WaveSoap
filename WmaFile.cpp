@@ -141,6 +141,7 @@ HRESULT STDMETHODCALLTYPE CDirectFileStream::CopyTo(
 		}
 		FilePos += Locked;
 		m_File.Seek(Locked, FILE_CURRENT);
+
 		if (NULL != pcbRead)
 		{
 			pcbRead->QuadPart += Locked;
@@ -157,7 +158,7 @@ HRESULT STDMETHODCALLTYPE CDirectFileStream::CopyTo(
 		{
 			pcbWritten->QuadPart += Written;
 		}
-		if (Written != Locked)
+		if (Written != ULONG(Locked))
 		{
 			break;
 		}
@@ -167,7 +168,7 @@ HRESULT STDMETHODCALLTYPE CDirectFileStream::CopyTo(
 }
 
 HRESULT STDMETHODCALLTYPE CDirectFileStream::Commit(
-													/* [in] */ DWORD grfCommitFlags)
+													/* [in] */ DWORD /*grfCommitFlags*/)
 {
 	m_File.Commit();
 	return S_OK;
@@ -180,18 +181,18 @@ HRESULT STDMETHODCALLTYPE CDirectFileStream::Revert( void)
 }
 
 HRESULT STDMETHODCALLTYPE CDirectFileStream::LockRegion(
-														/* [in] */ ULARGE_INTEGER libOffset,
-														/* [in] */ ULARGE_INTEGER cb,
-														/* [in] */ DWORD dwLockType)
+														/* [in] */ ULARGE_INTEGER /*libOffset*/,
+														/* [in] */ ULARGE_INTEGER /*cb*/,
+														/* [in] */ DWORD /*dwLockType*/)
 {
 	if (TRACE_WMA_DECODER) TRACE(_T("CDirectFileStream::LockRegion\n"));
 	return STG_E_INVALIDFUNCTION;
 }
 
 HRESULT STDMETHODCALLTYPE CDirectFileStream::UnlockRegion(
-														/* [in] */ ULARGE_INTEGER libOffset,
-														/* [in] */ ULARGE_INTEGER cb,
-														/* [in] */ DWORD dwLockType)
+														/* [in] */ ULARGE_INTEGER /*libOffset*/,
+														/* [in] */ ULARGE_INTEGER /*cb*/,
+														/* [in] */ DWORD /*dwLockType*/)
 {
 	if (TRACE_WMA_DECODER) TRACE(_T("CDirectFileStream::UnlockRegion\n"));
 	return STG_E_INVALIDFUNCTION;
@@ -233,7 +234,7 @@ HRESULT STDMETHODCALLTYPE CDirectFileStream::Stat(
 }
 
 HRESULT STDMETHODCALLTYPE CDirectFileStream::Clone(
-													/* [out] */ IStream __RPC_FAR *__RPC_FAR *ppstm)
+													/* [out] */ IStream __RPC_FAR *__RPC_FAR * /*ppstm*/)
 {
 	if (TRACE_WMA_DECODER) TRACE(_T("CDirectFileStream::Clone\n"));
 	return STG_E_INVALIDFUNCTION;
@@ -282,7 +283,7 @@ HRESULT STDMETHODCALLTYPE CWmaDecoder::OnStatus( /* [in] */ WMT_STATUS Status,
 															/* [in] */ HRESULT hr,
 															/* [in] */ WMT_ATTR_DATATYPE dwType,
 															/* [in] */ BYTE __RPC_FAR *pValue,
-															/* [in] */ void __RPC_FAR *pvContext )
+															/* [in] */ void __RPC_FAR * /*pvContext*/ )
 {
 	if (0 || TRACE_WMA_DECODER) TRACE(_T("CWmaDecoder::OnStatus Status=%X, hr=%08X, DataType=%X, pValue=%X\n"),
 									Status, hr, dwType, pValue);
@@ -330,9 +331,9 @@ HRESULT STDMETHODCALLTYPE CWmaDecoder::OnStatus( /* [in] */ WMT_STATUS Status,
 HRESULT STDMETHODCALLTYPE CWmaDecoder::OnSample( /* [in] */ DWORD dwOutputNum,
 															/* [in] */ QWORD cnsSampleTime,
 															/* [in] */ QWORD cnsSampleDuration,
-															/* [in] */ DWORD dwFlags,
+															/* [in] */ DWORD /*dwFlags*/,
 															/* [in] */ INSSBuffer __RPC_FAR *pSample,
-															/* [in] */ void __RPC_FAR *pvContext )
+															/* [in] */ void __RPC_FAR * /*pvContext*/ )
 {
 	//
 	// Make sure its Audio sample
@@ -400,7 +401,7 @@ HRESULT STDMETHODCALLTYPE CWmaDecoder::OnSample( /* [in] */ DWORD dwOutputNum,
 
 HRESULT STDMETHODCALLTYPE CWmaDecoder::OnTime(
 											/* [in] */ QWORD cnsCurrentTime,
-											/* [in] */ void __RPC_FAR *pvContext)
+											/* [in] */ void __RPC_FAR * /*pvContext*/)
 {
 	if (0 || TRACE_WMA_DECODER) TRACE(_T("IWMReaderCallbackAdvancedOnTime(%I64d)\n"), cnsCurrentTime);
 	// ask for next buffer
@@ -830,7 +831,7 @@ BOOL WmaEncoder::OpenWrite(CDirectFile & File)
 
 	if (SUCCEEDED(hr))
 	{
-		WAVEFORMATEX * pwfx = (WAVEFORMATEX *)pType->pbFormat;
+		//WAVEFORMATEX * pwfx = (WAVEFORMATEX *)pType->pbFormat;
 
 		pType->pbFormat = (PBYTE) & m_SrcWfx;
 		pType->cbFormat = sizeof m_SrcWfx;
@@ -950,7 +951,7 @@ void WmaEncoder::SetArtist(LPCTSTR szArtist)
 {
 #ifdef _UNICODE
 	m_pHeaderInfo->SetAttribute(1, g_wszWMAuthor, WMT_TYPE_STRING,
-								(LPBYTE)szArtist, (wcslen(szArtist) + 1) * sizeof(TCHAR));
+								(LPBYTE)szArtist, WORD((wcslen(szArtist) + 1) * sizeof(TCHAR)));
 #else
 	WCHAR Artist[MAX_PATH+1] = {0};
 	int nChars = ::MultiByteToWideChar(CP_ACP, MB_PRECOMPOSED, szArtist, -1,
@@ -967,7 +968,7 @@ void WmaEncoder::SetAlbum(LPCTSTR szAlbum)
 {
 #ifdef _UNICODE
 	m_pHeaderInfo->SetAttribute(1, g_wszWMAlbumTitle, WMT_TYPE_STRING,
-								(LPBYTE)szAlbum, (wcslen(szAlbum) + 1) * sizeof(TCHAR));
+								(LPBYTE)szAlbum, WORD((wcslen(szAlbum) + 1) * sizeof(TCHAR)));
 #else
 	WCHAR Album[MAX_PATH+1] = {0};
 	int nChars = ::MultiByteToWideChar(CP_ACP, MB_PRECOMPOSED, szAlbum, -1,
@@ -984,7 +985,7 @@ void WmaEncoder::SetGenre(LPCTSTR szGenre)
 {
 #ifdef _UNICODE
 	m_pHeaderInfo->SetAttribute(1, g_wszWMGenre, WMT_TYPE_STRING,
-								(LPBYTE)szGenre, (wcslen(szGenre) + 1) * sizeof(TCHAR));
+								(LPBYTE)szGenre, WORD((wcslen(szGenre) + 1) * sizeof(TCHAR)));
 #else
 	WCHAR Genre[MAX_PATH+1] = {0};
 	int nChars = ::MultiByteToWideChar(CP_ACP, MB_PRECOMPOSED, szGenre, -1,
@@ -1302,9 +1303,9 @@ HRESULT STDMETHODCALLTYPE FileWriter::OnDataUnit(
 		return E_POINTER;
 	}
 
-	if (Length == m_DstFile.Write(pData, Length))
+	if (Length == (DWORD) m_DstFile.Write(pData, Length))
 	{
-		DWORD CurPos = (DWORD)m_DstFile.Seek(0, FILE_CURRENT);
+		ULONGLONG CurPos = m_DstFile.Seek(0, FILE_CURRENT);
 		if (CurPos > m_WrittenLength)
 		{
 			m_WrittenLength = CurPos;
@@ -1327,10 +1328,10 @@ HRESULT STDMETHODCALLTYPE FileWriter::OnEndWriting( void)
 
 #if USE_READER_CALLBACK_ADVANCED
 HRESULT STDMETHODCALLTYPE CWmaDecoder::AllocateForStream(
-														/* [in] */ WORD wStreamNum,
+														/* [in] */ WORD /*wStreamNum*/,
 														/* [in] */ DWORD cbBuffer,
 														/* [out] */ INSSBuffer __RPC_FAR *__RPC_FAR *ppBuffer,
-														/* [in] */ void __RPC_FAR *pvContext)
+														/* [in] */ void __RPC_FAR * /*pvContext*/)
 {
 	if (NULL == ppBuffer)
 	{
@@ -1341,10 +1342,10 @@ HRESULT STDMETHODCALLTYPE CWmaDecoder::AllocateForStream(
 }
 
 HRESULT STDMETHODCALLTYPE CWmaDecoder::AllocateForOutput(
-														/* [in] */ DWORD dwOutputNum,
+														/* [in] */ DWORD /*dwOutputNum*/,
 														/* [in] */ DWORD cbBuffer,
 														/* [out] */ INSSBuffer __RPC_FAR *__RPC_FAR *ppBuffer,
-														/* [in] */ void __RPC_FAR *pvContext)
+														/* [in] */ void __RPC_FAR * /*pvContext*/)
 {
 	if (NULL == ppBuffer)
 	{

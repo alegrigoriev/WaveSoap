@@ -103,7 +103,7 @@ void COperationContext::Retire()
 	pDocument->m_RetiredList.InsertTail(this);
 }
 
-void COperationContext::PostRetire(BOOL bChildContext)
+void COperationContext::PostRetire(BOOL /*bChildContext*/)
 {
 	if (WasClipped())
 	{
@@ -177,6 +177,11 @@ CUndoRedoContext * COperationContext::GetUndo()
 	}
 
 	return pUndo.release();
+}
+
+BOOL COperationContext::CreateUndo(BOOL /*IsRedo*/)
+{
+	return TRUE;
 }
 
 //////////// COneFileOperation
@@ -315,7 +320,7 @@ BOOL CTwoFilesOperation::InitDestination(CWaveFile & DstFile, SAMPLE_INDEX Start
 	return TRUE;
 }
 
-BOOL CTwoFilesOperation::CreateUndo(BOOL IsRedo)
+BOOL CTwoFilesOperation::CreateUndo(BOOL /*IsRedo*/)
 {
 	if (NULL != m_pUndoContext
 		|| ! m_DstFile.IsOpen()
@@ -589,6 +594,15 @@ MEDIA_FILE_SIZE CThroughProcessOperation::GetCompletedOperationSize() const
 			+ BaseClass::GetCompletedOperationSize();
 }
 
+BOOL CThroughProcessOperation::Init()
+{
+	return InitPass(1);
+}
+
+BOOL CThroughProcessOperation::InitPass(int /*nPass*/)
+{
+	return TRUE;
+}
 
 /////////////// CStagedContext ///////////////
 CStagedContext::CStagedContext(CWaveSoapFrontDoc * pDoc,
@@ -982,8 +996,10 @@ BOOL CScanPeaksContext::OperationProc()
 						pWaveData++;
 					}
 
-					m_SrcFile.SetPeakData(PeakIndex, wpl_l, wpl_h);
-					m_SrcFile.SetPeakData(PeakIndex + 1, wpr_l, wpr_h);
+					m_SrcFile.SetPeakData(PeakIndex,
+										WAVE_SAMPLE(wpl_l), WAVE_SAMPLE(wpl_h));
+					m_SrcFile.SetPeakData(PeakIndex + 1,
+										WAVE_SAMPLE(wpr_l), WAVE_SAMPLE(wpr_h));
 
 					PeakIndex += 2;
 					DataForGranule = m_GranuleSize;
@@ -1016,7 +1032,8 @@ BOOL CScanPeaksContext::OperationProc()
 						}
 					}
 
-					m_SrcFile.SetPeakData(PeakIndex, wp_l, wp_h);
+					m_SrcFile.SetPeakData(PeakIndex,
+										WAVE_SAMPLE(wp_l), WAVE_SAMPLE(wp_h));
 
 					PeakIndex ++;
 					DataForGranule = m_GranuleSize;
@@ -1030,7 +1047,6 @@ BOOL CScanPeaksContext::OperationProc()
 		{
 			m_Flags |= OperationContextStop;
 			break;
-			return FALSE;
 		}
 	}
 	while (m_SrcPos < m_SrcEnd
@@ -1116,10 +1132,10 @@ BOOL CCopyContext::OperationProc()
 	long LeftToWrite = 0;
 	long WasRead = 0;
 	long WasLockedToWrite = 0;
-	void * pOriginalSrcBuf;
-	char * pSrcBuf;
-	void * pOriginalDstBuf;
-	char * pDstBuf;
+	void * pOriginalSrcBuf = NULL;
+	char * pSrcBuf = NULL;
+	void * pOriginalDstBuf = NULL;
+	char * pDstBuf = NULL;
 
 	DWORD DstFileFlags = CDirectFile::GetBufferAndPrefetchNext;
 	WAVE_SAMPLE tmp[MAX_NUMBER_OF_CHANNELS];
@@ -1723,8 +1739,8 @@ BOOL CSoundPlayContext::OperationProc()
 				Samples = SrcSamples;
 			}
 
-			if (Samples != m_PlayFile.ReadSamples(m_Chan, m_CurrentPlaybackPos,
-												Samples, pBuf))
+			if (Samples != (unsigned)m_PlayFile.ReadSamples(m_Chan, m_CurrentPlaybackPos,
+															Samples, pBuf))
 			{
 				m_CurrentPlaybackPos = m_End;
 				break;
@@ -1865,7 +1881,8 @@ CVolumeChangeContext::CVolumeChangeContext(CWaveSoapFrontDoc * pDoc,
 	}
 }
 
-BOOL CVolumeChangeContext::ProcessBuffer(void * buf, size_t BufferLength, SAMPLE_POSITION offset, BOOL bBackward)
+BOOL CVolumeChangeContext::ProcessBuffer(void * buf, size_t BufferLength,
+										SAMPLE_POSITION /*offset*/, BOOL /*bBackward*/)
 {
 	WAVE_SAMPLE * pDst = (WAVE_SAMPLE *) buf;
 	int nChannels = m_DstFile.Channels();
@@ -1984,7 +2001,8 @@ int CDcScanContext::GetDc(int channel)
 	return int(m_Sum[channel] / nSamples);
 }
 
-BOOL CDcScanContext::ProcessBuffer(void * buf, size_t BufferLength, SAMPLE_POSITION offset, BOOL bBackward)
+BOOL CDcScanContext::ProcessBuffer(void * buf, size_t BufferLength,
+									SAMPLE_POSITION /*offset*/, BOOL /*bBackward*/)
 {
 	WAVE_SAMPLE * pSrc = (WAVE_SAMPLE *) buf;
 
@@ -2067,7 +2085,7 @@ BOOL CDcOffsetContext::Init()
 }
 
 BOOL CDcOffsetContext::ProcessBuffer(void * buf, size_t BufferLength,
-									SAMPLE_POSITION offset, BOOL bBackward)
+									SAMPLE_POSITION /*offset*/, BOOL /*bBackward*/)
 {
 	WAVE_SAMPLE * pDst = (WAVE_SAMPLE *) buf;
 
@@ -2230,13 +2248,13 @@ static inline DWORD CalcCrc32(DWORD PrevCrc, UCHAR byte)
 	return (PrevCrc << 8) ^ CRC32_Table[(( PrevCrc >> 24) ^ byte) & 0xff];
 }
 
-BOOL CStatisticsContext::ProcessBuffer(void * buf, size_t const BufferLength, SAMPLE_POSITION offset, BOOL bBackward)
+BOOL CStatisticsContext::ProcessBuffer(void * buf, size_t const BufferLength,
+										SAMPLE_POSITION offset, BOOL /*bBackward*/)
 {
 	WAVE_SAMPLE * pSrc = (WAVE_SAMPLE *) buf;
 	int nChannels = m_DstFile.Channels();
 	NUMBER_OF_SAMPLES nSamples = BufferLength / sizeof pSrc[0];
 
-	ASSERT(0 == (offset % m_DstFile.SampleSize()));
 	ASSERT(0 == (BufferLength % m_DstFile.SampleSize()));
 
 	if (nChannels == 1)
@@ -2261,7 +2279,9 @@ BOOL CStatisticsContext::ProcessBuffer(void * buf, size_t const BufferLength, SA
 				m_ZeroCrossingLeft++;
 			}
 			m_PrevSampleLeft = sample;
-			m_CurrentLeftCrc = CalcCrc32(CalcCrc32(m_CurrentLeftCrc, sample & 0xFF), (sample >> 8) & 0xFF);
+			m_CurrentLeftCrc = CalcCrc32(CalcCrc32(m_CurrentLeftCrc,
+													UCHAR(sample & 0xFF)), UCHAR((sample >> 8) & 0xFF));
+
 			if (sample != 0)
 			{
 				m_CRC32Left = m_CurrentLeftCrc;
@@ -2272,6 +2292,7 @@ BOOL CStatisticsContext::ProcessBuffer(void * buf, size_t const BufferLength, SA
 			{
 				m_ChecksumSampleNumber = 1;
 			}
+
 			m_Checksum += m_ChecksumSampleNumber * sample;
 			m_ChecksumSampleNumber++;
 			if (m_ChecksumSampleNumber > 256)
@@ -2303,8 +2324,11 @@ BOOL CStatisticsContext::ProcessBuffer(void * buf, size_t const BufferLength, SA
 				m_ZeroCrossingLeft++;
 			}
 			m_PrevSampleLeft = sample;
-			m_CurrentLeftCrc = CalcCrc32(CalcCrc32(m_CurrentLeftCrc, sample & 0xFF), (sample >> 8) & 0xFF);
-			m_CurrentCommonCRC = CalcCrc32(CalcCrc32(m_CurrentCommonCRC, sample & 0xFF), (sample >> 8) & 0xFF);
+			m_CurrentLeftCrc = CalcCrc32(CalcCrc32(m_CurrentLeftCrc,
+													UCHAR(sample & 0xFF)), UCHAR((sample >> 8) & 0xFF));
+
+			m_CurrentCommonCRC = CalcCrc32(CalcCrc32(m_CurrentCommonCRC,
+													UCHAR(sample & 0xFF)), UCHAR((sample >> 8) & 0xFF));
 
 			if (sample != 0)
 			{
@@ -2346,8 +2370,10 @@ BOOL CStatisticsContext::ProcessBuffer(void * buf, size_t const BufferLength, SA
 			}
 
 			m_PrevSampleRight = sample;
-			m_CurrentRightCrc = CalcCrc32(CalcCrc32(m_CurrentRightCrc, sample & 0xFF), (sample >> 8) & 0xFF);
-			m_CurrentCommonCRC = CalcCrc32(CalcCrc32(m_CurrentCommonCRC, sample & 0xFF), (sample >> 8) & 0xFF);
+			m_CurrentRightCrc = CalcCrc32(CalcCrc32(m_CurrentRightCrc,
+													UCHAR(sample & 0xFF)), UCHAR((sample >> 8) & 0xFF));
+			m_CurrentCommonCRC = CalcCrc32(CalcCrc32(m_CurrentCommonCRC,
+													UCHAR(sample & 0xFF)), UCHAR((sample >> 8) & 0xFF));
 
 			if (sample != 0)
 			{
@@ -2422,14 +2448,14 @@ int CMaxScanContext::GetMax(int channel)
 	return m_Max[channel];
 }
 
-BOOL CMaxScanContext::ProcessBuffer(void * buf, size_t BufferLength, SAMPLE_POSITION offset, BOOL bBackward)
+BOOL CMaxScanContext::ProcessBuffer(void * buf, size_t BufferLength,
+									SAMPLE_POSITION /*offset*/, BOOL /*bBackward*/)
 {
 	WAVE_SAMPLE * pSrc = (WAVE_SAMPLE *) buf;
 
 	int nChannels = m_DstFile.Channels();
 	NUMBER_OF_SAMPLES nSamples = BufferLength / sizeof pSrc[0];
 
-	ASSERT(0 == (offset % m_DstFile.SampleSize()));
 	ASSERT(0 == (BufferLength % m_DstFile.SampleSize()));
 
 	if (nChannels == 1)
@@ -2657,10 +2683,11 @@ BOOL CConversionContext::OperationProc()
 	long WasRead = 0;
 	long WasLockedToWrite = 0;
 
-	void * pOriginalSrcBuf = 0;
-	char const * pSrcBuf;
+	void * pOriginalSrcBuf = NULL;
+	char const * pSrcBuf = NULL;
 	void * pOriginalDstBuf = NULL;
-	char * pDstBuf;
+	char * pDstBuf = NULL;
+
 	do
 	{
 		if (0 == LeftToRead)
@@ -2987,7 +3014,8 @@ void CWmaSaveContext::PostRetire(BOOL bChildContext)
 	CConversionContext::PostRetire(bChildContext);
 }
 
-BOOL CWmaSaveContext::ProcessBuffer(void * buf, size_t len, SAMPLE_POSITION offset, BOOL bBackward)
+BOOL CWmaSaveContext::ProcessBuffer(void * buf, size_t len,
+									SAMPLE_POSITION /*offset*/, BOOL /*bBackward*/)
 {
 	return m_Enc.Write(buf, len);
 }
@@ -3008,7 +3036,7 @@ BOOL CWmaSaveContext::OperationProc()
 	}
 
 	DWORD dwStartTime = GetTickCount();
-	SAMPLE_POSITION dwOperationBegin = m_DstPos;
+	//SAMPLE_POSITION dwOperationBegin = m_DstPos;
 	int SampleSize = m_SrcFile.SampleSize();
 
 	LONG SizeToProcess = 0;

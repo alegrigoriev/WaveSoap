@@ -91,7 +91,7 @@ void CChildFrame::Dump(CDumpContext& dc) const
 /////////////////////////////////////////////////////////////////////////////
 // CChildFrame message handlers
 
-BOOL CChildFrame::OnCreateClient(LPCREATESTRUCT lpcs, CCreateContext* pContext)
+BOOL CChildFrame::OnCreateClient(LPCREATESTRUCT /*lpcs*/, CCreateContext* pContext)
 {
 	CRect r;
 	GetClientRect( & r);
@@ -1156,7 +1156,7 @@ void CMiniToolbar::OnLButtonDown(UINT nFlags, CPoint point)
 
 void CMiniToolbar::OnLButtonUp(UINT nFlags, CPoint point)
 {
-	int nID = 0;
+	UINT nID = 0;
 	if (m_ButtonClicked)
 	{
 		nID = GetHitCode(point);
@@ -1166,20 +1166,24 @@ void CMiniToolbar::OnLButtonUp(UINT nFlags, CPoint point)
 		}
 		HiliteButton(m_ButtonHilit, false);
 	}
+
 	if (m_MouseCaptured)
 	{
 		ReleaseCapture();
 	}
+
 	m_LButtonPressed = false;
 	m_ButtonClicked = 0;
 	CWnd::OnLButtonUp(nFlags, point);
+
 	if (nID != 0)
 	{
 		GetParentFrame()->PostMessage(WM_COMMAND, nID | (BN_CLICKED << 16), LPARAM(m_hWnd));
 	}
 }
 
-int CMiniToolbar::OnMouseActivate(CWnd* pDesktopWnd, UINT nHitTest, UINT message)
+int CMiniToolbar::OnMouseActivate(CWnd* /*pDesktopWnd*/,
+								UINT /*nHitTest*/, UINT /*message*/)
 {
 	return MA_NOACTIVATE;
 }
@@ -1239,7 +1243,7 @@ void CMiniToolbar::OnPaint()
 	}
 }
 
-int CMiniToolbar::GetHitCode(POINT point) const
+UINT CMiniToolbar::GetHitCode(POINT point) const
 {
 	CRect cr;
 	GetClientRect( & cr);
@@ -1248,7 +1252,7 @@ int CMiniToolbar::GetHitCode(POINT point) const
 		|| m_Buttons.size() == 0
 		|| cr.Width() == 0)
 	{
-		return 0;
+		return 0U;
 	}
 	return m_Buttons[point.x * m_Buttons.size() / cr.Width()].nID;
 }
@@ -1393,7 +1397,7 @@ void CMiniToolbarCmdUI::Enable(BOOL bOn)
 	pToolBar->EnableButton(m_nIndex, bOn);
 }
 
-void CMiniToolbarCmdUI::SetCheck(int nCheck)
+void CMiniToolbarCmdUI::SetCheck(int /*nCheck*/)
 {
 	// ignore it
 }

@@ -65,6 +65,7 @@ public:
 
 class CFilterGraphWnd : public CWnd, public Filter
 {
+	typedef CWnd BaseClass;
 	// Construction
 public:
 	CFilterGraphWnd();
