@@ -21,6 +21,7 @@ IMPLEMENT_DYNAMIC(CPreferencesPropertySheet, CPropertySheet)
 CPreferencesPropertySheet::CPreferencesPropertySheet(UINT nIDCaption, CWnd* pParentWnd, UINT iSelectPage)
 	:CPropertySheet(nIDCaption, pParentWnd, iSelectPage)
 	, m_PageSelected(iSelectPage)
+	, m_UndoPage(PersistentUndoRedo::GetData())
 {
 	m_psh.dwFlags |= PSH_NOAPPLYNOW;
 	AddPage( & m_FilePage);
@@ -32,6 +33,7 @@ CPreferencesPropertySheet::CPreferencesPropertySheet(UINT nIDCaption, CWnd* pPar
 CPreferencesPropertySheet::CPreferencesPropertySheet(LPCTSTR pszCaption, CWnd* pParentWnd, UINT iSelectPage)
 	:CPropertySheet(pszCaption, pParentWnd, iSelectPage)
 	, m_PageSelected(iSelectPage)
+	, m_UndoPage(PersistentUndoRedo::GetData())
 {
 	m_psh.dwFlags |= PSH_NOAPPLYNOW;
 	AddPage( & m_FilePage);
@@ -267,20 +269,10 @@ END_MESSAGE_MAP()
 // CUndoPropertyPage dialog
 
 IMPLEMENT_DYNAMIC(CUndoPropertyPage, CPropertyPage)
-CUndoPropertyPage::CUndoPropertyPage()
+CUndoPropertyPage::CUndoPropertyPage(UndoRedoParameters const * pParams)
 	: CPropertyPage(CUndoPropertyPage::IDD)
+	, UndoRedoParameters(*pParams)
 {
-	m_bEnableRedo = FALSE;
-	m_bEnableUndo = FALSE;
-	m_bLimitRedoDepth = FALSE;
-	m_bLimitRedoSize = FALSE;
-	m_bLimitUndoSize = FALSE;
-	m_bLimitUndoDepth = FALSE;
-	m_bRememberSelectionInUndo = FALSE;
-	m_RedoDepthLimit = 0;
-	m_RedoSizeLimit = 0;
-	m_UndoDepthLimit = 0;
-	m_UndoSizeLimit = 0;
 }
 
 CUndoPropertyPage::~CUndoPropertyPage()
@@ -292,13 +284,13 @@ void CUndoPropertyPage::DoDataExchange(CDataExchange* pDX)
 	CPropertyPage::DoDataExchange(pDX);
 	DDX_Control(pDX, IDC_SPIN_UNDO_DEPTH, m_SpinUndoLimit);
 	DDX_Control(pDX, IDC_SPIN_REDO_LIMIT, m_SpinRedoLimit);
-	DDX_Check(pDX, IDC_CHECK_ENABLE_REDO, m_bEnableRedo);
-	DDX_Check(pDX, IDC_CHECK_ENABLE_UNDO, m_bEnableUndo);
-	DDX_Check(pDX, IDC_CHECK_LIMIT_REDO_DEPTH, m_bLimitRedoDepth);
-	DDX_Check(pDX, IDC_CHECK_LIMIT_REDO_SIZE, m_bLimitRedoSize);
-	DDX_Check(pDX, IDC_CHECK_LIMIT_UNDO, m_bLimitUndoSize);
-	DDX_Check(pDX, IDC_CHECK_LIMIT_UNDO_DEPTH, m_bLimitUndoDepth);
-	DDX_Check(pDX, IDC_CHECK_REMEMBER_SELECTION_IN_UNDO, m_bRememberSelectionInUndo);
+	DDX_Check(pDX, IDC_CHECK_ENABLE_REDO, m_RedoEnabled);
+	DDX_Check(pDX, IDC_CHECK_ENABLE_UNDO, m_UndoEnabled);
+	DDX_Check(pDX, IDC_CHECK_LIMIT_REDO_DEPTH, m_LimitRedoDepth);
+	DDX_Check(pDX, IDC_CHECK_LIMIT_REDO_SIZE, m_LimitRedoSize);
+	DDX_Check(pDX, IDC_CHECK_LIMIT_UNDO, m_LimitUndoSize);
+	DDX_Check(pDX, IDC_CHECK_LIMIT_UNDO_DEPTH, m_LimitUndoDepth);
+	DDX_Check(pDX, IDC_CHECK_REMEMBER_SELECTION_IN_UNDO, m_RememberSelectionInUndo);
 	DDX_Text(pDX, IDC_EDIT_REDO_DEPTH_LIMIT, m_RedoDepthLimit);
 	DDV_MinMaxUInt(pDX, m_RedoDepthLimit, 1, 200);
 	DDX_Text(pDX, IDC_EDIT_REDO_SIZE_LIMIT, m_RedoSizeLimit);
