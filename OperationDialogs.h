@@ -312,6 +312,7 @@ public:
 		return m_Position;
 	}
 
+protected:
 // Dialog Data
 	//{{AFX_DATA(CGotoDialog)
 	enum { IDD = IDD_DIALOG_GOTO };
@@ -319,22 +320,25 @@ public:
 	CFileTimesCombo	m_eStart;
 	int		m_TimeFormatIndex;
 	//}}AFX_DATA
-	int m_TimeFormat;
 // Overrides
 	// ClassWizard generated virtual function overrides
 	//{{AFX_VIRTUAL(CGotoDialog)
 protected:
 	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV support
+	virtual BOOL OnInitDialog();
 	//}}AFX_VIRTUAL
 
 // Implementation
 protected:
 
 	SAMPLE_INDEX m_Position;
+	int m_TimeFormat;
+	CWaveFile & m_WaveFile;
 	// Generated message map functions
 	//{{AFX_MSG(CGotoDialog)
+	afx_msg void OnKillfocusEditStart();
 	afx_msg void OnSelchangeComboTimeFormat();
-	virtual BOOL OnInitDialog();
+	afx_msg void OnBuddyChangeSpinStart(NMHDR * pNmHdr, LRESULT * pResult);
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 };
