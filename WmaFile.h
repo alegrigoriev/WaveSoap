@@ -96,7 +96,7 @@ public:
 private:
 	CDirectFile m_File;
 };
-#define USE_READER_CALLBACK_ADVANCED 0
+#define USE_READER_CALLBACK_ADVANCED 1
 class CWmaDecoder : public IWMReaderCallback
 #if USE_READER_CALLBACK_ADVANCED
 	, public IWMReaderCallbackAdvanced
@@ -171,6 +171,12 @@ public:
 											/* [in] */ QWORD cnsCurrentTime,
 											/* [in] */ void __RPC_FAR *pvContext)
 	{
+		TRACE("IWMReaderCallbackAdvancedOnTime(%I64d)\n", cnsCurrentTime);
+		// ask for next buffer
+		m_CurrentStreamTime = cnsCurrentTime;
+
+		m_bNeedNextSample = true;
+		m_SampleEvent.SetEvent();
 		return S_OK;
 	}
 

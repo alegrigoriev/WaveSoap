@@ -10,7 +10,8 @@ HRESULT STDMETHODCALLTYPE CDirectFileStream::Read(
 												/* [in] */ ULONG cb,
 												/* [out] */ ULONG __RPC_FAR *pcbRead)
 {
-	TRACE("CDirectFileStream::Read %d bytes\n", cb);
+	TRACE("CDirectFileStream::Read %d bytes at pos %d, length=%d\n",
+		cb, (DWORD)m_File.Seek(0, FILE_CURRENT), (DWORD)m_File.GetLength());
 	LONG lRead = m_File.Read(pv, cb);
 	if (lRead != -1)
 	{
@@ -388,6 +389,7 @@ HRESULT STDMETHODCALLTYPE CWmaDecoder::OnSample( /* [in] */ DWORD dwOutputNum,
 
 	// ask for next buffer
 	m_CurrentStreamTime = cnsSampleTime + cnsSampleDuration;
+
 	m_bNeedNextSample = true;
 	m_SampleEvent.SetEvent();
 	return S_OK;
@@ -400,9 +402,11 @@ void CWmaDecoder::DeliverNextSample(DWORD timeout)
 		m_bNeedNextSample = false;
 		if (m_pAdvReader)
 		{
-			TRACE("CWmaDecoder::DeliverNextSample:  m_CurrentStreamTime=%X%X, BufferLengthTime=%d\n",
-				ULONG((m_CurrentStreamTime & 0xFFFFFFFF) >> 32), ULONG(m_CurrentStreamTime), m_BufferLengthTime);
-			m_pAdvReader->DeliverTime(m_CurrentStreamTime + m_BufferLengthTime);
+			QWORD NextSampleTime = m_CurrentStreamTime + m_BufferLengthTime;
+			TRACE("CWmaDecoder::DeliverNextSample:  m_CurrentStreamTime=%I64d, NextTime=%I64d\n",
+				m_CurrentStreamTime, NextSampleTime);
+
+			m_pAdvReader->DeliverTime(NextSampleTime);
 		}
 		else
 		{
@@ -564,7 +568,9 @@ HRESULT CWmaDecoder::Open(CDirectFile & file)
 		{
 			MaxSampleSize = 32768;
 		}
-		m_BufferLengthTime = MulDiv(MaxSampleSize-4, 10000000, m_DstWf.BytesPerSec());
+		m_BufferLengthTime = MulDiv(MaxSampleSize, 10000000, m_DstWf.BytesPerSec());
+		m_BufferLengthTime -= m_BufferLengthTime % 10000;   // round to miliseconds
+
 		if (m_DstWf.FormatTag() != WAVE_FORMAT_PCM)
 		{
 			hr = E_UNEXPECTED;
