@@ -264,7 +264,7 @@ void CWaveSoapFrontView::OnDraw(CDC* pDC)
 	PointToDoubleDev(CPoint(r.right, r.bottom), right, bottom);
 	// number of sample that corresponds to the r.left position
 	int NumOfFirstSample = DWORD(left);
-	int SamplesPerPoint = m_HorizontalScale;
+	unsigned SamplesPerPoint = m_HorizontalScale;
 
 
 	// create an array of points
@@ -342,51 +342,37 @@ void CWaveSoapFrontView::OnDraw(CDC* pDC)
 				}
 
 				int i;
-				if (SamplesPerPoint >= pDoc->m_PeakDataGranularity)
+				unsigned PeakDataGranularity = pDoc->m_WavFile.GetPeakGranularity();
+				if (SamplesPerPoint >= PeakDataGranularity)
 				{
+					CSimpleCriticalSectionLock lock(pDoc->m_WavFile.GetPeakLock());
 					// use peak data for drawing
-					CSimpleCriticalSectionLock lock(pDoc->m_PeakLock);
-					DWORD PeakSamplesPerPoint =
-						SamplesPerPoint / pDoc->m_PeakDataGranularity;
+					DWORD PeakSamplesPerPoint = SamplesPerPoint / PeakDataGranularity * nChannels;
 
 					int nIndexOfPeak =
-						ch + (NumOfFirstSample / pDoc->m_PeakDataGranularity) * nChannels;
-					WavePeak * pPeaks = & pDoc->m_pPeaks[nIndexOfPeak];
-					for (i = 0; i < nNumberOfPoints; i++)
+						ch + (NumOfFirstSample / int(PeakDataGranularity)) * nChannels;
+
+					for (i = 0; i < nNumberOfPoints; i++, nIndexOfPeak += PeakSamplesPerPoint)
 					{
-						int low = 0x7FFF;
-						int high = -0x8000;
-						if (NULL != pDoc->m_pPeaks
-							&& pPeaks < pDoc->m_pPeaks + pDoc->m_WavePeakSize)
+						int index1 = nIndexOfPeak;
+						if (index1 < 0)
 						{
-							if (pPeaks >= pDoc->m_pPeaks)
-							{
-								for (DWORD j = 0; j < PeakSamplesPerPoint; j++, pPeaks+= nChannels)
-								{
-									if (pPeaks >= pDoc->m_pPeaks + pDoc->m_WavePeakSize)
-									{
-										break;
-									}
-									if (high < pPeaks->high)
-									{
-										high = pPeaks->high;
-									}
-									if (low > pPeaks->low)
-									{
-										low = pPeaks->low;
-									}
-								}
-							}
-							else
-							{
-								pPeaks += PeakSamplesPerPoint * nChannels;
-							}
+							index1 = 0;
 						}
 
+						int index2 = nIndexOfPeak + PeakSamplesPerPoint;
+						if (index2 < 0)
+						{
+							index2 = 0;
+						}
+
+						WavePeak peak =
+							pDoc->m_WavFile.GetPeakMinMax(index1, index2, nChannels);
+
 						ppArray[i][0] = CPoint(i + r.left,
-												fround((low * m_VerticalScale + WaveOffset) * YScaleDev));
+												fround((peak.low * m_VerticalScale + WaveOffset) * YScaleDev));
 						ppArray[i][1] = CPoint(i + r.left,
-												fround((high * m_VerticalScale + WaveOffset) * YScaleDev));
+												fround((peak.high * m_VerticalScale + WaveOffset) * YScaleDev));
 					}
 				}
 				else
@@ -419,7 +405,7 @@ void CWaveSoapFrontView::OnDraw(CDC* pDC)
 						{
 							if (nSample >= 0)
 							{
-								for (int j = 0; j < SamplesPerPoint; j++, nSample += nChannels)
+								for (unsigned j = 0; j < SamplesPerPoint; j++, nSample += nChannels)
 								{
 									if (nSample >= nCountSamples)
 									{
@@ -1963,7 +1949,14 @@ BOOL CWaveSoapFrontView::MasterScrollBy(double dx, double dy, BOOL bDoScroll)
 		CWaveSoapFrontDoc * pDoc = GetDocument();
 		CRect r;
 		GetClientRect( & r);
-		int nHeight = r.Height() / pDoc->WaveChannels();
+		int nHeight = r.Height();
+
+		int nChannels = pDoc->WaveChannels();
+		if (0 != nChannels)
+		{
+			nHeight /= nChannels;
+		}
+
 		double offset = m_WaveOffsetY + 65536. * ndy / (nHeight * m_VerticalScale);
 		// find max and min offset for this scale
 		double MaxOffset = 32768. * (1 - 1. / m_VerticalScale);
