@@ -1,19 +1,19 @@
 Known problems and tasks:
 
+Make save presets for Expression Evaluation command
 When number of channels changed, view parameters are screwed up.
 Add declicking: first dialog
-Add memory file support (CDirectFile) for short Undo
 Add declicking: interpolation
+Add spectrum section view
+Add noise reduction dialog and processing
+Add noise reduction estimation in spectrum section view
 Add MP3 save
 Add ASF save
 Use waveformat instead of template, for FileNew
 If read-only file is saved, name should be different
-Make "Expression Evaluation" command
-Add spectrum section view
 Sound view jerks during playback of the last screen.
 Add spin support for selection and GOTO dialog.
 Statistics: zero crossings shows double the frquency
-Rintime error during Undo on some systems
 Make Paste Special command
 When a file is opened in non-direct mode, peak info is saved with wrong time stamp
 support copy from a file (FileName) in DoCopy
@@ -39,14 +39,9 @@ Add mouse wheel support
 Add autoscroll during selection
 
 Done:
-Added ULF noise suppression
-Fixed one-channel UNDO issues.
-Undo is kept or deleted depending also on local override.
-Add click interpolation
-Fixed channel selection in most operation dialogs.
-Add ASF reading
-MP3 reading uses Windows Media functions
-Add MP3 and WMA attributes display to the open dialog
+Make "Expression Evaluation" command
+Add memory file support (CDirectFile) for short Undo
+Runtime error during Undo on some systems
 
 File Save/Save As checklist:
 

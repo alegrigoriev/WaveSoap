@@ -4130,14 +4130,66 @@ void CWaveSoapFrontDoc::OnViewRescanPeaks()
 
 void CWaveSoapFrontDoc::OnUpdateProcessSynthesisExpressionEvaluation(CCmdUI* pCmdUI)
 {
-	// TODO: Add your command update UI handler code here
-
+	pCmdUI->Enable( ! m_bReadOnly
+					&& ! m_OperationInProgress
+					&& m_WavFile.IsOpen());
 }
 
 void CWaveSoapFrontDoc::OnProcessSynthesisExpressionEvaluation()
 {
-	// TODO: Add your command handler code here
+	if (m_bReadOnly
+		|| m_OperationInProgress)
+	{
+		return;
+	}
+	long start = m_SelectionStart;
+	long end = m_SelectionEnd;
+	if (start == end)
+	{
+		// select all
+		start = 0;
+		end = WaveFileSamples();
+	}
+	int channel = m_SelectedChannel;
+	if (ChannelsLocked())
+	{
+		channel = ALL_CHANNELS;
+	}
 
+	CExpressionEvaluationDialog dlg;
+	CWaveSoapFrontApp * pApp = GetApp();
+	dlg.m_bUndo = UndoEnabled();
+	dlg.m_Start = start;
+	dlg.m_End = end;
+	dlg.m_Chan = channel;
+	dlg.m_pWf = m_WavFile.GetWaveFormat();
+	dlg.m_bLockChannels = m_bChannelsLocked;
+	dlg.m_bUndo = UndoEnabled();
+	dlg.m_TimeFormat = pApp->m_SoundTimeFormat;
+	dlg.m_FileLength = WaveFileSamples();
+	CExpressionEvaluationContext * pContext = new CExpressionEvaluationContext(this, "Calculating the waveform...",
+												"Expression evaluation");
+	dlg.m_pContext = pContext;
+	if (NULL == pContext)
+	{
+		// todo: dialog
+		return;
+	}
+	dlg.m_sExpression = pApp->m_ExpressionToEvaluate;
+	if (IDOK != dlg.DoModal())
+	{
+		delete dlg.m_pContext;
+		return;
+	}
+	if ( ! dlg.m_pContext->InitDestination(m_WavFile, dlg.m_Start, dlg.m_End,
+											dlg.m_Chan, dlg.m_bUndo))
+	{
+		delete pContext;
+		return;
+	}
+	pApp->m_ExpressionToEvaluate = dlg.m_sExpression;
+	dlg.m_pContext->Execute();
+	SetModifiedFlag(TRUE, dlg.m_bUndo);
 }
 
 void CWaveSoapFrontDoc::OnUpdateViewStatusHhmmss(CCmdUI* pCmdUI)

@@ -44,6 +44,7 @@
 #define IDC_CURSOR_BEAM                 150
 #define IDD_DIALOG_ULF_REDUCTION        150
 #define IDC_CURSOR_BEAM_LEFT            151
+#define IDD_DIALOG_EXPRESSION_EVALUATION 151
 #define IDC_CURSOR_BEAM_RIGHT           152
 #define IDC_EDIT_MIN_CLICK_AMPLITUDE    1000
 #define IDC_TAB_SWITCH_VIEW_MODE        1000
@@ -145,6 +146,7 @@
 #define IDC_CHECK_LOW_FREQUENCY         1057
 #define IDC_EDIT_DIFF_NOISE_RANGE       1058
 #define IDC_EDIT_LF_NOISE_RANGE         1059
+#define IDC_EDIT_EXPRESSION             1059
 #define IDC_VIEW_RULER_SAMPLES          32771
 #define IDC_VIEW_RULER_HHMMSS           32772
 #define IDC_VIEW_RULER_SECONDS          32773
@@ -272,7 +274,7 @@
 #define _APS_3D_CONTROLS                     1
 #define _APS_NEXT_RESOURCE_VALUE        147
 #define _APS_NEXT_COMMAND_VALUE         40066
-#define _APS_NEXT_CONTROL_VALUE         1059
+#define _APS_NEXT_CONTROL_VALUE         1060
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif

@@ -178,15 +178,15 @@ BEGIN
         MENUITEM "&Close",                      ID_FILE_CLOSE
         MENUITEM "&Save\tCtrl+S",               ID_FILE_SAVE
         MENUITEM "Save &As...",                 ID_FILE_SAVE_AS
-        MENUITEM "Save Copy As...\tCtrl+Shift+S", ID_FILE_SAVE_COPY_AS
+        MENUITEM "Save Cop&y As...\tCtrl+Shift+S", ID_FILE_SAVE_COPY_AS
         MENUITEM "Save Al&l",                   ID_FILE_SAVE_ALL
         MENUITEM SEPARATOR
         MENUITEM "&Print...\tCtrl+P",           ID_FILE_PRINT
         MENUITEM "Print Pre&view",              ID_FILE_PRINT_PREVIEW
         MENUITEM "P&rint Setup...",             ID_FILE_PRINT_SETUP
         MENUITEM SEPARATOR
-        MENUITEM "Pr&operties...\tAlt+Enter",   ID_FILE_PROPERTIES
-        MENUITEM "St&atistics...",              ID_FILE_STATISTICS
+        MENUITEM "Prop&erties...\tAlt+Enter",   ID_FILE_PROPERTIES
+        MENUITEM "S&tatistics...",              ID_FILE_STATISTICS
         MENUITEM SEPARATOR
         MENUITEM "Recent File",                 ID_FILE_MRU_FILE1, GRAYED
         MENUITEM SEPARATOR
@@ -204,12 +204,12 @@ BEGIN
         MENUITEM "&Delete\tDel",                ID_EDIT_DELETE
         MENUITEM "&Paste\tCtrl+V",              ID_EDIT_PASTE
         MENUITEM "Paste As &New File\tCtrl+E",  ID_EDIT_PASTE_NEW
-        MENUITEM "Paste Special...",            ID_EDIT_PASTE_SPECIAL
+        MENUITEM "Past&e Special...",           ID_EDIT_PASTE_SPECIAL
         MENUITEM SEPARATOR
         MENUITEM "&Go To...\tCtrl+G",           ID_EDIT_GOTO
         MENUITEM "Select &All\tCtrl+A",         ID_EDIT_SELECT_ALL
         MENUITEM "&Selection...\tCtrl+D",       ID_EDIT_SELECTION
-        MENUITEM "Lock Channels",               ID_EDIT_CHANNELS_LOCK
+        MENUITEM "&Lock Channels",              ID_EDIT_CHANNELS_LOCK
     END
     POPUP "&View"
     BEGIN
@@ -248,7 +248,7 @@ BEGIN
         MENUITEM SEPARATOR
         MENUITEM "Rescan Peaks",                ID_VIEW_RESCAN_PEAKS
     END
-    POPUP "Process"
+    POPUP "&Process"
     BEGIN
         MENUITEM "&Click Removal...",           IDC_PROCESS_DO_DECLICKING
         MENUITEM "&Turntable Noise Reduction...", IDC_PROCESS_DO_ULF
@@ -257,19 +257,17 @@ BEGIN
         MENUITEM "&Normalize...",               ID_PROCESS_NORMALIZE
         MENUITEM "Change &Volume...",           ID_PROCESS_CHANGEVOLUME
         MENUITEM "&Mute",                       ID_PROCESS_MUTE
-        MENUITEM "Invert",                      ID_PROCESS_INVERT
+        MENUITEM "Inv&ert",                     ID_PROCESS_INVERT
         MENUITEM "Insert &Silence...",          ID_PROCESS_INSERTSILENCE
         MENUITEM "&Resample...",                ID_PROCESS_RESAMPLE
     END
-    POPUP "Tools"
+    POPUP "&Tools"
     BEGIN
-        MENUITEM "Options",                     ID_TOOLS_OPTIONS
-        MENUITEM "Interpolate",                 ID_TOOLS_INTERPOLATE
-        POPUP "Synthesis"
-        BEGIN
-            MENUITEM "Expression Evaluation...",    ID_PROCESS_SYNTHESIS_EXPRESSION_EVALUATION
+        MENUITEM "&Options...",                 ID_TOOLS_OPTIONS
+        MENUITEM "I&nterpolate",                ID_TOOLS_INTERPOLATE
+        MENUITEM "&Expression Evaluation...",   ID_PROCESS_SYNTHESIS_EXPRESSION_EVALUATION
 
-        END
+        MENUITEM "&Synthesis",                  65535
     END
     POPUP "&Window"
     BEGIN
@@ -989,6 +987,24 @@ BEGIN
     PUSHBUTTON      "&Help",IDHELP,132,86,50,14
 END
 
+IDD_DIALOG_EXPRESSION_EVALUATION DIALOG DISCARDABLE  0, 0, 252, 241
+STYLE DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "Expression Evaluation"
+FONT 8, "MS Sans Serif"
+BEGIN
+    LTEXT           "Expression:",IDC_STATIC,7,71,53,8
+    EDITTEXT        IDC_EDIT_EXPRESSION,7,83,223,83,ES_MULTILINE | 
+                    ES_AUTOVSCROLL | WS_VSCROLL
+    LTEXT           "Selection:\nChannels:",IDC_STATIC_SELECTION,7,180,238,
+                    17
+    CONTROL         "Save &Undo",IDC_CHECK_UNDO,"Button",BS_AUTOCHECKBOX | 
+                    WS_TABSTOP,7,201,50,10
+    PUSHBUTTON      "&Selection...",IDC_BUTTON_SELECTION,7,220,50,14
+    DEFPUSHBUTTON   "OK",IDOK,81,220,50,14
+    PUSHBUTTON      "Cancel",IDCANCEL,137,220,50,14
+    PUSHBUTTON      "&Help",IDHELP,195,220,50,14
+END
+
 
 #ifndef _MAC
 /////////////////////////////////////////////////////////////////////////////
@@ -1193,6 +1209,14 @@ BEGIN
         RIGHTMARGIN, 186
         TOPMARGIN, 7
         BOTTOMMARGIN, 100
+    END
+
+    IDD_DIALOG_EXPRESSION_EVALUATION, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 245
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 234
     END
 END
 #endif    // APSTUDIO_INVOKED
@@ -1602,6 +1626,8 @@ BEGIN
     ID_VIEW_RESCAN_PEAKS    "Scan the wave file for peaks\nRescan peaks"
     ID_PROCESS_SYNTHESIS_EXPRESSIONEVALUATION 
                             "Create waveform from expression\nExpression evaluation"
+    ID_PROCESS_SYNTHESIS_EXPRESSION_EVALUATION 
+                            "Calculate waveform based on the math expression\nExpression Evaluation"
     ID_VIEW_ZOOM_SELECTION  "Zoom to the selected area\nZoom selection"
     ID_TOOLS_OPTIONS        "Change various settings for the application\nOptions"
     ID_TOOLS_INTERPOLATE    "Interpolate the selected area (up to 128 samples)\nInterpolate"
