@@ -351,6 +351,7 @@ public:
 	{
 		return m_FileWriter.GetWrittenLength();
 	}
+
 	BOOL Init();
 	void DeInit();
 	void SetArtist(LPCTSTR szArtist);
@@ -358,6 +359,7 @@ public:
 	void SetGenre(LPCTSTR szGenre);
 	BOOL SetFormat(WAVEFORMATEX * pDstWfx);
 	BOOL Write(void * Buf, size_t size);
+
 	WAVEFORMATEX m_SrcWfx;
 protected:
 	IWMWriter * m_pWriter;
