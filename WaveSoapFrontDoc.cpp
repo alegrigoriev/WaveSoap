@@ -1476,6 +1476,14 @@ BOOL CWaveSoapFrontDoc::DoPaste(SAMPLE_INDEX Start, SAMPLE_INDEX End, CHANNEL_MA
 		return FALSE;
 	}
 
+	// show warning if one channel will get offset from another
+	if (NumSamplesToPasteFrom != (End - Start)
+		&& ! m_WavFile.AllChannels(Channel)
+		&& IDOK != AfxMessageBox(IDS_CHANNELS_SHIFT_WARNING_PROMPT, MB_OKCANCEL))
+	{
+		return FALSE;
+	}
+
 	if ( ! pStagedContext->InitInsertCopy(m_WavFile, Start, End - Start, Channel,
 										SrcFile, 0, NumSamplesToPasteFrom, ChannelToCopyFrom))
 	{
@@ -1543,6 +1551,13 @@ void CWaveSoapFrontDoc::DoCut(SAMPLE_INDEX Start, SAMPLE_INDEX End, CHANNEL_MASK
 		pContext->InitMoveMarkers(m_WavFile, Start, End - Start, 0);
 	}
 
+	// show warning if one channel will get offset from another
+	if ( ! m_WavFile.AllChannels(Channel)
+		&& IDOK != AfxMessageBox(IDS_CHANNELS_SHIFT_WARNING_PROMPT, MB_OKCANCEL))
+	{
+		return;
+	}
+
 	if ( ! pContext->InitShrinkOperation(m_WavFile, Start, End - Start, Channel))
 	{
 		return;
@@ -1563,6 +1578,13 @@ void CWaveSoapFrontDoc::DoDelete(SAMPLE_INDEX Start, SAMPLE_INDEX End, CHANNEL_M
 	if (End == Start)
 	{
 		End++;
+	}
+
+	// show warning if one channel will get offset from another
+	if ( ! m_WavFile.AllChannels(Channel)
+		&& IDOK != AfxMessageBox(IDS_CHANNELS_SHIFT_WARNING_PROMPT, MB_OKCANCEL))
+	{
+		return;
 	}
 
 	CStagedContext::auto_ptr pContext(new CStagedContext(this,
@@ -4035,6 +4057,13 @@ void CWaveSoapFrontDoc::OnProcessInsertsilence()
 	if (dlg.GetLength() <= 0)
 	{
 		// nothing to change
+		return;
+	}
+
+	// show warning if one channel will get offset from another
+	if ( ! m_WavFile.AllChannels(dlg.GetChannel())
+		&& IDOK != AfxMessageBox(IDS_CHANNELS_SHIFT_WARNING_PROMPT, MB_OKCANCEL))
+	{
 		return;
 	}
 
