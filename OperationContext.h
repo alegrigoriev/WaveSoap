@@ -67,6 +67,7 @@ public:
 	{
 		return TRUE;
 	}
+	// the function undoes any PrepareUndo, if the operation didn't go on
 	virtual void UnprepareUndo() {}
 
 	virtual void DeleteUndo();
@@ -183,22 +184,22 @@ public:
 						CHANNEL_MASK chan, BOOL NeedUndo);
 	void InitSource(CWaveFile & SrcFile, SAMPLE_INDEX StartSample,
 					SAMPLE_INDEX EndSample, CHANNEL_MASK chan);
-#if 0
-	virtual BOOL SaveUndoData(void * pBuf, long BufSize, SAMPLE_POSITION Position, CHANNEL_MASK Channel)
-	{
-		return TRUE;
-	}
-	virtual BOOL NeedToSaveUndo(SAMPLE_POSITION Position, size_t length)
-	{
-		return FALSE;
-	}
-#endif
 
 	void UpdateCompletedPercent();
 	void UpdateCompletedPercent(SAMPLE_INDEX CurrentSample,
 								SAMPLE_INDEX StartSample, SAMPLE_INDEX EndSample);
 	void UpdateCompletedPercent(SAMPLE_POSITION CurrentPos,
 								SAMPLE_POSITION StartPos, SAMPLE_POSITION EndPos);
+
+	virtual MEDIA_FILE_SIZE GetTotalOperationSize() const
+	{
+		return 0;
+	}
+
+	virtual MEDIA_FILE_SIZE GetCompletedOperationSize() const
+	{
+		return 0;
+	}
 
 #ifdef _DEBUG
 	FILETIME m_ThreadUserTime;
@@ -220,7 +221,6 @@ class CTwoFilesOperation : public COperationContext
 public:
 	CTwoFilesOperation(class CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString,
 						ULONG Flags, LPCTSTR OperationName = _T(""));
-	typedef std::auto_ptr<ThisClass> auto_ptr;
 };
 
 class CThroughProcessOperation : public CTwoFilesOperation
@@ -272,6 +272,10 @@ public:
 	void AddContextInFront(COperationContext * pContext);
 	virtual LONGLONG GetTempDataSize() const;
 	virtual bool KeepsPermanentFileReference() const;
+
+	virtual MEDIA_FILE_SIZE GetTotalOperationSize() const;
+
+	virtual MEDIA_FILE_SIZE GetCompletedOperationSize() const;
 
 protected:
 	ListHead<COperationContext> m_ContextList;
@@ -381,8 +385,11 @@ public:
 	virtual void DeleteUndo();
 
 	virtual BOOL OperationProc();
-	virtual BOOL SaveUndoData(void * pBuf, long BufSize, SAMPLE_POSITION Position, CHANNEL_MASK Channel);
-	virtual BOOL NeedToSaveUndo(SAMPLE_POSITION Position, size_t length);
+	virtual BOOL SaveUndoData(void const * pBuf, long BufSize,
+							SAMPLE_POSITION Position,
+							NUMBER_OF_CHANNELS NumSrcChannels);
+
+	virtual BOOL NeedToSaveUndo(SAMPLE_POSITION Position, long length);
 };
 
 class CUndoRedoContext : public CStagedContext
