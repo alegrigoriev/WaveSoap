@@ -1,3 +1,4 @@
+// Copyright Alexander Grigoriev, 1997-2002, All Rights Reserved
 #ifndef __WMAFILE_H_INCLUDED
 #define __WMAFILE_H_INCLUDED
 #include <wtypes.h>
@@ -95,7 +96,11 @@ public:
 private:
 	CDirectFile m_File;
 };
-class CWmaDecoder : public IWMReaderCallback//Advanced
+#define USE_READER_CALLBACK_ADVANCED 0
+class CWmaDecoder : public IWMReaderCallback
+#if USE_READER_CALLBACK_ADVANCED
+	, public IWMReaderCallbackAdvanced
+#endif
 {
 public:
 
@@ -107,17 +112,19 @@ public:
 	HRESULT STDMETHODCALLTYPE QueryInterface( REFIID riid,
 											void __RPC_FAR *__RPC_FAR *ppvObject )
 	{
-		if ( riid == IID_IWMReaderCallback )
+		if (riid == IID_IWMReaderCallback)
 		{
-			*ppvObject = ( IWMReaderCallback* )this;
+			*ppvObject = static_cast<IWMReaderCallback*>(this);
 		}
-		//else if ( riid == IID_IWMReaderCallbackAdvanced )
-		//{
-		//*ppvObject = ( IWMReaderCallbackAdvanced* )this;
-		//}
-		else if ( riid == IID_IWMStatusCallback )
+#if USE_READER_CALLBACK_ADVANCED
+		else if (riid == IID_IWMReaderCallbackAdvanced)
 		{
-			*ppvObject = ( IWMStatusCallback* )this;
+			*ppvObject = static_cast<IWMReaderCallbackAdvanced*>(this);
+		}
+#endif
+		else if (riid == IID_IWMStatusCallback)
+		{
+			*ppvObject = static_cast<IWMStatusCallback*>(this);
 		}
 		else
 		{
@@ -145,6 +152,57 @@ public:
 													/* [in] */ BYTE __RPC_FAR *pValue,
 													/* [in] */ void __RPC_FAR *pvContext ) ;
 
+#if USE_READER_CALLBACK_ADVANCED
+	//
+	//Methods of IWMReaderCallbackAdvanced
+	//
+	virtual HRESULT STDMETHODCALLTYPE OnStreamSample(
+													/* [in] */ WORD wStreamNum,
+													/* [in] */ QWORD cnsSampleTime,
+													/* [in] */ QWORD cnsSampleDuration,
+													/* [in] */ DWORD dwFlags,
+													/* [in] */ INSSBuffer __RPC_FAR *pSample,
+													/* [in] */ void __RPC_FAR *pvContext)
+	{
+		return S_OK;
+	}
+
+	virtual HRESULT STDMETHODCALLTYPE OnTime(
+											/* [in] */ QWORD cnsCurrentTime,
+											/* [in] */ void __RPC_FAR *pvContext)
+	{
+		return S_OK;
+	}
+
+	virtual HRESULT STDMETHODCALLTYPE OnStreamSelection(
+														/* [in] */ WORD wStreamCount,
+														/* [in] */ WORD __RPC_FAR *pStreamNumbers,
+														/* [in] */ WMT_STREAM_SELECTION __RPC_FAR *pSelections,
+														/* [in] */ void __RPC_FAR *pvContext)
+	{
+		return S_OK;
+	}
+
+	virtual HRESULT STDMETHODCALLTYPE OnOutputPropsChanged(
+															/* [in] */ DWORD dwOutputNum,
+															/* [in] */ WM_MEDIA_TYPE __RPC_FAR *pMediaType,
+															/* [in] */ void __RPC_FAR *pvContext)
+	{
+		return S_OK;
+	}
+
+	virtual HRESULT STDMETHODCALLTYPE AllocateForStream(
+														/* [in] */ WORD wStreamNum,
+														/* [in] */ DWORD cbBuffer,
+														/* [out] */ INSSBuffer __RPC_FAR *__RPC_FAR *ppBuffer,
+														/* [in] */ void __RPC_FAR *pvContext);
+
+	virtual HRESULT STDMETHODCALLTYPE AllocateForOutput(
+														/* [in] */ DWORD dwOutputNum,
+														/* [in] */ DWORD cbBuffer,
+														/* [out] */ INSSBuffer __RPC_FAR *__RPC_FAR *ppBuffer,
+														/* [in] */ void __RPC_FAR *pvContext);
+#endif
 
 	HRESULT Open(LPCTSTR szFilename);
 	HRESULT Open(CDirectFile & file);
@@ -159,6 +217,15 @@ public:
 	{
 		return m_InputStream.GetPos();
 	}
+
+	bool IsOpened() const
+	{
+		return m_bOpened;
+	}
+	bool IsStarted() const
+	{
+		return m_bStarted;
+	}
 	void DeliverNextSample();
 	BOOL m_bNeedNextSample;
 	CWaveFile m_DstFile;
@@ -168,8 +235,14 @@ public:
 	IWMReader * m_Reader;
 	IWMReaderAdvanced2 * m_pAdvReader;
 	CDirectFileStream m_InputStream;
-	CEvent m_SignalEvent;
-	WMT_STATUS ReaderStatus;
+
+	bool m_bOpened;
+	bool m_bStarted;
+
+	CEvent m_OpenedEvent;
+	CEvent m_StartedEvent;
+	CEvent m_SampleEvent;
+	//WMT_STATUS ReaderStatus;
 	QWORD m_CurrentStreamTime;
 	QWORD m_BufferLengthTime; //32kbytes in 100ns units
 	QWORD m_StreamDuration;
