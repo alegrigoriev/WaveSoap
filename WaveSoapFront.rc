@@ -2823,8 +2823,9 @@ BEGIN
     IDR_WAVESOTYPE          "\nSound\nWindowsSound file\nWindows Sound files (*.wav)\n.wav\nWaveSoap.Document\nWaveSoap Document"
     IDR_MP3TYPE             "\nSound\nMPEG Layer3 file\nMPEG Audio files (*.mp3)\n.mp3\nWaveSoap.Document\nWaveSoap Document"
     IDR_WMATYPE             "\nSound\nWindows Media file\nWindows Media files (*.wma)\n.wma\nWaveSoap.Document\nWaveSoap Document"
-    IDR_ALLTYPES            "\nSound\nWindows Audio file\nAll Supported Types (*.wav, *.mp3, *.wma)\n.wav;*.mp3;*.wma\nWaveSoap.Document\nWaveSoap Document"
+    IDR_ALLTYPES            "\nSound\nWindows Audio file\nAll Supported Types (*.wav, *.mp3, *.wma,*.wmv,*.asf)\n.wav;*.mp3;*.wma;*.wmv;*.asf\nWaveSoap.Document\nWaveSoap Document"
     IDR_RAWTYPE             "\nSound\nRaw sound file\nRaw (unformatted) sound files (*.raw)\n.raw\nWaveSoap.Document\nWaveSoap Document"
+    IDR_WMTYPES             "\nSound\nWindows Media file\nAll Windows Media files (*.wma,*.wmv,*.asf)\n.wma;*.wmv;*.asf\nWaveSoap.Document\nWaveSoap Document"
 END
 
 STRINGTABLE 
