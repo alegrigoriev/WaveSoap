@@ -9,6 +9,7 @@
 #include "TimeEdit.h"
 
 #include "CdDrive.h"
+#include <vector>
 /////////////////////////////////////////////////////////////////////////////
 // CInsertSilenceDialog dialog
 
@@ -125,6 +126,25 @@ protected:
 /////////////////////////////////////////////////////////////////////////////
 // CCdGrabbingDialog dialog
 
+struct CdTrackInfo
+{
+	CString Artist;
+	CString Album;
+	CString Track;
+	BOOL Selected;
+	CdAddressMSF TrackBegin;
+	LONG NumSectors;
+	CdTrackInfo()
+	{
+		Selected = FALSE;
+		NumSectors = 0;
+		TrackBegin.reserved = 0;
+		TrackBegin.Minute = 0;
+		TrackBegin.Second = 0;
+		TrackBegin.Frame = 0;
+	}
+};
+
 class CCdGrabbingDialog : public CDialog
 {
 // Construction
@@ -150,9 +170,15 @@ public:
 	int m_NumberOfDrives;
 	int m_CDDriveSelected;
 	TCHAR m_DriveLetterSelected;
+
 	CDROM_TOC m_toc;
+	vector<CdTrackInfo> m_Tracks;
 
 	DWORD m_DiskID;
+
+	// speed is in bytes/s, rounded to nearest multiple of 176400
+	int m_MaxReadSpeed;
+	int m_SelectedReadSpeed;
 	BOOL m_bDiskReady;
 
 // Overrides
@@ -169,6 +195,7 @@ protected:
 	MINMAXINFO m_mmxi;
 	void FillTrackList(TCHAR letter);
 	void ReloadTrackList();
+	void InitReadSpeedCombobox();
 
 	BOOL OpenDrive(TCHAR letter);
 

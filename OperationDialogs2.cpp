@@ -216,7 +216,8 @@ CCdGrabbingDialog::CCdGrabbingDialog(CWnd* pParent /*=NULL*/)
 	m_PreviousSize.cy = -1;
 	memzero(m_mmxi);
 	m_bNeedUpdateControls = TRUE;
-
+	m_MaxReadSpeed = 0;
+	m_SelectedReadSpeed = 64000000;    // use max available
 }
 
 CCdGrabbingDialog::~CCdGrabbingDialog()
@@ -325,6 +326,7 @@ void CCdGrabbingDialog::FillTrackList(TCHAR letter)
 		return;
 	}
 	ReloadTrackList();
+	InitReadSpeedCombobox();
 }
 
 void CCdGrabbingDialog::ReloadTrackList()
@@ -342,12 +344,13 @@ void CCdGrabbingDialog::ReloadTrackList()
 	}
 	m_bDiskReady = TRUE;
 
-	int MinSpeed;
 	int MaxSpeed;
-	m_CdDrive.GetMinMaxReadSpeed( & MinSpeed, & MaxSpeed);
+	m_CdDrive.GetMaxReadSpeed( & MaxSpeed);
 
 	// Get disk ID
 	m_DiskID = m_CdDrive.GetDiskID();
+
+	m_Tracks.resize(m_toc.LastTrack - m_toc.FirstTrack + 1);
 
 	for (int tr = 0; tr <= m_toc.LastTrack - m_toc.FirstTrack; tr++)
 	{
@@ -701,12 +704,14 @@ void CCdGrabbingDialog::CheckForDiskChanged()
 	{
 	case CdMediaStateNotReady:
 		ReloadTrackList();
+		InitReadSpeedCombobox();
 		break;
 	case CdMediaStateSameMedia:
 		return;
 		break;
 	case CdMediaStateChanged:
 		ReloadTrackList();
+		InitReadSpeedCombobox();
 		break;
 	}
 }
@@ -849,4 +854,61 @@ void CCdGrabbingDialog::OnRadioStoreSingleFile()
 {
 	m_RadioStoreMultiple = 1;
 
+}
+
+void CCdGrabbingDialog::InitReadSpeedCombobox()
+{
+	m_SpeedCombo.ResetContent();
+	m_MaxReadSpeed = 0;
+	if ( ! m_bDiskReady
+		|| ! m_CdDrive.GetMaxReadSpeed( & m_MaxReadSpeed))
+	{
+		m_SpeedCombo.AddString("Default");  // TODO: LoadString
+		m_SpeedCombo.SetCurSel(0);
+		m_SpeedCombo.EnableWindow(FALSE);
+		return;
+	}
+	m_SpeedCombo.EnableWindow(TRUE);
+	// round MaxReadSpeed to nearest multiple of 176400
+	m_MaxReadSpeed += 44100 * 4 / 2;
+	m_MaxReadSpeed -= m_MaxReadSpeed % (44100 * 4);
+
+	static int const Speeds[] =
+	{
+		1,
+		2,
+		4,
+		8,
+		12,
+		16,
+		24,
+		32,
+		40,
+		48,
+		64,
+	};
+	for (int i = 0; i < sizeof Speeds / sizeof Speeds[0]; i++)
+	{
+		if (m_MaxReadSpeed < Speeds[i] * 176400)
+		{
+			break;
+		}
+		CString s;
+		s.Format("%dx", Speeds[i]);
+		m_SpeedCombo.AddString(s);
+		if (m_SelectedReadSpeed == Speeds[i] * 176400)
+		{
+			m_SpeedCombo.SetCurSel(i);
+		}
+	}
+	if (i == sizeof Speeds / sizeof Speeds[0]
+		|| m_MaxReadSpeed > Speeds[i] * 176400)
+	{
+		m_SpeedCombo.AddString("Default");  // TODO: LoadString
+		m_SpeedCombo.SetCurSel(i);
+	}
+	else if (LB_ERR == m_SpeedCombo.GetCurSel())
+	{
+		m_SpeedCombo.SetCurSel(i - 1);
+	}
 }

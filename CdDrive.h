@@ -21,6 +21,14 @@ struct CD_CDB
 	UCHAR Opcode;
 };
 
+struct CdAddressMSF
+{
+	UCHAR reserved;
+	UCHAR Minute;
+	UCHAR Second;
+	UCHAR Frame;
+};
+
 struct BigEndWord
 {
 	UCHAR num[2];
@@ -109,64 +117,9 @@ struct ReadCD_Cdb : CD_CDB
 	UCHAR Control;
 };
 
-struct GetConfigurationCDB : CD_CDB
-{
-	enum { OPCODE = 0x46};
-	UCHAR RequestedType:2;
-	enum {
-		RequestedTypeAllDescriptors = 0,
-		RequestedTypeCurrentDescriptors = 1,
-		RequestedTypeOneDescriptor = 2};
-	UCHAR Reserved2:6;
-
-	BigEndWord StartingFeatureNumber;
-
-	UCHAR Reserved[3];
-
-	BigEndWord AllocationLength;
-
-	UCHAR Control;
-	GetConfigurationCDB(USHORT allocLength,
-						USHORT StartingFeature = 0, int RequestType = RequestedTypeAllDescriptors)
-	{
-		memzero(*this);
-		Opcode = OPCODE;
-		AllocationLength = allocLength;
-		StartingFeatureNumber = StartingFeature;
-		RequestedType = RequestType;
-	}
-};
-
-struct ModeSenseCDB : CD_CDB
-{
-	enum { OPCODE = 0x1A};
-	UCHAR Reserved1:3;
-	UCHAR DisableBlockDescriptor:1;
-	UCHAR Reserved2:4;
-
-	UCHAR PageCode:6;
-	UCHAR PageControl:2;
-	enum {PageCurrentValues = 0,
-		PageChangeableValues = 1,
-		PageDefaultValues = 2,
-		PageSavedValues = 3
-	};
-
-	UCHAR Reserved3;
-	UCHAR AllocationLength;
-	UCHAR Control;
-	ModeSenseCDB(UCHAR nLength, int nPageCode,
-				int nPageControl = PageCurrentValues, bool dbd = true)
-	{
-		memzero(*this);
-		Opcode = OPCODE;
-		AllocationLength = nLength;
-		PageCode = nPageCode;
-		PageControl = nPageControl;
-		DisableBlockDescriptor = dbd;
-	}
-};
-
+///////////////////////////////////////////////////////////////////////////
+// Get Performance command (MMC2)
+///////////////////////////////////////////////////////////////////////////
 struct CdPerformanceDataHeader
 {
 	BigEndDword DataLength;
@@ -215,6 +168,9 @@ struct GetPerformanceCDB : CD_CDB
 	}
 };
 
+///////////////////////////////////////////////////////////////////////////
+// Device inquiry command
+///////////////////////////////////////////////////////////////////////////
 struct InquiryCDB : CD_CDB
 {
 	enum { OPCODE = 0x12};
@@ -295,6 +251,39 @@ struct InquiryData
 };
 
 //C_ASSERT(96 == sizeof (InquiryData));
+///////////////////////////////////////////////////////////////////////////
+// Mode Sense command and Mode pages
+///////////////////////////////////////////////////////////////////////////
+struct ModeSenseCDB : CD_CDB
+{
+	enum { OPCODE = 0x1A};
+	UCHAR Reserved1:3;
+	UCHAR DisableBlockDescriptor:1;
+	UCHAR Reserved2:4;
+
+	UCHAR PageCode:6;
+	UCHAR PageControl:2;
+	enum {PageCurrentValues = 0,
+		PageChangeableValues = 1,
+		PageDefaultValues = 2,
+		PageSavedValues = 3
+	};
+
+	UCHAR Reserved3;
+	UCHAR AllocationLength;
+	UCHAR Control;
+	ModeSenseCDB(UCHAR nLength, int nPageCode,
+				int nPageControl = PageCurrentValues, bool dbd = true)
+	{
+		memzero(*this);
+		Opcode = OPCODE;
+		AllocationLength = nLength;
+		PageCode = nPageCode;
+		PageControl = nPageControl;
+		DisableBlockDescriptor = dbd;
+	}
+};
+
 struct ModeInfoHeader
 {
 	UCHAR ModeDataLength;
@@ -302,43 +291,6 @@ struct ModeInfoHeader
 	UCHAR DeviceSpecific;
 	UCHAR BlockDescriptorLength;
 };
-
-struct SCSI_SenseInfo
-{
-	UCHAR ResponseCode:7;
-	enum { CurrentErrors=0x70, DeferredErrors=0x71 };
-	UCHAR Valid:1;
-
-	UCHAR SegmentNumber;
-
-	UCHAR SenseKey:4;
-	UCHAR Reserved1:1;
-	UCHAR IncorrectLengthIndicator:1;
-	UCHAR EndOfMedium:1;
-	UCHAR Filemark:1;
-
-	BigEndDword Unformation;
-	UCHAR AdditionalSenseLength;
-
-	BigEndDword CommandSpecificInfo;
-	UCHAR AdditionalSenseCode;
-	UCHAR AdditionalSenseQualifier;
-	UCHAR FieldReplaceableUnitCode;
-
-	UCHAR BitPointer:3;
-	UCHAR BitPointerValid:1;
-	UCHAR Reserved2:1;
-	UCHAR SegmentDescriptor:1;
-	UCHAR CommandOrData:1;
-	UCHAR SenseKeySpecificValid:1;
-	union {
-		BigEndWord FieldPointerBytes;
-		BigEndWord ActualRetryCount;
-		BigEndWord ProgressIndication;
-		BigEndWord FieldPointer;
-	};
-	UCHAR Extra[14];    // total 32
-};  // 18 bytes
 
 struct CDParametersModePage
 {
@@ -387,6 +339,37 @@ struct CDErrorRecoveryModePage
 
 	BigEndWord RecoveryTimeLimit; // MSB first, should be set to zero
 };
+
+// Reduced Multimedia Command Set (obsolete)
+struct CDCurrentCapabilitiesModePage
+{
+	UCHAR PageCode:6;
+	enum {Code = 0x0C, Length=0x0E};
+	UCHAR Reserved1:1;
+	UCHAR PS:1; // parameter savable
+
+	UCHAR PageLength;
+
+	BigEndWord MaximumReadSpeed;
+	BigEndWord CurrentReadSpeed;
+
+	UCHAR ReadCDRW:1;
+	UCHAR ReadATIP:1;
+	UCHAR ReadData:1;
+	UCHAR CAV:1;
+	UCHAR reserved1:4;
+
+	BigEndWord MaximumWriteSpeed;
+	BigEndWord CurrentWriteSpeed;
+
+	UCHAR WriteCDR:1;
+	UCHAR WriteCDRW:1;
+	UCHAR WriteData:1;
+	UCHAR reserved2:5;
+
+	UCHAR reserved3[2];
+};
+
 // see T10/1228-D, NCITS 333, clause 5.5.10 table 137
 struct CDCapabilitiesMechStatusModePage
 {
@@ -443,16 +426,16 @@ struct CDCapabilitiesMechStatusModePage
 	UCHAR ChangerSupportsDiskPresent:1;
 	UCHAR SW_SlotSelection:1;
 	UCHAR SideChangeCapable:1;
-	UCHAR PW_InLeaiIn:1;
+	UCHAR PW_InLeadIn:1;
 	UCHAR Reserved6:2;
 
-	UCHAR Reserved7[2];
+	BigEndWord MaxReadSpeedSupported;   // obsolete
 
 	BigEndWord NumberOfVolumeLevelsSupported; // MSB first
 
 	BigEndWord BufferSizeSupported;   // MSB first
 
-	UCHAR Reserved8[2];
+	BigEndWord CurrentReadSpeedSelected; // obsolete
 
 	UCHAR Reserved9;
 
@@ -464,11 +447,43 @@ struct CDCapabilitiesMechStatusModePage
 	UCHAR LengthBCKs:2;
 	UCHAR Reserved:2;
 
-	UCHAR Obsolete[4];
-
+	BigEndWord MaxWriteSpeedSupported;   // obsolete
+	BigEndWord CurrentWriteSpeedSelected; // obsolete
+	// may not be available:
 	BigEndWord CopyManagementRevision;
 
 	UCHAR Reserved11[2];
+};
+
+///////////////////////////////////////////////////////////////////////////
+// Get Configuration command and Feature descriptors
+///////////////////////////////////////////////////////////////////////////
+struct GetConfigurationCDB : CD_CDB
+{
+	enum { OPCODE = 0x46};
+	UCHAR RequestedType:2;
+	enum {
+		RequestedTypeAllDescriptors = 0,
+		RequestedTypeCurrentDescriptors = 1,
+		RequestedTypeOneDescriptor = 2};
+	UCHAR Reserved2:6;
+
+	BigEndWord StartingFeatureNumber;
+
+	UCHAR Reserved[3];
+
+	BigEndWord AllocationLength;
+
+	UCHAR Control;
+	GetConfigurationCDB(USHORT allocLength,
+						USHORT StartingFeature = 0, int RequestType = RequestedTypeAllDescriptors)
+	{
+		memzero(*this);
+		Opcode = OPCODE;
+		AllocationLength = allocLength;
+		StartingFeatureNumber = StartingFeature;
+		RequestedType = RequestType;
+	}
 };
 
 struct FeatureDescriptor
@@ -552,6 +567,43 @@ struct SerialNumberFeatureDesc : FeatureDescriptor
 	enum {Code = 0x0108, AddLength = 128};
 	UCHAR SerialNumber[128];  // number of bytes is in AdditionalLength
 };
+
+struct SCSI_SenseInfo
+{
+	UCHAR ResponseCode:7;
+	enum { CurrentErrors=0x70, DeferredErrors=0x71 };
+	UCHAR Valid:1;
+
+	UCHAR SegmentNumber;
+
+	UCHAR SenseKey:4;
+	UCHAR Reserved1:1;
+	UCHAR IncorrectLengthIndicator:1;
+	UCHAR EndOfMedium:1;
+	UCHAR Filemark:1;
+
+	BigEndDword Unformation;
+	UCHAR AdditionalSenseLength;
+
+	BigEndDword CommandSpecificInfo;
+	UCHAR AdditionalSenseCode;
+	UCHAR AdditionalSenseQualifier;
+	UCHAR FieldReplaceableUnitCode;
+
+	UCHAR BitPointer:3;
+	UCHAR BitPointerValid:1;
+	UCHAR Reserved2:1;
+	UCHAR SegmentDescriptor:1;
+	UCHAR CommandOrData:1;
+	UCHAR SenseKeySpecificValid:1;
+	union {
+		BigEndWord FieldPointerBytes;
+		BigEndWord ActualRetryCount;
+		BigEndWord ProgressIndication;
+		BigEndWord FieldPointer;
+	};
+	UCHAR Extra[14];    // total 32
+};  // 18 bytes
 
 struct SRB
 {
@@ -648,7 +700,7 @@ public:
 	static int FindCdDrives(TCHAR Drives['Z' - 'A' + 1]);
 	DWORD GetDiskID();
 
-	BOOL GetMinMaxReadSpeed(int * MinSpeed, int * MaxSpeed); // bytes/s
+	BOOL GetMaxReadSpeed(int * pMaxSpeed); // bytes/s
 
 	BOOL SetReadSpeed(long BytesPerSec);
 	BOOL ReadCdData(void * pBuf, long SectorNum, int nSectors);
