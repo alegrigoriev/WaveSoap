@@ -648,9 +648,13 @@ public:
 								CHANNEL_MASK Channels,
 								CWaveFile & File,
 								BOOL ChannelsLocked, BOOL UndoEnabled,
-								int TimeFormat = SampleToString_HhMmSs | TimeToHhMmSs_NeedsHhMm | TimeToHhMmSs_NeedsMs,
+								int TimeFormat,
+								class CExpressionEvaluationContext * pContext,
 								CWnd* pParent = NULL);   // standard constructor
+	~CExpressionEvaluationDialog();
+	class CExpressionEvaluationContext * GetExpressionContext();
 
+protected:
 // Dialog Data
 	//{{AFX_DATA(CExpressionEvaluationDialog)
 	enum { IDD = IDD_DIALOG_EXPRESSION_EVALUATION };
@@ -659,6 +663,7 @@ public:
 	CString m_sExpression;
 	//}}AFX_DATA
 
+	CApplicationProfile m_Profile;
 	CChildDialog m_FunctionsTabDlg;
 	COperandsDialog m_OperandsTabDlg;
 	CInsertExpressionDialog m_SavedExprTabDlg;
@@ -693,7 +698,6 @@ protected:
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 	// m_Profile will be conrtructed last and destructed first
-	CApplicationProfile m_Profile;
 };
 /////////////////////////////////////////////////////////////////////////////
 // CDeclickDialog dialog
