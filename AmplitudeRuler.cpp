@@ -14,9 +14,10 @@ static char THIS_FILE[] = __FILE__;
 /////////////////////////////////////////////////////////////////////////////
 // CAmplitudeRuler
 
-IMPLEMENT_DYNCREATE(CAmplitudeRuler, CView)
+IMPLEMENT_DYNCREATE(CAmplitudeRuler, CVerticalRuler)
 
 CAmplitudeRuler::CAmplitudeRuler()
+	:m_DrawMode(SampleView)
 {
 }
 
@@ -25,19 +26,327 @@ CAmplitudeRuler::~CAmplitudeRuler()
 }
 
 
-BEGIN_MESSAGE_MAP(CAmplitudeRuler, CView)
+BEGIN_MESSAGE_MAP(CAmplitudeRuler, CVerticalRuler)
 	//{{AFX_MSG_MAP(CAmplitudeRuler)
-		// NOTE - the ClassWizard will add and remove mapping macros here.
+	ON_WM_CREATE()
+	ON_WM_LBUTTONDBLCLK()
+	ON_COMMAND(IDC_VIEW_AMPL_RULER_SAMPLES, OnViewAmplRulerSamples)
+	ON_COMMAND(IDC_VIEW_AMPL_RULER_PERCENT, OnViewAmplRulerPercent)
+	ON_COMMAND(IDC_VIEW_AMPL_RULER_DECIBELS, OnViewAmplRulerDecibels)
 	//}}AFX_MSG_MAP
 END_MESSAGE_MAP()
 
 /////////////////////////////////////////////////////////////////////////////
 // CAmplitudeRuler drawing
 
+static int fround(double d)
+{
+	if (d >= 0.)
+	{
+		return int(d + 0.5);
+	}
+	else
+	{
+		return int(d - 0.5);
+	}
+}
+
 void CAmplitudeRuler::OnDraw(CDC* pDC)
 {
-	CDocument* pDoc = GetDocument();
-	// TODO: add draw code here
+	CGdiObject * pOldFont = (CFont *) pDC->SelectStockObject(ANSI_VAR_FONT);
+	CGdiObject * OldPen = pDC->SelectStockObject(BLACK_PEN);
+	switch (m_DrawMode)
+	{
+	case PercentView:
+		DrawPercents(pDC);
+		break;
+	case DecibelView:
+		DrawDecibels(pDC);
+		break;
+	default:
+		DrawSamples(pDC);
+		break;
+	}
+	pDC->SelectObject(OldPen);
+	pDC->SelectObject(pOldFont);
+}
+
+void CAmplitudeRuler::DrawSamples(CDC * pDC)
+{
+	CWaveSoapFrontDoc* pDoc = GetDocument();
+
+	CWaveSoapFrontView * pMasterView = DYNAMIC_DOWNCAST(CWaveSoapFrontView, m_pVertMaster);
+	if (NULL == pMasterView)
+	{
+		return; // not attached
+	}
+
+	CRect cr;
+	GetClientRect(cr);
+
+	TEXTMETRIC tm;
+	pDC->GetTextMetrics( & tm);
+	pDC->SetTextAlign(TA_BOTTOM | TA_RIGHT);
+	pDC->SetTextColor(0x000000);   // black
+	pDC->SetBkMode(TRANSPARENT);
+	int nVertStep = GetSystemMetrics(SM_CYMENU);
+	int nChannels = pDoc->WaveChannels();
+	int nHeight = cr.Height() / nChannels;
+	double VerticalScale = pMasterView->m_VerticalScale;
+	double ScaledWaveOffset = pMasterView->m_WaveOffsetY * VerticalScale;
+	int nSampleUnits = nVertStep * 65536. / (nHeight * VerticalScale);
+	// round sample units to 10 or 5
+	int step;
+	for (step = 1; step < nSampleUnits; step *= 10)
+	{
+		if (step * 2 >= nSampleUnits)
+		{
+			step *= 2;
+			break;
+		}
+		if (step * 5 >= nSampleUnits)
+		{
+			step *= 5;
+			break;
+		}
+	}
+	double YScaleDev = pMasterView->GetYScaleDev();
+	int ChannelSeparatorY = fround((0 - pMasterView->dOrgY) * YScaleDev);
+	if (2 == nChannels)
+	{
+		pDC->MoveTo(0, ChannelSeparatorY);
+		pDC->LineTo(cr.right, ChannelSeparatorY);
+	}
+	for (int ch = 0; ch < nChannels; ch++)
+	{
+		double WaveOffset = ScaledWaveOffset - pMasterView->dOrgY;
+		int ClipHigh = cr.bottom;
+		int ClipLow = cr.top;
+		if (nChannels > 1)
+		{
+			if (0 == ch)
+			{
+				WaveOffset = ScaledWaveOffset + 32768. - pMasterView->dOrgY;
+				ClipHigh = ChannelSeparatorY;
+			}
+			else
+			{
+				WaveOffset = ScaledWaveOffset -32768. - pMasterView->dOrgY;
+				ClipLow = ChannelSeparatorY + 1;
+			}
+		}
+		ClipLow += tm.tmHeight / 2;
+		ClipHigh -= tm.tmHeight / 2;
+		int yLow = (ClipHigh / YScaleDev -WaveOffset) / VerticalScale;
+		// round to the next multiple of step
+		yLow += (step*0x10000-yLow) % step;
+		int yHigh = (ClipLow / YScaleDev -WaveOffset) / VerticalScale;
+		yHigh -= (step*0x10000+yHigh) % step;
+		ASSERT(yLow <= yHigh);
+		for (int y = yLow; y <= yHigh; y += step)
+		{
+			int yDev= fround((y * VerticalScale + WaveOffset) * YScaleDev);
+			pDC->MoveTo(cr.right - 3, yDev);
+			pDC->LineTo(cr.right, yDev);
+			CString s;
+			s.Format(_T("%d"), y);
+
+			pDC->TextOut(cr.right - 3, yDev + tm.tmHeight / 2, s);
+		}
+	}
+}
+
+void CAmplitudeRuler::DrawPercents(CDC * pDC)
+{
+	CWaveSoapFrontDoc* pDoc = GetDocument();
+
+	CWaveSoapFrontView * pMasterView = DYNAMIC_DOWNCAST(CWaveSoapFrontView, m_pVertMaster);
+	if (NULL == pMasterView)
+	{
+		return; // not attached
+	}
+
+	CRect cr;
+	GetClientRect(cr);
+
+	TEXTMETRIC tm;
+	pDC->GetTextMetrics( & tm);
+	pDC->SetTextAlign(TA_BOTTOM | TA_RIGHT);
+	pDC->SetTextColor(0x000000);   // black
+	pDC->SetBkMode(TRANSPARENT);
+	int nVertStep = GetSystemMetrics(SM_CYMENU);
+	int nChannels = pDoc->WaveChannels();
+	int nHeight = cr.Height() / nChannels;
+	double VerticalScale = pMasterView->m_VerticalScale;
+	double ScaledWaveOffset = pMasterView->m_WaveOffsetY * VerticalScale;
+	double nSampleUnits = nVertStep * 200. / (nHeight * VerticalScale);
+	// round sample units to 10 or 5
+	int step;
+	for (step = 1; step < nSampleUnits; step *= 10)
+	{
+		if (step * 2 >= nSampleUnits)
+		{
+			step *= 2;
+			break;
+		}
+		if (step * 5 >= nSampleUnits)
+		{
+			step *= 5;
+			break;
+		}
+	}
+	double YScaleDev = pMasterView->GetYScaleDev();
+	int ChannelSeparatorY = fround((0 - pMasterView->dOrgY) * YScaleDev);
+	if (2 == nChannels)
+	{
+		pDC->MoveTo(0, ChannelSeparatorY);
+		pDC->LineTo(cr.right, ChannelSeparatorY);
+	}
+	for (int ch = 0; ch < nChannels; ch++)
+	{
+		double WaveOffset = ScaledWaveOffset - pMasterView->dOrgY;
+		int ClipHigh = cr.bottom;
+		int ClipLow = cr.top;
+		if (nChannels > 1)
+		{
+			if (0 == ch)
+			{
+				WaveOffset = ScaledWaveOffset + 32768. - pMasterView->dOrgY;
+				ClipHigh = ChannelSeparatorY;
+			}
+			else
+			{
+				WaveOffset = ScaledWaveOffset -32768. - pMasterView->dOrgY;
+				ClipLow = ChannelSeparatorY + 1;
+			}
+		}
+		ClipLow += tm.tmHeight / 2;
+		ClipHigh -= tm.tmHeight / 2;
+		int yLow = 100. / 32768. * (ClipHigh / YScaleDev -WaveOffset) / VerticalScale;
+		// round to the next multiple of step
+		yLow += (step*0x10000-yLow) % step;
+		int yHigh = 100. / 32768. * (ClipLow / YScaleDev -WaveOffset) / VerticalScale;
+		yHigh -= (step*0x10000+yHigh) % step;
+		ASSERT(yLow <= yHigh);
+		for (int y = yLow; y <= yHigh; y += step)
+		{
+			int yDev= fround((y * 32768. / 100.* VerticalScale + WaveOffset) * YScaleDev);
+			pDC->MoveTo(cr.right - 3, yDev);
+			pDC->LineTo(cr.right, yDev);
+			CString s;
+			s.Format(_T("%d%%"), y);
+
+			pDC->TextOut(cr.right - 3, yDev + tm.tmHeight / 2, s);
+		}
+	}
+}
+
+void CAmplitudeRuler::DrawDecibels(CDC * pDC)
+{
+	// decibels are drawn with 1.5 dB step
+	CWaveSoapFrontDoc* pDoc = GetDocument();
+
+	CWaveSoapFrontView * pMasterView = DYNAMIC_DOWNCAST(CWaveSoapFrontView, m_pVertMaster);
+	if (NULL == pMasterView)
+	{
+		return; // not attached
+	}
+
+	CRect cr;
+	GetClientRect(cr);
+
+	TEXTMETRIC tm;
+	pDC->GetTextMetrics( & tm);
+	pDC->SetTextAlign(TA_BOTTOM | TA_RIGHT);
+	pDC->SetTextColor(0x000000);   // black
+	pDC->SetBkMode(TRANSPARENT);
+	int nVertStep = GetSystemMetrics(SM_CYMENU);
+	int nChannels = pDoc->WaveChannels();
+	int nHeight = cr.Height() / nChannels;
+	double VerticalScale = pMasterView->m_VerticalScale;
+	double ScaledWaveOffset = pMasterView->m_WaveOffsetY * VerticalScale;
+	int nSampleUnits = nVertStep * 65536. / (nHeight * VerticalScale);
+	// round sample units to 10 or 5
+	int step;
+	for (step = 1; step < nSampleUnits; step *= 10)
+	{
+		if (step * 2 >= nSampleUnits)
+		{
+			step *= 2;
+			break;
+		}
+		if (step * 5 >= nSampleUnits)
+		{
+			step *= 5;
+			break;
+		}
+	}
+	double YScaleDev = pMasterView->GetYScaleDev();
+	int ChannelSeparatorY = fround((0 - pMasterView->dOrgY) * YScaleDev);
+	if (2 == nChannels)
+	{
+		pDC->MoveTo(0, ChannelSeparatorY);
+		pDC->LineTo(cr.right, ChannelSeparatorY);
+	}
+	for (int ch = 0; ch < nChannels; ch++)
+	{
+		double WaveOffset = ScaledWaveOffset - pMasterView->dOrgY;
+		int ClipHigh = cr.bottom;
+		int ClipLow = cr.top;
+		if (nChannels > 1)
+		{
+			if (0 == ch)
+			{
+				WaveOffset = ScaledWaveOffset + 32768. - pMasterView->dOrgY;
+				ClipHigh = ChannelSeparatorY;
+			}
+			else
+			{
+				WaveOffset = ScaledWaveOffset -32768. - pMasterView->dOrgY;
+				ClipLow = ChannelSeparatorY + 1;
+			}
+		}
+		ClipLow += tm.tmHeight / 2;
+		ClipHigh -= tm.tmHeight / 2;
+		int yLow = (ClipHigh / YScaleDev -WaveOffset) / VerticalScale;
+		// round to the next multiple of step
+		yLow += (step*0x10000-yLow) % step;
+		int yHigh = (ClipLow / YScaleDev -WaveOffset) / VerticalScale;
+		yHigh -= (step*0x10000+yHigh) % step;
+		ASSERT(yLow <= yHigh);
+		for (int y = yLow; y <= yHigh; y += step)
+		{
+			int yDev= fround((y * VerticalScale + WaveOffset) * YScaleDev);
+			pDC->MoveTo(cr.right - 3, yDev);
+			pDC->LineTo(cr.right, yDev);
+			CString s;
+			s.Format(_T("%d"), y);
+
+			pDC->TextOut(cr.right - 3, yDev + tm.tmHeight / 2, s);
+		}
+	}
+}
+
+int CAmplitudeRuler::CalculateWidth()
+{
+	CWnd * pW = GetDesktopWindow();
+	CDC * pDC = pW->GetWindowDC();
+	CGdiObject * pOld = pDC->SelectStockObject(ANSI_VAR_FONT);
+	int Width = 4 + pDC->GetTextExtent("-000000", 7).cx;
+
+	pDC->SelectObject(pOld);
+	pW->ReleaseDC(pDC);
+	return Width;
+}
+
+void CAmplitudeRuler::OnUpdate( CView* pSender, LPARAM lHint, CObject* pHint )
+{
+	if ((lHint == CWaveSoapFrontView::WAVE_OFFSET_CHANGED
+			|| lHint == CWaveSoapFrontView::WAVE_SCALE_CHANGED)
+		&& NULL == pHint)
+	{
+		Invalidate();
+	}
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -46,14 +355,78 @@ void CAmplitudeRuler::OnDraw(CDC* pDC)
 #ifdef _DEBUG
 void CAmplitudeRuler::AssertValid() const
 {
-	CView::AssertValid();
+	CVerticalRuler::AssertValid();
 }
 
 void CAmplitudeRuler::Dump(CDumpContext& dc) const
 {
-	CView::Dump(dc);
+	CVerticalRuler::Dump(dc);
+}
+
+CWaveSoapFrontDoc* CAmplitudeRuler::GetDocument() // non-debug version is inline
+{
+	ASSERT(m_pDocument->IsKindOf(RUNTIME_CLASS(CWaveSoapFrontDoc)));
+	return (CWaveSoapFrontDoc*)m_pDocument;
 }
 #endif //_DEBUG
 
 /////////////////////////////////////////////////////////////////////////////
 // CAmplitudeRuler message handlers
+
+int CAmplitudeRuler::OnCreate(LPCREATESTRUCT lpCreateStruct)
+{
+	if (CVerticalRuler::OnCreate(lpCreateStruct) == -1)
+		return -1;
+
+	KeepAspectRatio(FALSE);
+	KeepScaleOnResizeX(FALSE);
+	KeepScaleOnResizeY(FALSE);
+	KeepOrgOnResizeX(FALSE);
+	KeepOrgOnResizeY(TRUE);
+	int nChannels = GetDocument()->WaveChannels();
+	int nLowExtent = -32768;
+	int nHighExtent = 32767;
+	if (nChannels > 1)
+	{
+		nLowExtent = -0x10000;
+		nHighExtent = 0x10000;
+	}
+
+	SetMaxExtents(0., 1., nLowExtent, nHighExtent);
+	SetExtents(0., 1., nLowExtent, nHighExtent);
+	ShowScrollBar(SB_VERT, FALSE);
+	ShowScrollBar(SB_HORZ, FALSE);
+
+	return 0;
+}
+
+void CAmplitudeRuler::OnLButtonDblClk(UINT nFlags, CPoint point)
+{
+	CVerticalRuler::OnLButtonDblClk(nFlags, point);
+	// set default scale
+	CWaveSoapFrontView * pView =
+		DYNAMIC_DOWNCAST(CWaveSoapFrontView, m_pVertMaster);
+	if (NULL != pView)
+	{
+		pView->OnViewZoomvertNormal();
+	}
+}
+
+void CAmplitudeRuler::OnViewAmplRulerSamples()
+{
+	m_DrawMode = SampleView;
+	Invalidate();
+}
+
+void CAmplitudeRuler::OnViewAmplRulerPercent()
+{
+	m_DrawMode = PercentView;
+	Invalidate();
+}
+
+void CAmplitudeRuler::OnViewAmplRulerDecibels()
+{
+	m_DrawMode = DecibelView;
+	Invalidate();
+}
+
