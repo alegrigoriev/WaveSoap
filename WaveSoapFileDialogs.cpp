@@ -239,9 +239,11 @@ void CWaveSoapFileOpenDialog::OnFileNameChange()
 			SetDlgItemText(IDC_STATIC_FILE_TYPE, _T("Microsoft RIFF Wave"));
 			CString s;
 			CString s2;
+
 			// get format name
 			ACMFORMATDETAILS afd;
-			memset (& afd, 0, sizeof afd);
+			memzero(afd);
+
 			afd.cbStruct = sizeof afd;
 			afd.pwfx = pWf;
 			afd.cbwfx = sizeof (WAVEFORMATEX) + pWf->cbSize;
@@ -261,10 +263,12 @@ void CWaveSoapFileOpenDialog::OnFileNameChange()
 					LPCTSTR(TimeToHhMmSs(MulDiv(nSamples, 1000, nSamplingRate))),
 					LPCTSTR(LtoaCS(nSamples)));
 			SetDlgItemText(IDC_STATIC_FILE_LENGTH, s2);
+
 			ACMFORMATTAGDETAILS aft;
-			memset (& aft, 0, sizeof aft);
+			memzero(aft);
 			aft.cbStruct = sizeof aft;
 			aft.dwFormatTag = afd.dwFormatTag;
+
 			if (MMSYSERR_NOERROR == acmFormatTagDetails(NULL, & aft,
 														ACM_FORMATTAGDETAILSF_FORMATTAG))
 			{
@@ -461,7 +465,8 @@ BOOL _stdcall CWaveSoapFileSaveDialog::FormatTagEnumCallback(
 	pwfx->wBitsPerSample = 16;
 	pwfx->nBlockAlign = pDlg->m_Wf.NumChannels() * 2;
 	pwfx->nAvgBytesPerSec = pwfx->nSamplesPerSec * pwfx->nBlockAlign;
-	memset( & afd, 0, sizeof afd);
+
+	memzero(afd);
 	afd.cbStruct = sizeof afd;
 	afd.cbwfx = 0xFFFF;
 	afd.dwFormatTag = paftd->dwFormatTag;
@@ -489,18 +494,19 @@ BOOL _stdcall CWaveSoapFileSaveDialog::FormatTagEnumCallback(
 
 void CWaveSoapFileSaveDialog::FillFormatTagArray(int const ListOfTags[], int NumTags)
 {
-
 	m_FormatTags.RemoveAll();
-	ACMFORMATTAGDETAILS atd;
+
 	FormatTagEnumStruct fts;
 	fts.pDlg = this;
 	fts.NumTags = NumTags;
 	fts.pListOfTags = ListOfTags;
 
 	// enum all formats
-	memset( & atd, 0, sizeof atd);
+	ACMFORMATTAGDETAILS atd;
+	memzero(atd);
 	atd.cbStruct = sizeof atd;
 	atd.dwFormatTag = WAVE_FORMAT_UNKNOWN;
+
 	acmFormatTagEnum(NULL, & atd, FormatTagEnumCallback, DWORD( & fts), 0);
 
 }
@@ -623,7 +629,8 @@ void CWaveSoapFileSaveDialog::FillFormatArray(int SelFormat, int Flags)
 	pwfx->wBitsPerSample = 16;
 	pwfx->nBlockAlign = m_Wf.NumChannels();
 	pwfx->nAvgBytesPerSec = pwfx->nSamplesPerSec * pwfx->nBlockAlign;
-	memset( & afd, 0, sizeof afd);
+
+	memzero(afd);
 	afd.cbStruct = sizeof afd;
 	afd.cbwfx = 0xFFFF;
 	afd.dwFormatTag = dwFormatTag;
@@ -735,12 +742,14 @@ void CWaveSoapFileSaveDialog::FillFormatCombo(int SelFormat, int Flags)
 					16, // wBitsPerSample
 					0
 				};
+
 				ACMFORMATDETAILS afd;
-				memset (& afd, 0, sizeof afd);
+				memzero(afd);
 				afd.cbStruct = sizeof afd;
 				afd.pwfx = & wf;
 				afd.cbwfx = sizeof (WAVEFORMATEX);
 				afd.dwFormatTag = WAVE_FORMAT_PCM;
+
 				acmFormatDetails(NULL, & afd, ACM_FORMATDETAILSF_FORMAT);
 				m_Formats.InsertAt(0, SaveFormat());
 				m_Formats[0].SetData( & wf, afd.szFormat);
@@ -1117,29 +1126,12 @@ void CWaveSoapFileSaveDialog::FillMp3EncoderArray()
 	BladeMp3Encoder Mp3Enc;
 	if (Mp3Enc.Open())
 	{
-		BE_VERSION ver;
-		memset( & ver, 0, sizeof ver);
-		Mp3Enc.GetVersion( & ver);
+		m_FormatCombo.AddString(Mp3Enc.GetVersionString());
 
-		SYSTEMTIME time;
-		memset( & time, 0, sizeof time);
-		time.wYear = ver.wYear;
-		time.wDay = ver.byDay;
-		time.wMonth = ver.byMonth;
-
-		int const TimeBufSize = 256;
-		TCHAR str[TimeBufSize] = {0};
-
-		GetDateFormat(LOCALE_USER_DEFAULT, DATE_SHORTDATE, & time, NULL, str, TimeBufSize - 1);
-
-		CString s;
-		s.Format("LameEnc DLL Version %d.%02d, (%s) Engine %d.%02d",
-				ver.byDLLMajorVersion, ver.byDLLMinorVersion,
-				str, ver.byMajorVersion, ver.byMinorVersion);
-		Mp3Enc.Close();
-		m_FormatCombo.AddString(s);
 		m_Mp3Encoders[m_NumOfMp3Encoders] = Mp3EncoderLameencoder;
 		m_NumOfMp3Encoders++;
+
+		Mp3Enc.Close();
 	}
 
 	// check if MP3 ACM encoder presents

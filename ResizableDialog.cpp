@@ -27,7 +27,7 @@ CResizableDialog::CResizableDialog(UINT id, CWnd* pParent)
 	m_DlgWidth = 0;
 	m_DlgHeight = 0;
 
-	memset(& m_mmxi, 0, sizeof m_mmxi);
+	memzero(m_mmxi);
 }
 
 

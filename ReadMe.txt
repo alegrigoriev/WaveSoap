@@ -1,6 +1,11 @@
 Known problems and tasks:
 
-During CD read, create next document during Context::Execute()
+Get rid of "grab CD to a single file" mode
+Add file format selection for CD grabbing
+Add check/uncheck icons to the header
+Add context menu to track list (check/uncheck all/selected)
+Add eject CD button
+Process Space key in track list
 Pass wave format to CD grabbing dialog
 Process Loss Of Streaming error
 Add CD grabbing
@@ -89,6 +94,8 @@ Save As dialog is not centered first time (comdlg problem?)
 ??? When time/seconds format is set for status bar, MM:SS is actually shown
 
 Done:
+Created CWaveFormat class
+During CD read, create next document during Context::Execute()
 Use temporary filename for CD temp files
 Add file extension to CD track file name
 Set CD reading speed !

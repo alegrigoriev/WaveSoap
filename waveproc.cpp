@@ -2110,7 +2110,7 @@ CAudioConvertor::CAudioConvertor()
 	m_DstFormat(NULL),
 	m_acmStr(NULL)
 {
-	memset( & m_ash, 0, sizeof m_ash);
+	memzero(m_ash);
 }
 
 CAudioConvertor::~CAudioConvertor()
@@ -2472,6 +2472,30 @@ BOOL BladeMp3Encoder::FlushStream(BYTE * pDst, DWORD * pBytesEncoded)
 	}
 	m_bFlushStreamCalled = TRUE;
 	return BE_ERR_SUCCESSFUL == beDeinitStream(m_pStream, pDst, pBytesEncoded);
+}
+
+CString BladeMp3Encoder::GetVersionString()
+{
+	BE_VERSION ver;
+	memzero(ver);
+	GetVersion( & ver);
+
+	SYSTEMTIME time;
+	memzero(time);
+	time.wYear = ver.wYear;
+	time.wDay = ver.byDay;
+	time.wMonth = ver.byMonth;
+
+	int const TimeBufSize = 256;
+	TCHAR str[TimeBufSize] = {0};
+
+	GetDateFormat(LOCALE_USER_DEFAULT, DATE_SHORTDATE, & time, NULL, str, TimeBufSize - 1);
+
+	CString s;
+	s.Format("LameEnc DLL Version %d.%02d, (%s) Engine %d.%02d",
+			ver.byDLLMajorVersion, ver.byDLLMinorVersion,
+			str, ver.byMajorVersion, ver.byMinorVersion);
+	return s;
 }
 
 CLameEncConvertor::~CLameEncConvertor()

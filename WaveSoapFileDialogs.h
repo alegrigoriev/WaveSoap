@@ -126,7 +126,7 @@ public:
 		m_SelectedRawFormat(RawSoundFilePcm16Lsb),
 		m_pDocument(NULL)
 	{
-		memset(m_Mp3Encoders, 0, sizeof m_Mp3Encoders);
+		memzero(m_Mp3Encoders);
 		if (CThisApp::SupportsV5FileDialog())
 		{
 			m_ofn.lpTemplateName = MAKEINTRESOURCE(IDD_DIALOG_SAVE_TEMPLATE_V5);

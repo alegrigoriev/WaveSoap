@@ -403,7 +403,7 @@ protected:
 			m_MaxBlocksToPrefetch(GetCache()->m_NumberOfBuffers / 6),
 			m_LastError(0)
 		{
-			memset(& m_FileInfo, 0, sizeof m_FileInfo);
+			memzero(m_FileInfo);
 		}
 			#ifdef _DEBUG
 		void ValidateList() const;

@@ -209,14 +209,12 @@ CCdGrabbingDialog::CCdGrabbingDialog(CWnd* pParent /*=NULL*/)
 	//{{AFX_DATA_INIT(CCdGrabbingDialog)
 	m_RadioAssignAttributes = -1;
 	m_RadioStoreImmediately = -1;
-	m_RadioStoreMultiple = -1;
 	m_sSaveFolderOrFile = _T("");
 	m_sAlbum = _T("");
 	m_sArtist = _T("");
 	//}}AFX_DATA_INIT
 	m_RadioAssignAttributes = 0;
 	m_RadioStoreImmediately = 0;
-	m_RadioStoreMultiple = 0;
 	m_DiskID = -1;
 	m_bNeedUpdateControls = TRUE;
 	m_MaxReadSpeed = 0;
@@ -226,6 +224,10 @@ CCdGrabbingDialog::CCdGrabbingDialog(CWnd* pParent /*=NULL*/)
 	m_FileTypeFlags = 0;
 
 	m_Profile.AddItem(_T("CdRead"), _T("BaseDirectory"), m_sSaveFolderOrFile);
+	m_Profile.AddItem(_T("CdRead"), _T("FileType"), m_FileTypeFlags, 0,
+					0, SaveFile_WmaFile);
+	m_FileTypeFlags &= ~SaveFile_NonWavFile;
+
 	m_Profile.AddItem(_T("CdRead"), _T("Speed"), m_SelectedReadSpeed, 64000000,
 					176400, 0x10000000);
 	m_Profile.AddItem(_T("CdRead"), _T("DriveLetter"),
@@ -235,8 +237,6 @@ CCdGrabbingDialog::CCdGrabbingDialog(CWnd* pParent /*=NULL*/)
 						_T("AssignToAllOrSelected"), m_RadioAssignAttributes, FALSE);
 	m_Profile.AddBoolItem(_T("CdRead"),
 						_T("EditFiles"), m_RadioStoreImmediately, FALSE);
-	m_Profile.AddBoolItem(_T("CdRead"),
-						_T("StoreSingleFile"), m_RadioStoreMultiple, FALSE);
 
 	static ResizableDlgItem const ResizeItems[] =
 	{
@@ -249,8 +249,7 @@ CCdGrabbingDialog::CCdGrabbingDialog(CWnd* pParent /*=NULL*/)
 		{IDC_EDIT_ALBUM, MoveDown | ExpandRight},
 		{IDC_STATIC_ARTIST, MoveDown},
 		{IDC_EDIT_ARTIST, MoveDown | ExpandRight},
-		{IDC_RADIO_STORE_MULTIPLE_FILES, MoveDown},
-		{IDC_RADIO_STORE_SINGLE_FILE, MoveDown},
+		{IDC_STATIC_STORE_FOLDER, MoveDown},
 		{IDC_EDIT_FOLDER_OR_FILE, MoveDown | ExpandRight},
 		{IDC_BUTTON_BROWSE_SAVE_FOLDER, MoveRight | MoveDown},
 		{IDC_RADIO_STORE_IMMEDIATELY, MoveDown},
@@ -261,6 +260,7 @@ CCdGrabbingDialog::CCdGrabbingDialog(CWnd* pParent /*=NULL*/)
 		{IDC_BUTTON_STOP, MoveRight | MoveDown},
 
 		{IDC_BUTTON_CDDB, MoveRight | MoveDown},
+		{IDHELP, MoveRight | MoveDown},
 		{IDOK, MoveRight | MoveDown},
 		{IDCANCEL, MoveRight | MoveDown},
 
@@ -292,7 +292,6 @@ void CCdGrabbingDialog::DoDataExchange(CDataExchange* pDX)
 	DDX_Control(pDX, IDC_LIST_TRACKS, m_lbTracks);
 	DDX_Radio(pDX, IDC_RADIO_ASSIGN_ATTRIBUTES, m_RadioAssignAttributes);
 	DDX_Radio(pDX, IDC_RADIO_STORE_IMMEDIATELY, m_RadioStoreImmediately);
-	DDX_Radio(pDX, IDC_RADIO_STORE_MULTIPLE_FILES, m_RadioStoreMultiple);
 	DDX_Text(pDX, IDC_EDIT_FOLDER_OR_FILE, m_sSaveFolderOrFile);
 	DDX_Text(pDX, IDC_EDIT_ALBUM, m_sAlbum);
 	DDX_Text(pDX, IDC_EDIT_ARTIST, m_sArtist);
@@ -305,69 +304,66 @@ void CCdGrabbingDialog::DoDataExchange(CDataExchange* pDX)
 		// check for valid file names
 		// get base folder
 		// check if the folder exists
-		if (0 == m_RadioStoreMultiple)
+		m_sSaveFolderOrFile.TrimLeft();
+		m_sSaveFolderOrFile.TrimRight();
+
+		if ( ! VerifyCreateDirectory(m_sSaveFolderOrFile))
 		{
-			m_sSaveFolderOrFile.TrimLeft();
-			m_sSaveFolderOrFile.TrimRight();
-
-			if ( ! VerifyCreateDirectory(m_sSaveFolderOrFile))
+			pDX->PrepareEditCtrl(IDC_EDIT_FOLDER_OR_FILE);
+			pDX->Fail();
+		}
+		// create valid file names, ask for file replace
+		if (! m_sSaveFolderOrFile.IsEmpty())
+		{
+			TCHAR c = m_sSaveFolderOrFile[m_sSaveFolderOrFile.GetLength() - 1];
+			if (c != '\\'
+				&& c != '/')
 			{
-				pDX->PrepareEditCtrl(IDC_EDIT_FOLDER_OR_FILE);
-				pDX->Fail();
+				m_sSaveFolderOrFile += '\\';
 			}
-			// create valid file names, ask for file replace
-			if (! m_sSaveFolderOrFile.IsEmpty())
+		}
+		for (int t = 0; t < m_Tracks.size(); t++)
+		{
+			if ( ! m_Tracks[t].Checked)
 			{
-				TCHAR c = m_sSaveFolderOrFile[m_sSaveFolderOrFile.GetLength() - 1];
-				if (c != '\\'
-					&& c != '/')
-				{
-					m_sSaveFolderOrFile += '\\';
-				}
+				continue;
 			}
-			for (int t = 0; t < m_Tracks.size(); t++)
+			CString Name = m_Tracks[t].Track;
+			LPTSTR pName = Name.GetBuffer(0);
+			while (*pName != 0)
 			{
-				if ( ! m_Tracks[t].Checked)
+				char c= *pName;
+				if ('\\' == c
+					|| '"' == c
+					|| '?' == c
+					|| '*' == c
+					|| ':' == c
+					|| ';' == c
+					|| ',' == c
+					|| '#' == c
+					|| '&' == c
+					|| '%' == c)
 				{
-					continue;
+					*pName = '_';
 				}
-				CString Name = m_Tracks[t].Track;
-				LPTSTR pName = Name.GetBuffer(0);
-				while (*pName != 0)
-				{
-					char c= *pName;
-					if ('\\' == c
-						|| '"' == c
-						|| '?' == c
-						|| '*' == c
-						|| ':' == c
-						|| ';' == c
-						|| ',' == c
-						|| '#' == c
-						|| '&' == c
-						|| '%' == c)
-					{
-						*pName = '_';
-					}
 
-					pName++;
-				}
-				Name.ReleaseBuffer();
-
-				switch (m_FileTypeFlags & OpenDocumentNonWavFile)
-				{
-				case OpenDocumentMp3File:
-					Name += ".mp3";
-					break;
-				case OpenDocumentWmaFile:
-					Name += ".wma";
-					break;
-				default:
-					Name += ".wav";
-					break;
-				}
-				m_Tracks[t].TrackFileName = m_sSaveFolderOrFile + Name;
+				pName++;
 			}
+			Name.ReleaseBuffer();
+
+			switch (m_FileTypeFlags & OpenDocumentNonWavFile)
+			{
+			case OpenDocumentMp3File:
+				Name += ".mp3";
+				break;
+			case OpenDocumentWmaFile:
+				Name += ".wma";
+				break;
+			default:
+				Name += ".wav";
+				break;
+			}
+			m_Tracks[t].TrackFileName = m_sSaveFolderOrFile + Name;
 		}
 		m_PreviousDriveLetter = m_DriveLetterSelected;
 		m_Profile.UnloadAll();
@@ -388,8 +384,6 @@ BEGIN_MESSAGE_MAP(CCdGrabbingDialog, CResizableDialog)
 	ON_BN_CLICKED(IDC_BUTTON_SET_FORMAT, OnButtonSetFormat)
 	ON_EN_CHANGE(IDC_EDIT_ALBUM, OnChangeEditAlbum)
 	ON_EN_CHANGE(IDC_EDIT_ARTIST, OnChangeEditArtist)
-	ON_BN_CLICKED(IDC_RADIO_STORE_MULTIPLE_FILES, OnRadioStoreMultipleFiles)
-	ON_BN_CLICKED(IDC_RADIO_STORE_SINGLE_FILE, OnRadioStoreSingleFile)
 	ON_NOTIFY(NM_CLICK, IDC_LIST_TRACKS, OnClickListTracks)
 	ON_NOTIFY(LVN_BEGINLABELEDIT, IDC_LIST_TRACKS, OnBeginlabeleditListTracks)
 	ON_NOTIFY(LVN_ENDLABELEDIT, IDC_LIST_TRACKS, OnEndlabeleditListTracks)
@@ -689,6 +683,8 @@ BOOL CCdGrabbingDialog::OnInitDialog()
 	FillTrackList(m_DriveLetterSelected);
 
 	SetTimer(1, 200, NULL);
+	UpdateFormatStatic();
+
 	return TRUE;  // return TRUE unless you set the focus to a control
 	// EXCEPTION: OCX Property Pages should return FALSE
 }
@@ -855,59 +851,16 @@ void CCdGrabbingDialog::OnButtonBrowseSaveFolder()
 	// save file name consists of base folder, album name filename,
 	// if album filename not entered, it is created from CD label
 
-	if (0 == m_RadioStoreMultiple)
+	// browse for folder
+	m_eSaveFolderOrFile.GetWindowText(m_sSaveFolderOrFile);
+	CFolderDialog dlg("Save Files To Folder",
+					m_sSaveFolderOrFile, TRUE);
+	if (IDOK == dlg.DoModal())
 	{
-		// browse for folder
-		m_eSaveFolderOrFile.GetWindowText(m_sSaveFolderOrFile);
-		CFolderDialog dlg("Save Files To Folder",
-						m_sSaveFolderOrFile, TRUE);
-		if (IDOK == dlg.DoModal())
-		{
-			m_sSaveFolderOrFile = dlg.GetFolderPath();
-			// TODO: check permissiong in callback
-			m_eSaveFolderOrFile.SetWindowText(m_sSaveFolderOrFile);
-			// TODO: check if the folder exists and create if necessary
-		}
-	}
-	else
-	{
-		// browse for file
-		CString FileName;
-		CString Filter;
-		Filter.LoadString(IDS_PLAYLIST_FILE_FILTER);
-
-		CString Title;
-		Title.LoadString(IDS_PLAYLIST_SAVE_TITLE);
-
-		m_eSaveFolderOrFile.GetWindowText(m_sSaveFolderOrFile);
-		if (m_sSaveFolderOrFile.IsEmpty())
-		{
-			//m_sSaveFolderOrFile = _T("album.m3u");
-		}
-
-		CWaveSoapFileSaveDialog dlg(FALSE,
-									"wav", m_sSaveFolderOrFile,
-									OFN_HIDEREADONLY
-									| OFN_OVERWRITEPROMPT
-									| OFN_ENABLESIZING
-									| OFN_EXPLORER
-									| OFN_ENABLETEMPLATE
-									//| OFN_NONETWORKBUTTON
-									| OFN_PATHMUSTEXIST,
-									Filter);
-		dlg.m_ofn.lpstrTitle = Title;
-
-		dlg.m_pDocument = NULL;
-
-		dlg.m_Wf = m_Wf;
-
-		if (IDOK != dlg.DoModal())
-		{
-			return;
-		}
-
-		m_sSaveFolderOrFile = dlg.GetPathName();
+		m_sSaveFolderOrFile = dlg.GetFolderPath();
+		// TODO: check permissiong in callback
 		m_eSaveFolderOrFile.SetWindowText(m_sSaveFolderOrFile);
+		// TODO: check if the folder exists and create if necessary
 	}
 }
 
@@ -974,18 +927,6 @@ void CCdGrabbingDialog::OnChangeEditArtist()
 	// with the ENM_CHANGE flag ORed into the mask.
 
 	// TODO: Add your control notification handler code here
-
-}
-
-void CCdGrabbingDialog::OnRadioStoreMultipleFiles()
-{
-	// change edit box to the folder string
-	m_RadioStoreMultiple = 0;
-}
-
-void CCdGrabbingDialog::OnRadioStoreSingleFile()
-{
-	m_RadioStoreMultiple = 1;
 
 }
 
@@ -1378,5 +1319,19 @@ void CCdGrabbingDialog::OnCancel()
 
 void CCdGrabbingDialog::UpdateFormatStatic()
 {
+	CString s;
+	switch (m_FileTypeFlags & SaveFile_NonWavFile)
+	{
+	case 0:
+		s.LoadString(IDS_CD_SAVE_WAV_FORMAT);
+		break;
+	case SaveFile_Mp3File:
+		s.Format(IDS_CD_SAVE_MP3_FORMAT, LPCTSTR(m_Mp3EncoderName), m_Wf.BytesPerSec / 125);
+		break;
+	case SaveFile_WmaFile:
+		s.Format(IDS_CD_SAVE_WMA_FORMAT, m_Wf.BytesPerSec / 125);
+		break;
+	}
+	m_StaticFormat.SetWindowText(s);
 }
 
