@@ -6,8 +6,10 @@
 #include "MainFrm.h"
 #include "WaveSoapFrontDoc.h"
 #include "WaveSupport.h"
+#include "resource.h"
 #include <afxpriv.h>
-
+#include <mmreg.h>
+#include <msacm.h>
 #ifdef _DEBUG
 #define new DEBUG_NEW
 #undef THIS_FILE
@@ -49,7 +51,7 @@ END_MESSAGE_MAP()
 
 CWaveSoapFrontDoc::CWaveSoapFrontDoc()
 	:m_pPeaks(NULL), m_WavePeakSize(0), m_PeakDataGranularity(512),
-	m_pWaveBuffer(NULL), m_WaveBufferSize(0),
+//m_pWaveBuffer(NULL), m_WaveBufferSize(0),
 	m_CaretPosition(0),
 	m_TimeSelectionMode(TRUE),
 	m_SelectionStart(0),
@@ -96,12 +98,13 @@ CWaveSoapFrontDoc::~CWaveSoapFrontDoc()
 		CloseHandle(m_hThreadEvent);
 		m_hThreadEvent = NULL;
 	}
-
+#if 0
 	if (m_pWaveBuffer)
 	{
 		delete[] m_pWaveBuffer;
 		m_pWaveBuffer = NULL;
 	}
+#endif
 	if (m_pPeaks != NULL)
 	{
 		delete[] m_pPeaks;
@@ -134,6 +137,7 @@ BOOL CWaveSoapFrontDoc::OnNewDocument()
 											| CreateWaveFileTemp,
 											NULL))
 	{
+		AfxMessageBox(IDS_UNABLE_TO_CREATE_NEW_FILE, MB_OK | MB_ICONEXCLAMATION);
 		return FALSE;
 	}
 
@@ -190,14 +194,10 @@ void CWaveSoapFrontDoc::LoadPeakFile()
 			)
 		{
 			// allocate data and read it
-			delete[] m_pPeaks;
-			m_pPeaks = NULL;
-			m_WavePeakSize = pfh.PeakInfoSize / sizeof (WavePeak);
-			m_pPeaks = new WavePeak[m_WavePeakSize];
-			if (NULL == m_pPeaks)
+			m_WavePeakSize = 0;
+			if ( ! AllocatePeakData(pfh.PeakInfoSize / sizeof (WavePeak)))
 			{
 				TRACE("Unable to allocate peak info buffer\n");
-				m_WavePeakSize = 0;
 				return;
 			}
 
@@ -206,9 +206,6 @@ void CWaveSoapFrontDoc::LoadPeakFile()
 				return;
 			}
 			TRACE("Unable to read peak data\n");
-			delete[] m_pPeaks;
-			m_pPeaks = NULL;
-			m_WavePeakSize = 0;
 			// rebuild the info from the WAV file
 		}
 		PeakFile.Close();
@@ -219,32 +216,9 @@ void CWaveSoapFrontDoc::LoadPeakFile()
 void CWaveSoapFrontDoc::BuildPeakInfo()
 {
 	// read the DATA chunk of wavefile
-	const int BufSize = 0x10000;
-	if ( ! AllocateWaveBuffer(BufSize))    // 64K
+	if ( ! AllocatePeakData(CalculatePeakInfoSize()))
 	{
 		return;
-	}
-	size_t RequiredPeakInfoSize = CalculatePeakInfoSize();
-	if (m_WavePeakSize < RequiredPeakInfoSize)
-	{
-		delete[] m_pPeaks;
-		m_pPeaks = NULL;
-		m_WavePeakSize = 0;
-	}
-	if (NULL == m_pPeaks)
-	{
-		m_pPeaks = new WavePeak[CalculatePeakInfoSize()];
-		if (NULL == m_pPeaks)
-		{
-			return;
-		}
-		m_WavePeakSize = CalculatePeakInfoSize();
-	}
-	int i;
-	for (i = 0; i < m_WavePeakSize; i++)
-	{
-		m_pPeaks[i].low = 0x7FFF;
-		m_pPeaks[i].high = -0x8000;
 	}
 
 	CScanPeaksContext * pContext = new CScanPeaksContext(this);
@@ -267,9 +241,9 @@ void CWaveSoapFrontDoc::BuildPeakInfo()
 
 BOOL CScanPeaksContext::OperationProc()
 {
-	if (Flags & OperationContextStopRequested)
+	if (m_Flags & OperationContextStopRequested)
 	{
-		Flags |= OperationContextFinished;
+		m_Flags |= OperationContextFinished;
 		return TRUE;
 	}
 	if (m_Position < m_End)
@@ -419,7 +393,7 @@ BOOL CScanPeaksContext::OperationProc()
 			}
 			else
 			{
-				Flags |= OperationContextStop;
+				m_Flags |= OperationContextStop;
 				break;
 				return FALSE;
 			}
@@ -443,7 +417,7 @@ BOOL CScanPeaksContext::OperationProc()
 	else
 	{
 		pDocument->SavePeakInfo();
-		Flags |= OperationContextFinished;
+		m_Flags |= OperationContextFinished;
 		PercentCompleted = 100;
 		return TRUE;
 	}
@@ -473,6 +447,7 @@ void CWaveSoapFrontDoc::SavePeakInfo()
 	}
 }
 
+#if 0
 void CWaveSoapFrontDoc::FreeWaveBuffer()
 {
 	if (NULL != m_pWaveBuffer)
@@ -503,21 +478,50 @@ BOOL CWaveSoapFrontDoc::AllocateWaveBuffer(size_t size)
 		return FALSE;
 	}
 }
+#endif
 
-BOOL CWaveSoapFrontDoc::OpenWaveFile()
+BOOL CWaveSoapFrontDoc::OpenWaveFile(LPCTSTR szName, DWORD flags)
 {
-	if (m_WavFile.Open(szWaveFilename, MmioFileOpenReadOnly)
-		&& m_WavFile.LoadWaveformat()
-		&& m_WavFile.FindData())
+	CString s;
+	UINT format = 0;
+	if (m_WavFile.Open(szName, flags))
 	{
-		m_SizeOfWaveData = WaveDataChunk()->cksize;
-		m_WavFile.GetFileInformationByHandle(& WavFileInfo);
-		return TRUE;
+		if(m_WavFile.LoadWaveformat())
+		{
+			if (m_WavFile.FindData())
+			{
+				m_SizeOfWaveData = WaveDataChunk()->cksize;
+				m_WavFile.GetFileInformationByHandle(& WavFileInfo);
+				return TRUE;
+			}
+			else
+			{
+				format = IDS_UNABLE_TO_FIND_DATA_CHUNK;
+			}
+		}
+		else
+		{
+			format = IDS_UNABLE_TO_LOAD_WAVEFORMAT;
+		}
 	}
 	else
 	{
-		return FALSE;
+		switch(GetLastError())
+		{
+		case ERROR_ACCESS_DENIED:
+			format = IDS_FILE_OPEN_ACCESS_DENIED;
+			break;
+		case ERROR_SHARING_VIOLATION:
+			format = IDS_FILE_OPEN_SHARING_VIOLATION;
+			break;
+		default:
+			format = IDS_UNABLE_TO_OPEN_WAVE_FILE;
+			break;
+		}
 	}
+	s.Format(format, szName);
+	AfxMessageBox(s, MB_OK | MB_ICONEXCLAMATION);
+	return FALSE;
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -529,13 +533,13 @@ void CWaveSoapFrontDoc::Serialize(CArchive& ar)
 	if (ar.IsStoring())
 	{
 		// TODO: add storing code here
-		ar << szWaveFilename;
+		ar << m_szWaveFilename;
 		ar << szPeakFilename;
 	}
 	else
 	{
 		// TODO: add loading code here
-		ar >> szWaveFilename;
+		ar >> m_szWaveFilename;
 		ar >> szPeakFilename;
 	}
 }
@@ -632,6 +636,44 @@ void CWaveSoapFrontDoc::SetSelection(long begin, long end, int channel, int care
 	UpdateAllViews(NULL, UpdateSelectionChanged, & ui);
 }
 
+BOOL CWaveSoapFrontDoc::AllocatePeakData(long NewNumberOfSamples)
+{
+	// change m_pPeaks size
+	// need to synchronize with OnDraw
+	int NewWavePeakSize = WaveChannels() * ((NewNumberOfSamples + m_PeakDataGranularity - 1) / m_PeakDataGranularity);
+	if (NewWavePeakSize > m_WavePeakSize)
+	{
+		NewWavePeakSize += 1024;  // reserve more
+		WavePeak * NewPeaks = new WavePeak[NewWavePeakSize];
+		if (NULL == NewPeaks)
+		{
+			return FALSE;
+		}
+		if (NULL != m_pPeaks
+			&& 0 != m_WavePeakSize)
+		{
+			memcpy(NewPeaks, m_pPeaks, m_WavePeakSize * sizeof (WavePeak));
+		}
+		else
+		{
+			m_WavePeakSize = 0;
+		}
+		for (int i = m_WavePeakSize; i < NewWavePeakSize; i++)
+		{
+			NewPeaks[i].high = -0x8000;
+			NewPeaks[i].low = 0x7FFF;
+		}
+		WavePeak * OldPeaks = m_pPeaks;
+		{
+			CSimpleCriticalSectionLock lock(m_PeakLock);
+			m_pPeaks = NewPeaks;
+			m_WavePeakSize = NewWavePeakSize;
+		}
+		delete[] OldPeaks;
+	}
+	return TRUE;
+}
+
 void CWaveSoapFrontDoc::SoundChanged(DWORD FileID, long begin, long end,
 									int FileLength, DWORD flags)
 {
@@ -642,41 +684,9 @@ void CWaveSoapFrontDoc::SoundChanged(DWORD FileID, long begin, long end,
 		return;
 	}
 	// update peak data
-	if (FileLength != -1)
-	{
-		// change m_pPeaks size
-		// need to synchronize with OnDraw
-		int NewWavePeakSize = WaveChannels() * ((FileLength + m_PeakDataGranularity - 1) / m_PeakDataGranularity);
-		if (NewWavePeakSize > m_WavePeakSize)
-		{
-			WavePeak * NewPeaks = new WavePeak[NewWavePeakSize];
-			if (NULL != NewPeaks)
-			{
-				if (NULL != m_pPeaks
-					&& 0 != m_WavePeakSize)
-				{
-					memcpy(NewPeaks, m_pPeaks, m_WavePeakSize * sizeof (WavePeak));
-				}
-				else
-				{
-					m_WavePeakSize = 0;
-				}
-				for (int i = m_WavePeakSize; i < NewWavePeakSize; i++)
-				{
-					NewPeaks[i].high = -0x8000;
-					NewPeaks[i].low = 0x7FFF;
-				}
-				WavePeak * OldPeaks = m_pPeaks;
-				{
-					CSimpleCriticalSectionLock lock(m_PeakLock);
-					m_pPeaks = NewPeaks;
-					m_WavePeakSize = NewWavePeakSize;
-				}
-				delete[] OldPeaks;
-			}
-		}
-	}
-	if (0 == (flags & UpdateSoundDontRescanPeaks)
+	if ((FileLength == -1
+			|| AllocatePeakData(FileLength))
+		&& 0 == (flags & UpdateSoundDontRescanPeaks)
 		&& FileID != NULL
 		&& begin != end)
 	{
@@ -698,7 +708,7 @@ void CWaveSoapFrontDoc::SoundChanged(DWORD FileID, long begin, long end,
 		else
 		{
 			CSoundUpdateInfo *pInfo = m_pUpdateList;
-			while (NULL == pInfo->pNext)
+			while (NULL != pInfo->pNext)
 			{
 				pInfo = pInfo->pNext;
 			}
@@ -995,29 +1005,29 @@ UINT CWaveSoapFrontDoc::_ThreadProc(void)
 		}
 		if (m_pCurrentContext)
 		{
-			if (0 == (m_pCurrentContext->Flags & OperationContextInitialized))
+			if (0 == (m_pCurrentContext->m_Flags & OperationContextInitialized))
 			{
 				if ( ! m_pCurrentContext->Init())
 				{
-					m_pCurrentContext->Flags |= OperationContextStop;
+					m_pCurrentContext->m_Flags |= OperationContextStop;
 				}
-				m_pCurrentContext->Flags |= OperationContextInitialized;
+				m_pCurrentContext->m_Flags |= OperationContextInitialized;
 				NeedKickIdle = true;
 			}
 
 			if (m_StopOperation)
 			{
-				m_pCurrentContext->Flags |= OperationContextStopRequested;
+				m_pCurrentContext->m_Flags |= OperationContextStopRequested;
 			}
 
 			int LastPercent = m_pCurrentContext->PercentCompleted;
 			// execute one step
-			if (0 == (m_pCurrentContext->Flags &
+			if (0 == (m_pCurrentContext->m_Flags &
 					(OperationContextStop | OperationContextFinished)))
 			{
 				if (! m_pCurrentContext->OperationProc())
 				{
-					m_pCurrentContext->Flags |= OperationContextStop;
+					m_pCurrentContext->m_Flags |= OperationContextStop;
 				}
 				// signal for status update
 				if (LastPercent != m_pCurrentContext->PercentCompleted)
@@ -1031,7 +1041,7 @@ UINT CWaveSoapFrontDoc::_ThreadProc(void)
 												m_pCurrentContext->PercentCompleted);
 				}
 			}
-			if (m_pCurrentContext->Flags &
+			if (m_pCurrentContext->m_Flags &
 				(OperationContextStop | OperationContextFinished))
 			{
 				m_CurrentStatusString =
@@ -1163,7 +1173,7 @@ BOOL CResizeContext::InitExpand(CWaveFile & File, LONG StartSample, LONG Length,
 	m_DstEnd = pDatachunk->dwDataOffset + NewDataLength;
 	m_DstCopyPos = m_DstEnd;
 
-	Flags |= CopyExpandFile;
+	m_Flags |= CopyExpandFile;
 	return TRUE;
 }
 
@@ -1177,9 +1187,9 @@ BOOL CWaveSoapFrontDoc::QueueOperation(COperationContext * pContext)
 		return FALSE;
 	}
 	m_StopOperation = false;
-	m_OperationNonCritical = (0 != (pContext->Flags & OperationContextNonCritical));
+	m_OperationNonCritical = (0 != (pContext->m_Flags & OperationContextNonCritical));
 	m_OperationInProgress = TRUE;
-	if (pContext->Flags & (OperationContextDiskIntensive | OperationContextClipboard))
+	if (pContext->m_Flags & (OperationContextDiskIntensive | OperationContextClipboard))
 	{
 		return GetApp()->QueueOperation(pContext);
 	}
@@ -1230,11 +1240,11 @@ BOOL CCopyContext::InitCopy(CWaveFile & DstFile,
 			return FALSE;
 		}
 
-		Flags |= CopyExpandFile;
+		m_Flags |= CopyExpandFile;
 	}
 	else if (SrcLength < DstLength)
 	{
-		Flags |= CopyShrinkFile;
+		m_Flags |= CopyShrinkFile;
 	}
 
 	return TRUE;
@@ -1263,7 +1273,7 @@ void CWaveSoapFrontDoc::DoCopy(LONG Start, LONG End, LONG Channel, LPCTSTR FileN
 		AfxMessageBox(IDS_STRING_UNABLE_TO_CREATE_CLIPBOARD, MB_OK | MB_ICONEXCLAMATION);
 		return;
 	}
-	pContext->Flags |= OperationContextClipboard;
+	pContext->m_Flags |= OperationContextClipboard;
 
 	pContext->InitCopy(DstFile, 0, m_SelectionEnd - m_SelectionStart, 2,
 						m_WavFile, m_SelectionStart, m_SelectionEnd - m_SelectionStart,
@@ -1286,39 +1296,39 @@ CCopyContext::~CCopyContext()
 BOOL CCopyContext::OperationProc()
 {
 	// get buffers from source file and copy them to m_CopyFile
-	if (Flags & OperationContextStopRequested)
+	if (m_Flags & OperationContextStopRequested)
 	{
-		Flags |= OperationContextFinished;
+		m_Flags |= OperationContextFinished;
 		return TRUE;
 	}
-	if (Flags & (CopyExpandFile | CopyShrinkFile))
+	if (m_Flags & (CopyExpandFile | CopyShrinkFile))
 	{
 		if (NULL != m_pExpandShrinkContext)
 		{
-			if ( 0 == (m_pExpandShrinkContext->Flags & (OperationContextStop | OperationContextFinished)))
+			if ( 0 == (m_pExpandShrinkContext->m_Flags & (OperationContextStop | OperationContextFinished)))
 			{
 				if ( ! m_pExpandShrinkContext->OperationProc())
 				{
-					m_pExpandShrinkContext->Flags |= OperationContextStop;
+					m_pExpandShrinkContext->m_Flags |= OperationContextStop;
 				}
 			}
 			PercentCompleted = m_pExpandShrinkContext->PercentCompleted;
-			if (m_pExpandShrinkContext->Flags &
+			if (m_pExpandShrinkContext->m_Flags &
 				(OperationContextStop | OperationContextFinished))
 			{
 				delete m_pExpandShrinkContext;
 				m_pExpandShrinkContext = NULL;
-				Flags &= ~(CopyExpandFile | CopyShrinkFile);
+				m_Flags &= ~(CopyExpandFile | CopyShrinkFile);
 			}
 			return TRUE;
 		}
-		Flags &= ~(CopyExpandFile | CopyShrinkFile);
+		m_Flags &= ~(CopyExpandFile | CopyShrinkFile);
 		PercentCompleted = 0;
 	}
 
 	if (m_SrcCopyPos >= m_SrcEnd)
 	{
-		Flags |= OperationContextFinished;
+		m_Flags |= OperationContextFinished;
 		return TRUE;
 	}
 
@@ -1364,9 +1374,14 @@ BOOL CCopyContext::OperationProc()
 		}
 		if (0 == LeftToWrite)
 		{
+			DWORD flags = CDirectFile::GetBufferAndPrefetchNext;
+			if (2 == m_DstChan)
+			{
+				flags = CDirectFile::GetBufferWriteOnly;
+			}
 			DWORD SizeToWrite = m_DstEnd - m_DstCopyPos;
 			WasLockedToWrite = m_DstFile.m_File.GetDataBuffer( & pOriginalDstBuf,
-																SizeToWrite, m_DstCopyPos, CDirectFile::GetBufferWriteOnly);
+																SizeToWrite, m_DstCopyPos, flags);
 
 			if (0 == WasLockedToWrite)
 			{
@@ -1630,16 +1645,16 @@ BOOL CCopyContext::OperationProc()
 BOOL CResizeContext::OperationProc()
 {
 	// change size of the file
-	if (Flags & OperationContextStopRequested)
+	if (m_Flags & OperationContextStopRequested)
 	{
-		Flags |= OperationContextFinished;
+		m_Flags |= OperationContextFinished;
 		return TRUE;
 	}
-	if (Flags & CopyExpandFile)
+	if (m_Flags & CopyExpandFile)
 	{
 		return ExpandProc();
 	}
-	if (Flags & CopyShrinkFile)
+	if (m_Flags & CopyShrinkFile)
 	{
 		return ShrinkProc();
 	}
@@ -1650,7 +1665,7 @@ BOOL CResizeContext::ShrinkProc()
 {
 	if (m_DstCopyPos >= m_DstEnd)
 	{
-		Flags |= OperationContextFinished;
+		m_Flags |= OperationContextFinished;
 		return TRUE;
 	}
 	DWORD dwStartTime = timeGetTime();
@@ -1826,7 +1841,7 @@ BOOL CResizeContext::ExpandProc()
 	// copying is done from end backward
 	if (m_SrcCopyPos <= m_SrcStart)
 	{
-		Flags |= OperationContextFinished;
+		m_Flags |= OperationContextFinished;
 		return TRUE;
 	}
 	DWORD DstFlags = 0;
@@ -2027,7 +2042,7 @@ void CWaveSoapFrontDoc::DoPaste(LONG Start, LONG End, LONG Channel, LPCTSTR File
 
 	CCopyContext * pContext = new CCopyContext(this, _T("Inserting data from clipboard..."));
 
-	pContext->Flags |= OperationContextClipboard | CopyExpandFile;
+	pContext->m_Flags |= OperationContextClipboard | CopyExpandFile;
 
 	if ( ! pContext->InitCopy(m_WavFile, m_CaretPosition, 0, m_SelectedChannel,
 							* pSrcFile, 0, pSrcFile->NumberOfSamples(), 2))
@@ -2061,6 +2076,224 @@ void CWaveSoapFrontDoc::OnUpdateEditStop(CCmdUI* pCmdUI)
 	pCmdUI->Enable(m_OperationInProgress);
 }
 
+class CDecompressContext : public COperationContext
+{
+	friend class CWaveSoapFrontDoc;
+	CWaveFile m_SrcFile;
+	CWaveFile m_DstFile;
+	// Start, End and position are in bytes
+	DWORD m_SrcStart;
+	DWORD m_SrcEnd;
+	DWORD m_SrcPos;
+
+	DWORD m_DstStart;
+	DWORD m_DstPos;
+	DWORD m_DstEnd;
+
+	DWORD m_CurrentSamples;
+
+	HACMSTREAM m_acmStr;
+	size_t m_SrcBufSize;
+	size_t m_DstBufSize;
+	ACMSTREAMHEADER m_ash;
+	DWORD m_ConvertFlags;
+
+
+public:
+	CString sOp;
+	CDecompressContext(CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString)
+		: COperationContext(pDoc,
+							// operation can be terminated by Close
+							OperationContextDiskIntensive | OperationContextNonCritical),
+		sOp(StatusString),
+		m_SrcBufSize(0),
+		m_DstBufSize(0),
+		m_acmStr(NULL)
+	{
+		memset( & m_ash, 0, sizeof m_ash);
+	}
+	~CDecompressContext() {}
+	virtual BOOL OperationProc();
+	virtual BOOL Init();
+	virtual BOOL DeInit();
+	virtual CString GetStatusString()
+	{
+		return sOp;
+	}
+};
+
+BOOL CDecompressContext::OperationProc()
+{
+
+	DWORD dwOperationBegin = m_DstPos;
+	DWORD StartTime = GetTickCount();
+	while (GetTickCount() - StartTime < 200)
+	{
+		// fill the source buffer
+		size_t leftToRead = m_SrcEnd - m_SrcPos;
+		size_t ToRead = m_SrcBufSize;
+		if (ToRead > leftToRead)
+		{
+			ToRead = leftToRead;
+		}
+		if (ToRead != 0)
+		{
+			long read = m_SrcFile.m_File.ReadAt(m_ash.pbSrc,
+												ToRead, m_SrcPos);
+			m_ash.cbSrcLength = read;
+		}
+		else
+		{
+			m_ConvertFlags |= ACM_STREAMCONVERTF_END;
+			m_ConvertFlags &= ~ACM_STREAMCONVERTF_BLOCKALIGN;
+			m_ash.cbSrcLength = 0;
+		}
+		// do the conversion
+		m_ash.cbSrcLengthUsed = 0;
+		m_ash.cbDstLength = m_DstBufSize;
+		m_ash.cbDstLengthUsed = 0;
+		if (0 == acmStreamConvert(m_acmStr, & m_ash, m_ConvertFlags)
+			&& (0 != m_ash.cbDstLengthUsed || 0 != m_ash.cbSrcLengthUsed))
+		{
+			// write the result
+			if (0 != m_ash.cbDstLengthUsed)
+			{
+				long written = m_DstFile.m_File.WriteAt(m_ash.pbDst,
+														m_ash.cbDstLengthUsed, m_DstPos);
+				m_DstPos += written;
+				if (written != m_ash.cbDstLengthUsed)
+				{
+					// error
+				}
+			}
+			m_SrcPos += m_ash.cbSrcLengthUsed;
+		}
+		else
+		{
+			// error
+		}
+		m_ConvertFlags &= ~ACM_STREAMCONVERTF_START;
+		if (0 == m_ash.cbSrcLengthUsed
+			&& 0 == m_ash.cbDstLengthUsed)
+		{
+			m_Flags |= OperationContextFinished;
+			m_CurrentSamples = 0;   // to force update file length
+			break;
+		}
+	}
+	// notify the view
+
+	int nSampleSize = m_DstFile.SampleSize();
+	int TotalSamples = -1;
+	int nFirstSample = (dwOperationBegin - m_DstFile.GetDataChunk()->dwDataOffset)
+						/ nSampleSize;
+	int nLastSample = (m_DstPos - m_DstFile.GetDataChunk()->dwDataOffset)
+					/ nSampleSize;
+	// check if we need to change file size
+	if (nLastSample > m_CurrentSamples)
+	{
+		// calculate new length
+		TotalSamples = MulDiv(nLastSample, m_SrcEnd - m_SrcStart, m_SrcPos - m_SrcStart);
+		LPMMCKINFO pck = m_DstFile.GetDataChunk();
+		if (TotalSamples > 0x7FFFFFFF / nSampleSize)
+		{
+			TotalSamples = 0x7FFFFFFF / nSampleSize;
+		}
+		DWORD datasize = TotalSamples * nSampleSize;
+		m_DstFile.m_File.SetFileLength(datasize + pck->dwDataOffset);
+		m_CurrentSamples = TotalSamples;
+		// update data chunk length
+		pck->cksize = m_DstPos - m_DstStart;
+		pDocument->AllocatePeakData(nLastSample);
+	}
+	pDocument->SoundChanged(m_DstFile.GetFileID(), nFirstSample, nLastSample, TotalSamples);
+
+	if (m_SrcEnd > m_SrcStart)
+	{
+		PercentCompleted = 100i64 * (m_SrcPos - m_SrcStart) / (m_SrcEnd - m_SrcStart);
+	}
+	return TRUE;
+}
+
+BOOL CDecompressContext::Init()
+{
+	// Open codec, allocate buffers, ets
+	WAVEFORMATEX * pSrcFormat = m_SrcFile.GetWaveFormat();
+	WAVEFORMATEX wf =
+	{
+		WAVE_FORMAT_PCM,
+		pSrcFormat->nChannels,
+		0,  // nSamplesPerSec
+		0,  // nAvgBytesPerSec
+		0, // nBlockAlign
+		16, // bits per sample
+		0   // cbSize
+	};
+	acmFormatSuggest(NULL, pSrcFormat, & wf, sizeof wf,
+					ACM_FORMATSUGGESTF_NCHANNELS
+					| ACM_FORMATSUGGESTF_WBITSPERSAMPLE
+					| ACM_FORMATSUGGESTF_WFORMATTAG);
+	TRACE("acmFormatSuggest:nSamplesPerSec=%d, BytesPerSec=%d, nBlockAlign=%d\n",
+		wf.nSamplesPerSec, wf.nAvgBytesPerSec, wf.nBlockAlign);
+
+	m_ash.cbSrcLength = 0;
+	m_ash.cbDstLength = 0x10000;  // 64K
+
+	if (0 != acmStreamOpen( & m_acmStr, NULL, pSrcFormat, & wf, NULL, NULL, NULL,
+							ACM_STREAMOPENF_NONREALTIME)
+		|| 0 != acmStreamSize(m_acmStr, m_ash.cbDstLength, & m_ash.cbSrcLength,
+							ACM_STREAMSIZEF_DESTINATION)
+		|| 0 != acmStreamSize(m_acmStr, m_ash.cbSrcLength, & m_ash.cbDstLength,
+							ACM_STREAMSIZEF_SOURCE))
+	{
+		if (m_acmStr != NULL)
+		{
+			acmStreamClose(m_acmStr, 0);
+			m_acmStr = NULL;
+		}
+		return FALSE;
+	}
+	// allocate buffers
+	m_SrcBufSize = m_ash.cbSrcLength;
+	m_DstBufSize = m_ash.cbDstLength;
+	m_ash.pbSrc = new BYTE[m_SrcBufSize];
+	m_ash.pbDst = new BYTE[m_DstBufSize];
+
+	m_ash.cbStruct = sizeof m_ash;
+	if (NULL == m_ash.pbSrc
+		|| NULL == m_ash.pbDst)
+	{
+		delete m_ash.pbSrc;
+		m_ash.pbSrc = NULL;
+		delete m_ash.pbDst;
+		m_ash.pbDst = NULL;
+		acmStreamClose(m_acmStr, 0);
+		m_acmStr = NULL;
+		return FALSE;
+	}
+	// prepare the buffer
+	acmStreamPrepareHeader(m_acmStr, & m_ash, 0);
+	m_ConvertFlags = ACM_STREAMCONVERTF_START;
+	return TRUE;
+}
+
+BOOL CDecompressContext::DeInit()
+{
+	if (m_acmStr)
+	{
+		m_ash.cbDstLength = m_DstBufSize;
+		m_ash.cbSrcLength = m_DstBufSize;
+		acmStreamUnprepareHeader(m_acmStr, & m_ash, 0);
+		delete[] m_ash.pbDst;
+		delete[] m_ash.pbSrc;
+		m_ash.pbDst = NULL;
+		m_ash.pbSrc = NULL;
+		acmStreamClose(m_acmStr, 0);
+		m_acmStr = NULL;
+	}
+	return TRUE;
+}
+
 BOOL CWaveSoapFrontDoc::OnOpenDocument(LPCTSTR lpszPathName)
 {
 
@@ -2072,23 +2305,167 @@ BOOL CWaveSoapFrontDoc::OnOpenDocument(LPCTSTR lpszPathName)
 	m_SelectionEnd = 0;
 	m_SelectedChannel = 2;  // both channels
 	m_TimeSelectionMode = TRUE;
+	CWaveSoapFrontApp * pApp = GetApp();
+	m_bDirectMode = pApp->m_bDirectMode;
+	m_bReadOnly = pApp->m_bReadOnly;
+	if (m_bReadOnly)
+	{
+		m_bDirectMode = TRUE;
+	}
 
-	szWaveFilename = lpszPathName;
-	if (FALSE == OpenWaveFile())
+	m_szWaveFilename = lpszPathName;
+
+	DWORD flags = MmioFileOpenReadOnly;
+	if (m_bDirectMode && ! m_bReadOnly)
+	{
+		flags = MmioFileOpenExisting | MmioFileAllowReadOnlyFallback;
+	}
+
+	if (FALSE == OpenWaveFile(lpszPathName, flags))
 	{
 		return FALSE;
 	}
+	// check if the file can be opened in direct mode
+	WAVEFORMATEX * pWf = m_WavFile.GetWaveFormat();
+	bool bNeedConversion = FALSE;
+	if (pWf != NULL)
+	{
+		int nChannels = pWf->nChannels;
+		int nBitsPerSample = pWf->wBitsPerSample;
+		if (16 == nBitsPerSample
+			&& WAVE_FORMAT_PCM == pWf->wFormatTag
+			&& (nChannels == 1 || nChannels == 2))
+		{
+			// can open direct and readonly
+		}
+		else
+		{
+			bNeedConversion = TRUE;
+		}
+	}
+	else
+	{
+		return FALSE;
+	}
+	// if could only open in Read-Only mode, disable DirectMode
+	if ( ! bNeedConversion
+		&& m_bDirectMode
+		&& ! m_bReadOnly)
+	{
+		if (m_WavFile.m_File.IsReadOnly())
+		{
+			CString s;
+			s.Format(IDS_FILE_OPENED_NONDIRECT, lpszPathName);
+			AfxMessageBox(s, MB_OK | MB_ICONINFORMATION);
+			m_bDirectMode = FALSE;
+		}
+	}
+	if (bNeedConversion)
+	{
+		m_bDirectMode = FALSE;
+	}
+	if ( ! m_bDirectMode)
+	{
+		m_bReadOnly = FALSE;
+	}
+
 	// create peak file name
 	// remove WAV extension and add ".wspk" extension
 	// we need the full pathname.
 	SetModifiedFlag(FALSE);     // start off with unmodified
-	szPeakFilename = szWaveFilename;
+	szPeakFilename = m_szWaveFilename;
 	if (0 == szPeakFilename.Right(4).CompareNoCase(_T(".WAV")))
 	{
 		szPeakFilename.Delete(szPeakFilename.GetLength() - 4, 4);
 	}
 	szPeakFilename += _T(".wspk");
-	LoadPeakFile();
+	// if non-direct mode, create a temp file.
+	if ( ! m_bDirectMode)
+	{
+		CWaveFile SrcFile;
+		SrcFile = m_WavFile;
+		m_WavFile.Close();
+		if (bNeedConversion)
+		{
+			flags = CreateWaveFileTempDir
+					// don't keep the file
+					| CreateWaveFileDeleteAfterClose
+					| CreateWaveFilePcmFormat
+					| CreateWaveFileTemp;
+		}
+		else
+		{
+			flags = CreateWaveFileTempDir
+					// don't keep the file
+					| CreateWaveFileDeleteAfterClose
+					| CreateWaveFilePcmFormat
+					| CreateWaveFileDontInitStructure
+					| CreateWaveFileTemp;
+		}
+		if (! m_WavFile.CreateWaveFile( & SrcFile, pWf->nChannels,
+										SrcFile.NumberOfSamples(), flags, NULL))
+		{
+			AfxMessageBox(IDS_UNABLE_TO_CREATE_TEMPORARY_FILE, MB_OK | MB_ICONEXCLAMATION);
+			return FALSE;
+		}
+		// for compressed file, actual size of file may differ from the
+		// initial size
+		if (bNeedConversion)
+		{
+			CDecompressContext * pContext =
+				new CDecompressContext(this, "Loading the compressed file...");
+			pContext->m_SrcFile = SrcFile;
+			pContext->m_DstFile = m_WavFile;
+			pContext->m_SrcStart = SrcFile.GetDataChunk()->dwDataOffset;
+			pContext->m_SrcPos = pContext->m_SrcStart;
+			pContext->m_SrcEnd = pContext->m_SrcStart +
+								SrcFile.GetDataChunk()->cksize;
+			pContext->m_DstStart = m_WavFile.GetDataChunk()->dwDataOffset;
+			pContext->m_DstPos = pContext->m_DstStart;
+			pContext->m_CurrentSamples = m_WavFile.NumberOfSamples();
+			AllocatePeakData(pContext->m_CurrentSamples);
+			// peak data will be created during decompression
+			QueueOperation(pContext);
+		}
+		else
+		{
+			// just link the files
+			UINT format = 0;
+			if (m_WavFile.m_File.SetSourceFile( & SrcFile.m_File)
+				&& m_WavFile.m_File.SetFileLength(SrcFile.m_File.GetLength())
+				&& m_WavFile.LoadRiffChunk()
+				&& m_WavFile.LoadWaveformat())
+			{
+				if (m_WavFile.FindData())
+				{
+					m_SizeOfWaveData = WaveDataChunk()->cksize;
+					m_WavFile.GetFileInformationByHandle(& WavFileInfo);
+				}
+				else
+				{
+					format = IDS_UNABLE_TO_FIND_DATA_CHUNK;
+				}
+			}
+			else
+			{
+				format = IDS_UNABLE_TO_LOAD_WAVEFORMAT;
+			}
+			if (format)
+			{
+				CString s;
+				s.Format(format, lpszPathName);
+				AfxMessageBox(s, MB_OK | MB_ICONEXCLAMATION);
+				return FALSE;
+			}
+			LoadPeakFile();
+		}
+	}
+	else
+	{
+		LoadPeakFile();
+	}
+	// if file is open in direct mode or read-only, leave it as is,
+	// otherwise open
 	return TRUE;
 }
 
@@ -2202,9 +2579,9 @@ BOOL CSoundPlayContext::DeInit()
 
 BOOL CSoundPlayContext::OperationProc()
 {
-	if (Flags & OperationContextStopRequested)
+	if (m_Flags & OperationContextStopRequested)
 	{
-		Flags |= OperationContextFinished;
+		m_Flags |= OperationContextFinished;
 		return TRUE;
 	}
 	if (m_CurrentPlaybackPos >= m_End)
@@ -2214,7 +2591,7 @@ BOOL CSoundPlayContext::OperationProc()
 		{
 			return TRUE;    // not finished yet
 		}
-		Flags |= OperationContextFinished;
+		m_Flags |= OperationContextFinished;
 		PercentCompleted = 100;
 		return TRUE;
 	}

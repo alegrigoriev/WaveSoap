@@ -75,7 +75,7 @@ protected:
 	virtual void OnIdle();
 	virtual BOOL DoSave(LPCTSTR lpszPathName, BOOL bReplace = TRUE);
 public:
-	CString szWaveFilename;
+	CString m_szWaveFilename;
 	CString szWaveTitle;
 	CWaveFile m_WavFile;
 
@@ -89,12 +89,13 @@ public:
 	int m_PeakDataGranularity;
 	CSimpleCriticalSection m_PeakLock;
 	void RescanPeaks(long begin, long end);
+	BOOL AllocatePeakData(long NewNumberOfSamples);
 
 	DWORD m_SizeOfWaveData;
-	__int16 * m_pWaveBuffer;
-	size_t m_WaveBufferSize;
-	BOOL AllocateWaveBuffer(size_t size = 0x100000);    // 1M default
-	void FreeWaveBuffer();
+	//__int16 * m_pWaveBuffer;
+	//size_t m_WaveBufferSize;
+	//BOOL AllocateWaveBuffer(size_t size = 0x100000);    // 1M default
+	//void FreeWaveBuffer();
 
 	LONG m_CaretPosition;
 	LONG m_SelectionStart;
@@ -116,7 +117,6 @@ public:
 	void UpdateDocumentTitle();
 	void LoadPeakFile();
 	void BuildPeakInfo();
-	BOOL AllocatePeakInfo();
 	int CalculatePeakInfoSize() const
 	{
 		size_t WavGranule = m_PeakDataGranularity * WaveChannels() * sizeof(__int16);
@@ -153,7 +153,7 @@ public:
 	}
 
 	void SavePeakInfo();
-	BOOL OpenWaveFile();
+	BOOL OpenWaveFile(LPCTSTR szName, DWORD flags);
 #ifdef _DEBUG
 	virtual void AssertValid() const;
 	virtual void Dump(CDumpContext& dc) const;
