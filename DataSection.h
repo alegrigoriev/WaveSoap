@@ -146,7 +146,7 @@ int CDataSection<T, C>::GetData(T ** ppBuf, ULONGLONG nOffset, unsigned int nCou
 #if 0//def _DEBUG
 	// verify that the buffer contains the correct data
 	{
-		__int16 * pVerBuf = new T[nSamples];
+		WAVE_SAMPLE * pVerBuf = new T[nSamples];
 		int ReadSamples = ReadData(pVerBuf, nOffset, nSamples, pSource);
 		ASSERT (0 == memcmp(pVerBuf, m_pBuffer + nOffset - m_BufferOffset,
 							ReadSamples * sizeof(T)));
