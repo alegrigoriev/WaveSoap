@@ -3050,8 +3050,8 @@ static void LimitUndoRedo(COperationContext ** ppContext, int MaxNum, size_t Max
 			Size += pUndoRedo->m_SrcFile.GetLength();
 		}
 		ppContext = & pContext->pNext;
-		if (Num > MaxNum
-			|| Size > MaxSize)
+		if ((MaxNum != 0 && Num > MaxNum)
+			|| (MaxSize != 0 && Size > MaxSize))
 		{
 			COperationContext * tmp;
 			pContext = *ppContext;
@@ -3069,6 +3069,7 @@ static void LimitUndoRedo(COperationContext ** ppContext, int MaxNum, size_t Max
 
 void CWaveSoapFrontDoc::AddUndoRedo(CUndoRedoContext * pContext)
 {
+	CThisApp * pApp = GetApp();
 	if (pContext->m_Flags & RedoContext)
 	{
 		pContext->pNext = m_pRedoList;
@@ -3078,7 +3079,18 @@ void CWaveSoapFrontDoc::AddUndoRedo(CUndoRedoContext * pContext)
 		}
 		m_pRedoList = pContext;
 		// free extra redo, if count or size limit is exceeded
-		LimitUndoRedo( & m_pRedoList, GetApp()->m_MaxRedoDepth, GetApp()->m_MaxRedoSize);
+		int MaxRedoDepth = pApp->m_MaxRedoDepth;
+		if ( ! pApp->m_bEnableRedoDepthLimit)
+		{
+			MaxRedoDepth = 0;
+		}
+		int MaxRedoSize = pApp->m_MaxRedoSize;
+		if ( ! pApp->m_bEnableRedoLimit)
+		{
+			MaxRedoSize = 0;
+		}
+
+		LimitUndoRedo( & m_pRedoList, MaxRedoDepth, MaxRedoSize);
 	}
 	else
 	{
@@ -3089,7 +3101,18 @@ void CWaveSoapFrontDoc::AddUndoRedo(CUndoRedoContext * pContext)
 		}
 		m_pUndoList = pContext;
 		// free extra undo, if count or size limit is exceeded
-		LimitUndoRedo( & m_pUndoList, GetApp()->m_MaxUndoDepth, GetApp()->m_MaxUndoSize);
+		int MaxUndoDepth = pApp->m_MaxUndoDepth;
+		if ( ! pApp->m_bEnableUndoDepthLimit)
+		{
+			MaxUndoDepth = 0;
+		}
+		int MaxUndoSize = pApp->m_MaxUndoSize;
+		if ( ! pApp->m_bEnableUndoLimit)
+		{
+			MaxUndoSize = 0;
+		}
+
+		LimitUndoRedo( & m_pUndoList, MaxUndoDepth, MaxUndoSize);
 	}
 }
 

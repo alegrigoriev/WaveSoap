@@ -1,5 +1,6 @@
 Known problems and tasks:
 
+Max WAV file size: [x] 2GB [ ] 4 GB
 Add options dialog
 Show File Properties
 Make sliders working in Resample Dialog
@@ -45,7 +46,7 @@ Reconsider Undo All Changes functionality and Redo All Changes
 ??Delete permanent undo: non-permanent file may become permanent after save, move call after save
 Use ReplaceFile for renaming the file
 Add DELETE premission when creating temp file
-If there is no selection, Selection button dialog doesn't give option From Cursor, To Cursor
+Use GetFileAttributes rather than FindFirst to check whether it's file or directory
 
 Problems:
 Expression dialog: OK not disabled on the beginning, if expression is empty
@@ -63,6 +64,7 @@ Save As dialog is not centered first time (comdlg problem?)
 ??? When time/seconds format is set for status bar, MM:SS is actually shown
 
 Fixed:
+If there is no selection, Selection button dialog doesn't give option From Cursor, To Cursor
 "Interpolate" command not disabled properly
 Last 64 KB block is not read from the master file (need to round read length to sector size
 Channels swapped in Spectrum Section view
@@ -114,6 +116,7 @@ Support WAVEFORMATEXTENSIBLE.
 Make multichannel editing
 allow 24/32 bit data
 Allow "Minimized" channels
+Use UNICODE
 
 File Save/Save As checklist:
 
