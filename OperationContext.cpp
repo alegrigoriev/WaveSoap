@@ -50,6 +50,8 @@ COperationContext::COperationContext(class CWaveSoapFrontDoc * pDoc, LPCTSTR Ope
 	m_NumberOfForwardPasses(1),
 	m_NumberOfBackwardPasses(0),
 	m_CurrentPass(1),
+	m_bClipped(false),
+	m_MaxClipped(0.),
 	m_GetBufferFlags(CDirectFile::GetBufferAndPrefetchNext),
 	m_ReturnBufferFlags(0)
 {
@@ -362,6 +364,13 @@ void COperationContext::Retire()
 
 void COperationContext::PostRetire(BOOL bChildContext)
 {
+	if (WasClipped())
+	{
+		CString s;
+		s.Format(IDS_SOUND_CLIPPED, pDocument->GetTitle(), int(GetMaxClipped() * (100. / 32678)));
+		AfxMessageBox(s, MB_OK | MB_ICONEXCLAMATION);
+	}
+
 	// save undo context
 	if (m_pUndoContext)
 	{
@@ -2415,9 +2424,7 @@ CVolumeChangeContext::CVolumeChangeContext(CWaveSoapFrontDoc * pDoc,
 											LPCTSTR StatusString, LPCTSTR OperationName)
 	: COperationContext(pDoc, OperationName, OperationContextDiskIntensive),
 	m_VolumeLeft(1.),
-	m_VolumeRight(1.),
-	m_MaxClipped(0.),
-	m_bClipped(FALSE)
+	m_VolumeRight(1.)
 {
 	m_OperationString = StatusString;
 	m_GetBufferFlags = 0;
@@ -2443,46 +2450,14 @@ BOOL CVolumeChangeContext::ProcessBuffer(void * buf, size_t BufferLength, DWORD 
 		{
 			for (int i = 0; i < BufferLength / sizeof pDst[0]; i++)
 			{
-				long tmp = -pDst[i];
-				if (tmp == 0x8000)
-				{
-					pDst[i] = 0x7FFF;
-					m_bClipped = TRUE;
-					m_MaxClipped = 32768;
-				}
-				else
-				{
-					pDst[i] = __int16(tmp);
-				}
+				pDst[i] = LongToShort(-long(pDst[i]));
 			}
 		}
 		else
 		{
 			for (int i = 0; i < BufferLength / sizeof pDst[0]; i++)
 			{
-				long tmp = fround(pDst[i] * volume);
-				if (tmp > 0x7FFF)
-				{
-					if (m_MaxClipped < tmp)
-					{
-						m_MaxClipped = tmp;
-					}
-					pDst[i] = 0x7FFF;
-					m_bClipped = TRUE;
-				}
-				else if (tmp < -0x8000)
-				{
-					if (m_MaxClipped < -tmp)
-					{
-						m_MaxClipped = -tmp;
-					}
-					pDst[i] = -0x8000;
-					m_bClipped = TRUE;
-				}
-				else
-				{
-					pDst[i] = __int16(tmp);
-				}
+				pDst[i] = DoubleToShort(pDst[i] * volume);
 			}
 		}
 		return TRUE;
@@ -2511,109 +2486,31 @@ BOOL CVolumeChangeContext::ProcessBuffer(void * buf, size_t BufferLength, DWORD 
 	{
 		for (i = 0; i < BufferLength / sizeof pDst[0]; i += 2)
 		{
-			long tmp;
 			if (1 != m_DstChan)
 			{
-				tmp = -pDst[i];
-				if (tmp == 0x8000)
-				{
-					pDst[i] = 0x7FFF;
-					m_bClipped = TRUE;
-					m_MaxClipped = 32768.;
-				}
-				else
-				{
-					pDst[i] = __int16(tmp);
-				}
+				pDst[i] = LongToShort(-long(pDst[i]));
 			}
 
 			if (0 != m_DstChan)
 			{
-				tmp = -pDst[i + 1];
-				if (tmp == 0x8000)
-				{
-					pDst[i + 1] = 0x7FFF;
-					m_bClipped = TRUE;
-					m_MaxClipped = 32768.;
-				}
-				else
-				{
-					pDst[i + 1] = __int16(tmp);
-				}
+				pDst[i + 1] = LongToShort(-long(pDst[i + 1]));
 			}
 		}
 		return TRUE;
 	}
 	for (i = 0; i < BufferLength / sizeof pDst[0]; i += 2)
 	{
-		long tmp;
 		if (1 != m_DstChan)
 		{
-			tmp = fround(pDst[i] * m_VolumeLeft);
-			if (tmp > 0x7FFF)
-			{
-				if (m_MaxClipped < tmp)
-				{
-					m_MaxClipped = tmp;
-				}
-				pDst[i] = 0x7FFF;
-				m_bClipped = TRUE;
-			}
-			else if (tmp < -0x8000)
-			{
-				if (m_MaxClipped < -tmp)
-				{
-					m_MaxClipped = -tmp;
-				}
-				pDst[i] = -0x8000;
-				m_bClipped = TRUE;
-			}
-			else
-			{
-				pDst[i] = __int16(tmp);
-			}
+			pDst[i] = DoubleToShort(pDst[i] * m_VolumeLeft);
 		}
 
 		if (0 != m_DstChan)
 		{
-			tmp = fround(pDst[i + 1] * m_VolumeRight);
-			if (tmp > 0x7FFF)
-			{
-				if (m_MaxClipped < tmp)
-				{
-					m_MaxClipped = tmp;
-				}
-				pDst[i + 1] = 0x7FFF;
-				m_bClipped = TRUE;
-			}
-			else if (tmp < -0x8000)
-			{
-				if (m_MaxClipped < -tmp)
-				{
-					m_MaxClipped = -tmp;
-				}
-				pDst[i + 1] = -0x8000;
-				m_bClipped = TRUE;
-			}
-			else
-			{
-				pDst[i + 1] = __int16(tmp);
-			}
+			pDst[i] = DoubleToShort(pDst[i] * m_VolumeRight);
 		}
 	}
 	return TRUE;
-}
-
-void CVolumeChangeContext::PostRetire(BOOL bChildContext)
-{
-	// save undo context done in COperationContext::PostRetire
-	if (m_bClipped)
-	{
-		CString s;
-		s.Format(IDS_SOUND_CLIPPED, pDocument->GetTitle(), int(m_MaxClipped * 100. / 32678));
-		AfxMessageBox(s, MB_OK | MB_ICONEXCLAMATION);
-	}
-	COperationContext::PostRetire(bChildContext);
 }
 
 CDcOffsetContext::CDcOffsetContext(CWaveSoapFrontDoc * pDoc,
@@ -2621,8 +2518,6 @@ CDcOffsetContext::CDcOffsetContext(CWaveSoapFrontDoc * pDoc,
 	: COperationContext(pDoc, OperationName, OperationContextDiskIntensive),
 	m_OffsetLeft(0),
 	m_OffsetRight(0),
-	m_bClipped(FALSE),
-	m_MaxClipped(0.),
 	m_pScanContext(NULL)
 {
 	m_OperationString = StatusString;
@@ -2693,29 +2588,7 @@ BOOL CDcOffsetContext::ProcessBuffer(void * buf, size_t BufferLength, DWORD offs
 		int DcOffset = m_OffsetLeft;
 		for (int i = 0; i < BufferLength / sizeof pDst[0]; i++)
 		{
-			long tmp = pDst[i] + DcOffset;
-			if (tmp > 0x7FFF)
-			{
-				if (m_MaxClipped < tmp)
-				{
-					m_MaxClipped = tmp;
-				}
-				pDst[i] = 0x7FFF;
-				m_bClipped = TRUE;
-			}
-			else if (tmp < -0x8000)
-			{
-				if (m_MaxClipped < -tmp)
-				{
-					m_MaxClipped = -tmp;
-				}
-				pDst[i] = -0x8000;
-				m_bClipped = TRUE;
-			}
-			else
-			{
-				pDst[i] = __int16(tmp);
-			}
+			pDst[i] = LongToShort(pDst[i] + DcOffset);
 		}
 		return TRUE;
 	}
@@ -2723,203 +2596,31 @@ BOOL CDcOffsetContext::ProcessBuffer(void * buf, size_t BufferLength, DWORD offs
 	if (ALL_CHANNELS == m_DstChan)
 	{
 		// process both channels
-		if (offset & 2)
-		{
-			long tmp = pDst[0] + m_OffsetRight;
-			if (tmp > 0x7FFF)
-			{
-				if (m_MaxClipped < tmp)
-				{
-					m_MaxClipped = tmp;
-				}
-				pDst[0] = 0x7FFF;
-				m_bClipped = TRUE;
-			}
-			else if (tmp < -0x8000)
-			{
-				if (m_MaxClipped < -tmp)
-				{
-					m_MaxClipped = -tmp;
-				}
-				pDst[0] = -0x8000;
-				m_bClipped = TRUE;
-			}
-			else
-			{
-				pDst[0] = __int16(tmp);
-			}
-			pDst++;
-			BufferLength -= 2;
-		}
 
-		for (i = 0; i < BufferLength / (2 * sizeof pDst[0]); i++, pDst += 2)
+		for (i = 0; i < BufferLength / sizeof pDst[0]; i+=2)
 		{
-			long tmp = pDst[0] + m_OffsetLeft;
-			if (tmp > 0x7FFF)
-			{
-				if (m_MaxClipped < tmp)
-				{
-					m_MaxClipped = tmp;
-				}
-				pDst[0] = 0x7FFF;
-				m_bClipped = TRUE;
-			}
-			else if (tmp < -0x8000)
-			{
-				if (m_MaxClipped < -tmp)
-				{
-					m_MaxClipped = -tmp;
-				}
-				pDst[0] = -0x8000;
-				m_bClipped = TRUE;
-			}
-			else
-			{
-				pDst[0] = __int16(tmp);
-			}
-
-			tmp = pDst[1] + m_OffsetRight;
-			if (tmp > 0x7FFF)
-			{
-				if (m_MaxClipped < tmp)
-				{
-					m_MaxClipped = tmp;
-				}
-				pDst[1] = 0x7FFF;
-				m_bClipped = TRUE;
-			}
-			else if (tmp < -0x8000)
-			{
-				if (m_MaxClipped < -tmp)
-				{
-					m_MaxClipped = -tmp;
-				}
-				pDst[1] = -0x8000;
-				m_bClipped = TRUE;
-			}
-			else
-			{
-				pDst[1] = __int16(tmp);
-			}
-		}
-
-		BufferLength -= i * (2 * sizeof pDst[0]);
-		if (2 == BufferLength)
-		{
-			long tmp = pDst[0] + m_OffsetLeft;
-			if (tmp > 0x7FFF)
-			{
-				if (m_MaxClipped < tmp)
-				{
-					m_MaxClipped = tmp;
-				}
-				pDst[0] = 0x7FFF;
-				m_bClipped = TRUE;
-			}
-			else if (tmp < -0x8000)
-			{
-				if (m_MaxClipped < -tmp)
-				{
-					m_MaxClipped = -tmp;
-				}
-				pDst[0] = -0x8000;
-				m_bClipped = TRUE;
-			}
-			else
-			{
-				pDst[0] = __int16(tmp);
-			}
+			pDst[i] = LongToShort(pDst[i] + m_OffsetLeft);
+			pDst[i + 1] = LongToShort(pDst[i + 1] + m_OffsetRight);
 		}
 	}
-	else
+	else if (0 == m_DstChan)
 	{
 		// change one channel
-		if ((offset & 2)
-			!= m_DstChan * 2)
+		for (i = 0; i < BufferLength / sizeof pDst[0]; i+=2)
 		{
-			// skip this word
-			pDst++;
-			BufferLength -= 2;
-		}
-
-		int DcOffset;
-		if (0 == m_DstChan)
-		{
-			DcOffset = m_OffsetLeft;
-		}
-		else
-		{
-			DcOffset = m_OffsetRight;
-		}
-
-		for (i = 0; i < BufferLength / (2 * sizeof pDst[0]); i++, pDst += 2)
-		{
-			long tmp = pDst[0] + DcOffset;
-			if (tmp > 0x7FFF)
-			{
-				if (m_MaxClipped < tmp)
-				{
-					m_MaxClipped = tmp;
-				}
-				pDst[0] = 0x7FFF;
-				m_bClipped = TRUE;
-			}
-			else if (tmp < -0x8000)
-			{
-				if (m_MaxClipped < -tmp)
-				{
-					m_MaxClipped = -tmp;
-				}
-				pDst[0] = -0x8000;
-				m_bClipped = TRUE;
-			}
-			else
-			{
-				pDst[0] = __int16(tmp);
-			}
-		}
-
-		BufferLength -= i * (2 * sizeof pDst[0]);
-		if (2 == BufferLength)
-		{
-			long tmp = pDst[0] + DcOffset;
-			if (tmp > 0x7FFF)
-			{
-				if (m_MaxClipped < tmp)
-				{
-					m_MaxClipped = tmp;
-				}
-				pDst[0] = 0x7FFF;
-				m_bClipped = TRUE;
-			}
-			else if (tmp < -0x8000)
-			{
-				if (m_MaxClipped < -tmp)
-				{
-					m_MaxClipped = -tmp;
-				}
-				pDst[0] = -0x8000;
-				m_bClipped = TRUE;
-			}
-			else
-			{
-				pDst[0] = __int16(tmp);
-			}
+			pDst[i] = LongToShort(pDst[i] + m_OffsetLeft);
 		}
 	}
-	return TRUE;
-}
-
-void CDcOffsetContext::PostRetire(BOOL bChildContext)
-{
-	// save undo context done in COperationContext::PostRetire
-	if (m_bClipped)
+	else if (1 == m_DstChan)
 	{
-		CString s;
-		s.Format(IDS_SOUND_CLIPPED, pDocument->GetTitle(), int(m_MaxClipped * 100. / 32678));
-		AfxMessageBox(s, MB_OK | MB_ICONEXCLAMATION);
+		// change one channel
+		for (i = 0; i < BufferLength / sizeof pDst[0]; i+=2)
+		{
+			pDst[i + 1] = LongToShort(pDst[i + 1] + m_OffsetRight);
+		}
 	}
-	COperationContext::PostRetire(bChildContext);
+
+	return TRUE;
 }
 
 CString CDcOffsetContext::GetStatusString()

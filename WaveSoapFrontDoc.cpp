@@ -5159,36 +5159,34 @@ void CWaveSoapFrontDoc::OnToolsInterpolate()
 							WriteStartOffset, m_SelectedChannel);
 		AddUndoRedo(pUndo);
 	}
+
 	// now, do the interpolation
+	CClickRemoval crm;
 	if (m_SelectedChannel != 1) // mono or not right channel only
 	{
-		if (BigGap)
-		{
-			InterpolateBigGap(pBuf, InterpolateOffset, InterpolateSamples, nChannels);
-		}
-		else
-		{
-			InterpolateGap(pBuf, InterpolateOffset, InterpolateSamples, nChannels);
-		}
+		crm.InterpolateGap(pBuf, InterpolateOffset, InterpolateSamples, nChannels, BigGap);
 	}
 	if (nChannels == 2
 		&& m_SelectedChannel != 0) // mono or not right channel only
 	{
-		if (BigGap)
-		{
-			InterpolateBigGap(pBuf + 1, InterpolateOffset, InterpolateSamples, nChannels);
-		}
-		else
-		{
-			InterpolateGap(pBuf + 1, InterpolateOffset, InterpolateSamples, nChannels);
-		}
+		crm.InterpolateGap(pBuf + 1, InterpolateOffset, InterpolateSamples, nChannels, BigGap);
 	}
+
 	// write the data back
 	m_WavFile.WriteAt(pBuf + WriteBufferOffset * nChannels, WriteBytes, WriteStartOffset);
 	SetModifiedFlag(TRUE);
 	SoundChanged(m_WavFile.GetFileID(), m_SelectionStart - PreInterpolateSamples,
 				m_SelectionEnd + PostInterpolateSamples);
 	delete[] pBuf;
+
+	// check for clipping
+	if (crm.WasClipped())
+	{
+		OnIdle();   // update views
+		CString s;
+		s.Format(IDS_SOUND_CLIPPED, GetTitle(), int(crm.GetMaxClipped() * (100. / 32678)));
+		AfxMessageBox(s, MB_OK | MB_ICONEXCLAMATION);
+	}
 }
 
 void CWaveSoapFrontDoc::OnUpdateProcessDoUlf(CCmdUI* pCmdUI)

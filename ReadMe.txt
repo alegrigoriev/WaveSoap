@@ -1,10 +1,11 @@
 Known problems and tasks:
 
+Add CD grabbing
+Add overflow dialog on resample	and other waveproc
 Load sound from AVI
 Add options dialog
 Enter WMA file attributes (title, author, etc)
 Enter MP3 file attributes
-Add CD grabbing
 
 Add noise reduction estimation in spectrum section view
 Add sound recording
@@ -44,6 +45,11 @@ Add splash screen
 Make recording from Internet stream
 
 Problems:
+16 and 20 kbit/s save is incomplete
+After resample, frequency ruler not updated
+FFT zoom out doesn't put the range to the proper limits
+Notch filter initial setting is weird
+Too many digits in filter/equalizer dialogs number boxes
 During playback, scroll is done without hiding playback cursor
 When FFT array is reallocated, it is invalidated
 Paste operation doesn't check if sampling rate is the same. Add dialog to resample
