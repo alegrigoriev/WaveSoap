@@ -10,6 +10,7 @@
 #pragma once
 #endif // _MSC_VER > 1000
 #include "MessageBoxSynch.h"
+#include "GdiObjectSave.h"
 #include "MainFrameEx.h"
 
 typedef FrameExParameters<MainFrameRememberMaximized

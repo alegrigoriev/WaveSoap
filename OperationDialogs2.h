@@ -8,6 +8,7 @@
 // OperationDialogs2.h : header file
 //
 #include "TimeEdit.h"
+#include "TimeToStr.h"
 #include "UiUpdatedDlg.h"
 #include "DialogWithSelection.h"
 
