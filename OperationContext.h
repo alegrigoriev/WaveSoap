@@ -11,8 +11,6 @@
 #include "WaveSupport.h"
 #include "WmaFile.h"
 
-class COperationContext;
-typedef BOOL (_stdcall * WAVE_OPERATION_PROC)(COperationContext *);
 class COperationContext
 {
 public:
@@ -109,8 +107,8 @@ class CResizeContext : public COperationContext
 
 	BOOL ExpandProc();
 	BOOL ShrinkProc();
-	BOOL InitUndoRedo(CString UndoStatusString);
 public:
+	BOOL InitUndoRedo(CString UndoStatusString);
 
 	CString sOp;
 	CResizeContext(CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString, LPCTSTR OperationName)
@@ -154,7 +152,7 @@ public:
 				CWaveFile & SrcFile,
 				LONG SrcStartSample, LONG SrcLength, LONG SrcChannel
 				);
-	BOOL InitExpand(LONG StartSample, LONG Length, int Channel);
+	//BOOL InitExpand(LONG StartSample, LONG Length, int Channel);
 	virtual BOOL OperationProc();
 	virtual void PostRetire(BOOL bChildContext = FALSE);
 	virtual CString GetStatusString();
@@ -196,6 +194,22 @@ public:
 	~CUndoRedoContext();
 };
 
+class CInsertSilenceContext: public CCopyContext
+{
+public:
+	CInsertSilenceContext(CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString, LPCTSTR OperationName)
+		: CCopyContext(pDoc, StatusString, OperationName)
+	{
+		m_ReturnBufferFlags = CDirectFile::ReturnBufferDirty;
+		m_GetBufferFlags = CDirectFile::GetBufferWriteOnly;
+	}
+	virtual BOOL OperationProc();
+	virtual BOOL ProcessBuffer(void * buf, size_t len, DWORD offset);
+	BOOL InitExpand(CWaveFile & DstFile, long StartSample, long length,
+					int chan, BOOL NeedUndo);
+};
+
+#if 0
 class CCutContext : public CCopyContext
 {
 	friend class CWaveSoapFrontDoc;
@@ -209,6 +223,7 @@ public:
 	virtual BOOL OperationProc();
 	virtual CString GetStatusString() { return sOp; }
 };
+#endif
 
 class CDecompressContext : public COperationContext
 {
@@ -612,4 +627,6 @@ private:
 	//static void _fastcall (Operation *t)  { *t->Dst = *t->Src1  *t->Src2; }
 	virtual BOOL Init();
 };
+
+
 #endif // AFX_OPERATIONCONTEXT_H__FFA16C44_2FA7_11D4_9ADD_00C0F0583C4B__INCLUDED_

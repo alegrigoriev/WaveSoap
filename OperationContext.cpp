@@ -594,7 +594,7 @@ BOOL CResizeContext::InitUndoRedo(CString UndoOperationString)
 		pUndo->m_Flags |= CopyExpandFile;
 
 		// Init undo to expand the file at position DstStart, expand by
-		if ( ! pUndo->InitUndoCopy(m_DstFile,
+		if ( ! pUndo->InitUndoCopy(pDocument->m_WavFile,
 									m_DstStart,
 									m_SrcStart, // expand by
 									m_DstChan))
@@ -2353,9 +2353,10 @@ BOOL CVolumeChangeContext::ProcessBuffer(void * buf, size_t BufferLength, DWORD 
 		// special code for mute and inverse
 		if (0 == volume)
 		{
-			memset(pDst, 0, BufferLength);
-			BufferLength = 0;
-			i = 0;
+			for (int i = 0; i < BufferLength / (2 * sizeof pDst[0]); i++, pDst += 2)
+			{
+				pDst[0] = 0;
+			}
 		}
 		else if (-1. == volume)
 		{
@@ -4211,4 +4212,91 @@ void CExpressionEvaluationContext::Evaluate()
 	{
 		m_OperationArray[i].Function( & m_OperationArray[i]);
 	}
+}
+
+BOOL CInsertSilenceContext::InitExpand(CWaveFile & DstFile, long StartSample, long Length,
+										int Channel, BOOL NeedUndo)
+{
+	m_pExpandShrinkContext = new CResizeContext(pDocument, _T("Expanding the file..."), "");
+	if (NULL == m_pExpandShrinkContext)
+	{
+		return FALSE;
+	}
+	if ( ! m_pExpandShrinkContext->InitExpand(DstFile, StartSample,
+											Length, Channel))
+	{
+		delete m_pExpandShrinkContext;
+		m_pExpandShrinkContext = NULL;
+		return FALSE;
+	}
+	InitDestination(DstFile, StartSample, StartSample + Length, Channel, FALSE);
+	m_pExpandShrinkContext->InitUndoRedo("Insert Silence");
+	m_Flags |= CopyExpandFile;
+	return TRUE;
+}
+
+BOOL CInsertSilenceContext::OperationProc()
+{
+	// process ShrinkExpand context first, then proceed with clearing the area
+	// get buffers from source file and copy them to m_CopyFile
+	if (m_Flags & OperationContextStopRequested)
+	{
+		m_Flags |= OperationContextFinished;
+		return TRUE;
+	}
+	if (m_Flags & CopyExpandFile)
+	{
+		if (NULL != m_pExpandShrinkContext)
+		{
+			if ( 0 == (m_pExpandShrinkContext->m_Flags & (OperationContextStop | OperationContextFinished)))
+			{
+				if ( ! m_pExpandShrinkContext->OperationProc())
+				{
+					m_pExpandShrinkContext->m_Flags |= OperationContextStop;
+				}
+			}
+			PercentCompleted = m_pExpandShrinkContext->PercentCompleted;
+			if (m_pExpandShrinkContext->m_Flags &
+				(OperationContextStop | OperationContextFinished))
+			{
+				m_Flags &= ~(CopyExpandFile | CopyShrinkFile);
+			}
+			return TRUE;
+		}
+		m_Flags &= ~(CopyExpandFile | CopyShrinkFile);
+		PercentCompleted = 0;
+	}
+
+	return COperationContext::OperationProc();
+}
+
+BOOL CInsertSilenceContext::ProcessBuffer(void * buf, size_t BufferLength, DWORD offset)
+{
+	__int16 * pDst = (__int16 *) buf;
+	if (m_DstFile.Channels() == 1
+		|| ALL_CHANNELS == m_DstChan)
+	{
+		memset(buf, 0, BufferLength);
+		return TRUE;
+	}
+	// change one channel
+	if ((offset & 2)
+		!= m_DstChan * 2)
+	{
+		// skip this word
+		pDst++;
+		BufferLength -= 2;
+	}
+
+	for (int i = 0; i < BufferLength / (2 * sizeof pDst[0]); i++, pDst += 2)
+	{
+		pDst[0] = 0;
+	}
+
+	BufferLength -= i * (2 * sizeof pDst[0]);
+	if (2 == BufferLength)
+	{
+		pDst[0] = 0;
+	}
+	return TRUE;
 }
