@@ -313,7 +313,14 @@ void CWaveMDIChildClient::RecalcLayout()
 			r.right = RulerWidth;
 			r.top = OutlineHeight + RulerHeight;
 			r.bottom = cr.bottom - cyhscroll;
-			pVertRuler->ShowWindow(SW_SHOWNOACTIVATE);
+			if (m_bShowWaveform)
+			{
+				pVertRuler->ShowWindow(SW_SHOWNOACTIVATE);
+			}
+			else
+			{
+				pVertRuler->ShowWindow(SW_HIDE);
+			}
 			DeferClientPos(&layout, pVertRuler, r, FALSE);
 		}
 
@@ -323,7 +330,14 @@ void CWaveMDIChildClient::RecalcLayout()
 			r.right = RulerWidth;
 			r.top = OutlineHeight + RulerHeight;
 			r.bottom = cr.bottom - cyhscroll;
-			pVertFftRuler->ShowWindow(SW_SHOWNOACTIVATE);
+			if (m_bShowFft)
+			{
+				pVertFftRuler->ShowWindow(SW_SHOWNOACTIVATE);
+			}
+			else
+			{
+				pVertFftRuler->ShowWindow(SW_HIDE);
+			}
 			DeferClientPos(&layout, pVertFftRuler, r, FALSE);
 		}
 	}
