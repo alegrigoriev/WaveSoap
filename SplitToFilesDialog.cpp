@@ -510,22 +510,34 @@ BOOL CSplitToFilesDialog::PreTranslateMessage(MSG* pMsg)
 {
 	if (pMsg->message == WM_KEYDOWN
 		&& pMsg->hwnd != NULL
-		&& pMsg->hwnd == m_FilesList.m_hWnd
-		&& pMsg->wParam == VK_F2)
+		&& pMsg->hwnd == m_FilesList.m_hWnd)
 	{
-		// find a selected item
-		unsigned nSelItem = unsigned(-1);
-
-		if (unsigned(-1) != (nSelItem = m_FilesList.GetNextItem(nSelItem, LVNI_SELECTED)))
+		if (pMsg->wParam == VK_F2)
 		{
-			if (nSelItem < m_Files.size())
+			// find a selected item
+			unsigned nSelItem = unsigned(-1);
+
+			if (unsigned(-1) != (nSelItem = m_FilesList.GetNextItem(nSelItem, LVNI_SELECTED)))
 			{
-				m_FilesList.SetItemState(nSelItem, LVIS_FOCUSED, LVIS_FOCUSED);
-				TRACE("m_FilesList.EditLabel(%d)\n", nSelItem);
-				m_FilesList.EditLabel(nSelItem);
+				if (nSelItem < m_Files.size())
+				{
+					m_FilesList.SetItemState(nSelItem, LVIS_FOCUSED, LVIS_FOCUSED);
+					TRACE("m_FilesList.EditLabel(%d)\n", nSelItem);
+					m_FilesList.EditLabel(nSelItem);
+				}
 			}
+			return TRUE;
 		}
-		return TRUE;
+		else if (pMsg->wParam == VK_DELETE)
+		{
+			OnBnClickedButtonDelete();
+			return TRUE;
+		}
+		else if (pMsg->wParam == VK_INSERT)
+		{
+			OnBnClickedButtonNew();
+			return TRUE;
+		}
 	}
 
 	return BaseClass::PreTranslateMessage(pMsg);
