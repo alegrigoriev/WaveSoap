@@ -11,8 +11,8 @@
 #include "MainFrm.h"
 #include "SaveExpressionDialog.h"
 #include "DialogWithSelection.inl"
+#include "FileDialogWithHistory.h"
 #include <math.h>
-#include ".\operationdialogs.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -2042,6 +2042,10 @@ CDeclickDialog::CDeclickDialog(SAMPLE_INDEX begin, SAMPLE_INDEX end, SAMPLE_INDE
 	m_dEnvelopDecayRate = 0.02;
 
 	LoadValuesFromRegistry();
+
+	m_ClickToNoise.SetPrecision(1);
+	m_AttackRate.SetPrecision(2);
+	m_EnvelopDecayRate.SetPrecision(2);
 }
 
 void CDeclickDialog::DoDataExchange(CDataExchange* pDX)
@@ -2076,10 +2080,6 @@ void CDeclickDialog::DoDataExchange(CDataExchange* pDX)
 	m_EnvelopDecayRate.ExchangeData(pDX, m_dEnvelopDecayRate,
 									IDS_INPUT_NAME_ENVELOP_DECAY_RATE, 0, 0.01, 0.99);
 
-	if (pDX->m_bSaveAndValidate)
-	{
-		Profile.UnloadAll();
-	}
 }
 
 
@@ -2097,6 +2097,9 @@ BEGIN_MESSAGE_MAP(CDeclickDialog, BaseClass)
 
 	ON_UPDATE_COMMAND_UI(IDC_EDIT_CLICK_IMPORT_FILENAME, OnUpdateImportClicks)
 	ON_UPDATE_COMMAND_UI(IDC_CLICK_IMPORT_BROWSE_BUTTON, OnUpdateImportClicks)
+
+	ON_BN_CLICKED(IDC_BUTTON_SAVE, OnButtonSaveSettings)
+	ON_BN_CLICKED(IDC_BUTTON_LOAD, OnButtonLoadSettings)
 	//}}AFX_MSG_MAP
 END_MESSAGE_MAP()
 
@@ -2179,6 +2182,18 @@ void CDeclickDialog::LoadValuesFromRegistry()
 
 }
 
+void CDeclickDialog::OnOK()
+{
+	if (!UpdateData(TRUE))
+	{
+		TRACE(traceAppMsg, 0, "UpdateData failed during dialog termination.\n");
+		// the UpdateData routine will set focus to correct item
+		return;
+	}
+	Profile.FlushAll();
+	EndDialog(IDOK);
+}
+
 void CDeclickDialog::OnUpdateLogClicks(CCmdUI * pCmdUI)
 {
 	pCmdUI->Enable(m_LogClicksCheck.GetCheck());
@@ -2207,6 +2222,65 @@ void CDeclickDialog::SetDeclickData(CClickRemoval * pCr)
 	}
 	pCr->m_PassTrough = m_bLogClicksOnly;
 }
+
+void CDeclickDialog::OnButtonSaveSettings()
+{
+	if (!UpdateData(TRUE))
+	{
+		TRACE("UpdateData failed.\n");
+		// the UpdateData routine will set focus to correct item
+		return;
+	}
+
+	CString FileName;
+	CString Filter;
+	Filter.LoadString(IDS_FILTER_FILE_CLICK_REMOVAL);
+
+	CString Title;
+	Title.LoadString(IDS_CLICK_REMOVAL_SAVE_TITLE);
+
+	CFileDialogWithHistory dlg(FALSE,
+								_T("CrIni"), NULL,
+								OFN_HIDEREADONLY | OFN_OVERWRITEPROMPT
+								| OFN_EXPLORER | OFN_NONETWORKBUTTON | OFN_PATHMUSTEXIST,
+								Filter);
+	dlg.m_ofn.lpstrTitle = Title;
+
+	if (IDOK != dlg.DoModal())
+	{
+		return;
+	}
+
+	FileName = dlg.GetPathName();
+	Profile.ExportSection(_T("Declicker"), FileName);
+}
+
+void CDeclickDialog::OnButtonLoadSettings()
+{
+	CString FileName;
+	CString Filter;
+	Filter.LoadString(IDS_FILTER_FILE_CLICK_REMOVAL);
+
+	CString Title;
+	Title.LoadString(IDS_CLICK_REMOVAL_LOAD_TITLE);
+
+	CFileDialogWithHistory dlg(TRUE,
+								_T("CrIni"), NULL,
+								OFN_HIDEREADONLY
+								| OFN_EXPLORER | OFN_NONETWORKBUTTON | OFN_FILEMUSTEXIST,
+								Filter);
+	dlg.m_ofn.lpstrTitle = Title;
+
+	if (IDOK != dlg.DoModal())
+	{
+		return;
+	}
+	FileName = dlg.GetPathName();
+	Profile.ImportSection(_T("Declicker"), FileName);
+
+	UpdateData(FALSE);
+}
+
 /////////////////////////////////////////////////////////////////////////////
 // CNoiseReductionDialog dialog
 
@@ -2282,7 +2356,6 @@ void CNoiseReductionDialog::DoDataExchange(CDataExchange* pDX)
 	if (pDX->m_bSaveAndValidate)
 	{
 		m_FftOrder = 256 << m_nFftOrderExp;
-		Profile.UnloadAll();
 	}
 }
 
@@ -2291,6 +2364,8 @@ BEGIN_MESSAGE_MAP(CNoiseReductionDialog, BaseClass)
 	//{{AFX_MSG_MAP(CNoiseReductionDialog)
 	ON_BN_CLICKED(IDC_BUTTON_MORE_SETTINGS, OnButtonMore)
 	ON_BN_CLICKED(IDC_BUTTON_SET_THRESHOLD, OnButtonSetThreshold)
+	ON_BN_CLICKED(IDC_BUTTON_SAVE, OnButtonSaveSettings)
+	ON_BN_CLICKED(IDC_BUTTON_LOAD, OnButtonLoadSettings)
 	//}}AFX_MSG_MAP
 END_MESSAGE_MAP()
 
@@ -2375,6 +2450,17 @@ void CNoiseReductionDialog::GetNoiseReductionData(NoiseReductionParameters * pNr
 	pNr->m_FarMaskingLevelDb = float(m_FarMaskingLevelDb);
 }
 
+void CNoiseReductionDialog::OnOK()
+{
+	if (!UpdateData(TRUE))
+	{
+		TRACE(traceAppMsg, 0, "UpdateData failed during dialog termination.\n");
+		// the UpdateData routine will set focus to correct item
+		return;
+	}
+	Profile.FlushAll();
+	EndDialog(IDOK);
+}
 /////////////////////////////////////////////////////////////////////////////
 // CMoreNoiseDialog dialog
 
@@ -2456,11 +2542,69 @@ void CNoiseReductionDialog::OnButtonSetThreshold()
 {
 	if (!UpdateData(TRUE))
 	{
-		TRACE0("UpdateData failed during dialog termination.\n");
+		TRACE("UpdateData failed during dialog termination.\n");
 		// the UpdateData routine will set focus to correct item
 		return;
 	}
 	EndDialog(IDC_BUTTON_SET_THRESHOLD);
+}
+
+void CNoiseReductionDialog::OnButtonSaveSettings()
+{
+	if (!UpdateData(TRUE))
+	{
+		TRACE("UpdateData failed.\n");
+		// the UpdateData routine will set focus to correct item
+		return;
+	}
+
+	CString FileName;
+	CString Filter;
+	Filter.LoadString(IDS_FILTER_FILE_NOISE_REDUCTION);
+
+	CString Title;
+	Title.LoadString(IDS_NOISE_REDUCTION_SAVE_TITLE);
+
+	CFileDialogWithHistory dlg(FALSE,
+								_T("NrIni"), NULL,
+								OFN_HIDEREADONLY | OFN_OVERWRITEPROMPT
+								| OFN_EXPLORER | OFN_NONETWORKBUTTON | OFN_PATHMUSTEXIST,
+								Filter);
+	dlg.m_ofn.lpstrTitle = Title;
+
+	if (IDOK != dlg.DoModal())
+	{
+		return;
+	}
+
+	FileName = dlg.GetPathName();
+	Profile.ExportSection(_T("NoiseReduction"), FileName);
+}
+
+void CNoiseReductionDialog::OnButtonLoadSettings()
+{
+	CString FileName;
+	CString Filter;
+	Filter.LoadString(IDS_FILTER_FILE_NOISE_REDUCTION);
+
+	CString Title;
+	Title.LoadString(IDS_NOISE_REDUCTION_LOAD_TITLE);
+
+	CFileDialogWithHistory dlg(TRUE,
+								_T("NrIni"), NULL,
+								OFN_HIDEREADONLY
+								| OFN_EXPLORER | OFN_NONETWORKBUTTON | OFN_FILEMUSTEXIST,
+								Filter);
+	dlg.m_ofn.lpstrTitle = Title;
+
+	if (IDOK != dlg.DoModal())
+	{
+		return;
+	}
+	FileName = dlg.GetPathName();
+	Profile.ImportSection(_T("NoiseReduction"), FileName);
+
+	UpdateData(FALSE);
 }
 
 void CExpressionEvaluationDialog::OnSelchangeTabTokens(NMHDR* /*pNMHDR*/, LRESULT* pResult)
