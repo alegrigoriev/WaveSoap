@@ -3355,8 +3355,6 @@ BOOL CWmaDecodeContext::OperationProc()
 	int nLastSample = m_Decoder.GetCurrentSample();
 	m_DstCopySample = nLastSample;
 
-	TRACE("Changed from %d to %d\n", nFirstSample, nLastSample);
-
 	ULONG OldSampleCount = m_CurrentSamples;
 	ULONG NewSampleCount = m_Decoder.GetTotalSamples();
 	m_CurrentSamples = NewSampleCount;
@@ -3373,13 +3371,14 @@ BOOL CWmaDecodeContext::OperationProc()
 	if (nFirstSample != nLastSample
 		|| -1 != NewSampleCount)
 	{
+		TRACE("Changed from %d to %d, length=%d\n", nFirstSample, nLastSample, NewSampleCount);
+
 		pDocument->SoundChanged(m_DstFile.GetFileID(), nFirstSample, nLastSample, NewSampleCount);
 	}
 
-	DWORD SrcLength = m_Decoder.SrcLength();
-	if (SrcLength)
+	if (m_CurrentSamples)
 	{
-		PercentCompleted = MulDiv(100, m_Decoder.SrcPos(), SrcLength);
+		PercentCompleted = MulDiv(100, m_DstCopySample, m_CurrentSamples);
 	}
 	return TRUE;
 }
@@ -3395,6 +3394,8 @@ BOOL CWmaDecodeContext::Init()
 		CString s;
 		s.Format(IDS_CANT_OPEN_WMA_DECODER, m_WmaFile.GetName());
 		MessageBoxSync(s, MB_ICONEXCLAMATION | MB_OK);
+
+		pDocument->m_bCloseThisDocumentNow = true;
 		return FALSE;
 	}
 
@@ -3409,13 +3410,18 @@ BOOL CWmaDecodeContext::Init()
 												| CreateWaveFileTemp, NULL))
 	{
 		MessageBoxSync(IDS_UNABLE_TO_CREATE_TEMPORARY_FILE, MB_OK | MB_ICONEXCLAMATION);
+
 		pDocument->m_bCloseThisDocumentNow = true;
 		return FALSE;
 	}
 
 	pDocument->m_OriginalWaveFormat = m_Decoder.GetDstFormat();
 	SetDstFile(pDocument->m_WavFile);
+
 	pDocument->SoundChanged(pDocument->m_WavFile.GetFileID(), 0, 0, m_CurrentSamples);
+
+	pDocument->QueueSoundUpdate(pDocument->UpdateWholeFileChanged,
+								pDocument->m_WavFile.GetFileID(), 0, 0, m_CurrentSamples);
 
 	pDocument->m_WavFile.LoadPeaksForCompressedFile(pDocument->m_OriginalWavFile, m_CurrentSamples);
 
