@@ -116,6 +116,9 @@
 #define IDB_BITMAP_STOP                 191
 #define IDB_BITMAP_LOAD                 192
 #define ID_EDIT_MARKERREGION            193
+#define IDR_MENU_TIME_RULER_MARKER      194
+#define IDR_MENU_TIME_RULER_MARKER1     195
+#define IDR_MENU_TIME_RULER_REGION      195
 #define IDC_EDIT_MIN_CLICK_AMPLITUDE    1000
 #define IDC_TAB_SWITCH_VIEW_MODE        1000
 #define IDC_CHECK_LOG_CLICKS            1001
@@ -717,7 +720,6 @@
 #define IDS_INPUT_NAME_FREQUENCY_ARGUMENT3 33097
 #define IDS_INPUT_NAME_FREQUENCY_ARGUMENT4 33098
 #define IDS_INPUT_NAME_FREQUENCY_ARGUMENT1 33098
-#define IDS_STRING33099                 33099
 #define IDS_MARKER_REGION_CHANGE        33099
 #define ID_FILE_PROPERTIES              40000
 #define ID_VIEW_ZOOMVERT_NORMAL         40001
@@ -814,6 +816,12 @@
 #define ID_CDGRAB_SETCHECK              40110
 #define ID_CDGRAB_UNCHECK               40111
 #define ID_PROCESS_REVERSE              40114
+#define IDC_GOTO_MARKER                 40116
+#define IDC_DELETE_MARKER               40118
+#define IDC_MOVE_MARKER_TO_CURRENT      40120
+#define ID_Menu                         40121
+#define IDC_EDIT_MARKER                 40123
+#define IDC_SELECT_REGION               40125
 #define ID_TOOLS_SYNTHESIS              65535
 #define IDC_END_LABEL                   65535
 #define IDC_LENGTH_LABEL                65535
@@ -823,8 +831,8 @@
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_3D_CONTROLS                     1
-#define _APS_NEXT_RESOURCE_VALUE        194
-#define _APS_NEXT_COMMAND_VALUE         40115
+#define _APS_NEXT_RESOURCE_VALUE        195
+#define _APS_NEXT_COMMAND_VALUE         40126
 #define _APS_NEXT_CONTROL_VALUE         1260
 #define _APS_NEXT_SYMED_VALUE           101
 #endif

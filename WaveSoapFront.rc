@@ -807,6 +807,29 @@ BEGIN
     END
 END
 
+IDR_MENU_TIME_RULER_MARKER MENU 
+BEGIN
+    POPUP " "
+    BEGIN
+        MENUITEM "&Cursor Here",                IDC_GOTO_MARKER
+        MENUITEM "&Delete",                     IDC_DELETE_MARKER
+        MENUITEM "&Move to Cursor",             IDC_MOVE_MARKER_TO_CURRENT
+        MENUITEM "&Edit...",                    IDC_EDIT_MARKER
+    END
+END
+
+IDR_MENU_TIME_RULER_REGION MENU 
+BEGIN
+    POPUP " "
+    BEGIN
+        MENUITEM "&Cursor Here",                IDC_GOTO_MARKER
+        MENUITEM "&Select",                     IDC_SELECT_REGION
+        MENUITEM "&Delete",                     IDC_DELETE_MARKER
+        MENUITEM "&Move to Cursor",             IDC_MOVE_MARKER_TO_CURRENT
+        MENUITEM "&Edit...",                    IDC_EDIT_MARKER
+    END
+END
+
 
 /////////////////////////////////////////////////////////////////////////////
 //
@@ -3468,6 +3491,11 @@ END
 STRINGTABLE 
 BEGIN
     ID_PROCESS_REVERSE      "Reverse sound - make it go backwards"
+    IDC_GOTO_MARKER         "Set current edit position to this cue mark"
+    IDC_DELETE_MARKER       "Delete this cue mark"
+    IDC_MOVE_MARKER_TO_CURRENT "Move cue mark to the current edit position"
+    IDC_EDIT_MARKER         "Edit this cue mark"
+    IDC_SELECT_REGION       "Select this region"
 END
 
 STRINGTABLE 
