@@ -1632,9 +1632,9 @@ BOOL CEqualizerContext::ProcessBuffer(void * buf, size_t len, DWORD offset, BOOL
 	{
 		if ( ! bBackward)
 		{
-			while (len >= sizeof (__int16))
+			for (int i = 0; i < len / sizeof (__int16); i ++)
 			{
-				double dResult = CalculateResult(0, *pDst);
+				double dResult = CalculateResult(0, pDst[i]);
 				int result = fround(dResult);
 				if (result > 0x7FFF)
 				{
@@ -1654,18 +1654,14 @@ BOOL CEqualizerContext::ProcessBuffer(void * buf, size_t len, DWORD offset, BOOL
 					result = -0x8000;
 					m_bClipped = true;
 				}
-				*pDst = result;
-				pDst++;
-				len -= sizeof (__int16);
+				pDst[i] = result;
 			}
 		}
 		else
 		{
-			pDst += len / sizeof (__int16);
-			while (len >= sizeof (__int16))
+			for (int i = len / sizeof (__int16) - 1; i >=0; i --)
 			{
-				pDst --;
-				double dResult = CalculateResult(0, *pDst);
+				double dResult = CalculateResult(0, pDst[i]);
 				int result = fround(dResult);
 				if (result > 0x7FFF)
 				{
@@ -1685,8 +1681,7 @@ BOOL CEqualizerContext::ProcessBuffer(void * buf, size_t len, DWORD offset, BOOL
 					result = -0x8000;
 					m_bClipped = true;
 				}
-				*pDst = result;
-				len -= sizeof (__int16);
+				pDst[i] = result;
 			}
 		}
 	}
@@ -1694,135 +1689,112 @@ BOOL CEqualizerContext::ProcessBuffer(void * buf, size_t len, DWORD offset, BOOL
 	{
 		if ( ! bBackward)
 		{
-			while (len >= sizeof (__int16))
+			for (int i = 0; i < len / sizeof (__int16); i += 2)
 			{
-				if (0 == (offset & sizeof (__int16)))
+				if (m_DstChan != 1) // not right only
 				{
-					if (m_DstChan != 1) // not right only
+					double dResult = CalculateResult(0, pDst[i]);
+					int result = fround(dResult);
+					if (result > 0x7FFF)
 					{
-						double dResult = CalculateResult(0, *pDst);
-						int result = fround(dResult);
-						if (result > 0x7FFF)
+						if (m_MaxClipped < dResult)
 						{
-							if (m_MaxClipped < dResult)
-							{
-								m_MaxClipped = dResult;
-							}
-							m_bClipped = true;
-							result = 0x7FFF;
+							m_MaxClipped = dResult;
 						}
-						else if (result < -0x8000)
-						{
-							if (m_MaxClipped < -dResult)
-							{
-								m_MaxClipped = -dResult;
-							}
-							result = -0x8000;
-							m_bClipped = true;
-						}
-						*pDst = result;
+						m_bClipped = true;
+						result = 0x7FFF;
 					}
-					offset += sizeof (__int16);
-					pDst++;
-					len -= sizeof (__int16);
-				}
-				if (len >= sizeof (__int16))
-				{
-					if (m_DstChan != 0) // not left only
+					else if (result < -0x8000)
 					{
-						double dResult = CalculateResult(1, *pDst);
-						int result = fround(dResult);
-						if (result > 0x7FFF)
+						if (m_MaxClipped < -dResult)
 						{
-							if (m_MaxClipped < dResult)
-							{
-								m_MaxClipped = dResult;
-							}
-							m_bClipped = true;
-							result = 0x7FFF;
+							m_MaxClipped = -dResult;
 						}
-						else if (result < -0x8000)
-						{
-							if (m_MaxClipped < -dResult)
-							{
-								m_MaxClipped = -dResult;
-							}
-							result = -0x8000;
-							m_bClipped = true;
-						}
-						*pDst = result;
+						result = -0x8000;
+						m_bClipped = true;
 					}
-					offset += sizeof (__int16);
-					pDst++;
-					len -= sizeof (__int16);
+					pDst[i] = result;
 				}
 
+				if (m_DstChan != 0) // not left only
+				{
+					double dResult = CalculateResult(1, pDst[i + 1]);
+					int result = fround(dResult);
+					if (result > 0x7FFF)
+					{
+						if (m_MaxClipped < dResult)
+						{
+							m_MaxClipped = dResult;
+						}
+						m_bClipped = true;
+						result = 0x7FFF;
+					}
+					else if (result < -0x8000)
+					{
+						if (m_MaxClipped < -dResult)
+						{
+							m_MaxClipped = -dResult;
+						}
+						result = -0x8000;
+						m_bClipped = true;
+					}
+					pDst[i + 1] = result;
+				}
 			}
 		}
 		else
 		{
-			pDst += len / sizeof (__int16);
-			offset += len;
-			while (len >= sizeof (__int16))
+			for (int i = len / sizeof (__int16) - 2; i >=0; i -= 2)
 			{
-				pDst--;
-				offset -= sizeof (__int16);
+				if (m_DstChan != 1) // not right only
+				{
+					double dResult = CalculateResult(0, pDst[i]);
+					int result = fround(dResult);
+					if (result > 0x7FFF)
+					{
+						if (m_MaxClipped < dResult)
+						{
+							m_MaxClipped = dResult;
+						}
+						m_bClipped = true;
+						result = 0x7FFF;
+					}
+					else if (result < -0x8000)
+					{
+						if (m_MaxClipped < -dResult)
+						{
+							m_MaxClipped = -dResult;
+						}
+						result = -0x8000;
+						m_bClipped = true;
+					}
+					pDst[i] = result;
+				}
 
-				if (0 == (offset & sizeof (__int16)))
+				if (m_DstChan != 0) // not left only
 				{
-					if (m_DstChan != 1) // not right only
+					double dResult = CalculateResult(1, pDst[i + 1]);
+					int result = fround(dResult);
+					if (result > 0x7FFF)
 					{
-						double dResult = CalculateResult(0, *pDst);
-						int result = fround(dResult);
-						if (result > 0x7FFF)
+						if (m_MaxClipped < dResult)
 						{
-							if (m_MaxClipped < dResult)
-							{
-								m_MaxClipped = dResult;
-							}
-							m_bClipped = true;
-							result = 0x7FFF;
+							m_MaxClipped = dResult;
 						}
-						else if (result < -0x8000)
-						{
-							if (m_MaxClipped < -dResult)
-							{
-								m_MaxClipped = -dResult;
-							}
-							result = -0x8000;
-							m_bClipped = true;
-						}
-						*pDst = result;
+						m_bClipped = true;
+						result = 0x7FFF;
 					}
-				}
-				else
-				{
-					if (m_DstChan != 0) // not left only
+					else if (result < -0x8000)
 					{
-						double dResult = CalculateResult(1, *pDst);
-						int result = fround(dResult);
-						if (result > 0x7FFF)
+						if (m_MaxClipped < -dResult)
 						{
-							if (m_MaxClipped < dResult)
-							{
-								m_MaxClipped = dResult;
-							}
-							m_bClipped = true;
-							result = 0x7FFF;
+							m_MaxClipped = -dResult;
 						}
-						else if (result < -0x8000)
-						{
-							if (m_MaxClipped < -dResult)
-							{
-								m_MaxClipped = -dResult;
-							}
-							result = -0x8000;
-							m_bClipped = true;
-						}
-						*pDst = result;
+						result = -0x8000;
+						m_bClipped = true;
 					}
+					pDst[i + 1] = result;
 				}
-				len -= sizeof (__int16);
 			}
 		}
 	}
@@ -1841,3 +1813,283 @@ BOOL CSwapChannelsContext::ProcessBuffer(void * buf, size_t len, DWORD offset, B
 	}
 	return TRUE;
 }
+
+CFilterContext::CFilterContext(CWaveSoapFrontDoc * pDoc,
+								LPCTSTR StatusString, LPCTSTR OperationName)
+	: COperationContext(pDoc, OperationName, OperationContextDiskIntensive),
+	m_bClipped(FALSE),
+	m_bZeroPhase(FALSE),
+	m_MaxClipped(0.)
+{
+	m_OperationString = StatusString;
+	//m_GetBufferFlags = 0; // leave CDirectFile::GetBufferAndPrefetchNext flag
+	m_ReturnBufferFlags = CDirectFile::ReturnBufferDirty;
+}
+
+CFilterContext::~CFilterContext()
+{
+}
+
+BOOL CFilterContext::Init()
+{
+	if (m_bZeroPhase)
+	{
+		m_NumberOfBackwardPasses = 1;
+	}
+	return InitPass(1);
+}
+
+BOOL CFilterContext::InitPass(int nPass)
+{
+	TRACE("CFilterContext::InitPass %d\n", nPass);
+	for (int i = 0; i < MaxFilterOrder; i++)
+	{
+		for (int j = 0; j < 4; j++)
+		{
+			m_PrevLpfSamples[0][i][j] = 0.;
+			m_PrevLpfSamples[1][i][j] = 0.;
+
+			m_PrevHpfSamples[0][i][j] = 0.;
+			m_PrevHpfSamples[1][i][j] = 0.;
+
+			m_PrevNotchSamples[0][i][j] = 0.;
+			m_PrevNotchSamples[1][i][j] = 0.;
+
+		}
+	}
+	return TRUE;
+}
+
+double CFilterContext::CalculateResult(int ch, int Input)
+{
+	double in = Input;
+	if (0 != m_nLpfOrder)
+	{
+		double out = 0;
+		for (int i = 0; i < m_nLpfOrder; i++)
+		{
+			double tmp = in * m_LpfCoeffs[i][0]
+						+ m_PrevLpfSamples[ch][i][0] * m_LpfCoeffs[i][1]
+						+ m_PrevLpfSamples[ch][i][1] * m_LpfCoeffs[i][2]
+						- m_PrevLpfSamples[ch][i][2] * m_LpfCoeffs[i][4]
+						- m_PrevLpfSamples[ch][i][3] * m_LpfCoeffs[i][5];
+			m_PrevLpfSamples[ch][i][1] = m_PrevLpfSamples[ch][i][0];
+			m_PrevLpfSamples[ch][i][0] = in;
+			m_PrevLpfSamples[ch][i][3] = m_PrevLpfSamples[ch][i][2];
+			m_PrevLpfSamples[ch][i][2] = tmp;
+			out += tmp;
+		}
+		in = out;
+	}
+	if (0 != m_nHpfOrder)
+	{
+		double out = 0;
+		for (int i = 0; i < m_nHpfOrder; i++)
+		{
+			double tmp = in * m_HpfCoeffs[i][0]
+						+ m_PrevHpfSamples[ch][i][0] * m_HpfCoeffs[i][1]
+						+ m_PrevHpfSamples[ch][i][1] * m_HpfCoeffs[i][2]
+						- m_PrevHpfSamples[ch][i][2] * m_HpfCoeffs[i][4]
+						- m_PrevHpfSamples[ch][i][3] * m_HpfCoeffs[i][5];
+			m_PrevHpfSamples[ch][i][1] = m_PrevHpfSamples[ch][i][0];
+			m_PrevHpfSamples[ch][i][0] = in;
+			m_PrevHpfSamples[ch][i][3] = m_PrevHpfSamples[ch][i][2];
+			m_PrevHpfSamples[ch][i][2] = tmp;
+			out += tmp;
+		}
+		in = out;
+	}
+	return in;
+}
+
+void CFilterContext::PostRetire(BOOL bChildContext)
+{
+	if (m_bClipped)
+	{
+		CString s;
+		s.Format(IDS_SOUND_CLIPPED, pDocument->GetTitle(), int(m_MaxClipped * 100. / 32678));
+		AfxMessageBox(s, MB_OK | MB_ICONEXCLAMATION);
+	}
+	COperationContext::PostRetire(bChildContext);
+}
+
+BOOL CFilterContext::ProcessBuffer(void * buf, size_t len, DWORD offset, BOOL bBackward)
+{
+	// calculate number of sample, and time
+	int nSampleSize = m_DstFile.SampleSize();
+	int nChannels = m_DstFile.Channels();
+	//int nSample = (offset - m_DstStart) / nSampleSize;
+	__int16 * pDst = (__int16 *) buf;
+	if (1 == nChannels)
+	{
+		if ( ! bBackward)
+		{
+			for (int i = 0; i < len / sizeof (__int16); i ++)
+			{
+				double dResult = CalculateResult(0, pDst[i]);
+				int result = fround(dResult);
+				if (result > 0x7FFF)
+				{
+					if (m_MaxClipped < dResult)
+					{
+						m_MaxClipped = dResult;
+					}
+					m_bClipped = true;
+					result = 0x7FFF;
+				}
+				else if (result < -0x8000)
+				{
+					if (m_MaxClipped < -dResult)
+					{
+						m_MaxClipped = -dResult;
+					}
+					result = -0x8000;
+					m_bClipped = true;
+				}
+				pDst[i] = result;
+			}
+		}
+		else
+		{
+			for (int i = len / sizeof (__int16) - 1; i >=0; i --)
+			{
+				double dResult = CalculateResult(0, pDst[i]);
+				int result = fround(dResult);
+				if (result > 0x7FFF)
+				{
+					if (m_MaxClipped < dResult)
+					{
+						m_MaxClipped = dResult;
+					}
+					m_bClipped = true;
+					result = 0x7FFF;
+				}
+				else if (result < -0x8000)
+				{
+					if (m_MaxClipped < -dResult)
+					{
+						m_MaxClipped = -dResult;
+					}
+					result = -0x8000;
+					m_bClipped = true;
+				}
+				pDst[i] = result;
+			}
+		}
+	}
+	else
+	{
+		if ( ! bBackward)
+		{
+			for (int i = 0; i < len / sizeof (__int16); i += 2)
+			{
+				if (m_DstChan != 1) // not right only
+				{
+					double dResult = CalculateResult(0, pDst[i]);
+					int result = fround(dResult);
+					if (result > 0x7FFF)
+					{
+						if (m_MaxClipped < dResult)
+						{
+							m_MaxClipped = dResult;
+						}
+						m_bClipped = true;
+						result = 0x7FFF;
+					}
+					else if (result < -0x8000)
+					{
+						if (m_MaxClipped < -dResult)
+						{
+							m_MaxClipped = -dResult;
+						}
+						result = -0x8000;
+						m_bClipped = true;
+					}
+					pDst[i] = result;
+				}
+
+				if (m_DstChan != 0) // not left only
+				{
+					double dResult = CalculateResult(1, pDst[i + 1]);
+					int result = fround(dResult);
+					if (result > 0x7FFF)
+					{
+						if (m_MaxClipped < dResult)
+						{
+							m_MaxClipped = dResult;
+						}
+						m_bClipped = true;
+						result = 0x7FFF;
+					}
+					else if (result < -0x8000)
+					{
+						if (m_MaxClipped < -dResult)
+						{
+							m_MaxClipped = -dResult;
+						}
+						result = -0x8000;
+						m_bClipped = true;
+					}
+					pDst[i + 1] = result;
+				}
+			}
+		}
+		else
+		{
+			for (int i = len / sizeof (__int16) - 2; i >=0; i -= 2)
+			{
+				if (m_DstChan != 1) // not right only
+				{
+					double dResult = CalculateResult(0, pDst[i]);
+					int result = fround(dResult);
+					if (result > 0x7FFF)
+					{
+						if (m_MaxClipped < dResult)
+						{
+							m_MaxClipped = dResult;
+						}
+						m_bClipped = true;
+						result = 0x7FFF;
+					}
+					else if (result < -0x8000)
+					{
+						if (m_MaxClipped < -dResult)
+						{
+							m_MaxClipped = -dResult;
+						}
+						result = -0x8000;
+						m_bClipped = true;
+					}
+					pDst[i] = result;
+				}
+
+				if (m_DstChan != 0) // not left only
+				{
+					double dResult = CalculateResult(1, pDst[i + 1]);
+					int result = fround(dResult);
+					if (result > 0x7FFF)
+					{
+						if (m_MaxClipped < dResult)
+						{
+							m_MaxClipped = dResult;
+						}
+						m_bClipped = true;
+						result = 0x7FFF;
+					}
+					else if (result < -0x8000)
+					{
+						if (m_MaxClipped < -dResult)
+						{
+							m_MaxClipped = -dResult;
+						}
+						result = -0x8000;
+						m_bClipped = true;
+					}
+					pDst[i + 1] = result;
+				}
+			}
+		}
+	}
+	return TRUE;
+}
+
