@@ -349,31 +349,27 @@ protected:
 /////////////////////////////////////////////////////////////////////////////
 // CDcOffsetDialog dialog
 
-class CDcOffsetDialog : public CDialog
+class CDcOffsetDialog : public CDialogWithSelection
 {
-	typedef CDialog BaseClass;
+	typedef CDialogWithSelection BaseClass;
 // Construction
 public:
-	CDcOffsetDialog(CWnd* pParent = NULL);   // standard constructor
+	CDcOffsetDialog(SAMPLE_INDEX begin, SAMPLE_INDEX end, SAMPLE_INDEX caret,
+					CHANNEL_MASK Channels,
+					CWaveFile & File,
+					BOOL ChannelsLocked, BOOL UndoEnabled,
+					int TimeFormat = SampleToString_HhMmSs | TimeToHhMmSs_NeedsHhMm | TimeToHhMmSs_NeedsMs,
+					CWnd* pParent = NULL);   // standard constructor
 
 // Dialog Data
 	//{{AFX_DATA(CDcOffsetDialog)
 	enum { IDD = IDD_DIALOG_DC_OFFSET };
 	CSpinButtonCtrl	m_OffsetSpin;
 	BOOL	m_b5SecondsDC;
-	BOOL	m_bUndo;
 	int		m_nDcOffset;
 	int		m_DcSelectMode;
 	//}}AFX_DATA
 
-
-	long m_Start;
-	long m_End;
-	long m_CaretPosition;
-	long m_FileLength;
-	int m_Chan;
-	int m_TimeFormat;
-	const WAVEFORMATEX * m_pWf;
 	CApplicationProfile m_Profile;
 // Overrides
 	// ClassWizard generated virtual function overrides
@@ -384,11 +380,9 @@ protected:
 
 // Implementation
 protected:
-	void UpdateSelectionStatic();
 
 	// Generated message map functions
 	//{{AFX_MSG(CDcOffsetDialog)
-	afx_msg void OnButtonSelection();
 	afx_msg void OnRadioDcSelect();
 	afx_msg void OnRadioAdjustSelectEdit();
 	virtual BOOL OnInitDialog();
