@@ -19,34 +19,39 @@ static char THIS_FILE[]=__FILE__;
 
 void CCdDrive::LoadAspi()
 {
-	//m_hWinaspi32 = LoadLibrary(_T("wnaspi32.dll"));
+	m_hWinaspi32 = LoadLibrary(_T("cdral.dll"));
+
 	if (NULL != m_hWinaspi32)
 	{
 		GetASPI32DLLVersion = (DWORD (_cdecl * )())
-							GetProcAddress(m_hWinaspi32, "GetASPI32DLLVersion");
+							GetProcAddress(m_hWinaspi32, _T("GetASPI32DLLVersion"));
 
 		GetASPI32SupportInfo = (DWORD (_cdecl * )())
-								GetProcAddress(m_hWinaspi32, "GetASPI32SupportInfo");
+								GetProcAddress(m_hWinaspi32, _T("GetASPI32SupportInfo"));
 
 		SendASPI32Command = (DWORD (_cdecl * )(SRB * ))
-							GetProcAddress(m_hWinaspi32, "SendASPI32Command");
+							GetProcAddress(m_hWinaspi32, _T("SendASPI32Command"));
 
 		GetAspi32Buffer = (GETASPI32BUFFER)
-						GetProcAddress(m_hWinaspi32, "GetASPI32Buffer");
+						GetProcAddress(m_hWinaspi32, _T("GetASPI32Buffer"));
 
 		FreeAspi32Buffer = (FREEASPI32BUFFER)
-							GetProcAddress(m_hWinaspi32, "FreeASPI32Buffer");
+							GetProcAddress(m_hWinaspi32, _T("FreeASPI32Buffer"));
 
 		TranslateAspi32Address = (TRANSLATEASPI32ADDRESS)
-								GetProcAddress(m_hWinaspi32, "TranslateAspi32Address");
+								GetProcAddress(m_hWinaspi32, _T("TranslateASPI32Address"));
 
-		GetAspi32DriveLetter = NULL;
+		GetAspi32DriveLetter = (GETASPI32DRIVELETTER)
+								GetProcAddress(m_hWinaspi32, _T("GetASPI32DriveLetter"));
 
-		GetAspi32HaTargetLun = NULL;
+		GetAspi32HaTargetLun = (GETASPI32HATARGETLUN)
+								GetProcAddress(m_hWinaspi32, _T("GetASPI32HaTargetLun"));
 
 		if (NULL == GetASPI32DLLVersion
 			|| NULL == GetASPI32SupportInfo
 			|| NULL == SendASPI32Command
+			|| NULL == GetAspi32DriveLetter
+			|| NULL == GetAspi32HaTargetLun
 			|| 1 != ((0xFF00 & GetASPI32SupportInfo()) >> 8))
 		{
 			SendASPI32Command = NULL;
@@ -57,35 +62,32 @@ void CCdDrive::LoadAspi()
 			m_hWinaspi32 = NULL;
 		}
 	}
-
-	if (NULL == m_hWinaspi32)
+	if (NULL != m_hWinaspi32)
 	{
-		m_hWinaspi32 = LoadLibrary(_T("cdral.dll"));
-		if (NULL != m_hWinaspi32)
+		m_hWinaspi32 = LoadLibrary(_T("wnaspi32.dll"));
+		if (NULL == m_hWinaspi32)
 		{
 			GetASPI32DLLVersion = (DWORD (_cdecl * )())
-								GetProcAddress(m_hWinaspi32, "GetASPI32DLLVersion");
+								GetProcAddress(m_hWinaspi32, _T("GetASPI32DLLVersion"));
 
 			GetASPI32SupportInfo = (DWORD (_cdecl * )())
-									GetProcAddress(m_hWinaspi32, "GetASPI32SupportInfo");
+									GetProcAddress(m_hWinaspi32, _T("GetASPI32SupportInfo"));
 
 			SendASPI32Command = (DWORD (_cdecl * )(SRB * ))
-								GetProcAddress(m_hWinaspi32, "SendASPI32Command");
+								GetProcAddress(m_hWinaspi32, _T("SendASPI32Command"));
 
 			GetAspi32Buffer = (GETASPI32BUFFER)
-							GetProcAddress(m_hWinaspi32, "GetASPI32Buffer");
+							GetProcAddress(m_hWinaspi32, _T("GetASPI32Buffer"));
 
 			FreeAspi32Buffer = (FREEASPI32BUFFER)
-								GetProcAddress(m_hWinaspi32, "FreeASPI32Buffer");
+								GetProcAddress(m_hWinaspi32, _T("FreeASPI32Buffer"));
 
 			TranslateAspi32Address = (TRANSLATEASPI32ADDRESS)
-									GetProcAddress(m_hWinaspi32, "TranslateAspi32Address");
+									GetProcAddress(m_hWinaspi32, _T("TranslateASPI32Address"));
 
-			GetAspi32DriveLetter = (GETASPI32DRIVELETTER)
-									GetProcAddress(m_hWinaspi32, "GetASPI32DriveLetter");
+			GetAspi32DriveLetter = NULL;
 
-			GetAspi32HaTargetLun = (GETASPI32HATARGETLUN)
-									GetProcAddress(m_hWinaspi32, "GetASPI32HaTargetLun");
+			GetAspi32HaTargetLun = NULL;
 
 			if (NULL == GetASPI32DLLVersion
 				|| NULL == GetASPI32SupportInfo
@@ -101,6 +103,7 @@ void CCdDrive::LoadAspi()
 			}
 		}
 	}
+
 }
 
 CCdDrive::CCdDrive(CCdDrive const & Drive, BOOL UseAspi)
@@ -796,31 +799,7 @@ BOOL CCdDrive::GetMaxReadSpeed(int * pMaxSpeed) // bytes/s
 	// try to use Get Performance command
 	// if the command is not supported, use Set Speed and get the max speed
 	// from mech status mode page (offset 8 / 176.4)
-#if 0//def _DEBUG
-	InquiryData inq;
-	InquiryCDB iqcdb(sizeof inq);
-	DataLen = sizeof inq;
 
-	res = SendScsiCommand( & iqcdb, & inq, & DataLen, SCSI_IOCTL_DATA_IN, & ssi);
-
-	struct FEATURE : FeatureHeader
-	{
-		UCHAR MoreData[1024];
-	} feature;
-
-	DataLen = sizeof feature;
-	GetConfigurationCDB ConfigCdb(sizeof feature);
-
-	res = SendScsiCommand( & ConfigCdb, & feature, & DataLen, SCSI_IOCTL_DATA_IN, & ssi);
-
-
-	ProfileListDesc pld;
-	GetConfigurationCDB GetProfiles(sizeof pld, 0x1E,
-									GetConfigurationCDB::RequestedTypeOneDescriptor);
-	DataLen = sizeof pld;
-	res = SendScsiCommand( & GetProfiles, & pld, & DataLen, SCSI_IOCTL_DATA_IN, & ssi);
-
-#endif
 	struct PERF : CdPerformanceDataHeader
 	{
 		CdNominalPerformanceDescriptor desc[10];
@@ -834,11 +813,12 @@ BOOL CCdDrive::GetMaxReadSpeed(int * pMaxSpeed) // bytes/s
 		const DWORD DataLength = perf.DataLength;
 		if (DataLength > 10 * sizeof (CdNominalPerformanceDescriptor)
 			|| 0 != DataLength % sizeof (CdNominalPerformanceDescriptor)
-			|| 0 != DataLength)
+			|| 0 == DataLength)
 		{
 			TRACE("Wrong performance data length=%d\n", DataLength);
 			return FALSE;
 		}
+		TRACE("CD speed obtained by GetPerformanceCDB\n");
 		DWORD MaxPerformance = 0;
 		for (int i = 0; i < DataLength / sizeof (CdNominalPerformanceDescriptor); i++)
 		{
@@ -857,41 +837,43 @@ BOOL CCdDrive::GetMaxReadSpeed(int * pMaxSpeed) // bytes/s
 		* pMaxSpeed = MaxPerformance * 1024;
 		return TRUE;
 	}
-	else
+	// use CD MAE current capabilities page
+	// use mech status mode page
+	struct CdCaps: ModeInfoHeader, CDCapabilitiesMechStatusModePage
 	{
-		// use CD MAE current capabilities page
-		// use mech status mode page
-		struct CdCaps: ModeInfoHeader, CDCapabilitiesMechStatusModePage
-		{
-		} cdmp;
-		ModeSenseCDB msdb(sizeof cdmp, cdmp.Code);
-		DataLen = sizeof cdmp;
+	} cdmp;
+	ModeSenseCDB msdb(sizeof cdmp, cdmp.Code);
+	DataLen = sizeof cdmp;
 
-		res = SendScsiCommand( & msdb, & cdmp, & DataLen, SCSI_IOCTL_DATA_IN, & ssi);
+	res = SendScsiCommand( & msdb, & cdmp, & DataLen, SCSI_IOCTL_DATA_IN, & ssi);
 
-		if (res)
-		{
-			* pMaxSpeed = cdmp.MaxReadSpeedSupported * 1000;
-			return TRUE;
-		}
-
-		struct CdCaps: ModeInfoHeader, CDCurrentCapabilitiesModePage
-		{
-		} cdcp;
-		ModeSenseCDB msdb2(sizeof cdcp, cdcp.Code);
-		DataLen = sizeof cdcp;
-
-		res = SendScsiCommand( & msdb2, & cdcp, & DataLen, SCSI_IOCTL_DATA_IN, & ssi);
-
-		if (res)
-		{
-			* pMaxSpeed = cdcp.MaximumReadSpeed * 1000;
-			return TRUE;
-		}
-
-		return FALSE;
-
+	if (res)
+	{
+		TRACE("CD speed obtained by CDCapabilitiesMechStatusModePage\n");
+		TRACE("CD speed obtained by CDCapabilitiesMechStatusModePage,current = %d, max=%d\n",
+			LONG(cdmp.CurrentReadSpeedSelected), LONG(cdmp.MaxReadSpeedSupported));
+		* pMaxSpeed = cdmp.MaxReadSpeedSupported * 1000;
+		return TRUE;
 	}
+
+	struct CdCaps: ModeInfoHeader, CDCurrentCapabilitiesModePage
+	{
+	} cdcp;
+	ModeSenseCDB msdb2(sizeof cdcp, cdcp.Code);
+	DataLen = sizeof cdcp;
+
+	res = SendScsiCommand( & msdb2, & cdcp, & DataLen, SCSI_IOCTL_DATA_IN, & ssi);
+
+	if (res)
+	{
+		TRACE("CD speed obtained by CDCurrentCapabilitiesModePage,current = %d, max=%d\n",
+			LONG(cdcp.CurrentReadSpeed), LONG(cdcp.MaximumReadSpeed));
+		* pMaxSpeed = cdcp.MaximumReadSpeed * 1000;
+		return TRUE;
+	}
+
+	return FALSE;
+
 }
 
 void CCdDrive::StopAudioPlay()
@@ -911,8 +893,20 @@ BOOL CCdDrive::ReadCdData(void * pBuf, long Address, int nSectors)
 	DWORD Length = nSectors * 2352;
 	ReadCD_CDB rcd(Address, Length);
 
-	return SendScsiCommand( & rcd, pBuf, & Length,
-							SCSI_IOCTL_DATA_IN, NULL);
+	SCSI_SenseInfo ssi;
+
+	BOOL res = SendScsiCommand( & rcd, pBuf, & Length,
+								SCSI_IOCTL_DATA_IN, & ssi);
+	if (! res)
+	{
+		TRACE("READ CD error, SenseKey=%d, AdditionalSenseCode=%X\n",
+			ssi.SenseKey, ssi.AdditionalSenseCode);
+	}
+	if (Length != nSectors * 2352)
+	{
+		TRACE("Incomplete read! %d bytes instead of %d\n", Length, nSectors * 2352);
+	}
+	return res;
 }
 
 BOOL CCdDrive::ReadCdData(void * pBuf, CdAddressMSF Address, int nSectors)
@@ -921,8 +915,19 @@ BOOL CCdDrive::ReadCdData(void * pBuf, CdAddressMSF Address, int nSectors)
 	CdAddressMSF EndAddress;
 	EndAddress = LONG(Address) + nSectors;
 	ReadCD_MSF_CDB rcd(Address, EndAddress);
+	SCSI_SenseInfo ssi;
 
-	return SendScsiCommand( & rcd, pBuf, & Length,
-							SCSI_IOCTL_DATA_IN, NULL);
+	BOOL res = SendScsiCommand( & rcd, pBuf, & Length,
+								SCSI_IOCTL_DATA_IN, & ssi);
+	if (! res)
+	{
+		TRACE("READ CD error, SenseKey=%d, AdditionalSenseCode=%X\n",
+			ssi.SenseKey, ssi.AdditionalSenseCode);
+	}
+	if (Length != nSectors * 2352)
+	{
+		TRACE("Incomplete read! %d bytes instead of %d\n", Length, nSectors * 2352);
+	}
+	return res;
 }
 

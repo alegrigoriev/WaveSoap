@@ -211,6 +211,8 @@ CCdGrabbingDialog::CCdGrabbingDialog(CWnd* pParent /*=NULL*/)
 	m_RadioStoreImmediately = -1;
 	m_RadioStoreMultiple = -1;
 	m_sSaveFolderOrFile = _T("");
+	m_sAlbum = _T("");
+	m_sArtist = _T("");
 	//}}AFX_DATA_INIT
 	m_RadioAssignAttributes = 0;
 	m_RadioStoreImmediately = 0;
@@ -222,8 +224,17 @@ CCdGrabbingDialog::CCdGrabbingDialog(CWnd* pParent /*=NULL*/)
 	m_pWfx = NULL;
 	m_bNeedUpdateControls = TRUE;
 	m_MaxReadSpeed = 0;
-	m_SelectedReadSpeed = 64000000;    // use max available
 	m_DiskReady = DiskStateUnknown;
+
+	m_Profile.AddItem(_T("CdRead"), _T("BaseDirectory"), m_sSaveFolderOrFile);
+	m_Profile.AddItem(_T("CdRead"), _T("Speed"), m_SelectedReadSpeed, 64000000,
+					176400, 0x10000000);
+	m_Profile.AddBoolItem(_T("CdRead"),
+						_T("AssignToAllOrSelected"), m_RadioAssignAttributes, FALSE);
+	m_Profile.AddBoolItem(_T("CdRead"),
+						_T("EditFiles"), m_RadioStoreImmediately, FALSE);
+	m_Profile.AddBoolItem(_T("CdRead"),
+						_T("StoreSingleFile"), m_RadioStoreMultiple, FALSE);
 }
 
 CCdGrabbingDialog::~CCdGrabbingDialog()
@@ -234,6 +245,8 @@ void CCdGrabbingDialog::DoDataExchange(CDataExchange* pDX)
 {
 	CDialog::DoDataExchange(pDX);
 	//{{AFX_DATA_MAP(CCdGrabbingDialog)
+	DDX_Control(pDX, IDC_EDIT_ARTIST, m_eArtist);
+	DDX_Control(pDX, IDC_EDIT_ALBUM, m_eAlbum);
 	DDX_Control(pDX, IDC_EDIT_FOLDER_OR_FILE, m_eSaveFolderOrFile);
 	DDX_Control(pDX, IDC_STATIC_FORMAT, m_StaticFormat);
 	DDX_Control(pDX, IDC_COMBO_SPEED, m_SpeedCombo);
@@ -243,6 +256,8 @@ void CCdGrabbingDialog::DoDataExchange(CDataExchange* pDX)
 	DDX_Radio(pDX, IDC_RADIO_STORE_IMMEDIATELY, m_RadioStoreImmediately);
 	DDX_Radio(pDX, IDC_RADIO_STORE_MULTIPLE_FILES, m_RadioStoreMultiple);
 	DDX_Text(pDX, IDC_EDIT_FOLDER_OR_FILE, m_sSaveFolderOrFile);
+	DDX_Text(pDX, IDC_EDIT_ALBUM, m_sAlbum);
+	DDX_Text(pDX, IDC_EDIT_ARTIST, m_sArtist);
 	//}}AFX_DATA_MAP
 
 	if (pDX->m_bSaveAndValidate)
@@ -304,6 +319,7 @@ void CCdGrabbingDialog::DoDataExchange(CDataExchange* pDX)
 				m_Tracks[t].TrackFileName += Name;
 			}
 		}
+		m_Profile.UnloadAll();
 	}
 }
 
@@ -393,11 +409,11 @@ LRESULT CCdGrabbingDialog::OnKickIdle(WPARAM, LPARAM)
 
 BOOL CCdGrabbingDialog::OpenDrive(TCHAR letter)
 {
+	m_DiskReady = DiskStateUnknown;
 	if ( ! m_CdDrive.Open(letter))
 	{
 		return FALSE;
 	}
-
 	m_CdDrive.DisableMediaChangeDetection();
 	return TRUE;
 }
@@ -446,14 +462,23 @@ void CCdGrabbingDialog::ReloadTrackList()
 	m_DiskReady = DiskStateReady;
 	m_lbTracks.DeleteAllItems();
 
-	int MaxSpeed;
-	m_CdDrive.GetMaxReadSpeed( & MaxSpeed);
-
 	// Get disk ID
 	m_DiskID = m_CdDrive.GetDiskID();
-	CString Album;
-	CString Artist;
 	// TODO: find artist and album info in cdplayer.ini
+
+	CApplicationProfile CdPlayerIni;
+	CdPlayerIni.m_pszProfileName = _T("cdplayer.ini");
+
+	CString SectionName;
+	SectionName.Format("%X", m_DiskID);
+
+	m_sAlbum = CdPlayerIni.GetProfileString(SectionName, _T("title"), "");
+	m_eAlbum.SetWindowText(m_sAlbum);
+
+	m_sArtist = CdPlayerIni.GetProfileString(SectionName, _T("artist"), "");
+	m_eArtist.SetWindowText(m_sArtist);
+
+	int NumTracks = CdPlayerIni.GetProfileInt(SectionName, _T("numtracks"), 0);
 
 	m_Tracks.resize(m_toc.LastTrack - m_toc.FirstTrack + 1);
 
@@ -473,21 +498,24 @@ void CCdGrabbingDialog::ReloadTrackList()
 		UINT StateImage = 0, StateImageMask = 0;
 		if (m_toc.TrackData[tr].Control & 0xC)
 		{
-			s.LoadString(IDS_DATA_TRACK);
+			pTrack->Track.LoadString(IDS_DATA_TRACK);
 			pTrack->IsAudio = false;
 			pTrack->Checked = false;
 		}
 		else
 		{
 			s.Format(IDS_TRACK_NUM_FORMAT, m_toc.TrackData[tr].TrackNumber);
-			pTrack->Album = Album;
-			pTrack->Artist = Artist;
+			TCHAR buf[10];
+			_stprintf(buf, "%d", tr);
+			pTrack->Track = CdPlayerIni.GetProfileString(SectionName, buf, s);
+
+			pTrack->Album = m_sAlbum;
+			pTrack->Artist = m_sArtist;
 			pTrack->IsAudio = true;
 			StateImage = 2;    // checked
 			StateImageMask = LVIS_STATEIMAGEMASK;
 			pTrack->Checked = TRUE;
 		}
-		pTrack->Track = s;
 		pTrack->TrackBegin.Minute = m_toc.TrackData[tr].Address[1];
 		pTrack->TrackBegin.Second = m_toc.TrackData[tr].Address[2];
 		pTrack->TrackBegin.Frame = m_toc.TrackData[tr].Address[3];
@@ -500,7 +528,7 @@ void CCdGrabbingDialog::ReloadTrackList()
 			0,
 			INDEXTOSTATEIMAGEMASK(StateImage),
 			StateImageMask,
-			LPTSTR(LPCTSTR(s)),
+			LPTSTR(LPCTSTR(pTrack->Track)),
 			0, 0, 0, 0};
 		m_lbTracks.InsertItem( & item1);
 

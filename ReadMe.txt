@@ -1,5 +1,6 @@
 Known problems and tasks:
 
+Set CD reading speed !
 Pass wave format to CD grabbing dialog
 check file length param on new file creation
 Add flush control to CDirectFile
@@ -64,6 +65,8 @@ samples with 32767, -32768 are not visible
 Log Off query doesn't close the active dialog. Recursion is possible. Make sure to check after Cancel
 
 Fixed:
+No status string during CD reading?
+When opening CD drive, set its media state to undefined
 No Disk In Drive has a checkmark
 "No Disk in drive" is updated all the time
 CD list combo height too low
@@ -102,6 +105,7 @@ Save As dialog is not centered first time (comdlg problem?)
 ??? When time/seconds format is set for status bar, MM:SS is actually shown
 
 Done:
+make CDRAL.DLL first choice
 Disable label edit, if the track is not audio
 Draw gray background outside file area on FFT
 Add overflow dialog on resample	and other waveproc
