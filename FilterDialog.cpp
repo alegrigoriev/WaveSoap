@@ -371,10 +371,8 @@ CFilterGraphWnd::CFilterGraphWnd()
 	m_bGotFocus = false;
 	m_PointWithFocus = 0;
 
-	m_Gain[HpfNotchIndex] = 0.000003;
 	m_Gain[HpfPassbandIndex] = 0.9;
 	m_Gain[HpfStopbandIndex] = 0.001;
-	m_Frequencies[HpfNotchIndex] = M_PI / 2000.;
 	m_Frequencies[HpfPassbandIndex] = M_PI / 250.;
 	m_Frequencies[HpfStopbandIndex] = M_PI / 500.;
 
@@ -493,7 +491,7 @@ void CFilterGraphWnd::OnPaint()
 		double f;
 		f = M_PI * pow(1000., (x + 1. - cr.Width()) / cr.Width());
 		double gain = abs(CalculateResponse(f));
-		int y = (0.25 - log10(gain)) * cr.Height() / 4.5;
+		int y = GainToPosY(gain, cr.Height());
 		if (x == ur.left)
 		{
 			dc.MoveTo(x, y);
@@ -536,8 +534,8 @@ void CFilterGraphWnd::OnPaint()
 	{
 		// draw circles around the reference points
 		int x = (1. + log10(m_Frequencies[i] / M_PI) / 3.) * cr.Width() - 1;
-		// full range: 5 to -85 db
-		int y = (0.25 - log10(m_Gain[i])) * cr.Height() / 4.5;
+		int y = GainToPosY(m_Gain[i], cr.Height());
+
 		int SrcOffset = 0;
 		if (m_DotCaretIsOn && i == m_PointWithFocus)
 		{
@@ -592,11 +590,22 @@ void CFilterGraphWnd::OnMouseMove(UINT nFlags, CPoint point)
 		{
 			point.y = cr.bottom - 1;
 		}
-		// full range: 5 to -85 db
-		double gainDb = 5. - point.y * 85. / cr.Height();
+		if (point.x < 0)
+		{
+			point.x = 0;
+		}
+		if (point.x >= cr.right)
+		{
+			point.x = cr.right - 1;
+		}
 
-		SetPointGainDb(m_PointWithFocus, gainDb);
-		// TODO SetPointFrequency(GetCurrentPointFrequencyHz());
+		SetCurrentPointGainDb(PosYToGainDb(point.y, cr.Height()));
+		if (GetFilterPointPixel(m_PointWithFocus) != point.x)
+		{
+			SetFilterPointPixel(m_PointWithFocus, point.x);
+			RebuildFilters();
+			Invalidate();
+		}
 		NotifyParentDlg();
 	}
 }
@@ -713,9 +722,6 @@ void CFilterGraphWnd::SetPointGainDb(int nPoint, double GainDb)
 	}
 	switch (nPoint)
 	{
-	case HpfNotchIndex:
-		return;
-		break;
 	case HpfStopbandIndex:
 		if (GainDb > -10.)
 		{
@@ -1080,6 +1086,19 @@ void CFilterDialog::OnButtonSaveAs()
 	m_Profile.ExportSection("Filter", FileName);
 }
 
+int CFilterGraphWnd::GetFilterPointPixel(int FilterPoint)
+{
+	CRect cr;
+	GetClientRect( & cr);
+	return (1. + log10(m_Frequencies[FilterPoint] / M_PI) / 3.) * cr.Width() - 1;
+}
+void CFilterGraphWnd::SetFilterPointPixel(int FilterPoint, int PointPixel)
+{
+	CRect cr;
+	GetClientRect( & cr);
+	m_Frequencies[FilterPoint] = M_PI * pow(10., ((PointPixel + 1.) / cr.Width() - 1.) * 3);
+}
+
 void CFilterGraphWnd::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 {
 	CWnd::OnKeyDown(nChar, nRepCnt, nFlags);
@@ -1095,39 +1114,7 @@ void CFilterGraphWnd::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 	case VK_UP:
 		// 1 dB up
 		GainDb = 1 + floor(20. * log10(m_Gain[m_PointWithFocus] * 1.00001));
-		if (GainDb > 0.)
-		{
-			GainDb = 0.;
-		}
-		switch (m_PointWithFocus)
-		{
-		case HpfNotchIndex:
-			GainDb = -90.;
-			break;
-		case HpfStopbandIndex:
-			if (GainDb > -10.)
-			{
-				GainDb = -10.;
-			}
-			break;
-		case HpfPassbandIndex:
-			break;
-		case NotchBeginIndex:
-			GainDb = -3.;
-			break;
-		case NotchEndIndex:
-			GainDb = -3.;
-			break;
-		case LpfPassbandIndex:
-			break;
-		case LpfStopbandIndex:
-			if (GainDb > -10.)
-			{
-				GainDb = -10.;
-			}
-			break;
-		}
-		SetPointGainDb(m_PointWithFocus, GainDb);
+		SetCurrentPointGainDb(GainDb);
 		DrawDotCaret(true);
 		NotifyParentDlg();
 		return;
@@ -1135,75 +1122,93 @@ void CFilterGraphWnd::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 	case VK_DOWN:
 		// 1 dB down
 		GainDb = ceil(20. * log10(m_Gain[m_PointWithFocus] / 1.00001)) - 1.;
-		if (GainDb < -90.)
-		{
-			GainDb = -90.;
-		}
-		switch (m_PointWithFocus)
-		{
-		case HpfNotchIndex:
-			GainDb = -90.;
-			break;
-		case HpfStopbandIndex:
-			break;
-		case HpfPassbandIndex:
-			if (GainDb < -6.)
-			{
-				GainDb = -6.;
-			}
-			break;
-		case NotchBeginIndex:
-			GainDb = -3.;
-			break;
-		case NotchEndIndex:
-			GainDb = -3.;
-			break;
-		case LpfPassbandIndex:
-			if (GainDb < -6.)
-			{
-				GainDb = -6.;
-			}
-			break;
-		case LpfStopbandIndex:
-			break;
-		}
-		SetPointGainDb(m_PointWithFocus, GainDb);
+		SetCurrentPointGainDb(GainDb);
 		DrawDotCaret(true);
 		NotifyParentDlg();
 		return;
 		break;
 	case VK_LEFT:
-		// Shift+Left - shift focused point
-		// between left and right points must be at least 1 pixel
 
 		// focus to the prev band
 		if (CtrlPressed)
 		{
 			// Ctrl+Left - shift the whole transition band
+			int BeginPoint, EndPoint;
 			switch (m_PointWithFocus)
 			{
-			case HpfNotchIndex:
-				break;
 			case HpfStopbandIndex:
-				break;
 			case HpfPassbandIndex:
+				BeginPoint = HpfStopbandIndex;
+				EndPoint = HpfPassbandIndex;
 				break;
 			case NotchBeginIndex:
-				break;
 			case NotchEndIndex:
+				BeginPoint = NotchBeginIndex;
+				EndPoint = NotchEndIndex;
 				break;
 			case LpfPassbandIndex:
-				break;
 			case LpfStopbandIndex:
+				BeginPoint = LpfPassbandIndex;
+				EndPoint = LpfStopbandIndex;
 				break;
+			default:
+				return;
 			}
+
+			int TransitionBegin = GetFilterPointPixel(BeginPoint);
+			int TransitionEnd = GetFilterPointPixel(EndPoint);
+			if (TransitionBegin <= 0)
+			{
+				return;
+			}
+			if (TransitionEnd > TransitionBegin)
+			{
+				TransitionEnd--;
+			}
+			TransitionBegin--;
+
+			SetFilterPointPixel(BeginPoint, TransitionBegin);
+			SetFilterPointPixel(EndPoint, TransitionEnd);
+			RebuildFilters();
+			Invalidate();
+			NotifyParentDlg();
 		}
 		else if (ShiftPressed)
 		{
+			// Shift+Left - shift focused point
+			// between left and right points must be at least 1 pixel
+			int BeginPoint, EndPoint, ChangePoint;
 			switch (m_PointWithFocus)
 			{
-			case HpfNotchIndex:
+			case HpfStopbandIndex:
+				BeginPoint = HpfStopbandIndex;
+				EndPoint = HpfPassbandIndex;
 				break;
+			case HpfPassbandIndex:
+				BeginPoint = HpfStopbandIndex;
+				EndPoint = HpfPassbandIndex;
+				break;
+			case NotchBeginIndex:
+				BeginPoint = NotchBeginIndex;
+				EndPoint = NotchEndIndex;
+				break;
+			case NotchEndIndex:
+				BeginPoint = NotchBeginIndex;
+				EndPoint = NotchEndIndex;
+				break;
+			case LpfPassbandIndex:
+				BeginPoint = LpfPassbandIndex;
+				EndPoint = LpfStopbandIndex;
+				break;
+			case LpfStopbandIndex:
+				BeginPoint = LpfPassbandIndex;
+				EndPoint = LpfStopbandIndex;
+				break;
+			default:
+				return;
+			}
+			switch (m_PointWithFocus)
+			{
 			case HpfStopbandIndex:
 				break;
 			case HpfPassbandIndex:
@@ -1224,12 +1229,8 @@ void CFilterGraphWnd::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 			int NewFocusPoint = m_PointWithFocus;
 			switch (m_PointWithFocus)
 			{
-			case HpfNotchIndex:
-				// nothing
-				return;
-				break;
 			case HpfStopbandIndex:
-				NewFocusPoint = HpfNotchIndex;
+				// nothing
 				break;
 			case HpfPassbandIndex:
 				NewFocusPoint = HpfStopbandIndex;
@@ -1265,50 +1266,95 @@ void CFilterGraphWnd::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 		}
 		break;
 	case VK_RIGHT:
-		// focus to the next band
-	{
-		// find next visible point
-		int NewFocusPoint = m_PointWithFocus;
-		switch (m_PointWithFocus)
+		if (CtrlPressed)
 		{
-		case HpfNotchIndex:
-			NewFocusPoint = HpfStopbandIndex;
-			break;
-		case HpfStopbandIndex:
-			NewFocusPoint = HpfPassbandIndex;
-			break;
-		case HpfPassbandIndex:
-			if (m_bNotchFilter)
+			// Ctrl+Right - shift the whole transition band
+			CRect cr;
+			GetClientRect( & cr);
+
+			int BeginPoint, EndPoint;
+
+			switch (m_PointWithFocus)
 			{
-				NewFocusPoint = NotchBeginIndex;
+			case HpfStopbandIndex:
+			case HpfPassbandIndex:
+				BeginPoint = HpfStopbandIndex;
+				EndPoint = HpfPassbandIndex;
+				break;
+			case NotchBeginIndex:
+			case NotchEndIndex:
+				BeginPoint = NotchBeginIndex;
+				EndPoint = NotchEndIndex;
+				break;
+			case LpfPassbandIndex:
+			case LpfStopbandIndex:
+				BeginPoint = LpfPassbandIndex;
+				EndPoint = LpfStopbandIndex;
+				break;
+			default:
+				return;
 			}
-			else if (m_bLowPass)
+
+			int TransitionBegin = GetFilterPointPixel(BeginPoint);
+			int TransitionEnd = GetFilterPointPixel(EndPoint);
+			if (TransitionEnd >= cr.right - 1)
 			{
-				NewFocusPoint = LpfPassbandIndex;
+				return;
 			}
-			break;
-		case NotchBeginIndex:
-			NewFocusPoint = NotchEndIndex;
-			break;
-		case NotchEndIndex:
-			if (m_bLowPass)
+			if (TransitionEnd > TransitionBegin)
 			{
-				NewFocusPoint = LpfPassbandIndex;
+				TransitionBegin ++;
 			}
-			break;
-		case LpfPassbandIndex:
-			NewFocusPoint = LpfStopbandIndex;
-			break;
-		case LpfStopbandIndex:
-			// nothing
-			break;
-		}
-		if (m_PointWithFocus != NewFocusPoint)
-		{
-			SetFocusPoint(NewFocusPoint);
+			TransitionEnd ++;
+
+			SetFilterPointPixel(BeginPoint, TransitionBegin);
+			SetFilterPointPixel(EndPoint, TransitionEnd);
+			RebuildFilters();
+			Invalidate();
 			NotifyParentDlg();
 		}
-	}
+		else
+		{
+			// focus to the next band
+			// find next visible point
+			int NewFocusPoint = m_PointWithFocus;
+			switch (m_PointWithFocus)
+			{
+			case HpfStopbandIndex:
+				NewFocusPoint = HpfPassbandIndex;
+				break;
+			case HpfPassbandIndex:
+				if (m_bNotchFilter)
+				{
+					NewFocusPoint = NotchBeginIndex;
+				}
+				else if (m_bLowPass)
+				{
+					NewFocusPoint = LpfPassbandIndex;
+				}
+				break;
+			case NotchBeginIndex:
+				NewFocusPoint = NotchEndIndex;
+				break;
+			case NotchEndIndex:
+				if (m_bLowPass)
+				{
+					NewFocusPoint = LpfPassbandIndex;
+				}
+				break;
+			case LpfPassbandIndex:
+				NewFocusPoint = LpfStopbandIndex;
+				break;
+			case LpfStopbandIndex:
+				// nothing
+				break;
+			}
+			if (m_PointWithFocus != NewFocusPoint)
+			{
+				SetFocusPoint(NewFocusPoint);
+				NotifyParentDlg();
+			}
+		}
 		break;
 	}
 }
@@ -1333,7 +1379,7 @@ int CFilterGraphWnd::GetHitCode(POINT point)
 		// find if the mouse gets into a focus point
 		int x = (1. + log10(m_Frequencies[i] / M_PI) / 3.) * cr.Width() - 1;
 		// full range: 5 to -85 db
-		int y = (0.25 - log10(m_Gain[i])) * cr.Height() / 4.5;
+		int y = GainToPosY(m_Gain[i], cr.Height());
 		CRect r(x - dx, y - dy, x + dx, y + dy);
 		CRect r1(x - dx, cr.top, x + dx, cr.bottom);
 
@@ -1382,22 +1428,26 @@ void CFilterGraphWnd::OnTimer(UINT nIDEvent)
 	}
 }
 
+void CFilterGraphWnd::InvalidateGraphPoint(double Frequency, double Gain)
+{
+	CRect cr;
+	GetClientRect( & cr);
+
+	int x = (1. + log10(Frequency / M_PI) / 3.) * cr.Width() - 1;
+	int y = GainToPosY(Gain, cr.Height());
+
+	int dx = GetSystemMetrics(SM_CXDRAG);
+	int dy = GetSystemMetrics(SM_CYDRAG);
+	CRect r(x - dx, y - dy, x + dx, y + dy);
+	InvalidateRect( & r);
+}
+
 void CFilterGraphWnd::DrawDotCaret(bool state)
 {
 	if (m_DotCaretIsOn != state)
 	{
 		m_DotCaretIsOn = state;
-		CRect cr;
-		GetClientRect( & cr);
-
-		int x = (1. + log10(m_Frequencies[m_PointWithFocus] / M_PI) / 3.) * cr.Width() - 1;
-		// full range: 5 to -85 db
-		int y = (0.25 - log10(m_Gain[m_PointWithFocus])) * cr.Height() / 4.5;
-
-		int dx = GetSystemMetrics(SM_CXDRAG);
-		int dy = GetSystemMetrics(SM_CYDRAG);
-		CRect r(x - dx, y - dy, x + dx, y + dy);
-		InvalidateRect( & r);
+		InvalidateGraphPoint(m_Frequencies[m_PointWithFocus], m_Gain[m_PointWithFocus]);
 	}
 	if (m_bGotFocus && ! m_bButtonPressed)
 	{
@@ -1484,8 +1534,7 @@ void CFilterGraphWnd::OnLButtonDblClk(UINT nFlags, CPoint point)
 	{
 		point.y = cr.bottom - 1;
 	}
-	double gainDb = 5. - point.y * 85. / cr.Height();
-	SetPointGainDb(m_PointWithFocus, gainDb);
+	SetCurrentPointGainDb(PosYToGainDb(point.y, cr.Height()));
 	NotifyParentDlg();
 }
 

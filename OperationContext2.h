@@ -8,6 +8,7 @@
 
 #include "OperationContext.h"
 #include "EqualizerDialog.h"
+#include "FilterDialog.h"
 
 class CExpressionEvaluationContext : public COperationContext
 {
@@ -254,7 +255,6 @@ public:
 
 	BOOL m_bClipped;
 	BOOL m_bZeroPhase;
-	BOOL m_bSecondPass;
 	double m_MaxClipped;
 
 	// the coefficients are: 3 numerator's coeffs and 3 denominator's coeffs
@@ -270,6 +270,43 @@ public:
 private:
 	double CalculateResult(int ch, int Input);
 };
+
+class CFilterContext: public COperationContext
+{
+public:
+	CFilterContext(CWaveSoapFrontDoc * pDoc,
+					LPCTSTR StatusString, LPCTSTR OperationName);
+	~CFilterContext();
+
+	BOOL m_bClipped;
+	BOOL m_bZeroPhase;
+	double m_MaxClipped;
+
+	// the coefficients are: 3 numerator's coeffs and 3 denominator's coeffs
+	// results of the filter sections are ADDED
+	// if order==0, no filter
+	int     m_nLpfOrder;    // low pass filter order
+	double m_LpfCoeffs[MaxFilterOrder][6];
+	double m_PrevLpfSamples[2][MaxFilterOrder][4];
+
+	// results of the filter sections are ADDED
+	int     m_nHpfOrder;    // high pass filter order
+	double m_HpfCoeffs[MaxFilterOrder][6];
+	double m_PrevHpfSamples[2][MaxFilterOrder][4];
+
+	// results of the filter sections are MULTIPLIED
+	int     m_nNotchOrder;
+	double m_NotchCoeffs[MaxFilterOrder][6];
+	double m_PrevNotchSamples[2][MaxFilterOrder][4];
+
+	virtual BOOL ProcessBuffer(void * buf, size_t len, DWORD offset, BOOL bBackward = FALSE);
+	virtual void PostRetire(BOOL bChildContext = FALSE);
+	virtual BOOL Init();
+	virtual BOOL InitPass(int nPass);
+private:
+	double CalculateResult(int ch, int Input);
+};
+
 class CSwapChannelsContext : public COperationContext
 {
 public:
