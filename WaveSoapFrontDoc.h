@@ -214,19 +214,20 @@ public:
 
 	BOOL OnSaveDocument(LPCTSTR lpszPathName, DWORD flags, WAVEFORMATEX const * pWf);
 
-	BOOL OnSaveFileOrPart(int flags, LPCTSTR FullTargetName, WAVEFORMATEX const * pWf,
+	BOOL OnSaveFileOrPart(class COperationContext ** ppOp, int flags, LPCTSTR FullTargetName, WAVEFORMATEX const * pWf,
 						SAMPLE_INDEX Begin = 0, SAMPLE_INDEX End = LAST_SAMPLE);
-	BOOL OnSaveDirectFile();
-	BOOL OnSaveBufferedPcmFile(int flags, LPCTSTR FullTargetName);
-	BOOL OnSaveBufferedPcmFileCopy(int flags, LPCTSTR FullTargetName);
 
-	BOOL OnSaveConvertedFile(int flags, LPCTSTR FullTargetName, WAVEFORMATEX const * pWf,
+	BOOL OnSaveDirectFile();
+	BOOL OnSaveBufferedPcmFile(class COperationContext ** ppOp, int flags, LPCTSTR FullTargetName);
+	BOOL OnSaveBufferedPcmFileCopy(class COperationContext ** ppOp, int flags, LPCTSTR FullTargetName);
+
+	BOOL OnSaveConvertedFile(class COperationContext ** ppOp, int flags, LPCTSTR FullTargetName, WAVEFORMATEX const * pWf,
 							SAMPLE_INDEX Begin = 0, SAMPLE_INDEX End = LAST_SAMPLE);
-	BOOL OnSaveMp3File(int flags, LPCTSTR FullTargetName, WAVEFORMATEX const * pWf,
+	BOOL OnSaveMp3File(class COperationContext ** ppOp, int flags, LPCTSTR FullTargetName, WAVEFORMATEX const * pWf,
 						SAMPLE_INDEX Begin = 0, SAMPLE_INDEX End = LAST_SAMPLE);
-	BOOL OnSaveWmaFile(int flags, LPCTSTR FullTargetName, WAVEFORMATEX const * pWf,
+	BOOL OnSaveWmaFile(class COperationContext ** ppOp, int flags, LPCTSTR FullTargetName, WAVEFORMATEX const * pWf,
 						SAMPLE_INDEX Begin = 0, SAMPLE_INDEX End = LAST_SAMPLE);
-	BOOL OnSaveRawFile(int flags, LPCTSTR FullTargetName, WAVEFORMATEX const * pWf,
+	BOOL OnSaveRawFile(class COperationContext ** ppOp, int flags, LPCTSTR FullTargetName, WAVEFORMATEX const * pWf,
 						SAMPLE_INDEX Begin = 0, SAMPLE_INDEX End = LAST_SAMPLE);
 
 	// flags OpenDocumentReadOnly - ReadOnly, 2 - DirectMode
