@@ -12,6 +12,8 @@
 #include "UiUpdatedDlg.h"
 #include "ResizableDialog.h"
 #include "DialogWithSelection.h"
+#include "OperationDialogs.h"
+#include "resource.h"
 
 #include "CdDrive.h"
 #include <vector>
@@ -343,6 +345,35 @@ protected:
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 };
+
+class CMarkerRegionDialog : public CSelectionDialog
+{
+	typedef CSelectionDialog BaseClass;
+public:
+	CMarkerRegionDialog(SAMPLE_INDEX Start, SAMPLE_INDEX End, SAMPLE_INDEX CaretPos,
+						CWaveFile & WaveFile, int TimeFormat,
+						CWnd* pParent = NULL);   // standard constructor
+	// Dialog Data
+	//{{AFX_DATA(CSelectionDialog)
+	enum { IDD = IDD_REGION_DIALOG };
+	//}}AFX_DATA
+
+// Overrides
+	// ClassWizard generated virtual function overrides
+	//{{AFX_VIRTUAL(CSelectionDialog)
+protected:
+	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV support
+	//}}AFX_VIRTUAL
+
+// Implementation
+protected:
+
+	// Generated message map functions
+	//{{AFX_MSG(CSelectionDialog)
+	//}}AFX_MSG
+	DECLARE_MESSAGE_MAP()
+};
+
 //{{AFX_INSERT_LOCATION}}
 // Microsoft Visual C++ will insert additional declarations immediately before the previous line.
 
