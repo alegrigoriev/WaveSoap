@@ -106,7 +106,10 @@
 #define IDD_DIALOG_BATCH_CONVERSION     185
 #define IDD_DIALOG_BATCH_SAVE_TARGET    186
 #define IDR_MENU_CDGRAB                 187
+#define IDD_DIALOG_WITH_HISTORY_TEMPLATE_V4 187
 #define IDI_ICON_CD                     188
+#define IDD_DIALOG_OPEN_TEMPLATE_V7     188
+#define IDD_DIALOG_WITH_HISTORY_TEMPLATE_V5 188
 #define IDB_BITMAP_PLAY                 189
 #define IDB_BITMAP_EJECT                190
 #define IDB_BITMAP_STOP                 191
@@ -567,6 +570,7 @@
 #define IDS_CD_DRIVE_BUSY               32959
 #define IDS_WMA_ENCODER_NOT_AVILABLE    32960
 #define IDS_REPLACEYESNO                32961
+#define IDC_FILE_READ_ERROR             32962
 #define ID_FILE_PROPERTIES              40000
 #define ID_VIEW_ZOOMVERT_NORMAL         40001
 #define ID_VIEW_ZOOMIN_HOR_FULL         40002
