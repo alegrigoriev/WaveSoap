@@ -1179,7 +1179,7 @@ BOOL CWaveSoapFrontDoc::InitUndoRedo(CUndoRedoContext * pContext)
 			pResize->m_pUndoContext->m_Flags |= RedoContext;
 		}
 
-		if (FALSE == m_WavFile.SetFileLength(pContext->m_RestoredLength))
+		if (FALSE == m_WavFile.SetFileLengthSamples(pContext->m_RestoredLength))
 		{
 			delete pResize->m_pUndoContext;
 			pResize->m_pUndoContext = NULL;
@@ -1187,13 +1187,7 @@ BOOL CWaveSoapFrontDoc::InitUndoRedo(CUndoRedoContext * pContext)
 			return FALSE;
 		}
 
-		MMCKINFO * pDatachunk = m_WavFile.GetDataChunk();
-
-		pDatachunk->cksize = pContext->m_RestoredLength - pDatachunk->dwDataOffset;
-		pDatachunk->dwFlags |= MMIO_DIRTY;
-
-		long NewLength = pDatachunk->cksize / WaveSampleSize();
-		SoundChanged(WaveFileID(), 0, 0, NewLength);
+		SoundChanged(WaveFileID(), 0, 0, WaveFileSamples());
 	}
 	else
 	{
@@ -3381,6 +3375,8 @@ void CWaveSoapFrontDoc::SetSampleRate(unsigned SampleRate)
 	}
 	pWf->nSamplesPerSec = SampleRate;
 	m_WavFile.GetFmtChunk()->dwFlags |= MMIO_DIRTY;
+	m_WavFile.CommitChanges();
+
 	SetModifiedFlag();
 	UpdateAllViews(NULL, UpdateSampleRateChanged);
 }
@@ -3516,6 +3512,8 @@ void CWaveSoapFrontDoc::ChangeChannels(NUMBER_OF_CHANNELS nChannels)
 
 		pWf->nChannels = nChannels;
 		m_WavFile.GetFmtChunk()->dwFlags |= MMIO_DIRTY;
+		m_WavFile.CommitChanges();
+
 		SetModifiedFlag();
 		UpdateAllViews(NULL);
 		// update wave view boundaries
