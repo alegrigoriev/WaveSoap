@@ -1522,7 +1522,10 @@ BOOL CLowFrequencySuppressDialog::OnInitDialog()
 
 
 CExpressionEvaluationDialog::CExpressionEvaluationDialog(CWnd* pParent /*=NULL*/)
-	: CDialog(CExpressionEvaluationDialog::IDD, pParent)
+	: CDialog(CExpressionEvaluationDialog::IDD, pParent),
+	m_ExpressionGroupSelected(0),
+	m_ExpressionSelected(0),
+	m_ExpressionTabSelected(0)
 {
 	//{{AFX_DATA_INIT(CExpressionEvaluationDialog)
 	m_bUndo = FALSE;
@@ -1543,9 +1546,7 @@ void CExpressionEvaluationDialog::DoDataExchange(CDataExchange* pDX)
 	//}}AFX_DATA_MAP
 	if (pDX->m_bSaveAndValidate)
 	{
-		CThisApp * pApp = GetApp();
-		pApp->m_ExpressionGroupSelected = m_SavedExprTabDlg.m_ExpressionGroupSelected;
-		pApp->m_ExpressionSelected = m_SavedExprTabDlg.m_ExpressionSelected;
+		m_Profile.FlushAll();
 	}
 
 }
@@ -2221,14 +2222,21 @@ void CExpressionEvaluationDialog::ShowHideTabDialogs()
 	m_SavedExprTabDlg.EnableWindow(3 == sel);
 	m_SavedExprTabDlg.ShowWindow((3 == sel) ? SW_SHOWNA : SW_HIDE);
 
-	GetApp()->m_ExpressionTabSelected = sel;
+	m_ExpressionTabSelected = sel;
 }
 
 BOOL CExpressionEvaluationDialog::OnInitDialog()
 {
-	CThisApp * pApp = GetApp();
-	m_SavedExprTabDlg.m_ExpressionGroupSelected = pApp->m_ExpressionGroupSelected;
-	m_SavedExprTabDlg.m_ExpressionSelected = pApp->m_ExpressionSelected;
+
+	m_Profile.AddItem(_T("Settings\\Expressions"), _T("ExpressionGroupSelected"),
+					m_SavedExprTabDlg.m_ExpressionGroupSelected, 0, 0, 100);
+	m_Profile.AddItem(_T("Settings\\Expressions"), _T("ExpressionSelected"),
+					m_SavedExprTabDlg.m_ExpressionSelected, 0, 0, 1000);
+	m_Profile.AddItem(_T("Settings\\Expressions"), _T("ExpressionTabSelected"),
+					m_ExpressionTabSelected, 0, 0, 3);
+	m_Profile.AddItem(_T("Settings\\Expressions"), _T("FrequencyArgument"),
+					m_OperandsTabDlg.m_dFrequency, 500., 0., 1000000.);
+	m_Profile.AddItem(_T("Settings\\Expressions"), _T("EvaluateExpression"), m_sExpression);
 
 	m_FunctionsTabDlg.Create(IDD_FUNCTIONS_TAB, this);
 	m_OperandsTabDlg.Create(IDD_OPERANDS_TAB, this);
@@ -2263,7 +2271,7 @@ BOOL CExpressionEvaluationDialog::OnInitDialog()
 	m_TabTokens.InsertItem(2, _T("Operators"));
 	m_TabTokens.InsertItem(3, _T("Saved Expressions"));
 
-	m_TabTokens.SetCurSel(pApp->m_ExpressionTabSelected);
+	m_TabTokens.SetCurSel(m_ExpressionTabSelected);
 	ShowHideTabDialogs();
 
 	UpdateSelectionStatic();

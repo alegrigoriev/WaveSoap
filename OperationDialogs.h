@@ -491,6 +491,11 @@ public:
 	const WAVEFORMATEX * m_pWf;
 	class CExpressionEvaluationContext * m_pContext;
 
+
+	int m_ExpressionGroupSelected;
+	int m_ExpressionSelected;
+	int m_ExpressionTabSelected;
+
 	void UpdateSelectionStatic();
 // Overrides
 	// ClassWizard generated virtual function overrides
@@ -518,6 +523,8 @@ protected:
 	afx_msg void OnChangeEditExpression();
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
+	// m_Profile will be conrtructed last and destructed first
+	CApplicationProfile m_Profile;
 };
 /////////////////////////////////////////////////////////////////////////////
 // CDeclickDialog dialog

@@ -2,8 +2,7 @@ Known problems and tasks:
 
 Make "New File parameters" dialog
 Support "Play" in selection dialog
-Move most persistent dialog parameters to dialogs, to update registry dynamically
-File specified in the command line is not open
+Open files specified in the command line
 Add CD grabbing
 Add noise reduction estimation in spectrum section view
 Add MP3 save
@@ -54,6 +53,7 @@ Insert Silence of zero length still tries to modify the file
 Multiple MP3 files open: all but one get stuck
 
 Done:
+Move most persistent dialog parameters to dialogs, to update registry dynamically
 Notify when there is overflow during expression evaluation
 Make group "All Expressions" in expression evaluation dialog
 Make "Custom samplerate" dialog

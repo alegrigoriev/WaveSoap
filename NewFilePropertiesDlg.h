@@ -9,6 +9,7 @@
 
 /////////////////////////////////////////////////////////////////////////////
 // CNewFilePropertiesDlg dialog
+#include "TimeEdit.h"
 
 class CNewFilePropertiesDlg : public CDialog
 {
@@ -19,9 +20,13 @@ public:
 // Dialog Data
 	//{{AFX_DATA(CNewFilePropertiesDlg)
 	enum { IDD = IDD_DIALOG_NEW_FILE_PARAMETERS };
-	// NOTE: the ClassWizard will add data members here
+	CTimeEdit	m_eLength;
+	CTimeSpinCtrl	m_SpinLength;
+	BOOL	m_bShowOnlyWhenShift;
+	int		m_MonoStereo;
+	int m_nSamplingRate;
 	//}}AFX_DATA
-
+	long m_Length;
 
 // Overrides
 	// ClassWizard generated virtual function overrides
@@ -35,7 +40,7 @@ protected:
 
 	// Generated message map functions
 	//{{AFX_MSG(CNewFilePropertiesDlg)
-	// NOTE: the ClassWizard will add member functions here
+	virtual BOOL OnInitDialog();
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 };
