@@ -146,8 +146,23 @@ class CSelectionDialog : public CDialog
 {
 // Construction
 public:
-	CSelectionDialog(CWnd* pParent = NULL);   // standard constructor
+	CSelectionDialog(SAMPLE_INDEX Start, SAMPLE_INDEX End, SAMPLE_INDEX CaretPos,
+					CHANNEL_MASK Channel,
+					NUMBER_OF_SAMPLES TotalSamples, const WAVEFORMATEX * pWf, int TimeFormat,
+					CWnd* pParent = NULL);   // standard constructor
 
+	SAMPLE_INDEX GetStart() const
+	{
+		return m_Start;
+	}
+	SAMPLE_INDEX GetEnd() const
+	{
+		return m_End;
+	}
+	CHANNEL_MASK GetChannel() const
+	{
+		return m_Chan;
+	}
 // Dialog Data
 	//{{AFX_DATA(CSelectionDialog)
 	enum { IDD = IDD_SELECTION_DIALOG };
@@ -161,26 +176,27 @@ public:
 	int		m_TimeFormatIndex;
 	int		m_SelectionNumber;
 	//}}AFX_DATA
-	int		m_Chan;
+protected:
+	CHANNEL_MASK m_Chan;
 	int		m_TimeFormat;
-	ULONG m_Start;
-	ULONG m_End;
-	ULONG m_CaretPosition;
-	ULONG m_Length;
-	ULONG m_FileLength;
+	SAMPLE_INDEX m_Start;
+	SAMPLE_INDEX m_End;
+	SAMPLE_INDEX m_CaretPosition;
+	NUMBER_OF_SAMPLES m_Length;
+	NUMBER_OF_SAMPLES m_FileLength;
 	const WAVEFORMATEX * m_pWf;
 
 	struct Selection
 	{
-		long begin;
-		long end;
+		SAMPLE_INDEX begin;
+		SAMPLE_INDEX end;
 	};
 
 	std::vector<Selection> m_Selections;
 
-	void AddSelection(LPCTSTR Name, long begin, long end);
-	void AddSelection(UINT id, long begin, long end);
-	int FindSelection(long begin, long end);
+	void AddSelection(LPCTSTR Name, SAMPLE_INDEX begin, SAMPLE_INDEX end);
+	void AddSelection(UINT id, SAMPLE_INDEX begin, SAMPLE_INDEX end);
+	int FindSelection(SAMPLE_INDEX begin, SAMPLE_INDEX end);
 // Overrides
 	// ClassWizard generated virtual function overrides
 	//{{AFX_VIRTUAL(CSelectionDialog)
@@ -221,8 +237,8 @@ public:
 	int		m_TimeFormatIndex;
 	//}}AFX_DATA
 	int m_TimeFormat;
-	ULONG m_Position;
-	ULONG m_FileLength;
+	SAMPLE_INDEX m_Position;
+	NUMBER_OF_SAMPLES m_FileLength;
 	const WAVEFORMATEX * m_pWf;
 // Overrides
 	// ClassWizard generated virtual function overrides
