@@ -2669,13 +2669,15 @@ void File::FlushDirtyBuffers(BufferHeader * pDirtyBuf, BLOCK_INDEX MaxKey)
 
 				BOOL result = WriteFile(hFile, buf, ToWrite, & BytesWritten, NULL);
 
-				if (TRACE_WRITE) TRACE("WriteFile(%08x, pos=0x%08X, bytes=%X), elapsed time=%d ms/10\n",
-										hFile, (ULONG)(StartFilePtr & 0xFFFFFFFF), ToWrite, time.ElapsedTimeTenthMs());
-
-				if (0 == m_LastError)
+				if (! result
+					&& 0 == m_LastError)
 				{
 					m_LastError = ::GetLastError();
 				}
+
+				if (TRACE_WRITE) TRACE("WriteFile(%08x, pos=0x%08X, bytes=%X), elapsed time=%d ms/10\n",
+										hFile, (ULONG)(StartFilePtr & 0xFFFFFFFF), ToWrite, time.ElapsedTimeTenthMs());
+
 				m_FilePointer += BytesWritten;
 				if (BytesWritten != ToWrite)
 				{
