@@ -2501,7 +2501,7 @@ BOOL InitInsertCopy(CStagedContext * pContext,
 			return FALSE;
 		}
 	}
-	else if (LengthToReplace < SamplesToInsert)
+	else if (LengthToReplace > SamplesToInsert)
 	{
 		if ( ! InitShrinkOperation(pContext, DstFile, StartDstSample + SamplesToInsert,
 									LengthToReplace - SamplesToInsert, DstChannel))
@@ -2511,9 +2511,15 @@ BOOL InitInsertCopy(CStagedContext * pContext,
 	}
 	// now copy data and replace regions/markers
 	CCopyContext::auto_ptr pCopy(new CCopyContext(pContext->pDocument,
-												_T(""), _T("")));
+												_T("Inserting data"), _T("")));
 
-	pCopy->InitCopy(DstFile, StartDstSample, DstChannel, SrcFile, StartSrcSample, SrcChannel, SamplesToInsert);
+	if ( ! pCopy->InitCopy(DstFile, StartDstSample, DstChannel,
+							SrcFile, StartSrcSample, SrcChannel, SamplesToInsert))
+	{
+		return FALSE;
+	}
+
+	pCopy->SetSaveForUndo(StartDstSample, StartDstSample + LengthToReplace);
 
 	pContext->AddContext(pCopy.release());
 
