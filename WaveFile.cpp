@@ -6,24 +6,31 @@
 CMmioFile::CMmioFile()
 	: m_hmmio(NULL),
 	m_dwSize(0)
-//m_pReadBuffer(NULL)
 {
-}
-
-CMmioFile::CMmioFile( LPCTSTR lpszFileName, UINT nOpenFlags )
-	: m_hmmio(NULL),
-	m_dwSize(0)
-//m_pReadBuffer(NULL)
-{
-	Open(lpszFileName, nOpenFlags);
+	memset( & m_riffck, 0, sizeof m_riffck);
 }
 
 CMmioFile::~CMmioFile()
 {
 	Close();
-	//if (m_pReadBuffer != NULL) VirtualFree(m_pReadBuffer, 0, MEM_RELEASE);
-	//m_pReadBuffer = NULL;
 
+}
+
+CMmioFile & CMmioFile::operator=(CMmioFile & SourceFile)
+{
+	Close();
+	m_File.Attach( & SourceFile.m_File);
+	m_dwSize = SourceFile.m_dwSize;
+	MMIOINFO mmii;
+	SourceFile.GetInfo(mmii);
+	m_hmmio = mmioOpen(NULL, & mmii, MMIO_READ | MMIO_ALLOCBUF);
+	m_riffck.ckid = FOURCC_RIFF;
+	m_riffck.cksize = 0;
+	m_riffck.dwDataOffset = 0;
+	m_riffck.dwFlags = 0;
+	Seek(0);
+	FindRiff();
+	return *this;
 }
 
 static DWORD GetSectorSize(LPCTSTR szFilename)
@@ -99,13 +106,24 @@ BOOL CMmioFile::Open( LPCTSTR szFileName, UINT nOpenFlags)
 	{
 		DirectFileOpenFlags |= CDirectFile::OpenReadOnly | CDirectFile::OpenExisting;
 	}
-	if (nOpenFlags & MmioFileOpenCreateNew)
-	{
-		DirectFileOpenFlags |= CDirectFile::CreateNew;
-	}
-	if (nOpenFlags & MmioFileOpenExisting)
+	else if (nOpenFlags & MmioFileOpenExisting)
 	{
 		DirectFileOpenFlags |= CDirectFile::OpenExisting;
+	}
+	else
+	{
+		if (nOpenFlags & MmioFileOpenCreateAlways)
+		{
+			DirectFileOpenFlags |= CDirectFile::CreateAlways;
+		}
+		else if (nOpenFlags & MmioFileOpenCreateNew)
+		{
+			DirectFileOpenFlags |= CDirectFile::CreateNew;
+		}
+		if (nOpenFlags & MmioFileOpenDeleteAfterClose)
+		{
+			DirectFileOpenFlags |= CDirectFile::OpenDeleteAfterClose;
+		}
 	}
 
 	if ( ! m_File.Open(szFileName, DirectFileOpenFlags))
@@ -113,7 +131,7 @@ BOOL CMmioFile::Open( LPCTSTR szFileName, UINT nOpenFlags)
 		return FALSE;
 	}
 
-	if (0 == (nOpenFlags & MmioFileOpenCreateNew))
+	if (0 == (nOpenFlags & (MmioFileOpenCreateNew | MmioFileOpenCreateAlways)))
 	{
 
 		DWORD dwSizeHigh = 0;
@@ -144,7 +162,7 @@ BOOL CMmioFile::Open( LPCTSTR szFileName, UINT nOpenFlags)
 
 		m_riffck.ckid = FOURCC_RIFF;
 		m_riffck.cksize = 0;
-		m_riffck.fccType = 0;
+//        m_riffck.fccType = 0; // derived class can set it
 		m_riffck.dwDataOffset = 0;
 		m_riffck.dwFlags = 0;
 		if ( ! FindRiff())
@@ -175,7 +193,7 @@ BOOL CMmioFile::Open( LPCTSTR szFileName, UINT nOpenFlags)
 
 		m_riffck.ckid = FOURCC_RIFF;
 		m_riffck.cksize = 0;
-		m_riffck.fccType = 0;
+//        m_riffck.fccType = 0; // derived class can set it
 		m_riffck.dwDataOffset = 0;
 		m_riffck.dwFlags = 0;
 		if (0 == (nOpenFlags & MmioFileOpenDontCreateRiff))
@@ -228,7 +246,7 @@ LRESULT PASCAL CMmioFile::BufferedIOProc(LPSTR lpmmioinfo, UINT wMsg,
 			return pmmi->lDiskOffset;
 			break;
 		case SEEK_END:
-			pmmi->lDiskOffset = pFile->m_File.m_pFile->FileLength + lParam1;
+			pmmi->lDiskOffset = long(pFile->m_File.GetLength()) + lParam1;
 			return pmmi->lDiskOffset;
 			break;
 		case SEEK_SET:
@@ -266,12 +284,22 @@ void CMmioFile::Close( )
 CWaveFile::CWaveFile()
 	: m_pWf(NULL)
 {
+	m_riffck.fccType = mmioFOURCC('W', 'A', 'V', 'E');
 }
 
 CWaveFile::CWaveFile( LPCTSTR lpszFileName, UINT nOpenFlags )
 	: CMmioFile(), m_pWf(NULL)
 {
 	Open(lpszFileName, nOpenFlags);
+}
+
+CWaveFile & CWaveFile::operator =(CWaveFile & SourceFile)
+{
+	CMmioFile::operator=(SourceFile);
+	// waveformat will be read as needed
+	m_datack.cksize = 0;
+	m_datack.dwFlags = 0;
+	return *this;
 }
 
 CWaveFile::~CWaveFile()
@@ -289,11 +317,11 @@ BOOL CWaveFile::Open( LPCTSTR lpszFileName, UINT nOpenFlags)
 	return CMmioFile::Open(lpszFileName, nOpenFlags);
 }
 
+#endif
 void CWaveFile::Close( )
 {
 	CMmioFile::Close();
 }
-#endif
 
 BOOL CWaveFile::LoadWaveformat()
 {
@@ -430,7 +458,7 @@ BOOL CWaveFile::CreateWaveFile(CWaveFile * pTemplateFile, int Channel,
 			return FALSE;
 		}
 	}
-	if (CreateWaveFileDontInitStructure)
+	if (flags & CreateWaveFileDontInitStructure)
 	{
 		if (FALSE == Open(name, MmioFileOpenCreateNew | MmioFileOpenDontCreateRiff))
 		{
@@ -534,7 +562,13 @@ BOOL CWaveFile::CreateWaveFile(CWaveFile * pTemplateFile, int Channel,
 	}
 	m_pWf = pWF;
 	// create a file, RIFF list, fmt chunk, data chunk of specified size
-	if (FALSE == Open(name, MmioFileOpenCreateNew))
+	// temp file with this name may already be created
+	DWORD OpenFlags = MmioFileOpenCreateAlways;
+	if (flags & CreateWaveFileDeleteAfterClose)
+	{
+		OpenFlags |= MmioFileOpenDeleteAfterClose;
+	}
+	if (FALSE == Open(name, OpenFlags))
 	{
 		Close();
 		return FALSE;
@@ -545,6 +579,7 @@ BOOL CWaveFile::CreateWaveFile(CWaveFile * pTemplateFile, int Channel,
 	Write(m_pWf, FormatSize);
 	Ascend(fck);
 	// create data chunk
+	memset( & m_datack, 0, sizeof m_datack);
 	m_datack.ckid = mmioFOURCC('d', 'a', 't', 'a');
 	CreateChunk(m_datack, 0);
 	if (Samples)
@@ -555,6 +590,8 @@ BOOL CWaveFile::CreateWaveFile(CWaveFile * pTemplateFile, int Channel,
 	}
 	Ascend(m_datack);
 	// and copy INFO
-	// then updata RIFF
+	// then update RIFF
 	Ascend(m_riffck);
+	return TRUE;
 }
+
