@@ -3,6 +3,104 @@
 #ifndef WAVESUPPORT_H__
 #define WAVESUPPORT_H__
 
+struct WaveFormat
+{
+	WAVEFORMATEX * m_pWf;
+	int m_AllocatedSize;
+	WaveFormat()
+		: m_pWf(NULL),
+		m_AllocatedSize(0)
+	{
+	}
+	~WaveFormat();
+	void Allocate(int ExtraSize, bool bCopy = false);
+	WaveFormat & operator =(WAVEFORMATEX const * pWf);
+	WaveFormat & operator =(WaveFormat const & src)
+	{
+		return operator=(src.m_pWf);
+	}
+	WaveFormat(WaveFormat const & src)
+		: m_pWf(NULL),
+		m_AllocatedSize(0)
+	{
+		*this = src;
+	}
+	WaveFormat(WAVEFORMATEX const * pWf)
+		: m_pWf(NULL),
+		m_AllocatedSize(0)
+	{
+		*this = pWf;
+	}
+	operator WAVEFORMATEX *() const
+	{
+		return m_pWf;
+	}
+	void InitCdAudioFormat();
+	WAVEFORMATEX * Detach()
+	{
+		WAVEFORMATEX * pwf = m_pWf;
+		m_pWf = NULL;
+		return pwf;
+	}
+
+	WORD & FormatTag()
+	{
+		return m_pWf->wFormatTag;
+	}
+
+	WORD FormatTag() const
+	{
+		return m_pWf->wFormatTag;
+	}
+	DWORD & SampleRate()
+	{
+		return m_pWf->nSamplesPerSec;
+	}
+	DWORD SampleRate() const
+	{
+		return m_pWf->nSamplesPerSec;
+	}
+	DWORD & BytesPerSec()
+	{
+		return m_pWf->nAvgBytesPerSec;
+	}
+	DWORD BytesPerSec() const
+	{
+		return m_pWf->nAvgBytesPerSec;
+	}
+	WORD & NumChannels()
+	{
+		return m_pWf->nNumChannels;
+	}
+	WORD NumChannels() const
+	{
+		return m_pWf->nNumChannels;
+	}
+	WORD & BitsPerSample()
+	{
+		return m_pWf->wBitsPerSample;
+	}
+
+	WORD BitsPerSample() const
+	{
+		return m_pWf->wBitsPerSample;
+	}
+	void * FormatExtension() const
+	{
+		return m_pWf + 1;
+	}
+	void InitFormat(WORD wFormatTag, DWORD nSampleRate,
+					WORD nNumChannels, WORD nBitsPerSample = 16)
+	{
+		m_pWf->wFormatTag = wFormatTag;
+		m_pWf->nSamplesPerSec = nSampleRate;
+		m_pWf->nNumChannels = nNumChannels;
+		m_pWf->nBitsPerSample = nBitsPerSample;
+		m_pWf->nBlockAlign = nBitsperSample * nNumChannels / 8;
+		m_pWf->nAvgBytesPerSec = nSampleRate * nNumChannels * nBitsPerSample / 8;
+	}
+};
+
 class CWaveDevice
 {
 public:
