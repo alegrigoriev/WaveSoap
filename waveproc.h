@@ -79,11 +79,11 @@ public:
 
 	virtual int GetMinInputBufSize() const
 	{
-		return m_InputChannels * sizeof (__int16);
+		return m_InputChannels * sizeof (WAVE_SAMPLE);
 	}
 	virtual int GetMinOutputBufSize() const
 	{
-		return m_OutputChannels * sizeof (__int16);
+		return m_OutputChannels * sizeof (WAVE_SAMPLE);
 	}
 
 	__int16 DoubleToShort(double x)
@@ -171,8 +171,8 @@ public:
 									int nInBytes, int nOutBytes, int * pUsedBytes);
 	virtual BOOL SetAndValidateWaveformat(WAVEFORMATEX const * pWf);
 	void InterpolateGap(CBackBuffer<int, int> & data, int nLeftIndex, int InterpolateSamples, bool BigGap);
-	void InterpolateGap(__int16 data[], int nLeftIndex, int ClickLength, int nChans, bool BigGap);
-	void InterpolateBigGap(__int16 data[], int nLeftIndex, int ClickLength, int nChans);
+	void InterpolateGap(WAVE_SAMPLE data[], int nLeftIndex, int ClickLength, int nChans, bool BigGap);
+	void InterpolateBigGap(WAVE_SAMPLE data[], int nLeftIndex, int ClickLength, int nChans);
 
 	BOOL SetClickSourceFile(LPCTSTR szFilename);
 	BOOL SetClickLogFile(LPCTSTR szFilename);
