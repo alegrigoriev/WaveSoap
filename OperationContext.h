@@ -698,6 +698,7 @@ class CWaveProcContext : public CTwoFilesOperation
 public:
 	typedef std::auto_ptr<ThisClass> auto_ptr;
 	CWaveProcContext(CWaveSoapFrontDoc * pDoc, UINT StatusStringId = 0, UINT OperationNameId = 0);
+
 	virtual void Dump(unsigned indent) const
 	{
 		BaseClass::Dump(indent);
@@ -731,7 +732,7 @@ protected:
 	virtual void DeInit();
 };
 
-// is used to convert the whole file
+// is used to convert the file to save it
 class CConversionContext : public CWaveProcContext
 {
 	typedef CConversionContext ThisClass;
@@ -855,31 +856,27 @@ private:
 	CoInitHelper m_CoInit;
 };
 
-class CWmaSaveContext : public CConversionContext
+class CWmaSaveContext : public CWaveProcContext
 {
 	typedef CWmaSaveContext ThisClass;
-	typedef CConversionContext BaseClass;
+	typedef CWaveProcContext BaseClass;
 public:
 	typedef std::auto_ptr<ThisClass> auto_ptr;
 
 	CWmaSaveContext(CWaveSoapFrontDoc * pDoc, UINT StatusStringId, UINT OperationNameId,
 					CWaveFile & SrcFile, CWaveFile & DstFile,
-					SAMPLE_INDEX SrcBegin, SAMPLE_INDEX SrcEnd)
-		: BaseClass(pDoc, StatusStringId, OperationNameId, SrcFile, DstFile, TRUE, SrcBegin, SrcEnd)
-	{
-	}
-
-	~CWmaSaveContext()
-	{
-	}
-	WmaEncoder m_Enc;
+					SAMPLE_INDEX SrcBegin, SAMPLE_INDEX SrcEnd);
 
 	virtual BOOL Init();
 	virtual void DeInit();
-	virtual BOOL ProcessBuffer(void * buf, size_t len, SAMPLE_POSITION offset, BOOL bBackward = FALSE);
 	virtual BOOL OperationProc();
 	//BOOL SetTargetFormat(WAVEFORMATEX * pwf);
 private:
+	WmaEncoder m_Enc;
+	static unsigned const m_TmpBufferSize = 0x10000;    // 64K
+	char m_TmpBuffer[m_TmpBufferSize];
+	unsigned m_TmpBufferFilled;
+
 	CoInitHelper m_CoInit;
 };
 #endif // AFX_OPERATIONCONTEXT_H__FFA16C44_2FA7_11D4_9ADD_00C0F0583C4B__INCLUDED_
