@@ -320,7 +320,7 @@ BEGIN
         END
         MENUITEM "E&qualizer...",               ID_PROCESS_EQUALIZER
         MENUITEM "&Filter...",                  ID_PROCESS_FILTER
-        MENUITEM "&Normalize...",               ID_PROCESS_NORMALIZE
+        MENUITEM "&Normalize Volume...",        ID_PROCESS_NORMALIZE
         MENUITEM "DC &Offset...",               ID_PROCESS_DCOFFSET
         MENUITEM "Change &Volume...",           ID_PROCESS_CHANGEVOLUME
         MENUITEM "&Mute",                       ID_PROCESS_MUTE
@@ -1195,7 +1195,7 @@ END
 IDD_DIALOG_NORMALIZE DIALOGEX 0, 0, 214, 122
 STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | 
     WS_SYSMENU
-CAPTION "Normalize sound"
+CAPTION "Normalize volume"
 FONT 8, "MS Shell Dlg", 0, 0, 0x0
 BEGIN
     LTEXT           "&Normalize to:",IDC_STATIC,7,10,53,8
@@ -3096,7 +3096,7 @@ IDC_CURSOR_BEAM         CURSOR                  "res\\cur00002.cur"
 // RT_MANIFEST
 //
 
-CREATEPROCESS_MANIFEST_RESOURCE_ID RT_MANIFEST             "WaveSoap.manifest"
+1                       RT_MANIFEST             "WaveSoap.manifest"
 
 /////////////////////////////////////////////////////////////////////////////
 //
@@ -3367,7 +3367,7 @@ BEGIN
     ID_VIEW_ZOOMVERT_NORMAL "Full zoom out\nZoom out full"
     ID_VIEW_ZOOMIN_HOR_FULL "Maximum zoom in"
     ID_EDIT_SELECTION       "Select range of sound data\nSelect"
-    ID_PROCESS_NORMALIZE    "Normalize the sound amplitude\nNormalize"
+    ID_PROCESS_NORMALIZE    "Normalize the sound volume\nNormalize volume"
     ID_PROCESS_CHANGEVOLUME "Change the sound volume\nVolume"
     ID_PROCESS_DCOFFSET     "Add or compensate DC offset"
     ID_PROCESS_RESAMPLE     "Change sample rate while preserving the duration\nResample"
@@ -3780,7 +3780,7 @@ BEGIN
     IDS_MUTING_STATUS_PROMPT "Muting the selection"
     IDS_MUTING_OPERATION_NAME "Mute"
     IDS_NORMALIZE_VOLUME_STATUS_PROMPT "Normalizing sound level"
-    IDS_NORMALIZE_VOLUME_OPERATION_NAME "Normalize"
+    IDS_NORMALIZE_VOLUME_OPERATION_NAME "Normalize volume"
     IDS_MAX_SCAN_STATUS_PROMPT "Scanning for maximum amplitude"
     IDS_RESAMPLE_STATUS_PROMPT "Changing sample rate"
     IDS_RESAMPLE_OPERATION_NAME "Resample"
