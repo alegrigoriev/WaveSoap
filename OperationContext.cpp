@@ -3406,7 +3406,7 @@ BOOL CWmaDecodeContext::OperationProc()
 
 BOOL CWmaDecodeContext::Init()
 {
-	m_CoInit.InitializeCom(COINIT_MULTITHREADED);
+	m_CoInit.InitializeCom(COINIT_APARTMENTTHREADED);
 
 	if ( ! m_Decoder.Init()
 		|| S_OK != m_Decoder.Open(m_WmaFile))
@@ -3503,7 +3503,7 @@ BOOL CWmaSaveContext::Init()
 	SetBeginTime();
 	m_Enc.m_SrcWfx = * m_SrcFile.GetWaveFormat();
 
-	m_CoInit.InitializeCom(COINIT_MULTITHREADED);
+	m_CoInit.InitializeCom(COINIT_APARTMENTTHREADED);
 
 	if (! m_Enc.Init())
 	{
