@@ -178,26 +178,40 @@ enum {
 	UndoContextReplaceFormat = 0x00800000,
 	FileSaveContext_SavingCopy    = 0x00400000,
 	FileSaveContext_SameName    =   0x00200000,
-	ScanPeaksSavePeakFile = 0x00200000,
 	DecompressSavePeakFile = 0x00200000,
 };
 
 class CScanPeaksContext : public COperationContext
 {
-	friend class CWaveSoapFrontDoc;
+	//friend class CWaveSoapFrontDoc;
 public:
-	SAMPLE_POSITION m_Position;
-	SAMPLE_POSITION m_Start;
-	SAMPLE_POSITION m_End;
-	int m_GranuleSize;
-	CScanPeaksContext(CWaveSoapFrontDoc * pDoc)
-		: COperationContext(pDoc, _T("Scanning the file for peaks..."), OperationContextDiskIntensive, _T("Peak Scan")),
-		m_Start(0), m_End(0), m_Position(0)
+
+	CScanPeaksContext(CWaveSoapFrontDoc * pDoc,
+					CWaveFile & WavFile,
+					CWaveFile & OriginalFile,
+					BOOL bSavePeaks)
+		: COperationContext(pDoc, _T("Scanning the file for peaks..."), OperationContextDiskIntensive, _T("Peak Scan"))
+		, m_GranuleSize(WavFile.SampleSize() * WavFile.GetPeakGranularity())
+		, m_bSavePeakFile(bSavePeaks)
 	{
+		WavFile.SetPeaks(0, WavFile.NumberOfSamples() * WavFile.Channels(),
+						WavFile.Channels(), WavePeak(0x7FFF, -0x8000));
+
+		m_OriginalFile = OriginalFile;
+		m_SrcFile = WavFile;
+		m_SrcStart = WavFile.SampleToPosition(0);
+		m_SrcPos = m_SrcStart;
+
+		m_SrcEnd = WavFile.SampleToPosition(LAST_SAMPLE);
 	}
-	~CScanPeaksContext() {}
+	//~CScanPeaksContext() {}
+protected:
+	CWaveFile m_OriginalFile;
+	int m_GranuleSize;
+	BOOL m_bSavePeakFile;
 	virtual BOOL OperationProc();
 	virtual void PostRetire(BOOL bChildContext = FALSE);
+	virtual BOOL Init();
 };
 
 class CResizeContext : public COperationContext
@@ -291,35 +305,17 @@ public:
 class CDecompressContext : public COperationContext
 {
 	friend class CWaveSoapFrontDoc;
-	// Start, End and position are in bytes
-
-	NUMBER_OF_SAMPLES m_CurrentSamples;
-
-	size_t m_SrcBufSize;
-	size_t m_DstBufSize;
-	ACMSTREAMHEADER m_ash;
-	DWORD m_ConvertFlags;
-	CWaveFormat m_Wf;
 
 public:
-	HACMSTREAM m_acmStr;
-	HACMDRIVER m_acmDrv;
-	MMRESULT m_MmResult;
-	BOOL m_bSwapBytes;
-	CDecompressContext(CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString, WAVEFORMATEX * pWf)
-		: COperationContext(pDoc, StatusString,
-							// operation can be terminated by Close
-							OperationContextDiskIntensive | OperationContextNonCritical),
-		m_SrcBufSize(0),
-		m_DstBufSize(0),
-		m_acmDrv(NULL),
-		m_acmStr(NULL),
-		m_bSwapBytes(FALSE),
-		m_Wf(pWf),
-		m_MmResult(MMSYSERR_NOERROR)
-	{
-		memzero(m_ash);
-	}
+	CDecompressContext(CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString,
+						CWaveFile & SrcFile,
+						CWaveFile & DstFile,
+						SAMPLE_POSITION SrcStart,
+						SAMPLE_POSITION SrcEnd,
+						NUMBER_OF_SAMPLES NumSamples,
+						WAVEFORMATEX const * pWf,
+						BOOL SwapBytes = FALSE);
+
 	~CDecompressContext()
 	{
 		DeInit();
@@ -328,6 +324,19 @@ public:
 	virtual BOOL Init();
 	virtual void DeInit();
 	virtual void PostRetire(BOOL bChildContext = FALSE);
+
+protected:
+	NUMBER_OF_SAMPLES m_CurrentSamples;
+
+	size_t m_SrcBufSize;
+	size_t m_DstBufSize;
+	ACMSTREAMHEADER m_ash;
+	DWORD m_ConvertFlags;
+	CWaveFormat m_Wf;
+	HACMSTREAM m_acmStr;
+	HACMDRIVER m_acmDrv;
+	MMRESULT m_MmResult;
+	BOOL m_bSwapBytes;
 };
 
 class CSoundPlayContext : public COperationContext
