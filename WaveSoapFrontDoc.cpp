@@ -2,11 +2,11 @@
 //
 
 #include "stdafx.h"
-//#include "WaveSoapFront.h"
-#include "MainFrm.h"
-//#include "WaveSoapFrontDoc.h"
-#include "OperationContext.h"
 #include "resource.h"
+#include "MainFrm.h"
+#include "OperationContext.h"
+
+#include "OperationDialogs.h"
 #include <afxpriv.h>
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -81,6 +81,11 @@ BEGIN_MESSAGE_MAP(CWaveSoapFrontDoc, CDocument)
 	ON_UPDATE_COMMAND_UI(ID_CHANNELS_MONO, OnUpdateChannelsMono)
 	ON_COMMAND(ID_CHANNELS_STEREO, OnChannelsStereo)
 	ON_UPDATE_COMMAND_UI(ID_CHANNELS_STEREO, OnUpdateChannelsStereo)
+	ON_COMMAND(ID_PROCESS_CHANGEVOLUME, OnProcessChangevolume)
+	ON_UPDATE_COMMAND_UI(ID_PROCESS_CHANGEVOLUME, OnUpdateProcessChangevolume)
+	ON_COMMAND(IDC_VIEW_STATUS_HHMMSS, OnViewStatusHhmmss)
+	ON_COMMAND(IDC_VIEW_STATUS_SAMPLES, OnViewStatusSamples)
+	ON_COMMAND(IDC_VIEW_STATUS_SECONDS, OnViewStatusSeconds)
 	//}}AFX_MSG_MAP
 END_MESSAGE_MAP()
 
@@ -542,6 +547,11 @@ BOOL CWaveSoapFrontDoc::AllocatePeakData(long NewNumberOfSamples)
 	}
 	else
 	{
+		for (int i = m_WavePeakSize; i < NewWavePeakSize; i++)
+		{
+			m_pPeaks[i].high = -0x8000;
+			m_pPeaks[i].low = 0x7FFF;
+		}
 		m_WavePeakSize = NewWavePeakSize;
 	}
 	return TRUE;
@@ -979,7 +989,7 @@ UINT CWaveSoapFrontDoc::_ThreadProc(void)
 	return 0;
 }
 
-BOOL CWaveSoapFrontDoc::DoUndoRedo(CUndoRedoContext * pContext)
+BOOL CWaveSoapFrontDoc::InitUndoRedo(CUndoRedoContext * pContext)
 {
 	// see what is necessary to restore
 	CResizeContext * pResize = pContext->m_pExpandShrinkContext;
@@ -988,7 +998,9 @@ BOOL CWaveSoapFrontDoc::DoUndoRedo(CUndoRedoContext * pContext)
 		// shrink the file
 		// todo: create redo
 		if (NULL != pResize
-			&& pResize->InitUndo("Redoing...")
+			&& ((pContext->m_Flags & RedoContext)
+				? UndoEnabled() : RedoEnabled())
+			&& pResize->InitUndoRedo(pContext->m_OperationName)
 			&& NULL != pResize->m_pUndoContext
 			&& 0 == (pContext->m_Flags & RedoContext))
 		{
@@ -998,7 +1010,9 @@ BOOL CWaveSoapFrontDoc::DoUndoRedo(CUndoRedoContext * pContext)
 	else if (pContext->m_Flags & CopyExpandFile)
 	{
 		if (NULL != pResize
-			&& pResize->InitUndo("Redoing...")
+			&& ((pContext->m_Flags & RedoContext)
+				? UndoEnabled() : RedoEnabled())
+			&& pResize->InitUndoRedo(pContext->m_OperationName)
 			&& NULL != pResize->m_pUndoContext
 			&& 0 == (pContext->m_Flags & RedoContext))
 		{
@@ -1021,9 +1035,9 @@ BOOL CWaveSoapFrontDoc::DoUndoRedo(CUndoRedoContext * pContext)
 		// just copy
 		// todo: create redo
 		if ((pContext->m_Flags & RedoContext)
-			? RedoEnabled() : UndoEnabled())
+			? UndoEnabled() : RedoEnabled())
 		{
-			CUndoRedoContext * pUndoRedo = new CUndoRedoContext(this, "Redoing...");
+			CUndoRedoContext * pUndoRedo = new CUndoRedoContext(this, pContext->m_OperationName);
 			if (NULL == pUndoRedo)
 			{
 				return FALSE;
@@ -1034,6 +1048,7 @@ BOOL CWaveSoapFrontDoc::DoUndoRedo(CUndoRedoContext * pContext)
 				delete pUndoRedo;
 				return FALSE;
 			}
+			pContext->m_pUndoContext = pUndoRedo;
 		}
 	}
 	return TRUE;
@@ -1048,7 +1063,7 @@ void CWaveSoapFrontDoc::OnEditUndo()
 	}
 	// no critical section lock needed
 	CUndoRedoContext * pUndo = (CUndoRedoContext *) m_pUndoList;
-	if ( ! DoUndoRedo(pUndo))
+	if ( ! InitUndoRedo(pUndo))
 	{
 		return;
 	}
@@ -1070,7 +1085,7 @@ void CWaveSoapFrontDoc::OnEditRedo()
 	}
 	// no critical section lock needed
 	CUndoRedoContext * pRedo = (CUndoRedoContext *) m_pRedoList;
-	if ( ! DoUndoRedo(pRedo))
+	if ( ! InitUndoRedo(pRedo))
 	{
 		return;
 	}
@@ -1123,7 +1138,7 @@ void CWaveSoapFrontDoc::QueueOperation(COperationContext * pContext)
 void CWaveSoapFrontDoc::DoCopy(LONG Start, LONG End, LONG Channel, LPCTSTR FileName)
 {
 	// create a operation context
-	CCopyContext * pContext = new CCopyContext(this, _T("Copying data to clipboard..."));
+	CCopyContext * pContext = new CCopyContext(this, _T("Copying data to clipboard..."), "Copy");
 
 	CWaveFile DstFile;
 	// create a temporary clipboard WAV file
@@ -1207,7 +1222,7 @@ void CWaveSoapFrontDoc::DoPaste(LONG Start, LONG End, LONG Channel, LPCTSTR File
 		ChannelToCopyFrom = dlg.m_ChannelToCopy;
 	}
 
-	CCopyContext * pContext = new CCopyContext(this, _T("Inserting data from clipboard..."));
+	CCopyContext * pContext = new CCopyContext(this, _T("Inserting data from clipboard..."), "Paste");
 
 	pContext->m_Flags |= OperationContextClipboard | CopyExpandFile;
 
@@ -1221,7 +1236,7 @@ void CWaveSoapFrontDoc::DoPaste(LONG Start, LONG End, LONG Channel, LPCTSTR File
 
 	if (NULL != pContext->m_pExpandShrinkContext)
 	{
-		pContext->m_pExpandShrinkContext->InitUndo("Undoing Paste...");
+		pContext->m_pExpandShrinkContext->InitUndoRedo("Paste");
 		// if the source selection is not empty,
 		// init undo copy
 	}
@@ -1238,7 +1253,7 @@ void CWaveSoapFrontDoc::DoCut(LONG Start, LONG End, LONG Channel)
 {
 	// save the cut area to Undo context, then shrink the file
 	// create a operation context
-	CCopyContext * pContext = new CCopyContext(this, _T("Copying data to clipboard..."));
+	CCopyContext * pContext = new CCopyContext(this, _T("Copying data to clipboard..."), "Cut");
 
 	CWaveFile DstFile;
 	// create a temporary clipboard WAV file
@@ -1265,9 +1280,9 @@ void CWaveSoapFrontDoc::DoCut(LONG Start, LONG End, LONG Channel)
 	GetApp()->m_ClipboardFile = DstFile;
 	// set operation context to the queue
 	QueueOperation(pContext);
-	CResizeContext * pResizeContext = new CResizeContext(this, _T("Shrinking the file..."));
+	CResizeContext * pResizeContext = new CResizeContext(this, _T("Shrinking the file..."), "File Resize");
 	pResizeContext->InitShrink(m_WavFile, Start, End - Start, Channel);
-	pResizeContext->InitUndo("Undoing Cut...");
+	pResizeContext->InitUndoRedo("Cut");
 	SetSelection(Start, Start, Channel, Start);
 	QueueOperation(pResizeContext);
 }
@@ -1278,9 +1293,9 @@ void CWaveSoapFrontDoc::DoDelete(LONG Start, LONG End, LONG Channel)
 	{
 		End++;
 	}
-	CResizeContext * pResizeContext = new CResizeContext(this, _T("Deleting the selection..."));
+	CResizeContext * pResizeContext = new CResizeContext(this, _T("Deleting the selection..."), "Delete");
 	pResizeContext->InitShrink(m_WavFile, Start, End - Start, Channel);
-	pResizeContext->InitUndo("Undoing Delete...");
+	pResizeContext->InitUndoRedo("Delete");
 	SetSelection(Start, Start, Channel, Start);
 	QueueOperation(pResizeContext);
 }
@@ -1646,9 +1661,9 @@ void CWaveSoapFrontDoc::OnUpdateSoundStop(CCmdUI* pCmdUI)
 
 void CWaveSoapFrontDoc::OnUpdateIndicatorFileSize(CCmdUI* pCmdUI)
 {
-	SetStatusString(pCmdUI, TimeToHhMmSs(double(WaveFileSamples())
-										/ m_WavFile.GetWaveFormat()->nSamplesPerSec * 1000.,
-										TimeToHhMmSs_NeedsHhMm | TimeToHhMmSs_NeedsMs));
+	SetStatusString(pCmdUI,
+					SampleToString(WaveFileSamples(), WaveFormat(),
+									GetApp()->m_SoundTimeFormat));
 }
 
 void CWaveSoapFrontDoc::OnUpdateIndicatorSelectionLength(CCmdUI* pCmdUI)
@@ -1656,9 +1671,8 @@ void CWaveSoapFrontDoc::OnUpdateIndicatorSelectionLength(CCmdUI* pCmdUI)
 	if (m_SelectionStart != m_SelectionEnd)
 	{
 		SetStatusString(pCmdUI,
-						TimeToHhMmSs(double(m_SelectionEnd - m_SelectionStart)
-									/ m_WavFile.GetWaveFormat()->nSamplesPerSec * 1000.,
-									TimeToHhMmSs_NeedsHhMm | TimeToHhMmSs_NeedsMs));
+						SampleToString(m_SelectionEnd - m_SelectionStart, WaveFormat(),
+										GetApp()->m_SoundTimeFormat));
 	}
 	else
 	{
@@ -1668,27 +1682,34 @@ void CWaveSoapFrontDoc::OnUpdateIndicatorSelectionLength(CCmdUI* pCmdUI)
 
 void CWaveSoapFrontDoc::OnUpdateIndicatorCurrentPos(CCmdUI* pCmdUI)
 {
-	int TimeMs;
+	unsigned TimeMs;
+	int TimeFormat = GetApp()->m_SoundTimeFormat;
 	CSoundPlayContext * pCx = dynamic_cast<CSoundPlayContext *>(m_pCurrentContext);
 	if (m_PlayingSound && NULL != pCx)
 	{
-		TimeMs = double(pCx->m_SamplePlayed)
-				/ m_WavFile.GetWaveFormat()->nSamplesPerSec * 1000.;
-		TimeMs -= TimeMs % 100;
-		int BeginTimeMs = double(pCx->m_FirstSamplePlayed)
-						/ m_WavFile.GetWaveFormat()->nSamplesPerSec * 1000.;
-		if (TimeMs < BeginTimeMs)
+		if ((TimeFormat & SampleToString_Mask) == SampleToString_Sample)
 		{
-			TimeMs = BeginTimeMs;
+			SetStatusString(pCmdUI, SampleToString(pCx->m_SamplePlayed, WaveFormat(),
+													TimeFormat));
+		}
+		else
+		{
+			TimeMs = double(pCx->m_SamplePlayed)
+					/ m_WavFile.GetWaveFormat()->nSamplesPerSec * 1000.;
+			TimeMs -= TimeMs % 100;
+			int BeginTimeMs = double(pCx->m_FirstSamplePlayed)
+							/ m_WavFile.GetWaveFormat()->nSamplesPerSec * 1000.;
+			if (TimeMs < BeginTimeMs)
+			{
+				TimeMs = BeginTimeMs;
+			}
+			SetStatusString(pCmdUI, TimeToHhMmSs(TimeMs, TimeFormat));
 		}
 	}
 	else
 	{
-		TimeMs = double(m_CaretPosition)
-				/ m_WavFile.GetWaveFormat()->nSamplesPerSec * 1000.;
+		SetStatusString(pCmdUI, SampleToString(m_CaretPosition, WaveFormat(), TimeFormat));
 	}
-	SetStatusString(pCmdUI, TimeToHhMmSs(TimeMs,
-										TimeToHhMmSs_NeedsHhMm | TimeToHhMmSs_NeedsMs));
 }
 
 void CWaveSoapFrontDoc::OnUpdateIndicatorSampleRate(CCmdUI* pCmdUI)
@@ -2075,63 +2096,147 @@ void CWaveSoapFrontDoc::OnUpdateChannelsStereo(CCmdUI* pCmdUI)
 {
 	pCmdUI->SetRadio(WaveChannels() == 2);
 }
-/////////////////////////////////////////////////////////////////////////////
-// CCopyChannelsSelectDlg dialog
 
-
-CCopyChannelsSelectDlg::CCopyChannelsSelectDlg(CWnd* pParent /*=NULL*/)
-	: CDialog(CCopyChannelsSelectDlg::IDD, pParent)
+void CWaveSoapFrontDoc::OnProcessChangevolume()
 {
-	//{{AFX_DATA_INIT(CCopyChannelsSelectDlg)
-	m_ChannelToCopy = -1;
-	//}}AFX_DATA_INIT
+	if (m_OperationInProgress)
+	{
+		return;
+	}
+	long start = m_SelectionStart;
+	long end = m_SelectionEnd;
+	if (start == end)
+	{
+		// select all
+		start = 0;
+		end = WaveFileSamples();
+	}
+	int channel = m_SelectedChannel;
+	if (ChannelsLocked())
+	{
+		channel = 2;
+	}
+
+	CVolumeChangeDialog dlg;
+	CWaveSoapFrontApp * pApp = GetApp();
+	dlg.m_DbPercent = pApp->m_VolumeDialogDbPercents;
+	dlg.m_dVolumeLeftDb = pApp->m_dVolumeLeftDb;
+	dlg.m_dVolumeRightDb = pApp->m_dVolumeRightDb;
+	dlg.m_dVolumeLeftPercent = pApp->m_dVolumeLeftPercent;
+	dlg.m_dVolumeRightPercent = pApp->m_dVolumeRightPercent;
+	dlg.m_Start = start;
+	dlg.m_End = end;
+	dlg.m_Chan = channel;
+	dlg.m_pWf = m_WavFile.GetWaveFormat();
+	dlg.m_bLockChannels = m_bChannelsLocked;
+	dlg.m_bUndo = m_bUndoEnabled;
+	dlg.m_TimeFormat = GetApp()->m_SoundTimeFormat;
+	if (1 == WaveChannels())
+	{
+		dlg.SetTemplate(IDD_DIALOG_VOLUME_CHANGE_MONO);
+	}
+
+	if (IDOK != dlg.DoModal())
+	{
+		return;
+	}
+	pApp->m_VolumeDialogDbPercents = dlg.m_DbPercent;
+	pApp->m_dVolumeLeftDb = dlg.m_dVolumeLeftDb;
+	pApp->m_dVolumeRightDb = dlg.m_dVolumeRightDb;
+	pApp->m_dVolumeLeftPercent = dlg.m_dVolumeLeftPercent;
+	pApp->m_dVolumeRightPercent = dlg.m_dVolumeRightPercent;
+	CVolumeChangeContext * pContext =
+		new CVolumeChangeContext(this, "Changing volume...", "Volume Change");
+	if (NULL == pContext)
+	{
+		return;
+	}
+
+	pContext->m_DstFile = m_WavFile;
+	if (0 == dlg.m_DbPercent)   // dBs
+	{
+		pContext->m_VolumeLeft = pow(10., dlg.m_dVolumeLeftDb / 20.);
+		if (dlg.m_bLockChannels || WaveChannels() == 1)
+		{
+			pContext->m_VolumeRight = pContext->m_VolumeLeft;
+		}
+		else
+		{
+			pContext->m_VolumeRight = pow(10., dlg.m_dVolumeRightDb / 20.);
+		}
+	}
+	else // percents
+	{
+		pContext->m_VolumeLeft = 0.01 * dlg.m_dVolumeLeftPercent;
+		if (dlg.m_bLockChannels || WaveChannels() == 1)
+		{
+			pContext->m_VolumeRight = pContext->m_VolumeLeft;
+		}
+		else
+		{
+			pContext->m_VolumeRight = 0.01 * dlg.m_dVolumeRightPercent;
+		}
+	}
+
+	if (1. == pContext->m_VolumeLeft
+		&& 1. == pContext->m_VolumeRight)
+	{
+		// nothing to do
+		delete pContext;
+		return;
+	}
+	// set begin and end offsets
+	DWORD DstSampleSize = pContext->m_DstFile.SampleSize();
+
+	pContext->m_DstCopyPos = pContext->m_DstFile.GetDataChunk()->dwDataOffset
+							+ dlg.m_Start * DstSampleSize;
+	pContext->m_DstStart = pContext->m_DstCopyPos;
+
+	pContext->m_DstEnd = pContext->m_DstFile.GetDataChunk()->dwDataOffset
+						+ dlg.m_End * DstSampleSize;
+	pContext->m_DstChan = channel;
+	// create undo
+	if (dlg.m_bUndo)
+	{
+		CUndoRedoContext * pUndo = new CUndoRedoContext(this, pContext->m_OperationName);
+		if (NULL != pUndo
+			&& pUndo->InitUndoCopy(pContext->m_DstFile, pContext->m_DstStart,
+									pContext->m_DstEnd, pContext->m_DstChan))
+		{
+			pContext->m_pUndoContext = pUndo;
+		}
+		else
+		{
+			delete pUndo;
+			if (IDOK != AfxMessageBox(IDS_M_UNABLE_TO_CREATE_UNDO, MB_YESNO | MB_ICONEXCLAMATION))
+			{
+				delete pContext;
+				return;
+			}
+		}
+	}
+	QueueOperation(pContext);
+	SetModifiedFlag();
 }
 
-
-void CCopyChannelsSelectDlg::DoDataExchange(CDataExchange* pDX)
+void CWaveSoapFrontDoc::OnUpdateProcessChangevolume(CCmdUI* pCmdUI)
 {
-	CDialog::DoDataExchange(pDX);
-	//{{AFX_DATA_MAP(CCopyChannelsSelectDlg)
-	DDX_Radio(pDX, IDC_RADIO_LEFT, m_ChannelToCopy);
-	//}}AFX_DATA_MAP
+	pCmdUI->Enable( ! m_bReadOnly && ! m_OperationInProgress);
 }
 
-
-BEGIN_MESSAGE_MAP(CCopyChannelsSelectDlg, CDialog)
-	//{{AFX_MSG_MAP(CCopyChannelsSelectDlg)
-		// NOTE: the ClassWizard will add message map macros here
-	//}}AFX_MSG_MAP
-END_MESSAGE_MAP()
-
-/////////////////////////////////////////////////////////////////////////////
-// CCopyChannelsSelectDlg message handlers
-/////////////////////////////////////////////////////////////////////////////
-// CPasteModeDialog dialog
-
-
-CPasteModeDialog::CPasteModeDialog(CWnd* pParent /*=NULL*/)
-	: CDialog(CPasteModeDialog::IDD, pParent)
+void CWaveSoapFrontDoc::OnViewStatusHhmmss()
 {
-	//{{AFX_DATA_INIT(CPasteModeDialog)
-	m_PasteMode = -1;
-	//}}AFX_DATA_INIT
+	GetApp()->m_SoundTimeFormat =
+		SampleToString_HhMmSs | TimeToHhMmSs_NeedsMs | TimeToHhMmSs_NeedsHhMm;
 }
 
-
-void CPasteModeDialog::DoDataExchange(CDataExchange* pDX)
+void CWaveSoapFrontDoc::OnViewStatusSamples()
 {
-	CDialog::DoDataExchange(pDX);
-	//{{AFX_DATA_MAP(CPasteModeDialog)
-	DDX_Radio(pDX, IDC_RADIO_SELECT, m_PasteMode);
-	//}}AFX_DATA_MAP
+	GetApp()->m_SoundTimeFormat = SampleToString_Sample;
 }
 
-
-BEGIN_MESSAGE_MAP(CPasteModeDialog, CDialog)
-	//{{AFX_MSG_MAP(CPasteModeDialog)
-		// NOTE: the ClassWizard will add message map macros here
-	//}}AFX_MSG_MAP
-END_MESSAGE_MAP()
-
-/////////////////////////////////////////////////////////////////////////////
-// CPasteModeDialog message handlers
+void CWaveSoapFrontDoc::OnViewStatusSeconds()
+{
+	GetApp()->m_SoundTimeFormat =
+		SampleToString_Seconds | TimeToHhMmSs_NeedsMs;
+}

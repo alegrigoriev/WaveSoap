@@ -104,7 +104,7 @@ public:
 	void AddUndoRedo(class CUndoRedoContext * pUndo);
 	void EnableUndo(BOOL bEnable = TRUE);
 	void EnableRedo(BOOL bEnable = TRUE);
-	BOOL DoUndoRedo(class CUndoRedoContext * pContext);
+	BOOL InitUndoRedo(class CUndoRedoContext * pContext);
 
 // Overrides
 	// ClassWizard generated virtual function overrides
@@ -297,6 +297,11 @@ protected:
 	afx_msg void OnUpdateChannelsMono(CCmdUI* pCmdUI);
 	afx_msg void OnChannelsStereo();
 	afx_msg void OnUpdateChannelsStereo(CCmdUI* pCmdUI);
+	afx_msg void OnProcessChangevolume();
+	afx_msg void OnUpdateProcessChangevolume(CCmdUI* pCmdUI);
+	afx_msg void OnViewStatusHhmmss();
+	afx_msg void OnViewStatusSamples();
+	afx_msg void OnViewStatusSeconds();
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 
@@ -319,70 +324,6 @@ struct PeakFileHeader
 
 /////////////////////////////////////////////////////////////////////////////
 
-/////////////////////////////////////////////////////////////////////////////
-// CCopyChannelsSelectDlg dialog
-
-class CCopyChannelsSelectDlg : public CDialog
-{
-// Construction
-public:
-	CCopyChannelsSelectDlg(CWnd* pParent = NULL);   // standard constructor
-
-// Dialog Data
-	//{{AFX_DATA(CCopyChannelsSelectDlg)
-	enum { IDD = IDD_DIALOG_COPY_CHANNELS_SELECT };
-	int		m_ChannelToCopy;
-	//}}AFX_DATA
-
-
-// Overrides
-	// ClassWizard generated virtual function overrides
-	//{{AFX_VIRTUAL(CCopyChannelsSelectDlg)
-protected:
-	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV support
-	//}}AFX_VIRTUAL
-
-// Implementation
-protected:
-
-	// Generated message map functions
-	//{{AFX_MSG(CCopyChannelsSelectDlg)
-	// NOTE: the ClassWizard will add member functions here
-	//}}AFX_MSG
-	DECLARE_MESSAGE_MAP()
-};
-/////////////////////////////////////////////////////////////////////////////
-// CPasteModeDialog dialog
-
-class CPasteModeDialog : public CDialog
-{
-// Construction
-public:
-	CPasteModeDialog(CWnd* pParent = NULL);   // standard constructor
-
-// Dialog Data
-	//{{AFX_DATA(CPasteModeDialog)
-	enum { IDD = IDD_DIALOG_PASTE_MODE_SELECT };
-	int		m_PasteMode;
-	//}}AFX_DATA
-
-
-// Overrides
-	// ClassWizard generated virtual function overrides
-	//{{AFX_VIRTUAL(CPasteModeDialog)
-protected:
-	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV support
-	//}}AFX_VIRTUAL
-
-// Implementation
-protected:
-
-	// Generated message map functions
-	//{{AFX_MSG(CPasteModeDialog)
-	// NOTE: the ClassWizard will add member functions here
-	//}}AFX_MSG
-	DECLARE_MESSAGE_MAP()
-};
 //{{AFX_INSERT_LOCATION}}
 // Microsoft Visual C++ will insert additional declarations immediately before the previous line.
 
