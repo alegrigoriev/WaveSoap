@@ -219,6 +219,10 @@ static int fround(double d)
 void CWaveFftView::OnDraw(CDC* pDC)
 {
 	CWaveSoapFrontDoc* pDoc = GetDocument();
+	if (! pDoc->m_WavFile.IsOpen())
+	{
+		return;
+	}
 	// FFT is performed 1 time per 1 pixel across.
 	//
 	// FFT order is specified by the options dialog.
@@ -245,15 +249,8 @@ void CWaveFftView::OnDraw(CDC* pDC)
 	int iClientWidth = r.right - r.left;
 	PointToDoubleDev(CPoint(r.left, cr.top), left, top);
 	PointToDoubleDev(CPoint(r.right, cr.bottom), right, bottom);
-	// TODO: add draw code here
-
-	// draw the graph
-	// create an array of points
 
 	if (left < 0) left = 0;
-	//POINT LeftPoint = DoubleToPointDev(left, 0);
-	//int iSamplesCount = int(right) - int(left);
-	// draw the graph
 	// create an array of points
 	int nNumberOfPoints = r.right - r.left;
 
@@ -723,7 +720,7 @@ void CWaveFftView::OnPaint()
 	{
 		CRect r;
 		UpdRgn.GetRgnBox( & r);
-		TRACE("Update region width=%d\n", r.Width());
+		//TRACE("Update region width=%d\n", r.Width());
 		if (r.Width() > 64)
 		{
 			r.right = r.left + 64;
@@ -733,8 +730,8 @@ void CWaveFftView::OnPaint()
 			InvalidRgn.CombineRgn( & UpdRgn, & RectToDraw, RGN_DIFF);
 			UpdRgn.CombineRgn( & UpdRgn, & RectToDraw, RGN_AND);
 #ifdef _DEBUG
-			InvalidRgn.GetRgnBox( & r);
-			TRACE("Width of new invalid region = %d\n", r.Width());
+			//InvalidRgn.GetRgnBox( & r);
+			//TRACE("Width of new invalid region = %d\n", r.Width());
 #endif
 			ValidateRect(NULL);
 			InvalidateRgn( & UpdRgn, FALSE);    // no erase
@@ -748,7 +745,7 @@ void CWaveFftView::OnPaint()
 	CWaveSoapFrontView::OnPaint();
 	if (NULL != InvalidRgn.m_hObject)
 	{
-		TRACE("Invalidating unpainted region\n");
+		//TRACE("Invalidating unpainted region\n");
 		InvalidateRgn( & InvalidRgn, FALSE);
 	}
 }
@@ -931,7 +928,7 @@ void CWaveFftView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
 		int left = pInfo->Begin / nChannels;
 		int right = pInfo->End / nChannels;
 		int FirstSampleChanged = left - left % m_FftSpacing;
-		int LastSampleRequired = right + m_FftSpacing - right % m_FftSpacing;
+		int LastSampleRequired = right - right % m_FftSpacing + m_FftSpacing;
 		if (LastSampleRequired > m_FftResultBegin
 			&& FirstSampleChanged < m_FftResultEnd)
 		{
@@ -976,9 +973,13 @@ void CWaveFftView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
 		CSelectionUpdateInfo * pInfo = (CSelectionUpdateInfo *) pHint;
 		CWaveSoapFrontDoc * pDoc = GetDocument();
 
-		if (pInfo->m_bMakeCaretVisible)
+		if (pInfo->Flags & SetSelection_MakeCaretVisible)
 		{
 			MovePointIntoView(pDoc->m_CaretPosition);
+		}
+		else if (pInfo->Flags & SetSelection_MoveCaretToCenter)
+		{
+			MovePointIntoView(pDoc->m_CaretPosition, TRUE);
 		}
 
 		int nChannels = GetDocument()->WaveChannels();
