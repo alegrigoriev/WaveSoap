@@ -676,8 +676,7 @@ BOOL CResizeContext::InitExpand(CWaveFile & File, LONG StartSample, LONG Length,
 
 	m_SrcEnd = pDatachunk->dwDataOffset + pDatachunk->cksize;
 	m_SrcCopyPos = m_SrcEnd;
-	m_SrcStart = pDatachunk->dwDataOffset +
-				StartSample * SampleSize;
+	m_SrcStart = m_DstFile.SampleToPosition(StartSample);
 
 	size_t NewDataLength = (m_DstFile.NumberOfSamples() + Length) * SampleSize;
 
@@ -777,14 +776,14 @@ BOOL CResizeContext::InitShrink(CWaveFile & File, LONG StartSample, LONG Length,
 	}
 
 	m_SrcEnd = pDatachunk->dwDataOffset + pDatachunk->cksize;
-	m_SrcStart = pDatachunk->dwDataOffset +
-				(StartSample + Length) * SampleSize;
+	m_SrcStart = m_DstFile.SampleToPosition(StartSample + Length);
+
 	m_SrcCopyPos = m_SrcStart;
 
 	// when shrinking, data is moved starting from the begin of the file,
 	// but I use SrcStart as begin of the moved area and SrcEns as end (SrcStart <= SrcEnd)
 
-	m_DstStart = pDatachunk->dwDataOffset + StartSample * SampleSize;
+	m_DstStart = m_DstFile.SampleToPosition(StartSample);
 
 	m_DstEnd = m_SrcEnd - Length * SampleSize;
 	m_DstCopyPos = m_DstStart;
@@ -1271,12 +1270,9 @@ void CCopyContext::InitSource(CWaveFile & SrcFile, long StartSample,
 
 	m_SrcChan = SrcChannel;
 
-	DWORD SrcSampleSize = m_SrcFile.SampleSize();
-	m_SrcStart = m_SrcFile.GetDataChunk()->dwDataOffset +
-				StartSample * SrcSampleSize;
+	m_SrcStart = m_SrcFile.SampleToPosition(StartSample);
 	m_SrcCopyPos = m_SrcStart;
-	m_SrcEnd = m_SrcFile.GetDataChunk()->dwDataOffset +
-				EndSample * SrcSampleSize;
+	m_SrcEnd = m_SrcFile.SampleToPosition(EndSample);
 }
 
 BOOL CCopyContext::InitCopy(CWaveFile & DstFile,
@@ -1290,22 +1286,16 @@ BOOL CCopyContext::InitCopy(CWaveFile & DstFile,
 
 	m_SrcChan = SrcChannel;
 
-	DWORD SrcSampleSize = m_SrcFile.SampleSize();
-	m_SrcStart = m_SrcFile.GetDataChunk()->dwDataOffset +
-				SrcStartSample * SrcSampleSize;
+	m_SrcStart = m_SrcFile.SampleToPosition(SrcStartSample);
 	m_SrcCopyPos = m_SrcStart;
-	m_SrcEnd = m_SrcFile.GetDataChunk()->dwDataOffset +
-				(SrcStartSample + SrcLength) * SrcSampleSize;
+	m_SrcEnd = m_SrcFile.SampleToPosition(SrcStartSample + SrcLength);
 
-	DWORD DstSampleSize = m_DstFile.SampleSize();
-
-	m_DstCopyPos = m_DstFile.GetDataChunk()->dwDataOffset +
-					DstStartSample * DstSampleSize;
+	m_DstCopyPos = m_DstFile.SampleToPosition(DstStartSample);
 	m_DstStart = m_DstCopyPos;
 
-	m_DstEnd = m_DstFile.GetDataChunk()->dwDataOffset +
-				(DstStartSample + SrcLength) * DstSampleSize;
+	m_DstEnd = m_DstFile.SampleToPosition(DstStartSample + SrcLength);
 	m_DstChan = DstChannel;
+
 	if (SrcLength > DstLength)
 	{
 		m_pExpandShrinkContext = new CResizeContext(pDocument, _T("Expanding the file..."), _T(""));
@@ -2041,7 +2031,8 @@ BOOL CSoundPlayContext::Init()
 {
 	MMCKINFO * pDatack = m_PlayFile.GetDataChunk();
 
-	m_Begin = m_FirstSamplePlayed * m_PlayFile.SampleSize() + pDatack->dwDataOffset;
+	m_Begin = m_PlayFile.SampleToPosition(m_FirstSamplePlayed);
+
 	m_CurrentPlaybackPos = m_Begin;
 
 	if (m_FirstSamplePlayed == m_LastSamplePlayed)
@@ -2050,7 +2041,7 @@ BOOL CSoundPlayContext::Init()
 	}
 	else
 	{
-		m_End = m_LastSamplePlayed * m_PlayFile.SampleSize() + pDatack->dwDataOffset;
+		m_End = m_PlayFile.SampleToPosition(m_LastSamplePlayed);
 	}
 
 	m_OldThreadPriority = GetThreadPriority(GetCurrentThread());
@@ -2252,7 +2243,8 @@ BOOL CUndoRedoContext::InitUndoCopy(CWaveFile & SrcFile,
 			NotEnoughUndoSpaceMessageBox();
 			return FALSE;
 		}
-		m_DstSavePos = SrcFile.GetDataChunk()->dwDataOffset;
+
+		m_DstSavePos = SrcFile.SampleToPosition(0);
 		m_SrcStart = m_DstSavePos;
 		m_SrcCopyPos = m_SrcStart;
 		m_SrcChan = ALL_CHANNELS;
@@ -3086,6 +3078,7 @@ void CFileSaveContext::PostRetire(BOOL bChildContext)
 	{
 		// update data chunk and number of samples
 		MMCKINFO * datack = m_pConvert->m_DstFile.GetDataChunk();
+
 		if (NULL != datack && datack->ckid != 0)
 		{
 			datack->dwFlags |= MMIO_DIRTY;
@@ -3444,7 +3437,7 @@ void CWmaDecodeContext::DeInit()
 void CWmaDecodeContext::SetDstFile(CWaveFile & file)
 {
 	m_DstFile = file;
-	m_DstStart = m_DstFile.GetDataChunk()->dwDataOffset;
+	m_DstStart = m_DstFile.SampleToPosition(0);
 	m_DstCopyPos = m_DstStart;
 	m_DstCopySample = 0;
 
