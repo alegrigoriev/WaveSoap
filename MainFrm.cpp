@@ -36,6 +36,8 @@ BEGIN_MESSAGE_MAP(CMainFrame, CMDIFrameWnd)
 	ON_UPDATE_COMMAND_UI(ID_INDICATOR_SAMPLE_RATE, OnUpdateIndicatorSampleRate)
 	//ON_UPDATE_COMMAND_UI(ID_INDICATOR_SAMPLE_SIZE, OnUpdateIndicatorSampleSize)
 	ON_UPDATE_COMMAND_UI(ID_INDICATOR_CHANNELS, OnUpdateIndicatorChannels)
+	ON_MESSAGE(WM_DISPLAYCHANGE, OnDisplayChange)
+	ON_MESSAGE(WM_SETTINGCHANGE, OnSettingChange)
 END_MESSAGE_MAP()
 
 static UINT indicators[] =
@@ -58,6 +60,19 @@ CMainFrame::CMainFrame()
 
 CMainFrame::~CMainFrame()
 {
+}
+
+void CMainFrame::OnSettingChange(UINT uFlags, LPCTSTR lpszSection)
+{
+	CFrameWnd::OnSettingChange(uFlags, lpszSection);
+	RecalcLayout();
+}
+
+LRESULT CMainFrame::OnDisplayChange(LPARAM lParam, WPARAM wParam)
+{
+	LRESULT result = CFrameWnd::OnDisplayChange(lParam, wParam);
+	RecalcLayout();
+	return result;
 }
 
 int CMainFrame::OnCreate(LPCREATESTRUCT lpCreateStruct)

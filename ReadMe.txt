@@ -1,8 +1,15 @@
 Known problems and tasks:
 
-Add FFT windowing choice
+When moving cursor into view, use timer to limit scroll speed
+Add options dialog
+Add toolbar button for channels lock
+Show File Properties
+Make sliders working in Resample Dialog
+Add decibel view to CAmplitudeRuler
+Draw decibels and crosshair in Spectrum Section view
+Add equalizer function
 Use list instead of array for FFT data.
-Broadcast UpdateAllViews if settings or metrics changed
+
 Add CD grabbing
 Add noise reduction estimation in spectrum section view
 Add MP3 save
@@ -10,7 +17,6 @@ Add ASF save
 Add sound recording
 Add splash screen
 Support "Play" in selection dialog
-keep cursor in 10% from the view boundary.
 Make Paste Special command (with Fade In/Fade Out etc)
 Make Undo/redo save the selection and regions
 Add support for markers and regions: save on copy and with undo, move and delete on Cut,
@@ -20,21 +26,16 @@ Delete/Insert operations can auto add markers and regions
 If delete (shrink) is done with one channel of two, fill the rest with zeros
 If displaying data without peak info, call RescanPeaks for this range.
 Support CFSTR_FILECONTENTS clipboard format
-Add options dialog
-Add toolbar button for channels lock
-Show File Properties
-Make sliders working in Resample Dialog
 Save current workspace
 Use secondary stream to keep peak info
 Support filenames with stream extension
-Add decibel view to CAmplitudeRuler
-Draw decibels and crosshair in Spectrum Section view
 Add VU meter for playback
-Add equalizer function
 Add Application Close Pending flag
 Make tooltips in wave view and other important views
 Make help file
 Add "Favorite formats" combobox to Save dialog
+"Save selection as" in selection dialog
+"Save As" in most process dialogs
 When Open/Save dialog is resized, resize/move the controls
 Verify that FileSave can be canceled
 Reconsider Undo All Changes functionality and Redo All Changes
@@ -42,11 +43,11 @@ Reconsider Undo All Changes functionality and Redo All Changes
 
 Problems:
  
+Expression evaluation selection longer than file length doesn't update file length
 Multiline edit box in child dialog eats Esc and Enter (DLGC_WANTALLCHARS)
 If there is not enough space on NTFS volume, it will be seen only during flush
 Windows2000 is trying to zero the allocated file
 
-Expression evaluation selection longer than file length doesn't update file length
 LOg Off query doesn't close the active dialog. Recursion is possible. Make sure to check after Cancel
 
 Deferred:
@@ -55,6 +56,7 @@ Save As dialog is not centered first time (comdlg problem?)
 ??? When time/seconds format is set for status bar, MM:SS is actually shown
 
 Fixed:
+SetSelection now moves only active child frame views.
 Ctrl-End, Ctrl-Home loses synchronization between FFT and wave
 When selecting to the begin of file, FFT is corrupted
 When Save As from LLADPCM to PCM, suggests 8 bit (now chooises max number of bits)
@@ -72,6 +74,9 @@ Wrong minimum/maximum valies shown for a zero length file in Statistics (command
 ???? When a file is opened in non-direct mode, peak info is saved with wrong time stamp
 
 Done:
+keep cursor in 5% from the view boundary.
+Add FFT windowing choice
+Process WM_SETTINGSCHANGE if settings or metrics changed (do RecalcLayout)
 Show FFT selection with thick XOR rectangle
 Remember Spectrum Section settings (FFT order) and size
 Appropriate commands are disabled when the file has zero length
