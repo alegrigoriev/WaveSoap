@@ -9,11 +9,6 @@
 #include "FileDialogWithHistory.h"
 #include "GdiObjectSave.h"
 #include "DialogWithSelection.inl"
-#ifdef NOMINMAX
-#include <algorithm>
-using std::min;
-using std::max;
-#endif
 
 #ifdef _DEBUG
 #define new DEBUG_NEW

@@ -73,16 +73,10 @@ inline void AssignMultiSz(CStringA & dst, LPCWSTR src)
 #define EnableDlgItem(id, Enable) \
 	::EnableWindow(GetDlgItem(id)->GetSafeHwnd(), Enable)
 
-#include "resource.h"
-#include "mmsystem.h"
-#include "SimpleCriticalSection.h"
-
-#if 0
-#include "WaveFile.h"
-#include "waveproc.h"
-#include "WaveSoapFrontDoc.h"
-#include "WaveSoapFrontView.h"
-#include "WaveFftView.h"
+#ifdef NOMINMAX
+#include <algorithm>
+using std::min;
+using std::max;
 #endif
 #include "WaveSoapFront.h"
 //{{AFX_INSERT_LOCATION}}

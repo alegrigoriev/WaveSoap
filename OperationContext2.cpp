@@ -5,11 +5,6 @@
 #include "OperationDialogs.h"
 #include "WaveSoapFrontDoc.h"
 #include "BladeMP3EncDLL.h"
-#ifdef NOMINMAX
-#include <algorithm>
-using std::min;
-using std::max;
-#endif
 
 static int _fastcall fround(double d)
 {
