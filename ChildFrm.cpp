@@ -718,8 +718,9 @@ int CWaveMDIChildClient::OnCreate(LPCREATESTRUCT lpCreateStruct)
 	CWnd * pSpectrumSectionRuler = CreateView(RUNTIME_CLASS(CSpectrumSectionRuler),
 											r, SpectrumSectionRulerID, pContext, FALSE);    // not visible
 
-	CWnd * pOutlineView = CreateView(RUNTIME_CLASS(CWaveOutlineView),
-									r, OutlineViewID, pContext, TRUE);    // visible
+	//CWnd * pOutlineView =
+	CreateView(RUNTIME_CLASS(CWaveOutlineView),
+				r, OutlineViewID, pContext, TRUE);    // visible
 
 	m_FftZoomBar.Create(this, FftZoomBarID, r);
 	m_FftZoomBar.AddButton(ID_BITMAP_ZOOMINVERT, ID_VIEW_SS_ZOOMINVERT);
