@@ -169,7 +169,7 @@ BEGIN
     POPUP "&File"
     BEGIN
         MENUITEM "&New\tCtrl+N",                ID_FILE_NEW
-        MENUITEM "New From Clipboard\tCtrl+E",  ID_EDIT_PASTE_NEW
+        MENUITEM "Ne&w From Clipboard\tCtrl+E", ID_EDIT_PASTE_NEW
         MENUITEM "&Open...\tCtrl+O",            ID_FILE_OPEN
         MENUITEM "Reopen For Editing",          ID_FILE_REOPENFOREDITING
         MENUITEM "&Close",                      ID_FILE_CLOSE
@@ -181,7 +181,8 @@ BEGIN
         MENUITEM "Print Pre&view",              ID_FILE_PRINT_PREVIEW
         MENUITEM "P&rint Setup...",             ID_FILE_PRINT_SETUP
         MENUITEM SEPARATOR
-        MENUITEM "Properties...\tAlt+Enter",    ID_FILE_PROPERTIES
+        MENUITEM "Pr&operties...\tAlt+Enter",   ID_FILE_PROPERTIES
+        MENUITEM "St&atistics...",              ID_FILE_STATISTICS
         MENUITEM SEPARATOR
         MENUITEM "Recent File",                 ID_FILE_MRU_FILE1, GRAYED
         MENUITEM SEPARATOR
@@ -209,15 +210,18 @@ BEGIN
     POPUP "&View"
     BEGIN
         MENUITEM "&Toolbar",                    ID_VIEW_TOOLBAR
-        MENUITEM "&Status Bar",                 ID_VIEW_STATUS_BAR
+        MENUITEM "Status &Bar",                 ID_VIEW_STATUS_BAR
         MENUITEM SEPARATOR
-        MENUITEM "Spectral View",               IDC_VIEW_SHOW_FFT
-        MENUITEM "Waveform View",               IDC_VIEW_WAVEFORM
+        MENUITEM "&Outline",                    ID_VIEW_OUTLINE
+        MENUITEM "&Spectral View",              IDC_VIEW_SHOW_FFT
+        MENUITEM "&Waveform View",              IDC_VIEW_WAVEFORM
         MENUITEM SEPARATOR
         MENUITEM "Zoom In Time\tGray +",        ID_VIEW_ZOOMINHOR2
         MENUITEM "Zoom Out Time\tGray -",       ID_VIEW_ZOOMOUTHOR2
         POPUP "Time Ruler"
         BEGIN
+            MENUITEM "Enable",                      ID_VIEW_TIME_RULER
+            MENUITEM SEPARATOR
             MENUITEM "Samples",                     IDC_VIEW_RULER_SAMPLES
             MENUITEM "HH:MM:SS",                    IDC_VIEW_RULER_HHMMSS
             MENUITEM "Seconds",                     IDC_VIEW_RULER_SECONDS
@@ -227,6 +231,8 @@ BEGIN
         MENUITEM "Zoom Out Amplitude\tAlt+Down", ID_VIEW_ZOOMOUTVERT
         POPUP "Amplitude Ruler"
         BEGIN
+            MENUITEM "Enable",                      ID_VIEW_VERTICAL_RULER
+            MENUITEM SEPARATOR
             MENUITEM "&Sample Value",               IDC_VIEW_AMPL_RULER_SAMPLES
 
             MENUITEM "&Percents",                   IDC_VIEW_AMPL_RULER_PERCENT
@@ -234,18 +240,21 @@ BEGIN
             MENUITEM "&dB",                         IDC_VIEW_AMPL_RULER_DECIBELS
 
         END
+        MENUITEM SEPARATOR
+        MENUITEM "Rescan Peaks",                ID_VIEW_RESCAN_PEAKS
     END
     POPUP "Process"
     BEGIN
         MENUITEM "&Click Removal...",           IDC_PROCESS_DO_DECLICKING
         MENUITEM "&Turntable Noise Reduction...", IDC_PROCESS_DO_ULF
         MENUITEM "&White Noise Reduction...",   IDC_PROCESS_NOISE_REDUCTION
+        MENUITEM "DC &Offset...",               ID_PROCESS_DCOFFSET
         MENUITEM "&Normalize...",               ID_PROCESS_NORMALIZE
         MENUITEM "Change &Volume...",           ID_PROCESS_CHANGEVOLUME
-        MENUITEM "DC &Offset...",               ID_PROCESS_DCOFFSET
-        MENUITEM "&Resample...",                ID_PROCESS_RESAMPLE
         MENUITEM "&Mute",                       ID_PROCESS_MUTE
+        MENUITEM "Invert",                      ID_PROCESS_INVERT
         MENUITEM "Insert &Silence...",          ID_PROCESS_INSERTSILENCE
+        MENUITEM "&Resample...",                ID_PROCESS_RESAMPLE
     END
     POPUP "&Window"
     BEGIN
@@ -765,21 +774,21 @@ BEGIN
     PUSHBUTTON      "&Help",IDHELP,132,89,50,14
 END
 
-IDD_DIALOG_GOTO DIALOG DISCARDABLE  0, 0, 162, 117
+IDD_DIALOG_GOTO DIALOG DISCARDABLE  0, 0, 162, 98
 STYLE DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
 CAPTION "Go To..."
 FONT 8, "MS Sans Serif"
 BEGIN
-    LTEXT           "Position:",-1,7,28,26,8
+    LTEXT           "&Position:",IDC_STATIC,7,28,26,8
     EDITTEXT        IDC_EDIT_START,52,25,82,14,ES_AUTOHSCROLL
     CONTROL         "Spin1",IDC_SPIN_START,"msctls_updown32",UDS_ALIGNRIGHT | 
                     UDS_AUTOBUDDY | UDS_ARROWKEYS,136,25,10,14
-    LTEXT           "Time format: ",-1,7,47,40,8
+    LTEXT           "&Time format: ",IDC_STATIC,7,47,40,8
     COMBOBOX        IDC_COMBO_TIME_FORMAT,52,45,83,53,CBS_DROPDOWNLIST | 
                     WS_VSCROLL | WS_TABSTOP
-    DEFPUSHBUTTON   "OK",IDOK,7,96,50,14
-    PUSHBUTTON      "Cancel",IDCANCEL,105,96,50,14
-    LTEXT           "Go To:",-1,7,7,22,8
+    DEFPUSHBUTTON   "OK",IDOK,7,77,50,14
+    PUSHBUTTON      "Cancel",IDCANCEL,105,77,50,14
+    LTEXT           "&Go To:",IDC_STATIC,7,7,22,8
     COMBOBOX        IDC_COMBO_SELECTION,51,6,83,72,CBS_DROPDOWNLIST | 
                     WS_VSCROLL | WS_TABSTOP
 END
@@ -807,6 +816,45 @@ BEGIN
     DEFPUSHBUTTON   "OK",IDOK,12,105,50,14
     PUSHBUTTON      "Cancel",IDCANCEL,73,105,50,14
     PUSHBUTTON      "&Help",IDHELP,132,105,50,14
+END
+
+IDD_DIALOG_STATISTICS DIALOG DISCARDABLE  0, 0, 330, 133
+STYLE DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "File statistics:"
+FONT 8, "MS Sans Serif"
+BEGIN
+    DEFPUSHBUTTON   "OK",IDOK,140,112,50,14
+    EDITTEXT        IDC_EDIT_LEFT,99,25,100,83,ES_MULTILINE | ES_AUTOVSCROLL | 
+                    ES_AUTOHSCROLL | ES_READONLY | NOT WS_BORDER
+    EDITTEXT        IDC_EDIT_RIGHT,207,25,100,83,ES_MULTILINE | 
+                    ES_AUTOHSCROLL | ES_READONLY | NOT WS_BORDER
+    CONTROL         "Cursor position:\nSample value at cursor:\nMinimum sample position:\nMinimum sample value:\nMaximum sample position:\nMaximum sample value:\nRMS power:\nAverage value (DC offset):\nZero crossings:",
+                    IDC_STATIC,"Static",SS_LEFTNOWORDWRAP | WS_GROUP,7,25,91,
+                    80
+    LTEXT           "Left channel: ",IDC_STATIC,99,13,54,8
+    LTEXT           "Right channel:",IDC_STATIC,207,13,54,8
+END
+
+IDD_DIALOG_NORMALIZE DIALOG DISCARDABLE  0, 0, 193, 110
+STYLE DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "Normalize sound"
+FONT 8, "MS Sans Serif"
+BEGIN
+    LTEXT           "&Normalize to:",IDC_STATIC,7,7,44,8
+    CONTROL         "Slider1",IDC_SLIDER_LEVEL,"msctls_trackbar32",
+                    TBS_AUTOTICKS | WS_TABSTOP,54,4,86,21
+    EDITTEXT        IDC_EDIT_LEVEL,143,4,35,14,ES_AUTOHSCROLL
+    COMBOBOX        IDC_COMBODB_PERCENT,143,25,34,59,CBS_DROPDOWNLIST | 
+                    WS_TABSTOP
+    LTEXT           "Selection:\nChannels:",IDC_STATIC_SELECTION,7,45,179,17
+    CONTROL         "Save &Undo",IDC_CHECK_UNDO,"Button",BS_AUTOCHECKBOX | 
+                    WS_TABSTOP,7,66,50,10
+    PUSHBUTTON      "&Selection...",IDC_BUTTON_SELECTION,132,64,50,14
+    DEFPUSHBUTTON   "OK",IDOK,12,89,50,14
+    PUSHBUTTON      "Cancel",IDCANCEL,73,89,50,14
+    PUSHBUTTON      "&Help",IDHELP,132,89,50,14
+    CONTROL         "&Equally adjust both channels",IDC_CHECK_LOCK_CHANNELS,
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,7,31,101,10
 END
 
 
@@ -954,7 +1002,7 @@ BEGIN
         LEFTMARGIN, 7
         RIGHTMARGIN, 155
         TOPMARGIN, 7
-        BOTTOMMARGIN, 110
+        BOTTOMMARGIN, 91
     END
 
     IDD_DIALOG_DC_OFFSET, DIALOG
@@ -963,6 +1011,22 @@ BEGIN
         RIGHTMARGIN, 186
         TOPMARGIN, 7
         BOTTOMMARGIN, 119
+    END
+
+    IDD_DIALOG_STATISTICS, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 323
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 126
+    END
+
+    IDD_DIALOG_NORMALIZE, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 186
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 103
     END
 END
 #endif    // APSTUDIO_INVOKED
@@ -1045,6 +1109,15 @@ BEGIN
 0x6e45, 0x2064, 0x664f, 0x4620, 0x6c69, 0x0065, 
     IDC_COMBO_SELECTION, 0x403, 14, 0
 0x6542, 0x6967, 0x206e, 0x664f, 0x4620, 0x6c69, 0x0065, 
+    0
+END
+
+IDD_DIALOG_NORMALIZE DLGINIT
+BEGIN
+    IDC_COMBODB_PERCENT, 0x403, 3, 0
+0x4264, "\000" 
+    IDC_COMBODB_PERCENT, 0x403, 2, 0
+0x0025, 
     0
 END
 
@@ -1315,6 +1388,7 @@ BEGIN
     IDS_SOUND_MAY_BE_CLIPPED 
                             "%s:\nAs a result of the operation, some samples may exceed limit and will be clipped. Continue?"
     IDS_M_UNABLE_TO_CREATE_UNDO "Unable to save undo data, continue?"
+    IDS_STATISTICS_FORMAT   "%s (%s)\r\n%s (%s dB; %.2f%%)\r\n%s (%s)\r\n%s (%s dB; %.2f%%)\r\n%s (%s)\r\n%s (%s dB; %.2f%%)\r\n%s dB (%.2f%%)\r\n%s (%s dB; %.2f%%)\r\n%.2f Hz"
 END
 
 STRINGTABLE DISCARDABLE 
@@ -1345,6 +1419,13 @@ STRINGTABLE DISCARDABLE
 BEGIN
     IDC_VIEW_STATUS_HHMMSS  "Show time as hour:minute:seconds\nShow hh:mm:ss"
     IDC_VIEW_STATUS_SECONDS "Show time in seconds\nShow seconds"
+    ID_FILE_STATISTICS      "Calculate file statistics\nStatistics"
+    ID_PROCESS_INVERT       "Invert the sample sign\nInvert"
+    ID_VIEW_OUTLINE         "Toggle outline view\nOutline"
+    ID_VIEW_TIMERULER       "Toggle time ruler"
+    ID_VIEW_TIME_RULER      "Toggle time ruler\nTime ruler"
+    ID_VIEW_VERTICAL_RULER  "Toggle vertical ruler\nVertical ruler"
+    ID_VIEW_RESCAN_PEAKS    "Scan the wave file for peaks\nRescan peaks"
 END
 
 #endif    // English (U.S.) resources

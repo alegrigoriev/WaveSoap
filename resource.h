@@ -31,7 +31,9 @@
 #define IDR_MENU_CURRENT_POSITION       143
 #define IDD_DIALOG_DC_OFFSET            143
 #define IDR_MENU_SELECTION_LENGTH       144
+#define IDD_DIALOG_STATISTICS           144
 #define IDR_MENU_FILE_LENGTH            145
+#define IDD_DIALOG_NORMALIZE            145
 #define IDC_CURSOR_BEAM                 150
 #define IDC_CURSOR_BEAM_LEFT            151
 #define IDC_CURSOR_BEAM_RIGHT           152
@@ -116,6 +118,11 @@
 #define IDC_RADIO_DC_SELECT             1043
 #define IDC_EDIT_DC_OFFSET              1044
 #define IDC_CHECK_5SECONDS              1045
+#define IDC_EDIT_LEFT                   1046
+#define IDC_EDIT_RIGHT                  1047
+#define IDC_CHECK_LOCK_CHANNELS         1047
+#define IDC_SLIDER_LEVEL                1048
+#define IDC_EDIT_LEVEL                  1049
 #define IDC_VIEW_RULER_SAMPLES          32771
 #define IDC_VIEW_RULER_HHMMSS           32772
 #define IDC_VIEW_RULER_SECONDS          32773
@@ -177,6 +184,7 @@
 #define IDS_SOUND_CLIPPED               32836
 #define IDS_SOUND_MAY_BE_CLIPPED        32837
 #define IDS_M_UNABLE_TO_CREATE_UNDO     32838
+#define IDS_STATISTICS_FORMAT           32839
 #define IDC_VIEW_AMPL_RULER_PERCENT     32900
 #define ID_FILE_PROPERTIES              40000
 #define ID_VIEW_ZOOMVERT_NORMAL         40001
@@ -220,15 +228,22 @@
 #define IDC_VIEW_STATUS_SAMPLES         40047
 #define IDC_VIEW_STATUS_HHMMSS          40048
 #define IDC_VIEW_STATUS_SECONDS         40049
+#define ID_FILE_STATISTICS              40050
+#define ID_PROCESS_INVERT               40051
+#define ID_VIEW_OUTLINE                 40052
+#define ID_VIEW_TIMERULER               40053
+#define ID_VIEW_TIME_RULER              40055
+#define ID_VIEW_VERTICAL_RULER          40056
+#define ID_VIEW_RESCAN_PEAKS            40057
 
 // Next default values for new objects
 //
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_3D_CONTROLS                     1
-#define _APS_NEXT_RESOURCE_VALUE        142
-#define _APS_NEXT_COMMAND_VALUE         40050
-#define _APS_NEXT_CONTROL_VALUE         1046
+#define _APS_NEXT_RESOURCE_VALUE        145
+#define _APS_NEXT_COMMAND_VALUE         40058
+#define _APS_NEXT_CONTROL_VALUE         1050
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif

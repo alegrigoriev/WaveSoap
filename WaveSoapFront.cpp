@@ -242,9 +242,22 @@ BOOL CWaveSoapFrontApp::InitInstance()
 	Profile.AddItem(_T("Settings"), _T("MaxRedoSize"), m_MaxRedoSize, 0x40000000u,
 					0u, 0xC0000000u);
 
+	// DC offset parameters:
 	Profile.AddBoolItem(_T("Settings"), _T("5SecondsDC"), m_b5SecondsDC, TRUE);
 	Profile.AddItem(_T("Settings"), _T("DcOffsetSelectMode"), m_DcSelectMode, 0, 0, 1);
 	Profile.AddItem(_T("Settings"), _T("DcOffset"), m_nDcOffset, 0, -32767, 32767);
+
+	// Normalize volume parameters:
+	Profile.AddItem(_T("Settings"), _T("NormalizeDialogDbPercents"), m_NormalizeDialogDbPercents, 0, 0, 1);
+	Profile.AddItem(_T("Settings"), _T("NormalizeLevelDb"), m_dNormalizeLevelDb, -6., -40., 0.);
+	Profile.AddItem(_T("Settings"), _T("NormalizeLevelPercent"), m_dNormalizeLevelPercent, 50., 1., 100.);
+
+	// change volume parameters:
+	Profile.AddItem(_T("Settings"), _T("VolumeDialogDbPercents"), m_VolumeDialogDbPercents, 0, 0, 1);
+	Profile.AddItem(_T("Settings"), _T("VolumeLeftDb"), m_dVolumeLeftDb, 0., -40., 40.);
+	Profile.AddItem(_T("Settings"), _T("VolumeLeftPercent"), m_dVolumeLeftPercent, 100., 1., 10000.);
+	Profile.AddItem(_T("Settings"), _T("VolumeRightDb"), m_dVolumeRightDb, 0., -40., 40.);
+	Profile.AddItem(_T("Settings"), _T("VolumeRightPercent"), m_dVolumeRightPercent, 100., 1., 10000.);
 
 	LoadStdProfileSettings(10);  // Load standard INI file options (including MRU)
 
@@ -1329,11 +1342,13 @@ public:
 						LPCTSTR lpszCurDir, int nCurDir, BOOL bAtLeastName = TRUE) const;
 	virtual void UpdateMenu(CCmdUI* pCmdUI);
 	virtual ~CWaveSoapFileList() {}
+	virtual void Add(LPCTSTR lpszPathName);
 };
 
 BOOL AFXAPI AfxFullPath(LPTSTR lpszPathOut, LPCTSTR lpszFileIn);
 UINT AFXAPI AfxGetFileTitle(LPCTSTR lpszPathName, LPTSTR lpszTitle, UINT nMax);
 UINT AFXAPI AfxGetFileName(LPCTSTR lpszPathName, LPTSTR lpszTitle, UINT nMax);
+BOOL AFXAPI AfxComparePath(LPCTSTR lpszPath1, LPCTSTR lpszPath2);
 
 static void AFXAPI _AfxAbbreviateName(LPTSTR lpszCanon, int cchMax, BOOL bAtLeastName)
 {
@@ -1452,6 +1467,7 @@ BOOL CWaveSoapFileList::GetDisplayName(CString& strName, int nIndex,
 	lpch[_MAX_PATH] = 0;
 	CString suffix;
 	TCHAR flags = m_arrNames[nIndex][0];
+	TRACE("First byte of name #%d = %02x\n", nIndex, flags);
 	if (flags <= 7)
 	{
 		if (flags & 4)
@@ -1565,5 +1581,33 @@ void CWaveSoapFileList::UpdateMenu(CCmdUI* pCmdUI)
 	pCmdUI->m_nIndexMax = pCmdUI->m_pMenu->GetMenuItemCount();
 
 	pCmdUI->m_bEnableChanged = TRUE;    // all the added items are enabled
+}
+
+void CWaveSoapFileList::Add(LPCTSTR lpszPathName)
+{
+	ASSERT(m_arrNames != NULL);
+	ASSERT(lpszPathName != NULL);
+	ASSERT(AfxIsValidString(lpszPathName));
+
+	// fully qualify the path name
+	TCHAR szTemp[_MAX_PATH];
+	szTemp[0] = lpszPathName[0];
+	AfxFullPath(szTemp+1, lpszPathName+1);
+
+	// update the MRU list, if an existing MRU string matches file name
+	for (int iMRU = 0; iMRU < m_nSize-1; iMRU++)
+	{
+		if (AfxComparePath(LPCTSTR(m_arrNames[iMRU])+1, szTemp+1))
+			break;      // iMRU will point to matching entry
+	}
+	// move MRU strings before this one down
+	for (; iMRU > 0; iMRU--)
+	{
+		ASSERT(iMRU > 0);
+		ASSERT(iMRU < m_nSize);
+		m_arrNames[iMRU] = m_arrNames[iMRU-1];
+	}
+	// place this one at the beginning
+	m_arrNames[0] = szTemp;
 }
 
