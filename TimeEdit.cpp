@@ -15,9 +15,9 @@ static char THIS_FILE[] = __FILE__;
 /////////////////////////////////////////////////////////////////////////////
 // CTimeEdit
 
-CTimeEdit::CTimeEdit()
+CTimeEdit::CTimeEdit(int format)
 	:m_nSamplesPerSec(1),
-	m_TimeFormat(0),
+	m_TimeFormat(format),
 	m_Sample(0)
 {
 }
@@ -50,12 +50,6 @@ void CTimeEdit::ExchangeData(CDataExchange* pDX, SAMPLE_INDEX & sample)
 		SetTimeSample(sample);
 		return;
 	}
-}
-
-void CTimeEdit::SetTimeFormat(int format)
-{
-	m_TimeFormat = format;
-	//UpdateEditControl();
 }
 
 void CTimeEdit::SetTimeSample(SAMPLE_INDEX sample)
@@ -262,10 +256,6 @@ void CTimeSpinCtrl::OnDeltapos(NMHDR* pNMHDR, LRESULT* pResult)
 		pBuddy->SendMessage(WM_VSCROLL, SbCode + (pNMUpDown->iDelta << 16), long(m_hWnd));
 	}
 	*pResult = 0;
-}
-
-CTimeEditCombo::CTimeEditCombo()
-{
 }
 
 CTimeEditCombo::~CTimeEditCombo()

@@ -80,8 +80,8 @@ public:
 		LARGE_INTEGER freq;
 		if (QueryPerformanceFrequency( & freq))
 		{
-			ASSERT(freq >= 1000U);
-			return diff / ULONG(freq / 1000U);
+			ASSERT(freq.QuadPart >= 1000U);
+			return DWORD(diff / ULONG(freq.QuadPart / 1000U));
 		}
 		return 0;
 	}
@@ -90,8 +90,8 @@ public:
 		LARGE_INTEGER freq;
 		if (QueryPerformanceFrequency( & freq))
 		{
-			ASSERT(freq >= 10000U);
-			return diff / ULONG(freq / 10000U);
+			ASSERT(freq.QuadPart >= 10000U);
+			return DWORD(diff / ULONG(freq.QuadPart / 10000U));
 		}
 		return 0;
 	}

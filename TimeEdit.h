@@ -13,29 +13,33 @@
 
 class CTimeEdit : public CEdit
 {
-// Construction
+	// Construction
 public:
-	CTimeEdit();
+	CTimeEdit(int format = 0);
 
-// Attributes
+	// Attributes
 public:
 	void ExchangeData(CDataExchange* pDX, SAMPLE_INDEX & sample);
 	ULONG GetTimeSample();
-// Operations
+	// Operations
 public:
-	void SetTimeFormat(int format);
+	void SetTimeFormat(int format)
+	{
+		m_TimeFormat = format;
+		//UpdateEditControl();
+	}
 	void SetTimeSample(SAMPLE_INDEX sample);
 	void SetSamplingRate(long nSamplesPerSec)
 	{
 		m_nSamplesPerSec = nSamplesPerSec;
 	}
 	void UpdateEditControl();
-// Overrides
+	// Overrides
 	// ClassWizard generated virtual function overrides
 	//{{AFX_VIRTUAL(CTimeEdit)
 	//}}AFX_VIRTUAL
 
-// Implementation
+	// Implementation
 public:
 	virtual ~CTimeEdit();
 
@@ -59,22 +63,22 @@ protected:
 
 class CTimeSpinCtrl : public CSpinButtonCtrl
 {
-// Construction
+	// Construction
 public:
 	CTimeSpinCtrl();
 
-// Attributes
+	// Attributes
 public:
 
-// Operations
+	// Operations
 public:
 
-// Overrides
+	// Overrides
 	// ClassWizard generated virtual function overrides
 	//{{AFX_VIRTUAL(CTimeSpinCtrl)
 	//}}AFX_VIRTUAL
 
-// Implementation
+	// Implementation
 public:
 	virtual ~CTimeSpinCtrl();
 
@@ -90,23 +94,26 @@ protected:
 // CTimeEditCombo privides combobox with several time choices
 class CTimeEditCombo : public CTimeEdit
 {
-// Construction
+	// Construction
 public:
-	CTimeEditCombo();
+	CTimeEditCombo(int format = 0)
+		: CTimeEdit(format)
+	{
+	}
 
-// Attributes
+	// Attributes
 public:
 	std::vector<long> m_Positions;
-// Operations
+	// Operations
 	void AddPosition(LPCTSTR name, long time);
 	void AddPosition(UINT id, long time);
 public:
-// Overrides
+	// Overrides
 	// ClassWizard generated virtual function overrides
 	//{{AFX_VIRTUAL(CTimeEditCombo)
 	//}}AFX_VIRTUAL
 
-// Implementation
+	// Implementation
 public:
 	virtual ~CTimeEditCombo();
 
