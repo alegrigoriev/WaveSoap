@@ -16,12 +16,8 @@ static char THIS_FILE[] = __FILE__;
 
 /////////////////////////////////////////////////////////////////////////////
 // CMainFrame
-#if 0
-IMPLEMENT_DYNAMIC(CMainFrame, DialogProxyWnd)
-IMPLEMENT_DYNAMIC_T(DialogProxyWnd, CMDIFrameWnd, CMDIFrameWnd)
-#else
 IMPLEMENT_DYNAMIC(CMainFrame, CMDIFrameWnd)
-#endif
+
 BEGIN_MESSAGE_MAP(CMainFrame, BaseClass)
 	//{{AFX_MSG_MAP(CMainFrame)
 	ON_WM_CREATE()
