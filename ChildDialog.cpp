@@ -332,12 +332,12 @@ void CInsertExpressionDialog::SaveExpressionAs(const CString & expr)
 	CSaveExpressionDialog dlg(m_Expressions);
 
 	if (IDOK == dlg.DoModal()
-		&& SaveExpression(expr, dlg.m_Name, dlg.m_GroupName, dlg.m_Comment, false))
+		&& SaveExpression(expr, dlg.GetName(), dlg.GetGroupName(), dlg.GetComment(), false))
 	{
 		RebuildAllExpressionsList();
 		int nGroup;
 		int nExpr;
-		if (FindExpression(dlg.m_GroupName, dlg.m_Name, & nGroup, & nExpr))
+		if (FindExpression(dlg.GetGroupName(), dlg.GetName(), & nGroup, & nExpr))
 		{
 			BuildExpressionGroupCombobox(nGroup, nExpr);
 		}
