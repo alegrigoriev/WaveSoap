@@ -12,11 +12,8 @@ Language=0x409 English (United States)
 
 [FILES]
 html\main_index.htm
+
 html\File\menu_file.htm
-html\Edit\menu_edit.htm
-html\View\menu_view.htm
-html\menu_window.htm
-html\menu_help.htm
 html\File\hid_file_new.htm
 html\File\file_new_from_clipboard.htm
 html\File\hid_file_open.htm
@@ -31,52 +28,68 @@ html\File\hid_file_statistics.htm
 html\File\hid_read_audio_cd.htm
 html\File\hid_file_mru_file1.htm
 html\File\hid_app_exit.htm
+
 html\Dialogs\FileSave\afx_hidd_filesave.htm
 html\Dialogs\FileOpen\afx_hidd_fileopen.htm
-html\Edit\hid_edit_undo.htm
-html\Edit\hid_edit_redo.htm
-html\Edit\hid_edit_cut.htm
+
+html\Edit\menu_edit.htm
 html\Edit\hid_edit_copy.htm
-html\Edit\hid_edit_paste.htm
-html\Edit\hid_edit_clear.htm
-html\Edit\hid_edit_insert_silence.htm
-html\Edit\hid_edit_stop.htm
-html\Edit\hid_lock_channels.htm
+html\Edit\hid_edit_cut.htm
+html\Edit\hid_edit_delete.htm
 html\Edit\hid_edit_goto.htm
-html\Edit\hid_edit_selection.htm
+html\Edit\hid_edit_insert_silence.htm
+html\Edit\hid_edit_paste.htm
+html\Edit\hid_edit_redo.htm
+html\Edit\hid_edit_region_marker.htm
 html\Edit\hid_edit_select_all.htm
-html\View\hid_view_toolbar.htm
-html\View\hid_view_status_bar.htm
-html\View\hid_view_ruler.htm
-html\View\hid_view_waveform.htm
+html\Edit\hid_edit_selection.htm
+html\Edit\hid_edit_stop.htm
+html\Edit\hid_edit_undo.htm
+html\Edit\hid_lock_channels.htm
+
+html\View\menu_view.htm
+html\View\hid_view_ampl_ruler_decibels.htm
+html\View\hid_view_ampl_ruler_percent.htm
+html\View\hid_view_ampl_ruler_samples.htm
 html\View\hid_view_fft.htm
-html\View\hid_view_spectrum_section.htm
-html\View\hid_view_zoom_in_time.htm
-html\View\hid_view_zoom_out_time.htm
-html\View\hid_view_zoom_in_amplitude.htm
-html\View\hid_view_zoom_out_amplitude.htm
-html\View\hid_view_time_ruler.htm
+html\View\hid_view_outline.htm
+html\View\hid_view_rescan_peaks.htm
 html\View\hid_view_ruler_samples.htm
 html\View\hid_view_ruler_hhmmss.htm
 html\View\hid_view_ruler_seconds.htm
 html\View\hid_view_ruler_hhmmssff.htm
+html\View\hid_view_spectrum_section.htm
+html\View\hid_view_status_bar.htm
+html\View\hid_view_time_ruler.htm
+html\View\hid_view_toolbar.htm
+html\View\hid_view_vertical_ruler.htm
+html\View\hid_view_waveform.htm
+html\View\hid_view_zoom_in_amplitude.htm
+html\View\hid_view_zoom_in_time.htm
+html\View\hid_view_zoom_out_amplitude.htm
+html\View\hid_view_zoom_out_time.htm
 html\View\hid_view_zoom_selection.htm
-html\View\hid_view_rescan_peaks.htm
-html\View\hid_view_outline.htm
-html\MainWindow\afx_hidw_toolbar.htm
-html\MainWindow\afx_hidw_status_bar.htm
-html\Window\hid_window_new.htm
+html\View\hid_view_zoomin_hor_full.htm
+html\View\hid_view_zoomprevious.htm
+html\View\hid_view_zoomvert_normal.htm
+
+html\Window\menu_window.htm
+html\Window\hid_next_pane.htm
+html\Window\hid_prev_pane.htm
+html\Window\hid_window_all.htm
+html\Window\hid_window_arrange.htm
 html\Window\hid_window_cascade.htm
+html\Window\hid_window_new.htm
 html\Window\hid_window_tile.htm
 html\Window\hid_window_tile_horz.htm
-html\Window\hid_window_arrange.htm
-html\Window\hid_window_all.htm
-html\Help\hid_help_index.htm
-html\Help\hid_help_using.htm
+
+html\Help\menu_help.htm
 html\Help\hid_app_about.htm
 html\Help\hid_context_help.htm
-html\hid_ht_caption.htm
-html\scrollbars.htm
+html\Help\hid_help_index.htm
+html\Help\hid_help_using.htm
+html\Help\technical_support.htm
+
 html\MainWindow\SysMenu\hid_sc_size.htm
 html\MainWindow\SysMenu\hid_sc_move.htm
 html\MainWindow\SysMenu\hid_sc_minimize.htm
@@ -85,19 +98,48 @@ html\MainWindow\SysMenu\hid_sc_nextwindow.htm
 html\MainWindow\SysMenu\hid_sc_prevwindow.htm
 html\MainWindow\SysMenu\hid_sc_close.htm
 html\MainWindow\SysMenu\hid_sc_restore.htm
-html\Window\hid_next_pane.htm
-html\Window\hid_prev_pane.htm
-html\hidr_convertype.htm
-html\hid_ht_nowhere.htm
-html\afx_hidp_default.htm
+
+html\MainWindow\afx_hidw_status_bar.htm
+html\MainWindow\afx_hidw_toolbar.htm
+html\MainWindow\amplitude_ruler.htm
+html\MainWindow\fft_spectrum_view.htm
+html\MainWindow\hid_ht_caption.htm
+html\MainWindow\main_menu.htm
+html\MainWindow\menu_channels_change_popup.htm
+html\MainWindow\menu_sample_rate_popup.htm
+html\MainWindow\menu_time_mode_popup.htm
+html\MainWindow\scrollbars.htm
+html\MainWindow\spectrum_section_pane.htm
+html\MainWindow\time_ruler.htm
+html\MainWindow\wave_outline_view.htm
+html\MainWindow\waveform_view.htm
+html\MainWindow\wavesoap_main_window.htm
+
+html\Process\process_menu.htm
+html\Process\process_mute.htm
+html\Process\process_resample.htm
+
 html\File\hid_file_print.htm
 html\File\afx_hidd_print.htm
 html\File\afx_hidd_printdlg.htm
 html\File\hid_file_print_preview.htm
-html\afx_hidw_preview_bar.htm
 html\File\hid_file_print_setup.htm
 html\File\afx_hidd_printsetup.htm
 html\File\hid_file_page_setup.htm
+
+html\afx_hidp_default.htm
+html\afx_hidw_preview_bar.htm
+html\hidr_convertype.htm
+html\hid_ht_nowhere.htm
+html\basic_editing_tasks.htm
+html\clipboard.htm
+html\creating_a_new_sound_file.htm
+html\License_and_copyright.htm
+html\MarkersAndRegions.htm
+html\Navigation.htm
+html\opening_an_existing_sound_file.htm
+html\saving_sound_file.htm
+html\SpecifyingPositionAndSelection.htm
 
 [ALIAS]
 main_index = html\main_index.htm
@@ -121,13 +163,14 @@ afx_hidd_filesave = html\Dialogs\FileSave\afx_hidd_filesave.htm
 hid_tools_cdgrab = html\File\hid_read_audio_cd.htm
 hid_file_mru_file1 = html\File\hid_file_mru_file1.htm
 hid_app_exit = html\File\hid_app_exit.htm
+
 hid_edit_undo = html\Edit\hid_edit_undo.htm
 hid_edit_redo = html\Edit\hid_edit_redo.htm
 hid_edit_cut = html\Edit\hid_edit_cut.htm
 hid_edit_copy = html\Edit\hid_edit_copy.htm
 hid_edit_paste = html\Edit\hid_edit_paste.htm
 hid_edit_paste_new = html\File\file_new_from_clipboard.htm
-hid_edit_clear = html\Edit\hid_edit_clear.htm
+hid_edit_clear = html\Edit\hid_edit_delete.htm
 hid_process_insertsilence = html\Edit\hid_edit_insert_silence.htm
 hid_edit_stop = html\Edit\hid_edit_stop.htm
 hid_edit_channels_lock = html\Edit\hid_lock_channels.htm
@@ -137,6 +180,7 @@ hid_edit_select_all = html\Edit\hid_edit_select_all.htm
 hidr_menu_time_ruler_marker = html\Edit\hid_edit_region_marker.htm
 hidr_menu_time_ruler_marker1 = html\Edit\hid_edit_region_marker.htm
 hidr_menu_time_ruler_region = html\Edit\hid_edit_region_marker.htm
+
 hid_view_toolbar = html\View\hid_view_toolbar.htm
 hid_view_show_fft = html\View\hid_view_fft.htm
 hid_view_waveform = html\View\hid_view_waveform.htm
@@ -153,17 +197,20 @@ hid_view_ruler_samples = html\View\hid_view_ruler_samples.htm
 hid_view_ruler_hhmmss = html\View\hid_view_ruler_hhmmss.htm
 hid_view_ruler_seconds = html\View\hid_view_ruler_seconds.htm
 hid_view_ruler_hhmmssff = html\View\hid_view_ruler_hhmmssff.htm
-HID_VIEW_ZOOMVERT_NORMAL
-HID_VIEW_ZOOMIN_HOR_FULL
-HID_VIEW_ZOOMPREVIOUS
-HID_VIEW_AMPL_RULER_DECIBELS
-HID_VIEW_AMPL_RULER_PERCENT
-HID_VIEW_AMPL_RULER_SAMPLES
-ID_VIEW_VERTICAL_RULER
+hid_view_vertical_ruler = html\View\hid_view_vertical_ruler.htm
+hid_view_ampl_ruler_decibels = html\View\hid_view_ampl_ruler_decibels.htm
+hid_view_ampl_ruler_percent = html\View\hid_view_ampl_ruler_percent.htm
+hid_view_ampl_ruler_samples = html\View\hid_view_ampl_ruler_samples.htm
+hid_view_zoomin_hor_full = html\View\hid_view_zoomin_hor_full.htm
+hid_view_zoomprevious = html\View\hid_view_zoomprevious.htm
+hid_view_zoomvert_normal = html\View\hid_view_zoomvert_normal.htm
+hid_view_ruler = html\View\hid_view_ruler.htm
+hid_view_status_bar = html\View\hid_view_status_bar.htm
 
-hid_view_ruler = html\hid_view_ruler.htm
+hid_process_mute = html\Process\process_mute.htm
+hid_process_resample = html\Process\process_resample.htm
+
 afx_hidw_toolbar = html\MainWindow\afx_hidw_toolbar.htm
-hid_view_status_bar = html\hid_view_status_bar.htm
 afx_hidw_status_bar = html\MainWindow\afx_hidw_status_bar.htm
 hid_window_new = html\Window\hid_window_new.htm
 hid_window_cascade = html\Window\hid_window_cascade.htm
@@ -173,12 +220,11 @@ hid_window_arrange = html\Window\hid_window_arrange.htm
 hid_window_all = html\Window\hid_window_all.htm
 hid_next_pane = html\Window\hid_next_pane.htm
 hid_prev_pane = html\Window\hid_prev_pane.htm
+
 hid_help_index = html\Help\hid_help_index.htm
 hid_help_using = html\Help\hid_help_using.htm
 hid_app_about = html\Help\hid_app_about.htm
 hid_context_help = html\Help\hid_context_help.htm
-hid_ht_caption = html\hid_ht_caption.htm
-scrollbars = html\scrollbars.htm
 hid_sc_size = html\MainWindow\SysMenu\hid_sc_size.htm
 hid_sc_move = html\MainWindow\SysMenu\hid_sc_move.htm
 hid_sc_minimize = html\MainWindow\SysMenu\hid_sc_minimize.htm
@@ -187,10 +233,14 @@ hid_sc_nextwindow = html\MainWindow\SysMenu\hid_sc_nextwindow.htm
 hid_sc_prevwindow = html\MainWindow\SysMenu\hid_sc_prevwindow.htm
 hid_sc_close = html\MainWindow\SysMenu\hid_sc_close.htm
 hid_sc_restore = html\MainWindow\SysMenu\hid_sc_restore.htm
+hid_ht_caption = html\MainWindow\hid_ht_caption.htm
+scrollbars = html\MainWindow\scrollbars.htm
+
 hidr_convertype = html\hidr_convertype.htm
 hidr_doc1type = html\hidr_convertype.htm
 hid_ht_nowhere = html\hid_ht_nowhere.htm
 afx_hidp_default = html\afx_hidp_default.htm
+
 hid_file_print = html\File\hid_file_print.htm
 afx_hidd_print = html\File\afx_hidd_print.htm
 afx_hidd_printdlg = html\File\afx_hidd_printdlg.htm
