@@ -163,6 +163,10 @@ SOURCE=.\OperationDialogs2.cpp
 # End Source File
 # Begin Source File
 
+SOURCE=.\PreferencesPropertySheet.cpp
+# End Source File
+# Begin Source File
+
 SOURCE=.\Resample.cpp
 # End Source File
 # Begin Source File
@@ -386,6 +390,10 @@ SOURCE=.\OperationDialogs.h
 # Begin Source File
 
 SOURCE=.\OperationDialogs2.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\PreferencesPropertySheet.h
 # End Source File
 # Begin Source File
 

@@ -1,8 +1,6 @@
 Known problems and tasks:
 
-When moving cursor into view, use timer to limit scroll speed
 Add options dialog
-Add toolbar button for channels lock
 Show File Properties
 Make sliders working in Resample Dialog
 Add decibel view to CAmplitudeRuler
@@ -42,7 +40,7 @@ Reconsider Undo All Changes functionality and Redo All Changes
 ??Delete permanent undo: non-permanent file may become permanent after save, move call after save
 
 Problems:
- 
+Last 64 KB block is not read from the master file
 Expression evaluation selection longer than file length doesn't update file length
 Multiline edit box in child dialog eats Esc and Enter (DLGC_WANTALLCHARS)
 If there is not enough space on NTFS volume, it will be seen only during flush
@@ -56,6 +54,8 @@ Save As dialog is not centered first time (comdlg problem?)
 ??? When time/seconds format is set for status bar, MM:SS is actually shown
 
 Fixed:
+Channels swapped in Spectrum Section view
+FFT view is ahead of the data??? 
 SetSelection now moves only active child frame views.
 Ctrl-End, Ctrl-Home loses synchronization between FFT and wave
 When selecting to the begin of file, FFT is corrupted
@@ -74,6 +74,7 @@ Wrong minimum/maximum valies shown for a zero length file in Statistics (command
 ???? When a file is opened in non-direct mode, peak info is saved with wrong time stamp
 
 Done:
+Add toolbar button for channels lock
 keep cursor in 5% from the view boundary.
 Add FFT windowing choice
 Process WM_SETTINGSCHANGE if settings or metrics changed (do RecalcLayout)

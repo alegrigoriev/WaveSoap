@@ -378,6 +378,14 @@ protected:
 	afx_msg void OnUpdateProcessChannels(CCmdUI* pCmdUI);
 	afx_msg void OnSamplerateCustom();
 	afx_msg void OnUpdateSamplerateCustom(CCmdUI* pCmdUI);
+	afx_msg void OnEditEnableUndo();
+	afx_msg void OnUpdateEditEnableUndo(CCmdUI* pCmdUI);
+	afx_msg void OnEditEnableRedo();
+	afx_msg void OnUpdateEditEnableRedo(CCmdUI* pCmdUI);
+	afx_msg void OnEditClearUndo();
+	afx_msg void OnUpdateEditClearUndo(CCmdUI* pCmdUI);
+	afx_msg void OnEditClearRedo();
+	afx_msg void OnUpdateEditClearRedo(CCmdUI* pCmdUI);
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 

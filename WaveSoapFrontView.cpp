@@ -1803,17 +1803,18 @@ void CWaveSoapFrontView::MovePointIntoView(int nCaret, BOOL bCenter)
 
 	int nDesiredPos = WorldToWindowX(nCaret);
 	double scroll;
+	int AutoscrollWidth = GetSystemMetrics(SM_CXVSCROLL);
 	if (bCenter)
 	{
 		scroll = (nDesiredPos - r.right / 2) * m_HorizontalScale;
 	}
-	else if (nDesiredPos < r.left + r.Width() / 32)
+	else if (nDesiredPos < r.left + AutoscrollWidth)
 	{
-		scroll = (nDesiredPos - (r.left + r.Width() / 32)) * m_HorizontalScale;
+		scroll = (nDesiredPos - (r.left + AutoscrollWidth)) * m_HorizontalScale;
 	}
-	else if (nDesiredPos >= r.right - r.Width() / 32)
+	else if (nDesiredPos >= r.right - AutoscrollWidth)
 	{
-		scroll = (nDesiredPos - (r.right - r.Width() / 32)) * m_HorizontalScale;
+		scroll = (nDesiredPos - (r.right - AutoscrollWidth)) * m_HorizontalScale;
 	}
 	else
 	{

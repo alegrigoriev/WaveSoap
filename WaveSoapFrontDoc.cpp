@@ -137,6 +137,14 @@ BEGIN_MESSAGE_MAP(CWaveSoapFrontDoc, CDocument)
 	ON_UPDATE_COMMAND_UI(ID_PROCESS_CHANNELS, OnUpdateProcessChannels)
 	ON_COMMAND(ID_SAMPLERATE_CUSTOM, OnSamplerateCustom)
 	ON_UPDATE_COMMAND_UI(ID_SAMPLERATE_CUSTOM, OnUpdateSamplerateCustom)
+	ON_COMMAND(ID_EDIT_ENABLE_UNDO, OnEditEnableUndo)
+	ON_UPDATE_COMMAND_UI(ID_EDIT_ENABLE_UNDO, OnUpdateEditEnableUndo)
+	ON_COMMAND(ID_EDIT_ENABLE_REDO, OnEditEnableRedo)
+	ON_UPDATE_COMMAND_UI(ID_EDIT_ENABLE_REDO, OnUpdateEditEnableRedo)
+	ON_COMMAND(ID_EDIT_CLEAR_UNDO, OnEditClearUndo)
+	ON_UPDATE_COMMAND_UI(ID_EDIT_CLEAR_UNDO, OnUpdateEditClearUndo)
+	ON_COMMAND(ID_EDIT_CLEAR_REDO, OnEditClearRedo)
+	ON_UPDATE_COMMAND_UI(ID_EDIT_CLEAR_REDO, OnUpdateEditClearRedo)
 	//}}AFX_MSG_MAP
 END_MESSAGE_MAP()
 
@@ -3759,11 +3767,7 @@ void CWaveSoapFrontDoc::OnProcessChangevolume()
 
 	CVolumeChangeDialog dlg;
 	CThisApp * pApp = GetApp();
-	dlg.m_DbPercent = pApp->m_VolumeDialogDbPercents;
-	dlg.m_dVolumeLeftDb = pApp->m_dVolumeLeftDb;
-	dlg.m_dVolumeRightDb = pApp->m_dVolumeRightDb;
-	dlg.m_dVolumeLeftPercent = pApp->m_dVolumeLeftPercent;
-	dlg.m_dVolumeRightPercent = pApp->m_dVolumeRightPercent;
+
 	dlg.m_Start = start;
 	dlg.m_End = end;
 	dlg.m_Chan = channel;
@@ -3782,11 +3786,6 @@ void CWaveSoapFrontDoc::OnProcessChangevolume()
 	{
 		return;
 	}
-	pApp->m_VolumeDialogDbPercents = dlg.m_DbPercent;
-	pApp->m_dVolumeLeftDb = dlg.m_dVolumeLeftDb;
-	pApp->m_dVolumeRightDb = dlg.m_dVolumeRightDb;
-	pApp->m_dVolumeLeftPercent = dlg.m_dVolumeLeftPercent;
-	pApp->m_dVolumeRightPercent = dlg.m_dVolumeRightPercent;
 
 	CVolumeChangeContext * pContext =
 		new CVolumeChangeContext(this, "Changing volume...", "Volume Change");
@@ -4045,16 +4044,11 @@ void CWaveSoapFrontDoc::OnProcessDcoffset()
 	dlg.m_bUndo = UndoEnabled();
 	dlg.m_TimeFormat = GetApp()->m_SoundTimeFormat;
 	dlg.m_FileLength = WaveFileSamples();
-	dlg.m_b5SecondsDC = GetApp()->m_b5SecondsDC;
-	dlg.m_DcSelectMode = GetApp()->m_DcSelectMode;
-	dlg.m_nDcOffset = GetApp()->m_nDcOffset;
+
 	if (IDOK != dlg.DoModal())
 	{
 		return;
 	}
-	GetApp()->m_b5SecondsDC = dlg.m_b5SecondsDC;
-	GetApp()->m_DcSelectMode = dlg.m_DcSelectMode;
-	GetApp()->m_nDcOffset = dlg.m_nDcOffset;
 
 	CDcOffsetContext * pContext =
 		new CDcOffsetContext(this, "Adjusting DC...", "DC Adjust");
@@ -4291,9 +4285,6 @@ void CWaveSoapFrontDoc::OnProcessNormalize()
 
 	CNormalizeSoundDialog dlg;
 	CThisApp * pApp = GetApp();
-	dlg.m_DbPercent = pApp->m_NormalizeDialogDbPercents;
-	dlg.m_dLevelDb = pApp->m_dNormalizeLevelDb;
-	dlg.m_dLevelPercent = pApp->m_dNormalizeLevelPercent;
 	dlg.m_Start = start;
 	dlg.m_End = end;
 	dlg.m_Chan = channel;
@@ -4312,9 +4303,6 @@ void CWaveSoapFrontDoc::OnProcessNormalize()
 	{
 		return;
 	}
-	pApp->m_NormalizeDialogDbPercents = dlg.m_DbPercent;
-	pApp->m_dNormalizeLevelDb = dlg.m_dLevelDb;
-	pApp->m_dNormalizeLevelPercent = dlg.m_dLevelPercent;
 
 	CNormalizeContext * pContext =
 		new CNormalizeContext(this, "Normalizing sound level...", "Normalize");
@@ -4378,11 +4366,7 @@ void CWaveSoapFrontDoc::OnProcessResample()
 	CResampleDialog dlg;
 	CThisApp * pApp = GetApp();
 	dlg.m_bUndo = UndoEnabled();
-	dlg.m_bChangeRateOnly = pApp->m_bResampleChangeRateOnly;
-	dlg.m_bChangeSamplingRate = pApp->m_bResampleRate;
-	dlg.m_TempoChange = pApp->m_ResampleTempoPercents;
-	dlg.m_NewSampleRate = pApp->m_ResampleSamplingRate;
-	dlg.m_bChangeSamplingRate = pApp->m_bResampleRate;
+
 	dlg.m_OldSampleRate = WaveFormat()->nSamplesPerSec;
 	dlg.m_bCanOnlyChangeSamplerate = WaveFileSamples() == 0;
 
@@ -4390,16 +4374,6 @@ void CWaveSoapFrontDoc::OnProcessResample()
 	{
 		return;
 	}
-
-	if ( ! dlg.m_bCanOnlyChangeSamplerate)
-	{
-		pApp->m_bResampleChangeRateOnly = dlg.m_bChangeRateOnly;
-	}
-
-	pApp->m_bResampleRate    = dlg.m_bChangeSamplingRate;
-	pApp->m_ResampleTempoPercents   = dlg.m_TempoChange;
-	pApp->m_ResampleSamplingRate    = dlg.m_NewSampleRate;
-	pApp->m_bResampleRate           = dlg.m_bChangeSamplingRate;
 
 	double ResampleQuality = 40.;
 
@@ -4915,11 +4889,9 @@ void CWaveSoapFrontDoc::OnProcessDoUlf()
 
 	CLowFrequencySuppressDialog dlg;
 	CThisApp * pApp = GetApp();
-	dlg.m_DifferentialModeSuppress = pApp->m_bSuppressDifferential;
-	dlg.m_LowFrequencySuppress = pApp->m_bSuppressLowFrequency;
+
 	dlg.m_bUndo = UndoEnabled();
-	dlg.m_dDiffNoiseRange = pApp->m_dSuppressDifferentialRange;
-	dlg.m_dLfNoiseRange = pApp->m_dSuppressLowFreqRange;
+
 	dlg.m_Start = start;
 	dlg.m_End = end;
 	dlg.m_Chan = channel;
@@ -4931,11 +4903,6 @@ void CWaveSoapFrontDoc::OnProcessDoUlf()
 	{
 		return;
 	}
-
-	pApp->m_bSuppressDifferential = dlg.m_DifferentialModeSuppress;
-	pApp->m_bSuppressLowFrequency = dlg.m_LowFrequencySuppress;
-	pApp->m_dSuppressDifferentialRange = dlg.m_dDiffNoiseRange;
-	pApp->m_dSuppressLowFreqRange = dlg.m_dLfNoiseRange;
 
 	CConversionContext * pContext = new CConversionContext(this, "Reducing low frequency static...",
 															"Low Frequency Suppression");
@@ -5364,3 +5331,65 @@ void CWaveSoapFrontDoc::DeletePermanentUndoRedo()
 	}
 }
 
+
+void CWaveSoapFrontDoc::OnEditEnableUndo()
+{
+	if ( ! m_bReadOnly)
+	{
+		m_bUndoEnabled = ! m_bUndoEnabled;
+	}
+}
+
+void CWaveSoapFrontDoc::OnUpdateEditEnableUndo(CCmdUI* pCmdUI)
+{
+	if (m_bReadOnly)
+	{
+		pCmdUI->Enable(FALSE);
+	}
+	else
+	{
+		pCmdUI->SetCheck(UndoEnabled());
+		pCmdUI->Enable(! m_OperationInProgress);
+	}
+}
+
+void CWaveSoapFrontDoc::OnEditEnableRedo()
+{
+	if ( ! m_bReadOnly)
+	{
+		m_bRedoEnabled = ! m_bRedoEnabled;
+	}
+}
+
+void CWaveSoapFrontDoc::OnUpdateEditEnableRedo(CCmdUI* pCmdUI)
+{
+	if (m_bReadOnly)
+	{
+		pCmdUI->Enable(FALSE);
+	}
+	else
+	{
+		pCmdUI->SetCheck(RedoEnabled());
+		pCmdUI->Enable(! m_OperationInProgress);
+	}
+}
+
+void CWaveSoapFrontDoc::OnEditClearUndo()
+{
+	DeleteUndo();
+}
+
+void CWaveSoapFrontDoc::OnUpdateEditClearUndo(CCmdUI* pCmdUI)
+{
+	pCmdUI->Enable(! m_OperationInProgress && NULL != m_pUndoList);
+}
+
+void CWaveSoapFrontDoc::OnEditClearRedo()
+{
+	DeleteRedo();
+}
+
+void CWaveSoapFrontDoc::OnUpdateEditClearRedo(CCmdUI* pCmdUI)
+{
+	pCmdUI->Enable(! m_OperationInProgress && NULL != m_pRedoList);
+}
