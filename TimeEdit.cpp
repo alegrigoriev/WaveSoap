@@ -8,6 +8,7 @@
 #include "TimeToStr.h"
 #include "resource.h"
 #include "LocaleUtilities.h"
+#include <math.h>
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -109,14 +110,28 @@ SAMPLE_INDEX CTimeEdit::GetTimeSample()
 	{
 		m_OriginalString = s;
 		s.Remove(GetApp()->m_ThousandSeparator);
+
 		int mult = 1000;
 		int mult1 = 1000;
 		double time = 0;    // in miliseconds
 		BOOL SepFound = false;
-		TCHAR DecimalSeparator = GetApp()->m_DecimalPoint;
-		TCHAR TimeSeparator = GetApp()->m_TimeSeparator;
 
-		for (int idx = s.GetLength() - 1; idx >= 0; idx--)
+		TCHAR const DecimalSeparator = GetApp()->m_DecimalPoint;
+		TCHAR const TimeSeparator = GetApp()->m_TimeSeparator;
+
+		int idx = s.GetLength() - 1;
+		BOOL UseFrames = SampleToString_HhMmSsFf == (m_TimeFormat & SampleToString_Mask);
+
+		if (idx >= 0)
+		{
+			if (TCHAR('f') == s[idx])
+			{
+				UseFrames = TRUE;
+				idx--;
+			}
+		}
+
+		for ( ; idx >= 0; idx--)
 		{
 			if (s[idx] == DecimalSeparator)
 			{
@@ -125,8 +140,17 @@ SAMPLE_INDEX CTimeEdit::GetTimeSample()
 					break;
 				}
 				SepFound = true;
-				time /= mult / 1000;
-				mult = 1000;
+
+				if (UseFrames)
+				{
+					mult = 1000;
+					time /= 1000;
+				}
+				else
+				{
+					time /= mult / 1000;
+					mult = 1000;
+				}
 			}
 			else if (s[idx] == TimeSeparator)
 			{
@@ -144,7 +168,15 @@ SAMPLE_INDEX CTimeEdit::GetTimeSample()
 				break;
 			}
 		}
-		m_Sample = SAMPLE_INDEX(time * m_nSamplesPerSec / 1000.);
+
+		if (UseFrames)
+		{
+			m_Sample = SAMPLE_INDEX(ceil(time / 1000.) * m_nSamplesPerSec + fmod(time, 1000.) * m_nSamplesPerSec / 75);
+		}
+		else
+		{
+			m_Sample = SAMPLE_INDEX(time * m_nSamplesPerSec / 1000.);
+		}
 	}
 	return m_Sample;
 }
@@ -208,6 +240,22 @@ void CTimeEdit::OnVScroll(UINT /*nSBCode*/, UINT nPos, CScrollBar* /*pScrollBar*
 			{
 				increment = m_nSamplesPerSec;
 			}
+			break;
+		case 5:
+			increment = m_nSamplesPerSec;
+			break;
+		case 20:
+		default:
+			increment = m_nSamplesPerSec * 10;
+			break;
+		}
+		break;
+
+	case SampleToString_HhMmSsFf:
+		switch (step)
+		{
+		case 1:
+			increment = m_nSamplesPerSec / 75;
 			break;
 		case 5:
 			increment = m_nSamplesPerSec;

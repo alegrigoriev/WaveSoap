@@ -836,6 +836,8 @@
 #define IDC_EDIT_WAVE_REGION            40131
 #define ID_SAVE_SAVESELECTIONAS         40132
 #define ID_VIEW_ZOOMPREVIOUS            40138
+#define IDC_VIEW_STATUS_HHMMSSFF        40140
+#define IDC_VIEW_RULER_HHMMSSFF         40141
 #define ID_TOOLS_SYNTHESIS              65535
 #define IDC_END_LABEL                   65535
 #define IDC_LENGTH_LABEL                65535
@@ -846,7 +848,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_3D_CONTROLS                     1
 #define _APS_NEXT_RESOURCE_VALUE        195
-#define _APS_NEXT_COMMAND_VALUE         40139
+#define _APS_NEXT_COMMAND_VALUE         40142
 #define _APS_NEXT_CONTROL_VALUE         1268
 #define _APS_NEXT_SYMED_VALUE           101
 #endif

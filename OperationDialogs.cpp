@@ -535,6 +535,9 @@ CSelectionDialog::CSelectionDialog(SAMPLE_INDEX Start, SAMPLE_INDEX End,
 	default:
 		m_TimeFormatIndex = 2;
 		break;
+	case SampleToString_HhMmSsFf:
+		m_TimeFormatIndex = 3;
+		break;
 	}
 
 	m_eLength.SetSamplingRate(WaveFile.SampleRate());
@@ -684,6 +687,9 @@ void CSelectionDialog::OnSelchangeComboTimeFormat()
 	case 2:
 	default:
 		Format = SampleToString_Seconds | TimeToHhMmSs_NeedsMs;
+		break;
+	case 3:
+		Format = SampleToString_HhMmSsFf | TimeToHhMmSs_NeedsHhMm;
 		break;
 	}
 	if (Format == m_TimeFormat)
@@ -920,6 +926,9 @@ CGotoDialog::CGotoDialog(SAMPLE_INDEX Position,
 		break;
 	case SampleToString_Seconds: default:
 		m_TimeFormatIndex = 2;
+		break;
+	case SampleToString_HhMmSsFf:
+		m_TimeFormatIndex = 3;
 		break;
 	}
 }
@@ -1519,6 +1528,9 @@ void CGotoDialog::OnSelchangeComboTimeFormat()
 	case 2:
 	default:
 		Format = SampleToString_Seconds | TimeToHhMmSs_NeedsMs;
+		break;
+	case 3:
+		Format = SampleToString_HhMmSsFf | TimeToHhMmSs_NeedsHhMm;
 		break;
 	}
 	if (Format == m_TimeFormat)

@@ -38,7 +38,7 @@ static int fround(double d)
 IMPLEMENT_DYNCREATE(CTimeRulerView, CHorizontalRuler)
 
 CTimeRulerView::CTimeRulerView()
-	: m_CurrentDisplayMode(ShowHhMmSs)
+	: m_CurrentDisplayMode(SampleToString_Mask & GetApp()->m_SoundTimeFormat)
 	, m_DraggedMarkerHitTest(0)
 	, m_AutoscrollTimerID(0)
 	, m_MarkerHeight(10)
@@ -61,6 +61,8 @@ BEGIN_MESSAGE_MAP(CTimeRulerView, CHorizontalRuler)
 	ON_UPDATE_COMMAND_UI(IDC_VIEW_RULER_SAMPLES, OnUpdateViewRulerSamples)
 	ON_COMMAND(IDC_VIEW_RULER_SECONDS, OnViewRulerSeconds)
 	ON_UPDATE_COMMAND_UI(IDC_VIEW_RULER_SECONDS, OnUpdateViewRulerSeconds)
+	ON_COMMAND(IDC_VIEW_RULER_HHMMSSFF, OnViewRulerHhmmssFf)
+	ON_UPDATE_COMMAND_UI(IDC_VIEW_RULER_HHMMSSFF, OnUpdateViewRulerHhmmssFf)
 	//}}AFX_MSG_MAP
 	ON_WM_CONTEXTMENU()
 	ON_WM_SETCURSOR()
@@ -132,7 +134,8 @@ void CTimeRulerView::OnDraw(CDC* pDC)
 
 	TCHAR const DecimalPoint = GetApp()->m_DecimalPoint;
 	float const SampleRate = float(pDoc->WaveSampleRate());
-	int nTickCount;
+
+	int nTickCount = 1;
 	double DistTime;
 	double nFirstTime;
 	int nLength;
@@ -335,6 +338,106 @@ void CTimeRulerView::OnDraw(CDC* pDC)
 	}
 		break;
 
+	case ShowHhMmSsFf:
+	{
+		// calculate position string length
+
+		nLength = pDC->GetTextExtent(_T("00:00:00.00f"), 12).cx;
+
+		DistTime = 1.5 * nLength / GetXScaleDev() / SampleRate;
+		// select distance between ticks
+		double multiplier = 1.;
+		double divisor = 1.;
+
+		if (DistTime >= 1.)
+		{
+			if (DistTime > 3600.)
+			{
+				multiplier = 3600.;
+				DistTime = ceil(DistTime / 3600.);
+			}
+			else if (DistTime > 60.)
+			{
+				multiplier = 60.;
+				DistTime = ceil(DistTime / 60.);
+			}
+			else
+			{
+				DistTime = ceil(DistTime);
+			}
+			// find the closest bigger 1,2,5, 10, 20, 30
+			if (DistTime <= 1.)
+			{
+				DistTime = 1.;
+				nTickCount = 5;
+			}
+			else if (DistTime <= 2.)
+			{
+				DistTime = 2.;
+				nTickCount = 2;
+			}
+			else if (DistTime <= 5.)
+			{
+				DistTime = 5.;
+				nTickCount = 5;
+			}
+			else if (DistTime <= 10.)
+			{
+				DistTime = 10.;
+				nTickCount = 10;
+			}
+			else if (DistTime <= 20.)
+			{
+				DistTime = 20.;
+				nTickCount = 2;
+			}
+			else if (DistTime <= 30.)
+			{
+				DistTime = 30.;
+				nTickCount = 3;
+			}
+			else
+			{
+				DistTime = 60.;
+				nTickCount = 6;
+			}
+		}
+		else    // DistTime < 1
+		{
+			divisor = 75.;
+			DistTime = ceil(DistTime * 75.);
+			// find the closest bigger 1,2,5 * 10^x
+			if (DistTime <= 1.)
+			{
+				DistTime = 1.;
+				nTickCount = 1;
+			}
+			else if (DistTime <= 5.)
+			{
+				DistTime = 5.;
+				nTickCount = 5;
+			}
+			else if (DistTime <= 15.)
+			{
+				DistTime = 15.;
+				nTickCount = 5;
+			}
+			else if (DistTime <= 25.)
+			{
+				DistTime = 25.;
+				nTickCount = 5;
+			}
+			else
+			{
+				DistTime = 75.;
+				nTickCount = 5;
+			}
+		}
+
+		DistTime = DistTime * multiplier / divisor;
+	}
+		break;
+
 	default:
 		return;
 	}
@@ -415,6 +518,20 @@ void CTimeRulerView::OnDraw(CDC* pDC)
 					s.Format(_T("%s%c0"), s1, DecimalPoint);
 				}
 			}
+			case ShowHhMmSsFf:
+			{
+				if (DistTime < 1.)
+				{
+					unsigned Seconds = unsigned(time + 0.0001);
+					unsigned Frames = unsigned(fmod(time + 0.0001, 1.) * 75);
+					s = TimeToHhMmSs(Seconds * 1000 + Frames, TimeToHhMmSs_NeedsHhMm | TimeToHhMmSs_Frames75);
+				}
+				else
+				{
+					s = TimeToHhMmSs(unsigned((time + 0.0005) * 1000), TimeToHhMmSs_NeedsHhMm);
+				}
+			}
+				break;
 			}
 			pDC->TextOut(x + 2, RulerBase - 5, s);
 
@@ -555,6 +672,17 @@ void CTimeRulerView::OnViewRulerSeconds()
 void CTimeRulerView::OnUpdateViewRulerSeconds(CCmdUI* pCmdUI)
 {
 	pCmdUI->SetRadio(m_CurrentDisplayMode == ShowSeconds);
+}
+
+void CTimeRulerView::OnViewRulerHhmmssFf()
+{
+	m_CurrentDisplayMode = ShowHhMmSsFf;
+	Invalidate();
+}
+
+void CTimeRulerView::OnUpdateViewRulerHhmmssFf(CCmdUI* pCmdUI)
+{
+	pCmdUI->SetRadio(m_CurrentDisplayMode == ShowHhMmSsFf);
 }
 
 void CTimeRulerView::OnUpdate( CView* /*pSender*/, LPARAM lHint, CObject* pHint )

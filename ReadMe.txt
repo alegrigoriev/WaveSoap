@@ -1,5 +1,6 @@
 TODO tasks:
 
+Show markers on the outline view as dotted XOR lines
 Complete "Insert silence" command
 Complete "Reverse" command
 If metadata doesn't come as the very last chunk of the file, copy the original file to 
@@ -74,6 +75,9 @@ Find which alignment better for edit box labels: left or right
 
 Problems:
 
+Suggests u-Law when saving a file from clipboard
+Reopen after save new file doesn't work
+When scrolling FFT view during playback, checkered background after EOF is constantly blinking
 Vertical scroll in the wave view makes marker labels blinking
 If a clipboard operation gets stopped, need to cancel all the operations that depend on it.
 Expression evaluation selection longer than file length doesn't update file length
@@ -153,6 +157,9 @@ Save As dialog is not centered first time (comdlg problem?)
 ??? When time/seconds format is set for status bar, MM:SS is actually shown
 
 Done:
+Impletent time format with CD frames (75 fps)
+Implement "Zoom to previous scale" command
+Add Ctrl+I accelerator for "Interpolate" command
 Add "Goto" button to the statistics dialog
 Save/Load metadata strings in UTF-8 codepage
 Add a new marker/region
@@ -319,3 +326,9 @@ Direct cache lock m_cs:
 
 locks m_FileList, m_MruList,
 
+Revisit FFT way of locating large clicks:
+
+1. Do low-order (64 bands) FFT with Hamming window. 
+2. Keep sliding average in every band.
+3. Detect a peak when the current value in higher half is over sliding average by some threshold.
+4. Locate a peak by finding where FFT power is max (by sliding it)

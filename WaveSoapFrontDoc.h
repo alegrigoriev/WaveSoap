@@ -452,9 +452,7 @@ protected:
 	afx_msg void OnUpdateChannelsStereo(CCmdUI* pCmdUI);
 	afx_msg void OnProcessChangevolume();
 	afx_msg void OnUpdateProcessChangevolume(CCmdUI* pCmdUI);
-	afx_msg void OnViewStatusHhmmss();
-	afx_msg void OnViewStatusSamples();
-	afx_msg void OnViewStatusSeconds();
+
 	afx_msg void OnUpdateProcessDcoffset(CCmdUI* pCmdUI);
 	afx_msg void OnProcessDcoffset();
 	afx_msg void OnUpdateProcessInsertsilence(CCmdUI* pCmdUI);
@@ -475,9 +473,17 @@ protected:
 	afx_msg void OnViewRescanPeaks();
 	afx_msg void OnUpdateProcessSynthesisExpressionEvaluation(CCmdUI* pCmdUI);
 	afx_msg void OnProcessSynthesisExpressionEvaluation();
+
+	afx_msg void OnViewStatusHhmmss();
+	afx_msg void OnViewStatusSamples();
+	afx_msg void OnViewStatusSeconds();
+	afx_msg void OnViewStatusHhmmssFf();
+
 	afx_msg void OnUpdateViewStatusHhmmss(CCmdUI* pCmdUI);
 	afx_msg void OnUpdateViewStatusSamples(CCmdUI* pCmdUI);
 	afx_msg void OnUpdateViewStatusSeconds(CCmdUI* pCmdUI);
+	afx_msg void OnUpdateViewStatusHhmmssFf(CCmdUI* pCmdUI);
+
 	afx_msg void OnUpdateFileSaveAs(CCmdUI* pCmdUI);
 	afx_msg void OnUpdateFileSaveCopyAs(CCmdUI* pCmdUI);
 	afx_msg void OnFileSaveCopyAs();
