@@ -55,14 +55,16 @@ class CPasteModeDialog : public CDialog
 {
 // Construction
 public:
-	CPasteModeDialog(CWnd* pParent = NULL);   // standard constructor
+	CPasteModeDialog(int PasteMode, CWnd* pParent = NULL);   // standard constructor
 
 // Dialog Data
 	//{{AFX_DATA(CPasteModeDialog)
 	enum { IDD = IDD_DIALOG_PASTE_MODE_SELECT };
-	int		m_PasteMode;
 	//}}AFX_DATA
-
+	int GetPasteMode() const
+	{
+		return m_PasteMode;
+	}
 
 // Overrides
 	// ClassWizard generated virtual function overrides
@@ -73,6 +75,7 @@ protected:
 
 // Implementation
 protected:
+	int		m_PasteMode;
 
 	// Generated message map functions
 	//{{AFX_MSG(CPasteModeDialog)
