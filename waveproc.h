@@ -26,7 +26,7 @@ public:
 	{
 		nCurrIndex += n;
 	}
-	operator BOOL() {return pBuf != 0; }
+	operator bool() {return pBuf != 0; }
 	T_int& operator[](int index);
 private:
 	T_int * pBuf;
@@ -114,6 +114,204 @@ inline T_int& CBackBuffer<T_ext, T_int>::operator[](int index)
 	return pBuf[(index + nCurrIndex) & dwIndexMask];
 }
 
+template <typename T = UCHAR, unsigned s = 512>
+struct FixedRingBufferBase
+{
+protected:
+	FixedRingBufferBase() {}
+	T Array[s];
+	enum { size = s, };
+	typedef T Type;
+	C_ASSERT(size < 0xFFFFu);
+};
+
+template <typename T = UCHAR, typename T_src = T>
+struct RingBufferBase
+{
+protected:
+	RingBufferBase() : Array(NULL), size(0) {}
+
+	T * Array;
+	size_t size;
+	typedef T Type;
+	typedef T_src Type_Src;
+};
+
+template<typename Base>
+class RingBufferT : public Base
+{
+protected:
+	typedef typename Base::Type Type;
+	typedef typename Base::Type_Src Type_Src;
+public:
+	RingBufferT()
+	{
+		ReadIndex = 0;
+		Filled = 0;
+	}
+	void Write(Type_Src data);
+	// remove samples from FIFO
+	void Discard(int n)
+	{
+		ASSERT(n <= int(Filled));
+		Filled -= n;
+		ReadIndex += n;
+		if (ReadIndex >= size)
+		{
+			ReadIndex -= size;
+		}
+	}
+	Type Read();
+
+	Type & AtOut(int index)
+	{
+		ASSERT(index < Filled);
+
+		index += ReadIndex;
+		if (index >= size)
+		{
+			index -= size;
+		}
+		return Array[index];
+	}
+
+	Type & AtIn(int index)
+	{
+		ASSERT(-index <= Filled);
+		index += ReadIndex + Filled;
+		if (index >= size)
+		{
+			index -= size;
+		}
+		return Array[index];
+	}
+
+	Type & operator[](int index)
+	{
+		ASSERT(index < int(Filled));
+
+		index += ReadIndex;
+		if (index >= int(size))
+		{
+			index -= size;
+		}
+		return Array[index];
+	}
+
+	void Purge()
+	{
+		Filled = 0;
+		ReadIndex = 0;
+	}
+
+	unsigned AvailableToWrite() const
+	{
+		return size - Filled;
+	}
+
+	unsigned AvailableToRead() const
+	{
+		return Filled;
+	}
+	size_t Size() const
+	{
+		return size;
+	}
+private:
+	unsigned ReadIndex;
+	unsigned Filled;
+};
+
+template <typename T = UCHAR>
+class RingBufferA : public RingBufferT<RingBufferBase<T> >
+{
+	bool bBufferAllocated;
+public:
+
+	RingBufferA()
+		: bBufferAllocated(false)
+	{
+		size = 0;
+		Array = NULL;
+	}
+	~RingBufferA()
+	{
+		if (bBufferAllocated)
+		{
+			delete[] Array;
+		}
+	}
+	void SetBuffer(Type * pBuffer, size_t Count)
+	{
+		ASSERT(Count < 0xFFFFu);
+		size = 0;
+		Purge();
+		Array = pBuffer;
+		size = Count;
+		Purge();
+	}
+
+	void AllocateBuffer(size_t Count)
+	{
+		if (bBufferAllocated)
+		{
+			return;
+		}
+		if (Count > 0xFFFF)
+		{
+			Count = 0xFFFF;
+		}
+		Type * buf = new Type[Count];
+		if (NULL != buf)
+		{
+			SetBuffer(buf, Count);
+			bBufferAllocated = true;
+		}
+	}
+};
+
+template <typename T = UCHAR, int size = 512>
+class RingBuffer : public RingBufferT<FixedRingBufferBase<T, size> >
+{
+};
+
+template <typename L>
+void RingBufferT<L>::Write(Type_Src data)
+{
+	if (Filled >= size)
+	{
+		return;
+	}
+
+	unsigned WriteIndex = ReadIndex + Filled;
+	if (WriteIndex >= size)
+	{
+		WriteIndex -= size;
+	}
+	Array[WriteIndex] = data;
+	Filled++;
+}
+
+template <typename L>
+typename RingBufferT<L>::Type RingBufferT<L>::Read()
+{
+	if (0 == Filled)
+	{
+		return Type();
+	}
+
+	Filled--;
+
+	if (ReadIndex >= size - 1)
+	{
+		ReadIndex -= size - 1;
+		return Array[ReadIndex + (size - 1)];
+	}
+	else
+	{
+		return Array[ReadIndex ++];
+	}
+}
 
 class CWaveProc
 {
@@ -311,24 +509,10 @@ protected:
 	FILE * pOutClicksFile;
 };
 
-class CNoiseReduction: public CWaveProc
+struct NoiseReductionParameters
 {
-	typedef CNoiseReduction ThisClass;
-	typedef CWaveProc BaseClass;
+	NoiseReductionParameters();     // default initialization
 
-public:
-	typedef std::auto_ptr<ThisClass> auto_ptr;
-
-	CNoiseReduction(int nFftOrder = 1024);
-	virtual ~CNoiseReduction();
-
-	typedef float DATA;
-	virtual size_t ProcessSoundBuffer(char const * pInBuf, char * pOutBuf,
-									size_t nInBytes, size_t nOutBytes, size_t * pUsedBytes);
-	virtual BOOL SetAndValidateWaveformat(WAVEFORMATEX const * pWf);
-	//protected:
-	long m_SamplesPerSec;
-	unsigned m_nFftOrder;
 	float m_MinFrequencyToProcess;
 
 	// decay rates for average amplitude and frequency
@@ -368,52 +552,42 @@ public:
 
 	float m_NearMaskingCoeff;  // weights near masking against far masking
 	//float m_FarMaskingScale;    // overall scale to calculate far masking
+};
+
+class CNoiseReduction : public CWaveProc, protected NoiseReductionParameters
+{
+	typedef CNoiseReduction ThisClass;
+	typedef CWaveProc BaseClass;
+
+public:
+	typedef std::auto_ptr<ThisClass> auto_ptr;
+
+	CNoiseReduction(int nFftOrder, int nChannels, NoiseReductionParameters const & nr = NoiseReductionParameters());
+
+	virtual ~CNoiseReduction();
+
+	typedef float DATA;
+	virtual size_t ProcessSoundBuffer(char const * pInBuf, char * pOutBuf,
+									size_t nInBytes, size_t nOutBytes, size_t * pUsedBytes);
+	virtual BOOL SetAndValidateWaveformat(WAVEFORMATEX const * pWf);
+	//protected:
+	long m_SamplesPerSec;
+	unsigned m_nFftOrder;
 
 	float m_PowerScale;             // to make the values independent of FFT order
-	int m_nBackSampleCount;
-	int m_nStoredSamples;
 	float * m_Window;
 	// pointer to array of float pairs
 	// for storing input data
-	float (* m_BackBuffer)[2];
-	// pointer to array of float pairs
-	// for accumulating output result
-	float (* m_AccumBuffer)[2];
-	DATA * m_FftInBuffer[2];
 	enum {FAR_MASKING_GRANULARITY = 64};
 	float m_FarMaskingCoeffs[FAR_MASKING_GRANULARITY][FAR_MASKING_GRANULARITY];
 
-	struct SIGNAL_PARAMS
-	{
-		// current and previous samples are stored. Result of current analysis
-		// is used for the previous sample
-		std::complex<DATA> sp_FftIn[2];
-		//complex<DATA> sp_PrevFftOut;
-		void AnalyzeFftSample(std::complex<DATA> smp, CNoiseReduction * pNr, int nSample);
-		// average frequency and amplitude in the band
-		float sp_AvgFreq; // filtered arg(x[n] / x[n-1])
-		float sp_AvgPhase;
-		// AvgLevelChange = filter(log (abs(x[n]) / abs(x[n-1])))
-		float sp_AvgLevelChange;
-		//float sp_AvgLevel;
-		// FilteredLevel = sum (AvgLevelChange)
-		float sp_FilteredLevel;
-		// frequency and amplitude deviation in band
-		float sp_FilteredFreqError;
-		float sp_FilteredLevelError;
-		float sp_FreqDev;
-		float sp_LevelDev;
-		float sp_PrevInstantLevel;
-		float sp_PrevPhase; // previous phase
-		float sp_Freq;  // current frequency
-		float sp_Power;     // current power
-		float sp_MaskingPower; // masking function
-		float sp_PrevMaskingPower;
-		char m_TonalBand;
-	};
-	SIGNAL_PARAMS * m_pParams[2];
 	friend struct SIGNAL_PARAMS;
-	std::complex<DATA> * m_FftOutBuffer[2];
+	friend struct NoiseReductionChannelData;
+
+	struct NoiseReductionChannelData * m_ChannelData[MAX_NUMBER_OF_CHANNELS];
+	void CalculateFarMasking(float SubbandPower[FAR_MASKING_GRANULARITY],
+							float FarMasking[FAR_MASKING_GRANULARITY]);
+
 #ifdef _DEBUG
 public:
 	int m_TotalBandProcessed;
@@ -425,7 +599,6 @@ public:
 	float m_MinLevelInBand;
 #endif
 };
-
 
 class CBatchProcessing: public CWaveProc
 {
