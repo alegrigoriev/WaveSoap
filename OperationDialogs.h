@@ -507,7 +507,7 @@ protected:
 protected:
 	bool m_bNeedUpdateControls;
 	//afx_msg LONG OnIdleUpdateCmdUI(UINT wParam, LONG);
-	void OnKickIdle();
+	LRESULT OnKickIdle(WPARAM, LPARAM);
 	void ShowHideTabDialogs();
 	afx_msg BOOL OnButtonText(UINT id);
 	afx_msg void OnUpdateOk(CCmdUI* pCmdUI);

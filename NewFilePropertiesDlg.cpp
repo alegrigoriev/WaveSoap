@@ -38,7 +38,11 @@ void CNewFilePropertiesDlg::DoDataExchange(CDataExchange* pDX)
 	DDX_Control(pDX, IDC_EDIT_LENGTH, m_eLength);
 	//}}AFX_DATA_MAP
 	m_eLength.ExchangeData(pDX, m_Length);
-	DDV_MinMaxInt(pDX, m_Length, 0, 4800);
+	if (m_Length < 0 || m_Length > 4800)
+	{
+		AfxMessageBox(IDS_WRONG_NEW_FILE_LENGTH);
+		pDX->Fail();
+	}
 }
 
 

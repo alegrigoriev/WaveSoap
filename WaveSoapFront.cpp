@@ -1035,7 +1035,7 @@ unsigned CWaveSoapFrontApp::_ThreadProc()
 			{
 				if ( ! pContext->Init())
 				{
-					pContext->m_Flags |= OperationContextStop;
+					pContext->m_Flags |= OperationContextInitFailed | OperationContextStop;
 				}
 				pContext->m_Flags |= OperationContextInitialized;
 				NeedKickIdle = true;

@@ -214,7 +214,6 @@
 #define IDC_CHECK_24BIT                 1117
 #define IDC_CHECK_SHOW_ONLY_WHEN_SHIFT  1119
 #define IDC_STATIC_VERSION              1120
-#define IDC_EDIT1                       1121
 #define IDC_VIEW_RULER_SAMPLES          32771
 #define IDC_VIEW_RULER_HHMMSS           32772
 #define IDC_VIEW_RULER_SECONDS          32773
@@ -347,6 +346,9 @@
 #define IDC_VIEW_AMPL_RULER_PERCENT     32900
 #define IDS_COPY_OF                     32901
 #define IDS_FILE_MAY_GET_TOO_BIG        32902
+#define IDS_WRONG_NEW_FILE_LENGTH       32903
+#define IDS_CANT_DECOMPRESS_FILE        32904
+#define IDS_ERROR_WHILE_DECOMPRESSING_FILE 32905
 #define ID_FILE_PROPERTIES              40000
 #define ID_VIEW_ZOOMVERT_NORMAL         40001
 #define ID_VIEW_ZOOMIN_HOR_FULL         40002
