@@ -148,8 +148,7 @@ void CAmplitudeRuler::DrawSamples(CDC * pDC)
 			int yDev= fround((y * VerticalScale + WaveOffset) * YScaleDev);
 			pDC->MoveTo(cr.right - 3, yDev);
 			pDC->LineTo(cr.right, yDev);
-			CString s;
-			s.Format(_T("%d"), y);
+			CString s = LtoaCS(y);
 
 			pDC->TextOut(cr.right - 3, yDev + tm.tmHeight / 2, s);
 		}
@@ -332,7 +331,7 @@ int CAmplitudeRuler::CalculateWidth()
 	CWnd * pW = GetDesktopWindow();
 	CDC * pDC = pW->GetWindowDC();
 	CGdiObject * pOld = pDC->SelectStockObject(ANSI_VAR_FONT);
-	int Width = 4 + pDC->GetTextExtent("-000000", 7).cx;
+	int Width = 4 + pDC->GetTextExtent("-000,000", 8).cx;
 
 	pDC->SelectObject(pOld);
 	pW->ReleaseDC(pDC);
