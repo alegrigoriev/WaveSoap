@@ -733,8 +733,6 @@ BOOL CCdDrive::SendScsiCommand(CD_CDB * pCdb,
 										& spt, OutLength,
 										& bytes, NULL);
 
-			TRACE("IOCTL_SCSI_PASS_THROUGH returned %d, error=%d\n", res, GetLastError());
-
 			if (res)
 			{
 				*pDataLen = spt.DataTransferLength;
@@ -757,6 +755,7 @@ BOOL CCdDrive::SendScsiCommand(CD_CDB * pCdb,
 				{
 					m_bScsiCommandsAvailable = false;
 				}
+				TRACE("IOCTL_SCSI_PASS_THROUGH returned %d, error=%d\n", res, GetLastError());
 				return FALSE;
 			}
 		}
@@ -789,8 +788,6 @@ BOOL CCdDrive::SendScsiCommand(CD_CDB * pCdb,
 										& spt, sizeof spt,
 										& bytes, NULL);
 
-			TRACE("IOCTL_SCSI_PASS_THROUGH returned %d, error=%d\n", res, GetLastError());
-
 			if (res)
 			{
 				*pDataLen = spt.DataTransferLength;
@@ -807,6 +804,8 @@ BOOL CCdDrive::SendScsiCommand(CD_CDB * pCdb,
 				{
 					m_bScsiCommandsAvailable = false;
 				}
+				TRACE("IOCTL_SCSI_PASS_THROUGH returned %d, error=%d\n", res, GetLastError());
+
 				return FALSE;
 			}
 		}
@@ -1106,6 +1105,8 @@ BOOL CCdDrive::ReadCdData(void * pBuf, CdAddressMSF Address, int nSectors)
 	BOOL res;
 	if (m_bScsiCommandsAvailable)
 	{
+		TRACE("ReadCdData using SCSI, ADDR=%d:%02d.%02d\n",
+			Address.Minute, Address.Second, Address.Frame);
 		CdAddressMSF EndAddress;
 		EndAddress = LONG(Address) + nSectors;
 		ReadCD_MSF_CDB rcd(Address, EndAddress);
@@ -1121,6 +1122,8 @@ BOOL CCdDrive::ReadCdData(void * pBuf, CdAddressMSF Address, int nSectors)
 	}
 	else
 	{
+		TRACE("ReadCdData using IOCTL_CDROM_RAW_READ, ADDR=%d:%02d.%02d\n",
+			Address.Minute, Address.Second, Address.Frame);
 		RAW_READ_INFO rri;
 		rri.SectorCount = nSectors;
 		rri.TrackMode = CDDA;

@@ -4221,20 +4221,22 @@ void CWaveSoapFrontDoc::SetPathName(LPCTSTR lpszPathName, BOOL bAddToMRU)
 	if (AfxGetFileTitle(szFullPath, szTitle, _MAX_FNAME) == 0)
 		SetTitle(szTitle);
 
-	// add it to the file MRU list
-	// first byte is a flag byte
-	char flag = 1;
-	if (m_bDirectMode)
-	{
-		flag |= OpenDocumentDirectMode;
-	}
-	if (m_bReadOnly)
-	{
-		flag |= OpenDocumentReadOnly;
-	}
-
 	if (bAddToMRU)
+	{
+		// add it to the file MRU list
+		// first byte is a flag byte
+		char flag = 1;
+		if (m_bDirectMode)
+		{
+			flag |= OpenDocumentDirectMode;
+		}
+		if (m_bReadOnly)
+		{
+			flag |= OpenDocumentReadOnly;
+		}
+
 		AfxGetApp()->AddToRecentFileList(CString(flag, 1) + m_strPathName);
+	}
 
 	ASSERT_VALID(this);
 }

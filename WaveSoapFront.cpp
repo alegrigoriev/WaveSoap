@@ -716,20 +716,11 @@ CDocument* CWaveSoapDocTemplate::OpenDocumentFile(LPCTSTR lpszPathName,
 	// Document is created and initialized first, then the frame is created
 	if (lpszPathName == NULL)
 	{
-		// create a new document - with default document name
-		CThisApp * pApp = GetApp();
-		if (NULL != pParams->pInitialTitle)
-		{
-			pDocument->SetTitle(pParams->pInitialTitle);
-		}
-		else
-		{
-			SetDefaultTitle(pDocument);
-		}
-
 		// avoid creating temporary compound file when starting up invisible
+#if 0
 		if (!bMakeVisible)
 			pDocument->m_bEmbedded = TRUE;
+#endif
 		if ( ! pDocument->OnNewDocument(pParams))
 		{
 			// user has be alerted to what failed in OnNewDocument
@@ -738,8 +729,18 @@ CDocument* CWaveSoapDocTemplate::OpenDocumentFile(LPCTSTR lpszPathName,
 			return NULL;
 		}
 
+		// create a new document - with default document name
+		if (NULL != pParams->pInitialTitle)
+		{
+			pDocument->SetPathName(pParams->pInitialTitle, FALSE);
+		}
+		else
+		{
+			SetDefaultTitle(pDocument);
+			m_nUntitledCount++;
+		}
+
 		// it worked, now bump untitled count
-		m_nUntitledCount++;
 	}
 	else
 	{
