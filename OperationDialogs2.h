@@ -90,6 +90,7 @@ protected:
 	virtual BOOL OnInitDialog();
 	afx_msg void OnKillfocusEditStart();
 	afx_msg void OnKillfocusEditLength();
+	afx_msg void OnBuddyChangeSpinStart(NMHDR * pNmHdr, LRESULT * pResult);
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 };

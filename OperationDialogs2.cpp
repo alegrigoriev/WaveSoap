@@ -104,6 +104,7 @@ BEGIN_MESSAGE_MAP(CInsertSilenceDialog, BaseClass)
 	ON_CBN_SELCHANGE(IDC_COMBO_TIME_FORMAT, OnSelchangeComboTimeFormat)
 	ON_EN_KILLFOCUS(IDC_EDIT_LENGTH, OnKillfocusEditLength)
 	ON_CBN_KILLFOCUS(IDC_COMBO_START, OnKillfocusEditStart)
+	ON_NOTIFY(CTimeSpinCtrl::TSC_BUDDY_CHANGE, IDC_SPIN_START, OnBuddyChangeSpinStart)
 	//}}AFX_MSG_MAP
 END_MESSAGE_MAP()
 
@@ -162,7 +163,17 @@ void CInsertSilenceDialog::OnKillfocusEditLength()
 void CInsertSilenceDialog::OnKillfocusEditStart()
 {
 	m_Start = m_eStart.GetTimeSample();
+	if (m_Start > m_WaveFile.NumberOfSamples())
+	{
+		m_Start = m_WaveFile.NumberOfSamples();
+	}
+
 	m_eStart.SetTimeSample(m_Start);
+}
+
+void CInsertSilenceDialog::OnBuddyChangeSpinStart(NMHDR * /*pNmHdr*/, LRESULT * /*pResult*/)
+{
+	OnKillfocusEditStart();
 }
 
 /////////////////////////////////////////////////////////////////////////////
