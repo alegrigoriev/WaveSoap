@@ -198,4 +198,5 @@ public:
 	virtual void PostRetire(BOOL bChildContext = FALSE);
 };
 
+
 #endif // AFX_OPERATIONCONTEXT2_H__FFA16C44_2FA7_11D4_9ADD_00C0F0583C4B__INCLUDED_
