@@ -50,7 +50,9 @@ public:
 										);
 	virtual void OnIdle();
 	void BroadcastUpdate(UINT lHint);
-
+	BOOL IsAnyDocumentModified();
+	BOOL CanSaveAnyDocument();
+	void SaveAll();
 };
 
 class CWaveSoapDocManager : public CDocManager
@@ -62,6 +64,9 @@ public:
 	virtual void OnFileOpen();
 	CDocument* OpenDocumentFile(LPCTSTR lpszFileName, int flags);
 	void BroadcastUpdate(UINT lHint);
+	BOOL IsAnyDocumentModified();
+	BOOL CanSaveAnyDocument();
+	void SaveAll();
 };
 
 void CWaveSoapDocTemplate::OnIdle()
@@ -149,12 +154,14 @@ END_MESSAGE_MAP()
 
 BEGIN_MESSAGE_MAP(CWaveSoapFrontApp, CWinApp)
 	//{{AFX_MSG_MAP(CWaveSoapFrontApp)
+	ON_COMMAND(ID_FILE_NEW, OnFileNew)
 	ON_COMMAND(ID_APP_ABOUT, OnAppAbout)
 	ON_COMMAND(ID_EDIT_PASTE_NEW, OnEditPasteNew)
 	ON_UPDATE_COMMAND_UI(ID_EDIT_PASTE_NEW, OnUpdateEditPasteNew)
 	ON_COMMAND_EX_RANGE(ID_FILE_MRU_FILE1, ID_FILE_MRU_FILE16, OnOpenRecentFile)
 	ON_COMMAND(ID_TOOLS_CDGRAB, OnToolsCdgrab)
-	ON_COMMAND(ID_FILE_NEW, OnFileNew)
+	ON_COMMAND(ID_FILE_SAVE_ALL, OnFileSaveAll)
+	ON_UPDATE_COMMAND_UI(ID_FILE_SAVE_ALL, OnUpdateFileSaveAll)
 	//}}AFX_MSG_MAP
 	// if no documents, Paste will create a new file
 	ON_COMMAND(ID_EDIT_PASTE, OnEditPasteNew)
@@ -189,6 +196,7 @@ CWaveSoapFrontApp::CWaveSoapFrontApp()
 	m_bShowStatusBar(true),
 	m_bOpenMaximized(true),
 	m_bOpenChildMaximized(true),
+	m_bAllow4GbWavFile(false),
 	m_VolumeDialogDbPercents(0),    // dB, 1 - percents
 	m_dVolumeLeftDb(0.),
 	m_dVolumeRightDb(0.),
@@ -459,7 +467,12 @@ BOOL CWaveSoapFrontApp::InitInstance()
 	Profile.AddItem(_T("Settings"), _T("OpenChildMaximized"), m_bOpenChildMaximized, true);
 	Profile.AddItem(_T("Settings"), _T("OpenMaximized"), m_bOpenMaximized, true);
 	Profile.AddItem(_T("Settings"), _T("ShowNewFormatDialogWhenShiftOnly"), m_bShowNewFormatDialogWhenShiftOnly, false);
-	Profile.AddItem(_T("Settings"), _T("m_NewFileLength"), m_NewFileLength, 10, 0, 4800);
+	Profile.AddItem(_T("Settings"), _T("Allow4GbWavFile"), m_bAllow4GbWavFile, false);
+
+	Profile.AddItem(_T("Settings"), _T("NewFileLength"), m_NewFileLength, 10, 0, 4800);
+	Profile.AddItem(_T("Settings"), _T("NewFileSampleRate"), m_NewFileFormat.nSamplesPerSec, 44100, 1, 1000000);
+	Profile.AddItem(_T("Settings"), _T("NewFileChannels"), m_NewFileChannels, 2, 1, 2);
+	m_NewFileFormat.nChannels = m_NewFileChannels;
 
 	LoadStdProfileSettings(10);  // Load standard INI file options (including MRU)
 
@@ -1912,6 +1925,7 @@ void CWaveSoapFrontApp::OnFileNew()
 		(CWaveSoapFrontDoc *)pTemplate->OpenDocumentFile(
 														(LPCTSTR) & (GetApp()->m_NewFileFormat),
 														OpenDocumentCreateNewWithWaveformat | OpenDocumentCreateNewQueryFormat);
+		m_NewFileChannels = m_NewFileFormat.nChannels;
 	}
 }
 
@@ -2486,6 +2500,19 @@ void CWaveSoapDocManager::BroadcastUpdate(UINT lHint)
 	}
 }
 
+void CWaveSoapDocManager::SaveAll()
+{
+	POSITION pos = m_templateList.GetHeadPosition();
+	while (pos != NULL)
+	{
+		CWaveSoapDocTemplate* pTemplate = dynamic_cast<CWaveSoapDocTemplate*>((CDocTemplate*)m_templateList.GetNext(pos));
+		if (NULL != pTemplate)
+		{
+			pTemplate->SaveAll();
+		}
+	}
+}
+
 void CWaveSoapDocTemplate::BroadcastUpdate(UINT lHint)
 {
 	POSITION pos = GetFirstDocPosition();
@@ -2493,6 +2520,21 @@ void CWaveSoapDocTemplate::BroadcastUpdate(UINT lHint)
 	{
 		CDocument* pDoc = GetNextDoc(pos);
 		pDoc->UpdateAllViews(NULL, lHint);
+	}
+}
+
+void CWaveSoapDocTemplate::SaveAll()
+{
+	POSITION pos = GetFirstDocPosition();
+	while (pos != NULL)
+	{
+		CWaveSoapFrontDoc * pDoc = dynamic_cast<CWaveSoapFrontDoc *> (GetNextDoc(pos));
+		if (NULL != pDoc
+			&& pDoc->IsModified()
+			&& ! pDoc->IsBusy())
+		{
+			pDoc->DoFileSave();
+		}
 	}
 }
 
@@ -2694,4 +2736,152 @@ bool CWaveSoapFrontApp::SupportsV5FileDialog()
 		return FALSE;
 
 	}
+}
+
+void CWaveSoapFrontApp::OnFileSaveAll()
+{
+	CWaveSoapDocManager * pDocManager = dynamic_cast<CWaveSoapDocManager *>(m_pDocManager);
+	if (pDocManager != NULL)
+	{
+		pDocManager->SaveAll();
+	}
+}
+
+void CWaveSoapFrontApp::OnUpdateFileSaveAll(CCmdUI* pCmdUI)
+{
+	pCmdUI->Enable(CanSaveAnyDocument());
+}
+
+BOOL CWaveSoapDocManager::IsAnyDocumentModified()
+{
+	POSITION pos = m_templateList.GetHeadPosition();
+	while (pos != NULL)
+	{
+		CWaveSoapDocTemplate* pTemplate = dynamic_cast<CWaveSoapDocTemplate*>((CDocTemplate*)m_templateList.GetNext(pos));
+		if (NULL != pTemplate
+			&& pTemplate->IsAnyDocumentModified())
+		{
+			return TRUE;
+		}
+	}
+	return FALSE;
+}
+
+BOOL CWaveSoapDocTemplate::IsAnyDocumentModified()
+{
+	POSITION pos = GetFirstDocPosition();
+	while (pos != NULL)
+	{
+		CDocument * pDoc = GetNextDoc(pos);
+		if (pDoc->IsModified())
+		{
+			return TRUE;
+		}
+	}
+	return FALSE;
+}
+
+BOOL CWaveSoapFrontApp::IsAnyDocumentModified()
+{
+	CWaveSoapDocManager * pDocManager = dynamic_cast<CWaveSoapDocManager *>(m_pDocManager);
+	if (pDocManager != NULL)
+	{
+		return pDocManager->IsAnyDocumentModified();
+	}
+	else
+	{
+		return FALSE;
+	}
+}
+
+BOOL CWaveSoapDocManager::CanSaveAnyDocument()
+{
+	POSITION pos = m_templateList.GetHeadPosition();
+	while (pos != NULL)
+	{
+		CWaveSoapDocTemplate* pTemplate = dynamic_cast<CWaveSoapDocTemplate*>((CDocTemplate*)m_templateList.GetNext(pos));
+		if (NULL != pTemplate
+			&& pTemplate->CanSaveAnyDocument())
+		{
+			return TRUE;
+		}
+	}
+	return FALSE;
+}
+
+BOOL CWaveSoapDocTemplate::CanSaveAnyDocument()
+{
+	POSITION pos = GetFirstDocPosition();
+	while (pos != NULL)
+	{
+		CWaveSoapFrontDoc * pDoc = dynamic_cast<CWaveSoapFrontDoc *> (GetNextDoc(pos));
+		if (NULL != pDoc
+			&& pDoc->IsModified()
+			&& ! pDoc->IsBusy())
+		{
+			return TRUE;
+		}
+	}
+	return FALSE;
+}
+
+BOOL CWaveSoapFrontApp::CanSaveAnyDocument()
+{
+	CWaveSoapDocManager * pDocManager = dynamic_cast<CWaveSoapDocManager *>(m_pDocManager);
+	if (pDocManager != NULL)
+	{
+		return pDocManager->CanSaveAnyDocument();
+	}
+	else
+	{
+		return FALSE;
+	}
+}
+
+BOOL CanAllocateWaveFileSamples(const WAVEFORMATEX * pWf, LONGLONG NumOfSamples)
+{
+	int SampleSize = pWf->wBitsPerSample * pWf->nChannels / 8;
+	LONGLONG NewSize = NumOfSamples * SampleSize;
+	// reserve 1 megabyte of overhead
+	LONGLONG MaxLength = 0x7FFFFFEi64 - 0x100000;
+	if (GetApp()->m_bAllow4GbWavFile)
+	{
+		MaxLength = 0xFFFFFFEi64 - 0x100000;
+	}
+	return NewSize <= MaxLength;
+}
+
+BOOL CanAllocateWaveFileSamplesDlg(const WAVEFORMATEX * pWf, LONGLONG NumOfSamples)
+{
+	if (CanAllocateWaveFileSamples(pWf, NumOfSamples))
+	{
+		return TRUE;
+	}
+	AfxMessageBox(IDS_FILE_MAY_GET_TOO_BIG, MB_OK | MB_ICONSTOP);
+	return FALSE;
+}
+
+BOOL CanExpandWaveFile(const CWaveFile & WaveFile, long NumOfSamplesToAdd)
+{
+	if (NumOfSamplesToAdd <= 0)
+	{
+		return TRUE;
+	}
+	LONGLONG NewLength = WaveFile.GetLength() + LONGLONG(NumOfSamplesToAdd) * WaveFile.SampleSize();
+	LONGLONG MaxLength = 0x7FFFFFEi64;
+	if (GetApp()->m_bAllow4GbWavFile)
+	{
+		MaxLength = 0xFFFFFFEi64;
+	}
+	return NewLength <= MaxLength;
+}
+
+BOOL CanExpandWaveFileDlg(const CWaveFile & WaveFile, long NumOfSamplesToAdd)
+{
+	if (CanExpandWaveFile(WaveFile, NumOfSamplesToAdd))
+	{
+		return TRUE;
+	}
+	AfxMessageBox(IDS_FILE_MAY_GET_TOO_BIG, MB_OK | MB_ICONSTOP);
+	return FALSE;
 }

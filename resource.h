@@ -214,6 +214,7 @@
 #define IDC_CHECK_24BIT                 1117
 #define IDC_CHECK_SHOW_ONLY_WHEN_SHIFT  1119
 #define IDC_STATIC_VERSION              1120
+#define IDC_EDIT1                       1121
 #define IDC_VIEW_RULER_SAMPLES          32771
 #define IDC_VIEW_RULER_HHMMSS           32772
 #define IDC_VIEW_RULER_SECONDS          32773
@@ -431,7 +432,7 @@
 #define _APS_3D_CONTROLS                     1
 #define _APS_NEXT_RESOURCE_VALUE        168
 #define _APS_NEXT_COMMAND_VALUE         40089
-#define _APS_NEXT_CONTROL_VALUE         1121
+#define _APS_NEXT_CONTROL_VALUE         1122
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif

@@ -385,6 +385,13 @@ BOOL CWaveSoapFrontDoc::OnNewDocument(WAVEFORMATEX * pWfx, long InitialLengthSec
 		pWfx = & GetApp()->m_NewFileFormat;
 	}
 
+	LONGLONG nSamples = InitialLengthSeconds * pWfx->nSamplesPerSec;
+
+	if ( ! CanAllocateWaveFileSamplesDlg(pWfx, nSamples))
+	{
+		nSamples = 0;
+	}
+
 	if ( FALSE == m_WavFile.CreateWaveFile(NULL, pWfx, ALL_CHANNELS,
 											InitialLengthSeconds * pWfx->nSamplesPerSec,
 											CreateWaveFileTempDir
@@ -1000,46 +1007,49 @@ BOOL CWaveSoapFrontDoc::DoSave(LPCTSTR lpszPathName, BOOL bReplace)
 				newName += strExt;
 			}
 		}
-
-		TCHAR Buf[MAX_PATH * 2] = {0};
-		LPTSTR FilePart = Buf;
-		GetFullPathName(newName, MAX_PATH * 2, Buf, & FilePart);
-		CString path(Buf, FilePart - Buf);
-		CString name(FilePart);
-
-		CString Ext;
-		int idx = name.ReverseFind('.');
-		if (idx != -1
-			&& idx >= name.GetLength() - 4)
+		else
 		{
-			Ext = LPCTSTR(name) + idx;
-			name = name.Left(idx);
-		}
 
-		if (SaveFlags & SaveFile_SaveCopy)
-		{
-			// add Copy Of
-			// Get filename
-			CString CopyOf;
-			CopyOf.LoadString(IDS_COPY_OF);
-			if (0 != _tcsnicmp(name, CopyOf, CopyOf.GetLength()))
+			TCHAR Buf[MAX_PATH * 2] = {0};
+			LPTSTR FilePart = Buf;
+			GetFullPathName(newName, MAX_PATH * 2, Buf, & FilePart);
+			CString path(Buf, FilePart - Buf);
+			CString name(FilePart);
+
+			CString Ext;
+			int idx = name.ReverseFind('.');
+			if (idx != -1
+				&& idx >= name.GetLength() - 4)
 			{
-				name = CopyOf + name;
+				Ext = LPCTSTR(name) + idx;
+				name = name.Left(idx);
 			}
-			else
+
+			if (SaveFlags & SaveFile_SaveCopy)
 			{
-				name += _T("(1)");
+				// add Copy Of
+				// Get filename
+				CString CopyOf;
+				CopyOf.LoadString(IDS_COPY_OF);
+				if (0 != _tcsnicmp(name, CopyOf, CopyOf.GetLength()))
+				{
+					name = CopyOf + name;
+				}
+				else
+				{
+					name += _T("(1)");
+				}
 			}
-		}
 
-		// replace the extension
-		// TODO: Add the extension for the supported type
-		if (! Ext.IsEmpty())
-		{
-			name += _T(".wav");
-		}
+			// replace the extension
+			// TODO: Add the extension for the supported type
+			if (! Ext.IsEmpty())
+			{
+				name += _T(".wav");
+			}
 
-		newName = path + name;
+			newName = path + name;
+		}
 
 		CWaveSoapFileSaveDialog dlg(FALSE, "wav", newName,
 									OFN_HIDEREADONLY
@@ -2018,6 +2028,11 @@ void CWaveSoapFrontDoc::DoPaste(LONG Start, LONG End, LONG Channel, LPCTSTR File
 		m_PrevChannelToCopy = ChannelToCopyFrom;
 	}
 
+	if ( ! CanExpandWaveFileDlg(m_WavFile, NumSamplesToPasteFrom - (End - Start)))
+	{
+		return;
+	}
+
 	CCopyContext * pContext = new CCopyContext(this, _T("Inserting data from clipboard..."), "Paste");
 	if (NULL == pContext)
 	{
@@ -2487,7 +2502,12 @@ BOOL CWaveSoapFrontDoc::OnSaveDocument(LPCTSTR lpszPathName, DWORD flags, WAVEFO
 		if (WAVE_FORMAT_PCM == pWf->wFormatTag
 			&& 16 == pWf->wBitsPerSample)
 		{
-			int nNewSamples = MulDiv(m_WavFile.NumberOfSamples(), pWf->nSamplesPerSec, m_WavFile.SampleRate());
+			LONGLONG nNewSamples = MulDiv(m_WavFile.NumberOfSamples(), pWf->nSamplesPerSec, m_WavFile.SampleRate());
+			if ( ! CanAllocateWaveFileSamplesDlg(pWf, nNewSamples))
+			{
+				return FALSE;
+			}
+
 			if (FALSE == NewWaveFile.CreateWaveFile(& m_OriginalWavFile, pWf, ALL_CHANNELS, nNewSamples,
 													CreateWaveFilePcmFormat | CreateWaveFileDontCopyInfo,
 													NewTempFilename))
@@ -3601,6 +3621,11 @@ void CWaveSoapFrontDoc::ChangeChannels(int nChannels)
 	WAVEFORMATEX NewFormat = *pWf;
 	NewFormat.nChannels = nChannels;
 	int nSrcChan = ALL_CHANNELS;
+	if ( ! CanAllocateWaveFileSamplesDlg( & NewFormat, SampleCount))
+	{
+		return;
+	}
+
 	if (nChannels < WaveChannels())
 	{
 		CCopyChannelsSelectDlg dlg;
@@ -4148,9 +4173,14 @@ void CWaveSoapFrontDoc::OnProcessInsertsilence()
 	GetApp()->m_SoundTimeFormat = dlg.m_TimeFormat;
 	channel = dlg.m_nChannel - 1;
 
-	if (0 == dlg.m_Length)
+	if (dlg.m_Length <= 0)
 	{
 		// nothing to change
+		return;
+	}
+
+	if ( ! CanExpandWaveFileDlg(m_WavFile, dlg.m_Length))
+	{
 		return;
 	}
 
@@ -4371,6 +4401,13 @@ void CWaveSoapFrontDoc::OnProcessResample()
 		SetSampleRate(NewSamplingRate);
 		return;
 	}
+
+	LONGLONG NewSampleCount = MulDiv(WaveFileSamples(), NewSamplingRate, OldSamplingRate);
+	if ( ! CanAllocateWaveFileSamplesDlg(m_WavFile.GetWaveFormat(), NewSampleCount))
+	{
+		return;
+	}
+
 	CResampleContext * pContext = new CResampleContext(this, "Changing sample rate...", "Resample");
 	if (NULL == pContext)
 	{
@@ -4379,7 +4416,7 @@ void CWaveSoapFrontDoc::OnProcessResample()
 	}
 	// create new temporary file
 	CWaveFile DstFile;
-	int NewSampleCount = MulDiv(WaveFileSamples(), NewSamplingRate, OldSamplingRate);
+
 	if ( ! DstFile.CreateWaveFile( & m_WavFile, NULL, ALL_CHANNELS, NewSampleCount,
 									//CreateWaveFileTempDir |
 									CreateWaveFileDeleteAfterClose
@@ -5294,3 +5331,4 @@ void CWaveSoapFrontDoc::DeletePermanentUndoRedo()
 		}
 	}
 }
+
