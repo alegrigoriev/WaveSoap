@@ -1130,6 +1130,8 @@ BOOL CStatisticsDialog::OnInitDialog()
 		DcDb = _T("-Inf.");
 	}
 
+	SAMPLE_INDEX MinPosSample = m_pContext->m_DstFile.PositionToSample(m_pContext->m_PosMinLeft);
+	SAMPLE_INDEX MaxPosSample = m_pContext->m_DstFile.PositionToSample(m_pContext->m_PosMaxLeft);
 	_stprintf(s.GetBuffer(1024), format,
 			//%s (%s)\r\n"
 			LPCTSTR(SampleToString(m_CaretPosition, m_SamplesPerSec,
@@ -1141,18 +1143,18 @@ BOOL CStatisticsDialog::OnInitDialog()
 			m_ValueAtCursorLeft / 327.68,
 
 			//"%s (%s)\r\n"
-			LPCTSTR(SampleToString(m_pContext->m_PosMinLeft / nSampleSize, m_SamplesPerSec,
+			LPCTSTR(SampleToString(MinPosSample, m_SamplesPerSec,
 									SampleToString_HhMmSs | TimeToHhMmSs_NeedsMs | TimeToHhMmSs_NeedsHhMm)),
-			LPCTSTR(SampleToString(m_pContext->m_PosMinLeft / nSampleSize, m_SamplesPerSec, SampleToString_Sample)),
+			LPCTSTR(SampleToString(MinPosSample, m_SamplesPerSec, SampleToString_Sample)),
 
 			//"%s (%.2f dB; %.2f%%)\r\n"
 			LPCTSTR(LtoaCS(m_pContext->m_MinLeft)), LPCTSTR(MinDb),
 			m_pContext->m_MinLeft / 327.68,
 
 			//"%s (%s)\r\n"
-			LPCTSTR(SampleToString(m_pContext->m_PosMaxLeft / nSampleSize, m_SamplesPerSec,
+			LPCTSTR(SampleToString(MaxPosSample, m_SamplesPerSec,
 									SampleToString_HhMmSs | TimeToHhMmSs_NeedsMs | TimeToHhMmSs_NeedsHhMm)),
-			LPCTSTR(SampleToString(m_pContext->m_PosMaxLeft / nSampleSize, m_SamplesPerSec, SampleToString_Sample)),
+			LPCTSTR(SampleToString(MaxPosSample, m_SamplesPerSec, SampleToString_Sample)),
 
 			//"%s (%.2f dB; %.2f%%)\r\n"
 			LPCTSTR(LtoaCS(m_pContext->m_MaxLeft)),
@@ -1221,6 +1223,9 @@ BOOL CStatisticsDialog::OnInitDialog()
 			DcDb = _T("-Inf.");
 		}
 
+		MinPosSample = m_pContext->m_DstFile.PositionToSample(m_pContext->m_PosMinRight);
+		MaxPosSample = m_pContext->m_DstFile.PositionToSample(m_pContext->m_PosMaxRight);
+
 		_stprintf(s.GetBuffer(1024), formatRight,
 				//%s (%s)\r\n"
 				LPCTSTR(SampleToString(m_CaretPosition, m_SamplesPerSec,
@@ -1232,18 +1237,18 @@ BOOL CStatisticsDialog::OnInitDialog()
 				m_ValueAtCursorRight / 327.68,
 
 				//"%s (%s)\r\n"
-				LPCTSTR(SampleToString(m_pContext->m_PosMinRight / nSampleSize, m_SamplesPerSec,
+				LPCTSTR(SampleToString(MinPosSample, m_SamplesPerSec,
 										SampleToString_HhMmSs | TimeToHhMmSs_NeedsMs | TimeToHhMmSs_NeedsHhMm)),
-				LPCTSTR(SampleToString(m_pContext->m_PosMinRight / nSampleSize, m_SamplesPerSec, SampleToString_Sample)),
+				LPCTSTR(SampleToString(MinPosSample, m_SamplesPerSec, SampleToString_Sample)),
 
 				//"%s (%.2f dB; %.2f%%)\r\n"
 				LPCTSTR(LtoaCS(m_pContext->m_MinRight)), LPCTSTR(MinDb),
 				m_pContext->m_MinRight / 327.68,
 
 				//"%s (%s)\r\n"
-				LPCTSTR(SampleToString(m_pContext->m_PosMaxRight / nSampleSize, m_SamplesPerSec,
+				LPCTSTR(SampleToString(MaxPosSample, m_SamplesPerSec,
 										SampleToString_HhMmSs | TimeToHhMmSs_NeedsMs | TimeToHhMmSs_NeedsHhMm)),
-				LPCTSTR(SampleToString(m_pContext->m_PosMaxRight / nSampleSize, m_SamplesPerSec, SampleToString_Sample)),
+				LPCTSTR(SampleToString(MaxPosSample, m_SamplesPerSec, SampleToString_Sample)),
 
 				//"%s (%.2f dB; %.2f%%)\r\n"
 				LPCTSTR(LtoaCS(m_pContext->m_MaxRight)),
