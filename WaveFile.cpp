@@ -3447,6 +3447,75 @@ void CWaveFile::InstanceDataWav::GetSortedMarkers(SAMPLE_INDEX_Vector & markers)
 	markers.erase(std::unique(markers.begin(), markers.end()), markers.end());
 }
 
+void CWaveFile::GetSortedFileSegments(WaveFileSegmentVector & segments) const
+{
+	InstanceDataWav * inst = GetInstanceData();
+	if (NULL != inst)
+	{
+		WaveFileSegment seg;
+
+		seg.Begin = NumberOfSamples();
+		seg.End = seg.Begin;
+		segments.push_back(seg);
+
+		inst->GetSortedFileSegments(segments);
+	}
+}
+
+void CWaveFile::InstanceDataWav::GetSortedFileSegments(WaveFileSegmentVector & segments) const
+{
+	segments.reserve(segments.size() + m_CuePoints.size() + m_RegionMarkers.size());
+
+	WaveFileSegment seg;
+
+	for (ConstCuePointVectorIterator i = m_CuePoints.begin(); i < m_CuePoints.end(); i++)
+	{
+		seg.Begin = SAMPLE_INDEX(i->dwSampleOffset);
+		seg.Name = GetCueText(i->CuePointID);
+
+		WaveRegionMarker const * pMarker = GetRegionMarker(i->CuePointID);
+		if (NULL != pMarker)
+		{
+			seg.End = SAMPLE_INDEX(i->dwSampleOffset + pMarker->SampleLength);
+		}
+		else
+		{
+			seg.End = seg.Begin;
+		}
+
+		segments.push_back(seg);
+	}
+
+	// sort the array
+	std::sort(segments.begin(), segments.end());
+
+	WaveFileSegmentVector::iterator pSegGet, pSegPut;
+
+	// set segment length, remove empty segments
+	for (pSegGet = segments.begin(), pSegPut = pSegGet; pSegGet < segments.end(); pSegGet++)
+	{
+		if (pSegGet->Begin < pSegGet->End)
+		{
+			*pSegPut = *pSegGet;
+			++pSegPut;
+		}
+		else if (! pSegGet->Name.IsEmpty()
+				&& pSegGet + 1 < segments.end()
+				&& pSegGet->Begin < pSegGet[1].Begin)
+		{
+			pSegGet->End = pSegGet[1].Begin;
+			*pSegPut = *pSegGet;
+			++pSegPut;
+		}
+		else
+		{
+			// skip this item
+		}
+	}
+
+	segments.erase(pSegPut, segments.end());
+}
+
 NUMBER_OF_CHANNELS CWaveFile::NumChannelsFromMask(CHANNEL_MASK ChannelMask) const
 {
 	return GetInstanceData()->wf.NumChannelsFromMask(ChannelMask);

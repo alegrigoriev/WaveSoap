@@ -303,6 +303,20 @@ struct CuePointChunkItem
 	DWORD dwSampleOffset;   // sample position of the cue (NOT byte offset) from the block
 };
 
+struct WaveFileSegment
+{
+	SAMPLE_INDEX Begin;
+	SAMPLE_INDEX End;
+	CString Name;
+};
+
+typedef std::vector<WaveFileSegment> WaveFileSegmentVector;
+
+inline bool operator <(WaveFileSegment const & s1, WaveFileSegment const & s2)
+{
+	return s1.Begin < s2.Begin;
+}
+
 typedef std::vector<CuePointChunkItem> CuePointVector;
 typedef CuePointVector::iterator CuePointVectorIterator;
 typedef CuePointVector::const_iterator ConstCuePointVectorIterator;
@@ -633,6 +647,7 @@ public:
 		BOOL MoveWaveMarker(unsigned long MarkerCueID, SAMPLE_INDEX Sample);
 		BOOL SetMarkerLabel(unsigned long MarkerCueID, LPCTSTR Label);
 		void GetSortedMarkers(SAMPLE_INDEX_Vector & markers) const;
+		void GetSortedFileSegments(WaveFileSegmentVector & segments) const;
 
 		BOOL MoveMarkers(SAMPLE_INDEX SampleBegin, NUMBER_OF_SAMPLES SrcLength, NUMBER_OF_SAMPLES DstLength);
 		BOOL ReverseMarkers(SAMPLE_INDEX SampleBegin, NUMBER_OF_SAMPLES Length);
@@ -715,6 +730,7 @@ public:
 
 	// return sorted array of markers
 	void GetSortedMarkers(SAMPLE_INDEX_Vector & markers, BOOL IncludeFileLimits = FALSE) const;
+	void GetSortedFileSegments(WaveFileSegmentVector & segments) const;
 
 	unsigned SampleRate() const;
 
