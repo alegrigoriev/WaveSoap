@@ -5,6 +5,7 @@
 #include "stdafx.h"
 #include "WaveSoapFront.h"
 #include "FftRulerView.h"
+#include "GdiObjectSave.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -98,8 +99,9 @@ void CFftRulerView::OnDraw(CDC* pDC)
 	int FirstRowInView = FirstFftSample * TotalRows / pMasterView->m_FftOrder;
 	int FftSamplesInView = LastFftSample - FirstFftSample + 1;
 
-	CGdiObject * pOldFont = (CFont *) pDC->SelectStockObject(ANSI_VAR_FONT);
-	CGdiObject * OldPen = pDC->SelectStockObject(BLACK_PEN);
+	CGdiObjectSave OldFont(pDC, pDC->SelectStockObject(ANSI_VAR_FONT));
+	CGdiObjectSave OldPen(pDC, pDC->SelectStockObject(BLACK_PEN));
+
 	TEXTMETRIC tm;
 	pDC->GetTextMetrics( & tm);
 	pDC->SetTextAlign(TA_BOTTOM | TA_RIGHT);
@@ -174,19 +176,15 @@ void CFftRulerView::OnDraw(CDC* pDC)
 			pDC->TextOut(cr.right - 3, yDev + tm.tmHeight / 2, s);
 		}
 	}
-	pDC->SelectObject(OldPen);
-	pDC->SelectObject(pOldFont);
 }
 
 int CFftRulerView::CalculateWidth()
 {
-	CWnd * pW = GetDesktopWindow();
-	CDC * pDC = pW->GetWindowDC();
-	CGdiObject * pOld = pDC->SelectStockObject(ANSI_VAR_FONT);
-	int Width = 4 + pDC->GetTextExtent(_T("-000,000"), 8).cx;
+	CWindowDC wDC(GetDesktopWindow());
 
-	pDC->SelectObject(pOld);
-	pW->ReleaseDC(pDC);
+	CGdiObjectSave Old(wDC, wDC.SelectStockObject(ANSI_VAR_FONT));
+	int Width = 4 + wDC.GetTextExtent(_T("-000,000"), 8).cx;
+
 	return Width;
 }
 

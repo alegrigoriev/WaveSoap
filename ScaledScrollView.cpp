@@ -6,6 +6,8 @@
 #include "resource.h"       // main symbols
 #include "ScaledScrollView.h"
 #include <math.h>
+#include "GdiObjectSave.h"
+
 #ifdef _DEBUG
 #define new DEBUG_NEW
 #undef THIS_FILE
@@ -1229,10 +1231,11 @@ void CScaledScrollView::OnUpdateIndicatorMousePosition(CCmdUI* pCmdUI)
 				CWindowDC dc(pSB);
 				CFont * pFont = pSB->GetFont();
 				VERIFY(pFont);
-				CGdiObject *pObj = dc.SelectObject(pFont);
+
+				CGdiObjectSaveT<CFont> OldObj(dc, dc.SelectObject(pFont));
+
 				VERIFY(::GetTextExtentPoint32(dc,
 											s, s.GetLength(), & size));
-				dc.SelectObject(pObj);
 			}
 			UINT nID, nStyle;
 			int cxWidth;

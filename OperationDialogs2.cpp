@@ -10,6 +10,7 @@
 #include "FileDialogWithHistory.h"
 #include <afxpriv.h>
 #include "WaveSoapFileDialogs.h"
+#include "GdiObjectSave.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -784,7 +785,8 @@ void CCdGrabbingDialog::CreateImageList()
 	CBitmap CheckboxesBmp;
 	CBitmap CheckBmp;
 	BITMAP info;
-	CDC dc1, dc2;
+	CDC dc1;
+	CDC dc2;
 	CImageList ImgList;
 
 	CheckboxesBmp.LoadOEMBitmap(OBM_CHECKBOXES);
@@ -799,22 +801,26 @@ void CCdGrabbingDialog::CreateImageList()
 	dc1.CreateCompatibleDC(NULL);
 	dc2.CreateCompatibleDC(NULL);
 
-	CGdiObject * OldBmp1 = dc1.SelectObject( & CheckboxesBmp);
+	{
+		CGdiObjectSaveT<CBitmap> OldBmp1(dc1, dc1.SelectObject( & CheckboxesBmp));
 
-	ImgList.Create(cbWidth, cbHeight, ILC_COLOR, 2, 1);
+		ImgList.Create(cbWidth, cbHeight, ILC_COLOR, 2, 1);
 
-	CGdiObject * OldBmp2 = dc2.SelectObject( & CheckBmp);
-	dc2.BitBlt(0, 0, cbWidth, cbHeight, & dc1, 0, 0, SRCCOPY);
-	dc2.SelectObject(OldBmp2);
+		CGdiObjectSaveT<CBitmap> OldBmp2(dc2, dc2.SelectObject( & CheckBmp));
 
-	char buf[1024];
-	CheckBmp.GetBitmapBits(1024, buf);
+		dc2.BitBlt(0, 0, cbWidth, cbHeight, & dc1, 0, 0, SRCCOPY);
 
-	ImgList.Add( & CheckBmp, (CBitmap *) NULL);
+		dc2.SelectObject(OldBmp2);
 
-	dc2.SelectObject( & CheckBmp);
-	dc2.BitBlt(0, 0, cbWidth, cbHeight, & dc1, cbWidth, 0, SRCCOPY);
-	dc2.SelectObject(OldBmp2);
+		//char buf[1024];
+		//CheckBmp.GetBitmapBits(1024, buf);
+
+		ImgList.Add( & CheckBmp, (CBitmap *) NULL);
+
+		dc2.SelectObject( & CheckBmp);
+		dc2.BitBlt(0, 0, cbWidth, cbHeight, & dc1, cbWidth, 0, SRCCOPY);
+	}
+	// CheckBmp is deselected here from DC
 	ImgList.Add( & CheckBmp, (CBitmap *) NULL);
 
 	CImageList * pOldList = m_lbTracks.SetImageList( & ImgList, LVSIL_STATE);
@@ -823,8 +829,6 @@ void CCdGrabbingDialog::CreateImageList()
 	{
 		pOldList->DeleteImageList();
 	}
-
-	dc1.SelectObject(OldBmp1);
 }
 
 BOOL CCdGrabbingDialog::OnInitDialog()

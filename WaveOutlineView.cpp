@@ -5,6 +5,7 @@
 #include "stdafx.h"
 #include "WaveSoapFront.h"
 #include "WaveOutlineView.h"
+#include "GdiObjectSave.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -100,9 +101,11 @@ void CWaveOutlineView::OnDraw(CDC* pDC)
 	{
 		pOldPalette = pDC->SelectPalette(pApp->GetPalette(), FALSE);
 	}
+
 	CPen BlackPen;
 	BlackPen.CreatePen(PS_SOLID, 0, DWORD(0x000000u));
-	CGdiObject * pOldPen = pDC->SelectObject( & BlackPen);
+
+	CGdiObjectSaveT<CPen> OldPen(pDC, pDC->SelectObject( & BlackPen));
 	// draw lower border line
 	pDC->MoveTo(cr.left, cr.bottom - 1);
 	pDC->LineTo(cr.right, cr.bottom - 1);
@@ -137,9 +140,9 @@ void CWaveOutlineView::OnDraw(CDC* pDC)
 		int SampleSize = pDoc->WaveSampleSize();
 		size_t BufSize = (nSamples / width + 2) * SampleSize;
 		WAVE_SAMPLE * pBuf = new WAVE_SAMPLE[BufSize / sizeof(WAVE_SAMPLE)];
+
 		if (NULL == pBuf)
 		{
-			pDC->SelectObject(pOldPen);
 			if (pOldPalette)
 			{
 				pDC->SelectPalette(pOldPalette, FALSE);
@@ -147,6 +150,7 @@ void CWaveOutlineView::OnDraw(CDC* pDC)
 			delete[] pPeaks;
 			return;
 		}
+
 		int PrevIdx = MulDiv(ur.left, nSamples, width);
 		size_t DataOffset = pDoc->m_WavFile.SampleToPosition(0);
 
@@ -245,7 +249,6 @@ void CWaveOutlineView::OnDraw(CDC* pDC)
 			pDC->LineTo(nCursorPos, cr.bottom - 1);
 		}
 	}
-	pDC->SelectObject(pOldPen);
 	if (pOldPalette)
 	{
 		pDC->SelectPalette(pOldPalette, FALSE);

@@ -10,6 +10,7 @@
 #include "WaveSoapFrontView.h"
 #include "ChildFrm.h"
 #include "WaveOutlineView.h"
+#include "GdiObjectSave.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -236,14 +237,17 @@ void CWaveSoapFrontView::OnDraw(CDC* pDC)
 	}
 	WaveformPen.CreatePen(PS_SOLID, 1, pApp->m_WaveColor);
 	SelectedWaveformPen.CreatePen(PS_SOLID, 1, pApp->m_SelectedWaveColor);
+
 	ZeroLinePen.CreatePen(PS_SOLID, 1, pApp->m_ZeroLineColor);
 	SelectedZeroLinePen.CreatePen(PS_SOLID, 1, pApp->m_SelectedZeroLineColor);
+
 	SixDBLinePen.CreatePen(PS_SOLID, 1, pApp->m_6dBLineColor);
 	SelectedSixDBLinePen.CreatePen(PS_SOLID, 1, pApp->m_Selected6dBLineColor);
+
 	ChannelSeparatorPen.CreatePen(PS_SOLID, 1, pApp->m_ChannelSeparatorColor);
 	SelectedChannelSeparatorPen.CreatePen(PS_SOLID, 1, pApp->m_SelectedChannelSeparatorColor);
 
-	CGdiObject * pOldPen = pDC->SelectObject(& ZeroLinePen);
+	CGdiObjectSaveT<CPen> OldPen(pDC, pDC->SelectObject(& ZeroLinePen));
 	RECT r;
 	//double y;
 	double left, right, top, bottom;
@@ -267,7 +271,6 @@ void CWaveSoapFrontView::OnDraw(CDC* pDC)
 	// number of sample that corresponds to the r.left position
 	SAMPLE_INDEX NumOfFirstSample = DWORD(left);
 	unsigned SamplesPerPoint = m_HorizontalScale;
-
 
 	// create an array of points
 
@@ -443,7 +446,9 @@ void CWaveSoapFrontView::OnDraw(CDC* pDC)
 				// make sure the graph is continuous
 				int LastY0 = ppArray[0][0].y;
 				int LastY1 = ppArray[0][1].y;
+
 				CPen * pLastPen = NULL;
+
 				for (i = 0; i < nNumberOfPoints; i ++)
 				{
 					if (ppArray[i][0].y >= ppArray[i][1].y)
@@ -493,7 +498,9 @@ void CWaveSoapFrontView::OnDraw(CDC* pDC)
 						{
 							continue;
 						}
+
 						CPen * pPenToDraw = & WaveformPen;
+
 						if (ppArray[i][0].x >= SelBegin
 							&& ppArray[i][0].x < SelEnd
 							&& (ALL_CHANNELS == pDoc->m_SelectedChannel
@@ -513,7 +520,7 @@ void CWaveSoapFrontView::OnDraw(CDC* pDC)
 			}
 		delete[] ppArray;
 	}
-	pDC->SelectObject(pOldPen);
+
 	if (pOldPalette)
 	{
 		pDC->SelectPalette(pOldPalette, FALSE);
@@ -524,6 +531,7 @@ void CWaveSoapFrontView::OnDraw(CDC* pDC)
 	}
 	CScaledScrollView::OnDraw(pDC);
 }
+
 int CDataSection<WAVE_SAMPLE, CWaveSoapFrontView>::ReadData(WAVE_SAMPLE * pBuf, ULONGLONG nOffset,
 															unsigned int nCount, CWaveSoapFrontView * pSource)
 {
@@ -620,28 +628,36 @@ void CWaveSoapFrontView::DrawPlaybackCursor(CDC * pDC, SAMPLE_INDEX Sample, CHAN
 	}
 	int OldMap = pDrawDC->SetMapMode(MM_TEXT);
 	int OldRop = pDrawDC->SetROP2(R2_XORPEN);
-	CPen pen(PS_SOLID, 0, 0xFFFFFF);
-	CGdiObject * pOldPen = pDrawDC->SelectObject( & pen);
-	// looks like the display driver can delay the drawing with
-	// WHITE_PEN, it is causing jerkiness in the playback cursor
-	//CGdiObject * pOldPen = pDrawDC->SelectStockObject(WHITE_PEN);
-	if (0 == Channel)
-	{
-		r.bottom /= 2;
-	}
-	else if (1 == Channel)
-	{
-		r.top = r.bottom / 2;
-	}
 
-	pDrawDC->MoveTo(CPoint(pos, r.top));
-	pDrawDC->LineTo(CPoint(pos, r.bottom));
-	//TRACE("Cursor drawn  at %d, time=%d\n", pos, timeGetTime());
+	try
+	{
+		CPen pen(PS_SOLID, 0, 0xFFFFFF);
+
+		CGdiObjectSaveT<CPen> OldPen(pDrawDC, pDrawDC->SelectObject( & pen));
+		// looks like the display driver can delay the drawing with
+		// WHITE_PEN, it is causing jerkiness in the playback cursor
+		//CGdiObject * pOldPen = pDrawDC->SelectStockObject(WHITE_PEN);
+		if (0 == Channel)
+		{
+			r.bottom /= 2;
+		}
+		else if (1 == Channel)
+		{
+			r.top = r.bottom / 2;
+		}
+
+		pDrawDC->MoveTo(CPoint(pos, r.top));
+		pDrawDC->LineTo(CPoint(pos, r.bottom));
+		//TRACE("Cursor drawn  at %d, time=%d\n", pos, timeGetTime());
+	}
+	catch (CResourceException * e)
+	{
+		e->Delete();
+	}
 
 	pDrawDC->SetROP2(OldRop);
 	pDrawDC->SetMapMode(OldMap);
 
-	pDrawDC->SelectObject(pOldPen);
 	if (NULL == pDC)
 	{
 		ReleaseDC(pDrawDC);

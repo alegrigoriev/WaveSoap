@@ -23,6 +23,7 @@
 #include "BatchConvertDlg.h"
 #include <imagehlp.h>
 #include <shlwapi.h>
+#include "GdiObjectSave.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -1477,11 +1478,12 @@ void SetStatusString(CCmdUI* pCmdUI, const CString & string,
 			CWindowDC dc(pSB);
 			CFont * pFont = pSB->GetFont();
 			VERIFY(pFont);
-			CFont *pOldFont = dc.SelectObject(pFont);
+			CGdiObjectSaveT<CFont> OldFont(dc, dc.SelectObject(pFont));
+
 			VERIFY(::GetTextExtentPoint32(dc,
 										MaxString, _tcslen(MaxString), & size));
-			dc.SelectObject(pOldFont);
 		}
+
 		UINT nID, nStyle;
 		int cxWidth;
 		pSB->GetPaneInfo(pCmdUI->m_nIndex, nID, nStyle,
