@@ -257,8 +257,8 @@ CDirectFile::File * CDirectFile::CDirectFileCache::Open
 
 		pFile->WrittenMaskSize = WrittenMaskLength;
 		memset(pFile->m_pWrittenMask, 0, WrittenMaskLength);
-		memset(pFile->m_pWrittenMask, 0xFF, pFile->FileLength >> 19);
-		pFile->m_pWrittenMask[pFile->FileLength >> 19] =
+		memset(pFile->m_pWrittenMask, 0xFF, (pFile->FileLength +0xFFFF) >> 19);
+		pFile->m_pWrittenMask[(pFile->FileLength +0xFFFF) >> 19] =
 			0xFF >> (8 - (((pFile->FileLength +0xFFFF) >> 16) & 7));
 	}
 	else
@@ -307,9 +307,161 @@ BOOL CDirectFile::File::SetSourceFile(File * pOriginalFile)
 	return TRUE;
 }
 
+BOOL CDirectFile::File::Commit(DWORD flags)
+{
+	if (m_Flags & FileFlagsReadOnly)
+	{
+		return FALSE;
+	}
+	// close the file, set length and reopen again if necessary
+	if (flags & CommitFileFlushBuffers)
+	{
+		InitializeTheRestOfFile();
+		if (NULL != pSourceFile)
+		{
+			pSourceFile->Close(0);
+			pSourceFile = NULL;
+		}
+		Flush();
+
+	}
+	if (FileLength != RealFileLength)
+	{
+		CSimpleCriticalSectionLock lock(m_FileLock);
+		CloseHandle(hFile);
+		hFile = NULL;
+		HANDLE hf = CreateFile(sName,
+								GENERIC_WRITE,
+								0,
+								NULL, // lpSecurity
+								OPEN_EXISTING,
+								FILE_ATTRIBUTE_NORMAL,
+								NULL);
+		long MoveHigh = FileLength >> 32;
+		SetLastError(ERROR_SUCCESS);
+		if (hf != INVALID_HANDLE_VALUE)
+		{
+			SetFilePointer(hf, long(FileLength), & MoveHigh, FILE_BEGIN);
+			if (GetLastError() == ERROR_SUCCESS)
+			{
+				SetEndOfFile(hf);
+			}
+			CloseHandle(hf);
+		}
+		if (0 == (flags & CommitFileDontReopen))
+		{
+			hf = CreateFile(sName,
+							GENERIC_WRITE | GENERIC_READ,
+							0,
+							NULL, // lpSecurity
+							OPEN_EXISTING,
+							FILE_FLAG_NO_BUFFERING | FILE_ATTRIBUTE_NORMAL,
+							NULL);
+			if (INVALID_HANDLE_VALUE == hf)
+			{
+				// couldnt reopen!!
+				return FALSE;
+			}
+			hFile = hf;
+			FilePointer = 0;
+
+		}
+		if (NULL != hFile)
+		{
+			::GetFileInformationByHandle(hFile, & m_FileInfo);
+			RealFileLength = m_FileInfo.nFileSizeLow
+							| (ULONGLONG(m_FileInfo.nFileSizeHigh << 32));
+		}
+	}
+	return TRUE;
+}
+
+BOOL CDirectFile::File::Rename(LPCTSTR NewName, DWORD flags)
+{
+	if (m_Flags & FileFlagsReadOnly)
+	{
+		return FALSE;
+	}
+	// close the file, set length and reopen again if necessary
+	CSimpleCriticalSectionLock lock(m_FileLock);
+	if (FALSE == Commit(flags | CommitFileDontReopen))
+	{
+		return FALSE;
+	}
+	if (NULL != hFile)
+	{
+		CloseHandle(hFile);
+		hFile = NULL;
+	}
+	BOOL result = FALSE;
+	if (MoveFile(sName, NewName))
+	{
+		sName = NewName;
+		result = TRUE;
+	}
+	else
+	{
+		TRACE("Couldn't rename the file from %s to %s, last error=%X\n",
+			LPCTSTR(sName), LPCTSTR(NewName), GetLastError());
+	}
+	if (flags & CommitFileDontReopen)
+	{
+		return result;
+	}
+
+	DWORD access = GENERIC_WRITE | GENERIC_READ;
+
+	if (flags & RenameFileOpenReadOnly)
+	{
+		access = GENERIC_READ;
+		m_Flags |= FileFlagsReadOnly;
+	}
+
+	HANDLE hf = CreateFile(sName,
+							access,
+							0,
+							NULL, // lpSecurity
+							OPEN_EXISTING,
+							FILE_FLAG_NO_BUFFERING | FILE_ATTRIBUTE_NORMAL,
+							NULL);
+	if (INVALID_HANDLE_VALUE == hf)
+	{
+		// couldnt reopen!!
+		TRACE("Couldn't reopen the file, last error=%X\n", GetLastError());
+		return FALSE;
+	}
+	hFile = hf;
+	FilePointer = 0;
+
+	if (NULL != hFile)
+	{
+		::GetFileInformationByHandle(hFile, & m_FileInfo);
+		RealFileLength = m_FileInfo.nFileSizeLow
+						| (ULONGLONG(m_FileInfo.nFileSizeHigh << 32));
+	}
+	return result;
+}
+
 BOOL CDirectFile::File::Close(DWORD flags)
 {
 	// dereference File structure.
+	CDirectFileCache * pCache = GetCache();
+	ASSERT(pCache);
+	// stop all prefetch operations on the file
+	// if the file in prefetch is ours, then wait for the operation to finish
+	// last Close operation is always synchronous, there is no parallel activity
+	pCache->m_cs.Lock();
+	InterlockedCompareExchangePointer((PVOID *)& pCache->m_pPrefetchFile, NULL, this);
+	if (this == InterlockedCompareExchangePointer(& pCache->m_pCurrentPrefetchFile, NULL, this))
+	{
+		pCache->m_cs.Unlock();
+		WaitForSingleObject(pCache->m_hStopPrefetchEvent, INFINITE);
+	}
+	else
+	{
+		pCache->m_cs.Unlock();
+	}
+
 	if (InterlockedDecrement( & RefCount) > 0)
 	{
 		return TRUE;
@@ -320,8 +472,6 @@ BOOL CDirectFile::File::Close(DWORD flags)
 	{
 		InitializeTheRestOfFile();
 	}
-	CDirectFileCache * pCache = GetCache();
-	ASSERT(pCache);
 	if (NULL != pSourceFile)
 	{
 		pSourceFile->Close(0);
@@ -336,6 +486,7 @@ BOOL CDirectFile::File::Close(DWORD flags)
 			// something strange: buffer not released
 			if (pBuf->LockCount != 0)
 			{
+				TRACE("CDirectFile::File::Close: Buffer not released!\n");
 				return FALSE;
 			}
 			if (pBuf->DirtyMask)
@@ -374,21 +525,31 @@ BOOL CDirectFile::File::Close(DWORD flags)
 			pCache->m_pFreeBuffers = pBuf;
 			pBuf->pFile = NULL;
 			// remove the buffer also from MRU list
-			if (pBuf->pMruPrev)
+			if (NULL != pBuf->pMruPrev)
 			{
 				pBuf->pMruPrev->pMruNext = pBuf->pMruNext;
 			}
 			else
 			{
+				ASSERT(pCache->m_pMruListHead == pBuf);
 				pCache->m_pMruListHead = pBuf->pMruNext;
+				if (NULL != pCache->m_pMruListHead)
+				{
+					pCache->m_pMruListHead->pMruPrev = NULL;
+				}
 			}
-			if (pBuf->pMruNext)
+			if (NULL != pBuf->pMruNext)
 			{
 				pBuf->pMruNext->pMruPrev = pBuf->pMruPrev;
 			}
 			else
 			{
+				ASSERT(pCache->m_pMruListTail == pBuf);
 				pCache->m_pMruListTail = pBuf->pMruPrev;
+				if (NULL != pCache->m_pMruListTail)
+				{
+					pCache->m_pMruListTail->pMruNext = NULL;
+				}
 			}
 		}
 	}
@@ -410,7 +571,11 @@ BOOL CDirectFile::File::Close(DWORD flags)
 		}
 	}
 
-	CloseHandle(hFile);
+	if (NULL != hFile)
+	{
+		CloseHandle(hFile);
+		hFile = NULL;
+	}
 
 	if (m_Flags & FileFlagsDeleteAfterClose)
 	{
@@ -625,6 +790,7 @@ CDirectFile::CDirectFileCache::CDirectFileCache(size_t CacheSize)
 	m_MinPrefetchMRU(0),
 	m_pMruListHead(NULL),
 	m_pMruListTail(NULL),
+	m_pCurrentPrefetchFile(NULL),
 	m_pFreeBuffers(NULL)
 {
 	if (SingleInstance != NULL)
@@ -632,6 +798,7 @@ CDirectFile::CDirectFileCache::CDirectFileCache(size_t CacheSize)
 		return;
 	}
 	m_hEvent = CreateEvent(NULL, NULL, FALSE, NULL);
+	m_hStopPrefetchEvent = CreateEvent(NULL, NULL, FALSE, NULL);
 	// round up to 64K
 	if (0 == CacheSize)
 	{
@@ -672,6 +839,7 @@ CDirectFile::CDirectFileCache::CDirectFileCache(size_t CacheSize)
 	if (m_hThread != NULL)
 	{
 		if (m_hEvent != NULL
+			&& m_hStopPrefetchEvent != NULL
 			&& m_pBuffersArray != NULL
 			&& m_pHeaders != NULL)
 		{
@@ -694,11 +862,18 @@ CDirectFile::CDirectFileCache::~CDirectFileCache()
 	if (NULL != m_hThread)
 	{
 		m_bRunThread = FALSE;
+#ifdef _DEBUG
+		DWORD Time = timeGetTime();
+#endif
 		SetEvent(m_hEvent);
 		if (WAIT_TIMEOUT == WaitForSingleObject(m_hThread, 5000))
 		{
 			TerminateThread(m_hThread, -1);
 		}
+#ifdef _DEBUG
+		TRACE("File Cache Thread finished in %d ms\n",
+			timeGetTime() - Time);
+#endif
 		CloseHandle(m_hThread);
 		m_hThread = NULL;
 	}
@@ -709,6 +884,11 @@ CDirectFile::CDirectFileCache::~CDirectFileCache()
 	{
 		CloseHandle(m_hEvent);
 		m_hEvent = NULL;
+	}
+	if (NULL != m_hStopPrefetchEvent)
+	{
+		CloseHandle(m_hStopPrefetchEvent);
+		m_hStopPrefetchEvent = NULL;
 	}
 	if (NULL != m_pBuffersArray)
 	{
@@ -995,7 +1175,9 @@ long CDirectFile::CDirectFileCache::GetDataBuffer(File * pFile,
 		// extract the buffer from MRU list
 		CSimpleCriticalSectionLock lock(m_cs);
 		// if they are equal (0), the buffer is not in the list
-		if (pBuf->pMruPrev != pBuf->pMruNext)
+		// except when it is the only buffer in the list
+		if (pBuf->pMruPrev != pBuf->pMruNext
+			|| m_pMruListHead == pBuf)
 		{
 			if (pBuf->pMruPrev)
 			{
@@ -1003,7 +1185,12 @@ long CDirectFile::CDirectFileCache::GetDataBuffer(File * pFile,
 			}
 			else
 			{
+				ASSERT(m_pMruListHead == pBuf);
 				m_pMruListHead = pBuf->pMruNext;
+				if (m_pMruListHead != NULL)
+				{
+					m_pMruListHead->pMruPrev = NULL;
+				}
 			}
 
 			if (pBuf->pMruNext)
@@ -1012,8 +1199,14 @@ long CDirectFile::CDirectFileCache::GetDataBuffer(File * pFile,
 			}
 			else
 			{
+				ASSERT(m_pMruListTail == pBuf);
 				m_pMruListTail = pBuf->pMruPrev;
+				if (m_pMruListTail != NULL)
+				{
+					m_pMruListTail->pMruNext = NULL;
+				}
 			}
+			ASSERT((NULL == m_pMruListHead) == (NULL == m_pMruListTail));
 		}
 		// since we already have the required buffer,
 		// return the free buffer back
@@ -1182,7 +1375,9 @@ void CDirectFile::CDirectFileCache::ReturnDataBuffer(File * pFile,
 		// extract the buffer from MRU list
 		CSimpleCriticalSectionLock lock(m_cs);
 		// if they are equal (0), the buffer is not in the list
-		if (pBuf->pMruPrev != pBuf->pMruNext)
+		// except when it is the only buffer in the list
+		if (pBuf->pMruPrev != pBuf->pMruNext
+			|| m_pMruListHead == pBuf)
 		{
 			if (pBuf->pMruPrev)
 			{
@@ -1190,7 +1385,12 @@ void CDirectFile::CDirectFileCache::ReturnDataBuffer(File * pFile,
 			}
 			else
 			{
+				ASSERT(m_pMruListHead == pBuf);
 				m_pMruListHead = pBuf->pMruNext;
+				if (m_pMruListHead != NULL)
+				{
+					m_pMruListHead->pMruPrev = NULL;
+				}
 			}
 
 			if (pBuf->pMruNext)
@@ -1199,8 +1399,14 @@ void CDirectFile::CDirectFileCache::ReturnDataBuffer(File * pFile,
 			}
 			else
 			{
+				ASSERT(m_pMruListTail == pBuf);
 				m_pMruListTail = pBuf->pMruPrev;
+				if (m_pMruListTail != NULL)
+				{
+					m_pMruListTail->pMruNext = NULL;
+				}
 			}
+			ASSERT((NULL == m_pMruListHead) == (NULL == m_pMruListTail));
 		}
 		// insert the buffer to the list tail
 		// to do: insert the buffer before the first with MRU_Count==1
@@ -1266,6 +1472,8 @@ CDirectFile::BufferHeader
 			MaxMRU = m_MRU_Count;
 		}
 
+		// find least recent unlocked and non-dirty buffer (with lowest MRU)
+		// whose MRU is at most MaxMRU.
 		pBuf = m_pMruListTail;
 		while (NULL != pBuf
 				&& pBuf->MRU_Count < MaxMRU
@@ -1309,23 +1517,34 @@ CDirectFile::BufferHeader
 		}
 
 		// get the buffer from the MRU list
-		if (pBuf->pMruNext)
-		{
-			pBuf->pMruNext->pMruPrev = pBuf->pMruPrev;
-		}
-		else
-		{
-			m_pMruListTail = pBuf->pMruPrev;
-		}
-
 		if (pBuf->pMruPrev)
 		{
 			pBuf->pMruPrev->pMruNext = pBuf->pMruNext;
 		}
 		else
 		{
+			ASSERT(m_pMruListHead == pBuf);
 			m_pMruListHead = pBuf->pMruNext;
+			if (m_pMruListHead != NULL)
+			{
+				m_pMruListHead->pMruPrev = NULL;
+			}
 		}
+
+		if (pBuf->pMruNext)
+		{
+			pBuf->pMruNext->pMruPrev = pBuf->pMruPrev;
+		}
+		else
+		{
+			ASSERT(m_pMruListTail == pBuf);
+			m_pMruListTail = pBuf->pMruPrev;
+			if (m_pMruListTail != NULL)
+			{
+				m_pMruListTail->pMruNext = NULL;
+			}
+		}
+		ASSERT((NULL == m_pMruListHead) == (NULL == m_pMruListTail));
 		// get the buffer from the file list
 		if (pBuf->pNext)
 		{
@@ -1335,6 +1554,10 @@ CDirectFile::BufferHeader
 		{
 			ASSERT(pFile->BuffersListTail == pBuf);
 			pFile->BuffersListTail = pBuf->pPrev;
+			if (NULL != pFile->BuffersListTail)
+			{
+				pFile->BuffersListTail->pNext = NULL;
+			}
 		}
 
 		if (pBuf->pPrev)
@@ -1345,6 +1568,10 @@ CDirectFile::BufferHeader
 		{
 			ASSERT(pFile->BuffersListHead == pBuf);
 			pFile->BuffersListHead = pBuf->pNext;
+			if (NULL != pFile->BuffersListHead)
+			{
+				pFile->BuffersListHead->pPrev = NULL;
+			}
 		}
 		pFile->BuffersCount--;
 		ASSERT(0 == pBuf->DirtyMask);
@@ -1421,7 +1648,7 @@ void CDirectFile::CDirectFileCache::ReadDataBuffer(BufferHeader * pBuf, DWORD Ma
 						SetFilePointer(pSourceFile->hFile, (LONG)StartFilePtr, & FilePtrH, FILE_BEGIN);
 						pSourceFile->FilePointer = StartFilePtr;
 					}
-					//TRACE("ReadFile(%x, pos=0x%X, bytes=%X)\n", pFile->hFile, long(StartFilePtr), ToRead);
+					TRACE("ReadFile(%08x, pos=0x%08X, bytes=%X)\n", pFile->hFile, long(StartFilePtr), ToRead);
 					ReadFile(pSourceFile->hFile, buf, ToRead, & BytesRead, NULL);
 					pSourceFile->FilePointer += BytesRead;
 					buf += BytesRead;
@@ -1481,7 +1708,7 @@ void CDirectFile::CDirectFileCache::ReadDataBuffer(BufferHeader * pBuf, DWORD Ma
 				SetFilePointer(pFile->hFile, (LONG)StartFilePtr, & FilePtrH, FILE_BEGIN);
 				pFile->FilePointer = StartFilePtr;
 			}
-			//TRACE("ReadFile(%x, pos=0x%X, bytes=%X)\n", pFile->hFile, long(StartFilePtr), ToRead);
+			TRACE("ReadFile(%08x, pos=0x%08X, bytes=%X)\n", pFile->hFile, long(StartFilePtr), ToRead);
 			ReadFile(pFile->hFile, buf, ToRead, & BytesRead, NULL);
 			pFile->FilePointer += BytesRead;
 			buf += BytesRead;
@@ -1590,7 +1817,7 @@ void CDirectFile::BufferHeader::FlushDirtyBuffers()
 							long(StartFilePtr), ToWrite,
 							buf[0], buf[1], buf[2], buf[3], buf[4],
 							buf[5], buf[6], buf[7]);
-				//TRACE("WriteFile(%x, pos=0x%X, bytes=%X)\n", pFile->hFile, long(StartFilePtr), ToWrite);
+				TRACE("WriteFile(%08x, pos=0x%08X, bytes=%X)\n", pFile->hFile, long(StartFilePtr), ToWrite);
 				WriteFile(pFile->hFile, buf, ToWrite, & BytesWritten, NULL);
 				pFile->FilePointer += BytesWritten;
 				buf += ToWrite;
@@ -1668,13 +1895,21 @@ unsigned CDirectFile::CDirectFileCache::_ThreadProc()
 			{
 				CSimpleCriticalSectionLock lock(m_cs);
 				pPrefetchFile = m_pPrefetchFile;
+				m_pCurrentPrefetchFile = pPrefetchFile;
 				PrefetchPosition = m_PrefetchPosition;
 				PrefetchLength = m_PrefetchLength;
 				PrefetchMRU = m_MinPrefetchMRU;
 			}
-			if (NULL == pPrefetchFile
-				|| 0 == PrefetchLength)
+			if (NULL == pPrefetchFile)
 			{
+				break;
+			}
+			if (0 == PrefetchLength)
+			{
+				if (NULL == InterlockedExchangePointer(& m_pCurrentPrefetchFile, NULL))
+				{
+					SetEvent(m_hStopPrefetchEvent);
+				}
 				break;
 			}
 			void * pBuf = NULL;
@@ -1684,6 +1919,12 @@ unsigned CDirectFile::CDirectFileCache::_ThreadProc()
 			if (pBuf)
 			{
 				ReturnDataBuffer(pPrefetchFile, pBuf, ReadLength, 0);
+			}
+			// prefetch was canceled for this file
+			if (NULL == InterlockedExchangePointer(& m_pCurrentPrefetchFile, NULL))
+			{
+				SetEvent(m_hStopPrefetchEvent);
+				break;
 			}
 			{
 				CSimpleCriticalSectionLock lock(m_cs);

@@ -125,10 +125,84 @@ public:
 	{
 		return DWORD(m_pFile);
 	}
+	// file MUST be open!
+	void ModifyFlags(DWORD set, DWORD reset)
+	{
+		if (NULL != m_pFile)
+		{
+			m_pFile->m_Flags &= ~reset;
+			m_pFile->m_Flags |= set;
+		}
+	}
+	void DeleteOnClose(bool Delete = true)
+	{
+		if (NULL != m_pFile)
+		{
+			if (Delete)
+			{
+				m_pFile->m_Flags |= FileFlagsDeleteAfterClose;
+			}
+			else
+			{
+				m_pFile->m_Flags &= ~FileFlagsDeleteAfterClose;
+			}
+		}
+	}
+
+	enum {
+		CommitFileFlushBuffers = 1,
+		RenameFileFlushBuffers = CommitFileFlushBuffers,
+		CommitFileDontReopen = 2,
+		RenameFileDontReopen = CommitFileDontReopen,
+		RenameFileOpenReadOnly = 4,
+	};
+
+	BOOL Commit(DWORD flags = CommitFileFlushBuffers)
+	{
+		if (NULL != m_pFile)
+		{
+			return m_pFile->Commit(flags);
+		}
+		else
+			return FALSE;
+	}
+
+	BOOL Rename(LPCTSTR NewName, DWORD flags)
+	{
+		if (NULL != m_pFile)
+		{
+			return m_pFile->Rename(NewName, flags);
+		}
+		else
+			return FALSE;
+	}
+
+	BOOL InitializeTheRestOfFile(int timeout = 0)
+	{
+		if (NULL != m_pFile)
+		{
+			return m_pFile->InitializeTheRestOfFile(timeout);
+		}
+		else
+			return TRUE;    // operation completed
+	}
+
+	DWORD Flags() const
+	{
+		if (NULL != m_pFile)
+		{
+			return m_pFile->m_Flags;
+		}
+		else
+		{
+			return 0;
+		}
+	}
 
 	enum { ReturnBufferDirty = 1, // buffer contains changed data
 		ReturnBufferDiscard = 2, // make the buffer lower priority
 	};
+
 	// unlock the buffer, mark dirty if necessary
 	void ReturnDataBuffer(void * pBuffer, long count, DWORD flags = 0)
 	{
@@ -199,17 +273,9 @@ public:
 		return m_pFile->SetFileLength(NewLength);
 	}
 
-	BOOL GetFileInformationByHandle(LPBY_HANDLE_FILE_INFORMATION lpFileInformation)
+	BY_HANDLE_FILE_INFORMATION const & GetFileInformation() const
 	{
-		if (m_pFile != NULL
-			&& m_pFile->hFile != NULL)
-		{
-			return ::GetFileInformationByHandle(m_pFile->hFile, lpFileInformation);
-		}
-		else
-		{
-			return FALSE;
-		}
+		return m_pFile->m_FileInfo;
 	}
 
 protected:
@@ -270,6 +336,8 @@ protected:
 			GetCache()->ReturnDataBuffer(this, pBuffer, count, flags);
 		}
 		BOOL Close(DWORD flags);
+		BOOL Commit(DWORD flags);
+		BOOL Rename(LPCTSTR NewName, DWORD flags);
 
 		// read data, lock the buffer
 		// and return the buffer address
@@ -363,7 +431,11 @@ public:
 		// points to the only instance of the class
 		static CDirectFileCache * SingleInstance;
 		BufferHeader * m_pHeaders;    // address of array
+		// when you traverse from Head to Tail, jump to pNext.
+		// when you traverse from Tail to Head , jump to pPrev.
+		// Pointer to a buffer with highest MRU. This buffer have pMruPrev=NULL
 		BufferHeader * m_pMruListHead;
+		// Pointer to a buffer with lowest MRU. This buffer have pMruNext=NULL
 		BufferHeader * m_pMruListTail;
 		void * m_pBuffersArray;    // allocated area
 		int m_NumberOfBuffers; // number of allocated buffers
@@ -377,6 +449,8 @@ public:
 		BOOL m_bRunThread;
 
 		File * volatile m_pPrefetchFile;
+		void * m_pCurrentPrefetchFile;
+		HANDLE m_hStopPrefetchEvent;
 		LONGLONG volatile m_PrefetchPosition;
 		LONGLONG volatile m_PrefetchLength;
 		unsigned volatile m_MinPrefetchMRU;
