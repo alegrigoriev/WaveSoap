@@ -3,29 +3,37 @@
 #ifndef WAVESUPPORT_H__
 #define WAVESUPPORT_H__
 
-struct WaveFormat
+enum {
+	WaveFormatMatchBytesPerSec = 1,
+	WaveFormatMatchCnahhels = 2,
+	WaveFormatMatchSampleRate = 4,
+	WaveFormatMatch16Bits = 8,
+	WaveFormatMatchFormatTag = 0x20,
+	WaveFormatExactMatch = 0x100,
+};
+struct CWaveFormat
 {
 	WAVEFORMATEX * m_pWf;
 	int m_AllocatedSize;
-	WaveFormat()
+	CWaveFormat()
 		: m_pWf(NULL),
 		m_AllocatedSize(0)
 	{
 	}
-	~WaveFormat();
+	~CWaveFormat();
 	void Allocate(int ExtraSize, bool bCopy = false);
-	WaveFormat & operator =(WAVEFORMATEX const * pWf);
-	WaveFormat & operator =(WaveFormat const & src)
+	CWaveFormat & operator =(WAVEFORMATEX const * pWf);
+	CWaveFormat & operator =(CWaveFormat const & src)
 	{
 		return operator=(src.m_pWf);
 	}
-	WaveFormat(WaveFormat const & src)
+	CWaveFormat(CWaveFormat const & src)
 		: m_pWf(NULL),
 		m_AllocatedSize(0)
 	{
 		*this = src;
 	}
-	WaveFormat(WAVEFORMATEX const * pWf)
+	CWaveFormat(WAVEFORMATEX const * pWf)
 		: m_pWf(NULL),
 		m_AllocatedSize(0)
 	{
@@ -70,11 +78,11 @@ struct WaveFormat
 	}
 	WORD & NumChannels()
 	{
-		return m_pWf->nNumChannels;
+		return m_pWf->nChannels;
 	}
 	WORD NumChannels() const
 	{
-		return m_pWf->nNumChannels;
+		return m_pWf->nChannels;
 	}
 	WORD & BitsPerSample()
 	{
@@ -85,6 +93,15 @@ struct WaveFormat
 	{
 		return m_pWf->wBitsPerSample;
 	}
+	WORD & SampleSize()
+	{
+		return m_pWf->nBlockAlign;
+	}
+
+	WORD SampleSize() const
+	{
+		return m_pWf->nBlockAlign;
+	}
 	void * FormatExtension() const
 	{
 		return m_pWf + 1;
@@ -94,11 +111,12 @@ struct WaveFormat
 	{
 		m_pWf->wFormatTag = wFormatTag;
 		m_pWf->nSamplesPerSec = nSampleRate;
-		m_pWf->nNumChannels = nNumChannels;
-		m_pWf->nBitsPerSample = nBitsPerSample;
-		m_pWf->nBlockAlign = nBitsperSample * nNumChannels / 8;
+		m_pWf->nChannels = nNumChannels;
+		m_pWf->wBitsPerSample = nBitsPerSample;
+		m_pWf->nBlockAlign = nBitsPerSample * nNumChannels / 8;
 		m_pWf->nAvgBytesPerSec = nSampleRate * nNumChannels * nBitsPerSample / 8;
 	}
+	int MatchFormat(WAVEFORMATEX const * pWf);
 };
 
 class CWaveDevice
