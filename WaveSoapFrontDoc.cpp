@@ -5531,7 +5531,7 @@ void CWaveSoapFrontDoc::ExecuteOperation(COperationContext * pContext, BOOL SetM
 
 void CWaveSoapFrontDoc::OnSaveSplitToFiles()
 {
-	CSplitToFilesDialog dlg(m_WavFile);
+	CSplitToFilesDialog dlg(m_WavFile, GetApp()->m_SoundTimeFormat);
 
 	if (IDOK != dlg.DoModal())
 	{
