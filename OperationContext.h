@@ -21,7 +21,7 @@ public:
 	virtual ~COperationContext();
 
 	virtual BOOL OperationProc();
-	virtual BOOL ProcessBuffer(void * buf, size_t len, DWORD offset, BOOL bBackward = FALSE) { return TRUE; }
+	virtual BOOL ProcessBuffer(void * buf, size_t len, SAMPLE_POSITION offset, BOOL bBackward = FALSE) { return TRUE; }
 
 	virtual BOOL Init() { return InitPass(1); }
 	virtual BOOL InitPass(int nPass) { return TRUE; }
@@ -50,11 +50,11 @@ public:
 	int m_NumberOfBackwardPasses;
 	int m_CurrentPass;
 
-	int m_DstChan;
+	CHANNEL_MASK m_DstChan;
 	CWaveFile m_DstFile;
-	DWORD m_DstStart;
-	DWORD m_DstEnd;
-	DWORD m_DstCopyPos;
+	SAMPLE_POSITION m_DstStart;
+	SAMPLE_POSITION m_DstEnd;
+	SAMPLE_POSITION m_DstCopyPos;
 
 	bool m_bClipped;
 	double m_MaxClipped;
@@ -121,8 +121,8 @@ public:
 		return m_MaxClipped;
 	}
 
-	BOOL InitDestination(CWaveFile & DstFile, long StartSample, long EndSample,
-						int chan, BOOL NeedUndo);
+	BOOL InitDestination(CWaveFile & DstFile, SAMPLE_INDEX StartSample, SAMPLE_INDEX EndSample,
+						CHANNEL_MASK chan, BOOL NeedUndo);
 #ifdef _DEBUG
 	FILETIME m_ThreadUserTime;
 	DWORD m_SystemTime;
@@ -190,9 +190,9 @@ class CResizeContext : public COperationContext
 {
 	friend class CWaveSoapFrontDoc;
 	// Start, End and position are in bytes
-	DWORD m_SrcStart;
-	DWORD m_SrcEnd;
-	DWORD m_SrcCopyPos;
+	SAMPLE_POSITION m_SrcStart;
+	SAMPLE_POSITION m_SrcEnd;
+	SAMPLE_POSITION m_SrcCopyPos;
 
 	BOOL ExpandProc();
 	BOOL ShrinkProc();
@@ -207,8 +207,8 @@ public:
 
 	}
 	~CResizeContext();
-	BOOL InitExpand(CWaveFile & File, LONG StartSample, LONG Length, int Channel);
-	BOOL InitShrink(CWaveFile & File, LONG StartSample, LONG Length, int Channel);
+	BOOL InitExpand(CWaveFile & File, SAMPLE_INDEX StartSample, NUMBER_OF_SAMPLES Length, CHANNEL_MASK Channel);
+	BOOL InitShrink(CWaveFile & File, SAMPLE_INDEX StartSample, NUMBER_OF_SAMPLES Length, CHANNEL_MASK Channel);
 	virtual BOOL OperationProc();
 	virtual CString GetStatusString();
 };
@@ -218,10 +218,10 @@ class CCopyContext : public COperationContext
 public:
 	CWaveFile m_SrcFile;
 	// Start, End and position are in bytes
-	DWORD m_SrcStart;
-	DWORD m_SrcEnd;
-	int m_SrcChan;
-	DWORD m_SrcCopyPos;
+	SAMPLE_POSITION m_SrcStart;
+	SAMPLE_POSITION m_SrcEnd;
+	CHANNEL_MASK m_SrcChan;
+	SAMPLE_POSITION m_SrcCopyPos;
 
 	class CResizeContext * m_pExpandShrinkContext;
 
@@ -236,13 +236,13 @@ public:
 	}
 	~CCopyContext();
 	BOOL InitCopy(CWaveFile & DstFile,
-				LONG DstStartSample, LONG DstLength, LONG DstChannel,
+				SAMPLE_INDEX DstStartSample, NUMBER_OF_SAMPLES DstLength, CHANNEL_MASK DstChannel,
 				CWaveFile & SrcFile,
-				LONG SrcStartSample, LONG SrcLength, LONG SrcChannel
+				SAMPLE_INDEX SrcStartSample, NUMBER_OF_SAMPLES SrcLength, CHANNEL_MASK SrcChannel
 				);
-	void InitSource(CWaveFile & SrcFile, long StartSample,
-					long EndSample, int chan);
-	//BOOL InitExpand(LONG StartSample, LONG Length, int Channel);
+	void InitSource(CWaveFile & SrcFile, SAMPLE_INDEX StartSample,
+					SAMPLE_INDEX EndSample, CHANNEL_MASK chan);
+	//BOOL InitExpand(LONG StartSample, NUMBER_OF_SAMPLES Length, CHANNEL_MASK Channel);
 	virtual BOOL OperationProc();
 	virtual void PostRetire(BOOL bChildContext = FALSE);
 	virtual CString GetStatusString();
@@ -251,12 +251,12 @@ public:
 class CUndoRedoContext : public CCopyContext
 {
 public:
-	DWORD m_SrcSaveStart;
-	DWORD m_SrcSaveEnd;
-	DWORD m_SrcSavePos;
-	DWORD m_DstSavePos;
-	int m_SaveChan;
-	size_t m_RestoredLength;
+	SAMPLE_POSITION m_SrcSaveStart;
+	SAMPLE_POSITION m_SrcSaveEnd;
+	SAMPLE_POSITION m_SrcSavePos;
+	SAMPLE_POSITION m_DstSavePos;
+	CHANNEL_MASK m_SaveChan;
+	WAV_FILE_SIZE m_RestoredLength;
 
 	struct WavePeak * m_pOldPeaks;
 	size_t m_OldWavePeakSize;
@@ -272,11 +272,11 @@ public:
 	}
 
 	BOOL InitUndoCopy(CWaveFile & SrcFile,
-					DWORD SaveStartPos, // source file position of data needed to save and restore
-					DWORD SaveEndPos,
-					int SaveChannel);
-	BOOL SaveUndoData(void * pBuf, long BufSize, DWORD Position, int Channel);
-	BOOL NeedToSave(DWORD Position, size_t length);
+					SAMPLE_POSITION SaveStartPos, // source file position of data needed to save and restore
+					SAMPLE_POSITION SaveEndPos,
+					CHANNEL_MASK SaveChannel);
+	BOOL SaveUndoData(void * pBuf, long BufSize, SAMPLE_POSITION Position, CHANNEL_MASK Channel);
+	BOOL NeedToSave(SAMPLE_POSITION Position, size_t length);
 	virtual void PostRetire(BOOL bChildContext = FALSE);
 	virtual CString GetStatusString();
 	virtual void Execute();
@@ -289,11 +289,11 @@ class CDecompressContext : public COperationContext
 	friend class CWaveSoapFrontDoc;
 	CWaveFile m_SrcFile;
 	// Start, End and position are in bytes
-	DWORD m_SrcStart;
-	DWORD m_SrcEnd;
-	DWORD m_SrcPos;
+	SAMPLE_POSITION m_SrcStart;
+	SAMPLE_POSITION m_SrcEnd;
+	SAMPLE_POSITION m_SrcPos;
 
-	DWORD m_CurrentSamples;
+	NUMBER_OF_SAMPLES m_CurrentSamples;
 
 	size_t m_SrcBufSize;
 	size_t m_DstBufSize;
@@ -370,7 +370,7 @@ public:
 	float m_VolumeRight;
 
 	//virtual BOOL OperationProc();
-	virtual BOOL ProcessBuffer(void * buf, size_t len, DWORD offset, BOOL bBackward = FALSE);
+	virtual BOOL ProcessBuffer(void * buf, size_t len, SAMPLE_POSITION offset, BOOL bBackward = FALSE);
 
 };
 
@@ -386,7 +386,7 @@ public:
 	class CStatisticsContext * m_pScanContext;
 
 	virtual BOOL OperationProc();
-	virtual BOOL ProcessBuffer(void * buf, size_t len, DWORD offset, BOOL bBackward = FALSE);
+	virtual BOOL ProcessBuffer(void * buf, size_t len, SAMPLE_POSITION offset, BOOL bBackward = FALSE);
 	virtual CString GetStatusString();
 
 };
@@ -425,7 +425,7 @@ public:
 	DWORD m_Checksum;
 
 	//virtual BOOL OperationProc();
-	virtual BOOL ProcessBuffer(void * buf, size_t BufferLength, DWORD offset, BOOL bBackward = FALSE);
+	virtual BOOL ProcessBuffer(void * buf, size_t BufferLength, SAMPLE_POSITION offset, BOOL bBackward = FALSE);
 
 	virtual void PostRetire(BOOL bChildContext = FALSE);
 };
@@ -531,8 +531,8 @@ protected:
 	CWmaDecoder m_Decoder;
 	// opens m_Decoder, loads wave format to its SrcFile
 	void SetDstFile(CWaveFile & file);
-	ULONG m_CurrentSamples;
-	long m_DstCopySample;
+	NUMBER_OF_SAMPLES m_CurrentSamples;
+	SAMPLE_INDEX m_DstCopySample;
 	virtual BOOL OperationProc();
 	virtual BOOL Init();
 	virtual void DeInit();
@@ -558,7 +558,7 @@ public:
 
 	virtual BOOL Init();
 	virtual void DeInit();
-	virtual BOOL ProcessBuffer(void * buf, size_t len, DWORD offset, BOOL bBackward = FALSE);
+	virtual BOOL ProcessBuffer(void * buf, size_t len, SAMPLE_POSITION offset, BOOL bBackward = FALSE);
 	virtual BOOL OperationProc();
 	//BOOL SetTargetFormat(WAVEFORMATEX * pwf);
 	virtual void PostRetire(BOOL bChildContext = FALSE);
