@@ -112,6 +112,7 @@ public:
 	{
 		return m_FileType;
 	}
+	int GetFileTypeFlags() const;
 
 protected:
 
@@ -174,16 +175,18 @@ public:
 							DWORD dwFlags = OFN_HIDEREADONLY | OFN_OVERWRITEPROMPT,
 							LPCTSTR lpszFilter = NULL,
 							CWnd* pParentWnd = NULL);
-	//~CWaveSoapFileSaveDialog() {}
 
-	CWaveSoapFrontDoc * m_pDocument;
-
+	~CWaveSoapFileSaveDialog();
 
 	virtual BOOL OnFileNameOK();
 	virtual UINT OnShareViolation( LPCTSTR lpszPathName );
 
 	void ShowDlgItem(UINT nID, int nCmdShow);
+	void AddAllTypeFilters(CDocManager * pDocManager);
 
+protected:
+	CWaveSoapFrontDoc * m_pDocument;
+	CString m_strFilter;
 
 	virtual void OnInitDone();
 	virtual void OnTypeChange();
