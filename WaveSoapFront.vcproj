@@ -3,6 +3,7 @@
 	ProjectType="Visual C++"
 	Version="7.10"
 	Name="WaveSoapFront"
+	RootNamespace="WaveSoapFront"
 	SccProjectName="&quot;$/WaveSoapFront&quot;, XGAAAAAA"
 	SccAuxPath=""
 	SccLocalPath="."
@@ -426,6 +427,42 @@
 			</File>
 			<File
 				RelativePath=".\hlp\WaveSoap.hhp">
+				<FileConfiguration
+					Name="Debug|Win32">
+					<Tool
+						Name="VCCustomBuildTool"
+						Description="Making help file..."
+						CommandLine="start /wait hhc &quot;hlp\$(InputFileName)&quot;
+if not exist &quot;hlp\$(InputName).chm&quot; goto :HelpError
+copy &quot;hlp\$(InputName).chm&quot; &quot;$(OutDir)\$(InputName).chm&quot;
+goto :HelpDone
+:HelpError
+echo hlp\$(InputName).hhp(1) : error:Problem encountered creating help file
+echo.
+:HelpDone
+echo.
+"
+						AdditionalDependencies="hlp\HTMLDefines.h"
+						Outputs="$(OutDir)\$(InputName).chm"/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Release|Win32">
+					<Tool
+						Name="VCCustomBuildTool"
+						Description="Making help file..."
+						CommandLine="start /wait hhc &quot;hlp\$(InputFileName)&quot;
+if not exist &quot;hlp\$(InputName).chm&quot; goto :HelpError
+copy &quot;hlp\$(InputName).chm&quot; &quot;$(OutDir)\$(InputName).chm&quot;
+goto :HelpDone
+:HelpError
+echo hlp\$(InputName).hhp(1) : error:Problem encountered creating help file
+echo.
+:HelpDone
+echo.
+"
+						AdditionalDependencies="hlp\HTMLDefines.h"
+						Outputs="$(OutDir)\$(InputName).chm"/>
+				</FileConfiguration>
 			</File>
 			<File
 				RelativePath=".\WaveSoapFileDialogs.cpp">
@@ -600,69 +637,63 @@
 					<Tool
 						Name="VCCustomBuildTool"
 						Description="Making help include file..."
-						CommandLine="echo. &gt;&quot;hlp\$(TargetName).hm&quot;
-echo // Commands (ID_* and IDM_*) &gt;&gt;&quot;hlp\$(TargetName).hm&quot;
-makehm ID_,HID_,0x10000 IDM_,HIDM_,0x10000 resource.h &gt;&gt;&quot;hlp\$(TargetName).hm&quot;
-echo. &gt;&gt;&quot;hlp\$(TargetName).hm&quot;
-echo // Prompts (IDP_*) &gt;&gt;&quot;hlp\$(TargetName).hm&quot;
-makehm IDP_,HIDP_,0x30000 resource.h &gt;&gt;&quot;hlp\$(TargetName).hm&quot;
-echo. &gt;&gt;&quot;hlp\$(TargetName).hm&quot;
-echo // Resources (IDR_*) &gt;&gt;&quot;hlp\$(TargetName).hm&quot;
-makehm IDR_,HIDR_,0x20000 resource.h &gt;&gt;&quot;hlp\$(TargetName).hm&quot;
-echo. &gt;&gt;&quot;hlp\$(TargetName).hm&quot;
-echo // Dialogs (IDD_*) &gt;&gt;&quot;hlp\$(TargetName).hm&quot;
-makehm IDD_,HIDD_,0x20000 resource.h &gt;&gt;&quot;hlp\$(TargetName).hm&quot;
-echo. &gt;&gt;&quot;hlp\$(TargetName).hm&quot;
-echo // Frame Controls (IDW_*) &gt;&gt;&quot;hlp\$(TargetName).hm&quot;
-makehm IDW_,HIDW_,0x50000 resource.h &gt;&gt;&quot;hlp\$(TargetName).hm&quot;
+						CommandLine="makehm /h ID_,HID_,0x10000 IDM_,HIDM_,0x10000 &quot;$(InputFileName)&quot; &gt;&gt; &quot;hlp\HTMLDefines.h&quot;
+echo. &gt;&gt; &quot;hlp\HTMLDefines.h&quot;
+echo // Prompts (IDP_*) &gt;&gt; &quot;hlp\HTMLDefines.h&quot;
+makehm /h IDP_,HIDP_,0x30000 &quot;$(InputFileName)&quot; &gt;&gt; &quot;hlp\HTMLDefines.h&quot;
+echo. &gt;&gt; &quot;hlp\HTMLDefines.h&quot;
+echo // Resources (IDR_*) &gt;&gt; &quot;hlp\HTMLDefines.h&quot;
+makehm /h IDR_,HIDR_,0x20000 &quot;$(InputFileName)&quot; &gt;&gt; &quot;hlp\HTMLDefines.h&quot;
+echo. &gt;&gt; &quot;hlp\HTMLDefines.h&quot;
+echo // Dialogs (IDD_*) &gt;&gt; &quot;hlp\HTMLDefines.h&quot;
+makehm /h IDD_,HIDD_,0x20000 &quot;$(InputFileName)&quot; &gt;&gt; &quot;hlp\HTMLDefines.h&quot;
+echo. &gt;&gt; &quot;hlp\HTMLDefines.h&quot;
+echo // Frame Controls (IDW_*) &gt;&gt; &quot;hlp\HTMLDefines.h&quot;
+makehm /h /a afxhh.h IDW_,HIDW_,0x50000 &quot;$(InputFileName)&quot; &gt;&gt; &quot;hlp\HTMLDefines.h&quot;
 "
-						Outputs="hlp\$(TargetName).hm"/>
+						Outputs="hlp\HTMLDefines.h"/>
 				</FileConfiguration>
 				<FileConfiguration
 					Name="Release|Win32">
 					<Tool
 						Name="VCCustomBuildTool"
 						Description="Making help include file..."
-						CommandLine="echo. &gt;&quot;hlp\$(TargetName).hm&quot;
-echo // Commands (ID_* and IDM_*) &gt;&gt;&quot;hlp\$(TargetName).hm&quot;
-makehm ID_,HID_,0x10000 IDM_,HIDM_,0x10000 resource.h &gt;&gt;&quot;hlp\$(TargetName).hm&quot;
-echo. &gt;&gt;&quot;hlp\$(TargetName).hm&quot;
-echo // Prompts (IDP_*) &gt;&gt;&quot;hlp\$(TargetName).hm&quot;
-makehm IDP_,HIDP_,0x30000 resource.h &gt;&gt;&quot;hlp\$(TargetName).hm&quot;
-echo. &gt;&gt;&quot;hlp\$(TargetName).hm&quot;
-echo // Resources (IDR_*) &gt;&gt;&quot;hlp\$(TargetName).hm&quot;
-makehm IDR_,HIDR_,0x20000 resource.h &gt;&gt;&quot;hlp\$(TargetName).hm&quot;
-echo. &gt;&gt;&quot;hlp\$(TargetName).hm&quot;
-echo // Dialogs (IDD_*) &gt;&gt;&quot;hlp\$(TargetName).hm&quot;
-makehm IDD_,HIDD_,0x20000 resource.h &gt;&gt;&quot;hlp\$(TargetName).hm&quot;
-echo. &gt;&gt;&quot;hlp\$(TargetName).hm&quot;
-echo // Frame Controls (IDW_*) &gt;&gt;&quot;hlp\$(TargetName).hm&quot;
-makehm IDW_,HIDW_,0x50000 resource.h &gt;&gt;&quot;hlp\$(TargetName).hm&quot;
+						CommandLine="makehm /h ID_,HID_,0x10000 IDM_,HIDM_,0x10000 &quot;$(InputFileName)&quot; &gt;&gt; &quot;hlp\HTMLDefines.h&quot;
+echo. &gt;&gt; &quot;hlp\HTMLDefines.h&quot;
+echo // Prompts (IDP_*) &gt;&gt; &quot;hlp\HTMLDefines.h&quot;
+makehm /h IDP_,HIDP_,0x30000 &quot;$(InputFileName)&quot; &gt;&gt; &quot;hlp\HTMLDefines.h&quot;
+echo. &gt;&gt; &quot;hlp\HTMLDefines.h&quot;
+echo // Resources (IDR_*) &gt;&gt; &quot;hlp\HTMLDefines.h&quot;
+makehm /h IDR_,HIDR_,0x20000 &quot;$(InputFileName)&quot; &gt;&gt; &quot;hlp\HTMLDefines.h&quot;
+echo. &gt;&gt; &quot;hlp\HTMLDefines.h&quot;
+echo // Dialogs (IDD_*) &gt;&gt; &quot;hlp\HTMLDefines.h&quot;
+makehm /h IDD_,HIDD_,0x20000 &quot;$(InputFileName)&quot; &gt;&gt; &quot;hlp\HTMLDefines.h&quot;
+echo. &gt;&gt; &quot;hlp\HTMLDefines.h&quot;
+echo // Frame Controls (IDW_*) &gt;&gt; &quot;hlp\HTMLDefines.h&quot;
+makehm /h /a afxhh.h IDW_,HIDW_,0x50000 &quot;$(InputFileName)&quot; &gt;&gt; &quot;hlp\HTMLDefines.h&quot;
 "
-						Outputs="hlp\$(TargetName).hm"/>
+						Outputs="hlp\HTMLDefines.h"/>
 				</FileConfiguration>
 				<FileConfiguration
 					Name="Debug ANSI|Win32">
 					<Tool
 						Name="VCCustomBuildTool"
 						Description="Making help include file..."
-						CommandLine="echo. &gt;&quot;hlp\$(TargetName).hm&quot;
-echo // Commands (ID_* and IDM_*) &gt;&gt;&quot;hlp\$(TargetName).hm&quot;
-makehm ID_,HID_,0x10000 IDM_,HIDM_,0x10000 resource.h &gt;&gt;&quot;hlp\$(TargetName).hm&quot;
-echo. &gt;&gt;&quot;hlp\$(TargetName).hm&quot;
-echo // Prompts (IDP_*) &gt;&gt;&quot;hlp\$(TargetName).hm&quot;
-makehm IDP_,HIDP_,0x30000 resource.h &gt;&gt;&quot;hlp\$(TargetName).hm&quot;
-echo. &gt;&gt;&quot;hlp\$(TargetName).hm&quot;
-echo // Resources (IDR_*) &gt;&gt;&quot;hlp\$(TargetName).hm&quot;
-makehm IDR_,HIDR_,0x20000 resource.h &gt;&gt;&quot;hlp\$(TargetName).hm&quot;
-echo. &gt;&gt;&quot;hlp\$(TargetName).hm&quot;
-echo // Dialogs (IDD_*) &gt;&gt;&quot;hlp\$(TargetName).hm&quot;
-makehm IDD_,HIDD_,0x20000 resource.h &gt;&gt;&quot;hlp\$(TargetName).hm&quot;
-echo. &gt;&gt;&quot;hlp\$(TargetName).hm&quot;
-echo // Frame Controls (IDW_*) &gt;&gt;&quot;hlp\$(TargetName).hm&quot;
-makehm IDW_,HIDW_,0x50000 resource.h &gt;&gt;&quot;hlp\$(TargetName).hm&quot;
+						CommandLine="makehm /h ID_,HID_,0x10000 IDM_,HIDM_,0x10000 &quot;$(InputFileName)&quot; &gt;&gt; &quot;hlp\HTMLDefines.h&quot;
+echo. &gt;&gt; &quot;hlp\HTMLDefines.h&quot;
+echo // Prompts (IDP_*) &gt;&gt; &quot;hlp\HTMLDefines.h&quot;
+makehm /h IDP_,HIDP_,0x30000 &quot;$(InputFileName)&quot; &gt;&gt; &quot;hlp\HTMLDefines.h&quot;
+echo. &gt;&gt; &quot;hlp\HTMLDefines.h&quot;
+echo // Resources (IDR_*) &gt;&gt; &quot;hlp\HTMLDefines.h&quot;
+makehm /h IDR_,HIDR_,0x20000 &quot;$(InputFileName)&quot; &gt;&gt; &quot;hlp\HTMLDefines.h&quot;
+echo. &gt;&gt; &quot;hlp\HTMLDefines.h&quot;
+echo // Dialogs (IDD_*) &gt;&gt; &quot;hlp\HTMLDefines.h&quot;
+makehm /h IDD_,HIDD_,0x20000 &quot;$(InputFileName)&quot; &gt;&gt; &quot;hlp\HTMLDefines.h&quot;
+echo. &gt;&gt; &quot;hlp\HTMLDefines.h&quot;
+echo // Frame Controls (IDW_*) &gt;&gt; &quot;hlp\HTMLDefines.h&quot;
+makehm /h /a afxhh.h IDW_,HIDW_,0x50000 &quot;$(InputFileName)&quot; &gt;&gt; &quot;hlp\HTMLDefines.h&quot;
 "
-						Outputs="hlp\$(TargetName).hm"/>
+						Outputs="hlp\HTMLDefines.h"/>
 				</FileConfiguration>
 			</File>
 			<File
@@ -794,317 +825,404 @@ makehm IDW_,HIDW_,0x50000 resource.h &gt;&gt;&quot;hlp\$(TargetName).hm&quot;
 			Name="Help Files"
 			Filter="cnt;rtf">
 			<File
-				RelativePath=".\hlp\html\afxc0085.htm">
-			</File>
-			<File
-				RelativePath=".\hlp\html\afxc0853.htm">
-			</File>
-			<File
-				RelativePath=".\hlp\html\afxc0c4l.htm">
-			</File>
-			<File
-				RelativePath=".\hlp\html\afxc0l7p.htm">
-			</File>
-			<File
-				RelativePath=".\hlp\html\afxc0wc8.htm">
-			</File>
-			<File
-				RelativePath=".\hlp\html\afxc0xpz.htm">
-			</File>
-			<File
-				RelativePath=".\hlp\html\afxc1304.htm">
-			</File>
-			<File
-				RelativePath=".\hlp\html\afxc181c.htm">
-			</File>
-			<File
-				RelativePath=".\hlp\html\afxc1cof.htm">
-			</File>
-			<File
-				RelativePath=".\hlp\html\afxc1g4z.htm">
-			</File>
-			<File
-				RelativePath=".\hlp\html\afxc1tk7.htm">
-			</File>
-			<File
-				RelativePath=".\hlp\html\afxc1vqd.htm">
-			</File>
-			<File
-				RelativePath=".\hlp\html\afxc214i.htm">
-			</File>
-			<File
-				RelativePath=".\hlp\html\afxc2fsc.htm">
-			</File>
-			<File
-				RelativePath=".\hlp\html\afxc30hf.htm">
-			</File>
-			<File
-				RelativePath=".\hlp\html\afxc31id.htm">
-			</File>
-			<File
-				RelativePath=".\hlp\html\afxc31ym.htm">
-			</File>
-			<File
-				RelativePath=".\hlp\html\afxc33uf.htm">
-			</File>
-			<File
-				RelativePath=".\hlp\html\afxc3at6.htm">
-			</File>
-			<File
-				RelativePath=".\hlp\html\afxc3ewk.htm">
-			</File>
-			<File
-				RelativePath=".\hlp\html\afxc3zz9.htm">
-			</File>
-			<File
-				RelativePath=".\hlp\html\afxc45r9.htm">
-			</File>
-			<File
-				RelativePath=".\hlp\html\afxc48h1.htm">
-			</File>
-			<File
-				RelativePath=".\hlp\html\afxc48o5.htm">
-			</File>
-			<File
-				RelativePath=".\hlp\html\afxc49x0.htm">
-			</File>
-			<File
-				RelativePath=".\hlp\html\afxc4mn9.htm">
-			</File>
-			<File
-				RelativePath=".\hlp\html\afxc4r72.htm">
-			</File>
-			<File
-				RelativePath=".\hlp\html\afxc56lw.htm">
-			</File>
-			<File
-				RelativePath=".\hlp\html\afxc57j9.htm">
-			</File>
-			<File
-				RelativePath=".\hlp\html\afxc590x.htm">
-			</File>
-			<File
-				RelativePath=".\hlp\html\afxc5tr9.htm">
-			</File>
-			<File
-				RelativePath=".\hlp\html\afxc5zol.htm">
-			</File>
-			<File
-				RelativePath=".\hlp\html\afxc67ad.htm">
-			</File>
-			<File
-				RelativePath=".\hlp\html\afxc6t2v.htm">
-			</File>
-			<File
-				RelativePath=".\hlp\html\afxc6tv6.htm">
-			</File>
-			<File
-				RelativePath=".\hlp\html\afxc6ztx.htm">
-			</File>
-			<File
-				RelativePath=".\hlp\html\afxc71o2.htm">
-			</File>
-			<File
-				RelativePath=".\hlp\html\afxc72d3.htm">
-			</File>
-			<File
-				RelativePath=".\hlp\html\afxc72ya.htm">
-			</File>
-			<File
-				RelativePath=".\hlp\html\afxc7d4k.htm">
-			</File>
-			<File
-				RelativePath=".\hlp\html\afxc7yt5.htm">
-			</File>
-			<File
-				RelativePath=".\hlp\html\afxc85dk.htm">
-			</File>
-			<File
-				RelativePath=".\hlp\html\afxc8ble.htm">
-			</File>
-			<File
-				RelativePath=".\hlp\html\afxc8eed.htm">
-			</File>
-			<File
-				RelativePath=".\hlp\html\afxc8rhq.htm">
-			</File>
-			<File
-				RelativePath=".\hlp\html\afxc8zxr.htm">
-			</File>
-			<File
-				RelativePath=".\hlp\html\afxc9b3o.htm">
-			</File>
-			<File
-				RelativePath=".\hlp\html\afxc9ctz.htm">
-			</File>
-			<File
-				RelativePath=".\hlp\html\afxc9jci.htm">
-			</File>
-			<File
-				RelativePath=".\hlp\html\afxc9sz0.htm">
-			</File>
-			<File
-				RelativePath=".\hlp\html\afxc9u5h.htm">
-			</File>
-			<File
-				RelativePath=".\hlp\html\afxc9vp0.htm">
-			</File>
-			<File
-				RelativePath=".\hlp\html\afxc9y05.htm">
-			</File>
-			<File
-				RelativePath=".\hlp\html\afxc9ysw.htm">
-			</File>
-			<File
-				RelativePath=".\hlp\html\afxp0434.htm">
-			</File>
-			<File
-				RelativePath=".\hlp\html\afxp0vjk.htm">
-			</File>
-			<File
-				RelativePath=".\hlp\html\afxp225w.htm">
-			</File>
-			<File
-				RelativePath=".\hlp\html\afxp3i9e.htm">
-			</File>
-			<File
-				RelativePath=".\hlp\html\afxp42b4.htm">
-			</File>
-			<File
-				RelativePath=".\hlp\html\afxp5hf8.htm">
-			</File>
-			<File
-				RelativePath=".\hlp\html\afxp7q2f.htm">
-			</File>
-			<File
-				RelativePath=".\hlp\html\afxp86av.htm">
-			</File>
-			<File
-				RelativePath=".\hlp\html\amplitude_ruler.htm">
-			</File>
-			<File
-				RelativePath=".\hlp\images\AppExit.png">
-			</File>
-			<File
-				RelativePath=".\hlp\images\Bullet.png">
-			</File>
-			<File
-				RelativePath=".\hlp\html\creating_a_new_sound_file.htm">
-			</File>
-			<File
-				RelativePath=".\hlp\images\CurArw4.png">
-			</File>
-			<File
-				RelativePath=".\hlp\images\CurHelp.png">
-			</File>
-			<File
-				RelativePath=".\hlp\images\DlgResizeHandle.png">
-			</File>
-			<File
-				RelativePath=".\hlp\images\EditCopy.png">
-			</File>
-			<File
-				RelativePath=".\hlp\images\EditCut.png">
-			</File>
-			<File
-				RelativePath=".\hlp\images\EditPast.png">
-			</File>
-			<File
-				RelativePath=".\hlp\images\EditUndo.png">
-			</File>
-			<File
-				RelativePath=".\hlp\html\fft_spectrum_command.htm">
-			</File>
-			<File
-				RelativePath=".\hlp\html\fft_spectrum_view.htm">
-			</File>
-			<File
-				RelativePath=".\hlp\images\FileCloseButton.png">
-			</File>
-			<File
-				RelativePath=".\hlp\images\FileCloseIcon.png">
-			</File>
-			<File
-				RelativePath=".\hlp\images\FileNew.png">
-			</File>
-			<File
-				RelativePath=".\hlp\images\FileOpen.png">
-			</File>
-			<File
-				RelativePath=".\hlp\images\FileOpenDlg.png">
-			</File>
-			<File
-				RelativePath=".\hlp\images\FilePrnt.png">
-			</File>
-			<File
-				RelativePath=".\hlp\images\FileSave.png">
-			</File>
-			<File
-				RelativePath=".\hlp\images\HlpSBar.png">
-			</File>
-			<File
-				RelativePath=".\hlp\images\HlpTBar.png">
-			</File>
-			<File
-				RelativePath=".\hlp\html\Menu Item Template.htm">
-			</File>
-			<File
-				RelativePath=".\hlp\images\NewFileDlg.png">
-			</File>
-			<File
-				RelativePath=".\hlp\html\opening_an_existing_sound_file.htm">
-			</File>
-			<File
-				RelativePath=".\hlp\html\outline_command.htm">
-			</File>
-			<File
-				RelativePath=".\hlp\html\process_menu_commands.htm">
-			</File>
-			<File
-				RelativePath=".\hlp\images\Scmax.png">
-			</File>
-			<File
-				RelativePath=".\hlp\images\ScMenu.png">
-			</File>
-			<File
-				RelativePath=".\hlp\images\Scmin.png">
-			</File>
-			<File
-				RelativePath=".\hlp\html\spectrum_section_command.htm">
-			</File>
-			<File
-				RelativePath=".\hlp\html\spectrum_section_pane.htm">
-			</File>
-			<File
-				RelativePath=".\hlp\html\time_ruler.htm">
-			</File>
-			<File
-				RelativePath=".\hlp\html\tools_menu_commands.htm">
-			</File>
-			<File
-				RelativePath=".\hlp\images\ViewMenu.png">
-			</File>
-			<File
-				RelativePath=".\hlp\html\ViewWaveform.htm">
-			</File>
-			<File
-				RelativePath=".\hlp\html\wave_outline_view.htm">
-			</File>
-			<File
-				RelativePath=".\hlp\html\waveform_view.htm">
-			</File>
-			<File
 				RelativePath=".\hlp\wavesoap.hhc">
-			</File>
-			<File
-				RelativePath=".\hlp\html\wavesoap_main_window.htm">
 			</File>
 			<File
 				RelativePath=".\hlp\WaveSoapFront.hhk">
 			</File>
-			<File
-				RelativePath=".\hlp\html\zoom_in_time_command.htm">
-			</File>
+			<Filter
+				Name="Topics"
+				Filter="">
+				<File
+					RelativePath=".\hlp\html\afx_hidd_fileopen.htm"
+					DeploymentContent="TRUE">
+				</File>
+				<File
+					RelativePath=".\hlp\html\afx_hidd_filesave.htm"
+					DeploymentContent="TRUE">
+				</File>
+				<File
+					RelativePath=".\hlp\html\afx_hidd_print.htm"
+					DeploymentContent="TRUE">
+				</File>
+				<File
+					RelativePath=".\hlp\html\afx_hidd_printdlg.htm"
+					DeploymentContent="TRUE">
+				</File>
+				<File
+					RelativePath=".\hlp\html\afx_hidd_printsetup.htm"
+					DeploymentContent="TRUE">
+				</File>
+				<File
+					RelativePath=".\hlp\html\afx_hidp_default.htm"
+					DeploymentContent="TRUE">
+				</File>
+				<File
+					RelativePath=".\hlp\html\afx_hidw_preview_bar.htm"
+					DeploymentContent="TRUE">
+				</File>
+				<File
+					RelativePath=".\hlp\html\afx_hidw_status_bar.htm"
+					DeploymentContent="TRUE">
+				</File>
+				<File
+					RelativePath=".\hlp\html\afx_hidw_toolbar.htm"
+					DeploymentContent="TRUE">
+				</File>
+				<File
+					RelativePath=".\hlp\html\amplitude_ruler.htm"
+					DeploymentContent="TRUE">
+				</File>
+				<File
+					RelativePath=".\hlp\html\creating_a_new_sound_file.htm"
+					DeploymentContent="TRUE">
+				</File>
+				<File
+					RelativePath=".\hlp\html\fft_spectrum_command.htm"
+					DeploymentContent="TRUE">
+				</File>
+				<File
+					RelativePath=".\hlp\html\fft_spectrum_view.htm"
+					DeploymentContent="TRUE">
+				</File>
+				<File
+					RelativePath=".\hlp\html\hid_app_about.htm"
+					DeploymentContent="TRUE">
+				</File>
+				<File
+					RelativePath=".\hlp\html\hid_app_exit.htm"
+					DeploymentContent="TRUE">
+				</File>
+				<File
+					RelativePath=".\hlp\html\hid_context_help.htm"
+					DeploymentContent="TRUE">
+				</File>
+				<File
+					RelativePath=".\hlp\html\hid_edit_clear.htm"
+					DeploymentContent="TRUE">
+				</File>
+				<File
+					RelativePath=".\hlp\html\hid_edit_clear_all.htm"
+					DeploymentContent="TRUE">
+				</File>
+				<File
+					RelativePath=".\hlp\html\hid_edit_copy.htm"
+					DeploymentContent="TRUE">
+				</File>
+				<File
+					RelativePath=".\hlp\html\hid_edit_cut.htm"
+					DeploymentContent="TRUE">
+				</File>
+				<File
+					RelativePath=".\hlp\html\hid_edit_paste.htm"
+					DeploymentContent="TRUE">
+				</File>
+				<File
+					RelativePath=".\hlp\html\hid_edit_redo.htm"
+					DeploymentContent="TRUE">
+				</File>
+				<File
+					RelativePath=".\hlp\html\hid_edit_repeat.htm"
+					DeploymentContent="TRUE">
+				</File>
+				<File
+					RelativePath=".\hlp\html\hid_edit_undo.htm"
+					DeploymentContent="TRUE">
+				</File>
+				<File
+					RelativePath=".\hlp\html\hid_file_close.htm"
+					DeploymentContent="TRUE">
+				</File>
+				<File
+					RelativePath=".\hlp\html\hid_file_mru_file1.htm"
+					DeploymentContent="TRUE">
+				</File>
+				<File
+					RelativePath=".\hlp\html\hid_file_new.htm"
+					DeploymentContent="TRUE">
+				</File>
+				<File
+					RelativePath=".\hlp\html\hid_file_open.htm"
+					DeploymentContent="TRUE">
+				</File>
+				<File
+					RelativePath=".\hlp\html\hid_file_page_setup.htm"
+					DeploymentContent="TRUE">
+				</File>
+				<File
+					RelativePath=".\hlp\html\hid_file_print.htm"
+					DeploymentContent="TRUE">
+				</File>
+				<File
+					RelativePath=".\hlp\html\hid_file_print_preview.htm"
+					DeploymentContent="TRUE">
+				</File>
+				<File
+					RelativePath=".\hlp\html\hid_file_print_setup.htm"
+					DeploymentContent="TRUE">
+				</File>
+				<File
+					RelativePath=".\hlp\html\hid_file_save.htm"
+					DeploymentContent="TRUE">
+				</File>
+				<File
+					RelativePath=".\hlp\html\hid_file_save_as.htm"
+					DeploymentContent="TRUE">
+				</File>
+				<File
+					RelativePath=".\hlp\html\hid_help_index.htm"
+					DeploymentContent="TRUE">
+				</File>
+				<File
+					RelativePath=".\hlp\html\hid_help_using.htm"
+					DeploymentContent="TRUE">
+				</File>
+				<File
+					RelativePath=".\hlp\html\hid_ht_caption.htm"
+					DeploymentContent="TRUE">
+				</File>
+				<File
+					RelativePath=".\hlp\html\hid_ht_nowhere.htm"
+					DeploymentContent="TRUE">
+				</File>
+				<File
+					RelativePath=".\hlp\html\hid_next_pane.htm"
+					DeploymentContent="TRUE">
+				</File>
+				<File
+					RelativePath=".\hlp\html\hid_prev_pane.htm"
+					DeploymentContent="TRUE">
+				</File>
+				<File
+					RelativePath=".\hlp\html\hid_sc_close.htm"
+					DeploymentContent="TRUE">
+				</File>
+				<File
+					RelativePath=".\hlp\html\hid_sc_maximize.htm"
+					DeploymentContent="TRUE">
+				</File>
+				<File
+					RelativePath=".\hlp\html\hid_sc_minimize.htm"
+					DeploymentContent="TRUE">
+				</File>
+				<File
+					RelativePath=".\hlp\html\hid_sc_move.htm"
+					DeploymentContent="TRUE">
+				</File>
+				<File
+					RelativePath=".\hlp\html\hid_sc_nextwindow.htm"
+					DeploymentContent="TRUE">
+				</File>
+				<File
+					RelativePath=".\hlp\html\hid_sc_prevwindow.htm"
+					DeploymentContent="TRUE">
+				</File>
+				<File
+					RelativePath=".\hlp\html\hid_sc_restore.htm"
+					DeploymentContent="TRUE">
+				</File>
+				<File
+					RelativePath=".\hlp\html\hid_sc_size.htm"
+					DeploymentContent="TRUE">
+				</File>
+				<File
+					RelativePath=".\hlp\html\hid_view_ruler.htm"
+					DeploymentContent="TRUE">
+				</File>
+				<File
+					RelativePath=".\hlp\html\hid_view_status_bar.htm"
+					DeploymentContent="TRUE">
+				</File>
+				<File
+					RelativePath=".\hlp\html\hid_view_toolbar.htm"
+					DeploymentContent="TRUE">
+				</File>
+				<File
+					RelativePath=".\hlp\html\hid_window_all.htm"
+					DeploymentContent="TRUE">
+				</File>
+				<File
+					RelativePath=".\hlp\html\hid_window_arrange.htm"
+					DeploymentContent="TRUE">
+				</File>
+				<File
+					RelativePath=".\hlp\html\hid_window_cascade.htm"
+					DeploymentContent="TRUE">
+				</File>
+				<File
+					RelativePath=".\hlp\html\hid_window_new.htm"
+					DeploymentContent="TRUE">
+				</File>
+				<File
+					RelativePath=".\hlp\html\hid_window_tile.htm"
+					DeploymentContent="TRUE">
+				</File>
+				<File
+					RelativePath=".\hlp\html\hid_window_tile_horz.htm"
+					DeploymentContent="TRUE">
+				</File>
+				<File
+					RelativePath=".\hlp\html\hidr_convertype.htm"
+					DeploymentContent="TRUE">
+				</File>
+				<File
+					RelativePath=".\hlp\html\main_index.htm"
+					DeploymentContent="TRUE">
+				</File>
+				<File
+					RelativePath=".\hlp\html\Menu Item Template.htm"
+					DeploymentContent="TRUE">
+				</File>
+				<File
+					RelativePath=".\hlp\html\menu_edit.htm"
+					DeploymentContent="TRUE">
+				</File>
+				<File
+					RelativePath=".\hlp\html\menu_file.htm"
+					DeploymentContent="TRUE">
+				</File>
+				<File
+					RelativePath=".\hlp\html\menu_help.htm"
+					DeploymentContent="TRUE">
+				</File>
+				<File
+					RelativePath=".\hlp\html\Menu_Item_Template.htm"
+					DeploymentContent="TRUE">
+				</File>
+				<File
+					RelativePath=".\hlp\html\menu_view.htm"
+					DeploymentContent="TRUE">
+				</File>
+				<File
+					RelativePath=".\hlp\html\menu_window.htm"
+					DeploymentContent="TRUE">
+				</File>
+				<File
+					RelativePath=".\hlp\html\opening_an_existing_sound_file.htm"
+					DeploymentContent="TRUE">
+				</File>
+				<File
+					RelativePath=".\hlp\html\outline_command.htm"
+					DeploymentContent="TRUE">
+				</File>
+				<File
+					RelativePath=".\hlp\html\process_menu_commands.htm"
+					DeploymentContent="TRUE">
+				</File>
+				<File
+					RelativePath=".\hlp\html\scrollbars.htm"
+					DeploymentContent="TRUE">
+				</File>
+				<File
+					RelativePath=".\hlp\html\spectrum_section_command.htm"
+					DeploymentContent="TRUE">
+				</File>
+				<File
+					RelativePath=".\hlp\html\spectrum_section_pane.htm"
+					DeploymentContent="TRUE">
+				</File>
+				<File
+					RelativePath=".\hlp\html\time_ruler.htm"
+					DeploymentContent="TRUE">
+				</File>
+				<File
+					RelativePath=".\hlp\html\tools_menu_commands.htm"
+					DeploymentContent="TRUE">
+				</File>
+				<File
+					RelativePath=".\hlp\html\ViewWaveform.htm"
+					DeploymentContent="TRUE">
+				</File>
+				<File
+					RelativePath=".\hlp\html\wave_outline_view.htm"
+					DeploymentContent="TRUE">
+				</File>
+				<File
+					RelativePath=".\hlp\html\waveform_view.htm"
+					DeploymentContent="TRUE">
+				</File>
+				<File
+					RelativePath=".\hlp\html\wavesoap_main_window.htm"
+					DeploymentContent="TRUE">
+				</File>
+				<File
+					RelativePath=".\hlp\html\zoom_in_time_command.htm"
+					DeploymentContent="TRUE">
+				</File>
+			</Filter>
+			<Filter
+				Name="Graphics"
+				Filter="">
+				<File
+					RelativePath=".\hlp\images\AppExit.png">
+				</File>
+				<File
+					RelativePath=".\hlp\images\Bullet.png">
+				</File>
+				<File
+					RelativePath=".\hlp\images\CurArw4.png">
+				</File>
+				<File
+					RelativePath=".\hlp\images\CurHelp.png">
+				</File>
+				<File
+					RelativePath=".\hlp\images\DlgResizeHandle.png">
+				</File>
+				<File
+					RelativePath=".\hlp\images\EditCopy.png">
+				</File>
+				<File
+					RelativePath=".\hlp\images\EditCut.png">
+				</File>
+				<File
+					RelativePath=".\hlp\images\EditPast.png">
+				</File>
+				<File
+					RelativePath=".\hlp\images\EditUndo.png">
+				</File>
+				<File
+					RelativePath=".\hlp\images\FileCloseButton.png">
+				</File>
+				<File
+					RelativePath=".\hlp\images\FileCloseIcon.png">
+				</File>
+				<File
+					RelativePath=".\hlp\images\FileNew.png">
+				</File>
+				<File
+					RelativePath=".\hlp\images\FileOpen.png">
+				</File>
+				<File
+					RelativePath=".\hlp\images\FileOpenDlg.png">
+				</File>
+				<File
+					RelativePath=".\hlp\images\FilePrnt.png">
+				</File>
+				<File
+					RelativePath=".\hlp\images\FileSave.png">
+				</File>
+				<File
+					RelativePath=".\hlp\images\HlpSBar.png">
+				</File>
+				<File
+					RelativePath=".\hlp\images\HlpTBar.png">
+				</File>
+				<File
+					RelativePath=".\hlp\images\NewFileDlg.png">
+				</File>
+				<File
+					RelativePath=".\hlp\images\Scmax.png">
+				</File>
+				<File
+					RelativePath=".\hlp\images\ScMenu.png">
+				</File>
+				<File
+					RelativePath=".\hlp\images\Scmin.png">
+				</File>
+				<File
+					RelativePath=".\hlp\images\ViewMenu.png">
+				</File>
+			</Filter>
 		</Filter>
 		<Filter
 			Name="FilterMath"
