@@ -24,6 +24,8 @@ CSpectrumSectionView::CSpectrumSectionView()
 	m_pWindow = NULL;
 	m_FftPosition = -1;
 	m_nFftSumSize = 0;
+	m_PlaybackSample = 0;
+	m_bShowNoiseThreshold = FALSE;
 }
 
 CSpectrumSectionView::~CSpectrumSectionView()
@@ -37,6 +39,12 @@ BEGIN_MESSAGE_MAP(CSpectrumSectionView, CScaledScrollView)
 	//{{AFX_MSG_MAP(CSpectrumSectionView)
 	ON_WM_CREATE()
 	ON_WM_MOUSEACTIVATE()
+	ON_UPDATE_COMMAND_UI(ID_VIEW_SS_SHOW_NOISE_THRESHOLD, OnUpdateViewSsShowNoiseThreshold)
+	ON_COMMAND(ID_VIEW_SS_SHOW_NOISE_THRESHOLD, OnViewSsShowNoiseThreshold)
+	ON_COMMAND(ID_VIEW_SS_ZOOMINHOR2, OnViewSsZoominhor2)
+	ON_UPDATE_COMMAND_UI(ID_VIEW_SS_ZOOMINHOR2, OnUpdateViewSsZoominhor2)
+	ON_COMMAND(ID_VIEW_SS_ZOOMOUTHOR2, OnViewSsZoomouthor2)
+	ON_UPDATE_COMMAND_UI(ID_VIEW_SS_ZOOMOUTHOR2, OnUpdateViewSsZoomouthor2)
 	//}}AFX_MSG_MAP
 END_MESSAGE_MAP()
 
@@ -83,15 +91,20 @@ void CSpectrumSectionView::OnDraw(CDC* pDC)
 	m_FftOrder = pFftView->m_FftOrder;
 	int nSampleSize = pDoc->WaveSampleSize();
 	int nChannels = pDoc->WaveChannels();
-	DWORD offset = pDoc->WaveDataChunk()->dwDataOffset;
-	DWORD start = pDoc->m_CaretPosition * nSampleSize + offset;
-	DWORD FftStepInFile = m_FftOrder * nSampleSize;
+	LONG nStartSample = pDoc->m_SelectionStart;
 	int NumberOfFftSamplesAveraged =
 		(pDoc->m_SelectionEnd - pDoc->m_SelectionStart) / m_FftOrder + 1;
 	if (NumberOfFftSamplesAveraged > 100)
 	{
 		NumberOfFftSamplesAveraged = 100;
 	}
+	if (pDoc->m_PlayingSound)
+	{
+		NumberOfFftSamplesAveraged = 4;
+		nStartSample = m_PlaybackSample;
+	}
+	DWORD start = nStartSample * nSampleSize + pDoc->WaveDataChunk()->dwDataOffset;
+	DWORD FftStepInFile = m_FftOrder * nSampleSize;
 
 	int length = FftStepInFile * 2;
 
@@ -109,20 +122,26 @@ void CSpectrumSectionView::OnDraw(CDC* pDC)
 	}
 
 	int LastFftSample = m_FftOrder - pFftView->m_FirstbandVisible;
-	int FirstFftSample = LastFftSample + (-rows * m_FftOrder) / TotalRows;
+	int FirstFftSample = LastFftSample + MulDiv(-rows, m_FftOrder, TotalRows);
+	int NoiseReductionBegin = MulDiv(nBeginFrequency, m_FftOrder,
+									pDoc->WaveFormat()->nSamplesPerSec);
+	int NoiseReductionBeginY = NoiseReductionBegin;
+	int NoiseReductionBeginX;
+	int NoiseReductionEndX;
 	if (FirstFftSample < 0)
 	{
 		LastFftSample -= FirstFftSample;
 		FirstFftSample = 0;
 	}
-	int FirstRowInView = FirstFftSample * TotalRows / m_FftOrder;
+	int FirstRowInView = MulDiv(FirstFftSample, TotalRows, m_FftOrder);
+
 	int FftSamplesInView = LastFftSample - FirstFftSample + 1;
 
 	int IdxSize1 = __min(rows, FftSamplesInView);
 
 	// Allocate FFT arrays
 	if (NULL == m_pFftSum
-		|| m_nFftSumSize < nChannels * (m_FftOrder * 2 + 2))
+		|| m_nFftSumSize != nChannels * (m_FftOrder * 2 + 2))
 	{
 		delete[] m_pFftSum;
 		delete[] m_pWindow;
@@ -130,12 +149,12 @@ void CSpectrumSectionView::OnDraw(CDC* pDC)
 		m_pWindow = NULL;
 		m_nFftSumSize = 0;
 		m_nFftSumSize = nChannels * (m_FftOrder * 2 + 2);
-		m_pFftSum = new double[m_nFftSumSize];
+		m_pFftSum = new float[m_nFftSumSize];
 		if (NULL == m_pFftSum)
 		{
 			return;
 		}
-		m_pWindow = new double[m_FftOrder * 2];
+		m_pWindow = new float[m_FftOrder * 2];
 		for (int w = 0; w < m_FftOrder * 2; w++)
 		{
 			// Hamming window (sucks!!!)
@@ -418,4 +437,66 @@ int CSpectrumSectionView::OnMouseActivate(CWnd* pDesktopWnd, UINT nHitTest, UINT
 	// don't call CView function, to avoid getting focus to the window
 
 	return CWnd::OnMouseActivate(pDesktopWnd, nHitTest, message);
+}
+
+void CSpectrumSectionView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
+{
+	CWaveSoapFrontDoc * pDoc = GetDocument();
+	if (lHint == CWaveSoapFrontDoc::UpdateSoundChanged
+		&& NULL != pHint)
+	{
+		CSoundUpdateInfo * pInfo = (CSoundUpdateInfo *) pHint;
+
+		if ((pDoc->m_SelectionStart <= pInfo->End
+				&& pDoc->m_SelectionEnd + 2 * m_FftOrder >= pInfo->Begin)
+			|| pInfo->Length != -1)
+		{
+			Invalidate();
+		}
+	}
+	else if (lHint == CWaveSoapFrontDoc::UpdateSelectionChanged)
+	{
+		Invalidate();
+		return;
+	}
+	else if (lHint == CWaveSoapFrontDoc::UpdatePlaybackPositionChanged
+			&& NULL != pHint)
+	{
+		CSoundUpdateInfo * pInfo = (CSoundUpdateInfo *) pHint;
+		m_PlaybackSample = pInfo->Begin;
+		Invalidate();
+		return;
+	}
+	CScaledScrollView::OnUpdate(pSender, lHint, pHint);
+}
+
+void CSpectrumSectionView::OnUpdateViewSsShowNoiseThreshold(CCmdUI* pCmdUI)
+{
+	pCmdUI->SetCheck(m_bShowNoiseThreshold);
+}
+
+void CSpectrumSectionView::OnViewSsShowNoiseThreshold()
+{
+	m_bShowNoiseThreshold = ! m_bShowNoiseThreshold;
+	Invalidate();
+}
+
+void CSpectrumSectionView::OnViewSsZoominhor2()
+{
+	CScaledScrollView::OnViewZoominHor2();
+}
+
+void CSpectrumSectionView::OnUpdateViewSsZoominhor2(CCmdUI* pCmdUI)
+{
+	pCmdUI->Enable(dSizeX > 2.);
+}
+
+void CSpectrumSectionView::OnViewSsZoomouthor2()
+{
+	CScaledScrollView::OnViewZoomOutHor2();
+}
+
+void CSpectrumSectionView::OnUpdateViewSsZoomouthor2(CCmdUI* pCmdUI)
+{
+	pCmdUI->Enable(dSizeX < 150.);
 }
