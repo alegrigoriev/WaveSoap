@@ -424,11 +424,24 @@ unsigned CWaveSoapFrontApp::_ThreadProc()
 		}
 		if (pContext != NULL)
 		{
-			int LastPercent = pContext->PercentCompleted;
 			// execute one step
-			if ( ! pContext->OperationProc())
+			if (0 == (pContext->Flags & OperationContextInitialized))
 			{
-				pContext->Flags |= OperationContextStop;
+				if ( ! pContext->Init())
+				{
+					pContext->Flags |= OperationContextStop;
+				}
+				pContext->Flags |= OperationContextInitialized;
+				NeedKickIdle = true;
+			}
+
+			int LastPercent = pContext->PercentCompleted;
+			if ( 0 == (pContext->Flags & (OperationContextStop | OperationContextFinished)))
+			{
+				if ( ! pContext->OperationProc())
+				{
+					pContext->Flags |= OperationContextStop;
+				}
 			}
 			// signal for status update
 			if (LastPercent != pContext->PercentCompleted)
