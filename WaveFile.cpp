@@ -7,6 +7,8 @@
 #include <atlpath.h>
 #include "PathEx.h"
 
+#define DEBUG_RESCAN_PEAKS 0
+
 CMmioFile::CMmioFile()
 	: m_hmmio(NULL),
 	m_RiffckType(0)
@@ -1391,7 +1393,7 @@ void CWaveFile::RescanPeaks(SAMPLE_INDEX begin, SAMPLE_INDEX end)
 {
 	// if called immediately after data modification, it will get
 	// the data directly from the cache
-	TRACE("RescanPeaks from %d to %d\n", begin, end);
+	if (DEBUG_RESCAN_PEAKS) TRACE("RescanPeaks from %d to %d\n", begin, end);
 
 	CWavePeaks * pPeaks = GetWavePeaks();
 	unsigned Granularity = pPeaks->GetGranularity();
