@@ -1002,7 +1002,7 @@ unsigned CWaveSoapFrontApp::_ThreadProc()
 				if (NeedKickIdle)
 				{
 					CString s;
-					s.Format(_T("%s%d%%"),
+					s.Format(_T("%s %d%%"),
 							(LPCTSTR)pContext->GetStatusString(), NewPercent);
 					SetStatusStringAndDoc(s, pContext->pDocument);
 				}
@@ -1299,6 +1299,12 @@ void CWaveSoapFrontStatusBar::OnContextMenu(CWnd* /*pWnd*/, CPoint point)
 	}
 }
 
+void SetStatusString(CCmdUI* pCmdUI, UINT id,
+					LPCTSTR MaxString, BOOL bForceSize)
+{
+	SetStatusString(pCmdUI, LoadCString(id), MaxString, bForceSize);
+}
+
 void SetStatusString(CCmdUI* pCmdUI, const CString & string,
 					LPCTSTR MaxString, BOOL bForceSize)
 {
@@ -1558,7 +1564,7 @@ BOOL CWaveSoapFileList::GetDisplayName(CString& strName, int nIndex,
 	LPTSTR lpch = strName.GetBuffer(_MAX_PATH+1);
 	lpch[_MAX_PATH] = 0;
 
-	LPCTSTR suffix = _T("");
+	CString suffix;
 
 	LPCTSTR src = m_arrNames[nIndex];
 	TCHAR flags = src[0];
@@ -1569,22 +1575,22 @@ BOOL CWaveSoapFileList::GetDisplayName(CString& strName, int nIndex,
 		{
 			if (pApp->m_bReadOnly)
 			{
-				suffix = _T(" (RO)");
+				suffix.LoadString(IDS_MRU_LIST_RO_SUFFIX);
 			}
 			else if (pApp->m_bDirectMode)
 			{
-				suffix = _T(" (D)");
+				suffix.LoadString(IDS_MRU_LIST_DIRECT_SUFFIX);
 			}
 		}
 		else
 		{
 			if (0 != (flags & OpenDocumentReadOnly))
 			{
-				suffix = _T(" (RO)");
+				suffix.LoadString(IDS_MRU_LIST_RO_SUFFIX);
 			}
 			else if (flags & OpenDocumentDirectMode)
 			{
-				suffix = _T(" (D)");
+				suffix.LoadString(IDS_MRU_LIST_DIRECT_SUFFIX);
 			}
 		}
 		src++;
@@ -2016,6 +2022,7 @@ void CWaveSoapFrontApp::OnToolsCdgrab()
 	{
 		return;
 	}
+
 	const int MaxTracks = 99;
 
 	CCdReadingContext * pContexts[MaxTracks];
@@ -2034,15 +2041,11 @@ void CWaveSoapFrontApp::OnToolsCdgrab()
 
 		// allocate a context
 		CString s;
-		s.Format(_T("Reading CD track %d..."), t + 1);
+		s.Format(IDS_READING_CD_TRACK_STATUS_PROMPT, t + 1);
 
-		pContext = new CCdReadingContext(NULL, s, _T("CD read"));
+		pContext = new CCdReadingContext(NULL, s, LoadCString(IDS_READING_CD_TRACK_OPERATION_NAME));
 
-		if (NULL == pContext)
-		{
-			break;
-		}
-
+		// TODO: exception safe operation
 		if (n > 0)
 		{
 			pContexts[n - 1]->m_pNextTrackContext = pContext;
@@ -2329,29 +2332,31 @@ CString GetSelectionText(SAMPLE_INDEX Start, SAMPLE_INDEX End, CHANNEL_MASK Chan
 	if (nChannels > 1)
 	{
 		CHANNEL_MASK mask = ~(~0L << nChannels);
-		LPCTSTR sChans = _T("Stereo");
+
+		CString sChans;
+		sChans.LoadString(IDS_STEREO);
+
 		if (! bLockChannels
 			&& mask != (Chan & mask))
 		{
 			if (Chan & (1 << 0))
 			{
-				sChans = _T("Left");
+				sChans.LoadString(IDS_LEFT);
 			}
 			else if (Chan & (1 << 1))
 			{
-				sChans = _T("Right");
+				sChans.LoadString(IDS_RIGHT);
 			}
 		}
-		s.Format(_T("Selection : %s to %s (%s)\n")
-				_T("Channels: %s"),
+		s.Format(IDS_SELECTION_STRING_FORMAT_STEREO,
 				LPCTSTR(SampleToString(Start, nSamplesPerSec, TimeFormat)),
 				LPCTSTR(SampleToString(End, nSamplesPerSec, TimeFormat)),
 				LPCTSTR(SampleToString(End - Start, nSamplesPerSec, TimeFormat)),
-				sChans);
+				LPCTSTR(sChans));
 	}
 	else
 	{
-		s.Format(_T("Selection : %s to %s (%s)"),
+		s.Format(IDS_CHANNELS_STRING_FORMAT_MONO,
 				LPCTSTR(SampleToString(Start, nSamplesPerSec, TimeFormat)),
 				LPCTSTR(SampleToString(End, nSamplesPerSec, TimeFormat)),
 				LPCTSTR(SampleToString(End - Start, nSamplesPerSec, TimeFormat)));
@@ -2441,6 +2446,11 @@ BOOL VerifyCreateDirectory(LPCTSTR pszPath)
 		AfxMessageBox(s, MB_OK | MB_ICONEXCLAMATION);
 		return FALSE;
 	}
+}
+
+CString LoadCString(UINT id)
+{
+	return CString(MAKEINTRESOURCE(id));
 }
 
 CDocumentPopup::CDocumentPopup(CDocument * pDoc)

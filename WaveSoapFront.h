@@ -287,6 +287,9 @@ inline CThisApp * GetApp()
 // long to string, thousands separated by commas
 void SetStatusString(CCmdUI* pCmdUI, const CString & string,
 					LPCTSTR MaxString = NULL, BOOL bForceSize = FALSE);
+void SetStatusString(CCmdUI* pCmdUI, UINT id, // string resource ID
+					LPCTSTR MaxString = NULL, BOOL bForceSize = FALSE);
+
 BOOL VerifyCreateDirectory(LPCTSTR pszPath);
 void NotEnoughMemoryMessageBox();
 void NotEnoughDiskSpaceMessageBox();
@@ -300,6 +303,8 @@ BOOL CanAllocateWaveFileSamplesDlg(const WAVEFORMATEX * pWf, LONGLONG NumOfSampl
 CString GetSelectionText(SAMPLE_INDEX Start, SAMPLE_INDEX End, CHANNEL_MASK Chan,
 						NUMBER_OF_CHANNELS nChannels, BOOL bLockChannels,
 						int nSamplesPerSec, int TimeFormat);
+
+CString LoadCString(UINT id);
 
 /////////////////////////////////////////////////////////////////////////////
 //{{AFX_INSERT_LOCATION}}
