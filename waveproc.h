@@ -154,32 +154,7 @@ public:
 		return m_OutputChannels * sizeof (WAVE_SAMPLE);
 	}
 
-	__int16 DoubleToShort(double x)
-	{
-		long tmp = (long) floor(x + 0.5);
-		if (tmp < -0x8000)
-		{
-			if (m_MaxClipped < -x)
-			{
-				m_MaxClipped = -x;
-			}
-			m_bClipped = TRUE;
-			return -0x8000;
-		}
-		else if (tmp > 0x7FFF)
-		{
-			if (m_MaxClipped < x)
-			{
-				m_MaxClipped = x;
-			}
-			m_bClipped = TRUE;
-			return 0x7FFF;
-		}
-		else
-		{
-			return __int16(tmp);
-		}
-	}
+	__int16 DoubleToShort(double x);
 
 	virtual BOOL WasClipped() const
 	{
@@ -189,6 +164,9 @@ public:
 	{
 		return m_MaxClipped;
 	}
+
+	virtual BOOL Init();
+	virtual void DeInit();
 
 	char m_TmpInBuf[32];
 	char m_TmpOutBuf[32];
@@ -467,6 +445,9 @@ public:
 	virtual BOOL WasClipped() const;
 	virtual double GetMaxClipped() const;
 
+	virtual BOOL Init();
+	virtual void DeInit();
+
 	BOOL m_bAutoDeleteProcs;
 protected:
 	struct Item
@@ -550,7 +531,7 @@ public:
 	size_t m_LeftInDstBuffer;
 	UCHAR const * m_DstBufPtr;
 
-	BOOL InitConversion(WAVEFORMATEX * SrcFormat, WAVEFORMATEX * DstFormat);
+	BOOL InitConversion(WAVEFORMATEX const * SrcFormat, WAVEFORMATEX const * DstFormat);
 	virtual size_t ProcessSound(char const * pInBuf, char * pOutBuf,
 								size_t nInBytes, size_t nOutBytes, size_t * pUsedBytes);
 };
@@ -611,18 +592,23 @@ public:
 		m_Enc.Open(pDll);
 	}
 	~CLameEncConvertor();
+	BOOL SetFormat(WAVEFORMATEX const * pWF);
+protected:
 	BladeMp3Encoder m_Enc;
 	char * m_pInputBuffer;
 	size_t m_InputBufferSize;
 	size_t m_InputBufferFilled;
 
-	char * m_pOutputBuffer;
+	BYTE * m_pOutputBuffer;
 	size_t m_OutputBufferFilled;
 	size_t m_OutputBufferSize;
-
-	BOOL Open(WAVEFORMATEX * pWF);
 	virtual size_t ProcessSound(char const * pInBuf, char * pOutBuf,
 								size_t nInBytes, size_t nOutBytes, size_t * pUsedBytes);
+
+	virtual BOOL Init();
+	virtual void DeInit();
+
+	CWaveFormat m_Wf;
 };
 
 #endif //#ifndef __WAVEPROC_H_
