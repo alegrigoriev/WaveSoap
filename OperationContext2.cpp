@@ -1369,9 +1369,9 @@ BOOL CEqualizerContext::Init()
 	return InitPass(1);
 }
 
-BOOL CEqualizerContext::InitPass(int nPass)
+BOOL CEqualizerContext::InitPass(int /*nPass*/)
 {
-	TRACE("CEqualizerContext::InitPass %d\n", nPass);
+	//TRACE("CEqualizerContext::InitPass %d\n", nPass);
 
 	for (int ch = 0; ch < countof (m_PrevSamples); ch++)
 	{
@@ -1405,7 +1405,7 @@ double CEqualizerContext::CalculateResult(int ch, int Input)
 	return tmp;
 }
 
-BOOL CEqualizerContext::ProcessBuffer(void * buf, size_t BufferLength, SAMPLE_POSITION offset, BOOL bBackward)
+BOOL CEqualizerContext::ProcessBuffer(void * buf, size_t BufferLength, SAMPLE_POSITION /*offset*/, BOOL bBackward)
 {
 	// calculate number of sample, and time
 	int nChannels = m_DstFile.Channels();
@@ -1413,7 +1413,7 @@ BOOL CEqualizerContext::ProcessBuffer(void * buf, size_t BufferLength, SAMPLE_PO
 	WAVE_SAMPLE * pDst = (WAVE_SAMPLE *) buf;
 	NUMBER_OF_SAMPLES nSamples = BufferLength / sizeof pDst[0];
 
-	ASSERT(0 == (offset % m_DstFile.SampleSize()));
+	//ASSERT(0 == (offset % m_DstFile.SampleSize()));
 	ASSERT(0 == (BufferLength % nChannels));
 
 	if ( ! bBackward)
@@ -1484,9 +1484,9 @@ BOOL CFilterContext::Init()
 	return InitPass(1);
 }
 
-BOOL CFilterContext::InitPass(int nPass)
+BOOL CFilterContext::InitPass(int /*nPass*/)
 {
-	TRACE("CFilterContext::InitPass %d\n", nPass);
+	//TRACE("CFilterContext::InitPass %d\n", nPass);
 
 	for (int ch = 0; ch < countof (m_PrevLpfSamples); ch++)
 	{
@@ -2647,7 +2647,7 @@ BOOL CInitChannels::CreateUndo()
 }
 
 BOOL CInitChannels::ProcessBuffer(void * buf, size_t BufferLength,
-								SAMPLE_POSITION offset,
+								SAMPLE_POSITION /*offset*/,
 								BOOL /*bBackward*/)
 {
 	ASSERT(m_DstFile.GetSampleType() == SampleType16bit);
@@ -2657,7 +2657,7 @@ BOOL CInitChannels::ProcessBuffer(void * buf, size_t BufferLength,
 
 	NUMBER_OF_SAMPLES nSamples = BufferLength / sizeof pDst[0];
 
-	ASSERT(0 == (offset % m_DstFile.SampleSize()));
+	//ASSERT(0 == (offset % m_DstFile.SampleSize()));
 	ASSERT(0 == (BufferLength % m_DstFile.SampleSize()));
 
 	NUMBER_OF_SAMPLES i;
