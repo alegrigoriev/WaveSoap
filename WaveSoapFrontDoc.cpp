@@ -357,11 +357,6 @@ void CWaveSoapFrontDoc::BuildPeakInfo(BOOL bSavePeakFile)
 		return;
 	}
 
-	if ( ! m_WavFile.AllocatePeakData(WaveFileSamples()))
-	{
-		NotEnoughMemoryMessageBox();
-		return;
-	}
 	CScanPeaksContext * pContext =
 		new CScanPeaksContext(this, m_WavFile, m_OriginalWavFile, bSavePeakFile);
 
@@ -1712,26 +1707,22 @@ BOOL CWaveSoapFrontDoc::OnOpenDocument(LPCTSTR lpszPathName, int DocOpenFlags)
 		// initial size
 		if (bNeedConversion)
 		{
+			NUMBER_OF_SAMPLES NumSamples = WaveFileSamples();
 			CDecompressContext * pContext =
-				new CDecompressContext(this, _T("Loading the compressed file..."), m_OriginalWavFile.GetWaveFormat());
+				new CDecompressContext(this, _T("Loading the compressed file..."),
+										m_OriginalWavFile,
+										m_WavFile,
+										m_OriginalWavFile.SampleToPosition(0),
+										m_OriginalWavFile.SampleToPosition(LAST_SAMPLE),
+										NumSamples,
+										m_OriginalWavFile.GetWaveFormat());
 
 			pContext->m_Flags |= DecompressSavePeakFile;
 
-			pContext->m_SrcFile = m_OriginalWavFile;
-
-			pContext->m_SrcStart = m_OriginalWavFile.SampleToPosition(0);
-			pContext->m_SrcPos = pContext->m_SrcStart;
-			pContext->m_SrcEnd = m_OriginalWavFile.SampleToPosition(LAST_SAMPLE);
-
-			pContext->m_DstFile = m_WavFile;
-			pContext->m_DstStart = m_WavFile.SampleToPosition(0);
-			pContext->m_DstPos = pContext->m_DstStart;
-			pContext->m_CurrentSamples = WaveFileSamples();
-
 			// peak data will be created during decompression
-			m_WavFile.LoadPeaksForCompressedFile(m_OriginalWavFile, pContext->m_CurrentSamples);
+			m_WavFile.LoadPeaksForCompressedFile(m_OriginalWavFile, NumSamples);
 
-			SoundChanged(WaveFileID(), 0, 0, WaveFileSamples(), UpdateSoundDontRescanPeaks);
+			SoundChanged(WaveFileID(), 0, 0, NumSamples, UpdateSoundDontRescanPeaks);
 			pContext->Execute();
 		}
 		else
@@ -4568,6 +4559,7 @@ BOOL CWaveSoapFrontDoc::OpenRawFileDocument(LPCTSTR lpszPathName)
 	}
 	CRawFileParametersDlg dlg;
 	dlg.m_SourceFileSize = m_OriginalWavFile.GetFileSize(NULL);
+
 	if (IDOK != dlg.DoModal())
 	{
 		return FALSE;
@@ -4621,32 +4613,28 @@ BOOL CWaveSoapFrontDoc::OpenRawFileDocument(LPCTSTR lpszPathName)
 		return FALSE;
 	}
 
-	CDecompressContext * pContext =
-		new CDecompressContext(this, _T("Loading the raw sound file..."), & wf);
-
-	m_OriginalWaveFormat = & wf;
-
-	pContext->m_SrcFile = m_OriginalWavFile;
-	pContext->m_DstFile = m_WavFile;
-
-	pContext->m_SrcStart = dlg.m_HeaderLength;
-	pContext->m_SrcPos = pContext->m_SrcStart;
-	pContext->m_SrcEnd = dlg.m_SourceFileSize - dlg.m_TrailerLength;
-
-	pContext->m_DstStart = m_WavFile.SampleToPosition(0);
-	pContext->m_DstPos = pContext->m_DstStart;
-
-	pContext->m_CurrentSamples = nNewFileSamples;
 	if (16 == wf.wBitsPerSample)
 	{
-		pContext->m_bSwapBytes = dlg.m_bMsbFirst;
 		if (dlg.m_bMsbFirst)
 		{
 			m_FileTypeFlags |= OpenRawFileMsbFirst;
 		}
 	}
 
+	m_OriginalWaveFormat = & wf;
+
 	m_WavFile.AllocatePeakData(nNewFileSamples);
+
+	CDecompressContext * pContext =
+		new CDecompressContext(this, _T("Loading the raw sound file..."),
+								m_OriginalWavFile,
+								m_WavFile,
+								dlg.m_HeaderLength,
+								dlg.m_SourceFileSize - dlg.m_TrailerLength,
+								nNewFileSamples,
+								& wf,
+								0 != (m_FileTypeFlags & OpenRawFileMsbFirst));
+
 	// peak data will be created during decompression
 	pContext->Execute();
 	return TRUE;
