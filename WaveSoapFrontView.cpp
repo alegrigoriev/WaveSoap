@@ -1542,33 +1542,10 @@ void CWaveSoapFrontView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
 			return;
 		}
 
-		CRect r;
-		// change for foreground frame only
-		CFrameWnd * pFrameWnd = GetParentFrame();
-		if (NULL != pFrameWnd
-			&& pFrameWnd == pFrameWnd->GetWindow(GW_HWNDFIRST))
-		{
-			if (pInfo->Flags & SetSelection_MakeCaretVisible)
-			{
-				MovePointIntoView(pInfo->CaretPos);
-			}
-			else if (pInfo->Flags & SetSelection_MoveCaretToCenter)
-			{
-				MovePointIntoView(pInfo->CaretPos, TRUE);
-			}
-		}
+		CRect cr;
+		GetClientRect(cr);
 
-		if (pInfo->Flags & SetSelection_MakeFileVisible)
-		{
-			SAMPLE_INDEX LastSample = pDoc->WaveFileSamples();
-			if (WindowToWorldX(0) > LastSample)
-			{
-				MovePointIntoView(LastSample, TRUE);
-			}
-		}
-
-		GetClientRect(r);
-		int Separator = WorldToWindowY(0.);
+		AdjustCaretVisibility(pInfo->CaretPos, pInfo->OldCaretPos, pInfo->Flags);
 
 		// calculate new selection boundaries
 		int SelBegin = WorldToWindowXfloor(pInfo->SelBegin);
@@ -1580,36 +1557,6 @@ void CWaveSoapFrontView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
 			SelEnd++;
 		}
 
-		int SelTop = r.top;
-		int SelBottom = r.bottom;
-		if (pDoc->WaveChannels() > 1)
-		{
-			if (0 == (pInfo->SelChannel & SPEAKER_FRONT_RIGHT))
-			{
-				SelBottom = Separator;
-			}
-			else if (0 == (pInfo->SelChannel & SPEAKER_FRONT_LEFT))
-			{
-				SelTop = Separator;
-			}
-		}
-
-		// calculate old selection boundaries
-		int OldSelTop = r.top;
-		int OldSelBottom = r.bottom;
-
-		if (pDoc->WaveChannels() > 1)
-		{
-			if (0 == (pInfo->OldSelChannel & SPEAKER_FRONT_RIGHT))
-			{
-				OldSelBottom = Separator;
-			}
-			else if (0 == (pInfo->OldSelChannel & SPEAKER_FRONT_LEFT))
-			{
-				OldSelTop = Separator;
-			}
-		}
-
 		int OldSelBegin = WorldToWindowXfloor(pInfo->OldSelBegin);
 		int OldSelEnd = WorldToWindowXfloor(pInfo->OldSelEnd);
 
@@ -1619,24 +1566,38 @@ void CWaveSoapFrontView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
 			OldSelEnd++;
 		}
 
-		// build rectangles with selection boundaries
-		CRect r1(SelBegin, SelTop, SelEnd, SelBottom);
-		CRect r2(OldSelBegin, OldSelTop, OldSelEnd, OldSelBottom);
-		// invalidate the regions with changed selection
-		if (pInfo->OldSelChannel == pInfo->SelChannel)
+		for (int ch = 0; ch < pDoc->WaveChannels(); ch++)
 		{
-			// the same channel, different region
-			// sort all 'x' coordinates
-			int x[4] = {SelBegin, OldSelBegin, SelEnd, OldSelEnd };
-			if (SelBegin > OldSelBegin)
+			CRect ChanR;
+			GetChannelRect(ch, ChanR);
+			// build rectangles with selection boundaries
+
+			CRect r1(SelBegin, ChanR.top, SelEnd, ChanR.bottom);
+			CRect r2(OldSelBegin, ChanR.top, OldSelEnd, ChanR.bottom);
+
+			// invalidate the regions with changed selection
+			if (0 == (pInfo->SelChannel & (1 << ch)))
 			{
-				x[0] = OldSelBegin;
-				x[1] = SelBegin;
+				r1.right = r1.left;
 			}
-			if (SelEnd > OldSelEnd)
+
+			if (0 == (pInfo->OldSelChannel & (1 << ch)))
 			{
-				x[2] = OldSelEnd;
-				x[3] = SelEnd;
+				r2.right = r2.left;
+			}
+
+			int x[4] = {r1.left, r1.right, r2.left, r2.right };
+
+			// sort all 'x' coordinates in ascending order
+			if (x[0] > x[2])
+			{
+				x[0] = r2.left;
+				x[2] = r1.left;
+			}
+			if (x[1] > x[3])
+			{
+				x[1] = r2.right;
+				x[3] = r1.right;
 			}
 			if (x[1] > x[2])
 			{
@@ -1644,49 +1605,52 @@ void CWaveSoapFrontView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
 				x[1] = x[2];
 				x[2] = tmp;
 			}
+
 			r1.left = x[0];
 			r1.right = x[1];
 			r2.left = x[2];
 			r2.right = x[3];
+
 			if (x[1] == x[2])
 			{
 				r2.left = x[0];
 				r1.right = x[0];    // make empty
 			}
-		}
 
-		// invalidate two rectangles
-		if (r1.left != r1.right
-			// limit the rectangles with the window boundaries
-			&& r1.left < r.right
-			&& r1.right > r.left)
-		{
-			// non-empty, in the client
-			if (r1.left < r.left)
+			// invalidate two rectangles
+			if (r1.left != r1.right
+				// limit the rectangles with the window boundaries
+				&& r1.left < cr.right
+				&& r1.right > cr.left)
 			{
-				r1.left = r.left;
+				// non-empty, in the client
+				if (r1.left < cr.left)
+				{
+					r1.left = cr.left;
+				}
+				if(r1.right > cr.right)
+				{
+					r1.right = cr.right;
+				}
+				InvalidateRect(& r1);
 			}
-			if(r1.right > r.right)
+
+			if (r2.left != r2.right
+				// limit the rectangles with the window boundaries
+				&& r2.left < cr.right
+				&& r2.right > cr.left)
 			{
-				r1.right = r.right;
+				// non-empty, in the client
+				if (r2.left < cr.left)
+				{
+					r2.left = cr.left;
+				}
+				if(r2.right > cr.right)
+				{
+					r2.right = cr.right;
+				}
+				InvalidateRect(& r2);
 			}
-			InvalidateRect(& r1);
-		}
-		if (r2.left != r2.right
-			// limit the rectangles with the window boundaries
-			&& r2.left < r.right
-			&& r2.right > r.left)
-		{
-			// non-empty, in the client
-			if (r2.left < r.left)
-			{
-				r2.left = r.left;
-			}
-			if(r2.right > r.right)
-			{
-				r2.right = r.right;
-			}
-			InvalidateRect(& r2);
 		}
 		CreateAndShowCaret();
 	}
@@ -1939,6 +1903,7 @@ void CWaveSoapFrontView::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 	BOOL KeepSelection = (0 != (0x8000 & GetKeyState(VK_SHIFT)));
 	BOOL CtrlPressed = (0 != (0x8000 & GetKeyState(VK_CONTROL)));
 	BOOL MakeCaretVisible = TRUE;
+	BOOL KeepCaretVisible = FALSE;
 
 	int nCaretMove = m_HorizontalScale;
 
@@ -1963,24 +1928,46 @@ void CWaveSoapFrontView::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 		if (CtrlPressed)
 		{
 			nCaret = pDoc->GetPrevMarker();
+			KeepCaretVisible = TRUE;
 		}
 		else
 		{
-			// move caret 1 pixel to the left,
-			nCaret -= nCaretMove;
+			if (nSelBegin < nSelEnd
+				&& ! KeepSelection)
+			{
+				// move caret to the selection start, cancel selection
+				nCaret = nSelBegin;
+			}
+			else
+			{
+				// move caret 1 pixel to the left,
+				nCaret -= nCaretMove;
+			}
 		}
 		break;
+
 	case VK_RIGHT:
 		if (CtrlPressed)
 		{
 			nCaret = pDoc->GetNextMarker();
+			KeepCaretVisible = TRUE;
 		}
 		else
 		{
-			// move caret 1 to the right
-			nCaret += nCaretMove;
+			if (nSelBegin < nSelEnd
+				&& ! KeepSelection)
+			{
+				// move caret to the selection end, cancel selection
+				nCaret = nSelEnd;
+			}
+			else
+			{
+				// move caret 1 to the right
+				nCaret += nCaretMove;
+			}
 		}
 		break;
+
 	case VK_HOME:
 		// move to the begin of file or selection
 		if (CtrlPressed)
@@ -2003,6 +1990,7 @@ void CWaveSoapFrontView::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 		}
 
 		break;
+
 	case VK_END:
 		// move to the end of file or selection
 		if (CtrlPressed)
@@ -2025,18 +2013,23 @@ void CWaveSoapFrontView::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 		}
 
 		break;
+
 	case VK_PRIOR:
 		nCaret -= nPage;
 		break;
+
 	case VK_NEXT:
 		nCaret += nPage;
 		break;
+
 	case VK_UP:
 		// move the zoomed image up
 		break;
+
 	case VK_DOWN:
 		// move the zoomed image down
 		break;
+
 	case VK_TAB:
 		// toggle selection channel
 		if (pDoc->m_WavFile.AllChannels(nChan))
@@ -2065,6 +2058,7 @@ void CWaveSoapFrontView::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 
 		break;
 	}
+
 	if (nCaret < 0)
 	{
 		nCaret = 0;
@@ -2073,6 +2067,7 @@ void CWaveSoapFrontView::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 	{
 		nCaret = nTotalSamples;
 	}
+
 	if (KeepSelection)
 	{
 		if (nCaret <
@@ -2091,7 +2086,14 @@ void CWaveSoapFrontView::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 		nSelEnd = nCaret;
 	}
 
-	MovePointIntoView(nCaret);
+	if (KeepCaretVisible)
+	{
+		AdjustCaretVisibility(nCaret, pDoc->m_CaretPosition, SetSelection_KeepCaretVisible);
+	}
+	else
+	{
+		MovePointIntoView(nCaret, MakeCaretVisible);
+	}
 
 	pDoc->SetSelection(nSelBegin, nSelEnd, nChan, nCaret);
 
@@ -2808,4 +2810,82 @@ void CWaveSoapFrontView::OnLButtonDblClk(UINT nFlags, CPoint point)
 	BaseClass::OnLButtonDblClk(nFlags, point);
 
 	GetDocument()->SelectBetweenMarkers(SAMPLE_INDEX(WindowToWorldX(point.x)));
+}
+
+void CWaveSoapFrontView::AdjustCaretVisibility(SAMPLE_INDEX CaretPos, SAMPLE_INDEX OldCaretPos,
+												unsigned Flags)
+{
+	ThisDoc * pDoc = GetDocument();
+	CRect cr;
+	GetClientRect(cr);
+	// change for foreground frame only
+	CFrameWnd * pFrameWnd = GetParentFrame();
+
+	if (NULL != pFrameWnd
+		&& pFrameWnd == pFrameWnd->GetWindow(GW_HWNDFIRST))
+	{
+		if (SetSelection_KeepCaretVisible ==
+			(Flags & SetSelection_KeepCaretVisible))
+		{
+			// move caret toward center
+			// if the caret was from the left side, allow it to stay on the left side,
+			// but when moved to the right, keep it in center.
+			// If the caret was or becomes not visible, bring it to center
+			long PrevX = WorldToWindowXfloor(OldCaretPos);
+			long NewX = WorldToWindowXfloor(CaretPos);
+			int Center = (cr.left + cr.right) / 2;
+
+			if (PrevX < cr.left
+				|| PrevX >= cr.right
+				|| NewX < cr.left
+				|| NewX >= cr.right)
+			{
+				MovePointIntoView(CaretPos, TRUE);
+			}
+			else if (PrevX < Center)
+			{
+				if (NewX > Center)
+				{
+					MovePointIntoView(CaretPos, TRUE);
+				}
+				else
+				{
+					MovePointIntoView(CaretPos, FALSE);
+				}
+			}
+			else if (PrevX > Center)
+			{
+				if (NewX < Center)
+				{
+					MovePointIntoView(CaretPos, TRUE);
+				}
+				else
+				{
+					MovePointIntoView(CaretPos, FALSE);
+				}
+			}
+			else
+			{
+				// keep centered
+				MovePointIntoView(CaretPos, TRUE);
+			}
+		}
+		else if (Flags & SetSelection_MakeCaretVisible)
+		{
+			MovePointIntoView(CaretPos, FALSE);
+		}
+		else if (Flags & SetSelection_MoveCaretToCenter)
+		{
+			MovePointIntoView(CaretPos, TRUE);
+		}
+	}
+
+	if (Flags & SetSelection_MakeFileVisible)
+	{
+		SAMPLE_INDEX LastSample = pDoc->WaveFileSamples();
+		if (WindowToWorldX(0) > LastSample)
+		{
+			MovePointIntoView(LastSample, TRUE);
+		}
+	}
 }

@@ -87,6 +87,8 @@ protected:
 
 	virtual POINT GetZoomCenter();
 	void MovePointIntoView(SAMPLE_INDEX nCaret, BOOL Center = FALSE);
+	void AdjustCaretVisibility(SAMPLE_INDEX CaretPos, SAMPLE_INDEX OldCaretPos,
+								unsigned Flags);
 
 	void UpdateMaxHorExtents(NUMBER_OF_SAMPLES Length);
 	void UpdateVertExtents();
