@@ -244,13 +244,25 @@ public:
 	CCommitFileSaveContext(CWaveSoapFrontDoc * pDoc,
 							LPCTSTR StatusString, CWaveFile & WavFile, int flags, LPCTSTR TargetName);
 
-	int m_FileSaveFlags;
-	CString m_TargetName;
 	//~CCommitFileSaveContext() { }
 	virtual BOOL OperationProc();
 	virtual void PostRetire();
 
+	virtual MEDIA_FILE_SIZE GetTotalOperationSize() const
+	{
+		return m_File.GetLength();
+	}
+
+	virtual MEDIA_FILE_SIZE GetCompletedOperationSize() const
+	{
+		return m_TotalCommitted;
+	}
+
+protected:
+	int m_FileSaveFlags;
+	CString m_TargetName;
 	CWaveFile m_File;
+	LONGLONG m_TotalCommitted;
 };
 
 class CEqualizerContext: public CThroughProcessOperation
