@@ -183,10 +183,14 @@ int CFftRulerView::CalculateWidth()
 
 void CFftRulerView::OnUpdate( CView* pSender, LPARAM lHint, CObject* pHint )
 {
-	if ((lHint == CWaveFftView::FFT_OFFSET_CHANGED
-			|| lHint == CWaveFftView::FFT_SCALE_CHANGED
-			|| lHint == CWaveSoapFrontDoc::UpdateSampleRateChanged)
-		&& NULL == pHint)
+	if (lHint == CWaveSoapFrontDoc::UpdateWholeFileChanged)
+	{
+		Invalidate();
+	}
+	else if (lHint == CWaveSoapFrontDoc::UpdateWholeFileChanged
+			|| lHint == CWaveSoapFrontDoc::UpdateSampleRateChanged
+			|| ((lHint == CWaveFftView::FFT_OFFSET_CHANGED
+					|| lHint == CWaveFftView::FFT_SCALE_CHANGED) && NULL == pHint))
 	{
 		Invalidate();
 	}
