@@ -2401,11 +2401,11 @@ CNoiseReductionDialog::CNoiseReductionDialog(SAMPLE_INDEX begin, SAMPLE_INDEX en
 	m_dNoiseThresholdHigh = -70.;
 	m_dLowerFrequency = 4000.;
 	m_FftOrder = 256;
-	m_dNoiseReductionAggressivness = 1.;
+	m_dNoiseReductionAggressiveness = 1.;
 	m_FarMaskingLevelDb = -40.;
 
 	m_eToneOverNoisePreference.SetPrecision(1);
-	m_EditAggressivness.SetPrecision(2);
+	m_EditAggressiveness.SetPrecision(2);
 	m_eNoiseReduction.SetPrecision(2);
 	m_eNoiseCriterion.SetPrecision(2);
 	m_eNoiseThresholdHigh.SetPrecision(1);
@@ -2420,7 +2420,7 @@ void CNoiseReductionDialog::DoDataExchange(CDataExchange* pDX)
 	BaseClass::DoDataExchange(pDX);
 	//{{AFX_DATA_MAP(CNoiseReductionDialog)
 	DDX_Control(pDX, IDC_EDIT_TONE_PREFERENCE, m_eToneOverNoisePreference);
-	DDX_Control(pDX, IDC_EDIT_AGGRESSIVNESS, m_EditAggressivness);
+	DDX_Control(pDX, IDC_EDIT_AGGRESSIVNESS, m_EditAggressiveness);
 	DDX_Control(pDX, IDC_EDIT_NOISE_REDUCTION, m_eNoiseReduction);
 	DDX_Control(pDX, IDC_EDIT_NOISE_CRITERION, m_eNoiseCriterion);
 	DDX_Control(pDX, IDC_EDIT_NOISE_AREA_THRESHOLD_HIGH, m_eNoiseThresholdHigh);
@@ -2441,7 +2441,7 @@ void CNoiseReductionDialog::DoDataExchange(CDataExchange* pDX)
 										IDS_INPUT_NAME_NOISE_FLOOR_HIGH, IDS_DECIBEL, -120., -10.);
 	m_eNoiseThresholdLow.ExchangeData(pDX, m_dNoiseThresholdLow,
 									IDS_INPUT_NAME_NOISE_FLOOR_LOW, IDS_DECIBEL, -120., -10.);
-	m_EditAggressivness.ExchangeData(pDX, m_dNoiseReductionAggressivness,
+	m_EditAggressiveness.ExchangeData(pDX, m_dNoiseReductionAggressiveness,
 									IDS_INPUT_NAME_NOISE_SUPPRESSION_AGGR, 0, 0.1, 3.);
 	m_eToneOverNoisePreference.ExchangeData(pDX, m_dToneOverNoisePreference,
 											IDS_INPUT_NAME_TONE_OVER_NOISE, IDS_DECIBEL, 0., 20.);
@@ -2516,7 +2516,7 @@ void CNoiseReductionDialog::LoadValuesFromRegistry()
 	Profile.AddItem(_T("NoiseReduction"), _T("NearMaskingDecayTimeHigh"), m_NearMaskingDecayTimeHigh, 40., 1., 1000.);
 	Profile.AddItem(_T("NoiseReduction"), _T("NearMaskingDecayTimeLow"), m_NearMaskingDecayTimeLow, 100., 1., 1000.);
 	Profile.AddItem(_T("NoiseReduction"), _T("FarMaskingLevel"), m_FarMaskingLevelDb, -40., -100., -10.);
-	Profile.AddItem(_T("NoiseReduction"), _T("Aggressivness"), m_dNoiseReductionAggressivness, 1., 0.1, 3.);
+	Profile.AddItem(_T("NoiseReduction"), _T("Aggressiveness"), m_dNoiseReductionAggressiveness, 1., 0.1, 3.);
 }
 
 
@@ -2535,7 +2535,7 @@ void CNoiseReductionDialog::GetNoiseReductionData(NoiseReductionParameters * pNr
 	pNr->m_LevelThresholdForNoiseLow = float(DB_TO_NEPER * (m_dNoiseThresholdLow));
 	pNr->m_LevelThresholdForNoiseHigh = float(DB_TO_NEPER * (m_dNoiseThresholdHigh));
 	pNr->m_ToneOverNoisePreference = float(DB_TO_NEPER * m_dToneOverNoisePreference);
-	pNr->m_NoiseReductionRatio = 0.5 * m_dNoiseReductionAggressivness;
+	pNr->m_NoiseReductionRatio = 0.5 * m_dNoiseReductionAggressiveness;
 
 	pNr->m_NearMaskingDecayDistanceLow = float(m_NearMaskingDecayDistanceLow);
 	pNr->m_NearMaskingDecayDistanceHigh = float(m_NearMaskingDecayDistanceHigh);

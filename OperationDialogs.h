@@ -773,7 +773,7 @@ protected:
 	//{{AFX_DATA(CNoiseReductionDialog)
 	enum { IDD = IDD_DIALOG_NOISE_REDUCTION };
 	CNumEdit	m_eToneOverNoisePreference;
-	CNumEdit	m_EditAggressivness;
+	CNumEdit	m_EditAggressiveness;
 	CNumEdit	m_eNoiseReduction;
 	CNumEdit	m_eNoiseCriterion;
 	CNumEdit	m_eNoiseThresholdHigh;
@@ -788,7 +788,7 @@ protected:
 	double	m_dNoiseThresholdLow;
 	double	m_dNoiseThresholdHigh;
 	double	m_dLowerFrequency;
-	double  m_dNoiseReductionAggressivness;
+	double  m_dNoiseReductionAggressiveness;
 	double  m_dToneOverNoisePreference;
 	double  m_NearMaskingDecayDistanceHigh;
 	double  m_NearMaskingDecayDistanceLow;

@@ -1439,7 +1439,7 @@ BEGIN
     EDITTEXT        IDC_EDIT_NOISE_AREA_THRESHOLD_LOW,104,58,40,13,
                     ES_AUTOHSCROLL
     LTEXT           "dB",IDC_STATIC,150,60,12,8
-    LTEXT           "Noise reduction \n&aggressivness:",IDC_STATIC,7,73,94,
+    LTEXT           "Noise reduction \n&aggressiveness:",IDC_STATIC,7,73,94,
                     18
     EDITTEXT        IDC_EDIT_AGGRESSIVNESS,104,75,40,14,ES_AUTOHSCROLL
     LTEXT           "&Maximum noise reduction:",IDC_STATIC,7,97,94,8
