@@ -692,10 +692,8 @@ HRESULT CWmaDecoder::Stop()
 
 WmaEncoder::WmaEncoder()
 	:m_pWriter(NULL),
-	m_pProfile(NULL),
 	m_pProfileManager(NULL),
 	m_pHeaderInfo(NULL),
-	m_pStreamConfig(NULL),
 	m_SampleTimeMs(0),
 	m_pBuffer(NULL)
 {
@@ -714,16 +712,6 @@ void WmaEncoder::DeInit()
 		m_pBuffer = NULL;
 	}
 
-	if (NULL != m_pStreamConfig)
-	{
-		m_pStreamConfig->Release();
-		m_pStreamConfig = NULL;
-	}
-	if (NULL != m_pProfile)
-	{
-		m_pProfile->Release();
-		m_pProfile = NULL;
-	}
 	if (NULL != m_pProfileManager)
 	{
 		m_pProfileManager->Release();
@@ -821,7 +809,58 @@ BOOL WmaEncoder::OpenWrite(CDirectFile & File)
 #endif
 	return TRUE;
 }
+#ifdef _DEBUG
+void PrintProfile(IWMProfileManager * pProfileManager, REFGUID guid)
+{
+	IWMProfile * pProfile = NULL;
+	HRESULT hr;
+	hr = pProfileManager->LoadProfileByID(guid, & pProfile);
+	if ( ! SUCCEEDED(hr))
+	{
+		return;
+	}
 
+	IWMStreamConfig * pStreamConfig;
+	hr = pProfile->GetStreamByNumber(1, & pStreamConfig);
+	if (SUCCEEDED(hr))
+	{
+		IWMMediaProps * pProps = NULL;
+		HRESULT hr = pStreamConfig->QueryInterface(IID_IWMMediaProps, (void**) & pProps);
+		DWORD bitrate;
+		pStreamConfig->GetBitrate( & bitrate);
+		if (SUCCEEDED(hr))
+		{
+
+			DWORD cbType;
+			//   Make the first call to establish the size of buffer needed.
+			pProps -> GetMediaType(NULL, &cbType);
+
+			//   Now create a buffer of the appropriate size
+			BYTE *pBuf = new BYTE[cbType];
+			//   Create an appropriate structure pointer to the buffer.
+			WM_MEDIA_TYPE *pType = (WM_MEDIA_TYPE*) pBuf;
+
+			//   Call the method again to extract the information.
+			hr = pProps -> GetMediaType(pType, & cbType);
+
+			WAVEFORMATEX * pWfx = (WAVEFORMATEX *) pType->pbFormat;
+			DWORD * pExt = (DWORD *) (pType->pbFormat + sizeof WAVEFORMATEX);
+			TRACE("Format: %d, BytesPerSec: %d, BlockAlign: %d, cbSize: %d, stream bitrate=%d\n",
+				pWfx->wFormatTag, pWfx->nAvgBytesPerSec,
+				pWfx->nBlockAlign, pWfx->cbSize, bitrate);
+			TRACE("FormatExtension: %08X, %08X, %08X\n", pExt[0], pExt[1], pExt[2]);
+
+			delete[] pBuf;
+
+			pProps->Release();
+			pProps = NULL;
+		}
+		pStreamConfig->Release();
+	}
+
+	pProfile->Release();
+}
+#endif
 BOOL WmaEncoder::Init()
 {
 	if (S_OK != WMCreateWriter(NULL, & m_pWriter))
@@ -843,18 +882,15 @@ BOOL WmaEncoder::Init()
 		return FALSE;
 	}
 
-	hr = m_pProfileManager->LoadProfileByID(WMProfile_V70_128Audio, & m_pProfile);
-	if ( ! SUCCEEDED(hr))
-	{
-		return FALSE;
-	}
-
-	hr = m_pProfile->GetStreamByNumber(1, & m_pStreamConfig);
-	if ( ! SUCCEEDED(hr))
-	{
-		return FALSE;
-	}
-	m_pWriter->SetProfile(m_pProfile);
+#if 0//def _DEBUG
+	PrintProfile(m_pProfileManager, WMProfile_V40_64Audio);
+	PrintProfile(m_pProfileManager, WMProfile_V40_96Audio);
+	PrintProfile(m_pProfileManager, WMProfile_V40_128Audio);
+	PrintProfile(m_pProfileManager, WMProfile_V70_64AudioISDN);
+	PrintProfile(m_pProfileManager, WMProfile_V70_64Audio);
+	PrintProfile(m_pProfileManager, WMProfile_V70_96Audio);
+	PrintProfile(m_pProfileManager, WMProfile_V70_128Audio);
+#endif
 
 	return TRUE;
 }
@@ -915,10 +951,27 @@ BOOL WmaEncoder::SetFormat(WAVEFORMATEX * pDstWfx)
 {
 // pDstWfx points to the destination format (but with wFormatTag = WAVE_FORMAT_PCM
 // the function must replace wFormatTag
-	IWMMediaProps * pProps = NULL;
-	HRESULT hr = m_pStreamConfig->QueryInterface(IID_IWMMediaProps, (void**) & pProps);
+	IWMProfile * pProfile = NULL;
+
+	HRESULT hr = m_pProfileManager->LoadProfileByID(WMProfile_V70_128Audio, & pProfile);
 	if ( ! SUCCEEDED(hr))
 	{
+		return FALSE;
+	}
+
+	IWMStreamConfig * pStreamConfig = NULL;
+	hr = pProfile->GetStreamByNumber(1, & pStreamConfig);
+	if ( ! SUCCEEDED(hr))
+	{
+		pProfile->Release();
+		return FALSE;
+	}
+	IWMMediaProps * pProps = NULL;
+	hr = pStreamConfig->QueryInterface(IID_IWMMediaProps, (void**) & pProps);
+	if ( ! SUCCEEDED(hr))
+	{
+		pStreamConfig->Release();
+		pProfile->Release();
 		return FALSE;
 	}
 
@@ -933,30 +986,38 @@ BOOL WmaEncoder::SetFormat(WAVEFORMATEX * pDstWfx)
 
 	//   Call the method again to extract the information.
 	hr = pProps -> GetMediaType(pType, & cbType);
-	WAVEFORMATEX * pwfx = (WAVEFORMATEX *) pType->pbFormat;
 
-	pDstWfx->wFormatTag = pwfx->wFormatTag;
+#ifdef _DEBUG
+	WAVEFORMATEX * pWfx = (WAVEFORMATEX *) pType->pbFormat;
+	DWORD * pExt = (DWORD *) (pType->pbFormat + sizeof WAVEFORMATEX);
+	TRACE("Format: %d, BytesPerSec: %d, BlockAlign: %d, cbSize: %d\n",
+		pWfx->wFormatTag, pWfx->nAvgBytesPerSec,
+		pWfx->nBlockAlign, pWfx->cbSize);
+	TRACE("FormatExtension: %08X, %08X, %08X\n", pExt[0], pExt[1], pExt[2]);
 
-	pwfx->nSamplesPerSec = pDstWfx->nSamplesPerSec;
-	pwfx->nAvgBytesPerSec = pDstWfx->nAvgBytesPerSec;
+#endif
+	pType->pbFormat = PBYTE(pDstWfx);
+	pType->cbFormat = sizeof (WAVEFORMATEX) + pDstWfx->cbSize;
 
-	TRACE("MediaType: wFormatTag=%x, BytesPerSec = %d\n",
-		pwfx->wFormatTag, pwfx->nAvgBytesPerSec);
+	TRACE("MediaType: wFormatTag=%d, BytesPerSec = %d\n",
+		pDstWfx->wFormatTag, pDstWfx->nAvgBytesPerSec);
 
-	hr = m_pStreamConfig->SetBitrate(pwfx->nAvgBytesPerSec * 8);
 
-	pProps->SetMediaType(pType);
+	hr = pStreamConfig->SetBitrate(pDstWfx->nAvgBytesPerSec * 8);
+	hr = pProps->SetMediaType(pType);
 
-	hr = m_pProfile->ReconfigStream(m_pStreamConfig);
-	TRACE("ReconfigBitrate returned %X\n", hr);
-	hr = m_pWriter->SetProfile(m_pProfile);
+	hr = pProfile->ReconfigStream(pStreamConfig);
+	TRACE("ReconfigStream returned %X\n", hr);
+	hr = m_pWriter->SetProfile(pProfile);
 	delete[] pBuf;
 
 	pProps->Release();
 	pProps = NULL;
 
-	//m_pWriter->SetProfileByID(WMProfile_V70_128Audio);
-	m_pWriter->SetProfileByID(WMProfile_V40_128Audio);
+	pStreamConfig->Release();
+
+	pProfile->Release();
+
 	return SUCCEEDED(hr);
 }
 
