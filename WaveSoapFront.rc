@@ -2297,10 +2297,10 @@ BEGIN
     COMBOBOX        IDC_COMBO_MARKER_NAME,16,22,209,72,CBS_DROPDOWN | 
                     WS_VSCROLL | WS_TABSTOP
     LTEXT           "Type:",IDC_STATIC,16,41,51,8
-    CONTROL         "&Marker",IDC_RADIO1,"Button",BS_AUTORADIOBUTTON,71,40,
-                    58,10
-    CONTROL         "&Region",IDC_RADIO2,"Button",BS_AUTORADIOBUTTON,138,40,
-                    60,10
+    CONTROL         "&Marker",IDC_RADIO_MARKER,"Button",BS_AUTORADIOBUTTON | 
+                    WS_GROUP,71,40,58,10
+    CONTROL         "&Region",IDC_RADIO_REGION,"Button",BS_AUTORADIOBUTTON,
+                    138,40,60,10
     LTEXT           "&Start:",IDC_STATIC,16,60,52,8
     COMBOBOX        IDC_COMBO_START,70,58,140,39,CBS_DROPDOWN | WS_VSCROLL | 
                     WS_TABSTOP
