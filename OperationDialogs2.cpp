@@ -5,7 +5,10 @@
 #include "WaveSoapFront.h"
 #include "OperationDialogs2.h"
 #include <dbt.h>
+#include "FolderDialog.h"
+#include "FileDialogWithHistory.h"
 #include <afxpriv.h>
+#include "WaveSoapFileDialogs.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -207,6 +210,7 @@ CCdGrabbingDialog::CCdGrabbingDialog(CWnd* pParent /*=NULL*/)
 	m_RadioAssignAttributes = -1;
 	m_RadioStoreImmediately = -1;
 	m_RadioStoreMultiple = -1;
+	m_sSaveFolderOrFile = _T("");
 	//}}AFX_DATA_INIT
 	m_RadioAssignAttributes = 0;
 	m_RadioStoreImmediately = 0;
@@ -229,6 +233,7 @@ void CCdGrabbingDialog::DoDataExchange(CDataExchange* pDX)
 {
 	CDialog::DoDataExchange(pDX);
 	//{{AFX_DATA_MAP(CCdGrabbingDialog)
+	DDX_Control(pDX, IDC_EDIT_FOLDER_OR_FILE, m_eSaveFolderOrFile);
 	DDX_Control(pDX, IDC_STATIC_FORMAT, m_StaticFormat);
 	DDX_Control(pDX, IDC_COMBO_SPEED, m_SpeedCombo);
 	DDX_Control(pDX, IDC_COMBO_DRIVES, m_DrivesCombo);
@@ -236,6 +241,7 @@ void CCdGrabbingDialog::DoDataExchange(CDataExchange* pDX)
 	DDX_Radio(pDX, IDC_RADIO_ASSIGN_ATTRIBUTES, m_RadioAssignAttributes);
 	DDX_Radio(pDX, IDC_RADIO_STORE_IMMEDIATELY, m_RadioStoreImmediately);
 	DDX_Radio(pDX, IDC_RADIO_STORE_MULTIPLE_FILES, m_RadioStoreMultiple);
+	DDX_Text(pDX, IDC_EDIT_FOLDER_OR_FILE, m_sSaveFolderOrFile);
 	//}}AFX_DATA_MAP
 
 	if (pDX->m_bSaveAndValidate)
@@ -265,6 +271,7 @@ BEGIN_MESSAGE_MAP(CCdGrabbingDialog, CDialog)
 	ON_BN_CLICKED(IDC_RADIO_STORE_MULTIPLE_FILES, OnRadioStoreMultipleFiles)
 	ON_BN_CLICKED(IDC_RADIO_STORE_SINGLE_FILE, OnRadioStoreSingleFile)
 	ON_NOTIFY(NM_CLICK, IDC_LIST_TRACKS, OnClickListTracks)
+	ON_NOTIFY(LVN_BEGINLABELEDIT, IDC_LIST_TRACKS, OnBeginlabeleditListTracks)
 	//}}AFX_MSG_MAP
 	ON_WM_DEVICECHANGE()
 	ON_MESSAGE(WM_KICKIDLE, OnKickIdle)
@@ -768,7 +775,6 @@ void CCdGrabbingDialog::OnTimer(UINT nIDEvent)
 void CCdGrabbingDialog::OnButtonMore()
 {
 	// TODO: Add your control notification handler code here
-
 }
 
 void CCdGrabbingDialog::CheckForDiskChanged()
@@ -852,8 +858,82 @@ void CCdGrabbingDialog::CheckForDrivesChanged()
 
 void CCdGrabbingDialog::OnButtonBrowseSaveFolder()
 {
-	// TODO: Add your control notification handler code here
+	// save folder name consists of base folder, album name folder,
+	// save file name consists of base folder, album name filename,
+	// if album filename not entered, it is created from CD label
 
+	if (m_RadioStoreMultiple)
+	{
+		// browse for folder
+		m_eSaveFolderOrFile.GetWindowText(m_sSaveFolderOrFile);
+		CFolderDialog dlg("Save Files To Folder",
+						m_sSaveFolderOrFile, TRUE);
+		if (IDOK == dlg.DoModal())
+		{
+			// TODO: check permissiong in callback
+			m_eSaveFolderOrFile.SetWindowText(m_sSaveFolderOrFile);
+			// TODO: check if the folder exists and create if necessary
+		}
+	}
+	else
+	{
+		// browse for file
+		CString FileName;
+		CString Filter;
+		Filter.LoadString(IDS_PLAYLIST_FILE_FILTER);
+
+		CString Title;
+		Title.LoadString(IDS_PLAYLIST_SAVE_TITLE);
+
+		m_eSaveFolderOrFile.GetWindowText(m_sSaveFolderOrFile);
+		if (m_sSaveFolderOrFile.IsEmpty())
+		{
+			//m_sSaveFolderOrFile = _T("album.m3u");
+		}
+
+		CWaveSoapFileSaveDialog dlg(FALSE,
+									"wav", m_sSaveFolderOrFile,
+									OFN_HIDEREADONLY
+									| OFN_OVERWRITEPROMPT
+									| OFN_ENABLESIZING
+									| OFN_EXPLORER
+									| OFN_ENABLETEMPLATE
+									//| OFN_NONETWORKBUTTON
+									| OFN_PATHMUSTEXIST,
+									Filter);
+		dlg.m_ofn.lpstrTitle = Title;
+
+		dlg.m_pDocument = NULL;
+		//dlg.m_ofn.lpstrInitialDir = m_eSaveFolderOrFile;
+
+		WAVEFORMATEX * pWf = (WAVEFORMATEX*) new char[0xFFFF]; // max size
+		if (NULL == pWf)
+		{
+			NotEnoughMemoryMessageBox();
+			return;
+		}
+		// sample rate and number of channels might change from the original file
+		// new format may not be quite valid for some convertors!!
+		pWf->nSamplesPerSec = 44100;
+		pWf->nChannels = 2;
+		pWf->cbSize = 0;
+		pWf->nAvgBytesPerSec = 44100 *4;
+		pWf->nBlockAlign = 4;
+		pWf->wBitsPerSample = 16;
+		pWf->wFormatTag = WAVE_FORMAT_PCM;
+
+		dlg.m_pWf = pWf;
+
+		if (IDOK != dlg.DoModal())
+		{
+			delete[] (char*)pWf;
+			return;
+		}
+
+		m_sSaveFolderOrFile = dlg.GetPathName();
+		m_eSaveFolderOrFile.SetWindowText(m_sSaveFolderOrFile);
+		delete[] (char*)pWf;
+	}
 }
 
 void CCdGrabbingDialog::OnButtonCddb()
@@ -864,30 +944,34 @@ void CCdGrabbingDialog::OnButtonCddb()
 
 void CCdGrabbingDialog::OnButtonDeselectAll()
 {
-	if (0 == m_toc.Length[0]
-		&& 0 == m_toc.Length[1])
+	for (int tr = 0; tr < m_Tracks.size(); tr++)
 	{
-		return;
+		if (m_Tracks[tr].IsAudio)
+		{
+			if (m_Tracks[tr].Checked)
+			{
+				m_bNeedUpdateControls = TRUE;
+			}
+			m_lbTracks.SetCheck(tr, FALSE);
+			m_Tracks[tr].Checked = false;
+		}
 	}
-	for (int tr = 0; tr <= m_toc.LastTrack - m_toc.FirstTrack; tr++)
-	{
-		m_lbTracks.SetCheck(tr, FALSE);
-	}
-	m_bNeedUpdateControls = TRUE;
 }
 
 void CCdGrabbingDialog::OnButtonSelectAll()
 {
-	if (0 == m_toc.Length[0]
-		&& 0 == m_toc.Length[1])
+	for (int tr = 0; tr < m_Tracks.size(); tr++)
 	{
-		return;
+		if (m_Tracks[tr].IsAudio)
+		{
+			if ( ! m_Tracks[tr].Checked)
+			{
+				m_bNeedUpdateControls = TRUE;
+			}
+			m_lbTracks.SetCheck(tr, TRUE);
+			m_Tracks[tr].Checked = true;
+		}
 	}
-	for (int tr = 0; tr <= m_toc.LastTrack - m_toc.FirstTrack; tr++)
-	{
-		m_lbTracks.SetCheck(tr, TRUE);
-	}
-	m_bNeedUpdateControls = TRUE;
 }
 
 void CCdGrabbingDialog::OnButtonSetFormat()
@@ -994,7 +1078,6 @@ void CCdGrabbingDialog::InitReadSpeedCombobox()
 void CCdGrabbingDialog::OnClickListTracks(NMHDR* pNMHDR, LRESULT* pResult)
 {
 	*pResult = 0;
-	UINT flags;
 	NMLISTVIEW * pnmlv = (NMLISTVIEW *) pNMHDR;
 	LVHITTESTINFO hti;
 	hti.pt = pnmlv->ptAction;
@@ -1013,6 +1096,7 @@ void CCdGrabbingDialog::OnClickListTracks(NMHDR* pNMHDR, LRESULT* pResult)
 	lvi.iSubItem = 0;
 	lvi.mask = LVIF_STATE;
 	lvi.stateMask = LVIS_STATEIMAGEMASK;
+
 	if (m_Tracks[hti.iItem].Checked)
 	{
 		// uncheck
@@ -1025,4 +1109,56 @@ void CCdGrabbingDialog::OnClickListTracks(NMHDR* pNMHDR, LRESULT* pResult)
 		m_Tracks[hti.iItem].Checked = true;
 	}
 	m_lbTracks.SetItem( & lvi);
+}
+
+void CCdGrabbingDialog::OnBeginlabeleditListTracks(NMHDR* pNMHDR, LRESULT* pResult)
+{
+	NMLVDISPINFO* pDispInfo = (NMLVDISPINFO*)pNMHDR;
+	// if the track is not audio track, return TRUE
+	TRACE("OnBeginlabeleditListTracks %d\n", pDispInfo->item.iItem);
+	if (pDispInfo->item.iItem >= m_Tracks.size()
+		|| ! m_Tracks[pDispInfo->item.iItem].IsAudio)
+	{
+		*pResult = TRUE;
+	}
+	else
+	{
+		*pResult = 0;
+	}
+}
+
+BOOL CCdGrabbingDialog::PreTranslateMessage(MSG* pMsg)
+{
+	if (pMsg->message == WM_KEYDOWN &&
+		pMsg->wParam == VK_F2
+		&& pMsg->hwnd != NULL
+		&& pMsg->hwnd == m_lbTracks.m_hWnd)
+	{
+		// find a selected item
+		int nSelItem = -1;
+		while (-1 != (nSelItem = m_lbTracks.GetNextItem(nSelItem, LVNI_SELECTED)))
+		{
+			if (nSelItem < m_Tracks.size()
+				&& m_Tracks[nSelItem].IsAudio)
+			{
+				// unselect all items
+				int nItem = -1;
+				while (-1 != (nItem = m_lbTracks.GetNextItem(nItem, LVNI_SELECTED)))
+				{
+					if (nItem != nSelItem)
+					{
+						m_lbTracks.SetItemState(nItem, LVIS_SELECTED, 0);
+					}
+				}
+				m_lbTracks.SetItemState(nSelItem, LVIS_FOCUSED, LVIS_FOCUSED);
+				TRACE("m_lbTracks.EditLabel(%d)\n", nSelItem);
+				m_lbTracks.EditLabel(nSelItem);
+
+				break;
+			}
+		}
+		return TRUE;
+	}
+
+	return CDialog::PreTranslateMessage(pMsg);
 }

@@ -362,7 +362,8 @@ UINT CWaveSoapFileSaveDialog::OnShareViolation( LPCTSTR lpszPathName)
 {
 	// if the name is the same as current document name, just return
 	// if it's different, display warning
-	if (m_pDocument->m_OriginalWavFile.IsOpen()
+	if (NULL != m_pDocument
+		&& m_pDocument->m_OriginalWavFile.IsOpen()
 		&& AfxComparePath(m_pDocument->m_OriginalWavFile.GetName(), lpszPathName))
 	{
 		return OFN_SHAREFALLTHROUGH;

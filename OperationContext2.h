@@ -308,8 +308,34 @@ public:
 		m_OperationString = StatusString;
 		m_ReturnBufferFlags = CDirectFile::ReturnBufferDirty;
 	}
-	~CSwapChannelsContext() {}
+	virtual ~CSwapChannelsContext() {}
 	virtual BOOL ProcessBuffer(void * buf, size_t len, DWORD offset, BOOL bBackward = FALSE);
 };
 
+class CCdReadingContext : public COperationContext
+{
+public:
+	CCdReadingContext(CWaveSoapFrontDoc * pDoc,
+					LPCTSTR StatusString, LPCTSTR OperationName, CCdDrive const & Drive)
+		: COperationContext(pDoc, OperationName,
+							OperationContextDiskIntensive | OperationContextSerialized),
+		m_Drive(Drive)
+	{
+		m_GetBufferFlags = GetBufferWriteOnly | GetBufferNoPrefetch;
+		m_ReturnBufferFlags = ReturnBufferDirty | ReturnBufferFlush;
+		m_bCdBuffer = NULL;
+		m_CdBufferSize = 0;
+	}
+
+	virtual ~CCdReadingContext() {}
+protected:
+	CCdDrive m_Drive;
+	CdAddressMSF m_CdAddress;
+	LONG m_NumberOfSectors;
+	void * m_bCdBuffer;
+	int m_CdBufferSize;
+	virtual BOOL ProcessBuffer(void * buf, size_t len, DWORD offset, BOOL bBackward = FALSE);
+	virtual BOOL Init();
+	virtual void DeInit();
+}
 #endif // AFX_OPERATIONCONTEXT2_H__FFA16C44_2FA7_11D4_9ADD_00C0F0583C4B__INCLUDED_

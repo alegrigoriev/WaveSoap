@@ -156,6 +156,7 @@ public:
 // Dialog Data
 	//{{AFX_DATA(CCdGrabbingDialog)
 	enum { IDD = IDD_DIALOG_CD_GRABBING };
+	CEdit	m_eSaveFolderOrFile;
 	CStatic	m_StaticFormat;
 	CComboBox	m_SpeedCombo;
 	CComboBox	m_DrivesCombo;
@@ -163,6 +164,7 @@ public:
 	int		m_RadioAssignAttributes;
 	int		m_RadioStoreImmediately;
 	int		m_RadioStoreMultiple;
+	CString	m_sSaveFolderOrFile;
 	//}}AFX_DATA
 
 	CCdDrive m_CdDrive;
@@ -191,6 +193,8 @@ public:
 // Overrides
 	// ClassWizard generated virtual function overrides
 	//{{AFX_VIRTUAL(CCdGrabbingDialog)
+public:
+	virtual BOOL PreTranslateMessage(MSG* pMsg);
 protected:
 	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV support
 	//}}AFX_VIRTUAL
@@ -234,6 +238,7 @@ protected:
 	afx_msg void OnRadioStoreMultipleFiles();
 	afx_msg void OnRadioStoreSingleFile();
 	afx_msg void OnClickListTracks(NMHDR* pNMHDR, LRESULT* pResult);
+	afx_msg void OnBeginlabeleditListTracks(NMHDR* pNMHDR, LRESULT* pResult);
 	//}}AFX_MSG
 	void OnMetricsChange();
 	afx_msg LRESULT OnDeviceChange(UINT, DWORD);

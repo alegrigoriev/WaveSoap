@@ -1,7 +1,7 @@
 Known problems and tasks:
 
-use CDRALW2K.sys service before trying ASPI
 Add CD grabbing
+use CDRALW2K.sys service before trying ASPI
 Open CDA files
 Load sound from AVI
 Add options dialog
@@ -53,7 +53,7 @@ Multisession disk shows only begin of tracks. Read the whole structure.
 
 Expression evaluation selection longer than file length doesn't update file length
 After file length increased to 1 sample from 0, scroll bar set to wrond scale
-Multiline edit box in child dialog eats Esc and Enter (DLGC_WANTALLCHARS)
+Multiline edit box in child dialog eats Esc and Enter (DLGC_WANTALLCHARS) (MFC CDialog::PreTranslateMessage() bug
 If there is not enough space on NTFS volume, it will be seen only during flush
 Windows2000 is trying to zero the allocated file
 samples with 32767, -32768 are not visible
@@ -99,6 +99,7 @@ Save As dialog is not centered first time (comdlg problem?)
 ??? When time/seconds format is set for status bar, MM:SS is actually shown
 
 Done:
+Disable label edit, if the track is not audio
 Draw gray background outside file area on FFT
 Add overflow dialog on resample	and other waveproc
 Test "reload compressed file" dialogs

@@ -21,11 +21,7 @@
 extern "C" {
 #endif
 
-typedef void *LPSRB;
-typedef void (*PFNPOST)();
-
-DWORD SendASPI32Command    (LPSRB);
-DWORD GetASPI32SupportInfo (VOID);
+#pragma pack(push, 1)
 
 #define SENSE_LEN					14			// Default sense buffer length
 #define SRB_DIR_SCSI				0x00		// Direction determined by SCSI 															// command
@@ -62,7 +58,8 @@ DWORD GetASPI32SupportInfo (VOID);
 #define SS_INVALID_SRB		0xE0		// Invalid parameter set in SRB
 #define SS_FAILED_INIT		0xE4		// ASPI for windows failed init
 #define SS_ASPI_IS_BUSY		0xE5		// No resources available to execute cmd
-#define SS_BUFFER_TO_BIG	0xE6		// Buffer size to big to handle!
+#define SS_BUFFER_TOO_BIG	0xE6		// Buffer size to big to handle!
+#define SS_BUFFER_ALIGN    0xE1
 
 //***************************************************************************
 //							%%% Host Adapter Status %%%
@@ -198,6 +195,30 @@ typedef struct {
 	BYTE	SRB_Rsvd1[10];			// Reserved
 } SRB_GetDiskInfo, *PSRB_GetDiskInfo;
 
+typedef struct tag_ASPI32BUFF
+{
+	PBYTE                   AB_BufPointer;      // Pointer to the ASPI allocated buffer
+	DWORD                   AB_BufLen;          // Length in bytes of the buffer
+	DWORD                   AB_ZeroFill;        // Flag set to 1 if buffer should be zeroed
+	DWORD                   AB_Reserved;        // Reserved
+} ASPI32BUFF, *PASPI32BUFF;
+
+typedef struct HaTargetLun
+{
+	BYTE Lun;
+	BYTE TargetId;
+	BYTE HaId;
+	BYTE zero;
+} HaTargetLun;
+typedef DWORD (_cdecl * GETASPI32SUPPORTINFO)(void);
+typedef DWORD (_cdecl * SENDASPI32COMMAND)( void * );
+typedef BOOL (_cdecl * GETASPI32BUFFER)(PASPI32BUFF );
+typedef BOOL (_cdecl * FREEASPI32BUFFER)(PASPI32BUFF );
+typedef BOOL (_cdecl * TRANSLATEASPI32ADDRESS)( PDWORD, PDWORD );
+typedef UCHAR (_cdecl * GETASPI32DRIVELETTER)(HaTargetLun);
+typedef HaTargetLun (_cdecl * GETASPI32HATARGETLUN)(UCHAR DriveLetter);
+
+#pragma pack(pop)
 
 #ifdef __cplusplus
 }

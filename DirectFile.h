@@ -180,6 +180,7 @@ public:
 
 	enum { ReturnBufferDirty = 1, // buffer contains changed data
 		ReturnBufferDiscard = 2, // make the buffer lower priority
+		ReturnBufferFlush = 4,  // request buffer flush
 	};
 
 	// unlock the buffer, mark dirty if necessary

@@ -1316,3 +1316,44 @@ The following are additional guidelines for writing ASPI for Win32 applications.
 
 
 
+BOOL GetASPI32Buffer( PASPI32BUFF ) 
+
+This function will allocate some storage space for us in Virtual Memory. 
+Normally we could just use VirtualAlloc, but sometimes the space is so 
+physically fragmented that it'll make transfer on bus-mastering host 
+adapters impossible. So, we can use this function. PASPI32BUFF is a pointer 
+to the ASPI32BUFF struct in wnaspi32.h. It needs a DWORD containing the 
+length in bytes of the buffer, a ZeroFill flag that ASPI will use to 
+determine if it should zero fill the buffer (otherwise the buffer will 
+hold whatever data was last put in that spot), and a Reserved DWORD which 
+MBZ. If the function call returns a TRUE (1), then there's a section in 
+the PASPI32BUFF struct that will have the address to the block/array of 
+bytes reserved for your use. If you were writing a CD burning program, 
+you'd create ASPI32Buffers to hold the data you wish to write to CD. 
+
+BOOL FreeASPI32Buffer( PASPI32BUFF ) 
+
+This function takes the same struct as GetASPI32Buffer, but the ZeroFill 
+and Reserved are both MBZ. Now you must set the address that you were 
+originally given plus the size of the buffer/array in bytes that you 
+requested so ASPI can release it back to the OS. If the address or the 
+size is not exactly correct, the function will fail. You've got to keep 
+track of that information in your program! 
+
+BOOL TranslateASPI32Address( PDWORD pTriple, PDWORD pDEVNODE ) 
+
+Here we're getting into some Windows-specific Plug-n-Play topics. 
+In Windows 9x (and I would assume Win2k, but not NT), DEVNODEs are 
+associated with WM_DEVICECHANGE messages. So, it's possible to associate 
+ASPI target addresses with plug-n-play events. 
+
+pTriple is an encoding of the standard SCSI HostAdapter/SCSI_ID/LUN 
+triple, stored as 0x00HHIILL, where HH is the Host Adapter, II is the 
+ID, and LL is the LUN. Make pDEVNODE 0x0 if you which to translate the 
+Path to a DEVNODE. After you call the function and it returns TRUE (1), 
+the pDEVNODE will now contain the DEVNODE (even though you originally 
+set it to a 0). If DEVNODE is non-zero, the function will assume that 
+you're giving it a valid DEVNODE to translate to the 0x00HHIILL Triple, 
+and will transform the first argument accordingly. It's messy, but 
+efficient. Want to use DEVNODEs with Plug-n-play events? Go read a Windows 
+plug-n-play book. I only care about the pure SCSI aspects. =)

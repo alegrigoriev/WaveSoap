@@ -14,6 +14,30 @@
 #include <winioctl.h>
 #include <ntddscsi.h>
 
+#define SRB_HAInquiry    _SRB_HAInquiry
+#define PSRB_HAInquiry   _PSRB_HAInquiry
+#define SRB_ExecSCSICmd  _SRB_ExecSCSICmd
+#define PSRB_ExecSCSICmd _PSRB_ExecSCSICmd
+#define SRB_Abort        _SRB_Abort
+#define PSRB_Abort       _PSRB_Abort
+#define SRB_BusDeviceReset _SRB_BusDeviceReset
+#define PSRB_BusDeviceReset _PSRB_BusDeviceReset
+#define SRB_GetDiskInfo     _SRB_GetDiskInfo
+#define PSRB_GetDiskInfo    _PSRB_GetDiskInfo
+
+#include "wnaspi32.h"
+
+#undef  SRB_HAInquiry
+#undef PSRB_HAInquiry
+#undef SRB_ExecSCSICmd
+#undef PSRB_ExecSCSICmd
+#undef SRB_Abort
+#undef PSRB_Abort
+#undef SRB_BusDeviceReset
+#undef PSRB_BusDeviceReset
+#undef SRB_GetDiskInfo
+#undef PSRB_GetDiskInfo
+
 #pragma pack(push, 1)
 
 struct CD_CDB
@@ -662,30 +686,6 @@ struct SRB_ExecSCSICmd : SRB
 
 typedef SRB_HAInquiry *PSRB_HAInquiry;
 
-#define SC_HA_INQUIRY      0
-
-#define SC_GET_DEV_TYPE    1
-#define SC_EXEC_SCSI_CMD   2
-#define SC_ABORT_SRB       3
-#define SC_RESET_DEV       4
-#define SC_GET_DISK_INFO   6
-
-#define SRB_POSTING                0x01
-#define SRB_ENABLE_RESIDUAL_COUNT  0x04
-#define SRB_DIR_IN                 0x08
-#define SRB_DIR_OUT                0x10
-#define SRB_EVENT_NOTIFY           0x40
-
-#define SS_PENDING         0x00
-#define SS_COMP            0x01
-#define SS_ABORTED         0x02
-#define SS_ABORT_FAIL      0x03
-#define SS_ERR             0x04
-#define SS_INVALID_HA      0x81
-#define SS_INVALID_SRB     0xE0
-#define SS_BUFFER_ALIGN    0xE1
-#define SS_ASPI_IS_BUSY    0xE5
-#define SS_BUFFER_TOO_BIG   0xE6
 
 enum CdMediaChangeState
 {
@@ -697,6 +697,7 @@ class CCdDrive
 {
 public:
 	CCdDrive(BOOL UseAspi = TRUE);
+	CCdDrive(CCdDrive const & Drive, BOOL UseAspi = TRUE);
 	virtual ~CCdDrive();
 
 	BOOL Open(TCHAR letter);
@@ -739,7 +740,6 @@ protected:
 	TCHAR m_DriveLetter;
 
 	SCSI_ADDRESS m_ScsiAddr;
-	IO_SCSI_CAPABILITIES m_ScsiCaps;
 
 	HMODULE m_hWinaspi32;
 	ULONG m_MaxTransferSize;
@@ -750,11 +750,15 @@ protected:
 	bool m_bMediaChangeNotificationDisabled;
 	bool m_bDoorLocked;
 
+	void LoadAspi();
 	DWORD (_cdecl * GetASPI32DLLVersion)();
 	DWORD (_cdecl * GetASPI32SupportInfo)();
 	DWORD (_cdecl * SendASPI32Command)(SRB * lpSRB);
-
-
+	GETASPI32BUFFER GetAspi32Buffer;
+	FREEASPI32BUFFER FreeAspi32Buffer;
+	TRANSLATEASPI32ADDRESS TranslateAspi32Address;
+	GETASPI32DRIVELETTER GetAspi32DriveLetter;
+	GETASPI32HATARGETLUN GetAspi32HaTargetLun;
 };
 
 #pragma pack(pop)

@@ -596,6 +596,10 @@ SOURCE=.\WaveSupport.h
 
 SOURCE=.\WmaFile.h
 # End Source File
+# Begin Source File
+
+SOURCE=.\wnaspi32.h
+# End Source File
 # End Group
 # Begin Group "Resource Files"
 
