@@ -20,7 +20,11 @@ CMmioFile & CMmioFile::operator=(CMmioFile & SourceFile)
 	Close();
 	m_File.Attach( & SourceFile.m_File);
 	MMIOINFO mmii;
-	SourceFile.GetInfo(mmii);
+	memset( & mmii, 0, sizeof mmii);
+	mmii.fccIOProc = 0;
+	mmii.pIOProc = BufferedIOProc;
+
+	mmii.adwInfo[0] = (DWORD)this;
 	m_hmmio = mmioOpen(NULL, & mmii, MMIO_READ | MMIO_ALLOCBUF);
 	Seek(0);
 	return *this;
