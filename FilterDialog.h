@@ -181,17 +181,16 @@ protected:
 /////////////////////////////////////////////////////////////////////////////
 // CFilterDialog dialog
 
-class CFilterDialog : public CResizableDialog
+class CFilterDialog : public CDialogWithSelectionT<CResizableDialog>
 {
-	typedef CResizableDialog BaseClass;
+	typedef CDialogWithSelectionT<CResizableDialog> BaseClass;
 // Construction
 public:
 	CFilterDialog(SAMPLE_INDEX Start,
 				SAMPLE_INDEX End,
 				SAMPLE_INDEX CaretPosition,
 				CHANNEL_MASK Channels,
-				NUMBER_OF_SAMPLES FileLength,
-				const WAVEFORMATEX * pWf,
+				CWaveFile & WaveFile,
 				int m_TimeFormat,
 				BOOL bLockChannels,
 				BOOL	bUndoEnabled,
@@ -200,20 +199,9 @@ public:
 // Dialog Data
 	//{{AFX_DATA(CFilterDialog)
 	enum { IDD = IDD_DIALOG_FILTER };
-	CStatic	m_SelectionStatic;
-	BOOL	m_bUndo;
 	//}}AFX_DATA
 	CNumEdit m_EditGain;
 	CNumEdit m_EditFrequency;
-
-	BOOL	m_bLockChannels;
-	SAMPLE_INDEX m_Start;
-	SAMPLE_INDEX m_End;
-	SAMPLE_INDEX m_CaretPosition;
-	NUMBER_OF_SAMPLES m_FileLength;
-	CHANNEL_MASK m_Chan;
-	int m_TimeFormat;
-	const WAVEFORMATEX * m_pWf;
 
 	CApplicationProfile m_Profile;  // goes before m_wGraph
 	CFilterGraphWnd m_wGraph;
@@ -227,7 +215,6 @@ protected:
 
 // Implementation
 protected:
-	void UpdateSelectionStatic();
 
 	void OnNotifyGraph( NMHDR * pNotifyStruct, LRESULT * result );
 	void OnKillfocusEditBandGain();
@@ -236,7 +223,6 @@ protected:
 	afx_msg void OnButtonLoad();
 	afx_msg void OnButtonResetBands();
 	afx_msg void OnButtonSaveAs();
-	afx_msg void OnButtonSelection();
 	afx_msg void OnCheckZeroPhase();
 	afx_msg void OnCheckLowpass();
 	afx_msg void OnCheckHighpass();
