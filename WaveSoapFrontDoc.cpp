@@ -219,6 +219,11 @@ CWaveSoapFrontDoc::CWaveSoapFrontDoc()
 	m_DefaultPasteMode = pApp->m_DefaultPasteMode;
 	m_PasteResampleMode = pApp->m_PasteResampleMode;
 
+	m_UseFadeInOut = pApp->m_UseFadeInOut;
+	m_FadeInOutLengthMs = pApp->m_FadeInOutLengthMs;
+	m_FadeInEnvelope = pApp->m_FadeInEnvelope;
+	m_FadeOutEnvelope = -m_FadeInEnvelope;
+
 	m_Thread.m_bAutoDelete = FALSE;
 	m_hThreadEvent = CreateEvent(NULL, FALSE, FALSE, NULL);
 	TRACE("CWaveSoapFrontDoc::CWaveSoapFrontDoc()\n");
@@ -278,6 +283,10 @@ CWaveSoapFrontDoc::~CWaveSoapFrontDoc()
 
 	pApp->m_DefaultPasteMode = m_DefaultPasteMode;
 	pApp->m_PasteResampleMode = m_PasteResampleMode;
+
+	pApp->m_UseFadeInOut = m_UseFadeInOut;
+	pApp->m_FadeInOutLengthMs = m_FadeInOutLengthMs;
+	pApp->m_FadeInEnvelope = m_FadeInEnvelope;
 }
 
 NUMBER_OF_SAMPLES CWaveSoapFrontDoc::WaveFileSamples() const
@@ -3914,16 +3923,41 @@ void CWaveSoapFrontDoc::OnProcessMute()
 		m_FadeInOutLengthMs = dlg.GetTransitionLengthMs();
 	}
 
+	CStagedContext::auto_ptr pContext(new CStagedContext(this, 0, IDS_MUTING_STATUS_PROMPT,
+														IDS_MUTING_OPERATION_NAME));
+
+	CVolumeChangeContext * pVolumeContext = new CVolumeChangeContext(this, 0, 0, 0.);
+
+	pContext->AddContext(pVolumeContext);
+
+	SAMPLE_INDEX Start = m_SelectionStart;
+	SAMPLE_INDEX End = m_SelectionEnd;
+
 	if (m_UseFadeInOut)
 	{
+		int FadeInOutLengthSamples = m_FadeInOutLengthMs * WaveSampleRate() / 1000;
+
+		if (End - Start > FadeInOutLengthSamples * 2)
+		{
+			if (End < WaveFileSamples())
+			{
+				End -= FadeInOutLengthSamples;
+				pContext->AddContext(new CFadeInOutOperation(this, m_FadeInEnvelope, m_WavFile,
+															End, GetSelectedChannel(), FadeInOutLengthSamples, UndoEnabled()));
+			}
+
+			if (Start != 0)
+			{
+				pContext->AddContext(new CFadeInOutOperation(this, m_FadeOutEnvelope, m_WavFile,
+										Start, GetSelectedChannel(), FadeInOutLengthSamples, UndoEnabled()));
+
+				Start += FadeInOutLengthSamples;
+			}
+		}
 	}
 
-	CVolumeChangeContext::auto_ptr pContext
-	(new CVolumeChangeContext(this, IDS_MUTING_STATUS_PROMPT,
-							IDS_MUTING_OPERATION_NAME, 0.));
-
-	if ( ! pContext->InitDestination(m_WavFile, m_SelectionStart,
-									m_SelectionEnd, GetSelectedChannel(), UndoEnabled()))
+	if ( ! pVolumeContext->InitDestination(m_WavFile, Start,
+											End, GetSelectedChannel(), UndoEnabled()))
 	{
 		return;
 	}
