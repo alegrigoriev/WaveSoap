@@ -73,7 +73,58 @@ struct GetConfigurationCDB : CD_CDB
 
 	UCHAR AllocationLength[2];  // MSB first
 
-	UCHAR Control;  // ??
+	UCHAR Control;
+	GetConfigurationCDB(USHORT allocLength,
+						USHORT StartingFeature = 0, int RequestType = RequestedTypeAllDescriptors)
+	{
+		memset(this, 0, sizeof *this);
+		Opcode = OPCODE;
+		AllocationLength[0] = UCHAR(allocLength >> 8);
+		AllocationLength[1] = UCHAR(allocLength);
+
+		StartingFeatureNumber[0] = UCHAR(StartingFeature >> 8);
+		StartingFeatureNumber[1] = UCHAR(StartingFeature);
+
+		RequestedType = RequestType;
+	}
+};
+
+struct ModeSenseCDB : CD_CDB
+{
+	enum { OPCODE = 0x1A};
+	UCHAR Reserved1:3;
+	UCHAR DisableBlockDescriptor:1;
+	UCHAR Reserved2:4;
+
+	UCHAR PageCode:6;
+	UCHAR PageControl:2;
+	enum {PageCurrentValues = 0,
+		PageChangeableValues = 1,
+		PageDefaultValues = 2,
+		PageSavedValues = 3
+	};
+
+	UCHAR Reserved3;
+	UCHAR AllocationLength;
+	UCHAR Control;
+	ModeSenseCDB(UCHAR nLength, int nPageCode,
+				int nPageControl = PageCurrentValues, bool dbd = true)
+	{
+		memset(this, 0, sizeof *this);
+		Opcode = OPCODE;
+		AllocationLength = nLength;
+		PageCode = nPageCode;
+		PageControl = nPageControl;
+		DisableBlockDescriptor = dbd;
+	}
+};
+
+struct ModeInfoHeader
+{
+	UCHAR ModeDataLength;
+	UCHAR MediumType;
+	UCHAR DeviceSpecific;
+	UCHAR BlockDescriptorLength;
 };
 
 struct SCSI_SenseInfo
@@ -266,12 +317,12 @@ struct FeatureHeader
 
 struct RealTimeStreamingFeatureDesc : FeatureDescriptor
 {
-	enum {Code0 = 0x01, Code1 = 0x07, AddLength = 0};
+	enum {Code = 0x0107, AddLength = 0};
 };
 
 struct CoreFeatureDesc : FeatureDescriptor
 {
-	enum {Code0 = 0x00, Code1 = 0x01, AddLength = 4};
+	enum {Code = 0x0001, AddLength = 4};
 	UCHAR PhysicalInterfaceStandard[4]; // MSB first
 	// 00000001 SCSI family
 	// 00000002 ATAPI
@@ -281,7 +332,7 @@ struct CoreFeatureDesc : FeatureDescriptor
 
 struct ProfileListDesc : FeatureDescriptor
 {
-	enum {Code0 = 0x00, Code1 = 0x00, AddLength = 4*16};
+	enum {Code = 0x0000, AddLength = 4*16};
 	struct ProfileDescriptor
 	{
 		UCHAR ProfileNumber[2]; // MSB first
@@ -306,12 +357,12 @@ enum {
 
 struct MultiReadFeatureDesc : FeatureDescriptor
 {
-	enum {Code0 = 0x00, Code1 = 0x1D, AddLength = 0};
+	enum {Code = 0x001D, AddLength = 0};
 };
 
 struct CDReadFeatureDesc : FeatureDescriptor
 {
-	enum {Code0 = 0x00, Code1 = 0x1E, AddLength = 4};
+	enum {Code = 0x001E, AddLength = 4};
 	UCHAR CDText:1;
 	UCHAR C2Flag:1; // supports C2 error pointers
 	UCHAR Reserved1:6;
@@ -321,14 +372,92 @@ struct CDReadFeatureDesc : FeatureDescriptor
 
 struct SerialNumberFeatureDesc : FeatureDescriptor
 {
-	enum {Code0 = 0x01, Code1 = 0x08, AddLength = 128};
+	enum {Code = 0x0108, AddLength = 128};
 	UCHAR SerialNumber[128];  // number of bytes is in AdditionalLength
 };
+
+struct SRB
+{
+	BYTE        Command;            // ASPI command code
+	BYTE        Status;         // ASPI command status byte
+	BYTE        HostAdapter;           // ASPI host adapter number
+	BYTE        Flags;          // ASPI request flags
+	DWORD       dwReserved;       // Reserved, MUST = 0
+};
+
+struct SRB_HAInquiry : SRB
+{
+	BYTE        HA_Count;           // Number of host adapters present
+	BYTE        HA_SCSI_ID;         // SCSI ID of host adapter
+	BYTE        HA_ManagerId[16];   // String describing the manager
+	BYTE        HA_Identifier[16];  // String describing the host adapter
+	union {
+		BYTE        HA_Unique[16];      // Host Adapter Unique parameters
+		struct {
+			USHORT BufferAlignment;
+			UCHAR Reserved1:1;
+			UCHAR ResidualByteCountSupported:1;
+			UCHAR MaximumScsiTargets;
+			ULONG MaximumTransferLength;
+			// the rest is reserved
+		};
+	};
+	WORD        HA_Rsvd1;
+};
+
+struct SRB_ExecSCSICmd : SRB
+{
+	BYTE        Target;         // Target's SCSI ID
+	BYTE        Lun;            // Target's LUN number
+	WORD        Rsvd1;          // Reserved for Alignment
+	DWORD       BufLen;         // Data Allocation Length
+	void *      BufPointer;    // Data Buffer Point
+	BYTE        SenseLen;       // Sense Allocation Length
+	BYTE        CDBLen;         // CDB Length
+	BYTE        HostStatus;         // Host Adapter Status
+	BYTE        TargetStatus;       // Target Status
+	// to be defined: calling convention
+	union {
+		void        (_cdecl*SRB_PostProc)(SRB_ExecSCSICmd*);  // Post routine
+		HANDLE      hCompletionEvent;
+	};
+	void        *Reserved2;         // Reserved
+	BYTE        Reserved3[16];      // Reserved for expansion
+	BYTE        CDBByte[16];        // SCSI CDB
+	SCSI_SenseInfo  SenseInfo; // Request Sense buffer
+};
+
+typedef SRB_HAInquiry *PSRB_HAInquiry;
+
+#define SC_HA_INQUIRY      0
+
+#define SC_GET_DEV_TYPE    1
+#define SC_EXEC_SCSI_CMD   2
+#define SC_ABORT_SRB       3
+#define SC_RESET_DEV       4
+#define SC_GET_DISK_INFO   6
+
+#define SRB_POSTING                0x01
+#define SRB_ENABLE_RESIDUAL_COUNT  0x04
+#define SRB_DIR_IN                 0x08
+#define SRB_DIR_OUT                0x10
+#define SRB_EVENT_NOTIFY           0x40
+
+#define SS_PENDING         0x00
+#define SS_COMP            0x01
+#define SS_ABORTED         0x02
+#define SS_ABORT_FAIL      0x03
+#define SS_ERR             0x04
+#define SS_INVALID_HA      0x81
+#define SS_INVALID_SRB     0xE0
+#define SS_BUFFER_ALIGN    0xE1
+#define SS_ASPI_IS_BUSY    0xE5
+#define SS_BUFFER_TOO_BIG   0xE6
 
 class CCdDrive
 {
 public:
-	CCdDrive();
+	CCdDrive(BOOL UseAspi = TRUE);
 	virtual ~CCdDrive();
 	BOOL Open(TCHAR letter);
 	void Close();
@@ -344,20 +473,24 @@ public:
 	BOOL LockDoor();
 	BOOL UnlockDoor();
 
-	BOOL SendAtapiCommand(CD_CDB * pCdb, void * pData, DWORD * pDataLen,
+	BOOL SendScsiCommand(CD_CDB * pCdb, void * pData, DWORD * pDataLen,
 						int DataDirection,
 						SCSI_SenseInfo * pSense);  // SCSI_IOCTL_DATA_IN, SCSI_IOCTL_DATA_OUT,
+	BOOL ScsiInquiry(SRB_HAInquiry * pInq);
+
 private:
 	HANDLE m_hDrive;
 	SCSI_ADDRESS m_ScsiAddr;
 	HMODULE m_hWinaspi32;
-	bool m_bReserved;
+	ULONG m_MaxTransferSize;
+	USHORT m_BufferAlignment;
 	bool m_bMediaChangeNotificationDisabled;
 	bool m_bDoorLocked;
 	CDROM_TOC m_Toc;
 	DWORD (_cdecl * GetASPI32DLLVersion)();
 	DWORD (_cdecl * GetASPI32SupportInfo)();
-	DWORD (_cdecl * SendASPI32Command)(PVOID lpSRB);
+	DWORD (_cdecl * SendASPI32Command)(SRB * lpSRB);
+
 
 };
 

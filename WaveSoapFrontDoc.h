@@ -52,6 +52,7 @@ enum {
 	UpdateSoundDontRescanPeaks = 1,
 	SetSelection_MakeCaretVisible = 1,
 	SetSelection_MoveCaretToCenter = 2,
+	SetSelection_SnapToMaximum = 4,
 	SaveFile_SameName = 4,
 	SaveFile_CloseAfterSave = 8,
 	SaveFile_SaveCopy = 0x10,

@@ -20,6 +20,8 @@ CWaveOutlineView::CWaveOutlineView()
 	: m_PlaybackCursorPosition(-1),
 	m_LeftViewBoundary(-1),
 	m_LastMaxAmplitude(0),
+	bIsTrackingSelection(false),
+	nKeyPressed(0),
 	m_RightViewBoundary(-1)
 {
 }
@@ -36,6 +38,7 @@ BEGIN_MESSAGE_MAP(CWaveOutlineView, CView)
 	ON_WM_LBUTTONDOWN()
 	ON_WM_LBUTTONUP()
 	ON_WM_MOUSEMOVE()
+	ON_WM_CAPTURECHANGED()
 	//}}AFX_MSG_MAP
 END_MESSAGE_MAP()
 
@@ -652,22 +655,133 @@ void CWaveOutlineView::OnLButtonDown(UINT nFlags, CPoint point)
 		return;
 	}
 	int nSampleUnderMouse = MulDiv(point.x, nSamples, cr.Width());
-	pDoc->SetSelection(nSampleUnderMouse, nSampleUnderMouse,
-						pDoc->m_SelectedChannel, nSampleUnderMouse, SetSelection_MoveCaretToCenter);
+	int SelectionStart = pDoc->m_SelectionStart;
+	int SelectionEnd = pDoc->m_SelectionEnd;
+
+	nKeyPressed = WM_LBUTTONDOWN;
+	if ((nFlags & MK_SHIFT)
+		//|| (nHit & (VSHT_SEL_BOUNDARY_L | VSHT_SEL_BOUNDARY_R))
+		)
+	{
+		if (nSampleUnderMouse <
+			(double(SelectionStart) + SelectionEnd) / 2)
+		{
+			SelectionStart = nSampleUnderMouse;
+		}
+		else
+		{
+			SelectionEnd = nSampleUnderMouse;
+		}
+	}
+	else
+	{
+		SelectionStart = nSampleUnderMouse;
+		SelectionEnd = SelectionStart;
+	}
+	pDoc->SetSelection(SelectionStart, SelectionEnd,
+						ALL_CHANNELS, nSampleUnderMouse, SetSelection_MoveCaretToCenter);
 
 	//CView::OnLButtonDown(nFlags, point);
 }
 
 void CWaveOutlineView::OnLButtonUp(UINT nFlags, CPoint point)
 {
-	// TODO: Add your message handler code here and/or call default
+	CWaveSoapFrontDoc * pDoc = GetDocument();
 
-	CView::OnLButtonUp(nFlags, point);
+	if ( ! bIsTrackingSelection
+		&&  nKeyPressed == WM_LBUTTONDOWN)
+	{
+		long nSamples = pDoc->WaveFileSamples();
+		CRect cr;
+		GetClientRect( & cr);
+		if (0 != cr.Width())
+		{
+			// mouse hasn't moved after click
+			if (GetApp()->m_bSnapMouseSelectionToMax
+				// the whole area wasn't selected
+				&& pDoc->m_SelectionStart == pDoc->m_SelectionEnd)
+			{
+				long nBegin = MulDiv(point.x, nSamples, cr.Width());
+				long nEnd = MulDiv(point.x + 1, nSamples, cr.Width());
+				pDoc->SetSelection(nBegin, nEnd, ALL_CHANNELS, nBegin,
+									SetSelection_SnapToMaximum | SetSelection_MoveCaretToCenter);
+			}
+		}
+	}
+	ReleaseCapture();
+	bIsTrackingSelection = FALSE;
+	nKeyPressed = 0;
 }
 
 void CWaveOutlineView::OnMouseMove(UINT nFlags, CPoint point)
 {
-	// TODO: Add your message handler code here and/or call default
+	// point is in client coordinates
+	CWaveSoapFrontDoc * pDoc = GetDocument();
+	CRect r;
+	GetClientRect( & r);
+	if (r.Width() <= 0)
+	{
+		CView::OnMouseMove(nFlags, point);
+		return;
+	}
+
+	long nSamples = pDoc->WaveFileSamples();
+	int nSampleUnderMouse = MulDiv(point.x, nSamples, r.Width());
+	if (nSampleUnderMouse < 0)
+	{
+		nSampleUnderMouse = 0;
+	}
+	if (nSampleUnderMouse > nSamples)
+	{
+		nSampleUnderMouse = nSamples;
+	}
+	int SelectionStart = pDoc->m_SelectionStart;
+	int SelectionEnd = pDoc->m_SelectionEnd;
 
 	CView::OnMouseMove(nFlags, point);
+	if (nKeyPressed != 0)
+	{
+		if (bIsTrackingSelection)
+		{
+		}
+		else
+		{
+			bIsTrackingSelection = TRUE;
+			SetCapture();
+		}
+
+		// tracked side (where the caret is) is moved,
+		// other side stays
+		if (SelectionStart == pDoc->m_CaretPosition)
+		{
+			SelectionStart = nSampleUnderMouse;
+		}
+		else if (SelectionEnd == pDoc->m_CaretPosition)
+		{
+			SelectionEnd = nSampleUnderMouse;
+		}
+		else if (nSampleUnderMouse <
+				(double(SelectionStart) + SelectionEnd) / 2)
+		{
+			SelectionStart = nSampleUnderMouse;
+		}
+		else
+		{
+			SelectionEnd = nSampleUnderMouse;
+		}
+
+		pDoc->SetSelection(SelectionStart, SelectionEnd,
+							ALL_CHANNELS, nSampleUnderMouse, SetSelection_MakeCaretVisible);
+	}
+}
+
+void CWaveOutlineView::OnCaptureChanged(CWnd *pWnd)
+{
+	if (pWnd != this)
+	{
+		bIsTrackingSelection = FALSE;
+		nKeyPressed = 0;
+	}
+
+	CView::OnCaptureChanged(pWnd);
 }

@@ -146,7 +146,13 @@ public:
 	TCHAR m_DecimalPoint;
 	TCHAR m_ThousandSeparator;
 
+	BOOL m_DontShowMediaPlayerWarning;
+
+	BOOL m_bSnapMouseSelectionToMax;
+
 	CString m_ExpressionToEvaluate;
+
+	CString m_UserKey;
 
 	CDocument* OpenDocumentFile(LPCTSTR lpszPathName, int flags);
 	virtual CDocument* OpenDocumentFile(LPCTSTR lpszPathName);
@@ -157,11 +163,14 @@ public:
 
 	void BroadcastUpdate(UINT lHint = 0);
 
+	CString m_NotEnoughMemoryMsg;
+
 	//{{AFX_MSG(CWaveSoapFrontApp)
 	afx_msg void OnAppAbout();
 	afx_msg void OnEditPasteNew();
 	afx_msg void OnUpdateEditPasteNew(CCmdUI* pCmdUI);
 	afx_msg BOOL OnOpenRecentFile(UINT nID);
+	afx_msg void OnToolsCdgrab();
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 	CWinThread m_Thread;
@@ -203,6 +212,7 @@ void SetStatusString(CCmdUI* pCmdUI, const CString & string,
 					LPCTSTR MaxString = NULL, BOOL bForceSize = FALSE);
 void NotEnoughMemoryMessageBox();
 void NotEnoughDiskSpaceMessageBox();
+void NotEnoughUndoSpaceMessageBox();
 /////////////////////////////////////////////////////////////////////////////
 //{{AFX_INSERT_LOCATION}}
 // Microsoft Visual C++ will insert additional declarations immediately before the previous line.

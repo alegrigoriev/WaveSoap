@@ -1204,9 +1204,25 @@ void CWaveSoapFrontView::OnLButtonDown(UINT nFlags, CPoint point)
 
 void CWaveSoapFrontView::OnLButtonUp(UINT nFlags, CPoint point)
 {
-	// TODO: Add your message handler code here and/or call default
-	if (GetDocument()->m_TimeSelectionMode)
+	CWaveSoapFrontDoc * pDoc = GetDocument();
+
+	if (pDoc->m_TimeSelectionMode)
 	{
+		if ( ! bIsTrackingSelection
+			&&  nKeyPressed == WM_LBUTTONDOWN)
+		{
+			// mouse hasn't moved after click
+			if (GetApp()->m_bSnapMouseSelectionToMax
+				// the whole area wasn't selected
+				&& pDoc->m_SelectionStart == pDoc->m_SelectionEnd)
+			{
+				long nBegin = WindowToWorldX(point.x);
+				long nEnd = WindowToWorldX(point.x + 1);
+				pDoc->SetSelection(nBegin, nEnd, pDoc->m_SelectedChannel, nBegin,
+									SetSelection_SnapToMaximum
+									| SetSelection_MakeCaretVisible);
+			}
+		}
 		ReleaseCapture();
 		bIsTrackingSelection = FALSE;
 		nKeyPressed = 0;
@@ -1239,7 +1255,10 @@ BOOL CWaveSoapFrontView::OnMouseWheel(UINT nFlags, short zDelta, CPoint pt)
 	{
 		if (WHEEL_DELTA == zDelta)
 		{
-			OnViewZoominHor2();
+			if (m_HorizontalScale > 1)
+			{
+				OnViewZoominHor2();
+			}
 		}
 		else if ( - WHEEL_DELTA == zDelta)
 		{
@@ -1249,11 +1268,10 @@ BOOL CWaveSoapFrontView::OnMouseWheel(UINT nFlags, short zDelta, CPoint pt)
 	return TRUE;
 }
 
-void CWaveSoapFrontView::OnMouseMove(UINT nFlags, CPoint OriginalPoint)
+void CWaveSoapFrontView::OnMouseMove(UINT nFlags, CPoint point)
 {
 	// point is in client coordinates
 	CWaveSoapFrontDoc * pDoc = GetDocument();
-	CPoint point = OriginalPoint;
 	DWORD nHit = ClientHitTest(point);
 	CRect r;
 	GetClientRect( & r);

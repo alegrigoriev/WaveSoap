@@ -147,6 +147,7 @@ BEGIN
     BEGIN
         MENUITEM "&New\tCtrl+N",                ID_FILE_NEW
         MENUITEM "&Open...\tCtrl+O",            ID_FILE_OPEN
+        MENUITEM "CD &Grabber..",               ID_TOOLS_CDGRAB
         MENUITEM SEPARATOR
         MENUITEM "P&rint Setup...",             ID_FILE_PRINT_SETUP
         MENUITEM SEPARATOR
@@ -270,6 +271,7 @@ BEGIN
         MENUITEM "&Expression Evaluation...",   ID_PROCESS_SYNTHESIS_EXPRESSION_EVALUATION
 
         MENUITEM "&Synthesis",                  65535
+        MENUITEM "CD &Grabber..",               ID_TOOLS_CDGRAB
     END
     POPUP "&Window"
     BEGIN
@@ -1308,6 +1310,40 @@ BEGIN
     PUSHBUTTON      "Insert &silence",IDC_BUTTON_SILENCE,61,47,50,14
 END
 
+IDD_DIALOG_NO_WINDOWS_MEDIA DIALOG DISCARDABLE  0, 0, 187, 69
+STYLE DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "Cannot open non-WAV file"
+FONT 8, "MS Sans Serif"
+BEGIN
+    DEFPUSHBUTTON   "OK",IDOK,130,48,50,14
+    LTEXT           "This file cannot be open because a required DLL is not found in the system folder. To be able to open MP3 and WMA files, you need to install Windows Media Player 7",
+                    IDC_STATIC,7,7,173,36
+    CONTROL         "Don't show this in the future",IDC_CHECK_DONT_SHOW_THIS,
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,7,52,110,10
+END
+
+IDD_DIALOG_CD_GRABBING DIALOGEX 0, 0, 300, 227
+STYLE WS_POPUP | WS_CAPTION | WS_SYSMENU | WS_THICKFRAME
+CAPTION "CD Audio Extraction"
+FONT 8, "MS Sans Serif"
+BEGIN
+    DEFPUSHBUTTON   "OK",IDOK,175,206,50,14
+    PUSHBUTTON      "Cancel",IDCANCEL,232,206,50,14
+    COMBOBOX        IDC_COMBO1,33,7,129,30,CBS_DROPDOWNLIST | CBS_SORT | 
+                    WS_VSCROLL | WS_TABSTOP
+    LTEXT           "Drive:",IDC_STATIC,7,9,24,8
+    LTEXT           "Tracks:",IDC_STATIC,7,27,38,8
+    COMBOBOX        IDC_COMBO_SPEED,77,163,48,40,CBS_DROPDOWN | CBS_SORT | 
+                    WS_VSCROLL | WS_TABSTOP
+    LTEXT           "Extraction speed:",IDC_STATIC_SPEED,7,166,62,8
+    PUSHBUTTON      "CDDB Lookup...",IDC_BUTTON_CDDB,233,7,60,14
+    CONTROL         "Store in a single file",IDC_CHECK_SINGLE_FILE,"Button",
+                    BS_AUTOCHECKBOX | WS_TABSTOP,209,164,84,10
+    CONTROL         "List1",IDC_LIST_TRACKS,"SysListView32",LVS_REPORT | 
+                    LVS_EDITLABELS | LVS_ALIGNLEFT | LVS_NOSORTHEADER | 
+                    WS_BORDER | WS_TABSTOP,7,39,286,117,WS_EX_CLIENTEDGE
+END
+
 
 #ifndef _MAC
 /////////////////////////////////////////////////////////////////////////////
@@ -1529,6 +1565,22 @@ BEGIN
         TOPMARGIN, 7
         BOTTOMMARGIN, 61
     END
+
+    IDD_DIALOG_NO_WINDOWS_MEDIA, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 180
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 62
+    END
+
+    IDD_DIALOG_CD_GRABBING, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 293
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 220
+    END
 END
 #endif    // APSTUDIO_INVOKED
 
@@ -1630,6 +1682,21 @@ BEGIN
 0x6868, 0x6d3a, 0x3a6d, 0x7373, 0x732e, 0x7373, "\000" 
     IDC_COMBO_TIME_FORMAT, 0x403, 8, 0
 0x6553, 0x6f63, 0x646e, 0x0073, 
+    0
+END
+
+IDD_DIALOG_CD_GRABBING DLGINIT
+BEGIN
+    IDC_COMBO_SPEED, 0x403, 8, 0
+0x6544, 0x6166, 0x6c75, 0x0074, 
+    IDC_COMBO_SPEED, 0x403, 3, 0
+0x7831, "\000" 
+    IDC_COMBO_SPEED, 0x403, 3, 0
+0x7832, "\000" 
+    IDC_COMBO_SPEED, 0x403, 3, 0
+0x7834, "\000" 
+    IDC_COMBO_SPEED, 0x403, 3, 0
+0x7838, "\000" 
     0
 END
 
@@ -1811,6 +1878,11 @@ BEGIN
     ID_VIEW_ZOOMIN3         "Zoom in x2"
     ID_VIEW_ZOOMINHOR2      "Zoom in time\nZoom in time"
     ID_INDICATOR_MOUSE_POSITION "X=%1, Y=%2"
+    IDS_NOT_ENOUGH_MEMORY   "Not enough memory to complete the operation"
+    IDS_NOT_ENOUGH_UNDO_SPACE 
+                            "Not enough disk space in the temp directory to create a temporary file for Undo data"
+    IDS_NOT_ENOUGH_DISK_SPACE 
+                            "Not enough disk space to create or expand a file"
     ID_VIEW_ZOOMINVERT      "Zoom in vertical\nZoom In vertical"
     ID_VIEW_ZOOMOUTHOR      "Zoom out time\nZoom out time"
     ID_VIEW_ZOOMOUTVERT     "Zoom out vertical\nZoom out vertical"
@@ -1910,6 +1982,13 @@ BEGIN
     IDS_RELOAD_COMPRESSED_FILE 
                             "Sound data might change because of compression loss, reload it?"
     ID_INDICATOR_SCALE      "\nHorizontal Scale"
+    IDS_UNABLE_TO_OPEN_WMA_FILE "Audio file ""%s"" couldn't be opened"
+    IDS_CANT_OPEN_WMA_DECODER "Unable to decode audio info from file ""%s"""
+    IDS_CANT_COMMIT_FILE_DATA 
+                            "Unable to commit the file changes or adjust its length"
+    IDS_UNABLE_TO_RENAME_TEMPORARY_FILE 
+                            "Unable to rename temporary file from ""%s"" to ""%s"""
+    IDS_UNABLE_TO_REOPEN_AS "Unable to reopen the file as ""%s"""
 END
 
 STRINGTABLE DISCARDABLE 
@@ -1983,6 +2062,7 @@ BEGIN
     ID_VIEW_HOR_SCALE_2048  "Show 2048 samples per pixel\n1:2048"
     ID_VIEW_HOR_SCALE_4096  "Show 4096 samples per pixel\n1:4096"
     ID_VIEW_HOR_SCALE_8192  "Show 8192 samples per pixel\n1:8192"
+    ID_TOOLS_CDGRAB         "Read data from an audio CD\nCD Grabber"
 END
 
 #endif    // English (U.S.) resources

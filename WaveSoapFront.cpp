@@ -14,6 +14,8 @@
 #include <afxpriv.h>
 #include <mmreg.h>
 #include <msacm.h>
+#include "OperationDialogs2.h"
+
 #define _countof(array) (sizeof(array)/sizeof(array[0]))
 
 #ifdef _DEBUG
@@ -152,6 +154,7 @@ BEGIN_MESSAGE_MAP(CWaveSoapFrontApp, CWinApp)
 	ON_COMMAND(ID_EDIT_PASTE_NEW, OnEditPasteNew)
 	ON_UPDATE_COMMAND_UI(ID_EDIT_PASTE_NEW, OnUpdateEditPasteNew)
 	ON_COMMAND_EX_RANGE(ID_FILE_MRU_FILE1, ID_FILE_MRU_FILE16, OnOpenRecentFile)
+	ON_COMMAND(ID_TOOLS_CDGRAB, OnToolsCdgrab)
 	//}}AFX_MSG_MAP
 	// if no documents, Paste will create a new file
 	ON_COMMAND(ID_EDIT_PASTE, OnEditPasteNew)
@@ -210,6 +213,10 @@ CWaveSoapFrontApp::CWaveSoapFrontApp()
 	m_pWavTypeTemplate(NULL),
 	m_pWmaTypeTemplate(NULL),
 
+	m_DontShowMediaPlayerWarning(FALSE),
+
+	m_bSnapMouseSelectionToMax(TRUE),
+
 	m_hWMVCORE_DLL_Handle(NULL),
 
 	m_OpenFileDialogFilter(1)
@@ -255,6 +262,8 @@ BOOL CWaveSoapFrontApp::InitInstance()
 	// such as the name of your company or organization.
 	SetRegistryKey(_T("AleGr SoftWare"));
 
+	// this must be the first item to add. It will become the last item in the list
+	Profile.AddItem(_T("Settings"), _T("ProductKey"), m_UserKey, _T("Unregistered"));
 	Profile.AddItem(_T("Settings"), _T("CurrentDir"), m_CurrentDir, _T("."));
 	if (m_CurrentDir != ".")
 	{
@@ -333,6 +342,11 @@ BOOL CWaveSoapFrontApp::InitInstance()
 	Profile.AddBoolItem(_T("Settings"), _T("SuppressLowFrequency"), m_bSuppressLowFrequency, TRUE);
 
 	Profile.AddItem(_T("Settings"), _T("EvaluateExpression"), m_ExpressionToEvaluate);
+
+	Profile.AddBoolItem(_T("Settings"), _T("DontShowMediaPlayerWarning"), m_DontShowMediaPlayerWarning, FALSE);
+
+	Profile.AddBoolItem(_T("Settings"), _T("SnapMouseSelectionToMax"), m_bSnapMouseSelectionToMax, TRUE);
+
 	LoadStdProfileSettings(10);  // Load standard INI file options (including MRU)
 
 	if (m_bUseCountrySpecificNumberAndTime)
@@ -418,6 +432,8 @@ BOOL CWaveSoapFrontApp::InitInstance()
 	// The main window has been initialized, so show and update it.
 	pMainFrame->ShowWindow(m_nCmdShow);
 	pMainFrame->UpdateWindow();
+
+	m_NotEnoughMemoryMsg.LoadString(IDS_NOT_ENOUGH_MEMORY);
 
 	return TRUE;
 }
@@ -2058,10 +2074,17 @@ CDocument* CWaveSoapDocManager::OpenDocumentFile(LPCTSTR lpszFileName, int flags
 
 void NotEnoughMemoryMessageBox()
 {
+	AfxMessageBox(GetApp()->m_NotEnoughMemoryMsg, MB_ICONEXCLAMATION | MB_OK);
 }
 
 void NotEnoughDiskSpaceMessageBox()
 {
+	AfxMessageBox(IDS_NOT_ENOUGH_DISK_SPACE);
+}
+
+void NotEnoughUndoSpaceMessageBox()
+{
+	AfxMessageBox(IDS_NOT_ENOUGH_UNDO_SPACE);
 }
 
 void CWaveSoapFrontApp::CreatePalette()
@@ -2171,3 +2194,104 @@ void CWaveSoapDocTemplate::BroadcastUpdate(UINT lHint)
 	}
 }
 
+#include <devioctl.h>
+#include <ntddcdrm.h>
+#include <winioctl.h>
+
+void CWaveSoapFrontApp::OnToolsCdgrab()
+{
+#ifdef _DEBUG
+	CCdGrabbingDialog dlg;
+	dlg.DoModal();
+	return;
+	HANDLE hCD = NULL;
+	hCD = CreateFile(
+					"G:\\TRACK01.CDA",
+					//"R:",
+					GENERIC_READ,
+					FILE_SHARE_READ | FILE_SHARE_WRITE,
+					NULL,
+					OPEN_EXISTING,
+					FILE_ATTRIBUTE_NORMAL,
+					NULL);
+	if (INVALID_HANDLE_VALUE == hCD || NULL == hCD)
+	{
+		TRACE("Couldn't open CD,error=%d\n",GetLastError());
+		return;
+	}
+	TRACE("Handle %x opened, device type=%d\n", hCD, GetFileType(hCD));
+	CDROM_TOC toc;
+	DWORD dwReturned;
+	BOOL res = DeviceIoControl(hCD, IOCTL_CDROM_READ_TOC,
+								NULL, 0,
+								& toc, sizeof toc,
+								& dwReturned,
+								NULL);
+	TRACE("Get TOC IoControl returned %x, bytes: %d, First track %d, last track: %d\n",
+		res, dwReturned, toc.FirstTrack, toc.LastTrack);
+
+	STORAGE_DEVICE_NUMBER devnum;
+	res = DeviceIoControl(hCD, IOCTL_STORAGE_GET_DEVICE_NUMBER,
+						NULL, 0,
+						& devnum, sizeof devnum,
+						& dwReturned,
+						NULL);
+	TRACE("Get device number IoControl returned %x, bytes: %d, devtype=%d, DeviceNumber=%d, partitionNumber=%d\n",
+		res, dwReturned, devnum.DeviceType, devnum.DeviceNumber, devnum.PartitionNumber);
+
+#if 0
+	CDROM_AUDIO_CONTROL cac;
+	res = DeviceIoControl(hCD, IOCTL_CDROM_GET_CONTROL,
+						NULL, 0,
+						& cac, sizeof cac,
+						& dwReturned,
+						NULL);
+	TRACE("Get control IoControl returned %x, bytes: %d, Format=%d, Bloskc per second=%d\n",
+		res, dwReturned, cac.LbaFormat, cac.LogicalBlocksPerSecond);
+	DISK_GEOMETRY dg;
+	res = DeviceIoControl(hCD, IOCTL_CDROM_GET_DRIVE_GEOMETRY,
+						NULL, 0,
+						& dg, sizeof dg,
+						& dwReturned,
+						NULL);
+	TRACE("Get geometry IoControl returned %x, bytes: %d, cylinders=%d, media type=%d"
+		"tracks per cyl=%d, spt=%d, sector size=%d\n",
+		res, dwReturned, long(dg.Cylinders.QuadPart), dg.MediaType, dg.TracksPerCylinder,
+		dg.SectorsPerTrack, dg.BytesPerSector);
+#endif
+
+	// can't read more than 65536 bytes
+	const int SectorSize = 2352;
+	const int NumberOfSectors = 0x10000 / SectorSize;
+	void * data1 = VirtualAlloc(NULL, 0x10000, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+	RAW_READ_INFO rri = {{0, 0}, NumberOfSectors, CDDA};
+	rri.DiskOffset.QuadPart = SectorSize*75*30;
+	BYTE * data = (BYTE *)data1;
+	res = DeviceIoControl(hCD, IOCTL_CDROM_RAW_READ,
+						& rri, sizeof rri,
+						data1, SectorSize*NumberOfSectors,
+						& dwReturned,
+						NULL);
+	TRACE("Raw read IoControl returned %x, bytes: %d, last error=%d, data=%02X%02X%02X%02X\n",
+		res, dwReturned, GetLastError(), data[3], data[2], data[1], data[0]);
+	VirtualFree(data1, 0, MEM_RELEASE);
+#if 0
+	POSITION pos = m_pDocManager->GetFirstDocTemplatePosition();
+	CDocTemplate* pTemplate = m_pDocManager->GetNextDocTemplate(pos);
+	if (pTemplate != NULL)
+	{
+		//m_NewFileFormat = *m_ClipboardFile.GetWaveFormat();
+
+		CWaveSoapFrontDoc * pDoc = (CWaveSoapFrontDoc *)pTemplate->OpenDocumentFile(NULL);
+		if (NULL != pDoc)
+		{
+			BOOL TmpUndo = pDoc->UndoEnabled();
+			pDoc->EnableUndo(FALSE);
+			//pDoc->DoEditPaste();
+			pDoc->EnableUndo(TmpUndo);
+		}
+	}
+#endif
+	CloseHandle(hCD);
+#endif
+}
