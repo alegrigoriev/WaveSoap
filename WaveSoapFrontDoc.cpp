@@ -370,13 +370,8 @@ BOOL CWaveSoapFrontDoc::OnNewDocument()
 	m_SelectedChannel = ALL_CHANNELS;
 	m_TimeSelectionMode = TRUE;
 	m_bReadOnly = false;
-	CWaveFile * pTemplateFile = & GetApp()->m_NewTemplateFile;
-	if ( ! pTemplateFile->IsOpen())
-	{
-		pTemplateFile = NULL;
-	}
 
-	if ( FALSE == m_WavFile.CreateWaveFile(pTemplateFile, NULL, ALL_CHANNELS, // 2 channels
+	if ( FALSE == m_WavFile.CreateWaveFile(NULL, & GetApp()->m_NewFileFormat, ALL_CHANNELS, // 2 channels
 											0, // empty
 											CreateWaveFileTempDir
 											| CreateWaveFileDeleteAfterClose
@@ -387,7 +382,7 @@ BOOL CWaveSoapFrontDoc::OnNewDocument()
 		AfxMessageBox(IDS_UNABLE_TO_CREATE_NEW_FILE, MB_OK | MB_ICONEXCLAMATION);
 		return FALSE;
 	}
-	m_OriginalWavFile = m_WavFile;
+	//m_OriginalWavFile = m_WavFile;
 	return TRUE;
 }
 
@@ -1912,13 +1907,13 @@ void CWaveSoapFrontDoc::DoPaste(LONG Start, LONG End, LONG Channel, LPCTSTR File
 	if (nCopiedChannels < pSrcFile->Channels())
 	{
 		CCopyChannelsSelectDlg dlg;
-		dlg.m_ChannelToCopy = m_PrevChannelToCopy;
+		dlg.m_ChannelToCopy = m_PrevChannelToCopy + 1;
 		if (IDOK != dlg.DoModal())
 		{
 			return;
 		}
-		m_PrevChannelToCopy = dlg.m_ChannelToCopy;
-		ChannelToCopyFrom = dlg.m_ChannelToCopy;
+		ChannelToCopyFrom = dlg.m_ChannelToCopy - 1;
+		m_PrevChannelToCopy = ChannelToCopyFrom;
 	}
 
 	CCopyContext * pContext = new CCopyContext(this, _T("Inserting data from clipboard..."), "Paste");
@@ -2151,7 +2146,6 @@ BOOL CWaveSoapFrontDoc::OnOpenDocument(LPCTSTR lpszPathName, int DocOpenFlags)
 			// just link the files
 			UINT ErrorFormatID = 0;
 			if (m_WavFile.SetSourceFile( & m_OriginalWavFile)
-				&& m_WavFile.SetFileLength(m_OriginalWavFile.GetLength())
 				&& m_WavFile.LoadRiffChunk()
 				&& m_WavFile.LoadWaveformat())
 			{
@@ -2690,8 +2684,8 @@ BOOL CWaveSoapFrontDoc::PostCommitFileSave(int flags, LPCTSTR FullTargetName)
 				}
 				delete[] (BYTE*)pSecurityDescriptor;
 			}
+			m_OriginalWavFile.DeleteOnClose(true);
 		}
-		m_OriginalWavFile.DeleteOnClose(true);
 	}
 	else
 	{
@@ -3412,10 +3406,89 @@ void CWaveSoapFrontDoc::OnUpdateSamplerate96k(CCmdUI* pCmdUI)
 	OnUpdateSampleRate(pCmdUI, 96000);
 }
 
+void CWaveSoapFrontDoc::ChangeChannels(int nChannels)
+{
+	if (m_bReadOnly
+		|| ! m_WavFile.IsOpen()
+		|| nChannels == WaveChannels())
+	{
+		return;
+	}
+	WAVEFORMATEX * pWf = m_WavFile.GetWaveFormat();
+	int SampleCount = WaveFileSamples();
+	if (0 == SampleCount)
+	{
+		// easy change
+		if (UndoEnabled())
+		{
+			CUndoRedoContext * pContext = new CUndoRedoContext(this, "Number Of Channels Change");
+			if (NULL == pContext)
+			{
+			}
+			else
+			{
+				pContext->m_Flags |= UndoContextReplaceFormat;
+				pContext->m_OldWaveFormat = * pWf;
+				AddUndoRedo(pContext);
+			}
+		}
+
+		pWf->nChannels = nChannels;
+		m_WavFile.GetFmtChunk()->dwFlags |= MMIO_DIRTY;
+		SetModifiedFlag();
+		UpdateAllViews(NULL);
+		// update wave view boundaries
+		SoundChanged(m_WavFile.GetFileID(), 0, 0, 0);
+		return;
+	}
+	WAVEFORMATEX NewFormat = *pWf;
+	NewFormat.nChannels = nChannels;
+	int nSrcChan = ALL_CHANNELS;
+	if (nChannels < WaveFileChannels())
+	{
+		CCopyChannelsSelectDlg dlg;
+		dlg.m_ChannelToCopy = m_PrevChannelToCopy + 1;
+		if (IDOK != dlg.DoModal())
+		{
+			return;
+		}
+		nSrcChan = dlg.m_ChannelToCopy - 1;
+		m_PrevChannelToCopy = nSrcChan;
+	}
+	else
+	{
+		// if mono->Stereo, duplicate the channels
+	}
+	CResampleContext * pContext = new CResampleContext(this, "Changing number of channels...",
+														"Number Of Channels Change");
+	if (NULL == pContext)
+	{
+		return;
+	}
+	// create new temporary file
+	CWaveFile DstFile;
+	if ( ! DstFile.CreateWaveFile( & m_WavFile, & NewFormat, ALL_CHANNELS, SampleCount,
+									CreateWaveFileDeleteAfterClose
+									| CreateWaveFilePcmFormat
+									| CreateWaveFileTemp,
+									NULL))
+	{
+		delete pContext;
+		return;
+	}
+	if (UndoEnabled())
+	{
+		CUndoRedoContext * pUndo = new CUndoRedoContext(this, "Number Of Channels Change");
+		pUndo->m_Flags |= UndoContextReplaceWholeFile;
+		pUndo->m_SrcFile = m_WavFile;
+		pContext->m_pUndoContext = pUndo;
+	}
+	pContext->Execute();
+}
+
 void CWaveSoapFrontDoc::OnChannelsMono()
 {
-	// TODO: Add your command handler code here
-
+	ChangeChannels(1);
 }
 
 void CWaveSoapFrontDoc::OnUpdateChannelsMono(CCmdUI* pCmdUI)
@@ -3429,8 +3502,7 @@ void CWaveSoapFrontDoc::OnUpdateChannelsMono(CCmdUI* pCmdUI)
 
 void CWaveSoapFrontDoc::OnChannelsStereo()
 {
-	// TODO: Add your command handler code here
-
+	ChangeChannels(2);
 }
 
 void CWaveSoapFrontDoc::OnUpdateChannelsStereo(CCmdUI* pCmdUI)
@@ -4344,7 +4416,7 @@ BOOL CWaveSoapFrontDoc::OpenWmaFileDocument(LPCTSTR lpszPathName)
 	m_bReadOnly = FALSE;
 
 	m_szWaveFilename = lpszPathName;
-	if ( !m_OriginalWavFile.Open(lpszPathName,
+	if ( ! m_OriginalWavFile.Open(lpszPathName,
 								MmioFileOpenExisting
 								| MmioFileOpenReadOnly
 								| MmioFileOpenDontLoadRiff))
