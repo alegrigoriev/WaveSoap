@@ -86,6 +86,16 @@ BEGIN_MESSAGE_MAP(CWaveSoapFrontDoc, CDocument)
 	ON_COMMAND(IDC_VIEW_STATUS_HHMMSS, OnViewStatusHhmmss)
 	ON_COMMAND(IDC_VIEW_STATUS_SAMPLES, OnViewStatusSamples)
 	ON_COMMAND(IDC_VIEW_STATUS_SECONDS, OnViewStatusSeconds)
+	ON_UPDATE_COMMAND_UI(ID_PROCESS_DCOFFSET, OnUpdateProcessDcoffset)
+	ON_COMMAND(ID_PROCESS_DCOFFSET, OnProcessDcoffset)
+	ON_UPDATE_COMMAND_UI(ID_PROCESS_INSERTSILENCE, OnUpdateProcessInsertsilence)
+	ON_COMMAND(ID_PROCESS_INSERTSILENCE, OnProcessInsertsilence)
+	ON_UPDATE_COMMAND_UI(ID_PROCESS_MUTE, OnUpdateProcessMute)
+	ON_COMMAND(ID_PROCESS_MUTE, OnProcessMute)
+	ON_UPDATE_COMMAND_UI(ID_PROCESS_NORMALIZE, OnUpdateProcessNormalize)
+	ON_COMMAND(ID_PROCESS_NORMALIZE, OnProcessNormalize)
+	ON_UPDATE_COMMAND_UI(ID_PROCESS_RESAMPLE, OnUpdateProcessResample)
+	ON_COMMAND(ID_PROCESS_RESAMPLE, OnProcessResample)
 	//}}AFX_MSG_MAP
 END_MESSAGE_MAP()
 
@@ -171,13 +181,6 @@ CWaveSoapFrontDoc::~CWaveSoapFrontDoc()
 		CloseHandle(m_hThreadEvent);
 		m_hThreadEvent = NULL;
 	}
-#if 0
-	if (m_pWaveBuffer)
-	{
-		delete[] m_pWaveBuffer;
-		m_pWaveBuffer = NULL;
-	}
-#endif
 	if (m_pPeaks != NULL)
 	{
 		delete[] m_pPeaks;
@@ -490,6 +493,15 @@ void CWaveSoapFrontDoc::SetSelection(long begin, long end, int channel, int care
 	CSelectionUpdateInfo ui;
 	ui.SelBegin = m_SelectionStart;
 	ui.SelEnd = m_SelectionEnd;
+	long length = WaveFileSamples();
+	if (begin < 0) begin = 0;
+	if (begin > length) begin = length;
+	if (end < 0) end = 0;
+	if (end > length) end = length;
+	if (caret < 0) caret = 0;
+	if (caret > length) caret = length;
+	if (channel < 0 || channel > 2) channel = 2;
+
 	if (begin <= end)
 	{
 		m_SelectionStart = begin;
@@ -1048,6 +1060,11 @@ BOOL CWaveSoapFrontDoc::InitUndoRedo(CUndoRedoContext * pContext)
 				delete pUndoRedo;
 				return FALSE;
 			}
+			if (0 == (pContext->m_Flags & RedoContext))
+			{
+				pUndoRedo->m_Flags |= RedoContext;
+			}
+
 			pContext->m_pUndoContext = pUndoRedo;
 		}
 	}
@@ -1441,7 +1458,7 @@ BOOL CWaveSoapFrontDoc::OnOpenDocument(LPCTSTR lpszPathName)
 			pContext->m_SrcEnd = pContext->m_SrcStart +
 								SrcFile.GetDataChunk()->cksize;
 			pContext->m_DstStart = m_WavFile.GetDataChunk()->dwDataOffset;
-			pContext->m_DstPos = pContext->m_DstStart;
+			pContext->m_DstCopyPos = pContext->m_DstStart;
 			pContext->m_CurrentSamples = m_WavFile.NumberOfSamples();
 			AllocatePeakData(pContext->m_CurrentSamples);
 			// peak data will be created during decompression
@@ -1548,13 +1565,26 @@ void CWaveSoapFrontDoc::OnEditSelectAll()
 
 void CWaveSoapFrontDoc::OnEditSelection()
 {
+	CSelectionDialog dlg;
+	dlg.m_Start = m_SelectionStart;
+	dlg.m_End = m_SelectionEnd;
+	dlg.m_Length = m_SelectionEnd - m_SelectionStart;
+	dlg.m_FileLength = WaveFileSamples();
+	dlg.m_Chan = m_SelectedChannel;
+	dlg.m_pWf = WaveFormat();
+	dlg.m_TimeFormat = GetApp()->m_SoundTimeFormat;
+
+	if (IDOK != dlg.DoModal())
+	{
+		return;
+	}
+	SetSelection(dlg.m_Start, dlg.m_End, dlg.m_Chan, dlg.m_End, true);
 
 }
 
 void CWaveSoapFrontDoc::OnUpdateEditSelection(CCmdUI* pCmdUI)
 {
-	// TODO: Add your command update UI handler code here
-
+	pCmdUI->Enable( ! m_OperationInProgress);
 }
 
 static void LimitUndoRedo(COperationContext ** ppContext, int MaxNum, size_t MaxSize)
@@ -1662,7 +1692,7 @@ void CWaveSoapFrontDoc::OnUpdateSoundStop(CCmdUI* pCmdUI)
 void CWaveSoapFrontDoc::OnUpdateIndicatorFileSize(CCmdUI* pCmdUI)
 {
 	SetStatusString(pCmdUI,
-					SampleToString(WaveFileSamples(), WaveFormat(),
+					SampleToString(WaveFileSamples(), WaveFormat()->nSamplesPerSec,
 									GetApp()->m_SoundTimeFormat));
 }
 
@@ -1671,7 +1701,7 @@ void CWaveSoapFrontDoc::OnUpdateIndicatorSelectionLength(CCmdUI* pCmdUI)
 	if (m_SelectionStart != m_SelectionEnd)
 	{
 		SetStatusString(pCmdUI,
-						SampleToString(m_SelectionEnd - m_SelectionStart, WaveFormat(),
+						SampleToString(m_SelectionEnd - m_SelectionStart, WaveFormat()->nSamplesPerSec,
 										GetApp()->m_SoundTimeFormat));
 	}
 	else
@@ -1689,8 +1719,9 @@ void CWaveSoapFrontDoc::OnUpdateIndicatorCurrentPos(CCmdUI* pCmdUI)
 	{
 		if ((TimeFormat & SampleToString_Mask) == SampleToString_Sample)
 		{
-			SetStatusString(pCmdUI, SampleToString(pCx->m_SamplePlayed, WaveFormat(),
-													TimeFormat));
+			SetStatusString(pCmdUI,
+							SampleToString(pCx->m_SamplePlayed, WaveFormat()->nSamplesPerSec,
+											TimeFormat));
 		}
 		else
 		{
@@ -1708,7 +1739,8 @@ void CWaveSoapFrontDoc::OnUpdateIndicatorCurrentPos(CCmdUI* pCmdUI)
 	}
 	else
 	{
-		SetStatusString(pCmdUI, SampleToString(m_CaretPosition, WaveFormat(), TimeFormat));
+		SetStatusString(pCmdUI, SampleToString(m_CaretPosition,
+												WaveFormat()->nSamplesPerSec, TimeFormat));
 	}
 }
 
@@ -2099,7 +2131,7 @@ void CWaveSoapFrontDoc::OnUpdateChannelsStereo(CCmdUI* pCmdUI)
 
 void CWaveSoapFrontDoc::OnProcessChangevolume()
 {
-	if (m_OperationInProgress)
+	if (m_OperationInProgress || m_bReadOnly)
 	{
 		return;
 	}
@@ -2131,6 +2163,8 @@ void CWaveSoapFrontDoc::OnProcessChangevolume()
 	dlg.m_bLockChannels = m_bChannelsLocked;
 	dlg.m_bUndo = m_bUndoEnabled;
 	dlg.m_TimeFormat = GetApp()->m_SoundTimeFormat;
+	dlg.m_FileLength = WaveFileSamples();
+
 	if (1 == WaveChannels())
 	{
 		dlg.SetTemplate(IDD_DIALOG_VOLUME_CHANGE_MONO);
@@ -2145,6 +2179,7 @@ void CWaveSoapFrontDoc::OnProcessChangevolume()
 	pApp->m_dVolumeRightDb = dlg.m_dVolumeRightDb;
 	pApp->m_dVolumeLeftPercent = dlg.m_dVolumeLeftPercent;
 	pApp->m_dVolumeRightPercent = dlg.m_dVolumeRightPercent;
+
 	CVolumeChangeContext * pContext =
 		new CVolumeChangeContext(this, "Changing volume...", "Volume Change");
 	if (NULL == pContext)
@@ -2152,12 +2187,12 @@ void CWaveSoapFrontDoc::OnProcessChangevolume()
 		return;
 	}
 
-	pContext->m_DstFile = m_WavFile;
 	if (0 == dlg.m_DbPercent)   // dBs
 	{
 		pContext->m_VolumeLeft = pow(10., dlg.m_dVolumeLeftDb / 20.);
 		if (dlg.m_bLockChannels || WaveChannels() == 1)
 		{
+			dlg.m_Chan = 2;
 			pContext->m_VolumeRight = pContext->m_VolumeLeft;
 		}
 		else
@@ -2170,6 +2205,7 @@ void CWaveSoapFrontDoc::OnProcessChangevolume()
 		pContext->m_VolumeLeft = 0.01 * dlg.m_dVolumeLeftPercent;
 		if (dlg.m_bLockChannels || WaveChannels() == 1)
 		{
+			dlg.m_Chan = 2;
 			pContext->m_VolumeRight = pContext->m_VolumeLeft;
 		}
 		else
@@ -2185,38 +2221,129 @@ void CWaveSoapFrontDoc::OnProcessChangevolume()
 		delete pContext;
 		return;
 	}
-	// set begin and end offsets
-	DWORD DstSampleSize = pContext->m_DstFile.SampleSize();
-
-	pContext->m_DstCopyPos = pContext->m_DstFile.GetDataChunk()->dwDataOffset
-							+ dlg.m_Start * DstSampleSize;
-	pContext->m_DstStart = pContext->m_DstCopyPos;
-
-	pContext->m_DstEnd = pContext->m_DstFile.GetDataChunk()->dwDataOffset
-						+ dlg.m_End * DstSampleSize;
-	pContext->m_DstChan = channel;
-	// create undo
-	if (dlg.m_bUndo)
+	// check if the values can exceed the maximum
+	int MinL, MaxL, MinR, MaxR;
+	GetSoundMinMax(MinL, MaxL, MinR, MaxR, dlg.m_Start, dlg.m_End);
+	if (MinL < 0)
 	{
-		CUndoRedoContext * pUndo = new CUndoRedoContext(this, pContext->m_OperationName);
-		if (NULL != pUndo
-			&& pUndo->InitUndoCopy(pContext->m_DstFile, pContext->m_DstStart,
-									pContext->m_DstEnd, pContext->m_DstChan))
+		MinL = - MinL;
+	}
+	if (MaxL < 0)
+	{
+		MaxL = - MaxL;
+	}
+	if (MaxL < MinL) MaxL = MinL;
+
+	if (MinR < 0)
+	{
+		MinR = - MinR;
+	}
+	if (MaxR < 0)
+	{
+		MaxR = - MaxR;
+	}
+	if (MaxR < MinR) MaxR = MinR;
+
+	if ((dlg.m_Chan != 1 && pContext->m_VolumeLeft * MaxL > 32767.)
+		|| (WaveChannels() > 1 && dlg.m_Chan != 0
+			&& pContext->m_VolumeRight * MaxR > 32767.))
+	{
+		CString s;
+		s.Format(IDS_SOUND_MAY_BE_CLIPPED, GetTitle());
+		if (IDYES != AfxMessageBox(s, MB_YESNO | MB_ICONQUESTION))
 		{
-			pContext->m_pUndoContext = pUndo;
+			delete pContext;
+			return;
 		}
-		else
-		{
-			delete pUndo;
-			if (IDOK != AfxMessageBox(IDS_M_UNABLE_TO_CREATE_UNDO, MB_YESNO | MB_ICONEXCLAMATION))
-			{
-				delete pContext;
-				return;
-			}
-		}
+	}
+
+	if ( ! pContext->InitDestination(m_WavFile, dlg.m_Start,
+									dlg.m_End, dlg.m_Chan, dlg.m_bUndo))
+	{
+		delete pContext;
+		return;
 	}
 	QueueOperation(pContext);
 	SetModifiedFlag();
+}
+
+void CWaveSoapFrontDoc::GetSoundMinMax(int & MinL, int & MaxL,
+										int & MinR, int & MaxR,
+										long begin, long end)
+{
+	MinL = 0;
+	MinR = 0;
+	MaxL = 0;
+	MaxR = 0;
+	int IntMinR = 0x7FFF;
+	int IntMinL = 0x7FFF;
+	int IntMaxR = -0x8000;
+	int IntMaxL = -0x8000;
+	int PeakBegin = (begin & ~m_PeakDataGranularity) / m_PeakDataGranularity;
+	int PeakEnd = ((end + m_PeakDataGranularity - 1) & ~m_PeakDataGranularity) / m_PeakDataGranularity;
+	if (NULL == m_pPeaks)
+	{
+		return;
+	}
+	if (WaveChannels() == 1)
+	{
+		if (PeakEnd > m_WavePeakSize)
+		{
+			PeakEnd = m_WavePeakSize;
+		}
+		for (int i = PeakBegin; i < PeakEnd; i++)
+		{
+			if (m_pPeaks[i].high > m_pPeaks[i].low)
+			{
+				if (IntMaxL < m_pPeaks[i].high)
+				{
+					IntMaxL = m_pPeaks[i].high;
+				}
+				if (IntMinL > m_pPeaks[i].low)
+				{
+					IntMinL = m_pPeaks[i].low;
+				}
+			}
+		}
+		MaxL = IntMaxL;
+		MinL = IntMinL;
+	}
+	else
+	{
+		if (PeakEnd > m_WavePeakSize / 2)
+		{
+			PeakEnd = m_WavePeakSize / 2;
+		}
+		for (int i = PeakBegin; i < PeakEnd; i++)
+		{
+			if (m_pPeaks[i * 2].high > m_pPeaks[i * 2].low)
+			{
+				if (IntMaxL < m_pPeaks[i * 2].high)
+				{
+					IntMaxL = m_pPeaks[i * 2].high;
+				}
+				if (IntMinL > m_pPeaks[i * 2].low)
+				{
+					IntMinL = m_pPeaks[i * 2].low;
+				}
+			}
+			if (m_pPeaks[i * 2 + 1].high > m_pPeaks[i * 2 + 1].low)
+			{
+				if (IntMaxR < m_pPeaks[i * 2 + 1].high)
+				{
+					IntMaxR = m_pPeaks[i * 2 + 1].high;
+				}
+				if (IntMinR > m_pPeaks[i * 2 + 1].low)
+				{
+					IntMinR = m_pPeaks[i * 2 + 1].low;
+				}
+			}
+		}
+		MinL = IntMinL;
+		MinR = IntMinR;
+		MaxL = IntMaxL;
+		MaxR = IntMaxR;
+	}
 }
 
 void CWaveSoapFrontDoc::OnUpdateProcessChangevolume(CCmdUI* pCmdUI)
@@ -2239,4 +2366,208 @@ void CWaveSoapFrontDoc::OnViewStatusSeconds()
 {
 	GetApp()->m_SoundTimeFormat =
 		SampleToString_Seconds | TimeToHhMmSs_NeedsMs;
+}
+
+BOOL AFXAPI AfxFullPath(LPTSTR lpszPathOut, LPCTSTR lpszFileIn);
+UINT AFXAPI AfxGetFileTitle(LPCTSTR lpszPathName, LPTSTR lpszTitle, UINT nMax);
+
+void CWaveSoapFrontDoc::SetPathName(LPCTSTR lpszPathName, BOOL bAddToMRU)
+{
+	// store the path fully qualified
+	TCHAR szFullPath[_MAX_PATH];
+	AfxFullPath(szFullPath, lpszPathName);
+	m_strPathName = szFullPath;
+	ASSERT(!m_strPathName.IsEmpty());       // must be set to something
+	m_bEmbedded = FALSE;
+	ASSERT_VALID(this);
+
+	// set the document title based on path name
+	TCHAR szTitle[_MAX_FNAME];
+	if (AfxGetFileTitle(szFullPath, szTitle, _MAX_FNAME) == 0)
+		SetTitle(szTitle);
+
+	// add it to the file MRU list
+	// first byte is a flag byte
+	char flag = 1;
+	if (m_bDirectMode)
+	{
+		flag |= 2;
+	}
+	if (m_bReadOnly)
+	{
+		flag |= 4;
+	}
+
+	if (bAddToMRU)
+		AfxGetApp()->AddToRecentFileList(CString(flag, 1) + m_strPathName);
+
+	ASSERT_VALID(this);
+}
+
+void CWaveSoapFrontDoc::OnUpdateProcessDcoffset(CCmdUI* pCmdUI)
+{
+	pCmdUI->Enable( ! m_bReadOnly && ! m_OperationInProgress);
+}
+
+void CWaveSoapFrontDoc::OnProcessDcoffset()
+{
+	if (m_OperationInProgress || m_bReadOnly)
+	{
+		return;
+	}
+	long start = m_SelectionStart;
+	long end = m_SelectionEnd;
+	if (start == end)
+	{
+		// select all
+		start = 0;
+		end = WaveFileSamples();
+	}
+	int channel = m_SelectedChannel;
+	if (ChannelsLocked())
+	{
+		channel = 2;
+	}
+
+	CDcOffsetDialog dlg;
+	CWaveSoapFrontApp * pApp = GetApp();
+	dlg.m_Start = start;
+	dlg.m_End = end;
+	dlg.m_Chan = channel;
+	dlg.m_pWf = m_WavFile.GetWaveFormat();
+	dlg.m_bUndo = m_bUndoEnabled;
+	dlg.m_TimeFormat = GetApp()->m_SoundTimeFormat;
+	dlg.m_FileLength = WaveFileSamples();
+	dlg.m_b5SecondsDC = GetApp()->m_b5SecondsDC;
+	dlg.m_DcSelectMode = GetApp()->m_DcSelectMode;
+	dlg.m_nDcOffset = GetApp()->m_nDcOffset;
+	if (IDOK != dlg.DoModal())
+	{
+		return;
+	}
+	GetApp()->m_b5SecondsDC = dlg.m_b5SecondsDC;
+	GetApp()->m_DcSelectMode = dlg.m_DcSelectMode;
+	GetApp()->m_nDcOffset = dlg.m_nDcOffset;
+
+	CDcOffsetContext * pContext =
+		new CDcOffsetContext(this, "Adjusting DC...", "DC Adjust");
+	if (NULL == pContext)
+	{
+		return;
+	}
+
+	if (0 == dlg.m_DcSelectMode)   // Calculate DC offset
+	{
+		pContext->m_OffsetLeft = 0;
+		pContext->m_OffsetRight = 0;
+		pContext->m_pScanContext = new CStatisticsContext(this, "Scanning for DC offset...", "");
+		if (NULL == pContext->m_pScanContext)
+		{
+			// todo: message box
+			delete pContext;
+			return;
+		}
+		pContext->m_pScanContext->m_Flags |= StatisticsContext_DcOnly;
+		long EndScanSample = dlg.m_End;
+		if (dlg.m_b5SecondsDC)
+		{
+			// 5.4 seconds is actually scanned, to compensate for turntable rotation
+			EndScanSample = dlg.m_Start
+							+ 54 * m_WavFile.GetWaveFormat()->nSamplesPerSec / 10;
+			if (EndScanSample > dlg.m_End)
+			{
+				EndScanSample = dlg.m_End;
+			}
+		}
+		pContext->m_pScanContext->InitDestination(m_WavFile, dlg.m_Start,
+												EndScanSample, dlg.m_Chan, FALSE);
+		pContext->m_Flags |= DcContextScanning;
+	}
+	else // Use specified DC offset
+	{
+		pContext->m_OffsetLeft = dlg.m_nDcOffset;
+		pContext->m_OffsetRight = dlg.m_nDcOffset;
+		// check if the values can exceed the maximum
+		if (0 == dlg.m_nDcOffset)
+		{
+			// nothing to do
+			delete pContext;
+			return;
+		}
+		int MinL, MaxL, MinR, MaxR;
+		GetSoundMinMax(MinL, MaxL, MinR, MaxR, dlg.m_Start, dlg.m_End);
+
+		MinL += dlg.m_nDcOffset;
+		MaxL += dlg.m_nDcOffset;
+		MinR += dlg.m_nDcOffset;
+		MaxR += dlg.m_nDcOffset;
+
+		if ((dlg.m_Chan != 1 && (MaxL > 0x7FFF || MinL < -0x8000))
+			|| (WaveChannels() > 1 && dlg.m_Chan != 0
+				&& (MaxR > 0x7FFF || MinR < -0x8000)))
+		{
+			CString s;
+			s.Format(IDS_SOUND_MAY_BE_CLIPPED, GetTitle());
+			if (IDYES != AfxMessageBox(s, MB_YESNO | MB_ICONQUESTION))
+			{
+				delete pContext;
+				return;
+			}
+		}
+	}
+
+
+	if ( ! pContext->InitDestination(m_WavFile, dlg.m_Start,
+									dlg.m_End, dlg.m_Chan, dlg.m_bUndo))
+	{
+		delete pContext;
+		return;
+	}
+	QueueOperation(pContext);
+	SetModifiedFlag();
+}
+
+void CWaveSoapFrontDoc::OnUpdateProcessInsertsilence(CCmdUI* pCmdUI)
+{
+	pCmdUI->Enable( ! m_bReadOnly && ! m_OperationInProgress);
+}
+
+void CWaveSoapFrontDoc::OnProcessInsertsilence()
+{
+	// TODO: Add your command handler code here
+
+}
+
+void CWaveSoapFrontDoc::OnUpdateProcessMute(CCmdUI* pCmdUI)
+{
+	pCmdUI->Enable( ! m_bReadOnly && ! m_OperationInProgress);
+}
+
+void CWaveSoapFrontDoc::OnProcessMute()
+{
+	// TODO: Add your command handler code here
+
+}
+
+void CWaveSoapFrontDoc::OnUpdateProcessNormalize(CCmdUI* pCmdUI)
+{
+	pCmdUI->Enable( ! m_bReadOnly && ! m_OperationInProgress);
+}
+
+void CWaveSoapFrontDoc::OnProcessNormalize()
+{
+	// TODO: Add your command handler code here
+
+}
+
+void CWaveSoapFrontDoc::OnUpdateProcessResample(CCmdUI* pCmdUI)
+{
+	// TODO: Add your command update UI handler code here
+
+}
+
+void CWaveSoapFrontDoc::OnProcessResample()
+{
+	// TODO: Add your command handler code here
+
 }

@@ -115,6 +115,7 @@ public:
 	virtual BOOL OnOpenDocument(LPCTSTR lpszPathName);
 	virtual BOOL OnSaveDocument(LPCTSTR lpszPathName);
 	virtual BOOL OnCmdMsg(UINT nID, int nCode, void* pExtra, AFX_CMDHANDLERINFO* pHandlerInfo);
+	virtual void SetPathName(LPCTSTR lpszPathName, BOOL bAddToMRU = TRUE);
 protected:
 	virtual BOOL SaveModified();
 	//}}AFX_VIRTUAL
@@ -165,6 +166,7 @@ public:
 	void UpdateDocumentTitle();
 	void LoadPeakFile();
 	void BuildPeakInfo();
+	void GetSoundMinMax(int & MinL, int & MaxL, int & MinR, int & MaxR, long begin, long end);
 	int CalculatePeakInfoSize() const
 	{
 		return (WaveFileSamples() + m_PeakDataGranularity - 1)
@@ -302,6 +304,16 @@ protected:
 	afx_msg void OnViewStatusHhmmss();
 	afx_msg void OnViewStatusSamples();
 	afx_msg void OnViewStatusSeconds();
+	afx_msg void OnUpdateProcessDcoffset(CCmdUI* pCmdUI);
+	afx_msg void OnProcessDcoffset();
+	afx_msg void OnUpdateProcessInsertsilence(CCmdUI* pCmdUI);
+	afx_msg void OnProcessInsertsilence();
+	afx_msg void OnUpdateProcessMute(CCmdUI* pCmdUI);
+	afx_msg void OnProcessMute();
+	afx_msg void OnUpdateProcessNormalize(CCmdUI* pCmdUI);
+	afx_msg void OnProcessNormalize();
+	afx_msg void OnUpdateProcessResample(CCmdUI* pCmdUI);
+	afx_msg void OnProcessResample();
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 
