@@ -496,6 +496,8 @@ private:
 	TCHAR m_DriveLetter;
 
 	SCSI_ADDRESS m_ScsiAddr;
+	IO_SCSI_CAPABILITIES m_ScsiCaps;
+
 	HMODULE m_hWinaspi32;
 	ULONG m_MaxTransferSize;
 	USHORT m_BufferAlignment;

@@ -5,6 +5,7 @@
 #include "stdafx.h"
 //#include "WaveSoapFront.h"
 #include "CdDrive.h"
+#include <Setupapi.h>
 
 #ifdef _DEBUG
 #undef THIS_FILE
@@ -53,6 +54,160 @@ CCdDrive::CCdDrive(BOOL UseAspi)
 			}
 		}
 	}
+#if 0//def _DEBUG
+	SetLastError(0);
+	HDEVINFO di = SetupDiGetClassDevs( & GUID_DEVINTERFACE_CDROM,
+										NULL, AfxGetMainWnd()->m_hWnd, DIGCF_DEVICEINTERFACE | DIGCF_PRESENT);
+	TRACE("HDEVINFO=%X, last error=%d\n", di, GetLastError());
+
+	for (int i = 0; ; i++)
+	{
+		SP_DEVICE_INTERFACE_DATA spdid;
+		spdid.cbSize = sizeof spdid;
+		spdid.InterfaceClassGuid = GUID_DEVINTERFACE_CDROM;
+
+		if ( ! SetupDiEnumDeviceInterfaces(di,
+											NULL, & GUID_DEVINTERFACE_CDROM,
+											i, & spdid))
+		{
+			TRACE("No more devices, last error=%d\n", GetLastError());
+			break;
+		}
+		TRACE("CDROM Device interface found!\n");
+		struct IntDetailData: SP_DEVICE_INTERFACE_DETAIL_DATA
+		{
+			TCHAR MorePath[256];
+		} DetailData;
+		DetailData.cbSize = sizeof SP_DEVICE_INTERFACE_DETAIL_DATA;
+		DetailData.DevicePath[0] = 0;
+		DetailData.DevicePath[1] = 0;
+		DWORD FilledSize = 0;;
+		SP_DEVINFO_DATA sdi;
+		sdi.cbSize = sizeof sdi;
+
+		SetupDiGetDeviceInterfaceDetail(di, &spdid,
+										NULL, 0, & FilledSize, NULL);
+		TRACE("Required data size=%d\n", FilledSize);
+
+		if ( ! SetupDiGetDeviceInterfaceDetail(di, & spdid,
+												& DetailData, sizeof DetailData, NULL, NULL))
+		{
+			TRACE("SetupDiGetDeviceInterfaceDetail failed, error=%d\n", GetLastError());
+			continue;
+		}
+
+		HANDLE hFile = CreateFile(DetailData.DevicePath,
+								GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE,
+								NULL, OPEN_EXISTING,
+								0, // flags
+								NULL);
+		if (NULL == hFile || INVALID_HANDLE_VALUE == hFile)
+		{
+			TRACE("Failed to open device for READ access, error=%d\n", GetLastError());
+		}
+		else
+		{
+			TRACE("Opened device for READ access\n");
+			CloseHandle(hFile);
+		}
+		hFile = CreateFile(DetailData.DevicePath,
+							0, FILE_SHARE_READ | FILE_SHARE_WRITE,
+							NULL, OPEN_EXISTING,
+							0, // flags
+							NULL);
+		if (NULL == hFile || INVALID_HANDLE_VALUE == hFile)
+		{
+			TRACE("Failed to open device for ATTRIBUTE access, error=%d\n", GetLastError());
+		}
+		else
+		{
+			TRACE("Opened device for ATTRIBUTE access\n");
+			CloseHandle(hFile);
+		}
+
+		hFile = CreateFile(DetailData.DevicePath,
+							GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE,
+							NULL, OPEN_EXISTING,
+							0, // flags
+							NULL);
+		if (NULL == hFile || INVALID_HANDLE_VALUE == hFile)
+		{
+			TRACE("Failed to open device for WRITE access, error=%d\n", GetLastError());
+		}
+		else
+		{
+			TRACE("Opened device for WRITE access\n");
+			CloseHandle(hFile);
+		}
+
+		hFile = CreateFile(DetailData.DevicePath,
+							GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE,
+							NULL, OPEN_EXISTING,
+							0, // flags
+							NULL);
+		if (NULL == hFile || INVALID_HANDLE_VALUE == hFile)
+		{
+			TRACE("Failed to open device for READ/WRITE access, error=%d\n", GetLastError());
+		}
+		else
+		{
+			TRACE("Opened device for READ/WRITE access\n");
+			CloseHandle(hFile);
+		}
+
+		hFile = CreateFile(DetailData.DevicePath,
+							MAXIMUM_ALLOWED, FILE_SHARE_READ | FILE_SHARE_WRITE,
+							NULL, OPEN_EXISTING,
+							0, // flags
+							NULL);
+		if (NULL == hFile || INVALID_HANDLE_VALUE == hFile)
+		{
+			TRACE("Failed to open device for MAXIMIM_ALLOWED access, error=%d\n", GetLastError());
+		}
+		else
+		{
+			TRACE("Opened device for MAXIMIM_ALLOWED access\n");
+			DWORD bytes;
+
+			BOOL res = DeviceIoControl(hFile, IOCTL_SCSI_GET_ADDRESS,
+										NULL, 0,
+										& m_ScsiAddr, sizeof m_ScsiAddr,
+										& bytes, NULL);
+
+			struct OP : SCSI_PASS_THROUGH, SCSI_SenseInfo
+			{
+				char CdConfig[1024];
+			} spt;
+			spt.Length = sizeof spt;
+			spt.PathId = m_ScsiAddr.PathId;
+			spt.TargetId = m_ScsiAddr.TargetId;
+			spt.Lun = m_ScsiAddr.Lun;
+			spt.SenseInfoLength = sizeof SCSI_SenseInfo;
+			spt.SenseInfoOffset = sizeof SCSI_PASS_THROUGH;
+
+			GetConfigurationCDB cdb(sizeof spt.CdConfig);
+
+			memcpy(spt.Cdb, & cdb, sizeof cdb);
+
+			spt.CdbLength = sizeof cdb;
+			spt.DataIn = FALSE;
+
+			spt.DataTransferLength = sizeof spt.CdConfig;
+			spt.DataBufferOffset = sizeof SCSI_PASS_THROUGH + sizeof SCSI_SenseInfo;
+			spt.TimeOutValue = 1000;
+
+			res = DeviceIoControl(hFile, IOCTL_SCSI_PASS_THROUGH,
+								& spt, sizeof spt,
+								& spt, sizeof spt,
+								& bytes, NULL);
+
+			TRACE("IOCTL_SCSI_PASS_THROUGH returned %d, error=%d\n", res, GetLastError());
+
+			CloseHandle(hFile);
+		}
+	}
+	SetupDiDestroyDeviceInfoList(di);
+#endif
 }
 
 CCdDrive::~CCdDrive()
@@ -135,20 +290,26 @@ BOOL CCdDrive::Open(TCHAR letter)
 	}
 	else
 	{
-		IO_SCSI_CAPABILITIES isc;
-		memzero(isc);
+		memzero(m_ScsiCaps);
+		memzero(m_ScsiAddr);
 
 		BOOL res = DeviceIoControl(m_hDrive, IOCTL_SCSI_GET_ADDRESS,
 									NULL, 0,
-									& isc, sizeof isc,
+									& m_ScsiAddr, sizeof m_ScsiAddr,
 									& bytes, NULL);
 
-		isc.Length = sizeof isc;
-		m_MaxTransferSize = isc.MaximumTransferLength;
-		m_BufferAlignment = isc.AlignmentMask;
+		res = DeviceIoControl(m_hDrive, IOCTL_SCSI_GET_CAPABILITIES,
+							NULL, 0,
+							& m_ScsiCaps, sizeof m_ScsiCaps,
+							& bytes, NULL);
 
-		TRACE("MaxTransferSize = %d, buffer alignment = %x\n",
-			m_MaxTransferSize, m_BufferAlignment);
+		m_MaxTransferSize = m_ScsiCaps.MaximumTransferLength;
+		m_BufferAlignment = m_ScsiCaps.AlignmentMask;
+
+		TRACE("MaxTransferSize = %d, buffer alignment = %x, \n",
+			m_MaxTransferSize, m_BufferAlignment
+			);
+
 	}
 	return TRUE;
 }

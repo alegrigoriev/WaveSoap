@@ -5,7 +5,6 @@
 #include "WaveSoapFront.h"
 #include "OperationDialogs2.h"
 #include <dbt.h>
-#include "Setupapi.h"
 #include <afxpriv.h>
 
 #ifdef _DEBUG
@@ -209,115 +208,15 @@ CCdGrabbingDialog::CCdGrabbingDialog(CWnd* pParent /*=NULL*/)
 	m_RadioStoreImmediately = -1;
 	m_RadioStoreMultiple = -1;
 	//}}AFX_DATA_INIT
+	m_RadioAssignAttributes = 0;
+	m_RadioStoreImmediately = 0;
+	m_RadioStoreMultiple = 0;
 	m_DiskID = -1;
 	m_PreviousSize.cx = -1;
 	m_PreviousSize.cy = -1;
 	memzero(m_mmxi);
 	m_bNeedUpdateControls = TRUE;
 
-#ifdef _DEBUG
-	SetLastError(0);
-	HDEVINFO di = SetupDiGetClassDevs( & GUID_DEVINTERFACE_CDROM,
-										NULL, AfxGetMainWnd()->m_hWnd, DIGCF_DEVICEINTERFACE | DIGCF_PRESENT);
-	TRACE("HDEVINFO=%X, last error=%d\n", di, GetLastError());
-
-	for (int i = 0; ; i++)
-	{
-		SP_DEVICE_INTERFACE_DATA spdid;
-		spdid.cbSize = sizeof spdid;
-		spdid.InterfaceClassGuid = GUID_DEVINTERFACE_CDROM;
-
-		if ( ! SetupDiEnumDeviceInterfaces(di,
-											NULL, & GUID_DEVINTERFACE_CDROM,
-											i, & spdid))
-		{
-			TRACE("No more devices, last error=%d\n", GetLastError());
-			break;
-		}
-		TRACE("CDROM Device interface found!\n");
-		struct IntDetailData: SP_DEVICE_INTERFACE_DETAIL_DATA
-		{
-			TCHAR MorePath[256];
-		} DetailData;
-		DetailData.cbSize = sizeof SP_DEVICE_INTERFACE_DETAIL_DATA;
-		DetailData.DevicePath[0] = 0;
-		DetailData.DevicePath[1] = 0;
-		DWORD FilledSize = 0;;
-		SP_DEVINFO_DATA sdi;
-		sdi.cbSize = sizeof sdi;
-
-		SetupDiGetDeviceInterfaceDetail(di, &spdid,
-										NULL, 0, & FilledSize, NULL);
-		TRACE("Required data size=%d\n", FilledSize);
-
-		if ( ! SetupDiGetDeviceInterfaceDetail(di, & spdid,
-												& DetailData, sizeof DetailData, NULL, NULL))
-		{
-			TRACE("SetupDiGetDeviceInterfaceDetail failed, error=%d\n", GetLastError());
-			continue;
-		}
-
-		HANDLE hFile = CreateFile(DetailData.DevicePath,
-								GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE,
-								NULL, OPEN_EXISTING,
-								0, // flags
-								NULL);
-		if (NULL == hFile || INVALID_HANDLE_VALUE == hFile)
-		{
-			TRACE("Failed to open device for READ access, error=%d\n", GetLastError());
-		}
-		else
-		{
-			TRACE("Opened device for READ access\n");
-			CloseHandle(hFile);
-		}
-		hFile = CreateFile(DetailData.DevicePath,
-							0, FILE_SHARE_READ | FILE_SHARE_WRITE,
-							NULL, OPEN_EXISTING,
-							0, // flags
-							NULL);
-		if (NULL == hFile || INVALID_HANDLE_VALUE == hFile)
-		{
-			TRACE("Failed to open device for ATTRIBUTE access, error=%d\n", GetLastError());
-		}
-		else
-		{
-			TRACE("Opened device for ATTRIBUTE access\n");
-			CloseHandle(hFile);
-		}
-
-		hFile = CreateFile(DetailData.DevicePath,
-							GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE,
-							NULL, OPEN_EXISTING,
-							0, // flags
-							NULL);
-		if (NULL == hFile || INVALID_HANDLE_VALUE == hFile)
-		{
-			TRACE("Failed to open device for WRITE access, error=%d\n", GetLastError());
-		}
-		else
-		{
-			TRACE("Opened device for WRITE access\n");
-			CloseHandle(hFile);
-		}
-
-		hFile = CreateFile(DetailData.DevicePath,
-							GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE,
-							NULL, OPEN_EXISTING,
-							0, // flags
-							NULL);
-		if (NULL == hFile || INVALID_HANDLE_VALUE == hFile)
-		{
-			TRACE("Failed to open device for READ/WRITE access, error=%d\n", GetLastError());
-		}
-		else
-		{
-			TRACE("Opened device for READ/WRITE access\n");
-			CloseHandle(hFile);
-		}
-	}
-	SetupDiDestroyDeviceInfoList(di);
-#endif
 }
 
 CCdGrabbingDialog::~CCdGrabbingDialog()
@@ -433,11 +332,15 @@ void CCdGrabbingDialog::ReloadTrackList()
 	m_lbTracks.DeleteAllItems();
 	BOOL res = m_CdDrive.ReadToc( & m_toc);
 
+	m_bNeedUpdateControls = TRUE;
 	if ( ! res)
 	{
 		m_lbTracks.InsertItem(0, "No disk in the drive");
+		memzero(m_toc);
+		m_bDiskReady = FALSE;
 		return;
 	}
+	m_bDiskReady = TRUE;
 	// Get disk ID
 	m_DiskID = m_CdDrive.GetDiskID();
 
@@ -829,6 +732,7 @@ LRESULT CCdGrabbingDialog::OnDeviceChange(UINT event, DWORD data)
 		if (DBT_DEVTYP_VOLUME == pdbh->dbch_devicetype)
 		{
 			CheckForDrivesChanged();
+			// TODO: close the device and open after timeout
 		}
 		break;
 	case DBT_DEVICEREMOVECOMPLETE:
@@ -876,14 +780,30 @@ void CCdGrabbingDialog::OnButtonCddb()
 
 void CCdGrabbingDialog::OnButtonDeselectAll()
 {
-	// TODO: Add your control notification handler code here
-
+	if (0 == m_toc.Length[0]
+		&& 0 == m_toc.Length[1])
+	{
+		return;
+	}
+	for (int tr = 0; tr <= m_toc.LastTrack - m_toc.FirstTrack; tr++)
+	{
+		m_lbTracks.SetCheck(tr, FALSE);
+	}
+	m_bNeedUpdateControls = TRUE;
 }
 
 void CCdGrabbingDialog::OnButtonSelectAll()
 {
-	// TODO: Add your control notification handler code here
-
+	if (0 == m_toc.Length[0]
+		&& 0 == m_toc.Length[1])
+	{
+		return;
+	}
+	for (int tr = 0; tr <= m_toc.LastTrack - m_toc.FirstTrack; tr++)
+	{
+		m_lbTracks.SetCheck(tr, TRUE);
+	}
+	m_bNeedUpdateControls = TRUE;
 }
 
 void CCdGrabbingDialog::OnButtonSetFormat()
@@ -916,12 +836,12 @@ void CCdGrabbingDialog::OnChangeEditArtist()
 
 void CCdGrabbingDialog::OnRadioStoreMultipleFiles()
 {
-	// TODO: Add your control notification handler code here
-
+	// change edit box to the folder string
+	m_RadioStoreMultiple = 0;
 }
 
 void CCdGrabbingDialog::OnRadioStoreSingleFile()
 {
-	// TODO: Add your control notification handler code here
+	m_RadioStoreMultiple = 1;
 
 }

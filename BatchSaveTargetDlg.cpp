@@ -33,6 +33,7 @@ CBatchSaveTargetDlg::CBatchSaveTargetDlg(CWnd* pParent /*=NULL*/)
 	//}}AFX_DATA_INIT
 	m_dNormalizeDb = 0;
 	m_bNeedFolderToSave = FALSE;
+	m_bNeedUpdateControls = TRUE;
 }
 
 
