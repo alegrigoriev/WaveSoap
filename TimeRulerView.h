@@ -21,6 +21,8 @@ protected:
 public:
 	CWaveSoapFrontDoc* GetDocument();
 
+	static int CalculateHeight();
+
 // Operations
 public:
 	enum {ShowSamples, ShowHhMmSs, ShowSeconds };
@@ -41,9 +43,6 @@ protected:
 	virtual void AssertValid() const;
 	virtual void Dump(CDumpContext& dc) const;
 #endif
-	void DrawRulerSamples(CDC* pDC);
-	void DrawRulerHhMmSs(CDC* pDC);
-	void DrawRulerSeconds(CDC* pDC);
 
 	// Generated message map functions
 protected:
