@@ -3353,14 +3353,17 @@ void CFileSaveContext::PostRetire(BOOL bChildContext)
 	{
 		// update data chunk and number of samples
 		MMCKINFO * datack = m_pConvert->m_DstFile.GetDataChunk();
-		datack->dwFlags |= MMIO_DIRTY;
-		datack->cksize = m_pConvert->m_DstCopyPos - datack->dwDataOffset;
-		//MMCKINFO * fact = m_pConvert->m_DstFile.GetFactChunk();
-		m_DstFile.GetFactChunk()->dwFlags |= MMIO_DIRTY;
-		// save number of samples in the main context
-		m_DstFile.m_FactSamples =
-			(m_pConvert->m_SrcCopyPos - m_pConvert->m_SrcStart)
-			/ m_pConvert->m_SrcFile.SampleSize();
+		if (NULL != datack)
+		{
+			datack->dwFlags |= MMIO_DIRTY;
+			datack->cksize = m_pConvert->m_DstCopyPos - datack->dwDataOffset;
+			//MMCKINFO * fact = m_pConvert->m_DstFile.GetFactChunk();
+			m_DstFile.GetFactChunk()->dwFlags |= MMIO_DIRTY;
+			// save number of samples in the main context
+			m_DstFile.m_FactSamples =
+				(m_pConvert->m_SrcCopyPos - m_pConvert->m_SrcStart)
+				/ m_pConvert->m_SrcFile.SampleSize();
+		}
 		// set length of file (even)
 		m_DstFile.SetFileLength((m_pConvert->m_DstCopyPos + 1) & ~1);
 		// release references
@@ -3531,12 +3534,17 @@ BOOL CConversionContext::OperationProc()
 	}
 
 	// notify the view
-	int nSampleSize = m_DstFile.SampleSize();
-	int nFirstSample = (dwOperationBegin - m_DstFile.GetDataChunk()->dwDataOffset)
+	MMCKINFO * pDataChunk = m_DstFile.GetDataChunk();
+	if (NULL != pDataChunk)
+	{
+		// pDataChunk is null, if the output file is not in WAV format
+		int nSampleSize = m_DstFile.SampleSize();
+		int nFirstSample = (dwOperationBegin - m_DstFile.GetDataChunk()->dwDataOffset)
+							/ nSampleSize;
+		int nLastSample = (m_DstCopyPos - m_DstFile.GetDataChunk()->dwDataOffset)
 						/ nSampleSize;
-	int nLastSample = (m_DstCopyPos - m_DstFile.GetDataChunk()->dwDataOffset)
-					/ nSampleSize;
-	pDocument->SoundChanged(m_DstFile.GetFileID(), nFirstSample, nLastSample);
+		pDocument->SoundChanged(m_DstFile.GetFileID(), nFirstSample, nLastSample);
+	}
 
 	if (m_SrcEnd > m_SrcStart)
 	{

@@ -2580,6 +2580,7 @@ BladeMp3Encoder::BladeMp3Encoder()
 	m_DllModule(NULL),
 	m_InBufferSize(0),
 	m_OutBufferSize(0),
+	m_bFlushStreamCalled(FALSE),
 	beInitStream(InitStreamStub),
 	beEncodeChunk(EncodeChunkStub),
 	beDeinitStream(DeinitStreamStub),
@@ -2618,6 +2619,8 @@ BOOL BladeMp3Encoder::OpenStream(PBE_CONFIG pConfig)
 	{
 		return FALSE;
 	}
+	m_bFlushStreamCalled = false;
+
 	m_InBufferSize = dwSamples * 2;
 	if (pConfig->format.LHV1.nMode != BE_MP3_MODE_MONO)
 	{
@@ -2666,6 +2669,12 @@ BOOL BladeMp3Encoder::EncodeChunk(short const * pSrc, int nSamples, BYTE * pDst,
 
 BOOL BladeMp3Encoder::FlushStream(BYTE * pDst, DWORD * pBytesEncoded)
 {
+	if (m_bFlushStreamCalled)
+	{
+		*pBytesEncoded = 0;
+		return TRUE;
+	}
+	m_bFlushStreamCalled = TRUE;
 	return BE_ERR_SUCCESSFUL == beDeinitStream(m_pStream, pDst, pBytesEncoded);
 }
 
@@ -2673,6 +2682,7 @@ BOOL CLameEncConvertor::Open(WAVEFORMATEX * pWF)
 {
 	BE_CONFIG cfg;
 	memzero(cfg);
+
 	cfg.dwConfig = BE_CONFIG_LAME;
 	cfg.format.LHV1.dwStructVersion = 1;
 	cfg.format.LHV1.dwStructSize = sizeof cfg;
@@ -2743,22 +2753,26 @@ int CLameEncConvertor::ProcessSound(char const * pInBuf, char * pOutBuf,
 		}
 		if (NULL != pInBuf)
 		{
-			memcpy(m_pInputBuffer, pInBuf, ToCopy);
+			memcpy(m_pInputBuffer + m_InputBufferFilled, pInBuf, ToCopy);
 			*pUsedBytes += ToCopy;
 			pInBuf += ToCopy;
 			nInBytes -= ToCopy;
-			if (m_InputBufferFilled == m_InputBufferSize)
-			{
-				DWORD OutFilled = 0;
-				m_Enc.EncodeChunk((short*)m_pInputBuffer,
-								m_InputBufferFilled / (sizeof (__int16) * m_InputChannels),
-								(BYTE*)m_pOutputBuffer, & OutFilled);
-				m_OutputBufferFilled = OutFilled;
-			}
-			else
-			{
-				break;
-			}
+			m_InputBufferFilled += ToCopy;
+		}
+		if (m_InputBufferFilled == m_InputBufferSize
+			|| (NULL == pInBuf && 0 != m_InputBufferFilled))
+		{
+			DWORD OutFilled = 0;
+			m_Enc.EncodeChunk((short*)m_pInputBuffer,
+							m_InputBufferFilled / (sizeof (__int16) * m_InputChannels),
+							(BYTE*)m_pOutputBuffer, & OutFilled);
+			m_OutputBufferFilled = OutFilled;
+			m_InputBufferFilled = 0;    // all used up
+			continue;
+		}
+		if (NULL != pInBuf)
+		{
+			break;
 		}
 		else
 		{

@@ -278,6 +278,7 @@ protected:
 
 	HBE_STREAM m_pStream;
 	HMODULE m_DllModule;
+	BOOL m_bFlushStreamCalled;
 public:
 	DWORD m_InBufferSize;
 	DWORD m_OutBufferSize;

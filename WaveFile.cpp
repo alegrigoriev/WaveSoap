@@ -741,11 +741,8 @@ BOOL CMmioFile::CommitChanges()
 	// save RIFF header
 	DWORD CurrentLength = (DWORD)GetLength();
 	LPMMCKINFO riff = GetRiffChunk();
-	if (NULL == riff)
-	{
-		return FALSE;
-	}
-	if ((riff->dwFlags & MMIO_DIRTY) || riff->dwDataOffset + riff->cksize != CurrentLength)
+	if (NULL != riff
+		&& ((riff->dwFlags & MMIO_DIRTY) || riff->dwDataOffset + riff->cksize != CurrentLength))
 	{
 		Seek(CurrentLength);
 		riff->dwFlags |= MMIO_DIRTY;
@@ -783,7 +780,8 @@ BOOL CWaveFile::CommitChanges()
 	}
 	// update data chunk
 	MMCKINFO * datack = GetDataChunk();
-	if (datack->dwFlags & MMIO_DIRTY)
+	if (NULL != datack
+		&& datack->dwFlags & MMIO_DIRTY)
 	{
 		Seek(datack->dwDataOffset - sizeof datack->cksize);
 		Write( & datack->cksize, sizeof datack->cksize);

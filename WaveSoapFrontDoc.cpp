@@ -2293,17 +2293,79 @@ BOOL CWaveSoapFrontDoc::OnSaveMp3File(int flags, LPCTSTR FullTargetName, WAVEFOR
 {
 	// create output file
 	CWaveFile NewWaveFile;
+	CString NewTempFilename = FullTargetName;
+	if (0 == (flags & SaveFile_SaveCopy))
+	{
+		NewTempFilename += _T(".temp");
+	}
 	DWORD FileSize = MulDiv(pWf->nAvgBytesPerSec, m_WavFile.GetDataChunk()->cksize,
 							m_WavFile.GetWaveFormat()->nAvgBytesPerSec);
 	if (FALSE == NewWaveFile.CreateWaveFile(& m_OriginalWavFile, pWf, ALL_CHANNELS,
 											FileSize,
 											CreateWaveFileDontInitStructure | CreateWaveFileSizeSpecified,
-											FullTargetName))
+											NewTempFilename))
 	{
-		FileCreationErrorMessageBox(FullTargetName);
+		FileCreationErrorMessageBox(NewTempFilename);
 		return FALSE;
 	}
 
+	CFileSaveContext * pContext = new CFileSaveContext(this,
+														"Compressing and saving the Mp3 file...", "Mp3 File Compress and Save");
+	if (NULL == pContext)
+	{
+		NotEnoughMemoryMessageBox();
+		return FALSE;
+	}
+
+	pContext->m_NewName = FullTargetName;
+	CConversionContext * pConvert = new CConversionContext(this, "", "");
+
+	if (NULL == pConvert)
+	{
+		delete pContext;
+		NotEnoughMemoryMessageBox();
+		return FALSE;
+	}
+	pContext->m_pConvert = pConvert;
+	pConvert->m_SrcFile = m_WavFile;
+	pConvert->m_DstFile = NewWaveFile;
+	pConvert->m_SrcStart = m_WavFile.GetDataChunk()->dwDataOffset;
+	pConvert->m_DstStart = 0;
+	pConvert->m_SrcCopyPos = pConvert->m_SrcStart;
+	pConvert->m_DstCopyPos = pConvert->m_DstStart;
+	pConvert->m_SrcEnd = pConvert->m_SrcStart + m_WavFile.GetDataChunk()->cksize;
+	pConvert->m_DstEnd = pConvert->m_DstStart;
+
+	pConvert->m_SrcChan = ALL_CHANNELS;
+	pConvert->m_DstChan = ALL_CHANNELS;
+
+	pContext->m_SrcFile = pConvert->m_SrcFile;
+	pContext->m_DstFile = pConvert->m_DstFile;
+	// fill unused data members:
+	pContext->m_SrcStart = pConvert->m_SrcStart;
+	pContext->m_DstStart = pConvert->m_DstStart;
+	pContext->m_SrcCopyPos = pContext->m_SrcStart;
+	pContext->m_DstCopyPos = pContext->m_DstCopyPos;
+	pContext->m_SrcEnd = m_WavFile.GetLength();
+	pContext->m_DstEnd = pContext->m_DstStart;
+
+	pContext->m_SrcChan = ALL_CHANNELS;
+	pContext->m_DstChan = ALL_CHANNELS;
+
+	CLameEncConvertor * pMp3Convertor = new CLameEncConvertor;
+	pConvert->m_ProcBatch.AddWaveProc(pMp3Convertor);
+	if ( ! pMp3Convertor->Open(pWf))
+	{
+		delete pContext;
+		return FALSE;
+	}
+
+	if (flags & SaveFile_SaveCopy)
+	{
+		pContext->m_Flags |= FileSaveContext_SavingCopy;
+	}
+	pContext->Execute();
+	return FALSE;   // not saved yet
 }
 
 BOOL CWaveSoapFrontDoc::OnSaveWmaFile(int flags, LPCTSTR FullTargetName, WAVEFORMATEX * pWf)
@@ -2313,6 +2375,7 @@ BOOL CWaveSoapFrontDoc::OnSaveWmaFile(int flags, LPCTSTR FullTargetName, WAVEFOR
 
 BOOL CWaveSoapFrontDoc::OnSaveRawFile(int flags, LPCTSTR FullTargetName, WAVEFORMATEX * pWf)
 {
+	return FALSE;
 }
 
 BOOL CWaveSoapFrontDoc::OnSaveDocument(LPCTSTR lpszPathName, DWORD flags, WAVEFORMATEX * pWf)
