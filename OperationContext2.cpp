@@ -3127,9 +3127,31 @@ CFadeInOutOperation::CFadeInOutOperation(class CWaveSoapFrontDoc * pDoc, int Fad
 {
 }
 
+// init cross fade
+CFadeInOutOperation::CFadeInOutOperation(class CWaveSoapFrontDoc * pDoc, int FadeCurveType,
+										CWaveFile & SrcFile, SAMPLE_INDEX SrcBegin, CHANNEL_MASK SrcChannel,
+										CWaveFile & DstFile, SAMPLE_INDEX DstBegin, CHANNEL_MASK DstChannel,
+										NUMBER_OF_SAMPLES Length, BOOL UndoEnabled)
+	: BaseClass(pDoc)
+	, m_FadeCurveType(FadeCurveType)
+{
+	InitDestination(DstFile, DstBegin, DstBegin + Length, DstChannel, UndoEnabled);
+	InitSource(SrcFile, SrcBegin, SrcBegin + Length, SrcChannel);
+}
+
+// init fade in/out
+CFadeInOutOperation::CFadeInOutOperation(class CWaveSoapFrontDoc * pDoc, int FadeCurveType,
+										CWaveFile & DstFile, SAMPLE_INDEX DstBegin, CHANNEL_MASK DstChannel,
+										NUMBER_OF_SAMPLES Length, BOOL UndoEnabled)
+	: BaseClass(pDoc)
+	, m_FadeCurveType(FadeCurveType)
+{
+	InitDestination(DstFile, DstBegin, DstBegin + Length, DstChannel, UndoEnabled);
+}
+
 double CFadeInOutOperation::GetSrcMixCoefficient(SAMPLE_INDEX Sample, int /*Channel*/) const
 {
-	double const Fraction = (Sample + 0.5) * m_DstFile.SampleSize() / (m_DstStart - m_DstEnd);
+	double const Fraction = (Sample + 0.5) * m_DstFile.SampleSize() / (m_DstEnd - m_DstStart);
 
 	switch (m_FadeCurveType)
 	{
@@ -3157,7 +3179,7 @@ double CFadeInOutOperation::GetSrcMixCoefficient(SAMPLE_INDEX Sample, int /*Chan
 
 double CFadeInOutOperation::GetDstMixCoefficient(SAMPLE_INDEX Sample, int /*Channel*/) const
 {
-	double const Fraction = (Sample + 0.5) * m_DstFile.SampleSize() / (m_DstStart - m_DstEnd);
+	double const Fraction = (Sample + 0.5) * m_DstFile.SampleSize() / (m_DstEnd - m_DstStart);
 
 	switch (m_FadeCurveType)
 	{
