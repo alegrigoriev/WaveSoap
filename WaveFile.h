@@ -132,7 +132,7 @@ public:
 	}
 	BOOL FindRiff()
 	{
-		return Descend(m_riffck, NULL, MMIO_FINDRIFF);
+		return Descend( * GetRiffChunk(), NULL, MMIO_FINDRIFF);
 	}
 
 	BOOL Advance(LPMMIOINFO mmio, UINT uFlags)
@@ -166,9 +166,54 @@ public:
 
 	CDirectFile m_File;
 	HMMIO m_hmmio;
-	DWORD m_dwSize;
-	MMCKINFO m_riffck;  // RIFF chunk info
+	FOURCC m_RiffckType;
 	CSimpleCriticalSection m_cs;
+	void * GetCommonData() const
+	{
+		char * tmp = (char *)m_File.GetCommonData();
+		if (NULL == tmp)
+		{
+			return NULL;
+		}
+		return tmp + sizeof (MMCKINFO);
+	}
+	size_t GetCommonDataSize() const
+	{
+		size_t tmp = m_File.GetCommonDataSize();
+		if (tmp >= sizeof (MMCKINFO))
+		{
+			return tmp - sizeof (MMCKINFO);
+		}
+		else
+		{
+			return 0;
+		}
+	}
+
+	void * AllocateCommonData(size_t size)
+	{
+		char * tmp = (char *)m_File.AllocateCommonData(size + sizeof (MMCKINFO));
+		if (NULL == tmp)
+		{
+			return NULL;
+		}
+		return tmp + sizeof (MMCKINFO);
+	}
+
+	LPMMCKINFO GetRiffChunk() const
+	{
+		return (LPMMCKINFO)m_File.GetCommonData();
+	}
+
+	BOOL IsOpen() const
+	{
+		return m_hmmio != NULL;
+	}
+	DWORD GetFileID() const
+	{
+		return m_File.GetFileID();
+	}
+
 private:
 	// wrong type of constructor
 	CMmioFile(const CMmioFile &)
@@ -194,24 +239,82 @@ class CWaveFile : public CMmioFile
 {
 public:
 	CWaveFile();
-	CWaveFile( LPCTSTR lpszFileName, UINT nOpenFlags );
 	~CWaveFile();
 	BOOL CreateWaveFile(CWaveFile * pTemplateFile, int Channel, int Samples, DWORD flags, LPCTSTR FileName);
 #if 0
 	virtual BOOL Open( LPCTSTR lpszFileName, UINT nOpenFlags);
 #endif
 	virtual void Close( );
+	int SampleSize() const
+	{
+		WAVEFORMATEX * pWf = GetWaveFormat();
+		if (NULL == pWf
+			|| 0 == pWf->nChannels
+			|| 0 == pWf->wBitsPerSample)
+		{
+			return 0;
+		}
+		return pWf->nChannels * pWf->wBitsPerSample / 8;
+	}
+	int Channels() const
+	{
+		WAVEFORMATEX * pWf = GetWaveFormat();
+		if (NULL == pWf)
+		{
+			return 0;
+		}
+		return pWf->nChannels;
+	}
+	LONG NumberOfSamples() const
+	{
+		WAVEFORMATEX * pWf = GetWaveFormat();
+		LPMMCKINFO pDatack = GetDataChunk();
+		if (NULL == pWf
+			|| NULL == pDatack
+			|| 0 == pWf->nChannels
+			|| 0 == pWf->wBitsPerSample)
+		{
+			return 0;
+		}
+		return pDatack->cksize / (pWf->nChannels * pWf->wBitsPerSample / 8);
+	}
 	CWaveFile & operator =(CWaveFile &);
 
-	MMCKINFO m_datack;
+	//MMCKINFO m_datack;
 
 	BOOL LoadWaveformat();
 	BOOL FindData();
 
-	unsigned SampleRate() const;
-	int Channels() const;
+	unsigned SampleRate() const
+	{
+		WAVEFORMATEX * pWf = GetWaveFormat();
+		if (pWf)
+		{
+			return pWf->nSamplesPerSec;
+		}
+		else
+		{
+			return 0;
+		}
+	}
 
-	WAVEFORMATEX * m_pWf;
+	LPMMCKINFO GetDataChunk() const
+	{
+		return (LPMMCKINFO) GetCommonData();
+	}
+	WAVEFORMATEX * GetWaveFormat() const
+	{
+		char * tmp = (char *)GetCommonData();
+		if (tmp)
+		{
+			return (WAVEFORMATEX *)(tmp + sizeof (MMCKINFO));
+		}
+		else
+		{
+			return NULL;
+		}
+	}
+	//WAVEFORMATEX * m_pWf;
 private:
 	// wrong type of constructor
 	CWaveFile(const CWaveFile &)
