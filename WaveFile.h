@@ -29,7 +29,10 @@ helper.
 
 typedef long SAMPLE_INDEX;
 typedef long NUMBER_OF_SAMPLES;
+
 typedef int CHANNEL_MASK;
+#define ALL_CHANNELS ((CHANNEL_MASK)-1)
+
 typedef short NUMBER_OF_CHANNELS;
 typedef DWORD SAMPLE_POSITION;
 typedef DWORD WAV_FILE_SIZE;
