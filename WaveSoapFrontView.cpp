@@ -1816,7 +1816,6 @@ void CWaveSoapFrontView::MovePointIntoView(int nCaret, BOOL bCenter)
 	TRACE("MovePointIntoView: DesiredPos=%d, left=%d, right=%d, scroll=%d\n",
 		nDesiredPos, r.left, r.right, scroll);
 	ScrollBy(scroll, 0, TRUE);
-	NotifySlaveViews(CHANGE_HOR_ORIGIN);
 	CreateAndShowCaret();
 }
 
@@ -1863,11 +1862,11 @@ int CWaveSoapFrontView::OnCreate(LPCREATESTRUCT lpCreateStruct)
 	return 0;
 }
 
-BOOL CWaveSoapFrontView::ScrollBy(double dx, double dy, BOOL bDoScroll)
+BOOL CWaveSoapFrontView::MasterScrollBy(double dx, double dy, BOOL bDoScroll)
 {
 	if (dx != 0.)
 	{
-		CScaledScrollView::ScrollBy(dx, 0, bDoScroll);
+		CScaledScrollView::MasterScrollBy(dx, 0, bDoScroll);
 	}
 	if (dy != 0.)
 	{
@@ -2054,7 +2053,6 @@ void CWaveSoapFrontView::UpdatePlaybackCursor(long sample, int channel)
 		if (dOrgX + dExtX + dScroll < dMaxRight)
 		{
 			ScrollBy(m_HorizontalScale * (pos - NewPos), 0, TRUE);
-			NotifySlaveViews(CHANGE_HOR_ORIGIN);
 		}
 	}
 	ShowPlaybackCursor();
@@ -2075,13 +2073,13 @@ void CWaveSoapFrontView::UpdateMaxExtents(unsigned Length)
 	SetExtents(0., 0., nLowExtent, nHighExtent);
 }
 
-void CWaveSoapFrontView::OnChangeOrgExt(double left, double width,
-										double top, double height, DWORD flag)
+void CWaveSoapFrontView::OnMasterChangeOrgExt(double left, double width,
+											double top, double height, DWORD flag)
 {
 	int OldHorScale = m_HorizontalScale;
 
-	CScaledScrollView::OnChangeOrgExt(left, width,
-									top, height, flag);
+	CScaledScrollView::OnMasterChangeOrgExt(left, width,
+											top, height, flag);
 
 	if (OldHorScale != m_HorizontalScale)
 	{
@@ -2332,7 +2330,7 @@ void CWaveSoapFrontView::OnTimer(UINT nIDEvent)
 				scroll *= 1 << nDistance;
 			}
 			ScrollBy(scroll, 0, TRUE);
-			NotifySlaveViews(CHANGE_HOR_ORIGIN);
+
 			CreateAndShowCaret();
 			UINT flags = 0;
 			if (0x8000 & GetKeyState(VK_CONTROL))

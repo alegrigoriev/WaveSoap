@@ -112,9 +112,9 @@ CWaveMDIChildClient::CWaveMDIChildClient()
 	m_bShowTimeRuler(TRUE),
 	m_bShowVerticalRuler(TRUE),
 	m_bShowSpectrumSection(FALSE),
-	m_SpectrumSectionWidth(100),
 	m_bShowFft(FALSE)
 {
+	m_SpectrumSectionWidth = GetApp()->m_SpectrumSectionWidth;
 }
 
 CWaveMDIChildClient::~CWaveMDIChildClient()
@@ -913,6 +913,7 @@ void CVerticalTrackerBar::OnMouseMove(UINT nFlags, CPoint point)
 			{
 				pSpectrumSection->ScreenToClient( & point);
 				pParent->m_SpectrumSectionWidth = point.x;
+				GetApp()->m_SpectrumSectionWidth = point.x;
 				pParent->RecalcLayout();
 			}
 		}
@@ -941,6 +942,7 @@ void CWaveMDIChildClient::OnViewHideSpectrumsection()
 
 void CChildFrame::OnDestroy()
 {
-	GetApp()->m_bOpenChildMaximized = (0 != (GetStyle() & WS_MAXIMIZE));
+	CThisApp * pApp = GetApp();
+	pApp->m_bOpenChildMaximized = (0 != (GetStyle() & WS_MAXIMIZE));
 	CMDIChildWnd::OnDestroy();
 }

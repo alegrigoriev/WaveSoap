@@ -418,7 +418,8 @@ void CAmplitudeRuler::UpdateMaxExtents()
 		nHighExtent = 0x10000;
 	}
 
-	SetMaxExtents(0., 1., nLowExtent, nHighExtent);
+	// don't want to go through the master window
+	SetMaxExtentsMaster(0., 1., nLowExtent, nHighExtent);
 	SetExtents(0., 1., nLowExtent, nHighExtent);
 }
 

@@ -49,8 +49,8 @@ public:
 	virtual ~CWaveSoapFrontView();
 	virtual void UpdateCaretPosition();
 	void InvalidateRect( LPCRECT lpRect, BOOL bErase = TRUE );
-	virtual void OnChangeOrgExt(double left, double width,
-								double top, double height, DWORD flag);
+	virtual void OnMasterChangeOrgExt(double left, double width,
+									double top, double height, DWORD flag);
 	enum {
 		WAVE_OFFSET_CHANGED = 0x10000,
 		WAVE_SCALE_CHANGED = 0x20000,
@@ -65,7 +65,7 @@ protected:
 	// how many samples in the display point
 	virtual void AdjustNewScale(double OldScaleX, double OldScaleY,
 								double & NewScaleX, double & NewScaleY);
-	virtual BOOL ScrollBy(double dx, double dy, BOOL bDoScroll = TRUE);
+	virtual BOOL MasterScrollBy(double dx, double dy, BOOL bDoScroll = TRUE);
 	void GetWaveSamples(int Position, int NumOfSamples);
 	void DrawHorizontalWithSelection(CDC * pDC,
 									int left, int right, int Y,

@@ -109,8 +109,7 @@ void CHorizontalRuler::OnMouseMove(UINT nFlags, CPoint point)
 		// do scroll
 		double dx = (PrevMouseX - point.x) / GetXScaleDev();
 		PrevMouseX = point.x;
-		m_pHorMaster->ScrollBy(dx, 0, TRUE);
-		m_pHorMaster->NotifySlaveViews(CHANGE_HOR_ORIGIN);
+		ScrollBy(dx, 0, TRUE);
 	}
 }
 
@@ -261,8 +260,7 @@ void CVerticalRuler::OnMouseMove(UINT nFlags, CPoint point)
 		// do scroll
 		double dy = (PrevMouseY - point.y) / m_pVertMaster->GetYScaleDev();
 		PrevMouseY = point.y;
-		m_pVertMaster->ScrollBy(0, dy, TRUE);
-		m_pVertMaster->NotifySlaveViews(CHANGE_VERT_ORIGIN);
+		ScrollBy(0, dy, TRUE);
 	}
 }
 

@@ -134,37 +134,37 @@ BOOL CScaledScrollView::OnScroll(UINT nScrollCode, UINT nPos, BOOL bDoScroll)
 
 	// calc new x position
 	DWORD flag = CHANGE_HOR_ORIGIN | CHANGE_VERT_ORIGIN;
-	double dX = dOrgX;
+	double X = dOrgX;
 
 	switch (LOBYTE(nScrollCode))
 	{
 	case SB_TOP:
 		TRACE("OnScroll horz SB_TOP, bDoScroll=%d\n", bDoScroll);
-		dX = dMaxRight;
+		X = dMaxRight;
 		break;
 	case SB_BOTTOM:
 		TRACE("OnScroll horz SB_BOTTOM, bDoScroll=%d\n", bDoScroll);
-		dX = dMinLeft - dExtX;
+		X = dMinLeft - dExtX;
 		break;
 	case SB_LINEUP:
 		TRACE("OnScroll horz SB_LINEUP, bDoScroll=%d\n", bDoScroll);
-		dX -= dExtX * 0.05;
+		X -= dExtX * 0.05;
 		break;
 	case SB_LINEDOWN:
 		TRACE("OnScroll horz SB_LINEDOWN, bDoScroll=%d\n", bDoScroll);
-		dX += dExtX * 0.05;
+		X += dExtX * 0.05;
 		break;
 	case SB_PAGEUP:
 		TRACE("OnScroll horz SB_PAGEUP, bDoScroll=%d\n", bDoScroll);
-		dX -= dExtX * 0.9;
+		X -= dExtX * 0.9;
 		break;
 	case SB_PAGEDOWN:
 		TRACE("OnScroll horz SB_PAGEDOWN, bDoScroll=%d\n", bDoScroll);
-		dX += dExtX * 0.9;
+		X += dExtX * 0.9;
 		break;
 	case SB_THUMBTRACK:
 		TRACE("OnScroll horz SB_THUMBTRACK, nPos=%d, bDoScroll=%d\n", nPos, bDoScroll);
-		dX = (dMaxRight - dMinLeft) * (int(nPos) - ScrollMin) / double(ScrollMax - ScrollMin)
+		X = (dMaxRight - dMinLeft) * (int(nPos) - ScrollMin) / double(ScrollMax - ScrollMin)
 			+ dMinLeft;
 		break;
 	default:
@@ -173,30 +173,30 @@ BOOL CScaledScrollView::OnScroll(UINT nScrollCode, UINT nPos, BOOL bDoScroll)
 	}
 
 	// calc new y position
-	double dY = dOrgY;
+	double Y = dOrgY;
 
 	switch (HIBYTE(nScrollCode))
 	{
 	case SB_TOP:
-		dY = dMaxTop;
+		Y = dMaxTop;
 		break;
 	case SB_BOTTOM:
-		dY = dMinBottom + dExtY;
+		Y = dMinBottom + dExtY;
 		break;
 	case SB_LINEUP:
-		dY += dExtY * 0.05;
+		Y += dExtY * 0.05;
 		break;
 	case SB_LINEDOWN:
-		dY -= dExtY * 0.05;
+		Y -= dExtY * 0.05;
 		break;
 	case SB_PAGEUP:
-		dY += dExtY * 0.9;
+		Y += dExtY * 0.9;
 		break;
 	case SB_PAGEDOWN:
-		dY -= dExtY * 0.9;
+		Y -= dExtY * 0.9;
 		break;
 	case SB_THUMBTRACK:
-		dY = dMaxTop - (dMaxTop - dMinBottom) * (int(nPos) - ScrollMin) / double(ScrollMax - ScrollMin);
+		Y = dMaxTop - (dMaxTop - dMinBottom) * (int(nPos) - ScrollMin) / double(ScrollMax - ScrollMin);
 		break;
 	default:
 		flag &= ~CHANGE_VERT_ORIGIN;
@@ -205,12 +205,12 @@ BOOL CScaledScrollView::OnScroll(UINT nScrollCode, UINT nPos, BOOL bDoScroll)
 
 	//    POINT p = DoubleToPointDev(dX - dOrgX, dY - dOrgY);
 
-	BOOL bResult = ScrollTo(dX, dY, bDoScroll);
+	BOOL bResult = ScrollTo(X, Y, bDoScroll);
 	if (bResult && bDoScroll )
 	{
 		UpdateWindow();
 	}
-	NotifySlaveViews(flag);
+	//NotifySlaveViews(flag);
 	return bResult;
 }
 
@@ -435,19 +435,8 @@ void CScaledScrollView::GetExtents(double & left, double & right,
 void CScaledScrollView::SetExtents(double left, double right,
 									double bottom, double top)
 {
-	if (m_pHorMaster != m_pVertMaster)
-	{
-		m_pHorMaster->OnChangeOrgExt(left, right - left, 0., 0.,
-									CHANGE_HOR_EXTENTS);
-		m_pVertMaster->OnChangeOrgExt(0., 0., top, top - bottom,
-									CHANGE_VERT_EXTENTS);
-	}
-	else
-		// true also for independent view
-	{
-		m_pHorMaster->OnChangeOrgExt(left, right - left, top, top - bottom,
-									CHANGE_HOR_EXTENTS | CHANGE_VERT_EXTENTS);
-	}
+	OnChangeOrgExt(left, right - left, top, top - bottom,
+					CHANGE_HOR_EXTENTS | CHANGE_VERT_EXTENTS);
 }
 
 inline double fsign(double x)
@@ -457,6 +446,20 @@ inline double fsign(double x)
 
 void CScaledScrollView::OnChangeOrgExt(double left, double width,
 										double top, double height, DWORD flag)
+{
+	if (m_pHorMaster == m_pVertMaster)
+	{
+		m_pHorMaster->OnMasterChangeOrgExt(left, width, top, height, flag);
+	}
+	else
+	{
+		m_pHorMaster->OnMasterChangeOrgExt(left, width, 0., 0., flag);
+		m_pVertMaster->OnMasterChangeOrgExt(0., 0., top, height, flag);
+	}
+}
+
+void CScaledScrollView::OnMasterChangeOrgExt(double left, double width,
+											double top, double height, DWORD flag)
 {
 	double dNewOrgX;
 	double dNewOrgY;
@@ -611,8 +614,8 @@ void CScaledScrollView::OnChangeOrgExt(double left, double width,
 	}
 	else if (dNewOrgX != dOrgX || dNewOrgY != dOrgY)
 	{
-		ScrollTo(dNewOrgX, dNewOrgY);
-		NotifySlaveViews(flag);
+		MasterScrollTo(dNewOrgX, dNewOrgY);
+		//NotifySlaveViews(flag);
 	}
 }
 
@@ -620,36 +623,35 @@ void CScaledScrollView::SetMaxExtents(double left, double right,
 									double bottom, double top)
 {
 	// if the view is slave, these values will be ignored
-	DWORD flags = 0;
-	if (! IsSlaveHor())
+	if (m_pHorMaster == m_pVertMaster)
 	{
-		if (left != right)
-		{
-			dMinLeft = left;
-			dMaxRight = right;
-			flags |= CHANGE_MAX_HOR_EXTENTS;
-		}
+		m_pHorMaster->SetMaxExtentsMaster(left, right, bottom, top);
 	}
 	else
 	{
-		dMinLeft = m_pHorMaster->dMinLeft;
-		dMaxRight = m_pHorMaster->dMaxRight;
+		m_pHorMaster->SetMaxExtentsMaster(left, right, 0., 0.);
+		m_pVertMaster->SetMaxExtentsMaster(0., 0., bottom, top);
+	}
+}
+
+void CScaledScrollView::SetMaxExtentsMaster(double left, double right,
+											double bottom, double top)
+{
+	DWORD flags = 0;
+	if (left != right)
+	{
+		dMinLeft = left;
+		dMaxRight = right;
+		flags |= CHANGE_MAX_HOR_EXTENTS;
 	}
 
-	if ( ! IsSlaveVert())
+	if (top != bottom)
 	{
-		if (top != bottom)
-		{
-			dMinBottom = bottom;
-			dMaxTop = top;
-			flags |= CHANGE_MAX_VERT_EXTENTS;
-		}
+		dMinBottom = bottom;
+		dMaxTop = top;
+		flags |= CHANGE_MAX_VERT_EXTENTS;
 	}
-	else
-	{
-		dMinBottom = m_pVertMaster->dMinBottom;
-		dMaxTop = m_pVertMaster->dMaxTop;
-	}
+
 	ArrangeMaxExtents();
 	if (flags != 0)
 	{
@@ -679,75 +681,91 @@ void CScaledScrollView::ArrangeMaxExtents()
 
 BOOL CScaledScrollView::ScrollBy(double dx, double dy, BOOL bDoScroll)
 {
+	if (m_pHorMaster == m_pVertMaster)
+	{
+		return m_pHorMaster->MasterScrollBy(dx, dy, bDoScroll);
+	}
+	return (0 != dx && m_pHorMaster->MasterScrollBy(dx, 0, bDoScroll))
+		// use '|' rather than '||'. I want both calls
+		| (0 != dy && m_pVertMaster->MasterScrollBy(0, dy, bDoScroll));
+}
+
+BOOL CScaledScrollView::MasterScrollBy(double dx, double dy, BOOL bDoScroll)
+{
 	// find world limits
 	// check if the target is beyound the world limits
 	double dNewOrgX = dOrgX + dx;
 	// slave views are not checked against the world extent limits
-	if ( ! IsSlaveHor())
+	double minleft = dMinLeft;
+	double maxright = dMaxRight;
+	if ((minleft < dOrgX) != (dExtX > 0.))
 	{
-		double minleft = dMinLeft;
-		double maxright = dMaxRight;
-		if ((minleft < dOrgX) != (dExtX > 0.))
-		{
-			minleft = dOrgX;
-		}
-		if ((maxright > (dOrgX + dExtX)) != (dExtX > 0.))
-		{
-			maxright = dOrgX + dExtX;
-		}
+		minleft = dOrgX;
+	}
+	if ((maxright > (dOrgX + dExtX)) != (dExtX > 0.))
+	{
+		maxright = dOrgX + dExtX;
+	}
 
-		if ((dNewOrgX < minleft) == (dExtX > 0.))
-		{
-			dNewOrgX = minleft;
-			dx = dNewOrgX - dOrgX;
-		}
-		else if ((dNewOrgX + dExtX > maxright) == (dExtX > 0.))
-		{
-			dNewOrgX = maxright - dExtX;
-			dx = dNewOrgX - dOrgX;
-		}
+	if ((dNewOrgX < minleft) == (dExtX > 0.))
+	{
+		dNewOrgX = minleft;
+		dx = dNewOrgX - dOrgX;
+	}
+	else if ((dNewOrgX + dExtX > maxright) == (dExtX > 0.))
+	{
+		dNewOrgX = maxright - dExtX;
+		dx = dNewOrgX - dOrgX;
 	}
 
 	// slave views are not checked against the world extent limits
 	double dNewOrgY = dOrgY + dy;
-	if ( ! IsSlaveVert())
+	double minbottom = dMinBottom;
+	double maxtop = dMaxTop;
+	if ((maxtop > dOrgY) != (dExtY > 0.))
 	{
-		double minbottom = dMinBottom;
-		double maxtop = dMaxTop;
-		if ((maxtop > dOrgY) != (dExtY > 0.))
-		{
-			maxtop = dOrgY;
-		}
-		if ((minbottom < (dOrgY - dExtY)) != (dExtY > 0.))
-		{
-			minbottom = dOrgY - dExtY;
-		}
-		if ((dNewOrgY > maxtop) == (dExtY > 0.))
-		{
-			dNewOrgY = maxtop;
-			dy = dNewOrgY - dOrgY;
-		}
-		else if ((dNewOrgY - dExtY < minbottom) == (dExtY > 0.))
-		{
-			dNewOrgY = minbottom + dExtY;
-			dy = dNewOrgY - dOrgY;
-		}
+		maxtop = dOrgY;
+	}
+	if ((minbottom < (dOrgY - dExtY)) != (dExtY > 0.))
+	{
+		minbottom = dOrgY - dExtY;
+	}
+	if ((dNewOrgY > maxtop) == (dExtY > 0.))
+	{
+		dNewOrgY = maxtop;
+		dy = dNewOrgY - dOrgY;
+	}
+	else if ((dNewOrgY - dExtY < minbottom) == (dExtY > 0.))
+	{
+		dNewOrgY = minbottom + dExtY;
+		dy = dNewOrgY - dOrgY;
 	}
 	// scroll the view or just invalidate it
 	// move origin to integer count of device units
+	DWORD flag = 0;
 	int ddevx = fround(dx * dScaleX * dLogScaleX);
+	if (ddevx != 0)
+	{
+		flag |= CHANGE_HOR_ORIGIN;
+	}
 	int ddevy = fround(dy * dScaleY * dLogScaleY);
+	if (ddevy != 0)
+	{
+		flag |= CHANGE_VERT_ORIGIN;
+	}
 	if (fabs(dx) > (dSizeX * 0.89) || fabs(dy) > (dSizeY * 0.89))
 	{
 //        TRACE("Invalidate instead of scroll\n");
-		dOrgX = dNewOrgX;
-		dOrgY = dNewOrgY;
+		// move origin to integer count of device units
+		dOrgX += ddevx / (dScaleX * dLogScaleX);
+		dOrgY += ddevy / (dScaleY * dLogScaleY);
 		if (bDoScroll)
 		{
 			Invalidate();
 		}
 		UpdateScrollbars(bDoScroll);
 		UpdateCaretPosition();
+		NotifySlaveViews(flag);
 		return TRUE; // view position changed
 	}
 	else
@@ -758,7 +776,9 @@ BOOL CScaledScrollView::ScrollBy(double dx, double dy, BOOL bDoScroll)
 		if (ddevx | ddevy)
 		{
 			// the function scrolls the real image, and modifies dOrgX, dOrgY.
-			return OnScrollBy(CSize(ddevx, ddevy), bDoScroll);
+			OnScrollBy(CSize(ddevx, ddevy), bDoScroll);
+			NotifySlaveViews(flag);
+			return TRUE;
 		}
 		else
 		{
@@ -1330,9 +1350,9 @@ BOOL CScaledScrollView::SyncHorizontal(CScaledScrollView * pSView)
 		ShowScrollBar(SB_HORZ, FALSE);
 	}
 	// sync origin and extents with the master
-	SetMaxExtents(pSView->dMinLeft, pSView->dMaxRight, 0., 0.);
-	OnChangeOrgExt(pSView->dOrgX, pSView->dExtX,
-					dOrgY, dExtY, CHANGE_HOR_EXTENTS);
+	SetMaxExtentsMaster(pSView->dMinLeft, pSView->dMaxRight, 0., 0.);
+	OnMasterChangeOrgExt(pSView->dOrgX, pSView->dExtX,
+						dOrgY, dExtY, CHANGE_HOR_EXTENTS);
 	return TRUE;
 }
 
@@ -1372,9 +1392,9 @@ BOOL CScaledScrollView::SyncVertical(CScaledScrollView * pSView)
 	{
 		ShowScrollBar(SB_VERT, FALSE);
 	}
-	SetMaxExtents(0., 0., pSView->dMinBottom, pSView->dMaxTop);
-	OnChangeOrgExt(dOrgX, dExtX,
-					pSView->dOrgY, pSView->dExtY, CHANGE_VERT_EXTENTS);
+	SetMaxExtentsMaster(0., 0., pSView->dMinBottom, pSView->dMaxTop);
+	OnMasterChangeOrgExt(dOrgX, dExtX,
+						pSView->dOrgY, pSView->dExtY, CHANGE_VERT_EXTENTS);
 	return TRUE;
 }
 
@@ -1454,12 +1474,12 @@ void CScaledScrollView::NotifySlaveViews(DWORD flag)
 				}
 				if (flag1 & (CHANGE_MAX_VERT_EXTENTS | CHANGE_MAX_HOR_EXTENTS))
 				{
-					pView->SetMaxExtents(MinX, MaxX, MinY, MaxY);
+					pView->SetMaxExtentsMaster(MinX, MaxX, MinY, MaxY);
 				}
 				if (flag1 & (CHANGE_VERT_EXTENTS | CHANGE_HOR_EXTENTS))
 				{
-					pView->OnChangeOrgExt(dOrgX, dExtX,
-										dOrgY, dExtY, flag1);
+					pView->OnMasterChangeOrgExt(dOrgX, dExtX,
+												dOrgY, dExtY, flag1);
 				}
 				if (flag & 0xFFFF0000)
 				{
@@ -1481,7 +1501,6 @@ void CScaledScrollView::NotifySlaveViews(DWORD flag)
 
 void CScaledScrollView::OnLButtonDown(UINT nFlags, CPoint point)
 {
-	// TODO: Add your message handler code here and/or call default
 
 	CView::OnLButtonDown(nFlags, point);
 	nKeyPressed = WM_LBUTTONDOWN;
@@ -1500,7 +1519,6 @@ void CScaledScrollView::OnLButtonDown(UINT nFlags, CPoint point)
 
 void CScaledScrollView::OnRButtonDown(UINT nFlags, CPoint point)
 {
-	// TODO: Add your message handler code here and/or call default
 
 	CView::OnRButtonDown(nFlags, point);
 	// find the click point

@@ -154,17 +154,33 @@ void CSpectrumSectionView::OnDraw(CDC* pDC)
 		{
 			return;
 		}
+
+
+	}
+	if (NULL == m_pWindow)
+	{
 		m_pWindow = new float[m_FftOrder * 2];
+		int FftWindowType = pFftView->m_FftWindowType;
+
 		for (int w = 0; w < m_FftOrder * 2; w++)
 		{
-			// Hamming window (sucks!!!)
-			//m_pWindow[w] = 0.54 - 0.46 * cos (w * M_PI /  m_FftOrder);
-			// squared sine - best stopband loss
-			m_pWindow[w] = 0.5 - 0.5 * cos ((w + 0.5) * M_PI /  m_FftOrder);
-			// half sine
-			//m_pWindow[w] = 0.707107 * sin (w * M_PI * 0.5 / m_FftOrder);
+			switch (FftWindowType)
+			{
+			default:
+			case pFftView->WindowTypeSquaredSine:
+				// squared sine
+				m_pWindow[w] = float(0.5 - 0.5 * cos ((w + 0.5) * M_PI /  m_FftOrder));
+				break;
+			case pFftView->WindowTypeHalfSine:
+				// half sine
+				m_pWindow[w] = float(0.707107 * sin ((w + 0.5) * M_PI /  (2*m_FftOrder)));
+				break;
+			case pFftView->WindowTypeHamming:
+				// Hamming window (sucks!!!)
+				m_pWindow[w] = float(0.54 - 0.46 * cos ((w + 0.5)* M_PI /  m_FftOrder));
+				break;
+			}
 		}
-
 	}
 	float * pSrcArray = new float [nChannels * (m_FftOrder * 2 + 2)];
 	if (NULL == pSrcArray)
@@ -472,6 +488,11 @@ void CSpectrumSectionView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint
 		m_PlaybackSample = pInfo->Begin;
 		Invalidate();
 		return;
+	}
+	else if (lHint == CWaveFftView::FFT_BANDS_CHANGED)
+	{
+		delete[] m_pWindow;
+		m_pWindow = NULL;
 	}
 	CScaledScrollView::OnUpdate(pSender, lHint, pHint);
 }

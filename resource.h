@@ -426,6 +426,9 @@
 #define ID_TOOLS_CDGRAB                 40086
 #define ID_VIEW_HIDE_SPECTRUMSECTION    40087
 #define ID_PROCESS_CHANNELS             40088
+#define ID_FFT_WINDOW_SQUARED_SINE      40089
+#define ID_FFT_WINDOW_SINE              40090
+#define ID_FFT_WINDOW_HAMMING           40091
 
 // Next default values for new objects
 //
@@ -433,7 +436,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_3D_CONTROLS                     1
 #define _APS_NEXT_RESOURCE_VALUE        168
-#define _APS_NEXT_COMMAND_VALUE         40089
+#define _APS_NEXT_COMMAND_VALUE         40092
 #define _APS_NEXT_CONTROL_VALUE         1122
 #define _APS_NEXT_SYMED_VALUE           101
 #endif

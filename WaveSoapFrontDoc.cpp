@@ -823,10 +823,11 @@ void CWaveSoapFileSaveDialog::FillFormatArray()
 		else
 		{
 			// select the best match
+			// Sample rate must match, then number of channels might match
+			// If original format is non PCM and the queried format is the same format
 			if (pwf->nSamplesPerSec == m_pWf->nSamplesPerSec
-				&& (-1 == sel || pwf->nChannels == m_pWf->nChannels)
-				&& (dwFormatTag != WAVE_FORMAT_PCM
-					|| pwf->wBitsPerSample == m_pWf->wBitsPerSample))
+				&& (-1 == sel || (pwf->nChannels == m_pWf->nChannels
+						&& pwf->wBitsPerSample >= m_Formats[sel].pWf->wBitsPerSample)))
 			{
 				sel = i;
 			}
