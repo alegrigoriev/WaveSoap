@@ -5,6 +5,7 @@
 #include "OperationDialogs.h"
 #include "ReopenSavedFileCopyDlg.h"
 #include "MessageBoxSynch.h"
+#include "DialogWithSelection.inl"
 
 static int fround(double d)
 {

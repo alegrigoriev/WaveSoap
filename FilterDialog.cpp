@@ -8,6 +8,7 @@
 #include "OperationDialogs.h"
 #include "FileDialogWithHistory.h"
 #include "GdiObjectSave.h"
+#include "DialogWithSelection.inl"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -23,24 +24,17 @@ CFilterDialog::CFilterDialog(SAMPLE_INDEX Start,
 							SAMPLE_INDEX End,
 							SAMPLE_INDEX CaretPosition,
 							CHANNEL_MASK Channels,
-							NUMBER_OF_SAMPLES FileLength,
-							const WAVEFORMATEX * pWf,
+							CWaveFile & WaveFile,
 							int TimeFormat,
 							BOOL bLockChannels,
 							BOOL	bUndoEnabled,
 							CWnd* pParent /*=NULL*/)
-	: BaseClass(CFilterDialog::IDD, pParent),
-	m_wGraph(m_Profile, pWf->nSamplesPerSec),
-	m_Start(Start),
-	m_End(End),
-	m_CaretPosition(CaretPosition),
-	m_Chan(Channels),
-	m_FileLength(FileLength),
-	m_pWf(pWf),
-	m_TimeFormat(TimeFormat),
-	m_bLockChannels(bLockChannels),
-	m_bUndo(bUndoEnabled)
+	: BaseClass(Start, End, CaretPosition, Channels, WaveFile, TimeFormat,
+				IDD, pParent),
+	m_wGraph(m_Profile, WaveFile.SampleRate())
 {
+	m_bLockChannels = bLockChannels;
+	m_bUndo = bUndoEnabled;
 	//{{AFX_DATA_INIT(CFilterDialog)
 	//}}AFX_DATA_INIT
 
@@ -88,7 +82,6 @@ void CFilterDialog::DoDataExchange(CDataExchange* pDX)
 	DDX_Control(pDX, IDC_EDIT_BAND_GAIN, m_EditGain);
 	DDX_Control(pDX, IDC_EDIT_FREQUENCY, m_EditFrequency);
 	//{{AFX_DATA_MAP(CFilterDialog)
-	DDX_Control(pDX, IDC_STATIC_SELECTION, m_SelectionStatic);
 	DDX_Check(pDX, IDC_CHECK_UNDO, m_bUndo);
 	//}}AFX_DATA_MAP
 	DDX_Check(pDX, IDC_CHECK_ZERO_PHASE, m_wGraph.m_bZeroPhase);
@@ -108,7 +101,6 @@ BEGIN_MESSAGE_MAP(CFilterDialog, BaseClass)
 	ON_BN_CLICKED(IDC_BUTTON_LOAD, OnButtonLoad)
 	ON_BN_CLICKED(IDC_BUTTON_RESET_BANDS, OnButtonResetBands)
 	ON_BN_CLICKED(IDC_BUTTON_SAVE_AS, OnButtonSaveAs)
-	ON_BN_CLICKED(IDC_BUTTON_SELECTION, OnButtonSelection)
 	ON_BN_CLICKED(IDC_CHECK_ZERO_PHASE, OnCheckZeroPhase)
 	ON_BN_CLICKED(IDC_CHECK_LOWPASS, OnCheckLowpass)
 	ON_BN_CLICKED(IDC_CHECK_HIGHPASS, OnCheckHighpass)
@@ -206,33 +198,10 @@ BOOL CFilterDialog::OnInitDialog()
 	m_EditGain.SetData(m_wGraph.GetCurrentPointGainDb());
 	m_EditFrequency.SetData(m_wGraph.GetCurrentPointFrequencyHz());
 	// init MINMAXINFO
-	UpdateSelectionStatic();
 	m_wGraph.RebuildFilters();
 
 	return TRUE;  // return TRUE unless you set the focus to a control
 	// EXCEPTION: OCX Property Pages should return FALSE
-}
-void CFilterDialog::UpdateSelectionStatic()
-{
-	m_SelectionStatic.SetWindowText(GetSelectionText(m_Start, m_End, m_Chan,
-													m_pWf->nChannels, m_bLockChannels,
-													m_pWf->nSamplesPerSec, m_TimeFormat));
-}
-
-
-void CFilterDialog::OnButtonSelection()
-{
-	CSelectionDialog dlg(m_Start, m_End, m_CaretPosition, m_Chan + 1, m_FileLength, m_pWf, m_TimeFormat);
-
-	if (IDOK != dlg.DoModal())
-	{
-		return;
-	}
-	m_Start = dlg.GetStart();
-	m_End = dlg.GetEnd();
-	m_Chan = dlg.GetChannel() - 1;
-
-	UpdateSelectionStatic();
 }
 
 CFilterGraphWnd::CFilterGraphWnd()
