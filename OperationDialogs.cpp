@@ -2220,9 +2220,17 @@ CNoiseReductionDialog::CNoiseReductionDialog(SAMPLE_INDEX begin, SAMPLE_INDEX en
 	m_dNoiseThresholdLow = -70.;
 	m_dNoiseThresholdHigh = -70.;
 	m_dLowerFrequency = 4000.;
-	m_FftOrder = 128;
+	m_FftOrder = 256;
 	m_dNoiseReductionAggressivness = 1.;
-	m_NearMaskingCoeff = 1.;
+	m_FarMaskingLevelDb = -40.;
+
+	m_eToneOverNoisePreference.SetPrecision(1);
+	m_EditAggressivness.SetPrecision(2);
+	m_eNoiseReduction.SetPrecision(2);
+	m_eNoiseCriterion.SetPrecision(2);
+	m_eNoiseThresholdHigh.SetPrecision(1);
+	m_eNoiseThresholdLow.SetPrecision(1);
+	m_eLowerFrequency.SetPrecision(1);
 
 	LoadValuesFromRegistry();
 }
@@ -2322,11 +2330,11 @@ void CNoiseReductionDialog::LoadValuesFromRegistry()
 	Profile.AddItem(_T("NoiseReduction"), _T("NoiseThresholdHigh"), m_dNoiseThresholdHigh, -65., -100., -10.);
 	Profile.AddItem(_T("NoiseReduction"), _T("LowerFrequency"), m_dLowerFrequency, 1000., 100., 48000.);
 	Profile.AddItem(_T("NoiseReduction"), _T("ToneOverNoisePreference"), m_dToneOverNoisePreference, 10., 0., 20.);
-	Profile.AddItem(_T("NoiseReduction"), _T("NearMaskingDecayDistanceHigh"), m_NearMaskingDecayDistanceHigh, 500., 1., 2000.);
-	Profile.AddItem(_T("NoiseReduction"), _T("NearMaskingDecayDistanceLow"), m_NearMaskingDecayDistanceLow, 30., 1., 2000.);
+	Profile.AddItem(_T("NoiseReduction"), _T("NearMaskingDecayDistanceHigh"), m_NearMaskingDecayDistanceHigh, 1000., 1., 5000.);
+	Profile.AddItem(_T("NoiseReduction"), _T("NearMaskingDecayDistanceLow"), m_NearMaskingDecayDistanceLow, 100., 1., 1000.);
 	Profile.AddItem(_T("NoiseReduction"), _T("NearMaskingDecayTimeHigh"), m_NearMaskingDecayTimeHigh, 40., 1., 1000.);
 	Profile.AddItem(_T("NoiseReduction"), _T("NearMaskingDecayTimeLow"), m_NearMaskingDecayTimeLow, 100., 1., 1000.);
-	Profile.AddItem(_T("NoiseReduction"), _T("NearMaskingCoeff"), m_NearMaskingCoeff, 1., 0., 1.);
+	Profile.AddItem(_T("NoiseReduction"), _T("FarMaskingLevel"), m_FarMaskingLevelDb, -40., -100., -10.);
 	Profile.AddItem(_T("NoiseReduction"), _T("Aggressivness"), m_dNoiseReductionAggressivness, 1., 0.1, 3.);
 }
 
@@ -2343,8 +2351,8 @@ void CNoiseReductionDialog::GetNoiseReductionData(NoiseReductionParameters * pNr
 	pNr->m_ThresholdOfTransient = float(m_dTransientThreshold);
 	pNr->m_FreqThresholdOfNoiselike = float(M_PI_2 * M_PI_2 * m_dNoiseCriterion * m_dNoiseCriterion);
 	pNr->m_MaxNoiseSuppression = float(DB_TO_NEPER * m_dNoiseReduction);
-	pNr->m_LevelThresholdForNoiseLow = float(DB_TO_NEPER * (m_dNoiseThresholdLow + 111.));
-	pNr->m_LevelThresholdForNoiseHigh = float(DB_TO_NEPER * (m_dNoiseThresholdHigh + 111.));
+	pNr->m_LevelThresholdForNoiseLow = float(DB_TO_NEPER * (m_dNoiseThresholdLow));
+	pNr->m_LevelThresholdForNoiseHigh = float(DB_TO_NEPER * (m_dNoiseThresholdHigh));
 	pNr->m_ToneOverNoisePreference = float(DB_TO_NEPER * m_dToneOverNoisePreference);
 	pNr->m_NoiseReductionRatio = 0.5 * m_dNoiseReductionAggressivness;
 
@@ -2353,7 +2361,7 @@ void CNoiseReductionDialog::GetNoiseReductionData(NoiseReductionParameters * pNr
 
 	pNr->m_NearMaskingDecayTimeLow = float(m_NearMaskingDecayTimeLow);
 	pNr->m_NearMaskingDecayTimeHigh = float(m_NearMaskingDecayTimeHigh);
-	pNr->m_NearMaskingCoeff = float(m_NearMaskingCoeff);
+	pNr->m_FarMaskingLevelDb = float(m_FarMaskingLevelDb);
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -2366,6 +2374,12 @@ CMoreNoiseDialog::CMoreNoiseDialog(CWnd* pParent /*=NULL*/)
 	//{{AFX_DATA_INIT(CMoreNoiseDialog)
 	// NOTE: the ClassWizard will add member initialization here
 	//}}AFX_DATA_INIT
+	m_eNearMaskingCoeff.SetPrecision(2);
+	m_eFarMaskingCoeff.SetPrecision(2);
+	m_eNearMaskingTimeLow.SetPrecision(1);
+	m_eNearMaskingTimeHigh.SetPrecision(1);
+	m_eNearMaskingDistanceLow.SetPrecision(1);
+	m_eNearMaskingDistanceHigh.SetPrecision(1);
 }
 
 
@@ -2373,7 +2387,7 @@ void CMoreNoiseDialog::DoDataExchange(CDataExchange* pDX)
 {
 	BaseClass::DoDataExchange(pDX);
 	//{{AFX_DATA_MAP(CMoreNoiseDialog)
-	DDX_Control(pDX, IDC_EDIT_NEAR_MASKING_COEFF, m_eNearMaskingCoeff);
+	DDX_Control(pDX, IDC_EDIT_FAR_MASKING_LEVEL, m_eNearMaskingCoeff);
 	DDX_Control(pDX, IDC_EDIT_FAR_MASKING_COEFF, m_eFarMaskingCoeff);
 	DDX_Control(pDX, IDC_EDIT_MASKING_TIME_LOW, m_eNearMaskingTimeLow);
 	DDX_Control(pDX, IDC_EDIT_MASKING_TIME_HIGH, m_eNearMaskingTimeHigh);
@@ -2381,15 +2395,17 @@ void CMoreNoiseDialog::DoDataExchange(CDataExchange* pDX)
 	DDX_Control(pDX, IDC_EDIT_NEAR_MASKING_DISTANCE_HIGH, m_eNearMaskingDistanceHigh);
 	//}}AFX_DATA_MAP
 	m_eNearMaskingDistanceHigh.ExchangeData(pDX, m_NearMaskingDecayDistanceHigh,
-											IDS_INPUT_NAME_NEAR_MASK_DISTANCE_HIGH, IDS_HERTZ, 1., 2000.);
+											IDS_INPUT_NAME_NEAR_MASK_DISTANCE_HIGH, IDS_HERTZ, 1., 5000.);
 	m_eNearMaskingDistanceLow.ExchangeData(pDX, m_NearMaskingDecayDistanceLow,
-											IDS_INPUT_NAME_NEAR_MASK_DISTANCE_LOW, IDS_HERTZ, 1., 2000.);
+											IDS_INPUT_NAME_NEAR_MASK_DISTANCE_LOW, IDS_HERTZ, 1., 1000.);
+
 	m_eNearMaskingTimeHigh.ExchangeData(pDX, m_NearMaskingDecayTimeHigh,
 										IDS_INPUT_NAME_NEAR_MASK_TIME_HIGH, IDS_MILISECOND, 1., 1000.);
 	m_eNearMaskingTimeLow.ExchangeData(pDX, m_NearMaskingDecayTimeLow,
 										IDS_INPUT_NAME_NEAR_MASK_TIME_LOW, IDS_MILISECOND, 1., 1000.);
-	m_eNearMaskingCoeff.ExchangeData(pDX, m_NearMaskingCoeff,
-									IDS_INPUT_NAME_HEAR_MASK_COEFF, 0, 0., 1.);
+
+	m_eNearMaskingCoeff.ExchangeData(pDX, m_FarMaskingLevelDb,
+									IDS_INPUT_NAME_FAR_MASK_LEVEL, 0, -100., -10.);
 
 }
 
@@ -2412,7 +2428,7 @@ void CNoiseReductionDialog::OnButtonMore()
 
 	dlg.m_NearMaskingDecayTimeLow = m_NearMaskingDecayTimeLow;
 	dlg.m_NearMaskingDecayTimeHigh = m_NearMaskingDecayTimeHigh;
-	dlg.m_NearMaskingCoeff = m_NearMaskingCoeff;
+	dlg.m_FarMaskingLevelDb = m_FarMaskingLevelDb;
 	if (IDOK == dlg.DoModal())
 	{
 		// return the data from dlg
@@ -2421,7 +2437,7 @@ void CNoiseReductionDialog::OnButtonMore()
 
 		m_NearMaskingDecayTimeLow = dlg.m_NearMaskingDecayTimeLow;
 		m_NearMaskingDecayTimeHigh = dlg.m_NearMaskingDecayTimeHigh;
-		m_NearMaskingCoeff = dlg.m_NearMaskingCoeff;
+		m_FarMaskingLevelDb = dlg.m_FarMaskingLevelDb;
 	}
 }
 

@@ -932,36 +932,37 @@ BEGIN
     LTEXT           "TODO: layout dialog bar ",IDC_STATIC,12,4,300,8
 END
 
-IDD_DIALOG_MORE_NOISEREDUCTION DIALOGEX 0, 0, 187, 220
+IDD_DIALOG_MORE_NOISEREDUCTION DIALOGEX 0, 0, 218, 221
 STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | 
     WS_SYSMENU
 CAPTION "Advanced parameters for noise reduction"
 FONT 8, "MS Shell Dlg", 0, 0, 0x0
 BEGIN
-    LTEXT           "Near noise masking:",IDC_STATIC,7,16,63,8
-    EDITTEXT        IDC_EDIT_NEAR_MASKING_COEFF,102,14,40,14,ES_AUTOHSCROLL
-    LTEXT           "Near masking decay distance:",IDC_STATIC,7,34,111,9
-    LTEXT           "For lower frequencies:",IDC_STATIC,7,50,67,8
-    EDITTEXT        IDC_EDIT_NEAR_MASKING_DISTANCE_HIGH,102,47,40,14,
+    LTEXT           "Far noise masking:",IDC_STATIC,7,16,115,8
+    EDITTEXT        IDC_EDIT_FAR_MASKING_LEVEL,128,14,48,14,ES_AUTOHSCROLL
+    LTEXT           "dB",IDC_STATIC,182,17,21,8
+    LTEXT           "Near masking decay distance:",IDC_STATIC,7,34,115,9
+    LTEXT           "For lower frequencies:",IDC_STATIC,7,50,115,8
+    EDITTEXT        IDC_EDIT_NEAR_MASKING_DISTANCE_LOW,128,48,48,14,
                     ES_AUTOHSCROLL
-    LTEXT           "Hz",IDC_STATIC,146,50,9,8
-    LTEXT           "For higher frequencies:",IDC_STATIC,7,69,69,8
-    EDITTEXT        IDC_EDIT_NEAR_MASKING_DISTANCE_LOW,102,66,40,14,
+    LTEXT           "Hz",IDC_STATIC,183,50,21,8
+    LTEXT           "For higher frequencies:",IDC_STATIC,7,69,115,8
+    EDITTEXT        IDC_EDIT_NEAR_MASKING_DISTANCE_HIGH,128,66,48,14,
                     ES_AUTOHSCROLL
-    LTEXT           "Hz",IDC_STATIC,146,69,9,8
-    LTEXT           "Decay time of noise masking:",IDC_STATIC,7,88,89,8
-    LTEXT           "For lower frequencies:",IDC_STATIC,7,105,67,8
-    EDITTEXT        IDC_EDIT_MASKING_TIME_HIGH,102,102,40,14,ES_AUTOHSCROLL
-    LTEXT           "ms",IDC_STATIC,146,105,10,8
-    LTEXT           "For higher frequencies:",IDC_STATIC,7,124,69,8
-    EDITTEXT        IDC_EDIT_MASKING_TIME_LOW,102,121,40,14,ES_AUTOHSCROLL
-    LTEXT           "ms",IDC_STATIC,146,124,10,8
-    LTEXT           "Far noise masking:",IDC_STATIC,7,152,58,8
-    EDITTEXT        IDC_EDIT_FAR_MASKING_COEFF,102,149,40,14,ES_AUTOHSCROLL
-    LTEXT           "Far masking decay:",IDC_STATIC,7,170,60,8
-    EDITTEXT        IDC_EDIT4,102,167,40,14,ES_AUTOHSCROLL
-    DEFPUSHBUTTON   "OK",IDOK,31,199,50,14
-    PUSHBUTTON      "Cancel",IDCANCEL,101,199,50,14
+    LTEXT           "Hz",IDC_STATIC,183,69,20,8
+    LTEXT           "Decay time of noise masking:",IDC_STATIC,7,88,115,8
+    LTEXT           "For lower frequencies:",IDC_STATIC,7,105,115,8
+    EDITTEXT        IDC_EDIT_MASKING_TIME_LOW,128,103,48,14,ES_AUTOHSCROLL
+    LTEXT           "ms",IDC_STATIC,183,105,21,8
+    LTEXT           "For higher frequencies:",IDC_STATIC,7,124,115,8
+    EDITTEXT        IDC_EDIT_MASKING_TIME_HIGH,128,122,48,14,ES_AUTOHSCROLL
+    LTEXT           "ms",IDC_STATIC,183,124,20,8
+    LTEXT           "Far noise masking:",IDC_STATIC,7,152,115,8
+    EDITTEXT        IDC_EDIT_FAR_MASKING_COEFF,128,149,48,14,ES_AUTOHSCROLL
+    LTEXT           "Far masking decay:",IDC_STATIC,7,170,115,8
+    EDITTEXT        IDC_EDIT4,128,167,48,14,ES_AUTOHSCROLL
+    DEFPUSHBUTTON   "OK",IDOK,48,200,50,14
+    PUSHBUTTON      "Cancel",IDCANCEL,118,200,50,14
 END
 
 IDD_SELECTION_DIALOG DIALOGEX 0, 0, 239, 167
@@ -2411,9 +2412,9 @@ BEGIN
     IDD_DIALOG_MORE_NOISEREDUCTION, DIALOG
     BEGIN
         LEFTMARGIN, 7
-        RIGHTMARGIN, 180
+        RIGHTMARGIN, 211
         TOPMARGIN, 7
-        BOTTOMMARGIN, 213
+        BOTTOMMARGIN, 214
     END
 
     IDD_SELECTION_DIALOG, DIALOG
@@ -3572,7 +3573,7 @@ BEGIN
     IDS_INPUT_NAME_NEAR_MASK_TIME_HIGH 
                             "Near masking time in higher frequencies"
     IDS_INPUT_NAME_NEAR_MASK_TIME_LOW "Near masking time in lower frequencies"
-    IDS_INPUT_NAME_HEAR_MASK_COEFF "Near masking coefficient"
+    IDS_INPUT_NAME_FAR_MASK_LEVEL "Far masking level"
     IDS_TAB_TITLE_FUNCTIONS_AND_OPS "Functions And Operators"
     IDS_TAB_TITLE_OPERANDS  "Operands"
     IDS_TAB_TITLE_SAVED_EXPRESSIONS "Saved Expressions"

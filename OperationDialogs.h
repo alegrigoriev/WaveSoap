@@ -726,21 +726,6 @@ public:
 						int TimeFormat,
 						CWnd* pParent = NULL);   // standard constructor
 
-	double GetNoiseThresholdLow() const
-	{
-		return m_dNoiseThresholdLow;
-	}
-
-	double GetNoiseThresholdHigh() const
-	{
-		return m_dNoiseThresholdHigh;
-	}
-
-	double GetLowerFrequency() const
-	{
-		return m_dLowerFrequency;
-	}
-
 	unsigned GetNoiseReductionFftOrder() const
 	{
 		return m_FftOrder;
@@ -774,7 +759,7 @@ protected:
 	double  m_NearMaskingDecayDistanceLow;
 	double m_NearMaskingDecayTimeLow;   // for low frequencies
 	double m_NearMaskingDecayTimeHigh;   // for high frequencies
-	double m_NearMaskingCoeff;
+	double m_FarMaskingLevelDb;
 	int m_FftOrder;
 
 	void LoadValuesFromRegistry();
@@ -821,7 +806,7 @@ public:
 	double  m_NearMaskingDecayDistanceLow;
 	double m_NearMaskingDecayTimeLow;   // for low frequencies
 	double m_NearMaskingDecayTimeHigh;   // for high frequencies
-	double m_NearMaskingCoeff;
+	double m_FarMaskingLevelDb;
 // Overrides
 	// ClassWizard generated virtual function overrides
 	//{{AFX_VIRTUAL(CMoreNoiseDialog)
