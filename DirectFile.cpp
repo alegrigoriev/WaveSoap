@@ -1036,7 +1036,7 @@ long CDirectFile::ReadAt(void *buf, long count, LONGLONG Position)
 		return 0;
 	}
 
-	if (Position <= 0
+	if (Position < 0
 		|| Position >= m_pFile->FileLength)
 	{
 		// beyond end of file
@@ -1117,7 +1117,7 @@ long CDirectFile::WriteAt(const void *buf, long count, LONGLONG Position)
 		return 0;
 	}
 
-	if (Position <= 0)
+	if (Position < 0)
 	{
 		// beyond end of file
 		return 0;
