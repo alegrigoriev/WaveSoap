@@ -5,6 +5,8 @@
 #include "WaveSoapFront.h"
 #include "OperationDialogs2.h"
 #include <dbt.h>
+#include "Setupapi.h"
+#include <afxpriv.h>
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -203,12 +205,119 @@ CCdGrabbingDialog::CCdGrabbingDialog(CWnd* pParent /*=NULL*/)
 	: CDialog(CCdGrabbingDialog::IDD, pParent)
 {
 	//{{AFX_DATA_INIT(CCdGrabbingDialog)
-	// NOTE: the ClassWizard will add member initialization here
+	m_RadioAssignAttributes = -1;
+	m_RadioStoreImmediately = -1;
+	m_RadioStoreMultiple = -1;
 	//}}AFX_DATA_INIT
 	m_DiskID = -1;
 	m_PreviousSize.cx = -1;
 	m_PreviousSize.cy = -1;
 	memzero(m_mmxi);
+	m_bNeedUpdateControls = TRUE;
+
+#ifdef _DEBUG
+	SetLastError(0);
+	HDEVINFO di = SetupDiGetClassDevs( & GUID_DEVINTERFACE_CDROM,
+										NULL, AfxGetMainWnd()->m_hWnd, DIGCF_DEVICEINTERFACE | DIGCF_PRESENT);
+	TRACE("HDEVINFO=%X, last error=%d\n", di, GetLastError());
+
+	for (int i = 0; ; i++)
+	{
+		SP_DEVICE_INTERFACE_DATA spdid;
+		spdid.cbSize = sizeof spdid;
+		spdid.InterfaceClassGuid = GUID_DEVINTERFACE_CDROM;
+
+		if ( ! SetupDiEnumDeviceInterfaces(di,
+											NULL, & GUID_DEVINTERFACE_CDROM,
+											i, & spdid))
+		{
+			TRACE("No more devices, last error=%d\n", GetLastError());
+			break;
+		}
+		TRACE("CDROM Device interface found!\n");
+		struct IntDetailData: SP_DEVICE_INTERFACE_DETAIL_DATA
+		{
+			TCHAR MorePath[256];
+		} DetailData;
+		DetailData.cbSize = sizeof SP_DEVICE_INTERFACE_DETAIL_DATA;
+		DetailData.DevicePath[0] = 0;
+		DetailData.DevicePath[1] = 0;
+		DWORD FilledSize = 0;;
+		SP_DEVINFO_DATA sdi;
+		sdi.cbSize = sizeof sdi;
+
+		SetupDiGetDeviceInterfaceDetail(di, &spdid,
+										NULL, 0, & FilledSize, NULL);
+		TRACE("Required data size=%d\n", FilledSize);
+
+		if ( ! SetupDiGetDeviceInterfaceDetail(di, & spdid,
+												& DetailData, sizeof DetailData, NULL, NULL))
+		{
+			TRACE("SetupDiGetDeviceInterfaceDetail failed, error=%d\n", GetLastError());
+			continue;
+		}
+
+		HANDLE hFile = CreateFile(DetailData.DevicePath,
+								GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE,
+								NULL, OPEN_EXISTING,
+								0, // flags
+								NULL);
+		if (NULL == hFile || INVALID_HANDLE_VALUE == hFile)
+		{
+			TRACE("Failed to open device for READ access, error=%d\n", GetLastError());
+		}
+		else
+		{
+			TRACE("Opened device for READ access\n");
+			CloseHandle(hFile);
+		}
+		hFile = CreateFile(DetailData.DevicePath,
+							0, FILE_SHARE_READ | FILE_SHARE_WRITE,
+							NULL, OPEN_EXISTING,
+							0, // flags
+							NULL);
+		if (NULL == hFile || INVALID_HANDLE_VALUE == hFile)
+		{
+			TRACE("Failed to open device for ATTRIBUTE access, error=%d\n", GetLastError());
+		}
+		else
+		{
+			TRACE("Opened device for ATTRIBUTE access\n");
+			CloseHandle(hFile);
+		}
+
+		hFile = CreateFile(DetailData.DevicePath,
+							GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE,
+							NULL, OPEN_EXISTING,
+							0, // flags
+							NULL);
+		if (NULL == hFile || INVALID_HANDLE_VALUE == hFile)
+		{
+			TRACE("Failed to open device for WRITE access, error=%d\n", GetLastError());
+		}
+		else
+		{
+			TRACE("Opened device for WRITE access\n");
+			CloseHandle(hFile);
+		}
+
+		hFile = CreateFile(DetailData.DevicePath,
+							GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE,
+							NULL, OPEN_EXISTING,
+							0, // flags
+							NULL);
+		if (NULL == hFile || INVALID_HANDLE_VALUE == hFile)
+		{
+			TRACE("Failed to open device for READ/WRITE access, error=%d\n", GetLastError());
+		}
+		else
+		{
+			TRACE("Opened device for READ/WRITE access\n");
+			CloseHandle(hFile);
+		}
+	}
+	SetupDiDestroyDeviceInfoList(di);
+#endif
 }
 
 CCdGrabbingDialog::~CCdGrabbingDialog()
@@ -219,8 +328,13 @@ void CCdGrabbingDialog::DoDataExchange(CDataExchange* pDX)
 {
 	CDialog::DoDataExchange(pDX);
 	//{{AFX_DATA_MAP(CCdGrabbingDialog)
+	DDX_Control(pDX, IDC_STATIC_FORMAT, m_StaticFormat);
+	DDX_Control(pDX, IDC_COMBO_SPEED, m_SpeedCombo);
 	DDX_Control(pDX, IDC_COMBO_DRIVES, m_DrivesCombo);
 	DDX_Control(pDX, IDC_LIST_TRACKS, m_lbTracks);
+	DDX_Radio(pDX, IDC_RADIO_ASSIGN_ATTRIBUTES, m_RadioAssignAttributes);
+	DDX_Radio(pDX, IDC_RADIO_STORE_IMMEDIATELY, m_RadioStoreImmediately);
+	DDX_Radio(pDX, IDC_RADIO_STORE_MULTIPLE_FILES, m_RadioStoreMultiple);
 	//}}AFX_DATA_MAP
 
 	if (pDX->m_bSaveAndValidate)
@@ -240,8 +354,18 @@ BEGIN_MESSAGE_MAP(CCdGrabbingDialog, CDialog)
 	ON_BN_CLICKED(IDC_BUTTON_MORE, OnButtonMore)
 	ON_CBN_SELCHANGE(IDC_COMBO_DRIVES, OnSelchangeComboDrives)
 	ON_WM_DESTROY()
+	ON_BN_CLICKED(IDC_BUTTON_BROWSE_SAVE_FOLDER, OnButtonBrowseSaveFolder)
+	ON_BN_CLICKED(IDC_BUTTON_CDDB, OnButtonCddb)
+	ON_BN_CLICKED(IDC_BUTTON_DESELECT_ALL, OnButtonDeselectAll)
+	ON_BN_CLICKED(IDC_BUTTON_SELECT_ALL, OnButtonSelectAll)
+	ON_BN_CLICKED(IDC_BUTTON_SET_FORMAT, OnButtonSetFormat)
+	ON_EN_CHANGE(IDC_EDIT_ALBUM, OnChangeEditAlbum)
+	ON_EN_CHANGE(IDC_EDIT_ARTIST, OnChangeEditArtist)
+	ON_BN_CLICKED(IDC_RADIO_STORE_MULTIPLE_FILES, OnRadioStoreMultipleFiles)
+	ON_BN_CLICKED(IDC_RADIO_STORE_SINGLE_FILE, OnRadioStoreSingleFile)
 	//}}AFX_MSG_MAP
-   ON_WM_DEVICECHANGE()
+	ON_WM_DEVICECHANGE()
+	ON_MESSAGE(WM_KICKIDLE, OnKickIdle)
 END_MESSAGE_MAP()
 
 void CCdGrabbingDialog::FillDriveList(TCHAR SelectDrive)
@@ -269,6 +393,16 @@ void CCdGrabbingDialog::FillDriveList(TCHAR SelectDrive)
 		m_DriveLetterSelected = m_CDDrives[m_CDDriveSelected];
 	}
 
+}
+
+LRESULT CCdGrabbingDialog::OnKickIdle(WPARAM, LPARAM)
+{
+	if (m_bNeedUpdateControls)
+	{
+		UpdateDialogControls(this, FALSE);
+	}
+	m_bNeedUpdateControls = FALSE;
+	return 0;
 }
 
 BOOL CCdGrabbingDialog::OpenDrive(TCHAR letter)
@@ -727,3 +861,67 @@ void CCdGrabbingDialog::CheckForDrivesChanged()
 	}
 }
 
+
+void CCdGrabbingDialog::OnButtonBrowseSaveFolder()
+{
+	// TODO: Add your control notification handler code here
+
+}
+
+void CCdGrabbingDialog::OnButtonCddb()
+{
+	// TODO: Add your control notification handler code here
+
+}
+
+void CCdGrabbingDialog::OnButtonDeselectAll()
+{
+	// TODO: Add your control notification handler code here
+
+}
+
+void CCdGrabbingDialog::OnButtonSelectAll()
+{
+	// TODO: Add your control notification handler code here
+
+}
+
+void CCdGrabbingDialog::OnButtonSetFormat()
+{
+	// TODO: Add your control notification handler code here
+
+}
+
+void CCdGrabbingDialog::OnChangeEditAlbum()
+{
+	// TODO: If this is a RICHEDIT control, the control will not
+	// send this notification unless you override the CDialog::OnInitDialog()
+	// function and call CRichEditCtrl().SetEventMask()
+	// with the ENM_CHANGE flag ORed into the mask.
+
+	// TODO: Add your control notification handler code here
+
+}
+
+void CCdGrabbingDialog::OnChangeEditArtist()
+{
+	// TODO: If this is a RICHEDIT control, the control will not
+	// send this notification unless you override the CDialog::OnInitDialog()
+	// function and call CRichEditCtrl().SetEventMask()
+	// with the ENM_CHANGE flag ORed into the mask.
+
+	// TODO: Add your control notification handler code here
+
+}
+
+void CCdGrabbingDialog::OnRadioStoreMultipleFiles()
+{
+	// TODO: Add your control notification handler code here
+
+}
+
+void CCdGrabbingDialog::OnRadioStoreSingleFile()
+{
+	// TODO: Add your control notification handler code here
+
+}
