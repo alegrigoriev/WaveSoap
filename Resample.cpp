@@ -164,6 +164,7 @@ void CResampleContext::PostRetire(BOOL bChildContext)
 {
 	if (m_Flags & OperationContextFinished)
 	{
+		pDocument->m_WavFile.DetachSourceFile();
 		pDocument->m_WavFile = m_DstFile;
 		// since we replaced the file, it's no more direct
 		pDocument->SetModifiedFlag(TRUE, m_pUndoContext != NULL);
