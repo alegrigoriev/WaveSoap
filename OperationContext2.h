@@ -183,4 +183,19 @@ public:
 					int chan, BOOL NeedUndo);
 };
 
+class CCommitFileSaveContext :public COperationContext
+{
+public:
+	CCommitFileSaveContext(CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString)
+		: COperationContext(pDoc, StatusString, OperationContextDiskIntensive)
+	{
+		m_OperationString = StatusString;
+	}
+	int m_FileSaveFlags;
+	CString m_TargetName;
+	~CCommitFileSaveContext() { }
+	virtual BOOL OperationProc();
+	virtual void PostRetire(BOOL bChildContext = FALSE);
+};
+
 #endif // AFX_OPERATIONCONTEXT2_H__FFA16C44_2FA7_11D4_9ADD_00C0F0583C4B__INCLUDED_
