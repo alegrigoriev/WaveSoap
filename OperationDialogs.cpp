@@ -22,7 +22,7 @@ static char THIS_FILE[] = __FILE__;
 
 
 CCopyChannelsSelectDlg::CCopyChannelsSelectDlg(CHANNEL_MASK Channels, CWnd* pParent /*=NULL*/)
-	: BaseClass(CCopyChannelsSelectDlg::IDD, pParent)
+	: BaseClass(IDD, pParent)
 	, m_ChannelToCopy(-1)
 {
 	//{{AFX_DATA_INIT(CCopyChannelsSelectDlg)

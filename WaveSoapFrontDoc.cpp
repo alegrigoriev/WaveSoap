@@ -1223,9 +1223,12 @@ void CWaveSoapFrontDoc::QueueOperation(COperationContext * pContext)
 	}
 }
 
-void CWaveSoapFrontDoc::DoCopy(SAMPLE_INDEX Start, SAMPLE_INDEX End, CHANNEL_MASK Channel, LPCTSTR FileName)
+void CWaveSoapFrontDoc::DoCopy(SAMPLE_INDEX Start, SAMPLE_INDEX End,
+								CHANNEL_MASK Channel, LPCTSTR FileName)
 {
 	// create a operation context
+	ASSERT(Start > End);
+
 	TRACE("CWaveSoapFrontDoc::DoCopy Start=%d, End=%d, Channel=%x, FileName=%s\n",
 		Start, End, Channel, FileName);
 
@@ -1251,12 +1254,7 @@ void CWaveSoapFrontDoc::DoCopy(SAMPLE_INDEX Start, SAMPLE_INDEX End, CHANNEL_MAS
 		OperationFlags = OperationContextClipboard;
 	}
 
-	CCopyContext * pContext = new CCopyContext(this, OpName, _T("Copy"));
-	if (NULL == pContext)
-	{
-		NotEnoughMemoryMessageBox();
-		return;
-	}
+	CCopyContext::auto_ptr pContext(new CCopyContext(this, OpName, _T("Copy")));
 
 	// create a temporary clipboard WAV file
 	if (FALSE == DstFile.CreateWaveFile( & m_WavFile, NULL, Channel,
@@ -1264,21 +1262,21 @@ void CWaveSoapFrontDoc::DoCopy(SAMPLE_INDEX Start, SAMPLE_INDEX End, CHANNEL_MAS
 										OpenFlags,
 										FileName))
 	{
-		delete pContext;
 		AfxMessageBox(IDS_STRING_UNABLE_TO_CREATE_CLIPBOARD, MB_OK | MB_ICONEXCLAMATION);
 		return;
 	}
+
 	pContext->m_Flags |= OperationFlags;
 
-	pContext->InitCopy(DstFile, 0, End - Start, ALL_CHANNELS,
-						m_WavFile, Start, End - Start, Channel);
+	pContext->InitCopy(DstFile, 0, ALL_CHANNELS,
+						m_WavFile, Start, Channel, End - Start);
 
 	if (OperationFlags & OperationContextClipboard)
 	{
 		GetApp()->m_ClipboardFile = DstFile;
 	}
 	// set operation context to the queue
-	pContext->Execute();
+	pContext.release()->Execute();
 }
 
 void CWaveSoapFrontDoc::DoPaste(SAMPLE_INDEX Start, SAMPLE_INDEX End, CHANNEL_MASK Channel, LPCTSTR FileName)
@@ -1287,30 +1285,33 @@ void CWaveSoapFrontDoc::DoPaste(SAMPLE_INDEX Start, SAMPLE_INDEX End, CHANNEL_MA
 		Start, End, Channel, FileName);
 	// create a operation context
 	CThisApp * pApp = GetApp();
-	CWaveFile * pSrcFile = & pApp->m_ClipboardFile;
 
 	// todo: support copy from a file (FileName)
+	CWaveFile SrcFile;
+
 	if (NULL != FileName)
 	{
 	}
 	else
 	{
+		SrcFile = pApp->m_ClipboardFile;
 	}
 
-	if ( ! pSrcFile->IsOpen())
+	if ( ! SrcFile.IsOpen())
 	{
 		return;
 	}
 
-	NUMBER_OF_SAMPLES NumSamplesToPasteFrom = pSrcFile->NumberOfSamples();
+	NUMBER_OF_SAMPLES NumSamplesToPasteFrom = SrcFile.NumberOfSamples();
 	// check if the sampling rate matches the clipboard
-	int SrcSampleRate = pSrcFile->SampleRate();
+	int SrcSampleRate = SrcFile.SampleRate();
 	int TargetSampleRate = WaveSampleRate();
 
 	CStagedContext::auto_ptr pStagedContext(new CStagedContext(this, _T("Paste"), 0));
 
 	if (SrcSampleRate != TargetSampleRate)
 	{
+		// sample rate is different, needs resampling
 		CPasteResampleModeDlg dlg(SrcSampleRate, TargetSampleRate, m_PasteResampleMode);
 
 		if (IDOK != dlg.DoModal())
@@ -1335,10 +1336,11 @@ void CWaveSoapFrontDoc::DoPaste(SAMPLE_INDEX Start, SAMPLE_INDEX End, CHANNEL_MA
 
 			// create new temporary file
 			CWaveFile DstFile;
+
 			double ResampleQuality = 40.;
 			double ResampleRatio = double(TargetSampleRate) / SrcSampleRate;
 
-			if ( ! DstFile.CreateWaveFile(pSrcFile, NULL, ALL_CHANNELS, NumSamplesToPasteFrom,
+			if ( ! DstFile.CreateWaveFile(& SrcFile, NULL, ALL_CHANNELS, NumSamplesToPasteFrom,
 										CreateWaveFileTempDir
 										| CreateWaveFileDeleteAfterClose
 										| CreateWaveFilePcmFormat
@@ -1351,19 +1353,14 @@ void CWaveSoapFrontDoc::DoPaste(SAMPLE_INDEX Start, SAMPLE_INDEX End, CHANNEL_MA
 
 			DstFile.GetWaveFormat()->nSamplesPerSec = TargetSampleRate;
 
-			CResampleContext * pResampleContext =
+			CResampleContext::auto_ptr pResampleContext(
 				new CResampleContext(this, _T("Changing sample rate of clipboard data..."),
 									_T("Resample"),
-									*pSrcFile, DstFile, ResampleRatio, ResampleQuality);
-			if (NULL == pResampleContext)
-			{
-				NotEnoughMemoryMessageBox();
-				return;
-			}
+									SrcFile, DstFile, ResampleRatio, ResampleQuality));
 
-			pStagedContext->AddContext(pResampleContext);
+			pStagedContext->AddContext(pResampleContext.release());
 
-			pSrcFile = & pResampleContext->m_DstFile;
+			SrcFile = pResampleContext->m_DstFile;
 		}
 	}
 
@@ -1396,14 +1393,14 @@ void CWaveSoapFrontDoc::DoPaste(SAMPLE_INDEX Start, SAMPLE_INDEX End, CHANNEL_MA
 		}
 	}
 
-	CHANNEL_MASK nCopiedChannels = 2;
+	int nCopiedChannels = 2;
 	if (Channel != ALL_CHANNELS || WaveChannels() < 2)
 	{
 		nCopiedChannels = 1;
 	}
 
 	CHANNEL_MASK ChannelToCopyFrom = ALL_CHANNELS;
-	if (nCopiedChannels < pSrcFile->Channels())
+	if (nCopiedChannels < SrcFile.Channels())
 	{
 		CCopyChannelsSelectDlg dlg(m_PrevChannelToCopy);
 
@@ -1420,27 +1417,41 @@ void CWaveSoapFrontDoc::DoPaste(SAMPLE_INDEX Start, SAMPLE_INDEX End, CHANNEL_MA
 		return;
 	}
 
-	CCopyContext * pContext = new CCopyContext(this, _T("Inserting data from clipboard..."), _T("Paste"));
-	if (NULL == pContext)
+	if (NumSamplesToPasteFrom == End - Start)
 	{
-		NotEnoughMemoryMessageBox();
+		CCopyContext::auto_ptr pCopyContext(new
+											CCopyContext(this, _T("Inserting data from clipboard..."), _T("Paste")));
+
+		if ( ! pCopyContext->InitCopy(m_WavFile, Start, Channel,
+									SrcFile, 0, ChannelToCopyFrom, NumSamplesToPasteFrom))
+		{
+			return;
+		}
+
+
+		pStagedContext->AddContext(pCopyContext.release());
+	}
+	else
+	{
+		CInsertContext::auto_ptr pInsertContext(new CInsertContext(this, _T("Inserting data from clipboard..."), _T("Paste")));
+
+		if ( ! pInsertContext->InitInsertCopy(m_WavFile, Start, End - Start, Channel,
+											SrcFile, 0, NumSamplesToPasteFrom, ChannelToCopyFrom))
+		{
+			return;
+		}
+
+		pStagedContext->AddContext(pInsertContext.release());
+	}
+
+	if (UndoEnabled()
+		&& ! pStagedContext->CreateUndo())
+	{
 		return;
 	}
 
-	pStagedContext->AddContext(pContext);
+	pStagedContext->m_Flags |= OperationContextClipboard;
 
-	pContext->m_Flags |= OperationContextClipboard;
-
-	if ( ! pContext->InitCopy(m_WavFile, Start, End - Start, Channel,
-							* pSrcFile, 0, NumSamplesToPasteFrom, ChannelToCopyFrom))
-	{
-		return;
-	}
-
-	if (UndoEnabled())
-	{
-		pStagedContext->CreateUndo();
-	}
 	SoundChanged(WaveFileID(), 0, 0, WaveFileSamples());
 
 	// set operation context to the queue
@@ -1487,9 +1498,8 @@ void CWaveSoapFrontDoc::DoCut(SAMPLE_INDEX Start, SAMPLE_INDEX End, CHANNEL_MASK
 
 	pCopyContext->m_Flags |= OperationContextClipboard;
 
-	pCopyContext->InitCopy(DstFile, 0, End - Start, ALL_CHANNELS,
-							m_WavFile, Start, End - Start,
-							Channel);
+	pCopyContext->InitCopy(DstFile, 0, ALL_CHANNELS,
+							m_WavFile, Start, Channel, End - Start);
 	GetApp()->m_ClipboardFile = DstFile;
 
 	// set operation context to the queue
@@ -2629,6 +2639,7 @@ void CWaveSoapFrontDoc::PostFileSave(CWaveFile & DstFile,
 									OldFormat.nSamplesPerSec);
 		SAMPLE_INDEX Caret = MulDiv(m_CaretPosition, NewFormat.nSamplesPerSec,
 									OldFormat.nSamplesPerSec);
+
 		CHANNEL_MASK Chan = m_SelectedChannel;
 		if (OldFormat.nChannels != NewFormat.nChannels)
 		{
@@ -3935,6 +3946,7 @@ void CWaveSoapFrontDoc::OnProcessInsertsilence()
 			break;
 		}
 	}
+
 	CHANNEL_MASK channel = m_SelectedChannel;
 	if (ChannelsLocked())
 	{
@@ -3964,25 +3976,18 @@ void CWaveSoapFrontDoc::OnProcessInsertsilence()
 		return;
 	}
 
-	CInsertSilenceContext * pContext = new CInsertSilenceContext(this,
-																_T("Inserting silence..."), _T("Insert Silence"));
-
-	if (NULL == pContext)
-	{
-		NotEnoughMemoryMessageBox();
-		return;
-	}
+	CInsertSilenceContext::auto_ptr pContext(new CInsertSilenceContext(this,
+												_T("Inserting silence..."), _T("Insert Silence")));
 
 	if ( ! pContext->InitExpand(m_WavFile, dlg.GetStart(),
 								dlg.GetLength(), dlg.GetChannel(), TRUE))   // BUGBUG??undo isn't necessary
 	{
-		delete pContext;
 		return;
 	}
 
 	SoundChanged(WaveFileID(), 0, 0, WaveFileSamples());
-	pContext->Execute();
-	SetModifiedFlag(TRUE, TRUE);    // kepp previous undo
+	pContext.release()->Execute();
+	SetModifiedFlag(TRUE, TRUE);    // keep previous undo
 }
 
 void CWaveSoapFrontDoc::OnUpdateProcessMute(CCmdUI* pCmdUI)
@@ -4609,6 +4614,7 @@ void CWaveSoapFrontDoc::OnToolsInterpolate()
 	int PreInterpolateSamples = 0;
 	int PostInterpolateSamples = 0;
 	int InterpolationOverlap;
+
 	bool BigGap = (InterpolateSamples > 32);
 	if (BigGap)
 	{
@@ -4648,10 +4654,11 @@ void CWaveSoapFrontDoc::OnToolsInterpolate()
 		return;
 	}
 
-	int ReadBytes = BufferSamples * SampleSize;
-	int WriteBytes = (InterpolateSamples + PreInterpolateSamples + PostInterpolateSamples)
-					* SampleSize;
-	if (ReadBytes != m_WavFile.ReadAt(pBuf, ReadBytes, ReadStartOffset))
+	int const ReadBytes = BufferSamples * SampleSize;
+	int const WrittenSamples = InterpolateSamples + PreInterpolateSamples + PostInterpolateSamples;
+	int const WriteBytes = WrittenSamples * SampleSize;
+
+	if (BufferSamples != m_WavFile.ReadSamples(ALL_CHANNELS, ReadStartOffset, BufferSamples, pBuf))
 	{
 		return;
 	}
@@ -4671,24 +4678,25 @@ void CWaveSoapFrontDoc::OnToolsInterpolate()
 			return;
 		}
 		pCopy->SaveUndoData(pBuf + WriteBufferOffset * nChannels, WriteBytes,
-							WriteStartOffset, m_SelectedChannel);
+							WriteStartOffset, nChannels);
 		AddUndoRedo(pUndo.release());
 	}
 
 	// now, do the interpolation
 	CClickRemoval crm;
-	if (m_SelectedChannel != 1) // mono or not right channel only
+	if (m_SelectedChannel & SPEAKER_FRONT_LEFT) // mono or not right channel only
 	{
 		crm.InterpolateGap(pBuf, InterpolateOffset, InterpolateSamples, nChannels, BigGap);
 	}
 	if (nChannels == 2
-		&& m_SelectedChannel != 0) // mono or not right channel only
+		&& (m_SelectedChannel & SPEAKER_FRONT_RIGHT) != 0) // mono or not right channel only
 	{
 		crm.InterpolateGap(pBuf + 1, InterpolateOffset, InterpolateSamples, nChannels, BigGap);
 	}
 
 	// write the data back
-	m_WavFile.WriteAt(pBuf + WriteBufferOffset * nChannels, WriteBytes, WriteStartOffset);
+	m_WavFile.WriteSamples(m_SelectedChannel, WriteStartOffset, WrittenSamples,
+							pBuf + WriteBufferOffset * nChannels, m_SelectedChannel, nChannels);
 
 	SetModifiedFlag(TRUE);
 	SoundChanged(WaveFileID(), m_SelectionStart - PreInterpolateSamples,
@@ -4744,23 +4752,13 @@ void CWaveSoapFrontDoc::OnProcessDoUlf()
 	(new CConversionContext(this, _T("Reducing low frequency static..."),
 							_T("Low Frequency Suppression")));
 
-	if (NULL == pContext.get())
-	{
-		NotEnoughMemoryMessageBox();
-		return;
-	}
 	if ( ! pContext->InitDestination(m_WavFile, dlg.GetStart(),
 									dlg.GetEnd(), dlg.GetChannel(), dlg.UndoEnabled()))
 	{
 		return;
 	}
 
-	CHumRemoval * pUlfProc = new CHumRemoval;
-	if (NULL == pUlfProc)
-	{
-		NotEnoughMemoryMessageBox();
-		return;
-	}
+	CHumRemoval::auto_ptr pUlfProc(new CHumRemoval);
 
 	pUlfProc->SetAndValidateWaveformat(WaveFormat());
 	pUlfProc->m_ChannelsToProcess = dlg.GetChannel();
@@ -4770,7 +4768,7 @@ void CWaveSoapFrontDoc::OnProcessDoUlf()
 	pUlfProc->SetDifferentialCutoff(dlg.m_dDiffNoiseRange);
 	pUlfProc->SetHighpassCutoff(dlg.m_dLfNoiseRange);
 
-	pContext->AddWaveProc(pUlfProc);
+	pContext->AddWaveProc(pUlfProc.release());
 
 	pContext.release()->Execute();
 	SetModifiedFlag(TRUE, dlg.UndoEnabled());
