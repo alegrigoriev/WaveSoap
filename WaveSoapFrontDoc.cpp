@@ -5,6 +5,7 @@
 #include "WaveSoapFront.h"
 #include "MainFrm.h"
 #include "WaveSoapFrontDoc.h"
+#include "WaveSupport.h"
 #include <afxpriv.h>
 
 #ifdef _DEBUG
@@ -32,6 +33,14 @@ BEGIN_MESSAGE_MAP(CWaveSoapFrontDoc, CDocument)
 	ON_UPDATE_COMMAND_UI(ID_EDIT_STOP, OnUpdateEditStop)
 	ON_UPDATE_COMMAND_UI(ID_FILE_SAVE, OnUpdateFileSave)
 	ON_COMMAND(ID_EDIT_SELECT_ALL, OnEditSelectAll)
+	ON_COMMAND(ID_EDIT_SELECTION, OnEditSelection)
+	ON_UPDATE_COMMAND_UI(ID_EDIT_SELECTION, OnUpdateEditSelection)
+	ON_UPDATE_COMMAND_UI(IDC_SOUND_PLAY, OnUpdateSoundPlay)
+	ON_COMMAND(IDC_SOUND_PLAY, OnSoundPlay)
+	ON_UPDATE_COMMAND_UI(IDC_SOUND_STOP, OnUpdateSoundStop)
+	ON_COMMAND(IDC_SOUND_STOP, OnSoundStop)
+	ON_COMMAND(IDC_SOUND_PAUSE, OnSoundPause)
+	ON_UPDATE_COMMAND_UI(IDC_SOUND_PAUSE, OnUpdateSoundPause)
 	//}}AFX_MSG_MAP
 END_MESSAGE_MAP()
 
@@ -55,6 +64,7 @@ CWaveSoapFrontDoc::CWaveSoapFrontDoc()
 	m_pRedoList(NULL),
 	m_pUpdateList(NULL),
 	m_OperationInProgress(false),
+	m_OperationNonCritical(false),
 	m_Thread(ThreadProc, this),
 	m_SelectedChannel(2)
 {
@@ -257,7 +267,11 @@ void CWaveSoapFrontDoc::BuildPeakInfo()
 
 BOOL CScanPeaksContext::OperationProc()
 {
-	// wave file peak granule is smaller than the buffer
+	if (Flags & OperationContextStopRequested)
+	{
+		Flags |= OperationContextFinished;
+		return TRUE;
+	}
 	if (m_Position < m_End)
 	{
 		DWORD dwStartTime = timeGetTime();
@@ -981,6 +995,21 @@ UINT CWaveSoapFrontDoc::_ThreadProc(void)
 		}
 		if (m_pCurrentContext)
 		{
+			if (0 == (m_pCurrentContext->Flags & OperationContextInitialized))
+			{
+				if ( ! m_pCurrentContext->Init())
+				{
+					m_pCurrentContext->Flags |= OperationContextStop;
+				}
+				m_pCurrentContext->Flags |= OperationContextInitialized;
+				NeedKickIdle = true;
+			}
+
+			if (m_StopOperation)
+			{
+				m_pCurrentContext->Flags |= OperationContextStopRequested;
+			}
+
 			int LastPercent = m_pCurrentContext->PercentCompleted;
 			// execute one step
 			if (0 == (m_pCurrentContext->Flags &
@@ -1010,6 +1039,7 @@ UINT CWaveSoapFrontDoc::_ThreadProc(void)
 				NeedKickIdle = true;
 				COperationContext * pContext =
 					(COperationContext *)InterlockedExchange(PLONG( & m_pCurrentContext), NULL);
+				pContext->DeInit();
 				m_OperationInProgress = false;
 				delete pContext;
 			}
@@ -1147,6 +1177,7 @@ BOOL CWaveSoapFrontDoc::QueueOperation(COperationContext * pContext)
 		return FALSE;
 	}
 	m_StopOperation = false;
+	m_OperationNonCritical = (0 != (pContext->Flags & OperationContextNonCritical));
 	m_OperationInProgress = TRUE;
 	if (pContext->Flags & (OperationContextDiskIntensive | OperationContextClipboard))
 	{
@@ -1255,6 +1286,11 @@ CCopyContext::~CCopyContext()
 BOOL CCopyContext::OperationProc()
 {
 	// get buffers from source file and copy them to m_CopyFile
+	if (Flags & OperationContextStopRequested)
+	{
+		Flags |= OperationContextFinished;
+		return TRUE;
+	}
 	if (Flags & (CopyExpandFile | CopyShrinkFile))
 	{
 		if (NULL != m_pExpandShrinkContext)
@@ -1497,10 +1533,10 @@ BOOL CCopyContext::OperationProc()
 					{
 						pDst[0] = pSrc[0];
 					}
-					LeftToRead -= ToCopy * sizeof (__int16);
-					m_SrcCopyPos += ToCopy * sizeof (__int16);
-					LeftToWrite -= ToCopy * (2 * sizeof (__int16));
-					m_DstCopyPos += ToCopy * (2 * sizeof (__int16));
+					LeftToRead -= ToCopy * (2 * sizeof (__int16));
+					m_SrcCopyPos += ToCopy * (2 * sizeof (__int16));
+					LeftToWrite -= ToCopy * sizeof (__int16);
+					m_DstCopyPos += ToCopy * sizeof (__int16);
 				}
 			}
 			else
@@ -1594,6 +1630,11 @@ BOOL CCopyContext::OperationProc()
 BOOL CResizeContext::OperationProc()
 {
 	// change size of the file
+	if (Flags & OperationContextStopRequested)
+	{
+		Flags |= OperationContextFinished;
+		return TRUE;
+	}
 	if (Flags & CopyExpandFile)
 	{
 		return ExpandProc();
@@ -2101,4 +2142,203 @@ void CWaveSoapFrontDoc::OnEditSelectAll()
 {
 	long len = WaveFileSamples();
 	SetSelection(0, len, 2, len);
+}
+
+void CWaveSoapFrontDoc::OnEditSelection()
+{
+
+}
+
+void CWaveSoapFrontDoc::OnUpdateEditSelection(CCmdUI* pCmdUI)
+{
+	// TODO: Add your command update UI handler code here
+
+}
+
+class CSoundPlayContext : public COperationContext
+{
+public:
+	CWaveOut m_WaveOut;
+	long m_Begin;
+	long m_End;
+	long m_CurrentPlaybackPos;
+	int m_Chan;
+	int m_PlaybackDevice;
+	int m_OldThreadPriority;
+	CString m_ss;
+
+public:
+	CSoundPlayContext(class CWaveSoapFrontDoc * pDoc)
+		: COperationContext(pDoc, 0), m_ss(_T("Playing..."))
+	{
+	}
+	virtual ~CSoundPlayContext() {}
+	virtual BOOL OperationProc();
+	virtual BOOL Init();
+	virtual BOOL DeInit();
+	virtual CString GetStatusString() { return m_ss; }
+};
+
+BOOL CSoundPlayContext::Init()
+{
+	m_OldThreadPriority = GetThreadPriority(GetCurrentThread());
+	MMRESULT mmres = m_WaveOut.Open(m_PlaybackDevice, pDocument->WaveFormat(), 0);
+	if (MMSYSERR_NOERROR != mmres)
+	{
+		// TODO:
+		// notify document
+		return FALSE;
+	}
+	SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_ABOVE_NORMAL);
+	return TRUE;
+}
+
+BOOL CSoundPlayContext::DeInit()
+{
+	SetThreadPriority(GetCurrentThread(), m_OldThreadPriority);
+	m_WaveOut.Reset();
+	return TRUE;
+}
+
+BOOL CSoundPlayContext::OperationProc()
+{
+	if (Flags & OperationContextStopRequested)
+	{
+		Flags |= OperationContextFinished;
+		return TRUE;
+	}
+	if (m_CurrentPlaybackPos >= m_End)
+	{
+		// wait until all the buffer is finished
+		if (FALSE == m_WaveOut.WaitForQueueEmpty(50))
+		{
+			return TRUE;    // not finished yet
+		}
+		Flags |= OperationContextFinished;
+		PercentCompleted = 100;
+		return TRUE;
+	}
+	char * pBuf;
+	size_t size;
+	int nBuf = m_WaveOut.GetBuffer( & pBuf, & size, FALSE);
+	if (nBuf <= 0)
+	{
+		// buffer not available yet
+		Sleep(50);
+	}
+	else
+	{
+		// fill the buffer
+		int TotalInBuf = 0;
+		while (size != 0 && m_CurrentPlaybackPos < m_End)
+		{
+			size_t len = m_End - m_CurrentPlaybackPos;
+			if (len > size) len = size;
+			void * pFileBuf = NULL;
+			long lRead = pDocument->m_WavFile.m_File.GetDataBuffer( & pFileBuf,
+							len, m_CurrentPlaybackPos, CDirectFile::GetBufferAndPrefetchNext);
+			if (lRead <= 0)
+			{
+				m_WaveOut.ReturnBuffer(nBuf);
+				return FALSE;
+			}
+			memcpy(pBuf, pFileBuf, lRead);
+			pDocument->m_WavFile.m_File.ReturnDataBuffer(pFileBuf,
+														lRead, CDirectFile::ReturnBufferDiscard);
+			m_CurrentPlaybackPos += lRead;
+			pBuf += lRead;
+			size -= lRead;
+			TotalInBuf += lRead;
+		}
+		m_WaveOut.Play(nBuf, TotalInBuf, 0);
+
+
+	}
+	// notify the document
+
+	return TRUE;
+}
+
+void CWaveSoapFrontDoc::OnUpdateSoundPlay(CCmdUI* pCmdUI)
+{
+	pCmdUI->Enable(! m_OperationInProgress);
+}
+
+void CWaveSoapFrontDoc::OnSoundPlay()
+{
+	if (m_OperationInProgress)
+	{
+		return;
+	}
+	CSoundPlayContext * pContext = new CSoundPlayContext(this);
+	MMCKINFO * pDatack = WaveDataChunk();
+	pContext->m_Begin = m_SelectionStart * WaveSampleSize() + pDatack->dwDataOffset;
+	if (m_SelectionStart == m_SelectionEnd)
+	{
+		pContext->m_End = pDatack->dwDataOffset + pDatack->cksize;
+	}
+	else
+	{
+		pContext->m_End = m_SelectionEnd * WaveSampleSize() + pDatack->dwDataOffset;
+	}
+	pContext->m_CurrentPlaybackPos = pContext->m_Begin;
+	pContext->m_Chan = m_SelectedChannel;
+	pContext->m_PlaybackDevice = GetApp()->m_DefaultPlaybackDevice;
+	if (false == pContext->m_WaveOut.AllocateBuffers(GetApp()->m_SizePlaybackBuffers,
+													GetApp()->m_NumPlaybackBuffers))
+	{
+		AfxMessageBox(IDS_STRING_UNABLE_TO_ALLOCATE_AUDIO_BUFFERS,
+					MB_OK | MB_ICONEXCLAMATION);
+		delete pContext;
+		return;
+	}
+	if (MMSYSERR_NOERROR != pContext->m_WaveOut.Open(
+													pContext->m_PlaybackDevice, WaveFormat(), WAVE_FORMAT_QUERY))
+	{
+		AfxMessageBox(IDS_STRING_UNABLE_TO_OPEN_AUDIO_DEVICE,
+					MB_OK | MB_ICONEXCLAMATION);
+		delete pContext;
+		return;
+	}
+	QueueOperation(pContext);
+}
+
+void CWaveSoapFrontDoc::OnUpdateSoundStop(CCmdUI* pCmdUI)
+{
+	// TODO: Add your command update UI handler code here
+
+}
+
+void CWaveSoapFrontDoc::OnSoundStop()
+{
+	// TODO: Add your command handler code here
+
+}
+
+void CWaveSoapFrontDoc::OnSoundPause()
+{
+	// TODO: Add your command handler code here
+
+}
+
+void CWaveSoapFrontDoc::OnUpdateSoundPause(CCmdUI* pCmdUI)
+{
+	// TODO: Add your command update UI handler code here
+
+}
+
+BOOL CWaveSoapFrontDoc::SaveModified()
+{
+	if (m_OperationInProgress)
+	{
+		if (m_OperationNonCritical)
+		{
+			m_StopOperation = TRUE;
+		}
+		else
+		{
+			return FALSE;
+		}
+	}
+	return CDocument::SaveModified();
 }

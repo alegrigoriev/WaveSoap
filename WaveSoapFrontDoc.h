@@ -69,9 +69,12 @@ public:
 	virtual void Serialize(CArchive& ar);
 	virtual BOOL OnOpenDocument(LPCTSTR lpszPathName);
 	virtual BOOL OnSaveDocument(LPCTSTR lpszPathName);
+protected:
+	virtual BOOL SaveModified();
 	//}}AFX_VIRTUAL
 	virtual void OnIdle();
 	virtual BOOL DoSave(LPCTSTR lpszPathName, BOOL bReplace = TRUE);
+public:
 	CString szWaveFilename;
 	CString szWaveTitle;
 	CWaveFile m_WavFile;
@@ -110,7 +113,6 @@ public:
 public:
 	virtual ~CWaveSoapFrontDoc();
 	virtual void SetModifiedFlag(BOOL bModified = TRUE);
-	//virtual void SetTitle(LPCTSTR lpszTitle);
 	void UpdateDocumentTitle();
 	void LoadPeakFile();
 	void BuildPeakInfo();
@@ -159,8 +161,8 @@ public:
 
 	bool volatile m_OperationInProgress;
 	bool volatile m_StopOperation;
+	bool m_OperationNonCritical;
 	CString m_CurrentStatusString;
-	CString m_strRealTitle;
 	bool m_bReadOnly;
 	bool m_bDirectMode;
 	CSimpleCriticalSection m_cs;
@@ -208,6 +210,14 @@ protected:
 	afx_msg void OnUpdateEditStop(CCmdUI* pCmdUI);
 	afx_msg void OnUpdateFileSave(CCmdUI* pCmdUI);
 	afx_msg void OnEditSelectAll();
+	afx_msg void OnEditSelection();
+	afx_msg void OnUpdateEditSelection(CCmdUI* pCmdUI);
+	afx_msg void OnUpdateSoundPlay(CCmdUI* pCmdUI);
+	afx_msg void OnSoundPlay();
+	afx_msg void OnUpdateSoundStop(CCmdUI* pCmdUI);
+	afx_msg void OnSoundStop();
+	afx_msg void OnSoundPause();
+	afx_msg void OnUpdateSoundPause(CCmdUI* pCmdUI);
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 
