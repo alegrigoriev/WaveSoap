@@ -39,6 +39,8 @@ public:
 	COperationContext(class CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString, DWORD Flags, LPCTSTR OperationName = _T(""));
 	virtual ~COperationContext();
 
+	virtual void Dump(unsigned indent=0) const;
+
 	virtual BOOL OperationProc() = 0;
 
 	virtual BOOL Init() { return TRUE; }
@@ -97,10 +99,12 @@ public:
 	DWORD m_Flags;
 
 	int m_PercentCompleted;
+	// This list keeps all UNDO operations for this operation context.
+	// they are created in advance, before the operation is executed
+	// First item in the list is to be executed first
+	// this means the latest item executed during operation,
+	// gives the first UNDO item.
 	ListHead<COperationContext> m_UndoChain;
-
-	int m_GetBufferFlags;
-	int m_ReturnBufferFlags;
 
 	bool m_bClipped;
 	double m_MaxClipped;
@@ -202,6 +206,7 @@ class COneFileOperation : public COperationContext
 public:
 	COneFileOperation(class CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString,
 					ULONG Flags, LPCTSTR OperationName = _T(""));
+	virtual void Dump(unsigned indent=0) const;
 
 	virtual bool KeepsPermanentFileReference() const;
 	virtual LONGLONG GetTempDataSize() const;
@@ -232,6 +237,8 @@ public:
 	CTwoFilesOperation(class CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString,
 						ULONG Flags, LPCTSTR OperationName = _T(""));
 	~CTwoFilesOperation();
+
+	virtual void Dump(unsigned indent=0) const;
 
 	virtual LONGLONG GetTempDataSize() const;
 	BOOL InitDestination(CWaveFile & DstFile, SAMPLE_INDEX StartSample, SAMPLE_INDEX EndSample,
@@ -278,6 +285,8 @@ public:
 	int m_NumberOfForwardPasses;
 	int m_NumberOfBackwardPasses;
 	int m_CurrentPass;
+	int m_GetBufferFlags;
+	int m_ReturnBufferFlags;
 
 	virtual MEDIA_FILE_SIZE GetTotalOperationSize() const;
 
@@ -311,6 +320,8 @@ public:
 	virtual void UnprepareUndo();
 	virtual void DeleteUndo();
 
+	virtual void Dump(unsigned indent=0) const;
+
 	void AddContext(COperationContext * pContext);
 	void AddContextInFront(COperationContext * pContext);
 	virtual LONGLONG GetTempDataSize() const;
@@ -321,8 +332,11 @@ public:
 	virtual MEDIA_FILE_SIZE GetCompletedOperationSize() const;
 
 protected:
+	// This list keeps items to execute. First() is executed first
 	ListHead<COperationContext> m_ContextList;
+	// This list keeps items done. First() was executed first, Last was executed last
 	ListHead<COperationContext> m_DoneList;
+	// this is total size of all completed operations
 	MEDIA_FILE_SIZE m_DoneSize;
 };
 
@@ -634,6 +648,7 @@ public:
 
 	BOOL InitDestination(CWaveFile & DstFile, SAMPLE_INDEX StartSample, SAMPLE_INDEX EndSample,
 						CHANNEL_MASK chan, BOOL NeedUndo);
+
 	virtual BOOL WasClipped() const
 	{
 		return m_ProcBatch.WasClipped();

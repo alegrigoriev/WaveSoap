@@ -5,6 +5,7 @@
 #include "OperationDialogs.h"
 #include "WaveSoapFrontDoc.h"
 #include "BladeMP3EncDLL.h"
+#include "TimeToStr.h"
 
 static int _fastcall fround(double d)
 {
@@ -35,7 +36,6 @@ void SkipWhitespace(LPCTSTR * ppStr)
 CExpressionEvaluationContext::CExpressionEvaluationContext(CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString, LPCTSTR OperationName)
 	:BaseClass(pDoc, StatusString, 0, OperationName)
 {
-	m_ReturnBufferFlags = CDirectFile::ReturnBufferDirty;
 }
 
 BOOL CExpressionEvaluationContext::Init()
@@ -1351,8 +1351,6 @@ CEqualizerContext::CEqualizerContext(CWaveSoapFrontDoc * pDoc,
 	: BaseClass(pDoc, StatusString, OperationContextDiskIntensive, OperationName),
 	m_bZeroPhase(FALSE)
 {
-	//m_GetBufferFlags = 0; // leave CDirectFile::GetBufferAndPrefetchNext flag
-	m_ReturnBufferFlags = CDirectFile::ReturnBufferDirty;
 }
 
 CEqualizerContext::~CEqualizerContext()
@@ -1361,7 +1359,6 @@ CEqualizerContext::~CEqualizerContext()
 
 BOOL CEqualizerContext::Init()
 {
-	m_ReturnBufferFlags = CDirectFile::ReturnBufferDirty;
 	if (m_bZeroPhase)
 	{
 		m_NumberOfBackwardPasses = 1;
@@ -1372,6 +1369,7 @@ BOOL CEqualizerContext::Init()
 BOOL CEqualizerContext::InitPass(int nPass)
 {
 	TRACE("CEqualizerContext::InitPass %d\n", nPass);
+
 	for (int ch = 0; ch < countof (m_PrevSamples); ch++)
 	{
 		for (int i = 0; i < MaxNumberOfEqualizerBands; i++)
@@ -1468,8 +1466,6 @@ CFilterContext::CFilterContext(CWaveSoapFrontDoc * pDoc,
 	: BaseClass(pDoc, StatusString, OperationContextDiskIntensive, OperationName),
 	m_bZeroPhase(FALSE)
 {
-	//m_GetBufferFlags = 0; // leave CDirectFile::GetBufferAndPrefetchNext flag
-	m_ReturnBufferFlags = CDirectFile::ReturnBufferDirty;
 }
 
 CFilterContext::~CFilterContext()
@@ -1488,6 +1484,7 @@ BOOL CFilterContext::Init()
 BOOL CFilterContext::InitPass(int nPass)
 {
 	TRACE("CFilterContext::InitPass %d\n", nPass);
+
 	for (int ch = 0; ch < countof (m_PrevLpfSamples); ch++)
 	{
 		for (int i = 0; i < MaxFilterOrder; i++)
@@ -1876,7 +1873,7 @@ BOOL CReplaceFileContext::CreateUndo()
 								pDocument->m_bDirectMode);
 	if (NULL != pUndo)
 	{
-		m_UndoChain.InsertTail(pUndo);
+		m_UndoChain.InsertHead(pUndo);
 		return TRUE;
 	}
 	return FALSE;
@@ -1912,7 +1909,7 @@ BOOL CReplaceFormatContext::CreateUndo()
 	CReplaceFormatContext * pUndo =
 		new CReplaceFormatContext(pDocument, m_OperationName, pDocument->WaveFormat());
 
-	m_UndoChain.InsertTail(pUndo);
+	m_UndoChain.InsertHead(pUndo);
 	return TRUE;
 }
 
@@ -2038,6 +2035,17 @@ CMoveOperation::~CMoveOperation()
 	delete m_pUndoMove;
 }
 
+void CMoveOperation::Dump(unsigned indent) const
+{
+	BaseClass::Dump(indent);
+
+	if (NULL != m_pUndoMove)
+	{
+		TRACE(" %*.sUNDO MOVE:\n", indent, "");
+		m_pUndoMove->Dump(indent+2);
+	}
+}
+
 BOOL CMoveOperation::InitMove(CWaveFile & File,
 							SAMPLE_INDEX SrcStartSample,
 							SAMPLE_INDEX DstStartSample,
@@ -2097,11 +2105,14 @@ BOOL CMoveOperation::CreateUndo()
 		m_pUndoContext->m_UndoStartPos = 0;
 		m_pUndoContext->m_UndoEndPos = 0;
 	}
+
 	return TRUE;
 }
 
 ListHead<COperationContext> * CMoveOperation::GetUndoChain()
 {
+	BaseClass::GetUndoChain();
+
 	if (NULL != m_pUndoMove)
 	{
 		// adjust positions!
@@ -2118,12 +2129,13 @@ ListHead<COperationContext> * CMoveOperation::GetUndoChain()
 			m_pUndoMove->m_UndoEndPos = min(m_pUndoMove->m_SrcStart, m_pUndoMove->m_DstEnd);
 		}
 
+		// inserted to the head: will be executed first
 		m_UndoChain.InsertHead(m_pUndoMove);
 
 		m_pUndoMove = NULL;
 	}
 
-	return BaseClass::GetUndoChain();
+	return COperationContext::GetUndoChain();
 }
 
 void CMoveOperation::DeInit()
@@ -2236,9 +2248,12 @@ BOOL CMoveOperation::OperationProc()
 				SizeToWrite = -CDirectFile::CacheBufferSize();
 			}
 
-			// TODO
+			// if source and destination overlap less than BufferSize,
+			// then we cannot use WriteOnly flag
 			if (m_DstFile.AllChannels(m_DstChan)
-				&& m_SrcFile.GetFileID() != m_DstFile.GetFileID()
+				&& (m_SrcFile.GetFileID() != m_DstFile.GetFileID()
+					|| m_SrcPos + CDirectFile::CacheBufferSize() < m_DstPos
+					|| m_DstPos + CDirectFile::CacheBufferSize() < m_SrcPos)
 				&& (NULL == m_pUndoContext
 					|| ! m_pUndoContext->NeedToSaveUndo(m_DstPos, long(SizeToWrite))))
 			{
@@ -2402,6 +2417,17 @@ CSaveTrimmedOperation::~CSaveTrimmedOperation()
 	delete m_pRestoreOperation;
 }
 
+void CSaveTrimmedOperation::Dump(unsigned indent) const
+{
+	BaseClass::Dump(indent);
+
+	if (NULL != m_pRestoreOperation)
+	{
+		TRACE("%*.sRestore UNDO:\n", indent, "");
+		m_pRestoreOperation->Dump(indent + 2);
+	}
+}
+
 BOOL CSaveTrimmedOperation::CreateUndo()
 {
 	// Only create undo, if the source file is the main document file
@@ -2494,6 +2520,17 @@ CRestoreTrimmedOperation::~CRestoreTrimmedOperation()
 	delete m_pSaveOperation;
 }
 
+void CRestoreTrimmedOperation::Dump(unsigned indent) const
+{
+	BaseClass::Dump(indent);
+
+	if (NULL != m_pSaveOperation)
+	{
+		TRACE(" %*.sSave UNDO:\n", indent, "");
+		m_pSaveOperation->Dump(indent + 2);
+	}
+}
+
 BOOL CRestoreTrimmedOperation::CreateUndo()
 {
 	// Only create undo, if the source file is the main document file
@@ -2545,8 +2582,6 @@ CInitChannels::CInitChannels(CWaveSoapFrontDoc * pDoc,
 							CWaveFile & File, SAMPLE_INDEX Start, SAMPLE_INDEX End, CHANNEL_MASK Channels)
 	: BaseClass(pDoc, _T(""), 0, _T(""))
 {
-	m_ReturnBufferFlags |= CDirectFile::ReturnBufferDirty;
-
 	InitDestination(File, Start, End, Channels, FALSE);
 }
 
@@ -2576,7 +2611,7 @@ BOOL CInitChannels::CreateUndo()
 		return TRUE;
 	}
 
-	m_UndoChain.InsertTail(new CInitChannelsUndo(pDocument,
+	m_UndoChain.InsertHead(new CInitChannelsUndo(pDocument,
 												m_DstStart, m_DstEnd, m_DstChan));
 	return TRUE;
 }
@@ -2632,7 +2667,7 @@ CInitChannelsUndo::CInitChannelsUndo(CWaveSoapFrontDoc * pDoc,
 
 BOOL CInitChannelsUndo::CreateUndo()
 {
-	m_UndoChain.InsertTail(new CInitChannels(pDocument,
+	m_UndoChain.InsertHead(new CInitChannels(pDocument,
 											pDocument->m_WavFile,
 											m_SrcStart, m_SrcEnd, m_SrcChan));
 	return TRUE;
@@ -2659,7 +2694,7 @@ CSelectionChangeOperation::CSelectionChangeOperation(CWaveSoapFrontDoc * pDoc,
 
 BOOL CSelectionChangeOperation::CreateUndo()
 {
-	m_UndoChain.InsertTail(new CSelectionChangeOperation(pDocument,
+	m_UndoChain.InsertHead(new CSelectionChangeOperation(pDocument,
 														pDocument->m_SelectionStart, pDocument->m_SelectionEnd,
 														pDocument->m_CaretPosition, pDocument->m_SelectedChannel));
 
@@ -2864,10 +2899,35 @@ BOOL InitInsertCopy(CStagedContext * pContext,
 {
 	if (LengthToReplace < SamplesToInsert)
 	{
+		// Expanding the file
 		if ( ! InitExpandOperation(pContext, DstFile, StartDstSample + LengthToReplace,
 									SamplesToInsert - LengthToReplace, DstChannel))
 		{
 			return FALSE;
+		}
+		// the copied data outside of old data chunk length should be handled by
+		// CRestoreTrimmedOperation
+		NUMBER_OF_SAMPLES NumberOfSamples = DstFile.NumberOfSamples();
+		if (StartDstSample + SamplesToInsert > NumberOfSamples)
+		{
+			CRestoreTrimmedOperation * pCopy = new CRestoreTrimmedOperation
+												(pContext->pDocument);
+
+			ASSERT(StartDstSample <= NumberOfSamples);
+			TRACE(_T("Copying some samples with CRestoreTrimmedOperation:\n")
+				_T("SRC: start=%s, end=%s, DST: start=%s, end=%s\n"),
+				LPCTSTR(SampleToString(StartSrcSample + (NumberOfSamples - StartDstSample), 44100)),
+				LPCTSTR(SampleToString(StartSrcSample + SamplesToInsert, 44100)),
+				LPCTSTR(SampleToString(NumberOfSamples, 44100)),
+				LPCTSTR(SampleToString(StartDstSample + SamplesToInsert, 44100)));
+
+			pCopy->InitCopy(DstFile, NumberOfSamples, DstChannel, SrcFile,
+							StartSrcSample + (NumberOfSamples - StartDstSample), SrcChannel,
+							StartDstSample + SamplesToInsert - NumberOfSamples);
+
+			pContext->AddContext(pCopy);
+
+			SamplesToInsert = NumberOfSamples - StartDstSample;
 		}
 	}
 	else if (LengthToReplace > SamplesToInsert)
@@ -2878,19 +2938,23 @@ BOOL InitInsertCopy(CStagedContext * pContext,
 			return FALSE;
 		}
 	}
-	// now copy data and replace regions/markers
-	CCopyContext::auto_ptr pCopy(new CCopyContext(pContext->pDocument,
-												_T("Inserting data"), _T("")));
 
-	if ( ! pCopy->InitCopy(DstFile, StartDstSample, DstChannel,
-							SrcFile, StartSrcSample, SrcChannel, SamplesToInsert))
+	if (0 != SamplesToInsert)
 	{
-		return FALSE;
+		// now copy data and replace regions/markers
+		CCopyContext::auto_ptr pCopy(new CCopyContext(pContext->pDocument,
+													_T("Inserting data"), _T("")));
+
+		if ( ! pCopy->InitCopy(DstFile, StartDstSample, DstChannel,
+								SrcFile, StartSrcSample, SrcChannel, SamplesToInsert))
+		{
+			return FALSE;
+		}
+
+		pCopy->SetSaveForUndo(StartDstSample, StartDstSample + LengthToReplace);
+
+		pContext->AddContext(pCopy.release());
 	}
-
-	pCopy->SetSaveForUndo(StartDstSample, StartDstSample + LengthToReplace);
-
-	pContext->AddContext(pCopy.release());
 
 	return TRUE;
 }
