@@ -162,6 +162,7 @@ CClickRemoval::CClickRemoval()
 	m_MeanPowerAttackRate = float(1./15.);  // 1 ms
 	pInClicksFile = NULL;
 	pOutClicksFile = NULL;
+	PredefinedClickCurrentIndex = 0;
 	m_PassTrough = FALSE;
 	m_NoiseFloorThresholdScale = 3.;
 }
@@ -402,7 +403,8 @@ BOOL CHumRemoval::SetAndValidateWaveformat(WAVEFORMATEX const * pWf)
 BOOL CClickRemoval::SetAndValidateWaveformat(WAVEFORMATEX const * pWf)
 {
 	return CWaveProc::SetAndValidateWaveformat(pWf)
-			&& pWf->nSamplesPerSec == 44100;
+			//&& pWf->nSamplesPerSec == 44100
+	;
 }
 
 BOOL CNoiseReduction::SetAndValidateWaveformat(WAVEFORMATEX const * pWf)
