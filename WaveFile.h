@@ -413,6 +413,22 @@ public:
 
 	virtual BOOL Open(LPCTSTR lpszFileName, UINT nOpenFlags);
 	virtual void Close();
+
+	WaveSampleType GetSampleType() const
+	{
+		// todo
+		return SampleType16bit;
+	}
+
+	long ReadSamples(CHANNEL_MASK Channels,
+					SAMPLE_POSITION Pos, long Samples, void * pBuf,
+					WaveSampleType type = SampleType16bit);
+	long WriteSamples(CHANNEL_MASK DstChannels,
+					SAMPLE_POSITION Pos, long Samples,
+					void const * pBuf, CHANNEL_MASK SrcChannels,
+					NUMBER_OF_CHANNELS NumSrcChannels,
+					WaveSampleType type = SampleType16bit);
+
 	int SampleSize() const;
 	BOOL SetSourceFile(CWaveFile * const pOriginalFile);
 
