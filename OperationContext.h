@@ -416,6 +416,7 @@ public:
 		delete m_pConvert;
 	}
 	CString m_NewName;
+	CString m_TempName;
 	DWORD m_NewFileTypeFlags;
 	virtual BOOL Init();
 	virtual void DeInit();
