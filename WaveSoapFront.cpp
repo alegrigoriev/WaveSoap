@@ -195,9 +195,13 @@ CWaveSoapFrontApp::CWaveSoapFrontApp()
 	m_FftBandsOrder(9),
 	m_FftWindowType(0),
 
-	m_PasteResampleMode(0),
-
 	m_OpenFileDialogFilter(1)
+
+	, m_PasteResampleMode(0)
+	, m_UseFadeInOut(false)
+	, m_FadeInOutLengthMs(100)
+	, m_FadeInEnvelope(FadeInSinSquared)
+	, m_FadeOutEnvelope(FadeOutSinSquared)
 {
 	// Place all significant initialization in InitInstance
 	m_NewFileFormat.wFormatTag = WAVE_FORMAT_PCM;
@@ -427,6 +431,10 @@ BOOL CWaveSoapFrontApp::InitInstance()
 
 	Profile.AddItem(_T("Settings"), _T("PasteMode"), m_DefaultPasteMode, 0, 0, 2);
 	Profile.AddItem(_T("Settings"), _T("PasteResampleMode"), m_PasteResampleMode, 0, 0, 1);
+
+	Profile.AddBoolItem(_T("Settings"), _T("UseFadeInOut"), m_UseFadeInOut, FALSE);
+	Profile.AddItem(_T("Settings"), _T("FadeInOutLengthMs"), m_FadeInOutLengthMs, 1, 1, 2000);
+	Profile.AddItem(_T("Settings"), _T("FadeInOutType"), m_FadeInEnvelope, 2, 1, 3);
 
 	LoadStdProfileSettings(10);  // Load standard INI file options (including MRU)
 

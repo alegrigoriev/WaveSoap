@@ -221,6 +221,11 @@ public:
 	int m_PasteResampleMode; // Edit/Paste to different rate: 0 - resample, 1- paste as is
 	int m_DefaultPasteMode; // 0 - replace selection, 1 - paste just selection length, 2 - insert
 
+	BOOL m_UseFadeInOut;
+	int m_FadeInOutLengthMs;
+	int m_FadeInEnvelope;
+	int m_FadeOutEnvelope;
+
 	CString m_UserKey;
 
 	CDocument* OpenDocumentFile(LPCTSTR lpszPathName, int flags);
