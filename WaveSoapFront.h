@@ -35,6 +35,7 @@ public:
 
 enum { OpenDocumentReadOnly = 4,
 	OpenDocumentDirectMode = 2,
+	OpenDocumentNonWavFile = 0x100,
 };
 class CWaveSoapFrontApp : public CWinApp
 {
@@ -57,6 +58,7 @@ public:
 	void WriteProfileDouble(LPCTSTR Section, LPCTSTR ValueName, double value);
 	CApplicationProfile Profile;
 	CString m_CurrentDir;
+	int m_OpenFileDialogFilter;
 	CString sTempDir;
 	// display colors:
 	DWORD m_WaveBackground;
@@ -85,6 +87,11 @@ public:
 	//CString m_CurrentStatusString;
 	CWaveFile m_ClipboardFile;
 	CWaveFile m_NewTemplateFile;
+
+	CDocTemplate * m_pAllTypesTemplate;
+	CDocTemplate * m_pMP3TypeTemplate;
+	CDocTemplate * m_pWavTypeTemplate;
+	CDocTemplate * m_pWmaTypeTemplate;
 
 	int m_DefaultPlaybackDevice;
 	int m_NumPlaybackBuffers;
