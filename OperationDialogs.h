@@ -489,26 +489,58 @@ class CResampleDialog : public CDialog
 	typedef CDialog BaseClass;
 // Construction
 public:
-	CResampleDialog(CWnd* pParent = NULL);   // standard constructor
+	CResampleDialog(BOOL bUndoEnabled,
+					long OldSampleRate,
+					bool CanOnlyChangeSampleRate,
+					CWnd* pParent = NULL);   // standard constructor
 
+	BOOL ChangeRateOnly() const
+	{
+		return m_bChangeRateOnly;
+	}
+
+	BOOL ChangeSampleRate() const
+	{
+		return m_bChangeSamplingRate;
+	}
+
+	BOOL UndoEnabled() const
+	{
+		return m_bUndo;
+	}
+	long NewSampleRate() const
+	{
+		if (m_bChangeSamplingRate)
+		{
+			return m_NewSampleRate;
+		}
+		else
+		{
+			return long(m_OldSampleRate * m_TempoChange);
+		}
+	}
+
+	double ResampleRatio() const
+	{
+		if (m_bChangeSamplingRate)
+		{
+			return double(m_NewSampleRate) / m_OldSampleRate;
+		}
+		else
+		{
+			return m_TempoChange;
+		}
+	}
 // Dialog Data
+	CApplicationProfile m_Profile;
 	//{{AFX_DATA(CResampleDialog)
 	enum { IDD = IDD_DIALOG_RESAMPLE };
 	CSliderCtrl	m_SliderTempo;
 	CSliderCtrl	m_SliderRate;
 	CNumEdit	m_EditTempo;
-	BOOL	m_bChangeRateOnly;
-	BOOL	m_bUndo;
-	int		m_bChangeSamplingRate;
-	UINT	m_ResampleSamplingRate;
 	//}}AFX_DATA
 
 
-	double m_TempoChange;
-	int m_NewSampleRate;
-	int m_OldSampleRate;
-	bool m_bCanOnlyChangeSamplerate;    // if the file have zero length
-	CApplicationProfile m_Profile;
 // Overrides
 	// ClassWizard generated virtual function overrides
 	//{{AFX_VIRTUAL(CResampleDialog)
@@ -519,6 +551,13 @@ protected:
 // Implementation
 protected:
 
+	BOOL	m_bChangeRateOnly;    // don't resample, set different rate only
+	int		m_bChangeSamplingRate; // set new rate for resampling. Otherwise the sound is just stretched.
+	BOOL	m_bUndo;
+	double m_TempoChange;
+	long m_NewSampleRate;
+	long m_OldSampleRate;
+	bool m_bCanOnlyChangeSamplerate;    // if the file have zero length
 	// Generated message map functions
 	//{{AFX_MSG(CResampleDialog)
 	afx_msg void OnRadioChangeRate();
