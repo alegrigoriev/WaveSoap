@@ -181,6 +181,7 @@ CWaveFftView::CWaveFftView()
 	m_pFftWindow(NULL),
 	m_FirstbandVisible(0),
 	m_FftWindowType(WindowTypeSquaredSine),
+	m_IndexOfFftBegin(0),
 //m_FftSamplesCalculated(0),
 	m_FftArraySize(0)
 {
@@ -462,15 +463,20 @@ void CWaveFftView::OnDraw(CDC* pDC)
 
 	unsigned char * pColBmp = pBmp;
 	int nChanOffset = stride * rows;
-	unsigned char * pData = m_pFftResultArray + nFirstCol * m_FftResultArrayHeight;
+	unsigned char * pData = m_pFftResultArray +
+							(nFirstCol + m_IndexOfFftBegin) * m_FftResultArrayHeight;
 	int nColumns = FirstCols;
-	for(int col = r.left; col < r.right && pData < m_pFftResultArray + m_FftArraySize; )
+	for(int col = r.left; col < r.right; )
 	{
 		int ff;
 		S * pId;
 		if (nColumns > r.right - col)
 		{
 			nColumns = r.right - col;
+		}
+		if (pData >= m_pFftResultArray + m_FftArraySize)
+		{
+			pData -= m_FftArraySize;
 		}
 		if (pData[0])
 		{
@@ -593,7 +599,7 @@ void CWaveFftView::OnDraw(CDC* pDC)
 	CScaledScrollView::OnDraw(pDC);
 }
 
-void CWaveFftView::MakeFftArray(int left, int right)
+void CWaveFftView::MakeFftArray(long left, long right)
 {
 	CWaveSoapFrontDoc * pDoc = GetDocument();
 	CRect r;
@@ -646,8 +652,9 @@ void CWaveFftView::MakeFftArray(int left, int right)
 						&& FftSample >= m_FftResultBegin
 						&& FftSample < m_FftResultEnd)
 				{
-					unsigned char * p = pOldArray +
-										(FftSample - m_FftResultBegin) / m_FftSpacing * NewFftArrayHeight;
+					long offset = m_IndexOfFftBegin + (FftSample - m_FftResultBegin) / m_FftSpacing;
+					offset %= m_FftResultArrayWidth;
+					unsigned char * p = pOldArray + offset * NewFftArrayHeight;
 					ASSERT(p >= pOldArray && p + NewFftArrayHeight <= pOldArray + m_FftArraySize);
 					if (p[0] != 0)
 					{
@@ -658,8 +665,9 @@ void CWaveFftView::MakeFftArray(int left, int right)
 		}
 
 		m_FftArraySize = NecessaryArraySize;
-		m_FftResultEnd = FftSample;
 		m_FftResultBegin = FirstFftSample;
+		m_FftResultEnd = FftSample;
+		m_IndexOfFftBegin = 0;
 		delete[] pOldArray;
 		m_FftSpacing = FftSpacing;
 		m_FftResultArrayHeight = NewFftArrayHeight;
@@ -675,80 +683,84 @@ void CWaveFftView::MakeFftArray(int left, int right)
 	CalculateFftRange(left, right);
 }
 
-void CWaveFftView::CalculateFftRange(int left, int right)
+void CWaveFftView::CalculateFftRange(long left, long right)
 {
 	CWaveSoapFrontDoc * pDoc = GetDocument();
 	// make sure the required range is in the buffer
 	// buffer size is enough to hold all data
 	int FirstSampleRequired = left - left % m_FftSpacing;
 	int LastSampleRequired = right + m_FftSpacing - right % m_FftSpacing;
+
 	TRACE("Samples required from %d to %d, in the buffer: from %d to %d\n",
 		FirstSampleRequired, LastSampleRequired, m_FftResultBegin, m_FftResultEnd);
 	ASSERT(LastSampleRequired > FirstSampleRequired);
 	ASSERT(m_FftResultEnd > m_FftResultBegin);
 	ASSERT(LastSampleRequired - FirstSampleRequired <= m_FftResultEnd - m_FftResultBegin);
 	ASSERT(m_FftResultEnd - m_FftResultBegin == m_FftResultArrayWidth * m_FftSpacing);
+	ASSERT(m_IndexOfFftBegin < m_FftResultArrayWidth);
+
 	if (FirstSampleRequired < m_FftResultBegin)
 	{
-		int i = (m_FftResultArrayWidth - 1) * m_FftResultArrayHeight;
 		if (LastSampleRequired > m_FftResultBegin)
 		{
-			// free some space in the beginning of the buffer
-			TRACE("Freeing %d positions in the beginning of buffer\n",
-				(m_FftResultBegin - FirstSampleRequired) / m_FftSpacing);
-			int j = i -
-					(m_FftResultBegin - FirstSampleRequired) / m_FftSpacing * m_FftResultArrayHeight;
-			for (; j >= 0; i -= m_FftResultArrayHeight, j -= m_FftResultArrayHeight)
+			// free some space before the calculated
+			while (m_FftResultBegin > FirstSampleRequired)
 			{
-				if (m_pFftResultArray[j] != 0)
+				m_IndexOfFftBegin--;
+				if (m_IndexOfFftBegin < 0)
 				{
-					ASSERT(1 == m_pFftResultArray[j]);
-					memcpy(m_pFftResultArray + i, m_pFftResultArray + j, m_FftResultArrayHeight);
+					m_IndexOfFftBegin += m_FftResultArrayWidth;
 				}
-				else
-				{
-					m_pFftResultArray[i] = 0;
-				}
+				m_pFftResultArray[m_IndexOfFftBegin * m_FftResultArrayHeight] = 0;
+
+				m_FftResultBegin -= m_FftSpacing;
+				m_FftResultEnd -= m_FftSpacing;
+
 			}
 		}
-		TRACE("Cleaning %d remaining FFT sets in the beginning of the buffer\n", i / m_FftResultArrayHeight + 1);
-		for (; i >= 0; i -= m_FftResultArrayHeight)
+		else
 		{
-			m_pFftResultArray[i] = 0;
+			m_FftResultEnd -= m_FftResultBegin - FirstSampleRequired;
+			m_FftResultBegin = FirstSampleRequired;
+			TRACE("Cleaning all FFT sets \n");
+			for (int i = 0; i < m_FftResultArrayWidth; i++)
+			{
+				m_pFftResultArray[i * m_FftResultArrayHeight] = 0;
+			}
+			m_IndexOfFftBegin = 0;
 		}
-		m_FftResultEnd -= m_FftResultBegin - FirstSampleRequired;
-		m_FftResultBegin = FirstSampleRequired;
 	}
 	else if (LastSampleRequired > m_FftResultEnd)
 	{
-		int i = 0;
 		if (FirstSampleRequired < m_FftResultEnd)
 		{
-			// free some space in the end of the buffer
-			TRACE("Freeing %d positions in the end of buffer\n",
-				(LastSampleRequired - m_FftResultEnd) / m_FftSpacing);
-			int j = (LastSampleRequired - m_FftResultEnd) / m_FftSpacing * m_FftResultArrayHeight;
-			for (; j < m_FftArraySize; i += m_FftResultArrayHeight, j += m_FftResultArrayHeight)
+			// free some space after the calculated
+			while (m_FftResultEnd < LastSampleRequired)
 			{
-				if (m_pFftResultArray[j] != 0)
+				m_pFftResultArray[m_IndexOfFftBegin * m_FftResultArrayHeight] = 0;
+
+				m_FftResultBegin += m_FftSpacing;
+				m_FftResultEnd += m_FftSpacing;
+
+				m_IndexOfFftBegin++;
+				if (m_IndexOfFftBegin >= m_FftResultArrayWidth)
 				{
-					ASSERT(1 == m_pFftResultArray[j]);
-					memcpy(m_pFftResultArray + i, m_pFftResultArray + j, m_FftResultArrayHeight);
-				}
-				else
-				{
-					m_pFftResultArray[i] = 0;
+					m_IndexOfFftBegin -= m_FftResultArrayWidth;
 				}
 			}
 		}
-		TRACE("Cleaning %d remaining FFT sets in the end of the buffer\n",
-			(m_FftArraySize - i) / m_FftResultArrayHeight);
-		for (; i < m_FftArraySize; i += m_FftResultArrayHeight)
+		else
 		{
-			m_pFftResultArray[i] = 0;
+			m_FftResultBegin += LastSampleRequired - m_FftResultEnd;
+			m_FftResultEnd = LastSampleRequired;
+			m_IndexOfFftBegin = 0;
+
+			TRACE("Cleaning all FFT sets \n");
+			for (int i = 0; i < m_FftResultArrayWidth; i++)
+			{
+				m_pFftResultArray[i * m_FftResultArrayHeight] = 0;
+			}
 		}
-		m_FftResultBegin += LastSampleRequired - m_FftResultEnd;
-		m_FftResultEnd = LastSampleRequired;
 	}
 	// calculate FFT
 	if (NULL == m_pFftWindow)
@@ -776,7 +788,7 @@ void CWaveFftView::CalculateFftRange(int left, int right)
 		}
 	}
 
-	int i = (FirstSampleRequired - m_FftResultBegin) / m_FftSpacing * m_FftResultArrayHeight;
+	int ii = (FirstSampleRequired - m_FftResultBegin) / m_FftSpacing * m_FftResultArrayHeight;
 	int j = (LastSampleRequired - m_FftResultBegin) / m_FftSpacing * m_FftResultArrayHeight;
 	typedef double DATA;
 	DATA * buf = NULL;
@@ -786,8 +798,10 @@ void CWaveFftView::CalculateFftRange(int left, int right)
 	int MinRes = 128;
 	int nNewFFtCalculated = 0;
 #endif
-	for (; i < j; i += m_FftResultArrayHeight, FirstSampleRequired += m_FftSpacing)
+	for (; ii < j; ii += m_FftResultArrayHeight, FirstSampleRequired += m_FftSpacing)
 	{
+		int i = (ii + m_IndexOfFftBegin * m_FftResultArrayHeight) % m_FftArraySize;
+
 		if (0 == m_pFftResultArray[i])
 		{
 			if (NULL == buf)
