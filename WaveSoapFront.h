@@ -40,7 +40,7 @@ enum
 	OpenDocumentDirectMode = 2,
 	OpenDocumentReadOnly = 4,
 	OpenDocumentCreateNewWithParameters = 8, // NAME is actually NewFileParameters *
-//    OpenDocumentCreateNewQueryFormat = 0x10,
+	OpenDocumentCreateNewFromCWaveFile = 0x10,// use m_pFile from NewFileParameters
 	OpenDocumentMp3File = 0x100,
 	OpenDocumentWmaFile = 0x200,
 	OpenDocumentRawFile = 0x400,
@@ -56,6 +56,7 @@ struct NewFileParameters
 	LPCTSTR pInitialTitle;
 	LONG InitialSamples;
 	DWORD m_FileTypeFlags;
+	CWaveFile * m_pFile;
 	NewFileParameters()
 	{
 		memzero(*this);

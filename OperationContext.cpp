@@ -2054,7 +2054,11 @@ BOOL CSoundPlayContext::Init()
 	m_OldThreadPriority = GetThreadPriority(GetCurrentThread());
 	// if mono playback requested, open it as mono
 	WAVEFORMATEX wfx = *(pDocument->WaveFormat());
+
 	if (m_Chan != ALL_CHANNELS) wfx.nChannels = 1;
+	wfx.nBlockAlign = wfx.nChannels * wfx.wBitsPerSample / 8;
+	wfx.nAvgBytesPerSec = wfx.nSamplesPerSec * wfx.nBlockAlign;
+
 	MMRESULT mmres = m_WaveOut.Open(m_PlaybackDevice, & wfx, 0);
 	if (MMSYSERR_NOERROR != mmres)
 	{

@@ -164,21 +164,19 @@ public:
 	CWaveFile m_DstFile;
 	DWORD m_DstCopyPos;
 	long m_DstCopySample;
-	//CWaveFile m_SrcFile;
+
 	IWMReader * m_Reader;
 	IWMReaderAdvanced2 * m_pAdvReader;
 	CDirectFileStream m_InputStream;
 	CEvent m_SignalEvent;
 	WMT_STATUS ReaderStatus;
-	//DWORD m_DstPosStart;
-	//DWORD m_DstCopyPos;
 	QWORD m_CurrentStreamTime;
 	QWORD m_BufferLengthTime; //32kbytes in 100ns units
 	QWORD m_StreamDuration;
 	LONG m_CurrentSamples;
 	DWORD m_dwAudioOutputNum;
-	WAVEFORMATEX * m_pwfx;
-	WAVEFORMATEX * m_pSrcWf;
+	CWaveFormat m_DstWf;
+	CWaveFormat m_SrcWf;
 	DWORD m_Bitrate;
 };
 

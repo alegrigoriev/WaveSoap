@@ -1,5 +1,6 @@
 Known problems and tasks:
 
+During CD read, create next document during Context::Execute()
 Pass wave format to CD grabbing dialog
 Process Loss Of Streaming error
 Add CD grabbing
@@ -51,7 +52,6 @@ Make recording from Internet stream
 
 Problems:
 
-READ CD SCSI command doesn't work for old NEC drive.
 During playback, outline is invalidated. (??)
 WinXP doesn't have CDRAL
 Multisession disk shows only begin of tracks. Read the whole structure.
@@ -66,6 +66,7 @@ samples with 32767, -32768 are not visible
 Log Off query doesn't close the active dialog. Recursion is possible. Make sure to check after Cancel
 
 Fixed:
+READ CD SCSI command doesn't work for old NEC drive.
 Open WMA file through dialog crashes the app
 ".wav" added one more time in File Save dialog
 IOCTL_CDROM_RAW_READ doesn't work on old Panasonic

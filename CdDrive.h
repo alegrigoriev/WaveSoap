@@ -958,6 +958,27 @@ struct RiffCddaFmt
 	CdAddressMSF LengthMsf;
 };
 
+struct CdTrackInfo
+{
+	CString Artist;
+	CString Album;
+	CString Track;
+	CString TrackFileName;
+	bool Checked;
+	bool IsAudio;
+	CdAddressMSF TrackBegin;
+	LONG NumSectors;
+	CdTrackInfo()
+	{
+		Checked = FALSE;
+		NumSectors = 0;
+		TrackBegin.reserved = 0;
+		TrackBegin.Minute = 0;
+		TrackBegin.Second = 0;
+		TrackBegin.Frame = 0;
+	}
+};
+
 class CCdDrive
 {
 public:

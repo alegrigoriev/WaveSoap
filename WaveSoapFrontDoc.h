@@ -152,6 +152,8 @@ public:
 	// original file with the name which was open
 	// for new file, it isn't open
 	CWaveFile m_OriginalWavFile;
+	CWaveFormat m_OriginalWaveFormat;
+
 	int m_ModificationSequenceNumber;
 
 	//WAVEFORMATEX WavFileFormat;
@@ -254,6 +256,7 @@ protected:
 
 // Generated message map functions
 public:
+	virtual BOOL DoFileSave();
 	void OnActivateDocument(BOOL bActivate);
 	void DoEditPaste()
 	{

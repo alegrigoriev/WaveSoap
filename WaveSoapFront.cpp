@@ -716,8 +716,8 @@ CDocument* CWaveSoapDocTemplate::OpenDocumentFile(LPCTSTR lpszPathName,
 	// Document is created and initialized first, then the frame is created
 	if (lpszPathName == NULL)
 	{
-		// avoid creating temporary compound file when starting up invisible
 #if 0
+		// avoid creating temporary compound file when starting up invisible
 		if (!bMakeVisible)
 			pDocument->m_bEmbedded = TRUE;
 #endif
@@ -2123,16 +2123,6 @@ void CWaveSoapDocTemplate::SaveAll()
 void CWaveSoapFrontApp::OnToolsCdgrab()
 {
 	CCdGrabbingDialog dlg;
-	WAVEFORMATEX wfx;
-	wfx.cbSize = 0;
-	wfx.wFormatTag = WAVE_FORMAT_PCM;
-	wfx.nChannels = 2;
-	wfx.nSamplesPerSec = 44100;
-	wfx.wBitsPerSample = 16;
-	wfx.nBlockAlign = 4;
-	wfx.nAvgBytesPerSec = 176400;
-
-	dlg.m_pWfx = & wfx;
 
 	if (IDOK != dlg.DoModal())
 	{
@@ -2142,88 +2132,49 @@ void CWaveSoapFrontApp::OnToolsCdgrab()
 
 	CCdReadingContext * pContexts[MaxTracks];
 	CCdReadingContext * pContext;
-	CCdReadingContext * pLastContext = NULL;
 	memzero(pContexts);
 
-	POSITION pos = m_pDocManager->GetFirstDocTemplatePosition();
-	CDocTemplate* pTemplate = m_pDocManager->GetNextDocTemplate(pos);
-	if (NULL == pTemplate)
-	{
-		return;
-	}
-
-	int t;
-	for (t = 0; t < dlg.m_Tracks.size() && t < MaxTracks; t++)
+	int t, n;
+	for (t = 0, n = 0; t < dlg.m_Tracks.size() && t < MaxTracks; t++)
 	{
 		// create a new document
-		if ( ! dlg.m_Tracks[t].Checked)
+		CdTrackInfo * pTrack = & dlg.m_Tracks[t];
+		if ( ! pTrack->Checked)
 		{
 			continue;
 		}
 
-		NewFileParameters Params;
-		Params.InitialSamples = dlg.m_Tracks[t].NumSectors * (CDDASectorSize / 4);
-		Params.pInitialTitle = dlg.m_Tracks[t].TrackFileName;
-		Params.m_FileTypeFlags = dlg.m_FileTypeFlags;
-		Params.pWf = dlg.m_pWfx;
-
-		CWaveSoapFrontDoc * pDoc =
-			(CWaveSoapFrontDoc *)pTemplate->OpenDocumentFile(
-															(LPCTSTR) & Params,
-															OpenDocumentCreateNewWithParameters);
-		if (NULL == pDoc)
-		{
-			break;
-		}
 		// allocate a context
 		CString s;
 		s.Format(_T("Reading CD track %d..."), t + 1);
 
-		pContext = new CCdReadingContext(pDoc, s, _T("CD read"));
+		pContext = new CCdReadingContext(NULL, s, _T("CD read"));
 
 		if (NULL == pContext)
 		{
-			delete pDoc;
 			break;
+		}
+
+		if (n > 0)
+		{
+			pContexts[n - 1]->m_pNextTrackContext = pContext;
 		}
 
 		pContext->m_RequiredReadSpeed = dlg.m_SelectedReadSpeed;
 		pContext->m_OriginalReadSpeed = dlg.m_CurrentReadSpeed;
-		pContexts[t] = pContext;
-		pLastContext = pContext;
-	}
-
-	if (NULL != pLastContext)
-	{
-		pLastContext->m_bLastTrack = true;
-	}
-
-	if (dlg.m_Tracks.size() == t)
-	{
-		for (t = 0; t < dlg.m_Tracks.size() && t < MaxTracks; t++)
+		pContexts[n] = pContext;
+		n++;
+		if ( ! pContext->InitTrackInformation(dlg.m_CdDrive,
+											pTrack, dlg.m_FileTypeFlags, dlg.m_Wf))
 		{
-			pContext = pContexts[t];
-
-			if (NULL != pContext)
-			{
-				pContext->SetTrackInformation(dlg.m_CdDrive,
-											dlg.m_Tracks[t].TrackBegin,
-											dlg.m_Tracks[t].NumSectors);
-				pContext->Execute();
-				pContext->pDocument->SetModifiedFlag();
-			}
+			delete pContexts[0];    // will delete all of them
+			return;
 		}
 	}
-	else
+
+	if (n > 0)
 	{
-		for (t = 0; t < dlg.m_Tracks.size() && t < MaxTracks; t++)
-		{
-			if (NULL != pContexts[t])
-			{
-				delete pContexts[t]->pDocument;
-				delete pContexts[t];
-			}
-		}
+		pContexts[0]->Execute();
 	}
 	return;
 }

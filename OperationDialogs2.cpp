@@ -218,7 +218,6 @@ CCdGrabbingDialog::CCdGrabbingDialog(CWnd* pParent /*=NULL*/)
 	m_RadioStoreImmediately = 0;
 	m_RadioStoreMultiple = 0;
 	m_DiskID = -1;
-	m_pWfx = NULL;
 	m_bNeedUpdateControls = TRUE;
 	m_MaxReadSpeed = 0;
 	m_CurrentReadSpeed = 0;
@@ -270,7 +269,8 @@ CCdGrabbingDialog::CCdGrabbingDialog(CWnd* pParent /*=NULL*/)
 
 	m_pResizeItems = ResizeItems;
 	m_pResizeItemsCount = sizeof ResizeItems / sizeof ResizeItems[0];
-
+	// TODO: restore last format used
+	m_Wf.InitCdAudioFormat();
 }
 
 CCdGrabbingDialog::~CCdGrabbingDialog()
@@ -898,35 +898,16 @@ void CCdGrabbingDialog::OnButtonBrowseSaveFolder()
 		dlg.m_ofn.lpstrTitle = Title;
 
 		dlg.m_pDocument = NULL;
-		//dlg.m_ofn.lpstrInitialDir = m_eSaveFolderOrFile;
 
-		WAVEFORMATEX * pWf = (WAVEFORMATEX*) new char[0xFFFF]; // max size
-		if (NULL == pWf)
-		{
-			NotEnoughMemoryMessageBox();
-			return;
-		}
-		// sample rate and number of channels might change from the original file
-		// new format may not be quite valid for some convertors!!
-		pWf->nSamplesPerSec = 44100;
-		pWf->nChannels = 2;
-		pWf->cbSize = 0;
-		pWf->nAvgBytesPerSec = 44100 *4;
-		pWf->nBlockAlign = 4;
-		pWf->wBitsPerSample = 16;
-		pWf->wFormatTag = WAVE_FORMAT_PCM;
-
-		dlg.m_pWf = pWf;
+		dlg.m_Wf = m_Wf;
 
 		if (IDOK != dlg.DoModal())
 		{
-			delete[] (char*)pWf;
 			return;
 		}
 
 		m_sSaveFolderOrFile = dlg.GetPathName();
 		m_eSaveFolderOrFile.SetWindowText(m_sSaveFolderOrFile);
-		delete[] (char*)pWf;
 	}
 }
 
@@ -1395,4 +1376,7 @@ void CCdGrabbingDialog::OnCancel()
 	CResizableDialog::OnCancel();
 }
 
-void UpdateFormatStatic();
+void CCdGrabbingDialog::UpdateFormatStatic()
+{
+}
+

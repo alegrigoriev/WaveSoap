@@ -241,11 +241,7 @@ void CDirectFileStream::Close()
 CWmaDecoder::CWmaDecoder()
 	: m_Reader(NULL),
 	m_pAdvReader(NULL),
-	m_pwfx(NULL),
-	m_pSrcWf(NULL),
 	ReaderStatus(WMT_ERROR),
-//m_DstPosStart(0),
-//m_DstCopyPos(0),
 	m_CurrentStreamTime(0),
 	m_bNeedNextSample(false),
 	m_BufferLengthTime(0),
@@ -253,6 +249,7 @@ CWmaDecoder::CWmaDecoder()
 	m_dwAudioOutputNum(0)
 {
 }
+
 CWmaDecoder::~CWmaDecoder()
 {
 	if (NULL != m_pAdvReader)
@@ -264,14 +261,6 @@ CWmaDecoder::~CWmaDecoder()
 	{
 		m_Reader->Release();
 		m_Reader = NULL;
-	}
-	if (NULL != m_pwfx)
-	{
-		delete[] (char*) m_pwfx;
-	}
-	if (NULL != m_pSrcWf)
-	{
-		delete[] (char*) m_pSrcWf;
 	}
 }
 
@@ -475,7 +464,7 @@ HRESULT CWmaDecoder::Open(CDirectFile & file)
 
 	WM_MEDIA_TYPE* pMedia = NULL ;
 	ULONG cbType = 0 ;
-	for(DWORD i = 0 ; i < cOutputs ; i++ )
+	for(DWORD i = 1 ; i <= cOutputs ; i++ )
 	{
 		hr = m_Reader->GetOutputProps( i, &pProps );
 
@@ -523,7 +512,7 @@ HRESULT CWmaDecoder::Open(CDirectFile & file)
 		pProps->Release();
 		pProps = NULL;
 	}
-	if( i == cOutputs || NULL == pMedia)
+	if( i > cOutputs || NULL == pMedia)
 	{
 		//
 		// Couldnt find any Audio output number in the file
@@ -535,20 +524,20 @@ HRESULT CWmaDecoder::Open(CDirectFile & file)
 	{
 		m_dwAudioOutputNum = i;
 
-		WAVEFORMATEX* pwfx = ( WAVEFORMATEX * )pMedia->pbFormat;
+		m_DstWf = ( WAVEFORMATEX * )pMedia->pbFormat;
 
-		m_pwfx = (WAVEFORMATEX *)new char[sizeof( WAVEFORMATEX ) + pwfx->cbSize];
-		if (m_pwfx)
+		DWORD MaxSampleSize = 32768;
+
+		hr = m_pAdvReader->GetMaxOutputSampleSize(m_dwAudioOutputNum, & MaxSampleSize);
+		TRACE("m_pAdvReader->GetMaxOutputSampleSize=%d\n", MaxSampleSize);
+		if (FAILED(hr))
 		{
-			DWORD MaxSampleSize = 32768;
-			memcpy(m_pwfx, pwfx, sizeof( WAVEFORMATEX ) + pwfx->cbSize );
-			hr = m_pAdvReader->GetMaxOutputSampleSize(m_dwAudioOutputNum, & MaxSampleSize);
-			TRACE("m_pAdvReader->GetMaxOutputSampleSize=%d\n", MaxSampleSize);
-			if (FAILED(hr))
-			{
-				MaxSampleSize = 32768;
-			}
-			m_BufferLengthTime = MulDiv(MaxSampleSize-4, 10000000, pwfx->nAvgBytesPerSec);
+			MaxSampleSize = 32768;
+		}
+		m_BufferLengthTime = MulDiv(MaxSampleSize-4, 10000000, m_DstWf.BytesPerSec());
+		if (m_DstWf.FormatTag() != WAVE_FORMAT_PCM)
+		{
+			hr = E_UNEXPECTED;
 		}
 	}
 	delete[] ( BYTE* )pMedia;
@@ -557,8 +546,6 @@ HRESULT CWmaDecoder::Open(CDirectFile & file)
 	{
 		return hr;
 	}
-	// if more than one stream, call SetStreamsSelected,
-	// to have only 1 stream decompressed
 	IWMHeaderInfo * pHeaderInfo = NULL;
 	hr = m_Reader->QueryInterface(IID_IWMHeaderInfo, ( VOID ** )& pHeaderInfo);
 	if (SUCCEEDED(hr))
@@ -584,9 +571,9 @@ HRESULT CWmaDecoder::Open(CDirectFile & file)
 		m_StreamDuration = 10000 * 1000 * 60i64;    // 1 minute
 	}
 
-	m_CurrentSamples = m_StreamDuration * m_pwfx->nSamplesPerSec / 10000000;
+	m_CurrentSamples = m_StreamDuration * m_DstWf.SampleRate() / 10000000;
 	TRACE("m_CurrentSamples = %d (%d seconds)\n", m_CurrentSamples,
-		m_CurrentSamples / m_pwfx->nSamplesPerSec);
+		m_CurrentSamples / m_DstWf.SampleRate());
 
 	IWMProfile * pProfile = NULL;
 	hr = m_Reader->QueryInterface(IID_IWMProfile, (void **) &pProfile);
@@ -609,17 +596,7 @@ HRESULT CWmaDecoder::Open(CDirectFile & file)
 				if (pType)
 				{
 					pStreamProps->GetMediaType(pType, & size);
-					WAVEFORMATEX * pWf = NULL;
-					pWf = (WAVEFORMATEX *) pType->pbFormat;
-					if (NULL != pWf)
-					{
-						int size= sizeof WAVEFORMATEX + pWf->cbSize;
-						m_pSrcWf = (WAVEFORMATEX *) new char[size];
-						if (m_pSrcWf)
-						{
-							memcpy(m_pSrcWf, pWf, size);
-						}
-					}
+					m_SrcWf = (WAVEFORMATEX *) pType->pbFormat;
 					delete[] (char*) pType;
 				}
 				pStreamProps->Release();
@@ -638,8 +615,16 @@ HRESULT CWmaDecoder::Open(CDirectFile & file)
 		pProfile = NULL;
 	}
 
-	if (cOutputs > 1)
+	// if more than one stream, call SetStreamsSelected,
+	// to have only 1 stream decompressed
+	for (WORD StreamNumber = 1; StreamNumber <= cOutputs; StreamNumber++)
 	{
+		WMT_STREAM_SELECTION StreamSelection = WMT_ON;
+		if (StreamNumber != m_dwAudioOutputNum)
+		{
+			StreamSelection = WMT_OFF;
+		}
+		m_pAdvReader->SetStreamsSelected(1, & StreamNumber, & StreamSelection);
 	}
 
 	if (NULL != m_pAdvReader)
