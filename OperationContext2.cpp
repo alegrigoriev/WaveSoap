@@ -2879,6 +2879,30 @@ void CMetadataChangeOperation::SaveUndoMetadata(unsigned ChangeFlags)
 	m_pMetadata->CopyMetadata(pDocument->m_WavFile.GetInstanceData(), ChangeFlags);
 }
 
+BOOL CInsertSilenceContext::InitExpand(CWaveFile & DstFile, SAMPLE_INDEX StartSample, SAMPLE_INDEX length,
+										CHANNEL_MASK chan, BOOL NeedUndo)
+{
+	if (DstFile.NumberOfSamples() == StartSample)
+	{
+		chan = ALL_CHANNELS;
+	}
+
+	if ( ! InitExpandOperation(this, DstFile, StartSample,
+								length, chan))
+	{
+		return FALSE;
+	}
+
+	AddContext(new CInitChannels(pDocument, DstFile, StartSample,
+								StartSample + length, chan));
+
+	if (NeedUndo
+		&& ! CreateUndo())
+	{
+		return FALSE;
+	}
+	return TRUE;
+}
 ///////////////////////////////////////////////////////////////////////
 BOOL InitExpandOperation(CStagedContext * pContext,
 						CWaveFile & File, SAMPLE_INDEX StartSample,
