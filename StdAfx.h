@@ -19,10 +19,51 @@
 #include <afxcmn.h>			// MFC support for Windows Common Controls
 #endif // _AFX_NO_AFXCMN_SUPPORT
 
+#include "resource.h"
 #include "mmsystem.h"
+class CSimpleCriticalSection
+{
+	CRITICAL_SECTION m_cs;
+public:
+	CSimpleCriticalSection() throw()
+	{
+		InitializeCriticalSection( & m_cs);
+	}
+	~CSimpleCriticalSection() throw()
+	{
+		DeleteCriticalSection( & m_cs);
+	}
+	void Lock() throw()
+	{
+		EnterCriticalSection( & m_cs);
+	}
+	void Unlock() throw()
+	{
+		LeaveCriticalSection( & m_cs);
+	}
+};
+class CSimpleCriticalSectionLock
+{
+	CSimpleCriticalSection & m_cs;
+public:
+	CSimpleCriticalSectionLock(CSimpleCriticalSection & cs)
+		: m_cs(cs)
+	{
+		cs.Lock();
+	}
+	~CSimpleCriticalSectionLock()
+	{
+		m_cs.Unlock();
+	}
+};
+
 #include "WaveFile.h"
 #include "waveproc.h"
 #include "WaveSoapFront.h"
+#include "WaveSoapFrontDoc.h"
+#include "WaveSoapFrontView.h"
+#include "WaveFftView.h"
+
 //{{AFX_INSERT_LOCATION}}
 // Microsoft Visual C++ will insert additional declarations immediately before the previous line.
 

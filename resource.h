@@ -9,6 +9,7 @@
 #define IDR_MAINFRAME                   128
 #define IDR_WAVESOTYPE                  129
 #define IDR_MENU_TIME_RULER             130
+#define IDR_MP3TYPE                     130
 #define IDD_SELECTION_DIALOG            131
 #define IDR_POPUP_SCALED_SCROLL_VIEW    132
 #define IDD_DIALOG_MORE_NOISEREDUCTION  133
@@ -34,6 +35,10 @@
 #define IDD_DIALOG_STATISTICS           144
 #define IDR_MENU_FILE_LENGTH            145
 #define IDD_DIALOG_NORMALIZE            145
+#define IDD_DIALOG_RESAMPLE             146
+#define IDD_DIALOG_STATISTICS_MONO      147
+#define IDD_DIALOG_OPEN_TEMPLATE1       148
+#define IDD_DIALOG_SAVE_TEMPLATE        149
 #define IDC_CURSOR_BEAM                 150
 #define IDC_CURSOR_BEAM_LEFT            151
 #define IDC_CURSOR_BEAM_RIGHT           152
@@ -61,9 +66,11 @@
 #define IDC_SPIN_LENGTH                 1009
 #define IDC_CLICK_IMPORT_BROWSE_BUTTON  1010
 #define IDC_COMBO2                      1010
+#define IDC_COMBO_FORMAT                1010
 #define IDC_CHECK_IMPORT_CLICKS         1011
 #define IDC_CHECK_NOISE_REDUCTION       1011
 #define IDC_CHECK_READONLY              1011
+#define IDC_COMBO_ATTRIBUTES            1011
 #define IDC_CHECK_DIRECT                1012
 #define IDC_COMBO1                      1013
 #define IDC_COMBO_RECENT                1013
@@ -92,8 +99,10 @@
 #define IDC_EDIT_VOLUME_LEFT            1029
 #define IDC_BUTTON_REVERT_INITIAL       1030
 #define IDC_BUTTON_SELECTION            1030
+#define IDC_SLIDER_TEMPO                1030
 #define IDC_BUTTON_MORE_SETTINGS        1031
 #define IDC_STATIC_SELECTION            1031
+#define IDC_EDIT_TEMPO                  1031
 #define IDC_EDIT_AGGRESSIVNESS          1032
 #define IDC_CHECK_UNDO                  1032
 #define IDC_EDIT_NEAR_MASKING_COEFF     1033
@@ -123,6 +132,12 @@
 #define IDC_CHECK_LOCK_CHANNELS         1047
 #define IDC_SLIDER_LEVEL                1048
 #define IDC_EDIT_LEVEL                  1049
+#define IDC_RADIO_CHANGE_RATE           1050
+#define IDC_RADIO_CHANGE_PITCH          1051
+#define IDC_CHECK_CHANGE_RATE_ONLY      1052
+#define IDC_SLIDER_RATE                 1053
+#define IDC_EDIT_RATE                   1054
+#define IDC_CHECK_COMPATIBLE_FORMATS    1055
 #define IDC_VIEW_RULER_SAMPLES          32771
 #define IDC_VIEW_RULER_HHMMSS           32772
 #define IDC_VIEW_RULER_SECONDS          32773
@@ -185,6 +200,8 @@
 #define IDS_SOUND_MAY_BE_CLIPPED        32837
 #define IDS_M_UNABLE_TO_CREATE_UNDO     32838
 #define IDS_STATISTICS_FORMAT           32839
+#define IDS_REOPEN_IN_DIRECT_MODE       32840
+#define IDS_RELOAD_COMPRESSED_FILE      32841
 #define IDC_VIEW_AMPL_RULER_PERCENT     32900
 #define ID_FILE_PROPERTIES              40000
 #define ID_VIEW_ZOOMVERT_NORMAL         40001
@@ -235,15 +252,18 @@
 #define ID_VIEW_TIME_RULER              40055
 #define ID_VIEW_VERTICAL_RULER          40056
 #define ID_VIEW_RESCAN_PEAKS            40057
+#define ID_PROCESS_SYNTHESIS_EXPRESSIONEVALUATION 40058
+#define ID_PROCESS_SYNTHESIS_EXPRESSION_EVALUATION 40059
+#define ID_VIEW_ZOOM_SELECTION          40060
 
 // Next default values for new objects
 //
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_3D_CONTROLS                     1
-#define _APS_NEXT_RESOURCE_VALUE        145
-#define _APS_NEXT_COMMAND_VALUE         40058
-#define _APS_NEXT_CONTROL_VALUE         1050
+#define _APS_NEXT_RESOURCE_VALUE        147
+#define _APS_NEXT_COMMAND_VALUE         40062
+#define _APS_NEXT_CONTROL_VALUE         1056
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif
