@@ -469,6 +469,10 @@ public:
 	CChildDialog m_OperandsTabDlg;
 	CChildDialog m_OperatorsTabDlg;
 	CChildDialog m_SavedExprTabDlg;
+	int m_NumSavedExpressions;
+	enum { MaxSavedExpressions = 20, };
+	CString m_SavedExpressions[MaxSavedExpressions];
+	CString m_SavedExpressionDescriptions[MaxSavedExpressions];
 
 	BOOL	m_bLockChannels;
 	long m_Start;
@@ -489,6 +493,9 @@ protected:
 // Implementation
 protected:
 
+	afx_msg BOOL OnButtonText(UINT id);
+	afx_msg void OnButtonInsert();
+	afx_msg void OnSelchangeExpression();
 	// Generated message map functions
 	//{{AFX_MSG(CExpressionEvaluationDialog)
 	afx_msg void OnButtonSelection();

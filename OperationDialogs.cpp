@@ -1474,6 +1474,7 @@ CExpressionEvaluationDialog::CExpressionEvaluationDialog(CWnd* pParent /*=NULL*/
 	//{{AFX_DATA_INIT(CExpressionEvaluationDialog)
 	m_bUndo = FALSE;
 	//}}AFX_DATA_INIT
+	m_NumSavedExpressions = 0;
 }
 
 
@@ -1491,14 +1492,103 @@ void CExpressionEvaluationDialog::DoDataExchange(CDataExchange* pDX)
 
 
 BEGIN_MESSAGE_MAP(CExpressionEvaluationDialog, CDialog)
+	ON_COMMAND(IDC_BUTTON_INSERT_EXPRESSION, OnButtonInsert)
 	//{{AFX_MSG_MAP(CExpressionEvaluationDialog)
 	ON_BN_CLICKED(IDC_BUTTON_SELECTION, OnButtonSelection)
 	ON_NOTIFY(TCN_SELCHANGE, IDC_TAB_TOKENS, OnSelchangeTabTokens)
 	//}}AFX_MSG_MAP
+	ON_CBN_SELCHANGE(IDC_COMBO_SAVED_EXPRESSIONS, OnSelchangeExpression)
+#if 0
+	ON_COMMAND_EX(IDC_BUTTON_SIN, OnButtonText)
+	ON_COMMAND_EX(IDC_BUTTON_COS, OnButtonText)
+	ON_COMMAND_EX(IDC_BUTTON_TAN, OnButtonText)
+	ON_COMMAND_EX(IDC_BUTTON_SINH, OnButtonText)
+	ON_COMMAND_EX(IDC_BUTTON_COSH, OnButtonText)
+	ON_COMMAND_EX(IDC_BUTTON_TANH, OnButtonText)
+	ON_COMMAND_EX(IDC_BUTTON_EXP, OnButtonText)
+	ON_COMMAND_EX(IDC_BUTTON_LN, OnButtonText)
+	ON_COMMAND_EX(IDC_BUTTON_EXP10, OnButtonText)
+	ON_COMMAND_EX(IDC_BUTTON_LOG10, OnButtonText)
+	ON_COMMAND_EX(IDC_BUTTON_SQRT, OnButtonText)
+	ON_COMMAND_EX(IDC_BUTTON_ABS, OnButtonText)
+	ON_COMMAND_EX(IDC_BUTTON_INT, OnButtonText)
+	ON_COMMAND_EX(IDC_BUTTON_POW, OnButtonText)
+	ON_COMMAND_EX(IDC_BUTTON_NOISE, OnButtonText)
+	ON_COMMAND_EX(IDC_BUTTON_PI, OnButtonText)
+	ON_COMMAND_EX(IDC_BUTTON_T, OnButtonText)
+	ON_COMMAND_EX(IDC_BUTTON_LC_T, OnButtonText)
+	ON_COMMAND_EX(IDC_BUTTON_DT, OnButtonText)
+	ON_COMMAND_EX(IDC_BUTTON_LC_DT, OnButtonText)
+	ON_COMMAND_EX(IDC_BUTTON_DN, OnButtonText)
+	ON_COMMAND_EX(IDC_BUTTON_LC_DN, OnButtonText)
+	ON_COMMAND_EX(IDC_BUTTON_F, OnButtonText)
+	ON_COMMAND_EX(IDC_BUTTON_LC_F, OnButtonText)
+	ON_COMMAND_EX(IDC_BUTTON_WAVE, OnButtonText)
+	ON_COMMAND_EX(IDC_BUTTON_PLUS, OnButtonText)
+	ON_COMMAND_EX(IDC_BUTTON_MINUS, OnButtonText)
+	ON_COMMAND_EX(IDC_BUTTON_MULTIPLY, OnButtonText)
+	ON_COMMAND_EX(IDC_BUTTON_DIVIDE, OnButtonText)
+	ON_COMMAND_EX(IDC_BUTTON_MODULE, OnButtonText)
+	ON_COMMAND_EX(IDC_BUTTON_AND, OnButtonText)
+	ON_COMMAND_EX(IDC_BUTTON_OR, OnButtonText)
+	ON_COMMAND_EX(IDC_BUTTON_XOR, OnButtonText)
+	ON_COMMAND_EX(IDC_BUTTON_INVERSE, OnButtonText)
+	//ON_COMMAND_EX(IDC_BUTTON_, OnButtonText)
+#else
+	ON_COMMAND_EX_RANGE(IDC_BUTTON_SIN, IDC_BUTTON_INVERSE, OnButtonText)
+#endif
 END_MESSAGE_MAP()
 
 /////////////////////////////////////////////////////////////////////////////
 // CExpressionEvaluationDialog message handlers
+BOOL CExpressionEvaluationDialog::OnButtonText(UINT id)
+{
+	TRACE("CExpressionEvaluationDialog::OnButtonText(%X)\n", id);
+	CString s;
+	if (s.LoadString(id))
+	{
+		CString Substr;
+		AfxExtractSubString(Substr, s, 0, '\n');
+		CEdit * pEdit = (CEdit *) GetDlgItem(IDC_EDIT_EXPRESSION);
+		if (NULL != pEdit)
+		{
+			pEdit->ReplaceSel(Substr, TRUE);
+			pEdit->SetFocus();
+			return TRUE;
+		}
+	}
+	return FALSE;
+}
+
+void CExpressionEvaluationDialog::OnButtonInsert()
+{
+	CComboBox * pCB = (CComboBox *) m_SavedExprTabDlg.GetDlgItem(IDC_COMBO_SAVED_EXPRESSIONS);
+	CEdit * pEdit = (CEdit *) GetDlgItem(IDC_EDIT_EXPRESSION);
+	if (NULL != pCB
+		&& NULL != pEdit)
+	{
+		int sel = pCB->GetCurSel();
+		if (sel >= 0 && sel < m_NumSavedExpressions)
+		{
+			pEdit->ReplaceSel(m_SavedExpressions[sel], TRUE);
+			pEdit->SetFocus();
+		}
+	}
+}
+void CExpressionEvaluationDialog::OnSelchangeExpression()
+{
+	CComboBox * pCB = (CComboBox *) m_SavedExprTabDlg.GetDlgItem(IDC_COMBO_SAVED_EXPRESSIONS);
+	CWnd * pStatic = m_SavedExprTabDlg.GetDlgItem(IDC_STATIC_DESCRIPTION);
+	if (NULL != pCB
+		&& NULL != pStatic)
+	{
+		int sel = pCB->GetCurSel();
+		if (sel >= 0 && sel < m_NumSavedExpressions)
+		{
+			pStatic->SetWindowText(m_SavedExpressionDescriptions[sel]);
+		}
+	}
+}
 
 void CExpressionEvaluationDialog::OnButtonSelection()
 {
@@ -2125,6 +2215,44 @@ BOOL CExpressionEvaluationDialog::OnInitDialog()
 	m_TabTokens.InsertItem(1, _T("Operands"));
 	m_TabTokens.InsertItem(2, _T("Operators"));
 	m_TabTokens.InsertItem(3, _T("Saved Expressions"));
+	// load saved expressions
+	TCHAR ModuleName[MAX_PATH] = {0};
+	TCHAR FullPathName[MAX_PATH];
+	LPTSTR FilePart = FullPathName;
+	GetModuleFileName(NULL, ModuleName, MAX_PATH);
+	GetFullPathName(ModuleName, MAX_PATH, FullPathName, & FilePart);
+	*FilePart = 0;
+	CString ProfileName(FullPathName);
+	ProfileName += _T("Expressions.ini");
+	int ExprCount = ::GetPrivateProfileInt(
+											_T("Expressions"), _T("NumExpressions"),
+											0, ProfileName);
+	if (ExprCount > MaxSavedExpressions)
+	{
+		ExprCount = MaxSavedExpressions;
+	}
+	CComboBox * pCB = (CComboBox *) m_SavedExprTabDlg.GetDlgItem(IDC_COMBO_SAVED_EXPRESSIONS);
+	for (int i = 0; i < ExprCount; i++)
+	{
+		TCHAR Buf[512];
+		CString s;
+		s.Format("expr%d", i + 1);
+		GetPrivateProfileString(_T("Descriptions"), s, "", Buf, 512, ProfileName);
+		m_SavedExpressionDescriptions[i] = Buf;
+
+		GetPrivateProfileString(_T("Expressions"), s, "", Buf, 512, ProfileName);
+		m_SavedExpressions[i] = Buf;
+		if (NULL != pCB)
+		{
+			pCB->AddString(Buf);
+		}
+	}
+	if (NULL != pCB)
+	{
+		pCB->SetCurSel(0);
+	}
+	m_NumSavedExpressions = ExprCount;
+
 	return TRUE;  // return TRUE unless you set the focus to a control
 	// EXCEPTION: OCX Property Pages should return FALSE
 }

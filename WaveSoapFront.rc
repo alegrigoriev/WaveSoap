@@ -1169,7 +1169,7 @@ FONT 8, "MS Sans Serif"
 BEGIN
     LTEXT           "&Expression:",IDC_STATIC,7,98,53,8
     EDITTEXT        IDC_EDIT_EXPRESSION,7,111,238,58,ES_MULTILINE | 
-                    ES_AUTOVSCROLL | WS_VSCROLL
+                    ES_AUTOVSCROLL | ES_NOHIDESEL | WS_VSCROLL
     LTEXT           "Selection:\nChannels:",IDC_STATIC_SELECTION,7,180,238,
                     17
     CONTROL         "Save &Undo",IDC_CHECK_UNDO,"Button",BS_AUTOCHECKBOX | 
@@ -1372,13 +1372,13 @@ BEGIN
     PUSHBUTTON      "exp",IDC_BUTTON_EXP,88,2,27,10
     PUSHBUTTON      "exp10",IDC_BUTTON_EXP10,117,2,27,10
     PUSHBUTTON      "sqrt",IDC_BUTTON_SQRT,146,2,27,10
+    PUSHBUTTON      "int",IDC_BUTTON_INT,175,2,27,10
     PUSHBUTTON      "sinh",IDC_BUTTON_SINH,1,14,27,10,BS_NOTIFY
     PUSHBUTTON      "cosh",IDC_BUTTON_COSH,30,14,27,10
     PUSHBUTTON      "tanh",IDC_BUTTON_TANH,59,14,27,10
     PUSHBUTTON      "ln",IDC_BUTTON_LN,88,14,27,10
     PUSHBUTTON      "log10",IDC_BUTTON_LOG10,117,14,27,10
     PUSHBUTTON      "abs",IDC_BUTTON_ABS,146,14,27,10
-    PUSHBUTTON      "int",IDC_BUTTON_INT,175,2,27,10
     PUSHBUTTON      "pow",IDC_BUTTON_POW,175,14,27,10
     LTEXT           "Hold mouse cursor over the button to see its description",
                     IDC_STATIC,2,29,165,8
@@ -1390,16 +1390,16 @@ EXSTYLE WS_EX_CONTROLPARENT
 FONT 8, "MS Sans Serif"
 BEGIN
     PUSHBUTTON      "noise",IDC_BUTTON_NOISE,1,2,27,10
-    PUSHBUTTON      "T",IDC_BUTTON9,30,2,27,10
+    PUSHBUTTON      "T",IDC_BUTTON_T,30,2,27,10
+    PUSHBUTTON      "DT",IDC_BUTTON_DT,59,2,27,10
+    PUSHBUTTON      "DN",IDC_BUTTON_DN,88,2,27,10
     PUSHBUTTON      "F",IDC_BUTTON10,117,2,27,10
-    PUSHBUTTON      "DN",IDC_BUTTON11,88,2,27,10
+    PUSHBUTTON      "wave",IDC_BUTTON_WAVE,146,2,27,10
     PUSHBUTTON      "pi",IDC_BUTTON_PI,1,14,27,10
-    PUSHBUTTON      "DT",IDC_BUTTON19,59,2,27,10
-    PUSHBUTTON      "f",IDC_BUTTON20,117,14,27,10
-    PUSHBUTTON      "dn",IDC_BUTTON21,88,14,27,10
-    PUSHBUTTON      "wave",IDC_BUTTON12,146,2,27,10
-    PUSHBUTTON      "dt",IDC_BUTTON13,59,14,27,10
-    PUSHBUTTON      "t",IDC_BUTTON14,30,14,27,10
+    PUSHBUTTON      "t",IDC_BUTTON_LC_T,30,14,27,10
+    PUSHBUTTON      "dt",IDC_BUTTON_LC_DT,59,14,27,10
+    PUSHBUTTON      "dn",IDC_BUTTON_LC_DN,88,14,27,10
+    PUSHBUTTON      "f",IDC_BUTTON_LC_F,117,14,27,10
     LTEXT           "Hold mouse cursor over the button to see its description",
                     IDC_STATIC,2,29,165,8
 END
@@ -1409,15 +1409,15 @@ STYLE WS_CHILD | WS_DISABLED
 EXSTYLE WS_EX_CONTROLPARENT
 FONT 8, "MS Sans Serif"
 BEGIN
-    PUSHBUTTON      "+",IDC_BUTTON8,1,2,27,10
-    PUSHBUTTON      "-",IDC_BUTTON9,30,2,27,10
-    PUSHBUTTON      "/",IDC_BUTTON10,59,2,27,10
-    PUSHBUTTON      "*",IDC_BUTTON11,88,2,27,10
-    PUSHBUTTON      "%",IDC_BUTTON18,117,2,27,10
-    PUSHBUTTON      "&&",IDC_BUTTON19,1,14,27,10
-    PUSHBUTTON      "|",IDC_BUTTON20,30,14,27,10
-    PUSHBUTTON      "^",IDC_BUTTON21,59,14,27,10
-    PUSHBUTTON      "~",IDC_BUTTON12,88,14,27,10
+    PUSHBUTTON      "+",IDC_BUTTON_PLUS,1,2,27,10
+    PUSHBUTTON      "-",IDC_BUTTON_MINUS,30,2,27,10
+    PUSHBUTTON      "/",IDC_BUTTON_DIVIDE,59,2,27,10
+    PUSHBUTTON      "*",IDC_BUTTON_MULTIPLY,88,2,27,10
+    PUSHBUTTON      "%",IDC_BUTTON_MODULE,117,2,27,10
+    PUSHBUTTON      "&&",IDC_BUTTON_AND,1,14,27,10
+    PUSHBUTTON      "|",IDC_BUTTON_OR,30,14,27,10
+    PUSHBUTTON      "^",IDC_BUTTON_XOR,59,14,27,10
+    PUSHBUTTON      "~",IDC_BUTTON_INVERSE,88,14,27,10
     LTEXT           "Hold mouse cursor over the button to see its description",
                     IDC_STATIC,1,29,165,8
 END
@@ -1427,9 +1427,9 @@ STYLE WS_CHILD | WS_DISABLED
 EXSTYLE WS_EX_CONTROLPARENT
 FONT 8, "MS Sans Serif"
 BEGIN
-    COMBOBOX        IDC_COMBO1,3,22,146,54,CBS_DROPDOWN | WS_VSCROLL | 
-                    WS_TABSTOP
-    PUSHBUTTON      "Insert",IDC_BUTTON1,161,21,50,14
+    COMBOBOX        IDC_COMBO_SAVED_EXPRESSIONS,3,22,146,54,CBS_DROPDOWNLIST | 
+                    WS_VSCROLL | WS_TABSTOP
+    PUSHBUTTON      "&Insert",IDC_BUTTON_INSERT_EXPRESSION,161,21,50,14
     LTEXT           "(no description)",IDC_STATIC_DESCRIPTION,3,6,209,8
 END
 
@@ -2167,39 +2167,54 @@ STRINGTABLE DISCARDABLE
 BEGIN
     IDS_DIRECTORY_ACCESS_DENIED "Access to directory ""%s"" denied"
     IDS_DIRECTORY_NOT_FOUND "Directory ""%s"" not found"
-    IDC_BUTTON_SIN          "\nsin(x), argument in radians"
-    IDC_BUTTON_COS          "\ncos(x), argument in radians"
-    IDC_BUTTON_SINH         "\nsinh(x) - hyperbolic sine"
-    IDC_BUTTON_COSH         "\ncosh(x) - hyperbolic cosine"
-    IDC_BUTTON_TAN          "\ntan(x), argument in radians"
-    IDC_BUTTON_TANH         "\ntanh(x) - hyperbolic tangens"
-    IDC_BUTTON_EXP          "\nexp(x) - e power x"
-    IDC_BUTTON_LN           "\nln(x) - natural logarithm"
-    IDC_BUTTON_EXP10        "\nexp10(x) - 10 power x"
-    IDC_BUTTON_LOG10        "\nlog10(x) - decimal logarithm"
-    IDC_BUTTON_SQRT         "\nsqrt(x) - square root"
-    IDC_BUTTON_ABS          "\nabs(x) - absolute value"
-    IDC_BUTTON_INT          "\nint(x) - integer part, rounded toward zero"
-    IDC_BUTTON_POW          "\npow(x, y) - x power y"
+    IDC_BUTTON_SIN          "sin\nsin(x), argument in radians"
+    IDC_BUTTON_COS          "cos\ncos(x), argument in radians"
+    IDC_BUTTON_SINH         "sinh\nsinh(x) - hyperbolic sine"
+    IDC_BUTTON_COSH         "cosh\ncosh(x) - hyperbolic cosine"
+    IDC_BUTTON_TAN          "tan\ntan(x), argument in radians"
+    IDC_BUTTON_TANH         "tanh\ntanh(x) - hyperbolic tangens"
+    IDC_BUTTON_EXP          "exp\nexp(x) - e power x"
+    IDC_BUTTON_LN           "ln\nln(x) - natural logarithm"
+    IDC_BUTTON_EXP10        "exp10\nexp10(x) - 10 power x"
+    IDC_BUTTON_LOG10        "log10\nlog10(x) - decimal logarithm"
+    IDC_BUTTON_SQRT         "sqrt\nsqrt(x) - square root"
+    IDC_BUTTON_ABS          "abs\nabs(x) - absolute value"
+    IDC_BUTTON_INT          "int\nint(x) - integer part, rounded toward zero"
+    IDC_BUTTON_POW          "pow\npow(x, y) - x power y"
 END
 
 STRINGTABLE DISCARDABLE 
 BEGIN
-    IDC_BUTTON_NOISE        "\nnoise() - white noise, evenly distributed from -1 to 1"
-    IDC_BUTTON_PI           "\npi = 3.1415926..."
-    IDC_BUTTON_T            "sin"
-    IDC_BUTTON_LC_T         "sin"
-    IDC_BUTTON_DT           "sin"
-    IDC_BUTTON_LC_DT        "sin"
-    IDC_BUTTON_DN           "sin"
-    IDC_BUTTON_LC_DN        "sin"
-    IDC_BUTTON_F            "sin"
-    IDC_BUTTON_LC_F         "sin"
-    IDC_BUTTON_WAVE         "sin"
+    IDC_BUTTON_NOISE        "noise\nnoise() - white noise, evenly distributed from -1 to 1"
+    IDC_BUTTON_PI           "pi\npi = 3.1415926..."
+    IDC_BUTTON_T            "T\nTime in seconds from the beginning of file"
+    IDC_BUTTON_LC_T         "t\nTime in seconds from the beginning of selection"
+    IDC_BUTTON_DT           "DT\nLength of file in seconds"
+    IDC_BUTTON_LC_DT        "dt\nLength of selection in seconds"
+    IDC_BUTTON_DN           "DN\nLength of file in samples"
+    IDC_BUTTON_LC_DN        "dn\nLength of selection in samples"
+    IDC_BUTTON_F            "F\nSampling rate"
+    IDC_BUTTON_LC_F         "f\nFrequency argument"
+    IDC_BUTTON_WAVE         "wave\nCurrent wave sample"
+    IDC_BUTTON_PLUS         "+\nAdd two operands"
+    IDC_BUTTON_MINUS        "-\nSubtract two operands"
+    IDC_BUTTON_MULTIPLY     "*\nMultiply two operands"
+    IDC_BUTTON_DIVIDE       "/\nDivide the first operand by the second operand"
+    IDC_BUTTON_MODULE       "%\nFirst operand modulo second operand"
+END
+
+STRINGTABLE DISCARDABLE 
+BEGIN
+    IDC_BUTTON_AND          "&\nBitwise AND"
+    IDC_BUTTON_OR           "|\nBitwise OR"
+    IDC_BUTTON_XOR          "^\nBitwise XOR"
+    IDC_BUTTON_INVERSE      "~\nBinary complement"
+    IDC_BUTTON_1            "sin"
+    IDC_BUTTON_14           "sin"
+    IDC_BUTTON_15           "sin"
+    IDC_BUTTON_2            "sin"
+    IDC_BUTTON_3            "sin"
     IDC_BUTTON_4            "sin"
-    IDC_BUTTON_5            "sin"
-    IDC_BUTTON_6            "sin"
-    IDC_BUTTON_7            "sin"
 END
 
 #endif    // English (U.S.) resources
