@@ -1,12 +1,12 @@
 Known problems and tasks:
 
-Open files specified in the command line
 If read-only file is saved, name should be different
 Add CD grabbing
 Add noise reduction estimation in spectrum section view
 Add MP3 save
 Add ASF save
 Add sound recording
+Add splash screen
 Support "Play" in selection dialog
 keep cursor in 10% from the view boundary.
 Make Paste Special command (with Fade In/Fade Out etc)
@@ -24,6 +24,7 @@ If delete (shrink) is done with one channel of two, fill the rest with zeros
 If displaying data without peak info, call RescanPeaks for this range.
 Check if the file size will exceed 2 GB
 Add options dialog
+Show File Properties
 Save current workspace
 Add decibel view to CAmplitudeRuler
 Add VU meter for playback
@@ -53,6 +54,7 @@ Insert Silence of zero length still tries to modify the file
 Multiple MP3 files open: all but one get stuck
 
 Done:
+Open files specified in the command line
 Init file length for new file dialog
 Remember new file length in seconds
 Make "New File parameters" dialog

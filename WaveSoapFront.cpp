@@ -255,6 +255,104 @@ CWaveSoapFrontApp theApp;
 
 /////////////////////////////////////////////////////////////////////////////
 // CWaveSoapFrontApp initialization
+class CMyCommandLineInfo : public CCommandLineInfo
+{
+	//plain char* version on UNICODE for source-code backwards compatibility
+	virtual void ParseParam(const TCHAR* pszParam, BOOL bFlag, BOOL bLast);
+	void ParseParamFlag(const TCHAR* pszParam);
+	void ParseParamNotFlag(const TCHAR* pszParam);
+	void ParseLast(BOOL bLast);
+};
+
+void CMyCommandLineInfo::ParseParam(const TCHAR* pszParam, BOOL bFlag, BOOL bLast)
+{
+	if (bFlag)
+	{
+		ParseParamFlag(pszParam);
+	}
+	else
+		ParseParamNotFlag(pszParam);
+
+	ParseLast(bLast);
+}
+
+void CMyCommandLineInfo::ParseParamFlag(LPCTSTR pszParam)
+{
+	// OLE command switches are case insensitive, while
+	// shell command switches are case sensitive
+
+	if (lstrcmp(pszParam, _T("pt")) == 0)
+	{
+		m_nShellCommand = FilePrintTo;
+	}
+	else if (lstrcmp(pszParam, _T("p")) == 0)
+	{
+		m_nShellCommand = FilePrint;
+	}
+	else if (lstrcmpi(pszParam, _T("Unregister")) == 0 ||
+			lstrcmpi(pszParam, _T("Unregserver")) == 0)
+	{
+		m_nShellCommand = AppUnregister;
+	}
+	else if (lstrcmp(pszParam, _T("dde")) == 0)
+	{
+		AfxOleSetUserCtrl(FALSE);
+		m_nShellCommand = FileDDE;
+	}
+	else if (lstrcmpi(pszParam, _T("Embedding")) == 0)
+	{
+		AfxOleSetUserCtrl(FALSE);
+		m_bRunEmbedded = TRUE;
+		m_bShowSplash = FALSE;
+	}
+	else if (lstrcmpi(pszParam, _T("Automation")) == 0)
+	{
+		AfxOleSetUserCtrl(FALSE);
+		m_bRunAutomated = TRUE;
+		m_bShowSplash = FALSE;
+	}
+	else if (lstrcmpi(pszParam, _T("Nologo")) == 0)
+	{
+		m_bShowSplash = FALSE;
+	}
+	else if (lstrcmpi(pszParam, _T("N")) == 0)
+	{
+		m_bShowSplash = FALSE;
+		m_nShellCommand = FileNew;
+	}
+}
+
+void CMyCommandLineInfo::ParseParamNotFlag(const TCHAR* pszParam)
+{
+	if (m_strFileName.IsEmpty())
+		m_strFileName = pszParam;
+	else if (m_nShellCommand == FilePrintTo && m_strPrinterName.IsEmpty())
+		m_strPrinterName = pszParam;
+	else if (m_nShellCommand == FilePrintTo && m_strDriverName.IsEmpty())
+		m_strDriverName = pszParam;
+	else if (m_nShellCommand == FilePrintTo && m_strPortName.IsEmpty())
+		m_strPortName = pszParam;
+	else if (m_nShellCommand == FileNothing
+			|| m_nShellCommand == FileOpen
+			|| m_nShellCommand == FileNew)
+	{
+		m_strFileName += ';';
+		m_strFileName += pszParam;
+	}
+}
+
+void CMyCommandLineInfo::ParseLast(BOOL bLast)
+{
+	if (bLast)
+	{
+		if ((m_nShellCommand == FileNew || m_nShellCommand == FileNothing)
+			&& !m_strFileName.IsEmpty())
+		{
+			m_nShellCommand = FileOpen;
+		}
+		m_bShowSplash = m_bShowSplash && !m_bRunEmbedded && !m_bRunAutomated;
+	}
+}
 
 BOOL CWaveSoapFrontApp::InitInstance()
 {
@@ -434,22 +532,15 @@ BOOL CWaveSoapFrontApp::InitInstance()
 	m_pMainWnd = pMainFrame;
 
 	// Parse command line for standard shell commands, DDE, file open
-	CCommandLineInfo cmdInfo;
+	CMyCommandLineInfo cmdInfo;
 	cmdInfo.m_nShellCommand = CCommandLineInfo::FileNothing;
 	ParseCommandLine(cmdInfo);
-	if ( ! cmdInfo.m_strFileName.IsEmpty())
-	{
-		cmdInfo.m_nShellCommand = CCommandLineInfo::FileOpen;
-	}
 
 	// start the processing thread
 	m_hThreadEvent = CreateEvent(NULL, FALSE, FALSE, NULL);
 	m_RunThread = true;
 	m_Thread.CreateThread(0, 0x10000);
 
-	// Dispatch commands specified on the command line
-	if (!ProcessShellCommand(cmdInfo))
-		return FALSE;
 
 	m_pMainWnd->DragAcceptFiles();
 	// The main window has been initialized, so show and update it.
@@ -463,6 +554,9 @@ BOOL CWaveSoapFrontApp::InitInstance()
 
 	m_NotEnoughMemoryMsg.LoadString(IDS_NOT_ENOUGH_MEMORY);
 
+	// Dispatch commands specified on the command line
+	if (!ProcessShellCommand(cmdInfo))
+		return FALSE;
 	return TRUE;
 }
 
@@ -557,7 +651,31 @@ CDocument* CWaveSoapFrontApp::OpenDocumentFile(LPCTSTR lpszPathName, int flags)
 	if (NULL != pMyDocMan)
 	{
 		TRACE("Using CWaveSoapDocManager::OpenDocumentFile(lpszPathName)\n");
-		return pMyDocMan->OpenDocumentFile(lpszPathName, flags);
+		// lpszPathName may contain several names separated by ';'
+		if (NULL == lpszPathName)
+		{
+			return pMyDocMan->OpenDocumentFile(NULL, flags);
+		}
+		CDocument * pDoc = NULL;
+		CDocument * pTmpDoc;
+		while (*lpszPathName != 0)
+		{
+			int length;
+			for (length = 0; lpszPathName[length] != 0 && lpszPathName[length] != ';'; length++)
+			{}
+			CString name(lpszPathName, length);
+			pTmpDoc = pMyDocMan->OpenDocumentFile(name, flags);
+			if (NULL != pTmpDoc)
+			{
+				pDoc = pTmpDoc;
+			}
+			lpszPathName += length;
+			if (*lpszPathName == ';')
+			{
+				lpszPathName++;
+			}
+		}
+		return pDoc;
 	}
 	else
 	{

@@ -42,6 +42,7 @@ enum
 	OpenNewDocumentZeroLength = 0x20,
 	OpenDocumentNonWavFile = 0x100,
 };
+
 class CWaveSoapFrontApp : public CWinApp
 {
 public:
