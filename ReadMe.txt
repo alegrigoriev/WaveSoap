@@ -1,7 +1,7 @@
 Known problems and tasks:
 
+Draw checkered background outside file area on FFT
 Add CD grabbing
-Add overflow dialog on resample	and other waveproc
 Load sound from AVI
 Add options dialog
 Enter WMA file attributes (title, author, etc)
@@ -45,13 +45,8 @@ Add splash screen
 Make recording from Internet stream
 
 Problems:
-16 and 20 kbit/s save is incomplete
-After resample, frequency ruler not updated
-FFT zoom out doesn't put the range to the proper limits
-Notch filter initial setting is weird
-Too many digits in filter/equalizer dialogs number boxes
-During playback, scroll is done without hiding playback cursor
 When FFT array is reallocated, it is invalidated
+
 Paste operation doesn't check if sampling rate is the same. Add dialog to resample
 Click on outline view moves the wave view a bit after the button released
 After file length increased to 1 sample from 0, scroll bar set to wrond scale
@@ -61,15 +56,14 @@ If there is not enough space on NTFS volume, it will be seen only during flush
 Windows2000 is trying to zero the allocated file
 samples with 32767, -32768 are not visible
 
-LOg Off query doesn't close the active dialog. Recursion is possible. Make sure to check after Cancel
-
-Deferred:
-Put buttons for the view commands to the wave window status bar
-CWmaNotInstalledDlg doesn't save "Don't show" flag
-Save As dialog is not centered first time (comdlg problem?)
-??? When time/seconds format is set for status bar, MM:SS is actually shown
+Log Off query doesn't close the active dialog. Recursion is possible. Make sure to check after Cancel
 
 Fixed:
+Notch filter initial setting is weird
+Originally selected filter point may be hidden because the filter is disabled
+Too many digits in filter/equalizer dialogs number boxes
+FFT zoom out doesn't put the range to the proper limits
+After resample, frequency ruler not updated
 Save copy reopen file dialog has "Close" instead of "Cancel"
 OpenWmaFile crashes if the temporary file couldn't be created
 File dialog didn't open in Win98
@@ -88,7 +82,16 @@ ATI card can't draw small circles (use memory bitmap)
 No status bar in WinME
 FFT doesn't invaludate some areas
 
+Deferred:
+16 and 20 kbit/s WMA save is incomplete (not reproduced)
+During playback, scrolled remnants of playback cursor seen (video driver?)
+Put buttons for the view commands to the wave window status bar
+CWmaNotInstalledDlg doesn't save "Don't show" flag
+Save As dialog is not centered first time (comdlg problem?)
+??? When time/seconds format is set for status bar, MM:SS is actually shown
+
 Done:
+Add overflow dialog on resample	and other waveproc
 Test "reload compressed file" dialogs
 Add WMA save
 Fill WMA formats combo

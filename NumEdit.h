@@ -36,6 +36,15 @@ public:
 						double dLowLimit = 0., double dHighLimit = 0.);
 	virtual void SetData(double num);
 
+	void SetPrecision(int FractionDigits)
+	{
+		m_Precision = FractionDigits;
+		if (m_Precision > 10)
+		{
+			m_Precision = 10;
+		}
+	}
+
 // Overrides
 	// ClassWizard generated virtual function overrides
 	//{{AFX_VIRTUAL(CNumEdit)
@@ -47,6 +56,7 @@ public:
 
 protected:
 	CString sLastValid;
+	int m_Precision;
 	//int iSelStart, iSelEnd;
 	// Generated message map functions
 	//{{AFX_MSG(CNumEdit)

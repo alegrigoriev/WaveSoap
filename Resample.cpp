@@ -194,7 +194,10 @@ void CResampleContext::PostRetire(BOOL bChildContext)
 		}
 		long nSamples = pDocument->WaveFileSamples();
 		pDocument->SoundChanged(pDocument->WaveFileID(),
-								0, nSamples, nSamples, UpdateSoundDontRescanPeaks);
+								0, nSamples, nSamples,
+								UpdateSoundDontRescanPeaks
+								| UpdateSoundSamplingRateChanged);
+		// TODO: change selection
 		pDocument->BuildPeakInfo(FALSE);    // don't save it yet
 		//pDocument->UpdateAllViews(NULL);
 	}

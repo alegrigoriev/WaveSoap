@@ -18,6 +18,7 @@ IMPLEMENT_DYNAMIC(CNumEdit, CEdit)
 CNumEdit::CNumEdit()
 //:iSelStart(0), iSelEnd(0)
 {
+	m_Precision = 6;
 }
 
 CNumEdit::~CNumEdit()
@@ -271,7 +272,7 @@ void CNumEdit::SetData(double num)
 	else
 	{
 		TCHAR szBuffer[32];
-		_stprintf(szBuffer, _T("%.10g"), num);
+		_stprintf(szBuffer, _T("%.*f"), m_Precision, num);
 		SetWindowText(szBuffer);
 	}
 }

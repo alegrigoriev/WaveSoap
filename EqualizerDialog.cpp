@@ -42,6 +42,7 @@ CEqualizerDialog::CEqualizerDialog(CWnd* pParent /*=NULL*/)
 		s.Format("Gain%d", n + 1);
 		m_Profile.AddItem("Equalizer", s, m_wGraph.m_BandGain[n], 1., 0.1, 10.);
 	}
+	m_BandGain.SetPrecision(2);
 }
 
 
