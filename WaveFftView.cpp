@@ -1070,6 +1070,7 @@ BOOL CWaveFftView::OnEraseBkgnd(CDC* pDC)
 			0x55, 0,
 		};
 		try {
+			// Windows98 can only use 8x8 bitmap for a brush
 			bmp.CreateBitmap(8, 8, 1, 1, pattern + 2 * (FileEnd & 1));
 			CBrush GrayBrush( & bmp);
 			CRect gr = r;
