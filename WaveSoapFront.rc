@@ -2444,11 +2444,11 @@ BEGIN
     GROUPBOX        "&Undo",IDC_STATIC,7,15,149,57,WS_GROUP
     CONTROL         "Enable",IDC_CHECK_ENABLE_UNDO,"Button",BS_AUTOCHECKBOX | 
                     WS_TABSTOP,11,25,56,10
-    CONTROL         "Limit total size:",IDC_CHECK_LIMIT_UNDO,"Button",
+    CONTROL         "Limit total size:",IDC_CHECK_LIMIT_UNDO_SIZE,"Button",
                     BS_AUTOCHECKBOX | WS_TABSTOP,11,40,83,10
-    EDITTEXT        IDC_EDIT_UNDO_LIMIT,99,39,25,13,ES_AUTOHSCROLL | 
+    EDITTEXT        IDC_EDIT_UNDO_SIZE_LIMIT,99,39,25,13,ES_AUTOHSCROLL | 
                     ES_NUMBER
-    LTEXT           "MB",IDC_STATIC,127,40,14,8
+    LTEXT           "MB",IDC_STATIC_UNDO_MB,127,40,14,8
     CONTROL         "Limit depth:",IDC_CHECK_LIMIT_UNDO_DEPTH,"Button",
                     BS_AUTOCHECKBOX | WS_TABSTOP,11,55,83,10
     EDITTEXT        IDC_EDIT_UNDO_DEPTH_LIMIT,99,54,33,13,ES_AUTOHSCROLL | 
@@ -2462,11 +2462,11 @@ BEGIN
     CONTROL         "Limit total size:",IDC_CHECK_LIMIT_REDO_SIZE,"Button",
                     BS_AUTOCHECKBOX | WS_TABSTOP,11,103,83,10
     EDITTEXT        IDC_EDIT_REDO_SIZE_LIMIT,99,101,25,13,ES_AUTOHSCROLL
-    LTEXT           "MB",IDC_STATIC,127,102,15,8
+    LTEXT           "MB",IDC_STATIC_REDO_MB,127,102,15,8
     CONTROL         "Limit depth:",IDC_CHECK_LIMIT_REDO_DEPTH,"Button",
                     BS_AUTOCHECKBOX | WS_TABSTOP,11,118,83,10
     EDITTEXT        IDC_EDIT_REDO_DEPTH_LIMIT,99,116,33,13,ES_AUTOHSCROLL
-    CONTROL         "Spin1",IDC_SPIN_REDO_LIMIT,"msctls_updown32",
+    CONTROL         "Spin1",IDC_SPIN_REDO_DEPTH,"msctls_updown32",
                     UDS_SETBUDDYINT | UDS_ALIGNRIGHT | UDS_AUTOBUDDY | 
                     UDS_ARROWKEYS,131,115,12,14
     CONTROL         "Remember current &selection in Undo/Redo",
