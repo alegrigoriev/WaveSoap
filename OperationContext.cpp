@@ -1658,12 +1658,33 @@ BOOL CDecompressContext::OperationProc()
 		m_ash.cbSrcLengthUsed = 0;
 		m_ash.cbDstLength = m_DstBufSize;
 		m_ash.cbDstLengthUsed = 0;
-		if (0 == (m_MmResult = acmStreamConvert(m_acmStr, & m_ash, m_ConvertFlags))
-			&& (0 != m_ash.cbDstLengthUsed || 0 != m_ash.cbSrcLengthUsed))
+		BOOL Success;
+		if (NULL == m_acmStr)
+		{
+			memcpy(m_ash.pbDst, m_ash.pbSrc, m_ash.cbSrcLength);
+			m_ash.cbSrcLengthUsed = m_ash.cbSrcLength;
+			m_ash.cbDstLengthUsed = m_ash.cbSrcLength;
+			Success = TRUE;
+		}
+		else
+		{
+			Success = (0 == (m_MmResult = acmStreamConvert(m_acmStr, & m_ash, m_ConvertFlags))
+						&& (0 != m_ash.cbDstLengthUsed || 0 != m_ash.cbSrcLengthUsed));
+		}
+		if (Success)
 		{
 			// write the result
 			if (0 != m_ash.cbDstLengthUsed)
 			{
+				if (m_bSwapBytes)
+				{
+					for (int i = 0; i < m_ash.cbDstLengthUsed - 1; i+= 2)
+					{
+						BYTE tmp = m_ash.pbDst[i];
+						m_ash.pbDst[i] = m_ash.pbDst[i + 1];
+						m_ash.pbDst[i + 1] = tmp;
+					}
+				}
 				long written = m_DstFile.WriteAt(m_ash.pbDst,
 												m_ash.cbDstLengthUsed, m_DstCopyPos);
 				m_DstCopyPos += written;
@@ -1727,48 +1748,51 @@ BOOL CDecompressContext::OperationProc()
 BOOL CDecompressContext::Init()
 {
 	// Open codec, allocate buffers, ets
-	WAVEFORMATEX * pSrcFormat = m_SrcFile.GetWaveFormat();
 	WAVEFORMATEX wf =
 	{
 		WAVE_FORMAT_PCM,
-		pSrcFormat->nChannels,
+		m_pWf->nChannels,
 		0,  // nSamplesPerSec
 		0,  // nAvgBytesPerSec
 		0, // nBlockAlign
 		16, // bits per sample
 		0   // cbSize
 	};
-	m_ash.cbSrcLength = 0;
+	m_ash.cbSrcLength = 0x10000;
 	m_ash.cbDstLength = 0x10000;  // 64K
-	if (0 == m_acmStr)
+	if (WAVE_FORMAT_PCM != m_pWf->wFormatTag
+		|| 16 != m_pWf->wBitsPerSample)
 	{
-		if (MMSYSERR_NOERROR != (m_MmResult = acmFormatSuggest(m_acmDrv, pSrcFormat,
-																& wf, sizeof wf,
-																ACM_FORMATSUGGESTF_NCHANNELS
-																| ACM_FORMATSUGGESTF_WBITSPERSAMPLE
-																| ACM_FORMATSUGGESTF_WFORMATTAG))
-			|| MMSYSERR_NOERROR != (m_MmResult = acmStreamOpen( & m_acmStr, m_acmDrv,
-													pSrcFormat, & wf, NULL, NULL, NULL, ACM_STREAMOPENF_NONREALTIME)))
+		if (0 == m_acmStr)
 		{
+			if (MMSYSERR_NOERROR != (m_MmResult = acmFormatSuggest(m_acmDrv, m_pWf,
+													& wf, sizeof wf,
+													ACM_FORMATSUGGESTF_NCHANNELS
+													| ACM_FORMATSUGGESTF_WBITSPERSAMPLE
+													| ACM_FORMATSUGGESTF_WFORMATTAG))
+				|| MMSYSERR_NOERROR != (m_MmResult = acmStreamOpen( & m_acmStr, m_acmDrv,
+														m_pWf, & wf, NULL, NULL, NULL, ACM_STREAMOPENF_NONREALTIME)))
+			{
+				return FALSE;
+			}
+		}
+
+		TRACE("acmFormatSuggest:nSamplesPerSec=%d, BytesPerSec=%d, nBlockAlign=%d\n",
+			wf.nSamplesPerSec, wf.nAvgBytesPerSec, wf.nBlockAlign);
+
+		if (MMSYSERR_NOERROR != (m_MmResult = acmStreamSize(m_acmStr, m_ash.cbDstLength, & m_ash.cbSrcLength,
+															ACM_STREAMSIZEF_DESTINATION))
+			|| MMSYSERR_NOERROR != (m_MmResult = acmStreamSize(m_acmStr, m_ash.cbSrcLength, & m_ash.cbDstLength,
+																ACM_STREAMSIZEF_SOURCE)))
+		{
+			if (m_acmStr != NULL)
+			{
+				acmStreamClose(m_acmStr, 0);
+				m_acmStr = NULL;
+			}
+			// todo:error
 			return FALSE;
 		}
-	}
-
-	TRACE("acmFormatSuggest:nSamplesPerSec=%d, BytesPerSec=%d, nBlockAlign=%d\n",
-		wf.nSamplesPerSec, wf.nAvgBytesPerSec, wf.nBlockAlign);
-
-	if (MMSYSERR_NOERROR != (m_MmResult = acmStreamSize(m_acmStr, m_ash.cbDstLength, & m_ash.cbSrcLength,
-														ACM_STREAMSIZEF_DESTINATION))
-		|| MMSYSERR_NOERROR != (m_MmResult = acmStreamSize(m_acmStr, m_ash.cbSrcLength, & m_ash.cbDstLength,
-															ACM_STREAMSIZEF_SOURCE)))
-	{
-		if (m_acmStr != NULL)
-		{
-			acmStreamClose(m_acmStr, 0);
-			m_acmStr = NULL;
-		}
-		// todo:error
-		return FALSE;
 	}
 	// allocate buffers
 	m_SrcBufSize = m_ash.cbSrcLength;
@@ -1780,35 +1804,44 @@ BOOL CDecompressContext::Init()
 	if (NULL == m_ash.pbSrc
 		|| NULL == m_ash.pbDst)
 	{
-		delete m_ash.pbSrc;
+		delete[] m_ash.pbSrc;
 		m_ash.pbSrc = NULL;
-		delete m_ash.pbDst;
+		delete[] m_ash.pbDst;
 		m_ash.pbDst = NULL;
-		acmStreamClose(m_acmStr, 0);
+		if (NULL != m_acmStr)
+		{
+			acmStreamClose(m_acmStr, 0);
+		}
 		m_acmStr = NULL;
 		// todo:error
 		return FALSE;
 	}
 	// prepare the buffer
-	acmStreamPrepareHeader(m_acmStr, & m_ash, 0);
+	if (NULL != m_acmStr)
+	{
+		acmStreamPrepareHeader(m_acmStr, & m_ash, 0);
+	}
 	m_ConvertFlags = ACM_STREAMCONVERTF_START;
 	return TRUE;
 }
 
 BOOL CDecompressContext::DeInit()
 {
+	m_ash.cbDstLength = m_DstBufSize;
+	m_ash.cbSrcLength = m_DstBufSize;
 	if (NULL != m_acmStr)
 	{
-		m_ash.cbDstLength = m_DstBufSize;
-		m_ash.cbSrcLength = m_DstBufSize;
 		acmStreamUnprepareHeader(m_acmStr, & m_ash, 0);
-		delete[] m_ash.pbDst;
-		delete[] m_ash.pbSrc;
-		m_ash.pbDst = NULL;
-		m_ash.pbSrc = NULL;
-		acmStreamClose(m_acmStr, 0);
-		m_acmStr = NULL;
 	}
+	delete[] m_ash.pbDst;
+	delete[] m_ash.pbSrc;
+	m_ash.pbDst = NULL;
+	m_ash.pbSrc = NULL;
+	if (NULL != m_acmStr)
+	{
+		acmStreamClose(m_acmStr, 0);
+	}
+	m_acmStr = NULL;
 	if (NULL != m_acmDrv)
 	{
 		acmDriverClose(m_acmDrv, 0);

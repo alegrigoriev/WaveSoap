@@ -18,6 +18,7 @@
 #define IDR_ALLTYPES                    132
 #define IDD_DIALOG_MORE_NOISEREDUCTION  133
 #define IDR_MENU_AMPLITUDE_RULER        133
+#define IDR_RAWTYPE                     133
 #define IDD_DIALOG_MORE_DECLICK         134
 #define IDR_MENU_FFT_RULER              134
 #define IDD_DIALOGBAR_MDI_CHILD         135
@@ -90,6 +91,9 @@
 #define IDD_DIALOG_INSERT_SILENCE_MONO  176
 #define IDR_CHILDFRAME                  177
 #define IDD_FUNCTIONS_AND_OPERATORS_TAB 177
+#define IDD_DIALOG_NO_WINDOWS_MEDIA_TYPE 178
+#define IDD_DIALOG_RAW_FILE_PARAMETERS  179
+#define IDD_DIALOG_SAVE_RAW_FILE        180
 #define IDC_EDIT_MIN_CLICK_AMPLITUDE    1000
 #define IDC_TAB_SWITCH_VIEW_MODE        1000
 #define IDC_CHECK_LOG_CLICKS            1001
@@ -184,6 +188,7 @@
 #define IDC_RADIO1                      1040
 #define IDC_RADIO2                      1041
 #define IDC_RADIO_CHANNEL               1042
+#define IDC_RADIO_16BITS                1042
 #define IDC_RADIO_DC_SELECT             1043
 #define IDC_EDIT_DC_OFFSET              1044
 #define IDC_CHECK_5SECONDS              1045
@@ -264,6 +269,7 @@
 #define IDC_BUTTON8                     1152
 #define IDC_RADIO4                      1153
 #define IDC_RADIO_WAV_SIZE              1154
+#define IDC_RADIO_COMPRESSION_ULAW      1154
 #define IDC_COMBO_PLAYBACK_DEVICE       1155
 #define IDC_SPIN_NUM_PLAYBACK_BUFFERS   1156
 #define IDC_COMBO_RECORDING_DEVICE      1157
@@ -282,6 +288,15 @@
 #define IDC_STATIC3                     1177
 #define IDC_BUTTON_EXPORT_EXPRESSIONS   1178
 #define IDC_BUTTON_IMPORT_EXPRESSIONS   1179
+#define IDC_EDIT_HEADER_LENGTH          1180
+#define IDC_EDIT_TRAILER_LENGTH         1181
+#define IDC_RADIO_LSB_FIRST             1182
+#define IDC_RADIO_MSB_FIRST             1183
+#define IDC_STATIC_BYTE_ORDER           1184
+#define IDC_RADIO_8BITS                 1185
+#define IDC_RADIO_COMPRESSION_NONE      1186
+#define IDC_RADIO_COMPRESSION_ALAW      1187
+#define IDC_STATIC_COMPRESSION          1188
 #define IDC_VIEW_RULER_SAMPLES          32771
 #define IDC_VIEW_RULER_HHMMSS           32772
 #define IDC_VIEW_RULER_SECONDS          32773
@@ -435,6 +450,7 @@
 #define IDS_EXPRESSIONS_FILE_FILTER     32918
 #define IDS_EXPRESSIONS_SAVE_TITLE      32919
 #define IDS_EXPRESSIONS_LOAD_TITLE      32920
+#define IDS_CANNOT_OPEN_WMA             32921
 #define ID_FILE_PROPERTIES              40000
 #define ID_VIEW_ZOOMVERT_NORMAL         40001
 #define ID_VIEW_ZOOMIN_HOR_FULL         40002
@@ -531,7 +547,7 @@
 #define _APS_3D_CONTROLS                     1
 #define _APS_NEXT_RESOURCE_VALUE        179
 #define _APS_NEXT_COMMAND_VALUE         40105
-#define _APS_NEXT_CONTROL_VALUE         1180
+#define _APS_NEXT_CONTROL_VALUE         1189
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif

@@ -101,7 +101,7 @@ public:
 
 // Dialog Data
 	//{{AFX_DATA(CWmpNotInstalleedWarningDlg)
-	enum { IDD = IDD_DIALOG_NO_WINDOWS_MEDIA };
+	enum { IDD = IDD_DIALOG_NO_WINDOWS_MEDIA_TYPE };
 	BOOL	m_DontShowAnymore;
 	//}}AFX_DATA
 

@@ -175,6 +175,10 @@ SOURCE=.\PreferencesPropertySheet.cpp
 # End Source File
 # Begin Source File
 
+SOURCE=.\RawFileParametersDlg.cpp
+# End Source File
+# Begin Source File
+
 SOURCE=.\ReopenCompressedFileDialog.cpp
 # End Source File
 # Begin Source File
@@ -422,6 +426,10 @@ SOURCE=.\OperationDialogs2.h
 # Begin Source File
 
 SOURCE=.\PreferencesPropertySheet.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\RawFileParametersDlg.h
 # End Source File
 # Begin Source File
 

@@ -45,6 +45,7 @@ public:
 protected:  // control bar embedded members
 	CWaveSoapFrontStatusBar  m_wndStatusBar;
 	CToolBar    m_wndToolBar;
+	CToolBar    m_wndToolBar2;
 	CReBar      m_wndReBar;
 	CDialogBar      m_wndDlgBar;
 	int m_nRotateChildIndex;  // used for Ctrl+Tab handling

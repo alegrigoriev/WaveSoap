@@ -831,6 +831,7 @@ int CChildFrame::OnCreate(LPCREATESTRUCT lpCreateStruct)
 	if (CMDIChildWnd::OnCreate(lpCreateStruct) == -1)
 		return -1;
 
+#if 0
 	if ( ! m_wndToolBar.CreateEx(this, WS_CHILD | WS_VISIBLE | CBRS_SIZE_FIXED | CBRS_TOP )
 		|| ! m_wndToolBar.LoadToolBar(IDR_CHILDFRAME))
 	{
@@ -839,7 +840,6 @@ int CChildFrame::OnCreate(LPCREATESTRUCT lpCreateStruct)
 	}
 	// to avoid setting width to the string length,
 	// the status bar is created with dummy IDs
-#if 0
 	if (!m_wndReBar.Create(this, RBS_BANDBORDERS, WS_CHILD | WS_VISIBLE
 							| WS_CLIPSIBLINGS | WS_CLIPCHILDREN | CBRS_BOTTOM)
 		|| !m_wndReBar.AddBar(&m_wndToolBar)
@@ -848,7 +848,19 @@ int CChildFrame::OnCreate(LPCREATESTRUCT lpCreateStruct)
 		TRACE0("Failed to create rebar\n");
 		return -1;      // fail to create
 	}
+	m_wndToolBar.SetBarStyle(m_wndToolBar.GetBarStyle() |
+							CBRS_TOOLTIPS | CBRS_FLYBY);
+	CThisApp * pApp = GetApp();
+	if ( ! pApp->m_bShowStatusBar)
+	{
+		ShowControlBar( & m_wndStatusBar, FALSE, FALSE);
+	}
+	if ( ! pApp->m_bShowToolbar)
+	{
+		ShowControlBar( & m_wndToolBar, FALSE, FALSE);
+	}
 #endif
+
 	if (!m_wndStatusBar.Create(this)
 //        || !m_wndReBar.AddBar(&m_wndStatusBar)
 		|| !m_wndStatusBar.SetIndicators(indicators,

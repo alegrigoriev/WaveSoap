@@ -38,7 +38,8 @@ public:
 	CWaveSoapDocTemplate( UINT nIDResource, UINT nIDStringResource,
 						CRuntimeClass* pDocClass,
 						CRuntimeClass* pFrameClass, CRuntimeClass* pViewClass )
-		:CMultiDocTemplate(nIDResource, pDocClass, pFrameClass, pViewClass)
+		:CMultiDocTemplate(nIDResource, pDocClass, pFrameClass, pViewClass),
+		m_OpenDocumentFlags(0)
 	{
 		if ( ! m_strDocStrings.LoadString(nIDStringResource))
 		{
@@ -49,6 +50,8 @@ public:
 	virtual CDocument* OpenDocumentFile( LPCTSTR lpszPathName, int flags = 1
 											//BOOL bMakeVisible = TRUE
 										);
+
+	DWORD m_OpenDocumentFlags;
 	virtual void OnIdle();
 	void BroadcastUpdate(UINT lHint);
 	BOOL IsAnyDocumentModified();
@@ -108,7 +111,12 @@ public:
 							LPCTSTR lpszFilter = NULL,
 							CWnd* pParentWnd = NULL)
 		: CFileDialogWithHistory(bOpenFileDialog, lpszDefExt, lpszFileName, dwFlags,
-								lpszFilter, pParentWnd), m_bReadOnly(false), m_bDirectMode(false)
+								lpszFilter, pParentWnd),
+		m_bReadOnly(false),
+		m_MinWmaFilter(0),
+		m_MaxWmaFilter(0),
+		m_PrevFilter(-1),
+		m_bDirectMode(false)
 	{
 	}
 
@@ -123,6 +131,9 @@ public:
 	int nSamplingRate;
 	int nSamples;
 	CString WaveFormat;
+	int m_MinWmaFilter;
+	int m_MaxWmaFilter;
+	int m_PrevFilter;
 
 	virtual BOOL OnFileNameOK();
 
@@ -137,7 +148,9 @@ public:
 	afx_msg void OnSize(UINT nType, int cx, int cy);
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
-	virtual BOOL OnWndMsg(UINT message, WPARAM wParam, LPARAM lParam, LRESULT* pResult);
+#ifdef _DEBUG
+	//virtual BOOL OnWndMsg(UINT message, WPARAM wParam, LPARAM lParam, LRESULT* pResult);
+#endif
 };
 
 BEGIN_MESSAGE_MAP(CWaveSoapFileOpenDialog, CFileDialogWithHistory)
@@ -227,6 +240,7 @@ CWaveSoapFrontApp::CWaveSoapFrontApp()
 	m_pAllTypesTemplate(NULL),
 	m_pMP3TypeTemplate(NULL),
 	m_pWavTypeTemplate(NULL),
+	m_pRawTypeTemplate(NULL),
 	m_pWmaTypeTemplate(NULL),
 
 	m_DontShowMediaPlayerWarning(FALSE),
@@ -506,43 +520,54 @@ BOOL CWaveSoapFrontApp::InitInstance()
 	// Only WAV template is added in the list and actually used.
 	// All others are used only to hold file type strings.
 	// register WAV document
-	CMultiDocTemplate * pDocTemplate;
-	pDocTemplate = new CWaveSoapDocTemplate(
-											// second ID - template string
-											IDR_WAVESOTYPE, IDR_WAVESOTYPE,
-											RUNTIME_CLASS(CWaveSoapFrontDoc),
-											RUNTIME_CLASS(CChildFrame), // custom MDI child frame
-											RUNTIME_CLASS(CWaveSoapFrontView)
-											);
-	AddDocTemplate(pDocTemplate);
-	m_pWavTypeTemplate = pDocTemplate;
+	m_pWavTypeTemplate = new CWaveSoapDocTemplate(
+												// second ID - template string
+												IDR_WAVESOTYPE, IDR_WAVESOTYPE,
+												RUNTIME_CLASS(CWaveSoapFrontDoc),
+												RUNTIME_CLASS(CChildFrame), // custom MDI child frame
+												RUNTIME_CLASS(CWaveSoapFrontView)
+												);
+	AddDocTemplate(m_pWavTypeTemplate);
 
-	if (CanOpenWindowsMedia())
-	{
-		// register MP3 document
-		m_pMP3TypeTemplate = new CWaveSoapDocTemplate(
-													IDR_WAVESOTYPE, IDR_MP3TYPE,
+	// MP3 and WMA are registered even when the decoder is not available
+	// register MP3 document
+	m_pMP3TypeTemplate = new CWaveSoapDocTemplate(
+												IDR_WAVESOTYPE, IDR_MP3TYPE,
+												RUNTIME_CLASS(CWaveSoapFrontDoc),
+												RUNTIME_CLASS(CChildFrame), // custom MDI child frame
+												RUNTIME_CLASS(CWaveSoapFrontView)
+												);
+	m_pMP3TypeTemplate->m_OpenDocumentFlags = OpenDocumentMp3File;
+	AddDocTemplate(m_pMP3TypeTemplate);
+
+	// register WMA document
+	m_pWmaTypeTemplate = new CWaveSoapDocTemplate(
+												IDR_WAVESOTYPE, IDR_WMATYPE,
+												RUNTIME_CLASS(CWaveSoapFrontDoc),
+												RUNTIME_CLASS(CChildFrame), // custom MDI child frame
+												RUNTIME_CLASS(CWaveSoapFrontView)
+												);
+	m_pWmaTypeTemplate->m_OpenDocumentFlags = OpenDocumentWmaFile;
+	AddDocTemplate(m_pWmaTypeTemplate);
+
+	// register WMA document
+	m_pRawTypeTemplate = new CWaveSoapDocTemplate(
+												IDR_WAVESOTYPE, IDR_RAWTYPE,
+												RUNTIME_CLASS(CWaveSoapFrontDoc),
+												RUNTIME_CLASS(CChildFrame), // custom MDI child frame
+												RUNTIME_CLASS(CWaveSoapFrontView)
+												);
+	m_pRawTypeTemplate->m_OpenDocumentFlags = OpenDocumentRawFile;
+	AddDocTemplate(m_pRawTypeTemplate);
+
+	// register All types document
+	m_pAllTypesTemplate = new CWaveSoapDocTemplate(
+													IDR_WAVESOTYPE, IDR_ALLTYPES,
 													RUNTIME_CLASS(CWaveSoapFrontDoc),
 													RUNTIME_CLASS(CChildFrame), // custom MDI child frame
 													RUNTIME_CLASS(CWaveSoapFrontView)
 													);
-
-		// register WMA document
-		m_pWmaTypeTemplate = new CWaveSoapDocTemplate(
-													IDR_WAVESOTYPE, IDR_WMATYPE,
-													RUNTIME_CLASS(CWaveSoapFrontDoc),
-													RUNTIME_CLASS(CChildFrame), // custom MDI child frame
-													RUNTIME_CLASS(CWaveSoapFrontView)
-													);
-
-		// register All types document
-		m_pAllTypesTemplate = new CWaveSoapDocTemplate(
-														IDR_WAVESOTYPE, IDR_ALLTYPES,
-														RUNTIME_CLASS(CWaveSoapFrontDoc),
-														RUNTIME_CLASS(CChildFrame), // custom MDI child frame
-														RUNTIME_CLASS(CWaveSoapFrontView)
-														);
-	}
+	m_pAllTypesTemplate->m_OpenDocumentFlags = OpenDocumentRawFile;
 
 	// create main MDI Frame window
 	CMainFrame* pMainFrame = new CMainFrame;
@@ -745,6 +770,7 @@ CDocument* CWaveSoapFrontApp::OpenDocumentFile(LPCTSTR lpszPathName)
 CDocument* CWaveSoapDocTemplate::OpenDocumentFile(LPCTSTR lpszPathName,
 												int flags/* BOOL bMakeVisible */)
 {
+	flags |= m_OpenDocumentFlags;
 	CDocument* pJustDocument = CreateNewDocument();
 	BOOL bMakeVisible = flags & 1;
 	WAVEFORMATEX * pWfx = NULL;
@@ -935,9 +961,12 @@ int CWaveSoapFrontApp::ExitInstance()
 		m_hWMVCORE_DLL_Handle = NULL;
 	}
 	delete m_pAllTypesTemplate;
-	delete m_pMP3TypeTemplate;
+
+	// those are deleted by doc manager:
+	//delete m_pMP3TypeTemplate;
 	//delete m_pWavTypeTemplate;
-	delete m_pWmaTypeTemplate;
+	//delete m_pWmaTypeTemplate;
+	//delete m_pRawTypeTemplate;
 	m_Palette.DeleteObject();
 	return CWinApp::ExitInstance();
 }
@@ -1184,6 +1213,8 @@ void CWaveSoapDocManager::OnFileOpen()
 	{
 		_AfxAppendFilterSuffix(strFilter, dlgFile.m_ofn, pApp->m_pWavTypeTemplate, NULL);
 	}
+
+	dlgFile.m_MinWmaFilter = dlgFile.m_ofn.nMaxCustFilter;
 	if (pApp->m_pMP3TypeTemplate)
 	{
 		_AfxAppendFilterSuffix(strFilter, dlgFile.m_ofn, pApp->m_pMP3TypeTemplate, NULL);
@@ -1191,6 +1222,12 @@ void CWaveSoapDocManager::OnFileOpen()
 	if (pApp->m_pWmaTypeTemplate)
 	{
 		_AfxAppendFilterSuffix(strFilter, dlgFile.m_ofn, pApp->m_pWmaTypeTemplate, NULL);
+	}
+	dlgFile.m_MaxWmaFilter = dlgFile.m_ofn.nMaxCustFilter;
+
+	if (pApp->m_pRawTypeTemplate)
+	{
+		_AfxAppendFilterSuffix(strFilter, dlgFile.m_ofn, pApp->m_pRawTypeTemplate, NULL);
 	}
 
 	// append the "*.*" all files filter
@@ -1248,6 +1285,7 @@ void CWaveSoapDocManager::OnFileOpen()
 	fileNameBuf.ReleaseBuffer();
 }
 
+#if 0//def _DEBUG
 BOOL CWaveSoapFileOpenDialog::OnWndMsg(UINT message, WPARAM wParam, LPARAM lParam, LRESULT* pResult)
 {
 	if (WM_COMMAND == message)
@@ -1260,9 +1298,9 @@ BOOL CWaveSoapFileOpenDialog::OnWndMsg(UINT message, WPARAM wParam, LPARAM lPara
 		TRACE("OnWndMsg WM_NOTIFY idctrl=%X, hWndFrom=%X, idFrom=%X, code=%X\n",
 			wParam, pnmh->hwndFrom, pnmh->idFrom, pnmh->code);
 	}
-	return CFileDialog::OnWndMsg(message, wParam, lParam, pResult);
+	return CFileDialogWithHistory::OnWndMsg(message, wParam, lParam, pResult);
 }
-
+#endif
 void CWaveSoapFileOpenDialog::ShowWmaFileInfo(CDirectFile & File)
 {
 	if ( ! GetApp()->CanOpenWindowsMedia())
@@ -1352,7 +1390,7 @@ BOOL CWaveSoapFileOpenDialog::OnFileNameOK()
 
 void CWaveSoapFileOpenDialog::OnInitDone()
 {
-	CFileDialog::OnInitDone();
+	CFileDialogWithHistory::OnInitDone();
 	ClearFileInfoDisplay();
 
 	CButton * pRO = (CButton *)GetDlgItem(IDC_CHECK_READONLY);
@@ -1366,7 +1404,6 @@ void CWaveSoapFileOpenDialog::OnInitDone()
 		pDirect->SetCheck(m_bDirectMode);
 		pDirect->EnableWindow( ! m_bReadOnly);
 	}
-	CFileDialogWithHistory::OnInitDone();
 }
 
 void CWaveSoapFileOpenDialog::OnFileNameChange()
@@ -1543,6 +1580,26 @@ void CWaveSoapFileOpenDialog::ClearFileInfoDisplay()
 
 void CWaveSoapFileOpenDialog::OnTypeChange()
 {
+	// display warning if can't open MP3 and WMA
+	TRACE("Filter changed to %d\n", m_ofn.nFilterIndex);
+	CThisApp * pApp = GetApp();
+	// the function is called twice in a row
+	if (m_PrevFilter == m_ofn.nFilterIndex)
+	{
+		return;
+	}
+	m_PrevFilter = m_ofn.nFilterIndex;
+	if (m_ofn.nFilterIndex >= m_MinWmaFilter + 1
+		&& m_ofn.nFilterIndex < m_MaxWmaFilter + 1
+		&& ! pApp->CanOpenWindowsMedia()
+		&& ! pApp->m_DontShowMediaPlayerWarning
+		)
+	{
+		CWmpNotInstalleedWarningDlg dlg;
+		dlg.m_DontShowAnymore = pApp->m_DontShowMediaPlayerWarning;
+		dlg.DoModal();
+		pApp->m_DontShowMediaPlayerWarning = dlg.m_DontShowAnymore;
+	}
 }
 
 void CWaveSoapFileOpenDialog::OnSize(UINT nType, int cx, int cy)
@@ -2289,7 +2346,7 @@ CDocument* CWaveSoapDocManager::OpenDocumentFile(LPCTSTR lpszFileName, int flags
 	}
 	if (bestMatch != CDocTemplate::yesAttemptNative)
 	{
-		flags |= OpenDocumentNonWavFile;
+		flags |= OpenDocumentRawFile;
 	}
 	return pBestTemplate->OpenDocumentFile(szPath, flags);
 }

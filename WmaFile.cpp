@@ -7,6 +7,7 @@ HRESULT STDMETHODCALLTYPE CDirectFileStream::Read(
 												/* [in] */ ULONG cb,
 												/* [out] */ ULONG __RPC_FAR *pcbRead)
 {
+	TRACE("CDirectFileStream::Read %d bytes\n", cb);
 	LONG lRead = m_File.Read(pv, cb);
 	if (lRead != -1)
 	{
@@ -27,6 +28,7 @@ HRESULT STDMETHODCALLTYPE CDirectFileStream::Write(
 													/* [in] */ ULONG cb,
 													/* [out] */ ULONG __RPC_FAR *pcbWritten)
 {
+	TRACE("CDirectFileStream::Write %d bytes\n", cb);
 	LONG lWritten = m_File.Write(pv, cb);
 	if (-1 != lWritten)
 	{
@@ -47,6 +49,8 @@ HRESULT STDMETHODCALLTYPE CDirectFileStream::Seek(
 												/* [in] */ DWORD dwOrigin,
 												/* [out] */ ULARGE_INTEGER __RPC_FAR *plibNewPosition)
 {
+	TRACE("CDirectFileStream::Seek to %08X%08X, %d\n",
+		dlibMove.HighPart, dlibMove.LowPart, dwOrigin);
 	int origin;
 	switch (dwOrigin)
 	{
@@ -94,6 +98,7 @@ HRESULT STDMETHODCALLTYPE CDirectFileStream::CopyTo(
 													/* [out] */ ULARGE_INTEGER __RPC_FAR *pcbWritten)
 {
 	// copy cb bytes from this stream to *pstrm
+	TRACE("CDirectFileStream::CopyTo %d bytes\n", cb);
 	LONGLONG FilePos = m_File.Seek(0, FILE_CURRENT);
 	LONGLONG FileLength = m_File.GetLength();
 	if (NULL != pcbRead)
@@ -171,6 +176,7 @@ HRESULT STDMETHODCALLTYPE CDirectFileStream::LockRegion(
 														/* [in] */ ULARGE_INTEGER cb,
 														/* [in] */ DWORD dwLockType)
 {
+	TRACE("CDirectFileStream::LockRegion\n");
 	return STG_E_INVALIDFUNCTION;
 }
 
@@ -179,6 +185,7 @@ HRESULT STDMETHODCALLTYPE CDirectFileStream::UnlockRegion(
 														/* [in] */ ULARGE_INTEGER cb,
 														/* [in] */ DWORD dwLockType)
 {
+	TRACE("CDirectFileStream::UnlockRegion\n");
 	return STG_E_INVALIDFUNCTION;
 }
 
@@ -186,6 +193,7 @@ HRESULT STDMETHODCALLTYPE CDirectFileStream::Stat(
 												/* [out] */ STATSTG __RPC_FAR *pstatstg,
 												/* [in] */ DWORD grfStatFlag)
 {
+	TRACE("CDirectFileStream::Stat flag=%x\n", grfStatFlag);
 	if (! m_File.IsOpen())
 	{
 		return STG_E_ACCESSDENIED;
@@ -209,6 +217,7 @@ HRESULT STDMETHODCALLTYPE CDirectFileStream::Stat(
 	pstatstg->ctime = m_File.GetFileInformation().ftCreationTime;
 	pstatstg->atime = m_File.GetFileInformation().ftLastAccessTime;
 	pstatstg->grfLocksSupported = 0;
+	pstatstg->grfMode = 0;
 	pstatstg->clsid = CLSID_NULL;
 	pstatstg->grfStateBits = 0;
 	pstatstg->reserved = 0;
@@ -218,6 +227,7 @@ HRESULT STDMETHODCALLTYPE CDirectFileStream::Stat(
 HRESULT STDMETHODCALLTYPE CDirectFileStream::Clone(
 													/* [out] */ IStream __RPC_FAR *__RPC_FAR *ppstm)
 {
+	TRACE("CDirectFileStream::Clone\n");
 	return STG_E_INVALIDFUNCTION;
 }
 
@@ -646,7 +656,7 @@ HRESULT CWmaDecoder::Start()
 	{
 		HRESULT hr = m_Reader->Start(0, 0, 1.0, NULL);
 		TRACE("Immediately after Start: ReaderStatus=%X\n", ReaderStatus);
-		WaitForSingleObject(m_SignalEvent, 1000);
+		WaitForSingleObject(m_SignalEvent, 5000);
 		if (ReaderStatus != WMT_STARTED)
 		{
 			m_Reader->Stop();
