@@ -54,7 +54,6 @@ protected:
 /////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////
 // CWaveMDIChildClient window
-
 class CWaveMDIChildClient : public CWnd
 {
 // Construction
@@ -90,10 +89,82 @@ public:
 		FftViewID = AFX_IDW_PANE_FIRST + 16,
 	};
 
+	class CNoFocusButton : public CButton
+	{
+// Construction
+	public:
+		CNoFocusButton() {}
+
+// Attributes
+	public:
+
+// Operations
+	public:
+// Overrides
+		// ClassWizard generated virtual function overrides
+		//{{AFX_VIRTUAL(CNoFocusButton)
+	public:
+		//}}AFX_VIRTUAL
+	public:
+		// Generated message map functions
+	protected:
+		//{{AFX_MSG(CNoFocusButton)
+		afx_msg int OnMouseActivate(CWnd* pDesktopWnd, UINT nHitTest, UINT message);
+		afx_msg void OnSetFocus(CWnd* pOldWnd);
+		//}}AFX_MSG
+		DECLARE_MESSAGE_MAP()
+	};
+
+	class CNoFocusWnd : public CWnd
+	{
+// Construction
+	public:
+		CNoFocusWnd() {}
+
+// Attributes
+	public:
+
+// Operations
+	public:
+// Overrides
+		// ClassWizard generated virtual function overrides
+		//{{AFX_VIRTUAL(CNoFocusWnd)
+	public:
+		//}}AFX_VIRTUAL
+	public:
+		// Generated message map functions
+	protected:
+		//{{AFX_MSG(CNoFocusWnd)
+		afx_msg int OnMouseActivate(CWnd* pDesktopWnd, UINT nHitTest, UINT message);
+		//}}AFX_MSG
+		DECLARE_MESSAGE_MAP()
+	};
+
 	CWnd wStatic;
 	CWnd wStatic1;
 	CWnd wStaticFftU;
-	CWnd wStaticFftL;
+	CNoFocusWnd wStaticFftL;
+
+	CNoFocusButton m_btZoomInVert;
+	CNoFocusButton m_btZoomInHor;
+	CNoFocusButton m_btZoomOutVert;
+	CNoFocusButton m_btZoomOutHor;
+	CNoFocusButton m_btZoomInVertFft;
+	CNoFocusButton m_btZoomInHorSpSec;
+	CNoFocusButton m_btZoomOutVertFft;
+	CNoFocusButton m_btZoomOutHorSpSec;
+
+	CBitmap m_bmZoomInVert;
+	CBitmap m_bmZoomInHor;
+	CBitmap m_bmZoomOutVert;
+	CBitmap m_bmZoomOutHor;
+	CBitmap m_bmZoomInVertFft;
+	CBitmap m_bmZoomInHorSpSec;
+	CBitmap m_bmZoomOutVertFft;
+	CBitmap m_bmZoomOutHorSpSec;
+
+	CToolBar m_FftZoomBar;
+
 	CVerticalTrackerBar wTracker;
 	CScrollBar m_sb;
 
