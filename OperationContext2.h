@@ -548,7 +548,7 @@ public:
 	typedef std::auto_ptr<ThisClass> auto_ptr;
 
 	CInitChannels(CWaveSoapFrontDoc * pDoc,
-				CWaveFile & File, SAMPLE_POSITION Start, SAMPLE_POSITION End, CHANNEL_MASK Channels);
+				CWaveFile & File, SAMPLE_INDEX Start, SAMPLE_INDEX End, CHANNEL_MASK Channels);
 
 protected:
 	virtual BOOL PrepareUndo();
