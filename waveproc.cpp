@@ -422,7 +422,7 @@ size_t CHumRemoval::ProcessSoundBuffer(char const * pIn, char * pOut,
 	size_t nInSamples = nInBytes / SampleSize;
 	size_t nOutSamples = nOutBytes / SampleSize;
 
-	WAVE_SAMPLE const * pInBuf = (WAVE_SAMPLE *) pIn;
+	WAVE_SAMPLE const * pInBuf = (WAVE_SAMPLE const *) pIn;
 	WAVE_SAMPLE * pOutBuf = (WAVE_SAMPLE *) pOut;
 
 	// process the data
@@ -707,8 +707,6 @@ struct SIGNAL_PARAMS
 	}
 };
 
-typedef struct NoiseReductionChannelData NR_ChannelData;
-
 struct NoiseReductionChannelData
 {
 	typedef NoiseReductionCore::DATA DATA;
@@ -719,13 +717,15 @@ struct NoiseReductionChannelData
 	unsigned const m_FftOrder;            // number of frequency bands (number of samples is double of that)
 	int m_nSamplesReceived;         // total samples received in ProcessSoundBuffer
 	int m_nSamplesStored;           // total samples stored in ProcessSoundBuffer
-	unsigned m_PrerollSamplesSaved;
+	BOOL m_PrerollSamplesSaved;
+	BOOL m_bPassThrough;        // pass the data through without change
 	int m_FftResultsProcessed;
 	// when all the processing is done, they should be the same
 
 	// FIFO to keep input samples
 	RingBufferA<DATA> InputDataBuffer;
 	RingBufferA<DATA> OutputDataBuffer;
+	RingBufferA<DATA> PassThroughBuffer;
 	// pointer to array
 	// for accumulating output result
 	float * m_AccumBuffer;
@@ -733,26 +733,28 @@ struct NoiseReductionChannelData
 	std::complex<DATA> * m_FftOutBuffer;
 	SIGNAL_PARAMS * m_pParams;
 
-	NoiseReductionChannelData(NoiseReductionCore * nr, int FftOrder);
+	NoiseReductionChannelData(NoiseReductionCore * nr, int FftOrder, BOOL PassThrough);
 	~NoiseReductionChannelData();
 
 	// return all samples left in the buffers
 	// returns number of samples drained
 	int FlushSamples(DATA * pBuf, int nOutSamples, int nChannels);
-	int FillInBuffer(WAVE_SAMPLE const * pBuf, int ninSamples, int nChannels);
+	int FillInBuffer(WAVE_SAMPLE const * pBuf, int nInSamples, int nChannels);
 	int DrainOutBuffer(DATA * pBuf, int nOutSamples, int nChannels);
+	void ResetOutBuffer();
 
 	void Reset()
 	{
 		InputDataBuffer.Purge();
 		OutputDataBuffer.Purge();
+		PassThroughBuffer.Purge();
 		for (unsigned i = 0; i <= m_FftOrder; i++)
 		{
 			m_pParams[i] = SIGNAL_PARAMS();
 		}
 		m_nSamplesReceived = 0;
 		m_nSamplesStored = 0;
-		m_PrerollSamplesSaved = 0;
+		m_PrerollSamplesSaved = FALSE;
 		m_FftResultsProcessed = 0;
 	}
 
@@ -834,15 +836,16 @@ void NoiseReductionParameters::Dump(unsigned indent) const
 
 /////////////////////////////////////////////////////////////////////////////
 ////////////////////////  NoiseReductionCore
-NoiseReductionCore::NoiseReductionCore(int nFftOrder, int nChannels,
-										long SampleRate, NoiseReductionParameters const & nr)
+NoiseReductionCore::NoiseReductionCore(int nFftOrder, NUMBER_OF_CHANNELS nChannels,
+										long SampleRate, NoiseReductionParameters const & nr,
+										CHANNEL_MASK ChannelsToProcess)
 	: NoiseReductionParameters(nr)
 	, m_nFftOrder(nFftOrder)
 	, m_SampleRate(SampleRate)
 	, m_nChannels(nChannels)
-	, m_Window(new float[nFftOrder * 2])
-	, m_pNoiseFloor(new float[nFftOrder + 1])
-
+	, m_Window(nFftOrder * 2)
+	, m_pNoiseFloor(nFftOrder + 1)
+	, m_ChannelsToProcess(ChannelsToProcess)
 #ifdef _DEBUG
 	, m_TotalBandProcessed(0),
 	m_TransientBandFound(0),
@@ -853,11 +856,15 @@ NoiseReductionCore::NoiseReductionCore(int nFftOrder, int nChannels,
 	m_MinLevelInBand(20)
 #endif
 {
-	memzero(m_ChannelData);
-
-	for (int ch = 0; ch < nChannels; ch++)
+	NUMBER_OF_CHANNELS ch;
+	for (ch = 0; ch < nChannels; ch++)
 	{
-		m_ChannelData[ch] = new NoiseReductionChannelData(this, nFftOrder);
+		m_ChannelData[ch] = new NoiseReductionChannelData(this, nFftOrder, 0 == (ChannelsToProcess & (1 << ch)));
+	}
+
+	for ( ; ch < MAX_NUMBER_OF_CHANNELS; ch++)
+	{
+		m_ChannelData[ch] = NULL;
 	}
 
 	unsigned i;
@@ -1029,9 +1036,6 @@ void NoiseReductionCore::GetResultPowerInBands(DATA * pBuf)  // nChannels * FftO
 
 NoiseReductionCore::~NoiseReductionCore()
 {
-	delete[] m_Window;
-	delete[] m_pNoiseFloor;
-
 	for (int ch = 0; ch < countof(m_ChannelData); ch++)
 	{
 		delete m_ChannelData[ch];
@@ -1051,6 +1055,14 @@ int NoiseReductionCore::DrainOutBuffer(DATA * pBuf, int nOutSamples)
 		nSavedSamples = m_ChannelData[ch]->DrainOutBuffer(pBuf + ch, nOutSamples, m_nChannels);
 	}
 	return nSavedSamples;
+}
+
+void NoiseReductionCore::ResetOutBuffer()
+{
+	for (int ch = 0; ch < m_nChannels; ch++)
+	{
+		m_ChannelData[ch]->ResetOutBuffer();
+	}
 }
 
 int NoiseReductionCore::FlushSamples(DATA * pBuf, int nOutSamples)
@@ -1161,7 +1173,7 @@ void NoiseReductionCore::AnalyseFft()
 
 		// post-process output data
 
-		pCh->AdjustFftBands(m_pNoiseFloor, SuppressionLimit);
+		pCh->AdjustFftBands(& m_pNoiseFloor[0], SuppressionLimit);
 	}
 }
 
@@ -1205,7 +1217,7 @@ BOOL CNoiseReduction::SetInputWaveformat(WAVEFORMATEX const * pWf)
 		delete m_pNrCore;
 		m_pNrCore = NULL;
 
-		m_pNrCore = new NoiseReductionCore(m_FftOrder, pWf->nChannels, pWf->nSamplesPerSec, m_NrParms);
+		m_pNrCore = new NoiseReductionCore(m_FftOrder, pWf->nChannels, pWf->nSamplesPerSec, m_NrParms, m_ChannelsToProcess);
 		return TRUE;
 	}
 	else
@@ -1227,7 +1239,7 @@ size_t CNoiseReduction::ProcessSoundBuffer(char const * pIn, char * pOut,
 	unsigned nOutSamples = nOutBytes / SampleSize;
 	unsigned nStoredSamples = 0;
 
-	WAVE_SAMPLE const * pInBuf = (WAVE_SAMPLE *) pIn;
+	WAVE_SAMPLE const * pInBuf = (WAVE_SAMPLE const *) pIn;
 	WAVE_SAMPLE * pOutBuf = (WAVE_SAMPLE *) pOut;
 
 	if (NULL == pInBuf)
@@ -1315,8 +1327,8 @@ size_t CNoiseReduction::ProcessSoundBuffer(char const * pIn, char * pOut,
 }
 
 ////////////////////////////////////////////
-/////////////////  NR_ChannelData
-NR_ChannelData::NoiseReductionChannelData(NoiseReductionCore * nr, int nFftOrder)
+/////////////////  NoiseReductionChannelData
+NoiseReductionChannelData::NoiseReductionChannelData(NoiseReductionCore * nr, int nFftOrder, BOOL PassThrough)
 	: pNr(nr)
 	, m_FftOrder(nFftOrder)
 	, m_AccumBuffer(new float[nFftOrder])
@@ -1325,11 +1337,12 @@ NR_ChannelData::NoiseReductionChannelData(NoiseReductionCore * nr, int nFftOrder
 	, m_pParams(new SIGNAL_PARAMS[nFftOrder + 1])
 	, m_nSamplesReceived(0)
 	, m_nSamplesStored(0)
-	, m_PrerollSamplesSaved(0)
+	, m_PrerollSamplesSaved(FALSE)
+	, m_bPassThrough(PassThrough)
 	, m_FftResultsProcessed(0)
 {
 	memset(m_AccumBuffer, 0, nFftOrder * (sizeof (float)));
-
+	PassThroughBuffer.AllocateBuffer(nFftOrder * 2);
 	InputDataBuffer.AllocateBuffer(nFftOrder * 2);
 	OutputDataBuffer.AllocateBuffer(nFftOrder * 2);
 }
@@ -1342,7 +1355,7 @@ NoiseReductionChannelData::~NoiseReductionChannelData()
 	delete[] m_pParams;
 }
 
-int NR_ChannelData::FlushSamples(DATA * pBuf, int nOutSamples, int nChannels)
+int NoiseReductionChannelData::FlushSamples(DATA * pBuf, int nOutSamples, int nChannels)
 {
 	int ReadFromOutBuffer = std::min((int) OutputDataBuffer.AvailableToRead(),
 									m_nSamplesReceived - m_nSamplesStored);
@@ -1361,7 +1374,26 @@ int NR_ChannelData::FlushSamples(DATA * pBuf, int nOutSamples, int nChannels)
 
 	m_nSamplesStored += ReadFromOutBuffer;
 
-	int ReadFromInBuffer = std::min(nOutSamples - ReadFromOutBuffer,
+	nOutSamples -= ReadFromOutBuffer;
+
+	int ReadFromThroughBuffer = std::min(nOutSamples,
+										(int) PassThroughBuffer.AvailableToRead());
+
+	if (ReadFromThroughBuffer > m_nSamplesReceived - m_nSamplesStored)
+	{
+		ReadFromThroughBuffer = m_nSamplesReceived - m_nSamplesStored;
+	}
+
+	for (int i = 0; i < ReadFromThroughBuffer; i++, pBuf += nChannels)
+	{
+		pBuf[0] = PassThroughBuffer.Read();
+	}
+
+	m_nSamplesStored += ReadFromThroughBuffer;
+
+	nOutSamples -= ReadFromThroughBuffer;
+
+	int ReadFromInBuffer = std::min(nOutSamples,
 									(int) InputDataBuffer.AvailableToRead());
 
 	if (ReadFromInBuffer > m_nSamplesReceived - m_nSamplesStored)
@@ -1376,10 +1408,10 @@ int NR_ChannelData::FlushSamples(DATA * pBuf, int nOutSamples, int nChannels)
 
 	m_nSamplesStored += ReadFromInBuffer;
 
-	return ReadFromOutBuffer + ReadFromInBuffer;
+	return ReadFromOutBuffer + ReadFromThroughBuffer + ReadFromInBuffer;
 }
 
-int NR_ChannelData::FillInBuffer(WAVE_SAMPLE const * pBuf, int nSamples, int nChannels)
+int NoiseReductionChannelData::FillInBuffer(WAVE_SAMPLE const * pBuf, int nSamples, int nChannels)
 {
 	nSamples = std::min(nSamples, int(InputDataBuffer.AvailableToWrite()));
 
@@ -1393,10 +1425,11 @@ int NR_ChannelData::FillInBuffer(WAVE_SAMPLE const * pBuf, int nSamples, int nCh
 	return nSamples;
 }
 
-void NR_ChannelData::ProcessInputFft()
+void NoiseReductionChannelData::ProcessInputFft()
 {
 	// process the current FFT
-	float const * Window = pNr->m_Window;
+	float const * Window = & pNr->m_Window[0];
+	ASSERT(InputDataBuffer.AvailableToRead() >= m_FftOrder * 2);
 
 	for (unsigned n = 0; n < m_FftOrder * 2; n++)
 	{
@@ -1404,17 +1437,26 @@ void NR_ChannelData::ProcessInputFft()
 		ASSERT(m_FftInBuffer[n] <= 32767. && m_FftInBuffer[n] >= -32768.);
 	}
 
-	if (m_PrerollSamplesSaved < m_FftOrder * 2)
+	ASSERT(PassThroughBuffer.AvailableToWrite() >= m_FftOrder);
+
+	for (unsigned n = 0; n < m_FftOrder; n++)
+	{
+		PassThroughBuffer.Write(InputDataBuffer[n]);
+	}
+
+	if ( ! m_PrerollSamplesSaved
+		&& PassThroughBuffer.AvailableToRead() >= m_FftOrder * 2)
 	{
 		for (unsigned f = 0; f < m_FftOrder; f++)
 		{
-			ASSERT(InputDataBuffer[f] <= 32767. && InputDataBuffer[f] >= -32768.);
+			ASSERT(PassThroughBuffer[f] <= 32767. && PassThroughBuffer[f] >= -32768.);
 
-			OutputDataBuffer.Write(InputDataBuffer[f]);
-			m_AccumBuffer[f] = Window[f + m_FftOrder] * m_FftInBuffer[f + m_FftOrder];
+			OutputDataBuffer.Write(PassThroughBuffer[f]);
+			m_AccumBuffer[f] = Window[f + m_FftOrder] * PassThroughBuffer[f + m_FftOrder];
 		}
 
-		m_PrerollSamplesSaved = m_FftOrder * 2;
+		PassThroughBuffer.Discard(m_FftOrder);
+		m_PrerollSamplesSaved = TRUE;
 	}
 
 	InputDataBuffer.Discard(m_FftOrder);
@@ -1422,7 +1464,7 @@ void NR_ChannelData::ProcessInputFft()
 	FastFourierTransform(m_FftInBuffer, m_FftOutBuffer, m_FftOrder * 2);
 }
 
-void NR_ChannelData::AnalyzeInputFft()
+void NoiseReductionChannelData::AnalyzeInputFft()
 {
 	for (unsigned f = 0; f <= m_FftOrder; f++)
 	{
@@ -1430,7 +1472,7 @@ void NR_ChannelData::AnalyzeInputFft()
 	}
 }
 
-void NR_ChannelData::AccumulateSubbandPower(float SubbandPower[FAR_MASKING_GRANULARITY])
+void NoiseReductionChannelData::AccumulateSubbandPower(float SubbandPower[FAR_MASKING_GRANULARITY])
 {
 	int const BandsPerMaskGranule = m_FftOrder / FAR_MASKING_GRANULARITY;
 	SIGNAL_PARAMS * p = m_pParams;
@@ -1446,7 +1488,7 @@ void NR_ChannelData::AccumulateSubbandPower(float SubbandPower[FAR_MASKING_GRANU
 
 // saves samples from the FIFO to the output buffer
 // returns number of saved samples
-int NR_ChannelData::DrainOutBuffer(DATA * pBuf, int nOutSamples, int nChannels)
+int NoiseReductionChannelData::DrainOutBuffer(DATA * pBuf, int nOutSamples, int nChannels)
 {
 	int nSamples = std::min(nOutSamples, int(OutputDataBuffer.AvailableToRead()));
 
@@ -1461,33 +1503,50 @@ int NR_ChannelData::DrainOutBuffer(DATA * pBuf, int nOutSamples, int nChannels)
 	return nSamples;
 }
 
-void NR_ChannelData::ProcessInverseFft()
+void NoiseReductionChannelData::ResetOutBuffer()
+{
+	OutputDataBuffer.Purge();
+	PassThroughBuffer.Purge();
+}
+
+void NoiseReductionChannelData::ProcessInverseFft()
 {
 	// Because FFT output is delayed by one round,
 	// we need to skip the very first result, which should be all zeros,
 	// and the next result, which is the first FFT window actually processed, already written to the output
 	if (m_FftResultsProcessed >= 2)
 	{
-		// perform inverse transform
-		FastInverseFourierTransform(m_FftOutBuffer, m_FftInBuffer, m_FftOrder * 2);
-		float const * Window = pNr->m_Window;
-
-		// add the processed data back to the output buffer
-		for (unsigned f = 0; f < m_FftOrder; f++)
+		if ( ! m_bPassThrough)
 		{
-			DATA tmp = Window[f] * m_FftInBuffer[f] + m_AccumBuffer[f];
+			// perform inverse transform
+			FastInverseFourierTransform(m_FftOutBuffer, m_FftInBuffer, m_FftOrder * 2);
+			float const * Window = & pNr->m_Window[0];
 
-			ASSERT(tmp <= 32767. && tmp >= -32768.);
+			// add the processed data back to the output buffer
+			for (unsigned f = 0; f < m_FftOrder; f++)
+			{
+				DATA tmp = Window[f] * m_FftInBuffer[f] + m_AccumBuffer[f];
 
-			OutputDataBuffer.Write(tmp);
+				ASSERT(tmp <= 32767. && tmp >= -32768.);
 
-			m_AccumBuffer[f] = Window[f + m_FftOrder] * m_FftInBuffer[f + m_FftOrder];
+				OutputDataBuffer.Write(tmp);
+
+				m_AccumBuffer[f] = Window[f + m_FftOrder] * m_FftInBuffer[f + m_FftOrder];
+			}
 		}
+		else
+		{
+			for (unsigned f = 0; f < m_FftOrder; f++)
+			{
+				OutputDataBuffer.Write(PassThroughBuffer[f]);
+			}
+		}
+		PassThroughBuffer.Discard(m_FftOrder);
 	}
 	m_FftResultsProcessed++;
 }
 
-void NR_ChannelData::AdjustFftBands(float const * pNoiseFloor, double SuppressionLimit)
+void NoiseReductionChannelData::AdjustFftBands(float const * pNoiseFloor, double SuppressionLimit)
 {
 
 #ifdef _DEBUG
@@ -1599,7 +1658,7 @@ void NR_ChannelData::AdjustFftBands(float const * pNoiseFloor, double Suppressio
 #endif
 }
 
-void NR_ChannelData::ApplyFarMasking(float FarMasking[FAR_MASKING_GRANULARITY])
+void NoiseReductionChannelData::ApplyFarMasking(float FarMasking[FAR_MASKING_GRANULARITY])
 {
 	// calculate fine masking function, using far masking table
 	// and near masking factors.
@@ -1620,8 +1679,8 @@ void NR_ChannelData::ApplyFarMasking(float FarMasking[FAR_MASKING_GRANULARITY])
 	p->sp_MaskingPower = float(p->sp_Power + FarMaskingFactor * FarMasking[FAR_MASKING_GRANULARITY - 1]);
 }
 
-void NR_ChannelData::CalculateMasking(double MaskingSpectralDecayNormLow,
-									double MaskingSpectralDecayNormHigh, double ToneEmphasis)
+void NoiseReductionChannelData::CalculateMasking(double MaskingSpectralDecayNormLow,
+												double MaskingSpectralDecayNormHigh, double ToneEmphasis)
 {
 	double const MaskingDistanceDelta =
 		(MaskingSpectralDecayNormHigh - MaskingSpectralDecayNormLow) / (m_FftOrder);
@@ -1659,9 +1718,9 @@ void NR_ChannelData::CalculateMasking(double MaskingSpectralDecayNormLow,
 
 }
 
-void NR_ChannelData::ProcessMaskingTemporalEnvelope(double MaskingTemporalDecayNormLow,
-													double MaskingTemporalDecayNormHigh,
-													unsigned MinFrequencyBandToProcess)
+void NoiseReductionChannelData::ProcessMaskingTemporalEnvelope(double MaskingTemporalDecayNormLow,
+																double MaskingTemporalDecayNormHigh,
+																unsigned MinFrequencyBandToProcess)
 {
 	// filter in time
 	SIGNAL_PARAMS * p = m_pParams;
