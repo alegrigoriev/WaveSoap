@@ -8,6 +8,7 @@
 #include "PathEx.h"
 #include <algorithm>
 #include <atlfile.h>
+#include "resource.h"
 
 #define DEBUG_RESCAN_PEAKS 0
 
@@ -3447,7 +3448,8 @@ void CWaveFile::InstanceDataWav::GetSortedMarkers(SAMPLE_INDEX_Vector & markers)
 	markers.erase(std::unique(markers.begin(), markers.end()), markers.end());
 }
 
-void CWaveFile::GetSortedFileSegments(WaveFileSegmentVector & segments) const
+void CWaveFile::GetSortedFileSegments(WaveFileSegmentVector & segments,
+									bool IncludeEndMarkerName) const
 {
 	InstanceDataWav * inst = GetInstanceData();
 	if (NULL != inst)
@@ -3456,13 +3458,15 @@ void CWaveFile::GetSortedFileSegments(WaveFileSegmentVector & segments) const
 
 		seg.Begin = NumberOfSamples();
 		seg.End = seg.Begin;
+		seg.Name.LoadString(IDS_END_OF_SAMPLE);
 		segments.push_back(seg);
 
-		inst->GetSortedFileSegments(segments);
+		inst->GetSortedFileSegments(segments, IncludeEndMarkerName);
 	}
 }
 
-void CWaveFile::InstanceDataWav::GetSortedFileSegments(WaveFileSegmentVector & segments) const
+void CWaveFile::InstanceDataWav::GetSortedFileSegments(WaveFileSegmentVector & segments,
+														bool IncludeEndMarkerName) const
 {
 	segments.reserve(segments.size() + m_CuePoints.size() + m_RegionMarkers.size());
 
@@ -3504,6 +3508,14 @@ void CWaveFile::InstanceDataWav::GetSortedFileSegments(WaveFileSegmentVector & s
 				&& pSegGet->Begin < pSegGet[1].Begin)
 		{
 			pSegGet->End = pSegGet[1].Begin;
+
+			if (IncludeEndMarkerName)
+			{
+				pSegGet->Name.Format(IDS_SEGMENT_NAME_FROM_MARKERS,
+									// make temporary copy of the begin name, because Format cannot work otherwise
+									LPCTSTR(CString(pSegGet->Name)), LPCTSTR(pSegGet[1].Name));
+			}
+
 			*pSegPut = *pSegGet;
 			++pSegPut;
 		}

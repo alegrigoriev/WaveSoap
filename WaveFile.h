@@ -647,8 +647,9 @@ public:
 
 		BOOL MoveWaveMarker(unsigned long MarkerCueID, SAMPLE_INDEX Sample);
 		BOOL SetMarkerLabel(unsigned long MarkerCueID, LPCTSTR Label);
+
 		void GetSortedMarkers(SAMPLE_INDEX_Vector & markers) const;
-		void GetSortedFileSegments(WaveFileSegmentVector & segments) const;
+		void GetSortedFileSegments(WaveFileSegmentVector & segments, bool IncludeEndMarkerName) const;
 
 		BOOL MoveMarkers(SAMPLE_INDEX SampleBegin, NUMBER_OF_SAMPLES SrcLength, NUMBER_OF_SAMPLES DstLength);
 		BOOL ReverseMarkers(SAMPLE_INDEX SampleBegin, NUMBER_OF_SAMPLES Length);
@@ -731,7 +732,7 @@ public:
 
 	// return sorted array of markers
 	void GetSortedMarkers(SAMPLE_INDEX_Vector & markers, BOOL IncludeFileLimits = FALSE) const;
-	void GetSortedFileSegments(WaveFileSegmentVector & segments) const;
+	void GetSortedFileSegments(WaveFileSegmentVector & segments, bool IncludeEndMarkerName = false) const;
 
 	unsigned SampleRate() const;
 
