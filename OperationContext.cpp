@@ -848,8 +848,8 @@ MEDIA_FILE_SIZE CThroughProcessOperation::GetCompletedOperationSize() const
 	}
 	else
 	{
-		return m_CurrentPass * BaseClass::GetTotalOperationSize()
-				+ BaseClass::GetCompletedOperationSize();
+		return (m_CurrentPass - 1) * BaseClass::GetTotalOperationSize()
+			+ BaseClass::GetCompletedOperationSize();
 	}
 }
 
@@ -2792,31 +2792,35 @@ BOOL CStatisticsContext::ProcessBuffer(void * buf, size_t const BufferLength,
 
 void CStatisticsContext::PostRetire()
 {
-	// read sample value at cursor
-	WAVE_SAMPLE Value[2] = {0, 0};
-	if (pDocument->m_CaretPosition < pDocument->WaveFileSamples())
+	// only show the dialog if the operation was all completed
+	if (m_Flags & OperationContextFinished)
 	{
-		int SampleSize = pDocument->WaveSampleSize();
-		DWORD offset = pDocument->m_WavFile.SampleToPosition(pDocument->m_CaretPosition);
-
-		if (SampleSize > sizeof Value)
+		// read sample value at cursor
+		WAVE_SAMPLE Value[2] = {0, 0};
+		if (pDocument->m_CaretPosition < pDocument->WaveFileSamples())
 		{
-			SampleSize = sizeof Value;
-		}
-		pDocument->m_WavFile.ReadAt(Value, SampleSize, offset);
-	}
-	// show dialog
-	CStatisticsDialog dlg;
-	dlg.m_pContext = this;
-	dlg.m_SamplesPerSec = pDocument->WaveSampleRate();
-	dlg.m_CaretPosition = pDocument->m_CaretPosition;
-	dlg.m_ValueAtCursorLeft = Value[0];
-	dlg.m_ValueAtCursorRight = Value[1];
-	dlg.m_sFilename = pDocument->GetTitle();
+			int SampleSize = pDocument->WaveSampleSize();
+			DWORD offset = pDocument->m_WavFile.SampleToPosition(pDocument->m_CaretPosition);
 
-	{
-		CDocumentPopup pop(pDocument);
-		dlg.DoModal();
+			if (SampleSize > sizeof Value)
+			{
+				SampleSize = sizeof Value;
+			}
+			pDocument->m_WavFile.ReadAt(Value, SampleSize, offset);
+		}
+		// show dialog
+		CStatisticsDialog dlg;
+		dlg.m_pContext = this;
+		dlg.m_SamplesPerSec = pDocument->WaveSampleRate();
+		dlg.m_CaretPosition = pDocument->m_CaretPosition;
+		dlg.m_ValueAtCursorLeft = Value[0];
+		dlg.m_ValueAtCursorRight = Value[1];
+		dlg.m_sFilename = pDocument->GetTitle();
+
+		{
+			CDocumentPopup pop(pDocument);
+			dlg.DoModal();
+		}
 	}
 	BaseClass::PostRetire();
 }
