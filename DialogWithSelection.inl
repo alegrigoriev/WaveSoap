@@ -39,4 +39,5 @@ CDialogWithSelectionT<B>::CDialogWithSelectionT(SAMPLE_INDEX Start,
 	, m_bLockChannels(FALSE)
 	, m_bAllowFileExtension(AllowFileExtension)
 {
+	m_Chan = Channel & File.ChannelsMask();
 }
