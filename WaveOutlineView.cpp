@@ -79,10 +79,7 @@ void CWaveOutlineView::OnDraw(CDC* pDC)
 	}
 	long nSamples = pDoc->WaveFileSamples();
 	WavePeak * pDocPeaks = pDoc->m_pPeaks;
-	if (NULL == pDocPeaks || 0 == nSamples)
-	{
-		return;
-	}
+
 	WavePeak * pPeaks = new WavePeak[width];
 	if (NULL == pPeaks)
 	{
@@ -91,9 +88,42 @@ void CWaveOutlineView::OnDraw(CDC* pDC)
 
 	int channels = pDoc->WaveChannels();
 
-	int i;
-	if (pDoc->m_WavePeakSize / channels >= width)
+	CWaveSoapFrontApp * pApp = GetApp();
+
+	CPalette * pOldPalette = NULL;
+
+	if (pDC->GetDeviceCaps(RASTERCAPS) & RC_PALETTE)
 	{
+		pOldPalette = pDC->SelectPalette(pApp->GetPalette(), FALSE);
+	}
+	CPen BlackPen;
+	BlackPen.CreatePen(PS_SOLID, 0, DWORD(0x000000u));
+	CGdiObject * pOldPen = pDC->SelectObject( & BlackPen);
+	// draw lower border line
+	pDC->MoveTo(cr.left, cr.bottom - 1);
+	pDC->LineTo(cr.right, cr.bottom - 1);
+
+	int i;
+	if (0 == nSamples)
+	{
+		for (i = ur.left; i < ur.right; i++)
+		{
+			pPeaks[i].low = 0;
+			pPeaks[i].high = 0;
+		}
+	}
+	else if (pDoc->m_WavePeakSize / channels >= width)
+	{
+		if (NULL == pDocPeaks)
+		{
+			pDC->SelectObject(pOldPen);
+			if (pOldPalette)
+			{
+				pDC->SelectPalette(pOldPalette, FALSE);
+			}
+			delete[] pPeaks;
+			return;
+		}
 		int PrevIdx = ur.left * pDoc->m_WavePeakSize / width;
 		for (i = ur.left; i < ur.right; i++)
 		{
@@ -122,6 +152,11 @@ void CWaveOutlineView::OnDraw(CDC* pDC)
 		__int16 * pBuf = new __int16[BufSize / sizeof(__int16)];
 		if (NULL == pBuf)
 		{
+			pDC->SelectObject(pOldPen);
+			if (pOldPalette)
+			{
+				pDC->SelectPalette(pOldPalette, FALSE);
+			}
 			delete[] pPeaks;
 			return;
 		}
@@ -163,7 +198,12 @@ void CWaveOutlineView::OnDraw(CDC* pDC)
 
 	int PeakMax = -0x8000;
 	int PeakMin = 0x7FFF;
-	for (i = 0; i < pDoc->m_WavePeakSize; i++)
+	if (0 == nSamples)
+	{
+		PeakMax = 1;
+		PeakMin = 1;
+	}
+	else for (i = 0; i < pDoc->m_WavePeakSize; i++)
 	{
 		if (PeakMin > pDocPeaks[i].low)
 		{
@@ -183,15 +223,15 @@ void CWaveOutlineView::OnDraw(CDC* pDC)
 	}
 	m_LastMaxAmplitude = PeakMax;
 
-	CPen WaveformPen;
-	CWaveSoapFrontApp * pApp = GetApp();
-	WaveformPen.CreatePen(PS_SOLID, 0, pApp->m_WaveColor);
-	CGdiObject * pOldPen = pDC->SelectObject( & WaveformPen);
-
 	if (0 == PeakMax)
 	{
 		PeakMax = 1;
 	}
+
+	CPen WaveformPen;
+	WaveformPen.CreatePen(PS_SOLID, 0, pApp->m_WaveColor);
+	pDC->SelectObject( & WaveformPen);
+
 	for (i = ur.left; i < ur.right; i++)
 	{
 		if (pPeaks[i].low <= pPeaks[i].high)
@@ -202,29 +242,32 @@ void CWaveOutlineView::OnDraw(CDC* pDC)
 			pDC->LineTo(i, y2 - 1);
 		}
 	}
-	CPen BlackPen;
-	BlackPen.CreatePen(PS_SOLID, 0, DWORD(0x000000u));
-	pDC->SelectObject( & BlackPen);
-	// draw lower border line
-	pDC->MoveTo(cr.left, cr.bottom - 1);
-	pDC->LineTo(cr.right, cr.bottom - 1);
-	// draw window boundary
-	int nLeftPos = MulDiv(m_LeftViewBoundary, cr.right, nSamples);
-	int nRightPos = MulDiv(m_RightViewBoundary, cr.right, nSamples);
-	pDC->MoveTo(nLeftPos, 0);
-	pDC->LineTo(nLeftPos, cr.bottom - 2);
-	pDC->LineTo(nRightPos, cr.bottom - 2);
-	pDC->LineTo(nRightPos, 0);
-	pDC->LineTo(nLeftPos, 0);
 
-	// draw playback cursor
-	if (-1 != m_PlaybackCursorPosition)
+	if (0 != nSamples)
 	{
-		int nCursorPos = MulDiv(m_PlaybackCursorPosition, cr.right, nSamples);
-		pDC->MoveTo(nCursorPos, 0);
-		pDC->LineTo(nCursorPos, cr.bottom - 1);
+		pDC->SelectObject( & BlackPen);
+		// draw window boundary
+		int nLeftPos = MulDiv(m_LeftViewBoundary, cr.right, nSamples);
+		int nRightPos = MulDiv(m_RightViewBoundary, cr.right, nSamples);
+		pDC->MoveTo(nLeftPos, 0);
+		pDC->LineTo(nLeftPos, cr.bottom - 2);
+		pDC->LineTo(nRightPos, cr.bottom - 2);
+		pDC->LineTo(nRightPos, 0);
+		pDC->LineTo(nLeftPos, 0);
+
+		// draw playback cursor
+		if (-1 != m_PlaybackCursorPosition)
+		{
+			int nCursorPos = MulDiv(m_PlaybackCursorPosition, cr.right, nSamples);
+			pDC->MoveTo(nCursorPos, 0);
+			pDC->LineTo(nCursorPos, cr.bottom - 1);
+		}
 	}
 	pDC->SelectObject(pOldPen);
+	if (pOldPalette)
+	{
+		pDC->SelectPalette(pOldPalette, FALSE);
+	}
 	delete[] pPeaks;
 }
 
