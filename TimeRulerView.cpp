@@ -6,6 +6,7 @@
 #include "WaveSoapFront.h"
 #include "TimeRulerView.h"
 #include "WaveSoapFrontView.h"
+#include "GdiObjectSave.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -69,7 +70,8 @@ void CTimeRulerView::DrawRulerSamples(CDC* pDC)
 
 	// background is erased by gray brush.
 	// draw horizontal line with ticks and numbers
-	CGdiObject * pOldFont = (CFont *) pDC->SelectStockObject(ANSI_VAR_FONT);
+	CGdiObjectSave OldFont(pDC, pDC->SelectStockObject(ANSI_VAR_FONT));
+
 	CPen DarkGrayPen(PS_SOLID, 0, 0x808080);
 	CRect cr;
 	GetClientRect( & cr);
@@ -117,7 +119,8 @@ void CTimeRulerView::DrawRulerSamples(CDC* pDC)
 	pDC->SetTextColor(0x000000);   // black
 	pDC->SetBkMode(TRANSPARENT);
 
-	CGdiObject * pOldPen = pDC->SelectStockObject(BLACK_PEN);
+	CGdiObjectSave OldPen(pDC, pDC->SelectStockObject(BLACK_PEN));
+
 	pDC->MoveTo(cr.left, cr.bottom - 5);
 	pDC->LineTo(cr.right, cr.bottom - 5);
 
@@ -175,8 +178,6 @@ void CTimeRulerView::DrawRulerSamples(CDC* pDC)
 		}
 	}
 
-	pDC->SelectObject(pOldPen);
-	pDC->SelectObject(pOldFont);
 }
 
 void CTimeRulerView::DrawRulerHhMmSs(CDC* pDC)
@@ -189,7 +190,7 @@ void CTimeRulerView::DrawRulerHhMmSs(CDC* pDC)
 
 	// background is erased by gray brush.
 	// draw horizontal line with ticks and numbers
-	CGdiObject * pOldFont = (CFont *) pDC->SelectStockObject(ANSI_VAR_FONT);
+	CGdiObjectSave OldFont(pDC, pDC->SelectStockObject(ANSI_VAR_FONT));
 	CPen DarkGrayPen(PS_SOLID, 0, 0x808080);
 	CRect cr;
 	GetClientRect( & cr);
@@ -292,7 +293,8 @@ void CTimeRulerView::DrawRulerHhMmSs(CDC* pDC)
 	pDC->SetTextColor(0x000000);   // black
 	pDC->SetBkMode(TRANSPARENT);
 
-	CGdiObject * pOldPen = pDC->SelectStockObject(BLACK_PEN);
+	CGdiObjectSave OldPen(pDC, pDC->SelectStockObject(BLACK_PEN));
+
 	pDC->MoveTo(cr.left, cr.bottom - 5);
 	pDC->LineTo(cr.right, cr.bottom - 5);
 
@@ -360,8 +362,6 @@ void CTimeRulerView::DrawRulerHhMmSs(CDC* pDC)
 		}
 	}
 
-	pDC->SelectObject(pOldPen);
-	pDC->SelectObject(pOldFont);
 }
 
 void CTimeRulerView::DrawRulerSeconds(CDC* pDC)
@@ -374,7 +374,8 @@ void CTimeRulerView::DrawRulerSeconds(CDC* pDC)
 
 	// background is erased by gray brush.
 	// draw horizontal line with ticks and numbers
-	CGdiObject * pOldFont = (CFont *) pDC->SelectStockObject(ANSI_VAR_FONT);
+	CGdiObjectSave OldFont(pDC, pDC->SelectStockObject(ANSI_VAR_FONT));
+
 	CPen DarkGrayPen(PS_SOLID, 0, 0x808080);
 	CRect cr;
 	GetClientRect( & cr);
@@ -429,7 +430,8 @@ void CTimeRulerView::DrawRulerSeconds(CDC* pDC)
 	pDC->SetTextColor(0x000000);   // black
 	pDC->SetBkMode(TRANSPARENT);
 
-	CGdiObject * pOldPen = pDC->SelectStockObject(BLACK_PEN);
+	CGdiObjectSave OldPen(pDC, pDC->SelectStockObject(BLACK_PEN));
+
 	pDC->MoveTo(cr.left, cr.bottom - 5);
 	pDC->LineTo(cr.right, cr.bottom - 5);
 
@@ -511,8 +513,6 @@ void CTimeRulerView::DrawRulerSeconds(CDC* pDC)
 		}
 	}
 
-	pDC->SelectObject(pOldPen);
-	pDC->SelectObject(pOldFont);
 }
 
 /////////////////////////////////////////////////////////////////////////////

@@ -1,21 +1,31 @@
+// GdiObjectSave.h
 #pragma once
 
-class CGdiObjectSave
+template<typename T=CGdiObject>
+class CGdiObjectSaveT
 {
 public:
 
-	CGdiObjectSave(CDC * pDC, CGdiObject * pObjectToSave)
+	CGdiObjectSaveT(CDC * pDC, T * pObjectToSave)
 		: m_pDC(pDC), m_pSavedObject(pObjectToSave)
 	{
 	}
 
-	void operator=(CGdiObject * pObj)
+	CGdiObjectSaveT(CDC & DC, T * pObjectToSave)
+		: m_pDC( & DC), m_pSavedObject(pObjectToSave)
+	{
+	}
+
+	void operator=(T * pObj)
 	{
 		ASSERT(NULL == m_pSavedObject);
 		m_pSavedObject = pObj;
 	}
-
-	~CGdiObjectSave()
+	operator T * () const
+	{
+		return m_pSavedObject;
+	}
+	~CGdiObjectSaveT()
 	{
 		if (NULL != m_pSavedObject)
 		{
@@ -24,8 +34,10 @@ public:
 	}
 private:
 	CDC * const m_pDC;
-	CGdiObject * m_pSavedObject;
+	T * m_pSavedObject;
 
-	CGdiObjectSave(CGdiObjectSave const &);
-	CGdiObjectSave & operator =(CGdiObjectSave const &);
+	CGdiObjectSaveT(CGdiObjectSaveT const &);
+	CGdiObjectSaveT & operator =(CGdiObjectSaveT const &);
 };
+
+typedef CGdiObjectSaveT<> CGdiObjectSave;

@@ -7,6 +7,7 @@
 #include "EqualizerDialog.h"
 #include "OperationDialogs.h"
 #include "FileDialogWithHistory.h"
+#include "GdiObjectSave.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -263,7 +264,9 @@ void CEqualizerGraphWnd::OnPaint()
 	GetClientRect( & cr);
 	dc.GetClipBox( & ur);
 	dc.SetMapMode(MM_TEXT);
-	CGdiObject * pOldPen = dc.SelectStockObject(BLACK_PEN);
+
+	CGdiObjectSave OldPenDc(dc, dc.SelectStockObject(BLACK_PEN));
+
 	ur.left -= 2;
 	if (ur.left < 0)
 	{
@@ -307,10 +310,12 @@ void CEqualizerGraphWnd::OnPaint()
 	bmp.CreateBitmap(2 * w, h, 1, 1, NULL);
 	CDC cdc;
 	cdc.CreateCompatibleDC( & dc);
-	CBitmap * pOldBitmap = cdc.SelectObject( & bmp);
 
-	CGdiObject * pOldBrush = cdc.SelectStockObject(WHITE_BRUSH);
-	CGdiObject * pOldCdcPen = cdc.SelectStockObject(WHITE_PEN);
+	CGdiObjectSaveT<CBitmap> OldBitmap( & cdc, cdc.SelectObject( & bmp));
+
+	CGdiObjectSave OldBrush(cdc, cdc.SelectStockObject(WHITE_BRUSH));
+	CGdiObjectSave OldCdcPen(cdc, cdc.SelectStockObject(WHITE_PEN));
+
 	cdc.Rectangle(0, 0, 2 * w, h);
 	cdc.SelectStockObject(BLACK_PEN);
 
@@ -319,10 +324,8 @@ void CEqualizerGraphWnd::OnPaint()
 	cdc.SelectStockObject(BLACK_BRUSH);
 	cdc.Ellipse(w, 0, w + 2 * dx, 2 * dy);
 
-	cdc.SelectObject(pOldCdcPen);
-	cdc.SelectObject(pOldBrush);
+	CGdiObjectSave OldBrushDc(dc, dc.SelectStockObject(NULL_BRUSH));
 
-	pOldBrush = dc.SelectStockObject(NULL_BRUSH);
 	dc.SetBkColor(0xFFFFFF);
 	dc.SetTextColor(0x000000);
 
@@ -346,9 +349,7 @@ void CEqualizerGraphWnd::OnPaint()
 		}
 		dc.BitBlt(x - dx, y - dy, w, h, & cdc, SrcOffset, 0, SRCAND);
 	}
-	cdc.SelectObject(pOldBitmap);
-	dc.SelectObject(pOldBrush);
-	dc.SelectObject(pOldPen);
+
 }
 
 void CEqualizerGraphWnd::OnMouseMove(UINT nFlags, CPoint point)
@@ -813,7 +814,8 @@ void CEqualizerGraphWnd::SetNumberOfBands(int NumBands)
 BOOL CEqualizerGraphWnd::OnEraseBkgnd(CDC* pDC)
 {
 	// white brush
-	CGdiObject * pOldBrush = pDC->SelectStockObject(WHITE_BRUSH);
+	CGdiObjectSave OldBrush(pDC, pDC->SelectStockObject(WHITE_BRUSH));
+
 	CRect cr;
 	GetClientRect( & cr);
 	if (0) TRACE("CEqualizerGraphWnd::OnEraseBkgnd, cr=%d, %d, %d, %d\n",
@@ -852,7 +854,6 @@ BOOL CEqualizerGraphWnd::OnEraseBkgnd(CDC* pDC)
 			int x = cr.Width() * (i * 2 + 1) / (2 * nNumOfFrequencies);
 			pDC->PatBlt(x, cr.top, 1, cr.bottom - cr.top, PATINVERT);
 		}
-		pDC->SelectObject(pOldBrush);
 	}
 	catch (CResourceException * e)
 	{
@@ -860,7 +861,8 @@ BOOL CEqualizerGraphWnd::OnEraseBkgnd(CDC* pDC)
 		e->Delete();
 	}
 	CPen DotPen(PS_DOT, 0, COLORREF(0));
-	CPen * pOldPen = pDC->SelectObject( & DotPen);
+
+	CGdiObjectSaveT<CPen> OldPen(pDC, pDC->SelectObject( & DotPen));
 
 	pDC->MoveTo(cr.left, cr.bottom / 4);
 	pDC->LineTo(cr.right, cr.bottom / 4);
@@ -868,9 +870,6 @@ BOOL CEqualizerGraphWnd::OnEraseBkgnd(CDC* pDC)
 	pDC->MoveTo(cr.left, cr.bottom - cr.bottom / 4);
 	pDC->LineTo(cr.right, cr.bottom - cr.bottom / 4);
 
-	pDC->SelectObject(pOldPen);
-
-	pDC->SelectObject(pOldBrush);
 	return TRUE;
 }
 
@@ -878,13 +877,12 @@ void CEqualizerGraphWnd::OnNcCalcSize(BOOL bCalcValidRects, NCCALCSIZE_PARAMS * 
 {
 	int ncHeight = 2 + GetSystemMetrics(SM_CYMENUSIZE);
 	int ncWidth;
-	CWnd * pW = GetDesktopWindow();
-	CDC * pDC = pW->GetWindowDC();
-	CGdiObject * pOld = pDC->SelectStockObject(ANSI_VAR_FONT);
-	ncWidth = 3 + pDC->GetTextExtent(_T("-20 dB"), 6).cx;
 
-	pDC->SelectObject(pOld);
-	pW->ReleaseDC(pDC);
+	CWindowDC wDC(GetDesktopWindow());
+	CGdiObjectSave Old(wDC, wDC.SelectStockObject(ANSI_VAR_FONT));
+
+	ncWidth = 3 + wDC.GetTextExtent(_T("-20 dB"), 6).cx;
+
 	lpncsp->rgrc[0].left += ncWidth;
 	lpncsp->rgrc[0].right -= GetSystemMetrics(SM_CXSIZEFRAME);
 	lpncsp->rgrc[0].top += GetSystemMetrics(SM_CYSIZEFRAME);
@@ -896,139 +894,140 @@ void CEqualizerGraphWnd::OnNcPaint(UINT wParam)
 {
 	if (0) TRACE("CEqualizerGraphWnd::OnNcPaint, hrgn=%X\n", wParam);
 	// copy region, because it will be deleted
-	CRect wr;
-	GetWindowRect( & wr);
-
-	CDC * pDC = GetWindowDC();
-	if (NULL == pDC)
+	try
 	{
-		return;
-	}
-	if (wParam != 1)
-	{
-		CRgn rgn;
-		rgn.CreateRectRgn(0, 0, 1, 1);
-		rgn.CopyRgn(CRgn::FromHandle((HRGN)wParam));
-		rgn.OffsetRgn( -wr.left, -wr.top);
-		pDC->SelectClipRgn( & rgn, RGN_AND);
-	}
+		CRect wr;
+		GetWindowRect( & wr);
 
-	NCCALCSIZE_PARAMS ncp;
-	wr.right = wr.Width();
-	wr.left = 0;
-	wr.bottom = wr.Height();
-	wr.top = 0;
-	ncp.rgrc[0] = wr;
-	OnNcCalcSize(FALSE, & ncp);
-	//SendMessage(WM_NCCALCSIZE, FALSE, (LPARAM) & ncp);
-	pDC->ExcludeClipRect( & ncp.rgrc[0]);
+		CWindowDC wDC(this);
 
-	// Paint into this DC
-	CBrush BkBrush;
-	CWnd * pParentDlg = GetParent();
-	BkBrush.Attach(GetSysColorBrush(COLOR_BTNFACE));
-	//BkBrush.Attach((HBRUSH) pParentDlg->SendMessage(WM_CTLCOLORDLG, (WPARAM)(pParentDlg->m_hWnd), LPARAM(pDC->m_hDC)));
+		if (wParam != 1)
+		{
+			CRgn rgn;
+			rgn.CreateRectRgn(0, 0, 1, 1);
+			rgn.CopyRgn(CRgn::FromHandle((HRGN)wParam));
+			rgn.OffsetRgn( -wr.left, -wr.top);
+			wDC.SelectClipRgn( & rgn, RGN_AND);
+		}
 
-	CGdiObject * pOldPen = pDC->SelectStockObject(BLACK_PEN);
-	CGdiObject * pOldBrush = pDC->SelectObject( & BkBrush);
-	// fill the NC area
-	pDC->Rectangle( & wr);
-	// Draw rectangle
-	pDC->SelectStockObject(HOLLOW_BRUSH);
-	BkBrush.Detach();
+		NCCALCSIZE_PARAMS ncp;
+		wr.right = wr.Width();
+		wr.left = 0;
+		wr.bottom = wr.Height();
+		wr.top = 0;
+		ncp.rgrc[0] = wr;
+		OnNcCalcSize(FALSE, & ncp);
+		//SendMessage(WM_NCCALCSIZE, FALSE, (LPARAM) & ncp);
+		wDC.ExcludeClipRect( & ncp.rgrc[0]);
 
-	pDC->Rectangle(ncp.rgrc[0].left - 1, ncp.rgrc[0].top - 1,
+		// Paint into this DC
+		CBrush BkBrush;
+		CWnd * pParentDlg = GetParent();
+		BkBrush.Attach(GetSysColorBrush(COLOR_BTNFACE));
+		//BkBrush.Attach((HBRUSH) pParentDlg->SendMessage(WM_CTLCOLORDLG, (WPARAM)(pParentDlg->m_hWnd), LPARAM(wDC.m_hDC)));
+
+		CGdiObjectSave OldPen(wDC, wDC.SelectStockObject(BLACK_PEN));
+		CGdiObjectSave OldBrush(wDC, wDC.SelectObject( & BkBrush));
+
+		// fill the NC area
+		wDC.Rectangle( & wr);
+		// Draw rectangle
+		wDC.SelectStockObject(HOLLOW_BRUSH);
+		BkBrush.Detach();
+
+		wDC.Rectangle(ncp.rgrc[0].left - 1, ncp.rgrc[0].top - 1,
 					ncp.rgrc[0].right + 1, ncp.rgrc[0].bottom + 1);
-	CGdiObject * pOldFont = pDC->SelectStockObject(ANSI_VAR_FONT);
-	// draw frequencies
-	pDC->SetTextAlign(TA_TOP | TA_CENTER);
-	pDC->SetTextColor(0x000000);   // black
-	pDC->SetBkMode(TRANSPARENT);
 
-	int PrevX = ncp.rgrc[0].left;
+		CGdiObjectSave OldFont(wDC, wDC.SelectStockObject(ANSI_VAR_FONT));
+		// draw frequencies
+		wDC.SetTextAlign(TA_TOP | TA_CENTER);
+		wDC.SetTextColor(0x000000);   // black
+		wDC.SetBkMode(TRANSPARENT);
 
-	int nNumOfFrequencies = m_NumOfBands;
-	if (nNumOfFrequencies <= 2)
-	{
-		nNumOfFrequencies = 20;
-	}
-	for (int i = 0; i < nNumOfFrequencies; i ++)
-	{
-		int x = ncp.rgrc[0].left +
-				(ncp.rgrc[0].right - ncp.rgrc[0].left) * (i * 2 + 1) / (2 * nNumOfFrequencies);
-		CString s;
-		double f;
-		if (m_NumOfBands > 2)
+		int PrevX = ncp.rgrc[0].left;
+
+		int nNumOfFrequencies = m_NumOfBands;
+		if (nNumOfFrequencies <= 2)
 		{
-			f = m_BandFrequencies[i] / M_PI * 0.5 * m_SamplingRate;
+			nNumOfFrequencies = 20;
 		}
-		else
+		for (int i = 0; i < nNumOfFrequencies; i ++)
 		{
-			f =  0.5 * m_SamplingRate * pow(500.,
-											(x + 1. - ncp.rgrc[0].right) /
-											(ncp.rgrc[0].right - ncp.rgrc[0].left));
-		}
-		int TextWidth;
-		if (f >= 1000.)
-		{
-			// 12.1k
-			// 8.9k
-			s.Format(_T("%.1fk"), f / 1000.);
-			if (f >= 10000.)
+			int x = ncp.rgrc[0].left +
+					(ncp.rgrc[0].right - ncp.rgrc[0].left) * (i * 2 + 1) / (2 * nNumOfFrequencies);
+			CString s;
+			double f;
+			if (m_NumOfBands > 2)
 			{
-				TextWidth = pDC->GetTextExtent(_T("20.0k "), 7).cx;
+				f = m_BandFrequencies[i] / M_PI * 0.5 * m_SamplingRate;
 			}
 			else
 			{
-				TextWidth = pDC->GetTextExtent(_T("0.0k "), 7).cx;
+				f =  0.5 * m_SamplingRate * pow(500.,
+												(x + 1. - ncp.rgrc[0].right) /
+												(ncp.rgrc[0].right - ncp.rgrc[0].left));
+			}
+			int TextWidth;
+			if (f >= 1000.)
+			{
+				// 12.1k
+				// 8.9k
+				s.Format(_T("%.1fk"), f / 1000.);
+				if (f >= 10000.)
+				{
+					TextWidth = wDC.GetTextExtent(_T("20.0k "), 7).cx;
+				}
+				else
+				{
+					TextWidth = wDC.GetTextExtent(_T("0.0k "), 7).cx;
+				}
+			}
+			else if (f >= 100.)
+			{
+				// 550 (round to 10)
+				s.Format(_T("%d"), 10 * ((int(f) + 5) / 10));
+				TextWidth = wDC.GetTextExtent(_T("999 "), 7).cx;
+			}
+			else
+			{
+				// 55
+				s.Format(_T("%d"), int(f));
+				TextWidth = wDC.GetTextExtent(_T("99 "), 7).cx;
+			}
+			if (x - TextWidth / 2 >= PrevX)
+			{
+				wDC.TextOut(x, ncp.rgrc[0].bottom - 1, s);
+				PrevX = x + TextWidth / 2;
 			}
 		}
-		else if (f >= 100.)
-		{
-			// 550 (round to 10)
-			s.Format(_T("%d"), 10 * ((int(f) + 5) / 10));
-			TextWidth = pDC->GetTextExtent(_T("999 "), 7).cx;
-		}
-		else
-		{
-			// 55
-			s.Format(_T("%d"), int(f));
-			TextWidth = pDC->GetTextExtent(_T("99 "), 7).cx;
-		}
-		if (x - TextWidth / 2 >= PrevX)
-		{
-			pDC->TextOut(x, ncp.rgrc[0].bottom - 1, s);
-			PrevX = x + TextWidth / 2;
-		}
+
+		wDC.SetTextAlign(TA_BOTTOM | TA_RIGHT);
+		int TextHeight = wDC.GetTextExtent(_T("9"), 1).cy;
+
+		wDC.TextOut(ncp.rgrc[0].left - 1,
+					ncp.rgrc[0].top + TextHeight,
+					_T("20 dB"), 5);
+
+		wDC.TextOut(ncp.rgrc[0].left - 1,
+					ncp.rgrc[0].top + (ncp.rgrc[0].bottom - ncp.rgrc[0].top) / 4 + TextHeight / 2,
+					_T("10 dB"), 5);
+
+		wDC.TextOut(ncp.rgrc[0].left - 1,
+					ncp.rgrc[0].top + (ncp.rgrc[0].bottom - ncp.rgrc[0].top) / 2 + TextHeight / 2,
+					_T("0 dB"), 4);
+
+		wDC.TextOut(ncp.rgrc[0].left - 1,
+					ncp.rgrc[0].bottom - (ncp.rgrc[0].bottom - ncp.rgrc[0].top) / 4 + TextHeight / 2,
+					_T("-10 dB"), 6);
+
+		wDC.TextOut(ncp.rgrc[0].left - 1,
+					ncp.rgrc[0].bottom + TextHeight / 2,
+					_T("-20 dB"), 6);
 	}
-
-	pDC->SetTextAlign(TA_BOTTOM | TA_RIGHT);
-	int TextHeight = pDC->GetTextExtent(_T("9"), 1).cy;
-
-	pDC->TextOut(ncp.rgrc[0].left - 1,
-				ncp.rgrc[0].top + TextHeight,
-				_T("20 dB"), 5);
-
-	pDC->TextOut(ncp.rgrc[0].left - 1,
-				ncp.rgrc[0].top + (ncp.rgrc[0].bottom - ncp.rgrc[0].top) / 4 + TextHeight / 2,
-				_T("10 dB"), 5);
-
-	pDC->TextOut(ncp.rgrc[0].left - 1,
-				ncp.rgrc[0].top + (ncp.rgrc[0].bottom - ncp.rgrc[0].top) / 2 + TextHeight / 2,
-				_T("0 dB"), 4);
-
-	pDC->TextOut(ncp.rgrc[0].left - 1,
-				ncp.rgrc[0].bottom - (ncp.rgrc[0].bottom - ncp.rgrc[0].top) / 4 + TextHeight / 2,
-				_T("-10 dB"), 6);
-
-	pDC->TextOut(ncp.rgrc[0].left - 1,
-				ncp.rgrc[0].bottom + TextHeight / 2,
-				_T("-20 dB"), 6);
-
-	pDC->SelectObject(pOldFont);
-	pDC->SelectObject(pOldBrush);
-	pDC->SelectObject(pOldPen);
-	ReleaseDC(pDC);
+	catch (CResourceException * e)
+	{
+		e->Delete();
+	}
 	CWnd::OnNcPaint();
 }
 

@@ -6,6 +6,7 @@
 #include "WaveSoapFront.h"
 #include "SpectrumSectionView.h"
 #include "fft.h"
+#include "GdiObjectSave.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -282,7 +283,7 @@ void CSpectrumSectionView::OnDraw(CDC* pDC)
 	pIdArray[k].nNumOfRows = 0;
 
 	CPen pen(PS_SOLID, 0, COLORREF(0));   // black pen
-	CGdiObject * pOldPen = pDC->SelectObject( & pen);
+	CGdiObjectSaveT<CPen> OldPen(pDC, pDC->SelectObject( & pen));
 
 	int i;
 	int j;
@@ -437,7 +438,7 @@ void CSpectrumSectionView::OnDraw(CDC* pDC)
 		pDC->MoveTo(0, rows);
 		pDC->LineTo(cr.right, rows);
 	}
-	pDC->SelectObject(pOldPen);
+
 	delete[] ppArray;
 	delete[] pIdArray;
 	delete[] pSrcIntArray;
@@ -621,33 +622,33 @@ void CSpectrumSectionView::DrawCrossHair(POINT point, CDC * pDC)
 		}
 		pDrawDC->ExcludeUpdateRgn(this);
 	}
-
 	int OldMap = pDrawDC->SetMapMode(MM_TEXT);
-	RECT cr;
 
-	GetClientRect( & cr);
-	// have to use PatBlt to draw alternate lines
-	CBitmap bmp;
-	static const unsigned char pattern[] =
-	{
-		0x55, 0,  // aligned to WORD
-		0xAA, 0,
-		0x55, 0,
-		0xAA, 0,
-		0x55, 0,
-		0xAA, 0,
-		0x55, 0,
-		0xAA, 0,
-	};
 	try {
+		RECT cr;
+
+		GetClientRect( & cr);
+		// have to use PatBlt to draw alternate lines
+		CBitmap bmp;
+		static const unsigned char pattern[] =
+		{
+			0x55, 0,  // aligned to WORD
+			0xAA, 0,
+			0x55, 0,
+			0xAA, 0,
+			0x55, 0,
+			0xAA, 0,
+			0x55, 0,
+			0xAA, 0,
+		};
+
 		bmp.CreateBitmap(8, 8, 1, 1, pattern);
 		CBrush GrayBrush( & bmp);
-		CBrush * pOldBrush = pDrawDC->SelectObject( & GrayBrush);
+		CGdiObjectSaveT<CBrush> OldBrush(pDrawDC, pDrawDC->SelectObject( & GrayBrush));
 
 		pDrawDC->PatBlt(cr.left, point.y, cr.right - cr.left, 1, PATINVERT);
 		pDrawDC->PatBlt(point.x, cr.top, 1, cr.bottom - cr.top, PATINVERT);
 
-		pDrawDC->SelectObject(pOldBrush);
 	}
 	catch (CResourceException * e)
 	{

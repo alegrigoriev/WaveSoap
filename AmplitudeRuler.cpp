@@ -6,6 +6,7 @@
 #include "WaveSoapFront.h"
 #include "AmplitudeRuler.h"
 #include "SpectrumSectionView.h"
+#include "GdiObjectSave.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -55,8 +56,9 @@ static int fround(double d)
 
 void CAmplitudeRuler::OnDraw(CDC* pDC)
 {
-	CGdiObject * pOldFont = (CFont *) pDC->SelectStockObject(ANSI_VAR_FONT);
-	CGdiObject * OldPen = pDC->SelectStockObject(BLACK_PEN);
+	CGdiObjectSave OldFont(pDC, pDC->SelectStockObject(ANSI_VAR_FONT));
+	CGdiObjectSave OldPen(pDC, pDC->SelectStockObject(BLACK_PEN));
+
 	switch (m_DrawMode)
 	{
 	case PercentView:
@@ -69,8 +71,6 @@ void CAmplitudeRuler::OnDraw(CDC* pDC)
 		DrawSamples(pDC);
 		break;
 	}
-	pDC->SelectObject(OldPen);
-	pDC->SelectObject(pOldFont);
 }
 
 void CAmplitudeRuler::DrawSamples(CDC * pDC)
@@ -399,13 +399,10 @@ void CAmplitudeRuler::DrawDecibels(CDC * pDC)
 
 int CAmplitudeRuler::CalculateWidth()
 {
-	CWnd * pW = GetDesktopWindow();
-	CDC * pDC = pW->GetWindowDC();
-	CGdiObject * pOld = pDC->SelectStockObject(ANSI_VAR_FONT);
-	int Width = 4 + pDC->GetTextExtent(_T("-000,000"), 8).cx;
+	CWindowDC wDC(GetDesktopWindow());
 
-	pDC->SelectObject(pOld);
-	pW->ReleaseDC(pDC);
+	CGdiObjectSave OldFont(wDC, wDC.SelectStockObject(ANSI_VAR_FONT));
+	int Width = 4 + wDC.GetTextExtent(_T("-000,000"), 8).cx;
 	return Width;
 }
 
@@ -551,7 +548,8 @@ void CSpectrumSectionRuler::OnDraw(CDC* pDC)
 		return; // not attached
 	}
 
-	CGdiObject * pOldFont = (CFont *) pDC->SelectStockObject(ANSI_VAR_FONT);
+	CGdiObjectSave OldFont(pDC, pDC->SelectStockObject(ANSI_VAR_FONT));
+
 	// draw horizontal line with ticks and numbers
 	CPen DarkGrayPen(PS_SOLID, 0, 0x808080);
 	CRect cr;
@@ -624,7 +622,8 @@ void CSpectrumSectionRuler::OnDraw(CDC* pDC)
 		nTickCount = 10;
 	}
 
-	CGdiObject * OldPen = pDC->SelectStockObject(BLACK_PEN);
+	CGdiObjectSave OldPen(pDC, pDC->SelectStockObject(BLACK_PEN));
+
 	pDC->SetTextAlign(TA_BOTTOM | TA_LEFT);
 	pDC->SetTextColor(0x000000);   // black
 	pDC->SetBkMode(TRANSPARENT);
@@ -679,10 +678,6 @@ void CSpectrumSectionRuler::OnDraw(CDC* pDC)
 			pDC->LineTo(x, cr.bottom - 5);
 		}
 	}
-
-
-	pDC->SelectObject(OldPen);
-	pDC->SelectObject(pOldFont);
 }
 
 

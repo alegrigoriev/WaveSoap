@@ -5,6 +5,7 @@
 #include "stdafx.h"
 #include "WaveSoapFront.h"
 #include "Ruler.h"
+#include "GdiObjectSave.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -344,10 +345,11 @@ int CHorizontalRuler::OnCreate(LPCREATESTRUCT lpCreateStruct)
 
 int CHorizontalRuler::CalculateHeight()
 {
-	CWindowDC dc(NULL);
-	CFont * pOldFont = (CFont * )dc.SelectStockObject(ANSI_VAR_FONT);
+	CWindowDC dc(GetDesktopWindow());
+	CGdiObjectSave OldFont(dc, dc.SelectStockObject(ANSI_VAR_FONT));
+
 	int height = dc.GetTextExtent(_T("0"), 1).cy;
-	dc.SelectObject(pOldFont);
+
 	return height + 9;
 }
 
