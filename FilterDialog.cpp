@@ -80,6 +80,7 @@ void CFilterDialog::DoDataExchange(CDataExchange* pDX)
 	DDX_Check(pDX, IDC_CHECK_ZERO_PHASE, m_wGraph.m_bZeroPhase);
 	DDX_Check(pDX, IDC_CHECK_LOWPASS, m_wGraph.m_bLowPass);
 	DDX_Check(pDX, IDC_CHECK_HIGHPASS, m_wGraph.m_bHighPass);
+	DDX_Check(pDX, IDC_CHECK_STOPBAND, m_wGraph.m_bNotchFilter);
 
 	if (pDX->m_bSaveAndValidate)
 	{
