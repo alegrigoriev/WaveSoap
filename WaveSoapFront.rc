@@ -2352,6 +2352,29 @@ BEGIN
                     WS_GROUP
 END
 
+IDD_DIALOG_FADEINOUT DIALOGEX 0, 0, 183, 131
+STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | 
+    WS_SYSMENU
+CAPTION "Fade In/Out"
+FONT 8, "MS Shell Dlg", 400, 0, 0x1
+BEGIN
+    CONTROL         "&Enable fade in/out",IDC_CHECK_ENABLE_FADEINOUT,"Button",
+                    BS_AUTOCHECKBOX | WS_TABSTOP,15,13,75,10
+    LTEXT           "Transition length:",IDC_STATIC1,15,31,81,8,NOT WS_GROUP
+    EDITTEXT        IDC_EDIT_TRANSITION_LENGTH,101,29,40,14,ES_AUTOHSCROLL | 
+                    ES_NUMBER
+    LTEXT           "ms",IDC_STATIC2,145,31,19,8
+    GROUPBOX        "Transition type",IDC_STATIC3,15,46,148,55
+    CONTROL         "Linear",IDC_RADIO_LINEAR,"Button",BS_AUTORADIOBUTTON | 
+                    WS_GROUP,18,58,117,10
+    CONTROL         "Squared sine",IDC_RADIO_SQUARED_SINE,"Button",
+                    BS_AUTORADIOBUTTON,18,71,135,10
+    CONTROL         "Sine/Cosine",IDC_RADIO_SINE_COSINE,"Button",
+                    BS_AUTORADIOBUTTON,18,85,141,10
+    DEFPUSHBUTTON   "OK",IDOK,31,110,50,14,WS_GROUP
+    PUSHBUTTON      "Cancel",IDCANCEL,101,110,50,14
+END
+
 
 /////////////////////////////////////////////////////////////////////////////
 //
@@ -2779,6 +2802,14 @@ BEGIN
         RIGHTMARGIN, 302
         TOPMARGIN, 7
         BOTTOMMARGIN, 155
+    END
+
+    IDD_DIALOG_FADEINOUT, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 176
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 124
     END
 END
 #endif    // APSTUDIO_INVOKED
