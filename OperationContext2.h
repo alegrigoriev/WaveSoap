@@ -321,6 +321,7 @@ public:
 							OperationContextDiskIntensive | OperationContextSerialized, OperationName),
 		m_pCdBuffer(NULL),
 		m_CdBufferFilled(0),
+		m_hEvent(NULL),
 		m_CdDataOffset(0),
 		m_CdBufferSize(0)
 	{
@@ -336,6 +337,7 @@ protected:
 	CCdDrive m_Drive;
 	CdAddressMSF m_CdAddress;
 	LONG m_NumberOfSectors;
+	HANDLE m_hEvent;
 	void * m_pCdBuffer;
 	size_t m_CdBufferSize;
 	size_t m_CdBufferFilled;
