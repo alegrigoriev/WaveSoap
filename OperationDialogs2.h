@@ -136,6 +136,7 @@ public:
 // Dialog Data
 	//{{AFX_DATA(CCdGrabbingDialog)
 	enum { IDD = IDD_DIALOG_CD_GRABBING };
+	CButton	m_EjectButton;
 	CComboBox	m_ComboBitrate;
 	CButton	m_StopButton;
 	CButton	m_PlayButton;
@@ -218,6 +219,10 @@ protected:
 	void CreateImageList();
 	void CheckForDiskChanged();
 	void CheckForDrivesChanged();
+
+	CBitmap m_BmpPlay;
+	CBitmap m_BmpStop;
+	CBitmap m_BmpEject;
 
 	// Generated message map functions
 	LRESULT OnKickIdle(WPARAM, LPARAM);

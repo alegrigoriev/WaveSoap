@@ -305,6 +305,7 @@ void CCdGrabbingDialog::DoDataExchange(CDataExchange* pDX)
 {
 	CResizableDialog::DoDataExchange(pDX);
 	//{{AFX_DATA_MAP(CCdGrabbingDialog)
+	DDX_Control(pDX, IDC_BUTTON_EJECT, m_EjectButton);
 	DDX_Control(pDX, IDC_COMBO_BITRATE, m_ComboBitrate);
 	DDX_Control(pDX, IDC_BUTTON_STOP, m_StopButton);
 	DDX_Control(pDX, IDC_BUTTON_PLAY, m_PlayButton);
@@ -794,6 +795,15 @@ BOOL CCdGrabbingDialog::OnInitDialog()
 	HICON hIcon = AfxGetApp()->LoadIcon(IDI_ICON_CD);
 	SetIcon(hIcon, TRUE);			// Set big icon
 	SetIcon(hIcon, FALSE);		// Set small icon
+
+	m_BmpPlay.LoadBitmap(IDB_BITMAP_PLAY);
+	m_PlayButton.SetBitmap(m_BmpPlay);
+
+	m_BmpStop.LoadBitmap(IDB_BITMAP_STOP);
+	m_StopButton.SetBitmap(m_BmpStop);
+
+	m_BmpEject.LoadBitmap(IDB_BITMAP_EJECT);
+	m_EjectButton.SetBitmap(m_BmpEject);
 
 	CreateImageList();
 	CRect cr;
@@ -1602,16 +1612,19 @@ void CCdGrabbingDialog::OnUpdateEject(CCmdUI* pCmdUI)
 	}
 	else if (m_CdDrive.IsSlotType())
 	{
-
+		Enable = m_DiskReady == CdMediaStateReady;
 	}
-	if (m_CdDrive.IsTrayOpen())
+	else if (m_CdDrive.IsTrayType())
 	{
-		Enable = m_CdDrive.CanLoadMedia();
-	}
-	else
-	{
-		//
-		Enable = m_CdDrive.CanEjectMedia();
+		if (m_CdDrive.IsTrayOpen())
+		{
+			Enable = m_CdDrive.CanLoadMedia();
+		}
+		else
+		{
+			//
+			Enable = m_CdDrive.CanEjectMedia();
+		}
 	}
 }
 

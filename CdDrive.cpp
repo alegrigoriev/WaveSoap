@@ -1389,9 +1389,9 @@ void CCdDrive::LoadMedia()
 	DWORD bytes = 0;
 	if (m_hDriveAttributes)
 	{
-		BOOL res = DeviceIoControl(m_hDrive, IOCTL_STORAGE_LOAD_MEDIA2,
+		BOOL res = DeviceIoControl(m_hDrive, IOCTL_STORAGE_LOAD_MEDIA,
 									NULL, 0, NULL, 0, & bytes, NULL);
-		TRACE("IOCTL_STORAGE_LOAD_MEDIA2 returned %d, last error=%d\n", res, GetLastError());
+		TRACE("IOCTL_STORAGE_LOAD_MEDIA returned %d, last error=%d\n", res, GetLastError());
 	}
 	else if (m_bScsiCommandsAvailable)
 	{

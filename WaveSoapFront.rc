@@ -94,6 +94,9 @@ ID_BITMAP_ZOOMINVERT    BITMAP  DISCARDABLE     "res\\idc_zoom.bmp"
 ID_BITMAP_ZOOMOUTVERT   BITMAP  DISCARDABLE     "res\\id_bitma.bmp"
 ID_BITMAP_ZOOMINHOR     BITMAP  DISCARDABLE     "res\\bmp00001.bmp"
 ID_BITMAP_ZOOMOUTHOR    BITMAP  DISCARDABLE     "res\\bmp00002.bmp"
+IDB_BITMAP_PLAY         BITMAP  DISCARDABLE     "res\\bmp_play.bmp"
+IDB_BITMAP_EJECT        BITMAP  DISCARDABLE     "res\\bmp_eject.bmp"
+IDB_BITMAP_STOP         BITMAP  DISCARDABLE     "res\\bmp_stop.bmp"
 
 /////////////////////////////////////////////////////////////////////////////
 //
@@ -1456,10 +1459,10 @@ BEGIN
     CONTROL         "Assign to selected tracks only:",
                     IDC_RADIO_ASSIGN_SELECTED_TRACK,"Button",
                     BS_AUTORADIOBUTTON,134,155,113,10
-    CHECKBOX        " Play",IDC_BUTTON_PLAY,247,152,18,14,BS_PUSHLIKE | 
-                    WS_GROUP
-    PUSHBUTTON      "Stop",IDC_BUTTON_STOP,268,152,17,14
-    PUSHBUTTON      "Eject",IDC_BUTTON_EJECT,288,152,17,14
+    CHECKBOX        " Play",IDC_BUTTON_PLAY,247,152,18,14,BS_BITMAP | 
+                    BS_PUSHLIKE | WS_GROUP
+    PUSHBUTTON      "Stop",IDC_BUTTON_STOP,268,152,17,14,BS_BITMAP
+    PUSHBUTTON      "Eject",IDC_BUTTON_EJECT,288,152,17,14,BS_BITMAP
     LTEXT           "Album:",IDC_STATIC_ALBUM,7,172,25,8
     COMBOBOX        IDC_COMBO_ALBUM,41,170,203,59,CBS_DROPDOWN | 
                     CBS_AUTOHSCROLL | WS_VSCROLL | WS_TABSTOP
