@@ -161,6 +161,7 @@ CUndoRedoContext * COperationContext::GetUndo()
 {
 	ListHead<COperationContext> * pUndoChain =
 		GetUndoChain();
+
 	if (NULL == pUndoChain
 		|| pUndoChain->IsEmpty())
 	{
@@ -1132,12 +1133,12 @@ BOOL CCopyUndoContext::InitUndoCopy(CWaveFile & SrcFile,
 			return FALSE;
 		}
 
-		m_SrcStart = SrcFile.SampleToPosition(0);
+		m_SrcStart = m_SrcFile.SampleToPosition(0);
 		m_SrcPos = m_SrcStart;
 		m_SrcChan = ALL_CHANNELS;
 		m_DstChan = SaveChannel;
 
-		m_SrcEnd = SrcFile.SampleToPosition(LAST_SAMPLE);
+		m_SrcEnd = m_SrcFile.SampleToPosition(LAST_SAMPLE);
 	}
 
 	return TRUE;
@@ -1846,7 +1847,7 @@ void CUndoRedoContext::PostRetire(BOOL bChildContext)
 		pDocument->AddUndoRedo(pUndo);
 	}
 
-	// if the last context is not done
+	// TODO: if the last context is not done
 	while( ! m_DoneList.IsEmpty())
 	{
 		COperationContext * pContext = m_DoneList.RemoveHead();
@@ -1872,6 +1873,20 @@ void CUndoRedoContext::PostRetire(BOOL bChildContext)
 	//BUGBUG: UnprepareUndo(); to release file references
 	// put the context back to undo/redo list
 	pDocument->AddUndoRedo(this);
+}
+
+CUndoRedoContext * CUndoRedoContext::GetUndo()
+{
+	CUndoRedoContext * pUndo = BaseClass::GetUndo();
+
+	if (NULL != pUndo)
+	{
+		// copy inverse value of Undoing flag
+		pUndo->m_Flags &= ~OperationContextUndoing;
+		pUndo->m_Flags |= OperationContextUndoing & ~m_Flags;
+	}
+
+	return pUndo;
 }
 
 CString CUndoRedoContext::GetStatusString()

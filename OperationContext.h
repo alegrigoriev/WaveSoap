@@ -417,11 +417,11 @@ public:
 
 	CUndoRedoContext(CWaveSoapFrontDoc * pDoc, LPCTSTR OperationName)
 		: BaseClass(pDoc, _T(""), 0, OperationName)
-//        , m_RestoredLength(0)
 	{
+		m_Flags |= OperationContextUndoing;
 	}
 
-//    NUMBER_OF_SAMPLES m_RestoredLength;
+	virtual class CUndoRedoContext * GetUndo();
 
 	virtual void PostRetire(BOOL bChildContext = FALSE);
 	virtual CString GetStatusString();

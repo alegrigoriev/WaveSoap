@@ -1125,19 +1125,29 @@ void CWaveSoapFrontDoc::OnEditUndo()
 	}
 	// no critical section lock needed
 	COperationContext * pUndo = m_UndoList.RemoveHead();
+
+	if ( ! pUndo->PrepareUndo())
+	{
+		// return head back
+		pUndo->UnprepareUndo();
+		m_UndoList.InsertHead(pUndo);
+		return;
+	}
+
 	if (RedoEnabled())
 	{
 		if ( ! pUndo->CreateUndo(FALSE))
 		{
 			// return head back
 			pUndo->DeleteUndo();
+			pUndo->UnprepareUndo();
 			m_UndoList.InsertHead(pUndo);
 			return;
 		}
 	}
 	else
 	{
-		DeleteRedo();
+		DeleteRedo();  // cannot redo anymore
 	}
 
 	DecrementModified();
@@ -1155,18 +1165,27 @@ void CWaveSoapFrontDoc::OnEditRedo()
 	// no critical section lock needed
 	COperationContext * pRedo = m_RedoList.RemoveHead();
 
+	if ( ! pRedo->PrepareUndo())
+	{
+		// return head back
+		pRedo->UnprepareUndo();
+		m_RedoList.InsertHead(pRedo);
+		return;
+	}
+
 	if (UndoEnabled())
 	{
 		if ( ! pRedo->CreateUndo(TRUE))
 		{
 			pRedo->DeleteUndo();
+			pRedo->UnprepareUndo();
 			m_RedoList.InsertHead(pRedo);
 			return;
 		}
 	}
 	else
 	{
-		DeleteUndo();
+		DeleteUndo();   // cannot undo anymore
 	}
 
 	IncrementModified(FALSE);   // don't delete redo
@@ -1370,7 +1389,7 @@ BOOL CWaveSoapFrontDoc::DoPaste(SAMPLE_INDEX Start, SAMPLE_INDEX End, CHANNEL_MA
 	}
 
 	int nCopiedChannels = WaveChannels();
-	if (Channel != ALL_CHANNELS)
+	if ( ! m_WavFile.AllChannels(Channel))
 	{
 		nCopiedChannels = 1;
 	}
@@ -4575,6 +4594,7 @@ void CWaveSoapFrontDoc::OnToolsInterpolate()
 		{
 			return;
 		}
+
 		pCopy->SaveUndoData(pBuf + WriteBufferOffset * nChannels, WriteBytes,
 							WriteStartOffset, nChannels);
 		AddUndoRedo(pUndo.release());
