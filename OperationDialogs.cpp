@@ -1868,15 +1868,23 @@ void CExpressionEvaluationDialog::OnOK()
 		}
 	}
 
-	BaseClass::OnOK();
+	EndDialog(IDOK);
 }
 /////////////////////////////////////////////////////////////////////////////
 // CDeclickDialog dialog
 
 
-CDeclickDialog::CDeclickDialog(CWnd* pParent /*=NULL*/)
-	: BaseClass(CDeclickDialog::IDD, pParent)
+CDeclickDialog::CDeclickDialog(SAMPLE_INDEX begin, SAMPLE_INDEX end, SAMPLE_INDEX caret,
+								CHANNEL_MASK Channels,
+								CWaveFile & File,
+								BOOL ChannelsLocked, BOOL UndoEnabled,
+								int TimeFormat,
+								CWnd* pParent /*=NULL*/)
+	: BaseClass(begin, end, caret, Channels, File,
+				TimeFormat, IDD, pParent)
 {
+	m_bUndo = UndoEnabled;
+	m_bLockChannels = ChannelsLocked;
 	//{{AFX_DATA_INIT(CDeclickDialog)
 	m_ClickLogFilename = _T("");
 	m_MaxClickLength = 24;
@@ -1885,23 +1893,16 @@ CDeclickDialog::CDeclickDialog(CWnd* pParent /*=NULL*/)
 	m_bLogClicksOnly = FALSE;
 	m_bImportClicks = FALSE;
 	m_ClickImportFilename = _T("");
-	m_bUndo = FALSE;
 	//}}AFX_DATA_INIT
 	m_dAttackRate = .06;
 	m_dClickToNoise = 5.;
 	m_dEnvelopDecayRate = 0.02;
 }
 
-CDeclickDialog::~CDeclickDialog()
-{
-	GetApp()->Profile.RemoveSection(_T("Declicker"));
-}
-
 void CDeclickDialog::DoDataExchange(CDataExchange* pDX)
 {
 	BaseClass::DoDataExchange(pDX);
 	//{{AFX_DATA_MAP(CDeclickDialog)
-	DDX_Control(pDX, IDC_STATIC_SELECTION, m_SelectionStatic);
 	DDX_Control(pDX, IDC_EDIT_DECAY_RATE, m_EnvelopDecayRate);
 	DDX_Control(pDX, IDC_EDIT_CLICK_TO_NOISE, m_ClickToNoise);
 	DDX_Control(pDX, IDC_EDIT_ATTACK_RATE, m_AttackRate);
@@ -1922,6 +1923,11 @@ void CDeclickDialog::DoDataExchange(CDataExchange* pDX)
 								_T("Click to noise rate"), _T(""), 1., 10.);
 	m_EnvelopDecayRate.ExchangeData(pDX, m_dEnvelopDecayRate,
 									_T("Envelop decay rate"), _T(""), 0.01, 0.99);
+
+	if (pDX->m_bSaveAndValidate)
+	{
+		Profile.FlushSection(_T("Declicker"));
+	}
 }
 
 
@@ -1932,7 +1938,6 @@ BEGIN_MESSAGE_MAP(CDeclickDialog, BaseClass)
 	ON_BN_CLICKED(IDC_CLICK_LOG_BROWSE_BUTTON, OnClickLogBrowseButton)
 	ON_BN_CLICKED(IDC_CLICK_IMPORT_BROWSE_BUTTON, OnClickImportBrowseButton)
 	ON_BN_CLICKED(IDC_BUTTON_MORE_SETTINGS, OnButtonMoreSettings)
-	ON_BN_CLICKED(IDC_BUTTON_SELECTION, OnButtonSelection)
 	//}}AFX_MSG_MAP
 END_MESSAGE_MAP()
 
@@ -2007,17 +2012,16 @@ void CDeclickDialog::OnButtonMoreSettings()
 
 void CDeclickDialog::LoadValuesFromRegistry()
 {
-	CThisApp * pApp = GetApp();
-	pApp->Profile.AddBoolItem(_T("Declicker"), _T("LogClicks"), m_bLogClicks, FALSE);
-	pApp->Profile.AddBoolItem(_T("Declicker"), _T("ImportClicks"), m_bImportClicks, FALSE);
-	pApp->Profile.AddBoolItem(_T("Declicker"), _T("LogClicksOnly"), m_bLogClicksOnly, FALSE);
-	pApp->Profile.AddItem(_T("Declicker"), _T("ClickLogFilename"), m_ClickLogFilename, _T(""));
-	pApp->Profile.AddItem(_T("Declicker"), _T("ClickImportFilename"), m_ClickImportFilename, _T(""));
-	pApp->Profile.AddItem(_T("Declicker"), _T("MaxClickLength"), m_MaxClickLength, 32, 6, 64);
-	pApp->Profile.AddItem(_T("Declicker"), _T("MinClickAmplitude"), m_MinClickAmplitude, 200, 50, 5000);
-	pApp->Profile.AddItem(_T("Declicker"), _T("AttackRate"), m_dAttackRate, 0.5, 0.001, 0.99);
-	pApp->Profile.AddItem(_T("Declicker"), _T("DecayRate"), m_dEnvelopDecayRate, 0.01, 0.001, 0.99);
-	pApp->Profile.AddItem(_T("Declicker"), _T("ClickToNoise"), m_dClickToNoise, 4., 1.5, 20);
+	Profile.AddBoolItem(_T("Declicker"), _T("LogClicks"), m_bLogClicks, FALSE);
+	Profile.AddBoolItem(_T("Declicker"), _T("ImportClicks"), m_bImportClicks, FALSE);
+	Profile.AddBoolItem(_T("Declicker"), _T("LogClicksOnly"), m_bLogClicksOnly, FALSE);
+	Profile.AddItem(_T("Declicker"), _T("ClickLogFilename"), m_ClickLogFilename, _T(""));
+	Profile.AddItem(_T("Declicker"), _T("ClickImportFilename"), m_ClickImportFilename, _T(""));
+	Profile.AddItem(_T("Declicker"), _T("MaxClickLength"), m_MaxClickLength, 32, 6, 64);
+	Profile.AddItem(_T("Declicker"), _T("MinClickAmplitude"), m_MinClickAmplitude, 200, 50, 5000);
+	Profile.AddItem(_T("Declicker"), _T("AttackRate"), m_dAttackRate, 0.5, 0.001, 0.99);
+	Profile.AddItem(_T("Declicker"), _T("DecayRate"), m_dEnvelopDecayRate, 0.01, 0.001, 0.99);
+	Profile.AddItem(_T("Declicker"), _T("ClickToNoise"), m_dClickToNoise, 4., 1.5, 20);
 
 }
 
@@ -2033,43 +2037,8 @@ BOOL CDeclickDialog::OnInitDialog()
 	GetDlgItem(IDC_EDIT_CLICK_IMPORT_FILENAME)->EnableWindow(m_bImportClicks);
 	GetDlgItem(IDC_CLICK_IMPORT_BROWSE_BUTTON)->EnableWindow(m_bImportClicks);
 
-	UpdateSelectionStatic();
 	return TRUE;  // return TRUE unless you set the focus to a control
 	// EXCEPTION: OCX Property Pages should return FALSE
-}
-
-void CDeclickDialog::OnButtonSelection()
-{
-	CSelectionDialog dlg(m_Start, m_End, m_CaretPosition, m_Chan + 1, m_FileLength, m_pWf, m_TimeFormat);
-
-	if (IDOK != dlg.DoModal())
-	{
-		return;
-	}
-	m_Start = dlg.GetStart();
-	m_End = dlg.GetEnd();
-	m_Chan = dlg.GetChannel() - 1;
-	UpdateSelectionStatic();
-}
-
-void CDeclickDialog::UpdateSelectionStatic()
-{
-	m_SelectionStatic.SetWindowText(GetSelectionText(m_Start, m_End, m_Chan,
-													m_pWf->nChannels, m_bLockChannels,
-													m_pWf->nSamplesPerSec, m_TimeFormat));
-}
-
-
-void CDeclickDialog::OnOK()
-{
-	if (!UpdateData(TRUE))
-	{
-		TRACE0("UpdateData failed during dialog termination.\n");
-		// the UpdateData routine will set focus to correct item
-		return;
-	}
-	GetApp()->Profile.FlushSection(_T("Declicker"));
-	EndDialog(IDOK);
 }
 
 void CDeclickDialog::SetDeclickData(CClickRemoval * pCr)
