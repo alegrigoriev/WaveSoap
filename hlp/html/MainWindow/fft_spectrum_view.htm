@@ -12,15 +12,16 @@
 
 <h2>Spectrum view</h2>
 <p><map name="FPMap0">
-<area href="../Edit/hid_edit_region_marker.htm" shape="rect" coords="83, 192, 357, 215">
-<area href="../Edit/hid_edit_paste.htm" shape="rect" coords="83, 213, 355, 239">
-<area href="../View/hid_view_zoom_in_time.htm" shape="rect" coords="82, 241, 355, 268">
-<area href="../View/hid_view_zoom_out_time.htm" shape="rect" coords="82, 265, 354, 291">
-<area href="../View/hid_view_zoomin_hor_full.htm" shape="rect" coords="82, 286, 355, 310">
-<area href="../View/hid_view_zoom_selection.htm" shape="rect" coords="82, 310, 354, 332">
-<area href="../View/hid_view_zoomprevious.htm" shape="rect" coords="83, 327, 355, 353">
-<area href="time_ruler.htm" shape="rect" coords="54, 0, 503, 29"></map>
-<img border="0" src="../../images/FftView.png" usemap="#FPMap0"></p>
+<area href="../Edit/hid_edit_region_marker.htm" shape="rect" coords="67, 142, 341, 165">
+<area href="../Edit/hid_edit_paste.htm" shape="rect" coords="68, 165, 340, 191">
+<area href="../View/hid_view_zoom_in_time.htm" shape="rect" coords="68, 192, 341, 219">
+<area href="../View/hid_view_zoom_out_time.htm" shape="rect" coords="65, 216, 344, 240">
+<area href="../View/hid_view_zoomin_hor_full.htm" shape="rect" coords="64, 239, 344, 263">
+<area href="../View/hid_view_zoom_selection.htm" shape="rect" coords="65, 262, 345, 284">
+<area href="../View/hid_view_zoomprevious.htm" shape="rect" coords="65, 281, 346, 307">
+<area href="time_ruler.htm" shape="rect" coords="54, 0, 503, 29">
+<area href="#window_type" shape="rect" coords="359, 384, 559, 457"></map>
+<img border="0" src="../../images/FftView.png" usemap="#FPMap0"> </p>
 
 <p>Spectrum view shows how the sound energy is distributed among different 
 frequencies. The spectrum is calculated using FFT procedure, which stands for 
@@ -48,10 +49,12 @@ enough, because energy from one band would bleed (leak) to other bands, far from
 <p><b>Squared sine</b> is also known as Hanning window. It has low leakage to 
 the far bins, but the sidelobe has -30 dB leakage, which is a bit worse than 
 Hamming window.</p>
-<p><b>Half-sine</b> window quality is between Hamming and squared sine.</p>
 <p><b>Hamming</b> window (0.54 – 0.46*cos(2*pi * n/N)) has the lowest leak to 
 the first bin, but the worst leakage to the far bins. All sidelobes of its 
 transfer function are mere -40 dB.</p>
+<p><b>Nuttall</b> window: 0.355768 - 0.487396*cos(2*pi * n/N) + 
+0.144232*cos(4*pi * n/N) - 0.012604*cos(6*pi * n/N). This is so far the best 
+window, but there may be reasons you want to select Hanning or Hamming window.</p>
 
 <p>On the lower end of the ruler, two buttons are shown:</p>
 <p><img border="0" src="../../images/amplitude_zoom_buttons.png"></p>
