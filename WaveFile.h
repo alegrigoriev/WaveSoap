@@ -34,7 +34,7 @@ enum
 	MmioFileOpenDontCreateRiff = 0x80000000,
 };
 
-class CMmioFile
+class CMmioFile : public CDirectFile
 {
 	class CSimpleCriticalSection
 	{
@@ -78,22 +78,12 @@ public:
 	virtual void Close( );
 	CMmioFile & operator =(CMmioFile &);
 
-
-	BOOL GetFileInformationByHandle(LPBY_HANDLE_FILE_INFORMATION lpFileInformation)
-	{
-		return m_File.GetFileInformationByHandle(lpFileInformation);
-	}
-
 	// read/write:
 	LONG Read( void* lpBuf, LONG nCount )
 	{
 		CSimpleCriticalSectionLock lock(m_cs);
 		return mmioRead(m_hmmio, (HPSTR) lpBuf, nCount);
 	}
-
-	// read data at the specified position
-	// current position won't change after this function
-	LONG ReadAt(void * lpBuf, LONG nCount, LONG Position);
 
 	LONG Write( const void* lpBuf, LONG nCount )
 	{
@@ -166,25 +156,29 @@ public:
 
 	virtual ~CMmioFile();
 
-	CDirectFile m_File;
 	HMMIO m_hmmio;
 	FOURCC m_RiffckType;
 	CSimpleCriticalSection m_cs;
+	struct COMMON_DATA
+	{
+		MMCKINFO riffck;
+		HMMIO m_hmmio;
+	};
 	void * GetCommonData() const
 	{
-		char * tmp = (char *)m_File.GetCommonData();
+		COMMON_DATA * tmp = (COMMON_DATA *)CDirectFile::GetCommonData();
 		if (NULL == tmp)
 		{
 			return NULL;
 		}
-		return tmp + sizeof (MMCKINFO);
+		return tmp + 1;
 	}
 	size_t GetCommonDataSize() const
 	{
-		size_t tmp = m_File.GetCommonDataSize();
-		if (tmp >= sizeof (MMCKINFO))
+		size_t tmp = CDirectFile::GetCommonDataSize();
+		if (tmp >= sizeof (COMMON_DATA))
 		{
-			return tmp - sizeof (MMCKINFO);
+			return tmp - sizeof (COMMON_DATA);
 		}
 		else
 		{
@@ -194,17 +188,17 @@ public:
 
 	void * AllocateCommonData(size_t size)
 	{
-		char * tmp = (char *)m_File.AllocateCommonData(size + sizeof (MMCKINFO));
+		COMMON_DATA * tmp = (COMMON_DATA *)CDirectFile::AllocateCommonData(size + sizeof (COMMON_DATA));
 		if (NULL == tmp)
 		{
 			return NULL;
 		}
-		return tmp + sizeof (MMCKINFO);
+		return tmp + 1;
 	}
 
 	LPMMCKINFO GetRiffChunk() const
 	{
-		return (LPMMCKINFO)m_File.GetCommonData();
+		return &((COMMON_DATA*)CDirectFile::GetCommonData())->riffck;
 	}
 
 	BOOL LoadRiffChunk();
@@ -213,10 +207,8 @@ public:
 	{
 		return m_hmmio != NULL;
 	}
-	DWORD GetFileID() const
-	{
-		return m_File.GetFileID();
-	}
+
+	BOOL CommitChanges();
 
 private:
 	// wrong type of constructor
@@ -238,6 +230,8 @@ enum {
 	CreateWaveFilePcmFormat = 0x00400000,
 	CreateWaveFileTemp = 0x00800000,
 	CreateWaveFileAttachTemplateAsSource = 0x01000000,
+	CreateWaveFileSizeSpecified = 0x02000000,
+	CreateWaveFileCreateFact = 0x04000000,
 };
 
 class CWaveFile : public CMmioFile
@@ -245,22 +239,21 @@ class CWaveFile : public CMmioFile
 public:
 	CWaveFile();
 	~CWaveFile();
-	BOOL CreateWaveFile(CWaveFile * pTemplateFile, int Channel, int Samples, DWORD flags, LPCTSTR FileName);
+	BOOL CreateWaveFile(CWaveFile * pTemplateFile, WAVEFORMATEX * pTemplateFormat,
+						int Channels, unsigned long SizeOrSamples, DWORD flags, LPCTSTR FileName);
 #if 0
 	virtual BOOL Open( LPCTSTR lpszFileName, UINT nOpenFlags);
 #endif
 	virtual void Close( );
-	int SampleSize() const
+	int SampleSize() const;
+
+	struct COMMON_DATA
 	{
-		WAVEFORMATEX * pWf = GetWaveFormat();
-		if (NULL == pWf
-			|| 0 == pWf->nChannels
-			|| 0 == pWf->wBitsPerSample)
-		{
-			return 0;
-		}
-		return pWf->nChannels * pWf->wBitsPerSample / 8;
-	}
+		MMCKINFO datack;
+		MMCKINFO fmtck;
+		MMCKINFO factck;
+		WAVEFORMATEX wf;    // should be the last member
+	};
 	int Channels() const
 	{
 		WAVEFORMATEX * pWf = GetWaveFormat();
@@ -270,19 +263,7 @@ public:
 		}
 		return pWf->nChannels;
 	}
-	LONG NumberOfSamples() const
-	{
-		WAVEFORMATEX * pWf = GetWaveFormat();
-		LPMMCKINFO pDatack = GetDataChunk();
-		if (NULL == pWf
-			|| NULL == pDatack
-			|| 0 == pWf->nChannels
-			|| 0 == pWf->wBitsPerSample)
-		{
-			return 0;
-		}
-		return pDatack->cksize / (pWf->nChannels * pWf->wBitsPerSample / 8);
-	}
+	LONG NumberOfSamples() const;
 	CWaveFile & operator =(CWaveFile &);
 
 	//MMCKINFO m_datack;
@@ -305,21 +286,15 @@ public:
 
 	LPMMCKINFO GetDataChunk() const
 	{
-		return (LPMMCKINFO) GetCommonData();
+		return & ((COMMON_DATA*)GetCommonData())->datack;
 	}
-	WAVEFORMATEX * GetWaveFormat() const
-	{
-		char * tmp = (char *)GetCommonData();
-		if (tmp)
-		{
-			return (WAVEFORMATEX *)(tmp + sizeof (MMCKINFO));
-		}
-		else
-		{
-			return NULL;
-		}
-	}
-	//WAVEFORMATEX * m_pWf;
+	WAVEFORMATEX * GetWaveFormat() const;
+	// save all changes in wave format and data chunk size
+	BOOL CommitChanges();
+	MMCKINFO * GetFmtChunk() const;
+	MMCKINFO * GetFactChunk() const;
+
+	DWORD m_FactSamples;
 private:
 	// wrong type of constructor
 	CWaveFile(const CWaveFile &)
