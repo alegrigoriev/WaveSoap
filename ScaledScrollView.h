@@ -52,6 +52,9 @@ public:
 	{
 		return Zoom(1. / dScale, 1. / dScale, ptCenter);
 	}
+	void ZoomInSelection(DWORD flags);
+	void ZoomOutSelection(DWORD flags);
+
 	POINT DoubleToPointDev(double x, double y) const;
 	double GetXScale() const { return dScaleX; }
 	double GetYScale() const { return dScaleY; }
@@ -73,11 +76,13 @@ public:
 	void SetMaxExtents(double left, double right,
 						double bottom, double top);
 
-	void KeepAspectRatio(BOOL flag) {bKeepAspectRatio = flag; }
-	void KeepScaleOnResize(BOOL flag)
+	void KeepAspectRatio(bool flag) {bKeepAspectRatio = flag; }
+	void KeepScaleOnResize(bool flag)
 	{ bKeepScaleOnResizeX = bKeepScaleOnResizeY = flag; }
-	void KeepScaleOnResizeX(BOOL flag) { bKeepScaleOnResizeX = flag; }
-	void KeepScaleOnResizeY(BOOL flag) { bKeepScaleOnResizeY = flag; }
+	void KeepScaleOnResizeX(bool flag) { bKeepScaleOnResizeX = flag; }
+	void KeepScaleOnResizeY(bool flag) { bKeepScaleOnResizeY = flag; }
+	void KeepOrgOnResizeX(bool flag) { bKeepOrgOnResizeX = flag; }
+	void KeepOrgOnResizeY(bool flag) { bKeepOrgOnResizeY = flag; }
 // Overrides
 	// ClassWizard generated virtual function overrides
 	//{{AFX_VIRTUAL(CScaledScrollView)
@@ -109,9 +114,11 @@ protected:
 
 	enum {ScrollMin = -16384, ScrollMax = 16383};
 
-	BOOL bKeepAspectRatio;
-	BOOL bKeepScaleOnResizeX;
-	BOOL bKeepScaleOnResizeY;
+	bool bKeepAspectRatio;
+	bool bKeepScaleOnResizeX;
+	bool bKeepScaleOnResizeY;
+	bool bKeepOrgOnResizeX;
+	bool bKeepOrgOnResizeY;
 
 	// variables and functions for selection rectangle support
 	double m_dXStartTracking;
@@ -123,9 +130,9 @@ protected:
 	double m_dXSelectionEnd;
 	double m_dYSelectionEnd;
 
-	BOOL bIsTrackingSelection;
-	BOOL bHasSelection;
-	BOOL bSelRectDrawn;
+	bool bIsTrackingSelection;
+	bool bHasSelection;
+	bool bSelRectDrawn;
 	int nKeyPressed;
 	// invert selection rectangle, regardless whether it is visible or not
 	virtual void DrawSelectionRect(CDC * , double left,
@@ -174,6 +181,10 @@ protected:
 	afx_msg void OnViewZoomInVert();
 	afx_msg void OnViewZoomOutHor();
 	afx_msg void OnViewZoomOutVert();
+	afx_msg void OnViewZoominHor2();
+	afx_msg void OnViewZoomInVert2();
+	afx_msg void OnViewZoomOutHor2();
+	afx_msg void OnViewZoomOutVert2();
 	afx_msg void OnDestroy();
 	afx_msg void OnLButtonDown(UINT nFlags, CPoint point);
 	afx_msg void OnRButtonDown(UINT nFlags, CPoint point);
