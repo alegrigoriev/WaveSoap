@@ -8,6 +8,7 @@
 #include "OperationDialogs.h"
 #include "FileDialogWithHistory.h"
 #include "GdiObjectSave.h"
+#include "DialogWithSelection.inl"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -24,23 +25,16 @@ CEqualizerDialog::CEqualizerDialog(SAMPLE_INDEX Start,
 									SAMPLE_INDEX End,
 									SAMPLE_INDEX CaretPosition,
 									CHANNEL_MASK Channels,
-									NUMBER_OF_SAMPLES FileLength,
-									const WAVEFORMATEX * pWf,
+									CWaveFile & WaveFile,
 									int TimeFormat,
 									BOOL bLockChannels,
 									BOOL	bUndoEnabled,
 									CWnd* pParent /*=NULL*/)
-	: BaseClass(CFilterDialog::IDD, pParent),
-	m_Start(Start),
-	m_End(End),
-	m_CaretPosition(CaretPosition),
-	m_Chan(Channels),
-	m_FileLength(FileLength),
-	m_pWf(pWf),
-	m_TimeFormat(TimeFormat),
-	m_bLockChannels(bLockChannels),
-	m_bUndo(bUndoEnabled)
+	: BaseClass(Start, End, CaretPosition, Channels, WaveFile, TimeFormat,
+				IDD, pParent)
 {
+	m_bLockChannels = bLockChannels;
+	m_bUndo = bUndoEnabled;
 	//{{AFX_DATA_INIT(CEqualizerDialog)
 	m_bMultiBandEqualizer = -1;
 	m_nBands = 0;
@@ -89,7 +83,7 @@ CEqualizerDialog::CEqualizerDialog(SAMPLE_INDEX Start,
 	m_pResizeItemsCount = sizeof ResizeItems / sizeof ResizeItems[0];
 
 	m_wGraph.SetNumberOfBands(m_nBands);
-	m_wGraph.m_SamplingRate = m_pWf->nSamplesPerSec;
+	m_wGraph.m_SamplingRate = WaveFile.SampleRate();
 }
 
 
@@ -100,7 +94,6 @@ void CEqualizerDialog::DoDataExchange(CDataExchange* pDX)
 	DDX_Control(pDX, IDC_EDIT_BANDS, m_eEditBands);
 	DDX_Control(pDX, IDC_EDIT_BAND_GAIN, m_BandGain);
 	DDX_Control(pDX, IDC_SPIN_BANDS, m_SpinBands);
-	DDX_Control(pDX, IDC_STATIC_SELECTION, m_SelectionStatic);
 	DDX_Check(pDX, IDC_CHECK_UNDO, m_bUndo);
 	DDX_Radio(pDX, IDC_RADIO_EQUALIZER_TYPE, m_bMultiBandEqualizer);
 	DDX_Text(pDX, IDC_EDIT_BANDS, m_nBands);
@@ -115,7 +108,6 @@ void CEqualizerDialog::DoDataExchange(CDataExchange* pDX)
 
 BEGIN_MESSAGE_MAP(CEqualizerDialog, BaseClass)
 	//{{AFX_MSG_MAP(CEqualizerDialog)
-	ON_BN_CLICKED(IDC_BUTTON_SELECTION, OnButtonSelection)
 	ON_EN_CHANGE(IDC_EDIT_BANDS, OnChangeEditBands)
 	ON_BN_CLICKED(IDC_BUTTON_LOAD, OnButtonLoad)
 	ON_BN_CLICKED(IDC_BUTTON_RESET_BANDS, OnButtonResetBands)
@@ -149,7 +141,6 @@ BOOL CEqualizerDialog::OnInitDialog()
 
 	m_BandGain.SetData(m_wGraph.GetCurrentBandGainDb());
 	// init MINMAXINFO
-	UpdateSelectionStatic();
 
 	m_SpinBands.SetRange(3, MaxNumberOfEqualizerBands);
 	if (m_bMultiBandEqualizer)
@@ -165,29 +156,6 @@ BOOL CEqualizerDialog::OnInitDialog()
 	// EXCEPTION: OCX Property Pages should return FALSE
 }
 
-void CEqualizerDialog::UpdateSelectionStatic()
-{
-	m_SelectionStatic.SetWindowText(GetSelectionText(m_Start, m_End, m_Chan,
-													m_pWf->nChannels, m_bLockChannels,
-													m_pWf->nSamplesPerSec, m_TimeFormat));
-}
-
-
-void CEqualizerDialog::OnButtonSelection()
-{
-	CSelectionDialog dlg(m_Start, m_End, m_CaretPosition, m_Chan + 1, m_FileLength, m_pWf, m_TimeFormat);
-
-	if (IDOK != dlg.DoModal())
-	{
-		return;
-	}
-
-	m_Start = dlg.GetStart();
-	m_End = dlg.GetEnd();
-	m_Chan = dlg.GetChannel() - 1;
-
-	UpdateSelectionStatic();
-}
 /////////////////////////////////////////////////////////////////////////////
 // CEqualizerGraphWnd
 
@@ -1395,6 +1363,4 @@ void CEqualizerDialog::OnCheckZeroPhase()
 	}
 	// force filter recalculation
 	m_wGraph.SetNumberOfBands(m_nBands);
-	//m_wGraph.RebuildBandFilters();
-	//m_wGraph.Invalidate();
 }
