@@ -351,6 +351,9 @@ void COperationContext::PostRetire(BOOL bChildContext)
 {
 	if (WasClipped())
 	{
+		// bring document frame to the top, then return
+		CDocumentPopup pop(pDocument);
+
 		CString s;
 		s.Format(IDS_SOUND_CLIPPED, pDocument->GetTitle(), int(GetMaxClipped() * (100. / 32678)));
 		AfxMessageBox(s, MB_OK | MB_ICONEXCLAMATION);
@@ -2495,7 +2498,7 @@ BOOL CVolumeChangeContext::ProcessBuffer(void * buf, size_t BufferLength, DWORD 
 
 		if (0 != m_DstChan)
 		{
-			pDst[i] = DoubleToShort(pDst[i] * m_VolumeRight);
+			pDst[i + 1] = DoubleToShort(pDst[i + 1] * m_VolumeRight);
 		}
 	}
 	return TRUE;
@@ -2948,6 +2951,7 @@ void CStatisticsContext::PostRetire(BOOL bChildContext)
 	dlg.m_ValueAtCursorRight = Value[1];
 	dlg.m_sFilename = pDocument->GetTitle();
 
+	CDocumentPopup pop(pDocument);
 	dlg.DoModal();
 
 	COperationContext::PostRetire(bChildContext);
@@ -3113,7 +3117,11 @@ void CFileSaveContext::PostRetire(BOOL bChildContext)
 
 			dlg.m_Prompt.Format(fmt, LPCTSTR(pDocument->GetTitle()),
 								LPCTSTR(m_NewName));
-			int res = dlg.DoModal();
+			int res;
+			{
+				CDocumentPopup pop(pDocument);
+				res = dlg.DoModal();
+			}
 			if (IDCANCEL != res)
 			{
 				m_DstFile.Close();  // to allow open
