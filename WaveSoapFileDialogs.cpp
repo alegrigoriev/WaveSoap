@@ -799,8 +799,8 @@ void CWaveSoapFileSaveDialog::OnComboFormatsChange()
 		break;
 	case SoundFileWma:
 		// WMA file
-		FillFormatCombo(sel,
-						MatchNumChannels | MatchSamplingRate);
+		// never called!
+		//FillFormatCombo(sel, MatchNumChannels | MatchSamplingRate);
 		break;
 	case SoundFileRaw:
 		// RAW file
@@ -888,8 +888,8 @@ void CWaveSoapFileSaveDialog::OnTypeChange()
 		}
 	}
 	SetFileType(m_ofn.nFilterIndex);
-	return;
 }
+
 void CWaveSoapFileSaveDialog::OnFileNameChange()
 {
 	// if the file type is different from the selected type,
@@ -956,8 +956,8 @@ void CWaveSoapFileSaveDialog::SetFileType(int nType)
 	case SoundFileWma:
 		// WMA file
 		// remove Format: combo
-		ShowDlgItem(IDC_STATIC_FORMAT, SW_SHOWNOACTIVATE);
-		ShowDlgItem(IDC_COMBO_FORMAT, SW_SHOWNOACTIVATE);
+		ShowDlgItem(IDC_STATIC_FORMAT, SW_HIDE);
+		ShowDlgItem(IDC_COMBO_FORMAT, SW_HIDE);
 		ShowDlgItem(IDC_COMBO_ATTRIBUTES, SW_SHOWNOACTIVATE);
 		ShowDlgItem(IDC_STATIC_ATTRIBUTES, SW_SHOWNOACTIVATE);
 		ShowDlgItem(IDC_CHECK_COMPATIBLE_FORMATS, SW_HIDE);
@@ -1071,15 +1071,14 @@ void CWaveSoapFileSaveDialog::FillLameEncoderFormats()
 void CWaveSoapFileSaveDialog::FillWmaFormatArray()
 {
 	// if WmaOnly, only tags 352 and 353 are used
-	// WAVE_FORMAT_MSAUDIO1 and WAVE_FORMAT_MSAUDIO1+1
-	int formats[2] = { WAVE_FORMAT_MSAUDIO1, WAVE_FORMAT_MSAUDIO1 + 1};
+	//WAVE_FORMAT_MSAUDIO1+1
+	int format = WAVE_FORMAT_MSAUDIO1 + 1;
 	// enum VMA V1 and V2 formats
-	// V1 format: 352
 	// V2 format: 353
 	// filter the formats by tag, sampling rate, number of channels
-	// fill format tag array with V1 and V2 formats
-	FillFormatTagCombo(formats, 2);
-	FillFormatCombo(m_FormatCombo.GetCurSel(), MatchNumChannels | MatchSamplingRate);
+	// fill format tag array with V2 formats
+	FillFormatTagArray( & format, 1);
+	FillFormatCombo(0, MatchNumChannels | MatchSamplingRate);
 }
 
 void CWaveSoapFileSaveDialog::FillMp3FormatArray()
