@@ -600,9 +600,8 @@ void CSelectionDialog::OnKillfocusEditStart()
 
 void CSelectionDialog::OnSelchangeComboSelection()
 {
-	int sel = m_SelectionCombo.GetCurSel();
-	if (sel >= 0
-		&& sel < m_Selections.size())
+	unsigned sel = m_SelectionCombo.GetCurSel();
+	if (sel < m_Selections.size())
 	{
 		m_Start = m_Selections[sel].begin;
 		m_eStart.SetTimeSample(m_Start);
@@ -630,7 +629,7 @@ void CSelectionDialog::AddSelection(UINT id, long begin, long end)
 
 int CSelectionDialog::FindSelection(long begin, long end)
 {
-	for (int i = 0; i < m_Selections.size(); i++)
+	for (unsigned i = 0; i < m_Selections.size(); i++)
 	{
 		if (m_Selections[i].begin == begin
 			&& m_Selections[i].end == end)
@@ -864,7 +863,7 @@ BOOL CStatisticsDialog::OnInitDialog()
 	if (m_pContext->m_EnergyLeft != 0)
 	{
 		RmsDb.Format("%.2f",
-					10. * log10(fabs(m_pContext->m_EnergyLeft) / (nSamples * 1073741824.)));
+					10. * log10(fabs(double(m_pContext->m_EnergyLeft)) / (nSamples * 1073741824.)));
 	}
 	else
 	{
@@ -873,7 +872,7 @@ BOOL CStatisticsDialog::OnInitDialog()
 	if (m_pContext->m_SumLeft / nSamples != 0)
 	{
 		DcDb.Format("%.2f",
-					20. * log10(abs(m_pContext->m_SumLeft / nSamples) / 32768.));
+					20. * log10(fabs(double(m_pContext->m_SumLeft) / nSamples) / 32768.));
 	}
 	else
 	{
@@ -911,9 +910,9 @@ BOOL CStatisticsDialog::OnInitDialog()
 			//"%.2f dB (%.2f%%)\r\n"
 			// RMS
 			LPCTSTR(RmsDb),
-			100. * sqrt(fabs(m_pContext->m_EnergyLeft) / (nSamples * 1073741824.)),
+			100. * sqrt(fabs(double(m_pContext->m_EnergyLeft)) / (nSamples * 1073741824.)),
 			//"%s (%.2f dB; %.2f%%)\r\n"
-			LPCTSTR(LtoaCS(m_pContext->m_SumLeft / nSamples)),
+			LPCTSTR(LtoaCS(long(m_pContext->m_SumLeft / nSamples))),
 			LPCTSTR(DcDb), (m_pContext->m_SumLeft / nSamples) / 327.68,
 			//"%.2f Hz\r\n\r\n"
 			// zero crossing
@@ -938,7 +937,7 @@ BOOL CStatisticsDialog::OnInitDialog()
 		}
 		if (m_pContext->m_MinRight != 0)
 		{
-			MinDb.Format("%.2f", 20. * log10(abs(m_pContext->m_MinRight) / 32768.));
+			MinDb.Format("%.2f", 20. * log10(fabs(double(m_pContext->m_MaxRight)) / 32768.));
 		}
 		else
 		{
@@ -946,7 +945,7 @@ BOOL CStatisticsDialog::OnInitDialog()
 		}
 		if (m_pContext->m_MinRight != 0)
 		{
-			MaxDb.Format("%.2f", 20. * log10(abs(m_pContext->m_MaxRight) / 32768.));
+			MaxDb.Format("%.2f", 20. * log10(fabs(double(m_pContext->m_MaxRight)) / 32768.));
 		}
 		else
 		{
@@ -955,7 +954,7 @@ BOOL CStatisticsDialog::OnInitDialog()
 		if (m_pContext->m_EnergyRight != 0)
 		{
 			RmsDb.Format("%.2f",
-						10. * log10(fabs(m_pContext->m_EnergyRight) / (nSamples * 1073741824.)));
+						10. * log10(fabs(double(m_pContext->m_EnergyRight)) / (nSamples * 1073741824.)));
 		}
 		else
 		{
@@ -964,7 +963,7 @@ BOOL CStatisticsDialog::OnInitDialog()
 		if (m_pContext->m_SumRight / nSamples != 0)
 		{
 			DcDb.Format("%.2f",
-						20. * log10(abs(m_pContext->m_SumRight / nSamples) / 32768.));
+						20. * log10(fabs(double(m_pContext->m_SumRight) / nSamples) / 32768.));
 		}
 		else
 		{
@@ -1002,10 +1001,10 @@ BOOL CStatisticsDialog::OnInitDialog()
 				//"%.2f dB (%.2f%%)\r\n"
 				// RMS
 				LPCTSTR(RmsDb),
-				100. * sqrt(fabs(m_pContext->m_EnergyRight) / (nSamples * 1073741824.)),
+				100. * sqrt(fabs(double(m_pContext->m_EnergyRight)) / (nSamples * 1073741824.)),
 				//"%s (%.2f dB; %.2f%%)\r\n"
-				LPCTSTR(LtoaCS(m_pContext->m_SumRight / nSamples)),
-				LPCTSTR(DcDb), (m_pContext->m_SumRight / nSamples) / 327.68,
+				LPCTSTR(LtoaCS(long(double(m_pContext->m_SumRight) / nSamples))),
+				LPCTSTR(DcDb), (double(m_pContext->m_SumRight) / nSamples) / 327.68,
 				//"%.2f Hz"
 				// zero crossing
 				m_pContext->m_ZeroCrossingRight / double(nSamples) * m_SamplesPerSec,
@@ -1991,11 +1990,11 @@ void CDeclickDialog::OnOK()
 
 void CDeclickDialog::SetDeclickData(CClickRemoval * pCr)
 {
-	pCr->m_MeanPowerDecayRate = m_dEnvelopDecayRate;
-	pCr->m_PowerToDeriv3RatioThreshold = m_dClickToNoise * m_dClickToNoise;
-	pCr->m_MeanPowerAttackRate = m_dAttackRate;
+	pCr->m_MeanPowerDecayRate = (float)m_dEnvelopDecayRate;
+	pCr->m_PowerToDeriv3RatioThreshold = float(m_dClickToNoise * m_dClickToNoise);
+	pCr->m_MeanPowerAttackRate = float(m_dAttackRate);
 	pCr->m_nMaxClickLength = m_MaxClickLength;
-	pCr->m_MinDeriv3Threshold = m_MinClickAmplitude * m_MinClickAmplitude;
+	pCr->m_MinDeriv3Threshold = float(m_MinClickAmplitude * m_MinClickAmplitude);
 	if (m_bImportClicks)
 	{
 		pCr->SetClickSourceFile(m_ClickImportFilename);
@@ -2150,21 +2149,21 @@ void CNoiseReductionDialog::StoreValuesToRegistry()
 void CNoiseReductionDialog::SetNoiseReductionData(CNoiseReduction * pNr)
 {
 	//pNr->m_bApplyPhaseFilter = m_bPhaseFilter;
-	pNr->m_MinFrequencyToProcess = m_dLowerFrequency;
-	pNr->m_ThresholdOfTransient = m_dTransientThreshold;
-	pNr->m_FreqThresholdOfNoiselike = M_PI_2 * M_PI_2 * m_dNoiseCriterion * m_dNoiseCriterion;
-	pNr->m_MaxNoiseSuppression = DB_TO_NEPER * m_dNoiseReduction;
-	pNr->m_LevelThresholdForNoiseLow = DB_TO_NEPER * (m_dNoiseThresholdLow +111.);
-	pNr->m_LevelThresholdForNoiseHigh = DB_TO_NEPER * (m_dNoiseThresholdHigh +111.);
-	pNr->m_ToneOverNoisePreference = DB_TO_NEPER * m_dToneOverNoisePreference;
-	pNr->m_NoiseReductionRatio = 0.5 * m_dNoiseReductionAggressivness;
+	pNr->m_MinFrequencyToProcess = float(m_dLowerFrequency);
+	pNr->m_ThresholdOfTransient = float(m_dTransientThreshold);
+	pNr->m_FreqThresholdOfNoiselike = float(M_PI_2 * M_PI_2 * m_dNoiseCriterion * m_dNoiseCriterion);
+	pNr->m_MaxNoiseSuppression = float(DB_TO_NEPER * m_dNoiseReduction);
+	pNr->m_LevelThresholdForNoiseLow = float(DB_TO_NEPER * (m_dNoiseThresholdLow +111.));
+	pNr->m_LevelThresholdForNoiseHigh = float(DB_TO_NEPER * (m_dNoiseThresholdHigh +111.));
+	pNr->m_ToneOverNoisePreference = float(DB_TO_NEPER * m_dToneOverNoisePreference);
+	pNr->m_NoiseReductionRatio = float(0.5 * m_dNoiseReductionAggressivness);
 
-	pNr->m_NearMaskingDecayDistanceLow = m_NearMaskingDecayDistanceLow;
-	pNr->m_NearMaskingDecayDistanceHigh = m_NearMaskingDecayDistanceHigh;
+	pNr->m_NearMaskingDecayDistanceLow = float(m_NearMaskingDecayDistanceLow);
+	pNr->m_NearMaskingDecayDistanceHigh = float(m_NearMaskingDecayDistanceHigh);
 
-	pNr->m_NearMaskingDecayTimeLow = m_NearMaskingDecayTimeLow;
-	pNr->m_NearMaskingDecayTimeHigh = m_NearMaskingDecayTimeHigh;
-	pNr->m_NearMaskingCoeff = m_NearMaskingCoeff;
+	pNr->m_NearMaskingDecayTimeLow = float(m_NearMaskingDecayTimeLow);
+	pNr->m_NearMaskingDecayTimeHigh = float(m_NearMaskingDecayTimeHigh);
+	pNr->m_NearMaskingCoeff = float(m_NearMaskingCoeff);
 }
 
 /////////////////////////////////////////////////////////////////////////////

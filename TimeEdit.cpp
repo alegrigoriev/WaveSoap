@@ -34,7 +34,7 @@ END_MESSAGE_MAP()
 
 /////////////////////////////////////////////////////////////////////////////
 // CTimeEdit message handlers
-void CTimeEdit::ExchangeData(CDataExchange* pDX, long & sample)
+void CTimeEdit::ExchangeData(CDataExchange* pDX, ULONG & sample)
 {
 	if (pDX->m_bSaveAndValidate)
 	{
@@ -57,7 +57,7 @@ void CTimeEdit::SetTimeFormat(int format)
 	//UpdateEditControl();
 }
 
-void CTimeEdit::SetTimeSample(long sample)
+void CTimeEdit::SetTimeSample(ULONG sample)
 {
 	m_Sample = sample;
 	UpdateEditControl();
@@ -69,7 +69,7 @@ void CTimeEdit::UpdateEditControl()
 	SetWindowText(m_OriginalString);
 }
 
-long CTimeEdit::GetTimeSample()
+ULONG CTimeEdit::GetTimeSample()
 {
 	CString s;
 	GetWindowText(s);
@@ -131,7 +131,7 @@ long CTimeEdit::GetTimeSample()
 				break;
 			}
 		}
-		m_Sample = long(time * m_nSamplesPerSec / 1000.);
+		m_Sample = ULONG(time * m_nSamplesPerSec / 1000.);
 	}
 	return m_Sample;
 }
@@ -140,7 +140,7 @@ void CTimeEdit::OnVScroll(UINT nSBCode, UINT nPos, CScrollBar* pScrollBar)
 {
 	TRACE("CTimeEdit::OnVScroll, nPos=%d\n", nPos);
 	// nPos is actually an increment from CTimeSpinCtrl
-	long nSample = GetTimeSample();
+	ULONG nSample = GetTimeSample();
 	int step = abs(int(nPos));
 	int increment = 0;
 	switch (m_TimeFormat & SampleToString_Mask)
@@ -281,8 +281,8 @@ END_MESSAGE_MAP()
 void CTimeEditCombo::OnReflectComboSelectionChanged()
 {
 	CComboBox * pCB = (CComboBox *) this;
-	int sel = pCB->GetCurSel();
-	if (sel >= 0 && sel < m_Positions.size())
+	unsigned sel = pCB->GetCurSel();
+	if (sel < m_Positions.size())
 	{
 		// repost it to itself
 		// need to use posted message, because edit control is modified
@@ -294,8 +294,8 @@ void CTimeEditCombo::OnReflectComboSelectionChanged()
 void CTimeEditCombo::OnComboSelectionChanged()
 {
 	CComboBox * pCB = (CComboBox *) this;
-	int sel = pCB->GetCurSel();
-	if (sel >= 0 && sel < m_Positions.size())
+	unsigned sel = pCB->GetCurSel();
+	if (sel < m_Positions.size())
 	{
 		SetTimeSample(m_Positions[sel]);
 	}

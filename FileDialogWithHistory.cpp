@@ -201,6 +201,94 @@ void CFileDialogWithHistory::OnFolderChange()
 	}
 }
 
+CString CResizableFileDialog::GetNextPathName(POSITION& pos) const
+{
+	if (0 == (m_ofn.Flags & OFN_EXPLORER)
+		|| (m_ofn.Flags & OFN_ALLOWMULTISELECT) == 0)
+	{
+		return CFileDialog::GetNextPathName(pos);
+	}
+	TCHAR const chDelimiter = '\0';
+
+	LPTSTR lpsz = (LPTSTR)pos;
+	if (lpsz == m_ofn.lpstrFile) // first time
+	{
+		// find char pos after first Delimiter
+		while( *lpsz != '\0')
+			lpsz = _tcsinc(lpsz);
+		lpsz = _tcsinc(lpsz);
+
+		// if single selection then return only selection
+		if (*lpsz == 0)
+		{
+			pos = NULL;
+			return m_ofn.lpstrFile;
+		}
+	}
+
+	CString strPath = m_ofn.lpstrFile;
+
+	LPTSTR lpszFileName = lpsz;
+	CString strFileName = lpsz;
+
+	// find char pos at next Delimiter
+	while( *lpsz != '\0')
+		lpsz = _tcsinc(lpsz);
+
+	lpsz = _tcsinc(lpsz);
+	if (*lpsz == '\0') // if double terminated then done
+		pos = NULL;
+	else
+		pos = (POSITION)lpsz;
+
+	// check if the filename is already absolute
+	if (strFileName[0] == '/' || strFileName[0] == '\\'
+		|| (strFileName.GetLength() > 1 && strFileName[1] == ':'))
+	{
+		TCHAR * pTitle;
+		GetFullPathName(strFileName,MAX_PATH,strPath.GetBuffer(MAX_PATH), & pTitle);
+		strPath.ReleaseBuffer();
+		return strPath;
+	}
+	// only add '\\' if it is needed
+	if (!strPath.IsEmpty())
+	{
+		// check for last back-slash or forward slash (handles DBCS)
+		LPCTSTR lpsz = _tcsrchr(strPath, '\\');
+		if (lpsz == NULL)
+			lpsz = _tcsrchr(strPath, '/');
+		// if it is also the last character, then we don't need an extra
+		if (lpsz != NULL &&
+			(lpsz - (LPCTSTR)strPath) == strPath.GetLength()-1)
+		{
+			ASSERT(*lpsz == '\\' || *lpsz == '/');
+			return strPath + strFileName;
+		}
+	}
+	return strPath + '\\' + strFileName;
+}
+
+size_t CResizableFileDialog::OpenfilenameSize()
+{
+	OSVERSIONINFO vi;
+	vi.dwOSVersionInfoSize = sizeof vi;
+	GetVersionEx( & vi);
+
+	if ((vi.dwPlatformId == VER_PLATFORM_WIN32_NT
+			&& vi.dwMajorVersion >= 5)
+		|| (vi.dwPlatformId == VER_PLATFORM_WIN32_WINDOWS
+			&& (vi.dwMajorVersion > 4
+				|| (vi.dwMajorVersion == 4
+					&& vi.dwMinorVersion >= 90))))
+	{
+		return sizeof (OPENFILENAME);
+	}
+	else
+	{
+		return OPENFILENAME_SIZE_VERSION_400;
+	}
+}
+
 void CResizableFileDialog::OnSize(UINT nType, int cx, int cy)
 {
 	TRACE("CResizableFileDialog::OnSize %d %d, hwdn=%x\n", cx, cy, m_hWnd);

@@ -18,12 +18,12 @@ public:
 
 // Attributes
 public:
-	void ExchangeData(CDataExchange* pDX, long & sample);
-	long GetTimeSample();
+	void ExchangeData(CDataExchange* pDX, ULONG & sample);
+	ULONG GetTimeSample();
 // Operations
 public:
 	void SetTimeFormat(int format);
-	void SetTimeSample(long sample);
+	void SetTimeSample(ULONG sample);
 	void SetSamplingRate(long nSamplesPerSec)
 	{
 		m_nSamplesPerSec = nSamplesPerSec;
@@ -42,7 +42,7 @@ public:
 protected:
 	long m_nSamplesPerSec;
 	int m_TimeFormat;
-	long m_Sample;
+	ULONG m_Sample;
 	CString m_OriginalString;
 	//{{AFX_MSG(CTimeEdit)
 	afx_msg void OnVScroll(UINT nSBCode, UINT nPos, CScrollBar* pScrollBar);

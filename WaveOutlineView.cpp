@@ -71,7 +71,7 @@ void CWaveOutlineView::OnDraw(CDC* pDC)
 	{
 		ur.right = cr.right;
 	}
-	int width = cr.Width();
+	unsigned width = cr.Width();
 	if (width == 0)
 	{
 		return;
@@ -182,7 +182,7 @@ void CWaveOutlineView::OnDraw(CDC* pDC)
 					TRACE("Miscalculation: ToRead > BufSize\n");
 				}
 				ToRead = pDoc->m_WavFile.ReadAt(pBuf, ToRead, Offset);
-				for (int j = 0; j < ToRead / sizeof (__int16); j++)
+				for (unsigned j = 0; j < ToRead / sizeof (__int16); j++)
 				{
 					if (pPeaks[i].low > pBuf[j])
 					{
@@ -207,7 +207,7 @@ void CWaveOutlineView::OnDraw(CDC* pDC)
 		PeakMax = 1;
 		PeakMin = 1;
 	}
-	else for (i = 0; i < pDoc->m_WavePeakSize; i++)
+	else for (unsigned i = 0; i < pDoc->m_WavePeakSize; i++)
 	{
 		if (PeakMin > pDocPeaks[i].low)
 		{
@@ -415,7 +415,7 @@ void CWaveOutlineView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
 			Invalidate();
 			return;
 		}
-		for (int i = 0; i < pDoc->m_WavePeakSize; i++)
+		for (unsigned i = 0; i < pDoc->m_WavePeakSize; i++)
 		{
 			if (PeakMin > pDocPeaks[i].low)
 			{

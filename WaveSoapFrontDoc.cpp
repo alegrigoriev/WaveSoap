@@ -493,7 +493,7 @@ void CWaveSoapFrontDoc::BuildPeakInfo(BOOL bSavePeakFile)
 		return;
 	}
 
-	for (int i = 0; i < m_WavePeakSize; i++)
+	for (unsigned i = 0; i < m_WavePeakSize; i++)
 	{
 		m_pPeaks[i].high = -0x8000;
 		m_pPeaks[i].low = 0x7FFF;
@@ -994,7 +994,7 @@ BOOL CWaveSoapFrontDoc::AllocatePeakData(long NewNumberOfSamples)
 {
 	// change m_pPeaks size
 	// need to synchronize with OnDraw
-	int NewWavePeakSize = WaveChannels() * ((NewNumberOfSamples + m_PeakDataGranularity - 1) / m_PeakDataGranularity);
+	unsigned NewWavePeakSize = WaveChannels() * ((NewNumberOfSamples + m_PeakDataGranularity - 1) / m_PeakDataGranularity);
 	if (NULL == m_pPeaks
 		|| NewWavePeakSize > m_AllocatedWavePeakSize)
 	{
@@ -1013,7 +1013,7 @@ BOOL CWaveSoapFrontDoc::AllocatePeakData(long NewNumberOfSamples)
 		{
 			m_WavePeakSize = 0;
 		}
-		for (int i = m_WavePeakSize; i < NewWavePeakSize; i++)
+		for (unsigned i = m_WavePeakSize; i < NewWavePeakSize; i++)
 		{
 			NewPeaks[i].high = -0x8000;
 			NewPeaks[i].low = 0x7FFF;
@@ -1030,7 +1030,7 @@ BOOL CWaveSoapFrontDoc::AllocatePeakData(long NewNumberOfSamples)
 	}
 	else
 	{
-		for (int i = m_WavePeakSize; i < NewWavePeakSize; i++)
+		for (unsigned i = m_WavePeakSize; i < NewWavePeakSize; i++)
 		{
 			m_pPeaks[i].high = -0x8000;
 			m_pPeaks[i].low = 0x7FFF;
@@ -1133,7 +1133,7 @@ void CWaveSoapFrontDoc::RescanPeaks(long begin, long end)
 		if (lRead > 0)
 		{
 			unsigned i;
-			long DataToProcess = lRead;
+			unsigned DataToProcess = lRead;
 			__int16 * pWaveData = (__int16 *) pBuf;
 			DWORD DataOffset = Pos - dwDataChunkOffset;
 			unsigned DataForGranule = GranuleSize - DataOffset % GranuleSize;
@@ -1217,7 +1217,7 @@ void CWaveSoapFrontDoc::RescanPeaks(long begin, long end)
 						pWaveData++;
 					}
 
-					ASSERT(pPeak - m_pPeaks < m_WavePeakSize);
+					ASSERT(unsigned(pPeak - m_pPeaks) < m_WavePeakSize);
 					pPeak[0].low = wpl_l;
 					pPeak[0].high = wpl_h;
 					pPeak[1].low = wpr_l;
@@ -1263,7 +1263,7 @@ void CWaveSoapFrontDoc::RescanPeaks(long begin, long end)
 						}
 					}
 
-					ASSERT(pPeak - m_pPeaks < m_WavePeakSize);
+					ASSERT(unsigned(pPeak - m_pPeaks) < m_WavePeakSize);
 					pPeak[0].low = wp_l;
 					pPeak[0].high = wp_h;
 					pPeak ++;
@@ -1730,7 +1730,7 @@ void CWaveSoapFrontDoc::DoPaste(LONG Start, LONG End, LONG Channel, LPCTSTR File
 			return;
 		}
 
-		NumSamplesToPasteFrom = NumSamplesToPasteFrom64;
+		NumSamplesToPasteFrom = long(NumSamplesToPasteFrom64);
 		pResampleContext = new CResampleContext(this, "Changing sample rate of clipboard data...", "Resample");
 		if (NULL == pResampleContext)
 		{
@@ -2225,7 +2225,7 @@ BOOL CWaveSoapFrontDoc::OnSaveConvertedFile(int flags, LPCTSTR FullTargetName, W
 			return FALSE;
 		}
 
-		if (FALSE == NewWaveFile.CreateWaveFile(& m_OriginalWavFile, pWf, ALL_CHANNELS, nNewSamples,
+		if (FALSE == NewWaveFile.CreateWaveFile(& m_OriginalWavFile, pWf, ALL_CHANNELS, ULONG(nNewSamples),
 												CreateWaveFilePcmFormat | CreateWaveFileDontCopyInfo,
 												NewTempFilename))
 		{
@@ -3209,7 +3209,7 @@ static void LimitUndoRedo(KListEntry<COperationContext> * pEntry, int MaxNum, si
 		if (NULL != pUndoRedo
 			&& pUndoRedo->m_SrcFile.IsOpen())
 		{
-			Size += pUndoRedo->m_SrcFile.GetLength();
+			Size += size_t(pUndoRedo->m_SrcFile.GetLength());
 		}
 		if ((MaxNum != 0 && Num > MaxNum)
 			|| (MaxSize != 0 && Size > MaxSize))
@@ -3350,7 +3350,7 @@ void CWaveSoapFrontDoc::OnUpdateIndicatorSelectionLength(CCmdUI* pCmdUI)
 
 void CWaveSoapFrontDoc::OnUpdateIndicatorCurrentPos(CCmdUI* pCmdUI)
 {
-	unsigned TimeMs;
+	ULONG TimeMs;
 	int TimeFormat = GetApp()->m_SoundTimeFormat;
 
 	if ( ! m_WavFile.IsOpen())
@@ -3374,11 +3374,11 @@ void CWaveSoapFrontDoc::OnUpdateIndicatorCurrentPos(CCmdUI* pCmdUI)
 		}
 		else
 		{
-			TimeMs = double(pCx->m_SamplePlayed)
-					/ m_WavFile.GetWaveFormat()->nSamplesPerSec * 1000.;
+			TimeMs = ULONG(double(pCx->m_SamplePlayed)
+							/ m_WavFile.GetWaveFormat()->nSamplesPerSec * 1000.);
 			TimeMs -= TimeMs % 100;
-			int BeginTimeMs = double(pCx->m_FirstSamplePlayed)
-							/ WaveFormat()->nSamplesPerSec * 1000.;
+			ULONG BeginTimeMs = ULONG(double(pCx->m_FirstSamplePlayed)
+									/ WaveFormat()->nSamplesPerSec * 1000.);
 			if (TimeMs < BeginTimeMs)
 			{
 				TimeMs = BeginTimeMs;
@@ -4034,7 +4034,7 @@ void CWaveSoapFrontDoc::OnProcessChangevolume()
 
 	if (0 == dlg.m_DbPercent)   // dBs
 	{
-		pContext->m_VolumeLeft = pow(10., dlg.m_dVolumeLeftDb / 20.);
+		pContext->m_VolumeLeft = float(pow(10., dlg.m_dVolumeLeftDb / 20.));
 		if (dlg.m_bLockChannels || WaveChannels() == 1)
 		{
 			dlg.m_Chan = ALL_CHANNELS;
@@ -4042,12 +4042,12 @@ void CWaveSoapFrontDoc::OnProcessChangevolume()
 		}
 		else
 		{
-			pContext->m_VolumeRight = pow(10., dlg.m_dVolumeRightDb / 20.);
+			pContext->m_VolumeRight = float(pow(10., dlg.m_dVolumeRightDb / 20.));
 		}
 	}
 	else // percents
 	{
-		pContext->m_VolumeLeft = 0.01 * dlg.m_dVolumeLeftPercent;
+		pContext->m_VolumeLeft = float(0.01 * dlg.m_dVolumeLeftPercent);
 		if (dlg.m_bLockChannels || WaveChannels() == 1)
 		{
 			dlg.m_Chan = ALL_CHANNELS;
@@ -4055,7 +4055,7 @@ void CWaveSoapFrontDoc::OnProcessChangevolume()
 		}
 		else
 		{
-			pContext->m_VolumeRight = 0.01 * dlg.m_dVolumeRightPercent;
+			pContext->m_VolumeRight = float(0.01 * dlg.m_dVolumeRightPercent);
 		}
 	}
 
@@ -4124,8 +4124,8 @@ void CWaveSoapFrontDoc::GetSoundMinMax(int & MinL, int & MaxL,
 	int IntMinL = 0x7FFF;
 	int IntMaxR = -0x8000;
 	int IntMaxL = -0x8000;
-	int PeakBegin = (begin & ~m_PeakDataGranularity) / m_PeakDataGranularity;
-	int PeakEnd = ((end + m_PeakDataGranularity - 1) & ~m_PeakDataGranularity) / m_PeakDataGranularity;
+	unsigned PeakBegin = (begin & ~m_PeakDataGranularity) / m_PeakDataGranularity;
+	unsigned PeakEnd = ((end + m_PeakDataGranularity - 1) & ~m_PeakDataGranularity) / m_PeakDataGranularity;
 	if (NULL == m_pPeaks)
 	{
 		return;
@@ -4136,7 +4136,7 @@ void CWaveSoapFrontDoc::GetSoundMinMax(int & MinL, int & MaxL,
 		{
 			PeakEnd = m_WavePeakSize;
 		}
-		for (int i = PeakBegin; i < PeakEnd; i++)
+		for (unsigned i = PeakBegin; i < PeakEnd; i++)
 		{
 			if (m_pPeaks[i].high > m_pPeaks[i].low)
 			{
@@ -4159,7 +4159,7 @@ void CWaveSoapFrontDoc::GetSoundMinMax(int & MinL, int & MaxL,
 		{
 			PeakEnd = m_WavePeakSize / 2;
 		}
-		for (int i = PeakBegin; i < PeakEnd; i++)
+		for (unsigned i = PeakBegin; i < PeakEnd; i++)
 		{
 			if (m_pPeaks[i * 2].high > m_pPeaks[i * 2].low)
 			{
@@ -4629,7 +4629,7 @@ void CWaveSoapFrontDoc::OnProcessResample()
 	}
 	else
 	{
-		NewSamplingRate = WaveFormat()->nSamplesPerSec * dlg.m_TempoChange;
+		NewSamplingRate = long(WaveFormat()->nSamplesPerSec * dlg.m_TempoChange);
 		ResampleRatio = dlg.m_TempoChange;
 	}
 	if (dlg.m_bChangeRateOnly)
@@ -4654,7 +4654,7 @@ void CWaveSoapFrontDoc::OnProcessResample()
 	// create new temporary file
 	CWaveFile DstFile;
 
-	if ( ! DstFile.CreateWaveFile( & m_WavFile, NULL, ALL_CHANNELS, NewSampleCount,
+	if ( ! DstFile.CreateWaveFile( & m_WavFile, NULL, ALL_CHANNELS, ULONG(NewSampleCount),
 									//CreateWaveFileTempDir |
 									CreateWaveFileDeleteAfterClose
 									| CreateWaveFilePcmFormat
@@ -5487,7 +5487,7 @@ void CWaveSoapFrontDoc::OnProcessNoiseReduction()
 				pSectionView->m_bShowNoiseThreshold = TRUE;
 				pSectionView->m_dNoiseThresholdLow = dlg.m_dNoiseThresholdLow;
 				pSectionView->m_dNoiseThresholdHigh = dlg.m_dNoiseThresholdHigh;
-				pSectionView->nBeginFrequency = dlg.m_dLowerFrequency;
+				pSectionView->nBeginFrequency = int(dlg.m_dLowerFrequency);
 
 				if (! pFrame->m_wClient.m_bShowSpectrumSection)
 				{

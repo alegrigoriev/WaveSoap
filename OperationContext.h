@@ -520,7 +520,7 @@ public:
 	// opens m_Decoder, loads wave format to its SrcFile
 	BOOL Open(CDirectFile & file);
 	void SetDstFile(CWaveFile & file);
-	LONG m_CurrentSamples;
+	ULONG m_CurrentSamples;
 	long m_DstCopySample;
 	virtual BOOL OperationProc();
 	virtual BOOL Init();

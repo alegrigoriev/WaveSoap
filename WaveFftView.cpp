@@ -299,7 +299,7 @@ void CWaveFftView::OnDraw(CDC* pDC)
 	if (r.left < r.right)
 	{
 
-		MakeFftArray(left, right);
+		MakeFftArray(long(left), long(right));
 
 		HBITMAP hbm;
 		void * pBits;
@@ -402,7 +402,7 @@ void CWaveFftView::OnDraw(CDC* pDC)
 		// rows to fill with this color
 		int rows = cr.Height() / nChannels;
 		// if all the chart was drawn, how many scans it would have:
-		int TotalRows = rows * m_VerticalScale;
+		int TotalRows = int(rows * m_VerticalScale);
 
 		if (0 == TotalRows)
 		{
@@ -415,7 +415,7 @@ void CWaveFftView::OnDraw(CDC* pDC)
 			return;
 		}
 
-		int LastFftSample = m_FftOrder - m_FirstbandVisible;
+		int LastFftSample = int(m_FftOrder - m_FirstbandVisible);
 		int FirstFftSample = LastFftSample + (-rows * m_FftOrder) / TotalRows;
 		if (FirstFftSample < 0)
 		{
@@ -703,6 +703,11 @@ void CWaveFftView::CalculateFftRange(long left, long right)
 	// make sure the required range is in the buffer
 	// buffer size is enough to hold all data
 	int FirstSampleRequired = left - left % m_FftSpacing;
+	if (FirstSampleRequired < 0)
+	{
+		FirstSampleRequired = 0;
+	}
+
 	int LastSampleRequired = right + m_FftSpacing - right % m_FftSpacing;
 
 	if (0) TRACE("Samples required from %d to %d, in the buffer: from %d to %d\n",
@@ -852,11 +857,11 @@ void CWaveFftView::CalculateFftRange(long left, long right)
 				for (k = 0; k < m_FftOrder * 2; k += 2)
 				{
 					pRes--;
-					float power = buf[k] * buf[k] + buf[k + 1] * buf[k + 1];
+					float power = float(buf[k] * buf[k] + buf[k + 1] * buf[k + 1]);
 					if (power != 0.)
 					{
 						// max power= (32768 * m_FftOrder * 2) ^ 2
-						int res = m_FftLogRange * (PowerOffset - log(power));
+						int res = int(m_FftLogRange * (PowerOffset - log(power)));
 #ifdef _DEBUG
 						if (MaxRes < res) MaxRes = res;
 						if (MinRes > res) MinRes = res;

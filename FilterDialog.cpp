@@ -452,7 +452,7 @@ void CFilterGraphWnd::OnPaint()
 	for (int i = 0; i < MaxFilterFrequencies; i++)
 	{
 		// draw circles around the reference points
-		int x = (1. + log10(m_Frequencies[i] / M_PI) / 3.) * cr.Width() - 1;
+		int x = int((1. + log10(m_Frequencies[i] / M_PI) / 3.) * cr.Width() - 1);
 		int y = GainToPosY(m_Gain[i], cr.Height());
 
 		int SrcOffset = 0;
@@ -639,7 +639,7 @@ complex<float> Filter::CalculateResponse(double Frequency)
 		// filter is applied twice
 		Result *= conj(Result);
 	}
-	return Result;
+	return complex<float>(Result);
 }
 
 void CFilterGraphWnd::SetPointGainDb(int nPoint, double GainDb)
@@ -1018,7 +1018,7 @@ int CFilterGraphWnd::GetFilterPointPixel(int FilterPoint)
 	{
 		return cr.right;
 	}
-	return (1.00001 + log10(m_Frequencies[FilterPoint] / M_PI) / 3.) * cr.Width() - 1;
+	return int((1.00001 + log10(m_Frequencies[FilterPoint] / M_PI) / 3.) * cr.Width() - 1);
 }
 
 void CFilterGraphWnd::SetFilterPointPixel(int FilterPoint, int PointPixel, BOOL MoveBothSides)
@@ -1264,7 +1264,7 @@ int CFilterGraphWnd::GetHitCode(POINT point)
 	for (int i = 0; i < MaxFilterFrequencies; i++)
 	{
 		// find if the mouse gets into a focus point
-		int x = (1. + log10(m_Frequencies[i] / M_PI) / 3.) * cr.Width() - 1;
+		int x = int((1. + log10(m_Frequencies[i] / M_PI) / 3.) * cr.Width() - 1);
 		// full range: 5 to -85 db
 		int y = GainToPosY(m_Gain[i], cr.Height());
 		CRect r(x - dx, y - dy, x + dx, y + dy);
@@ -1320,7 +1320,7 @@ void CFilterGraphWnd::InvalidateGraphPoint(double Frequency, double Gain)
 	CRect cr;
 	GetClientRect( & cr);
 
-	int x = (1. + log10(Frequency / M_PI) / 3.) * cr.Width() - 1;
+	int x = int((1. + log10(Frequency / M_PI) / 3.) * cr.Width() - 1);
 	int y = GainToPosY(Gain, cr.Height());
 
 	int dx = GetSystemMetrics(SM_CXSIZEFRAME);

@@ -414,7 +414,7 @@ BOOL CCdDrive::Open(TCHAR letter)
 		else if (NULL != SendASPI32Command)
 		{
 			m_ScsiAddr.PortNumber = 0xFF;
-			for (int adapter = 0; adapter < (0xFF & GetASPI32SupportInfo())
+			for (unsigned adapter = 0; adapter < (0xFF & GetASPI32SupportInfo())
 				&& 0xFF == m_ScsiAddr.PortNumber
 				; adapter++)
 			{
@@ -1114,7 +1114,7 @@ BOOL CCdDrive::GetMaxReadSpeed(int * pMaxSpeed, int * pCurrentSpeed) // bytes/s
 		}
 		TRACE("CD speed obtained by GetPerformanceCDB\n");
 		DWORD MaxPerformance = 0;
-		for (int i = 0; i < DataLength / sizeof (CdNominalPerformanceDescriptor); i++)
+		for (unsigned i = 0; i < DataLength / sizeof (CdNominalPerformanceDescriptor); i++)
 		{
 			DWORD tmp = perf.desc[i].StartPerformance;
 			if (MaxPerformance < tmp)
@@ -1335,7 +1335,7 @@ BOOL CCdDrive::SetReadSpeed(ULONG BytesPerSec, ULONG BeginLba, ULONG NumSectors)
 	}
 	else
 	{
-		SetCdSpeedCDB SetSpeed(BytesPerSec / 1024);
+		SetCdSpeedCDB SetSpeed(USHORT(BytesPerSec / 1024));
 		DWORD Length = 0;
 		BOOL res = SendScsiCommand( & SetSpeed, NULL, & Length,
 									SCSI_IOCTL_DATA_UNSPECIFIED, NULL);
@@ -1421,23 +1421,23 @@ bool CCdDrive::IsDriveBusy(TCHAR letter)
 	}
 }
 
-BOOL CCdDrive::CanEjectMedia()
+bool CCdDrive::CanEjectMedia()
 {
 	// true: tray/slot or unknown
 	if (NULL == m_hDriveAttributes
 		&& ! m_bScsiCommandsAvailable)
 	{
-		return FALSE;
+		return false;
 	}
 	return m_bEjectSupported && ! m_bTrayOut;
 }
 
-BOOL CCdDrive::CanLoadMedia()
+bool CCdDrive::CanLoadMedia()
 {
 	if (NULL == m_hDriveAttributes
 		&& ! m_bScsiCommandsAvailable)
 	{
-		return FALSE;
+		return false;
 	}
 	// TRUE - tray mechanism
 	// false: all others

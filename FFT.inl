@@ -15,7 +15,8 @@ void FFTPostProc(complex<T> * x, const int count)
 {
 	ASSERT(count > 0 && count % 2 == 0);
 	double angle = -M_PI / count;
-	T rot_r = cos(angle), rot_i = -sin(angle);
+	T rot_r = (T)(cos(angle));
+	T rot_i = (T)(-sin(angle));
 	T u_r = 0., u_i = 1.;
 	x[count] = x[0];
 	for (int i = 0, k = count; i <= count / 2; i++, k--)
@@ -44,7 +45,7 @@ void IFFTPreProc(const complex<T> * src, complex<T> * dst, const int count)
 {
 	ASSERT(count > 0 && count % 2 == 0);
 	double angle = -M_PI / count;
-	T rot_r = cos(angle), rot_i = sin(angle);
+	T rot_r = (T)(cos(angle)), rot_i = (T)(sin(angle));
 	T u_r = 0., u_i = -1.;
 	dst[0] = T(0.5) * (src[0] + conj(src[count]) + complex<T>(0., -1.) * (conj(src[count]) - src[0]));
 	for (int i = 1, k = count - 1; i <= count / 2; i++, k--)
@@ -102,11 +103,11 @@ void FastFourierTransformCore(const T * src, T * dst,
 		}
 		else
 		{
-			T z = M_PI / f * 2.;
+			T z = (T)(M_PI / f * 2.);
 
-			T c = cos(z);
+			T c = (T)(cos(z));
 			int e = f * 2;
-			T s = sin(z);
+			T s = (T)(sin(z));
 			if (reverse_fft) s = -s;
 
 			T u = 1.;
@@ -172,7 +173,7 @@ void FastFourierTransformCore(const T * src, T * dst,
 
 	if (! reverse_fft) return;
 
-	T a = 2.0 / n;
+	T a = (T)(2.0 / n);
 	for (int k = 0; k < n; k += 2)
 	{
 		dst[k] *= a;

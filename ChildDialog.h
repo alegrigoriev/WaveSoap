@@ -131,8 +131,8 @@ protected:
 
 // Implementation
 protected:
-	void BuildExpressionGroupCombobox(int nGroupSelected, int nExprSelected);
-	void LoadExpressionCombobox(int nGroupSelected, int nExprSelected);
+	void BuildExpressionGroupCombobox(unsigned nGroupSelected, unsigned nExprSelected);
+	void LoadExpressionCombobox(unsigned nGroupSelected, unsigned nExprSelected);
 	void OnUpdateDeleteExpression(CCmdUI* pCmdUI);
 	void OnUpdateInsertExpression(CCmdUI* pCmdUI);
 

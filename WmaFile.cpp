@@ -346,15 +346,15 @@ HRESULT STDMETHODCALLTYPE CWmaDecoder::OnSample( /* [in] */ DWORD dwOutputNum,
 	}
 	m_DstFile.CDirectFile::Write(pData, cbData);
 	// update current number of samples
-	int nSampleSize = m_DstFile.SampleSize();
-	DWORD DstCopyPos = m_DstFile.CDirectFile::Seek(0, FILE_CURRENT);
+	unsigned nSampleSize = m_DstFile.SampleSize();
+	DWORD DstCopyPos = (DWORD)m_DstFile.CDirectFile::Seek(0, FILE_CURRENT);
 	LPMMCKINFO pck = m_DstFile.GetDataChunk();
 	DWORD DstCopySample = (DstCopyPos - pck->dwDataOffset)
 						/ nSampleSize;
 	if (DstCopySample > m_CurrentSamples)
 	{
 		// calculate new length
-		long TotalSamples = MulDiv(DstCopySample, SrcLength(), SrcPos());
+		ULONG TotalSamples = MulDiv(DstCopySample, SrcLength(), SrcPos());
 		if (TotalSamples > 0x7FFFFFFF / nSampleSize)
 		{
 			TotalSamples = 0x7FFFFFFF / nSampleSize;
@@ -559,7 +559,7 @@ HRESULT CWmaDecoder::Open(CDirectFile & file)
 	hr = m_Reader->QueryInterface(IID_IWMHeaderInfo, ( VOID ** )& pHeaderInfo);
 	if (SUCCEEDED(hr))
 	{
-		WORD stream = m_dwAudioOutputNum;
+		WORD stream = WORD(m_dwAudioOutputNum);
 		TRACE("IWMHeaderInfo interface acquired\n");
 		QWORD StreamLength = 0;
 		WORD SizeofStreamLength = sizeof StreamLength;
@@ -580,7 +580,7 @@ HRESULT CWmaDecoder::Open(CDirectFile & file)
 		m_StreamDuration = 10000 * 1000 * 60i64;    // 1 minute
 	}
 
-	m_CurrentSamples = m_StreamDuration * m_DstWf.SampleRate() / 10000000;
+	m_CurrentSamples = ULONG(m_StreamDuration * m_DstWf.SampleRate() / 10000000);
 	TRACE("m_CurrentSamples = %d (%d seconds)\n", m_CurrentSamples,
 		m_CurrentSamples / m_DstWf.SampleRate());
 
@@ -1247,7 +1247,7 @@ HRESULT STDMETHODCALLTYPE FileWriter::OnDataUnit(
 
 	if (Length == m_DstFile.Write(pData, Length))
 	{
-		DWORD CurPos = m_DstFile.Seek(0, FILE_CURRENT);
+		DWORD CurPos = (DWORD)m_DstFile.Seek(0, FILE_CURRENT);
 		if (CurPos > m_WrittenLength)
 		{
 			m_WrittenLength = CurPos;

@@ -44,7 +44,6 @@ Make tooltips in wave view and other important views
 Show File Properties
 Make help file
 Add "Favorite formats" combobox to Save dialog
-When Open/Save dialog is resized, resize/move the controls
 Verify that FileSave can be canceled
 Reconsider Undo All Changes functionality and Redo All Changes
 ??Delete permanent undo: non-permanent file may become permanent after save, move call after save
@@ -106,6 +105,7 @@ Save As dialog is not centered first time (comdlg problem?)
 ??? When time/seconds format is set for status bar, MM:SS is actually shown
 
 Done:
+When Open/Save dialog is resized, resize/move the controls
 Handle "Save from CD immediately" option
 Pass wave format to CD grabbing dialog
 Add saved from CD files to the MRU list
@@ -205,6 +205,12 @@ WM/Description  (comment)
 WAV file keeps all the meta information in the end of file. 
 If it is in the beginning, it may be moved to the end.
 
-Whan the file needs expansion, this information is moved.
+When the file needs expansion, this information is moved.
 Copy of info is always kept in the memory.
 Total size of metainformation is limited to 256 kbytes.
+
+Common data may be allocated at any time.
+The structures need copying, when reallocated for the bigger size.
+For the given class, size of the structure is always constant.
+If old size of structure was less than new size, the added part needs constructing.
+When the file is closed, the structure needs deletion. Destructor is virtual.

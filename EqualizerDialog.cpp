@@ -273,7 +273,7 @@ void CEqualizerGraphWnd::OnPaint()
 			f = M_PI * pow(500., (x + 1. - cr.Width()) / cr.Width());
 		}
 		double gain = abs(CalculateResponse(f));
-		int y = (1 - log10(gain)) * cr.Height() / 2;
+		int y = int((1 - log10(gain)) * cr.Height() / 2);
 		if (x == ur.left)
 		{
 			dc.MoveTo(x, y);
@@ -324,7 +324,7 @@ void CEqualizerGraphWnd::OnPaint()
 		{
 			x = cr.Width() * (i * 2 + 1) / (2 * m_NumOfBands);
 		}
-		int y = (1 - log10(m_BandGain[i])) * cr.Height() / 2;
+		int y = int((1 - log10(m_BandGain[i])) * cr.Height() / 2);
 		int SrcOffset = 0;
 		if (m_DotCaretIsOn && i == m_BandWithFocus)
 		{
@@ -444,7 +444,7 @@ complex<float> Equalizer::CalculateResponse(double Frequency)
 		// filter is applied twice
 		Numerator *= conj(Numerator);
 	}
-	return Numerator;
+	return complex<float>(Numerator);
 }
 
 void Equalizer::CalculateCoefficients(double Gain, double Frequency, double Width, double Coeffs[6])
@@ -1223,7 +1223,7 @@ int CEqualizerGraphWnd::GetHitCode(POINT point)
 		{
 			x = cr.Width() * (i * 2 + 1) / (2 * m_NumOfBands);
 		}
-		int y = (1 - log10(m_BandGain[i])) * cr.Height() / 2;
+		int y = int((1 - log10(m_BandGain[i])) * cr.Height() / 2);
 		CRect r(x - dx, y - dy, x + dx, y + dy);
 		CRect r1(x - dx, cr.top, x + dx, cr.bottom);
 
@@ -1266,7 +1266,7 @@ void CEqualizerGraphWnd::DrawDotCaret(bool state)
 		{
 			x = cr.Width() * (m_BandWithFocus * 2 + 1) / (2 * m_NumOfBands);
 		}
-		int y = (1 - log10(m_BandGain[m_BandWithFocus])) * cr.Height() / 2;
+		int y = int((1 - log10(m_BandGain[m_BandWithFocus])) * cr.Height() / 2);
 		int dx = GetSystemMetrics(SM_CXSIZEFRAME);
 		int dy = GetSystemMetrics(SM_CYSIZEFRAME);
 		CRect r(x - dx, y - dy, x + dx, y + dy);

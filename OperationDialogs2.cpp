@@ -386,7 +386,7 @@ void CCdGrabbingDialog::DoDataExchange(CDataExchange* pDX)
 								sizeof m_ArtistHistory / sizeof m_ArtistHistory[0], true);
 		}
 
-		for (int t = 0; t < m_Tracks.size(); t++)
+		for (unsigned t = 0; t < m_Tracks.size(); t++)
 		{
 			if ( ! m_Tracks[t].Checked)
 			{
@@ -1014,7 +1014,7 @@ void CCdGrabbingDialog::OnSelchangeComboDrives()
 	}
 }
 
-LRESULT CCdGrabbingDialog::OnDeviceChange(UINT event, DWORD data)
+BOOL CCdGrabbingDialog::OnDeviceChange(UINT event, DWORD data)
 {
 	DEV_BROADCAST_HDR * pdbh = (DEV_BROADCAST_HDR *) data;;
 	switch (event)
@@ -1181,8 +1181,7 @@ void CCdGrabbingDialog::OnClickListTracks(NMHDR* pNMHDR, LRESULT* pResult)
 	hti.pt = pnmlv->ptAction;
 	m_lbTracks.HitTest( & hti);
 	TRACE("NM_CLICK Hittest=%X, item=%d\n", hti.flags, hti.iItem);
-	if (-1 == hti.iItem
-		|| hti.iItem >= m_Tracks.size()
+	if (unsigned(hti.iItem) >= m_Tracks.size()
 		|| 0 == (LVHT_ONITEMSTATEICON & hti.flags)
 		|| ! m_Tracks[hti.iItem].IsAudio)
 	{
@@ -1219,8 +1218,7 @@ void CCdGrabbingDialog::OnDblclkListTracks(NMHDR* pNMHDR, LRESULT* pResult)
 	hti.pt = pnmlv->ptAction;
 	m_lbTracks.HitTest( & hti);
 	TRACE("NM_CLICK Hittest=%X, item=%d\n", hti.flags, hti.iItem);
-	if (-1 == hti.iItem
-		|| hti.iItem >= m_Tracks.size()
+	if (unsigned(hti.iItem) >= m_Tracks.size()
 		|| 0 == (LVHT_ONITEMSTATEICON & hti.flags)
 		|| ! m_Tracks[hti.iItem].IsAudio)
 	{
@@ -1244,14 +1242,15 @@ void CCdGrabbingDialog::OnDblclkListTracks(NMHDR* pNMHDR, LRESULT* pResult)
 		lvi.state = INDEXTOSTATEIMAGEMASK(1);
 	}
 
-	for (lvi.iItem = 0; lvi.iItem < m_Tracks.size(); lvi.iItem++)
+	for (unsigned i = 0; i < m_Tracks.size(); i++)
 	{
-		if ( ! m_Tracks[lvi.iItem].IsAudio
-			|| Checked == m_Tracks[lvi.iItem].Checked)
+		if ( ! m_Tracks[i].IsAudio
+			|| Checked == m_Tracks[i].Checked)
 		{
 			continue;
 		}
-		m_Tracks[lvi.iItem].Checked = Checked;
+		m_Tracks[i].Checked = Checked;
+		lvi.iItem = i;
 		m_lbTracks.SetItem( & lvi);
 		m_bNeedUpdateControls = TRUE;
 	}
@@ -1262,7 +1261,7 @@ void CCdGrabbingDialog::OnBeginlabeleditListTracks(NMHDR* pNMHDR, LRESULT* pResu
 	NMLVDISPINFO* pDispInfo = (NMLVDISPINFO*)pNMHDR;
 	// if the track is not audio track, return TRUE
 	TRACE("OnBeginlabeleditListTracks %d\n", pDispInfo->item.iItem);
-	if (pDispInfo->item.iItem >= m_Tracks.size()
+	if (unsigned(pDispInfo->item.iItem) >= m_Tracks.size()
 		|| ! m_Tracks[pDispInfo->item.iItem].IsAudio)
 	{
 		*pResult = TRUE;
@@ -1282,14 +1281,14 @@ BOOL CCdGrabbingDialog::PreTranslateMessage(MSG* pMsg)
 		if (pMsg->wParam == VK_F2)
 		{
 			// find a selected item
-			int nSelItem = -1;
+			unsigned nSelItem = -1;
 			while (-1 != (nSelItem = m_lbTracks.GetNextItem(nSelItem, LVNI_SELECTED)))
 			{
 				if (nSelItem < m_Tracks.size()
 					&& m_Tracks[nSelItem].IsAudio)
 				{
 					// unselect all items
-					int nItem = -1;
+					unsigned nItem = -1;
 					while (-1 != (nItem = m_lbTracks.GetNextItem(nItem, LVNI_SELECTED)))
 					{
 						if (nItem != nSelItem)
@@ -1315,7 +1314,8 @@ BOOL CCdGrabbingDialog::PreTranslateMessage(MSG* pMsg)
 			lvi.mask = LVIF_STATE;
 			lvi.stateMask = LVIS_STATEIMAGEMASK;
 
-			if (m_Tracks[lvi.iItem].IsAudio)
+			if (unsigned(lvi.iItem) < m_Tracks.size()
+				&& m_Tracks[lvi.iItem].IsAudio)
 			{
 				if (m_Tracks[lvi.iItem].Checked)
 				{
@@ -1341,7 +1341,7 @@ BOOL CCdGrabbingDialog::PreTranslateMessage(MSG* pMsg)
 void CCdGrabbingDialog::OnUpdateOk(CCmdUI* pCmdUI)
 {
 	BOOL bEnable = FALSE;
-	for (int i = 0; i < m_Tracks.size(); i++)
+	for (unsigned i = 0; i < m_Tracks.size(); i++)
 	{
 		if (m_Tracks[i].Checked)
 		{
@@ -1365,13 +1365,13 @@ void CCdGrabbingDialog::OnEndlabeleditListTracks(NMHDR* pNMHDR, LRESULT* pResult
 		s.TrimLeft();
 		s.TrimRight();
 		if (s.IsEmpty()
-			|| pDispInfo->item.iItem >= m_Tracks.size()
+			|| unsigned(pDispInfo->item.iItem) >= m_Tracks.size()
 			|| ! m_Tracks[pDispInfo->item.iItem].IsAudio)
 		{
 			*pResult = FALSE;
 			return;
 		}
-		for (int t = 0; t < m_Tracks.size(); t++)
+		for (unsigned t = 0; t < m_Tracks.size(); t++)
 		{
 			if (t != pDispInfo->item.iItem
 				&& m_Tracks[t].IsAudio
@@ -1461,7 +1461,7 @@ void CCdGrabbingDialog::OnButtonStop()
 void CCdGrabbingDialog::OnUpdatePlay(CCmdUI* pCmdUI)
 {
 	BOOL bEnable = FALSE;
-	for (int t = 0; t < m_Tracks.size(); t++)
+	for (unsigned t = 0; t < m_Tracks.size(); t++)
 	{
 		if (m_Tracks[t].IsAudio)
 		{
@@ -1721,7 +1721,7 @@ void CCdGrabbingDialog::FillFormatCombo()
 									WaveFormatMatchCnannels | WaveFormatMatchSampleRate);
 		break;
 	}
-	for (int i = 0; i < m_Acm.m_Formats.size(); i++)
+	for (unsigned i = 0; i < m_Acm.m_Formats.size(); i++)
 	{
 		m_ComboBitrate.AddString(m_Acm.m_Formats[i].Name
 								+ _T(" - ") + m_Acm.m_FormatTags[m_Acm.m_Formats[i].TagIndex].Name);

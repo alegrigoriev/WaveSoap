@@ -76,11 +76,11 @@ void CTimeRulerView::DrawRulerSamples(CDC* pDC)
 	// calculate position string length
 	CString s;
 	int nLength;
-	int dist, nTickDist;
+	unsigned dist, nTickDist;
 	unsigned nSamples, k;
 	nLength = pDC->GetTextExtent("0,000,000,000", 13).cx;
 
-	nSamples = 1.5 * nLength / GetXScaleDev();
+	nSamples = unsigned(1.5 * nLength / GetXScaleDev());
 	// calculate how much samples can be between the numbers
 	if (nSamples > INT_MAX / 10)
 	{
@@ -127,7 +127,7 @@ void CTimeRulerView::DrawRulerSamples(CDC* pDC)
 	pDC->MoveTo(cr.left, cr.bottom - 6);
 	pDC->LineTo(cr.right, cr.bottom - 6);
 
-	long nFirstSample = WindowToWorldX(cr.left - nLength);
+	long nFirstSample = long(WindowToWorldX(cr.left - nLength));
 	if (nFirstSample < 0)
 	{
 		nFirstSample = 0;
@@ -193,7 +193,7 @@ void CTimeRulerView::DrawRulerHhMmSs(CDC* pDC)
 
 	// calculate position string length
 	int nTickCount;
-	float SampleRate = pDoc->m_WavFile.SampleRate();
+	float SampleRate = float(pDoc->m_WavFile.SampleRate());
 
 	int nLength = pDC->GetTextExtent("00:00:00.0000", 13).cx;
 
@@ -231,27 +231,27 @@ void CTimeRulerView::DrawRulerHhMmSs(CDC* pDC)
 		else if (DistTime <= 5.)
 		{
 			DistTime = 5.;
-			nTickCount = 5.;
+			nTickCount = 5;
 		}
 		else if (DistTime <= 10.)
 		{
 			DistTime = 10.;
-			nTickCount = 10.;
+			nTickCount = 10;
 		}
 		else if (DistTime <= 20.)
 		{
 			DistTime = 20.;
-			nTickCount = 2.;
+			nTickCount = 2;
 		}
 		else if (DistTime <= 30.)
 		{
 			DistTime = 30.;
-			nTickCount = 3.;
+			nTickCount = 3;
 		}
 		else
 		{
 			DistTime = 60.;
-			nTickCount = 6.;
+			nTickCount = 6;
 		}
 	}
 	else    // DistTime < 1
@@ -276,7 +276,7 @@ void CTimeRulerView::DrawRulerHhMmSs(CDC* pDC)
 			else if (DistTime <= 5.)
 			{
 				DistTime = 5.;
-				nTickCount = 5.;
+				nTickCount = 5;
 				break;
 			}
 		}
@@ -338,7 +338,7 @@ void CTimeRulerView::DrawRulerHhMmSs(CDC* pDC)
 			{
 				flags = TimeToHhMmSs_NeedsHhMm | TimeToHhMmSs_NeedsMs;
 			}
-			CString s = TimeToHhMmSs((time + 0.0005) * 1000, flags);
+			CString s = TimeToHhMmSs(unsigned((time + 0.0005) * 1000), flags);
 
 			pDC->TextOut(x + 2, cr.bottom - 9, s);
 
@@ -378,7 +378,7 @@ void CTimeRulerView::DrawRulerSeconds(CDC* pDC)
 
 	// calculate position string length
 	int nTickCount;
-	float SampleRate = pDoc->m_WavFile.SampleRate();
+	float SampleRate = float(pDoc->m_WavFile.SampleRate());
 
 	int nLength = pDC->GetTextExtent("00,000.0000", 14).cx;
 
@@ -415,7 +415,7 @@ void CTimeRulerView::DrawRulerSeconds(CDC* pDC)
 		else if (DistTime <= 5.)
 		{
 			DistTime = 5.;
-			nTickCount = 5.;
+			nTickCount = 5;
 			break;
 		}
 	}
@@ -474,9 +474,9 @@ void CTimeRulerView::DrawRulerSeconds(CDC* pDC)
 			pDC->LineTo(x - 1, cr.bottom - 12);
 			CString s;
 			time += 0.0005;
-			int ss = time;
+			int ss = int(time);
 			time -= ss;
-			int ms = time * 1000.;
+			int ms = int(time * 1000.);
 			CString s1 = LtoaCS(ss);
 
 			if (DistTime < 1.)

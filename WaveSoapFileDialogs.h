@@ -36,8 +36,8 @@ public:
 	int nSamplingRate;
 	int nSamples;
 	CString WaveFormat;
-	int m_MinWmaFilter;
-	int m_MaxWmaFilter;
+	unsigned m_MinWmaFilter;
+	unsigned m_MaxWmaFilter;
 	int m_PrevFilter;
 
 	virtual BOOL OnFileNameOK();
@@ -110,11 +110,11 @@ public:
 	CComboBox m_AttributesCombo;
 
 	WaveFormatTagEx m_SelectedTag;
-	int m_SelectedFormat;
+	unsigned m_SelectedFormat;
 	int m_FileType;// Wav, Mp3, wma, raw...
 	int m_SelectedRawFormat;
 
-	int m_SelectedMp3Encoder;
+	unsigned m_SelectedMp3Encoder;
 	int m_SelectedMp3Bitrate;
 	int m_SelectedWmaBitrate;
 
@@ -136,8 +136,8 @@ public:
 
 	void ShowDlgItem(UINT nID, int nCmdShow);
 
-	int FillFormatCombo(int nSel, int Flags);
-	int FillFormatCombo(int nSel)
+	int FillFormatCombo(unsigned nSel, int Flags);
+	int FillFormatCombo(unsigned nSel)
 	{
 		return FillFormatCombo(nSel,
 								m_bCompatibleFormatsOnly ?

@@ -82,7 +82,7 @@ public:
 	int GetHitCode(POINT point) const;
 	void GetItemRect(UINT nID, RECT & rect) const;
 	void HiliteButton(UINT nID, bool Hilite);
-	void EnableButton(int Index, BOOL bEnable);
+	void EnableButton(unsigned Index, BOOL bEnable);
 
 	UINT m_ButtonClicked;
 	UINT m_ButtonHilit;

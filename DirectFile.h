@@ -16,6 +16,16 @@ public:
 	CDirectFile();
 	virtual ~CDirectFile();
 	CDirectFile const & operator=(CDirectFile & file);
+	struct InstanceData
+	{
+		virtual ~InstanceData() {}
+		size_t m_size;
+		InstanceData() : m_size(sizeof (InstanceData)) {}
+		virtual void CopyDataTo(InstanceData * dst)
+		{
+		}
+	};
+
 	enum {
 		OpenReadOnly = 1,
 		CreateNew = 2,
@@ -61,37 +71,18 @@ public:
 		return 0 != (m_pFile->m_Flags & FileFlagsReadOnly);
 	}
 
-	void * AllocateCommonData(size_t size)
+	template<typename T>
+	T * AllocateInstanceData();
+
+	InstanceData * GetInstanceData() const
 	{
 		if (NULL != m_pFile)
 		{
-			return m_pFile->AllocateCommonData(size);
+			return m_pFile->GetInstanceData();
 		}
 		else
 		{
 			return NULL;
-		}
-	}
-	void * GetCommonData() const
-	{
-		if (NULL != m_pFile)
-		{
-			return m_pFile->GetCommonData();
-		}
-		else
-		{
-			return NULL;
-		}
-	}
-	size_t GetCommonDataSize() const
-	{
-		if (NULL != m_pFile)
-		{
-			return m_pFile->GetCommonDataSize();
-		}
-		else
-		{
-			return 0;
 		}
 	}
 
@@ -287,6 +278,7 @@ public:
 				&& 0 == (Flags() & (FileFlagsDeleteAfterClose | FileFlagsMemoryFile));
 	}
 
+
 protected:
 	struct BufferHeader;
 	enum {
@@ -318,8 +310,8 @@ protected:
 			long m_MemoryFileBufferSize;
 		};
 		// data common for all CDirectFile instances, attached to this File
-		void * m_pCommonData;
-		size_t m_CommonDataSize;
+		InstanceData * m_pInstanceData;
+
 		// pointer to the source file. The information is copied from there
 		// when it is read first time.
 		File * pSourceFile;
@@ -351,14 +343,12 @@ protected:
 		BOOL Flush();
 		BOOL InitializeTheRestOfFile(int timeout = 0, int * pPercentCompleted = NULL);
 		BOOL SetSourceFile(File * pOriginalFile);
-		void * AllocateCommonData(size_t size);
-		void * GetCommonData() const
+		template<typename T>
+		T * AllocateInstanceData();
+
+		InstanceData * GetInstanceData() const
 		{
-			return m_pCommonData;
-		}
-		size_t GetCommonDataSize() const
-		{
-			return m_CommonDataSize;
+			return m_pInstanceData;
 		}
 
 		void ReturnDataBuffer(void * pBuffer, long count, DWORD flags = 0)
@@ -392,8 +382,7 @@ protected:
 			WrittenMaskSize(0),
 			pSourceFile(NULL),
 			UseSourceFileLength(0),
-			m_pCommonData(NULL),
-			m_CommonDataSize(0),
+			m_pInstanceData(new InstanceData),
 			m_PrefetchedBeginBlock(-1),
 			m_PrefetchedEndBlock(-1),
 			m_LastPrefetchTick(0),
@@ -415,12 +404,10 @@ protected:
 			{
 				delete[] m_pWrittenMask;
 			}
-			if (NULL != m_pCommonData)
-			{
-				delete[] (char *) m_pCommonData;
-			}
+			delete m_pInstanceData;
 		}
 	};
+
 	struct BufferMruEntry : public KListEntry<BufferMruEntry>
 	{
 		long LockCount;
@@ -517,6 +504,33 @@ public:
 	{
 		return CDirectFileCache::GetInstance();
 	}
+private:
+	// copy constructor inaccessible
+	CDirectFile(CDirectFile const &);
 };
 
+template<typename T>
+inline T * CDirectFile::File::AllocateInstanceData()
+{
+	if (sizeof (T) > m_pInstanceData->m_size)
+	{
+		T * ptr = new T;
+		m_pInstanceData->CopyDataTo(ptr);
+		delete m_pInstanceData;
+		m_pInstanceData = ptr;
+	}
+	return static_cast<T *>(m_pInstanceData);
+}
+template<typename T>
+inline T * CDirectFile::AllocateInstanceData()
+{
+	if (NULL != m_pFile)
+	{
+		return m_pFile->AllocateInstanceData<T>();
+	}
+	else
+	{
+		return NULL;
+	}
+}
 #endif // !defined(AFX_DIRECTFILE_H__B7AA7401_4036_11D4_9ADD_00C0F0583C4B__INCLUDED_)

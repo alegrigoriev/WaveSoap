@@ -3,6 +3,8 @@
 #ifndef WAVESUPPORT_H__
 #define WAVESUPPORT_H__
 #include <vector>
+#include <mmreg.h>
+#include <msacm.h>
 
 enum {
 	WaveFormatMatchBitsPerSample = 1,
@@ -39,7 +41,7 @@ struct WaveFormatTagEx
 					|| SubFormat == ((PWAVEFORMATEXTENSIBLE)wfx)->SubFormat);
 	}
 
-	operator =(WAVEFORMATEX const * pwf)
+	WaveFormatTagEx & operator =(WAVEFORMATEX const * pwf)
 	{
 		Tag = pwf->wFormatTag;
 		if (Tag != WAVE_FORMAT_EXTENSIBLE)
@@ -50,6 +52,7 @@ struct WaveFormatTagEx
 		{
 			SubFormat = ((PWAVEFORMATEXTENSIBLE)pwf)->SubFormat;
 		}
+		return *this;
 	}
 };
 
@@ -63,7 +66,7 @@ struct CWaveFormat
 	{
 	}
 	~CWaveFormat();
-	void Allocate(int ExtraSize, bool bCopy = false);
+	WAVEFORMATEX * Allocate(int ExtraSize, bool bCopy = false);
 	CWaveFormat & operator =(WAVEFORMATEX const * pWf);
 	CWaveFormat & operator =(CWaveFormat const & src)
 	{
@@ -312,6 +315,9 @@ public:
 
 	struct FormatItem
 	{
+		FormatItem() {}
+		FormatItem(WAVEFORMATEX * pwf, LPCTSTR name, int index)
+			: Wf(pwf), Name(name), TagIndex(index) {}
 		CWaveFormat Wf;
 		CString Name;
 		int TagIndex;

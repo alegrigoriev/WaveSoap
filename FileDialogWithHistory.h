@@ -21,14 +21,20 @@ public:
 						DWORD dwFlags = OFN_HIDEREADONLY,
 						LPCTSTR lpszFilter = NULL,
 						CWnd* pParentWnd = NULL)
-		: CFileDialog(bOpenFileDialog, lpszDefExt, lpszFileName, dwFlags, lpszFilter, pParentWnd),
+		: CFileDialog(bOpenFileDialog, lpszDefExt,
+					lpszFileName, dwFlags, lpszFilter, pParentWnd,
+					OpenfilenameSize()),
 		m_pResizeItems(NULL),
 		m_pResizeItemsCount(0)
 	{
 		m_PrevSize.cx = -1;
 		m_PrevSize.cy = -1;
+		m_ofn.Flags |= OFN_ENABLESIZING;
 	}
+	CString GetNextPathName(POSITION& pos) const;
 protected:
+	static size_t OpenfilenameSize();
+
 	CSize m_PrevSize;
 	enum
 	{

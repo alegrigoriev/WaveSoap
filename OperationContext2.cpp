@@ -4,9 +4,9 @@
 #include "OperationDialogs.h"
 #include "BladeMP3EncDLL.h"
 
-static int fround(double d)
+static int _fastcall fround(double d)
 {
-	return floor(d + 0.5);
+	return (int)floor(d + 0.5);
 	if (d >= 0.)
 	{
 		return int(d + 0.5);
@@ -65,7 +65,7 @@ BOOL CExpressionEvaluationContext::ProcessBuffer(void * buf, size_t len, DWORD o
 	{
 		if (1 == nChannels)
 		{
-			for (int i = 0; i < len / sizeof pDst[0]; i ++)
+			for (unsigned i = 0; i < len / sizeof pDst[0]; i ++)
 			{
 				m_dCurrentSample = pDst[i] * 0.00003051850947599719229;
 				Evaluate();
@@ -79,7 +79,7 @@ BOOL CExpressionEvaluationContext::ProcessBuffer(void * buf, size_t len, DWORD o
 		}
 		else
 		{
-			for (int i = 0; i < len / sizeof pDst[0]; i += 2)
+			for (unsigned i = 0; i < len / sizeof pDst[0]; i += 2)
 			{
 				if (m_DstChan != 1) // not right only
 				{
@@ -1365,7 +1365,7 @@ BOOL CInsertSilenceContext::ProcessBuffer(void * buf, size_t BufferLength, DWORD
 		BufferLength -= 2;
 	}
 
-	for (int i = 0; i < BufferLength / (2 * sizeof pDst[0]); i++, pDst += 2)
+	for (unsigned i = 0; i < BufferLength / (2 * sizeof pDst[0]); i++, pDst += 2)
 	{
 		pDst[0] = 0;
 	}
@@ -1533,7 +1533,7 @@ BOOL CEqualizerContext::ProcessBuffer(void * buf, size_t len, DWORD offset, BOOL
 	{
 		if ( ! bBackward)
 		{
-			for (int i = 0; i < len / sizeof (__int16); i ++)
+			for (unsigned i = 0; i < len / sizeof (__int16); i ++)
 			{
 				pDst[i] = DoubleToShort(CalculateResult(0, pDst[i]));
 			}
@@ -1550,7 +1550,7 @@ BOOL CEqualizerContext::ProcessBuffer(void * buf, size_t len, DWORD offset, BOOL
 	{
 		if ( ! bBackward)
 		{
-			for (int i = 0; i < len / sizeof (__int16); i += 2)
+			for (unsigned i = 0; i < len / sizeof (__int16); i += 2)
 			{
 				if (m_DstChan != 1) // not right only
 				{
@@ -1707,7 +1707,7 @@ BOOL CFilterContext::ProcessBuffer(void * buf, size_t len, DWORD offset, BOOL bB
 	{
 		if ( ! bBackward)
 		{
-			for (int i = 0; i < len / sizeof (__int16); i ++)
+			for (unsigned i = 0; i < len / sizeof (__int16); i ++)
 			{
 				pDst[i] = DoubleToShort(CalculateResult(0, pDst[i]));
 			}
@@ -1724,7 +1724,7 @@ BOOL CFilterContext::ProcessBuffer(void * buf, size_t len, DWORD offset, BOOL bB
 	{
 		if ( ! bBackward)
 		{
-			for (int i = 0; i < len / sizeof (__int16); i += 2)
+			for (unsigned i = 0; i < len / sizeof (__int16); i += 2)
 			{
 				if (m_DstChan != 1) // not right only
 				{

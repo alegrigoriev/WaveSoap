@@ -512,7 +512,7 @@ BOOL CScanPeaksContext::OperationProc()
 		if (lRead > 0)
 		{
 			unsigned i;
-			long DataToProcess = lRead;
+			ULONG DataToProcess = lRead;
 			__int16 * pWaveData = (__int16 *) pBuf;
 			DWORD DataOffset = m_Position - pDocument->WaveDataChunk()->dwDataOffset;
 			unsigned DataForGranule = m_GranuleSize - DataOffset % m_GranuleSize;
@@ -580,7 +580,7 @@ BOOL CScanPeaksContext::OperationProc()
 						pWaveData++;
 					}
 
-					ASSERT(pPeak - pDocument->m_pPeaks < pDocument->m_WavePeakSize);
+					ASSERT(unsigned(pPeak - pDocument->m_pPeaks) < pDocument->m_WavePeakSize);
 					if (pPeak[0].low > wpl_l)
 					{
 						pPeak[0].low = wpl_l;
@@ -627,7 +627,7 @@ BOOL CScanPeaksContext::OperationProc()
 						}
 					}
 
-					ASSERT(pPeak - pDocument->m_pPeaks < pDocument->m_WavePeakSize);
+					ASSERT(unsigned(pPeak - pDocument->m_pPeaks) < pDocument->m_WavePeakSize);
 					if (pPeak[0].low > wp_l)
 					{
 						pPeak[0].low = wp_l;
@@ -995,7 +995,6 @@ BOOL CResizeContext::ShrinkProc()
 			// we need to account this
 			__int16 * pSrc = (__int16 *) pSrcBuf;
 			__int16 * pDst = (__int16 *) pDstBuf;
-			int i;
 			// both are 2 channel
 			if (((m_DstCopyPos - m_DstStart) & 2)
 				!= m_DstChan * 2)
@@ -1013,6 +1012,7 @@ BOOL CResizeContext::ShrinkProc()
 				m_SrcCopyPos += 2;
 				LeftToRead -= 2;
 			}
+			unsigned i;
 			size_t ToCopy = __min(LeftToRead / (2 * sizeof(__int16)),
 								LeftToWrite / (2 * sizeof(__int16)));
 			for (i = 0; i < ToCopy; i++, pDst += 2, pSrc += 2)
@@ -1184,7 +1184,7 @@ BOOL CResizeContext::ExpandProc()
 			// we need to account this
 			__int16 * pSrc = (__int16 *) pSrcBuf;
 			__int16 * pDst = (__int16 *) pDstBuf;
-			int i;
+			unsigned i;
 			// both are 2 channel
 			if (((m_DstCopyPos - m_DstStart) & 2)
 				!= m_DstChan * 2)
@@ -1539,7 +1539,7 @@ BOOL CCopyContext::OperationProc()
 			// we need to account this
 			__int16 * pSrc = (__int16 *) pSrcBuf;
 			__int16 * pDst = (__int16 *) pDstBuf;
-			int i;
+			unsigned i;
 			if (m_SrcFile.Channels() == 1)
 			{
 				ASSERT(m_DstFile.Channels() == 2);
@@ -1620,7 +1620,7 @@ BOOL CCopyContext::OperationProc()
 			else if (m_DstFile.Channels() == 1)
 			{
 				ASSERT(m_SrcFile.Channels() == 2);
-				int i;
+				unsigned i;
 				// source is stereo, destination is mono.
 				// copy can go either from one channel, or from both
 				if (ALL_CHANNELS == m_SrcChan)
@@ -1855,7 +1855,7 @@ BOOL CDecompressContext::OperationProc()
 			{
 				if (m_bSwapBytes)
 				{
-					for (int i = 0; i < m_ash.cbDstLengthUsed - 1; i+= 2)
+					for (unsigned i = 0; i < m_ash.cbDstLengthUsed - 1; i+= 2)
 					{
 						BYTE tmp = m_ash.pbDst[i];
 						m_ash.pbDst[i] = m_ash.pbDst[i + 1];
@@ -1890,10 +1890,10 @@ BOOL CDecompressContext::OperationProc()
 	int nSampleSize = m_DstFile.SampleSize();
 	int TotalSamples = -1;
 	LPMMCKINFO pck = m_DstFile.GetDataChunk();
-	int nFirstSample = (dwOperationBegin - pck->dwDataOffset)
-						/ nSampleSize;
-	int nLastSample = (m_DstCopyPos - pck->dwDataOffset)
-					/ nSampleSize;
+	unsigned nFirstSample = (dwOperationBegin - pck->dwDataOffset)
+							/ nSampleSize;
+	unsigned nLastSample = (m_DstCopyPos - pck->dwDataOffset)
+							/ nSampleSize;
 	// check if we need to change file size
 	if (nLastSample > m_CurrentSamples)
 	{
@@ -2183,7 +2183,7 @@ BOOL CSoundPlayContext::OperationProc()
 					{
 						pSrcBuf++;
 					}
-					for (int i = 0; i < lUsedRead / (2 * sizeof(__int16)); i++)
+					for (unsigned i = 0; i < lUsedRead / (2 * sizeof(__int16)); i++)
 					{
 						pDstBuf[i] = pSrcBuf[i * 2];
 					}
@@ -2439,21 +2439,20 @@ BOOL CVolumeChangeContext::ProcessBuffer(void * buf, size_t BufferLength, DWORD 
 		}
 		else if (-1. == volume)
 		{
-			for (int i = 0; i < BufferLength / sizeof pDst[0]; i++)
+			for (unsigned i = 0; i < BufferLength / sizeof pDst[0]; i++)
 			{
 				pDst[i] = LongToShort(-long(pDst[i]));
 			}
 		}
 		else
 		{
-			for (int i = 0; i < BufferLength / sizeof pDst[0]; i++)
+			for (unsigned i = 0; i < BufferLength / sizeof pDst[0]; i++)
 			{
 				pDst[i] = DoubleToShort(pDst[i] * volume);
 			}
 		}
 		return TRUE;
 	}
-	int i;
 	// special code for mute
 	if (0 == m_VolumeLeft && 0 == m_VolumeRight)
 	{
@@ -2463,7 +2462,7 @@ BOOL CVolumeChangeContext::ProcessBuffer(void * buf, size_t BufferLength, DWORD 
 		}
 		else
 		{
-			for (int i = m_DstChan; i < BufferLength / sizeof pDst[0]; i+=2)
+			for (unsigned i = m_DstChan; i < BufferLength / sizeof pDst[0]; i+=2)
 			{
 				pDst[i] = 0;
 			}
@@ -2472,6 +2471,7 @@ BOOL CVolumeChangeContext::ProcessBuffer(void * buf, size_t BufferLength, DWORD 
 	}
 	// process both channels
 	// special code for mute and inverse
+	unsigned i;
 	if ((-1. == m_VolumeLeft || 1 == m_DstChan)
 		&& (-1. == m_VolumeRight || 0 == m_DstChan))
 	{
@@ -2573,16 +2573,16 @@ BOOL CDcOffsetContext::OperationProc()
 BOOL CDcOffsetContext::ProcessBuffer(void * buf, size_t BufferLength, DWORD offset, BOOL bBackward)
 {
 	__int16 * pDst = (__int16 *) buf;
+	unsigned i;
 	if (m_DstFile.Channels() == 1)
 	{
 		int DcOffset = m_OffsetLeft;
-		for (int i = 0; i < BufferLength / sizeof pDst[0]; i++)
+		for (i = 0; i < BufferLength / sizeof pDst[0]; i++)
 		{
 			pDst[i] = LongToShort(pDst[i] + DcOffset);
 		}
 		return TRUE;
 	}
-	int i;
 	if (ALL_CHANNELS == m_DstChan)
 	{
 		// process both channels
@@ -2742,14 +2742,14 @@ BOOL CStatisticsContext::ProcessBuffer(void * buf, size_t BufferLength, DWORD of
 	{
 		if (m_Flags & StatisticsContext_DcOnly)
 		{
-			for (int i = 0; i < BufferLength / sizeof pSrc[0]; i++)
+			for (unsigned i = 0; i < BufferLength / sizeof pSrc[0]; i++)
 			{
 				m_SumLeft += pSrc[i];
 			}
 		}
 		else if (m_Flags & StatisticsContext_MinMaxOnly)
 		{
-			for (int i = 0; i < BufferLength / sizeof pSrc[0]; i++)
+			for (unsigned i = 0; i < BufferLength / sizeof pSrc[0]; i++)
 			{
 				int sample = pSrc[i];
 
@@ -2763,7 +2763,7 @@ BOOL CStatisticsContext::ProcessBuffer(void * buf, size_t BufferLength, DWORD of
 				}
 			}
 		}
-		else for (int i = 0; i < BufferLength / sizeof pSrc[0]; i++)
+		else for (unsigned i = 0; i < BufferLength / sizeof pSrc[0]; i++)
 		{
 			int sample = pSrc[i];
 			m_SumLeft += sample;
@@ -2813,7 +2813,7 @@ BOOL CStatisticsContext::ProcessBuffer(void * buf, size_t BufferLength, DWORD of
 				offset += 2;
 				BufferLength -= 2;
 			}
-			for (int i = 0; i < BufferLength / (2 * sizeof pSrc[0]); i++)
+			for (unsigned i = 0; i < BufferLength / (2 * sizeof pSrc[0]); i++)
 			{
 				m_SumLeft += pSrc[i * 2];
 				m_SumRight += pSrc[i * 2 + 1];
@@ -2826,7 +2826,7 @@ BOOL CStatisticsContext::ProcessBuffer(void * buf, size_t BufferLength, DWORD of
 		}
 		else if (m_Flags & StatisticsContext_MinMaxOnly)
 		{
-			for (int i = 0; i < BufferLength / sizeof pSrc[0]; i++, offset += 2)
+			for (unsigned i = 0; i < BufferLength / sizeof pSrc[0]; i++, offset += 2)
 			{
 				int sample = pSrc[i];
 				if (offset & 2)
@@ -2853,7 +2853,7 @@ BOOL CStatisticsContext::ProcessBuffer(void * buf, size_t BufferLength, DWORD of
 				}
 			}
 		}
-		else for (int i = 0; i < BufferLength / sizeof pSrc[0]; i++, offset += 2)
+		else for (unsigned i = 0; i < BufferLength / sizeof pSrc[0]; i++, offset += 2)
 		{
 			int sample = pSrc[i];
 			if (offset & 2)
@@ -2984,7 +2984,7 @@ BOOL CNormalizeContext::OperationProc()
 		if (MaxLeft < MinLeft) MaxLeft = MinLeft;
 		if (MaxLeft != 0)
 		{
-			m_VolumeLeft = 32767. * m_LimitLevel / MaxLeft;
+			m_VolumeLeft = float(32767. * m_LimitLevel / MaxLeft);
 		}
 		else
 		{
@@ -2996,7 +2996,7 @@ BOOL CNormalizeContext::OperationProc()
 		if (MaxRight < MinRight) MaxRight = MinRight;
 		if (MaxRight != 0)
 		{
-			m_VolumeRight = 32767. * m_LimitLevel / MaxRight;
+			m_VolumeRight = float(32767. * m_LimitLevel / MaxRight);
 		}
 		else
 		{
@@ -3367,8 +3367,8 @@ BOOL CWmaDecodeContext::OperationProc()
 	m_DstCopySample = nLastSample;
 	TRACE("Changed from %d to %d\n", nFirstSample, nLastSample);
 
-	LONG OldSampleCount = m_CurrentSamples;
-	LONG NewSampleCount = m_Decoder.m_CurrentSamples;
+	ULONG OldSampleCount = m_CurrentSamples;
+	ULONG NewSampleCount = m_Decoder.m_CurrentSamples;
 	m_CurrentSamples = NewSampleCount;
 	if (NewSampleCount == OldSampleCount)
 	{

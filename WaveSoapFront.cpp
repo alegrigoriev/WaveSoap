@@ -307,12 +307,6 @@ BOOL CWaveSoapFrontApp::InitInstance()
 #endif
 	m_hWMVCORE_DLL_Handle = LoadLibrary(_T("WMVCORE.DLL"));
 
-#ifdef _AFXDLL
-	Enable3dControls();			// Call this when using MFC in a shared DLL
-#else
-	Enable3dControlsStatic();	// Call this when linking to MFC statically
-#endif
-
 	// Change the registry key under which our settings are stored.
 	// TODO: You should modify this string to be something appropriate
 	// such as the name of your company or organization.
@@ -1574,7 +1568,7 @@ static void AFXAPI _AfxAbbreviateName(LPTSTR lpszCanon, int cchMax, BOOL bAtLeas
 	// If cchMax isn't enough to hold at least the basename, we're done
 	if (cchMax < cchFileName)
 	{
-		lstrcpy(lpszCanon, (bAtLeastName) ? lpszFileName : &afxChNil);
+		lstrcpy(lpszCanon, (bAtLeastName) ? lpszFileName : "");
 		return;
 	}
 
@@ -2126,7 +2120,7 @@ void CWaveSoapFrontApp::OnToolsCdgrab()
 	CCdReadingContext * pContext;
 	memzero(pContexts);
 
-	int t, n;
+	unsigned t, n;
 	for (t = 0, n = 0; t < dlg.m_Tracks.size() && t < MaxTracks; t++)
 	{
 		// create a new document

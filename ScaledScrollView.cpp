@@ -294,9 +294,9 @@ POINT CScaledScrollView::DoubleToPointDev
 		(double x, double y) const
 {
 	return CPoint(//fround
-				((x - dOrgX) * GetXScaleDev()),
+				int((x - dOrgX) * GetXScaleDev()),
 				//fround
-				((y - dOrgY) * GetYScaleDev()));
+				int((y - dOrgY) * GetYScaleDev()));
 }
 
 void CScaledScrollView::PointToDoubleDev(POINT pt,
@@ -308,12 +308,12 @@ void CScaledScrollView::PointToDoubleDev(POINT pt,
 
 int CScaledScrollView::WorldToWindowX(double x) const
 {
-	return (x - dOrgX) * GetXScaleDev();
+	return int((x - dOrgX) * GetXScaleDev());
 }
 
 int CScaledScrollView::WorldToWindowY(double y) const
 {
-	return (y - dOrgY) * GetYScaleDev();
+	return int((y - dOrgY) * GetYScaleDev());
 }
 
 int CScaledScrollView::WorldToWindowXrnd(double x) const
@@ -339,13 +339,13 @@ double CScaledScrollView::WindowToWorldY(int y) const
 int CScaledScrollView::WorldToLogX(double x) const
 {
 	return //fround
-		((x - dOrgX) * dScaleX);
+	int((x - dOrgX) * dScaleX);
 }
 
 int CScaledScrollView::WorldToLogY(double y) const
 {
 	return //fround
-		((y - dOrgY) * dScaleY);
+	int((y - dOrgY) * dScaleY);
 }
 
 double CScaledScrollView::LogToWorldX(int x) const
