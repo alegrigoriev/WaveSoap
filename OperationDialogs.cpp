@@ -1762,7 +1762,6 @@ CResampleDialog::CResampleDialog(BOOL bUndoEnabled,
 	m_NewSampleRate = 0;
 	//}}AFX_DATA_INIT
 
-	m_bCanOnlyChangeSamplerate = false;
 	m_Profile.AddItem(_T("Settings"), _T("ResampleChangeRateOnly"), m_bChangeRateOnly, 0, 0, 1);
 	m_Profile.AddItem(_T("Settings"), _T("ResampleChangeSamplingRate"), m_bChangeSamplingRate, 1, 0, 1);
 	m_Profile.AddItem(_T("Settings"), _T("ResampleTempoChange"), m_TempoChange, 100., 25., 400.);
@@ -1808,6 +1807,13 @@ BEGIN_MESSAGE_MAP(CResampleDialog, BaseClass)
 	ON_WM_HSCROLL()
 	ON_EN_KILLFOCUS(IDC_EDIT_RATE, OnKillfocusEditRate)
 	ON_EN_KILLFOCUS(IDC_EDIT_TEMPO, OnKillfocusEditTempo)
+
+	ON_UPDATE_COMMAND_UI(IDC_EDIT_RATE, OnUpdateRateControls)
+	ON_UPDATE_COMMAND_UI(IDC_SLIDER_RATE, OnUpdateRateControls)
+	ON_UPDATE_COMMAND_UI(IDC_EDIT_TEMPO, OnUpdateTempoControls)
+	ON_UPDATE_COMMAND_UI(IDC_SLIDER_TEMPO, OnUpdateTempoControls)
+	ON_UPDATE_COMMAND_UI(IDC_RADIO_CHANGE_PITCH, OnUpdateRadioTempo)
+	ON_UPDATE_COMMAND_UI(IDC_CHECK_CHANGE_RATE_ONLY, OnUpdateRadioTempo)
 	//}}AFX_MSG_MAP
 END_MESSAGE_MAP()
 
@@ -1817,20 +1823,28 @@ END_MESSAGE_MAP()
 void CResampleDialog::OnRadioChangeRate()
 {
 	m_bChangeSamplingRate = 1;
-	m_SliderRate.EnableWindow(TRUE);
-	GetDlgItem(IDC_EDIT_RATE)->EnableWindow(TRUE);
-	m_SliderTempo.EnableWindow(FALSE);
-	m_EditTempo.EnableWindow(FALSE);
+	NeedUpdateControls();
 }
 
 void CResampleDialog::OnRadioChangeTempo()
 {
 	m_bChangeSamplingRate = 0;
-	m_SliderTempo.EnableWindow(TRUE);
-	m_EditTempo.EnableWindow(TRUE);
-	m_SliderRate.EnableWindow(FALSE);
+	NeedUpdateControls();
+}
 
-	GetDlgItem(IDC_EDIT_RATE)->EnableWindow(FALSE);
+void CResampleDialog::OnUpdateRateControls(CCmdUI * pCmdUI)
+{
+	pCmdUI->Enable(m_bCanOnlyChangeSamplerate || m_bChangeSamplingRate);
+}
+
+void CResampleDialog::OnUpdateTempoControls(CCmdUI * pCmdUI)
+{
+	pCmdUI->Enable(! m_bCanOnlyChangeSamplerate && ! m_bChangeSamplingRate);
+}
+
+void CResampleDialog::OnUpdateRadioTempo(CCmdUI * pCmdUI)
+{
+	pCmdUI->Enable(! m_bCanOnlyChangeSamplerate);
 }
 
 void CResampleDialog::OnHScroll(UINT nSBCode, UINT nPos, CScrollBar* pScrollBar)
@@ -1911,18 +1925,6 @@ BOOL CResampleDialog::OnInitDialog()
 	m_SliderRate.SetPageSize(m_OldSampleRate / 4);
 	m_SliderRate.SetPos(m_NewSampleRate);
 
-	if (m_bChangeSamplingRate)
-	{
-		OnRadioChangeRate();
-	}
-	else
-	{
-		OnRadioChangeTempo();
-	}
-	if (m_bCanOnlyChangeSamplerate)
-	{
-		GetDlgItem(IDC_CHECK_CHANGE_RATE_ONLY)->EnableWindow(FALSE);
-	}
 	return TRUE;  // return TRUE unless you set the focus to a control
 	// EXCEPTION: OCX Property Pages should return FALSE
 }

@@ -495,9 +495,9 @@ protected:
 /////////////////////////////////////////////////////////////////////////////
 // CResampleDialog dialog
 
-class CResampleDialog : public CDialog
+class CResampleDialog : public CUiUpdatedDlg
 {
-	typedef CDialog BaseClass;
+	typedef CUiUpdatedDlg BaseClass;
 // Construction
 public:
 	CResampleDialog(BOOL bUndoEnabled,
@@ -576,6 +576,9 @@ protected:
 	afx_msg void OnHScroll(UINT nSBCode, UINT nPos, CScrollBar* pScrollBar);
 	afx_msg void OnKillfocusEditRate();
 	afx_msg void OnKillfocusEditTempo();
+	void OnUpdateRateControls(CCmdUI * pCmdUI);
+	void OnUpdateTempoControls(CCmdUI * pCmdUI);
+	void OnUpdateRadioTempo(CCmdUI * pCmdUI);
 	virtual BOOL OnInitDialog();
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
