@@ -8,6 +8,7 @@
 #include "OperationDialogs.h"
 #include "MainFrm.h"
 #include "SaveExpressionDialog.h"
+#include "DialogWithSelection.inl"
 #include <afxpriv.h>
 
 #ifdef _DEBUG
@@ -15,120 +16,6 @@
 #undef THIS_FILE
 static char THIS_FILE[] = __FILE__;
 #endif
-
-CFileTimesCombo::CFileTimesCombo(SAMPLE_INDEX caret,
-								CWaveFile & WaveFile, int TimeFormat)
-	: BaseClass(TimeFormat)
-	, m_WaveFile(WaveFile)
-	, m_CaretPosition(caret)
-{
-	SetSamplingRate(WaveFile.SampleRate());
-}
-
-void CFileTimesCombo::FillFileTimes()
-{
-	AddPosition(IDS_BEGIN_OF_SAMPLE, 0);
-
-	NUMBER_OF_SAMPLES FileLength = m_WaveFile.NumberOfSamples();
-	AddPosition(IDS_END_OF_SAMPLE, FileLength);
-
-	if (0 != m_CaretPosition
-		&& FileLength != m_CaretPosition)
-	{
-		AddPosition(IDS_CURSOR, m_CaretPosition);
-	}
-	CWaveFile::InstanceDataWav * pInst = m_WaveFile.GetInstanceData();
-
-	CString s;
-	for (std::vector<WaveMarker>::iterator i = pInst->Markers.begin();
-		i < pInst->Markers.end(); i++)
-	{
-		// TODO: include positions in HH:mm:ss and the tooltips
-		if (0 == i->LengthSamples
-			&& i->StartSample <= FileLength)
-		{
-			if (i->Comment.IsEmpty())
-			{
-				s = i->Name;
-			}
-			else
-			{
-				s.Format(_T("%s (%s)"), LPCTSTR(i->Name), LPCTSTR(i->Comment));
-			}
-
-			AddPosition(s, i->StartSample);
-		}
-	}
-}
-
-CDialogWithSelection::CDialogWithSelection(SAMPLE_INDEX Start,
-											SAMPLE_INDEX End, SAMPLE_INDEX CaretPos,
-											CHANNEL_MASK Channel,
-											CWaveFile & File, int TimeFormat,
-											UINT TemplateID,
-											CWnd* pParent)
-	: BaseClass(TemplateID, pParent)
-	, m_Start(Start)
-	, m_End(End)
-	, m_CaretPosition(CaretPos)
-	, m_Chan(Channel)
-	, m_WaveFile(File)
-	, m_TimeFormat(TimeFormat)
-	, m_bUndo(FALSE)
-	, m_bLockChannels(FALSE)
-{
-}
-
-BEGIN_MESSAGE_MAP(CDialogWithSelection, BaseClass)
-	//{{AFX_MSG_MAP(CDialogWithSelection)
-	ON_BN_CLICKED(IDC_CHECKLOCK_CHANNELS, OnChecklockChannels)
-	ON_BN_CLICKED(IDC_BUTTON_SELECTION, OnButtonSelection)
-	ON_UPDATE_COMMAND_UI(IDC_STATIC_SELECTION, OnUpdateSelectionStatic)
-	//}}AFX_MSG_MAP
-END_MESSAGE_MAP()
-
-void CDialogWithSelection::OnButtonSelection()
-{
-	CSelectionDialog dlg(m_Start, m_End, m_CaretPosition, m_Chan + 1,
-						m_WaveFile.NumberOfSamples(), m_WaveFile.GetWaveFormat(), m_TimeFormat);
-
-	if (IDOK != dlg.DoModal())
-	{
-		return;
-	}
-
-	m_Start = dlg.GetStart();
-	m_End = dlg.GetEnd();
-	m_Chan = dlg.GetChannel() - 1;
-
-	NeedUpdateControls();
-}
-
-void CDialogWithSelection::OnChecklockChannels()
-{
-	m_bLockChannels = IsDlgButtonChecked(IDC_CHECKLOCK_CHANNELS);
-	NeedUpdateControls();
-}
-
-void CDialogWithSelection::OnUpdateSelectionStatic(CCmdUI * pCmdUI)
-{
-	pCmdUI->SetText(GetSelectionText(m_Start, m_End, m_Chan,
-									m_WaveFile.Channels(), m_bLockChannels,
-									m_WaveFile.SampleRate(), m_TimeFormat));
-}
-
-void CDialogWithSelection::DoDataExchange(CDataExchange* pDX)
-{
-	BaseClass::DoDataExchange(pDX);
-	// initialize slider control dirst, then edit control
-	//{{AFX_DATA_MAP(CDialogWithSelection)
-	//}}AFX_DATA_MAP
-	// get data first, then get new selection of the combobox
-	if ( ! pDX->m_bSaveAndValidate)
-	{
-		NeedUpdateControls();
-	}
-}
 
 /////////////////////////////////////////////////////////////////////////////
 // CCopyChannelsSelectDlg dialog
@@ -315,7 +202,7 @@ void CVolumeChangeDialog::DoDataExchange(CDataExchange* pDX)
 	}
 	else
 	{
-		m_Profile.FlushAll();
+		m_Profile.UnloadAll();
 	}
 }
 
@@ -891,7 +778,7 @@ void CDcOffsetDialog::DoDataExchange(CDataExchange* pDX)
 	}
 	if (pDX->m_bSaveAndValidate)
 	{
-		m_Profile.FlushAll();
+		m_Profile.UnloadAll();
 	}
 	else
 	{
@@ -1228,7 +1115,7 @@ void CNormalizeSoundDialog::DoDataExchange(CDataExchange* pDX)
 	}
 	else
 	{
-		m_Profile.FlushAll();
+		m_Profile.UnloadAll();
 	}
 }
 
@@ -1464,7 +1351,7 @@ void CResampleDialog::DoDataExchange(CDataExchange* pDX)
 			m_Profile.RevertItemToInitial(_T("Settings"), _T("ResampleChangeRateOnly"));
 		}
 
-		m_Profile.FlushAll();
+		m_Profile.UnloadAll();
 	}
 }
 
@@ -1654,7 +1541,7 @@ void CLowFrequencySuppressDialog::DoDataExchange(CDataExchange* pDX)
 
 	if (pDX->m_bSaveAndValidate)
 	{
-		m_Profile.FlushAll();
+		m_Profile.UnloadAll();
 	}
 }
 
@@ -1770,7 +1657,7 @@ void CExpressionEvaluationDialog::DoDataExchange(CDataExchange* pDX)
 	//}}AFX_DATA_MAP
 	if (pDX->m_bSaveAndValidate)
 	{
-		m_Profile.FlushAll();
+		m_Profile.UnloadAll();
 	}
 }
 
@@ -1935,7 +1822,7 @@ void CDeclickDialog::DoDataExchange(CDataExchange* pDX)
 
 	if (pDX->m_bSaveAndValidate)
 	{
-		Profile.FlushSection(_T("Declicker"));
+		Profile.UnloadAll();
 	}
 }
 
@@ -2132,7 +2019,7 @@ void CNoiseReductionDialog::DoDataExchange(CDataExchange* pDX)
 	if (pDX->m_bSaveAndValidate)
 	{
 		m_FftOrder = 256 << m_nFftOrderExp;
-		Profile.FlushSection(_T("NoiseReduction"));
+		Profile.UnloadAll();
 	}
 }
 
