@@ -2413,10 +2413,11 @@ void CWaveSoapFrontApp::OnToolsOptions()
 	dlg.m_FilePage.m_MaxFileCache = m_MaxFileCache;
 	dlg.m_FilePage.m_FileTextEncoding = CMmioFile::m_TextEncodingInFiles;
 
-	dlg.m_SoundPage.m_PlaybackDevice = m_DefaultPlaybackDevice;
+	dlg.m_SoundPage.m_PlaybackDevice = m_DefaultPlaybackDevice + 1;
 	dlg.m_SoundPage.m_NumPlaybackBuffers = m_NumPlaybackBuffers;
 	dlg.m_SoundPage.m_PlaybackBufferSize = m_SizePlaybackBuffers / 1024;
-	dlg.m_SoundPage.m_RecordingDevice = m_DefaultRecordDevice;
+
+	dlg.m_SoundPage.m_RecordingDevice = m_DefaultRecordDevice + 1;
 	dlg.m_SoundPage.m_NumRecordingBuffers = m_NumRecordBuffers;
 	dlg.m_SoundPage.m_RecordingBufferSize = m_SizeRecordBuffers / 1024;
 
@@ -2452,11 +2453,11 @@ void CWaveSoapFrontApp::OnToolsOptions()
 		m_MaxFileCache = dlg.m_FilePage.m_MaxFileCache;
 		CMmioFile::m_TextEncodingInFiles = dlg.m_FilePage.m_FileTextEncoding;
 
-		m_DefaultPlaybackDevice = dlg.m_SoundPage.m_PlaybackDevice;
+		m_DefaultPlaybackDevice = dlg.m_SoundPage.m_PlaybackDevice - 1;
 		m_NumPlaybackBuffers = dlg.m_SoundPage.m_NumPlaybackBuffers;
 		m_SizePlaybackBuffers = dlg.m_SoundPage.m_PlaybackBufferSize * 1024;
 
-		m_DefaultRecordDevice = dlg.m_SoundPage.m_RecordingDevice;
+		m_DefaultRecordDevice = dlg.m_SoundPage.m_RecordingDevice - 1;
 		m_NumRecordBuffers = dlg.m_SoundPage.m_NumRecordingBuffers;
 		m_SizeRecordBuffers = dlg.m_SoundPage.m_RecordingBufferSize * 1024;
 
