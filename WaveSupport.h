@@ -92,7 +92,7 @@ struct CWaveFormat
 	{
 	}
 	~CWaveFormat();
-	WAVEFORMATEX * Allocate(int ExtraSize, bool bCopy = false);
+	WAVEFORMATEX * Allocate(unsigned ExtraSize, bool bCopy = false);
 	CWaveFormat & operator =(WAVEFORMATEX const * pWf);
 	CWaveFormat & operator =(CWaveFormat const & src)
 	{
@@ -145,6 +145,12 @@ struct CWaveFormat
 	{
 		return m_pWf->nSamplesPerSec;
 	}
+
+	WORD BlockAlign() const
+	{
+		return m_pWf->nBlockAlign;
+	}
+
 	DWORD SampleRate() const
 	{
 		return m_pWf->nSamplesPerSec;
@@ -187,6 +193,20 @@ struct CWaveFormat
 	{
 		return m_pWf + 1;
 	}
+
+	unsigned FormatSize() const
+	{
+		if (NULL == m_pWf)
+		{
+			return 0;
+		}
+		if (WAVE_FORMAT_PCM == m_pWf->wFormatTag)
+		{
+			return sizeof (PCMWAVEFORMAT);
+		}
+		return sizeof (WAVEFORMATEX) + m_pWf->cbSize;
+	}
+
 	void InitFormat(WORD wFormatTag, DWORD nSampleRate,
 					WORD nNumChannels, WORD nBitsPerSample = 16, WORD Size = 0)
 	{
