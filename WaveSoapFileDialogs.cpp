@@ -16,6 +16,8 @@ BEGIN_MESSAGE_MAP(CWaveSoapFileOpenDialog, CFileDialogWithHistory)
 	//}}AFX_MSG_MAP
 END_MESSAGE_MAP()
 
+static Mp3Bitrates[] = { 64, 96, 128, 160, 192, 256, 320 };
+
 void CWaveSoapFileOpenDialog::ShowWmaFileInfo(CDirectFile & File)
 {
 	if ( ! GetApp()->CanOpenWindowsMedia())
@@ -372,7 +374,17 @@ BOOL CWaveSoapFileSaveDialog::OnFileNameOK()
 	}
 	CFileDialogWithHistory::OnFileNameOK();
 	// save format selection
-	m_SelectedFormat = m_AttributesCombo.GetCurSel();
+	if (m_FileType == SoundFileWav)
+	{
+		m_SelectedFormat = m_AttributesCombo.GetCurSel();
+	}
+	else if (m_FileType == SoundFileMp3)
+	{
+		m_SelectedLameMp3Bitrate = Mp3Bitrates[m_AttributesCombo.GetCurSel()];
+	}
+	else if (m_FileType == SoundFileWma)
+	{
+	}
 
 	return 0;   // OK to close dialog
 }
@@ -923,13 +935,12 @@ void CWaveSoapFileSaveDialog::FillLameEncoderFormats()
 	f.LoadString(IDS_LAMEENC_FORMAT);
 
 	m_AttributesCombo.ResetContent();
-	static bitrate[] = { 64, 96, 128, 160, 256, 320 };
-	for (int i = 0; i < sizeof bitrate / sizeof bitrate[0]; i++)
+	for (int i = 0; i < sizeof Mp3Bitrates / sizeof Mp3Bitrates[0]; i++)
 	{
 		CString s;
-		s.Format(f, bitrate[i], LPCTSTR(ms));
+		s.Format(f, Mp3Bitrates[i], LPCTSTR(ms));
 		m_AttributesCombo.AddString(s);
-		if (bitrate[i] == m_SelectedLameMp3Bitrate)
+		if (Mp3Bitrates[i] == m_SelectedLameMp3Bitrate)
 		{
 			m_AttributesCombo.SetCurSel(i);
 		}

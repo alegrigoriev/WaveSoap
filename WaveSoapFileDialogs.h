@@ -96,13 +96,13 @@ enum
 
 enum
 {
-	LameEncBitrate64 = 0,
-	LameEncBitrate96,
-	LameEncBitrate128,
-	LameEncBitrate160,
-	LameEncBitrate192,
-	LameEncBitrate256,
-	LameEncBitrate320,
+	LameEncBitrate64 = 64,
+	LameEncBitrate96 = 96,
+	LameEncBitrate128 = 128,
+	LameEncBitrate160 = 160,
+	LameEncBitrate192 = 192,
+	LameEncBitrate256 = 256,
+	LameEncBitrate320 = 320,
 
 };
 
@@ -121,7 +121,7 @@ public:
 		m_SelectedFormat(-1),
 		m_SelectedMp3Encoder(0),
 		m_NumOfMp3Encoders(0),
-		m_SelectedLameMp3Bitrate(128),
+		m_SelectedLameMp3Bitrate(LameEncBitrate128),
 		m_bCompatibleFormatsOnly(TRUE),
 		m_FileType(SoundFileWav),
 		m_SelectedRawFormat(RawSoundFilePcm16Lsb),

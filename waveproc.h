@@ -438,6 +438,7 @@ public:
 	{
 		m_Enc.Open(pDll);
 	}
+	~CLameEncConvertor();
 	BladeMp3Encoder m_Enc;
 	char * m_pInputBuffer;
 	int m_InputBufferSize;
