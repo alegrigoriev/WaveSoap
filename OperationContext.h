@@ -12,8 +12,9 @@
 #include "WaveSupport.h"
 #include "WmaFile.h"
 #include "KListEntry.h"
+#include "CoInitHelper.h"
 
-class COperationContext : public KListEntry<COperationContext>
+class COperationContext : public ListItem<COperationContext>
 {
 public:
 	COperationContext(class CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString, DWORD Flags, LPCTSTR OperationName = _T(""));
@@ -333,24 +334,25 @@ class CSoundPlayContext : public COperationContext
 {
 public:
 	CWaveOut m_WaveOut;
+	CWaveFile m_PlayFile;
 	long m_Begin;
 	long m_End;
 	long m_CurrentPlaybackPos;
 	int m_Chan;
 	int m_SamplePlayed;
 	int m_FirstSamplePlayed;
+	int m_LastSamplePlayed;
 	bool m_bPauseRequested;
 	int m_PlaybackDevice;
 	int m_OldThreadPriority;
+	int m_PlaybackBuffers;
+	size_t m_PlaybackBufferSize;
 
 public:
-	CSoundPlayContext(CWaveSoapFrontDoc * pDoc)
-		: COperationContext(pDoc, _T("Playing"),
-							OperationContextDontAdjustPriority, _T("Play")),
-		m_bPauseRequested(false)
-	{
-		PercentCompleted = -1;  // no percents
-	}
+	CSoundPlayContext(CWaveSoapFrontDoc * pDoc, CWaveFile & WavFile,
+					long PlaybackStart, long PlaybackEnd, int Channel,
+					int PlaybackDevice, int PlaybackBuffers, size_t PlaybackBufferSize);
+
 	virtual ~CSoundPlayContext() {}
 	virtual BOOL OperationProc();
 	virtual BOOL Init();
@@ -513,19 +515,21 @@ public:
 class CWmaDecodeContext: public COperationContext
 {
 public:
-	CWmaDecodeContext(CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString)
+	CWmaDecodeContext(CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString,
+					CDirectFile & rWmaFile)
 		: COperationContext(pDoc, StatusString,
 							// operation can be terminated by Close
-							OperationContextDiskIntensive | OperationContextNonCritical)
+							OperationContextDiskIntensive | OperationContextNonCritical),
+		m_WmaFile(rWmaFile)
 	{
 	}
 	~CWmaDecodeContext()
 	{
-		DeInit();
+		m_Decoder.Stop();
 	}
+protected:
 	CWmaDecoder m_Decoder;
 	// opens m_Decoder, loads wave format to its SrcFile
-	BOOL Open(CDirectFile & file);
 	void SetDstFile(CWaveFile & file);
 	ULONG m_CurrentSamples;
 	long m_DstCopySample;
@@ -533,6 +537,10 @@ public:
 	virtual BOOL Init();
 	virtual void DeInit();
 	virtual void PostRetire(BOOL bChildContext = FALSE);
+
+private:
+	CDirectFile & m_WmaFile;
+	CoInitHelper m_CoInit;
 };
 
 class CWmaSaveContext : public CConversionContext
@@ -554,5 +562,7 @@ public:
 	virtual BOOL OperationProc();
 	//BOOL SetTargetFormat(WAVEFORMATEX * pwf);
 	virtual void PostRetire(BOOL bChildContext = FALSE);
+private:
+	CoInitHelper m_CoInit;
 };
 #endif // AFX_OPERATIONCONTEXT_H__FFA16C44_2FA7_11D4_9ADD_00C0F0583C4B__INCLUDED_
