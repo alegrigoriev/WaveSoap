@@ -300,8 +300,8 @@ void CWaveSoapFrontView::OnDraw(CDC* pDC)
 			if (cr.right > r_upd.right) cr.right = r_upd.right;
 		}
 
-		cr.left--;   // make additional
-		cr.right++;
+		cr.left -= 2;   // make additional
+		cr.right += 2;
 
 		double left = WindowToWorldX(cr.left);
 		//double right = WindowToWorldX(cr.right);
@@ -603,7 +603,7 @@ void CWaveSoapFrontView::OnDraw(CDC* pDC)
 							&& x <= cr.right)
 						{
 							DWORD BrushRop = DstAndBrushRop;    // black dashes
-							if (x >= SelBegin && x <=SelEnd)
+							if (x >= SelBegin && x < SelEnd)
 							{
 								BrushRop = DstOrBrushRop; // white dashes
 							}
@@ -630,7 +630,7 @@ void CWaveSoapFrontView::OnDraw(CDC* pDC)
 								&& x <= cr.right)
 							{
 								DWORD BrushRop = DstAndBrushRop;
-								if (x >= SelBegin && x <=SelEnd)
+								if (x >= SelBegin && x < SelEnd)
 								{
 									BrushRop = DstOrBrushRop;
 								}
