@@ -19,17 +19,14 @@ static char THIS_FILE[] = __FILE__;
 
 
 CEqualizerDialog::CEqualizerDialog(CWnd* pParent /*=NULL*/)
-	: CDialog(CEqualizerDialog::IDD, pParent)
+	: CResizableDialog(CEqualizerDialog::IDD, pParent)
 {
-	m_PrevSize.cx = -1;
-	m_PrevSize.cy = -1;
 	//{{AFX_DATA_INIT(CEqualizerDialog)
 	m_bUndo = FALSE;
 	m_bMultiBandEqualizer = -1;
 	m_nBands = 0;
 	//}}AFX_DATA_INIT
 
-	memset(& m_mmxi, 0, sizeof m_mmxi);
 	m_Profile.AddItem("Equalizer", "NumberOfBands", m_nBands,
 					10, 3, MaxNumberOfEqualizerBands);
 	m_Profile.AddItem("Settings", "EqualizerDlgWidth", m_DlgWidth, 0, 0, 4096);
@@ -43,12 +40,40 @@ CEqualizerDialog::CEqualizerDialog(CWnd* pParent /*=NULL*/)
 		m_Profile.AddItem("Equalizer", s, m_wGraph.m_BandGain[n], 1., 0.1, 10.);
 	}
 	m_BandGain.SetPrecision(2);
+
+	static ResizableDlgItem const ResizeItems[] =
+	{
+		{IDC_STATIC1, MoveDown},
+		{IDC_EDIT_BAND_GAIN, MoveDown},
+		{IDC_STATIC2, MoveDown},
+		{IDC_CHECK_ZERO_PHASE, MoveDown},
+		{IDC_RADIO_EQUALIZER_TYPE, MoveDown},
+		{IDC_RADIO2, MoveDown},
+		{IDC_EDIT_BANDS, MoveDown},
+		{IDC_SPIN_BANDS, MoveDown},
+		{IDC_STATIC3, MoveDown},
+		{IDC_CHECK_UNDO, MoveDown},
+		{IDC_STATIC_SELECTION, MoveDown},
+		{IDC_BUTTON_SELECTION, MoveDown},
+
+		{IDC_BUTTON_RESET_BANDS, MoveRight | MoveDown},
+		{IDC_BUTTON_SAVE_AS, MoveRight | MoveDown},
+		{IDC_BUTTON_LOAD, MoveRight | MoveDown},
+		{IDOK, MoveRight | MoveDown},
+		{IDCANCEL, MoveRight | MoveDown},
+		{IDHELP, MoveRight | MoveDown},
+
+		{AFX_IDW_PANE_FIRST, ExpandRight | ExpandDown},
+	};
+
+	m_pResizeItems = ResizeItems;
+	m_pResizeItemsCount = sizeof ResizeItems / sizeof ResizeItems[0];
 }
 
 
 void CEqualizerDialog::DoDataExchange(CDataExchange* pDX)
 {
-	CDialog::DoDataExchange(pDX);
+	CResizableDialog::DoDataExchange(pDX);
 	//{{AFX_DATA_MAP(CEqualizerDialog)
 	DDX_Control(pDX, IDC_EDIT_BANDS, m_eEditBands);
 	DDX_Control(pDX, IDC_EDIT_BAND_GAIN, m_BandGain);
@@ -66,13 +91,8 @@ void CEqualizerDialog::DoDataExchange(CDataExchange* pDX)
 	}
 }
 
-BEGIN_MESSAGE_MAP(CEqualizerDialog, CDialog)
+BEGIN_MESSAGE_MAP(CEqualizerDialog, CResizableDialog)
 	//{{AFX_MSG_MAP(CEqualizerDialog)
-	ON_WM_ERASEBKGND()
-	ON_WM_NCHITTEST()
-	ON_WM_SIZING()
-	ON_WM_SIZE()
-	ON_WM_GETMINMAXINFO()
 	ON_BN_CLICKED(IDC_BUTTON_SELECTION, OnButtonSelection)
 	ON_EN_CHANGE(IDC_EDIT_BANDS, OnChangeEditBands)
 	ON_BN_CLICKED(IDC_BUTTON_LOAD, OnButtonLoad)
@@ -89,153 +109,6 @@ END_MESSAGE_MAP()
 /////////////////////////////////////////////////////////////////////////////
 // CEqualizerDialog message handlers
 
-BOOL CEqualizerDialog::OnEraseBkgnd(CDC* pDC)
-{
-	if (CDialog::OnEraseBkgnd(pDC))
-	{
-		// draw size grip
-		CRect r;
-		GetClientRect( & r);
-		int size = GetSystemMetrics(SM_CXVSCROLL);
-		r.left = r.right - size;
-		r.top = r.bottom - size;
-		pDC->DrawFrameControl( & r, DFC_SCROLL, DFCS_SCROLLSIZEGRIP);
-		return TRUE;
-	}
-	else
-	{
-		return FALSE;
-	}
-}
-
-UINT CEqualizerDialog::OnNcHitTest(CPoint point)
-{
-	// return HTBOTTOMRIGHT for sizegrip area
-	CRect r;
-	GetClientRect( & r);
-	int size = GetSystemMetrics(SM_CXVSCROLL);
-	r.left = r.right - size;
-	r.top = r.bottom - size;
-	ScreenToClient( & point);
-
-	if (r.PtInRect(point))
-	{
-		return HTBOTTOMRIGHT;
-	}
-	else
-		return CDialog::OnNcHitTest(point);
-}
-
-void CEqualizerDialog::OnSizing(UINT fwSide, LPRECT pRect)
-{
-	CDialog::OnSizing(fwSide, pRect);
-
-	// invalidate an area currently (before resizing)
-	// occupied by size grip
-	CRect r;
-	GetClientRect( & r);
-	int size = GetSystemMetrics(SM_CXVSCROLL);
-	r.left = r.right - size;
-	r.top = r.bottom - size;
-	InvalidateRect( & r, FALSE);
-}
-
-void CEqualizerDialog::OnSize(UINT nType, int cx, int cy)
-{
-	CDialog::OnSize(nType, cx, cy);
-	if (m_PrevSize.cx > 0)
-	{
-		// resize graph control
-		if (NULL != m_wGraph.m_hWnd)
-		{
-			CRect r;
-			m_wGraph.GetWindowRect( & r);
-			m_wGraph.SetWindowPos(NULL, 0, 0, r.Width() + cx - m_PrevSize.cx,
-								r.Height() + cy - m_PrevSize.cy,
-								SWP_DRAWFRAME | SWP_NOACTIVATE
-								| SWP_NOMOVE | SWP_NOZORDER | SWP_NOOWNERZORDER);
-		}
-
-		// move all controls
-		static int const MoveDown[] =
-		{
-			IDC_STATIC1, IDC_EDIT_BAND_GAIN, IDC_STATIC2,
-			IDC_CHECK_ZERO_PHASE,
-			IDC_RADIO_EQUALIZER_TYPE, IDC_RADIO2, IDC_EDIT_BANDS,
-			IDC_SPIN_BANDS, IDC_STATIC3, IDC_CHECK_UNDO,
-			IDC_STATIC_SELECTION, IDC_BUTTON_SELECTION,
-		};
-		for (int i = 0; i < sizeof MoveDown / sizeof MoveDown[0]; i++)
-		{
-			CWnd * pWnd = GetDlgItem(MoveDown[i]);
-			if (pWnd)
-			{
-				CRect r;
-				pWnd->GetWindowRect( & r);
-				ScreenToClient( & r);
-				pWnd->SetWindowPos(NULL, r.left, r.top + cy - m_PrevSize.cy,
-									0, 0, SWP_NOCOPYBITS | SWP_NOACTIVATE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOOWNERZORDER);
-			}
-		}
-		static int const MoveRightDown[] =
-		{
-			IDC_BUTTON_RESET_BANDS, IDC_BUTTON_SAVE_AS,
-			IDC_BUTTON_LOAD, IDOK, IDCANCEL, IDHELP,
-		};
-		for (i = 0; i < sizeof MoveRightDown / sizeof MoveRightDown[0]; i++)
-		{
-			CWnd * pWnd = GetDlgItem(MoveRightDown[i]);
-			if (pWnd)
-			{
-				CRect r;
-				pWnd->GetWindowRect( & r);
-				ScreenToClient( & r);
-				pWnd->SetWindowPos(NULL, r.left + cx - m_PrevSize.cx,
-									r.top + cy - m_PrevSize.cy,
-									0, 0, SWP_NOCOPYBITS | SWP_NOACTIVATE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOOWNERZORDER);
-			}
-		}
-	}
-
-	m_PrevSize.cx = cx;
-	m_PrevSize.cy = cy;
-
-	// invalidate an area which is (after resizing)
-	// occupied by size grip
-	int size = GetSystemMetrics(SM_CXVSCROLL);
-	CRect r(cx - size, cy - size, cx, cy);
-	InvalidateRect( & r, TRUE);
-}
-
-void CEqualizerDialog::OnGetMinMaxInfo(MINMAXINFO FAR* lpMMI)
-{
-	if (m_mmxi.ptMaxSize.x != 0)
-	{
-		*lpMMI = m_mmxi;
-	}
-	else
-	{
-		CDialog::OnGetMinMaxInfo(lpMMI);
-	}
-}
-
-void CEqualizerDialog::OnMetricsChange()
-{
-	// Initialize MINMAXINFO
-	CRect r;
-	SystemParametersInfo(SPI_GETWORKAREA, 0, & r, 0);
-	m_mmxi.ptMaxSize.x = r.Width();
-	m_mmxi.ptMaxTrackSize.x = m_mmxi.ptMaxSize.x;
-	m_mmxi.ptMaxSize.y = r.Height();
-	m_mmxi.ptMaxTrackSize.y = m_mmxi.ptMaxSize.y;
-	m_mmxi.ptMaxPosition.x = r.left;
-	m_mmxi.ptMaxPosition.y = r.top;
-	GetWindowRect(& r);
-	m_mmxi.ptMinTrackSize.x = r.Width();
-	m_mmxi.ptMinTrackSize.y = r.Height();
-}
-
-
 BOOL CEqualizerDialog::OnInitDialog()
 {
 	m_wGraph.SetNumberOfBands(m_nBands);
@@ -251,11 +124,10 @@ BOOL CEqualizerDialog::OnInitDialog()
 						SWP_NOACTIVATE | SWP_NOMOVE | SWP_NOSIZE);
 	pTemplateWnd->DestroyWindow();
 
-	CDialog::OnInitDialog();
+	CResizableDialog::OnInitDialog();
 
 	m_BandGain.SetData(m_wGraph.GetCurrentBandGainDb());
 	// init MINMAXINFO
-	OnMetricsChange();
 	UpdateSelectionStatic();
 
 	m_SpinBands.SetRange(3, MaxNumberOfEqualizerBands);
@@ -267,25 +139,6 @@ BOOL CEqualizerDialog::OnInitDialog()
 	{
 		OnRadioEqualizerType();
 	}
-	// set dialog size
-	if (m_DlgWidth < m_mmxi.ptMinTrackSize.x)
-	{
-		m_DlgWidth = m_mmxi.ptMinTrackSize.x;
-	}
-	if (m_DlgWidth > m_mmxi.ptMaxTrackSize.x)
-	{
-		m_DlgWidth = m_mmxi.ptMaxTrackSize.x;
-	}
-	if (m_DlgHeight < m_mmxi.ptMinTrackSize.y)
-	{
-		m_DlgHeight = m_mmxi.ptMinTrackSize.y;
-	}
-	if (m_DlgHeight > m_mmxi.ptMaxTrackSize.y)
-	{
-		m_DlgHeight = m_mmxi.ptMaxTrackSize.y;
-	}
-	SetWindowPos(NULL, 0, 0, m_DlgWidth, m_DlgHeight,
-				SWP_NOACTIVATE | SWP_NOOWNERZORDER | SWP_NOZORDER | SWP_NOMOVE);
 
 	return TRUE;  // return TRUE unless you set the focus to a control
 	// EXCEPTION: OCX Property Pages should return FALSE
@@ -1446,7 +1299,7 @@ void CEqualizerDialog::OnOK()
 	m_DlgWidth = r.Width();
 	m_DlgHeight = r.Height();
 
-	CDialog::OnOK();
+	CResizableDialog::OnOK();
 }
 
 void CEqualizerDialog::OnNotifyGraph( NMHDR * pNotifyStruct, LRESULT * result )
