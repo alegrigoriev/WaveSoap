@@ -2852,38 +2852,29 @@ BOOL InitShrinkOperation(CStagedContext * pContext,
 	}
 
 	// 2. If partial channels moved: add special operation, to zero the area on undo
-	CHANNEL_MASK ChannelsToZero = File.ChannelsMask() & ~Channel;
 
-	if (0 != ChannelsToZero)
+	if (NewSamples < StartSample + Length)
 	{
-		if (NewSamples < StartSample + Length)
-		{
-			// BUGBUG
-			// because some data (not moved by CMoveOperation)
-			// will be discarded by WaveSampleChange,
-			// we need to save it
-			pContext->AddContext(new
-								CSaveTrimmedOperation(pContext->pDocument, File,
-													NewSamples, StartSample + Length, Channel));
-		}
+		// because some data (not moved by CMoveOperation)
+		// will be discarded by WaveSampleChange or by InitChannels,
+		// we need to save it
+		pContext->AddContext(new
+							CSaveTrimmedOperation(pContext->pDocument, File,
+												NewSamples, StartSample + Length, Channel));
+	}
+
+	if ( ! File.AllChannels(Channel))
+	{
+		// not all channels are moved
 		// special zero context used, with empty undo
 		pContext->AddContext(new CInitChannels(pContext->pDocument, File, NewSamples, NumberOfSamples,
-												ChannelsToZero));
+												Channel));
 	}
 	else
 	{
 		// 3. If all channels moved: Move all markers and regions
 		// TODO
 
-		if (NewSamples < StartSample + Length)
-		{
-			// because some data (not moved by CMoveOperation)
-			// will be discarded by WaveSampleChange,
-			// we need to save it
-			pContext->AddContext(new
-								CSaveTrimmedOperation(pContext->pDocument, File,
-													NewSamples, StartSample + Length, Channel));
-		}
 		// 4. If all channels moved: Change number of samples
 		pContext->AddContext(new
 							CWaveSamplesChangeOperation(pContext->pDocument, File, NewSamples));
