@@ -58,8 +58,10 @@ protected:
 	afx_msg void OnSelchangeComboSelection();
 	afx_msg void OnBnClickedButtonNew();
 	afx_msg void OnBnClickedButtonDelete();
+	afx_msg void EnableIfItemSelected(CCmdUI * pCmdUI);
 
 	virtual void OnOK();
+	afx_msg void OnUpdateOK(CCmdUI * pCmdUI);
 	virtual BOOL OnInitDialog();
 	virtual BOOL PreTranslateMessage(MSG* pMsg);
 
