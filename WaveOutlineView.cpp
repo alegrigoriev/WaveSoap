@@ -7,6 +7,7 @@
 #include "WaveOutlineView.h"
 #include "GdiObjectSave.h"
 #include "WaveSoapFrontDoc.h"
+#include ".\waveoutlineview.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -44,6 +45,7 @@ BEGIN_MESSAGE_MAP(CWaveOutlineView, CView)
 	ON_WM_CAPTURECHANGED()
 	ON_WM_SETCURSOR()
 	//}}AFX_MSG_MAP
+	ON_WM_LBUTTONDBLCLK()
 END_MESSAGE_MAP()
 
 /////////////////////////////////////////////////////////////////////////////
@@ -906,4 +908,15 @@ BOOL CWaveOutlineView::OnSetCursor(CWnd* /*pWnd*/,
 	// TODO: set different cursor, depending on hit test
 	SetCursor(AfxGetApp()->LoadStandardCursor(IDC_ARROW));
 	return TRUE;
+}
+
+void CWaveOutlineView::OnLButtonDblClk(UINT nFlags, CPoint point)
+{
+	CView::OnLButtonDblClk(nFlags, point);
+
+	CRect cr;
+	GetClientRect(cr);
+
+	GetDocument()->SelectBetweenMarkers(SAMPLE_INDEX(
+													MulDiv(point.x, GetDocument()->WaveFileSamples(), cr.Width())));
 }

@@ -1,15 +1,14 @@
 TODO tasks:
 
+Add support for markers and regions: save on copy and with undo, move and delete on Cut, move on Paste
+Delete/Insert operations can auto add markers and regions
 If metadata doesn't come as the very last chunk of the file, copy the original file to 
  a file where it does (for non-compressed file, that is)
 
 Unnamed region name is composed from its boundaries
-Add support for markers and regions: save on copy and with undo, move and delete on Cut, move on Paste
-Delete/Insert operations can auto add markers and regions
 
 Make Windows/Close All command
 Put copyright notices to all files
-Double click on the outline view should select between markers
 
 When starting playing selection, bring the playback cursor into active view
 Add "Show" button to the selection dialog
@@ -73,7 +72,7 @@ Find which alignment better for edit box labels: left or right
 
 Problems:
 
-Suggests u-Law when saving a file from clipboard
+Suggests u-Law when saving a file from clipboard (??)
 Reopen after save new file doesn't work
 When scrolling FFT view during playback, checkered background after EOF is constantly blinking
 Vertical scroll in the wave view makes marker labels blinking
@@ -156,6 +155,7 @@ Save As dialog is not centered first time (comdlg problem?)
 ??? When time/seconds format is set for status bar, MM:SS is actually shown
 
 Done:
+Double click on the outline view should select between markers
 Complete "Reverse" command
 Complete "Insert silence" command
 Show markers on the outline view as dotted XOR lines
