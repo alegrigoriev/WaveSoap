@@ -138,8 +138,9 @@ afx_hidd_printsetup = html\afx_hidd_printsetup.htm
 hid_file_page_setup = html\hid_file_page_setup.htm
 
 [MAP]
-#include [afxhelp.hm]
-#include [WaveSoap.hm]
+#include HTMLDefines.h
+
+[TEXT POPUPS]
+HTMLDefines.h
 
 [INFOTYPES]
-
