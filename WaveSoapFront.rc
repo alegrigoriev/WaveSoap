@@ -128,16 +128,16 @@ BEGIN
     BUTTON      ID_APP_ABOUT
     BUTTON      ID_CONTEXT_HELP
     SEPARATOR
-    BUTTON      IDC_SOUND_PLAY
-    BUTTON      IDC_SOUND_PAUSE
-    BUTTON      IDC_SOUND_STOP
+    BUTTON      ID_SOUND_PLAY
+    BUTTON      ID_SOUND_PAUSE
+    BUTTON      ID_SOUND_STOP
     SEPARATOR
-    BUTTON      IDC_VIEW_SHOW_FFT
-    BUTTON      IDC_VIEW_WAVEFORM
+    BUTTON      ID_VIEW_SHOW_FFT
+    BUTTON      ID_VIEW_WAVEFORM
     SEPARATOR
-    BUTTON      IDC_PROCESS_DO_ULF
-    BUTTON      IDC_PROCESS_DO_DECLICKING
-    BUTTON      IDC_PROCESS_NOISE_REDUCTION
+    BUTTON      ID_PROCESS_DO_ULF
+    BUTTON      ID_PROCESS_DO_DECLICKING
+    BUTTON      ID_PROCESS_NOISE_REDUCTION
     SEPARATOR
     BUTTON      ID_VIEW_ZOOMINVERT
     BUTTON      ID_VIEW_ZOOMOUTVERT
@@ -150,12 +150,12 @@ END
 
 IDR_CHILDFRAME TOOLBAR  16, 15
 BEGIN
-    BUTTON      IDC_SOUND_PLAY
-    BUTTON      IDC_SOUND_PAUSE
-    BUTTON      IDC_SOUND_STOP
+    BUTTON      ID_SOUND_PLAY
+    BUTTON      ID_SOUND_PAUSE
+    BUTTON      ID_SOUND_STOP
     SEPARATOR
-    BUTTON      IDC_VIEW_SHOW_FFT
-    BUTTON      IDC_VIEW_WAVEFORM
+    BUTTON      ID_VIEW_SHOW_FFT
+    BUTTON      ID_VIEW_WAVEFORM
     SEPARATOR
     BUTTON      ID_VIEW_ZOOMINVERT
     BUTTON      ID_VIEW_ZOOMOUTVERT
@@ -186,7 +186,6 @@ BEGIN
         MENUITEM "Read Audio CD Tracks...",     ID_TOOLS_CDGRAB
         MENUITEM SEPARATOR
         MENUITEM "&Preferences...",             ID_TOOLS_OPTIONS
-        MENUITEM "P&rint Setup...",             ID_FILE_PRINT_SETUP
         MENUITEM SEPARATOR
         MENUITEM "Recent File",                 ID_FILE_MRU_FILE1, GRAYED
         MENUITEM SEPARATOR
@@ -230,11 +229,7 @@ BEGIN
         END
         MENUITEM "&Close\tCtrl+Shift+F4",       ID_FILE_CLOSE
         MENUITEM SEPARATOR
-        MENUITEM "&Print...\tCtrl+P",           ID_FILE_PRINT
-        MENUITEM "Print Pre&view",              ID_FILE_PRINT_PREVIEW
-        MENUITEM "P&rint Setup...",             ID_FILE_PRINT_SETUP
-        MENUITEM SEPARATOR
-        MENUITEM "Prop&erties...\tAlt+Enter",   ID_FILE_PROPERTIES
+        MENUITEM "Prop&erties...",              ID_FILE_PROPERTIES
         MENUITEM "S&tatistics...",              ID_FILE_STATISTICS
         MENUITEM SEPARATOR
         MENUITEM "Recent File",                 ID_FILE_MRU_FILE1, GRAYED
@@ -270,7 +265,7 @@ BEGIN
         MENUITEM "&Go To...\tCtrl+G",           ID_EDIT_GOTO
         MENUITEM "Select &All\tCtrl+A",         ID_EDIT_SELECT_ALL
         MENUITEM "&Selection...\tCtrl+D",       ID_EDIT_SELECTION
-        MENUITEM "Mar&ker/Region\tM",           IDC_EDIT_MARKER_REGION
+        MENUITEM "Mar&ker/Region\tM",           ID_EDIT_MARKER_REGION
         MENUITEM "&Lock Channels",              ID_EDIT_CHANNELS_LOCK
         MENUITEM "St&op\tEsc",                  ID_EDIT_STOP
     END
@@ -279,8 +274,8 @@ BEGIN
         MENUITEM "&Toolbar",                    ID_VIEW_TOOLBAR
         MENUITEM "Status &Bar",                 ID_VIEW_STATUS_BAR
         MENUITEM SEPARATOR
-        MENUITEM "&Waveform\tAlt+1",            IDC_VIEW_WAVEFORM
-        MENUITEM "&FFT Spectrum\tAlt+2",        IDC_VIEW_SHOW_FFT
+        MENUITEM "&Waveform\tAlt+1",            ID_VIEW_WAVEFORM
+        MENUITEM "&FFT Spectrum\tAlt+2",        ID_VIEW_SHOW_FFT
         MENUITEM SEPARATOR
         MENUITEM "&Spectrum Section\tAlt+3",    ID_VIEW_SPECTRUMSECTION
         MENUITEM "&Outline\tAlt+4",             ID_VIEW_OUTLINE
@@ -292,10 +287,10 @@ BEGIN
         BEGIN
             MENUITEM "&Enable\tAlt+5",              ID_VIEW_TIME_RULER
             MENUITEM SEPARATOR
-            MENUITEM "&Samples",                    IDC_VIEW_RULER_SAMPLES
-            MENUITEM "&HH:MM:SS",                   IDC_VIEW_RULER_HHMMSS
-            MENUITEM "Se&conds",                    IDC_VIEW_RULER_SECONDS
-            MENUITEM "HH:MM:SS.&FF",                IDC_VIEW_RULER_HHMMSSFF
+            MENUITEM "&Samples",                    ID_VIEW_RULER_SAMPLES
+            MENUITEM "&HH:MM:SS",                   ID_VIEW_RULER_HHMMSS
+            MENUITEM "Se&conds",                    ID_VIEW_RULER_SECONDS
+            MENUITEM "HH:MM:SS.&FF",                ID_VIEW_RULER_HHMMSSFF
         END
         MENUITEM SEPARATOR
         MENUITEM "Zoom In Amplitude\tAlt+Up",   ID_VIEW_ZOOMINVERT
@@ -304,11 +299,11 @@ BEGIN
         BEGIN
             MENUITEM "Enable\tAlt+6",               ID_VIEW_VERTICAL_RULER
             MENUITEM SEPARATOR
-            MENUITEM "&Sample Value",               IDC_VIEW_AMPL_RULER_SAMPLES
+            MENUITEM "&Sample Value",               ID_VIEW_AMPL_RULER_SAMPLES
 
-            MENUITEM "&Percents",                   IDC_VIEW_AMPL_RULER_PERCENT
+            MENUITEM "&Percents",                   ID_VIEW_AMPL_RULER_PERCENT
 
-            MENUITEM "&dB",                         IDC_VIEW_AMPL_RULER_DECIBELS
+            MENUITEM "&dB",                         ID_VIEW_AMPL_RULER_DECIBELS
 
         END
         MENUITEM SEPARATOR
@@ -318,10 +313,10 @@ BEGIN
     BEGIN
         POPUP "Sound &Cleanup"
         BEGIN
-            MENUITEM "&Click Removal...",           IDC_PROCESS_DO_DECLICKING
+            MENUITEM "&Click Removal...",           ID_PROCESS_DO_DECLICKING
 
-            MENUITEM "&Turntable Noise Reduction...", IDC_PROCESS_DO_ULF
-            MENUITEM "&White Noise Reduction...",   IDC_PROCESS_NOISE_REDUCTION
+            MENUITEM "&Turntable Noise Reduction...", ID_PROCESS_DO_ULF
+            MENUITEM "&White Noise Reduction...",   ID_PROCESS_NOISE_REDUCTION
 
         END
         MENUITEM "E&qualizer...",               ID_PROCESS_EQUALIZER
@@ -375,12 +370,12 @@ IDR_MENU_TIME_RULER MENU
 BEGIN
     POPUP " "
     BEGIN
-        MENUITEM "Marker/Region...",            IDC_EDIT_MARKER_REGION
+        MENUITEM "Marker/Region...",            ID_EDIT_MARKER_REGION
         MENUITEM SEPARATOR
-        MENUITEM "&Samples",                    IDC_VIEW_RULER_SAMPLES
-        MENUITEM "&HH:MM:SS",                   IDC_VIEW_RULER_HHMMSS
-        MENUITEM "S&econds",                    IDC_VIEW_RULER_SECONDS
-        MENUITEM "HH:MM:SS.&FF",                IDC_VIEW_RULER_HHMMSSFF
+        MENUITEM "&Samples",                    ID_VIEW_RULER_SAMPLES
+        MENUITEM "&HH:MM:SS",                   ID_VIEW_RULER_HHMMSS
+        MENUITEM "S&econds",                    ID_VIEW_RULER_SECONDS
+        MENUITEM "HH:MM:SS.&FF",                ID_VIEW_RULER_HHMMSSFF
         MENUITEM SEPARATOR
         MENUITEM "&Zoom In",                    ID_VIEW_ZOOMINHOR2
         MENUITEM "Zoom &Out",                   ID_VIEW_ZOOMOUTHOR2
@@ -392,9 +387,9 @@ IDR_MENU_AMPLITUDE_RULER MENU
 BEGIN
     POPUP " "
     BEGIN
-        MENUITEM "&Sample Value",               IDC_VIEW_AMPL_RULER_SAMPLES
-        MENUITEM "&Percents",                   IDC_VIEW_AMPL_RULER_PERCENT
-        MENUITEM "&dB",                         IDC_VIEW_AMPL_RULER_DECIBELS
+        MENUITEM "&Sample Value",               ID_VIEW_AMPL_RULER_SAMPLES
+        MENUITEM "&Percents",                   ID_VIEW_AMPL_RULER_PERCENT
+        MENUITEM "&dB",                         ID_VIEW_AMPL_RULER_DECIBELS
         MENUITEM SEPARATOR
         MENUITEM "&Zoom In",                    ID_VIEW_ZOOMINVERT
         MENUITEM "Zoom &Out",                   ID_VIEW_ZOOMOUTVERT
@@ -450,7 +445,7 @@ IDR_MENU_WAVE_VIEW MENU
 BEGIN
     POPUP " "
     BEGIN
-        MENUITEM "Marker...\tM",                IDC_EDIT_WAVE_MARKER
+        MENUITEM "Marker...\tM",                ID_EDIT_WAVE_MARKER
         MENUITEM "Paste\tCtrl+V",               ID_EDIT_PASTE
         MENUITEM SEPARATOR
         MENUITEM "&Zoom In Time\tNum +",        ID_VIEW_ZOOMINHOR2
@@ -471,7 +466,7 @@ BEGIN
         MENUITEM "Paste\tCtrl+V",               ID_EDIT_PASTE
         MENUITEM "Cut\tCtrl+X",                 ID_EDIT_CUT
         MENUITEM "Delete\tDel",                 ID_EDIT_DELETE
-        MENUITEM "&Region...\tR",               IDC_EDIT_WAVE_REGION
+        MENUITEM "&Region...\tR",               ID_EDIT_WAVE_REGION
         MENUITEM SEPARATOR
         MENUITEM "&Zoom In Time\tNum +",        ID_VIEW_ZOOMINHOR2
         MENUITEM "Zoom &Out Time\tNum -",       ID_VIEW_ZOOMOUTHOR2
@@ -487,7 +482,7 @@ IDR_MENU_FFT_VIEW MENU
 BEGIN
     POPUP " "
     BEGIN
-        MENUITEM "&Marker...\tM",               IDC_EDIT_WAVE_MARKER
+        MENUITEM "&Marker...\tM",               ID_EDIT_WAVE_MARKER
         MENUITEM "Paste\tCtrl+V",               ID_EDIT_PASTE
         MENUITEM SEPARATOR
         MENUITEM "&Zoom In Time\tNum +",        ID_VIEW_ZOOMINHOR2
@@ -524,10 +519,10 @@ IDR_MENU_CURRENT_POSITION MENU
 BEGIN
     POPUP " "
     BEGIN
-        MENUITEM "&Samples",                    IDC_VIEW_STATUS_SAMPLES
-        MENUITEM "&HH:MM:SS",                   IDC_VIEW_STATUS_HHMMSS
-        MENUITEM "S&econds",                    IDC_VIEW_STATUS_SECONDS
-        MENUITEM "HH:MM:SS.&FF",                IDC_VIEW_STATUS_HHMMSSFF
+        MENUITEM "&Samples",                    ID_VIEW_STATUS_SAMPLES
+        MENUITEM "&HH:MM:SS",                   ID_VIEW_STATUS_HHMMSS
+        MENUITEM "S&econds",                    ID_VIEW_STATUS_SECONDS
+        MENUITEM "HH:MM:SS.&FF",                ID_VIEW_STATUS_HHMMSSFF
         MENUITEM SEPARATOR
         MENUITEM "&Go To...",                   ID_EDIT_GOTO
     END
@@ -537,10 +532,10 @@ IDR_MENU_SELECTION_LENGTH MENU
 BEGIN
     POPUP " "
     BEGIN
-        MENUITEM "&Samples",                    IDC_VIEW_STATUS_SAMPLES
-        MENUITEM "&HH:MM:SS",                   IDC_VIEW_STATUS_HHMMSS
-        MENUITEM "S&econds",                    IDC_VIEW_STATUS_SECONDS
-        MENUITEM "HH:MM:SS.&FF",                IDC_VIEW_STATUS_HHMMSSFF
+        MENUITEM "&Samples",                    ID_VIEW_STATUS_SAMPLES
+        MENUITEM "&HH:MM:SS",                   ID_VIEW_STATUS_HHMMSS
+        MENUITEM "S&econds",                    ID_VIEW_STATUS_SECONDS
+        MENUITEM "HH:MM:SS.&FF",                ID_VIEW_STATUS_HHMMSSFF
         MENUITEM SEPARATOR
         MENUITEM "Selection...",                ID_EDIT_SELECTION
     END
@@ -550,10 +545,10 @@ IDR_MENU_FILE_LENGTH MENU
 BEGIN
     POPUP " "
     BEGIN
-        MENUITEM "&Samples",                    IDC_VIEW_STATUS_SAMPLES
-        MENUITEM "&HH:MM:SS",                   IDC_VIEW_STATUS_HHMMSS
-        MENUITEM "S&econds",                    IDC_VIEW_STATUS_SECONDS
-        MENUITEM "HH:MM:SS.&FF",                IDC_VIEW_STATUS_HHMMSSFF
+        MENUITEM "&Samples",                    ID_VIEW_STATUS_SAMPLES
+        MENUITEM "&HH:MM:SS",                   ID_VIEW_STATUS_HHMMSS
+        MENUITEM "S&econds",                    ID_VIEW_STATUS_SECONDS
+        MENUITEM "HH:MM:SS.&FF",                ID_VIEW_STATUS_HHMMSSFF
     END
 END
 
@@ -830,10 +825,10 @@ IDR_MENU_TIME_RULER_MARKER MENU
 BEGIN
     POPUP " "
     BEGIN
-        MENUITEM "&Cursor Here",                IDC_GOTO_MARKER
-        MENUITEM "&Delete",                     IDC_DELETE_MARKER
-        MENUITEM "&Move to Cursor",             IDC_MOVE_MARKER_TO_CURRENT
-        MENUITEM "&Edit...",                    IDC_EDIT_MARKER
+        MENUITEM "&Cursor Here",                ID_GOTO_MARKER
+        MENUITEM "&Delete",                     ID_DELETE_MARKER
+        MENUITEM "&Move to Cursor",             ID_MOVE_MARKER_TO_CURRENT
+        MENUITEM "&Edit...",                    ID_EDIT_MARKER
     END
 END
 
@@ -841,11 +836,11 @@ IDR_MENU_TIME_RULER_REGION MENU
 BEGIN
     POPUP " "
     BEGIN
-        MENUITEM "&Cursor Here",                IDC_GOTO_MARKER
-        MENUITEM "&Select",                     IDC_SELECT_REGION
-        MENUITEM "&Delete",                     IDC_DELETE_MARKER
-        MENUITEM "&Move to Cursor",             IDC_MOVE_MARKER_TO_CURRENT
-        MENUITEM "&Edit...",                    IDC_EDIT_MARKER
+        MENUITEM "&Cursor Here",                ID_GOTO_MARKER
+        MENUITEM "&Select",                     ID_SELECT_REGION
+        MENUITEM "&Delete",                     ID_DELETE_MARKER
+        MENUITEM "&Move to Cursor",             ID_MOVE_MARKER_TO_CURRENT
+        MENUITEM "&Edit...",                    ID_EDIT_MARKER
     END
 END
 
@@ -905,12 +900,12 @@ BEGIN
     VK_SUBTRACT,    ID_VIEW_ZOOMOUTHOR2,    VIRTKEY, NOINVERT
     VK_DOWN,        ID_VIEW_ZOOMOUTVERT,    VIRTKEY, ALT, NOINVERT
     VK_SUBTRACT,    ID_VIEW_ZOOMPREVIOUS,   VIRTKEY, CONTROL, NOINVERT
-    "M",            IDC_EDIT_WAVE_MARKER,   VIRTKEY, NOINVERT
-    "R",            IDC_EDIT_WAVE_REGION,   VIRTKEY, NOINVERT
-    VK_SPACE,       IDC_PLAY_AND_STOP,      VIRTKEY, NOINVERT
-    VK_RETURN,      IDC_SOUND_PAUSE,        VIRTKEY, NOINVERT
-    "2",            IDC_VIEW_SHOW_FFT,      VIRTKEY, ALT, NOINVERT
-    "1",            IDC_VIEW_WAVEFORM,      VIRTKEY, ALT, NOINVERT
+    "M",            ID_EDIT_WAVE_MARKER,   VIRTKEY, NOINVERT
+    "R",            ID_EDIT_WAVE_REGION,   VIRTKEY, NOINVERT
+    VK_SPACE,       ID_PLAY_AND_STOP,      VIRTKEY, NOINVERT
+    VK_RETURN,      ID_SOUND_PAUSE,        VIRTKEY, NOINVERT
+    "2",            ID_VIEW_SHOW_FFT,      VIRTKEY, ALT, NOINVERT
+    "1",            ID_VIEW_WAVEFORM,      VIRTKEY, ALT, NOINVERT
     VK_ADD,         ID_VIEW_ZOOM_SELECTION, VIRTKEY, SHIFT, NOINVERT
 END
 
@@ -2362,13 +2357,13 @@ BEGIN
     LTEXT           "&Time format: ",IDC_STATIC,16,113,52,8
     COMBOBOX        IDC_COMBO_TIME_FORMAT,70,111,140,53,CBS_DROPDOWNLIST | 
                     WS_VSCROLL | WS_TABSTOP
-    LTEXT           "Tri&gger:",IDC_STATIC,16,129,28,8
+    LTEXT           "Tri&gger:",IDC_STATIC,16,129,28,8,NOT WS_VISIBLE
     COMBOBOX        IDC_COMBO_TRIGGER,69,128,156,59,CBS_DROPDOWN | CBS_SORT | 
-                    WS_VSCROLL | WS_TABSTOP
+                    NOT WS_VISIBLE | WS_VSCROLL | WS_TABSTOP
     DEFPUSHBUTTON   "OK",IDOK,252,38,50,14
     PUSHBUTTON      "Cancel",IDCANCEL,252,55,50,14
-    PUSHBUTTON      "&Play",IDC_BUTTON_PLAY,252,74,50,14,WS_DISABLED | 
-                    WS_GROUP
+    PUSHBUTTON      "&Play",IDC_BUTTON_PLAY,252,74,50,14,NOT WS_VISIBLE | 
+                    WS_DISABLED | WS_GROUP
     PUSHBUTTON      "Delete",IDC_BUTTON_DELETE,252,21,50,14
 END
 
@@ -3248,10 +3243,10 @@ BEGIN
     ID_FILE_SAVE_ALL        "Save all open files\nSave all"
     ID_EDIT_PASTE_NEW       "Create a new file from the clipboard contents\nPaste as new"
     ID_EDIT_GOTO            "Go to specified position\nGo to"
-    IDC_VIEW_AMPL_RULER_SAMPLES "Show numerical sample value\nSample value"
+    ID_VIEW_AMPL_RULER_SAMPLES "Show numerical sample value\nSample value"
     ID_VIEW_ZOOMIN          "Magnify the view"
     ID_VIEW_ZOOMOUT         "Diminish the view"
-    IDC_VIEW_AMPL_RULER_DECIBELS "Show sample value in decibels\nDecibels"
+    ID_VIEW_AMPL_RULER_DECIBELS "Show sample value in decibels\nDecibels"
     ID_VIEW_ZOOM_OUT2       "Zoom out x2"
     ID_VIEW_ZOOMIN2         "Zoom in x2"
     ID_VIEW_ZOOMINHOR       "Zoom in time\nZoom in time"
@@ -3285,18 +3280,18 @@ END
 
 STRINGTABLE 
 BEGIN
-    IDC_VIEW_RULER_SAMPLES  "Show time in samples\nShow samples"
-    IDC_VIEW_RULER_HHMMSS   "Show time as hour:minute:seconds\nShow hh:mm:ss"
-    IDC_VIEW_RULER_SECONDS  "Show time in seconds\nShow seconds"
-    IDC_SOUND_PLAY          "Play from the current cursor position\nPlay"
-    IDC_SOUND_PAUSE         "Stop playback and leave the cursor at the current position\nPause"
-    IDC_SOUND_STOP          "Stop playback and return to the last known cursor position\nStop"
-    IDC_VIEW_SHOW_FFT       "Show the wave spectrum\nSpectral view"
-    IDC_VIEW_WAVEFORM       "Show the sound as waveform\nShow waveform"
-    IDC_PROCESS_DO_ULF      "Ultra-low frequency noise suppression (for vinyl recordings)\nTurntable noise suppression"
-    IDC_PROCESS_DO_DECLICKING 
+    ID_VIEW_RULER_SAMPLES  "Show time in samples\nShow samples"
+    ID_VIEW_RULER_HHMMSS   "Show time as hour:minute:seconds\nShow hh:mm:ss"
+    ID_VIEW_RULER_SECONDS  "Show time in seconds\nShow seconds"
+    ID_SOUND_PLAY          "Play from the current cursor position\nPlay"
+    ID_SOUND_PAUSE         "Stop playback and leave the cursor at the current position\nPause"
+    ID_SOUND_STOP          "Stop playback and return to the last known cursor position\nStop"
+    ID_VIEW_SHOW_FFT       "Show the wave spectrum\nSpectral view"
+    ID_VIEW_WAVEFORM       "Show the sound as waveform\nShow waveform"
+    ID_PROCESS_DO_ULF      "Ultra-low frequency noise suppression (for vinyl recordings)\nTurntable noise suppression"
+    ID_PROCESS_DO_DECLICKING 
                             "Click removal (for vinyl recordings)\nClick removal"
-    IDC_PROCESS_NOISE_REDUCTION 
+    ID_PROCESS_NOISE_REDUCTION 
                             "White noise (hiss) reduction\nNoise reduction"
     ID_EDIT_DELETE          "Delete the selection\nDelete"
 END
@@ -3342,7 +3337,7 @@ BEGIN
                             "Temporary file couldn't be created because you don't have write privilege on the containing directory"
     IDS_UNKNOWN_FILE_CREATION_ERROR_TEMP 
                             "Temporary file couldn't be created because of unknown error"
-    IDC_VIEW_AMPL_RULER_PERCENT "Show sample value in percents\nPercents"
+    ID_VIEW_AMPL_RULER_PERCENT "Show sample value in percents\nPercents"
     IDS_COPY_OF             "Copy of "
     IDS_FILE_MAY_GET_TOO_BIG 
                             "Operation cannot be performed because the file size would exceed the WAV format limit"
@@ -3429,13 +3424,13 @@ BEGIN
     ID_CHANNELS_STEREO      "Change the file to stereo\nStereo"
     ID_SAMPLE_16BIT         "Set sample size to 16 bit\n16 bit"
     ID_SAMPLE_8BIT          "Set sample size to 8 bit"
-    IDC_VIEW_STATUS_SAMPLES "Show time in samples\nShow samples"
+    ID_VIEW_STATUS_SAMPLES "Show time in samples\nShow samples"
 END
 
 STRINGTABLE 
 BEGIN
-    IDC_VIEW_STATUS_HHMMSS  "Show time as hour:minute:seconds\nShow hh:mm:ss"
-    IDC_VIEW_STATUS_SECONDS "Show time in seconds\nShow seconds"
+    ID_VIEW_STATUS_HHMMSS  "Show time as hour:minute:seconds\nShow hh:mm:ss"
+    ID_VIEW_STATUS_SECONDS "Show time in seconds\nShow seconds"
     ID_FILE_STATISTICS      "Calculate file statistics\nStatistics"
     ID_PROCESS_INVERT       "Invert the sample sign\nInvert"
     ID_VIEW_OUTLINE         "Toggle outline view\nOutline"
@@ -3638,7 +3633,7 @@ BEGIN
     IDS_WMA_ENCODER_NOT_AVILABLE 
                             "Windows Media Audio (WMA) encoder is not available. To encode to WMA format, you need to install Windows Media Player."
     IDS_REPLACEYESNO        "%s\nThis file already exists.\nReplace existing file?"
-    IDC_FILE_READ_ERROR     "Error occured while reading file ""%s"":\n\n%s"
+    IDS_FILE_READ_ERROR     "Error occured while reading file ""%s"":\n\n%s"
     IDS_SUFFIX_READ_ONLY    " (Read Only)"
     IDS_SUFFIX_DIRECT       " (Direct)"
     IDS_STATUS_STRING16BIT  "16-bit"
@@ -3657,12 +3652,12 @@ END
 STRINGTABLE 
 BEGIN
     ID_PROCESS_REVERSE      "Reverse sound - make it go backwards"
-    IDC_GOTO_MARKER         "Set current edit position to this cue mark"
-    IDC_DELETE_MARKER       "Delete this cue mark"
-    IDC_MOVE_MARKER_TO_CURRENT "Move cue mark to the current edit position"
-    IDC_EDIT_MARKER         "Edit this cue mark"
-    IDC_SELECT_REGION       "Select this region"
-    IDC_EDIT_WAVE_MARKER    "Add or edit a marker in the current position"
+    ID_GOTO_MARKER         "Set current edit position to this cue mark"
+    ID_DELETE_MARKER       "Delete this cue mark"
+    ID_MOVE_MARKER_TO_CURRENT "Move cue mark to the current edit position"
+    ID_EDIT_MARKER         "Edit this cue mark"
+    ID_SELECT_REGION       "Select this region"
+    ID_EDIT_WAVE_MARKER    "Add or edit a marker in the current position"
 END
 
 STRINGTABLE 
@@ -3836,13 +3831,13 @@ END
 
 STRINGTABLE 
 BEGIN
-    IDC_EDIT_MARKER_REGION  "Add or edit marker or region"
-    IDC_EDIT_WAVE_REGION    "Add or edit a region at the current selection"
+    ID_EDIT_MARKER_REGION  "Add or edit marker or region"
+    ID_EDIT_WAVE_REGION    "Add or edit a region at the current selection"
     ID_SAVE_SAVESELECTIONAS "Save the current selection to a file\nSave selection"
     ID_VIEW_ZOOMPREVIOUS    "Change to the previous zoom\nPrevious zoom"
-    IDC_VIEW_STATUS_HHMMSSFF 
+    ID_VIEW_STATUS_HHMMSSFF 
                             "Show time as hour:minute:seconds.CD frames (75 fps)\nShow hh:mm:ss.ff75"
-    IDC_VIEW_RULER_HHMMSSFF "Show time as hour:minute:seconds.CD frames (75 fps)\nShow hh:mm:ss.ff75"
+    ID_VIEW_RULER_HHMMSSFF "Show time as hour:minute:seconds.CD frames (75 fps)\nShow hh:mm:ss.ff75"
 END
 
 STRINGTABLE 
