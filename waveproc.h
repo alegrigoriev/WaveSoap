@@ -70,6 +70,9 @@ public:
 		m_TmpInBufPut(0),
 		m_TmpInBufGet(0),
 		m_TmpOutBufPut(0),
+		m_InputChannels(1),
+		m_OutputChannels(1),
+		m_ChannelsToProcess(-1),
 		m_TmpOutBufGet(0)
 	{}
 	virtual ~CWaveProc() {}
@@ -78,16 +81,20 @@ public:
 	// and return their number, or 0 if no more samples
 	// any latency should be compensated in the function
 	virtual int ProcessSound(char const * pInBuf, char * pOutBuf,
-							int nInBytes, int nOutBytes, int * pUsedSamples, int nChans) = 0;
+							int nInBytes, int nOutBytes, int * pUsedSamples) = 0;
 	// SetAndValidateWaveformat returns FALSE if the wave cannot be
 	// processed
 	virtual BOOL SetAndValidateWaveformat(WAVEFORMATEX const * pWf);
+	int m_InputChannels;
+	int m_OutputChannels;
+	int m_ChannelsToProcess;
+	int m_SamplesPerSecond;
 	BOOL (*m_Callback)(CWaveProc * pProc, UINT msg,
 						size_t TotalSize, size_t pos);
 	BOOL CheckForMinBufferSize(char const * &pInBuf, char * &pOutBuf,
 								int &nInBytes, int &nOutBytes,
 								int * pUsedBytes, int * pSavedBytes,
-								int nMinInBytes, int nMinOutBytes, int nChan);
+								int nMinInBytes, int nMinOutBytes);
 
 	static BOOL NullCallback(CWaveProc * , UINT ,
 							size_t , size_t ) { return TRUE; }
@@ -111,15 +118,22 @@ class CHumRemoval: public CWaveProc
 public:
 	CHumRemoval();
 	virtual int ProcessSound(char const * pInBuf, char * pOutBuf,
-							int nInBytes, int nOutBytes, int * pUsedSamples, int nChans);
+							int nInBytes, int nOutBytes, int * pUsedSamples);
 	virtual BOOL SetAndValidateWaveformat(WAVEFORMATEX const * pWf);
 	float m_prev_outl, m_prev_outr;
 	float m_prev_inl, m_prev_inr;
 	int m_PrevHpfL[2];
 	int m_PrevHpfR[2];
-	double m_PrevHpOutL[2];
-	double m_PrevHpOutR[2];
+	float m_PrevHpOutL[2];
+	float m_PrevHpOutR[2];
+	double m_DiffCutoffCoeffs[2];
+	double m_HighpassCoeffs[3];
 	BOOL m_ApplyHighpassFilter;
+	BOOL m_ApplyCommonModeFilter;
+	void EnableDifferentialSuppression(BOOL enable) { m_ApplyCommonModeFilter = enable; }
+	void EnableLowFrequencySuppression(BOOL enable) { m_ApplyHighpassFilter = enable;}
+	void SetDifferentialCutoff(double frequency);
+	void SetHighpassCutoff(double frequency);
 };
 
 struct StoredClickData
@@ -134,7 +148,7 @@ public:
 	CClickRemoval();
 	virtual ~CClickRemoval();
 	virtual int ProcessSound(char const * pInBuf, char * pOutBuf,
-							int nInBytes, int nOutBytes, int * pUsedSamples, int nChans);
+							int nInBytes, int nOutBytes, int * pUsedSamples);
 	virtual BOOL SetAndValidateWaveformat(WAVEFORMATEX const * pWf);
 
 	BOOL SetClickSourceFile(LPCTSTR szFilename);
@@ -183,7 +197,7 @@ public:
 	virtual ~CNoiseReduction();
 	typedef float DATA;
 	virtual int ProcessSound(char const * pInBuf, char * pOutBuf,
-							int nInBytes, int nOutBytes, int * pUsedSamples, int nChans);
+							int nInBytes, int nOutBytes, int * pUsedSamples);
 	virtual BOOL SetAndValidateWaveformat(WAVEFORMATEX const * pWf);
 	//protected:
 	long m_SamplesPerSec;
@@ -294,7 +308,7 @@ public:
 	virtual ~CBatchProcessing();
 
 	virtual int ProcessSound(char const * pInBuf, char * pOutBuf,
-							int nInBytes, int nOutBytes, int * pUsedSamples, int nChans);
+							int nInBytes, int nOutBytes, int * pUsedSamples);
 	virtual BOOL SetAndValidateWaveformat(WAVEFORMATEX const * pWf);
 	void AddWaveProc(CWaveProc * pProc, int index = -1);
 	BOOL m_bAutoDeleteProcs;
@@ -320,7 +334,7 @@ public:
 	}
 	virtual ~CResampleFilter();
 	virtual int ProcessSound(char const * pInBuf, char * pOutBuf,
-							int nInBytes, int nOutBytes, int * pUsedSamples, int nChans);
+							int nInBytes, int nOutBytes, int * pUsedSamples);
 	//virtual BOOL SetAndValidateWaveformat(WAVEFORMATEX const * pWf);
 	BOOL InitResample(double ResampleRatio, double FilterLength, int nChannels);
 	void FilterSoundResample();
@@ -351,7 +365,6 @@ public:
 	long m_TotalProcessedSamples;
 	long m_TotalSavedSamples;
 
-	int m_Channels;
 };
 
 class CAudioConvertor : public CWaveProc
@@ -372,7 +385,7 @@ public:
 	BOOL InitConversion(WAVEFORMATEX * SrcFormat, WAVEFORMATEX * DstFormat,
 						HACMDRIVER had = NULL);
 	virtual int ProcessSound(char const * pInBuf, char * pOutBuf,
-							int nInBytes, int nOutBytes, int * pUsedSamples, int nChans);
+							int nInBytes, int nOutBytes, int * pUsedSamples);
 };
 
 class CChannelConvertor : public CWaveProc
@@ -380,22 +393,18 @@ class CChannelConvertor : public CWaveProc
 public:
 	CChannelConvertor()
 		: nSrcChannel(2),
-		nSourceChannels(1),
-		nTargetChannels(1),
 		dwSrcProcessed(0),
 		dwDstProcessed(0)
 	{
 	}
 	virtual ~CChannelConvertor() {}
 	int nSrcChannel;
-	int nSourceChannels;
-	int nTargetChannels;
 	DWORD dwSrcProcessed;
 	DWORD dwDstProcessed;
 	// conversion either mono->stereo, or stereo->mono.
 	// if converting stereo->mono, the data can be left, right, or average
 	virtual int ProcessSound(char const * pIn, char * pOut,
-							int nInBytes, int nOutBytes, int * pUsedBytes, int nChans);
+							int nInBytes, int nOutBytes, int * pUsedBytes);
 };
 void InterpolateGap(__int16 data[], int nLeftIndex, int ClickLength, int nChans);
 void InterpolateBigGap(__int16 data[], int nLeftIndex, int ClickLength, int nChans);
