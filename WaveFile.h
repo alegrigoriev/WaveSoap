@@ -670,27 +670,11 @@ public:
 		return static_cast<InstanceDataWav *>(CDirectFile::GetInstanceData());
 	}
 
-	CWavePeaks * GetWavePeaks() const
-	{
-		InstanceDataWav * pInstData = GetInstanceData();
-		if (NULL == pInstData)
-		{
-			return NULL;
-		}
-		return & pInstData->m_PeakData;
-	}
+	CWavePeaks * GetWavePeaks() const;
 
 	void SetPeaks(PEAK_INDEX from, PEAK_INDEX to, NUMBER_OF_CHANNELS stride, WavePeak value);
 
-	NUMBER_OF_CHANNELS Channels() const
-	{
-		WAVEFORMATEX * pWf = GetWaveFormat();
-		if (NULL == pWf)
-		{
-			return 1;
-		}
-		return pWf->nChannels;
-	}
+	NUMBER_OF_CHANNELS Channels() const;
 
 	NUMBER_OF_CHANNELS NumChannelsFromMask(CHANNEL_MASK Channels) const;
 	bool AllChannels(CHANNEL_MASK Channels) const;
@@ -698,19 +682,11 @@ public:
 	NUMBER_OF_SAMPLES NumberOfSamples() const;
 	CWaveFile & operator =(CWaveFile &);
 
-	WAVEFORMATEX * AllocateWaveformat(size_t FormatSize = sizeof (WAVEFORMATEX))
-	{
-		return AllocateInstanceData<InstanceDataWav>()->wf.Allocate(int(FormatSize - sizeof (WAVEFORMATEX)));
-	}
-	bool IsCompressed() const
-	{
-		return GetInstanceData()->wf.IsCompressed();
-	}
+	WAVEFORMATEX * AllocateWaveformat(size_t FormatSize = sizeof (WAVEFORMATEX));
 
-	CHANNEL_MASK ChannelsMask() const
-	{
-		return GetInstanceData()->wf.ChannelsMask();
-	}
+	bool IsCompressed() const;
+
+	CHANNEL_MASK ChannelsMask() const;
 
 	BOOL LoadWaveformat();
 	BOOL FindData();
@@ -740,36 +716,11 @@ public:
 	// return sorted array of markers
 	void GetSortedMarkers(SAMPLE_INDEX_Vector & markers, BOOL IncludeFileLimits = FALSE) const;
 
-	unsigned SampleRate() const
-	{
-		WAVEFORMATEX * pWf = GetWaveFormat();
-		if (pWf)
-		{
-			return pWf->nSamplesPerSec;
-		}
-		else
-		{
-			return 0;
-		}
-	}
+	unsigned SampleRate() const;
 
-	WORD BitsPerSample() const
-	{
-		WAVEFORMATEX * pWf = GetWaveFormat();
-		if (pWf)
-		{
-			return pWf->wBitsPerSample;
-		}
-		else
-		{
-			return 8;
-		}
-	}
+	WORD BitsPerSample() const;
 
-	LPMMCKINFO GetDataChunk() const
-	{
-		return & GetInstanceData()->datack;
-	}
+	LPMMCKINFO GetDataChunk() const;
 
 	WAVEFORMATEX * GetWaveFormat() const;
 	// save all changes in wave format and data chunk size
