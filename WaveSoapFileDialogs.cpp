@@ -34,7 +34,7 @@ CWaveSoapFileOpenDialog::CWaveSoapFileOpenDialog(BOOL bOpenFileDialog, // TRUE f
 			{ IDHELP, MoveRight},
 		};
 		m_pResizeItems = ItemsV5;
-		m_ResizeItemsCount = sizeof ItemsV5 / sizeof ItemsV5[0];
+		m_ResizeItemsCount = countof(ItemsV5);
 	}
 	else
 	{
@@ -48,7 +48,7 @@ CWaveSoapFileOpenDialog::CWaveSoapFileOpenDialog(BOOL bOpenFileDialog, // TRUE f
 			{ IDHELP, MoveRight},
 		};
 		m_pResizeItems = ItemsV4;
-		m_ResizeItemsCount = sizeof ItemsV4 / sizeof ItemsV4[0];
+		m_ResizeItemsCount = countof(ItemsV4);
 	}
 }
 
@@ -103,7 +103,7 @@ void CWaveSoapFileOpenDialog::ShowWmaFileInfo(CDirectFile & File)
 				LPCTSTR(LtoaCS(WmaFile.m_CurrentSamples)));
 		SetDlgItemText(IDC_STATIC_FILE_LENGTH, s);
 		// num of channels, bitrate, sampling rate
-		s.Format("%s bps, %s Hz, %s", LPCTSTR(LtoaCS(WmaFile.m_Bitrate)),
+		s.Format(_T("%s bps, %s Hz, %s"), LPCTSTR(LtoaCS(WmaFile.m_Bitrate)),
 				LPCTSTR(LtoaCS(WmaFile.m_SrcWf.SampleRate())),
 				1 == WmaFile.m_SrcWf.NumChannels() ? _T("Mono") : _T("Stereo"));
 		SetDlgItemText(IDC_STATIC_ATTRIBUTES, s);
@@ -183,7 +183,7 @@ void CWaveSoapFileOpenDialog::OnFileNameChange()
 		ClearFileInfoDisplay();
 		return;
 	}
-	TRACE("CWaveSoapFileOpenDialog::OnFileNameChange=%s\n", LPCTSTR(sName));
+	TRACE(_T("CWaveSoapFileOpenDialog::OnFileNameChange=%s\n"), LPCTSTR(sName));
 	// if one file selected, its name will be in the buffer.
 	// If multiple files selected, the buffer will contain directory name,
 	// then file name surrounded with double quotes,
@@ -402,7 +402,7 @@ CWaveSoapFileSaveDialog::CWaveSoapFileSaveDialog(BOOL bOpenFileDialog, // TRUE f
 		};
 		m_ofn.lpTemplateName = MAKEINTRESOURCE(IDD_DIALOG_SAVE_TEMPLATE_V5);
 		m_pResizeItems = ItemsV5;
-		m_ResizeItemsCount = sizeof ItemsV5 / sizeof ItemsV5[0];
+		m_ResizeItemsCount = countof(ItemsV5);
 	}
 	else
 	{
@@ -419,7 +419,7 @@ CWaveSoapFileSaveDialog::CWaveSoapFileSaveDialog(BOOL bOpenFileDialog, // TRUE f
 		};
 		m_ofn.lpTemplateName = MAKEINTRESOURCE(IDD_DIALOG_SAVE_TEMPLATE_V4);
 		m_pResizeItems = ItemsV4;
-		m_ResizeItemsCount = sizeof ItemsV4 / sizeof ItemsV4[0];
+		m_ResizeItemsCount = countof(ItemsV4);
 	}
 	m_DefExt[1] = _T("wav");
 	m_DefExt[2] = _T("mp3");
@@ -642,7 +642,7 @@ void CWaveSoapFileSaveDialog::OnCompatibleFormatsClicked()
 	if (SoundFileWav == m_FileType)
 	{
 		FillFormatTagCombo(ExcludeFormats,
-							sizeof ExcludeFormats / sizeof ExcludeFormats[0], WaveFormatExcludeFormats);
+							countof(ExcludeFormats), WaveFormatExcludeFormats);
 		m_SelectedFormat = FillFormatCombo(m_FormatTagCombo.GetCurSel());
 	}
 	else if (SoundFileMp3 == m_FileType)
@@ -827,7 +827,7 @@ void CWaveSoapFileSaveDialog::SetFileType(int nType)
 		ShowDlgItem(IDC_EDIT_COMMENT, SW_SHOWNOACTIVATE);
 
 		FillFormatTagCombo(ExcludeFormats,
-							sizeof ExcludeFormats / sizeof ExcludeFormats[0],
+							countof(ExcludeFormats),
 							WaveFormatExcludeFormats);
 		m_SelectedFormat = FillFormatCombo(m_FormatTagCombo.GetCurSel());
 		break;  // go on

@@ -50,23 +50,23 @@ CFilterDialog::CFilterDialog(CWnd* pParent /*=NULL*/)
 	};
 
 	m_pResizeItems = ResizeItems;
-	m_pResizeItemsCount = sizeof ResizeItems / sizeof ResizeItems[0];
+	m_pResizeItemsCount = countof(ResizeItems);
 
-	m_Profile.AddItem("Settings", "FilterDlgWidth", m_DlgWidth, 0, 0, 4096);
-	m_Profile.AddItem("Settings", "FilterDlgHeight", m_DlgHeight, 0, 0, 4096);
+	m_Profile.AddItem(_T("Settings"), _T("FilterDlgWidth"), m_DlgWidth, 0, 0, 4096);
+	m_Profile.AddItem(_T("Settings"), _T("FilterDlgHeight"), m_DlgHeight, 0, 0, 4096);
 
-	m_Profile.AddBoolItem("Filter", "ZeroPhase", m_wGraph.m_bZeroPhase, FALSE);
-	m_Profile.AddBoolItem("Filter", "LowPassFilter", m_wGraph.m_bLowPass, TRUE);
-	m_Profile.AddBoolItem("Filter", "HighPassFilter", m_wGraph.m_bHighPass, TRUE);
-	m_Profile.AddBoolItem("Filter", "NotchFilter", m_wGraph.m_bNotchFilter, FALSE);
+	m_Profile.AddBoolItem(_T("Filter"), _T("ZeroPhase"), m_wGraph.m_bZeroPhase, FALSE);
+	m_Profile.AddBoolItem(_T("Filter"), _T("LowPassFilter"), m_wGraph.m_bLowPass, TRUE);
+	m_Profile.AddBoolItem(_T("Filter"), _T("HighPassFilter"), m_wGraph.m_bHighPass, TRUE);
+	m_Profile.AddBoolItem(_T("Filter"), _T("NotchFilter"), m_wGraph.m_bNotchFilter, FALSE);
 
 	for (int n = 0; n < MaxFilterFrequencies; n++)
 	{
 		CString s;
-		s.Format("Gain%d", n + 1);
-		m_Profile.AddItem("Filter", s, m_wGraph.m_Gain[n], m_wGraph.m_Gain[n], 0.00003, 1.);
-		s.Format("Frequency%d", n + 1);
-		m_Profile.AddItem("Filter", s, m_wGraph.m_Frequencies[n], m_wGraph.m_Frequencies[n], 0.00314, 3.14);
+		s.Format(_T("Gain%d"), n + 1);
+		m_Profile.AddItem(_T("Filter"), s, m_wGraph.m_Gain[n], m_wGraph.m_Gain[n], 0.00003, 1.);
+		s.Format(_T("Frequency%d"), n + 1);
+		m_Profile.AddItem(_T("Filter"), s, m_wGraph.m_Frequencies[n], m_wGraph.m_Frequencies[n], 0.00314, 3.14);
 	}
 	// check for correct frequencies and gain
 	if (m_wGraph.m_Gain[HpfPassbandIndex] <= m_wGraph.m_Gain[HpfStopbandIndex])
@@ -232,7 +232,7 @@ BOOL CFilterDialog::OnInitDialog()
 	CWnd * pTemplateWnd = GetDlgItem(IDC_STATIC_RESPONSE_TEMPLATE);
 	pTemplateWnd->GetWindowRect( & r);
 	ScreenToClient( & r);
-	m_wGraph.Create(NULL, "", WS_CHILD | WS_VISIBLE
+	m_wGraph.Create(NULL, _T(""), WS_CHILD | WS_VISIBLE
 					| WS_CLIPSIBLINGS | WS_CLIPCHILDREN | WS_TABSTOP,
 					r, this, AFX_IDW_PANE_FIRST);
 	m_wGraph.SetWindowPos(pTemplateWnd, 0, 0, 0, 0,
@@ -768,7 +768,7 @@ void CFilterGraphWnd::OnNcCalcSize(BOOL bCalcValidRects, NCCALCSIZE_PARAMS * lpn
 	CWnd * pW = GetDesktopWindow();
 	CDC * pDC = pW->GetWindowDC();
 	CGdiObject * pOld = pDC->SelectStockObject(ANSI_VAR_FONT);
-	ncWidth = 3 + pDC->GetTextExtent(" -20 dB", 7).cx;
+	ncWidth = 3 + pDC->GetTextExtent(_T(" -20 dB"), 7).cx;
 
 	pDC->SelectObject(pOld);
 	pW->ReleaseDC(pDC);
@@ -848,27 +848,27 @@ void CFilterGraphWnd::OnNcPaint(UINT wParam)
 		{
 			// 12.1k
 			// 8.9k
-			s.Format("%.1fk", f / 1000.);
+			s.Format(_T("%.1fk"), f / 1000.);
 			if (f >= 10000.)
 			{
-				TextWidth = pDC->GetTextExtent("20.0k ", 6).cx;
+				TextWidth = pDC->GetTextExtent(_T("20.0k "), 6).cx;
 			}
 			else
 			{
-				TextWidth = pDC->GetTextExtent("0.0k ", 5).cx;
+				TextWidth = pDC->GetTextExtent(_T("0.0k "), 5).cx;
 			}
 		}
 		else if (f >= 100.)
 		{
 			// 550 (round to 10)
-			s.Format("%d", 10 * ((int(f) + 5) / 10));
-			TextWidth = pDC->GetTextExtent("999 ", 4).cx;
+			s.Format(_T("%d"), 10 * ((int(f) + 5) / 10));
+			TextWidth = pDC->GetTextExtent(_T("999 "), 4).cx;
 		}
 		else
 		{
 			// 55
-			s.Format("%d", int(f));
-			TextWidth = pDC->GetTextExtent("99 ", 3).cx;
+			s.Format(_T("%d"), int(f));
+			TextWidth = pDC->GetTextExtent(_T("99 "), 3).cx;
 		}
 		if (x - TextWidth / 2 >= PrevX)
 		{
@@ -878,14 +878,14 @@ void CFilterGraphWnd::OnNcPaint(UINT wParam)
 	}
 
 	pDC->SetTextAlign(TA_BOTTOM | TA_RIGHT);
-	int TextOrigin = pDC->GetTextExtent("9", 1).cy / 2 + ncp.rgrc[0].top;
+	int TextOrigin = pDC->GetTextExtent(_T("9"), 1).cy / 2 + ncp.rgrc[0].top;
 	int ClientHeight = ncp.rgrc[0].bottom - ncp.rgrc[0].top;
 
 	// from 0 to -80 dB, with 20 dB step
 	for (int d = 0; d >= -80; d -= 20)
 	{
 		CString s;
-		s.Format("%d dB", d);
+		s.Format(_T("%d dB"), d);
 		pDC->TextOut(ncp.rgrc[0].left - 1,
 					TextOrigin + GainDbToPosY(d, ClientHeight),
 					s);
@@ -966,7 +966,7 @@ void CFilterDialog::OnButtonLoad()
 	Title.LoadString(IDS_FILTER_LOAD_TITLE);
 
 	CFileDialogWithHistory dlg(TRUE,
-								"Fltr", NULL,
+								_T("Fltr"), NULL,
 								OFN_HIDEREADONLY
 								| OFN_EXPLORER | OFN_NONETWORKBUTTON | OFN_FILEMUSTEXIST,
 								Filter);
@@ -977,7 +977,7 @@ void CFilterDialog::OnButtonLoad()
 		return;
 	}
 	FileName = dlg.GetPathName();
-	m_Profile.ImportSection("Filter", FileName);
+	m_Profile.ImportSection(_T("Filter"), FileName);
 	//m_wGraph.SetNumberOfBands(m_nBands);
 	//m_Gain.SetData(m_wGraph.GetCurrentBandGainDb());
 }
@@ -992,7 +992,7 @@ void CFilterDialog::OnButtonSaveAs()
 	Title.LoadString(IDS_FILTER_SAVE_TITLE);
 
 	CFileDialogWithHistory dlg(FALSE,
-								"Fltr", NULL,
+								_T("Fltr"), NULL,
 								OFN_HIDEREADONLY | OFN_OVERWRITEPROMPT
 								| OFN_EXPLORER | OFN_NONETWORKBUTTON | OFN_PATHMUSTEXIST,
 								Filter);
@@ -1003,7 +1003,7 @@ void CFilterDialog::OnButtonSaveAs()
 		return;
 	}
 	FileName = dlg.GetPathName();
-	m_Profile.ExportSection("Filter", FileName);
+	m_Profile.ExportSection(_T("Filter"), FileName);
 }
 
 int CFilterGraphWnd::GetFilterPointPixel(int FilterPoint)

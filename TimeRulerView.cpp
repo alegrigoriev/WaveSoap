@@ -78,7 +78,7 @@ void CTimeRulerView::DrawRulerSamples(CDC* pDC)
 	int nLength;
 	unsigned dist, nTickDist;
 	unsigned nSamples, k;
-	nLength = pDC->GetTextExtent("0,000,000,000", 13).cx;
+	nLength = pDC->GetTextExtent(_T("0,000,000,000"), 13).cx;
 
 	nSamples = unsigned(1.5 * nLength / GetXScaleDev());
 	// calculate how much samples can be between the numbers
@@ -195,7 +195,7 @@ void CTimeRulerView::DrawRulerHhMmSs(CDC* pDC)
 	int nTickCount;
 	float SampleRate = float(pDoc->m_WavFile.SampleRate());
 
-	int nLength = pDC->GetTextExtent("00:00:00.0000", 13).cx;
+	int nLength = pDC->GetTextExtent(_T("00:00:00.0000"), 13).cx;
 
 	double DistTime = 1.5 * nLength / GetXScaleDev() / SampleRate;
 	// select distance between ticks
@@ -380,7 +380,7 @@ void CTimeRulerView::DrawRulerSeconds(CDC* pDC)
 	int nTickCount;
 	float SampleRate = float(pDoc->m_WavFile.SampleRate());
 
-	int nLength = pDC->GetTextExtent("00,000.0000", 14).cx;
+	int nLength = pDC->GetTextExtent(_T("00,000.0000"), 14).cx;
 
 	double DistTime = 1.5 * nLength / GetXScaleDev() / SampleRate;
 	// select distance between ticks

@@ -17,9 +17,9 @@ static int _fastcall fround(double d)
 	}
 }
 
-void SkipWhitespace(LPCSTR * ppStr)
+void SkipWhitespace(LPCTSTR * ppStr)
 {
-	LPCSTR str = *ppStr;
+	LPCTSTR str = *ppStr;
 	while (' ' == *str
 			|| '\n' == *str
 			|| '\t' == *str
@@ -110,7 +110,7 @@ BOOL CExpressionEvaluationContext::ProcessBuffer(void * buf, size_t len, DWORD o
 	return TRUE;
 }
 
-CString CExpressionEvaluationContext::GetToken(LPCSTR * ppStr, TokenType * pType)
+CString CExpressionEvaluationContext::GetToken(LPCTSTR * ppStr, TokenType * pType)
 {
 	// get either delimiter, operand or operator
 	static struct TokenTable
@@ -163,13 +163,13 @@ CString CExpressionEvaluationContext::GetToken(LPCSTR * ppStr, TokenType * pType
 		"wave", eCurrentSampleValue,
 	};
 	SkipWhitespace(ppStr);
-	LPCSTR str = *ppStr;
+	LPCTSTR str = *ppStr;
 	if ('\0' == *str)
 	{
 		*pType = eEndOfExpression;
 		return "";
 	}
-	for (int i = 0; i < sizeof Table / sizeof Table[0];i++)
+	for (int i = 0; i < countof(Table);i++)
 	{
 		int j;
 		for (j = 0; Table[i].token[j] != '\0' && Table[i].token[j] == str[j]; j++)
@@ -196,10 +196,10 @@ CString CExpressionEvaluationContext::GetToken(LPCSTR * ppStr, TokenType * pType
 }
 
 CExpressionEvaluationContext::TokenType
-CExpressionEvaluationContext::CompileParenthesedExpression(LPCSTR * ppStr)
+CExpressionEvaluationContext::CompileParenthesedExpression(LPCTSTR * ppStr)
 {
 	TokenType type;
-	LPCSTR prevStr = *ppStr;
+	LPCTSTR prevStr = *ppStr;
 	CString token = GetToken( ppStr, & type);
 	if (type != eLeftParenthesis
 		|| eRightParenthesis != CompileExpression(ppStr))
@@ -209,7 +209,7 @@ CExpressionEvaluationContext::CompileParenthesedExpression(LPCSTR * ppStr)
 	return eRightParenthesis;
 }
 
-void CExpressionEvaluationContext::CompileFunctionOfDouble(void (_fastcall * Function)(Operation * t), LPCSTR * ppStr)
+void CExpressionEvaluationContext::CompileFunctionOfDouble(void (_fastcall * Function)(Operation * t), LPCTSTR * ppStr)
 {
 	CompileParenthesedExpression( ppStr);
 	// can't put those right to the function call, because
@@ -221,16 +221,16 @@ void CExpressionEvaluationContext::CompileFunctionOfDouble(void (_fastcall * Fun
 }
 
 CExpressionEvaluationContext::TokenType
-	CExpressionEvaluationContext::CompileTerm(LPCSTR * ppStr)
+	CExpressionEvaluationContext::CompileTerm(LPCTSTR * ppStr)
 {
 	// term may be either expression in parentheses, or function call, or unary operation
 	// and a term
 	TokenType type;
 	int IntConstant;
 	double DoubleConstant;
-	char * endptr;
+	TCHAR * endptr;
 
-	LPCSTR prevStr = *ppStr;
+	LPCTSTR prevStr = *ppStr;
 	CString token = GetToken( ppStr, & type);
 	switch (type)
 	{
@@ -398,12 +398,12 @@ CExpressionEvaluationContext::TokenType
 		break;
 
 	case eIntConstant:
-		IntConstant = strtol(prevStr, & endptr, 0);
+		IntConstant = _tcstol(prevStr, & endptr, 0);
 		*ppStr = endptr;
 		PushConstant(IntConstant);
 		break;
 	case eDoubleConstant:
-		DoubleConstant = strtod(prevStr, & endptr);
+		DoubleConstant = _tcstod(prevStr, & endptr);
 		*ppStr = endptr;
 		IntConstant = int(DoubleConstant);
 		if (IntConstant == DoubleConstant)
@@ -912,7 +912,7 @@ void CExpressionEvaluationContext::CompileDivide()
 }
 
 CExpressionEvaluationContext::TokenType
-	CExpressionEvaluationContext::CompileExpression(LPCSTR * ppStr)
+	CExpressionEvaluationContext::CompileExpression(LPCTSTR * ppStr)
 {
 	TokenType type, type1;
 	//void (_fastcall * Function)(Operation * t);
@@ -921,11 +921,11 @@ CExpressionEvaluationContext::TokenType
 	{
 		throw "Expression syntax error";
 	}
-	LPCSTR str = *ppStr;
+	LPCTSTR str = *ppStr;
 
 	while (1)
 	{
-		LPCSTR prevStr = *ppStr;
+		LPCTSTR prevStr = *ppStr;
 		CString token = GetToken( ppStr, & type);
 		CString token1;
 		switch (type)
@@ -1256,7 +1256,7 @@ double * CExpressionEvaluationContext::PopDouble()
 	throw "Internal Error";
 }
 
-BOOL CExpressionEvaluationContext::SetExpression(LPCSTR * ppszExpression)
+BOOL CExpressionEvaluationContext::SetExpression(LPCTSTR * ppszExpression)
 {
 	// parse the string
 	m_ErrorString.Empty();
@@ -1293,7 +1293,7 @@ void CExpressionEvaluationContext::Evaluate()
 BOOL CInsertSilenceContext::InitExpand(CWaveFile & DstFile, long StartSample, long Length,
 										int Channel, BOOL NeedUndo)
 {
-	m_pExpandShrinkContext = new CResizeContext(pDocument, _T("Expanding the file..."), "");
+	m_pExpandShrinkContext = new CResizeContext(pDocument, _T("Expanding the file..."), _T(""));
 	if (NULL == m_pExpandShrinkContext)
 	{
 		NotEnoughMemoryMessageBox();

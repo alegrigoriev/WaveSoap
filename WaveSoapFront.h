@@ -307,15 +307,6 @@ CString GetSelectionText(long Start, long End, int Chan,
 						int nChannels, BOOL bLockChannels,
 						long nSamplesPerSec, int TimeFormat);
 
-inline void _EnableDlgItem(CWnd * pParent, int id, BOOL bEnable)
-{
-	CWnd * tmp = pParent->GetDlgItem(id);
-	if (tmp)
-	{
-		tmp->EnableWindow(bEnable);
-	}
-}
-#define EnableDlgItem(id, bEnable) _EnableDlgItem(this, id, bEnable)
 /////////////////////////////////////////////////////////////////////////////
 //{{AFX_INSERT_LOCATION}}
 // Microsoft Visual C++ will insert additional declarations immediately before the previous line.

@@ -61,11 +61,11 @@ void CCdDrive::CommonInit(BOOL LoadAspi)
 		{
 			TRACE("Loaded CDRAL.DLL, getting function pointers\n");
 			GetASPI32DLLVersion = (DWORD (_cdecl * )())
-								GetProcAddress(m_hWinaspi32, _T("GetASPI32DLLVersion"));
+								GetProcAddress(m_hWinaspi32, "GetASPI32DLLVersion");
 			TRACE("GetASPI32DLLVersion=%p\n", GetASPI32DLLVersion);
 
 			GetASPI32SupportInfo = (DWORD (_cdecl * )())
-									GetProcAddress(m_hWinaspi32, _T("GetASPI32SupportInfo"));
+									GetProcAddress(m_hWinaspi32, "GetASPI32SupportInfo");
 			TRACE("GetASPI32SupportInfo=%p\n", GetASPI32SupportInfo);
 			if (NULL != GetASPI32SupportInfo)
 			{
@@ -73,27 +73,27 @@ void CCdDrive::CommonInit(BOOL LoadAspi)
 			}
 
 			SendASPI32Command = (DWORD (_cdecl * )(SRB * ))
-								GetProcAddress(m_hWinaspi32, _T("SendASPI32Command"));
+								GetProcAddress(m_hWinaspi32, "SendASPI32Command");
 			TRACE("SendASPI32Command=%p\n", SendASPI32Command);
 
 			GetAspi32Buffer = (GETASPI32BUFFER)
-							GetProcAddress(m_hWinaspi32, _T("GetASPI32Buffer"));
+							GetProcAddress(m_hWinaspi32, "GetASPI32Buffer");
 			TRACE("GetAspi32Buffer=%p\n", GetAspi32Buffer);
 
 			FreeAspi32Buffer = (FREEASPI32BUFFER)
-								GetProcAddress(m_hWinaspi32, _T("FreeASPI32Buffer"));
+								GetProcAddress(m_hWinaspi32, "FreeASPI32Buffer");
 			TRACE("FreeAspi32Buffer=%p\n", FreeAspi32Buffer);
 
 			TranslateAspi32Address = (TRANSLATEASPI32ADDRESS)
-									GetProcAddress(m_hWinaspi32, _T("TranslateASPI32Address"));
+									GetProcAddress(m_hWinaspi32, "TranslateASPI32Address");
 			TRACE("TranslateAspi32Address=%p\n", TranslateAspi32Address);
 
 			GetAspi32DriveLetter = (GETASPI32DRIVELETTER)
-									GetProcAddress(m_hWinaspi32, _T("GetASPI32DriveLetter"));
+									GetProcAddress(m_hWinaspi32, "GetASPI32DriveLetter");
 			TRACE("GetAspi32DriveLetter=%p\n", GetAspi32DriveLetter);
 
 			GetAspi32HaTargetLun = (GETASPI32HATARGETLUN)
-									GetProcAddress(m_hWinaspi32, _T("GetASPI32HaTargetLun"));
+									GetProcAddress(m_hWinaspi32, "GetASPI32HaTargetLun");
 			TRACE("GetAspi32HaTargetLun=%p\n", GetAspi32HaTargetLun);
 
 			if (NULL == GetASPI32DLLVersion
@@ -119,11 +119,11 @@ void CCdDrive::CommonInit(BOOL LoadAspi)
 			{
 				TRACE("Loaded CDRAL.DLL, getting function pointers\n");
 				GetASPI32DLLVersion = (DWORD (_cdecl * )())
-									GetProcAddress(m_hWinaspi32, _T("GetASPI32DLLVersion"));
+									GetProcAddress(m_hWinaspi32, "GetASPI32DLLVersion");
 				TRACE("GetASPI32DLLVersion=%p\n", GetASPI32DLLVersion);
 
 				GetASPI32SupportInfo = (DWORD (_cdecl * )())
-										GetProcAddress(m_hWinaspi32, _T("GetASPI32SupportInfo"));
+										GetProcAddress(m_hWinaspi32, "GetASPI32SupportInfo");
 				TRACE("GetASPI32SupportInfo=%p\n", GetASPI32SupportInfo);
 				if (NULL != GetASPI32SupportInfo)
 				{
@@ -131,17 +131,17 @@ void CCdDrive::CommonInit(BOOL LoadAspi)
 				}
 
 				SendASPI32Command = (DWORD (_cdecl * )(SRB * ))
-									GetProcAddress(m_hWinaspi32, _T("SendASPI32Command"));
+									GetProcAddress(m_hWinaspi32, "SendASPI32Command");
 				TRACE("SendASPI32Command=%p\n", SendASPI32Command);
 
 				GetAspi32Buffer = (GETASPI32BUFFER)
-								GetProcAddress(m_hWinaspi32, _T("GetASPI32Buffer"));
+								GetProcAddress(m_hWinaspi32, "GetASPI32Buffer");
 
 				FreeAspi32Buffer = (FREEASPI32BUFFER)
-									GetProcAddress(m_hWinaspi32, _T("FreeASPI32Buffer"));
+									GetProcAddress(m_hWinaspi32, "FreeASPI32Buffer");
 
 				TranslateAspi32Address = (TRANSLATEASPI32ADDRESS)
-										GetProcAddress(m_hWinaspi32, _T("TranslateASPI32Address"));
+										GetProcAddress(m_hWinaspi32, "TranslateASPI32Address");
 
 				GetAspi32DriveLetter = NULL;
 
@@ -388,7 +388,7 @@ BOOL CCdDrive::Open(TCHAR letter)
 	Close();
 
 	CString path;
-	path.Format("\\\\.\\%c:", letter);
+	path.Format(_T("\\\\.\\%c:"), letter);
 
 	HANDLE Drive = CreateFile(
 							path,
@@ -406,7 +406,7 @@ BOOL CCdDrive::Open(TCHAR letter)
 		{
 			HaTargetLun Addr = GetAspi32HaTargetLun(letter);
 			TRACE("Drive %c SCSI addr returned by cdral=%08X\n",
-				Addr);
+				letter, Addr);
 			m_ScsiAddr.PortNumber = Addr.HaId;
 			m_ScsiAddr.Lun = Addr.Lun;
 			m_ScsiAddr.TargetId = Addr.TargetId;
@@ -496,7 +496,7 @@ BOOL CCdDrive::Open(TCHAR letter)
 			// use either ASPI or IOCTL to find max transfer length
 			HaTargetLun Addr = GetAspi32HaTargetLun(letter);
 			TRACE("Drive %c SCSI addr returned by cdral=%08X\n",
-				Addr);
+				letter, Addr);
 			m_ScsiAddr.PortNumber = Addr.HaId;
 			m_ScsiAddr.Lun = Addr.Lun;
 			m_ScsiAddr.TargetId = Addr.TargetId;
@@ -529,12 +529,12 @@ BOOL CCdDrive::Open(TCHAR letter)
 	CString Vendor;
 	if (QueryVendor(Vendor))
 	{
-		TRACE("QueryVendor returned \"%s\"\n", LPCTSTR(Vendor));
-		if (0 == strncmp(Vendor, "PLEXTOR", 7))
+		TRACE(_T("QueryVendor returned \"%s\"\n"), LPCTSTR(Vendor));
+		if (0 == _tcsncmp(Vendor, _T("PLEXTOR"), 7))
 		{
 			m_bPlextorDrive = true;
 		}
-		else if (0 == strncmp(Vendor, "NEC", 3))
+		else if (0 == _tcsncmp(Vendor, _T("NEC"), 3))
 		{
 			m_bNECDrive = true;
 		}
@@ -1059,7 +1059,7 @@ int CCdDrive::FindCdDrives(TCHAR Drives['Z' - 'A' + 1])
 	for (int letter = 'A'; letter <= 'Z'; letter++)
 	{
 		CString s;
-		s.Format("%c:", letter);
+		s.Format(_T("%c:"), letter);
 		if (DRIVE_CDROM == GetDriveType(s))
 		{
 			Drives[NumberOfDrives] = letter;
@@ -1074,7 +1074,7 @@ DWORD CCdDrive::GetDiskID()
 	DWORD MaxCompLength, FilesysFlags, DiskId = 0;
 
 	TCHAR root[8];
-	sprintf(root, "%c:\\", m_DriveLetter);
+	_stprintf(root, _T("%c:\\"), m_DriveLetter);
 
 	if (GetVolumeInformation(root, NULL, 0, & DiskId,
 							& MaxCompLength, & FilesysFlags, NULL, 0))
@@ -1331,18 +1331,21 @@ BOOL CCdDrive::SetReadSpeed(ULONG BytesPerSec, ULONG BeginLba, ULONG NumSectors)
 		BOOL res = SendScsiCommand( & cdb, & spd, & Length,
 									SCSI_IOCTL_DATA_OUT, NULL);
 		TRACE("Set Streaming returned %d\n", res);
-		return res;
+		if (res)
+		{
+			return TRUE;
+		}
+		m_bStreamingFeatureSuported = false;
 	}
-	else
-	{
-		SetCdSpeedCDB SetSpeed(USHORT(BytesPerSec / 1024));
-		DWORD Length = 0;
-		BOOL res = SendScsiCommand( & SetSpeed, NULL, & Length,
-									SCSI_IOCTL_DATA_UNSPECIFIED, NULL);
-		TRACE("Set CD Speed returned %d\n", res);
-		return res;
-	}
+
+	SetCdSpeedCDB SetSpeed(USHORT(BytesPerSec / 1024));
+	DWORD Length = 0;
+	BOOL res = SendScsiCommand( & SetSpeed, NULL, & Length,
+								SCSI_IOCTL_DATA_UNSPECIFIED, NULL);
+	TRACE("Set CD Speed returned %d\n", res);
+	return res;
 }
+
 BOOL CCdDrive::QueryVendor(CString & Vendor)
 {
 	InquiryData iqd;

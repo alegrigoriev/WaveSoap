@@ -16,7 +16,7 @@ class CExpressionEvaluationContext : public COperationContext
 public:
 	CExpressionEvaluationContext(CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString, LPCTSTR OperationName);
 	virtual BOOL ProcessBuffer(void * buf, size_t len, DWORD offset, BOOL bBackward = FALSE);
-	BOOL SetExpression(LPCSTR * ppszExpression);
+	BOOL SetExpression(LPCTSTR * ppszExpression);
 	CString m_ErrorString;
 	void Evaluate();
 
@@ -99,13 +99,13 @@ private:
 			void * pDst;
 		};
 	};
-	static CString GetToken(LPCSTR * ppStr, TokenType * pType);
-	TokenType CompileTerm(LPCSTR * ppStr);
-	TokenType CompileExpression(LPCSTR * ppStr);
-	TokenType CompileParenthesedExpression(LPCSTR * ppStr);
+	static CString GetToken(LPCTSTR * ppStr, TokenType * pType);
+	TokenType CompileTerm(LPCTSTR * ppStr);
+	TokenType CompileExpression(LPCTSTR * ppStr);
+	TokenType CompileParenthesedExpression(LPCTSTR * ppStr);
 	void AddOperation(void (_fastcall * Function)(Operation * t),
 					void * pDst, void * pSrc1, void * pSrc2);
-	void CompileFunctionOfDouble(void (_fastcall * Function)(Operation * t), LPCSTR * ppStr);
+	void CompileFunctionOfDouble(void (_fastcall * Function)(Operation * t), LPCTSTR * ppStr);
 	TokenType GetTopOfStackType();
 	void PushConstant(int data);
 	void PushConstant(double data);

@@ -27,17 +27,17 @@ CEqualizerDialog::CEqualizerDialog(CWnd* pParent /*=NULL*/)
 	m_nBands = 0;
 	//}}AFX_DATA_INIT
 
-	m_Profile.AddItem("Equalizer", "NumberOfBands", m_nBands,
+	m_Profile.AddItem(_T("Equalizer"), _T("NumberOfBands"), m_nBands,
 					10, 3, MaxNumberOfEqualizerBands);
-	m_Profile.AddItem("Settings", "EqualizerDlgWidth", m_DlgWidth, 0, 0, 4096);
-	m_Profile.AddItem("Settings", "EqualizerDlgHeight", m_DlgHeight, 0, 0, 4096);
-	m_Profile.AddBoolItem("Equalizer", "MultiBandEqualizer", m_bMultiBandEqualizer, TRUE);
-	m_Profile.AddBoolItem("Equalizer", "ZeroPhase", m_wGraph.m_bZeroPhase, FALSE);
+	m_Profile.AddItem(_T("Settings"), _T("EqualizerDlgWidth"), m_DlgWidth, 0, 0, 4096);
+	m_Profile.AddItem(_T("Settings"), _T("EqualizerDlgHeight"), m_DlgHeight, 0, 0, 4096);
+	m_Profile.AddBoolItem(_T("Equalizer"), _T("MultiBandEqualizer"), m_bMultiBandEqualizer, TRUE);
+	m_Profile.AddBoolItem(_T("Equalizer"), _T("ZeroPhase"), m_wGraph.m_bZeroPhase, FALSE);
 	for (int n = 0; n < MaxNumberOfEqualizerBands; n++)
 	{
 		CString s;
-		s.Format("Gain%d", n + 1);
-		m_Profile.AddItem("Equalizer", s, m_wGraph.m_BandGain[n], 1., 0.1, 10.);
+		s.Format(_T("Gain%d"), n + 1);
+		m_Profile.AddItem(_T("Equalizer"), s, m_wGraph.m_BandGain[n], 1., 0.1, 10.);
 	}
 	m_BandGain.SetPrecision(2);
 
@@ -117,7 +117,7 @@ BOOL CEqualizerDialog::OnInitDialog()
 	CWnd * pTemplateWnd = GetDlgItem(IDC_STATIC_RESPONSE_TEMPLATE);
 	pTemplateWnd->GetWindowRect( & r);
 	ScreenToClient( & r);
-	m_wGraph.Create(NULL, "", WS_CHILD | WS_VISIBLE
+	m_wGraph.Create(NULL, _T(""), WS_CHILD | WS_VISIBLE
 					| WS_CLIPSIBLINGS | WS_CLIPCHILDREN | WS_TABSTOP,
 					r, this, AFX_IDW_PANE_FIRST);
 	m_wGraph.SetWindowPos(pTemplateWnd, 0, 0, 0, 0,
@@ -866,7 +866,7 @@ void CEqualizerGraphWnd::OnNcCalcSize(BOOL bCalcValidRects, NCCALCSIZE_PARAMS * 
 	CWnd * pW = GetDesktopWindow();
 	CDC * pDC = pW->GetWindowDC();
 	CGdiObject * pOld = pDC->SelectStockObject(ANSI_VAR_FONT);
-	ncWidth = 3 + pDC->GetTextExtent("-20 dB", 6).cx;
+	ncWidth = 3 + pDC->GetTextExtent(_T("-20 dB"), 6).cx;
 
 	pDC->SelectObject(pOld);
 	pW->ReleaseDC(pDC);
@@ -958,27 +958,27 @@ void CEqualizerGraphWnd::OnNcPaint(UINT wParam)
 		{
 			// 12.1k
 			// 8.9k
-			s.Format("%.1fk", f / 1000.);
+			s.Format(_T("%.1fk"), f / 1000.);
 			if (f >= 10000.)
 			{
-				TextWidth = pDC->GetTextExtent("20.0k ", 7).cx;
+				TextWidth = pDC->GetTextExtent(_T("20.0k "), 7).cx;
 			}
 			else
 			{
-				TextWidth = pDC->GetTextExtent("0.0k ", 7).cx;
+				TextWidth = pDC->GetTextExtent(_T("0.0k "), 7).cx;
 			}
 		}
 		else if (f >= 100.)
 		{
 			// 550 (round to 10)
-			s.Format("%d", 10 * ((int(f) + 5) / 10));
-			TextWidth = pDC->GetTextExtent("999 ", 7).cx;
+			s.Format(_T("%d"), 10 * ((int(f) + 5) / 10));
+			TextWidth = pDC->GetTextExtent(_T("999 "), 7).cx;
 		}
 		else
 		{
 			// 55
-			s.Format("%d", int(f));
-			TextWidth = pDC->GetTextExtent("99 ", 7).cx;
+			s.Format(_T("%d"), int(f));
+			TextWidth = pDC->GetTextExtent(_T("99 "), 7).cx;
 		}
 		if (x - TextWidth / 2 >= PrevX)
 		{
@@ -988,27 +988,27 @@ void CEqualizerGraphWnd::OnNcPaint(UINT wParam)
 	}
 
 	pDC->SetTextAlign(TA_BOTTOM | TA_RIGHT);
-	int TextHeight = pDC->GetTextExtent("9", 1).cy;
+	int TextHeight = pDC->GetTextExtent(_T("9"), 1).cy;
 
 	pDC->TextOut(ncp.rgrc[0].left - 1,
 				ncp.rgrc[0].top + TextHeight,
-				"20 dB", 5);
+				_T("20 dB"), 5);
 
 	pDC->TextOut(ncp.rgrc[0].left - 1,
 				ncp.rgrc[0].top + (ncp.rgrc[0].bottom - ncp.rgrc[0].top) / 4 + TextHeight / 2,
-				"10 dB", 5);
+				_T("10 dB"), 5);
 
 	pDC->TextOut(ncp.rgrc[0].left - 1,
 				ncp.rgrc[0].top + (ncp.rgrc[0].bottom - ncp.rgrc[0].top) / 2 + TextHeight / 2,
-				"0 dB", 4);
+				_T("0 dB"), 4);
 
 	pDC->TextOut(ncp.rgrc[0].left - 1,
 				ncp.rgrc[0].bottom - (ncp.rgrc[0].bottom - ncp.rgrc[0].top) / 4 + TextHeight / 2,
-				"-10 dB", 6);
+				_T("-10 dB"), 6);
 
 	pDC->TextOut(ncp.rgrc[0].left - 1,
 				ncp.rgrc[0].bottom + TextHeight / 2,
-				"-20 dB", 6);
+				_T("-20 dB"), 6);
 
 	pDC->SelectObject(pOldFont);
 	pDC->SelectObject(pOldBrush);
@@ -1104,7 +1104,7 @@ void CEqualizerDialog::OnButtonLoad()
 	Title.LoadString(IDS_EQUALIZER_LOAD_TITLE);
 
 	CFileDialogWithHistory dlg(TRUE,
-								"Eqlz", NULL,
+								_T("Eqlz"), NULL,
 								OFN_HIDEREADONLY
 								| OFN_EXPLORER | OFN_NONETWORKBUTTON | OFN_FILEMUSTEXIST,
 								Filter);
@@ -1115,7 +1115,7 @@ void CEqualizerDialog::OnButtonLoad()
 		return;
 	}
 	FileName = dlg.GetPathName();
-	m_Profile.ImportSection("Equalizer", FileName);
+	m_Profile.ImportSection(_T("Equalizer"), FileName);
 	m_wGraph.SetNumberOfBands(m_nBands);
 	m_BandGain.SetData(m_wGraph.GetCurrentBandGainDb());
 }
@@ -1130,7 +1130,7 @@ void CEqualizerDialog::OnButtonSaveAs()
 	Title.LoadString(IDS_EQUALIZER_SAVE_TITLE);
 
 	CFileDialogWithHistory dlg(FALSE,
-								"Eqlz", NULL,
+								_T("Eqlz"), NULL,
 								OFN_HIDEREADONLY | OFN_OVERWRITEPROMPT
 								| OFN_EXPLORER | OFN_NONETWORKBUTTON | OFN_PATHMUSTEXIST,
 								Filter);
@@ -1141,7 +1141,7 @@ void CEqualizerDialog::OnButtonSaveAs()
 		return;
 	}
 	FileName = dlg.GetPathName();
-	m_Profile.ExportSection("Equalizer", FileName);
+	m_Profile.ExportSection(_T("Equalizer"), FileName);
 }
 
 void CEqualizerGraphWnd::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)

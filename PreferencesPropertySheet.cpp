@@ -210,7 +210,7 @@ END_MESSAGE_MAP()
 void CFilePreferencesPage::OnButtonBrowseTempFileLocation()
 {
 	m_eTempFileLocation.GetWindowText(m_sTempFileLocation);
-	CFolderDialog dlg("Temporary File Folder",
+	CFolderDialog dlg(_T("Temporary File Folder"),
 					m_sTempFileLocation,
 					TRUE);
 	if (IDOK == dlg.DoModal())

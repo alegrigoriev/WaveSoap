@@ -290,7 +290,7 @@ CCdGrabbingDialog::CCdGrabbingDialog(CWnd* pParent /*=NULL*/)
 	};
 
 	m_pResizeItems = ResizeItems;
-	m_pResizeItemsCount = sizeof ResizeItems / sizeof ResizeItems[0];
+	m_pResizeItemsCount = countof(ResizeItems);
 	// TODO: restore last format used
 	m_Wf.InitCdAudioFormat();
 	m_Acm.m_Wf.InitCdAudioFormat();
@@ -370,19 +370,19 @@ void CCdGrabbingDialog::DoDataExchange(CDataExchange* pDX)
 				m_sSaveFolder += '\\';
 			}
 			AddStringToHistory(m_sSaveFolder, m_FolderHistory,
-								sizeof m_FolderHistory / sizeof m_FolderHistory[0], false);
+								countof(m_FolderHistory), false);
 		}
 
 		if (! m_sAlbum.IsEmpty())
 		{
 			AddStringToHistory(m_sAlbum, m_AlbumHistory,
-								sizeof m_AlbumHistory / sizeof m_AlbumHistory[0], true);
+								countof(m_AlbumHistory), true);
 		}
 
 		if (! m_sArtist.IsEmpty())
 		{
 			AddStringToHistory(m_sArtist, m_ArtistHistory,
-								sizeof m_ArtistHistory / sizeof m_ArtistHistory[0], true);
+								countof(m_ArtistHistory), true);
 		}
 
 		for (unsigned t = 0; t < m_Tracks.size(); t++)
@@ -395,7 +395,7 @@ void CCdGrabbingDialog::DoDataExchange(CDataExchange* pDX)
 			LPTSTR pName = Name.GetBuffer(0);
 			while (*pName != 0)
 			{
-				char c= *pName;
+				TCHAR c= *pName;
 				if ('\\' == c
 					|| '"' == c
 					|| '?' == c
@@ -543,7 +543,7 @@ void CCdGrabbingDialog::FillDriveList(TCHAR SelectDrive)
 			{
 				m_CDDriveSelected = drive;
 			}
-			s.Format("%c:", m_CDDrives[drive]);
+			s.Format(_T("%c:"), m_CDDrives[drive]);
 
 			m_DrivesCombo.AddString(s);
 		}
@@ -674,12 +674,12 @@ void CCdGrabbingDialog::ReloadTrackList(CdMediaChangeState NewMediaState)
 	CdPlayerIni.m_pszProfileName = _T("cdplayer.ini");
 
 	CString SectionName;
-	SectionName.Format("%X", m_DiskID);
+	SectionName.Format(_T("%X"), m_DiskID);
 
-	m_sAlbum = CdPlayerIni.GetProfileString(SectionName, _T("title"), "");
+	m_sAlbum = CdPlayerIni.GetProfileString(SectionName, _T("title"), _T(""));
 	m_eAlbum.SetWindowText(m_sAlbum);
 
-	m_sArtist = CdPlayerIni.GetProfileString(SectionName, _T("artist"), "");
+	m_sArtist = CdPlayerIni.GetProfileString(SectionName, _T("artist"), _T(""));
 	m_eArtist.SetWindowText(m_sArtist);
 
 	int NumTracks = CdPlayerIni.GetProfileInt(SectionName, _T("numtracks"), 0);
@@ -713,7 +713,7 @@ void CCdGrabbingDialog::ReloadTrackList(CdMediaChangeState NewMediaState)
 			// audio track
 			s.Format(IDS_TRACK_NUM_FORMAT, m_toc.TrackData[tr].TrackNumber);
 			TCHAR buf[10];
-			_stprintf(buf, "%d", tr);
+			_stprintf(buf, _T("%d"), tr);
 			pTrack->Track = CdPlayerIni.GetProfileString(SectionName, buf, s);
 			if (pTrack->Track.IsEmpty())
 			{
@@ -744,7 +744,7 @@ void CCdGrabbingDialog::ReloadTrackList(CdMediaChangeState NewMediaState)
 			0, 0, 0, 0};
 		m_lbTracks.InsertItem( & item1);
 
-		s.Format("%d:%02d",
+		s.Format(_T("%d:%02d"),
 				(pTrack->NumSectors + 37) / (75 * 60),
 				(pTrack->NumSectors + 37) / 75 % 60);
 
@@ -841,7 +841,7 @@ BOOL CCdGrabbingDialog::OnInitDialog()
 
 	s.LoadString(IDS_LENGTH);
 	m_lbTracks.InsertColumn(1, s, LVCFMT_LEFT, -1, 1);
-	m_lbTracks.InsertColumn(2, " ", LVCFMT_RIGHT, 100, 1);
+	m_lbTracks.InsertColumn(2, _T(" "), LVCFMT_RIGHT, 100, 1);
 	m_lbTracks.SetColumnWidth(1, LVSCW_AUTOSIZE_USEHEADER);
 
 	m_lbTracks.SetColumnWidth(0,
@@ -854,10 +854,10 @@ BOOL CCdGrabbingDialog::OnInitDialog()
 	FillTrackList(m_DriveLetterSelected);
 
 	int i;
-	for (i = 0; i < sizeof m_FolderHistory / sizeof m_FolderHistory[0]; i++)
+	for (i = 0; i < countof(m_FolderHistory); i++)
 	{
 		CString s;
-		s.Format("SaveFolder%d", i);
+		s.Format(_T("SaveFolder%d"), i);
 		m_Profile.AddItem(_T("CdRead"), s, m_FolderHistory[i]);
 		m_FolderHistory[i].TrimLeft();
 		m_FolderHistory[i].TrimRight();
@@ -867,10 +867,10 @@ BOOL CCdGrabbingDialog::OnInitDialog()
 		}
 	}
 
-	for (i = 0; i < sizeof m_AlbumHistory / sizeof m_AlbumHistory[0]; i++)
+	for (i = 0; i < countof(m_AlbumHistory); i++)
 	{
 		CString s;
-		s.Format("Album%d", i);
+		s.Format(_T("Album%d"), i);
 		m_Profile.AddItem(_T("CdRead"), s, m_AlbumHistory[i]);
 		m_AlbumHistory[i].TrimLeft();
 		m_AlbumHistory[i].TrimRight();
@@ -880,10 +880,10 @@ BOOL CCdGrabbingDialog::OnInitDialog()
 		}
 	}
 
-	for (i = 0; i < sizeof m_ArtistHistory / sizeof m_ArtistHistory[0]; i++)
+	for (i = 0; i < countof(m_ArtistHistory); i++)
 	{
 		CString s;
-		s.Format("Artist%d", i);
+		s.Format(_T("Artist%d"), i);
 		m_Profile.AddItem(_T("CdRead"), s, m_ArtistHistory[i]);
 		m_ArtistHistory[i].TrimLeft();
 		m_ArtistHistory[i].TrimRight();
@@ -1065,7 +1065,7 @@ void CCdGrabbingDialog::OnButtonBrowseSaveFolder()
 
 	// browse for folder
 	m_eSaveFolder.GetWindowText(m_sSaveFolder);
-	CFolderDialog dlg("Save Files To Folder",
+	CFolderDialog dlg(_T("Save Files To Folder"),
 					m_sSaveFolder, TRUE);
 	if (IDOK == dlg.DoModal())
 	{
@@ -1118,7 +1118,7 @@ void CCdGrabbingDialog::InitReadSpeedCombobox()
 		if (m_SpeedCombo.IsWindowEnabled())
 		{
 			m_SpeedCombo.ResetContent();
-			m_SpeedCombo.AddString("Default");  // TODO: LoadString
+			m_SpeedCombo.AddString(_T("Default"));  // TODO: LoadString
 			m_SpeedCombo.SetCurSel(0);
 			m_SpeedCombo.EnableWindow(FALSE);
 		}
@@ -1130,24 +1130,24 @@ void CCdGrabbingDialog::InitReadSpeedCombobox()
 	m_MaxReadSpeed += 44100 * 4 / 2;
 	m_MaxReadSpeed -= m_MaxReadSpeed % (44100 * 4);
 
-	for (int i = 0; i < sizeof CdSpeeds / sizeof CdSpeeds[0]; i++)
+	for (int i = 0; i < countof(CdSpeeds); i++)
 	{
 		if (m_MaxReadSpeed < CdSpeeds[i] * 176400)
 		{
 			break;
 		}
 		CString s;
-		s.Format("%dx", CdSpeeds[i]);
+		s.Format(_T("%dx"), CdSpeeds[i]);
 		m_SpeedCombo.AddString(s);
 		if (m_SelectedReadSpeed == CdSpeeds[i] * 176400)
 		{
 			m_SpeedCombo.SetCurSel(i);
 		}
 	}
-	if (i == sizeof CdSpeeds / sizeof CdSpeeds[0]
+	if (i == countof(CdSpeeds)
 		|| m_MaxReadSpeed > CdSpeeds[i] * 176400)
 	{
-		m_SpeedCombo.AddString("Default");  // TODO: LoadString
+		m_SpeedCombo.AddString(_T("Default"));  // TODO: LoadString
 		m_SpeedCombo.SetCurSel(i);
 	}
 	else if (LB_ERR == m_SpeedCombo.GetCurSel())
@@ -1367,7 +1367,7 @@ void CCdGrabbingDialog::OnEndlabeleditListTracks(NMHDR* pNMHDR, LRESULT* pResult
 				return;
 			}
 		}
-		strcpy(pDispInfo->item.pszText, s);
+		_tcscpy(pDispInfo->item.pszText, s);
 		m_Tracks[pDispInfo->item.iItem].Track = s;
 	}
 	*pResult = TRUE;

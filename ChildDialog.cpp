@@ -67,13 +67,13 @@ void COperandsDialog::DoDataExchange(CDataExchange* pDX)
 	DDX_Control(pDX, IDC_EDIT_FREQUENCY2, m_eFrequency2);
 	DDX_Control(pDX, IDC_EDIT_FREQUENCY3, m_eFrequency3);
 	m_eFrequency.ExchangeData(pDX, m_dFrequency,
-							"Frequency argument f", "", 0., 1000000.);
+							_T("Frequency argument f"), _T(""), 0., 1000000.);
 	m_eFrequency1.ExchangeData(pDX, m_dFrequency1,
-								"Frequency argument f1", "", 0., 1000000.);
+								_T("Frequency argument f1"), _T(""), 0., 1000000.);
 	m_eFrequency2.ExchangeData(pDX, m_dFrequency2,
-								"Frequency argument f2", "", 0., 1000000.);
+								_T("Frequency argument f2"), _T(""), 0., 1000000.);
 	m_eFrequency3.ExchangeData(pDX, m_dFrequency3,
-								"Frequency argument f3", "", 0., 1000000.);
+								_T("Frequency argument f3"), _T(""), 0., 1000000.);
 }
 
 BEGIN_MESSAGE_MAP(COperandsDialog, CChildDialog)
@@ -231,13 +231,13 @@ void CInsertExpressionDialog::OnSelchangeComboSavedExpressions()
 	{
 		CString s;
 
-		s.Format("%s - %s", LPCTSTR(ii->exprs[sel].expr),
+		s.Format(_T("%s - %s"), LPCTSTR(ii->exprs[sel].expr),
 				LPCTSTR(ii->exprs[sel].comment));
 		m_Description.SetWindowText(s);
 	}
 	else
 	{
-		m_Description.SetWindowText("");
+		m_Description.SetWindowText(_T(""));
 	}
 }
 
@@ -456,18 +456,18 @@ void CInsertExpressionDialog::LoadExpressions(vector<Expressions::ExprGroup> & E
 	{
 		profile.m_pszProfileName = ProfileName;
 	}
-	int NumGroups = profile.GetProfileInt("Expressions", "NumOfGroups", 0);
+	int NumGroups = profile.GetProfileInt(_T("Expressions"), _T("NumOfGroups"), 0);
 	Expressions.reserve(NumGroups + 1);
 	Expressions.resize(1);
-	Expressions[0].name = "All Expressions";
+	Expressions[0].name = _T("All Expressions");
 	for (int i = 1; i < NumGroups + 1; i++)
 	{
 		ExprGroup egroup;
 		CString s;
-		s.Format("ExprsInGroup%d", i);
-		int GroupSize = profile.GetProfileInt("Expressions", s, 0);
-		s.Format("GroupName%d", i);
-		egroup.name = profile.GetProfileString("Expressions", s, "");
+		s.Format(_T("ExprsInGroup%d"), i);
+		int GroupSize = profile.GetProfileInt(_T("Expressions"), s, 0);
+		s.Format(_T("GroupName%d"), i);
+		egroup.name = profile.GetProfileString(_T("Expressions"), s, _T(""));
 		if (egroup.name.IsEmpty())
 		{
 			continue;
@@ -475,12 +475,12 @@ void CInsertExpressionDialog::LoadExpressions(vector<Expressions::ExprGroup> & E
 		for (int j = 0; j < GroupSize; j++)
 		{
 			Expr expr;
-			s.Format("Name%d.%d", i, j + 1);
-			expr.name = profile.GetProfileString("Expressions", s, "");
-			s.Format("Expr%d.%d", i, j + 1);
-			expr.expr = profile.GetProfileString("Expressions", s, "");
-			s.Format("Comment%d.%d", i, j + 1);
-			expr.comment = profile.GetProfileString("Expressions", s, "");
+			s.Format(_T("Name%d.%d"), i, j + 1);
+			expr.name = profile.GetProfileString(_T("Expressions"), s, _T(""));
+			s.Format(_T("Expr%d.%d"), i, j + 1);
+			expr.expr = profile.GetProfileString(_T("Expressions"), s, _T(""));
+			s.Format(_T("Comment%d.%d"), i, j + 1);
+			expr.comment = profile.GetProfileString(_T("Expressions"), s, _T(""));
 			if ( ! expr.name.IsEmpty()
 				&& ! expr.comment.IsEmpty())
 			{
@@ -504,27 +504,27 @@ void CInsertExpressionDialog::UnloadExpressions(LPCTSTR ProfileName)
 	{
 		profile.m_pszProfileName = ProfileName;
 	}
-	profile.WriteProfileString("Expressions", NULL, NULL);    // delete key or section
-	profile.WriteProfileInt("Expressions", "NumOfGroups", m_Expressions.size() - 1);
+	profile.WriteProfileString(_T("Expressions"), NULL, NULL);    // delete key or section
+	profile.WriteProfileInt(_T("Expressions"), _T("NumOfGroups"), m_Expressions.size() - 1);
 
 	int i = 1;
 	for (vector<ExprGroup>::iterator ii = m_Expressions.begin() + 1
 		; ii < m_Expressions.end(); ii++, i++)
 	{
-		s.Format("ExprsInGroup%d", i);
-		profile.WriteProfileInt("Expressions", s, ii->exprs.size());
-		s.Format("GroupName%d", i);
-		profile.WriteProfileString("Expressions", s, ii->name);
+		s.Format(_T("ExprsInGroup%d"), i);
+		profile.WriteProfileInt(_T("Expressions"), s, ii->exprs.size());
+		s.Format(_T("GroupName%d"), i);
+		profile.WriteProfileString(_T("Expressions"), s, ii->name);
 
 		int j = 1;
 		for (vector<Expr>::iterator jj = ii->exprs.begin(); jj < ii->exprs.end(); j++, jj++)
 		{
-			s.Format("Name%d.%d", i, j);
-			profile.WriteProfileString("Expressions", s, jj->name);
-			s.Format("Expr%d.%d", i, j);
-			profile.WriteProfileString("Expressions", s, jj->expr);
-			s.Format("Comment%d.%d", i, j);
-			profile.WriteProfileString("Expressions", s, jj->comment);
+			s.Format(_T("Name%d.%d"), i, j);
+			profile.WriteProfileString(_T("Expressions"), s, jj->name);
+			s.Format(_T("Expr%d.%d"), i, j);
+			profile.WriteProfileString(_T("Expressions"), s, jj->expr);
+			s.Format(_T("Comment%d.%d"), i, j);
+			profile.WriteProfileString(_T("Expressions"), s, jj->comment);
 		}
 	}
 }
@@ -539,7 +539,7 @@ void CInsertExpressionDialog::OnButtonExportExpressions()
 	Title.LoadString(IDS_EXPRESSIONS_SAVE_TITLE);
 
 	CFileDialogWithHistory dlg(FALSE,
-								"Expr", NULL,
+								_T("Expr"), NULL,
 								OFN_HIDEREADONLY | OFN_OVERWRITEPROMPT
 								| OFN_EXPLORER | OFN_NONETWORKBUTTON | OFN_PATHMUSTEXIST,
 								Filter);
@@ -563,7 +563,7 @@ void CInsertExpressionDialog::OnButtonImportExpressions()
 	Title.LoadString(IDS_EXPRESSIONS_LOAD_TITLE);
 
 	CFileDialogWithHistory dlg(TRUE,
-								"Expr", NULL,
+								_T("Expr"), NULL,
 								OFN_HIDEREADONLY
 								| OFN_EXPLORER | OFN_NONETWORKBUTTON | OFN_FILEMUSTEXIST,
 								Filter);

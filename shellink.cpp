@@ -39,7 +39,7 @@ CString ResolveShellLink(LPCTSTR file)
 				if (SUCCEEDED(pPersistFile->Load(lpOleStrLinkName, 0))
 					&& SUCCEEDED(pShellLink->Resolve(NULL, SLR_NO_UI))
 					&& S_OK == pShellLink->GetPath(szPath,
-													sizeof szPath / sizeof szPath[0], & fd, 0))
+													countof(szPath), & fd, 0))
 				{
 					result = szPath;
 				}

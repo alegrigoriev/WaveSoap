@@ -1,5 +1,10 @@
-Known problems and tasks:
+TODO tasks:
 
+Remove "Arrange Icons" from the window menu
+Don't ask to replace the file if Save As with the same name
+Add "Retry" to error dialog boxes
+Save CD grabbing dialog position
+Save CD grabbing selected format (WAV/MP3/WMA)
 Enter WMA file attributes (title, author, etc)
 Enter MP3 file attributes
 Make WSPK file hidden (optional)
@@ -19,6 +24,7 @@ Load sound from AVI
 Add options dialog
 In outline view, change mouse cursor over caret and view and selection boundaries
 TODO: check 4GB WAV files
+Make Windows/Close All command
 
 Add noise reduction estimation in spectrum section view
 Add sound recording
@@ -49,7 +55,7 @@ Reconsider Undo All Changes functionality and Redo All Changes
 ??Delete permanent undo: non-permanent file may become permanent after save, move call after save
 Pass saved Raw file parameters back for reopen
 Use ReplaceFile for renaming the file
-Add DELETE premission when creating temp file
+Add DELETE permission when creating temp file
 Use GetFileAttributes rather than FindFirst to check whether it's file or directory
 Add Export Settings, Import Settings to Options dialog
 Add splash screen
@@ -60,14 +66,16 @@ Find which alignment better for edit box labels: left or right
 
 Problems:
 
-"Operate Directly On the sound file" truncated
+Save As fails if the file replaced is is read-only
+doesn't show caret on the outline (short file, all in view)
+Undo/Redo doesn't update FFT
 Crash with old wspk file?
 During exit, asks to reopen the file
 "Save as" from LLADPCM: PCM16 is not shown when "Compatible only" selected
 During playback, outline is invalidated. (??)
 WinXP doesn't have CDRAL
 Multisession disk shows only begin of tracks. Read the whole structure.
-Daylight saving time change invalidates peak info timespamp (FAT only??)
+Daylight saving time change invalidates peak info timestamp (FAT only??)
 Expression evaluation selection longer than file length doesn't update file length
 After file length increased to 1 sample from 0, scroll bar set to wrond scale
 Multiline edit box in child dialog eats Esc and Enter (DLGC_WANTALLCHARS) (MFC CDialog::PreTranslateMessage() bug
@@ -78,6 +86,8 @@ samples with 32767, -32768 are not visible
 Log Off query doesn't close the active dialog. Recursion is possible. Make sure to check after Cancel
 
 Fixed:
+Non-direct file: Save As with compression and the same name failed
+"Operate Directly On the sound file" truncated
 If there is a selection, Ctrl+Shift+End, Ctrl+Shift+Home doesn't work as expected
 Undo/redo order was wrong
 Path change doesn't update OK

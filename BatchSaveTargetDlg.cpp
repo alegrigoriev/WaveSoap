@@ -57,7 +57,7 @@ void CBatchSaveTargetDlg::DoDataExchange(CDataExchange* pDX)
 	DDX_Radio(pDX, IDC_RADIO_SAVE_TYPE, m_FileSaveType);
 	//}}AFX_DATA_MAP
 	m_eNormalizeDb.ExchangeData(pDX, m_dNormalizeDb,
-								"Normalize level", "dB", -20., 0.);
+								_T("Normalize level"), _T("dB"), -20., 0.);
 	if (pDX->m_bSaveAndValidate)
 	{
 		// check that folder exists and accessible
@@ -115,7 +115,7 @@ LRESULT CBatchSaveTargetDlg::OnKickIdle(WPARAM, LPARAM)
 void CBatchSaveTargetDlg::OnButtonBrowseDstFolder()
 {
 	m_eSaveFolder.GetWindowText(m_sSaveFolder);
-	CFolderDialog dlg("Save Files To Folder",
+	CFolderDialog dlg(_T("Save Files To Folder"),
 					m_sSaveFolder, TRUE);
 	if (IDOK == dlg.DoModal())
 	{
@@ -142,7 +142,7 @@ void CBatchSaveTargetDlg::OnButtonBrowsePlaylist()
 	}
 
 	CFileDialogWithHistory dlg(FALSE,
-								"m3u", m_sPlaylistFile,
+								_T("m3u"), m_sPlaylistFile,
 								OFN_HIDEREADONLY | OFN_OVERWRITEPROMPT
 								| OFN_EXPLORER | OFN_NONETWORKBUTTON | OFN_PATHMUSTEXIST,
 								Filter);
@@ -188,7 +188,7 @@ void CBatchSaveTargetDlg::OnButtonBrowseWebpage()
 	}
 
 	CFileDialogWithHistory dlg(FALSE,
-								"htm", m_sPlaylistFile,
+								_T("htm"), m_sPlaylistFile,
 								OFN_HIDEREADONLY | OFN_OVERWRITEPROMPT
 								| OFN_EXPLORER | OFN_NONETWORKBUTTON | OFN_PATHMUSTEXIST,
 								Filter);
@@ -334,18 +334,18 @@ void CBatchSaveTargetDlg::OnChangeEditSaveFolder()
 
 BOOL CBatchSaveTargetDlg::OnInitDialog()
 {
-	m_Profile.AddItem("Settings", "BatchSaveFolder", m_sSaveFolder);
-	m_Profile.AddItem("Settings", "BatchPlaylistFile", m_sPlaylistFile);
-	m_Profile.AddItem("Settings", "BatchHtmlFile", m_sHtmlFile);
+	m_Profile.AddItem(_T("Settings"), _T("BatchSaveFolder"), m_sSaveFolder);
+	m_Profile.AddItem(_T("Settings"), _T("BatchPlaylistFile"), m_sPlaylistFile);
+	m_Profile.AddItem(_T("Settings"), _T("BatchHtmlFile"), m_sHtmlFile);
 
-	m_Profile.AddBoolItem("Settings", "BatchMakeHtml", m_bMakeHtml);
-	m_Profile.AddBoolItem("Settings", "BatchMakePlaylist", m_bMakePlaylist);
-	m_Profile.AddBoolItem("Settings", "BatchNormalize", m_bNormalize);
-	m_Profile.AddItem("Settings", "BatchNormalizeLevel",
+	m_Profile.AddBoolItem(_T("Settings"), _T("BatchMakeHtml"), m_bMakeHtml);
+	m_Profile.AddBoolItem(_T("Settings"), _T("BatchMakePlaylist"), m_bMakePlaylist);
+	m_Profile.AddBoolItem(_T("Settings"), _T("BatchNormalize"), m_bNormalize);
+	m_Profile.AddItem(_T("Settings"), _T("BatchNormalizeLevel"),
 					m_dNormalizeDb, 0., -20., 0.);
 	if ( ! m_bNeedFolderToSave)
 	{
-		m_Profile.AddBoolItem("Settings", "BatchMakePlaylistOnly", m_bMakePlaylistOnly);
+		m_Profile.AddBoolItem(_T("Settings"), _T("BatchMakePlaylistOnly"), m_bMakePlaylistOnly);
 	}
 	else
 	{
