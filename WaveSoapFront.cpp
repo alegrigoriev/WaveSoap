@@ -43,6 +43,7 @@ public:
 	virtual CDocument* OpenDocumentFile( LPCTSTR lpszPathName, int flags = 1
 											//BOOL bMakeVisible = TRUE
 										);
+	virtual void OnIdle();
 
 };
 
@@ -55,6 +56,34 @@ public:
 	virtual void OnFileOpen();
 	CDocument* OpenDocumentFile(LPCTSTR lpszFileName, int flags);
 };
+
+void CWaveSoapDocTemplate::OnIdle()
+{
+	CMultiDocTemplate::OnIdle();
+	// now, delete all dead documents
+	while (1)
+	{
+		POSITION pos = GetFirstDocPosition();
+		while (pos != NULL)
+		{
+			CWaveSoapFrontDoc * pDoc =
+				dynamic_cast<CWaveSoapFrontDoc *>(GetNextDoc(pos));
+			if (NULL != pDoc)
+			{
+				ASSERT_VALID(pDoc);
+				if (pDoc->m_bCloseThisDocumentNow)
+				{
+					pDoc->OnCloseDocument();
+					break;  // iterate the document list once again
+				}
+			}
+		}
+		if (NULL == pos)
+		{
+			break;
+		}
+	}
+}
 
 class CWaveSoapFileOpenDialog : public CFileDialog
 {
@@ -179,6 +208,8 @@ CWaveSoapFrontApp::CWaveSoapFrontApp()
 	m_pWavTypeTemplate(NULL),
 	m_pWmaTypeTemplate(NULL),
 
+	m_hWMVCORE_DLL_Handle(NULL),
+
 	m_OpenFileDialogFilter(1)
 {
 	// Place all significant initialization in InitInstance
@@ -200,6 +231,8 @@ BOOL CWaveSoapFrontApp::InitInstance()
 	// If you are not using these features and wish to reduce the size
 	//  of your final executable, you should remove from the following
 	//  the specific initialization routines you do not need.
+	m_hWMVCORE_DLL_Handle = LoadLibrary(_T("WMVCORE.DLL"));
+
 	CoInitializeEx(NULL, COINIT_MULTITHREADED);
 #ifdef _AFXDLL
 	Enable3dControls();			// Call this when using MFC in a shared DLL
@@ -324,29 +357,32 @@ BOOL CWaveSoapFrontApp::InitInstance()
 	AddDocTemplate(pDocTemplate);
 	m_pWavTypeTemplate = pDocTemplate;
 
-	// register MP3 document
-	m_pMP3TypeTemplate = new CWaveSoapDocTemplate(
-												IDR_WAVESOTYPE, IDR_MP3TYPE,
-												RUNTIME_CLASS(CWaveSoapFrontDoc),
-												RUNTIME_CLASS(CChildFrame), // custom MDI child frame
-												RUNTIME_CLASS(CWaveSoapFrontView)
-												);
-
-	// register WMA document
-	m_pWmaTypeTemplate = new CWaveSoapDocTemplate(
-												IDR_WAVESOTYPE, IDR_WMATYPE,
-												RUNTIME_CLASS(CWaveSoapFrontDoc),
-												RUNTIME_CLASS(CChildFrame), // custom MDI child frame
-												RUNTIME_CLASS(CWaveSoapFrontView)
-												);
-
-	// register All types document
-	m_pAllTypesTemplate = new CWaveSoapDocTemplate(
-													IDR_WAVESOTYPE, IDR_ALLTYPES,
+	if (CanOpenWindowsMedia())
+	{
+		// register MP3 document
+		m_pMP3TypeTemplate = new CWaveSoapDocTemplate(
+													IDR_WAVESOTYPE, IDR_MP3TYPE,
 													RUNTIME_CLASS(CWaveSoapFrontDoc),
 													RUNTIME_CLASS(CChildFrame), // custom MDI child frame
 													RUNTIME_CLASS(CWaveSoapFrontView)
 													);
+
+		// register WMA document
+		m_pWmaTypeTemplate = new CWaveSoapDocTemplate(
+													IDR_WAVESOTYPE, IDR_WMATYPE,
+													RUNTIME_CLASS(CWaveSoapFrontDoc),
+													RUNTIME_CLASS(CChildFrame), // custom MDI child frame
+													RUNTIME_CLASS(CWaveSoapFrontView)
+													);
+
+		// register All types document
+		m_pAllTypesTemplate = new CWaveSoapDocTemplate(
+														IDR_WAVESOTYPE, IDR_ALLTYPES,
+														RUNTIME_CLASS(CWaveSoapFrontDoc),
+														RUNTIME_CLASS(CChildFrame), // custom MDI child frame
+														RUNTIME_CLASS(CWaveSoapFrontView)
+														);
+	}
 
 	// create main MDI Frame window
 	CMainFrame* pMainFrame = new CMainFrame;
@@ -607,6 +643,11 @@ int CWaveSoapFrontApp::ExitInstance()
 	delete m_FileCache;
 	m_FileCache = NULL;
 	CoUninitialize();
+	if (NULL != m_hWMVCORE_DLL_Handle)
+	{
+		FreeLibrary(m_hWMVCORE_DLL_Handle);
+		m_hWMVCORE_DLL_Handle = NULL;
+	}
 	delete m_pAllTypesTemplate;
 	delete m_pMP3TypeTemplate;
 	//delete m_pWavTypeTemplate;
@@ -840,10 +881,22 @@ void CWaveSoapDocManager::OnFileOpen()
 	CString strDefault;
 	// do for all doc template
 	CWaveSoapFrontApp * pApp = GetApp();
-	_AfxAppendFilterSuffix(strFilter, dlgFile.m_ofn, pApp->m_pAllTypesTemplate, & strDefault);
-	_AfxAppendFilterSuffix(strFilter, dlgFile.m_ofn, pApp->m_pWavTypeTemplate, NULL);
-	_AfxAppendFilterSuffix(strFilter, dlgFile.m_ofn, pApp->m_pMP3TypeTemplate, NULL);
-	_AfxAppendFilterSuffix(strFilter, dlgFile.m_ofn, pApp->m_pWmaTypeTemplate, NULL);
+	if (pApp->m_pAllTypesTemplate)
+	{
+		_AfxAppendFilterSuffix(strFilter, dlgFile.m_ofn, pApp->m_pAllTypesTemplate, & strDefault);
+	}
+	if (pApp->m_pWavTypeTemplate)
+	{
+		_AfxAppendFilterSuffix(strFilter, dlgFile.m_ofn, pApp->m_pWavTypeTemplate, NULL);
+	}
+	if (pApp->m_pMP3TypeTemplate)
+	{
+		_AfxAppendFilterSuffix(strFilter, dlgFile.m_ofn, pApp->m_pMP3TypeTemplate, NULL);
+	}
+	if (pApp->m_pWmaTypeTemplate)
+	{
+		_AfxAppendFilterSuffix(strFilter, dlgFile.m_ofn, pApp->m_pWmaTypeTemplate, NULL);
+	}
 
 	// append the "*.*" all files filter
 	CString allFilter;
@@ -906,6 +959,12 @@ void CWaveSoapFileOpenDialog::OnComboClosed()
 
 void CWaveSoapFileOpenDialog::ShowWmaFileInfo(CDirectFile & File)
 {
+	if ( ! GetApp()->CanOpenWindowsMedia())
+	{
+		ClearFileInfoDisplay();
+		return;
+	}
+
 	CWmaDecoder WmaFile;
 	if (WmaFile.Init()
 		&& SUCCEEDED(WmaFile.Open(File)))
@@ -946,6 +1005,10 @@ void CWaveSoapFileOpenDialog::ShowWmaFileInfo(CDirectFile & File)
 					1 == WmaFile.m_pSrcWf->nSamplesPerSec ? _T("Mono") : _T("Stereo"));
 			SetDlgItemText(IDC_STATIC_ATTRIBUTES, s);
 		}
+	}
+	else
+	{
+		ClearFileInfoDisplay();
 	}
 }
 void CWaveSoapFileOpenDialog::OnCheckReadOnly()
@@ -1913,5 +1976,13 @@ CDocument* CWaveSoapDocManager::OpenDocumentFile(LPCTSTR lpszFileName, int flags
 		flags |= OpenDocumentNonWavFile;
 	}
 	return pBestTemplate->OpenDocumentFile(szPath, flags);
+}
+
+void NotEnoughMemoryMessageBox()
+{
+}
+
+void NotEnoughDiskSpaceMessageBox()
+{
 }
 

@@ -44,6 +44,7 @@ public:
 	void QueueOperation(COperationContext * pContext);
 	void LoadStdProfileSettings(UINT nMaxMRU);
 
+	BOOL CanOpenWindowsMedia() const { return NULL != m_hWMVCORE_DLL_Handle; }
 // Overrides
 	// ClassWizard generated virtual function overrides
 	//{{AFX_VIRTUAL(CWaveSoapFrontApp)
@@ -160,6 +161,8 @@ public:
 	{
 		return ((CWaveSoapFrontApp *) arg)->_ThreadProc();
 	}
+
+	HINSTANCE m_hWMVCORE_DLL_Handle;
 };
 
 inline CWaveSoapFrontApp * GetApp()
@@ -186,7 +189,8 @@ CString SampleToString(long Sample, long nSamplesPerSec,
 									| TimeToHhMmSs_NeedsMs);
 void SetStatusString(CCmdUI* pCmdUI, const CString & string,
 					LPCTSTR MaxString = NULL, BOOL bForceSize = FALSE);
-void NotEnoughMemory();
+void NotEnoughMemoryMessageBox();
+void NotEnoughDiskSpaceMessageBox();
 /////////////////////////////////////////////////////////////////////////////
 //{{AFX_INSERT_LOCATION}}
 // Microsoft Visual C++ will insert additional declarations immediately before the previous line.
