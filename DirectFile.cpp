@@ -1045,7 +1045,7 @@ long CDirectFile::ReadAt(void *buf, long count, LONGLONG Position)
 	}
 
 	if (Position < 0
-		|| Position >= m_pFile->FileLength)
+		|| Position > m_pFile->FileLength)
 	{
 		// beyond end of file
 		return 0;
