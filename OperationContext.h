@@ -423,11 +423,7 @@ public:
 		return 0 != (m_Flags & OperationContextUndoing);
 	}
 
-	CUndoRedoContext(CWaveSoapFrontDoc * pDoc, LPCTSTR OperationName)
-		: BaseClass(pDoc, _T(""), 0, OperationName)
-	{
-		m_Flags |= OperationContextUndoing;
-	}
+	CUndoRedoContext(CWaveSoapFrontDoc * pDoc, LPCTSTR OperationName);
 
 	virtual class CUndoRedoContext * GetUndo();
 
