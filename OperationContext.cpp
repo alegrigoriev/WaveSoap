@@ -474,186 +474,189 @@ BOOL CScanPeaksContext::OperationProc()
 		m_Flags |= OperationContextFinished;
 		return TRUE;
 	}
-	if (m_Position < m_End)
+	if (m_Position >= m_End)
 	{
-		DWORD dwStartTime = timeGetTime();
-		DWORD dwOperationBegin = m_Position;
-		do
-		{
-			DWORD SizeToRead = m_End - m_Position;
-			void * pBuf;
-			long lRead = pDocument->m_WavFile.GetDataBuffer( & pBuf,
-															SizeToRead, m_Position, CDirectFile::GetBufferAndPrefetchNext);
-			if (lRead > 0)
-			{
-				unsigned i;
-				long DataToProcess = lRead;
-				__int16 * pWaveData = (__int16 *) pBuf;
-				DWORD DataOffset = m_Position - pDocument->WaveDataChunk()->dwDataOffset;
-				unsigned DataForGranule = m_GranuleSize - DataOffset % m_GranuleSize;
-
-				if (2 == pDocument->WaveChannels())
-				{
-					WavePeak * pPeak = pDocument->m_pPeaks + (DataOffset / m_GranuleSize) * 2;
-					while (0 != DataToProcess)
-					{
-						int wpl_l = pPeak[0].low;
-						int wpl_h = pPeak[0].high;
-						int wpr_l = pPeak[1].low;
-						int wpr_h = pPeak[1].high;
-
-						if (DataForGranule > DataToProcess)
-						{
-							DataForGranule = DataToProcess;
-						}
-						DataToProcess -= DataForGranule;
-
-						if (DataOffset & 2)
-						{
-							if (pWaveData[0] < wpr_l)
-							{
-								wpr_l = pWaveData[0];
-							}
-							if (pWaveData[0] > wpr_h)
-							{
-								wpr_h = pWaveData[0];
-							}
-							pWaveData++;
-							DataForGranule -= 2;
-						}
-
-						for (i = 0; i < DataForGranule / (sizeof(__int16) * 2); i++, pWaveData += 2)
-						{
-							if (pWaveData[0] < wpl_l)
-							{
-								wpl_l = pWaveData[0];
-							}
-							if (pWaveData[0] > wpl_h)
-							{
-								wpl_h = pWaveData[0];
-							}
-							if (pWaveData[1] < wpr_l)
-							{
-								wpr_l = pWaveData[1];
-							}
-							if (pWaveData[1] > wpr_h)
-							{
-								wpr_h = pWaveData[1];
-							}
-						}
-
-						if (DataForGranule & 2)
-						{
-							if (pWaveData[0] < wpl_l)
-							{
-								wpl_l = pWaveData[0];
-							}
-							if (pWaveData[0] > wpl_h)
-							{
-								wpl_h = pWaveData[0];
-							}
-							pWaveData++;
-						}
-
-						ASSERT(pPeak - pDocument->m_pPeaks < pDocument->m_WavePeakSize);
-						if (pPeak[0].low > wpl_l)
-						{
-							pPeak[0].low = wpl_l;
-						}
-						if (pPeak[0].high < wpl_h)
-						{
-							pPeak[0].high = wpl_h;
-						}
-						if (pPeak[1].low > wpr_l)
-						{
-							pPeak[1].low = wpr_l;
-						}
-						if (pPeak[1].high < wpr_h)
-						{
-							pPeak[1].high = wpr_h;
-						}
-						pPeak += 2;
-						DataForGranule = m_GranuleSize;
-					}
-				}
-				else
-				{
-					WavePeak * pPeak = pDocument->m_pPeaks + DataOffset / m_GranuleSize;
-					while (0 != DataToProcess)
-					{
-						int wp_l = pPeak[0].low;
-						int wp_h = pPeak[0].high;
-
-						if (DataForGranule > DataToProcess)
-						{
-							DataForGranule = DataToProcess;
-						}
-						DataToProcess -= DataForGranule;
-
-						for (i = 0; i < DataForGranule / sizeof(__int16); i++, pWaveData ++)
-						{
-							if (pWaveData[0] < wp_l)
-							{
-								wp_l = pWaveData[0];
-							}
-							if (pWaveData[0] > wp_h)
-							{
-								wp_h = pWaveData[0];
-							}
-						}
-
-						ASSERT(pPeak - pDocument->m_pPeaks < pDocument->m_WavePeakSize);
-						if (pPeak[0].low > wp_l)
-						{
-							pPeak[0].low = wp_l;
-						}
-						if (pPeak[0].high < wp_h)
-						{
-							pPeak[0].high = wp_h;
-						}
-						pPeak ++;
-						DataForGranule = m_GranuleSize;
-					}
-				}
-
-				m_Position += lRead;
-				pDocument->m_WavFile.ReturnDataBuffer(pBuf, lRead, 0);
-			}
-			else
-			{
-				m_Flags |= OperationContextStop;
-				break;
-				return FALSE;
-			}
-		}
-		while (m_Position < m_End
-				&& timeGetTime() - dwStartTime < 200);
-		if (m_End > m_Start)
-		{
-			PercentCompleted = 100i64 * (m_Position - m_Start) / (m_End - m_Start);
-		}
-		// notify the view
-		int nSampleSize = pDocument->WaveSampleSize();
-		int nFirstSample = (dwOperationBegin - pDocument->WaveDataChunk()->dwDataOffset)
-							/ nSampleSize;
-		int nLastSample = (m_Position - pDocument->WaveDataChunk()->dwDataOffset)
-						/ nSampleSize;
-		pDocument->SoundChanged(pDocument->WaveFileID(),
-								nFirstSample, nLastSample, -1, UpdateSoundDontRescanPeaks);
-		return TRUE;
-	}
-	else
-	{
-		if ((m_Flags & ScanPeaksSavePeakFile)
-			&& pDocument->m_OriginalWavFile.IsOpen())
-		{
-			pDocument->SavePeakInfo(pDocument->m_OriginalWavFile);
-		}
 		m_Flags |= OperationContextFinished;
 		PercentCompleted = 100;
 		return TRUE;
 	}
 
+	DWORD dwStartTime = timeGetTime();
+	DWORD dwOperationBegin = m_Position;
+	do
+	{
+		DWORD SizeToRead = m_End - m_Position;
+		void * pBuf;
+		long lRead = pDocument->m_WavFile.GetDataBuffer( & pBuf,
+														SizeToRead, m_Position, CDirectFile::GetBufferAndPrefetchNext);
+		if (lRead > 0)
+		{
+			unsigned i;
+			long DataToProcess = lRead;
+			__int16 * pWaveData = (__int16 *) pBuf;
+			DWORD DataOffset = m_Position - pDocument->WaveDataChunk()->dwDataOffset;
+			unsigned DataForGranule = m_GranuleSize - DataOffset % m_GranuleSize;
+
+			if (2 == pDocument->WaveChannels())
+			{
+				WavePeak * pPeak = pDocument->m_pPeaks + (DataOffset / m_GranuleSize) * 2;
+				while (0 != DataToProcess)
+				{
+					int wpl_l = pPeak[0].low;
+					int wpl_h = pPeak[0].high;
+					int wpr_l = pPeak[1].low;
+					int wpr_h = pPeak[1].high;
+
+					if (DataForGranule > DataToProcess)
+					{
+						DataForGranule = DataToProcess;
+					}
+					DataToProcess -= DataForGranule;
+
+					if (DataOffset & 2)
+					{
+						if (pWaveData[0] < wpr_l)
+						{
+							wpr_l = pWaveData[0];
+						}
+						if (pWaveData[0] > wpr_h)
+						{
+							wpr_h = pWaveData[0];
+						}
+						pWaveData++;
+						DataForGranule -= 2;
+					}
+
+					for (i = 0; i < DataForGranule / (sizeof(__int16) * 2); i++, pWaveData += 2)
+					{
+						if (pWaveData[0] < wpl_l)
+						{
+							wpl_l = pWaveData[0];
+						}
+						if (pWaveData[0] > wpl_h)
+						{
+							wpl_h = pWaveData[0];
+						}
+						if (pWaveData[1] < wpr_l)
+						{
+							wpr_l = pWaveData[1];
+						}
+						if (pWaveData[1] > wpr_h)
+						{
+							wpr_h = pWaveData[1];
+						}
+					}
+
+					if (DataForGranule & 2)
+					{
+						if (pWaveData[0] < wpl_l)
+						{
+							wpl_l = pWaveData[0];
+						}
+						if (pWaveData[0] > wpl_h)
+						{
+							wpl_h = pWaveData[0];
+						}
+						pWaveData++;
+					}
+
+					ASSERT(pPeak - pDocument->m_pPeaks < pDocument->m_WavePeakSize);
+					if (pPeak[0].low > wpl_l)
+					{
+						pPeak[0].low = wpl_l;
+					}
+					if (pPeak[0].high < wpl_h)
+					{
+						pPeak[0].high = wpl_h;
+					}
+					if (pPeak[1].low > wpr_l)
+					{
+						pPeak[1].low = wpr_l;
+					}
+					if (pPeak[1].high < wpr_h)
+					{
+						pPeak[1].high = wpr_h;
+					}
+					pPeak += 2;
+					DataForGranule = m_GranuleSize;
+				}
+			}
+			else
+			{
+				WavePeak * pPeak = pDocument->m_pPeaks + DataOffset / m_GranuleSize;
+				while (0 != DataToProcess)
+				{
+					int wp_l = pPeak[0].low;
+					int wp_h = pPeak[0].high;
+
+					if (DataForGranule > DataToProcess)
+					{
+						DataForGranule = DataToProcess;
+					}
+					DataToProcess -= DataForGranule;
+
+					for (i = 0; i < DataForGranule / sizeof(__int16); i++, pWaveData ++)
+					{
+						if (pWaveData[0] < wp_l)
+						{
+							wp_l = pWaveData[0];
+						}
+						if (pWaveData[0] > wp_h)
+						{
+							wp_h = pWaveData[0];
+						}
+					}
+
+					ASSERT(pPeak - pDocument->m_pPeaks < pDocument->m_WavePeakSize);
+					if (pPeak[0].low > wp_l)
+					{
+						pPeak[0].low = wp_l;
+					}
+					if (pPeak[0].high < wp_h)
+					{
+						pPeak[0].high = wp_h;
+					}
+					pPeak ++;
+					DataForGranule = m_GranuleSize;
+				}
+			}
+
+			m_Position += lRead;
+			pDocument->m_WavFile.ReturnDataBuffer(pBuf, lRead, 0);
+		}
+		else
+		{
+			m_Flags |= OperationContextStop;
+			break;
+			return FALSE;
+		}
+	}
+	while (m_Position < m_End
+			&& timeGetTime() - dwStartTime < 200);
+	if (m_End > m_Start)
+	{
+		PercentCompleted = 100i64 * (m_Position - m_Start) / (m_End - m_Start);
+	}
+	// notify the view
+	int nSampleSize = pDocument->WaveSampleSize();
+	int nFirstSample = (dwOperationBegin - pDocument->WaveDataChunk()->dwDataOffset)
+						/ nSampleSize;
+	int nLastSample = (m_Position - pDocument->WaveDataChunk()->dwDataOffset)
+					/ nSampleSize;
+	pDocument->SoundChanged(pDocument->WaveFileID(),
+							nFirstSample, nLastSample, -1, UpdateSoundDontRescanPeaks);
+	return TRUE;
+}
+
+void CScanPeaksContext::PostRetire(BOOL bChildContext)
+{
+	if ((m_Flags & ScanPeaksSavePeakFile)
+		&& (m_Flags & OperationContextFinished)
+		&& pDocument->m_OriginalWavFile.IsOpen())
+	{
+		pDocument->SavePeakInfo(pDocument->m_WavFile, pDocument->m_OriginalWavFile);
+	}
+	COperationContext::PostRetire(bChildContext);
 }
 
 CResizeContext::~CResizeContext()
@@ -2022,6 +2025,10 @@ void CDecompressContext::PostRetire(BOOL bChildContext)
 		}
 		AfxMessageBox(s, MB_ICONSTOP);
 	}
+	else if (m_Flags & DecompressSavePeakFile)
+	{
+		pDocument->SavePeakInfo(pDocument->m_WavFile, pDocument->m_OriginalWavFile);
+	}
 	COperationContext::PostRetire(bChildContext);
 }
 
@@ -3368,6 +3375,7 @@ void CFileSaveContext::PostRetire(BOOL bChildContext)
 		{
 			// will be closed by the destructor
 			m_DstFile.CommitChanges();
+			pDocument->SavePeakInfo(pDocument->m_WavFile, m_DstFile);
 			// todo: ask about opening the file
 		}
 		else
@@ -3630,3 +3638,27 @@ void CWmaDecodeContext::SetDstFile(CWaveFile & file)
 	m_Decoder.m_DstFile.CDirectFile::Seek(m_DstStart, FILE_BEGIN);
 }
 
+void CWmaDecodeContext::PostRetire(BOOL bChildContext)
+{
+	if (0)// TODO:m_MmResult != MMSYSERR_NOERROR)
+	{
+		CString s;
+		if (m_Flags & OperationContextInitFailed)
+		{
+			s.Format(IDS_CANT_DECOMPRESS_FILE, LPCTSTR(pDocument->m_OriginalWavFile.GetName()),
+					-1, 0);
+			pDocument->m_bCloseThisDocumentNow = true;
+		}
+		else
+		{
+			s.Format(IDS_ERROR_WHILE_DECOMPRESSING_FILE,
+					LPCTSTR(pDocument->m_OriginalWavFile.GetName()), 0);
+		}
+		AfxMessageBox(s, MB_ICONSTOP);
+	}
+	else if (m_Flags & DecompressSavePeakFile)
+	{
+		pDocument->SavePeakInfo(m_DstFile, pDocument->m_OriginalWavFile);
+	}
+	COperationContext::PostRetire(bChildContext);
+}

@@ -1,9 +1,10 @@
 Known problems and tasks:
 
-Save peak info for compressed files, too, but recalculate it when loading
 Test "reload compressed file" dialogs
 Add options dialog
-Put zoom buttons in the static fields in the view
+Put zoom buttons instead of the static fields in the view:
+  On top static: horiontal zoom,
+  On Bottom static: vertical zoom
 
 Add CD grabbing
 Add noise reduction estimation in spectrum section view
@@ -78,6 +79,7 @@ No status bar in WinME
 FFT doesn't invaludate some areas
 
 Done:
+Save peak info for compressed files, too, but recalculate it when loading
 Add low/high frequency and notch filters functions
 Add "Swap Channels" function
 Make "CRC" field for the statistics

@@ -84,6 +84,7 @@ enum {
 	FileSaveContext_SavingCopy    = 0x00400000,
 	FileSaveContext_SameName    =   0x00200000,
 	ScanPeaksSavePeakFile = 0x00200000,
+	DecompressSavePeakFile = 0x00200000,
 };
 
 class CScanPeaksContext : public COperationContext
@@ -102,6 +103,7 @@ public:
 	}
 	~CScanPeaksContext() {}
 	virtual BOOL OperationProc();
+	virtual void PostRetire(BOOL bChildContext = FALSE);
 };
 
 class CResizeContext : public COperationContext
@@ -417,29 +419,6 @@ public:
 	virtual void PostRetire(BOOL bChildContext = FALSE);
 };
 
-class CConvertedFileSaveContext : public CFileSaveContext
-{
-public:
-	CConvertedFileSaveContext(CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString, LPCTSTR OperationName)
-		: CFileSaveContext(pDoc, StatusString, OperationName),
-		m_pWf(NULL)
-	{
-	}
-	WAVEFORMATEX * m_pWf;
-	CBatchProcessing m_ProcBatch;
-
-	virtual ~CConvertedFileSaveContext()
-	{
-		delete[] (char*) m_pWf;
-	}
-	//virtual BOOL OperationProc();
-	//virtual void PostRetire(BOOL bChildContext = FALSE);
-	//virtual BOOL Init();
-	//virtual BOOL DeInit();
-	//BOOL SetTargetFormat(WAVEFORMATEX * pwf);
-
-};
-
 class CWmaDecodeContext: public COperationContext
 {
 public:
@@ -463,6 +442,7 @@ public:
 	virtual BOOL OperationProc();
 	virtual BOOL Init();
 	virtual BOOL DeInit();
+	virtual void PostRetire(BOOL bChildContext = FALSE);
 };
 
 

@@ -430,7 +430,7 @@ BOOL CWaveSoapFrontDoc::OnNewDocument(WAVEFORMATEX * pWfx, long InitialLengthSec
 	return TRUE;
 }
 
-void CWaveSoapFrontDoc::LoadPeakFile(CWaveFile & WaveFile)
+void CWaveSoapFrontDoc::CheckAndLoadPeakFile(CWaveFile & WaveFile)
 {
 	// if peak file exists and the wav file length/date/time matches the stored
 	// length/date/time, then use this peak file.
@@ -451,14 +451,15 @@ void CWaveSoapFrontDoc::LoadPeakFile(CWaveFile & WaveFile)
 			== PeakFile.Read( & pfh, offsetof(PeakFileHeader, WaveFileTime))
 			&& PeakFileHeader::pfhSignature == pfh.dwSignature
 			&& pfh.dwVersion == PeakFileHeader::pfhMaxVersion
-			&& pfh.dwSize == sizeof (PeakFileHeader)
+			&& pfh.wSize == sizeof (PeakFileHeader)
 			// read the rest of the header
-			&& pfh.dwSize - offsetof(PeakFileHeader, WaveFileTime)
-			== PeakFile.Read( & pfh.WaveFileTime, pfh.dwSize - offsetof(PeakFileHeader, WaveFileTime))
+			&& pfh.wSize - offsetof(PeakFileHeader, WaveFileTime)
+			== PeakFile.Read( & pfh.WaveFileTime, pfh.wSize - offsetof(PeakFileHeader, WaveFileTime))
 			&& pfh.WaveFileTime.dwHighDateTime == WaveFile.GetFileInformation().ftLastWriteTime.dwHighDateTime
 			&& pfh.WaveFileTime.dwLowDateTime == WaveFile.GetFileInformation().ftLastWriteTime.dwLowDateTime
 			&& pfh.dwWaveFileSize == WaveFile.GetFileInformation().nFileSizeLow
 			&& 0 == memcmp(& pfh.wfFormat, WaveFile.GetWaveFormat(), sizeof pfh.wfFormat)
+			&& m_PeakDataGranularity == pfh.Granularity
 			&& pfh.PeakInfoSize
 			== CalculatePeakInfoSize() * sizeof (WavePeak)
 			)
@@ -471,7 +472,8 @@ void CWaveSoapFrontDoc::LoadPeakFile(CWaveFile & WaveFile)
 				return;
 			}
 
-			if (pfh.PeakInfoSize == PeakFile.Read(m_pPeaks, pfh.PeakInfoSize))
+			if (pfh.PeakInfoSize <= m_WavePeakSize * sizeof (WavePeak)
+				&& pfh.PeakInfoSize == PeakFile.Read(m_pPeaks, pfh.PeakInfoSize))
 			{
 				return;
 			}
@@ -488,6 +490,74 @@ void CWaveSoapFrontDoc::LoadPeakFile(CWaveFile & WaveFile)
 		PeakFile.Close();
 	}
 	BuildPeakInfo(TRUE);
+}
+
+// the function is called to load peak info for a compressed file
+// WaveFile argument - temporary wave file
+// OriginalWaveFile - compressed file
+void CWaveSoapFrontDoc::LoadPeaksForCompressedFile(CWaveFile & WaveFile, CWaveFile & OriginalWaveFile)
+{
+
+	// don't check peak file data size, just make sure source file parameters match
+	// if peak file exists and the wav file length/date/time matches the stored
+	// length/date/time, then use this peak file.
+	// otherwise don't use it.
+	// the peak info will be rebuilt in any case during file load
+	CFile PeakFile;
+	PeakFileHeader pfh;
+	CString szPeakFilename(OriginalWaveFile.GetName());
+
+	if (0 == szPeakFilename.Right(4).CompareNoCase(_T(".WAV")))
+	{
+		szPeakFilename.Delete(szPeakFilename.GetLength() - 4, 4);
+	}
+	szPeakFilename += _T(".wspk");
+	if (PeakFile.Open(szPeakFilename,
+					CFile::modeRead | CFile::shareDenyWrite | CFile::typeBinary))
+	{
+		if (offsetof(PeakFileHeader, WaveFileTime)
+			== PeakFile.Read( & pfh, offsetof(PeakFileHeader, WaveFileTime))
+			&& PeakFileHeader::pfhSignature == pfh.dwSignature
+			&& pfh.dwVersion == PeakFileHeader::pfhMaxVersion
+			&& pfh.wSize == sizeof (PeakFileHeader)
+			// read the rest of the header
+			&& pfh.wSize - offsetof(PeakFileHeader, WaveFileTime)
+			== PeakFile.Read( & pfh.WaveFileTime, pfh.wSize - offsetof(PeakFileHeader, WaveFileTime))
+			// check date and time
+			&& pfh.WaveFileTime.dwHighDateTime == OriginalWaveFile.GetFileInformation().ftLastWriteTime.dwHighDateTime
+			&& pfh.WaveFileTime.dwLowDateTime == OriginalWaveFile.GetFileInformation().ftLastWriteTime.dwLowDateTime
+			// check source file size
+			&& pfh.dwWaveFileSize == OriginalWaveFile.GetFileInformation().nFileSizeLow
+			// check PCM number of channels and sampling rate
+			&& 0 == memcmp(& pfh.wfFormat, WaveFile.GetWaveFormat(), sizeof pfh.wfFormat)
+			&& m_PeakDataGranularity == pfh.Granularity
+			)
+		{
+			// allocate data and read it
+			m_WavePeakSize = 0;
+			if ( ! AllocatePeakData(pfh.NumOfSamples))
+			{
+				TRACE("Unable to allocate peak info buffer\n");
+				return;
+			}
+
+			if (pfh.PeakInfoSize <= m_WavePeakSize * sizeof (WavePeak)
+				&& pfh.PeakInfoSize == PeakFile.Read(m_pPeaks, pfh.PeakInfoSize))
+			{
+				return;
+			}
+			TRACE("Unable to read peak data\n");
+			// rebuild the info from the WAV file
+		}
+		else
+		{
+			TRACE("Peak Info modification time = 0x%08X%08X, open file time=0x%08X%08X\n",
+				pfh.WaveFileTime.dwHighDateTime, pfh.WaveFileTime.dwLowDateTime,
+				WaveFile.GetFileInformation().ftLastWriteTime.dwHighDateTime,
+				WaveFile.GetFileInformation().ftLastWriteTime.dwLowDateTime);
+		}
+		PeakFile.Close();
+	}
 }
 
 void CWaveSoapFrontDoc::BuildPeakInfo(BOOL bSavePeakFile)
@@ -527,11 +597,11 @@ void CWaveSoapFrontDoc::BuildPeakInfo(BOOL bSavePeakFile)
 	pContext->Execute();
 }
 
-void CWaveSoapFrontDoc::SavePeakInfo(CWaveFile & WaveFile)
+void CWaveSoapFrontDoc::SavePeakInfo(CWaveFile & WaveFile, CWaveFile & SavedWaveFile)
 {
 	CFile PeakFile;
 	PeakFileHeader pfh;
-	CString szPeakFilename(WaveFile.GetName());
+	CString szPeakFilename(SavedWaveFile.GetName());
 
 	if (0 == szPeakFilename.Right(4).CompareNoCase(_T(".WAV")))
 	{
@@ -542,13 +612,14 @@ void CWaveSoapFrontDoc::SavePeakInfo(CWaveFile & WaveFile)
 	if (PeakFile.Open(szPeakFilename,
 					CFile::modeCreate | CFile::modeWrite | CFile::shareExclusive | CFile::typeBinary))
 	{
-		pfh.dwSize = sizeof PeakFileHeader;
+		pfh.wSize = sizeof PeakFileHeader;
 		pfh.dwSignature = PeakFileHeader::pfhSignature;
 		pfh.dwVersion = PeakFileHeader::pfhMaxVersion;
-		pfh.dwWaveFileSize = WaveFile.GetFileSize(NULL);
+		pfh.dwWaveFileSize = SavedWaveFile.GetFileSize(NULL);
 		pfh.Granularity = m_PeakDataGranularity;
 		pfh.PeakInfoSize = CalculatePeakInfoSize() * sizeof (WavePeak);
-		pfh.WaveFileTime = WaveFile.GetFileInformation().ftLastWriteTime;
+		pfh.WaveFileTime = SavedWaveFile.GetFileInformation().ftLastWriteTime;
+		pfh.NumOfSamples = WaveFile.NumberOfSamples();
 		pfh.wfFormat = * WaveFile.GetWaveFormat();
 
 		PeakFile.Write( & pfh, sizeof pfh);
@@ -2304,17 +2375,25 @@ BOOL CWaveSoapFrontDoc::OnOpenDocument(LPCTSTR lpszPathName, int DocOpenFlags)
 		{
 			CDecompressContext * pContext =
 				new CDecompressContext(this, "Loading the compressed file...", m_OriginalWavFile.GetWaveFormat());
+
+			pContext->m_Flags |= DecompressSavePeakFile;
+
 			pContext->m_SrcFile = m_OriginalWavFile;
 			pContext->m_DstFile = m_WavFile;
+
 			pContext->m_SrcStart = m_OriginalWavFile.GetDataChunk()->dwDataOffset;
 			pContext->m_SrcPos = pContext->m_SrcStart;
 			pContext->m_SrcEnd = pContext->m_SrcStart +
 								m_OriginalWavFile.GetDataChunk()->cksize;
+
 			pContext->m_DstStart = m_WavFile.GetDataChunk()->dwDataOffset;
 			pContext->m_DstCopyPos = pContext->m_DstStart;
 			pContext->m_CurrentSamples = m_WavFile.NumberOfSamples();
+
 			AllocatePeakData(pContext->m_CurrentSamples);
 			// peak data will be created during decompression
+			LoadPeaksForCompressedFile(m_WavFile, m_OriginalWavFile);
+			SoundChanged(m_WavFile.GetFileID(), 0, 0, WaveFileSamples(), UpdateSoundDontRescanPeaks);
 			pContext->Execute();
 		}
 		else
@@ -2341,13 +2420,13 @@ BOOL CWaveSoapFrontDoc::OnOpenDocument(LPCTSTR lpszPathName, int DocOpenFlags)
 				AfxMessageBox(s, MB_OK | MB_ICONEXCLAMATION);
 				return FALSE;
 			}
-			LoadPeakFile(m_OriginalWavFile);
+			CheckAndLoadPeakFile(m_OriginalWavFile);
 			SoundChanged(m_WavFile.GetFileID(), 0, 0, WaveFileSamples());
 		}
 	}
 	else
 	{
-		LoadPeakFile(m_WavFile);
+		CheckAndLoadPeakFile(m_WavFile);
 		SoundChanged(m_WavFile.GetFileID(), 0, 0, WaveFileSamples());
 	}
 	// if file is open in direct mode or read-only, leave it as is,
@@ -2439,14 +2518,14 @@ BOOL CWaveSoapFrontDoc::OnSaveDocument(LPCTSTR lpszPathName, DWORD flags, WAVEFO
 			//Close and reopen the file
 			if ( ! m_WavFile.Commit())
 			{
-				SavePeakInfo(m_WavFile);
+				SavePeakInfo(m_WavFile, m_WavFile);
 				AfxMessageBox(IDS_CANT_COMMIT_FILE_DATA, MB_OK | MB_ICONEXCLAMATION);
 				SetModifiedFlag(FALSE);
 				m_bCloseThisDocumentNow = true;
 				return FALSE;
 			}
 			SetModifiedFlag(FALSE);
-			SavePeakInfo(m_WavFile);
+			SavePeakInfo(m_WavFile, m_WavFile);
 			// direct file saved with the same format and name
 			// information committed, peak info saved, file remains open
 			return TRUE;
@@ -2770,18 +2849,18 @@ void CWaveSoapFrontDoc::PostFileSave(CFileSaveContext * pContext)
 		SetModifiedFlag(FALSE);
 		// need to commit file to save its peak info with the correct timestamp
 		pContext->m_DstFile.Commit();
-		SavePeakInfo(pContext->m_DstFile);
-		if (m_bClosePending)
-		{
-			pContext->m_DstFile.Close();
-			SetModifiedFlag(FALSE);
-			m_bCloseThisDocumentNow = true; // the document will be deleted
-			return;
-		}
 		// we always reopen the document
 		if (WAVE_FORMAT_PCM == NewFormat.wFormatTag
 			&& 16 == NewFormat.wBitsPerSample)
 		{
+			SavePeakInfo(m_WavFile, pContext->m_DstFile);
+			if (m_bClosePending)
+			{
+				pContext->m_DstFile.Close();
+				SetModifiedFlag(FALSE);
+				m_bCloseThisDocumentNow = true; // the document will be deleted
+				return;
+			}
 			if (! m_bDirectMode || m_bReadOnly)
 			{
 				// if PCM format and read-only or non-direct, ask about reopening as direct
@@ -2803,11 +2882,24 @@ void CWaveSoapFrontDoc::PostFileSave(CFileSaveContext * pContext)
 		}
 		else
 		{
+			if (m_bClosePending)
+			{
+				if (OldFormat.nSamplesPerSec == NewFormat.nSamplesPerSec
+					&& OldFormat.nChannels == NewFormat.nChannels)
+				{
+					SavePeakInfo(m_WavFile, pContext->m_DstFile);
+				}
+				pContext->m_DstFile.Close();
+				SetModifiedFlag(FALSE);
+				m_bCloseThisDocumentNow = true; // the document will be deleted
+				return;
+			}
 			// if non-PCM format, ask about reloading the file
 			// if format changed, always reload
 			if (OldFormat.nSamplesPerSec == NewFormat.nSamplesPerSec
 				&& OldFormat.nChannels == NewFormat.nChannels)
 			{
+				SavePeakInfo(m_WavFile, pContext->m_DstFile);
 				CReopenCompressedFileDialog dlg;
 				dlg.m_Text.Format(IDS_RELOAD_COMPRESSED_FILE, LPCTSTR(pContext->m_NewName));
 				int result = dlg.DoModal();
@@ -2932,7 +3024,7 @@ BOOL CWaveSoapFrontDoc::PostCommitFileSave(int flags, LPCTSTR FullTargetName)
 	if (m_WavFile.Rename(FullTargetName, 0))
 	{
 		// if PCM format and non-direct, ask about reopening as direct
-		SavePeakInfo(m_WavFile);
+		SavePeakInfo(m_WavFile, m_WavFile);
 		SetModifiedFlag(FALSE);
 		if (m_bClosePending)
 		{
@@ -4938,6 +5030,8 @@ BOOL CWaveSoapFrontDoc::OpenWmaFileDocument(LPCTSTR lpszPathName)
 		NotEnoughMemoryMessageBox();
 		return FALSE;
 	}
+	pWmaContext->m_Flags |= DecompressSavePeakFile;
+
 	CoInitializeEx(NULL, COINIT_MULTITHREADED );
 	BOOL res = pWmaContext->Open(m_OriginalWavFile);
 	if (res)
@@ -4957,6 +5051,9 @@ BOOL CWaveSoapFrontDoc::OpenWmaFileDocument(LPCTSTR lpszPathName)
 		}
 		pWmaContext->SetDstFile(m_WavFile);
 		AllocatePeakData(pWmaContext->m_CurrentSamples);
+
+		LoadPeaksForCompressedFile(m_WavFile, m_OriginalWavFile);
+
 		pWmaContext->Execute();
 		CoUninitialize();
 		return TRUE;
