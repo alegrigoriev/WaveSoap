@@ -14,35 +14,87 @@
 #include "KListEntry.h"
 #include "CoInitHelper.h"
 
+enum {
+	OperationContextClipboard = 1,  // clipboard operations are serialized
+	OperationContextSerialized = 1,  // clipboard operations are serialized
+	OperationContextDiskIntensive = 2,  // only one disk intensive can be active
+	OperationContextStopRequested = 4,    // cancel button pressed (set by the main thread)
+	OperationContextStop = 8,  // the procedure is canceling
+	OperationContextFinished = 0x10,    // the operation finished
+	OperationContextSynchronous = 0x20,    // need to run in a main thread
+	OperationContextInitialized = 0x40,
+	OperationContextNonCritical = 0x100,
+
+	OperationContextDontAdjustPriority = 0x400,
+	OperationContextInitFailed = 0x800,
+	OperationContextUndoing = 0x1000,
+};
+
 class COperationContext : public ListItem<COperationContext>
 {
+	typedef COperationContext ThisClass;
 public:
+	typedef std::auto_ptr<ThisClass> auto_ptr;
 	COperationContext(class CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString, DWORD Flags, LPCTSTR OperationName = _T(""));
 	virtual ~COperationContext();
 
-	virtual BOOL OperationProc();
-	virtual BOOL ProcessBuffer(void * buf, size_t len, SAMPLE_POSITION offset, BOOL bBackward = FALSE) { return TRUE; }
+	virtual BOOL OperationProc() = 0;
 
-	virtual BOOL Init() { return InitPass(1); }
-	virtual BOOL InitPass(int nPass) { return TRUE; }
+	virtual BOOL Init() { return TRUE; }
 
 	virtual void DeInit() { }
 	virtual void Retire();
 	virtual void PostRetire(BOOL bChildContext = FALSE);
 	virtual void Execute();
+	virtual void ExecuteSynch();
+	virtual LONGLONG GetTempDataSize() const;
+
+	// The function returns UNDO context to store in the document list after
+	// the main operation is completed
+	virtual class CUndoRedoContext * GetUndo();
+	// the function may prepare Undo/redo:
+	virtual ListHead<COperationContext> * GetUndoChain()
+	{
+		return & m_UndoChain;
+	}
+
+	// the function is called to create UNDO context before starting the main operation
+	virtual BOOL CreateUndo(BOOL IsRedo = FALSE);
+
+	// the function prepares the context which is part of UNDO
+	// before doing the UNDO/REDO operation
+	virtual BOOL PrepareUndo()
+	{
+		return TRUE;
+	}
+	virtual void UnprepareUndo() {}
+
+	virtual void DeleteUndo();
+
+	bool IsUndoOperation() const
+	{
+		return 0 != (m_Flags & OperationContextUndoing);
+	}
+
+	virtual bool KeepsPermanentFileReference() const
+	{
+		return m_SrcFile.IsOpen()
+				&& ! m_SrcFile.IsTemporaryFile();
+	}
 
 	virtual CString GetStatusString();
+
 	CString m_OperationName;
 	CString m_OperationString;
+	CString sOp;
 
-	// chained context is executed
-	// after the primary context is successfully completed
-	// but if the primary context is aborted, the chained one is just deleted
-	COperationContext * m_pChainedContext;
 	class CWaveSoapFrontDoc * pDocument;
 	DWORD m_Flags;
-	int PercentCompleted;
-	class CUndoRedoContext * m_pUndoContext;
+
+	int m_PercentCompleted;
+	ListHead<COperationContext> m_UndoChain;
+
+	class CCopyContext * m_pUndoContext;
 
 	int m_GetBufferFlags;
 	int m_ReturnBufferFlags;
@@ -131,12 +183,23 @@ public:
 						CHANNEL_MASK chan, BOOL NeedUndo);
 	void InitSource(CWaveFile & SrcFile, SAMPLE_INDEX StartSample,
 					SAMPLE_INDEX EndSample, CHANNEL_MASK chan);
+#if 0
+	virtual BOOL SaveUndoData(void * pBuf, long BufSize, SAMPLE_POSITION Position, CHANNEL_MASK Channel)
+	{
+		return TRUE;
+	}
+	virtual BOOL NeedToSaveUndo(SAMPLE_POSITION Position, size_t length)
+	{
+		return FALSE;
+	}
+#endif
 
 	void UpdateCompletedPercent();
 	void UpdateCompletedPercent(SAMPLE_INDEX CurrentSample,
 								SAMPLE_INDEX StartSample, SAMPLE_INDEX EndSample);
 	void UpdateCompletedPercent(SAMPLE_POSITION CurrentPos,
 								SAMPLE_POSITION StartPos, SAMPLE_POSITION EndPos);
+
 #ifdef _DEBUG
 	FILETIME m_ThreadUserTime;
 	DWORD m_BeginSystemTime;
@@ -146,45 +209,95 @@ public:
 	void SetBeginTime() {}
 	void PrintElapsedTime() {}
 #endif
+	// utility functions
+	enum eSampleType
+	{
+		SampleType16bit,
+		SampleType32Bit,
+		SampleTypeFloat32,
+		SampleTypeFloat64,
+	};
+
+	static long ReadSamples(CWaveFile & File, CHANNEL_MASK Channels,
+							SAMPLE_POSITION Pos, long Samples, void * pBuf,
+							eSampleType type = SampleType16bit);
+	static long WriteSamples(CWaveFile & File, CHANNEL_MASK DstChannels,
+							SAMPLE_POSITION Pos, long Samples,
+							void const * pBuf, CHANNEL_MASK SrcChannels,
+							NUMBER_OF_CHANNELS NumSrcChannels, eSampleType type = SampleType16bit);
 };
 
-enum {
-	OperationContextClipboard = 1,  // clipboard operations are serialized
-	OperationContextSerialized = 1,  // clipboard operations are serialized
-	OperationContextDiskIntensive = 2,  // only one disk intensive can be active
-	OperationContextStopRequested = 4,    // cancel button pressed (set by the main thread)
-	OperationContextStop = 8,  // the procedure is canceling
-	OperationContextFinished = 0x10,    // the operation finished
-	OperationContextInterventionRequired = 0x20,    // need to run a modal dialog
-	OperationContextInitialized = 0x40,
-	OperationContextCreatingUndo = 0x80,
-	OperationContextNonCritical = 0x100,
-	//OperationContextDontKeepAfterRetire = 0x200,
-	OperationContextDontAdjustPriority = 0x400,
-	OperationContextInitFailed = 0x800,
+class CTwoFilesOperation : public COperationContext
+{
+	typedef COperationContext BaseClass;
+	typedef CTwoFilesOperation ThisClass;
+public:
+	CTwoFilesOperation(class CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString,
+						ULONG Flags, LPCTSTR OperationName = _T(""));
+	typedef std::auto_ptr<ThisClass> auto_ptr;
+};
+
+class CThroughProcessOperation : public CTwoFilesOperation
+{
+	typedef CTwoFilesOperation BaseClass;
+	typedef CThroughProcessOperation ThisClass;
+public:
+	CThroughProcessOperation(class CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString,
+							ULONG Flags, LPCTSTR OperationName = _T(""))
+		: BaseClass(pDoc, StatusString, Flags, OperationName)
+	{
+	}
+	typedef std::auto_ptr<ThisClass> auto_ptr;
+
+	virtual BOOL Init() { return InitPass(1); }
+	virtual BOOL InitPass(int nPass) { return TRUE; }
+	virtual BOOL OperationProc();
+	virtual BOOL ProcessBuffer(void * buf, size_t len, SAMPLE_POSITION offset, BOOL bBackward = FALSE) = 0;
 };
 
 // additional custom flags for the contexts
 enum {
-	CopyExpandFile = 0x80000000,
-	CopyShrinkFile = 0x40000000,
-	CopyCreatingUndo = 0x20000000,
-	RedoContext = 0x10000000,
-	UndoContextReplaceWholeFile = 0x08000000,
-	ConvertContextReplaceWholeFile = 0x08000000,
-	ContextScanning = 0x04000000,
-	StatisticsContext_DcOnly = 0x02000000,
-	StatisticsContext_MinMaxOnly = 0x01000000,
-	UndoContextReplaceFormat = 0x00800000,
 	FileSaveContext_SavingCopy    = 0x00400000,
 	FileSaveContext_SameName    =   0x00200000,
 	DecompressSavePeakFile = 0x00200000,
 };
 
-class CScanPeaksContext : public COperationContext
+class CStagedContext : public COperationContext
 {
 	typedef COperationContext BaseClass;
+	typedef CStagedContext ThisClass;
 public:
+	typedef std::auto_ptr<ThisClass> auto_ptr;
+	CStagedContext(class CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString, DWORD Flags, LPCTSTR OperationName = _T(""));
+	virtual ~CStagedContext();
+
+	virtual BOOL OperationProc();
+	virtual ListHead<COperationContext> * GetUndoChain();
+
+	virtual void PostRetire(BOOL bChildContext = FALSE);
+	virtual CString GetStatusString();
+	virtual void Execute();
+	virtual BOOL CreateUndo(BOOL IsRedo = FALSE);
+	virtual BOOL PrepareUndo();
+	virtual void UnprepareUndo();
+	virtual void DeleteUndo();
+
+	void AddContext(COperationContext * pContext);
+	void AddContextInFront(COperationContext * pContext);
+	virtual LONGLONG GetTempDataSize() const;
+	virtual bool KeepsPermanentFileReference() const;
+
+protected:
+	ListHead<COperationContext> m_ContextList;
+	ListHead<COperationContext> m_DoneList;
+};
+
+class CScanPeaksContext : public COperationContext
+{
+	typedef CScanPeaksContext ThisClass;
+	typedef COperationContext BaseClass;
+public:
+	typedef std::auto_ptr<ThisClass> auto_ptr;
 
 	CScanPeaksContext(CWaveSoapFrontDoc * pDoc,
 					CWaveFile & WavFile,
@@ -214,98 +327,119 @@ protected:
 	virtual BOOL Init();
 };
 
-class CResizeContext : public COperationContext
+class CExpandContext : public COperationContext
 {
+	typedef CExpandContext ThisClass;
 	typedef COperationContext BaseClass;
-	friend class CWaveSoapFrontDoc;
+	//friend class CWaveSoapFrontDoc;
 	// Start, End and position are in bytes
 
-	BOOL ExpandProc();
-	BOOL ShrinkProc();
 public:
-	BOOL InitUndoRedo(CString UndoStatusString);
+	typedef std::auto_ptr<ThisClass> auto_ptr;
+	virtual BOOL CreateUndo(BOOL IsRedo = FALSE);
 
-	CString sOp;
-	CResizeContext(CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString, LPCTSTR OperationName)
-		: COperationContext(pDoc, OperationName, OperationContextDiskIntensive),
-		sOp(StatusString)
+	CExpandContext(CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString, LPCTSTR OperationName)
+		: BaseClass(pDoc, StatusString, OperationContextDiskIntensive, OperationName)
 	{
 
 	}
-	~CResizeContext();
 	BOOL InitExpand(CWaveFile & File, SAMPLE_INDEX StartSample, NUMBER_OF_SAMPLES Length, CHANNEL_MASK Channel);
+	virtual BOOL OperationProc();
+};
+
+class CShrinkContext : public COperationContext
+{
+	typedef CShrinkContext ThisClass;
+	typedef COperationContext BaseClass;
+	//friend class CWaveSoapFrontDoc;
+	// Start, End and position are in bytes
+
+public:
+	typedef std::auto_ptr<ThisClass> auto_ptr;
+	virtual BOOL CreateUndo(BOOL IsRedo = FALSE);
+
+	CShrinkContext(CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString, LPCTSTR OperationName)
+		: BaseClass(pDoc, StatusString, OperationContextDiskIntensive, OperationName)
+	{
+
+	}
 	BOOL InitShrink(CWaveFile & File, SAMPLE_INDEX StartSample, NUMBER_OF_SAMPLES Length, CHANNEL_MASK Channel);
 	virtual BOOL OperationProc();
-	virtual CString GetStatusString();
 };
 
 class CCopyContext : public COperationContext
 {
+	typedef CCopyContext ThisClass;
 	typedef COperationContext BaseClass;
-public:
-	// Start, End and position are in bytes
-
-	class CResizeContext * m_pExpandShrinkContext;
 
 public:
-	CString sOp;
+	typedef std::auto_ptr<ThisClass> auto_ptr;
 	CCopyContext(CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString, LPCTSTR OperationName)
-		: COperationContext(pDoc, OperationName, OperationContextDiskIntensive),
-		sOp(StatusString),
-		m_pExpandShrinkContext(NULL)
+		: BaseClass(pDoc, StatusString, OperationContextDiskIntensive, OperationName)
 	{
-
 	}
-	~CCopyContext();
+
 	BOOL InitCopy(CWaveFile & DstFile,
-				SAMPLE_INDEX DstStartSample, NUMBER_OF_SAMPLES DstLength, CHANNEL_MASK DstChannel,
+				SAMPLE_INDEX DstStartSample, CHANNEL_MASK DstChannel,
 				CWaveFile & SrcFile,
-				SAMPLE_INDEX SrcStartSample, NUMBER_OF_SAMPLES SrcLength, CHANNEL_MASK SrcChannel
-				);
-	//BOOL InitExpand(LONG StartSample, NUMBER_OF_SAMPLES Length, CHANNEL_MASK Channel);
-	virtual BOOL OperationProc();
-	virtual void PostRetire(BOOL bChildContext = FALSE);
-	virtual CString GetStatusString();
-};
-
-class CUndoRedoContext : public CCopyContext
-{
-	typedef CCopyContext BaseClass;
-public:
-	SAMPLE_POSITION m_SrcSaveStart;
-	SAMPLE_POSITION m_SrcSaveEnd;
-	SAMPLE_POSITION m_SrcSavePos;
-	SAMPLE_POSITION m_DstSavePos;
-	CHANNEL_MASK m_SaveChan;
-
-	NUMBER_OF_SAMPLES m_RestoredLength;
-
-	bool m_bOldDirectMode;
-	WAVEFORMATEX m_OldWaveFormat;
-
-	CUndoRedoContext(CWaveSoapFrontDoc * pDoc, LPCTSTR OperationName)
-		: CCopyContext(pDoc, _T(""), OperationName)
-		, m_RestoredLength(0)
-	{
-	}
-
+				SAMPLE_INDEX SrcStartSample, CHANNEL_MASK SrcChannel,
+				NUMBER_OF_SAMPLES SrcDstLength);
 	BOOL InitUndoCopy(CWaveFile & SrcFile,
 					SAMPLE_POSITION SaveStartPos, // source file position of data needed to save and restore
 					SAMPLE_POSITION SaveEndPos,
 					CHANNEL_MASK SaveChannel);
-	BOOL SaveUndoData(void * pBuf, long BufSize, SAMPLE_POSITION Position, CHANNEL_MASK Channel);
-	BOOL NeedToSave(SAMPLE_POSITION Position, size_t length);
+
+	virtual BOOL CreateUndo(BOOL IsRedo = FALSE);
+	virtual BOOL PrepareUndo();
+	virtual void UnprepareUndo();
+	virtual void DeleteUndo();
+
+	virtual BOOL OperationProc();
+	virtual BOOL SaveUndoData(void * pBuf, long BufSize, SAMPLE_POSITION Position, CHANNEL_MASK Channel);
+	virtual BOOL NeedToSaveUndo(SAMPLE_POSITION Position, size_t length);
+};
+
+class CUndoRedoContext : public CStagedContext
+{
+	typedef CUndoRedoContext ThisClass;
+	typedef CStagedContext BaseClass;
+public:
+	typedef std::auto_ptr<ThisClass> auto_ptr;
+
+	bool IsUndoOperation() const
+	{
+		return 0 != (m_Flags & OperationContextUndoing);
+	}
+
+	CUndoRedoContext(CWaveSoapFrontDoc * pDoc, LPCTSTR OperationName)
+		: BaseClass(pDoc, _T(""), 0, OperationName)
+//        , m_RestoredLength(0)
+	{
+	}
+
+//    NUMBER_OF_SAMPLES m_RestoredLength;
+
 	virtual void PostRetire(BOOL bChildContext = FALSE);
 	virtual CString GetStatusString();
-	virtual void Execute();
-
-	~CUndoRedoContext();
 };
 
 class CSoundPlayContext : public COperationContext
 {
+	typedef CSoundPlayContext ThisClass;
 	typedef COperationContext BaseClass;
 public:
+	typedef std::auto_ptr<ThisClass> auto_ptr;
+
+	CSoundPlayContext(CWaveSoapFrontDoc * pDoc, CWaveFile & WavFile,
+					SAMPLE_INDEX PlaybackStart, SAMPLE_INDEX PlaybackEnd, CHANNEL_MASK Channel,
+					int PlaybackDevice, int PlaybackBuffers, size_t PlaybackBufferSize);
+	CString GetPlaybackTimeString(int TimeFormat) const;
+
+	void Pause()
+	{
+		m_bPauseRequested = true;
+	}
+protected:
 	CWaveOut m_WaveOut;
 	CWaveFile m_PlayFile;
 	SAMPLE_POSITION m_Begin;
@@ -324,25 +458,26 @@ public:
 	int m_PlaybackBuffers;
 	size_t m_PlaybackBufferSize;
 
-public:
-	CSoundPlayContext(CWaveSoapFrontDoc * pDoc, CWaveFile & WavFile,
-					SAMPLE_INDEX PlaybackStart, SAMPLE_INDEX PlaybackEnd, CHANNEL_MASK Channel,
-					int PlaybackDevice, int PlaybackBuffers, size_t PlaybackBufferSize);
-
-	virtual ~CSoundPlayContext() {}
 	virtual BOOL OperationProc();
 	virtual BOOL Init();
 	virtual void DeInit();
 	virtual void PostRetire(BOOL bChildContext = FALSE);
 };
 
-class CVolumeChangeContext : public COperationContext
+class CVolumeChangeContext : public CThroughProcessOperation
 {
-	typedef COperationContext BaseClass;
+	typedef CVolumeChangeContext ThisClass;
+	typedef CThroughProcessOperation BaseClass;
 public:
+	typedef std::auto_ptr<ThisClass> auto_ptr;
+
+	CVolumeChangeContext(CWaveSoapFrontDoc * pDoc,
+						LPCTSTR StatusString, LPCTSTR OperationName,
+						double const * VolumeArray, int VolumeArraySize = 2);
 	CVolumeChangeContext(CWaveSoapFrontDoc * pDoc,
 						LPCTSTR StatusString, LPCTSTR OperationName);
-	~CVolumeChangeContext();
+
+protected:
 	float m_VolumeLeft;
 	float m_VolumeRight;
 
@@ -351,31 +486,16 @@ public:
 
 };
 
-class CDcOffsetContext : public COperationContext
+class CStatisticsContext : public CThroughProcessOperation
 {
-	typedef COperationContext BaseClass;
+	typedef CStatisticsContext ThisClass;
+	typedef CThroughProcessOperation BaseClass;
 public:
-	CDcOffsetContext(CWaveSoapFrontDoc * pDoc,
-					LPCTSTR StatusString, LPCTSTR OperationName);
-	~CDcOffsetContext();
-	int m_OffsetLeft;
-	int m_OffsetRight;
+	typedef std::auto_ptr<ThisClass> auto_ptr;
 
-	class CStatisticsContext * m_pScanContext;
-
-	virtual BOOL OperationProc();
-	virtual BOOL ProcessBuffer(void * buf, size_t len, SAMPLE_POSITION offset, BOOL bBackward = FALSE);
-	virtual CString GetStatusString();
-
-};
-
-class CStatisticsContext : public COperationContext
-{
-	typedef COperationContext BaseClass;
-public:
 	CStatisticsContext(CWaveSoapFrontDoc * pDoc,
 						LPCTSTR StatusString, LPCTSTR OperationName);
-	~CStatisticsContext() {}
+
 	int m_ZeroCrossingLeft;
 	int m_ZeroCrossingRight;
 	int m_PrevSampleLeft;
@@ -403,37 +523,102 @@ public:
 	int m_ChecksumSampleNumber;
 	DWORD m_Checksum;
 
-	//virtual BOOL OperationProc();
 	virtual BOOL ProcessBuffer(void * buf, size_t BufferLength, SAMPLE_POSITION offset, BOOL bBackward = FALSE);
 
 	virtual void PostRetire(BOOL bChildContext = FALSE);
 };
 
+class CDcScanContext : public CThroughProcessOperation
+{
+	typedef CDcScanContext ThisClass;
+	typedef CThroughProcessOperation BaseClass;
+public:
+	typedef std::auto_ptr<ThisClass> auto_ptr;
+
+	CDcScanContext(CWaveSoapFrontDoc * pDoc,
+					LPCTSTR StatusString, LPCTSTR OperationName);
+
+	int GetDc(int channel);
+
+protected:
+	LONGLONG m_Sum[2];
+
+	virtual BOOL ProcessBuffer(void * buf, size_t BufferLength, SAMPLE_POSITION offset, BOOL bBackward = FALSE);
+};
+
+class CDcOffsetContext : public CThroughProcessOperation
+{
+	typedef CDcOffsetContext ThisClass;
+	typedef CThroughProcessOperation BaseClass;
+public:
+	typedef std::auto_ptr<ThisClass> auto_ptr;
+
+	CDcOffsetContext(CWaveSoapFrontDoc * pDoc,
+					LPCTSTR StatusString, LPCTSTR OperationName,
+					CDcScanContext * pScanContext);
+	CDcOffsetContext(CWaveSoapFrontDoc * pDoc,
+					LPCTSTR StatusString, LPCTSTR OperationName,
+					int offset[2]);
+
+protected:
+	int m_Offset[2];
+
+	CDcScanContext * m_pScanContext;
+
+	virtual BOOL Init();
+	virtual BOOL ProcessBuffer(void * buf, size_t len, SAMPLE_POSITION offset, BOOL bBackward = FALSE);
+
+};
+
+class CMaxScanContext : public CThroughProcessOperation
+{
+	typedef CMaxScanContext ThisClass;
+	typedef CThroughProcessOperation BaseClass;
+public:
+	typedef std::auto_ptr<ThisClass> auto_ptr;
+
+	CMaxScanContext(CWaveSoapFrontDoc * pDoc,
+					LPCTSTR StatusString, LPCTSTR OperationName);
+
+	int GetMax(int channel);
+
+protected:
+	int m_Max[2];
+
+	virtual BOOL ProcessBuffer(void * buf, size_t BufferLength, SAMPLE_POSITION offset, BOOL bBackward = FALSE);
+};
+
 class CNormalizeContext : public CVolumeChangeContext
 {
+	typedef CNormalizeContext ThisClass;
 	typedef CVolumeChangeContext BaseClass;
 public:
+	typedef std::auto_ptr<ThisClass> auto_ptr;
+
 	CNormalizeContext(CWaveSoapFrontDoc * pDoc,
-					LPCTSTR StatusString, LPCTSTR OperationName)
-		: BaseClass(pDoc, StatusString, OperationName),
-		m_pScanContext(NULL)
+					LPCTSTR StatusString, LPCTSTR OperationName,
+					double LimitLevel, BOOL EqualChannels,
+					CMaxScanContext * pScanContext)
+		: BaseClass(pDoc, StatusString, OperationName)
+		, m_pScanContext(pScanContext)
+		, m_LimitLevel(LimitLevel)
+		, m_bEqualChannels(EqualChannels)
 	{
 	}
-	virtual ~CNormalizeContext()
-	{
-		delete m_pScanContext;
-	}
+
 	double m_LimitLevel;
 	BOOL m_bEqualChannels;
-	CStatisticsContext * m_pScanContext;
-	virtual BOOL OperationProc();
-	virtual CString GetStatusString();
+	CMaxScanContext * m_pScanContext;
+
+	virtual BOOL Init();
 };
 
 class CConversionContext : public CCopyContext
 {
+	typedef CConversionContext ThisClass;
 	typedef CCopyContext BaseClass;
 public:
+	typedef std::auto_ptr<ThisClass> auto_ptr;
 	CConversionContext(CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString, LPCTSTR OperationName);
 
 	CConversionContext(CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString,
@@ -441,13 +626,13 @@ public:
 						CWaveFile & SrcFile,
 						CWaveFile & DstFile);
 
-	//~CConversionContext() {}
-
 	void AddWaveProc(CWaveProc * pProc, int index = -1)
 	{
 		m_ProcBatch.AddWaveProc(pProc, index);
 	}
 
+	BOOL InitDestination(CWaveFile & DstFile, SAMPLE_INDEX StartSample, SAMPLE_INDEX EndSample,
+						CHANNEL_MASK chan, BOOL NeedUndo);
 	virtual BOOL WasClipped() const
 	{
 		return m_ProcBatch.WasClipped();
@@ -466,10 +651,12 @@ protected:
 
 class CDecompressContext : public CConversionContext
 {
+	typedef CDecompressContext ThisClass;
 	typedef CConversionContext BaseClass;
-	friend class CWaveSoapFrontDoc;
+	//friend class CWaveSoapFrontDoc;
 
 public:
+	typedef std::auto_ptr<ThisClass> auto_ptr;
 	CDecompressContext(CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString,
 						CWaveFile & SrcFile,
 						CWaveFile & DstFile,
@@ -493,35 +680,31 @@ protected:
 	CWaveFormat m_Wf;
 };
 
-class CFileSaveContext : public CCopyContext
+class CFileSaveContext : public CStagedContext
 {
-	typedef CCopyContext BaseClass;
+	typedef CFileSaveContext ThisClass;
+	typedef CStagedContext BaseClass;
 public:
+	typedef std::auto_ptr<ThisClass> auto_ptr;
+
 	CFileSaveContext(CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString, LPCTSTR OperationName)
-		: BaseClass(pDoc, StatusString, OperationName),
-		m_NewFileTypeFlags(0),
-		m_pConvert(NULL)
+		: BaseClass(pDoc, StatusString, 0, OperationName),
+		m_NewFileTypeFlags(0)
 	{
 	}
-	CConversionContext * m_pConvert;
-	virtual ~CFileSaveContext()
-	{
-		delete m_pConvert;
-	}
+
 	CString m_NewName;
 	DWORD m_NewFileTypeFlags;
 
-	virtual BOOL Init();
-	virtual void DeInit();
-	virtual BOOL OperationProc();
 	virtual void PostRetire(BOOL bChildContext = FALSE);
-	virtual void Execute();
 };
 
 class CWmaDecodeContext: public COperationContext
 {
+	typedef CWmaDecodeContext ThisClass;
 	typedef COperationContext BaseClass;
 public:
+	typedef std::auto_ptr<ThisClass> auto_ptr;
 	CWmaDecodeContext(CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString,
 					CDirectFile & rWmaFile)
 		: BaseClass(pDoc, StatusString,
@@ -552,13 +735,13 @@ private:
 
 class CWmaSaveContext : public CConversionContext
 {
+	typedef CWmaSaveContext ThisClass;
 	typedef CConversionContext BaseClass;
 public:
+	typedef std::auto_ptr<ThisClass> auto_ptr;
+
 	CWmaSaveContext(CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString, LPCTSTR OperationName)
 		: BaseClass(pDoc, StatusString, OperationName)
-	{
-	}
-	~CWmaSaveContext()
 	{
 	}
 
