@@ -71,6 +71,8 @@ CFilterDialog::CFilterDialog(CWnd* pParent /*=NULL*/)
 void CFilterDialog::DoDataExchange(CDataExchange* pDX)
 {
 	CDialog::DoDataExchange(pDX);
+	DDX_Control(pDX, IDC_EDIT_BAND_GAIN, m_EditGain);
+	DDX_Control(pDX, IDC_EDIT_FREQUENCY, m_EditFrequency);
 	//{{AFX_DATA_MAP(CFilterDialog)
 	DDX_Control(pDX, IDC_STATIC_SELECTION, m_SelectionStatic);
 	DDX_Check(pDX, IDC_CHECK_UNDO, m_bUndo);
@@ -78,6 +80,7 @@ void CFilterDialog::DoDataExchange(CDataExchange* pDX)
 	DDX_Check(pDX, IDC_CHECK_ZERO_PHASE, m_wGraph.m_bZeroPhase);
 	DDX_Check(pDX, IDC_CHECK_LOWPASS, m_wGraph.m_bLowPass);
 	DDX_Check(pDX, IDC_CHECK_HIGHPASS, m_wGraph.m_bHighPass);
+
 	if (pDX->m_bSaveAndValidate)
 	{
 		m_Profile.UnloadAll();
@@ -99,13 +102,28 @@ BEGIN_MESSAGE_MAP(CFilterDialog, CDialog)
 	ON_WM_NCHITTEST()
 	ON_BN_CLICKED(IDC_CHECK_LOWPASS, OnCheckLowpass)
 	ON_BN_CLICKED(IDC_CHECK_HIGHPASS, OnCheckHighpass)
-	ON_WM_LBUTTONDBLCLK()
 	//}}AFX_MSG_MAP
 	ON_NOTIFY(NM_RETURN, AFX_IDW_PANE_FIRST, OnNotifyGraph)
 END_MESSAGE_MAP()
 
 /////////////////////////////////////////////////////////////////////////////
 // CFilterDialog message handlers
+
+void CFilterDialog::OnMetricsChange()
+{
+	// Initialize MINMAXINFO
+	CRect r;
+	SystemParametersInfo(SPI_GETWORKAREA, 0, & r, 0);
+	m_mmxi.ptMaxSize.x = r.Width();
+	m_mmxi.ptMaxTrackSize.x = m_mmxi.ptMaxSize.x;
+	m_mmxi.ptMaxSize.y = r.Height();
+	m_mmxi.ptMaxTrackSize.y = m_mmxi.ptMaxSize.y;
+	m_mmxi.ptMaxPosition.x = r.left;
+	m_mmxi.ptMaxPosition.y = r.top;
+	GetWindowRect(& r);
+	m_mmxi.ptMinTrackSize.x = r.Width();
+	m_mmxi.ptMinTrackSize.y = r.Height();
+}
 
 void CFilterDialog::OnSize(UINT nType, int cx, int cy)
 {
@@ -128,7 +146,7 @@ void CFilterDialog::OnSize(UINT nType, int cx, int cy)
 		{
 			IDC_STATIC1, IDC_EDIT_BAND_GAIN, IDC_STATIC2,
 			IDC_EDIT_FREQUENCY, IDC_STATIC4,
-			IDC_CHECK_LOWPASS, IDC_CHECK_HIGHPASS,
+			IDC_CHECK_LOWPASS, IDC_CHECK_STOPBAND, IDC_CHECK_HIGHPASS,
 			IDC_CHECK_ZERO_PHASE, IDC_CHECK_UNDO,
 			IDC_STATIC_SELECTION, IDC_BUTTON_SELECTION,
 		};
@@ -266,9 +284,11 @@ BOOL CFilterDialog::OnInitDialog()
 	CDialog::OnInitDialog();
 
 	m_EditGain.SetData(m_wGraph.GetCurrentPointGainDb());
+	m_EditFrequency.SetData(m_wGraph.GetCurrentPointFrequencyHz());
 	// init MINMAXINFO
 	OnMetricsChange();
 	UpdateSelectionStatic();
+	m_wGraph.RebuildFilters();
 
 	// set dialog size
 	if (m_DlgWidth < m_mmxi.ptMinTrackSize.x)
@@ -452,7 +472,7 @@ void CFilterGraphWnd::OnPaint()
 		double f;
 		f = M_PI * pow(1000., (x + 1. - cr.Width()) / cr.Width());
 		double gain = abs(CalculateResponse(f));
-		int y = (1 - log10(gain)) * cr.Height() / 2;
+		int y = (0.25 - log10(gain)) * cr.Height() / 4.5;
 		if (x == ur.left)
 		{
 			dc.MoveTo(x, y);
@@ -496,7 +516,7 @@ void CFilterGraphWnd::OnPaint()
 		// draw circles around the reference points
 		int x = (1. + log10(m_Frequencies[i] / M_PI) / 3.) * cr.Width() - 1;
 		// full range: 5 to -85 db
-		int y = (0.25 - log10(m_Gain[i])) * cr.Height() / 9;
+		int y = (0.25 - log10(m_Gain[i])) * cr.Height() / 4.5;
 		int SrcOffset = 0;
 		if (m_DotCaretIsOn && i == m_PointWithFocus)
 		{
@@ -862,23 +882,23 @@ void CFilterGraphWnd::OnNcPaint(UINT wParam)
 
 	pDC->TextOut(ncp.rgrc[0].left - 1,
 				ncp.rgrc[0].top + TextHeight,
-				"20 dB", 5);
+				"+5 dB", 5);
 
 	pDC->TextOut(ncp.rgrc[0].left - 1,
 				ncp.rgrc[0].top + (ncp.rgrc[0].bottom - ncp.rgrc[0].top) / 4 + TextHeight / 2,
-				"10 dB", 5);
+				"-20 dB", 5);
 
 	pDC->TextOut(ncp.rgrc[0].left - 1,
 				ncp.rgrc[0].top + (ncp.rgrc[0].bottom - ncp.rgrc[0].top) / 2 + TextHeight / 2,
-				"0 dB", 4);
+				"-40 dB", 4);
 
 	pDC->TextOut(ncp.rgrc[0].left - 1,
 				ncp.rgrc[0].bottom - (ncp.rgrc[0].bottom - ncp.rgrc[0].top) / 4 + TextHeight / 2,
-				"-10 dB", 6);
+				"-60 dB", 6);
 
 	pDC->TextOut(ncp.rgrc[0].left - 1,
 				ncp.rgrc[0].bottom + TextHeight / 2,
-				"-20 dB", 6);
+				"-80 dB", 6);
 
 	pDC->SelectObject(pOldFont);
 	pDC->SelectObject(pOldBrush);
@@ -1067,7 +1087,7 @@ int CFilterGraphWnd::GetHitCode(POINT point)
 		// find if the mouse gets into a focus point
 		int x = (1. + log10(m_Frequencies[i] / M_PI) / 3.) * cr.Width() - 1;
 		// full range: 5 to -85 db
-		int y = (0.25 - log10(m_Gain[i])) * cr.Height() / 9;
+		int y = (0.25 - log10(m_Gain[i])) * cr.Height() / 4.5;
 		CRect r(x - dx, y - dy, x + dx, y + dy);
 		CRect r1(x - dx, cr.top, x + dx, cr.bottom);
 
@@ -1126,7 +1146,7 @@ void CFilterGraphWnd::DrawDotCaret(bool state)
 
 		int x = (1. + log10(m_Frequencies[m_PointWithFocus] / M_PI) / 3.) * cr.Width() - 1;
 		// full range: 5 to -85 db
-		int y = (0.25 - log10(m_Gain[m_PointWithFocus])) * cr.Height() / 9;
+		int y = (0.25 - log10(m_Gain[m_PointWithFocus])) * cr.Height() / 4.5;
 
 		int dx = GetSystemMetrics(SM_CXDRAG);
 		int dy = GetSystemMetrics(SM_CYDRAG);
@@ -1276,19 +1296,19 @@ BOOL Filter::CreateLowpassElliptic(double PassFreq, double PassLoss,
 #endif
 		polyRatio prBil;
 		BilinearTransform( *pDecomposed->GetAt(i), prBil, 1.);
-		ASSERT(prBil.numer().order() == 0 || prBil.numer().order() == 1);
+		ASSERT(prBil.numer().order() == 2 || prBil.numer().order() == 1);
 		ASSERT(prBil.denom().order() == 2 || prBil.denom().order() == 1);
 
 		m_LpfCoeffs[i][0] = prBil.numer()[0].real();
-		if (prBil.numer().order() > 0)
+		m_LpfCoeffs[i][1] = prBil.numer()[1].real();
+		if (prBil.numer().order() > 1)
 		{
-			m_LpfCoeffs[i][1] = prBil.numer()[1].real();
+			m_LpfCoeffs[i][2] = prBil.numer()[2].real();
 		}
 		else
 		{
-			m_LpfCoeffs[i][1] = 0.;
+			m_LpfCoeffs[i][2] = 0.;
 		}
-		m_LpfCoeffs[i][2] = 0.;
 		m_LpfCoeffs[i][3] = prBil.denom()[0].real();
 		m_LpfCoeffs[i][4] = prBil.denom()[1].real();
 
@@ -1327,7 +1347,7 @@ BOOL Filter::CreateHighpassElliptic(double PassFreq, double PassLoss,
 	CArray<polyRatio *, polyRatio *> * pDecomposed
 		= polyRatio(poly(zeros, NormCoeff), poly(poles)).Decompose(2, & poles);
 
-	m_nLpfOrder = pDecomposed->GetSize();
+	m_nHpfOrder = pDecomposed->GetSize();
 
 	for (int i = 0; i < pDecomposed->GetSize(); i++)
 	{
@@ -1336,29 +1356,29 @@ BOOL Filter::CreateHighpassElliptic(double PassFreq, double PassLoss,
 #endif
 		polyRatio prBil;
 		BilinearTransform( *pDecomposed->GetAt(i), prBil, 1.);
-		ASSERT(prBil.numer().order() == 0 || prBil.numer().order() == 1);
+		ASSERT(prBil.numer().order() == 2 || prBil.numer().order() == 1);
 		ASSERT(prBil.denom().order() == 2 || prBil.denom().order() == 1);
 
-		m_LpfCoeffs[i][0] = prBil.numer()[0].real();
-		if (prBil.numer().order() > 0)
+		m_HpfCoeffs[i][0] = prBil.numer()[0].real();
+		m_HpfCoeffs[i][1] = -prBil.numer()[1].real();
+		if (prBil.numer().order() > 1)
 		{
-			m_LpfCoeffs[i][1] = -prBil.numer()[1].real();
+			m_HpfCoeffs[i][2] = prBil.numer()[2].real();
 		}
 		else
 		{
-			m_LpfCoeffs[i][1] = 0.;
+			m_HpfCoeffs[i][2] = 0.;
 		}
-		m_LpfCoeffs[i][2] = 0.;
-		m_LpfCoeffs[i][3] = prBil.denom()[0].real();
-		m_LpfCoeffs[i][4] = -prBil.denom()[1].real();
+		m_HpfCoeffs[i][3] = prBil.denom()[0].real();
+		m_HpfCoeffs[i][4] = -prBil.denom()[1].real();
 
 		if (prBil.numer().order() > 1)
 		{
-			m_LpfCoeffs[i][5] = prBil.denom()[2].real();
+			m_HpfCoeffs[i][5] = prBil.denom()[2].real();
 		}
 		else
 		{
-			m_LpfCoeffs[i][5] = 0.;
+			m_HpfCoeffs[i][5] = 0.;
 		}
 
 		delete pDecomposed->GetAt(i);

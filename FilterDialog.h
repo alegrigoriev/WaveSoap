@@ -222,7 +222,6 @@ protected:
 	afx_msg void OnCheckHighpass();
 	virtual BOOL OnInitDialog();
 	virtual void OnOK();
-	afx_msg void OnLButtonDblClk(UINT nFlags, CPoint point);
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 };

@@ -50,8 +50,8 @@ public:
 	friend polyRatio __stdcall operator/(const polyRatio &, const Complex&);
 	friend polyRatio __stdcall operator<<(const polyRatio &, int);
 	friend polyRatio __stdcall operator>>(const polyRatio &, int);
-	friend int __stdcall operator==(const polyRatio &, const polyRatio &);
-	friend int __stdcall operator!=(const polyRatio &, const polyRatio &);
+	//friend int __stdcall operator==(const polyRatio &, const polyRatio &);
+	//friend int __stdcall operator!=(const polyRatio &, const polyRatio &);
 
 	friend polyRatio __stdcall reduce(const polyRatio &);
 	Complex eval(Complex arg) const;

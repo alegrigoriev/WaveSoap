@@ -31,7 +31,7 @@ polyRatio::~polyRatio()
 
 polyRatio & polyRatio::operator +=(const Complex &a)
 {
-	if (a !=0)
+	if (a !=0.)
 	{
 		m_numer += m_denom * a;
 	}
@@ -40,7 +40,7 @@ polyRatio & polyRatio::operator +=(const Complex &a)
 
 polyRatio & polyRatio::operator -=(const Complex &a)
 {
-	if (a !=0)
+	if (a !=0.)
 	{
 		m_numer -= m_denom * a;
 	}
@@ -49,7 +49,7 @@ polyRatio & polyRatio::operator -=(const Complex &a)
 
 polyRatio & polyRatio::operator +=(double a)
 {
-	if (a !=0)
+	if (a !=0.)
 	{
 		m_numer += m_denom * a;
 	}
@@ -58,7 +58,7 @@ polyRatio & polyRatio::operator +=(double a)
 
 polyRatio & polyRatio::operator -=(double a)
 {
-	if (a !=0)
+	if (a !=0.)
 	{
 		m_numer -= m_denom * a;
 	}
