@@ -16,17 +16,21 @@ static char THIS_FILE[] = __FILE__;
 /////////////////////////////////////////////////////////////////////////////
 // CWaveSoapFrontView
 
-IMPLEMENT_DYNCREATE(CWaveSoapFrontView, CScaledGraphView)
+IMPLEMENT_DYNCREATE(CWaveSoapFrontView, CScaledScrollView)
 
-BEGIN_MESSAGE_MAP(CWaveSoapFrontView, CScaledGraphView)
+BEGIN_MESSAGE_MAP(CWaveSoapFrontView, CScaledScrollView)
 	//{{AFX_MSG_MAP(CWaveSoapFrontView)
-		// NOTE - the ClassWizard will add and remove mapping macros here.
-		//    DO NOT EDIT what you see in these blocks of generated code!
+	ON_UPDATE_COMMAND_UI(ID_VIEW_ZOOMINHOR, OnUpdateViewZoominhor)
+	ON_UPDATE_COMMAND_UI(ID_VIEW_ZOOMINHOR2, OnUpdateViewZoominhor2)
+	ON_COMMAND(ID_VIEW_ZOOMINVERT, OnViewZoomInVert)
+	ON_COMMAND(ID_VIEW_ZOOMOUTVERT, OnViewZoomOutVert)
+	ON_UPDATE_COMMAND_UI(ID_VIEW_ZOOMINVERT, OnUpdateViewZoomInVert)
+	ON_UPDATE_COMMAND_UI(ID_VIEW_ZOOMOUTVERT, OnUpdateViewZoomOutVert)
 	//}}AFX_MSG_MAP
 	// Standard printing commands
-	ON_COMMAND(ID_FILE_PRINT, CScaledGraphView::OnFilePrint)
-	ON_COMMAND(ID_FILE_PRINT_DIRECT, CScaledGraphView::OnFilePrint)
-	ON_COMMAND(ID_FILE_PRINT_PREVIEW, CScaledGraphView::OnFilePrintPreview)
+	ON_COMMAND(ID_FILE_PRINT, CScaledScrollView::OnFilePrint)
+	ON_COMMAND(ID_FILE_PRINT_DIRECT, CScaledScrollView::OnFilePrint)
+	ON_COMMAND(ID_FILE_PRINT_PREVIEW, CScaledScrollView::OnFilePrintPreview)
 END_MESSAGE_MAP()
 
 /////////////////////////////////////////////////////////////////////////////
@@ -34,6 +38,8 @@ END_MESSAGE_MAP()
 
 CWaveSoapFrontView::CWaveSoapFrontView()
 	: m_HorizontalScale(2048),
+	m_VerticalScale(1.),
+	m_WaveOffsetY(0.),
 	m_FirstSampleInBuffer(0),
 	m_pWaveBuffer(NULL),
 	m_WaveBufferSize(0),
@@ -58,8 +64,7 @@ BOOL CWaveSoapFrontView::PreCreateWindow(CREATESTRUCT& cs)
 	// TODO: Modify the Window class or styles here by modifying
 	//  the CREATESTRUCT cs
 	TRACE("CWaveSoapFrontView::PreCreateWindow(CREATESTRUCT)\n");
-
-	return CScaledGraphView::PreCreateWindow(cs);
+	return CScaledScrollView::PreCreateWindow(cs);
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -77,50 +82,85 @@ static int fround(double d)
 	}
 }
 
+void CWaveSoapFrontView::DrawHorizontalWithSelection(CDC * pDC,
+													int left, int right, int Y, CPen * NormalPen, CPen * SelectedPen)
+{
+	CWaveSoapFrontDoc * pDoc = GetDocument();
+	// find positions of the selection start and and
+	// and check whether the selected area is visible
+	double XScaleDev = GetXScaleDev();
+	int SelectionLeft = fround((pDoc->m_SelectionStart - dOrgX) * XScaleDev);
+	int SelectionRight = fround((pDoc->m_SelectionEnd - dOrgX) * XScaleDev);
+	if (pDoc->m_SelectionEnd != pDoc->m_SelectionStart
+		&& SelectionRight == SelectionLeft)
+	{
+		SelectionRight++;
+	}
+	if (SelectionLeft < left)
+	{
+		SelectionLeft = left;
+	}
+	if (SelectionRight > right)
+	{
+		SelectionRight = right;
+	}
+	pDC->MoveTo(left, Y);
+	if (SelectionLeft >= right
+		|| SelectionRight == SelectionLeft)
+	{
+		// no selection visible
+		pDC->SelectObject(NormalPen);
+		pDC->LineTo(right, Y);
+	}
+	else
+	{
+		if (SelectionLeft > left)
+		{
+			pDC->SelectObject(NormalPen);
+			pDC->LineTo(SelectionLeft, Y);
+		}
+		pDC->SelectObject(SelectedPen);
+		pDC->LineTo(SelectionRight, Y);
+
+		if (SelectionRight < right)
+		{
+			pDC->SelectObject(NormalPen);
+			pDC->LineTo(right, Y);
+		}
+	}
+}
+
 void CWaveSoapFrontView::OnDraw(CDC* pDC)
 {
 	CWaveSoapFrontDoc* pDoc = GetDocument();
 	ASSERT_VALID(pDoc);
 	// TODO: add draw code for native data here
+	// pen to draw the waveform
+	CPen WaveformPen;
+	CPen SelectedWaveformPen;
+	// pen to draw zero level
+	CPen ZeroLinePen;
+	CPen SelectedZeroLinePen;
+	// pen do draw 6dB line
+	CPen SixDBLinePen;
+	CPen SelectedSixDBLinePen;
+	// pen to draw left/right channel separator
+	CPen ChannelSeparatorPen;
+	CPen SelectedChannelSeparatorPen;
 
-	// draw bands boundaries with light grey
-	// draw instant frequency trail in each band (unless the level is too low)
-	CPen BlackPen;
-	CPen GrayPen;
-	CPen GrayDottedPen;
-	if (pDC->GetDeviceCaps(TECHNOLOGY) == DT_RASDISPLAY)
-	{
-		COLORREF crText = GetSysColor(COLOR_WINDOWTEXT);
-		COLORREF crBackground = GetSysColor(COLOR_WINDOW);
-		COLORREF crGray = RGB(
-							(GetRValue(crText) + GetRValue(crBackground)) / 2,
-							(GetGValue(crText) + GetGValue(crBackground)) / 2,
-							(GetBValue(crText) + GetBValue(crBackground)) / 2);
-		COLORREF crLtGray = RGB(
-								(GetRValue(crText) + GetRValue(crBackground) * 2) / 3,
-								(GetGValue(crText) + GetGValue(crBackground) * 2) / 3,
-								(GetBValue(crText) + GetBValue(crBackground) * 2) / 3);
-		if (pDC->GetDeviceCaps(BITSPIXEL) < 8)
-		{
-			GrayPen.CreatePen(PS_DASH, 1, crText);
-			BlackPen.CreatePen(PS_SOLID, 1, crText);
-			GrayDottedPen.CreatePen(PS_DOT, 1, crText);
-		}
-		else
-		{
-			GrayPen.CreatePen(PS_SOLID, 1, crLtGray);
-			BlackPen.CreatePen(PS_SOLID, 1, crText);
-			GrayDottedPen.CreatePen(PS_DOT, 1, crGray);
-		}
-	}
-	else
-	{
-		// all pens are black
-		GrayPen.CreatePen(PS_DASH, 1, RGB(0, 0, 0));
-		BlackPen.CreatePen(PS_SOLID, 1, RGB(0, 0, 0));
-		GrayDottedPen.CreatePen(PS_DOT, 1, RGB(0, 0, 0));
-	}
-	CGdiObject * pOldPen = pDC->SelectObject(& GrayPen);
+	CWaveSoapFrontApp * pApp = (CWaveSoapFrontApp *)AfxGetApp();
+	//if (pDC->GetDeviceCaps(TECHNOLOGY) == DT_RASDISPLAY)
+	//{
+	WaveformPen.CreatePen(PS_SOLID, 1, pApp->m_WaveColor);
+	SelectedWaveformPen.CreatePen(PS_SOLID, 1, pApp->m_SelectedWaveColor);
+	ZeroLinePen.CreatePen(PS_SOLID, 1, pApp->m_ZeroLineColor);
+	SelectedZeroLinePen.CreatePen(PS_SOLID, 1, pApp->m_SelectedZeroLineColor);
+	SixDBLinePen.CreatePen(PS_SOLID, 1, pApp->m_6dBLineColor);
+	SelectedSixDBLinePen.CreatePen(PS_SOLID, 1, pApp->m_Selected6dBLineColor);
+	ChannelSeparatorPen.CreatePen(PS_SOLID, 1, pApp->m_ChannelSeparatorColor);
+	SelectedChannelSeparatorPen.CreatePen(PS_SOLID, 1, pApp->m_SelectedChannelSeparatorColor);
+	//}
+	CGdiObject * pOldPen = pDC->SelectObject(& ZeroLinePen);
 	RECT r;
 	double y;
 	double left, right, top, bottom;
@@ -149,12 +189,6 @@ void CWaveSoapFrontView::OnDraw(CDC* pDC)
 	// TODO: add draw code here
 
 	// draw 0 line
-	pDC->SelectObject(& GrayDottedPen);
-	if (top > 0. && bottom < 0.)
-	{
-		pDC->MoveTo(DoubleToPoint(left, 0.));
-		pDC->LineTo(DoubleToPoint(right, 0.));
-	}
 
 	// draw the graph
 	// create an array of points
@@ -166,160 +200,198 @@ void CWaveSoapFrontView::OnDraw(CDC* pDC)
 	// create an array of points
 	// allocate the array for the view bitmap
 
+	int nChannels = pDoc->m_WavFile.m_pWf->nChannels;
 	int nNumberOfPoints = r.right - r.left;
+	int ChannelSeparatorY = fround((0 - dOrgY) * GetYScaleDev());
+	double YScaleDev = GetYScaleDev();
+	if (nChannels > 1)
+	{
+		// draw channel separator line
+		DrawHorizontalWithSelection(pDC, r.left, r.right,
+									ChannelSeparatorY,
+									& ChannelSeparatorPen,
+									& SelectedChannelSeparatorPen);
+	}
 	if (nNumberOfPoints > 0)
 	{
 		POINT (* ppArray)[2] = new POINT[nNumberOfPoints][2];
-
-		int i;
-		if (SamplesPerPoint >= pDoc->m_PeakDataGranularity)
-		{
-			// use peak data for drawing
-			DWORD PeakSamplesPerPoint =
-				SamplesPerPoint / pDoc->m_PeakDataGranularity;
-			int nChannels = pDoc->m_WavFile.m_pWf->nChannels;
-
-			int nIndexOfPeak =
-				(NumOfFirstSample / pDoc->m_PeakDataGranularity) * nChannels;
-			WavePeak * pPeaks = & pDoc->m_pPeaks[nIndexOfPeak];
-			double YScaleDev = GetYScaleDev();
-			for (i = 0; i < nNumberOfPoints; i++)
+		if (ppArray)
+			for (int ch = 0; ch < nChannels; ch++)
 			{
-				int low = 0x7FFF;
-				int high = -0x8000;
-				if (NULL != pDoc->m_pPeaks
-					&& pPeaks < pDoc->m_pPeaks + pDoc->m_WavePeakSize)
+				double WaveOffset = m_WaveOffsetY - dOrgY;
+				int ClipHigh = r.bottom;
+				int ClipLow = r.top;
+				if (nChannels > 1)
 				{
-					if (pPeaks >= pDoc->m_pPeaks)
+					if (0 == ch)
 					{
-						for (int j = 0; j < PeakSamplesPerPoint; j++, pPeaks+= nChannels)
-						{
-							if (pPeaks >= pDoc->m_pPeaks + pDoc->m_WavePeakSize)
-							{
-								break;
-							}
-							if (high < pPeaks->high)
-							{
-								high = pPeaks->high;
-							}
-							if (low > pPeaks->low)
-							{
-								low = pPeaks->low;
-							}
-						}
+						WaveOffset = m_WaveOffsetY + 32768. - dOrgY;
+						ClipHigh = ChannelSeparatorY;
 					}
 					else
 					{
-						pPeaks += PeakSamplesPerPoint * nChannels;
+						WaveOffset = m_WaveOffsetY -32768. - dOrgY;
+						ClipLow = ChannelSeparatorY + 1;
 					}
 				}
 
-				ppArray[i][0] = CPoint(i + r.left, fround((low - dOrgY) * YScaleDev));
-				ppArray[i][1] = CPoint(i + r.left, fround((high - dOrgY) * YScaleDev));
-			}
-		}
-		else
-		{
-			// use wave data for drawing
-			int nChannels = pDoc->m_WavFile.m_pWf->nChannels;
+				DrawHorizontalWithSelection(pDC, r.left, r.right,
+											fround(WaveOffset * GetYScaleDev()),
+											& ZeroLinePen,
+											& SelectedZeroLinePen);
 
-			GetWaveSamples(NumOfFirstSample * nChannels, nNumberOfPoints * SamplesPerPoint * nChannels);
-
-			int nIndexOfSample =
-				NumOfFirstSample * nChannels - m_FirstSampleInBuffer;
-			double YScaleDev = GetYScaleDev();
-			__int16 * pWaveSamples = & m_pWaveBuffer[nIndexOfSample];
-			for (i = 0; i < nNumberOfPoints; i++)
-			{
-				int low = 0x7FFF;
-				int high = -0x8000;
-				if (NULL != m_pWaveBuffer
-					&& pWaveSamples < m_pWaveBuffer + m_WaveBufferSize)
+				int i;
+				if (SamplesPerPoint >= pDoc->m_PeakDataGranularity)
 				{
-					if (pWaveSamples >= m_pWaveBuffer)
+					// use peak data for drawing
+					DWORD PeakSamplesPerPoint =
+						SamplesPerPoint / pDoc->m_PeakDataGranularity;
+
+					int nIndexOfPeak =
+						ch + (NumOfFirstSample / pDoc->m_PeakDataGranularity) * nChannels;
+					WavePeak * pPeaks = & pDoc->m_pPeaks[nIndexOfPeak];
+					for (i = 0; i < nNumberOfPoints; i++)
 					{
-						for (int j = 0; j < SamplesPerPoint; j++, pWaveSamples+= nChannels)
+						int low = 0x7FFF;
+						int high = -0x8000;
+						if (NULL != pDoc->m_pPeaks
+							&& pPeaks < pDoc->m_pPeaks + pDoc->m_WavePeakSize)
 						{
-							if (pWaveSamples >= m_pWaveBuffer + m_WaveBufferSize)
+							if (pPeaks >= pDoc->m_pPeaks)
 							{
-								break;
+								for (int j = 0; j < PeakSamplesPerPoint; j++, pPeaks+= nChannels)
+								{
+									if (pPeaks >= pDoc->m_pPeaks + pDoc->m_WavePeakSize)
+									{
+										break;
+									}
+									if (high < pPeaks->high)
+									{
+										high = pPeaks->high;
+									}
+									if (low > pPeaks->low)
+									{
+										low = pPeaks->low;
+									}
+								}
 							}
-							if (high < pWaveSamples[0])
+							else
 							{
-								high = pWaveSamples[0];
-							}
-							if (low > pWaveSamples[0])
-							{
-								low = pWaveSamples[0];
+								pPeaks += PeakSamplesPerPoint * nChannels;
 							}
 						}
+
+						ppArray[i][0] = CPoint(i + r.left,
+												fround((low * m_VerticalScale + WaveOffset) * YScaleDev));
+						ppArray[i][1] = CPoint(i + r.left,
+												fround((high * m_VerticalScale + WaveOffset) * YScaleDev));
 					}
-					else
+				}
+				else
+				{
+					// use wave data for drawing
+
+					GetWaveSamples(NumOfFirstSample * nChannels, nNumberOfPoints * SamplesPerPoint * nChannels);
+
+					int nIndexOfSample =
+						ch + NumOfFirstSample * nChannels - m_FirstSampleInBuffer;
+					__int16 * pWaveSamples = & m_pWaveBuffer[nIndexOfSample];
+					for (i = 0; i < nNumberOfPoints; i++)
 					{
-						pWaveSamples += SamplesPerPoint * nChannels;
+						int low = 0x7FFF;
+						int high = -0x8000;
+						if (NULL != m_pWaveBuffer
+							&& pWaveSamples < m_pWaveBuffer + m_WaveBufferSize)
+						{
+							if (pWaveSamples >= m_pWaveBuffer)
+							{
+								for (int j = 0; j < SamplesPerPoint; j++, pWaveSamples+= nChannels)
+								{
+									if (pWaveSamples >= m_pWaveBuffer + m_WaveBufferSize)
+									{
+										break;
+									}
+									if (high < pWaveSamples[0])
+									{
+										high = pWaveSamples[0];
+									}
+									if (low > pWaveSamples[0])
+									{
+										low = pWaveSamples[0];
+									}
+								}
+							}
+							else
+							{
+								pWaveSamples += SamplesPerPoint * nChannels;
+							}
+						}
+
+						ppArray[i][0] = CPoint(i + r.left,
+												fround((low * m_VerticalScale + WaveOffset) * YScaleDev));
+						ppArray[i][1] = CPoint(i + r.left,
+												fround((high * m_VerticalScale + WaveOffset) * YScaleDev));
 					}
 				}
 
-				ppArray[i][0] = CPoint(i + r.left, fround((low - dOrgY) * YScaleDev));
-				ppArray[i][1] = CPoint(i + r.left, fround((high - dOrgY) * YScaleDev));
+				pDC->SelectObject(& WaveformPen);
+				// draw by 256 points
+				// make sure the graph is continuous
+				int LastY0 = ppArray[0][0].y;
+				int LastY1 = ppArray[0][1].y;
+				for (i = 0; i < nNumberOfPoints; i ++)
+				{
+					if (ppArray[i][0].y >= ppArray[i][1].y)
+					{
+						ppArray[i][0].y++;
+						if (i < nNumberOfPoints - 1)
+						{
+							if (ppArray[i][0].y < ppArray[i + 1][1].y)
+							{
+								ppArray[i][0].y = (ppArray[i + 1][1].y + ppArray[i][0].y) >> 1;
+							}
+							else if (ppArray[i + 1][0].y < ppArray[i][1].y)
+							{
+								ppArray[i][1].y = (ppArray[i][1].y + ppArray[i + 1][0].y) >> 1;
+							}
+						}
+						if (LastY0 >= LastY1)
+						{
+							if (ppArray[i][0].y < LastY1)
+							{
+								ppArray[i][0].y = LastY1;
+							}
+							else if (ppArray[i][1].y > LastY0)
+							{
+								ppArray[i][1].y = LastY0;
+							}
+						}
+
+						LastY0 = ppArray[i][0].y;
+						LastY1 = ppArray[i][1].y;
+
+						if (ppArray[i][0].y < ClipLow)
+						{
+							ppArray[i][0].y = ClipLow;
+						}
+						else if (ppArray[i][0].y > ClipHigh)
+						{
+							ppArray[i][0].y = ClipHigh;
+						}
+
+						if (ppArray[i][1].y < ClipLow)
+						{
+							ppArray[i][1].y = ClipLow;
+						}
+						else if (ppArray[i][1].y > ClipHigh)
+						{
+							ppArray[i][1].y = ClipHigh;
+						}
+						pDC->MoveTo(ppArray[i][0]);
+						pDC->LineTo(ppArray[i][1]);
+					}
+				}
 			}
-		}
-
-		pDC->SelectObject(& BlackPen);
-		// draw by 256 points
-		// make sure the graph is continuous
-		int LastY0 = ppArray[0][0].y;
-		int LastY1 = ppArray[0][1].y;
-		for (i = 0; i < nNumberOfPoints; i ++)
-		{
-			if (ppArray[i][0].y >= ppArray[i][1].y)
-			{
-				ppArray[i][0].y++;
-				if (i < nNumberOfPoints - 1)
-				{
-					if (ppArray[i][0].y < ppArray[i + 1][1].y)
-					{
-						ppArray[i][0].y = (ppArray[i + 1][1].y + ppArray[i][0].y) / 2;
-					}
-					else if (ppArray[i + 1][0].y < ppArray[i][1].y)
-					{
-						ppArray[i][1].y = (ppArray[i][1].y + ppArray[i + 1][0].y) / 2;
-					}
-				}
-
-				if (ppArray[i][0].y < LastY1)
-				{
-					ppArray[i][0].y = LastY1;
-				}
-				else if (ppArray[i][1].y > LastY0)
-				{
-					ppArray[i][1].y = LastY0;
-				}
-
-				LastY0 = ppArray[i][0].y;
-				LastY1 = ppArray[i][1].y;
-
-				if (ppArray[i][0].y < r.top)
-				{
-					ppArray[i][0].y = r.top;
-				}
-				else if (ppArray[i][0].y > r.bottom)
-				{
-					ppArray[i][0].y = r.bottom;
-				}
-
-				if (ppArray[i][1].y < r.top)
-				{
-					ppArray[i][1].y = r.top;
-				}
-				else if (ppArray[i][1].y > r.bottom)
-				{
-					ppArray[i][1].y = r.bottom;
-				}
-				pDC->MoveTo(ppArray[i][0]);
-				pDC->LineTo(ppArray[i][1]);
-			}
-		}
 		delete[] ppArray;
 	}
 	pDC->SelectObject(pOldPen);
@@ -459,12 +531,12 @@ void CWaveSoapFrontView::OnEndPrinting(CDC* /*pDC*/, CPrintInfo* /*pInfo*/)
 #ifdef _DEBUG
 void CWaveSoapFrontView::AssertValid() const
 {
-	CScaledGraphView::AssertValid();
+	CScaledScrollView::AssertValid();
 }
 
 void CWaveSoapFrontView::Dump(CDumpContext& dc) const
 {
-	CScaledGraphView::Dump(dc);
+	CScaledScrollView::Dump(dc);
 }
 
 CWaveSoapFrontDoc* CWaveSoapFrontView::GetDocument() // non-debug version is inline
@@ -479,7 +551,7 @@ CWaveSoapFrontDoc* CWaveSoapFrontView::GetDocument() // non-debug version is inl
 
 void CWaveSoapFrontView::OnInitialUpdate()
 {
-	CScaledGraphView::OnInitialUpdate();
+	CScaledScrollView::OnInitialUpdate();
 
 	KeepAspectRatio(FALSE);
 	KeepScaleOnResizeX(TRUE);
@@ -489,6 +561,61 @@ void CWaveSoapFrontView::OnInitialUpdate()
 	// TODO: Add your specialized code here and/or call the base class
 	CRect r;
 	GetClientRect( r);
-	SetMaxExtents(0., GetDocument()->WaveFileSamples(), -32768., 32768.);
-	SetExtents(0., double(r.Width()) * m_HorizontalScale, -32768., 32768.);
+	int nChannels = GetDocument()->WaveChannels();
+	int nLowExtent = -32768;
+	int nHighExtent = 32767;
+	if (nChannels > 1)
+	{
+		nLowExtent = -0x10000;
+		nHighExtent = 0x10000;
+	}
+
+	SetMaxExtents(0., GetDocument()->WaveFileSamples(), nLowExtent, nHighExtent);
+	SetExtents(0., double(r.Width()) * m_HorizontalScale, nLowExtent, nHighExtent);
+	ShowScrollBar(SB_VERT, FALSE);
+}
+
+void CWaveSoapFrontView::OnUpdateViewZoominhor(CCmdUI* pCmdUI)
+{
+	pCmdUI->Enable(m_HorizontalScale > 1);
+}
+
+void CWaveSoapFrontView::OnUpdateViewZoominhor2(CCmdUI* pCmdUI)
+{
+	pCmdUI->Enable(m_HorizontalScale > 1);
+}
+
+void CWaveSoapFrontView::OnViewZoomInVert()
+{
+	if (m_VerticalScale < 1024.)
+	{
+		m_VerticalScale	*= sqrt(2.);
+		InvalidateRgn(NULL);
+		NotifySlaveViews(CHANGE_HEIGHT);
+	}
+}
+
+void CWaveSoapFrontView::OnViewZoomOutVert()
+{
+	// TODO: Add your command handler code here
+	if (m_VerticalScale > 1.)
+	{
+		m_VerticalScale	*= sqrt(0.5);
+		if (m_VerticalScale < 1.)
+		{
+			m_VerticalScale = 1.;
+		}
+		InvalidateRgn(NULL);
+		NotifySlaveViews(CHANGE_HEIGHT);
+	}
+}
+
+void CWaveSoapFrontView::OnUpdateViewZoomInVert(CCmdUI* pCmdUI)
+{
+	pCmdUI->Enable(m_VerticalScale < 1024.);
+}
+
+void CWaveSoapFrontView::OnUpdateViewZoomOutVert(CCmdUI* pCmdUI)
+{
+	pCmdUI->Enable(m_VerticalScale > 1.);
 }

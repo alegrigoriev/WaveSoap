@@ -11,7 +11,7 @@
 
 #include "ScaledGraphView.h"
 
-class CWaveSoapFrontView : public CScaledGraphView
+class CWaveSoapFrontView : public CScaledScrollView
 {
 protected: // create from serialization only
 	CWaveSoapFrontView();
@@ -45,7 +45,14 @@ public:
 	virtual void Dump(CDumpContext& dc) const;
 #endif
 protected:
+	// how many samples in the display point
 	int m_HorizontalScale;
+	// multiply the wave to get the additional magnification.
+	// m_VerticalScale means all the range is shown, scale 2 means the wave
+	// is magnified 2 times.
+	double m_VerticalScale;
+	// additional vertical offset, to see a region of magnified wave
+	double m_WaveOffsetY;
 	virtual void AdjustNewScale(double OldScaleX, double OldScaleY,
 								double & NewScaleX, double & NewScaleY);
 	DWORD m_FirstSampleInBuffer;    // in 16-bit numbers
@@ -53,12 +60,18 @@ protected:
 	size_t m_WaveBufferSize;    // in 16-bit samples
 	size_t m_WaveDataSizeInBuffer;  // in 16-bit samples
 	void GetWaveSamples(int Position, int NumOfSamples);
+	void DrawHorizontalWithSelection(CDC * pDC,
+									int left, int right, int Y, CPen * NormalPen, CPen * SelectedPen);
 
 // Generated message map functions
 protected:
 	//{{AFX_MSG(CWaveSoapFrontView)
-	// NOTE - the ClassWizard will add and remove member functions here.
-	//    DO NOT EDIT what you see in these blocks of generated code !
+	afx_msg void OnUpdateViewZoominhor(CCmdUI* pCmdUI);
+	afx_msg void OnUpdateViewZoominhor2(CCmdUI* pCmdUI);
+	afx_msg void OnViewZoomInVert();
+	afx_msg void OnViewZoomOutVert();
+	afx_msg void OnUpdateViewZoomInVert(CCmdUI* pCmdUI);
+	afx_msg void OnUpdateViewZoomOutVert(CCmdUI* pCmdUI);
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 };
