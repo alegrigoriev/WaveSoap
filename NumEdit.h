@@ -31,7 +31,7 @@ public:
 	void ExchangeData(CDataExchange* pDX, double & num,
 					UINT uIdDataName, UINT uIdUnits,
 					double dLowLimit = 0., double dHighLimit = 0.);
-	virtual void GetData(CDataExchange * pDX, double & num,
+	virtual BOOL GetData(CDataExchange * pDX, double & num,
 						LPCTSTR szDataName = NULL, LPCTSTR szUnits = NULL,
 						double dLowLimit = 0., double dHighLimit = 0.);
 	virtual void SetData(double num);

@@ -56,7 +56,6 @@ void CEqualizerDialog::DoDataExchange(CDataExchange* pDX)
 	}
 }
 
-
 BEGIN_MESSAGE_MAP(CEqualizerDialog, CDialog)
 	//{{AFX_MSG_MAP(CEqualizerDialog)
 	ON_WM_ERASEBKGND()
@@ -70,6 +69,7 @@ BEGIN_MESSAGE_MAP(CEqualizerDialog, CDialog)
 	ON_BN_CLICKED(IDC_BUTTON_RESET_BANDS, OnButtonResetBands)
 	ON_BN_CLICKED(IDC_BUTTON_SAVE_AS, OnButtonSaveAs)
 	//}}AFX_MSG_MAP
+	ON_NOTIFY(NM_RETURN, AFX_IDW_PANE_FIRST, OnNotifyGraph)
 END_MESSAGE_MAP()
 
 /////////////////////////////////////////////////////////////////////////////
@@ -170,6 +170,7 @@ void CEqualizerDialog::OnMetricsChange()
 BOOL CEqualizerDialog::OnInitDialog()
 {
 	m_wGraph.SetNumberOfBands(m_nBands);
+	m_wGraph.m_SamplingRate = m_pWf->nSamplesPerSec;
 	CRect r;
 	CWnd * pTemplateWnd = GetDlgItem(IDC_STATIC_RESPONSE_TEMPLATE);
 	pTemplateWnd->GetWindowRect( & r);
@@ -183,6 +184,7 @@ BOOL CEqualizerDialog::OnInitDialog()
 
 	CDialog::OnInitDialog();
 
+	m_BandGain.SetData(m_wGraph.GetCurrentBandGainDb());
 	// init MINMAXINFO
 	OnMetricsChange();
 	UpdateSelectionStatic();
@@ -349,7 +351,17 @@ void CEqualizerGraphWnd::OnMouseMove(UINT nFlags, CPoint point)
 		}
 		double gain = pow(10., (cr.Height() - point.y) * 2. / cr.Height() - 1.);
 		SetBandGain(m_BandWithFocus, gain);
+		NotifyParentDlg();
 	}
+}
+
+void CEqualizerGraphWnd::NotifyParentDlg()
+{
+	NMHDR nmhdr;
+	nmhdr.hwndFrom = m_hWnd;
+	nmhdr.code = NM_RETURN;
+	nmhdr.idFrom = GetDlgCtrlID();
+	GetParent()->SendMessage(WM_NOTIFY, nmhdr.idFrom, (LPARAM) & nmhdr);
 }
 
 void CEqualizerGraphWnd::SetFocusBand(int nBand)
@@ -613,7 +625,7 @@ void CEqualizerGraphWnd::SetNumberOfBands(int NumBands)
 	}
 	if (NULL != m_hWnd)
 	{
-		Invalidate();
+		RedrawWindow(NULL, NULL, RDW_FRAME | RDW_INVALIDATE | RDW_ERASENOW);
 	}
 }
 
@@ -653,12 +665,21 @@ BOOL CEqualizerGraphWnd::OnEraseBkgnd(CDC* pDC)
 			int x = cr.Width() * (i * 2 + 1) / (2 * m_NumOfBands);
 			pDC->PatBlt(x, cr.top, 1, cr.bottom - cr.top, PATINVERT);
 		}
-
 	}
 	catch (CResourceException)
 	{
 		TRACE("CResourceException\n");
 	}
+	CPen DotPen(PS_DOT, 0, COLORREF(0));
+	CPen * pOldPen = pDC->SelectObject( & DotPen);
+
+	pDC->MoveTo(cr.left, cr.bottom / 4);
+	pDC->LineTo(cr.right, cr.bottom / 4);
+
+	pDC->MoveTo(cr.left, cr.bottom - cr.bottom / 4);
+	pDC->LineTo(cr.right, cr.bottom - cr.bottom / 4);
+
+	pDC->SelectObject(pOldPen);
 
 	pDC->SelectObject(pOldBrush);
 	return TRUE;
@@ -666,7 +687,7 @@ BOOL CEqualizerGraphWnd::OnEraseBkgnd(CDC* pDC)
 
 void CEqualizerGraphWnd::OnNcCalcSize(BOOL bCalcValidRects, NCCALCSIZE_PARAMS * lpncsp)
 {
-	int ncHeight = GetSystemMetrics(SM_CYMENUSIZE);
+	int ncHeight = 2 + GetSystemMetrics(SM_CYMENUSIZE);
 	int ncWidth;
 	CWnd * pW = GetDesktopWindow();
 	CDC * pDC = pW->GetWindowDC();
@@ -676,22 +697,119 @@ void CEqualizerGraphWnd::OnNcCalcSize(BOOL bCalcValidRects, NCCALCSIZE_PARAMS * 
 	pDC->SelectObject(pOld);
 	pW->ReleaseDC(pDC);
 	lpncsp->rgrc[0].left += ncWidth;
-	lpncsp->rgrc[0].right--;
-	lpncsp->rgrc[0].top++;
-	lpncsp->rgrc[0].bottom -= ncHeight;
+	lpncsp->rgrc[0].right -= GetSystemMetrics(SM_CXSIZEFRAME);
+	lpncsp->rgrc[0].top += GetSystemMetrics(SM_CYSIZEFRAME);
+	lpncsp->rgrc[0].bottom -= ncHeight /* + GetSystemMetrics(SM_CXSIZEFRAME) */;
 
-	//CWnd::OnNcCalcSize(bCalcValidRects, lpncsp);
 }
 
 void CEqualizerGraphWnd::OnNcPaint(UINT wParam)
 {
-
-	CDC * pDC = GetDCEx(CRgn::FromHandle((HRGN)wParam), DCX_WINDOW|DCX_INTERSECTRGN);
-	if (NULL != pDC)
+	CDC * pDC = GetDCEx(CRgn::FromHandle((HRGN)wParam),
+						// DCX_CACHE is necessary!
+						DCX_CACHE | DCX_WINDOW | DCX_INTERSECTRGN);
+	if (NULL == pDC)
 	{
-		// Paint into this DC
-		ReleaseDC(pDC);
+		return;
 	}
+	CRect wr;
+	GetWindowRect( & wr);
+	NCCALCSIZE_PARAMS ncp;
+	wr.right = wr.Width();
+	wr.left = 0;
+	wr.bottom = wr.Height();
+	wr.top = 0;
+	ncp.rgrc[0] = wr;
+	//OnNcCalcSize(FALSE, & ncp);
+	SendMessage(WM_NCCALCSIZE, FALSE, (LPARAM) & ncp);
+
+	// Paint into this DC
+	CBrush BkBrush;
+	CWnd * pParentDlg = GetParent();
+	BkBrush.Attach((HBRUSH) pParentDlg->SendMessage(WM_CTLCOLORDLG, (WPARAM)(pParentDlg->m_hWnd), LPARAM(pDC->m_hDC)));
+	CGdiObject * pOldPen = pDC->SelectStockObject(BLACK_PEN);
+	CGdiObject * pOldBrush = pDC->SelectObject( & BkBrush);
+	// fill the NC area
+	pDC->Rectangle( & wr);
+	// Draw rectangle
+	pDC->SelectStockObject(NULL_BRUSH);
+	pDC->Rectangle(ncp.rgrc[0].left - 1, ncp.rgrc[0].top - 1,
+					ncp.rgrc[0].right + 1, ncp.rgrc[0].bottom + 1);
+	CGdiObject * pOldFont = pDC->SelectStockObject(ANSI_VAR_FONT);
+	// draw frequencies
+	pDC->SetTextAlign(TA_TOP | TA_CENTER);
+	pDC->SetTextColor(0x000000);   // black
+	pDC->SetBkMode(TRANSPARENT);
+
+	int PrevX = ncp.rgrc[0].left;
+
+	for (int i = 0; i < m_NumOfBands; i ++)
+	{
+		int x = ncp.rgrc[0].left +
+				(ncp.rgrc[0].right - ncp.rgrc[0].left) * (i * 2 + 1) / (2 * m_NumOfBands);
+		CString s;
+		double f = m_BandFrequencies[i] / M_PI * 0.5 * m_SamplingRate;
+		int TextWidth;
+		if (f >= 1000.)
+		{
+			// 12.1k
+			// 8.9k
+			s.Format("%.1fk", f / 1000.);
+			if (f >= 10000.)
+			{
+				TextWidth = pDC->GetTextExtent("20.0k ", 7).cx;
+			}
+			else
+			{
+				TextWidth = pDC->GetTextExtent("0.0k ", 7).cx;
+			}
+		}
+		else if (f >= 100.)
+		{
+			// 550 (round to 10)
+			s.Format("%d", 10 * ((int(f) + 5) / 10));
+			TextWidth = pDC->GetTextExtent("999 ", 7).cx;
+		}
+		else
+		{
+			// 55
+			s.Format("%d", int(f));
+			TextWidth = pDC->GetTextExtent("99 ", 7).cx;
+		}
+		if (x - TextWidth / 2 >= PrevX)
+		{
+			pDC->TextOut(x, ncp.rgrc[0].bottom - 1, s);
+			PrevX = x + TextWidth / 2;
+		}
+	}
+
+	pDC->SetTextAlign(TA_BOTTOM | TA_RIGHT);
+	int TextHeight = pDC->GetTextExtent("9", 1).cy;
+
+	pDC->TextOut(ncp.rgrc[0].left - 1,
+				ncp.rgrc[0].top + TextHeight,
+				"20 dB", 5);
+
+	pDC->TextOut(ncp.rgrc[0].left - 1,
+				ncp.rgrc[0].top + (ncp.rgrc[0].bottom - ncp.rgrc[0].top) / 4 + TextHeight / 2,
+				"10 dB", 5);
+
+	pDC->TextOut(ncp.rgrc[0].left - 1,
+				ncp.rgrc[0].top + (ncp.rgrc[0].bottom - ncp.rgrc[0].top) / 2 + TextHeight / 2,
+				"0 dB", 4);
+
+	pDC->TextOut(ncp.rgrc[0].left - 1,
+				ncp.rgrc[0].bottom - (ncp.rgrc[0].bottom - ncp.rgrc[0].top) / 4 + TextHeight / 2,
+				"-10 dB", 6);
+
+	pDC->TextOut(ncp.rgrc[0].left - 1,
+				ncp.rgrc[0].bottom + TextHeight / 2,
+				"-20 dB", 6);
+
+	pDC->SelectObject(pOldFont);
+	pDC->SelectObject(pOldBrush);
+	pDC->SelectObject(pOldPen);
+	ReleaseDC(pDC);
 }
 
 void CEqualizerGraphWnd::OnCaptureChanged(CWnd *pWnd)
@@ -718,7 +836,7 @@ void CEqualizerGraphWnd::OnKillFocus(CWnd* pNewWnd)
 	if (m_bGotFocus)
 	{
 		m_bGotFocus = false;
-		DrawDotCaret(false);
+		DrawDotCaret(true);
 	}
 }
 
@@ -786,20 +904,26 @@ void CEqualizerGraphWnd::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 	{
 	case VK_UP:
 		// 1 dB up
-		if (GainDb < 19.)
+		GainDb += 1;
+		if (GainDb > 20.)
 		{
-			SetBandGain(m_BandWithFocus, pow(10., (GainDb + 1.) / 20.));
-			DrawDotCaret(true);
+			GainDb = 20.;
 		}
+		SetBandGain(m_BandWithFocus, pow(10., GainDb / 20.));
+		DrawDotCaret(true);
+		NotifyParentDlg();
 		return;
 		break;
 	case VK_DOWN:
 		// 1 dB down
-		if (GainDb > -19.)
+		GainDb -= 1;
+		if (GainDb < -20.)
 		{
-			SetBandGain(m_BandWithFocus, pow(10., (GainDb - 1.) / 20.));
-			DrawDotCaret(true);
+			GainDb = -20.;
 		}
+		SetBandGain(m_BandWithFocus, pow(10., GainDb / 20.));
+		DrawDotCaret(true);
+		NotifyParentDlg();
 		return;
 		break;
 	case VK_LEFT:
@@ -808,6 +932,7 @@ void CEqualizerGraphWnd::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 		{
 			SetFocusBand(m_BandWithFocus - 1);
 		}
+		NotifyParentDlg();
 		break;
 	case VK_RIGHT:
 		// focus to the next band
@@ -815,6 +940,7 @@ void CEqualizerGraphWnd::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 		{
 			SetFocusBand(m_BandWithFocus + 1);
 		}
+		NotifyParentDlg();
 		break;
 	}
 }
@@ -876,4 +1002,27 @@ void CEqualizerGraphWnd::DrawDotCaret(bool state)
 	{
 		SetTimer(1, GetCaretBlinkTime(), NULL);
 	}
+}
+
+void CEqualizerDialog::OnOK()
+{
+	int FocusId = GetFocus()->GetDlgCtrlID();
+	if (IDC_EDIT_BAND_GAIN == FocusId)
+	{
+		// read the gain
+		double GainDb;
+		if (m_BandGain.GetData(NULL, GainDb, NULL, NULL, -20., 20.))
+		{
+			m_wGraph.SetCurrentBandGainDb(GainDb);
+			// set focus to the graph
+			m_wGraph.SetFocus();
+		}
+		return;
+	}
+	CDialog::OnOK();
+}
+
+void CEqualizerDialog::OnNotifyGraph( NMHDR * pNotifyStruct, LRESULT * result )
+{
+	m_BandGain.SetData(m_wGraph.GetCurrentBandGainDb());
 }

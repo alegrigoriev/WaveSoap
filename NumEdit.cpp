@@ -182,7 +182,7 @@ void CNumEdit::ExchangeData(CDataExchange* pDX, double & num,
 	}
 }
 
-void CNumEdit::GetData(CDataExchange * pDX, double & num,
+BOOL CNumEdit::GetData(CDataExchange * pDX, double & num,
 						LPCTSTR szDataName, LPCTSTR szUnits,
 						double dLowLimit, double dHighLimit)
 {
@@ -214,8 +214,11 @@ void CNumEdit::GetData(CDataExchange * pDX, double & num,
 	{
 		AfxFormatString1(ErrStr, IDS_BAD_FLOAT_VALUE, WndText);
 		AfxMessageBox(ErrStr, MB_OK | MB_ICONEXCLAMATION);
-		pDX->Fail();
-		return;
+		if (NULL != pDX)
+		{
+			pDX->Fail();
+		}
+		return FALSE;
 	}
 	if (dHighLimit > dLowLimit
 		&& (num < dLowLimit
@@ -250,10 +253,13 @@ void CNumEdit::GetData(CDataExchange * pDX, double & num,
 			}
 		}
 		AfxMessageBox(ErrStr, MB_OK | MB_ICONEXCLAMATION);
-		pDX->Fail();
-		return;
+		if (NULL != pDX)
+		{
+			pDX->Fail();
+		}
+		return FALSE;
 	}
-	return;
+	return TRUE;
 }
 
 void CNumEdit::SetData(double num)

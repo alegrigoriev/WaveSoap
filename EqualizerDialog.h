@@ -23,6 +23,22 @@ public:
 	void SetNumberOfBands(int NumBands);
 	complex<float> CalculateResponse(double Frequency);
 	void SetBandGain(int nBand, double Gain);
+	void SetCurrentBandGain(double Gain)
+	{
+		SetBandGain(m_BandWithFocus, Gain);
+	}
+	double GetCurrentBandGain()
+	{
+		return m_BandGain[m_BandWithFocus];
+	}
+	void SetCurrentBandGainDb(double GainDb)
+	{
+		SetBandGain(m_BandWithFocus, pow(10., GainDb / 20.));
+	}
+	double GetCurrentBandGainDb()
+	{
+		return 20. * log10(m_BandGain[m_BandWithFocus]);
+	}
 	void RebuildBandFilters();
 	void ResetBands();
 	void SetFocusBand(int nBand);
@@ -40,7 +56,7 @@ protected:
 
 // Implementation
 	void DrawDotCaret(bool state = true);
-	void ShowDotCaret(bool state = true);
+//    void ShowDotCaret(bool state = true);
 public:
 	virtual ~CEqualizerGraphWnd();
 	bool m_bMouseCaptured;
@@ -50,6 +66,7 @@ public:
 
 	int m_NumOfBands;    // 2-MaxNumberOfBands
 	int m_BandWithFocus;
+	double m_SamplingRate;
 	double m_BandGain[MaxNumberOfBands];   // target gain in the band
 	double m_UsedBandGain[MaxNumberOfBands];   // gain in the band used to calculate coefficients
 	double m_BandWidth;
@@ -58,6 +75,7 @@ public:
 	double m_BandCoefficients[MaxNumberOfBands][6];
 	// Generated message map functions
 protected:
+	void NotifyParentDlg();
 	//{{AFX_MSG(CEqualizerGraphWnd)
 	afx_msg void OnPaint();
 	afx_msg void OnMouseMove(UINT nFlags, CPoint point);
@@ -122,6 +140,8 @@ protected:
 
 	void UpdateSelectionStatic();
 	void OnMetricsChange();
+	afx_msg void OnNotifyGraph( NMHDR * pNotifyStruct, LRESULT * result );
+
 	// Generated message map functions
 	//{{AFX_MSG(CEqualizerDialog)
 	afx_msg BOOL OnEraseBkgnd(CDC* pDC);
@@ -135,6 +155,7 @@ protected:
 	afx_msg void OnButtonLoad();
 	afx_msg void OnButtonResetBands();
 	afx_msg void OnButtonSaveAs();
+	virtual void OnOK();
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 };
