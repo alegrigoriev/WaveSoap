@@ -196,7 +196,7 @@ public:
 	TCHAR m_DriveLetterSelected;
 	int m_NumberOfDrives;
 	int m_CDDriveSelected;
-	TCHAR m_PreviousDriveLetter;
+	USHORT m_PreviousDriveLetter;
 
 	CDROM_TOC m_toc;
 	std::vector<CdTrackInfo> m_Tracks;
