@@ -475,7 +475,7 @@ BOOL CWaveSoapFrontApp::InitInstance()
 												RUNTIME_CLASS(CWaveSoapFrontDoc),
 												RUNTIME_CLASS(CChildFrame), // custom MDI child frame
 												RUNTIME_CLASS(CWaveSoapFrontView),
-												OpenDocumentAviFile);
+												OpenDocumentAviFile | DocumentFlagOpenOnly);
 
 	AddDocTemplate(m_pAviTypeTemplate);
 
@@ -485,7 +485,7 @@ BOOL CWaveSoapFrontApp::InitInstance()
 													RUNTIME_CLASS(CWaveSoapFrontDoc),
 													RUNTIME_CLASS(CChildFrame), // custom MDI child frame
 													RUNTIME_CLASS(CWaveSoapFrontView),
-													OpenDocumentWmaFile);
+													OpenDocumentWmaFile | DocumentFlagOpenOnly);
 
 	AddDocTemplate(m_pAllWmTypeTemplate);
 
@@ -505,7 +505,7 @@ BOOL CWaveSoapFrontApp::InitInstance()
 													RUNTIME_CLASS(CWaveSoapFrontDoc),
 													RUNTIME_CLASS(CChildFrame), // custom MDI child frame
 													RUNTIME_CLASS(CWaveSoapFrontView),
-													OpenDocumentRawFile);
+													OpenDocumentRawFile | DocumentFlagOpenOnly);
 
 	// create main MDI Frame window
 	CMainFrame* pMainFrame = new CMainFrame;
