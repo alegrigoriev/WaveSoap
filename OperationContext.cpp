@@ -3659,6 +3659,7 @@ BOOL CDecompressContext::OperationProc()
 	return TRUE;
 }
 
+//////////////// CWmaDecodeContext
 BOOL CWmaDecodeContext::OperationProc()
 {
 	if (m_Flags & OperationContextStopRequested)
@@ -3778,15 +3779,13 @@ void CWmaDecodeContext::SetDstFile(CWaveFile & file)
 
 void CWmaDecodeContext::PostRetire()
 {
-	if (0
-		//&& m_MmResult != MMSYSERR_NOERROR  // TODO
-		)
+	if (0 == (m_Flags & OperationContextFinished))
 	{
 		CString s;
 		if (m_Flags & OperationContextInitFailed)
 		{
-			s.Format(IDS_CANT_DECOMPRESS_FILE, LPCTSTR(m_pDocument->m_OriginalWavFile.GetName()),
-					-1, 0);
+			//s.Format(IDS_CANT_DECOMPRESS_FILE, LPCTSTR(m_pDocument->m_OriginalWavFile.GetName()), -1, 0);
+			//AfxMessageBox(s, MB_ICONSTOP);
 			m_pDocument->m_bCloseThisDocumentNow = true;
 		}
 		else
