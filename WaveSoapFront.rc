@@ -1070,54 +1070,54 @@ BEGIN
     PUSHBUTTON      "Cancel",IDCANCEL,97,98,50,14
 END
 
-IDD_DIALOG_VOLUME_CHANGE DIALOGEX 0, 0, 193, 144
+IDD_DIALOG_VOLUME_CHANGE DIALOGEX 0, 0, 233, 157
 STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | 
     WS_SYSMENU
 CAPTION "Volume"
 FONT 8, "MS Shell Dlg", 0, 0, 0x0
 BEGIN
-    LTEXT           "&Left channel:",IDC_STATIC_LEFT_CHANNEL,7,8,44,8
+    LTEXT           "&Left channel:",IDC_STATIC_LEFT_CHANNEL,7,8,63,8
     CONTROL         "Slider1",IDC_SLIDER_VOLUME_LEFT,"msctls_trackbar32",
-                    TBS_AUTOTICKS | WS_TABSTOP,54,6,86,19
-    EDITTEXT        IDC_EDIT_VOLUME_LEFT,143,6,35,14,ES_AUTOHSCROLL
+                    TBS_AUTOTICKS | WS_TABSTOP,79,6,100,19
+    EDITTEXT        IDC_EDIT_VOLUME_LEFT,184,6,35,14,ES_AUTOHSCROLL
     CONTROL         "Loc&k",IDC_CHECKLOCK_CHANNELS,"Button",BS_AUTOCHECKBOX | 
-                    WS_TABSTOP,7,26,31,10
-    LTEXT           "-40 dB",IDC_STATIC,57,26,24,8
-    RTEXT           "40 dB",IDC_STATIC,110,26,24,8
-    COMBOBOX        IDC_COMBODB_PERCENT,143,25,34,59,CBS_DROPDOWNLIST | 
+                    WS_TABSTOP,7,26,65,10
+    LTEXT           "-40 dB",IDC_STATIC,82,26,24,8
+    RTEXT           "40 dB",IDC_STATIC,155,26,24,8
+    COMBOBOX        IDC_COMBODB_PERCENT,184,25,34,59,CBS_DROPDOWNLIST | 
                     WS_TABSTOP
-    LTEXT           "&Right channel:",IDC_STATIC_RIGHT_CHANNEL,7,45,46,8
+    LTEXT           "&Right channel:",IDC_STATIC_RIGHT_CHANNEL,7,45,63,8
     CONTROL         "Slider1",IDC_SLIDER_VOLUME_RIGHT,"msctls_trackbar32",
-                    TBS_AUTOTICKS | TBS_TOP | WS_TABSTOP,54,38,86,21
-    EDITTEXT        IDC_EDIT_VOLUME_RIGHT,143,42,35,14,ES_AUTOHSCROLL
-    LTEXT           "Selection:\nChannels:",IDC_STATIC_SELECTION,7,66,179,25
+                    TBS_AUTOTICKS | TBS_TOP | WS_TABSTOP,79,38,100,21
+    EDITTEXT        IDC_EDIT_VOLUME_RIGHT,184,42,35,14,ES_AUTOHSCROLL
+    LTEXT           "Selection:\nChannels:",IDC_STATIC_SELECTION,7,69,219,33
     CONTROL         "Save &Undo",IDC_CHECK_UNDO,"Button",BS_AUTOCHECKBOX | 
-                    WS_TABSTOP,7,99,50,10
-    PUSHBUTTON      "&Selection...",IDC_BUTTON_SELECTION,132,98,50,14
-    DEFPUSHBUTTON   "OK",IDOK,12,123,50,14
-    PUSHBUTTON      "Cancel",IDCANCEL,73,123,50,14
-    PUSHBUTTON      "&Help",IDHELP,132,123,50,14
+                    WS_TABSTOP,7,114,71,10
+    PUSHBUTTON      "&Selection...",IDC_BUTTON_SELECTION,168,113,50,14
+    DEFPUSHBUTTON   "OK",IDOK,14,136,50,14
+    PUSHBUTTON      "Cancel",IDCANCEL,91,136,50,14
+    PUSHBUTTON      "&Help",IDHELP,168,136,50,14
 END
 
-IDD_DIALOG_VOLUME_CHANGE_MONO DIALOGEX 0, 0, 193, 110
+IDD_DIALOG_VOLUME_CHANGE_MONO DIALOGEX 0, 0, 215, 111
 STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | 
     WS_SYSMENU
 CAPTION "Volume"
 FONT 8, "MS Shell Dlg", 0, 0, 0x0
 BEGIN
-    LTEXT           "&Volume:",IDC_STATIC,7,8,44,8
+    LTEXT           "&Volume:",IDC_STATIC,7,11,44,8
     CONTROL         "Slider1",IDC_SLIDER_VOLUME_LEFT,"msctls_trackbar32",
-                    TBS_AUTOTICKS | TBS_BOTH | WS_TABSTOP,54,1,86,21
-    EDITTEXT        IDC_EDIT_VOLUME_LEFT,143,6,35,14,ES_AUTOHSCROLL
-    COMBOBOX        IDC_COMBODB_PERCENT,143,25,34,59,CBS_DROPDOWNLIST | 
+                    TBS_AUTOTICKS | TBS_BOTH | WS_TABSTOP,54,4,104,21
+    EDITTEXT        IDC_EDIT_VOLUME_LEFT,165,6,35,14,ES_AUTOHSCROLL
+    COMBOBOX        IDC_COMBODB_PERCENT,165,25,34,59,CBS_DROPDOWNLIST | 
                     WS_TABSTOP
-    LTEXT           "Selection:\nChannels:",IDC_STATIC_SELECTION,7,45,179,17
+    LTEXT           "Selection:\nChannels:",IDC_STATIC_SELECTION,7,43,200,20
     CONTROL         "Save &Undo",IDC_CHECK_UNDO,"Button",BS_AUTOCHECKBOX | 
-                    WS_TABSTOP,7,66,50,10
-    PUSHBUTTON      "&Selection...",IDC_BUTTON_SELECTION,132,64,50,14
-    DEFPUSHBUTTON   "OK",IDOK,12,89,50,14
-    PUSHBUTTON      "Cancel",IDCANCEL,73,89,50,14
-    PUSHBUTTON      "&Help",IDHELP,132,89,50,14
+                    WS_TABSTOP,7,71,50,10
+    PUSHBUTTON      "&Selection...",IDC_BUTTON_SELECTION,151,69,50,14
+    DEFPUSHBUTTON   "OK",IDOK,12,90,50,14
+    PUSHBUTTON      "Cancel",IDCANCEL,82,90,50,14
+    PUSHBUTTON      "&Help",IDHELP,151,90,50,14
 END
 
 IDD_DIALOG_GOTO DIALOGEX 0, 0, 239, 78
@@ -1138,30 +1138,30 @@ BEGIN
     PUSHBUTTON      "Cancel",IDCANCEL,129,57,50,14
 END
 
-IDD_DIALOG_DC_OFFSET DIALOGEX 0, 0, 193, 126
+IDD_DIALOG_DC_OFFSET DIALOGEX 0, 0, 222, 145
 STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | 
     WS_SYSMENU
 CAPTION "Adjust DC offset"
 FONT 8, "MS Shell Dlg", 0, 0, 0x0
 BEGIN
     CONTROL         "Automatically detect and remove",IDC_RADIO_DC_SELECT,
-                    "Button",BS_AUTORADIOBUTTON | WS_GROUP,7,16,133,10
+                    "Button",BS_AUTORADIOBUTTON | WS_GROUP,7,16,181,10
     CONTROL         "Adjust DC offset by:",IDC_RADIO2,"Button",
-                    BS_AUTORADIOBUTTON,7,32,74,10
-    EDITTEXT        IDC_EDIT_DC_OFFSET,131,30,35,14,ES_AUTOHSCROLL | 
+                    BS_AUTORADIOBUTTON,7,32,126,10
+    EDITTEXT        IDC_EDIT_DC_OFFSET,157,30,35,14,ES_AUTOHSCROLL | 
                     WS_GROUP
     CONTROL         "Spin1",IDC_SPIN1,"msctls_updown32",UDS_AUTOBUDDY | 
-                    UDS_ARROWKEYS,166,30,10,14
+                    UDS_ARROWKEYS,192,30,10,14
     CONTROL         "Compute DC offset from 5 seconds only",
                     IDC_CHECK_5SECONDS,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,
-                    7,52,150,10
-    LTEXT           "Selection:\nChannels:",IDC_STATIC_SELECTION,7,68,179,17
+                    7,52,187,10
+    LTEXT           "Selection:\nChannels:",IDC_STATIC_SELECTION,7,68,208,22
     CONTROL         "Save &Undo",IDC_CHECK_UNDO,"Button",BS_AUTOCHECKBOX | 
-                    WS_TABSTOP,7,89,50,10
-    PUSHBUTTON      "&Selection...",IDC_BUTTON_SELECTION,132,87,50,14
-    DEFPUSHBUTTON   "OK",IDOK,12,105,50,14
-    PUSHBUTTON      "Cancel",IDCANCEL,73,105,50,14
-    PUSHBUTTON      "&Help",IDHELP,132,105,50,14
+                    WS_TABSTOP,7,103,74,10
+    PUSHBUTTON      "&Selection...",IDC_BUTTON_SELECTION,158,101,50,14
+    DEFPUSHBUTTON   "OK",IDOK,15,124,50,14
+    PUSHBUTTON      "Cancel",IDCANCEL,86,124,50,14
+    PUSHBUTTON      "&Help",IDHELP,158,124,50,14
 END
 
 IDD_DIALOG_STATISTICS DIALOGEX 0, 0, 330, 188
@@ -1185,56 +1185,56 @@ BEGIN
     PUSHBUTTON      "&Go to max sample",IDC_BUTTON_GOTO_MAX,72,167,77,14
 END
 
-IDD_DIALOG_NORMALIZE DIALOGEX 0, 0, 193, 110
+IDD_DIALOG_NORMALIZE DIALOGEX 0, 0, 214, 122
 STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | 
     WS_SYSMENU
 CAPTION "Normalize sound"
 FONT 8, "MS Shell Dlg", 0, 0, 0x0
 BEGIN
-    LTEXT           "&Normalize to:",IDC_STATIC,7,7,47,8
+    LTEXT           "&Normalize to:",IDC_STATIC,7,10,53,8
     CONTROL         "Slider1",IDC_SLIDER_LEVEL,"msctls_trackbar32",
-                    TBS_AUTOTICKS | WS_TABSTOP,54,4,86,21
-    EDITTEXT        IDC_EDIT_LEVEL,143,4,35,14,ES_AUTOHSCROLL
-    COMBOBOX        IDC_COMBODB_PERCENT,143,25,34,59,CBS_DROPDOWNLIST | 
+                    TBS_AUTOTICKS | WS_TABSTOP,63,7,96,21
+    EDITTEXT        IDC_EDIT_LEVEL,162,7,35,14,ES_AUTOHSCROLL
+    COMBOBOX        IDC_COMBODB_PERCENT,162,28,34,59,CBS_DROPDOWNLIST | 
                     WS_TABSTOP
     CONTROL         "&Equally adjust both channels",IDC_CHECK_LOCK_CHANNELS,
-                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,7,31,129,10
-    LTEXT           "Selection:\nChannels:",IDC_STATIC_SELECTION,7,45,179,17
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,7,34,132,10
+    LTEXT           "Selection:\nChannels:",IDC_STATIC_SELECTION,7,48,200,25
     CONTROL         "Save &Undo",IDC_CHECK_UNDO,"Button",BS_AUTOCHECKBOX | 
-                    WS_TABSTOP,7,66,50,10
-    PUSHBUTTON      "&Selection...",IDC_BUTTON_SELECTION,132,64,50,14
-    DEFPUSHBUTTON   "OK",IDOK,12,89,50,14
-    PUSHBUTTON      "Cancel",IDCANCEL,73,89,50,14
-    PUSHBUTTON      "&Help",IDHELP,132,89,50,14
+                    WS_TABSTOP,7,80,85,10
+    PUSHBUTTON      "&Selection...",IDC_BUTTON_SELECTION,150,78,50,14
+    DEFPUSHBUTTON   "OK",IDOK,12,101,50,14
+    PUSHBUTTON      "Cancel",IDCANCEL,81,101,50,14
+    PUSHBUTTON      "&Help",IDHELP,150,101,50,14
 END
 
-IDD_DIALOG_RESAMPLE DIALOGEX 0, 0, 224, 120
+IDD_DIALOG_RESAMPLE DIALOGEX 0, 0, 251, 121
 STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | 
     WS_SYSMENU
 CAPTION "Resample"
 FONT 8, "MS Shell Dlg", 0, 0, 0x0
 BEGIN
-    EDITTEXT        IDC_EDIT_RATE,166,7,35,14,ES_AUTOHSCROLL | ES_NUMBER
-    LTEXT           "Hz",IDC_STATIC,207,10,12,8
-    CONTROL         "Slider1",IDC_SLIDER_TEMPO,"msctls_trackbar32",
-                    TBS_AUTOTICKS | TBS_BOTH | WS_TABSTOP,100,28,62,21
-    EDITTEXT        IDC_EDIT_TEMPO,166,32,35,14,ES_AUTOHSCROLL
-    LTEXT           "%",IDC_STATIC,208,35,11,8
+    EDITTEXT        IDC_EDIT_RATE,190,7,35,14,ES_AUTOHSCROLL | ES_NUMBER
+    LTEXT           "Hz",IDC_STATIC,229,10,15,8
+    EDITTEXT        IDC_EDIT_TEMPO,190,32,35,14,ES_AUTOHSCROLL
+    LTEXT           "%",IDC_STATIC,230,35,12,8
     CONTROL         "Change sampling rate only, do not resample data",
                     IDC_CHECK_CHANGE_RATE_ONLY,"Button",BS_AUTOCHECKBOX | 
-                    BS_MULTILINE | WS_TABSTOP,7,56,114,21
+                    BS_MULTILINE | WS_TABSTOP,7,56,132,21
     CONTROL         "Save &Undo",IDC_CHECK_UNDO,"Button",BS_AUTOCHECKBOX | 
-                    WS_TABSTOP,163,64,50,10
-    DEFPUSHBUTTON   "OK",IDOK,57,99,50,14
-    PUSHBUTTON      "Cancel",IDCANCEL,111,99,50,14
-    PUSHBUTTON      "&Help",IDHELP,167,99,50,14
-    CONTROL         "Change tempo and pitch:",IDC_RADIO_CHANGE_PITCH,"Button",
-                    BS_AUTORADIOBUTTON | WS_GROUP,7,34,93,10
+                    WS_TABSTOP,165,64,58,10
+    DEFPUSHBUTTON   "OK",IDOK,37,100,50,14
+    PUSHBUTTON      "Cancel",IDCANCEL,100,100,50,14
+    PUSHBUTTON      "&Help",IDHELP,164,100,50,14
     CONTROL         "Change sampling rate:",IDC_RADIO_CHANGE_RATE,"Button",
-                    BS_AUTORADIOBUTTON,7,9,91,10
+                    BS_AUTORADIOBUTTON,7,6,102,18
     CONTROL         "Slider1",IDC_SLIDER_RATE,"msctls_trackbar32",
-                    TBS_AUTOTICKS | TBS_BOTH | WS_GROUP | WS_TABSTOP,100,3,
-                    62,21
+                    TBS_AUTOTICKS | TBS_BOTH | WS_GROUP | WS_TABSTOP,112,3,
+                    74,21
+    CONTROL         "Change tempo and pitch:",IDC_RADIO_CHANGE_PITCH,"Button",
+                    BS_AUTORADIOBUTTON | WS_GROUP,7,30,103,19
+    CONTROL         "Slider1",IDC_SLIDER_TEMPO,"msctls_trackbar32",
+                    TBS_AUTOTICKS | TBS_BOTH | WS_TABSTOP,112,28,74,21
     LTEXT           "All the file will be processed",IDC_STATIC,7,83,190,8
 END
 
@@ -1318,7 +1318,7 @@ BEGIN
     EDITTEXT        IDC_EDIT_COMMENT,54,127,205,26,ES_WANTRETURN
 END
 
-IDD_DIALOG_ULF_REDUCTION DIALOGEX 0, 0, 193, 102
+IDD_DIALOG_ULF_REDUCTION DIALOGEX 0, 0, 211, 122
 STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | 
     WS_SYSMENU
 CAPTION "Ultra low frequency suppression"
@@ -1326,21 +1326,21 @@ FONT 8, "MS Shell Dlg", 0, 0, 0x0
 BEGIN
     CONTROL         "Suppress ""vertical wobble"" noise up to:",
                     IDC_CHECK_DIFFERENTIAL_MODE_SUPPRESS,"Button",
-                    BS_AUTOCHECKBOX | BS_MULTILINE | WS_TABSTOP,7,5,100,19
-    EDITTEXT        IDC_EDIT_DIFF_NOISE_RANGE,127,7,40,14,ES_AUTOHSCROLL
-    LTEXT           "Hz",IDC_STATIC,172,10,14,8
+                    BS_AUTOCHECKBOX | BS_MULTILINE | WS_TABSTOP,7,5,118,19
+    EDITTEXT        IDC_EDIT_DIFF_NOISE_RANGE,139,7,42,14,ES_AUTOHSCROLL
+    LTEXT           "Hz",IDC_STATIC,185,10,19,8
     CONTROL         "Suppress low frequencies up to:",
                     IDC_CHECK_LOW_FREQUENCY,"Button",BS_AUTOCHECKBOX | 
-                    WS_TABSTOP,7,26,118,10
-    EDITTEXT        IDC_EDIT_LF_NOISE_RANGE,127,24,40,14,ES_AUTOHSCROLL
-    LTEXT           "Hz",IDC_STATIC,173,26,14,8
-    LTEXT           "Selection:\nChannels:",IDC_STATIC_SELECTION,7,44,179,17
+                    WS_TABSTOP,7,26,127,10
+    EDITTEXT        IDC_EDIT_LF_NOISE_RANGE,139,24,42,14,ES_AUTOHSCROLL
+    LTEXT           "Hz",IDC_STATIC,184,26,20,8
+    LTEXT           "Selection:\nChannels:",IDC_STATIC_SELECTION,7,44,197,25
     CONTROL         "Save &Undo",IDC_CHECK_UNDO,"Button",BS_AUTOCHECKBOX | 
-                    WS_TABSTOP,7,65,51,10
-    PUSHBUTTON      "&Selection...",IDC_BUTTON_SELECTION,132,63,50,14
-    DEFPUSHBUTTON   "OK",IDOK,12,81,50,14
-    PUSHBUTTON      "Cancel",IDCANCEL,73,81,50,14
-    PUSHBUTTON      "&Help",IDHELP,132,81,50,14
+                    WS_TABSTOP,7,82,86,10
+    PUSHBUTTON      "&Selection...",IDC_BUTTON_SELECTION,141,80,50,14
+    DEFPUSHBUTTON   "OK",IDOK,18,101,50,14
+    PUSHBUTTON      "Cancel",IDCANCEL,80,101,50,14
+    PUSHBUTTON      "&Help",IDHELP,141,101,50,14
 END
 
 IDD_DIALOG_EXPRESSION_EVALUATION DIALOGEX 0, 0, 252, 249
@@ -1415,42 +1415,43 @@ CAPTION "Noise Reduction Parameters"
 FONT 8, "MS Shell Dlg", 0, 0, 0x0
 BEGIN
     LTEXT           "Apply noise reduction to\nfrequencies higher than:",
-                    IDC_STATIC,7,5,86,19
-    EDITTEXT        IDC_EDIT_LOWER_FREQUENCY,96,7,40,13,ES_AUTOHSCROLL
-    LTEXT           "Hz",IDC_STATIC,142,9,12,8
-    LTEXT           "FFT order for analyze:",IDC_STATIC,7,26,87,8
-    COMBOBOX        IDC_COMBO_FFT_ORDER,96,24,40,44,CBS_DROPDOWNLIST | 
+                    IDC_STATIC,7,5,93,19
+    EDITTEXT        IDC_EDIT_LOWER_FREQUENCY,104,7,40,13,ES_AUTOHSCROLL
+    LTEXT           "Hz",IDC_STATIC,150,9,12,8
+    LTEXT           "FFT order for analyze:",IDC_STATIC,7,26,90,8
+    COMBOBOX        IDC_COMBO_FFT_ORDER,104,24,40,44,CBS_DROPDOWNLIST | 
                     WS_VSCROLL | WS_TABSTOP
     LTEXT           "Noise floor for higher frequencies:",IDC_STATIC,7,38,84,
                     17
-    EDITTEXT        IDC_EDIT_NOISE_AREA_THRESHOLD_HIGH,96,40,40,13,
+    EDITTEXT        IDC_EDIT_NOISE_AREA_THRESHOLD_HIGH,104,40,40,13,
                     ES_AUTOHSCROLL
-    LTEXT           "dB",IDC_STATIC,142,42,12,8
-    LTEXT           "Noise floor for lower frequencies:",IDC_STATIC,7,56,83,
+    LTEXT           "dB",IDC_STATIC,150,42,12,8
+    LTEXT           "Noise floor for lower frequencies:",IDC_STATIC,7,56,92,
                     17
-    EDITTEXT        IDC_EDIT_NOISE_AREA_THRESHOLD_LOW,96,58,40,13,
+    EDITTEXT        IDC_EDIT_NOISE_AREA_THRESHOLD_LOW,104,58,40,13,
                     ES_AUTOHSCROLL
-    LTEXT           "dB",IDC_STATIC,142,60,12,8
-    LTEXT           "Noise reduction \naggressivness:",IDC_STATIC,7,73,86,18
-    EDITTEXT        IDC_EDIT_AGGRESSIVNESS,96,75,40,14,ES_AUTOHSCROLL
-    LTEXT           "Maximum noise reduction:",IDC_STATIC,7,97,87,8
-    EDITTEXT        IDC_EDIT_NOISE_REDUCTION,96,94,40,14,ES_AUTOHSCROLL
-    LTEXT           "dB",IDC_STATIC,142,96,12,8
+    LTEXT           "dB",IDC_STATIC,150,60,12,8
+    LTEXT           "Noise reduction \naggressivness:",IDC_STATIC,7,73,94,18
+    EDITTEXT        IDC_EDIT_AGGRESSIVNESS,104,75,40,14,ES_AUTOHSCROLL
+    LTEXT           "Maximum noise reduction:",IDC_STATIC,7,97,93,8
+    EDITTEXT        IDC_EDIT_NOISE_REDUCTION,104,94,40,14,ES_AUTOHSCROLL
+    LTEXT           "dB",IDC_STATIC,150,96,12,8
     LTEXT           "Tone over noise preference:",IDC_STATIC,7,109,75,19
-    EDITTEXT        IDC_EDIT_TONE_PREFERENCE,96,112,40,13,ES_AUTOHSCROLL
-    LTEXT           "dB",IDC_STATIC,142,114,12,8
+    EDITTEXT        IDC_EDIT_TONE_PREFERENCE,104,112,40,13,ES_AUTOHSCROLL
+    LTEXT           "dB",IDC_STATIC,150,114,12,8
     PUSHBUTTON      "Show spectrum and noise threshold",
                     IDC_BUTTON_SET_THRESHOLD,8,132,88,21,BS_MULTILINE
     LTEXT           "Continuous tone detection\nthreshold:",IDC_STATIC,7,161,
                     87,17
-    EDITTEXT        IDC_EDIT_NOISE_CRITERION,96,161,40,13,ES_AUTOHSCROLL
-    LTEXT           "Transient area threshold:",IDC_STATIC,7,181,87,8
-    EDITTEXT        IDC_EDIT_TRANSIENT_THRESHOLD,96,178,40,13,ES_AUTOHSCROLL
-    LTEXT           "dB",IDC_STATIC,142,180,12,8
-    LTEXT           "Selection:\nChannels:",IDC_STATIC_SELECTION,8,212,215,
-                    17
+    EDITTEXT        IDC_EDIT_NOISE_CRITERION,104,161,40,13,ES_AUTOHSCROLL
+    LTEXT           "Transient area threshold:",IDC_STATIC,7,181,94,8
+    EDITTEXT        IDC_EDIT_TRANSIENT_THRESHOLD,104,178,40,13,
+                    ES_AUTOHSCROLL
+    LTEXT           "dB",IDC_STATIC,150,180,12,8
+    LTEXT           "Selection:\nChannels:",IDC_STATIC_SELECTION,8,204,215,
+                    21
     CONTROL         "Save &Undo",IDC_CHECK_UNDO,"Button",BS_AUTOCHECKBOX | 
-                    WS_TABSTOP,8,233,56,10
+                    WS_TABSTOP,8,233,74,10
     PUSHBUTTON      "Set defaults",IDC_BUTTON_RESET_DEFAULT,173,7,50,14
     PUSHBUTTON      "Revert",IDC_BUTTON_REVERT_INITIAL,173,22,50,14
     PUSHBUTTON      "&Help",IDHELP,173,40,50,14
@@ -2171,11 +2172,11 @@ FONT 8, "MS Shell Dlg", 0, 0, 0x0
 BEGIN
     LTEXT           "",IDC_STATIC_RESPONSE_TEMPLATE,7,7,239,77
     CONTROL         "Highpass filter",IDC_CHECK_HIGHPASS,"Button",
-                    BS_AUTOCHECKBOX | WS_TABSTOP,7,89,59,10
+                    BS_AUTOCHECKBOX | WS_TABSTOP,7,89,77,10
     CONTROL         "Notch filter",IDC_CHECK_STOPBAND,"Button",
-                    BS_AUTOCHECKBOX | WS_TABSTOP,91,89,56,10
+                    BS_AUTOCHECKBOX | WS_TABSTOP,91,89,74,10
     CONTROL         "Lowpass filter",IDC_CHECK_LOWPASS,"Button",
-                    BS_AUTOCHECKBOX | WS_TABSTOP,183,89,63,10
+                    BS_AUTOCHECKBOX | WS_TABSTOP,177,89,63,10
     LTEXT           "&Transfer loss:",IDC_STATIC1,7,109,50,8
     EDITTEXT        IDC_EDIT_BAND_GAIN,59,106,40,14,ES_AUTOHSCROLL | 
                     ES_WANTRETURN
@@ -2184,9 +2185,9 @@ BEGIN
                     ES_WANTRETURN
     CTEXT           "Hz",IDC_STATIC4,169,109,16,8
     CONTROL         "&Zero phase shift",IDC_CHECK_ZERO_PHASE,"Button",
-                    BS_AUTOCHECKBOX | WS_TABSTOP,7,125,79,10
+                    BS_AUTOCHECKBOX | WS_TABSTOP,7,125,124,10
     CONTROL         "Save &Undo",IDC_CHECK_UNDO,"Button",BS_AUTOCHECKBOX | 
-                    WS_TABSTOP,7,138,55,10
+                    WS_TABSTOP,7,138,83,10
     LTEXT           "Selection:\nChannels:",IDC_STATIC_SELECTION,7,154,181,
                     25
     PUSHBUTTON      "&Reset",IDC_BUTTON_RESET_BANDS,196,107,50,14
@@ -2472,17 +2473,17 @@ BEGIN
     IDD_DIALOG_VOLUME_CHANGE, DIALOG
     BEGIN
         LEFTMARGIN, 7
-        RIGHTMARGIN, 186
+        RIGHTMARGIN, 226
         TOPMARGIN, 7
-        BOTTOMMARGIN, 137
+        BOTTOMMARGIN, 150
     END
 
     IDD_DIALOG_VOLUME_CHANGE_MONO, DIALOG
     BEGIN
         LEFTMARGIN, 7
-        RIGHTMARGIN, 186
+        RIGHTMARGIN, 208
         TOPMARGIN, 7
-        BOTTOMMARGIN, 103
+        BOTTOMMARGIN, 104
     END
 
     IDD_DIALOG_GOTO, DIALOG
@@ -2496,9 +2497,9 @@ BEGIN
     IDD_DIALOG_DC_OFFSET, DIALOG
     BEGIN
         LEFTMARGIN, 7
-        RIGHTMARGIN, 186
+        RIGHTMARGIN, 215
         TOPMARGIN, 7
-        BOTTOMMARGIN, 119
+        BOTTOMMARGIN, 138
     END
 
     IDD_DIALOG_STATISTICS, DIALOG
@@ -2512,17 +2513,17 @@ BEGIN
     IDD_DIALOG_NORMALIZE, DIALOG
     BEGIN
         LEFTMARGIN, 7
-        RIGHTMARGIN, 186
+        RIGHTMARGIN, 207
         TOPMARGIN, 7
-        BOTTOMMARGIN, 103
+        BOTTOMMARGIN, 115
     END
 
     IDD_DIALOG_RESAMPLE, DIALOG
     BEGIN
         LEFTMARGIN, 7
-        RIGHTMARGIN, 217
+        RIGHTMARGIN, 244
         TOPMARGIN, 7
-        BOTTOMMARGIN, 113
+        BOTTOMMARGIN, 114
     END
 
     IDD_DIALOG_STATISTICS_MONO, DIALOG
@@ -2546,9 +2547,9 @@ BEGIN
     IDD_DIALOG_ULF_REDUCTION, DIALOG
     BEGIN
         LEFTMARGIN, 7
-        RIGHTMARGIN, 186
+        RIGHTMARGIN, 204
         TOPMARGIN, 7
-        BOTTOMMARGIN, 95
+        BOTTOMMARGIN, 115
     END
 
     IDD_DIALOG_EXPRESSION_EVALUATION, DIALOG
