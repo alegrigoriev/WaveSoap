@@ -402,7 +402,7 @@ BOOL CCdDrive::Open(TCHAR letter)
 	if (INVALID_HANDLE_VALUE == Drive || NULL == Drive)
 	{
 		// it is windows9x
-		if (NULL != GetAspi32HaTargetLun)
+		if (0 && NULL != GetAspi32HaTargetLun)
 		{
 			HaTargetLun Addr = GetAspi32HaTargetLun(letter);
 			TRACE("Drive %c SCSI addr returned by cdral=%08X\n",
@@ -413,7 +413,10 @@ BOOL CCdDrive::Open(TCHAR letter)
 		}
 		else if (NULL != SendASPI32Command)
 		{
-			for (int adapter = 0; adapter < (0xFF & GetASPI32SupportInfo()); adapter++)
+			m_ScsiAddr.PortNumber = 0xFF;
+			for (int adapter = 0; adapter < (0xFF & GetASPI32SupportInfo())
+				&& 0xFF == m_ScsiAddr.PortNumber
+				; adapter++)
 			{
 				SRB_HAInquiry inq;
 				memzero(inq);
@@ -421,7 +424,26 @@ BOOL CCdDrive::Open(TCHAR letter)
 				inq.Command = SC_HA_INQUIRY;
 				if (SendASPI32Command( & inq))
 				{
+					for (int Target = 0; Target < inq.MaximumScsiTargets; Target++)
+					{
+						// query LUN 0 only
+						SRB_GetDevType gdt(adapter, Target, 0);
+						if (SendASPI32Command( & gdt))
+						{
+							if (gdt.DeviceType == 5)
+							{
+								TRACE("CD-ROM device at %d:%d\n", adapter, Target);
+								m_ScsiAddr.PortNumber = adapter;
+								m_ScsiAddr.TargetId = Target;
+								m_ScsiAddr.Lun = 0;
+							}
+						}
+					}
 				}
+			}
+			if (0xFF == m_ScsiAddr.PortNumber)
+			{
+				return FALSE;
 			}
 		}
 		else
@@ -569,7 +591,7 @@ BOOL CCdDrive::EnableMediaChangeDetection(bool Enable)
 								& McnDisable, sizeof McnDisable,
 								NULL, 0,
 								&BytesReturned, NULL);
-	m_bMediaChangeNotificationDisabled = McnDisable;
+	m_bMediaChangeNotificationDisabled = ! Enable;
 
 	return TRUE;
 }
@@ -708,10 +730,7 @@ BOOL CCdDrive::SendScsiCommand(CD_CDB * pCdb,
 			//TRACE("Scsi request pending\n");
 			if (ERROR_TIMEOUT == WaitForSingleObject(m_hEvent, timeout * 1000))
 			{
-				SRB_Abort abrt;
-				memzero(abrt);
-				abrt.Command = SC_ABORT_SRB;
-				abrt.pSRBToAbort = & srb;
+				SRB_Abort abrt( & srb);
 				SendASPI32Command( & abrt);
 			}
 		}
@@ -721,8 +740,9 @@ BOOL CCdDrive::SendScsiCommand(CD_CDB * pCdb,
 			memcpy(pSense, & srb.SenseInfo, sizeof * pSense);
 		}
 
-		TRACE("SendASPI32Command Opcode=0x%02X returned %d, srb.Status=%d, Sense=%x/%x\n",
-			pCdb->Opcode, status, srb.Status, srb.SenseInfo.SenseKey, srb.SenseInfo.AdditionalSenseCode);
+		TRACE("SendASPI32Command Opcode=0x%02X returned %d, srb.Status=%X, Sense=%x/%x/%x\n",
+			pCdb->Opcode, status, srb.Status, srb.SenseInfo.SenseKey,
+			srb.SenseInfo.AdditionalSenseCode, srb.SenseInfo.AdditionalSenseQualifier);
 		return SS_COMP == srb.Status;
 	}
 	else
@@ -871,12 +891,16 @@ BOOL CCdDrive::ReadToc(CDROM_TOC * pToc)
 	m_OffsetBytesPerSector = 2048;
 	DWORD dwReturned = sizeof * pToc;
 	BOOL res;
-
+	CDROM_TOC toc;
 	if (NULL == m_hDrive)
 	{
-		ReadTocCdb cdb(0, sizeof * pToc);
+		ReadTocCdb cdb(0, sizeof toc);
 
-		res = SendScsiCommand( & cdb, pToc, & dwReturned, SCSI_IOCTL_DATA_IN, NULL);
+		res = SendScsiCommand( & cdb, & toc, & dwReturned, SCSI_IOCTL_DATA_IN, NULL);
+		if (res)
+		{
+			*pToc = toc;
+		}
 	}
 	else
 	{
@@ -922,8 +946,27 @@ BOOL CCdDrive::ReadSessions(CDROM_TOC * pToc)
 	return res;
 }
 
+void CCdDrive::ForceMountCD()
+{
+	if (NULL != m_hDrive)
+	{
+		DWORD MediaChangeCount = 0;
+		DWORD BytesReturned;
+		DeviceIoControl(m_hDrive,
+						IOCTL_STORAGE_CHECK_VERIFY,
+						NULL, 0,
+						& MediaChangeCount, sizeof MediaChangeCount,
+						& BytesReturned, NULL);
+	}
+}
+
 CdMediaChangeState CCdDrive::CheckForMediaChange()
 {
+	TestUnitReadyCdb cdb;
+	SCSI_SenseInfo sense;
+	DWORD bytes = 0;
+	memzero(sense);
+
 	if (NULL != m_hDrive)
 	{
 		DWORD MediaChangeCount = 0;
@@ -934,11 +977,12 @@ CdMediaChangeState CCdDrive::CheckForMediaChange()
 									& MediaChangeCount, sizeof MediaChangeCount,
 									& BytesReturned, NULL);
 
-		if (0) TRACE("GetLastError=%d, MediaChange=%d\n",
-					GetLastError(),
-					MediaChangeCount);
+		DWORD error = GetLastError();
 
-		if (! res && GetLastError() != ERROR_NOT_READY)
+		if (0) TRACE("GetLastError=%d, MediaChange=%d\n",
+					error, MediaChangeCount);
+
+		if (! res && error != ERROR_NOT_READY)
 		{
 			res = DeviceIoControl(m_hDrive,
 								IOCTL_STORAGE_CHECK_VERIFY,
@@ -952,10 +996,25 @@ CdMediaChangeState CCdDrive::CheckForMediaChange()
 
 		if (! res)
 		{
-			if (-1 != m_MediaChangeCount)
+			if (m_bTrayLoading
+				&& m_bScsiCommandsAvailable)
+			{
+				SendScsiCommand( & cdb, NULL, & bytes,
+								SCSI_IOCTL_DATA_UNSPECIFIED, & sense);
+				if (cdb.CanCloseTray( & sense))
+				{
+					m_bTrayOut = true;
+				}
+				if (cdb.CanOpenTray( & sense))
+				{
+					m_bTrayOut = false;
+				}
+			}
+			//if (-1 != m_MediaChangeCount)
 			{
 				m_MediaChangeCount = -1;
-				TRACE("device not ready\n");
+				//TRACE("device not ready\n");
+				// check door state
 				return CdMediaStateNotReady;
 			}
 		}
@@ -971,6 +1030,24 @@ CdMediaChangeState CCdDrive::CheckForMediaChange()
 	}
 	else
 	{
+		if ( ! SendScsiCommand( & cdb, NULL, & bytes,
+								SCSI_IOCTL_DATA_UNSPECIFIED, & sense))
+		{
+			if (m_bTrayLoading
+				&& cdb.CanCloseTray( & sense))
+			{
+				m_bTrayOut = true;
+			}
+			if (cdb.CanOpenTray( & sense))
+			{
+				m_bTrayOut = false;
+			}
+			return cdb.TranslateSenseInfo( & sense);
+		}
+		else
+		{
+			return CdMediaStateReady;
+		}
 	}
 	return CdMediaStateNotReady;
 
@@ -1375,12 +1452,13 @@ void CCdDrive::EjectMedia()
 		BOOL res = DeviceIoControl(m_hDrive, IOCTL_STORAGE_EJECT_MEDIA,
 									NULL, 0, NULL, 0, & bytes, NULL);
 		TRACE("IOCTL_STORAGE_EJECT_MEDIA returned %d, last error=%d\n", res, GetLastError());
-		m_bTrayOut = res != 0;
+		m_bTrayOut = m_bTrayOut || res != 0;
 	}
 	else if (m_bScsiCommandsAvailable)
 	{
 		StartStopCdb ssc(StartStopCdb::NoChange, false, true, false);
-		m_bTrayOut = 0 != SendScsiCommand( & ssc, NULL, & bytes, SCSI_IOCTL_DATA_UNSPECIFIED, NULL);
+		m_bTrayOut = 0 != SendScsiCommand( & ssc, NULL, & bytes, SCSI_IOCTL_DATA_UNSPECIFIED, NULL)
+					|| m_bTrayOut;
 	}
 }
 
@@ -1406,27 +1484,34 @@ BOOL CCdDrive::IsTrayOpen()
 	return m_bTrayOut;
 }
 
-int TestUnitReadyCdb::TranslateSenseInfo(SCSI_SenseInfo * pSense)
+CdMediaChangeState TestUnitReadyCdb::TranslateSenseInfo(SCSI_SenseInfo * pSense)
 {
 	if (pSense->SenseKey == 2   // not ready
 		&& 0x3A == pSense->AdditionalSenseCode)
 	{
 		switch (pSense->AdditionalSenseQualifier)
 		{
-		case 00:
+		case 0:
 			// medium not present
-		case 01:
+			break;
+		case 1:
 			// Medium not present, tray closed
+			break;
 		case 2:
 			// medium not present, tray open
+			break;
 		case 3:
 			// medium not present - loadable (load command allowed?)
+			break;
 		}
+		return CdMediaStateNotReady;
 	}
 	else if (pSense->SenseKey == 6) // unit attention
 	{
 		// medium might be changed
+		return CdMediaStateDiskChanged;
 	}
+	return CdMediaStateNotReady;
 }
 
 LONG CCdDrive::m_DriveBusyCount['Z' - 'A' + 1]; // zero-initialized

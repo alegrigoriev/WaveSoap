@@ -97,6 +97,7 @@ ID_BITMAP_ZOOMOUTHOR    BITMAP  DISCARDABLE     "res\\bmp00002.bmp"
 IDB_BITMAP_PLAY         BITMAP  DISCARDABLE     "res\\bmp_play.bmp"
 IDB_BITMAP_EJECT        BITMAP  DISCARDABLE     "res\\bmp_eject.bmp"
 IDB_BITMAP_STOP         BITMAP  DISCARDABLE     "res\\bmp_stop.bmp"
+IDB_BITMAP_LOAD         BITMAP  DISCARDABLE     "res\\bitmap_load.bmp"
 
 /////////////////////////////////////////////////////////////////////////////
 //

@@ -944,6 +944,15 @@ struct SCSI_SenseInfo
 //////////////////////////////////////////////////////////////////
 // Media removal
 //////////////////////////////////////////////////////////////////
+enum CdMediaChangeState
+{
+	CdMediaStateUnknown,
+	CdMediaStateNotReady,
+	CdMediaStateReady,
+	CdMediaStateDiskChanged,
+	CdMediaStateBusy,
+	CdMediaStateNoDrives,
+};
 struct TestUnitReadyCdb : CD_CDB
 {
 	enum { OPCODE = 0x00};
@@ -955,13 +964,20 @@ struct TestUnitReadyCdb : CD_CDB
 		memzero(*this);
 		Opcode = OPCODE;
 	}
-	enum {
-		MediaReady,
-		MediaLoading,
-		MediaUnloaded,
-		MediaNotReady,
-	};
-	static int TranslateSenseInfo(SCSI_SenseInfo * pSense);
+	static CdMediaChangeState TranslateSenseInfo(SCSI_SenseInfo * pSense);
+	static bool CanOpenTray(SCSI_SenseInfo * pSense)
+	{
+		return pSense->SenseKey == 0
+				|| (pSense->SenseKey == 2   // not ready
+					&& 0x3A == pSense->AdditionalSenseCode
+					&& 1 == pSense->AdditionalSenseQualifier);
+	}
+	static bool CanCloseTray(SCSI_SenseInfo * pSense)
+	{
+		return pSense->SenseKey == 2   // not ready
+				&& 0x3A == pSense->AdditionalSenseCode
+				&& 2 == pSense->AdditionalSenseQualifier;
+	}
 };
 struct SRB
 {
@@ -1019,17 +1035,30 @@ typedef SRB_HAInquiry *PSRB_HAInquiry;
 struct SRB_Abort : SRB
 {
 	SRB * pSRBToAbort;
+	SRB_Abort(SRB * srb)
+	{
+		memzero(*this);
+		Command = SC_ABORT_SRB;  // 01
+		pSRBToAbort = srb;
+	}
 };
 
-enum CdMediaChangeState
+struct SRB_GetDevType : SRB
 {
-	CdMediaStateUnknown,
-	CdMediaStateNotReady,
-	CdMediaStateReady,
-	CdMediaStateDiskChanged,
-	CdMediaStateBusy,
-	CdMediaStateNoDrives,
+	UCHAR Target;
+	UCHAR Lun;
+	UCHAR DeviceType;   // filled out
+	UCHAR reserved;
+	SRB_GetDevType(UCHAR adapter, UCHAR target, UCHAR lun)
+	{
+		memzero(*this);
+		Command = SC_GET_DEV_TYPE;  // 01
+		HostAdapter = adapter;
+		Target = target;
+		Lun = lun;
+	}
 };
+
 enum { CDDASectorSize = 2352} ;
 
 struct RiffCddaFmt
@@ -1127,6 +1156,7 @@ public:
 	}
 
 	CdMediaChangeState CheckForMediaChange();
+	void ForceMountCD();
 
 	BOOL SendScsiCommand(CD_CDB * pCdb, void * pData, DWORD * pDataLen,
 						int DataDirection,   // SCSI_IOCTL_DATA_IN, SCSI_IOCTL_DATA_OUT,

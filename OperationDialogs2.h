@@ -125,7 +125,7 @@ protected:
 };
 /////////////////////////////////////////////////////////////////////////////
 // CCdGrabbingDialog dialog
-
+#pragma pack(push, 8)
 class CCdGrabbingDialog : public CResizableDialog
 {
 // Construction
@@ -157,10 +157,10 @@ public:
 	CCdDrive m_CdDrive;
 
 	TCHAR m_CDDrives['Z' - 'A' + 1];
+	TCHAR m_DriveLetterSelected;
 	int m_NumberOfDrives;
 	int m_CDDriveSelected;
 	int m_PreviousDriveLetter;
-	TCHAR m_DriveLetterSelected;
 
 	CDROM_TOC m_toc;
 	vector<CdTrackInfo> m_Tracks;
@@ -225,6 +225,7 @@ protected:
 	CBitmap m_BmpPlay;
 	CBitmap m_BmpStop;
 	CBitmap m_BmpEject;
+	CBitmap m_BmpLoad;
 
 	// Generated message map functions
 	LRESULT OnKickIdle(WPARAM, LPARAM);
@@ -266,6 +267,7 @@ protected:
 	afx_msg LRESULT OnDeviceChange(UINT, DWORD);
 	DECLARE_MESSAGE_MAP()
 };
+#pragma pack(pop)
 /////////////////////////////////////////////////////////////////////////////
 // CReopenDialog dialog
 
