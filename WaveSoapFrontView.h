@@ -74,7 +74,7 @@ protected:
 	void CreateAndShowCaret();
 	DWORD ClientHitTest(CPoint p);
 	virtual POINT GetZoomCenter();
-
+	void MovePointIntoView(int nCaret);
 	// Generated message map functions
 protected:
 	//{{AFX_MSG(CWaveSoapFrontView)
@@ -93,6 +93,7 @@ protected:
 	afx_msg void OnLButtonUp(UINT nFlags, CPoint point);
 	afx_msg BOOL OnMouseWheel(UINT nFlags, short zDelta, CPoint pt);
 	afx_msg void OnMouseMove(UINT nFlags, CPoint point);
+	afx_msg void OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags);
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 };

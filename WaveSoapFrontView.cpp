@@ -36,6 +36,7 @@ BEGIN_MESSAGE_MAP(CWaveSoapFrontView, CScaledScrollView)
 	ON_WM_LBUTTONUP()
 	ON_WM_MOUSEWHEEL()
 	ON_WM_MOUSEMOVE()
+	ON_WM_KEYDOWN()
 	//}}AFX_MSG_MAP
 	// Standard printing commands
 	ON_COMMAND(ID_FILE_PRINT, CScaledScrollView::OnFilePrint)
@@ -1294,3 +1295,180 @@ POINT CWaveSoapFrontView::GetZoomCenter()
 	}
 }
 
+
+void CWaveSoapFrontView::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
+{
+	// TODO: Add your message handler code here and/or call default
+	// process cursor control commands
+	CWaveSoapFrontDoc * pDoc = GetDocument();
+
+	int nCaret = pDoc->m_CaretPosition;
+	int nSelBegin = pDoc->m_SelectionStart;
+	int nSelEnd = pDoc->m_SelectionEnd;
+	int nChan = pDoc->m_SelectedChannel;
+
+	BOOL KeepSelection = (0 != (0x8000 & GetKeyState(VK_SHIFT)));
+	BOOL CtrlPressed = (0 != (0x8000 & GetKeyState(VK_CONTROL)));
+	BOOL MakeCaretVisible = TRUE;
+
+	int nCaretMove = m_HorizontalScale;
+
+	// ctrl+arrow moves by 32 pixels
+	if (CtrlPressed)
+	{
+		nCaretMove *= 32;
+	}
+
+	int nTotalSamples = pDoc->WaveFileSamples();
+
+	CRect r;
+	GetClientRect( & r);
+
+	// page is one half of the window width
+	int nPage = r.Width() * m_HorizontalScale / 2;
+	if (CtrlPressed)
+	{
+		// make it 7/8 of the window width
+		nPage = nPage * 7 * m_HorizontalScale / 4;
+	}
+	// round to one pixel
+	nPage -= nPage % m_HorizontalScale;
+
+	switch (nChar)
+	{
+	case VK_LEFT:
+		// move caret 1 pixel or 32 pixels to the left,
+		nCaret -= nCaretMove;
+		break;
+	case VK_RIGHT:
+		// move caret 1 or 32 to the right
+		nCaret += nCaretMove;
+		break;
+	case VK_HOME:
+		// move to the begin of file or selection
+		if (nSelBegin < nSelEnd)
+		{
+			KeepSelection = TRUE;
+			nCaret = nSelBegin;
+		}
+		else if (nSelBegin > nSelEnd)
+		{
+			KeepSelection = TRUE;
+			nCaret = nSelEnd;
+		}
+		else if (CtrlPressed)
+		{
+			nCaret = 0;
+		}
+		else
+		{
+			nCaret = WindowToWorldX(r.left + 1); // cursor to the left boundary + 1
+		}
+
+		break;
+	case VK_END:
+		// move to the end of file or selection
+		if (nSelBegin < nSelEnd)
+		{
+			KeepSelection = TRUE;
+			nCaret = nSelEnd;
+		}
+		else if (nSelBegin > nSelEnd)
+		{
+			KeepSelection = TRUE;
+			nCaret = nSelBegin;
+		}
+		else if (CtrlPressed)
+		{
+			nCaret = nTotalSamples;
+		}
+		else
+		{
+			nCaret = WindowToWorldX(r.right - 2); // cursor to the right boundary + 1
+		}
+		break;
+	case VK_PRIOR:
+		nCaret -= nPage;
+		break;
+	case VK_NEXT:
+		nCaret += nPage;
+		break;
+	case VK_UP:
+		// move the zoomed image up
+		break;
+	case VK_DOWN:
+		// move the zoomed image down
+		break;
+	case VK_TAB:
+		// toggle selection channel
+		if (pDoc->WaveChannels() > 1)
+		{
+			nChan = (nChan + 1) % 3;
+		}
+		KeepSelection = TRUE;
+		MakeCaretVisible = FALSE;
+		break;
+	default:
+		// default action
+		CView::OnKeyDown(nChar, nRepCnt, nFlags);
+		return;
+
+		break;
+	}
+	if (nCaret < 0)
+	{
+		nCaret = 0;
+	}
+	if (nCaret > nTotalSamples)
+	{
+		nCaret = nTotalSamples;
+	}
+	if (KeepSelection)
+	{
+		if (nCaret <
+			(double(nSelBegin) + nSelEnd) / 2)
+		{
+			nSelBegin = nCaret;
+		}
+		else
+		{
+			nSelEnd = nCaret;
+		}
+	}
+	else
+	{
+		nSelBegin = nCaret;
+		nSelEnd = nCaret;
+	}
+
+	MovePointIntoView(nCaret);
+
+	pDoc->SetSelection(nSelBegin, nSelEnd, nChan, nCaret);
+
+	CView::OnKeyDown(nChar, nRepCnt, nFlags);
+}
+
+void CWaveSoapFrontView::MovePointIntoView(int nCaret)
+{
+	CRect r;
+	GetClientRect( & r);
+
+	int nDesiredPos = WorldToWindowX(nCaret);
+	double scroll;
+	if (nDesiredPos < r.left)
+	{
+		scroll = (nDesiredPos - r.left) * m_HorizontalScale;
+	}
+	else if (nDesiredPos >= r.right)
+	{
+		scroll = (nDesiredPos - r.right + 1) * m_HorizontalScale;
+	}
+	else
+	{
+		return;
+	}
+	TRACE("MovePointIntoView: DesiredPos=%d, left=%d, right=%d, scroll=%d\n",
+		nDesiredPos, r.left, r.right, scroll);
+	ScrollBy(scroll, 0, TRUE);
+	CreateAndShowCaret();
+}
