@@ -376,6 +376,8 @@ protected:
 	//{{AFX_MSG(CMarkerRegionDialog)
 	afx_msg void OnUpdateEditLength(CCmdUI * pCmdUI);
 	afx_msg void OnClickedMarkerRegion();
+	afx_msg void OnClickedDelete();
+	afx_msg void OnUpdateDelete(CCmdUI * pCmdUI);
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 public:
