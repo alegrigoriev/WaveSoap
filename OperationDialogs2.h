@@ -30,12 +30,12 @@ public:
 	int		m_TimeFormatIndex;
 	//}}AFX_DATA
 
-	int		m_nChannel;
+	CHANNEL_MASK	m_nChannel;
 	int		m_TimeFormat;
-	ULONG    m_Length;
-	ULONG    m_Start;
-	ULONG    m_FileLength;
-	long    m_CaretPosition;
+	SAMPLE_INDEX    m_Length;
+	SAMPLE_INDEX    m_Start;
+	NUMBER_OF_SAMPLES    m_FileLength;
+	SAMPLE_INDEX    m_CaretPosition;
 	WAVEFORMATEX * m_pWf;
 
 // Overrides
