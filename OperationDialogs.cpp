@@ -500,7 +500,10 @@ CSelectionDialog::CSelectionDialog(SAMPLE_INDEX Start, SAMPLE_INDEX End,
 
 	if (WaveFile.Channels() < 2)
 	{
-		m_lpszTemplateName = MAKEINTRESOURCE(IDD_SELECTION_DIALOG_MONO);
+		if (m_lpszTemplateName == MAKEINTRESOURCE(IDD_SELECTION_DIALOG))
+		{
+			m_lpszTemplateName = MAKEINTRESOURCE(IDD_SELECTION_DIALOG_MONO);
+		}
 		m_Chan = 0;
 	}
 	else
