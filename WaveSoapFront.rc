@@ -1,4 +1,4 @@
-//Microsoft Visual C++ generated resource script.
+//Microsoft Developer Studio generated resource script.
 //
 #include "resource.h"
 
@@ -7,14 +7,21 @@
 //
 // Generated from the TEXTINCLUDE 2 resource.
 //
-
 #include "afxres.h"
 
 /////////////////////////////////////////////////////////////////////////////
 #undef APSTUDIO_READONLY_SYMBOLS
 
-#ifdef APSTUDIO_INVOKED
+/////////////////////////////////////////////////////////////////////////////
+// Russian resources
 
+#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_RUS)
+#ifdef _WIN32
+LANGUAGE LANG_RUSSIAN, SUBLANG_DEFAULT
+#pragma code_page(1251)
+#endif //_WIN32
+
+#ifdef APSTUDIO_INVOKED
 /////////////////////////////////////////////////////////////////////////////
 //
 // TEXTINCLUDE
@@ -22,13 +29,13 @@
 
 1 TEXTINCLUDE DISCARDABLE 
 BEGIN
-	"resource.h\0"
+    "resource.h\0"
 END
 
 2 TEXTINCLUDE DISCARDABLE 
 BEGIN
-	"#include ""afxres.h""\r\n"
-	"\0"
+    "#include ""afxres.h""\r\n"
+    "\0"
 END
 
 3 TEXTINCLUDE DISCARDABLE 
@@ -37,21 +44,33 @@ BEGIN
     "#define _AFX_NO_OLE_RESOURCES\r\n"
     "#define _AFX_NO_TRACKER_RESOURCES\r\n"
     "#define _AFX_NO_PROPERTY_RESOURCES\r\n"
-	"\r\n"
-	"#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_ENU)\r\n"
-	"#ifdef _WIN32\r\n"
-	"LANGUAGE 9, 1\r\n"
-	"#pragma code_page(1252)\r\n"
-	"#endif //_WIN32\r\n"
-	"#include ""res\\WaveSoapFront.rc2""  // non-Microsoft Visual C++ edited resources\r\n"
-	"#include ""afxres.rc""  	// Standard components\r\n"
-	"#include ""afxprint.rc""	// printing/print preview resources\r\n"
-	"#endif\r\n"
-	"\0"
+    "\r\n"
+    "#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_ENU)\r\n"
+    "#ifdef _WIN32\r\n"
+    "LANGUAGE 9, 1\r\n"
+    "#pragma code_page(1252)\r\n"
+    "#endif //_WIN32\r\n"
+    "#include ""res\\WaveSoapFront.rc2""  // non-Microsoft Visual C++ edited resources\r\n"
+    "#include ""afxres.rc""         // Standard components\r\n"
+    "#include ""afxprint.rc""       // printing/print preview resources\r\n"
+    "#endif\r\n"
+    "\0"
 END
 
 #endif    // APSTUDIO_INVOKED
 
+#endif    // Russian resources
+/////////////////////////////////////////////////////////////////////////////
+
+
+/////////////////////////////////////////////////////////////////////////////
+// English (U.S.) resources
+
+#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_ENU)
+#ifdef _WIN32
+LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
+#pragma code_page(1252)
+#endif //_WIN32
 
 /////////////////////////////////////////////////////////////////////////////
 //
@@ -60,15 +79,8 @@ END
 
 // Icon with lowest ID value placed first to ensure application icon
 // remains consistent on all systems.
-
-#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_ENU)
-#ifdef _WIN32
-LANGUAGE 9, 1
-#pragma code_page(1252)
-#endif //_WIN32
-IDR_MAINFRAME           ICON    DISCARDABLE     "res\\WaveSoapFront.ico"
-IDR_WAVESOTYPE         ICON    DISCARDABLE     "res\\WaveSoapFrontDoc.ico"
-#endif
+IDR_MAINFRAME           ICON    DISCARDABLE     "res\\WaveSoap.ico"
+IDR_WAVESOTYPE          ICON    DISCARDABLE     "res\\WaveSoapFrontDoc.ico"
 
 /////////////////////////////////////////////////////////////////////////////
 //
@@ -87,25 +99,18 @@ BEGIN
     BUTTON      ID_FILE_NEW
     BUTTON      ID_FILE_OPEN
     BUTTON      ID_FILE_SAVE
-	SEPARATOR
+    SEPARATOR
     BUTTON      ID_EDIT_CUT
     BUTTON      ID_EDIT_COPY
     BUTTON      ID_EDIT_PASTE
-	SEPARATOR
+    SEPARATOR
     BUTTON      ID_FILE_PRINT
-	SEPARATOR
+    SEPARATOR
     BUTTON      ID_APP_ABOUT
     BUTTON      ID_CONTEXT_HELP
 END
 
 
-
-
-#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_ENU)
-#ifdef _WIN32
-LANGUAGE 9, 1
-#pragma code_page(1252)
-#endif //_WIN32
 /////////////////////////////////////////////////////////////////////////////
 //
 // Menu
@@ -113,76 +118,89 @@ LANGUAGE 9, 1
 
 IDR_MAINFRAME MENU PRELOAD DISCARDABLE 
 BEGIN
-	POPUP "&File"
-	BEGIN
-		MENUITEM "&New\tCtrl+N",                ID_FILE_NEW
-		MENUITEM "&Open...\tCtrl+O",            ID_FILE_OPEN
-		MENUITEM SEPARATOR
-		MENUITEM "P&rint Setup...",             ID_FILE_PRINT_SETUP
-		MENUITEM SEPARATOR
-		MENUITEM "Recent File",                 ID_FILE_MRU_FILE1,GRAYED
-		MENUITEM SEPARATOR
-		MENUITEM "E&xit",                       ID_APP_EXIT
-	END
-	POPUP "&View"
-	BEGIN
-		MENUITEM "&Toolbar",                    ID_VIEW_TOOLBAR
-		MENUITEM "&Status Bar",                 ID_VIEW_STATUS_BAR
-	END
-	POPUP "&Help"
-	BEGIN
-		MENUITEM "&Help Topics",                ID_HELP_FINDER
-		MENUITEM SEPARATOR
-		MENUITEM "&About WaveSoapFront...",          ID_APP_ABOUT
-	END
+    POPUP "&File"
+    BEGIN
+        MENUITEM "&New\tCtrl+N",                ID_FILE_NEW
+        MENUITEM "&Open...\tCtrl+O",            ID_FILE_OPEN
+        MENUITEM SEPARATOR
+        MENUITEM "P&rint Setup...",             ID_FILE_PRINT_SETUP
+        MENUITEM SEPARATOR
+        MENUITEM "Recent File",                 ID_FILE_MRU_FILE1, GRAYED
+        MENUITEM SEPARATOR
+        MENUITEM "E&xit",                       ID_APP_EXIT
+    END
+    POPUP "&View"
+    BEGIN
+        MENUITEM "&Toolbar",                    ID_VIEW_TOOLBAR
+        MENUITEM "&Status Bar",                 ID_VIEW_STATUS_BAR
+    END
+    POPUP "&Help"
+    BEGIN
+        MENUITEM "&Help Topics",                ID_HELP_FINDER
+        MENUITEM SEPARATOR
+        MENUITEM "&About WaveSoap...",          ID_APP_ABOUT
+    END
 END
+
 IDR_WAVESOTYPE MENU PRELOAD DISCARDABLE 
 BEGIN
-	POPUP "&File"
-	BEGIN
-		MENUITEM "&New\tCtrl+N",                ID_FILE_NEW
-		MENUITEM "&Open...\tCtrl+O",            ID_FILE_OPEN
-		MENUITEM "&Close",                      ID_FILE_CLOSE
-		MENUITEM "&Save\tCtrl+S",               ID_FILE_SAVE
-		MENUITEM "Save &As...",                 ID_FILE_SAVE_AS
-		MENUITEM SEPARATOR
-		MENUITEM "&Print...\tCtrl+P",           ID_FILE_PRINT
-		MENUITEM "Print Pre&view",              ID_FILE_PRINT_PREVIEW
-		MENUITEM "P&rint Setup...",             ID_FILE_PRINT_SETUP
-		MENUITEM SEPARATOR
-		MENUITEM "Recent File",                 ID_FILE_MRU_FILE1,GRAYED
-		MENUITEM SEPARATOR
-		MENUITEM "E&xit",                       ID_APP_EXIT
-	END
-	POPUP "&Edit"
-	BEGIN
-		MENUITEM "&Undo\tCtrl+Z",               ID_EDIT_UNDO
-		MENUITEM SEPARATOR
-		MENUITEM "Cu&t\tCtrl+X",                ID_EDIT_CUT
-		MENUITEM "&Copy\tCtrl+C",               ID_EDIT_COPY
-		MENUITEM "&Paste\tCtrl+V",              ID_EDIT_PASTE
-	END
-	POPUP "&View"
-	BEGIN
-		MENUITEM "&Toolbar",                    ID_VIEW_TOOLBAR
-		MENUITEM "&Status Bar",                 ID_VIEW_STATUS_BAR
-	END
-	POPUP "&Window"
-	BEGIN
-		MENUITEM "&New Window",                 ID_WINDOW_NEW
-		MENUITEM "&Cascade",                    ID_WINDOW_CASCADE
-		MENUITEM "&Tile",                       ID_WINDOW_TILE_HORZ
-		MENUITEM "&Arrange Icons",              ID_WINDOW_ARRANGE
-	END
-	POPUP "&Help"
-	BEGIN
-		MENUITEM "&Help Topics",                ID_HELP_FINDER
-		MENUITEM SEPARATOR
-		MENUITEM "&About WaveSoapFront...",          ID_APP_ABOUT
-	END
+    POPUP "&File"
+    BEGIN
+        MENUITEM "&New\tCtrl+N",                ID_FILE_NEW
+        MENUITEM "&Open...\tCtrl+O",            ID_FILE_OPEN
+        MENUITEM "&Close",                      ID_FILE_CLOSE
+        MENUITEM "&Save\tCtrl+S",               ID_FILE_SAVE
+        MENUITEM "Save &As...",                 ID_FILE_SAVE_AS
+        MENUITEM SEPARATOR
+        MENUITEM "&Print...\tCtrl+P",           ID_FILE_PRINT
+        MENUITEM "Print Pre&view",              ID_FILE_PRINT_PREVIEW
+        MENUITEM "P&rint Setup...",             ID_FILE_PRINT_SETUP
+        MENUITEM SEPARATOR
+        MENUITEM "Recent File",                 ID_FILE_MRU_FILE1, GRAYED
+        MENUITEM SEPARATOR
+        MENUITEM "E&xit",                       ID_APP_EXIT
+    END
+    POPUP "&Edit"
+    BEGIN
+        MENUITEM "&Undo\tCtrl+Z",               ID_EDIT_UNDO
+        MENUITEM SEPARATOR
+        MENUITEM "Cu&t\tCtrl+X",                ID_EDIT_CUT
+        MENUITEM "&Copy\tCtrl+C",               ID_EDIT_COPY
+        MENUITEM "&Paste\tCtrl+V",              ID_EDIT_PASTE
+    END
+    POPUP "&View"
+    BEGIN
+        MENUITEM "&Toolbar",                    ID_VIEW_TOOLBAR
+        MENUITEM "&Status Bar",                 ID_VIEW_STATUS_BAR
+        MENUITEM SEPARATOR
+        MENUITEM "Zoom in horizontal",          ID_VIEW_ZOOMINHOR
+        MENUITEM "Zoom in vertical",            ID_VIEW_ZOOMINVERT
+        MENUITEM "Zoom out horizontal",         ID_VIEW_ZOOMOUTHOR
+        MENUITEM "Zoom out vertical",           ID_VIEW_ZOOMOUTVERT
+    END
+    POPUP "&Window"
+    BEGIN
+        MENUITEM "&New Window",                 ID_WINDOW_NEW
+        MENUITEM "&Cascade",                    ID_WINDOW_CASCADE
+        MENUITEM "&Tile",                       ID_WINDOW_TILE_HORZ
+        MENUITEM "&Arrange Icons",              ID_WINDOW_ARRANGE
+    END
+    POPUP "&Help"
+    BEGIN
+        MENUITEM "&Help Topics",                ID_HELP_FINDER
+        MENUITEM SEPARATOR
+        MENUITEM "&About WaveSoap...",          ID_APP_ABOUT
+    END
 END
 
-
+IDR_POPUP_SCALED_SCROLL_VIEW MENU DISCARDABLE 
+BEGIN
+    POPUP ""
+    BEGIN
+        MENUITEM "Zoom in\tGray +",             ID_VIEW_ZOOMIN
+        MENUITEM "Zoom out\tGray -",            ID_VIEW_ZOOMOUT
+    END
+END
 
 
 /////////////////////////////////////////////////////////////////////////////
@@ -190,27 +208,31 @@ END
 // Accelerator
 //
 
-IDR_MAINFRAME ACCELERATORS PRELOAD MOVEABLE PURE
+IDR_MAINFRAME ACCELERATORS PRELOAD MOVEABLE PURE 
 BEGIN
-	"N",            ID_FILE_NEW,            VIRTKEY,CONTROL
-	"O",            ID_FILE_OPEN,           VIRTKEY,CONTROL
-	"S",            ID_FILE_SAVE,           VIRTKEY,CONTROL
-	"P",            ID_FILE_PRINT,          VIRTKEY,CONTROL
-	"Z",            ID_EDIT_UNDO,           VIRTKEY,CONTROL
-	"X",            ID_EDIT_CUT,            VIRTKEY,CONTROL
-	"C",            ID_EDIT_COPY,           VIRTKEY,CONTROL
-	"V",            ID_EDIT_PASTE,          VIRTKEY,CONTROL
-	VK_BACK,        ID_EDIT_UNDO,           VIRTKEY,ALT
-	VK_DELETE,      ID_EDIT_CUT,            VIRTKEY,SHIFT
-	VK_INSERT,      ID_EDIT_COPY,           VIRTKEY,CONTROL
-	VK_INSERT,      ID_EDIT_PASTE,          VIRTKEY,SHIFT
-	VK_F6,          ID_NEXT_PANE,           VIRTKEY 
-	VK_F6,          ID_PREV_PANE,           VIRTKEY,SHIFT
-	VK_F1,          ID_CONTEXT_HELP,        VIRTKEY,SHIFT
-	VK_F1,          ID_HELP,                VIRTKEY
+    "C",            ID_EDIT_COPY,           VIRTKEY, CONTROL, NOINVERT
+    "N",            ID_FILE_NEW,            VIRTKEY, CONTROL, NOINVERT
+    "O",            ID_FILE_OPEN,           VIRTKEY, CONTROL, NOINVERT
+    "P",            ID_FILE_PRINT,          VIRTKEY, CONTROL, NOINVERT
+    "S",            ID_FILE_SAVE,           VIRTKEY, CONTROL, NOINVERT
+    "V",            ID_EDIT_PASTE,          VIRTKEY, CONTROL, NOINVERT
+    VK_ADD,         ID_VIEW_ZOOMINHOR2,     VIRTKEY, NOINVERT
+    VK_BACK,        ID_EDIT_UNDO,           VIRTKEY, ALT, NOINVERT
+    VK_DELETE,      ID_EDIT_CUT,            VIRTKEY, SHIFT, NOINVERT
+    VK_DOWN,        ID_VIEW_ZOOMOUTVERT,    VIRTKEY, ALT, NOINVERT
+    VK_F1,          ID_HELP,                VIRTKEY, NOINVERT
+    VK_F1,          ID_CONTEXT_HELP,        VIRTKEY, SHIFT, NOINVERT
+    VK_F6,          ID_NEXT_PANE,           VIRTKEY, NOINVERT
+    VK_F6,          ID_PREV_PANE,           VIRTKEY, SHIFT, NOINVERT
+    VK_INSERT,      ID_EDIT_COPY,           VIRTKEY, CONTROL, NOINVERT
+    VK_INSERT,      ID_EDIT_PASTE,          VIRTKEY, SHIFT, NOINVERT
+    VK_LEFT,        ID_VIEW_ZOOMOUTHOR,     VIRTKEY, ALT, NOINVERT
+    VK_RIGHT,       ID_VIEW_ZOOMINHOR,      VIRTKEY, ALT, NOINVERT
+    VK_SUBTRACT,    ID_VIEW_ZOOMOUTHOR2,    VIRTKEY, NOINVERT
+    VK_UP,          ID_VIEW_ZOOMINVERT,     VIRTKEY, ALT, NOINVERT
+    "X",            ID_EDIT_CUT,            VIRTKEY, CONTROL, NOINVERT
+    "Z",            ID_EDIT_UNDO,           VIRTKEY, CONTROL, NOINVERT
 END
-
-
 
 
 /////////////////////////////////////////////////////////////////////////////
@@ -219,35 +241,147 @@ END
 //
 
 IDD_ABOUTBOX DIALOG DISCARDABLE  0, 0, 235, 55
-CAPTION "About WaveSoapFront"
 STYLE DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "About WaveSoap"
 FONT 8, "MS Sans Serif"
 BEGIN
-	ICON            IDR_MAINFRAME,IDC_STATIC,11,17,20,20
-	LTEXT           "WaveSoapFront Version 1.0",IDC_STATIC,40,10,119,8,
+    ICON            IDR_MAINFRAME,IDC_STATIC,11,17,20,20
+    LTEXT           "WaveSoap Version 1.0",IDC_STATIC,40,10,119,8,
                     SS_NOPREFIX
-	LTEXT           "Copyright (C) 2000",IDC_STATIC,40,25,119,8
-	DEFPUSHBUTTON   "OK",IDOK,178,7,50,14,WS_GROUP
+    LTEXT           "Copyright (C) Alexander Grigoriev, 2000",IDC_STATIC,40,
+                    25,119,8
+    DEFPUSHBUTTON   "OK",IDOK,178,7,50,14,WS_GROUP
 END
 
-
-IDR_MAINFRAME	DIALOG DISCARDABLE 0, 0, 330, 16
+IDR_MAINFRAME DIALOG DISCARDABLE  0, 0, 330, 16
 STYLE WS_CHILD
 FONT 8, "MS Sans Serif"
 BEGIN
-	LTEXT	"TODO: layout dialog bar ",IDC_STATIC,12,4,
-		300,8
+    LTEXT           "TODO: layout dialog bar ",IDC_STATIC,12,4,300,8
+END
+
+IDD_DIALOG_MORE_DECLICK DIALOG DISCARDABLE  0, 0, 187, 198
+STYLE DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "Advanced parameters for declick"
+FONT 8, "MS Sans Serif"
+BEGIN
+    DEFPUSHBUTTON   "OK",IDOK,130,7,50,14
+    PUSHBUTTON      "Cancel",IDCANCEL,130,24,50,14
+END
+
+IDD_DIALOG_MORE_NOISEREDUCTION DIALOG DISCARDABLE  0, 0, 187, 220
+STYLE DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "Advanced parameters for noise reduction"
+FONT 8, "MS Sans Serif"
+BEGIN
+    DEFPUSHBUTTON   "OK",IDOK,31,199,50,14
+    PUSHBUTTON      "Cancel",IDCANCEL,101,199,50,14
+    LTEXT           "Near noise masking:",IDC_STATIC,7,16,63,8
+    LTEXT           "Near masking decay distance:",IDC_STATIC,7,34,111,9
+    LTEXT           "Far noise masking:",IDC_STATIC,7,152,58,8
+    LTEXT           "Far masking decay:",IDC_STATIC,7,170,60,8
+    EDITTEXT        IDC_EDIT_NEAR_MASKING_COEFF,102,14,40,14,ES_AUTOHSCROLL
+    EDITTEXT        IDC_EDIT_NEAR_MASKING_DISTANCE_HIGH,102,47,40,14,
+                    ES_AUTOHSCROLL
+    EDITTEXT        IDC_EDIT_FAR_MASKING_COEFF,102,149,40,14,ES_AUTOHSCROLL
+    EDITTEXT        IDC_EDIT4,102,167,40,14,ES_AUTOHSCROLL
+    LTEXT           "Hz",IDC_STATIC,146,50,9,8
+    LTEXT           "For lower frequencies:",IDC_STATIC,7,50,67,8
+    EDITTEXT        IDC_EDIT_NEAR_MASKING_DISTANCE_LOW,102,66,40,14,
+                    ES_AUTOHSCROLL
+    LTEXT           "Hz",IDC_STATIC,146,69,9,8
+    LTEXT           "For higher frequencies:",IDC_STATIC,7,69,69,8
+    LTEXT           "Decay time of noise masking:",IDC_STATIC,7,88,89,8
+    EDITTEXT        IDC_EDIT_MASKING_TIME_HIGH,102,102,40,14,ES_AUTOHSCROLL
+    LTEXT           "ms",IDC_STATIC,146,105,10,8
+    LTEXT           "For lower frequencies:",IDC_STATIC,7,105,67,8
+    EDITTEXT        IDC_EDIT_MASKING_TIME_LOW,102,121,40,14,ES_AUTOHSCROLL
+    LTEXT           "ms",IDC_STATIC,146,124,10,8
+    LTEXT           "For higher frequencies:",IDC_STATIC,7,124,69,8
+END
+
+IDD_PROPPAGE_DECLICK DIALOG DISCARDABLE  0, 0, 195, 191
+STYLE WS_CHILD | WS_DISABLED | WS_CAPTION
+CAPTION "Declicker"
+FONT 8, "MS Sans Serif"
+BEGIN
+    LTEXT           "Min click amplitude:",IDC_STATIC,7,9,71,8
+    EDITTEXT        IDC_EDIT_MIN_CLICK_AMPLITUDE,86,7,40,14,ES_AUTOHSCROLL
+    LTEXT           "Click to noise ratio:",IDC_STATIC,7,28,71,8
+    CONTROL         "Log all found clicks to a file:",IDC_CHECK_LOG_CLICKS,
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,7,138,97,10
+    EDITTEXT        IDC_EDIT_CLICK_LOG_FILENAME,7,153,128,14,ES_AUTOHSCROLL
+    PUSHBUTTON      "Browse...",IDC_CLICK_LOG_BROWSE_BUTTON,146,153,42,14
+    CONTROL         "Log clicks only, don't change the wave",
+                    IDC_CHECK_LOG_CLICKS_ONLY,"Button",BS_AUTOCHECKBOX | 
+                    WS_TABSTOP,7,174,136,10
+    EDITTEXT        IDC_EDIT_CLICK_TO_NOISE,86,25,40,14,ES_AUTOHSCROLL
+    LTEXT           "Max click length:",IDC_STATIC,7,47,67,8
+    EDITTEXT        IDC_EDIT_MAX_CLICK_LENGTH,86,43,40,14,ES_AUTOHSCROLL | 
+                    ES_NUMBER
+    LTEXT           "Noise attack rate:",IDC_STATIC,7,64,68,8
+    EDITTEXT        IDC_EDIT_ATTACK_RATE,86,61,40,14,ES_AUTOHSCROLL
+    LTEXT           "Click proximity factor:",IDC_STATIC,7,84,73,8
+    EDITTEXT        IDC_EDIT_DECAY_RATE,86,80,40,14,ES_AUTOHSCROLL
+    EDITTEXT        IDC_EDIT_CLICK_IMPORT_FILENAME,7,118,128,14,
+                    ES_AUTOHSCROLL
+    PUSHBUTTON      "Browse...",IDC_CLICK_IMPORT_BROWSE_BUTTON,146,118,42,14
+    CONTROL         "Import clicks from a file:",IDC_CHECK_IMPORT_CLICKS,
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,7,102,85,10
+    PUSHBUTTON      "Set defaults",IDC_BUTTON_RESET_DEFAULT,138,7,50,14
+    PUSHBUTTON      "Revert",IDC_BUTTON_REVERT_INITIAL,138,25,50,14
+    PUSHBUTTON      "More settings...",IDC_BUTTON_MORE_SETTINGS,138,80,50,14
+END
+
+IDD_PROPPAGE_NOISEREDUCT DIALOG DISCARDABLE  0, 0, 195, 238
+STYLE WS_CHILD | WS_DISABLED | WS_CAPTION
+CAPTION "Noise Reduction"
+FONT 8, "MS Sans Serif"
+BEGIN
+    LTEXT           "Apply noise reduction to\nfrequencies higher than:",
+                    IDC_STATIC,7,5,77,19
+    EDITTEXT        IDC_EDIT_LOWER_FREQUENCY,96,7,40,13,ES_AUTOHSCROLL
+    LTEXT           "Hz",IDC_STATIC,142,9,12,8
+    LTEXT           "FFT order for analyze:",IDC_STATIC,7,27,67,8
+    COMBOBOX        IDC_COMBO_FFT_ORDER,96,24,40,44,CBS_DROPDOWNLIST | 
+                    WS_VSCROLL | WS_TABSTOP
+    LTEXT           "Tone over noise preference:",IDC_STATIC,7,109,59,19
+    EDITTEXT        IDC_EDIT_TONE_PREFERENCE,96,112,40,13,ES_AUTOHSCROLL
+    LTEXT           "dB",IDC_STATIC,142,114,12,8
+    LTEXT           "Noise floor for higher frequencies:",IDC_STATIC,7,38,70,
+                    17
+    EDITTEXT        IDC_EDIT_NOISE_AREA_THRESHOLD_HIGH,96,40,40,13,
+                    ES_AUTOHSCROLL
+    LTEXT           "dB",IDC_STATIC,142,42,12,8
+    LTEXT           "Continuous tone detection\nthreshold:",IDC_STATIC,7,161,
+                    81,18
+    EDITTEXT        IDC_EDIT_NOISE_CRITERION,96,161,40,13,ES_AUTOHSCROLL
+    LTEXT           "Transient area threshold:",IDC_STATIC,7,181,75,8
+    EDITTEXT        IDC_EDIT_TRANSIENT_THRESHOLD,96,178,40,13,ES_AUTOHSCROLL
+    LTEXT           "dB",IDC_STATIC,142,180,12,8
+    LTEXT           "Noise reduction \naggressivness:",IDC_STATIC,7,73,65,18
+    EDITTEXT        IDC_EDIT_AGGRESSIVNESS,96,75,40,14,ES_AUTOHSCROLL
+    LTEXT           "Maximum noise reduction:",IDC_STATIC,7,97,78,8
+    EDITTEXT        IDC_EDIT_NOISE_REDUCTION,96,94,40,14,ES_AUTOHSCROLL
+    LTEXT           "dB",IDC_STATIC,142,96,12,8
+    PUSHBUTTON      "More...",IDC_BUTTON_MORE,138,217,50,14
+    LTEXT           "Noise floor for lower frequencies:",IDC_STATIC,7,56,70,
+                    17
+    EDITTEXT        IDC_EDIT_NOISE_AREA_THRESHOLD_LOW,96,58,40,13,
+                    ES_AUTOHSCROLL
+    LTEXT           "dB",IDC_STATIC,142,60,12,8
 END
 
 
+#ifndef _MAC
 /////////////////////////////////////////////////////////////////////////////
 //
 // Version
 //
 
-VS_VERSION_INFO     VERSIONINFO
-  FILEVERSION       1,0,0,1
-  PRODUCTVERSION    1,0,0,1
+VS_VERSION_INFO VERSIONINFO
+ FILEVERSION 1,0,0,1
+ PRODUCTVERSION 1,0,0,1
  FILEFLAGSMASK 0x3fL
 #ifdef _DEBUG
  FILEFLAGS 0x1L
@@ -258,26 +392,29 @@ VS_VERSION_INFO     VERSIONINFO
  FILETYPE 0x1L
  FILESUBTYPE 0x0L
 BEGIN
-	BLOCK "StringFileInfo"
-	BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
         BLOCK "040904B0"
-		BEGIN 
-			VALUE "CompanyName",     "\0"
-			VALUE "FileDescription", "WaveSoapFront MFC Application\0"
-			VALUE "FileVersion",     "1, 0, 0, 1\0"
-			VALUE "InternalName",    "WaveSoapFront\0"
-			VALUE "LegalCopyright",  "Copyright (C) 2000\0"
-			VALUE "LegalTrademarks", "\0"
-			VALUE "OriginalFilename","WaveSoapFront.EXE\0"
-			VALUE "ProductName",     "WaveSoapFront Application\0"
-			VALUE "ProductVersion",  "1, 0, 0, 1\0"
-		END
-	END
-	BLOCK "VarFileInfo" 
-	BEGIN 
-		VALUE "Translation", 0x409, 1200
+        BEGIN
+            VALUE "CompanyName", "\0"
+            VALUE "FileDescription", "WaveSoapFront MFC Application\0"
+            VALUE "FileVersion", "1, 0, 0, 1\0"
+            VALUE "InternalName", "WaveSoapFront\0"
+            VALUE "LegalCopyright", "Copyright (C) 2000\0"
+            VALUE "LegalTrademarks", "\0"
+            VALUE "OriginalFilename", "WaveSoapFront.EXE\0"
+            VALUE "ProductName", "WaveSoapFront Application\0"
+            VALUE "ProductVersion", "1, 0, 0, 1\0"
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x409, 1200
     END
 END
+
+#endif    // !_MAC
+
 
 /////////////////////////////////////////////////////////////////////////////
 //
@@ -294,8 +431,66 @@ BEGIN
         TOPMARGIN, 7
         BOTTOMMARGIN, 48
     END
+
+    IDD_DIALOG_MORE_DECLICK, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 180
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 191
+    END
+
+    IDD_DIALOG_MORE_NOISEREDUCTION, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 180
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 213
+    END
+
+    IDD_PROPPAGE_DECLICK, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 188
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 184
+    END
+
+    IDD_PROPPAGE_NOISEREDUCT, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 188
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 231
+    END
 END
 #endif    // APSTUDIO_INVOKED
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Dialog Info
+//
+
+IDD_PROPPAGE_NOISEREDUCT DLGINIT
+BEGIN
+    IDC_COMBO_FFT_ORDER, 0x403, 4, 0
+0x3532, 0x0036, 
+    IDC_COMBO_FFT_ORDER, 0x403, 4, 0
+0x3135, 0x0032, 
+    IDC_COMBO_FFT_ORDER, 0x403, 5, 0
+0x3031, 0x3432, "\000" 
+    IDC_COMBO_FFT_ORDER, 0x403, 5, 0
+0x3032, 0x3834, "\000" 
+    IDC_COMBO_FFT_ORDER, 0x403, 5, 0
+0x3034, 0x3639, "\000" 
+    IDC_COMBO_FFT_ORDER, 0x403, 5, 0
+0x3138, 0x3239, "\000" 
+    IDC_COMBO_FFT_ORDER, 0x403, 6, 0
+0x3631, 0x3833, 0x0034, 
+    0
+END
+
 
 /////////////////////////////////////////////////////////////////////////////
 //
@@ -304,98 +499,167 @@ END
 
 STRINGTABLE PRELOAD DISCARDABLE 
 BEGIN
-	IDR_MAINFRAME           "WaveSoap"
-	IDR_WAVESOTYPE         "\nWaveSo\nWaveSoap job\n\n\nWaveSoap.Document\nWaveSoap Document"
+    IDR_MAINFRAME           "WaveSoap"
+    IDR_WAVESOTYPE          "\nWaveSo\nWaveSoap job\nWaveSoap job files (*.wsjb)\n.wsjb\nWaveSoap.Document\nWaveSoap Document"
 END
+
 STRINGTABLE PRELOAD DISCARDABLE 
 BEGIN
-	AFX_IDS_APP_TITLE       "WaveSoapFront"
-	AFX_IDS_IDLEMESSAGE     "For Help, press F1"
-	AFX_IDS_HELPMODEMESSAGE "Select an object on which to get Help"
-END
-STRINGTABLE DISCARDABLE 
-BEGIN
-	ID_INDICATOR_EXT        "EXT"
-	ID_INDICATOR_CAPS       "CAP"
-	ID_INDICATOR_NUM        "NUM"
-	ID_INDICATOR_SCRL       "SCRL"
-	ID_INDICATOR_OVR        "OVR"
-	ID_INDICATOR_REC        "REC"
-END
-STRINGTABLE DISCARDABLE 
-BEGIN
-	ID_FILE_NEW             "Create a new document\nNew"
-	ID_FILE_OPEN            "Open an existing document\nOpen"
-	ID_FILE_CLOSE           "Close the active document\nClose"
-	ID_FILE_SAVE            "Save the active document\nSave"
-	ID_FILE_SAVE_AS         "Save the active document with a new name\nSave As"
-	ID_FILE_PAGE_SETUP      "Change the printing options\nPage Setup"
-	ID_FILE_PRINT_SETUP     "Change the printer and printing options\nPrint Setup"
-	ID_FILE_PRINT           "Print the active document\nPrint"
-	ID_FILE_PRINT_PREVIEW   "Display full pages\nPrint Preview"
-	ID_APP_ABOUT            "Display program information, version number and copyright\nAbout"
-	ID_APP_EXIT             "Quit the application; prompts to save documents\nExit"
-	ID_CONTEXT_HELP         "Display help for clicked on buttons, menus and windows\nHelp"
-	ID_HELP_INDEX           "Opens Help\nHelp Topics"
-	ID_HELP_FINDER			"List Help topics\nHelp Topics"
-	ID_HELP_USING           "Display instructions about how to use help\nHelp"
-	ID_HELP                 "Display help for current task or command\nHelp"
-	ID_FILE_MRU_FILE1       "Open this document"
-	ID_FILE_MRU_FILE2       "Open this document"
-	ID_FILE_MRU_FILE3       "Open this document"
-	ID_FILE_MRU_FILE4       "Open this document"
-	ID_FILE_MRU_FILE5       "Open this document"
-	ID_FILE_MRU_FILE6       "Open this document"
-	ID_FILE_MRU_FILE7       "Open this document"
-	ID_FILE_MRU_FILE8       "Open this document"
-	ID_FILE_MRU_FILE9       "Open this document"
-	ID_FILE_MRU_FILE10      "Open this document"
-	ID_FILE_MRU_FILE11      "Open this document"
-	ID_FILE_MRU_FILE12      "Open this document"
-	ID_FILE_MRU_FILE13      "Open this document"
-	ID_FILE_MRU_FILE14      "Open this document"
-	ID_FILE_MRU_FILE15      "Open this document"
-	ID_FILE_MRU_FILE16      "Open this document"
-	ID_NEXT_PANE            "Switch to the next window pane\nNext Pane"
-	ID_PREV_PANE            "Switch back to the previous window pane\nPrevious Pane"
-	ID_WINDOW_NEW           "Open another window for the active document\nNew Window"
-	ID_WINDOW_ARRANGE       "Arrange icons at the bottom of the window\nArrange Icons"
-	ID_WINDOW_CASCADE       "Arrange windows so they overlap\nCascade Windows"
-	ID_WINDOW_TILE_HORZ     "Arrange windows as non-overlapping tiles\nTile Windows"
-	ID_WINDOW_TILE_VERT     "Arrange windows as non-overlapping tiles\nTile Windows"
-	ID_WINDOW_SPLIT         "Split the active window into panes\nSplit"
-	ID_EDIT_CLEAR           "Erase the selection\nErase"
-	ID_EDIT_CLEAR_ALL       "Erase everything\nErase All"
-	ID_EDIT_COPY            "Copy the selection and put it on the Clipboard\nCopy"
-	ID_EDIT_CUT             "Cut the selection and put it on the Clipboard\nCut"
-	ID_EDIT_FIND            "Find the specified text\nFind"
-	ID_EDIT_PASTE           "Insert Clipboard contents\nPaste"
-	ID_EDIT_REPEAT          "Repeat the last action\nRepeat"
-	ID_EDIT_REPLACE         "Replace specific text with different text\nReplace"
-	ID_EDIT_SELECT_ALL      "Select the entire document\nSelect All"
-	ID_EDIT_UNDO            "Undo the last action\nUndo"
-	ID_EDIT_REDO            "Redo the previously undone action\nRedo"
-	ID_VIEW_TOOLBAR         "Show or hide the toolbar\nToggle ToolBar"
-	ID_VIEW_STATUS_BAR      "Show or hide the status bar\nToggle StatusBar"
+    AFX_IDS_APP_TITLE       "WaveSoapFront"
+    AFX_IDS_IDLEMESSAGE     "For Help, press F1"
+    AFX_IDS_HELPMODEMESSAGE "Select an object on which to get Help"
 END
 
 STRINGTABLE DISCARDABLE 
 BEGIN
-	AFX_IDS_SCSIZE          "Change the window size"
-	AFX_IDS_SCMOVE          "Change the window position"
-	AFX_IDS_SCMINIMIZE      "Reduce the window to an icon"
-	AFX_IDS_SCMAXIMIZE      "Enlarge the window to full size"
-	AFX_IDS_SCNEXTWINDOW    "Switch to the next document window"
-	AFX_IDS_SCPREVWINDOW    "Switch to the previous document window"
-	AFX_IDS_SCCLOSE         "Close the active window and prompts to save the documents"
-	AFX_IDS_SCRESTORE       "Restore the window to normal size"
-	AFX_IDS_SCTASKLIST      "Activate Task List"
-	AFX_IDS_MDICHILD        "Activate this window"
-	AFX_IDS_PREVIEW_CLOSE   "Close print preview mode\nCancel Preview"
+    ID_INDICATOR_EXT        "EXT"
+    ID_INDICATOR_CAPS       "CAP"
+    ID_INDICATOR_NUM        "NUM"
+    ID_INDICATOR_SCRL       "SCRL"
+    ID_INDICATOR_OVR        "OVR"
+    ID_INDICATOR_REC        "REC"
 END
 
+STRINGTABLE DISCARDABLE 
+BEGIN
+    ID_FILE_NEW             "Create a new document\nNew"
+    ID_FILE_OPEN            "Open an existing document\nOpen"
+    ID_FILE_CLOSE           "Close the active document\nClose"
+    ID_FILE_SAVE            "Save the active document\nSave"
+    ID_FILE_SAVE_AS         "Save the active document with a new name\nSave As"
+    ID_FILE_PAGE_SETUP      "Change the printing options\nPage Setup"
+    ID_FILE_PRINT_SETUP     "Change the printer and printing options\nPrint Setup"
+    ID_FILE_PRINT           "Print the active document\nPrint"
+    ID_FILE_PRINT_PREVIEW   "Display full pages\nPrint Preview"
+END
 
-#endif
+STRINGTABLE DISCARDABLE 
+BEGIN
+    ID_APP_ABOUT            "Display program information, version number and copyright\nAbout"
+    ID_APP_EXIT             "Quit the application; prompts to save documents\nExit"
+    ID_HELP_INDEX           "Opens Help\nHelp Topics"
+    ID_HELP_FINDER          "List Help topics\nHelp Topics"
+    ID_HELP_USING           "Display instructions about how to use help\nHelp"
+    ID_CONTEXT_HELP         "Display help for clicked on buttons, menus and windows\nHelp"
+    ID_HELP                 "Display help for current task or command\nHelp"
+END
+
+STRINGTABLE DISCARDABLE 
+BEGIN
+    ID_FILE_MRU_FILE1       "Open this document"
+    ID_FILE_MRU_FILE2       "Open this document"
+    ID_FILE_MRU_FILE3       "Open this document"
+    ID_FILE_MRU_FILE4       "Open this document"
+    ID_FILE_MRU_FILE5       "Open this document"
+    ID_FILE_MRU_FILE6       "Open this document"
+    ID_FILE_MRU_FILE7       "Open this document"
+    ID_FILE_MRU_FILE8       "Open this document"
+    ID_FILE_MRU_FILE9       "Open this document"
+    ID_FILE_MRU_FILE10      "Open this document"
+    ID_FILE_MRU_FILE11      "Open this document"
+    ID_FILE_MRU_FILE12      "Open this document"
+    ID_FILE_MRU_FILE13      "Open this document"
+    ID_FILE_MRU_FILE14      "Open this document"
+    ID_FILE_MRU_FILE15      "Open this document"
+    ID_FILE_MRU_FILE16      "Open this document"
+END
+
+STRINGTABLE DISCARDABLE 
+BEGIN
+    ID_NEXT_PANE            "Switch to the next window pane\nNext Pane"
+    ID_PREV_PANE            "Switch back to the previous window pane\nPrevious Pane"
+END
+
+STRINGTABLE DISCARDABLE 
+BEGIN
+    ID_WINDOW_NEW           "Open another window for the active document\nNew Window"
+    ID_WINDOW_ARRANGE       "Arrange icons at the bottom of the window\nArrange Icons"
+    ID_WINDOW_CASCADE       "Arrange windows so they overlap\nCascade Windows"
+    ID_WINDOW_TILE_HORZ     "Arrange windows as non-overlapping tiles\nTile Windows"
+    ID_WINDOW_TILE_VERT     "Arrange windows as non-overlapping tiles\nTile Windows"
+    ID_WINDOW_SPLIT         "Split the active window into panes\nSplit"
+END
+
+STRINGTABLE DISCARDABLE 
+BEGIN
+    ID_EDIT_CLEAR           "Erase the selection\nErase"
+    ID_EDIT_CLEAR_ALL       "Erase everything\nErase All"
+    ID_EDIT_COPY            "Copy the selection and put it on the Clipboard\nCopy"
+    ID_EDIT_CUT             "Cut the selection and put it on the Clipboard\nCut"
+    ID_EDIT_FIND            "Find the specified text\nFind"
+    ID_EDIT_PASTE           "Insert Clipboard contents\nPaste"
+    ID_EDIT_REPEAT          "Repeat the last action\nRepeat"
+    ID_EDIT_REPLACE         "Replace specific text with different text\nReplace"
+    ID_EDIT_SELECT_ALL      "Select the entire document\nSelect All"
+    ID_EDIT_UNDO            "Undo the last action\nUndo"
+    ID_EDIT_REDO            "Redo the previously undone action\nRedo"
+END
+
+STRINGTABLE DISCARDABLE 
+BEGIN
+    ID_VIEW_TOOLBAR         "Show or hide the toolbar\nToggle ToolBar"
+    ID_VIEW_STATUS_BAR      "Show or hide the status bar\nToggle StatusBar"
+END
+
+STRINGTABLE DISCARDABLE 
+BEGIN
+    AFX_IDS_SCSIZE          "Change the window size"
+    AFX_IDS_SCMOVE          "Change the window position"
+    AFX_IDS_SCMINIMIZE      "Reduce the window to an icon"
+    AFX_IDS_SCMAXIMIZE      "Enlarge the window to full size"
+    AFX_IDS_SCNEXTWINDOW    "Switch to the next document window"
+    AFX_IDS_SCPREVWINDOW    "Switch to the previous document window"
+    AFX_IDS_SCCLOSE         "Close the active window and prompts to save the documents"
+END
+
+STRINGTABLE DISCARDABLE 
+BEGIN
+    AFX_IDS_SCRESTORE       "Restore the window to normal size"
+    AFX_IDS_SCTASKLIST      "Activate Task List"
+    AFX_IDS_MDICHILD        "Activate this window"
+END
+
+STRINGTABLE DISCARDABLE 
+BEGIN
+    AFX_IDS_PREVIEW_CLOSE   "Close print preview mode\nCancel Preview"
+END
+
+STRINGTABLE DISCARDABLE 
+BEGIN
+    IDS_WAV_FILTER          "Windows Sound Files (*.wav)|*.wav|All Files (*.*)|*.*||"
+END
+
+STRINGTABLE DISCARDABLE 
+BEGIN
+    ID_VIEW_ZOOMIN          "Magnify the view"
+    ID_VIEW_ZOOMOUT         "Diminish the view"
+    ID_VIEW_ZOOM_OUT2       "Zoom out x2"
+    ID_VIEW_ZOOMIN2         "Zoom in x2"
+    ID_VIEW_ZOOMINHOR       "Zoom in horizontal"
+    IDS_BAD_FLOAT_VALUE     "%1 Invalid value entered"
+    IDS_VALUE_REQUIRED      "%1 Non-empty value required"
+    IDS_VALUE_TOO_LOW       "%1 Value is less than allowed (%2)"
+    IDS_VALUE_TOO_HIGH      "%1 Value is greater than allowed (%2)"
+END
+
+STRINGTABLE DISCARDABLE 
+BEGIN
+    IDS_INI_FILTER          "Initialization settings (*.ini)|*.ini|All Files (*.*)|*.*||"
+    ID_VIEW_ZOOM_OUT3       "Zoom out x2"
+    ID_VIEW_ZOOMIN3         "Zoom in x2"
+    ID_VIEW_ZOOMINHOR2      "Zoom in horizontal"
+    ID_INDICATOR_MOUSE_POSITION "X=%1, Y=%2"
+    ID_VIEW_ZOOMINVERT      "Zoom in vertical"
+    ID_VIEW_ZOOMOUTHOR      "Zoom out horizontal"
+    ID_VIEW_ZOOMOUTVERT     "Zoom out vertical"
+    ID_VIEW_ZOOMINVERT2     "Zoom in vertical"
+    ID_VIEW_ZOOMOUTHOR2     "Zoom out horizontal"
+    ID_VIEW_ZOOMOUTVERT2    "Zoom out vertical"
+END
+
+#endif    // English (U.S.) resources
+/////////////////////////////////////////////////////////////////////////////
+
 
 
 #ifndef APSTUDIO_INVOKED
@@ -403,7 +667,6 @@ END
 //
 // Generated from the TEXTINCLUDE 3 resource.
 //
-
 #define _AFX_NO_SPLITTER_RESOURCES
 #define _AFX_NO_OLE_RESOURCES
 #define _AFX_NO_TRACKER_RESOURCES
@@ -414,9 +677,11 @@ END
 LANGUAGE 9, 1
 #pragma code_page(1252)
 #endif //_WIN32
-#include "res\\WaveSoapFront.rc2"  // non-Microsoft Visual C++ edited resources
-#include "afxres.rc"  	// Standard components
-#include "afxprint.rc"  // printing/print preview resources
+#include "res\WaveSoapFront.rc2"  // non-Microsoft Visual C++ edited resources
+#include "afxres.rc"         // Standard components
+#include "afxprint.rc"       // printing/print preview resources
 #endif
 
+/////////////////////////////////////////////////////////////////////////////
 #endif    // not APSTUDIO_INVOKED
+
