@@ -7,20 +7,34 @@
 
 <BODY BGCOLOR="#FFFFFF" TEXT="#000000">
 
-<OBJECT TYPE="application/x-oleobject" CLASSID="clsid:1e2a7bd0-dab9-11d0-b93a-00c04fc99f9e">
-	<PARAM NAME="Keyword" VALUE="files: managing">
-</OBJECT>
+<P><B>Save command (<a href="menu_file.htm">File menu</a>)</B></P>
 
-<P><A NAME="hid_file_save"></A><B>Save command (File menu)</B></P>
+<P>Use this command to save the active sound file to its current name and directory.  When you save a 
+new sound file for the first time, WaveSoap displays the <A HREF="../Dialogs/FileSave/afx_hidd_filesave.htm">Save As dialog box</A>, so you can name your sound file.  </P>
+<P>If you want to change the name and directory of an existing sound file before you save it, choose the <A HREF="hid_file_save_as.htm">Save As command</A>.
+Use this command also to save the file with different compression or sample 
+rate.</P>
+<P>You can also save a copy of the open file, by selecting
+<a href="hid_save_copy_as.htm">Save Copy command</a>. The original file will 
+remain open.</P>
+<P>After the file has been saved, the application reloads it. It may prompt you 
+how you want the file to be reopen:</P>
+<ul>
+  <li>If the uncompressed file was originally opened in buffered mode, you have 
+  options to reopen in buffered mode again (this will create a new temporary 
+  file), reopen it in direct mode to work immediately on the file, or close it 
+  altogether.</li>
+  <li>If the file was saved with compression, you have options to reload it from 
+  the saved copy, or continue working with the current data. Most compression 
+  formats have compression loss, and reloaded data may be different from 
+  original.</li>
+</ul>
 
-<P>Use this command to save the active sound to its current name and directory.  When you save a sound file for the first time, WaveSoap displays the <A HREF="../Dialogs/FileSave/afx_hidd_filesave.htm">Save As dialog box</A> so you can name your sound file.  If you want to change the name and directory of an existing sound file before you save it, choose the <A HREF="hid_file_save_as.htm">Save As command</A>.
-You can also save a copy of the open file, by selecting Save Copy command.</P>
+<P><B>Shortcuts:</B></P>
 
-<P><B>Shortcuts</B></P>
+<P>Toolbar:<IMG SRC="../../images/filesave.png" ALT="" BORDER=0 align="middle"></P>
 
-<P>Toolbar:<IMG SRC="../../images/filesave.png" ALT="" BORDER=0 width="28" height="24"></P>
-
-<P>Keys:CTRL+S</P>
+<P>Keys:Ctrl+S</P>
 
 </BODY>
 </HTML>
