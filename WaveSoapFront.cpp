@@ -79,10 +79,37 @@ void CWaveSoapDocTemplate::OnIdle()
 	}
 }
 
+void CWaveSoapFrontStatusBar::OnLButtonDblClk(UINT nFlags, CPoint point)
+{
+	// TODO: Add your message handler code here and/or call default
+	// make sure window is active
+	int nHit = -1;
+	for (int i = 1; i < m_nCount; i++)
+	{
+		CRect r;
+		GetItemRect(i, & r);
+		if (r.PtInRect(point))
+		{
+			nHit = GetItemID(i);
+			// found matching rect
+			break;
+		}
+	}
+
+	if (nHit == ID_INDICATOR_SCALE)
+	{
+		// toggle previous scale
+		AfxGetMainWnd()->SendMessage(WM_COMMAND, ID_VIEW_ZOOMPREVIOUS);
+	}
+
+	CStatusBar::OnLButtonDblClk(nFlags, point);
+}
+
 BEGIN_MESSAGE_MAP(CWaveSoapFrontStatusBar, CStatusBar)
 	//{{AFX_MSG_MAP(CWaveSoapFrontStatusBar)
 	ON_WM_CONTEXTMENU()
 	//}}AFX_MSG_MAP
+	ON_WM_LBUTTONDBLCLK()
 END_MESSAGE_MAP()
 
 BEGIN_MESSAGE_MAP(CWaveSoapFrontApp, CWinApp)
@@ -2013,6 +2040,7 @@ void CWaveSoapDocTemplate::SaveAll()
 #include <devioctl.h>
 #include <ntddcdrm.h>
 #include <winioctl.h>
+#include ".\wavesoapfront.h"
 
 void CWaveSoapFrontApp::OnToolsCdgrab()
 {
@@ -2512,3 +2540,4 @@ CDocumentPopup::~CDocumentPopup()
 		static_cast<CMDIChildWnd*>(pTop)->MDIActivate();
 	}
 }
+
