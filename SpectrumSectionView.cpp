@@ -613,20 +613,31 @@ BOOL CSpectrumSectionView::AllocateFftArrays()
 
 		for (int w = 0; w < m_FftOrder * 2; w++)
 		{
+			// X changes from 0 to 2pi
+			double X = (w + 0.5) * M_PI /  m_FftOrder;
+
 			switch (FftWindowType)
 			{
 			default:
 			case pFftView->WindowTypeSquaredSine:
 				// squared sine
-				m_pWindow[w] = float(0.5 - 0.5 * cos ((w + 0.5) * M_PI /  m_FftOrder));
+				m_pWindow[w] = float(0.5 - 0.5 * cos (X));
 				break;
+
 			case pFftView->WindowTypeHalfSine:
 				// half sine
-				m_pWindow[w] = float(0.707107 * sin ((w + 0.5) * M_PI /  (2*m_FftOrder)));
+				m_pWindow[w] = float(0.707107 * sin (0.5 * X));
 				break;
+
 			case pFftView->WindowTypeHamming:
 				// Hamming window (sucks!!!)
-				m_pWindow[w] = float(0.9 *(0.54 - 0.46 * cos ((w + 0.5)* M_PI /  m_FftOrder)));
+				m_pWindow[w] = float(0.9 *(0.54 - 0.46 * cos (X)));
+				break;
+
+			case pFftView->WindowTypeNuttall:
+				// Nuttall window:
+				// w(n) = 0.355768 - 0.487396*cos(2pn/N) + 0.144232*cos(4pn/N) - 0.012604*cos(6pn/N)
+				m_pWindow[w] = float(0.355768 - 0.487396*cos(X) + 0.144232*cos(2 * X) - 0.012604*cos(3 * X));
 				break;
 			}
 		}
