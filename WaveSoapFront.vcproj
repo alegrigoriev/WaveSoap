@@ -366,6 +366,9 @@
 				RelativePath=".\SpectrumSectionView.cpp">
 			</File>
 			<File
+				RelativePath=".\SplitToFilesDialog.cpp">
+			</File>
+			<File
 				RelativePath=".\StdAfx.cpp">
 				<FileConfiguration
 					Name="Debug|Win32">
@@ -713,6 +716,9 @@ makehm /h /a afxhh.h IDW_,HIDW_,0x50000 &quot;$(InputFileName)&quot; &gt;&gt; &q
 			</File>
 			<File
 				RelativePath=".\SpectrumSectionView.h">
+			</File>
+			<File
+				RelativePath=".\SplitToFilesDialog.h">
 			</File>
 			<File
 				RelativePath=".\StdAfx.h">
