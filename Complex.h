@@ -78,8 +78,10 @@ public:
 	// constructors
 	Complex(DOUBLE __re_val, DOUBLE __im_val=0);
 	Complex();
+#ifdef __LCOMPLEX_H
 	friend class lcomplex;
 	Complex(const lcomplex&);
+#endif
 	// Complex manipulations
 	friend DOUBLE __stdcall real(const Complex &); // the real part
 	friend DOUBLE __stdcall imag(const Complex &); // the imaginary part
@@ -144,10 +146,6 @@ public:
 
 #pragma pack(pop)
 
-#if !defined(__LCOMPLEX_H)
-#include "LComplex.h"
-#endif
-
 // Inline Complex functions
 
 inline Complex::Complex(DOUBLE __re_val, DOUBLE __im_val)
@@ -156,11 +154,13 @@ inline Complex::Complex(DOUBLE __re_val, DOUBLE __im_val)
 	im = __im_val;
 }
 
+#ifdef __LCOMPLEX_H
 inline Complex::Complex(const lcomplex &a)
 {
 	re = a.re;
 	im = a.im;
 }
+#endif
 
 inline Complex::Complex()
 {
