@@ -135,8 +135,13 @@ public:
 // Dialog Data
 	//{{AFX_DATA(CCdGrabbingDialog)
 	enum { IDD = IDD_DIALOG_CD_GRABBING };
+	CStatic	m_StaticFormat;
+	CComboBox	m_SpeedCombo;
 	CComboBox	m_DrivesCombo;
 	CListCtrl	m_lbTracks;
+	int		m_RadioAssignAttributes;
+	int		m_RadioStoreImmediately;
+	int		m_RadioStoreMultiple;
 	//}}AFX_DATA
 
 	CCdDrive m_CdDrive;
@@ -148,6 +153,7 @@ public:
 	CDROM_TOC m_toc;
 
 	DWORD m_DiskID;
+	BOOL m_bDiskReady;
 
 // Overrides
 	// ClassWizard generated virtual function overrides
@@ -158,6 +164,7 @@ protected:
 
 // Implementation
 protected:
+	BOOL m_bNeedUpdateControls;
 	CSize m_PreviousSize;
 	MINMAXINFO m_mmxi;
 	void FillTrackList(TCHAR letter);
@@ -171,6 +178,7 @@ protected:
 	void CheckForDrivesChanged();
 
 	// Generated message map functions
+	LRESULT OnKickIdle(WPARAM, LPARAM);
 	//{{AFX_MSG(CCdGrabbingDialog)
 	virtual BOOL OnInitDialog();
 	afx_msg BOOL OnEraseBkgnd(CDC* pDC);
@@ -182,6 +190,15 @@ protected:
 	afx_msg void OnButtonMore();
 	afx_msg void OnSelchangeComboDrives();
 	afx_msg void OnDestroy();
+	afx_msg void OnButtonBrowseSaveFolder();
+	afx_msg void OnButtonCddb();
+	afx_msg void OnButtonDeselectAll();
+	afx_msg void OnButtonSelectAll();
+	afx_msg void OnButtonSetFormat();
+	afx_msg void OnChangeEditAlbum();
+	afx_msg void OnChangeEditArtist();
+	afx_msg void OnRadioStoreMultipleFiles();
+	afx_msg void OnRadioStoreSingleFile();
 	//}}AFX_MSG
 	void OnMetricsChange();
 	afx_msg LRESULT OnDeviceChange(UINT, DWORD);

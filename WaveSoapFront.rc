@@ -1434,29 +1434,31 @@ BEGIN
     CONTROL         "List1",IDC_LIST_TRACKS,"SysListView32",LVS_REPORT | 
                     LVS_EDITLABELS | LVS_ALIGNLEFT | LVS_NOSORTHEADER | 
                     WS_BORDER | WS_TABSTOP,7,34,299,117,WS_EX_CLIENTEDGE
-    CONTROL         "Assign to selected tracks only:",IDC_RADIO5,"Button",
-                    BS_AUTORADIOBUTTON,106,155,114,10
     CONTROL         "Assign to all tracks:",IDC_RADIO_ASSIGN_ATTRIBUTES,
                     "Button",BS_AUTORADIOBUTTON | WS_GROUP | WS_TABSTOP,7,
                     155,73,10
+    CONTROL         "Assign to selected tracks only:",IDC_RADIO5,"Button",
+                    BS_AUTORADIOBUTTON,106,155,114,10
     LTEXT           "Album:",IDC_STATIC,7,172,25,8
-    EDITTEXT        IDC_EDIT1,33,169,203,14,ES_AUTOHSCROLL
+    EDITTEXT        IDC_EDIT_ALBUM,33,169,203,14,ES_AUTOHSCROLL
     LTEXT           "Artist:",IDC_STATIC,7,188,17,8
-    EDITTEXT        IDC_EDIT2,33,186,203,14,ES_AUTOHSCROLL
+    EDITTEXT        IDC_EDIT_ARTIST,33,186,203,14,ES_AUTOHSCROLL
     PUSHBUTTON      "Lookup in CDDB...",IDC_BUTTON_CDDB,242,169,64,14
     CONTROL         "Store files in this folder:",
                     IDC_RADIO_STORE_MULTIPLE_FILES,"Button",
                     BS_AUTORADIOBUTTON | WS_GROUP | WS_TABSTOP,7,204,84,10
-    CONTROL         "Put all tracks in a single file:",IDC_RADIO4,"Button",
-                    BS_AUTORADIOBUTTON,106,204,97,10
-    EDITTEXT        IDC_EDIT3,7,217,230,14,ES_AUTOHSCROLL
+    CONTROL         "Put all tracks in a single file:",
+                    IDC_RADIO_STORE_SINGLE_FILE,"Button",BS_AUTORADIOBUTTON,
+                    106,204,97,10
+    EDITTEXT        IDC_EDIT_FOLDER_OR_FILE,7,217,230,14,ES_AUTOHSCROLL | 
+                    WS_GROUP
     PUSHBUTTON      "...",IDC_BUTTON_BROWSE_SAVE_FOLDER,243,217,15,14
     CONTROL         "Store file(s) immediately",IDC_RADIO_STORE_IMMEDIATELY,
                     "Button",BS_AUTORADIOBUTTON | WS_GROUP | WS_TABSTOP,7,
                     237,91,10
     CONTROL         "Load file(s) for editing first",IDC_RADIO3,"Button",
                     BS_AUTORADIOBUTTON,106,237,90,10
-    DEFPUSHBUTTON   "OK",IDOK,256,251,50,14
+    DEFPUSHBUTTON   "OK",IDOK,256,251,50,14,WS_GROUP
     PUSHBUTTON      "Cancel",IDCANCEL,256,270,50,14
     LTEXT           "&Drive:",IDC_STATIC,7,9,24,8
     COMBOBOX        IDC_COMBO_DRIVES,33,7,42,30,CBS_DROPDOWNLIST | CBS_SORT | 
@@ -1466,7 +1468,7 @@ BEGIN
                     WS_VSCROLL | WS_TABSTOP
     PUSHBUTTON      "Mark all tracks",IDC_BUTTON_SELECT_ALL,195,7,54,14
     PUSHBUTTON      "Unmark all",IDC_BUTTON_DESELECT_ALL,252,7,54,14
-    LTEXT           "Static",IDC_STATIC,7,250,183,34
+    LTEXT           "Static",IDC_STATIC_FORMAT,7,250,183,34
     PUSHBUTTON      "File(s) format...",IDC_BUTTON_SET_FORMAT,196,251,50,14
 END
 
