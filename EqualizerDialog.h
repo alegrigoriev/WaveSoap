@@ -28,7 +28,7 @@ public:
 	double m_BandFrequencies[MaxNumberOfEqualizerBands];
 	// the coefficients are: 3 numerator's coeffs and 3 denominator's coeffs
 	double m_BandCoefficients[MaxNumberOfEqualizerBands][6];
-	int m_NumOfBands;    // 2-MaxNumberOfEqualizerBands
+	int m_NumOfFilters;    // 2-MaxNumberOfEqualizerBands
 };
 
 class CEqualizerGraphWnd : public CWnd, public Equalizer
@@ -79,7 +79,9 @@ public:
 	bool m_bButtonPressed;
 	bool m_bGotFocus;
 	bool m_DotCaretIsOn;
+	bool m_MultiBandEqualizer;
 
+	int m_NumOfBands;    // 2-MaxNumberOfEqualizerBands
 	int m_BandWithFocus;
 	double m_SamplingRate;
 	// Generated message map functions
@@ -100,6 +102,7 @@ protected:
 	afx_msg void OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags);
 	afx_msg UINT OnGetDlgCode();
 	afx_msg void OnTimer(UINT nIDEvent);
+	afx_msg void OnLButtonDblClk(UINT nFlags, CPoint point);
 	//}}AFX_MSG
 	afx_msg void OnNcPaint(UINT wParam);
 	DECLARE_MESSAGE_MAP()

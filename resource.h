@@ -385,11 +385,8 @@
 #define IDC_BUTTON_LC_F                 32873
 #define IDC_BUTTON_WAVE                 32874
 #define IDC_BUTTON_PLUS                 32875
-#define IDC_BUTTON_LC_F1                32875
 #define IDC_BUTTON_MINUS                32876
-#define IDC_BUTTON_LC_F2                32876
 #define IDC_BUTTON_MULTIPLY             32877
-#define IDC_BUTTON_LC_F3                32877
 #define IDC_BUTTON_DIVIDE               32878
 #define IDC_BUTTON_MODULE               32879
 #define IDC_BUTTON_AND                  32880
@@ -399,8 +396,11 @@
 #define IDC_BUTTON_N                    32884
 #define IDC_BUTTON_LC_N                 32885
 #define IDC_BUTTON_15                   32886
+#define IDC_BUTTON_LC_F1                32886
 #define IDC_BUTTON_2                    32887
+#define IDC_BUTTON_LC_F2                32887
 #define IDC_BUTTON_3                    32888
+#define IDC_BUTTON_LC_F3                32888
 #define IDC_BUTTON_4                    32889
 #define IDC_BUTTON_INSERT_EXPRESSION    32890
 #define IDC_BUTTON_5                    32890
