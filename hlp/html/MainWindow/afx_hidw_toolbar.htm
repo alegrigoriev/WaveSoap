@@ -2,12 +2,17 @@
 <HTML>
 <HEAD>
 <META HTTP-EQUIV="Content-Type" Content="text/html; charset=Windows-1252">
-<TITLE>toolbar</TITLE>
+<TITLE>Toolbar</TITLE>
 </HEAD>
 
 <BODY BGCOLOR="#FFFFFF" TEXT="#000000">
 
-<B>Toolbar</B><P><IMG SRC="../../images/hlptbar.png" ALT="" BORDER=0></P>
+<B>Toolbar</B><P><map name="FPMap0">
+<area alt="New File" coords="4, 0, 27, 24" shape="rect" href="../File/hid_file_new.htm">
+<area alt="Open File" href="../File/hid_file_open.htm" shape="rect" coords="27, 0, 51, 25">
+<area alt="Read audio CD" href="../File/hid_read_audio_cd.htm" shape="rect" coords="50, 1, 74, 22">
+<area alt="Save file" href="../File/hid_file_save.htm" shape="rect" coords="73, 0, 95, 24">
+</map><IMG SRC="../../images/hlptbar.png" ALT="" BORDER=0 usemap="#FPMap0"></P>
 
 <P>The toolbar is displayed across the top of the application window, below the menu bar.  The toolbar provides quick mouse access to many tools used in
 WaveSoap.</P>
@@ -15,19 +20,29 @@ WaveSoap.</P>
 <P>To hide or display the Toolbar, choose Toolbar from the 
 <a href="../View/menu_view.htm">View</a> menu (ALT, V, T).</P>
 
-<P><B>ClickTo:</B></P>
+<P><B>Click To:</B></P>
 
 <P><a href="../File/hid_file_new.htm"><img border="0" src="../../images/FileNew.png"> Create a new sound file</a>. 
 WaveSoap may display a dialog to specify the new file parameters</P>
 
 <P><a href="../File/hid_file_open.htm">
-<img border="0" src="../../images/fileopen.png" width="29" height="28"> Open an existing 
+<img border="0" src="../../images/fileopen.png"> Open an existing 
 sound file</a>. WaveSoap displays the Open dialog box, in which you can locate and open the desired file.</P>
+<P><a href="../File/hid_read_audio_cd.htm">
+<img border="0" src="../../images/ReadAudioCDButton.png" width="24" height="23">Read 
+audio CD contents as audio files</a>.</P>
 
 <P><a href="../File/hid_file_save.htm"><img border="0" src="../../images/FileSave.png"> Save the active 
 file with its current name</a>.  If you have not named the document, WaveSoap displays the Save As dialog box.</P>
-
-<P><IMG SRC="../../images/fileprnt.png" ALT="" BORDER=0> Print the active document.</P>
+<P><a href="../File/hid_file_save_as.htm">
+<img border="0" src="../../images/FileSaveAs.png"> Save the active file with 
+different name or conversion</a>.</P>
+<P><a href="../File/hid_save_copy_as.htm">
+<img border="0" src="../../images/SaveCopyButton.png" width="22" height="19"> 
+Save a copy of the active file</a>.</P>
+<P><a href="../File/hid_file_save_all.htm">
+<img border="0" src="../../images/FileSaveAll.png" width="21" height="20"> Save 
+all modified files</a>.</P>
 
 <P><a href="../Edit/hid_edit_cut.htm"><img border="0" src="../../images/EditCut.png"> Cut</a>: Remove selected sound data from the 
 file and stores it on the clipboard.</P>
@@ -40,8 +55,10 @@ file and stores it on the clipboard.</P>
 the last editing (<a href="../Edit/hid_edit_undo.htm">Undo</a>).</P>
 
 <P><a href="../Edit/hid_edit_redo.htm">
-<img border="0" src="../../images/EditRedo.png" width="21" height="20"> Redo</a> 
+<img border="0" src="../../images/EditRedo.png"> Redo</a> 
 the last editing after Undo.</P>
+
+<p>TODO</p>
 
 </BODY>
 </HTML>
