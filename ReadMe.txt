@@ -1,53 +1,56 @@
 Known problems and tasks:
 
-Make context for background WriteRestOfTheFile
 Make save presets for Expression Evaluation command
 Add noise reduction estimation in spectrum section view
-Make delay load for Windows Media DLL, to work on systems without WMP installed
 Add MP3 save
 Add ASF save
-Use waveformat instead of template, for FileNew
+Add sound recording
+Add CD grabbing
 If read-only file is saved, name should be different
-Add spin support for selection, insert silence and GOTO dialog.
 Statistics: zero crossings shows double the frequency (as supposed??)
 Make Paste Special command
 ???? When a file is opened in non-direct mode, peak info is saved with wrong time stamp
+Before Save, delete Undo and REdo which keeps reference to the target file
+    (it can be file replacement Undo/Redo)
 After Save As, peak info is not saved for the new PCM file.
 ???? File created from clipboard and saved can't be reopened in direct mode.
 Add support for markers and regions: save on copy and with undo, move and delete on Cut,
 	move on Paste
 Double click selects between two markers
+Delete/Insert operations can auto add markers and regions
 If delete (shrink) is done with one channel of two, fill the rest with zeros
-Prb: GetBufferWriteOnly can conflict with SourceFile and WrittenMask
-Prb: After file expansion, the new area may not contain zeros, 
-	if the file has a SourceFile (not a problem, actually)
-prb: time ruler is blinking when scrolled
-Add support for 256 color display (palette)
 If displaying data without peak info, call RescanPeaks for this range.
 Add options dialog
 Save current workspace
 Add decibel view to CAmplitudeRuler
 Add VU meter for playback
 Make all correct error messages and message boxes
+Make tooltips
+Make help file
+
+For Version 2:
+Make multichannel editing
+allow 24/32 bit data
 Allow "Minimized" channels
-Add sound recording
-Add CD grabbing
-Add mouse wheel support
-Add autoscroll during selection
 
 Done:
-Make Insert Silence command
-Show current scale in the status bar.
-Fft view didn't get focus after switch
-support copy from a file (FileName) in DoCopy
-When number of channels changed after save, view parameters are screwed up.
-Sound and FFT view jerks during playback of the last screen.
-Lost sync between horz ruler scrolling and waveform.
-After zoom in max, cursor jumps to not the view center.
-Noise reduction doesn't save aggressivness parameter.
-Make horizontal zoom and context menu for Spectrum Section View.
-Show playback position spectrum in Spectrum Section View
-Wrong selection display in FFT view.
+Add support for 256 color display (palette)
+Add mouse wheel support
+Add autoscroll during selection
+Spectrum section view: drawing on the edges.
+Add spin support for selection, insert silence and GOTO dialog.
+Channel conversion
+Prb: GetBufferWriteOnly can conflict with SourceFile and WrittenMask
+Wrong caret size after window resize during playback
+Prb: After file expansion, the new area may not contain zeros, 
+	if the file has a SourceFile and the operation was interrupted 
+Draw zero line in outline view for empty wave file
+Use waveformat instead of template, for FileNew
+prb: time ruler is blinking when scrolled
+Make delay load for Windows Media DLL, to work on systems without WMP installed
+Document closed now after long save operation
+Make status string and percent for CCommitFileSaveContext
+Make context for background WriteRestOfTheFile
 
 
 File Save/Save As checklist:

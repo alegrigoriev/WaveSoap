@@ -40,17 +40,31 @@
 #define IDD_DIALOG_RESAMPLE             146
 #define IDR_MENU_SPECTRUMSECTION_VIEW   146
 #define IDD_DIALOG_STATISTICS_MONO      147
+#define IDR_MENU_POPUP_HOR_SCALE1       147
 #define IDD_DIALOG_OPEN_TEMPLATE1       148
+#define IDR_MENU_POPUP_HOR_SCALE2       148
 #define IDD_DIALOG_SAVE_TEMPLATE        149
+#define IDR_MENU_POPUP_HOR_SCALE256     149
 #define IDC_CURSOR_BEAM                 150
 #define IDD_DIALOG_ULF_REDUCTION        150
+#define IDR_MENU_POPUP_HOR_SCALE4       150
 #define IDC_CURSOR_BEAM_LEFT            151
 #define IDD_DIALOG_EXPRESSION_EVALUATION 151
+#define IDR_MENU_POPUP_HOR_SCALE128     151
 #define IDC_CURSOR_BEAM_RIGHT           152
 #define IDD_DIALOG_DECLICKING           152
+#define IDR_MENU_POPUP_HOR_SCALE64      152
 #define IDD_DIALOG_NOISE_REDUCTION      153
+#define IDR_MENU_POPUP_HOR_SCALE32      153
 #define IDD_DIALOG_INSERT_SILENCE       154
+#define IDR_MENU_POPUP_HOR_SCALE8       154
 #define IDD_DIALOG_MUTE_OR_SILENCE      155
+#define IDR_MENU_POPUP_HOR_SCALE16      155
+#define IDR_MENU_POPUP_HOR_SCALE1024    156
+#define IDR_MENU_POPUP_HOR_SCALE2048    157
+#define IDR_MENU_POPUP_HOR_SCALE512     158
+#define IDR_MENU_POPUP_HOR_SCALE4096    159
+#define IDR_MENU_POPUP_HOR_SCALE8192    160
 #define IDC_EDIT_MIN_CLICK_AMPLITUDE    1000
 #define IDC_TAB_SWITCH_VIEW_MODE        1000
 #define IDC_CHECK_LOG_CLICKS            1001
@@ -157,6 +171,8 @@
 #define IDC_BUTTON_MORE_SETTINGS        1062
 #define IDC_BUTTON_SET_THRESHOLD        1070
 #define IDC_BUTTON_SILENCE              1071
+#define IDC_BUTTON_MAILTO               1072
+#define IDC_BUTTON_HOMEPAGE             1073
 #define IDC_VIEW_RULER_SAMPLES          32771
 #define IDC_VIEW_RULER_HHMMSS           32772
 #define IDC_VIEW_RULER_SECONDS          32773
@@ -283,6 +299,20 @@
 #define ID_VIEW_SS_SHOW_NOISE_THRESHOLD 40069
 #define ID_VIEW_SS_ZOOMINVERT           40070
 #define ID_VIEW_SS_ZOOMOUTVERT          40071
+#define ID_VIEW_HOR_SCALE_1             40072
+#define ID_VIEW_HOR_SCALE_2             40073
+#define ID_VIEW_HOR_SCALE_4             40074
+#define ID_VIEW_HOR_SCALE_8             40075
+#define ID_VIEW_HOR_SCALE_16            40076
+#define ID_VIEW_HOR_SCALE_32            40077
+#define ID_VIEW_HOR_SCALE_64            40078
+#define ID_VIEW_HOR_SCALE_128           40079
+#define ID_VIEW_HOR_SCALE_256           40080
+#define ID_VIEW_HOR_SCALE_512           40081
+#define ID_VIEW_HOR_SCALE_1024          40082
+#define ID_VIEW_HOR_SCALE_2048          40083
+#define ID_VIEW_HOR_SCALE_4096          40084
+#define ID_VIEW_HOR_SCALE_8192          40085
 
 // Next default values for new objects
 //
@@ -290,8 +320,8 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_3D_CONTROLS                     1
 #define _APS_NEXT_RESOURCE_VALUE        149
-#define _APS_NEXT_COMMAND_VALUE         40072
-#define _APS_NEXT_CONTROL_VALUE         1072
+#define _APS_NEXT_COMMAND_VALUE         40086
+#define _APS_NEXT_CONTROL_VALUE         1074
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif
