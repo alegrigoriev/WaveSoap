@@ -266,7 +266,7 @@ long CDirectFile::Read(void *buf, long count)
 // read data ('count' bytes) from the given 'position' to *buf
 long CDirectFile::ReadAt(void *buf, long count, LONGLONG Position)
 {
-	TRACE("ReadAt 0x%x, 0x%x bytes..", long(Position), count);
+	//TRACE("ReadAt 0x%x, 0x%x bytes..", long(Position), count);
 	long TotalRead = 0;
 	char * pDstBuf = (char *)buf;
 	while(count > 0)
@@ -284,7 +284,7 @@ long CDirectFile::ReadAt(void *buf, long count, LONGLONG Position)
 		pDstBuf += nRead;
 		count -= nRead;
 	}
-	TRACE("return\n");
+	//TRACE("return\n");
 	return TotalRead;
 }
 
@@ -308,6 +308,31 @@ long CDirectFile::Write(const void *pBuf, long count)
 		m_FilePointer += nWritten;
 		count -= nWritten;
 	}
+	return TotalWritten;
+}
+
+// write data ('count' bytes) at the given 'position' from *buf
+long CDirectFile::WriteAt(const void *buf, long count, LONGLONG Position)
+{
+	//TRACE("WriteAt 0x%x, 0x%x bytes..", long(Position), count);
+	long TotalWritten = 0;
+	char * pSrcBuf = (char *)buf;
+	while(count > 0)
+	{
+		void * pDstBuf;
+		long nWritten = GetDataBuffer( & pDstBuf, count, Position, GetBufferWriteOnly);
+		if (0 == nWritten)
+		{
+			break;
+		}
+		memmove(pDstBuf, pSrcBuf, nWritten);
+		ReturnDataBuffer(pDstBuf, nWritten, ReturnBufferDirty);
+		Position += nWritten;
+		TotalWritten += nWritten;
+		pSrcBuf += nWritten;
+		count -= nWritten;
+	}
+	//TRACE("return\n");
 	return TotalWritten;
 }
 
@@ -386,7 +411,7 @@ CDirectFile::CDirectFileCache::CDirectFileCache(size_t CacheSize)
 		}
 		else
 		{
-			TerminateThread(m_hThread, 0);
+			TerminateThread(m_hThread, -1);
 			CloseHandle(m_hThread);
 			m_hThread = NULL;
 		}
@@ -402,7 +427,7 @@ CDirectFile::CDirectFileCache::~CDirectFileCache()
 		SetEvent(m_hEvent);
 		if (WAIT_TIMEOUT == WaitForSingleObject(m_hThread, 5000))
 		{
-			TerminateThread(m_hThread, 0);
+			TerminateThread(m_hThread, -1);
 		}
 		CloseHandle(m_hThread);
 		m_hThread = NULL;
@@ -476,9 +501,7 @@ void CDirectFile::File::InsertBuffer(BufferHeader * pBuf)
 			pBufAfter = pBufAfter->pPrev;
 			ASSERT(pBufAfter != NULL);
 		}
-		// skip one more position
-		pBufAfter = pBufAfter->pPrev;
-		ASSERT(pBufAfter != NULL);
+		// pBufAfter->PositionKey < pBuf->PositionKey
 	}
 	else
 	{
@@ -489,7 +512,12 @@ void CDirectFile::File::InsertBuffer(BufferHeader * pBuf)
 			pBufAfter = pBufAfter->pNext;
 			ASSERT(pBufAfter != NULL);
 		}
+		// pBufAfter->PositionKey > pBuf->PositionKey
+		// return by one position
+		pBufAfter = pBufAfter->pPrev;
+		ASSERT(pBufAfter != NULL);
 	}
+	// pBufAfter->PositionKey < pBuf->PositionKey
 	pBuf->pNext = pBufAfter->pNext;
 	pBuf->pPrev = pBufAfter;
 	pBufAfter->pNext = pBuf;
@@ -503,6 +531,9 @@ CDirectFile::BufferHeader * CDirectFile::File::FindBuffer(unsigned long key) con
 {
 	// the buffers are ordered: BuffersListHead has lowest key, BuffersListTail has the highest key
 	BufferHeader * pBuf;
+#ifdef _DEBUG
+	ValidateList();
+#endif
 	if (NULL == BuffersListHead
 		|| BuffersListHead->PositionKey > key
 		|| BuffersListTail->PositionKey < key)
@@ -764,7 +795,7 @@ long CDirectFile::CDirectFileCache::GetDataBuffer(File * pFile,
 				else
 				{
 					// round the length to make it prefetch the whole buffer
-					length += 0xFFFF & -(long(position) + BytesRequested);
+					length += 0xFFFF & -(long(position) + long(length));
 				}
 			}
 			RequestPrefetch(pFile, position + BytesRequested, length - BytesRequested, m_MRU_Count);
@@ -787,7 +818,7 @@ long CDirectFile::CDirectFileCache::GetDataBuffer(File * pFile,
 				else
 				{
 					// round the length to make it prefetch the whole buffer
-					length -= 0xFFFF & (long(position) - BytesRequested);
+					length -= 0xFFFF & (long(position) - length);
 				}
 			}
 			RequestPrefetch(pFile, position - BytesRequested, length + BytesRequested, m_MRU_Count);
@@ -800,6 +831,8 @@ void CDirectFile::CDirectFileCache::RequestPrefetch(File * pFile,
 													LONGLONG PrefetchPosition,
 													LONGLONG PrefetchLength, unsigned MaxMRU)
 {
+	TRACE("RequestPrefetch: 0x%X bytes at 0x%X\n", long(PrefetchLength),
+		long(PrefetchPosition));
 	{
 		CSimpleCriticalSectionLock lock(m_cs);
 		m_pPrefetchFile = pFile;
@@ -1074,6 +1107,41 @@ void CDirectFile::CDirectFileCache::FlushDirtyBuffers(BufferHeader * pBuf)
 	// flush all unlocked dirty buffers in sequence with pBuf;
 }
 
+#ifdef _DEBUG
+#define VL_ASSERT(expr) if ( ! (expr)) \
+	{ TRACE("FALSE ==(" #expr ")\n"); \
+	__asm int 3 \
+		}
+void CDirectFile::File::ValidateList() const
+{
+	CSimpleCriticalSectionLock lock(m_ListLock);
+	BufferHeader const * pBuf = BuffersListHead;
+	VL_ASSERT((NULL == BuffersListHead) == (NULL == BuffersListTail));
+	while (pBuf)
+	{
+		VL_ASSERT(pBuf->pFile == this);
+		if (pBuf == BuffersListHead)
+		{
+			VL_ASSERT(pBuf->pPrev == 0);
+		}
+		else
+		{
+			VL_ASSERT(pBuf->pPrev != 0 && pBuf->pPrev->pNext == pBuf);
+			VL_ASSERT(pBuf->pPrev->PositionKey < pBuf->PositionKey);
+		}
+		if (pBuf == BuffersListTail)
+		{
+			VL_ASSERT(pBuf->pNext == 0);
+		}
+		else
+		{
+			VL_ASSERT(pBuf->pNext != 0);
+		}
+		pBuf = pBuf->pNext;
+	}
+}
+#endif
+
 unsigned CDirectFile::CDirectFileCache::_ThreadProc()
 {
 	while (m_bRunThread)
@@ -1102,6 +1170,7 @@ unsigned CDirectFile::CDirectFileCache::_ThreadProc()
 			void * pBuf = NULL;
 			long ReadLength = GetDataBuffer(pPrefetchFile, & pBuf, PrefetchLength,
 											PrefetchPosition, GetBufferNoPrefetch, PrefetchMRU);
+			//TRACE("Prefetched buffer at 0x%X\n", long(PrefetchPosition));
 			if (pBuf)
 			{
 				ReturnDataBuffer(pPrefetchFile, pBuf, ReadLength, 0);

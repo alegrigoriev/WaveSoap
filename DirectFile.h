@@ -47,9 +47,10 @@ class CDirectFile
 		}
 	};
 public:
-	long Write(const void * pBuf, long count);
 	long Read(void * buf, long count);
 	long ReadAt(void * buf, long count, LONGLONG Position);
+	long Write(const void * pBuf, long count);
+	long WriteAt(const void * buf, long count, LONGLONG Position);
 	LONGLONG Seek(LONGLONG position, int flag);
 
 	enum { ReturnBufferDirty = 1, // buffer contains changed data
@@ -136,8 +137,8 @@ protected:
 		struct BufferHeader * volatile BuffersListHead;
 		struct BufferHeader * volatile BuffersListTail;
 		LONGLONG FilePointer;
-		CSimpleCriticalSection m_ListLock;    // synchronize BufferList changes
-		CSimpleCriticalSection m_FileLock;    // synchronize FileRead, FileWrite
+		CSimpleCriticalSection mutable m_ListLock;    // synchronize BufferList changes
+		CSimpleCriticalSection mutable m_FileLock;    // synchronize FileRead, FileWrite
 		CString sName;
 		BufferHeader * FindBuffer(unsigned long key) const;
 		void InsertBuffer(BufferHeader * pBuf);
@@ -151,6 +152,9 @@ protected:
 			RefCount(1),
 			pPrev(NULL),
 			pNext(NULL) {}
+			#ifdef _DEBUG
+		void ValidateList() const;
+			#endif
 	};
 	struct BufferHeader
 	{
