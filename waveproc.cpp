@@ -407,27 +407,130 @@ BOOL CBatchProcessing::SetAndValidateWaveformat(WAVEFORMATEX const * pWf)
 {
 	for (int i = 0; i < m_Stages.GetSize(); i++)
 	{
-		if (FALSE == m_Stages[i]->SetAndValidateWaveformat(pWf))
+		if (FALSE == m_Stages[i].Proc->SetAndValidateWaveformat(pWf))
 			return FALSE;
 	}
 	return TRUE;
 }
 
-int CHumRemoval::ProcessSound(__int16 const * pInBuf, __int16 * pOutBuf,
-							int nSamples, int nChans)
+BOOL CWaveProc::CheckForMinBufferSize(char const * &pIn, char * &pOut,
+									int &nInBytes, int &nOutBytes,
+									int * pUsedBytes, int * pSavedBytes,
+									int nMinInBytes, int nMinOutBytes, int nChan)
+{
+	int nSavedBytes = 0;
+	*pSavedBytes = 0;
+	*pUsedBytes = 0;
+	if (m_TmpOutBufPut != m_TmpOutBufGet)
+	{
+		for ( ;m_TmpOutBufPut > m_TmpOutBufGet
+			&& nOutBytes > 0; m_TmpOutBufGet++, pOut++, nOutBytes--, nSavedBytes++)
+		{
+			*pOut = m_TmpOutBuf[m_TmpOutBufGet];
+		}
+		if (m_TmpOutBufPut == m_TmpOutBufGet)
+		{
+			m_TmpOutBufPut = 0;
+			m_TmpOutBufGet = 0;
+		}
+	}
+	if (nOutBytes <= 0)
+	{
+		*pSavedBytes = nSavedBytes;
+		return FALSE;
+	}
+
+	if (NULL != pIn
+		&& m_TmpInBufPut > 0
+		&& m_TmpInBufPut < nMinInBytes)
+	{
+		for (; nInBytes > 0 && m_TmpInBufPut < nMinInBytes; nInBytes--,
+			m_TmpInBufPut++, *pUsedBytes++, pIn++)
+		{
+			m_TmpInBuf[m_TmpInBufPut] = *pIn;
+		}
+		if (nMinInBytes == m_TmpInBufPut)
+		{
+			int nUsed = 0;
+			int nSaved = ProcessSound(m_TmpInBuf, pOut, nMinInBytes, nOutBytes, & nUsed, nChan);
+			if (nUsed != nMinInBytes)
+			{
+				TRACE("Couldn't process min bytes!\n");
+				return FALSE;  // error!!
+			}
+			m_TmpInBufPut = 0;
+			nSavedBytes += nSaved;
+			pOut += nSaved;
+			nOutBytes -= nSaved;
+		}
+		else
+		{
+			*pSavedBytes = nSavedBytes;
+			return FALSE;
+		}
+	}
+	// if there is too little input data, save it in the temp buffer and return
+	// if there is too little space for output data,
+	if (NULL != pIn
+		&& nInBytes != 0 && nInBytes < nMinInBytes)
+	{
+		for (; nInBytes > 0 && m_TmpInBufPut < nMinInBytes; nInBytes--,
+			m_TmpInBufPut++, *pUsedBytes++, pIn++)
+		{
+			m_TmpInBuf[m_TmpInBufPut] = *pIn;
+		}
+		*pSavedBytes = nSavedBytes;
+		return FALSE;
+	}
+
+	if (nOutBytes < nMinOutBytes)
+	{
+		int nUsed = 0;
+		m_TmpOutBufGet = 0;
+		m_TmpOutBufPut = 0;
+		int nSaved = ProcessSound(pIn, m_TmpOutBuf, nInBytes, nMinOutBytes, & nUsed, nChan);
+		m_TmpOutBufPut = nSaved;
+		* pUsedBytes += nUsed;
+		for ( ; nOutBytes > 0 && m_TmpOutBufGet < m_TmpOutBufPut; m_TmpOutBufGet++,
+			nOutBytes--, nSavedBytes++, pOut++)
+		{
+			*pOut = m_TmpOutBuf[m_TmpOutBufGet];
+		}
+		if (m_TmpOutBufGet == m_TmpOutBufPut)
+		{
+			m_TmpOutBufGet = 0;
+			m_TmpOutBufPut = 0;
+		}
+		*pSavedBytes = nSavedBytes;
+		return FALSE;
+	}
+	return TRUE;
+}
+
+int CHumRemoval::ProcessSound(char const * pIn, char * pOut,
+							int nInBytes, int nOutBytes, int * pUsedBytes, int nChans)
 {
 	ASSERT(nChans == 2);
-	if (nChans != 2)
+	int nSavedBytes = 0;
+	*pUsedBytes = 0;
+	if ( ! CheckForMinBufferSize(pIn, pOut, nInBytes, nOutBytes,
+								pUsedBytes, & nSavedBytes, 2 * sizeof (__int16), 2 * sizeof (__int16), nChans))
 	{
-		return -1;
+		return nSavedBytes;
 	}
 
-	if (NULL == pInBuf)
-	{
-		return 0;   // no delayed samples in history
-	}
+	int nInSamples = nInBytes / sizeof (__int16);
+	int nOutSamples = nOutBytes / sizeof (__int16);
+	__int16 const * pInBuf = (__int16 *) pIn;
+	__int16 * pOutBuf = (__int16 *) pOut;
+
 
 	// process the data
+	int nSamples = __min(nInSamples, nOutSamples) / 2;
+	if (0 == nSamples || NULL == pInBuf)
+	{
+		return nSavedBytes;   // no delayed samples in history
+	}
 	for (int i = 0; i < nSamples * 2; i += 2)
 	{
 		float curr_l;
@@ -487,7 +590,9 @@ int CHumRemoval::ProcessSound(__int16 const * pInBuf, __int16 * pOutBuf,
 		}
 		pOutBuf[i + 1] = __int16(out_r);
 	}
-	return nSamples;
+
+	*pUsedBytes += nSamples * (2 * sizeof (__int16));
+	return nSavedBytes + nSamples * (2 * sizeof (__int16));
 }
 
 void InterpolateBigGap(CBackBuffer<int, int> & data, int nLeftIndex, int ClickLength)
@@ -709,21 +814,36 @@ void InterpolateGap(CBackBuffer<int, int> & data, int nLeftIndex, int ClickLengt
 	}
 }
 
-int CClickRemoval::ProcessSound(__int16 const * pInBuf, __int16 * pOutBuf,
-								int nSamples, int nChans)
+int CClickRemoval::ProcessSound(char const * pIn, char * pOut,
+								int nInBytes, int nOutBytes, int * pUsedBytes, int nChans)
 {
+	int nSavedBytes = 0;
+	*pUsedBytes = 0;
+	if ( ! CheckForMinBufferSize(pIn, pOut, nInBytes, nOutBytes,
+								pUsedBytes, & nSavedBytes, nChans * sizeof (__int16), nChans * sizeof (__int16), nChans))
+	{
+		return nSavedBytes;
+	}
+
+	int nInSamples = nInBytes / (nChans * sizeof (__int16));
+	int nOutSamples = nOutBytes / (nChans * sizeof (__int16));
+	__int16 const * pInBuf = (__int16 *) pIn;
+	__int16 * pOutBuf = (__int16 *) pOut;
+
+	// process the data
+
 	if (NULL == pInBuf)
 	{
 		// flush backlogged samples
 		// nSamples - size of out buffer / size of samples
 		int nBackSamples = m_PrevIndex - m_nStoredSamples;
-		if (nBackSamples > nSamples)
+		if (nBackSamples > nOutSamples)
 		{
-			nBackSamples = nSamples;
+			nBackSamples = nOutSamples;
 		}
 		if (nBackSamples <= 0)
 		{
-			return 0;
+			return nSavedBytes;
 		}
 		for (int i = 0; i < nBackSamples; i++)
 		{
@@ -736,12 +856,13 @@ int CClickRemoval::ProcessSound(__int16 const * pInBuf, __int16 * pOutBuf,
 		m_prev[0].Advance(nBackSamples);
 		m_prev[1].Advance(nBackSamples);
 		m_nStoredSamples += nBackSamples;
-		return nBackSamples;
+		return nSavedBytes + nBackSamples * nChans * sizeof (__int16);
 	}
 
 	int nClickIndex;
 	int nStoreIndex = 0;
 	int PrevIndex = m_PrevIndex;
+	int nSamples = __min(nInSamples, nOutSamples);
 	for (int ch = 0; ch < nChans; ch++)
 	{
 		int FftIn[CLICK_LENGTH];   // additional space for click length search
@@ -953,10 +1074,11 @@ int CClickRemoval::ProcessSound(__int16 const * pInBuf, __int16 * pOutBuf,
 	int nStoredSamples = nStoreIndex;
 	m_PrevIndex = PrevIndex;
 	m_nStoredSamples += nStoredSamples;
-	return nStoredSamples;
+	*pUsedBytes += nSamples * (nChans * sizeof (__int16));
+	return nSavedBytes + nChans * sizeof(__int16) * nStoredSamples;
 }
 
-// smp - cource FFT sample
+// smp - source FFT sample
 // pNr - points to the parent CNoiseReduction object
 // nSample - number of the sample in FFT set
 void CNoiseReduction::SIGNAL_PARAMS::AnalyzeFftSample(complex<DATA> smp, CNoiseReduction * pNr, int nSample)
@@ -1133,9 +1255,24 @@ void CNoiseReduction::SIGNAL_PARAMS::AnalyzeFftSample(complex<DATA> smp, CNoiseR
 	return;
 }
 
-int CNoiseReduction::ProcessSound(__int16 const * pInBuf, __int16 * pOutBuf,
-								int nSamples, int nChans)
+int CNoiseReduction::ProcessSound(char const * pIn, char * pOut,
+								int nInBytes, int nOutBytes, int * pUsedBytes, int nChans)
 {
+	int nSavedBytes = 0;
+	*pUsedBytes = 0;
+	if ( ! CheckForMinBufferSize(pIn, pOut, nInBytes, nOutBytes,
+								pUsedBytes, & nSavedBytes, nChans * sizeof (__int16), nChans * sizeof (__int16), nChans))
+	{
+		return nSavedBytes;
+	}
+
+	int nInSamples = nInBytes / (nChans * sizeof (__int16));
+	int nOutSamples = nOutBytes / (nChans * sizeof (__int16));
+	__int16 const * pInBuf = (__int16 *) pIn;
+	__int16 * pOutBuf = (__int16 *) pOut;
+
+	// process the data
+	int nSamples = __min(nInSamples, nOutSamples);
 	const int PREV_MASK = (m_nFftOrder * 2) - 1;
 	const unsigned int ANALYZE_LAG = m_nFftOrder;
 	int MinFrequencyToProcess = int(m_MinFrequencyToProcess / 44100. * m_nFftOrder);
@@ -1145,13 +1282,13 @@ int CNoiseReduction::ProcessSound(__int16 const * pInBuf, __int16 * pOutBuf,
 		// flush backlogged samples
 		// nSamples - size of out buffer / size of samples
 		int nBackSamples = m_nBackSampleCount - m_nStoredSamples;
-		if (nBackSamples > nSamples)
+		if (nBackSamples > nOutSamples)
 		{
-			nBackSamples = nSamples;
+			nBackSamples = nOutSamples;
 		}
 		if (nBackSamples <= 0)
 		{
-			return 0;
+			return nSavedBytes;
 		}
 		for (int i = 0; i < nBackSamples; i++)
 		{
@@ -1162,7 +1299,7 @@ int CNoiseReduction::ProcessSound(__int16 const * pInBuf, __int16 * pOutBuf,
 			}
 			m_nStoredSamples++;
 		}
-		return nBackSamples;
+		return nSavedBytes + nChans * sizeof(__int16) * nBackSamples;
 	}
 
 	int ch;
@@ -1481,154 +1618,757 @@ int CNoiseReduction::ProcessSound(__int16 const * pInBuf, __int16 * pOutBuf,
 	}
 
 	m_nBackSampleCount += nSamples;
-	return nStoredSamples;
+	*pUsedBytes += nSamples * (nChans * sizeof (__int16));
+	return nSavedBytes + nChans * sizeof(__int16) * nStoredSamples;
 }
 
-int CBatchProcessing::ProcessSound(__int16 const * pInBuf, __int16 * pOutBuf,
-									int nSamples, int nChans)
+CBatchProcessing::~CBatchProcessing()
 {
-	int nTotalOutputSamples = 0;
-	if (NULL != pInBuf)
+	for (int i = 0; i < m_Stages.GetSize(); i++)
+	{
+		if (m_bAutoDeleteProcs)
+		{
+			delete m_Stages[i].Proc;
+		}
+		delete[] m_Stages[i].Buf;
+	}
+}
+
+int CBatchProcessing::ProcessSound(char const * pIn, char * pOut,
+									int nInBytes, int nOutBytes, int * pUsedBytes, int nChans)
+{
+	int nSavedBytes = 0;
+	*pUsedBytes = 0;
+
+	if (NULL != pIn)
 	{
 		// regular processing of input data
-		while(nSamples)
+		bool bDataWasProcessed;
+		do
 		{
-			int nInputSamples = nSamples;
-			if (nInputSamples > int(sizeof m_InternBuf1 / sizeof m_InternBuf1[0] / nChans))
-			{
-				nInputSamples = int(sizeof m_InternBuf1 / sizeof m_InternBuf1[0] / nChans);
-			}
-			int nOutputSamples = 0;
-			int nCurrInputSamples = nInputSamples;
+			bDataWasProcessed = false;
 			for (int i = 0; i < m_Stages.GetSize(); i++)
 			{
-				__int16 const * inbuf;
-				__int16 * outbuf;
+				int nProcessedBytes;
+				int nCurrInputBytes;
+				int nCurrOutputBytes;
+				char const * inbuf;
+				char * outbuf;
+				Item * pItem = & m_Stages[i];
 				if (i != 0)
 				{
-					if (i & 1)
+					inbuf = pItem->Buf + pItem->BufGetIndex;
+					nCurrInputBytes = pItem->BufPutIndex - pItem->BufGetIndex;
+				}
+				else
+				{
+					inbuf = pIn;
+					nCurrInputBytes = nInBytes;
+				}
+
+				if (0 == nCurrInputBytes)
+				{
+					continue;
+				}
+				if (i < m_Stages.GetSize() - 1)
+				{
+					Item * pOutItem = & m_Stages[i + 1];
+					outbuf = pOutItem->Buf + pOutItem->BufPutIndex;
+					nCurrOutputBytes = IntermediateBufSize - pOutItem->BufPutIndex;
+				}
+				else
+				{
+					nCurrOutputBytes = nOutBytes;
+					outbuf = pOut;
+				}
+
+				if (0 == nCurrOutputBytes)
+				{
+					continue;
+				}
+				int nOutputBytes= pItem->Proc->ProcessSound(inbuf, outbuf,
+															nCurrInputBytes, nCurrOutputBytes, & nProcessedBytes, nChans);
+
+				if (nOutputBytes!= 0
+					|| nProcessedBytes != 0)
+				{
+					bDataWasProcessed = true;
+				}
+
+				if (i != 0)
+				{
+					pItem->BufGetIndex += nProcessedBytes;
+					if (pItem->BufGetIndex == pItem->BufPutIndex)
 					{
-						inbuf = m_InternBuf1;
-					}
-					else
-					{
-						inbuf = m_InternBuf2;
+						pItem->BufGetIndex = 0;
+						pItem->BufPutIndex = 0;
 					}
 				}
 				else
 				{
-					inbuf = pInBuf;
+					pIn += nProcessedBytes;
+					nInBytes -= nProcessedBytes;
+					*pUsedBytes += nProcessedBytes;
 				}
 
-				if (i != m_Stages.GetSize() - 1)
+				if (i < m_Stages.GetSize() - 1)
 				{
-					if (i & 1)
-					{
-						outbuf = m_InternBuf2;
-					}
-					else
-					{
-						outbuf = m_InternBuf1;
-					}
+					m_Stages[i + 1].BufPutIndex += nOutputBytes;
 				}
 				else
 				{
-					outbuf = pOutBuf;
+					pOut += nOutputBytes;
+					nOutBytes -= nOutputBytes;
+					nSavedBytes += nOutputBytes;
 				}
 
-				nOutputSamples = m_Stages[i]->ProcessSound(inbuf, outbuf, nCurrInputSamples, nChans);
-				nCurrInputSamples = nOutputSamples;
-				if (0 == nOutputSamples)
-				{
-					break;  // no data went through the last filter
-				}
 			}
-			pInBuf += nInputSamples * nChans;
-			nSamples -= nInputSamples;
-			pOutBuf += nOutputSamples * nChans;
-			nTotalOutputSamples += nOutputSamples;
-		}
+		} while (bDataWasProcessed);
+
 	}
 	else
 	{
 		// flush the data
-		while(nSamples)
+		bool bDataWasProcessed;
+		do
 		{
-			int nInputSamples = nSamples;
-			if (nInputSamples > int(sizeof m_InternBuf1 / sizeof m_InternBuf1[0] / nChans))
-			{
-				nInputSamples = int(sizeof m_InternBuf1 / sizeof m_InternBuf1[0] / nChans);
-			}
-			int nOutputSamples = 0;
-			int nCurrInputSamples = nInputSamples;
+			bDataWasProcessed = false;
 			for (int i = 0; i < m_Stages.GetSize(); i++)
 			{
-				__int16 const * inbuf;
-				__int16 * outbuf;
-				if (i != 0 && nCurrInputSamples != 0)
+				int nProcessedBytes;
+				int nCurrInputBytes;
+				int nCurrOutputBytes;
+				char const * inbuf;
+				char * outbuf;
+				Item * pItem = & m_Stages[i];
+				if (i != 0)
 				{
-					if (i & 1)
+					inbuf = pItem->Buf + pItem->BufGetIndex;
+					nCurrInputBytes = pItem->BufPutIndex - pItem->BufGetIndex;
+					if (0 == nCurrInputBytes)
 					{
-						inbuf = m_InternBuf1;
-					}
-					else
-					{
-						inbuf = m_InternBuf2;
+						inbuf = NULL;
 					}
 				}
 				else
 				{
-					nCurrInputSamples = nSamples;
-					if (nCurrInputSamples > int(sizeof m_InternBuf1 / sizeof m_InternBuf1[0] / nChans))
-					{
-						nCurrInputSamples = int(sizeof m_InternBuf1 / sizeof m_InternBuf1[0] / nChans);
-					}
 					inbuf = NULL;
+					nCurrInputBytes = 0;
 				}
 
-				if (i != m_Stages.GetSize() - 1)
+				if (i < m_Stages.GetSize() - 1)
 				{
-					if (i & 1)
-					{
-						outbuf = m_InternBuf2;
-					}
-					else
-					{
-						outbuf = m_InternBuf1;
-					}
+					Item * pOutItem = & m_Stages[i + 1];
+					outbuf = pOutItem->Buf + pOutItem->BufPutIndex;
+					nCurrOutputBytes = IntermediateBufSize - pOutItem->BufPutIndex;
 				}
 				else
 				{
-					outbuf = pOutBuf;
+					nCurrOutputBytes = nOutBytes;
+					outbuf = pOut;
 				}
 
-				nOutputSamples = m_Stages[i]->ProcessSound(inbuf, outbuf, nCurrInputSamples, nChans);
-				nCurrInputSamples = nOutputSamples;
+				if (0 == nCurrOutputBytes)
+				{
+					continue;
+				}
+				int nOutputBytes = pItem->Proc->ProcessSound(inbuf, outbuf,
+															nCurrInputBytes, nCurrOutputBytes, & nProcessedBytes, nChans);
+
+				if (nOutputBytes != 0
+					|| nProcessedBytes != 0)
+				{
+					bDataWasProcessed = true;
+				}
+
+				if (i != 0)
+				{
+					pItem->BufGetIndex += nProcessedBytes;
+					if (pItem->BufGetIndex == pItem->BufPutIndex)
+					{
+						pItem->BufGetIndex = 0;
+						pItem->BufPutIndex = 0;
+					}
+				}
+
+				if (i < m_Stages.GetSize() - 1)
+				{
+					m_Stages[i + 1].BufPutIndex += nOutputBytes;
+				}
+				else
+				{
+					pOut += nOutputBytes;
+					nOutBytes-= nOutputBytes;
+					nSavedBytes += nOutputBytes;
+				}
+
 			}
-			nSamples -= nOutputSamples;
-			pOutBuf += nOutputSamples * nChans;
-			nTotalOutputSamples += nOutputSamples;
-			if (0 == nOutputSamples)
-			{
-				break;
-			}
-		}
+		} while (bDataWasProcessed);
+
 	}
-	return nTotalOutputSamples;
+	return nSavedBytes;
+	//return nTotalOutputSamples;
 }
 
 void CBatchProcessing::AddWaveProc(CWaveProc * pProc, int index)
 {
+	Item item;
+	item.Proc = pProc;
+	item.BufGetIndex = 0;
+	item.BufPutIndex = 0;
+	item.Buf = new char[IntermediateBufSize];
+
 	if (-1 == index || index > m_Stages.GetSize())
 	{
 		index = m_Stages.GetSize();
 	}
-	m_Stages.InsertAt(index, pProc);
+	m_Stages.InsertAt(index, item);
 }
 
+CResampleFilter::~CResampleFilter()
+{
+}
 
-char const title[] = "Vinyl mechanical noise suppressor, AleGr Software, 1998";
+BOOL CResampleFilter::InitResample(double ResampleRatio, double FilterLength, int nChannels)
+{
+	// FrequencyRatio is out freq/ input freq. If >1, it is upsampling,
+	// if < 1 it is downsampling
+	// FilterLength is how many Sin periods are in the array
+	double PrevVal = 0.;
+	int i;
+	for (i = 0; i < ResampleFilterSize; i++)
+	{
+		double arg = M_PI * FilterLength / ResampleFilterSize * (i + 1 - ResampleFilterSize / 2);
+		double Window = sin(M_PI * (i +1) / ResampleFilterSize);
+		Window *= Window;   // squared sin window
 
+		double arg1 = M_PI * FilterLength / ResampleFilterSize * (i + 0.5 - ResampleFilterSize / 2);
+		double Window1 = sin(M_PI * (i +0.5) / ResampleFilterSize);
+		Window1 *= Window1;   // squared sin window
+		double val;
+		if (arg != 0)
+		{
+			val = Window * sin(arg) / arg;
+		}
+		else
+		{
+			val = Window;   // window must be 1.
+		}
+		double val1 = Window1 * sin(arg1) / arg1;
+		// val *= FilterScale;
+		m_FilterBuf[i] = PrevVal;
+		//TRACE("Resample filter[%03d]=%f\n", i, m_FilterBuf[i]);
+		double dif1 = val1 - PrevVal;
+		double dif2 = val - val1;
+		double sqrdif = (dif2 - dif1) * 4. / 3.;
+		m_FilterDifBuf[i] = (val - PrevVal - sqrdif) / (1 << ResampleIndexShift);
+		m_FilterDif2Buf[i] = sqrdif / (1 << ResampleIndexShift) / (1 << ResampleIndexShift);
+		PrevVal = val;
+	}
+	if (ResampleRatio >= 1.)
+	{
+		// upsampling.
+		//
+		double InputPeriod = 0x100000000i64 / (FilterLength * (1. + 1. / FilterLength));
+		m_InputPeriod = unsigned __int32(InputPeriod);
+		m_OutputPeriod = unsigned __int32(InputPeriod / ResampleRatio);
+	}
+	else
+	{
+		// downsampling
+		double OutputPeriod = 0x100000000i64 / (FilterLength * (1. + 1. / FilterLength));
+		m_OutputPeriod = unsigned __int32(OutputPeriod);
+		m_InputPeriod = unsigned __int32(OutputPeriod * ResampleRatio);
+	}
+	//TRACE("InputPeriod=%08x, OutputPeriod=%08x\n", m_InputPeriod, m_OutputPeriod);
+
+	m_SrcFilterLength = 0x100000000i64 / m_InputPeriod;
+	m_Phase = 0x80000000u % m_InputPeriod;
+	m_ResampleRatio = ResampleRatio;
+
+	m_SrcBufUsed = 0;
+	m_DstBufUsed = 0;
+	m_DstBufSaved = 0;
+	m_Channels = nChannels;
+	// compute normalization coefficient
+	// apply DC to the filter
+	for (i = 0; i < SrcBufSize; i++)
+	{
+		m_pSrcBuf[i] = 1.;
+	}
+	m_SrcBufFilled = SrcBufSize;
+	FilterSoundResample();
+	double Max = 0;
+	for (i = 2; i < m_DstBufUsed; i++)
+	{
+		if (Max < m_pDstBuf[i])
+		{
+			Max = m_pDstBuf[i];
+		}
+	}
+	for (i = 0; i < ResampleFilterSize; i++)
+	{
+		m_FilterBuf[i] /= Max;
+		m_FilterDifBuf[i] /= Max;
+		m_FilterDif2Buf[i] /= Max;
+	}
+
+	m_SrcBufUsed = 0;
+	m_DstBufUsed = 0;
+	// prefill at 1/2 filter length
+	memset(m_pSrcBuf, 0, SrcBufSize * sizeof * m_pSrcBuf);
+	m_SrcBufFilled = (0x80000000u / m_InputPeriod) * nChannels;
+	m_Phase = 0x80000000u % m_InputPeriod;
+
+	m_TotalProcessedSamples = 0;
+	m_TotalSavedSamples = 0;
+
+	return TRUE;
+}
+
+void CResampleFilter::FilterSoundResample()
+{
+	int SrcSamples = m_SrcBufFilled - m_SrcBufUsed - m_Channels * m_SrcFilterLength;
+	const float * src = m_pSrcBuf + m_SrcBufUsed;
+
+	if (SrcSamples <= 0)
+	{
+		return;
+	}
+
+	for (int i = m_DstBufUsed; i < DstBufSize; i+= m_Channels)
+	{
+		for (int ch = 0; ch < m_Channels; ch++)
+		{
+			unsigned __int32 Phase1 = m_Phase;
+			double OutSample = 0.;
+			for (int j = 0; ; j+= m_Channels)
+			{
+				int TableIndex = Phase1 >> ResampleIndexShift;
+				double PhaseFraction = int(Phase1 & ~(0xFFFFFFFF << ResampleIndexShift));
+				ASSERT(src + j + ch < m_pSrcBuf + SrcBufSize);
+				OutSample += src[j+ch] * (m_FilterBuf[TableIndex] +
+										PhaseFraction * (m_FilterDifBuf[TableIndex]
+											+ PhaseFraction * m_FilterDif2Buf[TableIndex]));
+				unsigned __int32 Phase2 = Phase1 + m_InputPeriod;
+				if (Phase2 < Phase1)
+				{
+					break;
+				}
+				Phase1 = Phase2;
+			}
+			m_pDstBuf[i+ch] = OutSample;
+		}
+		m_DstBufUsed += m_Channels;
+		m_Phase -= m_OutputPeriod;
+		while (m_Phase & 0x80000000)
+		{
+			src += m_Channels;
+			m_Phase += m_InputPeriod;
+			SrcSamples -= m_Channels;
+			m_SrcBufUsed += m_Channels;
+		}
+		if (SrcSamples < m_Channels)
+		{
+			return;
+		}
+	}
+}
+
+int CResampleFilter::ProcessSound(char const * pIn, char * pOut,
+								int nInBytes, int nOutBytes, int * pUsedBytes, int nChans)
+{
+	int nSavedBytes = 0;
+	*pUsedBytes = 0;
+	if ( ! CheckForMinBufferSize(pIn, pOut, nInBytes, nOutBytes,
+								pUsedBytes, & nSavedBytes, nChans * sizeof (__int16), nChans * sizeof (__int16), nChans))
+	{
+		return nSavedBytes;
+	}
+
+	int nInSamples = nInBytes / sizeof (__int16);
+	int nOutSamples = nOutBytes / sizeof (__int16);
+	__int16 const * pInBuf = (__int16 *) pIn;
+	__int16 * pOutBuf = (__int16 *) pOut;
+
+	int nUsedSamples = 0;
+	int nSavedSamples = 0;
+	if (0 == pInBuf)
+	{
+		// adjust nOutSamples
+		LONGLONG MaxOutSamples = m_ResampleRatio * m_TotalProcessedSamples;
+		if (2 == m_Channels)
+		{
+			MaxOutSamples &= ~1;
+		}
+		MaxOutSamples -= m_TotalSavedSamples;
+		if (MaxOutSamples <= 0)
+		{
+			MaxOutSamples = 0;
+		}
+		if (nOutSamples > MaxOutSamples)
+		{
+			nOutSamples = MaxOutSamples;
+		}
+	}
+
+	while(nOutSamples > 0)
+	{
+		// move data in the internal buffer, if necessary
+		if ((m_SrcBufFilled - m_SrcBufUsed) / nChans
+			<= m_SrcFilterLength * 2)
+		{
+			for (int i = 0, j = m_SrcBufUsed; j < m_SrcBufFilled; i++, j++)
+			{
+				m_pSrcBuf[i] = m_pSrcBuf[j];
+			}
+			m_SrcBufUsed = 0;
+			m_SrcBufFilled = i;
+		}
+		if (m_SrcBufFilled < SrcBufSize)
+		{
+
+			int ToCopy = __min(SrcBufSize - m_SrcBufFilled, nInSamples);
+			if (0 == pInBuf)
+			{
+				// fill the rest of the input buffer with zeros
+				for (int j = m_SrcBufFilled; j < SrcBufSize; j++)
+				{
+					m_pSrcBuf[j] = 0.;
+				}
+				m_SrcBufFilled = j;
+			}
+			else
+			{
+				for (int i = 0, j = m_SrcBufFilled; i < ToCopy; i++, j++)
+				{
+					long tmp = pInBuf[i];
+					if (tmp < -0x8000)
+					{
+						tmp = -0x8000;
+					}
+					else if (tmp > 0x7FFF)
+					{
+						tmp = 0x7FFF;
+					}
+					m_pSrcBuf[j] = tmp;
+				}
+				m_SrcBufFilled = j;
+				pInBuf += i;
+				nInSamples -= i;
+				nUsedSamples += i;
+				m_TotalProcessedSamples += i;
+			}
+		}
+
+		FilterSoundResample();
+		if (m_DstBufSaved == m_DstBufUsed)
+		{
+			m_DstBufSaved = 0;
+			m_DstBufUsed = 0;
+			break;
+		}
+
+		int ToCopy = __min(m_DstBufUsed - m_DstBufSaved, nOutSamples);
+		for (int i = 0, j = m_DstBufSaved; i < ToCopy; i++, j++)
+		{
+			pOutBuf[i] = m_pDstBuf[j];
+		}
+		m_DstBufSaved = j;
+		pOutBuf += i;
+		nOutSamples -= i;
+		nSavedSamples += i;
+		m_TotalSavedSamples += i;
+		if (m_DstBufSaved == m_DstBufUsed)
+		{
+			m_DstBufSaved = 0;
+			m_DstBufUsed = 0;
+		}
+	}
+
+	* pUsedBytes += nUsedSamples * sizeof(__int16);
+	return nSavedBytes + nSavedSamples * sizeof(__int16);
+}
+
+CAudioConvertor::CAudioConvertor()
+	:m_SrcBufSize(0),
+	m_DstBufSize(0),
+	m_SrcFormat(NULL),
+	m_DstFormat(NULL),
+	m_acmStr(NULL)
+{
+	memset( & m_ash, 0, sizeof m_ash);
+}
+
+CAudioConvertor::~CAudioConvertor()
+{
+	if (NULL != m_acmStr)
+	{
+		acmStreamClose(m_acmStr, 0);
+		m_acmStr = NULL;
+	}
+	delete[] m_ash.pbSrc;
+	delete[] m_ash.pbDst;
+	delete[] (char*) m_SrcFormat;
+	delete[] (char*) m_DstFormat;
+
+}
+
+BOOL CAudioConvertor::InitConversion(WAVEFORMATEX * SrcFormat, WAVEFORMATEX * DstFormat,
+									HACMDRIVER had)
+{
+	if (SrcFormat->wFormatTag == DstFormat->wFormatTag)
+	{
+		return FALSE;
+	}
+	if (WAVE_FORMAT_PCM == SrcFormat->wFormatTag)
+	{
+		if (SrcFormat->nChannels != DstFormat->nChannels
+			|| SrcFormat->nSamplesPerSec != DstFormat->nSamplesPerSec)
+		{
+			// unable to convert
+			return FALSE;
+		}
+
+		m_ash.cbDstLength = 0;
+		m_ash.cbSrcLength = 0x10000;  // 64K
+		if (0 != acmStreamOpen( & m_acmStr, had, SrcFormat, DstFormat, NULL, NULL, NULL,
+								ACM_STREAMOPENF_NONREALTIME)
+			|| 0 != acmStreamSize(m_acmStr, m_ash.cbSrcLength, & m_ash.cbDstLength,
+								ACM_STREAMSIZEF_SOURCE)
+			|| 0 != acmStreamSize(m_acmStr, m_ash.cbDstLength, & m_ash.cbSrcLength,
+								ACM_STREAMSIZEF_DESTINATION))
+		{
+			if (m_acmStr != NULL)
+			{
+				acmStreamClose(m_acmStr, 0);
+				m_acmStr = NULL;
+			}
+			return FALSE;
+		}
+	}
+	else if (WAVE_FORMAT_PCM == DstFormat->wFormatTag)
+	{
+		WAVEFORMATEX wf =
+		{
+			WAVE_FORMAT_PCM,
+			SrcFormat->nChannels,
+			0,  // nSamplesPerSec
+			0,  // nAvgBytesPerSec
+			0, // nBlockAlign
+			16, // bits per sample
+			0   // cbSize
+		};
+		acmFormatSuggest(had, SrcFormat, & wf, sizeof wf,
+						ACM_FORMATSUGGESTF_NCHANNELS
+						| ACM_FORMATSUGGESTF_WBITSPERSAMPLE
+						| ACM_FORMATSUGGESTF_WFORMATTAG);
+		TRACE("acmFormatSuggest:nSamplesPerSec=%d, BytesPerSec=%d, nBlockAlign=%d\n",
+			wf.nSamplesPerSec, wf.nAvgBytesPerSec, wf.nBlockAlign);
+		if (wf.nChannels != DstFormat->nChannels
+			|| wf.nSamplesPerSec != DstFormat->nSamplesPerSec)
+		{
+			// unable to convert
+			return FALSE;
+		}
+
+		m_ash.cbSrcLength = 0;
+		m_ash.cbDstLength = 0x10000;  // 64K
+		if (0 != acmStreamOpen( & m_acmStr, had, SrcFormat, & wf, NULL, NULL, NULL,
+								ACM_STREAMOPENF_NONREALTIME)
+			|| 0 != acmStreamSize(m_acmStr, m_ash.cbDstLength, & m_ash.cbSrcLength,
+								ACM_STREAMSIZEF_DESTINATION)
+			|| 0 != acmStreamSize(m_acmStr, m_ash.cbSrcLength, & m_ash.cbDstLength,
+								ACM_STREAMSIZEF_SOURCE))
+		{
+			if (m_acmStr != NULL)
+			{
+				acmStreamClose(m_acmStr, 0);
+				m_acmStr = NULL;
+			}
+			return FALSE;
+		}
+	}
+	else
+	{
+		return FALSE;
+	}
+
+	// allocate buffers
+	m_SrcBufSize = m_ash.cbSrcLength;
+	m_DstBufSize = m_ash.cbDstLength;
+	m_ash.pbSrc = new BYTE[m_SrcBufSize];
+	m_ash.pbDst = new BYTE[m_DstBufSize];
+
+	m_ash.cbStruct = sizeof m_ash;
+	if (0 == m_SrcBufSize
+		|| 0 == m_DstBufSize
+		|| NULL == m_ash.pbSrc
+		|| NULL == m_ash.pbDst
+		// prepare the buffer
+		|| 0 != acmStreamPrepareHeader(m_acmStr, & m_ash, 0))
+	{
+		delete m_ash.pbSrc;
+		m_ash.pbSrc = NULL;
+		delete m_ash.pbDst;
+		m_ash.pbDst = NULL;
+		acmStreamClose(m_acmStr, 0);
+		m_acmStr = NULL;
+		return FALSE;
+	}
+	m_ConvertFlags = ACM_STREAMCONVERTF_START;
+	m_DstSaved = 0;
+	m_ash.cbSrcLength = 0;  // buffer is empty
+	m_ash.cbDstLengthUsed = 0;  // buffer is empty
+	return TRUE;
+}
+
+int CAudioConvertor::ProcessSound(char const * pIn, char * pOut,
+								int nInBytes, int nOutBytes, int * pUsedBytes, int nChans)
+{
+	int nSavedBytes = 0;
+	*pUsedBytes = 0;
+	while (1)
+	{
+		// empty the output buffer
+		if (m_ash.cbDstLengthUsed > m_DstSaved)
+		{
+			int ToCopy = m_ash.cbDstLengthUsed - m_DstSaved;
+			if (nOutBytes < ToCopy)
+			{
+				ToCopy = nOutBytes;
+			}
+			memmove(pOut, m_ash.pbDst + m_DstSaved, ToCopy);
+			pOut += ToCopy;
+			nSavedBytes += ToCopy;
+			nOutBytes -= ToCopy;
+			m_DstSaved += ToCopy;
+		}
+		// fill the source buffer
+		if (m_ash.cbSrcLength < m_SrcBufSize && NULL != pIn)
+		{
+			int ToCopy = m_SrcBufSize - m_ash.cbSrcLength;
+			if (ToCopy > nInBytes)
+			{
+				ToCopy = nInBytes;
+			}
+			memmove(m_ash.pbSrc + m_ash.cbSrcLength, pIn, ToCopy);
+			m_ash.cbSrcLength += ToCopy;
+			pIn += ToCopy;
+			nInBytes -= ToCopy;
+			* pUsedBytes += ToCopy;
+			if (m_ash.cbSrcLength < m_SrcBufSize)
+			{
+				break;  // still not enough data
+			}
+		}
+		if (m_DstSaved < m_ash.cbDstLengthUsed)
+		{
+			break;  // not enough space
+		}
+		m_DstSaved = 0;
+		m_ash.cbDstLengthUsed = 0;
+		m_ash.cbDstLength = m_DstBufSize;
+		if (NULL == pIn)
+		{
+			m_ConvertFlags |= ACM_STREAMCONVERTF_END;
+			m_ConvertFlags &= ~ACM_STREAMCONVERTF_BLOCKALIGN;
+		}
+		// do the conversion
+		m_ash.cbSrcLengthUsed = 0;
+
+		if (0 == acmStreamConvert(m_acmStr, & m_ash, m_ConvertFlags))
+		{
+			if (0 == m_ash.cbSrcLengthUsed
+				&& 0 == m_ash.cbDstLengthUsed)
+			{
+				break;
+			}
+			// move data in the source buffer
+			if (m_ash.cbSrcLengthUsed != 0)
+			{
+				if (m_ash.cbSrcLength > m_ash.cbSrcLengthUsed)
+				{
+					memmove(m_ash.pbSrc, m_ash.pbSrc + m_ash.cbSrcLengthUsed,
+							m_ash.cbSrcLength - m_ash.cbSrcLengthUsed);
+				}
+				m_ash.cbSrcLength -= m_ash.cbSrcLengthUsed;
+				m_ash.cbSrcLengthUsed = 0;
+			}
+		}
+		else
+		{
+			// error
+			return -1;
+		}
+		m_ConvertFlags &= ~ACM_STREAMCONVERTF_START;
+	}
+	return nSavedBytes;
+}
+
+int CChannelConvertor::ProcessSound(char const * pIn, char * pOut,
+									int nInBytes, int nOutBytes, int * pUsedBytes, int nChans)
+{
+	int nSavedBytes = 0;
+	*pUsedBytes = 0;
+	if ( ! CheckForMinBufferSize(pIn, pOut, nInBytes, nOutBytes,
+								pUsedBytes, & nSavedBytes, nSourceChannels * sizeof (__int16),
+								nTargetChannels * sizeof (__int16), nChans))
+	{
+		return nSavedBytes;
+	}
+
+	int nInSamples = nInBytes / (nSourceChannels * sizeof (__int16));
+	int nOutSamples = nOutBytes / (nTargetChannels * sizeof (__int16));
+	__int16 const * pInBuf = (__int16 *) pIn;
+	__int16 * pOutBuf = (__int16 *) pOut;
+
+	int nSamples = __min(nInSamples, nOutSamples);
+	int i;
+	if (2 == nSourceChannels
+		&& 1 == nTargetChannels)
+	{
+		if (0 == nSrcChannel
+			|| 1 == nSrcChannel)
+		{
+			pInBuf += nSrcChannel;
+			for (i = 0; i < nSamples; i++,
+				pInBuf += 2, pOutBuf += 1)
+			{
+				*pOutBuf = * pInBuf;
+			}
+		}
+		else
+		{
+			for (i = 0; i < nSamples; i++,
+				pInBuf += 2, pOutBuf += 1)
+			{
+				*pOutBuf = (pInBuf[0] + pInBuf[1]) / 2;
+			}
+		}
+		nSavedBytes += i * sizeof(__int16);
+		*pUsedBytes += 2 * i * sizeof(__int16);
+	}
+	else if (1 == nSourceChannels
+			&& 2 == nTargetChannels)
+	{
+		for (i = 0; i < nSamples; i++,
+			pInBuf += 1, pOutBuf += 2)
+		{
+			pOutBuf[0] = * pInBuf;
+			pOutBuf[1] = * pInBuf;
+		}
+		nSavedBytes += 2 * i * sizeof(__int16);
+		*pUsedBytes += i * sizeof(__int16);
+	}
+	else
+	{
+		return -1;
+	}
+	return nSavedBytes;
+}
+
+#if 0
 int ProcessWaveFile(LPCTSTR NameIn, LPCTSTR NameOut, CWaveProc * pProc)
 {
 	HANDLE hOutFile;
@@ -1883,67 +2623,4 @@ int ProcessWaveFile(LPCTSTR NameIn, LPCTSTR NameOut, CWaveProc * pProc)
 	pProc->m_Callback(pProc, WAVEPROC_MSG_FINISHED, 0, 0);
 	return 0;
 }
-#ifdef _CONSOLE
-int main (int argc, char ** argv)
-{
-	puts(title);
-	if (argc <= 1)
-	{
-		puts("WAVEPROC input_file [output_file]");
-		return 0;
-	}
-	LPCTSTR name_in = argv[1];
-	LPCTSTR name_out = name_in;
-	if (argc >= 3)
-	{
-		name_out = argv[2];
-	}
-
-#if 0 //def _DEBUG
-	float source[64];
-	float dst[64];
-	complex<float> fft[33];
-	for (int i = 0; i < 64; i++)
-	{
-		source[i] = rand();
-	}
-	FastFourierTransform(source, fft, 64);
-	FastInverseFourierTransform(fft, dst, 64);
-	for (i = 0; i <64; i++)
-	{
-		TRACE("src[%d]=%f, dst=%f\n", i, source[i], dst[i]);
-	}
-#endif
-
-	int TimeStart = GetTickCount();
-	//CHumRemoval hr;
-	CClickRemoval cr;
-	CBatchProcessing bp;
-	CNoiseReduction nr;
-	bp.AddWaveProc( & cr);
-	//bp.AddWaveProc( & hr);
-	//ProcessWaveFile(name_in, name_out, & bp);
-	ProcessWaveFile(name_in, name_out, & nr);
-	printf("File processed in %d seconds\n", int(GetTickCount() - TimeStart) / 1000);
-	TRACE("File processed in %d seconds\n", int(GetTickCount() - TimeStart) / 1000);
-#ifdef _DEBUG
-	TRACE("Total Bands Processed=%d\n"
-		"Transient Bands Found=%d\n"
-		"Phase Filtered In Bands=%d\n"
-		"Stationary Bands Cancelled=%d\n"
-		"Noiselike Bands Cancelled=%d\n"
-		"Max Level In Band=%f\n"
-		"Min Level In Band=%f\n",
-		nr.m_TotalBandProcessed,
-		nr.m_TransientBandFound,
-		nr.m_PhaseFilteredInBands,
-		nr.m_StationaryBandCancelled,
-		nr.m_NoiselikeBandCancelled,
-		nr.m_MaxLevelInBand,
-		nr.m_MinLevelInBand,
-		0);
-#endif
-	return 0;
-}
-
 #endif
