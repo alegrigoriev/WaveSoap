@@ -35,9 +35,8 @@ public:
 	}
 
 protected:
-	//CButton m_CheckFade;
 	BOOL m_FadeEnable;
-	int m_TransitionType;
+	int m_TransitionType; // 0 - linear, 1 - squared sine, 2 - sine/cosine
 
 	void OnUpdateFade(CCmdUI * pCmdUI);
 	void OnClickedFade();
