@@ -112,6 +112,7 @@ CDirectFile::File * CDirectFile::CDirectFileCache::Open
 				info.dwVolumeSerialNumber, info.nFileIndexHigh,
 				info.nFileIndexLow);
 			// find a File struct with the same parameters
+			CSimpleCriticalSectionLock lock(m_cs);
 			File * pFile = m_pFileList;
 			while (NULL != pFile)
 			{
@@ -213,13 +214,6 @@ CDirectFile::File * CDirectFile::CDirectFileCache::Open
 	pFile->m_pWrittenMask[pFile->FileLength >> 19] =
 		0xFF >> (8 - ((pFile->FileLength >> 16) & 7));
 
-	pFile->pPrev = NULL;
-	pFile->pNext = m_pFileList;
-	if (m_pFileList)
-	{
-		m_pFileList->pPrev = pFile;
-	}
-	m_pFileList = pFile;
 	if ((flags & OpenDeleteAfterClose)
 		&& (flags & (CreateNew | CreateAlways)))
 	{
@@ -229,6 +223,14 @@ CDirectFile::File * CDirectFile::CDirectFileCache::Open
 	{
 		pFile->Flags |= FileFlagsReadOnly;
 	}
+	CSimpleCriticalSectionLock lock(m_cs);
+	pFile->pPrev = NULL;
+	pFile->pNext = m_pFileList;
+	if (m_pFileList)
+	{
+		m_pFileList->pPrev = pFile;
+	}
+	m_pFileList = pFile;
 	SetLastError(ERROR_SUCCESS);
 	return pFile;
 }
@@ -324,7 +326,7 @@ BOOL CDirectFile::File::Close(DWORD flags)
 		{
 			pPrev->pNext = pNext;
 		}
-		else
+		else if (pCache->m_pFileList == this)
 		{
 			pCache->m_pFileList = pNext;
 		}
@@ -1178,7 +1180,7 @@ CDirectFile::BufferHeader
 				&& (pBuf->LockCount > 0
 					|| 0 != pBuf->DirtyMask))
 		{
-			pBuf = pBuf->pPrev;
+			pBuf = pBuf->pMruPrev;
 		}
 
 		// unlocked buffer not found or buffer was too recent
@@ -1190,7 +1192,7 @@ CDirectFile::BufferHeader
 					&& pBuf->MRU_Count < MaxMRU
 					&& pBuf->LockCount > 0)
 			{
-				pBuf = pBuf->pPrev;
+				pBuf = pBuf->pMruPrev;
 			}
 			if (pBuf != NULL
 				&& 0 == pBuf->LockCount
@@ -1358,6 +1360,7 @@ void CDirectFile::CDirectFileCache::ReadDataBuffer(BufferHeader * pBuf, DWORD Ma
 				SetFilePointer(pFile->hFile, (LONG)StartFilePtr, & FilePtrH, FILE_BEGIN);
 				pFile->FilePointer = StartFilePtr;
 			}
+			//TRACE("ReadFile(%x, pos=0x%X, bytes=%X)\n", pFile->hFile, long(StartFilePtr), ToRead);
 			ReadFile(pFile->hFile, buf, ToRead, & BytesRead, NULL);
 			pFile->FilePointer += BytesRead;
 			buf += BytesRead;
@@ -1415,6 +1418,7 @@ void CDirectFile::BufferHeader::FlushDirtyBuffers()
 	do {
 		if (pBuf->DirtyMask)
 		{
+			key = pBuf->PositionKey;
 			CSimpleCriticalSectionLock lock(pFile->m_FileLock);
 			LONGLONG StartFilePtr = ULONGLONG(pBuf->PositionKey) << 16;
 			unsigned char * buf = (unsigned char *) pBuf->pBuf;
@@ -1463,6 +1467,7 @@ void CDirectFile::BufferHeader::FlushDirtyBuffers()
 							long(StartFilePtr), ToWrite,
 							buf[0], buf[1], buf[2], buf[3], buf[4],
 							buf[5], buf[6], buf[7]);
+				//TRACE("WriteFile(%x, pos=0x%X, bytes=%X)\n", pFile->hFile, long(StartFilePtr), ToWrite);
 				WriteFile(pFile->hFile, buf, ToWrite, & BytesWritten, NULL);
 				pFile->FilePointer += BytesWritten;
 				buf += ToWrite;
