@@ -209,7 +209,6 @@ protected:
 // Implementation
 protected:
 	void UpdateVolumeData(CDataExchange* pDX, BOOL InPercents);
-	void UpdateEnables();
 	// Generated message map functions
 	//{{AFX_MSG(CVolumeChangeDialog)
 	afx_msg void OnSelchangeCombodbPercent();
@@ -217,6 +216,8 @@ protected:
 	afx_msg void OnHScroll(UINT nSBCode, UINT nPos, CScrollBar* pScrollBar);
 	afx_msg void OnKillfocusEditVolumeLeft();
 	afx_msg void OnKillfocusEditVolumeRight();
+	void OnUpdateVolumeLeft(CCmdUI * pCmdUI);
+	void OnUpdateVolumeRight(CCmdUI * pCmdUI);
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 
