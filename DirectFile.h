@@ -8,6 +8,7 @@
 #if _MSC_VER > 1000
 #pragma once
 #endif // _MSC_VER > 1000
+#include "KListEntry.h"
 
 class CDirectFile
 {
@@ -292,15 +293,12 @@ protected:
 		FileFlagsReadOnly = OpenReadOnly,
 		FileFlagsMemoryFile = CreateMemoryFile,
 	};
-	struct File
+	struct File : public KListEntry<File>
 	{
-		File * pPrev;   // prev link
-		File * pNext;   // next link
 		HANDLE hFile;
 		DWORD m_Flags;
 		long RefCount;
-		struct BufferHeader * volatile BuffersListHead;
-		struct BufferHeader * volatile BuffersListTail;
+		LockedListHead<BufferHeader> volatile mutable BuffersList;
 		// number of buffers in the list
 		int BuffersCount;
 		union {
@@ -329,7 +327,6 @@ protected:
 		LONGLONG m_FilePointer;
 		LONGLONG RealFileLength;
 		LONGLONG FileLength;
-		CSimpleCriticalSection mutable m_ListLock;    // synchronize BufferList changes
 		CSimpleCriticalSection mutable m_FileLock;    // synchronize FileRead, FileWrite
 		BY_HANDLE_FILE_INFORMATION m_FileInfo;
 		CString sName;
@@ -372,8 +369,6 @@ protected:
 			m_FilePointer(0),
 			FileLength(0),
 			RealFileLength(0),
-			BuffersListHead(NULL),
-			BuffersListTail(NULL),
 			BuffersCount(0),
 			DirtyBuffersCount(0),
 			RefCount(1),
@@ -383,9 +378,7 @@ protected:
 			UseSourceFileLength(0),
 			m_pCommonData(NULL),
 			m_CommonDataSize(0),
-			m_LastError(0),
-			pPrev(NULL),
-			pNext(NULL)
+			m_LastError(0)
 		{
 			memset(& m_FileInfo, 0, sizeof m_FileInfo);
 		}
@@ -405,14 +398,8 @@ protected:
 			}
 		}
 	};
-	struct BufferHeader
+	struct BufferMruEntry : public KListEntry<BufferMruEntry>
 	{
-		// pointer in the common list
-		BufferHeader * pPrev;   // prev link for file
-		BufferHeader * pNext;
-		BufferHeader * pMruPrev;    // prev link for all buffers in MRU order
-		BufferHeader * pMruNext;    // next link for all buffers in MRU order
-		void * pBuf;        // corresponding buffer
 		long LockCount;
 		unsigned MRU_Count;
 		DWORD m_Flags;
@@ -420,6 +407,11 @@ protected:
 		DWORD DirtyMask;    // 32 bits for dirty data
 		File * pFile;
 		unsigned long PositionKey;   // position / 0x10000
+	};
+	struct BufferHeader : public KListEntry<BufferHeader>, public BufferMruEntry
+	{
+		// pointer in the common list
+		void * pBuf;        // corresponding buffer
 		void FlushDirtyBuffers();
 	};
 	friend struct File;
@@ -455,13 +447,12 @@ public:
 		// when you traverse from Head to Tail, jump to pNext.
 		// when you traverse from Tail to Head , jump to pPrev.
 		// Pointer to a buffer with highest MRU. This buffer have pMruPrev=NULL
-		BufferHeader * m_pMruListHead;
-		// Pointer to a buffer with lowest MRU. This buffer have pMruNext=NULL
-		BufferHeader * m_pMruListTail;
+		KListEntry<BufferMruEntry> m_MruList;
+
 		void * m_pBuffersArray;    // allocated area
 		int m_NumberOfBuffers; // number of allocated buffers
-		BufferHeader * m_pFreeBuffers;
-		File * m_pFileList;
+		KListEntry<BufferHeader> m_FreeBuffers;
+		KListEntry<File> m_FileList;
 		DWORD m_Flags;
 		unsigned volatile m_MRU_Count;
 

@@ -1,13 +1,20 @@
+#if !defined(AFX_KLISTENTRY_H__B7AA7401_4036_11D4_9ADD_00C0F0583C4B__INCLUDED_)
+#define AFX_KLISTENTRY_H__B7AA7401_4036_11D4_9ADD_00C0F0583C4B__INCLUDED_
+
+#if _MSC_VER > 1000
+#pragma once
+#endif // _MSC_VER > 1000
+
 template<class T>
 struct KListEntry
 {
 	KListEntry * pPrev;
 	KListEntry * pNext;
 	// no destructor necessary
-	void Init()
+	void Init() volatile
 	{
-		pPrev = this;
-		pNext = this;
+		pPrev = const_cast<KListEntry *>(this);
+		pNext = pPrev;
 	}
 	KListEntry()
 	{
@@ -21,6 +28,14 @@ struct KListEntry
 		pNext->pPrev = static_cast<KListEntry<T> *>(entry);
 		pNext = static_cast<KListEntry<T> *>(entry);
 	}
+	void InsertHead(T volatile * entry) volatile
+	{
+		__assume(NULL != entry);
+		static_cast<KListEntry<T> volatile *>(entry)->pPrev = const_cast<KListEntry *>(this);
+		static_cast<KListEntry<T> volatile *>(entry)->pNext = pNext;
+		pNext->pPrev = static_cast<KListEntry<T> volatile *>(entry);
+		pNext = static_cast<KListEntry<T> volatile *>(entry);
+	}
 	void InsertTail(T * entry)
 	{
 		__assume(NULL != entry);
@@ -29,7 +44,16 @@ struct KListEntry
 		pPrev->pNext = static_cast<KListEntry<T> *>(entry);
 		pPrev = static_cast<KListEntry<T> *>(entry);
 	}
-	bool IsEmpty() const
+	void InsertTail(T volatile * entry) volatile
+	{
+		__assume(NULL != entry);
+		static_cast<KListEntry<T> volatile *>(entry)->pNext = const_cast<KListEntry *>(this);
+		static_cast<KListEntry<T> volatile *>(entry)->pPrev = pPrev;
+		pPrev->pNext = static_cast<KListEntry<T> volatile *>(entry);
+		pPrev = static_cast<KListEntry<T> volatile *>(entry);
+	}
+
+	bool IsEmpty() const volatile
 	{
 		return pNext == this;
 	}
@@ -37,6 +61,15 @@ struct KListEntry
 	{
 		KListEntry * tmp = pNext;
 		tmp->pNext->pPrev = this;
+		pNext = tmp->pNext;
+		tmp->Init();
+		__assume(NULL != tmp);
+		return static_cast<T *>(tmp);
+	}
+	T * RemoveHead() volatile
+	{
+		KListEntry * tmp = pNext;
+		tmp->pNext->pPrev = const_cast<KListEntry *>(this);
 		pNext = tmp->pNext;
 		tmp->Init();
 		__assume(NULL != tmp);
@@ -51,7 +84,22 @@ struct KListEntry
 		__assume(NULL != tmp);
 		return static_cast<T *>(tmp);
 	}
+	T * RemoveTail() volatile
+	{
+		KListEntry * tmp = pPrev;
+		tmp->pPrev->pNext = const_cast<KListEntry *>(this);
+		pPrev = tmp->pPrev;
+		tmp->Init();
+		__assume(NULL != tmp);
+		return static_cast<T *>(tmp);
+	}
 	void RemoveFromList()
+	{
+		pNext->pPrev = pPrev;
+		pPrev->pNext = pNext;
+		Init();
+	}
+	void RemoveFromList() volatile
 	{
 		pNext->pPrev = pPrev;
 		pPrev->pNext = pNext;
@@ -63,6 +111,14 @@ struct KListEntry
 		static_cast<KListEntry<T> *>(entry)->pNext->pPrev = static_cast<KListEntry<T> *>(entry)->pPrev;
 		static_cast<KListEntry<T> *>(entry)->pPrev->pNext = static_cast<KListEntry<T> *>(entry)->pNext;
 		static_cast<KListEntry<T> *>(entry)->Init();
+	}
+
+	static void RemoveEntry(T volatile * entry)
+	{
+		__assume(NULL != entry);
+		static_cast<KListEntry<T> volatile *>(entry)->pNext->pPrev = static_cast<KListEntry<T> volatile *>(entry)->pPrev;
+		static_cast<KListEntry<T> volatile *>(entry)->pPrev->pNext = static_cast<KListEntry<T> volatile *>(entry)->pNext;
+		static_cast<KListEntry<T> volatile *>(entry)->Init();
 	}
 
 	// move all the list to DstList. The list becomes empty
@@ -81,11 +137,26 @@ struct KListEntry
 		}
 	}
 
-	T * Next() const { __assume(NULL != pNext); return static_cast<T *>(pNext); }
-	T * Prev() const { __assume(NULL != pPrev); return static_cast<T *>(pPrev); }
+	void RemoveAll(KListEntry & DstList) volatile
+	{
+		if ( ! IsEmpty())
+		{
+			KListEntry * pListEntry = pNext;
+			RemoveFromList();
+			Init();
+			pListEntry->InsertTailList( & DstList);
+		}
+		else
+		{
+			DstList.Init();
+		}
+	}
+
+	T * Next() const volatile { __assume(NULL != pNext); return static_cast<T *>(pNext); }
+	T * Prev() const volatile { __assume(NULL != pPrev); return static_cast<T *>(pPrev); }
 
 	// call a function with any return type
-	template <class F> void CallForEach(F function)
+	template <class F> void CallForEach(F function) const volatile
 	{
 		for (T * p = Next(); p != this; p = p->KListEntry<T>::Next())
 		{
@@ -93,62 +164,62 @@ struct KListEntry
 		}
 	}
 	// call a function with any return and argument type
-	template <class F, class A> void CallForEach(F function, A a)
+	template <class F, class A> void CallForEach(F function, A a) const volatile
 	{
 		for (T * p = Next(); p != this; p = p->KListEntry<T>::Next())
 		{
 			(p->*function)(a);
 		}
 	}
-	template <class F> NTSTATUS CallForEachWhileNotSuccess(F function)
+	template <class F> BOOL CallForEachWhileNotSuccess(F function) const volatile
 	{
 		for (T * p = Next(); p != this; p = p->KListEntry<T>::Next())
 		{
-			NTSTATUS status = (p->*function)();
-			if (STATUS_SUCCESS == status)
-			{
-				return STATUS_SUCCESS;
-			}
-		}
-		return STATUS_UNSUCCESSFUL;
-	}
-	template <class F, class A> NTSTATUS CallForEachWhileNotSuccess(F function, A a)
-	{
-		for (T * p = Next(); p != this; p = p->KListEntry<T>::Next())
-		{
-			NTSTATUS status = (p->*function)(a);
-			if (STATUS_SUCCESS == status)
-			{
-				return STATUS_SUCCESS;
-			}
-		}
-		return STATUS_UNSUCCESSFUL;
-	}
-	template <class F> NTSTATUS CallForEachWhileSuccess(F function)
-	{
-		for (T * p = Next(); p != this; p = p->KListEntry<T>::Next())
-		{
-			NTSTATUS status = (p->*function)();
-			if (STATUS_SUCCESS != status)
+			BOOL status = (p->*function)();
+			if (status)
 			{
 				return status;
 			}
 		}
-		return STATUS_SUCCESS;
+		return FALSE;
 	}
-	template <class F, class A> NTSTATUS CallForEachWhileSuccess(F function, A a)
+	template <class F, class A> BOOL CallForEachWhileNotSuccess(F function, A a) const volatile
 	{
 		for (T * p = Next(); p != this; p = p->KListEntry<T>::Next())
 		{
-			NTSTATUS status = (p->*function)(a);
-			if (STATUS_SUCCESS != status)
+			BOOL status = (p->*function)(a);
+			if (status)
 			{
 				return status;
 			}
 		}
-		return STATUS_SUCCESS;
+		return FALSE;
 	}
-	template <class F> bool CallForEachWhileTrue(F function)
+	template <class F> BOOL CallForEachWhileSuccess(F function) const volatile
+	{
+		for (T * p = Next(); p != this; p = p->KListEntry<T>::Next())
+		{
+			BOOL status = (p->*function)();
+			if ( ! status)
+			{
+				return FALSE;
+			}
+		}
+		return TRUE;
+	}
+	template <class F, class A> BOOL CallForEachWhileSuccess(F function, A a) const volatile
+	{
+		for (T * p = Next(); p != this; p = p->KListEntry<T>::Next())
+		{
+			BOOL status = (p->*function)(a);
+			if ( ! status)
+			{
+				return FALSE;
+			}
+		}
+		return TRUE;
+	}
+	template <class F> bool CallForEachWhileTrue(F function) const volatile
 	{
 		for (T * p = Next(); p != this; p = p->KListEntry<T>::Next())
 		{
@@ -159,7 +230,7 @@ struct KListEntry
 		}
 		return true;
 	}
-	template <class F, class A> bool CallForEachWhileTrue(F function, A a)
+	template <class F, class A> bool CallForEachWhileTrue(F function, A a) const volatile
 	{
 		for (T * p = Next(); p != this; p = p->KListEntry<T>::Next())
 		{
@@ -170,7 +241,7 @@ struct KListEntry
 		}
 		return true;
 	}
-	template <class F> bool CallForEachWhileNotTrue(F function)
+	template <class F> bool CallForEachWhileNotTrue(F function) const volatile
 	{
 		for (T * p = Next(); p != this; p = p->KListEntry<T>::Next())
 		{
@@ -181,7 +252,7 @@ struct KListEntry
 		}
 		return false;
 	}
-	template <class F, class A> bool CallForEachWhileNotTrue(F function, A a)
+	template <class F, class A> bool CallForEachWhileNotTrue(F function, A a) const volatile
 	{
 		for (T * p = Next(); p != this; p = p->KListEntry<T>::Next())
 		{
@@ -198,27 +269,49 @@ struct KListEntry
 template<class T >
 struct LockedListHead: public KListEntry<T>, public CSimpleCriticalSection
 {
-	// no destructor necessary
+	KListEntry<T> * Head() { return this; }
+	KListEntry<T> const * Head() const { return this; }
+	KListEntry<T> volatile * Head() volatile { return this; }
+	KListEntry<T> const volatile * Head() const volatile { return this; }
 	void InsertHead(T * entry)
 	{
 		Lock();
 		KListEntry::InsertHead(entry);
 		Unlock();
 	}
-	void InsertHeadUnsafe(T * entry)
+	void InsertHead(T * entry) volatile
 	{
 		Lock();
-		KListEntry::InsertHead(entry);
+		KListEntry<T>::InsertHead(entry);
+		Unlock();
+	}
+	void InsertHeadUnsafe(T * entry)
+	{
+		KListEntry<T>::InsertHead(entry);
+	}
+	void InsertHeadUnsafe(T * entry) volatile
+	{
+		KListEntry<T>::InsertHead(entry);
 	}
 	void InsertTail(T * entry)
 	{
 		Lock();
-		KListEntry::InsertTail(entry);
+		KListEntry<T>::InsertTail(entry);
+		Unlock();
+	}
+	void InsertTail(T * entry) volatile
+	{
+		Lock();
+		KListEntry<T>::InsertTail(entry);
 		Unlock();
 	}
 	void InsertTailUnsafe(T * entry)
 	{
-		KListEntry::InsertTail(entry);
+		KListEntry<T>::InsertTail(entry);
+	}
+	void InsertTailUnsafe(T * entry) volatile
+	{
+		KListEntry<T>::InsertTail(entry);
 	}
 	T * RemoveHead()
 	{
@@ -227,137 +320,55 @@ struct LockedListHead: public KListEntry<T>, public CSimpleCriticalSection
 		{
 			return NULL;
 		}
-		return KListEntry::RemoveHead();
+		return KListEntry<T>::RemoveHead();
+	}
+	T * RemoveHead() volatile
+	{
+		CSimpleCriticalSectionLock lock(*this);
+		if (IsEmpty())
+		{
+			return NULL;
+		}
+		return KListEntry<T>::RemoveHead();
 	}
 	T * RemoveHeadUnsafe()
 	{
-		return KListEntry::RemoveHead();
+		return KListEntry<T>::RemoveHead();
+	}
+	T * RemoveHeadUnsafe() volatile
+	{
+		return KListEntry<T>::RemoveHead();
 	}
 	void RemoveEntry(T * Entry)
 	{
-		CSimpleCriticalSectionLock lock(*this);
-		KListEntry::RemoveEntry(Entry);
+		Lock();
+		KListEntry<T>::RemoveEntry(Entry);
+		Unlock();
+	}
+	void RemoveEntry(T * Entry) volatile
+	{
+		Lock();
+		KListEntry<T>::RemoveEntry(Entry);
+		Unlock();
 	}
 	static void RemoveEntryUnsafe(T * entry)
 	{
-		KListEntry::RemoveEntry(Entry);
+		KListEntry<T>::RemoveEntry(Entry);
 	}
 
 	// move all the list to DstList. The list becomes empty
 	void RemoveAll(KListEntry & DstList)
 	{
 		Lock();
-		KListEntry::RemoveAll(DstList);
+		KListEntry<T>::RemoveAll(DstList);
 		Unlock();
 	}
-
-	// call a function with any return type
-	template <class F> void CallForEach(F function)
+	void RemoveAll(KListEntry & DstList) volatile
 	{
-		for (T * p = Next(); p != this; p = p->KListEntry<T>::Next())
-		{
-			(p->*function)();
-		}
-	}
-	// call a function with any return and argument type
-	template <class F, class A> void CallForEach(F function, A a)
-	{
-		for (T * p = Next(); p != this; p = p->KListEntry<T>::Next())
-		{
-			(p->*function)(a);
-		}
-	}
-	template <class F> NTSTATUS CallForEachWhileNotSuccess(F function)
-	{
-		for (T * p = Next(); p != this; p = p->KListEntry<T>::Next())
-		{
-			NTSTATUS status = (p->*function)();
-			if (STATUS_SUCCESS == status)
-			{
-				return STATUS_SUCCESS;
-			}
-		}
-		return STATUS_UNSUCCESSFUL;
-	}
-	template <class F, class A> NTSTATUS CallForEachWhileNotSuccess(F function, A a)
-	{
-		for (T * p = Next(); p != this; p = p->KListEntry<T>::Next())
-		{
-			NTSTATUS status = (p->*function)(a);
-			if (STATUS_SUCCESS == status)
-			{
-				return STATUS_SUCCESS;
-			}
-		}
-		return STATUS_UNSUCCESSFUL;
-	}
-	template <class F> NTSTATUS CallForEachWhileSuccess(F function)
-	{
-		for (T * p = Next(); p != this; p = p->KListEntry<T>::Next())
-		{
-			NTSTATUS status = (p->*function)();
-			if (STATUS_SUCCESS != status)
-			{
-				return status;
-			}
-		}
-		return STATUS_SUCCESS;
-	}
-	template <class F, class A> NTSTATUS CallForEachWhileSuccess(F function, A a)
-	{
-		for (T * p = Next(); p != this; p = p->KListEntry<T>::Next())
-		{
-			NTSTATUS status = (p->*function)(a);
-			if (STATUS_SUCCESS != status)
-			{
-				return status;
-			}
-		}
-		return STATUS_SUCCESS;
-	}
-	template <class F> bool CallForEachWhileTrue(F function)
-	{
-		for (T * p = Next(); p != this; p = p->KListEntry<T>::Next())
-		{
-			if ( ! (p->*function)())
-			{
-				return false;
-			}
-		}
-		return true;
-	}
-	template <class F, class A> bool CallForEachWhileTrue(F function, A a)
-	{
-		for (T * p = Next(); p != this; p = p->KListEntry<T>::Next())
-		{
-			if ( ! (p->*function)(a))
-			{
-				return false;
-			}
-		}
-		return true;
-	}
-	template <class F> bool CallForEachWhileNotTrue(F function)
-	{
-		for (T * p = Next(); p != this; p = p->KListEntry<T>::Next())
-		{
-			if ((p->*function)())
-			{
-				return true;
-			}
-		}
-		return false;
-	}
-	template <class F, class A> bool CallForEachWhileNotTrue(F function, A a)
-	{
-		for (T * p = Next(); p != this; p = p->KListEntry<T>::Next())
-		{
-			if ((p->*function)(a))
-			{
-				return true;
-			}
-		}
-		return false;
+		Lock();
+		KListEntry<T>::RemoveAll(DstList);
+		Unlock();
 	}
 };
 
+#endif // AFX_KLISTENTRY_H__B7AA7401_4036_11D4_9ADD_00C0F0583C4B__INCLUDED_
