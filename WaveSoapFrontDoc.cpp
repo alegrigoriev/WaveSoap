@@ -29,7 +29,12 @@ END_MESSAGE_MAP()
 
 CWaveSoapFrontDoc::CWaveSoapFrontDoc()
 	:m_pPeaks(NULL), m_WavePeakSize(0), m_PeakDataGranularity(512),
-	m_pWaveBuffer(NULL), m_WaveBufferSize(0)
+	m_pWaveBuffer(NULL), m_WaveBufferSize(0),
+	m_CaretPosition(0),
+	m_TimeSelectionMode(TRUE),
+	m_SelectionStart(0),
+	m_SelectionEnd(0),
+	m_SelectedChannel(2)
 {
 	// TODO: add one-time construction code here
 	TRACE("CWaveSoapFrontDoc::CWaveSoapFrontDoc()\n");
@@ -61,6 +66,12 @@ BOOL CWaveSoapFrontDoc::OnNewDocument()
 	// Query for WAV filename and build peaks
 	CString filter;
 	filter.LoadString(IDS_WAV_FILTER);
+
+	m_CaretPosition = 0;
+	m_SelectionStart = 0;
+	m_SelectionEnd = 0;
+	m_SelectedChannel = 2;  // both channels
+	m_TimeSelectionMode = TRUE;
 
 	// allow multiple selection for batch processing
 	CFileDialog fdlg(TRUE, "wav", szWaveFilename,
@@ -440,6 +451,21 @@ BOOL CWaveSoapFrontDoc::DoSave(LPCTSTR lpszPathName, BOOL bReplace)
 
 	return TRUE;        // success
 }
+
+void CWaveSoapFrontDoc::SetSelection(int begin, int end, int channel, int caret)
+{
+	CSelectionUpdateInfo ui;
+	ui.SelBegin = m_SelectionStart;
+	m_SelectionStart = begin;
+	ui.SelEnd = m_SelectionEnd;
+	m_SelectionEnd = end;
+	ui.SelChannel = m_SelectedChannel;
+	m_SelectedChannel = channel;
+	ui.CaretPos = m_CaretPosition;
+	m_CaretPosition = caret;
+	UpdateAllViews(NULL, UpdateSelectionChanged, & ui);
+}
+
 /////////////////////////////////////////////////////////////////////////////
 // CWaveSoapFrontDoc diagnostics
 
