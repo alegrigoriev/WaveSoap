@@ -6,7 +6,7 @@
 #endif // _MSC_VER > 1000
 // FileDialogWithHistory.h : header file
 //
-
+#include "ApplicationProfile.h"
 /////////////////////////////////////////////////////////////////////////////
 // CFileDialogWithHistory dialog
 
@@ -20,11 +20,20 @@ public:
 							LPCTSTR lpszFileName = NULL,
 							DWORD dwFlags = OFN_HIDEREADONLY | OFN_OVERWRITEPROMPT,
 							LPCTSTR lpszFilter = NULL,
-							CWnd* pParentWnd = NULL);
+							CWnd* pParentWnd = NULL)
+		: CFileDialog(bOpenFileDialog, lpszDefExt, lpszFileName, dwFlags, lpszFilter, pParentWnd)
+	{
+	}
 
 protected:
+	CString m_RecentFolders[15];
+	CApplicationProfile m_Profile;
+
+	virtual void OnFolderChange();
+	virtual void OnInitDone();
+	virtual BOOL OnFileNameOK();
 	//{{AFX_MSG(CFileDialogWithHistory)
-	// NOTE - the ClassWizard will add and remove member functions here.
+	afx_msg void OnComboSelendOK();
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 };

@@ -17,6 +17,7 @@
 #include "OperationDialogs2.h"
 #include <Dlgs.h>
 #include "NewFilePropertiesDlg.h"
+#include "FileDialogWithHistory.h"
 
 #define _countof(array) (sizeof(array)/sizeof(array[0]))
 
@@ -91,7 +92,7 @@ void CWaveSoapDocTemplate::OnIdle()
 	}
 }
 
-class CWaveSoapFileOpenDialog : public CFileDialog
+class CWaveSoapFileOpenDialog : public CFileDialogWithHistory
 {
 public:
 	CWaveSoapFileOpenDialog(BOOL bOpenFileDialog, // TRUE for FileOpen, FALSE for FileSaveAs
@@ -100,12 +101,9 @@ public:
 							DWORD dwFlags = OFN_HIDEREADONLY | OFN_OVERWRITEPROMPT,
 							LPCTSTR lpszFilter = NULL,
 							CWnd* pParentWnd = NULL)
-		: CFileDialog(bOpenFileDialog, lpszDefExt, lpszFileName, dwFlags,
-					lpszFilter, pParentWnd), m_bReadOnly(false), m_bDirectMode(false)
-	{}
-	~CWaveSoapFileOpenDialog()
+		: CFileDialogWithHistory(bOpenFileDialog, lpszDefExt, lpszFileName, dwFlags,
+								lpszFilter, pParentWnd), m_bReadOnly(false), m_bDirectMode(false)
 	{
-		GetApp()->Profile.RemoveSection(_T("RecentOpenDirs"));
 	}
 
 	CWaveFile m_WaveFile;
@@ -119,14 +117,11 @@ public:
 	int nSamplingRate;
 	int nSamples;
 	CString WaveFormat;
-	CString m_RecentFolders[15];
 
 	virtual BOOL OnFileNameOK();
-	//virtual void OnLBSelChangedNotify(UINT nIDBox, UINT iCurSel, UINT nCode);
 
 	virtual void OnInitDone();
 	virtual void OnFileNameChange();
-	virtual void OnFolderChange();
 	virtual void OnTypeChange();
 	void ClearFileInfoDisplay();
 	void ShowWmaFileInfo(CDirectFile & File);
@@ -134,19 +129,15 @@ public:
 	//{{AFX_MSG(CWaveSoapFileOpenDialog)
 	afx_msg void OnCheckReadOnly();
 	afx_msg void OnCheckDirectMode();
-	afx_msg void OnComboSelendOK();
-	// NOTE - the ClassWizard will add and remove member functions here.
-	//    DO NOT EDIT what you see in these blocks of generated code !
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 	virtual BOOL OnWndMsg(UINT message, WPARAM wParam, LPARAM lParam, LRESULT* pResult);
 };
 
-BEGIN_MESSAGE_MAP(CWaveSoapFileOpenDialog, CFileDialog)
+BEGIN_MESSAGE_MAP(CWaveSoapFileOpenDialog, CFileDialogWithHistory)
 	//{{AFX_MSG_MAP(CWaveSoapFileOpenDialog)
 	ON_BN_CLICKED(IDC_CHECK_READONLY, OnCheckReadOnly)
 	ON_BN_CLICKED(IDC_CHECK_DIRECT, OnCheckDirectMode)
-	ON_CBN_SELENDOK(IDC_COMBO_RECENT, OnComboSelendOK)
 	//}}AFX_MSG_MAP
 END_MESSAGE_MAP()
 
@@ -1254,84 +1245,6 @@ BOOL CWaveSoapFileOpenDialog::OnWndMsg(UINT message, WPARAM wParam, LPARAM lPara
 	return CFileDialog::OnWndMsg(message, wParam, lParam, pResult);
 }
 
-void CWaveSoapFileOpenDialog::OnComboSelendOK()
-{
-	TRACE("CWaveSoapFileOpenDialog::OnComboSelendOK()\n");
-	CString str;
-	CComboBox * pCb = static_cast<CComboBox *>(GetDlgItem(IDC_COMBO_RECENT));
-	if (NULL != pCb)
-	{
-		int sel = pCb->GetCurSel();
-		if (-1 == sel
-			|| sel >= pCb->GetCount())
-		{
-			return;
-		}
-		pCb->GetLBText(sel, str);
-		TRACE("CWaveSoapFileOpenDialog::OnComboSelendOK: %s selected\n", str);
-		if (str.IsEmpty())
-		{
-			return;
-		}
-		// check if the selected text is a folder
-		// make sure we can find a file in the folder
-		CString dir(str);
-		TCHAR c = dir[dir.GetLength() - 1];
-		if (c != ':'
-			&& c != '\\'
-			&& c != '/')
-		{
-			dir += '\\';
-		}
-		dir += '*';
-
-		WIN32_FIND_DATA wfd;
-		HANDLE hFind = FindFirstFile(dir, & wfd);
-		if (INVALID_HANDLE_VALUE == hFind)
-		{
-			DWORD error = GetLastError();
-			TRACE("FindFirstFile failed, last error = %d\n", error);
-			CString s;
-			if (ERROR_ACCESS_DENIED == error)
-			{
-				s.Format(IDS_DIRECTORY_ACCESS_DENIED, LPCTSTR(str));
-			}
-			else if (1 || ERROR_DIRECTORY == error
-					|| ERROR_PATH_NOT_FOUND == error
-					|| ERROR_INVALID_NAME == error
-					|| ERROR_BAD_NETPATH)
-			{
-				s.Format(IDS_DIRECTORY_NOT_FOUND, LPCTSTR(str));
-			}
-			AfxMessageBox(s);
-			// delete the string from combobox
-			pCb->DeleteString(sel);
-			pCb->SetCurSel(-1); // no selection
-			return;
-		}
-		else
-		{
-			TRACE("FindFirstFile success\n");
-			FindClose(hFind);
-			CWnd * pParent = GetParent();
-			pParent->SendMessage(CDM_SETCONTROLTEXT, edt1, LPARAM(LPCTSTR(str)));
-			pParent->SendMessage(WM_COMMAND, IDOK, 0);
-			pParent->SendMessage(CDM_SETCONTROLTEXT, edt1, LPARAM(LPCTSTR("")));
-			CWnd * pTmp = pParent->GetDlgItem(edt1);
-			if (NULL == pTmp)
-			{
-				// new style dialog
-				pTmp = pParent->GetDlgItem(cmb13);
-			}
-			if (NULL != pTmp)
-			{
-				pTmp->SetFocus();
-			}
-		}
-
-	}
-}
-
 void CWaveSoapFileOpenDialog::ShowWmaFileInfo(CDirectFile & File)
 {
 	if ( ! GetApp()->CanOpenWindowsMedia())
@@ -1414,26 +1327,10 @@ void CWaveSoapFileOpenDialog::OnCheckDirectMode()
 
 BOOL CWaveSoapFileOpenDialog::OnFileNameOK()
 {
-	// add the current directory name to MRU
-	CString sCurrDir;
-	GetParent()->SendMessage(CDM_GETFOLDERPATH, MAX_PATH, LPARAM(sCurrDir.GetBuffer(MAX_PATH)));
-	sCurrDir.ReleaseBuffer();
-	TRACE("CWaveSoapFileOpenDialog::OnFileNameOK Folder Path=%s\n", sCurrDir);
-
-	AddStringToHistory(sCurrDir, m_RecentFolders,
-						sizeof m_RecentFolders / sizeof m_RecentFolders[0], false);
-
-	GetApp()->Profile.FlushSection(_T("RecentOpenDirs"));
 
 	m_WaveFile.Close();
-	return CFileDialog::OnFileNameOK();
+	return CFileDialogWithHistory::OnFileNameOK();
 }
-
-#if 0
-void CWaveSoapFileOpenDialog::OnLBSelChangedNotify(UINT nIDBox, UINT iCurSel, UINT nCode)
-{
-}
-#endif
 
 void CWaveSoapFileOpenDialog::OnInitDone()
 {
@@ -1451,24 +1348,7 @@ void CWaveSoapFileOpenDialog::OnInitDone()
 		pDirect->SetCheck(m_bDirectMode);
 		pDirect->EnableWindow( ! m_bReadOnly);
 	}
-	CComboBox * pCb = static_cast<CComboBox *>(GetDlgItem(IDC_COMBO_RECENT));
-	if (NULL != pCb)
-	{
-		pCb->SetExtendedUI();
-		CThisApp * pApp = GetApp();
-		for (int i = 0; i < sizeof m_RecentFolders / sizeof m_RecentFolders[0]; i++)
-		{
-			CString s;
-			s.Format("Dir%d", i);
-			pApp->Profile.AddItem(_T("RecentOpenDirs"), s, m_RecentFolders[i]);
-			m_RecentFolders[i].TrimLeft();
-			m_RecentFolders[i].TrimRight();
-			if ( ! m_RecentFolders[i].IsEmpty())
-			{
-				pCb->AddString(m_RecentFolders[i]);
-			}
-		}
-	}
+	CFileDialogWithHistory::OnInitDone();
 }
 
 void CWaveSoapFileOpenDialog::OnFileNameChange()
@@ -1641,32 +1521,6 @@ void CWaveSoapFileOpenDialog::ClearFileInfoDisplay()
 	SetDlgItemText(IDC_STATIC_FILE_LENGTH, _T(""));
 	SetDlgItemText(IDC_STATIC_ATTRIBUTES, _T(""));
 	SetDlgItemText(IDC_EDIT_FILE_COMMENTS, _T(""));
-}
-
-void CWaveSoapFileOpenDialog::OnFolderChange()
-{
-	CThisApp * pApp = GetApp();
-	CString dir = GetFolderPath();
-	if (dir.GetLength() > 1
-		&& dir[dir.GetLength() - 1] == '\\')
-	{
-		dir.SetAt(dir.GetLength() - 1, 0);
-	}
-	CComboBox * pCb = static_cast<CComboBox *>(GetDlgItem(IDC_COMBO_RECENT));
-	if (NULL != pCb)
-	{
-		for (int i = 0; i < sizeof m_RecentFolders / sizeof m_RecentFolders[0]; i++)
-		{
-			if ( ! m_RecentFolders[i].IsEmpty())
-			{
-				if (0 == m_RecentFolders[i].CompareNoCase(dir))
-				{
-					pCb->SetCurSel(i);
-					break;
-				}
-			}
-		}
-	}
 }
 
 void CWaveSoapFileOpenDialog::OnTypeChange()
@@ -2822,7 +2676,7 @@ OSVERSIONINFO CWaveSoapFrontApp::m_VersionInfo;
 
 bool CWaveSoapFrontApp::SupportsV5FileDialog()
 {
-	TRACE("Major version=%d, minor version=%d, build=%d\n",
+	TRACE("Major version=%d, minor version=%d, build=%X\n",
 		m_VersionInfo.dwMajorVersion,
 		m_VersionInfo.dwMinorVersion,
 		m_VersionInfo.dwBuildNumber);
@@ -2832,7 +2686,9 @@ bool CWaveSoapFrontApp::SupportsV5FileDialog()
 		return m_VersionInfo.dwMajorVersion >= 5;
 		break;
 	case VER_PLATFORM_WIN32_WINDOWS:
-		return m_VersionInfo.dwMajorVersion >= 5;
+		return m_VersionInfo.dwMajorVersion > 4
+				|| (m_VersionInfo.dwMajorVersion == 4
+					&& m_VersionInfo.dwMinorVersion >= 90);
 		break;
 	default:
 		return FALSE;

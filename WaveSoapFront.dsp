@@ -54,7 +54,7 @@ BSC32=bscmake.exe
 LINK32=link.exe
 # ADD BASE LINK32 /nologo /subsystem:windows /machine:I386
 # ADD LINK32 winmm.lib msacm32.lib wmstub.lib wmvcore.lib delayimp.lib /nologo /subsystem:windows /map /machine:I386 /out:"Release/WaveSoap.exe" /libpath:"G:\WMSDK\WMFSDK\lib" /delayload:wmvcore.dll
-# SUBTRACT LINK32 /pdb:none
+# SUBTRACT LINK32 /pdb:none /debug
 
 !ELSEIF  "$(CFG)" == "WaveSoapFront - Win32 Debug"
 
@@ -70,7 +70,7 @@ LINK32=link.exe
 # PROP Ignore_Export_Lib 0
 # PROP Target_Dir ""
 # ADD BASE CPP /nologo /MTd /W3 /Gm /GX /ZI /Od /D "WIN32" /D "_DEBUG" /D "_WINDOWS" /Yu"stdafx.h" /FD /GZ /c
-# ADD CPP /nologo /MTd /W3 /Gm /GR /GX /ZI /Od /I "c:\ntddk\inc" /D "_DEBUG" /D "WIN32" /D "_WINDOWS" /D "_MBCS" /D _WIN32_WINNT=0x0500 /D "OEMRESOURCE" /Yu"stdafx.h" /FD /GZ /c
+# ADD CPP /nologo /MTd /W3 /Gm /GR /GX /ZI /Od /I "c:\ntddk\inc" /D "_DEBUG" /D "WIN32" /D "_WINDOWS" /D "_MBCS" /D _WIN32_WINNT=0x0500 /D "OEMRESOURCE" /Yu"stdafx.h" /FD /c
 # ADD BASE MTL /nologo /D "_DEBUG" /mktyplib203 /win32
 # ADD MTL /nologo /D "_DEBUG" /mktyplib203 /win32
 # ADD BASE RSC /l 0x419 /d "_DEBUG"
@@ -128,6 +128,10 @@ SOURCE=.\DlgFileNew.cpp
 # Begin Source File
 
 SOURCE=.\FftRulerView.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=.\FileDialogWithHistory.cpp
 # End Source File
 # Begin Source File
 
@@ -346,6 +350,10 @@ SOURCE=.\FFT.inl
 # Begin Source File
 
 SOURCE=.\FftRulerView.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\FileDialogWithHistory.h
 # End Source File
 # Begin Source File
 
