@@ -903,7 +903,7 @@ void CTimeRulerView::OnMouseMove(UINT nFlags, CPoint point)
 
 		if (m_DraggedMarkerHitTest & HitTestRegionBegin)
 		{
-			if (NewPosition >= info.Sample + info.Length)
+			if (NewPosition >= SAMPLE_INDEX(info.Sample + info.Length))
 			{
 				return;
 			}
@@ -914,7 +914,7 @@ void CTimeRulerView::OnMouseMove(UINT nFlags, CPoint point)
 		}
 		else if (m_DraggedMarkerHitTest & HitTestRegionEnd)
 		{
-			if (NewPosition <= info.Sample)
+			if (NewPosition <= SAMPLE_INDEX(info.Sample))
 			{
 				return;
 			}
