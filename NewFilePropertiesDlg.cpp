@@ -16,14 +16,19 @@ static char THIS_FILE[] = __FILE__;
 // CNewFilePropertiesDlg dialog
 
 
-CNewFilePropertiesDlg::CNewFilePropertiesDlg(CWnd* pParent /*=NULL*/)
-	: CDialog(CNewFilePropertiesDlg::IDD, pParent),
-	m_eLength(SampleToString_HhMmSs | TimeToHhMmSs_NeedsHhMm)
+CNewFilePropertiesDlg::CNewFilePropertiesDlg(long SamplingRate,
+											NUMBER_OF_CHANNELS nChannels,
+											NUMBER_OF_SAMPLES Length,
+											bool WhenShiftOnly,
+											CWnd* pParent /*=NULL*/)
+	: BaseClass(IDD, pParent)
+	, m_Length(Length)
+	, m_nSamplingRate(SamplingRate)
+	, m_bShowOnlyWhenShift(WhenShiftOnly)
+	, m_MonoStereo(2 == nChannels)
+	, m_eLength(SampleToString_HhMmSs | TimeToHhMmSs_NeedsHhMm)
 {
 	//{{AFX_DATA_INIT(CNewFilePropertiesDlg)
-	m_bShowOnlyWhenShift = FALSE;
-	m_MonoStereo = -1;
-	m_nSamplingRate = -1;
 	//}}AFX_DATA_INIT
 }
 
@@ -39,6 +44,7 @@ void CNewFilePropertiesDlg::DoDataExchange(CDataExchange* pDX)
 	DDX_Radio(pDX, IDC_RADIO_MONO, m_MonoStereo);
 	DDX_Control(pDX, IDC_EDIT_LENGTH, m_eLength);
 	//}}AFX_DATA_MAP
+
 	m_eLength.ExchangeData(pDX, m_Length);
 	if (pDX->m_bSaveAndValidate)
 	{

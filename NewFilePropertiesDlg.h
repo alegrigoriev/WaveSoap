@@ -14,10 +14,32 @@
 
 class CNewFilePropertiesDlg : public CDialog
 {
+	typedef CDialog BaseClass;
 // Construction
 public:
-	CNewFilePropertiesDlg(CWnd* pParent = NULL);   // standard constructor
+	CNewFilePropertiesDlg(long SamplingRate,
+						NUMBER_OF_CHANNELS nChannels,
+						long LengthSeconds,
+						bool WhenShiftOnly,
+						CWnd* pParent = NULL);   // standard constructor
 
+	long GetLengthSeconds() const
+	{
+		return m_Length;
+	}
+	bool ShowWhenShiftOnly() const
+	{
+		return m_bShowOnlyWhenShift != 0;
+	}
+	long GetSamplingRate() const
+	{
+		return m_nSamplingRate;
+	}
+	int NumberOfChannels() const
+	{
+		return 1 + (m_MonoStereo != 0);
+	}
+protected:
 // Dialog Data
 	//{{AFX_DATA(CNewFilePropertiesDlg)
 	enum { IDD = IDD_DIALOG_NEW_FILE_PARAMETERS };
@@ -27,7 +49,7 @@ public:
 	int		m_MonoStereo;
 	int m_nSamplingRate;
 	//}}AFX_DATA
-	NUMBER_OF_SAMPLES m_Length;
+	long m_Length;
 
 // Overrides
 	// ClassWizard generated virtual function overrides
