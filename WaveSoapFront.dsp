@@ -622,6 +622,18 @@ SOURCE=.\res\bmp00002.bmp
 # End Source File
 # Begin Source File
 
+SOURCE=.\res\bmp_eject.bmp
+# End Source File
+# Begin Source File
+
+SOURCE=.\res\bmp_play.bmp
+# End Source File
+# Begin Source File
+
+SOURCE=.\res\bmp_stop.bmp
+# End Source File
+# Begin Source File
+
 SOURCE=.\res\cur00001.cur
 # End Source File
 # Begin Source File

@@ -105,6 +105,9 @@
 #define IDD_DIALOG_BATCH_SAVE_TARGET    186
 #define IDR_MENU_CDGRAB                 187
 #define IDI_ICON_CD                     188
+#define IDB_BITMAP_PLAY                 189
+#define IDB_BITMAP_EJECT                190
+#define IDB_BITMAP_STOP                 191
 #define IDC_EDIT_MIN_CLICK_AMPLITUDE    1000
 #define IDC_TAB_SWITCH_VIEW_MODE        1000
 #define IDC_CHECK_LOG_CLICKS            1001
@@ -659,7 +662,7 @@
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_3D_CONTROLS                     1
-#define _APS_NEXT_RESOURCE_VALUE        189
+#define _APS_NEXT_RESOURCE_VALUE        192
 #define _APS_NEXT_COMMAND_VALUE         40114
 #define _APS_NEXT_CONTROL_VALUE         1253
 #define _APS_NEXT_SYMED_VALUE           101
