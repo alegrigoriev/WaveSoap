@@ -1482,6 +1482,7 @@ void CExpressionEvaluationDialog::DoDataExchange(CDataExchange* pDX)
 	DDX_Control(pDX, IDC_EDIT_EXPRESSION, m_eExpression);
 	DDX_Control(pDX, IDC_STATIC_SELECTION, m_SelectionStatic);
 	DDX_Check(pDX, IDC_CHECK_UNDO, m_bUndo);
+	DDX_Text(pDX, IDC_EDIT_EXPRESSION, m_sExpression);
 	//}}AFX_DATA_MAP
 }
 
@@ -1534,9 +1535,9 @@ void CExpressionEvaluationDialog::OnOK()
 	}
 	if (NULL != m_pContext)
 	{
-		CString expr;
-		m_eExpression.GetWindowText(expr);
-		LPCSTR str = expr;
+		//CString expr;
+		//m_eExpression.GetWindowText(expr);
+		LPCSTR str = m_sExpression;
 		LPCSTR str1 = str;
 		if ( ! m_pContext->SetExpression( & str))
 		{

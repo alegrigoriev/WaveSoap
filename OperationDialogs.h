@@ -458,6 +458,7 @@ public:
 	CEdit	m_eExpression;
 	CStatic	m_SelectionStatic;
 	BOOL	m_bUndo;
+	CString m_sExpression;
 	//}}AFX_DATA
 
 	BOOL	m_bLockChannels;

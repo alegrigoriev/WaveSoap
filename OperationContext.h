@@ -123,7 +123,7 @@ public:
 	BOOL InitExpand(CWaveFile & File, LONG StartSample, LONG Length, int Channel);
 	BOOL InitShrink(CWaveFile & File, LONG StartSample, LONG Length, int Channel);
 	virtual BOOL OperationProc();
-	virtual void PostRetire(BOOL bChildContext = FALSE);
+	//virtual void PostRetire(BOOL bChildContext = FALSE);
 	virtual CString GetStatusString();
 };
 
@@ -460,6 +460,7 @@ public:
 	virtual BOOL ProcessBuffer(void * buf, size_t len, DWORD offset);
 	BOOL SetExpression(LPCSTR * ppszExpression);
 	CString m_ErrorString;
+	void Evaluate();
 
 private:
 	enum TokenType
@@ -499,6 +500,12 @@ private:
 		eAbsoluteSampleNumber,
 		eSelectionTime,
 		eAbsoluteTime,
+		eSelectionLengthTime,
+		eSelectionLengthSamples,
+		eFileLengthTime,
+		eFileLengthSamples,
+		eSamplingRate,
+		eSamplePeriod,
 		eCurrentFrequencyArgument,
 		eCurrentSampleValue,
 		eConvertDoubleToLong,
@@ -566,6 +573,9 @@ private:
 	double m_dFrequencyArgument;
 	double m_dSelectionLengthTime;
 	double m_dFileLengthTime;
+	double m_dCurrentSample;
+	int m_nSamplingRate;
+	double m_SamplePeriod;
 	// op functions:
 	static void _fastcall AddDouble(Operation *t) { *t->dDst = *t->dSrc1 + *t->dSrc2; }
 	static void _fastcall AddInt(Operation *t) { *t->nDst = *t->nSrc1 + *t->nSrc2; }
@@ -600,5 +610,6 @@ private:
 	static void _fastcall IntToDouble(Operation *t)  { *t->dDst = *t->nSrc1; }
 	//static void _fastcall (Operation *t)  { *t->Dst = *t->Src1  *t->Src2; }
 	//static void _fastcall (Operation *t)  { *t->Dst = *t->Src1  *t->Src2; }
+	virtual BOOL Init();
 };
 #endif // AFX_OPERATIONCONTEXT_H__FFA16C44_2FA7_11D4_9ADD_00C0F0583C4B__INCLUDED_

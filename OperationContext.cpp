@@ -184,6 +184,12 @@ void COperationContext::Retire()
 
 void COperationContext::PostRetire(BOOL bChildContext)
 {
+	// save undo context
+	if (m_pUndoContext)
+	{
+		pDocument->AddUndoRedo(m_pUndoContext);
+		m_pUndoContext = NULL;
+	}
 	if ( ! bChildContext)
 	{
 		InterlockedDecrement( & pDocument->m_OperationInProgress);
@@ -645,16 +651,10 @@ BOOL CResizeContext::InitShrink(CWaveFile & File, LONG StartSample, LONG Length,
 	return TRUE;
 }
 
-void CResizeContext::PostRetire(BOOL bChildContext)
-{
-	// save undo context
-	if (m_pUndoContext)
-	{
-		pDocument->AddUndoRedo(m_pUndoContext);
-		m_pUndoContext = NULL;
-	}
-	COperationContext::PostRetire(bChildContext);
-}
+//void CResizeContext::PostRetire(BOOL bChildContext)
+	//{
+	//COperationContext::PostRetire(bChildContext);
+	//}
 
 BOOL CResizeContext::OperationProc()
 {
@@ -2420,12 +2420,7 @@ BOOL CVolumeChangeContext::ProcessBuffer(void * buf, size_t BufferLength, DWORD 
 
 void CVolumeChangeContext::PostRetire(BOOL bChildContext)
 {
-	// save undo context
-	if (m_pUndoContext)
-	{
-		pDocument->AddUndoRedo(m_pUndoContext);
-		m_pUndoContext = NULL;
-	}
+	// save undo context done in COperationContext::PostRetire
 	if (m_bClipped)
 	{
 		CString s;
@@ -2674,12 +2669,7 @@ BOOL CDcOffsetContext::ProcessBuffer(void * buf, size_t BufferLength, DWORD offs
 
 void CDcOffsetContext::PostRetire(BOOL bChildContext)
 {
-	// save undo context
-	if (m_pUndoContext)
-	{
-		pDocument->AddUndoRedo(m_pUndoContext);
-		m_pUndoContext = NULL;
-	}
+	// save undo context done in COperationContext::PostRetire
 	if (m_bClipped)
 	{
 		CString s;
@@ -3299,10 +3289,107 @@ CExpressionEvaluationContext::CExpressionEvaluationContext(CWaveSoapFrontDoc * p
 
 {
 	m_OperationName = OperationName;
+	m_ReturnBufferFlags = CDirectFile::ReturnBufferDirty;
+}
+BOOL CExpressionEvaluationContext::Init()
+{
+	m_nSamplingRate = m_DstFile.SampleRate();
+	m_SamplePeriod = 1. / m_nSamplingRate;
+	m_dSelectionLengthTime = (m_DstEnd - m_DstStart) / m_DstFile.SampleSize() / double(m_nSamplingRate);
+	m_dFileLengthTime = m_DstFile.NumberOfSamples() / double(m_nSamplingRate);
+	m_nSelectionSampleArgument = 0;
+	m_dSelectionTimeArgument = 0.;
+	m_nFileSampleArgument = (m_DstStart - m_DstFile.GetDataChunk()->dwDataOffset) / m_DstFile.SampleSize();
+	m_dFileTimeArgument = m_nFileSampleArgument / double(m_nSamplingRate);
+	return TRUE;
 }
 
 BOOL CExpressionEvaluationContext::ProcessBuffer(void * buf, size_t len, DWORD offset)
-{ return TRUE; }
+{
+	// calculate number of sample, and time
+	int nSampleSize = m_DstFile.SampleSize();
+	int nChannels = m_DstFile.Channels();
+	int nSample = (offset - m_DstStart) / nSampleSize;
+	__int16 * pDst = (__int16 *) buf;
+	if (1 == nChannels)
+	{
+		while (len >= sizeof (__int16))
+		{
+			m_dCurrentSample = *pDst * 0.00003051850947599719229;
+			Evaluate();
+			int result = * m_pResultAddress;
+			if (result > 0x7FFF)
+			{
+				result = 0x7FFF;
+			}
+			else if (result < -0x8000)
+			{
+				result = -0x8000;
+			}
+			*pDst = result;
+			pDst++;
+			len -= sizeof (__int16);
+			m_nSelectionSampleArgument++;
+			m_nFileSampleArgument++;
+			m_dSelectionTimeArgument += m_SamplePeriod;
+			m_dFileTimeArgument += m_SamplePeriod;
+		}
+	}
+	else
+	{
+		while (len >= sizeof (__int16))
+		{
+			if (0 == (offset & sizeof (__int16)))
+			{
+				if (m_DstChan != 1) // not right only
+				{
+					m_dCurrentSample = *pDst * 0.00003051850947599719229;
+					Evaluate();
+					int result = * m_pResultAddress;
+					if (result > 0x7FFF)
+					{
+						result = 0x7FFF;
+					}
+					else if (result < -0x8000)
+					{
+						result = -0x8000;
+					}
+					*pDst = result;
+				}
+				offset += sizeof (__int16);
+				pDst++;
+				len -= sizeof (__int16);
+			}
+			if (len >= sizeof (__int16))
+			{
+				if (m_DstChan != 0) // not left only
+				{
+					m_dCurrentSample = *pDst * 0.00003051850947599719229;
+					Evaluate();
+					int result = * m_pResultAddress;
+					if (result > 0x7FFF)
+					{
+						result = 0x7FFF;
+					}
+					else if (result < -0x8000)
+					{
+						result = -0x8000;
+					}
+					*pDst = result;
+				}
+				offset += sizeof (__int16);
+				pDst++;
+				len -= sizeof (__int16);
+			}
+
+			m_nSelectionSampleArgument++;
+			m_nFileSampleArgument++;
+			m_dSelectionTimeArgument += m_SamplePeriod;
+			m_dFileTimeArgument += m_SamplePeriod;
+		}
+	}
+	return TRUE;
+}
 
 CString CExpressionEvaluationContext::GetToken(LPCSTR * ppStr, TokenType * pType)
 {
@@ -3334,6 +3421,16 @@ CString CExpressionEvaluationContext::GetToken(LPCSTR * ppStr, TokenType * pType
 		"abs", eAbsFunc,
 		"noise", eNoiseFunc,
 		"pi", ePiConstant,
+		"T", eAbsoluteTime,
+		"t", eSelectionTime,
+		"dt", eSelectionLengthTime,
+		"DT", eFileLengthTime,
+		"F", eSamplingRate,
+		"dn", eSelectionLengthSamples,
+		"DN", eFileLengthSamples,
+		"T", eSamplePeriod,
+		"f", eCurrentFrequencyArgument,
+		"wave", eCurrentSampleValue,
 	};
 	SkipWhitespace(ppStr);
 	LPCSTR str = *ppStr;
@@ -3502,6 +3599,7 @@ CExpressionEvaluationContext::TokenType
 			double * pDst = PushDouble();
 			AddOperation(Noise, pDst, NULL, NULL);
 		}
+		return eNoiseFunc;
 		break;
 
 	case eIntConstant:
@@ -3534,6 +3632,10 @@ CExpressionEvaluationContext::TokenType
 		PushVariable( & m_dFrequencyArgument);
 		break;
 	case eCurrentSampleValue:
+		PushVariable( & m_dCurrentSample);
+		break;
+	case eSamplingRate:
+		PushVariable( & m_nSamplingRate);
 		break;
 	default:
 		*ppStr = prevStr;
@@ -3806,13 +3908,13 @@ CExpressionEvaluationContext::TokenType
 			{
 				str = *ppStr;
 				token1 = GetToken( & str, & type1);
-				if (eDivideOp == token1)
+				if (eDivideOp == type1)
 				{
 					*ppStr = str;
 					CompileTerm(ppStr);
 					CompileDivide();
 				}
-				else if (eMultiplyOp == token1)
+				else if (eMultiplyOp == type1)
 				{
 					*ppStr = str;
 					CompileTerm(ppStr);
@@ -3822,12 +3924,10 @@ CExpressionEvaluationContext::TokenType
 				{
 					if (ePlusOp == type)
 					{
-						CompileTerm(ppStr);
 						CompileAdd();
 					}
 					else
 					{
-						CompileTerm(ppStr);
 						CompileSubtract();
 					}
 					break;
@@ -4103,4 +4203,12 @@ BOOL CExpressionEvaluationContext::SetExpression(LPCSTR * ppszExpression)
 		return FALSE;
 	}
 	return TRUE;
+}
+
+void CExpressionEvaluationContext::Evaluate()
+{
+	for (int i = 0; i < m_OperationArray.GetSize(); i++)
+	{
+		m_OperationArray[i].Function( & m_OperationArray[i]);
+	}
 }
