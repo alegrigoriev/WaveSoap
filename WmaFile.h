@@ -368,12 +368,12 @@ public:
 private:
 	CWaveFormat m_SrcWfx;
 	CComPtr<IWMWriter> m_pWriter;
-	CComQIPtr<IWMWriterAdvanced, &IID_IWMWriterAdvanced> m_pWriterAdvanced;
+	CComQIPtr<IWMWriterAdvanced> m_pWriterAdvanced;
 	CComPtr<IWMProfileManager> m_pProfileManager;
 
 	FileWriter m_FileWriter;
 	DWORD m_SampleTimeMs;
-	CComQIPtr<IWMHeaderInfo, &IID_IWMHeaderInfo> m_pHeaderInfo;
+	CComQIPtr<IWMHeaderInfo> m_pHeaderInfo;
 	CComPtr<INSSBuffer> m_pBuffer;
 };
 
