@@ -59,6 +59,9 @@ CWaveSoapFrontView::CWaveSoapFrontView()
 	m_FirstSampleInBuffer(0),
 	m_pWaveBuffer(NULL),
 	m_WaveBufferSize(0),
+	m_PlaybackChannel(-1),
+	m_PlaybackCursorDrawn(false),
+	m_LastPlaybackCursorPos(0),
 	m_WaveDataSizeInBuffer(0)
 {
 	// TODO: add construction code here
@@ -160,6 +163,7 @@ void CWaveSoapFrontView::DrawHorizontalWithSelection(CDC * pDC,
 
 void CWaveSoapFrontView::OnDraw(CDC* pDC)
 {
+	TRACE("OnDraw\n");
 	CWaveSoapFrontDoc* pDoc = GetDocument();
 	ASSERT_VALID(pDoc);
 	// TODO: add draw code for native data here
@@ -399,7 +403,7 @@ void CWaveSoapFrontView::OnDraw(CDC* pDC)
 				{
 					if (ppArray[i][0].y >= ppArray[i][1].y)
 					{
-						ppArray[i][0].y++;
+						ppArray[i][1].y--;
 						if (i < nNumberOfPoints - 1
 							&& ppArray[i + 1][0].y >= ppArray[i + 1][1].y)
 						{
@@ -465,6 +469,10 @@ void CWaveSoapFrontView::OnDraw(CDC* pDC)
 		delete[] ppArray;
 	}
 	pDC->SelectObject(pOldPen);
+	if (m_PlaybackCursorDrawn)
+	{
+		DrawPlaybackCursor(pDC, m_LastPlaybackCursorPos, m_PlaybackChannel);
+	}
 	CScaledScrollView::OnDraw(pDC);
 }
 
@@ -582,6 +590,99 @@ void CWaveSoapFrontView::AdjustNewScale(double OldScaleX, double OldScaleY,
 	TRACE("Old scale X=%g, New scale X=%g, Old scale Y=%g, New scale Y=%g\n",
 		OldScaleX, NewScaleX, OldScaleY, NewScaleY);
 }
+
+BOOL CWaveSoapFrontView::PlaybackCursorVisible()
+{
+	int pos = WorldToWindowX(m_LastPlaybackCursorPos);
+	CRect r;
+	GetClientRect( & r);
+	if (pos < r.left || pos >= r.right)
+	{
+		// not in the view;
+		return FALSE;
+	}
+	else
+	{
+		return TRUE;
+	}
+}
+
+void CWaveSoapFrontView::DrawPlaybackCursor(CDC * pDC, long Sample, int Channel)
+{
+	CDC * pDrawDC = pDC;
+	if ( ! IsWindowVisible())
+	{
+		return;
+	}
+	int pos = WorldToWindowX(Sample);
+	CRect r;
+	GetClientRect( & r);
+	if (pos < r.left || pos >= r.right)
+	{
+		// not in the view;
+		return;
+	}
+	if (NULL == pDrawDC)
+	{
+		pDrawDC = GetDC();
+		if (NULL == pDrawDC)
+		{
+			return;
+		}
+		pDrawDC->ExcludeUpdateRgn(this);
+	}
+	int OldMap = pDrawDC->SetMapMode(MM_TEXT);
+	int OldRop = pDrawDC->SetROP2(R2_XORPEN);
+	CPen pen(PS_SOLID, 0, 0xFFFFFF);
+	CGdiObject * pOldPen = pDrawDC->SelectObject( & pen);
+	// looks like the display driver can delay the drawing with
+	// WHITE_PEN, it is causing jerkiness in the playback cursor
+	//CGdiObject * pOldPen = pDrawDC->SelectStockObject(WHITE_PEN);
+	if (0 == Channel)
+	{
+		r.bottom /= 2;
+	}
+	else if (1 == Channel)
+	{
+		r.top = r.bottom / 2;
+	}
+
+	pDrawDC->MoveTo(CPoint(pos, r.top));
+	pDrawDC->LineTo(CPoint(pos, r.bottom));
+	//TRACE("Cursor drawn  at %d, time=%d\n", pos, timeGetTime());
+
+	pDrawDC->SetROP2(OldRop);
+	pDrawDC->SetMapMode(OldMap);
+
+	pDrawDC->SelectObject(pOldPen);
+	if (NULL == pDC)
+	{
+		ReleaseDC(pDrawDC);
+	}
+}
+
+void CWaveSoapFrontView::ShowPlaybackCursor(CDC * pDC)
+{
+	if (GetDocument()->m_PlayingSound
+		&& IsWindowVisible()
+		&& ! m_PlaybackCursorDrawn)
+	{
+		//TRACE("Cursor drawn  at %d, time=%d\n", m_LastPlaybackCursorPos, timeGetTime());
+		DrawPlaybackCursor(pDC, m_LastPlaybackCursorPos, m_PlaybackChannel);
+		m_PlaybackCursorDrawn = true;
+	}
+}
+
+void CWaveSoapFrontView::HidePlaybackCursor(CDC * pDC)
+{
+	if (m_PlaybackCursorDrawn)
+	{
+		//TRACE("Cursor hidden at %d, time=%d\n", m_LastPlaybackCursorPos, timeGetTime());
+		DrawPlaybackCursor(pDC, m_LastPlaybackCursorPos, m_PlaybackChannel);
+		m_PlaybackCursorDrawn = false;
+	}
+}
+
 /////////////////////////////////////////////////////////////////////////////
 // CWaveSoapFrontView printing
 
@@ -1152,6 +1253,11 @@ void CWaveSoapFrontView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
 		CSelectionUpdateInfo * pInfo = (CSelectionUpdateInfo *) pHint;
 		CWaveSoapFrontDoc * pDoc = GetDocument();
 		CRect r;
+		if (pInfo->m_bMakeCaretVisible)
+		{
+			MovePointIntoView(pDoc->m_CaretPosition);
+		}
+
 		GetClientRect( & r);
 		int Separator = WorldToWindowY(0.);
 
@@ -1318,6 +1424,12 @@ void CWaveSoapFrontView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
 			}
 			InvalidateRect(& r1, TRUE);
 		}
+	}
+	else if (lHint == CWaveSoapFrontDoc::UpdatePlaybackPositionChanged
+			&& NULL != pHint)
+	{
+		CSoundUpdateInfo * pInfo = (CSoundUpdateInfo *) pHint;
+		UpdatePlaybackCursor(pInfo->Begin, pInfo->End);
 	}
 	else
 	{
@@ -1574,7 +1686,7 @@ void CWaveSoapFrontView::OnActivateView(BOOL bActivate, CView* pActivateView, CV
 	{
 		GetApp()->m_pActiveDocument = pDoc;
 		TRACE("App::m_pActiveDocument set to %X\n", pDoc);
-		if (pDoc)
+		if (pDoc && ! pDoc->m_PlayingSound)
 		{
 			TRACE("Document %x thread priority increased\n", pDoc);
 			pDoc->SetThreadPriority(THREAD_PRIORITY_BELOW_NORMAL);
@@ -1584,7 +1696,7 @@ void CWaveSoapFrontView::OnActivateView(BOOL bActivate, CView* pActivateView, CV
 	{
 		GetApp()->m_pActiveDocument = NULL;
 		TRACE("App::m_pActiveDocument set to NULL\n");
-		if (pDoc)
+		if (pDoc && ! pDoc->m_PlayingSound)
 		{
 			TRACE("Document %x thread priority lowered\n", pDoc);
 			pDoc->SetThreadPriority(THREAD_PRIORITY_LOWEST);
@@ -1668,6 +1780,7 @@ BOOL CWaveSoapFrontView::ScrollBy(double dx, double dy, BOOL bDoScroll)
 				CWaveSoapFrontDoc * pDoc = GetDocument();
 				CRect cr;
 				GetClientRect( & cr);
+				HidePlaybackCursor();
 				if (pDoc->WaveChannels() == 1)
 				{
 					ScrollWindowEx(0, -ndy, NULL, NULL, NULL, NULL,
@@ -1690,6 +1803,7 @@ BOOL CWaveSoapFrontView::ScrollBy(double dx, double dy, BOOL bDoScroll)
 					InvalidateRect( & ir1);
 					InvalidateRect( & ir2);
 				}
+				ShowPlaybackCursor();
 			}
 		}
 	}
@@ -1728,3 +1842,76 @@ void CWaveSoapFrontView::OnUpdateViewZoominHorFull(CCmdUI* pCmdUI)
 {
 	pCmdUI->Enable(m_HorizontalScale > 1);
 }
+
+BOOL CWaveSoapFrontView::OnScrollBy(CSize sizeScroll, BOOL bDoScroll)
+{
+	if (bDoScroll)
+	{
+		HidePlaybackCursor();
+	}
+
+	BOOL bRet = CScaledScrollView::OnScrollBy(sizeScroll, bDoScroll);
+	if (bDoScroll)
+	{
+		ShowPlaybackCursor();
+	}
+	return bRet;
+}
+
+void CWaveSoapFrontView::UpdatePlaybackCursor(long sample, int channel)
+{
+	if (-1 == m_PlaybackChannel)
+	{
+		m_LastPlaybackCursorPos = sample;
+	}
+	int pos = WorldToWindowX(sample);
+	int OldPos = WorldToWindowX(m_LastPlaybackCursorPos);
+	if (pos == OldPos
+		&& channel == m_PlaybackChannel)
+	{
+		m_LastPlaybackCursorPos = sample;
+		return; // no need to change
+	}
+
+	HidePlaybackCursor();
+	m_LastPlaybackCursorPos = sample;
+	m_PlaybackChannel = channel;
+
+	if (-1 == channel)
+	{
+		// not playing
+		return;
+	}
+	CRect r;
+	GetClientRect( & r);
+	if ((OldPos < r.left || OldPos >= r.right)
+		&& (pos < r.left || pos >= r.right))
+	{
+		// not in the view;
+		return;
+	}
+	// scroll the cursor to the center
+	if (pos > r.right / 2)
+	{
+		long NewPos;
+		// scroll it to the window
+		if (pos > r.right)
+		{
+			NewPos = r.right / 2;
+		}
+		else
+		{
+			NewPos = OldPos - (pos - OldPos);
+		}
+		if (NewPos < r.right / 2)
+		{
+			NewPos = r.right / 2;
+		}
+		ScrollBy(m_HorizontalScale * (pos - NewPos), 0, TRUE);
+		NotifySlaveViews(CHANGE_HOR_ORIGIN);
+		CreateAndShowCaret();
+	}
+	ShowPlaybackCursor();
+	GdiFlush();
+}
+
