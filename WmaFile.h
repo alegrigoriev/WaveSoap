@@ -254,7 +254,7 @@ public:
 	}
 
 protected:
-	BOOL m_bNeedNextSample;
+	BOOL volatile m_bNeedNextSample;
 	CWaveFile m_DstFile;
 	DWORD m_DstCopyPos;
 	long m_DstCopySample;

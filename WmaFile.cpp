@@ -401,7 +401,7 @@ void CWmaDecoder::DeliverNextSample(DWORD timeout)
 		if (m_pAdvReader)
 		{
 			TRACE("CWmaDecoder::DeliverNextSample:  m_CurrentStreamTime=%X%X, BufferLengthTime=%d\n",
-				ULONG(m_CurrentStreamTime >> 32), ULONG(m_CurrentStreamTime), m_BufferLengthTime);
+				ULONG((m_CurrentStreamTime & 0xFFFFFFFF) >> 32), ULONG(m_CurrentStreamTime), m_BufferLengthTime);
 			m_pAdvReader->DeliverTime(m_CurrentStreamTime + m_BufferLengthTime);
 		}
 		else
@@ -713,7 +713,7 @@ HRESULT CWmaDecoder::Stop()
 void CWmaDecoder::SetDstFile(CWaveFile & file)
 {
 	m_DstFile = file;
-	m_DstCopyPos = file.GetDataChunk()->dwDataOffset;
+	m_DstCopyPos = file.SampleToPosition(0);
 	m_DstCopySample = 0;
 	m_DstFile.CDirectFile::Seek(m_DstCopyPos, FILE_BEGIN);
 }
