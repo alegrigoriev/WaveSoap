@@ -1,5 +1,12 @@
 Known problems and tasks:
 
+Handle situation when the CD file save directory is not accessible for writing
+When showing a dialog for a document, make the doc active, then restore the previous one.
+CD grab: prompt for file replacement
+If CD recording not supported, SET SPEED WriteSpeed set to zero
+Restore CD speed to max rather than current!
+SetSpeed returned sense 5/24
+Restore 
 Make a few retries to read TOC after disk change
 Set speed doesn't work on Goldstar CDRW
 Add file format selection for CD grabbing
@@ -96,6 +103,7 @@ Save As dialog is not centered first time (comdlg problem?)
 ??? When time/seconds format is set for status bar, MM:SS is actually shown
 
 Done:
+Add comboboxes to Author, Album, Folder
 Save WAVEFORMAT of an open WMA/MP3 file
 Process Space key in track list
 Get rid of "grab CD to a single file" mode

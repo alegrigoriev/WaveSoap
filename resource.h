@@ -119,7 +119,6 @@
 #define IDC_EDIT_LENGTH                 1005
 #define IDC_EDIT_PLAYBACK_BUF_SIZE      1005
 #define IDC_EDIT_NORMALIZE              1005
-#define IDC_EDIT_FOLDER_OR_FILE         1005
 #define IDC_EDIT_MAX_CLICK_LENGTH       1006
 #define IDC_EDIT_RECORDING_BUF_SIZE     1006
 #define IDC_EDIT_ATTACK_RATE            1007
@@ -346,8 +345,6 @@
 #define IDC_STATIC_NORMALIZE_DB         1223
 #define IDC_RADIO_MP3                   1224
 #define IDC_STATIC_SAVE_TYPE            1225
-#define IDC_EDIT_ALBUM                  1227
-#define IDC_EDIT_ARTIST                 1228
 #define IDC_BUTTON_BROWSE_SAVE_FOLDER   1230
 #define IDC_RADIO_ASSIGN_SELECTED_TRACK 1232
 #define IDC_RADIO_ASSIGN_ATTRIBUTES     1233
@@ -364,6 +361,9 @@
 #define IDC_BUTTON_EJECT                1247
 #define IDC_STATIC_BITRATE              1248
 #define IDC_RADIO_MP3_FORMAT            1249
+#define IDC_COMBO_ALBUM                 1250
+#define IDC_COMBO_ARTIST                1251
+#define IDC_COMBO_FOLDER                1252
 #define IDC_VIEW_RULER_SAMPLES          32771
 #define IDC_VIEW_RULER_HHMMSS           32772
 #define IDC_VIEW_RULER_SECONDS          32773
@@ -557,6 +557,7 @@
 #define IDS_CD_DRIVE_INACCESSIBLE       32958
 #define IDS_CD_DRIVE_BUSY               32959
 #define IDS_WMA_ENCODER_NOT_AVILABLE    32960
+#define IDS_REPLACEYESNO                32961
 #define ID_FILE_PROPERTIES              40000
 #define ID_VIEW_ZOOMVERT_NORMAL         40001
 #define ID_VIEW_ZOOMIN_HOR_FULL         40002
@@ -660,7 +661,7 @@
 #define _APS_3D_CONTROLS                     1
 #define _APS_NEXT_RESOURCE_VALUE        189
 #define _APS_NEXT_COMMAND_VALUE         40114
-#define _APS_NEXT_CONTROL_VALUE         1250
+#define _APS_NEXT_CONTROL_VALUE         1253
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif

@@ -1461,14 +1461,16 @@ BEGIN
     PUSHBUTTON      "Stop",IDC_BUTTON_STOP,268,152,17,14
     PUSHBUTTON      "Eject",IDC_BUTTON_EJECT,288,152,17,14
     LTEXT           "Album:",IDC_STATIC_ALBUM,7,172,25,8
-    EDITTEXT        IDC_EDIT_ALBUM,41,169,203,14,ES_AUTOHSCROLL
+    COMBOBOX        IDC_COMBO_ALBUM,41,170,203,59,CBS_DROPDOWN | 
+                    CBS_AUTOHSCROLL | WS_VSCROLL | WS_TABSTOP
     LTEXT           "Artist:",IDC_STATIC_ARTIST,7,189,23,8
-    EDITTEXT        IDC_EDIT_ARTIST,41,186,203,14,ES_AUTOHSCROLL
+    COMBOBOX        IDC_COMBO_ARTIST,41,185,203,30,CBS_DROPDOWN | CBS_SORT | 
+                    WS_VSCROLL | WS_TABSTOP
     PUSHBUTTON      "Lookup in Internet database...",IDC_BUTTON_CDDB,256,169,
                     50,31,BS_MULTILINE
     LTEXT           "&Save in:",IDC_STATIC_STORE_FOLDER,7,213,31,8
-    EDITTEXT        IDC_EDIT_FOLDER_OR_FILE,41,210,184,14,ES_AUTOHSCROLL | 
-                    WS_GROUP
+    COMBOBOX        IDC_COMBO_FOLDER,41,211,184,30,CBS_DROPDOWN | CBS_SORT | 
+                    WS_VSCROLL | WS_TABSTOP
     PUSHBUTTON      "...",IDC_BUTTON_BROWSE_SAVE_FOLDER,229,210,15,14
     GROUPBOX        "Save As",IDC_STATIC_SAVE_AS,7,232,238,70
     CONTROL         "Windows WAV file (WAV)",IDC_RADIO_WAV_FORMAT,"Button",
@@ -3292,6 +3294,7 @@ STRINGTABLE DISCARDABLE
 BEGIN
     IDS_WMA_ENCODER_NOT_AVILABLE 
                             "Windows Media Audio (WMA) encoder is not available. To encode to WMA format, you need to install Windows Media Player."
+    IDS_REPLACEYESNO        "%s\nThis file already exists.\nReplace existing file?"
 END
 
 #endif    // English (U.S.) resources

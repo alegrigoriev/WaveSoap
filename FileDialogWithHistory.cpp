@@ -132,7 +132,7 @@ void CFileDialogWithHistory::OnInitDone()
 	if (NULL != pCb)
 	{
 		pCb->SetExtendedUI();
-		CThisApp * pApp = GetApp();
+
 		for (int i = 0; i < sizeof m_RecentFolders / sizeof m_RecentFolders[0]; i++)
 		{
 			CString s;
