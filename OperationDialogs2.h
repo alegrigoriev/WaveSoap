@@ -131,6 +131,7 @@ struct CdTrackInfo
 	CString Artist;
 	CString Album;
 	CString Track;
+	CString TrackFileName;
 	bool Checked;
 	bool IsAudio;
 	CdAddressMSF TrackBegin;
@@ -205,6 +206,9 @@ protected:
 	BOOL m_bNeedUpdateControls;
 	CSize m_PreviousSize;
 	MINMAXINFO m_mmxi;
+
+	CApplicationProfile m_Profile;
+
 	void FillTrackList(TCHAR letter);
 	void ReloadTrackList();
 	void InitReadSpeedCombobox();
@@ -243,6 +247,7 @@ protected:
 	afx_msg void OnClickListTracks(NMHDR* pNMHDR, LRESULT* pResult);
 	afx_msg void OnBeginlabeleditListTracks(NMHDR* pNMHDR, LRESULT* pResult);
 	afx_msg void OnEndlabeleditListTracks(NMHDR* pNMHDR, LRESULT* pResult);
+	afx_msg void OnChangeEditFolderOrFile();
 	//}}AFX_MSG
 	void OnMetricsChange();
 	afx_msg LRESULT OnDeviceChange(UINT, DWORD);

@@ -19,7 +19,7 @@ static char THIS_FILE[]=__FILE__;
 
 void CCdDrive::LoadAspi()
 {
-	m_hWinaspi32 = LoadLibrary(_T("wnaspi32.dll"));
+	//m_hWinaspi32 = LoadLibrary(_T("wnaspi32.dll"));
 	if (NULL != m_hWinaspi32)
 	{
 		GetASPI32DLLVersion = (DWORD (_cdecl * )())
@@ -39,6 +39,10 @@ void CCdDrive::LoadAspi()
 
 		TranslateAspi32Address = (TRANSLATEASPI32ADDRESS)
 								GetProcAddress(m_hWinaspi32, "TranslateAspi32Address");
+
+		GetAspi32DriveLetter = NULL;
+
+		GetAspi32HaTargetLun = NULL;
 
 		if (NULL == GetASPI32DLLVersion
 			|| NULL == GetASPI32SupportInfo
@@ -78,10 +82,10 @@ void CCdDrive::LoadAspi()
 									GetProcAddress(m_hWinaspi32, "TranslateAspi32Address");
 
 			GetAspi32DriveLetter = (GETASPI32DRIVELETTER)
-									GetProcAddress(m_hWinaspi32, "GetAspi32DriveLetter");
+									GetProcAddress(m_hWinaspi32, "GetASPI32DriveLetter");
 
 			GetAspi32HaTargetLun = (GETASPI32HATARGETLUN)
-									GetProcAddress(m_hWinaspi32, "GetAspi32HaTargetLun");
+									GetProcAddress(m_hWinaspi32, "GetASPI32HaTargetLun");
 
 			if (NULL == GetASPI32DLLVersion
 				|| NULL == GetASPI32SupportInfo
@@ -331,6 +335,7 @@ CCdDrive::~CCdDrive()
 
 BOOL CCdDrive::Open(TCHAR letter)
 {
+	BOOL res;
 	Close();
 	CString path;
 	path.Format("\\\\.\\%c:", letter);
@@ -373,57 +378,52 @@ BOOL CCdDrive::Open(TCHAR letter)
 	m_DriveLetter = letter;
 
 	DWORD bytes =0;
-	BOOL res = DeviceIoControl(m_hDrive, IOCTL_SCSI_GET_ADDRESS,
-								NULL, 0,
-								& m_ScsiAddr, sizeof m_ScsiAddr,
-								& bytes, NULL);
+	res = DeviceIoControl(m_hDrive, IOCTL_SCSI_GET_ADDRESS,
+						NULL, 0,
+						& m_ScsiAddr, sizeof m_ScsiAddr,
+						& bytes, NULL);
 
 	if ( ! res)
 	{
 		Close();
 		return FALSE;
 	}
-	// find its equivalent in ASPI. The adapter number is suposed to be the same.
+	// find its equivalent in ASPI. The adapter number is supposed to be the same.
 	// use either ASPI or IOCTL to find max transfer length
-	if (0 && NULL != m_hWinaspi32)
+	IO_SCSI_CAPABILITIES ScsiCaps;
+	memzero(ScsiCaps);
+	memzero(m_ScsiAddr);
+
+	if (NULL != GetAspi32HaTargetLun)
 	{
-		SRB_HAInquiry inq;
-		memset(& inq, 0, sizeof inq);
-		if (ScsiInquiry( & inq))
-		{
-			m_MaxTransferSize = inq.MaximumTransferLength;
-			m_BufferAlignment = inq.BufferAlignment;
-		}
-		else
-		{
-			Close();
-			return FALSE;
-		}
+		HaTargetLun Addr = GetAspi32HaTargetLun(letter);
+		TRACE("Drive %c SCSI addr returned by cdral=%08X\n",
+			Addr);
+		m_ScsiAddr.PortNumber = Addr.HaId;
+		m_ScsiAddr.Lun = Addr.Lun;
+		m_ScsiAddr.TargetId = Addr.TargetId;
 	}
 	else
 	{
-		IO_SCSI_CAPABILITIES ScsiCaps;
-		memzero(ScsiCaps);
-		memzero(m_ScsiAddr);
-
-		BOOL res = DeviceIoControl(m_hDrive, IOCTL_SCSI_GET_ADDRESS,
-									NULL, 0,
-									& m_ScsiAddr, sizeof m_ScsiAddr,
-									& bytes, NULL);
-
-		res = DeviceIoControl(m_hDrive, IOCTL_SCSI_GET_CAPABILITIES,
+		// WINASPI is used or IOCTL_SCSI_PASS_THROUGH
+		res = DeviceIoControl(m_hDrive, IOCTL_SCSI_GET_ADDRESS,
 							NULL, 0,
-							& ScsiCaps, sizeof ScsiCaps,
+							& m_ScsiAddr, sizeof m_ScsiAddr,
 							& bytes, NULL);
-
-		m_MaxTransferSize = ScsiCaps.MaximumTransferLength;
-		m_BufferAlignment = ScsiCaps.AlignmentMask;
-
-		TRACE("MaxTransferSize = %d, buffer alignment = %x, \n",
-			m_MaxTransferSize, m_BufferAlignment
-			);
-
 	}
+
+	res = DeviceIoControl(m_hDrive, IOCTL_SCSI_GET_CAPABILITIES,
+						NULL, 0,
+						& ScsiCaps, sizeof ScsiCaps,
+						& bytes, NULL);
+
+	m_MaxTransferSize = ScsiCaps.MaximumTransferLength;
+	m_BufferAlignment = ScsiCaps.AlignmentMask;
+
+	TRACE("MaxTransferSize = %d, buffer alignment = %x, \n",
+		m_MaxTransferSize, m_BufferAlignment
+		);
+
 	return TRUE;
 }
 
