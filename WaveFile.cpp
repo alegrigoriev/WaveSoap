@@ -1854,7 +1854,7 @@ BOOL CWaveFile::InstanceDataWav::MoveWaveMarker(unsigned long MarkerCueID, SAMPL
 }
 
 // creates a file based on template format from pTemplateFile
-BOOL CWaveFile::CreateWaveFile(CWaveFile * pTemplateFile, WAVEFORMATEX * pTemplateFormat,
+BOOL CWaveFile::CreateWaveFile(CWaveFile * pTemplateFile, WAVEFORMATEX const * pTemplateFormat,
 								CHANNEL_MASK Channels, WAV_FILE_SIZE SizeOrSamples,
 								long flags, LPCTSTR FileName)
 {
