@@ -475,6 +475,9 @@
 #define IDS_RAW_8BITS_PCM               32931
 #define IDS_ENCODER                     32932
 #define IDS_FORMAT                      32933
+#define IDS_MONO                        32934
+#define IDS_STEREO                      32935
+#define IDS_LAMEENC_FORMAT              32936
 #define ID_FILE_PROPERTIES              40000
 #define ID_VIEW_ZOOMVERT_NORMAL         40001
 #define ID_VIEW_ZOOMIN_HOR_FULL         40002

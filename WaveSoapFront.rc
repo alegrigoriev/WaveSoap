@@ -1412,14 +1412,14 @@ BEGIN
     PUSHBUTTON      "Insert &silence",IDC_BUTTON_SILENCE,61,47,50,14
 END
 
-IDD_DIALOG_NO_WINDOWS_MEDIA DIALOG DISCARDABLE  0, 0, 187, 69
+IDD_DIALOG_NO_WINDOWS_MEDIA DIALOG DISCARDABLE  0, 0, 198, 69
 STYLE DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
 CAPTION "Cannot open non-WAV file"
 FONT 8, "MS Sans Serif"
 BEGIN
-    DEFPUSHBUTTON   "OK",IDOK,130,48,50,14
+    DEFPUSHBUTTON   "OK",IDOK,141,48,50,14
     LTEXT           "This file cannot be opened because a required DLL is not found in the system folder.\nTo be able to open MP3 and WMA files, you need to install Windows Media Player version 7 or later",
-                    IDC_STATIC,7,7,173,36
+                    IDC_STATIC,7,7,184,36
     CONTROL         "Don't show this in the future",IDC_CHECK_DONT_SHOW_THIS,
                     "Button",BS_AUTOCHECKBOX | WS_TABSTOP,7,52,110,10
 END
@@ -1925,14 +1925,14 @@ BEGIN
     PUSHBUTTON      "~",IDC_BUTTON_INVERSE,88,38,27,10,BS_NOTIFY
 END
 
-IDD_DIALOG_NO_WINDOWS_MEDIA_TYPE DIALOG DISCARDABLE  0, 0, 187, 69
+IDD_DIALOG_NO_WINDOWS_MEDIA_TYPE DIALOG DISCARDABLE  0, 0, 215, 69
 STYLE DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
 CAPTION "Cannot open non-WAV files"
 FONT 8, "MS Sans Serif"
 BEGIN
-    DEFPUSHBUTTON   "OK",IDOK,130,48,50,14
+    DEFPUSHBUTTON   "OK",IDOK,158,48,50,14
     LTEXT           "The files of the selected type cannot be opened because a required DLL is not found in the system folder.\nTo be able to open MP3 and WMA files, you need to install Windows Media Player version 7 or later",
-                    IDC_STATIC,7,7,173,36
+                    IDC_STATIC,7,7,201,36
     CONTROL         "Don't show this in the future",IDC_CHECK_DONT_SHOW_THIS,
                     "Button",BS_AUTOCHECKBOX | WS_TABSTOP,7,52,110,10
 END
@@ -2262,7 +2262,7 @@ BEGIN
     IDD_DIALOG_NO_WINDOWS_MEDIA, DIALOG
     BEGIN
         LEFTMARGIN, 7
-        RIGHTMARGIN, 180
+        RIGHTMARGIN, 191
         TOPMARGIN, 7
         BOTTOMMARGIN, 62
     END
@@ -2392,7 +2392,7 @@ BEGIN
     IDD_DIALOG_NO_WINDOWS_MEDIA_TYPE, DIALOG
     BEGIN
         LEFTMARGIN, 7
-        RIGHTMARGIN, 180
+        RIGHTMARGIN, 208
         TOPMARGIN, 7
         BOTTOMMARGIN, 62
     END
@@ -3095,6 +3095,9 @@ BEGIN
     IDS_RAW_8BITS_PCM       "8 bits PCM"
     IDS_ENCODER             "Encoder:"
     IDS_FORMAT              "Format:"
+    IDS_MONO                "Mono"
+    IDS_STEREO              "Stereo"
+    IDS_LAMEENC_FORMAT      "%d kbit/s, %s"
 END
 
 #endif    // English (U.S.) resources

@@ -206,7 +206,7 @@ typedef struct BE_VERSION
 #ifndef _BLADEDLL
 
 typedef BE_ERR	(_cdecl *BEINITSTREAM)			(PBE_CONFIG, PDWORD, PDWORD, PHBE_STREAM);
-typedef BE_ERR	(_cdecl *BEENCODECHUNK)		(HBE_STREAM, DWORD, PSHORT, PBYTE, PDWORD);
+typedef BE_ERR	(_cdecl *BEENCODECHUNK)		(HBE_STREAM, DWORD, SHORT const *, PBYTE, PDWORD);
 typedef BE_ERR	(_cdecl *BEDEINITSTREAM)		(HBE_STREAM, PBYTE, PDWORD);
 typedef BE_ERR	(_cdecl *BECLOSESTREAM)		(HBE_STREAM);
 typedef VOID	(_cdecl *BEVERSION)			(PBE_VERSION);
@@ -233,27 +233,48 @@ __declspec(dllexport) BE_ERR	beWriteVBRHeader(LPCSTR lpszFileName);
 
 #pragma pack(pop)
 // AG:
-class BladeMp3Dll
+class BladeMp3Encoder
 {
 public:
-	BladeMp3Dll();
-	~BladeMp3Dll();
+	BladeMp3Encoder();
+	~BladeMp3Encoder()
+	{
+		Close();
+	}
 	BOOL Open(LPCTSTR DllName = "LAME_ENC.DLL");
-	BEINITSTREAM InitStream;
-	BEENCODECHUNK EncodeChunk;
-	BEDEINITSTREAM DeinitStream;
-	BECLOSESTREAM CloseStream;
-	BEVERSION GetVersion;
-	BEWRITEVBRHEADER WriteVBRHeader;
-protected:
+	void Close();
+
+	BOOL OpenStream(PBE_CONFIG pConfig);
+	BOOL EncodeChunk(short const * pSrc, int nSamples, BYTE * pDst, DWORD * pBytesEncoded);
+	BOOL FlushStream(BYTE * pDst, DWORD * pBytesEncoded);
+	void CloseStream()
+	{
+		if (NULL != m_pStream)
+		{
+			beCloseStream(m_pStream);
+			m_pStream = NULL;
+		}
+	}
+	void GetVersion(PBE_VERSION pVer)
+	{
+		beGetVersion(pVer);
+	}
+
+private:
 	static BE_ERR	_cdecl InitStreamStub(PBE_CONFIG, PDWORD, PDWORD, PHBE_STREAM) { return BE_ERR_NO_MORE_HANDLES; }
-	static BE_ERR	_cdecl EncodeChunkStub		(HBE_STREAM, DWORD, PSHORT, PBYTE, PDWORD) { return BE_ERR_INVALID_HANDLE; }
+	static BE_ERR	_cdecl EncodeChunkStub		(HBE_STREAM, DWORD, SHORT const *, PBYTE, PDWORD) { return BE_ERR_INVALID_HANDLE; }
 	static BE_ERR	_cdecl DeinitStreamStub		(HBE_STREAM, PBYTE, PDWORD) { return BE_ERR_INVALID_HANDLE; }
 	static BE_ERR	_cdecl CloseStreamStub		(HBE_STREAM) { return BE_ERR_INVALID_HANDLE; }
 	static VOID	_cdecl GetVersionStub			(PBE_VERSION) {}
 	static VOID	_cdecl WriteVBRHeaderStub		(LPCSTR) {}
 
-private:
+protected:
+	BEINITSTREAM beInitStream;
+	BEENCODECHUNK beEncodeChunk;
+	BEDEINITSTREAM beDeinitStream;
+	BECLOSESTREAM beCloseStream;
+	BEVERSION beGetVersion;
+	BEWRITEVBRHEADER beWriteVBRHeader;
 	HBE_STREAM m_pStream;
 	HMODULE m_DllModule;
 	DWORD m_InBufferSize;
