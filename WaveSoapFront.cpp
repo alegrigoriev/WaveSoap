@@ -43,6 +43,9 @@ CWaveSoapFrontApp::CWaveSoapFrontApp()
 	m_pLastOp(NULL),
 	m_Thread(ThreadProc, this),
 	m_RunThread(false),
+	m_DefaultPlaybackDevice(WAVE_MAPPER),
+	m_NumPlaybackBuffers(4),
+	m_SizePlaybackBuffers(0x10000),
 	m_pActiveDocument(NULL)
 {
 	// Place all significant initialization in InitInstance
@@ -378,7 +381,8 @@ unsigned CWaveSoapFrontApp::_ThreadProc()
 			pContext = m_pFirstOp;
 			while (pContext)
 			{
-				if (pContext->Flags & OperationContextStopRequested)
+				if ((pContext->Flags & OperationContextStopRequested)
+					|| pContext->pDocument->m_StopOperation)
 				{
 					break;
 				}
@@ -435,6 +439,10 @@ unsigned CWaveSoapFrontApp::_ThreadProc()
 				NeedKickIdle = true;
 			}
 
+			if (pContext->pDocument->m_StopOperation)
+			{
+				pContext->Flags |= OperationContextStopRequested;
+			}
 			int LastPercent = pContext->PercentCompleted;
 			if ( 0 == (pContext->Flags & (OperationContextStop | OperationContextFinished)))
 			{
@@ -474,6 +482,7 @@ unsigned CWaveSoapFrontApp::_ThreadProc()
 				// send a signal to the document, that the operation completed
 				pContext->pDocument->m_CurrentStatusString =
 					pContext->GetStatusString() + _T("Completed");
+				pContext->DeInit();
 				delete pContext;
 				// send a signal to the document, that the operation completed
 				NeedKickIdle = true;    // this will reenable all commands

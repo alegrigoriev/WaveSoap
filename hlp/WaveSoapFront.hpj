@@ -1,13 +1,18 @@
+; This file is maintained by HCW. Do not modify this file directly.
+
 [OPTIONS]
-LCID=0x409 0x0 0x0 ;English (U.S.)
+COMPRESS=12 Hall Zeck
+ERRORLOG=WaveSoapFront.LOG
+LCID=0x409 0x0 0x0 ; English (United States)
+REPORT=Yes
 CONTENTS=main_index
 TITLE=WAVESOAPFRONT Application Help
-COMPRESS=true
-WARNING=2
-BMROOT= ..,.
-ROOT= ..,.
+CNT=WaveSoapFront.cnt
+BMROOT=.
+BMROOT=..
+ROOT=..
+ROOT=.
 HLP=WaveSoapFront.HLP
-ERRORLOG=WaveSoapFront.LOG
 
 [FILES]
 afxcore.rtf
@@ -17,7 +22,6 @@ afxprint.rtf
 HIDR_MAINFRAME = main_index
 HIDR_WAVESOTYPE = HIDR_DOC1TYPE
 HIDD_ABOUTBOX = HID_APP_ABOUT
-
 HID_HT_SIZE = HID_SC_SIZE
 HID_HT_HSCROLL = scrollbars
 HID_HT_VSCROLL = scrollbars

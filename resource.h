@@ -9,9 +9,12 @@
 #define IDR_MAINFRAME                   128
 #define IDR_WAVESOTYPE                  129
 #define IDR_MENU_TIME_RULER             130
+#define IDD_SELECTION_DIALOG            131
 #define IDR_POPUP_SCALED_SCROLL_VIEW    132
 #define IDD_DIALOG_MORE_NOISEREDUCTION  133
+#define IDR_MENU_AMPLITUDE_RULER        133
 #define IDD_DIALOG_MORE_DECLICK         134
+#define IDR_MENU_FFT_RULER              134
 #define IDD_DIALOGBAR_MDI_CHILD         135
 #define IDC_CURSOR_BEAM                 150
 #define IDC_CURSOR_BEAM_LEFT            151
@@ -20,14 +23,22 @@
 #define IDC_TAB_SWITCH_VIEW_MODE        1000
 #define IDC_CHECK_LOG_CLICKS            1001
 #define IDC_EDIT_CLICK_LOG_FILENAME     1002
+#define IDC_COMBO_SELECTION             1002
 #define IDC_CLICK_LOG_BROWSE_BUTTON     1003
+#define IDC_EDIT_START                  1003
 #define IDC_CHECK_LOG_CLICKS_ONLY       1004
+#define IDC_EDIT_END                    1004
 #define IDC_EDIT_CLICK_TO_NOISE         1005
+#define IDC_EDIT3                       1005
 #define IDC_EDIT_MAX_CLICK_LENGTH       1006
 #define IDC_EDIT_ATTACK_RATE            1007
+#define IDC_SPIN1                       1007
 #define IDC_EDIT_DECAY_RATE             1008
+#define IDC_SPIN2                       1008
 #define IDC_EDIT_CLICK_IMPORT_FILENAME  1009
+#define IDC_SPIN3                       1009
 #define IDC_CLICK_IMPORT_BROWSE_BUTTON  1010
+#define IDC_COMBO2                      1010
 #define IDC_CHECK_IMPORT_CLICKS         1011
 #define IDC_CHECK_NOISE_REDUCTION       1011
 #define IDC_EDIT_LOWER_FREQUENCY        1018
@@ -69,8 +80,10 @@
 #define ID_FILE_SAVE_ALL                32786
 #define ID_EDIT_PASTE_NEW               32787
 #define ID_EDIT_GOTO                    32788
+#define IDC_VIEW_AMPL_RULER_SAMPLES     32789
 #define ID_VIEW_ZOOMIN                  32790
 #define ID_VIEW_ZOOMOUT                 32791
+#define IDC_VIEW_AMPL_RULER_DECIBELS    32792
 #define ID_VIEW_ZOOM_OUT2               32793
 #define ID_VIEW_ZOOMIN2                 32794
 #define ID_VIEW_ZOOMINHOR               32795
@@ -91,15 +104,25 @@
 #define ID_VIEW_ZOOMOUTVERT2            32815
 #define IDS_STRING_UNABLE_TO_CREATE_CLIPBOARD 32816
 #define IDS_STRING_OPERATION_IN_PROGRESS 32817
+#define IDS_STRING_UNABLE_TO_OPEN_AUDIO_DEVICE 32818
+#define IDS_STRING_UNABLE_TO_ALLOCATE_AUDIO_BUFFERS 32819
+#define IDC_VIEW_AMPL_RULER_PERCENT     32900
+#define ID_FILE_PROPERTIES              40000
+#define ID_VIEW_ZOOMVERT_NORMAL         40001
+#define ID_VIEW_ZOOMIN_HOR_FULL         40002
+#define ID_EDIT_SELECTION               40003
+#define ID_PROCESS_NORMALIZE            40004
+#define ID_PROCESS_CHANGEVOLUME         40005
+#define ID_PROCESS_DCOFFSET             40006
 
 // Next default values for new objects
 //
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_3D_CONTROLS                     1
-#define _APS_NEXT_RESOURCE_VALUE        131
-#define _APS_NEXT_COMMAND_VALUE         32789
-#define _APS_NEXT_CONTROL_VALUE         1002
+#define _APS_NEXT_RESOURCE_VALUE        133
+#define _APS_NEXT_COMMAND_VALUE         40007
+#define _APS_NEXT_CONTROL_VALUE         1011
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif
