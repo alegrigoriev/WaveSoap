@@ -517,6 +517,7 @@ protected:
 	class CRestoreTrimmedOperation * m_pRestoreOperation;
 
 	virtual BOOL CreateUndo(BOOL IsRedo = FALSE);
+	virtual void DeleteUndo();
 	virtual BOOL OperationProc();
 };
 
@@ -536,6 +537,7 @@ protected:
 	class CSaveTrimmedOperation * m_pSaveOperation;
 
 	virtual BOOL CreateUndo(BOOL IsRedo = FALSE);
+	virtual void DeleteUndo();
 };
 
 // zero-fill a file area
@@ -599,7 +601,7 @@ public:
 	typedef std::auto_ptr<ThisClass> auto_ptr;
 
 	CSelectionChangeOperation(CWaveSoapFrontDoc * pDoc,
-							SAMPLE_INDEX Start, NUMBER_OF_SAMPLES Length,
+							SAMPLE_INDEX Start, SAMPLE_INDEX End, SAMPLE_INDEX Caret,
 							CHANNEL_MASK Channels);
 
 	virtual BOOL CreateUndo(BOOL IsRedo = FALSE);
@@ -607,7 +609,8 @@ public:
 
 protected:
 	SAMPLE_INDEX m_Start;
-	NUMBER_OF_SAMPLES m_Length;
+	SAMPLE_INDEX m_End;
+	SAMPLE_INDEX m_Caret;
 	CHANNEL_MASK m_Channels;
 };
 
