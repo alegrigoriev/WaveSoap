@@ -29,6 +29,8 @@ public:
 		: pDocument(pDoc),
 		m_Flags(Flags),
 		pNextChain(NULL),
+		pNext(NULL),
+		pPrev(NULL),
 		PercentCompleted(0)
 	{
 	}
@@ -80,7 +82,7 @@ class CWaveSoapFrontApp : public CWinApp
 {
 public:
 	CWaveSoapFrontApp();
-	BOOL QueueOperation(COperationContext * pContext);
+	void QueueOperation(COperationContext * pContext);
 
 // Overrides
 	// ClassWizard generated virtual function overrides
@@ -117,12 +119,14 @@ public:
 	COperationContext * m_pLastOp;
 	//CString m_CurrentStatusString;
 	CWaveFile m_ClipboardFile;
+	CWaveFile m_NewTemplateFile;
 
 	int m_DefaultPlaybackDevice;
 	int m_NumPlaybackBuffers;
 	size_t m_SizePlaybackBuffers;
 	BOOL m_bReadOnly;
 	BOOL m_bDirectMode;
+	BOOL m_bUndoEnabled;
 
 	BOOL m_bUseCountrySpecificNumberAndTime;
 	TCHAR m_TimeSeparator;
@@ -131,6 +135,8 @@ public:
 
 	//{{AFX_MSG(CWaveSoapFrontApp)
 	afx_msg void OnAppAbout();
+	afx_msg void OnEditPasteNew();
+	afx_msg void OnUpdateEditPasteNew(CCmdUI* pCmdUI);
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 	CWinThread m_Thread;

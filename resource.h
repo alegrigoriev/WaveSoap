@@ -148,6 +148,8 @@
 #define ID_EDIT_UNDO_ALL_CHANGES        40012
 #define ID_STOP_ALL                     40013
 #define IDC_PLAY_AND_STOP               -25522
+#define ID_EDIT_MORE_UNDO_REDO          40015
+#define ID_EDIT_CHANNELS_LOCK           40016
 
 // Next default values for new objects
 //
@@ -155,7 +157,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_3D_CONTROLS                     1
 #define _APS_NEXT_RESOURCE_VALUE        137
-#define _APS_NEXT_COMMAND_VALUE         40015
+#define _APS_NEXT_COMMAND_VALUE         40017
 #define _APS_NEXT_CONTROL_VALUE         1024
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
