@@ -125,7 +125,7 @@ void CRawFileParametersDlg::DoDataExchange(CDataExchange* pDX)
 		m_Params.m_Compression = m_Compression;
 		m_Params.m_bMsbFirst = m_bMsbFirst;
 
-		m_Profile.UnloadAll();
+		m_Profile.FlushAll();
 	}
 }
 
@@ -210,7 +210,7 @@ void CSaveRawFileDlg::DoDataExchange(CDataExchange* pDX)
 		m_Params.m_Compression = m_Compression;
 		m_Params.m_bMsbFirst = m_bMsbFirst;
 
-		m_Profile.UnloadAll();
+		m_Profile.FlushAll();
 	}
 }
 
