@@ -581,7 +581,7 @@ LONGLONG CStagedContext::GetTempDataSize() const
 	return sum;
 }
 
-MEDIA_FILE_SIZE CThroughProcessOperation::GetTotalOperationSize() const
+MEDIA_FILE_SIZE CStagedContext::GetTotalOperationSize() const
 {
 	MEDIA_FILE_SIZE sum = m_DoneSize;
 
@@ -594,7 +594,7 @@ MEDIA_FILE_SIZE CThroughProcessOperation::GetTotalOperationSize() const
 	return sum;
 }
 
-MEDIA_FILE_SIZE CThroughProcessOperation::GetCompletedOperationSize() const
+MEDIA_FILE_SIZE CStagedContext::GetCompletedOperationSize() const
 {
 	MEDIA_FILE_SIZE sum = m_DoneSize;
 
