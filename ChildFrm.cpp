@@ -563,7 +563,7 @@ void CWaveMDIChildClient::OnViewShowFft()
 
 void CWaveMDIChildClient::OnUpdateViewShowFft(CCmdUI* pCmdUI)
 {
-	pCmdUI->SetCheck(m_bShowFft);
+	pCmdUI->SetRadio(m_bShowFft);
 }
 
 void CWaveMDIChildClient::OnViewWaveform()
@@ -601,7 +601,7 @@ void CWaveMDIChildClient::OnViewWaveform()
 
 void CWaveMDIChildClient::OnUpdateViewWaveform(CCmdUI* pCmdUI)
 {
-	pCmdUI->SetCheck(m_bShowWaveform);
+	pCmdUI->SetRadio(m_bShowWaveform);
 }
 
 void CWaveMDIChildClient::OnHScroll(UINT nSBCode, UINT nPos, CScrollBar* pScrollBar)

@@ -59,6 +59,7 @@ public:
 		CreateAlways = 0x40,
 		// if couldn't be opened for writing, try read-only
 		OpenAllowReadOnlyFallback = 0x80,
+		CreateMemoryFile = 0x100,   // real file won't be created
 	};
 	BOOL Open(LPCTSTR szName, DWORD flags);
 	BOOL Close(DWORD flags);
