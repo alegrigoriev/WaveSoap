@@ -307,6 +307,8 @@
 #define IDC_CHECK_ZERO_PHASE            1189
 #define IDC_CHECK_LOWPASS               1190
 #define IDC_CHECK_STOPBAND              1191
+#define IDC_STATIC_FORMAT               1191
+#define IDC_STATIC_COMMENTS             1192
 #define IDC_VIEW_RULER_SAMPLES          32771
 #define IDC_VIEW_RULER_HHMMSS           32772
 #define IDC_VIEW_RULER_SECONDS          32773
@@ -466,6 +468,13 @@
 #define IDS_FILTER_FILE_FILTER          32924
 #define IDS_FILTER_SAVE_TITLE           32925
 #define IDS_FILTER_LOAD_TITLE           32926
+#define IDS_RAW_16BIT_LSB               32927
+#define IDS_RAW_16BIT_MSB               32928
+#define IDS_RAW_8BITS_ALAW              32929
+#define IDS_RAW_8BITS_ULAW              32930
+#define IDS_RAW_8BITS_PCM               32931
+#define IDS_ENCODER                     32932
+#define IDS_FORMAT                      32933
 #define ID_FILE_PROPERTIES              40000
 #define ID_VIEW_ZOOMVERT_NORMAL         40001
 #define ID_VIEW_ZOOMIN_HOR_FULL         40002
@@ -566,7 +575,7 @@
 #define _APS_3D_CONTROLS                     1
 #define _APS_NEXT_RESOURCE_VALUE        185
 #define _APS_NEXT_COMMAND_VALUE         40109
-#define _APS_NEXT_CONTROL_VALUE         1191
+#define _APS_NEXT_CONTROL_VALUE         1193
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif

@@ -33,6 +33,24 @@ UINT AFXAPI AfxGetFileTitle(LPCTSTR lpszPathName, LPTSTR lpszTitle, UINT nMax);
 UINT AFXAPI AfxGetFileName(LPCTSTR lpszPathName, LPTSTR lpszTitle, UINT nMax);
 BOOL AFXAPI AfxComparePath(LPCTSTR lpszPath1, LPCTSTR lpszPath2);
 
+enum {
+	SoundFileTypeMin = 1,
+	SoundFileWav = 1,
+	SoundFileMp3 = 2,
+	SoundFileWma = 3,
+	SoundFileRaw = 4,
+	//SoundFileAvi = 5,
+	SoundFileTypeMax = 4,
+};
+enum
+{
+	RawSoundFilePcm16Lsb,
+	RawSoundFilePcm16Msb,
+	RawSoundFilePcm8,
+	RawSoundFileALaw8,
+	RawSoundFileULaw8,
+	RawSoundFileAsciiDecimal,
+};
 
 IMPLEMENT_DYNCREATE(CWaveSoapFrontDoc, CDocument)
 
@@ -226,6 +244,7 @@ public:
 		m_pWf(NULL),
 		m_SelectedFormat(-1),
 		m_bCompatibleFormatsOnly(TRUE),
+		m_FileType(SoundFileWav),
 		m_pDocument(NULL)
 	{}
 	~CWaveSoapFileSaveDialog() {}
@@ -236,6 +255,7 @@ public:
 	DWORD m_CurrentEnumeratedTag;
 	DWORD m_SelectedTag;
 	int m_SelectedFormat;
+	int m_FileType;// Wav, Mp3, wma, raw...
 	BOOL m_bCompatibleFormatsOnly;
 	CString m_FormatTagName;
 	CString m_DefExt[10];
@@ -255,6 +275,11 @@ public:
 	WAVEFORMATEX * GetWaveFormat();
 	virtual void OnInitDone();
 	virtual void OnTypeChange();
+	virtual void OnFileNameChange();
+	void SetFileType(int nType);// Wav, Mp3, wma, raw...
+	void SetFileType(LPCTSTR lpExt);
+	int GetFileTypeForExt(LPCTSTR lpExt);
+	int GetFileTypeForName(LPCTSTR FileName);
 	//void ClearFileInfoDisplay();
 
 	//{{AFX_MSG(CWaveSoapFileSaveDialog)
@@ -722,6 +747,15 @@ BOOL _stdcall CWaveSoapFileSaveDialog::FormatEnumCallback(
 
 BOOL CWaveSoapFileSaveDialog::OnFileNameOK()
 {
+	// if the file type is different from the selected type,
+	// set the type and let the user select the parameters
+	CString Name = GetPathName();
+	int type = GetFileTypeForName(Name);
+	if (type != m_FileType)
+	{
+		SetFileType(type);
+		return 1;   // don't close
+	}
 	CFileDialogWithHistory::OnFileNameOK();
 	// save format selection
 	m_SelectedFormat = m_AttributesCombo.GetCurSel();
@@ -974,16 +1008,45 @@ void CWaveSoapFileSaveDialog::FillFormatArray()
 void CWaveSoapFileSaveDialog::OnCompatibleFormatsClicked()
 {
 	m_bCompatibleFormatsOnly = ((CButton*)GetDlgItem(IDC_CHECK_COMPATIBLE_FORMATS))->GetCheck();
-	FillFormatTagArray();
-	FillFormatArray();
+	if (SoundFileWav == m_FileType)
+	{
+		FillFormatTagArray();
+		FillFormatArray();
+	}
 }
 
 void CWaveSoapFileSaveDialog::OnComboFormatsChange()
 {
-	int sel = m_FormatCombo.GetCurSel();
-	m_SelectedTag = m_FormatTags[sel].dwTag;
-	//FillFormatTagArray();
-	FillFormatArray();
+	switch (m_ofn.nFilterIndex)
+	{
+	case SoundFileWav:
+		// WAV file
+		// show Comments, fill formats combo box
+	{
+		int sel = m_FormatCombo.GetCurSel();
+		m_SelectedTag = m_FormatTags[sel].dwTag;
+		FillFormatArray();
+	}
+		break;
+	case SoundFileMp3:
+		// MP3 file
+		// Hide Comments, show Artist, Genre, Title
+		//
+		break;
+	case SoundFileWma:
+		// WMA file
+		break;
+	case SoundFileRaw:
+		// RAW file
+		// show formats: 16 bits LSB first, 16 bits MSB first, a-law, u-law, 8 bits, ascii hex, ascii decimal
+		// hide attributes
+		break;
+		//case SoundFileAvi:
+		// RAW file
+		// show formats: 16 bits LSB first, 16 bits MSB first, a-law, u-law, 8 bits, ascii hex, ascii decimal
+		// hide attributes
+		break;
+	}
 }
 
 void CWaveSoapFileSaveDialog::OnInitDone()
@@ -991,8 +1054,8 @@ void CWaveSoapFileSaveDialog::OnInitDone()
 	//fill format combo box.
 	m_SelectedTag = m_pWf->wFormatTag;
 	((CButton*)GetDlgItem(IDC_CHECK_COMPATIBLE_FORMATS))->SetCheck(m_bCompatibleFormatsOnly);
-	FillFormatTagArray();
-	FillFormatArray();
+
+	SetFileType(m_ofn.nFilterIndex);
 
 	CFileDialogWithHistory::OnInitDone();
 }
@@ -1017,23 +1080,146 @@ void CWaveSoapFileSaveDialog::OnTypeChange()
 	}
 	pTmp->GetWindowText(name);
 	// get the extension
-	if (name.IsEmpty())
+	if ( ! name.IsEmpty())
 	{
-		return;
+		int idx = name.ReverseFind('.');
+		// replace the extension
+		if (idx != -1)
+		{
+			// need to replace
+			if (idx >= name.GetLength() - 4)
+			{
+				name.Delete(idx + 1, name.GetLength() - idx - 1);
+				name += m_DefExt[m_ofn.nFilterIndex];
+			}
+			pParent->SendMessage(CDM_SETCONTROLTEXT, edt1, LPARAM(LPCTSTR(name)));
+		}
 	}
-	int idx = name.ReverseFind('.');
-	// replace the extension
-	if (idx == -1)
+	SetFileType(m_ofn.nFilterIndex);
+	return;
+}
+void CWaveSoapFileSaveDialog::OnFileNameChange()
+{
+	// if the file type is different from the selected type,
+	// set the type and let the user select the parameters
+	CString Name = GetPathName();
+	int type = GetFileTypeForName(Name);
+	if (type != m_FileType)
 	{
-		// no need to replace ???
-		return;
+		SetFileType(type);
 	}
-	else if (idx >= name.GetLength() - 4)
+}
+
+void CWaveSoapFileSaveDialog::SetFileType(int nType)
+{
+	// Wav, Mp3, wma, raw...
+	CString s;
+	m_FileType = nType;
+	switch (nType)
 	{
-		name.Delete(idx + 1, name.GetLength() - idx - 1);
-		name += m_DefExt[m_ofn.nFilterIndex];
+	default:
+	case SoundFileWav:
+		// WAV file
+		// show Comments, fill formats combo box
+		s.LoadString(IDS_FORMAT);
+		SetDlgItemText(IDC_STATIC_FORMAT, s);
+		GetDlgItem(IDC_COMBO_ATTRIBUTES)->ShowWindow(SW_SHOWNOACTIVATE);
+		GetDlgItem(IDC_CHECK_COMPATIBLE_FORMATS)->ShowWindow(SW_SHOWNOACTIVATE);
+		GetDlgItem(IDC_STATIC_ATTRIBUTES)->ShowWindow(SW_SHOWNOACTIVATE);
+		GetDlgItem(IDC_STATIC_COMMENTS)->ShowWindow(SW_SHOWNOACTIVATE);
+		GetDlgItem(IDC_EDIT_COMMENT)->ShowWindow(SW_SHOWNOACTIVATE);
+
+		FillFormatTagArray();
+		FillFormatArray();
+		break;  // go on
+	case SoundFileMp3:
+		// MP3 file
+		s.LoadString(IDS_ENCODER);
+		SetDlgItemText(IDC_STATIC_FORMAT, s);
+		GetDlgItem(IDC_COMBO_ATTRIBUTES)->ShowWindow(SW_SHOWNOACTIVATE);
+		GetDlgItem(IDC_CHECK_COMPATIBLE_FORMATS)->ShowWindow(SW_HIDE);
+		GetDlgItem(IDC_STATIC_ATTRIBUTES)->ShowWindow(SW_SHOWNOACTIVATE);
+		GetDlgItem(IDC_STATIC_COMMENTS)->ShowWindow(SW_HIDE);
+		GetDlgItem(IDC_EDIT_COMMENT)->ShowWindow(SW_HIDE);
+		// Hide Comments, show Artist, Genre, Title
+		//
+		// replace Format with Encoder: (LAME, Fraunhofer
+		// fill formats combo (bitrate, etc)
+		break;
+	case SoundFileWma:
+		// WMA file
+		// fill profiles combo
+		break;
+		//case SoundFileAvi:
+		// AVI file
+		break;
+	case SoundFileRaw:
+		// RAW file
+		// show formats: 16 bits LSB first, 16 bits MSB first, a-law, u-law, 8 bits, ascii hex, ascii decimal
+		// hide attributes
+		s.LoadString(IDS_FORMAT);
+		SetDlgItemText(IDC_STATIC_FORMAT, s);
+
+		m_FormatCombo.ResetContent();
+		s.LoadString(IDS_RAW_16BIT_LSB);
+		m_FormatCombo.InsertString(RawSoundFilePcm16Lsb, s);
+		s.LoadString(IDS_RAW_16BIT_MSB);
+		m_FormatCombo.InsertString(RawSoundFilePcm16Msb, s);
+		s.LoadString(IDS_RAW_8BITS_PCM);
+		m_FormatCombo.InsertString(RawSoundFilePcm8, s);
+		s.LoadString(IDS_RAW_8BITS_ALAW);
+		m_FormatCombo.InsertString(RawSoundFileALaw8, s);
+		s.LoadString(IDS_RAW_8BITS_ULAW);
+		m_FormatCombo.InsertString(RawSoundFileULaw8, s);
+
+		m_FormatCombo.SetCurSel(0);
+
+		GetDlgItem(IDC_COMBO_ATTRIBUTES)->ShowWindow(SW_HIDE);
+		GetDlgItem(IDC_CHECK_COMPATIBLE_FORMATS)->ShowWindow(SW_HIDE);
+		GetDlgItem(IDC_STATIC_ATTRIBUTES)->ShowWindow(SW_HIDE);
+		GetDlgItem(IDC_STATIC_COMMENTS)->ShowWindow(SW_HIDE);
+		GetDlgItem(IDC_EDIT_COMMENT)->ShowWindow(SW_HIDE);
+
+		break;
 	}
-	pParent->SendMessage(CDM_SETCONTROLTEXT, edt1, LPARAM(LPCTSTR(name)));
+}
+
+void CWaveSoapFileSaveDialog::SetFileType(LPCTSTR lpExt)
+{
+	SetFileType(GetFileTypeForExt(lpExt));
+}
+
+int CWaveSoapFileSaveDialog::GetFileTypeForExt(LPCTSTR lpExt)
+{
+	if (NULL != lpExt && '.' == *lpExt)
+	{
+		lpExt++;
+	}
+	int type = SoundFileRaw;
+	if (NULL != lpExt && 0 != *lpExt)
+	{
+		CString s(lpExt);
+		s.TrimRight();
+		for (int i = SoundFileTypeMin; i <= SoundFileTypeMax; i++)
+		{
+			if (0 == m_DefExt[i].CompareNoCase(lpExt))
+			{
+				type = i;
+				break;
+			}
+		}
+	}
+	return type;
+}
+
+int CWaveSoapFileSaveDialog::GetFileTypeForName(LPCTSTR FileName)
+{
+	LPCTSTR ext = _tcsrchr(FileName, '.');
+	if (NULL == ext)
+	{
+		return m_FileType;
+	}
+	return GetFileTypeForExt(ext + 1);
 }
 
 // Save the document data to a file
@@ -1175,6 +1361,9 @@ BOOL CWaveSoapFrontDoc::DoSave(LPCTSTR lpszPathName, BOOL bReplace)
 		dlg.m_pDocument = this;
 		dlg.m_DefExt[1] = _T("wav");
 		dlg.m_DefExt[2] = _T("mp3");
+		dlg.m_DefExt[3] = _T("wma");
+		dlg.m_DefExt[4] = _T("raw");
+		dlg.m_DefExt[5] = _T("avi");
 
 		CString strFilter;
 		CString strDefault;
