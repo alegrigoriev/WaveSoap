@@ -218,7 +218,7 @@ void CWaveSoapFrontView::OnDraw(CDC* pDC)
 	// create an array of points
 	// allocate the array for the view bitmap
 
-	int nChannels = pDoc->m_WavFile.m_pWf->nChannels;
+	int nChannels = pDoc->WaveChannels();
 	int nNumberOfPoints = r.right - r.left;
 	int ChannelSeparatorY = fround((0 - dOrgY) * GetYScaleDev());
 	double YScaleDev = GetYScaleDev();
@@ -292,6 +292,7 @@ void CWaveSoapFrontView::OnDraw(CDC* pDC)
 				if (SamplesPerPoint >= pDoc->m_PeakDataGranularity)
 				{
 					// use peak data for drawing
+					CSimpleCriticalSectionLock lock(pDoc->m_PeakLock);
 					DWORD PeakSamplesPerPoint =
 						SamplesPerPoint / pDoc->m_PeakDataGranularity;
 
@@ -516,7 +517,7 @@ void CWaveSoapFrontView::GetWaveSamples(int Position, int NumOfSamples)
 		ASSERT(m_WaveDataSizeInBuffer <= m_WaveBufferSize);
 		pDoc->m_WavFile.ReadAt(m_pWaveBuffer,
 								MoveBy * sizeof(__int16),
-								pDoc->m_WavFile.m_datack.dwDataOffset + Position * sizeof(__int16));
+								pDoc->WaveDataChunk()->dwDataOffset + Position * sizeof(__int16));
 		m_FirstSampleInBuffer = Position;
 	}
 
@@ -540,7 +541,7 @@ void CWaveSoapFrontView::GetWaveSamples(int Position, int NumOfSamples)
 		ASSERT(m_WaveDataSizeInBuffer + NumOfSamples <= m_WaveBufferSize);
 		NumOfSamples = pDoc->m_WavFile.ReadAt(m_pWaveBuffer + m_WaveDataSizeInBuffer,
 											NumOfSamples * sizeof(__int16),
-											pDoc->m_WavFile.m_datack.dwDataOffset + Position * sizeof(__int16))
+											pDoc->WaveDataChunk()->dwDataOffset + Position * sizeof(__int16))
 						/ sizeof(__int16);
 		m_WaveDataSizeInBuffer += NumOfSamples;
 	}
@@ -702,7 +703,7 @@ DWORD CWaveSoapFrontView::ClientHitTest(CPoint p)
 	}
 
 	int Separator = WorldToWindowY(0.);
-	if (pDoc->m_SelectionStart < pDoc->m_SelectionEnd
+	if (pDoc->m_SelectionStart <= pDoc->m_SelectionEnd
 		&& (pDoc->WaveChannels() == 1
 			|| 2 == pDoc->m_SelectedChannel
 			|| (0 == pDoc->m_SelectedChannel) == (p.y < Separator)))
@@ -1010,6 +1011,7 @@ void CWaveSoapFrontView::OnLButtonDown(UINT nFlags, CPoint point)
 			nChan = 1;
 		}
 		pDoc->SetSelection(SelectionStart, SelectionEnd, nChan, nSampleUnderMouse);
+		OnSetCursor(this, HTCLIENT, WM_LBUTTONDOWN);
 	}
 	else
 	{
@@ -1073,8 +1075,18 @@ void CWaveSoapFrontView::OnMouseMove(UINT nFlags, CPoint point)
 				SetCapture();
 			}
 
-			if (nSampleUnderMouse <
-				(double(SelectionStart) + SelectionEnd) / 2)
+			// tracked side (where the caret is) is moved,
+			// other side stays
+			if (SelectionStart == pDoc->m_CaretPosition)
+			{
+				SelectionStart = nSampleUnderMouse;
+			}
+			else if (SelectionEnd == pDoc->m_CaretPosition)
+			{
+				SelectionEnd = nSampleUnderMouse;
+			}
+			else if (nSampleUnderMouse <
+					(double(SelectionStart) + SelectionEnd) / 2)
 			{
 				SelectionStart = nSampleUnderMouse;
 			}
@@ -1275,7 +1287,7 @@ void CWaveSoapFrontView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
 			{
 				r1.right = r.right;
 			}
-			InvalidateRect(& r1, FALSE);
+			InvalidateRect(& r1, TRUE);
 		}
 	}
 	else
