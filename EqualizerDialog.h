@@ -117,6 +117,7 @@ public:
 // Dialog Data
 	//{{AFX_DATA(CEqualizerDialog)
 	enum { IDD = IDD_DIALOG_SIMPLE_EQUALIZER };
+	CEdit	m_eEditBands;
 	CNumEdit	m_BandGain;
 	CSpinButtonCtrl	m_SpinBands;
 	CStatic	m_SelectionStatic;
@@ -168,6 +169,8 @@ protected:
 	afx_msg void OnButtonSaveAs();
 	virtual void OnOK();
 	afx_msg void OnKillfocusEditBandGain();
+	afx_msg void OnRadioEqualizerType();
+	afx_msg void OnRadio2();
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 };
