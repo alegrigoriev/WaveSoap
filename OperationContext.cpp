@@ -1457,7 +1457,20 @@ void CCopyContext::DeInit()
 	BaseClass::DeInit();
 
 	m_SrcStart = m_SrcPos;
+	if (m_Flags & OperationContextCommitFile)
+	{
+		m_DstFile.SetDatachunkLength(m_DstPos - m_DstStart);
+	}
 	m_DstStart = m_DstPos;
+}
+
+void CCopyContext::PostRetire()
+{
+	if (m_Flags & OperationContextCommitFile)
+	{
+		m_DstFile.CommitChanges();
+	}
+	BaseClass::PostRetire();
 }
 
 // copy the actual data, while probably changing number of channels
