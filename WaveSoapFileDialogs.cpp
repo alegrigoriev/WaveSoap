@@ -911,9 +911,13 @@ void CWaveSoapFileSaveDialog::FillWmaFormatCombo()
 
 void CWaveSoapFileSaveDialog::FillMp3EncoderCombo()
 {
+	// TODO: check if this format can be converted from the source format
+	// Remove the encoder if there is not conversion
 	// check if LAME encoder is available
 	m_FormatTagCombo.ResetContent();
-	m_Acm.FillMp3EncoderTags();
+	m_Acm.FillMp3EncoderTags(m_bCompatibleFormatsOnly ?
+								WaveFormatMatchCompatibleFormats
+							: WaveFormatMatchFormatTag);
 
 	if (m_Acm.m_FormatTags.empty())
 	{

@@ -322,13 +322,13 @@ BOOL CWaveSoapFrontDoc::OnNewDocument(NewFileParameters * pParams)
 
 		LPCTSTR FileName = NULL;
 		// For PCM files, create new temporary file in the target directory
-		if (NULL != pParams->pInitialTitle
+		if (NULL != pParams->m_pInitialName
 			&& WAVE_FORMAT_PCM == pWfx->wFormatTag)
 		{
 			flags = CreateWaveFileDeleteAfterClose
 					| CreateWaveFilePcmFormat
 					| CreateWaveFileTemp;
-			FileName = pParams->pInitialTitle;
+			FileName = pParams->m_pInitialName;
 		}
 
 		if ( ! CanAllocateWaveFileSamplesDlg(pWfx, nSamples))

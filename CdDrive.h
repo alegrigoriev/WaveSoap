@@ -838,6 +838,69 @@ struct StartStopCdb : CD_CDB
 };
 
 //////////////////////////////////////////////////////////////////
+// Media removal
+//////////////////////////////////////////////////////////////////
+struct LockMediaCdb : CD_CDB
+{
+	enum { OPCODE = 0x1E};
+
+	UCHAR reserved1[3];
+
+	UCHAR LockDataTransport:1;
+	UCHAR LockMediaChanger:1;
+	UCHAR reserved2:6;
+
+	LockMediaCdb(bool LockTransport = true, bool LockChanger = false)
+	{
+		memzero(*this);
+		Opcode = OPCODE;
+		LockDataTransport = LockTransport;
+		LockMediaChanger = LockChanger;
+	}
+};
+
+//////////////////////////////////////////////////////////////////
+// Media removal
+//////////////////////////////////////////////////////////////////
+struct ReadTocCdb : CD_CDB
+{
+	enum { OPCODE = 0x43};
+
+	UCHAR reserved1:1;
+	UCHAR MSF:1;
+	UCHAR reserved2:6;
+
+	UCHAR DataFormat:4;
+
+	enum {
+		TOC = 0,
+		SessionInfo = 1,
+		FullToc = 2,
+		PMA = 3,
+		ATIP = 4,
+		CDTEXT = 5,
+	};
+	UCHAR reserved3:4;
+
+	UCHAR reserved4[3];
+
+	UCHAR TrackSessionNumber;
+
+	BigEndWord AllocationLength;
+
+	UCHAR Control;
+
+	ReadTocCdb(int TrackNum, WORD AllocLen, int nFormat=TOC, bool msf=true)
+	{
+		memzero(*this);
+		Opcode = OPCODE;
+		MSF = msf;
+		DataFormat = nFormat;
+		TrackSessionNumber = TrackNum;
+		AllocationLength = AllocLen;
+	}
+};
+//////////////////////////////////////////////////////////////////
 // Generic SCSI structures
 //////////////////////////////////////////////////////////////////
 
@@ -878,6 +941,28 @@ struct SCSI_SenseInfo
 	UCHAR Extra[14];    // total 32
 };  // 18 bytes
 
+//////////////////////////////////////////////////////////////////
+// Media removal
+//////////////////////////////////////////////////////////////////
+struct TestUnitReadyCdb : CD_CDB
+{
+	enum { OPCODE = 0x00};
+	UCHAR reserved[4];
+	UCHAR Control;
+
+	TestUnitReadyCdb()
+	{
+		memzero(*this);
+		Opcode = OPCODE;
+	}
+	enum {
+		MediaReady,
+		MediaLoading,
+		MediaUnloaded,
+		MediaNotReady,
+	};
+	static int TranslateSenseInfo(SCSI_SenseInfo * pSense);
+};
 struct SRB
 {
 	BYTE        Command;            // ASPI command code
@@ -1003,10 +1088,16 @@ public:
 
 	//CString GetLastScsiErrorText();
 	BOOL GetMediaChanged(); // TRUE if disk was changed after previous call
-	BOOL EnableMediaChangeDetection();
-	BOOL DisableMediaChangeDetection();
-	BOOL LockDoor();
-	BOOL UnlockDoor();
+	BOOL EnableMediaChangeDetection(bool Enable = true);
+	BOOL DisableMediaChangeDetection()
+	{
+		return EnableMediaChangeDetection(false);
+	}
+	BOOL LockDoor(bool Lock = true);
+	BOOL UnlockDoor()
+	{
+		return LockDoor(false);
+	}
 	BOOL ReadToc(CDROM_TOC * pToc);
 	BOOL ReadSessions(CDROM_TOC * pToc);
 	void StopAudioPlay();
@@ -1086,7 +1177,7 @@ protected:
 	bool m_bTrayOut;
 	bool m_bDriveBusy;
 
-	void LoadAspi();
+	void CommonInit(BOOL LoadAspi);
 	DWORD (_cdecl * GetASPI32DLLVersion)();
 	DWORD (_cdecl * GetASPI32SupportInfo)();
 	DWORD (_cdecl * SendASPI32Command)(SRB * lpSRB);
@@ -1097,6 +1188,7 @@ protected:
 	GETASPI32HATARGETLUN GetAspi32HaTargetLun;
 private:
 	static LONG m_DriveBusyCount['Z' - 'A' + 1];
+	static LONG m_MediaLockCount['Z' - 'A' + 1];
 };
 
 #pragma pack(pop)
