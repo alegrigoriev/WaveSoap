@@ -260,6 +260,8 @@ public:
 		beGetVersion(pVer);
 	}
 
+	CString GetVersionString();
+
 private:
 	static BE_ERR	_cdecl InitStreamStub(PBE_CONFIG, PDWORD, PDWORD, PHBE_STREAM) { return BE_ERR_NO_MORE_HANDLES; }
 	static BE_ERR	_cdecl EncodeChunkStub		(HBE_STREAM, DWORD, SHORT const *, PBYTE, PDWORD) { return BE_ERR_INVALID_HANDLE; }

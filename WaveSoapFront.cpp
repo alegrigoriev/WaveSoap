@@ -569,7 +569,7 @@ END_MESSAGE_MAP()
 void CAboutDlg::OnButtonMailto()
 {
 	SHELLEXECUTEINFO shex;
-	memset( & shex, 0, sizeof shex);
+	memzero(shex);
 	shex.cbSize = sizeof shex;
 	shex.hwnd = NULL;//AfxGetMainWnd()->m_hWnd;
 

@@ -147,7 +147,6 @@ public:
 	CListCtrl	m_lbTracks;
 	int		m_RadioAssignAttributes;
 	int		m_RadioStoreImmediately;
-	int		m_RadioStoreMultiple;
 	CString	m_sSaveFolderOrFile;
 	CString	m_sAlbum;
 	CString	m_sArtist;
@@ -163,10 +162,12 @@ public:
 
 	CDROM_TOC m_toc;
 	vector<CdTrackInfo> m_Tracks;
-
 	DWORD m_DiskID;
+
+	// Format to save the files:
 	CWaveFormat m_Wf;
 	DWORD m_FileTypeFlags;
+	CString m_Mp3EncoderName;
 
 	// speed is in bytes/s, rounded to nearest multiple of 176400
 	int m_MaxReadSpeed;
@@ -193,6 +194,7 @@ protected:
 protected:
 	BOOL m_bNeedUpdateControls;
 
+	// Playback support:
 	BOOL m_bPlayingAudio;
 	int m_PlayingTrack;
 	CWaveOut m_WaveOut;
@@ -238,8 +240,6 @@ protected:
 	afx_msg void OnButtonSetFormat();
 	afx_msg void OnChangeEditAlbum();
 	afx_msg void OnChangeEditArtist();
-	afx_msg void OnRadioStoreMultipleFiles();
-	afx_msg void OnRadioStoreSingleFile();
 	afx_msg void OnClickListTracks(NMHDR* pNMHDR, LRESULT* pResult);
 	afx_msg void OnBeginlabeleditListTracks(NMHDR* pNMHDR, LRESULT* pResult);
 	afx_msg void OnEndlabeleditListTracks(NMHDR* pNMHDR, LRESULT* pResult);

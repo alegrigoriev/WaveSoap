@@ -19,8 +19,9 @@ CMmioFile & CMmioFile::operator=(CMmioFile & SourceFile)
 {
 	Close();
 	Attach( & SourceFile);
+
 	MMIOINFO mmii;
-	memset( & mmii, 0, sizeof mmii);
+	memzero(mmii);
 	mmii.fccIOProc = 0;
 	mmii.pIOProc = BufferedIOProc;
 
@@ -141,7 +142,7 @@ BOOL CMmioFile::Open( LPCTSTR szFileName, UINT nOpenFlags)
 	{
 
 		MMIOINFO mmii;
-		memset( & mmii, 0, sizeof mmii);
+		memzero(mmii);
 		mmii.fccIOProc = 0;
 		mmii.pIOProc = BufferedIOProc;
 
@@ -172,7 +173,7 @@ BOOL CMmioFile::Open( LPCTSTR szFileName, UINT nOpenFlags)
 			SetFileLength(0x40);
 		}
 		MMIOINFO mmii;
-		memset( & mmii, 0, sizeof mmii);
+		memzero(mmii);
 		mmii.fccIOProc = 0;
 		mmii.pIOProc = BufferedIOProc;
 
@@ -641,7 +642,7 @@ BOOL CWaveFile::CreateWaveFile(CWaveFile * pTemplateFile, WAVEFORMATEX * pTempla
 	if ((flags & CreateWaveFileCreateFact)
 		&& NULL != fact)
 	{
-		memset(fact, 0, sizeof *fact);
+		memzero(*fact);
 		fact->ckid = mmioFOURCC('f', 'a', 'c', 't');
 		fact->cksize = sizeof (DWORD);
 		if (CreateChunk(* fact, 0))
@@ -654,7 +655,8 @@ BOOL CWaveFile::CreateWaveFile(CWaveFile * pTemplateFile, WAVEFORMATEX * pTempla
 
 	// create data chunk
 	LPMMCKINFO pDatachunk = GetDataChunk();
-	memset(pDatachunk, 0, sizeof (MMCKINFO));
+	memzero(*pDatachunk);
+
 	pDatachunk->ckid = mmioFOURCC('d', 'a', 't', 'a');
 	CreateChunk( * pDatachunk, 0);
 	if (SizeOrSamples)

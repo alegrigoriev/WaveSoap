@@ -2422,10 +2422,10 @@ BOOL CWaveSoapFrontDoc::OnSaveMp3File(int flags, LPCTSTR FullTargetName, WAVEFOR
 		return FALSE;
 	}
 
-	WAVEFORMATEX * pNewFormat = NewWaveFile.AllocateWaveformat();
+	WAVEFORMATEX * pNewFormat = NewWaveFile.AllocateWaveformat(sizeof (WAVEFORMATEX) + pWf->cbSize);
 	if (NULL != pNewFormat)
 	{
-		* pNewFormat = * pWf;
+		memcpy(pNewFormat, pWf, sizeof (WAVEFORMATEX) + pWf->cbSize);
 	}
 
 	CFileSaveContext * pContext = new CFileSaveContext(this,
@@ -5098,7 +5098,7 @@ BOOL CWaveSoapFrontDoc::OpenWmaFileDocument(LPCTSTR lpszPathName)
 		CoUninitialize();
 		return FALSE;
 	}
-	//pWmaContext->m_CurrentSamples = 0x10000;
+
 	if ( ! m_WavFile.CreateWaveFile(NULL, pWmaContext->m_Decoder.m_DstWf,
 									ALL_CHANNELS, pWmaContext->m_CurrentSamples,  // initiali sample count
 									CreateWaveFileTempDir
@@ -5111,6 +5111,8 @@ BOOL CWaveSoapFrontDoc::OpenWmaFileDocument(LPCTSTR lpszPathName)
 		CoUninitialize();
 		return FALSE;
 	}
+
+	m_OriginalWaveFormat = pWmaContext->m_Decoder.m_DstWf;
 	pWmaContext->SetDstFile(m_WavFile);
 	AllocatePeakData(pWmaContext->m_CurrentSamples);
 
