@@ -277,6 +277,13 @@ void CWaveFftView::OnDraw(CDC* pDC)
 	int rows = cr.Height() / nChannels;
 	// if all the chart was drawn, how many scans it would have:
 	int TotalRows = rows * m_VerticalScale;
+
+	if (0 == TotalRows)
+	{
+		DeleteObject(hbm);
+		return;
+	}
+
 	int LastFftSample = m_FftOrder - m_FirstbandVisible;
 	int FirstFftSample = LastFftSample + (-rows * m_FftOrder) / TotalRows;
 	if (FirstFftSample < 0)
@@ -298,6 +305,11 @@ void CWaveFftView::OnDraw(CDC* pDC)
 
 	S * pIdArray = new S[IdxSize];
 
+	if (NULL == pIdArray)
+	{
+		DeleteObject(hbm);
+		return;
+	}
 	// fill the array
 	int LastRow = 0;
 	int k;
@@ -707,7 +719,7 @@ BOOL CWaveFftView::OnEraseBkgnd(CDC* pDC)
 {
 	// TODO: Add your message handler code here and/or call default
 	return CView::OnEraseBkgnd(pDC);       // we don't need to erase background
-	return CWaveSoapFrontView::OnEraseBkgnd(pDC);
+//	return CWaveSoapFrontView::OnEraseBkgnd(pDC);
 }
 
 BOOL CWaveFftView::PreCreateWindow(CREATESTRUCT& cs)
