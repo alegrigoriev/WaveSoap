@@ -60,6 +60,10 @@ void CTimeRulerView::OnDraw(CDC* pDC)
 void CTimeRulerView::DrawRulerSamples(CDC* pDC)
 {
 	CWaveSoapFrontDoc* pDoc = GetDocument();
+	if (! pDoc->m_WavFile.IsOpen())
+	{
+		return;
+	}
 
 	// background is erased by gray brush.
 	// draw horizontal line with ticks and numbers
@@ -172,6 +176,10 @@ void CTimeRulerView::DrawRulerSamples(CDC* pDC)
 void CTimeRulerView::DrawRulerHhMmSs(CDC* pDC)
 {
 	CWaveSoapFrontDoc* pDoc = GetDocument();
+	if (! pDoc->m_WavFile.IsOpen())
+	{
+		return;
+	}
 
 	// background is erased by gray brush.
 	// draw horizontal line with ticks and numbers
@@ -353,6 +361,10 @@ void CTimeRulerView::DrawRulerHhMmSs(CDC* pDC)
 void CTimeRulerView::DrawRulerSeconds(CDC* pDC)
 {
 	CWaveSoapFrontDoc* pDoc = GetDocument();
+	if (! pDoc->m_WavFile.IsOpen())
+	{
+		return;
+	}
 
 	// background is erased by gray brush.
 	// draw horizontal line with ticks and numbers
