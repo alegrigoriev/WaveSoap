@@ -258,7 +258,29 @@ enum
 	MaxInterpolatedLength = 128,
 };
 
-class CClickRemoval: public CWaveProc
+struct DeclickParameters
+{
+	int m_nMaxClickLength;
+	BOOL m_bLogClicksOnly;
+	int m_nMinClickLength;
+	BOOL m_bLogClicks;
+	CString m_ClickLogFilename;
+	BOOL m_bImportClicks;
+	CString m_ClickImportFilename;
+	BOOL    m_bDontAutodetectClicks;
+
+	double m_MeanPowerDecayRate;
+	double m_MeanPowerAttackRate;
+	double m_PowerToDeriv3RatioThreshold;
+	double m_MinDeriv3Threshold;
+	double m_MinClickDeriv3BoundThreshold;
+	double m_ClickDeriv3ThresholdScale;  // is used to find click boundary
+	double m_NoiseFloorThresholdScale;
+
+	DeclickParameters();    // default initializer
+};
+
+class CClickRemoval: public CWaveProc, protected DeclickParameters
 {
 	typedef CClickRemoval ThisClass;
 	typedef CWaveProc BaseClass;
@@ -266,7 +288,9 @@ class CClickRemoval: public CWaveProc
 public:
 	typedef std::auto_ptr<ThisClass> auto_ptr;
 
-	CClickRemoval(WAVEFORMATEX const * pWf, CHANNEL_MASK ChannelsToProcess);
+	CClickRemoval(WAVEFORMATEX const * pWf, CHANNEL_MASK ChannelsToProcess,
+				DeclickParameters const & dp = DeclickParameters());
+
 	virtual ~CClickRemoval();
 
 	virtual size_t ProcessSoundBuffer(char const * pInBuf, char * pOutBuf,
@@ -278,46 +302,47 @@ public:
 	void InterpolateGap(WAVE_SAMPLE data[], int nLeftIndex, int ClickLength, int nChans, bool BigGap);
 	void InterpolateBigGap(WAVE_SAMPLE data[], int nLeftIndex, int ClickLength, int nChans);
 
-	BOOL SetClickSourceFile(LPCTSTR szFilename);
+	BOOL LoadClickSourceFile(LPCTSTR szFilename);
 	BOOL SetClickLogFile(LPCTSTR szFilename);
 
-	float m_MeanPowerDecayRate;
-	float m_MeanPowerAttackRate;
-	float m_PowerToDeriv3RatioThreshold;
-	int m_nMaxClickLength;
-	float m_MinDeriv3Threshold;
-	BOOL m_PassTrough;
 protected:
+	virtual BOOL Init();
+
 	enum {PREV_BUF_SIZE = 2048,
 		PREV_MASK = PREV_BUF_SIZE-1,
 		CLICK_LENGTH = 64,
 		ANALYZE_LAG = 1024};
-	CBackBuffer<int, int> m_prev[2];
-	CBackBuffer<int, int> m_prev3[2];
-//    int m_prev[2][PREV_BUF_SIZE];
-//    int m_prev3[2][PREV_BUF_SIZE];
-	float m_ClickDeriv3ThresholdScale;  // is used to find click boundary
-	float m_MinClickDeriv3BoundThreshold;
-	float m_NoiseFloorThresholdScale;
 
-	int m_nMinClickLength;
+	struct DeclickChannelData
+	{
+		DeclickChannelData();
+		CBackBuffer<int, int> m_prev;
+		CBackBuffer<int, int> m_prev3;
+		SAMPLE_INDEX m_NextPossibleClickPosition;
+		int m_PrevDeriv;
+		int m_PrevDeriv2;
+		double m_MeanPower;
 
-	int m_NextPossibleClickPosition[2];
-	int m_PrevDeriv[2];
-	int m_PrevDeriv2[2];
-	int m_PrevIndex;
+		int Update3RdDerivativePowerThreshold(CClickRemoval const * pCr);
 
-	int m_nStoredSamples;
-	float m_MeanPower[2];
+		BOOL CheckForClick();
+		void StoreData(WAVE_SAMPLE * pOut, unsigned nSamples, int Stride);
+	};
+
 
 private:
+
+	SAMPLE_INDEX m_PrevIndex;
+	NUMBER_OF_SAMPLES m_nStoredSamples;
+	DeclickChannelData m_ChannelData[2];
 	// array for the clicks defined in a file
 	typedef std::vector<StoredClickData> ClicksVector;
 	typedef ClicksVector::iterator ClicksVectorIterator;
-	ClicksVector PredefinedClicks;
+	typedef ClicksVector::const_iterator ClicksVectorConstIterator;
 
-	CString OutClickFilename;
-	FILE * pOutClicksFile;
+	ClicksVector m_PredefinedClicks;
+
+	FILE * m_pOutClicksFile;
 };
 
 struct NoiseReductionParameters
