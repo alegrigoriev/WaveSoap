@@ -168,6 +168,18 @@ void CFftRulerView::OnDraw(CDC* pDC)
 	pDC->SelectObject(pOldFont);
 }
 
+int CFftRulerView::CalculateWidth()
+{
+	CWnd * pW = GetDesktopWindow();
+	CDC * pDC = pW->GetWindowDC();
+	CGdiObject * pOld = pDC->SelectStockObject(ANSI_VAR_FONT);
+	int Width = 4 + pDC->GetTextExtent("-000,000", 8).cx;
+
+	pDC->SelectObject(pOld);
+	pW->ReleaseDC(pDC);
+	return Width;
+}
+
 void CFftRulerView::OnUpdate( CView* pSender, LPARAM lHint, CObject* pHint )
 {
 	if ((lHint == CWaveFftView::FFT_OFFSET_CHANGED

@@ -21,6 +21,7 @@ protected:
 // Attributes
 public:
 	CWaveSoapFrontDoc* GetDocument();
+	static int CalculateWidth();
 
 // Operations
 public:
