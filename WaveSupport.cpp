@@ -681,6 +681,27 @@ bool CWaveFormat::IsCompressed() const
 	return true;
 }
 
+bool WaveFormatTagEx::IsCompressed() const
+{
+	if (WAVE_FORMAT_PCM == Tag
+		|| WAVE_FORMAT_IEEE_FLOAT == Tag)
+	{
+		// PCM integer or float format
+		return false;
+	}
+
+	if (WAVE_FORMAT_EXTENSIBLE == Tag)
+	{
+		if (SubFormat == KSDATAFORMAT_SUBTYPE_PCM
+			|| SubFormat == KSDATAFORMAT_SUBTYPE_IEEE_FLOAT)
+		{
+			return false;
+		}
+	}
+
+	return true;
+}
+
 NUMBER_OF_CHANNELS CWaveFormat::NumChannelsFromMask(CHANNEL_MASK ChannelMask) const
 {
 	NUMBER_OF_CHANNELS Channels = 0;
@@ -1091,10 +1112,20 @@ BOOL _stdcall CAudioCompressionManager::FormatEnumCallback(
 			// include all non-PCM formats or
 			// PCM formats with the same sample rate and number of channels,
 			// and the same number of bits or 16 bits
-			if (pfcs->m_Tag.Tag == WAVE_FORMAT_PCM
-				&& ((match & (WaveFormatMatchSampleRate | WaveFormatMatchCnannels))
-					!= (WaveFormatMatchSampleRate | WaveFormatMatchCnannels)
-					|| (0 == (match & (WaveFormatMatchBitsPerSample | WaveFormatMatch16Bits)))))
+			if (pfcs->m_Tag.IsCompressed())
+			{
+				if ((match & (WaveFormatMatchSampleRate | WaveFormatMatchCnannels))
+					!= (WaveFormatMatchSampleRate | WaveFormatMatchCnannels))
+				{
+					// discard a target format with different sample rate or number of channels
+					// such a format may erroneously be returned by MP3 encoder
+					return TRUE;
+				}
+			}
+			else if (pfcs->m_Tag.Tag == WAVE_FORMAT_PCM
+					&& ((match & (WaveFormatMatchSampleRate | WaveFormatMatchCnannels))
+						!= (WaveFormatMatchSampleRate | WaveFormatMatchCnannels)
+						|| (0 == (match & (WaveFormatMatchBitsPerSample | WaveFormatMatch16Bits)))))
 			{
 				return TRUE;
 			}
