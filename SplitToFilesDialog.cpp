@@ -92,6 +92,58 @@ void CSplitToFilesDialog::ShowDlgItem(UINT nID, int nCmdShow)
 	}
 }
 
+void CSplitToFilesDialog::SetFileArrayItem(unsigned index, SAMPLE_INDEX Begin, SAMPLE_INDEX End)
+{
+	if (index >= m_Files.size())
+	{
+		return;
+	}
+	WaveFileSegmentVector::reference f = m_Files[index];
+
+	f.Begin = Begin;
+	f.End = End;
+
+	SetFileListItem(index, Begin, End);
+}
+
+void CSplitToFilesDialog::InsertFileListItem(unsigned index, LPCTSTR Name, SAMPLE_INDEX Begin, SAMPLE_INDEX End)
+{
+	m_FilesList.InsertItem(index, Name);
+
+	SetFileListItem(index, Begin, End);
+}
+
+void CSplitToFilesDialog::SetFileListItem(unsigned index, SAMPLE_INDEX Begin, SAMPLE_INDEX End)
+{
+	CString s;
+	LVITEM item;
+	memzero(item);
+
+	item.mask = LVIF_TEXT;
+	item.iItem = index;
+
+	// set "begin" column
+	item.iSubItem = ListBeginColumn;
+	s = SampleToString(Begin, m_WaveFile.SampleRate(), m_TimeFormat);
+	item.pszText = (LPTSTR)LPCTSTR(s);
+
+	m_FilesList.SetItem( & item);
+
+	// set "end" column
+	item.iSubItem = ListEndColumn;
+	s = SampleToString(End, m_WaveFile.SampleRate(), m_TimeFormat);
+	item.pszText = (LPTSTR)LPCTSTR(s);
+
+	m_FilesList.SetItem( & item);
+
+	// set "length" column
+	item.iSubItem = ListLengthColumn;
+	s = SampleToString(End - Begin, m_WaveFile.SampleRate(), m_TimeFormat);
+	item.pszText = (LPTSTR)LPCTSTR(s);
+
+	m_FilesList.SetItem( & item);
+}
+
 void CSplitToFilesDialog::DoDataExchange(CDataExchange* pDX)
 {
 	BaseClass::DoDataExchange(pDX);
@@ -376,10 +428,15 @@ bool CSplitToFilesDialog::GetFileData(unsigned index, CString & FileName, CStrin
 BEGIN_MESSAGE_MAP(CSplitToFilesDialog, BaseClass)
 	ON_BN_CLICKED(IDC_BUTTON_BROWSE_FOLDER, OnBnClickedButtonBrowseFolder)
 	ON_BN_CLICKED(IDC_CHECK_COMPATIBLE_FORMATS, OnCompatibleFormatsClicked)
+	ON_BN_CLICKED(IDC_BUTTON_NEW, OnBnClickedButtonNew)
+	ON_BN_CLICKED(IDC_BUTTON_DELETE, OnBnClickedButtonDelete)
+
 	ON_CBN_SELCHANGE(IDC_COMBO_FORMAT_TAG, OnComboFormatsChange)
 	ON_CBN_SELCHANGE(IDC_COMBO_FORMAT_ATTRIBUTES, OnComboAttributesChange)
 	ON_CBN_SELCHANGE(IDC_COMBO_FILE_TYPE, OnComboFileTypeSelChange)
+
 	ON_NOTIFY(LVN_ENDLABELEDIT, IDC_LIST_FILES, OnLvnEndlabeleditListFiles)
+	ON_NOTIFY(LVN_ITEMCHANGED, IDC_LIST_FILES, OnLvnItemchangedListFiles)
 // CSelectionSupport
 	ON_CBN_SELCHANGE(IDC_COMBO_TIME_FORMAT, OnSelchangeComboTimeFormat)
 	ON_CBN_KILLFOCUS(IDC_COMBO_END, OnKillfocusEditEnd)
@@ -571,6 +628,7 @@ BOOL CSplitToFilesDialog::OnInitDialog()
 	m_sFilenamePrefix = m_RecentFilenamePrefixes[0];
 
 	BaseClass::OnInitDialog();
+	SetWindowIcons(this, IDI_ICON_SPLIT_TO_FILES);
 
 	InitSelectionUi();
 
@@ -621,34 +679,12 @@ BOOL CSplitToFilesDialog::OnInitDialog()
 	for (WaveFileSegmentVector::const_iterator i = m_Files.begin();
 		i < m_Files.end(); i++, ItemIdx++)
 	{
-		LVITEM item;
-		memzero(item);
+		InsertFileListItem(ItemIdx, i->Name, i->Begin, i->End);
+	}
 
-		item.mask = LVIF_TEXT;
-		item.iItem = ItemIdx;
-		item.iSubItem = ListNameColumn;
-		item.pszText = (LPTSTR)LPCTSTR(i->Name);
-
-		m_FilesList.InsertItem( & item);
-
-		item.iSubItem = ListBeginColumn;
-		s = SampleToString(i->Begin, m_WaveFile.SampleRate());
-		item.pszText = (LPTSTR)LPCTSTR(s);
-
-		m_FilesList.SetItem( & item);
-
-		item.iSubItem = ListEndColumn;
-		s = SampleToString(i->End, m_WaveFile.SampleRate());
-		item.pszText = (LPTSTR)LPCTSTR(s);
-
-		m_FilesList.SetItem( & item);
-
-		item.iSubItem = ListLengthColumn;
-		s = SampleToString(i->End - i->Begin, m_WaveFile.SampleRate());
-		item.pszText = (LPTSTR)LPCTSTR(s);
-
-		m_FilesList.SetItem( & item);
-		//m_FilesList.SetItem(ItemIdx, ListBeginColumn,  & item);
+	if ( ! m_Files.empty())
+	{
+		m_FilesList.SetItemState(0, LVIS_SELECTED, LVIS_SELECTED);
 	}
 
 	static int const FileTypeIds[] =
@@ -692,40 +728,147 @@ void CSplitToFilesDialog::OnOK()
 void CSplitToFilesDialog::OnSelchangeComboTimeFormat()
 {
 	CSelectionUiSupport::OnSelchangeComboTimeFormat();
+
+	// fill the list view
+	unsigned ItemIdx = 0;
+	for (WaveFileSegmentVector::const_iterator i = m_Files.begin();
+		i < m_Files.end(); i++, ItemIdx++)
+	{
+		SetFileListItem(ItemIdx, i->Begin, i->End);
+	}
 }
 
 void CSplitToFilesDialog::OnBuddyChangeSpinEnd(NMHDR * pNmHdr, LRESULT * pResult)
 {
 	CSelectionUiSupport::OnBuddyChangeSpinEnd(pNmHdr, pResult);
+	SaveChangedSelectionRange();
 }
 
 void CSplitToFilesDialog::OnKillfocusEditEnd()
 {
 	CSelectionUiSupport::OnKillfocusEditEnd();
+	SaveChangedSelectionRange();
 }
 
 void CSplitToFilesDialog::OnBuddyChangeSpinLength(NMHDR * pNmHdr, LRESULT * pResult)
 {
 	CSelectionUiSupport::OnBuddyChangeSpinLength(pNmHdr, pResult);
+	SaveChangedSelectionRange();
 }
 
 void CSplitToFilesDialog::OnKillfocusEditLength()
 {
 	CSelectionUiSupport::OnKillfocusEditLength();
+	SaveChangedSelectionRange();
 }
 
 void CSplitToFilesDialog::OnBuddyChangeSpinStart(NMHDR * pNmHdr, LRESULT * pResult)
 {
 	CSelectionUiSupport::OnBuddyChangeSpinStart(pNmHdr, pResult);
+	SaveChangedSelectionRange();
 }
 
 void CSplitToFilesDialog::OnKillfocusEditStart()
 {
 	CSelectionUiSupport::OnKillfocusEditStart();
+	SaveChangedSelectionRange();
 }
 
 void CSplitToFilesDialog::OnSelchangeComboSelection()
 {
 	CSelectionUiSupport::OnSelchangeComboSelection();
+	SaveChangedSelectionRange();
+}
+
+void CSplitToFilesDialog::SaveChangedSelectionRange()
+{
+	// save range from the selection combo-boxes
+	unsigned nSelItem = m_FilesList.GetNextItem(-1, LVNI_SELECTED);
+	TRACE("Item %d selection saved\n", nSelItem);
+	SetFileArrayItem(nSelItem, m_Start, m_End);
+}
+
+void CSplitToFilesDialog::OnLvnItemchangedListFiles(NMHDR *pNMHDR, LRESULT *pResult)
+{
+	LPNMLISTVIEW pNMLV = reinterpret_cast<LPNMLISTVIEW>(pNMHDR);
+
+	if ((pNMLV->uChanged & LVIF_STATE)
+		&& unsigned(pNMLV->iItem) < m_Files.size())
+	{
+		if (pNMLV->uNewState & LVIS_SELECTED)
+		{
+			TRACE("List item %d selected\n", pNMLV->iItem);
+			// set new range to the selection combo-boxes
+			SetSelection(m_Files[pNMLV->iItem].Begin, m_Files[pNMLV->iItem].End);
+		}
+		if (pNMLV->uOldState & LVIS_SELECTED)
+		{
+			TRACE("List item %d UNselected\n", pNMLV->iItem);
+			// save range from the selection combo-boxes
+			UpdateAllSelections();  // KILLFOCUS doesn't come yet, have to just update all
+			SetFileArrayItem(pNMLV->iItem, m_Start, m_End);
+		}
+	}
+	*pResult = 0;
+}
+
+void CSplitToFilesDialog::OnBnClickedButtonNew()
+{
+	unsigned nSelItem = m_FilesList.GetNextItem(-1, LVNI_SELECTED);
+
+	WaveFileSegmentVector::iterator i;
+	i = m_Files.begin();
+	if (nSelItem <= m_Files.size())
+	{
+		i += nSelItem;
+	}
+	else
+	{
+		nSelItem = 0;
+	}
+
+	WaveFileSegment seg;
+	seg.Begin = 0;
+	seg.End = m_WaveFile.NumberOfSamples();
+
+	if (i != m_Files.begin())
+	{
+		seg.Begin = (i - 1)->End;
+	}
+	if (i != m_Files.end())
+	{
+		seg.End = i->Begin;
+	}
+
+	seg.Name.Format(IDS_NEW_FILE_SEGMENT_NAME, nSelItem + 1);
+
+	m_Files.insert(i, seg);
+	InsertFileListItem(nSelItem, seg.Name, seg.Begin, seg.End);
+	m_FilesList.SetFocus();
+	m_FilesList.SetItemState(nSelItem, LVIS_SELECTED, LVIS_SELECTED);
+	m_FilesList.EditLabel(nSelItem);
+}
+
+void CSplitToFilesDialog::OnBnClickedButtonDelete()
+{
+	// find a selected item
+	unsigned nSelItem = m_FilesList.GetNextItem(-1, LVNI_SELECTED);
+
+	if (nSelItem < m_Files.size())
+	{
+		if (m_FilesList.DeleteItem(nSelItem))
+		{
+			m_Files.erase(m_Files.begin() + nSelItem);
+
+			if ( ! m_Files.empty())
+			{
+				if (nSelItem >= m_Files.size())
+				{
+					nSelItem = m_Files.size() - 1;
+				}
+				m_FilesList.SetItemState(nSelItem, LVIS_SELECTED, LVIS_SELECTED);
+			}
+		}
+	}
 }
 

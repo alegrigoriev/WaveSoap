@@ -14,7 +14,7 @@
 
 // CSplitToFilesDialog dialog
 class CWaveFile;
-class CSplitToFilesDialog : public CResizableDialog, public CFileSaveUiSupport, public CSelectionUiSupport
+class CSplitToFilesDialog : public CResizableDialog, public CFileSaveUiSupport, protected CSelectionUiSupport
 {
 	typedef CResizableDialog BaseClass;
 public:
@@ -34,7 +34,6 @@ protected:
 	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV support
 
 	DECLARE_MESSAGE_MAP()
-protected:
 
 	WaveFileSegmentVector m_Files;
 	// List of all files to write
@@ -42,7 +41,7 @@ protected:
 	int m_FileTypeFlags;
 
 	afx_msg void OnBnClickedButtonBrowseFolder();
-	afx_msg void OnLvnItemChangedListFiles(NMHDR *pNMHDR, LRESULT *pResult);
+	afx_msg void OnLvnItemchangedListFiles(NMHDR *pNMHDR, LRESULT *pResult);
 	afx_msg void OnLvnEndlabeleditListFiles(NMHDR *pNMHDR, LRESULT *pResult);
 	afx_msg void OnCompatibleFormatsClicked();
 	afx_msg void OnComboFormatsChange();
@@ -57,14 +56,23 @@ protected:
 	afx_msg void OnBuddyChangeSpinLength(NMHDR * pNmHdr, LRESULT * pResult);
 	afx_msg void OnBuddyChangeSpinStart(NMHDR * pNmHdr, LRESULT * pResult);
 	afx_msg void OnSelchangeComboSelection();
+	afx_msg void OnBnClickedButtonNew();
+	afx_msg void OnBnClickedButtonDelete();
 
 	virtual void OnOK();
+	virtual BOOL OnInitDialog();
 	virtual BOOL PreTranslateMessage(MSG* pMsg);
 
 	void SetFileType(int nType, BOOL Force = FALSE);
 	void ShowDlgItem(UINT nID, int nCmdShow);
 
-	virtual BOOL OnInitDialog();
+	// sets the data to the array and also to the list view
+	void SetFileArrayItem(unsigned index, SAMPLE_INDEX Begin, SAMPLE_INDEX End);
+	// sets the data to the list view only
+	void SetFileListItem(unsigned index, SAMPLE_INDEX Begin, SAMPLE_INDEX End);
+	void InsertFileListItem(unsigned index, LPCTSTR Name, SAMPLE_INDEX Begin, SAMPLE_INDEX End);
+
+	void SaveChangedSelectionRange();
 
 	// Combobox to list supported types
 	CComboBox m_SaveAsTypesCombo;
