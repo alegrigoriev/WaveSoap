@@ -266,7 +266,7 @@ protected:
 	LONGLONG m_TotalCommitted;
 };
 
-class CEqualizerContext: public CThroughProcessOperation
+class CEqualizerContext : public CThroughProcessOperation
 {
 	typedef CEqualizerContext ThisClass;
 	typedef CThroughProcessOperation BaseClass;
@@ -274,7 +274,10 @@ public:
 	typedef std::auto_ptr<ThisClass> auto_ptr;
 
 	CEqualizerContext(CWaveSoapFrontDoc * pDoc,
-					UINT StatusStringId, UINT OperationNameId);
+					UINT StatusStringId, UINT OperationNameId,
+					double const BandCoefficients[MaxNumberOfEqualizerBands][6],
+					int NumberOfBands, BOOL ZeroPhase);
+
 	~CEqualizerContext();
 
 	BOOL m_bZeroPhase;

@@ -1336,10 +1336,20 @@ void CCommitFileSaveContext::PostRetire()
 }
 
 CEqualizerContext::CEqualizerContext(CWaveSoapFrontDoc * pDoc,
-									UINT StatusStringId, UINT OperationNameId)
-	: BaseClass(pDoc, OperationContextDiskIntensive, StatusStringId, OperationNameId),
-	m_bZeroPhase(FALSE)
+									UINT StatusStringId, UINT OperationNameId,
+									double const BandCoefficients[MaxNumberOfEqualizerBands][6],
+									int NumberOfBands, BOOL ZeroPhase)
+	: BaseClass(pDoc, OperationContextDiskIntensive, StatusStringId, OperationNameId)
+	, m_bZeroPhase(ZeroPhase)
+	, m_NumOfBands(NumberOfBands)
 {
+	for (int i = 0; i < NumberOfBands; i++)
+	{
+		for (int j = 0; j < 6; j++)
+		{
+			m_BandCoefficients[i][j] = BandCoefficients[i][j];
+		}
+	}
 }
 
 CEqualizerContext::~CEqualizerContext()
