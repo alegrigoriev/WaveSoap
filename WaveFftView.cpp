@@ -257,7 +257,7 @@ void CWaveFftView::OnDraw(CDC* pDC)
 	size_t stride = (width * 3 + 3) & ~3;
 	size_t BmpSize = stride * abs(height);
 	memset(pBmp, 0, BmpSize);
-	int i;
+//    int i;
 
 	// fill the array
 	int x;
@@ -674,9 +674,9 @@ void CWaveFftView::OnPaint()
 		CRect r;
 		UpdRgn.GetRgnBox( & r);
 		TRACE("Update region width=%d\n", r.Width());
-		if (r.Width() > 128)
+		if (r.Width() > 64)
 		{
-			r.right = r.left + 128;
+			r.right = r.left + 64;
 			RectToDraw.CreateRectRgnIndirect( & r);
 			// init the handle
 			InvalidRgn.CreateRectRgn(0, 0, 1, 1);
@@ -687,7 +687,7 @@ void CWaveFftView::OnPaint()
 			TRACE("Width of new invalid region = %d\n", r.Width());
 #endif
 			ValidateRect(NULL);
-			InvalidateRgn( & UpdRgn, TRUE);    // no erase
+			InvalidateRgn( & UpdRgn, FALSE);    // no erase
 		}
 	}
 	else
@@ -699,13 +699,22 @@ void CWaveFftView::OnPaint()
 	if (NULL != InvalidRgn.m_hObject)
 	{
 		TRACE("Invalidating unpainted region\n");
-		InvalidateRgn( & InvalidRgn, TRUE);
+		InvalidateRgn( & InvalidRgn, FALSE);
 	}
 }
 
 BOOL CWaveFftView::OnEraseBkgnd(CDC* pDC)
 {
 	// TODO: Add your message handler code here and/or call default
-	return 1;       // we don't need to erase background
+	return CView::OnEraseBkgnd(pDC);       // we don't need to erase background
 	return CWaveSoapFrontView::OnEraseBkgnd(pDC);
 }
+
+BOOL CWaveFftView::PreCreateWindow(CREATESTRUCT& cs)
+{
+	cs.lpszClass = AfxRegisterWndClass(CS_VREDRAW | CS_DBLCLKS, NULL,
+										(HBRUSH)GetStockObject(BLACK_BRUSH), NULL);
+	TRACE("CWaveFftView::PreCreateWindow(CREATESTRUCT)\n");
+	return CScaledScrollView::PreCreateWindow(cs);
+}
+

@@ -27,6 +27,7 @@ public:
 	//{{AFX_VIRTUAL(CWaveFftView)
 protected:
 	virtual void OnDraw(CDC* pDC);      // overridden to draw this view
+	virtual BOOL PreCreateWindow(CREATESTRUCT& cs);
 	//}}AFX_VIRTUAL
 
 // Implementation
