@@ -17,17 +17,21 @@
 
 class CCopyChannelsSelectDlg : public CDialog
 {
-// Construction
+	typedef CDialog BaseClass;
+	// Construction
 public:
-	CCopyChannelsSelectDlg(CWnd* pParent = NULL);   // standard constructor
+	CCopyChannelsSelectDlg(CHANNEL_MASK Channels, CWnd* pParent = NULL);   // standard constructor
 
 // Dialog Data
 	//{{AFX_DATA(CCopyChannelsSelectDlg)
 	enum { IDD = IDD_DIALOG_COPY_CHANNELS_SELECT };
-	int		m_ChannelToCopy;
 	//}}AFX_DATA
-
-
+	CHANNEL_MASK GetChannelToCopy() const
+	{
+		return m_ChannelToCopy - 1;
+	}
+protected:
+	CHANNEL_MASK		m_ChannelToCopy;
 // Overrides
 	// ClassWizard generated virtual function overrides
 	//{{AFX_VIRTUAL(CCopyChannelsSelectDlg)

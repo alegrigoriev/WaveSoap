@@ -20,11 +20,11 @@ static char THIS_FILE[] = __FILE__;
 // CCopyChannelsSelectDlg dialog
 
 
-CCopyChannelsSelectDlg::CCopyChannelsSelectDlg(CWnd* pParent /*=NULL*/)
-	: CDialog(CCopyChannelsSelectDlg::IDD, pParent)
+CCopyChannelsSelectDlg::CCopyChannelsSelectDlg(CHANNEL_MASK Channels, CWnd* pParent /*=NULL*/)
+	: BaseClass(CCopyChannelsSelectDlg::IDD, pParent)
+	, m_ChannelToCopy(Channels + 1)
 {
 	//{{AFX_DATA_INIT(CCopyChannelsSelectDlg)
-	m_ChannelToCopy = -1;
 	//}}AFX_DATA_INIT
 }
 
