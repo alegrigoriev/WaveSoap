@@ -180,6 +180,7 @@ CWaveSoapFrontApp::CWaveSoapFrontApp()
 	m_pWavTypeTemplate(NULL),
 	m_pRawTypeTemplate(NULL),
 	m_pWmaTypeTemplate(NULL),
+	m_pAviTypeTemplate(NULL),
 	m_pAllWmTypeTemplate(NULL),
 
 	m_DontShowMediaPlayerWarning(FALSE),
@@ -483,6 +484,16 @@ BOOL CWaveSoapFrontApp::InitInstance()
 
 	AddDocTemplate(m_pWmaTypeTemplate);
 
+	// register AVI document
+	m_pAviTypeTemplate = new CWaveSoapDocTemplate(
+												IDR_WAVESOTYPE, IDR_AVITYPE,
+												RUNTIME_CLASS(CWaveSoapFrontDoc),
+												RUNTIME_CLASS(CChildFrame), // custom MDI child frame
+												RUNTIME_CLASS(CWaveSoapFrontView),
+												OpenDocumentAviFile);
+
+	AddDocTemplate(m_pAviTypeTemplate);
+
 	// register all Windows media documents
 	m_pAllWmTypeTemplate = new CWaveSoapDocTemplate(
 													IDR_WAVESOTYPE, IDR_WMTYPES,
@@ -503,7 +514,7 @@ BOOL CWaveSoapFrontApp::InitInstance()
 
 	AddDocTemplate(m_pRawTypeTemplate);
 
-	// register All types document
+	// register All types document, don't add it to Doc template list!
 	m_pAllTypesTemplate = new CWaveSoapDocTemplate(
 													IDR_WAVESOTYPE, IDR_ALLTYPES,
 													RUNTIME_CLASS(CWaveSoapFrontDoc),
@@ -896,7 +907,8 @@ int CWaveSoapFrontApp::ExitInstance()
 		FreeLibrary(m_hWMVCORE_DLL_Handle);
 		m_hWMVCORE_DLL_Handle = NULL;
 	}
-	delete m_pAllTypesTemplate;
+
+	delete m_pAllTypesTemplate; // need to delete, because it's not added to list of templates
 
 	m_Palette.DeleteObject();
 	return CWinApp::ExitInstance();
@@ -1147,6 +1159,10 @@ void CWaveSoapDocManager::OnFileOpen()
 	if (pApp->m_pWmaTypeTemplate)
 	{
 		_AfxAppendFilterSuffix(strFilter, dlgFile.m_ofn, pApp->m_pWmaTypeTemplate, NULL);
+	}
+	if (pApp->m_pAviTypeTemplate)
+	{
+		_AfxAppendFilterSuffix(strFilter, dlgFile.m_ofn, pApp->m_pAviTypeTemplate, NULL);
 	}
 	if (pApp->m_pAllWmTypeTemplate)
 	{

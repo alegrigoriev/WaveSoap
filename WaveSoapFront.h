@@ -182,6 +182,7 @@ public:
 	class CWaveSoapDocTemplate * m_pMP3TypeTemplate;
 	class CWaveSoapDocTemplate * m_pWavTypeTemplate;
 	class CWaveSoapDocTemplate * m_pWmaTypeTemplate;
+	class CWaveSoapDocTemplate * m_pAviTypeTemplate;
 	class CWaveSoapDocTemplate * m_pAllWmTypeTemplate;
 	class CWaveSoapDocTemplate * m_pRawTypeTemplate;
 
