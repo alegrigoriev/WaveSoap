@@ -12,20 +12,27 @@ Language=0x409 English (United States)
 
 [FILES]
 html\main_index.htm
-html\menu_file.htm
+html\File\menu_file.htm
 html\menu_edit.htm
 html\menu_view.htm
 html\menu_window.htm
 html\menu_help.htm
-html\hid_file_new.htm
-html\hid_file_open.htm
-html\afx_hidd_fileopen.htm
-html\hid_file_close.htm
-html\hid_file_save.htm
-html\hid_file_save_as.htm
-html\afx_hidd_filesave.htm
-html\hid_file_mru_file1.htm
-html\hid_app_exit.htm
+html\File\hid_file_new.htm
+html\File\file_new_from_clipboard.htm
+html\File\hid_file_open.htm
+html\File\hid_file_close.htm
+html\File\hid_file_save.htm
+html\File\hid_file_save_all.htm
+html\File\hid_file_save_as.htm
+html\File\hid_save_copy_as.htm
+html\File\hid_split_to_files.htm
+html\File\hid_file_properties.htm
+html\File\hid_file_statistics.htm
+html\File\hid_read_audio_cd.htm
+html\File\hid_file_mru_file1.htm
+html\File\hid_app_exit.htm
+html\Dialogs\FileSave\afx_hidd_filesave.htm
+html\Dialogs\FileOpen\afx_hidd_fileopen.htm
 html\hid_edit_undo.htm
 html\hid_edit_redo.htm
 html\hid_edit_cut.htm
@@ -75,25 +82,32 @@ html\hid_file_page_setup.htm
 
 [ALIAS]
 main_index = html\main_index.htm
-menu_file = html\menu_file.htm
+menu_file = html\File\menu_file.htm
 menu_edit = html\menu_edit.htm
 menu_view = html\menu_view.htm
 menu_window = html\menu_window.htm
 menu_help = html\menu_help.htm
-hid_file_new = html\hid_file_new.htm
-hid_file_open = html\hid_file_open.htm
-afx_hidd_fileopen = html\afx_hidd_fileopen.htm
-hid_file_close = html\hid_file_close.htm
-hid_file_save = html\hid_file_save.htm
-hid_file_save_as = html\hid_file_save_as.htm
-afx_hidd_filesave = html\afx_hidd_filesave.htm
-hid_file_mru_file1 = html\hid_file_mru_file1.htm
-hid_app_exit = html\hid_app_exit.htm
+hid_file_new = html\File\hid_file_new.htm
+hid_file_open = html\File\hid_file_open.htm
+afx_hidd_fileopen = html\Dialogs\FileOpen\afx_hidd_fileopen.htm
+hid_file_close = html\File\hid_file_close.htm
+hid_file_save = html\File\hid_file_save.htm
+hid_file_save_as = html\File\hid_file_save_as.htm
+hid_file_save_copy_as = html\File\hid_save_copy_as.htm
+hid_file_save_all = html\File\hid_file_save_all.htm
+hid_save_split_to_files = html\File\hid_split_to_files.htm
+hid_file_properties = html\File\hid_file_properties.htm
+hid_file_statistics = html\File\hid_file_statistics.htm
+afx_hidd_filesave = html\Dialogs\FileSave\afx_hidd_filesave.htm
+hid_tools_cdgrab = html\File\hid_read_audio_cd.htm
+hid_file_mru_file1 = html\File\hid_file_mru_file1.htm
+hid_app_exit = html\File\hid_app_exit.htm
 hid_edit_undo = html\hid_edit_undo.htm
 hid_edit_redo = html\hid_edit_redo.htm
 hid_edit_cut = html\hid_edit_cut.htm
 hid_edit_copy = html\hid_edit_copy.htm
 hid_edit_paste = html\hid_edit_paste.htm
+hid_edit_paste_new = html\File\file_new_from_clipboard.htm
 hid_view_toolbar = html\hid_view_toolbar.htm
 afx_hidw_toolbar = html\afx_hidw_toolbar.htm
 hid_view_status_bar = html\hid_view_status_bar.htm
