@@ -186,11 +186,17 @@ CWaveSoapFrontDoc::CWaveSoapFrontDoc()
 	m_ModificationSequenceNumber(0),
 	m_PrevChannelToCopy(ALL_CHANNELS),
 	m_DefaultPasteMode(0),
+	m_PasteResampleMode(0),
 	m_FileTypeFlags(0),
 	m_SelectedChannel(ALL_CHANNELS)
 {
 	m_bUndoEnabled = (FALSE != GetApp()->m_bUndoEnabled);
 	m_bRedoEnabled = (FALSE != GetApp()->m_bRedoEnabled);
+
+	CThisApp * pApp = GetApp();
+	m_DefaultPasteMode = pApp->m_DefaultPasteMode;
+	m_PasteResampleMode = pApp->m_PasteResampleMode;
+
 	m_Thread.m_bAutoDelete = FALSE;
 	m_hThreadEvent = CreateEvent(NULL, FALSE, FALSE, NULL);
 	TRACE("CWaveSoapFrontDoc::CWaveSoapFrontDoc()\n");
@@ -247,6 +253,9 @@ CWaveSoapFrontDoc::~CWaveSoapFrontDoc()
 	{
 		pApp->SetStatusStringAndDoc(_T(""), NULL);
 	}
+
+	pApp->m_DefaultPasteMode = m_DefaultPasteMode;
+	pApp->m_PasteResampleMode = m_PasteResampleMode;
 }
 
 NUMBER_OF_SAMPLES CWaveSoapFrontDoc::WaveFileSamples() const
@@ -1290,6 +1299,9 @@ void CWaveSoapFrontDoc::QueueOperation(COperationContext * pContext)
 void CWaveSoapFrontDoc::DoCopy(SAMPLE_INDEX Start, SAMPLE_INDEX End, CHANNEL_MASK Channel, LPCTSTR FileName)
 {
 	// create a operation context
+	TRACE("CWaveSoapFrontDoc::DoCopy Start=%d, End=%d, Channel=%x, FileName=%s\n",
+		Start, End, Channel, FileName);
+
 	CString OpName;
 	DWORD OpenFlags;
 	DWORD OperationFlags;
@@ -1318,7 +1330,7 @@ void CWaveSoapFrontDoc::DoCopy(SAMPLE_INDEX Start, SAMPLE_INDEX End, CHANNEL_MAS
 	}
 
 	// create a temporary clipboard WAV file
-	if (FALSE == DstFile.CreateWaveFile( & m_WavFile, NULL, m_SelectedChannel,
+	if (FALSE == DstFile.CreateWaveFile( & m_WavFile, NULL, Channel,
 										End - Start,
 										OpenFlags,
 										FileName))
@@ -1342,8 +1354,12 @@ void CWaveSoapFrontDoc::DoCopy(SAMPLE_INDEX Start, SAMPLE_INDEX End, CHANNEL_MAS
 
 void CWaveSoapFrontDoc::DoPaste(SAMPLE_INDEX Start, SAMPLE_INDEX End, CHANNEL_MASK Channel, LPCTSTR FileName)
 {
+	TRACE("DoPaste Start=%d, End=%d, Channel=%x, FileName=%s\n",
+		Start, End, Channel, FileName);
 	// create a operation context
 	CWaveFile * pSrcFile = & GetApp()->m_ClipboardFile;
+	CThisApp * pApp = GetApp();
+
 	// todo: support copy from a file (FileName)
 	if ( ! pSrcFile->IsOpen())
 	{
@@ -1359,53 +1375,54 @@ void CWaveSoapFrontDoc::DoPaste(SAMPLE_INDEX Start, SAMPLE_INDEX End, CHANNEL_MA
 
 	if (SrcSampleRate != TargetSampleRate)
 	{
-		CPasteResampleModeDlg dlg;
-		dlg.m_SrcSampleRate = SrcSampleRate;
-		dlg.m_TargetSampleRate = TargetSampleRate;
+		CPasteResampleModeDlg dlg(SrcSampleRate, TargetSampleRate, m_PasteResampleMode);
 
 		if (IDOK != dlg.DoModal())
 		{
 			return;
 		}
-		LONGLONG NumSamplesToPasteFrom64;
-		if (0 == dlg.m_ModeSelect)
+
+		m_PasteResampleMode = dlg.GetSelectedResampleMode();
+
+		if (0 == dlg.GetSelectedResampleMode())
 		{
+			LONGLONG NumSamplesToPasteFrom64;
 			// resample
 			NumSamplesToPasteFrom64 =
 				UInt32x32To64(NumSamplesToPasteFrom, TargetSampleRate) / SrcSampleRate;
-		}
-		if ( ! CanAllocateWaveFileSamplesDlg(WaveFormat(), NumSamplesToPasteFrom64))
-		{
-			return;
-		}
+			if ( ! CanAllocateWaveFileSamplesDlg(WaveFormat(), NumSamplesToPasteFrom64))
+			{
+				return;
+			}
 
-		NumSamplesToPasteFrom = NUMBER_OF_SAMPLES(NumSamplesToPasteFrom64);
-		pResampleContext = new CResampleContext(this, _T("Changing sample rate of clipboard data..."), _T("Resample"));
-		if (NULL == pResampleContext)
-		{
-			NotEnoughMemoryMessageBox();
-			return;
-		}
-		// create new temporary file
-		CWaveFile DstFile;
-		double ResampleQuality = 40.;
-		double ResampleRatio = double(TargetSampleRate) / SrcSampleRate;
+			NumSamplesToPasteFrom = NUMBER_OF_SAMPLES(NumSamplesToPasteFrom64);
+			pResampleContext = new CResampleContext(this, _T("Changing sample rate of clipboard data..."), _T("Resample"));
+			if (NULL == pResampleContext)
+			{
+				NotEnoughMemoryMessageBox();
+				return;
+			}
+			// create new temporary file
+			CWaveFile DstFile;
+			double ResampleQuality = 40.;
+			double ResampleRatio = double(TargetSampleRate) / SrcSampleRate;
 
-		if ( ! DstFile.CreateWaveFile(pSrcFile, NULL, ALL_CHANNELS, NumSamplesToPasteFrom,
-									CreateWaveFileTempDir
-									| CreateWaveFileDeleteAfterClose
-									| CreateWaveFilePcmFormat
-									| CreateWaveFileTemp,
-									NULL))
-		{
-			delete pResampleContext;
-			FileCreationErrorMessageBox(NULL);
-			return;
-		}
+			if ( ! DstFile.CreateWaveFile(pSrcFile, NULL, ALL_CHANNELS, NumSamplesToPasteFrom,
+										CreateWaveFileTempDir
+										| CreateWaveFileDeleteAfterClose
+										| CreateWaveFilePcmFormat
+										| CreateWaveFileTemp,
+										NULL))
+			{
+				delete pResampleContext;
+				FileCreationErrorMessageBox(NULL);
+				return;
+			}
 
-		DstFile.GetWaveFormat()->nSamplesPerSec = TargetSampleRate;
-		pResampleContext->InitResample(*pSrcFile, DstFile, ResampleRatio, ResampleQuality);
-		pSrcFile = & pResampleContext->m_DstFile;
+			DstFile.GetWaveFormat()->nSamplesPerSec = TargetSampleRate;
+			pResampleContext->InitResample(*pSrcFile, DstFile, ResampleRatio, ResampleQuality);
+			pSrcFile = & pResampleContext->m_DstFile;
+		}
 	}
 
 	if (End > Start)
