@@ -573,13 +573,13 @@ CWaveFormat & CWaveFormat::operator =(WAVEFORMATEX const * pWf)
 		if (WAVE_FORMAT_PCM == pWf->wFormatTag)
 		{
 			Allocate(0);
-			memcpy(m_pWf, pWf, sizeof (PCMWAVEFORMAT));
+			memcpy(m_pWf, pWf, sizeof (WAVEFORMATEX));
 			m_pWf->cbSize = 0;
 		}
 		else
 		{
 			Allocate(pWf->cbSize);
-			memcpy(m_pWf, pWf, pWf->cbSize + sizeof WAVEFORMATEX);
+			memcpy(m_pWf, pWf, pWf->cbSize + sizeof (WAVEFORMATEX));
 		}
 	}
 	return *this;
