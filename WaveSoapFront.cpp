@@ -2395,25 +2395,26 @@ BOOL CanExpandWaveFileDlg(const CWaveFile & WaveFile, NUMBER_OF_SAMPLES NumOfSam
 
 void CWaveSoapFrontApp::OnToolsOptions()
 {
-	CPreferencesPropertySheet dlg(IDS_OPTIONS_CAPTION);
+	CPreferencesPropertySheet dlg(IDS_OPTIONS_CAPTION, NULL, m_LastPrefsPropertyPageSelected);
 	dlg.m_FilePage.m_sTempFileLocation = m_sTempDir;
-	dlg.m_FilePage.m_bEnableUndo = m_bUndoEnabled;
-	dlg.m_FilePage.m_bEnableRedo = m_bRedoEnabled;
-	dlg.m_FilePage.m_UndoDepthLimit = m_MaxUndoDepth;
-	dlg.m_FilePage.m_RedoDepthLimit = m_MaxRedoDepth;
-	dlg.m_FilePage.m_UndoSizeLimit = m_MaxUndoSize / 0x100000;
-	dlg.m_FilePage.m_RedoSizeLimit = m_MaxRedoSize / 0x100000;
-	dlg.m_FilePage.m_bLimitUndoSize = m_bEnableUndoLimit;
-	dlg.m_FilePage.m_bLimitRedoSize = m_bEnableRedoLimit;
-	dlg.m_FilePage.m_bLimitUndoDepth = m_bEnableUndoDepthLimit;
-	dlg.m_FilePage.m_bLimitRedoDepth = m_bEnableRedoDepthLimit;
-	dlg.m_FilePage.m_bRememberSelectionInUndo = m_bRememberSelectionInUndo;
 	dlg.m_FilePage.m_DefaultFileOpenMode = m_DefaultOpenMode;
 	dlg.m_FilePage.m_bEnable4GbWavFile = m_bAllow4GbWavFile;
 
 	dlg.m_FilePage.m_MaxMemoryFileSize = m_MaxMemoryFileSize;
 	dlg.m_FilePage.m_MaxFileCache = m_MaxFileCache;
 	dlg.m_FilePage.m_FileTextEncoding = CMmioFile::m_TextEncodingInFiles;
+
+	dlg.m_UndoPage.m_bEnableUndo = m_bUndoEnabled;
+	dlg.m_UndoPage.m_bEnableRedo = m_bRedoEnabled;
+	dlg.m_UndoPage.m_UndoDepthLimit = m_MaxUndoDepth;
+	dlg.m_UndoPage.m_RedoDepthLimit = m_MaxRedoDepth;
+	dlg.m_UndoPage.m_UndoSizeLimit = m_MaxUndoSize / 0x100000;
+	dlg.m_UndoPage.m_RedoSizeLimit = m_MaxRedoSize / 0x100000;
+	dlg.m_UndoPage.m_bLimitUndoSize = m_bEnableUndoLimit;
+	dlg.m_UndoPage.m_bLimitRedoSize = m_bEnableRedoLimit;
+	dlg.m_UndoPage.m_bLimitUndoDepth = m_bEnableUndoDepthLimit;
+	dlg.m_UndoPage.m_bLimitRedoDepth = m_bEnableRedoDepthLimit;
+	dlg.m_UndoPage.m_bRememberSelectionInUndo = m_bRememberSelectionInUndo;
 
 	dlg.m_SoundPage.m_PlaybackDevice = m_DefaultPlaybackDevice + 1;
 	dlg.m_SoundPage.m_NumPlaybackBuffers = m_NumPlaybackBuffers;
@@ -2423,36 +2424,35 @@ void CWaveSoapFrontApp::OnToolsOptions()
 	dlg.m_SoundPage.m_NumRecordingBuffers = m_NumRecordBuffers;
 	dlg.m_SoundPage.m_RecordingBufferSize = m_SizeRecordBuffers / 1024;
 
-	dlg.m_PageSelected = m_LastPrefsPropertyPageSelected;
-
 	dlg.m_ViewPage.m_bSnapMouseSelection = m_bSnapMouseSelectionToMax;
 
 	if (IDOK == dlg.DoModal())
 	{
 		m_sTempDir = dlg.m_FilePage.m_sTempFileLocation;
 
-		m_bUndoEnabled = dlg.m_FilePage.m_bEnableUndo;
-		m_bRedoEnabled = dlg.m_FilePage.m_bEnableRedo;
-
-		m_MaxUndoDepth = dlg.m_FilePage.m_UndoDepthLimit;
-		m_MaxRedoDepth = dlg.m_FilePage.m_RedoDepthLimit;
-
-		m_MaxUndoSize = dlg.m_FilePage.m_UndoSizeLimit * 0x100000;
-		m_MaxRedoSize = dlg.m_FilePage.m_RedoSizeLimit * 0x100000;
-
-		m_bEnableUndoLimit = dlg.m_FilePage.m_bLimitUndoSize;
-		m_bEnableRedoLimit = dlg.m_FilePage.m_bLimitRedoSize;
-
-		m_bEnableUndoDepthLimit = dlg.m_FilePage.m_bLimitUndoDepth;
-		m_bEnableRedoDepthLimit = dlg.m_FilePage.m_bLimitRedoDepth;
-
-		m_bRememberSelectionInUndo = dlg.m_FilePage.m_bRememberSelectionInUndo;
 		m_DefaultOpenMode = dlg.m_FilePage.m_DefaultFileOpenMode;
 
 		m_bAllow4GbWavFile = (0 != dlg.m_FilePage.m_bEnable4GbWavFile);
 		m_MaxMemoryFileSize = dlg.m_FilePage.m_MaxMemoryFileSize;
 		m_MaxFileCache = dlg.m_FilePage.m_MaxFileCache;
 		CMmioFile::m_TextEncodingInFiles = dlg.m_FilePage.m_FileTextEncoding;
+
+		m_bUndoEnabled = dlg.m_UndoPage.m_bEnableUndo;
+		m_bRedoEnabled = dlg.m_UndoPage.m_bEnableRedo;
+
+		m_MaxUndoDepth = dlg.m_UndoPage.m_UndoDepthLimit;
+		m_MaxRedoDepth = dlg.m_UndoPage.m_RedoDepthLimit;
+
+		m_MaxUndoSize = dlg.m_UndoPage.m_UndoSizeLimit * 0x100000;
+		m_MaxRedoSize = dlg.m_UndoPage.m_RedoSizeLimit * 0x100000;
+
+		m_bEnableUndoLimit = dlg.m_UndoPage.m_bLimitUndoSize;
+		m_bEnableRedoLimit = dlg.m_UndoPage.m_bLimitRedoSize;
+
+		m_bEnableUndoDepthLimit = dlg.m_UndoPage.m_bLimitUndoDepth;
+		m_bEnableRedoDepthLimit = dlg.m_UndoPage.m_bLimitRedoDepth;
+
+		m_bRememberSelectionInUndo = dlg.m_UndoPage.m_bRememberSelectionInUndo;
 
 		m_DefaultPlaybackDevice = dlg.m_SoundPage.m_PlaybackDevice - 1;
 		m_NumPlaybackBuffers = dlg.m_SoundPage.m_NumPlaybackBuffers;
@@ -2462,7 +2462,7 @@ void CWaveSoapFrontApp::OnToolsOptions()
 		m_NumRecordBuffers = dlg.m_SoundPage.m_NumRecordingBuffers;
 		m_SizeRecordBuffers = dlg.m_SoundPage.m_RecordingBufferSize * 1024;
 
-		m_LastPrefsPropertyPageSelected = dlg.m_PageSelected;
+		m_LastPrefsPropertyPageSelected = dlg.GetLastSelectedPage();
 
 		m_bSnapMouseSelectionToMax = dlg.m_ViewPage.m_bSnapMouseSelection;
 	}

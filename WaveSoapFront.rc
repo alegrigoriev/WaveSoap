@@ -1823,7 +1823,7 @@ BEGIN
                     CBS_AUTOHSCROLL | WS_VSCROLL | WS_TABSTOP
 END
 
-IDD_PROPPAGE_FILE_PREFERENCES DIALOGEX 0, 0, 267, 235
+IDD_PROPPAGE_FILE_PREFERENCES DIALOGEX 0, 0, 219, 168
 STYLE DS_SETFONT | DS_FIXEDSYS | WS_CHILD | WS_DISABLED | WS_CAPTION
 CAPTION "File"
 FONT 8, "MS Shell Dlg", 0, 0, 0x0
@@ -1852,48 +1852,17 @@ BEGIN
     LTEXT           "Max file &cache size:",IDC_STATIC,7,105,65,8
     EDITTEXT        IDC_EDIT_MAX_FILE_CACHE,84,104,32,14,ES_AUTOHSCROLL
     LTEXT           "MB",IDC_STATIC,128,107,14,8
-    GROUPBOX        "&Undo",IDC_STATIC,7,122,120,57,WS_GROUP
-    CONTROL         "Enable",IDC_CHECK_ENABLE_UNDO,"Button",BS_AUTOCHECKBOX | 
-                    WS_TABSTOP,11,132,56,10
-    CONTROL         "Limit total size:",IDC_CHECK_LIMIT_UNDO,"Button",
-                    BS_AUTOCHECKBOX | WS_TABSTOP,11,147,67,10
-    EDITTEXT        IDC_EDIT_UNDO_LIMIT,82,146,25,13,ES_AUTOHSCROLL | 
-                    ES_NUMBER
-    LTEXT           "MB",IDC_STATIC,110,147,14,8
-    CONTROL         "Limit depth:",IDC_CHECK_LIMIT_UNDO_DEPTH,"Button",
-                    BS_AUTOCHECKBOX | WS_TABSTOP,11,162,60,10
-    EDITTEXT        IDC_EDIT_UNDO_DEPTH_LIMIT,82,161,33,13,ES_AUTOHSCROLL | 
-                    ES_NUMBER
-    CONTROL         "Spin1",IDC_SPIN_UNDO_DEPTH,"msctls_updown32",
-                    UDS_SETBUDDYINT | UDS_ALIGNRIGHT | UDS_AUTOBUDDY | 
-                    UDS_ARROWKEYS,114,160,10,14
-    GROUPBOX        "&Redo",IDC_STATIC,135,122,123,57
-    CONTROL         "Enable",IDC_CHECK_ENABLE_REDO,"Button",BS_AUTOCHECKBOX | 
-                    WS_TABSTOP,139,133,62,10
-    CONTROL         "Limit total size:",IDC_CHECK_LIMIT_REDO_SIZE,"Button",
-                    BS_AUTOCHECKBOX | WS_TABSTOP,139,148,67,10
-    EDITTEXT        IDC_EDIT_REDO_SIZE_LIMIT,210,146,25,13,ES_AUTOHSCROLL
-    LTEXT           "MB",IDC_STATIC,238,147,15,8
-    CONTROL         "Limit depth:",IDC_CHECK_LIMIT_REDO_DEPTH,"Button",
-                    BS_AUTOCHECKBOX | WS_TABSTOP,139,163,55,10
-    EDITTEXT        IDC_EDIT_REDO_DEPTH_LIMIT,210,161,33,13,ES_AUTOHSCROLL
-    CONTROL         "Spin1",IDC_SPIN_REDO_LIMIT,"msctls_updown32",
-                    UDS_SETBUDDYINT | UDS_ALIGNRIGHT | UDS_AUTOBUDDY | 
-                    UDS_ARROWKEYS,246,160,10,14
-    CONTROL         "Remember current &selection in Undo/Redo",
-                    IDC_CHECK_REMEMBER_SELECTION_IN_UNDO,"Button",
-                    BS_AUTOCHECKBOX | WS_TABSTOP,11,184,170,10
-    CONTROL         "Read &only",IDC_RADIO_OPEN_FILE_MODE,"Button",
-                    BS_AUTORADIOBUTTON | WS_GROUP | WS_TABSTOP,10,211,51,10
-    CONTROL         "&Direct edit",IDC_RADIO2,"Button",BS_AUTORADIOBUTTON,71,
-                    211,57,10
-    CONTROL         "&Buffered",IDC_RADIO3,"Button",BS_AUTORADIOBUTTON,132,
-                    211,49,10
     GROUPBOX        "Open files from command line and drag-and-drop as:",
-                    IDC_STATIC,7,200,186,27
+                    IDC_STATIC,7,130,186,27
+    CONTROL         "Read &only",IDC_RADIO_OPEN_FILE_MODE,"Button",
+                    BS_AUTORADIOBUTTON | WS_GROUP | WS_TABSTOP,10,141,51,10
+    CONTROL         "&Direct edit",IDC_RADIO2,"Button",BS_AUTORADIOBUTTON,71,
+                    141,57,10
+    CONTROL         "&Buffered",IDC_RADIO3,"Button",BS_AUTORADIOBUTTON,132,
+                    141,49,10
 END
 
-IDD_PROPPAGE_VIEW_PREFERENCES DIALOGEX 0, 0, 210, 154
+IDD_PROPPAGE_VIEW_PREFERENCES DIALOGEX 0, 0, 207, 155
 STYLE DS_SETFONT | DS_FIXEDSYS | WS_CHILD | WS_DISABLED | WS_CAPTION
 CAPTION "View"
 FONT 8, "MS Shell Dlg", 0, 0, 0x0
@@ -1904,38 +1873,38 @@ BEGIN
                     WS_TABSTOP,9,131,142,10
 END
 
-IDD_PROPPAGE_SOUND_PREFERENCES DIALOGEX 0, 0, 210, 191
+IDD_PROPPAGE_SOUND_PREFERENCES DIALOGEX 0, 0, 211, 174
 STYLE DS_SETFONT | DS_FIXEDSYS | WS_CHILD | WS_DISABLED | WS_CAPTION
 CAPTION "Sound"
 FONT 8, "MS Shell Dlg", 0, 0, 0x0
 BEGIN
     GROUPBOX        "&Playback",IDC_STATIC,7,7,197,72
-    LTEXT           "Device:",IDC_STATIC,9,19,32,8
-    COMBOBOX        IDC_COMBO_PLAYBACK_DEVICE,42,17,157,38,CBS_DROPDOWNLIST | 
+    LTEXT           "Device:",IDC_STATIC,9,19,37,8
+    COMBOBOX        IDC_COMBO_PLAYBACK_DEVICE,49,17,153,38,CBS_DROPDOWNLIST | 
                     WS_VSCROLL | WS_TABSTOP
-    LTEXT           "Buffer size:",IDC_STATIC,9,44,59,8
-    EDITTEXT        IDC_EDIT_PLAYBACK_BUF_SIZE,76,41,40,14,ES_AUTOHSCROLL | 
+    LTEXT           "Buffer size:",IDC_STATIC,9,44,78,8
+    EDITTEXT        IDC_EDIT_PLAYBACK_BUF_SIZE,92,41,40,14,ES_AUTOHSCROLL | 
                     ES_NUMBER
-    LTEXT           "kB",IDC_STATIC,121,44,13,8
-    LTEXT           "Number of buffers:",IDC_STATIC,9,62,65,8
-    EDITTEXT        IDC_EDIT_NUM_PLAYBACK_BUFFERS,76,59,40,14,ES_AUTOHSCROLL | 
+    LTEXT           "kB",IDC_STATIC,137,44,13,8
+    LTEXT           "Number of buffers:",IDC_STATIC,9,62,78,8
+    EDITTEXT        IDC_EDIT_NUM_PLAYBACK_BUFFERS,92,59,40,14,ES_AUTOHSCROLL | 
                     ES_NUMBER
     CONTROL         "Spin1",IDC_SPIN_NUM_PLAYBACK_BUFFERS,"msctls_updown32",
-                    UDS_SETBUDDYINT | UDS_AUTOBUDDY | UDS_ARROWKEYS,115,59,8,
+                    UDS_SETBUDDYINT | UDS_AUTOBUDDY | UDS_ARROWKEYS,131,59,8,
                     14
     GROUPBOX        "&Recording",IDC_STATIC,7,86,197,72
-    LTEXT           "Device:",IDC_STATIC,10,98,31,8
-    COMBOBOX        IDC_COMBO_RECORDING_DEVICE,42,96,157,37,CBS_DROPDOWNLIST | 
+    LTEXT           "Device:",IDC_STATIC,10,98,37,8
+    COMBOBOX        IDC_COMBO_RECORDING_DEVICE,49,96,153,37,CBS_DROPDOWNLIST | 
                     WS_VSCROLL | WS_TABSTOP
-    LTEXT           "Buffer size:",IDC_STATIC,10,123,59,8
-    EDITTEXT        IDC_EDIT_RECORDING_BUF_SIZE,77,120,40,14,ES_AUTOHSCROLL | 
+    LTEXT           "Buffer size:",IDC_STATIC,10,123,78,8
+    EDITTEXT        IDC_EDIT_RECORDING_BUF_SIZE,92,120,40,14,ES_AUTOHSCROLL | 
                     ES_NUMBER
-    LTEXT           "kB",IDC_STATIC,121,123,13,8
-    LTEXT           "Number of buffers:",IDC_STATIC,10,141,66,8
-    EDITTEXT        IDC_EDIT_NUM_RECORDING_BUFFERS,77,138,40,14,
+    LTEXT           "kB",IDC_STATIC,136,123,13,8
+    LTEXT           "Number of buffers:",IDC_STATIC,10,141,78,8
+    EDITTEXT        IDC_EDIT_NUM_RECORDING_BUFFERS,92,138,40,14,
                     ES_AUTOHSCROLL | ES_NUMBER
     CONTROL         "Spin1",IDC_SPIN_NUM_RECORDING_BUFFERS,"msctls_updown32",
-                    UDS_SETBUDDYINT | UDS_AUTOBUDDY | UDS_ARROWKEYS,116,138,
+                    UDS_SETBUDDYINT | UDS_AUTOBUDDY | UDS_ARROWKEYS,131,138,
                     8,14
 END
 
@@ -2467,6 +2436,46 @@ BEGIN
     PUSHBUTTON      "&Delete",IDC_BUTTON_DELETE,301,36,50,14
 END
 
+IDD_PROPPAGE_UNDO_PREFERENCES DIALOGEX 0, 0, 202, 174
+STYLE DS_SETFONT | DS_FIXEDSYS | WS_CHILD | WS_DISABLED | WS_CAPTION
+CAPTION "Undo/Redo"
+FONT 8, "MS Shell Dlg", 0, 0, 0x0
+BEGIN
+    GROUPBOX        "&Undo",IDC_STATIC,7,15,149,57,WS_GROUP
+    CONTROL         "Enable",IDC_CHECK_ENABLE_UNDO,"Button",BS_AUTOCHECKBOX | 
+                    WS_TABSTOP,11,25,56,10
+    CONTROL         "Limit total size:",IDC_CHECK_LIMIT_UNDO,"Button",
+                    BS_AUTOCHECKBOX | WS_TABSTOP,11,40,83,10
+    EDITTEXT        IDC_EDIT_UNDO_LIMIT,99,39,25,13,ES_AUTOHSCROLL | 
+                    ES_NUMBER
+    LTEXT           "MB",IDC_STATIC,127,40,14,8
+    CONTROL         "Limit depth:",IDC_CHECK_LIMIT_UNDO_DEPTH,"Button",
+                    BS_AUTOCHECKBOX | WS_TABSTOP,11,55,83,10
+    EDITTEXT        IDC_EDIT_UNDO_DEPTH_LIMIT,99,54,33,13,ES_AUTOHSCROLL | 
+                    ES_NUMBER
+    CONTROL         "Spin1",IDC_SPIN_UNDO_DEPTH,"msctls_updown32",
+                    UDS_SETBUDDYINT | UDS_ALIGNRIGHT | UDS_AUTOBUDDY | 
+                    UDS_ARROWKEYS,131,53,12,14
+    GROUPBOX        "&Redo",IDC_STATIC,7,77,148,57
+    CONTROL         "Enable",IDC_CHECK_ENABLE_REDO,"Button",BS_AUTOCHECKBOX | 
+                    WS_TABSTOP,11,88,62,10
+    CONTROL         "Limit total size:",IDC_CHECK_LIMIT_REDO_SIZE,"Button",
+                    BS_AUTOCHECKBOX | WS_TABSTOP,11,103,83,10
+    EDITTEXT        IDC_EDIT_REDO_SIZE_LIMIT,99,101,25,13,ES_AUTOHSCROLL
+    LTEXT           "MB",IDC_STATIC,127,102,15,8
+    CONTROL         "Limit depth:",IDC_CHECK_LIMIT_REDO_DEPTH,"Button",
+                    BS_AUTOCHECKBOX | WS_TABSTOP,11,118,83,10
+    EDITTEXT        IDC_EDIT_REDO_DEPTH_LIMIT,99,116,33,13,ES_AUTOHSCROLL
+    CONTROL         "Spin1",IDC_SPIN_REDO_LIMIT,"msctls_updown32",
+                    UDS_SETBUDDYINT | UDS_ALIGNRIGHT | UDS_AUTOBUDDY | 
+                    UDS_ARROWKEYS,131,115,12,14
+    CONTROL         "Remember current &selection in Undo/Redo",
+                    IDC_CHECK_REMEMBER_SELECTION_IN_UNDO,"Button",
+                    BS_AUTOCHECKBOX | WS_TABSTOP,7,157,170,10
+    LTEXT           "Undo/Redo limits are accounted per open file",
+                    IDC_STATIC,7,137,150,17
+END
+
 
 /////////////////////////////////////////////////////////////////////////////
 //
@@ -2744,25 +2753,25 @@ BEGIN
     IDD_PROPPAGE_FILE_PREFERENCES, DIALOG
     BEGIN
         LEFTMARGIN, 7
-        RIGHTMARGIN, 260
+        RIGHTMARGIN, 212
         TOPMARGIN, 7
-        BOTTOMMARGIN, 228
+        BOTTOMMARGIN, 161
     END
 
     IDD_PROPPAGE_VIEW_PREFERENCES, DIALOG
     BEGIN
         LEFTMARGIN, 7
-        RIGHTMARGIN, 203
+        RIGHTMARGIN, 200
         TOPMARGIN, 7
-        BOTTOMMARGIN, 147
+        BOTTOMMARGIN, 148
     END
 
     IDD_PROPPAGE_SOUND_PREFERENCES, DIALOG
     BEGIN
         LEFTMARGIN, 7
-        RIGHTMARGIN, 203
+        RIGHTMARGIN, 204
         TOPMARGIN, 7
-        BOTTOMMARGIN, 184
+        BOTTOMMARGIN, 167
     END
 
     IDD_DIALOG_REOPEN_COMPRESSED, DIALOG
@@ -2910,6 +2919,14 @@ BEGIN
         RIGHTMARGIN, 351
         TOPMARGIN, 7
         BOTTOMMARGIN, 304
+    END
+
+    IDD_PROPPAGE_UNDO_PREFERENCES, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 195
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 167
     END
 END
 #endif    // APSTUDIO_INVOKED
@@ -3402,7 +3419,7 @@ BEGIN
                             "Revert all changes to return the file to the state before open"
     ID_EDIT_UNDO_ALL_CHANGES 
                             "Undo all changes to return the file to the last saved state\nUndo all"
-    ID_EDIT_MORE_UNDO_REDO  "Shows information about undo/redo size, sets undo/redo options\nMore Undo/Redo"
+    ID_EDIT_MORE_UNDO_REDO  "Shows information about undo/redo size and sets undo/redo options\nMore Undo/Redo"
 END
 
 STRINGTABLE 

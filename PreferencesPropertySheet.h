@@ -27,22 +27,10 @@ public:
 // Dialog Data
 	//{{AFX_DATA(CFilePreferencesPage)
 	enum { IDD = IDD_PROPPAGE_FILE_PREFERENCES };
-	CSpinButtonCtrl	m_SpinUndoLimit;
-	CSpinButtonCtrl	m_SpinRedoLimit;
 	CEdit	m_eTempFileLocation;
-	BOOL	m_bEnableRedo;
-	BOOL	m_bEnableUndo;
-	BOOL	m_bLimitRedoDepth;
-	BOOL	m_bLimitRedoSize;
-	BOOL	m_bLimitUndoSize;
-	BOOL	m_bLimitUndoDepth;
-	BOOL	m_bRememberSelectionInUndo;
-	UINT	m_RedoDepthLimit;
-	UINT	m_RedoSizeLimit;
+
 	CString	m_sTempFileLocation;
 	UINT	m_MaxMemoryFileSize;
-	UINT	m_UndoDepthLimit;
-	UINT	m_UndoSizeLimit;
 	int		m_DefaultFileOpenMode;
 	int		m_bEnable4GbWavFile;
 	UINT	m_MaxFileCache;
@@ -62,7 +50,6 @@ protected:
 	// Generated message map functions
 	//{{AFX_MSG(CFilePreferencesPage)
 	afx_msg void OnButtonBrowseTempFileLocation();
-	virtual BOOL OnInitDialog();
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 
@@ -148,6 +135,40 @@ protected:
 	DECLARE_MESSAGE_MAP()
 
 };
+/////////////////////////////////////////////////
+// CUndoPropertyPage dialog
+
+class CUndoPropertyPage : public CPropertyPage
+{
+	typedef CPropertyPage BaseClass;
+	DECLARE_DYNAMIC(CUndoPropertyPage)
+
+public:
+	CUndoPropertyPage();
+	virtual ~CUndoPropertyPage();
+
+// Dialog Data
+	enum { IDD = IDD_PROPPAGE_UNDO_PREFERENCES };
+	CSpinButtonCtrl	m_SpinUndoLimit;
+	CSpinButtonCtrl	m_SpinRedoLimit;
+	BOOL	m_bEnableRedo;
+	BOOL	m_bEnableUndo;
+	BOOL	m_bLimitRedoDepth;
+	BOOL	m_bLimitRedoSize;
+	BOOL	m_bLimitUndoSize;
+	BOOL	m_bLimitUndoDepth;
+	BOOL	m_bRememberSelectionInUndo;
+	UINT	m_RedoDepthLimit;
+	UINT	m_RedoSizeLimit;
+	UINT	m_UndoDepthLimit;
+	UINT	m_UndoSizeLimit;
+
+protected:
+	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV support
+	virtual BOOL OnInitDialog();
+
+	DECLARE_MESSAGE_MAP()
+};
 /////////////////////////////////////////////////////////////////////////////
 // CPreferencesPropertySheet
 
@@ -162,7 +183,10 @@ public:
 
 // Attributes
 public:
-
+	int GetLastSelectedPage() const
+	{
+		return m_PageSelected;
+	}
 // Operations
 public:
 
@@ -171,25 +195,27 @@ public:
 	//{{AFX_VIRTUAL(CPreferencesPropertySheet)
 	//}}AFX_VIRTUAL
 
-// Implementation
-	CFilePreferencesPage m_FilePage;
-	CSoundPreferencesPage m_SoundPage;
-	CViewPreferencesPage m_ViewPage;
-	int m_PageSelected;
 public:
 	virtual ~CPreferencesPropertySheet();
 
-	// Generated message map functions
+// Implementation
+	CFilePreferencesPage m_FilePage;
+	CUndoPropertyPage m_UndoPage;
+	CSoundPreferencesPage m_SoundPage;
+	CViewPreferencesPage m_ViewPage;
 protected:
+	int m_PageSelected;
+	// Generated message map functions
 	//{{AFX_MSG(CPreferencesPropertySheet)
 	// NOTE - the ClassWizard will add and remove member functions here.
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
-public:
-	virtual BOOL OnInitDialog();
+
 protected:
 	virtual BOOL OnWndMsg(UINT message, WPARAM wParam, LPARAM lParam, LRESULT* pResult);
 };
+
+
 
 //{{AFX_INSERT_LOCATION}}
 // Microsoft Visual C++ will insert additional declarations immediately before the previous line.

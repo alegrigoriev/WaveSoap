@@ -6,7 +6,6 @@
 #include "WaveSoapFront.h"
 #include "PreferencesPropertySheet.h"
 #include "FolderDialog.h"
-#include ".\preferencespropertysheet.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -21,19 +20,22 @@ IMPLEMENT_DYNAMIC(CPreferencesPropertySheet, CPropertySheet)
 
 CPreferencesPropertySheet::CPreferencesPropertySheet(UINT nIDCaption, CWnd* pParentWnd, UINT iSelectPage)
 	:CPropertySheet(nIDCaption, pParentWnd, iSelectPage)
-	, m_PageSelected(0)
+	, m_PageSelected(iSelectPage)
 {
 	m_psh.dwFlags |= PSH_NOAPPLYNOW;
 	AddPage( & m_FilePage);
+	AddPage( & m_UndoPage);
 	AddPage( & m_SoundPage);
 	AddPage( & m_ViewPage);
 }
 
 CPreferencesPropertySheet::CPreferencesPropertySheet(LPCTSTR pszCaption, CWnd* pParentWnd, UINT iSelectPage)
 	:CPropertySheet(pszCaption, pParentWnd, iSelectPage)
+	, m_PageSelected(iSelectPage)
 {
 	m_psh.dwFlags |= PSH_NOAPPLYNOW;
 	AddPage( & m_FilePage);
+	AddPage( & m_UndoPage);
 	AddPage( & m_SoundPage);
 	AddPage( & m_ViewPage);
 }
@@ -51,20 +53,6 @@ END_MESSAGE_MAP()
 /////////////////////////////////////////////////////////////////////////////
 // CPreferencesPropertySheet message handlers
 /////////////////////////////////////////////////////////////////////////////
-
-BOOL CPreferencesPropertySheet::OnInitDialog()
-{
-	BOOL bResult = CPropertySheet::OnInitDialog();
-
-	if (unsigned(m_PageSelected) >= unsigned(GetPageCount()))
-	{
-		m_PageSelected = 0;
-	}
-
-	SetActivePage(m_PageSelected);
-
-	return bResult;
-}
 
 BOOL CPreferencesPropertySheet::OnWndMsg(UINT message, WPARAM wParam, LPARAM lParam, LRESULT* pResult)
 {
@@ -86,19 +74,8 @@ CFilePreferencesPage::CFilePreferencesPage()
 	: BaseClass(CFilePreferencesPage::IDD)
 {
 	//{{AFX_DATA_INIT(CFilePreferencesPage)
-	m_bEnableRedo = FALSE;
-	m_bEnableUndo = FALSE;
-	m_bLimitRedoDepth = FALSE;
-	m_bLimitRedoSize = FALSE;
-	m_bLimitUndoSize = FALSE;
-	m_bLimitUndoDepth = FALSE;
-	m_bRememberSelectionInUndo = FALSE;
-	m_RedoDepthLimit = 0;
-	m_RedoSizeLimit = 0;
 	m_sTempFileLocation = _T("");
 	m_MaxMemoryFileSize = 0;
-	m_UndoDepthLimit = 0;
-	m_UndoSizeLimit = 0;
 	m_DefaultFileOpenMode = -1;
 	m_bEnable4GbWavFile = -1;
 	m_MaxFileCache = 0;
@@ -114,27 +91,10 @@ void CFilePreferencesPage::DoDataExchange(CDataExchange* pDX)
 {
 	BaseClass::DoDataExchange(pDX);
 	//{{AFX_DATA_MAP(CFilePreferencesPage)
-	DDX_Control(pDX, IDC_SPIN_UNDO_DEPTH, m_SpinUndoLimit);
-	DDX_Control(pDX, IDC_SPIN_REDO_LIMIT, m_SpinRedoLimit);
 	DDX_Control(pDX, IDC_EDIT_TEMP_FILE_LOCATION, m_eTempFileLocation);
-	DDX_Check(pDX, IDC_CHECK_ENABLE_REDO, m_bEnableRedo);
-	DDX_Check(pDX, IDC_CHECK_ENABLE_UNDO, m_bEnableUndo);
-	DDX_Check(pDX, IDC_CHECK_LIMIT_REDO_DEPTH, m_bLimitRedoDepth);
-	DDX_Check(pDX, IDC_CHECK_LIMIT_REDO_SIZE, m_bLimitRedoSize);
-	DDX_Check(pDX, IDC_CHECK_LIMIT_UNDO, m_bLimitUndoSize);
-	DDX_Check(pDX, IDC_CHECK_LIMIT_UNDO_DEPTH, m_bLimitUndoDepth);
-	DDX_Check(pDX, IDC_CHECK_REMEMBER_SELECTION_IN_UNDO, m_bRememberSelectionInUndo);
-	DDX_Text(pDX, IDC_EDIT_REDO_DEPTH_LIMIT, m_RedoDepthLimit);
-	DDV_MinMaxUInt(pDX, m_RedoDepthLimit, 1, 200);
-	DDX_Text(pDX, IDC_EDIT_REDO_SIZE_LIMIT, m_RedoSizeLimit);
-	DDV_MinMaxUInt(pDX, m_RedoSizeLimit, 1, 2047);
 	DDX_Text(pDX, IDC_EDIT_TEMP_FILE_LOCATION, m_sTempFileLocation);
 	DDX_Text(pDX, IDC_EDIT_TEMP_MEMORY_FILE_LIMIT, m_MaxMemoryFileSize);
 	DDV_MinMaxUInt(pDX, m_MaxMemoryFileSize, 1, 4096);
-	DDX_Text(pDX, IDC_EDIT_UNDO_DEPTH_LIMIT, m_UndoDepthLimit);
-	DDV_MinMaxUInt(pDX, m_UndoDepthLimit, 1, 200);
-	DDX_Text(pDX, IDC_EDIT_UNDO_LIMIT, m_UndoSizeLimit);
-	DDV_MinMaxUInt(pDX, m_UndoSizeLimit, 1, 2047);
 	DDX_Radio(pDX, IDC_RADIO_OPEN_FILE_MODE, m_DefaultFileOpenMode);
 	DDX_Radio(pDX, IDC_RADIO_WAV_SIZE, m_bEnable4GbWavFile);
 	DDX_Text(pDX, IDC_EDIT_MAX_FILE_CACHE, m_MaxFileCache);
@@ -167,16 +127,6 @@ void CFilePreferencesPage::OnButtonBrowseTempFileLocation()
 		// TODO: check permissiong in callback
 		m_eTempFileLocation.SetWindowText(m_sTempFileLocation);
 	}
-}
-
-BOOL CFilePreferencesPage::OnInitDialog()
-{
-	BaseClass::OnInitDialog();
-
-	m_SpinUndoLimit.SetRange(1, 200);
-	m_SpinRedoLimit.SetRange(1, 200);
-	return TRUE;  // return TRUE unless you set the focus to a control
-	// EXCEPTION: OCX Property Pages should return FALSE
 }
 
 // CSoundPreferencesPage property page
@@ -314,3 +264,64 @@ END_MESSAGE_MAP()
 /////////////////////////////////////////////////////////////////////////////
 // CViewPreferencesPage message handlers
 
+// CUndoPropertyPage dialog
+
+IMPLEMENT_DYNAMIC(CUndoPropertyPage, CPropertyPage)
+CUndoPropertyPage::CUndoPropertyPage()
+	: CPropertyPage(CUndoPropertyPage::IDD)
+{
+	m_bEnableRedo = FALSE;
+	m_bEnableUndo = FALSE;
+	m_bLimitRedoDepth = FALSE;
+	m_bLimitRedoSize = FALSE;
+	m_bLimitUndoSize = FALSE;
+	m_bLimitUndoDepth = FALSE;
+	m_bRememberSelectionInUndo = FALSE;
+	m_RedoDepthLimit = 0;
+	m_RedoSizeLimit = 0;
+	m_UndoDepthLimit = 0;
+	m_UndoSizeLimit = 0;
+}
+
+CUndoPropertyPage::~CUndoPropertyPage()
+{
+}
+
+void CUndoPropertyPage::DoDataExchange(CDataExchange* pDX)
+{
+	CPropertyPage::DoDataExchange(pDX);
+	DDX_Control(pDX, IDC_SPIN_UNDO_DEPTH, m_SpinUndoLimit);
+	DDX_Control(pDX, IDC_SPIN_REDO_LIMIT, m_SpinRedoLimit);
+	DDX_Check(pDX, IDC_CHECK_ENABLE_REDO, m_bEnableRedo);
+	DDX_Check(pDX, IDC_CHECK_ENABLE_UNDO, m_bEnableUndo);
+	DDX_Check(pDX, IDC_CHECK_LIMIT_REDO_DEPTH, m_bLimitRedoDepth);
+	DDX_Check(pDX, IDC_CHECK_LIMIT_REDO_SIZE, m_bLimitRedoSize);
+	DDX_Check(pDX, IDC_CHECK_LIMIT_UNDO, m_bLimitUndoSize);
+	DDX_Check(pDX, IDC_CHECK_LIMIT_UNDO_DEPTH, m_bLimitUndoDepth);
+	DDX_Check(pDX, IDC_CHECK_REMEMBER_SELECTION_IN_UNDO, m_bRememberSelectionInUndo);
+	DDX_Text(pDX, IDC_EDIT_REDO_DEPTH_LIMIT, m_RedoDepthLimit);
+	DDV_MinMaxUInt(pDX, m_RedoDepthLimit, 1, 200);
+	DDX_Text(pDX, IDC_EDIT_REDO_SIZE_LIMIT, m_RedoSizeLimit);
+	DDV_MinMaxUInt(pDX, m_RedoSizeLimit, 1, 2047);
+	DDX_Text(pDX, IDC_EDIT_UNDO_DEPTH_LIMIT, m_UndoDepthLimit);
+	DDV_MinMaxUInt(pDX, m_UndoDepthLimit, 1, 200);
+	DDX_Text(pDX, IDC_EDIT_UNDO_LIMIT, m_UndoSizeLimit);
+	DDV_MinMaxUInt(pDX, m_UndoSizeLimit, 1, 2047);
+}
+
+BOOL CUndoPropertyPage::OnInitDialog()
+{
+	BaseClass::OnInitDialog();
+
+	m_SpinUndoLimit.SetRange(1, 200);
+	m_SpinRedoLimit.SetRange(1, 200);
+	return TRUE;  // return TRUE unless you set the focus to a control
+	// EXCEPTION: OCX Property Pages should return FALSE
+}
+
+
+BEGIN_MESSAGE_MAP(CUndoPropertyPage, CPropertyPage)
+END_MESSAGE_MAP()
+
+
+// CUndoPropertyPage message handlers
