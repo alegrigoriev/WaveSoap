@@ -66,6 +66,8 @@ public:
 	virtual void Dump(CDumpContext& dc) const;
 #endif
 protected:
+	void InvalidateMarkerRegion(WAVEREGIONINFO const * pInfo);
+
 	virtual UINT GetPopupMenuID(CPoint point);
 	// how many samples in the display point
 	virtual void AdjustNewScale(double OldScaleX, double OldScaleY,
@@ -110,8 +112,7 @@ protected:
 	CHANNEL_MASK m_PlaybackCursorChannel;  // 0 = not playing
 	bool m_PlaybackCursorDrawn;
 	bool m_NewSelectionMade;
-	bool m_bAutoscrollTimerStarted;
-	UINT m_TimerID;
+	UINT_PTR m_AutoscrollTimerID;
 	SAMPLE_INDEX m_PlaybackCursorDrawnSamplePos;
 	int m_WheelAccumulator;
 	// Generated message map functions
