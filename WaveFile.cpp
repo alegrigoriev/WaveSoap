@@ -18,14 +18,15 @@ CMmioFile::~CMmioFile()
 CMmioFile & CMmioFile::operator=(CMmioFile & SourceFile)
 {
 	Close();
-	m_File.Attach( & SourceFile.m_File);
+	Attach( & SourceFile);
 	MMIOINFO mmii;
 	memset( & mmii, 0, sizeof mmii);
 	mmii.fccIOProc = 0;
 	mmii.pIOProc = BufferedIOProc;
 
 	mmii.adwInfo[0] = (DWORD)this;
-	m_hmmio = mmioOpen(NULL, & mmii, MMIO_READ | MMIO_ALLOCBUF);
+	m_hmmio = mmioOpen(NULL, & mmii, MMIO_READ //| MMIO_ALLOCBUF
+						);
 	Seek(0);
 	return *this;
 }
@@ -127,7 +128,7 @@ BOOL CMmioFile::Open( LPCTSTR szFileName, UINT nOpenFlags)
 		}
 	}
 
-	if ( ! m_File.Open(szFileName, DirectFileOpenFlags))
+	if ( ! CDirectFile::Open(szFileName, DirectFileOpenFlags))
 	{
 		return FALSE;
 	}
@@ -143,7 +144,8 @@ BOOL CMmioFile::Open( LPCTSTR szFileName, UINT nOpenFlags)
 		mmii.adwInfo[0] = (DWORD)this;
 
 		m_hmmio = mmioOpen(NULL, & mmii,
-							MMIO_READ | MMIO_ALLOCBUF);
+							MMIO_READ //| MMIO_ALLOCBUF
+							);
 
 		if (NULL == m_hmmio)
 		{
@@ -168,7 +170,8 @@ BOOL CMmioFile::Open( LPCTSTR szFileName, UINT nOpenFlags)
 		mmii.adwInfo[0] = (DWORD)this;
 
 		m_hmmio = mmioOpen(NULL, & mmii,
-							MMIO_READ | MMIO_WRITE | MMIO_ALLOCBUF);
+							MMIO_READ | MMIO_WRITE //| MMIO_ALLOCBUF
+							);
 
 		if (NULL == m_hmmio)
 		{
@@ -235,17 +238,20 @@ LRESULT PASCAL CMmioFile::BufferedIOProc(LPSTR lpmmioinfo, UINT wMsg,
 		break;
 	case MMIOM_READ:
 	{
-		DWORD cbRead = pFile->m_File.ReadAt((LPVOID) lParam1, lParam2, pmmi->lDiskOffset);
+		//TRACE("MMIOM_READ at %08x, %x bytes\n", pmmi->lDiskOffset, lParam2);
+		DWORD cbRead = pFile->ReadAt((LPVOID) lParam1, lParam2, pmmi->lDiskOffset);
 		if (-1 == cbRead)
 			return -1;
 		pmmi->lDiskOffset += cbRead;
 		return cbRead;
 	}
 		break;
-	case MMIOM_WRITE:
 	case MMIOM_WRITEFLUSH:
+		TRACE("MMIOM_WRITEFLUSH\n");
+	case MMIOM_WRITE:
 	{
-		DWORD cbWritten = pFile->m_File.WriteAt((LPVOID) lParam1, lParam2, ULONG(pmmi->lDiskOffset));
+		//TRACE("MMIOM_WRITE at %08x, %x bytes\n", pmmi->lDiskOffset, lParam2);
+		DWORD cbWritten = pFile->WriteAt((LPVOID) lParam1, lParam2, ULONG(pmmi->lDiskOffset));
 		if (-1 == cbWritten)
 			return -1;
 		pmmi->lDiskOffset += cbWritten;
@@ -257,14 +263,17 @@ LRESULT PASCAL CMmioFile::BufferedIOProc(LPSTR lpmmioinfo, UINT wMsg,
 		{
 		case SEEK_CUR:
 			pmmi->lDiskOffset += lParam1;
+			//TRACE("MMIOM_SEEK SEEK_CUR pmmi->lDiskOffset=%08x\n", pmmi->lDiskOffset);
 			return pmmi->lDiskOffset;
 			break;
 		case SEEK_END:
-			pmmi->lDiskOffset = long(pFile->m_File.GetLength()) + lParam1;
+			pmmi->lDiskOffset = long(pFile->CDirectFile::GetLength()) + lParam1;
+			//TRACE("MMIOM_SEEK SEEK_END pmmi->lDiskOffset=%08x\n", pmmi->lDiskOffset);
 			return pmmi->lDiskOffset;
 			break;
 		case SEEK_SET:
 			pmmi->lDiskOffset = lParam1;
+			//TRACE("MMIOM_SEEK SEEK_SET pmmi->lDiskOffset=%08x\n", pmmi->lDiskOffset);
 			return pmmi->lDiskOffset;
 			break;
 		default:
@@ -276,13 +285,6 @@ LRESULT PASCAL CMmioFile::BufferedIOProc(LPSTR lpmmioinfo, UINT wMsg,
 	}
 }
 
-	// read data at the specified position
-	// current position won't change after this function
-LONG CMmioFile::ReadAt(void * lpBuf, LONG nCount, LONG Position)
-{
-	//CSimpleCriticalSectionLock(m_cs);
-	return m_File.ReadAt(lpBuf, nCount, Position);
-}
 
 void CMmioFile::Close( )
 {
@@ -291,7 +293,7 @@ void CMmioFile::Close( )
 		mmioClose(m_hmmio, 0);
 		m_hmmio = NULL;
 	}
-	m_File.Close(0);
+	CDirectFile::Close(0);
 }
 
 
@@ -303,6 +305,7 @@ CWaveFile::CWaveFile()
 CWaveFile & CWaveFile::operator =(CWaveFile & SourceFile)
 {
 	CMmioFile::operator=(SourceFile);
+	m_FactSamples = SourceFile.m_FactSamples;
 	// waveformat will be read as needed
 	return *this;
 }
@@ -321,6 +324,7 @@ BOOL CWaveFile::Open( LPCTSTR lpszFileName, UINT nOpenFlags)
 void CWaveFile::Close( )
 {
 	CMmioFile::Close();
+	m_FactSamples = -1;
 }
 
 BOOL CWaveFile::LoadWaveformat()
@@ -343,13 +347,30 @@ BOOL CWaveFile::LoadWaveformat()
 	{
 		WaveformatSize = sizeof (WAVEFORMATEX);
 	}
-	AllocateCommonData(sizeof (MMCKINFO) + WaveformatSize);
-	LPWAVEFORMATEX pWf = GetWaveFormat();
+	COMMON_DATA * pCd = (COMMON_DATA *)AllocateCommonData(offsetof (COMMON_DATA, wf) + WaveformatSize);
+	LPWAVEFORMATEX pWf = & pCd->wf;
 
-	if (NULL != pWf)
+	if (NULL != pCd)
 	{
 		if (ck.cksize == Read(pWf, ck.cksize))
 		{
+			Ascend(ck);
+			// try to find 'fact' chunk
+			MMCKINFO * pFact = GetFactChunk();
+			pFact->ckid = mmioFOURCC('f', 'a', 'c', 't');
+			// save current position
+			DWORD CurrPos = Seek(0, SEEK_CUR);
+			m_FactSamples = -1;
+			if (FindChunk(* pFact, GetRiffChunk()))
+			{
+				if (pFact->cksize >= sizeof (DWORD))
+				{
+					// read real number of samples
+					Read(& m_FactSamples, sizeof m_FactSamples);
+				}
+				Ascend(* pFact);
+			}
+			Seek(CurrPos);
 			return TRUE;
 		}
 		else
@@ -366,9 +387,9 @@ BOOL CWaveFile::LoadWaveformat()
 
 BOOL CWaveFile::FindData()
 {
-	if (GetCommonDataSize() < sizeof (MMCKINFO) + sizeof (WAVEFORMATEX))
+	if (GetCommonDataSize() < sizeof (COMMON_DATA))
 	{
-		if (NULL == AllocateCommonData(sizeof (MMCKINFO) + sizeof (WAVEFORMATEX)))
+		if (NULL == AllocateCommonData(sizeof (COMMON_DATA)))
 		{
 			return FALSE;
 		}
@@ -378,14 +399,9 @@ BOOL CWaveFile::FindData()
 	return FindChunk( * pDatack, GetRiffChunk());
 }
 
-//DWORD CAviFile::Seek(DWORD position)
-	//{
-	//return SetFilePointer(m_hFile, position, NULL, FILE_BEGIN);
-	//}
-
 // creates a file based on template format from pTemplateFile
-BOOL CWaveFile::CreateWaveFile(CWaveFile * pTemplateFile, int Channel,
-								int Samples, DWORD flags, LPCTSTR FileName)
+BOOL CWaveFile::CreateWaveFile(CWaveFile * pTemplateFile, WAVEFORMATEX * pTemplateFormat,
+								int Channels, unsigned long SizeOrSamples, DWORD flags, LPCTSTR FileName)
 {
 	CString name;
 	char NameBuf[512];
@@ -403,7 +419,7 @@ BOOL CWaveFile::CreateWaveFile(CWaveFile * pTemplateFile, int Channel,
 			// get directory name from template file
 			LPTSTR pFilePart = NULL;
 			if (NULL != pTemplateFile
-				&& 0 != GetFullPathName(pTemplateFile->m_File.GetName(),
+				&& 0 != GetFullPathName(pTemplateFile->GetName(),
 										sizeof NameBuf, NameBuf, & pFilePart)
 				&& pFilePart != NULL)
 			{
@@ -449,6 +465,11 @@ BOOL CWaveFile::CreateWaveFile(CWaveFile * pTemplateFile, int Channel,
 		{
 			return FALSE;
 		}
+		if (flags & CreateWaveFileSizeSpecified
+			&& 0 != SizeOrSamples)
+		{
+			return SetFileLength(SizeOrSamples);
+		}
 		return TRUE;
 	}
 	if (FALSE == Open(name, OpenFlags))
@@ -457,9 +478,9 @@ BOOL CWaveFile::CreateWaveFile(CWaveFile * pTemplateFile, int Channel,
 		return FALSE;
 	}
 
-	if (GetCommonDataSize() < sizeof (MMCKINFO) + sizeof (WAVEFORMATEX))
+	if (GetCommonDataSize() < sizeof (COMMON_DATA))
 	{
-		if (NULL == AllocateCommonData(sizeof (MMCKINFO) + sizeof (WAVEFORMATEX)))
+		if (NULL == AllocateCommonData(sizeof (COMMON_DATA)))
 		{
 			Close();
 			return FALSE;
@@ -467,8 +488,8 @@ BOOL CWaveFile::CreateWaveFile(CWaveFile * pTemplateFile, int Channel,
 	}
 	// create new WAVEFORMATEX
 	WAVEFORMATEX * pWF = NULL;
-	WAVEFORMATEX * pTemplateFormat = NULL;
-	if (NULL != pTemplateFile)
+	if (NULL == pTemplateFormat
+		&& NULL != pTemplateFile)
 	{
 		pTemplateFormat = pTemplateFile->GetWaveFormat();
 	}
@@ -491,7 +512,7 @@ BOOL CWaveFile::CreateWaveFile(CWaveFile * pTemplateFile, int Channel,
 				{
 					pWF->wBitsPerSample = pTemplateFormat->wBitsPerSample;
 				}
-				if (2 == Channel)
+				if (ALL_CHANNELS == Channels)
 				{
 					pWF->nChannels = pTemplateFormat->nChannels;
 				}
@@ -511,12 +532,12 @@ BOOL CWaveFile::CreateWaveFile(CWaveFile * pTemplateFile, int Channel,
 		else
 		{
 			FormatSize = sizeof WAVEFORMATEX + pTemplateFormat->cbSize;
-			AllocateCommonData(FormatSize + sizeof (MMCKINFO));
+			AllocateCommonData(FormatSize + offsetof (COMMON_DATA, wf));
 			pWF = GetWaveFormat();
 			if (pWF)
 			{
 				memcpy(pWF, pTemplateFormat, FormatSize);
-				if (2 == Channel)
+				if (ALL_CHANNELS == Channels)
 				{
 					pWF->nChannels = pTemplateFormat->nChannels;
 				}
@@ -547,7 +568,7 @@ BOOL CWaveFile::CreateWaveFile(CWaveFile * pTemplateFile, int Channel,
 			pWF->nSamplesPerSec = 44100;
 			pWF->wFormatTag = WAVE_FORMAT_PCM;
 			pWF->wBitsPerSample = 16;
-			if (2 == Channel)
+			if (ALL_CHANNELS == Channels)
 			{
 				pWF->nChannels = 2;
 			}
@@ -565,20 +586,46 @@ BOOL CWaveFile::CreateWaveFile(CWaveFile * pTemplateFile, int Channel,
 		}
 	}
 	// RIFF created in Open()
-	MMCKINFO fck = {mmioFOURCC('f', 'm', 't', ' '), 0, 0, 0, 0};
-	CreateChunk(fck, 0);
+	MMCKINFO * pfck = GetFmtChunk();
+	pfck->ckid = mmioFOURCC('f', 'm', 't', ' ');
+	CreateChunk(* pfck, 0);
 	Write(pWF, FormatSize);
-	Ascend(fck);
+	Ascend(* pfck);
+
+	// write fact chunk
+	MMCKINFO * fact = GetFactChunk();
+	if ((flags & CreateWaveFileCreateFact)
+		&& NULL != fact)
+	{
+		memset(fact, 0, sizeof *fact);
+		fact->ckid = mmioFOURCC('f', 'a', 'c', 't');
+		fact->cksize = sizeof (DWORD);
+		if (CreateChunk(* fact, 0))
+		{
+			DWORD tmp = 0;
+			Write(& tmp, sizeof tmp);
+			Ascend( * fact);
+		}
+	}
+
 	// create data chunk
 	LPMMCKINFO pDatachunk = GetDataChunk();
 	memset(pDatachunk, 0, sizeof (MMCKINFO));
 	pDatachunk->ckid = mmioFOURCC('d', 'a', 't', 'a');
 	CreateChunk( * pDatachunk, 0);
-	if (Samples)
+	if (SizeOrSamples)
 	{
-		size_t DataLength = Samples * SampleSize();
-		m_File.SetFileLength(pDatachunk->dwDataOffset + DataLength);
-		Seek(DataLength, SEEK_CUR);
+		if (flags & CreateWaveFileSizeSpecified)
+		{
+			SetFileLength(SizeOrSamples);
+			Seek(SizeOrSamples);
+		}
+		else
+		{
+			size_t DataLength = SizeOrSamples * SampleSize();
+			SetFileLength(pDatachunk->dwDataOffset + DataLength);
+			Seek(DataLength, SEEK_CUR);
+		}
 	}
 	Ascend( * pDatachunk);
 	// and copy INFO
@@ -587,3 +634,127 @@ BOOL CWaveFile::CreateWaveFile(CWaveFile * pTemplateFile, int Channel,
 	return TRUE;
 }
 
+int CWaveFile::SampleSize() const
+{
+	COMMON_DATA * cd = (COMMON_DATA *)GetCommonData();
+	if (NULL == cd
+		|| 0 == cd->wf.nChannels
+		|| 0 == cd->wf.wBitsPerSample)
+	{
+		return 0;
+	}
+	return cd->wf.nChannels * cd->wf.wBitsPerSample / 8;
+}
+
+LONG CWaveFile::NumberOfSamples() const
+{
+	COMMON_DATA * cd = (COMMON_DATA *)GetCommonData();
+	if (NULL == cd
+		|| 0 == cd->wf.nChannels
+		|| 0 == cd->wf.wBitsPerSample)
+	{
+		return 0;
+	}
+	return MulDiv(cd->datack.cksize, 8, cd->wf.nChannels * cd->wf.wBitsPerSample);
+}
+
+WAVEFORMATEX * CWaveFile::GetWaveFormat() const
+{
+	COMMON_DATA * tmp = (COMMON_DATA *)GetCommonData();
+	if (tmp)
+	{
+		return & tmp->wf;
+	}
+	else
+	{
+		return NULL;
+	}
+}
+
+MMCKINFO * CWaveFile::GetFmtChunk() const
+{
+	COMMON_DATA * tmp = (COMMON_DATA *)GetCommonData();
+	if (tmp)
+	{
+		return & tmp->fmtck;
+	}
+	else
+	{
+		return NULL;
+	}
+}
+
+MMCKINFO * CWaveFile::GetFactChunk() const
+{
+	COMMON_DATA * tmp = (COMMON_DATA *)GetCommonData();
+	if (tmp)
+	{
+		return & tmp->factck;
+	}
+	else
+	{
+		return NULL;
+	}
+}
+
+BOOL CMmioFile::CommitChanges()
+{
+	if ( ! IsOpen()
+		|| IsReadOnly())
+	{
+		return FALSE;
+	}
+	// save RIFF header
+	DWORD CurrentLength = (DWORD)GetLength();
+	LPMMCKINFO riff = GetRiffChunk();
+	if (NULL == riff)
+	{
+		return FALSE;
+	}
+	if ((riff->dwFlags & MMIO_DIRTY) || riff->dwDataOffset + riff->cksize != CurrentLength)
+	{
+		Seek(CurrentLength);
+		riff->dwFlags |= MMIO_DIRTY;
+
+		Ascend( * riff);
+	}
+	Flush();
+	return TRUE;
+}
+
+BOOL CWaveFile::CommitChanges()
+{
+	if ( ! IsOpen()
+		|| IsReadOnly())
+	{
+		return FALSE;
+	}
+	// write new fmt chunk
+	MMCKINFO * fmtck = GetFmtChunk();
+	if (NULL != fmtck
+		&& (fmtck->dwFlags & MMIO_DIRTY))
+	{
+		Seek(fmtck->dwDataOffset);
+		Write(GetWaveFormat(), fmtck->cksize);
+		fmtck->dwFlags &= ~MMIO_DIRTY;
+	}
+	MMCKINFO * factck = GetFactChunk();
+	if (NULL != factck
+		&& factck->dwDataOffset != 0
+		&& (factck->dwFlags & MMIO_DIRTY))
+	{
+		Seek(factck->dwDataOffset);
+		Write( & m_FactSamples, sizeof m_FactSamples);
+		factck->dwFlags &= ~MMIO_DIRTY;
+	}
+	// update data chunk
+	MMCKINFO * datack = GetDataChunk();
+	if (datack->dwFlags & MMIO_DIRTY)
+	{
+		Seek(datack->dwDataOffset - sizeof datack->cksize);
+		Write( & datack->cksize, sizeof datack->cksize);
+		datack->dwFlags &= ~MMIO_DIRTY;
+		GetRiffChunk()->dwFlags |= MMIO_DIRTY;
+	}
+	return CMmioFile::CommitChanges();
+}
