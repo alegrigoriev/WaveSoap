@@ -157,7 +157,7 @@ public:
 	bool IsTemporaryFile() const
 	{
 		return IsOpen()
-				&& 0 == (Flags() & (FileFlagsDeleteAfterClose | FileFlagsMemoryFile));
+				&& 0 != (Flags() & (FileFlagsDeleteAfterClose | FileFlagsMemoryFile));
 	}
 
 protected:
