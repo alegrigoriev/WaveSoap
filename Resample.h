@@ -15,11 +15,10 @@ class CResampleContext : public CCopyContext
 public:
 	CResampleContext(CWaveSoapFrontDoc * pDoc,
 					LPCTSTR StatusString, LPCTSTR OperationName)
-		: CCopyContext(pDoc, OperationName, 0),
+		: CCopyContext(pDoc, StatusString, OperationName),
 		m_pDstBuf(NULL),
 		m_pSrcBuf(NULL)
 	{
-		m_OperationString = StatusString;
 	}
 	virtual ~CResampleContext()
 	{
@@ -33,20 +32,11 @@ public:
 			delete[] m_pSrcBuf;
 			m_pSrcBuf = NULL;
 		}
-#if 0
-		if (m_pFilterBuf)
-		{
-			delete[] m_pFilterBuf;
-			m_pFilterBuf = NULL;
-		}
-		if (m_pFilterDifBuf)
-		{
-			delete[] m_pFilterDifBuf;
-			m_pFilterDifBuf = NULL;
-		}
-#endif
 	}
-	enum { ResampleFilterSize = 256, SrcBufSize = 0x4000,
+	enum {ResampleTableBits = 10,
+		ResampleFilterSize = (1 << ResampleTableBits),
+		ResampleIndexShift = (32 - ResampleTableBits),
+		SrcBufSize = 0x4000,
 		DstBufSize = 0x4000 };
 	float *m_pSrcBuf;
 	float *m_pDstBuf;
@@ -59,15 +49,16 @@ public:
 
 	float m_FilterBuf[ResampleFilterSize];
 	float m_FilterDifBuf[ResampleFilterSize];
+	float m_FilterDif2Buf[ResampleFilterSize];
 
 	unsigned __int32 m_InputPeriod;
 	unsigned __int32 m_OutputPeriod;
 	unsigned __int32 m_Phase;
 
 	virtual BOOL OperationProc();
-	virtual CString GetStatusString();
 	BOOL InitResample(CWaveFile & SrcFile, CWaveFile &DstFile,
 					double FrequencyRatio, double FilterLength);
+	virtual void PostRetire(BOOL bChildContext = FALSE);
 	void FilterSoundResample();
 };
 
