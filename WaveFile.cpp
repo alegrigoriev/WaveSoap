@@ -974,7 +974,10 @@ BOOL CWaveFile::InstanceDataWav::GetWaveMarker(WAVEREGIONINFO * pInfo)
 	BOOL result = FALSE;
 	if (pInfo->Flags & pInfo->CuePointIndex)
 	{
-		ASSERT(pInfo->MarkerCueID < m_CuePoints.size());
+		if (pInfo->MarkerCueID >= m_CuePoints.size())
+		{
+			return FALSE;
+		}
 
 		pInfo->Sample = m_CuePoints[pInfo->MarkerCueID].dwSampleOffset;
 		pInfo->MarkerCueID = m_CuePoints[pInfo->MarkerCueID].CuePointID;
