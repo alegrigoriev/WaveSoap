@@ -588,6 +588,19 @@ public:
 		}
 	}
 
+	WORD BitsPerSample() const
+	{
+		WAVEFORMATEX * pWf = GetWaveFormat();
+		if (pWf)
+		{
+			return pWf->wBitsPerSample;
+		}
+		else
+		{
+			return 8;
+		}
+	}
+
 	LPMMCKINFO GetDataChunk() const
 	{
 		return & GetInstanceData()->datack;
