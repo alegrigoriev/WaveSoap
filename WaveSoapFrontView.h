@@ -16,7 +16,7 @@ class CWaveSoapFrontView : public CScaledScrollView
 {
 protected: // create from serialization only
 	CWaveSoapFrontView();
-	DECLARE_DYNCREATE(CWaveSoapFrontView)
+	DECLARE_DYNCREATE(CWaveSoapFrontView);
 
 // Attributes
 public:
@@ -68,8 +68,9 @@ protected:
 	void CreateAndShowCaret();
 	DWORD ClientHitTest(CPoint p);
 	virtual POINT GetZoomCenter();
-	void MovePointIntoView(int nCaret);
+	void MovePointIntoView(int nCaret, BOOL Center = FALSE);
 	void UpdateMaxExtents(unsigned Length);
+	virtual void NotifySlaveViews(DWORD flag);
 
 	int m_HorizontalScale;
 	// multiply the wave to get the additional magnification.
@@ -94,7 +95,7 @@ protected:
 	void UpdatePlaybackCursor(long sample, int channel);
 	BOOL PlaybackCursorVisible();
 
-	int m_PlaybackCursorChannel;  // -1 = not playing
+	int m_PlaybackCursorChannel;  // -2 = not playing
 	bool m_PlaybackCursorDrawn;
 	long m_PlaybackCursorDrawnSamplePos;
 	// Generated message map functions
@@ -123,6 +124,8 @@ protected:
 	afx_msg void OnUpdateViewZoominHorFull(CCmdUI* pCmdUI);
 	afx_msg void OnRButtonDown(UINT nFlags, CPoint point);
 	afx_msg void OnRButtonUp(UINT nFlags, CPoint point);
+	afx_msg void OnUpdateViewZoomSelection(CCmdUI* pCmdUI);
+	afx_msg void OnViewZoomSelection();
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 };
