@@ -5297,7 +5297,7 @@ void CWaveSoapFrontDoc::UpdateAllMarkers()
 	MarkerRegionUpdateInfo ui;
 	for (unsigned index = 0; ; index ++)
 	{
-		ui.info.Flags = ui.info.CuePointIndex;
+		ui.info.Flags = ui.info.CuePointIndex | ui.info.ChangeAll;
 
 		ui.info.MarkerCueID = index;
 
