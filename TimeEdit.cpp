@@ -336,12 +336,12 @@ CTimeEditCombo::~CTimeEditCombo()
 
 BEGIN_MESSAGE_MAP(CTimeEditCombo, CTimeEdit)
 	//{{AFX_MSG_MAP(CTimeEditCombo)
-	ON_CONTROL_REFLECT(CBN_SELCHANGE, OnReflectComboSelectionChanged)
+	ON_CONTROL_REFLECT_EX(CBN_SELCHANGE, OnReflectComboSelectionChanged)
 	ON_COMMAND(CBN_SELCHANGE, OnComboSelectionChanged)
 	//}}AFX_MSG_MAP
 END_MESSAGE_MAP()
 
-void CTimeEditCombo::OnReflectComboSelectionChanged()
+BOOL CTimeEditCombo::OnReflectComboSelectionChanged()
 {
 	unsigned sel = GetComboBox().GetCurSel();
 
@@ -352,6 +352,7 @@ void CTimeEditCombo::OnReflectComboSelectionChanged()
 		// after the function exits
 		PostMessage(WM_COMMAND, CBN_SELCHANGE, NULL);
 	}
+	return FALSE;   // let the parent handle the message, as well
 }
 
 void CTimeEditCombo::OnComboSelectionChanged()
