@@ -389,7 +389,7 @@ void CWaveFftView::OnDraw(CDC* pDC)
 
 		// fill the array
 
-		int nChannels = pDoc->WaveChannels();
+		NUMBER_OF_CHANNELS nChannels = pDoc->WaveChannels();
 		// find offset in the FFT result array for 'left' point
 		// and how many columns to fill with this color
 		int ColsPerFftPoint = m_FftSpacing / m_HorizontalScale;
@@ -831,7 +831,8 @@ void CWaveFftView::CalculateFftRange(long left, long right)
 					break;
 				}
 			}
-			int nChannels = pDoc->WaveChannels();
+
+			NUMBER_OF_CHANNELS nChannels = pDoc->WaveChannels();
 			unsigned char * pRes = & m_pFftResultArray[i + 1 + m_FftOrder];
 			if (FirstSampleRequired + m_FftOrder * 2 > pDoc->WaveFileSamples())
 			{
@@ -842,7 +843,7 @@ void CWaveFftView::CalculateFftRange(long left, long right)
 
 			for (int ch = 0; ch < nChannels; ch++)
 			{
-				__int16 * pWaveSamples;
+				WAVE_SAMPLE * pWaveSamples;
 
 				ASSERT(FirstSampleRequired >= 0);
 				m_WaveBuffer.GetData( & pWaveSamples, FirstSampleRequired * nChannels,
@@ -1088,14 +1089,18 @@ BOOL CWaveFftView::MasterScrollBy(double dx, double dy, BOOL bDoScroll)
 		CRect r;
 		GetClientRect( & r);
 		int nHeight = r.Height();
-		int nChannels = pDoc->WaveChannels();
+
+		NUMBER_OF_CHANNELS nChannels = pDoc->WaveChannels();
+
 		if (0 != nChannels)
 		{
 			nHeight /= nChannels;
 		}
+
 		double offset = m_FirstbandVisible + -m_FftOrder * ndy / (nHeight * m_VerticalScale);
 		// find max and min offset for this scale
 		double MaxOffset = m_FftOrder * (1 - 1. / m_VerticalScale);
+
 		BOOL NoScroll = false;
 		if (offset > MaxOffset)
 		{
@@ -1124,6 +1129,7 @@ BOOL CWaveFftView::MasterScrollBy(double dx, double dy, BOOL bDoScroll)
 				CRect cr;
 				GetClientRect( & cr);
 				RemoveSelectionRect();
+
 				if (pDoc->WaveChannels() == 1)
 				{
 					ScrollWindowEx(0, -ndy, NULL, NULL, NULL, NULL,
@@ -1174,7 +1180,7 @@ void CWaveFftView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
 		CSoundUpdateInfo * pInfo = static_cast<CSoundUpdateInfo *>(pHint);
 
 		// calculate update boundaries
-		int nChannels = pDoc->WaveChannels();
+		NUMBER_OF_CHANNELS nChannels = pDoc->WaveChannels();
 		int left = pInfo->m_Begin;
 		int right = pInfo->m_End;
 		int FirstSampleChanged = left - left % m_FftSpacing;
@@ -1237,9 +1243,10 @@ void CWaveFftView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
 			}
 		}
 
-		int nChannels = pDoc->WaveChannels();
+		NUMBER_OF_CHANNELS nChannels = pDoc->WaveChannels();
 		int nLowExtent = -32768;
 		int nHighExtent = 32767;
+
 		if (nChannels > 1)
 		{
 			nLowExtent = -0x10000;
