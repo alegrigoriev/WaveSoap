@@ -3,6 +3,8 @@
 //
 
 #include "stdafx.h"
+#define _USE_MATH_DEFINES   // for M_PI definition
+#include <math.h>
 #include "WaveSoapFront.h"
 #include "EqualizerDialog.h"
 #include "OperationDialogs.h"
@@ -16,7 +18,6 @@
 static char THIS_FILE[] = __FILE__;
 #endif
 
-#define M_PI        3.14159265358979323846
 /////////////////////////////////////////////////////////////////////////////
 // CEqualizerDialog dialog
 
