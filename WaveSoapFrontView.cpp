@@ -227,14 +227,14 @@ void CWaveSoapFrontView::OnDraw(CDC* pDC)
 	CPen SelectedChannelSeparatorPen;
 
 	CThisApp * pApp = GetApp();
-	//if (pDC->GetDeviceCaps(TECHNOLOGY) == DT_RASDISPLAY)
-	//{
-	CPalette * pOldPalette = NULL;
+
+	CPushDcPalette OldPalette(pDC, NULL);
 
 	if (pDC->GetDeviceCaps(RASTERCAPS) & RC_PALETTE)
 	{
-		pOldPalette = pDC->SelectPalette(pApp->GetPalette(), FALSE);
+		OldPalette.PushPalette(pApp->GetPalette(), FALSE);
 	}
+
 	WaveformPen.CreatePen(PS_SOLID, 1, pApp->m_WaveColor);
 	SelectedWaveformPen.CreatePen(PS_SOLID, 1, pApp->m_SelectedWaveColor);
 
@@ -521,10 +521,6 @@ void CWaveSoapFrontView::OnDraw(CDC* pDC)
 		delete[] ppArray;
 	}
 
-	if (pOldPalette)
-	{
-		pDC->SelectPalette(pOldPalette, FALSE);
-	}
 	if (m_PlaybackCursorDrawn)
 	{
 		DrawPlaybackCursor(pDC, m_PlaybackCursorDrawnSamplePos, m_PlaybackCursorChannel);
