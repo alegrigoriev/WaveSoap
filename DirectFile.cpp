@@ -297,6 +297,8 @@ struct DirectFileCache::File : public ListItem<DirectFileCache::File>
 		return CacheInstance.GetDataBuffer(this, ppBuf, length, position, flags);
 	}
 
+	void LoadFileInformation(); // load m_FileInfo member from the file info
+
 	File(CString name) : hFile(NULL),
 		m_FileName(name),
 		m_Flags(0),
@@ -595,17 +597,20 @@ File * CDirectFileCache::Open(LPCTSTR szName, DWORD flags)
 	}
 	while (hf == INVALID_HANDLE_VALUE);
 
+	pFile->hFile = hf;
+
 	if (FILE_TYPE_DISK != GetFileType(hf))
 	{
 		err.Set(ERROR_INVALID_FUNCTION);
-		CloseHandle(hf);
 		pFile->Close(0); // delete
 		return NULL;
 	}
 
-	::GetFileInformationByHandle(hf, & pFile->m_FileInfo);
+	pFile->LoadFileInformation();
+
 	pFile->FileLength = pFile->m_FileInfo.nFileSizeLow
 						| (ULONGLONG(pFile->m_FileInfo.nFileSizeHigh) << 32);
+
 	pFile->RealFileLength = pFile->FileLength;
 
 	if (0 == (flags & CDirectFile::OpenReadOnly))
@@ -616,7 +621,6 @@ File * CDirectFileCache::Open(LPCTSTR szName, DWORD flags)
 		if (NULL == pFile->m_pWrittenMask)
 		{
 			err.Set(ERROR_NOT_ENOUGH_MEMORY);
-			CloseHandle(hf);
 			pFile->Close(0); // delete
 			return NULL;
 		}
@@ -647,8 +651,6 @@ File * CDirectFileCache::Open(LPCTSTR szName, DWORD flags)
 	{
 		pFile->m_Flags |= CDirectFile::FileFlagsReadOnly;
 	}
-
-	pFile->hFile = hf;
 
 	m_FileList.InsertHead(pFile);
 
@@ -763,7 +765,9 @@ BOOL File::Commit(DWORD flags)
 		{
 			TRACE("Refreshing file info after file commit, prev modif. time=0x%08X%08X, ",
 				m_FileInfo.ftLastWriteTime.dwHighDateTime, m_FileInfo.ftLastWriteTime.dwLowDateTime);
-			::GetFileInformationByHandle(hFile, & m_FileInfo);
+
+			LoadFileInformation();
+
 			TRACE("new modif. time=0x%08X%08X\n",
 				m_FileInfo.ftLastWriteTime.dwHighDateTime, m_FileInfo.ftLastWriteTime.dwLowDateTime);
 			RealFileLength = m_FileInfo.nFileSizeLow
@@ -825,18 +829,21 @@ BOOL File::Rename(LPCTSTR NewName, DWORD flags)
 							OPEN_EXISTING,
 							FILE_FLAG_NO_BUFFERING | FILE_ATTRIBUTE_NORMAL,
 							NULL);
+
 	if (INVALID_HANDLE_VALUE == hf)
 	{
 		// couldnt reopen!!
 		TRACE("Couldn't reopen the file, last error=%X\n", ::GetLastError());
 		return FALSE;
 	}
+
 	hFile = hf;
 	m_FilePointer = 0;
 
 	if (NULL != hFile)
 	{
-		::GetFileInformationByHandle(hFile, & m_FileInfo);
+		LoadFileInformation();
+
 		RealFileLength = m_FileInfo.nFileSizeLow
 						| (ULONGLONG(m_FileInfo.nFileSizeHigh << 32));
 	}
@@ -3104,6 +3111,27 @@ void File::FlushRequestedRange()
 		m_FlushBegin += Flushed;
 		m_FlushLength -= Flushed;
 	}
+}
+
+// load m_FileInfo member from the file info
+void File::LoadFileInformation()
+{
+	if (::GetFileInformationByHandle(hFile, & m_FileInfo))
+	{
+		return;
+	}
+	// GetFileInformationByHandle may fail on some network redirectors
+	// simulate GetFileInformation
+
+	m_FileInfo.dwFileAttributes = GetFileAttributes(m_FileName);
+	::GetFileTime(hFile, & m_FileInfo.ftCreationTime, & m_FileInfo.ftLastAccessTime,
+				& m_FileInfo.ftLastWriteTime);
+
+	m_FileInfo.nFileSizeLow = ::GetFileSize(hFile, & m_FileInfo.nFileSizeHigh);
+	m_FileInfo.nNumberOfLinks = 1;
+
+	m_FileInfo.nFileIndexHigh = DWORD(ULONG_PTR(this));
+	m_FileInfo.nFileIndexLow = DWORD(ULONG_PTR(this));
 }
 
 CDirectFile const & CDirectFile::operator=(CDirectFile & file)
