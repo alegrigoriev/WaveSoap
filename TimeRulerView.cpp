@@ -6,15 +6,17 @@
 #include "WaveSoapFront.h"
 #include "TimeRulerView.h"
 #include "WaveSoapFrontView.h"
+#include "WaveSoapFrontDoc.h"
 #include "GdiObjectSave.h"
 #include "TimeToStr.h"
-#include ".\timerulerview.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
 #undef THIS_FILE
 static char THIS_FILE[] = __FILE__;
 #endif
+
+#define TRACE_SCROLL 0
 
 static int fround(double d)
 {
@@ -35,6 +37,9 @@ IMPLEMENT_DYNCREATE(CTimeRulerView, CHorizontalRuler)
 
 CTimeRulerView::CTimeRulerView()
 	: m_CurrentDisplayMode(ShowHhMmSs)
+	, m_DraggedMarkerHitTest(0)
+	, m_AutoscrollTimerID(0)
+	, m_MarkerHeight(10)
 {
 }
 
@@ -55,6 +60,12 @@ BEGIN_MESSAGE_MAP(CTimeRulerView, CHorizontalRuler)
 	ON_WM_SETCURSOR()
 	ON_NOTIFY_RANGE(TTN_NEEDTEXTW, 0, 0xFFFF, OnToolTipText)
 	ON_NOTIFY_RANGE(TTN_NEEDTEXTA, 0, 0xFFFF, OnToolTipText)
+	ON_WM_LBUTTONDBLCLK()
+	ON_WM_LBUTTONDOWN()
+	ON_WM_LBUTTONUP()
+	ON_WM_MOUSEMOVE()
+	ON_WM_CAPTURECHANGED()
+	ON_WM_TIMER()
 END_MESSAGE_MAP()
 
 /////////////////////////////////////////////////////////////////////////////
@@ -74,7 +85,7 @@ void CTimeRulerView::OnDraw(CDC* pDC)
 	TEXTMETRIC tm;
 	pDC->GetTextMetrics( & tm);
 
-	int const MarkerHeight = tm.tmAveCharWidth;
+	m_MarkerHeight = tm.tmAveCharWidth;
 
 	CPen DarkGrayPen(PS_SOLID, 0, 0x808080);
 	CRect cr;
@@ -86,7 +97,7 @@ void CTimeRulerView::OnDraw(CDC* pDC)
 		cr = pPaintDC->m_ps.rcPaint;
 	}
 
-	int const RulerBase = cr.bottom - MarkerHeight - 2;
+	int const RulerBase = cr.bottom - m_MarkerHeight - 2;
 
 	pDC->SetTextAlign(TA_BOTTOM | TA_LEFT);
 	pDC->SetTextColor(0x000000);   // black
@@ -421,8 +432,8 @@ void CTimeRulerView::OnDraw(CDC* pDC)
 		long x = WorldToWindowXfloor(i->dwSampleOffset);
 		WaveRegionMarker * pMarker = pInst->GetRegionMarker(i->CuePointID);
 
-		if (x >= cr.left - MarkerHeight
-			&& x <= cr.right + MarkerHeight)
+		if (x >= cr.left - m_MarkerHeight
+			&& x <= cr.right + m_MarkerHeight)
 		{
 			if (pMarker != NULL
 				&& pMarker->SampleLength != 0)
@@ -430,9 +441,9 @@ void CTimeRulerView::OnDraw(CDC* pDC)
 				// draw mark of the region begin
 				POINT p[] = {
 					x, cr.bottom - 1,
-					x, cr.bottom - MarkerHeight,
-					x + MarkerHeight - 2, cr.bottom - MarkerHeight,
-					x + MarkerHeight - 2, cr.bottom - MarkerHeight + 1,
+					x, cr.bottom - m_MarkerHeight,
+					x + m_MarkerHeight - 2, cr.bottom - m_MarkerHeight,
+					x + m_MarkerHeight - 2, cr.bottom - m_MarkerHeight + 1,
 				};
 
 				pDC->Polygon(p, countof(p));
@@ -442,10 +453,10 @@ void CTimeRulerView::OnDraw(CDC* pDC)
 				// draw marker
 				POINT p[] = {
 					x, cr.bottom - 1,
-					x + (MarkerHeight >> 1), cr.bottom - (MarkerHeight >> 1) - 1,
-					x + (MarkerHeight >> 1), cr.bottom - MarkerHeight,
-					x - (MarkerHeight >> 1), cr.bottom - MarkerHeight,
-					x - (MarkerHeight >> 1), cr.bottom - (MarkerHeight >> 1) - 1,
+					x + (m_MarkerHeight >> 1), cr.bottom - (m_MarkerHeight >> 1) - 1,
+					x + (m_MarkerHeight >> 1), cr.bottom - m_MarkerHeight,
+					x - (m_MarkerHeight >> 1), cr.bottom - m_MarkerHeight,
+					x - (m_MarkerHeight >> 1), cr.bottom - (m_MarkerHeight >> 1) - 1,
 				};
 
 				pDC->Polygon(p, countof(p));
@@ -457,15 +468,15 @@ void CTimeRulerView::OnDraw(CDC* pDC)
 		{
 			x = WorldToWindowXfloor(i->dwSampleOffset + pMarker->SampleLength);
 
-			if (x >= cr.left - MarkerHeight
-				&& x <= cr.right + MarkerHeight)
+			if (x >= cr.left - m_MarkerHeight
+				&& x <= cr.right + m_MarkerHeight)
 			{
 				// draw mark of the region end
 				POINT p[] = {
 					x, cr.bottom - 1,
-					x, cr.bottom - MarkerHeight,
-					x - MarkerHeight + 2, cr.bottom - MarkerHeight,
-					x - MarkerHeight + 2, cr.bottom - MarkerHeight + 1,
+					x, cr.bottom - m_MarkerHeight,
+					x - m_MarkerHeight + 2, cr.bottom - m_MarkerHeight,
+					x - m_MarkerHeight + 2, cr.bottom - m_MarkerHeight + 1,
 				};
 
 				pDC->Polygon(p, countof(p));
@@ -534,13 +545,24 @@ void CTimeRulerView::OnUpdateViewRulerSeconds(CCmdUI* pCmdUI)
 
 void CTimeRulerView::OnUpdate( CView* /*pSender*/, LPARAM lHint, CObject* pHint )
 {
-	CSoundUpdateInfo * pInfo = dynamic_cast<CSoundUpdateInfo *>(pHint);
-	if (lHint == CWaveSoapFrontDoc::UpdateSampleRateChanged
-		|| (lHint == CWaveSoapFrontDoc::UpdateSoundChanged
-			&& pInfo != NULL && pInfo->m_NewLength != -1))
+	if (lHint == CWaveSoapFrontDoc::UpdateMarkerRegionChanged
+		&& NULL != pHint)
 	{
-		// either unknown notification or length changed
-		Invalidate();
+		MarkerRegionUpdateInfo * pInfo = static_cast<MarkerRegionUpdateInfo *> (pHint);
+		ASSERT(NULL != pInfo);
+
+		InvalidateMarkerRegion( & pInfo->info);
+	}
+	else
+	{
+		CSoundUpdateInfo * pInfo = dynamic_cast<CSoundUpdateInfo *>(pHint);
+		if (lHint == CWaveSoapFrontDoc::UpdateSampleRateChanged
+			|| (lHint == CWaveSoapFrontDoc::UpdateSoundChanged
+				&& pInfo != NULL && pInfo->m_NewLength != -1))
+		{
+			// either unknown notification or length changed
+			Invalidate();
+		}
 	}
 }
 
@@ -551,6 +573,7 @@ int CTimeRulerView::CalculateHeight()
 
 	TEXTMETRIC tm;
 	dc.GetTextMetrics( & tm);
+
 	// text height plus tmAveCharWidth (for the marks) plus 7 pixels for overhead
 	return tm.tmHeight + tm.tmAveCharWidth + 7;
 }
@@ -562,17 +585,12 @@ unsigned CTimeRulerView::HitTest(POINT p, RECT * pHitRect) const
 	CWindowDC dc(GetDesktopWindow());
 	CGdiObjectSave OldFont(dc, dc.SelectStockObject(ANSI_VAR_FONT));
 
-	TEXTMETRIC tm;
-	dc.GetTextMetrics( & tm);
-
-	int const MarkerHeight = tm.tmAveCharWidth;
-
 	CRect cr;
 	GetClientRect(cr);
 
 	CWaveFile::InstanceDataWav * pInst = GetDocument()->m_WavFile.GetInstanceData();
 
-	if (p.y >= cr.bottom - MarkerHeight)
+	if (p.y >= cr.bottom - m_MarkerHeight)
 	{
 		int n;
 		CuePointVectorIterator i;
@@ -586,25 +604,26 @@ unsigned CTimeRulerView::HitTest(POINT p, RECT * pHitRect) const
 			if (NULL == pMarker
 				|| 0 == pMarker->SampleLength)
 			{
-				if (p.x <= x + (MarkerHeight >> 1)
-					&& p.x >= x - (MarkerHeight >> 1))
+				if (p.x <= x + (m_MarkerHeight >> 1)
+					&& p.x >= x - (m_MarkerHeight >> 1))
 				{
 					// marker
+#if 0
 					POINT p[] = {
 						x, cr.bottom - 1,
-						x + (MarkerHeight >> 1), cr.bottom - (MarkerHeight >> 1) - 1,
-						x + (MarkerHeight >> 1), cr.bottom - MarkerHeight,
-						x - (MarkerHeight >> 1), cr.bottom - MarkerHeight,
-						x - (MarkerHeight >> 1), cr.bottom - (MarkerHeight >> 1) - 1,
+						x + (m_MarkerHeight >> 1), cr.bottom - (m_MarkerHeight >> 1) - 1,
+						x + (m_MarkerHeight >> 1), cr.bottom - m_MarkerHeight,
+						x - (m_MarkerHeight >> 1), cr.bottom - m_MarkerHeight,
+						x - (m_MarkerHeight >> 1), cr.bottom - (m_MarkerHeight >> 1) - 1,
 					};
-
+#endif
 					result = HitTestMarker | n;
 
 					if (NULL != pHitRect)
 					{
-						pHitRect->left = x - (MarkerHeight >> 1);
-						pHitRect->right = x + (MarkerHeight >> 1);
-						pHitRect->top = cr.bottom - MarkerHeight;
+						pHitRect->left = x - (m_MarkerHeight >> 1);
+						pHitRect->right = x + (m_MarkerHeight >> 1);
+						pHitRect->top = cr.bottom - m_MarkerHeight;
 						pHitRect->bottom = cr.bottom;
 					}
 					break;
@@ -612,24 +631,26 @@ unsigned CTimeRulerView::HitTest(POINT p, RECT * pHitRect) const
 			}
 			else
 			{
-				if (p.x <= x + MarkerHeight
+				if (p.x <= x + m_MarkerHeight
 					&& p.x >= x)
 				{
 					// mark of the region begin
+#if 0
 					POINT p[] = {
 						x, cr.bottom - 1,
-						x, cr.bottom - MarkerHeight,
-						x + MarkerHeight - 2, cr.bottom - MarkerHeight,
-						x + MarkerHeight - 2, cr.bottom - MarkerHeight + 1,
+						x, cr.bottom - m_MarkerHeight,
+						x + m_MarkerHeight - 2, cr.bottom - m_MarkerHeight,
+						x + m_MarkerHeight - 2, cr.bottom - m_MarkerHeight + 1,
 					};
+#endif
 
 					result = HitTestRegionBegin | n;
 
 					if (NULL != pHitRect)
 					{
 						pHitRect->left = x;
-						pHitRect->right = x + MarkerHeight;
-						pHitRect->top = cr.bottom - MarkerHeight;
+						pHitRect->right = x + m_MarkerHeight - 1;
+						pHitRect->top = cr.bottom - m_MarkerHeight;
 						pHitRect->bottom = cr.bottom;
 					}
 					break;
@@ -637,24 +658,25 @@ unsigned CTimeRulerView::HitTest(POINT p, RECT * pHitRect) const
 
 				x = WorldToWindowXfloor(i->dwSampleOffset + pMarker->SampleLength);
 
-				if (p.x >= x - MarkerHeight
+				if (p.x >= x - m_MarkerHeight
 					&& p.x <= x)
 				{
 					// mark of the region end
+#if 0
 					POINT p[] = {
 						x, cr.bottom - 1,
-						x, cr.bottom - MarkerHeight,
-						x - MarkerHeight + 2, cr.bottom - MarkerHeight,
-						x - MarkerHeight + 2, cr.bottom - MarkerHeight + 1,
+						x, cr.bottom - m_MarkerHeight,
+						x - m_MarkerHeight + 2, cr.bottom - m_MarkerHeight,
+						x - m_MarkerHeight + 2, cr.bottom - m_MarkerHeight + 1,
 					};
-
+#endif
 					result = HitTestRegionEnd | n;
 
 					if (NULL != pHitRect)
 					{
-						pHitRect->left = x - MarkerHeight;
+						pHitRect->left = x - m_MarkerHeight;
 						pHitRect->right = x;
-						pHitRect->top = cr.bottom - MarkerHeight;
+						pHitRect->top = cr.bottom - m_MarkerHeight;
 						pHitRect->bottom = cr.bottom;
 					}
 					break;
@@ -764,3 +786,324 @@ void CTimeRulerView::OnToolTipText(UINT /*id*/, NMHDR* pNMHDR, LRESULT* pResult)
 	::SetWindowPos(pNMHDR->hwndFrom, HWND_TOP, 0, 0, 0, 0,
 					SWP_NOACTIVATE|SWP_NOSIZE|SWP_NOMOVE|SWP_NOOWNERZORDER);
 }
+
+void CTimeRulerView::OnLButtonDblClk(UINT nFlags, CPoint point)
+{
+	// TODO: Add your message handler code here and/or call default
+	// if the marker or region is double-clicked, open the marker editing dialog
+
+	BaseClass::OnLButtonDblClk(nFlags, point);
+}
+
+void CTimeRulerView::OnLButtonDown(UINT nFlags, CPoint point)
+{
+	// TODO: Add your message handler code here and/or call default
+	// if clicked on a marker, wait for marker drag
+	m_DraggedMarkerHitTest = HitTest(point);
+
+	BaseClass::OnLButtonDown(nFlags, point);
+}
+
+void CTimeRulerView::OnLButtonUp(UINT nFlags, CPoint point)
+{
+	EndMarkerDrag();
+	BaseClass::OnLButtonUp(nFlags, point);
+}
+
+void CTimeRulerView::EndMarkerDrag()
+{
+	CWaveSoapFrontDoc * pDoc = GetDocument();
+	if (0 != m_DraggedMarkerHitTest
+		&& bIsTrackingSelection
+		&& ! pDoc->IsReadOnly())
+	{
+		// if it's being dragged, finalize UNDO
+		WAVEREGIONINFO info = {0};
+
+		info.Flags = info.CommitChanges | info.CuePointIndex;
+		info.MarkerCueID = m_DraggedMarkerHitTest & HitTestCueIndexMask;
+
+		pDoc->ChangeWaveMarker( & info);
+	}
+
+	m_DraggedMarkerHitTest = 0;
+}
+
+void CTimeRulerView::OnMouseMove(UINT nFlags, CPoint point)
+{
+	CWaveSoapFrontDoc * pDoc = GetDocument();
+	// if a marker is being dragged, move it
+	// if it begun to drag, store UNDO
+	if (0 == m_DraggedMarkerHitTest
+		|| pDoc->IsReadOnly())
+	{
+		BaseClass::OnMouseMove(nFlags, point);
+		return;
+	}
+
+	CView::OnMouseMove(nFlags, point);
+
+	if (WM_LBUTTONDOWN == ButtonPressed
+		&& point.x != PrevMouseX)
+	{
+		if (! bIsTrackingSelection)
+		{
+			// check if drag threshold exceeded
+			if (abs(point.x - PrevMouseX) < GetSystemMetrics(SM_CXDRAG) / 2)
+			{
+				return;
+			}
+			SetCapture();
+			bIsTrackingSelection = TRUE;
+		}
+
+		CRect cr;
+		GetClientRect(cr);
+
+		int const AutoscrollWidth = GetSystemMetrics(SM_CXVSCROLL);
+
+		bool DoLeftAutoscroll = false;
+		bool DoRightAutoscroll = false;
+
+		int DataEnd = WorldToWindowXceil(pDoc->WaveFileSamples());
+		if (point.x < DataEnd
+			&& cr.right > AutoscrollWidth)
+		{
+			if (point.x > cr.right - AutoscrollWidth)
+			{
+				DoRightAutoscroll = true;
+			}
+			else if (point.x < AutoscrollWidth)
+			{
+				DoLeftAutoscroll = true;
+			}
+		}
+
+		if (DoLeftAutoscroll || DoRightAutoscroll)
+		{
+			if (NULL == m_AutoscrollTimerID)
+			{
+				m_AutoscrollTimerID = SetTimer(UINT_PTR(this) + sizeof *this, 50, NULL);
+			}
+		}
+		else if (NULL != m_AutoscrollTimerID)
+		{
+			KillTimer(m_AutoscrollTimerID);
+			m_AutoscrollTimerID = NULL;
+		}
+		// do drag
+		SAMPLE_INDEX NewPosition = SAMPLE_INDEX(WindowToWorldX(point.x));
+
+		WAVEREGIONINFO info = {0};
+
+		info.Flags = info.ChangeSample | info.CuePointIndex;
+		info.MarkerCueID = m_DraggedMarkerHitTest & HitTestCueIndexMask;
+
+		pDoc->m_WavFile.GetWaveMarker( & info);
+
+		if (m_DraggedMarkerHitTest & HitTestRegionBegin)
+		{
+			if (NewPosition >= info.Sample + info.Length)
+			{
+				return;
+			}
+
+			info.Flags = info.ChangeSample | info.ChangeLength;
+			info.Length += info.Sample - NewPosition;
+			info.Sample = NewPosition;
+		}
+		else if (m_DraggedMarkerHitTest & HitTestRegionEnd)
+		{
+			if (NewPosition <= info.Sample)
+			{
+				return;
+			}
+			info.Flags = info.ChangeLength;
+			info.Length = NewPosition - info.Sample;
+		}
+		else if (m_DraggedMarkerHitTest & HitTestMarker)
+		{
+			info.Flags = info.ChangeSample;
+			info.Sample = NewPosition;
+		}
+		else
+		{
+			return;
+		}
+
+		pDoc->ChangeWaveMarker( & info);
+	}
+}
+
+void CTimeRulerView::OnCaptureChanged(CWnd *pWnd)
+{
+	// TODO: Add your message handler code here
+	if (pWnd != this
+		&& NULL != m_AutoscrollTimerID)
+	{
+		if (TRACE_SCROLL) TRACE("Killing timer in CWaveSoapFrontView::OnCaptureChanged\n");
+		KillTimer(m_AutoscrollTimerID);
+		m_AutoscrollTimerID = NULL;
+	}
+
+	EndMarkerDrag();
+	// if capture is lost, reset changes?
+	BaseClass::OnCaptureChanged(pWnd);
+}
+
+void CTimeRulerView::OnTimer(UINT nIDEvent)
+{
+	// get mouse position and hit code
+	if (NULL != m_AutoscrollTimerID
+		&& nIDEvent == m_AutoscrollTimerID)
+	{
+		CWaveSoapFrontDoc * pDoc = GetDocument();
+
+		CPoint p;
+		GetCursorPos( & p);
+		ScreenToClient( & p);
+
+		CRect cr;
+		GetClientRect(cr);
+
+		int const AutoscrollWidth = GetSystemMetrics(SM_CXVSCROLL);
+
+		bool DoLeftAutoscroll = false;
+		bool DoRightAutoscroll = false;
+
+		int DataEnd = WorldToWindowXceil(pDoc->WaveFileSamples());
+		if (p.x < DataEnd
+			&& cr.right > AutoscrollWidth)
+		{
+			if (p.x > cr.right - AutoscrollWidth)
+			{
+				DoRightAutoscroll = true;
+			}
+			else if (p.x < AutoscrollWidth)
+			{
+				DoLeftAutoscroll = true;
+			}
+		}
+
+		if (DoLeftAutoscroll || DoRightAutoscroll)
+		{
+			//TRACE("OnTimer: VSHT_RIGHT_AUTOSCROLL\n");
+			double scroll;
+			int nDistance;
+
+			scroll = 1. / m_pHorMaster->GetXScale();
+
+			if (DoRightAutoscroll)
+			{
+				CRect r;
+				GetClientRect(r);
+
+				nDistance = p.x - r.right + AutoscrollWidth - 1;
+			}
+			else
+			{
+				scroll = -scroll;
+				nDistance = AutoscrollWidth - p.x - 1;
+			}
+
+			if (TRACE_SCROLL) TRACE("nDistance = %d\n", nDistance);
+			if (nDistance > 14)
+			{
+				nDistance = 14;
+			}
+			if (nDistance > 0)
+			{
+				scroll *= 1 << nDistance;
+			}
+			ScrollBy(scroll, 0, TRUE);
+
+			UINT flags = 0;
+			if (0x8000 & GetKeyState(VK_CONTROL))
+			{
+				flags |= MK_CONTROL;
+			}
+			if (0x8000 & GetKeyState(VK_SHIFT))
+			{
+				flags |= MK_SHIFT;
+			}
+			if (0x8000 & GetKeyState(VK_LBUTTON))
+			{
+				flags |= MK_LBUTTON;
+			}
+			if (0x8000 & GetKeyState(VK_RBUTTON))
+			{
+				flags |= MK_RBUTTON;
+			}
+			if (0x8000 & GetKeyState(VK_MBUTTON))
+			{
+				flags |= MK_MBUTTON;
+			}
+			OnMouseMove(flags, p);
+			return;
+		}
+		else
+		{
+			KillTimer(m_AutoscrollTimerID);
+			m_AutoscrollTimerID = NULL;
+		}
+	}
+
+	if (TRACE_SCROLL) TRACE("Timer ID=%X\n", nIDEvent);
+
+	BaseClass::OnTimer(nIDEvent);
+}
+
+void CTimeRulerView::InvalidateMarkerRegion(WAVEREGIONINFO const * pInfo)
+{
+	CRect cr;
+	GetClientRect(cr);
+	CRect r;
+
+	long x = WorldToWindowXfloor(pInfo->Sample);
+
+	if (0 != (pInfo->Flags & (pInfo->ChangeSample | pInfo->Delete)))
+	{
+		if (0 == pInfo->Length)
+		{
+			if (x < cr.right + (m_MarkerHeight >> 1)
+				&& x >= cr.left - (m_MarkerHeight >> 1))
+			{
+				r.left = x - (m_MarkerHeight >> 1);
+				r.right = x + 1 + (m_MarkerHeight >> 1);
+				r.top = cr.bottom - m_MarkerHeight;
+				r.bottom = cr.bottom;
+
+				InvalidateRect(r);
+			}
+		}
+		else if (x < cr.right && x >= cr.left - m_MarkerHeight)
+		{
+			// invalidate region begin marker
+			r.left = x;
+			r.right = x + m_MarkerHeight - 1;
+			r.top = cr.bottom - m_MarkerHeight;
+			r.bottom = cr.bottom;
+
+			InvalidateRect(r);
+		}
+	}
+
+	if (0 != pInfo->Length
+		&& 0 != (pInfo->Flags
+			& (pInfo->ChangeSample | pInfo->ChangeLength | pInfo->Delete)))
+	{
+		// invalidate region end marker
+		x = WorldToWindowXfloor(pInfo->Sample + pInfo->Length);
+
+		if (x < cr.right + m_MarkerHeight && x >= cr.left)
+		{
+			r.left = x - m_MarkerHeight;
+			r.right = x + 1;
+			r.top = cr.bottom - m_MarkerHeight;
+			r.bottom = cr.bottom;
+
+			InvalidateRect(r);
+		}
+	}
+}
+

@@ -27,7 +27,6 @@ public:
 // Operations
 public:
 	enum {ShowSamples, ShowHhMmSs, ShowSeconds };
-	int m_CurrentDisplayMode;
 // Overrides
 	// ClassWizard generated virtual function overrides
 	//{{AFX_VIRTUAL(CTimeRulerView)
@@ -45,6 +44,7 @@ protected:
 	virtual void Dump(CDumpContext& dc) const;
 #endif
 	unsigned HitTest(POINT p, RECT * pHitRect = NULL) const;
+	void InvalidateMarkerRegion(WAVEREGIONINFO const * pInfo);
 
 	enum {
 		HitTestNone = 0x00000000,          // non-specific area of the ruler hit - no bits set
@@ -52,10 +52,17 @@ protected:
 		HitTestRegionEnd = 0x20000000,      // mark of region begin hit
 		HitTestMarker = 0x10000000,
 
-		HitTestCueIndexMask = 0x0000FFF,    // these bits contain index of the region/marker hit
+		HitTestCueIndexMask = 0x000FFFF,    // these bits contain index of the region/marker hit
 	};
 	// Generated message map functions
 protected:
+	int m_CurrentDisplayMode;
+	unsigned m_DraggedMarkerHitTest;
+	UINT_PTR m_AutoscrollTimerID;
+	int m_MarkerHeight;
+
+	void EndMarkerDrag();
+
 	//{{AFX_MSG(CTimeRulerView)
 	afx_msg void OnViewRulerHhmmss();
 	afx_msg void OnUpdateViewRulerHhmmss(CCmdUI* pCmdUI);
@@ -63,13 +70,19 @@ protected:
 	afx_msg void OnUpdateViewRulerSamples(CCmdUI* pCmdUI);
 	afx_msg void OnViewRulerSeconds();
 	afx_msg void OnUpdateViewRulerSeconds(CCmdUI* pCmdUI);
-	//}}AFX_MSG
-	DECLARE_MESSAGE_MAP()
-public:
+	afx_msg void OnTimer(UINT nIDEvent);
 	afx_msg BOOL OnSetCursor(CWnd* pWnd, UINT nHitTest, UINT message);
 	virtual void OnInitialUpdate();
 	virtual INT_PTR OnToolHitTest(CPoint point, TOOLINFO* pTI) const;
 	void OnToolTipText(UINT /*id*/, NMHDR* pNMHDR, LRESULT* pResult);
+	afx_msg void OnLButtonDblClk(UINT nFlags, CPoint point);
+	afx_msg void OnLButtonDown(UINT nFlags, CPoint point);
+	afx_msg void OnLButtonUp(UINT nFlags, CPoint point);
+	afx_msg void OnMouseMove(UINT nFlags, CPoint point);
+	afx_msg void OnCaptureChanged(CWnd *pWnd);
+	//}}AFX_MSG
+	DECLARE_MESSAGE_MAP()
+public:
 };
 
 #ifndef _DEBUG  // debug version in TimeRulerView.cpp
