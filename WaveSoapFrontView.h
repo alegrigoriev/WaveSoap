@@ -97,6 +97,7 @@ protected:
 
 	int m_PlaybackCursorChannel;  // -2 = not playing
 	bool m_PlaybackCursorDrawn;
+	bool m_NewSelectionMade;
 	long m_PlaybackCursorDrawnSamplePos;
 	// Generated message map functions
 protected:
@@ -126,6 +127,7 @@ protected:
 	afx_msg void OnRButtonUp(UINT nFlags, CPoint point);
 	afx_msg void OnUpdateViewZoomSelection(CCmdUI* pCmdUI);
 	afx_msg void OnViewZoomSelection();
+	afx_msg void OnUpdateIndicatorScale(CCmdUI* pCmdUI);
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 };
