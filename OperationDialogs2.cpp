@@ -24,25 +24,22 @@ static char THIS_FILE[] = __FILE__;
 
 CInsertSilenceDialog::CInsertSilenceDialog(SAMPLE_INDEX Start,
 											NUMBER_OF_SAMPLES Length,
-											CHANNEL_MASK	m_nChannel,
-											NUMBER_OF_SAMPLES    FileLength,
+											CHANNEL_MASK Channel,
+											CWaveFile & WaveFile,
 											int TimeFormat,
-											WAVEFORMATEX * pWf,
 											CWnd* pParent /*=NULL*/)
-	: BaseClass(CInsertSilenceDialog::IDD, pParent)
+	: BaseClass(IDD, pParent)
 	, m_Length(Length)
 	, m_Start(Start)
 	, m_CaretPosition(Start)
-	, m_pWf(pWf)
-	, m_nChannel(m_nChannel)
-	, m_FileLength(FileLength)
+	, m_WaveFile(WaveFile)
+	, m_nChannel(Channel + 1)
 	, m_TimeFormat(TimeFormat)
 	, m_eLength(TimeFormat)
-	, m_eStart(TimeFormat)
+	, m_eStart(Start, WaveFile, TimeFormat)
 {
 
-	m_eLength.SetSamplingRate(pWf->nSamplesPerSec);
-	m_eStart.SetSamplingRate(pWf->nSamplesPerSec);
+	m_eLength.SetSamplingRate(WaveFile.SampleRate());
 	//{{AFX_DATA_INIT(CInsertSilenceDialog)
 	m_TimeFormatIndex = -1;
 	//}}AFX_DATA_INIT
@@ -58,6 +55,10 @@ CInsertSilenceDialog::CInsertSilenceDialog(SAMPLE_INDEX Start,
 		m_TimeFormatIndex = 2;
 		break;
 	}
+	if (WaveFile.Channels() < 2)
+	{
+		m_lpszTemplateName = MAKEINTRESOURCE(IDD_DIALOG_INSERT_SILENCE_MONO);
+	}
 }
 
 
@@ -71,7 +72,7 @@ void CInsertSilenceDialog::DoDataExchange(CDataExchange* pDX)
 	DDX_Control(pDX, IDC_COMBO_START, m_eStart);
 	DDX_CBIndex(pDX, IDC_COMBO_TIME_FORMAT, m_TimeFormatIndex);
 	//}}AFX_DATA_MAP
-	if (m_pWf->nChannels > 1)
+	if (m_WaveFile.Channels() > 1)
 	{
 		DDX_Radio(pDX, IDC_RADIO_CHANNEL, m_nChannel);
 	}
@@ -114,30 +115,18 @@ void CInsertSilenceDialog::OnSelchangeComboTimeFormat()
 	}
 	m_TimeFormat = Format;
 
-	m_Length = m_eLength.GetTimeSample();
-	m_eLength.SetTimeFormat(Format);
-	m_eLength.SetTimeSample(m_Length);
+	m_Length = m_eLength.ChangeTimeFormat(Format);
 
-	m_Start = m_eStart.GetTimeSample();
-	m_eStart.SetTimeFormat(Format);
-	m_eStart.SetTimeSample(m_Start);
+	m_Start = m_eStart.ChangeTimeFormat(Format);
 }
 
 
 BOOL CInsertSilenceDialog::OnInitDialog()
 {
 	BaseClass::OnInitDialog();
-
-	m_eStart.AddPosition(IDS_BEGIN_OF_SAMPLE, 0);
-	if (m_CaretPosition != 0
-		&& m_CaretPosition != m_FileLength)
-	{
-		m_eStart.AddPosition(IDS_CURSOR, m_CaretPosition);
-	}
-	m_eStart.AddPosition(IDS_END_OF_SAMPLE, m_FileLength);
+	m_eStart.FillFileTimes();
 
 	m_eStart.GetComboBox().SetExtendedUI(TRUE);
-	// TODO: add markers
 
 	return TRUE;  // return TRUE unless you set the focus to a control
 }
@@ -187,8 +176,15 @@ END_MESSAGE_MAP()
 
 void CSilenceOptionDialog::OnButtonSilence()
 {
+	if (!UpdateData(TRUE))
+	{
+		TRACE0("UpdateData failed during dialog termination.\n");
+		// the UpdateData routine will set focus to correct item
+		return;
+	}
 	EndDialog(IDC_BUTTON_SILENCE);
 }
+
 /////////////////////////////////////////////////////////////////
 CWmpNotInstalleedWarningDlg::CWmpNotInstalleedWarningDlg(CWnd* pParent /*=NULL*/)
 	: BaseClass(CWmpNotInstalleedWarningDlg::IDD, pParent)
@@ -913,14 +909,19 @@ void CCdGrabbingDialog::OnSize(UINT nType, int cx, int cy)
 // CReopenDialog dialog
 
 
-CReopenDialog::CReopenDialog(CWnd* pParent /*=NULL*/)
-	: BaseClass(CReopenDialog::IDD, pParent)
+CReopenDialog::CReopenDialog(UINT FormatId, LPCTSTR Name, CWnd* pParent /*=NULL*/)
+	: BaseClass(IDD, pParent)
 {
 	//{{AFX_DATA_INIT(CReopenDialog)
-	m_Prompt = _T("");
 	//}}AFX_DATA_INIT
+	m_Prompt.Format(FormatId, Name);
 }
 
+int CReopenDialog::DoModalPopDocument(CDocument * pDoc)
+{
+	CDocumentPopup pop(pDoc);
+	return DoModal();
+}
 
 void CReopenDialog::DoDataExchange(CDataExchange* pDX)
 {
@@ -943,15 +944,6 @@ END_MESSAGE_MAP()
 void CReopenDialog::OnNo()
 {
 	EndDialog(IDNO);
-}
-
-int CInsertSilenceDialog::DoModal()
-{
-	if (m_pWf->nChannels < 2)
-	{
-		m_lpszTemplateName = MAKEINTRESOURCE(IDD_DIALOG_INSERT_SILENCE_MONO);
-	}
-	return BaseClass::DoModal();
 }
 
 void CCdGrabbingDialog::OnTimer(UINT nIDEvent)
