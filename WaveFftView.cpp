@@ -958,7 +958,7 @@ BOOL CWaveFftView::OnEraseBkgnd(CDC* pDC)
 // TODO: draw checkered background outside wave area
 	CWaveSoapFrontDoc * pDoc = GetDocument();
 
-	RemoveSelectionRect();
+	//RemoveSelectionRect();
 	CRect r;
 	GetClientRect( & r);
 	int FileEnd = WorldToWindowX(pDoc->WaveFileSamples());
