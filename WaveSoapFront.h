@@ -108,6 +108,7 @@ class CWaveSoapFrontApp : public CWinApp,
 	public DirectFileParameters,
 	public LocaleParameters
 {
+	typedef CWinApp BaseClass;
 public:
 	CWaveSoapFrontApp();
 	void QueueOperation(COperationContext * pContext);

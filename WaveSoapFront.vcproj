@@ -821,6 +821,9 @@ makehm /h /a afxhh.h IDW_,HIDW_,0x50000 &quot;$(InputFileName)&quot; &gt;&gt; &q
 				RelativePath=".\res\WaveSoap.ico">
 			</File>
 			<File
+				RelativePath=".\WaveSoap.manifest">
+			</File>
+			<File
 				RelativePath=".\res\WaveSoapFront.ico">
 			</File>
 			<File
