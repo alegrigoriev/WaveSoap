@@ -307,13 +307,13 @@ void NotEnoughMemoryMessageBox();
 void NotEnoughDiskSpaceMessageBox();
 void NotEnoughUndoSpaceMessageBox();
 void FileCreationErrorMessageBox(LPCTSTR name);
-void AddStringToHistory(const CString & str, CString history[], int NumItems, bool CaseSensitive = false);
-BOOL CanExpandWaveFile(const CWaveFile & WaveFile, long NumOfSamplesToAdd);
-BOOL CanExpandWaveFileDlg(const CWaveFile & WaveFile, long NumOfSamplesToAdd);
-BOOL CanAllocateWaveFileSamples(const WAVEFORMATEX * pWf, LONGLONG NumOfSamples);
-BOOL CanAllocateWaveFileSamplesDlg(const WAVEFORMATEX * pWf, LONGLONG NumOfSamples);
-CString GetSelectionText(long Start, long End, int Chan,
-						int nChannels, BOOL bLockChannels,
+
+BOOL CanExpandWaveFile(const CWaveFile & WaveFile, NUMBER_OF_SAMPLES NumOfSamplesToAdd);
+BOOL CanExpandWaveFileDlg(const CWaveFile & WaveFile, NUMBER_OF_SAMPLES NumOfSamplesToAdd);
+BOOL CanAllocateWaveFileSamples(const WAVEFORMATEX * pWf, NUMBER_OF_SAMPLES NumOfSamples);
+BOOL CanAllocateWaveFileSamplesDlg(const WAVEFORMATEX * pWf, NUMBER_OF_SAMPLES NumOfSamples);
+CString GetSelectionText(SAMPLE_INDEX Start, SAMPLE_INDEX End, CHANNEL_MASK Chan,
+						NUMBER_OF_CHANNELS nChannels, BOOL bLockChannels,
 						long nSamplesPerSec, int TimeFormat);
 
 /////////////////////////////////////////////////////////////////////////////

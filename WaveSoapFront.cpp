@@ -2280,40 +2280,6 @@ void CWaveSoapFrontApp::SetStatusStringAndDoc(const CString & str, CWaveSoapFron
 	m_StatusStringLock.Unlock();
 }
 
-void AddStringToHistory(const CString & str, CString history[], int NumItems, bool CaseSensitive)
-{
-	// remove those that match the currently selected dirs
-	int i, j;
-	for (i = 0, j = 0; i < NumItems; i++)
-	{
-		if (CaseSensitive)
-		{
-			if (0 == str.Compare(history[i]))
-			{
-				continue;
-			}
-		}
-		else
-		{
-			if (0 == str.CompareNoCase(history[i]))
-			{
-				continue;
-			}
-		}
-		if (i != j)
-		{
-			history[j] = history[i];
-		}
-		j++;
-	}
-	// remove last dir from the list
-	for (i = NumItems - 1; i >= 1; i--)
-	{
-		history[i] = history[i - 1];
-	}
-	history[0] = str;
-}
-
 OSVERSIONINFO CWaveSoapFrontApp::m_VersionInfo;
 
 bool CWaveSoapFrontApp::SupportsV5FileDialog()
@@ -2438,10 +2404,10 @@ BOOL CWaveSoapFrontApp::CanSaveAnyDocument()
 	}
 }
 
-BOOL CanAllocateWaveFileSamples(const WAVEFORMATEX * pWf, LONGLONG NumOfSamples)
+BOOL CanAllocateWaveFileSamples(const WAVEFORMATEX * pWf, NUMBER_OF_SAMPLES NumOfSamples)
 {
 	int SampleSize = pWf->wBitsPerSample * pWf->nChannels / 8;
-	LONGLONG NewSize = NumOfSamples * SampleSize;
+	LONGLONG NewSize = LONGLONG(NumOfSamples) * SampleSize;
 	// reserve 1 megabyte of overhead
 	LONGLONG MaxLength = 0x7FFFFFFEi64 - 0x100000;
 	if (GetApp()->m_bAllow4GbWavFile)
@@ -2451,7 +2417,7 @@ BOOL CanAllocateWaveFileSamples(const WAVEFORMATEX * pWf, LONGLONG NumOfSamples)
 	return NewSize <= MaxLength;
 }
 
-BOOL CanAllocateWaveFileSamplesDlg(const WAVEFORMATEX * pWf, LONGLONG NumOfSamples)
+BOOL CanAllocateWaveFileSamplesDlg(const WAVEFORMATEX * pWf, NUMBER_OF_SAMPLES NumOfSamples)
 {
 	if (CanAllocateWaveFileSamples(pWf, NumOfSamples))
 	{
@@ -2461,7 +2427,7 @@ BOOL CanAllocateWaveFileSamplesDlg(const WAVEFORMATEX * pWf, LONGLONG NumOfSampl
 	return FALSE;
 }
 
-BOOL CanExpandWaveFile(const CWaveFile & WaveFile, long NumOfSamplesToAdd)
+BOOL CanExpandWaveFile(const CWaveFile & WaveFile, NUMBER_OF_SAMPLES NumOfSamplesToAdd)
 {
 	if (NumOfSamplesToAdd <= 0)
 	{
@@ -2476,7 +2442,7 @@ BOOL CanExpandWaveFile(const CWaveFile & WaveFile, long NumOfSamplesToAdd)
 	return NewLength <= MaxLength;
 }
 
-BOOL CanExpandWaveFileDlg(const CWaveFile & WaveFile, long NumOfSamplesToAdd)
+BOOL CanExpandWaveFileDlg(const CWaveFile & WaveFile, NUMBER_OF_SAMPLES NumOfSamplesToAdd)
 {
 	if (CanExpandWaveFile(WaveFile, NumOfSamplesToAdd))
 	{
@@ -2550,8 +2516,8 @@ void CWaveSoapFrontApp::OnToolsOptions()
 	}
 }
 
-CString GetSelectionText(long Start, long End, int Chan,
-						int nChannels, BOOL bLockChannels,
+CString GetSelectionText(SAMPLE_INDEX Start, SAMPLE_INDEX End, CHANNEL_MASK Chan,
+						NUMBER_OF_CHANNELS nChannels, BOOL bLockChannels,
 						long nSamplesPerSec, int TimeFormat)
 {
 	CString s;
