@@ -54,3 +54,15 @@ CString ResolveShellLink(LPCTSTR file)
 	// if any error occured, the result string is empty
 	return result;
 }
+
+CString ResolveIfShellLink(LPCTSTR file)
+{
+	int index = _tcslen(file) - 4;
+	if (index >= 0
+		&& 0 == _tcsicmp(file + index, _T(".lnk")))
+	{
+		return ResolveShellLink(file);
+	}
+	return file;
+}
+
