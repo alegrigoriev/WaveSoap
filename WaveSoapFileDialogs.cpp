@@ -443,18 +443,18 @@ void CWaveSoapFileSaveDialog::FillFormatTagCombo(WaveFormatTagEx const ListOfTag
 	m_FormatCombo.SetCurSel(sel);
 }
 
-void CWaveSoapFileSaveDialog::FillFormatCombo(int SelFormat, int Flags)
+int CWaveSoapFileSaveDialog::FillFormatCombo(int SelFormat, int Flags)
 {
 	if (m_AttributesCombo.m_hWnd == NULL
 		&& ! m_AttributesCombo.SubclassDlgItem(IDC_COMBO_ATTRIBUTES, this))
 	{
-		return;
+		return 0;
 	}
 
 	m_AttributesCombo.ResetContent();
 	if (SelFormat >= m_Acm.m_FormatTags.size())
 	{
-		return;
+		return 0;
 	}
 	m_AttributesCombo.LockWindowUpdate();
 
@@ -560,9 +560,9 @@ void CWaveSoapFileSaveDialog::FillFormatCombo(int SelFormat, int Flags)
 			}
 		}
 	}
-	m_SelectedFormat = sel;
 	m_AttributesCombo.SetCurSel(sel);
 	m_AttributesCombo.UnlockWindowUpdate();
+	return sel;
 }
 
 void CWaveSoapFileSaveDialog::OnCompatibleFormatsClicked()
@@ -572,7 +572,7 @@ void CWaveSoapFileSaveDialog::OnCompatibleFormatsClicked()
 	{
 		FillFormatTagCombo(ExcludeFormats,
 							sizeof ExcludeFormats / sizeof ExcludeFormats[0], WaveFormatExcludeFormats);
-		FillFormatCombo(m_FormatCombo.GetCurSel());
+		m_SelectedFormat = FillFormatCombo(m_FormatCombo.GetCurSel());
 	}
 }
 
@@ -584,11 +584,11 @@ void CWaveSoapFileSaveDialog::OnComboFormatsChange()
 	case SoundFileWav:
 		// WAV file
 		m_SelectedTag = m_Acm.m_FormatTags[sel].Tag;
-		FillFormatCombo(sel);
+		m_SelectedFormat = FillFormatCombo(sel);
 		break;
 	case SoundFileMp3:
 		// MP3 file
-		FillMp3FormatArray();
+		FillMp3FormatCombo();
 		break;
 	case SoundFileWma:
 		// WMA file
@@ -729,7 +729,7 @@ void CWaveSoapFileSaveDialog::SetFileType(int nType)
 		FillFormatTagCombo(ExcludeFormats,
 							sizeof ExcludeFormats / sizeof ExcludeFormats[0],
 							WaveFormatExcludeFormats);
-		FillFormatCombo(m_FormatCombo.GetCurSel());
+		m_SelectedFormat = FillFormatCombo(m_FormatCombo.GetCurSel());
 		break;  // go on
 	case SoundFileMp3:
 		// MP3 file
@@ -747,7 +747,7 @@ void CWaveSoapFileSaveDialog::SetFileType(int nType)
 		//
 		// set tag to MP3
 		// fill formats combo (bitrate, etc)
-		FillMp3EncoderArray();
+		FillMp3EncoderCombo();
 		break;
 	case SoundFileWma:
 		// WMA file
@@ -760,7 +760,7 @@ void CWaveSoapFileSaveDialog::SetFileType(int nType)
 		ShowDlgItem(IDC_STATIC_COMMENTS, SW_HIDE);
 		ShowDlgItem(IDC_EDIT_COMMENT, SW_HIDE);
 		// fill profiles combo
-		FillWmaFormatArray();
+		FillWmaFormatCombo();
 		break;
 		//case SoundFileAvi:
 		// AVI file
@@ -864,89 +864,52 @@ void CWaveSoapFileSaveDialog::FillLameEncoderFormats()
 	}
 }
 
-void CWaveSoapFileSaveDialog::FillWmaFormatArray()
+void CWaveSoapFileSaveDialog::FillWmaFormatCombo()
 {
-	// if WmaOnly, only tags 352 and 353 are used
-	//WAVE_FORMAT_MSAUDIO1+1
-	static WaveFormatTagEx const format = {WAVE_FORMAT_MSAUDIO1 + 1};
-	// enum VMA V1 and V2 formats
-	// V2 format: 353
-	// filter the formats by tag, sampling rate, number of channels
-	// fill format tag array with V2 formats
-	m_Acm.FillFormatTagArray(m_Wf, & format, 1);
-	FillFormatCombo(0, WaveFormatMatchCnannels | WaveFormatMatchSampleRate);
+	m_Acm.FillWmaFormatTags();
+	m_SelectedFormat = FillFormatCombo(0, WaveFormatMatchCnannels | WaveFormatMatchSampleRate);
 }
 
-void CWaveSoapFileSaveDialog::FillMp3FormatArray()
+void CWaveSoapFileSaveDialog::FillMp3FormatCombo()
 {
-	if (0 == m_NumOfMp3Encoders)
+	unsigned sel = m_FormatCombo.GetCurSel();
+	if (sel >= m_Acm.m_FormatTags.size())
 	{
 		return;
 	}
-	int EncoderType = m_Mp3Encoders[m_FormatCombo.GetCurSel()];
-	BOOL bSaveCompFormat;
-	WaveFormatTagEx SaveSelectedTag;
-	int nSel;
-	switch (EncoderType)
-	{
-	case Mp3EncoderLameencoder:
-		FillLameEncoderFormats();
-		break;
 
-	case Mp3EncoderAcm:
-		//FillFormatTagArray();
-		SaveSelectedTag = m_SelectedTag;
-		m_SelectedTag.Tag = WAVE_FORMAT_MPEGLAYER3;
-		bSaveCompFormat = m_bCompatibleFormatsOnly;
-		m_bCompatibleFormatsOnly = true;
-		// Find MP3 encode index
-		for (nSel = 0; nSel < m_Acm.m_FormatTags.size(); nSel++)
-		{
-			if (WAVE_FORMAT_MPEGLAYER3 == m_Acm.m_FormatTags[nSel].Tag.Tag)
-			{
-				FillFormatCombo(nSel);
-				break;
-			}
-		}
-		m_bCompatibleFormatsOnly = bSaveCompFormat;
-		m_SelectedTag = SaveSelectedTag;
-		break;
-	case Mp3EncoderBlade:
-		break;
+	WaveFormatTagEx SelectedTag = m_Acm.m_FormatTags[sel].Tag;
+
+	if (WAVE_FORMAT_MPEGLAYER3 == SelectedTag.Tag)
+	{
+		FillFormatCombo(sel, WaveFormatMatchCompatibleFormats);
+	}
+	else if (BladeMp3Encoder::GetTag() == SelectedTag)
+	{
+		FillLameEncoderFormats();
 	}
 }
 
-void CWaveSoapFileSaveDialog::FillMp3EncoderArray()
+void CWaveSoapFileSaveDialog::FillMp3EncoderCombo()
 {
 	// check if LAME encoder is available
 	m_FormatCombo.ResetContent();
-	m_NumOfMp3Encoders = 0;
+	m_Acm.FillMp3EncoderTags();
 
-	BladeMp3Encoder Mp3Enc;
-	if (Mp3Enc.Open())
+	if (m_Acm.m_FormatTags.empty())
 	{
-		m_FormatCombo.AddString(Mp3Enc.GetVersionString());
-
-		m_Mp3Encoders[m_NumOfMp3Encoders] = Mp3EncoderLameencoder;
-		m_NumOfMp3Encoders++;
-
-		Mp3Enc.Close();
+		return;
 	}
 
-	// check if MP3 ACM encoder presents
-	static WaveFormatTagEx const Mp3Tag = { WAVE_FORMAT_MPEGLAYER3 };
-
-	m_Acm.FillFormatTagArray(m_Wf, & Mp3Tag, 1);
 	for (int i = 0; i < m_Acm.m_FormatTags.size(); i++)
 	{
-		if (WAVE_FORMAT_MPEGLAYER3 == m_Acm.m_FormatTags[i].Tag.Tag)
-		{
-			m_FormatCombo.AddString(m_Acm.m_FormatTags[i].Name);
-			m_Mp3Encoders[m_NumOfMp3Encoders] = Mp3EncoderAcm;
-			m_NumOfMp3Encoders++;
-			break;
-		}
+		m_FormatCombo.AddString(m_Acm.m_FormatTags[i].Name);
+	}
+
+	if (m_SelectedMp3Encoder >= m_Acm.m_FormatTags.size())
+	{
+		m_SelectedMp3Encoder = 0;
 	}
 	m_FormatCombo.SetCurSel(m_SelectedMp3Encoder);
-	FillMp3FormatArray();
+	FillMp3FormatCombo();
 }

@@ -1,13 +1,10 @@
 Known problems and tasks:
 
-Add eject CD button
+Add file format selection for CD grabbing
 When showing a dialog for a document, make the doc active, then restore the previous one.
 If CD recording not supported, SET SPEED WriteSpeed set to zero
 Restore CD speed to max rather than current!
-SetSpeed returned sense 5/24
-Set speed doesn't work on Goldstar CDRW
-Add file format selection for CD grabbing
-Add context menu to track list (check/uncheck all/selected)
+Set speed doesn't work on Goldstar CDRW	 SetSpeed returned sense 5/24
 Pass wave format to CD grabbing dialog
 Process Loss Of Streaming error
 Add CD grabbing
@@ -60,6 +57,7 @@ Make recording from Internet stream
 
 Problems:
 
+FFT view seems to read much more than necessary (prefetch?)
 During playback, outline is invalidated. (??)
 WinXP doesn't have CDRAL
 Multisession disk shows only begin of tracks. Read the whole structure.
@@ -89,6 +87,7 @@ No Disk In Drive has a checkmark
 CD list combo height too low
 
 Deferred:
+Add context menu to track list (check/uncheck all/selected)
 Add check/uncheck icons to the header
 Move WMA error dialog to PostRetire, all initialization to Init()
 16 and 20 kbit/s WMA save is incomplete (not reproduced)
@@ -99,6 +98,12 @@ Save As dialog is not centered first time (comdlg problem?)
 ??? When time/seconds format is set for status bar, MM:SS is actually shown
 
 Done:
+Include PCM format always
+If there is no compatible PCM format, add one
+Enumerate format tags (filter by tag)
+If no format was returned on EnumFormats, try to call SuggestFormat.
+Sort formats in datarate order
+Add eject CD button, CD buttons with bitmaps
 Make a few retries to read TOC after disk change
 CD grab: prompt for file replacement
 Handle situation when the CD file save directory is not accessible for writing
@@ -191,3 +196,16 @@ Call master view MasterScrollBy
 
 
 When origin is set, it is possible to round it to whole pixels. It is also done when zoom is done
+----------------------------------------------------------------------------------------------
+
+Enumerating format tags:
+
+Given source file format, check all format tags and see if conversion is possible from the source format to the target format. Source PCM format address is passed to the function.
+If there are tags to select, check first if the format tag is among them.
+Then enumerate formats to see if there are compatible with source format.
+In enum call check if the format is from the requested array, or if no array, that the format tag matches the tag returned for tag enumeration.
+
+If there are tags to exclude, check if the format tag is among them (unless it is WAVE_FORMAT_EXTENSIBLE). During formats enumeration also exclude the WAVE_FORMAT_EXTENSIBLE formats.
+
+
+Enumerating formats:

@@ -76,10 +76,10 @@ CStringN::CStringN(const CStringN& stringSrc)
 
 #define ROUND(x,y) (((x)+(y-1))&~(y-1))
 #define ROUND4(x) ROUND(x, 4)
-AFX_STATIC CFixedAlloc _afxAlloc64(ROUND4(65*sizeof(NTCHAR)+sizeof(CStringDataN)));
-AFX_STATIC CFixedAlloc _afxAlloc128(ROUND4(129*sizeof(NTCHAR)+sizeof(CStringDataN)));
-AFX_STATIC CFixedAlloc _afxAlloc256(ROUND4(257*sizeof(NTCHAR)+sizeof(CStringDataN)));
-AFX_STATIC CFixedAlloc _afxAlloc512(ROUND4(513*sizeof(NTCHAR)+sizeof(CStringDataN)));
+AFX_STATIC CFixedAlloc _afxAlloc64N(ROUND4(65*sizeof(NTCHAR)+sizeof(CStringDataN)));
+AFX_STATIC CFixedAlloc _afxAlloc128N(ROUND4(129*sizeof(NTCHAR)+sizeof(CStringDataN)));
+AFX_STATIC CFixedAlloc _afxAlloc256N(ROUND4(257*sizeof(NTCHAR)+sizeof(CStringDataN)));
+AFX_STATIC CFixedAlloc _afxAlloc512N(ROUND4(513*sizeof(NTCHAR)+sizeof(CStringDataN)));
 
 #endif //!_DEBUG
 
@@ -98,22 +98,22 @@ void CStringN::AllocBuffer(int nLen)
 #ifndef _DEBUG
 		if (nLen <= 64)
 		{
-			pData = (CStringDataN*)_afxAlloc64.Alloc();
+			pData = (CStringDataN*)_afxAlloc64N.Alloc();
 			pData->nAllocLength = 64;
 		}
 		else if (nLen <= 128)
 		{
-			pData = (CStringDataN*)_afxAlloc128.Alloc();
+			pData = (CStringDataN*)_afxAlloc128N.Alloc();
 			pData->nAllocLength = 128;
 		}
 		else if (nLen <= 256)
 		{
-			pData = (CStringDataN*)_afxAlloc256.Alloc();
+			pData = (CStringDataN*)_afxAlloc256N.Alloc();
 			pData->nAllocLength = 256;
 		}
 		else if (nLen <= 512)
 		{
-			pData = (CStringDataN*)_afxAlloc512.Alloc();
+			pData = (CStringDataN*)_afxAlloc512N.Alloc();
 			pData->nAllocLength = 512;
 		}
 		else
@@ -135,13 +135,13 @@ void FASTCALL CStringN::FreeData(CStringDataN* pData)
 #ifndef _DEBUG
 	int nLen = pData->nAllocLength;
 	if (nLen == 64)
-		_afxAlloc64.Free(pData);
+		_afxAlloc64N.Free(pData);
 	else if (nLen == 128)
-		_afxAlloc128.Free(pData);
+		_afxAlloc128N.Free(pData);
 	else if (nLen == 256)
-		_afxAlloc256.Free(pData);
+		_afxAlloc256N.Free(pData);
 	else  if (nLen == 512)
-		_afxAlloc512.Free(pData);
+		_afxAlloc512N.Free(pData);
 	else
 	{
 		ASSERT(nLen > 512);

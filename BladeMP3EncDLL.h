@@ -20,8 +20,10 @@
  * Boston, MA  02111-1307, USA.
  */
 
+// BladeMP3EncDLL.h
 #ifndef ___BLADEDLL_H_INCLUDED___
 #define ___BLADEDLL_H_INCLUDED___
+#include "WaveSupport.h"
 
 #pragma pack(push)
 #pragma pack(1)
@@ -261,6 +263,21 @@ public:
 	}
 
 	CString GetVersionString();
+
+	static WaveFormatTagEx const & GetTag()
+	{
+		// {9568C76A-394E-4df6-B8F2-3AF5E90CD23C}
+		static WaveFormatTagEx const tag =
+		{
+			WAVE_FORMAT_EXTENSIBLE,
+			{
+				0x9568c76a, 0x394e, 0x4df6,
+				{ 0xb8, 0xf2, 0x3a, 0xf5, 0xe9, 0xc, 0xd2, 0x3c
+				}
+			}
+		};
+		return tag;
+	}
 
 private:
 	static BE_ERR	_cdecl InitStreamStub(PBE_CONFIG, PDWORD, PDWORD, PHBE_STREAM) { return BE_ERR_NO_MORE_HANDLES; }

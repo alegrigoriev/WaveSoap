@@ -1567,6 +1567,7 @@ void CCdGrabbingDialog::OnRadioWmaFormat()
 	{
 		m_RadioFileFormat = 1;
 		// fill bitrate dialog
+
 		return;
 	}
 	int id = AfxMessageBox(IDS_WMA_ENCODER_NOT_AVILABLE, MB_OK | MB_ICONEXCLAMATION | MB_HELP);
