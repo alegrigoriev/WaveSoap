@@ -5,6 +5,7 @@
 #include "WaveSoapFront.h"
 #include "EqualizerDialog.h"
 #include "OperationDialogs.h"
+#include "FileDialogWithHistory.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -30,6 +31,8 @@ CEqualizerDialog::CEqualizerDialog(CWnd* pParent /*=NULL*/)
 	memset(& m_mmxi, 0, sizeof m_mmxi);
 	m_Profile.AddItem("Equalizer", "NumberOfBands", m_nBands,
 					10, 3, MaxNumberOfEqualizerBands);
+	m_Profile.AddItem("Settings", "EqualizerDlgWidth", m_DlgWidth, 0, 0, 4096);
+	m_Profile.AddItem("Settings", "EqualizerDlgHeight", m_DlgHeight, 0, 0, 4096);
 	m_Profile.AddBoolItem("Equalizer", "MultiBandEqualizer", m_bMultiBandEqualizer, TRUE);
 	for (int n = 0; n < MaxNumberOfEqualizerBands; n++)
 	{
@@ -233,7 +236,7 @@ BOOL CEqualizerDialog::OnInitDialog()
 	pTemplateWnd->GetWindowRect( & r);
 	ScreenToClient( & r);
 	m_wGraph.Create(NULL, "", WS_CHILD | WS_VISIBLE
-					| WS_CLIPSIBLINGS | WS_TABSTOP,
+					| WS_CLIPSIBLINGS | WS_CLIPCHILDREN | WS_TABSTOP,
 					r, this, AFX_IDW_PANE_FIRST);
 	m_wGraph.SetWindowPos(pTemplateWnd, 0, 0, 0, 0,
 						SWP_NOACTIVATE | SWP_NOMOVE | SWP_NOSIZE);
@@ -247,6 +250,26 @@ BOOL CEqualizerDialog::OnInitDialog()
 	UpdateSelectionStatic();
 
 	m_SpinBands.SetRange(3, MaxNumberOfEqualizerBands);
+
+	// set dialog size
+	if (m_DlgWidth < m_mmxi.ptMinTrackSize.x)
+	{
+		m_DlgWidth = m_mmxi.ptMinTrackSize.x;
+	}
+	if (m_DlgWidth > m_mmxi.ptMaxTrackSize.x)
+	{
+		m_DlgWidth = m_mmxi.ptMaxTrackSize.x;
+	}
+	if (m_DlgHeight < m_mmxi.ptMinTrackSize.y)
+	{
+		m_DlgHeight = m_mmxi.ptMinTrackSize.y;
+	}
+	if (m_DlgHeight > m_mmxi.ptMaxTrackSize.y)
+	{
+		m_DlgHeight = m_mmxi.ptMaxTrackSize.y;
+	}
+	SetWindowPos(NULL, 0, 0, m_DlgWidth, m_DlgHeight,
+				SWP_NOACTIVATE | SWP_NOOWNERZORDER | SWP_NOZORDER | SWP_NOMOVE);
 
 	return TRUE;  // return TRUE unless you set the focus to a control
 	// EXCEPTION: OCX Property Pages should return FALSE
@@ -347,6 +370,7 @@ END_MESSAGE_MAP()
 
 void CEqualizerGraphWnd::OnPaint()
 {
+	TRACE("CEqualizerGraphWnd::OnPaint\n");
 	CPaintDC dc(this); // device context for painting
 
 	CRect cr;
@@ -356,14 +380,23 @@ void CEqualizerGraphWnd::OnPaint()
 	dc.SetMapMode(MM_TEXT);
 	CGdiObject * pOldPen = dc.SelectStockObject(BLACK_PEN);
 	CGdiObject * pOldBrush = dc.SelectStockObject(NULL_BRUSH);
-
+	ur.left -= 2;
+	if (ur.left < 0)
+	{
+		ur.left = 0;
+	}
+	ur.right ++;
+	if (ur.right > cr.right)
+	{
+		ur.right = cr.right;
+	}
 	double coeff = M_PI / pow(500., m_NumOfBands / (m_NumOfBands - 0.5));
-	for (int x = ur.left - 1; x < ur.right; x++)
+	for (int x = ur.left; x < ur.right; x++)
 	{
 		double f = coeff * pow(500., m_NumOfBands * (x + 1) /((m_NumOfBands - 0.5) * cr.Width()));
 		double gain = abs(CalculateResponse(f));
 		int y = (1 - log10(gain)) * cr.Height() / 2;
-		if (x == ur.left - 1)
+		if (x == ur.left)
 		{
 			dc.MoveTo(x, y);
 		}
@@ -695,7 +728,7 @@ void CEqualizerGraphWnd::SetNumberOfBands(int NumBands)
 	}
 	if (NULL != m_hWnd)
 	{
-		RedrawWindow(NULL, NULL, RDW_FRAME | RDW_INVALIDATE | RDW_ERASENOW);
+		RedrawWindow(NULL, NULL, RDW_FRAME | RDW_ERASE | RDW_INVALIDATE | RDW_ERASENOW);
 	}
 }
 
@@ -704,11 +737,12 @@ BOOL CEqualizerGraphWnd::OnEraseBkgnd(CDC* pDC)
 	// white brush
 	CGdiObject * pOldBrush = pDC->SelectStockObject(WHITE_BRUSH);
 	CRect cr;
-	pDC->GetClipBox( & cr);
+	GetClientRect( & cr);
+	TRACE("CEqualizerGraphWnd::OnEraseBkgnd, cr=%d, %d, %d, %d\n",
+		cr.left, cr.right, cr.top, cr.bottom);
 
 	pDC->PatBlt(cr.left, cr.top, cr.Width(), cr.Height(), PATCOPY);
 
-	GetClientRect( & cr);
 	// have to use PatBlt to draw alternate lines
 	CBitmap bmp;
 	static const unsigned char pattern[] =
@@ -735,6 +769,7 @@ BOOL CEqualizerGraphWnd::OnEraseBkgnd(CDC* pDC)
 			int x = cr.Width() * (i * 2 + 1) / (2 * m_NumOfBands);
 			pDC->PatBlt(x, cr.top, 1, cr.bottom - cr.top, PATINVERT);
 		}
+		pDC->SelectObject(pOldBrush);
 	}
 	catch (CResourceException)
 	{
@@ -775,9 +810,27 @@ void CEqualizerGraphWnd::OnNcCalcSize(BOOL bCalcValidRects, NCCALCSIZE_PARAMS * 
 
 void CEqualizerGraphWnd::OnNcPaint(UINT wParam)
 {
-	CDC * pDC = GetDCEx(CRgn::FromHandle((HRGN)wParam),
+	TRACE("CEqualizerGraphWnd::OnNcPaint, hrgn=%X\n", wParam);
+	// copy region, because it will be deleted
+	CRgn rgn;
+	if (wParam != 1)
+	{
+		rgn.CreateRectRgn(0, 0, 1, 1);
+		CRgn rgn1;
+		rgn1.Attach((HRGN)wParam);
+		rgn.CopyRgn(& rgn1);
+		rgn1.Detach();
+	}
+	else
+	{
+		rgn.Attach(HRGN(1));
+	}
+	CDC * pDC = GetDCEx(& rgn,
 						// DCX_CACHE is necessary!
 						DCX_CACHE | DCX_WINDOW | DCX_INTERSECTRGN);
+	// GetDCEx deletes the region
+	rgn.Detach();
+
 	if (NULL == pDC)
 	{
 		return;
@@ -792,17 +845,22 @@ void CEqualizerGraphWnd::OnNcPaint(UINT wParam)
 	ncp.rgrc[0] = wr;
 	//OnNcCalcSize(FALSE, & ncp);
 	SendMessage(WM_NCCALCSIZE, FALSE, (LPARAM) & ncp);
-
+	//CRgn ClientRgn;
+	//ClientRgn.CreateRectRgnIndirect( & ncp.rgrc[0]);
+	pDC->ExcludeClipRect( & ncp.rgrc[0]);
 	// Paint into this DC
 	CBrush BkBrush;
 	CWnd * pParentDlg = GetParent();
 	BkBrush.Attach((HBRUSH) pParentDlg->SendMessage(WM_CTLCOLORDLG, (WPARAM)(pParentDlg->m_hWnd), LPARAM(pDC->m_hDC)));
+
 	CGdiObject * pOldPen = pDC->SelectStockObject(BLACK_PEN);
 	CGdiObject * pOldBrush = pDC->SelectObject( & BkBrush);
 	// fill the NC area
 	pDC->Rectangle( & wr);
 	// Draw rectangle
-	pDC->SelectStockObject(NULL_BRUSH);
+	pDC->SelectStockObject(HOLLOW_BRUSH);
+	BkBrush.Detach();
+
 	pDC->Rectangle(ncp.rgrc[0].left - 1, ncp.rgrc[0].top - 1,
 					ncp.rgrc[0].right + 1, ncp.rgrc[0].bottom + 1);
 	CGdiObject * pOldFont = pDC->SelectStockObject(ANSI_VAR_FONT);
@@ -880,6 +938,11 @@ void CEqualizerGraphWnd::OnNcPaint(UINT wParam)
 	pDC->SelectObject(pOldBrush);
 	pDC->SelectObject(pOldPen);
 	ReleaseDC(pDC);
+	if (wParam != 1)
+	{
+		TRACE("HRGN type = %d\n", GetObjectType((HRGN)wParam));
+	}
+	CWnd::OnNcPaint();
 }
 
 void CEqualizerGraphWnd::OnCaptureChanged(CWnd *pWnd)
@@ -953,14 +1016,51 @@ void CEqualizerDialog::OnButtonResetBands()
 
 void CEqualizerDialog::OnButtonLoad()
 {
-	// TODO: Add your control notification handler code here
+	CString FileName;
+	CString Filter;
+	Filter.LoadString(IDS_EQUALIZER_FILE_FILTER);
 
+	CString Title;
+	Title.LoadString(IDS_EQUALIZER_LOAD_TITLE);
+
+	CFileDialogWithHistory dlg(TRUE,
+								"Eqlz", NULL,
+								OFN_HIDEREADONLY
+								| OFN_EXPLORER | OFN_NONETWORKBUTTON | OFN_FILEMUSTEXIST,
+								Filter);
+	dlg.m_ofn.lpstrTitle = Title;
+
+	if (IDOK != dlg.DoModal())
+	{
+		return;
+	}
+	FileName = dlg.GetPathName();
+	m_Profile.ImportSection("Equalizer", FileName);
+	m_wGraph.SetNumberOfBands(m_nBands);
 }
 
 void CEqualizerDialog::OnButtonSaveAs()
 {
-	// TODO: Add your control notification handler code here
+	CString FileName;
+	CString Filter;
+	Filter.LoadString(IDS_EQUALIZER_FILE_FILTER);
 
+	CString Title;
+	Title.LoadString(IDS_EQUALIZER_SAVE_TITLE);
+
+	CFileDialogWithHistory dlg(FALSE,
+								"Eqlz", NULL,
+								OFN_HIDEREADONLY | OFN_OVERWRITEPROMPT
+								| OFN_EXPLORER | OFN_NONETWORKBUTTON | OFN_PATHMUSTEXIST,
+								Filter);
+	dlg.m_ofn.lpstrTitle = Title;
+
+	if (IDOK != dlg.DoModal())
+	{
+		return;
+	}
+	FileName = dlg.GetPathName();
+	m_Profile.ExportSection("Equalizer", FileName);
 }
 
 void CEqualizerGraphWnd::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
@@ -1089,6 +1189,12 @@ void CEqualizerDialog::OnOK()
 		}
 		return;
 	}
+
+	CRect r;
+	GetWindowRect( & r);
+	m_DlgWidth = r.Width();
+	m_DlgHeight = r.Height();
+
 	CDialog::OnOK();
 }
 

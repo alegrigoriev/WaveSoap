@@ -1792,6 +1792,37 @@ BEGIN
     PUSHBUTTON      "&Help",IDHELP,162,172,50,14
 END
 
+IDD_SELECTION_DIALOG_MONO DIALOG DISCARDABLE  0, 0, 177, 132
+STYLE DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "Selection"
+FONT 8, "MS Sans Serif"
+BEGIN
+    LTEXT           "Start:",-1,16,43,26,8
+    COMBOBOX        IDC_COMBO_START,61,41,82,39,CBS_DROPDOWN | WS_VSCROLL | 
+                    WS_TABSTOP
+    CONTROL         "Spin1",IDC_SPIN_START,"msctls_updown32",UDS_ALIGNRIGHT | 
+                    UDS_AUTOBUDDY | UDS_ARROWKEYS,145,40,10,14
+    LTEXT           "End:",-1,16,60,26,8
+    COMBOBOX        IDC_COMBO_END,61,58,82,39,CBS_DROPDOWN | WS_VSCROLL | 
+                    WS_TABSTOP
+    CONTROL         "Spin1",IDC_SPIN_END,"msctls_updown32",UDS_ALIGNRIGHT | 
+                    UDS_AUTOBUDDY | UDS_ARROWKEYS,145,57,10,14
+    LTEXT           "Length:",-1,16,78,32,8
+    EDITTEXT        IDC_EDIT_LENGTH,61,75,82,14,ES_AUTOHSCROLL
+    CONTROL         "Spin1",IDC_SPIN_LENGTH,"msctls_updown32",UDS_ALIGNRIGHT | 
+                    UDS_AUTOBUDDY | UDS_ARROWKEYS,145,75,10,14
+    LTEXT           "Time format: ",-1,16,96,40,8
+    COMBOBOX        IDC_COMBO_TIME_FORMAT,61,94,82,53,CBS_DROPDOWNLIST | 
+                    WS_VSCROLL | WS_TABSTOP
+    PUSHBUTTON      "&Play",IDC_BUTTON_PLAY,7,111,50,14,WS_DISABLED | 
+                    WS_GROUP
+    DEFPUSHBUTTON   "OK",IDOK,63,111,50,14
+    PUSHBUTTON      "Cancel",IDCANCEL,119,111,50,14
+    LTEXT           "Selection:",-1,16,10,31,8
+    COMBOBOX        IDC_COMBO_SELECTION,16,22,127,72,CBS_DROPDOWNLIST | 
+                    WS_VSCROLL | WS_TABSTOP
+END
+
 
 #ifndef _MAC
 /////////////////////////////////////////////////////////////////////////////
@@ -2127,6 +2158,14 @@ BEGIN
         TOPMARGIN, 7
         BOTTOMMARGIN, 186
     END
+
+    IDD_SELECTION_DIALOG_MONO, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 170
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 125
+    END
 END
 #endif    // APSTUDIO_INVOKED
 
@@ -2250,6 +2289,17 @@ BEGIN
 0x3834, 0x3030, 0x0030, 
     IDC_COMBO_SAMPLING_RATE, 0x403, 6, 0
 0x3639, 0x3030, 0x0030, 
+    0
+END
+
+IDD_SELECTION_DIALOG_MONO DLGINIT
+BEGIN
+    IDC_COMBO_TIME_FORMAT, 0x403, 8, 0
+0x6153, 0x706d, 0x656c, 0x0073, 
+    IDC_COMBO_TIME_FORMAT, 0x403, 13, 0
+0x6868, 0x6d3a, 0x3a6d, 0x7373, 0x732e, 0x7373, "\000" 
+    IDC_COMBO_TIME_FORMAT, 0x403, 8, 0
+0x6553, 0x6f63, 0x646e, 0x0073, 
     0
 END
 
@@ -2727,6 +2777,10 @@ BEGIN
     IDS_FROM_BEGIN_TO_CURSOR "From Begin To Cursor"
     IDS_FROM_CURSOR_TO_END  "From Cursor To End"
     IDS_CURSOR              "Cursor"
+    IDS_EQUALIZER_FILE_FILTER 
+                            "Equalizer files (*.Eqlz)|*.Eqlz|All Files (*.*)|*||"
+    IDS_EQUALIZER_SAVE_TITLE "Save Equalizer As"
+    IDS_EQUALIZER_LOAD_TITLE "Load Equalizer"
 END
 
 #endif    // English (U.S.) resources

@@ -1017,16 +1017,17 @@ void CWaveMDIChildClient::OnViewHideSpectrumsection()
 	RecalcLayout();
 }
 
-void CWaveMDIChildClient::OnSettingChange(UINT uFlags, LPCTSTR lpszSection)
+LRESULT CWaveMDIChildClient::OnSettingChange(WPARAM uFlags, LPARAM lParam)
 {
 	RecalcLayout();
-	CWnd::OnSettingChange(uFlags, lpszSection);
+	CWnd::OnSettingChange(uFlags, (LPCTSTR) lParam);
+	return 0;
 }
 
-LRESULT CWaveMDIChildClient::OnDisplayChange(LPARAM lParam, WPARAM wParam)
+LRESULT CWaveMDIChildClient::OnDisplayChange(WPARAM wParam, LPARAM lParam)
 {
 	RecalcLayout();
-	return CWnd::OnDisplayChange(lParam, wParam);
+	return CWnd::OnDisplayChange(wParam, lParam);
 }
 
 

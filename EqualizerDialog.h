@@ -133,10 +133,12 @@ public:
 	int m_Chan;
 	int m_TimeFormat;
 	const WAVEFORMATEX * m_pWf;
-	CApplicationProfile m_Profile;
+	int m_DlgWidth;
+	int m_DlgHeight;
 
 	CEqualizerGraphWnd m_wGraph;
 
+	CApplicationProfile m_Profile;
 // Overrides
 	// ClassWizard generated virtual function overrides
 	//{{AFX_VIRTUAL(CEqualizerDialog)

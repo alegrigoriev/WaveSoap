@@ -49,8 +49,8 @@ protected:  // control bar embedded members
 	CDialogBar      m_wndDlgBar;
 	int m_nRotateChildIndex;  // used for Ctrl+Tab handling
 // Generated message map functions
-	afx_msg LRESULT OnDisplayChange(LPARAM, WPARAM);
-	void OnSettingChange(UINT uFlags, LPCTSTR lpszSection);
+	afx_msg LRESULT OnDisplayChange(WPARAM, LPARAM);
+	LRESULT OnSettingChange(WPARAM, LPARAM);
 protected:
 	//{{AFX_MSG(CMainFrame)
 	afx_msg int OnCreate(LPCREATESTRUCT lpCreateStruct);

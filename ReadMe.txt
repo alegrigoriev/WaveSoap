@@ -48,7 +48,9 @@ Add Export Settings, Import Settings to Options dialog
 Add splash screen
 
 Problems:
-Selection dialog shows channels for MONO sound
+SpectrumSection ruler sometimes doesn't draw smaller ticks
+Spectrum section resize uses wrong position
+samples with 32767, -32768 are not visible
 When switched to/from FFT view, scrollbar is set to wrong range (Suite1.wav)
 After file length increased to 1 sample from 0, scroll bar set to wrond scale
 Expression evaluation selection longer than file length doesn't update file length
@@ -64,7 +66,9 @@ Save As dialog is not centered first time (comdlg problem?)
 ??? When time/seconds format is set for status bar, MM:SS is actually shown
 
 Fixed:
-Expression evaliation didn't show status string
+Equalizer window could be drawn with non-client backgrould in the client area
+Selection dialog shows channels for MONO sound
+Expression evaluation didn't show status string
 Backward file prefetch from position 0 would cause memory overallocation (500 MB) and hang
 Expression dialog: OK not disabled on the beginning, if expression is empty
 If there is no selection, Selection button dialog doesn't give option From Cursor, To Cursor
@@ -90,7 +94,10 @@ Wrong minimum/maximum valies shown for a zero length file in Statistics (command
 ???? When a file is opened in non-direct mode, peak info is saved with wrong time stamp
 
 Done:
-EQ window: hide dot-caret if no focus, draw without blink, when dragging
+Add Save/Load to equalizer
+Remember Equalizer dialog size
+Process Enter on EDIT_GAIN edit box
+EQ window: draw dot-caret if no focus, draw without blink, when dragging
 In CSelectionDialog: replace combobox strings with LoadString
 Show file names in PostRetire dialogs, because they can be shown for background DOC.
 Show file name in Statistics Dialog
