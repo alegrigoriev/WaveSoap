@@ -1320,8 +1320,6 @@ BOOL CWaveSoapFrontDoc::DoPaste(SAMPLE_INDEX Start, SAMPLE_INDEX End, CHANNEL_MA
 			// create new temporary file
 			CWaveFile DstFile;
 
-			double ResampleRatio = double(TargetSampleRate) / SrcSampleRate;
-
 			CWaveFormat wf;
 			wf.InitFormat(WAVE_FORMAT_PCM, TargetSampleRate, SrcFile.Channels());
 
@@ -1341,7 +1339,7 @@ BOOL CWaveSoapFrontDoc::DoPaste(SAMPLE_INDEX Start, SAMPLE_INDEX End, CHANNEL_MA
 			CResampleContext::auto_ptr pResampleContext(
 														new CResampleContext(this, IDS_RESAMPLE_CLIPBOARD_STATUS_PROMPT,
 															0,
-															SrcFile, DstFile, ResampleRatio, 63));
+															SrcFile, DstFile, SrcSampleRate, TargetSampleRate, 63));
 
 			SrcFile = DstFile;
 
@@ -4201,7 +4199,6 @@ void CWaveSoapFrontDoc::OnProcessResample()
 
 	unsigned long OldSamplingRate = WaveSampleRate();
 	unsigned long NewSamplingRate = dlg.NewSampleRate();
-	double ResampleRatio = dlg.ResampleRatio();
 
 	if (dlg.ChangeRateOnly())
 	{
@@ -4249,7 +4246,7 @@ void CWaveSoapFrontDoc::OnProcessResample()
 	}
 
 	pContext->AddContext(new CResampleContext(this,
-											0, 0, m_WavFile, DstFile, ResampleRatio, 63));
+											0, 0, m_WavFile, DstFile, OldSamplingRate, NewSamplingRate, 63));
 
 	pContext->AddContext(new CReplaceFileContext(this, _T(""), DstFile, false));
 

@@ -21,7 +21,8 @@ public:
 	CResampleContext(CWaveSoapFrontDoc * pDoc,
 					UINT StatusStringId, UINT OperationNameId,
 					CWaveFile & SrcFile, CWaveFile & DstFile,
-					double FrequencyRatio, double FilterLength);
+					long OriginalSampleRate, long NewSampleRate,
+					int FilterLength);
 
 	CResampleFilter m_Resample;
 
