@@ -602,12 +602,12 @@ void CWaveFftView::MakeFftArray(int left, int right)
 	int FftSpacing = m_HorizontalScale;
 	if (m_FftOrder <= m_HorizontalScale)
 	{
-		NumberOfFftPoints = r.Width()+1;
+		NumberOfFftPoints = r.Width()+2;
 	}
 	else
 	{
 		FftSpacing = m_FftOrder;
-		NumberOfFftPoints = 1 + r.Width() * m_HorizontalScale / m_FftOrder;
+		NumberOfFftPoints = 2 + r.Width() * m_HorizontalScale / m_FftOrder;
 	}
 	// for each FFT set we keep a byte to mark it valid or invalid
 	int NewFftArrayHeight = (m_FftOrder * pDoc->WaveChannels() + 1);
@@ -661,10 +661,11 @@ void CWaveFftView::MakeFftArray(int left, int right)
 		m_FftResultEnd = FftSample;
 		m_FftResultBegin = FirstFftSample;
 		delete[] pOldArray;
+		m_FftSpacing = FftSpacing;
+		m_FftResultArrayHeight = NewFftArrayHeight;
+		m_FftResultArrayWidth = NumberOfFftPoints;
 	}
-	m_FftSpacing = FftSpacing;
-	m_FftResultArrayHeight = NewFftArrayHeight;
-	m_FftResultArrayWidth = NumberOfFftPoints;
+	ASSERT(m_FftResultEnd - m_FftResultBegin == m_FftResultArrayWidth * m_FftSpacing);
 
 	if (NULL == m_pFftResultArray)
 	{
@@ -683,6 +684,10 @@ void CWaveFftView::CalculateFftRange(int left, int right)
 	int LastSampleRequired = right + m_FftSpacing - right % m_FftSpacing;
 	TRACE("Samples required from %d to %d, in the buffer: from %d to %d\n",
 		FirstSampleRequired, LastSampleRequired, m_FftResultBegin, m_FftResultEnd);
+	ASSERT(LastSampleRequired > FirstSampleRequired);
+	ASSERT(m_FftResultEnd > m_FftResultBegin);
+	ASSERT(LastSampleRequired - FirstSampleRequired <= m_FftResultEnd - m_FftResultBegin);
+	ASSERT(m_FftResultEnd - m_FftResultBegin == m_FftResultArrayWidth * m_FftSpacing);
 	if (FirstSampleRequired < m_FftResultBegin)
 	{
 		int i = (m_FftResultArrayWidth - 1) * m_FftResultArrayHeight;

@@ -525,6 +525,7 @@ void CWaveSoapFrontView::OnDraw(CDC* pDC)
 // Position - offset in data chunk in 16-bit words
 void CWaveSoapFrontView::GetWaveSamples(int Position, int NumOfSamples)
 {
+	int nSamples = NumOfSamples;
 	if (Position < 0)
 	{
 		Position = 0;
@@ -606,11 +607,10 @@ void CWaveSoapFrontView::GetWaveSamples(int Position, int NumOfSamples)
 		}
 		// adjust NumOfSamples:
 		NumOfSamples -= m_FirstSampleInBuffer + m_WaveDataSizeInBuffer - Position;
-		Position = m_FirstSampleInBuffer + m_WaveDataSizeInBuffer;
 		ASSERT(m_WaveDataSizeInBuffer + NumOfSamples <= m_WaveBufferSize);
 		NumOfSamples = pDoc->m_WavFile.ReadAt(m_pWaveBuffer + m_WaveDataSizeInBuffer,
 											NumOfSamples * sizeof(__int16),
-											pDoc->WaveDataChunk()->dwDataOffset + Position * sizeof(__int16))
+											pDoc->WaveDataChunk()->dwDataOffset + (m_FirstSampleInBuffer + m_WaveDataSizeInBuffer)  * sizeof(__int16))
 						/ sizeof(__int16);
 		m_WaveDataSizeInBuffer += NumOfSamples;
 	}
@@ -618,8 +618,18 @@ void CWaveSoapFrontView::GetWaveSamples(int Position, int NumOfSamples)
 	{
 		// all requested data is already in the buffer
 	}
-#ifdef _DEBUG
+#if 0//def _DEBUG
 	// verify that the buffer contains the correct data
+	__int16 * pVerBuf = new __int16[nSamples];
+	int ReadSamples = pDoc->m_WavFile.ReadAt(pVerBuf,
+											nSamples * sizeof(__int16),
+											pDoc->WaveDataChunk()->dwDataOffset + Position * sizeof(__int16))
+					/ sizeof(__int16);
+	ASSERT (Position >= m_FirstSampleInBuffer
+			&& Position + ReadSamples <= m_FirstSampleInBuffer + m_WaveDataSizeInBuffer
+			&& 0 == memcmp(pVerBuf, m_pWaveBuffer + Position - m_FirstSampleInBuffer,
+							ReadSamples * sizeof(__int16)));
+	delete[] pVerBuf;
 #endif
 	return;
 }
