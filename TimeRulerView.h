@@ -35,7 +35,7 @@ protected:
 // Implementation
 protected:
 	virtual ~CTimeRulerView();
-	virtual UINT GetPopupMenuID() { return IDR_MENU_TIME_RULER; }
+	virtual UINT GetPopupMenuID(CPoint) { return IDR_MENU_TIME_RULER; }
 #ifdef _DEBUG
 	virtual void AssertValid() const;
 	virtual void Dump(CDumpContext& dc) const;

@@ -1232,7 +1232,7 @@ void CScaledScrollView::OnViewZoomOutVert()
 	ZoomOutSelection(CHANGE_VERT_EXTENTS);
 }
 
-UINT CScaledScrollView::GetPopupMenuID()
+UINT CScaledScrollView::GetPopupMenuID(CPoint)
 {
 	return IDR_POPUP_SCALED_SCROLL_VIEW;
 }
@@ -1243,7 +1243,7 @@ void CScaledScrollView::OnContextMenu(CWnd* pWnd, CPoint point)
 	GetParentFrame()->ActivateFrame();
 
 	CMenu menu;
-	CMenu* pPopup = GetPopupMenu( & menu);
+	CMenu* pPopup = GetPopupMenu( & menu, point);
 	if(pPopup != NULL)
 	{
 		pPopup->TrackPopupMenu(TPM_LEFTALIGN | TPM_RIGHTBUTTON,
@@ -1485,9 +1485,9 @@ void CScaledScrollView::OnLButtonUp(UINT nFlags, CPoint point)
 	CView::OnLButtonUp(nFlags, point);
 }
 
-CMenu * CScaledScrollView::GetPopupMenu(CMenu * pMenu)
+CMenu * CScaledScrollView::GetPopupMenu(CMenu * pMenu, CPoint point)
 {
-	UINT uID = GetPopupMenuID();
+	UINT uID = GetPopupMenuID(point);
 	if (uID != 0 && pMenu->LoadMenu(uID))
 	{
 		return ModifyPopupMenu(pMenu->GetSubMenu(0));

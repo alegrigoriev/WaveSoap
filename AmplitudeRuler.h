@@ -41,7 +41,7 @@ protected:
 // Implementation
 protected:
 	virtual ~CAmplitudeRuler();
-	virtual UINT GetPopupMenuID() { return IDR_MENU_AMPLITUDE_RULER; }
+	virtual UINT GetPopupMenuID(CPoint) { return IDR_MENU_AMPLITUDE_RULER; }
 #ifdef _DEBUG
 	virtual void AssertValid() const;
 	virtual void Dump(CDumpContext& dc) const;
