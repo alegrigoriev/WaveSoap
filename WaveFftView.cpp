@@ -1421,19 +1421,7 @@ void CWaveFftView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
 			return;
 		}
 
-		CFrameWnd * pFrameWnd = GetParentFrame();
-		if (NULL != pFrameWnd
-			&& pFrameWnd == pFrameWnd->GetWindow(GW_HWNDFIRST))
-		{
-			if (pInfo->Flags & SetSelection_MakeCaretVisible)
-			{
-				MovePointIntoView(pInfo->CaretPos);
-			}
-			else if (pInfo->Flags & SetSelection_MoveCaretToCenter)
-			{
-				MovePointIntoView(pInfo->CaretPos, TRUE);
-			}
-		}
+		AdjustCaretVisibility(pInfo->CaretPos, pInfo->OldCaretPos, pInfo->Flags);
 
 		NUMBER_OF_CHANNELS nChannels = pDoc->WaveChannels();
 		int nLowExtent = -0x8000;
@@ -1441,6 +1429,7 @@ void CWaveFftView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
 
 		if (nChannels > 1)
 		{
+			ASSERT(nChannels <= 2); // TODO: support multichannel
 			nLowExtent = -0x10000;
 			nHighExtent = 0x10000;
 			if (0 == (pInfo->SelChannel & SPEAKER_FRONT_RIGHT))
@@ -1452,7 +1441,6 @@ void CWaveFftView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
 				nHighExtent = 0;
 			}
 		}
-
 
 		ChangeSelection(pInfo->SelBegin, pInfo->SelEnd,
 						nLowExtent, nHighExtent);
