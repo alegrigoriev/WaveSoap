@@ -1,3 +1,4 @@
+// Copyright Alexander Grigoriev, 1997-2002, All Rights Reserved
 #if !defined(AFX_OPERATIONDIALOGS2_H__908708EA_C03D_430C_A6BA_E92753C9E84F__INCLUDED_)
 #define AFX_OPERATIONDIALOGS2_H__908708EA_C03D_430C_A6BA_E92753C9E84F__INCLUDED_
 
@@ -262,7 +263,7 @@ protected:
 	afx_msg void OnButtonEject();
 	afx_msg void OnSysColorChange();
 	//}}AFX_MSG
-	void OnMetricsChange();
+	//void OnMetricsChange();
 	afx_msg BOOL OnDeviceChange(UINT, DWORD);
 	DECLARE_MESSAGE_MAP()
 };
