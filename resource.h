@@ -8,10 +8,16 @@
 #define IDD_PROPPAGE_NOISEREDUCT        106
 #define IDR_MAINFRAME                   128
 #define IDR_WAVESOTYPE                  129
+#define IDR_MENU_TIME_RULER             130
 #define IDR_POPUP_SCALED_SCROLL_VIEW    132
 #define IDD_DIALOG_MORE_NOISEREDUCTION  133
 #define IDD_DIALOG_MORE_DECLICK         134
+#define IDD_DIALOGBAR_MDI_CHILD         135
+#define IDC_CURSOR_BEAM                 150
+#define IDC_CURSOR_BEAM_LEFT            151
+#define IDC_CURSOR_BEAM_RIGHT           152
 #define IDC_EDIT_MIN_CLICK_AMPLITUDE    1000
+#define IDC_TAB_SWITCH_VIEW_MODE        1000
 #define IDC_CHECK_LOG_CLICKS            1001
 #define IDC_EDIT_CLICK_LOG_FILENAME     1002
 #define IDC_CLICK_LOG_BROWSE_BUTTON     1003
@@ -23,6 +29,7 @@
 #define IDC_EDIT_CLICK_IMPORT_FILENAME  1009
 #define IDC_CLICK_IMPORT_BROWSE_BUTTON  1010
 #define IDC_CHECK_IMPORT_CLICKS         1011
+#define IDC_CHECK_NOISE_REDUCTION       1011
 #define IDC_EDIT_LOWER_FREQUENCY        1018
 #define IDC_EDIT_TRANSIENT_THRESHOLD    1020
 #define IDC_EDIT_NOISE_CRITERION        1021
@@ -38,11 +45,30 @@
 #define IDC_EDIT_AGGRESSIVNESS          1032
 #define IDC_EDIT_NEAR_MASKING_COEFF     1033
 #define IDC_EDIT_NEAR_MASKING_DISTANCE_HIGH 1034
+#define IDC_CHECK_DEHUMMING             1034
 #define IDC_EDIT_FAR_MASKING_COEFF      1035
+#define IDC_CHECK_DECLICKING            1035
 #define IDC_EDIT4                       1036
 #define IDC_EDIT_NEAR_MASKING_DISTANCE_LOW 1037
+#define IDC_TAB_VIEW_SWITCH             1037
 #define IDC_EDIT_MASKING_TIME_HIGH      1038
 #define IDC_EDIT_MASKING_TIME_LOW       1039
+#define IDC_VIEW_RULER_SAMPLES          32771
+#define IDC_VIEW_RULER_HHMMSS           32772
+#define IDC_VIEW_RULER_SECONDS          32773
+#define IDC_SOUND_PLAY                  32774
+#define IDC_SOUND_PAUSE                 32775
+#define IDC_SOUND_STOP                  32776
+#define IDC_VIEW_SHOW_FFT               32777
+#define IDC_VIEW_WAVEFORM               32778
+#define IDC_PROCESS_DO_ULF              32780
+#define IDC_PROCESS_DO_DECLICKING       32781
+#define IDC_PROCESS_NOISE_REDUCTION     32782
+#define ID_EDIT_DELETE                  32783
+#define ID_EDIT_STOP                    32784
+#define ID_FILE_SAVE_ALL                32786
+#define ID_EDIT_PASTE_NEW               32787
+#define ID_EDIT_GOTO                    32788
 #define ID_VIEW_ZOOMIN                  32790
 #define ID_VIEW_ZOOMOUT                 32791
 #define ID_VIEW_ZOOM_OUT2               32793
@@ -63,15 +89,17 @@
 #define ID_VIEW_ZOOMINVERT2             32813
 #define ID_VIEW_ZOOMOUTHOR2             32814
 #define ID_VIEW_ZOOMOUTVERT2            32815
+#define IDS_STRING_UNABLE_TO_CREATE_CLIPBOARD 32816
+#define IDS_STRING_OPERATION_IN_PROGRESS 32817
 
 // Next default values for new objects
 //
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_3D_CONTROLS                     1
-#define _APS_NEXT_RESOURCE_VALUE        130
-#define _APS_NEXT_COMMAND_VALUE         32771
-#define _APS_NEXT_CONTROL_VALUE         1000
+#define _APS_NEXT_RESOURCE_VALUE        131
+#define _APS_NEXT_COMMAND_VALUE         32789
+#define _APS_NEXT_CONTROL_VALUE         1002
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif
