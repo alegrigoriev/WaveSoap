@@ -835,12 +835,12 @@ void CWaveSoapFrontDoc::QueueSoundUpdate(int UpdateCode, ULONG_PTR FileID,
 	{
 		CSimpleCriticalSectionLock lock(m_UpdateList);
 
-		for (CSoundUpdateInfo * pEntry = m_UpdateList.First()
-			;  m_UpdateList.NotEnd(pEntry); pEntry = m_UpdateList.Next(pEntry))
+		if (flags & QueueSoundUpdateMerge)
 		{
-			// see if the ranges overlap
-			if (flags & QueueSoundUpdateMerge)
+			for (CSoundUpdateInfo * pEntry = m_UpdateList.First()
+				;  m_UpdateList.NotEnd(pEntry); pEntry = m_UpdateList.Next(pEntry))
 			{
+				// see if the ranges overlap
 				if (FileID == pEntry->m_FileID
 					&& pEntry->m_UpdateCode == UpdateCode
 					//&& pEntry->m_NewLength == NewLength
@@ -864,15 +864,20 @@ void CWaveSoapFrontDoc::QueueSoundUpdate(int UpdateCode, ULONG_PTR FileID,
 					break;
 				}
 			}
-			else if (flags & QueueSoundUpdateReplace)
+		}
+		else if (flags & QueueSoundUpdateReplace)
+		{
+			for (CSoundUpdateInfo * pEntry = m_UpdateList.First()
+				;  m_UpdateList.NotEnd(pEntry); )
 			{
-				if (pEntry->m_UpdateCode == UpdateCode)
+				CSoundUpdateInfo * next = m_UpdateList.Next(pEntry);
+				if (FileID == pEntry->m_FileID
+					&& pEntry->m_UpdateCode == UpdateCode)
 				{
-					CSoundUpdateInfo * pTmpEntry = pEntry->Prev();
 					m_UpdateList.RemoveEntryUnsafe(pEntry);
 					delete pEntry;
-					pEntry = pTmpEntry;
 				}
+				pEntry = next;
 			}
 		}
 		if (NULL != pui)
@@ -902,13 +907,15 @@ void CWaveSoapFrontDoc::SoundChanged(DWORD FileID, SAMPLE_INDEX begin, SAMPLE_IN
 		m_WavFile.RescanPeaks(begin, end);
 	}
 
+	int UpdateFlag = QueueSoundUpdateMerge;
 	if (flags & UpdateSoundSamplingRateChanged)
 	{
-		UpdateAllViews(NULL, UpdateSampleRateChanged);
+		QueueSoundUpdate(UpdateSampleRateChanged, FileID, 0, 0, -1);
+		UpdateFlag = 0;
 	}
 
 	QueueSoundUpdate(UpdateSoundChanged, FileID, begin, end,
-					FileLength, QueueSoundUpdateMerge);
+					FileLength, UpdateFlag);
 }
 
 
@@ -3251,25 +3258,31 @@ void CWaveSoapFrontDoc::PlaybackPositionNotify(SAMPLE_INDEX position, CHANNEL_MA
 // return FALSE otherwise
 BOOL CWaveSoapFrontDoc::ProcessUpdatePlaybackPosition()
 {
-	m_cs.Lock();
+	BOOL result = FALSE;
+	m_UpdateList.Lock();
 
 	for (CSoundUpdateInfo * pEntry = m_UpdateList.First()
-		; m_UpdateList.NotEnd(pEntry); pEntry = m_UpdateList.Next(pEntry))
+		; m_UpdateList.NotEnd(pEntry); )
 	{
+		CSoundUpdateInfo * next = m_UpdateList.Next(pEntry);
+
 		if (pEntry->m_UpdateCode == UpdatePlaybackPositionChanged)
 		{
-			m_UpdateList.RemoveEntry(pEntry);
-			m_cs.Unlock();
+			m_UpdateList.RemoveEntryUnsafe(pEntry);
+			m_UpdateList.Unlock();
 
 			UpdateAllViews(NULL, pEntry->m_UpdateCode, pEntry);
 
 			delete pEntry;
-			return TRUE;
+			result = TRUE;
+			m_UpdateList.Lock();
 		}
+
+		pEntry = next;
 	}
 
-	m_cs.Unlock();
-	return FALSE;
+	m_UpdateList.Unlock();
+	return result;
 }
 void CWaveSoapFrontDoc::OnEditChannelsLock()
 {
@@ -5471,18 +5484,10 @@ void CWaveSoapFrontDoc::OnProcessFilter()
 		channel = ALL_CHANNELS;
 	}
 
-	CFilterDialog dlg;
-
 	CThisApp * pApp = GetApp();
-	dlg.m_bUndo = UndoEnabled();
-	dlg.m_Start = start;
-	dlg.m_End = end;
-	dlg.m_CaretPosition = m_CaretPosition;
-	dlg.m_Chan = channel;
-	dlg.m_pWf = m_WavFile.GetWaveFormat();
-	dlg.m_bLockChannels = m_bChannelsLocked;
-	dlg.m_TimeFormat = pApp->m_SoundTimeFormat;
-	dlg.m_FileLength = WaveFileSamples();
+	CFilterDialog dlg(start, end, m_CaretPosition,
+					channel, WaveFileSamples(), m_WavFile.GetWaveFormat(),
+					pApp->m_SoundTimeFormat, m_bChannelsLocked, UndoEnabled());
 
 	if (IDOK != dlg.DoModal())
 	{
