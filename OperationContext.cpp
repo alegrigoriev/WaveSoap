@@ -651,11 +651,6 @@ BOOL CResizeContext::InitShrink(CWaveFile & File, LONG StartSample, LONG Length,
 	return TRUE;
 }
 
-//void CResizeContext::PostRetire(BOOL bChildContext)
-	//{
-	//COperationContext::PostRetire(bChildContext);
-	//}
-
 BOOL CResizeContext::OperationProc()
 {
 	// change size of the file
@@ -3029,7 +3024,7 @@ void CFileSaveContext::PostRetire(BOOL bChildContext)
 	else
 	{
 		// Operation canceled, discard the file
-		pDocument->m_bClosing = false;
+		pDocument->m_bClosePending = false;
 		m_DstFile.DeleteOnClose();
 		m_DstFile.Close();
 	}
