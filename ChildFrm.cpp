@@ -1061,8 +1061,13 @@ LRESULT CWaveMDIChildClient::OnDisplayChange(WPARAM wParam, LPARAM lParam)
 
 void CChildFrame::OnDestroy()
 {
-	CThisApp * pApp = GetApp();
-	pApp->m_bOpenChildMaximized = (0 != (GetStyle() & WS_MAXIMIZE));
+	WINDOWPLACEMENT wp;
+	wp.length = sizeof wp;
+
+	GetWindowPlacement( & wp);
+
+	GetApp()->m_bOpenChildMaximized = 0 != (wp.flags & WPF_RESTORETOMAXIMIZED);
+
 	CMDIChildWnd::OnDestroy();
 }
 

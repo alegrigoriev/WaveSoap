@@ -1223,9 +1223,9 @@ BEGIN
                     WS_VSCROLL | WS_TABSTOP
     RTEXT           "",1119,0,22,367,8,NOT WS_VISIBLE
     CONTROL         "Open as &read-only",IDC_CHECK_READONLY,"Button",
-                    BS_AUTOCHECKBOX | WS_TABSTOP,67,31,78,10
+                    BS_AUTOCHECKBOX | WS_TABSTOP,67,31,81,10
     CONTROL         "Operate directly on the sound file",IDC_CHECK_DIRECT,
-                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,153,31,113,10
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,153,31,155,10
     PUSHBUTTON      "Help",IDHELP,316,30,50,14
     RTEXT           "File type:",IDC_STATIC,4,58,34,8
     CONTROL         "Unknown",IDC_STATIC_FILE_TYPE,"Static",
@@ -1708,21 +1708,21 @@ BEGIN
                     WS_VSCROLL | WS_TABSTOP
     RTEXT           "",1119,0,22,272,8,NOT WS_VISIBLE
     CONTROL         "Open as &read-only",IDC_CHECK_READONLY,"Button",
-                    BS_AUTOCHECKBOX | WS_TABSTOP,3,31,78,10
+                    BS_AUTOCHECKBOX | WS_TABSTOP,3,31,81,10
     CONTROL         "Operate directly on the sound file",IDC_CHECK_DIRECT,
-                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,89,31,113,10
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,89,31,129,10
     PUSHBUTTON      "Help",IDHELP,222,30,50,14
     RTEXT           "File type:",IDC_STATIC,4,58,30,8
     CONTROL         "Unknown",IDC_STATIC_FILE_TYPE,"Static",
                     SS_LEFTNOWORDWRAP | SS_NOPREFIX | WS_GROUP,37,58,73,8
     RTEXT           "Length: ",IDC_STATIC,3,83,31,8
     CONTROL         "Static",IDC_STATIC_FILE_LENGTH,"Static",
-                    SS_LEFTNOWORDWRAP | SS_NOPREFIX | WS_GROUP,37,83,98,8
+                    SS_LEFTNOWORDWRAP | SS_NOPREFIX | WS_GROUP,37,83,109,8
     RTEXT           "Format: ",IDC_STATIC,4,71,30,8
     CONTROL         "Unknown",IDC_STATIC_FILE_FORMAT,"Static",
                     SS_LEFTNOWORDWRAP | SS_NOPREFIX | WS_GROUP,37,71,118,8
-    RTEXT           "Attributes: ",IDC_STATIC,2,96,32,8
-    LTEXT           "Attr",IDC_STATIC_ATTRIBUTES,38,96,103,23,SS_NOPREFIX
+    RTEXT           "Attributes: ",IDC_STATIC,3,96,41,8
+    LTEXT           "Attr",IDC_STATIC_ATTRIBUTES,49,96,103,23,SS_NOPREFIX
     RTEXT           "Comments: ",IDC_STATIC,109,58,49,8
     EDITTEXT        IDC_EDIT_FILE_COMMENTS,161,57,114,54,ES_MULTILINE | 
                     ES_AUTOVSCROLL | ES_READONLY | WS_VSCROLL

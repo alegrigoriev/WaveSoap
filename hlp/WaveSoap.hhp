@@ -134,7 +134,7 @@ hid_edit_repeat = html\afxc56lw.htm
 hid_edit_clear = html\afxc214i.htm
 hid_edit_clear_all = html\afxc2fsc.htm
 hid_next_pane = html\afxc0l7p.htm
-hid_prev_pane = html\afxc48o5.htm<BR/>
+hid_prev_pane = html\afxc48o5.htm
 hidr_convertype = html\afxc31id.htm
 hidr_doc1type = html\afxc31id.htm
 hid_ht_nowhere = html\afxc5zol.htm
@@ -149,8 +149,8 @@ afx_hidd_printsetup = html\afxp0vjk.htm
 hid_file_page_setup = html\afxp42b4.htm
 
 [MAP]
-#include <c:\Program Files\Microsoft Visual Studio\VC98\MFC\include\afxhelp.hm>
-#include [yourprojectname.hm]
+#include <C:\Program Files\Microsoft Visual Studio .NET\Vc7\atlmfc\include\afxhelp.hm>
+#include [WaveSoap.hm]
 
 [INFOTYPES]
 

@@ -1772,7 +1772,11 @@ void CWaveSoapFrontView::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 		break;
 	case VK_HOME:
 		// move to the begin of file or selection
-		if (nSelBegin < nSelEnd)
+		if (CtrlPressed)
+		{
+			nCaret = 0;
+		}
+		else if (nSelBegin < nSelEnd)
 		{
 			KeepSelection = TRUE;
 			nCaret = nSelBegin;
@@ -1781,10 +1785,6 @@ void CWaveSoapFrontView::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 		{
 			KeepSelection = TRUE;
 			nCaret = nSelEnd;
-		}
-		else if (CtrlPressed)
-		{
-			nCaret = 0;
 		}
 		else
 		{
@@ -1794,7 +1794,11 @@ void CWaveSoapFrontView::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 		break;
 	case VK_END:
 		// move to the end of file or selection
-		if (nSelBegin < nSelEnd)
+		if (CtrlPressed)
+		{
+			nCaret = nTotalSamples;
+		}
+		else if (nSelBegin < nSelEnd)
 		{
 			KeepSelection = TRUE;
 			nCaret = nSelEnd;
@@ -1803,10 +1807,6 @@ void CWaveSoapFrontView::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 		{
 			KeepSelection = TRUE;
 			nCaret = nSelBegin;
-		}
-		else if (CtrlPressed)
-		{
-			nCaret = nTotalSamples;
 		}
 		else
 		{

@@ -872,14 +872,7 @@ CDirectFile::CDirectFileCache::CDirectFileCache(size_t MaxCacheSize)
 	{
 		m_FreeBuffers.InsertHead( & m_pHeaders[i]);
 
-		m_pHeaders[i].DirtyMask = 0;
-		m_pHeaders[i].ReadMask = 0;
-		m_pHeaders[i].m_Flags = 0;
-		m_pHeaders[i].LockCount = 0;
-		m_pHeaders[i].MRU_Count = 0;
 		m_pHeaders[i].pBuf = i * 0x10000 + (char *) m_pBuffersArray;
-		m_pHeaders[i].pFile = NULL;
-		m_pHeaders[i].PositionKey = 0;
 	}
 
 	unsigned ThreadID = NULL;
@@ -946,6 +939,12 @@ CDirectFile::CDirectFileCache::~CDirectFileCache()
 		m_pBuffersArray = NULL;
 		m_NumberOfBuffers = 0;
 	}
+	// TODO: remove from list
+	while ( ! m_FreeBuffers.IsEmpty())
+	{
+		m_FreeBuffers.RemoveHead();
+	}
+
 	if (NULL != m_pHeaders)
 	{
 		delete[] m_pHeaders;
