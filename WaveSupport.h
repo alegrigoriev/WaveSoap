@@ -25,8 +25,33 @@ enum {
 	WaveFormatMatchCompatibleFormats = 0x10000,
 	WaveFormatExcludeFormats = 0x20000,
 };
+
 struct WaveFormatTagEx
 {
+	WaveFormatTagEx() {}
+	WaveFormatTagEx(int tag, GUID const & guid)
+		: Tag(tag), SubFormat(guid)
+	{}
+	WaveFormatTagEx(int tag)
+		: Tag(tag)
+	{
+		ASSERT(tag != WAVE_FORMAT_EXTENSIBLE);
+		memzero(SubFormat);
+	}
+
+	WaveFormatTagEx(WAVEFORMATEX const * pwf)
+		: Tag(pwf->wFormatTag)
+	{
+		if (Tag != WAVE_FORMAT_EXTENSIBLE)
+		{
+			memzero(SubFormat);
+		}
+		else
+		{
+			SubFormat = ((PWAVEFORMATEXTENSIBLE)pwf)->SubFormat;
+		}
+	}
+
 	int Tag;
 	GUID SubFormat;
 	bool operator ==(WaveFormatTagEx const & wfx) const
@@ -195,6 +220,7 @@ struct CWaveFormat
 								(WAVE_FORMAT_PCM == m_pWf->wFormatTag) ?
 									sizeof (PCMWAVEFORMAT) : sizeof (WAVEFORMATEX) + m_pWf->cbSize);
 	}
+	static WAVEFORMATEX const CdAudioFormat;
 };
 
 inline bool operator ==(WAVEFORMATEX const & wf1, WAVEFORMATEX const & wf2)
@@ -306,11 +332,16 @@ class CAudioMixer
 class CAudioCompressionManager
 {
 public:
+	CAudioCompressionManager(CWaveFormat const & wf)
+		: m_Wf(wf)
+	{
+	}
+
 	struct FormatTagItem
 	{
 		FormatTagItem() : m_hadid(NULL) {}
 
-		void SetData(WaveFormatTagEx & pwf, CString const & name, HACMDRIVERID hadid)
+		void SetData(WaveFormatTagEx const & pwf, CString const & name, HACMDRIVERID hadid)
 		{
 			Tag = pwf;
 			Name = name;
@@ -325,7 +356,7 @@ public:
 	struct FormatItem
 	{
 		FormatItem() {}
-		FormatItem(WAVEFORMATEX * pwf, LPCTSTR name, int index)
+		FormatItem(WAVEFORMATEX const * pwf, LPCTSTR name, int index)
 			: Wf(pwf), Name(name), TagIndex(index) {}
 		CWaveFormat Wf;
 		CString Name;
@@ -347,12 +378,13 @@ public:
 	std::vector<FormatTagItem> m_FormatTags;
 	std::vector<FormatItem> m_Formats;
 
-	void FillMultiFormatArray(unsigned nSelFrom, unsigned nSelTo, int Flags);
-	void FillFormatArray(unsigned nSel, int Flags)
+	bool FillMultiFormatArray(unsigned nSelFrom, unsigned nSelTo, int Flags);
+	bool FillFormatArray(unsigned nSel, int Flags)
 	{
-		FillMultiFormatArray(nSel, nSel, Flags);
+		return FillMultiFormatArray(nSel, nSel, Flags);
 	}
-	void FillFormatTagArray(WAVEFORMATEX * pwf,
+
+	void FillFormatTagArray(WAVEFORMATEX const * pwf,
 							WaveFormatTagEx const ListOfTags[],
 							int NumTags, DWORD flags = 0);
 	void FillWmaFormatTags();
@@ -361,7 +393,9 @@ public:
 	void FillLameEncoderFormats();
 
 	static CString GetFormatName(HACMDRIVER had, WAVEFORMATEX const * pWf);
-
+	int FillFormatsCombo(CComboBox * pCombo, CWaveFormat & Wf,
+						WaveFormatTagEx SelectedTag, int SelectedBitrate);
+protected:
 	static BOOL _stdcall FormatTestEnumCallback(
 												HACMDRIVERID hadid, LPACMFORMATDETAILS pafd,
 												DWORD dwInstance, DWORD fdwSupport);
