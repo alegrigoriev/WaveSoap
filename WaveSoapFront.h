@@ -215,6 +215,7 @@ public:
 	BOOL m_DontShowMediaPlayerWarning;
 
 	BOOL m_bSnapMouseSelectionToMax;
+	int m_LastPrefsPropertyPageSelected;
 
 	int m_SpectrumSectionWidth;
 	int m_FftBandsOrder;

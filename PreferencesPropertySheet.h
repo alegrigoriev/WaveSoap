@@ -66,6 +66,7 @@ protected:
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 
+public:
 };
 /////////////////////////////////////////////////////////////////////////////
 // CSoundPreferencesPage dialog
@@ -111,6 +112,7 @@ protected:
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 
+public:
 };
 /////////////////////////////////////////////////////////////////////////////
 // CViewPreferencesPage dialog
@@ -147,6 +149,7 @@ protected:
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 
+public:
 };
 /////////////////////////////////////////////////////////////////////////////
 // CPreferencesPropertySheet
@@ -175,7 +178,7 @@ public:
 	CFilePreferencesPage m_FilePage;
 	CSoundPreferencesPage m_SoundPage;
 	CViewPreferencesPage m_ViewPage;
-
+	int m_PageSelected;
 public:
 	virtual ~CPreferencesPropertySheet();
 
@@ -185,6 +188,10 @@ protected:
 	// NOTE - the ClassWizard will add and remove member functions here.
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
+public:
+	virtual BOOL OnInitDialog();
+protected:
+	virtual BOOL OnWndMsg(UINT message, WPARAM wParam, LPARAM lParam, LRESULT* pResult);
 };
 
 //{{AFX_INSERT_LOCATION}}
