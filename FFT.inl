@@ -14,7 +14,7 @@ template<class T>
 void FFTPostProc(complex<T> * x, const int count)
 {
 	ASSERT(count > 0 && count % 2 == 0);
-	double angle = M_PI / count;
+	double angle = -M_PI / count;
 	complex<T> rotator(cos(angle), -sin(angle));
 	complex<T> u(0., 1.);
 	x[count] = x[0];
@@ -36,7 +36,7 @@ template<class T>
 void IFFTPreProc(const complex<T> * src, complex<T> * dst, const int count)
 {
 	ASSERT(count > 0 && count % 2 == 0);
-	double angle = M_PI / count;
+	double angle = -M_PI / count;
 	complex<T> rotator(cos(angle), sin(angle));
 	complex<T> u(0., -1.);
 	dst[0] = T(0.5) * (src[0] + conj(src[count]) + u * (conj(src[count]) - src[0]));
