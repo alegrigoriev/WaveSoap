@@ -303,7 +303,6 @@ LRESULT PASCAL CMmioFile::BufferedIOProc(LPSTR lpmmioinfo, UINT wMsg,
 	}
 }
 
-
 void CMmioFile::Close( )
 {
 	if (m_hmmio != NULL)
@@ -961,6 +960,54 @@ BOOL CWaveFile::CreateWaveFile(CWaveFile * pTemplateFile, WAVEFORMATEX * pTempla
 	// then update RIFF
 	//Ascend( *GetRiffChunk());
 	return TRUE;
+}
+
+BOOL CWaveFile::SaveMetadata()
+{
+	// TODO
+	return FALSE;
+}
+
+DWORD CWaveFile::GetMetadataLength()
+{
+	// TODO
+	return 0;
+}
+
+BOOL CWaveFile::SetDatachunkLength(DWORD Length)
+{
+	LPMMCKINFO pck = GetDataChunk();
+	if (NULL == pck)
+	{
+		return FALSE;
+	}
+
+	if ( ! SetFileLength(Length + pck->dwDataOffset + GetMetadataLength()))
+	{
+		return FALSE;
+	}
+
+	if (pck->ckid != 0)
+	{
+		// update data chunk length
+		pck->cksize = Length;
+		pck->dwFlags |= MMIO_DIRTY;
+	}
+	return TRUE;
+}
+
+void CWaveFile::SetFactNumberOfSamples(NUMBER_OF_SAMPLES length)
+{
+	GetFactChunk()->dwFlags |= MMIO_DIRTY;
+	// save number of samples
+	m_FactSamples = length;
+}
+
+BOOL CWaveFile::SetFileLengthSamples(NUMBER_OF_SAMPLES length)
+{
+	ASSERT(WAVE_FORMAT_PCM == GetWaveFormat()->wFormatTag);
+
+	return SetDatachunkLength(length * SampleSize());
 }
 
 int CWaveFile::SampleSize() const

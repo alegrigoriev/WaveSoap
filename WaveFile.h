@@ -370,6 +370,10 @@ public:
 	SAMPLE_POSITION SampleToPosition(SAMPLE_INDEX sample) const;
 	SAMPLE_INDEX PositionToSample(SAMPLE_POSITION position) const;
 
+	BOOL SetFileLengthSamples(NUMBER_OF_SAMPLES length);
+	BOOL SetDatachunkLength(DWORD Length);
+	void SetFactNumberOfSamples(NUMBER_OF_SAMPLES length);
+
 	int CalculatePeakInfoSize() const
 	{
 		unsigned Granularity = GetPeakGranularity();
@@ -431,6 +435,10 @@ public:
 		// move all data to a derived (bigger) type
 		InstanceDataWav & operator =(InstanceDataWav const & src)
 		{
+			if (this == & src)
+			{
+				return * this;
+			}
 			datack = src.datack;
 			fmtck = src.fmtck;
 			factck = src.factck;
@@ -448,7 +456,7 @@ public:
 
 			Playlist = src.Playlist;
 			m_PeakData = src.m_PeakData;
-
+			InfoChanged = true;
 			BaseInstanceClass::operator =(src);
 			return *this;
 		}
@@ -478,7 +486,7 @@ public:
 
 			Markers.clear();
 			Playlist.clear();
-			InfoChanged = false;
+			InfoChanged = true;
 
 		}
 	};
@@ -517,6 +525,9 @@ public:
 	BOOL LoadWaveformat();
 	BOOL FindData();
 	BOOL LoadMetadata();
+	BOOL SaveMetadata();
+	DWORD GetMetadataLength();
+
 	BOOL LoadListMetadata(MMCKINFO & chunk);
 	BOOL ReadCueSheet(MMCKINFO & chunk);
 	BOOL ReadPlaylist(MMCKINFO & chunk);
