@@ -10,6 +10,7 @@
 #endif // _MSC_VER > 1000
 
 #include "ScaledGraphView.h"
+#include "WaveSoapFrontDoc.h"
 
 class CWaveSoapFrontView : public CScaledScrollView
 {
@@ -36,6 +37,7 @@ protected:
 	virtual void OnBeginPrinting(CDC* pDC, CPrintInfo* pInfo);
 	virtual void OnEndPrinting(CDC* pDC, CPrintInfo* pInfo);
 	virtual BOOL OnScrollBy(CSize sizeScroll, BOOL bDoScroll = TRUE);
+	virtual void OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint);
 	//}}AFX_VIRTUAL
 
 // Implementation
@@ -43,6 +45,8 @@ public:
 	virtual ~CWaveSoapFrontView();
 	virtual void OnChangeOrgExt(double left, double width,
 								double top, double height, DWORD flag);
+	void InvalidateRect( LPCRECT lpRect, BOOL bErase = TRUE );
+
 #ifdef _DEBUG
 	virtual void AssertValid() const;
 	virtual void Dump(CDumpContext& dc) const;
@@ -64,8 +68,12 @@ protected:
 	size_t m_WaveDataSizeInBuffer;  // in 16-bit samples
 	void GetWaveSamples(int Position, int NumOfSamples);
 	void DrawHorizontalWithSelection(CDC * pDC,
-									int left, int right, int Y, CPen * NormalPen, CPen * SelectedPen);
+									int left, int right, int Y,
+									CPen * NormalPen, CPen * SelectedPen,
+									int nChannel);
 	void CreateAndShowCaret();
+	DWORD ClientHitTest(CPoint p);
+	virtual POINT GetZoomCenter();
 
 	// Generated message map functions
 protected:
@@ -81,9 +89,24 @@ protected:
 	afx_msg void OnSetFocus(CWnd* pOldWnd);
 	afx_msg void OnSize(UINT nType, int cx, int cy);
 	afx_msg BOOL OnEraseBkgnd(CDC* pDC);
+	afx_msg void OnLButtonDown(UINT nFlags, CPoint point);
+	afx_msg void OnLButtonUp(UINT nFlags, CPoint point);
+	afx_msg BOOL OnMouseWheel(UINT nFlags, short zDelta, CPoint pt);
+	afx_msg void OnMouseMove(UINT nFlags, CPoint point);
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 };
+
+#define VSHT_BCKGND         0x10000     // in the middle area (selecting both channels
+#define VSHT_LEFT_CHAN      0x08000     // in the upper half of the left chan
+#define VSHT_RIGHT_CHAN     0x04000     // in the lower half of the right chan
+#define VSHT_SEL_BOUNDARY_L 0x02000
+#define VSHT_SEL_BOUNDARY_R 0x01000     // on the selection boundary
+#define VSHT_NOWAVE         0x00800     // after the data end
+#define VSHT_SELECTION      0x00400     // inside the selection
+#define VSHT_WAVEFORM       0x00200     // on the waveform (allows drag)
+#define VSHT_NONCLIENT      0x00100     // out of the client area
+//#define VSHT_
 
 #ifndef _DEBUG  // debug version in WaveSoapFrontView.cpp
 inline CWaveSoapFrontDoc* CWaveSoapFrontView::GetDocument()

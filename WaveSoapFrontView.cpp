@@ -32,6 +32,10 @@ BEGIN_MESSAGE_MAP(CWaveSoapFrontView, CScaledScrollView)
 	ON_WM_SETFOCUS()
 	ON_WM_SIZE()
 	ON_WM_ERASEBKGND()
+	ON_WM_LBUTTONDOWN()
+	ON_WM_LBUTTONUP()
+	ON_WM_MOUSEWHEEL()
+	ON_WM_MOUSEMOVE()
 	//}}AFX_MSG_MAP
 	// Standard printing commands
 	ON_COMMAND(ID_FILE_PRINT, CScaledScrollView::OnFilePrint)
@@ -90,7 +94,9 @@ static int fround(double d)
 }
 
 void CWaveSoapFrontView::DrawHorizontalWithSelection(CDC * pDC,
-													int left, int right, int Y, CPen * NormalPen, CPen * SelectedPen)
+													int left, int right, int Y,
+													CPen * NormalPen, CPen * SelectedPen,
+													int nChannel)
 {
 	CWaveSoapFrontDoc * pDoc = GetDocument();
 	// find positions of the selection start and and
@@ -98,6 +104,15 @@ void CWaveSoapFrontView::DrawHorizontalWithSelection(CDC * pDC,
 	double XScaleDev = GetXScaleDev();
 	int SelectionLeft = WorldToWindowX(pDoc->m_SelectionStart);
 	int SelectionRight = WorldToWindowX(pDoc->m_SelectionEnd);
+	if (nChannel != 2
+		&& pDoc->m_SelectedChannel != 2
+		&& nChannel != pDoc->m_SelectedChannel)
+	{
+		// don't draw selection
+		SelectionLeft = right;
+		SelectionRight = right;
+	}
+
 	if (pDoc->m_SelectionEnd != pDoc->m_SelectionStart
 		&& SelectionRight == SelectionLeft)
 	{
@@ -226,7 +241,7 @@ void CWaveSoapFrontView::OnDraw(CDC* pDC)
 		DrawHorizontalWithSelection(pDC, r.left, r.right,
 									ChannelSeparatorY,
 									& ChannelSeparatorPen,
-									& SelectedChannelSeparatorPen);
+									& SelectedChannelSeparatorPen, 2);
 	}
 	if (nNumberOfPoints > 0)
 	{
@@ -258,7 +273,7 @@ void CWaveSoapFrontView::OnDraw(CDC* pDC)
 					DrawHorizontalWithSelection(pDC, r.left, r.right,
 												ZeroLinePos,
 												& ZeroLinePen,
-												& SelectedZeroLinePen);
+												& SelectedZeroLinePen, ch);
 				}
 				int n6DBLine = fround((16384.* m_VerticalScale + WaveOffset) * YScaleDev);
 				if (n6DBLine >= ClipLow &&
@@ -267,7 +282,7 @@ void CWaveSoapFrontView::OnDraw(CDC* pDC)
 					DrawHorizontalWithSelection(pDC, r.left, r.right,
 												n6DBLine,
 												& SixDBLinePen,
-												& SelectedSixDBLinePen);
+												& SelectedSixDBLinePen, ch);
 				}
 				n6DBLine = fround((-16384.* m_VerticalScale + WaveOffset) * YScaleDev);
 				if (n6DBLine >= ClipLow &&
@@ -276,7 +291,7 @@ void CWaveSoapFrontView::OnDraw(CDC* pDC)
 					DrawHorizontalWithSelection(pDC, r.left, r.right,
 												n6DBLine,
 												& SixDBLinePen,
-												& SelectedSixDBLinePen);
+												& SelectedSixDBLinePen, ch);
 				}
 
 				int i;
@@ -430,7 +445,9 @@ void CWaveSoapFrontView::OnDraw(CDC* pDC)
 						}
 						CPen * pPenToDraw = & WaveformPen;
 						if (ppArray[i][0].x >= SelBegin
-							&& ppArray[i][0].x < SelEnd)
+							&& ppArray[i][0].x < SelEnd
+							&& (2 == pDoc->m_SelectedChannel
+								|| ch == pDoc->m_SelectedChannel))
 						{
 							pPenToDraw = & SelectedWaveformPen;
 						}
@@ -543,6 +560,8 @@ void CWaveSoapFrontView::GetWaveSamples(int Position, int NumOfSamples)
 void CWaveSoapFrontView::AdjustNewScale(double OldScaleX, double OldScaleY,
 										double & NewScaleX, double & NewScaleY)
 {
+	//NewScaleY = OldScaleY;  // vertical scale never changes
+
 	m_HorizontalScale = 1. / NewScaleX;
 	if (m_HorizontalScale < 1)
 	{
@@ -676,40 +695,124 @@ void CWaveSoapFrontView::OnUpdateViewZoomOutVert(CCmdUI* pCmdUI)
 	pCmdUI->Enable(m_VerticalScale > 1.);
 }
 
+// return client hit test code. 'p' is in client coordinates
+DWORD CWaveSoapFrontView::ClientHitTest(CPoint p)
+{
+	CWaveSoapFrontDoc * pDoc = GetDocument();
+	DWORD result = 0;
+	CRect r;
+	GetClientRect( & r);
+	if ( ! r.PtInRect(p))
+	{
+		return VSHT_NONCLIENT;
+	}
+
+	int Separator = WorldToWindowY(0.);
+	if (pDoc->m_SelectionStart < pDoc->m_SelectionEnd
+		&& (pDoc->WaveChannels() == 1
+			|| 2 == pDoc->m_SelectedChannel
+			|| (0 == pDoc->m_SelectedChannel) == (p.y < Separator)))
+	{
+		int SelBegin = WorldToWindowX(pDoc->m_SelectionStart);
+		int SelEnd = WorldToWindowX(pDoc->m_SelectionEnd);
+		if (pDoc->m_SelectionEnd != pDoc->m_SelectionStart
+			&& SelEnd == SelBegin)
+		{
+			SelEnd++;
+		}
+		int BorderWidth = GetSystemMetrics(SM_CXEDGE);
+		// check whether the cursor is on the selection boundary
+		if (p.x >= SelBegin - BorderWidth
+			&& p.x < SelBegin + BorderWidth)
+		{
+			result |= VSHT_SEL_BOUNDARY_L;
+		}
+		if (p.x >= SelEnd - BorderWidth
+			&& p.x < SelEnd + BorderWidth)
+		{
+			result |= VSHT_SEL_BOUNDARY_R;
+		}
+		if (p.x >= SelBegin && p.x < SelEnd)
+		{
+			result |= VSHT_SELECTION;
+		}
+	}
+
+	int nCursorOverChannel = 2;
+	int DataEnd = WorldToWindowX(pDoc->WaveFileSamples());
+	if (p.x < DataEnd)
+	{
+		if (pDoc->WaveChannels() > 1)
+		{
+			if (p.y < ((32768. - dOrgY) * GetYScaleDev()))
+			{
+				result |= VSHT_LEFT_CHAN;
+			}
+			else if (p.y > ((-32768. - dOrgY) * GetYScaleDev()))
+			{
+				result |= VSHT_RIGHT_CHAN;
+			}
+			else
+			{
+				result |= VSHT_BCKGND;
+			}
+		}
+		else
+		{
+			result |= VSHT_BCKGND;
+		}
+	}
+	else
+	{
+		result |= VSHT_NOWAVE;
+	}
+	return result;
+}
+
 BOOL CWaveSoapFrontView::OnSetCursor(CWnd* pWnd, UINT nHitTest, UINT message)
 {
 	if (pWnd == this
 		&& HTCLIENT == nHitTest)
 	{
-		CWaveSoapFrontDoc * pDoc = GetDocument();
 		CPoint p;
-		CRect r;
-		GetClientRect(r);
+
 		GetCursorPos( & p);
 		ScreenToClient( & p);
 
-		if (bIsTrackingSelection)
+		DWORD ht = ClientHitTest(p);
+
+		if ((ht & (VSHT_SEL_BOUNDARY_L | VSHT_SEL_BOUNDARY_R))
+			|| WM_LBUTTONDOWN == nKeyPressed)
 		{
 			SetCursor(AfxGetApp()->LoadStandardCursor(IDC_SIZEWE));
 			return TRUE;
 		}
-		if (pDoc->WaveChannels() > 1)
+
+		if (ht & (VSHT_SELECTION | VSHT_NOWAVE))
 		{
-			// if Y is
-			if (p.y > ((-32768. - dOrgY) * GetYScaleDev()))
-			{
-				SetCursor(AfxGetApp()->LoadCursor(IDC_CURSOR_BEAM_RIGHT));
-				return TRUE;
-			}
-			if (p.y < ((32768. - dOrgY) * GetYScaleDev()))
-			{
-				SetCursor(AfxGetApp()->LoadCursor(IDC_CURSOR_BEAM_LEFT));
-				return TRUE;
-			}
+			SetCursor(AfxGetApp()->LoadStandardCursor(IDC_ARROW));
+			return TRUE;
 		}
-		SetCursor(AfxGetApp()->LoadCursor(IDC_CURSOR_BEAM));
-		return TRUE;
+
+		if (ht & VSHT_LEFT_CHAN)
+		{
+			SetCursor(AfxGetApp()->LoadCursor(IDC_CURSOR_BEAM_LEFT));
+			return TRUE;
+		}
+
+		if (ht & VSHT_RIGHT_CHAN)
+		{
+			SetCursor(AfxGetApp()->LoadCursor(IDC_CURSOR_BEAM_RIGHT));
+			return TRUE;
+		}
+
+		if (ht & VSHT_BCKGND)
+		{
+			SetCursor(AfxGetApp()->LoadCursor(IDC_CURSOR_BEAM));
+			return TRUE;
+		}
 	}
+
 	return CScaledScrollView::OnSetCursor(pWnd, nHitTest, message);
 }
 
@@ -733,11 +836,24 @@ void CWaveSoapFrontView::CreateAndShowCaret()
 	{
 		return;
 	}
+	CWaveSoapFrontDoc * pDoc = GetDocument();
 	CRect r;
 	GetClientRect( & r);
-	CPoint p(WorldToWindowX(GetDocument()->m_CaretPosition), 0);
+
+	CPoint p(WorldToWindowX(pDoc->m_CaretPosition), r.top);
 	TRACE("Client rect height=%d, caret poisition=%d\n", r.Height(), p.x);
-	CreateSolidCaret(1, r.Height());
+	if (2 == pDoc->m_SelectedChannel || pDoc->WaveChannels() == 1)
+	{
+		CreateSolidCaret(1, r.Height());
+	}
+	else
+	{
+		CreateSolidCaret(1, r.Height() / 2);
+		if (1 == pDoc->m_SelectedChannel)
+		{
+			p.y += r.Height() / 2;
+		}
+	}
 	if (p.x >= 0 && p.x < r.right)
 	{
 		SetCaretPos(p);
@@ -772,20 +888,21 @@ BOOL CWaveSoapFrontView::OnEraseBkgnd(CDC* pDC)
 {
 	// TODO: Add your message handler code here and/or call default
 	CWaveSoapFrontApp * pApp = (CWaveSoapFrontApp *) AfxGetApp();
+	CWaveSoapFrontDoc * pDoc = GetDocument();
 	RemoveSelectionRect();
 	CBrush backBrush(pApp->m_WaveBackground);
 	CRect r;
 	GetClientRect( & r);
-	int SelBegin = WorldToWindowX(GetDocument()->m_SelectionStart);
-	int SelEnd = WorldToWindowX(GetDocument()->m_SelectionEnd);
-	if (GetDocument()->m_SelectionEnd != GetDocument()->m_SelectionStart
+	int SelBegin = WorldToWindowX(pDoc->m_SelectionStart);
+	int SelEnd = WorldToWindowX(pDoc->m_SelectionEnd);
+	if (pDoc->m_SelectionEnd != pDoc->m_SelectionStart
 		&& SelEnd == SelBegin)
 	{
 		SelEnd++;
 	}
 	if (SelBegin >= r.right
 		|| SelEnd < r.left
-		|| GetDocument()->m_SelectionStart >= GetDocument()->m_SelectionEnd)
+		|| pDoc->m_SelectionStart >= pDoc->m_SelectionEnd)
 	{
 		// erase using only one brush
 		pDC->FillRect(r, & backBrush);
@@ -816,7 +933,364 @@ BOOL CWaveSoapFrontView::OnEraseBkgnd(CDC* pDC)
 		r.left = SelBegin;
 		r.right = SelEnd;
 		CBrush SelectedBackBrush(pApp->m_SelectedWaveBackground);
-		pDC->FillRect(r, & SelectedBackBrush);
+		if (2 == pDoc->m_SelectedChannel || pDoc->WaveChannels() == 1)
+		{
+			pDC->FillRect(r, & SelectedBackBrush);
+		}
+		else
+		{
+			// only one channel is selected
+			int Separator = WorldToWindowY(0.);
+			CRect r1 = r;
+			CRect r2 = r;
+			if (0 == pDoc->m_SelectedChannel)
+			{
+				r1.bottom = Separator;
+				r2.top = Separator;
+			}
+			else
+			{
+				r2.bottom = Separator;
+				r1.top = Separator;
+			}
+			pDC->FillRect(r1, & SelectedBackBrush);
+			pDC->FillRect(r2, & backBrush);
+		}
 	}
 	return TRUE;
 }
+
+void CWaveSoapFrontView::OnLButtonDown(UINT nFlags, CPoint point)
+{
+	// begin tracking
+	// point is in client coordinates
+	CWaveSoapFrontDoc * pDoc = GetDocument();
+	DWORD nHit = ClientHitTest(point);
+	if (nHit & (VSHT_NOWAVE | VSHT_NONCLIENT))
+	{
+		return;
+	}
+	int nSampleUnderMouse = WindowToWorldX(point.x);
+	int SelectionStart = pDoc->m_SelectionStart;
+	int SelectionEnd = pDoc->m_SelectionEnd;
+
+	if (nSampleUnderMouse < 0)
+	{
+		nSampleUnderMouse = 0;
+	}
+
+	if (pDoc->m_TimeSelectionMode)
+	{
+		CView::OnLButtonDown(nFlags, point);
+		nKeyPressed = WM_LBUTTONDOWN;
+		if ((nFlags & MK_SHIFT)
+			|| (nHit & (VSHT_SEL_BOUNDARY_L | VSHT_SEL_BOUNDARY_R)))
+		{
+			if (nSampleUnderMouse <
+				(double(SelectionStart) + SelectionEnd) / 2)
+			{
+				SelectionStart = nSampleUnderMouse;
+			}
+			else
+			{
+				SelectionEnd = nSampleUnderMouse;
+			}
+		}
+		else
+		{
+			SelectionStart = nSampleUnderMouse;
+			SelectionEnd = SelectionStart;
+		}
+		int nChan = 2;
+		if (nHit & VSHT_LEFT_CHAN)
+		{
+			nChan = 0;
+		}
+		else if (nHit & VSHT_RIGHT_CHAN)
+		{
+			nChan = 1;
+		}
+		pDoc->SetSelection(SelectionStart, SelectionEnd, nChan, nSampleUnderMouse);
+	}
+	else
+	{
+		CScaledScrollView::OnLButtonDown(nFlags, point);
+	}
+}
+
+void CWaveSoapFrontView::OnLButtonUp(UINT nFlags, CPoint point)
+{
+	// TODO: Add your message handler code here and/or call default
+	if (GetDocument()->m_TimeSelectionMode)
+	{
+		ReleaseCapture();
+		bIsTrackingSelection = FALSE;
+		nKeyPressed = 0;
+
+		CView::OnLButtonUp(nFlags, point);
+	}
+	else
+	{
+		CScaledScrollView::OnLButtonUp(nFlags, point);
+	}
+}
+
+BOOL CWaveSoapFrontView::OnMouseWheel(UINT nFlags, short zDelta, CPoint pt)
+{
+	// TODO: Add your message handler code here and/or call default
+
+	return CScaledScrollView::OnMouseWheel(nFlags, zDelta, pt);
+}
+
+void CWaveSoapFrontView::OnMouseMove(UINT nFlags, CPoint point)
+{
+	// point is in client coordinates
+	CWaveSoapFrontDoc * pDoc = GetDocument();
+	DWORD nHit = ClientHitTest(point);
+	if (nHit & (VSHT_NOWAVE | VSHT_NONCLIENT))
+	{
+		return;
+	}
+	int nSampleUnderMouse = WindowToWorldX(point.x);
+	if (nSampleUnderMouse < 0)
+	{
+		nSampleUnderMouse = 0;
+	}
+	int SelectionStart = pDoc->m_SelectionStart;
+	int SelectionEnd = pDoc->m_SelectionEnd;
+
+	if (pDoc->m_TimeSelectionMode)
+	{
+		CView::OnMouseMove(nFlags, point);
+		if (nKeyPressed != 0)
+		{
+			if (bIsTrackingSelection)
+			{
+			}
+			else
+			{
+				//CancelSelection();
+				bIsTrackingSelection = TRUE;
+				SetCapture();
+			}
+
+			if (nSampleUnderMouse <
+				(double(SelectionStart) + SelectionEnd) / 2)
+			{
+				SelectionStart = nSampleUnderMouse;
+			}
+			else
+			{
+				SelectionEnd = nSampleUnderMouse;
+			}
+
+			int nChan = 2;
+			if (nHit & VSHT_LEFT_CHAN)
+			{
+				nChan = 0;
+			}
+			else if (nHit & VSHT_RIGHT_CHAN)
+			{
+				nChan = 1;
+			}
+			pDoc->SetSelection(SelectionStart, SelectionEnd, nChan, nSampleUnderMouse);
+		}
+	}
+	else
+	{
+
+		CScaledScrollView::OnMouseMove(nFlags, point);
+	}
+}
+
+void CWaveSoapFrontView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
+{
+	// TODO: Add your specialized code here and/or call the base class
+	if (lHint == CWaveSoapFrontDoc::UpdateSelectionChanged
+		&& NULL != pHint)
+	{
+		CSelectionUpdateInfo * pInfo = (CSelectionUpdateInfo *) pHint;
+		CWaveSoapFrontDoc * pDoc = GetDocument();
+		CRect r;
+		GetClientRect( & r);
+		int Separator = WorldToWindowY(0.);
+
+		// calculate new selection boundaries
+		int SelBegin = WorldToWindowX(pDoc->m_SelectionStart);
+		int SelEnd = WorldToWindowX(pDoc->m_SelectionEnd);
+		if (pDoc->m_SelectionEnd != pDoc->m_SelectionStart
+			&& SelEnd == SelBegin)
+		{
+			SelEnd++;
+		}
+
+		int SelTop = r.top;
+		int SelBottom = r.bottom;
+		if (2 != pDoc->m_SelectedChannel
+			&& pDoc->WaveChannels() != 1)
+		{
+			if (0 == pDoc->m_SelectedChannel)
+			{
+				SelBottom = Separator;
+			}
+			else
+			{
+				SelTop = Separator;
+			}
+		}
+
+		// calculate old selection boundaries
+		int OldSelTop = r.top;
+		int OldSelBottom = r.bottom;
+		if (2 != pInfo->SelChannel
+			&& pDoc->WaveChannels() != 1)
+		{
+			if (0 == pInfo->SelChannel)
+			{
+				OldSelBottom = Separator;
+			}
+			else
+			{
+				OldSelTop = Separator;
+			}
+		}
+
+		int OldSelBegin = WorldToWindowX(pInfo->SelBegin);
+		int OldSelEnd = WorldToWindowX(pInfo->SelEnd);
+		if (pInfo->SelEnd != pInfo->SelBegin
+			&& OldSelEnd == OldSelBegin)
+		{
+			OldSelEnd++;
+		}
+
+		// build rectangles with selection boundaries
+		CRect r1(SelBegin, SelTop, SelEnd, SelBottom);
+		CRect r2(OldSelBegin, OldSelTop, OldSelEnd, OldSelBottom);
+		// invalidate the regions with changed selection
+		if (pInfo->SelChannel == pDoc->m_SelectedChannel)
+		{
+			// the same channel, different region
+			// sort all 'x' coordinates
+			int x[4] = {SelBegin, OldSelBegin, SelEnd, OldSelEnd };
+			if (SelBegin > OldSelBegin)
+			{
+				x[0] = OldSelBegin;
+				x[1] = SelBegin;
+			}
+			if (SelEnd > OldSelEnd)
+			{
+				x[2] = OldSelEnd;
+				x[3] = SelEnd;
+			}
+			if (x[1] > x[2])
+			{
+				int tmp = x[1];
+				x[1] = x[2];
+				x[2] = tmp;
+			}
+			r1.left = x[0];
+			r1.right = x[1];
+			r2.left = x[2];
+			r2.right = x[3];
+			if (x[1] == x[2])
+			{
+				r2.left = x[0];
+				r1.right = x[0];    // make empty
+			}
+		}
+
+		// invalidate two rectangles
+		if (r1.left != r1.right
+			// limit the rectangles with the window boundaries
+			&& r1.left < r.right
+			&& r1.right > r.left)
+		{
+			// non-empty, in the client
+			if (r1.left < r.left)
+			{
+				r1.left = r.left;
+			}
+			if(r1.right > r.right)
+			{
+				r1.right = r.right;
+			}
+			InvalidateRect(& r1);
+		}
+		if (r2.left != r2.right
+			// limit the rectangles with the window boundaries
+			&& r2.left < r.right
+			&& r2.right > r.left)
+		{
+			// non-empty, in the client
+			if (r2.left < r.left)
+			{
+				r2.left = r.left;
+			}
+			if(r2.right > r.right)
+			{
+				r2.right = r.right;
+			}
+			InvalidateRect(& r2);
+		}
+		CreateAndShowCaret();
+	}
+	else
+	{
+		CScaledScrollView::OnUpdate(pSender, lHint, pHint);
+	}
+}
+
+void CWaveSoapFrontView::InvalidateRect( LPCRECT lpRect, BOOL bErase)
+{
+	HideCaret();
+	CScaledScrollView::InvalidateRect(lpRect, bErase);
+	ShowCaret();
+}
+
+POINT CWaveSoapFrontView::GetZoomCenter()
+{
+	CWaveSoapFrontDoc * pDoc = GetDocument();
+	int caret = WorldToWindowX(pDoc->m_CaretPosition);
+	int SelBegin = WorldToWindowX(pDoc->m_SelectionStart);
+	int SelEnd = WorldToWindowX(pDoc->m_SelectionEnd);
+	//int CenterY = WorldToWindowY(0);
+	CRect r;
+	GetClientRect( & r);
+	// if both selection start and end are
+	// outside the visible area, zoom center is the window center
+	if ((caret < r.left
+			|| caret >= r.right)
+		&& (SelBegin < r.left
+			|| SelBegin >= r.right)
+		&& (SelBegin < r.left
+			|| SelBegin >= r.right))
+	{
+		return CPoint(INT_MAX, INT_MAX);
+	}
+	// if there is no selection
+	if (pDoc->m_SelectionStart == pDoc->m_SelectionEnd)
+	{
+		return CPoint(caret, INT_MAX);
+	}
+	// if both boundaries of the selection are in the client area,
+	// center it
+	if (SelBegin >= r.left
+		&& SelBegin < r.right)
+	{
+		if (SelEnd >= r.left
+			&& SelEnd < r.right)
+		{
+			return CPoint((SelBegin + SelEnd) / 2, INT_MAX);
+		}
+		else
+		{
+			// only SelBegin is in the client area
+			return CPoint(SelBegin, INT_MAX);
+		}
+	}
+	else
+	{
+		return CPoint(SelEnd, INT_MAX);
+	}
+}
+
