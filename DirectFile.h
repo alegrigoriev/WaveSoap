@@ -47,6 +47,18 @@ class CDirectFile
 		}
 	};
 public:
+	CDirectFile();
+	virtual ~CDirectFile();
+	enum {
+		OpenReadOnly = 1,
+		CreateNew = 2,
+		OpenToTemporary = 4,
+		OpenDirect = 8,
+		OpenExisting = 0x10,
+	};
+	BOOL Open(LPCTSTR szName, DWORD flags);
+	BOOL Close(DWORD flags);
+
 	long Read(void * buf, long count);
 	long ReadAt(void * buf, long count, LONGLONG Position);
 	long Write(const void * pBuf, long count);
@@ -85,16 +97,6 @@ public:
 		return CDirectFileCache::SingleInstance->GetDataBuffer(m_pFile, ppBuf, length, position, flags);
 	}
 
-	CDirectFile();
-	virtual ~CDirectFile();
-	enum {
-		OpenReadOnly = 1,
-		CreateNew = 2,
-		OpenToTemporary = 4,
-		OpenDirect = 8
-	};
-	BOOL Open(LPCTSTR szName, DWORD flags);
-	BOOL Close(DWORD flags);
 	DWORD GetFileSize(LPDWORD lpFileSizeHigh)
 	{
 		if (m_pFile != NULL
@@ -110,6 +112,26 @@ public:
 			}
 			return 0xFFFFFFFF;
 		}
+	}
+
+	LPCTSTR GetName() const
+	{
+		if (NULL == m_pFile)
+		{
+			return _T("");
+		}
+		else
+		{
+			return m_pFile->sName;
+		}
+	}
+	BOOL SetFileLength(LONGLONG NewLength)
+	{
+		if (NULL == m_pFile)
+		{
+			return FALSE;
+		}
+		return m_pFile->SetFileLength(NewLength);
 	}
 
 	BOOL GetFileInformationByHandle(LPBY_HANDLE_FILE_INFORMATION lpFileInformation)
@@ -136,22 +158,48 @@ protected:
 		long RefCount;
 		struct BufferHeader * volatile BuffersListHead;
 		struct BufferHeader * volatile BuffersListTail;
+		// number of buffers in the list
+		int BuffersCount;
+		int DirtyBuffersCount;
+		// bitmask of 64K blocks that were once initialized.
+		// if the bit is 0, the block contains garbage and it should be
+		// zeroed or read from the source file
+		char * m_pWrittenMask;
+		int WrittenMaskSize;
+		// pointer to the source file. The information is copied from there
+		// when it is read first time.
+		File * pSourceFile;
 		LONGLONG FilePointer;
+		LONGLONG RealFileLength;
+		LONGLONG FileLength;
 		CSimpleCriticalSection mutable m_ListLock;    // synchronize BufferList changes
 		CSimpleCriticalSection mutable m_FileLock;    // synchronize FileRead, FileWrite
+		BY_HANDLE_FILE_INFORMATION m_FileInfo;
 		CString sName;
 		BufferHeader * FindBuffer(unsigned long key) const;
 		void InsertBuffer(BufferHeader * pBuf);
+		BOOL SetFileLength(LONGLONG NewLength);
+		BOOL Flush();
 
 		File(CString name) : hFile(NULL),
 			sName(name),
 			Flags(0),
 			FilePointer(0),
+			FileLength(0),
+			RealFileLength(0),
 			BuffersListHead(NULL),
 			BuffersListTail(NULL),
+			BuffersCount(0),
+			DirtyBuffersCount(0),
 			RefCount(1),
+			m_pWrittenMask(NULL),
+			WrittenMaskSize(0),
+			pSourceFile(NULL),
 			pPrev(NULL),
-			pNext(NULL) {}
+			pNext(NULL)
+		{
+			memset(& m_FileInfo, 0, sizeof m_FileInfo);
+		}
 			#ifdef _DEBUG
 		void ValidateList() const;
 			#endif
@@ -171,6 +219,7 @@ protected:
 		DWORD DirtyMask;    // 32 bits for dirty data
 		File * pFile;
 		unsigned long PositionKey;   // position / 0x10000
+		void FlushDirtyBuffers();
 	};
 	friend struct File;
 
@@ -187,7 +236,6 @@ public:
 
 		BufferHeader * GetFreeBuffer(unsigned MaxMRU = 0xFFFFFFFFu);
 		void ReadDataBuffer(BufferHeader * pBuf, DWORD MaskToRead);
-		void FlushDirtyBuffers(BufferHeader * pBuf);
 		File * Open(LPCTSTR szName, DWORD flags);
 		BOOL Close(File * pFile, DWORD flags);
 		void RequestPrefetch(File * pFile, LONGLONG PrefetchPosition,
