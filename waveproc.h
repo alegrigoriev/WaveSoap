@@ -204,7 +204,8 @@ public:
 	float m_NearMaskingDecayTimeLow;   // for low frequencies
 	float m_NearMaskingDecayTimeHigh;   // for high frequencies
 
-	float m_FarMaskingCoeff;  // weights far masking against near masking
+	float m_NearMaskingCoeff;  // weights near masking against far masking
+	//float m_FarMaskingScale;    // overall scale to calculate far masking
 
 	float m_PowerScale;             // to make the values independent of FFT order
 	int m_nBackSampleCount;

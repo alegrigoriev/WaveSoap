@@ -280,11 +280,11 @@ CNoiseReduction::CNoiseReduction(int nFftOrder)
 //m_LevelThresholdForStationary(6.),   // Nepers
 	m_MaxNoiseSuppression(2.),      // Nepers
 
-	m_NearMaskingDecayDistanceHigh(100.f),
+	m_NearMaskingDecayDistanceHigh(500.f),
 	m_NearMaskingDecayDistanceLow(30.f),
 
 	m_NoiseReductionRatio(1.),
-	m_FarMaskingCoeff(1.),
+	m_NearMaskingCoeff(1.),
 	m_NearMaskingDecayTimeHigh(40.),    // miliseconds
 	m_NearMaskingDecayTimeLow(100.),    // miliseconds
 	m_ToneOverNoisePreference(2.5),     // in nepers
@@ -338,7 +338,8 @@ CNoiseReduction::CNoiseReduction(int nFftOrder)
 	}
 	// norm masking factor to make it independent of FFT order
 	m_PowerScale = 1. / nFftOrder;
-	double MaskingFactor = FAR_MASKING_GRANULARITY * 2. * m_PowerScale;
+	double MaskingFactor = 2 * m_PowerScale;
+	//m_FarMaskingScale = MaskingFactor;
 
 	for (int i = 0; i < FAR_MASKING_GRANULARITY; i++)
 	{
@@ -348,12 +349,13 @@ CNoiseReduction::CNoiseReduction(int nFftOrder)
 			// power drops as reciprocal of the distance
 			if (k == i)
 			{
-				m_FarMaskingCoeffs[i][k] = MaskingFactor * 10;
+				m_FarMaskingCoeffs[i][k] = MaskingFactor * 5;
 			}
 			else
 			{
-				float x = 1. / (k - i);
-				if ( x < 0.) x = -x;
+				int n = k - i;
+				if (n < 0) n = -n;
+				float x = 1. / (n + 1);
 				m_FarMaskingCoeffs[i][k] = MaskingFactor * x;
 			}
 		}
@@ -1059,8 +1061,8 @@ int CNoiseReduction::ProcessSound(__int16 const * pInBuf, __int16 * pOutBuf,
 				for (ch = 0; ch < nChans; ch++)
 				{
 					m_pParams[ch][f].sp_MaskingPower =
-						m_pParams[ch][f].sp_Power * m_FarMaskingCoeff
-						+ (1. - m_FarMaskingCoeff) * FarMasking[f * FAR_MASKING_GRANULARITY*2 / m_nFftOrder]
+						m_pParams[ch][f].sp_Power * m_NearMaskingCoeff
+						+ (1. - m_NearMaskingCoeff) * FarMasking[f * FAR_MASKING_GRANULARITY*2 / m_nFftOrder]
 					;
 				}
 			}
@@ -1163,7 +1165,7 @@ int CNoiseReduction::ProcessSound(__int16 const * pInBuf, __int16 * pOutBuf,
 			// total power (original and after processing)
 			// max power in band, min power in band,
 			// max masking, min masking
-			if (0) {
+			if (1) {
 				double TotalPower1=0, TotalPower2=0;
 				double MaxBandPower1=0, MaxBandPower2=0;
 				double MinBandPower1=1.e10,MinBandPower2=1.e10;
@@ -1228,30 +1230,35 @@ int CNoiseReduction::ProcessSound(__int16 const * pInBuf, __int16 * pOutBuf,
 #endif
 //#define DB_TO_NEPER 0.115129254
 			// post-process output data
-			double NoiseFloor = exp(m_LevelThresholdForNoiseHigh + m_MaxNoiseSuppression / m_NoiseReductionRatio);
+			double NoiseFloorDelta = exp((m_LevelThresholdForNoiseHigh - m_LevelThresholdForNoiseLow)
+										/ (m_nFftOrder / 2 - MinFrequencyToProcess));
 			double SuppressionLimit = exp(-m_MaxNoiseSuppression);
 
 			for (ch = 0; ch < nChans; ch++)
 			{
+				double NoiseFloor = exp(m_LevelThresholdForNoiseLow + m_MaxNoiseSuppression / m_NoiseReductionRatio);
 				for (f = 0; f < m_nFftOrder / 2 + 1; f++)
 				{
 
 					m_FftOutBuffer[ch][f] = m_pParams[ch][f].sp_FftIn[1];
 
-					if (f >= MinFrequencyToProcess
-						&& m_pParams[ch][f].sp_MaskingPower < NoiseFloor)
+					if (f >= MinFrequencyToProcess)
 					{
-						double suppress =
-							pow( m_pParams[ch][f].sp_MaskingPower / NoiseFloor,
-								m_NoiseReductionRatio);
-						if (suppress < SuppressionLimit)
+						if (m_pParams[ch][f].sp_MaskingPower < NoiseFloor)
 						{
-							suppress = SuppressionLimit;
+							double suppress =
+								pow( m_pParams[ch][f].sp_MaskingPower / NoiseFloor,
+									m_NoiseReductionRatio);
+							if (suppress < SuppressionLimit)
+							{
+								suppress = SuppressionLimit;
+							}
+							m_FftOutBuffer[ch][f] *= suppress;
 						}
-						m_FftOutBuffer[ch][f] *= suppress;
-					}
-					else
-					{
+						else
+						{
+						}
+						NoiseFloor *= NoiseFloorDelta;
 					}
 				}
 				// perform inverse transform

@@ -56,10 +56,13 @@
 #define IDC_BUTTON_REVERT_INITIAL       1030
 #define IDC_BUTTON_MORE_SETTINGS        1031
 #define IDC_EDIT_AGGRESSIVNESS          1032
-#define IDC_EDIT1                       1033
-#define IDC_EDIT2                       1034
-#define IDC_EDIT3                       1035
+#define IDC_EDIT_NEAR_MASKING_COEFF     1033
+#define IDC_EDIT_NEAR_MASKING_DISTANCE_HIGH 1034
+#define IDC_EDIT_FAR_MASKING_COEFF      1035
 #define IDC_EDIT4                       1036
+#define IDC_EDIT_NEAR_MASKING_DISTANCE_LOW 1037
+#define IDC_EDIT_MASKING_TIME_HIGH      1038
+#define IDC_EDIT_MASKING_TIME_LOW       1039
 #define IDS_BAD_FLOAT_VALUE             32796
 #define IDS_VALUE_REQUIRED              32797
 #define IDS_VALUE_TOO_LOW               32798

@@ -40,6 +40,11 @@ public:
 	double	m_dLowerFrequency;
 	double  m_dNoiseReductionAggressivness;
 	double  m_dToneOverNoisePreference;
+	double  m_NearMaskingDecayDistanceHigh;
+	double  m_NearMaskingDecayDistanceLow;
+	double m_NearMaskingDecayTimeLow;   // for low frequencies
+	double m_NearMaskingDecayTimeHigh;   // for high frequencies
+	double m_NearMaskingCoeff;
 	int m_FftOrder;
 
 	void LoadValuesFromRegistry();
@@ -78,10 +83,19 @@ public:
 // Dialog Data
 	//{{AFX_DATA(CMoreNoiseDialog)
 	enum { IDD = IDD_DIALOG_MORE_NOISEREDUCTION };
-	// NOTE: the ClassWizard will add data members here
+	CNumEdit	m_eNearMaskingCoeff;
+	CNumEdit	m_eFarMaskingCoeff;
+	CNumEdit	m_eNearMaskingTimeLow;
+	CNumEdit	m_eNearMaskingTimeHigh;
+	CNumEdit	m_eNearMaskingDistanceLow;
+	CNumEdit	m_eNearMaskingDistanceHigh;
 	//}}AFX_DATA
 
-
+	double  m_NearMaskingDecayDistanceHigh;
+	double  m_NearMaskingDecayDistanceLow;
+	double m_NearMaskingDecayTimeLow;   // for low frequencies
+	double m_NearMaskingDecayTimeHigh;   // for high frequencies
+	double m_NearMaskingCoeff;
 // Overrides
 	// ClassWizard generated virtual function overrides
 	//{{AFX_VIRTUAL(CMoreNoiseDialog)

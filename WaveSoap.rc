@@ -72,15 +72,16 @@ IDR_MAINFRAME           ICON    DISCARDABLE     "res\\WaveSoap.ico"
 // Dialog
 //
 
-IDD_ABOUTBOX DIALOG DISCARDABLE  0, 0, 217, 55
+IDD_ABOUTBOX DIALOG DISCARDABLE  0, 0, 217, 61
 STYLE DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
 CAPTION "About WaveSoap"
 FONT 8, "MS Sans Serif"
 BEGIN
     ICON            IDR_MAINFRAME,IDC_STATIC,11,17,20,20
-    LTEXT           "WaveSoap Version 1.0",IDC_STATIC,40,10,119,8,
+    CTEXT           "WaveSoap Version 1.1",IDC_STATIC,40,10,119,8,
                     SS_NOPREFIX
-    LTEXT           "Copyright (C) 1998",IDC_STATIC,40,25,119,8
+    CTEXT           "Copyright (C) 1998-2000 \nAlexandre Grigoriev (alegr@earthlink.net)",
+                    IDC_STATIC,47,31,119,23
     DEFPUSHBUTTON   "OK",IDOK,178,7,32,14,WS_GROUP
 END
 
@@ -218,21 +219,35 @@ BEGIN
     CTEXT           "",IDC_STATIC_ESTIMATED,7,31,173,8
 END
 
-IDD_DIALOG_MORE_NOISEREDUCTION DIALOG DISCARDABLE  0, 0, 187, 144
+IDD_DIALOG_MORE_NOISEREDUCTION DIALOG DISCARDABLE  0, 0, 187, 220
 STYLE DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
 CAPTION "Advanced parameters for noise reduction"
 FONT 8, "MS Sans Serif"
 BEGIN
-    DEFPUSHBUTTON   "OK",IDOK,31,123,50,14
-    PUSHBUTTON      "Cancel",IDCANCEL,101,123,50,14
+    DEFPUSHBUTTON   "OK",IDOK,31,199,50,14
+    PUSHBUTTON      "Cancel",IDCANCEL,101,199,50,14
     LTEXT           "Near noise masking:",IDC_STATIC,7,16,63,8
-    LTEXT           "Near masking decay:",IDC_STATIC,7,34,65,8
-    LTEXT           "Far noise masking:",IDC_STATIC,7,51,58,8
-    LTEXT           "Far masking decay:",IDC_STATIC,7,69,60,8
-    EDITTEXT        IDC_EDIT1,75,14,40,14,ES_AUTOHSCROLL
-    EDITTEXT        IDC_EDIT2,75,31,40,14,ES_AUTOHSCROLL
-    EDITTEXT        IDC_EDIT3,75,48,40,14,ES_AUTOHSCROLL
-    EDITTEXT        IDC_EDIT4,75,66,40,14,ES_AUTOHSCROLL
+    LTEXT           "Near masking decay distance:",IDC_STATIC,7,34,111,9
+    LTEXT           "Far noise masking:",IDC_STATIC,7,152,58,8
+    LTEXT           "Far masking decay:",IDC_STATIC,7,170,60,8
+    EDITTEXT        IDC_EDIT_NEAR_MASKING_COEFF,102,14,40,14,ES_AUTOHSCROLL
+    EDITTEXT        IDC_EDIT_NEAR_MASKING_DISTANCE_HIGH,102,47,40,14,
+                    ES_AUTOHSCROLL
+    EDITTEXT        IDC_EDIT_FAR_MASKING_COEFF,102,149,40,14,ES_AUTOHSCROLL
+    EDITTEXT        IDC_EDIT4,102,167,40,14,ES_AUTOHSCROLL
+    LTEXT           "Hz",IDC_STATIC,146,50,9,8
+    LTEXT           "For lower frequencies:",IDC_STATIC,7,50,67,8
+    EDITTEXT        IDC_EDIT_NEAR_MASKING_DISTANCE_LOW,102,66,40,14,
+                    ES_AUTOHSCROLL
+    LTEXT           "Hz",IDC_STATIC,146,69,9,8
+    LTEXT           "For higher frequencies:",IDC_STATIC,7,69,69,8
+    LTEXT           "Decay time of noise masking:",IDC_STATIC,7,88,89,8
+    EDITTEXT        IDC_EDIT_MASKING_TIME_HIGH,102,102,40,14,ES_AUTOHSCROLL
+    LTEXT           "ms",IDC_STATIC,146,105,10,8
+    LTEXT           "For lower frequencies:",IDC_STATIC,7,105,67,8
+    EDITTEXT        IDC_EDIT_MASKING_TIME_LOW,102,121,40,14,ES_AUTOHSCROLL
+    LTEXT           "ms",IDC_STATIC,146,124,10,8
+    LTEXT           "For higher frequencies:",IDC_STATIC,7,124,69,8
 END
 
 IDD_DIALOG_MORE_DECLICK DIALOG DISCARDABLE  0, 0, 187, 198
@@ -252,8 +267,8 @@ END
 //
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 1,0,0,1
- PRODUCTVERSION 1,0,0,1
+ FILEVERSION 1,1,0,0
+ PRODUCTVERSION 1,1,0,0
  FILEFLAGSMASK 0x3fL
 #ifdef _DEBUG
  FILEFLAGS 0x1L
@@ -266,17 +281,20 @@ VS_VERSION_INFO VERSIONINFO
 BEGIN
     BLOCK "StringFileInfo"
     BEGIN
-        BLOCK "040904B0"
+        BLOCK "040904b0"
         BEGIN
-            VALUE "CompanyName", "\0"
-            VALUE "FileDescription", "WaveSoap MFC Application\0"
-            VALUE "FileVersion", "1, 0, 0, 1\0"
+            VALUE "Comments", "\0"
+            VALUE "CompanyName", "Alexandre Grigoriev\0"
+            VALUE "FileDescription", "WaveSoap Application - cleans sound files\0"
+            VALUE "FileVersion", "1, 1, 0, 0\0"
             VALUE "InternalName", "WaveSoap\0"
-            VALUE "LegalCopyright", "Copyright (C) 1998\0"
+            VALUE "LegalCopyright", "Copyright (C) 1998-2000 Alexandre Grigoriev\0"
             VALUE "LegalTrademarks", "\0"
             VALUE "OriginalFilename", "WaveSoap.EXE\0"
+            VALUE "PrivateBuild", "\0"
             VALUE "ProductName", "WaveSoap Application\0"
-            VALUE "ProductVersion", "1, 0, 0, 1\0"
+            VALUE "ProductVersion", "1, 1, 0, 0\0"
+            VALUE "SpecialBuild", "\0"
         END
     END
     BLOCK "VarFileInfo"
@@ -301,7 +319,7 @@ BEGIN
         LEFTMARGIN, 7
         RIGHTMARGIN, 210
         TOPMARGIN, 7
-        BOTTOMMARGIN, 48
+        BOTTOMMARGIN, 54
     END
 
     IDD_WAVESOAP_DIALOG, DIALOG
@@ -365,7 +383,7 @@ BEGIN
         LEFTMARGIN, 7
         RIGHTMARGIN, 180
         TOPMARGIN, 7
-        BOTTOMMARGIN, 137
+        BOTTOMMARGIN, 213
     END
 
     IDD_DIALOG_MORE_DECLICK, DIALOG

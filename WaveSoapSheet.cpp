@@ -64,6 +64,15 @@ BOOL CWaveSoapSheet::OnInitDialog()
 		pBtn->SetWindowText("Exit");
 	}
 
+	HICON m_hIcon = (HICON) LoadImage(AfxFindResourceHandle
+									(MAKEINTRESOURCE(IDR_MAINFRAME), RT_GROUP_ICON),
+									MAKEINTRESOURCE(IDR_MAINFRAME),
+									IMAGE_ICON,
+									0, 0, LR_DEFAULTSIZE
+									);
+	SetIcon(m_hIcon, TRUE);			// Set big icon
+	SetIcon(m_hIcon, FALSE);			// Set small icon
+
 	return bResult;
 }
 

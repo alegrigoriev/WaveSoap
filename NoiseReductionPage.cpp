@@ -29,6 +29,7 @@ CNoiseReductionPage::CNoiseReductionPage() : CPropertyPage(CNoiseReductionPage::
 	m_dLowerFrequency = 4000.;
 	m_FftOrder = 128;
 	m_dNoiseReductionAggressivness = 1.;
+	m_NearMaskingCoeff = 1.;
 }
 
 CNoiseReductionPage::~CNoiseReductionPage()
@@ -125,7 +126,11 @@ void CNoiseReductionPage::LoadValuesFromRegistry()
 	pApp->Profile.AddItem(_T("NoiseReduction"), _T("NoiseThresholdHigh"), m_dNoiseThresholdHigh, -65., -100., -10.);
 	pApp->Profile.AddItem(_T("NoiseReduction"), _T("LowerFrequency"), m_dLowerFrequency, 4000., 100., 48000.);
 	pApp->Profile.AddItem(_T("NoiseReduction"), _T("ToneOverNoisePreference"), m_dToneOverNoisePreference, 10., 0., 20.);
-	pApp->Profile.AddItem(_T("NoiseReduction"), _T("NoiseReductionAggressivness"), m_dNoiseReductionAggressivness, 1., 0.1, 3.);
+	pApp->Profile.AddItem(_T("NoiseReduction"), _T("NearMaskingDecayDistanceHigh"), m_NearMaskingDecayDistanceHigh, 500., 1., 2000.);
+	pApp->Profile.AddItem(_T("NoiseReduction"), _T("NearMaskingDecayDistanceLow"), m_NearMaskingDecayDistanceLow, 30., 1., 2000.);
+	pApp->Profile.AddItem(_T("NoiseReduction"), _T("NearMaskingDecayTimeHigh"), m_NearMaskingDecayTimeHigh, 40., 1., 1000.);
+	pApp->Profile.AddItem(_T("NoiseReduction"), _T("NearMaskingDecayTimeLow"), m_NearMaskingDecayTimeLow, 100., 1., 1000.);
+	pApp->Profile.AddItem(_T("NoiseReduction"), _T("NearMaskingCoeff"), m_NearMaskingCoeff, 1., 0., 1.);
 }
 
 void CNoiseReductionPage::StoreValuesToRegistry()
@@ -147,10 +152,17 @@ void CNoiseReductionPage::SetWaveprocData(CNoiseReduction * pNr)
 	pNr->m_ThresholdOfTransient = m_dTransientThreshold;
 	pNr->m_FreqThresholdOfNoiselike = M_PI_2 * M_PI_2 * m_dNoiseCriterion * m_dNoiseCriterion;
 	pNr->m_MaxNoiseSuppression = DB_TO_NEPER * m_dNoiseReduction;
-	pNr->m_LevelThresholdForNoiseLow = DB_TO_NEPER * (m_dNoiseThresholdHigh +126.);
-	pNr->m_LevelThresholdForNoiseHigh = DB_TO_NEPER * (m_dNoiseThresholdHigh +126.);
+	pNr->m_LevelThresholdForNoiseLow = DB_TO_NEPER * (m_dNoiseThresholdHigh +111.);
+	pNr->m_LevelThresholdForNoiseHigh = DB_TO_NEPER * (m_dNoiseThresholdHigh +111.);
 	pNr->m_ToneOverNoisePreference = DB_TO_NEPER * m_dToneOverNoisePreference;
 	pNr->m_NoiseReductionRatio = 0.5 * m_dNoiseReductionAggressivness;
+
+	pNr->m_NearMaskingDecayDistanceLow = m_NearMaskingDecayDistanceLow;
+	pNr->m_NearMaskingDecayDistanceHigh = m_NearMaskingDecayDistanceHigh;
+
+	pNr->m_NearMaskingDecayTimeLow = m_NearMaskingDecayTimeLow;
+	pNr->m_NearMaskingDecayTimeHigh = m_NearMaskingDecayTimeHigh;
+	pNr->m_NearMaskingCoeff = m_NearMaskingCoeff;
 }
 
 void CNoiseReductionPage::OnOK()
@@ -179,8 +191,23 @@ void CMoreNoiseDialog::DoDataExchange(CDataExchange* pDX)
 {
 	CDialog::DoDataExchange(pDX);
 	//{{AFX_DATA_MAP(CMoreNoiseDialog)
-	// NOTE: the ClassWizard will add DDX and DDV calls here
+	DDX_Control(pDX, IDC_EDIT_NEAR_MASKING_COEFF, m_eNearMaskingCoeff);
+	DDX_Control(pDX, IDC_EDIT_FAR_MASKING_COEFF, m_eFarMaskingCoeff);
+	DDX_Control(pDX, IDC_EDIT_MASKING_TIME_LOW, m_eNearMaskingTimeLow);
+	DDX_Control(pDX, IDC_EDIT_MASKING_TIME_HIGH, m_eNearMaskingTimeHigh);
+	DDX_Control(pDX, IDC_EDIT_NEAR_MASKING_DISTANCE_LOW, m_eNearMaskingDistanceLow);
+	DDX_Control(pDX, IDC_EDIT_NEAR_MASKING_DISTANCE_HIGH, m_eNearMaskingDistanceHigh);
 	//}}AFX_DATA_MAP
+	m_eNearMaskingDistanceHigh.ExchangeData(pDX, m_NearMaskingDecayDistanceHigh,
+											"Near masking distance in higher frequencies", "Hz", 1., 2000.);
+	m_eNearMaskingDistanceLow.ExchangeData(pDX, m_NearMaskingDecayDistanceLow,
+											"Near masking distance in lower frequencies", "Hz", 1., 2000.);
+	m_eNearMaskingTimeHigh.ExchangeData(pDX, m_NearMaskingDecayTimeHigh,
+										"Near masking time in higher frequencies", "ms", 1., 1000.);
+	m_eNearMaskingTimeLow.ExchangeData(pDX, m_NearMaskingDecayTimeLow,
+										"Near masking time in lower frequencies", "ms", 1., 1000.);
+	m_eNearMaskingCoeff.ExchangeData(pDX, m_NearMaskingCoeff,
+									"Near masking coefficient", "", 0., 1.);
 }
 
 
@@ -197,9 +224,21 @@ void CNoiseReductionPage::OnButtonMore()
 {
 	CMoreNoiseDialog dlg;
 	// set the data to dlg
+	dlg.m_NearMaskingDecayDistanceLow = m_NearMaskingDecayDistanceLow;
+	dlg.m_NearMaskingDecayDistanceHigh = m_NearMaskingDecayDistanceHigh;
+
+	dlg.m_NearMaskingDecayTimeLow = m_NearMaskingDecayTimeLow;
+	dlg.m_NearMaskingDecayTimeHigh = m_NearMaskingDecayTimeHigh;
+	dlg.m_NearMaskingCoeff = m_NearMaskingCoeff;
 	if (IDOK == dlg.DoModal())
 	{
 		// return the data from dlg
+		m_NearMaskingDecayDistanceLow = dlg.m_NearMaskingDecayDistanceLow;
+		m_NearMaskingDecayDistanceHigh = dlg.m_NearMaskingDecayDistanceHigh;
+
+		m_NearMaskingDecayTimeLow = dlg.m_NearMaskingDecayTimeLow;
+		m_NearMaskingDecayTimeHigh = dlg.m_NearMaskingDecayTimeHigh;
+		m_NearMaskingCoeff = dlg.m_NearMaskingCoeff;
 	}
 
 }
