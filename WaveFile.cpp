@@ -161,13 +161,14 @@ BOOL CMmioFile::Open(LPCTSTR szFileName, UINT nOpenFlags)
 			return FALSE;
 		}
 
+		AllocateInstanceData<InstanceDataMm>();
+
 		if (0 == (nOpenFlags & MmioFileOpenDontLoadRiff)
 			&& ! LoadRiffChunk())
 		{
 			Close();
 			return FALSE;
 		}
-		AllocateInstanceData<InstanceDataMm>();
 	}
 	else
 	{

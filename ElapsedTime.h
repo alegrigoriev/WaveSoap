@@ -1,4 +1,5 @@
 #pragma once
+#include <mmsystem.h>
 
 namespace ElapsedTime
 {

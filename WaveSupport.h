@@ -4,6 +4,7 @@
 #ifndef WAVESUPPORT_H__
 #define WAVESUPPORT_H__
 #include <vector>
+#include <mmsystem.h>
 #include <mmreg.h>
 #include <msacm.h>
 
