@@ -20,6 +20,11 @@ CWaveDevice::~CWaveDevice()
 {
 	if (hEvent != NULL) CloseHandle(hEvent);
 	DeleteCriticalSection( & cs);
+	if (NULL != m_pwfe)
+	{
+		delete[] (char*)m_pwfe;
+		m_pwfe = NULL;
+	}
 }
 
 BOOL CWaveDevice::AllocateBuffers(size_t size, int count)
@@ -239,6 +244,11 @@ MMRESULT CWaveOut::Close()
 		return err;
 	m_hwo = NULL;
 	m_id = WAVE_MAPPER - 1;
+	if (NULL != m_pwfe)
+	{
+		delete[] (char*)m_pwfe;
+		m_pwfe = NULL;
+	}
 	return MMSYSERR_NOERROR;
 }
 
@@ -269,7 +279,7 @@ MMRESULT CWaveOut::Reset()
 {
 	ASSERT(this != NULL);
 
-	if ( ! CWaveOut::IsOpen())
+	if ( ! IsOpen())
 		return MMSYSERR_NOERROR;
 	return waveOutReset(m_hwo);
 }
@@ -278,7 +288,7 @@ MMRESULT CWaveOut::BreakLoop()
 {
 	ASSERT(this != NULL);
 
-	if ( ! CWaveOut::IsOpen())
+	if ( ! IsOpen())
 		return MMSYSERR_NOERROR;
 	return waveOutBreakLoop(m_hwo);
 }
@@ -287,7 +297,7 @@ MMRESULT CWaveOut::Pause()
 {
 	ASSERT(this != NULL);
 
-	if ( ! CWaveOut::IsOpen())
+	if ( ! IsOpen())
 		return MMSYSERR_INVALHANDLE;
 	return waveOutPause(m_hwo);
 }
@@ -296,7 +306,7 @@ MMRESULT CWaveOut::Resume()
 {
 	ASSERT(this != NULL);
 
-	if ( ! CWaveOut::IsOpen())
+	if ( ! IsOpen())
 		return MMSYSERR_INVALHANDLE;
 	return waveOutRestart(m_hwo);
 }
@@ -309,7 +319,7 @@ DWORD CWaveOut::GetPosition(UINT type)
 
 	MMTIME mmt;
 	mmt.wType = type;
-	if (! CWaveOut::IsOpen()
+	if ( ! IsOpen()
 		|| waveOutGetPosition(m_hwo, & mmt, sizeof mmt) != MMSYSERR_NOERROR)
 		return DWORD(-1);
 	return mmt.u.ms;
@@ -318,7 +328,7 @@ DWORD CWaveOut::GetPosition(UINT type)
 MMRESULT CWaveOut::Unprepare(UINT hBuffer)
 {
 	ASSERT(this != NULL);
-	ASSERT(CWaveOut::IsOpen());
+	ASSERT(IsOpen());
 	ASSERT(hBuffer > 0 && hBuffer <= nBuffers);
 
 	return waveOutUnprepareHeader(m_hwo, & m_pBufs[hBuffer - 1].whd,
@@ -438,7 +448,7 @@ MMRESULT CWaveIn::Open(LPCSTR szName, const WAVEFORMATEX * pwfe, DWORD dwAuxFlag
 MMRESULT CWaveIn::Close()
 {
 	ASSERT(this);
-	if (! CWaveIn::IsOpen())
+	if (! IsOpen())
 		return MMSYSERR_INVALHANDLE;
 	Reset();
 	ResetBuffers();
@@ -447,6 +457,11 @@ MMRESULT CWaveIn::Close()
 		return err;
 	m_hwi = NULL;
 	m_id = WAVE_MAPPER - 1;
+	if (NULL != m_pwfe)
+	{
+		delete[] (char*)m_pwfe;
+		m_pwfe = NULL;
+	}
 	return MMSYSERR_NOERROR;
 }
 
@@ -472,7 +487,7 @@ MMRESULT CWaveIn::Reset()
 {
 	ASSERT(this != NULL);
 
-	if ( ! CWaveIn::IsOpen())
+	if ( ! IsOpen())
 		return MMSYSERR_NOERROR;
 	return waveInReset(m_hwi);
 }
@@ -490,7 +505,7 @@ MMRESULT CWaveIn::Start()
 {
 	ASSERT(this != NULL);
 
-	if ( ! CWaveIn::IsOpen())
+	if ( ! IsOpen())
 		return MMSYSERR_INVALHANDLE;
 	return waveInStart(m_hwi);
 }
@@ -503,7 +518,7 @@ DWORD CWaveIn::GetPosition(UINT type)
 
 	MMTIME mmt;
 	mmt.wType = type;
-	if (! CWaveIn::IsOpen()
+	if (! IsOpen()
 		|| waveInGetPosition(m_hwi, & mmt, sizeof mmt) != MMSYSERR_NOERROR)
 		return DWORD(-1);
 	return mmt.u.ms;
@@ -512,7 +527,7 @@ DWORD CWaveIn::GetPosition(UINT type)
 MMRESULT CWaveIn::Unprepare(UINT hBuffer)
 {
 	ASSERT(this != NULL);
-	ASSERT(CWaveIn::IsOpen());
+	ASSERT(IsOpen());
 	ASSERT(hBuffer > 0 && hBuffer <= nBuffers);
 
 	return waveInUnprepareHeader(m_hwi, & m_pBufs[hBuffer - 1].whd,
