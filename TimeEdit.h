@@ -127,7 +127,7 @@ public:
 
 	// Generated message map functions
 protected:
-	afx_msg void OnReflectComboSelectionChanged();
+	afx_msg BOOL OnReflectComboSelectionChanged();
 	afx_msg void OnComboSelectionChanged();
 	//{{AFX_MSG(CTimeEditCombo)
 
