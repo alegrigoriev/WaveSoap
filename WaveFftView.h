@@ -33,6 +33,7 @@ public:
 protected:
 	virtual void OnDraw(CDC* pDC);      // overridden to draw this view
 	virtual BOOL PreCreateWindow(CREATESTRUCT& cs);
+	virtual void OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint);
 	//}}AFX_VIRTUAL
 
 // Implementation
@@ -58,6 +59,7 @@ protected:
 	int m_FftSpacing;
 	void MakeFftArray(int left, int right);
 	void CalculateFftRange(int left, int right);
+	static HBRUSH m_Brush;
 	// Generated message map functions
 protected:
 	//{{AFX_MSG(CWaveFftView)
