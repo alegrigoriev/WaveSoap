@@ -170,16 +170,16 @@ CFilterGraphWnd::CFilterGraphWnd(CApplicationProfile & Profile, int SampleRate)
 	m_Frequencies[LpfStopbandIndex] = M_PI * 0.9;
 
 	Profile.AddBoolItem(_T("Filter"), _T("LowPassEnable"), m_bLowPass, TRUE);
-	Profile.AddItem(_T("Filter"), _T("LowPass_StopLoss"), m_Gain[LpfStopbandIndex], m_Gain[LpfStopbandIndex], 0.00003, 1.);
-	Profile.AddItem(_T("Filter"), _T("LowPass_StopFrequency"), m_Frequencies[LpfStopbandIndex], m_Frequencies[LpfStopbandIndex], 0.00157, 3.14);
 	Profile.AddItem(_T("Filter"), _T("LowPass_PassLoss"), m_Gain[LpfPassbandIndex], m_Gain[LpfPassbandIndex], 0.00003, 1.);
 	Profile.AddItem(_T("Filter"), _T("LowPass_PassFrequency"), m_Frequencies[LpfPassbandIndex], m_Frequencies[LpfPassbandIndex], 0.00157, 3.14);
+	Profile.AddItem(_T("Filter"), _T("LowPass_StopLoss"), m_Gain[LpfStopbandIndex], m_Gain[LpfStopbandIndex], 0.00003, 1.);
+	Profile.AddItem(_T("Filter"), _T("LowPass_StopFrequency"), m_Frequencies[LpfStopbandIndex], m_Frequencies[LpfStopbandIndex], 0.00157, 3.14);
 
 	Profile.AddBoolItem(_T("Filter"), _T("HighPassEnable"), m_bHighPass, TRUE);
-	Profile.AddItem(_T("Filter"), _T("HighPass_StopLoss"), m_Gain[HpfStopbandIndex], m_Gain[HpfStopbandIndex], 0.00003, 1.);
-	Profile.AddItem(_T("Filter"), _T("HighPass_StopFrequency"), m_Frequencies[HpfStopbandIndex], m_Frequencies[HpfStopbandIndex], 0.00157, 3.14);
 	Profile.AddItem(_T("Filter"), _T("HighPass_PassLoss"), m_Gain[HpfPassbandIndex], m_Gain[HpfPassbandIndex], 0.00003, 1.);
 	Profile.AddItem(_T("Filter"), _T("HighPass_PassFrequency"), m_Frequencies[HpfPassbandIndex], m_Frequencies[HpfPassbandIndex], 0.00157, 3.14);
+	Profile.AddItem(_T("Filter"), _T("HighPass_StopLoss"), m_Gain[HpfStopbandIndex], m_Gain[HpfStopbandIndex], 0.00003, 1.);
+	Profile.AddItem(_T("Filter"), _T("HighPass_StopFrequency"), m_Frequencies[HpfStopbandIndex], m_Frequencies[HpfStopbandIndex], 0.00157, 3.14);
 
 	Profile.AddBoolItem(_T("Filter"), _T("NotchEnable"), m_bNotchFilter, FALSE);
 	Profile.AddItem(_T("Filter"), _T("Notch_PassFrequency"), m_Frequencies[NotchBeginIndex], m_Frequencies[NotchBeginIndex], 0.00157, 3.14);
