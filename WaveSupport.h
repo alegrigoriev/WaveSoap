@@ -328,6 +328,10 @@ protected:
 	HANDLE hEvent;
 	BUFFER_STRUCT * m_pBufs;
 	UINT nBuffers;
+	// the class doesn't allow assignment and copy
+private:
+	CWaveDevice(const CWaveDevice &);
+	CWaveDevice & operator=(const CWaveDevice &);
 };
 
 class CWaveOut : public CWaveDevice
@@ -356,8 +360,9 @@ private:
 									DWORD dwParam2);
 
 	// the class doesn't allow assignment and copy
-	CWaveOut(const CWaveOut &) {ASSERT(FALSE);}
-	CWaveOut & operator=(const CWaveOut&) {ASSERT(FALSE); return *this;}
+private:
+	CWaveOut(const CWaveOut &);
+	CWaveOut & operator=(const CWaveOut&);
 };
 
 class CWaveIn : public CWaveDevice
@@ -383,9 +388,11 @@ private:
 	static void CALLBACK waveInProc(HWAVEIN hwi,
 									UINT uMsg,	DWORD_PTR dwInstance, DWORD dwParam1,
 									DWORD dwParam2	);
+
+private:
 	// the class doesn't allow assignment and copy
-	CWaveIn(const CWaveIn &) {ASSERT(FALSE);}
-	CWaveIn & operator=(const CWaveIn&) {ASSERT(FALSE); return *this;}
+	CWaveIn(const CWaveIn &);
+	CWaveIn & operator=(const CWaveIn &);
 };
 
 class CAudioMixer
@@ -473,6 +480,11 @@ protected:
 											DWORD_PTR dwInstance, DWORD fdwSupport);
 	// source wave format for comparing:
 	CWaveFormat m_Wf;
+
+private:
+	// the class doesn't allow assignment and copy
+	CAudioCompressionManager(const CAudioCompressionManager &);
+	CAudioCompressionManager & operator=(const CAudioCompressionManager &);
 };
 
 class AudioStreamConvertor
@@ -542,6 +554,11 @@ protected:
 
 	DWORD m_SrcBufSize;
 	DWORD m_DstBufSize;
+
+	// the class doesn't allow assignment and copy
+private:
+	AudioStreamConvertor(const AudioStreamConvertor &);
+	AudioStreamConvertor & operator=(const AudioStreamConvertor &);
 };
 
 inline CString CWaveFormat::GetFormatNameString(HACMDRIVER had)
