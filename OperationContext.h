@@ -463,6 +463,11 @@ public:
 	{
 		delete[] (char*) m_pWf;
 	}
+
+	void AddWaveProc(CWaveProc * pProc, int index = -1)
+	{
+		m_ProcBatch.AddWaveProc(pProc, index);
+	}
 	//virtual BOOL Init();
 	//virtual BOOL DeInit();
 	virtual BOOL WasClipped() const
@@ -473,11 +478,12 @@ public:
 	{
 		return m_ProcBatch.GetMaxClipped();
 	}
-	CBatchProcessing m_ProcBatch;
 	WAVEFORMATEX * m_pWf;
 	virtual BOOL OperationProc();
 	//BOOL SetTargetFormat(WAVEFORMATEX * pwf);
 	virtual void PostRetire(BOOL bChildContext = FALSE);
+protected:
+	CBatchProcessing m_ProcBatch;
 };
 
 class CFileSaveContext : public CCopyContext
