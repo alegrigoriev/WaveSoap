@@ -1,3 +1,4 @@
+// Copyright Alexander Grigoriev, 1997-2002, All Rights Reserved
 // Resample.cpp
 #include "stdafx.h"
 #include "Resample.h"
