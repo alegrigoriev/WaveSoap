@@ -8,6 +8,8 @@
 //
 #include <complex>
 #include "NumEdit.h"
+#include "ResizableDialog.h"
+
 /////////////////////////////////////////////////////////////////////////////
 // CEqualizerGraphWnd window
 enum { MaxNumberOfEqualizerBands = 20, };
@@ -113,7 +115,7 @@ protected:
 /////////////////////////////////////////////////////////////////////////////
 // CEqualizerDialog dialog
 
-class CEqualizerDialog : public CDialog
+class CEqualizerDialog : public CResizableDialog
 {
 // Construction
 public:
@@ -130,7 +132,6 @@ public:
 	int		m_bMultiBandEqualizer;
 	int 	m_nBands;
 	//}}AFX_DATA
-	MINMAXINFO m_mmxi;
 	BOOL	m_bLockChannels;
 	long m_Start;
 	long m_End;
@@ -139,8 +140,6 @@ public:
 	int m_Chan;
 	int m_TimeFormat;
 	const WAVEFORMATEX * m_pWf;
-	int m_DlgWidth;
-	int m_DlgHeight;
 
 	CEqualizerGraphWnd m_wGraph;
 
@@ -154,18 +153,11 @@ protected:
 
 // Implementation
 protected:
-	CSize m_PrevSize;
 	void UpdateSelectionStatic();
-	void OnMetricsChange();
 	afx_msg void OnNotifyGraph( NMHDR * pNotifyStruct, LRESULT * result );
 
 	// Generated message map functions
 	//{{AFX_MSG(CEqualizerDialog)
-	afx_msg BOOL OnEraseBkgnd(CDC* pDC);
-	afx_msg UINT OnNcHitTest(CPoint point);
-	afx_msg void OnSizing(UINT fwSide, LPRECT pRect);
-	afx_msg void OnSize(UINT nType, int cx, int cy);
-	afx_msg void OnGetMinMaxInfo(MINMAXINFO FAR* lpMMI);
 	virtual BOOL OnInitDialog();
 	afx_msg void OnButtonSelection();
 	afx_msg void OnChangeEditBands();

@@ -18,15 +18,39 @@ static char THIS_FILE[] = __FILE__;
 
 
 CFilterDialog::CFilterDialog(CWnd* pParent /*=NULL*/)
-	: CDialog(CFilterDialog::IDD, pParent)
+	: CResizableDialog(CFilterDialog::IDD, pParent)
 {
 	//{{AFX_DATA_INIT(CFilterDialog)
 	m_bUndo = FALSE;
 	//}}AFX_DATA_INIT
-	m_PrevSize.cx = -1;
-	m_PrevSize.cy = -1;
 
-	memset(& m_mmxi, 0, sizeof m_mmxi);
+	static ResizableDlgItem const ResizeItems[] =
+	{
+		{IDC_STATIC1, MoveDown},
+		{IDC_EDIT_BAND_GAIN, MoveDown},
+		{IDC_STATIC2, MoveDown},
+		{IDC_EDIT_FREQUENCY, MoveDown},
+		{IDC_STATIC4, MoveDown},
+		{IDC_CHECK_LOWPASS, MoveDown},
+		{IDC_CHECK_STOPBAND, MoveDown},
+		{IDC_CHECK_HIGHPASS, MoveDown},
+		{IDC_CHECK_ZERO_PHASE, MoveDown},
+		{IDC_CHECK_UNDO, MoveDown},
+		{IDC_STATIC_SELECTION, MoveDown},
+		{IDC_BUTTON_SELECTION, MoveDown},
+
+		{IDC_BUTTON_RESET_BANDS, MoveRight | MoveDown},
+		{IDC_BUTTON_SAVE_AS, MoveRight | MoveDown},
+		{IDC_BUTTON_LOAD, MoveRight | MoveDown},
+		{IDOK, MoveRight | MoveDown},
+		{IDCANCEL, MoveRight | MoveDown},
+		{IDHELP, MoveRight | MoveDown},
+
+		{AFX_IDW_PANE_FIRST, ExpandRight | ExpandDown},
+	};
+
+	m_pResizeItems = ResizeItems;
+	m_pResizeItemsCount = sizeof ResizeItems / sizeof ResizeItems[0];
 
 	m_Profile.AddItem("Settings", "FilterDlgWidth", m_DlgWidth, 0, 0, 4096);
 	m_Profile.AddItem("Settings", "FilterDlgHeight", m_DlgHeight, 0, 0, 4096);
@@ -97,7 +121,7 @@ CFilterDialog::CFilterDialog(CWnd* pParent /*=NULL*/)
 
 void CFilterDialog::DoDataExchange(CDataExchange* pDX)
 {
-	CDialog::DoDataExchange(pDX);
+	CResizableDialog::DoDataExchange(pDX);
 	DDX_Control(pDX, IDC_EDIT_BAND_GAIN, m_EditGain);
 	DDX_Control(pDX, IDC_EDIT_FREQUENCY, m_EditFrequency);
 	//{{AFX_DATA_MAP(CFilterDialog)
@@ -116,18 +140,13 @@ void CFilterDialog::DoDataExchange(CDataExchange* pDX)
 }
 
 
-BEGIN_MESSAGE_MAP(CFilterDialog, CDialog)
+BEGIN_MESSAGE_MAP(CFilterDialog, CResizableDialog)
 	//{{AFX_MSG_MAP(CFilterDialog)
 	ON_BN_CLICKED(IDC_BUTTON_LOAD, OnButtonLoad)
 	ON_BN_CLICKED(IDC_BUTTON_RESET_BANDS, OnButtonResetBands)
 	ON_BN_CLICKED(IDC_BUTTON_SAVE_AS, OnButtonSaveAs)
 	ON_BN_CLICKED(IDC_BUTTON_SELECTION, OnButtonSelection)
 	ON_BN_CLICKED(IDC_CHECK_ZERO_PHASE, OnCheckZeroPhase)
-	ON_WM_SIZE()
-	ON_WM_SIZING()
-	ON_WM_GETMINMAXINFO()
-	ON_WM_ERASEBKGND()
-	ON_WM_NCHITTEST()
 	ON_BN_CLICKED(IDC_CHECK_LOWPASS, OnCheckLowpass)
 	ON_BN_CLICKED(IDC_CHECK_HIGHPASS, OnCheckHighpass)
 	ON_EN_KILLFOCUS(IDC_EDIT_FREQUENCY, OnKillfocusEditFrequency)
@@ -138,152 +157,6 @@ END_MESSAGE_MAP()
 
 /////////////////////////////////////////////////////////////////////////////
 // CFilterDialog message handlers
-
-void CFilterDialog::OnMetricsChange()
-{
-	// Initialize MINMAXINFO
-	CRect r;
-	SystemParametersInfo(SPI_GETWORKAREA, 0, & r, 0);
-	m_mmxi.ptMaxSize.x = r.Width();
-	m_mmxi.ptMaxTrackSize.x = m_mmxi.ptMaxSize.x;
-	m_mmxi.ptMaxSize.y = r.Height();
-	m_mmxi.ptMaxTrackSize.y = m_mmxi.ptMaxSize.y;
-	m_mmxi.ptMaxPosition.x = r.left;
-	m_mmxi.ptMaxPosition.y = r.top;
-	GetWindowRect(& r);
-	m_mmxi.ptMinTrackSize.x = r.Width();
-	m_mmxi.ptMinTrackSize.y = r.Height();
-}
-
-void CFilterDialog::OnSize(UINT nType, int cx, int cy)
-{
-	CDialog::OnSize(nType, cx, cy);
-	if (m_PrevSize.cx > 0)
-	{
-		// resize graph control
-		if (NULL != m_wGraph.m_hWnd)
-		{
-			CRect r;
-			m_wGraph.GetWindowRect( & r);
-			m_wGraph.SetWindowPos(NULL, 0, 0, r.Width() + cx - m_PrevSize.cx,
-								r.Height() + cy - m_PrevSize.cy,
-								SWP_DRAWFRAME | SWP_NOACTIVATE
-								| SWP_NOMOVE | SWP_NOZORDER | SWP_NOOWNERZORDER);
-		}
-
-		// move all controls
-		static int const MoveDown[] =
-		{
-			IDC_STATIC1, IDC_EDIT_BAND_GAIN, IDC_STATIC2,
-			IDC_EDIT_FREQUENCY, IDC_STATIC4,
-			IDC_CHECK_LOWPASS, IDC_CHECK_STOPBAND, IDC_CHECK_HIGHPASS,
-			IDC_CHECK_ZERO_PHASE, IDC_CHECK_UNDO,
-			IDC_STATIC_SELECTION, IDC_BUTTON_SELECTION,
-		};
-		for (int i = 0; i < sizeof MoveDown / sizeof MoveDown[0]; i++)
-		{
-			CWnd * pWnd = GetDlgItem(MoveDown[i]);
-			if (pWnd)
-			{
-				CRect r;
-				pWnd->GetWindowRect( & r);
-				ScreenToClient( & r);
-				pWnd->SetWindowPos(NULL, r.left, r.top + cy - m_PrevSize.cy,
-									0, 0, SWP_NOCOPYBITS | SWP_NOACTIVATE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOOWNERZORDER);
-			}
-		}
-		static int const MoveRightDown[] =
-		{
-			IDC_BUTTON_RESET_BANDS, IDC_BUTTON_SAVE_AS,
-			IDC_BUTTON_LOAD, IDOK, IDCANCEL, IDHELP,
-		};
-		for (i = 0; i < sizeof MoveRightDown / sizeof MoveRightDown[0]; i++)
-		{
-			CWnd * pWnd = GetDlgItem(MoveRightDown[i]);
-			if (pWnd)
-			{
-				CRect r;
-				pWnd->GetWindowRect( & r);
-				ScreenToClient( & r);
-				pWnd->SetWindowPos(NULL, r.left + cx - m_PrevSize.cx,
-									r.top + cy - m_PrevSize.cy,
-									0, 0, SWP_NOCOPYBITS | SWP_NOACTIVATE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOOWNERZORDER);
-			}
-		}
-	}
-
-	m_PrevSize.cx = cx;
-	m_PrevSize.cy = cy;
-
-	// invalidate an area which is (after resizing)
-	// occupied by size grip
-	int size = GetSystemMetrics(SM_CXVSCROLL);
-	CRect r(cx - size, cy - size, cx, cy);
-	InvalidateRect( & r, TRUE);
-}
-
-void CFilterDialog::OnSizing(UINT fwSide, LPRECT pRect)
-{
-	CDialog::OnSizing(fwSide, pRect);
-
-	// invalidate an area currently (before resizing)
-	// occupied by size grip
-	CRect r;
-	GetClientRect( & r);
-	int size = GetSystemMetrics(SM_CXVSCROLL);
-	r.left = r.right - size;
-	r.top = r.bottom - size;
-	InvalidateRect( & r, FALSE);
-}
-
-void CFilterDialog::OnGetMinMaxInfo(MINMAXINFO FAR* lpMMI)
-{
-	if (m_mmxi.ptMaxSize.x != 0)
-	{
-		*lpMMI = m_mmxi;
-	}
-	else
-	{
-		CDialog::OnGetMinMaxInfo(lpMMI);
-	}
-}
-
-BOOL CFilterDialog::OnEraseBkgnd(CDC* pDC)
-{
-	if (CDialog::OnEraseBkgnd(pDC))
-	{
-		// draw size grip
-		CRect r;
-		GetClientRect( & r);
-		int size = GetSystemMetrics(SM_CXVSCROLL);
-		r.left = r.right - size;
-		r.top = r.bottom - size;
-		pDC->DrawFrameControl( & r, DFC_SCROLL, DFCS_SCROLLSIZEGRIP);
-		return TRUE;
-	}
-	else
-	{
-		return FALSE;
-	}
-}
-
-UINT CFilterDialog::OnNcHitTest(CPoint point)
-{
-	// return HTBOTTOMRIGHT for sizegrip area
-	CRect r;
-	GetClientRect( & r);
-	int size = GetSystemMetrics(SM_CXVSCROLL);
-	r.left = r.right - size;
-	r.top = r.bottom - size;
-	ScreenToClient( & point);
-
-	if (r.PtInRect(point))
-	{
-		return HTBOTTOMRIGHT;
-	}
-	else
-		return CDialog::OnNcHitTest(point);
-}
 
 void CFilterDialog::OnCheckLowpass()
 {
@@ -366,34 +239,13 @@ BOOL CFilterDialog::OnInitDialog()
 						SWP_NOACTIVATE | SWP_NOMOVE | SWP_NOSIZE);
 	pTemplateWnd->DestroyWindow();
 
-	CDialog::OnInitDialog();
+	CResizableDialog::OnInitDialog();
 
 	m_EditGain.SetData(m_wGraph.GetCurrentPointGainDb());
 	m_EditFrequency.SetData(m_wGraph.GetCurrentPointFrequencyHz());
 	// init MINMAXINFO
-	OnMetricsChange();
 	UpdateSelectionStatic();
 	m_wGraph.RebuildFilters();
-
-	// set dialog size
-	if (m_DlgWidth < m_mmxi.ptMinTrackSize.x)
-	{
-		m_DlgWidth = m_mmxi.ptMinTrackSize.x;
-	}
-	if (m_DlgWidth > m_mmxi.ptMaxTrackSize.x)
-	{
-		m_DlgWidth = m_mmxi.ptMaxTrackSize.x;
-	}
-	if (m_DlgHeight < m_mmxi.ptMinTrackSize.y)
-	{
-		m_DlgHeight = m_mmxi.ptMinTrackSize.y;
-	}
-	if (m_DlgHeight > m_mmxi.ptMaxTrackSize.y)
-	{
-		m_DlgHeight = m_mmxi.ptMaxTrackSize.y;
-	}
-	SetWindowPos(NULL, 0, 0, m_DlgWidth, m_DlgHeight,
-				SWP_NOACTIVATE | SWP_NOOWNERZORDER | SWP_NOZORDER | SWP_NOMOVE);
 
 	return TRUE;  // return TRUE unless you set the focus to a control
 	// EXCEPTION: OCX Property Pages should return FALSE
@@ -531,7 +383,6 @@ END_MESSAGE_MAP()
 
 void CFilterGraphWnd::OnPaint()
 {
-	if (0) TRACE("CFilterGraphWnd::OnPaint\n");
 	CPaintDC dc(this); // device context for painting
 
 	CRect cr;
@@ -1519,12 +1370,7 @@ void CFilterDialog::OnOK()
 		return;
 	}
 
-	CRect r;
-	GetWindowRect( & r);
-	m_DlgWidth = r.Width();
-	m_DlgHeight = r.Height();
-
-	CDialog::OnOK();
+	CResizableDialog::OnOK();
 }
 
 void CFilterDialog::OnNotifyGraph( NMHDR * pNotifyStruct, LRESULT * result )

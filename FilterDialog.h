@@ -7,6 +7,8 @@
 // FilterDialog.h : header file
 //
 #include "FilterMath.h"
+#include "ResizableDialog.h"
+
 enum { MaxFilterOrder = 16, };
 enum
 {
@@ -177,7 +179,7 @@ protected:
 /////////////////////////////////////////////////////////////////////////////
 // CFilterDialog dialog
 
-class CFilterDialog : public CDialog
+class CFilterDialog : public CResizableDialog
 {
 // Construction
 public:
@@ -192,7 +194,6 @@ public:
 	CNumEdit m_EditGain;
 	CNumEdit m_EditFrequency;
 
-	MINMAXINFO m_mmxi;
 	BOOL	m_bLockChannels;
 	long m_Start;
 	long m_End;
@@ -201,8 +202,6 @@ public:
 	int m_Chan;
 	int m_TimeFormat;
 	const WAVEFORMATEX * m_pWf;
-	int m_DlgWidth;
-	int m_DlgHeight;
 
 	CFilterGraphWnd m_wGraph;
 
@@ -216,9 +215,7 @@ protected:
 
 // Implementation
 protected:
-	CSize m_PrevSize;
 	void UpdateSelectionStatic();
-	void OnMetricsChange();
 
 	void OnNotifyGraph( NMHDR * pNotifyStruct, LRESULT * result );
 	void OnKillfocusEditBandGain();
@@ -229,11 +226,6 @@ protected:
 	afx_msg void OnButtonSaveAs();
 	afx_msg void OnButtonSelection();
 	afx_msg void OnCheckZeroPhase();
-	afx_msg void OnSize(UINT nType, int cx, int cy);
-	afx_msg void OnSizing(UINT fwSide, LPRECT pRect);
-	afx_msg void OnGetMinMaxInfo(MINMAXINFO FAR* lpMMI);
-	afx_msg BOOL OnEraseBkgnd(CDC* pDC);
-	afx_msg UINT OnNcHitTest(CPoint point);
 	afx_msg void OnCheckLowpass();
 	afx_msg void OnCheckHighpass();
 	virtual BOOL OnInitDialog();
