@@ -259,6 +259,8 @@ protected:
 
 	void OnUpdateSampleRate(CCmdUI* pCmdUI, unsigned SampleRate);
 	void SetSampleRate(unsigned SampleRate);
+	void ChangeChannels(int nChannels);
+
 	//{{AFX_MSG(CWaveSoapFrontDoc)
 	afx_msg void OnEditCopy();
 	afx_msg void OnUpdateEditCopy(CCmdUI* pCmdUI);

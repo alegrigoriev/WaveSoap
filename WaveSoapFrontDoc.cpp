@@ -2457,7 +2457,7 @@ BOOL CWaveSoapFrontDoc::OnSaveDocument(LPCTSTR lpszPathName, DWORD flags, WAVEFO
 			}
 			pChConvertor->m_InputChannels =  m_WavFile.GetWaveFormat()->nChannels;
 			pChConvertor->m_OutputChannels =  pWf->nChannels;
-			pChConvertor->nSrcChannel = 2;
+			pChConvertor->m_ChannelsToProcess = ALL_CHANNELS;
 			pConvert->m_ProcBatch.AddWaveProc(pChConvertor);
 		}
 		if (pWf->nSamplesPerSec != m_WavFile.GetWaveFormat()->nSamplesPerSec)
@@ -2483,7 +2483,7 @@ BOOL CWaveSoapFrontDoc::OnSaveDocument(LPCTSTR lpszPathName, DWORD flags, WAVEFO
 			}
 			pChConvertor->m_InputChannels =  m_WavFile.GetWaveFormat()->nChannels;
 			pChConvertor->m_OutputChannels =  pWf->nChannels;
-			pChConvertor->nSrcChannel = 2;
+			pChConvertor->m_ChannelsToProcess = ALL_CHANNELS;
 			pConvert->m_ProcBatch.AddWaveProc(pChConvertor);
 		}
 
@@ -3444,7 +3444,7 @@ void CWaveSoapFrontDoc::ChangeChannels(int nChannels)
 	WAVEFORMATEX NewFormat = *pWf;
 	NewFormat.nChannels = nChannels;
 	int nSrcChan = ALL_CHANNELS;
-	if (nChannels < WaveFileChannels())
+	if (nChannels < WaveChannels())
 	{
 		CCopyChannelsSelectDlg dlg;
 		dlg.m_ChannelToCopy = m_PrevChannelToCopy + 1;
@@ -3459,12 +3459,23 @@ void CWaveSoapFrontDoc::ChangeChannels(int nChannels)
 	{
 		// if mono->Stereo, duplicate the channels
 	}
-	CResampleContext * pContext = new CResampleContext(this, "Changing number of channels...",
-														"Number Of Channels Change");
-	if (NULL == pContext)
+	CChannelConvertor * pConvert = new CChannelConvertor;
+	if (NULL == pConvert)
 	{
 		return;
 	}
+	CConversionContext * pContext = new CConversionContext(this, "Changing number of channels...",
+															"Number Of Channels Change");
+	if (NULL == pContext)
+	{
+		delete pConvert;
+		return;
+	}
+	pConvert->m_InputChannels = WaveChannels();
+	pConvert->m_OutputChannels = nChannels;
+	pConvert->m_ChannelsToProcess = nSrcChan;
+
+	pContext->m_ProcBatch.AddWaveProc(pConvert);
 	// create new temporary file
 	CWaveFile DstFile;
 	if ( ! DstFile.CreateWaveFile( & m_WavFile, & NewFormat, ALL_CHANNELS, SampleCount,
@@ -3476,6 +3487,9 @@ void CWaveSoapFrontDoc::ChangeChannels(int nChannels)
 		delete pContext;
 		return;
 	}
+	pContext->InitDestination(DstFile, 0, SampleCount, ALL_CHANNELS, FALSE);
+	pContext->InitSource(m_WavFile, 0, SampleCount, ALL_CHANNELS);
+
 	if (UndoEnabled())
 	{
 		CUndoRedoContext * pUndo = new CUndoRedoContext(this, "Number Of Channels Change");
@@ -3483,6 +3497,7 @@ void CWaveSoapFrontDoc::ChangeChannels(int nChannels)
 		pUndo->m_SrcFile = m_WavFile;
 		pContext->m_pUndoContext = pUndo;
 	}
+	pContext->m_Flags |= ConvertContextReplaceWholeFile;
 	pContext->Execute();
 }
 
