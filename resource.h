@@ -235,6 +235,7 @@
 #define IDS_NOT_ENOUGH_UNDO_SPACE       32806
 #define IDS_NOT_ENOUGH_DISK_SPACE       32807
 #define IDS_DELETE_EXPRESSION           32808
+#define IDS_REPLACE_EXPRESSION          32809
 #define ID_VIEW_ZOOMINVERT              32810
 #define ID_VIEW_ZOOMOUTHOR              32811
 #define ID_VIEW_ZOOMOUTVERT             32812

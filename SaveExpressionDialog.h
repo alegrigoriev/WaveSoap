@@ -19,11 +19,17 @@ public:
 // Dialog Data
 	//{{AFX_DATA(CSaveExpressionDialog)
 	enum { IDD = IDD_DIALOG_SAVE_EXPRESSION };
+	CComboBox	m_SavedExpressionCombo;
+	CEdit	m_eComment;
+	CComboBox	m_ExpressionGroupCombo;
+	CString	m_GroupName;
 	CString	m_Comment;
 	CString	m_Name;
 	//}}AFX_DATA
-
-
+	int m_ExpressionGroupSelected;
+	int m_CurrExpressionGroupSelected;
+	int m_ExpressionSelected;
+	bool m_bCommentChanged;
 // Overrides
 	// ClassWizard generated virtual function overrides
 	//{{AFX_VIRTUAL(CSaveExpressionDialog)
@@ -33,10 +39,15 @@ protected:
 
 // Implementation
 protected:
+	void BuildExpressionGroupCombobox(int nGroupSelected, int nExprSelected);
+	void LoadExpressionCombobox(int nGroupSelected, int nExprSelected);
 
 	// Generated message map functions
 	//{{AFX_MSG(CSaveExpressionDialog)
+	virtual BOOL OnInitDialog();
+	afx_msg void OnSelchangeComboGroup();
 	afx_msg void OnSelchangeComboName();
+	afx_msg void OnChangeEditComment();
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 };

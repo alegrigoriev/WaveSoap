@@ -59,11 +59,10 @@ public:
 	int m_ExpressionGroupSelected;
 	int m_CurrExpressionGroupSelected;
 	int m_ExpressionSelected;
-	int m_NumSavedExpressions;
-	int m_NumExprGroups;
 	//CString m_Expressions[CThisApp::MaxSavedTotalExpressions];
 	//CString m_ExpressionComments[CThisApp::MaxSavedTotalExpressions];
 	//CString m_ExpressionNames[CThisApp::MaxSavedTotalExpressions];
+	void SaveExpressionAs(const CString & expr);
 
 // Overrides
 	// ClassWizard generated virtual function overrides
@@ -74,6 +73,10 @@ protected:
 
 // Implementation
 protected:
+	void BuildExpressionGroupCombobox(int nGroupSelected, int nExprSelected);
+	void LoadExpressionCombobox(int nGroupSelected, int nExprSelected);
+	void OnUpdateDeleteExpression(CCmdUI* pCmdUI);
+	void OnUpdateInsertExpression(CCmdUI* pCmdUI);
 
 	// Generated message map functions
 	//{{AFX_MSG(CInsertExpressionDialog)
