@@ -25,6 +25,7 @@ public:
 		FFT_SCALE_CHANGED = 0x00400000,
 		FFT_BANDS_CHANGED = 0x00500000,
 	};
+	static void FillLogPalette(LOGPALETTE * pal, int nEntries);
 // Operations
 public:
 
