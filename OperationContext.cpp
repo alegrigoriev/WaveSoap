@@ -46,7 +46,7 @@ void COperationContext::PrintElapsedTime()
 
 #endif
 
-COperationContext::COperationContext(class CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString, DWORD Flags, LPCTSTR OperationName)
+COperationContext::COperationContext(class CWaveSoapFrontDoc * pDoc, DWORD Flags, LPCTSTR StatusString, LPCTSTR OperationName)
 	: pDocument(pDoc),
 	m_Flags(Flags),
 	m_OperationName(OperationName),
@@ -56,12 +56,21 @@ COperationContext::COperationContext(class CWaveSoapFrontDoc * pDoc, LPCTSTR Sta
 {
 }
 
-COperationContext::COperationContext(class CWaveSoapFrontDoc * pDoc, DWORD Flags)
+COperationContext::COperationContext(class CWaveSoapFrontDoc * pDoc, DWORD Flags,
+									UINT StatusStringId, UINT OperationNameId)
 	: pDocument(pDoc),
 	m_Flags(Flags),
 	m_bClipped(false),
 	m_MaxClipped(0.)
 {
+	if (0 != StatusStringId)
+	{
+		m_StatusPrompt.LoadString(StatusStringId);
+	}
+	if (0 != OperationNameId)
+	{
+		m_OperationName.LoadString(OperationNameId);
+	}
 }
 
 COperationContext::~COperationContext()
@@ -103,7 +112,7 @@ CString COperationContext::GetCompletedStatusString() const
 		s = GetStatusString();
 	}
 
-	s += _T(" Completed");
+	s += LoadCString(IDS_STATUS_OPERATION_PROMPT_COMPLETED);
 	return s;
 }
 
@@ -243,9 +252,10 @@ void COperationContext::SetStatusPrompt(UINT id)
 }
 
 //////////// COneFileOperation
-COneFileOperation::COneFileOperation(class CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString,
-									ULONG Flags, LPCTSTR OperationName)
-	: BaseClass(pDoc, StatusString, Flags, OperationName)
+COneFileOperation::COneFileOperation(class CWaveSoapFrontDoc * pDoc, ULONG Flags,
+									LPCTSTR StatusString,
+									LPCTSTR OperationName)
+	: BaseClass(pDoc, Flags, StatusString, OperationName)
 	, m_SrcChan(ALL_CHANNELS)
 	, m_SrcStart(0)
 	, m_SrcEnd(0)
@@ -253,8 +263,9 @@ COneFileOperation::COneFileOperation(class CWaveSoapFrontDoc * pDoc, LPCTSTR Sta
 {
 }
 
-COneFileOperation::COneFileOperation(class CWaveSoapFrontDoc * pDoc, ULONG Flags)
-	: BaseClass(pDoc, Flags)
+COneFileOperation::COneFileOperation(class CWaveSoapFrontDoc * pDoc, ULONG Flags,
+									UINT StatusStringId, UINT OperationNameId)
+	: BaseClass(pDoc, Flags, StatusStringId, OperationNameId)
 	, m_SrcChan(ALL_CHANNELS)
 	, m_SrcStart(0)
 	, m_SrcEnd(0)
@@ -338,9 +349,23 @@ void COneFileOperation::Dump(unsigned indent) const
 }
 
 //////////// CTwoFilesOperation
-CTwoFilesOperation::CTwoFilesOperation(class CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString,
-										ULONG Flags, LPCTSTR OperationName)
-	: BaseClass(pDoc, StatusString, Flags, OperationName)
+CTwoFilesOperation::CTwoFilesOperation(class CWaveSoapFrontDoc * pDoc,
+										ULONG Flags, LPCTSTR StatusString,
+										LPCTSTR OperationName)
+	: BaseClass(pDoc, Flags, StatusString, OperationName)
+	, m_DstChan(ALL_CHANNELS)
+	, m_DstStart(0)
+	, m_DstEnd(0)
+	, m_DstPos(0)
+	, m_pUndoContext(NULL)
+	, m_UndoStartPos(0)
+	, m_UndoEndPos(0)
+{
+}
+
+CTwoFilesOperation::CTwoFilesOperation(class CWaveSoapFrontDoc * pDoc,
+										ULONG Flags, UINT StatusStringId, UINT OperationNameId)
+	: BaseClass(pDoc, Flags, StatusStringId, OperationNameId)
 	, m_DstChan(ALL_CHANNELS)
 	, m_DstStart(0)
 	, m_DstEnd(0)
@@ -539,10 +564,44 @@ void CTwoFilesOperation::DeInit()
 	BaseClass::DeInit();
 }
 
+MEDIA_FILE_SIZE CTwoFilesOperation::GetTotalOperationSize() const
+{
+	if (m_SrcStart != m_SrcEnd)
+	{
+		return BaseClass::GetTotalOperationSize();
+	}
+
+	if (m_DstStart <= m_DstEnd)
+	{
+		return m_DstEnd - m_DstStart;
+	}
+	else
+	{
+		return m_DstStart - m_DstEnd;
+	}
+}
+
+MEDIA_FILE_SIZE CTwoFilesOperation::GetCompletedOperationSize() const
+{
+	if (m_SrcStart != m_SrcEnd)
+	{
+		return BaseClass::GetCompletedOperationSize();
+	}
+
+	if (m_DstStart <= m_DstEnd)
+	{
+		return m_DstPos - m_DstStart;
+	}
+	else
+	{
+		return m_DstStart - m_DstPos;
+	}
+}
+
 /////////// CThroughProcessOperation
-CThroughProcessOperation::CThroughProcessOperation(class CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString,
-													ULONG Flags, LPCTSTR OperationName)
-	: BaseClass(pDoc, StatusString, Flags, OperationName)
+CThroughProcessOperation::CThroughProcessOperation(class CWaveSoapFrontDoc * pDoc,
+													ULONG Flags, LPCTSTR StatusString, LPCTSTR OperationName)
+	: BaseClass(pDoc, Flags, StatusString, OperationName)
 	, m_NumberOfForwardPasses(1)
 	, m_NumberOfBackwardPasses(0)
 	, m_CurrentPass(1)
@@ -551,8 +610,9 @@ CThroughProcessOperation::CThroughProcessOperation(class CWaveSoapFrontDoc * pDo
 {
 }
 
-CThroughProcessOperation::CThroughProcessOperation(class CWaveSoapFrontDoc * pDoc, ULONG Flags)
-	: BaseClass(pDoc, Flags)
+CThroughProcessOperation::CThroughProcessOperation(class CWaveSoapFrontDoc * pDoc,
+													ULONG Flags, UINT StatusStringId, UINT OperationNameId)
+	: BaseClass(pDoc, Flags, StatusStringId, OperationNameId)
 	, m_NumberOfForwardPasses(1)
 	, m_NumberOfBackwardPasses(0)
 	, m_CurrentPass(1)
@@ -805,14 +865,15 @@ BOOL CThroughProcessOperation::InitPass(int /*nPass*/)
 
 /////////////// CStagedContext ///////////////
 CStagedContext::CStagedContext(CWaveSoapFrontDoc * pDoc,
-								LPCTSTR StatusString, DWORD Flags, LPCTSTR OperationName)
-	: BaseClass(pDoc, StatusString, Flags, OperationName)
+								DWORD Flags, LPCTSTR StatusString, LPCTSTR OperationName)
+	: BaseClass(pDoc, Flags, StatusString, OperationName)
 	, m_DoneSize(0)
 {
 }
 
-CStagedContext::CStagedContext(CWaveSoapFrontDoc * pDoc, DWORD Flags)
-	: BaseClass(pDoc, Flags)
+CStagedContext::CStagedContext(CWaveSoapFrontDoc * pDoc,
+								DWORD Flags, UINT StatusStringId, UINT OperationNameId)
+	: BaseClass(pDoc, Flags, StatusStringId, OperationNameId)
 	, m_DoneSize(0)
 {
 }
@@ -1163,7 +1224,8 @@ CScanPeaksContext::CScanPeaksContext(CWaveSoapFrontDoc * pDoc,
 									CWaveFile & WavFile,
 									CWaveFile & OriginalFile,
 									BOOL bSavePeaks)
-	: BaseClass(pDoc, _T("Scanning the file for peaks"), OperationContextDiskIntensive, _T("Peak Scan"))
+	: BaseClass(pDoc, OperationContextDiskIntensive,
+				IDS_PEAK_SCAN_STATUS_PROMPT, IDS_PEAK_SCAN_OPERATION_NAME)
 	, m_GranuleSize(WavFile.SampleSize() * WavFile.GetPeakGranularity())
 	, m_bSavePeakFile(bSavePeaks)
 {
@@ -1368,7 +1430,12 @@ BOOL CScanPeaksContext::Init()
 // is called for a CCopyContext which is actually Undo/Redo context
 // copies data from one file to another, with possible changing number of channels
 CCopyContext::CCopyContext(CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString, LPCTSTR OperationName)
-	: BaseClass(pDoc, StatusString, OperationContextDiskIntensive, OperationName)
+	: BaseClass(pDoc, OperationContextDiskIntensive, StatusString, OperationName)
+{
+}
+
+CCopyContext::CCopyContext(CWaveSoapFrontDoc * pDoc, UINT StatusStringId, UINT OperationNameId)
+	: BaseClass(pDoc, OperationContextDiskIntensive, StatusStringId, OperationNameId)
 {
 }
 
@@ -1787,7 +1854,7 @@ BOOL CCopyUndoContext::SaveUndoData(void const * pBuf, long BufSize,
 }
 
 ///////////// CDecompressContext
-CDecompressContext::CDecompressContext(CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString,
+CDecompressContext::CDecompressContext(CWaveSoapFrontDoc * pDoc, UINT StatusStringId,
 										CWaveFile & SrcFile,
 										CWaveFile & DstFile,
 										SAMPLE_POSITION SrcStart,
@@ -1795,8 +1862,7 @@ CDecompressContext::CDecompressContext(CWaveSoapFrontDoc * pDoc, LPCTSTR StatusS
 										NUMBER_OF_SAMPLES NumSamples,
 										WAVEFORMATEX const * pSrcWf,
 										BOOL SwapBytes)
-	: BaseClass(pDoc, StatusString, _T("")),
-
+	: BaseClass(pDoc, StatusStringId),
 	m_MmResult(MMSYSERR_NOERROR)
 {
 	m_CurrentSamples  = NumSamples;
@@ -1882,8 +1948,8 @@ void CDecompressContext::PostRetire()
 CSoundPlayContext::CSoundPlayContext(CWaveSoapFrontDoc * pDoc, CWaveFile & WavFile,
 									SAMPLE_INDEX PlaybackStart, SAMPLE_INDEX PlaybackEnd, CHANNEL_MASK Channel,
 									int PlaybackDevice, int PlaybackBuffers, size_t PlaybackBufferSize)
-	: BaseClass(pDoc, _T("Playing"),
-				OperationContextDontAdjustPriority, _T("Play"))
+	: BaseClass(pDoc, OperationContextDontAdjustPriority,
+				IDS_PLAYBACK_STATUS_PROMPT, IDS_PLAYBACK_OPERATION_NAME)
 	, m_bPauseRequested(false)
 	, m_FirstSamplePlayed(PlaybackStart)
 	, m_SamplePlayed(PlaybackStart)
@@ -2073,17 +2139,23 @@ CString CSoundPlayContext::GetCompletedStatusString() const
 {
 	if (m_bPauseRequested)
 	{
-		return _T("Playback Paused");
+		return LoadCString(IDS_PLAYBACK_PAUSED_STATUS);
 	}
 	else
 	{
-		return _T("Playback Stopped");
+		return LoadCString(IDS_PLAYBACK_STOPPED_STATUS);
 	}
 }
 
 //////////////// CUndoRedoContext
 CUndoRedoContext::CUndoRedoContext(CWaveSoapFrontDoc * pDoc, LPCTSTR OperationName)
-	: BaseClass(pDoc, _T(""), 0, OperationName)
+	: BaseClass(pDoc, 0, _T(""), OperationName)
+{
+	m_Flags |= OperationContextUndoing;
+}
+
+CUndoRedoContext::CUndoRedoContext(CWaveSoapFrontDoc * pDoc, UINT OperationNameId)
+	: BaseClass(pDoc, 0, 0, OperationNameId)
 {
 	m_Flags |= OperationContextUndoing;
 }
@@ -2159,11 +2231,11 @@ CString CUndoRedoContext::GetOperationName() const
 {
 	if (IsUndoOperation())
 	{
-		return _T("Undo ") + m_OperationName;
+		return LoadCString(IDS_OPERATION_PREFIX_UNDO) + m_OperationName;
 	}
 	else
 	{
-		return _T("Redo ") + m_OperationName;
+		return LoadCString(IDS_OPERATION_PREFIX_REDO) + m_OperationName;
 	}
 }
 
@@ -2171,19 +2243,19 @@ CString CUndoRedoContext::GetStatusString() const
 {
 	if (IsUndoOperation())
 	{
-		return _T("Undoing ") + m_OperationName;
+		return LoadCString(IDS_STATUS_PREFIX_UNDOING) + m_OperationName;
 	}
 	else
 	{
-		return _T("Redoing ") + m_OperationName;
+		return LoadCString(IDS_STATUS_PREFIX_REDOING) + m_OperationName;
 	}
 }
 
 ///////////////////  CVolumeChangeContext
 CVolumeChangeContext::CVolumeChangeContext(CWaveSoapFrontDoc * pDoc,
-											LPCTSTR StatusString, LPCTSTR OperationName,
+											UINT StatusStringId, UINT OperationNameId,
 											double const * VolumeArray, int VolumeArraySize)
-	: BaseClass(pDoc, StatusString, OperationContextDiskIntensive, OperationName)
+	: BaseClass(pDoc, OperationContextDiskIntensive, StatusStringId, OperationNameId)
 {
 	ASSERT(VolumeArraySize <= countof (m_Volume));
 
@@ -2194,8 +2266,8 @@ CVolumeChangeContext::CVolumeChangeContext(CWaveSoapFrontDoc * pDoc,
 }
 
 CVolumeChangeContext::CVolumeChangeContext(CWaveSoapFrontDoc * pDoc,
-											LPCTSTR StatusString, LPCTSTR OperationName, float Volume)
-	: BaseClass(pDoc, StatusString, OperationContextDiskIntensive, OperationName)
+											UINT StatusStringId, UINT OperationNameId, float Volume)
+	: BaseClass(pDoc, OperationContextDiskIntensive, StatusStringId, OperationNameId)
 {
 	for (int ch = 0; ch < countof (m_Volume); ch++)
 	{
@@ -2297,8 +2369,8 @@ BOOL CVolumeChangeContext::ProcessBuffer(void * buf, size_t BufferLength,
 }
 
 CDcScanContext::CDcScanContext(CWaveSoapFrontDoc * pDoc,
-								LPCTSTR StatusString, LPCTSTR OperationName)
-	: BaseClass(pDoc, StatusString, OperationContextDiskIntensive, OperationName)
+								UINT StatusStringId, UINT OperationNameId)
+	: BaseClass(pDoc, OperationContextDiskIntensive, StatusStringId, OperationNameId)
 {
 	m_ReturnBufferFlags = 0;    // no write back
 
@@ -2351,9 +2423,9 @@ BOOL CDcScanContext::ProcessBuffer(void * buf, size_t BufferLength,
 }
 
 CDcOffsetContext::CDcOffsetContext(CWaveSoapFrontDoc * pDoc,
-									LPCTSTR StatusString, LPCTSTR OperationName,
+									UINT StatusStringId, UINT OperationNameId,
 									CDcScanContext * pScanContext)
-	: BaseClass(pDoc, StatusString, OperationContextDiskIntensive, OperationName),
+	: BaseClass(pDoc, OperationContextDiskIntensive, StatusStringId, OperationNameId),
 	m_pScanContext(pScanContext)
 {
 	for (unsigned i = 0; i < countof (m_Offset); i++)
@@ -2364,9 +2436,9 @@ CDcOffsetContext::CDcOffsetContext(CWaveSoapFrontDoc * pDoc,
 }
 
 CDcOffsetContext::CDcOffsetContext(CWaveSoapFrontDoc * pDoc,
-									LPCTSTR StatusString, LPCTSTR OperationName,
+									UINT StatusStringId, UINT OperationNameId,
 									int offset[], unsigned OffsetArraySize)
-	: BaseClass(pDoc, StatusString, OperationContextDiskIntensive, OperationName),
+	: BaseClass(pDoc, OperationContextDiskIntensive, StatusStringId, OperationNameId),
 	m_pScanContext(NULL)
 {
 	ASSERT(OffsetArraySize <= countof (m_Offset));
@@ -2457,8 +2529,8 @@ BOOL CDcOffsetContext::ProcessBuffer(void * buf, size_t BufferLength,
 }
 
 CStatisticsContext::CStatisticsContext(CWaveSoapFrontDoc * pDoc,
-										LPCTSTR StatusString, LPCTSTR OperationName)
-	: BaseClass(pDoc, StatusString, OperationContextDiskIntensive, OperationName),
+										UINT StatusStringId, UINT OperationNameId)
+	: BaseClass(pDoc, OperationContextDiskIntensive, StatusStringId, OperationNameId),
 	m_ZeroCrossingLeft(0),
 	m_ZeroCrossingRight(0),
 	m_MinLeft(INT_MAX),
@@ -2750,8 +2822,8 @@ void CStatisticsContext::PostRetire()
 }
 
 CMaxScanContext::CMaxScanContext(CWaveSoapFrontDoc * pDoc,
-								LPCTSTR StatusString, LPCTSTR OperationName)
-	: BaseClass(pDoc, StatusString, OperationContextDiskIntensive, OperationName)
+								UINT StatusStringId, UINT OperationNameId)
+	: BaseClass(pDoc, OperationContextDiskIntensive, StatusStringId, OperationNameId)
 {
 	m_ReturnBufferFlags = 0;    // no write back
 
@@ -2938,8 +3010,8 @@ void CFileSaveContext::PostRetire()
 	BaseClass::PostRetire();
 }
 
-CConversionContext::CConversionContext(CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString, LPCTSTR OperationName)
-	: BaseClass(pDoc, StatusString, 0, OperationName),
+CConversionContext::CConversionContext(CWaveSoapFrontDoc * pDoc, UINT StatusStringId, UINT OperationNameId)
+	: BaseClass(pDoc, 0, StatusStringId, OperationNameId),
 	m_CurrentSamples(0)
 {
 	// delete the procs in the destructor
@@ -2947,11 +3019,11 @@ CConversionContext::CConversionContext(CWaveSoapFrontDoc * pDoc, LPCTSTR StatusS
 	m_ProcBatch.m_bAutoDeleteProcs = TRUE;
 }
 
-CConversionContext::CConversionContext(CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString,
-										LPCTSTR OperationName,
+CConversionContext::CConversionContext(CWaveSoapFrontDoc * pDoc, UINT StatusStringId,
+										UINT OperationNameId,
 										CWaveFile & SrcFile,
 										CWaveFile & DstFile)
-	: BaseClass(pDoc, StatusString, 0, OperationName)
+	: BaseClass(pDoc, 0, StatusStringId, OperationNameId)
 	, m_CurrentSamples(0)
 {
 	// delete the procs in the destructor
