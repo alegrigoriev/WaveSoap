@@ -19,11 +19,28 @@ static char THIS_FILE[] = __FILE__;
 // CEqualizerDialog dialog
 
 
-CEqualizerDialog::CEqualizerDialog(CWnd* pParent /*=NULL*/)
-	: CResizableDialog(CEqualizerDialog::IDD, pParent)
+CEqualizerDialog::CEqualizerDialog(SAMPLE_INDEX Start,
+									SAMPLE_INDEX End,
+									SAMPLE_INDEX CaretPosition,
+									CHANNEL_MASK Channels,
+									NUMBER_OF_SAMPLES FileLength,
+									const WAVEFORMATEX * pWf,
+									int TimeFormat,
+									BOOL bLockChannels,
+									BOOL	bUndoEnabled,
+									CWnd* pParent /*=NULL*/)
+	: BaseClass(CFilterDialog::IDD, pParent),
+	m_Start(Start),
+	m_End(End),
+	m_CaretPosition(CaretPosition),
+	m_Chan(Channels),
+	m_FileLength(FileLength),
+	m_pWf(pWf),
+	m_TimeFormat(TimeFormat),
+	m_bLockChannels(bLockChannels),
+	m_bUndo(bUndoEnabled)
 {
 	//{{AFX_DATA_INIT(CEqualizerDialog)
-	m_bUndo = FALSE;
 	m_bMultiBandEqualizer = -1;
 	m_nBands = 0;
 	//}}AFX_DATA_INIT
@@ -69,12 +86,15 @@ CEqualizerDialog::CEqualizerDialog(CWnd* pParent /*=NULL*/)
 
 	m_pResizeItems = ResizeItems;
 	m_pResizeItemsCount = sizeof ResizeItems / sizeof ResizeItems[0];
+
+	m_wGraph.SetNumberOfBands(m_nBands);
+	m_wGraph.m_SamplingRate = m_pWf->nSamplesPerSec;
 }
 
 
 void CEqualizerDialog::DoDataExchange(CDataExchange* pDX)
 {
-	CResizableDialog::DoDataExchange(pDX);
+	BaseClass::DoDataExchange(pDX);
 	//{{AFX_DATA_MAP(CEqualizerDialog)
 	DDX_Control(pDX, IDC_EDIT_BANDS, m_eEditBands);
 	DDX_Control(pDX, IDC_EDIT_BAND_GAIN, m_BandGain);
@@ -92,7 +112,7 @@ void CEqualizerDialog::DoDataExchange(CDataExchange* pDX)
 	}
 }
 
-BEGIN_MESSAGE_MAP(CEqualizerDialog, CResizableDialog)
+BEGIN_MESSAGE_MAP(CEqualizerDialog, BaseClass)
 	//{{AFX_MSG_MAP(CEqualizerDialog)
 	ON_BN_CLICKED(IDC_BUTTON_SELECTION, OnButtonSelection)
 	ON_EN_CHANGE(IDC_EDIT_BANDS, OnChangeEditBands)
@@ -112,12 +132,11 @@ END_MESSAGE_MAP()
 
 BOOL CEqualizerDialog::OnInitDialog()
 {
-	m_wGraph.SetNumberOfBands(m_nBands);
-	m_wGraph.m_SamplingRate = m_pWf->nSamplesPerSec;
 	CRect r;
 	CWnd * pTemplateWnd = GetDlgItem(IDC_STATIC_RESPONSE_TEMPLATE);
 	pTemplateWnd->GetWindowRect( & r);
 	ScreenToClient( & r);
+
 	m_wGraph.Create(NULL, _T(""), WS_CHILD | WS_VISIBLE
 					| WS_CLIPSIBLINGS | WS_CLIPCHILDREN | WS_TABSTOP,
 					r, this, AFX_IDW_PANE_FIRST);
@@ -125,7 +144,7 @@ BOOL CEqualizerDialog::OnInitDialog()
 						SWP_NOACTIVATE | SWP_NOMOVE | SWP_NOSIZE);
 	pTemplateWnd->DestroyWindow();
 
-	CResizableDialog::OnInitDialog();
+	BaseClass::OnInitDialog();
 
 	m_BandGain.SetData(m_wGraph.GetCurrentBandGainDb());
 	// init MINMAXINFO
@@ -1295,7 +1314,7 @@ void CEqualizerDialog::OnOK()
 	m_DlgWidth = r.Width();
 	m_DlgHeight = r.Height();
 
-	CResizableDialog::OnOK();
+	BaseClass::OnOK();
 }
 
 void CEqualizerDialog::OnNotifyGraph( NMHDR * pNotifyStruct, LRESULT * result )
