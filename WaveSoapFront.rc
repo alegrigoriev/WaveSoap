@@ -2264,6 +2264,46 @@ BEGIN
                     WS_DISABLED | WS_TABSTOP,126,31,12,8
 END
 
+IDD_REGION_DIALOG DIALOGEX 0, 0, 309, 162
+STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | 
+    WS_SYSMENU
+CAPTION "Marker/Region"
+FONT 8, "MS Shell Dlg", 0, 0, 0x0
+BEGIN
+    LTEXT           "&Name:",IDC_STATIC,16,10,63,8
+    COMBOBOX        IDC_COMBO_MARKER_NAME,16,22,209,72,CBS_DROPDOWN | 
+                    WS_VSCROLL | WS_TABSTOP
+    LTEXT           "Type:",IDC_STATIC,16,41,51,8
+    CONTROL         "&Marker",IDC_RADIO1,"Button",BS_AUTORADIOBUTTON,71,40,
+                    58,10
+    CONTROL         "&Region",IDC_RADIO2,"Button",BS_AUTORADIOBUTTON,138,40,
+                    60,10
+    LTEXT           "&Start:",IDC_STATIC,16,60,52,8
+    COMBOBOX        IDC_COMBO_START,70,58,140,39,CBS_DROPDOWN | WS_VSCROLL | 
+                    WS_TABSTOP
+    CONTROL         "Spin1",IDC_SPIN_START,"msctls_updown32",UDS_ALIGNRIGHT | 
+                    UDS_AUTOBUDDY | UDS_ARROWKEYS,212,57,12,14
+    LTEXT           "&End:",IDC_STATIC,16,77,52,8
+    COMBOBOX        IDC_COMBO_END,70,75,140,39,CBS_DROPDOWN | WS_VSCROLL | 
+                    WS_TABSTOP
+    CONTROL         "Spin1",IDC_SPIN_END,"msctls_updown32",UDS_ALIGNRIGHT | 
+                    UDS_AUTOBUDDY | UDS_ARROWKEYS,212,74,12,14
+    LTEXT           "&Length:",IDC_STATIC,16,95,52,8
+    EDITTEXT        IDC_EDIT_LENGTH,70,92,140,14,ES_AUTOHSCROLL
+    CONTROL         "Spin1",IDC_SPIN_LENGTH,"msctls_updown32",UDS_ALIGNRIGHT | 
+                    UDS_AUTOBUDDY | UDS_ARROWKEYS,212,92,12,14
+    LTEXT           "&Time format: ",IDC_STATIC,16,113,52,8
+    COMBOBOX        IDC_COMBO_TIME_FORMAT,70,111,140,53,CBS_DROPDOWNLIST | 
+                    WS_VSCROLL | WS_TABSTOP
+    LTEXT           "Tri&gger:",IDC_STATIC,16,129,28,8
+    COMBOBOX        IDC_COMBO_TRIGGER,69,128,156,59,CBS_DROPDOWN | CBS_SORT | 
+                    WS_VSCROLL | WS_TABSTOP
+    DEFPUSHBUTTON   "OK",IDOK,251,22,50,14
+    PUSHBUTTON      "Cancel",IDCANCEL,252,39,50,14
+    PUSHBUTTON      "&Play",IDC_BUTTON_PLAY,252,57,50,14,WS_DISABLED | 
+                    WS_GROUP
+END
+
 
 /////////////////////////////////////////////////////////////////////////////
 //
@@ -2684,6 +2724,14 @@ BEGIN
     BEGIN
         RIGHTMARGIN, 368
     END
+
+    IDD_REGION_DIALOG, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 302
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 155
+    END
 END
 #endif    // APSTUDIO_INVOKED
 
@@ -2837,6 +2885,17 @@ BEGIN
 0x3834, 0x3030, 0x0030, 
     IDC_COMBO_SAMPLING_RATE, 0x403, 6, 0
 0x3639, 0x3030, 0x0030, 
+    0
+END
+
+IDD_REGION_DIALOG DLGINIT
+BEGIN
+    IDC_COMBO_TIME_FORMAT, 0x403, 8, 0
+0x6153, 0x706d, 0x656c, 0x0073, 
+    IDC_COMBO_TIME_FORMAT, 0x403, 13, 0
+0x6868, 0x6d3a, 0x3a6d, 0x7373, 0x732e, 0x7373, "\000" 
+    IDC_COMBO_TIME_FORMAT, 0x403, 8, 0
+0x6553, 0x6f63, 0x646e, 0x0073, 
     0
 END
 
