@@ -2,28 +2,103 @@
 #define __CSTRINGW_H_INCLUDED
 #pragma once
 
-#ifdef UNICODE
+#ifdef _UNICODE
 typedef class CString CStringW;
-typedef class CStringData CStringDataW;
+typedef struct CStringData CStringDataW;
 
 #define CStringN CStringA
 #define CStringDataN CStringDataA
+#define _nT(s) s
 
-typedef unsigned char NTCHAR;
+typedef char NTCHAR;
+typedef unsigned char _NTUCHAR;
 
+#define lstrcmpN  lstrcmpA
+#define lstrcmpiN  lstrcmpiA
+#define lstrcpynN  lstrcpynA
+#define lstrcpyN  lstrcpyA
+#define lstrcatN  lstrcatA
+#define lstrlenN  lstrlenA
+
+#define _tcslenN     strlen
+#define _tcscmpN    strcmp
+#define _tcsicmpN   _stricmp
+#define _tcscollN    strcoll
+#define _tcsicollN   _stricoll
+#define _tcschrN      strchr
+#define _tcspbrkN     strpbrk
+#define _tcsuprN      _strupr
+#define _tcslwrN      _strlwr
+#define _tcsrevN      _strrev
+//#define _tcsincN      _strinc
+#define _tcsstrN      strstr
+#define _tcsspnN      strspn
+#define _tcscspnN     strcspn
+#define _tcsrchrN     strrchr
+#define _ttoiN        atoi
+#define _istdigitN    isdigit
+#define FormatMessageN FormatMessageA
+#define _istspaceN    isspace
+#define _vstprintfN  vsprintf
+#define _stprintfN   sprintf
+#define _tcsncmpN    strncmp
+//#define _tclen
+#define _tcsincN(_pc)    ((_pc)+1)
+__inline size_t __cdecl _tclenN(const char *_cpc) { return (_cpc,1); }
+//__inline void __cdecl _tccpy(wchar_t *_pc1, const wchar_t *_cpc2) { *_pc1 = (wchar_t)*_cpc2; }
+//__inline int __cdecl _tccmp(const wchar_t *_cpc1, const wchar_t *_cpc2) { return (int) ((*_cpc1)-(*_cpc2)); }
 #else
 typedef class CString CStringA;
-typedef class CStringData CStringDataA;
+typedef struct CStringData CStringDataA;
 
 #define CStringN CStringW
 #define CStringDataN CStringDataW
+#define _nT(s) L##s
 
 typedef WCHAR NTCHAR;
+typedef WCHAR _NTUCHAR;
+
+#define lstrcmpN  lstrcmpW
+#define lstrcmpiN  lstrcmpiW
+#define lstrcpynN  lstrcpynW
+#define lstrcpyN  lstrcpyW
+#define lstrcatN  lstrcatW
+#define lstrlenN  lstrlenW
+
+#define _tcscmpN wcscmp
+#define _tcsicmpN _wcsicmp
+#define _tcscollN    wcscoll
+#define _tcsicollN   _wcsicoll
+#define _tcschrN      wcschr
+#define _tcspbrkN     wcspbrk
+#define _tcsuprN      _wcsupr
+#define _tcslwrN      _wcslwr
+#define _tcsrevN      _wcsrev
+#define _tcslenN      wcslen
+//#define _tcsincN      _wcsinc
+#define _tcsstrN      wcsstr
+#define _tcsspnN      wcsspn
+#define _tcscspnN     wcscspn
+#define _tcsrchrN     wcsrchr
+#define _ttoiN         _wtoi
+#define _istdigitN    iswdigit
+#define FormatMessageN FormatMessageW
+#define _istspaceN    iswspace
+#define _vstprintfN  vswprintf
+#define _stprintfN   swprintf
+#define _tcsncmpN    wcsncmp
+//#define _tclen
+__inline size_t __cdecl _tclenN(const wchar_t *_cpc) { return (_cpc,1); }
+#define _tcsincN(_pc)    ((_pc)+1)
+//__inline void __cdecl _tccpy(wchar_t *_pc1, const wchar_t *_cpc2) { *_pc1 = (wchar_t)*_cpc2; }
+//__inline int __cdecl _tccmp(const wchar_t *_cpc1, const wchar_t *_cpc2) { return (int) ((*_cpc1)-(*_cpc2)); }
 #endif
 typedef NTCHAR * LPNTCHAR;
 typedef NTCHAR const * LPCNTCHAR;
-
+typedef LPNTCHAR LPNTSTR;
+typedef LPCNTCHAR LPCNTSTR;
 // CStringN
+
 struct CStringDataN
 {
 	long nRefs;             // reference count
@@ -80,8 +155,8 @@ public:
 	// ref-counted copy from another CStringN
 	const CStringN& operator=(const CStringN& stringSrc);
 	// set string content to single character
-	const CStringN& operator=(TCHAR ch);
-#ifdef _UNICODE
+	const CStringN& operator=(NTCHAR ch);
+#ifndef _UNICODE
 	const CStringN& operator=(char ch);
 #endif
 	// copy string content from ANSI string (converts to NTCHAR)
@@ -98,7 +173,7 @@ public:
 
 	// concatenate a single character
 	const CStringN& operator+=(NTCHAR ch);
-#ifdef _UNICODE
+#ifndef _UNICODE
 	// concatenate an ANSI character after converting it to NTCHAR
 	const CStringN& operator+=(char ch);
 #endif
@@ -109,7 +184,7 @@ public:
 									const CStringN& string2);
 	friend CStringN AFXAPI operator+(const CStringN& string, NTCHAR ch);
 	friend CStringN AFXAPI operator+(NTCHAR ch, const CStringN& string);
-#ifdef _UNICODE
+#ifndef _UNICODE
 	friend CStringN AFXAPI operator+(const CStringN& string, char ch);
 	friend CStringN AFXAPI operator+(char ch, const CStringN& string);
 #endif
@@ -232,7 +307,7 @@ public:
 	// load from string resource
 	BOOL LoadString(UINT nID);
 
-#ifndef _UNICODE
+#ifdef _UNICODE
 	// ANSI <-> OEM support (convert string in place)
 
 	// convert string from ANSI to OEM in-place
@@ -253,18 +328,18 @@ public:
 	// Access to string implementation buffer as "C" character array
 
 	// get pointer to modifiable buffer at least as long as nMinBufLength
-	LPTSTR GetBuffer(int nMinBufLength);
+	LPNTSTR GetBuffer(int nMinBufLength);
 	// release buffer, setting length to nNewLength (or to first nul if -1)
 	void ReleaseBuffer(int nNewLength = -1);
 	// get pointer to modifiable buffer exactly as long as nNewLength
-	LPTSTR GetBufferSetLength(int nNewLength);
+	LPNTSTR GetBufferSetLength(int nNewLength);
 	// release memory allocated to but unused by string
 	void FreeExtra();
 
 	// Use LockBuffer/UnlockBuffer to turn refcounting off
 
 	// turn refcounting back on
-	LPTSTR LockBuffer();
+	LPNTSTR LockBuffer();
 	// turn refcounting off
 	void UnlockBuffer();
 
@@ -314,19 +389,21 @@ bool AFXAPI operator>=(LPCNTSTR s1, const CStringN& s2);
 
 #ifdef _AFXDLL
 const CStringN& AFXAPI AfxGetEmptyString();
-#define afxEmptyString AfxGetEmptyString()
+#define afxEmptyStringN AfxGetEmptyString()
 #else
-extern LPCNTSTR _afxPchNil;
-#define afxEmptyString ((CStringN&)*(CStringN*)&_afxPchNil)
+extern LPCNTSTR _afxPchNilN;
+#define afxEmptyStringN ((CStringN&)*(CStringN*)&_afxPchNilN)
 #endif
+
+#ifdef _AFX_INLINE
 
 _AFX_INLINE CStringDataN* CStringN::GetData() const
 { ASSERT(m_pchData != NULL); return ((CStringDataN*)m_pchData)-1; }
 _AFX_INLINE void CStringN::Init()
-{ m_pchData = (CStringDataN*)afxEmptyString.m_pchData; }
+{ m_pchData = afxEmptyStringN.m_pchData; }
 #ifndef _AFXDLL
 _AFX_INLINE CStringN::CStringN()
-{ m_pchData = (CStringDataN*)afxEmptyString.m_pchData; }
+{ m_pchData = afxEmptyStringN.m_pchData; }
 #endif
 _AFX_INLINE CStringN::CStringN(const unsigned char* lpsz)
 { Init(); *this = (LPCSTR)lpsz; }
@@ -334,13 +411,13 @@ _AFX_INLINE const CStringN& CStringN::operator=(const unsigned char* lpsz)
 { *this = (LPCSTR)lpsz; return *this; }
 #ifndef _UNICODE
 _AFX_INLINE const CStringN& CStringN::operator+=(char ch)
-{ *this += (TCHAR)ch; return *this; }
+{ *this += (NTCHAR)ch; return *this; }
 _AFX_INLINE const CStringN& CStringN::operator=(char ch)
-{ *this = (TCHAR)ch; return *this; }
+{ *this = (NTCHAR)ch; return *this; }
 _AFX_INLINE CStringN AFXAPI operator+(const CStringN& string, char ch)
-{ return string + (TCHAR)ch; }
+{ return string + (NTCHAR)ch; }
 _AFX_INLINE CStringN AFXAPI operator+(char ch, const CStringN& string)
-{ return (TCHAR)ch + string; }
+{ return (NTCHAR)ch + string; }
 #endif
 
 _AFX_INLINE int CStringN::GetLength() const
@@ -352,27 +429,27 @@ _AFX_INLINE BOOL CStringN::IsEmpty() const
 _AFX_INLINE CStringN::operator LPCNTSTR() const
 { return m_pchData; }
 _AFX_INLINE int PASCAL CStringN::SafeStrlen(LPCNTSTR lpsz)
-{ return (lpsz == NULL) ? 0 : lstrlen(lpsz); }
+{ return (lpsz == NULL) ? 0 : lstrlenN(lpsz); }
 
 // CStringN support (windows specific)
 _AFX_INLINE int CStringN::Compare(LPCNTSTR lpsz) const
-{ ASSERT(AfxIsValidString(lpsz)); return _tcscmp(m_pchData, lpsz); }    // MBCS/Unicode aware
+{ ASSERT(AfxIsValidString(lpsz)); return _tcscmpN(m_pchData, lpsz); }    // MBCS/Unicode aware
 _AFX_INLINE int CStringN::CompareNoCase(LPCNTSTR lpsz) const
-{ ASSERT(AfxIsValidString(lpsz)); return _tcsicmp(m_pchData, lpsz); }   // MBCS/Unicode aware
+{ ASSERT(AfxIsValidString(lpsz)); return _tcsicmpN(m_pchData, lpsz); }   // MBCS/Unicode aware
 // CStringN::Collate is often slower than Compare but is MBSC/Unicode
 //  aware as well as locale-sensitive with respect to sort order.
 _AFX_INLINE int CStringN::Collate(LPCNTSTR lpsz) const
-{ ASSERT(AfxIsValidString(lpsz)); return _tcscoll(m_pchData, lpsz); }   // locale sensitive
+{ ASSERT(AfxIsValidString(lpsz)); return _tcscollN(m_pchData, lpsz); }   // locale sensitive
 _AFX_INLINE int CStringN::CollateNoCase(LPCNTSTR lpsz) const
-{ ASSERT(AfxIsValidString(lpsz)); return _tcsicoll(m_pchData, lpsz); }   // locale sensitive
+{ ASSERT(AfxIsValidString(lpsz)); return _tcsicollN(m_pchData, lpsz); }   // locale sensitive
 
-_AFX_INLINE TCHAR CStringN::GetAt(int nIndex) const
+_AFX_INLINE NTCHAR CStringN::GetAt(int nIndex) const
 {
 	ASSERT(nIndex >= 0);
 	ASSERT(nIndex < GetData()->nDataLength);
 	return m_pchData[nIndex];
 }
-_AFX_INLINE TCHAR CStringN::operator[](int nIndex) const
+_AFX_INLINE NTCHAR CStringN::operator[](int nIndex) const
 {
 	// same as GetAt
 	ASSERT(nIndex >= 0);
@@ -415,5 +492,6 @@ _AFX_INLINE bool AFXAPI operator>=(const CStringN& s1, LPCNTSTR s2)
 { return s1.Compare(s2) >= 0; }
 _AFX_INLINE bool AFXAPI operator>=(LPCNTSTR s1, const CStringN& s2)
 { return s2.Compare(s1) <= 0; }
+#endif // #ifdef _AFX_INLINE
 
 #endif

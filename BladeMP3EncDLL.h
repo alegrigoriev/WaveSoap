@@ -241,7 +241,7 @@ public:
 	{
 		Close();
 	}
-	BOOL Open(LPCTSTR DllName = "LAME_ENC.DLL");
+	BOOL Open(LPCTSTR DllName = _T("LAME_ENC.DLL"));
 	void Close();
 
 	BOOL OpenStream(PBE_CONFIG pConfig);
