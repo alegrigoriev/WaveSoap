@@ -564,6 +564,7 @@ public:
 
 		RegionMarkerVector m_RegionMarkers;  // markers and regions
 		CuePointVector m_CuePoints;
+		DWORD m_FreeCuePointNumber;
 
 		PlaylistVector m_Playlist;
 		LabelVector m_Labels;   // labels for the cue points
@@ -577,6 +578,7 @@ public:
 		InstanceDataWav()
 			: m_PeakData(512)
 			, m_InfoChanged(false)
+			, m_FreeCuePointNumber(0)
 		{
 			memzero(datack);
 			memzero(fmtck);
