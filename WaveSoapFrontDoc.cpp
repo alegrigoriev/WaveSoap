@@ -25,7 +25,7 @@
 #include "FadeInOutDialog.h"
 #include "SplitToFilesDialog.h"
 
-#include ".\wavesoapfrontdoc.h"
+#include "UndoRedoOptionsDlg.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -182,6 +182,8 @@ BEGIN_MESSAGE_MAP(CWaveSoapFrontDoc, CDocument)
 	ON_UPDATE_COMMAND_UI(ID_SAVE_SAVESELECTIONAS, OnUpdateSaveSaveselectionas)
 	ON_COMMAND(ID_SAVE_SPLIT_TO_FILES, OnSaveSplitToFiles)
 	ON_UPDATE_COMMAND_UI(ID_SAVE_SPLIT_TO_FILES, OnUpdateSaveSplitToFiles)
+	ON_COMMAND(ID_EDIT_MORE_UNDO_REDO, OnEditMoreUndoRedo)
+	ON_UPDATE_COMMAND_UI(ID_EDIT_MORE_UNDO_REDO, OnUpdateEditMoreUndoRedo)
 	END_MESSAGE_MAP()
 
 /////////////////////////////////////////////////////////////////////////////
@@ -216,10 +218,8 @@ CWaveSoapFrontDoc::CWaveSoapFrontDoc()
 	, m_FadeInOutLengthMs(100)
 	, m_FadeInEnvelope(FadeInSinSquared)
 	, m_FadeOutEnvelope(FadeOutSinSquared)
+	, UndoRedoParameters(*PersistentUndoRedo::GetData())
 {
-	m_bUndoEnabled = (FALSE != GetApp()->m_bUndoEnabled);
-	m_bRedoEnabled = (FALSE != GetApp()->m_bRedoEnabled);
-
 	CThisApp * pApp = GetApp();
 	m_DefaultPasteMode = pApp->m_DefaultPasteMode;
 	m_PasteResampleMode = pApp->m_PasteResampleMode;
@@ -2999,9 +2999,9 @@ void CWaveSoapFrontDoc::OnUpdateEditSelection(CCmdUI* pCmdUI)
 	pCmdUI->Enable( ! IsBusy());
 }
 
-static void LimitUndoRedo(ListHead<COperationContext> * pEntry, int MaxNum, size_t MaxSize)
+static void LimitUndoRedo(ListHead<COperationContext> * pEntry, int MaxNum, ULONGLONG MaxSize)
 {
-	LONGLONG Size = 0;
+	ULONGLONG Size = 0;
 	int Num = 0;
 	for (COperationContext * pContext = pEntry->First()
 		;  pEntry->NotEnd(pContext); pContext = pEntry->Next(pContext))
@@ -3028,7 +3028,6 @@ static void LimitUndoRedo(ListHead<COperationContext> * pEntry, int MaxNum, size
 
 void CWaveSoapFrontDoc::AddUndoRedo(CUndoRedoContext * pContext)
 {
-	CThisApp * pApp = GetApp();
 	// detach from the work file:
 	pContext->UnprepareUndo();
 
@@ -3037,13 +3036,13 @@ void CWaveSoapFrontDoc::AddUndoRedo(CUndoRedoContext * pContext)
 		m_UndoList.InsertHead(pContext);
 
 		// free extra undo, if count or size limit is exceeded
-		int MaxUndoDepth = pApp->m_MaxUndoDepth;
-		if ( ! pApp->m_bEnableUndoDepthLimit)
+		int MaxUndoDepth = m_UndoDepthLimit;
+		if ( ! m_LimitUndoDepth)
 		{
 			MaxUndoDepth = 0;
 		}
-		int MaxUndoSize = pApp->m_MaxUndoSize;
-		if ( ! pApp->m_bEnableUndoLimit)
+		ULONGLONG MaxUndoSize = m_UndoSizeLimit * 0x100000ll;
+		if ( ! m_LimitUndoSize)
 		{
 			MaxUndoSize = 0;
 		}
@@ -3055,13 +3054,13 @@ void CWaveSoapFrontDoc::AddUndoRedo(CUndoRedoContext * pContext)
 		m_RedoList.InsertHead(pContext);
 
 		// free extra redo, if count or size limit is exceeded
-		int MaxRedoDepth = pApp->m_MaxRedoDepth;
-		if ( ! pApp->m_bEnableRedoDepthLimit)
+		int MaxRedoDepth = m_RedoDepthLimit;
+		if ( ! m_LimitRedoDepth)
 		{
 			MaxRedoDepth = 0;
 		}
-		int MaxRedoSize = pApp->m_MaxRedoSize;
-		if ( ! pApp->m_bEnableRedoLimit)
+		ULONGLONG MaxRedoSize = m_RedoSizeLimit * 0x100000ll;
+		if ( ! m_LimitRedoSize)
 		{
 			MaxRedoSize = 0;
 		}
@@ -3438,12 +3437,12 @@ void CWaveSoapFrontDoc::OnUpdateEditChannelsLock(CCmdUI* pCmdUI)
 
 void CWaveSoapFrontDoc::EnableUndo(BOOL bEnable)
 {
-	m_bUndoEnabled = (FALSE != bEnable);
+	m_UndoEnabled = bEnable;
 }
 
 void CWaveSoapFrontDoc::EnableRedo(BOOL bEnable)
 {
-	m_bRedoEnabled = (FALSE != bEnable);
+	m_RedoEnabled = bEnable;
 }
 
 
@@ -5234,7 +5233,7 @@ void CWaveSoapFrontDoc::OnEditEnableUndo()
 {
 	if (CanModifyFile())
 	{
-		m_bUndoEnabled = ! m_bUndoEnabled;
+		m_UndoEnabled = ! m_UndoEnabled;
 	}
 }
 
@@ -5255,7 +5254,7 @@ void CWaveSoapFrontDoc::OnEditEnableRedo()
 {
 	if (CanModifyFile())
 	{
-		m_bRedoEnabled = ! m_bRedoEnabled;
+		m_RedoEnabled = ! m_RedoEnabled;
 	}
 }
 
@@ -5812,5 +5811,67 @@ void CWaveSoapFrontDoc::OnUpdateSaveSplitToFiles(CCmdUI *pCmdUI)
 {
 	// enable, if there is any data in the file
 	pCmdUI->Enable(CanStartOperation(1, false, false));
+}
+
+
+void CWaveSoapFrontDoc::OnEditMoreUndoRedo()
+{
+	CUndoRedoOptionsDlg dlg(this);
+
+	if (IDOK == dlg.DoModal())
+	{
+		*static_cast<UndoRedoParameters *>(this) = *dlg.GetUndoParameters();
+	}
+}
+
+void CWaveSoapFrontDoc::OnUpdateEditMoreUndoRedo(CCmdUI *pCmdUI)
+{
+	pCmdUI->Enable(CanModifyFile());
+}
+
+int CWaveSoapFrontDoc::GetUndoDepth() const
+{
+	int Count = 0;
+	for (COperationContext * pOp = m_UndoList.First();
+		m_UndoList.NotEnd(pOp); pOp = m_UndoList.Next(pOp))
+	{
+		Count++;
+	}
+	return Count;
+}
+
+int CWaveSoapFrontDoc::GetRedoDepth() const
+{
+	int Count = 0;
+	for (COperationContext * pOp = m_RedoList.First();
+		m_RedoList.NotEnd(pOp); pOp = m_RedoList.Next(pOp))
+	{
+		Count++;
+	}
+	return Count;
+}
+
+ULONGLONG CWaveSoapFrontDoc::GetUndoSize() const
+{
+	ULONGLONG Size = 0;
+	for (COperationContext * pOp = m_UndoList.First();
+		m_UndoList.NotEnd(pOp); pOp = m_UndoList.Next(pOp))
+	{
+		Size += pOp->GetTempDataSize();
+	}
+
+	return Size;
+}
+
+ULONGLONG CWaveSoapFrontDoc::GetRedoSize() const
+{
+	ULONGLONG Size = 0;
+	for (COperationContext * pOp = m_RedoList.First();
+		m_RedoList.NotEnd(pOp); pOp = m_RedoList.Next(pOp))
+	{
+		Size += pOp->GetTempDataSize();
+	}
+
+	return Size;
 }
 

@@ -12,6 +12,8 @@
 #include "WmaFile.h"
 #include "KListEntry.h"
 #include "KInterlocked.h"
+#include "ApplicationParameters.h"
+
 typedef int PASTE_MODE;
 typedef int PASTE_RESAMPLE_MODE;
 
@@ -135,7 +137,7 @@ enum {
 
 };
 
-class CWaveSoapFrontDoc : public CDocument
+class CWaveSoapFrontDoc : public CDocument, protected UndoRedoParameters
 {
 	typedef CDocument BaseClass;
 protected: // create from serialization only
@@ -146,12 +148,22 @@ protected: // create from serialization only
 public:
 	BOOL UndoEnabled() const
 	{
-		return m_bUndoEnabled;
+		return m_UndoEnabled;
 	}
 	BOOL RedoEnabled() const
 	{
-		return m_bRedoEnabled;
+		return m_RedoEnabled;
 	}
+	int GetUndoDepth() const;
+	int GetRedoDepth() const;
+	ULONGLONG GetUndoSize() const;
+	ULONGLONG GetRedoSize() const;
+
+	UndoRedoParameters const * GetUndoParameters() const
+	{
+		return this;
+	}
+
 	BOOL ChannelsLocked() const
 	{
 		return m_bChannelsLocked;
@@ -340,8 +352,7 @@ public:
 	bool m_OperationNonCritical;
 	bool m_PlayingSound;
 	bool m_bInOnIdle;
-	bool m_bUndoEnabled;
-	bool m_bRedoEnabled;
+
 	bool m_bChannelsLocked;
 	CHANNEL_MASK m_PrevChannelToCopy;
 	PASTE_MODE m_DefaultPasteMode;
@@ -413,6 +424,22 @@ public:
 	void BeginMarkerChange(unsigned ChangeFlags);   // create undo, increment change count
 	void EndMarkerChange(BOOL bCommitChanges = TRUE);
 
+	void ClearUndo()
+	{
+		OnEditClearUndo();
+	}
+	void ClearRedo()
+	{
+		OnEditClearRedo();
+	}
+	bool CanClearUndo() const
+	{
+		return ! m_UndoList.IsEmpty();
+	}
+	bool CanClearRedo() const
+	{
+		return ! m_RedoList.IsEmpty();
+	}
 protected:
 	// save the selected area to the permanent or temporary file
 	BOOL CanCloseFrame(CFrameWnd* pFrameArg);
@@ -563,6 +590,8 @@ public:
 	afx_msg void OnUpdateSaveSaveselectionas(CCmdUI *pCmdUI);
 	afx_msg void OnSaveSplitToFiles();
 	afx_msg void OnUpdateSaveSplitToFiles(CCmdUI *pCmdUI);
+	afx_msg void OnEditMoreUndoRedo();
+	afx_msg void OnUpdateEditMoreUndoRedo(CCmdUI *pCmdUI);
 };
 
 #pragma pack(push, 1)
