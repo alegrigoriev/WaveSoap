@@ -19,6 +19,11 @@
 static char THIS_FILE[] = __FILE__;
 #endif
 
+#define TRACE_DRAWING 0
+#define TRACE_MOUSE 0
+#define TRACE_SCROLL 0
+#define TRACE_CARET 0
+#define TRACE_UPDATE 0
 /////////////////////////////////////////////////////////////////////////////
 // CWaveSoapFrontView
 
@@ -345,9 +350,9 @@ void CWaveSoapFrontView::OnDraw(CDC* pDC)
 
 					WaveCalculate WaveToY(m_WaveOffsetY, m_VerticalScale, ChanR.top, ChanR.bottom);
 
-					TRACE("V Scale=%f, m_WaveOffsetY=%f, top = %d, bottom = %d, height=%d, W2Y(32767)=%d, W2Y(-32768)=%d\n",
-						m_VerticalScale, m_WaveOffsetY, ChanR.top, ChanR.bottom,
-						ChanR.Height(), WaveToY(32767), WaveToY(-32768));
+					if (TRACE_DRAWING) TRACE("V Scale=%f, m_WaveOffsetY=%f, top = %d, bottom = %d, height=%d, W2Y(32767)=%d, W2Y(-32768)=%d\n",
+											m_VerticalScale, m_WaveOffsetY, ChanR.top, ChanR.bottom,
+											ChanR.Height(), WaveToY(32767), WaveToY(-32768));
 					// Y = wave * m_VerticalScale + m_WaveOffsetY * m_VerticalScale
 					//     + (ChanR.bottom + ChanR.top) / 2
 					int ZeroLinePos = WaveToY(0);
@@ -355,7 +360,7 @@ void CWaveSoapFrontView::OnDraw(CDC* pDC)
 					if (ZeroLinePos >= ClipLow &&
 						ZeroLinePos < ClipHigh)
 					{
-						TRACE("CWaveSoapFrontView Zero pos=%d\n", ZeroLinePos);
+						if (TRACE_DRAWING) TRACE("CWaveSoapFrontView Zero pos=%d\n", ZeroLinePos);
 
 						DrawHorizontalWithSelection(pDC, r.left, r.right,
 													ZeroLinePos,
@@ -628,8 +633,8 @@ void CWaveSoapFrontView::AdjustNewScale(double OldScaleX, double OldScaleY,
 	m_HorizontalScale = 1L <<i;
 	NewScaleX = 1. / m_HorizontalScale;
 
-	if(0) TRACE("Old scale X=%g, New scale X=%g, Old scale Y=%g, New scale Y=%g\n",
-				OldScaleX, NewScaleX, OldScaleY, NewScaleY);
+	if (TRACE_DRAWING) TRACE("Old scale X=%g, New scale X=%g, Old scale Y=%g, New scale Y=%g\n",
+							OldScaleX, NewScaleX, OldScaleY, NewScaleY);
 }
 
 BOOL CWaveSoapFrontView::PlaybackCursorVisible()
@@ -1025,7 +1030,9 @@ void CWaveSoapFrontView::CreateAndShowCaret()
 	GetClientRect(r);
 
 	CPoint p(WorldToWindowX(pDoc->m_CaretPosition), r.top);
-//    TRACE("Client rect height=%d, caret position=%d\n", r.Height(), p.x);
+
+	if (TRACE_CARET) TRACE("Client rect height=%d, caret position=%d\n", r.Height(), p.x);
+
 	if (pDoc->m_WavFile.AllChannels(pDoc->m_SelectedChannel))
 	{
 		CreateSolidCaret(1, r.Height());
@@ -1362,7 +1369,7 @@ void CWaveSoapFrontView::OnMouseMove(UINT nFlags, CPoint point)
 				{
 					m_bAutoscrollTimerStarted = true;
 					m_TimerID = SetTimer(DWORD(this) + sizeof *this, 50, NULL);
-					TRACE("Timer %X started\n", m_TimerID);
+					if (TRACE_CARET) TRACE("Timer %X started\n", m_TimerID);
 				}
 			}
 			else if (m_bAutoscrollTimerStarted)
@@ -1587,8 +1594,8 @@ void CWaveSoapFrontView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
 		GetClientRect(r);
 
 		CRect r1;
-		if (0) TRACE("OnUpdate Sound Changed from %d to %d, length=%d\n",
-					pInfo->m_Begin, pInfo->m_End, pInfo->m_NewLength);
+		if (TRACE_UPDATE) TRACE("OnUpdate Sound Changed from %d to %d, length=%d\n",
+								pInfo->m_Begin, pInfo->m_End, pInfo->m_NewLength);
 
 		r1.top = r.top;
 		r1.bottom = r.bottom;
@@ -1628,7 +1635,7 @@ void CWaveSoapFrontView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
 			{
 				r1.right = r.right;
 			}
-			TRACE("OnUpdate: SoundChanged: Invalidating from %d to %d\n", r1.left, r1.right);
+			if (TRACE_UPDATE) TRACE("OnUpdate: SoundChanged: Invalidating from %d to %d\n", r1.left, r1.right);
 			InvalidateRect(& r1, TRUE);
 		}
 	}
@@ -1902,8 +1909,8 @@ void CWaveSoapFrontView::MovePointIntoView(SAMPLE_INDEX nCaret, BOOL bCenter)
 	{
 		return;
 	}
-	TRACE("MovePointIntoView: DesiredPos=%d, left=%d, right=%d, scroll=%d\n",
-		nDesiredPos, r.left, r.right, scroll);
+	if (TRACE_SCROLL) TRACE("MovePointIntoView: DesiredPos=%d, left=%d, right=%d, scroll=%d\n",
+							nDesiredPos, r.left, r.right, scroll);
 	ScrollBy(scroll, 0, TRUE);
 	CreateAndShowCaret();
 }
@@ -1956,7 +1963,7 @@ BOOL CWaveSoapFrontView::MasterScrollBy(double dx, double dy, BOOL bDoScroll)
 {
 	if (dx != 0.)
 	{
-		TRACE("before MasterScrollBy: dOrgX=%f, dx=%f\n", dOrgX, dx);
+		if (TRACE_SCROLL) TRACE("before MasterScrollBy: dOrgX=%f, dx=%f\n", dOrgX, dx);
 		BaseClass::MasterScrollBy(dx, 0, bDoScroll);
 		// make sure the new position will be on the multiple of m_HorizontalScale
 		ASSERT(0 == SAMPLE_INDEX(dOrgX) % m_HorizontalScale);
@@ -1996,8 +2003,8 @@ BOOL CWaveSoapFrontView::MasterScrollBy(double dx, double dy, BOOL bDoScroll)
 
 		if (0 != ndy)
 		{
-			TRACE("New offset = %g, MaxOffset=%g, VerticalScale = %g\n",
-				offset, MaxOffset, m_VerticalScale);
+			if (TRACE_SCROLL) TRACE("New offset = %g, MaxOffset=%g, VerticalScale = %g\n",
+									offset, MaxOffset, m_VerticalScale);
 			// calculate how much zero line would move
 
 			m_WaveOffsetY = offset;
@@ -2446,7 +2453,8 @@ void CWaveSoapFrontView::OnTimer(UINT nIDEvent)
 			{
 				nDistance = GetSystemMetrics(SM_CXVSCROLL) - p.x - 1;
 			}
-			TRACE("nDistance = %d\n", nDistance);
+
+			if (TRACE_SCROLL) TRACE("nDistance = %d\n", nDistance);
 			if (nDistance > 14)
 			{
 				nDistance = 14;
@@ -2491,7 +2499,7 @@ void CWaveSoapFrontView::OnTimer(UINT nIDEvent)
 	}
 	else
 	{
-		TRACE("Timer ID=%X\n", nIDEvent);
+		if (TRACE_SCROLL) TRACE("Timer ID=%X\n", nIDEvent);
 	}
 
 	BaseClass::OnTimer(nIDEvent);
@@ -2502,7 +2510,7 @@ void CWaveSoapFrontView::OnCaptureChanged(CWnd *pWnd)
 	if (pWnd != this
 		&& m_bAutoscrollTimerStarted)
 	{
-		TRACE("Killing timer in CWaveSoapFrontView::OnCaptureChanged\n");
+		if (TRACE_SCROLL) TRACE("Killing timer in CWaveSoapFrontView::OnCaptureChanged\n");
 		m_bAutoscrollTimerStarted = false;
 		KillTimer(m_TimerID);
 		m_TimerID = NULL;
