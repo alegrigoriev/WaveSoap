@@ -392,6 +392,8 @@ CFileSaveUiSupport::CFileSaveUiSupport(CWaveFormat const & Wf)
 	m_Profile.AddBoolItem(_T("Settings"), _T("ShowCompatibleFormatsOnly"), m_bCompatibleFormatsOnly, TRUE);
 }
 
+/////////////////////////////////////////////////////////////////////////
+//////// CWaveSoapFileSaveDialog
 CWaveSoapFileSaveDialog::CWaveSoapFileSaveDialog(BOOL bOpenFileDialog, // TRUE for FileOpen, FALSE for FileSaveAs
 												CWaveFormat const & Wf,
 												CWaveSoapFrontDoc * pDoc,
@@ -445,6 +447,10 @@ CWaveSoapFileSaveDialog::CWaveSoapFileSaveDialog(BOOL bOpenFileDialog, // TRUE f
 
 }
 
+CWaveSoapFileSaveDialog::~CWaveSoapFileSaveDialog()
+{
+}
+
 BEGIN_MESSAGE_MAP(CWaveSoapFileSaveDialog, BaseClass)
 	//{{AFX_MSG_MAP(CWaveSoapFileSaveDialog)
 	ON_BN_CLICKED(IDC_CHECK_COMPATIBLE_FORMATS, OnCompatibleFormatsClicked)
@@ -486,12 +492,64 @@ UINT CWaveSoapFileSaveDialog::OnShareViolation( LPCTSTR lpszPathName)
 	return OFN_SHAREWARN;
 }
 
-WAVEFORMATEX * CFileSaveUiSupport::GetWaveFormat()
+int CFileSaveUiSupport::GetFileTypeFlags() const
 {
 	switch (m_FileType)
 	{
+	case SoundFileWav:
+		return SaveFile_WavFile;
+		break;
+
+	case SoundFileMp3:
+		return SaveFile_Mp3File;
+		break;
+
+	case SoundFileWma:
+		return SaveFile_WmaFile;
+		break;
+
 	case SoundFileRaw:
-		return NULL;
+		if (m_SelectedRawFormat == RawSoundFilePcm16Msb)
+		{
+			return SaveFile_RawFile | SaveRawFileMsbFirst;
+		}
+		else
+		{
+			return SaveFile_RawFile;
+		}
+		break;
+	}
+	return 0;
+}
+
+WAVEFORMATEX * CFileSaveUiSupport::GetWaveFormat()
+{
+	WORD FormatTag = WAVE_FORMAT_PCM;
+	WORD BitsPerSample = 16;
+	switch (m_FileType)
+	{
+	case SoundFileRaw:
+		switch (m_SelectedRawFormat)
+		{
+		case RawSoundFilePcm8:
+			BitsPerSample = 8;
+			break;
+		case RawSoundFileALaw8:
+			FormatTag = WAVE_FORMAT_ALAW;
+			BitsPerSample = 8;
+			break;
+		case RawSoundFileULaw8:
+			FormatTag = WAVE_FORMAT_MULAW;
+			BitsPerSample = 8;
+			break;
+
+		case RawSoundFilePcm16Msb:
+		case RawSoundFilePcm16Lsb:
+		default:
+			break;
+		}
+		m_Wf.InitFormat(FormatTag, m_Wf.SampleRate(), m_Wf.NumChannels(), BitsPerSample);
+		return m_Wf;
 		break;
 
 	default:
@@ -660,6 +718,53 @@ void CFileSaveUiSupport::OnComboFormatsChange()
 		// RAW file
 		break;
 	}
+}
+
+void CWaveSoapFileSaveDialog::AddAllTypeFilters(CDocManager * pDocManager)
+{
+	CString strDefault;
+	// do for all doc template
+	POSITION pos = pDocManager->GetFirstDocTemplatePosition();
+	BOOL bFirst = TRUE;
+
+	int nFilterIndex = 1;
+	ULONG TemplateFlags[10] = {0};
+	while (pos != NULL)
+	{
+		CDocTemplate* pTemplate = pDocManager->GetNextDocTemplate(pos);
+		if (pTemplate == m_pDocument->GetDocTemplate())
+		{
+			m_ofn.nFilterIndex = nFilterIndex;
+		}
+#if 0
+		CWaveSoapDocTemplate * pWaveTemplate =
+			dynamic_cast<CWaveSoapDocTemplate *>(pTemplate);
+		if (NULL != pWaveTemplate)
+		{
+			TemplateFlags[nFilterIndex] = pWaveTemplate->m_OpenDocumentFlags;
+		}
+		else
+#endif
+		{
+			TemplateFlags[nFilterIndex] = 0;
+		}
+		_AfxAppendFilterSuffix(m_strFilter, m_ofn, pTemplate,
+								&strDefault);
+		nFilterIndex++;
+		bFirst = FALSE;
+	}
+
+	// append the "*.*" all files filter
+	CString allFilter;
+	VERIFY(allFilter.LoadString(AFX_IDS_ALLFILTER));
+	m_strFilter += allFilter;
+	m_strFilter += (TCHAR)'\0';   // next string please
+	m_strFilter += _T("*.*");
+	m_strFilter += (TCHAR)'\0';   // last string
+
+	m_ofn.nMaxCustFilter++;
+	m_ofn.lpstrFilter = m_strFilter;
+
 }
 
 void CWaveSoapFileSaveDialog::OnCompatibleFormatsClicked()
