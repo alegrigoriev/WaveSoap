@@ -359,7 +359,7 @@ public:
 	void SetAlbum(LPCTSTR szAlbum);
 	void SetGenre(LPCTSTR szGenre);
 	BOOL SetDestinationFormat(WAVEFORMATEX const * pDstWfx);
-	BOOL Write(void * Buf, size_t size);
+	BOOL Write(void const * Buf, size_t size);
 	void SetSourceWaveFormat(WAVEFORMATEX const * pSrcWfx);
 	WAVEFORMATEX const * GetSourceWaveFormat() const
 	{
@@ -372,7 +372,7 @@ private:
 	CComPtr<IWMProfileManager> m_pProfileManager;
 
 	FileWriter m_FileWriter;
-	DWORD m_SampleTimeMs;
+	QWORD m_SampleTime100ns;
 	CComQIPtr<IWMHeaderInfo> m_pHeaderInfo;
 	CComPtr<INSSBuffer> m_pBuffer;
 };

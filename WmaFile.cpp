@@ -721,14 +721,17 @@ void CWmaDecoder::SetDstFile(CWaveFile & file)
 }
 
 WmaEncoder::WmaEncoder()
-	:m_SampleTimeMs(0)
+	:m_SampleTime100ns(0)
 {
 }
 
 void WmaEncoder::DeInit()
 {
+	TRACE("WmaEncoder::DeInit\n");
 	if (m_pWriter)
 	{
+		Write(NULL, 0);
+		m_pWriter->Flush();
 		m_pWriter->EndWriting();
 	}
 	m_pWriter.Release();
@@ -794,7 +797,7 @@ BOOL WmaEncoder::OpenWrite(CDirectFile & File)
 		return FALSE;
 	}
 
-	m_SampleTimeMs = 0;
+	m_SampleTime100ns = 0;
 
 	hr = m_pWriter->BeginWriting();
 
@@ -1020,9 +1023,10 @@ BOOL WmaEncoder::SetDestinationFormat(WAVEFORMATEX const * pDstWfx)
 	return SUCCEEDED(hr);
 }
 
-BOOL WmaEncoder::Write(void * Buf, size_t size)
+BOOL WmaEncoder::Write(void const * Buf, size_t size)
 {
-	PBYTE pSrcBuf = PBYTE(Buf);
+	UCHAR const * pSrcBuf = static_cast<UCHAR const *>(Buf);
+
 	if (0 == size)
 	{
 		pSrcBuf = NULL;
@@ -1069,17 +1073,15 @@ BOOL WmaEncoder::Write(void * Buf, size_t size)
 			QWORD ActualWriterTime;
 			m_pWriterAdvanced->GetWriterTime( & ActualWriterTime);
 
-			QWORD WriterTime = m_SampleTimeMs * 10000i64;
-
 			if (TRACE_WMA_DECODER) TRACE(_T("Writing src buf %p, time=%d ms, ActualWriterTime=%d ms\n"),
-										m_pBuffer, DWORD(WriterTime / 10000), DWORD(ActualWriterTime / 10000));
+										m_pBuffer, DWORD(m_SampleTime100ns / 10000), DWORD(ActualWriterTime / 10000));
 
-			if (! SUCCEEDED(m_pWriter->WriteSample(0, WriterTime, 0, m_pBuffer)))
+			if (! SUCCEEDED(m_pWriter->WriteSample(0, m_SampleTime100ns, 0, m_pBuffer)))
 			{
 				return FALSE;
 			}
-			Sleep(50);
-			m_SampleTimeMs += MulDiv(1000, BufLength, m_SrcWfx.BytesPerSec());
+			//Sleep(50);
+			m_SampleTime100ns += (1000*1000*10Ui64) * BufLength / m_SrcWfx.BytesPerSec();
 
 			m_pBuffer.Release();
 		}
