@@ -1468,12 +1468,18 @@ public:
 						lpszEntryFormat, nSize,
 						nMaxDispLen)
 	{
+		m_ReadOnlyFileSuffix.LoadString(IDS_MRU_LIST_RO_SUFFIX);
+		m_DirectFileSuffix.LoadString(IDS_MRU_LIST_DIRECT_SUFFIX);
 	}
 	BOOL GetDisplayName(CString& strName, int nIndex,
 						LPCTSTR lpszCurDir, int nCurDir, BOOL bAtLeastName = TRUE) const;
 	virtual void UpdateMenu(CCmdUI* pCmdUI);
 	virtual ~CWaveSoapFileList() {}
 	virtual void Add(LPCTSTR lpszPathName);
+protected:
+
+	CString m_ReadOnlyFileSuffix;
+	CString m_DirectFileSuffix;
 };
 
 BOOL AFXAPI AfxFullPath(LPTSTR lpszPathOut, LPCTSTR lpszFileIn);
@@ -1599,7 +1605,7 @@ BOOL CWaveSoapFileList::GetDisplayName(CString& strName, int nIndex,
 	LPTSTR lpch = strName.GetBuffer(_MAX_PATH+1);
 	lpch[_MAX_PATH] = 0;
 
-	CString suffix;
+	LPCTSTR suffix = _T("");
 
 	LPCTSTR src = m_arrNames[nIndex];
 	TCHAR flags = src[0];
@@ -1610,22 +1616,22 @@ BOOL CWaveSoapFileList::GetDisplayName(CString& strName, int nIndex,
 		{
 			if (pApp->m_bReadOnly)
 			{
-				suffix.LoadString(IDS_MRU_LIST_RO_SUFFIX);
+				suffix = m_ReadOnlyFileSuffix;
 			}
 			else if (pApp->m_bDirectMode)
 			{
-				suffix.LoadString(IDS_MRU_LIST_DIRECT_SUFFIX);
+				suffix = m_DirectFileSuffix;
 			}
 		}
 		else
 		{
 			if (0 != (flags & OpenDocumentReadOnly))
 			{
-				suffix.LoadString(IDS_MRU_LIST_RO_SUFFIX);
+				suffix = m_ReadOnlyFileSuffix;
 			}
 			else if (flags & OpenDocumentDirectMode)
 			{
-				suffix.LoadString(IDS_MRU_LIST_DIRECT_SUFFIX);
+				suffix = m_DirectFileSuffix;
 			}
 		}
 		src++;
@@ -1633,7 +1639,6 @@ BOOL CWaveSoapFileList::GetDisplayName(CString& strName, int nIndex,
 
 	strName = src;
 	CPath dir(strName);
-	dir.RemoveFileSpec();
 
 	// copy the full path, otherwise abbreviate the name
 	if (dir.RemoveFileSpec()
@@ -1645,8 +1650,6 @@ BOOL CWaveSoapFileList::GetDisplayName(CString& strName, int nIndex,
 	}
 	else if (m_nMaxDisplayLength != -1)
 	{
-		strName.GetBuffer(MAX_PATH);
-
 		// abbreviate name based on what will fit in limited space
 		_AfxAbbreviateName(strName.GetBuffer(MAX_PATH), m_nMaxDisplayLength, bAtLeastName);
 		strName.ReleaseBuffer();
@@ -2127,24 +2130,70 @@ void CWaveSoapFrontApp::OnActivateDocument(CWaveSoapFrontDoc *pDocument, BOOL bA
 	}
 }
 
+BOOL CWaveSoapFrontApp::GetMessageString(UINT nID, CString& rMessage)
+{
+	if (nID < ID_FILE_MRU_FILE1
+		|| nID > ID_FILE_MRU_FILE16)
+	{
+		return FALSE;
+	}
+	// form the string from the recent file name
+	nID -= ID_FILE_MRU_FILE1;
+	if (nID >= m_pRecentFileList->GetSize())
+	{
+		return FALSE;
+	}
+	LPCTSTR file = m_pRecentFileList->m_arrNames[nID];
+
+	CString suffix;
+
+	TCHAR flags = file[0];
+
+	if (flags <= 0x1F)
+	{
+		if ((flags & OpenDocumentModeFlagsMask) == OpenDocumentDefaultMode)
+		{
+			if (m_bReadOnly)
+			{
+				suffix.LoadString(IDS_STRING_READ_ONLY_PROMPT);
+			}
+			else if (m_bDirectMode)
+			{
+				suffix.LoadString(IDS_STRING_DIRECT_MODE_PROMPT);
+			}
+		}
+		else
+		{
+			if (0 != (flags & OpenDocumentReadOnly))
+			{
+				suffix.LoadString(IDS_STRING_READ_ONLY_PROMPT);
+			}
+			else if (flags & OpenDocumentDirectMode)
+			{
+				suffix.LoadString(IDS_STRING_DIRECT_MODE_PROMPT);
+			}
+		}
+		file++;
+	}
+
+	rMessage.Format(IDS_OPEN_RECENT_FILE_PROMPT_FORMAT, file, LPCTSTR(suffix));
+	return TRUE;
+}
+
 void CWaveSoapFrontApp::GetStatusStringAndDoc(CString & str, CWaveSoapFrontDoc ** ppDoc)
 {
-	m_StatusStringLock.Lock();
+	CSimpleCriticalSectionLock lock(m_StatusStringLock);
 
 	str = m_CurrentStatusString;
 	*ppDoc = m_pLastStatusDocument;
-
-	m_StatusStringLock.Unlock();
 }
 
 void CWaveSoapFrontApp::SetStatusStringAndDoc(const CString & str, CWaveSoapFrontDoc * pDoc)
 {
-	m_StatusStringLock.Lock();
+	CSimpleCriticalSectionLock lock(m_StatusStringLock);
 
 	m_CurrentStatusString = str;
 	m_pLastStatusDocument = pDoc;
-
-	m_StatusStringLock.Unlock();
 }
 
 

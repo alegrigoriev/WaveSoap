@@ -3731,6 +3731,8 @@ BEGIN
     IDS_MARKER_REGION_CHANGE "Marker/region change"
     IDS_SAVE_SELECTION_TITLE "Save selection as file..."
     IDS_CONTINUE_QUESTION   "\nContinue?"
+    IDS_STRING_READ_ONLY_PROMPT " in read-only mode"
+    IDS_STRING_DIRECT_MODE_PROMPT " in direct mode"
 END
 
 STRINGTABLE 
@@ -3742,6 +3744,11 @@ BEGIN
     IDC_VIEW_STATUS_HHMMSSFF 
                             "Show time as hour:minute:seconds.CD frames (75 fps)\nShow hh:mm:ss.ff75"
     IDC_VIEW_RULER_HHMMSSFF "Show time as hour:minute:seconds.CD frames (75 fps)\nShow hh:mm:ss.ff75"
+END
+
+STRINGTABLE 
+BEGIN
+    IDS_OPEN_RECENT_FILE_PROMPT_FORMAT "Open ""%s""%s"
 END
 
 #endif    // English (U.S.) resources
