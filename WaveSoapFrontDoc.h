@@ -351,6 +351,10 @@ protected:
 	afx_msg void OnToolsInterpolate();
 	afx_msg void OnUpdateProcessDoUlf(CCmdUI* pCmdUI);
 	afx_msg void OnProcessDoUlf();
+	afx_msg void OnUpdateProcessDoDeclicking(CCmdUI* pCmdUI);
+	afx_msg void OnProcessDoDeclicking();
+	afx_msg void OnUpdateProcessNoiseReduction(CCmdUI* pCmdUI);
+	afx_msg void OnProcessNoiseReduction();
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 
