@@ -222,6 +222,30 @@ void COneFileOperation::UpdateCompletedPercent()
 	UpdateCompletedPercent(m_SrcPos, m_SrcStart, m_SrcEnd);
 }
 
+MEDIA_FILE_SIZE COneFileOperation::GetTotalOperationSize() const
+{
+	if (m_SrcStart <= m_SrcEnd)
+	{
+		return m_SrcEnd - m_SrcStart;
+	}
+	else
+	{
+		return m_SrcStart - m_SrcEnd;
+	}
+}
+
+MEDIA_FILE_SIZE COneFileOperation::GetCompletedOperationSize() const
+{
+	if (m_SrcStart <= m_SrcEnd)
+	{
+		return m_SrcPos - m_SrcStart;
+	}
+	else
+	{
+		return m_SrcStart - m_SrcPos;
+	}
+}
+
 //////////// CTwoFilesOperation
 CTwoFilesOperation::CTwoFilesOperation(class CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString,
 										ULONG Flags, LPCTSTR OperationName)
@@ -279,6 +303,15 @@ BOOL CTwoFilesOperation::InitDestination(CWaveFile & DstFile, SAMPLE_INDEX Start
 }
 
 /////////// CThroughProcessOperation
+CThroughProcessOperation::CThroughProcessOperation(class CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString,
+													ULONG Flags, LPCTSTR OperationName)
+	: BaseClass(pDoc, StatusString, Flags, OperationName)
+	, m_NumberOfForwardPasses(1)
+	, m_NumberOfBackwardPasses(0)
+	, m_CurrentPass(1)
+{
+}
+
 BOOL CThroughProcessOperation::OperationProc()
 {
 	// generic procedure working on one file
@@ -502,9 +535,24 @@ BOOL CThroughProcessOperation::OperationProc()
 	return res;
 }
 
+MEDIA_FILE_SIZE CThroughProcessOperation::GetTotalOperationSize() const
+{
+	return (m_NumberOfForwardPasses + m_NumberOfBackwardPasses)
+		* BaseClass::GetTotalOperationSize();
+}
+
+MEDIA_FILE_SIZE CThroughProcessOperation::GetCompletedOperationSize() const
+{
+	return m_CurrentPass * BaseClass::GetTotalOperationSize()
+			+ BaseClass::GetCompletedOperationSize();
+}
+
+
+/////////////// CStagedContext ///////////////
 CStagedContext::CStagedContext(CWaveSoapFrontDoc * pDoc,
 								LPCTSTR StatusString, DWORD Flags, LPCTSTR OperationName)
 	: BaseClass(pDoc, StatusString, Flags, OperationName)
+	, m_DoneSize(0)
 {
 }
 
@@ -530,6 +578,31 @@ LONGLONG CStagedContext::GetTempDataSize() const
 	{
 		sum += pContext->GetTempDataSize();
 	}
+	return sum;
+}
+
+MEDIA_FILE_SIZE CThroughProcessOperation::GetTotalOperationSize() const
+{
+	MEDIA_FILE_SIZE sum = m_DoneSize;
+
+	for (COperationContext * pContext = m_ContextList.First();
+		m_ContextList.NotEnd(pContext);
+		pContext = m_ContextList.Next(pContext))
+	{
+		sum += pContext->GetTotalOperationSize();
+	}
+	return sum;
+}
+
+MEDIA_FILE_SIZE CThroughProcessOperation::GetCompletedOperationSize() const
+{
+	MEDIA_FILE_SIZE sum = m_DoneSize;
+
+	if ( ! m_ContextList.IsEmpty())
+	{
+		sum += m_ContextList.First()->GetCompletedOperationSize();
+	}
+
 	return sum;
 }
 
@@ -643,6 +716,8 @@ BOOL CStagedContext::OperationProc()
 	if (0 != (pContext->m_Flags & (OperationContextStop | OperationContextFinished)))
 	{
 		m_DoneList.InsertTail(m_ContextList.RemoveHead());
+
+		m_DoneSize += m_DoneList.Last()->GetTotalOperationSize();
 	}
 
 	return result;
