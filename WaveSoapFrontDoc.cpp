@@ -53,6 +53,34 @@ BEGIN_MESSAGE_MAP(CWaveSoapFrontDoc, CDocument)
 	ON_COMMAND(ID_EDIT_PASTE, OnEditPaste)
 	ON_COMMAND(ID_EDIT_CHANNELS_LOCK, OnEditChannelsLock)
 	ON_UPDATE_COMMAND_UI(ID_EDIT_CHANNELS_LOCK, OnUpdateEditChannelsLock)
+	ON_COMMAND(ID_EDIT_REDO, OnEditRedo)
+	ON_UPDATE_COMMAND_UI(ID_EDIT_REDO, OnUpdateEditRedo)
+	ON_COMMAND(ID_SAMPLE_16BIT, OnSample16bit)
+	ON_UPDATE_COMMAND_UI(ID_SAMPLE_16BIT, OnUpdateSample16bit)
+	ON_COMMAND(ID_SAMPLE_8BIT, OnSample8bit)
+	ON_UPDATE_COMMAND_UI(ID_SAMPLE_8BIT, OnUpdateSample8bit)
+	ON_COMMAND(ID_SAMPLERATE_11025, OnSamplerate11025)
+	ON_UPDATE_COMMAND_UI(ID_SAMPLERATE_11025, OnUpdateSamplerate11025)
+	ON_COMMAND(ID_SAMPLERATE_16000, OnSamplerate16000)
+	ON_UPDATE_COMMAND_UI(ID_SAMPLERATE_16000, OnUpdateSamplerate16000)
+	ON_COMMAND(ID_SAMPLERATE_22050, OnSamplerate22050)
+	ON_UPDATE_COMMAND_UI(ID_SAMPLERATE_22050, OnUpdateSamplerate22050)
+	ON_COMMAND(ID_SAMPLERATE_32000, OnSamplerate32000)
+	ON_UPDATE_COMMAND_UI(ID_SAMPLERATE_32000, OnUpdateSamplerate32000)
+	ON_COMMAND(ID_SAMPLERATE_44100, OnSamplerate44100)
+	ON_UPDATE_COMMAND_UI(ID_SAMPLERATE_44100, OnUpdateSamplerate44100)
+	ON_COMMAND(ID_SAMPLERATE_48K, OnSamplerate48k)
+	ON_UPDATE_COMMAND_UI(ID_SAMPLERATE_48K, OnUpdateSamplerate48k)
+	ON_COMMAND(ID_SAMPLERATE_7200, OnSamplerate7200)
+	ON_UPDATE_COMMAND_UI(ID_SAMPLERATE_7200, OnUpdateSamplerate7200)
+	ON_COMMAND(ID_SAMPLERATE_8000, OnSamplerate8000)
+	ON_UPDATE_COMMAND_UI(ID_SAMPLERATE_8000, OnUpdateSamplerate8000)
+	ON_COMMAND(ID_SAMPLERATE_96K, OnSamplerate96k)
+	ON_UPDATE_COMMAND_UI(ID_SAMPLERATE_96K, OnUpdateSamplerate96k)
+	ON_COMMAND(ID_CHANNELS_MONO, OnChannelsMono)
+	ON_UPDATE_COMMAND_UI(ID_CHANNELS_MONO, OnUpdateChannelsMono)
+	ON_COMMAND(ID_CHANNELS_STEREO, OnChannelsStereo)
+	ON_UPDATE_COMMAND_UI(ID_CHANNELS_STEREO, OnUpdateChannelsStereo)
 	//}}AFX_MSG_MAP
 END_MESSAGE_MAP()
 
@@ -85,9 +113,12 @@ CWaveSoapFrontDoc::CWaveSoapFrontDoc()
 	m_OperationNonCritical(false),
 	m_Thread(ThreadProc, this),
 	m_ModificationSequenceNumber(0),
+	m_PrevChannelToCopy(2),
+	m_DefaultPasteMode(0),
 	m_SelectedChannel(2)
 {
 	m_bUndoEnabled = (FALSE != GetApp()->m_bUndoEnabled);
+	m_bRedoEnabled = (FALSE != GetApp()->m_bRedoEnabled);
 	m_Thread.m_bAutoDelete = FALSE;
 	m_hThreadEvent = CreateEvent(NULL, FALSE, FALSE, NULL);
 	TRACE("CWaveSoapFrontDoc::CWaveSoapFrontDoc()\n");
@@ -948,6 +979,66 @@ UINT CWaveSoapFrontDoc::_ThreadProc(void)
 	return 0;
 }
 
+BOOL CWaveSoapFrontDoc::DoUndoRedo(CUndoRedoContext * pContext)
+{
+	// see what is necessary to restore
+	CResizeContext * pResize = pContext->m_pExpandShrinkContext;
+	if (pContext->m_Flags & CopyShrinkFile)
+	{
+		// shrink the file
+		// todo: create redo
+		if (NULL != pResize
+			&& pResize->InitUndo("Redoing...")
+			&& NULL != pResize->m_pUndoContext
+			&& 0 == (pContext->m_Flags & RedoContext))
+		{
+			pResize->m_pUndoContext->m_Flags |= RedoContext;
+		}
+	}
+	else if (pContext->m_Flags & CopyExpandFile)
+	{
+		if (NULL != pResize
+			&& pResize->InitUndo("Redoing...")
+			&& NULL != pResize->m_pUndoContext
+			&& 0 == (pContext->m_Flags & RedoContext))
+		{
+			pResize->m_pUndoContext->m_Flags |= RedoContext;
+		}
+		if (FALSE == pContext->m_DstFile.m_File.SetFileLength(pContext->m_RestoredLength))
+		{
+			delete pResize->m_pUndoContext;
+			pResize->m_pUndoContext = NULL;
+			return FALSE;
+		}
+		MMCKINFO * pDatachunk = pContext->m_DstFile.GetDataChunk();
+		pDatachunk->cksize = pContext->m_RestoredLength - pDatachunk->dwDataOffset;
+		long NewLength = pDatachunk->cksize / pContext->m_DstFile.SampleSize();
+		SoundChanged(pContext->m_DstFile.GetFileID(), 0, 0, NewLength);
+		// todo: create redo
+	}
+	else
+	{
+		// just copy
+		// todo: create redo
+		if ((pContext->m_Flags & RedoContext)
+			? RedoEnabled() : UndoEnabled())
+		{
+			CUndoRedoContext * pUndoRedo = new CUndoRedoContext(this, "Redoing...");
+			if (NULL == pUndoRedo)
+			{
+				return FALSE;
+			}
+			if ( ! pUndoRedo->InitUndoCopy(m_WavFile,
+											pContext->m_DstCopyPos, pContext->m_DstEnd, pContext->m_DstChan))
+			{
+				delete pUndoRedo;
+				return FALSE;
+			}
+		}
+	}
+	return TRUE;
+}
+
 void CWaveSoapFrontDoc::OnEditUndo()
 {
 	if (m_OperationInProgress
@@ -957,35 +1048,44 @@ void CWaveSoapFrontDoc::OnEditUndo()
 	}
 	// no critical section lock needed
 	CUndoRedoContext * pUndo = (CUndoRedoContext *) m_pUndoList;
-
-	// see what is necessary to restore
-	if (pUndo->m_Flags & CopyShrinkFile)
+	if ( ! DoUndoRedo(pUndo))
 	{
-		// shrink the file
-		// todo: create redo
-	}
-	else if (pUndo->m_Flags & CopyExpandFile)
-	{
-		if (FALSE == pUndo->m_DstFile.m_File.SetFileLength(pUndo->m_RestoredLength))
-		{
-			return;
-		}
-		MMCKINFO * pDatachunk = pUndo->m_DstFile.GetDataChunk();
-		pDatachunk->cksize = pUndo->m_RestoredLength - pDatachunk->dwDataOffset;
-		long NewLength = pDatachunk->cksize / pUndo->m_DstFile.SampleSize();
-		SoundChanged(pUndo->m_DstFile.GetFileID(), 0, 0, NewLength);
-		// todo: create redo
-	}
-	else
-	{
-		// just copy
-		// todo: create redo
+		return;
 	}
 
 	m_pUndoList = pUndo->pNext;
 	pUndo->pNext = NULL;
 
+	DecrementModified();
+
 	QueueOperation(pUndo);
+}
+
+void CWaveSoapFrontDoc::OnEditRedo()
+{
+	if (m_OperationInProgress
+		|| NULL == m_pRedoList)
+	{
+		return;
+	}
+	// no critical section lock needed
+	CUndoRedoContext * pRedo = (CUndoRedoContext *) m_pRedoList;
+	if ( ! DoUndoRedo(pRedo))
+	{
+		return;
+	}
+
+	m_pRedoList = pRedo->pNext;
+	pRedo->pNext = NULL;
+
+	IncrementModified(FALSE);   // don't delete redo
+
+	QueueOperation(pRedo);
+}
+
+void CWaveSoapFrontDoc::OnUpdateEditRedo(CCmdUI* pCmdUI)
+{
+	pCmdUI->Enable(NULL != m_pRedoList && ! (m_OperationInProgress || m_bReadOnly));
 }
 
 void CWaveSoapFrontDoc::QueueOperation(COperationContext * pContext)
@@ -1056,19 +1156,67 @@ void CWaveSoapFrontDoc::DoPaste(LONG Start, LONG End, LONG Channel, LPCTSTR File
 {
 	// create a operation context
 	CWaveFile * pSrcFile = & GetApp()->m_ClipboardFile;
+	// todo: support copy from a file (FileName)
 	if ( ! pSrcFile->IsOpen())
 	{
 		return;
+	}
+	long NumSamplesToPasteFrom = pSrcFile->NumberOfSamples();
+	if (End > Start)
+	{
+		CPasteModeDialog dlg;
+		dlg.m_PasteMode = m_DefaultPasteMode;
+		if (dlg.DoModal() != IDOK)
+		{
+			return;
+		}
+		m_DefaultPasteMode = dlg.m_PasteMode;
+		switch (dlg.m_PasteMode)
+		{
+		case 0:
+			// selection will be replaced with clipboard
+			break;
+		case 1:
+			// paste as much as selection length, replace extra with silence
+			if (NumSamplesToPasteFrom > End - Start)
+			{
+				NumSamplesToPasteFrom = End - Start;
+			}
+			break;
+		default:
+			// insert at the current position
+			End = Start;
+			break;
+		}
+	}
+	int nCopiedChannels = 2;
+	if (Channel < 2 || WaveChannels() < 2)
+	{
+		nCopiedChannels = 1;
+	}
+	int ChannelToCopyFrom = 2;
+	if (nCopiedChannels < pSrcFile->Channels())
+	{
+		CCopyChannelsSelectDlg dlg;
+		dlg.m_ChannelToCopy = m_PrevChannelToCopy;
+		if (IDOK != dlg.DoModal())
+		{
+			return;
+		}
+		m_PrevChannelToCopy = dlg.m_ChannelToCopy;
+		ChannelToCopyFrom = dlg.m_ChannelToCopy;
 	}
 
 	CCopyContext * pContext = new CCopyContext(this, _T("Inserting data from clipboard..."));
 
 	pContext->m_Flags |= OperationContextClipboard | CopyExpandFile;
 
-	if ( ! pContext->InitCopy(m_WavFile, m_CaretPosition, 0, m_SelectedChannel,
-							* pSrcFile, 0, pSrcFile->NumberOfSamples(), 2))
+	if ( ! pContext->InitCopy(m_WavFile, Start, End - Start, Channel,
+							* pSrcFile, 0, NumSamplesToPasteFrom, ChannelToCopyFrom))
 	{
 		delete pContext;
+		// error
+		return;
 	}
 
 	if (NULL != pContext->m_pExpandShrinkContext)
@@ -1394,19 +1542,53 @@ void CWaveSoapFrontDoc::OnUpdateEditSelection(CCmdUI* pCmdUI)
 
 }
 
+static void LimitUndoRedo(COperationContext ** ppContext, int MaxNum, size_t MaxSize)
+{
+	size_t Size = 0;
+	int Num = 0;
+	while (* ppContext != NULL)
+	{
+		COperationContext * pContext = *ppContext;
+		Num++;
+		CUndoRedoContext * pUndoRedo = dynamic_cast<CUndoRedoContext *>(pContext);
+		if (NULL != pUndoRedo
+			&& pUndoRedo->m_SrcFile.IsOpen())
+		{
+			Size += pUndoRedo->m_SrcFile.m_File.GetLength();
+		}
+		ppContext = & pContext->pNext;
+		if (Num > MaxNum
+			|| Size > MaxSize)
+		{
+			COperationContext * tmp;
+			pContext = *ppContext;
+			* ppContext = NULL;
+			while (pContext != NULL)
+			{
+				tmp = pContext;
+				pContext = pContext->pNext;
+				delete tmp;
+			}
+			break;
+		}
+	}
+}
+
 void CWaveSoapFrontDoc::AddUndoRedo(CUndoRedoContext * pContext)
 {
 	if (pContext->m_Flags & RedoContext)
 	{
 		pContext->pNext = m_pRedoList;
 		m_pRedoList = pContext;
-		// to do: free extra undo, if count or size limit is exceeded
+		// free extra redo, if count or size limit is exceeded
+		LimitUndoRedo( & m_pRedoList, GetApp()->m_MaxRedoDepth, GetApp()->m_MaxRedoSize);
 	}
 	else
 	{
 		pContext->pNext = m_pUndoList;
 		m_pUndoList = pContext;
-		// to do: free extra undo, if count or size limit is exceeded
+		// free extra undo, if count or size limit is exceeded
+		LimitUndoRedo( & m_pUndoList, GetApp()->m_MaxUndoDepth, GetApp()->m_MaxUndoSize);
 	}
 }
 
@@ -1624,6 +1806,12 @@ void CWaveSoapFrontDoc::IncrementModified(BOOL bDeleteRedo)
 	{
 		DeleteRedo();
 	}
+	if (! UndoEnabled())
+	{
+		// since it is unable to restore undo, delete all previous undo
+		DeleteUndo();
+	}
+
 	if (CWaveSoapFrontDoc::IsModified() != OldModified)
 	{
 		UpdateFrameCounts();        // will cause name change in views
@@ -1634,6 +1822,13 @@ void CWaveSoapFrontDoc::DecrementModified()   // called at UNDO
 {
 	BOOL OldModified = CWaveSoapFrontDoc::IsModified();
 	m_ModificationSequenceNumber--;
+
+	if (! RedoEnabled())
+	{
+		// since it is unable to redo, delete all previous redo
+		DeleteRedo();
+	}
+
 	if (CWaveSoapFrontDoc::IsModified() != OldModified)
 	{
 		UpdateFrameCounts();        // will cause name change in views
@@ -1721,3 +1916,222 @@ void CWaveSoapFrontDoc::OnUpdateEditChannelsLock(CCmdUI* pCmdUI)
 		pCmdUI->SetCheck(m_bChannelsLocked);
 	}
 }
+
+void CWaveSoapFrontDoc::EnableUndo(BOOL bEnable)
+{
+	m_bUndoEnabled = (FALSE != bEnable);
+}
+
+void CWaveSoapFrontDoc::EnableRedo(BOOL bEnable)
+{
+	m_bRedoEnabled = (FALSE != bEnable);
+}
+
+
+void CWaveSoapFrontDoc::OnSample16bit()
+{
+	// TODO: Add your command handler code here
+
+}
+
+void CWaveSoapFrontDoc::OnUpdateSample16bit(CCmdUI* pCmdUI)
+{
+	// TODO: Add your command update UI handler code here
+
+}
+
+void CWaveSoapFrontDoc::OnSample8bit()
+{
+	// TODO: Add your command handler code here
+
+}
+
+void CWaveSoapFrontDoc::OnUpdateSample8bit(CCmdUI* pCmdUI)
+{
+	// TODO: Add your command update UI handler code here
+
+}
+
+void CWaveSoapFrontDoc::OnUpdateSampleRate(CCmdUI* pCmdUI, unsigned SampleRate)
+{
+	pCmdUI->SetRadio(m_WavFile.SampleRate() == SampleRate);
+}
+
+void CWaveSoapFrontDoc::OnSamplerate11025()
+{
+	// TODO: Add your command handler code here
+
+}
+
+void CWaveSoapFrontDoc::OnUpdateSamplerate11025(CCmdUI* pCmdUI)
+{
+	OnUpdateSampleRate(pCmdUI, 11025);
+}
+
+void CWaveSoapFrontDoc::OnSamplerate16000()
+{
+	// TODO: Add your command handler code here
+
+}
+
+void CWaveSoapFrontDoc::OnUpdateSamplerate16000(CCmdUI* pCmdUI)
+{
+	OnUpdateSampleRate(pCmdUI, 16000);
+}
+
+void CWaveSoapFrontDoc::OnSamplerate22050()
+{
+}
+
+void CWaveSoapFrontDoc::OnUpdateSamplerate22050(CCmdUI* pCmdUI)
+{
+	OnUpdateSampleRate(pCmdUI, 22050);
+}
+
+void CWaveSoapFrontDoc::OnSamplerate32000()
+{
+	// TODO: Add your command handler code here
+
+}
+
+void CWaveSoapFrontDoc::OnUpdateSamplerate32000(CCmdUI* pCmdUI)
+{
+	OnUpdateSampleRate(pCmdUI, 32000);
+}
+
+void CWaveSoapFrontDoc::OnSamplerate44100()
+{
+	// TODO: Add your command handler code here
+
+}
+
+void CWaveSoapFrontDoc::OnUpdateSamplerate44100(CCmdUI* pCmdUI)
+{
+	OnUpdateSampleRate(pCmdUI, 44100);
+}
+
+void CWaveSoapFrontDoc::OnSamplerate48k()
+{
+	// TODO: Add your command handler code here
+
+}
+
+void CWaveSoapFrontDoc::OnUpdateSamplerate48k(CCmdUI* pCmdUI)
+{
+	OnUpdateSampleRate(pCmdUI, 48000);
+}
+
+void CWaveSoapFrontDoc::OnSamplerate7200()
+{
+	// TODO: Add your command handler code here
+
+}
+
+void CWaveSoapFrontDoc::OnUpdateSamplerate7200(CCmdUI* pCmdUI)
+{
+	OnUpdateSampleRate(pCmdUI, 7200);
+}
+
+void CWaveSoapFrontDoc::OnSamplerate8000()
+{
+	// TODO: Add your command handler code here
+
+}
+
+void CWaveSoapFrontDoc::OnUpdateSamplerate8000(CCmdUI* pCmdUI)
+{
+	OnUpdateSampleRate(pCmdUI, 8000);
+}
+
+void CWaveSoapFrontDoc::OnSamplerate96k()
+{
+	// TODO: Add your command handler code here
+
+}
+
+void CWaveSoapFrontDoc::OnUpdateSamplerate96k(CCmdUI* pCmdUI)
+{
+	OnUpdateSampleRate(pCmdUI, 96000);
+}
+
+void CWaveSoapFrontDoc::OnChannelsMono()
+{
+	// TODO: Add your command handler code here
+
+}
+
+void CWaveSoapFrontDoc::OnUpdateChannelsMono(CCmdUI* pCmdUI)
+{
+	pCmdUI->SetRadio(WaveChannels() == 1);
+}
+
+void CWaveSoapFrontDoc::OnChannelsStereo()
+{
+	// TODO: Add your command handler code here
+
+}
+
+void CWaveSoapFrontDoc::OnUpdateChannelsStereo(CCmdUI* pCmdUI)
+{
+	pCmdUI->SetRadio(WaveChannels() == 2);
+}
+/////////////////////////////////////////////////////////////////////////////
+// CCopyChannelsSelectDlg dialog
+
+
+CCopyChannelsSelectDlg::CCopyChannelsSelectDlg(CWnd* pParent /*=NULL*/)
+	: CDialog(CCopyChannelsSelectDlg::IDD, pParent)
+{
+	//{{AFX_DATA_INIT(CCopyChannelsSelectDlg)
+	m_ChannelToCopy = -1;
+	//}}AFX_DATA_INIT
+}
+
+
+void CCopyChannelsSelectDlg::DoDataExchange(CDataExchange* pDX)
+{
+	CDialog::DoDataExchange(pDX);
+	//{{AFX_DATA_MAP(CCopyChannelsSelectDlg)
+	DDX_Radio(pDX, IDC_RADIO_LEFT, m_ChannelToCopy);
+	//}}AFX_DATA_MAP
+}
+
+
+BEGIN_MESSAGE_MAP(CCopyChannelsSelectDlg, CDialog)
+	//{{AFX_MSG_MAP(CCopyChannelsSelectDlg)
+		// NOTE: the ClassWizard will add message map macros here
+	//}}AFX_MSG_MAP
+END_MESSAGE_MAP()
+
+/////////////////////////////////////////////////////////////////////////////
+// CCopyChannelsSelectDlg message handlers
+/////////////////////////////////////////////////////////////////////////////
+// CPasteModeDialog dialog
+
+
+CPasteModeDialog::CPasteModeDialog(CWnd* pParent /*=NULL*/)
+	: CDialog(CPasteModeDialog::IDD, pParent)
+{
+	//{{AFX_DATA_INIT(CPasteModeDialog)
+	m_PasteMode = -1;
+	//}}AFX_DATA_INIT
+}
+
+
+void CPasteModeDialog::DoDataExchange(CDataExchange* pDX)
+{
+	CDialog::DoDataExchange(pDX);
+	//{{AFX_DATA_MAP(CPasteModeDialog)
+	DDX_Radio(pDX, IDC_RADIO_SELECT, m_PasteMode);
+	//}}AFX_DATA_MAP
+}
+
+
+BEGIN_MESSAGE_MAP(CPasteModeDialog, CDialog)
+	//{{AFX_MSG_MAP(CPasteModeDialog)
+		// NOTE: the ClassWizard will add message map macros here
+	//}}AFX_MSG_MAP
+END_MESSAGE_MAP()
+
+/////////////////////////////////////////////////////////////////////////////
+// CPasteModeDialog message handlers

@@ -62,6 +62,10 @@ public:
 	{
 		return m_bUndoEnabled;
 	}
+	BOOL RedoEnabled() const
+	{
+		return m_bRedoEnabled;
+	}
 	BOOL ChannelsLocked() const
 	{
 		return m_bChannelsLocked;
@@ -98,6 +102,9 @@ public:
 	void DecrementModified();   // called at UNDO
 	virtual void SetModifiedFlag(BOOL bModified = TRUE);
 	void AddUndoRedo(class CUndoRedoContext * pUndo);
+	void EnableUndo(BOOL bEnable = TRUE);
+	void EnableRedo(BOOL bEnable = TRUE);
+	BOOL DoUndoRedo(class CUndoRedoContext * pContext);
 
 // Overrides
 	// ClassWizard generated virtual function overrides
@@ -181,7 +188,10 @@ public:
 	bool m_PlayingSound;
 	bool m_bInOnIdle;
 	bool m_bUndoEnabled;
+	bool m_bRedoEnabled;
 	bool m_bChannelsLocked;
+	int m_PrevChannelToCopy;
+	int m_DefaultPasteMode;
 
 	CString m_CurrentStatusString;
 	bool m_bReadOnly;
@@ -225,7 +235,7 @@ protected:
 	void DoDelete(LONG Start, LONG End, LONG Channel);
 	void DeleteUndo();
 	void DeleteRedo();
-
+	void OnUpdateSampleRate(CCmdUI* pCmdUI, unsigned SampleRate);
 	//{{AFX_MSG(CWaveSoapFrontDoc)
 	afx_msg void OnEditCopy();
 	afx_msg void OnUpdateEditCopy(CCmdUI* pCmdUI);
@@ -259,6 +269,34 @@ protected:
 	afx_msg void OnEditPaste();
 	afx_msg void OnEditChannelsLock();
 	afx_msg void OnUpdateEditChannelsLock(CCmdUI* pCmdUI);
+	afx_msg void OnEditRedo();
+	afx_msg void OnUpdateEditRedo(CCmdUI* pCmdUI);
+	afx_msg void OnSample16bit();
+	afx_msg void OnUpdateSample16bit(CCmdUI* pCmdUI);
+	afx_msg void OnSample8bit();
+	afx_msg void OnUpdateSample8bit(CCmdUI* pCmdUI);
+	afx_msg void OnSamplerate11025();
+	afx_msg void OnUpdateSamplerate11025(CCmdUI* pCmdUI);
+	afx_msg void OnSamplerate16000();
+	afx_msg void OnUpdateSamplerate16000(CCmdUI* pCmdUI);
+	afx_msg void OnSamplerate22050();
+	afx_msg void OnUpdateSamplerate22050(CCmdUI* pCmdUI);
+	afx_msg void OnSamplerate32000();
+	afx_msg void OnUpdateSamplerate32000(CCmdUI* pCmdUI);
+	afx_msg void OnSamplerate44100();
+	afx_msg void OnUpdateSamplerate44100(CCmdUI* pCmdUI);
+	afx_msg void OnSamplerate48k();
+	afx_msg void OnUpdateSamplerate48k(CCmdUI* pCmdUI);
+	afx_msg void OnSamplerate7200();
+	afx_msg void OnUpdateSamplerate7200(CCmdUI* pCmdUI);
+	afx_msg void OnSamplerate8000();
+	afx_msg void OnUpdateSamplerate8000(CCmdUI* pCmdUI);
+	afx_msg void OnSamplerate96k();
+	afx_msg void OnUpdateSamplerate96k(CCmdUI* pCmdUI);
+	afx_msg void OnChannelsMono();
+	afx_msg void OnUpdateChannelsMono(CCmdUI* pCmdUI);
+	afx_msg void OnChannelsStereo();
+	afx_msg void OnUpdateChannelsStereo(CCmdUI* pCmdUI);
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 
@@ -281,6 +319,70 @@ struct PeakFileHeader
 
 /////////////////////////////////////////////////////////////////////////////
 
+/////////////////////////////////////////////////////////////////////////////
+// CCopyChannelsSelectDlg dialog
+
+class CCopyChannelsSelectDlg : public CDialog
+{
+// Construction
+public:
+	CCopyChannelsSelectDlg(CWnd* pParent = NULL);   // standard constructor
+
+// Dialog Data
+	//{{AFX_DATA(CCopyChannelsSelectDlg)
+	enum { IDD = IDD_DIALOG_COPY_CHANNELS_SELECT };
+	int		m_ChannelToCopy;
+	//}}AFX_DATA
+
+
+// Overrides
+	// ClassWizard generated virtual function overrides
+	//{{AFX_VIRTUAL(CCopyChannelsSelectDlg)
+protected:
+	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV support
+	//}}AFX_VIRTUAL
+
+// Implementation
+protected:
+
+	// Generated message map functions
+	//{{AFX_MSG(CCopyChannelsSelectDlg)
+	// NOTE: the ClassWizard will add member functions here
+	//}}AFX_MSG
+	DECLARE_MESSAGE_MAP()
+};
+/////////////////////////////////////////////////////////////////////////////
+// CPasteModeDialog dialog
+
+class CPasteModeDialog : public CDialog
+{
+// Construction
+public:
+	CPasteModeDialog(CWnd* pParent = NULL);   // standard constructor
+
+// Dialog Data
+	//{{AFX_DATA(CPasteModeDialog)
+	enum { IDD = IDD_DIALOG_PASTE_MODE_SELECT };
+	int		m_PasteMode;
+	//}}AFX_DATA
+
+
+// Overrides
+	// ClassWizard generated virtual function overrides
+	//{{AFX_VIRTUAL(CPasteModeDialog)
+protected:
+	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV support
+	//}}AFX_VIRTUAL
+
+// Implementation
+protected:
+
+	// Generated message map functions
+	//{{AFX_MSG(CPasteModeDialog)
+	// NOTE: the ClassWizard will add member functions here
+	//}}AFX_MSG
+	DECLARE_MESSAGE_MAP()
+};
 //{{AFX_INSERT_LOCATION}}
 // Microsoft Visual C++ will insert additional declarations immediately before the previous line.
 
