@@ -10,8 +10,28 @@
 #include "NumEdit.h"
 /////////////////////////////////////////////////////////////////////////////
 // CEqualizerGraphWnd window
+enum { MaxNumberOfEqualizerBands = 20, };
 
-class CEqualizerGraphWnd : public CWnd
+class Equalizer
+{
+public:
+	Equalizer();
+	void RebuildBandFilters();
+	void ResetBands();
+	void SetNumberOfBands(int NumBands);
+
+	complex<float> CalculateResponse(double Frequency);
+
+	double m_BandGain[MaxNumberOfEqualizerBands];   // target gain in the band
+	double m_UsedBandGain[MaxNumberOfEqualizerBands];   // gain in the band used to calculate coefficients
+	double m_BandWidth;
+	double m_BandFrequencies[MaxNumberOfEqualizerBands];
+	// the coefficients are: 3 numerator's coeffs and 3 denominator's coeffs
+	double m_BandCoefficients[MaxNumberOfEqualizerBands][6];
+	int m_NumOfBands;    // 2-MaxNumberOfEqualizerBands
+};
+
+class CEqualizerGraphWnd : public CWnd, public Equalizer
 {
 	// Construction
 public:
@@ -19,9 +39,7 @@ public:
 
 	// Attributes
 public:
-	enum { MaxNumberOfBands = 20, };
 	void SetNumberOfBands(int NumBands);
-	complex<float> CalculateResponse(double Frequency);
 	void SetBandGain(int nBand, double Gain);
 	void SetCurrentBandGain(double Gain)
 	{
@@ -39,8 +57,6 @@ public:
 	{
 		return 20. * log10(m_BandGain[m_BandWithFocus]);
 	}
-	void RebuildBandFilters();
-	void ResetBands();
 	void SetFocusBand(int nBand);
 	int GetHitCode(POINT point);
 
@@ -64,15 +80,8 @@ public:
 	bool m_bGotFocus;
 	bool m_DotCaretIsOn;
 
-	int m_NumOfBands;    // 2-MaxNumberOfBands
 	int m_BandWithFocus;
 	double m_SamplingRate;
-	double m_BandGain[MaxNumberOfBands];   // target gain in the band
-	double m_UsedBandGain[MaxNumberOfBands];   // gain in the band used to calculate coefficients
-	double m_BandWidth;
-	double m_BandFrequencies[MaxNumberOfBands];
-	// the coefficients are: 3 numerator's coeffs and 3 denominator's coeffs
-	double m_BandCoefficients[MaxNumberOfBands][6];
 	// Generated message map functions
 protected:
 	void NotifyParentDlg();
@@ -137,7 +146,7 @@ protected:
 
 // Implementation
 protected:
-
+	CSize m_PrevSize;
 	void UpdateSelectionStatic();
 	void OnMetricsChange();
 	afx_msg void OnNotifyGraph( NMHDR * pNotifyStruct, LRESULT * result );
@@ -156,6 +165,7 @@ protected:
 	afx_msg void OnButtonResetBands();
 	afx_msg void OnButtonSaveAs();
 	virtual void OnOK();
+	afx_msg void OnKillfocusEditBandGain();
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 };

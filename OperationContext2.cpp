@@ -5,6 +5,7 @@
 
 static int fround(double d)
 {
+	return floor(d + 0.5);
 	if (d >= 0.)
 	{
 		return int(d + 0.5);
@@ -32,17 +33,24 @@ CExpressionEvaluationContext::CExpressionEvaluationContext(CWaveSoapFrontDoc * p
 	:COperationContext(pDoc, StatusString, 0)
 
 {
+	m_OperationString = StatusString;
 	m_OperationName = OperationName;
 	m_ReturnBufferFlags = CDirectFile::ReturnBufferDirty;
 	m_bClipped = false;
+	m_MaxClipped = 0;
 }
 
 BOOL CExpressionEvaluationContext::Init()
 {
 	m_nSamplingRate = m_DstFile.SampleRate();
 	m_SamplePeriod = 1. / m_nSamplingRate;
-	m_dSelectionLengthTime = (m_DstEnd - m_DstStart) / m_DstFile.SampleSize() / double(m_nSamplingRate);
-	m_dFileLengthTime = m_DstFile.NumberOfSamples() / double(m_nSamplingRate);
+
+	m_NumberOfFileSamples = m_DstFile.NumberOfSamples();
+	m_dFileLengthTime = m_NumberOfFileSamples / double(m_nSamplingRate);
+
+	m_NumberOfSelectionSamples = (m_DstEnd - m_DstStart) / m_DstFile.SampleSize();
+	m_dSelectionLengthTime = m_NumberOfSelectionSamples / double(m_nSamplingRate);
+
 	m_nSelectionSampleArgument = 0;
 	m_dSelectionTimeArgument = 0.;
 	m_nFileSampleArgument = (m_DstStart - m_DstFile.GetDataChunk()->dwDataOffset) / m_DstFile.SampleSize();
@@ -65,14 +73,22 @@ BOOL CExpressionEvaluationContext::ProcessBuffer(void * buf, size_t len, DWORD o
 			{
 				m_dCurrentSample = *pDst * 0.00003051850947599719229;
 				Evaluate();
-				int result = * m_pResultAddress;
+				int result = fround(* m_pResultAddress);
 				if (result > 0x7FFF)
 				{
-					result = 0x7FFF;
 					m_bClipped = true;
+					if (m_MaxClipped < result)
+					{
+						m_MaxClipped = result;
+					}
+					result = 0x7FFF;
 				}
 				else if (result < -0x8000)
 				{
+					if (m_MaxClipped < -result)
+					{
+						m_MaxClipped = -result;
+					}
 					result = -0x8000;
 					m_bClipped = true;
 				}
@@ -95,14 +111,22 @@ BOOL CExpressionEvaluationContext::ProcessBuffer(void * buf, size_t len, DWORD o
 					{
 						m_dCurrentSample = *pDst * 0.00003051850947599719229;
 						Evaluate();
-						int result = * m_pResultAddress;
+						int result = fround(* m_pResultAddress);
 						if (result > 0x7FFF)
 						{
+							if (m_MaxClipped < result)
+							{
+								m_MaxClipped = result;
+							}
 							result = 0x7FFF;
 							m_bClipped = true;
 						}
 						else if (result < -0x8000)
 						{
+							if (m_MaxClipped < -result)
+							{
+								m_MaxClipped = -result;
+							}
 							result = -0x8000;
 							m_bClipped = true;
 						}
@@ -121,11 +145,19 @@ BOOL CExpressionEvaluationContext::ProcessBuffer(void * buf, size_t len, DWORD o
 						int result = * m_pResultAddress;
 						if (result > 0x7FFF)
 						{
+							if (m_MaxClipped < result)
+							{
+								m_MaxClipped = result;
+							}
 							result = 0x7FFF;
 							m_bClipped = true;
 						}
 						else if (result < -0x8000)
 						{
+							if (m_MaxClipped < -result)
+							{
+								m_MaxClipped = -result;
+							}
 							result = -0x8000;
 							m_bClipped = true;
 						}
@@ -465,6 +497,9 @@ CExpressionEvaluationContext::TokenType
 
 	case eSelectionTime:
 		PushVariable( & m_dSelectionTimeArgument);
+		break;
+	case eSelectionLengthTime:
+		PushVariable( & m_dSelectionLengthTime);
 		break;
 	case eAbsoluteTime:
 		PushVariable( & m_dFileTimeArgument);
@@ -1495,8 +1530,172 @@ void CExpressionEvaluationContext::PostRetire(BOOL bChildContext)
 	if (m_bClipped)
 	{
 		CString s;
-		s.Format(IDS_SOUND_CLIPPED, pDocument->GetTitle());
+		s.Format(IDS_SOUND_CLIPPED, pDocument->GetTitle(), m_MaxClipped);
 		AfxMessageBox(s, MB_OK | MB_ICONEXCLAMATION);
 	}
 	COperationContext::PostRetire(bChildContext);
 }
+
+CEqualizerContext::CEqualizerContext(CWaveSoapFrontDoc * pDoc,
+									LPCTSTR StatusString, LPCTSTR OperationName)
+	: COperationContext(pDoc, OperationName, OperationContextDiskIntensive),
+	m_bClipped(FALSE)
+{
+	m_OperationString = StatusString;
+	m_GetBufferFlags = 0;
+	m_ReturnBufferFlags = CDirectFile::ReturnBufferDirty;
+}
+
+CEqualizerContext::~CEqualizerContext()
+{
+}
+
+BOOL CEqualizerContext::Init()
+{
+	for (int i = 0; i < MaxNumberOfEqualizerBands; i++)
+	{
+		m_PrevSamples[0][i][0] = 0.;
+		m_PrevSamples[1][i][0] = 0.;
+		m_PrevSamples[0][i][1] = 0.;
+		m_PrevSamples[1][i][1] = 0.;
+		m_PrevSamples[0][i][2] = 0.;
+		m_PrevSamples[1][i][2] = 0.;
+		m_PrevSamples[0][i][3] = 0.;
+		m_PrevSamples[1][i][3] = 0.;
+	}
+	return TRUE;
+}
+
+double CEqualizerContext::CalculateResult(int ch, int Input)
+{
+	double tmp = Input;
+	for (int i = 0; i < m_NumOfBands; i++)
+	{
+		double tmp1 = tmp * m_BandCoefficients[i][0]
+					+ m_PrevSamples[ch][i][0] * m_BandCoefficients[i][1]
+					+ m_PrevSamples[ch][i][1] * m_BandCoefficients[i][2]
+					- m_PrevSamples[ch][i][2] * m_BandCoefficients[i][4]
+					- m_PrevSamples[ch][i][3] * m_BandCoefficients[i][5];
+		m_PrevSamples[ch][i][1] = m_PrevSamples[ch][i][0];
+		m_PrevSamples[ch][i][0] = tmp;
+		m_PrevSamples[ch][i][3] = m_PrevSamples[ch][i][2];
+		m_PrevSamples[ch][i][0] = tmp1;
+		tmp = tmp1;
+	}
+	return tmp;
+}
+
+void CEqualizerContext::PostRetire(BOOL bChildContext)
+{
+	if (m_bClipped)
+	{
+		CString s;
+		s.Format(IDS_SOUND_CLIPPED, pDocument->GetTitle(), m_MaxClipped);
+		AfxMessageBox(s, MB_OK | MB_ICONEXCLAMATION);
+	}
+	COperationContext::PostRetire(bChildContext);
+}
+
+BOOL CEqualizerContext::ProcessBuffer(void * buf, size_t len, DWORD offset)
+{
+	// calculate number of sample, and time
+	int nSampleSize = m_DstFile.SampleSize();
+	int nChannels = m_DstFile.Channels();
+	int nSample = (offset - m_DstStart) / nSampleSize;
+	__int16 * pDst = (__int16 *) buf;
+	if (1 == nChannels)
+	{
+		while (len >= sizeof (__int16))
+		{
+			int result = fround(CalculateResult(0, *pDst));
+			if (result > 0x7FFF)
+			{
+				m_bClipped = true;
+				if (m_MaxClipped < result)
+				{
+					m_MaxClipped = result;
+				}
+				result = 0x7FFF;
+			}
+			else if (result < -0x8000)
+			{
+				if (m_MaxClipped < -result)
+				{
+					m_MaxClipped = -result;
+				}
+				result = -0x8000;
+				m_bClipped = true;
+			}
+			*pDst = result;
+			pDst++;
+			len -= sizeof (__int16);
+		}
+	}
+	else
+	{
+		while (len >= sizeof (__int16))
+		{
+			if (0 == (offset & sizeof (__int16)))
+			{
+				if (m_DstChan != 1) // not right only
+				{
+					int result = fround(CalculateResult(0, *pDst));
+					if (result > 0x7FFF)
+					{
+						if (m_MaxClipped < result)
+						{
+							m_MaxClipped = result;
+						}
+						result = 0x7FFF;
+						m_bClipped = true;
+					}
+					else if (result < -0x8000)
+					{
+						if (m_MaxClipped < -result)
+						{
+							m_MaxClipped = -result;
+						}
+						result = -0x8000;
+						m_bClipped = true;
+					}
+					*pDst = result;
+				}
+				offset += sizeof (__int16);
+				pDst++;
+				len -= sizeof (__int16);
+			}
+			if (len >= sizeof (__int16))
+			{
+				if (m_DstChan != 0) // not left only
+				{
+					int result = fround(CalculateResult(1, *pDst));
+					if (result > 0x7FFF)
+					{
+						if (m_MaxClipped < result)
+						{
+							m_MaxClipped = result;
+						}
+						result = 0x7FFF;
+						m_bClipped = true;
+					}
+					else if (result < -0x8000)
+					{
+						if (m_MaxClipped < -result)
+						{
+							m_MaxClipped = -result;
+						}
+						result = -0x8000;
+						m_bClipped = true;
+					}
+					*pDst = result;
+				}
+				offset += sizeof (__int16);
+				pDst++;
+				len -= sizeof (__int16);
+			}
+
+		}
+	}
+	return TRUE;
+}
+

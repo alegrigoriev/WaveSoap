@@ -64,6 +64,7 @@ Save As dialog is not centered first time (comdlg problem?)
 ??? When time/seconds format is set for status bar, MM:SS is actually shown
 
 Fixed:
+Expression evaliation didn't show status string
 Backward file prefetch from position 0 would cause memory overallocation (500 MB) and hang
 Expression dialog: OK not disabled on the beginning, if expression is empty
 If there is no selection, Selection button dialog doesn't give option From Cursor, To Cursor

@@ -7,6 +7,7 @@
 #endif // _MSC_VER > 1000
 
 #include "OperationContext.h"
+#include "EqualizerDialog.h"
 
 class CExpressionEvaluationContext : public COperationContext
 {
@@ -17,6 +18,7 @@ public:
 	CString m_ErrorString;
 	void Evaluate();
 	bool m_bClipped;
+	long m_MaxClipped;
 
 private:
 	enum TokenType
@@ -142,6 +144,8 @@ public:
 	double m_dFrequencyArgument;
 private:
 	double m_dSelectionLengthTime;
+	int m_NumberOfFileSamples;
+	int m_NumberOfSelectionSamples;
 	double m_dFileLengthTime;
 	double m_dCurrentSample;
 	int m_nSamplingRate;
@@ -176,7 +180,7 @@ private:
 	static void _fastcall NegateInt(Operation *t)  { *t->nDst = - *t->nSrc1; }
 	static void _fastcall ComplementInt(Operation *t)  { *t->nDst = ~ *t->nSrc1; }
 	static void _fastcall NegateDouble(Operation *t)  { *t->dDst = - *t->dSrc1; }
-	static void _fastcall Sin(Operation *t)  { *t->dDst = sin(*t->dSrc1); }
+	static void _fastcall Sin(Operation *t)  { *t->dDst = sin(fmod(*t->dSrc1, 6.2831853071795864769252867)); }
 	static void _fastcall Cos(Operation *t)  { *t->dDst = cos(*t->dSrc1); }
 	static void _fastcall Tan(Operation *t)  { *t->dDst = tan(*t->dSrc1); }
 	static void _fastcall SinH(Operation *t)  { *t->dDst = sinh(*t->dSrc1); }
@@ -235,5 +239,29 @@ public:
 	virtual void PostRetire(BOOL bChildContext = FALSE);
 };
 
+class CEqualizerContext: public COperationContext
+{
+public:
+	CEqualizerContext(CWaveSoapFrontDoc * pDoc,
+					LPCTSTR StatusString, LPCTSTR OperationName);
+	~CEqualizerContext();
 
+	BOOL m_bClipped;
+	long m_MaxClipped;
+
+	Equalizer m_Equalizer;
+
+	// the coefficients are: 3 numerator's coeffs and 3 denominator's coeffs
+	double m_BandCoefficients[MaxNumberOfEqualizerBands][6];
+	int m_NumOfBands;    // 2-MaxNumberOfEqualizerBands
+	// 2 channels, 2 prev input samples for each filter
+	// and 2 prev output samples
+	double m_PrevSamples[2][MaxNumberOfEqualizerBands][4];
+	//virtual BOOL OperationProc();
+	virtual BOOL ProcessBuffer(void * buf, size_t len, DWORD offset);
+	virtual void PostRetire(BOOL bChildContext = FALSE);
+	virtual BOOL Init();
+private:
+	double CalculateResult(int ch, int Input);
+};
 #endif // AFX_OPERATIONCONTEXT2_H__FFA16C44_2FA7_11D4_9ADD_00C0F0583C4B__INCLUDED_
