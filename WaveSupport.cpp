@@ -537,9 +537,9 @@ CWaveFormat::~CWaveFormat()
 
 WAVEFORMATEX * CWaveFormat::Allocate(unsigned ExtraSize, bool bCopy)
 {
-	if (ExtraSize > 0xFFF0)
+	if (ExtraSize > 0xFFFF)
 	{
-		ExtraSize = 0;
+		ExtraSize = 0xFFFF;
 	}
 
 	int SizeToAllocate = ExtraSize + sizeof (WAVEFORMATEX);
@@ -554,7 +554,14 @@ WAVEFORMATEX * CWaveFormat::Allocate(unsigned ExtraSize, bool bCopy)
 	}
 	if (m_pWf)
 	{
-		if (bCopy) memcpy(NewBuf, m_pWf, m_AllocatedSize);
+		if (bCopy)
+		{
+			memcpy(NewBuf, m_pWf, m_AllocatedSize);
+		}
+		else
+		{
+			memset(NewBuf, 0, SizeToAllocate);
+		}
 		delete[] (char*) m_pWf;
 	}
 	m_pWf = (WAVEFORMATEX *)NewBuf;
