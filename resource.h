@@ -111,6 +111,7 @@
 #define IDD_DIALOG_OPEN_TEMPLATE_V7     188
 #define IDD_DIALOG_WITH_HISTORY_TEMPLATE_V5 188
 #define IDB_BITMAP_PLAY                 189
+#define IDD_REGION_DIALOG               189
 #define IDB_BITMAP_EJECT                190
 #define IDB_BITMAP_STOP                 191
 #define IDB_BITMAP_LOAD                 192
@@ -376,6 +377,9 @@
 #define IDC_COMBO_FOLDER                1252
 #define IDC_COMBO_TITLE                 1256
 #define IDC_STATIC_GROUPBOX             1257
+#define IDC_COMBO3                      1258
+#define IDC_COMBO_TRIGGER               1258
+#define IDC_COMBO_MARKER_NAME           1259
 #define IDC_VIEW_RULER_SAMPLES          32771
 #define IDC_VIEW_RULER_HHMMSS           32772
 #define IDC_VIEW_RULER_SECONDS          32773
@@ -809,6 +813,8 @@
 #define ID_CDGRAB_UNCHECK               40111
 #define ID_PROCESS_REVERSE              40114
 #define ID_TOOLS_SYNTHESIS              65535
+#define IDC_END_LABEL                   65535
+#define IDC_LENGTH_LABEL                65535
 
 // Next default values for new objects
 //
@@ -817,7 +823,7 @@
 #define _APS_3D_CONTROLS                     1
 #define _APS_NEXT_RESOURCE_VALUE        194
 #define _APS_NEXT_COMMAND_VALUE         40115
-#define _APS_NEXT_CONTROL_VALUE         1258
+#define _APS_NEXT_CONTROL_VALUE         1260
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif
