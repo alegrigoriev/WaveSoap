@@ -41,7 +41,7 @@ public:
 			return SPEAKER_FRONT_LEFT;
 			break;
 		case 2:
-			return SPEAKER_FRONT_CENTER;
+			return SPEAKER_FRONT_RIGHT;
 			break;
 		}
 	}
@@ -191,7 +191,7 @@ public:
 			return SPEAKER_FRONT_LEFT;
 			break;
 		case 2:
-			return SPEAKER_FRONT_CENTER;
+			return SPEAKER_FRONT_RIGHT;
 			break;
 		}
 	}

@@ -283,21 +283,28 @@ void CWaveOutlineView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
 	if (lHint == CWaveSoapFrontDoc::UpdateSelectionChanged
 		&& NULL != pHint)
 	{
-		CSelectionUpdateInfo * pInfo = (CSelectionUpdateInfo *) pHint;
+		CSelectionUpdateInfo * pInfo =
+			dynamic_cast<CSelectionUpdateInfo *>(pHint);
+		if (NULL == pInfo)
+		{
+			BaseClass::OnUpdate(pSender, lHint, pHint);
+			return;
+		}
 
 		// calculate new selection boundaries
-		SAMPLE_INDEX SelBegin = MulDiv(pDoc->m_SelectionStart, cr.Width(), nSamples);
-		SAMPLE_INDEX SelEnd = MulDiv(pDoc->m_SelectionEnd, cr.Width(), nSamples);
-		if (pDoc->m_SelectionEnd != pDoc->m_SelectionStart
+		SAMPLE_INDEX SelBegin = MulDiv(pInfo->SelBegin, cr.Width(), nSamples);
+		SAMPLE_INDEX SelEnd = MulDiv(pInfo->SelEnd, cr.Width(), nSamples);
+		if (pInfo->SelEnd != pInfo->SelBegin
 			&& SelEnd == SelBegin)
 		{
 			SelEnd++;
 		}
 
 		// calculate old selection boundaries
-		SAMPLE_INDEX OldSelBegin = MulDiv(pInfo->SelBegin, cr.Width(), nSamples);
-		SAMPLE_INDEX OldSelEnd = MulDiv(pInfo->SelEnd, cr.Width(), nSamples);
-		if (pInfo->SelEnd != pInfo->SelBegin
+		SAMPLE_INDEX OldSelBegin = MulDiv(pInfo->OldSelBegin, cr.Width(), nSamples);
+		SAMPLE_INDEX OldSelEnd = MulDiv(pInfo->OldSelEnd, cr.Width(), nSamples);
+
+		if (pInfo->OldSelEnd != pInfo->OldSelBegin
 			&& OldSelEnd == OldSelBegin)
 		{
 			OldSelEnd++;

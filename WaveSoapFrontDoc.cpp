@@ -706,10 +706,10 @@ void CWaveSoapFrontDoc::SetSelection(SAMPLE_INDEX begin, SAMPLE_INDEX end,
 									CHANNEL_MASK channel, SAMPLE_INDEX caret, int flags)
 {
 	CSelectionUpdateInfo ui;
-	ui.SelBegin = m_SelectionStart;
-	ui.SelEnd = m_SelectionEnd;
-	ui.SelChannel = m_SelectedChannel;
-	ui.CaretPos = m_CaretPosition;
+	ui.OldSelBegin = m_SelectionStart;
+	ui.OldSelEnd = m_SelectionEnd;
+	ui.OldSelChannel = m_SelectedChannel;
+	ui.OldCaretPos = m_CaretPosition;
 
 	NUMBER_OF_SAMPLES length = WaveFileSamples();
 
@@ -805,7 +805,13 @@ void CWaveSoapFrontDoc::SetSelection(SAMPLE_INDEX begin, SAMPLE_INDEX end,
 
 	m_SelectedChannel = channel;
 	m_CaretPosition = caret;
+
 	ui.Flags = flags;
+	ui.SelBegin = m_SelectionStart;
+	ui.SelEnd = m_SelectionEnd;
+	ui.SelChannel = m_SelectedChannel;
+	ui.CaretPos = m_CaretPosition;
+
 	UpdateAllViews(NULL, UpdateSelectionChanged, & ui);
 }
 
@@ -951,12 +957,7 @@ void CWaveSoapFrontDoc::OnEditCut()
 {
 	if (CanModifySelection())
 	{
-		CHANNEL_MASK ch = m_SelectedChannel;
-		if (ChannelsLocked())
-		{
-			ch = ALL_CHANNELS;
-		}
-		DoCut(m_SelectionStart, m_SelectionEnd, ch);
+		DoCut(m_SelectionStart, m_SelectionEnd, GetSelectedChannel());
 	}
 }
 
@@ -970,12 +971,7 @@ void CWaveSoapFrontDoc::OnEditDelete()
 	if (CanModifyFile()
 		&& m_SelectionStart < WaveFileSamples())
 	{
-		CHANNEL_MASK ch = m_SelectedChannel;
-		if (ChannelsLocked())
-		{
-			ch = ALL_CHANNELS;
-		}
-		DoDelete(m_SelectionStart, m_SelectionEnd, ch);
+		DoDelete(m_SelectionStart, m_SelectionEnd, GetSelectedChannel());
 	}
 }
 
@@ -993,12 +989,7 @@ void CWaveSoapFrontDoc::OnEditPaste()
 {
 	if (CanWriteFile())
 	{
-		CHANNEL_MASK ch = m_SelectedChannel;
-		if (ChannelsLocked())
-		{
-			ch = ALL_CHANNELS;
-		}
-		DoPaste(m_SelectionStart, m_SelectionEnd, ch, NULL);
+		DoPaste(m_SelectionStart, m_SelectionEnd, GetSelectedChannel(), NULL);
 	}
 }
 
@@ -1210,7 +1201,7 @@ void CWaveSoapFrontDoc::DoCopy(SAMPLE_INDEX Start, SAMPLE_INDEX End,
 								CHANNEL_MASK Channel, LPCTSTR FileName)
 {
 	// create a operation context
-	ASSERT(Start > End);
+	ASSERT(Start < End);
 
 	TRACE("CWaveSoapFrontDoc::DoCopy Start=%d, End=%d, Channel=%x, FileName=%s\n",
 		Start, End, Channel, FileName);
@@ -1262,7 +1253,7 @@ void CWaveSoapFrontDoc::DoCopy(SAMPLE_INDEX Start, SAMPLE_INDEX End,
 	pContext.release()->Execute();
 }
 
-void CWaveSoapFrontDoc::DoPaste(SAMPLE_INDEX Start, SAMPLE_INDEX End, CHANNEL_MASK Channel, LPCTSTR FileName)
+BOOL CWaveSoapFrontDoc::DoPaste(SAMPLE_INDEX Start, SAMPLE_INDEX End, CHANNEL_MASK Channel, LPCTSTR FileName)
 {
 	TRACE("DoPaste Start=%d, End=%d, Channel=%x, FileName=%s\n",
 		Start, End, Channel, FileName);
@@ -1285,14 +1276,13 @@ void CWaveSoapFrontDoc::DoPaste(SAMPLE_INDEX Start, SAMPLE_INDEX End, CHANNEL_MA
 
 	if ( ! SrcFile.IsOpen())
 	{
-		return;
+		return FALSE;
 	}
 
 	NUMBER_OF_SAMPLES NumSamplesToPasteFrom = SrcFile.NumberOfSamples();
 	// check if the sampling rate matches the clipboard
 	int SrcSampleRate = SrcFile.SampleRate();
 	int TargetSampleRate = WaveSampleRate();
-
 
 	if (SrcSampleRate != TargetSampleRate)
 	{
@@ -1301,7 +1291,7 @@ void CWaveSoapFrontDoc::DoPaste(SAMPLE_INDEX Start, SAMPLE_INDEX End, CHANNEL_MA
 
 		if (IDOK != dlg.DoModal())
 		{
-			return;
+			return FALSE;
 		}
 
 		m_PasteResampleMode = dlg.GetSelectedResampleMode();
@@ -1314,7 +1304,7 @@ void CWaveSoapFrontDoc::DoPaste(SAMPLE_INDEX Start, SAMPLE_INDEX End, CHANNEL_MA
 				UInt32x32To64(NumSamplesToPasteFrom, TargetSampleRate) / SrcSampleRate;
 			if ( ! CanAllocateWaveFileSamplesDlg(WaveFormat(), NumSamplesToPasteFrom64))
 			{
-				return;
+				return FALSE;
 			}
 
 			NumSamplesToPasteFrom = NUMBER_OF_SAMPLES(NumSamplesToPasteFrom64);
@@ -1333,7 +1323,7 @@ void CWaveSoapFrontDoc::DoPaste(SAMPLE_INDEX Start, SAMPLE_INDEX End, CHANNEL_MA
 										NULL))
 			{
 				FileCreationErrorMessageBox(NULL);
-				return;
+				return FALSE;
 			}
 
 			DstFile.GetWaveFormat()->nSamplesPerSec = TargetSampleRate;
@@ -1355,7 +1345,7 @@ void CWaveSoapFrontDoc::DoPaste(SAMPLE_INDEX Start, SAMPLE_INDEX End, CHANNEL_MA
 
 		if (dlg.DoModal() != IDOK)
 		{
-			return;
+			return FALSE;
 		}
 
 		m_DefaultPasteMode = dlg.GetPasteMode();
@@ -1378,8 +1368,8 @@ void CWaveSoapFrontDoc::DoPaste(SAMPLE_INDEX Start, SAMPLE_INDEX End, CHANNEL_MA
 		}
 	}
 
-	int nCopiedChannels = 2;
-	if (Channel != ALL_CHANNELS || WaveChannels() < 2)
+	int nCopiedChannels = WaveChannels();
+	if (Channel != ALL_CHANNELS)
 	{
 		nCopiedChannels = 1;
 	}
@@ -1391,7 +1381,7 @@ void CWaveSoapFrontDoc::DoPaste(SAMPLE_INDEX Start, SAMPLE_INDEX End, CHANNEL_MA
 
 		if (IDOK != dlg.DoModal())
 		{
-			return;
+			return FALSE;
 		}
 		ChannelToCopyFrom = dlg.GetChannelToCopy();
 		m_PrevChannelToCopy = ChannelToCopyFrom;
@@ -1399,7 +1389,7 @@ void CWaveSoapFrontDoc::DoPaste(SAMPLE_INDEX Start, SAMPLE_INDEX End, CHANNEL_MA
 
 	if ( ! CanExpandWaveFileDlg(m_WavFile, NumSamplesToPasteFrom - (End - Start)))
 	{
-		return;
+		return FALSE;
 	}
 
 	if (NumSamplesToPasteFrom == End - Start)
@@ -1410,7 +1400,7 @@ void CWaveSoapFrontDoc::DoPaste(SAMPLE_INDEX Start, SAMPLE_INDEX End, CHANNEL_MA
 		if ( ! pCopyContext->InitCopy(m_WavFile, Start, Channel,
 									SrcFile, 0, ChannelToCopyFrom, NumSamplesToPasteFrom))
 		{
-			return;
+			return FALSE;
 		}
 
 		pStagedContext->AddContext(pCopyContext.release());
@@ -1420,19 +1410,21 @@ void CWaveSoapFrontDoc::DoPaste(SAMPLE_INDEX Start, SAMPLE_INDEX End, CHANNEL_MA
 		if ( ! InitInsertCopy(pStagedContext.get(), m_WavFile, Start, End - Start, Channel,
 							SrcFile, 0, NumSamplesToPasteFrom, ChannelToCopyFrom))
 		{
-			return;
+			return FALSE;
 		}
 	}
 
 	if (UndoEnabled()
 		&& ! pStagedContext->CreateUndo())
 	{
-		return;
+		return FALSE;
 	}
 
 	// set operation context to the queue
 	pStagedContext.release()->Execute();
 	SetModifiedFlag(TRUE);
+
+	return TRUE;
 }
 
 void CWaveSoapFrontDoc::DoCut(SAMPLE_INDEX Start, SAMPLE_INDEX End, CHANNEL_MASK Channel)
@@ -2611,6 +2603,7 @@ void CWaveSoapFrontDoc::PostFileSave(CWaveFile & DstFile,
 		{
 			Chan = ALL_CHANNELS;
 		}
+
 		SetSelection(SelStart, SelEnd, Chan, Caret, SetSelection_MakeCaretVisible);
 		// view length will be adjusted in OpenDocument?
 	}
@@ -2618,7 +2611,8 @@ void CWaveSoapFrontDoc::PostFileSave(CWaveFile & DstFile,
 	{
 		DeleteUndo();
 		DeleteRedo();
-		m_SelectedChannel = ALL_CHANNELS;
+		SetSelection(m_SelectionStart, m_SelectionEnd,
+					ALL_CHANNELS, m_CaretPosition, 0);
 	}
 	if ( ! OnOpenDocument(NewName, ReopenDocumentFlags | m_FileTypeFlags))
 	{
@@ -3553,13 +3547,8 @@ void CWaveSoapFrontDoc::OnProcessChangevolume()
 		start = 0;
 		end = WaveFileSamples();
 	}
-	CHANNEL_MASK channel = m_SelectedChannel;
-	if (ChannelsLocked())
-	{
-		channel = ALL_CHANNELS;
-	}
 
-	CVolumeChangeDialog dlg(start, end, m_CaretPosition, channel,
+	CVolumeChangeDialog dlg(start, end, m_CaretPosition, GetSelectedChannel(),
 							m_WavFile,
 							m_bChannelsLocked, UndoEnabled(), GetApp()->m_SoundTimeFormat);
 
@@ -3619,8 +3608,8 @@ void CWaveSoapFrontDoc::OnProcessChangevolume()
 	}
 	if (MaxR < MinR) MaxR = MinR;
 
-	if ((dlg.GetChannel() != 1 && Volume[0] * MaxL > 32767.)
-		|| (WaveChannels() > 1 && dlg.GetChannel() != 0
+	if (((dlg.GetChannel() & SPEAKER_FRONT_LEFT) && Volume[0] * MaxL > 32767.)
+		|| (WaveChannels() > 1 && (dlg.GetChannel() & SPEAKER_FRONT_RIGHT)
 			&& Volume[1] * MaxR > 32767.))
 	{
 		CString s;
@@ -3745,6 +3734,7 @@ void CWaveSoapFrontDoc::OnProcessDcoffset()
 	{
 		return;
 	}
+
 	SAMPLE_INDEX start = m_SelectionStart;
 	SAMPLE_INDEX end = m_SelectionEnd;
 	if (start == end)
@@ -3753,14 +3743,9 @@ void CWaveSoapFrontDoc::OnProcessDcoffset()
 		start = 0;
 		end = WaveFileSamples();
 	}
-	CHANNEL_MASK channel = m_SelectedChannel;
-	if (ChannelsLocked())
-	{
-		channel = ALL_CHANNELS;
-	}
 
 	CThisApp * pApp = GetApp();
-	CDcOffsetDialog dlg(start, end, m_CaretPosition, channel,
+	CDcOffsetDialog dlg(start, end, m_CaretPosition, GetSelectedChannel(),
 						m_WavFile, ChannelsLocked(), UndoEnabled(), GetApp()->m_SoundTimeFormat);
 
 	if (IDOK != dlg.DoModal())
@@ -3776,20 +3761,8 @@ void CWaveSoapFrontDoc::OnProcessDcoffset()
 		CStagedContext::auto_ptr pStagedContext
 		(new CStagedContext(this, _T("Adjusting DC..."), 0, _T("DC Adjust")));
 
-		if (NULL == pStagedContext.get())
-		{
-			NotEnoughMemoryMessageBox();
-			return;
-		}
-
 		CDcScanContext * pScanContext =
 			new CDcScanContext(this, _T("Scanning for DC offset..."), _T(""));
-
-		if (NULL == pScanContext)
-		{
-			NotEnoughMemoryMessageBox();
-			return;
-		}
 
 		pStagedContext->AddContext(pScanContext);
 
@@ -3846,8 +3819,8 @@ void CWaveSoapFrontDoc::OnProcessDcoffset()
 		long MinR = RightPeak.low + DcOffset;
 		long MaxR = RightPeak.high + DcOffset;
 
-		if ((dlg.GetChannel() != 1 && (MaxL > 0x7FFF || MinL < -0x8000))
-			|| (WaveChannels() > 1 && dlg.GetChannel() != 0
+		if (((dlg.GetChannel() & SPEAKER_FRONT_LEFT) && (MaxL > 0x7FFF || MinL < -0x8000))
+			|| (WaveChannels() > 1 && (dlg.GetChannel() & SPEAKER_FRONT_RIGHT)
 				&& (MaxR > 0x7FFF || MinR < -0x8000)))
 		{
 			CString s;
@@ -3914,15 +3887,9 @@ void CWaveSoapFrontDoc::OnProcessInsertsilence()
 		}
 	}
 
-	CHANNEL_MASK channel = m_SelectedChannel;
-	if (ChannelsLocked())
-	{
-		channel = ALL_CHANNELS;
-	}
-
 	CInsertSilenceDialog dlg(m_SelectionStart,
 							m_SelectionEnd - m_SelectionStart,
-							channel,
+							GetSelectedChannel(),
 							m_WavFile, GetApp()->m_SoundTimeFormat);
 
 	if (IDOK != dlg.DoModal())
@@ -3975,28 +3942,14 @@ void CWaveSoapFrontDoc::OnProcessMute()
 		return;
 	}
 
-	SAMPLE_INDEX start = m_SelectionStart;
-	SAMPLE_INDEX end = m_SelectionEnd;
-	CHANNEL_MASK channel = m_SelectedChannel;
-	if (ChannelsLocked())
-	{
-		channel = ALL_CHANNELS;
-	}
-
 	double const ZeroVolume[] = { 0., 0.};
 
 	CVolumeChangeContext::auto_ptr pContext
 	(new CVolumeChangeContext(this, _T("Muting the selection..."),
 							_T("Mute"), ZeroVolume));
 
-	if (NULL == pContext.get())
-	{
-		NotEnoughMemoryMessageBox();
-		return;
-	}
-
-	if ( ! pContext->InitDestination(m_WavFile, start,
-									end, channel, UndoEnabled()))
+	if ( ! pContext->InitDestination(m_WavFile, m_SelectionStart,
+									m_SelectionEnd, GetSelectedChannel(), UndoEnabled()))
 	{
 		return;
 	}
@@ -4026,13 +3979,7 @@ void CWaveSoapFrontDoc::OnProcessNormalize()
 		end = WaveFileSamples();
 	}
 
-	CHANNEL_MASK channel = m_SelectedChannel;
-	if (ChannelsLocked())
-	{
-		channel = ALL_CHANNELS;
-	}
-
-	CNormalizeSoundDialog dlg(start, end, m_CaretPosition, channel,
+	CNormalizeSoundDialog dlg(start, end, m_CaretPosition, GetSelectedChannel(),
 							m_WavFile, ChannelsLocked(), UndoEnabled(), GetApp()->m_SoundTimeFormat);
 
 	//if (1 == WaveChannels())
@@ -4254,6 +4201,12 @@ void CWaveSoapFrontDoc::OnProcessInvert()
 		return;
 	}
 
+	double const InvertVolume[] = { -1., -1.};
+
+	CVolumeChangeContext::auto_ptr pContext
+	(new CVolumeChangeContext(this, _T("Inverting the waveform..."),
+							_T("Inversion"), InvertVolume));
+
 	SAMPLE_INDEX start = m_SelectionStart;
 	SAMPLE_INDEX end = m_SelectionEnd;
 	if (start == end)
@@ -4262,26 +4215,9 @@ void CWaveSoapFrontDoc::OnProcessInvert()
 		start = 0;
 		end = WaveFileSamples();
 	}
-	CHANNEL_MASK channel = m_SelectedChannel;
-	if (ChannelsLocked())
-	{
-		channel = ALL_CHANNELS;
-	}
-
-	double const InvertVolume[] = { -1., -1.};
-
-	CVolumeChangeContext::auto_ptr pContext
-	(new CVolumeChangeContext(this, _T("Inverting the waveform..."),
-							_T("Inversion"), InvertVolume));
-
-	if (NULL == pContext.get())
-	{
-		NotEnoughMemoryMessageBox();
-		return;
-	}
 
 	if ( ! pContext->InitDestination(m_WavFile, start,
-									end, channel, UndoEnabled()))
+									end, GetSelectedChannel(), UndoEnabled()))
 	{
 		return;
 	}
@@ -4323,23 +4259,12 @@ void CWaveSoapFrontDoc::OnProcessSynthesisExpressionEvaluation()
 		start = 0;
 		end = WaveFileSamples();
 	}
-	CHANNEL_MASK channel = m_SelectedChannel;
-	if (ChannelsLocked())
-	{
-		channel = ALL_CHANNELS;
-	}
 
 	CExpressionEvaluationContext * pContext =
 		new CExpressionEvaluationContext(this, _T("Calculating the waveform..."),
 										_T("Expression evaluation"));
 
-	if (NULL == pContext)
-	{
-		NotEnoughMemoryMessageBox();
-		return;
-	}
-
-	CExpressionEvaluationDialog dlg(start, end, m_CaretPosition, channel,
+	CExpressionEvaluationDialog dlg(start, end, m_CaretPosition, GetSelectedChannel(),
 									m_WavFile, ChannelsLocked(), UndoEnabled(), GetApp()->m_SoundTimeFormat,
 									pContext);
 
@@ -4706,13 +4631,8 @@ void CWaveSoapFrontDoc::OnProcessDoUlf()
 		start = 0;
 		end = WaveFileSamples();
 	}
-	CHANNEL_MASK channel = m_SelectedChannel;
-	if (ChannelsLocked())
-	{
-		channel = ALL_CHANNELS;
-	}
 
-	CLowFrequencySuppressDialog dlg(start, end, m_CaretPosition, channel,
+	CLowFrequencySuppressDialog dlg(start, end, m_CaretPosition, GetSelectedChannel(),
 									m_WavFile, ChannelsLocked(), UndoEnabled(), GetApp()->m_SoundTimeFormat);
 
 	if (IDOK != dlg.DoModal())
@@ -4765,13 +4685,8 @@ void CWaveSoapFrontDoc::OnProcessDoDeclicking()
 		start = 0;
 		end = WaveFileSamples();
 	}
-	CHANNEL_MASK channel = m_SelectedChannel;
-	if (ChannelsLocked())
-	{
-		channel = ALL_CHANNELS;
-	}
 
-	CDeclickDialog dlg(start, end, m_CaretPosition, channel,
+	CDeclickDialog dlg(start, end, m_CaretPosition, GetSelectedChannel(),
 						m_WavFile, ChannelsLocked(), UndoEnabled(), GetApp()->m_SoundTimeFormat);
 
 	if (IDOK != dlg.DoModal())
@@ -4782,23 +4697,11 @@ void CWaveSoapFrontDoc::OnProcessDoDeclicking()
 	(new CConversionContext(this, _T("Removing vinyl disk clicks..."),
 							_T("Declicking")));
 
-	if (NULL == pContext.get())
-	{
-		NotEnoughMemoryMessageBox();
-		return;
-	}
-
 	CClickRemoval * pDeclick = new CClickRemoval;
-	if (NULL == pDeclick)
-	{
-		NotEnoughMemoryMessageBox();
-		return;
-	}
+	pContext->AddWaveProc(pDeclick);
 
 	pDeclick->SetAndValidateWaveformat(WaveFormat());
 	dlg.SetDeclickData(pDeclick);
-
-	pContext->AddWaveProc(pDeclick);
 
 	if ( ! pContext->InitDestination(m_WavFile, dlg.GetStart(),
 									dlg.GetEnd(), dlg.GetChannel(), dlg.UndoEnabled()))
@@ -4830,13 +4733,8 @@ void CWaveSoapFrontDoc::OnProcessNoiseReduction()
 		start = 0;
 		end = WaveFileSamples();
 	}
-	CHANNEL_MASK channel = m_SelectedChannel;
-	if (ChannelsLocked())
-	{
-		channel = ALL_CHANNELS;
-	}
 
-	CNoiseReductionDialog dlg(start, end, m_CaretPosition, channel,
+	CNoiseReductionDialog dlg(start, end, m_CaretPosition, GetSelectedChannel(),
 							m_WavFile, ChannelsLocked(), UndoEnabled(), GetApp()->m_SoundTimeFormat);
 
 	ULONG result = dlg.DoModal();
@@ -4880,23 +4778,12 @@ void CWaveSoapFrontDoc::OnProcessNoiseReduction()
 	(new CConversionContext(this, _T("Removing background noise..."),
 							_T("Noise Reduction")));
 
-	if (NULL == pContext.get())
-	{
-		NotEnoughMemoryMessageBox();
-		return;
-	}
-
 	CNoiseReduction * pNoiseReduction = new CNoiseReduction;
-	if (NULL == pNoiseReduction)
-	{
-		NotEnoughMemoryMessageBox();
-		return;
-	}
+
+	pContext->AddWaveProc(pNoiseReduction);
 
 	pNoiseReduction->SetAndValidateWaveformat(WaveFormat());
 	dlg.SetNoiseReductionData(pNoiseReduction);
-
-	pContext->AddWaveProc(pNoiseReduction);
 
 	if ( ! pContext->InitDestination(m_WavFile, dlg.GetStart(),
 									dlg.GetEnd(), dlg.GetChannel(), dlg.UndoEnabled()))
@@ -5155,14 +5042,9 @@ void CWaveSoapFrontDoc::OnProcessEqualizer()
 		start = 0;
 		end = WaveFileSamples();
 	}
-	CHANNEL_MASK channel = m_SelectedChannel;
-	if (ChannelsLocked())
-	{
-		channel = ALL_CHANNELS;
-	}
 
 	CEqualizerDialog dlg(start, end, m_CaretPosition,
-						channel, m_WavFile,
+						GetSelectedChannel(), m_WavFile,
 						GetApp()->m_SoundTimeFormat, m_bChannelsLocked, UndoEnabled());
 
 	if (IDOK != dlg.DoModal())
@@ -5170,13 +5052,8 @@ void CWaveSoapFrontDoc::OnProcessEqualizer()
 		return;
 	}
 
-	CEqualizerContext * pContext =
-		new CEqualizerContext(this, _T("Applying equalizer..."), _T("Equalizer"));
-	if (NULL == pContext)
-	{
-		NotEnoughMemoryMessageBox();
-		return;
-	}
+	CEqualizerContext::auto_ptr pContext
+	(new CEqualizerContext(this, _T("Applying equalizer..."), _T("Equalizer")));
 
 	for (int i = 0; i < dlg.m_nBands; i++)
 	{
@@ -5192,11 +5069,10 @@ void CWaveSoapFrontDoc::OnProcessEqualizer()
 	if ( ! pContext->InitDestination(m_WavFile, dlg.GetStart(),
 									dlg.GetEnd(), dlg.GetChannel(), dlg.UndoEnabled()))
 	{
-		delete pContext;
 		return;
 	}
 
-	pContext->Execute();
+	pContext.release()->Execute();
 	SetModifiedFlag(TRUE, dlg.UndoEnabled());
 }
 
@@ -5261,28 +5137,19 @@ void CWaveSoapFrontDoc::OnProcessFilter()
 		start = 0;
 		end = WaveFileSamples();
 	}
-	CHANNEL_MASK channel = m_SelectedChannel;
-	if (ChannelsLocked())
-	{
-		channel = ALL_CHANNELS;
-	}
 
 	CThisApp * pApp = GetApp();
 	CFilterDialog dlg(start, end, m_CaretPosition,
-					channel, m_WavFile,
+					GetSelectedChannel(), m_WavFile,
 					pApp->m_SoundTimeFormat, m_bChannelsLocked, UndoEnabled());
 
 	if (IDOK != dlg.DoModal())
 	{
 		return;
 	}
-	CFilterContext * pContext =
-		new CFilterContext(this, _T("Applying filter..."), _T("Filter"));
-	if (NULL == pContext)
-	{
-		NotEnoughMemoryMessageBox();
-		return;
-	}
+
+	CFilterContext::auto_ptr pContext
+	(new CFilterContext(this, _T("Applying filter..."), _T("Filter")));
 
 	dlg.GetLpfCoefficients(pContext->m_LpfCoeffs);
 	dlg.GetHpfCoefficients(pContext->m_HpfCoeffs);
@@ -5297,11 +5164,10 @@ void CWaveSoapFrontDoc::OnProcessFilter()
 	if ( ! pContext->InitDestination(m_WavFile, dlg.GetStart(),
 									dlg.GetEnd(), dlg.GetChannel(), dlg.UndoEnabled()))
 	{
-		delete pContext;
 		return;
 	}
 
-	pContext->Execute();
+	pContext.release()->Execute();
 	SetModifiedFlag(TRUE, dlg.UndoEnabled());
 }
 
@@ -5342,4 +5208,15 @@ bool CWaveSoapFrontDoc::CanStartOperation(NUMBER_OF_SAMPLES SamplesNecessary,
 			&& WaveFileSamples() >= SamplesNecessary
 			&& ( ! SelectionNecessary || m_SelectionEnd > m_SelectionStart)
 			&& ! (Modify && IsReadOnly());
+}
+
+CHANNEL_MASK CWaveSoapFrontDoc::GetSelectedChannel() const
+{
+	CHANNEL_MASK Channels = m_SelectedChannel;
+	if ( ! ChannelsLocked())
+	{
+		Channels = ALL_CHANNELS;
+	}
+
+	return Channels & m_WavFile.ChannelsMask();
 }

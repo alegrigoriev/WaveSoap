@@ -26,7 +26,7 @@ protected: // create from serialization only
 // Attributes
 public:
 	friend class CAmplitudeRuler;
-	ThisDoc * GetDocument();
+	ThisDoc * GetDocument() const;
 	int GetHorizontalScale() const { return m_HorizontalScale; }
 	void SetHorizontalScale(int HorScale);
 
@@ -75,11 +75,14 @@ protected:
 	void DrawHorizontalWithSelection(CDC * pDC,
 									int left, int right, int Y,
 									CPen * NormalPen, CPen * SelectedPen,
-									int nChannel);
-	void GetChannelRect(int Channel, RECT * r);
+									CHANNEL_MASK nChannel);
+
+	void GetChannelRect(int Channel, RECT * r) const;
+	int GetChannelFromPoint(int y) const;
 
 	void CreateAndShowCaret();
-	DWORD ClientHitTest(CPoint p);
+	DWORD ClientHitTest(CPoint p) const;
+
 	virtual POINT GetZoomCenter();
 	void MovePointIntoView(SAMPLE_INDEX nCaret, BOOL Center = FALSE);
 
@@ -185,10 +188,11 @@ protected:
 #define VSHT_SELECTION      0x00400     // inside the selection
 #define VSHT_WAVEFORM       0x00200     // on the waveform (allows drag)
 #define VSHT_NONCLIENT      0x00100     // out of the client area
+#define VSHT_CHANNEL_MASK   0x0001F     // index of the hit channel
 //#define VSHT_
 
 #ifndef _DEBUG  // debug version in WaveSoapFrontView.cpp
-inline CWaveSoapFrontDoc* CWaveSoapFrontView::GetDocument()
+inline CWaveSoapFrontDoc* CWaveSoapFrontView::GetDocument() const
 {
 	return static_cast<ThisDoc *>(m_pDocument);
 }

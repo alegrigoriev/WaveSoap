@@ -54,14 +54,18 @@ enum
 
 struct NewFileParameters
 {
-	WAVEFORMATEX * pWf;
+	CWaveFormat pWf;
 	LPCTSTR m_pInitialName;
 	LONG InitialSamples;
 	DWORD m_FileTypeFlags;
-	class CWaveFile * m_pFile;
+	CWaveFile * m_pFile;
+
 	NewFileParameters()
+		: m_pInitialName(NULL)
+		, InitialSamples(0)
+		, m_FileTypeFlags(0)
+		, m_pFile(NULL)
 	{
-		memzero(*this);
 	}
 };
 

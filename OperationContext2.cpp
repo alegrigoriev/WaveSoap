@@ -1829,6 +1829,7 @@ void CCdReadingContext::Execute()
 	CThisApp * pApp = GetApp();
 	POSITION pos = pApp->m_pDocManager->GetFirstDocTemplatePosition();
 	CDocTemplate* pTemplate = pApp->m_pDocManager->GetNextDocTemplate(pos);
+
 	if (NULL == pTemplate)
 	{
 		delete this;
@@ -2017,6 +2018,8 @@ BOOL CWaveSamplesChangeOperation::OperationProc()
 		NotEnoughDiskSpaceMessageBox();
 		return FALSE;
 	}
+
+	m_File.AllocatePeakData(m_NewSamples);
 	return TRUE;
 }
 
