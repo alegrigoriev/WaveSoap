@@ -104,15 +104,18 @@ void FastFourierTransformCore(const T * src, T * dst,
 #ifdef _DEBUG
 	FftTime1 = FftReadTSC();
 #endif
+	int i;
 	int n = 1 << (order_power + 1);
 	if (src != dst)
 	{
-		memcpy(dst, src, n * sizeof * dst);
+		for (i = 0; i < n; i ++)
+		{
+			dst[i] = src[i];
+		}
 	}
 #ifdef _DEBUG
 	FftTime2 = FftReadTSC();
 #endif
-	int i;
 	for (int L = 0; L < order_power; L++)
 	{
 
