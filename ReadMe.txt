@@ -31,6 +31,7 @@ If delete (shrink) is done with one channel of two, fill the rest with zeros
 If displaying data without peak info, call RescanPeaks for this range.
 Support CFSTR_FILECONTENTS clipboard format
 Save current workspace
+Write operation log on the MDI client background
 Use temp directory to keep peak info
 Support filenames with stream extension
 Add "phase corrected" stereo to mono conversion

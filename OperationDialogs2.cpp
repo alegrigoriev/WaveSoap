@@ -669,6 +669,7 @@ void CCdGrabbingDialog::ReloadTrackList(CdMediaChangeState NewMediaState)
 	m_lbTracks.DeleteAllItems();
 
 	// Get disk ID
+	m_CdDrive.ForceMountCD();
 	m_DiskID = m_CdDrive.GetDiskID();
 	// TODO: find artist and album info in cdplayer.ini
 
@@ -821,6 +822,8 @@ BOOL CCdGrabbingDialog::OnInitDialog()
 	m_BmpEject.LoadBitmap(IDB_BITMAP_EJECT);
 	m_EjectButton.SetBitmap(m_BmpEject);
 
+	m_BmpLoad.LoadBitmap(IDB_BITMAP_LOAD);
+
 	CreateImageList();
 	CRect cr;
 	GetClientRect( & cr);
@@ -972,10 +975,15 @@ void CCdGrabbingDialog::OnButtonMore()
 
 void CCdGrabbingDialog::CheckForDiskChanged()
 {
-	CdMediaChangeState CdChange= m_CdDrive.CheckForMediaChange();
+	bool CanCloseDoor = m_CdDrive.CanLoadMedia();
+	CdMediaChangeState CdChange = m_CdDrive.CheckForMediaChange();
 	switch (CdChange)
 	{
 	case CdMediaStateNotReady:
+		if (CanCloseDoor != m_CdDrive.CanLoadMedia())
+		{
+			m_bNeedUpdateControls = TRUE;
+		}
 		break;
 	case CdMediaStateReady:
 		if (CdMediaStateReady == m_DiskReady)
@@ -1628,21 +1636,37 @@ void CCdGrabbingDialog::OnUpdateEject(CCmdUI* pCmdUI)
 		|| ! m_CdDrive.EjectSupported())
 	{
 		Enable = FALSE;
+		if (m_EjectButton.GetBitmap() != m_BmpEject)
+		{
+			m_EjectButton.SetBitmap(m_BmpEject);
+		}
 	}
 	else if (m_CdDrive.IsSlotType())
 	{
 		Enable = m_DiskReady == CdMediaStateReady;
+		if (m_EjectButton.GetBitmap() != m_BmpEject)
+		{
+			m_EjectButton.SetBitmap(m_BmpEject);
+		}
 	}
 	else if (m_CdDrive.IsTrayType())
 	{
 		if (m_CdDrive.IsTrayOpen())
 		{
 			Enable = m_CdDrive.CanLoadMedia();
+			if (m_EjectButton.GetBitmap() != m_BmpLoad)
+			{
+				m_EjectButton.SetBitmap(m_BmpLoad);
+			}
 		}
 		else
 		{
 			//
 			Enable = m_CdDrive.CanEjectMedia();
+			if (m_EjectButton.GetBitmap() != m_BmpEject)
+			{
+				m_EjectButton.SetBitmap(m_BmpEject);
+			}
 		}
 	}
 }
@@ -1662,6 +1686,7 @@ void CCdGrabbingDialog::OnButtonEject()
 	{
 		m_CdDrive.EjectMedia();
 	}
+	m_bNeedUpdateControls = TRUE;
 }
 
 void CCdGrabbingDialog::FillFormatCombo()
