@@ -203,6 +203,8 @@ CWaveSoapFrontApp::CWaveSoapFrontApp()
 	, m_FadeInOutLengthMs(100)
 	, m_FadeInEnvelope(FadeInSinSquared)
 	, m_FadeOutEnvelope(FadeOutSinSquared)
+
+	, m_LastPrefsPropertyPageSelected(0)
 {
 	// Place all significant initialization in InitInstance
 	m_NewFileFormat.wFormatTag = WAVE_FORMAT_PCM;
@@ -2421,7 +2423,7 @@ void CWaveSoapFrontApp::OnToolsOptions()
 	dlg.m_SoundPage.m_NumRecordingBuffers = m_NumRecordBuffers;
 	dlg.m_SoundPage.m_RecordingBufferSize = m_SizeRecordBuffers / 1024;
 
-
+	dlg.m_PageSelected = m_LastPrefsPropertyPageSelected;
 #if 0
 	dlg.m_ViewPage.m_bSnapMouseSelection = m_bSnapMouseSelectionToMax;
 #endif
@@ -2461,6 +2463,7 @@ void CWaveSoapFrontApp::OnToolsOptions()
 		m_NumRecordBuffers = dlg.m_SoundPage.m_NumRecordingBuffers;
 		m_SizeRecordBuffers = dlg.m_SoundPage.m_RecordingBufferSize * 1024;
 
+		m_LastPrefsPropertyPageSelected = dlg.m_PageSelected;
 	}
 }
 

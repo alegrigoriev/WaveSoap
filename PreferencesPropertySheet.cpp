@@ -6,6 +6,7 @@
 #include "WaveSoapFront.h"
 #include "PreferencesPropertySheet.h"
 #include "FolderDialog.h"
+#include ".\preferencespropertysheet.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -20,6 +21,7 @@ IMPLEMENT_DYNAMIC(CPreferencesPropertySheet, CPropertySheet)
 
 CPreferencesPropertySheet::CPreferencesPropertySheet(UINT nIDCaption, CWnd* pParentWnd, UINT iSelectPage)
 	:CPropertySheet(nIDCaption, pParentWnd, iSelectPage)
+	, m_PageSelected(0)
 {
 	m_psh.dwFlags |= PSH_NOAPPLYNOW;
 	AddPage( & m_FilePage);
@@ -49,6 +51,32 @@ END_MESSAGE_MAP()
 /////////////////////////////////////////////////////////////////////////////
 // CPreferencesPropertySheet message handlers
 /////////////////////////////////////////////////////////////////////////////
+
+BOOL CPreferencesPropertySheet::OnInitDialog()
+{
+	BOOL bResult = CPropertySheet::OnInitDialog();
+
+	if (unsigned(m_PageSelected) >= unsigned(GetPageCount()))
+	{
+		m_PageSelected = 0;
+	}
+
+	SetActivePage(m_PageSelected);
+
+	return bResult;
+}
+
+BOOL CPreferencesPropertySheet::OnWndMsg(UINT message, WPARAM wParam, LPARAM lParam, LRESULT* pResult)
+{
+	// TODO: Add your specialized code here and/or call the base class
+	if (WM_COMMAND == message
+		&& BN_CLICKED == HIWORD(wParam)
+		&& IDOK == LOWORD(wParam))
+	{
+		m_PageSelected = GetActiveIndex();
+	}
+	return CPropertySheet::OnWndMsg(message, wParam, lParam, pResult);
+}
 
 // CFilePreferencesPage property page
 
