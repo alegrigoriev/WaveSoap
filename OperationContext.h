@@ -624,7 +624,7 @@ public:
 	CMaxScanContext(CWaveSoapFrontDoc * pDoc,
 					UINT StatusStringId, UINT OperationNameId = 0);
 
-	int GetMax(int channel);
+	int GetMax(unsigned channel);
 
 protected:
 	int m_Max[MAX_NUMBER_OF_CHANNELS];
