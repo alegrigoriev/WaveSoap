@@ -2000,7 +2000,9 @@ BOOL CWaveSoapFrontDoc::OnSaveConvertedFile(class COperationContext ** ppOp, int
 
 	if (flags & SaveFile_SavePartial)
 	{
-		sOp.Format(IDS_SAVING_FILE_PART, FullTargetName);
+		CPath p(FullTargetName);
+		p.CompactPathEx(40, 0);
+		sOp.Format(IDS_SAVING_FILE_PART, LPCTSTR(p));
 		// sOpName left empty
 	}
 	else
@@ -2056,7 +2058,8 @@ BOOL CWaveSoapFrontDoc::OnSaveConvertedFile(class COperationContext ** ppOp, int
 	// fill unused data members:
 
 	// if target channels is less than source, convert it before resampling,
-	if (NewChannels < OldChannels)
+	if (0 == (flags & SaveFile_DontPromptChannelReduction)
+		&& pWf->nChannels < WaveChannels())
 	{
 		// ask which channels to save
 		CCopyChannelsSelectDlg dlg(m_PrevChannelToCopy);
@@ -2066,40 +2069,10 @@ BOOL CWaveSoapFrontDoc::OnSaveConvertedFile(class COperationContext ** ppOp, int
 			return FALSE;
 		}
 
-		CChannelConvertor * pChConvertor =
-			new CChannelConvertor(OldChannels, NewChannels, dlg.GetChannelToCopy());
-
 		m_PrevChannelToCopy = dlg.GetChannelToCopy();
-
-		pConvert->AddWaveProc(pChConvertor);
 	}
 
-	if (pWf->nSamplesPerSec != WaveSampleRate())
-	{
-		CResampleFilter * pFilter = new CResampleFilter;
-
-		// FIX: Wrong conversion if resampling and increasing channels
-		NUMBER_OF_CHANNELS nChannels = NewChannels;
-		if (nChannels > OldChannels)
-		{
-			nChannels = OldChannels;
-		}
-
-		pFilter->InitResample(double(pWf->nSamplesPerSec)
-							/ WaveSampleRate(), 40., nChannels);
-		pConvert->AddWaveProc(pFilter);
-
-		NewWaveFile.GetInstanceData()->RescaleMarkers(WaveSampleRate(), pWf->nSamplesPerSec);
-	}
-
-	// if target channels is more than source, convert it after resampling,
-	if (NewChannels > OldChannels)
-	{
-		CChannelConvertor * pChConvertor =
-			new CChannelConvertor(OldChannels, NewChannels, ALL_CHANNELS);
-
-		pConvert->AddWaveProc(pChConvertor);
-	}
+	pConvert->MakeCompatibleFormat(WaveFormat(), pWf, m_PrevChannelToCopy);
 
 	if (pWf->wFormatTag != WAVE_FORMAT_PCM
 		|| pWf->wBitsPerSample != 16)
@@ -2173,7 +2146,9 @@ BOOL CWaveSoapFrontDoc::OnSaveMp3File(class COperationContext ** ppOp, int flags
 
 	if (flags & SaveFile_SavePartial)
 	{
-		sOp.Format(IDS_SAVING_FILE_PART, FullTargetName);
+		CPath p(FullTargetName);
+		p.CompactPathEx(40, 0);
+		sOp.Format(IDS_SAVING_FILE_PART, LPCTSTR(p));
 		// sOpName left empty
 	}
 	else
@@ -2193,7 +2168,23 @@ BOOL CWaveSoapFrontDoc::OnSaveMp3File(class COperationContext ** ppOp, int flags
 
 	pContext->AddContext(pConvert);
 
-	// TODO: enable conversion to different sample rate
+	// if target channels is less than source, convert it before resampling,
+	if (0 == (flags & SaveFile_DontPromptChannelReduction)
+		&& pWf->nChannels < WaveChannels())
+	{
+		// ask which channels to save
+		CCopyChannelsSelectDlg dlg(m_PrevChannelToCopy);
+
+		if (IDOK != dlg.DoModal())
+		{
+			return FALSE;
+		}
+
+		m_PrevChannelToCopy = dlg.GetChannelToCopy();
+	}
+
+	pConvert->MakeCompatibleFormat(WaveFormat(), pWf, m_PrevChannelToCopy);
+
 	if (WAVE_FORMAT_MPEGLAYER3 == pWf->wFormatTag)
 	{
 		CAudioConvertor * pAcmConvertor = new CAudioConvertor;
@@ -2297,7 +2288,9 @@ BOOL CWaveSoapFrontDoc::OnSaveWmaFile(class COperationContext ** ppOp, int flags
 
 	if (flags & SaveFile_SavePartial)
 	{
-		sOp.Format(IDS_SAVING_FILE_PART, FullTargetName);
+		CPath p(FullTargetName);
+		p.CompactPathEx(40, 0);
+		sOp.Format(IDS_SAVING_FILE_PART, LPCTSTR(p));
 		// sOpName left empty
 	}
 	else
@@ -2314,10 +2307,26 @@ BOOL CWaveSoapFrontDoc::OnSaveWmaFile(class COperationContext ** ppOp, int flags
 
 	pContext->m_NewFileTypeFlags = OpenDocumentWmaFile;
 
-	// TODO: enable conversion to different sample rate
 	CWmaSaveContext * pConvert = new CWmaSaveContext(this, 0, 0, m_WavFile, NewWaveFile, Begin, End);
 
 	pContext->AddContext(pConvert);
+
+	// if target channels is less than source, convert it before resampling,
+	if (0 == (flags & SaveFile_DontPromptChannelReduction)
+		&& pWf->nChannels < WaveChannels())
+	{
+		// ask which channels to save
+		CCopyChannelsSelectDlg dlg(m_PrevChannelToCopy);
+
+		if (IDOK != dlg.DoModal())
+		{
+			return FALSE;
+		}
+
+		m_PrevChannelToCopy = dlg.GetChannelToCopy();
+	}
+
+	pConvert->MakeCompatibleFormat(WaveFormat(), pWf, m_PrevChannelToCopy);
 
 	if (flags & SaveFile_SavePartial)
 	{
@@ -5633,6 +5642,19 @@ void CWaveSoapFrontDoc::OnSaveSplitToFiles()
 	SAMPLE_INDEX Begin;
 	SAMPLE_INDEX End;
 
+	if (dlg.GetWaveFormat()->nChannels < WaveChannels())
+	{
+		// ask which channels to save
+		CCopyChannelsSelectDlg ChannelsDlg(m_PrevChannelToCopy);
+
+		if (IDOK != ChannelsDlg.DoModal())
+		{
+			return;
+		}
+
+		m_PrevChannelToCopy = ChannelsDlg.GetChannelToCopy();
+	}
+
 	for (unsigned i = 0; dlg.GetFileData(i, FileName, Title, & Begin, & End); i++)
 	{
 		// create a save file context.
@@ -5641,6 +5663,7 @@ void CWaveSoapFrontDoc::OnSaveSplitToFiles()
 		if ( ! OnSaveFileOrPart( & pOp,
 								dlg.GetFileTypeFlags()
 								| SaveFile_SaveCopy | SaveFile_SavePartial
+								| SaveFile_DontPromptChannelReduction
 								| SaveFile_DontPromptReopen | SaveFile_DontCopyMetadata,
 								FileName, dlg.GetWaveFormat(), Begin, End))
 		{
