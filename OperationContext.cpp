@@ -1753,9 +1753,7 @@ BOOL CCopyUndoContext::InitUndoCopy(CWaveFile & SrcFile,
 	m_DstPos = SaveStartPos;
 	m_DstEnd = SaveEndPos;
 
-	ASSERT(SaveEndPos >= SaveStartPos);
-
-	if (SaveEndPos > SaveStartPos)
+	if (SaveEndPos >= SaveStartPos)
 	{
 		if ( ! m_SrcFile.CreateWaveFile( & SrcFile, NULL,
 										SaveChannel,
@@ -1773,13 +1771,34 @@ BOOL CCopyUndoContext::InitUndoCopy(CWaveFile & SrcFile,
 		}
 
 		m_SrcStart = m_SrcFile.SampleToPosition(0);
-		m_SrcPos = m_SrcStart;
-		m_SrcChan = ALL_CHANNELS;
-		m_DstChan = SaveChannel;
 
 		m_SrcEnd = m_SrcFile.SampleToPosition(LAST_SAMPLE);
 	}
-	// TODO: support saving backward
+	else
+	{
+		if ( ! m_SrcFile.CreateWaveFile( & SrcFile, NULL,
+										SaveChannel,
+										(SaveStartPos - SaveEndPos) / SrcFile.SampleSize(),
+										CreateWaveFileTempDir
+										| CreateWaveFileDeleteAfterClose
+										| CreateWaveFileDontCopyInfo
+										| CreateWaveFilePcmFormat
+										| CreateWaveFileAllowMemoryFile
+										| CreateWaveFileTemp,
+										NULL))
+		{
+			NotEnoughUndoSpaceMessageBox();
+			return FALSE;
+		}
+
+		m_SrcStart = m_SrcFile.SampleToPosition(LAST_SAMPLE);
+
+		m_SrcEnd = m_SrcFile.SampleToPosition(0);
+	}
+	m_SrcPos = m_SrcStart;
+	m_SrcChan = ALL_CHANNELS;
+	m_DstChan = SaveChannel;
+
 	return TRUE;
 }
 
@@ -1790,7 +1809,7 @@ BOOL CCopyUndoContext::SaveUndoData(void const * pBuf, long BufSize,
 									SAMPLE_POSITION Position,
 									NUMBER_OF_CHANNELS NumSrcChannels)
 {
-	int const SrcSampleSize = m_SrcFile.BitsPerSample() / 8 * NumSrcChannels;
+	int const SrcSampleSize = m_SrcFile.BitsPerSample() * NumSrcChannels / 8;
 
 	ASSERT(0 == BufSize % SrcSampleSize);
 
@@ -1798,6 +1817,7 @@ BOOL CCopyUndoContext::SaveUndoData(void const * pBuf, long BufSize,
 
 	if (m_DstEnd < m_DstStart)
 	{
+		ASSERT(BufSize <= 0);
 		// pBuf points after the buffer.
 		// Position is the block end
 		if (BufSize >= 0
@@ -1809,13 +1829,13 @@ BOOL CCopyUndoContext::SaveUndoData(void const * pBuf, long BufSize,
 
 		if (Position < m_DstEnd + -BufSize)
 		{
-			BufSize = m_DstEnd - Position;
+			BufSize = -long(Position - m_DstEnd);
 		}
 
 		if (Position > m_DstPos)
 		{
-			BufSize -= m_DstPos - Position;
-			pSrcBuf += m_DstPos - Position;
+			BufSize += Position - m_DstPos;
+			pSrcBuf -= Position - m_DstPos;
 			Position = m_DstPos;
 		}
 		else
@@ -1826,6 +1846,8 @@ BOOL CCopyUndoContext::SaveUndoData(void const * pBuf, long BufSize,
 	}
 	else
 	{
+		ASSERT(BufSize >= 0);
+
 		if (Position >= m_DstEnd
 			|| Position + BufSize <= m_DstPos
 			|| BufSize <= 0)
@@ -3185,7 +3207,8 @@ BOOL CConversionContext::OperationProc()
 			MEDIA_FILE_SIZE SizeToWrite = m_DstEnd - m_DstPos;
 			long flags = CDirectFile::GetBufferWriteOnly;
 
-			if (m_SrcFile.GetFileID() == m_DstFile.GetFileID())
+			if (m_SrcFile.GetFileID() == m_DstFile.GetFileID()
+				|| NULL != m_pUndoContext)
 			{
 				flags = 0;
 			}
@@ -3216,6 +3239,7 @@ BOOL CConversionContext::OperationProc()
 
 			if (NULL != m_pUndoContext)
 			{
+				// BUGBUG: What if it doesn't have whole samples
 				m_pUndoContext->SaveUndoData(pDstBuf, WasLockedToWrite,
 											m_DstPos, m_DstFile.Channels());
 			}
