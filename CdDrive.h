@@ -21,6 +21,58 @@ struct CD_CDB
 	UCHAR Opcode;
 };
 
+struct BigEndWord
+{
+	UCHAR num[2];
+
+	BigEndWord & operator =(USHORT src)
+	{
+		num[0] = UCHAR(src >> 8);
+		num[1] = UCHAR(src);
+		return * this;
+	}
+	operator USHORT() { return num[1] | (num[0] << 8); }
+};
+
+struct BigEndTriple
+{
+	UCHAR num[3];
+	BigEndTriple & operator =(ULONG src)
+	{
+		num[0] = UCHAR(src >> 16);
+		num[1] = UCHAR(src >> 8);
+		num[2] = UCHAR(src);
+		return * this;
+	}
+	operator ULONG()
+	{
+		return num[2]
+				| (num[1] << 8)
+				| (num[0] << 16);
+	}
+};
+
+struct BigEndDword
+{
+	UCHAR num[4];
+
+	BigEndDword & operator =(ULONG src)
+	{
+		num[0] = UCHAR(src >> 24);
+		num[1] = UCHAR(src >> 16);
+		num[2] = UCHAR(src >> 8);
+		num[3] = UCHAR(src);
+		return * this;
+	}
+	operator ULONG()
+	{
+		return num[3]
+				| (num[2] << 8)
+				| (num[1] << 16)
+				| (num[0] << 24);
+	}
+};
+
 struct ReadCD_Cdb : CD_CDB
 {
 	enum { OPCODE = 0xBE};
@@ -34,8 +86,8 @@ struct ReadCD_Cdb : CD_CDB
 		SectorTypeMode2Form1 = 4,
 		SectorTypeMode2Form2 = 5};
 	UCHAR Reserved2:3;
-	UCHAR StartLBA[4];  // MSB first
-	UCHAR TransferLength[3]; // MSB first
+	BigEndDword StartLBA;  // MSB first
+	BigEndTriple TransferLength; // MSB first
 
 	UCHAR Reserved3:1;
 	UCHAR ErrorField:2;
@@ -67,24 +119,20 @@ struct GetConfigurationCDB : CD_CDB
 		RequestedTypeOneDescriptor = 2};
 	UCHAR Reserved2:6;
 
-	UCHAR StartingFeatureNumber[2]; // MSB first
+	BigEndWord StartingFeatureNumber;
 
 	UCHAR Reserved[3];
 
-	UCHAR AllocationLength[2];  // MSB first
+	BigEndWord AllocationLength;
 
 	UCHAR Control;
 	GetConfigurationCDB(USHORT allocLength,
 						USHORT StartingFeature = 0, int RequestType = RequestedTypeAllDescriptors)
 	{
-		memset(this, 0, sizeof *this);
+		memzero(*this);
 		Opcode = OPCODE;
-		AllocationLength[0] = UCHAR(allocLength >> 8);
-		AllocationLength[1] = UCHAR(allocLength);
-
-		StartingFeatureNumber[0] = UCHAR(StartingFeature >> 8);
-		StartingFeatureNumber[1] = UCHAR(StartingFeature);
-
+		AllocationLength = allocLength;
+		StartingFeatureNumber = StartingFeature;
 		RequestedType = RequestType;
 	}
 };
@@ -110,7 +158,7 @@ struct ModeSenseCDB : CD_CDB
 	ModeSenseCDB(UCHAR nLength, int nPageCode,
 				int nPageControl = PageCurrentValues, bool dbd = true)
 	{
-		memset(this, 0, sizeof *this);
+		memzero(*this);
 		Opcode = OPCODE;
 		AllocationLength = nLength;
 		PageCode = nPageCode;
@@ -119,6 +167,134 @@ struct ModeSenseCDB : CD_CDB
 	}
 };
 
+struct CdPerformanceDataHeader
+{
+	BigEndDword DataLength;
+	UCHAR Except:1;
+	UCHAR Write:1;
+	UCHAR reserved1:6;
+
+	UCHAR reserved2[3];
+};
+
+struct CdNominalPerformanceDescriptor
+{
+	BigEndDword StartLba;
+	BigEndDword StartPerformance;
+	BigEndDword EndLba;
+	BigEndDword EndPerformance;
+};
+
+struct GetPerformanceCDB : CD_CDB
+{
+	enum { OPCODE = 0xAC};
+
+	UCHAR Except:2;
+	UCHAR Write:1;
+	UCHAR Tolerance:2;
+	UCHAR reserved1:3;
+
+	BigEndDword StartingLba;
+	UCHAR reserved2[2];
+	BigEndWord MaxNumberOfDescriptors;
+	UCHAR Reserved3;
+	UCHAR Control;
+
+	GetPerformanceCDB(int nNumDescriptors,
+					long lStartLba = 0,
+					int nExcept = 0,
+					BOOL bWrite = FALSE)
+	{
+		memzero(*this);
+		Opcode = OPCODE;
+		Tolerance = 2;
+		Write = bWrite != 0;
+		Except = nExcept;
+		MaxNumberOfDescriptors = nNumDescriptors;
+		StartingLba = lStartLba;
+	}
+};
+
+struct InquiryCDB : CD_CDB
+{
+	enum { OPCODE = 0x12};
+	UCHAR EnableVitalProductData:1;
+	UCHAR CmdData:1;
+	UCHAR reserved1:6;
+
+	UCHAR PageOrOpcode;
+	UCHAR reserved;
+	UCHAR AllocationLength;
+	UCHAR Control;
+	InquiryCDB(int AllocLength, int nPageOrOpcode = 0, bool EVPD = false, bool CmdDt = false)
+	{
+		memzero(*this);
+		Opcode = OPCODE;
+		EnableVitalProductData = EVPD;
+		CmdData = CmdDt;
+		PageOrOpcode = nPageOrOpcode;
+		AllocationLength = AllocLength;
+	}
+};
+
+struct InquiryData
+{
+	UCHAR PeripheralDeviceType:5;
+	UCHAR PeripheralQualifier:3;
+
+	UCHAR reserved1:7;
+	UCHAR RemovableMedium:1;
+
+	UCHAR Version;
+
+	UCHAR ResponseDataFormat:4;
+	UCHAR HiSup:1;
+	UCHAR NormAca:1;
+	UCHAR Obsolete1:1;
+	UCHAR AsyncEventReporting:1;
+
+	UCHAR AdditionalLength;
+
+	UCHAR reserved2:7;
+	UCHAR SCC_Support:1;
+
+	UCHAR ADDR16:1;
+	UCHAR Obsolete2:2;
+	UCHAR MChanger:1;
+	UCHAR MultiPort:1;
+	UCHAR VS1:1;
+	UCHAR EncServ:1;
+	UCHAR BQue:1;
+
+	UCHAR VS2:1;
+	UCHAR CmdQue:1;
+	UCHAR TranDis:1;
+	UCHAR Linked:1;
+	UCHAR Sync:1;
+	UCHAR WBUS16:1;
+	UCHAR Obsolete3:1;
+	UCHAR RelAdr:1;
+
+	UCHAR VendorId[8];
+
+	UCHAR ProductID[16];
+	UCHAR ProductRevision[4];
+
+	UCHAR VendorSpecific[20];
+
+	UCHAR IUS:1;
+	UCHAR QAS:1;
+	UCHAR CLOCKING:2;
+	UCHAR reserved3:4;
+
+	UCHAR reserved4;
+
+	UCHAR VersionDescriptor[8][2];
+
+	UCHAR reserved5[22];
+};
+
+//C_ASSERT(96 == sizeof (InquiryData));
 struct ModeInfoHeader
 {
 	UCHAR ModeDataLength;
@@ -141,10 +317,10 @@ struct SCSI_SenseInfo
 	UCHAR EndOfMedium:1;
 	UCHAR Filemark:1;
 
-	UCHAR Unformation[4];
+	BigEndDword Unformation;
 	UCHAR AdditionalSenseLength;
 
-	UCHAR CommandSpecificInfo[4];
+	BigEndDword CommandSpecificInfo;
 	UCHAR AdditionalSenseCode;
 	UCHAR AdditionalSenseQualifier;
 	UCHAR FieldReplaceableUnitCode;
@@ -156,13 +332,14 @@ struct SCSI_SenseInfo
 	UCHAR CommandOrData:1;
 	UCHAR SenseKeySpecificValid:1;
 	union {
-		UCHAR FieldPointerBytes[2];
-		UCHAR ActualRetryCount[2];
-		UCHAR ProgressIndication[2];
-		UCHAR FieldPointer[2];
+		BigEndWord FieldPointerBytes;
+		BigEndWord ActualRetryCount;
+		BigEndWord ProgressIndication;
+		BigEndWord FieldPointer;
 	};
 	UCHAR Extra[14];    // total 32
 };  // 18 bytes
+
 struct CDParametersModePage
 {
 	UCHAR PageCode:6;
@@ -177,9 +354,9 @@ struct CDParametersModePage
 	UCHAR InactivityTimerMultiplier:4;
 	UCHAR Reserved3:4;
 
-	UCHAR NumberOf_S_per_M[2];  // S in M in MSF format (60), MSB first
+	BigEndWord NumberOf_S_per_M;  // S in M in MSF format (60), MSB first
 
-	UCHAR NumberOf_F_per_F[2];  // F in S in MSF format (75), MSB first
+	BigEndWord NumberOf_F_per_F;  // F in S in MSF format (75), MSB first
 };
 
 struct CDErrorRecoveryModePage
@@ -208,7 +385,7 @@ struct CDErrorRecoveryModePage
 
 	UCHAR Reserved4;
 
-	UCHAR RecoveryTimeLimit[2]; // MSB first, should be set to zero
+	BigEndWord RecoveryTimeLimit; // MSB first, should be set to zero
 };
 // see T10/1228-D, NCITS 333, clause 5.5.10 table 137
 struct CDCapabilitiesMechStatusModePage
@@ -271,9 +448,9 @@ struct CDCapabilitiesMechStatusModePage
 
 	UCHAR Reserved7[2];
 
-	UCHAR NumberOfVolumeLevelsSupported[2]; // MSB first
+	BigEndWord NumberOfVolumeLevelsSupported; // MSB first
 
-	UCHAR BufferSizeSupported[2];   // MSB first
+	BigEndWord BufferSizeSupported;   // MSB first
 
 	UCHAR Reserved8[2];
 
@@ -289,14 +466,14 @@ struct CDCapabilitiesMechStatusModePage
 
 	UCHAR Obsolete[4];
 
-	UCHAR CopyManagementRevision[2];
+	BigEndWord CopyManagementRevision;
 
 	UCHAR Reserved11[2];
 };
 
 struct FeatureDescriptor
 {
-	UCHAR FeatureCode[2];
+	BigEndWord FeatureCode;
 
 	UCHAR Current:1;
 	UCHAR Persistent:1;
@@ -308,10 +485,10 @@ struct FeatureDescriptor
 
 struct FeatureHeader
 {
-	UCHAR DataLength[4];    // msb first
+	BigEndDword DataLength;    // msb first
 
 	UCHAR Reserved[2];
-	UCHAR CurrentProfile[2];
+	BigEndWord CurrentProfile;
 	// FeatureDescriptor Descriptor[0];
 };
 
@@ -323,7 +500,7 @@ struct RealTimeStreamingFeatureDesc : FeatureDescriptor
 struct CoreFeatureDesc : FeatureDescriptor
 {
 	enum {Code = 0x0001, AddLength = 4};
-	UCHAR PhysicalInterfaceStandard[4]; // MSB first
+	BigEndDword PhysicalInterfaceStandard; // MSB first
 	// 00000001 SCSI family
 	// 00000002 ATAPI
 	// 00000003 IEEE-1394/1995
@@ -335,7 +512,7 @@ struct ProfileListDesc : FeatureDescriptor
 	enum {Code = 0x0000, AddLength = 4*16};
 	struct ProfileDescriptor
 	{
-		UCHAR ProfileNumber[2]; // MSB first
+		BigEndWord ProfileNumber; // MSB first
 
 		UCHAR CurrentP:1;
 		UCHAR Reserved1:7;
@@ -471,11 +648,12 @@ public:
 	static int FindCdDrives(TCHAR Drives['Z' - 'A' + 1]);
 	DWORD GetDiskID();
 
-	long GetMaxReadSpeed(); // bytes/s
-	long GetMinReadSpeed();
+	BOOL GetMinMaxReadSpeed(int * MinSpeed, int * MaxSpeed); // bytes/s
+
 	BOOL SetReadSpeed(long BytesPerSec);
 	BOOL ReadCdData(void * pBuf, long SectorNum, int nSectors);
 	BOOL SetStreaming(long BytesPerSecond);
+
 	CString GetLastScsiErrorText();
 	BOOL GetMediaChanged(); // TRUE if disk was changed after previous call
 	BOOL EnableMediaChangeDetection();
@@ -490,15 +668,11 @@ public:
 						SCSI_SenseInfo * pSense);  // SCSI_IOCTL_DATA_IN, SCSI_IOCTL_DATA_OUT,
 	BOOL ScsiInquiry(SRB_HAInquiry * pInq);
 
-	BOOL GetSupportedSpeeds(int Speeds[], int * NumSpeeds);
-
-	BOOL SetReadSpeed(int speed);
-
 	BOOL GetEcMode(BOOL * C2ErrorPointersSupported);
 
 	BOOL StartReading(int speed);
 
-	CCdDrive & operator =(CCdDrive & const Drive);
+	CCdDrive & operator =(CCdDrive const & Drive);
 
 protected:
 	HANDLE m_hDrive;

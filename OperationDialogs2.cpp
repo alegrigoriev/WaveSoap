@@ -341,6 +341,11 @@ void CCdGrabbingDialog::ReloadTrackList()
 		return;
 	}
 	m_bDiskReady = TRUE;
+
+	int MinSpeed;
+	int MaxSpeed;
+	m_CdDrive.GetMinMaxReadSpeed( & MinSpeed, & MaxSpeed);
+
 	// Get disk ID
 	m_DiskID = m_CdDrive.GetDiskID();
 
