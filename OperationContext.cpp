@@ -712,6 +712,8 @@ CString CResizeContext::GetStatusString() {
 
 BOOL CResizeContext::InitExpand(CWaveFile & File, SAMPLE_INDEX StartSample, NUMBER_OF_SAMPLES Length, CHANNEL_MASK Channel)
 {
+	TRACE("CResizeContext::InitExpand: StartSample=%d, length=%d, Channel=%x\n", StartSample, Length, Channel);
+
 	m_DstFile = File;
 
 	m_DstChan = Channel;
@@ -733,6 +735,8 @@ BOOL CResizeContext::InitExpand(CWaveFile & File, SAMPLE_INDEX StartSample, NUMB
 
 	m_DstEnd = m_DstFile.SampleToPosition(LAST_SAMPLE);
 	m_DstPos = m_DstEnd;
+	TRACE("SrcStart=%X, SrcEnd=%X, SrcPos=%X, DstStart=%X, DstEnd=%X, DstPos=%X\n",
+		m_SrcStart, m_SrcEnd, m_SrcPos, m_DstStart, m_DstEnd, m_DstPos);
 
 	m_Flags |= CopyExpandFile;
 	return TRUE;
@@ -896,12 +900,12 @@ BOOL CResizeContext::ShrinkProc()
 		{
 			// first, shrink the file itself
 			if (FALSE == m_DstFile.SetFileLengthSamples(
-														m_DstFile.SampleToPosition(m_DstEnd)))
+														m_DstFile.PositionToSample(m_DstEnd)))
 			{
 				m_Flags |= OperationContextFinished;
 				return FALSE;
 			}
-			pDocument->FileChanged(m_DstFile, 0, 0, m_DstFile.NumberOfSamples());
+			pDocument->SoundChanged(m_DstFile.GetFileID(), 0, 0, m_DstFile.NumberOfSamples());
 		}
 		m_Flags |= OperationContextFinished;
 		return TRUE;
@@ -1282,9 +1286,11 @@ CString CCopyContext::GetStatusString()
 BOOL CCopyContext::InitCopy(CWaveFile & DstFile,
 							SAMPLE_INDEX DstStartSample, NUMBER_OF_SAMPLES DstLength, CHANNEL_MASK DstChannel,
 							CWaveFile & SrcFile,
-							SAMPLE_INDEX SrcStartSample, NUMBER_OF_SAMPLES SrcLength, CHANNEL_MASK SrcChannel
-							)
+							SAMPLE_INDEX SrcStartSample, NUMBER_OF_SAMPLES SrcLength, CHANNEL_MASK SrcChannel)
 {
+	TRACE("CCopyContext::InitCopy : SrcStart=%d, SrcLength=%d, SrcChan=%x, DstStart=%d, DstLength=%d, DstChan=%x\n",
+		SrcStartSample, SrcLength, SrcChannel, DstStartSample, DstLength, DstChannel);
+
 	m_DstFile = DstFile;
 	m_SrcFile = SrcFile;
 
@@ -1299,6 +1305,9 @@ BOOL CCopyContext::InitCopy(CWaveFile & DstFile,
 
 	m_DstEnd = m_DstFile.SampleToPosition(DstStartSample + SrcLength);
 	m_DstChan = DstChannel;
+
+	TRACE("SrcStart=%X, SrcEnd=%X, SrcPos=%X, DstStart=%X, DstEnd=%X, DstPos=%X\n",
+		m_SrcStart, m_SrcEnd, m_SrcPos, m_DstStart, m_DstEnd, m_DstPos);
 
 	if (SrcLength > DstLength)
 	{
