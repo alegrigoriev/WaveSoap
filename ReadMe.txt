@@ -1,6 +1,5 @@
 Known problems and tasks:
 
-Add low/high frequency and notch filters functions
 Save peak info for compressed files, too
 Add "phase corrected" stereo to mono conversion
 Test "reload compressed file" dialogs
@@ -77,6 +76,7 @@ No status bar in WinME
 FFT doesn't invaludate some areas
 
 Done:
+Add low/high frequency and notch filters functions
 Add "Swap Channels" function
 Make "CRC" field for the statistics
 Add Checksum field for the statistics
