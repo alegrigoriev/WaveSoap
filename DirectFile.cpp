@@ -1488,7 +1488,7 @@ long CDirectFileCache::GetDataBuffer(File * pFile,
 
 	// BUGBUG: If the buffer is requested for write only, it may be re-read!. We don't want
 	// that, unless we have file locking (which may be prone to deadlocks)
-	// For now, we ingore such flag.
+	// For now, we ignore such flag.
 	flags &= ~CDirectFile::GetBufferWriteOnly;
 
 	long BytesRequested = 0;
