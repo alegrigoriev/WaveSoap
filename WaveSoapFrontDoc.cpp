@@ -17,6 +17,7 @@
 #include "ReopenConvertedFileDlg.h"
 #include "EqualizerDialog.h"
 #include "RawFileParametersDlg.h"
+#include "FilterDialog.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -153,6 +154,8 @@ BEGIN_MESSAGE_MAP(CWaveSoapFrontDoc, CDocument)
 	ON_UPDATE_COMMAND_UI(ID_PROCESS_EQUALIZER, OnUpdateProcessEqualizer)
 	ON_COMMAND(ID_PROCESS_SWAPCHANNELS, OnProcessSwapchannels)
 	ON_UPDATE_COMMAND_UI(ID_PROCESS_SWAPCHANNELS, OnUpdateProcessSwapchannels)
+	ON_COMMAND(ID_PROCESS_FILTER, OnProcessFilter)
+	ON_UPDATE_COMMAND_UI(ID_PROCESS_FILTER, OnUpdateProcessFilter)
 	//}}AFX_MSG_MAP
 END_MESSAGE_MAP()
 
@@ -5759,4 +5762,20 @@ void CWaveSoapFrontDoc::OnUpdateProcessSwapchannels(CCmdUI* pCmdUI)
 					&& ! m_OperationInProgress
 					&& m_WavFile.IsOpen() && WaveFileSamples() > 0
 					&& m_WavFile.Channels() == 2);
+}
+
+void CWaveSoapFrontDoc::OnProcessFilter()
+{
+	CFilterDialog dlg;
+	if (IDOK != dlg.DoModal())
+	{
+		return;
+	}
+}
+
+void CWaveSoapFrontDoc::OnUpdateProcessFilter(CCmdUI* pCmdUI)
+{
+	pCmdUI->Enable( ! m_bReadOnly
+					&& ! m_OperationInProgress
+					&& m_WavFile.IsOpen() && WaveFileSamples() > 0);
 }

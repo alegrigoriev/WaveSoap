@@ -19,7 +19,8 @@ public:
 // Dialog Data
 	//{{AFX_DATA(CFilterDialog)
 	enum { IDD = IDD_DIALOG_FILTER };
-	// NOTE: the ClassWizard will add data members here
+	BOOL	m_bUndo;
+	BOOL	m_bZeroPhase;
 	//}}AFX_DATA
 
 
@@ -35,7 +36,11 @@ protected:
 
 	// Generated message map functions
 	//{{AFX_MSG(CFilterDialog)
-	// NOTE: the ClassWizard will add member functions here
+	afx_msg void OnButtonLoad();
+	afx_msg void OnButtonResetBands();
+	afx_msg void OnButtonSaveAs();
+	afx_msg void OnButtonSelection();
+	afx_msg void OnCheckZeroPhase();
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 };
