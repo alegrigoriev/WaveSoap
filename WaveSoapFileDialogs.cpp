@@ -6,6 +6,7 @@
 #include "OperationDialogs2.h"
 #include <Dlgs.h>
 #include "BladeMP3EncDLL.h"
+#include "CoInitHelper.h"
 
 BOOL AFXAPI AfxComparePath(LPCTSTR lpszPath1, LPCTSTR lpszPath2);
 
@@ -69,8 +70,8 @@ void CWaveSoapFileOpenDialog::ShowWmaFileInfo(CDirectFile & File)
 		return;
 	}
 
-	HRESULT CoInitResult = CoInitializeEx(NULL, COINIT_APARTMENTTHREADED);
-	TRACE("CWaveSoapFileOpenDialog::ShowWmaFileInfo CoInitializeEx=%x\n", CoInitResult);
+	CoInitHelper CoInit(COINIT_APARTMENTTHREADED);
+
 	CWmaDecoder WmaFile;
 	if (WmaFile.Init()
 		&& SUCCEEDED(WmaFile.Open(File)))
@@ -86,7 +87,7 @@ void CWaveSoapFileOpenDialog::ShowWmaFileInfo(CDirectFile & File)
 		{
 			pWnd->EnableWindow(FALSE);
 		}
-		if (WmaFile.m_SrcWf.FormatTag() == WAVE_FORMAT_MPEGLAYER3)
+		if (WmaFile.GetSrcFormat().FormatTag() == WAVE_FORMAT_MPEGLAYER3)
 		{
 			SetDlgItemText(IDC_STATIC_FILE_TYPE, _T("MP3 Audio File"));
 			SetDlgItemText(IDC_STATIC_FILE_FORMAT, _T("MPEG Layer III"));
@@ -99,14 +100,14 @@ void CWaveSoapFileOpenDialog::ShowWmaFileInfo(CDirectFile & File)
 		// length
 		CString s;
 		s.Format(_T("%s (%s)"),
-				LPCTSTR(TimeToHhMmSs(MulDiv(WmaFile.m_CurrentSamples, 1000,
-											WmaFile.m_SrcWf.SampleRate()))),
-				LPCTSTR(LtoaCS(WmaFile.m_CurrentSamples)));
+				LPCTSTR(TimeToHhMmSs(MulDiv(WmaFile.GetTotalSamples(), 1000,
+											WmaFile.GetSrcFormat().SampleRate()))),
+				LPCTSTR(LtoaCS(WmaFile.GetTotalSamples())));
 		SetDlgItemText(IDC_STATIC_FILE_LENGTH, s);
 		// num of channels, bitrate, sampling rate
-		s.Format(_T("%s bps, %s Hz, %s"), LPCTSTR(LtoaCS(WmaFile.m_Bitrate)),
-				LPCTSTR(LtoaCS(WmaFile.m_SrcWf.SampleRate())),
-				1 == WmaFile.m_SrcWf.NumChannels() ? _T("Mono") : _T("Stereo"));
+		s.Format(_T("%s bps, %s Hz, %s"), LPCTSTR(LtoaCS(WmaFile.GetBitRate())),
+				LPCTSTR(LtoaCS(WmaFile.GetSrcFormat().SampleRate())),
+				1 == WmaFile.GetSrcFormat().NumChannels() ? _T("Mono") : _T("Stereo"));
 		SetDlgItemText(IDC_STATIC_ATTRIBUTES, s);
 	}
 	else
@@ -114,10 +115,6 @@ void CWaveSoapFileOpenDialog::ShowWmaFileInfo(CDirectFile & File)
 		ClearFileInfoDisplay();
 	}
 
-	if (SUCCEEDED(CoInitResult))
-	{
-		CoUninitialize();
-	}
 }
 
 void CWaveSoapFileOpenDialog::OnCheckReadOnly()
