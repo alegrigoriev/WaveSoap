@@ -1,6 +1,12 @@
 TODO tasks:
 
-Make Undo/redo save the selection and regions
+Ctrl+Arrow goes to next marker
+If metadata doesn't come as the very last chunk of the file, copy the original file to 
+ a file where it does (for non-compressed file, that is)
+Implement Marker/Region dialog
+When dragging a marker, keep the same position relative to click position
+
+Unnamed region name is composed from its boundaries
 Add support for markers and regions: save on copy and with undo, move and delete on Cut, move on Paste
 Double click selects between two markers
 Delete/Insert operations can auto add markers and regions
@@ -70,6 +76,7 @@ Find which alignment better for edit box labels: left or right
 
 Problems:
 
+Vertical scroll in the wave view makes marker labels blinking
 If a clipboard operation gets stopped, need to cancel all the operations that depend on it.
 Expression evaluation selection longer than file length doesn't update file length
 Save As adds "Copy of" for direct file
@@ -85,6 +92,7 @@ Windows2000 is trying to zero the allocated file
 Log Off query doesn't close the active dialog. Recursion is possible. Make sure to check after Cancel
 
 Fixed:
+Lines duplicated when scrolling the horizontal ruler
 If delete (shrink) is done with one channel of two, fill the rest with zeros
 Playback cursor not shown properly
 Saving short file with zeros as u-law doesn't save anything
@@ -145,6 +153,14 @@ Save As dialog is not centered first time (comdlg problem?)
 ??? When time/seconds format is set for status bar, MM:SS is actually shown
 
 Done:
+Make Undo/redo save the selection and regions
+Handle markers/regions in the hor. ruler
+Limit marker/region movement to the file limits
+Don't change cursor to a hand for a read-only file
+Add different context menu for the markers/regions - Select/Go To, Delete, Set To Current (marker), Split (region)
+Change cursor to an arrow in the lower part of time ruler.
+Implement SaveMetaData
+Draw markers/regions on the view
 Load operation prompts from resources
 Fix all operation status prompts
 Made "percent" through file size

@@ -9,6 +9,8 @@
 #include "WaveSoapFrontDoc.h"
 #include "GdiObjectSave.h"
 #include "TimeToStr.h"
+#include ".\timerulerview.h"
+#include "resource.h"       // main symbols
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -40,7 +42,9 @@ CTimeRulerView::CTimeRulerView()
 	, m_DraggedMarkerHitTest(0)
 	, m_AutoscrollTimerID(0)
 	, m_MarkerHeight(10)
+	, m_PopupMenuHitTest(0)
 {
+	memzero(m_PopupMenuHit);
 }
 
 CTimeRulerView::~CTimeRulerView()
@@ -57,6 +61,7 @@ BEGIN_MESSAGE_MAP(CTimeRulerView, CHorizontalRuler)
 	ON_COMMAND(IDC_VIEW_RULER_SECONDS, OnViewRulerSeconds)
 	ON_UPDATE_COMMAND_UI(IDC_VIEW_RULER_SECONDS, OnUpdateViewRulerSeconds)
 	//}}AFX_MSG_MAP
+	ON_WM_CONTEXTMENU()
 	ON_WM_SETCURSOR()
 	ON_NOTIFY_RANGE(TTN_NEEDTEXTW, 0, 0xFFFF, OnToolTipText)
 	ON_NOTIFY_RANGE(TTN_NEEDTEXTA, 0, 0xFFFF, OnToolTipText)
@@ -66,6 +71,14 @@ BEGIN_MESSAGE_MAP(CTimeRulerView, CHorizontalRuler)
 	ON_WM_MOUSEMOVE()
 	ON_WM_CAPTURECHANGED()
 	ON_WM_TIMER()
+	ON_COMMAND(IDC_GOTO_MARKER, OnGotoMarker)
+	ON_COMMAND(IDC_DELETE_MARKER, OnDeleteMarker)
+	ON_UPDATE_COMMAND_UI(IDC_DELETE_MARKER, OnUpdateDeleteMarker)
+	ON_COMMAND(IDC_MOVE_MARKER_TO_CURRENT, OnMoveMarkerToCurrent)
+	ON_UPDATE_COMMAND_UI(IDC_MOVE_MARKER_TO_CURRENT, OnUpdateMoveMarkerToCurrent)
+	ON_COMMAND(IDC_EDIT_MARKER, OnEditMarker)
+	ON_UPDATE_COMMAND_UI(IDC_EDIT_MARKER, OnUpdateEditMarker)
+	ON_COMMAND(IDC_SELECT_REGION, OnSelectRegion)
 END_MESSAGE_MAP()
 
 /////////////////////////////////////////////////////////////////////////////
@@ -580,7 +593,8 @@ int CTimeRulerView::CalculateHeight()
 
 unsigned CTimeRulerView::HitTest(POINT p, RECT * pHitRect) const
 {
-	unsigned result = 0;
+	unsigned result = HitTestNone;
+	CWaveSoapFrontDoc * pDoc = GetDocument();
 
 	CWindowDC dc(GetDesktopWindow());
 	CGdiObjectSave OldFont(dc, dc.SelectStockObject(ANSI_VAR_FONT));
@@ -588,10 +602,12 @@ unsigned CTimeRulerView::HitTest(POINT p, RECT * pHitRect) const
 	CRect cr;
 	GetClientRect(cr);
 
-	CWaveFile::InstanceDataWav * pInst = GetDocument()->m_WavFile.GetInstanceData();
+	CWaveFile::InstanceDataWav * pInst = pDoc->m_WavFile.GetInstanceData();
 
 	if (p.y >= cr.bottom - m_MarkerHeight)
 	{
+		result = HitTestLowerHalf;
+
 		int n;
 		CuePointVectorIterator i;
 
@@ -700,7 +716,14 @@ BOOL CTimeRulerView::OnSetCursor(CWnd* pWnd, UINT nHitTest, UINT message)
 		unsigned hit = HitTest(p);
 
 		//
-		if (hit & HitTestRegionBegin)
+		if (0 != (hit & HitTestLowerHalf)
+			|| (GetDocument()->IsReadOnly()
+				&& 0 != (hit & (HitTestRegionBegin | HitTestRegionEnd | HitTestMarker))))
+		{
+			SetCursor(AfxGetApp()->LoadStandardCursor(IDC_ARROW));
+			return TRUE;
+		}
+		else if (hit & HitTestRegionBegin)
 		{
 			SetCursor(AfxGetApp()->LoadStandardCursor(IDC_HAND));
 			return TRUE;
@@ -730,8 +753,9 @@ void CTimeRulerView::OnInitialUpdate()
 INT_PTR CTimeRulerView::OnToolHitTest(CPoint point, TOOLINFO* pTI) const
 {
 	RECT r;
-	unsigned hit = HitTest(point, & r);
-	if (HitTestNone == hit)
+	unsigned const hit = HitTest(point, & r);
+	if (HitTestNone == hit
+		|| HitTestLowerHalf == hit)
 	{
 		return -1;
 	}
@@ -791,15 +815,19 @@ void CTimeRulerView::OnLButtonDblClk(UINT nFlags, CPoint point)
 {
 	// TODO: Add your message handler code here and/or call default
 	// if the marker or region is double-clicked, open the marker editing dialog
-
+	// if double clicked between markers, select
 	BaseClass::OnLButtonDblClk(nFlags, point);
 }
 
 void CTimeRulerView::OnLButtonDown(UINT nFlags, CPoint point)
 {
-	// TODO: Add your message handler code here and/or call default
 	// if clicked on a marker, wait for marker drag
 	m_DraggedMarkerHitTest = HitTest(point);
+	if (GetDocument()->IsReadOnly()
+		|| HitTestLowerHalf == m_DraggedMarkerHitTest)
+	{
+		m_DraggedMarkerHitTest = 0;
+	}
 
 	BaseClass::OnLButtonDown(nFlags, point);
 }
@@ -835,7 +863,7 @@ void CTimeRulerView::EndMarkerDrag()
 		info.Flags = info.CommitChanges | info.CuePointIndex;
 		info.MarkerCueID = m_DraggedMarkerHitTest & HitTestCueIndexMask;
 
-		pDoc->ChangeWaveMarker( & info);
+		pDoc->ChangeWaveMarker( & info);    // also calls pDoc->EndMarkerChange
 	}
 
 	m_DraggedMarkerHitTest = 0;
@@ -846,8 +874,7 @@ void CTimeRulerView::OnMouseMove(UINT nFlags, CPoint point)
 	CWaveSoapFrontDoc * pDoc = GetDocument();
 	// if a marker is being dragged, move it
 	// if it begun to drag, store UNDO
-	if (0 == m_DraggedMarkerHitTest
-		|| pDoc->IsReadOnly())
+	if (0 == m_DraggedMarkerHitTest)
 	{
 		BaseClass::OnMouseMove(nFlags, point);
 		return;
@@ -906,6 +933,10 @@ void CTimeRulerView::OnMouseMove(UINT nFlags, CPoint point)
 		}
 		// do drag
 		SAMPLE_INDEX NewPosition = SAMPLE_INDEX(WindowToWorldX(point.x));
+		if (NewPosition > pDoc->WaveFileSamples())
+		{
+			return;
+		}
 
 		WAVEREGIONINFO info = {0};
 
@@ -1120,3 +1151,203 @@ void CTimeRulerView::InvalidateMarkerRegion(WAVEREGIONINFO const * pInfo)
 	}
 }
 
+void CTimeRulerView::OnContextMenu(CWnd* /*pWnd*/, CPoint point)
+{
+	CPoint pc(point);
+	ScreenToClient( & pc);
+
+	m_PopupMenuHitTest = HitTest(pc);
+
+	m_PopupMenuHit.Flags = m_PopupMenuHit.CuePointIndex | m_PopupMenuHit.ChangeAll;
+
+	m_PopupMenuHit.MarkerCueID = m_PopupMenuHitTest & HitTestCueIndexMask;
+
+	if ( ! GetDocument()->m_WavFile.GetWaveMarker( & m_PopupMenuHit))
+	{
+		m_PopupMenuHit.Flags = 0;
+	}
+
+	// make sure window is active
+	GetParentFrame()->ActivateFrame();
+
+	CMenu menu;
+	CMenu* pPopup = GetPopupMenu( & menu, point);
+	if(pPopup != NULL)
+	{
+		int Command = pPopup->TrackPopupMenu(
+											TPM_LEFTALIGN | TPM_RIGHTBUTTON | TPM_RETURNCMD,
+											point.x, point.y,
+											AfxGetMainWnd()); // use main window for cmds
+
+		if (0 != Command)
+		{
+			AfxGetMainWnd()->SendMessage(WM_COMMAND, Command & 0xFFFF, 0);
+		}
+	}
+
+	m_PopupMenuHitTest = 0;
+	m_PopupMenuHit.Flags = 0;
+}
+
+UINT CTimeRulerView::GetPopupMenuID(CPoint point)
+{
+	// point is in screen coordinates
+	ScreenToClient( & point);
+	unsigned hit = HitTest(point);
+
+	if (hit & HitTestMarker)
+	{
+		return IDR_MENU_TIME_RULER_MARKER;
+	}
+	else if (hit & (HitTestRegionBegin | HitTestRegionEnd))
+	{
+		return IDR_MENU_TIME_RULER_REGION;
+	}
+	else
+	{
+		return IDR_MENU_TIME_RULER;
+	}
+}
+
+void CTimeRulerView::OnGotoMarker()
+{
+	SAMPLE_INDEX sample;
+	CWaveSoapFrontDoc * pDoc = GetDocument();
+	if (m_PopupMenuHitTest & (HitTestRegionBegin | HitTestMarker))
+	{
+		sample = m_PopupMenuHit.Sample;
+	}
+	else if (m_PopupMenuHitTest & HitTestRegionEnd)
+	{
+		sample = m_PopupMenuHit.Sample + m_PopupMenuHit.Length;
+	}
+	else
+	{
+		return;
+	}
+
+	pDoc->SetSelection(sample, sample, pDoc->m_SelectedChannel, sample, 0);
+}
+
+void CTimeRulerView::OnDeleteMarker()
+{
+	if (m_PopupMenuHitTest & (HitTestRegionBegin | HitTestRegionEnd | HitTestMarker))
+	{
+		CWaveSoapFrontDoc * pDoc = GetDocument();
+		m_PopupMenuHit.Flags |= m_PopupMenuHit.Delete | m_PopupMenuHit.CommitChanges;
+
+		pDoc->BeginMarkerChange(CWaveFile::InstanceDataWav::MetadataCopyAllCueData);
+		pDoc->ChangeWaveMarker( & m_PopupMenuHit);
+	}
+}
+
+void CTimeRulerView::OnUpdateDeleteMarker(CCmdUI *pCmdUI)
+{
+	pCmdUI->Enable(0 != (m_PopupMenuHitTest & (HitTestRegionBegin | HitTestRegionEnd | HitTestMarker))
+					&& ! GetDocument()->IsReadOnly());
+}
+
+void CTimeRulerView::OnMoveMarkerToCurrent()
+{
+	CWaveSoapFrontDoc * pDoc = GetDocument();
+
+	unsigned MarkerChangeMask = CWaveFile::InstanceDataWav::MetadataCopyCue;
+
+	if (m_PopupMenuHitTest & (HitTestMarker | HitTestRegionBegin))
+	{
+		m_PopupMenuHit.Flags |= m_PopupMenuHit.ChangeSample | m_PopupMenuHit.CommitChanges;
+
+		if (m_PopupMenuHitTest & HitTestRegionBegin)
+		{
+			MarkerChangeMask = CWaveFile::InstanceDataWav::MetadataCopyCue
+								| CWaveFile::InstanceDataWav::MetadataCopyLtxt;
+
+			m_PopupMenuHit.Flags |= m_PopupMenuHit.ChangeLength;
+
+			if (pDoc->m_CaretPosition >= SAMPLE_INDEX(m_PopupMenuHit.Sample + m_PopupMenuHit.Length))
+			{
+				return;
+			}
+
+			m_PopupMenuHit.Length = m_PopupMenuHit.Length + m_PopupMenuHit.Sample - pDoc->m_CaretPosition;
+		}
+		m_PopupMenuHit.Sample = pDoc->m_CaretPosition;
+	}
+	else if (m_PopupMenuHitTest & HitTestRegionEnd)
+	{
+		m_PopupMenuHit.Flags |= m_PopupMenuHit.ChangeLength | m_PopupMenuHit.CommitChanges;
+		MarkerChangeMask = CWaveFile::InstanceDataWav::MetadataCopyLtxt;
+
+		if (pDoc->m_CaretPosition <= SAMPLE_INDEX(m_PopupMenuHit.Sample))
+		{
+			return;
+		}
+
+		m_PopupMenuHit.Length = pDoc->m_CaretPosition - m_PopupMenuHit.Sample;
+	}
+	else
+	{
+		return;
+	}
+	pDoc->BeginMarkerChange(MarkerChangeMask);
+	pDoc->ChangeWaveMarker( & m_PopupMenuHit);
+}
+
+void CTimeRulerView::OnUpdateMoveMarkerToCurrent(CCmdUI *pCmdUI)
+{
+	BOOL bEnable = FALSE;
+	CWaveSoapFrontDoc * pDoc = GetDocument();
+
+	if ( ! pDoc->IsReadOnly())
+	{
+		if (m_PopupMenuHitTest & HitTestMarker)
+		{
+			bEnable = TRUE;
+		}
+		else if (m_PopupMenuHitTest & HitTestRegionBegin)
+		{
+			bEnable = pDoc->m_CaretPosition < SAMPLE_INDEX(m_PopupMenuHit.Sample + m_PopupMenuHit.Length);
+		}
+		else if (m_PopupMenuHitTest & HitTestRegionEnd)
+		{
+			bEnable = pDoc->m_CaretPosition > SAMPLE_INDEX(m_PopupMenuHit.Sample);
+		}
+	}
+	pCmdUI->Enable(bEnable);
+}
+
+void CTimeRulerView::OnEditMarker()
+{
+	// TODO: Add your command handler code here
+}
+
+void CTimeRulerView::OnUpdateEditMarker(CCmdUI *pCmdUI)
+{
+	// TODO: Add your command update UI handler code here
+	pCmdUI->Enable(0 != (m_PopupMenuHitTest & (HitTestRegionBegin | HitTestRegionEnd | HitTestMarker))
+					&& ! GetDocument()->IsReadOnly());
+}
+
+void CTimeRulerView::OnSelectRegion()
+{
+	// TODO: Add your command handler code here
+	SAMPLE_INDEX Caret;
+
+	CWaveSoapFrontDoc * pDoc = GetDocument();
+
+	if (m_PopupMenuHitTest & HitTestRegionBegin)
+	{
+		Caret = m_PopupMenuHit.Sample;
+	}
+	else if (m_PopupMenuHitTest & HitTestRegionEnd)
+	{
+		Caret = m_PopupMenuHit.Sample + m_PopupMenuHit.Length;
+	}
+	else
+	{
+		return;
+	}
+
+	pDoc->SetSelection(m_PopupMenuHit.Sample, m_PopupMenuHit.Sample + m_PopupMenuHit.Length,
+						pDoc->m_SelectedChannel, Caret, 0);
+}
