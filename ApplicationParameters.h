@@ -17,6 +17,10 @@ struct UndoRedoParameters
 
 struct FileParameters
 {
+	WAVEFORMATEX RawFileFormat;
+	BOOL RawFileBigEnded;
+	unsigned RawFileHeaderLength;
+	unsigned RawFileTrailerLength;
 };
 
 struct SoundDeviceParameters
@@ -30,5 +34,14 @@ class PersistentUndoRedo : protected UndoRedoParameters
 public:
 	static UndoRedoParameters * GetData();
 	static void SaveData(const UndoRedoParameters * pParams);
+	static void LoadData(class CApplicationProfile & Profile);
+};
+
+class PersistentFileParameters : protected FileParameters
+{
+	PersistentFileParameters();  // private
+public:
+	static FileParameters * GetData();
+	static void SaveData(const FileParameters * pParams);
 	static void LoadData(class CApplicationProfile & Profile);
 };
