@@ -4271,16 +4271,15 @@ void CWaveSoapFrontDoc::OnEditGoto()
 		return;
 	}
 
-	CGotoDialog dlg(m_CaretPosition, WaveFileSamples(),
-					WaveFormat(), GetApp()->m_SoundTimeFormat);
+	CGotoDialog dlg(m_CaretPosition, m_WavFile, GetApp()->m_SoundTimeFormat);
 
 	if (IDOK != dlg.DoModal())
 	{
 		return;
 	}
-	GetApp()->m_SoundTimeFormat = dlg.m_TimeFormat;
-	SetSelection(dlg.m_Position, dlg.m_Position,
-				m_SelectedChannel, dlg.m_Position, SetSelection_MoveCaretToCenter);
+	//GetApp()->m_SoundTimeFormat = dlg.m_TimeFormat;
+	SetSelection(dlg.GetSelectedPosition(), dlg.GetSelectedPosition(),
+				m_SelectedChannel, dlg.GetSelectedPosition(), SetSelection_MoveCaretToCenter);
 }
 
 void CWaveSoapFrontDoc::OnUpdateProcessInvert(CCmdUI* pCmdUI)
@@ -4374,20 +4373,13 @@ void CWaveSoapFrontDoc::OnProcessSynthesisExpressionEvaluation()
 		channel = ALL_CHANNELS;
 	}
 
-	CExpressionEvaluationDialog dlg;
-	CThisApp * pApp = GetApp();
-	dlg.m_bUndo = UndoEnabled();
-	dlg.m_Start = start;
-	dlg.m_End = end;
-	dlg.m_CaretPosition = m_CaretPosition;
-	dlg.m_Chan = channel;
-	dlg.m_pWf = WaveFormat();
-	dlg.m_bLockChannels = m_bChannelsLocked;
-	dlg.m_TimeFormat = pApp->m_SoundTimeFormat;
-	dlg.m_FileLength = WaveFileSamples();
+	CExpressionEvaluationDialog dlg(start, end, m_CaretPosition, channel,
+									m_WavFile, ChannelsLocked(), UndoEnabled(), GetApp()->m_SoundTimeFormat);
+	//CThisApp * pApp = GetApp();
 
 	CExpressionEvaluationContext * pContext = new CExpressionEvaluationContext(this, _T("Calculating the waveform..."),
 												_T("Expression evaluation"));
+
 	dlg.m_pContext = pContext;
 	if (NULL == pContext)
 	{
@@ -4406,15 +4398,15 @@ void CWaveSoapFrontDoc::OnProcessSynthesisExpressionEvaluation()
 	pContext->m_dFrequencyArgument2 = dlg.m_OperandsTabDlg.m_dFrequency2;
 	pContext->m_dFrequencyArgument3 = dlg.m_OperandsTabDlg.m_dFrequency3;
 
-	if ( ! dlg.m_pContext->InitDestination(m_WavFile, dlg.m_Start, dlg.m_End,
-											dlg.m_Chan, dlg.m_bUndo))
+	if ( ! dlg.m_pContext->InitDestination(m_WavFile,
+											dlg.GetStart(), dlg.GetEnd(), dlg.GetChannel(), dlg.UndoEnabled()))
 	{
 		delete pContext;
 		return;
 	}
 
 	dlg.m_pContext->Execute();
-	SetModifiedFlag(TRUE, dlg.m_bUndo);
+	SetModifiedFlag(TRUE, dlg.UndoEnabled());
 }
 
 void CWaveSoapFrontDoc::OnUpdateViewStatusHhmmss(CCmdUI* pCmdUI)
@@ -4792,19 +4784,9 @@ void CWaveSoapFrontDoc::OnProcessDoUlf()
 		channel = ALL_CHANNELS;
 	}
 
-	CLowFrequencySuppressDialog dlg;
-	CThisApp * pApp = GetApp();
+	CLowFrequencySuppressDialog dlg(start, end, m_CaretPosition, channel,
+									m_WavFile, ChannelsLocked(), UndoEnabled(), GetApp()->m_SoundTimeFormat);
 
-	dlg.m_bUndo = UndoEnabled();
-
-	dlg.m_Start = start;
-	dlg.m_End = end;
-	dlg.m_CaretPosition = m_CaretPosition;
-	dlg.m_Chan = channel;
-	dlg.m_pWf = WaveFormat();
-	dlg.m_bLockChannels = m_bChannelsLocked;
-	dlg.m_TimeFormat = pApp->m_SoundTimeFormat;
-	dlg.m_FileLength = WaveFileSamples();
 	if (IDOK != dlg.DoModal())
 	{
 		return;
@@ -4817,8 +4799,8 @@ void CWaveSoapFrontDoc::OnProcessDoUlf()
 		NotEnoughMemoryMessageBox();
 		return;
 	}
-	if ( ! pContext->InitDestination(m_WavFile, dlg.m_Start,
-									dlg.m_End, dlg.m_Chan, dlg.m_bUndo))
+	if ( ! pContext->InitDestination(m_WavFile, dlg.GetStart(),
+									dlg.GetEnd(), dlg.GetChannel(), dlg.UndoEnabled()))
 	{
 		delete pContext;
 		return;
@@ -4828,7 +4810,7 @@ void CWaveSoapFrontDoc::OnProcessDoUlf()
 	pContext->m_SrcPos = pContext->m_SrcStart;
 	pContext->m_SrcEnd = pContext->m_DstEnd;
 
-	pContext->m_SrcChan = dlg.m_Chan;
+	pContext->m_SrcChan = dlg.GetChannel();
 
 	CHumRemoval * pUlfProc = new CHumRemoval;
 	if (NULL == pUlfProc)
@@ -4837,8 +4819,10 @@ void CWaveSoapFrontDoc::OnProcessDoUlf()
 		NotEnoughMemoryMessageBox();
 		return;
 	}
+
 	pUlfProc->SetAndValidateWaveformat(WaveFormat());
-	pUlfProc->m_ChannelsToProcess = dlg.m_Chan;
+	pUlfProc->m_ChannelsToProcess = dlg.GetChannel();
+
 	pUlfProc->EnableDifferentialSuppression(dlg.m_DifferentialModeSuppress);
 	pUlfProc->EnableLowFrequencySuppression(dlg.m_LowFrequencySuppress);
 	pUlfProc->SetDifferentialCutoff(dlg.m_dDiffNoiseRange);
@@ -4847,7 +4831,7 @@ void CWaveSoapFrontDoc::OnProcessDoUlf()
 	pContext->AddWaveProc(pUlfProc);
 
 	pContext->Execute();
-	SetModifiedFlag(TRUE, dlg.m_bUndo);
+	SetModifiedFlag(TRUE, dlg.UndoEnabled());
 }
 
 void CWaveSoapFrontDoc::OnUpdateProcessDoDeclicking(CCmdUI* pCmdUI)
