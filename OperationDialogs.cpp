@@ -126,6 +126,9 @@ CVolumeChangeDialog::CVolumeChangeDialog(SAMPLE_INDEX begin, SAMPLE_INDEX end, S
 	m_Profile.AddItem(_T("Settings"), _T("VolumeLeftPercent"), m_dVolumeLeftPercent, 100., 1., 10000.);
 	m_Profile.AddItem(_T("Settings"), _T("VolumeRightDb"), m_dVolumeRightDb, 0., -40., 40.);
 	m_Profile.AddItem(_T("Settings"), _T("VolumeRightPercent"), m_dVolumeRightPercent, 100., 1., 10000.);
+
+	m_eVolumeLeft.SetPrecision(2);
+	m_eVolumeRight.SetPrecision(2);
 }
 
 double CVolumeChangeDialog::GetLeftVolume()
@@ -1335,6 +1338,8 @@ CNormalizeSoundDialog::CNormalizeSoundDialog(SAMPLE_INDEX begin,
 	m_Profile.AddItem(_T("Settings"), _T("NormalizeDialogDbPercents"), m_DbPercent, 0, 0, 1);
 	m_Profile.AddItem(_T("Settings"), _T("NormalizeLevelDb"), m_dLevelDb, -6., -40., 0.);
 	m_Profile.AddItem(_T("Settings"), _T("NormalizeLevelPercent"), m_dLevelPercent, 50., 1., 100.);
+
+	m_eLevel.SetPrecision(2);
 }
 
 
@@ -1579,7 +1584,9 @@ CResampleDialog::CResampleDialog(BOOL bUndoEnabled,
 	m_Profile.AddItem(_T("Settings"), _T("ResampleChangeRateOnly"), m_bChangeRateOnly, 0, 0, 1);
 	m_Profile.AddItem(_T("Settings"), _T("ResampleChangeSamplingRate"), m_bChangeSamplingRate, 1, 0, 1);
 	m_Profile.AddItem(_T("Settings"), _T("ResampleTempoChange"), m_TempoChange, 100., 25., 400.);
-	m_Profile.AddItem(_T("Settings"), _T("ResampleNewSampleRate"), m_NewSampleRate, 44100, 11025, 176400);
+	m_Profile.AddItem(_T("Settings"), _T("ResampleNewSampleRate"), m_NewSampleRate, 44100, 150, 1000000);
+
+	m_EditTempo.SetPrecision(3);
 }
 
 
@@ -1752,8 +1759,7 @@ CLowFrequencySuppressDialog::CLowFrequencySuppressDialog(
 														int TimeFormat,
 														CWnd* pParent /*=NULL*/)
 	: BaseClass(begin, end, caret, Channels, File,
-				TimeFormat,
-				IDD, pParent)
+				TimeFormat, IDD, pParent)
 	, m_DifferentialModeSuppress(TRUE)
 	, m_LowFrequencySuppress(TRUE)
 	, m_dLfNoiseRange(20.)
@@ -1768,6 +1774,8 @@ CLowFrequencySuppressDialog::CLowFrequencySuppressDialog(
 	m_Profile.AddBoolItem(_T("Settings"), _T("SuppressDifferential"), m_DifferentialModeSuppress, TRUE);
 	m_Profile.AddBoolItem(_T("Settings"), _T("SuppressLowFrequency"), m_LowFrequencySuppress, TRUE);
 
+	m_eLfNoiseRange.SetPrecision(2);
+	m_eDiffNoiseRange.SetPrecision(2);
 }
 
 
