@@ -686,7 +686,7 @@ BOOL CScaledScrollView::ScrollBy(double dx, double dy, BOOL bDoScroll)
 	// scroll the view or just invalidate it
 	if (fabs(dx) > (dSizeX * 0.89) || fabs(dy) > (dSizeY * 0.89))
 	{
-		TRACE("Invalidate instead of scroll\n");
+//        TRACE("Invalidate instead of scroll\n");
 		dOrgX = dNewOrgX;
 		dOrgY = dNewOrgY;
 		if (bDoScroll)
@@ -702,8 +702,8 @@ BOOL CScaledScrollView::ScrollBy(double dx, double dy, BOOL bDoScroll)
 		// move origin to integer count of device units
 		int ddevx = fround(dx * dScaleX * dLogScaleX);
 		int ddevy = fround(dy * dScaleY * dLogScaleY);
-		TRACE("Necessary window scroll=(%g, %g), new org=(%g, %g), devx=%d, devy=%d\n",
-			dx, dy, dNewOrgX, dNewOrgY, ddevx, ddevy);
+		if (0) TRACE("Necessary window scroll=(%g, %g), new org=(%g, %g), devx=%d, devy=%d\n",
+					dx, dy, dNewOrgX, dNewOrgY, ddevx, ddevy);
 
 		if (ddevx | ddevy)
 		{
