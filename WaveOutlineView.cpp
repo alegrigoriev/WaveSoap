@@ -45,10 +45,6 @@ END_MESSAGE_MAP()
 void CWaveOutlineView::OnDraw(CDC* pDC)
 {
 	CWaveSoapFrontDoc* pDoc = GetDocument();
-	if (! pDoc->m_WavFile.IsOpen())
-	{
-		return;
-	}
 	// the whole file is here
 	CRect cr;
 	GetClientRect( & cr);
@@ -56,12 +52,17 @@ void CWaveOutlineView::OnDraw(CDC* pDC)
 	if (pDC->IsKindOf(RUNTIME_CLASS(CPaintDC)))
 	{
 		CPaintDC* pPaintDC = (CPaintDC*)pDC;
+		if (pPaintDC->m_ps.fErase)
+		{
+			EraseBkgnd(pPaintDC);
+		}
 		ur = pPaintDC->m_ps.rcPaint;
 	}
 	else
 	{
 		pDC->GetClipBox( & ur);
 	}
+
 	if (ur.right > cr.right)
 	{
 		ur.right = cr.right;
@@ -72,6 +73,10 @@ void CWaveOutlineView::OnDraw(CDC* pDC)
 		return;
 	}
 
+	if (! pDoc->m_WavFile.IsOpen())
+	{
+		return;
+	}
 	long nSamples = pDoc->WaveFileSamples();
 	WavePeak * pDocPeaks = pDoc->m_pPeaks;
 	if (NULL == pDocPeaks || 0 == nSamples)
@@ -182,15 +187,6 @@ void CWaveOutlineView::OnDraw(CDC* pDC)
 	CWaveSoapFrontApp * pApp = GetApp();
 	WaveformPen.CreatePen(PS_SOLID, 0, pApp->m_WaveColor);
 	CGdiObject * pOldPen = pDC->SelectObject( & WaveformPen);
-
-	if (pDC->IsKindOf(RUNTIME_CLASS(CPaintDC)))
-	{
-		CPaintDC* pPaintDC = (CPaintDC*)pDC;
-		if (pPaintDC->m_ps.fErase)
-		{
-			EraseBkgnd(pPaintDC);
-		}
-	}
 
 	if (0 == PeakMax)
 	{
