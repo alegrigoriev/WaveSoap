@@ -4244,6 +4244,7 @@ BOOL CWaveSoapMP3Doc::OnOpenDocument(LPCTSTR lpszPathName, int flags)
 		// todo: dialog
 		return FALSE;
 	}
+#if 0
 	// read tag, if any
 	DWORD Mp3FileLength = m_OriginalWavFile.GetLength();
 	if (Mp3FileLength <= sizeof (DWORD))
@@ -4361,7 +4362,7 @@ BOOL CWaveSoapMP3Doc::OnOpenDocument(LPCTSTR lpszPathName, int flags)
 	m3wf.nBlockSize = MulDiv(1152, m3wf.wfx.nAvgBytesPerSec, m3wf.wfx.nSamplesPerSec);
 	m3wf.nFramesPerBlock = 1;
 	m3wf.nCodecDelay = 0x571;
-
+#endif
 #if 0
 	TRACE("Bitrate=%d\n", BitrateTable[BitrateIndex]);
 	ACMFORMATTAGDETAILS atd;
@@ -4384,6 +4385,7 @@ BOOL CWaveSoapMP3Doc::OnOpenDocument(LPCTSTR lpszPathName, int flags)
 #endif
 	// enum drivers, query which driver suports MP3 format, and open this driver
 	// for decode
+#if 0
 	CDecompressContext * pContext = new CDecompressContext(this, "Loading the compressed file...");
 
 	acmDriverEnum(DriverEnumProc, DWORD(pContext), 0);
@@ -4442,6 +4444,29 @@ BOOL CWaveSoapMP3Doc::OnOpenDocument(LPCTSTR lpszPathName, int flags)
 	pContext->m_DstEnd = m_WavFile.GetLength();
 	pContext->m_CurrentSamples = m_WavFile.NumberOfSamples();
 	AllocatePeakData(pContext->m_CurrentSamples);
-	QueueOperation(pContext);
-	return TRUE;
+	pContext->Execute();
+#else
+	CWmaDecodeContext * pWmaContext = new CWmaDecodeContext(this, "Loading the compressed file...");
+	BOOL res = pWmaContext->Open(m_OriginalWavFile);
+	if (res)
+	{
+		//pWmaContext->m_CurrentSamples = 0x10000;
+		m_WavFile.CreateWaveFile(NULL, pWmaContext->m_Decoder.m_pwfx,
+								ALL_CHANNELS, pWmaContext->m_CurrentSamples,  // initiali sample count
+								CreateWaveFileTempDir
+								| CreateWaveFileDeleteAfterClose
+								| CreateWaveFilePcmFormat
+								| CreateWaveFileTemp, NULL); // todo
+		pWmaContext->SetDstFile(m_WavFile);
+		AllocatePeakData(pWmaContext->m_CurrentSamples);
+		pWmaContext->Execute();
+		return TRUE;
+	}
+	else
+	{
+		delete pWmaContext;
+		return FALSE;
+	}
+#endif
+	return FALSE;
 }
