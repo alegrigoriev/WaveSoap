@@ -2393,7 +2393,7 @@ BOOL CWaveFile::SetDatachunkLength(DWORD Length)
 		return FALSE;
 	}
 
-	if ( ! SetFileLength(Length + pck->dwDataOffset + GetMetadataLength()))
+	if ( ! SetFileLength(((Length + 1) & ~1UL) + pck->dwDataOffset + ((GetMetadataLength() + 1) & ~1UL)))
 	{
 		return FALSE;
 	}
@@ -2404,7 +2404,7 @@ BOOL CWaveFile::SetDatachunkLength(DWORD Length)
 		pck->cksize = Length;
 		pck->dwFlags |= MMIO_DIRTY;
 	}
-	// TODO: make it to save metadata
+	// make it to save metadata
 	CommitChanges();
 	return TRUE;
 }
@@ -2549,8 +2549,8 @@ BOOL CWaveFile::CommitChanges()
 		if (pInst->IsChanged()
 			|| (datack->dwFlags & MMIO_DIRTY))
 		{
-			DWORD MetadataLength = SaveMetadata();
-			if ( ! SetFileLength(datack->dwDataOffset + datack->cksize + MetadataLength))
+			DWORD MetadataLength = (SaveMetadata() + 1) & ~1UL;
+			if ( ! SetFileLength(datack->dwDataOffset + (~1UL & (datack->cksize + 1)) + MetadataLength))
 			{
 				return FALSE;
 			}
