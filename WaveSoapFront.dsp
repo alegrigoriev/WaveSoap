@@ -312,10 +312,6 @@ SOURCE=.\ChildFrm.h
 # End Source File
 # Begin Source File
 
-SOURCE=.\Complex.h
-# End Source File
-# Begin Source File
-
 SOURCE=.\CustomSampleRateDlg.h
 # End Source File
 # Begin Source File
@@ -940,6 +936,34 @@ SOURCE=.\hlp\wavesoap.hhc
 # Begin Source File
 
 SOURCE=.\hlp\WaveSoapFront.hhk
+# End Source File
+# End Group
+# Begin Group "FilterMath"
+
+# PROP Default_Filter ""
+# Begin Source File
+
+SOURCE=.\FilterMath.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=.\FilterMath.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\PolyMath.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=.\PolyMath.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\PolyRatio.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=.\PolyRatio.h
 # End Source File
 # End Group
 # Begin Source File

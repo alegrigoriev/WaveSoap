@@ -1993,27 +1993,32 @@ CAPTION "Filter"
 FONT 8, "MS Sans Serif"
 BEGIN
     LTEXT           "",IDC_STATIC_RESPONSE_TEMPLATE,7,7,221,77
-    LTEXT           "&Transfer:",IDC_STATIC1,7,91,44,8
-    EDITTEXT        IDC_EDIT_BAND_GAIN,58,88,40,14,ES_AUTOHSCROLL | 
+    LTEXT           "&Transfer:",IDC_STATIC1,7,109,37,8
+    EDITTEXT        IDC_EDIT_BAND_GAIN,48,106,40,14,ES_AUTOHSCROLL | 
                     ES_WANTRETURN
-    CTEXT           "dB",IDC_STATIC2,104,90,14,8
-    LTEXT           "At &Frequency:",IDC_STATIC3,7,111,49,8
-    EDITTEXT        IDC_EDIT_FREQUENCY,58,107,40,14,ES_AUTOHSCROLL | 
+    CTEXT           "dB at",IDC_STATIC2,89,109,24,8
+    EDITTEXT        IDC_EDIT_FREQUENCY,115,106,40,14,ES_AUTOHSCROLL | 
                     ES_WANTRETURN
-    CTEXT           "Hz",IDC_STATIC4,104,109,14,8
+    CTEXT           "Hz",IDC_STATIC4,158,109,16,8
+    CONTROL         "Lowpass filter",IDC_CHECK_LOWPASS,"Button",
+                    BS_AUTOCHECKBOX | WS_TABSTOP,165,89,63,10
+    CONTROL         "Highpass filter",IDC_CHECK_HIGHPASS,"Button",
+                    BS_AUTOCHECKBOX | WS_TABSTOP,7,89,59,10
     CONTROL         "&Zero phase shift",IDC_CHECK_ZERO_PHASE,"Button",
-                    BS_AUTOCHECKBOX | WS_TABSTOP,7,125,113,10
+                    BS_AUTOCHECKBOX | WS_TABSTOP,7,125,79,10
     CONTROL         "Save &Undo",IDC_CHECK_UNDO,"Button",BS_AUTOCHECKBOX | 
-                    WS_TABSTOP,7,138,50,10
-    LTEXT           "Selection:\nChannels:",IDC_STATIC_SELECTION,7,154,184,
+                    WS_TABSTOP,7,138,55,10
+    LTEXT           "Selection:\nChannels:",IDC_STATIC_SELECTION,7,154,168,
                     25
-    PUSHBUTTON      "&Reset",IDC_BUTTON_RESET_BANDS,178,87,50,14
-    PUSHBUTTON      "Save &As...",IDC_BUTTON_SAVE_AS,178,105,50,14
-    PUSHBUTTON      "&Load...",IDC_BUTTON_LOAD,178,122,50,14
+    PUSHBUTTON      "&Reset",IDC_BUTTON_RESET_BANDS,178,107,50,14
+    PUSHBUTTON      "Save &As...",IDC_BUTTON_SAVE_AS,178,125,50,14
+    PUSHBUTTON      "&Load...",IDC_BUTTON_LOAD,178,142,50,14
     PUSHBUTTON      "&Selection...",IDC_BUTTON_SELECTION,7,187,50,14
     DEFPUSHBUTTON   "OK",IDOK,64,187,50,14
     PUSHBUTTON      "Cancel",IDCANCEL,121,187,50,14
     PUSHBUTTON      "&Help",IDHELP,178,187,50,14
+    CONTROL         "Notch filter",IDC_CHECK_STOPBAND,"Button",
+                    BS_AUTOCHECKBOX | WS_TABSTOP,91,89,56,10
 END
 
 
