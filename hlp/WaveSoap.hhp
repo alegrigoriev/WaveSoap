@@ -72,6 +72,13 @@ html\Edit\hid_edit_selection.htm
 html\Edit\hid_edit_region_marker.htm
 html\Edit\hid_edit_stop.htm
 html\Edit\hid_lock_channels.htm
+html\Edit\hid_edit_enable_undo.htm
+html\Edit\hid_edit_enable_redo.htm
+html\Edit\hid_edit_clear_undo.htm
+html\Edit\hid_edit_clear_redo.htm
+html\Edit\edit_undo_redo_options.htm
+html\Edit\hid_edit_fade_in.htm
+html\Edit\hid_edit_fade_out.htm
 
 html\View\menu_view.htm
 html\View\hid_view_status_bar.htm
@@ -131,6 +138,11 @@ html\Process\process_resample.htm
 html\Process\process_change_channels.htm
 html\Process\process_swap_channels.htm
 html\Process\process_reverse.htm
+
+html\Tools\tools_menu.htm
+html\Tools\tools_interpolate.htm
+html\Tools\tools_expression_evaluation.htm
+html\Tools\tools_preferences.htm
 
 html\File\hid_file_print.htm
 html\File\afx_hidd_print.htm
@@ -192,11 +204,14 @@ hid_edit_select_all = html\Edit\hid_edit_select_all.htm
 hid_edit_wave_region = html\Edit\hid_edit_region_marker.htm
 hid_edit_wave_marker1 = html\Edit\hid_edit_region_marker.htm
 hid_edit_marker_region = html\Edit\hid_edit_region_marker.htm
-hid_edit_more_undo_redo = html\Edit\edit_undo_redo_options.htm
 hid_edit_enable_undo = html\Edit\hid_edit_enable_undo.htm
 hid_edit_enable_redo = html\Edit\hid_edit_enable_redo.htm
 hid_edit_clear_undo = html\Edit\hid_edit_clear_undo.htm
 hid_edit_clear_redo = html\Edit\hid_edit_clear_redo.htm
+hid_edit_more_undo_redo = html\Edit\edit_undo_redo_options.htm
+
+hid_edit_fade_in = html\Edit\hid_edit_fade_in.htm
+hid_edit_fade_out = html\Edit\hid_edit_fade_out.htm
 
 hid_view_toolbar = html\View\hid_view_toolbar.htm
 hid_view_show_fft = html\View\hid_view_fft.htm
@@ -243,6 +258,10 @@ hid_process_reverse = html\Process\process_reverse.htm
 hid_fft_window_squared_sine = html\MainWindow\fft_spectrum_view.htm#window_type
 hid_fft_window_sine = html\MainWindow\fft_spectrum_view.htm#window_type
 hid_fft_window_hamming = html\MainWindow\fft_spectrum_view.htm#window_type
+
+hid_tools_interpolate = html\Tools\tools_interpolate.htm
+hid_process_synthesis_expression_evaluation = html\Tools\tools_expression_evaluation.htm
+hid_tools_options = html\Tools\tools_preferences.htm
 
 afx_hidw_toolbar = html\MainWindow\afx_hidw_toolbar.htm
 afx_hidw_status_bar = html\MainWindow\afx_hidw_status_bar.htm

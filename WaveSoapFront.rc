@@ -169,6 +169,8 @@ BEGIN
     BUTTON      ID_PROCESS_SYNTHESIS_EXPRESSION_EVALUATION
     BUTTON      ID_PROCESS_EQUALIZER
     BUTTON      ID_PROCESS_DCOFFSET
+    BUTTON      ID_EDIT_FADE_IN
+    BUTTON      ID_EDIT_FADE_OUT
 END
 
 
@@ -472,8 +474,8 @@ BEGIN
         MENUITEM "Delete\tDel",                 ID_EDIT_DELETE
         POPUP "Fade"
         BEGIN
-            MENUITEM "In",                          40154
-            MENUITEM "Out",                         40155
+            MENUITEM "In",                          ID_EDIT_FADE_IN
+            MENUITEM "Out",                         ID_EDIT_FADE_OUT
         END
         MENUITEM "&Region...\tR",               ID_EDIT_WAVE_REGION
         MENUITEM SEPARATOR
@@ -3583,8 +3585,6 @@ BEGIN
     ID_VIEW_TIME_RULER      "Toggle time ruler\nTime ruler"
     ID_VIEW_VERTICAL_RULER  "Toggle vertical ruler\nVertical ruler"
     ID_VIEW_RESCAN_PEAKS    "Scan the wave file for peaks\nRescan peaks"
-    ID_PROCESS_SYNTHESIS_EXPRESSIONEVALUATION 
-                            "Create waveform from expression\nExpression evaluation"
     ID_PROCESS_SYNTHESIS_EXPRESSION_EVALUATION 
                             "Calculate waveform based on the math expression\nExpression Evaluation"
     ID_VIEW_ZOOM_SELECTION  "Zoom to the selected area\nZoom selection"
