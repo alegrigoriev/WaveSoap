@@ -12,26 +12,9 @@
 #define puts(t) AfxMessageBox(_T(t), MB_OK | MB_ICONEXCLAMATION)
 
 #endif
-#define DB_TO_NEPER 0.115129254
+#define DB_TO_NEPER 0.23025851
 
 #include "FFT.h"
-#if 0
-void __cdecl DoFFT(const float * src, float * dst, int count)
-{
-	complex<float> * tmp = new complex<float>[count /2 + 1];
-	if (NULL == tmp)
-	{
-		ASSERT(FALSE);
-		return;
-	}
-	FastFourierTransform(const_cast<float*>(src), tmp, count);
-	for (int i = 0; i < count / 2; i++)
-	{
-		dst[i] = abs(tmp[i]);
-	}
-	delete[] tmp;
-}
-#endif
 
 template <typename T = UCHAR, unsigned s = 512>
 struct FixedRingBufferBase
@@ -890,7 +873,7 @@ NoiseReductionCore::NoiseReductionCore(int nFftOrder, int nChannels,
 		m_pNoiseFloor[i] = float(NoiseFloor * double(i) * i / (MinFrequencyBandToProcess * MinFrequencyBandToProcess));
 	}
 
-	for (; i < m_nFftOrder + 1; i++, NoiseFloor *= NoiseFloorDelta)
+	for (; i <= m_nFftOrder; i++, NoiseFloor *= NoiseFloorDelta)
 	{
 		m_pNoiseFloor[i] = float(NoiseFloor);
 	}
@@ -1252,6 +1235,8 @@ void NR_ChannelData::ApplyFarMasking(float FarMasking[FAR_MASKING_GRANULARITY])
 			p->sp_MaskingPower = float(p->sp_Power + FarMaskingFactor * FarMasking[n]);
 		}
 	}
+	// last FFT term
+	p->sp_MaskingPower = float(p->sp_Power + FarMaskingFactor * FarMasking[FAR_MASKING_GRANULARITY - 1]);
 }
 
 void NR_ChannelData::CalculateMasking(double MaskingSpectralDecayNormLow,
@@ -1330,6 +1315,8 @@ void NR_ChannelData::ProcessMaskingTemporalEnvelope(double MaskingTemporalDecayN
 NoiseReductionCore::~NoiseReductionCore()
 {
 	delete[] m_Window;
+	delete[] m_pNoiseFloor;
+
 	for (int ch = 0; ch < countof(m_ChannelData); ch++)
 	{
 		delete m_ChannelData[ch];
