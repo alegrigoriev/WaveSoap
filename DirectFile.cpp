@@ -179,7 +179,7 @@ CDirectFile::File * CDirectFile::CDirectFileCache::Open
 					NULL);
 	if (INVALID_HANDLE_VALUE == hf)
 	{
-		delete pFile;
+		pFile->Close(0); // delete
 		return NULL;
 	}
 
@@ -187,7 +187,7 @@ CDirectFile::File * CDirectFile::CDirectFileCache::Open
 	{
 		SetLastError(ERROR_INVALID_FUNCTION);
 		CloseHandle(hf);
-		delete pFile;
+		pFile->Close(0); // delete
 		return NULL;
 	}
 
@@ -203,7 +203,7 @@ CDirectFile::File * CDirectFile::CDirectFileCache::Open
 	{
 		SetLastError(ERROR_NOT_ENOUGH_MEMORY);
 		CloseHandle(hf);
-		delete pFile;
+		pFile->Close(0); // delete
 		return NULL;
 	}
 
@@ -359,10 +359,6 @@ BOOL CDirectFile::File::Close(DWORD flags)
 				}
 			}
 		}
-	}
-	if (NULL != m_pWrittenMask)
-	{
-		delete[] m_pWrittenMask;
 	}
 
 	delete this;
@@ -799,10 +795,9 @@ long CDirectFile::CDirectFileCache::GetDataBuffer(File * pFile,
 	else if (length < 0)
 	{
 		OffsetInBuffer = 0x10000 - ((-long(position)) & 0xFFFF);
-		LONGLONG tmp = ((position + 0x7FF) & ~(__int64)0x7FF) - (position + length);
-		if (OffsetInBuffer + length < 0)    // length < 0
+		if (OffsetInBuffer + length <= 0)    // length < 0
 		{
-			BytesRequested = long(position) & 0xFFFF;
+			BytesRequested = OffsetInBuffer;
 			BytesReturned = BytesRequested;
 		}
 		else
@@ -812,7 +807,7 @@ long CDirectFile::CDirectFileCache::GetDataBuffer(File * pFile,
 			if (flags & GetBufferAndPrefetchNext)
 			{
 				// read the rest of the buffer
-				BytesRequested = long(position) & 0xFFFF;
+				BytesRequested = OffsetInBuffer;
 			}
 		}
 		BufferPosition = long((position - BytesRequested) >> 16);
@@ -980,7 +975,7 @@ long CDirectFile::CDirectFileCache::GetDataBuffer(File * pFile,
 		{
 			if (flags & GetBufferAndPrefetchNext)
 			{
-				if (length <= BytesRequested)
+				if (1 || length <= BytesRequested)
 				{
 					// prefetch the next buffer
 					length = (long(position) & ~0xFFFFL) + 0x20000 - long(position);
@@ -1003,7 +998,7 @@ long CDirectFile::CDirectFileCache::GetDataBuffer(File * pFile,
 		{
 			if (flags & GetBufferAndPrefetchNext)
 			{
-				if (-length <= BytesRequested)
+				if ( 1 || -length <= BytesRequested)
 				{
 					// prefetch the next buffer
 					length = (position | 0xFFFF) + 1 - 0x20000 - position;
@@ -1440,8 +1435,8 @@ void CDirectFile::BufferHeader::FlushDirtyBuffers()
 					}
 				}
 				DWORD BytesWritten = 0;
-				TRACE("Stored file pointer: %X, actual: %X\n",
-					long(pFile->FilePointer), SetFilePointer(pFile->hFile, 0, NULL, FILE_CURRENT));
+				if (0) TRACE("Stored file pointer: %X, actual: %X\n",
+							long(pFile->FilePointer), SetFilePointer(pFile->hFile, 0, NULL, FILE_CURRENT));
 
 				if (StartFilePtr != pFile->FilePointer)
 				{
@@ -1704,4 +1699,37 @@ BOOL CDirectFile::File::Flush()
 			pBuf = pBuf->pNext;
 		}
 	}
+}
+
+void * CDirectFile::File::AllocateCommonData(size_t size)
+{
+	if (0 == size)
+	{
+		return m_pCommonData;
+	}
+	if (size <= m_CommonDataSize)
+	{
+		memset((char*)m_pCommonData + size, 0, m_CommonDataSize - size);
+		return m_pCommonData;
+	}
+
+	char * tmp = new char[size];
+	if (NULL == tmp)
+	{
+		return NULL;
+	}
+
+	if (NULL != m_pCommonData)
+	{
+		memcpy(tmp, m_pCommonData, m_CommonDataSize);
+		memset(tmp + m_CommonDataSize, 0, size - m_CommonDataSize);
+		delete[] (char*) m_pCommonData;
+	}
+	else
+	{
+		memset(tmp, 0, size);
+	}
+	m_CommonDataSize = size;
+	m_pCommonData = tmp;
+	return tmp;
 }

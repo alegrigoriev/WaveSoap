@@ -61,12 +61,51 @@ public:
 	BOOL Open(LPCTSTR szName, DWORD flags);
 	BOOL Close(DWORD flags);
 	BOOL Attach(CDirectFile * const pOriginalFile);
+	// allocate data common for all instances
+	// attached to the same File
+	void * AllocateCommonData(size_t size)
+	{
+		if (NULL != m_pFile)
+		{
+			return m_pFile->AllocateCommonData(size);
+		}
+		else
+		{
+			return NULL;
+		}
+	}
+	void * GetCommonData() const
+	{
+		if (NULL != m_pFile)
+		{
+			return m_pFile->GetCommonData();
+		}
+		else
+		{
+			return NULL;
+		}
+	}
+	size_t GetCommonDataSize() const
+	{
+		if (NULL != m_pFile)
+		{
+			return m_pFile->GetCommonDataSize();
+		}
+		else
+		{
+			return 0;
+		}
+	}
 
 	long Read(void * buf, long count);
 	long ReadAt(void * buf, long count, LONGLONG Position);
 	long Write(const void * pBuf, long count);
 	long WriteAt(const void * buf, long count, LONGLONG Position);
 	LONGLONG Seek(LONGLONG position, int flag);
+	DWORD GetFileID() const
+	{
+		return DWORD(m_pFile);
+	}
 
 	enum { ReturnBufferDirty = 1, // buffer contains changed data
 		ReturnBufferDiscard = 2, // make the buffer lower priority
@@ -177,6 +216,9 @@ protected:
 		// zeroed or read from the source file
 		char * m_pWrittenMask;
 		int WrittenMaskSize;
+		// data common for all CDirectFile instances, attached to this File
+		void * m_pCommonData;
+		size_t m_CommonDataSize;
 		// pointer to the source file. The information is copied from there
 		// when it is read first time.
 		File * pSourceFile;
@@ -192,6 +234,15 @@ protected:
 		BOOL SetFileLength(LONGLONG NewLength);
 		BOOL Flush();
 		BOOL InitializeTheRestOfFile();
+		void * AllocateCommonData(size_t size);
+		void * GetCommonData() const
+		{
+			return m_pCommonData;
+		}
+		size_t GetCommonDataSize() const
+		{
+			return m_CommonDataSize;
+		}
 
 		void ReturnDataBuffer(void * pBuffer, long count, DWORD flags = 0)
 		{
@@ -221,6 +272,8 @@ protected:
 			m_pWrittenMask(NULL),
 			WrittenMaskSize(0),
 			pSourceFile(NULL),
+			m_pCommonData(NULL),
+			m_CommonDataSize(0),
 			pPrev(NULL),
 			pNext(NULL)
 		{
@@ -230,7 +283,17 @@ protected:
 		void ValidateList() const;
 			#endif
 	private:
-		File() {}
+		~File()
+		{
+			if (NULL != m_pWrittenMask)
+			{
+				delete[] m_pWrittenMask;
+			}
+			if (NULL != m_pCommonData)
+			{
+				delete[] (char *) m_pCommonData;
+			}
+		}
 	};
 	struct BufferHeader
 	{
