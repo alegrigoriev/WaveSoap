@@ -69,27 +69,33 @@ Find which alignment better for edit box labels: left or right
 
 Problems:
 
+Mono file with compression is not fuly saved
+If a clipboard operation gets stopped, need to cancel all the operations that depend on it.
+Saving short file with zeros as u-law doesn't save anything
+Expression evaluation selection longer than file length doesn't update file length
+Save As adds "Copy of" for direct file
 File resample doesn't tell about overflow
 Save As fails if the file replaced is read-only
-doesn't show caret on the outline (short file, all in view)
-Undo/Redo doesn't update FFT
-Crash with old wspk file?
 During exit, asks to reopen the file
-"Save as" from LLADPCM: PCM16 is not shown when "Compatible only" selected
-During playback, outline is invalidated. (??)
 WinXP doesn't have CDRAL
 Multisession disk shows only begin of tracks. Read the whole structure.
-Daylight saving time change invalidates peak info timestamp (FAT only??)
-Expression evaluation selection longer than file length doesn't update file length
-After file length increased to 1 sample from 0, scroll bar set to wrond scale
 Multiline edit box in child dialog eats Esc and Enter (DLGC_WANTALLCHARS) (MFC CDialog::PreTranslateMessage() bug
 If there is not enough space on NTFS volume, it will be seen only during flush
 Windows2000 is trying to zero the allocated file
-samples with 32767, -32768 are not visible
 
 Log Off query doesn't close the active dialog. Recursion is possible. Make sure to check after Cancel
 
 Fixed:
+samples with 32767, -32768 are not visible
+Wrong file length if the direct file is not saved. Need Always update RIFF/data
+Scrolling with scrollbar may corrupt sample number on the hor ruler
+"Save as" from LLADPCM: PCM16 is not shown when "Compatible only" selected
+Wave data change doesn't update FFT sometimes
+During playback, outline is invalidated. (??)
+After file length increased to 1 sample from 0, scroll bar set to wrond scale
+Initial rectangle is not drawn in the outline window for WMA and compressed file.
+Open dialog doesn't show attributes for PCM format.
+Crash with old wspk file?
 Wrong dialog when saving/loading filter file.
 WMA vertical ruler is not updated
 Cache buffers discarded too early.
@@ -120,6 +126,8 @@ No Disk In Drive has a checkmark
 CD list combo height too low
 
 Deferred:
+Daylight saving time change invalidates peak info timestamp (FAT only??)
+doesn't show caret on the outline (as designed)
 32 kbps file reading does too much read ahead (1.wma)
 
 Add context menu to track list (check/uncheck all/selected)
@@ -133,6 +141,7 @@ Save As dialog is not centered first time (comdlg problem?)
 ??? When time/seconds format is set for status bar, MM:SS is actually shown
 
 Done:
+detach CScanPeaksContext from a document, associate with a file
 Now recognizes ASF files as Windows Media
 Save CD grabbing selected format (WAV/MP3/WMA) and bitrate
 Save CD grabbing dialog position
@@ -269,3 +278,11 @@ LIST adtl
     labl
     note
 DISP    display title
+
+
+Locks:
+
+Direct cache lock m_cs:
+
+locks m_FileList, m_MruList,
+
