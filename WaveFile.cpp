@@ -1678,7 +1678,9 @@ BOOL CWaveFile::CheckAndLoadPeakFile()
 			&& pfh.WaveFileTime == GetFileInformation().ftLastWriteTime
 			&& pfh.dwWaveFileSize == GetFileInformation().nFileSizeLow
 
-			&& 0 == memcmp(& pfh.wfFormat, GetWaveFormat(), sizeof pfh.wfFormat)
+			&& 0 == memcmp(& pfh.wfFormat, GetWaveFormat(), sizeof (PCMWAVEFORMAT))
+			&& (WAVE_FORMAT_PCM == pfh.wfFormat.wFormatTag
+				|| pfh.wfFormat.cbSize == GetWaveFormat()->cbSize)
 			&& pPeakInfo->GetGranularity() == pfh.Granularity
 			&& pfh.PeakInfoSize == CalculatePeakInfoSize() * sizeof (WavePeak)
 			)
@@ -1791,14 +1793,19 @@ void CWaveFile::SavePeakInfo(CWaveFile & SavedWaveFile)
 					CFile::modeCreate | CFile::modeWrite | CFile::shareExclusive | CFile::typeBinary))
 	{
 		pfh.wSize = sizeof PeakFileHeader;
-		pfh.dwSignature = PeakFileHeader::pfhSignature;
-		pfh.dwVersion = PeakFileHeader::pfhMaxVersion;
+		pfh.dwSignature = pfh.pfhSignature;
+		pfh.dwVersion = pfh.pfhMaxVersion;
 		pfh.dwWaveFileSize = SavedWaveFile.GetFileSize(NULL);
 		pfh.Granularity = GetPeakGranularity();
 		pfh.PeakInfoSize = CalculatePeakInfoSize() * sizeof (WavePeak);
 		pfh.WaveFileTime = SavedWaveFile.GetFileInformation().ftLastWriteTime;
 		pfh.NumOfSamples = NumberOfSamples();
 		pfh.wfFormat = * GetWaveFormat();
+
+		if (WAVE_FORMAT_PCM == pfh.wfFormat.wFormatTag)
+		{
+			pfh.wfFormat.cbSize = 0;
+		}
 
 		PeakFile.Write( & pfh, sizeof pfh);
 		PeakFile.Write(GetWavePeaks()->GetPeakArray(), pfh.PeakInfoSize);
