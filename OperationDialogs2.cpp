@@ -224,6 +224,9 @@ CCdGrabbingDialog::CCdGrabbingDialog(CWnd* pParent /*=NULL*/)
 	m_bPlayingAudio = FALSE;
 	m_FileTypeFlags = 0;
 
+	m_Profile.AddItem(_T("CdRead"), _T("DlgWidth"), m_DlgWidth, 0, 0, 4096);
+	m_Profile.AddItem(_T("CdRead"), _T("DlgHeight"), m_DlgHeight, 0, 0, 4096);
+
 	m_Profile.AddItem(_T("CdRead"), _T("BaseDirectory"), m_sSaveFolder);
 	m_Profile.AddItem(_T("CdRead"), _T("FileType"), m_FileTypeFlags, 0,
 					0, SaveFile_WmaFile);
@@ -1023,7 +1026,6 @@ BOOL CCdGrabbingDialog::OnDeviceChange(UINT event, DWORD data)
 		if (DBT_DEVTYP_VOLUME == pdbh->dbch_devicetype)
 		{
 			CheckForDrivesChanged();
-			// TODO: close the device and open after timeout
 		}
 		break;
 	case DBT_DEVICEREMOVECOMPLETE:
@@ -1546,8 +1548,19 @@ void CCdGrabbingDialog::OnCancel()
 		m_CdDrive.SetReadSpeed(m_CurrentReadSpeed);
 		m_CdDrive.StopDrive();
 	}
-
+	//CStringW DosDevices;
+	//QueryDosDeviceW(_T("E:"), DosDevices.GetBuffer(4096), 4095);
 	CResizableDialog::OnCancel();
+}
+
+void CCdGrabbingDialog::OnOK()
+{
+	CRect r;
+	GetWindowRect( & r);
+	m_DlgWidth = r.Width();
+	m_DlgHeight = r.Height();
+
+	CResizableDialog::OnOK();
 }
 
 void CCdGrabbingDialog::OnContextMenu(CWnd* pWnd, CPoint point)
