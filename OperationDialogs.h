@@ -32,10 +32,21 @@ public:
 	//}}AFX_DATA
 	CHANNEL_MASK GetChannelToCopy() const
 	{
-		return m_ChannelToCopy - 1;
+		switch (m_ChannelToCopy)
+		{
+		case 0:
+		default:
+			return ALL_CHANNELS;
+		case 1:
+			return SPEAKER_FRONT_LEFT;
+			break;
+		case 2:
+			return SPEAKER_FRONT_CENTER;
+			break;
+		}
 	}
 protected:
-	CHANNEL_MASK		m_ChannelToCopy;
+	int m_ChannelToCopy;
 // Overrides
 	// ClassWizard generated virtual function overrides
 	//{{AFX_VIRTUAL(CCopyChannelsSelectDlg)
@@ -171,7 +182,18 @@ public:
 	}
 	CHANNEL_MASK GetChannel() const
 	{
-		return m_Chan - 1;
+		switch (m_Chan)
+		{
+		default:
+			return ALL_CHANNELS;
+			break;
+		case 1:
+			return SPEAKER_FRONT_LEFT;
+			break;
+		case 2:
+			return SPEAKER_FRONT_CENTER;
+			break;
+		}
 	}
 // Dialog Data
 	//{{AFX_DATA(CSelectionDialog)
@@ -188,7 +210,7 @@ public:
 	//}}AFX_DATA
 protected:
 	CWaveFile & m_WaveFile;
-	CHANNEL_MASK m_Chan;
+	int m_Chan;
 	int		m_TimeFormat;
 	SAMPLE_INDEX m_Start;
 	SAMPLE_INDEX m_End;
