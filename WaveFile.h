@@ -636,6 +636,7 @@ public:
 
 		BOOL MoveMarkers(SAMPLE_INDEX SampleBegin, NUMBER_OF_SAMPLES SrcLength, NUMBER_OF_SAMPLES DstLength);
 		BOOL ReverseMarkers(SAMPLE_INDEX SampleBegin, NUMBER_OF_SAMPLES Length);
+		BOOL RescaleMarkers(long OldSampleRate, long NewSampleRate);
 
 		BOOL CopyMarkers(InstanceDataWav const * pSrc,
 						SAMPLE_INDEX SrcBegin, SAMPLE_INDEX DstBegin, NUMBER_OF_SAMPLES Length);
