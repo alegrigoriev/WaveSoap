@@ -123,6 +123,10 @@ BEGIN_MESSAGE_MAP(CWaveSoapFrontDoc, CDocument)
 	ON_COMMAND(ID_TOOLS_INTERPOLATE, OnToolsInterpolate)
 	ON_UPDATE_COMMAND_UI(IDC_PROCESS_DO_ULF, OnUpdateProcessDoUlf)
 	ON_COMMAND(IDC_PROCESS_DO_ULF, OnProcessDoUlf)
+	ON_UPDATE_COMMAND_UI(IDC_PROCESS_DO_DECLICKING, OnUpdateProcessDoDeclicking)
+	ON_COMMAND(IDC_PROCESS_DO_DECLICKING, OnProcessDoDeclicking)
+	ON_UPDATE_COMMAND_UI(IDC_PROCESS_NOISE_REDUCTION, OnUpdateProcessNoiseReduction)
+	ON_COMMAND(IDC_PROCESS_NOISE_REDUCTION, OnProcessNoiseReduction)
 	//}}AFX_MSG_MAP
 END_MESSAGE_MAP()
 
@@ -4164,7 +4168,6 @@ void CWaveSoapFrontDoc::OnProcessSynthesisExpressionEvaluation()
 	dlg.m_Chan = channel;
 	dlg.m_pWf = m_WavFile.GetWaveFormat();
 	dlg.m_bLockChannels = m_bChannelsLocked;
-	dlg.m_bUndo = UndoEnabled();
 	dlg.m_TimeFormat = pApp->m_SoundTimeFormat;
 	dlg.m_FileLength = WaveFileSamples();
 	CExpressionEvaluationContext * pContext = new CExpressionEvaluationContext(this, "Calculating the waveform...",
@@ -4418,7 +4421,6 @@ void CWaveSoapFrontDoc::OnProcessDoUlf()
 	dlg.m_Chan = channel;
 	dlg.m_pWf = m_WavFile.GetWaveFormat();
 	dlg.m_bLockChannels = m_bChannelsLocked;
-	dlg.m_bUndo = UndoEnabled();
 	dlg.m_TimeFormat = pApp->m_SoundTimeFormat;
 	dlg.m_FileLength = WaveFileSamples();
 	if (IDOK != dlg.DoModal())
@@ -4470,4 +4472,166 @@ void CWaveSoapFrontDoc::OnProcessDoUlf()
 
 	pContext->Execute();
 	SetModifiedFlag(TRUE, dlg.m_bUndo);
+}
+
+void CWaveSoapFrontDoc::OnUpdateProcessDoDeclicking(CCmdUI* pCmdUI)
+{
+	pCmdUI->Enable( ! m_bReadOnly
+					&& ! m_OperationInProgress
+					&& m_WavFile.IsOpen());
+}
+
+void CWaveSoapFrontDoc::OnProcessDoDeclicking()
+{
+	if (m_bReadOnly
+		|| m_OperationInProgress)
+	{
+		return;
+	}
+	long start = m_SelectionStart;
+	long end = m_SelectionEnd;
+	if (start == end)
+	{
+		// select all
+		start = 0;
+		end = WaveFileSamples();
+	}
+	int channel = m_SelectedChannel;
+	if (ChannelsLocked())
+	{
+		channel = ALL_CHANNELS;
+	}
+
+	CDeclickDialog dlg;
+	CWaveSoapFrontApp * pApp = GetApp();
+
+	dlg.m_bUndo = UndoEnabled();
+	dlg.m_Start = start;
+	dlg.m_End = end;
+	dlg.m_Chan = channel;
+	dlg.m_pWf = m_WavFile.GetWaveFormat();
+	dlg.m_bLockChannels = m_bChannelsLocked;
+	dlg.m_TimeFormat = pApp->m_SoundTimeFormat;
+	dlg.m_FileLength = WaveFileSamples();
+	if (IDOK != dlg.DoModal())
+	{
+		return;
+	}
+	CConversionContext * pContext = new CConversionContext(this, "Removing vinyl disk clicks...",
+															"Declicking");
+	if (NULL == pContext)
+	{
+		return;
+	}
+
+	CClickRemoval * pDeclick = new CClickRemoval;
+	if (NULL == pDeclick)
+	{
+		delete pContext;
+		return;
+	}
+
+	pDeclick->SetAndValidateWaveformat(dlg.m_pWf);
+	dlg.SetDeclickData(pDeclick);
+
+	pContext->m_ProcBatch.AddWaveProc(pDeclick);
+
+	if ( ! pContext->InitDestination(m_WavFile, dlg.m_Start,
+									dlg.m_End, dlg.m_Chan, dlg.m_bUndo))
+	{
+		delete pContext;
+		// todo: dialog
+		return;
+	}
+	pContext->m_SrcFile = m_WavFile;
+	pContext->m_SrcStart = pContext->m_DstStart;
+	pContext->m_SrcCopyPos = pContext->m_SrcStart;
+	pContext->m_SrcEnd = pContext->m_DstEnd;
+
+	pContext->m_SrcChan = dlg.m_Chan;
+
+	pContext->Execute();
+	SetModifiedFlag(TRUE, dlg.m_bUndo);
+
+}
+
+void CWaveSoapFrontDoc::OnUpdateProcessNoiseReduction(CCmdUI* pCmdUI)
+{
+	pCmdUI->Enable( ! m_bReadOnly
+					&& ! m_OperationInProgress
+					&& m_WavFile.IsOpen());
+}
+
+void CWaveSoapFrontDoc::OnProcessNoiseReduction()
+{
+	if (m_bReadOnly
+		|| m_OperationInProgress)
+	{
+		return;
+	}
+	long start = m_SelectionStart;
+	long end = m_SelectionEnd;
+	if (start == end)
+	{
+		// select all
+		start = 0;
+		end = WaveFileSamples();
+	}
+	int channel = m_SelectedChannel;
+	if (ChannelsLocked())
+	{
+		channel = ALL_CHANNELS;
+	}
+
+	CNoiseReductionDialog dlg;
+	CWaveSoapFrontApp * pApp = GetApp();
+
+	dlg.m_bUndo = UndoEnabled();
+	dlg.m_Start = start;
+	dlg.m_End = end;
+	dlg.m_Chan = channel;
+	dlg.m_pWf = m_WavFile.GetWaveFormat();
+	dlg.m_bLockChannels = m_bChannelsLocked;
+	dlg.m_TimeFormat = pApp->m_SoundTimeFormat;
+	dlg.m_FileLength = WaveFileSamples();
+	if (IDOK != dlg.DoModal())
+	{
+		return;
+	}
+	CConversionContext * pContext = new CConversionContext(this, "Removing background noise...",
+															"Noise Reduction");
+	if (NULL == pContext)
+	{
+		return;
+	}
+
+	CNoiseReduction * pNoiseReduction = new CNoiseReduction;
+	if (NULL == pNoiseReduction)
+	{
+		delete pContext;
+		return;
+	}
+
+	pNoiseReduction->SetAndValidateWaveformat(dlg.m_pWf);
+	dlg.SetNoiseReductionData(pNoiseReduction);
+
+	pContext->m_ProcBatch.AddWaveProc(pNoiseReduction);
+
+	if ( ! pContext->InitDestination(m_WavFile, dlg.m_Start,
+									dlg.m_End, dlg.m_Chan, dlg.m_bUndo))
+	{
+		delete pContext;
+		// todo: dialog
+		return;
+	}
+	pContext->m_SrcFile = m_WavFile;
+	pContext->m_SrcStart = pContext->m_DstStart;
+	pContext->m_SrcCopyPos = pContext->m_SrcStart;
+	pContext->m_SrcEnd = pContext->m_DstEnd;
+
+	pContext->m_SrcChan = dlg.m_Chan;
+
+	pContext->Execute();
+	SetModifiedFlag(TRUE, dlg.m_bUndo);
+
 }
