@@ -1470,9 +1470,10 @@ void CWaveSoapFrontDoc::DoCut(SAMPLE_INDEX Start, SAMPLE_INDEX End, CHANNEL_MASK
 
 	InitShrinkOperation(pContext.get(), m_WavFile, Start, End - Start, Channel);
 
-	if (UndoEnabled())
+	if (UndoEnabled()
+		&& ! pContext->CreateUndo())
 	{
-		pContext->CreateUndo();
+		return;
 	}
 
 	SetSelection(Start, Start, Channel, Start);
@@ -1488,19 +1489,20 @@ void CWaveSoapFrontDoc::DoDelete(SAMPLE_INDEX Start, SAMPLE_INDEX End, CHANNEL_M
 		End++;
 	}
 
-	CStagedContext * pContext = new CStagedContext(this,
-													_T("Deleting the selection..."), OperationContextDiskIntensive,
-													_T("Delete"));
+	CStagedContext::auto_ptr pContext(new CStagedContext(this,
+														_T("Deleting the selection..."), OperationContextDiskIntensive,
+														_T("Delete")));
 
-	InitShrinkOperation(pContext, m_WavFile, Start, End - Start, Channel);
+	InitShrinkOperation(pContext.get(), m_WavFile, Start, End - Start, Channel);
 
-	if (UndoEnabled())
+	if (UndoEnabled()
+		&& ! pContext->CreateUndo())
 	{
-		pContext->CreateUndo();
+		return;
 	}
 
 	SetSelection(Start, Start, Channel, Start);
-	pContext->Execute();
+	pContext.release()->Execute();
 	SetModifiedFlag(TRUE);
 }
 

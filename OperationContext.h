@@ -238,11 +238,8 @@ public:
 						SAMPLE_INDEX EndUndoSample = LAST_SAMPLE);
 
 	void SetSaveForUndo(SAMPLE_INDEX StartSample, SAMPLE_INDEX EndSample);
-	virtual BOOL CreateUndo(BOOL IsRedo = FALSE);
 
 //    protected:
-	class CCopyUndoContext * m_pUndoContext;
-
 	CWaveFile m_DstFile;
 	CHANNEL_MASK m_DstChan;
 	SAMPLE_POSITION m_DstStart;
@@ -251,6 +248,11 @@ public:
 
 	SAMPLE_POSITION m_UndoStartPos;
 	SAMPLE_POSITION m_UndoEndPos;
+protected:
+	class CCopyUndoContext * m_pUndoContext;
+
+	virtual BOOL CreateUndo(BOOL IsRedo = FALSE);
+	virtual void DeInit();
 };
 
 class CThroughProcessOperation : public CTwoFilesOperation

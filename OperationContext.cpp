@@ -349,6 +349,20 @@ void CTwoFilesOperation::SetSaveForUndo(SAMPLE_INDEX StartSample, SAMPLE_INDEX E
 	m_UndoEndPos = m_DstFile.SampleToPosition(EndSample);
 }
 
+void CTwoFilesOperation::DeInit()
+{
+	m_SrcStart = m_SrcPos;
+	m_DstStart = m_DstPos;
+
+	if (NULL != m_pUndoContext)
+	{
+		m_pUndoContext->m_SrcEnd = m_pUndoContext->m_SrcPos;
+		m_pUndoContext->m_DstEnd = m_pUndoContext->m_DstPos;
+	}
+
+	BaseClass::DeInit();
+}
+
 /////////// CThroughProcessOperation
 CThroughProcessOperation::CThroughProcessOperation(class CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString,
 													ULONG Flags, LPCTSTR OperationName)
@@ -858,9 +872,9 @@ ListHead<COperationContext> * CStagedContext::GetUndoChain()
 		}
 	}
 
-	for (COperationContext * pContext = m_DoneList.First();
+	for (COperationContext * pContext = m_DoneList.Last();
 		m_DoneList.NotEnd(pContext);
-		pContext = m_DoneList.Next(pContext))
+		pContext = m_DoneList.Prev(pContext))
 	{
 		ListHead<COperationContext> * pUndo = pContext->GetUndoChain();
 		if (NULL != pUndo)
@@ -1177,7 +1191,7 @@ BOOL CCopyContext::OperationProc()
 				SizeToWrite = CDirectFile::CacheBufferSize();
 			}
 
-			if (ALL_CHANNELS == m_DstChan
+			if (m_DstFile.AllChannels(m_DstChan)
 				&& m_SrcFile.GetFileID() != m_DstFile.GetFileID()
 				&& (NULL == m_pUndoContext
 					|| ! m_pUndoContext->NeedToSaveUndo(m_DstPos, long(SizeToWrite))))
@@ -1376,8 +1390,7 @@ BOOL CCopyUndoContext::InitUndoCopy(CWaveFile & SrcFile,
 									SAMPLE_POSITION SaveEndPos,
 									CHANNEL_MASK SaveChannel)
 {
-	// don't keep reference to the file
-	//m_DstFile = SrcFile;
+	ASSERT(SrcFile.IsOpen());
 
 	m_DstStart = SaveStartPos;
 	m_DstPos = SaveStartPos;
@@ -1409,7 +1422,7 @@ BOOL CCopyUndoContext::InitUndoCopy(CWaveFile & SrcFile,
 
 		m_SrcEnd = m_SrcFile.SampleToPosition(LAST_SAMPLE);
 	}
-
+	// TODO: support saving backward
 	return TRUE;
 }
 

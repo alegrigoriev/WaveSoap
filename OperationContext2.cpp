@@ -1926,6 +1926,7 @@ BOOL CReplaceFormatContext::OperationProc()
 	return TRUE;
 }
 
+///////////////// CLengthChangeOperation
 CLengthChangeOperation::CLengthChangeOperation(CWaveSoapFrontDoc * pDoc,
 												CWaveFile & File, MEDIA_FILE_SIZE NewLength)
 	: BaseClass(pDoc, _T("Changing the file length"), OperationContextSynchronous,
@@ -1937,8 +1938,16 @@ CLengthChangeOperation::CLengthChangeOperation(CWaveSoapFrontDoc * pDoc,
 
 BOOL CLengthChangeOperation::CreateUndo(BOOL /*IsRedo*/)
 {
+	if ( ! m_File.IsOpen()
+		|| m_File.GetFileID() != pDocument->WaveFileID())
+	{
+		return TRUE;
+	}
+
 	CLengthChangeOperation * pUndo = new CLengthChangeOperation(pDocument,
 																m_File, m_File.GetLength());
+
+	pUndo->m_File.Close();
 
 	m_UndoChain.InsertHead(pUndo);
 	return TRUE;
@@ -1954,6 +1963,17 @@ BOOL CLengthChangeOperation::OperationProc()
 	return TRUE;
 }
 
+BOOL CLengthChangeOperation::PrepareUndo()
+{
+	m_File = pDocument->m_WavFile;
+	return TRUE;
+}
+
+void CLengthChangeOperation::UnprepareUndo()
+{
+	m_File.Close();
+}
+
 //////////////// CWaveSamplesChangeOperation /////////
 CWaveSamplesChangeOperation::CWaveSamplesChangeOperation(CWaveSoapFrontDoc * pDoc,
 														CWaveFile & File, NUMBER_OF_SAMPLES NewSamples)
@@ -1966,11 +1986,30 @@ CWaveSamplesChangeOperation::CWaveSamplesChangeOperation(CWaveSoapFrontDoc * pDo
 
 BOOL CWaveSamplesChangeOperation::CreateUndo(BOOL /*IsRedo*/)
 {
+	if ( ! m_File.IsOpen()
+		|| m_File.GetFileID() != pDocument->WaveFileID())
+	{
+		return TRUE;
+	}
+
 	CWaveSamplesChangeOperation * pUndo = new CWaveSamplesChangeOperation(pDocument,
 											m_File, m_File.NumberOfSamples());
 
+	pUndo->m_File.Close();
+
 	m_UndoChain.InsertHead(pUndo);
 	return TRUE;
+}
+
+BOOL CWaveSamplesChangeOperation::PrepareUndo()
+{
+	m_File = pDocument->m_WavFile;
+	return TRUE;
+}
+
+void CWaveSamplesChangeOperation::UnprepareUndo()
+{
+	m_File.Close();
 }
 
 BOOL CWaveSamplesChangeOperation::OperationProc()
@@ -1981,7 +2020,7 @@ BOOL CWaveSamplesChangeOperation::OperationProc()
 		return FALSE;
 	}
 
-	pDocument->SoundChanged(pDocument->WaveFileID(), 0, 0, m_NewSamples,
+	pDocument->SoundChanged(m_File.GetFileID(), 0, 0, m_NewSamples,
 							UpdateSoundDontRescanPeaks);
 
 	return TRUE;
@@ -2061,6 +2100,7 @@ void CMoveOperation::UnprepareUndo()
 	m_DstPos = m_DstEnd;    //??
 }
 
+#if 0
 ListHead<COperationContext> * CMoveOperation::GetUndoChain()
 {
 	if ( ! m_UndoChain.IsEmpty())
@@ -2075,6 +2115,7 @@ ListHead<COperationContext> * CMoveOperation::GetUndoChain()
 	}
 	return BaseClass::GetUndoChain();
 }
+#endif
 
 BOOL CMoveOperation::OperationProc()
 {
@@ -2295,6 +2336,141 @@ BOOL CMoveOperation::OperationProc()
 	return TRUE;
 }
 
+//////////////
+CSaveTrimmedOperation::CSaveTrimmedOperation(CWaveSoapFrontDoc * pDoc,
+											CWaveFile & SrcFile,
+											SAMPLE_INDEX SrcStartSample,
+											SAMPLE_INDEX SrcEndSample,
+											CHANNEL_MASK Channels)
+	: BaseClass(pDoc, _T(""), _T(""))
+	, m_pRestoreOperation(NULL)
+{
+	m_SrcFile = SrcFile;
+
+	m_UndoStartPos = SrcFile.SampleToPosition(SrcStartSample);
+	m_UndoEndPos = SrcFile.SampleToPosition(SrcEndSample);
+
+	m_SrcChan = Channels;
+	m_DstChan = ALL_CHANNELS;
+}
+
+BOOL CSaveTrimmedOperation::CreateUndo(BOOL /*IsRedo*/)
+{
+	// Only create undo, if the source file is the main document file
+	if (NULL != m_pRestoreOperation
+		|| ! m_SrcFile.IsOpen()
+		|| m_SrcFile.GetFileID() != pDocument->WaveFileID()
+		|| m_UndoStartPos == m_UndoEndPos)
+	{
+		return TRUE;
+	}
+
+	CRestoreTrimmedOperation::auto_ptr
+	pUndo(new CRestoreTrimmedOperation(pDocument));
+
+	if ( ! pUndo->InitUndoCopy(m_SrcFile, m_UndoStartPos, m_UndoEndPos, m_SrcChan))
+	{
+		return FALSE;
+	}
+
+	m_pRestoreOperation = pUndo.release();
+
+	m_DstFile = m_pRestoreOperation->m_SrcFile;
+
+	m_DstStart = m_pRestoreOperation->m_SrcStart;
+	m_DstPos = m_DstStart;
+	m_DstEnd = m_pRestoreOperation->m_SrcEnd;
+
+	m_SrcStart = m_pRestoreOperation->m_DstStart;
+	m_SrcPos = m_SrcStart;
+	m_SrcEnd = m_pRestoreOperation->m_DstEnd;
+
+	m_UndoChain.InsertTail(m_pRestoreOperation);
+
+	return TRUE;
+}
+
+BOOL CSaveTrimmedOperation::OperationProc()
+{
+	if (NULL == m_pRestoreOperation)
+	{
+		// UNDO was not requested for this
+		m_Flags |= OperationContextFinished;
+		return TRUE;
+	}
+
+	return BaseClass::OperationProc();
+}
+
+BOOL CSaveTrimmedOperation::PrepareUndo()
+{
+	m_SrcFile = pDocument->m_WavFile;
+
+	return TRUE;
+}
+
+void CSaveTrimmedOperation::UnprepareUndo()
+{
+	m_SrcFile.Close();
+}
+
+void CSaveTrimmedOperation::DeInit()
+{
+	if (NULL != m_pRestoreOperation)
+	{
+		m_pRestoreOperation->m_SrcEnd = m_DstPos;
+		m_pRestoreOperation->m_DstEnd = m_SrcPos;
+	}
+
+	BaseClass::DeInit();
+}
+
+/////////////// CRestoreTrimmedOperation
+CRestoreTrimmedOperation::CRestoreTrimmedOperation(CWaveSoapFrontDoc * pDoc)
+	: BaseClass(pDoc, _T(""), _T(""))
+	, m_pSaveOperation(NULL)
+{
+}
+
+BOOL CRestoreTrimmedOperation::CreateUndo(BOOL /*IsRedo*/)
+{
+	// Only create undo, if the source file is the main document file
+	if (NULL != m_pSaveOperation
+		|| ! m_DstFile.IsOpen()
+		|| m_DstFile.GetFileID() != pDocument->WaveFileID()
+		|| m_UndoStartPos == m_UndoEndPos)
+	{
+		return TRUE;
+	}
+
+	CSaveTrimmedOperation::auto_ptr pSave(
+										new CSaveTrimmedOperation(pDocument,
+																m_DstFile,
+																m_DstFile.PositionToSample(m_DstStart),
+																m_DstFile.PositionToSample(m_DstEnd),
+																m_DstChan));
+
+	// should not keep a reference on the main document file
+	pSave->m_SrcFile.Close();
+
+	m_pSaveOperation = pSave.release();
+
+	m_UndoChain.InsertTail(m_pSaveOperation);
+
+	return TRUE;
+}
+
+void CRestoreTrimmedOperation::DeInit()
+{
+	if (NULL != m_pSaveOperation)
+	{
+		m_pSaveOperation->m_SrcEnd = m_DstPos;
+		m_pSaveOperation->m_DstEnd = m_SrcPos;
+	}
+
+	BaseClass::DeInit();
+}
+
 ////////////// CInitChannels
 CInitChannels::CInitChannels(CWaveSoapFrontDoc * pDoc,
 							CWaveFile & File, SAMPLE_POSITION Start, SAMPLE_POSITION End, CHANNEL_MASK Channels)
@@ -2455,17 +2631,23 @@ BOOL InitExpandOperation(CStagedContext * pContext,
 	return TRUE;
 }
 
+// StartSample - from where the removed part starts
+// Length - how much to remove
 BOOL InitShrinkOperation(CStagedContext * pContext,
-						CWaveFile & File, SAMPLE_INDEX StartSample, NUMBER_OF_SAMPLES Length, CHANNEL_MASK Channel)
+						CWaveFile & File,
+						SAMPLE_INDEX StartSample, NUMBER_OF_SAMPLES Length, CHANNEL_MASK Channel)
 {
 	NUMBER_OF_SAMPLES NumberOfSamples = File.NumberOfSamples();
 
 	NUMBER_OF_SAMPLES NewSamples = NumberOfSamples - Length;
+
 	// 1. Move all wave data
-	if (NumberOfSamples > StartSample)
+	if (NewSamples > StartSample)
 	{
 		CMoveOperation::auto_ptr pMove(new
-										CMoveOperation(pContext->pDocument, _T("Expanding the file"), _T("")));
+										CMoveOperation(pContext->pDocument,
+														_T("Shrinking the file"), _T("")));
+
 		pMove->InitMove(File, StartSample + Length, StartSample,
 						NumberOfSamples - StartSample - Length,
 						Channel);
@@ -2478,6 +2660,16 @@ BOOL InitShrinkOperation(CStagedContext * pContext,
 
 	if (0 != ChannelsToZero)
 	{
+		if (NewSamples < StartSample + Length)
+		{
+			// BUGBUG
+			// because some data (not moved by CMoveOperation)
+			// will be discarded by WaveSampleChange,
+			// we need to save it
+			pContext->AddContext(new
+								CSaveTrimmedOperation(pContext->pDocument, File,
+													NewSamples, StartSample + Length, Channel));
+		}
 		// special zero context used, with empty undo
 		pContext->AddContext(new CInitChannels(pContext->pDocument, File, NewSamples, NumberOfSamples,
 												ChannelsToZero));
@@ -2486,6 +2678,16 @@ BOOL InitShrinkOperation(CStagedContext * pContext,
 	{
 		// 3. If all channels moved: Move all markers and regions
 		// TODO
+
+		if (NewSamples < StartSample + Length)
+		{
+			// because some data (not moved by CMoveOperation)
+			// will be discarded by WaveSampleChange,
+			// we need to save it
+			pContext->AddContext(new
+								CSaveTrimmedOperation(pContext->pDocument, File,
+													NewSamples, StartSample + Length, Channel));
+		}
 		// 4. If all channels moved: Change number of samples
 		pContext->AddContext(new
 							CWaveSamplesChangeOperation(pContext->pDocument, File, NewSamples));
