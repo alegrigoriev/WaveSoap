@@ -1,0 +1,9 @@
+*.suo
+*.aps
+.vs/
+.vscode/
+Debug/
+Release/
+x64/
+*.obj
+*.user
