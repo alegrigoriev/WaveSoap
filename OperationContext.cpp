@@ -50,7 +50,15 @@ COperationContext::COperationContext(class CWaveSoapFrontDoc * pDoc, LPCTSTR Sta
 	: pDocument(pDoc),
 	m_Flags(Flags),
 	m_OperationName(OperationName),
-	sOp(StatusString),
+	m_StatusPrompt(StatusString),
+	m_bClipped(false),
+	m_MaxClipped(0.)
+{
+}
+
+COperationContext::COperationContext(class CWaveSoapFrontDoc * pDoc, DWORD Flags)
+	: pDocument(pDoc),
+	m_Flags(Flags),
 	m_bClipped(false),
 	m_MaxClipped(0.)
 {
@@ -79,12 +87,24 @@ void COperationContext::Dump(unsigned indent) const
 
 CString COperationContext::GetStatusString() const
 {
-	return sOp;
+	return m_StatusPrompt;
+}
+
+CString COperationContext::GetOperationName() const
+{
+	return m_OperationName;
 }
 
 CString COperationContext::GetCompletedStatusString() const
 {
-	return GetStatusString() + _T("Completed");
+	CString s = GetOperationName();
+	if (s.IsEmpty())
+	{
+		s = GetStatusString();
+	}
+
+	s += _T(" Completed");
+	return s;
 }
 
 void COperationContext::DeleteUndo()
@@ -202,10 +222,39 @@ int COperationContext::PercentCompleted() const
 	return int(GetCompletedOperationSize() * 100. / TotalSize);
 }
 
+void COperationContext::SetOperationName(LPCTSTR str)
+{
+	m_OperationName = str;
+}
+
+void COperationContext::SetStatusPrompt(LPCTSTR str)
+{
+	m_StatusPrompt = str;
+}
+
+void COperationContext::SetOperationName(UINT id)
+{
+	m_OperationName.LoadString(id);
+}
+
+void COperationContext::SetStatusPrompt(UINT id)
+{
+	m_StatusPrompt.LoadString(id);
+}
+
 //////////// COneFileOperation
 COneFileOperation::COneFileOperation(class CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString,
 									ULONG Flags, LPCTSTR OperationName)
 	: BaseClass(pDoc, StatusString, Flags, OperationName)
+	, m_SrcChan(ALL_CHANNELS)
+	, m_SrcStart(0)
+	, m_SrcEnd(0)
+	, m_SrcPos(0)
+{
+}
+
+COneFileOperation::COneFileOperation(class CWaveSoapFrontDoc * pDoc, ULONG Flags)
+	: BaseClass(pDoc, Flags)
 	, m_SrcChan(ALL_CHANNELS)
 	, m_SrcStart(0)
 	, m_SrcEnd(0)
@@ -302,6 +351,18 @@ CTwoFilesOperation::CTwoFilesOperation(class CWaveSoapFrontDoc * pDoc, LPCTSTR S
 {
 }
 
+CTwoFilesOperation::CTwoFilesOperation(class CWaveSoapFrontDoc * pDoc, ULONG Flags)
+	: BaseClass(pDoc, Flags)
+	, m_DstChan(ALL_CHANNELS)
+	, m_DstStart(0)
+	, m_DstEnd(0)
+	, m_DstPos(0)
+	, m_pUndoContext(NULL)
+	, m_UndoStartPos(0)
+	, m_UndoEndPos(0)
+{
+}
+
 CTwoFilesOperation::~CTwoFilesOperation()
 {
 	delete m_pUndoContext;
@@ -368,7 +429,7 @@ BOOL CTwoFilesOperation::CreateUndo()
 		return TRUE;
 	}
 
-	CCopyUndoContext::auto_ptr pUndo(new CCopyUndoContext(pDocument, _T(""), m_OperationName));
+	CCopyUndoContext::auto_ptr pUndo(new CCopyUndoContext(pDocument));
 
 	if ( ! pUndo->InitUndoCopy(m_DstFile, m_UndoStartPos, m_UndoEndPos, m_DstChan))
 	{
@@ -482,6 +543,16 @@ void CTwoFilesOperation::DeInit()
 CThroughProcessOperation::CThroughProcessOperation(class CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString,
 													ULONG Flags, LPCTSTR OperationName)
 	: BaseClass(pDoc, StatusString, Flags, OperationName)
+	, m_NumberOfForwardPasses(1)
+	, m_NumberOfBackwardPasses(0)
+	, m_CurrentPass(1)
+	, m_GetBufferFlags(CDirectFile::GetBufferAndPrefetchNext)
+	, m_ReturnBufferFlags(CDirectFile::ReturnBufferDirty)
+{
+}
+
+CThroughProcessOperation::CThroughProcessOperation(class CWaveSoapFrontDoc * pDoc, ULONG Flags)
+	: BaseClass(pDoc, Flags)
 	, m_NumberOfForwardPasses(1)
 	, m_NumberOfBackwardPasses(0)
 	, m_CurrentPass(1)
@@ -740,6 +811,12 @@ CStagedContext::CStagedContext(CWaveSoapFrontDoc * pDoc,
 {
 }
 
+CStagedContext::CStagedContext(CWaveSoapFrontDoc * pDoc, DWORD Flags)
+	: BaseClass(pDoc, Flags)
+	, m_DoneSize(0)
+{
+}
+
 CStagedContext::~CStagedContext()
 {
 	while( ! m_ContextList.IsEmpty())
@@ -978,7 +1055,35 @@ CString CStagedContext::GetStatusString() const
 	{
 		return BaseClass::GetStatusString();
 	}
-	return m_ContextList.First()->GetStatusString();
+
+	CString s(m_ContextList.First()->GetStatusString());
+	CString s1(m_StatusPrompt);
+
+	if (m_StatusPrompt.IsEmpty())
+	{
+		s1 = s;
+	}
+	else if (s.IsEmpty())
+	{
+		s1 = m_StatusPrompt;
+	}
+	else
+	{
+		s1 += _T(" - ");
+		s1 += s;
+	}
+#if 0
+	if ( ! s1.IsEmpty())
+	{
+		TCHAR last = s1[s1.GetLength() - 1];
+		if (last != ' '
+			&& last != '.')
+		{
+			s1 += _T("...");
+		}
+	}
+#endif
+	return s1;
 }
 
 void CStagedContext::AddContext(COperationContext * pContext)
@@ -1058,7 +1163,7 @@ CScanPeaksContext::CScanPeaksContext(CWaveSoapFrontDoc * pDoc,
 									CWaveFile & WavFile,
 									CWaveFile & OriginalFile,
 									BOOL bSavePeaks)
-	: BaseClass(pDoc, _T("Scanning the file for peaks..."), OperationContextDiskIntensive, _T("Peak Scan"))
+	: BaseClass(pDoc, _T("Scanning the file for peaks"), OperationContextDiskIntensive, _T("Peak Scan"))
 	, m_GranuleSize(WavFile.SampleSize() * WavFile.GetPeakGranularity())
 	, m_bSavePeakFile(bSavePeaks)
 {
@@ -2050,15 +2155,27 @@ CUndoRedoContext * CUndoRedoContext::GetUndo()
 	return pUndo;
 }
 
+CString CUndoRedoContext::GetOperationName() const
+{
+	if (IsUndoOperation())
+	{
+		return _T("Undo ") + m_OperationName;
+	}
+	else
+	{
+		return _T("Redo ") + m_OperationName;
+	}
+}
+
 CString CUndoRedoContext::GetStatusString() const
 {
 	if (IsUndoOperation())
 	{
-		return _T("Undoing ") + m_OperationName + _T("...");
+		return _T("Undoing ") + m_OperationName;
 	}
 	else
 	{
-		return _T("Redoing ") + m_OperationName + _T("...");
+		return _T("Redoing ") + m_OperationName;
 	}
 }
 

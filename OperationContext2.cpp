@@ -2031,6 +2031,12 @@ CMoveOperation::CMoveOperation(CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString, L
 {
 }
 
+CMoveOperation::CMoveOperation(CWaveSoapFrontDoc * pDoc)
+	: BaseClass(pDoc)
+	, m_pUndoMove(NULL)
+{
+}
+
 CMoveOperation::~CMoveOperation()
 {
 	delete m_pUndoMove;
@@ -2397,7 +2403,7 @@ CSaveTrimmedOperation::CSaveTrimmedOperation(CWaveSoapFrontDoc * pDoc,
 											SAMPLE_INDEX SrcStartSample,
 											SAMPLE_INDEX SrcEndSample,
 											CHANNEL_MASK Channels)
-	: BaseClass(pDoc, _T(""), _T(""))
+	: BaseClass(pDoc)
 	, m_pRestoreOperation(NULL)
 {
 	m_SrcFile = SrcFile;
@@ -2507,7 +2513,7 @@ void CSaveTrimmedOperation::UnprepareUndo()
 
 /////////////// CRestoreTrimmedOperation
 CRestoreTrimmedOperation::CRestoreTrimmedOperation(CWaveSoapFrontDoc * pDoc)
-	: BaseClass(pDoc, _T(""), _T(""))
+	: BaseClass(pDoc)
 	, m_pSaveOperation(NULL)
 {
 }
@@ -2577,7 +2583,7 @@ void CRestoreTrimmedOperation::DeleteUndo()
 ////////////// CInitChannels
 CInitChannels::CInitChannels(CWaveSoapFrontDoc * pDoc,
 							CWaveFile & File, SAMPLE_INDEX Start, SAMPLE_INDEX End, CHANNEL_MASK Channels)
-	: BaseClass(pDoc, _T(""), 0, _T(""))
+	: BaseClass(pDoc)
 {
 	InitDestination(File, Start, End, Channels, FALSE);
 }
@@ -2655,7 +2661,7 @@ BOOL CInitChannels::ProcessBuffer(void * buf, size_t BufferLength,
 ////////////////// CInitChannelsUndo
 CInitChannelsUndo::CInitChannelsUndo(CWaveSoapFrontDoc * pDoc,
 									SAMPLE_POSITION Start, SAMPLE_POSITION End, CHANNEL_MASK Channels)
-	: BaseClass(pDoc, _T(""), 0, _T(""))
+	: BaseClass(pDoc)
 {
 	m_SrcStart = Start;
 	m_SrcEnd = End;
@@ -2680,8 +2686,7 @@ BOOL CInitChannelsUndo::OperationProc()
 CSelectionChangeOperation::CSelectionChangeOperation(CWaveSoapFrontDoc * pDoc,
 													SAMPLE_INDEX Start, SAMPLE_INDEX End, SAMPLE_INDEX Caret,
 													CHANNEL_MASK Channels)
-
-	: BaseClass(pDoc, _T(""), OperationContextSynchronous, _T(""))
+	: BaseClass(pDoc, OperationContextSynchronous)
 	, m_Start(Start)
 	, m_End(End)
 	, m_Caret(Caret)
@@ -2728,8 +2733,8 @@ BOOL CReverseOperation::CreateUndo()
 		return TRUE;
 	}
 
-	CCopyUndoContext::auto_ptr pUndo1(new CCopyUndoContext(pDocument, _T(""), m_OperationName));
-	CCopyUndoContext::auto_ptr pUndo2(new CCopyUndoContext(pDocument, _T(""), m_OperationName));
+	CCopyUndoContext::auto_ptr pUndo1(new CCopyUndoContext(pDocument));
+	CCopyUndoContext::auto_ptr pUndo2(new CCopyUndoContext(pDocument));
 
 	if ( ! pUndo1->InitUndoCopy(m_DstFile, m_DstStart, m_DstStart + (m_DstEnd - m_DstStart) / 2, m_DstChan))
 	{
@@ -2816,7 +2821,7 @@ BOOL InitExpandOperation(CStagedContext * pContext,
 	if (NumberOfSamples > StartSample)
 	{
 		CMoveOperation::auto_ptr pMove(new
-										CMoveOperation(pContext->pDocument, _T("Expanding the file"), _T("")));
+										CMoveOperation(pContext->pDocument, _T("Expanding the file")));
 		pMove->InitMove(File, StartSample, StartSample + Length, NumberOfSamples - StartSample,
 						Channel);
 		pContext->AddContext(pMove.release());
@@ -2839,7 +2844,7 @@ BOOL InitShrinkOperation(CStagedContext * pContext,
 	{
 		CMoveOperation::auto_ptr pMove(new
 										CMoveOperation(pContext->pDocument,
-														_T("Shrinking the file"), _T("")));
+														_T("Shrinking the file")));
 
 		pMove->InitMove(File, StartSample + Length, StartSample,
 						NumberOfSamples - StartSample - Length,
@@ -2931,7 +2936,7 @@ BOOL InitInsertCopy(CStagedContext * pContext,
 	{
 		// now copy data and replace regions/markers
 		CCopyContext::auto_ptr pCopy(new CCopyContext(pContext->pDocument,
-													_T("Inserting data"), _T("")));
+													_T("Inserting data")));
 
 		if ( ! pCopy->InitCopy(DstFile, StartDstSample, DstChannel,
 								SrcFile, StartSrcSample, SrcChannel, SamplesToInsert))
