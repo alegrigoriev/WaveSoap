@@ -105,9 +105,9 @@ BOOL CResampleContext::OperationProc()
 		size_t DstBufUsed = m_Resample.ProcessSound(pSrcBuf, pDstBuf, LeftToRead,
 													LeftToWrite, & SrcBufUsed);
 
-		TRACE("ResampleContext: SrcPos=%d (0x%X), DstPos=%d (0x%X), src: %d bytes, dst: %d bytes\n",
-			m_SrcPos, m_SrcPos, m_DstPos, m_DstPos,
-			SrcBufUsed, DstBufUsed);
+		if (0) TRACE("ResampleContext: SrcPos=%d (0x%X), DstPos=%d (0x%X), src: %d bytes, dst: %d bytes\n",
+					m_SrcPos, m_SrcPos, m_DstPos, m_DstPos,
+					SrcBufUsed, DstBufUsed);
 		LeftToRead -= SrcBufUsed;
 		m_SrcPos += SrcBufUsed;
 		pSrcBuf += SrcBufUsed;
