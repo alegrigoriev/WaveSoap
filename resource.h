@@ -24,6 +24,8 @@
 #define IDR_WMATYPE2                    134
 #define IDR_WMTYPES                     134
 #define IDD_DIALOGBAR_MDI_CHILD         135
+#define IDR_WMATYPE3                    135
+#define IDR_AVITYPE                     135
 #define IDD_DIALOG_OPEN_TEMPLATE        136
 #define IDR_MENU_POPUP_SAMPLE_RATE      137
 #define IDR_MENU_POPUP_CHANNELS         138
