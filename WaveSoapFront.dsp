@@ -43,7 +43,7 @@ RSC=rc.exe
 # PROP Ignore_Export_Lib 0
 # PROP Target_Dir ""
 # ADD BASE CPP /nologo /MT /W3 /GX /O2 /D "WIN32" /D "NDEBUG" /D "_WINDOWS" /Yu"stdafx.h" /FD /c
-# ADD CPP /nologo /G6 /MT /W3 /GX /O2 /D "WIN32" /D "NDEBUG" /D "_WINDOWS" /D "_MBCS" /Yu"stdafx.h" /FD /c
+# ADD CPP /nologo /G6 /MT /W3 /GR /GX /O2 /D "WIN32" /D "NDEBUG" /D "_WINDOWS" /D "_MBCS" /Yu"stdafx.h" /FD /c
 # ADD BASE MTL /nologo /D "NDEBUG" /mktyplib203 /win32
 # ADD MTL /nologo /D "NDEBUG" /mktyplib203 /win32
 # ADD BASE RSC /l 0x419 /d "NDEBUG"
@@ -53,7 +53,7 @@ BSC32=bscmake.exe
 # ADD BSC32 /nologo
 LINK32=link.exe
 # ADD BASE LINK32 /nologo /subsystem:windows /machine:I386
-# ADD LINK32 winmm.lib msacm32.lib /nologo /subsystem:windows /machine:I386
+# ADD LINK32 winmm.lib msacm32.lib /nologo /subsystem:windows /machine:I386 /out:"Release/WaveSoap.exe"
 
 !ELSEIF  "$(CFG)" == "WaveSoapFront - Win32 Debug"
 
@@ -69,7 +69,7 @@ LINK32=link.exe
 # PROP Ignore_Export_Lib 0
 # PROP Target_Dir ""
 # ADD BASE CPP /nologo /MTd /W3 /Gm /GX /ZI /Od /D "WIN32" /D "_DEBUG" /D "_WINDOWS" /Yu"stdafx.h" /FD /GZ /c
-# ADD CPP /nologo /MTd /W3 /Gm /GX /ZI /Od /D "WIN32" /D "_DEBUG" /D "_WINDOWS" /D "_MBCS" /Yu"stdafx.h" /FD /GZ /c
+# ADD CPP /nologo /MTd /W3 /Gm /GR /GX /ZI /Od /D "WIN32" /D "_DEBUG" /D "_WINDOWS" /D "_MBCS" /Yu"stdafx.h" /FD /GZ /c
 # ADD BASE MTL /nologo /D "_DEBUG" /mktyplib203 /win32
 # ADD MTL /nologo /D "_DEBUG" /mktyplib203 /win32
 # ADD BASE RSC /l 0x419 /d "_DEBUG"
@@ -79,7 +79,7 @@ BSC32=bscmake.exe
 # ADD BSC32 /nologo
 LINK32=link.exe
 # ADD BASE LINK32 /nologo /subsystem:windows /debug /machine:I386 /pdbtype:sept
-# ADD LINK32 winmm.lib msacm32.lib /nologo /subsystem:windows /debug /machine:I386 /pdbtype:sept
+# ADD LINK32 winmm.lib msacm32.lib /nologo /subsystem:windows /debug /machine:I386 /out:"Debug/WaveSoap.exe" /pdbtype:sept
 
 !ENDIF 
 
@@ -189,7 +189,7 @@ SOURCE=.\hlp\WaveSoapFront.hpj
 USERDEP__WAVES="hlp\AfxCore.rtf"	"hlp\AfxPrint.rtf"	"hlp\$(TargetName).hm"	
 # Begin Custom Build - Making help file...
 OutDir=.\Release
-TargetName=WaveSoapFront
+TargetName=WaveSoap
 InputPath=.\hlp\WaveSoapFront.hpj
 InputName=WaveSoapFront
 
@@ -212,7 +212,7 @@ InputName=WaveSoapFront
 USERDEP__WAVES="hlp\AfxCore.rtf"	"hlp\AfxPrint.rtf"	"hlp\$(TargetName).hm"	
 # Begin Custom Build - Making help file...
 OutDir=.\Debug
-TargetName=WaveSoapFront
+TargetName=WaveSoap
 InputPath=.\hlp\WaveSoapFront.hpj
 InputName=WaveSoapFront
 
@@ -308,7 +308,7 @@ SOURCE=.\Resource.h
 
 # PROP Ignore_Default_Tool 1
 # Begin Custom Build - Making help include file...
-TargetName=WaveSoapFront
+TargetName=WaveSoap
 InputPath=.\Resource.h
 
 "hlp\$(TargetName).hm" : $(SOURCE) "$(INTDIR)" "$(OUTDIR)"
@@ -334,7 +334,7 @@ InputPath=.\Resource.h
 
 # PROP Ignore_Default_Tool 1
 # Begin Custom Build - Making help include file...
-TargetName=WaveSoapFront
+TargetName=WaveSoap
 InputPath=.\Resource.h
 
 "hlp\$(TargetName).hm" : $(SOURCE) "$(INTDIR)" "$(OUTDIR)"
