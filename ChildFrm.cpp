@@ -634,7 +634,10 @@ BOOL CWaveMDIChildClient::OnCmdMsg(UINT nID, int nCode, void* pExtra, AFX_CMDHAN
 {
 	// then pump its own handlers
 	if (NULL == pExtra && NULL == pHandlerInfo)
-		TRACE("CWaveMDIChildClient::OnCmdMsg nID=%X, nCode=%X\n", nID, nCode);
+	{
+		if (0) TRACE("CWaveMDIChildClient::OnCmdMsg nID=%X, nCode=%X\n", nID, nCode);
+	}
+
 	if (CWnd::OnCmdMsg(nID, nCode, pExtra, pHandlerInfo))
 		return TRUE;
 
