@@ -60,19 +60,19 @@ void CBatchConvertDlg::OnButtonAddDestination()
 
 void CBatchConvertDlg::OnButtonAddFiles()
 {
-	// TODO: Add your control notification handler code here
+	// TODO Add your control notification handler code here
 
 }
 
 void CBatchConvertDlg::OnButtonDeleteDestination()
 {
-	// TODO: Add your control notification handler code here
+	// TODO Add your control notification handler code here
 
 }
 
 void CBatchConvertDlg::OnButtonDeleteFiles()
 {
-	// TODO: Add your control notification handler code here
+	// TODO Add your control notification handler code here
 
 }
 

@@ -111,10 +111,11 @@
 			<Tool
 				Name="VCLinkerTool"
 				AdditionalOptions="/MACHINE:I386"
-				AdditionalDependencies="winmm.lib msacm32.lib wmstub.lib wmvcore.lib setupapi.lib"
+				AdditionalDependencies="winmm.lib msacm32.lib wmstub.lib wmvcore.lib setupapi.lib Imagehlp.lib"
 				OutputFile="Release/WaveSoap.exe"
 				LinkIncremental="1"
 				SuppressStartupBanner="TRUE"
+				IgnoreDefaultLibraryNames="msvcrt.lib"
 				DelayLoadDLLs="wmvcore.dll"
 				GenerateMapFile="TRUE"
 				MapFileName=".\Release/WaveSoap.map"
@@ -331,9 +332,6 @@
 				RelativePath=".\BladeMP3EncDLL.h">
 			</File>
 			<File
-				RelativePath=".\CStringW.h">
-			</File>
-			<File
 				RelativePath=".\CdDrive.h">
 			</File>
 			<File
@@ -371,9 +369,6 @@
 			</File>
 			<File
 				RelativePath=".\MainFrm.h">
-			</File>
-			<File
-				RelativePath=".\MfcStdAfx.h">
 			</File>
 			<File
 				RelativePath=".\NewFilePropertiesDlg.h">
@@ -931,9 +926,6 @@ makehm IDW_,HIDW_,0x50000 resource.h &gt;&gt;&quot;hlp\$(TargetName).hm&quot;
 		</File>
 		<File
 			RelativePath=".\aspi_w32.txt">
-		</File>
-		<File
-			RelativePath=".\delayimp.lib">
 		</File>
 	</Files>
 	<Globals>

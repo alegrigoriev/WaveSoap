@@ -832,7 +832,7 @@ void CWaveOutlineView::OnCaptureChanged(CWnd *pWnd)
 
 BOOL CWaveOutlineView::OnSetCursor(CWnd* pWnd, UINT nHitTest, UINT message)
 {
-	// TODO: Add your message handler code here and/or call default
+	// TODO: set different cursor, depending on hit test
 	SetCursor(AfxGetApp()->LoadStandardCursor(IDC_ARROW));
 	return TRUE;
 }

@@ -239,7 +239,6 @@ protected:
 	afx_msg void OnSize(UINT nType, int cx, int cy);
 	virtual BOOL OnInitDialog();
 	afx_msg void OnTimer(UINT nIDEvent);
-	afx_msg void OnButtonMore();
 	afx_msg void OnSelchangeComboDrives();
 	afx_msg void OnDestroy();
 	afx_msg void OnButtonCddb();

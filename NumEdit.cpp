@@ -64,7 +64,6 @@ BOOL CNumEdit::SimpleFloatParse(LPCTSTR lpszText,
 #if 0
 void CNumEdit::OnUpdate()
 {
-	// TODO: Add your control notification handler code here
 	// check if it contents a valid numeric string
 	CString str;
 	GetWindowText(str);
@@ -86,7 +85,6 @@ void CNumEdit::OnUpdate()
 
 void CNumEdit::OnChar(UINT nChar, UINT nRepCnt, UINT nFlags)
 {
-	// TODO: Add your message handler code here and/or call default
 	// if it is alfanumeric char, filter all non-numeric characters
 //    GetSel(iSelStart, iSelEnd);
 	if (nChar >= ' ' && nChar <= 0xff)
@@ -97,7 +95,6 @@ void CNumEdit::OnChar(UINT nChar, UINT nRepCnt, UINT nFlags)
 			&& nChar != 'e'
 			&& nChar != 'E')
 		{
-//MessageBeep(MB_ICONEXCLAMATION); // don't annoy the user!
 			return;
 		}
 	}

@@ -1269,7 +1269,7 @@ BOOL CExpressionEvaluationContext::SetExpression(LPCSTR * ppszExpression)
 		{
 			throw "Expression syntax error";
 		}
-		// todo: norm the sample
+		// norm the sample
 		PushConstant(32767);
 		CompileMultiply();
 		m_pResultAddress = PopInt();

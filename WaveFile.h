@@ -4,6 +4,7 @@
 #if _MSC_VER > 1000
 #pragma once
 #endif // _MSC_VER > 1000
+#include <vector>
 /*
 Class CWaveFile serves as a WAV file input/output
 helper.
@@ -137,12 +138,17 @@ public:
 			memzero(riffck);
 			m_size = sizeof *this;
 		}
-		virtual void CopyDataTo(InstanceData * dst)
+		InstanceDataMm & operator =(InstanceDataMm const & src)
+		{
+			riffck = src.riffck;
+			m_hmmio = src.m_hmmio;
+			InstanceData::operator=(src);
+			return *this;
+		}
+		virtual void MoveDataTo(InstanceData * dst)
 		{
 			InstanceDataMm * dst1 = static_cast<InstanceDataMm *>(dst);
-			dst1->riffck = riffck;
-			dst1->m_hmmio = m_hmmio;
-			InstanceData::CopyDataTo(dst);
+			dst1->operator=(*this);
 		}
 	};
 
@@ -156,6 +162,7 @@ public:
 	}
 
 	BOOL LoadRiffChunk();
+	BOOL ReadChunkString(ULONG Length, CString & String);
 
 	BOOL IsOpen() const
 	{
@@ -189,6 +196,60 @@ enum {
 	CreateWaveFileCreateFact = 0x04000000,
 };
 
+struct WaveMarker
+{
+	CString Name;
+	CString Comment;
+	ULONG CueId;
+	ULONG StartSample;
+	FOURCC fccRgn;  // 'rgn '
+	ULONG LengthSamples;  // >1 if it is region
+	bool operator <(WaveMarker const & op)
+	{
+		return StartSample < op.StartSample;
+	}
+};
+
+struct WavePlaylistItem
+{
+	unsigned MarkerIndex;
+	DWORD Length;   // samples
+	DWORD NumLoops;
+};
+
+struct CuePointChunkItem
+{
+	DWORD NameId;   // unique ID
+	DWORD SamplePosition; // ordinal sample position in the file
+	FOURCC fccChunk;    // 'data'
+	DWORD dwChunkStart;
+	DWORD dwBlockStart;
+	DWORD dwSampleOffset;
+};
+
+struct PlaylistSegment
+{
+	DWORD NameId;   // CuePoint ID
+	DWORD Length;   // in samples
+	DWORD Loops;    // number of loops
+};
+#pragma pack(push, 1)
+
+struct LtxtChunk  // in LIST adtl
+{
+	DWORD NameId;   // CuePoint ID
+	DWORD SampleLength; // length in samples. For cue point - 0 or 1
+	DWORD Purpose;  //'rgn '
+	WORD Country;
+	WORD Language;
+	WORD Dialect;
+	WORD Codepage;
+	// then goes zero-terminated text
+	//UCHAR text[1];
+};
+
+#pragma pack(pop)
+
 class CWaveFile : public CMmioFile
 {
 public:
@@ -207,26 +268,88 @@ public:
 		MMCKINFO datack;
 		MMCKINFO fmtck;
 		MMCKINFO factck;
-		MMCKINFO infock;    // INFO chunk
 		CWaveFormat wf;
+		// TODO: use Unicode?
+		CString Author;
+		CString DisplayTitle;
+		CString Album;
+		CString Copyright;
+		CString RecordingEngineer;
+
+		CString Title;
+		CString Date;
+		CString Genre;
+		CString Comment;
+		CString Subject;
+		CString Keywords;
+		CString Medium;
+		CString Source;
+		CString Digitizer;
+		CString DigitizationSource;
+
+		std::vector<WaveMarker> Markers;
+		std::vector<WavePlaylistItem> Playlist;
+		bool InfoChanged;
 
 		InstanceDataWav()
 		{
 			memzero(datack);
 			memzero(fmtck);
 			memzero(factck);
-			memzero(infock);
 			m_size = sizeof *this;
+			InfoChanged = false;
 		}
-		virtual void CopyDataTo(InstanceData * dst)
+		// move all data to a derived (bigger) type
+		InstanceDataWav & operator =(InstanceDataWav const & src)
+		{
+			datack = src.datack;
+			fmtck = src.fmtck;
+			factck = src.factck;
+			wf = src.wf;
+
+			Album = src.Album;
+			Author = src.Author;
+			Date = src.Date;
+			Genre = src.Genre;
+			Comment = src.Comment;
+			Title = src.Title;
+			DisplayTitle = src.DisplayTitle;
+
+			Markers = src.Markers;
+
+			Playlist = src.Playlist;
+
+			InstanceDataMm::operator =(src);
+			return *this;
+		}
+		virtual void MoveDataTo(InstanceData * dst)
 		{
 			InstanceDataWav * dst1 = static_cast<InstanceDataWav *>(dst);
-			dst1->datack = datack;
-			dst1->fmtck = fmtck;
-			dst1->factck = factck;
-			dst1->infock = infock;
-			dst1->wf = wf;
-			InstanceDataMm::CopyDataTo(dst);
+			*dst1 = *this;
+		}
+		void ResetMetadata()
+		{
+			Author.Empty();
+			DisplayTitle.Empty();
+			Album.Empty();
+			Copyright.Empty();
+			RecordingEngineer.Empty();
+
+			Title.Empty();
+			Date.Empty();
+			Genre.Empty();
+			Comment.Empty();
+			Subject.Empty();
+			Keywords.Empty();
+			Medium.Empty();
+			Source.Empty();
+			Digitizer.Empty();
+			DigitizationSource.Empty();
+
+			Markers.clear();
+			Playlist.clear();
+			InfoChanged = false;
+
 		}
 	};
 	InstanceDataWav * GetInstanceData() const
@@ -245,15 +368,19 @@ public:
 	LONG NumberOfSamples() const;
 	CWaveFile & operator =(CWaveFile &);
 
-	//MMCKINFO m_datack;
-
 	WAVEFORMATEX * AllocateWaveformat(size_t FormatSize = sizeof (WAVEFORMATEX))
 	{
-		return GetInstanceData()->wf.Allocate(FormatSize - sizeof (WAVEFORMATEX));
+		return AllocateInstanceData<InstanceDataWav>()->wf.Allocate(FormatSize - sizeof (WAVEFORMATEX));
 	}
 
 	BOOL LoadWaveformat();
 	BOOL FindData();
+	BOOL LoadMetadata();
+	BOOL LoadListMetadata(MMCKINFO & chunk);
+	BOOL ReadCueSheet(MMCKINFO & chunk);
+	BOOL ReadPlaylist(MMCKINFO & chunk);
+
+	WaveMarker * GetCueItem(DWORD CueId);
 
 	unsigned SampleRate() const
 	{
@@ -272,6 +399,7 @@ public:
 	{
 		return & GetInstanceData()->datack;
 	}
+
 	WAVEFORMATEX * GetWaveFormat() const;
 	// save all changes in wave format and data chunk size
 	BOOL CommitChanges();

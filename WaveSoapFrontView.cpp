@@ -101,6 +101,7 @@ CWaveSoapFrontView::CWaveSoapFrontView()
 	m_NewSelectionMade(false),
 	m_bAutoscrollTimerStarted(false),
 	m_PlaybackCursorDrawnSamplePos(0),
+	m_WheelAccumulator(0),
 	m_WaveDataSizeInBuffer(0)
 {
 	TRACE("CWaveSoapFrontView::CWaveSoapFrontView()\n");
@@ -202,14 +203,12 @@ void CWaveSoapFrontView::DrawHorizontalWithSelection(CDC * pDC,
 
 void CWaveSoapFrontView::OnDraw(CDC* pDC)
 {
-//TRACE("OnDraw\n");
 	CWaveSoapFrontDoc* pDoc = GetDocument();
 	ASSERT_VALID(pDoc);
 	if (! pDoc->m_WavFile.IsOpen())
 	{
 		return;
 	}
-	// TODO: add draw code for native data here
 	// pen to draw the waveform
 	CPen WaveformPen;
 	CPen SelectedWaveformPen;
@@ -827,7 +826,6 @@ void CWaveSoapFrontView::OnViewZoomInVert()
 
 void CWaveSoapFrontView::OnViewZoomOutVert()
 {
-	// TODO: Add your command handler code here
 	if (m_VerticalScale > 1.)
 	{
 		m_VerticalScale	*= sqrt(0.5);
@@ -1254,30 +1252,47 @@ BOOL CWaveSoapFrontView::OnMouseWheel(UINT nFlags, short zDelta, CPoint pt)
 {
 	// without control or shift:
 	// just scrolls 1/20th of the window width
+	m_WheelAccumulator += zDelta;
 	if (0 == (nFlags & (MK_CONTROL | MK_SHIFT)))
 	{
-		// todo: accumulate the delta until WHEEL_DELTA is reached
-		if (WHEEL_DELTA == zDelta)
+		// accumulate the delta until WHEEL_DELTA is reached
+		if (m_WheelAccumulator >= 0)
 		{
-			OnScroll(MAKEWORD(SB_LINEUP, -1), 0);
+			while (m_WheelAccumulator >= WHEEL_DELTA)
+			{
+				m_WheelAccumulator -= WHEEL_DELTA;
+				OnScroll(MAKEWORD(SB_LINEUP, -1), 0);
+			}
 		}
-		else if ( - WHEEL_DELTA == zDelta)
+		else
 		{
-			OnScroll(MAKEWORD(SB_LINEDOWN, -1), 0);
+			while (m_WheelAccumulator <= - WHEEL_DELTA)
+			{
+				m_WheelAccumulator += WHEEL_DELTA;
+				OnScroll(MAKEWORD(SB_LINEDOWN, -1), 0);
+			}
 		}
 	}
 	else if (nFlags & MK_CONTROL)
 	{
-		if (WHEEL_DELTA == zDelta)
+		if (m_WheelAccumulator >= 0)
 		{
-			if (m_HorizontalScale > 1)
+			while (m_WheelAccumulator >= WHEEL_DELTA)
 			{
-				OnViewZoominHor2();
+				m_WheelAccumulator -= WHEEL_DELTA;
+				if (m_HorizontalScale > 1)
+				{
+					OnViewZoominHor2();
+				}
 			}
 		}
-		else if ( - WHEEL_DELTA == zDelta)
+		else
 		{
-			OnViewZoomOutHor2();
+			while (m_WheelAccumulator <= - WHEEL_DELTA)
+			{
+				m_WheelAccumulator += WHEEL_DELTA;
+				OnViewZoomOutHor2();
+			}
 		}
 	}
 	return TRUE;
@@ -1661,7 +1676,6 @@ POINT CWaveSoapFrontView::GetZoomCenter()
 
 void CWaveSoapFrontView::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 {
-	// TODO: Add your message handler code here and/or call default
 	// process cursor control commands
 	CWaveSoapFrontDoc * pDoc = GetDocument();
 

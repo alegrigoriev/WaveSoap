@@ -46,7 +46,6 @@ static UINT indicators[] =
 
 CChildFrame::CChildFrame()
 {
-	// TODO: add member initialization code here
 
 }
 
@@ -93,7 +92,6 @@ void CChildFrame::Dump(CDumpContext& dc) const
 
 BOOL CChildFrame::OnCreateClient(LPCREATESTRUCT lpcs, CCreateContext* pContext)
 {
-	// TODO: Add your specialized code here and/or call the base class
 	CRect r;
 	GetClientRect( & r);
 

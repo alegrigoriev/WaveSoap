@@ -1425,15 +1425,15 @@ int CNoiseReduction::ProcessSoundBuffer(char const * pIn, char * pOut,
 			}
 			PrevFilteredPower[0] = 0.;
 			PrevFilteredPower[1] = 0.;
-			for (f = m_nFftOrder / 2; f >= 0; f--)
+			for (int ff = m_nFftOrder / 2; ff >= 0; ff--)
 			{
 				MaskingSpectralDecayNormHigh -= MaskingDistanceDelta;
 				double decay = 1. / MaskingSpectralDecayNormHigh;
 				for (ch = 0; ch < nChans; ch++)
 				{
-					PrevFilteredPower[ch] += (m_pParams[ch][f].sp_MaskingPower - PrevFilteredPower[ch])
+					PrevFilteredPower[ch] += (m_pParams[ch][ff].sp_MaskingPower - PrevFilteredPower[ch])
 											* decay;
-					m_pParams[ch][f].sp_MaskingPower = float(PrevFilteredPower[ch]);
+					m_pParams[ch][ff].sp_MaskingPower = float(PrevFilteredPower[ch]);
 				}
 			}
 			float MaskingTemporalDecayNormLow = float(

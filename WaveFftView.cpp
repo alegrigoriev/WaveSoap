@@ -266,7 +266,6 @@ void CWaveFftView::OnDraw(CDC* pDC)
 	// The conversion result is cached in the byte array, of window width
 	// and FFT order high
 
-	// TODO: add draw code here
 	// show FFT:
 	// 1. build grayscale palette and realize it (for 8 bit mode)
 	// 2. allocate 256 colors or truecolor bitmap section
@@ -960,10 +959,9 @@ void CWaveFftView::OnPaint()
 
 BOOL CWaveFftView::OnEraseBkgnd(CDC* pDC)
 {
-// TODO: draw checkered background outside wave area
+// draw checkered background outside wave area
 	CWaveSoapFrontDoc * pDoc = GetDocument();
 
-	//RemoveSelectionRect();
 	CRect r;
 	GetClientRect( & r);
 	int FileEnd = WorldToWindowX(pDoc->WaveFileSamples());
@@ -1041,7 +1039,6 @@ void CWaveFftView::OnViewZoomInVert()
 
 void CWaveFftView::OnViewZoomOutVert()
 {
-	// TODO: Add your command handler code here
 	if (m_VerticalScale > 1.)
 	{
 		m_VerticalScale	*= sqrt(0.5);

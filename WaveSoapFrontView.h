@@ -104,6 +104,7 @@ protected:
 	bool m_bAutoscrollTimerStarted;
 	UINT m_TimerID;
 	long m_PlaybackCursorDrawnSamplePos;
+	int m_WheelAccumulator;
 	// Generated message map functions
 protected:
 	//{{AFX_MSG(CWaveSoapFrontView)
