@@ -3,6 +3,8 @@
 #include "stdafx.h"
 #include "DirectFile.h"
 #include "WaveFile.h"
+#include <atlbase.h>
+#include <atlpath.h>
 
 CMmioFile::CMmioFile()
 	: m_hmmio(NULL),
@@ -98,7 +100,7 @@ static DWORD GetSectorSize(LPCTSTR szFilename)
 	return sector_size;
 }
 
-BOOL CMmioFile::Open( LPCTSTR szFileName, UINT nOpenFlags)
+BOOL CMmioFile::Open(LPCTSTR szFileName, UINT nOpenFlags)
 {
 	Close();
 	DWORD DirectFileOpenFlags = 0;
@@ -165,6 +167,7 @@ BOOL CMmioFile::Open( LPCTSTR szFileName, UINT nOpenFlags)
 			Close();
 			return FALSE;
 		}
+		AllocateInstanceData<InstanceDataMm>();
 	}
 	else
 	{
@@ -190,9 +193,10 @@ BOOL CMmioFile::Open( LPCTSTR szFileName, UINT nOpenFlags)
 			return FALSE;
 		}
 
+		LPMMCKINFO pRiffck = & AllocateInstanceData<InstanceDataMm>()->riffck;
+
 		if (0 == (nOpenFlags & MmioFileOpenDontCreateRiff))
 		{
-			LPMMCKINFO pRiffck = & AllocateInstanceData<CMmioFile::InstanceDataMm>()->riffck;
 			if (FOURCC_RIFF != pRiffck->ckid)
 			{
 				// if RIFF chunk was filled before, it means that it is already read
@@ -226,6 +230,7 @@ BOOL CMmioFile::LoadRiffChunk()
 	pRiffck->fccType = m_RiffckType; // derived class can set it
 	pRiffck->dwDataOffset = 0;
 	pRiffck->dwFlags = 0;
+
 	if ( ! FindRiff())
 	{
 		Close();
@@ -234,6 +239,7 @@ BOOL CMmioFile::LoadRiffChunk()
 	// if RIFF chunk was allocated before, it means that it is already read
 	return TRUE;
 }
+
 LRESULT PASCAL CMmioFile::BufferedIOProc(LPSTR lpmmioinfo, UINT wMsg,
 										LPARAM lParam1, LPARAM lParam2)
 {
@@ -326,13 +332,16 @@ CWaveFile::~CWaveFile()
 {
 }
 
-#if 0
 BOOL CWaveFile::Open( LPCTSTR lpszFileName, UINT nOpenFlags)
 {
-	return CMmioFile::Open(lpszFileName, nOpenFlags);
+	if ( ! CMmioFile::Open(lpszFileName, nOpenFlags))
+	{
+		return FALSE;
+	}
+	AllocateInstanceData<InstanceDataWav>();
+	return TRUE;
 }
 
-#endif
 void CWaveFile::Close( )
 {
 	CMmioFile::Close();
@@ -779,6 +788,7 @@ BOOL CWaveFile::CreateWaveFile(CWaveFile * pTemplateFile, WAVEFORMATEX * pTempla
 	{
 		OpenFlags |= MmioFileOpenDeleteAfterClose;
 	}
+
 	if (flags & CreateWaveFileDontInitStructure)
 	{
 		if (FALSE == Open(name, OpenFlags | MmioFileOpenDontCreateRiff))
@@ -790,6 +800,12 @@ BOOL CWaveFile::CreateWaveFile(CWaveFile * pTemplateFile, WAVEFORMATEX * pTempla
 		{
 			return SetFileLength(SizeOrSamples);
 		}
+		if (NULL == AllocateInstanceData<InstanceDataWav>())
+		{
+			Close();
+			return FALSE;
+		}
+
 		return TRUE;
 	}
 	if (FALSE == Open(name, OpenFlags))
@@ -798,7 +814,7 @@ BOOL CWaveFile::CreateWaveFile(CWaveFile * pTemplateFile, WAVEFORMATEX * pTempla
 		return FALSE;
 	}
 
-	if (NULL == AllocateInstanceData<CWaveFile::InstanceDataWav>())
+	if (NULL == AllocateInstanceData<InstanceDataWav>())
 	{
 		Close();
 		return FALSE;
@@ -1068,3 +1084,553 @@ BOOL CWaveFile::CommitChanges()
 	}
 	return CMmioFile::CommitChanges();
 }
+
+CWavePeaks::CWavePeaks(unsigned granularity)
+	: m_pPeaks(NULL)
+	, m_WavePeakSize(0)
+	, m_AllocatedWavePeakSize(0),
+	m_PeakDataGranularity(granularity)
+{
+}
+
+CWavePeaks::~CWavePeaks()
+{
+	delete[] m_pPeaks;
+}
+
+WavePeak * CWavePeaks::AllocatePeakData(long NewNumberOfSamples, int NumberOfChannels)
+{
+	// change m_pPeaks size
+	// need to synchronize with OnDraw
+	unsigned NewWavePeakSize = NumberOfChannels *
+								((NewNumberOfSamples + m_PeakDataGranularity - 1) / m_PeakDataGranularity);
+
+	if (NULL == m_pPeaks
+		|| NewWavePeakSize > m_AllocatedWavePeakSize)
+	{
+		int NewAllocatedWavePeakSize = NewWavePeakSize + 1024;  // reserve more
+		WavePeak * NewPeaks = new WavePeak[NewAllocatedWavePeakSize];
+		if (NULL == NewPeaks)
+		{
+			return NULL;
+		}
+		if (NULL != m_pPeaks
+			&& 0 != m_WavePeakSize)
+		{
+			memcpy(NewPeaks, m_pPeaks, m_WavePeakSize * sizeof (WavePeak));
+		}
+		else
+		{
+			m_WavePeakSize = 0;
+		}
+		for (unsigned i = m_WavePeakSize; i < NewWavePeakSize; i++)
+		{
+			NewPeaks[i].high = -0x8000;
+			NewPeaks[i].low = 0x7FFF;
+		}
+		WavePeak * OldPeaks;
+		{
+			CSimpleCriticalSectionLock lock(m_PeakLock);
+			OldPeaks = m_pPeaks;
+			m_pPeaks = NewPeaks;
+			m_WavePeakSize = NewWavePeakSize;
+			m_AllocatedWavePeakSize = NewAllocatedWavePeakSize;
+		}
+		delete[] OldPeaks;
+	}
+	else
+	{
+		for (unsigned i = m_WavePeakSize; i < NewWavePeakSize; i++)
+		{
+			m_pPeaks[i].high = -0x8000;
+			m_pPeaks[i].low = 0x7FFF;
+		}
+		m_WavePeakSize = NewWavePeakSize;
+	}
+	return m_pPeaks;
+}
+
+void CWaveFile::SetPeakData(unsigned index, __int16 low, __int16 high)
+{
+	CWavePeaks * pPeaks = GetWavePeaks();
+	if (NULL != pPeaks)
+	{
+		pPeaks->SetPeakData(index, low, high);
+	}
+}
+
+BOOL CWaveFile::AllocatePeakData(long NewNumberOfSamples)
+{
+	CWavePeaks * pPeaks = GetWavePeaks();
+	if (NULL != pPeaks)
+	{
+		return NULL != pPeaks->AllocatePeakData(NewNumberOfSamples, Channels());
+	}
+	return FALSE;
+}
+
+BOOL CWaveFile::SetSourceFile(CWaveFile * const pOriginalFile)
+{
+	if (BaseClass::SetSourceFile(pOriginalFile))
+	{
+		CWavePeaks * pPeaks2 = GetWavePeaks();
+		CWavePeaks * pPeaks1 = pOriginalFile->GetWavePeaks();
+		if (NULL != pPeaks1 && NULL != pPeaks2)
+		{
+			*pPeaks2 = *pPeaks1;
+		}
+		return TRUE;
+	}
+	return FALSE;
+}
+
+WavePeak CWaveFile::GetPeakMinMax(unsigned from, unsigned to, unsigned stride)
+{
+	CWavePeaks * pPeaks = GetWavePeaks();
+	if (NULL != pPeaks)
+	{
+		return pPeaks->GetPeakMinMax(from, to, stride);
+	}
+	return WavePeak(0, 0);
+}
+
+unsigned CWaveFile::GetPeakGranularity() const
+{
+	CWavePeaks const * pPeaks = GetWavePeaks();
+	if (NULL != pPeaks)
+	{
+		return pPeaks->GetGranularity();
+	}
+	return 1024;
+}
+
+unsigned CWaveFile::GetPeaksSize() const
+{
+	CWavePeaks const * pPeaks = GetWavePeaks();
+	if (NULL != pPeaks)
+	{
+		return pPeaks->GetPeaksSize();
+	}
+	return 0;
+}
+
+void CWaveFile::SetPeaks(unsigned from, unsigned to, unsigned stride, WavePeak value)
+{
+	CWavePeaks * pPeaks = GetWavePeaks();
+	if (NULL != pPeaks)
+	{
+		pPeaks->SetPeaks(from, to, stride, value);
+	}
+}
+
+void CWaveFile::RescanPeaks(long begin, long end)
+{
+	// if called immediately after data modification, it will get
+	// the data directly from the cache
+	TRACE("RescanPeaks from %d to %d\n", begin, end);
+
+	CWavePeaks * pPeaks = GetWavePeaks();
+	unsigned Granularity = pPeaks->GetGranularity();
+
+	int nSampleSize = SampleSize();
+	LPMMCKINFO datack = GetDataChunk();
+	DWORD dwDataChunkOffset = datack->dwDataOffset;
+
+	unsigned GranuleSize = Channels() * Granularity * sizeof(__int16);
+
+	DWORD Pos = nSampleSize * (begin & -int(Granularity)) + dwDataChunkOffset;
+
+	DWORD EndPos = nSampleSize * ((end | (Granularity - 1)) + 1);
+	if (EndPos > datack->cksize)
+	{
+		EndPos = datack->cksize;
+	}
+	EndPos += dwDataChunkOffset;
+
+	while (Pos < EndPos)
+	{
+		DWORD SizeToRead = EndPos - Pos;
+		void * pBuf;
+		long lRead = GetDataBuffer( & pBuf, SizeToRead, Pos, 0);
+
+		if (lRead > 0)
+		{
+			unsigned i;
+			unsigned DataToProcess = lRead;
+			__int16 * pWaveData = (__int16 *) pBuf;
+			DWORD DataOffset = Pos - dwDataChunkOffset;
+			unsigned DataForGranule = GranuleSize - DataOffset % GranuleSize;
+
+			if (2 == Channels())
+			{
+				unsigned index = (DataOffset / GranuleSize) * 2;
+				while (0 != DataToProcess)
+				{
+					int wpl_l;
+					int wpl_h;
+					int wpr_l;
+					int wpr_h;
+					if (0 == DataOffset % GranuleSize)
+					{
+						wpl_l = 0x7FFF;
+						wpl_h = -0x8000;
+						wpr_l = 0x7FFF;
+						wpr_h = -0x8000;
+					}
+					else
+					{
+						wpl_l = pPeaks->GetPeakDataLow(index);
+						wpl_h = pPeaks->GetPeakDataHigh(index);
+						wpr_l = pPeaks->GetPeakDataLow(index + 1);
+						wpr_h = pPeaks->GetPeakDataHigh(index + 1);
+					}
+
+					if (DataForGranule > DataToProcess)
+					{
+						DataForGranule = DataToProcess;
+					}
+					DataToProcess -= DataForGranule;
+
+					if (DataOffset & 2)
+					{
+						if (pWaveData[0] < wpr_l)
+						{
+							wpr_l = pWaveData[0];
+						}
+						if (pWaveData[0] > wpr_h)
+						{
+							wpr_h = pWaveData[0];
+						}
+						pWaveData++;
+						DataOffset += 2;
+						DataForGranule -= 2;
+					}
+
+					DataOffset += DataForGranule;
+					for (i = 0; i < DataForGranule / (sizeof(__int16) * 2); i++, pWaveData += 2)
+					{
+						if (pWaveData[0] < wpl_l)
+						{
+							wpl_l = pWaveData[0];
+						}
+						if (pWaveData[0] > wpl_h)
+						{
+							wpl_h = pWaveData[0];
+						}
+						if (pWaveData[1] < wpr_l)
+						{
+							wpr_l = pWaveData[1];
+						}
+						if (pWaveData[1] > wpr_h)
+						{
+							wpr_h = pWaveData[1];
+						}
+					}
+
+					if (DataForGranule & 2)
+					{
+						if (pWaveData[0] < wpl_l)
+						{
+							wpl_l = pWaveData[0];
+						}
+						if (pWaveData[0] > wpl_h)
+						{
+							wpl_h = pWaveData[0];
+						}
+						pWaveData++;
+					}
+
+					pPeaks->SetPeakData(index, wpl_l, wpl_h);
+					pPeaks->SetPeakData(index + 1, wpr_l, wpr_h);
+					index += 2;
+
+					DataForGranule = GranuleSize;
+				}
+			}
+			else
+			{
+				unsigned index = DataOffset / GranuleSize;
+				while (0 != DataToProcess)
+				{
+					int wp_l;
+					int wp_h;
+					if (0 == DataOffset % GranuleSize)
+					{
+						wp_l = 0x7FFF;
+						wp_h = -0x8000;
+					}
+					else
+					{
+						wp_l = pPeaks->GetPeakDataLow(index);
+						wp_h = pPeaks->GetPeakDataHigh(index);
+					}
+
+					if (DataForGranule > DataToProcess)
+					{
+						DataForGranule = DataToProcess;
+					}
+					DataToProcess -= DataForGranule;
+					DataOffset += DataForGranule;
+
+					for (i = 0; i < DataForGranule / sizeof(__int16); i++, pWaveData ++)
+					{
+						if (pWaveData[0] < wp_l)
+						{
+							wp_l = pWaveData[0];
+						}
+						if (pWaveData[0] > wp_h)
+						{
+							wp_h = pWaveData[0];
+						}
+					}
+
+					pPeaks->SetPeakData(index, wp_l, wp_h);
+					index++;
+
+					DataForGranule = GranuleSize;
+				}
+			}
+
+			Pos += lRead;
+
+			ReturnDataBuffer(pBuf, lRead, 0);
+		}
+		else
+		{
+			break;
+		}
+	}
+}
+
+WavePeak CWavePeaks::GetPeakMinMax(unsigned from, unsigned to, unsigned stride)
+{
+
+	WavePeak peak;
+	peak.high = -0x8000;
+	peak.low = 0x7FFF;
+
+	CSimpleCriticalSectionLock lock(m_PeakLock);
+
+	if (to > m_WavePeakSize)
+	{
+		to = m_WavePeakSize;
+	}
+
+	for (unsigned j = from; j < to; j += stride)
+	{
+		if (peak.low > m_pPeaks[j].low)
+		{
+			peak.low = m_pPeaks[j].low;
+		}
+		if (peak.high < m_pPeaks[j].high)
+		{
+			peak.high = m_pPeaks[j].high;
+		}
+	}
+	return peak;
+}
+
+void CWavePeaks::SetPeaks(unsigned from, unsigned to, unsigned stride, WavePeak value)
+{
+	CSimpleCriticalSectionLock lock(m_PeakLock);
+
+	if (to > m_WavePeakSize)
+	{
+		to = m_WavePeakSize;
+	}
+
+	for (unsigned j = from; j < to; j += stride)
+	{
+		m_pPeaks[j] = value;
+	}
+}
+
+CWavePeaks & CWavePeaks::operator =(CWavePeaks const & src)
+{
+	m_PeakDataGranularity = src.GetGranularity();
+	WavePeak * pPeaks = AllocatePeakData(src.GetPeaksSize() * m_PeakDataGranularity);
+	if (NULL != pPeaks)
+	{
+		memcpy(pPeaks, src.GetPeakArray(), GetPeaksSize() * sizeof (WavePeak));
+	}
+	else
+	{
+		AllocatePeakData(0);
+	}
+	return *this;
+}
+
+bool operator ==(FILETIME const & t1, FILETIME const & t2)
+{
+	return t1.dwHighDateTime == t2.dwHighDateTime
+			&& t1.dwLowDateTime == t2.dwLowDateTime;
+}
+
+CPath CWaveFile::MakePeakFileName(LPCTSTR FileName)
+{
+	CPath path(FileName);
+	if (0 == path.GetExtension().CompareNoCase(_T(".WAV")))
+	{
+		path.RenameExtension(_T(".wspk"));
+	}
+	else
+	{
+		static_cast<CString &>(path).Append(_T(".wspk"));
+	}
+	return path;
+}
+
+BOOL CWaveFile::CheckAndLoadPeakFile()
+{
+	// if peak file exists and the wav file length/date/time matches the stored
+	// length/date/time, then use this peak file.
+	// otherwise scan the wav file and build the new peak file
+	CWavePeaks * pPeakInfo = GetWavePeaks();
+
+	CFile PeakFile;
+	PeakFileHeader pfh;
+
+	CPath PeakFilename(MakePeakFileName(GetName()));
+
+	if (PeakFile.Open(PeakFilename,
+					CFile::modeRead | CFile::shareDenyWrite | CFile::typeBinary))
+	{
+		if (sizeof (PeakFileHeader)
+			== PeakFile.Read( & pfh, sizeof (PeakFileHeader))
+			&& PeakFileHeader::pfhSignature == pfh.dwSignature
+			&& pfh.dwVersion == PeakFileHeader::pfhMaxVersion
+			&& pfh.wSize == sizeof (PeakFileHeader)
+
+			&& pfh.WaveFileTime == GetFileInformation().ftLastWriteTime
+			&& pfh.dwWaveFileSize == GetFileInformation().nFileSizeLow
+
+			&& 0 == memcmp(& pfh.wfFormat, GetWaveFormat(), sizeof pfh.wfFormat)
+			&& pPeakInfo->GetGranularity() == pfh.Granularity
+			&& pfh.PeakInfoSize == CalculatePeakInfoSize() * sizeof (WavePeak)
+			)
+		{
+			// allocate data and read it
+			WavePeak * pPeaks = pPeakInfo->AllocatePeakData(NumberOfSamples(), Channels());
+			if (NULL == pPeaks)
+			{
+				TRACE("Unable to allocate peak info buffer\n");
+				pPeakInfo->AllocatePeakData(0, 1);
+				return FALSE;
+			}
+
+			if (pfh.PeakInfoSize <= pPeakInfo->GetPeaksSize() * sizeof (WavePeak)
+				&& pfh.PeakInfoSize == PeakFile.Read(pPeaks, pfh.PeakInfoSize))
+			{
+				return TRUE;
+			}
+			TRACE("Unable to read peak data\n");
+			// rebuild the info from the WAV file
+		}
+		else
+		{
+			TRACE("Peak Info modification time = 0x%08X%08X, open file time=0x%08X%08X\n",
+				pfh.WaveFileTime.dwHighDateTime, pfh.WaveFileTime.dwLowDateTime,
+				GetFileInformation().ftLastWriteTime.dwHighDateTime,
+				GetFileInformation().ftLastWriteTime.dwLowDateTime);
+		}
+		PeakFile.Close();
+	}
+	return FALSE;
+}
+
+// the function is called to load peak info for a compressed file
+// WaveFile argument - temporary wave file
+// OriginalWaveFile - compressed file
+BOOL CWaveFile::LoadPeaksForCompressedFile(CWaveFile & OriginalWaveFile,
+											ULONG NumberOfSamples)
+{
+
+	// don't check peak file data size, just make sure source file parameters match
+	// if peak file exists and the wav file length/date/time matches the stored
+	// length/date/time, then use this peak file.
+	// otherwise don't use it.
+	// the peak info will be rebuilt in any case during file load
+	CWavePeaks * pPeakInfo = GetWavePeaks();
+
+	AllocatePeakData(NumberOfSamples);
+
+	CFile PeakFile;
+	PeakFileHeader pfh;
+	CPath PeakFilename(MakePeakFileName(OriginalWaveFile.GetName()));
+
+	if (PeakFile.Open(PeakFilename,
+					CFile::modeRead | CFile::shareDenyWrite | CFile::typeBinary))
+	{
+		if (offsetof(PeakFileHeader, WaveFileTime)
+			== PeakFile.Read( & pfh, offsetof(PeakFileHeader, WaveFileTime))
+			&& PeakFileHeader::pfhSignature == pfh.dwSignature
+			&& pfh.dwVersion == PeakFileHeader::pfhMaxVersion
+			&& pfh.wSize == sizeof (PeakFileHeader)
+			// read the rest of the header
+			&& pfh.wSize - offsetof(PeakFileHeader, WaveFileTime)
+			== PeakFile.Read( & pfh.WaveFileTime, pfh.wSize - offsetof(PeakFileHeader, WaveFileTime))
+			// check date and time
+			&& pfh.WaveFileTime == OriginalWaveFile.GetFileInformation().ftLastWriteTime
+			// check source file size
+			&& pfh.dwWaveFileSize == OriginalWaveFile.GetFileInformation().nFileSizeLow
+			// check PCM number of channels and sampling rate
+			&& 0 == memcmp(& pfh.wfFormat, GetWaveFormat(), sizeof pfh.wfFormat)
+			&& pPeakInfo->GetGranularity() == pfh.Granularity
+			)
+		{
+			// allocate data and read it
+			WavePeak * pPeaks = pPeakInfo->AllocatePeakData(pfh.NumOfSamples, 1);
+			if (NULL == pPeaks)
+			{
+				TRACE("Unable to allocate peak info buffer\n");
+				pPeakInfo->AllocatePeakData(0, 1);
+				return FALSE;
+			}
+
+			if (pfh.PeakInfoSize <= pPeakInfo->GetPeaksSize() * sizeof (WavePeak)
+				&& pfh.PeakInfoSize == PeakFile.Read(pPeaks, pfh.PeakInfoSize))
+			{
+				return TRUE;
+			}
+			TRACE("Unable to read peak data\n");
+			// rebuild the info from the WAV file
+		}
+		else
+		{
+			TRACE("Peak Info modification time = 0x%08X%08X, open file time=0x%08X%08X\n",
+				pfh.WaveFileTime.dwHighDateTime, pfh.WaveFileTime.dwLowDateTime,
+				GetFileInformation().ftLastWriteTime.dwHighDateTime,
+				GetFileInformation().ftLastWriteTime.dwLowDateTime);
+		}
+		PeakFile.Close();
+	}
+	return FALSE;
+}
+
+void CWaveFile::SavePeakInfo(CWaveFile & SavedWaveFile)
+{
+	CFile PeakFile;
+	PeakFileHeader pfh;
+	CPath PeakFilename(MakePeakFileName(SavedWaveFile.GetName()));
+
+	if (PeakFile.Open(PeakFilename,
+					CFile::modeCreate | CFile::modeWrite | CFile::shareExclusive | CFile::typeBinary))
+	{
+		pfh.wSize = sizeof PeakFileHeader;
+		pfh.dwSignature = PeakFileHeader::pfhSignature;
+		pfh.dwVersion = PeakFileHeader::pfhMaxVersion;
+		pfh.dwWaveFileSize = SavedWaveFile.GetFileSize(NULL);
+		pfh.Granularity = GetPeakGranularity();
+		pfh.PeakInfoSize = CalculatePeakInfoSize() * sizeof (WavePeak);
+		pfh.WaveFileTime = SavedWaveFile.GetFileInformation().ftLastWriteTime;
+		pfh.NumOfSamples = NumberOfSamples();
+		pfh.wfFormat = * GetWaveFormat();
+
+		PeakFile.Write( & pfh, sizeof pfh);
+		PeakFile.Write(GetWavePeaks()->GetPeakArray(), pfh.PeakInfoSize);
+
+		PeakFile.Close();
+	}
+
+}
+
