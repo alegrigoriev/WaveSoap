@@ -4646,7 +4646,7 @@ void CWaveSoapFrontDoc::OnToolsInterpolate()
 	int PostInterpolateSamples = 0;
 	int InterpolationOverlap;
 
-	CClickRemoval crm;
+	CClickRemoval crm(WaveFormat(), GetSelectedChannel());
 
 	bool BigGap = (InterpolateSamples >= BigGapLength);
 	if (BigGap)
@@ -4796,10 +4796,7 @@ void CWaveSoapFrontDoc::OnProcessDoUlf()
 		return;
 	}
 
-	CHumRemoval::auto_ptr pUlfProc(new CHumRemoval);
-
-	pUlfProc->SetAndValidateWaveformat(WaveFormat());
-	pUlfProc->m_ChannelsToProcess = dlg.GetChannel();
+	CHumRemoval::auto_ptr pUlfProc(new CHumRemoval(WaveFormat(), dlg.GetChannel()));
 
 	pUlfProc->EnableDifferentialSuppression(dlg.m_DifferentialModeSuppress);
 	pUlfProc->EnableLowFrequencySuppression(dlg.m_LowFrequencySuppress);
@@ -4843,10 +4840,9 @@ void CWaveSoapFrontDoc::OnProcessDoDeclicking()
 	(new CWaveProcContext(this, IDS_DECLICK_STATUS_PROMPT,
 						IDS_DECLICK_OPERATION_NAME));
 
-	CClickRemoval * pDeclick = new CClickRemoval;
+	CClickRemoval * pDeclick = new CClickRemoval(WaveFormat(), dlg.GetChannel());
 	pContext->AddWaveProc(pDeclick);
 
-	pDeclick->SetAndValidateWaveformat(WaveFormat());
 	dlg.SetDeclickData(pDeclick);
 
 	if (dlg.UndoEnabled())
@@ -4934,12 +4930,8 @@ void CWaveSoapFrontDoc::OnProcessNoiseReduction()
 	NoiseReductionParameters NrParms;
 	dlg.GetNoiseReductionData( & NrParms);
 
-	CNoiseReduction * pNoiseReduction =
-		new CNoiseReduction(dlg.GetNoiseReductionFftOrder(), NrParms);
-
-	pContext->AddWaveProc(pNoiseReduction);
-
-	pNoiseReduction->SetAndValidateWaveformat(WaveFormat());
+	pContext->AddWaveProc(new CNoiseReduction(WaveFormat(),
+											dlg.GetChannel(), dlg.GetNoiseReductionFftOrder(), NrParms));
 
 	if (dlg.UndoEnabled())
 	{
