@@ -27,10 +27,22 @@ public:
 	{
 		return m_pVertMaster != this;
 	}
-	double GetStartTrackingX() const { return m_dXStartTracking; }
-	double GetEndTrackingX() const { return m_dXEndTracking; }
-	double GetStartTrackingY() const { return m_dYStartTracking; }
-	double GetEndTrackingY() const { return m_dYEndTracking; }
+	double GetStartTrackingX() const
+	{
+		return m_dXStartTracking;
+	}
+	double GetEndTrackingX() const
+	{
+		return m_dXEndTracking;
+	}
+	double GetStartTrackingY() const
+	{
+		return m_dYStartTracking;
+	}
+	double GetEndTrackingY() const
+	{
+		return m_dYEndTracking;
+	}
 
 protected:
 	virtual UINT GetFormatStringID() const;
@@ -57,10 +69,22 @@ public:
 	void ZoomInSelection(DWORD flags);
 	void ZoomOutSelection(DWORD flags);
 
-	double GetXScale() const { return dScaleX; }
-	double GetYScale() const { return dScaleY; }
-	double GetXScaleDev() const { return dScaleX * dLogScaleX; }
-	double GetYScaleDev() const { return dScaleY * dLogScaleX; }
+	double GetXScale() const
+	{
+		return dScaleX;
+	}
+	double GetYScale() const
+	{
+		return dScaleY;
+	}
+	double GetXScaleDev() const
+	{
+		return dScaleX * dLogScaleX;
+	}
+	double GetYScaleDev() const
+	{
+		return dScaleY * dLogScaleX;
+	}
 
 	POINT DoubleToPointDev(double x, double y) const;
 	void PointToDoubleDev(POINT pt, double & x, double & y) const;
@@ -69,13 +93,22 @@ public:
 
 	int WorldToWindowX(double x) const;
 	int WorldToWindowY(double y) const;
+
 	int WorldToWindowXrnd(double x) const;
 	int WorldToWindowYrnd(double y) const;
+
+	int WorldToWindowXceil(double x) const;
+	int WorldToWindowYceil(double y) const;
+
+	int WorldToWindowXfloor(double x) const;
+	int WorldToWindowYfloor(double y) const;
+
 	double WindowToWorldX(int x) const;
 	double WindowToWorldY(int y) const;
 
 	int WorldToLogX(double x) const;
 	int WorldToLogY(double y) const;
+
 	double LogToWorldX(int x) const;
 	double LogToWorldY(int y) const;
 
@@ -100,13 +133,30 @@ public:
 	void SetMaxExtentsMaster(double left, double right,
 							double bottom, double top);
 
-	void KeepAspectRatio(bool flag) {bKeepAspectRatio = flag; }
+	void KeepAspectRatio(bool flag)
+	{
+		bKeepAspectRatio = flag;
+	}
 	void KeepScaleOnResize(bool flag)
-	{ bKeepScaleOnResizeX = bKeepScaleOnResizeY = flag; }
-	void KeepScaleOnResizeX(bool flag) { bKeepScaleOnResizeX = flag; }
-	void KeepScaleOnResizeY(bool flag) { bKeepScaleOnResizeY = flag; }
-	void KeepOrgOnResizeX(bool flag) { bKeepOrgOnResizeX = flag; }
-	void KeepOrgOnResizeY(bool flag) { bKeepOrgOnResizeY = flag; }
+	{
+		bKeepScaleOnResizeX = bKeepScaleOnResizeY = flag;
+	}
+	void KeepScaleOnResizeX(bool flag)
+	{
+		bKeepScaleOnResizeX = flag;
+	}
+	void KeepScaleOnResizeY(bool flag)
+	{
+		bKeepScaleOnResizeY = flag;
+	}
+	void KeepOrgOnResizeX(bool flag)
+	{
+		bKeepOrgOnResizeX = flag;
+	}
+	void KeepOrgOnResizeY(bool flag)
+	{
+		bKeepOrgOnResizeY = flag;
+	}
 // Overrides
 	// ClassWizard generated virtual function overrides
 	//{{AFX_VIRTUAL(CScaledScrollView)

@@ -232,14 +232,18 @@ void CScaledScrollView::DoZoom(double dHorScale, double dVertScale, CPoint ptCen
 	DWORD flag = CHANGE_HOR_EXTENTS | CHANGE_VERT_EXTENTS;
 	RECT r;
 	GetClientRect( & r);
+	// check if width changed
 	if (1. == dHorScale)
 	{
 		flag &= ~CHANGE_WIDTH;
 	}
+	//check if height changed
 	if (1. == dVertScale)
 	{
 		flag &= ~CHANGE_HEIGHT;
 	}
+
+	// check if horizontal zoom center specified
 	if (INT_MAX == ptCenter.x)
 	{
 		ptCenter.x = (r.left + r.right) / 2;
@@ -248,15 +252,19 @@ void CScaledScrollView::DoZoom(double dHorScale, double dVertScale, CPoint ptCen
 			flag &= ~CHANGE_HOR_ORIGIN;
 		}
 	}
+
+	// check if horizontal zoom center specified
 	if (INT_MAX == ptCenter.y)
 	{
 		ptCenter.y = (r.top + r.bottom) / 2;
 		if (1. == dVertScale)
 			flag &= ~CHANGE_VERT_ORIGIN;
 	}
+
 	double dCenterX;
 	double dCenterY;
 	PointToDoubleDev(ptCenter, dCenterX, dCenterY);
+
 	OnChangeOrgExt(dCenterX - dExtX / (dHorScale * 2.),
 					dExtX / dHorScale,
 					dCenterY + dExtY / (dVertScale * 2.),
@@ -323,6 +331,26 @@ int CScaledScrollView::WorldToWindowXrnd(double x) const
 int CScaledScrollView::WorldToWindowYrnd(double y) const
 {
 	return fround((y - dOrgY) * GetYScaleDev());
+}
+
+int CScaledScrollView::WorldToWindowXceil(double x) const
+{
+	return (int)ceil((x - dOrgX) * GetXScaleDev());
+}
+
+int CScaledScrollView::WorldToWindowYceil(double y) const
+{
+	return (int)ceil((y - dOrgY) * GetYScaleDev());
+}
+
+int CScaledScrollView::WorldToWindowXfloor(double x) const
+{
+	return (int)floor((x - dOrgX) * GetXScaleDev());
+}
+
+int CScaledScrollView::WorldToWindowYfloor(double y) const
+{
+	return (int)floor((y - dOrgY) * GetYScaleDev());
 }
 
 double CScaledScrollView::WindowToWorldX(int x) const
@@ -791,7 +819,10 @@ BOOL CScaledScrollView::MasterScrollBy(double dx, double dy, BOOL bDoScroll)
 		if (ddevx | ddevy)
 		{
 			// the function scrolls the real image, and modifies dOrgX, dOrgY.
+			if (0) TRACE("Before OnScrollBy: Org X = %f, dx=%d\n", dOrgX, ddevx);
 			OnScrollBy(CSize(ddevx, ddevy), bDoScroll);
+			if (0) TRACE("AfterOnScrollBy: Org X = %f\n", dOrgX);
+
 			NotifySlaveViews(flag);
 			return TRUE;
 		}
