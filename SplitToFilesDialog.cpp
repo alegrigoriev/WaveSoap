@@ -47,8 +47,8 @@ CSplitToFilesDialog::CSplitToFilesDialog(CWaveFile & WaveFile, int TimeFormat, C
 		IDC_COMBO_FORMAT_TAG, ExpandRight | MoveDown,
 		IDC_COMBO_FORMAT_ATTRIBUTES, ExpandRight | MoveDown,
 		IDC_COMBO_SELECTION, ExpandRight | MoveDown,
-		IDC_COMBO_START, ExpandRight | MoveDown | ThisIsDropCombobox,
-		IDC_COMBO_END, ExpandRight | MoveDown | ThisIsDropCombobox,
+		IDC_COMBO_START, ExpandRight | MoveDown,
+		IDC_COMBO_END, ExpandRight | MoveDown,
 		IDC_EDIT_LENGTH, ExpandRight | MoveDown,
 		IDC_COMBO_TIME_FORMAT, MoveDown,
 
@@ -456,6 +456,12 @@ BEGIN_MESSAGE_MAP(CSplitToFilesDialog, BaseClass)
 	ON_CBN_KILLFOCUS(IDC_COMBO_START, OnKillfocusEditStart)
 	ON_NOTIFY(CTimeSpinCtrl::TSC_BUDDY_CHANGE, IDC_SPIN_START, OnBuddyChangeSpinStart)
 	ON_CBN_SELCHANGE(IDC_COMBO_SELECTION, OnSelchangeComboSelection)
+
+	ON_CBN_SELCHANGE(IDC_COMBO_END, OnSelchangeComboEnd)
+	ON_CBN_SELCHANGE(IDC_COMBO_START, OnSelchangeComboStart)
+
+	ON_CONTROL(20, IDC_COMBO_START, OnDeferredSelchangeComboStart)
+	ON_CONTROL(20, IDC_COMBO_END, OnDeferredSelchangeComboEnd)
 END_MESSAGE_MAP()
 
 void CSplitToFilesDialog::OnCompatibleFormatsClicked()
@@ -815,6 +821,26 @@ void CSplitToFilesDialog::OnSelchangeComboSelection()
 {
 	CSelectionUiSupport::OnSelchangeComboSelection();
 	SaveChangedSelectionRange();
+}
+
+void CSplitToFilesDialog::OnSelchangeComboStart()
+{
+	PostMessage(WM_COMMAND, MAKEWPARAM(IDC_COMBO_START, 20), LPARAM(m_eStart.m_hWnd));
+}
+
+void CSplitToFilesDialog::OnSelchangeComboEnd()
+{
+	PostMessage(WM_COMMAND, MAKEWPARAM(IDC_COMBO_END, 20), LPARAM(m_eStart.m_hWnd));
+}
+
+void CSplitToFilesDialog::OnDeferredSelchangeComboStart()
+{
+	CSelectionUiSupport::OnKillfocusEditStart();
+}
+
+void CSplitToFilesDialog::OnDeferredSelchangeComboEnd()
+{
+	CSelectionUiSupport::OnKillfocusEditEnd();
 }
 
 void CSplitToFilesDialog::SaveChangedSelectionRange()

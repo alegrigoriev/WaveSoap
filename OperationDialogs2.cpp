@@ -1781,6 +1781,13 @@ BEGIN_MESSAGE_MAP(CMarkerRegionDialog, BaseClass)
 	ON_CBN_KILLFOCUS(IDC_COMBO_START, OnKillfocusEditStart)
 	ON_NOTIFY(CTimeSpinCtrl::TSC_BUDDY_CHANGE, IDC_SPIN_START, OnBuddyChangeSpinStart)
 	ON_CBN_SELCHANGE(IDC_COMBO_SELECTION, OnSelchangeComboSelection)
+
+	ON_CBN_SELCHANGE(IDC_COMBO_END, OnSelchangeComboEnd)
+	ON_CBN_SELCHANGE(IDC_COMBO_START, OnSelchangeComboStart)
+
+	ON_CONTROL(20, IDC_COMBO_START, OnDeferredSelchangeComboStart)
+	ON_CONTROL(20, IDC_COMBO_END, OnDeferredSelchangeComboEnd)
+
 END_MESSAGE_MAP()
 
 void CMarkerRegionDialog::OnSelchangeComboTimeFormat()
@@ -1821,6 +1828,26 @@ void CMarkerRegionDialog::OnKillfocusEditStart()
 void CMarkerRegionDialog::OnSelchangeComboSelection()
 {
 	CSelectionUiSupport::OnSelchangeComboSelection();
+}
+
+void CMarkerRegionDialog::OnSelchangeComboStart()
+{
+	PostMessage(WM_COMMAND, MAKEWPARAM(IDC_COMBO_START, 20), LPARAM(m_eStart.m_hWnd));
+}
+
+void CMarkerRegionDialog::OnSelchangeComboEnd()
+{
+	PostMessage(WM_COMMAND, MAKEWPARAM(IDC_COMBO_END, 20), LPARAM(m_eStart.m_hWnd));
+}
+
+void CMarkerRegionDialog::OnDeferredSelchangeComboStart()
+{
+	CSelectionUiSupport::OnKillfocusEditStart();
+}
+
+void CMarkerRegionDialog::OnDeferredSelchangeComboEnd()
+{
+	CSelectionUiSupport::OnKillfocusEditEnd();
 }
 
 void CMarkerRegionDialog::OnOK()
