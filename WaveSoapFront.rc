@@ -3065,6 +3065,9 @@ BEGIN
                             "%s (%s)\r\n%s (%s dB; %.2f%%)\r\n\r\n%s (%s)\r\n%s (%s dB; %.2f%%)\r\n\r\n%s (%s)\r\n%s (%s dB; %.2f%%)\r\n\r\n%s dB (%.2f%%)\r\n%s (%s dB; %.2f%%)\r\n%.2f Hz\r\n\r\n%08X\r\nCombined CRC: %08X"
     IDS_STATISTICS_FORMAT_LEFT 
                             "%s (%s)\r\n%s (%s dB; %.2f%%)\r\n\r\n%s (%s)\r\n%s (%s dB; %.2f%%)\r\n\r\n%s (%s)\r\n%s (%s dB; %.2f%%)\r\n\r\n%s dB (%.2f%%)\r\n%s (%s dB; %.2f%%)\r\n%.2f Hz\r\n\r\n%08X\r\nChecksum: %08X"
+    IDS_FILTER_FILE_FILTER  "Filter files (*.Fltr)|*.Fltr|All Files (*.*)|*||"
+    IDS_FILTER_SAVE_TITLE   "Save Filter As"
+    IDS_FILTER_LOAD_TITLE   "Load Filter"
 END
 
 #endif    // English (U.S.) resources
