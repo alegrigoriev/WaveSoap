@@ -80,7 +80,7 @@ CEqualizerDialog::CEqualizerDialog(SAMPLE_INDEX Start,
 	};
 
 	m_pResizeItems = ResizeItems;
-	m_pResizeItemsCount = sizeof ResizeItems / sizeof ResizeItems[0];
+	m_ResizeItemsCount = sizeof ResizeItems / sizeof ResizeItems[0];
 
 	m_wGraph.SetNumberOfBands(m_nBands);
 	m_wGraph.m_SamplingRate = WaveFile.SampleRate();

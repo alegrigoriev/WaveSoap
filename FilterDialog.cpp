@@ -64,7 +64,7 @@ CFilterDialog::CFilterDialog(SAMPLE_INDEX Start,
 	};
 
 	m_pResizeItems = ResizeItems;
-	m_pResizeItemsCount = countof(ResizeItems);
+	m_ResizeItemsCount = countof(ResizeItems);
 
 	m_Profile.AddItem(_T("Settings"), _T("FilterDlgWidth"), m_DlgWidth, 0, 0, 4096);
 	m_Profile.AddItem(_T("Settings"), _T("FilterDlgHeight"), m_DlgHeight, 0, 0, 4096);
