@@ -24,6 +24,9 @@ helper.
 #include <mmsystem.h>
 #include "DirectFile.h"
 #include "WaveSupport.h"
+#include <atlbase.h>
+#include <atlpath.h>
+
 enum
 {
 	MmioFileOpenExisting = CDirectFile::OpenExisting,
@@ -40,11 +43,12 @@ enum
 
 class CMmioFile : public CDirectFile
 {
+	typedef CDirectFile BaseClass;
 public:
 	// construction
 	CMmioFile();
-	virtual BOOL Open( LPCTSTR lpszFileName, UINT nOpenFlags);
-	virtual void Close( );
+	virtual BOOL Open(LPCTSTR lpszFileName, UINT nOpenFlags);
+	virtual void Close();
 	CMmioFile & operator =(CMmioFile &);
 
 	// read/write:
@@ -129,8 +133,11 @@ public:
 	FOURCC m_RiffckType;
 	CSimpleCriticalSection m_cs;
 
-	struct InstanceDataMm : public CDirectFile::InstanceData
+	struct InstanceDataMm : public BaseClass::InstanceData
 	{
+	private:
+		typedef BaseClass::InstanceData BaseClass;
+	public:
 		MMCKINFO riffck;
 		HMMIO m_hmmio;
 		InstanceDataMm()
@@ -139,12 +146,21 @@ public:
 			memzero(riffck);
 			m_size = sizeof *this;
 		}
+		InstanceDataMm & operator =(InstanceData const & src)
+		{
+			if (src.m_size >= sizeof *this)
+			{
+				InstanceDataMm const* src1 =
+					static_cast<InstanceDataMm const*>( & src);
+				riffck = src1->riffck;
+				m_hmmio = src1->m_hmmio;
+			}
+			BaseClass::operator=(src);
+			return *this;
+		}
 		InstanceDataMm & operator =(InstanceDataMm const & src)
 		{
-			riffck = src.riffck;
-			m_hmmio = src.m_hmmio;
-			InstanceData::operator=(src);
-			return *this;
+			return operator =(static_cast<InstanceData const &>(src));
 		}
 		virtual void MoveDataTo(InstanceData * dst)
 		{
@@ -251,25 +267,107 @@ struct LtxtChunk  // in LIST adtl
 
 #pragma pack(pop)
 
+struct WavePeak
+{
+	__int16 low;
+	__int16 high;
+	WavePeak(__int16 Low, __int16 High)
+		: low(Low), high(High) {}
+	WavePeak() {}
+};
+class CWavePeaks
+{
+
+public:
+	CWavePeaks(unsigned granularity);
+	~CWavePeaks();
+	unsigned GetGranularity() const
+	{
+		return m_PeakDataGranularity;
+	}
+	void SetPeakData(unsigned index, __int16 low, __int16 high)
+	{
+		ASSERT(index < m_WavePeakSize);
+		m_pPeaks[index].low = low;
+		m_pPeaks[index].high = high;
+	}
+
+	__int16 GetPeakDataLow(unsigned index) const
+	{
+		ASSERT(index < m_WavePeakSize);
+		return m_pPeaks[index].low;
+	}
+	__int16 GetPeakDataHigh(unsigned index) const
+	{
+		ASSERT(index < m_WavePeakSize);
+		return m_pPeaks[index].high;
+	}
+
+	WavePeak * AllocatePeakData(long NewNumberOfSamples, int NumberOfChannels = 1);
+	WavePeak * GetPeakArray()
+	{
+		return m_pPeaks;
+	}
+	WavePeak const * GetPeakArray() const
+	{
+		return m_pPeaks;
+	}
+	WavePeak GetPeakMinMax(unsigned from, unsigned to, unsigned stride = 1);
+
+	unsigned GetPeaksSize() const
+	{
+		return m_WavePeakSize;
+	}
+
+	void SetPeaks(unsigned from, unsigned to, unsigned stride, WavePeak value);
+	CWavePeaks & operator =(CWavePeaks const & src);
+protected:
+	WavePeak * m_pPeaks;
+	size_t m_WavePeakSize;
+	size_t m_AllocatedWavePeakSize;
+	unsigned m_PeakDataGranularity;
+	CSimpleCriticalSection m_PeakLock;
+};
+
 class CWaveFile : public CMmioFile
 {
+	typedef CMmioFile BaseClass;
 public:
 	CWaveFile();
 	~CWaveFile();
 	BOOL CreateWaveFile(CWaveFile * pTemplateFile, WAVEFORMATEX * pTemplateFormat,
 						int Channels, unsigned long SizeOrSamples, DWORD flags, LPCTSTR FileName);
-#if 0
-	virtual BOOL Open( LPCTSTR lpszFileName, UINT nOpenFlags);
-#endif
-	virtual void Close( );
-	int SampleSize() const;
 
-	struct InstanceDataWav : CMmioFile::InstanceDataMm
+	virtual BOOL Open(LPCTSTR lpszFileName, UINT nOpenFlags);
+	virtual void Close();
+	int SampleSize() const;
+	BOOL SetSourceFile(CWaveFile * const pOriginalFile);
+
+	void RescanPeaks(long begin, long end);
+	BOOL AllocatePeakData(long NewNumberOfSamples);
+	WavePeak GetPeakMinMax(unsigned from, unsigned to, unsigned stride = 1);
+	unsigned GetPeaksSize() const;
+	unsigned GetPeakGranularity() const;
+	int CalculatePeakInfoSize() const
 	{
+		unsigned Granularity = GetPeakGranularity();
+		return (NumberOfSamples() + Granularity - 1) / Granularity * Channels();
+	}
+	void SetPeakData(unsigned index, __int16 low, __int16 high);
+	BOOL LoadPeaksForCompressedFile(CWaveFile & OriginalWaveFile, ULONG NumberOfSamples);
+
+	BOOL CheckAndLoadPeakFile();
+	void SavePeakInfo(CWaveFile & SavedWaveFile);
+	struct InstanceDataWav : BaseClass::InstanceDataMm
+	{
+	private:
+		typedef CMmioFile::InstanceDataMm BaseInstanceClass;
+	public:
 		MMCKINFO datack;
 		MMCKINFO fmtck;
 		MMCKINFO factck;
 		CWaveFormat wf;
+		CWavePeaks m_PeakData;
 		// TODO: use Unicode?
 		CString Author;         // WM/Author
 		CString DisplayTitle;   // WM/Title
@@ -294,6 +392,7 @@ public:
 		bool InfoChanged;
 
 		InstanceDataWav()
+			: m_PeakData(512)
 		{
 			memzero(datack);
 			memzero(fmtck);
@@ -320,8 +419,9 @@ public:
 			Markers = src.Markers;
 
 			Playlist = src.Playlist;
+			m_PeakData = src.m_PeakData;
 
-			InstanceDataMm::operator =(src);
+			BaseInstanceClass::operator =(src);
 			return *this;
 		}
 		virtual void MoveDataTo(InstanceData * dst)
@@ -358,12 +458,23 @@ public:
 	{
 		return static_cast<InstanceDataWav *>(CDirectFile::GetInstanceData());
 	}
+	CWavePeaks * GetWavePeaks() const
+	{
+		InstanceDataWav * pInstData = GetInstanceData();
+		if (NULL == pInstData)
+		{
+			return NULL;
+		}
+		return & pInstData->m_PeakData;
+	}
+	void SetPeaks(unsigned from, unsigned to, unsigned stride, WavePeak value);
+
 	int Channels() const
 	{
 		WAVEFORMATEX * pWf = GetWaveFormat();
 		if (NULL == pWf)
 		{
-			return 0;
+			return 1;
 		}
 		return pWf->nChannels;
 	}
@@ -410,6 +521,7 @@ public:
 
 	DWORD m_FactSamples;
 private:
+	CPath MakePeakFileName(LPCTSTR FileName);
 	// wrong type of constructor
 	CWaveFile(const CWaveFile &)
 	{
