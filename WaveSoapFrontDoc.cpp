@@ -383,13 +383,13 @@ BOOL CWaveSoapFrontDoc::OpenWaveFile(CWaveFile & WaveFile, LPCTSTR szName, DWORD
 {
 	CString s;
 	UINT format = 0;
-	if (m_WavFile.Open(szName, flags))
+	if (WaveFile.Open(szName, flags))
 	{
-		if(m_WavFile.LoadWaveformat())
+		if(WaveFile.LoadWaveformat())
 		{
-			if (m_WavFile.FindData())
+			if (WaveFile.FindData())
 			{
-				m_WavFile.LoadMetadata();
+				WaveFile.LoadMetadata();
 				return TRUE;
 			}
 			else
@@ -1720,6 +1720,8 @@ BOOL CWaveSoapFrontDoc::OnOpenDocument(LPCTSTR lpszPathName, int DocOpenFlags)
 			AfxMessageBox(IDS_UNABLE_TO_CREATE_TEMPORARY_FILE, MB_OK | MB_ICONEXCLAMATION);
 			return FALSE;
 		}
+
+		m_WavFile.CopyMetadata(m_OriginalWavFile);
 		// for compressed file, actual size of file may differ from the
 		// initial size
 		if (bNeedConversion)
