@@ -4092,17 +4092,8 @@ void CWaveSoapFrontDoc::OnProcessNormalize()
 		channel = ALL_CHANNELS;
 	}
 
-	CNormalizeSoundDialog dlg;
-	CThisApp * pApp = GetApp();
-	dlg.m_Start = start;
-	dlg.m_End = end;
-	dlg.m_CaretPosition = m_CaretPosition;
-	dlg.m_Chan = channel;
-	dlg.m_pWf = WaveFormat();
-	dlg.m_bLockChannels = m_bChannelsLocked;
-	dlg.m_bUndo = UndoEnabled();
-	dlg.m_TimeFormat = GetApp()->m_SoundTimeFormat;
-	dlg.m_FileLength = WaveFileSamples();
+	CNormalizeSoundDialog dlg(start, end, m_CaretPosition, channel,
+							m_WavFile, ChannelsLocked(), UndoEnabled(), GetApp()->m_SoundTimeFormat);
 
 	//if (1 == WaveChannels())
 	//{
@@ -4122,43 +4113,34 @@ void CWaveSoapFrontDoc::OnProcessNormalize()
 		return;
 	}
 
-	if (dlg.m_bLockChannels || WaveChannels() == 1)
-	{
-		dlg.m_Chan = ALL_CHANNELS;
-	}
-	if (0 == dlg.m_DbPercent)   // dBs
-	{
-		pContext->m_LimitLevel = pow(10., dlg.m_dLevelDb / 20.);
-	}
-	else // percents
-	{
-		pContext->m_LimitLevel = 0.01 * dlg.m_dLevelPercent;
-	}
+	pContext->m_LimitLevel = dlg.GetLimitLevel();
 
-	if ( ! pContext->InitDestination(m_WavFile, dlg.m_Start,
-									dlg.m_End, dlg.m_Chan, dlg.m_bUndo))
+	if ( ! pContext->InitDestination(m_WavFile, dlg.GetStart(),
+									dlg.GetEnd(), dlg.GetChannel(), dlg.UndoEnabled()))
 	{
 		delete pContext;
 		return;
 	}
 	CStatisticsContext * pStatContext =
 		new CStatisticsContext(this, _T("Scanning for maximum amplitude..."), _T(""));
+
 	if (NULL == pStatContext)
 	{
 		delete pContext;
 		NotEnoughMemoryMessageBox();
 		return;
 	}
-	pStatContext->InitDestination(m_WavFile, dlg.m_Start,
-								dlg.m_End, dlg.m_Chan, FALSE);
+	pStatContext->InitDestination(m_WavFile, dlg.GetStart(),
+								dlg.GetEnd(), dlg.GetChannel(), FALSE);
 	pStatContext->m_Flags |= StatisticsContext_MinMaxOnly;
 
-	pContext->m_bEqualChannels = dlg.m_bLockChannels;
+	pContext->m_bEqualChannels = dlg.ChannelsLocked();
+
 	pContext->m_pScanContext = pStatContext;
 	pContext->m_Flags |= ContextScanning;
 
 	pContext->Execute();
-	SetModifiedFlag(TRUE, dlg.m_bUndo);
+	SetModifiedFlag(TRUE, dlg.UndoEnabled());
 }
 
 void CWaveSoapFrontDoc::OnUpdateProcessResample(CCmdUI* pCmdUI)

@@ -821,6 +821,8 @@ CDcOffsetDialog::CDcOffsetDialog(SAMPLE_INDEX begin, SAMPLE_INDEX end, SAMPLE_IN
 	: BaseClass(begin, end, caret, Channels, File, TimeFormat,
 				IDD, pParent)
 {
+	m_bLockChannels = ChannelsLocked;
+	m_bUndo = UndoEnabled;
 	//{{AFX_DATA_INIT(CDcOffsetDialog)
 	m_b5SecondsDC = FALSE;
 	m_nDcOffset = 0;
@@ -1130,12 +1132,19 @@ BOOL CStatisticsDialog::OnInitDialog()
 // CNormalizeSoundDialog dialog
 
 
-CNormalizeSoundDialog::CNormalizeSoundDialog(CWnd* pParent /*=NULL*/)
-	: BaseClass(CNormalizeSoundDialog::IDD, pParent)
+CNormalizeSoundDialog::CNormalizeSoundDialog(SAMPLE_INDEX begin,
+											SAMPLE_INDEX end, SAMPLE_INDEX caret,
+											CHANNEL_MASK Channels,
+											CWaveFile & File,
+											BOOL ChannelsLocked, BOOL UndoEnabled,
+											int TimeFormat,
+											CWnd* pParent /*=NULL*/)
+	: BaseClass(begin, end, caret, Channels, File, TimeFormat,
+				IDD, pParent)
 {
+	m_bLockChannels = ChannelsLocked;
+	m_bUndo = UndoEnabled;
 	//{{AFX_DATA_INIT(CNormalizeSoundDialog)
-	m_bLockChannels = FALSE;
-	m_bUndo = FALSE;
 	m_DbPercent = -1;
 	//}}AFX_DATA_INIT
 	m_Profile.AddItem(_T("Settings"), _T("NormalizeDialogDbPercents"), m_DbPercent, 0, 0, 1);
@@ -1148,7 +1157,6 @@ void CNormalizeSoundDialog::DoDataExchange(CDataExchange* pDX)
 {
 	BaseClass::DoDataExchange(pDX);
 	//{{AFX_DATA_MAP(CNormalizeSoundDialog)
-	DDX_Control(pDX, IDC_STATIC_SELECTION, m_SelectionStatic);
 	DDX_Control(pDX, IDC_SLIDER_LEVEL, m_SliderLevel);
 	DDX_Control(pDX, IDC_EDIT_LEVEL, m_eLevel);
 	DDX_Check(pDX, IDC_CHECK_LOCK_CHANNELS, m_bLockChannels);
@@ -1169,7 +1177,7 @@ void CNormalizeSoundDialog::DoDataExchange(CDataExchange* pDX)
 	DDX_CBIndex(pDX, IDC_COMBODB_PERCENT, m_DbPercent);
 	if ( ! pDX->m_bSaveAndValidate)
 	{
-		UpdateSelectionStatic();
+		NeedUpdateControls();
 	}
 	else
 	{
@@ -1181,11 +1189,22 @@ void CNormalizeSoundDialog::DoDataExchange(CDataExchange* pDX)
 BEGIN_MESSAGE_MAP(CNormalizeSoundDialog, BaseClass)
 	//{{AFX_MSG_MAP(CNormalizeSoundDialog)
 	ON_EN_KILLFOCUS(IDC_EDIT_LEVEL, OnKillfocusEditLevel)
-	ON_BN_CLICKED(IDC_BUTTON_SELECTION, OnButtonSelection)
 	ON_CBN_SELCHANGE(IDC_COMBODB_PERCENT, OnSelchangeCombodbPercent)
 	ON_WM_HSCROLL()
 	//}}AFX_MSG_MAP
 END_MESSAGE_MAP()
+
+double CNormalizeSoundDialog::GetLimitLevel() const
+{
+	if (0 == m_DbPercent)   // dBs
+	{
+		return pow(10., m_dLevelDb / 20.);
+	}
+	else // percents
+	{
+		return 0.01 * m_dLevelPercent;
+	}
+}
 
 /////////////////////////////////////////////////////////////////////////////
 // CNormalizeSoundDialog message handlers
@@ -1220,21 +1239,6 @@ void CNormalizeSoundDialog::OnKillfocusEditLevel()
 		}
 		m_SliderLevel.SetPos(SliderPos);
 	}
-}
-
-void CNormalizeSoundDialog::OnButtonSelection()
-{
-	CSelectionDialog dlg(m_Start, m_End, m_CaretPosition, m_Chan + 1, m_FileLength, m_pWf, m_TimeFormat);
-
-	if (IDOK != dlg.DoModal())
-	{
-		return;
-	}
-	m_Start = dlg.GetStart();
-	m_End = dlg.GetEnd();
-	m_Chan = dlg.GetChannel() - 1;
-
-	UpdateSelectionStatic();
 }
 
 void CNormalizeSoundDialog::OnSelchangeCombodbPercent()
@@ -1281,14 +1285,6 @@ void CNormalizeSoundDialog::OnSelchangeCombodbPercent()
 	UpdateData(FALSE);
 }
 
-void CNormalizeSoundDialog::UpdateSelectionStatic()
-{
-	m_SelectionStatic.SetWindowText(GetSelectionText(m_Start, m_End, m_Chan,
-													m_pWf->nChannels, m_bLockChannels,
-													m_pWf->nSamplesPerSec, m_TimeFormat));
-}
-
-
 BOOL CNormalizeSoundDialog::OnInitDialog()
 {
 	BaseClass::OnInitDialog();
@@ -1296,6 +1292,7 @@ BOOL CNormalizeSoundDialog::OnInitDialog()
 	m_SliderLevel.SetTicFreq(100);
 	m_SliderLevel.SetLineSize(10);
 	m_SliderLevel.SetPageSize(50);
+
 	if (0 == m_DbPercent)
 	{
 		// decibel
@@ -1305,7 +1302,7 @@ BOOL CNormalizeSoundDialog::OnInitDialog()
 	{
 		m_SliderLevel.SetPos(int(200. * log10(m_dLevelPercent / 100.)));
 	}
-	if (1 == m_pWf->nChannels)
+	if (1 == m_WaveFile.Channels())
 	{
 		GetDlgItem(IDC_CHECK_LOCK_CHANNELS)->ShowWindow(SW_HIDE);
 	}

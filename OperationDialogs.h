@@ -49,6 +49,11 @@ public:
 		return m_bUndo;
 	}
 
+	BOOL ChannelsLocked() const
+	{
+		return m_bLockChannels;
+	}
+
 	CHANNEL_MASK GetChannel() const
 	{
 		if (m_bLockChannels)
@@ -433,34 +438,27 @@ protected:
 /////////////////////////////////////////////////////////////////////////////
 // CNormalizeSoundDialog dialog
 
-class CNormalizeSoundDialog : public CDialog
+class CNormalizeSoundDialog : public CDialogWithSelection
 {
-	typedef CDialog BaseClass;
+	typedef CDialogWithSelection BaseClass;
 // Construction
 public:
-	CNormalizeSoundDialog(CWnd* pParent = NULL);   // standard constructor
+	CNormalizeSoundDialog(SAMPLE_INDEX begin, SAMPLE_INDEX end, SAMPLE_INDEX caret,
+						CHANNEL_MASK Channels,
+						CWaveFile & File,
+						BOOL ChannelsLocked, BOOL UndoEnabled,
+						int TimeFormat = SampleToString_HhMmSs | TimeToHhMmSs_NeedsHhMm | TimeToHhMmSs_NeedsMs,
+						CWnd* pParent = NULL);   // standard constructor
 
 // Dialog Data
 	//{{AFX_DATA(CNormalizeSoundDialog)
 	enum { IDD = IDD_DIALOG_NORMALIZE };
-	CStatic	m_SelectionStatic;
 	CSliderCtrl	m_SliderLevel;
 	CNumEdit	m_eLevel;
-	BOOL	m_bLockChannels;
-	BOOL	m_bUndo;
 	int		m_DbPercent;
 	//}}AFX_DATA
 
-	double m_dLevelDb;
-	double m_dLevelPercent;
-
-	long m_Start;
-	long m_End;
-	long m_CaretPosition;
-	long m_FileLength;
-	int m_Chan;
-	int m_TimeFormat;
-	const WAVEFORMATEX * m_pWf;
+	double GetLimitLevel() const;
 	CApplicationProfile m_Profile;
 // Overrides
 	// ClassWizard generated virtual function overrides
@@ -471,12 +469,12 @@ protected:
 
 // Implementation
 protected:
-	void UpdateSelectionStatic();
+	double m_dLevelDb;
+	double m_dLevelPercent;
 
 	// Generated message map functions
 	//{{AFX_MSG(CNormalizeSoundDialog)
 	afx_msg void OnKillfocusEditLevel();
-	afx_msg void OnButtonSelection();
 	afx_msg void OnSelchangeCombodbPercent();
 	virtual BOOL OnInitDialog();
 	afx_msg void OnHScroll(UINT nSBCode, UINT nPos, CScrollBar* pScrollBar);
