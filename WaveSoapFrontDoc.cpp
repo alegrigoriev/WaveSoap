@@ -605,7 +605,6 @@ BOOL CWaveSoapFrontDoc::DoSave(LPCTSTR lpszPathName, BOOL bReplace)
 
 		// add the proper file type extension
 		// todo: get from saved in the registry, if name is empty
-		dlg.m_ofn.nFilterIndex = dlg.GetFileTypeForName(newName);
 
 		if (IDOK != dlg.DoModal())
 		{
@@ -2651,6 +2650,7 @@ void CWaveSoapFrontDoc::PostFileSave(CWaveFile & DstFile,
 					SetPathName(NewName);
 					m_OriginalWavFile = DstFile;
 					m_OriginalWaveFormat = DstFile.GetWaveFormat();
+
 					DstFile.Close();
 					ASSERT(m_WavFile.IsOpen());
 					//todo
@@ -5643,7 +5643,6 @@ void CWaveSoapFrontDoc::OnSaveSaveselectionas()
 	dlg.m_ofn.lpstrTitle = Title;
 
 	dlg.AddAllTypeFilters(GetApp()->m_pDocManager);
-	dlg.m_ofn.nFilterIndex = dlg.GetFileTypeForName(GetPathName());
 
 	if (IDOK != dlg.DoModal())
 	{
