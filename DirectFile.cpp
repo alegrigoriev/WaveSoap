@@ -403,7 +403,11 @@ BOOL CDirectFile::File::Commit(DWORD flags)
 		}
 		if (NULL != hFile)
 		{
+			TRACE("Refreshing file info after file commit, prev modif. time=0x%08X%08X, ",
+				m_FileInfo.ftLastWriteTime.dwHighDateTime, m_FileInfo.ftLastWriteTime.dwLowDateTime);
 			::GetFileInformationByHandle(hFile, & m_FileInfo);
+			TRACE("new modif. time=0x%08X%08X\n",
+				m_FileInfo.ftLastWriteTime.dwHighDateTime, m_FileInfo.ftLastWriteTime.dwLowDateTime);
 			RealFileLength = m_FileInfo.nFileSizeLow
 							| (ULONGLONG(m_FileInfo.nFileSizeHigh << 32));
 		}

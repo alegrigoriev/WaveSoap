@@ -1256,6 +1256,7 @@ CResampleDialog::CResampleDialog(CWnd* pParent /*=NULL*/)
 	m_bChangeSamplingRate = -1;
 	m_NewSampleRate = 0;
 	//}}AFX_DATA_INIT
+	m_bCanOnlyChangeSamplerate = false;
 }
 
 
@@ -1355,6 +1356,10 @@ void CResampleDialog::OnKillfocusEditTempo()
 
 BOOL CResampleDialog::OnInitDialog()
 {
+	if (m_bCanOnlyChangeSamplerate)
+	{
+		m_bChangeRateOnly = true;
+	}
 	CDialog::OnInitDialog();
 
 	m_SliderTempo.SetRange(25, 400);
@@ -1374,6 +1379,10 @@ BOOL CResampleDialog::OnInitDialog()
 	else
 	{
 		OnRadioChangeTempo();
+	}
+	if (m_bCanOnlyChangeSamplerate)
+	{
+		GetDlgItem(IDC_CHECK_CHANGE_RATE_ONLY)->EnableWindow(FALSE);
 	}
 	return TRUE;  // return TRUE unless you set the focus to a control
 	// EXCEPTION: OCX Property Pages should return FALSE
@@ -2025,7 +2034,7 @@ void CNoiseReductionDialog::LoadValuesFromRegistry()
 	pApp->Profile.AddItem(_T("NoiseReduction"), _T("NoiseCriterion"), m_dNoiseCriterion, 0.25, 0., 1.);
 	pApp->Profile.AddItem(_T("NoiseReduction"), _T("NoiseThresholdLow"), m_dNoiseThresholdLow, -70., -100., -10.);
 	pApp->Profile.AddItem(_T("NoiseReduction"), _T("NoiseThresholdHigh"), m_dNoiseThresholdHigh, -65., -100., -10.);
-	pApp->Profile.AddItem(_T("NoiseReduction"), _T("LowerFrequency"), m_dLowerFrequency, 4000., 100., 48000.);
+	pApp->Profile.AddItem(_T("NoiseReduction"), _T("LowerFrequency"), m_dLowerFrequency, 1000., 100., 48000.);
 	pApp->Profile.AddItem(_T("NoiseReduction"), _T("ToneOverNoisePreference"), m_dToneOverNoisePreference, 10., 0., 20.);
 	pApp->Profile.AddItem(_T("NoiseReduction"), _T("NearMaskingDecayDistanceHigh"), m_NearMaskingDecayDistanceHigh, 500., 1., 2000.);
 	pApp->Profile.AddItem(_T("NoiseReduction"), _T("NearMaskingDecayDistanceLow"), m_NearMaskingDecayDistanceLow, 30., 1., 2000.);

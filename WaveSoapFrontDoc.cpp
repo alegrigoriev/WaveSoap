@@ -282,7 +282,6 @@ CWaveSoapFrontDoc::CWaveSoapFrontDoc()
 	m_bInOnIdle(false),
 	m_bChannelsLocked(true),
 	m_pCurrentContext(NULL),
-	m_pQueuedOperation(NULL),
 	m_pUndoList(NULL),
 	m_pRedoList(NULL),
 	m_pUpdateList(NULL),
@@ -392,13 +391,13 @@ BOOL CWaveSoapFrontDoc::OnNewDocument(WAVEFORMATEX * pWfx, long InitialLengthSec
 		nSamples = 0;
 	}
 
-	if ( FALSE == m_WavFile.CreateWaveFile(NULL, pWfx, ALL_CHANNELS,
-											nSamples,
-											CreateWaveFileTempDir
-											| CreateWaveFileDeleteAfterClose
-											| CreateWaveFilePcmFormat
-											| CreateWaveFileTemp,
-											NULL))
+	if (FALSE == m_WavFile.CreateWaveFile(NULL, pWfx, ALL_CHANNELS,
+										nSamples,
+										CreateWaveFileTempDir
+										| CreateWaveFileDeleteAfterClose
+										| CreateWaveFilePcmFormat
+										| CreateWaveFileTemp,
+										NULL))
 	{
 		AfxMessageBox(IDS_UNABLE_TO_CREATE_NEW_FILE, MB_OK | MB_ICONEXCLAMATION);
 		return FALSE;
@@ -459,6 +458,13 @@ void CWaveSoapFrontDoc::LoadPeakFile(CWaveFile & WaveFile)
 			}
 			TRACE("Unable to read peak data\n");
 			// rebuild the info from the WAV file
+		}
+		else
+		{
+			TRACE("Peak Info modification time = 0x%08X%08X, open file time=0x%08X%08X\n",
+				pfh.WaveFileTime.dwHighDateTime, pfh.WaveFileTime.dwLowDateTime,
+				WaveFile.GetFileInformation().ftLastWriteTime.dwHighDateTime,
+				WaveFile.GetFileInformation().ftLastWriteTime.dwLowDateTime);
 		}
 		PeakFile.Close();
 	}
@@ -2723,6 +2729,8 @@ void CWaveSoapFrontDoc::PostFileSave(CFileSaveContext * pContext)
 	else
 	{
 		SetModifiedFlag(FALSE);
+		// need to commit file to save its peak info with the correct timestamp
+		pContext->m_DstFile.Commit();
 		SavePeakInfo(pContext->m_DstFile);
 		if (m_bClosePending)
 		{
@@ -3049,7 +3057,7 @@ void CWaveSoapFrontDoc::AddUndoRedo(CUndoRedoContext * pContext)
 
 void CWaveSoapFrontDoc::OnUpdateSoundPlay(CCmdUI* pCmdUI)
 {
-	pCmdUI->Enable(! m_OperationInProgress);
+	pCmdUI->Enable(! m_OperationInProgress && m_WavFile.IsOpen() && WaveFileSamples() != 0);
 }
 
 void CWaveSoapFrontDoc::OnSoundPlay()
@@ -3948,7 +3956,8 @@ void CWaveSoapFrontDoc::GetSoundMinMax(int & MinL, int & MaxL,
 
 void CWaveSoapFrontDoc::OnUpdateProcessChangevolume(CCmdUI* pCmdUI)
 {
-	pCmdUI->Enable( ! m_bReadOnly && ! m_OperationInProgress);
+	pCmdUI->Enable( ! m_bReadOnly && ! m_OperationInProgress
+					&& m_WavFile.IsOpen() && WaveFileSamples() != 0);
 }
 
 void CWaveSoapFrontDoc::OnViewStatusHhmmss()
@@ -4003,7 +4012,7 @@ void CWaveSoapFrontDoc::SetPathName(LPCTSTR lpszPathName, BOOL bAddToMRU)
 
 void CWaveSoapFrontDoc::OnUpdateProcessDcoffset(CCmdUI* pCmdUI)
 {
-	pCmdUI->Enable( ! m_bReadOnly && ! m_OperationInProgress);
+	pCmdUI->Enable( ! m_bReadOnly && ! m_OperationInProgress && m_WavFile.IsOpen() && WaveFileSamples() != 0);
 }
 
 void CWaveSoapFrontDoc::OnProcessDcoffset()
@@ -4256,7 +4265,7 @@ void CWaveSoapFrontDoc::OnProcessMute()
 
 void CWaveSoapFrontDoc::OnUpdateProcessNormalize(CCmdUI* pCmdUI)
 {
-	pCmdUI->Enable( ! m_bReadOnly && ! m_OperationInProgress);
+	pCmdUI->Enable( ! m_bReadOnly && ! m_OperationInProgress && m_WavFile.IsOpen() && WaveFileSamples() != 0);
 }
 
 void CWaveSoapFrontDoc::OnProcessNormalize()
@@ -4374,13 +4383,18 @@ void CWaveSoapFrontDoc::OnProcessResample()
 	dlg.m_NewSampleRate = pApp->m_ResampleSamplingRate;
 	dlg.m_bChangeSamplingRate = pApp->m_bResampleRate;
 	dlg.m_OldSampleRate = WaveFormat()->nSamplesPerSec;
+	dlg.m_bCanOnlyChangeSamplerate = WaveFileSamples() == 0;
 
 	if (IDOK != dlg.DoModal())
 	{
 		return;
 	}
 
-	pApp->m_bResampleChangeRateOnly = dlg.m_bChangeRateOnly;
+	if ( ! dlg.m_bCanOnlyChangeSamplerate)
+	{
+		pApp->m_bResampleChangeRateOnly = dlg.m_bChangeRateOnly;
+	}
+
 	pApp->m_bResampleRate    = dlg.m_bChangeSamplingRate;
 	pApp->m_ResampleTempoPercents   = dlg.m_TempoChange;
 	pApp->m_ResampleSamplingRate    = dlg.m_NewSampleRate;
@@ -4458,6 +4472,11 @@ void CWaveSoapFrontDoc::OnProcessResample()
 
 void CWaveSoapFrontDoc::OnFileStatistics()
 {
+	// disable for zero length file
+	if (m_OperationInProgress || ! m_WavFile.IsOpen() || WaveFileSamples() == 0)
+	{
+		return;
+	}
 	CStatisticsContext * pContext = new CStatisticsContext(this, "Scanning the file for statistics...", "");
 	if (NULL == pContext)
 	{
@@ -4477,16 +4496,20 @@ void CWaveSoapFrontDoc::OnFileStatistics()
 
 void CWaveSoapFrontDoc::OnUpdateFileStatistics(CCmdUI* pCmdUI)
 {
-	pCmdUI->Enable( ! m_OperationInProgress);
+	pCmdUI->Enable( ! m_OperationInProgress && m_WavFile.IsOpen() && WaveFileSamples() != 0);
 }
 
 void CWaveSoapFrontDoc::OnUpdateEditGoto(CCmdUI* pCmdUI)
 {
-	pCmdUI->Enable( ! m_OperationInProgress);
+	pCmdUI->Enable( ! m_OperationInProgress && m_WavFile.IsOpen() && WaveFileSamples() != 0);
 }
 
 void CWaveSoapFrontDoc::OnEditGoto()
 {
+	if (m_OperationInProgress || ! m_WavFile.IsOpen() || WaveFileSamples() == 0)
+	{
+		return;
+	}
 	CGotoDialog dlg;
 	dlg.m_Position = m_CaretPosition;
 	dlg.m_pWf = m_WavFile.GetWaveFormat();
@@ -4503,15 +4526,18 @@ void CWaveSoapFrontDoc::OnEditGoto()
 
 void CWaveSoapFrontDoc::OnUpdateProcessInvert(CCmdUI* pCmdUI)
 {
-	pCmdUI->Enable( ! m_bReadOnly && ! m_OperationInProgress);
+	pCmdUI->Enable( ! m_bReadOnly && ! m_OperationInProgress
+					&& m_WavFile.IsOpen() && WaveFileSamples() != 0);
 }
 
 void CWaveSoapFrontDoc::OnProcessInvert()
 {
-	if (m_OperationInProgress || m_bReadOnly)
+	if (m_OperationInProgress || m_bReadOnly
+		|| ! m_WavFile.IsOpen() || WaveFileSamples() == 0)
 	{
 		return;
 	}
+
 	long start = m_SelectionStart;
 	long end = m_SelectionEnd;
 	if (start == end)
@@ -4549,7 +4575,7 @@ void CWaveSoapFrontDoc::OnProcessInvert()
 
 void CWaveSoapFrontDoc::OnUpdateViewRescanPeaks(CCmdUI* pCmdUI)
 {
-	pCmdUI->Enable( ! m_OperationInProgress);
+	pCmdUI->Enable( ! m_OperationInProgress && m_WavFile.IsOpen() && WaveFileSamples() != 0);
 }
 
 void CWaveSoapFrontDoc::OnViewRescanPeaks()
@@ -4859,7 +4885,7 @@ void CWaveSoapFrontDoc::OnUpdateProcessDoUlf(CCmdUI* pCmdUI)
 {
 	pCmdUI->Enable( ! m_bReadOnly
 					&& ! m_OperationInProgress
-					&& m_WavFile.IsOpen()
+					&& m_WavFile.IsOpen() && WaveFileSamples() != 0
 					&& (m_SelectionEnd - m_SelectionStart > 16
 						|| m_SelectionEnd == m_SelectionStart));
 
@@ -4954,7 +4980,7 @@ void CWaveSoapFrontDoc::OnUpdateProcessDoDeclicking(CCmdUI* pCmdUI)
 {
 	pCmdUI->Enable( ! m_bReadOnly
 					&& ! m_OperationInProgress
-					&& m_WavFile.IsOpen());
+					&& m_WavFile.IsOpen() && WaveFileSamples() != 0);
 }
 
 void CWaveSoapFrontDoc::OnProcessDoDeclicking()
@@ -5036,7 +5062,7 @@ void CWaveSoapFrontDoc::OnUpdateProcessNoiseReduction(CCmdUI* pCmdUI)
 {
 	pCmdUI->Enable( ! m_bReadOnly
 					&& ! m_OperationInProgress
-					&& m_WavFile.IsOpen());
+					&& m_WavFile.IsOpen() && WaveFileSamples() != 0);
 }
 
 void CWaveSoapFrontDoc::OnProcessNoiseReduction()
