@@ -114,6 +114,11 @@ SOURCE=.\ChildFrm.cpp
 # End Source File
 # Begin Source File
 
+SOURCE=.\CStringW.cpp
+# PROP Exclude_From_Build 1
+# End Source File
+# Begin Source File
+
 SOURCE=.\CustomSampleRateDlg.cpp
 # End Source File
 # Begin Source File
@@ -321,6 +326,10 @@ SOURCE=.\ChildDialog.h
 # Begin Source File
 
 SOURCE=.\ChildFrm.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\CStringW.h
 # End Source File
 # Begin Source File
 

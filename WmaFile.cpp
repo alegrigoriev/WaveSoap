@@ -1,6 +1,7 @@
 // WmaFile.cpp
 #include "stdafx.h"
 #include "WmaFile.h"
+#include <wmsysprf.h>
 
 HRESULT STDMETHODCALLTYPE CDirectFileStream::Read(
 												/* [length_is][size_is][out] */ void __RPC_FAR *pv,
@@ -689,3 +690,363 @@ HRESULT CWmaDecoder::Stop()
 	}
 }
 
+WmaEncoder::WmaEncoder()
+	:m_pWriter(NULL),
+	m_pProfile(NULL),
+	m_pProfileManager(NULL),
+	m_pHeaderInfo(NULL),
+	m_pStreamConfig(NULL),
+	m_pBuffer(NULL),
+	m_pFileSink(NULL)
+{
+}
+
+void WmaEncoder::DeInit()
+{
+	if (NULL != m_pWriter)
+	{
+		m_pWriter->Flush();
+		m_pWriter->EndWriting();
+	}
+	if (NULL != m_pFileSink)
+	{
+		m_pFileSink->Release();
+		m_pFileSink = NULL;
+	}
+	if (NULL != m_pBuffer)
+	{
+		m_pBuffer->Release();
+		m_pBuffer = NULL;
+	}
+	if (NULL != m_pStreamConfig)
+	{
+		m_pStreamConfig->Release();
+		m_pStreamConfig = NULL;
+	}
+	if (NULL != m_pProfile)
+	{
+		m_pProfile->Release();
+		m_pProfile = NULL;
+	}
+	if (NULL != m_pProfileManager)
+	{
+		m_pProfileManager->Release();
+		m_pProfileManager = NULL;
+	}
+	if (NULL != m_pHeaderInfo)
+	{
+		m_pHeaderInfo->Release();
+		m_pHeaderInfo = NULL;
+	}
+	if (NULL != m_pWriterAdvanced)
+	{
+		m_pWriterAdvanced->Release();
+		m_pWriterAdvanced = NULL;
+	}
+	if (NULL != m_pWriter)
+	{
+		m_pWriter->Release();
+		m_pWriter = NULL;
+	}
+}
+
+WmaEncoder::~WmaEncoder()
+{
+	DeInit();
+}
+
+BOOL WmaEncoder::OpenWrite(LPCTSTR FileName)
+{
+#ifndef _UNICODE
+	WCHAR Name[MAX_PATH+1] = {0};
+	if (0 == ::MultiByteToWideChar(CP_ACP, MB_PRECOMPOSED, FileName, -1,
+									Name, MAX_PATH))
+	{
+		return FALSE;
+	}
+	if ( ! SUCCEEDED(m_pFileSink->Open(Name)))
+	{
+		return FALSE;
+	}
+#else
+	if ( ! SUCCEEDED(m_pFileSink->Open(FileName)))
+	{
+		return FALSE;
+	}
+#endif
+	m_pWriterAdvanced->AddSink(m_pFileSink);
+	m_pWriter->BeginWriting();
+	HRESULT hr = m_pWriter->AllocateSample(0x10000, & m_pBuffer);
+	if ( ! SUCCEEDED(hr))
+	{
+		return FALSE;
+	}
+
+	return TRUE;
+}
+
+BOOL WmaEncoder::Init()
+{
+	if (S_OK != WMCreateWriter(NULL, & m_pWriter))
+	{
+		return FALSE;
+	}
+
+	HRESULT hr = m_pWriter->QueryInterface(IID_IWMWriterAdvanced, ( VOID ** )& m_pWriterAdvanced);
+
+	if ( ! SUCCEEDED(hr))
+	{
+		return FALSE;
+	}
+
+	//IWMHeaderInfo * pHeaderInfo = NULL;
+	hr = m_pWriter->QueryInterface(IID_IWMHeaderInfo, ( VOID ** )& m_pHeaderInfo);
+	if ( ! SUCCEEDED(hr))
+	{
+		return FALSE;
+	}
+#if 0
+	hr = pHeaderInfo->QueryInterface(IID_IWMHeaderInfo2, ( VOID ** )& m_pHeaderInfo);
+	pHeaderInfo->Release();
+	pHeaderInfo = NULL;
+	if ( ! SUCCEEDED(hr))
+	{
+		return FALSE;
+	}
+#endif
+
+	//IWMWriterFileSink * pSink;
+	hr = WMCreateWriterFileSink( & m_pFileSink);
+	if ( ! SUCCEEDED(hr))
+	{
+		return FALSE;
+	}
+
+#if 0
+	hr = pSink->QueryInterface(IID_IWMWriterFileSink2, ( VOID ** )& m_pFileSink);
+	pSink->Release();
+	pSink = NULL;
+	if ( ! SUCCEEDED(hr))
+	{
+		return FALSE;
+	}
+#endif
+	hr = WMCreateProfileManager( & m_pProfileManager);
+	if ( ! SUCCEEDED(hr))
+	{
+		return FALSE;
+	}
+#if 0//def _DEBUG
+	IWMProfileManager2 * pProfManager = NULL;
+	hr = m_pProfileManager->QueryInterface(IID_IWMProfileManager2, ( VOID ** )& pProfManager);
+	if (SUCCEEDED(hr))
+	{
+		pProfManager->SetSystemProfileVersion(WMT_VER_7_0);
+		DWORD count = 0;
+		pProfManager->GetSystemProfileCount( & count);
+		TRACE("Number of system profiles = %d\n", count);
+		for (int i = 0; i < count; i++)
+		{
+			IWMProfile * pSysProfile = NULL;
+			hr = pProfManager->LoadSystemProfile(i, & pSysProfile);
+			if (SUCCEEDED(hr))
+			{
+				DWORD StreamCount = 0;
+				pSysProfile->GetStreamCount( & StreamCount);
+				TRACE("Profile %d, num of streams = %d\n", i, StreamCount);
+				for (int j = 0; j < StreamCount; j++)
+				{
+					IWMStreamConfig * pStream = NULL;
+					hr = pSysProfile->GetStream(j, & pStream);
+					if (SUCCEEDED(hr))
+					{
+						GUID type;
+						DWORD bitrate;
+						pStream->GetStreamType( & type);
+						pStream->GetBitrate( & bitrate);
+						if (0 == memcmp( & type, & WMMEDIATYPE_Audio, sizeof type))
+						{
+							TRACE("Audio stream %d, bitrate=%d\n", j, bitrate);
+						}
+						else if (0 == memcmp( & type, & WMMEDIATYPE_Video, sizeof type))
+						{
+							TRACE("Video stream %d, bitrate=%d\n", j, bitrate);
+						}
+						pStream->Release();
+					}
+				}
+
+				pSysProfile->Release();
+			}
+		}
+		pProfManager->Release();
+	}
+#endif
+
+	hr = m_pProfileManager->LoadProfileByID(WMProfile_V70_128Audio, & m_pProfile);
+	if ( ! SUCCEEDED(hr))
+	{
+		return FALSE;
+	}
+
+	hr = m_pProfile->GetStreamByNumber(1, & m_pStreamConfig);
+	if ( ! SUCCEEDED(hr))
+	{
+		return FALSE;
+	}
+#if 1
+	DWORD SourceBitrate = 0;
+	m_pWriter->SetProfile(m_pProfile);
+	m_pStreamConfig->GetBitrate( & SourceBitrate);
+	TRACE("Stream Bitrate = %d\n", SourceBitrate);
+
+	IWMMediaProps * pProps = NULL;
+	hr = m_pStreamConfig->QueryInterface(IID_IWMMediaProps, (void**) & pProps);
+	if ( ! SUCCEEDED(hr))
+	{
+		return FALSE;
+	}
+
+	DWORD cbType;
+	//   Make the first call to establish the size of buffer needed.
+	pProps -> GetMediaType(NULL, &cbType);
+	//   Now create a buffer of the appropriate size
+	BYTE *pBuf = new BYTE[cbType];
+	//   Create an appropriate structure pointer to the buffer.
+	WM_MEDIA_TYPE *pType = (WM_MEDIA_TYPE*) pBuf;
+	//   Call the method again to extract the information.
+	hr = pProps -> GetMediaType(pType, & cbType);
+	WAVEFORMATEX * pwfx = (WAVEFORMATEX *) pType->pbFormat;
+	TRACE("MediaType: wFormatTag=%x, BytesPerSec = %d\n",
+		pwfx->wFormatTag, pwfx->nAvgBytesPerSec);
+
+	hr = m_pStreamConfig->SetBitrate(96024);
+	hr = pProps -> GetMediaType(pType, & cbType);
+	pwfx = (WAVEFORMATEX *) pType->pbFormat;
+	TRACE("new MediaType: wFormatTag=%x, BytesPerSec = %d\n",
+		pwfx->wFormatTag, pwfx->nAvgBytesPerSec);
+
+
+	m_pStreamConfig->GetBitrate( & SourceBitrate);
+	TRACE("Stream Bitrate = %d\n", SourceBitrate);
+
+	pwfx->nAvgBytesPerSec = SourceBitrate / 8;
+
+	pProps->SetMediaType(pType);
+
+	m_pProfile->SetName(L"New Profile");
+	m_pProfile->SetDescription(L"New Profile");
+	hr = m_pProfile->ReconfigStream(m_pStreamConfig);
+	TRACE("ReconfigBitrate returned %X\n", hr);
+	delete[] pBuf;
+
+	pProps->Release();
+	pProps = NULL;
+
+#endif
+
+	return TRUE;
+}
+
+void WmaEncoder::SetArtist(LPCTSTR szArtist)
+{
+#ifdef _UNICODE
+	m_pHeaderInfo->SetAttribute(1, g_wszWMAuthor, WMT_TYPE_STRING,
+								(LPBYTE)szArtist, (wcslen(szArtist) + 1) * sizeof(TCHAR));
+#else
+	WCHAR Artist[MAX_PATH+1] = {0};
+	int nChars = ::MultiByteToWideChar(CP_ACP, MB_PRECOMPOSED, szArtist, -1,
+										Artist, MAX_PATH);
+	if (0 == nChars)
+	{
+		return;
+	}
+	m_pHeaderInfo->SetAttribute(1, g_wszWMAuthor, WMT_TYPE_STRING,
+								(LPBYTE)Artist, (nChars + 1) * sizeof(TCHAR));
+#endif
+}
+void WmaEncoder::SetAlbum(LPCTSTR szAlbum)
+{
+#ifdef _UNICODE
+	m_pHeaderInfo->SetAttribute(1, g_wszWMAlbumTitle, WMT_TYPE_STRING,
+								(LPBYTE)szAlbum, (wcslen(szAlbum) + 1) * sizeof(TCHAR));
+#else
+	WCHAR Album[MAX_PATH+1] = {0};
+	int nChars = ::MultiByteToWideChar(CP_ACP, MB_PRECOMPOSED, szAlbum, -1,
+										Album, MAX_PATH);
+	if (0 == nChars)
+	{
+		return;
+	}
+	m_pHeaderInfo->SetAttribute(1, g_wszWMAlbumTitle, WMT_TYPE_STRING,
+								(LPBYTE)Album, (nChars + 1) * sizeof(TCHAR));
+#endif
+}
+void WmaEncoder::SetGenre(LPCTSTR szGenre)
+{
+#ifdef _UNICODE
+	m_pHeaderInfo->SetAttribute(1, g_wszWMGenre, WMT_TYPE_STRING,
+								(LPBYTE)szGenre, (wcslen(szGenre) + 1) * sizeof(TCHAR));
+#else
+	WCHAR Genre[MAX_PATH+1] = {0};
+	int nChars = ::MultiByteToWideChar(CP_ACP, MB_PRECOMPOSED, szGenre, -1,
+										Genre, MAX_PATH);
+	if (0 == nChars)
+	{
+		return;
+	}
+	m_pHeaderInfo->SetAttribute(1, g_wszWMGenre, WMT_TYPE_STRING,
+								(LPBYTE)Genre, (nChars + 1) * sizeof(TCHAR));
+#endif
+}
+BOOL WmaEncoder::SetBitrate(int Bitrate);
+
+BOOL WmaEncoder::Write(void * Buf, size_t size)
+{
+	PBYTE pSrcBuf = PBYTE(Buf);
+	if (0 == size)
+	{
+		pSrcBuf = NULL;
+	}
+	do
+	{
+
+		DWORD BufLength = 0;
+		DWORD MaxLength = 0;
+		BYTE * pBuf;
+		m_pBuffer->GetBufferAndLength( & pBuf, & BufLength);
+		m_pBuffer->GetMaxLength( & MaxLength);
+
+		if (pSrcBuf != NULL)
+		{
+			DWORD ToCopy = MaxLength - BufLength;
+			if (ToCopy > size)
+			{
+				ToCopy = size;
+			}
+			memcpy(pBuf + BufLength, pSrcBuf, ToCopy);
+
+			BufLength += ToCopy;
+			size -= ToCopy;
+			pSrcBuf += ToCopy;
+
+			m_pBuffer->SetLength(BufLength);
+		}
+
+		if (NULL == pSrcBuf
+			|| BufLength == MaxLength
+			|| 0 != BufLength)
+		{
+			QWORD WriterTime = 0;
+			m_pWriterAdvanced->GetWriterTime( & WriterTime);
+
+			if (! SUCCEEDED(m_pWriter->WriteSample(0, WriterTime, 0, m_pBuffer)))
+			{
+				return FALSE;
+			}
+			m_pBuffer->SetLength(0);
+		}
+	} while(size != 0);
+
+	return TRUE;
+}
