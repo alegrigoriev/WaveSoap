@@ -1,8 +1,12 @@
 TODO tasks:
 
+Add prefix to the "Split to files" files: index and/or text
+When saving partial file, show the file name in the status prompt, don't show the source name
+Allow Save Selection to save with compression
+When doing Paste from file, make the file title a region name.
+When saving the selection as, set the file title from the marker at beginning of the selection (unless all the file is selected)
 Make Fade In/Out command
 Make Paste Special command (with Fade In/Fade Out etc)
-Check if after file extension metadata gets saved again.
 Check all loading/saving of compressed files
 If metadata doesn't come as the very last chunk of the file, copy the original file to 
  a file where it does (for non-compressed file, that is)
@@ -14,6 +18,7 @@ Unnamed region name is composed from its boundaries. Marker name - from its posi
 Make context menu for outline view
 Show the marker position when dragging it.
 
+Make "URL-safe filenames" option in CD grab dialog and file split dialog.
 Do rewriting from a source file to the work file in background thread.
 
 Move "Import/Export clicks" to "Advanced" dialog
@@ -80,7 +85,9 @@ Find which alignment better for edit box labels: left or right
 
 Problems:
 
-Selected Mpeg3 compressor is not saved
+WMA encoded/decoded is delayed by 2048 samples.
+Save split to files shows MP3 formats for MP3 codec with different sample rate, even though "Show compatible formats" is selected
+SaveAs shows AVI as possible type
 Last columns (of the file) in FFT view are not getting erased/drawn properly
 Operation status text may get sticky after undo/redo
 Vertical scroll in the wave view makes marker labels blinking
@@ -97,6 +104,7 @@ Windows2000 is trying to zero the allocated file
 Log Off query doesn't close the active dialog. Recursion is possible. Make sure to check after Cancel
 
 Fixed:
+Selected Mpeg3 compressor is not saved
 Go to max peak goes a bit off
 mm:ss.FF if not available in Marker/Region dialog
 Unable to reopen after Save As compressed
@@ -184,6 +192,8 @@ Save As dialog is not centered first time (comdlg problem?)
 ??? When time/seconds format is set for status bar, MM:SS is actually shown
 
 Done:
+Make "Save: Split to files" command
+Check if after file extension metadata gets saved again.
 Fix GetBufferWriteOnly flag support (do zero instead of read)
 Show tooltip on a marker in outline view
 Make right click to move caret (unless inside a selection)
