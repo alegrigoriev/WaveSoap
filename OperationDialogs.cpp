@@ -466,17 +466,11 @@ void CVolumeChangeDialog::OnKillfocusEditVolumeRight()
 
 /////////////////////////////////////////////////////////////////////////////
 // CSelectionDialog dialog
-
-
-CSelectionDialog::CSelectionDialog(SAMPLE_INDEX Start, SAMPLE_INDEX End,
-									SAMPLE_INDEX CaretPos, CHANNEL_MASK Channel,
-									CWaveFile & WaveFile,
-									int TimeFormat,
-									BOOL bAllowFileExtension,
-									UINT id,
-									CWnd* pParent /*=NULL*/)
-	: BaseClass(id, pParent)
-	, m_Chan(-1)
+CSelectionUiSupport::CSelectionUiSupport(SAMPLE_INDEX Start, SAMPLE_INDEX End, SAMPLE_INDEX CaretPos,
+										CHANNEL_MASK Channel,
+										CWaveFile & WaveFile, int TimeFormat,
+										BOOL bAllowFileExtension)   // standard constructor
+	: m_Chan(-1)
 	, m_Start(0)
 	, m_End(0)
 	, m_CaretPosition(CaretPos)
@@ -501,34 +495,8 @@ CSelectionDialog::CSelectionDialog(SAMPLE_INDEX Start, SAMPLE_INDEX End,
 
 	m_Length = m_End - m_Start;
 
-	if (WaveFile.Channels() < 2)
-	{
-		if (m_lpszTemplateName == MAKEINTRESOURCE(IDD_SELECTION_DIALOG))
-		{
-			m_lpszTemplateName = MAKEINTRESOURCE(IDD_SELECTION_DIALOG_MONO);
-		}
-		m_Chan = 0;
-	}
-	else
-	{
-
-		if (WaveFile.AllChannels(Channel))
-		{
-			m_Chan = 0;
-		}
-		else if (Channel & SPEAKER_FRONT_LEFT)
-		{
-			m_Chan = 1;
-		}
-		else if (Channel & SPEAKER_FRONT_RIGHT)
-		{
-			m_Chan = 2;
-		}
-	}
-	//{{AFX_DATA_INIT(CSelectionDialog)
 	m_TimeFormatIndex = 0;
 	m_SelectionNumber = 0;
-	//}}AFX_DATA_INIT
 	switch (TimeFormat & SampleToString_Mask)
 	{
 	case SampleToString_Sample:
@@ -547,64 +515,30 @@ CSelectionDialog::CSelectionDialog(SAMPLE_INDEX Start, SAMPLE_INDEX End,
 	}
 
 	m_eLength.SetSamplingRate(WaveFile.SampleRate());
-}
 
-
-void CSelectionDialog::DoDataExchange(CDataExchange* pDX)
-{
-	BaseClass::DoDataExchange(pDX);
-	if (NULL != GetDlgItem(IDC_COMBO_SELECTION))
+	if (WaveFile.Channels() < 2)
 	{
-		DDX_Control(pDX, IDC_COMBO_SELECTION, m_SelectionCombo);
-		DDX_CBIndex(pDX, IDC_COMBO_SELECTION, m_SelectionNumber);
+		m_Chan = 0;
 	}
-	//{{AFX_DATA_MAP(CSelectionDialog)
-	DDX_Control(pDX, IDC_SPIN_START, m_SpinStart);
-	DDX_Control(pDX, IDC_SPIN_LENGTH, m_SpinLength);
-	DDX_Control(pDX, IDC_SPIN_END, m_SpinEnd);
-	DDX_Control(pDX, IDC_EDIT_LENGTH, m_eLength);
-	DDX_Control(pDX, IDC_COMBO_START, m_eStart);
-	DDX_Control(pDX, IDC_COMBO_END, m_eEnd);
-	DDX_CBIndex(pDX, IDC_COMBO_TIME_FORMAT, m_TimeFormatIndex);
-	//}}AFX_DATA_MAP
-	if (NULL != GetDlgItem(IDC_RADIO_CHANNEL)
-		&& m_WaveFile.Channels() >= 2)
+	else
 	{
-		DDX_Radio(pDX, IDC_RADIO_CHANNEL, m_Chan);
+		if (WaveFile.AllChannels(Channel))
+		{
+			m_Chan = 0;
+		}
+		else if (Channel & SPEAKER_FRONT_LEFT)
+		{
+			m_Chan = 1;
+		}
+		else if (Channel & SPEAKER_FRONT_RIGHT)
+		{
+			m_Chan = 2;
+		}
 	}
-
-	m_eStart.ExchangeData(pDX, m_Start);
-	m_eEnd.ExchangeData(pDX, m_End);
-	m_eLength.ExchangeData(pDX, m_Length);
-
 }
 
-void CSelectionDialog::OnOK()
+void CSelectionUiSupport::InitSelectionUi()
 {
-	AdjustSelection(m_eStart.GetTimeSample(), m_eEnd.GetTimeSample(), m_eLength.GetTimeSample());
-	BaseClass::OnOK();
-}
-
-BEGIN_MESSAGE_MAP(CSelectionDialog, BaseClass)
-//{{AFX_MSG_MAP(CSelectionDialog)
-	ON_CBN_SELCHANGE(IDC_COMBO_TIME_FORMAT, OnSelchangeComboTimeFormat)
-	ON_CBN_KILLFOCUS(IDC_COMBO_END, OnKillfocusEditEnd)
-	ON_NOTIFY(CTimeSpinCtrl::TSC_BUDDY_CHANGE, IDC_SPIN_END, OnBuddyChangeSpinEnd)
-	ON_EN_KILLFOCUS(IDC_EDIT_LENGTH, OnKillfocusEditLength)
-	ON_NOTIFY(CTimeSpinCtrl::TSC_BUDDY_CHANGE, IDC_SPIN_LENGTH, OnBuddyChangeSpinLength)
-	ON_CBN_KILLFOCUS(IDC_COMBO_START, OnKillfocusEditStart)
-	ON_NOTIFY(CTimeSpinCtrl::TSC_BUDDY_CHANGE, IDC_SPIN_START, OnBuddyChangeSpinStart)
-	ON_CBN_SELCHANGE(IDC_COMBO_SELECTION, OnSelchangeComboSelection)
-	//}}AFX_MSG_MAP
-END_MESSAGE_MAP()
-
-/////////////////////////////////////////////////////////////////////////////
-// CSelectionDialog message handlers
-
-BOOL CSelectionDialog::OnInitDialog()
-{
-	BaseClass::OnInitDialog();
-
 	m_eStart.FillFileTimes();
 	m_eEnd.FillFileTimes();
 	m_eStart.GetComboBox().SetExtendedUI(TRUE);
@@ -674,13 +608,41 @@ BOOL CSelectionDialog::OnInitDialog()
 	}
 
 	UpdateComboSelection();
-
-	return TRUE;  // return TRUE unless you set the focus to a control
 }
 
-void CSelectionDialog::OnSelchangeComboTimeFormat()
+void CSelectionUiSupport::DoDataExchange(CDataExchange* pDX, CWnd * pWnd)
 {
-	int sel = ((CComboBox *)GetDlgItem(IDC_COMBO_TIME_FORMAT))->GetCurSel();
+	if (NULL != pWnd->GetDlgItem(IDC_COMBO_SELECTION))
+	{
+		DDX_Control(pDX, IDC_COMBO_SELECTION, m_SelectionCombo);
+		DDX_CBIndex(pDX, IDC_COMBO_SELECTION, m_SelectionNumber);
+	}
+	//{{AFX_DATA_MAP(CSelectionDialog)
+	DDX_Control(pDX, IDC_SPIN_START, m_SpinStart);
+	DDX_Control(pDX, IDC_SPIN_LENGTH, m_SpinLength);
+	DDX_Control(pDX, IDC_SPIN_END, m_SpinEnd);
+	DDX_Control(pDX, IDC_EDIT_LENGTH, m_eLength);
+	DDX_Control(pDX, IDC_COMBO_START, m_eStart);
+	DDX_Control(pDX, IDC_COMBO_END, m_eEnd);
+
+	DDX_Control(pDX, IDC_COMBO_TIME_FORMAT, m_TimeFormatCombo);
+	DDX_CBIndex(pDX, IDC_COMBO_TIME_FORMAT, m_TimeFormatIndex);
+	//}}AFX_DATA_MAP
+	if (NULL != pWnd->GetDlgItem(IDC_RADIO_CHANNEL)
+		&& m_WaveFile.Channels() >= 2)
+	{
+		DDX_Radio(pDX, IDC_RADIO_CHANNEL, m_Chan);
+	}
+
+	m_eStart.ExchangeData(pDX, m_Start);
+	m_eEnd.ExchangeData(pDX, m_End);
+	m_eLength.ExchangeData(pDX, m_Length);
+
+}
+
+void CSelectionUiSupport::OnSelchangeComboTimeFormat()
+{
+	int sel = m_TimeFormatCombo.GetCurSel();
 	int Format;
 	switch (sel)
 	{
@@ -714,7 +676,7 @@ void CSelectionDialog::OnSelchangeComboTimeFormat()
 	m_eLength.SetTimeSample(m_Length);
 }
 
-void CSelectionDialog::AdjustSelection(SAMPLE_INDEX Start, SAMPLE_INDEX End,
+void CSelectionUiSupport::AdjustSelection(SAMPLE_INDEX Start, SAMPLE_INDEX End,
 										NUMBER_OF_SAMPLES Length)
 {
 	NUMBER_OF_SAMPLES const FileLength = m_WaveFile.NumberOfSamples();
@@ -805,7 +767,7 @@ void CSelectionDialog::AdjustSelection(SAMPLE_INDEX Start, SAMPLE_INDEX End,
 	m_eLength.SetTimeSample(m_Length);
 }
 
-void CSelectionDialog::UpdateComboSelection()
+void CSelectionUiSupport::UpdateComboSelection()
 {
 	if (NULL != m_SelectionCombo.m_hWnd)
 	{
@@ -813,46 +775,46 @@ void CSelectionDialog::UpdateComboSelection()
 	}
 }
 
-void CSelectionDialog::OnBuddyChangeSpinEnd(NMHDR * /*pNmHdr*/, LRESULT * pResult)
+void CSelectionUiSupport::OnBuddyChangeSpinEnd(NMHDR * /*pNmHdr*/, LRESULT * pResult)
 {
 	OnKillfocusEditEnd();
 	*pResult = 0;
 }
 
-void CSelectionDialog::OnKillfocusEditEnd()
+void CSelectionUiSupport::OnKillfocusEditEnd()
 {
 	AdjustSelection(m_Start, m_eEnd.UpdateTimeSample(), m_Length);
 
 	UpdateComboSelection();
 }
 
-void CSelectionDialog::OnBuddyChangeSpinLength(NMHDR * /*pNmHdr*/, LRESULT * pResult)
+void CSelectionUiSupport::OnBuddyChangeSpinLength(NMHDR * /*pNmHdr*/, LRESULT * pResult)
 {
 	OnKillfocusEditLength();
 	*pResult = 0;
 }
 
-void CSelectionDialog::OnKillfocusEditLength()
+void CSelectionUiSupport::OnKillfocusEditLength()
 {
 	AdjustSelection(m_Start, m_End, m_eLength.UpdateTimeSample());
 
 	UpdateComboSelection();
 }
 
-void CSelectionDialog::OnBuddyChangeSpinStart(NMHDR * /*pNmHdr*/, LRESULT * pResult)
+void CSelectionUiSupport::OnBuddyChangeSpinStart(NMHDR * /*pNmHdr*/, LRESULT * pResult)
 {
 	OnKillfocusEditStart();
 	*pResult = 0;
 }
 
-void CSelectionDialog::OnKillfocusEditStart()
+void CSelectionUiSupport::OnKillfocusEditStart()
 {
 	AdjustSelection(m_eStart.UpdateTimeSample(), m_End, m_Length);
 
 	UpdateComboSelection();
 }
 
-void CSelectionDialog::OnSelchangeComboSelection()
+void CSelectionUiSupport::OnSelchangeComboSelection()
 {
 	unsigned sel = m_SelectionCombo.GetCurSel();
 
@@ -876,7 +838,7 @@ void CSelectionDialog::OnSelchangeComboSelection()
 	}
 }
 
-void CSelectionDialog::AddSelection(LPCTSTR Name, SAMPLE_INDEX begin, SAMPLE_INDEX end)
+void CSelectionUiSupport::AddSelection(LPCTSTR Name, SAMPLE_INDEX begin, SAMPLE_INDEX end)
 {
 	if (NULL == m_SelectionCombo.m_hWnd)
 	{
@@ -887,14 +849,14 @@ void CSelectionDialog::AddSelection(LPCTSTR Name, SAMPLE_INDEX begin, SAMPLE_IND
 	m_Selections.push_back(s);
 }
 
-void CSelectionDialog::AddSelection(UINT id, SAMPLE_INDEX begin, SAMPLE_INDEX end)
+void CSelectionUiSupport::AddSelection(UINT id, SAMPLE_INDEX begin, SAMPLE_INDEX end)
 {
 	CString s;
 	s.LoadString(id);
 	AddSelection(s, begin, end);
 }
 
-int CSelectionDialog::FindSelection(SAMPLE_INDEX begin, SAMPLE_INDEX end)
+int CSelectionUiSupport::FindSelection(SAMPLE_INDEX begin, SAMPLE_INDEX end)
 {
 	for (unsigned i = 0; i < m_Selections.size(); i++)
 	{
@@ -905,6 +867,103 @@ int CSelectionDialog::FindSelection(SAMPLE_INDEX begin, SAMPLE_INDEX end)
 		}
 	}
 	return -1;
+}
+
+///////////////////////////////////////////////////////////////
+// CSelectionDialog dialog
+CSelectionDialog::CSelectionDialog(SAMPLE_INDEX Start, SAMPLE_INDEX End,
+									SAMPLE_INDEX CaretPos, CHANNEL_MASK Channel,
+									CWaveFile & WaveFile,
+									int TimeFormat,
+									BOOL bAllowFileExtension,
+									UINT id,
+									CWnd* pParent /*=NULL*/)
+	: BaseClass(id, pParent)
+	, CSelectionUiSupport(Start, End, CaretPos,
+						Channel, WaveFile, TimeFormat, bAllowFileExtension)
+{
+	if (WaveFile.Channels() < 2
+		&& m_lpszTemplateName == MAKEINTRESOURCE(IDD_SELECTION_DIALOG))
+	{
+		m_lpszTemplateName = MAKEINTRESOURCE(IDD_SELECTION_DIALOG_MONO);
+	}
+}
+
+
+void CSelectionDialog::DoDataExchange(CDataExchange* pDX)
+{
+	BaseClass::DoDataExchange(pDX);
+	CSelectionUiSupport::DoDataExchange(pDX, this);
+}
+
+void CSelectionDialog::OnOK()
+{
+	AdjustSelection(m_eStart.GetTimeSample(), m_eEnd.GetTimeSample(), m_eLength.GetTimeSample());
+	BaseClass::OnOK();
+}
+
+BEGIN_MESSAGE_MAP(CSelectionDialog, BaseClass)
+//{{AFX_MSG_MAP(CSelectionDialog)
+	ON_CBN_SELCHANGE(IDC_COMBO_TIME_FORMAT, OnSelchangeComboTimeFormat)
+	ON_CBN_KILLFOCUS(IDC_COMBO_END, OnKillfocusEditEnd)
+	ON_NOTIFY(CTimeSpinCtrl::TSC_BUDDY_CHANGE, IDC_SPIN_END, OnBuddyChangeSpinEnd)
+	ON_EN_KILLFOCUS(IDC_EDIT_LENGTH, OnKillfocusEditLength)
+	ON_NOTIFY(CTimeSpinCtrl::TSC_BUDDY_CHANGE, IDC_SPIN_LENGTH, OnBuddyChangeSpinLength)
+	ON_CBN_KILLFOCUS(IDC_COMBO_START, OnKillfocusEditStart)
+	ON_NOTIFY(CTimeSpinCtrl::TSC_BUDDY_CHANGE, IDC_SPIN_START, OnBuddyChangeSpinStart)
+	ON_CBN_SELCHANGE(IDC_COMBO_SELECTION, OnSelchangeComboSelection)
+	//}}AFX_MSG_MAP
+END_MESSAGE_MAP()
+
+/////////////////////////////////////////////////////////////////////////////
+// CSelectionDialog message handlers
+
+BOOL CSelectionDialog::OnInitDialog()
+{
+	BaseClass::OnInitDialog();
+
+	InitSelectionUi();
+	return TRUE;  // return TRUE unless you set the focus to a control
+}
+
+void CSelectionDialog::OnSelchangeComboTimeFormat()
+{
+	CSelectionUiSupport::OnSelchangeComboTimeFormat();
+}
+
+void CSelectionDialog::OnBuddyChangeSpinEnd(NMHDR * pNmHdr, LRESULT * pResult)
+{
+	CSelectionUiSupport::OnBuddyChangeSpinEnd(pNmHdr, pResult);
+}
+
+void CSelectionDialog::OnKillfocusEditEnd()
+{
+	CSelectionUiSupport::OnKillfocusEditEnd();
+}
+
+void CSelectionDialog::OnBuddyChangeSpinLength(NMHDR * pNmHdr, LRESULT * pResult)
+{
+	CSelectionUiSupport::OnBuddyChangeSpinLength(pNmHdr, pResult);
+}
+
+void CSelectionDialog::OnKillfocusEditLength()
+{
+	CSelectionUiSupport::OnKillfocusEditLength();
+}
+
+void CSelectionDialog::OnBuddyChangeSpinStart(NMHDR * pNmHdr, LRESULT * pResult)
+{
+	CSelectionUiSupport::OnBuddyChangeSpinStart(pNmHdr, pResult);
+}
+
+void CSelectionDialog::OnKillfocusEditStart()
+{
+	CSelectionUiSupport::OnKillfocusEditStart();
+}
+
+void CSelectionDialog::OnSelchangeComboSelection()
+{
+	CSelectionUiSupport::OnSelchangeComboSelection();
 }
 
 /////////////////////////////////////////////////////////////////////////////
