@@ -28,7 +28,10 @@
 				PreprocessorDefinitions="_DEBUG,WIN32,_WINDOWS,_WIN32_WINNT=0x0500,OEMRESOURCE"
 				GeneratePreprocessedFile="0"
 				StringPooling="FALSE"
+				BasicRuntimeChecks="3"
+				SmallerTypeCheck="TRUE"
 				RuntimeLibrary="1"
+				BufferSecurityCheck="TRUE"
 				RuntimeTypeInfo="TRUE"
 				UsePrecompiledHeader="3"
 				PrecompiledHeaderThrough="stdafx.h"
@@ -39,7 +42,8 @@
 				WarningLevel="3"
 				SuppressStartupBanner="TRUE"
 				DebugInformationFormat="4"
-				CompileAs="0"/>
+				CompileAs="0"
+				ShowIncludes="FALSE"/>
 			<Tool
 				Name="VCCustomBuildTool"/>
 			<Tool
@@ -212,6 +216,9 @@
 				RelativePath=".\MainFrm.cpp">
 			</File>
 			<File
+				RelativePath=".\MessageBoxSynch.cpp">
+			</File>
+			<File
 				RelativePath=".\NewFilePropertiesDlg.cpp">
 			</File>
 			<File
@@ -298,6 +305,12 @@
 			<File
 				RelativePath=".\WaveFile.cpp">
 				<FileConfiguration
+					Name="Debug|Win32">
+					<Tool
+						Name="VCCLCompilerTool"
+						UsePrecompiledHeader="3"/>
+				</FileConfiguration>
+				<FileConfiguration
 					Name="Release|Win32">
 					<Tool
 						Name="VCCLCompilerTool"
@@ -363,6 +376,9 @@
 				RelativePath=".\ChildFrm.h">
 			</File>
 			<File
+				RelativePath=".\CoInitHelper.h">
+			</File>
+			<File
 				RelativePath=".\CustomSampleRateDlg.h">
 			</File>
 			<File
@@ -393,10 +409,16 @@
 				RelativePath=".\FolderDialog.h">
 			</File>
 			<File
+				RelativePath=".\KInterlocked.h">
+			</File>
+			<File
 				RelativePath=".\KListEntry.h">
 			</File>
 			<File
 				RelativePath=".\MainFrm.h">
+			</File>
+			<File
+				RelativePath=".\MessageBoxSynch.h">
 			</File>
 			<File
 				RelativePath=".\NewFilePropertiesDlg.h">
