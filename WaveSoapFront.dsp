@@ -369,6 +369,10 @@ SOURCE=.\FolderDialog.h
 # End Source File
 # Begin Source File
 
+SOURCE=.\KListEntry.h
+# End Source File
+# Begin Source File
+
 SOURCE=.\MainFrm.h
 # End Source File
 # Begin Source File

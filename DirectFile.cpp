@@ -122,13 +122,9 @@ CDirectFile::File * CDirectFile::CDirectFileCache::Open(LPCTSTR szName, DWORD fl
 		}
 		pFile->m_Flags |= FileFlagsMemoryFile;
 		CSimpleCriticalSectionLock lock(m_cs);
-		pFile->pPrev = NULL;
-		pFile->pNext = m_pFileList;
-		if (m_pFileList)
-		{
-			m_pFileList->pPrev = pFile;
-		}
-		m_pFileList = pFile;
+
+		m_FileList.InsertHead(pFile);
+
 		SetLastError(ERROR_SUCCESS);
 		return pFile;
 	}
@@ -166,8 +162,8 @@ CDirectFile::File * CDirectFile::CDirectFileCache::Open(LPCTSTR szName, DWORD fl
 				info.nFileIndexLow);
 			// find a File struct with the same parameters
 			CSimpleCriticalSectionLock lock(m_cs);
-			File * pFile = m_pFileList;
-			while (NULL != pFile)
+			File * pFile = m_FileList.Next();
+			while ( & m_FileList != pFile)
 			{
 				if (info.nFileIndexHigh == pFile->m_FileInfo.nFileIndexHigh
 					&& info.nFileIndexLow == pFile->m_FileInfo.nFileIndexLow)
@@ -185,7 +181,7 @@ CDirectFile::File * CDirectFile::CDirectFileCache::Open(LPCTSTR szName, DWORD fl
 					pFile->RefCount++;
 					return pFile;
 				}
-				pFile = pFile->pNext;
+				pFile = pFile->Next();
 			}
 		}
 		else
@@ -301,13 +297,8 @@ CDirectFile::File * CDirectFile::CDirectFileCache::Open(LPCTSTR szName, DWORD fl
 	pFile->hFile = hf;
 
 	CSimpleCriticalSectionLock lock(m_cs);
-	pFile->pPrev = NULL;
-	pFile->pNext = m_pFileList;
-	if (m_pFileList)
-	{
-		m_pFileList->pPrev = pFile;
-	}
-	m_pFileList = pFile;
+	m_FileList.InsertHead(pFile);
+
 	SetLastError(ERROR_SUCCESS);
 	return pFile;
 }
@@ -532,10 +523,9 @@ BOOL CDirectFile::File::Close(DWORD flags)
 		pSourceFile = NULL;
 	}
 	{
-		CSimpleCriticalSectionLock lock(m_ListLock);
-		while (NULL != BuffersListHead)
+		BufferHeader * pBuf;
+		while (NULL != (pBuf = BuffersList.KListEntry<BufferHeader>::RemoveHead()))
 		{
-			BufferHeader * pBuf = BuffersListHead;
 			ASSERT(0 == pBuf->LockCount);
 			// something strange: buffer not released
 			if (pBuf->LockCount != 0)
@@ -560,74 +550,24 @@ BOOL CDirectFile::File::Close(DWORD flags)
 					pBuf->DirtyMask = 0;
 				}
 			}
-			ASSERT(pBuf == BuffersListHead);
 			ASSERT(0 == pBuf->DirtyMask);
 
 			BuffersCount--;
-			BuffersListHead = pBuf->pNext;
-			if (NULL != BuffersListHead)
-			{
-				ASSERT(BuffersListHead->pPrev == pBuf);
-				BuffersListHead->pPrev = NULL;
-			}
-			else
-			{
-				BuffersListTail = NULL;
-			}
+
 			CSimpleCriticalSectionLock lock1(pCache->m_cs);
-			pBuf->pNext = pCache->m_pFreeBuffers;
-			if (NULL != pCache->m_pFreeBuffers)
-			{
-				pCache->m_pFreeBuffers->pPrev = pBuf;
-			}
-			pBuf->pPrev = NULL;
-			pCache->m_pFreeBuffers = pBuf;
+
+			pCache->m_MruList.RemoveEntry(pBuf);
+
 			pBuf->pFile = NULL;
-			// remove the buffer also from MRU list
-			if (NULL != pBuf->pMruPrev)
-			{
-				pBuf->pMruPrev->pMruNext = pBuf->pMruNext;
-			}
-			else
-			{
-				ASSERT(pCache->m_pMruListHead == pBuf);
-				pCache->m_pMruListHead = pBuf->pMruNext;
-				if (NULL != pCache->m_pMruListHead)
-				{
-					pCache->m_pMruListHead->pMruPrev = NULL;
-				}
-			}
-			if (NULL != pBuf->pMruNext)
-			{
-				pBuf->pMruNext->pMruPrev = pBuf->pMruPrev;
-			}
-			else
-			{
-				ASSERT(pCache->m_pMruListTail == pBuf);
-				pCache->m_pMruListTail = pBuf->pMruPrev;
-				if (NULL != pCache->m_pMruListTail)
-				{
-					pCache->m_pMruListTail->pMruNext = NULL;
-				}
-			}
+
+			pCache->m_FreeBuffers.InsertHead(pBuf);
 		}
 	}
 	// close the handle and delete the structure
 	{
 		CSimpleCriticalSectionLock lock(pCache->m_cs);
 		// remove the structure from the list
-		if (NULL != pNext)
-		{
-			pNext->pPrev = pPrev;
-		}
-		if (NULL != pPrev)
-		{
-			pPrev->pNext = pNext;
-		}
-		else if (pCache->m_pFileList == this)
-		{
-			pCache->m_pFileList = pNext;
-		}
+		pCache->m_FileList.RemoveEntry(this);
 	}
 
 	if (m_Flags & FileFlagsDeleteAfterClose)
@@ -893,7 +833,6 @@ CDirectFile::CDirectFileCache::CDirectFileCache(size_t MaxCacheSize)
 	m_hEvent(NULL),
 	m_pHeaders(NULL),
 	m_pBuffersArray(NULL),
-	m_pFileList(NULL),
 	m_MRU_Count(1),
 	m_Flags(0),
 	m_NumberOfBuffers(0),
@@ -901,10 +840,7 @@ CDirectFile::CDirectFileCache::CDirectFileCache(size_t MaxCacheSize)
 	m_PrefetchPosition(0),
 	m_PrefetchLength(0),
 	m_MinPrefetchMRU(0),
-	m_pMruListHead(NULL),
-	m_pMruListTail(NULL),
-	m_ThreadRunState(0),
-	m_pFreeBuffers(NULL)
+	m_ThreadRunState(0)
 {
 	if (SingleInstance != NULL)
 	{
@@ -928,17 +864,13 @@ CDirectFile::CDirectFileCache::CDirectFileCache(size_t MaxCacheSize)
 	CacheSize = (CacheSize + 0xFFFF) & ~0xFFFF;
 	m_pBuffersArray = VirtualAlloc(NULL, CacheSize, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
 	m_NumberOfBuffers = CacheSize / 0x10000;
+
 	m_pHeaders = new BufferHeader[m_NumberOfBuffers];
-	BufferHeader * Next = NULL;
+
 	for (int i = 0; i < m_NumberOfBuffers; i++)
 	{
-		m_pHeaders[i].pPrev = NULL;
-		m_pHeaders[i].pNext = Next;
-		if (Next)
-		{
-			Next->pPrev = & m_pHeaders[i];
-		}
-		Next = & m_pHeaders[i];
+		m_FreeBuffers.InsertHead( & m_pHeaders[i]);
+
 		m_pHeaders[i].DirtyMask = 0;
 		m_pHeaders[i].ReadMask = 0;
 		m_pHeaders[i].m_Flags = 0;
@@ -948,7 +880,6 @@ CDirectFile::CDirectFileCache::CDirectFileCache(size_t MaxCacheSize)
 		m_pHeaders[i].pFile = NULL;
 		m_pHeaders[i].PositionKey = 0;
 	}
-	m_pFreeBuffers = Next;  // address of the last descriptor
 
 	unsigned ThreadID = NULL;
 
@@ -1032,66 +963,46 @@ void CDirectFile::File::InsertBuffer(BufferHeader * pBuf)
 {
 	unsigned long const key = pBuf->PositionKey;
 	BuffersCount++;
-	if (NULL == BuffersListHead)
+	if (BuffersList.IsEmpty()
+		|| BuffersList.Next()->PositionKey > key)
 	{
+		BuffersList.InsertHead(pBuf);
 		// insert to the empty list
-		pBuf->pPrev = NULL;
-		pBuf->pNext = NULL;
-		BuffersListHead = pBuf;
-		BuffersListTail = pBuf;
 		return;
 	}
-	else if (BuffersListHead->PositionKey > key)
-	{
-		// insert to the head
-		pBuf->pPrev = NULL;
-		pBuf->pNext = BuffersListHead;
-		BuffersListHead->pPrev = pBuf;
-		BuffersListHead = pBuf;
-		return;
-	}
-	else if (BuffersListTail->PositionKey < key)
+	else if (BuffersList.Prev()->PositionKey < key)
 	{
 		// insert to the tail
-		pBuf->pNext = NULL;
-		pBuf->pPrev = BuffersListTail;
-		BuffersListTail->pNext = pBuf;
-		BuffersListTail = pBuf;
+		BuffersList.InsertTail(pBuf);
 		return;
 	}
+
 	// find which side may be closer to the key
 	BufferHeader * pBufAfter;
-	if (key - BuffersListHead->PositionKey > BuffersListTail->PositionKey - key)
+	if (key - BuffersList.Next()->PositionKey > BuffersList.Prev()->PositionKey - key)
 	{
 		// search from tail
-		pBufAfter = BuffersListTail;
+		pBufAfter = BuffersList.Prev();
 		while (pBufAfter->PositionKey > key)
 		{
-			pBufAfter = pBufAfter->pPrev;
-			ASSERT(pBufAfter != NULL);
+			pBufAfter = pBufAfter->KListEntry<BufferHeader>::Prev();
 		}
-		// pBufAfter->PositionKey < pBuf->PositionKey
 	}
 	else
 	{
 		// search from head
-		pBufAfter = BuffersListHead;
+		pBufAfter = BuffersList.Next();
 		while (pBufAfter->PositionKey < key)
 		{
-			pBufAfter = pBufAfter->pNext;
+			pBufAfter = pBufAfter->KListEntry<BufferHeader>::Next();
 			ASSERT(pBufAfter != NULL);
 		}
-		// pBufAfter->PositionKey > pBuf->PositionKey
-		// return by one position
-		pBufAfter = pBufAfter->pPrev;
+		pBufAfter = pBufAfter->KListEntry<BufferHeader>::Prev();
 		ASSERT(pBufAfter != NULL);
 	}
+
 	// pBufAfter->PositionKey < pBuf->PositionKey
-	pBuf->pNext = pBufAfter->pNext;
-	pBuf->pPrev = pBufAfter;
-	pBufAfter->pNext = pBuf;
-	ASSERT(pBuf->pNext != NULL);
-	pBuf->pNext->pPrev = pBuf;
+	pBufAfter->KListEntry<BufferHeader>::InsertHead(pBuf);
 }
 
 // find a buffer in the list with the specified key
@@ -1103,37 +1014,37 @@ CDirectFile::BufferHeader * CDirectFile::File::FindBuffer(unsigned long key) con
 #ifdef _DEBUG
 	ValidateList();
 #endif
-	if (NULL == BuffersListHead
-		|| BuffersListHead->PositionKey > key
-		|| BuffersListTail->PositionKey < key)
+	if (BuffersList.IsEmpty()
+		|| BuffersList.Next()->PositionKey > key
+		|| BuffersList.Prev()->PositionKey < key)
 	{
 		return NULL;
 	}
 	// find which side may be closer to the key
-	if (key - BuffersListHead->PositionKey > BuffersListTail->PositionKey - key)
+	if (key - BuffersList.Next()->PositionKey > BuffersList.Prev()->PositionKey - key)
 	{
 		// search from tail
-		pBuf = BuffersListTail;
-		while (pBuf != NULL && pBuf->PositionKey >= key)
+		pBuf = BuffersList.Prev();
+		while (pBuf != BuffersList.Head() && pBuf->PositionKey >= key)
 		{
 			if (pBuf->PositionKey == key)
 			{
 				return pBuf;
 			}
-			pBuf = pBuf->pPrev;
+			pBuf = pBuf->KListEntry<BufferHeader>::Prev();
 		}
 	}
 	else
 	{
 		// search from head
-		pBuf = BuffersListHead;
-		while (pBuf != NULL && pBuf->PositionKey <= key)
+		pBuf = BuffersList.Next();
+		while (pBuf != BuffersList.Head() && pBuf->PositionKey <= key)
 		{
 			if (pBuf->PositionKey == key)
 			{
 				return pBuf;
 			}
-			pBuf = pBuf->pNext;
+			pBuf = pBuf->KListEntry<BufferHeader>::Next();
 		}
 	}
 	return NULL;    // buffer not found
@@ -1289,7 +1200,7 @@ long CDirectFile::CDirectFileCache::GetDataBuffer(File * pFile,
 	}
 
 	{
-		CSimpleCriticalSectionLock lock(pFile->m_ListLock);
+		CSimpleCriticalSectionLock lock(pFile->BuffersList);
 		pBuf = pFile->FindBuffer(BufferPosition);
 		if (NULL != pBuf)
 		{
@@ -1308,7 +1219,7 @@ long CDirectFile::CDirectFileCache::GetDataBuffer(File * pFile,
 			*ppBuf = NULL;
 			return 0;
 		}
-		CSimpleCriticalSectionLock lock(pFile->m_ListLock);
+		CSimpleCriticalSectionLock lock(pFile->BuffersList);
 		// make sure the buffer with the same position was not added
 		// while we might flush the buffers
 		pBuf = pFile->FindBuffer(BufferPosition);
@@ -1321,8 +1232,7 @@ long CDirectFile::CDirectFileCache::GetDataBuffer(File * pFile,
 		{
 			pBuf = pFreeBuf;
 			pFreeBuf = NULL;
-			pBuf->pMruPrev = NULL;
-			pBuf->pMruNext = NULL;
+			pBuf->BufferMruEntry::Init();
 
 			pBuf->LockCount = 1;
 			pBuf->ReadMask = 0;
@@ -1338,65 +1248,16 @@ long CDirectFile::CDirectFileCache::GetDataBuffer(File * pFile,
 	{
 		// extract the buffer from MRU list
 		CSimpleCriticalSectionLock lock(m_cs);
-		// if they are equal (0), the buffer is not in the list
-		// except when it is the only buffer in the list
-		if (pBuf->pMruPrev != pBuf->pMruNext
-			|| m_pMruListHead == pBuf)
-		{
-			if (pBuf->pMruPrev)
-			{
-				pBuf->pMruPrev->pMruNext = pBuf->pMruNext;
-			}
-			else
-			{
-				ASSERT(m_pMruListHead == pBuf);
-				m_pMruListHead = pBuf->pMruNext;
-				if (m_pMruListHead != NULL)
-				{
-					m_pMruListHead->pMruPrev = NULL;
-				}
-			}
 
-			if (pBuf->pMruNext)
-			{
-				pBuf->pMruNext->pMruPrev = pBuf->pMruPrev;
-			}
-			else
-			{
-				ASSERT(m_pMruListTail == pBuf);
-				m_pMruListTail = pBuf->pMruPrev;
-				if (m_pMruListTail != NULL)
-				{
-					m_pMruListTail->pMruNext = NULL;
-				}
-			}
-			ASSERT((NULL == m_pMruListHead) == (NULL == m_pMruListTail));
-		}
+		m_MruList.RemoveEntry(pBuf);
 		// since we already have the required buffer,
 		// return the free buffer back
 		if (NULL != pFreeBuf)
 		{
-			pFreeBuf->pNext = m_pFreeBuffers;
-			pFreeBuf->pPrev = NULL;
-			if (NULL != pFreeBuf->pNext)
-			{
-				pFreeBuf->pNext->pPrev = pFreeBuf;
-			}
-			m_pFreeBuffers = pFreeBuf;
+			m_FreeBuffers.InsertHead(pFreeBuf);
 		}
 		// insert the buffer to the list head
-		pBuf->pMruNext = m_pMruListHead;
-		pBuf->pMruPrev = NULL;
-		if (NULL != m_pMruListHead)
-		{
-			m_pMruListHead->pMruPrev = pBuf;
-		}
-		else
-		{
-			// the list was empty
-			m_pMruListTail = pBuf;
-		}
-		m_pMruListHead = pBuf;
+		m_MruList.InsertHead(pBuf);
 	}
 
 	if (MaskToRead != (pBuf->ReadMask & MaskToRead)
@@ -1520,7 +1381,7 @@ void CDirectFile::CDirectFileCache::ReturnDataBuffer(File * pFile,
 	ASSERT(OffsetInBuffer + count <= 0x10000);
 
 	{
-		CSimpleCriticalSectionLock lock(pFile->m_ListLock);
+		CSimpleCriticalSectionLock lock(pFile->BuffersList);
 		if (flags & CDirectFile::ReturnBufferDirty)
 		{
 			DWORD RequestedMask = (0xFFFFFFFFu << (OffsetInBuffer >> 11));
@@ -1537,76 +1398,29 @@ void CDirectFile::CDirectFileCache::ReturnDataBuffer(File * pFile,
 			}
 		}
 	}
+	BufferMruEntry * pMru = pBuf;
 	if (0 == ((count + dwBuffer) & 0xFFFF)
 		&& (flags & CDirectFile::ReturnBufferDiscard))
 	{
 		// move the buffer to MRU tail
 		// extract the buffer from MRU list
 		CSimpleCriticalSectionLock lock(m_cs);
-		// if they are equal (0), the buffer is not in the list
-		// except when it is the only buffer in the list
-		if (pBuf->pMruPrev != pBuf->pMruNext
-			|| m_pMruListHead == pBuf)
-		{
-			if (pBuf->pMruPrev)
-			{
-				pBuf->pMruPrev->pMruNext = pBuf->pMruNext;
-			}
-			else
-			{
-				ASSERT(m_pMruListHead == pBuf);
-				m_pMruListHead = pBuf->pMruNext;
-				if (m_pMruListHead != NULL)
-				{
-					m_pMruListHead->pMruPrev = NULL;
-				}
-			}
 
-			if (pBuf->pMruNext)
-			{
-				pBuf->pMruNext->pMruPrev = pBuf->pMruPrev;
-			}
-			else
-			{
-				ASSERT(m_pMruListTail == pBuf);
-				m_pMruListTail = pBuf->pMruPrev;
-				if (m_pMruListTail != NULL)
-				{
-					m_pMruListTail->pMruNext = NULL;
-				}
-			}
-			ASSERT((NULL == m_pMruListHead) == (NULL == m_pMruListTail));
-		}
+		m_MruList.RemoveEntry(pMru);
+		// insert the buffer to the list head
+		m_MruList.InsertTail(pMru);
 		// insert the buffer to the list tail
 		// to do: insert the buffer before the first with MRU_Count==1
-		pBuf->MRU_Count = 1;
-		BufferHeader * pBufAfter = m_pMruListTail;
-		while (NULL != pBufAfter
+		pMru->MRU_Count = 1;
+		BufferMruEntry * pBufAfter = m_MruList.Prev();
+		while (& m_MruList != pBufAfter
 				&& 1 == pBufAfter->MRU_Count)
 		{
-			pBufAfter = pBufAfter->pMruPrev;
+			pBufAfter = pBufAfter->Prev();
 		}
 
-		pBuf->pMruPrev = pBufAfter;
-		if (NULL != pBufAfter)
-		{
-			pBuf->pMruNext = pBufAfter->pMruNext;
-			pBufAfter->pMruNext = pBuf;
-		}
-		else
-		{
-			pBuf->pMruNext = m_pMruListHead;
-			m_pMruListHead = pBuf;
-		}
+		pBufAfter->InsertHead(pMru);
 
-		if (NULL != pBuf->pMruNext)
-		{
-			pBuf->pMruNext->pMruPrev = pBuf;
-		}
-		else
-		{
-			m_pMruListTail = pBuf;
-		}
 	}
 	// decrement lock count
 	InterlockedDecrement( & pBuf->LockCount);
@@ -1621,127 +1435,72 @@ CDirectFile::BufferHeader
 {
 	while (1) {
 		CSimpleCriticalSectionLock lock(m_cs);
-		BufferHeader * pBuf = NULL;
-		// try to find an empty buffer
-		if (NULL != m_pFreeBuffers)
 		{
-			pBuf = m_pFreeBuffers;
-			m_pFreeBuffers = pBuf->pNext;
-			if (m_pFreeBuffers != NULL)
+			BufferHeader * pBuf = NULL;
+			// try to find an empty buffer
+			if ( ! m_FreeBuffers.IsEmpty())
 			{
-				m_pFreeBuffers->pPrev = NULL;
+				pBuf = m_FreeBuffers.RemoveHead();
+				pBuf->ReadMask = 0;
+				pBuf->DirtyMask = 0;
+				return pBuf;
 			}
-			pBuf->ReadMask = 0;
-			pBuf->DirtyMask = 0;
-			return pBuf;
 		}
+
 		// find an unlocked buffer with oldest MRU stamp
 		if (0 == MaxMRU)
 		{
 			MaxMRU = m_MRU_Count;
 		}
-
+		BufferMruEntry * pMru = m_MruList.Prev();
 		// find least recent unlocked and non-dirty buffer (with lowest MRU)
 		// whose MRU is at most MaxMRU.
-		pBuf = m_pMruListTail;
-		while (NULL != pBuf
-				&& pBuf->MRU_Count < MaxMRU
-				&& (pBuf->LockCount > 0
-					|| 0 != pBuf->DirtyMask))
+		while ( & m_MruList != pMru
+				&& pMru->MRU_Count < MaxMRU
+				&& (pMru->LockCount > 0
+					|| 0 != pMru->DirtyMask))
 		{
-			pBuf = pBuf->pMruPrev;
+			pMru = pMru->Prev();
 		}
 
 		// unlocked buffer not found or buffer was too recent
-		if (NULL == pBuf || pBuf->MRU_Count >= MaxMRU)
+		if ( & m_MruList == pMru || pMru->MRU_Count >= MaxMRU)
 		{
 			// try to find a dirty buffer
-			pBuf = m_pMruListTail;
-			while (NULL != pBuf
-					&& pBuf->MRU_Count < MaxMRU
-					&& pBuf->LockCount > 0)
+			pMru = m_MruList.Prev();
+			while ( & m_MruList != pMru
+					&& pMru->MRU_Count < MaxMRU
+					&& pMru->LockCount > 0)
 			{
-				pBuf = pBuf->pMruPrev;
+				pMru = pMru->Prev();
 			}
-			if (pBuf != NULL
-				&& 0 == pBuf->LockCount
-				&& pBuf->MRU_Count < MaxMRU)
+			if ( & m_MruList != pMru
+				&& 0 == pMru->LockCount
+				&& pMru->MRU_Count < MaxMRU)
 			{
 				// only "dirty" buffer available
-				pBuf->FlushDirtyBuffers();
+				static_cast<BufferHeader *>(pMru)->FlushDirtyBuffers();
 				// try the loop again
 				continue;
 			}
 			return NULL;  // unable to find a buffer
 		}
 
-
-		File * pFile = pBuf->pFile;
-		CSimpleCriticalSectionLock lock1(pFile->m_ListLock);
+		File * pFile = pMru->pFile;
+		CSimpleCriticalSectionLock lock1(pFile->BuffersList);
 		// check if the buffer changed
-		if (0 != pBuf->LockCount
-			|| 0 != pBuf->DirtyMask)
+		if (0 != pMru->LockCount
+			|| 0 != pMru->DirtyMask)
 		{
 			continue;   // try again
 		}
 
 		// get the buffer from the MRU list
-		if (pBuf->pMruPrev)
-		{
-			pBuf->pMruPrev->pMruNext = pBuf->pMruNext;
-		}
-		else
-		{
-			ASSERT(m_pMruListHead == pBuf);
-			m_pMruListHead = pBuf->pMruNext;
-			if (m_pMruListHead != NULL)
-			{
-				m_pMruListHead->pMruPrev = NULL;
-			}
-		}
+		m_MruList.RemoveEntry(pMru);
 
-		if (pBuf->pMruNext)
-		{
-			pBuf->pMruNext->pMruPrev = pBuf->pMruPrev;
-		}
-		else
-		{
-			ASSERT(m_pMruListTail == pBuf);
-			m_pMruListTail = pBuf->pMruPrev;
-			if (m_pMruListTail != NULL)
-			{
-				m_pMruListTail->pMruNext = NULL;
-			}
-		}
-		ASSERT((NULL == m_pMruListHead) == (NULL == m_pMruListTail));
-		// get the buffer from the file list
-		if (pBuf->pNext)
-		{
-			pBuf->pNext->pPrev = pBuf->pPrev;
-		}
-		else
-		{
-			ASSERT(pFile->BuffersListTail == pBuf);
-			pFile->BuffersListTail = pBuf->pPrev;
-			if (NULL != pFile->BuffersListTail)
-			{
-				pFile->BuffersListTail->pNext = NULL;
-			}
-		}
+		BufferHeader * pBuf = static_cast<BufferHeader *>(pMru);
+		pBuf->KListEntry<BufferHeader>::RemoveFromList();
 
-		if (pBuf->pPrev)
-		{
-			pBuf->pPrev->pNext = pBuf->pNext;
-		}
-		else
-		{
-			ASSERT(pFile->BuffersListHead == pBuf);
-			pFile->BuffersListHead = pBuf->pNext;
-			if (NULL != pFile->BuffersListHead)
-			{
-				pFile->BuffersListHead->pPrev = NULL;
-			}
-		}
 		pFile->BuffersCount--;
 		ASSERT(0 == pBuf->DirtyMask);
 		pBuf->ReadMask = 0;
@@ -1931,14 +1690,14 @@ void CDirectFile::BufferHeader::FlushDirtyBuffers()
 {
 	// flush all unlocked dirty buffers in sequence with pBuf;
 	BufferHeader * pDirtyBuf = this;
-	BufferHeader * pBuf = pPrev;
+	BufferHeader * pBuf = KListEntry<BufferHeader>::Prev();
 	unsigned key = PositionKey;
 	ASSERT(NULL != pDirtyBuf);
 	ASSERT(pFile);
 
-	CSimpleCriticalSectionLock lock(pFile->m_ListLock);
+	CSimpleCriticalSectionLock lock(pFile->BuffersList);
 
-	while (pBuf != NULL)
+	while (pBuf != pFile->BuffersList.Head())
 	{
 		if (key - pBuf->PositionKey <= 2)
 		{
@@ -1952,7 +1711,7 @@ void CDirectFile::BufferHeader::FlushDirtyBuffers()
 		{
 			break;
 		}
-		pBuf = pBuf->pPrev;
+		pBuf = pBuf->KListEntry<BufferHeader>::Prev();
 	}
 	pBuf = pDirtyBuf;
 	key = pBuf->PositionKey;
@@ -2034,9 +1793,9 @@ void CDirectFile::BufferHeader::FlushDirtyBuffers()
 				}
 			}
 		}
-		pBuf = pBuf->pNext;
+		pBuf = pBuf->KListEntry<BufferHeader>::Next();
 	}
-	while (NULL != pBuf
+	while (pFile->BuffersList.Head() != pBuf
 			&& pBuf->PositionKey - key <= 2
 			// limit the operation to 500 ms
 			&& GetTickCount() - StartTickCount < 300);
@@ -2053,37 +1812,22 @@ void CDirectFile::File::ValidateList() const
 	{
 		return;
 	}
-	CSimpleCriticalSectionLock lock(m_ListLock);
-	BufferHeader const * pBuf = BuffersListHead;
-	VL_ASSERT((NULL == BuffersListHead) == (NULL == BuffersListTail));
+	CSimpleCriticalSectionLock lock(BuffersList);
+	BufferHeader * pBuf = BuffersList.Next();
+
 	int BufCount = 0;
 	int DirtyBufCount = 0;
-	while (pBuf)
+	while (BuffersList.Head() != pBuf)
 	{
 		VL_ASSERT(pBuf->pFile == this);
-		if (pBuf == BuffersListHead)
-		{
-			VL_ASSERT(pBuf->pPrev == 0);
-		}
-		else
-		{
-			VL_ASSERT(pBuf->pPrev != 0 && pBuf->pPrev->pNext == pBuf);
-			VL_ASSERT(pBuf->pPrev->PositionKey < pBuf->PositionKey);
-		}
-		if (pBuf == BuffersListTail)
-		{
-			VL_ASSERT(pBuf->pNext == 0);
-		}
-		else
-		{
-			VL_ASSERT(pBuf->pNext != 0);
-		}
+
+		//VL_ASSERT(pBuf);
 		BufCount++;
 		if (pBuf->DirtyMask)
 		{
 			DirtyBufCount++;
 		}
-		pBuf = pBuf->pNext;
+		pBuf = pBuf->KListEntry<BufferHeader>::Next();
 	}
 	VL_ASSERT(BufCount == BuffersCount && DirtyBufCount == DirtyBuffersCount);
 }
@@ -2114,12 +1858,12 @@ unsigned CDirectFile::CDirectFileCache::_ThreadProc()
 				File * pFile = 0;
 				{
 					CSimpleCriticalSectionLock lock(m_cs);
-					pFile = m_pFileList;
-					for (int i = 0; pFile != NULL
+					pFile = m_FileList.Next();
+					for (int i = 0; pFile != & m_FileList
 						&& (i < nFile
 							|| 0 == pFile->DirtyBuffersCount
 							|| (pFile->m_Flags & FileFlagsMemoryFile)); i++,
-						pFile = pFile->pNext)
+						pFile = pFile->Next())
 					{
 						// empty
 					}
@@ -2350,10 +2094,10 @@ BOOL CDirectFile::File::Flush()
 	while(1)
 	{
 		CSimpleCriticalSectionLock lock(m_FileLock);
-		BufferHeader * pBuf = BuffersListHead;
+		BufferHeader * pBuf = BuffersList.Next();
 		while (1)
 		{
-			if (NULL == pBuf)
+			if (BuffersList.Head() == pBuf)
 			{
 				return TRUE;
 			}
@@ -2366,7 +2110,7 @@ BOOL CDirectFile::File::Flush()
 				pBuf->FlushDirtyBuffers();
 				break;
 			}
-			pBuf = pBuf->pNext;
+			pBuf = pBuf->KListEntry<BufferHeader>::Next();
 		}
 	}
 }
