@@ -18,10 +18,17 @@ public:
 
 // Attributes
 public:
-
+	void ExchangeData(CDataExchange* pDX, long & sample);
+	long GetTimeSample(LPCTSTR str = NULL);
 // Operations
 public:
-
+	void SetTimeFormat(int format);
+	void SetTimeSample(long sample);
+	void SetSamplingRate(long nSamplesPerSec)
+	{
+		m_nSamplesPerSec = nSamplesPerSec;
+	}
+	void UpdateEditControl();
 // Overrides
 	// ClassWizard generated virtual function overrides
 	//{{AFX_VIRTUAL(CTimeEdit)
@@ -33,6 +40,10 @@ public:
 
 	// Generated message map functions
 protected:
+	long m_nSamplesPerSec;
+	int m_TimeFormat;
+	long m_Sample;
+	CString m_OriginalString;
 	//{{AFX_MSG(CTimeEdit)
 	// NOTE - the ClassWizard will add and remove member functions here.
 	//}}AFX_MSG
