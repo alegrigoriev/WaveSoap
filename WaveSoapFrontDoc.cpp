@@ -10,8 +10,9 @@
 #include "OperationDialogs.h"
 #include "OperationDialogs2.h"
 #include <afxpriv.h>
-#include <Dlgs.h>
 #include "CustomSampleRateDlg.h"
+#include "FileDialogWithHistory.h"
+#include <Dlgs.h>
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -192,7 +193,7 @@ SaveFormat::~SaveFormat()
 	}
 }
 
-class CWaveSoapFileSaveDialog : public CFileDialog
+class CWaveSoapFileSaveDialog : public CFileDialogWithHistory
 {
 public:
 	CWaveSoapFileSaveDialog(BOOL bOpenFileDialog, // TRUE for FileOpen, FALSE for FileSaveAs
@@ -201,8 +202,8 @@ public:
 							DWORD dwFlags = OFN_HIDEREADONLY | OFN_OVERWRITEPROMPT,
 							LPCTSTR lpszFilter = NULL,
 							CWnd* pParentWnd = NULL)
-		: CFileDialog(bOpenFileDialog, lpszDefExt, lpszFileName, dwFlags,
-					lpszFilter, pParentWnd),
+		: CFileDialogWithHistory(bOpenFileDialog, lpszDefExt, lpszFileName, dwFlags,
+								lpszFilter, pParentWnd),
 		m_pWf(NULL),
 		m_SelectedFormat(-1),
 		m_bCompatibleFormatsOnly(TRUE),
@@ -224,16 +225,11 @@ public:
 	CArray<SaveFormat, SaveFormat&> m_Formats;
 
 	WAVEFORMATEX * m_pWf; // original format
-	//int nChannels;
-	//int nBitsPerSample;
-	//int nSamplingRate;
-	//int nSamples;
 	CString WaveFormat;
 	CWaveSoapFrontDoc * m_pDocument;
 
 	virtual BOOL OnFileNameOK();
 	virtual UINT OnShareViolation( LPCTSTR lpszPathName );
-	//virtual void OnLBSelChangedNotify(UINT nIDBox, UINT iCurSel, UINT nCode);
 
 	void FillFormatArray();
 	void FillFormatTagArray();
@@ -258,7 +254,7 @@ private:
 												LPACMFORMATTAGDETAILS paftd, DWORD dwInstance, DWORD fdwSupport);
 };
 
-BEGIN_MESSAGE_MAP(CWaveSoapFileSaveDialog, CFileDialog)
+BEGIN_MESSAGE_MAP(CWaveSoapFileSaveDialog, CFileDialogWithHistory)
 	//{{AFX_MSG_MAP(CWaveSoapFileSaveDialog)
 	ON_BN_CLICKED(IDC_CHECK_COMPATIBLE_FORMATS, OnCompatibleFormatsClicked)
 	ON_CBN_SELCHANGE(IDC_COMBO_FORMAT, OnComboFormatsChange)
@@ -400,7 +396,7 @@ BOOL CWaveSoapFrontDoc::OnNewDocument(WAVEFORMATEX * pWfx, long InitialLengthSec
 		AfxMessageBox(IDS_UNABLE_TO_CREATE_NEW_FILE, MB_OK | MB_ICONEXCLAMATION);
 		return FALSE;
 	}
-
+	AllocatePeakData(InitialLengthSeconds * pWfx->nSamplesPerSec);
 	return TRUE;
 }
 
@@ -618,8 +614,10 @@ BOOL _stdcall CWaveSoapFileSaveDialog::FormatEnumCallback(
 
 BOOL CWaveSoapFileSaveDialog::OnFileNameOK()
 {
+	CFileDialogWithHistory::OnFileNameOK();
 	// save format selection
 	m_SelectedFormat = m_AttributesCombo.GetCurSel();
+
 	return 0;   // OK to close dialog
 }
 
@@ -886,6 +884,8 @@ void CWaveSoapFileSaveDialog::OnInitDone()
 	((CButton*)GetDlgItem(IDC_CHECK_COMPATIBLE_FORMATS))->SetCheck(m_bCompatibleFormatsOnly);
 	FillFormatTagArray();
 	FillFormatArray();
+
+	CFileDialogWithHistory::OnInitDone();
 }
 
 void CWaveSoapFileSaveDialog::OnTypeChange()
@@ -896,7 +896,17 @@ void CWaveSoapFileSaveDialog::OnTypeChange()
 	// set new default extension
 	CWnd * pParent = GetParent();
 	pParent->SendMessage(CDM_SETDEFEXT, 0, LPARAM(LPCTSTR(m_DefExt[m_ofn.nFilterIndex])));
-	pParent->GetDlgItem(edt1)->GetWindowText(name);
+	CWnd * pTmp = pParent->GetDlgItem(edt1);
+	if (NULL == pTmp)
+	{
+		// new style dialog
+		pTmp = pParent->GetDlgItem(cmb13);
+	}
+	if (NULL != pTmp)
+	{
+		pTmp->SetFocus();
+	}
+	pTmp->GetWindowText(name);
 	// get the extension
 	if (name.IsEmpty())
 	{
@@ -1041,7 +1051,14 @@ BOOL CWaveSoapFrontDoc::DoSave(LPCTSTR lpszPathName, BOOL bReplace)
 									//| OFN_SHAREAWARE
 									);
 
-		dlg.m_ofn.lpTemplateName = MAKEINTRESOURCE(IDD_DIALOG_SAVE_TEMPLATE);
+		if (CThisApp::SupportsV5FileDialog())
+		{
+			dlg.m_ofn.lpTemplateName = MAKEINTRESOURCE(IDD_DIALOG_SAVE_TEMPLATE_V5);
+		}
+		else
+		{
+			dlg.m_ofn.lpTemplateName = MAKEINTRESOURCE(IDD_DIALOG_SAVE_TEMPLATE_V4);
+		}
 		dlg.m_pWf = pWf;
 		dlg.m_pDocument = this;
 		dlg.m_DefExt[1] = _T("wav");

@@ -1,12 +1,13 @@
 Known problems and tasks:
 
-Show current folder name in "Recent"
 Keep Save File name when switching folders on Recent Folders
+Add Recent Folders to FileSave dialog
 ???? When a file is opened in non-direct mode, peak info is saved with wrong time stamp
 After Save As, peak info is not saved for the new PCM file.
 Check if the file size will exceed 2 GB
 Verify that FileSave can be canceled
 Remember Open and Save As folders
+Make SaveAll
 
 Broadcast UpdateAllViews if settings or metrics changed
 Add CD grabbing
@@ -36,6 +37,7 @@ Make help file
 
 Problems:
 
+For new file, "Copy Of" name is suggested
 If the ACM decoder is not available, the file still can be opened, but is empty
 If there is not enough space on NTFS volume, it will be seen only during flush
 Windows2000 is trying to zero the allocated file
@@ -48,6 +50,8 @@ Save As dialog is not centered first time (comdlg problem?)
 ??? When time/seconds format is set for status bar, MM:SS is actually shown
 
 Fixed:
+File/New with length didn't preallocate peak info
+WS_EX_CONTROLPARENT must not be set for child dialogs!
 File opened for read-only can only be reopened for read only too
 Read only file cannot change length (File::SetFileLength disabled)
 MP3 open, WAV save as - can't reopen in direct until 2 seconds passed.
@@ -65,6 +69,7 @@ Insert Silence of zero length still tries to modify the file
 Multiple MP3 files open: all but one get stuck
 
 Done:
+Show current folder name in "Recent"
 If read-only file is saved, name should be different
 If saving copy, assign different file name in the Save dialog
 Make Percent default setting for amplitude ruler
