@@ -33,6 +33,9 @@ public:
 	DECLARE_MESSAGE_MAP()
 };
 
+enum { OpenDocumentReadOnly = 4,
+	OpenDocumentDirectMode = 2,
+};
 class CWaveSoapFrontApp : public CWinApp
 {
 public:
@@ -113,15 +116,24 @@ public:
 	double m_dNormalizeLevelDb;
 	double m_dNormalizeLevelPercent;
 
+	// Resample parameters:
+	BOOL m_bResampleChangeRateOnly;
+	BOOL m_bResampleRate;
+	int m_ResampleSamplingRate;
+	double m_ResampleTempoPercents;
+
 	BOOL m_bUseCountrySpecificNumberAndTime;
 	TCHAR m_TimeSeparator;
 	TCHAR m_DecimalPoint;
 	TCHAR m_ThousandSeparator;
 
+	CDocument* OpenDocumentFile(LPCTSTR lpszPathName, int flags);
+	virtual CDocument* OpenDocumentFile(LPCTSTR lpszPathName);
 	//{{AFX_MSG(CWaveSoapFrontApp)
 	afx_msg void OnAppAbout();
 	afx_msg void OnEditPasteNew();
 	afx_msg void OnUpdateEditPasteNew(CCmdUI* pCmdUI);
+	afx_msg BOOL OnOpenRecentFile(UINT nID);
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 	CWinThread m_Thread;
@@ -159,6 +171,7 @@ CString SampleToString(long Sample, long nSamplesPerSec,
 									| TimeToHhMmSs_NeedsMs);
 void SetStatusString(CCmdUI* pCmdUI, const CString & string,
 					LPCTSTR MaxString = NULL, BOOL bForceSize = FALSE);
+void NotEnoughMemory();
 /////////////////////////////////////////////////////////////////////////////
 //{{AFX_INSERT_LOCATION}}
 // Microsoft Visual C++ will insert additional declarations immediately before the previous line.
