@@ -169,6 +169,7 @@ public:
 	{
 		if (++m_ThreadRunState < 0)
 		{
+			SetEvent(m_hEvent);
 			while (m_ThreadRunState < 0)
 			{
 				WaitForSingleObject(m_hThreadSuspendedEvent, 2000);
