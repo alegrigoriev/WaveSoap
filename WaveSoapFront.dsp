@@ -543,10 +543,6 @@ SOURCE=.\res\bmp00002.bmp
 # End Source File
 # Begin Source File
 
-SOURCE=.\res\bmp00003.bmp
-# End Source File
-# Begin Source File
-
 SOURCE=.\res\cur00001.cur
 # End Source File
 # Begin Source File

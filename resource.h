@@ -99,7 +99,6 @@
 #define IDD_DIALOG_FILTER               181
 #define ID_BITMAP_ZOOMINHOR             181
 #define ID_BITMAP_ZOOMOUTHOR            182
-#define IDR_TOOLBAR_ZOOMVERT            183
 #define IDC_EDIT_MIN_CLICK_AMPLITUDE    1000
 #define IDC_TAB_SWITCH_VIEW_MODE        1000
 #define IDC_CHECK_LOG_CLICKS            1001

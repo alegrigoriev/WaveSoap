@@ -137,7 +137,7 @@ int CMainFrame::OnCreate(LPCREATESTRUCT lpCreateStruct)
 		ShowControlBar( & m_wndToolBar, FALSE, FALSE);
 		ShowControlBar( & m_wndToolBar2, FALSE, FALSE);
 	}
-
+	EnableToolTips();
 	return 0;
 }
 

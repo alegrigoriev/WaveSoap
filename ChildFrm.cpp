@@ -13,6 +13,7 @@
 #include "WaveOutlineView.h"
 #include "SpectrumSectionView.h"
 #include <afxpriv.h>
+#include "MainFrm.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -115,11 +116,6 @@ CWaveMDIChildClient::CWaveMDIChildClient()
 	m_bShowFft(FALSE)
 {
 	m_SpectrumSectionWidth = GetApp()->m_SpectrumSectionWidth;
-
-	m_bmZoomInVert.LoadBitmap(ID_BITMAP_ZOOMINVERT);
-	m_bmZoomInHor.LoadBitmap(ID_BITMAP_ZOOMINHOR);
-	m_bmZoomOutVert.LoadBitmap(ID_BITMAP_ZOOMOUTVERT);
-	m_bmZoomOutHor.LoadBitmap(ID_BITMAP_ZOOMOUTHOR);
 }
 
 CWaveMDIChildClient::~CWaveMDIChildClient()
@@ -456,24 +452,24 @@ void CWaveMDIChildClient::RecalcLayout()
 	r.bottom = cr.bottom;
 	if (RulerWidth != 0)
 	{
-		wStatic1.ShowWindow(SW_SHOWNOACTIVATE);
-		DeferClientPos(&layout, & wStatic, r, FALSE);
+		m_AmplZoomBar.ShowWindow(SW_SHOWNOACTIVATE);
+		DeferClientPos(&layout, & m_AmplZoomBar, r, FALSE);
 	}
 	else
 	{
-		wStatic1.ShowWindow(SW_HIDE);
+		m_AmplZoomBar.ShowWindow(SW_HIDE);
 	}
 
 	r.top = OutlineHeight;
 	r.bottom = OutlineHeight + RulerHeight;
-	if (RulerWidth != r.left && RulerHeight != 0)
+	if (RulerWidth != 0 && RulerHeight != 0)
 	{
-		wStatic.ShowWindow(SW_SHOWNOACTIVATE);
-		DeferClientPos(&layout, & wStatic1, r, FALSE);
+		m_TimeZoomBar.ShowWindow(SW_SHOWNOACTIVATE);
+		DeferClientPos(&layout, & m_TimeZoomBar, r, FALSE);
 	}
 	else
 	{
-		wStatic.ShowWindow(SW_HIDE);
+		m_TimeZoomBar.ShowWindow(SW_HIDE);
 	}
 
 	r.left = 0;
@@ -484,36 +480,37 @@ void CWaveMDIChildClient::RecalcLayout()
 	{
 		CRect r1(0, r.Width() / 2, 0, r.Height());
 		CRect r2(0, r.Width() - r1.right, 0, r.Height());
-#if 0
-		wStaticFftL.ShowWindow(SW_SHOWNOACTIVATE);
-		DeferClientPos(&layout, & wStaticFftL, r, FALSE);
-
-		m_btZoomInVertFft.MoveWindow(0, 0, r.Width() / 2, r.Height());
-		m_btZoomOutVertFft.MoveWindow(r.Width() / 2, 0,
-									r.Width() - r.Width() / 2, r.Height());
-#else
 		m_FftZoomBar.ShowWindow(SW_SHOWNOACTIVATE);
 		DeferClientPos(&layout, & m_FftZoomBar, r, FALSE);
-#endif
 	}
 	else
 	{
-		//wStaticFftL.ShowWindow(SW_HIDE);
 		m_FftZoomBar.ShowWindow(SW_HIDE);
-		//m_btZoomInVertFft.ShowWindow(SW_HIDE);
-		//m_btZoomOutVertFft.ShowWindow(SW_HIDE);
 	}
 
 	r.top = OutlineHeight;
 	r.bottom = OutlineHeight + RulerHeight;
 	if (r.right != 0 && r.bottom != 0)
 	{
-		wStaticFftU.ShowWindow(SW_SHOWNOACTIVATE);
-		DeferClientPos(&layout, & wStaticFftU, r, FALSE);
+		if (0 != SpectrumSectionWidth)
+		{
+			m_SsZoomBar.ShowWindow(SW_SHOWNOACTIVATE);
+			DeferClientPos(&layout, & m_SsZoomBar, r, FALSE);
+		}
+		else
+		{
+			m_SsZoomBar.ShowWindow(SW_HIDE);
+			m_TimeZoomBar.ShowWindow(SW_SHOWNOACTIVATE);
+			DeferClientPos(&layout, & m_SsZoomBar, r, FALSE);
+		}
 	}
 	else
 	{
-		wStaticFftU.ShowWindow(SW_HIDE);
+		if (0 != SpectrumSectionWidth)
+		{
+			m_TimeZoomBar.ShowWindow(SW_HIDE);
+		}
+		m_SsZoomBar.ShowWindow(SW_HIDE);
 	}
 
 	r.left = SpectrumSectionWidth + VerticalTrackerWidth + RulerWidth + FftRulerWidth;
@@ -734,39 +731,22 @@ int CWaveMDIChildClient::OnCreate(LPCREATESTRUCT lpCreateStruct)
 	CWnd * pOutlineView = CreateView(RUNTIME_CLASS(CWaveOutlineView),
 									r, OutlineViewID, pContext, TRUE);    // visible
 
-	wStatic.Create("STATIC", "", WS_BORDER | WS_VISIBLE | WS_CHILD | SS_CENTER, r, this, ScaleStaticID, NULL);
-	//wStatic.SetFont(CFont::FromHandle((HFONT)GetStockObject(ANSI_VAR_FONT)));
-	wStatic1.Create("STATIC", "", WS_BORDER | WS_VISIBLE | WS_CHILD | SS_CENTER, r, this, Static1ID, NULL);
-	wStaticFftU.Create("STATIC", "", WS_BORDER | WS_VISIBLE | WS_CHILD | SS_CENTER, r, this, FftStaticLID, NULL);
-	//wStaticFftL.Create(NULL, "", WS_BORDER | WS_VISIBLE | WS_CHILD | SS_CENTER, r, this, FftStaticUID, NULL);
-#if 0
-	m_btZoomInVertFft.Create("",
-							WS_VISIBLE | WS_CHILD | BS_PUSHBUTTON | BS_BITMAP | BS_CENTER | BS_FLAT,
-							r, & wStaticFftL, ID_VIEW_SS_ZOOMINVERT);
-	m_btZoomInVertFft.SetBitmap(m_bmZoomInVert);
+	m_FftZoomBar.Create(this, FftZoomBarID, r);
+	m_FftZoomBar.AddButton(ID_BITMAP_ZOOMINVERT, ID_VIEW_SS_ZOOMINVERT);
+	m_FftZoomBar.AddButton(ID_BITMAP_ZOOMOUTVERT, ID_VIEW_SS_ZOOMOUTVERT);
 
-	m_btZoomOutVertFft.Create("",
-							WS_VISIBLE | WS_CHILD | BS_PUSHBUTTON | BS_BITMAP | BS_CENTER | BS_FLAT,
-							r, & wStaticFftL, ID_VIEW_SS_ZOOMOUTVERT);
-	m_btZoomOutVertFft.SetBitmap(m_bmZoomOutVert);
-#elif 0
-	m_FftZoomBar.Create(this,
-						WS_CHILD
-						| WS_VISIBLE
-						| CBRS_NOALIGN
-						| CBRS_TOOLTIPS | CBRS_FLYBY
-						| CBRS_SIZE_FIXED, FftStaticLID);
+	m_SsZoomBar.Create(this, SsZoomBarID, r);
+	m_SsZoomBar.AddButton(ID_BITMAP_ZOOMINHOR, ID_VIEW_SS_ZOOMINHOR2);
+	m_SsZoomBar.AddButton(ID_BITMAP_ZOOMOUTHOR, ID_VIEW_SS_ZOOMOUTHOR2);
 
-	m_FftZoomBar.LoadToolBar(IDR_TOOLBAR_ZOOMVERT);
-	m_FftZoomBar.SetBarStyle(m_FftZoomBar.GetBarStyle() & ~(CBRS_BORDER_ANY | CBRS_BORDER_3D));
-#else
-	m_FftZoomBar.Create(AfxRegisterWndClass(CS_HREDRAW | CS_VREDRAW,
-											AfxGetApp()->LoadStandardCursor(IDC_ARROW), NULL, NULL), "",
-						WS_CHILD | WS_VISIBLE | WS_BORDER, r, this, FftStaticLID, NULL);
-	m_FftZoomBar.AddButton( & m_bmZoomInVert, ID_VIEW_SS_ZOOMINVERT);
-	m_FftZoomBar.AddButton( & m_bmZoomOutVert, ID_VIEW_SS_ZOOMOUTVERT);
+	m_AmplZoomBar.Create(this, AmplZoomBarID, r);
+	m_AmplZoomBar.AddButton(ID_BITMAP_ZOOMINVERT, ID_VIEW_ZOOMINVERT);
+	m_AmplZoomBar.AddButton(ID_BITMAP_ZOOMOUTVERT, ID_VIEW_ZOOMOUTVERT);
 
-#endif
+	m_TimeZoomBar.Create(this, TimeZoomBarID, r);
+	m_TimeZoomBar.AddButton(ID_BITMAP_ZOOMINHOR, ID_VIEW_ZOOMINHOR2);
+	m_TimeZoomBar.AddButton(ID_BITMAP_ZOOMOUTHOR, ID_VIEW_ZOOMOUTHOR2);
+
 	// create scrollbar
 	m_sb.Create(SBS_HORZ | WS_VISIBLE | WS_CHILD, r, this, AFX_IDW_HSCROLL_FIRST);
 	wTracker.Create(AfxRegisterWndClass(CS_HREDRAW | CS_VREDRAW,
@@ -924,6 +904,7 @@ int CChildFrame::OnCreate(LPCREATESTRUCT lpCreateStruct)
 	m_wndStatusBar.SetPaneInfo(2, ID_INDICATOR_CURRENT_POS, style, width);
 	m_wndStatusBar.SetPaneInfo(3, ID_INDICATOR_SELECTION_LENGTH, style, width);
 	m_wndStatusBar.EnableToolTips();
+	//EnableToolTips();
 	return 0;
 }
 
@@ -1117,6 +1098,15 @@ CMiniToolbar::CMiniToolbar()
 
 CMiniToolbar::~CMiniToolbar()
 {
+	for (int i = 0; i < m_Buttons.size(); i++)
+	{
+		// delete our own bitmaps
+		if (m_Buttons[i].bDeleteBitmap)
+		{
+			delete m_Buttons[i].pBitmap;
+			m_Buttons[i].pBitmap = NULL;
+		}
+	}
 }
 
 IMPLEMENT_DYNAMIC(CMiniToolbar, CWnd)
@@ -1131,7 +1121,10 @@ ON_WM_LBUTTONUP()
 ON_WM_MOUSEACTIVATE()
 ON_WM_MOUSEMOVE()
 ON_WM_PAINT()
+ON_WM_CREATE()
 //}}AFX_MSG_MAP
+	ON_NOTIFY_EX_RANGE(TTN_NEEDTEXTW, 0, 0xFFFF, OnToolTipText)
+	ON_NOTIFY_EX_RANGE(TTN_NEEDTEXTA, 0, 0xFFFF, OnToolTipText)
 END_MESSAGE_MAP()
 
 
@@ -1195,7 +1188,7 @@ void CMiniToolbar::OnLButtonUp(UINT nFlags, CPoint point)
 	CWnd::OnLButtonUp(nFlags, point);
 	if (nID != 0)
 	{
-		GetParent()->PostMessage(WM_COMMAND, nID | (BN_CLICKED << 16), LPARAM(m_hWnd));
+		GetParentFrame()->PostMessage(WM_COMMAND, nID | (BN_CLICKED << 16), LPARAM(m_hWnd));
 	}
 }
 
@@ -1259,7 +1252,7 @@ void CMiniToolbar::OnPaint()
 	}
 }
 
-int CMiniToolbar::GetHitCode(POINT point)
+int CMiniToolbar::GetHitCode(POINT point) const
 {
 	CRect cr;
 	GetClientRect( & cr);
@@ -1273,7 +1266,28 @@ int CMiniToolbar::GetHitCode(POINT point)
 	return m_Buttons[point.x * m_Buttons.size() / cr.Width()].nID;
 }
 
-void CMiniToolbar::HiliteButton(int nID, bool Hilite)
+void CMiniToolbar::GetItemRect(UINT nID, RECT & rect) const
+{
+	CRect cr;
+	GetClientRect( & cr);
+	for (int i = 0; i < m_Buttons.size(); i++)
+	{
+		if (m_Buttons[i].nID == nID)
+		{
+			rect.top = cr.top;
+			rect.bottom = cr.bottom;
+			rect.left = cr.Width() * i / m_Buttons.size();
+			rect.right = cr.Width() * (i + 1) / m_Buttons.size();
+			return;
+		}
+	}
+	rect.left = 0;
+	rect.right = 0;
+	rect.bottom = 0;
+	rect.top = 0;
+}
+
+void CMiniToolbar::HiliteButton(UINT nID, bool Hilite)
 {
 	if (m_ButtonHilit != 0 && nID != m_ButtonHilit)
 	{
@@ -1320,13 +1334,30 @@ void CMiniToolbar::RedrawButton(int Index)
 	InvalidateRect( & r);
 }
 
-void CMiniToolbar::AddButton(CBitmap * pBitmap, int nID)
+void CMiniToolbar::AddButton(CBitmap * pBitmap, UINT nID)
 {
 	// not checking for duplicate ID
 	Button btn;
 	btn.nID = nID;
 	btn.pBitmap = pBitmap;
 	btn.bEnabled = true;
+	btn.bDeleteBitmap = false;
+	m_Buttons.push_back(btn);
+}
+
+void CMiniToolbar::AddButton(UINT nBitmapID, UINT nID)
+{
+	// not checking for duplicate ID
+	Button btn;
+	btn.nID = nID;
+	btn.pBitmap = new CBitmap;
+	if ( ! btn.pBitmap->LoadBitmap(nBitmapID))
+	{
+		delete btn.pBitmap;
+		return;
+	}
+	btn.bEnabled = true;
+	btn.bDeleteBitmap = true;
 	m_Buttons.push_back(btn);
 }
 
@@ -1412,3 +1443,48 @@ void CMiniToolbar::OnUpdateCmdUI(CFrameWnd* pTarget, BOOL bDisableIfNoHndler)
 
 }
 
+BOOL CMiniToolbar::Create(CWnd * pParent, UINT nID, RECT const & rect,
+						DWORD dwStyle)
+{
+	return CWnd::Create(AfxRegisterWndClass(CS_HREDRAW | CS_VREDRAW,
+											AfxGetApp()->LoadStandardCursor(IDC_ARROW), NULL, NULL), "",
+						dwStyle, rect, pParent, nID, NULL);
+}
+
+int CMiniToolbar::OnCreate(LPCREATESTRUCT lpCreateStruct)
+{
+	if (CWnd::OnCreate(lpCreateStruct) == -1)
+		return -1;
+
+	EnableToolTips();
+	return 0;
+}
+
+int CMiniToolbar::OnToolHitTest(CPoint point, TOOLINFO* pTI) const
+{
+	ASSERT_VALID(this);
+	ASSERT(::IsWindow(m_hWnd));
+
+	int nHit = GetHitCode(point);
+	if (0 == nHit)
+	{
+		return -1;
+	}
+	RECT rect;
+	GetItemRect(nHit, rect);
+	if (pTI != NULL && pTI->cbSize >= offsetof(TOOLINFO, lParam))
+	{
+		pTI->uFlags |= TTF_ALWAYSTIP;
+		pTI->hwnd = m_hWnd;
+		pTI->rect = rect;
+		pTI->uId = nHit;
+		pTI->lpszText = LPSTR_TEXTCALLBACK;
+	}
+	// found matching rect, return the ID of the button
+	return nHit;
+}
+
+BOOL CMiniToolbar::OnToolTipText(UINT, NMHDR* pNMHDR, LRESULT* pResult)
+{
+	return ((CMainFrame*)AfxGetMainWnd())->OnToolTipText(0, pNMHDR, pResult);
+}
