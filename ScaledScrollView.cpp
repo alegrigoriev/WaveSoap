@@ -14,6 +14,8 @@
 static char THIS_FILE[] = __FILE__;
 #endif
 
+#define DEBUG_SCROLL 0
+#define DEBUG_SCALE_CHANGE 0
 /////////////////////////////////////////////////////////////////////////////
 // CScaledScrollView
 // slave views copy origins and extents from the master view,
@@ -138,31 +140,31 @@ BOOL CScaledScrollView::OnScroll(UINT nScrollCode, UINT nPos, BOOL bDoScroll)
 	switch (LOBYTE(nScrollCode))
 	{
 	case SB_TOP:
-		if (0) TRACE("OnScroll horz SB_TOP, bDoScroll=%d\n", bDoScroll);
+		if (DEBUG_SCROLL) TRACE("OnScroll horz SB_TOP, bDoScroll=%d\n", bDoScroll);
 		X = dMaxRight;
 		break;
 	case SB_BOTTOM:
-		if (0) TRACE("OnScroll horz SB_BOTTOM, bDoScroll=%d\n", bDoScroll);
+		if (DEBUG_SCROLL) TRACE("OnScroll horz SB_BOTTOM, bDoScroll=%d\n", bDoScroll);
 		X = dMinLeft - dExtX;
 		break;
 	case SB_LINEUP:
-		if (0) TRACE("OnScroll horz SB_LINEUP, bDoScroll=%d\n", bDoScroll);
+		if (DEBUG_SCROLL) TRACE("OnScroll horz SB_LINEUP, bDoScroll=%d\n", bDoScroll);
 		X -= dExtX * 0.05;
 		break;
 	case SB_LINEDOWN:
-		if (0) TRACE("OnScroll horz SB_LINEDOWN, bDoScroll=%d\n", bDoScroll);
+		if (DEBUG_SCROLL) TRACE("OnScroll horz SB_LINEDOWN, bDoScroll=%d\n", bDoScroll);
 		X += dExtX * 0.05;
 		break;
 	case SB_PAGEUP:
-		if (0) TRACE("OnScroll horz SB_PAGEUP, bDoScroll=%d\n", bDoScroll);
+		if (DEBUG_SCROLL) TRACE("OnScroll horz SB_PAGEUP, bDoScroll=%d\n", bDoScroll);
 		X -= dExtX * 0.9;
 		break;
 	case SB_PAGEDOWN:
-		if (0) TRACE("OnScroll horz SB_PAGEDOWN, bDoScroll=%d\n", bDoScroll);
+		if (DEBUG_SCROLL) TRACE("OnScroll horz SB_PAGEDOWN, bDoScroll=%d\n", bDoScroll);
 		X += dExtX * 0.9;
 		break;
 	case SB_THUMBTRACK:
-		if (0) TRACE("OnScroll horz SB_THUMBTRACK, nPos=%d, bDoScroll=%d\n", nPos, bDoScroll);
+		if (DEBUG_SCROLL) TRACE("OnScroll horz SB_THUMBTRACK, nPos=%d, bDoScroll=%d\n", nPos, bDoScroll);
 		X = (dMaxRight - dMinLeft) * (int(nPos) - ScrollMin) / double(ScrollMax - ScrollMin)
 			+ dMinLeft;
 		break;
@@ -586,10 +588,10 @@ void CScaledScrollView::OnMasterChangeOrgExt(double left, double width,
 	}
 
 	AdjustNewScale(dScaleX, dScaleY, dNewScaleX, dNewScaleY);
-	if (0) TRACE("dNewScaleX = %g, dScaleX=%g, ExtX=%g\n",
-				dNewScaleX, dScaleX, dExtX);
-	if (0) TRACE("dNewScaleY = %g, dScaleY=%g, ExtY=%g\n",
-				dNewScaleY, dScaleY, dExtY);
+	if (DEBUG_SCALE_CHANGE) TRACE("dNewScaleX = %g, dScaleX=%g, ExtX=%g\n",
+								dNewScaleX, dScaleX, dExtX);
+	if (DEBUG_SCALE_CHANGE) TRACE("dNewScaleY = %g, dScaleY=%g, ExtY=%g\n",
+								dNewScaleY, dScaleY, dExtY);
 
 	if (dNewScaleX != dScaleX
 		&& r.right != r.left
@@ -733,7 +735,7 @@ BOOL CScaledScrollView::ScrollBy(double dx, double dy, BOOL bDoScroll)
 		| (0 != dy && m_pVertMaster->MasterScrollBy(0, dy, bDoScroll));
 }
 
-BOOL CScaledScrollView::MasterScrollBy(double dx, double dy, BOOL bDoScroll)
+BOOL CScaledScrollView::MasterScrollBy(double dx, double dy, BOOL bDoScroll, RECT const * pScrollRect, RECT const * pClipRect)
 {
 	// find world limits
 	// check if the target is beyound the world limits
@@ -802,9 +804,17 @@ BOOL CScaledScrollView::MasterScrollBy(double dx, double dy, BOOL bDoScroll)
 		// move origin to integer count of device units
 		dOrgX += ddevx / (dScaleX * dLogScaleX);
 		dOrgY += ddevy / (dScaleY * dLogScaleY);
+
 		if (bDoScroll)
 		{
-			Invalidate();
+			if (NULL == pScrollRect)
+			{
+				Invalidate();
+			}
+			else
+			{
+				InvalidateRect(pScrollRect);
+			}
 		}
 		UpdateScrollbars(bDoScroll);
 		UpdateCaretPosition();
@@ -813,15 +823,17 @@ BOOL CScaledScrollView::MasterScrollBy(double dx, double dy, BOOL bDoScroll)
 	}
 	else
 	{
-		if (0) TRACE("Necessary window scroll=(%g, %g), new org=(%g, %g), devx=%d, devy=%d\n",
-					dx, dy, dNewOrgX, dNewOrgY, ddevx, ddevy);
+		if (DEBUG_SCROLL) TRACE("Necessary window scroll=(%g, %g), new org=(%g, %g), devx=%d, devy=%d\n",
+								dx, dy, dNewOrgX, dNewOrgY, ddevx, ddevy);
 
 		if (ddevx | ddevy)
 		{
 			// the function scrolls the real image, and modifies dOrgX, dOrgY.
-			if (0) TRACE("Before OnScrollBy: Org X = %f, dx=%d\n", dOrgX, ddevx);
-			OnScrollBy(CSize(ddevx, ddevy), bDoScroll);
-			if (0) TRACE("AfterOnScrollBy: Org X = %f\n", dOrgX);
+			if (DEBUG_SCROLL) TRACE("Before OnScrollBy: Org X = %f, dx=%d\n", dOrgX, ddevx);
+
+			OnScrollBy(CSize(ddevx, ddevy), bDoScroll, pScrollRect, pClipRect);
+
+			if (DEBUG_SCROLL) TRACE("AfterOnScrollBy: Org X = %f\n", dOrgX);
 
 			NotifySlaveViews(flag);
 			return TRUE;
@@ -868,8 +880,8 @@ void CScaledScrollView::UpdateScrollbars(BOOL bRedraw)
 			if (sci.nPos > (sci.nMax - int(sci.nPage - 1)))
 				sci.nPos = sci.nMax - int(sci.nPage - 1);
 		}
-		if (0) TRACE("SetScrollInfo SB_HORZ, min=%d, max=%d, page=%d, pos=%d\n",
-					sci.nMin, sci.nMax, sci.nPage, sci.nPos);
+		if (DEBUG_SCROLL) TRACE("SetScrollInfo SB_HORZ, min=%d, max=%d, page=%d, pos=%d\n",
+								sci.nMin, sci.nMax, sci.nPage, sci.nPos);
 		SetScrollInfo(SB_HORZ, & sci, bRedraw);
 	}
 
@@ -971,7 +983,7 @@ void CScaledScrollView::OnSize(UINT nType, int cx, int cy)
 			AdjustNewScale(dScaleX, dScaleY, dScaleX, dNewScaleY);
 			if (dNewScaleY != dScaleY)
 			{
-				if (0) TRACE("New Y scale != old scale, invalidating...\n");
+				if (DEBUG_SCALE_CHANGE) TRACE("New Y scale != old scale, invalidating...\n");
 				dScaleY = dNewScaleY;
 				InvalidateRgn(NULL);
 				//UpdateScrollbars();
@@ -1001,7 +1013,7 @@ void CScaledScrollView::OnSize(UINT nType, int cx, int cy)
 			AdjustNewScale(dScaleX, dScaleY, dNewScaleX, dScaleY);
 			if (dNewScaleX != dScaleX)
 			{
-				if (0) TRACE("New X scale != old scale, invalidating...\n");
+				if (DEBUG_SCALE_CHANGE) TRACE("New X scale != old scale, invalidating...\n");
 				dScaleX = dNewScaleX;
 				InvalidateRgn(NULL);
 				//UpdateScrollbars();
@@ -1073,22 +1085,22 @@ int CScaledScrollView::GetMappingInfo()
 // the function scrolls the real image, and modifies dOrgX, dOrgY.
 BOOL CScaledScrollView::OnScrollBy(CSize sizeScroll, BOOL bDoScroll)
 {
+	return OnScrollBy(sizeScroll, bDoScroll, NULL, NULL);
+}
+
+BOOL CScaledScrollView::OnScrollBy(CSize sizeScroll, BOOL bDoScroll, RECT const * pScrollRect, RECT const * pClipRect)
+{
 	if (bDoScroll)
 	{
 		RemoveSelectionRect();
 	}
 	dOrgX += sizeScroll.cx / (dScaleX * dLogScaleX);
 	dOrgY += sizeScroll.cy / (dScaleY * dLogScaleY);
+
 	if (bDoScroll)
 	{
-		if (0 != sizeScroll.cy)
-		{
-			ScrollWindow(0, -sizeScroll.cy);
-		}
-		if (0 != sizeScroll.cx)
-		{
-			ScrollWindow(-sizeScroll.cx, 0);
-		}
+		ScrollWindow(-sizeScroll.cx, -sizeScroll.cy, pScrollRect, pClipRect);
+
 		RestoreSelectionRect();
 	}
 	UpdateCaretPosition();

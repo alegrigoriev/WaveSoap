@@ -123,7 +123,13 @@ public:
 	{
 		return ScrollBy(x - dOrgX, y - dOrgY, bDoScroll);
 	}
-	virtual BOOL MasterScrollBy(double dx, double dy, BOOL bDoScroll = TRUE);
+
+	virtual BOOL MasterScrollBy(double dx, double dy, BOOL bDoScroll = TRUE)
+	{
+		return MasterScrollBy(dx, dy, bDoScroll, NULL, NULL);
+	}
+	// pScrollRect specifies the rectangle to scroll inside
+	virtual BOOL MasterScrollBy(double dx, double dy, BOOL bDoScroll, RECT const * pScrollRect, RECT const * pClipRect = NULL);
 	BOOL MasterScrollTo(double x, double y, BOOL bDoScroll = TRUE)
 	{
 		return MasterScrollBy(x - dOrgX, y - dOrgY, bDoScroll);
@@ -157,6 +163,7 @@ public:
 	{
 		bKeepOrgOnResizeY = flag;
 	}
+	virtual BOOL OnScrollBy(CSize sizeScroll, BOOL bDoScroll, RECT const * pScrollRect, RECT const * pClipRect);
 // Overrides
 	// ClassWizard generated virtual function overrides
 	//{{AFX_VIRTUAL(CScaledScrollView)
