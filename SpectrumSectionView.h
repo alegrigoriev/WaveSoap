@@ -47,6 +47,7 @@ protected:
 	CPoint m_PrevCrossHair;
 	bool m_bCrossHairDrawn;
 	bool m_bTrackingMouseRect;
+
 	void ShowCrossHair(POINT point, CDC * pDC = NULL);
 	void HideCrossHair(CDC * pDC = NULL);
 	void DrawCrossHair(POINT point, CDC * pDC = NULL);
@@ -55,7 +56,7 @@ protected:
 	struct FftGraphBand;
 
 	BOOL AllocateFftArrays();
-	int InitBandArray(ATL::CHeapPtr<FftGraphBand> & pBands, int rows);
+	int InitBandArray(ATL::CHeapPtr<FftGraphBand> & pBands, int rows, int FftOrder);
 	void CalculateFftPowerSum(float * pFftSum, SAMPLE_INDEX FirstSample,
 							int NumberOfSamplesAveraged, int FftOrder);
 
@@ -67,12 +68,14 @@ protected:
 	void BuildPointArray(FftGraphBand * pBands, int NumBands, DoublePoint * ppArray, int nNumberOfPoints, int OffsetY);
 	void DrawPointArray(CDC * pDC, DoublePoint * ppArray, int NumberOfPoints, int right);
 
-	int m_FftOrder;
+	int m_FftOrder;     // frequencies in FFT conversions (window width=2*FFT order)
 
 	float * m_pFftSum;
 	float * m_pWindow;
+	class NoiseReductionCore * m_pNoiseReduction;
+	int m_NrFftOrder;
+
 	int m_nFftSumSize;
-	long m_FftPosition;
 	long m_PlaybackSample;
 	virtual ~CSpectrumSectionView();
 #ifdef _DEBUG

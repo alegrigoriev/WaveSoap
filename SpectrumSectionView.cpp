@@ -10,6 +10,7 @@
 #include "WaveSoapFrontDoc.h"
 #include "WaveFftView.h"
 #include "resource.h"       // main symbols
+#include "waveproc.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -33,9 +34,9 @@ CSpectrumSectionView::CSpectrumSectionView()
 	, m_bShowNoiseThreshold(FALSE)
 	, m_bShowCrossHair(false)
 	, m_bTrackingMouseRect(false)
-	, m_FftPosition(-1)
 	, m_nFftSumSize(0)
 	, m_PlaybackSample(0)
+	, m_pNoiseReduction(NULL)
 {
 }
 
@@ -43,6 +44,7 @@ CSpectrumSectionView::~CSpectrumSectionView()
 {
 	delete[] m_pFftSum;
 	delete[] m_pWindow;
+	delete m_pNoiseReduction;
 }
 
 
@@ -74,20 +76,20 @@ struct CSpectrumSectionView::FftGraphBand
 	int nMax;
 };
 
-int CSpectrumSectionView::InitBandArray(ATL::CHeapPtr<FftGraphBand> & pBands, int rows)
+int CSpectrumSectionView::InitBandArray(ATL::CHeapPtr<FftGraphBand> & pBands, int rows, int FftOrder)
 {
 	CWaveFftView * pFftView = dynamic_cast<CWaveFftView *>(m_pVertMaster);
 	int TotalRows = int(rows * pFftView->m_VerticalScale);
 
-	int LastFftSample = int(m_FftOrder - pFftView->m_FirstbandVisible);
-	int FirstFftSample = LastFftSample + MulDiv(-rows, m_FftOrder, TotalRows);
+	int LastFftSample = int(FftOrder - pFftView->m_FirstbandVisible);
+	int FirstFftSample = LastFftSample + MulDiv(-rows, FftOrder, TotalRows);
 
 	if (FirstFftSample < 0)
 	{
 		LastFftSample -= FirstFftSample;
 		FirstFftSample = 0;
 	}
-	int FirstRowInView = MulDiv(FirstFftSample, TotalRows, m_FftOrder);
+	int FirstRowInView = MulDiv(FirstFftSample, TotalRows, FftOrder);
 
 	int FftSamplesInView = LastFftSample - FirstFftSample + 1;
 
@@ -100,18 +102,18 @@ int CSpectrumSectionView::InitBandArray(ATL::CHeapPtr<FftGraphBand> & pBands, in
 
 	for (k = 0; k < IdxSize1; k++)
 	{
-		if (FirstFftSample >= m_FftOrder
+		if (FirstFftSample >= FftOrder
 			|| LastRow >= rows)
 		{
 			break;
 		}
 		pBands[k].nFftOffset = FirstFftSample;
 		FirstFftSample++;
-		int NextRow = FirstFftSample * TotalRows / m_FftOrder - FirstRowInView;
+		int NextRow = FirstFftSample * TotalRows / FftOrder - FirstRowInView;
 		if (NextRow == LastRow)
 		{
 			NextRow++;
-			FirstFftSample = (NextRow + FirstRowInView) * m_FftOrder / TotalRows;
+			FirstFftSample = (NextRow + FirstRowInView) * FftOrder / TotalRows;
 		}
 		if (NextRow > rows)
 		{
@@ -122,7 +124,7 @@ int CSpectrumSectionView::InitBandArray(ATL::CHeapPtr<FftGraphBand> & pBands, in
 	}
 	ASSERT(LastRow <= rows);
 
-	pBands[k].nFftOffset = m_FftOrder;
+	pBands[k].nFftOffset = FftOrder;
 	pBands[k].nNumOfRows = 0;
 
 	return k;
@@ -153,7 +155,7 @@ void CSpectrumSectionView::CalculateFftPowerSum(float * pFftSum,
 		pDoc->m_WavFile.ReadSamples(ALL_CHANNELS,
 									pDoc->m_WavFile.SampleToPosition(FirstSample), FftOrder * 2, pSrcIntArray);
 
-		FirstSample += FftOrder / 2;
+		FirstSample += FftOrder;
 
 		if (1 == nChannels)
 		{
@@ -319,6 +321,7 @@ void CSpectrumSectionView::DrawPointArray(CDC * pDC, DoublePoint * ppArray, int 
 void CSpectrumSectionView::OnDraw(CDC* pDC)
 {
 	CWaveSoapFrontDoc* pDoc = GetDocument();
+
 	if ( ! pDoc->m_WavFile.IsOpen())
 	{
 		if (m_bCrossHairDrawn)
@@ -335,6 +338,7 @@ void CSpectrumSectionView::OnDraw(CDC* pDC)
 	{
 		return;
 	}
+
 	CRect r;
 	CRect cr;
 	GetClientRect( & cr);
@@ -364,26 +368,6 @@ void CSpectrumSectionView::OnDraw(CDC* pDC)
 
 	SAMPLE_INDEX nStartSample = pDoc->m_SelectionStart;
 
-	int NumberOfFftSamplesAveraged =
-		(pDoc->m_SelectionEnd - pDoc->m_SelectionStart) / m_FftOrder + 1;
-	if (NumberOfFftSamplesAveraged > 100)
-	{
-		NumberOfFftSamplesAveraged = 100;
-	}
-	if (pDoc->m_PlayingSound)
-	{
-		NumberOfFftSamplesAveraged = 4;
-		nStartSample = m_PlaybackSample;
-	}
-	if (nStartSample > m_FftOrder)
-	{
-		nStartSample -= m_FftOrder;
-	}
-	else
-	{
-		nStartSample = 0;
-	}
-
 	// calculate extents
 	// find vertical offset in the result array and how many
 	// rows to fill with this color
@@ -408,46 +392,161 @@ void CSpectrumSectionView::OnDraw(CDC* pDC)
 		return;
 	}
 
-// build an array
+	// build an array
+
+	CPen BlackPen(PS_SOLID, 0, COLORREF(0));   // black pen
+	CPen BluePen(PS_SOLID, 0, RGB(0, 0, 128));   // medium blue pen
+
+	CGdiObjectSaveT<CPen> OldPen(pDC, pDC->SelectObject( & BlackPen));
 
 	ATL::CHeapPtr<FftGraphBand> pIdArray;
+	ATL::CHeapPtr<DoublePoint> ppArray;
 
-	// fill the array
-	int IdxSize = InitBandArray(pIdArray, rows);
-
-	CPen pen(PS_SOLID, 0, COLORREF(0));   // black pen
-	CGdiObjectSaveT<CPen> OldPen(pDC, pDC->SelectObject( & pen));
-
-	int i;
-	int j;
-	// read the data
+	double PowerScaleCoeff = 1.;
 	// if there is selection, calculate the whole region sum
-
-	CalculateFftPowerSum(m_pFftSum, nStartSample, NumberOfFftSamplesAveraged, m_FftOrder);
-
-	double PowerScaleCoeff = 1. / (NumberOfFftSamplesAveraged * 65536. * m_FftOrder * 65536 * m_FftOrder);
-	// now that we have calculated the FFT
-
-	ATL::CHeapPtr<POINT[2]> ppArray;
-
-	ppArray.Allocate(nNumberOfPoints);
-
-	for (int ch = 0; ch < nChannels; ch++)
+	if (m_bShowNoiseThreshold
+		&& NULL != m_pNoiseReduction)
 	{
-		BuildBandArray(PowerScaleCoeff, pIdArray, IdxSize, m_pFftSum, m_FftOrder + ch);
+		// todo: show second graph with blue color:
+		// calculate power distribution and masking function
+		// Items that can be shown:
+		// filtered power distribution
+		// masking function with noise threshold
+		ATL::CHeapPtr<float> NrResult;
+		NrResult.Allocate(m_NrFftOrder * nChannels);
 
-		BuildPointArray(pIdArray, IdxSize, ppArray, nNumberOfPoints, rows * ch);
+		// fill the array
+		int IdxSize = InitBandArray(pIdArray, rows, m_NrFftOrder);
 
-		DrawPointArray(pDC, ppArray, nNumberOfPoints, cr.right);
+		int const Preroll = 16;
 
-		if (nChannels > 1)
+		if (nStartSample >= m_NrFftOrder * Preroll)
 		{
-			pDC->MoveTo(0, rows);
-			pDC->LineTo(cr.right, rows);
+			nStartSample -= m_NrFftOrder * Preroll;
+		}
+		else
+		{
+			nStartSample = 0;
 		}
 
+		ATL::CHeapPtr<WAVE_SAMPLE> pSrcIntArray;
+		pSrcIntArray.Allocate(m_NrFftOrder * nChannels);
+
+		m_pNoiseReduction->Reset();
+
+		for (int i = 0; i < Preroll; i++)
+		{
+			if (m_NrFftOrder != pDoc->m_WavFile.ReadSamples(ALL_CHANNELS,
+					pDoc->m_WavFile.SampleToPosition(nStartSample), m_NrFftOrder, pSrcIntArray))
+			{
+				break;
+			}
+
+			int InputSamplesUsed = m_pNoiseReduction->FillInBuffer(pSrcIntArray, m_NrFftOrder);
+			nStartSample += InputSamplesUsed;
+
+			if (m_pNoiseReduction->CanProcessFft())
+			{
+				// now we have enough samples to do FFT
+				m_pNoiseReduction->AnalyseFft();
+			}
+		}
+
+		PowerScaleCoeff = 1. / (32768. * 32768. * m_FftOrder);
+
+		// now that we have calculated the FFT
+
+		ppArray.Allocate(nNumberOfPoints);
+
+		m_pNoiseReduction->GetAudioMasking(NrResult);
+
+		pDC->SelectObject( & BlackPen);
+		for (int ch = 0; ch < nChannels; ch++)
+		{
+			BuildBandArray(PowerScaleCoeff, pIdArray, IdxSize, NrResult + ch, m_NrFftOrder);
+
+			BuildPointArray(pIdArray, IdxSize, ppArray, nNumberOfPoints, rows * ch);
+
+			DrawPointArray(pDC, ppArray, nNumberOfPoints, cr.right);
+
+			if (nChannels > 1)
+			{
+				pDC->MoveTo(0, rows * ch);
+				pDC->LineTo(cr.right, rows * ch);
+			}
+
+		}
+
+		m_pNoiseReduction->GetNoiseThreshold(NrResult);
+
+		pDC->SelectObject( & BluePen);
+		for (int ch = 0; ch < nChannels; ch++)
+		{
+			BuildBandArray(PowerScaleCoeff, pIdArray, IdxSize, NrResult + ch, m_NrFftOrder);
+
+			BuildPointArray(pIdArray, IdxSize, ppArray, nNumberOfPoints, rows * ch);
+
+			DrawPointArray(pDC, ppArray, nNumberOfPoints, cr.right);
+
+			if (nChannels > 1)
+			{
+				pDC->MoveTo(0, rows * ch);
+				pDC->LineTo(cr.right, rows * ch);
+			}
+
+		}
+	}
+	else
+	{
+		// fill the array
+		int IdxSize = InitBandArray(pIdArray, rows, m_FftOrder);
+
+		int NumberOfFftSamplesAveraged =
+			(pDoc->m_SelectionEnd - pDoc->m_SelectionStart) / m_FftOrder + 1;
+		if (NumberOfFftSamplesAveraged > 100)
+		{
+			NumberOfFftSamplesAveraged = 100;
+		}
+		if (pDoc->m_PlayingSound)
+		{
+			NumberOfFftSamplesAveraged = 4;
+			nStartSample = m_PlaybackSample;
+		}
+		if (nStartSample > m_FftOrder)
+		{
+			nStartSample -= m_FftOrder;
+		}
+		else
+		{
+			nStartSample = 0;
+		}
+
+		CalculateFftPowerSum(m_pFftSum, nStartSample, NumberOfFftSamplesAveraged, m_FftOrder);
+
+		PowerScaleCoeff = 4. / (NumberOfFftSamplesAveraged * 32768. * m_FftOrder * 32768. * m_FftOrder);
+
+		// now that we have calculated the FFT
+
+		ppArray.Allocate(nNumberOfPoints);
+
+		for (int ch = 0; ch < nChannels; ch++)
+		{
+			BuildBandArray(PowerScaleCoeff, pIdArray, IdxSize, m_pFftSum + ch, m_FftOrder);
+
+			BuildPointArray(pIdArray, IdxSize, ppArray, nNumberOfPoints, rows * ch);
+
+			DrawPointArray(pDC, ppArray, nNumberOfPoints, cr.right);
+
+			if (nChannels > 1)
+			{
+				pDC->MoveTo(0, rows * ch);
+				pDC->LineTo(cr.right, rows * ch);
+			}
+
+		}
 	}
 
+#if 0
 	if (m_bShowNoiseThreshold)
 	{
 		int NoiseReductionBegin = MulDiv(m_nBeginFrequency, m_FftOrder,
@@ -471,8 +570,7 @@ void CSpectrumSectionView::OnDraw(CDC* pDC)
 			pDC->LineTo(PosLowX, ChanR.bottom);
 		}
 	}
-
-	delete[] ppArray;
+#endif
 	if (m_bCrossHairDrawn)
 	{
 		DrawCrossHair(m_PrevCrossHair, pDC);
@@ -595,7 +693,7 @@ void CSpectrumSectionView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint
 		&& NULL != pHint)
 	{
 		CSoundUpdateInfo * pInfo = static_cast<CSoundUpdateInfo *>(pHint);
-		m_bShowNoiseThreshold = false;
+		//m_bShowNoiseThreshold = false;
 
 		if ((pDoc->m_SelectionStart <= pInfo->m_End
 				&& pDoc->m_SelectionEnd + 2 * m_FftOrder >= pInfo->m_Begin)
@@ -604,13 +702,13 @@ void CSpectrumSectionView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint
 			Invalidate();
 		}
 	}
-	else if (lHint == CWaveSoapFrontDoc::UpdateSelectionChanged)
+	else if (lHint == pDoc->UpdateSelectionChanged)
 	{
-		m_bShowNoiseThreshold = false;
+		//m_bShowNoiseThreshold = false;
 		Invalidate();
 		return;
 	}
-	else if (lHint == CWaveSoapFrontDoc::UpdatePlaybackPositionChanged
+	else if (lHint == pDoc->UpdatePlaybackPositionChanged
 			&& NULL != pHint)
 	{
 		m_bShowNoiseThreshold = false;
@@ -625,6 +723,29 @@ void CSpectrumSectionView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint
 		m_bShowNoiseThreshold = false;
 		delete[] m_pWindow;
 		m_pWindow = NULL;
+		Invalidate();
+	}
+	else if (lHint == pDoc->UpdateNoiseThresholdChanged
+			&& NULL != pHint)
+	{
+		NoiseThresholdUpdateInfo * pInfo = static_cast<NoiseThresholdUpdateInfo *>(pHint);
+		if (NULL != pInfo)
+		{
+			delete m_pNoiseReduction;
+			m_pNoiseReduction = NULL;
+
+			if (NULL != pInfo->pNoiseReductionParameters)
+			{
+				m_pNoiseReduction = new NoiseReductionCore(pInfo->FftOrder,
+										pDoc->WaveChannels(), pInfo->SampleRate, * pInfo->pNoiseReductionParameters);
+
+				m_NrFftOrder = pInfo->FftOrder;
+			}
+
+			m_bShowNoiseThreshold = NULL != m_pNoiseReduction;
+			Invalidate();
+		}
+		return;
 	}
 	else if (0 == lHint)
 	{
@@ -634,12 +755,26 @@ void CSpectrumSectionView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint
 
 void CSpectrumSectionView::OnUpdateViewSsShowNoiseThreshold(CCmdUI* pCmdUI)
 {
-	pCmdUI->SetCheck(m_bShowNoiseThreshold);
+	if (NULL != m_pNoiseReduction || m_bShowNoiseThreshold)
+	{
+		pCmdUI->SetCheck(m_bShowNoiseThreshold);
+	}
+	else
+	{
+		pCmdUI->Enable(FALSE);
+	}
 }
 
 void CSpectrumSectionView::OnViewSsShowNoiseThreshold()
 {
-	m_bShowNoiseThreshold = TRUE;
+	if (NULL != m_pNoiseReduction)
+	{
+		m_bShowNoiseThreshold = ! m_bShowNoiseThreshold;
+	}
+	else
+	{
+		m_bShowNoiseThreshold = FALSE;
+	}
 	Invalidate();
 }
 
