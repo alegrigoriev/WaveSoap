@@ -2126,7 +2126,7 @@ CDeclickDialog::CDeclickDialog(SAMPLE_INDEX begin, SAMPLE_INDEX end, SAMPLE_INDE
 	m_ClickImportFilename = _T("");
 	//}}AFX_DATA_INIT
 	m_dAttackRate = .06;
-	m_dClickToNoise = 5.;
+	m_dClickToNoise = 4.;
 	m_dEnvelopDecayRate = 0.02;
 
 	LoadValuesFromRegistry();
@@ -2162,11 +2162,11 @@ void CDeclickDialog::DoDataExchange(CDataExchange* pDX)
 	DDX_Check(pDX, IDC_CHECK_UNDO, m_bUndo);
 	//}}AFX_DATA_MAP
 	m_AttackRate.ExchangeData(pDX, m_dAttackRate,
-							IDS_INPUT_NAME_ATTACK_RATE, 0, 0.01, 0.9);
+							IDS_INPUT_NAME_ATTACK_RATE, 0, 0.001, 0.99);
 	m_ClickToNoise.ExchangeData(pDX, m_dClickToNoise,
-								IDS_INPUT_NAME_CLICK_TO_NOISE_RATE, 0, 1., 10.);
+								IDS_INPUT_NAME_CLICK_TO_NOISE_RATE, 0, 1.5, 20.);
 	m_EnvelopDecayRate.ExchangeData(pDX, m_dEnvelopDecayRate,
-									IDS_INPUT_NAME_ENVELOP_DECAY_RATE, 0, 0.01, 0.99);
+									IDS_INPUT_NAME_ENVELOP_DECAY_RATE, 0, 0.001, 0.99);
 
 }
 
