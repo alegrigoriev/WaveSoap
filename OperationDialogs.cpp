@@ -95,7 +95,6 @@ END_MESSAGE_MAP()
 /////////////////////////////////////////////////////////////////////////////
 // CVolumeChangeDialog dialog
 
-
 CVolumeChangeDialog::CVolumeChangeDialog(SAMPLE_INDEX begin, SAMPLE_INDEX end, SAMPLE_INDEX caret,
 										CHANNEL_MASK Channels,
 										CWaveFile & File,
@@ -323,111 +322,6 @@ void CVolumeChangeDialog::OnSelchangeCombodbPercent()
 	UpdateData(FALSE);
 }
 
-/////////////////////////////////////////////////////////////////////////////
-// CSelectionDialog dialog
-
-
-CSelectionDialog::CSelectionDialog(SAMPLE_INDEX Start, SAMPLE_INDEX End,
-									SAMPLE_INDEX CaretPos, CHANNEL_MASK Channel,
-									CWaveFile & WaveFile,
-									int TimeFormat,
-									BOOL bAllowFileExtension,
-									CWnd* pParent /*=NULL*/)
-	: BaseClass(IDD, pParent)
-	, m_Chan(-1)
-	, m_Start(Start)
-	, m_End(End)
-	, m_CaretPosition(CaretPos)
-	, m_Length(End - Start)
-	, m_TimeFormat(TimeFormat)
-	, m_eStart(CaretPos, WaveFile, TimeFormat)
-	, m_eEnd(CaretPos, WaveFile, TimeFormat)
-	, m_eLength(TimeFormat)
-	, m_WaveFile(WaveFile)
-	, m_bAllowFileExtension(bAllowFileExtension)
-{
-	if (WaveFile.Channels() < 2)
-	{
-		m_lpszTemplateName = MAKEINTRESOURCE(IDD_SELECTION_DIALOG_MONO);
-		m_Chan = SPEAKER_FRONT_LEFT;
-	}
-	else
-	{
-		CHANNEL_MASK AllChannels = WaveFile.ChannelsMask();
-
-		if ((Channel & AllChannels) == AllChannels)
-		{
-			m_Chan = 0;
-		}
-		else if (Channel & 1)
-		{
-			m_Chan = 1;
-		}
-		else if (Channel & 2)
-		{
-			m_Chan = 2;
-		}
-	}
-	//{{AFX_DATA_INIT(CSelectionDialog)
-	m_TimeFormatIndex = 0;
-	m_SelectionNumber = 0;
-	//}}AFX_DATA_INIT
-	switch (TimeFormat & SampleToString_Mask)
-	{
-	case SampleToString_Sample:
-		m_TimeFormatIndex = 0;
-		break;
-	case SampleToString_HhMmSs:
-		m_TimeFormatIndex = 1;
-		break;
-	case SampleToString_Seconds:
-	default:
-		m_TimeFormatIndex = 2;
-		break;
-	}
-
-	m_eLength.SetSamplingRate(WaveFile.SampleRate());
-}
-
-
-void CSelectionDialog::DoDataExchange(CDataExchange* pDX)
-{
-	BaseClass::DoDataExchange(pDX);
-	//{{AFX_DATA_MAP(CSelectionDialog)
-	DDX_Control(pDX, IDC_COMBO_SELECTION, m_SelectionCombo);
-	DDX_Control(pDX, IDC_SPIN_START, m_SpinStart);
-	DDX_Control(pDX, IDC_SPIN_LENGTH, m_SpinLength);
-	DDX_Control(pDX, IDC_SPIN_END, m_SpinEnd);
-	DDX_Control(pDX, IDC_EDIT_LENGTH, m_eLength);
-	DDX_Control(pDX, IDC_COMBO_START, m_eStart);
-	DDX_Control(pDX, IDC_COMBO_END, m_eEnd);
-	DDX_CBIndex(pDX, IDC_COMBO_TIME_FORMAT, m_TimeFormatIndex);
-	DDX_CBIndex(pDX, IDC_COMBO_SELECTION, m_SelectionNumber);
-	//}}AFX_DATA_MAP
-	if (m_WaveFile.Channels() >= 2)
-	{
-		DDX_Radio(pDX, IDC_RADIO_CHANNEL, m_Chan);
-	}
-	m_eStart.ExchangeData(pDX, m_Start);
-	m_eEnd.ExchangeData(pDX, m_End);
-	m_eLength.ExchangeData(pDX, m_Length);
-	AdjustSelection();
-}
-
-
-BEGIN_MESSAGE_MAP(CSelectionDialog, BaseClass)
-//{{AFX_MSG_MAP(CSelectionDialog)
-	ON_CBN_SELCHANGE(IDC_COMBO_TIME_FORMAT, OnSelchangeComboTimeFormat)
-	ON_CBN_KILLFOCUS(IDC_COMBO_END, OnKillfocusEditEnd)
-	ON_EN_KILLFOCUS(IDC_EDIT_LENGTH, OnKillfocusEditLength)
-	ON_CBN_KILLFOCUS(IDC_COMBO_START, OnKillfocusEditStart)
-	ON_CBN_SELCHANGE(IDC_COMBO_SELECTION, OnSelchangeComboSelection)
-	//}}AFX_MSG_MAP
-END_MESSAGE_MAP()
-
-/////////////////////////////////////////////////////////////////////////////
-// CSelectionDialog message handlers
-
 BOOL CVolumeChangeDialog::OnInitDialog()
 {
 	BaseClass::OnInitDialog();
@@ -566,6 +460,129 @@ void CVolumeChangeDialog::OnKillfocusEditVolumeRight()
 	}
 }
 
+/////////////////////////////////////////////////////////////////////////////
+// CSelectionDialog dialog
+
+
+CSelectionDialog::CSelectionDialog(SAMPLE_INDEX Start, SAMPLE_INDEX End,
+									SAMPLE_INDEX CaretPos, CHANNEL_MASK Channel,
+									CWaveFile & WaveFile,
+									int TimeFormat,
+									BOOL bAllowFileExtension,
+									CWnd* pParent /*=NULL*/)
+	: BaseClass(IDD, pParent)
+	, m_Chan(-1)
+	, m_Start(0)
+	, m_End(0)
+	, m_CaretPosition(CaretPos)
+	, m_Length(0)
+	, m_TimeFormat(TimeFormat)
+	, m_eStart(CaretPos, WaveFile, TimeFormat)
+	, m_eEnd(CaretPos, WaveFile, TimeFormat)
+	, m_eLength(TimeFormat)
+	, m_WaveFile(WaveFile)
+	, m_bAllowFileExtension(bAllowFileExtension)
+{
+	if (Start <= End)
+	{
+		m_Start = Start;
+		m_End = End;
+	}
+	else
+	{
+		m_Start = End;
+		m_End = Start;
+	}
+
+	m_Length = m_End - m_Start;
+
+	if (WaveFile.Channels() < 2)
+	{
+		m_lpszTemplateName = MAKEINTRESOURCE(IDD_SELECTION_DIALOG_MONO);
+		m_Chan = 0;
+	}
+	else
+	{
+
+		if (WaveFile.AllChannels(Channel))
+		{
+			m_Chan = 0;
+		}
+		else if (Channel & SPEAKER_FRONT_LEFT)
+		{
+			m_Chan = 1;
+		}
+		else if (Channel & SPEAKER_FRONT_RIGHT)
+		{
+			m_Chan = 2;
+		}
+	}
+	//{{AFX_DATA_INIT(CSelectionDialog)
+	m_TimeFormatIndex = 0;
+	m_SelectionNumber = 0;
+	//}}AFX_DATA_INIT
+	switch (TimeFormat & SampleToString_Mask)
+	{
+	case SampleToString_Sample:
+		m_TimeFormatIndex = 0;
+		break;
+	case SampleToString_HhMmSs:
+		m_TimeFormatIndex = 1;
+		break;
+	case SampleToString_Seconds:
+	default:
+		m_TimeFormatIndex = 2;
+		break;
+	}
+
+	m_eLength.SetSamplingRate(WaveFile.SampleRate());
+}
+
+
+void CSelectionDialog::DoDataExchange(CDataExchange* pDX)
+{
+	BaseClass::DoDataExchange(pDX);
+	//{{AFX_DATA_MAP(CSelectionDialog)
+	DDX_Control(pDX, IDC_COMBO_SELECTION, m_SelectionCombo);
+	DDX_Control(pDX, IDC_SPIN_START, m_SpinStart);
+	DDX_Control(pDX, IDC_SPIN_LENGTH, m_SpinLength);
+	DDX_Control(pDX, IDC_SPIN_END, m_SpinEnd);
+	DDX_Control(pDX, IDC_EDIT_LENGTH, m_eLength);
+	DDX_Control(pDX, IDC_COMBO_START, m_eStart);
+	DDX_Control(pDX, IDC_COMBO_END, m_eEnd);
+	DDX_CBIndex(pDX, IDC_COMBO_TIME_FORMAT, m_TimeFormatIndex);
+	DDX_CBIndex(pDX, IDC_COMBO_SELECTION, m_SelectionNumber);
+	//}}AFX_DATA_MAP
+	if (m_WaveFile.Channels() >= 2)
+	{
+		DDX_Radio(pDX, IDC_RADIO_CHANNEL, m_Chan);
+	}
+
+	m_eStart.ExchangeData(pDX, m_Start);
+	m_eEnd.ExchangeData(pDX, m_End);
+	m_eLength.ExchangeData(pDX, m_Length);
+
+}
+
+void CSelectionDialog::OnUpdateOk(CCmdUI * pCmdUI)
+{
+	pCmdUI->Enable(TRUE);   // TODO
+}
+
+BEGIN_MESSAGE_MAP(CSelectionDialog, BaseClass)
+//{{AFX_MSG_MAP(CSelectionDialog)
+	ON_CBN_SELCHANGE(IDC_COMBO_TIME_FORMAT, OnSelchangeComboTimeFormat)
+	ON_CBN_KILLFOCUS(IDC_COMBO_END, OnKillfocusEditEnd)
+	ON_EN_KILLFOCUS(IDC_EDIT_LENGTH, OnKillfocusEditLength)
+	ON_CBN_KILLFOCUS(IDC_COMBO_START, OnKillfocusEditStart)
+	ON_CBN_SELCHANGE(IDC_COMBO_SELECTION, OnSelchangeComboSelection)
+	ON_UPDATE_COMMAND_UI(IDOK, OnUpdateOk)
+	//}}AFX_MSG_MAP
+END_MESSAGE_MAP()
+
+/////////////////////////////////////////////////////////////////////////////
+// CSelectionDialog message handlers
+
 BOOL CSelectionDialog::OnInitDialog()
 {
 	BaseClass::OnInitDialog();
@@ -622,6 +639,7 @@ BOOL CSelectionDialog::OnInitDialog()
 			AddSelection(s, StartSample, EndSample);
 		}
 	}
+
 	m_SelectionCombo.SetCurSel(FindSelection(m_Start, m_End));
 	return TRUE;  // return TRUE unless you set the focus to a control
 }
@@ -654,94 +672,120 @@ void CSelectionDialog::OnSelchangeComboTimeFormat()
 	m_End = m_eEnd.ChangeTimeFormat(Format);
 
 	m_Length = m_End - m_Start;
+
 	m_eLength.ChangeTimeFormat(Format);
 	m_eLength.SetTimeSample(m_Length);
 }
 
-void CSelectionDialog::AdjustSelection()
+void CSelectionDialog::AdjustSelection(SAMPLE_INDEX Start, SAMPLE_INDEX End,
+										NUMBER_OF_SAMPLES Length)
 {
+	NUMBER_OF_SAMPLES const FileLength = m_WaveFile.NumberOfSamples();
+
 	if (m_bAllowFileExtension)
 	{
-		if (m_Start > m_End)
+		// selection can be extended beyond current file length
+		// Start should be in the file length, though
+		if (Start > FileLength)
 		{
-			SAMPLE_INDEX tmp = m_Start;
-			m_Start = m_End;
-			m_End = tmp;
+			Start = FileLength;
 		}
+
+		if (Start != m_Start)
+		{
+			// if start is greater than end, set end to start+Length
+			if (Start > End)
+			{
+				End = Start + Length;
+			}
+		}
+		else if (End != m_End)
+		{
+			if (End < Start)
+			{
+				if (End < Length)
+				{
+					Length = End;
+				}
+
+				Start = End - Length;
+			}
+		}
+		else
+		{
+			// length changed, adjust end
+			End = Start + Length;
+		}
+
 	}
 	else
 	{
 		// force the values into the file length
-		NUMBER_OF_SAMPLES FileLength = m_WaveFile.NumberOfSamples();
 
-		if (m_Start > m_End)
+		if (Start != m_Start)
 		{
-			SAMPLE_INDEX tmp = m_Start;
-			m_Start = m_End;
-			m_End = tmp;
+			// if start is greater than end, set end to start+Length
+			if (Start > FileLength)
+			{
+				Start = FileLength;
+			}
+			if (Start > End)
+			{
+				End = Start + Length;
+			}
 		}
-		else if (m_Start <= FileLength
-				&& m_End <= FileLength)
+		else if (End != m_End)
 		{
-			return;
+			if (End < Start)
+			{
+				if (End < Length)
+				{
+					Length = End;
+				}
+
+				Start = End - Length;
+			}
+		}
+		else
+		{
+			// length changed, adjust end
+			End = Start + Length;
 		}
 
-		if (m_Start > FileLength)
+		if (End > FileLength)
 		{
-			m_Start = FileLength;
-		}
-		if (m_End > FileLength)
-		{
-			m_End = FileLength;
+			End = FileLength;
 		}
 	}
 
-
-	m_Length = m_End - m_Start;
-
+	m_Start = Start;
 	m_eStart.SetTimeSample(m_Start);
+
+	m_End = End;
 	m_eEnd.SetTimeSample(m_End);
+
+	m_Length = End - Start;
 	m_eLength.SetTimeSample(m_Length);
 }
 
 void CSelectionDialog::OnKillfocusEditEnd()
 {
-	m_End = m_eEnd.UpdateTimeSample();
-	m_Length = m_End - m_Start;
+	AdjustSelection(m_Start, m_eEnd.UpdateTimeSample(), m_Length);
 
-	if (m_Length < 0)
-	{
-		m_Length = 0;
-	}
-
-	m_eLength.SetTimeSample(m_Length);
-	AdjustSelection();
 	m_SelectionCombo.SetCurSel(FindSelection(m_Start, m_End));
 }
 
 void CSelectionDialog::OnKillfocusEditLength()
 {
-	m_Length = m_eLength.UpdateTimeSample();
+	AdjustSelection(m_Start, m_End, m_eLength.UpdateTimeSample());
 
-	m_End = m_Start + m_Length;
-	m_eEnd.SetTimeSample(m_End);
-	AdjustSelection();
 	m_SelectionCombo.SetCurSel(FindSelection(m_Start, m_End));
 }
 
 void CSelectionDialog::OnKillfocusEditStart()
 {
-	m_Start = m_eStart.UpdateTimeSample();
+	AdjustSelection(m_eStart.UpdateTimeSample(), m_End, m_Length);
 
-	m_Length = m_End - m_Start;
-
-	if (m_Length < 0)
-	{
-		m_Length = 0;
-	}
-
-	m_eLength.SetTimeSample(m_Length);
-	AdjustSelection();
 	m_SelectionCombo.SetCurSel(FindSelection(m_Start, m_End));
 }
 
@@ -757,11 +801,15 @@ void CSelectionDialog::OnSelchangeComboSelection()
 		m_End = m_Selections[sel].end;
 		m_eEnd.SetTimeSample(m_End);
 
+		ASSERT(m_Start <= m_End);
+
 		m_Length = m_End - m_Start;
 
-		if (m_Length < 0) m_Length = 0;
+		if (m_Length < 0)
+		{
+			m_Length = 0;
+		}
 		m_eLength.SetTimeSample(m_Length);
-		AdjustSelection();
 	}
 }
 
