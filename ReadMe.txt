@@ -1,19 +1,17 @@
 TODO tasks:
 
-Ctrl+Arrow goes to next marker
+Draw markers in the FFT view
 If metadata doesn't come as the very last chunk of the file, copy the original file to 
  a file where it does (for non-compressed file, that is)
 Implement Marker/Region dialog
-When dragging a marker, keep the same position relative to click position
 
 Unnamed region name is composed from its boundaries
 Add support for markers and regions: save on copy and with undo, move and delete on Cut, move on Paste
-Double click selects between two markers
 Delete/Insert operations can auto add markers and regions
 
 Make Windows/Close All command
 
-When starting playing selection, bring the playback cursor into view
+When starting playing selection, bring the playback cursor into active view
 Add "Goto" button to the statistics dialog
 Add "Show" button to the selection dialog
 Put "Save As" and "Save Copy As" files to file MRU
@@ -153,6 +151,9 @@ Save As dialog is not centered first time (comdlg problem?)
 ??? When time/seconds format is set for status bar, MM:SS is actually shown
 
 Done:
+Double click selects between two markers
+Ctrl+Arrow goes to next marker
+When dragging a marker, keep the same position relative to click position
 Make Undo/redo save the selection and regions
 Handle markers/regions in the hor. ruler
 Limit marker/region movement to the file limits
