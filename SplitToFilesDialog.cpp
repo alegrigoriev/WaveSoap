@@ -41,14 +41,14 @@ CSplitToFilesDialog::CSplitToFilesDialog(CWaveFile & WaveFile, int TimeFormat, C
 	{
 		IDC_LIST_FILES, ExpandRight | ExpandDown,
 		IDC_COMBO_FILE_TYPE, ExpandRight | MoveDown,
-		IDC_COMBO_SAVE_DIR, ExpandRight | MoveDown,
+		IDC_COMBO_SAVE_DIR, ExpandRight | MoveDown | ThisIsDropCombobox,
 		IDC_COMBO_FILE_TYPE, ExpandRight | MoveDown,
-		IDC_COMBO_FILENAME_PREFIX, ExpandRight | MoveDown,
+		IDC_COMBO_FILENAME_PREFIX, ExpandRight | MoveDown | ThisIsDropCombobox,
 		IDC_COMBO_FORMAT_TAG, ExpandRight | MoveDown,
 		IDC_COMBO_FORMAT_ATTRIBUTES, ExpandRight | MoveDown,
 		IDC_COMBO_SELECTION, ExpandRight | MoveDown,
-		IDC_COMBO_START, ExpandRight | MoveDown,
-		IDC_COMBO_END, ExpandRight | MoveDown,
+		IDC_COMBO_START, ExpandRight | MoveDown | ThisIsDropCombobox,
+		IDC_COMBO_END, ExpandRight | MoveDown | ThisIsDropCombobox,
 		IDC_EDIT_LENGTH, ExpandRight | MoveDown,
 		IDC_COMBO_TIME_FORMAT, MoveDown,
 
@@ -838,6 +838,8 @@ void CSplitToFilesDialog::OnLvnItemchangedListFiles(NMHDR *pNMHDR, LRESULT *pRes
 			TRACE("List item %d selected\n", pNMLV->iItem);
 			// set new range to the selection combo-boxes
 			SetSelection(m_Files[pNMLV->iItem].Begin, m_Files[pNMLV->iItem].End);
+
+			UpdateComboSelection();
 			NeedUpdateControls();
 		}
 		if (pNMLV->uOldState & LVIS_SELECTED)
