@@ -1195,7 +1195,7 @@ void CWaveSoapFrontDoc::OnEditRedo()
 
 void CWaveSoapFrontDoc::OnUpdateEditRedo(CCmdUI* pCmdUI)
 {
-	pCmdUI->Enable( ! m_RedoList.IsEmpty() && ! CanWriteFile());
+	pCmdUI->Enable( ! m_RedoList.IsEmpty() && CanWriteFile());
 }
 
 void CWaveSoapFrontDoc::QueueOperation(COperationContext * pContext)
@@ -3577,7 +3577,7 @@ void CWaveSoapFrontDoc::OnProcessChangevolume()
 		return;
 	}
 
-	double const Volume[] =
+	double const Volume[MAX_NUMBER_OF_CHANNELS] =
 	{
 		dlg.GetLeftVolume(),
 		dlg.GetRightVolume(),
@@ -3590,7 +3590,7 @@ void CWaveSoapFrontDoc::OnProcessChangevolume()
 	}
 
 	CVolumeChangeContext::auto_ptr pContext(new CVolumeChangeContext(this, _T("Changing volume..."),
-												_T("Volume Change"), Volume));
+												_T("Volume Change"), Volume, m_WavFile.Channels()));
 
 	if (NULL == pContext.get())
 	{
@@ -3962,11 +3962,9 @@ void CWaveSoapFrontDoc::OnProcessMute()
 		return;
 	}
 
-	double const ZeroVolume[] = { 0., 0.};
-
 	CVolumeChangeContext::auto_ptr pContext
 	(new CVolumeChangeContext(this, _T("Muting the selection..."),
-							_T("Mute"), ZeroVolume));
+							_T("Mute"), 0.));
 
 	if ( ! pContext->InitDestination(m_WavFile, m_SelectionStart,
 									m_SelectionEnd, GetSelectedChannel(), UndoEnabled()))
@@ -4221,14 +4219,13 @@ void CWaveSoapFrontDoc::OnProcessInvert()
 		return;
 	}
 
-	double const InvertVolume[] = { -1., -1.};
-
 	CVolumeChangeContext::auto_ptr pContext
 	(new CVolumeChangeContext(this, _T("Inverting the waveform..."),
-							_T("Inversion"), InvertVolume));
+							_T("Inversion"), -1.));
 
 	SAMPLE_INDEX start = m_SelectionStart;
 	SAMPLE_INDEX end = m_SelectionEnd;
+
 	if (start == end)
 	{
 		// select all
