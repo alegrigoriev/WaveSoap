@@ -3376,7 +3376,7 @@ BEGIN
     ID_EDIT_SELECTION       "Select range of sound data\nSelect"
     ID_PROCESS_NORMALIZE    "Normalize the sound volume\nNormalize volume"
     ID_PROCESS_CHANGEVOLUME "Change the sound volume\nVolume"
-    ID_PROCESS_DCOFFSET     "Add or compensate DC offset"
+    ID_PROCESS_DCOFFSET     "Add or compensate DC offset\nDC offset"
     ID_PROCESS_RESAMPLE     "Change sample rate while preserving the duration\nResample"
     ID_PROCESS_MUTE         "Replace the selected area with silence (hold Shift for Fade In/Out options)\nMute"
     ID_PROCESS_INSERTSILENCE 
