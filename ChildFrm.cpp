@@ -8,6 +8,7 @@
 #include "ChildFrm.h"
 #include "TimeRulerView.h"
 #include "AmplitudeRuler.h"
+#include "FftRulerView.h"
 #include "WaveFftView.h"
 #include <afxpriv.h>
 
@@ -488,6 +489,8 @@ int CWaveMDIChildClient::OnCreate(LPCREATESTRUCT lpCreateStruct)
 	CWnd * pVertRuler = CreateView(RUNTIME_CLASS(CAmplitudeRuler),
 									r, VerticalWaveRulerID, pContext);
 
+	CWnd * pFftRuler = CreateView(RUNTIME_CLASS(CFftRulerView),
+								r, VerticalFftRulerID, pContext, FALSE);    // not visible
 
 	wStatic.Create("STATIC", "", WS_BORDER | WS_VISIBLE | WS_CHILD | SS_CENTER, r, this, ScaleStaticID, NULL);
 	wStatic1.Create("STATIC", "", WS_BORDER | WS_VISIBLE | WS_CHILD | SS_CENTER, r, this, Static1ID, NULL);
@@ -516,6 +519,9 @@ int CWaveMDIChildClient::OnCreate(LPCREATESTRUCT lpCreateStruct)
 	pRulerCast = DYNAMIC_DOWNCAST(CScaledScrollView, pVertRuler);
 	if (pRulerCast) pRulerCast->SyncVertical
 			(DYNAMIC_DOWNCAST(CScaledScrollView, pView));
+	pRulerCast = DYNAMIC_DOWNCAST(CScaledScrollView, pFftRuler);
+	if (pRulerCast) pRulerCast->SyncVertical
+			(DYNAMIC_DOWNCAST(CScaledScrollView, pFftView));
 
 	RecalcLayout();
 	return 0;
@@ -536,7 +542,18 @@ void CWaveMDIChildClient::OnViewShowFft()
 	if (pView != NULL)
 	{
 		pView->ShowWindow(SW_SHOW);
+		((CFrameWnd*)GetParent())->SetActiveView((CView *)pView);
+		pView = GetDlgItem(VerticalFftRulerID);
+		if (NULL != pView)
+		{
+			pView->ShowWindow(SW_SHOWNOACTIVATE);
+		}
 		pView = GetDlgItem(WaveViewID);
+		if (NULL != pView)
+		{
+			pView->ShowWindow(SW_HIDE);
+		}
+		pView = GetDlgItem(VerticalWaveRulerID);
 		if (NULL != pView)
 		{
 			pView->ShowWindow(SW_HIDE);
@@ -563,7 +580,18 @@ void CWaveMDIChildClient::OnViewWaveform()
 	if (pView != NULL)
 	{
 		pView->ShowWindow(SW_SHOW);
+		((CFrameWnd*)GetParent())->SetActiveView((CView *)pView);
+		pView = GetDlgItem(VerticalWaveRulerID);
+		if (NULL != pView)
+		{
+			pView->ShowWindow(SW_SHOWNOACTIVATE);
+		}
 		pView = GetDlgItem(FftViewID);
+		if (NULL != pView)
+		{
+			pView->ShowWindow(SW_HIDE);
+		}
+		pView = GetDlgItem(VerticalFftRulerID);
 		if (NULL != pView)
 		{
 			pView->ShowWindow(SW_HIDE);
