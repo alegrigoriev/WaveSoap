@@ -1,3 +1,4 @@
+// Copyright Alexander Grigoriev, 1997-2002, All Rights Reserved
 #include "StdAfx.h"
 #include "WaveSoapFront.h"
 #include "WaveSoapFileDialogs.h"
