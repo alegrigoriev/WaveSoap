@@ -115,6 +115,11 @@ CWaveMDIChildClient::CWaveMDIChildClient()
 	m_bShowFft(FALSE)
 {
 	m_SpectrumSectionWidth = GetApp()->m_SpectrumSectionWidth;
+
+	m_bmZoomInVert.LoadBitmap(ID_BITMAP_ZOOMINVERT);
+	m_bmZoomInHor.LoadBitmap(ID_BITMAP_ZOOMINHOR);
+	m_bmZoomOutVert.LoadBitmap(ID_BITMAP_ZOOMOUTVERT);
+	m_bmZoomOutHor.LoadBitmap(ID_BITMAP_ZOOMOUTHOR);
 }
 
 CWaveMDIChildClient::~CWaveMDIChildClient()
@@ -477,12 +482,26 @@ void CWaveMDIChildClient::RecalcLayout()
 	r.bottom = cr.bottom;
 	if (r.right != r.left)
 	{
+		CRect r1(0, r.Width() / 2, 0, r.Height());
+		CRect r2(0, r.Width() - r1.right, 0, r.Height());
+#if 0
 		wStaticFftL.ShowWindow(SW_SHOWNOACTIVATE);
 		DeferClientPos(&layout, & wStaticFftL, r, FALSE);
+
+		m_btZoomInVertFft.MoveWindow(0, 0, r.Width() / 2, r.Height());
+		m_btZoomOutVertFft.MoveWindow(r.Width() / 2, 0,
+									r.Width() - r.Width() / 2, r.Height());
+#else
+		m_FftZoomBar.ShowWindow(SW_SHOWNOACTIVATE);
+		DeferClientPos(&layout, & m_FftZoomBar, r, FALSE);
+#endif
 	}
 	else
 	{
-		wStaticFftL.ShowWindow(SW_HIDE);
+		//wStaticFftL.ShowWindow(SW_HIDE);
+		m_FftZoomBar.ShowWindow(SW_HIDE);
+		//m_btZoomInVertFft.ShowWindow(SW_HIDE);
+		//m_btZoomOutVertFft.ShowWindow(SW_HIDE);
 	}
 
 	r.top = OutlineHeight;
@@ -634,6 +653,8 @@ BOOL CChildFrame::OnCmdMsg(UINT nID, int nCode, void* pExtra, AFX_CMDHANDLERINFO
 BOOL CWaveMDIChildClient::OnCmdMsg(UINT nID, int nCode, void* pExtra, AFX_CMDHANDLERINFO* pHandlerInfo)
 {
 	// then pump its own handlers
+	if (NULL == pExtra && NULL == pHandlerInfo)
+		TRACE("CWaveMDIChildClient::OnCmdMsg nID=%X, nCode=%X\n", nID, nCode);
 	if (CWnd::OnCmdMsg(nID, nCode, pExtra, pHandlerInfo))
 		return TRUE;
 
@@ -717,8 +738,28 @@ int CWaveMDIChildClient::OnCreate(LPCREATESTRUCT lpCreateStruct)
 	//wStatic.SetFont(CFont::FromHandle((HFONT)GetStockObject(ANSI_VAR_FONT)));
 	wStatic1.Create("STATIC", "", WS_BORDER | WS_VISIBLE | WS_CHILD | SS_CENTER, r, this, Static1ID, NULL);
 	wStaticFftU.Create("STATIC", "", WS_BORDER | WS_VISIBLE | WS_CHILD | SS_CENTER, r, this, FftStaticLID, NULL);
-	wStaticFftL.Create("STATIC", "", WS_BORDER | WS_VISIBLE | WS_CHILD | SS_CENTER, r, this, FftStaticUID, NULL);
+	//wStaticFftL.Create(NULL, "", WS_BORDER | WS_VISIBLE | WS_CHILD | SS_CENTER, r, this, FftStaticUID, NULL);
+#if 0
+	m_btZoomInVertFft.Create("",
+							WS_VISIBLE | WS_CHILD | BS_PUSHBUTTON | BS_BITMAP | BS_CENTER | BS_FLAT,
+							r, & wStaticFftL, ID_VIEW_SS_ZOOMINVERT);
+	m_btZoomInVertFft.SetBitmap(m_bmZoomInVert);
 
+	m_btZoomOutVertFft.Create("",
+							WS_VISIBLE | WS_CHILD | BS_PUSHBUTTON | BS_BITMAP | BS_CENTER | BS_FLAT,
+							r, & wStaticFftL, ID_VIEW_SS_ZOOMOUTVERT);
+	m_btZoomOutVertFft.SetBitmap(m_bmZoomOutVert);
+#else
+	m_FftZoomBar.Create(this,
+						WS_CHILD
+						| WS_VISIBLE
+						| CBRS_NOALIGN
+						| CBRS_TOOLTIPS | CBRS_FLYBY
+						| CBRS_SIZE_FIXED, FftStaticUID);
+
+	m_FftZoomBar.LoadToolBar(IDR_TOOLBAR_ZOOMVERT);
+	m_FftZoomBar.SetBarStyle(m_FftZoomBar.GetBarStyle() & ~(CBRS_BORDER_ANY | CBRS_BORDER_3D));
+#endif
 	// create scrollbar
 	m_sb.Create(SBS_HORZ | WS_VISIBLE | WS_CHILD, r, this, AFX_IDW_HSCROLL_FIRST);
 	wTracker.Create(AfxRegisterWndClass(CS_HREDRAW | CS_VREDRAW,
@@ -1051,4 +1092,59 @@ void CChildFrame::OnDestroy()
 	CThisApp * pApp = GetApp();
 	pApp->m_bOpenChildMaximized = (0 != (GetStyle() & WS_MAXIMIZE));
 	CMDIChildWnd::OnDestroy();
+}
+
+using CWaveMDIChildClient::CNoFocusButton;
+
+BEGIN_MESSAGE_MAP(CNoFocusButton, CButton)
+	//{{AFX_MSG_MAP(CNoFocusButton)
+	ON_WM_MOUSEACTIVATE()
+	ON_WM_SETFOCUS()
+	//}}AFX_MSG_MAP
+END_MESSAGE_MAP()
+
+int CNoFocusButton::OnMouseActivate(CWnd* pDesktopWnd, UINT nHitTest, UINT message)
+{
+	//int nResult = CWnd::OnMouseActivate(pDesktopWnd, nHitTest, message);
+	//if (nResult == MA_NOACTIVATE || nResult == MA_NOACTIVATEANDEAT)
+	//return nResult;   // parent does not want to activate
+	return MA_NOACTIVATE;
+}
+
+void CNoFocusButton::OnSetFocus(CWnd* pOldWnd)
+{
+	if (pOldWnd
+		&& pOldWnd->GetParentFrame() == GetParentFrame())
+	{
+		// reject focus
+		pOldWnd->SetFocus();
+	}
+	else
+	{
+		CWnd * pWnd = GetParent()->GetDlgItem(1);
+		if (pWnd)
+		{
+			pWnd->SetFocus();
+		}
+		else
+		{
+			pOldWnd->SetFocus();
+		}
+	}
+}
+
+using CWaveMDIChildClient::CNoFocusWnd;
+
+BEGIN_MESSAGE_MAP(CNoFocusWnd, CWnd)
+	//{{AFX_MSG_MAP(CNoFocusWnd)
+	ON_WM_MOUSEACTIVATE()
+	//}}AFX_MSG_MAP
+END_MESSAGE_MAP()
+
+int CNoFocusWnd::OnMouseActivate(CWnd* pDesktopWnd, UINT nHitTest, UINT message)
+{
+	int nResult = CWnd::OnMouseActivate(pDesktopWnd, nHitTest, message);
+	if (nResult == MA_NOACTIVATE || nResult == MA_NOACTIVATEANDEAT)
+		return nResult;   // parent does not want to activate
+	return MA_NOACTIVATE;
 }
