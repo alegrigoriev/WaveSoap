@@ -53,6 +53,14 @@ enum   // flags for CWaveFormat::ValidateFormat
 	WaveFormatCompressed = 0x80000000,
 };
 
+enum WaveSampleType
+{
+	SampleType16bit,
+	SampleType32Bit,
+	SampleTypeFloat32,
+	SampleTypeFloat64,
+};
+
 struct WaveFormatTagEx
 {
 	WaveFormatTagEx() {}
@@ -547,4 +555,12 @@ inline CString CWaveFormat::GetFormatTagNameString(HACMDRIVER had)
 }
 
 WAVEFORMATEX * CopyWaveformat(const WAVEFORMATEX * src);
+
+void CopyWaveSamples(void * pDstBuf, CHANNEL_MASK DstChannels,
+					NUMBER_OF_CHANNELS NumDstChannels,
+					void const * pSrcBuf, CHANNEL_MASK SrcChannels,
+					NUMBER_OF_CHANNELS NumSrcChannels,
+					unsigned Samples,
+					WaveSampleType DstType = SampleType16bit, WaveSampleType SrcType = SampleType16bit);
+
 #endif // #ifndef WAVESUPPORT_H__

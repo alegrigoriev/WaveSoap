@@ -1685,6 +1685,109 @@ void AudioStreamConvertor::Close()
 	}
 }
 
+void CopyWaveSamples(void * pDstBuf, CHANNEL_MASK DstChannels,
+					NUMBER_OF_CHANNELS const NumDstChannels,
+					void const * pSrcBuf, CHANNEL_MASK SrcChannels,
+					NUMBER_OF_CHANNELS const NumSrcChannels,
+					unsigned Samples,
+					WaveSampleType DstType, WaveSampleType SrcType)
+{
+	ASSERT(DstType == SampleType16bit);
+	ASSERT(SrcType == SampleType16bit);
+
+	CHANNEL_MASK const DstChannelsMask = ~((~0UL) << NumDstChannels);
+
+	DstChannels &= DstChannelsMask;
+	ASSERT(0 != DstChannels);
+
+	CHANNEL_MASK const SrcChannelsMask = ~((~0UL) << NumSrcChannels);
+
+	SrcChannels &= SrcChannelsMask;
+	ASSERT(0 != SrcChannels);
+
+	ASSERT(NumSrcChannels <= 2 && NumSrcChannels > 0);
+	int const SrcSampleSize = sizeof (WAVE_SAMPLE) * NumSrcChannels;
+
+	ASSERT(NumDstChannels <= 2 && NumDstChannels > 0);
+	int const DstSampleSize = sizeof (WAVE_SAMPLE) * NumDstChannels;
+
+	if (DstType == SrcType
+		&& DstChannelsMask == DstChannels
+		&& SrcChannelsMask == SrcChannels
+		&& DstChannels == SrcChannels)
+	{
+		// simply copy the data
+		memmove(pDstBuf, pSrcBuf, Samples * SrcSampleSize);
+		return;
+	}
+
+	// the following variants are possible:
+	// copying one channel to one channel
+	// copying one channel to two channels
+	// copying two channels to one channel
+	WAVE_SAMPLE const * pSrc = (WAVE_SAMPLE const *) pSrcBuf;
+	WAVE_SAMPLE * pDst = (WAVE_SAMPLE *) pDstBuf;
+
+	if ((SPEAKER_FRONT_LEFT | SPEAKER_FRONT_RIGHT) == DstChannels)
+	{
+		ASSERT(SPEAKER_FRONT_RIGHT == SrcChannels
+				|| SPEAKER_FRONT_LEFT == SrcChannels);
+		// copy one src channel to two dst channels
+		if (SPEAKER_FRONT_RIGHT == SrcChannels)
+		{
+			// channel #1
+			pSrc++;
+		}
+
+		for (unsigned i = 0; i < Samples;
+			i++, pSrc += NumSrcChannels, pDst += NumDstChannels)
+		{
+			WAVE_SAMPLE temp = *pSrc;
+			pDst[0] = temp;
+			pDst[1] = temp;
+		}
+	}
+	else if ((SPEAKER_FRONT_LEFT | SPEAKER_FRONT_RIGHT) == SrcChannels)
+	{
+		// copy two src channels to one dst channel
+		ASSERT(SPEAKER_FRONT_RIGHT == DstChannels
+				|| SPEAKER_FRONT_LEFT == DstChannels);
+
+		if (SPEAKER_FRONT_RIGHT == DstChannels)
+		{
+			// channel #1
+			pDst++;
+		}
+
+		for (unsigned i = 0; i < Samples;
+			i++, pSrc += NumSrcChannels, pDst += NumDstChannels)
+		{
+			pDst[0] = (pSrc[0] + pSrc[1]) / 2;
+		}
+	}
+	else
+	{
+		// copying one channel to one channel
+		if (SPEAKER_FRONT_RIGHT == SrcChannels)
+		{
+			// channel #1
+			pSrc++;
+		}
+		if (SPEAKER_FRONT_RIGHT == DstChannels)
+		{
+			// channel #1
+			pDst++;
+		}
+
+		for (unsigned i = 0; i < Samples;
+			i++, pSrc += NumSrcChannels, pDst += NumDstChannels)
+		{
+			pDst[0] = pSrc[0];
+		}
+	}
+}
+
+
 WAVEFORMATEX const CWaveFormat::CdAudioFormat =
 {
 	WAVE_FORMAT_PCM,
