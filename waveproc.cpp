@@ -424,6 +424,20 @@ BOOL CBatchProcessing::SetAndValidateWaveformat(WAVEFORMATEX const * pWf)
 	return TRUE;
 }
 
+int CWaveProc::ProcessSound(char const * pInBuf, char * pOutBuf,
+							int nInBytes, int nOutBytes, int * pUsedBytes)
+{
+	int nSavedBytes = 0;
+	*pUsedBytes = 0;
+	if ( ! CheckForMinBufferSize(pInBuf, pOutBuf, nInBytes, nOutBytes,
+								pUsedBytes, & nSavedBytes,
+								GetMinInputBufSize(), GetMinOutputBufSize()))
+	{
+		return nSavedBytes;
+	}
+	return ProcessSoundBuffer(pInBuf, pOutBuf, nInBytes, nOutBytes, pUsedBytes);
+}
+
 BOOL CWaveProc::CheckForMinBufferSize(char const * &pIn, char * &pOut,
 									int &nInBytes, int &nOutBytes,
 									int * pUsedBytes, int * pSavedBytes,
@@ -463,7 +477,7 @@ BOOL CWaveProc::CheckForMinBufferSize(char const * &pIn, char * &pOut,
 		if (nMinInBytes == m_TmpInBufPut)
 		{
 			int nUsed = 0;
-			int nSaved = ProcessSound(m_TmpInBuf, pOut, nMinInBytes, nOutBytes, & nUsed);
+			int nSaved = ProcessSoundBuffer(m_TmpInBuf, pOut, nMinInBytes, nOutBytes, & nUsed);
 			if (nUsed != nMinInBytes)
 			{
 				TRACE("Couldn't process min bytes!\n");
@@ -499,7 +513,7 @@ BOOL CWaveProc::CheckForMinBufferSize(char const * &pIn, char * &pOut,
 		int nUsed = 0;
 		m_TmpOutBufGet = 0;
 		m_TmpOutBufPut = 0;
-		int nSaved = ProcessSound(pIn, m_TmpOutBuf, nInBytes, nMinOutBytes, & nUsed);
+		int nSaved = ProcessSoundBuffer(pIn, m_TmpOutBuf, nInBytes, nMinOutBytes, & nUsed);
 		m_TmpOutBufPut = nSaved;
 		* pUsedBytes += nUsed;
 		for ( ; nOutBytes > 0 && m_TmpOutBufGet < m_TmpOutBufPut; m_TmpOutBufGet++,
@@ -537,17 +551,11 @@ void CHumRemoval::SetHighpassCutoff(double frequency)
 		m_HighpassCoeffs[1],  m_HighpassCoeffs[2]);
 }
 
-int CHumRemoval::ProcessSound(char const * pIn, char * pOut,
-							int nInBytes, int nOutBytes, int * pUsedBytes)
+int CHumRemoval::ProcessSoundBuffer(char const * pIn, char * pOut,
+									int nInBytes, int nOutBytes, int * pUsedBytes)
 {
 	int nSavedBytes = 0;
 	*pUsedBytes = 0;
-	if ( ! CheckForMinBufferSize(pIn, pOut, nInBytes, nOutBytes,
-								pUsedBytes, & nSavedBytes,
-								m_InputChannels * sizeof (__int16), m_InputChannels * sizeof (__int16)))
-	{
-		return nSavedBytes;
-	}
 
 	int nInSamples = nInBytes / sizeof (__int16);
 	int nOutSamples = nOutBytes / sizeof (__int16);
@@ -1046,16 +1054,11 @@ void InterpolateGap(CBackBuffer<int, int> & data, int nLeftIndex, int ClickLengt
 	}
 }
 
-int CClickRemoval::ProcessSound(char const * pIn, char * pOut,
-								int nInBytes, int nOutBytes, int * pUsedBytes)
+int CClickRemoval::ProcessSoundBuffer(char const * pIn, char * pOut,
+									int nInBytes, int nOutBytes, int * pUsedBytes)
 {
 	int nSavedBytes = 0;
 	*pUsedBytes = 0;
-	if ( ! CheckForMinBufferSize(pIn, pOut, nInBytes, nOutBytes,
-			pUsedBytes, & nSavedBytes, m_InputChannels * sizeof (__int16), m_InputChannels * sizeof (__int16)))
-	{
-		return nSavedBytes;
-	}
 
 	int nInSamples = nInBytes / (m_InputChannels * sizeof (__int16));
 	int nOutSamples = nOutBytes / (m_InputChannels * sizeof (__int16));
@@ -1487,17 +1490,12 @@ void CNoiseReduction::SIGNAL_PARAMS::AnalyzeFftSample(complex<DATA> smp, CNoiseR
 	return;
 }
 
-int CNoiseReduction::ProcessSound(char const * pIn, char * pOut,
-								int nInBytes, int nOutBytes, int * pUsedBytes)
+int CNoiseReduction::ProcessSoundBuffer(char const * pIn, char * pOut,
+										int nInBytes, int nOutBytes, int * pUsedBytes)
 {
 	int nSavedBytes = 0;
 	*pUsedBytes = 0;
 	int nChans = m_InputChannels;
-	if ( ! CheckForMinBufferSize(pIn, pOut, nInBytes, nOutBytes,
-								pUsedBytes, & nSavedBytes, nChans * sizeof (__int16), nChans * sizeof (__int16)))
-	{
-		return nSavedBytes;
-	}
 
 	int nInSamples = nInBytes / (nChans * sizeof (__int16));
 	int nOutSamples = nOutBytes / (nChans * sizeof (__int16));
@@ -2201,16 +2199,11 @@ void CResampleFilter::FilterSoundResample()
 	}
 }
 
-int CResampleFilter::ProcessSound(char const * pIn, char * pOut,
-								int nInBytes, int nOutBytes, int * pUsedBytes)
+int CResampleFilter::ProcessSoundBuffer(char const * pIn, char * pOut,
+										int nInBytes, int nOutBytes, int * pUsedBytes)
 {
 	int nSavedBytes = 0;
 	*pUsedBytes = 0;
-	if ( ! CheckForMinBufferSize(pIn, pOut, nInBytes, nOutBytes,
-			pUsedBytes, & nSavedBytes, m_InputChannels * sizeof (__int16), m_InputChannels * sizeof (__int16)))
-	{
-		return nSavedBytes;
-	}
 
 	int nInSamples = nInBytes / sizeof (__int16);
 	int nOutSamples = nOutBytes / sizeof (__int16);
@@ -2528,17 +2521,11 @@ int CAudioConvertor::ProcessSound(char const * pIn, char * pOut,
 	return nSavedBytes;
 }
 
-int CChannelConvertor::ProcessSound(char const * pIn, char * pOut,
-									int nInBytes, int nOutBytes, int * pUsedBytes)
+int CChannelConvertor::ProcessSoundBuffer(char const * pIn, char * pOut,
+										int nInBytes, int nOutBytes, int * pUsedBytes)
 {
 	int nSavedBytes = 0;
 	*pUsedBytes = 0;
-	if ( ! CheckForMinBufferSize(pIn, pOut, nInBytes, nOutBytes,
-								pUsedBytes, & nSavedBytes, m_InputChannels * sizeof (__int16),
-								m_OutputChannels * sizeof (__int16)))
-	{
-		return nSavedBytes;
-	}
 
 	int nInSamples = nInBytes / (m_InputChannels * sizeof (__int16));
 	int nOutSamples = nOutBytes / (m_OutputChannels * sizeof (__int16));
@@ -2590,3 +2577,72 @@ int CChannelConvertor::ProcessSound(char const * pIn, char * pOut,
 	return nSavedBytes;
 }
 
+BOOL CLameEncConvertor::Open(WAVEFORMATEX * pWF)
+{
+	BE_CONFIG cfg;
+	if (! m_Enc.OpenStream( & cfg))
+	{
+		return FALSE;
+	}
+}
+
+int CLameEncConvertor::ProcessSound(char const * pInBuf, char * pOutBuf,
+									int nInBytes, int nOutBytes, int * pUsedBytes)
+{
+	// save extra data from the output buffer
+	*pUsedBytes = 0;
+	int nSavedBytes = 0;
+	// copy data to the temp buffer
+	while (0 != nInBytes
+			|| 0 != m_InputBufferFilled
+			|| 0 != m_OutputBufferFilled)
+	{
+		if (0 != m_OutputBufferFilled)
+		{
+			int ToCopy = __min(nOutBytes, m_OutputBufferFilled);
+			memcpy(pOutBuf, m_pOutputBuffer, ToCopy);
+
+			m_OutputBufferFilled -= ToCopy;
+			nOutBytes -= ToCopy;
+			pOutBuf += ToCopy;
+			nSavedBytes += ToCopy;
+			if (0 != m_OutputBufferFilled)
+			{
+				memmove(m_pOutputBuffer, m_pOutputBuffer + ToCopy, m_OutputBufferFilled);
+				return nSavedBytes;
+			}
+		}
+		int ToCopy = m_InputBufferSize - m_InputBufferFilled;
+		if (ToCopy > nInBytes)
+		{
+			ToCopy = nInBytes;
+		}
+		if (NULL != pInBuf)
+		{
+			memcpy(m_pInputBuffer, pInBuf, ToCopy);
+			*pUsedBytes += ToCopy;
+			pInBuf += ToCopy;
+			nInBytes -= ToCopy;
+			if (m_InputBufferFilled == m_InputBufferSize)
+			{
+				DWORD OutFilled = 0;
+				m_Enc.EncodeChunk((short*)m_pInputBuffer,
+								m_InputBufferFilled / (sizeof (__int16) * m_InputChannels),
+								(BYTE*)m_pOutputBuffer, & OutFilled);
+				m_OutputBufferFilled = OutFilled;
+			}
+			else
+			{
+				break;
+			}
+		}
+		else
+		{
+			// flush data
+			DWORD OutFilled = 0;
+			m_Enc.FlushStream((BYTE*)m_pOutputBuffer, & OutFilled);
+			m_OutputBufferFilled = OutFilled;
+		}
+	}
+	return nSavedBytes;
+}

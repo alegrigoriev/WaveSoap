@@ -6,6 +6,8 @@
 #include <afxtempl.h>
 #include <mmreg.h>
 #include <msacm.h>
+#include "BladeMP3EncDll.h"
+
 using namespace std;
 
 #if 0
@@ -70,18 +72,27 @@ public:
 		m_TmpInBufPut(0),
 		m_TmpInBufGet(0),
 		m_TmpOutBufPut(0),
+		m_TmpOutBufGet(0),
 		m_InputChannels(1),
 		m_OutputChannels(1),
-		m_ChannelsToProcess(-1),
-		m_TmpOutBufGet(0)
+		m_ChannelsToProcess(-1)
 	{}
 	virtual ~CWaveProc() {}
 	// the function returns number of returned samples
 	// if NULL == pInBuf, the function should flush back stored samples
 	// and return their number, or 0 if no more samples
 	// any latency should be compensated in the function
+	// The function checks for minimum buffer size
+	// and calls ProcessSoundBuffer with at least MinInBytes()
+	// and MinOutBytes()
 	virtual int ProcessSound(char const * pInBuf, char * pOutBuf,
-							int nInBytes, int nOutBytes, int * pUsedSamples) = 0;
+							int nInBytes, int nOutBytes, int * pUsedBytes);
+	virtual int ProcessSoundBuffer(char const * pInBuf, char * pOutBuf,
+									int nInBytes, int nOutBytes, int * pUsedBytes)
+	{
+		* pUsedBytes = nInBytes;
+		return nOutBytes;
+	}
 	// SetAndValidateWaveformat returns FALSE if the wave cannot be
 	// processed
 	virtual BOOL SetAndValidateWaveformat(WAVEFORMATEX const * pWf);
@@ -89,18 +100,27 @@ public:
 	int m_OutputChannels;
 	int m_ChannelsToProcess;
 	int m_SamplesPerSecond;
-	BOOL (*m_Callback)(CWaveProc * pProc, UINT msg,
-						size_t TotalSize, size_t pos);
+	BOOL (CWaveProc::*m_Callback)(UINT msg,
+								size_t TotalSize, size_t pos);
 	BOOL CheckForMinBufferSize(char const * &pInBuf, char * &pOutBuf,
 								int &nInBytes, int &nOutBytes,
 								int * pUsedBytes, int * pSavedBytes,
 								int nMinInBytes, int nMinOutBytes);
 
-	static BOOL NullCallback(CWaveProc * , UINT ,
-							size_t , size_t ) { return TRUE; }
+	virtual int GetMinInputBufSize() const
+	{
+		return m_InputChannels * sizeof (__int16);
+	}
+	virtual int GetMinOutputBufSize() const
+	{
+		return m_OutputChannels * sizeof (__int16);
+	}
+
+
+	BOOL NullCallback(UINT , size_t , size_t ) { return TRUE; }
 	DWORD m_dwCallbackData;
-	char m_TmpInBuf[4];
-	char m_TmpOutBuf[4];
+	char m_TmpInBuf[32];
+	char m_TmpOutBuf[32];
 	int m_TmpInBufPut;
 	int m_TmpInBufGet;
 	int m_TmpOutBufPut;
@@ -117,8 +137,8 @@ class CHumRemoval: public CWaveProc
 {
 public:
 	CHumRemoval();
-	virtual int ProcessSound(char const * pInBuf, char * pOutBuf,
-							int nInBytes, int nOutBytes, int * pUsedSamples);
+	virtual int ProcessSoundBuffer(char const * pInBuf, char * pOutBuf,
+									int nInBytes, int nOutBytes, int * pUsedBytes);
 	virtual BOOL SetAndValidateWaveformat(WAVEFORMATEX const * pWf);
 	float m_prev_outl, m_prev_outr;
 	float m_prev_inl, m_prev_inr;
@@ -147,8 +167,8 @@ class CClickRemoval: public CWaveProc
 public:
 	CClickRemoval();
 	virtual ~CClickRemoval();
-	virtual int ProcessSound(char const * pInBuf, char * pOutBuf,
-							int nInBytes, int nOutBytes, int * pUsedSamples);
+	virtual int ProcessSoundBuffer(char const * pInBuf, char * pOutBuf,
+									int nInBytes, int nOutBytes, int * pUsedBytes);
 	virtual BOOL SetAndValidateWaveformat(WAVEFORMATEX const * pWf);
 
 	BOOL SetClickSourceFile(LPCTSTR szFilename);
@@ -196,8 +216,8 @@ public:
 	CNoiseReduction(int nFftOrder = 1024);
 	virtual ~CNoiseReduction();
 	typedef float DATA;
-	virtual int ProcessSound(char const * pInBuf, char * pOutBuf,
-							int nInBytes, int nOutBytes, int * pUsedSamples);
+	virtual int ProcessSoundBuffer(char const * pInBuf, char * pOutBuf,
+									int nInBytes, int nOutBytes, int * pUsedBytes);
 	virtual BOOL SetAndValidateWaveformat(WAVEFORMATEX const * pWf);
 	//protected:
 	long m_SamplesPerSec;
@@ -308,7 +328,7 @@ public:
 	virtual ~CBatchProcessing();
 
 	virtual int ProcessSound(char const * pInBuf, char * pOutBuf,
-							int nInBytes, int nOutBytes, int * pUsedSamples);
+							int nInBytes, int nOutBytes, int * pUsedBytes);
 	virtual BOOL SetAndValidateWaveformat(WAVEFORMATEX const * pWf);
 	void AddWaveProc(CWaveProc * pProc, int index = -1);
 	BOOL m_bAutoDeleteProcs;
@@ -333,8 +353,8 @@ public:
 	{
 	}
 	virtual ~CResampleFilter();
-	virtual int ProcessSound(char const * pInBuf, char * pOutBuf,
-							int nInBytes, int nOutBytes, int * pUsedSamples);
+	virtual int ProcessSoundBuffer(char const * pInBuf, char * pOutBuf,
+									int nInBytes, int nOutBytes, int * pUsedBytes);
 	//virtual BOOL SetAndValidateWaveformat(WAVEFORMATEX const * pWf);
 	BOOL InitResample(double ResampleRatio, double FilterLength, int nChannels);
 	void FilterSoundResample();
@@ -385,7 +405,7 @@ public:
 	BOOL InitConversion(WAVEFORMATEX * SrcFormat, WAVEFORMATEX * DstFormat,
 						HACMDRIVER had = NULL);
 	virtual int ProcessSound(char const * pInBuf, char * pOutBuf,
-							int nInBytes, int nOutBytes, int * pUsedSamples);
+							int nInBytes, int nOutBytes, int * pUsedBytes);
 };
 
 class CChannelConvertor : public CWaveProc
@@ -401,9 +421,37 @@ public:
 	DWORD dwDstProcessed;
 	// conversion either mono->stereo, or stereo->mono.
 	// if converting stereo->mono, the data can be left, right, or average
+	virtual int ProcessSoundBuffer(char const * pIn, char * pOut,
+									int nInBytes, int nOutBytes, int * pUsedBytes);
+};
+
+class CLameEncConvertor : public CWaveProc
+{
+public:
+	CLameEncConvertor(LPCTSTR pDll = _T("LAME_ENC.DLL"))
+		: m_InputBufferSize(0),
+		m_InputBufferFilled(0),
+		m_pOutputBuffer(NULL),
+		m_OutputBufferFilled(0),
+		m_OutputBufferSize(0),
+		m_pInputBuffer(NULL)
+	{
+		m_Enc.Open(pDll);
+	}
+	BladeMp3Encoder m_Enc;
+	char * m_pInputBuffer;
+	int m_InputBufferSize;
+	int m_InputBufferFilled;
+
+	char * m_pOutputBuffer;
+	int m_OutputBufferFilled;
+	int m_OutputBufferSize;
+
+	BOOL Open(WAVEFORMATEX * pWF);
 	virtual int ProcessSound(char const * pIn, char * pOut,
 							int nInBytes, int nOutBytes, int * pUsedBytes);
 };
+
 void InterpolateGap(__int16 data[], int nLeftIndex, int ClickLength, int nChans);
 void InterpolateBigGap(__int16 data[], int nLeftIndex, int ClickLength, int nChans);
 #endif //#ifndef __WAVEPROC_H_

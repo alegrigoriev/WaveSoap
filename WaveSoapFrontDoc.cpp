@@ -781,19 +781,47 @@ BOOL CWaveSoapFrontDoc::DoSave(LPCTSTR lpszPathName, BOOL bReplace)
 		{
 			memcpy(pWf, pNewWf, pNewWf->cbSize + sizeof (WAVEFORMATEX));
 		}
+		switch (dlg.m_FileType)
+		{
+		case SoundFileWav:
+			break;
+		case SoundFileMp3:
+			SaveFlags |= SaveFile_Mp3File;
+			// get encoder type and bitrate
+			switch (dlg.m_Mp3Encoders[dlg.m_SelectedMp3Encoder])
+			{
+			case Mp3EncoderAcm:
+				// waveformat is there
+				break;
+			case Mp3EncoderLameencoder:
+				pWf->wFormatTag = -1;
+				pWf->nAvgBytesPerSec = dlg.GetLameEncBitrate() / 8;
+				break;
+			}
+			break;
+		case SoundFileWma:
+			SaveFlags |= SaveFile_WmaFile;
+			break;
+		case SoundFileRaw:
+			SaveFlags |= SaveFile_RawFile;
+			pWf->wFormatTag = dlg.m_SelectedRawFormat;
+			break;
+		}
 	}
 
 	CWaitCursor wait;
-	if (!OnSaveDocument(newName, SaveFlags, pWf))
+	BOOL Result = OnSaveDocument(newName, SaveFlags, pWf);
+	delete[] (char*) pWf;
+	if ( ! Result)
 	{
-		delete[] (char*) pWf;
 		return FALSE;
 	}
 
-	delete[] (char*) pWf;
 	// reset the title and change the document name
 	if (bReplace)
+	{
 		SetPathName(newName);
+	}
 
 	return TRUE;        // success
 }
