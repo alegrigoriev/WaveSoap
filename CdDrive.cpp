@@ -19,7 +19,6 @@ static char THIS_FILE[]=__FILE__;
 
 void CCdDrive::LoadAspi()
 {
-//    return;
 	m_hWinaspi32 = LoadLibrary(_T("cdral.dll"));
 
 	if (NULL != m_hWinaspi32)
@@ -144,6 +143,7 @@ CCdDrive::CCdDrive(CCdDrive const & Drive, BOOL UseAspi)
 	GetAspi32DriveLetter(NULL),
 	GetAspi32HaTargetLun(NULL),
 	m_MediaChangeCount(-1),
+	m_OffsetBytesPerSector(2048),
 	m_bMediaChangeNotificationDisabled(false),
 	m_bDoorLocked(false)
 {
@@ -160,12 +160,29 @@ CCdDrive & CCdDrive::operator =(CCdDrive const & Drive)
 	m_MediaChangeCount = Drive.m_MediaChangeCount;
 	m_ScsiAddr = Drive.m_ScsiAddr;
 
-	DuplicateHandle(GetCurrentProcess(), Drive.m_hDrive,
-					GetCurrentProcess(), & m_hDrive,
-					0, FALSE, DUPLICATE_SAME_ACCESS);
-	DuplicateHandle(GetCurrentProcess(), Drive.m_hDriveAttributes,
-					GetCurrentProcess(), & m_hDriveAttributes,
-					0, FALSE, DUPLICATE_SAME_ACCESS);
+	if (NULL != Drive.m_hDrive)
+	{
+		DuplicateHandle(GetCurrentProcess(), Drive.m_hDrive,
+						GetCurrentProcess(), & m_hDrive,
+						0, FALSE, DUPLICATE_SAME_ACCESS);
+	}
+	else
+	{
+		m_hDrive = NULL;
+	}
+	if (NULL != Drive.m_hDriveAttributes)
+	{
+		DuplicateHandle(GetCurrentProcess(), Drive.m_hDriveAttributes,
+						GetCurrentProcess(), & m_hDriveAttributes,
+						0, FALSE, DUPLICATE_SAME_ACCESS);
+	}
+	else
+	{
+		m_hDriveAttributes = NULL;
+	}
+
+	m_bScsiCommandsAvailable = Drive.m_bScsiCommandsAvailable;
+	m_OffsetBytesPerSector = Drive.m_OffsetBytesPerSector;
 	return *this;
 }
 
@@ -733,6 +750,19 @@ BOOL CCdDrive::ReadToc(CDROM_TOC * pToc)
 	TRACE("Get TOC IoControl returned %x, bytes: %d, last error = %d, First track %d, last track: %d, Length:%02X%02X\n",
 		res, dwReturned, GetLastError(),
 		pToc->FirstTrack, pToc->LastTrack, pToc->Length[1], pToc->Length[0]);
+
+	m_OffsetBytesPerSector = 2048;
+	if (res)
+	{
+		DISK_GEOMETRY geom;
+		if (DeviceIoControl(m_hDrive, IOCTL_CDROM_GET_DRIVE_GEOMETRY,
+							NULL, 0, & geom, sizeof geom, & dwReturned, NULL)
+			&& dwReturned == sizeof geom)
+		{
+			m_OffsetBytesPerSector = geom.BytesPerSector;
+			TRACE("CD returned bytes per sector=%d\n", m_OffsetBytesPerSector);
+		}
+	}
 	return res;
 }
 
@@ -952,7 +982,8 @@ BOOL CCdDrive::ReadCdData(void * pBuf, long Address, int nSectors)
 		RAW_READ_INFO rri;
 		rri.SectorCount = nSectors;
 		rri.TrackMode = CDDA;
-		rri.DiskOffset.QuadPart = CDDASectorSize * Address;
+		// when the address is calculated, one sector is 2048 bytes
+		rri.DiskOffset.QuadPart = m_OffsetBytesPerSector * Address;
 		res = DeviceIoControl(m_hDrive, IOCTL_CDROM_RAW_READ,
 							& rri, sizeof rri,
 							pBuf, Length, & Length, NULL);
@@ -994,7 +1025,7 @@ BOOL CCdDrive::ReadCdData(void * pBuf, CdAddressMSF Address, int nSectors)
 		rri.SectorCount = nSectors;
 		rri.TrackMode = CDDA;
 		// 2 seconds (150 sectors) offset between MSF address and logical block address
-		rri.DiskOffset.QuadPart = CDDASectorSize * (LONG(Address) - 150);
+		rri.DiskOffset.QuadPart = m_OffsetBytesPerSector * (LONG(Address) - 150);
 
 		res = DeviceIoControl(m_hDrive, IOCTL_CDROM_RAW_READ,
 							& rri, sizeof rri,
