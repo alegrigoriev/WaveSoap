@@ -1823,7 +1823,7 @@ BOOL CWaveSoapFrontDoc::OnSaveDirectFile()
 	return TRUE;
 }
 
-BOOL CWaveSoapFrontDoc::OnSaveBufferedPcmFile(int flags, LPCTSTR FullTargetName)
+BOOL CWaveSoapFrontDoc::OnSaveBufferedPcmFile(class COperationContext ** ppOp, int flags, LPCTSTR FullTargetName)
 {
 	// non-direct PCM file, the same directory, not saving a copy,
 	// the same format
@@ -1838,17 +1838,19 @@ BOOL CWaveSoapFrontDoc::OnSaveBufferedPcmFile(int flags, LPCTSTR FullTargetName)
 									IDS_SAVE_FILE_COMMIT_STATUS_PROMPT,
 									m_WavFile, flags, FullTargetName);
 
-	if (NULL == pContext)
+	if (NULL != ppOp)
 	{
-		NotEnoughMemoryMessageBox();
-		return FALSE;
+		*ppOp = pContext;
+		return TRUE;
 	}
-
-	pContext->Execute();
-	return FALSE;   // not saved yet, in process
+	else
+	{
+		pContext->Execute();
+		return FALSE;   // not saved yet, in process
+	}
 }
 
-BOOL CWaveSoapFrontDoc::OnSaveBufferedPcmFileCopy(int flags, LPCTSTR FullTargetName)
+BOOL CWaveSoapFrontDoc::OnSaveBufferedPcmFileCopy(class COperationContext ** ppOp, int flags, LPCTSTR FullTargetName)
 {
 	CWaveFile NewWaveFile;
 	// the same file attributes, but different folder or saving a copy.
@@ -1912,11 +1914,19 @@ BOOL CWaveSoapFrontDoc::OnSaveBufferedPcmFileCopy(int flags, LPCTSTR FullTargetN
 		pSaveContext->m_Flags |= FileSaveContext_SameName;
 	}
 
-	pSaveContext.release()->Execute();
-	return FALSE;   // not saved yet
+	if (NULL != ppOp)
+	{
+		*ppOp = pSaveContext.release();
+		return TRUE;
+	}
+	else
+	{
+		pSaveContext.release()->Execute();
+		return FALSE;   // not saved yet
+	}
 }
 
-BOOL CWaveSoapFrontDoc::OnSaveConvertedFile(int flags, LPCTSTR FullTargetName, WAVEFORMATEX const * pWf,
+BOOL CWaveSoapFrontDoc::OnSaveConvertedFile(class COperationContext ** ppOp, int flags, LPCTSTR FullTargetName, WAVEFORMATEX const * pWf,
 											SAMPLE_INDEX Begin, SAMPLE_INDEX End)
 {
 	CWaveFile NewWaveFile;
@@ -1985,17 +1995,30 @@ BOOL CWaveSoapFrontDoc::OnSaveConvertedFile(int flags, LPCTSTR FullTargetName, W
 		}
 	}
 
-	UINT sOpId = IDS_SAVING_FILE_WITH_CONVERSION_STATUS;
-	UINT sOpNameId = IDS_FILE_SAVE_CONVERT_OPERATION_NAME;
+	CString sOp;
+	CString sOpName;
 
-	if (flags & SaveFile_SameFormat)
+	if (flags & SaveFile_SavePartial)
 	{
-		sOpId = IDS_SAVING_FILE_STATUS_PROMPT;
-		sOpNameId = IDS_FILE_SAVE_OPERATION_NAME;
+		sOp.Format(IDS_SAVING_FILE_PART, FullTargetName);
+		// sOpName left empty
 	}
-	else if (flags & SaveFile_SaveCopy)
+	else
 	{
-		sOpId = IDS_SAVING_FILE_COPY_STATUS_PROMPT;
+		UINT sOpId  = IDS_SAVING_FILE_WITH_CONVERSION_STATUS;
+		UINT sOpNameId = IDS_FILE_SAVE_CONVERT_OPERATION_NAME;
+
+		if (flags & SaveFile_SameFormat)
+		{
+			sOpId = IDS_SAVING_FILE_STATUS_PROMPT;
+			sOpNameId = IDS_FILE_SAVE_OPERATION_NAME;
+		}
+		else if (flags & SaveFile_SaveCopy)
+		{
+			sOpId = IDS_SAVING_FILE_COPY_STATUS_PROMPT;
+		}
+		sOp.LoadString(sOpId);
+		sOpName.LoadString(sOpNameId);
 	}
 
 	if (0 == (flags & SaveFile_DontCopyMetadata))
@@ -2004,8 +2027,7 @@ BOOL CWaveSoapFrontDoc::OnSaveConvertedFile(int flags, LPCTSTR FullTargetName, W
 	}
 
 	// TODO: Operation name may be different from Conversion
-	CFileSaveContext::auto_ptr pSaveContext
-	(new CFileSaveContext(this, sOpId, sOpNameId));
+	CFileSaveContext::auto_ptr pSaveContext(new CFileSaveContext(this, sOp, sOpName));
 
 	pSaveContext->m_NewName = FullTargetName;
 
@@ -2099,11 +2121,19 @@ BOOL CWaveSoapFrontDoc::OnSaveConvertedFile(int flags, LPCTSTR FullTargetName, W
 
 	NewWaveFile.DeleteOnClose(false);
 
-	pSaveContext.release()->Execute();
-	return FALSE;   // not saved yet
+	if (NULL != ppOp)
+	{
+		*ppOp = pSaveContext.release();
+		return TRUE;
+	}
+	else
+	{
+		pSaveContext.release()->Execute();
+		return FALSE;   // not saved yet
+	}
 }
 
-BOOL CWaveSoapFrontDoc::OnSaveMp3File(int flags, LPCTSTR FullTargetName, WAVEFORMATEX const * pWf,
+BOOL CWaveSoapFrontDoc::OnSaveMp3File(class COperationContext ** ppOp, int flags, LPCTSTR FullTargetName, WAVEFORMATEX const * pWf,
 									SAMPLE_INDEX Begin, SAMPLE_INDEX End)
 {
 	if (LAST_SAMPLE == End)
@@ -2138,8 +2168,21 @@ BOOL CWaveSoapFrontDoc::OnSaveMp3File(int flags, LPCTSTR FullTargetName, WAVEFOR
 		memcpy(pNewFormat, pWf, sizeof (WAVEFORMATEX) + pWf->cbSize);
 	}
 
-	CFileSaveContext::auto_ptr pContext(new CFileSaveContext(this,
-															IDS_MP3_SAVE_STATUS_PROMPT, IDS_MP3_SAVE_OPERATION_NAME));
+	CString sOp;
+	CString sOpName;
+
+	if (flags & SaveFile_SavePartial)
+	{
+		sOp.Format(IDS_SAVING_FILE_PART, FullTargetName);
+		// sOpName left empty
+	}
+	else
+	{
+		sOp.LoadString(IDS_MP3_SAVE_STATUS_PROMPT);
+		sOpName.LoadString(IDS_MP3_SAVE_OPERATION_NAME);
+	}
+
+	CFileSaveContext::auto_ptr pContext(new CFileSaveContext(this, sOp, sOpName));
 
 	pContext->m_NewName = FullTargetName;
 	pContext->m_NewFileTypeFlags = OpenDocumentMp3File;
@@ -2200,11 +2243,20 @@ BOOL CWaveSoapFrontDoc::OnSaveMp3File(int flags, LPCTSTR FullTargetName, WAVEFOR
 	}
 
 	NewWaveFile.DeleteOnClose(false);
-	pContext.release()->Execute();
-	return FALSE;   // not saved yet
+
+	if (NULL != ppOp)
+	{
+		*ppOp = pContext.release();
+		return TRUE;
+	}
+	else
+	{
+		pContext.release()->Execute();
+		return FALSE;   // not saved yet
+	}
 }
 
-BOOL CWaveSoapFrontDoc::OnSaveWmaFile(int flags, LPCTSTR FullTargetName, WAVEFORMATEX const * pWf,
+BOOL CWaveSoapFrontDoc::OnSaveWmaFile(class COperationContext ** ppOp, int flags, LPCTSTR FullTargetName, WAVEFORMATEX const * pWf,
 									SAMPLE_INDEX Begin, SAMPLE_INDEX End)
 {
 	if (LAST_SAMPLE == End)
@@ -2240,8 +2292,21 @@ BOOL CWaveSoapFrontDoc::OnSaveWmaFile(int flags, LPCTSTR FullTargetName, WAVEFOR
 		memcpy(pNewFormat, pWf, sizeof (WAVEFORMATEX) + pWf->cbSize);
 	}
 
-	CFileSaveContext::auto_ptr pContext(new CFileSaveContext(this,
-															IDS_WMA_SAVE_STATUS_PROMPT, IDS_WMA_SAVE_OPERATION_NAME));
+	CString sOp;
+	CString sOpName;
+
+	if (flags & SaveFile_SavePartial)
+	{
+		sOp.Format(IDS_SAVING_FILE_PART, FullTargetName);
+		// sOpName left empty
+	}
+	else
+	{
+		sOp.LoadString(IDS_WMA_SAVE_STATUS_PROMPT);
+		sOpName.LoadString(IDS_WMA_SAVE_OPERATION_NAME);
+	}
+
+	CFileSaveContext::auto_ptr pContext(new CFileSaveContext(this, sOp, sOpName));
 
 	pContext->m_NewName = FullTargetName;
 	pContext->m_DstFile = NewWaveFile;
@@ -2270,11 +2335,20 @@ BOOL CWaveSoapFrontDoc::OnSaveWmaFile(int flags, LPCTSTR FullTargetName, WAVEFOR
 	}
 
 	NewWaveFile.DeleteOnClose(false);
-	pContext.release()->Execute();
-	return FALSE;   // not saved yet
+
+	if (NULL != ppOp)
+	{
+		*ppOp = pContext.release();
+		return TRUE;
+	}
+	else
+	{
+		pContext.release()->Execute();
+		return FALSE;   // not saved yet
+	}
 }
 
-BOOL CWaveSoapFrontDoc::OnSaveRawFile(int flags, LPCTSTR FullTargetName, WAVEFORMATEX const * pWf,
+BOOL CWaveSoapFrontDoc::OnSaveRawFile(class COperationContext ** ppOp, int flags, LPCTSTR FullTargetName, WAVEFORMATEX const * pWf,
 									SAMPLE_INDEX Begin, SAMPLE_INDEX End)
 {
 	// create output file
@@ -2346,8 +2420,16 @@ BOOL CWaveSoapFrontDoc::OnSaveRawFile(int flags, LPCTSTR FullTargetName, WAVEFOR
 		pContext->m_Flags |= FileSaveContext_SavingCopy;
 	}
 
-	pContext->Execute();
-	return FALSE;   // not saved yet
+	if (NULL != ppOp)
+	{
+		*ppOp = pContext.release();
+		return TRUE;
+	}
+	else
+	{
+		pContext->Execute();
+		return FALSE;   // not saved yet
+	}
 }
 
 BOOL CWaveSoapFrontDoc::OnSaveDocument(LPCTSTR lpszPathName, DWORD flags, WAVEFORMATEX const * pWf)
@@ -2431,23 +2513,28 @@ BOOL CWaveSoapFrontDoc::OnSaveDocument(LPCTSTR lpszPathName, DWORD flags, WAVEFO
 			|| (m_WavFile.GetFileID() != m_OriginalWavFile.GetFileID()
 				&& 1 == m_WavFile.GetFileRefCount()));
 
-	return OnSaveFileOrPart(flags, FullTargetName, pWf);
+	return OnSaveFileOrPart(NULL, flags, FullTargetName, pWf);
 }
 
-BOOL CWaveSoapFrontDoc::OnSaveFileOrPart(int flags, LPCTSTR FullTargetName, WAVEFORMATEX const * pWf,
+BOOL CWaveSoapFrontDoc::OnSaveFileOrPart(COperationContext ** ppOp, int flags, LPCTSTR FullTargetName, WAVEFORMATEX const * pWf,
 										SAMPLE_INDEX Begin, SAMPLE_INDEX End)
 {
+	if (NULL != ppOp)
+	{
+		*ppOp = NULL;
+	}
+
 	if (flags & SaveFile_Mp3File)
 	{
-		return OnSaveMp3File(flags, FullTargetName, pWf, Begin, End);
+		return OnSaveMp3File(ppOp, flags, FullTargetName, pWf, Begin, End);
 	}
 	else if (flags & SaveFile_WmaFile)
 	{
-		return OnSaveWmaFile(flags, FullTargetName, pWf, Begin, End);
+		return OnSaveWmaFile(ppOp, flags, FullTargetName, pWf, Begin, End);
 	}
 	else if (flags & SaveFile_RawFile)
 	{
-		return OnSaveRawFile(flags, FullTargetName, pWf, Begin, End);
+		return OnSaveRawFile(ppOp, flags, FullTargetName, pWf, Begin, End);
 	}
 
 	if (0 == (flags & SaveFile_SavePartial)
@@ -2478,16 +2565,16 @@ BOOL CWaveSoapFrontDoc::OnSaveFileOrPart(int flags, LPCTSTR FullTargetName, WAVE
 		{
 			ASSERT(0 == Begin && LAST_SAMPLE == End);
 
-			return OnSaveBufferedPcmFile(flags, FullTargetName);
+			return OnSaveBufferedPcmFile(ppOp, flags, FullTargetName);
 		}
 		else
 		{
-			return OnSaveBufferedPcmFileCopy(flags, FullTargetName);
+			return OnSaveBufferedPcmFileCopy(ppOp, flags, FullTargetName);
 		}
 	}
 	else
 	{
-		return OnSaveConvertedFile(flags, FullTargetName, pWf, Begin, End);
+		return OnSaveConvertedFile(ppOp, flags, FullTargetName, pWf, Begin, End);
 	}
 }
 
@@ -5539,7 +5626,7 @@ void CWaveSoapFrontDoc::OnSaveSplitToFiles()
 		return;
 	}
 
-	CStagedContext::auto_ptr pContext(new CStagedContext(this, 0));
+	CStagedContext::auto_ptr pContext(new CStagedContext(this, 0, IDS_STRING_SPLIT_TO_FILES_OPERATION));
 	// TODO: Add your command handler code here
 	CString Title;
 	CString FileName;
@@ -5549,35 +5636,29 @@ void CWaveSoapFrontDoc::OnSaveSplitToFiles()
 	for (unsigned i = 0; dlg.GetFileData(i, FileName, Title, & Begin, & End); i++)
 	{
 		// create a save file context.
-		OnSaveFileOrPart(dlg.GetFileTypeFlags()
-						| SaveFile_SaveCopy | SaveFile_SavePartial
-						| SaveFile_DontPromptReopen | SaveFile_DontCopyMetadata,
-						FileName, dlg.GetWaveFormat(), Begin, End);
+		COperationContext * pOp = NULL;
+
+		if ( ! OnSaveFileOrPart( & pOp,
+								dlg.GetFileTypeFlags()
+								| SaveFile_SaveCopy | SaveFile_SavePartial
+								| SaveFile_DontPromptReopen | SaveFile_DontCopyMetadata,
+								FileName, dlg.GetWaveFormat(), Begin, End))
+		{
+			break;
+		}
+
+		if (NULL != pOp)
+		{
+			pContext->AddContext(pOp);
+		}
 	}
 
-//    pContext.release()->Execute();
+	pContext.release()->Execute();
 }
 
 void CWaveSoapFrontDoc::OnUpdateSaveSplitToFiles(CCmdUI *pCmdUI)
 {
-	// enable, if there is any marker not at the file beginning or end
-	BOOL bEnable = FALSE;
-
-	if ( ! IsBusy())
-	{
-		SAMPLE_INDEX_Vector markers;
-		m_WavFile.GetSortedMarkers(markers, FALSE);
-
-		for (SAMPLE_INDEX_Vector::const_iterator i = markers.begin();
-			i < markers.end(); i++)
-		{
-			if (*i != 0
-				&& *i < WaveFileSamples())
-			{
-				bEnable = TRUE;
-				break;
-			}
-		}
-	}
-	pCmdUI->Enable(bEnable);
+	// enable, if there is any data in the file
+	pCmdUI->Enable(CanStartOperation(1, false, false));
 }
+
