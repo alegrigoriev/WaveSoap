@@ -901,137 +901,147 @@ BOOL _stdcall CAudioCompressionManager::FormatEnumCallback(
 		FormatItem * pfmt = pAcm->m_Formats.insert(pAcm->m_Formats.end());
 		pfmt->Wf = pafd->pwfx;
 		pfmt->Name = pafd->szFormat;
+		pfcs->FormatFound = TRUE;
 	}
 	return TRUE;
 }
 
-void CAudioCompressionManager::FillFormatArray(unsigned SelFormat, int Flags)
+void CAudioCompressionManager::FillMultiFormatArray(unsigned nSelFrom, unsigned nSelTo, int Flags)
 {
 	m_Formats.clear();
-	if (SelFormat >= m_FormatTags.size())
-	{
-		return;
-	}
 
-	DWORD dwFormatTag = m_FormatTags[SelFormat].Tag.Tag;
 	CWaveFormat pwfx;
 	pwfx.Allocate(0xFFF0, true);
-
-	ACMFORMATDETAILS afd;
-
-	pwfx.InitFormat(dwFormatTag, m_Wf.SampleRate(), m_Wf.NumChannels(),
-					m_Wf.BitsPerSample());
-
-	memzero(afd);
-	afd.cbStruct = sizeof afd;
-	afd.cbwfx = pwfx.m_AllocatedSize;
-	afd.dwFormatTag = dwFormatTag;
-	afd.pwfx = pwfx;
-
-	CWaveFormat FormatToMatch(m_Wf);
-	FormatToMatch.FormatTag() = dwFormatTag;
-
-	HACMDRIVER had = NULL;
-	if (MMSYSERR_NOERROR == acmDriverOpen(&had, m_FormatTags[SelFormat].m_hadid, 0))
+	for (unsigned sel = nSelFrom; sel <= nSelTo && sel < m_FormatTags.size(); sel++)
 	{
-		DWORD EnumFlags = ACM_FORMATENUMF_WFORMATTAG;
 
-		if (Flags & WaveFormatMatchCompatibleFormats)
+		if (BladeMp3Encoder::GetTag() == m_FormatTags[sel].Tag)
 		{
-			EnumFlags |= ACM_FORMATENUMF_NCHANNELS | ACM_FORMATENUMF_NSAMPLESPERSEC;
-		}
-		if (Flags & WaveFormatMatchCnannels)
-		{
-			EnumFlags |= ACM_FORMATENUMF_NCHANNELS;
-		}
-		if (Flags & WaveFormatMatchSampleRate)
-		{
-			EnumFlags |= ACM_FORMATENUMF_NSAMPLESPERSEC;
+			FillLameEncoderFormats();
+			continue;
 		}
 
-		FormatEnumCallbackStruct fcs;
+		DWORD dwFormatTag = m_FormatTags[sel].Tag.Tag;
 
-		fcs.pAcm = this;
-		fcs.flags = Flags;
-		fcs.FormatToMatch = FormatToMatch;
-		fcs.m_Tag = m_FormatTags[SelFormat].Tag;
-		fcs.m_NumTagsToCompare = 0;
-		fcs.m_pTagsToCompare = NULL;
+		ACMFORMATDETAILS afd;
 
-		int res = acmFormatEnum(had, & afd, FormatEnumCallback, DWORD( & fcs), EnumFlags);
-		TRACE("acmFormatEnum returned %x\n", res);
+		pwfx.InitFormat(dwFormatTag, m_Wf.SampleRate(), m_Wf.NumChannels(),
+						m_Wf.BitsPerSample());
 
-		for (int i = 0, ch = m_Wf.NumChannels()
-							// if compatible format or match channels, check only exact num channels
-			; i <= (0 == (Flags & (WaveFormatMatchCompatibleFormats | WaveFormatMatchCnannels)))
-			; i++, ch ^= 3)
+		memzero(afd);
+		afd.cbStruct = sizeof afd;
+		afd.cbwfx = pwfx.m_AllocatedSize;
+		afd.dwFormatTag = dwFormatTag;
+		afd.pwfx = pwfx;
+
+		CWaveFormat FormatToMatch(m_Wf);
+		FormatToMatch.FormatTag() = dwFormatTag;
+
+		HACMDRIVER had = NULL;
+		if (NULL != m_FormatTags[sel].m_hadid
+			&& MMSYSERR_NOERROR == acmDriverOpen(&had, m_FormatTags[sel].m_hadid, 0))
 		{
-			pwfx.InitFormat(WAVE_FORMAT_PCM, m_Wf.SampleRate(), ch,
-							m_Wf.BitsPerSample());
-			if (WAVE_FORMAT_PCM == dwFormatTag)
+			DWORD EnumFlags = ACM_FORMATENUMF_WFORMATTAG;
+
+			if (Flags & WaveFormatMatchCompatibleFormats)
 			{
-				// if PCM format, add exact format to the list, and its
-				// mono/stereo counterpart (if compatible not selected).
-				ACMFORMATDETAILS afd;
-				afd.cbStruct = sizeof afd;
-				afd.dwFormatIndex = 0;
-				afd.dwFormatTag = pwfx.FormatTag();
-				afd.fdwSupport = 0;
-				afd.pwfx = pwfx;
-				afd.cbwfx = sizeof (WAVEFORMATEX) + pwfx.m_pWf->cbSize;
-
-				res = acmFormatDetails(had, & afd, ACM_FORMATDETAILSF_FORMAT);
-				if (MMSYSERR_NOERROR == res)
-				{
-					FormatItem * pfmt = m_Formats.insert(m_Formats.end());
-					pfmt->Wf = afd.pwfx;
-					pfmt->Name = afd.szFormat;
-				}
+				EnumFlags |= ACM_FORMATENUMF_NCHANNELS | ACM_FORMATENUMF_NSAMPLESPERSEC;
 			}
-			else
+			if (Flags & WaveFormatMatchCnannels)
 			{
-				memzero(afd);
-				afd.cbStruct = sizeof afd;
-				afd.cbwfx = pwfx.m_AllocatedSize;
-				afd.dwFormatTag = dwFormatTag;
-				afd.pwfx = pwfx;
-				res = acmFormatEnum(had, & afd, FormatEnumCallback,
-									DWORD(& fcs), ACM_FORMATENUMF_CONVERT);
+				EnumFlags |= ACM_FORMATENUMF_NCHANNELS;
+			}
+			if (Flags & WaveFormatMatchSampleRate)
+			{
+				EnumFlags |= ACM_FORMATENUMF_NSAMPLESPERSEC;
+			}
 
-				if (m_Formats.empty())
+			FormatEnumCallbackStruct fcs;
+
+			fcs.pAcm = this;
+			fcs.flags = Flags;
+			fcs.FormatToMatch = FormatToMatch;
+			fcs.m_Tag = m_FormatTags[sel].Tag;
+			fcs.m_NumTagsToCompare = 0;
+			fcs.m_pTagsToCompare = NULL;
+			fcs.FormatFound = FALSE;
+
+			int res = acmFormatEnum(had, & afd, FormatEnumCallback, DWORD( & fcs), EnumFlags);
+			TRACE("acmFormatEnum returned %x\n", res);
+
+			for (int i = 0, ch = m_Wf.NumChannels()
+								// if compatible format or match channels, check only exact num channels
+				; i <= 0 + (0 == (Flags & (WaveFormatMatchCompatibleFormats | WaveFormatMatchCnannels)))
+				; i++, ch ^= 3)
+			{
+				pwfx.InitFormat(WAVE_FORMAT_PCM, m_Wf.SampleRate(), ch,
+								m_Wf.BitsPerSample());
+				if (WAVE_FORMAT_PCM == dwFormatTag)
 				{
-					// try acmFormatSuggest
-					res = 0;
-					if (WAVE_FORMAT_PCM == dwFormatTag
-						|| MMSYSERR_NOERROR == acmFormatSuggest(had, m_Wf, pwfx, pwfx.m_AllocatedSize,
-																ACM_FORMATSUGGESTF_WFORMATTAG))
+					// if PCM format, add exact format to the list, and its
+					// mono/stereo counterpart (if compatible not selected).
+					ACMFORMATDETAILS afd;
+					afd.cbStruct = sizeof afd;
+					afd.dwFormatIndex = 0;
+					afd.dwFormatTag = pwfx.FormatTag();
+					afd.fdwSupport = 0;
+					afd.pwfx = pwfx;
+					afd.cbwfx = sizeof (WAVEFORMATEX) + pwfx.m_pWf->cbSize;
+
+					res = acmFormatDetails(had, & afd, ACM_FORMATDETAILSF_FORMAT);
+					if (MMSYSERR_NOERROR == res)
 					{
-						ACMFORMATDETAILS afd;
-						afd.cbStruct = sizeof afd;
-						afd.dwFormatIndex = 0;
-						afd.dwFormatTag = pwfx.FormatTag();
-						afd.fdwSupport = 0;
-						afd.pwfx = pwfx;
-						afd.cbwfx = sizeof (WAVEFORMATEX) + pwfx.m_pWf->cbSize;
-
-						res = acmFormatDetails(had, & afd, ACM_FORMATDETAILSF_FORMAT);
-						if (MMSYSERR_NOERROR == res)
-						{
-							FormatItem * pfmt = m_Formats.insert(m_Formats.end());
-							pfmt->Wf = afd.pwfx;
-							pfmt->Name = afd.szFormat;
-						}
+						FormatItem * pfmt = m_Formats.insert(m_Formats.end());
+						pfmt->Wf = afd.pwfx;
+						pfmt->Name = afd.szFormat;
 					}
-					TRACE("acmFormatEnum SUGGEST returned %x\n", res);
+				}
+				else
+				{
+					memzero(afd);
+					afd.cbStruct = sizeof afd;
+					afd.cbwfx = pwfx.m_AllocatedSize;
+					afd.dwFormatTag = dwFormatTag;
+					afd.pwfx = pwfx;
+					fcs.FormatFound = FALSE;
+					res = acmFormatEnum(had, & afd, FormatEnumCallback,
+										DWORD(& fcs), ACM_FORMATENUMF_CONVERT);
+
+					if ( ! fcs.FormatFound)
+					{
+						// try acmFormatSuggest
+						res = 0;
+						if (WAVE_FORMAT_PCM == dwFormatTag
+							|| MMSYSERR_NOERROR == acmFormatSuggest(had, m_Wf, pwfx, pwfx.m_AllocatedSize,
+								ACM_FORMATSUGGESTF_WFORMATTAG))
+						{
+							ACMFORMATDETAILS afd;
+							afd.cbStruct = sizeof afd;
+							afd.dwFormatIndex = 0;
+							afd.dwFormatTag = pwfx.FormatTag();
+							afd.fdwSupport = 0;
+							afd.pwfx = pwfx;
+							afd.cbwfx = sizeof (WAVEFORMATEX) + pwfx.m_pWf->cbSize;
+
+							res = acmFormatDetails(had, & afd, ACM_FORMATDETAILSF_FORMAT);
+							if (MMSYSERR_NOERROR == res)
+							{
+								FormatItem * pfmt = m_Formats.insert(m_Formats.end());
+								pfmt->Wf = afd.pwfx;
+								pfmt->Name = afd.szFormat;
+							}
+						}
+						TRACE("acmFormatEnum SUGGEST returned %x\n", res);
+					}
 				}
 			}
+
+			acmDriverClose(had, 0);
+
 		}
-
-		acmDriverClose(had, 0);
-
-		std::sort(m_Formats.begin(), m_Formats.end(), std::greater<FormatItem>());
-		m_Formats.erase(std::unique(m_Formats.begin(), m_Formats.end()), m_Formats.end());
 	}
+	std::sort(m_Formats.begin(), m_Formats.end(), std::greater<FormatItem>());
+	m_Formats.erase(std::unique(m_Formats.begin(), m_Formats.end()), m_Formats.end());
 }
 
 void CAudioCompressionManager::FillWmaFormatTags()
@@ -1044,7 +1054,6 @@ void CAudioCompressionManager::FillWmaFormatTags()
 
 void CAudioCompressionManager::FillMp3EncoderTags()
 {
-	// check if LAME encoder is available
 
 	// check if MP3 ACM encoder presents
 	static WaveFormatTagEx const Mp3Tag = { WAVE_FORMAT_MPEGLAYER3 };
@@ -1053,6 +1062,7 @@ void CAudioCompressionManager::FillMp3EncoderTags()
 	FormatTagItem TagItem;
 
 	BladeMp3Encoder Mp3Enc;
+	// check if LAME encoder is available
 	if (Mp3Enc.Open())
 	{
 		TagItem.Name = Mp3Enc.GetVersionString();
@@ -1064,3 +1074,54 @@ void CAudioCompressionManager::FillMp3EncoderTags()
 	}
 
 }
+
+void CAudioCompressionManager::FillLameEncoderFormats()
+{
+	static int const Mp3Bitrates[] = { 64, 96, 128, 160, 192, 256, 320 };
+	CString ms;
+	if (1 == m_Wf.NumChannels())
+	{
+		ms.LoadString(IDS_MONO);
+	}
+	else
+	{
+		ms.LoadString(IDS_STEREO);
+	}
+
+	CString f;
+	f.LoadString(IDS_LAMEENC_FORMAT);
+	FormatItem Item;
+
+	m_Formats.resize(sizeof Mp3Bitrates / sizeof Mp3Bitrates[0]);
+
+	unsigned sel = 0;
+	for (int i = 0; i < m_Formats.size(); i++)
+	{
+		m_Formats[i].Name.Format(f, Mp3Bitrates[i], LPCTSTR(ms));
+		m_Formats[i].Wf.InitFormat(WAVE_FORMAT_EXTENSIBLE, 44100,
+									2, 16,
+									sizeof (WAVEFORMATEXTENSIBLE) - sizeof (WAVEFORMATEX));
+		m_Formats[i].Wf.m_pWf->nAvgBytesPerSec = Mp3Bitrates[i] * 125;
+		((WAVEFORMATEXTENSIBLE*)(m_Formats[i].Wf.m_pWf))->SubFormat =
+			BladeMp3Encoder::GetTag().SubFormat;
+	}
+}
+
+CString CAudioCompressionManager::GetFormatName(HACMDRIVER had, WAVEFORMATEX const * pWf)
+{
+	ACMFORMATDETAILS afd;
+	afd.cbStruct = sizeof afd;
+	afd.dwFormatIndex = 0;
+	afd.dwFormatTag = pWf->wFormatTag;
+	afd.fdwSupport = 0;
+	afd.pwfx = const_cast<WAVEFORMATEX*>(pWf);
+	afd.cbwfx = sizeof (WAVEFORMATEX) + pWf->cbSize;
+
+	MMRESULT res = acmFormatDetails(had, & afd, ACM_FORMATDETAILSF_FORMAT);
+	if (MMSYSERR_NOERROR == res)
+	{
+		return afd.szFormat;
+	}
+	return CString();
+}
+

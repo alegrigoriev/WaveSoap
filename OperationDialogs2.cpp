@@ -294,7 +294,7 @@ CCdGrabbingDialog::CCdGrabbingDialog(CWnd* pParent /*=NULL*/)
 	m_pResizeItemsCount = sizeof ResizeItems / sizeof ResizeItems[0];
 	// TODO: restore last format used
 	m_Wf.InitCdAudioFormat();
-
+	m_Acm.m_Wf.InitCdAudioFormat();
 }
 
 CCdGrabbingDialog::~CCdGrabbingDialog()
@@ -871,6 +871,7 @@ BOOL CCdGrabbingDialog::OnInitDialog()
 		}
 	}
 
+	FillFormatCombo();
 	SetTimer(1, 200, NULL);
 
 	return TRUE;  // return TRUE unless you set the focus to a control
@@ -1566,7 +1567,7 @@ void CCdGrabbingDialog::OnRadioWmaFormat()
 	if (GetApp()->CanOpenWindowsMedia())
 	{
 		m_RadioFileFormat = 1;
-		// fill bitrate dialog
+		FillFormatCombo();
 
 		return;
 	}
@@ -1577,15 +1578,15 @@ void CCdGrabbingDialog::OnRadioWmaFormat()
 	}
 	CheckRadioButton(IDC_RADIO_WAV_FORMAT, IDC_RADIO_WAV_FORMAT, IDC_RADIO_MP3_FORMAT);
 	m_RadioFileFormat = 0;
+	FillFormatCombo();
 }
 
 void CCdGrabbingDialog::OnRadioMp3Format()
 {
 	m_bNeedUpdateControls = TRUE;
 	m_RadioFileFormat = 2;
-	// TODO: Add your control notification handler code here
-	// check if MP3 encoder is available
 
+	FillFormatCombo();
 }
 
 void CCdGrabbingDialog::OnRadioWavFormat()
@@ -1593,7 +1594,7 @@ void CCdGrabbingDialog::OnRadioWavFormat()
 	// TODO: Add your control notification handler code here
 	m_bNeedUpdateControls = TRUE;
 	m_RadioFileFormat = 0;
-
+	FillFormatCombo();
 }
 void CCdGrabbingDialog::OnUpdateComboBitrate(CCmdUI* pCmdUI)
 {
@@ -1645,3 +1646,37 @@ void CCdGrabbingDialog::OnButtonEject()
 		m_CdDrive.EjectMedia();
 	}
 }
+
+void CCdGrabbingDialog::FillFormatCombo()
+{
+	m_ComboBitrate.ResetContent();
+	switch (m_RadioFileFormat)
+	{
+	case 0:
+		// WAV
+		m_Acm.m_FormatTags.resize(1);
+		m_Acm.m_FormatTags[0].Tag.Tag = WAVE_FORMAT_PCM;
+		m_Acm.m_FormatTags[0].Name.Empty();
+		m_Acm.m_Formats.resize(1);
+		m_Acm.m_Formats[0].Name = m_Acm.GetFormatName(NULL, m_Acm.m_Wf);
+		m_Acm.m_Formats[0].Wf = m_Acm.m_Wf;
+		break;
+	case 1:
+		// WMA
+		m_Acm.FillWmaFormatTags();
+		m_Acm.FillMultiFormatArray(0, m_Acm.m_FormatTags.size() - 1,
+									WaveFormatMatchCnannels | WaveFormatMatchSampleRate);
+		break;
+	case 2:
+		m_Acm.FillMp3EncoderTags();
+		m_Acm.FillMultiFormatArray(0, m_Acm.m_FormatTags.size() - 1,
+									WaveFormatMatchCnannels | WaveFormatMatchSampleRate);
+		break;
+	}
+	for (int i = 0; i < m_Acm.m_Formats.size(); i++)
+	{
+		m_ComboBitrate.AddString(m_Acm.m_Formats[0].Name);
+	}
+	m_ComboBitrate.SetCurSel(0);
+}
+

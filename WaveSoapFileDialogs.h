@@ -68,6 +68,7 @@ public:
 };
 
 enum {
+	SoundFileTypeUnknown = 0,
 	SoundFileTypeMin = 1,
 	SoundFileWav = 1,
 	SoundFileMp3 = 2,
@@ -119,9 +120,9 @@ public:
 								lpszFilter, pParentWnd),
 		m_SelectedFormat(-1),
 		m_SelectedMp3Encoder(0),
-		m_SelectedLameMp3Bitrate(LameEncBitrate128),
+		m_SelectedMp3Bitrate(LameEncBitrate128),
 		m_bCompatibleFormatsOnly(TRUE),
-		m_FileType(SoundFileWav),
+		m_FileType(SoundFileTypeUnknown),
 		m_SelectedRawFormat(RawSoundFilePcm16Lsb),
 		m_pDocument(NULL)
 	{
@@ -153,8 +154,7 @@ public:
 
 	int m_SelectedMp3Encoder;
 	int m_Mp3Encoders[4];
-	int m_SelectedLameMp3Bitrate;
-	int GetLameEncBitrate() const;
+	int m_SelectedMp3Bitrate;
 
 	BOOL m_bCompatibleFormatsOnly;
 

@@ -196,6 +196,8 @@ protected:
 
 	BOOL m_bNeedUpdateControls;
 
+	CAudioCompressionManager m_Acm;
+	void FillFormatCombo();
 	// Playback support:
 	BOOL m_bPlayingAudio;
 	int m_PlayingTrack;
