@@ -2179,10 +2179,9 @@ void CExpressionEvaluationDialog::OnOK()
 
 	EndDialog(IDOK);
 }
+
 /////////////////////////////////////////////////////////////////////////////
 // CDeclickDialog dialog
-
-
 CDeclickDialog::CDeclickDialog(SAMPLE_INDEX begin, SAMPLE_INDEX end, SAMPLE_INDEX caret,
 								CHANNEL_MASK Channels,
 								CWaveFile & File,
@@ -2196,16 +2195,17 @@ CDeclickDialog::CDeclickDialog(SAMPLE_INDEX begin, SAMPLE_INDEX end, SAMPLE_INDE
 	m_bLockChannels = ChannelsLocked;
 	//{{AFX_DATA_INIT(CDeclickDialog)
 	m_ClickLogFilename = _T("");
-	m_MaxClickLength = 24;
+	m_nMaxClickLength = 24;
 	m_MinClickAmplitude = 200;
 	m_bLogClicks = FALSE;
 	m_bLogClicksOnly = FALSE;
 	m_bImportClicks = FALSE;
 	m_ClickImportFilename = _T("");
+	m_bDontAutodetectClicks = FALSE;
 	//}}AFX_DATA_INIT
-	m_dAttackRate = .06;
+	m_MeanPowerAttackRate = .06;
 	m_dClickToNoise = 4.;
-	m_dEnvelopDecayRate = 0.02;
+	m_MeanPowerDecayRate = 0.02;
 
 	LoadValuesFromRegistry();
 
@@ -2222,114 +2222,48 @@ void CDeclickDialog::DoDataExchange(CDataExchange* pDX)
 	DDX_Control(pDX, IDC_EDIT_CLICK_TO_NOISE, m_ClickToNoise);
 	DDX_Control(pDX, IDC_EDIT_ATTACK_RATE, m_AttackRate);
 
-	DDX_Control(pDX, IDC_CHECK_LOG_CLICKS, m_LogClicksCheck);
-	DDX_Control(pDX, IDC_CHECK_IMPORT_CLICKS, m_ImportClicksCheck);
-
-	DDX_Control(pDX, IDC_EDIT_CLICK_LOG_FILENAME, m_eLogFilename);
-	DDX_Control(pDX, IDC_EDIT_CLICK_IMPORT_FILENAME, m_eImportFilename);
-
-	DDX_Text(pDX, IDC_EDIT_CLICK_LOG_FILENAME, m_ClickLogFilename);
-	DDX_Text(pDX, IDC_EDIT_MAX_CLICK_LENGTH, m_MaxClickLength);
-	DDV_MinMaxInt(pDX, m_MaxClickLength, 6, 64);
+	DDX_Text(pDX, IDC_EDIT_MAX_CLICK_LENGTH, m_nMaxClickLength);
+	DDV_MinMaxInt(pDX, m_nMaxClickLength, 6, 64);
 	DDX_Text(pDX, IDC_EDIT_MIN_CLICK_AMPLITUDE, m_MinClickAmplitude);
 	DDV_MinMaxInt(pDX, m_MinClickAmplitude, 50, 5000);
-	DDX_Check(pDX, IDC_CHECK_LOG_CLICKS, m_bLogClicks);
-	DDX_Check(pDX, IDC_CHECK_LOG_CLICKS_ONLY, m_bLogClicksOnly);
-	DDX_Check(pDX, IDC_CHECK_IMPORT_CLICKS, m_bImportClicks);
-	DDX_Text(pDX, IDC_EDIT_CLICK_IMPORT_FILENAME, m_ClickImportFilename);
 	DDX_Check(pDX, IDC_CHECK_UNDO, m_bUndo);
+
 	//}}AFX_DATA_MAP
-	m_AttackRate.ExchangeData(pDX, m_dAttackRate,
+	m_AttackRate.ExchangeData(pDX, m_MeanPowerAttackRate,
 							IDS_INPUT_NAME_ATTACK_RATE, 0, 0.001, 0.99);
 	m_ClickToNoise.ExchangeData(pDX, m_dClickToNoise,
 								IDS_INPUT_NAME_CLICK_TO_NOISE_RATE, 0, 1.5, 20.);
-	m_EnvelopDecayRate.ExchangeData(pDX, m_dEnvelopDecayRate,
+	m_EnvelopDecayRate.ExchangeData(pDX, m_MeanPowerDecayRate,
 									IDS_INPUT_NAME_ENVELOP_DECAY_RATE, 0, 0.001, 0.99);
 
+	if ( ! pDX->m_bSaveAndValidate)
+	{
+		SetClicksImportString();
+	}
 }
 
 
 BEGIN_MESSAGE_MAP(CDeclickDialog, BaseClass)
 	//{{AFX_MSG_MAP(CDeclickDialog)
-	ON_BN_CLICKED(IDC_CHECK_LOG_CLICKS, OnCheckLogClicks)
-	ON_BN_CLICKED(IDC_CHECK_IMPORT_CLICKS, OnCheckImportClicks)
-	ON_BN_CLICKED(IDC_CLICK_LOG_BROWSE_BUTTON, OnClickLogBrowseButton)
-	ON_BN_CLICKED(IDC_CLICK_IMPORT_BROWSE_BUTTON, OnClickImportBrowseButton)
 	ON_BN_CLICKED(IDC_BUTTON_MORE_SETTINGS, OnButtonMoreSettings)
-
-	ON_UPDATE_COMMAND_UI(IDC_EDIT_CLICK_LOG_FILENAME, OnUpdateLogClicks)
-	ON_UPDATE_COMMAND_UI(IDC_CLICK_LOG_BROWSE_BUTTON, OnUpdateLogClicks)
-	ON_UPDATE_COMMAND_UI(IDC_CHECK_LOG_CLICKS_ONLY, OnUpdateLogClicks)
-
-	ON_UPDATE_COMMAND_UI(IDC_EDIT_CLICK_IMPORT_FILENAME, OnUpdateImportClicks)
-	ON_UPDATE_COMMAND_UI(IDC_CLICK_IMPORT_BROWSE_BUTTON, OnUpdateImportClicks)
 
 	ON_BN_CLICKED(IDC_BUTTON_SAVE, OnButtonSaveSettings)
 	ON_BN_CLICKED(IDC_BUTTON_LOAD, OnButtonLoadSettings)
+	ON_BN_CLICKED(IDC_BUTTON_RESET_DEFAULT, OnButtonSetDefaults)
+	ON_BN_CLICKED(IDC_BUTTON_REVERT_INITIAL, OnButtonRevert)
 	//}}AFX_MSG_MAP
 END_MESSAGE_MAP()
 
 /////////////////////////////////////////////////////////////////////////////
 // CDeclickDialog message handlers
-void CDeclickDialog::OnCheckLogClicks()
-{
-	NeedUpdateControls();
-}
-
-void CDeclickDialog::OnCheckImportClicks()
-{
-	NeedUpdateControls();
-}
-
-void CDeclickDialog::OnClickLogBrowseButton()
-{
-	CString filter(MAKEINTRESOURCE(IDS_FILE_FILTER_TXT));
-
-	m_eLogFilename.GetWindowText(m_ClickLogFilename);
-
-	CFileDialog fdlg(TRUE, _T("txt"), m_ClickLogFilename,
-					OFN_EXPLORER
-					//| OFN_FILEMUSTEXIST
-					| OFN_HIDEREADONLY,
-					filter);
-	fdlg.m_ofn.lpstrInitialDir = _T(".");
-
-	if (fdlg.DoModal() == IDOK)
-	{
-		m_ClickLogFilename = fdlg.GetPathName();
-		m_eLogFilename.SetWindowText(m_ClickLogFilename);
-	}
-
-}
-
-void CDeclickDialog::OnClickImportBrowseButton()
-{
-	CString filter(MAKEINTRESOURCE(IDS_FILE_FILTER_TXT));
-
-	m_eImportFilename.GetWindowText(m_ClickImportFilename);
-
-	CFileDialog fdlg(TRUE, _T("txt"), m_ClickImportFilename,
-					OFN_EXPLORER
-					| OFN_FILEMUSTEXIST
-					| OFN_HIDEREADONLY,
-					filter);
-	fdlg.m_ofn.lpstrInitialDir = _T(".");
-
-	if (fdlg.DoModal() == IDOK)
-	{
-		m_ClickImportFilename = fdlg.GetPathName();
-		m_eImportFilename.SetWindowText(m_ClickImportFilename);
-	}
-}
-
 void CDeclickDialog::OnButtonMoreSettings()
 {
 	// TODO: Add your control notification handler code here
-	//CMoreDeclickDialog dlg;
+	CMoreDeclickDialog dlg( *this);
 	// set the data to dlg
-	//if (IDOK == dlg.DoModal())
+	if (IDOK == dlg.DoModal())
 	{
-		// return the data from dlg
+		SetClicksImportString();
 	}
 }
 
@@ -2338,12 +2272,14 @@ void CDeclickDialog::LoadValuesFromRegistry()
 	Profile.AddBoolItem(_T("Declicker"), _T("LogClicks"), m_bLogClicks, FALSE);
 	Profile.AddBoolItem(_T("Declicker"), _T("ImportClicks"), m_bImportClicks, FALSE);
 	Profile.AddBoolItem(_T("Declicker"), _T("LogClicksOnly"), m_bLogClicksOnly, FALSE);
+	Profile.AddBoolItem(_T("Declicker"), _T("ImportClicksOnly"), m_bDontAutodetectClicks, FALSE);
+
 	Profile.AddItem(_T("Declicker"), _T("ClickLogFilename"), m_ClickLogFilename, _T(""));
 	Profile.AddItem(_T("Declicker"), _T("ClickImportFilename"), m_ClickImportFilename, _T(""));
-	Profile.AddItem(_T("Declicker"), _T("MaxClickLength"), m_MaxClickLength, 32, 6, 64);
+	Profile.AddItem(_T("Declicker"), _T("MaxClickLength"), m_nMaxClickLength, 32, 6, 64);
 	Profile.AddItem(_T("Declicker"), _T("MinClickAmplitude"), m_MinClickAmplitude, 200, 50, 5000);
-	Profile.AddItem(_T("Declicker"), _T("AttackRate"), m_dAttackRate, 0.5, 0.001, 0.99);
-	Profile.AddItem(_T("Declicker"), _T("DecayRate"), m_dEnvelopDecayRate, 0.01, 0.001, 0.99);
+	Profile.AddItem(_T("Declicker"), _T("AttackRate"), m_MeanPowerAttackRate, 0.5, 0.001, 0.99);
+	Profile.AddItem(_T("Declicker"), _T("DecayRate"), m_MeanPowerDecayRate, 0.01, 0.001, 0.99);
 	Profile.AddItem(_T("Declicker"), _T("ClickToNoise"), m_dClickToNoise, 4., 1.5, 20);
 
 }
@@ -2360,33 +2296,11 @@ void CDeclickDialog::OnOK()
 	EndDialog(IDOK);
 }
 
-void CDeclickDialog::OnUpdateLogClicks(CCmdUI * pCmdUI)
+void CDeclickDialog::GetDeclickParameters(DeclickParameters * pCr)
 {
-	pCmdUI->Enable(m_LogClicksCheck.GetCheck());
-}
-
-void CDeclickDialog::OnUpdateImportClicks(CCmdUI * pCmdUI)
-{
-	pCmdUI->Enable(m_ImportClicksCheck.GetCheck());
-}
-
-void CDeclickDialog::SetDeclickData(CClickRemoval * pCr)
-{
-	pCr->m_MeanPowerDecayRate = (float)m_dEnvelopDecayRate;
-	pCr->m_PowerToDeriv3RatioThreshold = float(m_dClickToNoise * m_dClickToNoise);
-	pCr->m_MeanPowerAttackRate = float(m_dAttackRate);
-	pCr->m_nMaxClickLength = m_MaxClickLength;
-	pCr->m_MinDeriv3Threshold = float(m_MinClickAmplitude * m_MinClickAmplitude);
-
-	if (m_bImportClicks)
-	{
-		pCr->SetClickSourceFile(m_ClickImportFilename);
-	}
-	if (m_bLogClicks)
-	{
-		pCr->SetClickLogFile(m_ClickLogFilename);
-	}
-	pCr->m_PassTrough = m_bLogClicksOnly;
+	*pCr = *this;
+	pCr->m_PowerToDeriv3RatioThreshold = m_dClickToNoise * m_dClickToNoise;
+	pCr->m_MinDeriv3Threshold = m_MinClickAmplitude * m_MinClickAmplitude;
 }
 
 void CDeclickDialog::OnButtonSaveSettings()
@@ -2447,6 +2361,149 @@ void CDeclickDialog::OnButtonLoadSettings()
 	Profile.ImportSection(_T("Declicker"), FileName);
 
 	UpdateData(FALSE);
+}
+
+void CDeclickDialog::OnButtonSetDefaults()
+{
+	UpdateData(TRUE);
+	Profile.ResetAllToDefault();
+	UpdateData(FALSE);
+}
+
+void CDeclickDialog::OnButtonRevert()
+{
+	UpdateData(TRUE);
+	Profile.RevertAllToInitial();
+	UpdateData(FALSE);
+}
+
+void CDeclickDialog::SetClicksImportString()
+{
+	CString s;
+
+	if ((m_bLogClicks
+			&& ! m_ClickLogFilename.IsEmpty())
+
+		|| (m_bImportClicks
+			&& ! m_ClickImportFilename.IsEmpty()))
+	{
+		s.LoadString(IDS_MORE_CLICK_SETTINGS_IN_EFFECT);
+	}
+	SetDlgItemText(IDC_STATIC_MORE_IN_EFFECT, s);
+}
+/////////////////////////////////////////////////////////////////////////////
+// CMoreDeclickDialog dialog
+
+
+CMoreDeclickDialog::CMoreDeclickDialog(DeclickParameters & Dp, CWnd* pParent /*=NULL*/)
+	: BaseClass(IDD, pParent)
+	, m_Dp(Dp)
+{
+	//{{AFX_DATA_INIT(CMoreDeclickDialog)
+	//}}AFX_DATA_INIT
+}
+
+void CMoreDeclickDialog::DoDataExchange(CDataExchange* pDX)
+{
+	BaseClass::DoDataExchange(pDX);
+	//{{AFX_DATA_MAP(CMoreDeclickDialog)
+	DDX_Control(pDX, IDC_CHECK_LOG_CLICKS, m_LogClicksCheck);
+	DDX_Control(pDX, IDC_CHECK_IMPORT_CLICKS, m_ImportClicksCheck);
+
+	DDX_Control(pDX, IDC_EDIT_CLICK_LOG_FILENAME, m_eLogFilename);
+	DDX_Control(pDX, IDC_EDIT_CLICK_IMPORT_FILENAME, m_eImportFilename);
+
+	DDX_Text(pDX, IDC_EDIT_CLICK_LOG_FILENAME, m_Dp.m_ClickLogFilename);
+	DDX_Check(pDX, IDC_CHECK_LOG_CLICKS, m_Dp.m_bLogClicks);
+	DDX_Check(pDX, IDC_CHECK_LOG_CLICKS_ONLY, m_Dp.m_bLogClicksOnly);
+	DDX_Check(pDX, IDC_CHECK_IMPORT_CLICKS, m_Dp.m_bImportClicks);
+	DDX_Text(pDX, IDC_EDIT_CLICK_IMPORT_FILENAME, m_Dp.m_ClickImportFilename);
+	DDX_Check(pDX, IDC_CHECK_IMPORTED_CLICKS_ONLY, m_Dp.m_bDontAutodetectClicks);
+
+	//}}AFX_DATA_MAP
+
+}
+
+
+BEGIN_MESSAGE_MAP(CMoreDeclickDialog, BaseClass)
+	//{{AFX_MSG_MAP(CMoreDeclickDialog)
+	ON_BN_CLICKED(IDC_CHECK_LOG_CLICKS, OnCheckLogClicks)
+	ON_BN_CLICKED(IDC_CHECK_IMPORT_CLICKS, OnCheckImportClicks)
+	ON_BN_CLICKED(IDC_CLICK_LOG_BROWSE_BUTTON, OnClickLogBrowseButton)
+	ON_BN_CLICKED(IDC_CLICK_IMPORT_BROWSE_BUTTON, OnClickImportBrowseButton)
+
+	ON_UPDATE_COMMAND_UI(IDC_EDIT_CLICK_LOG_FILENAME, OnUpdateLogClicks)
+	ON_UPDATE_COMMAND_UI(IDC_CLICK_LOG_BROWSE_BUTTON, OnUpdateLogClicks)
+	ON_UPDATE_COMMAND_UI(IDC_CHECK_LOG_CLICKS_ONLY, OnUpdateLogClicks)
+
+	ON_UPDATE_COMMAND_UI(IDC_EDIT_CLICK_IMPORT_FILENAME, OnUpdateImportClicks)
+	ON_UPDATE_COMMAND_UI(IDC_CLICK_IMPORT_BROWSE_BUTTON, OnUpdateImportClicks)
+	ON_UPDATE_COMMAND_UI(IDC_CHECK_IMPORTED_CLICKS_ONLY, OnUpdateImportClicks)
+
+	//}}AFX_MSG_MAP
+END_MESSAGE_MAP()
+
+/////////////////////////////////////////////////////////////////////////////
+// CMoreDeclickDialog message handlers
+void CMoreDeclickDialog::OnCheckLogClicks()
+{
+	NeedUpdateControls();
+}
+
+void CMoreDeclickDialog::OnCheckImportClicks()
+{
+	NeedUpdateControls();
+}
+
+void CMoreDeclickDialog::OnClickLogBrowseButton()
+{
+	CString filter(MAKEINTRESOURCE(IDS_FILE_FILTER_TXT));
+
+	m_eLogFilename.GetWindowText(m_Dp.m_ClickLogFilename);
+
+	CFileDialog fdlg(TRUE, _T("txt"), m_Dp.m_ClickLogFilename,
+					OFN_EXPLORER
+					//| OFN_FILEMUSTEXIST
+					| OFN_HIDEREADONLY,
+					filter);
+	fdlg.m_ofn.lpstrInitialDir = _T(".");
+
+	if (fdlg.DoModal() == IDOK)
+	{
+		m_Dp.m_ClickLogFilename = fdlg.GetPathName();
+		m_eLogFilename.SetWindowText(m_Dp.m_ClickLogFilename);
+	}
+
+}
+
+void CMoreDeclickDialog::OnClickImportBrowseButton()
+{
+	CString filter(MAKEINTRESOURCE(IDS_FILE_FILTER_TXT));
+
+	m_eImportFilename.GetWindowText(m_Dp.m_ClickImportFilename);
+
+	CFileDialog fdlg(TRUE, _T("txt"), m_Dp.m_ClickImportFilename,
+					OFN_EXPLORER
+					| OFN_FILEMUSTEXIST
+					| OFN_HIDEREADONLY,
+					filter);
+	fdlg.m_ofn.lpstrInitialDir = _T(".");
+
+	if (fdlg.DoModal() == IDOK)
+	{
+		m_Dp.m_ClickImportFilename = fdlg.GetPathName();
+		m_eImportFilename.SetWindowText(m_Dp.m_ClickImportFilename);
+	}
+}
+
+void CMoreDeclickDialog::OnUpdateLogClicks(CCmdUI * pCmdUI)
+{
+	pCmdUI->Enable(m_LogClicksCheck.GetCheck());
+}
+
+void CMoreDeclickDialog::OnUpdateImportClicks(CCmdUI * pCmdUI)
+{
+	pCmdUI->Enable(m_ImportClicksCheck.GetCheck());
 }
 
 /////////////////////////////////////////////////////////////////////////////

@@ -16,7 +16,7 @@
 #include "UiUpdatedDlg.h"
 #include "DialogWithSelection.h"
 #include "resource.h"       // main symbols
-
+#include "waveproc.h"
 /////////////////////////////////////////////////////////////////////////////
 // CCopyChannelsSelectDlg dialog
 
@@ -700,7 +700,7 @@ protected:
 /////////////////////////////////////////////////////////////////////////////
 // CDeclickDialog dialog
 
-class CDeclickDialog : public CDialogWithSelection
+class CDeclickDialog : public CDialogWithSelection, DeclickParameters
 {
 	typedef CDialogWithSelection BaseClass;
 // Construction
@@ -714,29 +714,17 @@ public:
 
 	// Dialog Data
 	CApplicationProfile Profile;
-	void SetDeclickData(class CClickRemoval * pCr);
+	void GetDeclickParameters(DeclickParameters * pCr);
+
 protected:
 	//{{AFX_DATA(CDeclickDialog)
 	enum { IDD = IDD_DIALOG_DECLICKING };
 	CNumEdit	m_EnvelopDecayRate;
 	CNumEdit	m_ClickToNoise;
 	CNumEdit	m_AttackRate;
-	CString	m_ClickLogFilename;
-	int		m_MaxClickLength;
 	int		m_MinClickAmplitude;
-	BOOL	m_bLogClicks;
-	BOOL	m_bLogClicksOnly;
-	BOOL	m_bImportClicks;
-	CString	m_ClickImportFilename;
 	//}}AFX_DATA
-	double m_dAttackRate;
 	double m_dClickToNoise;
-	double m_dEnvelopDecayRate;
-
-	CButton m_LogClicksCheck;
-	CButton m_ImportClicksCheck;
-	CEdit m_eLogFilename;
-	CEdit m_eImportFilename;
 
 // Overrides
 	// ClassWizard generated virtual function overrides
@@ -748,19 +736,58 @@ protected:
 
 // Implementation
 protected:
-
+	void SetClicksImportString();
 	// Generated message map functions
 	//{{AFX_MSG(CDeclickDialog)
+	afx_msg void OnButtonMoreSettings();
+
+	afx_msg void OnButtonSaveSettings();
+	afx_msg void OnButtonLoadSettings();
+	afx_msg void OnButtonSetDefaults();
+	afx_msg void OnButtonRevert();
+	//}}AFX_MSG
+	DECLARE_MESSAGE_MAP()
+	void LoadValuesFromRegistry();
+};
+
+class CMoreDeclickDialog : public CUiUpdatedDlg
+{
+	typedef CUiUpdatedDlg BaseClass;
+// Construction
+public:
+	CMoreDeclickDialog(DeclickParameters & Dp, CWnd* pParent = NULL);   // standard constructor
+
+	// Dialog Data
+	DeclickParameters & m_Dp;
+protected:
+	//{{AFX_DATA(CMoreDeclickDialog)
+	enum { IDD = IDD_DIALOG_MORE_DECLICK };
+	//}}AFX_DATA
+
+	CButton m_LogClicksCheck;
+	CButton m_ImportClicksCheck;
+	CEdit m_eLogFilename;
+	CEdit m_eImportFilename;
+
+// Overrides
+	// ClassWizard generated virtual function overrides
+	//{{AFX_VIRTUAL(CMoreDeclickDialog)
+protected:
+	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV support
+	//}}AFX_VIRTUAL
+
+// Implementation
+protected:
+
+	// Generated message map functions
+	//{{AFX_MSG(CMoreDeclickDialog)
 	afx_msg void OnCheckLogClicks();
 	afx_msg void OnCheckImportClicks();
 	afx_msg void OnClickLogBrowseButton();
 	afx_msg void OnClickImportBrowseButton();
-	afx_msg void OnButtonMoreSettings();
 
 	afx_msg void OnUpdateLogClicks(CCmdUI * pCmdUI);
 	afx_msg void OnUpdateImportClicks(CCmdUI * pCmdUI);
-	afx_msg void OnButtonSaveSettings();
-	afx_msg void OnButtonLoadSettings();
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 	void LoadValuesFromRegistry();
