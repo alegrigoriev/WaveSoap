@@ -1235,6 +1235,71 @@ BOOL CWaveFile::InstanceDataWav::CopyMarkers(InstanceDataWav const * pSrc,
 		SetWaveMarker( & SrcInfo);
 		HasChanged = TRUE;
 	}
+
+	if (HasChanged)
+	{
+		m_InfoChanged = true;
+	}
+	return HasChanged;
+}
+
+// reverse markers inside reversed area
+BOOL CWaveFile::InstanceDataWav::ReverseMarkers(SAMPLE_INDEX BeginSample, NUMBER_OF_SAMPLES Length)
+{
+	BOOL HasChanged = FALSE;
+
+	for (CuePointVectorIterator i = m_CuePoints.begin();
+		i < m_CuePoints.end(); i++)
+	{
+		WaveRegionMarker * pMarker = GetRegionMarker(i->CuePointID);
+
+		if (NULL != pMarker)
+		{
+			DWORD RegionEnd = i->dwSampleOffset + pMarker->SampleLength;
+
+			if (RegionEnd <= unsigned(BeginSample)
+				|| i->dwSampleOffset >= unsigned(BeginSample + Length))
+			{
+				// do nothing
+			}
+			else if (i->dwSampleOffset >= unsigned(BeginSample)
+					&& RegionEnd <= unsigned(BeginSample + Length))
+			{
+				// the region is all inside the area
+				i->dwSampleOffset = BeginSample * 2 + Length - RegionEnd;
+				HasChanged = TRUE;
+			}
+			else if (RegionEnd < unsigned(BeginSample + Length))
+			{
+				// the region begins before the area
+				// exclude the area from it
+				pMarker->SampleLength = BeginSample - i->dwSampleOffset;
+				HasChanged = TRUE;
+			}
+			else if (i->dwSampleOffset > unsigned(BeginSample))
+			{
+				// the region ends after the area
+				// exclude the area from it
+				pMarker->SampleLength = RegionEnd - (BeginSample + Length);
+				i->dwSampleOffset = BeginSample + Length;
+				HasChanged = TRUE;
+			}
+		}
+		else
+		{
+			if (i->dwSampleOffset >= unsigned(BeginSample)
+				&& i->dwSampleOffset <= unsigned(BeginSample + Length))
+			{
+				i->dwSampleOffset = BeginSample * 2 + Length - i->dwSampleOffset;
+				HasChanged = TRUE;
+			}
+		}
+	}
+
+	if (HasChanged)
+	{
+		m_InfoChanged = true;
+	}
 	return HasChanged;
 }
 
