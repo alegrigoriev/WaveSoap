@@ -1971,11 +1971,19 @@ void CCdReadingContext::PostRetire(BOOL bChildContext)
 			pDocument->SoundChanged(m_DstFile.GetFileID(), 0, 0, NewLength);
 		}
 	}
-	else if (NULL != m_pNextTrackContext)
+	else
 	{
-		CCdReadingContext * pContext = m_pNextTrackContext;
-		m_pNextTrackContext = NULL;
-		pContext->Execute();
+		if (m_bSaveImmediately)
+		{
+			pDocument->m_bClosing = true;
+			pDocument->DoFileSave();
+		}
+		if (NULL != m_pNextTrackContext)
+		{
+			CCdReadingContext * pContext = m_pNextTrackContext;
+			m_pNextTrackContext = NULL;
+			pContext->Execute();
+		}
 	}
 	COperationContext::PostRetire(bChildContext);
 }

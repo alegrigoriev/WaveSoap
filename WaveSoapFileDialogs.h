@@ -115,36 +115,11 @@ public:
 							LPCTSTR lpszFileName = NULL,
 							DWORD dwFlags = OFN_HIDEREADONLY | OFN_OVERWRITEPROMPT,
 							LPCTSTR lpszFilter = NULL,
-							CWnd* pParentWnd = NULL)
-		: CFileDialogWithHistory(bOpenFileDialog, lpszDefExt, lpszFileName, dwFlags,
-								lpszFilter, pParentWnd),
-		m_SelectedFormat(-1),
-		m_SelectedMp3Encoder(0),
-		m_SelectedMp3Bitrate(LameEncBitrate128),
-		m_bCompatibleFormatsOnly(TRUE),
-		m_FileType(SoundFileTypeUnknown),
-		m_SelectedRawFormat(RawSoundFilePcm16Lsb),
-		m_pDocument(NULL)
-	{
-		memzero(m_Mp3Encoders);
-		if (CThisApp::SupportsV5FileDialog())
-		{
-			m_ofn.lpTemplateName = MAKEINTRESOURCE(IDD_DIALOG_SAVE_TEMPLATE_V5);
-		}
-		else
-		{
-			m_ofn.lpTemplateName = MAKEINTRESOURCE(IDD_DIALOG_SAVE_TEMPLATE_V4);
-		}
-		m_DefExt[1] = _T("wav");
-		m_DefExt[2] = _T("mp3");
-		m_DefExt[3] = _T("wma");
-		m_DefExt[4] = _T("raw");
-		m_DefExt[5] = _T("avi");
-	}
+							CWnd* pParentWnd = NULL);
 	~CWaveSoapFileSaveDialog() {}
 
 	CWaveFile m_WaveFile;
-	CComboBox m_FormatCombo;
+	CComboBox m_FormatTagCombo;
 	CComboBox m_AttributesCombo;
 
 	WaveFormatTagEx m_SelectedTag;
@@ -153,8 +128,8 @@ public:
 	int m_SelectedRawFormat;
 
 	int m_SelectedMp3Encoder;
-	int m_Mp3Encoders[4];
 	int m_SelectedMp3Bitrate;
+	int m_SelectedWmaBitrate;
 
 	BOOL m_bCompatibleFormatsOnly;
 
@@ -166,6 +141,8 @@ public:
 	CWaveSoapFrontDoc * m_pDocument;
 
 	CAudioCompressionManager m_Acm;
+
+	CApplicationProfile m_Profile;
 
 	virtual BOOL OnFileNameOK();
 	virtual UINT OnShareViolation( LPCTSTR lpszPathName );
@@ -185,7 +162,6 @@ public:
 
 	void FillWmaFormatCombo();
 	void FillMp3EncoderCombo();
-	void FillMp3FormatCombo();
 	void FillLameEncoderFormats();
 
 	WAVEFORMATEX * GetWaveFormat();
@@ -201,6 +177,7 @@ public:
 	//{{AFX_MSG(CWaveSoapFileSaveDialog)
 	afx_msg void OnCompatibleFormatsClicked();
 	afx_msg void OnComboFormatsChange();
+	afx_msg void OnComboAttributesChange();
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 };

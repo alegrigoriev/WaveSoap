@@ -208,14 +208,14 @@ CCdGrabbingDialog::CCdGrabbingDialog(CWnd* pParent /*=NULL*/)
 {
 	//{{AFX_DATA_INIT(CCdGrabbingDialog)
 	m_RadioAssignAttributes = -1;
-	m_RadioStoreImmediately = -1;
+	m_RadioOpenInEditor = 0;
 	m_sSaveFolder = _T("");
 	m_sAlbum = _T("");
 	m_sArtist = _T("");
 	m_RadioFileFormat = -1;
 	//}}AFX_DATA_INIT
 	m_RadioAssignAttributes = 0;
-	m_RadioStoreImmediately = 0;
+	m_RadioOpenInEditor = 0;
 	m_DiskID = -1;
 	m_bNeedUpdateControls = TRUE;
 	m_MaxReadSpeed = 0;
@@ -250,7 +250,7 @@ CCdGrabbingDialog::CCdGrabbingDialog(CWnd* pParent /*=NULL*/)
 	m_Profile.AddBoolItem(_T("CdRead"),
 						_T("AssignToAllOrSelected"), m_RadioAssignAttributes, FALSE);
 	m_Profile.AddBoolItem(_T("CdRead"),
-						_T("EditFiles"), m_RadioStoreImmediately, FALSE);
+						_T("EditFiles"), m_RadioOpenInEditor, FALSE);
 
 	static ResizableDlgItem const ResizeItems[] =
 	{
@@ -316,7 +316,7 @@ void CCdGrabbingDialog::DoDataExchange(CDataExchange* pDX)
 	DDX_Control(pDX, IDC_COMBO_DRIVES, m_DrivesCombo);
 	DDX_Control(pDX, IDC_LIST_TRACKS, m_lbTracks);
 	DDX_Radio(pDX, IDC_RADIO_ASSIGN_ATTRIBUTES, m_RadioAssignAttributes);
-	DDX_Radio(pDX, IDC_RADIO_STORE_IMMEDIATELY, m_RadioStoreImmediately);
+	DDX_Radio(pDX, IDC_RADIO_STORE_IMMEDIATELY, m_RadioOpenInEditor);
 	DDX_Text(pDX, IDC_COMBO_FOLDER, m_sSaveFolder);
 	DDX_Text(pDX, IDC_COMBO_ALBUM, m_sAlbum);
 	DDX_Text(pDX, IDC_COMBO_ARTIST, m_sArtist);
@@ -325,6 +325,16 @@ void CCdGrabbingDialog::DoDataExchange(CDataExchange* pDX)
 
 	if (pDX->m_bSaveAndValidate)
 	{
+		unsigned sel = m_ComboBitrate.GetCurSel();
+		if (sel < m_Acm.m_Formats.size())
+		{
+			m_Wf = m_Acm.m_Formats[sel].Wf;
+		}
+		else
+		{
+			m_RadioFileFormat = 0;
+			m_Wf.InitCdAudioFormat();
+		}
 		// save album and track names to CDPLAYER.INI
 		// get selected tracks
 		// check for valid file names
@@ -502,6 +512,7 @@ BEGIN_MESSAGE_MAP(CCdGrabbingDialog, CResizableDialog)
 	ON_BN_CLICKED(IDC_RADIO_MP3_FORMAT, OnRadioMp3Format)
 	ON_BN_CLICKED(IDC_RADIO_WAV_FORMAT, OnRadioWavFormat)
 	ON_BN_CLICKED(IDC_BUTTON_EJECT, OnButtonEject)
+	ON_WM_SYSCOLORCHANGE()
 	//}}AFX_MSG_MAP
 	ON_WM_DEVICECHANGE()
 	ON_COMMAND(IDC_BUTTON_PLAY, OnButtonPlay)
@@ -759,7 +770,8 @@ void CCdGrabbingDialog::CreateImageList()
 	// first row: unchecked checkbutton, checked checkbutton
 	int cbWidth = info.bmWidth / 4;
 	int cbHeight = info.bmHeight / 3;
-	CheckBmp.CreateBitmap(cbWidth, cbHeight, 1, 1, NULL);
+	CheckBmp.CreateBitmap(cbWidth, cbHeight,
+						info.bmPlanes, info.bmBitsPixel, NULL);
 
 	dc1.CreateCompatibleDC(NULL);
 	dc2.CreateCompatibleDC(NULL);
@@ -771,6 +783,10 @@ void CCdGrabbingDialog::CreateImageList()
 	CGdiObject * OldBmp2 = dc2.SelectObject( & CheckBmp);
 	dc2.BitBlt(0, 0, cbWidth, cbHeight, & dc1, 0, 0, SRCCOPY);
 	dc2.SelectObject(OldBmp2);
+
+	char buf[1024];
+	CheckBmp.GetBitmapBits(1024, buf);
+
 	ImgList.Add( & CheckBmp, (CBitmap *) NULL);
 
 	dc2.SelectObject( & CheckBmp);
@@ -1050,6 +1066,7 @@ void CCdGrabbingDialog::OnButtonBrowseSaveFolder()
 		m_sSaveFolder = dlg.GetFolderPath();
 		// TODO: check permissiong in callback
 		m_eSaveFolder.SetWindowText(m_sSaveFolder);
+		m_bNeedUpdateControls = TRUE;
 		// TODO: check if the folder exists and create if necessary
 	}
 }
@@ -1656,10 +1673,11 @@ void CCdGrabbingDialog::FillFormatCombo()
 		// WAV
 		m_Acm.m_FormatTags.resize(1);
 		m_Acm.m_FormatTags[0].Tag.Tag = WAVE_FORMAT_PCM;
-		m_Acm.m_FormatTags[0].Name.Empty();
+		m_Acm.m_FormatTags[0].Name = _T("PCM");
 		m_Acm.m_Formats.resize(1);
 		m_Acm.m_Formats[0].Name = m_Acm.GetFormatName(NULL, m_Acm.m_Wf);
 		m_Acm.m_Formats[0].Wf = m_Acm.m_Wf;
+		m_Acm.m_Formats[0].TagIndex = 0;
 		break;
 	case 1:
 		// WMA
@@ -1675,8 +1693,16 @@ void CCdGrabbingDialog::FillFormatCombo()
 	}
 	for (int i = 0; i < m_Acm.m_Formats.size(); i++)
 	{
-		m_ComboBitrate.AddString(m_Acm.m_Formats[0].Name);
+		m_ComboBitrate.AddString(m_Acm.m_Formats[i].Name
+								+ _T(" - ") + m_Acm.m_FormatTags[m_Acm.m_Formats[i].TagIndex].Name);
 	}
 	m_ComboBitrate.SetCurSel(0);
 }
 
+
+void CCdGrabbingDialog::OnSysColorChange()
+{
+	CResizableDialog::OnSysColorChange();
+
+	CreateImageList();
+}

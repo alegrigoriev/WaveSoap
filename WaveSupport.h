@@ -178,6 +178,12 @@ struct CWaveFormat
 				|| (SampleRate() == cmp.SampleRate()
 					&& BytesPerSec() < cmp.BytesPerSec());
 	}
+	bool operator >(CWaveFormat const & cmp) const
+	{
+		return SampleRate() > cmp.SampleRate()
+				|| (SampleRate() == cmp.SampleRate()
+					&& BytesPerSec() > cmp.BytesPerSec());
+	}
 	bool operator ==(CWaveFormat const & cmp) const
 	{
 		return m_pWf->cbSize == cmp.m_pWf->cbSize
@@ -308,13 +314,14 @@ public:
 	{
 		CWaveFormat Wf;
 		CString Name;
+		int TagIndex;
 		bool operator <(FormatItem const & cmp) const
 		{
 			return Wf < cmp.Wf;
 		}
 		bool operator >(FormatItem const & cmp) const
 		{
-			return ! (Wf < cmp.Wf);
+			return Wf > cmp.Wf;
 		}
 		bool operator ==(FormatItem const & cmp) const
 		{

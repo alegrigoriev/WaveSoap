@@ -699,6 +699,10 @@ BOOL CWaveSoapFrontDoc::DoSave(LPCTSTR lpszPathName, BOOL bReplace)
 
 			if (SaveFlags & SaveFile_SaveCopy)
 			{
+				if (name.IsEmpty())
+				{
+					name = GetTitle();
+				}
 				// add Copy Of
 				// Get filename
 				CString CopyOf;
@@ -2482,7 +2486,7 @@ BOOL CWaveSoapFrontDoc::OnSaveMp3File(int flags, LPCTSTR FullTargetName, WAVEFOR
 		if (! pAcmConvertor->InitConversion( & SrcFormat, pWf))
 		{
 			delete pContext;
-			//todo: enable to convert dialog
+			//todo: unable to convert dialog
 			return FALSE;
 		}
 	}
@@ -3059,6 +3063,7 @@ BOOL CWaveSoapFrontDoc::PostCommitFileSave(int flags, LPCTSTR FullTargetName)
 		if (m_bClosePending)
 		{
 			m_WavFile.Close();
+			m_bCloseThisDocumentNow = true;
 			return TRUE;
 		}
 

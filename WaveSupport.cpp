@@ -652,6 +652,7 @@ struct FormatEnumCallbackStruct
 	int m_NumTagsToCompare;
 	//CString m_FormatTagName;
 	int flags;
+	int TagIndex;
 	BOOL FormatFound;
 };
 
@@ -758,6 +759,7 @@ BOOL _stdcall CAudioCompressionManager::FormatTagEnumCallback(
 	fcs.m_NumTagsToCompare = pfts->NumTags;
 	fcs.flags = pfts->flags;
 	fcs.FormatToMatch = pfts->pWf;
+	fcs.TagIndex = 0;
 
 	CWaveFormat pwfx;
 	pwfx.Allocate(0xFFF0);
@@ -901,6 +903,7 @@ BOOL _stdcall CAudioCompressionManager::FormatEnumCallback(
 		FormatItem * pfmt = pAcm->m_Formats.insert(pAcm->m_Formats.end());
 		pfmt->Wf = pafd->pwfx;
 		pfmt->Name = pafd->szFormat;
+		pfmt->TagIndex = pfcs->TagIndex;
 		pfcs->FormatFound = TRUE;
 	}
 	return TRUE;
@@ -965,6 +968,7 @@ void CAudioCompressionManager::FillMultiFormatArray(unsigned nSelFrom, unsigned 
 			fcs.m_NumTagsToCompare = 0;
 			fcs.m_pTagsToCompare = NULL;
 			fcs.FormatFound = FALSE;
+			fcs.TagIndex = sel;
 
 			int res = acmFormatEnum(had, & afd, FormatEnumCallback, DWORD( & fcs), EnumFlags);
 			TRACE("acmFormatEnum returned %x\n", res);
@@ -994,6 +998,7 @@ void CAudioCompressionManager::FillMultiFormatArray(unsigned nSelFrom, unsigned 
 						FormatItem * pfmt = m_Formats.insert(m_Formats.end());
 						pfmt->Wf = afd.pwfx;
 						pfmt->Name = afd.szFormat;
+						pfmt->TagIndex = sel;
 					}
 				}
 				else
@@ -1029,6 +1034,7 @@ void CAudioCompressionManager::FillMultiFormatArray(unsigned nSelFrom, unsigned 
 								FormatItem * pfmt = m_Formats.insert(m_Formats.end());
 								pfmt->Wf = afd.pwfx;
 								pfmt->Name = afd.szFormat;
+								pfmt->TagIndex = sel;
 							}
 						}
 						TRACE("acmFormatEnum SUGGEST returned %x\n", res);
@@ -1104,6 +1110,7 @@ void CAudioCompressionManager::FillLameEncoderFormats()
 		m_Formats[i].Wf.m_pWf->nAvgBytesPerSec = Mp3Bitrates[i] * 125;
 		((WAVEFORMATEXTENSIBLE*)(m_Formats[i].Wf.m_pWf))->SubFormat =
 			BladeMp3Encoder::GetTag().SubFormat;
+		m_Formats[i].TagIndex = 0;
 	}
 }
 
