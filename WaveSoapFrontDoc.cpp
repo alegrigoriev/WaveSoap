@@ -4155,12 +4155,7 @@ void CWaveSoapFrontDoc::OnProcessResample()
 		return;
 	}
 
-	CResampleDialog dlg;
-	CThisApp * pApp = GetApp();
-	dlg.m_bUndo = UndoEnabled();
-
-	dlg.m_OldSampleRate = WaveSampleRate();
-	dlg.m_bCanOnlyChangeSamplerate = WaveFileSamples() == 0;
+	CResampleDialog dlg(UndoEnabled(), WaveSampleRate(), WaveFileSamples() == 0);
 
 	if (IDOK != dlg.DoModal())
 	{
@@ -4172,17 +4167,11 @@ void CWaveSoapFrontDoc::OnProcessResample()
 	long OldSamplingRate = WaveSampleRate();
 	long NewSamplingRate;
 	double ResampleRatio;
-	if (dlg.m_bChangeSamplingRate)
-	{
-		NewSamplingRate = dlg.m_NewSampleRate;
-		ResampleRatio = double(NewSamplingRate) / OldSamplingRate;
-	}
-	else
-	{
-		NewSamplingRate = long(WaveSampleRate() * dlg.m_TempoChange);
-		ResampleRatio = dlg.m_TempoChange;
-	}
-	if (dlg.m_bChangeRateOnly)
+
+	NewSamplingRate = dlg.NewSampleRate();
+	ResampleRatio = dlg.ResampleRatio();
+
+	if (dlg.ChangeRateOnly())
 	{
 		SetSampleRate(NewSamplingRate);
 		return;
@@ -4215,7 +4204,7 @@ void CWaveSoapFrontDoc::OnProcessResample()
 		FileCreationErrorMessageBox(NULL);
 		return;
 	}
-	if (dlg.m_bChangeSamplingRate)
+	if (dlg.ChangeSampleRate())
 	{
 		DstFile.GetWaveFormat()->nSamplesPerSec = NewSamplingRate;
 	}
@@ -4224,7 +4213,7 @@ void CWaveSoapFrontDoc::OnProcessResample()
 	pContext->m_Flags |= ConvertContextReplaceWholeFile;
 
 	// add UNDO
-	if (UndoEnabled())
+	if (dlg.UndoEnabled())
 	{
 		CUndoRedoContext * pUndo = new CUndoRedoContext(this, _T("Resample"));
 		if (NULL == pUndo)
