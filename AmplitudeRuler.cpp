@@ -96,8 +96,13 @@ void CAmplitudeRuler::DrawSamples(CDC * pDC)
 	pDC->SetTextColor(0x000000);   // black
 	pDC->SetBkMode(TRANSPARENT);
 	int nVertStep = GetSystemMetrics(SM_CYMENU);
+
 	int nChannels = pDoc->WaveChannels();
-	int nHeight = cr.Height() / nChannels;
+	int nHeight = cr.Height();
+	if (0 != nChannels)
+	{
+		nHeight /= nChannels;
+	}
 	double VerticalScale = pMasterView->m_VerticalScale;
 	double ScaledWaveOffset = pMasterView->m_WaveOffsetY * VerticalScale;
 	int nSampleUnits = int(nVertStep * 65536. / (nHeight * VerticalScale));
@@ -382,11 +387,12 @@ int CAmplitudeRuler::CalculateWidth()
 	return Width;
 }
 
-void CAmplitudeRuler::OnUpdate( CView* pSender, LPARAM lHint, CObject* pHint )
+void CAmplitudeRuler::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
 {
 	if (lHint == CWaveSoapFrontDoc::UpdateWholeFileChanged)
 	{
 		UpdateMaxExtents();
+		Invalidate();
 	}
 	else if ((lHint == CWaveSoapFrontView::WAVE_OFFSET_CHANGED
 				|| lHint == CWaveSoapFrontView::WAVE_SCALE_CHANGED)
