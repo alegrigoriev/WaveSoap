@@ -317,7 +317,7 @@ CSelectionDialog::CSelectionDialog(SAMPLE_INDEX Start, SAMPLE_INDEX End,
 									int TimeFormat,
 									CWnd* pParent /*=NULL*/)
 	: BaseClass(IDD, pParent)
-	, m_Chan(Channel)
+	, m_Chan(Channel + 1)
 	, m_Start(Start)
 	, m_End(End)
 	, m_CaretPosition(CaretPos)
