@@ -11,6 +11,7 @@
 /////////////////////////////////////////////////////////////////////////////
 // CSaveExpressionDialog dialog
 #include "ChildDialog.h"
+#include "resource.h"       // main symbols
 
 class CSaveExpressionDialog : public CDialog
 {

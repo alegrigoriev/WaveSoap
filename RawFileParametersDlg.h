@@ -9,6 +9,7 @@
 //
 #include "ApplicationProfile.h"
 #include "UiUpdatedDlg.h"
+#include "resource.h"       // main symbols
 
 /////////////////////////////////////////////////////////////////////////////
 // CRawFileParametersDlg dialog

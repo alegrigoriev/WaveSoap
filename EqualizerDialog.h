@@ -12,6 +12,7 @@
 #include "ResizableDialog.h"
 #include "UiUpdatedDlg.h"
 #include "DialogWithSelection.h"
+#include "resource.h"       // main symbols
 
 /////////////////////////////////////////////////////////////////////////////
 // CEqualizerGraphWnd window

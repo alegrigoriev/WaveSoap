@@ -9,6 +9,7 @@
 #include "GdiObjectSave.h"
 #include "WaveSoapFrontDoc.h"
 #include "WaveFftView.h"
+#include "resource.h"       // main symbols
 
 #ifdef _DEBUG
 #define new DEBUG_NEW

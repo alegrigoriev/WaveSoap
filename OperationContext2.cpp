@@ -6,6 +6,7 @@
 #include "WaveSoapFrontDoc.h"
 #include "BladeMP3EncDLL.h"
 #include "TimeToStr.h"
+#include "resource.h"       // main symbols
 
 static int _fastcall fround(double d)
 {
