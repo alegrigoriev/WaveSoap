@@ -103,6 +103,11 @@ public:
 
 	// Attributes
 public:
+	CComboBox & GetComboBox()
+	{
+		return *static_cast<CComboBox *>(static_cast<CWnd *>(this));
+	}
+
 	std::vector<SAMPLE_INDEX> m_Positions;
 	// Operations
 	void AddPosition(LPCTSTR name, SAMPLE_INDEX Sample);
