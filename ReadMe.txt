@@ -1,5 +1,6 @@
 Known problems and tasks:
 
+If main window is minimized, save its state before minimization
 Enter WMA file attributes (title, author, etc)
 Enter MP3 file attributes
 Put "Save As" files to file MRU
