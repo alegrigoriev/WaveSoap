@@ -35,6 +35,7 @@ BEGIN_MESSAGE_MAP(CHorizontalRuler, CScaledScrollView)
 	ON_WM_LBUTTONUP()
 	ON_WM_MOUSEACTIVATE()
 	ON_WM_CAPTURECHANGED()
+	ON_WM_CREATE()
 	//}}AFX_MSG_MAP
 END_MESSAGE_MAP()
 
@@ -141,27 +142,15 @@ int CHorizontalRuler::OnMouseActivate(CWnd* pDesktopWnd, UINT nHitTest, UINT mes
 	return CWnd::OnMouseActivate(pDesktopWnd, nHitTest, message);
 }
 
-void CHorizontalRuler::OnInitialUpdate()
-{
-	CScaledScrollView::OnInitialUpdate();
-
-	KeepAspectRatio(FALSE);
-	KeepScaleOnResizeX(TRUE);
-	KeepScaleOnResizeY(FALSE);
-	KeepOrgOnResizeX(TRUE);
-	KeepOrgOnResizeY(FALSE);
-	SetMaxExtents(0., 0., 0, 1);
-	//SetExtents(0., 0., 0, 1);
-
-	ShowScrollBar(SB_VERT, FALSE);
-}
-
 BOOL CHorizontalRuler::OnScrollBy(CSize sizeScroll, BOOL bDoScroll)
 {
 	// TODO: Add your specialized code here and/or call the base class
 
 	CScaledScrollView::OnScrollBy(sizeScroll, TRUE);
-	Invalidate(FALSE);
+	if (sizeScroll.cx != 0 || sizeScroll.cy != 0)
+	{
+		Invalidate(FALSE);
+	}
 	return TRUE;
 }
 
@@ -197,6 +186,7 @@ BEGIN_MESSAGE_MAP(CVerticalRuler, CScaledScrollView)
 	ON_WM_LBUTTONUP()
 	ON_WM_MOUSEACTIVATE()
 	ON_WM_CAPTURECHANGED()
+	ON_WM_CREATE()
 	//}}AFX_MSG_MAP
 END_MESSAGE_MAP()
 
@@ -265,9 +255,9 @@ void CVerticalRuler::OnMouseMove(UINT nFlags, CPoint point)
 			bIsTrackingSelection = TRUE;
 		}
 		// do scroll
-		double dy = (PrevMouseY - point.y) / GetYScaleDev();
+		double dy = (PrevMouseY - point.y) / m_pVertMaster->GetYScaleDev();
 		PrevMouseY = point.y;
-		m_pVertMaster->ScrollBy(dy, 0, TRUE);
+		m_pVertMaster->ScrollBy(0, dy, TRUE);
 		m_pVertMaster->NotifySlaveViews(CHANGE_VERT_ORIGIN);
 	}
 }
@@ -301,27 +291,15 @@ int CVerticalRuler::OnMouseActivate(CWnd* pDesktopWnd, UINT nHitTest, UINT messa
 	return CWnd::OnMouseActivate(pDesktopWnd, nHitTest, message);
 }
 
-void CVerticalRuler::OnInitialUpdate()
-{
-	CScaledScrollView::OnInitialUpdate();
-
-	KeepAspectRatio(FALSE);
-	KeepScaleOnResizeX(FALSE);
-	KeepScaleOnResizeY(TRUE);
-	KeepOrgOnResizeX(FALSE);
-	KeepOrgOnResizeY(TRUE);
-	SetMaxExtents(0., 0., 1, 0);
-	//SetExtents(0., 0., 0, 1);
-
-	ShowScrollBar(SB_HORZ, FALSE);
-}
-
 BOOL CVerticalRuler::OnScrollBy(CSize sizeScroll, BOOL bDoScroll)
 {
 	// TODO: Add your specialized code here and/or call the base class
 
 	CScaledScrollView::OnScrollBy(sizeScroll, TRUE);
-	Invalidate(FALSE);
+	if (sizeScroll.cx != 0 || sizeScroll.cy != 0)
+	{
+		Invalidate(FALSE);
+	}
 	return TRUE;
 }
 
@@ -334,3 +312,38 @@ void CVerticalRuler::OnCaptureChanged(CWnd *pWnd)
 	CView::OnCaptureChanged(pWnd);
 }
 
+
+int CVerticalRuler::OnCreate(LPCREATESTRUCT lpCreateStruct)
+{
+	if (CScaledScrollView::OnCreate(lpCreateStruct) == -1)
+		return -1;
+
+	KeepAspectRatio(FALSE);
+	KeepScaleOnResizeX(FALSE);
+	KeepScaleOnResizeY(TRUE);
+	KeepOrgOnResizeX(FALSE);
+	KeepOrgOnResizeY(TRUE);
+	SetMaxExtents(0., 0., 0, 1);
+	//SetExtents(0., 0., 0, 1);
+
+	ShowScrollBar(SB_HORZ, FALSE);
+	return 0;
+}
+
+int CHorizontalRuler::OnCreate(LPCREATESTRUCT lpCreateStruct)
+{
+	if (CScaledScrollView::OnCreate(lpCreateStruct) == -1)
+		return -1;
+
+	KeepAspectRatio(FALSE);
+	KeepScaleOnResizeX(TRUE);
+	KeepScaleOnResizeY(FALSE);
+	KeepOrgOnResizeX(TRUE);
+	KeepOrgOnResizeY(FALSE);
+	SetMaxExtents(0., 0., 0, 1);
+	//SetExtents(0., 0., 0, 1);
+
+	ShowScrollBar(SB_VERT, FALSE);
+
+	return 0;
+}
