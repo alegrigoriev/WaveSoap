@@ -4146,6 +4146,8 @@ void CWaveSoapFrontDoc::OnFileStatistics()
 	}
 
 	CStatisticsContext * pContext = new CStatisticsContext(this, IDS_SCANNING_STATISTICS_STATUS_PROMPT);
+	// the operation can be aborted by exit
+	pContext->m_Flags |= OperationContextNonCritical;
 
 	SAMPLE_INDEX begin = m_SelectionStart;
 	SAMPLE_INDEX end = m_SelectionEnd;
@@ -4648,6 +4650,8 @@ void CWaveSoapFrontDoc::OnProcessDoUlf()
 	CWaveProcContext::auto_ptr pContext
 	(new CWaveProcContext(this, IDS_ULF_REDUCTION_STATUS_PROMPT,
 						IDS_ULF_REDUCTION_OPERATION_NAME));
+	// put it to disk-intensive
+	pContext->m_Flags |= OperationContextDiskIntensive;
 
 	if ( ! pContext->InitDestination(m_WavFile, dlg.GetStart(),
 									dlg.GetEnd(), dlg.GetChannel(), dlg.UndoEnabled()))
