@@ -168,7 +168,7 @@ void CResampleContext::DeInit()
 
 			CString s;
 			s.Format(IDS_SOUND_CLIPPED, m_pContext->pDocument->GetTitle(),
-					int(m_pContext->GetMaxClipped() * (100. / 32678)));
+					int(m_pContext->m_Resample.GetMaxClipped() * (100. / 32678)));
 
 			CString s1;
 			s1.LoadString(IDS_CONTINUE_QUESTION);
