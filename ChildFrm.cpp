@@ -9,6 +9,8 @@
 #include "TimeRulerView.h"
 #include "AmplitudeRuler.h"
 #include "WaveFftView.h"
+#include <afxpriv.h>
+
 #ifdef _DEBUG
 #define new DEBUG_NEW
 #undef THIS_FILE
@@ -87,28 +89,11 @@ BOOL CChildFrame::OnCreateClient(LPCREATESTRUCT lpcs, CCreateContext* pContext)
 	// TODO: Add your specialized code here and/or call the base class
 	CRect r;
 	GetClientRect( & r);
-	CRect tr = r;
-	CRect r1 = r;
-	//BOOL ret = m_dBar.Create(IDD_DIALOGBAR_MDI_CHILD, this);
-
-	//CRect dr;
-	//m_dBar.GetClientRect( & dr);
 
 	//r1.top = dr.bottom;
 	BOOL ret = m_wClient.Create(NULL, _T(""),
 								WS_CHILD | WS_VISIBLE,
-								r1, this, 1, pContext);
-
-	if (ret)
-	{
-#if 0
-		m_Tab.SetFont(CFont::FromHandle((HFONT)GetStockObject(ANSI_VAR_FONT)), FALSE);
-		m_Tab.InsertItem(0, _T("Source"));
-		m_Tab.InsertItem(1, _T("De-humming"));
-		m_Tab.InsertItem(2, _T("De-clicking"));
-		m_Tab.InsertItem(3, _T("Noise reduction"));
-#endif
-	}
+								r, this, AFX_IDW_PANE_FIRST, pContext);
 
 	return ret;
 }
@@ -130,6 +115,7 @@ BEGIN_MESSAGE_MAP(CWaveMDIChildClient, CWnd)
 	//{{AFX_MSG_MAP(CWaveMDIChildClient)
 	ON_WM_SIZE()
 	ON_WM_CREATE()
+	ON_WM_HSCROLL()
 	ON_COMMAND(IDC_VIEW_SHOW_FFT, OnViewShowFft)
 	ON_UPDATE_COMMAND_UI(IDC_VIEW_SHOW_FFT, OnUpdateViewShowFft)
 	ON_COMMAND(IDC_VIEW_WAVEFORM, OnViewWaveform)
@@ -203,19 +189,65 @@ void CWaveMDIChildClient::OnSize(UINT nType, int cx, int cy)
 {
 	CWnd::OnSize(nType, cx, cy);
 // resize child windows
-	RecalcLayout(cx, cy);
-
-
+	RecalcLayout();
 }
 
-void CWaveMDIChildClient::RecalcLayout(int cx, int cy)
+// repositions client area of specified window
+// assumes everything has WS_BORDER or is inset like it does
+//  (includes scroll bars)
+static void DeferClientPos(AFX_SIZEPARENTPARAMS* lpLayout,
+							CWnd* pWnd, RECT const& cr, BOOL bScrollBar)
+{
+	ASSERT(pWnd != NULL);
+	ASSERT(pWnd->m_hWnd != NULL);
+
+	CRect rect = cr;
+	if (bScrollBar)
+	{
+		// if there is enough room, draw scroll bar without border
+		// if there is not enough room, set the WS_BORDER bit so that
+		//   we will at least get a proper border drawn
+		BOOL bNeedBorder = (rect.Width() <= 1 || rect.Height() <= 1);
+		pWnd->ModifyStyle(bNeedBorder ? 0 : WS_BORDER,
+						bNeedBorder ? WS_BORDER : 0);
+	}
+
+	// adjust for 3d border (splitter windows have implied border)
+	if ((pWnd->GetExStyle() & WS_EX_CLIENTEDGE) ||
+		pWnd->IsKindOf(RUNTIME_CLASS(CSplitterWnd)))
+		rect.InflateRect(2, 2);
+
+	// first check if the new rectangle is the same as the current
+	CRect rectOld;
+	pWnd->GetWindowRect(rectOld);
+	pWnd->GetParent()->ScreenToClient(&rectOld);
+	if (rect != rectOld)
+		AfxRepositionWindow(lpLayout, pWnd->m_hWnd, rect);
+}
+
+void CWaveMDIChildClient::RecalcLayout()
 {
 // resize child windows
+	CRect cr;
+	GetClientRect( & cr);
 
 	CRect r;
+	AFX_SIZEPARENTPARAMS layout;
+	layout.hDWP = ::BeginDeferWindowPos(10);
+
 	int RulerHeight = CTimeRulerView::CalculateHeight();
 	// calculate horizontal ruler width
 	int RulerWidth = CAmplitudeRuler::CalculateWidth();
+	int cyhscroll = GetSystemMetrics(SM_CYHSCROLL);
+	CWnd * pScroll = GetDlgItem(AFX_IDW_HSCROLL_FIRST);
+	if (pScroll)
+	{
+		r.left = RulerWidth;
+		r.right = cr.right;
+		r.top = cr.bottom - cyhscroll;
+		r.bottom = cr.bottom;
+		DeferClientPos(&layout, pScroll, r, TRUE);
+	}
 
 	CWnd * pHorRuler = GetDlgItem(HorizontalRulerID);
 
@@ -224,17 +256,31 @@ void CWaveMDIChildClient::RecalcLayout(int cx, int cy)
 		r.left = RulerWidth;
 		r.top = 0;
 		r.bottom = RulerHeight;
-		r.right = cx;
-		pHorRuler->MoveWindow( & r);
+		r.right = cr.right;
+		//pHorRuler->MoveWindow( & r);
+		DeferClientPos(&layout, pHorRuler, r, FALSE);
 	}
-	CWnd * pVertRuler = GetDlgItem(VerticalRulerID);
+
+	CWnd * pVertRuler = GetDlgItem(VerticalWaveRulerID);
 	if (pVertRuler)
 	{
 		r.left = 0;
 		r.right = RulerWidth;
 		r.top = RulerHeight;
-		r.bottom = cy - GetSystemMetrics(SM_CYHSCROLL);
-		pVertRuler->MoveWindow( & r);
+		r.bottom = cr.bottom - cyhscroll;
+		DeferClientPos(&layout, pVertRuler, r, FALSE);
+		//pVertRuler->MoveWindow( & r);
+	}
+
+	pVertRuler = GetDlgItem(VerticalFftRulerID);
+	if (pVertRuler)
+	{
+		r.left = 0;
+		r.right = RulerWidth;
+		r.top = RulerHeight;
+		r.bottom = cr.bottom - cyhscroll;
+		DeferClientPos(&layout, pVertRuler, r, FALSE);
+		//pVertRuler->MoveWindow( & r);
 	}
 
 	CWnd * pStatic = GetDlgItem(ScaleStaticID);
@@ -242,27 +288,43 @@ void CWaveMDIChildClient::RecalcLayout(int cx, int cy)
 	{
 		r.left = 0;
 		r.right = RulerWidth;
-		r.top = cy - GetSystemMetrics(SM_CYHSCROLL);
-		r.bottom = cy;
-		pStatic->MoveWindow( & r);
+		r.top = cr.bottom - cyhscroll;
+		r.bottom = cr.bottom;
+		//pStatic->MoveWindow( & r);
+		DeferClientPos(&layout, pStatic, r, FALSE);
+	}
+
+	pStatic = GetDlgItem(Static1ID);
+	if (pStatic)
+	{
+		r.left = 0;
+		r.right = RulerWidth;
+		r.top = 0;
+		r.bottom = RulerHeight;
+		//pStatic->MoveWindow( & r);
+		DeferClientPos(&layout, pStatic, r, FALSE);
 	}
 
 	r.left = RulerWidth;
 	r.top = RulerHeight;
-	r.bottom = cy;
-	r.right = cx;
+	r.bottom = cr.bottom - cyhscroll;
+	r.right = cr.right;
 	CWnd * pWaveView = GetDlgItem(WaveViewID);
 	if (pWaveView)
 	{
-		pWaveView->MoveWindow( & r);
+		//pWaveView->MoveWindow( & r);
+		DeferClientPos(&layout, pWaveView, r, FALSE);
 	}
 
 	CWnd * pFftView = GetDlgItem(FftViewID);
 	if (pFftView)
 	{
-		pFftView->MoveWindow( & r);
+		//pFftView->MoveWindow( & r);
+		DeferClientPos(&layout, pFftView, r, FALSE);
 	}
-
+	// move and resize all the windows at once!
+	if (layout.hDWP == NULL || !::EndDeferWindowPos(layout.hDWP))
+		TRACE0("Warning: DeferWindowPos failed - low system resources.\n");
 }
 
 void CChildFrame::RecalcLayout(BOOL bNotify)
@@ -270,69 +332,52 @@ void CChildFrame::RecalcLayout(BOOL bNotify)
 	// TODO: Add your specialized code here and/or call the base class
 	CRect r, r1, dr;
 	GetClientRect( & r);
-	//m_dBar.GetWindowRect( & dr);
-	//r1 = r;
-	//r.bottom = dr.Height();
-	//r1.top = r.bottom;
-	//m_dBar.MoveWindow( & r);
 	m_wClient.MoveWindow( & r);
 }
-/////////////////////////////////////////////////////////////////////////////
-// CChildViewDialogBar dialog
 
-
-CChildViewDialogBar::CChildViewDialogBar(CWnd* pParent /*=NULL*/)
-	: CDialog(CChildViewDialogBar::IDD, pParent)
+void CChildFrame::OnUpdateFrameTitle(BOOL bAddToTitle)
 {
-	//{{AFX_DATA_INIT(CChildViewDialogBar)
-	//}}AFX_DATA_INIT
-}
+	// update our parent window first
+	GetMDIFrame()->OnUpdateFrameTitle(bAddToTitle);
 
+	if ((GetStyle() & FWS_ADDTOTITLE) == 0)
+		return;     // leave child window alone!
 
-void CChildViewDialogBar::DoDataExchange(CDataExchange* pDX)
-{
-	CDialog::DoDataExchange(pDX);
-	//{{AFX_DATA_MAP(CChildViewDialogBar)
-	DDX_Control(pDX, IDC_CHECK_DECLICKING, m_ClickRemoval);
-	DDX_Control(pDX, IDC_CHECK_DEHUMMING, m_HumReduction);
-	DDX_Control(pDX, IDC_CHECK_NOISE_REDUCTION, m_NoiseReduction);
-	DDX_Control(pDX, IDC_TAB_VIEW_SWITCH, m_TabViewSwitch);
-	//}}AFX_DATA_MAP
-}
+	CWaveSoapFrontDoc * pDocument = (CWaveSoapFrontDoc *)GetActiveDocument();
+	if (bAddToTitle)
+	{
+		CString szText;
+		if (pDocument == NULL)
+		{
+			szText = m_strTitle;
+		}
+		else
+		{
+			szText = pDocument->GetTitle();
+		}
+		if (m_nWindow > 0)
+		{
+			TCHAR sznum[20];
+			wsprintf(sznum, _T(":%d"), m_nWindow);
+			szText += sznum;
+		}
 
+		if (pDocument->m_bReadOnly)
+		{
+			szText += _T(" (Read Only)");
+		}
+		else if (pDocument->m_bDirectMode)
+		{
+			szText += _T(" (Direct)");
+		}
+		if (pDocument->IsModified())
+		{
+			szText += _T(" *");
+		}
 
-BEGIN_MESSAGE_MAP(CChildViewDialogBar, CDialog)
-	//{{AFX_MSG_MAP(CChildViewDialogBar)
-	ON_NOTIFY(TCN_SELCHANGE, IDC_TAB_VIEW_SWITCH, OnSelchangeTabViewSwitch)
-	ON_NOTIFY(TCN_SELCHANGE, IDC_TAB_SWITCH_VIEW_MODE, OnSelchangeTabSwitchViewMode)
-	//}}AFX_MSG_MAP
-END_MESSAGE_MAP()
-
-/////////////////////////////////////////////////////////////////////////////
-// CChildViewDialogBar message handlers
-
-void CChildViewDialogBar::OnSelchangeTabViewSwitch(NMHDR* pNMHDR, LRESULT* pResult)
-{
-	// TODO: Add your control notification handler code here
-
-	*pResult = 0;
-}
-
-void CChildViewDialogBar::OnSelchangeTabSwitchViewMode(NMHDR* pNMHDR, LRESULT* pResult)
-{
-	// TODO: Add your control notification handler code here
-
-	*pResult = 0;
-}
-
-BOOL CChildViewDialogBar::OnInitDialog()
-{
-	CDialog::OnInitDialog();
-
-	m_TabViewSwitch.InsertItem(0, _T("Source"));
-	m_TabViewSwitch.InsertItem(1, _T("Result"));
-	return TRUE;  // return TRUE unless you set the focus to a control
-	// EXCEPTION: OCX Property Pages should return FALSE
+		// set title if changed, but don't remove completely
+		AfxSetWindowText(m_hWnd, szText);
+	}
 }
 
 class CPushRoutingFrame
@@ -390,7 +435,13 @@ BOOL CWaveMDIChildClient::OnCmdMsg(UINT nID, int nCode, void* pExtra, AFX_CMDHAN
 		return TRUE;
 	}
 
-	pRuler = GetDlgItem(VerticalRulerID);
+	pRuler = GetDlgItem(VerticalWaveRulerID);
+	if (pRuler && pRuler->OnCmdMsg(nID, nCode, pExtra, pHandlerInfo))
+	{
+		return TRUE;
+	}
+
+	pRuler = GetDlgItem(VerticalFftRulerID);
 	if (pRuler && pRuler->OnCmdMsg(nID, nCode, pExtra, pHandlerInfo))
 	{
 		return TRUE;
@@ -428,24 +479,29 @@ int CWaveMDIChildClient::OnCreate(LPCREATESTRUCT lpCreateStruct)
 
 	CCreateContext * pContext = (CCreateContext *) lpCreateStruct->lpCreateParams;
 	CRect r(0, 0, 1, 1);
+	CRect r10(0, 0, 10, 10);
 
 
 	CWnd * pHorRuler = CreateView(RUNTIME_CLASS(CTimeRulerView),
 								r, HorizontalRulerID, pContext);
 
 	CWnd * pVertRuler = CreateView(RUNTIME_CLASS(CAmplitudeRuler),
-									r, VerticalRulerID, pContext);
+									r, VerticalWaveRulerID, pContext);
 
 
-	wStatic.Create("STATIC", "", WS_VISIBLE | WS_CHILD | SS_CENTER, r, this, ScaleStaticID, NULL);
+	wStatic.Create("STATIC", "", WS_BORDER | WS_VISIBLE | WS_CHILD | SS_CENTER, r, this, ScaleStaticID, NULL);
+	wStatic1.Create("STATIC", "", WS_BORDER | WS_VISIBLE | WS_CHILD | SS_CENTER, r, this, Static1ID, NULL);
+
+	// create scrollbar
+	m_sb.Create(SBS_HORZ | WS_VISIBLE | WS_CHILD, r, this, AFX_IDW_HSCROLL_FIRST);
 
 	CWnd * pFftView = CreateView(RUNTIME_CLASS(CWaveFftView),
-								r, FftViewID, pContext, FALSE); //do not show
+								r10, FftViewID, pContext, FALSE); //do not show
 
 	CWnd * pView = CreateView(RUNTIME_CLASS(CWaveSoapFrontView),
-							r, WaveViewID, pContext);
+							r10, WaveViewID, pContext);
 
-	if (0 && pView && pFftView)
+	if (pView && pFftView)
 	{
 		(DYNAMIC_DOWNCAST(CScaledScrollView, pFftView))->SyncHorizontal
 			(DYNAMIC_DOWNCAST(CScaledScrollView, pView));
@@ -461,8 +517,7 @@ int CWaveMDIChildClient::OnCreate(LPCREATESTRUCT lpCreateStruct)
 	if (pRulerCast) pRulerCast->SyncVertical
 			(DYNAMIC_DOWNCAST(CScaledScrollView, pView));
 
-	GetClientRect( & r);
-	RecalcLayout(r.right, r.bottom);
+	RecalcLayout();
 	return 0;
 }
 
@@ -519,4 +574,23 @@ void CWaveMDIChildClient::OnViewWaveform()
 void CWaveMDIChildClient::OnUpdateViewWaveform(CCmdUI* pCmdUI)
 {
 	pCmdUI->SetCheck(m_bShowWaveform);
+}
+
+void CWaveMDIChildClient::OnHScroll(UINT nSBCode, UINT nPos, CScrollBar* pScrollBar)
+{
+	//	forward the message to all views
+	CWnd * pView;
+	pView = GetDlgItem(WaveViewID);
+	if (pView != NULL)
+	{
+		pView->SendMessage(WM_HSCROLL,
+							MAKELONG(nSBCode, nPos), (LPARAM)pScrollBar->m_hWnd);
+	}
+	pView = GetDlgItem(FftViewID);
+	if (pView != NULL)
+	{
+		pView->SendMessage(WM_HSCROLL,
+							MAKELONG(nSBCode, nPos), (LPARAM)pScrollBar->m_hWnd);
+	}
+
 }
