@@ -8,7 +8,7 @@
 // PreferencesPropertySheet.h : header file
 //
 #include "resource.h"       // main symbols
-
+#include "ApplicationParameters.h"
 /////////////////////////////////////////////////////////////////////////////
 
 /////////////////////////////////////////////////////////////////////////////
@@ -138,30 +138,22 @@ protected:
 /////////////////////////////////////////////////
 // CUndoPropertyPage dialog
 
-class CUndoPropertyPage : public CPropertyPage
+class CUndoPropertyPage : public CPropertyPage, protected UndoRedoParameters
 {
 	typedef CPropertyPage BaseClass;
 	DECLARE_DYNAMIC(CUndoPropertyPage)
 
 public:
-	CUndoPropertyPage();
+	CUndoPropertyPage(UndoRedoParameters const * pParams);
 	virtual ~CUndoPropertyPage();
-
+	UndoRedoParameters const * GetParams() const
+	{
+		return this;
+	}
 // Dialog Data
 	enum { IDD = IDD_PROPPAGE_UNDO_PREFERENCES };
 	CSpinButtonCtrl	m_SpinUndoLimit;
 	CSpinButtonCtrl	m_SpinRedoLimit;
-	BOOL	m_bEnableRedo;
-	BOOL	m_bEnableUndo;
-	BOOL	m_bLimitRedoDepth;
-	BOOL	m_bLimitRedoSize;
-	BOOL	m_bLimitUndoSize;
-	BOOL	m_bLimitUndoDepth;
-	BOOL	m_bRememberSelectionInUndo;
-	UINT	m_RedoDepthLimit;
-	UINT	m_RedoSizeLimit;
-	UINT	m_UndoDepthLimit;
-	UINT	m_UndoSizeLimit;
 
 protected:
 	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV support
