@@ -86,6 +86,14 @@ enum
 	RawSoundFileAsciiDecimal,
 };
 
+enum
+{
+	Mp3EncoderNone = 0,
+	Mp3EncoderLameencoder = 1,
+	Mp3EncoderAcm = 2,
+	Mp3EncoderBlade = 3,
+};
+
 class CWaveSoapFileSaveDialog : public CFileDialogWithHistory
 {
 public:
@@ -99,10 +107,15 @@ public:
 								lpszFilter, pParentWnd),
 		m_pWf(NULL),
 		m_SelectedFormat(-1),
+		m_SelectedMp3Encoder(0),
+		m_NumOfMp3Encoders(0),
+		m_SelectedLameMp3Bitrate(128),
 		m_bCompatibleFormatsOnly(TRUE),
 		m_FileType(SoundFileWav),
 		m_pDocument(NULL)
-	{}
+	{
+		memset(m_Mp3Encoders, 0, sizeof m_Mp3Encoders);
+	}
 	~CWaveSoapFileSaveDialog() {}
 
 	CWaveFile m_WaveFile;
@@ -112,7 +125,14 @@ public:
 	DWORD m_SelectedTag;
 	int m_SelectedFormat;
 	int m_FileType;// Wav, Mp3, wma, raw...
+
+	int m_SelectedMp3Encoder;
+	int m_Mp3Encoders[4];
+	int m_NumOfMp3Encoders;
+	int m_SelectedLameMp3Bitrate;
+
 	BOOL m_bCompatibleFormatsOnly;
+
 	CString m_FormatTagName;
 	CString m_DefExt[10];
 
@@ -165,8 +185,12 @@ public:
 
 	void ShowDlgItem(UINT nID, int nCmdShow);
 	void FillFormatArray();
-	void FillMp3FormatArray();
 	void FillFormatTagArray();
+
+	void FillMp3EncoderArray();
+	void FillMp3FormatArray();
+	void FillLameEncoderFormats();
+
 	WAVEFORMATEX * GetWaveFormat();
 	virtual void OnInitDone();
 	virtual void OnTypeChange();

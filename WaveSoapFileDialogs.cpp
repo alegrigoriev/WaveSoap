@@ -4,6 +4,7 @@
 #include "ShelLink.h"
 #include "OperationDialogs2.h"
 #include <Dlgs.h>
+#include "BladeMP3EncDLL.h"
 
 BOOL AFXAPI AfxComparePath(LPCTSTR lpszPath1, LPCTSTR lpszPath2);
 
@@ -630,21 +631,18 @@ void CWaveSoapFileSaveDialog::OnCompatibleFormatsClicked()
 
 void CWaveSoapFileSaveDialog::OnComboFormatsChange()
 {
-	switch (m_ofn.nFilterIndex)
+	int sel = m_FormatCombo.GetCurSel();
+	switch (m_FileType)
 	{
 	case SoundFileWav:
 		// WAV file
-		// show Comments, fill formats combo box
-	{
-		int sel = m_FormatCombo.GetCurSel();
 		m_SelectedTag = m_FormatTags[sel].dwTag;
 		FillFormatArray();
-	}
 		break;
 	case SoundFileMp3:
 		// MP3 file
-		// Hide Comments, show Artist, Genre, Title
 		//
+		FillMp3FormatArray();
 		break;
 	case SoundFileWma:
 		// WMA file
@@ -772,7 +770,7 @@ void CWaveSoapFileSaveDialog::SetFileType(int nType)
 		//
 		// set tag to MP3
 		// fill formats combo (bitrate, etc)
-		FillMp3FormatArray();
+		FillMp3EncoderArray();
 		break;
 	case SoundFileWma:
 		// WMA file
@@ -860,7 +858,91 @@ int CWaveSoapFileSaveDialog::GetFileTypeForName(LPCTSTR FileName)
 	return GetFileTypeForExt(ext + 1);
 }
 
+void CWaveSoapFileSaveDialog::FillLameEncoderFormats()
+{
+	CString ms;
+	if (1 == m_pWf->nChannels)
+	{
+		ms.LoadString(IDS_MONO);
+	}
+	else
+	{
+		ms.LoadString(IDS_STEREO);
+	}
+
+	CString f;
+	f.LoadString(IDS_LAMEENC_FORMAT);
+
+	m_AttributesCombo.ResetContent();
+	static bitrate[] = { 64, 96, 128, 160, 256, 320 };
+	for (int i = 0; i < sizeof bitrate / sizeof bitrate[0]; i++)
+	{
+		CString s;
+		s.Format(f, bitrate[i], LPCTSTR(ms));
+		m_AttributesCombo.AddString(s);
+		if (bitrate[i] == m_SelectedLameMp3Bitrate)
+		{
+			m_AttributesCombo.SetCurSel(i);
+		}
+	}
+}
+
 void CWaveSoapFileSaveDialog::FillMp3FormatArray()
 {
+	if (0 == m_NumOfMp3Encoders)
+	{
+		return;
+	}
+	int EncoderType = m_Mp3Encoders[m_FormatCombo.GetCurSel()];
+	switch (EncoderType)
+	{
+	case Mp3EncoderLameencoder:
+		FillLameEncoderFormats();
+		break;
 
+	case Mp3EncoderAcm:
+		break;
+	case Mp3EncoderBlade:
+		break;
+	}
+}
+
+void CWaveSoapFileSaveDialog::FillMp3EncoderArray()
+{
+	// check if LAME encoder is available
+	m_FormatCombo.ResetContent();
+	m_NumOfMp3Encoders = 0;
+
+	BladeMp3Encoder Mp3Enc;
+	if (Mp3Enc.Open())
+	{
+		BE_VERSION ver;
+		memset( & ver, 0, sizeof ver);
+		Mp3Enc.GetVersion( & ver);
+
+		SYSTEMTIME time;
+		memset( & time, 0, sizeof time);
+		time.wYear = ver.wYear;
+		time.wDay = ver.byDay;
+		time.wMonth = ver.byMonth;
+
+		int const TimeBufSize = 256;
+		TCHAR str[TimeBufSize] = {0};
+
+		GetDateFormat(LOCALE_USER_DEFAULT, DATE_SHORTDATE, & time, NULL, str, TimeBufSize - 1);
+
+		CString s;
+		s.Format("LameEnc DLL Version %d.%02d, (%s) Engine %d.%02d",
+				ver.byDLLMajorVersion, ver.byDLLMinorVersion,
+				str, ver.byMajorVersion, ver.byMinorVersion);
+		Mp3Enc.Close();
+		m_FormatCombo.AddString(s);
+		m_Mp3Encoders[m_NumOfMp3Encoders] = Mp3EncoderLameencoder;
+		m_NumOfMp3Encoders++;
+	}
+
+	// check if MP3 ACM encoder presents
+
+	m_FormatCombo.SetCurSel(m_SelectedMp3Encoder);
+	FillMp3FormatArray();
 }
