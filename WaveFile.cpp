@@ -102,6 +102,10 @@ BOOL CMmioFile::Open( LPCTSTR szFileName, UINT nOpenFlags)
 	else if (nOpenFlags & MmioFileOpenExisting)
 	{
 		DirectFileOpenFlags |= CDirectFile::OpenExisting;
+		if (nOpenFlags & MmioFileAllowReadOnlyFallback)
+		{
+			DirectFileOpenFlags |= CDirectFile::OpenAllowReadOnlyFallback;
+		}
 	}
 	else
 	{
@@ -143,22 +147,11 @@ BOOL CMmioFile::Open( LPCTSTR szFileName, UINT nOpenFlags)
 			return FALSE;
 		}
 
-		if (NULL == GetRiffChunk())
+		if (! LoadRiffChunk())
 		{
-			AllocateCommonData(0);
-			LPMMCKINFO pRiffck = GetRiffChunk();
-			pRiffck->ckid = FOURCC_RIFF;
-			pRiffck->cksize = 0;
-			pRiffck->fccType = m_RiffckType; // derived class can set it
-			pRiffck->dwDataOffset = 0;
-			pRiffck->dwFlags = 0;
-			if ( ! FindRiff())
-			{
-				Close();
-				return FALSE;
-			}
+			Close();
+			return FALSE;
 		}
-		// if RIFF chunk was allocated before, it means that it is already read
 	}
 	else
 	{
@@ -202,7 +195,26 @@ BOOL CMmioFile::Open( LPCTSTR szFileName, UINT nOpenFlags)
 	return TRUE;
 }
 
-
+BOOL CMmioFile::LoadRiffChunk()
+{
+	if (NULL == GetRiffChunk())
+	{
+		AllocateCommonData(0);
+		LPMMCKINFO pRiffck = GetRiffChunk();
+		pRiffck->ckid = FOURCC_RIFF;
+		pRiffck->cksize = 0;
+		pRiffck->fccType = m_RiffckType; // derived class can set it
+		pRiffck->dwDataOffset = 0;
+		pRiffck->dwFlags = 0;
+		if ( ! FindRiff())
+		{
+			Close();
+			return FALSE;
+		}
+	}
+	// if RIFF chunk was allocated before, it means that it is already read
+	return TRUE;
+}
 LRESULT PASCAL CMmioFile::BufferedIOProc(LPSTR lpmmioinfo, UINT wMsg,
 										LPARAM lParam1, LPARAM lParam2)
 {
@@ -420,20 +432,20 @@ BOOL CWaveFile::CreateWaveFile(CWaveFile * pTemplateFile, int Channel,
 			return FALSE;
 		}
 	}
-	if (flags & CreateWaveFileDontInitStructure)
-	{
-		if (FALSE == Open(name, MmioFileOpenCreateNew | MmioFileOpenDontCreateRiff))
-		{
-			return FALSE;
-		}
-		return TRUE;
-	}
 	// create a file, RIFF list, fmt chunk, data chunk of specified size
 	// temp file with this name may already be created
 	DWORD OpenFlags = MmioFileOpenCreateAlways;
 	if (flags & CreateWaveFileDeleteAfterClose)
 	{
 		OpenFlags |= MmioFileOpenDeleteAfterClose;
+	}
+	if (flags & CreateWaveFileDontInitStructure)
+	{
+		if (FALSE == Open(name, OpenFlags | MmioFileOpenDontCreateRiff))
+		{
+			return FALSE;
+		}
+		return TRUE;
 	}
 	if (FALSE == Open(name, OpenFlags))
 	{

@@ -28,6 +28,8 @@ enum
 	MmioFileOpenCreateNew = CDirectFile::CreateNew,
 	MmioFileOpenCreateAlways = CDirectFile::CreateAlways,
 	MmioFileOpenReadOnly = CDirectFile::OpenReadOnly,
+	// if couldn't be opened for writing, try read-only
+	MmioFileAllowReadOnlyFallback = CDirectFile::OpenAllowReadOnlyFallback,
 	MmioFileOpenDeleteAfterClose = CDirectFile::OpenDeleteAfterClose,
 	MmioFileOpenDontCreateRiff = 0x80000000,
 };
@@ -205,6 +207,8 @@ public:
 		return (LPMMCKINFO)m_File.GetCommonData();
 	}
 
+	BOOL LoadRiffChunk();
+
 	BOOL IsOpen() const
 	{
 		return m_hmmio != NULL;
@@ -233,6 +237,7 @@ enum {
 	CreateWaveFileDontCopyInfo = 0x00200000,
 	CreateWaveFilePcmFormat = 0x00400000,
 	CreateWaveFileTemp = 0x00800000,
+	CreateWaveFileAttachTemplateAsSource = 0x01000000,
 };
 
 class CWaveFile : public CMmioFile
