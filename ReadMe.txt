@@ -1,5 +1,6 @@
 Known problems and tasks:
 
+In outline view, change mouse cursor over caret and view and selection boundaries
 Add CD grabbing
 Load sound from AVI
 Add options dialog
@@ -45,9 +46,8 @@ Make recording from Internet stream
 
 Problems:
 
-Click on outline view moves the wave view a bit after the button released
-After file length increased to 1 sample from 0, scroll bar set to wrond scale
 Expression evaluation selection longer than file length doesn't update file length
+After file length increased to 1 sample from 0, scroll bar set to wrond scale
 Multiline edit box in child dialog eats Esc and Enter (DLGC_WANTALLCHARS)
 If there is not enough space on NTFS volume, it will be seen only during flush
 Windows2000 is trying to zero the allocated file
@@ -56,6 +56,7 @@ samples with 32767, -32768 are not visible
 Log Off query doesn't close the active dialog. Recursion is possible. Make sure to check after Cancel
 
 Fixed:
+Click on outline view moves the wave view a bit after the button released
 When FFT array is reallocated, it is invalidated (was disabled in the code)
 Paste operation doesn't check if sampling rate is the same. Add dialog to resample
 Notch filter initial setting is weird
