@@ -232,9 +232,9 @@ struct WaveMarker
 	CString Name;
 	CString Comment;
 	ULONG CueId;
-	ULONG StartSample;
+	SAMPLE_INDEX StartSample;
 	FOURCC fccRgn;  // 'rgn '
-	ULONG LengthSamples;  // >1 if it is region
+	NUMBER_OF_SAMPLES LengthSamples;  // >1 if it is region
 	bool operator <(WaveMarker const & op)
 	{
 		return StartSample < op.StartSample;
