@@ -2257,6 +2257,8 @@ void CDeclickDialog::OnButtonSaveSettings()
 
 void CDeclickDialog::OnButtonLoadSettings()
 {
+	UpdateData(TRUE);
+
 	CString FileName;
 	CString Filter;
 	Filter.LoadString(IDS_FILTER_FILE_CLICK_REMOVAL);
@@ -2583,6 +2585,8 @@ void CNoiseReductionDialog::OnButtonSaveSettings()
 
 void CNoiseReductionDialog::OnButtonLoadSettings()
 {
+	UpdateData(TRUE);
+
 	CString FileName;
 	CString Filter;
 	Filter.LoadString(IDS_FILTER_FILE_NOISE_REDUCTION);
