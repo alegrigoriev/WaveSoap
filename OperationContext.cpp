@@ -94,7 +94,6 @@ BOOL COperationContext::InitDestination(CWaveFile & DstFile, long StartSample, l
 									m_DstEnd, m_DstChan))
 		{
 			m_pUndoContext = pUndo;
-			// TODO: add shrink context to undo, if necessary
 		}
 		else
 		{

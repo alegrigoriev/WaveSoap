@@ -1837,7 +1837,7 @@ void CDirectFile::BufferHeader::FlushDirtyBuffers(unsigned long MaxKey)
 				}
 				if (BytesWritten != ToWrite)
 				{
-					// run a message box in the main thread
+					// TODO: run a message box in the main thread
 					// if it is a secondary thread, post a command
 				}
 				pFile->m_FilePointer += BytesWritten;
@@ -2196,7 +2196,7 @@ BOOL CDirectFile::File::SetFileLength(LONGLONG NewLength)
 	{
 		Flush();
 		UseSourceFileLength = NewLength;
-		// todo: clear written mask
+		// TODO: clear written mask
 	}
 	else if (NewLength > FileLength)
 	{
@@ -2205,7 +2205,7 @@ BOOL CDirectFile::File::SetFileLength(LONGLONG NewLength)
 	{
 		return TRUE;
 	}
-	// TODO:
+
 	CSimpleCriticalSectionLock lock(m_FileLock);
 	FileLength = NewLength;
 	// set the length to the multiple of 2K

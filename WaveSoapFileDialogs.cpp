@@ -232,6 +232,7 @@ void CWaveSoapFileOpenDialog::OnFileNameChange()
 		&& m_WaveFile.LoadWaveformat()
 		&& m_WaveFile.FindData())
 	{
+		m_WaveFile.LoadMetadata();
 		WAVEFORMATEX * pWf = m_WaveFile.GetWaveFormat();
 		if (pWf != NULL)
 		{
@@ -855,7 +856,7 @@ void CWaveSoapFileSaveDialog::SetFileType(int nType)
 			int id = AfxMessageBox(IDS_WMA_ENCODER_NOT_AVILABLE, MB_OK | MB_ICONEXCLAMATION | MB_HELP);
 			if (IDHELP == id)
 			{
-				// TODO
+				// TODO: show help
 			}
 			SetFileType(SoundFileWav);
 			break;

@@ -536,7 +536,6 @@ BOOL CSelectionDialog::OnInitDialog()
 	m_SelectionCombo.SetCurSel(FindSelection(m_Start, m_End));
 	// TODO: add regions
 	return TRUE;  // return TRUE unless you set the focus to a control
-	// EXCEPTION: OCX Property Pages should return FALSE
 }
 
 void CSelectionDialog::OnSelchangeComboTimeFormat()
@@ -1288,7 +1287,6 @@ BOOL CGotoDialog::OnInitDialog()
 	((CComboBox*) & m_eStart)->SetExtendedUI(TRUE);
 	// TODO: add markers
 	return TRUE;  // return TRUE unless you set the focus to a control
-	// EXCEPTION: OCX Property Pages should return FALSE
 }
 /////////////////////////////////////////////////////////////////////////////
 // CResampleDialog dialog

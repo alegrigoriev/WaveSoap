@@ -128,7 +128,6 @@ BOOL CInsertSilenceDialog::OnInitDialog()
 	// TODO: add markers
 
 	return TRUE;  // return TRUE unless you set the focus to a control
-	// EXCEPTION: OCX Property Pages should return FALSE
 }
 
 void CInsertSilenceDialog::OnKillfocusEditLength()
@@ -491,7 +490,6 @@ BEGIN_MESSAGE_MAP(CCdGrabbingDialog, CResizableDialog)
 	//{{AFX_MSG_MAP(CCdGrabbingDialog)
 	ON_WM_SIZE()
 	ON_WM_TIMER()
-	ON_BN_CLICKED(IDC_BUTTON_MORE, OnButtonMore)
 	ON_CBN_SELCHANGE(IDC_COMBO_DRIVES, OnSelchangeComboDrives)
 	ON_WM_DESTROY()
 	ON_BN_CLICKED(IDC_BUTTON_CDDB, OnButtonCddb)
@@ -973,11 +971,6 @@ void CCdGrabbingDialog::OnTimer(UINT nIDEvent)
 	}
 }
 
-void CCdGrabbingDialog::OnButtonMore()
-{
-	// TODO: Add your control notification handler code here
-}
-
 void CCdGrabbingDialog::CheckForDiskChanged()
 {
 	bool CanCloseDoor = m_CdDrive.CanLoadMedia();
@@ -1077,10 +1070,8 @@ void CCdGrabbingDialog::OnButtonBrowseSaveFolder()
 	if (IDOK == dlg.DoModal())
 	{
 		m_sSaveFolder = dlg.GetFolderPath();
-		// TODO: check permissiong in callback
 		m_eSaveFolder.SetWindowText(m_sSaveFolder);
 		m_bNeedUpdateControls = TRUE;
-		// TODO: check if the folder exists and create if necessary
 	}
 }
 
@@ -1092,10 +1083,6 @@ void CCdGrabbingDialog::OnButtonCddb()
 
 void CCdGrabbingDialog::OnChangeEditAlbum()
 {
-	// TODO: If this is a RICHEDIT control, the control will not
-	// send this notification unless you override the CDialog::OnInitDialog()
-	// function and call CRichEditCtrl().SetEventMask()
-	// with the ENM_CHANGE flag ORed into the mask.
 
 	// TODO: Add your control notification handler code here
 
@@ -1103,10 +1090,6 @@ void CCdGrabbingDialog::OnChangeEditAlbum()
 
 void CCdGrabbingDialog::OnChangeEditArtist()
 {
-	// TODO: If this is a RICHEDIT control, the control will not
-	// send this notification unless you override the CDialog::OnInitDialog()
-	// function and call CRichEditCtrl().SetEventMask()
-	// with the ENM_CHANGE flag ORed into the mask.
 
 	// TODO: Add your control notification handler code here
 
@@ -1591,7 +1574,6 @@ void CCdGrabbingDialog::OnContextMenu(CWnd* pWnd, CPoint point)
 
 void CCdGrabbingDialog::OnRadioWmaFormat()
 {
-	// TODO: Add your control notification handler code here
 	// check if WMA encoder is available
 	m_bNeedUpdateControls = TRUE;
 	if (GetApp()->CanOpenWindowsMedia())
@@ -1604,7 +1586,7 @@ void CCdGrabbingDialog::OnRadioWmaFormat()
 	int id = AfxMessageBox(IDS_WMA_ENCODER_NOT_AVILABLE, MB_OK | MB_ICONEXCLAMATION | MB_HELP);
 	if (IDHELP == id)
 	{
-		// TODO
+		// TODO: show help
 	}
 	CheckRadioButton(IDC_RADIO_WAV_FORMAT, IDC_RADIO_WAV_FORMAT, IDC_RADIO_MP3_FORMAT);
 	m_RadioFileFormat = 0;
@@ -1621,7 +1603,6 @@ void CCdGrabbingDialog::OnRadioMp3Format()
 
 void CCdGrabbingDialog::OnRadioWavFormat()
 {
-	// TODO: Add your control notification handler code here
 	m_bNeedUpdateControls = TRUE;
 	m_RadioFileFormat = 0;
 	FillFormatCombo();

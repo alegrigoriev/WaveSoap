@@ -565,6 +565,7 @@ BOOL CWaveSoapFrontDoc::OpenWaveFile(CWaveFile & WaveFile, LPCTSTR szName, DWORD
 		{
 			if (m_WavFile.FindData())
 			{
+				m_WavFile.LoadMetadata();
 				return TRUE;
 			}
 			else
@@ -796,9 +797,8 @@ BOOL CWaveSoapFrontDoc::DoSave(LPCTSTR lpszPathName, BOOL bReplace)
 		dlg.m_ofn.lpstrFilter = strFilter;
 
 		// add the proper file type extension
-		// todo: get from saved in the registry
+		// todo: get from saved in the registry, if name is empty
 		dlg.m_ofn.nFilterIndex = dlg.GetFileTypeForName(newName);
-
 
 		if (IDOK != dlg.DoModal())
 		{
@@ -1925,7 +1925,6 @@ void CWaveSoapFrontDoc::OnUpdateEditStop(CCmdUI* pCmdUI)
 BOOL CWaveSoapFrontDoc::OnOpenDocument(LPCTSTR lpszPathName, int DocOpenFlags)
 {
 
-	// TODO: Add your specialized creation code here
 	TRACE("CWaveSoapFrontDoc::OnOpenDocument(%s)\n", lpszPathName);
 	m_WavFile.Close();
 	m_OriginalWavFile.Close();
@@ -2079,6 +2078,7 @@ BOOL CWaveSoapFrontDoc::OnOpenDocument(LPCTSTR lpszPathName, int DocOpenFlags)
 				{
 					ErrorFormatID = IDS_UNABLE_TO_FIND_DATA_CHUNK;
 				}
+				m_WavFile.LoadMetadata();
 			}
 			else
 			{
@@ -2127,11 +2127,11 @@ BOOL CWaveSoapFrontDoc::OnSaveBufferedPcmFile(int flags, LPCTSTR FullTargetName)
 {
 	// non-direct PCM file, the same directory, not saving a copy,
 	// the same format
-	// todo: InitializeTheRestOfFile in the thread
 	if (m_WavFile.InitializeTheRestOfFile(500))
 	{
 		return PostCommitFileSave(flags, FullTargetName);
 	}
+	// InitializeTheRestOfFile in the thread
 	//prepare context and queue it
 	CCommitFileSaveContext * pContext = new CCommitFileSaveContext(this, "Saving the file...");
 	if (NULL == pContext)
@@ -2298,6 +2298,10 @@ BOOL CWaveSoapFrontDoc::OnSaveConvertedFile(int flags, LPCTSTR FullTargetName, W
 
 	pContext->m_SrcChan = ALL_CHANNELS;
 	pContext->m_DstChan = ALL_CHANNELS;
+	if (flags & SaveFile_SaveCopy)
+	{
+		pContext->m_Flags |= FileSaveContext_SavingCopy;
+	}
 	// if target channels is less than source, convert it before resampling,
 	if (pWf->nChannels < m_WavFile.GetWaveFormat()->nChannels)
 	{
@@ -2371,26 +2375,15 @@ BOOL CWaveSoapFrontDoc::OnSaveConvertedFile(int flags, LPCTSTR FullTargetName, W
 		SrcFormat.cbSize = 0;
 		SrcFormat.wFormatTag = WAVE_FORMAT_PCM;
 		SrcFormat.wBitsPerSample = 16;
+		//todo: init conversion in Context->Init, error dialog in PostRetire.
 		if (! pAcmConvertor->InitConversion( & SrcFormat, pWf))
 		{
 			delete pContext;
-			//todo: enable to convert dialog
-			//NotEnoughMemoryMessageBox();
 			AfxMessageBox(IDS_STRING_UNABLE_TO_CONVERT);
 			return FALSE;
 		}
 	}
-	//pContext->m_pWf = CopyWaveformat(pWf);
-	//if (NULL == pContext->m_pWf)
-	//{
-	//delete pContext;
-	//return FALSE;
-	//}
 
-	if (flags & SaveFile_SaveCopy)
-	{
-		pContext->m_Flags |= FileSaveContext_SavingCopy;
-	}
 	pContext->Execute();
 	return FALSE;   // not saved yet
 }
@@ -2694,7 +2687,7 @@ BOOL CWaveSoapFrontDoc::OnSaveRawFile(int flags, LPCTSTR FullTargetName, WAVEFOR
 		if (! pAcmConvertor->InitConversion( & SrcFormat, pWf))
 		{
 			delete pContext;
-			//todo: enable to convert dialog
+			//todo: unable to convert dialog
 			return FALSE;
 		}
 	}
@@ -3291,7 +3284,6 @@ void CWaveSoapFrontDoc::OnSoundPlay()
 	pContext->m_CurrentPlaybackPos = pContext->m_Begin;
 	pContext->m_Chan = m_SelectedChannel;
 
-	// TODO: move Open, Allocate to the Context->Init(), error messages to PostRetire
 	CThisApp * pApp = GetApp();
 	pContext->m_PlaybackDevice = pApp->m_DefaultPlaybackDevice;
 	if (false == pContext->m_WaveOut.AllocateBuffers(pApp->m_SizePlaybackBuffers,

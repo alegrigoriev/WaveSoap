@@ -91,7 +91,6 @@ END_MESSAGE_MAP()
 
 void CScaledScrollView::OnDraw(CDC* pDC)
 {
-	// TODO: add draw code here
 	if (bSelRectDrawn)
 	{
 		DrawSelectionRect(pDC, m_dXSelectionBegin, m_dXSelectionEnd,
@@ -119,7 +118,6 @@ void CScaledScrollView::Dump(CDumpContext& dc) const
 
 void CScaledScrollView::OnPrepareDC(CDC* pDC, CPrintInfo* pInfo)
 {
-	// TODO: Add your specialized code here and/or call the base class
 
 	CView::OnPrepareDC(pDC, pInfo);
 	if (! pDC->IsPrinting())
@@ -130,8 +128,6 @@ void CScaledScrollView::OnPrepareDC(CDC* pDC, CPrintInfo* pInfo)
 
 BOOL CScaledScrollView::OnScroll(UINT nScrollCode, UINT nPos, BOOL bDoScroll)
 {
-	// TODO: Add your specialized code here and/or call the base class
-
 	// calc new x position
 	DWORD flag = CHANGE_HOR_ORIGIN | CHANGE_VERT_ORIGIN;
 	double X = dOrgX;
@@ -413,8 +409,6 @@ void CScaledScrollView::OnHScroll(UINT nSBCode, UINT nPos, CScrollBar* pScrollBa
 
 void CScaledScrollView::OnVScroll(UINT nSBCode, UINT nPos, CScrollBar* pScrollBar)
 {
-	// TODO: Add your message handler code here and/or call default
-
 	// is this a slave window?
 	if (IsSlaveVert())
 		return;
@@ -1017,7 +1011,6 @@ int CScaledScrollView::OnCreate(LPCREATESTRUCT lpCreateStruct)
 	if (CView::OnCreate(lpCreateStruct) == -1)
 		return -1;
 
-	// TODO: Add your specialized creation code here
 	return GetMappingInfo();
 }
 
@@ -1027,8 +1020,7 @@ int CScaledScrollView::GetMappingInfo()
 	wDC.SetMapMode(MM_TEXT);
 	CSize wndext = wDC.GetWindowExt();
 	CSize viewext = wDC.GetViewportExt();
-	//CPoint wndorg = wDC.GetWindowOrg();
-	//CPoint vieworg = wDC.GetViewportOrg();
+
 	dLogScaleX = double(viewext.cx) / double(wndext.cx);
 	dLogScaleY = double(viewext.cy) / double(wndext.cy);
 	return 0;
@@ -1281,13 +1273,11 @@ void CScaledScrollView::OnInitialUpdate()
 {
 	CView::OnInitialUpdate();
 
-	// TODO: Add your specialized code here and/or call the base class
 	UpdateScrollbars(TRUE);
 }
 
 void CScaledScrollView::OnViewZoominHor2()
 {
-	// TODO: Add your command handler code here
 	Zoom(2., 1., GetZoomCenter());
 }
 
@@ -1732,7 +1722,6 @@ BOOL CScaledScrollView::OnNeedText( UINT id, NMHDR * pNotifyStruct, LRESULT * re
 
 BOOL CScaledScrollView::OnNotify(WPARAM wParam, LPARAM lParam, LRESULT* pResult)
 {
-	// TODO: Add your specialized code here and/or call the base class
 	NMHDR * pNotify = (NMHDR *) lParam;
 	if (pNotify != NULL && TTN_NEEDTEXTA == pNotify->code)
 	{

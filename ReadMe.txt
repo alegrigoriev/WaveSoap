@@ -25,8 +25,7 @@ Support "Play" in selection dialog
 Make Paste Special command (with Fade In/Fade Out etc)
 Add Save Selection As function
 Make Undo/redo save the selection and regions
-Add support for markers and regions: save on copy and with undo, move and delete on Cut,
-	move on Paste
+Add support for markers and regions: save on copy and with undo, move and delete on Cut, move on Paste
 Double click selects between two markers
 Delete/Insert operations can auto add markers and regions
 If delete (shrink) is done with one channel of two, fill the rest with zeros
@@ -214,3 +213,25 @@ The structures need copying, when reallocated for the bigger size.
 For the given class, size of the structure is always constant.
 If old size of structure was less than new size, the added part needs constructing.
 When the file is closed, the structure needs deletion. Destructor is virtual.
+
+The following chunks are processed:
+
+LIST INFO
+    IART    Original Artist
+    ICMT    Comments
+    ICOP    Copyright
+    IENG    Engineers
+    IGNR    Genre
+    IKEY    Keywords
+    IMED    Original medium
+    INAM    Name
+    ISRC    Source supplier
+    ITCH    Digitizer
+    ISBJ    Subjest
+    ISRF    Digitiization source
+cue     Cue sheet
+LIST adtl
+    ltxt
+    labl
+    note
+DISP    display title

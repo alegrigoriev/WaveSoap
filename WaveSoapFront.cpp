@@ -308,8 +308,6 @@ BOOL CWaveSoapFrontApp::InitInstance()
 	m_hWMVCORE_DLL_Handle = LoadLibrary(_T("WMVCORE.DLL"));
 
 	// Change the registry key under which our settings are stored.
-	// TODO: You should modify this string to be something appropriate
-	// such as the name of your company or organization.
 	SetRegistryKey(_T("AleGr SoftWare"));
 
 	// this must be the first item to add. It will become the last item in the list
@@ -747,7 +745,7 @@ CDocument* CWaveSoapDocTemplate::OpenDocumentFile(LPCTSTR lpszPathName,
 		{
 			lpszPathName = LongPath;
 		}
-		// TODO: Check if the document is already open
+		// Check if the document is already open
 		POSITION pos = GetFirstDocPosition();
 		while (pos != NULL)
 		{
@@ -801,7 +799,6 @@ CDocument* CWaveSoapDocTemplate::OpenDocumentFile(LPCTSTR lpszPathName,
 
 int CWaveSoapFrontApp::ExitInstance()
 {
-	// TODO: Add your specialized code here and/or call the base class
 	if (m_Thread.m_hThread)
 	{
 		m_RunThread = false;

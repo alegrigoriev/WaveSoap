@@ -191,10 +191,10 @@ BOOL CMmioFile::Open( LPCTSTR szFileName, UINT nOpenFlags)
 
 		if (0 == (nOpenFlags & MmioFileOpenDontCreateRiff))
 		{
-			if (NULL == GetRiffChunk())
+			LPMMCKINFO pRiffck = & AllocateInstanceData<CMmioFile::InstanceDataMm>()->riffck;
+			if (FOURCC_RIFF != pRiffck->ckid)
 			{
-				AllocateInstanceData<CMmioFile::InstanceDataMm>();
-				LPMMCKINFO pRiffck = GetRiffChunk();
+				// if RIFF chunk was filled before, it means that it is already read
 				pRiffck->ckid = FOURCC_RIFF;
 				pRiffck->cksize = 0;
 				pRiffck->fccType = m_RiffckType; // derived class can set it
@@ -206,7 +206,6 @@ BOOL CMmioFile::Open( LPCTSTR szFileName, UINT nOpenFlags)
 					return FALSE;
 				}
 			}
-			// if RIFF chunk was allocated before, it means that it is already read
 		}
 	}
 	return TRUE;
@@ -214,20 +213,22 @@ BOOL CMmioFile::Open( LPCTSTR szFileName, UINT nOpenFlags)
 
 BOOL CMmioFile::LoadRiffChunk()
 {
-	if (NULL == GetRiffChunk())
+	LPMMCKINFO pRiffck = & AllocateInstanceData<InstanceDataMm>()->riffck;
+	if (FOURCC_RIFF == pRiffck->ckid)
 	{
-		AllocateInstanceData<InstanceDataMm>();
-		LPMMCKINFO pRiffck = GetRiffChunk();
-		pRiffck->ckid = FOURCC_RIFF;
-		pRiffck->cksize = 0;
-		pRiffck->fccType = m_RiffckType; // derived class can set it
-		pRiffck->dwDataOffset = 0;
-		pRiffck->dwFlags = 0;
-		if ( ! FindRiff())
-		{
-			Close();
-			return FALSE;
-		}
+		// RIFF chunk is already read
+		return TRUE;
+	}
+
+	pRiffck->ckid = FOURCC_RIFF;
+	pRiffck->cksize = 0;
+	pRiffck->fccType = m_RiffckType; // derived class can set it
+	pRiffck->dwDataOffset = 0;
+	pRiffck->dwFlags = 0;
+	if ( ! FindRiff())
+	{
+		Close();
+		return FALSE;
 	}
 	// if RIFF chunk was allocated before, it means that it is already read
 	return TRUE;
@@ -391,13 +392,286 @@ BOOL CWaveFile::LoadWaveformat()
 
 BOOL CWaveFile::FindData()
 {
-	AllocateInstanceData<InstanceDataWav>();
-
-	LPMMCKINFO pDatack = & GetInstanceData()->datack;
+	LPMMCKINFO pDatack = & AllocateInstanceData<InstanceDataWav>()->datack;
 	pDatack->ckid = mmioFOURCC('d', 'a', 't', 'a');
 	return FindChunk( * pDatack, GetRiffChunk());
 }
 
+BOOL CWaveFile::LoadMetadata()
+{
+	InstanceDataWav * pInstData = AllocateInstanceData<InstanceDataWav>();
+	pInstData->ResetMetadata();
+
+	DWORD id;
+	MMCKINFO chunk;
+	CMmioFile::Seek(pInstData->riffck.dwDataOffset + 4);
+
+	while(Descend(chunk, & pInstData->riffck))
+	{
+		// scan subchunks and parse for data
+		switch (chunk.ckid)
+		{
+		case mmioFOURCC('L', 'I', 'S', 'T'):
+			if (! LoadListMetadata(chunk))
+			{
+				return FALSE;
+			}
+			break;
+		case mmioFOURCC('c', 'u', 'e', ' '):
+			if ( ! ReadCueSheet(chunk))
+			{
+				return FALSE;
+			}
+			break;
+		case mmioFOURCC('p', 'l', 's', 't'):
+			if ( ! ReadPlaylist(chunk))
+			{
+				return FALSE;
+			}
+			break;
+		case mmioFOURCC('D', 'I', 'S', 'P'):
+			if (chunk.cksize < 5
+				|| sizeof id != Read( & id, sizeof id))
+			{
+				return FALSE;
+			}
+			if (CF_TEXT == id
+				|| ! ReadChunkString(chunk.cksize - sizeof id,
+									pInstData->DisplayTitle))
+			{
+				return FALSE;
+			}
+			// TODO: read arbitrary DISP types ( they can be several in one file
+			break;
+		}
+		Ascend(chunk);
+	}
+	return TRUE;
+}
+
+BOOL CMmioFile::ReadChunkString(ULONG Length, CString & String)
+{
+	// the string may be unicode or text
+	if (0 == Length)
+	{
+		String.Empty();
+		return TRUE;
+	}
+
+	CStringA s;
+	if (Length != Read(s.GetBuffer(Length), Length))
+	{
+		return FALSE;
+	}
+	if (Length >= 4
+		&& UCHAR(s[0]) == 0xFE
+		&& UCHAR(s[1]) == 0xFF)
+	{
+		// UNICODE marker
+		Length &= ~1;
+		s.SetAt(Length - 1, 0);
+		s.SetAt(Length - 2, 0);
+		String = PCWSTR(LPCSTR(s) + 2);
+	}
+	else
+	{
+		s.ReleaseBuffer(Length - 1);
+		String = s;
+	}
+	return TRUE;
+}
+
+BOOL CWaveFile::ReadCueSheet(MMCKINFO & chunk)
+{
+	InstanceDataWav * pInstData = AllocateInstanceData<InstanceDataWav>();
+	DWORD count;
+	if (chunk.cksize < sizeof count
+		|| sizeof count != Read( & count, sizeof count))
+	{
+		return FALSE;
+	}
+	if (count * sizeof (CuePointChunkItem) + sizeof count != chunk.cksize)
+	{
+		return FALSE;
+	}
+	pInstData->Markers.reserve(count);
+
+	CuePointChunkItem item;
+	for (unsigned i = 0; i < count; i++)
+	{
+		if (sizeof item != Read( & item, sizeof item)
+			|| item.fccChunk != 'atad')
+		{
+			return FALSE;
+		}
+		WaveMarker * pMarker = GetCueItem(item.NameId);
+		pMarker->StartSample = item.SamplePosition;
+
+	}
+	return TRUE;
+}
+
+BOOL CWaveFile::ReadPlaylist(MMCKINFO & chunk)
+{
+	InstanceDataWav * pInstData = AllocateInstanceData<InstanceDataWav>();
+	DWORD count;
+	if (chunk.cksize < sizeof count
+		|| sizeof count != Read( & count, sizeof count))
+	{
+		return FALSE;
+	}
+
+	if (count * sizeof (WavePlaylistItem) + sizeof count != chunk.cksize)
+	{
+		return FALSE;
+	}
+	pInstData->Playlist.reserve(count);
+
+	WavePlaylistItem item;
+	for (unsigned i = 0; i < count; i++)
+	{
+		if (sizeof item != Read( & item, sizeof item))
+		{
+			return FALSE;
+		}
+		WaveMarker * pMarker = GetCueItem(item.MarkerIndex);
+		// TODO: read playlist
+	}
+	return TRUE;
+}
+
+WaveMarker * CWaveFile::GetCueItem(DWORD CueId)
+{
+	InstanceDataWav * pInstData = AllocateInstanceData<InstanceDataWav>();
+	for (unsigned i = 0; i < pInstData->Markers.size(); i++)
+	{
+		if (CueId == pInstData->Markers[i].CueId)
+		{
+			return & pInstData->Markers[i];
+		}
+	}
+	WaveMarker marker;
+	marker.CueId = CueId;
+	marker.fccRgn = ' ngr';
+	marker.LengthSamples = 0;
+	marker.StartSample = 0;
+
+	std::vector<WaveMarker>::iterator mm =
+		pInstData->Markers.insert(pInstData->Markers.end(), marker);
+	return mm.base();
+}
+
+BOOL CWaveFile::LoadListMetadata(MMCKINFO & chunk)
+{
+	if (sizeof chunk.fccType != Read( & chunk.fccType, sizeof chunk.fccType))
+	{
+		return FALSE;
+	}
+	MMCKINFO subchunk;
+	InstanceDataWav * pInstData = AllocateInstanceData<InstanceDataWav>();
+
+	switch (chunk.fccType)
+	{
+	case mmioFOURCC('I', 'N', 'F', 'O'):
+		while(Descend(subchunk, & chunk))
+		{
+			BOOL res = TRUE;
+			switch (subchunk.ckid)
+			{
+			case RIFFINFO_IART:
+				res = ReadChunkString(subchunk.cksize, pInstData->Author);
+				break;
+			case RIFFINFO_ICMT:
+				res = ReadChunkString(subchunk.cksize, pInstData->Comment);
+				break;
+			case RIFFINFO_ICOP:
+				res = ReadChunkString(subchunk.cksize, pInstData->Copyright);
+				break;
+			case RIFFINFO_IENG:
+				res = ReadChunkString(subchunk.cksize, pInstData->RecordingEngineer);
+				break;
+			case RIFFINFO_IGNR:
+				res = ReadChunkString(subchunk.cksize, pInstData->Genre);
+				break;
+			case RIFFINFO_IKEY:
+				res = ReadChunkString(subchunk.cksize, pInstData->Keywords);
+				break;
+			case RIFFINFO_IMED:
+				res = ReadChunkString(subchunk.cksize, pInstData->Medium);
+				break;
+			case RIFFINFO_INAM:
+				res = ReadChunkString(subchunk.cksize, pInstData->Title);
+				break;
+			case RIFFINFO_ISRC:
+				res = ReadChunkString(subchunk.cksize, pInstData->Source);
+				break;
+			case RIFFINFO_ITCH:
+				res = ReadChunkString(subchunk.cksize, pInstData->Digitizer);
+				break;
+			case RIFFINFO_ISBJ:
+				res = ReadChunkString(subchunk.cksize, pInstData->Subject);
+				break;
+			case RIFFINFO_ISRF:
+				res = ReadChunkString(subchunk.cksize, pInstData->DigitizationSource);
+				break;
+			}
+			if ( ! res)
+			{
+				return FALSE;
+			}
+			Ascend(subchunk);
+		}
+		break;
+	case mmioFOURCC('a', 'd', 't', 'l'):
+		while(Descend(subchunk, & chunk))
+		{
+			BOOL res = TRUE;
+			DWORD CueId;
+			WaveMarker * pMarker;
+			CString s;
+			LtxtChunk ltxt;
+			switch (subchunk.ckid)
+			{
+			case mmioFOURCC('l', 't', 'x', 't'):
+				if (subchunk.cksize < sizeof ltxt
+					|| sizeof ltxt != Read( & ltxt, sizeof ltxt))
+				{
+					return FALSE;
+				}
+				pMarker = GetCueItem(CueId);
+				pMarker->LengthSamples = ltxt.SampleLength;
+
+				break;
+			case mmioFOURCC('l', 'a', 'b', 'l'):
+				if (subchunk.cksize < 5
+					|| sizeof CueId != Read( & CueId, sizeof CueId))
+				{
+					return FALSE;
+				}
+				res = ReadChunkString(subchunk.cksize - 4,
+									GetCueItem(CueId)->Name);
+				break;
+			case mmioFOURCC('n', 'o', 't', 'e'):
+				if (subchunk.cksize < 5
+					|| sizeof CueId != Read( & CueId, sizeof CueId))
+				{
+					return FALSE;
+				}
+				res = ReadChunkString(subchunk.cksize - 4,
+									GetCueItem(CueId)->Comment);
+				break;
+			}
+
+			if ( ! res)
+			{
+				return FALSE;
+			}
+			Ascend(subchunk);
+		}
+		break;
+	}
+	return TRUE;
+}
 // creates a file based on template format from pTemplateFile
 BOOL CWaveFile::CreateWaveFile(CWaveFile * pTemplateFile, WAVEFORMATEX * pTemplateFormat,
 								int Channels, unsigned long SizeOrSamples, DWORD flags, LPCTSTR FileName)

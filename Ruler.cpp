@@ -45,8 +45,6 @@ END_MESSAGE_MAP()
 
 void CHorizontalRuler::OnDraw(CDC* pDC)
 {
-	CDocument* pDoc = GetDocument();
-	// TODO: add draw code here
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -96,7 +94,6 @@ BOOL CHorizontalRuler::PreCreateWindow(CREATESTRUCT& cs)
 
 void CHorizontalRuler::OnMouseMove(UINT nFlags, CPoint point)
 {
-	// TODO: Add your message handler code here and/or call default
 	CView::OnMouseMove(nFlags, point);
 	if (WM_LBUTTONDOWN == ButtonPressed
 		&& PrevMouseX != point.x)
@@ -125,8 +122,6 @@ void CHorizontalRuler::OnLButtonDown(UINT nFlags, CPoint point)
 
 void CHorizontalRuler::OnLButtonUp(UINT nFlags, CPoint point)
 {
-	// TODO: Add your message handler code here and/or call default
-
 	ButtonPressed = 0;
 	if (bIsTrackingSelection)
 	{
@@ -197,8 +192,6 @@ END_MESSAGE_MAP()
 
 void CVerticalRuler::OnDraw(CDC* pDC)
 {
-	CDocument* pDoc = GetDocument();
-	// TODO: add draw code here
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -246,7 +239,6 @@ BOOL CVerticalRuler::PreCreateWindow(CREATESTRUCT& cs)
 }
 void CVerticalRuler::OnMouseMove(UINT nFlags, CPoint point)
 {
-	// TODO: Add your message handler code here and/or call default
 	//TRACE("CVerticalRuler::OnMouseMove: Y=%d, PrevY = %d\n", point.y, PrevMouseY);
 	CView::OnMouseMove(nFlags, point);
 	if (WM_LBUTTONDOWN == ButtonPressed
@@ -276,7 +268,6 @@ void CVerticalRuler::OnLButtonDown(UINT nFlags, CPoint point)
 
 void CVerticalRuler::OnLButtonUp(UINT nFlags, CPoint point)
 {
-	// TODO: Add your message handler code here and/or call default
 
 	ButtonPressed = 0;
 	if (bIsTrackingSelection)

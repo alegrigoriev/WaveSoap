@@ -21,7 +21,11 @@ public:
 		virtual ~InstanceData() {}
 		size_t m_size;
 		InstanceData() : m_size(sizeof (InstanceData)) {}
-		virtual void CopyDataTo(InstanceData * dst)
+		InstanceData & operator = (InstanceData const &)
+		{
+			return * this;
+		}
+		virtual void MoveDataTo(InstanceData * dst)
 		{
 		}
 	};
@@ -515,7 +519,7 @@ inline T * CDirectFile::File::AllocateInstanceData()
 	if (sizeof (T) > m_pInstanceData->m_size)
 	{
 		T * ptr = new T;
-		m_pInstanceData->CopyDataTo(ptr);
+		m_pInstanceData->MoveDataTo(ptr);
 		delete m_pInstanceData;
 		m_pInstanceData = ptr;
 	}
