@@ -34,12 +34,12 @@ void PersistentUndoRedo::LoadData(class CApplicationProfile & Profile)
 	Profile.AddBoolItem(_T("Settings"), _T("EnableUndoDepthLimit"), pParams->m_LimitUndoDepth, FALSE);
 	Profile.AddBoolItem(_T("Settings"), _T("EnableRedoDepthLimit"), pParams->m_LimitRedoDepth, FALSE);
 	Profile.AddBoolItem(_T("Settings"), _T("RememberSelectionInUndo"), pParams->m_RememberSelectionInUndo, TRUE);
-	Profile.AddItem(_T("Settings"), _T("MaxUndoDepth"), pParams->m_UndoDepthLimit, 100, 0, 1000);
-	Profile.AddItem(_T("Settings"), _T("MaxRedoDepth"), pParams->m_RedoDepthLimit, 100, 0, 1000);
+	Profile.AddItem(_T("Settings"), _T("MaxUndoDepth"), pParams->m_UndoDepthLimit, 100, 1, 1000);
+	Profile.AddItem(_T("Settings"), _T("MaxRedoDepth"), pParams->m_RedoDepthLimit, 100, 1, 1000);
 	Profile.AddItem(_T("Settings"), _T("UndoSizeLimit"), pParams->m_UndoSizeLimit, 2048u,
-					0u, 4095u);
+					1u, 4095u);
 	Profile.AddItem(_T("Settings"), _T("RedoSizeLimit"), pParams->m_RedoSizeLimit, 2048u,
-					0u, 4095u);
+					1u, 4095u);
 
 }
 
