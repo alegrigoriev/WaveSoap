@@ -22,6 +22,13 @@ helper.
 #include <mmsystem.h>
 #include "DirectFile.h"
 
+enum
+{
+	MmioFileOpenExisting = 1,
+	MmioFileOpenCreateNew = 2,
+	MmioFileOpenReadOnly = 4,
+	MmioFileOpenDontCreateRiff = 8,
+};
 class CMmioFile
 {
 	class CSimpleCriticalSection
@@ -176,12 +183,23 @@ private:
 										LPARAM lParam1, LPARAM lParam2);
 
 };
+
+enum {
+	CreateWaveFileTempDir = 1,
+	CreateWaveFileDeleteAfterClose = 2,
+	CreateWaveFileDontInitStructure = 4,
+	CreateWaveFileDontCopyInfo = 8,
+	CreateWaveFilePcmFormat = 0x10,
+	CreateWaveFileTemp = 0x20,
+};
+
 class CWaveFile : public CMmioFile
 {
 public:
 	CWaveFile();
 	CWaveFile( LPCTSTR lpszFileName, UINT nOpenFlags );
 	~CWaveFile();
+	BOOL CreateWaveFile(CWaveFile * pTemplateFile, int Channel, int Samples, DWORD flags, LPCTSTR FileName);
 #if 0
 	virtual BOOL Open( LPCTSTR lpszFileName, UINT nOpenFlags);
 	virtual void Close( );
@@ -190,6 +208,7 @@ public:
 
 	BOOL LoadWaveformat();
 	BOOL FindData();
+
 	unsigned SampleRate() const;
 	int Channels() const;
 
