@@ -57,12 +57,30 @@ public:
 		OpenExisting = 0x10,
 		OpenDeleteAfterClose = 0x20,
 		CreateAlways = 0x40,
+		// if couldn't be opened for writing, try read-only
+		OpenAllowReadOnlyFallback = 0x80,
 	};
 	BOOL Open(LPCTSTR szName, DWORD flags);
 	BOOL Close(DWORD flags);
 	BOOL Attach(CDirectFile * const pOriginalFile);
+	BOOL SetSourceFile(CDirectFile * const pOriginalFile);
+	BOOL DetachSourceFile();
 	// allocate data common for all instances
 	// attached to the same File
+	BOOL IsOpen() const
+	{
+		return m_pFile != 0;
+	}
+	BOOL IsReadOnly() const
+	{
+		if (NULL == m_pFile)
+		{
+			return FALSE;
+		}
+
+		return 0 != (m_pFile->m_Flags & FileFlagsReadOnly);
+	}
+
 	void * AllocateCommonData(size_t size)
 	{
 		if (NULL != m_pFile)
@@ -204,7 +222,7 @@ protected:
 		File * pPrev;   // prev link
 		File * pNext;   // next link
 		HANDLE hFile;
-		DWORD Flags;
+		DWORD m_Flags;
 		long RefCount;
 		struct BufferHeader * volatile BuffersListHead;
 		struct BufferHeader * volatile BuffersListTail;
@@ -233,7 +251,8 @@ protected:
 		void InsertBuffer(BufferHeader * pBuf);
 		BOOL SetFileLength(LONGLONG NewLength);
 		BOOL Flush();
-		BOOL InitializeTheRestOfFile();
+		BOOL InitializeTheRestOfFile(int timeout = 0);
+		BOOL SetSourceFile(File * pOriginalFile);
 		void * AllocateCommonData(size_t size);
 		void * GetCommonData() const
 		{
@@ -260,7 +279,7 @@ protected:
 		}
 		File(CString name) : hFile(NULL),
 			sName(name),
-			Flags(0),
+			m_Flags(0),
 			FilePointer(0),
 			FileLength(0),
 			RealFileLength(0),
@@ -305,7 +324,7 @@ protected:
 		void * pBuf;        // corresponding buffer
 		long LockCount;
 		unsigned MRU_Count;
-		DWORD Flags;
+		DWORD m_Flags;
 		DWORD ReadMask;     // 32 bits for data available (a bit per 2K)
 		DWORD DirtyMask;    // 32 bits for dirty data
 		File * pFile;
