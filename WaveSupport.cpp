@@ -1452,7 +1452,160 @@ CString CAudioCompressionManager::GetFormatTagName(HACMDRIVER had, DWORD Tag)
 	{
 		return afd.szFormatTag;
 	}
-	return CString();
+
+	// because the format is not known, look it up in the table:
+	struct
+	{
+		WORD Tag;
+		LPCTSTR Name;
+	}
+	Formats[] =
+	{
+		WAVE_FORMAT_UNKNOWN                 , _T("Unknown"),    /* Microsoft Corporation */
+		WAVE_FORMAT_ADPCM                   , _T("ADPCM"),    /* Microsoft Corporation */
+		WAVE_FORMAT_IEEE_FLOAT              , _T("IEEE_FLOAT"),    /* Microsoft Corporation */
+		WAVE_FORMAT_VSELP                   , _T("VSELP"),    /* Compaq Computer Corp. */
+		WAVE_FORMAT_IBM_CVSD                , _T("IBM_CVSD"),    /* IBM Corporation */
+		WAVE_FORMAT_ALAW                    , _T("ALAW"),    /* Microsoft Corporation */
+		WAVE_FORMAT_MULAW                   , _T("MULAW"),    /* Microsoft Corporation */
+		WAVE_FORMAT_DTS                     , _T("DTS"),    /* Microsoft Corporation */
+		WAVE_FORMAT_DRM                     , _T("DRM"),    /* Microsoft Corporation */
+		WAVE_FORMAT_OKI_ADPCM               , _T("OKI ADPCM"),    /* OKI */
+		WAVE_FORMAT_DVI_ADPCM               , _T("Intel ADPCM"),    /* Intel Corporation */
+		WAVE_FORMAT_MEDIASPACE_ADPCM        , _T("Videologic MEDIASPACE_ADPCM"),    /* Videologic */
+		WAVE_FORMAT_SIERRA_ADPCM            , _T("Sierra Semiconductor ADPCM"),    /* Sierra Semiconductor Corp */
+		WAVE_FORMAT_G723_ADPCM              , _T("Antex Electronics G723_ADPCM"),    /* Antex Electronics Corporation */
+		WAVE_FORMAT_DIGISTD                 , _T("DSP Solutions DIGISTD"),    /* DSP Solutions, Inc. */
+		WAVE_FORMAT_DIGIFIX                 , _T("DSP Solutions DIGIFIX"),    /* DSP Solutions, Inc. */
+		WAVE_FORMAT_DIALOGIC_OKI_ADPCM      , _T("Dialogic Corporation ADPCM"),    /* Dialogic Corporation */
+		WAVE_FORMAT_MEDIAVISION_ADPCM       , _T("Media Vision ADPCM"),    /* Media Vision, Inc. */
+		WAVE_FORMAT_CU_CODEC                , _T("Hewlett-Packard CU_CODEC"),    /* Hewlett-Packard Company */
+		WAVE_FORMAT_YAMAHA_ADPCM            , _T("Yamaha ADPCM"),    /* Yamaha Corporation of America */
+		WAVE_FORMAT_SONARC                  , _T("Speech Compression SONARC"),    /* Speech Compression */
+		WAVE_FORMAT_DSPGROUP_TRUESPEECH     , _T("DSP Group TRUESPEECH"),    /* DSP Group, Inc */
+		WAVE_FORMAT_ECHOSC1                 , _T("Echo Speech ECHOSC1"),    /* Echo Speech Corporation */
+		WAVE_FORMAT_AUDIOFILE_AF36          , _T("Virtual Music AUDIOFILE_AF36"),    /* Virtual Music, Inc. */
+		WAVE_FORMAT_APTX                    , _T("Audio Processing Technology APTX"),    /* Audio Processing Technology */
+		WAVE_FORMAT_AUDIOFILE_AF10          , _T("Virtual Music AUDIOFILE_AF10"),    /* Virtual Music, Inc. */
+		WAVE_FORMAT_PROSODY_1612            , _T("Aculab plc PROSODY_1612"),    /* Aculab plc */
+		WAVE_FORMAT_LRC                     , _T("Merging Technologies S.A. LRC"),    /* Merging Technologies S.A. */
+		WAVE_FORMAT_DOLBY_AC2               , _T("Dolby Laboratories "),    /* Dolby Laboratories */
+		WAVE_FORMAT_GSM610                  , _T("Microsoft GSM610"),    /* Microsoft Corporation */
+		WAVE_FORMAT_MSNAUDIO                , _T("Microsoft MSNAUDIO"),    /* Microsoft Corporation */
+		WAVE_FORMAT_ANTEX_ADPCME            , _T("Antex Electronics ADPCME"),    /* Antex Electronics Corporation */
+		WAVE_FORMAT_CONTROL_RES_VQLPC       , _T("Control Resources Limited VQLPC"),    /* Control Resources Limited */
+		WAVE_FORMAT_DIGIREAL                , _T("DSP Solutions DIGIREAL"),    /* DSP Solutions, Inc. */
+		WAVE_FORMAT_DIGIADPCM               , _T("DSP Solutions DIGIADPCM"),    /* DSP Solutions, Inc. */
+		WAVE_FORMAT_CONTROL_RES_CR10        , _T("Control Resources Limited CR10"),    /* Control Resources Limited */
+		WAVE_FORMAT_NMS_VBXADPCM            , _T("Natural MicroSystems VBXADPCM"),    /* Natural MicroSystems */
+		WAVE_FORMAT_CS_IMAADPCM             , _T("Crystal Semiconductor IMA ADPCM "),    /* Crystal Semiconductor IMA ADPCM */
+		WAVE_FORMAT_ECHOSC3                 , _T("Echo Speech ECHOSC3"),    /* Echo Speech Corporation */
+		WAVE_FORMAT_ROCKWELL_ADPCM          , _T("Rockwell ADPCM"),    /* Rockwell International */
+		WAVE_FORMAT_ROCKWELL_DIGITALK       , _T("Rockwell DIGITALK"),    /* Rockwell International */
+		WAVE_FORMAT_XEBEC                   , _T("XEBEC"),    /* Xebec Multimedia Solutions Limited */
+		WAVE_FORMAT_G721_ADPCM              , _T("Antex Electronics G721_ADPCM"),    /* Antex Electronics Corporation */
+		WAVE_FORMAT_G728_CELP               , _T("Antex Electronics G728_CELP"),    /* Antex Electronics Corporation */
+		WAVE_FORMAT_MSG723                  , _T("Microsoft MSG723"),    /* Microsoft Corporation */
+		WAVE_FORMAT_MPEG                    , _T("MPEG Audio"),    /* Microsoft Corporation */
+		WAVE_FORMAT_RT24                    , _T("InSoft RT24"),    /* InSoft, Inc. */
+		WAVE_FORMAT_PAC                     , _T("InSoft PAC"),    /* InSoft, Inc. */
+		WAVE_FORMAT_MPEGLAYER3              , _T("ISO/MPEG Layer3"),    /* ISO/MPEG Layer3 Format Tag */
+		WAVE_FORMAT_LUCENT_G723             , _T("Lucent Technologies G723"),    /* Lucent Technologies */
+		WAVE_FORMAT_CIRRUS                  , _T("Cirrus Logic "),    /* Cirrus Logic */
+		WAVE_FORMAT_ESPCM                   , _T("ESS Technology"),    /* ESS Technology */
+		WAVE_FORMAT_VOXWARE                 , _T("Voxware "),    /* Voxware Inc */
+		WAVE_FORMAT_CANOPUS_ATRAC           , _T("Canopus ATRAC"),    /* Canopus, co., Ltd. */
+		WAVE_FORMAT_G726_ADPCM              , _T("APICOM G726_ADPCM"),    /* APICOM */
+		WAVE_FORMAT_G722_ADPCM              , _T("APICOM G722_ADPCM"),    /* APICOM */
+		WAVE_FORMAT_DSAT_DISPLAY            , _T("Microsoft DSAT_DISPLAY"),    /* Microsoft Corporation */
+		WAVE_FORMAT_VOXWARE_BYTE_ALIGNED    , _T("Voxware BYTE_ALIGNED"),    /* Voxware Inc */
+		WAVE_FORMAT_VOXWARE_AC8             , _T("Voxware AC8"),    /* Voxware Inc */
+		WAVE_FORMAT_VOXWARE_AC10            , _T("Voxware AC10"),    /* Voxware Inc */
+		WAVE_FORMAT_VOXWARE_AC16            , _T("Voxware AC16"),    /* Voxware Inc */
+		WAVE_FORMAT_VOXWARE_AC20            , _T("Voxware AC20"),    /* Voxware Inc */
+		WAVE_FORMAT_VOXWARE_RT24            , _T("Voxware RT24"),    /* Voxware Inc */
+		WAVE_FORMAT_VOXWARE_RT29            , _T("Voxware RT29"),    /* Voxware Inc */
+		WAVE_FORMAT_VOXWARE_RT29HW          , _T("Voxware RT29HW"),    /* Voxware Inc */
+		WAVE_FORMAT_VOXWARE_VR12            , _T("Voxware VR12"),    /* Voxware Inc */
+		WAVE_FORMAT_VOXWARE_VR18            , _T("Voxware VR18"),    /* Voxware Inc */
+		WAVE_FORMAT_VOXWARE_TQ40            , _T("Voxware TQ40"),    /* Voxware Inc */
+		WAVE_FORMAT_SOFTSOUND               , _T("Softsound"),    /* Softsound, Ltd. */
+		WAVE_FORMAT_VOXWARE_TQ60            , _T("Voxware TQ60"),    /* Voxware Inc */
+		WAVE_FORMAT_MSRT24                  , _T("Microsoft MSRT24"),    /* Microsoft Corporation */
+		WAVE_FORMAT_G729A                   , _T("AT&T Labs G729A"),    /* AT&T Labs, Inc. */
+		WAVE_FORMAT_MVI_MVI2                , _T(""),    /* Motion Pixels */
+		WAVE_FORMAT_DF_G726                 , _T(""),    /* DataFusion Systems (Pty) (Ltd) */
+		WAVE_FORMAT_DF_GSM610               , _T(""),    /* DataFusion Systems (Pty) (Ltd) */
+		WAVE_FORMAT_ISIAUDIO                , _T(""),    /* Iterated Systems, Inc. */
+		WAVE_FORMAT_ONLIVE                  , _T(""),    /* OnLive! Technologies, Inc. */
+		WAVE_FORMAT_SBC24                   , _T(""),    /* Siemens Business Communications Sys */
+		WAVE_FORMAT_DOLBY_AC3_SPDIF         , _T(""),    /* Sonic Foundry */
+		WAVE_FORMAT_MEDIASONIC_G723         , _T(""),    /* MediaSonic */
+		WAVE_FORMAT_PROSODY_8KBPS           , _T(""),    /* Aculab plc */
+		WAVE_FORMAT_ZYXEL_ADPCM             , _T(""),    /* ZyXEL Communications, Inc. */
+		WAVE_FORMAT_PHILIPS_LPCBB           , _T(""),    /* Philips Speech Processing */
+		WAVE_FORMAT_PACKED                  , _T(""),    /* Studer Professional Audio AG */
+		WAVE_FORMAT_MALDEN_PHONYTALK        , _T(""),    /* Malden Electronics Ltd. */
+		WAVE_FORMAT_RHETOREX_ADPCM          , _T(""),    /* Rhetorex Inc. */
+		WAVE_FORMAT_IRAT                    , _T(""),    /* BeCubed Software Inc. */
+		WAVE_FORMAT_VIVO_G723               , _T("Vivo G723"),    /* Vivo Software */
+		WAVE_FORMAT_VIVO_SIREN              , _T("Vivo SIREN"),    /* Vivo Software */
+		WAVE_FORMAT_DIGITAL_G723            , _T("Digital Equipment Corporation G723"),    /* Digital Equipment Corporation */
+		WAVE_FORMAT_SANYO_LD_ADPCM          , _T("Sanyo Electric LD_ADPCM"),    /* Sanyo Electric Co., Ltd. */
+		WAVE_FORMAT_SIPROLAB_ACEPLNET       , _T("Sipro Lab Telecom ACEPLNET"),    /* Sipro Lab Telecom Inc. */
+		WAVE_FORMAT_SIPROLAB_ACELP4800      , _T("Sipro Lab Telecom ACELP4800"),    /* Sipro Lab Telecom Inc. */
+		WAVE_FORMAT_SIPROLAB_ACELP8V3       , _T("Sipro Lab Telecom ACELP8V3"),    /* Sipro Lab Telecom Inc. */
+		WAVE_FORMAT_SIPROLAB_G729           , _T("Sipro Lab Telecom G729"),    /* Sipro Lab Telecom Inc. */
+		WAVE_FORMAT_SIPROLAB_G729A          , _T("Sipro Lab Telecom G729A"),    /* Sipro Lab Telecom Inc. */
+		WAVE_FORMAT_SIPROLAB_KELVIN         , _T("Sipro Lab Telecom KELVIN"),    /* Sipro Lab Telecom Inc. */
+		WAVE_FORMAT_G726ADPCM               , _T("Dictaphone G726ADPCM"),    /* Dictaphone Corporation */
+		WAVE_FORMAT_QUALCOMM_PUREVOICE      , _T("Qualcomm PUREVOICE"),    /* Qualcomm, Inc. */
+		WAVE_FORMAT_QUALCOMM_HALFRATE       , _T("Qualcomm HALFRATE"),    /* Qualcomm, Inc. */
+		WAVE_FORMAT_TUBGSM                  , _T(""),    /* Ring Zero Systems, Inc. */
+		WAVE_FORMAT_MSAUDIO1                , _T(""),    /* Microsoft Corporation */
+		WAVE_FORMAT_UNISYS_NAP_ADPCM        , _T("Unisys ADPCM"),    /* Unisys Corp. */
+		WAVE_FORMAT_UNISYS_NAP_ULAW         , _T("Unisys ULAW"),    /* Unisys Corp. */
+		WAVE_FORMAT_UNISYS_NAP_ALAW         , _T("Unisys ALAW"),    /* Unisys Corp. */
+		WAVE_FORMAT_UNISYS_NAP_16K          , _T("Unisys 16K"),    /* Unisys Corp. */
+		WAVE_FORMAT_CREATIVE_ADPCM          , _T("Creative Labs, ADPCM"),    /* Creative Labs, Inc */
+		WAVE_FORMAT_CREATIVE_FASTSPEECH8    , _T("Creative Labs, FASTSPEECH8"),    /* Creative Labs, Inc */
+		WAVE_FORMAT_CREATIVE_FASTSPEECH10   , _T("Creative Labs, FASTSPEECH10"),    /* Creative Labs, Inc */
+		WAVE_FORMAT_UHER_ADPCM              , _T(""),    /* UHER informatic GmbH */
+		WAVE_FORMAT_QUARTERDECK             , _T(""),    /* Quarterdeck Corporation */
+		WAVE_FORMAT_ILINK_VC                , _T(""),    /* I-link Worldwide */
+		WAVE_FORMAT_RAW_SPORT               , _T(""),    /* Aureal Semiconductor */
+		WAVE_FORMAT_ESST_AC3                , _T(""),    /* ESS Technology, Inc. */
+		WAVE_FORMAT_IPI_HSX                 , _T(""),    /* Interactive Products, Inc. */
+		WAVE_FORMAT_IPI_RPELP               , _T(""),    /* Interactive Products, Inc. */
+		WAVE_FORMAT_CS2                     , _T(""),    /* Consistent Software */
+		WAVE_FORMAT_SONY_SCX                , _T(""),    /* Sony Corp. */
+		WAVE_FORMAT_FM_TOWNS_SND            , _T(""),    /* Fujitsu Corp. */
+		WAVE_FORMAT_BTV_DIGITAL             , _T(""),    /* Brooktree Corporation */
+		WAVE_FORMAT_QDESIGN_MUSIC           , _T(""),    /* QDesign Corporation */
+		WAVE_FORMAT_VME_VMPCM               , _T(""),    /* AT&T Labs, Inc. */
+		WAVE_FORMAT_TPC                     , _T(""),   /* AT&T Labs, Inc. */
+		WAVE_FORMAT_OLIGSM                  , _T(""),    /* Ing C. Olivetti & C., S.p.A. */
+		WAVE_FORMAT_OLIADPCM                , _T(""),    /* Ing C. Olivetti & C., S.p.A. */
+		WAVE_FORMAT_OLICELP                 , _T(""),    /* Ing C. Olivetti & C., S.p.A. */
+		WAVE_FORMAT_OLISBC                  , _T(""),    /* Ing C. Olivetti & C., S.p.A. */
+		WAVE_FORMAT_OLIOPR                  , _T(""),    /* Ing C. Olivetti & C., S.p.A. */
+		WAVE_FORMAT_LH_CODEC                , _T("Lernout & Hauspie"),    /* Lernout & Hauspie */
+		WAVE_FORMAT_NORRIS                  , _T("Norris Communications"),    /* Norris Communications, Inc. */
+		WAVE_FORMAT_SOUNDSPACE_MUSICOMPRESS , _T("AT&T Labs, SOUNDSPACE_MUSICOMPRESS"),    /* AT&T Labs, Inc. */
+		WAVE_FORMAT_DVM                     , _T("FAST Multimedia AG DVM"),    /* FAST Multimedia AG */
+	};
+
+	CString s;
+	for (int i = 0; i < countof (Formats); i++)
+	{
+		if (Formats[i].Tag == Tag)
+		{
+			s = Formats[i].Name;
+			s += " (codec not installed)";
+			break;
+		}
+	}
+	return s;
 }
 
 AudioStreamConvertor::AudioStreamConvertor(HACMDRIVER drv)
