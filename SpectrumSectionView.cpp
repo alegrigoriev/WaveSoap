@@ -449,6 +449,7 @@ void CSpectrumSectionView::OnDraw(CDC* pDC)
 				// now we have enough samples to do FFT
 				m_pNoiseReduction->AnalyseFft();
 			}
+			m_pNoiseReduction->ResetOutBuffer();
 		}
 
 		double const PowerScaleCoeff = 1. / (32768. * 32768.);
