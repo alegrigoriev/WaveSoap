@@ -80,24 +80,80 @@ END_MESSAGE_MAP()
 // CVolumeChangeDialog dialog
 
 
-CVolumeChangeDialog::CVolumeChangeDialog(CWnd* pParent /*=NULL*/)
+CVolumeChangeDialog::CVolumeChangeDialog(SAMPLE_INDEX begin, SAMPLE_INDEX end, SAMPLE_INDEX caret,
+										CHANNEL_MASK Channels,
+										NUMBER_OF_SAMPLES FileLength, WAVEFORMATEX const * pWf,
+										BOOL ChannelsLocked, BOOL UndoEnabled,
+										int TimeFormat,
+										CWnd* pParent /*=NULL*/)
 	: CDialog(CVolumeChangeDialog::IDD, pParent),
-	m_TimeFormat(SampleToString_HhMmSs | TimeToHhMmSs_NeedsHhMm | TimeToHhMmSs_NeedsMs),
-	m_pWf(NULL),
-	m_Chan(ALL_CHANNELS)
+	m_TimeFormat(TimeFormat),
+	m_pWf(pWf)
+	, m_FileLength(FileLength)
+	, m_Start(begin)
+	, m_End(end)
+	, m_CaretPosition(caret)
+	, m_Chan(Channels)
+	, m_bUndo(UndoEnabled)
+	, m_bLockChannels(ChannelsLocked)
+	, m_dVolumeLeftDb(0.)
+	, m_dVolumeRightDb(0.)
+	, m_dVolumeLeftPercent(100.)
+	, m_dVolumeRightPercent(100.)
 {
 	//{{AFX_DATA_INIT(CVolumeChangeDialog)
-	m_bUndo = FALSE;
-	m_bLockChannels = FALSE;
-	m_DbPercent = 0;
 	//}}AFX_DATA_INIT
-	// m_DbPercent: 0 = Decibel, 1 - Percent
 
+	if (1 == pWf->nChannels)
+	{
+		m_lpszTemplateName = MAKEINTRESOURCE(IDD_DIALOG_VOLUME_CHANGE_MONO);
+	}
+
+	// m_DbPercent: 0 = Decibel, 1 - Percent
 	m_Profile.AddItem(_T("Settings"), _T("VolumeDialogDbPercents"), m_DbPercent, 0, 0, 1);
 	m_Profile.AddItem(_T("Settings"), _T("VolumeLeftDb"), m_dVolumeLeftDb, 0., -40., 40.);
 	m_Profile.AddItem(_T("Settings"), _T("VolumeLeftPercent"), m_dVolumeLeftPercent, 100., 1., 10000.);
 	m_Profile.AddItem(_T("Settings"), _T("VolumeRightDb"), m_dVolumeRightDb, 0., -40., 40.);
 	m_Profile.AddItem(_T("Settings"), _T("VolumeRightPercent"), m_dVolumeRightPercent, 100., 1., 10000.);
+}
+
+double CVolumeChangeDialog::GetLeftVolume()
+{
+	if (0 == m_DbPercent)   // dBs
+	{
+		return pow(10., m_dVolumeLeftDb / 20.);
+	}
+	else // percents
+	{
+		return 0.01 * m_dVolumeLeftPercent;
+	}
+}
+
+double CVolumeChangeDialog::GetRightVolume()
+{
+	if (0 == m_DbPercent)   // dBs
+	{
+		if (m_bLockChannels || m_pWf->nChannels == 1)
+		{
+			return pow(10., m_dVolumeLeftDb / 20.);
+		}
+		else
+		{
+			return pow(10., m_dVolumeRightDb / 20.);
+		}
+	}
+	else // percents
+	{
+		if (m_bLockChannels || m_pWf->nChannels == 1)
+		{
+			return 0.01 * m_dVolumeLeftPercent;
+		}
+		else
+		{
+			return 0.01 * m_dVolumeRightPercent;
+		}
+	}
+
 }
 
 void CVolumeChangeDialog::UpdateVolumeData(CDataExchange* pDX, BOOL InPercents)

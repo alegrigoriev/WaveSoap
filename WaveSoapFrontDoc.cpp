@@ -3644,75 +3644,41 @@ void CWaveSoapFrontDoc::OnProcessChangevolume()
 		channel = ALL_CHANNELS;
 	}
 
-	CVolumeChangeDialog dlg;
-	CThisApp * pApp = GetApp();
-
-	dlg.m_Start = start;
-	dlg.m_End = end;
-	dlg.m_CaretPosition = m_CaretPosition;
-	dlg.m_Chan = channel;
-	dlg.m_pWf = WaveFormat();
-	dlg.m_bLockChannels = m_bChannelsLocked;
-	dlg.m_bUndo = UndoEnabled();
-	dlg.m_TimeFormat = GetApp()->m_SoundTimeFormat;
-	dlg.m_FileLength = WaveFileSamples();
-
-	if (1 == WaveChannels())
-	{
-		dlg.SetTemplate(IDD_DIALOG_VOLUME_CHANGE_MONO);
-	}
+	//CThisApp * pApp = GetApp();
+	CVolumeChangeDialog dlg(start, end, m_CaretPosition, channel, WaveFileSamples(),
+							WaveFormat(), m_bChannelsLocked, UndoEnabled(), GetApp()->m_SoundTimeFormat);
 
 	if (IDOK != dlg.DoModal())
 	{
 		return;
 	}
 
+	double LeftVolume = dlg.GetLeftVolume();
+	double RightVolume = dlg.GetRightVolume();
+
+	if (1. == LeftVolume
+		&& 1. == RightVolume)
+	{
+		// nothing to do
+		return;
+	}
+
 	CVolumeChangeContext * pContext =
 		new CVolumeChangeContext(this, _T("Changing volume..."), _T("Volume Change"));
+
 	if (NULL == pContext)
 	{
 		NotEnoughMemoryMessageBox();
 		return;
 	}
 
-	if (0 == dlg.m_DbPercent)   // dBs
-	{
-		pContext->m_VolumeLeft = float(pow(10., dlg.m_dVolumeLeftDb / 20.));
-		if (dlg.m_bLockChannels || WaveChannels() == 1)
-		{
-			dlg.m_Chan = ALL_CHANNELS;
-			pContext->m_VolumeRight = pContext->m_VolumeLeft;
-		}
-		else
-		{
-			pContext->m_VolumeRight = float(pow(10., dlg.m_dVolumeRightDb / 20.));
-		}
-	}
-	else // percents
-	{
-		pContext->m_VolumeLeft = float(0.01 * dlg.m_dVolumeLeftPercent);
-		if (dlg.m_bLockChannels || WaveChannels() == 1)
-		{
-			dlg.m_Chan = ALL_CHANNELS;
-			pContext->m_VolumeRight = pContext->m_VolumeLeft;
-		}
-		else
-		{
-			pContext->m_VolumeRight = float(0.01 * dlg.m_dVolumeRightPercent);
-		}
-	}
+	pContext->m_VolumeLeft = float(LeftVolume);
+	pContext->m_VolumeRight = float(RightVolume);
 
-	if (1. == pContext->m_VolumeLeft
-		&& 1. == pContext->m_VolumeRight)
-	{
-		// nothing to do
-		delete pContext;
-		return;
-	}
 	// check if the values can exceed the maximum
 	WavePeak LeftPeak, RightPeak;
 
-	GetSoundMinMax(LeftPeak, RightPeak, dlg.m_Start, dlg.m_End);
+	GetSoundMinMax(LeftPeak, RightPeak, dlg.GetStart(), dlg.GetEnd());
 
 	long MinL = LeftPeak.low;
 	long MaxL = LeftPeak.high;
@@ -3739,9 +3705,9 @@ void CWaveSoapFrontDoc::OnProcessChangevolume()
 	}
 	if (MaxR < MinR) MaxR = MinR;
 
-	if ((dlg.m_Chan != 1 && pContext->m_VolumeLeft * MaxL > 32767.)
-		|| (WaveChannels() > 1 && dlg.m_Chan != 0
-			&& pContext->m_VolumeRight * MaxR > 32767.))
+	if ((dlg.GetChannel() != 1 && LeftVolume * MaxL > 32767.)
+		|| (WaveChannels() > 1 && dlg.GetChannel() != 0
+			&& RightVolume * MaxR > 32767.))
 	{
 		CString s;
 		s.Format(IDS_SOUND_MAY_BE_CLIPPED, GetTitle());
@@ -3752,14 +3718,14 @@ void CWaveSoapFrontDoc::OnProcessChangevolume()
 		}
 	}
 
-	if ( ! pContext->InitDestination(m_WavFile, dlg.m_Start,
-									dlg.m_End, dlg.m_Chan, dlg.m_bUndo))
+	if ( ! pContext->InitDestination(m_WavFile, dlg.GetStart(),
+									dlg.GetEnd(), dlg.GetChannel(), dlg.UndoEnabled()))
 	{
 		delete pContext;
 		return;
 	}
 	pContext->Execute();
-	SetModifiedFlag(TRUE, dlg.m_bUndo);
+	SetModifiedFlag(TRUE, dlg.UndoEnabled());
 }
 
 void CWaveSoapFrontDoc::GetSoundMinMax(WavePeak & Left,

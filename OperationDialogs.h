@@ -89,15 +89,42 @@ class CVolumeChangeDialog : public CDialog
 {
 // Construction
 public:
-	CVolumeChangeDialog(CWnd* pParent = NULL);   // standard constructor
-	void SetTemplate(UINT id)
+	CVolumeChangeDialog(
+						SAMPLE_INDEX begin, SAMPLE_INDEX end, SAMPLE_INDEX caret,
+						CHANNEL_MASK Channels,
+						NUMBER_OF_SAMPLES FileLength, WAVEFORMATEX const * pWf,
+						BOOL ChannelsLocked, BOOL UndoEnabled,
+						int TimeFormat = SampleToString_HhMmSs | TimeToHhMmSs_NeedsHhMm | TimeToHhMmSs_NeedsMs,
+						CWnd* pParent = NULL);   // standard constructor
+
+	BOOL UndoEnabled() const
 	{
-		m_lpszTemplateName = MAKEINTRESOURCE(id);
+		return m_bUndo;
+	}
+	SAMPLE_INDEX GetStart() const
+	{
+		return m_Start;
+	}
+	SAMPLE_INDEX GetEnd() const
+	{
+		return m_End;
+	}
+	CHANNEL_MASK GetChannel() const
+	{
+		if (m_bLockChannels)
+		{
+			return ALL_CHANNELS;
+		}
+		return m_Chan;
 	}
 
-// Dialog Data
+	double GetLeftVolume();
+	double GetRightVolume();
+
+	// Dialog Data
+	enum { IDD = IDD_DIALOG_VOLUME_CHANGE,
+		IDD_MONO = IDD_DIALOG_VOLUME_CHANGE_MONO };
 	//{{AFX_DATA(CVolumeChangeDialog)
-	enum { IDD = IDD_DIALOG_VOLUME_CHANGE };
 	CSliderCtrl	m_SliderVolumeRight;
 	CSliderCtrl	m_SliderVolumeLeft;
 	CStatic	m_SelectionStatic;
@@ -108,19 +135,8 @@ public:
 	int		m_DbPercent;
 	//}}AFX_DATA
 
-
-	double m_dVolumeLeftDb;
-	double m_dVolumeRightDb;
-	double m_dVolumeLeftPercent;
-	double m_dVolumeRightPercent;
-	long m_Start;
-	long m_End;
-	long m_CaretPosition;
-	long m_FileLength;
-	int m_Chan;
-	int m_TimeFormat;
-	const WAVEFORMATEX * m_pWf;
 	CApplicationProfile m_Profile;
+
 // Overrides
 	// ClassWizard generated virtual function overrides
 	//{{AFX_VIRTUAL(CVolumeChangeDialog)
@@ -144,6 +160,19 @@ protected:
 	afx_msg void OnKillfocusEditVolumeRight();
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
+
+	SAMPLE_INDEX m_Start;
+	SAMPLE_INDEX m_End;
+	SAMPLE_INDEX m_CaretPosition;
+	NUMBER_OF_SAMPLES const m_FileLength;
+	CHANNEL_MASK m_Chan;
+	int m_TimeFormat;
+	WAVEFORMATEX const * const m_pWf;
+
+	double m_dVolumeLeftDb;
+	double m_dVolumeRightDb;
+	double m_dVolumeLeftPercent;
+	double m_dVolumeRightPercent;
 };
 
 /////////////////////////////////////////////////////////////////////////////
