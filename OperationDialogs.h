@@ -227,7 +227,10 @@ class CGotoDialog : public CDialog
 {
 // Construction
 public:
-	CGotoDialog(CWnd* pParent = NULL);   // standard constructor
+	CGotoDialog(SAMPLE_INDEX Position,
+				NUMBER_OF_SAMPLES FileLength,
+				const WAVEFORMATEX * pWf,
+				int TimeFormat, CWnd* pParent = NULL);   // standard constructor
 
 // Dialog Data
 	//{{AFX_DATA(CGotoDialog)
@@ -239,7 +242,6 @@ public:
 	int m_TimeFormat;
 	SAMPLE_INDEX m_Position;
 	NUMBER_OF_SAMPLES m_FileLength;
-	const WAVEFORMATEX * m_pWf;
 // Overrides
 	// ClassWizard generated virtual function overrides
 	//{{AFX_VIRTUAL(CGotoDialog)
