@@ -2219,13 +2219,19 @@ BOOL CWaveSoapFrontView::MasterScrollBy(double dx, double dy, BOOL bDoScroll)
 	CWaveSoapFrontDoc * pDoc = GetDocument();
 
 	LONG FileEnd = WorldToWindowXceil(pDoc->WaveFileSamples());
+	LONG NewFileEnd = FileEnd;
+
+	CRect ir;
+	CRect cr;
+	GetClientRect(cr);
+
+	int ndx = 0;
+	int ndy = 0;
+	bool PlaybackCursorHidden = false;
 
 	if (dx != 0.)
 	{
 		if (TRACE_SCROLL) TRACE("before MasterScrollBy: dOrgX=%f, dx=%f\n", dOrgX, dx);
-
-		CRect cr;
-		GetClientRect(cr);
 
 		CRect ScrollRect(cr);
 
@@ -2238,7 +2244,8 @@ BOOL CWaveSoapFrontView::MasterScrollBy(double dx, double dy, BOOL bDoScroll)
 
 		BaseClass::MasterScrollBy(dx, 0, bDoScroll, ScrollRect, ScrollRect);
 
-		LONG NewFileEnd = WorldToWindowXceil(pDoc->WaveFileSamples());
+		NewFileEnd = WorldToWindowXceil(pDoc->WaveFileSamples());
+		ndx = NewFileEnd - FileEnd;
 
 		// if scrolled to the right, invalidate checkered background beyond the file
 		if (NewFileEnd > FileEnd
@@ -2250,6 +2257,8 @@ BOOL CWaveSoapFrontView::MasterScrollBy(double dx, double dy, BOOL bDoScroll)
 
 			InvalidateRect(ir);
 		}
+
+		// TODO: invalidate all labels of markers, if they fall to the moved area
 		// make sure the new position will be on the multiple of m_HorizontalScale
 		ASSERT(0 == SAMPLE_INDEX(dOrgX) % m_HorizontalScale);
 	}
@@ -2262,7 +2271,7 @@ BOOL CWaveSoapFrontView::MasterScrollBy(double dx, double dy, BOOL bDoScroll)
 		CRect r;
 		GetChannelRect(0, r);
 
-		int ndy = -fround(dy * GetYScaleDev());
+		ndy = -fround(dy * GetYScaleDev());
 
 		double offset = m_WaveOffsetY - 65536. * ndy / (r.Height() * m_VerticalScale);
 		// find max and min offset for this scale
@@ -2295,100 +2304,100 @@ BOOL CWaveSoapFrontView::MasterScrollBy(double dx, double dy, BOOL bDoScroll)
 
 			m_WaveOffsetY = offset;
 			NotifySlaveViews(WAVE_OFFSET_CHANGED);
-			CRect cr;
-			GetClientRect(cr);
 
-			// change to scroll
 			if (NoScroll)
 			{
 				Invalidate();
+				return TRUE;
 			}
-			else
+
+			int nChannels = pDoc->WaveChannels();
+
+			HidePlaybackCursor();
+			PlaybackCursorHidden = true;
+
+			for (int ch = 0; ch < nChannels; ch++)
 			{
-				int nChannels = pDoc->WaveChannels();
+				CRect chr;
+				GetChannelRect(ch, chr);
+#if 1
+				ScrollWindowEx(0, ndy, chr, chr, NULL, ir,
+								SW_INVALIDATE);
+				InvalidateRect(ir);
+#else
+				ScrollWindowEx(0, ndy, NULL, NULL, NULL, NULL,
+								SW_INVALIDATE | SW_ERASE);
+#endif
+			}
 
-				HidePlaybackCursor();
-				// invalidate marker labels
-				CWindowDC dc(this);
-				CGdiObjectSave OldFont(dc, dc.SelectStockObject(ANSI_VAR_FONT));
+		}
+	}
 
+	if (ndy != 0
+		|| ndx != 0)
+	{
+		// invalidate marker labels
+		CWindowDC dc(this);
+		CGdiObjectSave OldFont(dc, dc.SelectStockObject(ANSI_VAR_FONT));
 
-				CRect ir;
-				CuePointVectorIterator i;
-				CWaveFile::InstanceDataWav * pInst = pDoc->m_WavFile.GetInstanceData();
+		CWaveFile::InstanceDataWav * pInst = pDoc->m_WavFile.GetInstanceData();
 
-				if (ndy > 0)    // moving down
-					for (i = pInst->m_CuePoints.begin();
-						i < pInst->m_CuePoints.end(); i++)
+		for (CuePointVectorIterator i = pInst->m_CuePoints.begin();
+			i < pInst->m_CuePoints.end(); i++)
+		{
+			long x = WorldToWindowXfloor(i->dwSampleOffset);
+
+			// invalidate text
+			if (x < cr.right)
+			{
+				LPCTSTR txt = pInst->GetCueText(i->CuePointID);
+				if (NULL != txt)
+				{
+					CPoint p(dc.GetTextExtent(txt, _tcslen(txt)));
+
+					ir.left = x;
+					ir.top = cr.top;
+					ir.bottom = cr.top + p.y;
+					ir.right = x + p.x;
+
+					// in the wave area, invalidate old and new position,
+					// only if vertical scroll was done.
+					// In the background area, invalidate only if horizontal scroll was done
+					if (x + p.x > cr.left)
 					{
-						long x = WorldToWindowXfloor(i->dwSampleOffset);
-
-						// invalidate text
-						if (x < cr.right)
+						if (ndy != 0)
 						{
-							LPCTSTR txt = pInst->GetCueText(i->CuePointID);
-							if (NULL != txt)
+							InvalidateRect(ir);
+							if (ndy > 0)
 							{
-								CPoint p(dc.GetTextExtent(txt, _tcslen(txt)));
-
-								ir.left = x;
-								ir.top = cr.top;
-								ir.bottom = ir.top + p.y;
-								ir.right = ir.left + p.x;
-
-								if (ir.left + p.x > cr.left)
+								// scroll down
+								// invalidate old position
+								if (ndy < cr.bottom - cr.top)
 								{
-									InvalidateRect(CRect(x, cr.top, ir.left + p.x, ir.top + p.y));
+									InvalidateRect(CRect(x, cr.top + ndy, x + p.x, cr.top + p.y + ndy));
 								}
 							}
 						}
-					}
 
-				for (int ch = 0; ch < nChannels; ch++)
-				{
-					CRect chr;
-					GetChannelRect(ch, chr);
-#if 1
-					ScrollWindowEx(0, ndy, chr, chr, NULL, ir,
-									SW_INVALIDATE);
-					InvalidateRect(ir);
-#else
-					ScrollWindowEx(0, ndy, NULL, NULL, NULL, NULL,
-									SW_INVALIDATE | SW_ERASE);
-#endif
-				}
-
-				// invalidate text area again, after scroll
-				for (i = pInst->m_CuePoints.begin();
-					i < pInst->m_CuePoints.end(); i++)
-				{
-					long x = WorldToWindowXfloor(i->dwSampleOffset);
-
-					// invalidate text
-					if (x < cr.right)
-					{
-						LPCTSTR txt = pInst->GetCueText(i->CuePointID);
-						if (NULL != txt)
+						if (ndx != 0
+							&& x + p.x > NewFileEnd)
 						{
-							CPoint p(dc.GetTextExtent(txt, _tcslen(txt)));
-
-							ir.left = x;
-							ir.top = cr.top;
-							ir.bottom = ir.top + p.y;
-							ir.right = ir.left + p.x;
-
-							if (ir.left + p.x > cr.left)
+							if (ndx < 0)
 							{
-								InvalidateRect(CRect(x, cr.top, ir.left + p.x, ir.top + p.y));
+								ir.right -= ndx;
 							}
+							InvalidateRect(ir);
 						}
 					}
 				}
-
-				ShowPlaybackCursor();
 			}
 		}
 	}
+	if (PlaybackCursorHidden)
+	{
+		ShowPlaybackCursor();
+	}
+
 	return TRUE;
 }
 
