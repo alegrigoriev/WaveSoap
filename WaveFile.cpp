@@ -3298,10 +3298,10 @@ long CWaveFile::WriteSamples(CHANNEL_MASK DstChannels,
 							pSrc, SrcChannels, NumSrcChannels, SamplesWritten,
 							GetSampleType(), type);
 
-			if (WasLockedForWrite < DstSampleSize)
+			if (-WasLockedForWrite < DstSampleSize)
 			{
 				LONG Written = WriteAt(tmp + NumFileChannels, -DstSampleSize, Pos);
-				if (Written != DstSampleSize)
+				if (Written != -DstSampleSize)
 				{
 					return TotalSamplesWritten;
 				}
