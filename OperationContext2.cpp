@@ -1557,7 +1557,8 @@ CEqualizerContext::CEqualizerContext(CWaveSoapFrontDoc * pDoc,
 	m_MaxClipped(0.)
 {
 	m_OperationString = StatusString;
-	m_GetBufferFlags = 0;
+	//m_GetBufferFlags = 0; // leave CDirectFile::GetBufferAndPrefetchNext flag
+	m_ReturnBufferFlags = CDirectFile::ReturnBufferDirty;
 }
 
 CEqualizerContext::~CEqualizerContext()
@@ -1829,3 +1830,15 @@ BOOL CEqualizerContext::ProcessBuffer(void * buf, size_t len, DWORD offset, BOOL
 	return TRUE;
 }
 
+BOOL CSwapChannelsContext::ProcessBuffer(void * buf, size_t len, DWORD offset, BOOL bBackward)
+{
+	__int16 * pDst = (__int16 *) buf;
+	// channels are always 2
+	for (unsigned i = 0; i < len / sizeof pDst[0]; i += 2)
+	{
+		__int16 tmp = pDst[i];
+		pDst[i] = pDst[i + 1];
+		pDst[i + 1] = tmp;
+	}
+	return TRUE;
+}

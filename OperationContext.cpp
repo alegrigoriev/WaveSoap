@@ -101,8 +101,9 @@ BOOL COperationContext::OperationProc()
 
 	DWORD dwStartTime = timeGetTime();
 	DWORD dwOperationBegin = m_DstCopyPos;
+	int SampleSize = m_DstFile.SampleSize();
 
-	LONGLONG LeftToWrite = 0;
+	LONG SizeToProcess = 0;
 	LONG WasLockedToWrite = 0;
 	void * pDstBuf;
 	if (m_CurrentPass > 0)
@@ -133,10 +134,13 @@ BOOL COperationContext::OperationProc()
 		}
 	}
 
+	__int16 TempBuf[4];
 	if (m_CurrentPass > 0)
 	{
 		do
 		{
+			// make sure ProcessBuffer gets integer number of complete samples, from sample boundary
+
 			LONGLONG SizeToWrite = m_DstEnd - m_DstCopyPos;
 			WasLockedToWrite = m_DstFile.GetDataBuffer( & pDstBuf,
 														SizeToWrite, m_DstCopyPos, m_GetBufferFlags);
@@ -146,7 +150,30 @@ BOOL COperationContext::OperationProc()
 				return FALSE;
 			}
 
-			LeftToWrite = WasLockedToWrite;
+			if (WasLockedToWrite < SampleSize)
+			{
+				m_DstFile.ReturnDataBuffer(pDstBuf, WasLockedToWrite, 0);
+				if (SampleSize != m_DstFile.ReadAt(TempBuf, SampleSize, m_DstCopyPos))
+				{
+					return FALSE;
+				}
+				if (1 == m_CurrentPass
+					&& NULL != m_pUndoContext)
+				{
+					m_pUndoContext->SaveUndoData(TempBuf, SampleSize,
+												m_DstCopyPos, m_DstChan);
+					m_pUndoContext->m_DstEnd = m_pUndoContext->m_SrcSavePos;
+					m_pUndoContext->m_SrcEnd = m_pUndoContext->m_DstSavePos;
+				}
+				ProcessBuffer(TempBuf, SampleSize, m_DstCopyPos - m_DstStart, FALSE);
+				if (m_ReturnBufferFlags & CDirectFile::ReturnBufferDirty)
+				{
+					m_DstFile.WriteAt(TempBuf, SampleSize, m_DstCopyPos);
+				}
+				m_DstCopyPos += SampleSize;
+				continue;
+			}
+			SizeToProcess = WasLockedToWrite - WasLockedToWrite % SampleSize;
 			// save the data to be changed to undo buffer, but only on the first forward pass
 			if (1 == m_CurrentPass
 				&& NULL != m_pUndoContext)
@@ -157,11 +184,11 @@ BOOL COperationContext::OperationProc()
 				m_pUndoContext->m_SrcEnd = m_pUndoContext->m_DstSavePos;
 			}
 			// virtual function which modifies the actual data:
-			ProcessBuffer(pDstBuf, WasLockedToWrite, m_DstCopyPos - m_DstStart, FALSE);
+			ProcessBuffer(pDstBuf, SizeToProcess, m_DstCopyPos - m_DstStart, FALSE);
 
 			m_DstFile.ReturnDataBuffer(pDstBuf, WasLockedToWrite,
 										m_ReturnBufferFlags);
-			m_DstCopyPos += WasLockedToWrite;
+			m_DstCopyPos += SizeToProcess;
 		}
 		while (m_DstCopyPos < m_DstEnd
 				&& timeGetTime() - dwStartTime < 200);
@@ -217,24 +244,47 @@ BOOL COperationContext::OperationProc()
 				return FALSE;
 			}
 
-			LeftToWrite = WasLockedToWrite;
+			if (-WasLockedToWrite < SampleSize)
+			{
+				m_DstFile.ReturnDataBuffer(pDstBuf, WasLockedToWrite, 0);
+				if (SampleSize != m_DstFile.ReadAt(TempBuf, SampleSize, m_DstCopyPos - SampleSize))
+				{
+					return FALSE;
+				}
+				if (1 == m_CurrentPass
+					&& NULL != m_pUndoContext)
+				{
+					m_pUndoContext->SaveUndoData(TempBuf, SampleSize,
+												m_DstCopyPos, m_DstChan);
+					m_pUndoContext->m_DstEnd = m_pUndoContext->m_SrcSavePos;
+					m_pUndoContext->m_SrcEnd = m_pUndoContext->m_DstSavePos;
+				}
+				ProcessBuffer(TempBuf, SampleSize, m_DstCopyPos - m_DstStart, TRUE);
+				if (m_ReturnBufferFlags & CDirectFile::ReturnBufferDirty)
+				{
+					m_DstFile.WriteAt(TempBuf, SampleSize, m_DstCopyPos - SampleSize);
+				}
+				m_DstCopyPos -= SampleSize;
+				continue;
+			}
+			SizeToProcess = -WasLockedToWrite - (-WasLockedToWrite) % SampleSize;
 			// save the data to be changed to undo buffer, but only on the first forward pass
 			// TODO: make for backward pass only
 			if (0 && 1 == m_CurrentPass
 				&& NULL != m_pUndoContext)
 			{
-				m_pUndoContext->SaveUndoData(pDstBuf, WasLockedToWrite,
+				m_pUndoContext->SaveUndoData(pDstBuf, SizeToProcess,
 											m_DstCopyPos, m_DstChan);
 				m_pUndoContext->m_DstEnd = m_pUndoContext->m_SrcSavePos;
 				m_pUndoContext->m_SrcEnd = m_pUndoContext->m_DstSavePos;
 			}
 			// virtual function which modifies the actual data:
-			ProcessBuffer(WasLockedToWrite + (PCHAR)pDstBuf, -WasLockedToWrite, m_DstCopyPos - m_DstStart, TRUE);   // backward=TRUE
+			ProcessBuffer(-SizeToProcess + (PCHAR)pDstBuf, SizeToProcess, m_DstCopyPos - m_DstStart, TRUE);   // backward=TRUE
 
 			m_DstFile.ReturnDataBuffer(pDstBuf, WasLockedToWrite,
 										m_ReturnBufferFlags);
 			// length requested and length returned are <0,
-			m_DstCopyPos += WasLockedToWrite;
+			m_DstCopyPos -= SizeToProcess;
 		}
 		while (m_DstCopyPos > m_DstStart
 				&& timeGetTime() - dwStartTime < 200);
@@ -2410,190 +2460,33 @@ BOOL CVolumeChangeContext::ProcessBuffer(void * buf, size_t BufferLength, DWORD 
 		return TRUE;
 	}
 	int i;
-	if (ALL_CHANNELS == m_DstChan)
+	// special code for mute
+	if (0 == m_VolumeLeft && 0 == m_VolumeRight)
 	{
-		// process both channels
-		if (offset & 2)
-		{
-			long tmp = fround(pDst[0] * m_VolumeRight);
-			if (tmp > 0x7FFF)
-			{
-				if (m_MaxClipped < tmp)
-				{
-					m_MaxClipped = tmp;
-				}
-				pDst[0] = 0x7FFF;
-				m_bClipped = TRUE;
-			}
-			else if (tmp < -0x8000)
-			{
-				if (m_MaxClipped < -tmp)
-				{
-					m_MaxClipped = -tmp;
-				}
-				pDst[0] = -0x8000;
-				m_bClipped = TRUE;
-			}
-			else
-			{
-				pDst[0] = __int16(tmp);
-			}
-			pDst++;
-			BufferLength -= 2;
-		}
-
-		// special code for mute and inverse
-		if (0 == m_VolumeLeft && 0 == m_VolumeRight)
+		if (ALL_CHANNELS == m_DstChan)
 		{
 			memset(pDst, 0, BufferLength);
-			BufferLength = 0;
-			i = 0;
-		}
-		else if (-1. == m_VolumeLeft && -1. == m_VolumeRight)
-		{
-			for (i = 0; i < BufferLength / (2 * sizeof pDst[0]); i++, pDst += 2)
-			{
-				long tmp = -pDst[0];
-				if (tmp == 0x8000)
-				{
-					pDst[0] = 0x7FFF;
-					m_bClipped = TRUE;
-					m_MaxClipped = 32768.;
-				}
-				else
-				{
-					pDst[0] = __int16(tmp);
-				}
-
-				tmp = -pDst[1];
-				if (tmp == 0x8000)
-				{
-					pDst[1] = 0x7FFF;
-					m_bClipped = TRUE;
-					m_MaxClipped = 32768.;
-				}
-				else
-				{
-					pDst[1] = __int16(tmp);
-				}
-			}
 		}
 		else
 		{
-			for (i = 0; i < BufferLength / (2 * sizeof pDst[0]); i++, pDst += 2)
-			{
-				long tmp = fround(pDst[0] * m_VolumeLeft);
-				if (tmp > 0x7FFF)
-				{
-					if (m_MaxClipped < tmp)
-					{
-						m_MaxClipped = tmp;
-					}
-					pDst[0] = 0x7FFF;
-					m_bClipped = TRUE;
-				}
-				else if (tmp < -0x8000)
-				{
-					if (m_MaxClipped < -tmp)
-					{
-						m_MaxClipped = -tmp;
-					}
-					pDst[0] = -0x8000;
-					m_bClipped = TRUE;
-				}
-				else
-				{
-					pDst[0] = __int16(tmp);
-				}
-
-				tmp = fround(pDst[1] * m_VolumeRight);
-				if (tmp > 0x7FFF)
-				{
-					if (m_MaxClipped < tmp)
-					{
-						m_MaxClipped = tmp;
-					}
-					pDst[1] = 0x7FFF;
-					m_bClipped = TRUE;
-				}
-				else if (tmp < -0x8000)
-				{
-					if (m_MaxClipped < -tmp)
-					{
-						m_MaxClipped = -tmp;
-					}
-					pDst[1] = -0x8000;
-					m_bClipped = TRUE;
-				}
-				else
-				{
-					pDst[1] = __int16(tmp);
-				}
-			}
-		}
-
-		BufferLength -= i * (2 * sizeof pDst[0]);
-		if (2 == BufferLength)
-		{
-			long tmp = fround(pDst[0] * m_VolumeLeft);
-			if (tmp > 0x7FFF)
-			{
-				if (m_MaxClipped < tmp)
-				{
-					m_MaxClipped = tmp;
-				}
-				pDst[0] = 0x7FFF;
-				m_bClipped = TRUE;
-			}
-			else if (tmp < -0x8000)
-			{
-				if (m_MaxClipped < -tmp)
-				{
-					m_MaxClipped = -tmp;
-				}
-				pDst[0] = -0x8000;
-				m_bClipped = TRUE;
-			}
-			else
-			{
-				pDst[0] = __int16(tmp);
-			}
-		}
-	}
-	else
-	{
-		// change one channel
-		if ((offset & 2)
-			!= m_DstChan * 2)
-		{
-			// skip this word
-			pDst++;
-			BufferLength -= 2;
-		}
-
-		float volume;
-		if (0 == m_DstChan)
-		{
-			volume = m_VolumeLeft;
-		}
-		else
-		{
-			volume = m_VolumeRight;
-		}
-
-		// special code for mute and inverse
-		if (0 == volume)
-		{
-			for (int i = 0; i < BufferLength / sizeof pDst[0]; i+=2)
+			for (int i = m_DstChan; i < BufferLength / sizeof pDst[0]; i+=2)
 			{
 				pDst[i] = 0;
 			}
 		}
-		else if (-1. == volume)
+		return TRUE;
+	}
+	// process both channels
+	// special code for mute and inverse
+	if ((-1. == m_VolumeLeft || 1 == m_DstChan)
+		&& (-1. == m_VolumeRight || 0 == m_DstChan))
+	{
+		for (i = 0; i < BufferLength / sizeof pDst[0]; i += 2)
 		{
-			for (int i = 0; i < BufferLength / sizeof pDst[0]; i += 2)
+			long tmp;
+			if (1 != m_DstChan)
 			{
-				long tmp = -pDst[i];
+				tmp = -pDst[i];
 				if (tmp == 0x8000)
 				{
 					pDst[i] = 0x7FFF;
@@ -2605,34 +2498,78 @@ BOOL CVolumeChangeContext::ProcessBuffer(void * buf, size_t BufferLength, DWORD 
 					pDst[i] = __int16(tmp);
 				}
 			}
-		}
-		else
-		{
-			for (int i = 0; i < BufferLength / sizeof pDst[0]; i += 2)
+
+			if (0 != m_DstChan)
 			{
-				long tmp = fround(pDst[i] * volume);
-				if (tmp > 0x7FFF)
+				tmp = -pDst[i + 1];
+				if (tmp == 0x8000)
 				{
-					if (m_MaxClipped < tmp)
-					{
-						m_MaxClipped = tmp;
-					}
-					pDst[i] = 0x7FFF;
+					pDst[i + 1] = 0x7FFF;
 					m_bClipped = TRUE;
-				}
-				else if (tmp < -0x8000)
-				{
-					if (m_MaxClipped < -tmp)
-					{
-						m_MaxClipped = -tmp;
-					}
-					pDst[i] = -0x8000;
-					m_bClipped = TRUE;
+					m_MaxClipped = 32768.;
 				}
 				else
 				{
-					pDst[i] = __int16(tmp);
+					pDst[i + 1] = __int16(tmp);
 				}
+			}
+		}
+		return TRUE;
+	}
+	for (i = 0; i < BufferLength / sizeof pDst[0]; i += 2)
+	{
+		long tmp;
+		if (1 != m_DstChan)
+		{
+			tmp = fround(pDst[i] * m_VolumeLeft);
+			if (tmp > 0x7FFF)
+			{
+				if (m_MaxClipped < tmp)
+				{
+					m_MaxClipped = tmp;
+				}
+				pDst[i] = 0x7FFF;
+				m_bClipped = TRUE;
+			}
+			else if (tmp < -0x8000)
+			{
+				if (m_MaxClipped < -tmp)
+				{
+					m_MaxClipped = -tmp;
+				}
+				pDst[i] = -0x8000;
+				m_bClipped = TRUE;
+			}
+			else
+			{
+				pDst[i] = __int16(tmp);
+			}
+		}
+
+		if (0 != m_DstChan)
+		{
+			tmp = fround(pDst[i + 1] * m_VolumeRight);
+			if (tmp > 0x7FFF)
+			{
+				if (m_MaxClipped < tmp)
+				{
+					m_MaxClipped = tmp;
+				}
+				pDst[i + 1] = 0x7FFF;
+				m_bClipped = TRUE;
+			}
+			else if (tmp < -0x8000)
+			{
+				if (m_MaxClipped < -tmp)
+				{
+					m_MaxClipped = -tmp;
+				}
+				pDst[i + 1] = -0x8000;
+				m_bClipped = TRUE;
+			}
+			else
+			{
+				pDst[i + 1] = __int16(tmp);
 			}
 		}
 	}

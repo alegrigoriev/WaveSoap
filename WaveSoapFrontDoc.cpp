@@ -151,6 +151,8 @@ BEGIN_MESSAGE_MAP(CWaveSoapFrontDoc, CDocument)
 	ON_UPDATE_COMMAND_UI(ID_EDIT_CLEAR_REDO, OnUpdateEditClearRedo)
 	ON_COMMAND(ID_PROCESS_EQUALIZER, OnProcessEqualizer)
 	ON_UPDATE_COMMAND_UI(ID_PROCESS_EQUALIZER, OnUpdateProcessEqualizer)
+	ON_COMMAND(ID_PROCESS_SWAPCHANNELS, OnProcessSwapchannels)
+	ON_UPDATE_COMMAND_UI(ID_PROCESS_SWAPCHANNELS, OnUpdateProcessSwapchannels)
 	//}}AFX_MSG_MAP
 END_MESSAGE_MAP()
 
@@ -5712,4 +5714,49 @@ void CWaveSoapFrontDoc::OnUpdateProcessEqualizer(CCmdUI* pCmdUI)
 	pCmdUI->Enable( ! m_bReadOnly
 					&& ! m_OperationInProgress
 					&& m_WavFile.IsOpen() && WaveFileSamples() > 2 );
+}
+
+void CWaveSoapFrontDoc::OnProcessSwapchannels()
+{
+	long start = m_SelectionStart;
+	long end = m_SelectionEnd;
+	if (start == end)
+	{
+		// select all
+		start = 0;
+		end = WaveFileSamples();
+	}
+	if (m_OperationInProgress
+		|| m_bReadOnly
+		|| start == end
+		|| WaveChannels() != 2)
+	{
+		// don't do anything
+		return;
+	}
+
+	CSwapChannelsContext * pContext =
+		new CSwapChannelsContext(this, "Swapping the channels...", "Swap channels");
+	if (NULL == pContext)
+	{
+		NotEnoughMemoryMessageBox();
+		return;
+	}
+
+	if ( ! pContext->InitDestination(m_WavFile, start,
+									end, ALL_CHANNELS, UndoEnabled()))
+	{
+		delete pContext;
+		return;
+	}
+	pContext->Execute();
+	SetModifiedFlag(TRUE);
+}
+
+void CWaveSoapFrontDoc::OnUpdateProcessSwapchannels(CCmdUI* pCmdUI)
+{
+	pCmdUI->Enable( ! m_bReadOnly
+					&& ! m_OperationInProgress
+					&& m_WavFile.IsOpen() && WaveFileSamples() > 0
+					&& m_WavFile.Channels() == 2);
 }
