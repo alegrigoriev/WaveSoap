@@ -444,8 +444,6 @@ File * CDirectFileCache::Open(LPCTSTR szName, DWORD flags)
 	// if it is, add a reference
 	CLastError err;
 
-	DWORD SectorSize = GetSectorSize(szName);
-
 	CSimpleCriticalSectionLock lock(m_cs);
 
 	if (flags & CDirectFile::CreateMemoryFile)
