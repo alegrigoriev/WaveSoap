@@ -3,18 +3,72 @@
 //
 
 #include "stdafx.h"
+#define _USE_MATH_DEFINES   // for M_PI definition
+#include <math.h>
 #include "WaveSoapFront.h"
 #include "FilterDialog.h"
 #include "OperationDialogs.h"
 #include "FileDialogWithHistory.h"
 #include "GdiObjectSave.h"
 #include "DialogWithSelection.inl"
+#include "FilterMath.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
 #undef THIS_FILE
 static char THIS_FILE[] = __FILE__;
 #endif
+
+
+void CFilterGraphWnd::SetPointFrequencyHz(int nPoint, double Frequency)
+{
+	SetPointFrequency(nPoint, Frequency / m_SamplingRate * (2. * M_PI));
+}
+
+inline void CFilterGraphWnd::SetCurrentPointFrequency(double Frequency)
+{
+	SetPointFrequency(m_PointWithFocus, Frequency);
+}
+
+inline void CFilterGraphWnd::SetCurrentPointFrequencyHz(double Frequency)
+{
+	SetPointFrequencyHz(m_PointWithFocus, Frequency);
+}
+
+inline double CFilterGraphWnd::GetCurrentPointGain() const
+{
+	return m_Gain[m_PointWithFocus];
+}
+
+inline double CFilterGraphWnd::GetCurrentPointFrequency() const
+{
+	return m_Frequencies[m_PointWithFocus];
+}
+
+inline double CFilterGraphWnd::GetPointGainDb(unsigned nPoint) const
+{
+	return 20. * log10(m_Gain[nPoint]);
+}
+
+double CFilterGraphWnd::GetPointFrequencyHz(unsigned nPoint) const
+{
+	return m_SamplingRate * m_Frequencies[nPoint] / (2. * M_PI);
+}
+
+double CFilterGraphWnd::GetCurrentPointFrequencyHz() const
+{
+	return m_SamplingRate * m_Frequencies[m_PointWithFocus] / (2. * M_PI);
+}
+
+inline void CFilterGraphWnd::SetCurrentPointGainDb(double GainDb)
+{
+	SetPointGainDb(m_PointWithFocus, GainDb);
+}
+
+inline double CFilterGraphWnd::GetCurrentPointGainDb() const
+{
+	return 20. * log10(m_Gain[m_PointWithFocus]);
+}
 
 /////////////////////////////////////////////////////////////////////////////
 // CFilterDialog dialog
@@ -41,23 +95,30 @@ CFilterDialog::CFilterDialog(SAMPLE_INDEX Start,
 	static ResizableDlgItem const ResizeItems[] =
 	{
 		{IDC_STATIC1, MoveDown},
-		{IDC_EDIT_BAND_GAIN, MoveDown},
+		{IDC_EDIT_FILTER_PASSBAND_LOSS, MoveDown},
 		{IDC_STATIC2, MoveDown},
-		{IDC_EDIT_FREQUENCY, MoveDown},
+		{IDC_EDIT_FILTER_PASS_FREQUENCY, MoveDown},
 		{IDC_STATIC4, MoveDown},
+
+		{IDC_STATIC3, MoveDown},
+		{IDC_EDIT_FILTER_STOPBAND_LOSS, MoveDown},
+		{IDC_STATIC9, MoveDown},
+		{IDC_EDIT_FILTER_STOP_FREQUENCY, MoveDown},
+		{IDC_STATIC10, MoveDown},
+
 		{IDC_CHECK_LOWPASS, MoveDown},
 		{IDC_CHECK_STOPBAND, MoveDown},
 		{IDC_CHECK_HIGHPASS, MoveDown},
 		{IDC_CHECK_ZERO_PHASE, MoveDown},
 		{IDC_CHECK_UNDO, MoveDown},
 		{IDC_STATIC_SELECTION, MoveDown},
-		{IDC_BUTTON_SELECTION, MoveDown},
+		{IDC_BUTTON_SELECTION, MoveRight | MoveDown},
 
 		{IDC_BUTTON_RESET_BANDS, MoveRight | MoveDown},
 		{IDC_BUTTON_SAVE_AS, MoveRight | MoveDown},
 		{IDC_BUTTON_LOAD, MoveRight | MoveDown},
-		{IDOK, MoveRight | MoveDown},
-		{IDCANCEL, MoveRight | MoveDown},
+		{IDOK, CenterHorizontally | MoveDown},
+		{IDCANCEL, CenterHorizontally | MoveDown},
 		{IDHELP, MoveRight | MoveDown},
 
 		{AFX_IDW_PANE_FIRST, ExpandRight | ExpandDown},
@@ -68,9 +129,11 @@ CFilterDialog::CFilterDialog(SAMPLE_INDEX Start,
 	m_Profile.AddItem(_T("Settings"), _T("FilterDlgWidth"), m_DlgWidth, 0, 0, 4096);
 	m_Profile.AddItem(_T("Settings"), _T("FilterDlgHeight"), m_DlgHeight, 0, 0, 4096);
 
+	m_EditPassLoss.SetPrecision(2);
+	m_EditPassFrequency.SetPrecision(1);
 
-	m_EditGain.SetPrecision(2);
-	m_EditFrequency.SetPrecision(1);
+	m_EditStopLoss.SetPrecision(2);
+	m_EditStopFrequency.SetPrecision(1);
 }
 
 
@@ -78,8 +141,10 @@ void CFilterDialog::DoDataExchange(CDataExchange* pDX)
 {
 	BaseClass::DoDataExchange(pDX);
 
-	DDX_Control(pDX, IDC_EDIT_BAND_GAIN, m_EditGain);
-	DDX_Control(pDX, IDC_EDIT_FREQUENCY, m_EditFrequency);
+	DDX_Control(pDX, IDC_EDIT_FILTER_PASSBAND_LOSS, m_EditPassLoss);
+	DDX_Control(pDX, IDC_EDIT_FILTER_PASS_FREQUENCY, m_EditPassFrequency);
+	DDX_Control(pDX, IDC_EDIT_FILTER_STOPBAND_LOSS, m_EditStopLoss);
+	DDX_Control(pDX, IDC_EDIT_FILTER_STOP_FREQUENCY, m_EditStopFrequency);
 	//{{AFX_DATA_MAP(CFilterDialog)
 	DDX_Check(pDX, IDC_CHECK_UNDO, m_bUndo);
 	//}}AFX_DATA_MAP
@@ -95,8 +160,13 @@ BEGIN_MESSAGE_MAP(CFilterDialog, BaseClass)
 	ON_BN_CLICKED(IDC_CHECK_ZERO_PHASE, OnCheckZeroPhase)
 	ON_BN_CLICKED(IDC_CHECK_LOWPASS, OnCheckLowpass)
 	ON_BN_CLICKED(IDC_CHECK_HIGHPASS, OnCheckHighpass)
-	ON_EN_KILLFOCUS(IDC_EDIT_FREQUENCY, OnKillfocusEditFrequency)
+	ON_EN_KILLFOCUS(IDC_EDIT_FILTER_PASSBAND_LOSS, OnKillfocusEditPassbandLoss)
+	ON_EN_KILLFOCUS(IDC_EDIT_FILTER_PASS_FREQUENCY, OnKillfocusEditPassbandFrequency)
+	ON_EN_KILLFOCUS(IDC_EDIT_FILTER_STOPBAND_LOSS, OnKillfocusEditStopbandLoss)
+	ON_EN_KILLFOCUS(IDC_EDIT_FILTER_STOP_FREQUENCY, OnKillfocusEditStopbandFrequency)
 	ON_BN_CLICKED(IDC_CHECK_STOPBAND, OnCheckStopband)
+	ON_UPDATE_COMMAND_UI(IDC_EDIT_FILTER_PASSBAND_LOSS, OnUpdateEditPassbandLoss)
+	ON_UPDATE_COMMAND_UI(IDC_EDIT_FILTER_STOPBAND_LOSS, OnUpdateEditStopbandLoss)
 	//}}AFX_MSG_MAP
 	ON_NOTIFY(NM_RETURN, AFX_IDW_PANE_FIRST, OnNotifyGraph)
 END_MESSAGE_MAP()
@@ -135,9 +205,11 @@ BOOL CFilterDialog::OnInitDialog()
 	BaseClass::OnInitDialog();
 	SetWindowIcons(this, IDI_ICON_FILTER_DIALOG);
 
-	m_EditGain.SetData(m_wGraph.GetCurrentPointGainDb());
-	m_EditFrequency.SetData(m_wGraph.GetCurrentPointFrequencyHz());
-	// init MINMAXINFO
+	m_EditPassLoss.SetData(m_wGraph.GetCurrentFilterPassbandLossDb());
+	m_EditPassFrequency.SetData(m_wGraph.GetCurrentFilterPassbandFrequency());
+	m_EditStopLoss.SetData(m_wGraph.GetCurrentFilterStopbandLossDb());
+	m_EditStopFrequency.SetData(m_wGraph.GetCurrentFilterStopbandFrequency());
+
 	m_wGraph.RebuildFilters();
 
 	return TRUE;  // return TRUE unless you set the focus to a control
@@ -268,6 +340,112 @@ Filter::Filter()
 	m_bZeroPhase(FALSE)
 {
 	ResetBands();
+}
+
+int CFilterGraphWnd::GetCurrentFilter() const
+{
+	switch (m_PointWithFocus)
+	{
+	case HpfStopbandIndex:
+	case HpfPassbandIndex:
+	default:
+		return HighpassFilter;
+		break;
+
+	case NotchBeginIndex:
+	case NotchZeroIndex:
+		return NotchFilter;
+		break;
+
+	case LpfPassbandIndex:
+	case LpfStopbandIndex:
+		return LowpassFilter;
+		break;
+	}
+}
+
+int CFilterGraphWnd::GetCurrentFilterPassbandIndex() const
+{
+	switch (m_PointWithFocus)
+	{
+	case HpfStopbandIndex:
+	case HpfPassbandIndex:
+	default:
+		return HpfPassbandIndex;
+		break;
+
+	case NotchBeginIndex:
+	case NotchZeroIndex:
+		return NotchBeginIndex;
+		break;
+
+	case LpfPassbandIndex:
+	case LpfStopbandIndex:
+		return LpfPassbandIndex;
+		break;
+	}
+}
+
+int CFilterGraphWnd::GetCurrentFilterStopbandIndex() const
+{
+	switch (m_PointWithFocus)
+	{
+	case HpfStopbandIndex:
+	case HpfPassbandIndex:
+	default:
+		return HpfStopbandIndex;
+		break;
+
+	case NotchBeginIndex:
+	case NotchZeroIndex:
+		return NotchZeroIndex;
+		break;
+
+	case LpfPassbandIndex:
+	case LpfStopbandIndex:
+		return LpfStopbandIndex;
+		break;
+	}
+}
+
+void CFilterGraphWnd::SetCurrentFilterPassbandFrequency(double Frequency)
+{
+	SetPointFrequencyHz(GetCurrentFilterPassbandIndex(), Frequency);
+}
+
+void CFilterGraphWnd::SetCurrentFilterPassbandLossDb(double Loss)
+{
+	SetPointGainDb(GetCurrentFilterPassbandIndex(), Loss);
+}
+
+void CFilterGraphWnd::SetCurrentFilterStopbandFrequency(double Frequency)
+{
+	SetPointFrequencyHz(GetCurrentFilterStopbandIndex(), Frequency);
+}
+
+void CFilterGraphWnd::SetCurrentFilterStopbandLossDb(double Loss)
+{
+	SetPointGainDb(GetCurrentFilterStopbandIndex(), Loss);
+}
+
+double CFilterGraphWnd::GetCurrentFilterPassbandFrequency() const
+{
+	return GetPointFrequencyHz(GetCurrentFilterPassbandIndex());
+}
+
+double CFilterGraphWnd::GetCurrentFilterPassbandLossDb() const
+{
+	return GetPointGainDb(GetCurrentFilterPassbandIndex());
+}
+
+double CFilterGraphWnd::GetCurrentFilterStopbandFrequency() const
+{
+	return GetPointFrequencyHz(GetCurrentFilterStopbandIndex());
+}
+
+double CFilterGraphWnd::GetCurrentFilterStopbandLossDb() const
+{
+	return GetPointGainDb(GetCurrentFilterStopbandIndex());
 }
 
 void Filter::ResetBands()
@@ -497,7 +675,7 @@ void CFilterGraphWnd::OnPaint()
 	dc.SetBkColor(0xFFFFFF);
 	dc.SetTextColor(0x000000);
 
-	for (int i = 0; i < MaxFilterFrequencies; i++)
+	for (unsigned i = 0; i < MaxFilterFrequencies; i++)
 	{
 		// draw circles around the reference points
 		int x = int((1. + log10(m_Frequencies[i] / M_PI) / 3.) * cr.Width() - 1);
@@ -582,7 +760,7 @@ void CFilterGraphWnd::NotifyParentDlg()
 	GetParent()->SendMessage(WM_NOTIFY, nmhdr.idFrom, (LPARAM) & nmhdr);
 }
 
-void CFilterGraphWnd::SetFocusPoint(int nPoint)
+void CFilterGraphWnd::SetFocusPoint(unsigned nPoint)
 {
 	if (nPoint != m_PointWithFocus)
 	{
@@ -1056,8 +1234,8 @@ void CFilterDialog::OnButtonResetBands()
 {
 	m_wGraph.ResetToInitial();
 
-	m_EditGain.SetData(m_wGraph.GetCurrentPointGainDb());
-	m_EditFrequency.SetData(m_wGraph.GetCurrentPointFrequencyHz());
+	m_EditPassLoss.SetData(m_wGraph.GetCurrentPointGainDb());
+	m_EditPassFrequency.SetData(m_wGraph.GetCurrentPointFrequencyHz());
 
 	CheckDlgButton(IDC_CHECK_ZERO_PHASE, m_wGraph.IsZeroPhase());
 	CheckDlgButton(IDC_CHECK_LOWPASS, m_wGraph.LowPassEnabled());
@@ -1097,8 +1275,8 @@ void CFilterDialog::OnButtonLoad()
 
 	m_wGraph.ValidateFilterSettings();
 
-	m_EditGain.SetData(m_wGraph.GetCurrentPointGainDb());
-	m_EditFrequency.SetData(m_wGraph.GetCurrentPointFrequencyHz());
+	m_EditPassLoss.SetData(m_wGraph.GetCurrentPointGainDb());
+	m_EditPassFrequency.SetData(m_wGraph.GetCurrentPointFrequencyHz());
 	m_wGraph.RebuildFilters();
 }
 
@@ -1278,7 +1456,7 @@ void CFilterGraphWnd::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 		{
 			// focus to the prev band
 			// find next visible point
-			int NewFocusPoint = m_PointWithFocus;
+			unsigned NewFocusPoint = m_PointWithFocus;
 			switch (m_PointWithFocus)
 			{
 			case HpfStopbandIndex:
@@ -1333,7 +1511,7 @@ void CFilterGraphWnd::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 		{
 			// focus to the next band
 			// find next visible point
-			int NewFocusPoint = m_PointWithFocus;
+			unsigned NewFocusPoint = m_PointWithFocus;
 			switch (m_PointWithFocus)
 			{
 			case HpfStopbandIndex:
@@ -1480,7 +1658,7 @@ void CFilterDialog::OnOK()
 	{
 		// read the gain
 		double GainDb;
-		if (m_EditGain.GetData(NULL, GainDb, NULL, NULL, -90., -0.1))
+		if (m_EditPassLoss.GetData(NULL, GainDb, NULL, NULL, -90., -0.1))
 		{
 			m_wGraph.SetCurrentPointGainDb(GainDb);
 			// set focus to the graph
@@ -1493,7 +1671,7 @@ void CFilterDialog::OnOK()
 		// read the freqyqncy
 		double Frequency;
 
-		if (m_EditFrequency.GetData(NULL, Frequency, NULL, NULL, 1, m_wGraph.GetSamplingRate()))
+		if (m_EditPassFrequency.GetData(NULL, Frequency, NULL, NULL, 1, m_wGraph.GetSamplingRate()))
 		{
 			m_wGraph.SetCurrentPointFrequencyHz(Frequency);
 			// set focus to the graph
@@ -1509,15 +1687,18 @@ void CFilterDialog::OnOK()
 void CFilterDialog::OnNotifyGraph(NMHDR * /*pNotifyStruct*/,
 								LRESULT * /*result*/)
 {
-	m_EditGain.SetData(m_wGraph.GetCurrentPointGainDb());
-	m_EditFrequency.SetData(m_wGraph.GetCurrentPointFrequencyHz());
+	m_EditPassLoss.SetData(m_wGraph.GetCurrentFilterPassbandLossDb());
+	m_EditPassFrequency.SetData(m_wGraph.GetCurrentFilterPassbandFrequency());
+	m_EditStopLoss.SetData(m_wGraph.GetCurrentFilterStopbandLossDb());
+	m_EditStopFrequency.SetData(m_wGraph.GetCurrentFilterStopbandFrequency());
+	NeedUpdateControls();
 }
 
 void CFilterDialog::OnKillfocusEditBandGain()
 {
 	// read the gain
 	double GainDb;
-	if (m_EditGain.GetData(NULL, GainDb, NULL, NULL, -20., 20.))
+	if (m_EditPassLoss.GetData(NULL, GainDb, NULL, NULL, -20., 20.))
 	{
 		m_wGraph.SetCurrentPointGainDb(GainDb);
 	}
@@ -1724,13 +1905,53 @@ BOOL Filter::CreateHighpassElliptic(double PassFreq, double PassLoss,
 	return TRUE;
 }
 
-void CFilterDialog::OnKillfocusEditFrequency()
+void CFilterDialog::OnKillfocusEditPassbandFrequency()
 {
-	// read the freqyqncy
+	// read the frequency
 	double Frequency;
-	if (m_EditFrequency.GetData(NULL, Frequency, NULL, NULL, 1, m_wGraph.GetSamplingRate()))
+	if (m_EditPassFrequency.GetData(NULL, Frequency, NULL, NULL, 1, m_wGraph.GetSamplingRate()))
 	{
-		m_wGraph.SetCurrentPointFrequencyHz(Frequency);
+		m_wGraph.SetCurrentFilterPassbandFrequency(Frequency);
 	}
+}
+
+void CFilterDialog::OnKillfocusEditPassbandLoss()
+{
+	// read the loss
+	double Loss;
+	if (m_EditPassLoss.GetData(NULL, Loss, NULL, NULL, -120., 0.))
+	{
+		m_wGraph.SetCurrentFilterPassbandLossDb(Loss);
+	}
+}
+
+void CFilterDialog::OnKillfocusEditStopbandFrequency()
+{
+	// read the frequency
+	double Frequency;
+	if (m_EditStopFrequency.GetData(NULL, Frequency, NULL, NULL, 1, m_wGraph.GetSamplingRate()))
+	{
+		m_wGraph.SetCurrentFilterStopbandFrequency(Frequency);
+	}
+}
+
+void CFilterDialog::OnKillfocusEditStopbandLoss()
+{
+	// read the loss
+	double Loss;
+	if (m_EditStopLoss.GetData(NULL, Loss, NULL, NULL, -120., 0.))
+	{
+		m_wGraph.SetCurrentFilterStopbandLossDb(Loss);
+	}
+}
+
+void CFilterDialog::OnUpdateEditPassbandLoss(CCmdUI * pCmdUI)
+{
+	pCmdUI->Enable(m_wGraph.GetCurrentFilter() != NotchFilter);
+}
+
+void CFilterDialog::OnUpdateEditStopbandLoss(CCmdUI * pCmdUI)
+{
+	pCmdUI->Enable(m_wGraph.GetCurrentFilter() != NotchFilter);
 }
 
