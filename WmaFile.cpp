@@ -371,7 +371,8 @@ HRESULT STDMETHODCALLTYPE CWmaDecoder::OnSample( /* [in] */ DWORD dwOutputNum,
 	{
 		// calculate new length
 		NUMBER_OF_SAMPLES MaxNumberOfSamples = 0x7FFFFFFF / m_DstFile.SampleSize();
-		ULONG TotalSamplesEstimated = ULONG(double(DstCopySample) * SrcLength() / SrcPos());
+		LONGLONG TotalSamplesEstimated = ULONG(double(DstCopySample) * SrcLength() / SrcPos());
+
 		if (TotalSamplesEstimated > MaxNumberOfSamples)
 		{
 			TotalSamplesEstimated = MaxNumberOfSamples;
@@ -381,8 +382,8 @@ HRESULT STDMETHODCALLTYPE CWmaDecoder::OnSample( /* [in] */ DWORD dwOutputNum,
 			TotalSamplesEstimated = m_CurrentSamples;
 		}
 
-		m_CurrentSamples = TotalSamplesEstimated;
-		m_DstFile.SetFileLengthSamples(TotalSamplesEstimated);
+		m_CurrentSamples = NUMBER_OF_SAMPLES(TotalSamplesEstimated);
+		m_DstFile.SetFileLengthSamples(m_CurrentSamples);
 	}
 	// modify positions after file length modified,
 	m_DstPos = DstCopyPos;  // to avoid race condition
