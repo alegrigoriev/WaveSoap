@@ -535,8 +535,8 @@ void CWaveSoapFrontView::OnDraw(CDC* pDC)
 	BaseClass::OnDraw(pDC);
 }
 
-int CDataSection<WAVE_SAMPLE, CWaveSoapFrontView>::ReadData(WAVE_SAMPLE * pBuf, ULONGLONG nOffset,
-															unsigned int nCount, CWaveSoapFrontView * pSource)
+int CDataSection<WAVE_SAMPLE, CWaveSoapFrontView>::ReadData(WAVE_SAMPLE * pBuf, LONGLONG nOffset,
+															long nCount, CWaveSoapFrontView * pSource)
 {
 	CWaveSoapFrontDoc * pDoc = pSource->GetDocument();
 	if (NULL == pDoc
@@ -544,16 +544,34 @@ int CDataSection<WAVE_SAMPLE, CWaveSoapFrontView>::ReadData(WAVE_SAMPLE * pBuf, 
 	{
 		return 0;
 	}
-	long Read = pDoc->m_WavFile.ReadAt(pBuf, nCount * sizeof (WAVE_SAMPLE),
-										pDoc->m_WavFile.GetDataChunk()->dwDataOffset + nOffset * sizeof (WAVE_SAMPLE));
-	if (-1 == Read)
+	long ToZero = 0;
+	if (nOffset < 0)
 	{
-		return 0;
+		ToZero = nCount;
+		if (ToZero > -nOffset)
+		{
+			ToZero = long(-nOffset);
+		}
+		memset(pBuf, 0, ToZero * sizeof *pBuf);
+		nOffset = 0;
+		nCount -= ToZero;
+		pBuf += ToZero;
 	}
-	return Read / sizeof (WAVE_SAMPLE);
+
+	long Read = 0;
+	if (0 != nCount)
+	{
+		Read = pDoc->m_WavFile.ReadAt(pBuf, nCount * sizeof (WAVE_SAMPLE),
+									pDoc->m_WavFile.GetDataChunk()->dwDataOffset + nOffset * sizeof (WAVE_SAMPLE));
+		if (-1 == Read)
+		{
+			return 0;
+		}
+	}
+	return ToZero + Read / sizeof (WAVE_SAMPLE);
 }
 
-ULONGLONG CDataSection<WAVE_SAMPLE, CWaveSoapFrontView>::GetSourceCount(CWaveSoapFrontView * pSource)
+LONGLONG CDataSection<WAVE_SAMPLE, CWaveSoapFrontView>::GetSourceCount(CWaveSoapFrontView * pSource)
 {
 	CWaveSoapFrontDoc * pDoc = pSource->GetDocument();
 	if (NULL == pDoc
@@ -562,6 +580,12 @@ ULONGLONG CDataSection<WAVE_SAMPLE, CWaveSoapFrontView>::GetSourceCount(CWaveSoa
 		return 0;
 	}
 	return pDoc->m_WavFile.GetDataChunk()->cksize / sizeof (WAVE_SAMPLE);
+}
+
+void CWaveSoapFrontView::AdjustNewOrigin(double & NewOrgX, double & NewOrgY)
+{
+	// make sure the screen is aligned by a multiple of m_HorizontalScale
+	NewOrgX -= SAMPLE_INDEX(NewOrgX) % m_HorizontalScale;
 }
 
 void CWaveSoapFrontView::AdjustNewScale(double OldScaleX, double OldScaleY,
@@ -585,6 +609,7 @@ void CWaveSoapFrontView::AdjustNewScale(double OldScaleX, double OldScaleY,
 	}
 	m_HorizontalScale = 1L <<i;
 	NewScaleX = 1. / m_HorizontalScale;
+
 	if(0) TRACE("Old scale X=%g, New scale X=%g, Old scale Y=%g, New scale Y=%g\n",
 				OldScaleX, NewScaleX, OldScaleY, NewScaleY);
 }
@@ -1863,7 +1888,10 @@ BOOL CWaveSoapFrontView::MasterScrollBy(double dx, double dy, BOOL bDoScroll)
 {
 	if (dx != 0.)
 	{
+		TRACE("before MasterScrollBy: dOrgX=%f, dx=%f\n", dOrgX, dx);
 		BaseClass::MasterScrollBy(dx, 0, bDoScroll);
+		// make sure the new position will be on the multiple of m_HorizontalScale
+		ASSERT(0 == SAMPLE_INDEX(dOrgX) % m_HorizontalScale);
 	}
 	if (dy != 0.)
 	{
