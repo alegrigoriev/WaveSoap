@@ -316,7 +316,7 @@ struct NoiseReductionParameters
 	// for tonal bands
 	float m_ToneOverNoisePreference;
 
-	double m_NoiseReductionRatio;    // aggressivness of noise suppression
+	double m_NoiseReductionRatio;    // aggressiveness of noise suppression
 	float m_MaxNoiseSuppression;    // how much FFT band can be suppressed (in dB)
 
 	// DecayDistance is frequency distance where masking decays by 1/e
