@@ -47,13 +47,30 @@ public:
 	virtual ~CWaveSoapFrontView();
 	virtual void UpdateCaretPosition();
 	void InvalidateRect( LPCRECT lpRect, BOOL bErase = TRUE );
+	virtual void OnChangeOrgExt(double left, double width,
+								double top, double height, DWORD flag);
 
 #ifdef _DEBUG
 	virtual void AssertValid() const;
 	virtual void Dump(CDumpContext& dc) const;
 #endif
 protected:
+	virtual UINT GetPopupMenuID(CPoint point);
 	// how many samples in the display point
+	virtual void AdjustNewScale(double OldScaleX, double OldScaleY,
+								double & NewScaleX, double & NewScaleY);
+	virtual BOOL ScrollBy(double dx, double dy, BOOL bDoScroll = TRUE);
+	void GetWaveSamples(int Position, int NumOfSamples);
+	void DrawHorizontalWithSelection(CDC * pDC,
+									int left, int right, int Y,
+									CPen * NormalPen, CPen * SelectedPen,
+									int nChannel);
+	void CreateAndShowCaret();
+	DWORD ClientHitTest(CPoint p);
+	virtual POINT GetZoomCenter();
+	void MovePointIntoView(int nCaret);
+	void UpdateMaxExtents(unsigned Length);
+
 	int m_HorizontalScale;
 	// multiply the wave to get the additional magnification.
 	// m_VerticalScale means all the range is shown, scale 2 means the wave
@@ -65,28 +82,18 @@ protected:
 	};
 	// additional vertical offset, to see a region of magnified wave
 	double m_WaveOffsetY;
-	virtual void AdjustNewScale(double OldScaleX, double OldScaleY,
-								double & NewScaleX, double & NewScaleY);
-	virtual BOOL ScrollBy(double dx, double dy, BOOL bDoScroll = TRUE);
+
 	DWORD m_FirstSampleInBuffer;    // in 16-bit numbers
 	__int16 * m_pWaveBuffer;
 	size_t m_WaveBufferSize;    // in 16-bit samples
 	size_t m_WaveDataSizeInBuffer;  // in 16-bit samples
-	void GetWaveSamples(int Position, int NumOfSamples);
-	void DrawHorizontalWithSelection(CDC * pDC,
-									int left, int right, int Y,
-									CPen * NormalPen, CPen * SelectedPen,
-									int nChannel);
-	void CreateAndShowCaret();
-	DWORD ClientHitTest(CPoint p);
-	virtual POINT GetZoomCenter();
-	void MovePointIntoView(int nCaret);
 
 	virtual void DrawPlaybackCursor(CDC * pDC, long Sample, int Channel);
 	virtual void ShowPlaybackCursor(CDC * pDC = NULL);
 	virtual void HidePlaybackCursor(CDC * pDC = NULL);
 	void UpdatePlaybackCursor(long sample, int channel);
 	BOOL PlaybackCursorVisible();
+
 	int m_PlaybackCursorChannel;  // -1 = not playing
 	bool m_PlaybackCursorDrawn;
 	long m_PlaybackCursorDrawnSamplePos;
@@ -114,6 +121,8 @@ protected:
 	afx_msg void OnUpdateViewZoomvertNormal(CCmdUI* pCmdUI);
 	afx_msg void OnViewZoominHorFull();
 	afx_msg void OnUpdateViewZoominHorFull(CCmdUI* pCmdUI);
+	afx_msg void OnRButtonDown(UINT nFlags, CPoint point);
+	afx_msg void OnRButtonUp(UINT nFlags, CPoint point);
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 };

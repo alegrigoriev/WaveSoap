@@ -42,6 +42,8 @@ BEGIN_MESSAGE_MAP(CWaveSoapFrontView, CScaledScrollView)
 	ON_UPDATE_COMMAND_UI(ID_VIEW_ZOOMVERT_NORMAL, OnUpdateViewZoomvertNormal)
 	ON_COMMAND(ID_VIEW_ZOOMIN_HOR_FULL, OnViewZoominHorFull)
 	ON_UPDATE_COMMAND_UI(ID_VIEW_ZOOMIN_HOR_FULL, OnUpdateViewZoominHorFull)
+	ON_WM_RBUTTONDOWN()
+	ON_WM_RBUTTONUP()
 	//}}AFX_MSG_MAP
 	// Standard printing commands
 	ON_COMMAND(ID_FILE_PRINT, CScaledScrollView::OnFilePrint)
@@ -1394,14 +1396,7 @@ void CWaveSoapFrontView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
 		if (pInfo->Length != -1)
 		{
 			// length changed, set new extents and caret position
-			int nLowExtent = -32768;
-			int nHighExtent = 32767;
-			if (GetDocument()->WaveChannels() > 1)
-			{
-				nLowExtent = -0x10000;
-				nHighExtent = 0x10000;
-			}
-			SetMaxExtents(0, pInfo->Length, nLowExtent, nHighExtent);
+			UpdateMaxExtents(pInfo->Length);
 			Invalidate();
 		}
 
@@ -1728,7 +1723,7 @@ int CWaveSoapFrontView::OnCreate(LPCREATESTRUCT lpCreateStruct)
 		nHighExtent = 0x10000;
 	}
 
-	SetMaxExtents(0., GetDocument()->WaveFileSamples(), nLowExtent, nHighExtent);
+	UpdateMaxExtents(GetDocument()->WaveFileSamples());
 	SetExtents(0., double(r.Width()) * m_HorizontalScale, nLowExtent, nHighExtent);
 	ShowScrollBar(SB_VERT, FALSE);
 	ShowScrollBar(SB_HORZ, FALSE);
@@ -1916,3 +1911,54 @@ void CWaveSoapFrontView::UpdatePlaybackCursor(long sample, int channel)
 	GdiFlush();
 }
 
+void CWaveSoapFrontView::UpdateMaxExtents(unsigned Length)
+{
+	int nLowExtent = -32768;
+	int nHighExtent = 32767;
+	if (GetDocument()->WaveChannels() > 1)
+	{
+		nLowExtent = -0x10000;
+		nHighExtent = 0x10000;
+	}
+	SetMaxExtents(0, Length - Length % m_HorizontalScale + 100. * m_HorizontalScale,
+				nLowExtent, nHighExtent);
+}
+
+void CWaveSoapFrontView::OnChangeOrgExt(double left, double width,
+										double top, double height, DWORD flag)
+{
+	int OldHorScale = m_HorizontalScale;
+
+	CScaledScrollView::OnChangeOrgExt(left, width,
+									top, height, flag);
+
+	if (OldHorScale != m_HorizontalScale)
+	{
+		UpdateMaxExtents(GetDocument()->WaveFileSamples());
+	}
+}
+
+UINT CWaveSoapFrontView::GetPopupMenuID(CPoint point)
+{
+	// point is in screen coordinates
+	ScreenToClient( & point);
+	DWORD hit = ClientHitTest(point);
+	if (hit & VSHT_SELECTION)
+	{
+		return IDR_MENU_WAVE_VIEW_SELECTION;
+	}
+	else
+	{
+		return IDR_MENU_WAVE_VIEW;
+	}
+}
+
+void CWaveSoapFrontView::OnRButtonDown(UINT nFlags, CPoint point)
+{
+	CView::OnRButtonDown(nFlags, point);
+}
+
+void CWaveSoapFrontView::OnRButtonUp(UINT nFlags, CPoint point)
+{
+	CView::OnRButtonUp(nFlags, point);
+}
