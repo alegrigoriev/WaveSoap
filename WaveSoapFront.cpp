@@ -385,6 +385,7 @@ BOOL CWaveSoapFrontApp::InitInstance()
 	Profile.AddBoolItem(_T("Settings"), _T("OpenInDirectMode"), m_bDirectMode, FALSE);
 
 	PersistentUndoRedo::LoadData(Profile);
+	PersistentFileParameters::LoadData(Profile);
 
 	Profile.AddBoolItem(_T("Settings"), _T("DontShowMediaPlayerWarning"), m_DontShowMediaPlayerWarning, FALSE);
 
