@@ -53,6 +53,7 @@ enum {
 	OperationContextInterventionRequired = 0x20,    // need to run a modal dialog
 	OperationContextInitialized = 0x40,
 	OperationContextCreatingUndo = 0x80,
+	OperationContextNonCritical = 0x100,
 };
 
 class CWaveSoapFrontApp : public CWinApp
@@ -96,6 +97,10 @@ public:
 	COperationContext * m_pLastOp;
 	//CString m_CurrentStatusString;
 	CWaveFile m_ClipboardFile;
+
+	int m_DefaultPlaybackDevice;
+	int m_NumPlaybackBuffers;
+	size_t m_SizePlaybackBuffers;
 
 	//{{AFX_MSG(CWaveSoapFrontApp)
 	afx_msg void OnAppAbout();
