@@ -59,79 +59,6 @@ END
 
 #endif    // APSTUDIO_INVOKED
 
-
-/////////////////////////////////////////////////////////////////////////////
-//
-// Dialog
-//
-
-IDD_SELECTION_DIALOG DIALOG DISCARDABLE  0, 0, 269, 138
-STYLE DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
-CAPTION "Selection"
-FONT 8, "MS Sans Serif"
-BEGIN
-    LTEXT           "Selection:",IDC_STATIC,7,10,31,8
-    COMBOBOX        IDC_COMBO_SELECTION,7,26,127,30,CBS_DROPDOWN | CBS_SORT | 
-                    WS_VSCROLL | WS_TABSTOP
-    LTEXT           "Start:",IDC_STATIC,7,47,26,8
-    EDITTEXT        IDC_EDIT_START,50,44,71,14,ES_AUTOHSCROLL
-    CONTROL         "Spin1",IDC_SPIN1,"msctls_updown32",UDS_ALIGNRIGHT | 
-                    UDS_AUTOBUDDY | UDS_ARROWKEYS,123,44,10,14
-    LTEXT           "End:",IDC_STATIC,7,64,26,8
-    EDITTEXT        IDC_EDIT_END,50,62,71,14,ES_AUTOHSCROLL
-    CONTROL         "Spin1",IDC_SPIN2,"msctls_updown32",UDS_ALIGNRIGHT | 
-                    UDS_AUTOBUDDY | UDS_ARROWKEYS,123,62,10,14
-    LTEXT           "Length:",IDC_STATIC,7,82,32,8
-    EDITTEXT        IDC_EDIT3,50,79,71,14,ES_AUTOHSCROLL
-    CONTROL         "Spin1",IDC_SPIN3,"msctls_updown32",UDS_ALIGNRIGHT | 
-                    UDS_AUTOBUDDY | UDS_ARROWKEYS,123,80,10,14
-    DEFPUSHBUTTON   "OK",IDOK,212,100,50,14
-    PUSHBUTTON      "Cancel",IDCANCEL,212,117,50,14
-    LTEXT           "Channel:",IDC_STATIC,7,104,27,8
-    COMBOBOX        IDC_COMBO2,50,101,48,30,CBS_DROPDOWN | CBS_SORT | 
-                    WS_VSCROLL | WS_TABSTOP
-END
-
-
-/////////////////////////////////////////////////////////////////////////////
-//
-// DESIGNINFO
-//
-
-#ifdef APSTUDIO_INVOKED
-GUIDELINES DESIGNINFO DISCARDABLE 
-BEGIN
-    IDD_SELECTION_DIALOG, DIALOG
-    BEGIN
-        LEFTMARGIN, 7
-        RIGHTMARGIN, 262
-        TOPMARGIN, 7
-        BOTTOMMARGIN, 131
-    END
-END
-#endif    // APSTUDIO_INVOKED
-
-
-/////////////////////////////////////////////////////////////////////////////
-//
-// Dialog Info
-//
-
-IDD_SELECTION_DIALOG DLGINIT
-BEGIN
-    IDC_COMBO_SELECTION, 0x403, 9, 0
-0x4328, 0x7375, 0x6f74, 0x296d, "\000" 
-    IDC_COMBO_SELECTION, 0x403, 16, 0
-0x6c41, 0x206c, 0x6153, 0x706d, 0x656c, 0x4420, 0x7461, 0x0061, 
-    IDC_COMBO_SELECTION, 0x403, 24, 0
-0x7543, 0x7372, 0x726f, 0x5420, 0x206f, 0x6e45, 0x2064, 0x664f, 0x5320, 
-0x6d61, 0x6c70, 0x0065, 
-    IDC_COMBO_SELECTION, 0x403, 26, 0
-0x7543, 0x7372, 0x726f, 0x5420, 0x206f, 0x6542, 0x6967, 0x206e, 0x664f, 
-0x5320, 0x6d61, 0x6c70, 0x0065, 
-    0
-END
-
 #endif    // Russian resources
 /////////////////////////////////////////////////////////////////////////////
 
@@ -236,6 +163,7 @@ BEGIN
     BEGIN
         MENUITEM "&New\tCtrl+N",                ID_FILE_NEW
         MENUITEM "&Open...\tCtrl+O",            ID_FILE_OPEN
+        MENUITEM "Reopen For Editing",          ID_FILE_REOPENFOREDITING
         MENUITEM "&Close",                      ID_FILE_CLOSE
         MENUITEM "&Save\tCtrl+S",               ID_FILE_SAVE
         MENUITEM "Save &As...",                 ID_FILE_SAVE_AS
@@ -255,6 +183,7 @@ BEGIN
     BEGIN
         MENUITEM "&Undo\tCtrl+Z",               ID_EDIT_UNDO
         MENUITEM "&Redo\tCtrl+Y",               ID_EDIT_REDO
+        MENUITEM "Undo All Changes\tCtrl+Shift+Z", ID_EDIT_UNDO_ALL_CHANGES
         MENUITEM SEPARATOR
         MENUITEM "&Copy\tCtrl+C",               ID_EDIT_COPY
         MENUITEM "Cu&t\tCtrl+X",                ID_EDIT_CUT
@@ -264,7 +193,7 @@ BEGIN
         MENUITEM SEPARATOR
         MENUITEM "&Go To...\tCtrl+G",           ID_EDIT_GOTO
         MENUITEM "Select &All\tCtrl+A",         ID_EDIT_SELECT_ALL
-        MENUITEM "&Selection\tCtrl+D",          ID_EDIT_SELECTION
+        MENUITEM "&Selection...\tCtrl+D",       ID_EDIT_SELECTION
     END
     POPUP "&View"
     BEGIN
@@ -287,11 +216,11 @@ BEGIN
         MENUITEM "Zoom Out Amplitude\tAlt+Down", ID_VIEW_ZOOMOUTVERT
         POPUP "Amplitude Ruler"
         BEGIN
-            MENUITEM "Samples",                     IDC_VIEW_AMPL_RULER_SAMPLES
+            MENUITEM "&Sample Value",               IDC_VIEW_AMPL_RULER_SAMPLES
 
-            MENUITEM "Percents",                    IDC_VIEW_AMPL_RULER_PERCENT
+            MENUITEM "&Percents",                   IDC_VIEW_AMPL_RULER_PERCENT
 
-            MENUITEM "dB",                          IDC_VIEW_AMPL_RULER_DECIBELS
+            MENUITEM "&dB",                         IDC_VIEW_AMPL_RULER_DECIBELS
 
         END
     END
@@ -302,7 +231,10 @@ BEGIN
         MENUITEM "White Noise Reduction...",    IDC_PROCESS_NOISE_REDUCTION
         MENUITEM "Normalize...",                ID_PROCESS_NORMALIZE
         MENUITEM "Change Volume...",            ID_PROCESS_CHANGEVOLUME
-        MENUITEM "DC Offset",                   ID_PROCESS_DCOFFSET
+        MENUITEM "DC Offset...",                ID_PROCESS_DCOFFSET
+        MENUITEM "Resample...",                 ID_PROCESS_RESAMPLE
+        MENUITEM "Mute",                        ID_PROCESS_MUTE
+        MENUITEM "Insert Silence...",           ID_PROCESS_INSERTSILENCE
     END
     POPUP "&Window"
     BEGIN
@@ -346,7 +278,7 @@ IDR_MENU_AMPLITUDE_RULER MENU DISCARDABLE
 BEGIN
     POPUP " "
     BEGIN
-        MENUITEM "&Samples",                    IDC_VIEW_AMPL_RULER_SAMPLES
+        MENUITEM "&Sample Value",               IDC_VIEW_AMPL_RULER_SAMPLES
         MENUITEM "&Percents",                   IDC_VIEW_AMPL_RULER_PERCENT
         MENUITEM "&dB",                         IDC_VIEW_AMPL_RULER_DECIBELS
         MENUITEM SEPARATOR
@@ -540,20 +472,62 @@ BEGIN
     LTEXT           "dB",IDC_STATIC,142,60,12,8
 END
 
-IDD_DIALOGBAR_MDI_CHILD DIALOG DISCARDABLE  0, 0, 393, 16
-STYLE WS_CHILD | WS_VISIBLE | WS_BORDER
+IDD_SELECTION_DIALOG DIALOG DISCARDABLE  0, 0, 269, 138
+STYLE DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "Selection"
 FONT 8, "MS Sans Serif"
 BEGIN
-    CONTROL         "De-humming",IDC_CHECK_DEHUMMING,"Button",
-                    BS_AUTOCHECKBOX | WS_TABSTOP,199,3,54,10
-    CONTROL         "De-clicking",IDC_CHECK_DECLICKING,"Button",
-                    BS_AUTOCHECKBOX | WS_TABSTOP,264,3,50,10
-    CONTROL         "Noise reduction",IDC_CHECK_NOISE_REDUCTION,"Button",
-                    BS_AUTOCHECKBOX | WS_TABSTOP,323,3,63,10
-    CONTROL         "Tab1",IDC_TAB_VIEW_SWITCH,"SysTabControl32",0x0,0,0,92,
-                    12
-    CONTROL         "Tab1",IDC_TAB_SWITCH_VIEW_MODE,"SysTabControl32",
-                    TCS_BUTTONS,99,0,75,16
+    LTEXT           "Selection:",IDC_STATIC,7,10,31,8
+    COMBOBOX        IDC_COMBO_SELECTION,7,26,127,30,CBS_DROPDOWN | CBS_SORT | 
+                    WS_VSCROLL | WS_TABSTOP
+    LTEXT           "Start:",IDC_STATIC,7,47,26,8
+    EDITTEXT        IDC_EDIT_START,50,44,71,14,ES_AUTOHSCROLL
+    CONTROL         "Spin1",IDC_SPIN1,"msctls_updown32",UDS_ALIGNRIGHT | 
+                    UDS_AUTOBUDDY | UDS_ARROWKEYS,123,44,10,14
+    LTEXT           "End:",IDC_STATIC,7,64,26,8
+    EDITTEXT        IDC_EDIT_END,50,62,71,14,ES_AUTOHSCROLL
+    CONTROL         "Spin1",IDC_SPIN2,"msctls_updown32",UDS_ALIGNRIGHT | 
+                    UDS_AUTOBUDDY | UDS_ARROWKEYS,123,62,10,14
+    LTEXT           "Length:",IDC_STATIC,7,82,32,8
+    EDITTEXT        IDC_EDIT3,50,79,71,14,ES_AUTOHSCROLL
+    CONTROL         "Spin1",IDC_SPIN3,"msctls_updown32",UDS_ALIGNRIGHT | 
+                    UDS_AUTOBUDDY | UDS_ARROWKEYS,123,80,10,14
+    DEFPUSHBUTTON   "OK",IDOK,212,100,50,14
+    PUSHBUTTON      "Cancel",IDCANCEL,212,117,50,14
+    LTEXT           "Channel:",IDC_STATIC,7,104,27,8
+    COMBOBOX        IDC_COMBO2,50,101,48,30,CBS_DROPDOWN | CBS_SORT | 
+                    WS_VSCROLL | WS_TABSTOP
+END
+
+IDD_DIALOG_OPEN_TEMPLATE DIALOG DISCARDABLE  0, 0, 279, 136
+STYLE DS_3DLOOK | DS_CONTROL | WS_CHILD | WS_CLIPSIBLINGS
+FONT 8, "MS Sans Serif"
+BEGIN
+    RTEXT           "Re&cent: ",IDC_STATIC,3,9,26,8
+    COMBOBOX        IDC_COMBO_RECENT,36,7,228,68,CBS_DROPDOWN | CBS_SORT | 
+                    WS_VSCROLL | WS_TABSTOP
+    RTEXT           "",1119,0,22,272,8,NOT WS_VISIBLE
+    CONTROL         "Open as &read-only",IDC_CHECK_READONLY,"Button",
+                    BS_AUTOCHECKBOX | WS_TABSTOP,3,31,78,10
+    CONTROL         "Operate directly on the sound file",IDC_CHECK_DIRECT,
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,89,31,113,10
+    PUSHBUTTON      "Help",IDHELP,222,30,50,14
+    RTEXT           "File type:",IDC_STATIC,4,58,30,8
+    CONTROL         "Unknown",IDC_STATIC_FILE_TYPE,"Static",
+                    SS_LEFTNOWORDWRAP | SS_NOPREFIX | WS_GROUP,37,58,73,8
+    RTEXT           "Length: ",IDC_STATIC,3,83,31,8
+    CONTROL         "Static",IDC_STATIC_FILE_LENGTH,"Static",
+                    SS_LEFTNOWORDWRAP | SS_NOPREFIX | WS_GROUP,37,83,98,8
+    RTEXT           "Format: ",IDC_STATIC,4,71,30,8
+    CONTROL         "Unknown",IDC_STATIC_FILE_FORMAT,"Static",
+                    SS_LEFTNOWORDWRAP | SS_NOPREFIX | WS_GROUP,37,71,118,8
+    RTEXT           "Attributes: ",IDC_STATIC,2,96,32,8
+    LTEXT           "Attr",IDC_STATIC_ATTRIBUTES,38,96,103,23,SS_NOPREFIX
+    RTEXT           "Comments: ",IDC_STATIC,109,58,49,8
+    EDITTEXT        IDC_EDIT_FILE_COMMENTS,161,57,114,54,ES_MULTILINE | 
+                    ES_AUTOVSCROLL | ES_READONLY | WS_VSCROLL
+    GROUPBOX        "",IDC_STATIC,0,45,276,90
+    PUSHBUTTON      "More...",IDC_BUTTON_MORE,222,115,50,14
 END
 
 
@@ -651,9 +625,17 @@ BEGIN
         BOTTOMMARGIN, 231
     END
 
-    IDD_DIALOGBAR_MDI_CHILD, DIALOG
+    IDD_SELECTION_DIALOG, DIALOG
     BEGIN
-        RIGHTMARGIN, 386
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 262
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 131
+    END
+
+    IDD_DIALOG_OPEN_TEMPLATE, DIALOG
+    BEGIN
+        RIGHTMARGIN, 275
     END
 END
 #endif    // APSTUDIO_INVOKED
@@ -680,6 +662,21 @@ BEGIN
 0x3138, 0x3239, "\000" 
     IDC_COMBO_FFT_ORDER, 0x403, 6, 0
 0x3631, 0x3833, 0x0034, 
+    0
+END
+
+IDD_SELECTION_DIALOG DLGINIT
+BEGIN
+    IDC_COMBO_SELECTION, 0x403, 9, 0
+0x4328, 0x7375, 0x6f74, 0x296d, "\000" 
+    IDC_COMBO_SELECTION, 0x403, 16, 0
+0x6c41, 0x206c, 0x6153, 0x706d, 0x656c, 0x4420, 0x7461, 0x0061, 
+    IDC_COMBO_SELECTION, 0x403, 24, 0
+0x7543, 0x7372, 0x726f, 0x5420, 0x206f, 0x6e45, 0x2064, 0x664f, 0x5320, 
+0x6d61, 0x6c70, 0x0065, 
+    IDC_COMBO_SELECTION, 0x403, 26, 0
+0x7543, 0x7372, 0x726f, 0x5420, 0x206f, 0x6542, 0x6967, 0x206e, 0x664f, 
+0x5320, 0x6d61, 0x6c70, 0x0065, 
     0
 END
 
@@ -836,7 +833,7 @@ BEGIN
     ID_FILE_SAVE_ALL        "Save all open files\nSave all"
     ID_EDIT_PASTE_NEW       "Create a new file from the clipboard contents\nPaste as new"
     ID_EDIT_GOTO            "Go to specified position\nGo to"
-    IDC_VIEW_AMPL_RULER_SAMPLES "Show numerical sample value\nSamples"
+    IDC_VIEW_AMPL_RULER_SAMPLES "Show numerical sample value\nSample value"
     ID_VIEW_ZOOMIN          "Magnify the view"
     ID_VIEW_ZOOMOUT         "Diminish the view"
     IDC_VIEW_AMPL_RULER_DECIBELS "Show sample value in decibels\nDecibels"
@@ -892,6 +889,20 @@ BEGIN
                             "Unable to open audio playback device. It can be busy or doesn't support the sound parameters"
     IDS_STRING_UNABLE_TO_ALLOCATE_AUDIO_BUFFERS 
                             "Unable to allocate memory buffers for audio playback"
+    IDS_UNABLE_TO_LOAD_WAVEFORMAT 
+                            "Wave file ""%s"" doesn't contain valid wave format descriptor"
+    IDS_UNABLE_TO_FIND_DATA_CHUNK 
+                            "Wave file ""%s"" doesn't contain valid sound data chunk"
+    IDS_UNABLE_TO_OPEN_WAVE_FILE "Wave file ""%s"" couldn't be opened"
+    IDS_FILE_OPEN_ACCESS_DENIED "Access to file ""%s"" is denied"
+    IDS_FILE_OPEN_SHARING_VIOLATION 
+                            "File ""%s"" couldn't be opened because it is in use by another application"
+    IDS_FILE_OPENED_NONDIRECT 
+                            "File ""%s"" can only be opened in non-direct mode because it is in use by this or another application"
+    IDS_UNABLE_TO_CREATE_TEMPORARY_FILE 
+                            "Unable to create temporary file to load the wave file"
+    IDS_UNABLE_TO_CREATE_NEW_FILE 
+                            "Unable to create temporary file for the new sound"
 END
 
 STRINGTABLE DISCARDABLE 
@@ -904,9 +915,20 @@ BEGIN
     ID_FILE_PROPERTIES      "Inspect and modify sound properties\nProperties"
     ID_VIEW_ZOOMVERT_NORMAL "Full zoom out"
     ID_VIEW_ZOOMIN_HOR_FULL "Maximum zoom in"
-    ID_EDIT_SELECTION       "Select sound data\nSelect"
+    ID_EDIT_SELECTION       "Select range of sound data\nSelect"
     ID_PROCESS_NORMALIZE    "Normalize the sound amplitude\nNormalize"
     ID_PROCESS_CHANGEVOLUME "Change the sound volume\nVolume"
+    ID_PROCESS_DCOFFSET     "Add or compensate DC offset"
+    ID_PROCESS_RESAMPLE     "Change sample rate while preserving the duration\nResample"
+    ID_PROCESS_MUTE         "Replace the selected area with silence\nMute"
+    ID_PROCESS_INSERTSILENCE 
+                            "Insert silence of specified length\nInsert silence"
+    ID_FILE_REOPENFOREDITING 
+                            "Enable editing of file previously opened as read-only\nReopen to edit"
+    ID_EDIT_REVERTALLCHANGES 
+                            "Revert all changes to return the file to the state before open"
+    ID_EDIT_UNDO_ALL_CHANGES 
+                            "Undo all changes to return the file to the last saved state\nUndo all"
 END
 
 #endif    // English (U.S.) resources

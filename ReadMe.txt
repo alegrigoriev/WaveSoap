@@ -1,12 +1,15 @@
 Known problems and tasks:
 
-Add Play/Stop/Pause commands to Doc
+Prb: GetBufferWriteOnly can conflict with SourceFile and WritttenMask
+prb: Draw when loading compressed file, after the file was expanded.
+Add playback Stop/Pause commands to Doc
+Add indicators in the status bar (position, selection)
+Support Cut, Delete commands
 Add undo/redo operation contexts
 Add Selection... command and dialog
 Add GoTo dialog and command
-Develop Outline view
+Show Outline view
 Show current scale in the "static" child control.
-Add: customized File Open dialog, to allow different modes and multiple files
 Add Cut and Delete commands
 Add Drag and Drop support
 Add options dialog
@@ -17,13 +20,10 @@ Add VU meter for playback
 Add mouse wheel support
 Add autoscroll during selection
 
-Done: Vertical ruler for wave view does draw
-Done: Vertical ruler makes vertical scroll
-Done: Add a static for another 'hole'.
-Done: Make vertical scroll for wave view
-Done: Double click on the vertical ruler makes default zoom
-Fixed: Prb: Mouse selection stops when mouse is out of view
-Fixed:Prb: Click outside the wave should set the caret to the end
-Done: Add percent view to CAmplitudeRuler
-Done: Add vertical ruler for FFT view
-Done: Added context menu to CAmplitudeRuler
+Done: load 8-bit and compressed files
+Support file opened for editing	(Source file in class File)
+Done: DetachSourceFile()
+Done: Do not reset prefetch pointer, if such a prefetch is already in progress
+Done: customized File Open dialog, to allow different modes and multiple files
+Done: Do not move buffer to the end of MRU, if 0 != ((pos + len) & 0xFFFF)
+Done: Play command
