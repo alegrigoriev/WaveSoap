@@ -15,19 +15,19 @@ class CDirectFile
 	{
 		CRITICAL_SECTION m_cs;
 	public:
-		CSimpleCriticalSection()
+		CSimpleCriticalSection() throw()
 		{
 			InitializeCriticalSection( & m_cs);
 		}
-		~CSimpleCriticalSection()
+		~CSimpleCriticalSection() throw()
 		{
 			DeleteCriticalSection( & m_cs);
 		}
-		void Lock()
+		void Lock() throw()
 		{
 			EnterCriticalSection( & m_cs);
 		}
-		void Unlock()
+		void Unlock() throw()
 		{
 			LeaveCriticalSection( & m_cs);
 		}
@@ -55,9 +55,12 @@ public:
 		OpenToTemporary = 4,
 		OpenDirect = 8,
 		OpenExisting = 0x10,
+		OpenDeleteAfterClose = 0x20,
+		CreateAlways = 0x40,
 	};
 	BOOL Open(LPCTSTR szName, DWORD flags);
 	BOOL Close(DWORD flags);
+	BOOL Attach(CDirectFile * const pOriginalFile);
 
 	long Read(void * buf, long count);
 	long ReadAt(void * buf, long count, LONGLONG Position);
@@ -66,18 +69,18 @@ public:
 	LONGLONG Seek(LONGLONG position, int flag);
 
 	enum { ReturnBufferDirty = 1, // buffer contains changed data
-		ReturnBufferDiscard = 2 // make the buffer lower priority
+		ReturnBufferDiscard = 2, // make the buffer lower priority
 	};
 	// unlock the buffer, mark dirty if necessary
 	void ReturnDataBuffer(void * pBuffer, long count, DWORD flags = 0)
 	{
-		ASSERT(NULL != CDirectFileCache::SingleInstance);
+		ASSERT(NULL != GetCache());
 		ASSERT(m_pFile != NULL);
 		if (NULL == m_pFile)
 		{
 			return;
 		}
-		CDirectFileCache::SingleInstance->ReturnDataBuffer(m_pFile, pBuffer, count, flags);
+		GetCache()->ReturnDataBuffer(m_pFile, pBuffer, count, flags);
 	}
 
 	enum {GetBufferWriteOnly = 1,
@@ -88,13 +91,13 @@ public:
 	// and return the buffer address
 	long GetDataBuffer(void * * ppBuf, LONGLONG length, LONGLONG position, DWORD flags = 0)
 	{
-		ASSERT(NULL != CDirectFileCache::SingleInstance);
+		ASSERT(NULL != GetCache());
 		ASSERT(m_pFile != NULL);
 		if (NULL == m_pFile)
 		{
 			return 0;
 		}
-		return CDirectFileCache::SingleInstance->GetDataBuffer(m_pFile, ppBuf, length, position, flags);
+		return GetCache()->GetDataBuffer(m_pFile, ppBuf, length, position, flags);
 	}
 
 	DWORD GetFileSize(LPDWORD lpFileSizeHigh)
@@ -112,6 +115,10 @@ public:
 			}
 			return 0xFFFFFFFF;
 		}
+	}
+	LONGLONG GetLength() const
+	{
+		return m_pFile->FileLength;
 	}
 
 	LPCTSTR GetName() const
@@ -149,6 +156,10 @@ public:
 
 protected:
 	struct BufferHeader;
+	enum {
+		FileFlagsDeleteAfterClose = OpenDeleteAfterClose,
+		FileFlagsReadOnly = OpenReadOnly,
+	};
 	struct File
 	{
 		File * pPrev;   // prev link
@@ -180,7 +191,22 @@ protected:
 		void InsertBuffer(BufferHeader * pBuf);
 		BOOL SetFileLength(LONGLONG NewLength);
 		BOOL Flush();
+		BOOL InitializeTheRestOfFile();
 
+		void ReturnDataBuffer(void * pBuffer, long count, DWORD flags = 0)
+		{
+			ASSERT(NULL != GetCache());
+			GetCache()->ReturnDataBuffer(this, pBuffer, count, flags);
+		}
+		BOOL Close(DWORD flags);
+
+		// read data, lock the buffer
+		// and return the buffer address
+		long GetDataBuffer(void * * ppBuf, LONGLONG length, LONGLONG position, DWORD flags = 0)
+		{
+			ASSERT(NULL != GetCache());
+			return GetCache()->GetDataBuffer(this, ppBuf, length, position, flags);
+		}
 		File(CString name) : hFile(NULL),
 			sName(name),
 			Flags(0),
@@ -203,6 +229,8 @@ protected:
 			#ifdef _DEBUG
 		void ValidateList() const;
 			#endif
+	private:
+		File() {}
 	};
 	struct BufferHeader
 	{
@@ -227,6 +255,7 @@ public:
 	class CDirectFileCache
 	{
 		friend class CDirectFile;
+		friend struct File;
 
 		long GetDataBuffer(File * pFile, void * * ppBuf,
 							LONGLONG length, LONGLONG position, DWORD flags = 0,
@@ -237,13 +266,16 @@ public:
 		BufferHeader * GetFreeBuffer(unsigned MaxMRU = 0xFFFFFFFFu);
 		void ReadDataBuffer(BufferHeader * pBuf, DWORD MaskToRead);
 		File * Open(LPCTSTR szName, DWORD flags);
-		BOOL Close(File * pFile, DWORD flags);
 		void RequestPrefetch(File * pFile, LONGLONG PrefetchPosition,
 							LONGLONG PrefetchLength, unsigned MaxMRU);
 
 	public:
 		CDirectFileCache(size_t CacheSize);
 		~CDirectFileCache();
+		static CDirectFileCache * GetInstance()
+		{
+			return SingleInstance;
+		}
 	private:
 		// points to the only instance of the class
 		static CDirectFileCache * SingleInstance;
@@ -277,7 +309,11 @@ public:
 protected:
 	File * m_pFile;
 	LONGLONG m_FilePointer;
-	//LONGLONG m_FileLength;
+public:
+	static CDirectFileCache * GetCache()
+	{
+		return CDirectFileCache::GetInstance();
+	}
 };
 
 #endif // !defined(AFX_DIRECTFILE_H__B7AA7401_4036_11D4_9ADD_00C0F0583C4B__INCLUDED_)
