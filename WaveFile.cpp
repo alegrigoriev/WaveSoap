@@ -917,6 +917,267 @@ BOOL CWaveFile::LoadListMetadata(MMCKINFO & chunk)
 	}
 	return TRUE;
 }
+
+BOOL CWaveFile::SetWaveMarker(WAVEREGIONINFO * info)
+{
+	if ( ! GetInstanceData()->SetWaveMarker(info))
+	{
+		return FALSE;
+	}
+	if (info->Flags & info->CommitChanges)
+	{
+		return SaveMetadata();
+	}
+	return TRUE;
+}
+
+BOOL CWaveFile::GetWaveMarker(WAVEREGIONINFO * info)
+{
+	return GetInstanceData()->GetWaveMarker(info);
+}
+
+BOOL CWaveFile::InstanceDataWav::GetWaveMarker(WAVEREGIONINFO * pInfo)
+{
+	BOOL result = FALSE;
+	if (pInfo->Flags & pInfo->CuePointIndex)
+	{
+		ASSERT(pInfo->MarkerCueID < m_CuePoints.size());
+
+		pInfo->Sample = m_CuePoints[pInfo->MarkerCueID].dwSampleOffset;
+		pInfo->MarkerCueID = m_CuePoints[pInfo->MarkerCueID].CuePointID;
+		// now reset the "index" flag
+		pInfo->Flags &= ~pInfo->CuePointIndex;
+
+		result = TRUE;
+	}
+	else
+	{
+		CuePointChunkItem * pCue = GetCuePoint(pInfo->MarkerCueID);
+		if (NULL != pCue)
+		{
+			pInfo->Sample = pCue->dwSampleOffset;
+			result = TRUE;
+		}
+		else
+		{
+			pInfo->Sample = 0;
+		}
+	}
+
+	pInfo->Label = GetCueLabel(pInfo->MarkerCueID);
+	pInfo->Comment = GetCueComment(pInfo->MarkerCueID);
+
+	WaveRegionMarker * pMarker = GetRegionMarker(pInfo->MarkerCueID);
+	if (NULL != pMarker)
+	{
+		pInfo->Ltxt = pMarker->Name;
+		pInfo->Length = pMarker->SampleLength;
+	}
+	else
+	{
+		pInfo->Ltxt = NULL;
+		pInfo->Length = 0;
+	}
+
+	return result;
+}
+
+BOOL CWaveFile::MoveWaveMarker(unsigned long MarkerCueID, SAMPLE_INDEX Sample)
+{
+	return GetInstanceData()->MoveWaveMarker(MarkerCueID, Sample);
+}
+
+BOOL CWaveFile::InstanceDataWav::SetWaveMarker(WAVEREGIONINFO * pInfo)
+{
+	WAVEREGIONINFO info = *pInfo;
+
+	if (info.Flags & info.CuePointIndex)
+	{
+		ASSERT(info.MarkerCueID < m_CuePoints.size());
+
+		info.MarkerCueID = m_CuePoints[info.MarkerCueID].CuePointID;
+	}
+
+	if (info.Flags & info.AddNew)
+	{
+		// find a CueID not used yet
+		int cue = 1;
+		for (cue = 1;
+			NULL != GetCuePoint(cue)
+			|| NULL != GetCueLabel(cue)
+			|| NULL != GetRegionMarker(cue)
+			|| NULL != GetCueComment(cue)
+			; cue++)
+		{
+		}
+		// found unused index
+		info.MarkerCueID = cue;
+		pInfo->MarkerCueID = cue;
+
+		// add cue point
+		CuePointChunkItem item;
+		item.CuePointID = info.MarkerCueID;
+		item.dwBlockStart = 0;
+		item.dwChunkStart = 0;
+		item.dwSampleOffset = info.Sample;
+		item.fccChunk = mmioFOURCC('d', 'a', 't', 'a');
+		item.SamplePosition = 0;
+
+		m_CuePoints.push_back(item);
+
+		// add region length
+		if (info.Length != 0)
+		{
+			WaveRegionMarker item;
+			if (NULL != info.Ltxt)
+			{
+				item.Name = info.Ltxt;
+			}
+
+			item.Codepage = 0;  // TODO
+			item.Country = 0;
+			item.CuePointID = info.MarkerCueID;
+			item.Dialect = 0;
+			item.Language = 0; //0x409;
+			item.Purpose = mmioFOURCC('r', 'g', 'n', ' ');
+			item.SampleLength = info.Length;
+
+			m_RegionMarkers.push_back(item);
+		}
+		// continue
+		// set label, comment, length, etc
+		info.Flags |= info.ChangeComment | info.ChangeLabel;
+	}
+	else if (info.Flags & info.Delete)
+	{
+		// delete all data for the marker
+
+		for (CuePointVectorIterator i = m_CuePoints.begin(); i != m_CuePoints.end(); i++)
+		{
+			if (i->CuePointID == info.MarkerCueID)
+			{
+				// delete text
+				i = m_CuePoints.erase(i);
+				break;
+			}
+		}
+
+		for (RegionMarkerIterator i = m_RegionMarkers.begin(); i != m_RegionMarkers.end(); i++)
+		{
+			if (i->CuePointID == info.MarkerCueID)
+			{
+				// delete text
+				i = m_RegionMarkers.erase(i);
+				break;
+			}
+		}
+		// continue deleting labels
+		info.Comment = NULL;
+		info.Label = NULL;
+
+		info.Flags |= info.ChangeComment | info.ChangeLabel;    // to delete labels
+	}
+
+	if (info.Flags & info.ChangeComment)
+	{
+		LabelVectorIterator i;
+		for (i = m_Notes.begin(); i != m_Notes.end(); i++)
+		{
+			if (i->CuePointID == info.MarkerCueID)
+			{
+				if (NULL != info.Comment
+					&& NULL != info.Comment[0])
+				{
+					// replace text
+					i->Text = info.Comment;
+				}
+				else
+				{
+					// delete text
+					i = m_Notes.erase(i);
+				}
+				break;
+			}
+		}
+
+		if (i == m_Notes.end()
+			&& NULL != info.Comment
+			&& NULL != info.Comment[0])
+		{
+			// not found, add
+			LablNote note;
+			note.CuePointID = info.MarkerCueID;
+			note.Text = info.Comment;
+
+			m_Notes.push_back(note);
+		}
+	}
+
+	if (info.Flags & info.ChangeLabel)
+	{
+		LabelVectorIterator i;
+		for (i = m_Labels.begin(); i != m_Labels.end(); i++)
+		{
+			if (i->CuePointID == info.MarkerCueID)
+			{
+				if (NULL != info.Label
+					&& NULL != info.Label[0])
+				{
+					// replace text
+					i->Text = info.Label;
+				}
+				else
+				{
+					// delete text
+					i = m_Labels.erase(i);
+				}
+				break;
+			}
+		}
+
+		if (i == m_Labels.end()
+			&& NULL != info.Label
+			&& NULL != info.Label[0])
+		{
+			// not found, add
+			LablNote note;
+			note.CuePointID = info.MarkerCueID;
+			note.Text = info.Label;
+
+			m_Labels.push_back(note);
+		}
+	}
+
+	if (info.Flags & info.ChangeSample)
+	{
+		CuePointChunkItem * pCue = GetCuePoint(info.MarkerCueID);
+		if (NULL != pCue)
+		{
+			pCue->dwSampleOffset = info.Sample;
+		}
+	}
+
+	if (info.Flags & info.ChangeLength)
+	{
+		WaveRegionMarker * pMarker = GetRegionMarker(info.MarkerCueID);
+		if (NULL != pMarker)
+		{
+			pMarker->SampleLength = info.Length;
+		}
+	}
+
+	return TRUE;
+}
+
+BOOL CWaveFile::InstanceDataWav::MoveWaveMarker(unsigned long MarkerCueID, SAMPLE_INDEX Sample)
+{
+	WAVEREGIONINFO info;
+	info.Flags = info.ChangeSample;
+	info.MarkerCueID = MarkerCueID;
+	info.Sample = Sample;
+	return SetWaveMarker( & info);
+}
+
 // creates a file based on template format from pTemplateFile
 BOOL CWaveFile::CreateWaveFile(CWaveFile * pTemplateFile, WAVEFORMATEX * pTemplateFormat,
 								CHANNEL_MASK Channels, WAV_FILE_SIZE SizeOrSamples,
@@ -1136,8 +1397,64 @@ BOOL CWaveFile::SaveMetadata()
 
 DWORD CWaveFile::GetMetadataLength()
 {
-	// TODO
-	return 0;
+	InstanceDataWav * inst = GetInstanceData();
+	if (NULL == inst)
+	{
+		return 0;
+	}
+	DWORD size = 0;
+
+	if ( ! inst->m_CuePoints.empty())
+	{
+		// add chunk header and cue count
+		C_ASSERT(0 == (1 & sizeof (CuePointChunkItem)));
+		size += inst->m_CuePoints.size() * sizeof (CuePointChunkItem) + 3 * sizeof (DWORD);
+	}
+
+	if ( ! inst->m_Playlist.empty())
+	{
+		// add chunk header and playlist count
+		C_ASSERT(0 == (1 & sizeof (PlaylistSegment)));
+		size += inst->m_Playlist.size() * sizeof (PlaylistSegment) + 3 * sizeof (DWORD);
+	}
+
+	if ( ! inst->m_Labels.empty()
+		|| ! inst->m_Notes.empty()
+		|| ! inst->m_RegionMarkers.empty())
+	{
+		// add 'adtl' LIST header size
+		size += 3 * sizeof (DWORD);
+
+		for (RegionMarkerIterator ri = inst->m_RegionMarkers.begin();
+			ri < inst->m_RegionMarkers.end();
+			ri++)
+		{
+			if ( ! ri->Name.IsEmpty())
+			{
+				size += (ri->Name.GetLength() + 2) & ~1UL;   // zero-terminated
+			}
+			size += sizeof LtxtChunk + 2 * sizeof (DWORD);
+		}
+
+		LabelVectorIterator i;
+		for (i = inst->m_Labels.begin(); i < inst->m_Labels.end(); i++)
+		{
+			if ( ! i->Text.IsEmpty())
+			{
+				size += 3 * sizeof (DWORD) + ((i->Text.GetLength() + 2) & ~1UL);   // zero-terminated
+			}
+		}
+
+		for (i = inst->m_Notes.begin(); i < inst->m_Notes.end(); i++)
+		{
+			if ( ! i->Text.IsEmpty())
+			{
+				size += 3 * sizeof (DWORD) + ((i->Text.GetLength() + 2) & ~1UL);   // zero-terminated
+			}
+		}
+	}
+
+	return size;
 }
 
 BOOL CWaveFile::SetDatachunkLength(DWORD Length)

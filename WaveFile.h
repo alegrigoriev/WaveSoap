@@ -351,10 +351,34 @@ struct LablNote
 typedef std::vector<LablNote> LabelVector;
 typedef LabelVector::iterator LabelVectorIterator;
 
+// this structure is used to edit region or marker
+struct WAVEREGIONINFO
+{
+	DWORD Flags;
+	DWORD MarkerCueID;
+	DWORD Sample;
+	DWORD Length;
+	LPCTSTR Label;
+	LPCTSTR Comment;
+	LPCTSTR Ltxt;
+	enum // flags for WAVEREGIONINFO
+	{
+		AddNew = 0x00000001,
+		ChangeLabel = 0x00000002,
+		ChangeComment = 0x00000004,
+		ChangeLength = 0x00000008,
+		ChangeLtxt = 0x00000010,
+		ChangeSample = 0x00000020,
+		Delete = 0x00000040,
+		CuePointIndex = 0x00000080,     // MarkerCueId is an index in cue point array
+		CommitChanges = 0x00000100,     // for Doc class - save UNDO for the file
+	};
+};
+
 struct InfoListItem
 {
 	FOURCC fccCode;
-	CStringA Tag;   // as in WMA
+	CStringA Tag;   // tag as in WMA file
 	CString Text;
 };
 
@@ -557,6 +581,11 @@ public:
 		LPCTSTR GetCueText(DWORD CueId);    // use either label, or comment, or marker text
 		LPCTSTR GetCueTextByIndex(unsigned CueIndex);   // the same, using cue index
 
+		BOOL SetWaveMarker(WAVEREGIONINFO * info);
+		BOOL GetWaveMarker(WAVEREGIONINFO * info);
+		BOOL MoveWaveMarker(unsigned long MarkerCueID, SAMPLE_INDEX Sample);
+		BOOL SetMarkerLabel(unsigned long MarkerCueID, LPCTSTR Label);
+
 		InstanceDataWav & operator =(InstanceDataWav const & src);
 
 		virtual void MoveDataTo(InstanceData * dst)
@@ -632,6 +661,11 @@ public:
 	LPCTSTR GetCueComment(DWORD CueId);
 	LPCTSTR GetCueText(DWORD CueId);    // use either label, or comment, or marker text
 	LPCTSTR GetCueTextByIndex(unsigned CueIndex);   // the same, using cue index
+
+	BOOL SetWaveMarker(WAVEREGIONINFO * info);
+	BOOL GetWaveMarker(WAVEREGIONINFO * info);
+	BOOL MoveWaveMarker(unsigned long MarkerCueID, SAMPLE_INDEX Sample);
+	BOOL SetMarkerLabel(unsigned long MarkerCueID, LPCTSTR Label);
 
 	unsigned SampleRate() const
 	{
