@@ -7,6 +7,7 @@
 #include <atlpath.h>
 #include "PathEx.h"
 #include <algorithm>
+#include <atlfile.h>
 
 #define DEBUG_RESCAN_PEAKS 0
 
@@ -2695,34 +2696,35 @@ BOOL CWaveFile::LoadPeaksForCompressedFile(CWaveFile & OriginalWaveFile,
 
 void CWaveFile::SavePeakInfo(CWaveFile & SavedWaveFile)
 {
-	CFile PeakFile;
-	PeakFileHeader pfh;
 	CPath PeakFilename(MakePeakFileName(SavedWaveFile.GetName()));
 
-	if (PeakFile.Open(PeakFilename,
-					CFile::modeCreate | CFile::modeWrite | CFile::shareExclusive | CFile::typeBinary))
+	ATL::CAtlFile PeakFile;
+
+	if (S_OK != PeakFile.Create(PeakFilename, GENERIC_WRITE, 0, CREATE_ALWAYS,
+								FILE_ATTRIBUTE_HIDDEN))
 	{
-		pfh.wSize = sizeof PeakFileHeader;
-		pfh.dwSignature = pfh.pfhSignature;
-		pfh.dwVersion = pfh.pfhMaxVersion;
-		pfh.dwWaveFileSize = SavedWaveFile.GetFileSize(NULL);
-		pfh.Granularity = GetPeakGranularity();
-		pfh.PeakInfoSize = CalculatePeakInfoSize() * sizeof (WavePeak);
-		pfh.WaveFileTime = SavedWaveFile.GetFileInformation().ftLastWriteTime;
-		pfh.NumOfSamples = NumberOfSamples();
-		pfh.wfFormat = * GetWaveFormat();
-
-		if (WAVE_FORMAT_PCM == pfh.wfFormat.wFormatTag)
-		{
-			pfh.wfFormat.cbSize = 0;
-		}
-
-		PeakFile.Write( & pfh, sizeof pfh);
-		PeakFile.Write(GetWavePeaks()->GetPeakArray(), pfh.PeakInfoSize);
-
-		PeakFile.Close();
+		return;
 	}
 
+	PeakFileHeader pfh;
+
+	pfh.wSize = sizeof PeakFileHeader;
+	pfh.dwSignature = pfh.pfhSignature;
+	pfh.dwVersion = pfh.pfhMaxVersion;
+	pfh.dwWaveFileSize = SavedWaveFile.GetFileSize(NULL);
+	pfh.Granularity = GetPeakGranularity();
+	pfh.PeakInfoSize = CalculatePeakInfoSize() * sizeof (WavePeak);
+	pfh.WaveFileTime = SavedWaveFile.GetFileInformation().ftLastWriteTime;
+	pfh.NumOfSamples = NumberOfSamples();
+	pfh.wfFormat = * GetWaveFormat();
+
+	if (WAVE_FORMAT_PCM == pfh.wfFormat.wFormatTag)
+	{
+		pfh.wfFormat.cbSize = 0;
+	}
+
+	PeakFile.Write( & pfh, sizeof pfh);
+	PeakFile.Write(GetWavePeaks()->GetPeakArray(), pfh.PeakInfoSize);
 }
 
 SAMPLE_POSITION CWaveFile::SampleToPosition(SAMPLE_INDEX sample) const
