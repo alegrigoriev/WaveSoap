@@ -95,74 +95,67 @@ void CAmplitudeRuler::DrawSamples(CDC * pDC)
 	pDC->SetTextAlign(TA_BOTTOM | TA_RIGHT);
 	pDC->SetTextColor(0x000000);   // black
 	pDC->SetBkMode(TRANSPARENT);
+
 	int nVertStep = GetSystemMetrics(SM_CYMENU);
+	double VerticalScale = pMasterView->m_VerticalScale;
 
 	NUMBER_OF_CHANNELS nChannels = pDoc->WaveChannels();
-	int nHeight = cr.Height();
-	if (0 != nChannels)
-	{
-		nHeight /= nChannels;
-	}
 
-	double VerticalScale = pMasterView->m_VerticalScale;
-	double ScaledWaveOffset = pMasterView->m_WaveOffsetY * VerticalScale;
-	int nSampleUnits = int(nVertStep * 65536. / (nHeight * VerticalScale));
-	// round sample units to 10 or 5
-	int step;
-	for (step = 1; step < nSampleUnits; step *= 10)
-	{
-		if (step * 2 >= nSampleUnits)
-		{
-			step *= 2;
-			break;
-		}
-		if (step * 5 >= nSampleUnits)
-		{
-			step *= 5;
-			break;
-		}
-	}
-	double YScaleDev = pMasterView->GetYScaleDev();
-	int ChannelSeparatorY = fround((0 - pMasterView->dOrgY) * YScaleDev);
-	if (2 == nChannels)
-	{
-		pDC->MoveTo(0, ChannelSeparatorY);
-		pDC->LineTo(cr.right, ChannelSeparatorY);
-	}
 	for (int ch = 0; ch < nChannels; ch++)
 	{
-		double WaveOffset = ScaledWaveOffset - pMasterView->dOrgY;
-		int ClipHigh = cr.bottom;
-		int ClipLow = cr.top;
-		if (nChannels > 1)
+		CRect chr;
+		pMasterView->GetChannelRect(ch, chr);
+
+		int nHeight = chr.Height();
+
+		int nSampleUnits = int(nVertStep * 65536. / (nHeight * VerticalScale));
+
+		// round sample units to 10 or 5
+		int step;
+		for (step = 1; step < nSampleUnits; step *= 10)
 		{
-			if (0 == ch)
+			if (step * 2 >= nSampleUnits)
 			{
-				WaveOffset = ScaledWaveOffset + 32768. - pMasterView->dOrgY;
-				ClipHigh = ChannelSeparatorY;
+				step *= 2;
+				break;
 			}
-			else
+			if (step * 5 >= nSampleUnits)
 			{
-				WaveOffset = ScaledWaveOffset -32768. - pMasterView->dOrgY;
-				ClipLow = ChannelSeparatorY + 1;
+				step *= 5;
+				break;
 			}
 		}
-		ClipLow += tm.tmHeight / 2;
-		ClipHigh -= tm.tmHeight / 2;
-		int yLow = int((ClipHigh / YScaleDev -WaveOffset) / VerticalScale);
+
+		WaveCalculate WaveToY(pMasterView->m_WaveOffsetY, VerticalScale, chr.top, chr.bottom);
+
+		int ClipHigh = chr.bottom - tm.tmHeight / 2;
+		int ClipLow = chr.top + tm.tmHeight / 2;
+
+		int yLow = WaveToY.ConvertToSample(ClipHigh);
 		// round to the next multiple of step
-		yLow += (step*0x10000-yLow) % step;
-		int yHigh = int((ClipLow / YScaleDev -WaveOffset) / VerticalScale);
-		yHigh -= (step*0x10000+yHigh) % step;
+		yLow += (step * 0x10000 - yLow) % step;
+
+		int yHigh = WaveToY.ConvertToSample(ClipLow);
+		yHigh -= (step * 0x10000 + yHigh) % step;
 		ASSERT(yLow <= yHigh);
+
 		for (int y = yLow; y <= yHigh; y += step)
 		{
-			int yDev= fround((y * VerticalScale + WaveOffset) * YScaleDev);
+			int yDev = WaveToY(y);
+
+			if (0 == y) TRACE("CAmplitudeRuler Zero pos=%d\n", yDev);
+
 			pDC->MoveTo(cr.right - 3, yDev);
 			pDC->LineTo(cr.right, yDev);
 			CString s = LtoaCS(y);
 
 			pDC->TextOut(cr.right - 3, yDev + tm.tmHeight / 2, s);
+		}
+
+		if (ch < nChannels - 1)
+		{
+			pDC->MoveTo(0, chr.bottom);
+			pDC->LineTo(cr.right, chr.bottom);
 		}
 	}
 }
@@ -193,79 +186,65 @@ void CAmplitudeRuler::DrawPercents(CDC * pDC)
 	int nVertStep = GetSystemMetrics(SM_CYMENU);
 
 	NUMBER_OF_CHANNELS nChannels = pDoc->WaveChannels();
-	if (0 == nChannels)
-	{
-		return;
-	}
-	int nHeight = cr.Height() / nChannels;
-
-	if (0 == nHeight)
-	{
-		return;
-	}
 
 	double VerticalScale = pMasterView->m_VerticalScale;
-	double ScaledWaveOffset = pMasterView->m_WaveOffsetY * VerticalScale;
-	double nSampleUnits = nVertStep * 200. / (nHeight * VerticalScale);
-	// round sample units to 10 or 5
-	int step;
-	for (step = 1; step < nSampleUnits; step *= 10)
-	{
-		if (step * 2 >= nSampleUnits)
-		{
-			step *= 2;
-			break;
-		}
-		if (step * 5 >= nSampleUnits)
-		{
-			step *= 5;
-			break;
-		}
-	}
-	double YScaleDev = pMasterView->GetYScaleDev();
-	int ChannelSeparatorY = fround((0 - pMasterView->dOrgY) * YScaleDev);
-	if (2 == nChannels)
-	{
-		pDC->MoveTo(0, ChannelSeparatorY);
-		pDC->LineTo(cr.right, ChannelSeparatorY);
-	}
+
 	for (int ch = 0; ch < nChannels; ch++)
 	{
-		double WaveOffset = ScaledWaveOffset - pMasterView->dOrgY;
-		int ClipHigh = cr.bottom;
-		int ClipLow = cr.top;
-		if (nChannels > 1)
+		CRect chr;
+		pMasterView->GetChannelRect(ch, chr);
+
+		int nHeight = chr.Height();
+
+		double nSampleUnits = nVertStep * 200. / (nHeight * VerticalScale);
+
+		// round sample units to 10 or 5
+		int step;
+		for (step = 1; step < nSampleUnits; step *= 10)
 		{
-			if (0 == ch)
+			if (step * 2 >= nSampleUnits)
 			{
-				WaveOffset = ScaledWaveOffset + 32768. - pMasterView->dOrgY;
-				ClipHigh = ChannelSeparatorY;
+				step *= 2;
+				break;
 			}
-			else
+			if (step * 5 >= nSampleUnits)
 			{
-				WaveOffset = ScaledWaveOffset -32768. - pMasterView->dOrgY;
-				ClipLow = ChannelSeparatorY + 1;
+				step *= 5;
+				break;
 			}
 		}
-		ClipLow += tm.tmHeight / 2;
-		ClipHigh -= tm.tmHeight / 2;
 
-		int yLow = int(100. / 32768. * (ClipHigh / YScaleDev -WaveOffset) / VerticalScale);
+		WaveCalculate WaveToY(pMasterView->m_WaveOffsetY, VerticalScale, chr.top, chr.bottom);
+
+		int ClipHigh = chr.bottom - tm.tmHeight / 2;
+		int ClipLow = chr.top + tm.tmHeight / 2;
+
+		int yLow = int(100. / 32768. * WaveToY.ConvertToSample(ClipHigh));
 		// round to the next multiple of step
 		yLow += (step * 0x10000 - yLow) % step;
 
-		int yHigh = int(100. / 32768. * (ClipLow / YScaleDev -WaveOffset) / VerticalScale);
+		int yHigh = int(100. / 32768. * WaveToY.ConvertToSample(ClipLow));
+
 		yHigh -= (step * 0x10000 + yHigh) % step;
 
 		for (int y = yLow; y <= yHigh; y += step)
 		{
-			int yDev= fround((y * 32768. / 100.* VerticalScale + WaveOffset) * YScaleDev);
+			int yDev= WaveToY(int(fround(y * 32768. / 100.)));
+
+			if (0 == y) TRACE("CAmplitudeRuler Zero pos=%d\n", yDev);
+
 			pDC->MoveTo(cr.right - 3, yDev);
 			pDC->LineTo(cr.right, yDev);
 			CString s;
 			s.Format(_T("%d%%"), y);
 
 			pDC->TextOut(cr.right - 3, yDev + tm.tmHeight / 2, s);
+		}
+
+		if (ch < nChannels - 1)
+		{
+			pDC->MoveTo(0, chr.bottom);
+			pDC->LineTo(cr.right, chr.bottom);
 		}
 	}
 }
@@ -295,88 +274,65 @@ void CAmplitudeRuler::DrawDecibels(CDC * pDC)
 	pDC->SetTextColor(0x000000);   // black
 	pDC->SetBkMode(TRANSPARENT);
 
-	int nVertStep = GetSystemMetrics(SM_CYMENU);
-
 	NUMBER_OF_CHANNELS nChannels = pDoc->WaveChannels();
-	int nHeight = cr.Height();
-	if (0 != nChannels)
-	{
-		nHeight /= nChannels;
-	}
 
 	double VerticalScale = pMasterView->m_VerticalScale;
-	double ScaledWaveOffset = pMasterView->m_WaveOffsetY * VerticalScale;
-	int nSampleUnits = int(nVertStep * 65536. / (nHeight * VerticalScale));
 
-	double YScaleDev = pMasterView->GetYScaleDev();
-	int ChannelSeparatorY = fround((0 - pMasterView->dOrgY) * YScaleDev);
-	if (2 == nChannels)
+	double nVertStep = -GetSystemMetrics(SM_CYMENU) /
+						(VerticalScale * pMasterView->GetYScaleDev());
+
+	for (int ch = 0; ch < nChannels; ch++)
 	{
-		pDC->MoveTo(0, ChannelSeparatorY);
-		pDC->LineTo(cr.right, ChannelSeparatorY);
-	}
+		CRect chr;
+		pMasterView->GetChannelRect(ch, chr);
+		int ClipHigh = chr.bottom - tm.tmHeight / 2;
+		int ClipLow = chr.top + tm.tmHeight / 2;
 
-	double MultStep = 0.841395141; //pow(10., -1.5 / 20.);
-	double DbStep = -1.5;
+		WaveCalculate WaveToY(pMasterView->m_WaveOffsetY, VerticalScale, chr.top, chr.bottom);
 
-	double CurrDb = -1.5;
-	double CurrVal = 27570.836;
+		int yLow = WaveToY.ConvertToSample(ClipHigh);
 
-	while (CurrDb > -120.)
-	{
-		int yDev1 = -fround(CurrVal * VerticalScale * YScaleDev);
-		if (yDev1 < nVertStep)
+		int yHigh = WaveToY.ConvertToSample(ClipLow);
+
+		ASSERT(yLow <= yHigh);
+
+		double MultStep = 0.841395141; //pow(10., -1.5 / 20.);
+		double DbStep = -1.5;
+
+		double CurrDb = -1.5;
+		double CurrVal = 27570.836;
+
+		while (CurrDb > -120.)
 		{
-			break;  // can't draw anymore
-		}
-		// if it's not multiple of DbStep*2, see if we need to multiply step and skip this value
-		if (0. != fmod(CurrDb, DbStep * 2.))
-		{
-			// check if we have enough space to draw the next value
-			int yDev2 = -fround(CurrVal * MultStep * VerticalScale * YScaleDev);
-			if (yDev1 - yDev2 < nVertStep)
+			double yDev1 = CurrVal;
+			if (yDev1 < nVertStep)
 			{
-				CurrVal *= MultStep;
-				MultStep *= MultStep;
-
-				CurrDb += DbStep;
-				DbStep *= 2;
-				continue;
+				break;  // can't draw anymore
 			}
-		}
-		CString s;
-		s.Format(_T("%.1f dB"), CurrDb);
-		for (int ch = 0; ch < nChannels; ch++)
-		{
-			double WaveOffset = ScaledWaveOffset - pMasterView->dOrgY;
-			int ClipHigh = cr.bottom;
-			int ClipLow = cr.top;
-			if (nChannels > 1)
+			// if it's not multiple of DbStep*2, see if we need to multiply step and skip this value
+			if (0. != fmod(CurrDb, DbStep * 2.))
 			{
-				if (0 == ch)
+				// check if we have enough space to draw the next value
+				double yDev2 = CurrVal * MultStep;
+
+				if (yDev1 - yDev2 < nVertStep)
 				{
-					WaveOffset = ScaledWaveOffset + 32768. - pMasterView->dOrgY;
-					ClipHigh = ChannelSeparatorY;
-				}
-				else
-				{
-					WaveOffset = ScaledWaveOffset -32768. - pMasterView->dOrgY;
-					ClipLow = ChannelSeparatorY + 1;
+					CurrVal *= MultStep;
+					MultStep *= MultStep;
+
+					CurrDb += DbStep;
+					DbStep *= 2;
+					continue;
 				}
 			}
-			ClipLow += tm.tmHeight / 2;
-			ClipHigh -= tm.tmHeight / 2;
-			int yLow = int((ClipHigh / YScaleDev -WaveOffset) / VerticalScale);
-			// round to the next multiple of step
-			//yLow += (step*0x10000-yLow) % step;
-			int yHigh = int((ClipLow / YScaleDev -WaveOffset) / VerticalScale);
-			//yHigh -= (step*0x10000+yHigh) % step;
-			ASSERT(yLow <= yHigh);
 
+			CString s;
+			s.Format(_T("%.1f dB"), CurrDb);
 
 			if (CurrVal >= yLow && CurrVal <= yHigh)
 			{
-				int yDev = fround((CurrVal * VerticalScale + WaveOffset) * YScaleDev);
+				int yDev = (int)WaveToY(CurrVal);
+
 				pDC->MoveTo(cr.right - 3, yDev);
 				pDC->LineTo(cr.right, yDev);
 
@@ -384,16 +340,22 @@ void CAmplitudeRuler::DrawDecibels(CDC * pDC)
 			}
 			if (-CurrVal >= yLow && -CurrVal <= yHigh)
 			{
-				int yDev = fround((-CurrVal * VerticalScale + WaveOffset) * YScaleDev);
+				int yDev = (int)WaveToY(-CurrVal);
 				pDC->MoveTo(cr.right - 3, yDev);
 				pDC->LineTo(cr.right, yDev);
 
 				pDC->TextOut(cr.right - 3, yDev + tm.tmHeight / 2, s);
 			}
-		}
 
-		CurrVal *= MultStep;
-		CurrDb += DbStep;
+			if (ch < nChannels - 1)
+			{
+				pDC->MoveTo(0, chr.bottom);
+				pDC->LineTo(cr.right, chr.bottom);
+			}
+
+			CurrVal *= MultStep;
+			CurrDb += DbStep;
+		}
 	}
 }
 
