@@ -407,5 +407,75 @@ protected:
 											DWORD dwInstance, DWORD fdwSupport);
 	CWaveFormat m_Wf;
 };
+
+class AudioStreamConvertor
+{
+	typedef void (CALLBACK * AcmStreamCallback)(HACMSTREAM , UINT uMsg,
+												DWORD_PTR dwInstance, LPARAM , LPARAM );
+	typedef void (CALLBACK * AcmStreamCallbackPtr)(HACMSTREAM , UINT uMsg,
+													PVOID pInstance, LPARAM , LPARAM );
+public:
+	AudioStreamConvertor(HACMDRIVER drv = NULL);
+	~AudioStreamConvertor();
+
+	BOOL SuggestFormat(WAVEFORMATEX const * pWf1,
+						WAVEFORMATEX * pWf2, size_t MaxFormat2Size, DWORD flags);
+
+	BOOL QueryOpen(WAVEFORMATEX const * pWfSrc,
+					WAVEFORMATEX const * pWfDst, DWORD flags = ACM_STREAMOPENF_NONREALTIME);
+
+	BOOL Open(WAVEFORMATEX const * pWfSrc,
+			WAVEFORMATEX const * pWfDst, DWORD flags = ACM_STREAMOPENF_NONREALTIME);
+
+	BOOL Open(WAVEFORMATEX const * pWfSrc,
+			WAVEFORMATEX const * pWfDst, HWND hCallbackWnd, DWORD_PTR dwInstance,
+			DWORD flags = ACM_STREAMOPENF_NONREALTIME);
+
+	BOOL Open(WAVEFORMATEX const * pWfSrc,
+			WAVEFORMATEX const * pWfDst, HWND hCallbackWnd, PVOID pInstance,
+			DWORD flags = ACM_STREAMOPENF_NONREALTIME)
+	{
+		return Open(pWfSrc, pWfDst, hCallbackWnd,
+					reinterpret_cast<DWORD_PTR>(pInstance), flags);
+	}
+
+	BOOL Open(WAVEFORMATEX const * pWfSrc,
+			WAVEFORMATEX const * pWfDst, HANDLE hEvent,
+			DWORD flags = ACM_STREAMOPENF_NONREALTIME);
+
+	BOOL Open(WAVEFORMATEX const * pWfSrc,
+			WAVEFORMATEX const * pWfDst,
+			AcmStreamCallback Callback,
+			DWORD_PTR dwInstance, DWORD flags = ACM_STREAMOPENF_NONREALTIME);
+	BOOL Open(WAVEFORMATEX const * pWfSrc,
+			WAVEFORMATEX const * pWfDst,
+			AcmStreamCallbackPtr Callback,
+			PVOID pInstance, DWORD flags = ACM_STREAMOPENF_NONREALTIME)
+	{
+		return Open(pWfSrc, pWfDst,
+					reinterpret_cast<AcmStreamCallback>(Callback),
+					reinterpret_cast<DWORD_PTR>(pInstance), flags);
+	}
+
+	void Close();
+	BOOL Reset(DWORD flags = 0);
+
+	BOOL AllocateBuffers(size_t PreferredInBufSize = 0x10000,
+						size_t PreferredOutBufSize = 0x10000);
+
+	BOOL Convert(void const * pSrcBuf, size_t SrcBufSize, size_t * pSrcBufUsed,
+				void* * ppDstBuf, size_t * pDstBufFilled,
+				DWORD flags = ACM_STREAMCONVERTF_BLOCKALIGN);
+
+protected:
+	ACMSTREAMHEADER m_ash;
+	HACMSTREAM m_acmStr;
+	HACMDRIVER m_acmDrv;
+	MMRESULT m_MmResult;
+
+	DWORD m_SrcBufSize;
+	DWORD m_DstBufSize;
+};
+
 WAVEFORMATEX * CopyWaveformat(const WAVEFORMATEX * src);
 #endif // #ifndef WAVESUPPORT_H__
