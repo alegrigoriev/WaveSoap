@@ -7,9 +7,8 @@
 // electronic documentation provided with the library.
 // See these sources for detailed information regarding the
 // Microsoft Foundation Classes product.
-
-#include "stdafx.h"
-#include <dlgs.h>       // for standard control IDs for commdlg
+#include "MfcStdAfx.h"
+//#include <dlgs.h>       // for standard control IDs for commdlg
 
 #ifdef AFX_AUX_SEG
 #pragma code_seg(AFX_AUX_SEG)
@@ -85,6 +84,8 @@ int CFileDialog::DoModal()
 	// WINBUG: This is a special case for the file open/save dialog,
 	//  which sometimes pumps while it is coming up but before it has
 	//  disabled the main window.
+	int nResult;
+#if 1
 	HWND hWndFocus = ::GetFocus();
 	BOOL bEnableParent = FALSE;
 	m_ofn.hwndOwner = PreModal();
@@ -103,7 +104,6 @@ int CFileDialog::DoModal()
 	else
 		AfxHookWindowCreate(this);
 
-	int nResult;
 	if (m_bOpenFileDialog)
 		nResult = ::GetOpenFileName(&m_ofn);
 	else
@@ -120,6 +120,15 @@ int CFileDialog::DoModal()
 		::SetFocus(hWndFocus);
 
 	PostModal();
+#else
+	CoInitialize(NULL);
+	m_ofn.Flags &= ~OFN_ENABLEHOOK;
+	if (m_bOpenFileDialog)
+		nResult = ::GetOpenFileName(&m_ofn);
+	else
+		nResult = ::GetSaveFileName(&m_ofn);
+	CoUninitialize();
+#endif
 	return nResult ? nResult : IDCANCEL;
 }
 
@@ -276,6 +285,15 @@ CString CFileDialog::GetNextPathName(POSITION& pos) const
 			pos = (POSITION)lpsz;
 	}
 
+	// check if the filename is already absolute
+	if (strFileName[0] == '/' || strFileName[0] == '\\'
+		|| (strFileName.GetLength() > 1 && strFileName[1] == ':'))
+	{
+		TCHAR * pTitle;
+		GetFullPathName(strFileName,MAX_PATH,strPath.GetBuffer(MAX_PATH), & pTitle);
+		strPath.ReleaseBuffer();
+		return strPath;
+	}
 	// only add '\\' if it is needed
 	if (!strPath.IsEmpty())
 	{
