@@ -42,6 +42,7 @@
 #define IDD_DIALOG_OPEN_TEMPLATE1       148
 #define IDD_DIALOG_SAVE_TEMPLATE        149
 #define IDC_CURSOR_BEAM                 150
+#define IDD_DIALOG_ULF_REDUCTION        150
 #define IDC_CURSOR_BEAM_LEFT            151
 #define IDC_CURSOR_BEAM_RIGHT           152
 #define IDC_EDIT_MIN_CLICK_AMPLITUDE    1000
@@ -123,9 +124,9 @@
 #define IDC_STATIC_LEFT_CHANNEL         1038
 #define IDC_EDIT_MASKING_TIME_LOW       1039
 #define IDC_BUTTON_PLAY                 1039
-#define IDC_RADIO_CHANNEL               1040
+#define IDC_RADIO1                      1040
 #define IDC_RADIO2                      1041
-#define IDC_RADIO3                      1042
+#define IDC_RADIO_CHANNEL               1042
 #define IDC_RADIO_DC_SELECT             1043
 #define IDC_EDIT_DC_OFFSET              1044
 #define IDC_CHECK_5SECONDS              1045
@@ -140,6 +141,10 @@
 #define IDC_SLIDER_RATE                 1053
 #define IDC_EDIT_RATE                   1054
 #define IDC_CHECK_COMPATIBLE_FORMATS    1055
+#define IDC_CHECK_DIFFERENTIAL_MODE_SUPPRESS 1056
+#define IDC_CHECK_LOW_FREQUENCY         1057
+#define IDC_EDIT_DIFF_NOISE_RANGE       1058
+#define IDC_EDIT_LF_NOISE_RANGE         1059
 #define IDC_VIEW_RULER_SAMPLES          32771
 #define IDC_VIEW_RULER_HHMMSS           32772
 #define IDC_VIEW_RULER_SECONDS          32773
@@ -266,8 +271,8 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_3D_CONTROLS                     1
 #define _APS_NEXT_RESOURCE_VALUE        147
-#define _APS_NEXT_COMMAND_VALUE         40064
-#define _APS_NEXT_CONTROL_VALUE         1056
+#define _APS_NEXT_COMMAND_VALUE         40066
+#define _APS_NEXT_CONTROL_VALUE         1059
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif

@@ -142,6 +142,7 @@ void CWaveSoapFrontView::DrawHorizontalWithSelection(CDC * pDC,
 	}
 	pDC->MoveTo(left, Y);
 	if (SelectionLeft >= right
+		|| SelectionRight < left
 		|| SelectionRight == SelectionLeft)
 	{
 		// no selection visible
