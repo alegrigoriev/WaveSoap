@@ -1496,10 +1496,13 @@ BOOL CWaveSoapFrontDoc::DoPaste(SAMPLE_INDEX Start, SAMPLE_INDEX End, CHANNEL_MA
 																Start, m_SelectedChannel));
 	}
 
-	if (UndoEnabled()
-		&& ! pStagedContext->CreateUndo())
+	if (UndoEnabled())
 	{
-		return FALSE;
+		pStagedContext->AddSelectionUndo(Start, End, Start, Channel);
+		if ( ! pStagedContext->CreateUndo())
+		{
+			return FALSE;
+		}
 	}
 
 	// set operation context to the queue
@@ -1563,10 +1566,14 @@ void CWaveSoapFrontDoc::DoCut(SAMPLE_INDEX Start, SAMPLE_INDEX End, CHANNEL_MASK
 		return;
 	}
 
-	if (UndoEnabled()
-		&& ! pContext->CreateUndo())
+	if (UndoEnabled())
 	{
-		return;
+		pContext->AddSelectionUndo(Start, End, Start, Channel);
+
+		if ( ! pContext->CreateUndo())
+		{
+			return;
+		}
 	}
 
 	// set operation context to the queue
@@ -1601,10 +1608,14 @@ void CWaveSoapFrontDoc::DoDelete(SAMPLE_INDEX Start, SAMPLE_INDEX End, CHANNEL_M
 
 	pContext->InitShrinkOperation(m_WavFile, Start, End - Start, Channel);
 
-	if (UndoEnabled()
-		&& ! pContext->CreateUndo())
+	if (UndoEnabled())
 	{
-		return;
+		pContext->AddSelectionUndo(Start, End, Start, Channel);
+
+		if ( ! pContext->CreateUndo())
+		{
+			return;
+		}
 	}
 
 	ExecuteOperation(pContext.release(), TRUE);
@@ -3782,6 +3793,11 @@ void CWaveSoapFrontDoc::OnProcessChangevolume()
 		}
 	}
 
+	if (dlg.UndoEnabled())
+	{
+		pContext->AddSelectionUndo(dlg.GetStart(), dlg.GetEnd(), dlg.GetStart(), dlg.GetChannel());
+	}
+
 	if ( ! pContext->InitDestination(m_WavFile, dlg.GetStart(),
 									dlg.GetEnd(), dlg.GetChannel(), dlg.UndoEnabled()))
 	{
@@ -3952,6 +3968,11 @@ void CWaveSoapFrontDoc::OnProcessDcoffset()
 		pDcContext.reset(new CDcOffsetContext(this, IDS_DC_ADJUST_STATUS_PROMPT,
 											IDS_DC_ADJUST_OPERATION_NAME, pScanContext));
 
+		if (dlg.UndoEnabled())
+		{
+			pDcContext->AddSelectionUndo(dlg.GetStart(), dlg.GetEnd(), dlg.GetStart(), dlg.GetChannel());
+		}
+
 		if ( ! pDcContext->InitDestination(m_WavFile, dlg.GetStart(),
 											dlg.GetEnd(), dlg.GetChannel(), dlg.UndoEnabled()))
 		{
@@ -3997,6 +4018,11 @@ void CWaveSoapFrontDoc::OnProcessDcoffset()
 
 		pDcContext.reset(new CDcOffsetContext(this, IDS_DC_ADJUST_STATUS_PROMPT,
 											IDS_DC_ADJUST_OPERATION_NAME, offset));
+
+		if (dlg.UndoEnabled())
+		{
+			pDcContext->AddSelectionUndo(dlg.GetStart(), dlg.GetEnd(), dlg.GetStart(), dlg.GetChannel());
+		}
 
 		if ( ! pDcContext->InitDestination(m_WavFile, dlg.GetStart(),
 											dlg.GetEnd(), dlg.GetChannel(), dlg.UndoEnabled()))
@@ -4074,6 +4100,8 @@ void CWaveSoapFrontDoc::OnProcessInsertsilence()
 
 	CInsertSilenceContext::auto_ptr pContext(new CInsertSilenceContext(this,
 												IDS_INSERT_SILENCE_STATUS_PROMPT, IDS_INSERT_SILENCE_OPERATION_NAME));
+
+	pContext->AddSelectionUndo(dlg.GetStart(), dlg.GetStart() + dlg.GetLength(), dlg.GetStart(), dlg.GetChannel());
 
 	if ( ! pContext->InitExpand(m_WavFile, dlg.GetStart(),
 								dlg.GetLength(), dlg.GetChannel(), FALSE))
@@ -4156,6 +4184,11 @@ void CWaveSoapFrontDoc::OnProcessMute()
 		}
 	}
 
+	if (UndoEnabled())
+	{
+		pVolumeContext->AddSelectionUndo(Start, End, Start, GetSelectedChannel());
+	}
+
 	if ( ! pVolumeContext->InitDestination(m_WavFile, Start,
 											End, GetSelectedChannel(), UndoEnabled()))
 	{
@@ -4219,6 +4252,11 @@ void CWaveSoapFrontDoc::OnProcessNormalize()
 
 	pContext->AddContext(pNormContext);
 
+	if (dlg.UndoEnabled())
+	{
+		pContext->AddSelectionUndo(dlg.GetStart(), dlg.GetEnd(), dlg.GetStart(), dlg.GetChannel());
+	}
+
 	if ( ! pNormContext->InitDestination(m_WavFile, dlg.GetStart(),
 										dlg.GetEnd(), dlg.GetChannel(), dlg.UndoEnabled()))
 	{
@@ -4250,11 +4288,8 @@ void CWaveSoapFrontDoc::OnProcessResample()
 	double ResampleQuality = 40.;
 
 	unsigned long OldSamplingRate = WaveSampleRate();
-	unsigned long NewSamplingRate;
-	double ResampleRatio;
-
-	NewSamplingRate = dlg.NewSampleRate();
-	ResampleRatio = dlg.ResampleRatio();
+	unsigned long NewSamplingRate = dlg.NewSampleRate();
+	double ResampleRatio = dlg.ResampleRatio();
 
 	if (dlg.ChangeRateOnly())
 	{
@@ -4269,14 +4304,16 @@ void CWaveSoapFrontDoc::OnProcessResample()
 		return;
 	}
 
+	unsigned long NewFileSamplingRate = NewSamplingRate;
 	if (! dlg.ChangeSampleRate())
 	{
-		NewSamplingRate = WaveSampleRate();
+		NewFileSamplingRate = OldSamplingRate;
 	}
+
 	// create new temporary file
 	CWaveFile DstFile;
 	CWaveFormat NewFormat;
-	NewFormat.InitFormat(WAVE_FORMAT_PCM, NewSamplingRate, WaveChannels());
+	NewFormat.InitFormat(WAVE_FORMAT_PCM, NewFileSamplingRate, WaveChannels());
 
 	if ( ! DstFile.CreateWaveFile( & m_WavFile, NewFormat, ALL_CHANNELS, ULONG(NewSampleCount),
 									//CreateWaveFileTempDir |
@@ -4294,12 +4331,22 @@ void CWaveSoapFrontDoc::OnProcessResample()
 	CStagedContext::auto_ptr pContext
 	(new CStagedContext(this, 0, IDS_RESAMPLE_STATUS_PROMPT, IDS_RESAMPLE_OPERATION_NAME));
 
-	CResampleContext * pResampleContext = new CResampleContext(this,
-																0, 0, m_WavFile, DstFile, ResampleRatio, ResampleQuality);
+	if (dlg.UndoEnabled())
+	{
+		pContext->AddSelectionUndo(m_SelectionStart, m_SelectionEnd, m_SelectionStart, m_SelectedChannel);
+	}
 
-	pContext->AddContext(pResampleContext);
+	pContext->AddContext(new CResampleContext(this,
+											0, 0, m_WavFile, DstFile, ResampleRatio, ResampleQuality));
 
 	pContext->AddContext(new CReplaceFileContext(this, _T(""), DstFile, false));
+
+	// recalculate selection
+	pContext->AddContext(new CSelectionChangeOperation(this,
+														MulDiv(m_SelectionStart, NewSamplingRate, OldSamplingRate),
+														MulDiv(m_SelectionEnd, NewSamplingRate, OldSamplingRate),
+														MulDiv(m_CaretPosition, NewSamplingRate, OldSamplingRate),
+														m_SelectedChannel));
 
 	pContext->AddContext(new CScanPeaksContext(this, DstFile, m_OriginalWavFile, FALSE));
 
@@ -4390,6 +4437,11 @@ void CWaveSoapFrontDoc::OnProcessInvert()
 		end = WaveFileSamples();
 	}
 
+	if (UndoEnabled())
+	{
+		pContext->AddSelectionUndo(m_SelectionStart, m_SelectionEnd, m_SelectionStart, m_SelectedChannel);
+	}
+
 	if ( ! pContext->InitDestination(m_WavFile, start,
 									end, GetSelectedChannel(), UndoEnabled()))
 	{
@@ -4446,6 +4498,11 @@ void CWaveSoapFrontDoc::OnProcessSynthesisExpressionEvaluation()
 
 	if (NULL != pContext)
 	{
+		if (dlg.UndoEnabled())
+		{
+			pContext->AddSelectionUndo(dlg.GetStart(), dlg.GetEnd(), dlg.GetStart(), dlg.GetChannel());
+		}
+
 		ExecuteOperation(pContext, TRUE, dlg.UndoEnabled(), dlg.UndoEnabled());
 	}
 }
@@ -4827,6 +4884,11 @@ void CWaveSoapFrontDoc::OnProcessDoUlf()
 	// put it to disk-intensive
 	pContext->m_Flags |= OperationContextDiskIntensive;
 
+	if (dlg.UndoEnabled())
+	{
+		pContext->AddSelectionUndo(dlg.GetStart(), dlg.GetEnd(), dlg.GetStart(), dlg.GetChannel());
+	}
+
 	if ( ! pContext->InitDestination(m_WavFile, dlg.GetStart(),
 									dlg.GetEnd(), dlg.GetChannel(), dlg.UndoEnabled()))
 	{
@@ -4875,6 +4937,7 @@ void CWaveSoapFrontDoc::OnProcessDoDeclicking()
 	{
 		return;
 	}
+
 	CWaveProcContext::auto_ptr pContext
 	(new CWaveProcContext(this, IDS_DECLICK_STATUS_PROMPT,
 						IDS_DECLICK_OPERATION_NAME));
@@ -4884,6 +4947,11 @@ void CWaveSoapFrontDoc::OnProcessDoDeclicking()
 
 	pDeclick->SetAndValidateWaveformat(WaveFormat());
 	dlg.SetDeclickData(pDeclick);
+
+	if (dlg.UndoEnabled())
+	{
+		pContext->AddSelectionUndo(dlg.GetStart(), dlg.GetEnd(), dlg.GetStart(), dlg.GetChannel());
+	}
 
 	if ( ! pContext->InitDestination(m_WavFile, dlg.GetStart(),
 									dlg.GetEnd(), dlg.GetChannel(), dlg.UndoEnabled()))
@@ -4962,15 +5030,20 @@ void CWaveSoapFrontDoc::OnProcessNoiseReduction()
 	(new CWaveProcContext(this, IDS_DENOISE_STATUS_PROMPT,
 						IDS_DENOISE_OPERATION_NAME));
 
-
 	NoiseReductionParameters NrParms;
 	dlg.GetNoiseReductionData( & NrParms);
+
 	CNoiseReduction * pNoiseReduction =
 		new CNoiseReduction(dlg.GetNoiseReductionFftOrder(), NrParms);
 
 	pContext->AddWaveProc(pNoiseReduction);
 
 	pNoiseReduction->SetAndValidateWaveformat(WaveFormat());
+
+	if (dlg.UndoEnabled())
+	{
+		pContext->AddSelectionUndo(dlg.GetStart(), dlg.GetEnd(), dlg.GetStart(), dlg.GetChannel());
+	}
 
 	if ( ! pContext->InitDestination(m_WavFile, dlg.GetStart(),
 									dlg.GetEnd(), dlg.GetChannel(), dlg.UndoEnabled()))
@@ -5245,6 +5318,11 @@ void CWaveSoapFrontDoc::OnProcessEqualizer()
 	(new CEqualizerContext(this, IDS_EQUALIZER_STATUS_PROMPT, IDS_EQUALIZER_OPERATION_NAME,
 							BandCoefficients, dlg.GetNumberOfBands(), dlg.IsZeroPhase()));
 
+	if (dlg.UndoEnabled())
+	{
+		pContext->AddSelectionUndo(dlg.GetStart(), dlg.GetEnd(), dlg.GetStart(), dlg.GetChannel());
+	}
+
 	if ( ! pContext->InitDestination(m_WavFile, dlg.GetStart(),
 									dlg.GetEnd(), dlg.GetChannel(), dlg.UndoEnabled()))
 	{
@@ -5282,6 +5360,11 @@ void CWaveSoapFrontDoc::OnProcessSwapchannels()
 	{
 		NotEnoughMemoryMessageBox();
 		return;
+	}
+
+	if (UndoEnabled())
+	{
+		pContext->AddSelectionUndo(m_SelectionStart, m_SelectionEnd, m_SelectionStart, m_SelectedChannel);
 	}
 
 	if ( ! pContext->InitDestination(m_WavFile, start,
@@ -5338,6 +5421,11 @@ void CWaveSoapFrontDoc::OnProcessFilter()
 	pContext->m_nLpfOrder = dlg.GetLowpassFilterOrder();
 	pContext->m_nHpfOrder = dlg.GetHighpassFilterOrder();
 	pContext->m_nNotchOrder = dlg.GetNotchFilterOrder();
+
+	if (dlg.UndoEnabled())
+	{
+		pContext->AddSelectionUndo(dlg.GetStart(), dlg.GetEnd(), dlg.GetStart(), dlg.GetChannel());
+	}
 
 	if ( ! pContext->InitDestination(m_WavFile, dlg.GetStart(),
 									dlg.GetEnd(), dlg.GetChannel(), dlg.UndoEnabled()))
@@ -5427,6 +5515,11 @@ void CWaveSoapFrontDoc::OnProcessReverse()
 	if (m_WavFile.AllChannels(GetSelectedChannel()))
 	{
 		pStagedContext->AddContext(new CCueReverseOperation(this, m_WavFile, start, end - start));
+	}
+
+	if (UndoEnabled())
+	{
+		pContext->AddSelectionUndo(m_SelectionStart, m_SelectionEnd, m_SelectionStart, m_SelectedChannel);
 	}
 
 	if (UndoEnabled()
