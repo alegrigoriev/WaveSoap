@@ -273,6 +273,9 @@
 				RelativePath=".\TimeRulerView.cpp">
 			</File>
 			<File
+				RelativePath="UiUpdatedDlg.cpp">
+			</File>
+			<File
 				RelativePath=".\WaveFftView.cpp">
 			</File>
 			<File
@@ -492,6 +495,9 @@ makehm IDW_,HIDW_,0x50000 resource.h &gt;&gt;&quot;hlp\$(TargetName).hm&quot;
 			</File>
 			<File
 				RelativePath=".\TimeRulerView.h">
+			</File>
+			<File
+				RelativePath="UiUpdatedDlg.h">
 			</File>
 			<File
 				RelativePath=".\WaveFftView.h">

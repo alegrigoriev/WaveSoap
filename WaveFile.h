@@ -1,3 +1,4 @@
+// Copyright Alexander Grigoriev, 1997-2002, All Rights Reserved
 // WaveFile.h
 #ifndef WAVE_FILE__H__
 #define WAVE_FILE__H__
