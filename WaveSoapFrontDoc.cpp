@@ -895,6 +895,19 @@ void CWaveSoapFrontDoc::QueueSoundUpdate(int UpdateCode, ULONG_PTR FileID,
 	::PostMessage(GetApp()->m_pMainWnd->m_hWnd, WM_KICKIDLE, 0, 0);
 }
 
+void CWaveSoapFrontDoc::FileChanged(CWaveFile & File, SAMPLE_POSITION begin,
+									SAMPLE_POSITION end, NUMBER_OF_SAMPLES length, DWORD flags)
+{
+	if (File.GetFileID() != WaveFileID())
+	{
+		// changed a different (some temporary) file
+		return;
+	}
+	SoundChanged(m_WavFile.GetFileID(),
+				m_WavFile.PositionToSample(begin),
+				m_WavFile.PositionToSample(end), length, flags);
+}
+
 void CWaveSoapFrontDoc::SoundChanged(DWORD FileID, SAMPLE_INDEX begin, SAMPLE_INDEX end,
 									NUMBER_OF_SAMPLES FileLength, DWORD flags)
 {
@@ -1413,15 +1426,16 @@ void CWaveSoapFrontDoc::DoPaste(SAMPLE_INDEX Start, SAMPLE_INDEX End, CHANNEL_MA
 
 	if (End > Start)
 	{
-		CPasteModeDialog dlg;
-		dlg.m_PasteMode = m_DefaultPasteMode;
+		CPasteModeDialog dlg(m_DefaultPasteMode);
+
 		if (dlg.DoModal() != IDOK)
 		{
 			delete pResampleContext;
 			return;
 		}
-		m_DefaultPasteMode = dlg.m_PasteMode;
-		switch (dlg.m_PasteMode)
+
+		m_DefaultPasteMode = dlg.GetPasteMode();
+		switch (m_DefaultPasteMode)
 		{
 		case 0:
 			// selection will be replaced with clipboard
