@@ -692,6 +692,16 @@ public:
 
 	typedef std::auto_ptr<ThisClass> auto_ptr;
 	CFadeInOutOperation(class CWaveSoapFrontDoc * pDoc, int FadeCurveType);
+	// init cross fade
+	CFadeInOutOperation(class CWaveSoapFrontDoc * pDoc, int FadeCurveType,
+						CWaveFile & SrcFile, SAMPLE_INDEX SrcBegin, CHANNEL_MASK SrcChannel,
+						CWaveFile & DstFile, SAMPLE_INDEX DstBegin, CHANNEL_MASK DstChannel,
+						NUMBER_OF_SAMPLES Length, BOOL UndoEnabled);
+
+	// init fade in/out
+	CFadeInOutOperation(class CWaveSoapFrontDoc * pDoc, int FadeCurveType,
+						CWaveFile & DstFile, SAMPLE_INDEX DstBegin, CHANNEL_MASK DstChannel,
+						NUMBER_OF_SAMPLES Length, BOOL UndoEnabled);
 
 protected:
 	virtual double GetSrcMixCoefficient(SAMPLE_INDEX Sample, int Channel) const;
