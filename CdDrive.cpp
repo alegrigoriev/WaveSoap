@@ -1,3 +1,4 @@
+// Copyright Alexander Grigoriev, 1997-2002, All Rights Reserved
 // CdDrive.cpp: implementation of the CCdDrive class.
 //
 //////////////////////////////////////////////////////////////////////

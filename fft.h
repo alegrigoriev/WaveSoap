@@ -1,3 +1,4 @@
+// Copyright Alexander Grigoriev, 1997-2002, All Rights Reserved
 // fft.h, copyright Alex Grigoriev, alegr@aha.ru
 
 #define FFT    0

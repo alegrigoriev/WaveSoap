@@ -1,3 +1,4 @@
+// Copyright Alexander Grigoriev, 1997-2002, All Rights Reserved
 // MainFrm.cpp : implementation of the CMainFrame class
 //
 
