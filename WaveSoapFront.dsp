@@ -110,6 +110,10 @@ SOURCE=.\DirectFile.cpp
 # End Source File
 # Begin Source File
 
+SOURCE=.\FftRulerView.cpp
+# End Source File
+# Begin Source File
+
 SOURCE=.\MainFrm.cpp
 # End Source File
 # Begin Source File
@@ -159,6 +163,10 @@ SOURCE=.\WaveFile.cpp
 
 !ENDIF 
 
+# End Source File
+# Begin Source File
+
+SOURCE=.\WaveOutlineView.cpp
 # End Source File
 # Begin Source File
 
@@ -276,6 +284,10 @@ SOURCE=.\FFT.inl
 # End Source File
 # Begin Source File
 
+SOURCE=.\FftRulerView.h
+# End Source File
+# Begin Source File
+
 SOURCE=.\MainFrm.h
 # End Source File
 # Begin Source File
@@ -372,6 +384,10 @@ SOURCE=.\WaveFftView.h
 # Begin Source File
 
 SOURCE=.\WaveFile.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\WaveOutlineView.h
 # End Source File
 # Begin Source File
 
