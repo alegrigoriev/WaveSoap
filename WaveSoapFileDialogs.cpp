@@ -367,6 +367,30 @@ void CWaveSoapFileOpenDialog::OnTypeChange()
 	}
 }
 
+CFileSaveUiSupport::CFileSaveUiSupport(CWaveFormat const & Wf)
+	: m_Wf(Wf)
+	, m_Acm(Wf)
+	, m_SelectedTag(Wf)
+	, m_SelectedFormat(~0U)
+	, m_SelectedMp3Encoder(0)
+	, m_SelectedMp3Bitrate(LameEncBitrate128 * 1000)
+	, m_SelectedWmaBitrate(128000)
+	, m_bCompatibleFormatsOnly(TRUE)
+	, m_FileType(SoundFileTypeUnknown)
+	, m_SelectedRawFormat(RawSoundFilePcm16Lsb)
+{
+	m_DefExt[1] = _T("wav");
+	m_DefExt[2] = _T("mp3");
+	m_DefExt[3] = _T("wma");
+	m_DefExt[4] = _T("raw");
+	m_DefExt[5] = _T("avi");
+
+	m_Profile.AddItem(_T("Settings"), _T("MP3Bitrate"), m_SelectedMp3Bitrate, 128000, 0, 320000);
+	m_Profile.AddItem(_T("Settings"), _T("WmaBitrate"), m_SelectedWmaBitrate, 128000, 0, 160000);
+	m_Profile.AddItem(_T("Settings"), _T("MP3Encoder"), m_SelectedMp3Encoder, 0, 0, 4);
+	m_Profile.AddItem(_T("Settings"), _T("FormatTag"), m_SelectedTag, m_SelectedTag);
+}
+
 CWaveSoapFileSaveDialog::CWaveSoapFileSaveDialog(BOOL bOpenFileDialog, // TRUE for FileOpen, FALSE for FileSaveAs
 												CWaveFormat const & Wf,
 												CWaveSoapFrontDoc * pDoc,
@@ -377,18 +401,9 @@ CWaveSoapFileSaveDialog::CWaveSoapFileSaveDialog(BOOL bOpenFileDialog, // TRUE f
 												CWnd* pParentWnd)
 
 	: BaseClass(bOpenFileDialog, lpszDefExt, lpszFileName, dwFlags,
-				lpszFilter, pParentWnd),
-	m_Wf(Wf),
-	m_Acm(Wf),
-	m_SelectedTag(Wf),
-	m_SelectedFormat(~0U),
-	m_SelectedMp3Encoder(0),
-	m_SelectedMp3Bitrate(LameEncBitrate128 * 1000),
-	m_SelectedWmaBitrate(128000),
-	m_bCompatibleFormatsOnly(TRUE),
-	m_FileType(SoundFileTypeUnknown),
-	m_SelectedRawFormat(RawSoundFilePcm16Lsb),
-	m_pDocument(pDoc)
+				lpszFilter, pParentWnd)
+	, CFileSaveUiSupport(Wf)
+	, m_pDocument(pDoc)
 {
 	if (SupportsV5FileDialog())
 	{
@@ -426,16 +441,6 @@ CWaveSoapFileSaveDialog::CWaveSoapFileSaveDialog(BOOL bOpenFileDialog, // TRUE f
 		m_pResizeItems = ItemsV4;
 		m_ResizeItemsCount = countof(ItemsV4);
 	}
-	m_DefExt[1] = _T("wav");
-	m_DefExt[2] = _T("mp3");
-	m_DefExt[3] = _T("wma");
-	m_DefExt[4] = _T("raw");
-	m_DefExt[5] = _T("avi");
-
-	m_Profile.AddItem(_T("Settings"), _T("MP3Bitrate"), m_SelectedMp3Bitrate, 128000, 0, 320000);
-	m_Profile.AddItem(_T("Settings"), _T("WmaBitrate"), m_SelectedWmaBitrate, 128000, 0, 160000);
-	m_Profile.AddItem(_T("Settings"), _T("MP3Encoder"), m_SelectedMp3Encoder, 0, 0, 4);
-	m_Profile.AddItem(_T("Settings"), _T("FormatTag"), m_SelectedTag, m_SelectedTag);
 
 }
 
@@ -462,7 +467,7 @@ BOOL CWaveSoapFileSaveDialog::OnFileNameOK()
 	// save format selection
 	m_SelectedFormat = m_AttributesCombo.GetCurSel();
 
-	m_Profile.FlushAll();
+	CFileSaveUiSupport::m_Profile.FlushAll();
 
 	return 0;   // OK to close dialog
 }
@@ -480,7 +485,7 @@ UINT CWaveSoapFileSaveDialog::OnShareViolation( LPCTSTR lpszPathName)
 	return OFN_SHAREWARN;
 }
 
-WAVEFORMATEX * CWaveSoapFileSaveDialog::GetWaveFormat()
+WAVEFORMATEX * CFileSaveUiSupport::GetWaveFormat()
 {
 	switch (m_FileType)
 	{
@@ -501,19 +506,33 @@ WAVEFORMATEX * CWaveSoapFileSaveDialog::GetWaveFormat()
 	}
 }
 
-static WaveFormatTagEx const ExcludeFormats[] =
+WaveFormatTagEx const CFileSaveUiSupport::ExcludeFormats[] =
 {
 	WAVE_FORMAT_MPEGLAYER3,
 	WAVE_FORMAT_MSAUDIO1,
 	WAVE_FORMAT_MSAUDIO1+1,
+	WORD(0),
 };
 
-void CWaveSoapFileSaveDialog::FillFormatTagCombo(WaveFormatTagEx const ListOfTags[], int NumTags, DWORD Flags)
+void CFileSaveUiSupport::FillFormatTagCombo(WaveFormatTagEx const ListOfTags[], int NumTags, DWORD Flags)
 {
 	if (m_bCompatibleFormatsOnly)
 	{
 		Flags |= WaveFormatMatchCompatibleFormats;
 	}
+
+	if (NULL == ListOfTags)
+	{
+		NumTags = 0;
+	}
+	else if (-1 == NumTags)
+	{
+		// tags list is zero-terminated
+		for (NumTags = 0; ListOfTags[NumTags].Tag != 0; NumTags++)
+		{
+		}
+	}
+
 	m_Acm.FillFormatTagArray(m_Wf, ListOfTags, NumTags, Flags);
 
 	if (m_FormatTagCombo.m_hWnd == NULL)
@@ -542,7 +561,7 @@ void CWaveSoapFileSaveDialog::FillFormatTagCombo(WaveFormatTagEx const ListOfTag
 	m_FormatTagCombo.SetCurSel(sel);
 }
 
-int CWaveSoapFileSaveDialog::FillFormatCombo(unsigned SelFormat, int Flags)
+int CFileSaveUiSupport::FillFormatCombo(unsigned SelFormat, int Flags)
 {
 	if (m_AttributesCombo.m_hWnd == NULL)
 	{
@@ -560,13 +579,11 @@ int CWaveSoapFileSaveDialog::FillFormatCombo(unsigned SelFormat, int Flags)
 									m_SelectedTag, m_SelectedBitrate);
 }
 
-void CWaveSoapFileSaveDialog::OnCompatibleFormatsClicked()
+void CFileSaveUiSupport::OnCompatibleFormatsClicked()
 {
-	m_bCompatibleFormatsOnly = ((CButton*)GetDlgItem(IDC_CHECK_COMPATIBLE_FORMATS))->GetCheck();
 	if (SoundFileWav == m_FileType)
 	{
-		FillFormatTagCombo(ExcludeFormats,
-							countof(ExcludeFormats), WaveFormatExcludeFormats);
+		FillFormatTagCombo(ExcludeFormats, -1, WaveFormatExcludeFormats);
 		m_SelectedFormat = FillFormatCombo(m_FormatTagCombo.GetCurSel());
 	}
 	else if (SoundFileMp3 == m_FileType)
@@ -579,7 +596,7 @@ void CWaveSoapFileSaveDialog::OnCompatibleFormatsClicked()
 	}
 }
 
-void CWaveSoapFileSaveDialog::OnComboAttributesChange()
+void CFileSaveUiSupport::OnComboAttributesChange()
 {
 	unsigned sel = m_AttributesCombo.GetCurSel();
 	switch (m_FileType)
@@ -613,7 +630,7 @@ void CWaveSoapFileSaveDialog::OnComboAttributesChange()
 	}
 }
 
-void CWaveSoapFileSaveDialog::OnComboFormatsChange()
+void CFileSaveUiSupport::OnComboFormatsChange()
 {
 	int sel = m_FormatTagCombo.GetCurSel();
 	switch (m_FileType)
@@ -641,6 +658,22 @@ void CWaveSoapFileSaveDialog::OnComboFormatsChange()
 		// RAW file
 		break;
 	}
+}
+
+void CWaveSoapFileSaveDialog::OnCompatibleFormatsClicked()
+{
+	m_bCompatibleFormatsOnly = ((CButton*)GetDlgItem(IDC_CHECK_COMPATIBLE_FORMATS))->GetCheck();
+	CFileSaveUiSupport::OnCompatibleFormatsClicked();
+}
+
+void CWaveSoapFileSaveDialog::OnComboFormatsChange()
+{
+	CFileSaveUiSupport::OnComboFormatsChange();
+}
+
+void CWaveSoapFileSaveDialog::OnComboAttributesChange()
+{
+	CFileSaveUiSupport::OnComboAttributesChange();
 }
 
 void CWaveSoapFileSaveDialog::OnInitDone()
@@ -764,9 +797,8 @@ void CWaveSoapFileSaveDialog::SetFileType(int nType)
 		ShowDlgItem(IDC_STATIC_COMMENTS, SW_SHOWNOACTIVATE);
 		ShowDlgItem(IDC_EDIT_COMMENT, SW_SHOWNOACTIVATE);
 
-		FillFormatTagCombo(ExcludeFormats,
-							countof(ExcludeFormats),
-							WaveFormatExcludeFormats);
+		FillFormatTagCombo(ExcludeFormats, -1, WaveFormatExcludeFormats);
+
 		m_SelectedFormat = FillFormatCombo(m_FormatTagCombo.GetCurSel());
 		break;  // go on
 	case SoundFileMp3:
@@ -840,7 +872,7 @@ void CWaveSoapFileSaveDialog::SetFileType(LPCTSTR lpExt)
 	SetFileType(GetFileTypeForExt(lpExt));
 }
 
-int CWaveSoapFileSaveDialog::GetFileTypeForExt(LPCTSTR lpExt)
+int CFileSaveUiSupport::GetFileTypeForExt(LPCTSTR lpExt)
 {
 	if (NULL != lpExt && '.' == *lpExt)
 	{
@@ -863,7 +895,7 @@ int CWaveSoapFileSaveDialog::GetFileTypeForExt(LPCTSTR lpExt)
 	return type;
 }
 
-int CWaveSoapFileSaveDialog::GetFileTypeForName(LPCTSTR FileName)
+int CFileSaveUiSupport::GetFileTypeForName(LPCTSTR FileName)
 {
 	LPCTSTR ext = _tcsrchr(FileName, '.');
 	if (NULL == ext)
@@ -873,7 +905,7 @@ int CWaveSoapFileSaveDialog::GetFileTypeForName(LPCTSTR FileName)
 	return GetFileTypeForExt(ext + 1);
 }
 
-void CWaveSoapFileSaveDialog::FillLameEncoderFormats()
+void CFileSaveUiSupport::FillLameEncoderFormats()
 {
 	m_Acm.FillLameEncoderFormats();
 	m_AttributesCombo.ResetContent();
@@ -890,7 +922,7 @@ void CWaveSoapFileSaveDialog::FillLameEncoderFormats()
 	m_AttributesCombo.SetCurSel(sel);
 }
 
-void CWaveSoapFileSaveDialog::FillRawFormatsCombo()
+void CFileSaveUiSupport::FillRawFormatsCombo()
 {
 	CString s;
 	m_FormatTagCombo.ResetContent();
@@ -914,7 +946,7 @@ void CWaveSoapFileSaveDialog::FillRawFormatsCombo()
 
 }
 
-void CWaveSoapFileSaveDialog::FillWmaFormatCombo()
+void CFileSaveUiSupport::FillWmaFormatCombo()
 {
 	m_Acm.FillWmaFormatTags();
 	if (m_Acm.m_FormatTags.empty())
@@ -926,7 +958,7 @@ void CWaveSoapFileSaveDialog::FillWmaFormatCombo()
 	m_SelectedFormat = FillFormatCombo(0, WaveFormatMatchCnannels | WaveFormatMatchSampleRate);
 }
 
-void CWaveSoapFileSaveDialog::FillMp3EncoderCombo()
+void CFileSaveUiSupport::FillMp3EncoderCombo()
 {
 	// TODO: check if this format can be converted from the source format
 	// Remove the encoder if there is not conversion

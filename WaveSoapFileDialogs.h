@@ -96,24 +96,17 @@ enum
 
 };
 
-class CWaveSoapFileSaveDialog : public CFileDialogWithHistory
+class CFileSaveUiSupport
 {
-	typedef CFileDialogWithHistory BaseClass;
 public:
-	CWaveSoapFileSaveDialog(BOOL bOpenFileDialog, // TRUE for FileOpen, FALSE for FileSaveAs
-							CWaveFormat const & Wf,
-							CWaveSoapFrontDoc * pDoc,
-							LPCTSTR lpszDefExt = NULL,
-							LPCTSTR lpszFileName = NULL,
-							DWORD dwFlags = OFN_HIDEREADONLY | OFN_OVERWRITEPROMPT,
-							LPCTSTR lpszFilter = NULL,
-							CWnd* pParentWnd = NULL);
-	//~CWaveSoapFileSaveDialog() {}
 
-	CWaveFile m_WaveFile;
+	CFileSaveUiSupport(CWaveFormat const & Wf);
+
+	CApplicationProfile m_Profile;
+
+	//CWaveFile m_WaveFile;
 	CComboBox m_FormatTagCombo;
 	CComboBox m_AttributesCombo;
-
 	WaveFormatTagEx m_SelectedTag;
 	unsigned m_SelectedFormat;
 	int m_FileType;// Wav, Mp3, wma, raw...
@@ -128,20 +121,10 @@ public:
 
 	CString m_FormatTagName;
 	CString m_DefExt[10];
-
 	CWaveFormat m_Wf; // original format
 	CString WaveFormat;
-	CWaveSoapFrontDoc * m_pDocument;
 
 	CAudioCompressionManager m_Acm;
-
-	CApplicationProfile m_Profile;
-
-	virtual BOOL OnFileNameOK();
-	virtual UINT OnShareViolation( LPCTSTR lpszPathName );
-
-	void ShowDlgItem(UINT nID, int nCmdShow);
-
 	int FillFormatCombo(unsigned nSel, int Flags);
 	int FillFormatCombo(unsigned nSel)
 	{
@@ -157,15 +140,45 @@ public:
 	void FillMp3EncoderCombo();
 	void FillRawFormatsCombo();
 	void FillLameEncoderFormats();
-
+	int GetFileTypeForExt(LPCTSTR lpExt);
+	int GetFileTypeForName(LPCTSTR FileName);
 	WAVEFORMATEX * GetWaveFormat();
+
+	afx_msg void OnCompatibleFormatsClicked();
+	afx_msg void OnComboFormatsChange();
+	afx_msg void OnComboAttributesChange();
+
+	static WaveFormatTagEx const ExcludeFormats[];
+};
+
+class CWaveSoapFileSaveDialog : public CFileDialogWithHistory, public CFileSaveUiSupport
+{
+	typedef CFileDialogWithHistory BaseClass;
+public:
+	CWaveSoapFileSaveDialog(BOOL bOpenFileDialog, // TRUE for FileOpen, FALSE for FileSaveAs
+							CWaveFormat const & Wf,
+							CWaveSoapFrontDoc * pDoc,
+							LPCTSTR lpszDefExt = NULL,
+							LPCTSTR lpszFileName = NULL,
+							DWORD dwFlags = OFN_HIDEREADONLY | OFN_OVERWRITEPROMPT,
+							LPCTSTR lpszFilter = NULL,
+							CWnd* pParentWnd = NULL);
+	//~CWaveSoapFileSaveDialog() {}
+
+	CWaveSoapFrontDoc * m_pDocument;
+
+
+	virtual BOOL OnFileNameOK();
+	virtual UINT OnShareViolation( LPCTSTR lpszPathName );
+
+	void ShowDlgItem(UINT nID, int nCmdShow);
+
+
 	virtual void OnInitDone();
 	virtual void OnTypeChange();
 	virtual void OnFileNameChange();
 	void SetFileType(int nType);// Wav, Mp3, wma, raw...
 	void SetFileType(LPCTSTR lpExt);
-	int GetFileTypeForExt(LPCTSTR lpExt);
-	int GetFileTypeForName(LPCTSTR FileName);
 	//void ClearFileInfoDisplay();
 
 	//{{AFX_MSG(CWaveSoapFileSaveDialog)
