@@ -2241,7 +2241,6 @@ void CNoiseReductionDialog::DoDataExchange(CDataExchange* pDX)
 	DDX_CBIndex(pDX, IDC_COMBO_FFT_ORDER, m_nFftOrderExp);
 	DDX_Check(pDX, IDC_CHECK_UNDO, m_bUndo);
 	//}}AFX_DATA_MAP
-	m_FftOrder = 256 << m_nFftOrderExp;
 #if 0
 	m_eTransientThreshold.ExchangeData(pDX, m_dTransientThreshold,
 										"Transient threshold", "", 0.3, 2);
@@ -2271,7 +2270,7 @@ void CNoiseReductionDialog::DoDataExchange(CDataExchange* pDX)
 
 BEGIN_MESSAGE_MAP(CNoiseReductionDialog, BaseClass)
 	//{{AFX_MSG_MAP(CNoiseReductionDialog)
-	ON_BN_CLICKED(IDC_BUTTON_MORE, OnButtonMore)
+	ON_BN_CLICKED(IDC_BUTTON_MORE_SETTINGS, OnButtonMore)
 	ON_BN_CLICKED(IDC_BUTTON_SET_THRESHOLD, OnButtonSetThreshold)
 	//}}AFX_MSG_MAP
 END_MESSAGE_MAP()
@@ -2337,15 +2336,15 @@ void CNoiseReductionDialog::LoadValuesFromRegistry()
 #define M_PI_2      1.57079632679489661923
 #define M_PI_4      0.785398163397448309616
 
-void CNoiseReductionDialog::SetNoiseReductionData(CNoiseReduction * pNr)
+void CNoiseReductionDialog::GetNoiseReductionData(NoiseReductionParameters * pNr)
 {
 	//pNr->m_bApplyPhaseFilter = m_bPhaseFilter;
 	pNr->m_MinFrequencyToProcess = float(m_dLowerFrequency);
 	pNr->m_ThresholdOfTransient = float(m_dTransientThreshold);
 	pNr->m_FreqThresholdOfNoiselike = float(M_PI_2 * M_PI_2 * m_dNoiseCriterion * m_dNoiseCriterion);
 	pNr->m_MaxNoiseSuppression = float(DB_TO_NEPER * m_dNoiseReduction);
-	pNr->m_LevelThresholdForNoiseLow = float(DB_TO_NEPER * (m_dNoiseThresholdLow +111.));
-	pNr->m_LevelThresholdForNoiseHigh = float(DB_TO_NEPER * (m_dNoiseThresholdHigh +111.));
+	pNr->m_LevelThresholdForNoiseLow = float(DB_TO_NEPER * (m_dNoiseThresholdLow + 111.));
+	pNr->m_LevelThresholdForNoiseHigh = float(DB_TO_NEPER * (m_dNoiseThresholdHigh + 111.));
 	pNr->m_ToneOverNoisePreference = float(DB_TO_NEPER * m_dToneOverNoisePreference);
 	pNr->m_NoiseReductionRatio = 0.5 * m_dNoiseReductionAggressivness;
 
