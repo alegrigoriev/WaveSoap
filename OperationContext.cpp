@@ -3692,7 +3692,7 @@ BOOL CWaveProcContext::OperationProc()
 		}
 
 		size_t SrcBufUsed = 0;
-
+		// Now process the input buffer and store the data to the output buffer
 		size_t DstBufUsed = m_ProcBatch.ProcessSound(pSrcBuf, pDstBuf, LeftToRead,
 													LeftToWrite, & SrcBufUsed);
 
