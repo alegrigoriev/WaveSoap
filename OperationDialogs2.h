@@ -40,7 +40,18 @@ public:
 	//}}AFX_DATA
 	CHANNEL_MASK GetChannel() const
 	{
-		return m_nChannel - 1;
+		switch (m_nChannel)
+		{
+		default:
+			return ALL_CHANNELS;
+			break;
+		case 1:
+			return SPEAKER_FRONT_LEFT;
+			break;
+		case 2:
+			return SPEAKER_FRONT_CENTER;
+			break;
+		}
 	}
 	SAMPLE_INDEX GetStart() const
 	{
@@ -55,8 +66,8 @@ public:
 protected:
 	NUMBER_OF_SAMPLES    m_Length;
 	SAMPLE_INDEX    m_Start;
-	CHANNEL_MASK	m_nChannel;
-	int		m_TimeFormat;
+	int     m_nChannel;
+	int	    m_TimeFormat;
 	SAMPLE_INDEX    m_CaretPosition;
 	CWaveFile & m_WaveFile;
 
