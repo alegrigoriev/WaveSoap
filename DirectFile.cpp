@@ -3037,6 +3037,7 @@ BOOL File::SetFileLength(LONGLONG NewLength)
 		//&& FlushFileBuffers(m_hFile)
 		)
 	{
+		err.Set(NO_ERROR);
 		SizeLow = ::GetFileSize(m_hFile, & SizeHigh);
 		if (err.Get() == NO_ERROR)
 		{
