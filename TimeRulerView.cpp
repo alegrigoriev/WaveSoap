@@ -4,6 +4,7 @@
 #include "stdafx.h"
 #include "WaveSoapFront.h"
 #include "TimeRulerView.h"
+#include "WaveSoapFrontView.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -78,6 +79,7 @@ void CTimeRulerView::DrawRulerSamples(CDC* pDC)
 	int dist, nTickDist;
 	unsigned nSamples, k;
 	nLength = pDC->GetTextExtent("0,000,000,000", 13).cx;
+
 	nSamples = 1.5 * nLength / GetXScaleDev();
 	// calculate how much samples can be between the numbers
 	if (nSamples > INT_MAX / 10)
@@ -109,9 +111,6 @@ void CTimeRulerView::DrawRulerSamples(CDC* pDC)
 		}
 	}
 
-	int nFirstSample = WindowToWorldX(cr.left);
-	// round it
-	nFirstSample -= nFirstSample % dist;
 	pDC->SetTextAlign(TA_BOTTOM | TA_LEFT);
 	pDC->SetTextColor(0x000000);   // black
 	pDC->SetBkMode(TRANSPARENT);
@@ -128,6 +127,13 @@ void CTimeRulerView::DrawRulerSamples(CDC* pDC)
 	pDC->MoveTo(cr.left, cr.bottom - 6);
 	pDC->LineTo(cr.right, cr.bottom - 6);
 
+	long nFirstSample = WindowToWorldX(cr.left - nLength);
+	if (nFirstSample < 0)
+	{
+		nFirstSample = 0;
+	}
+	// round it
+	nFirstSample -= nFirstSample % dist;
 	for(;; nFirstSample += nTickDist)
 	{
 		if (nFirstSample > pDoc->WaveFileSamples())
@@ -135,10 +141,7 @@ void CTimeRulerView::DrawRulerSamples(CDC* pDC)
 			break;
 		}
 		int x = WorldToWindowX(nFirstSample);
-		if (x < cr.left)
-		{
-			continue;
-		}
+
 		if (x > cr.right)
 		{
 			break;
@@ -193,6 +196,7 @@ void CTimeRulerView::DrawRulerHhMmSs(CDC* pDC)
 	float SampleRate = pDoc->m_WavFile.SampleRate();
 
 	int nLength = pDC->GetTextExtent("00:00:00.0000", 13).cx;
+
 	double DistTime = 1.5 * nLength / GetXScaleDev() / SampleRate;
 	// select distance between ticks
 	double multiplier = 1.;
@@ -281,9 +285,6 @@ void CTimeRulerView::DrawRulerHhMmSs(CDC* pDC)
 
 	DistTime = DistTime * multiplier / divisor;
 
-	double nFirstTime = floor(WindowToWorldX(cr.left) / (SampleRate * DistTime))
-						* DistTime;
-
 	pDC->SetTextAlign(TA_BOTTOM | TA_LEFT);
 	pDC->SetTextColor(0x000000);   // black
 	pDC->SetBkMode(TRANSPARENT);
@@ -303,6 +304,14 @@ void CTimeRulerView::DrawRulerHhMmSs(CDC* pDC)
 	TCHAR TimeSeparator = GetApp()->m_TimeSeparator;
 	TCHAR DecimalPoint = GetApp()->m_DecimalPoint;
 
+	double nFirstTime = floor(WindowToWorldX(cr.left - nLength) / (SampleRate * DistTime))
+						* DistTime;
+
+	if (nFirstTime < 0)
+	{
+		nFirstTime = 0;
+	}
+
 	for(int nTick = 0; ; nTick++)
 	{
 		double time = nFirstTime + DistTime
@@ -315,14 +324,11 @@ void CTimeRulerView::DrawRulerHhMmSs(CDC* pDC)
 		}
 
 		int x = WorldToWindowX(sample);
-		if (x < cr.left)
-		{
-			continue;
-		}
 		if (x > cr.right)
 		{
 			break;
 		}
+
 		pDC->SelectStockObject(BLACK_PEN);
 		pDC->MoveTo(x - 1, cr.bottom - 6);
 
@@ -378,6 +384,7 @@ void CTimeRulerView::DrawRulerSeconds(CDC* pDC)
 	float SampleRate = pDoc->m_WavFile.SampleRate();
 
 	int nLength = pDC->GetTextExtent("00,000.0000", 14).cx;
+
 	double DistTime = 1.5 * nLength / GetXScaleDev() / SampleRate;
 	// select distance between ticks
 	double multiplier = 1.;
@@ -418,9 +425,6 @@ void CTimeRulerView::DrawRulerSeconds(CDC* pDC)
 
 	DistTime = DistTime * multiplier / divisor;
 
-	double nFirstTime = floor(WindowToWorldX(cr.left) / (SampleRate * DistTime))
-						* DistTime;
-
 	pDC->SetTextAlign(TA_BOTTOM | TA_LEFT);
 	pDC->SetTextColor(0x000000);   // black
 	pDC->SetBkMode(TRANSPARENT);
@@ -439,6 +443,14 @@ void CTimeRulerView::DrawRulerSeconds(CDC* pDC)
 
 	TCHAR DecimalPoint = GetApp()->m_DecimalPoint;
 
+	double nFirstTime = floor(WindowToWorldX(cr.left - nLength) / (SampleRate * DistTime))
+						* DistTime;
+
+	if (nFirstTime < 0)
+	{
+		nFirstTime = 0;
+	}
+
 	for(int nTick = 0; ; nTick++)
 	{
 		double time = nFirstTime + DistTime
@@ -452,10 +464,6 @@ void CTimeRulerView::DrawRulerSeconds(CDC* pDC)
 
 		int x = WorldToWindowX(sample);
 
-		if (x < cr.left)
-		{
-			continue;
-		}
 		if (x > cr.right)
 		{
 			break;
@@ -568,11 +576,14 @@ void CTimeRulerView::OnUpdateViewRulerSeconds(CCmdUI* pCmdUI)
 void CTimeRulerView::OnUpdate( CView* pSender, LPARAM lHint, CObject* pHint )
 {
 	CSoundUpdateInfo * pInfo = dynamic_cast<CSoundUpdateInfo *>(pHint);
-	if (NULL == pHint
-		|| (lHint == CWaveSoapFrontDoc::UpdateSoundChanged
-			&& pInfo != NULL && pInfo->Length != -1))
-	{
-		// either unknown notification or length changed
-		Invalidate();
-	}
+	if (CWaveSoapFrontView::WAVE_OFFSET_CHANGED == lHint
+		|| CWaveSoapFrontView::WAVE_SCALE_CHANGED == lHint
+		|| CHANGE_HOR_ORIGIN == lHint)
+		if (NULL == pHint
+			|| (lHint == CWaveSoapFrontDoc::UpdateSoundChanged
+				&& pInfo != NULL && pInfo->Length != -1))
+		{
+			// either unknown notification or length changed
+			Invalidate();
+		}
 }
