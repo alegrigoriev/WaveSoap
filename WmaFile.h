@@ -182,6 +182,30 @@ public:
 	DWORD m_Bitrate;
 };
 
+class FileWriter : public IWMWriterSink
+{
+
+public:
+	FileWriter();
+	virtual HRESULT STDMETHODCALLTYPE OnHeader(
+												/* [in] */ INSSBuffer __RPC_FAR *pHeader);
+
+	virtual HRESULT STDMETHODCALLTYPE IsRealTime(
+												/* [out] */ BOOL __RPC_FAR *pfRealTime);
+
+	virtual HRESULT STDMETHODCALLTYPE AllocateDataUnit(
+														/* [in] */ DWORD cbDataUnit,
+														/* [out] */ INSSBuffer __RPC_FAR *__RPC_FAR *ppDataUnit);
+
+	virtual HRESULT STDMETHODCALLTYPE OnDataUnit(
+												/* [in] */ INSSBuffer __RPC_FAR *pDataUnit);
+
+	virtual HRESULT STDMETHODCALLTYPE OnEndWriting( void);
+
+	CDirectFile m_DstFile;
+	BOOL Open(CDirectFile & File);
+};
+
 class WmaEncoder
 {
 public:

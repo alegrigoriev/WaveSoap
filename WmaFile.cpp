@@ -894,9 +894,9 @@ BOOL WmaEncoder::Init()
 	{
 		return FALSE;
 	}
+	m_pWriter->SetProfile(m_pProfile);
 #if 1
 	DWORD SourceBitrate = 0;
-	m_pWriter->SetProfile(m_pProfile);
 	m_pStreamConfig->GetBitrate( & SourceBitrate);
 	TRACE("Stream Bitrate = %d\n", SourceBitrate);
 
@@ -920,7 +920,7 @@ BOOL WmaEncoder::Init()
 	TRACE("MediaType: wFormatTag=%x, BytesPerSec = %d\n",
 		pwfx->wFormatTag, pwfx->nAvgBytesPerSec);
 
-	hr = m_pStreamConfig->SetBitrate(96024);
+	hr = m_pStreamConfig->SetBitrate(96024*2);
 	hr = pProps -> GetMediaType(pType, & cbType);
 	pwfx = (WAVEFORMATEX *) pType->pbFormat;
 	TRACE("new MediaType: wFormatTag=%x, BytesPerSec = %d\n",
@@ -934,8 +934,6 @@ BOOL WmaEncoder::Init()
 
 	pProps->SetMediaType(pType);
 
-	m_pProfile->SetName(L"New Profile");
-	m_pProfile->SetDescription(L"New Profile");
 	hr = m_pProfile->ReconfigStream(m_pStreamConfig);
 	TRACE("ReconfigBitrate returned %X\n", hr);
 	delete[] pBuf;
@@ -999,7 +997,46 @@ void WmaEncoder::SetGenre(LPCTSTR szGenre)
 								(LPBYTE)Genre, (nChars + 1) * sizeof(TCHAR));
 #endif
 }
-BOOL WmaEncoder::SetBitrate(int Bitrate);
+BOOL WmaEncoder::SetBitrate(int Bitrate)
+{
+
+	IWMMediaProps * pProps = NULL;
+	HRESULT hr = m_pStreamConfig->QueryInterface(IID_IWMMediaProps, (void**) & pProps);
+	if ( ! SUCCEEDED(hr))
+	{
+		return FALSE;
+	}
+
+	DWORD cbType;
+	//   Make the first call to establish the size of buffer needed.
+	pProps -> GetMediaType(NULL, &cbType);
+
+	//   Now create a buffer of the appropriate size
+	BYTE *pBuf = new BYTE[cbType];
+	//   Create an appropriate structure pointer to the buffer.
+	WM_MEDIA_TYPE *pType = (WM_MEDIA_TYPE*) pBuf;
+
+	//   Call the method again to extract the information.
+	hr = pProps -> GetMediaType(pType, & cbType);
+	WAVEFORMATEX * pwfx = (WAVEFORMATEX *) pType->pbFormat;
+
+	TRACE("MediaType: wFormatTag=%x, BytesPerSec = %d\n",
+		pwfx->wFormatTag, pwfx->nAvgBytesPerSec);
+
+	hr = m_pStreamConfig->SetBitrate(Bitrate);
+
+	pwfx->nAvgBytesPerSec = Bitrate / 8;
+
+	pProps->SetMediaType(pType);
+
+	hr = m_pProfile->ReconfigStream(m_pStreamConfig);
+	TRACE("ReconfigBitrate returned %X\n", hr);
+	delete[] pBuf;
+
+	pProps->Release();
+	pProps = NULL;
+	return SUCCEEDED(hr);
+}
 
 BOOL WmaEncoder::Write(void * Buf, size_t size)
 {
@@ -1049,4 +1086,59 @@ BOOL WmaEncoder::Write(void * Buf, size_t size)
 	} while(size != 0);
 
 	return TRUE;
+}
+
+HRESULT STDMETHODCALLTYPE FileWriter::OnHeader(
+												/* [in] */ INSSBuffer __RPC_FAR *pHeader)
+{
+	return OnDataUnit(pHeader);
+}
+
+HRESULT STDMETHODCALLTYPE FileWriter::IsRealTime(
+												/* [out] */ BOOL __RPC_FAR *pfRealTime)
+{
+	if (NULL != pfRealTime)
+	{
+		* pfRealTime = FALSE;
+		return S_OK;
+	}
+	else
+	{
+		return E_POINTER;
+	}
+}
+
+HRESULT STDMETHODCALLTYPE FileWriter::AllocateDataUnit(
+														/* [in] */ DWORD cbDataUnit,
+														/* [out] */ INSSBuffer __RPC_FAR *__RPC_FAR *ppDataUnit)
+{
+}
+
+HRESULT STDMETHODCALLTYPE FileWriter::OnDataUnit(
+												/* [in] */ INSSBuffer __RPC_FAR *pDataUnit)
+{
+	PBYTE pData;
+	DWORD Length;
+	if (NULL == pDataUnit)
+	{
+		return E_POINTER;
+	}
+	pDataUnit->GetBufferAndLength( & pData, & Length);
+	if (NULL == pData)
+	{
+		return E_POINTER;
+	}
+	if (Length == m_DstFile.Write(pData, Length))
+	{
+		return S_OK;
+	}
+	else
+	{
+		return E_FAIL;
+	}
+}
+
+HRESULT STDMETHODCALLTYPE FileWriter::OnEndWriting( void)
+{
+	return S_OK;
 }

@@ -3351,20 +3351,23 @@ void CFileSaveContext::PostRetire(BOOL bChildContext)
 	if (NULL != m_pConvert)
 	{
 		// update data chunk and number of samples
-		MMCKINFO * datack = m_pConvert->m_DstFile.GetDataChunk();
-		if (NULL != datack && datack->ckid != 0)
+		if (m_pConvert->m_DstFile.IsOpen())
 		{
-			datack->dwFlags |= MMIO_DIRTY;
-			datack->cksize = m_pConvert->m_DstCopyPos - datack->dwDataOffset;
-			//MMCKINFO * fact = m_pConvert->m_DstFile.GetFactChunk();
-			m_DstFile.GetFactChunk()->dwFlags |= MMIO_DIRTY;
-			// save number of samples in the main context
-			m_DstFile.m_FactSamples =
-				(m_pConvert->m_SrcCopyPos - m_pConvert->m_SrcStart)
-				/ m_pConvert->m_SrcFile.SampleSize();
+			MMCKINFO * datack = m_pConvert->m_DstFile.GetDataChunk();
+			if (NULL != datack && datack->ckid != 0)
+			{
+				datack->dwFlags |= MMIO_DIRTY;
+				datack->cksize = m_pConvert->m_DstCopyPos - datack->dwDataOffset;
+				//MMCKINFO * fact = m_pConvert->m_DstFile.GetFactChunk();
+				m_DstFile.GetFactChunk()->dwFlags |= MMIO_DIRTY;
+				// save number of samples in the main context
+				m_DstFile.m_FactSamples =
+					(m_pConvert->m_SrcCopyPos - m_pConvert->m_SrcStart)
+					/ m_pConvert->m_SrcFile.SampleSize();
+			}
+			// set length of file (even)
+			m_DstFile.SetFileLength((m_pConvert->m_DstCopyPos + 1) & ~1);
 		}
-		// set length of file (even)
-		m_DstFile.SetFileLength((m_pConvert->m_DstCopyPos + 1) & ~1);
 		// release references
 		m_pConvert->PostRetire(TRUE);
 		m_pConvert = NULL;
@@ -3389,9 +3392,9 @@ void CFileSaveContext::PostRetire(BOOL bChildContext)
 				fmt = IDS_OPEN_SAVED_FILE_COPY_NONDIRECT;
 				dlg.m_bDisableDirect = TRUE;
 			}
-			CString NewName = m_DstFile.GetName();
+
 			dlg.m_Prompt.Format(fmt, LPCTSTR(pDocument->GetTitle()),
-								LPCTSTR(NewName));
+								LPCTSTR(m_NewName));
 			int res = dlg.DoModal();
 			if (IDCANCEL != res)
 			{
@@ -3403,7 +3406,7 @@ void CFileSaveContext::PostRetire(BOOL bChildContext)
 					OpenFlags = OpenDocumentDirectMode;
 				}
 				// file type will be determined there
-				GetApp()->OpenDocumentFile(NewName, OpenFlags);
+				GetApp()->OpenDocumentFile(m_NewName, OpenFlags);
 			}
 		}
 		else
