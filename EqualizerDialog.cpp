@@ -844,7 +844,8 @@ BOOL CEqualizerGraphWnd::OnEraseBkgnd(CDC* pDC)
 	return TRUE;
 }
 
-void CEqualizerGraphWnd::OnNcCalcSize(BOOL bCalcValidRects, NCCALCSIZE_PARAMS * lpncsp)
+void CEqualizerGraphWnd::OnNcCalcSize(BOOL /*bCalcValidRects*/,
+									NCCALCSIZE_PARAMS * lpncsp)
 {
 	int ncHeight = 2 + GetSystemMetrics(SM_CYMENUSIZE);
 	int ncWidth;
@@ -893,7 +894,8 @@ void CEqualizerGraphWnd::OnNcPaint(UINT wParam)
 
 		// Paint into this DC
 		CBrush BkBrush;
-		CWnd * pParentDlg = GetParent();
+
+		//CWnd * pParentDlg = GetParent();
 		BkBrush.Attach(GetSysColorBrush(COLOR_BTNFACE));
 		//BkBrush.Attach((HBRUSH) pParentDlg->SendMessage(WM_CTLCOLORDLG, (WPARAM)(pParentDlg->m_hWnd), LPARAM(wDC.m_hDC)));
 
@@ -1039,7 +1041,7 @@ void CEqualizerGraphWnd::OnSetFocus(CWnd* pOldWnd)
 
 }
 
-BOOL CEqualizerGraphWnd::OnSetCursor(CWnd* pWnd, UINT nHitTest, UINT message)
+BOOL CEqualizerGraphWnd::OnSetCursor(CWnd* /*pWnd*/, UINT nHitTest, UINT /*message*/)
 {
 	POINT p;
 	GetCursorPos( & p);
@@ -1129,7 +1131,7 @@ void CEqualizerDialog::OnButtonSaveAs()
 	m_Profile.ExportSection(_T("Equalizer"), FileName);
 }
 
-void CEqualizerGraphWnd::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
+void CEqualizerGraphWnd::OnKeyDown(UINT nChar, UINT /*nRepCnt*/, UINT /*nFlags*/)
 {
 	if (! m_bGotFocus)
 	{
@@ -1233,6 +1235,8 @@ void CEqualizerGraphWnd::OnTimer(UINT nIDEvent)
 	{
 		DrawDotCaret( ! m_DotCaretIsOn);
 	}
+
+	BaseClass::OnTimer(nIDEvent);
 }
 
 void CEqualizerGraphWnd::DrawDotCaret(bool state)
@@ -1287,7 +1291,7 @@ void CEqualizerDialog::OnOK()
 	BaseClass::OnOK();
 }
 
-void CEqualizerDialog::OnNotifyGraph( NMHDR * pNotifyStruct, LRESULT * result )
+void CEqualizerDialog::OnNotifyGraph( NMHDR * /*pNotifyStruct*/, LRESULT * /*result*/ )
 {
 	m_BandGain.SetData(m_wGraph.GetCurrentBandGainDb());
 }

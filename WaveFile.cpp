@@ -38,7 +38,7 @@ CMmioFile & CMmioFile::operator=(CMmioFile & SourceFile)
 	return *this;
 }
 
-BOOL CMmioFile::Open(LPCTSTR szFileName, UINT nOpenFlags)
+BOOL CMmioFile::Open(LPCTSTR szFileName, long nOpenFlags)
 {
 	Close();
 	DWORD DirectFileOpenFlags = 0;
@@ -434,7 +434,7 @@ CWaveFile::~CWaveFile()
 {
 }
 
-BOOL CWaveFile::Open( LPCTSTR lpszFileName, UINT nOpenFlags)
+BOOL CWaveFile::Open( LPCTSTR lpszFileName, long nOpenFlags)
 {
 	if ( ! CMmioFile::Open(lpszFileName, nOpenFlags))
 	{
@@ -857,7 +857,8 @@ BOOL CWaveFile::LoadListMetadata(MMCKINFO & chunk)
 }
 // creates a file based on template format from pTemplateFile
 BOOL CWaveFile::CreateWaveFile(CWaveFile * pTemplateFile, WAVEFORMATEX * pTemplateFormat,
-								CHANNEL_MASK Channels, WAV_FILE_SIZE SizeOrSamples, DWORD flags, LPCTSTR FileName)
+								CHANNEL_MASK Channels, WAV_FILE_SIZE SizeOrSamples,
+								long flags, LPCTSTR FileName)
 {
 	CString name;
 	TCHAR NameBuf[512];
@@ -882,7 +883,7 @@ BOOL CWaveFile::CreateWaveFile(CWaveFile * pTemplateFile, WAVEFORMATEX * pTempla
 		wf.InitCdAudioFormat();
 	}
 
-	int nNumChannels = wf.NumChannelsFromMask(Channels);
+	NUMBER_OF_CHANNELS nNumChannels = wf.NumChannelsFromMask(Channels);
 
 	if (flags & CreateWaveFileAllowMemoryFile)
 	{
@@ -2103,7 +2104,8 @@ long CWaveFile::WriteSamples(CHANNEL_MASK DstChannels,
 	ASSERT(NumSrcChannels <= 2);
 
 	int const DstSampleSize = SampleSize();
-	int const NumFileChannels = Channels();
+	NUMBER_OF_CHANNELS const NumFileChannels = Channels();
+
 	ASSERT(NumFileChannels <= 2);
 
 	if (FileChannelsMask == DstChannels

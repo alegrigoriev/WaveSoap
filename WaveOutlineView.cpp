@@ -483,14 +483,13 @@ int CWaveOutlineView::OnMouseActivate(CWnd* pDesktopWnd, UINT nHitTest, UINT mes
 	return CWnd::OnMouseActivate(pDesktopWnd, nHitTest, message);
 }
 
-BOOL CWaveOutlineView::OnEraseBkgnd(CDC* pDC)
+BOOL CWaveOutlineView::OnEraseBkgnd(CDC* /*pDC*/)
 {
 	return FALSE;
 }
 
 BOOL CWaveOutlineView::EraseBkgnd(CDC* pDC)
 {
-	CThisApp * pApp = GetApp();
 	CWaveSoapFrontDoc * pDoc = GetDocument();
 	CBrush backBrush(GetSysColor(COLOR_MENU));
 	CRect r;
@@ -672,7 +671,7 @@ void CWaveOutlineView::OnLButtonDown(UINT nFlags, CPoint point)
 
 }
 
-void CWaveOutlineView::OnLButtonUp(UINT nFlags, CPoint point)
+void CWaveOutlineView::OnLButtonUp(UINT /*nFlags*/, CPoint point)
 {
 	CWaveSoapFrontDoc * pDoc = GetDocument();
 	NUMBER_OF_SAMPLES nSamples = pDoc->WaveFileSamples();
@@ -815,7 +814,8 @@ void CWaveOutlineView::OnCaptureChanged(CWnd *pWnd)
 	CView::OnCaptureChanged(pWnd);
 }
 
-BOOL CWaveOutlineView::OnSetCursor(CWnd* pWnd, UINT nHitTest, UINT message)
+BOOL CWaveOutlineView::OnSetCursor(CWnd* /*pWnd*/,
+									UINT /*nHitTest*/, UINT /*message*/)
 {
 	// TODO: set different cursor, depending on hit test
 	SetCursor(AfxGetApp()->LoadStandardCursor(IDC_ARROW));

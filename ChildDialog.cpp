@@ -263,9 +263,10 @@ void CInsertExpressionDialog::OnButtonInsertExpression()
 void CInsertExpressionDialog::OnButtonDeleteExpression()
 {
 	CString s;
-	CThisApp * pApp = GetApp();
+
 	unsigned ExprSel = m_SavedExpressionCombo.GetCurSel();
 	unsigned nGroup = m_ExpressionGroupSelected;
+
 	if (nGroup >= m_Expressions.size()
 		|| ExprSel >= m_Expressions[nGroup].exprs.size())
 	{

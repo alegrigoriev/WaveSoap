@@ -169,15 +169,8 @@ protected:
 
 	virtual void CancelSelection();
 	virtual void AdjustNewScale(double OldScaleX, double OldScaleY,
-								double & NewScaleX, double & NewScaleY)
-	{
-		// change nothing
-		// the derived class function can change the new scale
-	}
-	virtual void AdjustNewOrigin(double & NewOrgX, double & NewOrgY)
-	{
-		// change nothing
-	}
+								double & NewScaleX, double & NewScaleY);
+	virtual void AdjustNewOrigin(double & NewOrgX, double & NewOrgY);
 
 	void UpdateScrollbars(BOOL bRedraw = TRUE);
 	virtual void UpdateCaretPosition() {}

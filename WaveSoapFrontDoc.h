@@ -50,6 +50,7 @@ public:
 		, m_Begin(Begin)
 		, m_End(End)
 		, m_NewLength(NewLength)
+		, m_FileID(FileID)
 	{
 	}
 	ULONG_PTR m_FileID;
@@ -109,7 +110,7 @@ public:
 	LPWAVEFORMATEX WaveFormat() const;
 	NUMBER_OF_CHANNELS WaveChannels() const;
 
-	int WaveSampleRate() const;
+	unsigned int WaveSampleRate() const;
 	int WaveSampleSize() const;
 	ULONG_PTR WaveFileID() const;
 
@@ -299,7 +300,7 @@ protected:
 		CWaveSoapFrontDoc * pDoc = DYNAMIC_DOWNCAST(CWaveSoapFrontDoc, (CObject *)arg);
 		if (NULL == pDoc)
 		{
-			return -1;
+			return ~0U;
 		}
 		return pDoc->_ThreadProc();
 	}

@@ -40,6 +40,7 @@ public:
 
 class CEqualizerGraphWnd : public CWnd, public Equalizer
 {
+	typedef CWnd BaseClass;
 	// Construction
 public:
 	CEqualizerGraphWnd();

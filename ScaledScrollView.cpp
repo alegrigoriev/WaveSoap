@@ -467,12 +467,13 @@ void CScaledScrollView::OnChangeOrgExt(double left, double width,
 void CScaledScrollView::OnMasterChangeOrgExt(double left, double width,
 											double top, double height, DWORD flag)
 {
-	double dNewOrgX;
-	double dNewOrgY;
-	double dNewScaleX;
-	double dNewScaleY;
-	double dNewExtX;
-	double dNewExtY;
+	double dNewOrgX = 0.;
+	double dNewOrgY = 0.;
+	double dNewScaleX = 1.;
+	double dNewScaleY = 1.;
+	double dNewExtX = 100.;
+	double dNewExtY = 100.;
+
 	RECT r;
 	ASSERT(m_hWnd);
 	GetClientRect( & r);
@@ -1334,7 +1335,7 @@ UINT CScaledScrollView::GetPopupMenuID(CPoint)
 	return IDR_POPUP_SCALED_SCROLL_VIEW;
 }
 
-void CScaledScrollView::OnContextMenu(CWnd* pWnd, CPoint point)
+void CScaledScrollView::OnContextMenu(CWnd* /*pWnd*/, CPoint point)
 {
 	// make sure window is active
 	GetParentFrame()->ActivateFrame();
@@ -1720,7 +1721,7 @@ void CScaledScrollView::CancelSelection()
 	bHasSelection = FALSE;
 }
 
-BOOL CScaledScrollView::OnNeedText( UINT id, NMHDR * pNotifyStruct, LRESULT * result )
+BOOL CScaledScrollView::OnNeedText( UINT /*id*/, NMHDR * pNotifyStruct, LRESULT * result )
 {
 	LPTOOLTIPTEXT lpttt = (LPTOOLTIPTEXT) pNotifyStruct;
 	if (lpttt != NULL)
@@ -1774,4 +1775,15 @@ int CScaledScrollView::OnToolHitTest( CPoint point, TOOLINFO* pTI ) const
 	return -1;
 }
 
+void CScaledScrollView::AdjustNewScale(double /*OldScaleX*/, double /*OldScaleY*/,
+										double & /*NewScaleX*/, double & /*NewScaleY*/)
+{
+	// change nothing
+	// the derived class function can change the new scale
+}
+
+void CScaledScrollView::AdjustNewOrigin(double & /*NewOrgX*/, double & /*NewOrgY*/)
+{
+	// change nothing
+}
 

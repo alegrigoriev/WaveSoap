@@ -1412,7 +1412,7 @@ BOOL CGotoDialog::OnInitDialog()
 
 
 CResampleDialog::CResampleDialog(BOOL bUndoEnabled,
-								long OldSampleRate,
+								unsigned long OldSampleRate,
 								bool CanOnlyChangeSampleRate,
 								CWnd* pParent /*=NULL*/)
 	: BaseClass(CResampleDialog::IDD, pParent)
@@ -1522,7 +1522,8 @@ void CResampleDialog::OnKillfocusEditRate()
 	if (! s.IsEmpty())
 	{
 		BOOL NoErr;
-		int val = GetDlgItemInt(IDC_EDIT_RATE, & NoErr, FALSE);
+		UINT val = GetDlgItemInt(IDC_EDIT_RATE, & NoErr, FALSE);
+
 		if ( ! NoErr || val < m_OldSampleRate / 4 || val > m_OldSampleRate * 4)
 		{
 			return;
@@ -2297,7 +2298,7 @@ void CNoiseReductionDialog::OnButtonSetThreshold()
 	EndDialog(IDC_BUTTON_SET_THRESHOLD);
 }
 
-void CExpressionEvaluationDialog::OnSelchangeTabTokens(NMHDR* pNMHDR, LRESULT* pResult)
+void CExpressionEvaluationDialog::OnSelchangeTabTokens(NMHDR* /*pNMHDR*/, LRESULT* pResult)
 {
 	ShowHideTabDialogs();
 

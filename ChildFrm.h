@@ -80,7 +80,8 @@ public:
 		bool bDeleteBitmap;
 	};
 	std::vector<Button> m_Buttons;
-	int GetHitCode(POINT point) const;
+	UINT GetHitCode(POINT point) const;
+
 	void GetItemRect(UINT nID, RECT & rect) const;
 	void HiliteButton(UINT nID, bool Hilite);
 	void EnableButton(unsigned Index, BOOL bEnable);

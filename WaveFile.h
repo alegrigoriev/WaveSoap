@@ -98,7 +98,7 @@ class CMmioFile : public CDirectFile
 public:
 	// construction
 	CMmioFile();
-	virtual BOOL Open(LPCTSTR lpszFileName, UINT nOpenFlags);
+	virtual BOOL Open(LPCTSTR lpszFileName, long nOpenFlags);
 	virtual void Close();
 	CMmioFile & operator =(CMmioFile &);
 
@@ -415,9 +415,10 @@ public:
 	~CWaveFile();
 
 	BOOL CreateWaveFile(CWaveFile * pTemplateFile, WAVEFORMATEX * pTemplateFormat,
-						CHANNEL_MASK Channels, WAV_FILE_SIZE SizeOrSamples, DWORD flags, LPCTSTR FileName);
+						CHANNEL_MASK Channels, WAV_FILE_SIZE SizeOrSamples,
+						long flags, LPCTSTR FileName);
 
-	virtual BOOL Open(LPCTSTR lpszFileName, UINT nOpenFlags);
+	virtual BOOL Open(LPCTSTR lpszFileName, long nOpenFlags);
 	virtual void Close();
 
 	WaveSampleType GetSampleType() const
@@ -477,7 +478,7 @@ public:
 		MMCKINFO factck;
 		CWaveFormat wf;
 		CWavePeaks m_PeakData;
-		// TODO: use Unicode?
+
 		CString Author;         // WM/Author
 		CString DisplayTitle;   // WM/Title
 		CString Album;          // WM/AlbumTitle

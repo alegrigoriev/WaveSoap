@@ -174,7 +174,7 @@ SAMPLE_INDEX CWaveFftView::FftColumnToDisplaySample(long Column)
 void CWaveFftView::FillLogPalette(LOGPALETTE * pal, int nEntries)
 {
 	pal->palVersion = 0x300;
-	for (int i = 0; i < 10; i++)
+	for (BYTE i = 0; i < 10; i++)
 	{
 		pal->palPalEntry[i].peFlags = PC_EXPLICIT;
 		pal->palPalEntry[i].peRed = i;
@@ -308,13 +308,14 @@ void CWaveFftView::OnDraw(CDC* pDC)
 	{
 		r.right = FileEnd;
 	}
-	int iClientWidth = r.right - r.left;
+
+	//int iClientWidth = r.right - r.left;
 	PointToDoubleDev(CPoint(r.left, cr.top), left, top);
 	PointToDoubleDev(CPoint(r.right, cr.bottom), right, bottom);
 
 	if (left < 0) left = 0;
 	// create an array of points
-	int nNumberOfPoints = r.right - r.left;
+	//int nNumberOfPoints = r.right - r.left;
 
 	if (r.left < r.right)
 	{
@@ -961,7 +962,7 @@ void CWaveFftView::CalculateFftRange(SAMPLE_INDEX left, SAMPLE_INDEX right)
 						}
 						else
 						{
-							pRes[0] = res;
+							pRes[0] = unsigned char(res);
 						}
 					}
 					else
@@ -1265,7 +1266,7 @@ void CWaveFftView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
 		CSoundUpdateInfo * pInfo = static_cast<CSoundUpdateInfo *>(pHint);
 
 		// calculate update boundaries
-		NUMBER_OF_CHANNELS nChannels = pDoc->WaveChannels();
+		//NUMBER_OF_CHANNELS nChannels = pDoc->WaveChannels();
 		SAMPLE_INDEX left = pInfo->m_Begin;
 		SAMPLE_INDEX right = pInfo->m_End;
 

@@ -30,6 +30,27 @@ void __cdecl DoFFT(const float * src, float * dst, int count)
 	delete[] tmp;
 }
 #endif
+
+CWaveProc::CWaveProc()
+	: m_TmpInBufPut(0),
+	m_TmpInBufGet(0),
+	m_TmpOutBufPut(0),
+	m_TmpOutBufGet(0),
+	m_InputChannels(1),
+	m_OutputChannels(1),
+	m_bClipped(FALSE),
+	m_MaxClipped(0),
+	m_ChannelsToProcess(-1)
+{}
+
+size_t CWaveProc::ProcessSoundBuffer(char const * /*pInBuf*/, char * /*pOutBuf*/,
+									size_t nInBytes, size_t nOutBytes, size_t * pUsedBytes)
+{
+	* pUsedBytes = nInBytes;
+	return nOutBytes;
+}
+
+////////////////// CHumRemoval
 CHumRemoval::CHumRemoval()
 {
 	m_ApplyHighpassFilter = FALSE;
@@ -134,8 +155,8 @@ BOOL CClickRemoval::SetClickSourceFile(LPCTSTR szFilename)
 			continue;
 		}
 		data.Position = pos;
-		data.Length[0] = length_l;
-		data.Length[1] = length_r;
+		data.Length[0] = short(length_l);
+		data.Length[1] = short(length_r);
 		// find position to add the data
 		int i;
 		for (i = PredefinedClicks.GetUpperBound() ; i >= 0; i--)
@@ -785,7 +806,7 @@ size_t CClickRemoval::ProcessSoundBuffer(char const * pIn, char * pOut,
 		{
 			for (int ch = 0; ch < m_InputChannels; ch++)
 			{
-				*pOutBuf = m_prev[ch][i-1];
+				*pOutBuf = WAVE_SAMPLE(m_prev[ch][i-1]);
 				pOutBuf++;
 			}
 		}
@@ -795,10 +816,11 @@ size_t CClickRemoval::ProcessSoundBuffer(char const * pIn, char * pOut,
 		return nSavedBytes + nBackSamples * m_InputChannels * sizeof (WAVE_SAMPLE);
 	}
 
-	int nClickIndex;
+	int nClickIndex = 0;
 	int nStoreIndex = 0;
 	int PrevIndex = m_PrevIndex;
-	int nSamples = __min(nInSamples, nOutSamples);
+	int nSamples = min(nInSamples, nOutSamples);
+
 	for (int ch = 0; ch < m_InputChannels; ch++)
 	{
 		int FftIn[CLICK_LENGTH];   // additional space for click length search
@@ -1128,7 +1150,7 @@ void CNoiseReduction::SIGNAL_PARAMS::AnalyzeFftSample(complex<DATA> smp, CNoiseR
 		sp_AvgFreq +=
 			pNr->m_AvgFreqDecayRate * (dFreq - sp_AvgFreq);
 		sp_AvgPhase += sp_AvgFreq;
-		double PhaseError = dPhase - sp_AvgPhase;
+//        double PhaseError = dPhase - sp_AvgPhase;
 		double FreqError = dFreq - sp_AvgFreq;
 #if 0
 		sp_FilteredFreqError += float(
@@ -1787,7 +1809,8 @@ CResampleFilter::~CResampleFilter()
 {
 }
 
-BOOL CResampleFilter::InitResample(double ResampleRatio, double FilterLength, int nChannels)
+BOOL CResampleFilter::InitResample(double ResampleRatio,
+									double FilterLength, NUMBER_OF_CHANNELS nChannels)
 {
 	// FrequencyRatio is out freq/ input freq. If >1, it is upsampling,
 	// if < 1 it is downsampling
@@ -2221,7 +2244,7 @@ size_t CChannelConvertor::ProcessSoundBuffer(char const * pIn, char * pOut,
 	}
 	else
 	{
-		return -1;
+		return size_t(-1);
 	}
 	return nSavedBytes;
 }

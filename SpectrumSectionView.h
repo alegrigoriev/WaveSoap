@@ -21,7 +21,8 @@ protected:
 // Attributes
 public:
 	CWaveSoapFrontDoc* GetDocument();
-	virtual UINT GetPopupMenuID(CPoint point) { return IDR_MENU_SPECTRUMSECTION_VIEW;}
+	virtual UINT GetPopupMenuID(CPoint point);
+
 	BOOL m_bShowNoiseThreshold;
 
 	double m_dNoiseThresholdLow;

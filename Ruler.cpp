@@ -45,7 +45,7 @@ END_MESSAGE_MAP()
 /////////////////////////////////////////////////////////////////////////////
 // CHorizontalRuler drawing
 
-void CHorizontalRuler::OnDraw(CDC* pDC)
+void CHorizontalRuler::OnDraw(CDC* /*pDC*/)
 {
 }
 
@@ -139,7 +139,7 @@ int CHorizontalRuler::OnMouseActivate(CWnd* pDesktopWnd, UINT nHitTest, UINT mes
 	return CWnd::OnMouseActivate(pDesktopWnd, nHitTest, message);
 }
 
-BOOL CHorizontalRuler::OnScrollBy(CSize sizeScroll, BOOL bDoScroll)
+BOOL CHorizontalRuler::OnScrollBy(CSize sizeScroll, BOOL /*bDoScroll*/)
 {
 
 // the function scrolls the real image, and modifies dOrgX, dOrgY.
@@ -192,7 +192,7 @@ END_MESSAGE_MAP()
 /////////////////////////////////////////////////////////////////////////////
 // CVerticalRuler drawing
 
-void CVerticalRuler::OnDraw(CDC* pDC)
+void CVerticalRuler::OnDraw(CDC* /*pDC*/)
 {
 }
 
@@ -286,7 +286,7 @@ int CVerticalRuler::OnMouseActivate(CWnd* pDesktopWnd, UINT nHitTest, UINT messa
 	return CWnd::OnMouseActivate(pDesktopWnd, nHitTest, message);
 }
 
-BOOL CVerticalRuler::OnScrollBy(CSize sizeScroll, BOOL bDoScroll)
+BOOL CVerticalRuler::OnScrollBy(CSize sizeScroll, BOOL /*bDoScroll*/)
 {
 
 // the function scrolls the real image, and modifies dOrgX, dOrgY.

@@ -40,7 +40,7 @@ public:
 	CString WaveFormat;
 	unsigned m_MinWmaFilter;
 	unsigned m_MaxWmaFilter;
-	int m_PrevFilter;
+	unsigned m_PrevFilter;
 
 	virtual BOOL OnFileNameOK();
 

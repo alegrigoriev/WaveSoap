@@ -57,12 +57,10 @@ BOOL CExpressionEvaluationContext::Init()
 }
 
 BOOL CExpressionEvaluationContext::ProcessBuffer(void * buf,
-												size_t BufferLength, SAMPLE_POSITION offset, BOOL bBackward)
+												size_t BufferLength, SAMPLE_POSITION /*offset*/, BOOL /*bBackward*/)
 {
 	// calculate number of sample, and time
-	int nSampleSize = m_DstFile.SampleSize();
 	int nChannels = m_DstFile.Channels();
-	int nSample = (offset - m_DstStart) / nSampleSize;
 
 	WAVE_SAMPLE * pDst = (WAVE_SAMPLE *) buf;
 	NUMBER_OF_SAMPLES NumSamples = BufferLength / sizeof pDst[0];
@@ -184,7 +182,7 @@ CExpressionEvaluationContext::TokenType
 CExpressionEvaluationContext::CompileParenthesedExpression(LPCTSTR * ppStr)
 {
 	TokenType type;
-	LPCTSTR prevStr = *ppStr;
+	//LPCTSTR prevStr = *ppStr;
 	CString token = GetToken( ppStr, & type);
 	if (type != eLeftParenthesis
 		|| eRightParenthesis != CompileExpression(ppStr))
@@ -1447,7 +1445,9 @@ BOOL CEqualizerContext::ProcessBuffer(void * buf, size_t BufferLength, SAMPLE_PO
 	return TRUE;
 }
 
-BOOL CSwapChannelsContext::ProcessBuffer(void * buf, size_t BufferLength, SAMPLE_POSITION offset, BOOL bBackward)
+BOOL CSwapChannelsContext::ProcessBuffer(void * buf, size_t BufferLength,
+										SAMPLE_POSITION /*offset*/,
+										BOOL /*bBackward*/)
 {
 	WAVE_SAMPLE * pDst = (WAVE_SAMPLE *) buf;
 	NUMBER_OF_SAMPLES nSamples = BufferLength / sizeof pDst[0];
@@ -1584,7 +1584,8 @@ double CFilterContext::CalculateResult(int ch, int Input)
 	return in;
 }
 
-BOOL CFilterContext::ProcessBuffer(void * buf, size_t BufferLength, SAMPLE_POSITION offset, BOOL bBackward)
+BOOL CFilterContext::ProcessBuffer(void * buf, size_t BufferLength,
+									SAMPLE_POSITION /*offset*/, BOOL bBackward)
 {
 	// calculate number of sample, and time
 	int nChannels = m_DstFile.Channels();
@@ -1677,7 +1678,9 @@ BOOL CCdReadingContext::InitTrackInformation(CCdDrive const & Drive,
 	return TRUE;
 }
 
-BOOL CCdReadingContext::ProcessBuffer(void * buf, size_t len, SAMPLE_POSITION offset, BOOL bBackward)
+BOOL CCdReadingContext::ProcessBuffer(void * buf, size_t len,
+									SAMPLE_POSITION /*offset*/,
+									BOOL /*bBackward*/)
 {
 	char * pBuf = (char*) buf;
 	while (len != 0)
@@ -1700,6 +1703,7 @@ BOOL CCdReadingContext::ProcessBuffer(void * buf, size_t len, SAMPLE_POSITION of
 			{
 				return FALSE;
 			}
+
 			DWORD ElapsedReadTime = timeGetTime() - ReadBeginTime;
 			// pace the reading process
 			DWORD delay;
@@ -1865,7 +1869,7 @@ CReplaceFileContext::CReplaceFileContext(CWaveSoapFrontDoc * pDoc, LPCTSTR Opera
 {
 }
 
-BOOL CReplaceFileContext::CreateUndo(BOOL IsRedo)
+BOOL CReplaceFileContext::CreateUndo(BOOL /*IsRedo*/)
 {
 	CReplaceFileContext * pUndo =
 		new CReplaceFileContext(pDocument, m_OperationName, pDocument->m_WavFile,
@@ -1903,7 +1907,7 @@ CReplaceFormatContext::CReplaceFormatContext(CWaveSoapFrontDoc * pDoc, LPCTSTR O
 {
 }
 
-BOOL CReplaceFormatContext::CreateUndo(BOOL IsRedo)
+BOOL CReplaceFormatContext::CreateUndo(BOOL /*IsRedo*/)
 {
 	CReplaceFormatContext * pUndo =
 		new CReplaceFormatContext(pDocument, m_OperationName, pDocument->WaveFormat());
@@ -1931,7 +1935,7 @@ CLengthChangeOperation::CLengthChangeOperation(CWaveSoapFrontDoc * pDoc,
 {
 }
 
-BOOL CLengthChangeOperation::CreateUndo(BOOL IsRedo)
+BOOL CLengthChangeOperation::CreateUndo(BOOL /*IsRedo*/)
 {
 	CLengthChangeOperation * pUndo = new CLengthChangeOperation(pDocument,
 																m_File, m_File.GetLength());
@@ -1960,7 +1964,7 @@ CWaveSamplesChangeOperation::CWaveSamplesChangeOperation(CWaveSoapFrontDoc * pDo
 {
 }
 
-BOOL CWaveSamplesChangeOperation::CreateUndo(BOOL IsRedo)
+BOOL CWaveSamplesChangeOperation::CreateUndo(BOOL /*IsRedo*/)
 {
 	CWaveSamplesChangeOperation * pUndo = new CWaveSamplesChangeOperation(pDocument,
 											m_File, m_File.NumberOfSamples());
@@ -2011,7 +2015,7 @@ BOOL CMoveOperation::InitMove(CWaveFile & File,
 	return TRUE;
 }
 
-BOOL CMoveOperation::CreateUndo(BOOL IsRedo)
+BOOL CMoveOperation::CreateUndo(BOOL /*IsRedo*/)
 {
 	if ( ! m_DstFile.IsOpen()
 		|| m_DstFile.GetFileID() != pDocument->WaveFileID())
@@ -2105,10 +2109,10 @@ BOOL CMoveOperation::OperationProc()
 	long LeftToWrite = 0;
 	long WasRead = 0;
 	long WasLockedToWrite = 0;
-	void * pOriginalSrcBuf;
-	char * pSrcBuf;
-	void * pOriginalDstBuf;
-	char * pDstBuf;
+	void * pOriginalSrcBuf = NULL;
+	char * pSrcBuf = NULL;
+	void * pOriginalDstBuf = NULL;
+	char * pDstBuf = NULL;
 
 	DWORD DstFileFlags = CDirectFile::GetBufferAndPrefetchNext;
 	WAVE_SAMPLE tmp[MAX_NUMBER_OF_CHANNELS];
@@ -2337,7 +2341,7 @@ void CInitChannels::UnprepareUndo()
 	m_DstPos = m_DstEnd;    //??
 }
 
-BOOL CInitChannels::CreateUndo(BOOL IsRedo)
+BOOL CInitChannels::CreateUndo(BOOL /*IsRedo*/)
 {
 	if ( ! m_DstFile.IsOpen()
 		|| m_DstFile.GetFileID() != pDocument->WaveFileID())
@@ -2350,13 +2354,15 @@ BOOL CInitChannels::CreateUndo(BOOL IsRedo)
 	return TRUE;
 }
 
-BOOL CInitChannels::ProcessBuffer(void * buf, size_t BufferLength, SAMPLE_POSITION offset, BOOL bBackward)
+BOOL CInitChannels::ProcessBuffer(void * buf, size_t BufferLength,
+								SAMPLE_POSITION offset,
+								BOOL /*bBackward*/)
 {
 	ASSERT(m_DstFile.GetSampleType() == SampleType16bit);
 	WAVE_SAMPLE * pDst = (WAVE_SAMPLE *) buf;
 
 	int nChannels = m_DstFile.Channels();
-	CHANNEL_MASK FileChannels = m_DstFile.ChannelsMask();
+	//CHANNEL_MASK FileChannels = m_DstFile.ChannelsMask();
 
 	NUMBER_OF_SAMPLES nSamples = BufferLength / sizeof pDst[0];
 
@@ -2398,7 +2404,7 @@ CInitChannelsUndo::CInitChannelsUndo(CWaveSoapFrontDoc * pDoc,
 	m_SrcChan = Channels;
 }
 
-BOOL CInitChannelsUndo::CreateUndo(BOOL IsRedo)
+BOOL CInitChannelsUndo::CreateUndo(BOOL /*IsRedo*/)
 {
 	m_UndoChain.InsertTail(new CInitChannels(pDocument,
 											pDocument->m_WavFile,

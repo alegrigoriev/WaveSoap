@@ -370,7 +370,7 @@ int CAmplitudeRuler::CalculateWidth()
 	return Width;
 }
 
-void CAmplitudeRuler::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
+void CAmplitudeRuler::OnUpdate(CView* /*pSender*/, LPARAM lHint, CObject* pHint)
 {
 	if (lHint == CWaveSoapFrontDoc::UpdateWholeFileChanged)
 	{
@@ -645,7 +645,8 @@ void CSpectrumSectionRuler::OnDraw(CDC* pDC)
 }
 
 
-void CSpectrumSectionRuler::OnUpdate( CView* pSender, LPARAM lHint, CObject* pHint )
+void CSpectrumSectionRuler::OnUpdate( CView* /*pSender*/,
+									LPARAM /*lHint*/, CObject* /*pHint*/ )
 {
 }
 

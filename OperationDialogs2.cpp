@@ -233,6 +233,9 @@ CCdGrabbingDialog::CCdGrabbingDialog(CWnd* pParent /*=NULL*/)
 	, m_FolderHistory( & m_Profile, _T("CdRead"), _T("SaveFolder%d"), 10)
 	, m_Acm( & CWaveFormat::CdAudioFormat)
 	, m_Wf( & CWaveFormat::CdAudioFormat)
+	, m_PreviousDriveLetter('Z')
+	, m_CDDriveSelected(0)
+	, m_TimerId(~0UL)
 {
 	//{{AFX_DATA_INIT(CCdGrabbingDialog)
 	m_RadioAssignAttributes = -1;
@@ -244,7 +247,7 @@ CCdGrabbingDialog::CCdGrabbingDialog(CWnd* pParent /*=NULL*/)
 	//}}AFX_DATA_INIT
 	m_RadioAssignAttributes = 0;
 	m_RadioOpenInEditor = 0;
-	m_DiskID = -1;
+	m_DiskID = ~0UL;
 	m_bNeedUpdateControls = TRUE;
 	m_MaxReadSpeed = 0;
 	m_CurrentReadSpeed = 0;
@@ -277,6 +280,7 @@ CCdGrabbingDialog::CCdGrabbingDialog(CWnd* pParent /*=NULL*/)
 					176400, 0x10000000);
 	m_Profile.AddItem(_T("CdRead"), _T("DriveLetter"),
 					m_PreviousDriveLetter, 'Z', 'A', 'Z');
+
 	m_Profile.AddItem(_T("CdRead"), _T("DataRate"), m_EncodedDataRate, 0);
 	m_Profile.AddItem(_T("CdRead"), _T("FormatIndex"), m_FormatIndex, 0, 0, 2);
 
@@ -714,7 +718,8 @@ void CCdGrabbingDialog::ReloadTrackList(CdMediaChangeState NewMediaState)
 	m_sArtist = CdPlayerIni.GetProfileString(SectionName, _T("artist"), _T(""));
 	m_eArtist.SetWindowText(m_sArtist);
 
-	int NumTracks = CdPlayerIni.GetProfileInt(SectionName, _T("numtracks"), 0);
+	//int NumTracks = CdPlayerIni.GetProfileInt(SectionName, _T("numtracks"), 0);
+	// TODO: verify that is's indeed the disk
 
 	m_Tracks.resize(m_toc.LastTrack - m_toc.FirstTrack + 1);
 
@@ -898,7 +903,7 @@ BOOL CCdGrabbingDialog::OnInitDialog()
 	m_ArtistHistory.LoadCombo( & m_eArtist);
 
 	FillFormatCombo();
-	SetTimer(1, 200, NULL);
+	m_TimerId = SetTimer(1, 200, NULL);
 
 	return TRUE;  // return TRUE unless you set the focus to a control
 	// EXCEPTION: OCX Property Pages should return FALSE
@@ -963,12 +968,17 @@ void CReopenDialog::OnNo()
 
 void CCdGrabbingDialog::OnTimer(UINT nIDEvent)
 {
-	// check CD status
-	CheckForDiskChanged();
-	if (m_bPlayingAudio)
+	if (nIDEvent == m_TimerId)
 	{
-		FillPlaybackBuffers();
+		// check CD status
+		CheckForDiskChanged();
+		if (m_bPlayingAudio)
+		{
+			FillPlaybackBuffers();
+		}
 	}
+
+	BaseClass::OnTimer(nIDEvent);
 }
 
 void CCdGrabbingDialog::CheckForDiskChanged()
@@ -1035,10 +1045,9 @@ BOOL CCdGrabbingDialog::OnDeviceChange(UINT event, DWORD data)
 
 void CCdGrabbingDialog::OnDestroy()
 {
-	KillTimer(1);
+	KillTimer(m_TimerId);
 	StopCdPlayback();
 	BaseClass::OnDestroy();
-
 }
 
 void CCdGrabbingDialog::CheckForDrivesChanged()
@@ -1263,15 +1272,16 @@ BOOL CCdGrabbingDialog::PreTranslateMessage(MSG* pMsg)
 		if (pMsg->wParam == VK_F2)
 		{
 			// find a selected item
-			unsigned nSelItem = -1;
-			while (-1 != (nSelItem = m_lbTracks.GetNextItem(nSelItem, LVNI_SELECTED)))
+			unsigned nSelItem = unsigned(-1);
+
+			while (unsigned(-1) != (nSelItem = m_lbTracks.GetNextItem(nSelItem, LVNI_SELECTED)))
 			{
 				if (nSelItem < m_Tracks.size()
 					&& m_Tracks[nSelItem].IsAudio)
 				{
 					// unselect all items
-					unsigned nItem = -1;
-					while (-1 != (nItem = m_lbTracks.GetNextItem(nItem, LVNI_SELECTED)))
+					unsigned nItem = unsigned(-1);
+					while (unsigned(-1) != (nItem = m_lbTracks.GetNextItem(nItem, LVNI_SELECTED)))
 					{
 						if (nItem != nSelItem)
 						{
@@ -1355,7 +1365,7 @@ void CCdGrabbingDialog::OnEndlabeleditListTracks(NMHDR* pNMHDR, LRESULT* pResult
 		}
 		for (unsigned t = 0; t < m_Tracks.size(); t++)
 		{
-			if (t != pDispInfo->item.iItem
+			if (t != unsigned(pDispInfo->item.iItem)
 				&& m_Tracks[t].IsAudio
 				&& 0 == s.CompareNoCase(m_Tracks[t].Track))
 			{
@@ -1624,7 +1634,7 @@ void CCdGrabbingDialog::OnUpdateComboBitrate(CCmdUI* pCmdUI)
 
 void CCdGrabbingDialog::OnUpdateEject(CCmdUI* pCmdUI)
 {
-	BOOL Enable;
+	BOOL Enable = TRUE;
 	// the button enabled:
 	// always for tray-loadable drives
 	// if a disk is loaded to slot-load drive
@@ -1665,6 +1675,8 @@ void CCdGrabbingDialog::OnUpdateEject(CCmdUI* pCmdUI)
 			}
 		}
 	}
+
+	pCmdUI->Enable(Enable);
 }
 
 

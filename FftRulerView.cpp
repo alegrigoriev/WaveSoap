@@ -98,8 +98,9 @@ void CFftRulerView::OnDraw(CDC* pDC)
 		LastFftSample -= FirstFftSample;
 		FirstFftSample = 0;
 	}
-	int FirstRowInView = FirstFftSample * TotalRows / pMasterView->m_FftOrder;
-	int FftSamplesInView = LastFftSample - FirstFftSample + 1;
+
+	//int FirstRowInView = FirstFftSample * TotalRows / pMasterView->m_FftOrder;
+	//int FftSamplesInView = LastFftSample - FirstFftSample + 1;
 
 	CGdiObjectSave OldFont(pDC, pDC->SelectStockObject(ANSI_VAR_FONT));
 	CGdiObjectSave OldPen(pDC, pDC->SelectStockObject(BLACK_PEN));
@@ -126,8 +127,10 @@ void CFftRulerView::OnDraw(CDC* pDC)
 			break;
 		}
 	}
-	double YScaleDev = pMasterView->GetYScaleDev();
+
+	//double YScaleDev = pMasterView->GetYScaleDev();
 	const int ChannelSeparatorY = nHeight;
+
 	if (2 == nChannels)
 	{
 		pDC->MoveTo(0, ChannelSeparatorY);
@@ -190,7 +193,7 @@ int CFftRulerView::CalculateWidth()
 	return Width;
 }
 
-void CFftRulerView::OnUpdate( CView* pSender, LPARAM lHint, CObject* pHint )
+void CFftRulerView::OnUpdate( CView* /*pSender*/, LPARAM lHint, CObject* pHint )
 {
 	if (lHint == CWaveSoapFrontDoc::UpdateWholeFileChanged)
 	{

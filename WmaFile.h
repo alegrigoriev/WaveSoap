@@ -157,12 +157,12 @@ public:
 	//Methods of IWMReaderCallbackAdvanced
 	//
 	virtual HRESULT STDMETHODCALLTYPE OnStreamSample(
-													/* [in] */ WORD wStreamNum,
-													/* [in] */ QWORD cnsSampleTime,
-													/* [in] */ QWORD cnsSampleDuration,
-													/* [in] */ DWORD dwFlags,
-													/* [in] */ INSSBuffer __RPC_FAR *pSample,
-													/* [in] */ void __RPC_FAR *pvContext)
+													/* [in] */ WORD /*wStreamNum*/,
+													/* [in] */ QWORD /*cnsSampleTime*/,
+													/* [in] */ QWORD /*cnsSampleDuration*/,
+													/* [in] */ DWORD /*dwFlags*/,
+													/* [in] */ INSSBuffer __RPC_FAR * /*pSample*/,
+													/* [in] */ void __RPC_FAR * /*pvContext*/)
 	{
 		return S_OK;
 	}
@@ -172,18 +172,18 @@ public:
 											/* [in] */ void __RPC_FAR *pvContext);
 
 	virtual HRESULT STDMETHODCALLTYPE OnStreamSelection(
-														/* [in] */ WORD wStreamCount,
-														/* [in] */ WORD __RPC_FAR *pStreamNumbers,
-														/* [in] */ WMT_STREAM_SELECTION __RPC_FAR *pSelections,
-														/* [in] */ void __RPC_FAR *pvContext)
+														/* [in] */ WORD /*wStreamCount*/,
+														/* [in] */ WORD __RPC_FAR * /*pStreamNumbers*/,
+														/* [in] */ WMT_STREAM_SELECTION __RPC_FAR * /*pSelections*/,
+														/* [in] */ void __RPC_FAR * /*pvContext*/)
 	{
 		return S_OK;
 	}
 
 	virtual HRESULT STDMETHODCALLTYPE OnOutputPropsChanged(
-															/* [in] */ DWORD dwOutputNum,
-															/* [in] */ WM_MEDIA_TYPE __RPC_FAR *pMediaType,
-															/* [in] */ void __RPC_FAR *pvContext)
+															/* [in] */ DWORD /*dwOutputNum*/,
+															/* [in] */ WM_MEDIA_TYPE __RPC_FAR * /*pMediaType*/,
+															/* [in] */ void __RPC_FAR * /*pvContext*/)
 	{
 		return S_OK;
 	}
@@ -328,13 +328,14 @@ public:
 	FileWriter() : m_WrittenLength(0) {}
 	~FileWriter() {}
 	CDirectFile m_DstFile;
-	DWORD m_WrittenLength;
+	ULONGLONG m_WrittenLength;
+
 	void Open(CDirectFile & File)
 	{
 		m_DstFile = File;
 		m_WrittenLength = 0;
 	}
-	DWORD GetWrittenLength()
+	ULONGLONG GetWrittenLength()
 	{
 		return m_WrittenLength;
 	}
@@ -346,7 +347,7 @@ public:
 	WmaEncoder();
 	~WmaEncoder();
 	BOOL OpenWrite(CDirectFile & File);
-	DWORD GetWrittenLength()
+	ULONGLONG GetWrittenLength()
 	{
 		return m_FileWriter.GetWrittenLength();
 	}

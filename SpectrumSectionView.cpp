@@ -154,12 +154,16 @@ void CSpectrumSectionView::OnDraw(CDC* pDC)
 
 	int LastFftSample = int(m_FftOrder - pFftView->m_FirstbandVisible);
 	int FirstFftSample = LastFftSample + MulDiv(-rows, m_FftOrder, TotalRows);
+
+#if 0 // TODO
 	int NoiseReductionBegin = MulDiv(nBeginFrequency, m_FftOrder,
 									pDoc->WaveSampleRate());
 
 	int NoiseReductionBeginY = NoiseReductionBegin;
-//    int NoiseReductionBeginX;
-//    int NoiseReductionEndX;
+	int NoiseReductionBeginX;
+	int NoiseReductionEndX;
+#endif
+
 	if (FirstFftSample < 0)
 	{
 		LastFftSample -= FirstFftSample;
@@ -664,7 +668,7 @@ void CSpectrumSectionView::DrawCrossHair(POINT point, CDC * pDC)
 	}
 }
 
-LRESULT CSpectrumSectionView::OnMouseLeave(WPARAM wParam, LPARAM lParam)
+LRESULT CSpectrumSectionView::OnMouseLeave(WPARAM /*wParam*/, LPARAM /*lParam*/)
 {
 	m_bTrackingMouseRect = false;
 	HideCrossHair();
@@ -691,4 +695,9 @@ void CSpectrumSectionView::OnViewShowCrosshair()
 	RemoveSelectionRect();
 	m_bShowCrossHair = ! m_bShowCrossHair;
 	RestoreSelectionRect();
+}
+
+UINT CSpectrumSectionView::GetPopupMenuID(CPoint /*point*/)
+{
+	return IDR_MENU_SPECTRUMSECTION_VIEW;
 }

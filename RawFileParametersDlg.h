@@ -52,15 +52,22 @@ public:
 
 	NUMBER_OF_CHANNELS NumberOfChannels() const
 	{
-		return 1 + (0 != m_bStereo);
+		if (m_bStereo)
+		{
+			return 2;
+		}
+		else
+		{
+			return 1;
+		}
 	}
 
-	int NumberOfBits() const
+	WORD NumberOfBits() const
 	{
-		return 8 + 8 * (0 != m_bBits16);
+		return WORD(8 + 8 * (0 != m_bBits16));
 	}
 
-	long SamplingRate() const
+	unsigned long SamplingRate() const
 	{
 		return m_SamplingRate;
 	}
@@ -95,7 +102,7 @@ protected:
 	int		m_Compression;
 	int		m_bMsbFirst;
 	//}}AFX_DATA
-	long    m_SamplingRate;
+	unsigned long    m_SamplingRate;
 	LONGLONG  m_SourceFileSize;
 
 	CApplicationProfile m_Profile;

@@ -39,7 +39,7 @@ void CCdDrive::CommonInit(BOOL LoadAspi)
 	GetAspi32HaTargetLun = NULL;
 	m_MaxTransferSize = 0x10000;
 	m_BufferAlignment = 1;
-	m_MediaChangeCount = -1;
+	m_MediaChangeCount = ~0UL;
 	m_OffsetBytesPerSector = 2048;
 	m_bScsiCommandsAvailable = false;
 	m_bMediaChangeNotificationDisabled = false;
@@ -418,7 +418,8 @@ BOOL CCdDrive::Open(TCHAR letter)
 		else if (NULL != SendASPI32Command)
 		{
 			m_ScsiAddr.PortNumber = 0xFF;
-			for (unsigned adapter = 0; adapter < (0xFF & GetASPI32SupportInfo())
+			UCHAR TotalAdapters = UCHAR(0xFF & GetASPI32SupportInfo());
+			for (UCHAR adapter = 0; adapter < TotalAdapters
 				&& 0xFF == m_ScsiAddr.PortNumber
 				; adapter++)
 			{
@@ -426,9 +427,10 @@ BOOL CCdDrive::Open(TCHAR letter)
 				memzero(inq);
 				inq.HostAdapter = adapter;
 				inq.Command = SC_HA_INQUIRY;
+
 				if (SendASPI32Command( & inq))
 				{
-					for (int Target = 0; Target < inq.MaximumScsiTargets; Target++)
+					for (UCHAR Target = 0; Target < inq.MaximumScsiTargets; Target++)
 					{
 						// query LUN 0 only
 						SRB_GetDevType gdt(adapter, Target, 0);
@@ -520,7 +522,7 @@ BOOL CCdDrive::Open(TCHAR letter)
 		}
 	}
 
-	m_MediaChangeCount = -1;
+	m_MediaChangeCount = ~0UL;
 
 	m_DriveLetter = letter;
 
@@ -591,18 +593,20 @@ BOOL CCdDrive::EnableMediaChangeDetection(bool Enable)
 	DWORD BytesReturned;
 	BOOLEAN McnDisable = ! Enable;
 
-	BOOL res = DeviceIoControl(m_hDriveAttributes,IOCTL_STORAGE_MCN_CONTROL,
-								& McnDisable, sizeof McnDisable,
-								NULL, 0,
-								&BytesReturned, NULL);
-	m_bMediaChangeNotificationDisabled = ! Enable;
+	if (DeviceIoControl(m_hDriveAttributes,IOCTL_STORAGE_MCN_CONTROL,
+						& McnDisable, sizeof McnDisable,
+						NULL, 0,
+						& BytesReturned, NULL))
+	{
+		m_bMediaChangeNotificationDisabled = ! Enable;
+	}
 
 	return TRUE;
 }
 
 BOOL CCdDrive::LockDoor(bool Lock)
 {
-	if (Lock = m_bDoorLocked)
+	if (Lock == m_bDoorLocked)
 	{
 		return TRUE;
 	}
@@ -652,12 +656,13 @@ BOOL CCdDrive::LockDoor(bool Lock)
 	DWORD BytesReturned;
 	BOOLEAN LockMedia = Lock;
 
-	BOOL res = DeviceIoControl(m_hDriveAttributes, IOCTL_STORAGE_EJECTION_CONTROL,
-								& LockMedia, sizeof LockMedia,
-								NULL, 0,
-								&BytesReturned, NULL);
-
-	m_bDoorLocked = Lock;
+	if (DeviceIoControl(m_hDriveAttributes, IOCTL_STORAGE_EJECTION_CONTROL,
+						& LockMedia, sizeof LockMedia,
+						NULL, 0,
+						&BytesReturned, NULL))
+	{
+		m_bDoorLocked = Lock;
+	}
 
 	return TRUE;
 }
@@ -669,7 +674,7 @@ BOOL CCdDrive::SendScsiCommand(CD_CDB * pCdb,
 								unsigned timeout)
 {
 	// issue IOCTL_SCSI_PASS_THROUGH_DIRECT or IOCTL_SCSI_PASS_THROUGH
-	int CdbLength;
+	UCHAR CdbLength = 6;
 	DWORD bytes;
 
 	if ( ! m_bScsiCommandsAvailable)
@@ -773,7 +778,7 @@ BOOL CCdDrive::SendScsiCommand(CD_CDB * pCdb,
 			memcpy(spt.Cdb, pCdb, CdbLength);
 
 			spt.CdbLength = CdbLength;
-			spt.DataIn = DataDirection;
+			spt.DataIn = UCHAR(DataDirection);
 			spt.DataTransferLength = * pDataLen;
 
 			DWORD InLength, OutLength;
@@ -843,7 +848,7 @@ BOOL CCdDrive::SendScsiCommand(CD_CDB * pCdb,
 			memcpy(spt.Cdb, pCdb, CdbLength);
 
 			spt.CdbLength = CdbLength;
-			spt.DataIn = DataDirection;
+			spt.DataIn = UCHAR(DataDirection);
 
 			spt.DataTransferLength = * pDataLen;
 			spt.DataBuffer = pData;
@@ -876,7 +881,7 @@ BOOL CCdDrive::SendScsiCommand(CD_CDB * pCdb,
 				return FALSE;
 			}
 		}
-		return FALSE;
+//        return FALSE;
 	}
 
 }
@@ -1014,9 +1019,9 @@ CdMediaChangeState CCdDrive::CheckForMediaChange()
 					m_bTrayOut = false;
 				}
 			}
-			//if (-1 != m_MediaChangeCount)
+			//if (~0UL != m_MediaChangeCount)
 			{
-				m_MediaChangeCount = -1;
+				m_MediaChangeCount = ~0UL;
 				//TRACE("device not ready\n");
 				// check door state
 				return CdMediaStateNotReady;
@@ -1053,14 +1058,14 @@ CdMediaChangeState CCdDrive::CheckForMediaChange()
 			return CdMediaStateReady;
 		}
 	}
-	return CdMediaStateNotReady;
+//    return CdMediaStateNotReady;
 
 }
 
 int CCdDrive::FindCdDrives(TCHAR Drives['Z' - 'A' + 1])
 {
 	int NumberOfDrives = 0;
-	for (int letter = 'A'; letter <= 'Z'; letter++)
+	for (TCHAR letter = 'A'; letter <= 'Z'; letter++)
 	{
 		CString s;
 		s.Format(_T("%c:"), letter);
@@ -1191,17 +1196,18 @@ void CCdDrive::StopAudioPlay()
 	if (NULL != m_hDrive)
 	{
 		DWORD bytes =0;
-		BOOL res = DeviceIoControl(m_hDrive, IOCTL_CDROM_STOP_AUDIO,
-									NULL, 0,
-									NULL, 0,
-									& bytes, NULL);
+		DeviceIoControl(m_hDrive, IOCTL_CDROM_STOP_AUDIO,
+						NULL, 0,
+						NULL, 0,
+						& bytes, NULL);
 	}
 }
 
 BOOL CCdDrive::ReadCdData(void * pBuf, long Address, int nSectors)
 {
 	DWORD Length = nSectors * CDDASectorSize;
-	BOOL res;
+	BOOL res = FALSE;
+
 	if (m_bScsiCommandsAvailable)
 	{
 		ReadCD_CDB rcd(Address, Length);
@@ -1227,7 +1233,7 @@ BOOL CCdDrive::ReadCdData(void * pBuf, long Address, int nSectors)
 		}
 		else if (m_bNECDrive)
 		{
-			ReadCD_NEC rcdNec(Address, nSectors);
+			ReadCD_NEC rcdNec(Address, USHORT(nSectors));
 			res = SendScsiCommand( & rcdNec, pBuf, & Length,
 									SCSI_IOCTL_DATA_IN, & ssi);
 		}
@@ -1249,7 +1255,7 @@ BOOL CCdDrive::ReadCdData(void * pBuf, long Address, int nSectors)
 			TRACE("READ CD error=%d\n", GetLastError());
 		}
 	}
-	if (res && Length != nSectors * CDDASectorSize)
+	if (res && Length != DWORD(nSectors) * CDDASectorSize)
 	{
 		TRACE("Incomplete read! %d bytes instead of %d\n", Length, nSectors * CDDASectorSize);
 	}
@@ -1259,7 +1265,8 @@ BOOL CCdDrive::ReadCdData(void * pBuf, long Address, int nSectors)
 BOOL CCdDrive::ReadCdData(void * pBuf, CdAddressMSF Address, int nSectors)
 {
 	DWORD Length = nSectors * CDDASectorSize;
-	BOOL res;
+	BOOL res = FALSE;
+
 	if (m_bScsiCommandsAvailable)
 	{
 		TRACE("ReadCdData using SCSI, ADDR=%d:%02d.%02d\n",
@@ -1281,6 +1288,7 @@ BOOL CCdDrive::ReadCdData(void * pBuf, CdAddressMSF Address, int nSectors)
 			TRACE("READ CD error, SenseKey=%d, AdditionalSenseCode=%X\n",
 				ssi.SenseKey, ssi.AdditionalSenseCode);
 		}
+
 		if (m_bPlextorDrive)
 		{
 			ReadCD_Plextor rcdpx(Address - 150, nSectors);
@@ -1289,7 +1297,7 @@ BOOL CCdDrive::ReadCdData(void * pBuf, CdAddressMSF Address, int nSectors)
 		}
 		else if (m_bNECDrive)
 		{
-			ReadCD_NEC rcdNec(Address - 150, nSectors);
+			ReadCD_NEC rcdNec(Address - 150, USHORT(nSectors));
 			res = SendScsiCommand( & rcdNec, pBuf, & Length,
 									SCSI_IOCTL_DATA_IN, & ssi);
 		}
@@ -1314,7 +1322,7 @@ BOOL CCdDrive::ReadCdData(void * pBuf, CdAddressMSF Address, int nSectors)
 			TRACE("READ CD error=%d\n", GetLastError());
 		}
 	}
-	if (Length != nSectors * CDDASectorSize)
+	if (Length != DWORD(nSectors) * CDDASectorSize)
 	{
 		TRACE("Incomplete read! %d bytes instead of %d\n", Length, nSectors * CDDASectorSize);
 	}
