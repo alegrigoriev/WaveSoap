@@ -16,7 +16,7 @@
 
 #include "ApplicationProfile.h"
 #include "DirectFile.h"
-#include "OperationContext.h"
+#include "OperationContext2.h"
 /////////////////////////////////////////////////////////////////////////////
 // CWaveSoapFrontApp:
 // See WaveSoapFront.cpp for the implementation of this class
