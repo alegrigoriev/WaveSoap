@@ -19,6 +19,7 @@ static char THIS_FILE[]=__FILE__;
 
 void CCdDrive::LoadAspi()
 {
+//    return;
 	m_hWinaspi32 = LoadLibrary(_T("cdral.dll"));
 
 	if (NULL != m_hWinaspi32)
@@ -184,6 +185,7 @@ CCdDrive::CCdDrive(BOOL UseAspi)
 	m_MaxTransferSize(0x10000),
 	m_BufferAlignment(1),
 	m_MediaChangeCount(-1),
+	m_bScsiCommandsAvailable(false),
 	m_bMediaChangeNotificationDisabled(false),
 	m_bDoorLocked(false)
 {
@@ -402,6 +404,7 @@ BOOL CCdDrive::Open(TCHAR letter)
 
 	m_DriveLetter = letter;
 
+	m_bScsiCommandsAvailable = true;
 	DWORD bytes =0;
 	res = DeviceIoControl(m_hDrive, IOCTL_SCSI_GET_ADDRESS,
 						NULL, 0,
@@ -576,6 +579,11 @@ BOOL CCdDrive::SendScsiCommand(CD_CDB * pCdb,
 	int CdbLength;
 	DWORD bytes;
 
+	if ( ! m_bScsiCommandsAvailable)
+	{
+		return FALSE;
+	}
+
 	switch (pCdb->Opcode >> 5)  // command group
 	{
 	case 0:
@@ -685,8 +693,16 @@ BOOL CCdDrive::SendScsiCommand(CD_CDB * pCdb,
 				{
 					memcpy(pSense, (SCSI_SenseInfo *) & spt, sizeof * pSense);
 				}
+				return SS_COMP == spt.ScsiStatus;
 			}
-			return res && SS_COMP == spt.ScsiStatus;
+			else
+			{
+				if (ERROR_ACCESS_DENIED == GetLastError())
+				{
+					m_bScsiCommandsAvailable = false;
+				}
+				return FALSE;
+			}
 		}
 		else
 		{
@@ -747,9 +763,9 @@ CdMediaChangeState CCdDrive::CheckForMediaChange()
 									& MediaChangeCount, sizeof MediaChangeCount,
 									& BytesReturned, NULL);
 
-		TRACE("GetLastError=%d, MediaChange=%d\n",
-			GetLastError(),
-			MediaChangeCount);
+		if (0) TRACE("GetLastError=%d, MediaChange=%d\n",
+					GetLastError(),
+					MediaChangeCount);
 
 		if (! res && GetLastError() != ERROR_NOT_READY)
 		{
@@ -915,43 +931,83 @@ void CCdDrive::StopAudioPlay()
 
 BOOL CCdDrive::ReadCdData(void * pBuf, long Address, int nSectors)
 {
-	DWORD Length = nSectors * 2352;
-	ReadCD_CDB rcd(Address, Length);
+	DWORD Length = nSectors * CDDASectorSize;
+	BOOL res;
+	if (m_bScsiCommandsAvailable)
+	{
+		ReadCD_CDB rcd(Address, Length);
 
-	SCSI_SenseInfo ssi;
+		SCSI_SenseInfo ssi;
 
-	BOOL res = SendScsiCommand( & rcd, pBuf, & Length,
+		res = SendScsiCommand( & rcd, pBuf, & Length,
 								SCSI_IOCTL_DATA_IN, & ssi);
-	if (! res)
-	{
-		TRACE("READ CD error, SenseKey=%d, AdditionalSenseCode=%X\n",
-			ssi.SenseKey, ssi.AdditionalSenseCode);
+		if (! res)
+		{
+			TRACE("READ CD error, SenseKey=%d, AdditionalSenseCode=%X\n",
+				ssi.SenseKey, ssi.AdditionalSenseCode);
+		}
 	}
-	if (Length != nSectors * 2352)
+	else
 	{
-		TRACE("Incomplete read! %d bytes instead of %d\n", Length, nSectors * 2352);
+		RAW_READ_INFO rri;
+		rri.SectorCount = nSectors;
+		rri.TrackMode = CDDA;
+		rri.DiskOffset.QuadPart = CDDASectorSize * Address;
+		res = DeviceIoControl(m_hDrive, IOCTL_CDROM_RAW_READ,
+							& rri, sizeof rri,
+							pBuf, Length, & Length, NULL);
+
+		if (! res)
+		{
+			TRACE("READ CD error=%d\n", GetLastError());
+		}
+	}
+	if (res && Length != nSectors * CDDASectorSize)
+	{
+		TRACE("Incomplete read! %d bytes instead of %d\n", Length, nSectors * CDDASectorSize);
 	}
 	return res;
 }
 
 BOOL CCdDrive::ReadCdData(void * pBuf, CdAddressMSF Address, int nSectors)
 {
-	DWORD Length = nSectors * 2352;
-	CdAddressMSF EndAddress;
-	EndAddress = LONG(Address) + nSectors;
-	ReadCD_MSF_CDB rcd(Address, EndAddress);
-	SCSI_SenseInfo ssi;
+	DWORD Length = nSectors * CDDASectorSize;
+	BOOL res;
+	if (m_bScsiCommandsAvailable)
+	{
+		CdAddressMSF EndAddress;
+		EndAddress = LONG(Address) + nSectors;
+		ReadCD_MSF_CDB rcd(Address, EndAddress);
+		SCSI_SenseInfo ssi;
 
-	BOOL res = SendScsiCommand( & rcd, pBuf, & Length,
+		res = SendScsiCommand( & rcd, pBuf, & Length,
 								SCSI_IOCTL_DATA_IN, & ssi);
-	if (! res)
-	{
-		TRACE("READ CD error, SenseKey=%d, AdditionalSenseCode=%X\n",
-			ssi.SenseKey, ssi.AdditionalSenseCode);
+		if (! res)
+		{
+			TRACE("READ CD error, SenseKey=%d, AdditionalSenseCode=%X\n",
+				ssi.SenseKey, ssi.AdditionalSenseCode);
+		}
 	}
-	if (Length != nSectors * 2352)
+	else
 	{
-		TRACE("Incomplete read! %d bytes instead of %d\n", Length, nSectors * 2352);
+		RAW_READ_INFO rri;
+		rri.SectorCount = nSectors;
+		rri.TrackMode = CDDA;
+		// 2 seconds (150 sectors) offset between MSF address and logical block address
+		rri.DiskOffset.QuadPart = CDDASectorSize * (LONG(Address) - 150);
+
+		res = DeviceIoControl(m_hDrive, IOCTL_CDROM_RAW_READ,
+							& rri, sizeof rri,
+							pBuf, Length, & Length, NULL);
+
+		if (! res)
+		{
+			TRACE("READ CD error=%d\n", GetLastError());
+		}
+	}
+	if (Length != nSectors * CDDASectorSize)
+	{
+		TRACE("Incomplete read! %d bytes instead of %d\n", Length, nSectors * CDDASectorSize);
 	}
 	return res;
 }

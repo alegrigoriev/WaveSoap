@@ -40,7 +40,7 @@ enum
 	OpenDocumentDirectMode = 2,
 	OpenDocumentReadOnly = 4,
 	OpenDocumentCreateNewWithParameters = 8, // NAME is actually NewFileParameters *
-	OpenDocumentCreateNewQueryFormat = 0x10,
+//    OpenDocumentCreateNewQueryFormat = 0x10,
 	OpenDocumentMp3File = 0x100,
 	OpenDocumentWmaFile = 0x200,
 	OpenDocumentRawFile = 0x400,
@@ -161,7 +161,6 @@ public:
 
 	CWaveFile m_ClipboardFile;
 	WAVEFORMATEX m_NewFileFormat;
-	int m_NewFileChannels;
 	long m_NewFileLength;
 
 	class CWaveSoapDocTemplate * m_pAllTypesTemplate;

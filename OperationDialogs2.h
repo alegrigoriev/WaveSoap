@@ -147,7 +147,7 @@ struct CdTrackInfo
 	}
 };
 
-class CCdGrabbingDialog : public CDialog
+class CCdGrabbingDialog : public CResizableDialog
 {
 // Construction
 public:
@@ -157,6 +157,8 @@ public:
 // Dialog Data
 	//{{AFX_DATA(CCdGrabbingDialog)
 	enum { IDD = IDD_DIALOG_CD_GRABBING };
+	CButton	m_StopButton;
+	CButton	m_PlayButton;
 	CEdit	m_eArtist;
 	CEdit	m_eAlbum;
 	CEdit	m_eSaveFolderOrFile;
@@ -209,8 +211,13 @@ protected:
 // Implementation
 protected:
 	BOOL m_bNeedUpdateControls;
-	CSize m_PreviousSize;
-	MINMAXINFO m_mmxi;
+
+	BOOL m_bPlayingAudio;
+	CWaveOut m_WaveOut;
+	CdAddressMSF m_PlaybackAddress;
+	LONG m_PlaybackSectors;
+	BOOL FillPlaybackBuffers();
+	void StopCdPlayback();
 
 	CApplicationProfile m_Profile;
 
@@ -228,14 +235,14 @@ protected:
 	// Generated message map functions
 	LRESULT OnKickIdle(WPARAM, LPARAM);
 	afx_msg void OnUpdateOk(CCmdUI* pCmdUI);
+	afx_msg void OnUpdatePlay(CCmdUI* pCmdUI);
+	afx_msg void OnUpdateStop(CCmdUI* pCmdUI);
+	afx_msg void OnUpdateSelectAll(CCmdUI* pCmdUI);
+	afx_msg void OnUpdateDeselectAll(CCmdUI* pCmdUI);
 
 	//{{AFX_MSG(CCdGrabbingDialog)
-	virtual BOOL OnInitDialog();
-	afx_msg BOOL OnEraseBkgnd(CDC* pDC);
 	afx_msg void OnSize(UINT nType, int cx, int cy);
-	afx_msg void OnSizing(UINT fwSide, LPRECT pRect);
-	afx_msg UINT OnNcHitTest(CPoint point);
-	afx_msg void OnGetMinMaxInfo(MINMAXINFO FAR* lpMMI);
+	virtual BOOL OnInitDialog();
 	afx_msg void OnTimer(UINT nIDEvent);
 	afx_msg void OnButtonMore();
 	afx_msg void OnSelchangeComboDrives();
@@ -253,6 +260,8 @@ protected:
 	afx_msg void OnBeginlabeleditListTracks(NMHDR* pNMHDR, LRESULT* pResult);
 	afx_msg void OnEndlabeleditListTracks(NMHDR* pNMHDR, LRESULT* pResult);
 	afx_msg void OnChangeEditFolderOrFile();
+	afx_msg void OnButtonPlay();
+	afx_msg void OnButtonStop();
 	//}}AFX_MSG
 	void OnMetricsChange();
 	afx_msg LRESULT OnDeviceChange(UINT, DWORD);

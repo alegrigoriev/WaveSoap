@@ -1762,7 +1762,7 @@ void CCdReadingContext::SetTrackInformation(CCdDrive const & Drive,
 	m_Drive = Drive;
 	m_CdAddress = StartAddr;
 	m_NumberOfSectors = NumSectors;
-	InitDestination(pDocument->m_WavFile, 0, NumSectors * (2352 / 4), 2, FALSE);
+	InitDestination(pDocument->m_WavFile, 0, NumSectors * (CDDASectorSize / 4), 2, FALSE);
 	m_Drive.DisableMediaChangeDetection();
 	m_Drive.LockDoor();
 }
@@ -1774,7 +1774,7 @@ BOOL CCdReadingContext::ProcessBuffer(void * buf, size_t len, DWORD offset, BOOL
 	{
 		if (0 == m_CdBufferFilled)
 		{
-			size_t SectorsToRead = m_CdBufferSize / 2352;
+			size_t SectorsToRead = m_CdBufferSize / CDDASectorSize;
 			if (SectorsToRead > m_NumberOfSectors)
 			{
 				SectorsToRead = m_NumberOfSectors;
@@ -1802,7 +1802,7 @@ BOOL CCdReadingContext::ProcessBuffer(void * buf, size_t len, DWORD offset, BOOL
 			m_NumberOfSectors -= SectorsToRead;
 			m_CdAddress = LONG(m_CdAddress) + SectorsToRead;
 			m_CdDataOffset = 0;
-			m_CdBufferFilled = SectorsToRead * 2352;
+			m_CdBufferFilled = SectorsToRead * CDDASectorSize;
 		}
 
 		size_t ToCopy = m_CdBufferFilled;
@@ -1826,7 +1826,7 @@ BOOL CCdReadingContext::Init()
 	// allocate buffer. Round to sector size multiple
 	m_CdBufferFilled = 0;
 	m_CdDataOffset = 0;
-	m_CdBufferSize = 0x10000 - 0x10000 % 2352;
+	m_CdBufferSize = 0x10000 - 0x10000 % CDDASectorSize;
 
 	timeBeginPeriod(2);
 

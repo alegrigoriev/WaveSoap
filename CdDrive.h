@@ -783,6 +783,8 @@ enum CdMediaChangeState
 	CdMediaStateSameMedia,
 	CdMediaStateChanged,
 };
+int const CDDASectorSize = 2352;
+
 class CCdDrive
 {
 public:
@@ -838,6 +840,7 @@ protected:
 
 	DWORD m_MediaChangeCount;
 
+	bool m_bScsiCommandsAvailable;
 	bool m_bMediaChangeNotificationDisabled;
 	bool m_bDoorLocked;
 
