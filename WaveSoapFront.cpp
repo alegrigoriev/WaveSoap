@@ -164,6 +164,11 @@ CWaveSoapFrontApp::CWaveSoapFrontApp()
 	m_ResampleSamplingRate(44100),
 	m_ResampleTempoPercents(100.),
 
+	m_bSuppressDifferential(TRUE),
+	m_bSuppressLowFrequency(TRUE),
+	m_dSuppressDifferentialRange(200.),
+	m_dSuppressLowFreqRange(20.),
+
 	m_b5SecondsDC(TRUE),
 	m_nDcOffset(0),
 	m_DcSelectMode(0),
@@ -278,6 +283,11 @@ BOOL CWaveSoapFrontApp::InitInstance()
 	Profile.AddItem(_T("Settings"), _T("VolumeLeftPercent"), m_dVolumeLeftPercent, 100., 1., 10000.);
 	Profile.AddItem(_T("Settings"), _T("VolumeRightDb"), m_dVolumeRightDb, 0., -40., 40.);
 	Profile.AddItem(_T("Settings"), _T("VolumeRightPercent"), m_dVolumeRightPercent, 100., 1., 10000.);
+
+	Profile.AddItem(_T("Settings"), _T("SuppressDifferentialRange"), m_dSuppressDifferentialRange, 200., 1., 1000.);
+	Profile.AddItem(_T("Settings"), _T("SuppressLowFreqRange"), m_dSuppressLowFreqRange, 20., 1., 1000.);
+	Profile.AddBoolItem(_T("Settings"), _T("SuppressDifferential"), m_bSuppressDifferential, TRUE);
+	Profile.AddBoolItem(_T("Settings"), _T("SuppressLowFrequency"), m_bSuppressLowFrequency, TRUE);
 
 	LoadStdProfileSettings(10);  // Load standard INI file options (including MRU)
 
