@@ -2775,15 +2775,17 @@ BOOL CResampleFilter::InitResample(double ResampleRatio,
 #ifdef _DEBUG
 		if (i > 0)
 		{
-			double err = fabs(val1 - (val + (1 << ResampleIndexShift) *
-								(m_FilterDifBuf[i] + (1 << ResampleIndexShift) * m_FilterDif2Buf[i])));
+			double err = fabs(sinc(arg + 0.25, FilterLength) * FilterWindow(arg + 0.25) -
+							(val + (1 << ResampleIndexShift) * 0.25 *
+								(m_FilterDifBuf[i] + (1 << ResampleIndexShift) * 0.25 * m_FilterDif2Buf[i])));
 			if (MaxErr < err)
 			{
 				MaxErr = err;
 			}
 
-			err = fabs(val05 - (val + (1 << (ResampleIndexShift - 1)) *
-							(m_FilterDifBuf[i] + (1 << (ResampleIndexShift - 1)) * m_FilterDif2Buf[i])));
+			err = fabs(sinc(arg + 0.75, FilterLength) * FilterWindow(arg + 0.75) -
+						(val + (1 << ResampleIndexShift) * 0.75 *
+							(m_FilterDifBuf[i] + (1 << ResampleIndexShift) * 0.75 * m_FilterDif2Buf[i])));
 			if (MaxErr < err)
 			{
 				MaxErr = err;
@@ -2792,7 +2794,9 @@ BOOL CResampleFilter::InitResample(double ResampleRatio,
 #endif
 	}
 
+#ifdef _DEBUG
 	TRACE("Max err = %g\n", MaxErr);
+#endif
 
 	if (ResampleRatio >= 1.)
 	{
