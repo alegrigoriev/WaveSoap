@@ -45,6 +45,7 @@ public:
 	CWnd wStatic;
 	CWnd wStatic1;
 	CScrollBar m_sb;
+
 // Implementation
 	BOOL m_bShowWaveform;
 	BOOL m_bShowFft;
@@ -85,13 +86,13 @@ public:
 public:
 	virtual BOOL PreCreateWindow(CREATESTRUCT& cs);
 	virtual void ActivateFrame(int nCmdShow);
-	virtual void RecalcLayout(BOOL bNotify = TRUE);
 	virtual BOOL OnCmdMsg(UINT nID, int nCode, void* pExtra, AFX_CMDHANDLERINFO* pHandlerInfo);
 protected:
 	virtual BOOL OnCreateClient(LPCREATESTRUCT lpcs, CCreateContext* pContext);
 	//}}AFX_VIRTUAL
 
 // Implementation
+	CWaveSoapFrontStatusBar  m_wndStatusBar;
 public:
 	virtual ~CChildFrame();
 #ifdef _DEBUG
@@ -102,6 +103,7 @@ public:
 // Generated message map functions
 protected:
 	//{{AFX_MSG(CChildFrame)
+	afx_msg int OnCreate(LPCREATESTRUCT lpCreateStruct);
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 };
