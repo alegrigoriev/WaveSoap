@@ -161,17 +161,16 @@ protected:
 
 /////////////////////////////////////////////////////////////////////////////
 // CSelectionDialog dialog
-
-class CSelectionDialog : public CUiUpdatedDlg
+class CSelectionUiSupport
 {
-	typedef CUiUpdatedDlg BaseClass;
-// Construction
 public:
-	CSelectionDialog(SAMPLE_INDEX Start, SAMPLE_INDEX End, SAMPLE_INDEX CaretPos,
-					CHANNEL_MASK Channel,
-					CWaveFile & WaveFile, int TimeFormat,
-					BOOL bAllowFileExtension = FALSE,
-					UINT TemplateId = IDD, CWnd* pParent = NULL);   // standard constructor
+	CSelectionUiSupport(SAMPLE_INDEX Start, SAMPLE_INDEX End, SAMPLE_INDEX CaretPos,
+						CHANNEL_MASK Channel,
+						CWaveFile & WaveFile, int TimeFormat,
+						BOOL bAllowFileExtension = FALSE);   // standard constructor
+
+	void InitSelectionUi();
+	void DoDataExchange(CDataExchange* pDX, CWnd * pWnd);
 
 	SAMPLE_INDEX GetStart() const
 	{
@@ -196,10 +195,8 @@ public:
 			break;
 		}
 	}
-// Dialog Data
-	//{{AFX_DATA(CSelectionDialog)
-	enum { IDD = IDD_SELECTION_DIALOG };
 	CComboBox	m_SelectionCombo;
+	CComboBox	m_TimeFormatCombo;
 	CTimeSpinCtrl	m_SpinStart;
 	CTimeSpinCtrl	m_SpinLength;
 	CTimeSpinCtrl	m_SpinEnd;
@@ -208,7 +205,6 @@ public:
 	CFileTimesCombo	m_eEnd;
 	int		m_TimeFormatIndex;
 	int		m_SelectionNumber;
-	//}}AFX_DATA
 protected:
 	CWaveFile & m_WaveFile;
 	int m_Chan;
@@ -235,19 +231,7 @@ protected:
 	void AddSelection(LPCTSTR Name, SAMPLE_INDEX begin, SAMPLE_INDEX end);
 	void AddSelection(UINT id, SAMPLE_INDEX begin, SAMPLE_INDEX end);
 	int FindSelection(SAMPLE_INDEX begin, SAMPLE_INDEX end);
-// Overrides
-	// ClassWizard generated virtual function overrides
-	//{{AFX_VIRTUAL(CSelectionDialog)
-protected:
-	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV support
-	//}}AFX_VIRTUAL
 
-// Implementation
-protected:
-
-	// Generated message map functions
-	//{{AFX_MSG(CSelectionDialog)
-	virtual BOOL OnInitDialog();
 	afx_msg void OnSelchangeComboTimeFormat();
 	afx_msg void OnKillfocusEditEnd();
 	afx_msg void OnKillfocusEditLength();
@@ -256,7 +240,45 @@ protected:
 	afx_msg void OnBuddyChangeSpinLength(NMHDR * pNmHdr, LRESULT * pResult);
 	afx_msg void OnBuddyChangeSpinStart(NMHDR * pNmHdr, LRESULT * pResult);
 	afx_msg void OnSelchangeComboSelection();
-	afx_msg void OnOK();
+};
+
+class CSelectionDialog : public CDialog, public CSelectionUiSupport
+{
+	typedef CDialog BaseClass;
+// Construction
+public:
+	CSelectionDialog(SAMPLE_INDEX Start, SAMPLE_INDEX End, SAMPLE_INDEX CaretPos,
+					CHANNEL_MASK Channel,
+					CWaveFile & WaveFile, int TimeFormat,
+					BOOL bAllowFileExtension = FALSE,
+					UINT TemplateId = IDD, CWnd* pParent = NULL);   // standard constructor
+
+// Dialog Data
+	//{{AFX_DATA(CSelectionDialog)
+	enum { IDD = IDD_SELECTION_DIALOG };
+	//}}AFX_DATA
+// Overrides
+	// ClassWizard generated virtual function overrides
+	//{{AFX_VIRTUAL(CSelectionDialog)
+protected:
+	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV support
+	virtual BOOL OnInitDialog();
+	virtual void OnOK();
+	//}}AFX_VIRTUAL
+
+// Implementation
+protected:
+
+	// Generated message map functions
+	//{{AFX_MSG(CSelectionDialog)
+	afx_msg void OnSelchangeComboTimeFormat();
+	afx_msg void OnKillfocusEditEnd();
+	afx_msg void OnKillfocusEditLength();
+	afx_msg void OnKillfocusEditStart();
+	afx_msg void OnBuddyChangeSpinEnd(NMHDR * pNmHdr, LRESULT * pResult);
+	afx_msg void OnBuddyChangeSpinLength(NMHDR * pNmHdr, LRESULT * pResult);
+	afx_msg void OnBuddyChangeSpinStart(NMHDR * pNmHdr, LRESULT * pResult);
+	afx_msg void OnSelchangeComboSelection();
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 };
