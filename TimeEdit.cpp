@@ -35,7 +35,7 @@ END_MESSAGE_MAP()
 
 /////////////////////////////////////////////////////////////////////////////
 // CTimeEdit message handlers
-void CTimeEdit::ExchangeData(CDataExchange* pDX, ULONG & sample)
+void CTimeEdit::ExchangeData(CDataExchange* pDX, SAMPLE_INDEX & sample)
 {
 	if (pDX->m_bSaveAndValidate)
 	{
@@ -58,7 +58,7 @@ void CTimeEdit::SetTimeFormat(int format)
 	//UpdateEditControl();
 }
 
-void CTimeEdit::SetTimeSample(ULONG sample)
+void CTimeEdit::SetTimeSample(SAMPLE_INDEX sample)
 {
 	m_Sample = sample;
 	UpdateEditControl();
