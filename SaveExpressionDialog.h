@@ -16,11 +16,25 @@ class CSaveExpressionDialog : public CDialog
 {
 	typedef Expressions::Expr Expr;
 	typedef Expressions::ExprGroup ExprGroup;
+	typedef CDialog BaseClass;
 // Construction
 public:
 	CSaveExpressionDialog(const vector<ExprGroup> & Exprs,
 						CWnd* pParent = NULL);   // standard constructor
+	LPCTSTR GetName() const
+	{
+		return m_Name;
+	}
+	LPCTSTR GetGroupName() const
+	{
+		return m_GroupName;
+	}
+	LPCTSTR GetComment() const
+	{
+		return m_Comment;
+	}
 
+protected:
 // Dialog Data
 	//{{AFX_DATA(CSaveExpressionDialog)
 	enum { IDD = IDD_DIALOG_SAVE_EXPRESSION };
