@@ -19,12 +19,12 @@ public:
 
 // Attributes
 public:
-	void ExchangeData(CDataExchange* pDX, ULONG & sample);
+	void ExchangeData(CDataExchange* pDX, SAMPLE_INDEX & sample);
 	ULONG GetTimeSample();
 // Operations
 public:
 	void SetTimeFormat(int format);
-	void SetTimeSample(ULONG sample);
+	void SetTimeSample(SAMPLE_INDEX sample);
 	void SetSamplingRate(long nSamplesPerSec)
 	{
 		m_nSamplesPerSec = nSamplesPerSec;
