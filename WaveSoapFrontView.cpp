@@ -160,6 +160,11 @@ void CWaveSoapFrontView::DrawHorizontalWithSelection(CDC * pDC,
 													CPen * NormalPen, CPen * SelectedPen,
 													CHANNEL_MASK Channel)
 {
+	if (left >= right)
+	{
+		return;
+	}
+
 	ThisDoc * pDoc = GetDocument();
 	// find positions of the selection start and and
 	// and check whether the selected area is visible
@@ -220,9 +225,15 @@ void CWaveSoapFrontView::DrawHorizontalWithSelection(CDC * pDC,
 void CWaveSoapFrontView::GetChannelRect(int Channel, RECT * pR) const
 {
 	ThisDoc * pDoc = GetDocument();
-	int nChannels = pDoc->WaveChannels();
+	int const nChannels = pDoc->WaveChannels();
+	int const FileEnd = WorldToWindowXceil(pDoc->WaveFileSamples());
 
 	GetClientRect(pR);
+	if (pR->right > FileEnd)
+	{
+		pR->right = FileEnd;
+	}
+
 	if (Channel >= nChannels)
 	{
 		pR->top = pR->bottom;
@@ -369,6 +380,17 @@ void CWaveSoapFrontView::OnDraw(CDC* pDC)
 					CRect ChanR;
 					GetChannelRect(ch, ChanR);
 
+
+					// clip the channel rectangle with 'clip rect'
+					if (ChanR.left < cr.left)
+					{
+						ChanR.left = cr.left;
+					}
+					if (ChanR.right > cr.right)
+					{
+						ChanR.right = cr.right;
+					}
+
 					int const ClipHigh = ChanR.bottom;
 					int const ClipLow = ChanR.top;
 
@@ -386,7 +408,7 @@ void CWaveSoapFrontView::OnDraw(CDC* pDC)
 					{
 						if (TRACE_DRAWING) TRACE("CWaveSoapFrontView Zero pos=%d\n", ZeroLinePos);
 
-						DrawHorizontalWithSelection(pDC, cr.left, cr.right,
+						DrawHorizontalWithSelection(pDC, ChanR.left, ChanR.right,
 													ZeroLinePos,
 													& ZeroLinePen,
 													& SelectedZeroLinePen, 1 << ch);
@@ -396,7 +418,7 @@ void CWaveSoapFrontView::OnDraw(CDC* pDC)
 					if (n6DBLine >= ClipLow &&
 						n6DBLine < ClipHigh)
 					{
-						DrawHorizontalWithSelection(pDC, cr.left, cr.right,
+						DrawHorizontalWithSelection(pDC, ChanR.left, ChanR.right,
 													n6DBLine,
 													& SixDBLinePen,
 													& SelectedSixDBLinePen, 1 << ch);
@@ -407,7 +429,7 @@ void CWaveSoapFrontView::OnDraw(CDC* pDC)
 					if (n6DBLine >= ClipLow &&
 						n6DBLine < ClipHigh)
 					{
-						DrawHorizontalWithSelection(pDC, cr.left, cr.right,
+						DrawHorizontalWithSelection(pDC, ChanR.left, ChanR.right,
 													n6DBLine,
 													& SixDBLinePen,
 													& SelectedSixDBLinePen, 1 << ch);
@@ -561,7 +583,7 @@ void CWaveSoapFrontView::OnDraw(CDC* pDC)
 
 					if (ch + 1 < nChannels)
 					{
-						// draw channel separator line
+						// draw channel separator line on all view length
 						DrawHorizontalWithSelection(pDC, cr.left, cr.right,
 													ChanR.bottom,
 													& ChannelSeparatorPen,
@@ -606,8 +628,8 @@ void CWaveSoapFrontView::OnDraw(CDC* pDC)
 							}
 						}
 
-						if (x >= cr.left
-							&& x <= cr.right)
+						if (x >= ChanR.left
+							&& x < ChanR.right)
 						{
 							DWORD BrushRop = DstAndBrushRop;    // black dashes
 							if (0 != (pDoc->m_SelectedChannel & (1 << ch))
@@ -634,8 +656,8 @@ void CWaveSoapFrontView::OnDraw(CDC* pDC)
 						{
 							x = WorldToWindowXfloor(i->dwSampleOffset + pMarker->SampleLength);
 
-							if (x >= cr.left
-								&& x <= cr.right)
+							if (x >= ChanR.left
+								&& x < ChanR.right)
 							{
 								DWORD BrushRop = DstAndBrushRop;
 								if (0 != (pDoc->m_SelectedChannel & (1 << ch))
@@ -1181,6 +1203,10 @@ BOOL CWaveSoapFrontView::OnEraseBkgnd(CDC* pDC)
 
 	CRect ClipRect;
 	pDC->GetClipBox(ClipRect);
+	if (0) TRACE("EraseBkgnd: ClipBox.left = %d, right=%d\n", ClipRect.left, ClipRect.right);
+
+	CRect cr;
+	GetClientRect(cr);
 
 	int SelBegin = WorldToWindowXfloor(pDoc->m_SelectionStart);
 	int SelEnd = WorldToWindowXfloor(pDoc->m_SelectionEnd);
@@ -1188,13 +1214,9 @@ BOOL CWaveSoapFrontView::OnEraseBkgnd(CDC* pDC)
 
 	try
 	{
-		for (NUMBER_OF_CHANNELS ch = 0; ch < pDoc->WaveChannels(); ch++)
+		if (FileEnd < cr.right)
 		{
-			CRect ChanR;
-
-			GetChannelRect(ch, ChanR);
-
-			if (FileEnd < ChanR.right)
+			if (FileEnd < ClipRect.right)
 			{
 				CBitmap bmp;
 				static const WORD pattern[] =
@@ -1207,21 +1229,32 @@ BOOL CWaveSoapFrontView::OnEraseBkgnd(CDC* pDC)
 					0xAAAA,
 					0x5555,
 					0xAAAA,
-					0x5555,
 				};
 
-				WaveCalculate WaveToY(m_WaveOffsetY, m_VerticalScale, ChanR.top, ChanR.bottom);
-				int BrushOffset = (FileEnd + WaveToY(-32768)) % 2;
-
 				// Windows98 can only use 8x8 bitmap for a brush
-				bmp.CreateBitmap(8, 8, 1, 1, pattern + BrushOffset);
+				bmp.CreateBitmap(8, 8, 1, 1, pattern);
 
 				CBrush GrayBrush( & bmp);
-				CRect GrayRect = ChanR;
-				ChanR.right = FileEnd;
+				CRect GrayRect = cr;
 				GrayRect.left = FileEnd;
 				// set background and foreground color
 				pDC->FillRect(GrayRect, & GrayBrush);
+			}
+
+			cr.right = FileEnd;
+		}
+
+		for (NUMBER_OF_CHANNELS ch = 0; ch < pDoc->WaveChannels(); ch++)
+		{
+			CRect ChanR;
+
+			GetChannelRect(ch, ChanR);
+			ChanR.right = std::min(cr.right, ClipRect.right);
+			ChanR.left = std::max(cr.left, ClipRect.left);
+
+			if (ChanR.left >= ChanR.right)
+			{
+				continue;
 			}
 
 			if (pDoc->m_SelectionEnd != pDoc->m_SelectionStart
@@ -1256,14 +1289,10 @@ BOOL CWaveSoapFrontView::OnEraseBkgnd(CDC* pDC)
 					CRect r1 = ChanR;
 					r1.left = SelEnd;
 					pDC->FillRect(r1, & backBrush);
-				}
-				else
-				{
-					SelEnd = ChanR.right;
+					ChanR.right = SelEnd;
 				}
 
 				ChanR.left = SelBegin;
-				ChanR.right = SelEnd;
 				CBrush SelectedBackBrush(pApp->m_SelectedWaveBackground);
 
 				pDC->FillRect(ChanR, & SelectedBackBrush);
@@ -2187,10 +2216,40 @@ int CWaveSoapFrontView::OnCreate(LPCREATESTRUCT lpCreateStruct)
 
 BOOL CWaveSoapFrontView::MasterScrollBy(double dx, double dy, BOOL bDoScroll)
 {
+	CWaveSoapFrontDoc * pDoc = GetDocument();
+
+	LONG FileEnd = WorldToWindowXceil(pDoc->WaveFileSamples());
+
 	if (dx != 0.)
 	{
 		if (TRACE_SCROLL) TRACE("before MasterScrollBy: dOrgX=%f, dx=%f\n", dOrgX, dx);
-		BaseClass::MasterScrollBy(dx, 0, bDoScroll);
+
+		CRect cr;
+		GetClientRect(cr);
+
+		CRect ScrollRect(cr);
+
+		// limit the scroll with the file area
+		if (FileEnd >= 0
+			&& FileEnd < ScrollRect.right)
+		{
+			ScrollRect.right = FileEnd;
+		}
+
+		BaseClass::MasterScrollBy(dx, 0, bDoScroll, ScrollRect, ScrollRect);
+
+		LONG NewFileEnd = WorldToWindowXceil(pDoc->WaveFileSamples());
+
+		// if scrolled to the right, invalidate checkered background beyond the file
+		if (NewFileEnd > FileEnd
+			&& FileEnd < cr.right)
+		{
+			CRect ir(cr);
+			ir.left = FileEnd;
+			ir.right = std::min(NewFileEnd, cr.right);
+
+			InvalidateRect(ir);
+		}
 		// make sure the new position will be on the multiple of m_HorizontalScale
 		ASSERT(0 == SAMPLE_INDEX(dOrgX) % m_HorizontalScale);
 	}
@@ -2236,6 +2295,9 @@ BOOL CWaveSoapFrontView::MasterScrollBy(double dx, double dy, BOOL bDoScroll)
 
 			m_WaveOffsetY = offset;
 			NotifySlaveViews(WAVE_OFFSET_CHANGED);
+			CRect cr;
+			GetClientRect(cr);
+
 			// change to scroll
 			if (NoScroll)
 			{
@@ -2243,7 +2305,6 @@ BOOL CWaveSoapFrontView::MasterScrollBy(double dx, double dy, BOOL bDoScroll)
 			}
 			else
 			{
-				CWaveSoapFrontDoc * pDoc = GetDocument();
 				int nChannels = pDoc->WaveChannels();
 
 				HidePlaybackCursor();
@@ -2251,8 +2312,6 @@ BOOL CWaveSoapFrontView::MasterScrollBy(double dx, double dy, BOOL bDoScroll)
 				CWindowDC dc(this);
 				CGdiObjectSave OldFont(dc, dc.SelectStockObject(ANSI_VAR_FONT));
 
-				CRect cr;
-				GetClientRect(cr);
 
 				CRect ir;
 				CuePointVectorIterator i;
@@ -2377,14 +2436,14 @@ void CWaveSoapFrontView::OnUpdateViewZoominHorFull(CCmdUI* pCmdUI)
 }
 
 // the function scrolls the real image, and modifies dOrgX, dOrgY.
-BOOL CWaveSoapFrontView::OnScrollBy(CSize sizeScroll, BOOL bDoScroll)
+BOOL CWaveSoapFrontView::OnScrollBy(CSize sizeScroll, BOOL bDoScroll, RECT const * pScrollRect, RECT const * pClipRect)
 {
 	if (bDoScroll)
 	{
 		HidePlaybackCursor();
 	}
 
-	BOOL bRet = BaseClass::OnScrollBy(sizeScroll, bDoScroll);
+	BOOL bRet = BaseClass::OnScrollBy(sizeScroll, bDoScroll, pScrollRect, pClipRect);
 	if (bDoScroll)
 	{
 		ShowPlaybackCursor();
