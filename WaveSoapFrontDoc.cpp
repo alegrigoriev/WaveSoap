@@ -1412,26 +1412,10 @@ BOOL CWaveSoapFrontDoc::DoPaste(SAMPLE_INDEX Start, SAMPLE_INDEX End, CHANNEL_MA
 		return FALSE;
 	}
 
-	if (NumSamplesToPasteFrom == End - Start)
+	if ( ! InitInsertCopy(pStagedContext.get(), m_WavFile, Start, End - Start, Channel,
+						SrcFile, 0, NumSamplesToPasteFrom, ChannelToCopyFrom))
 	{
-		CCopyContext::auto_ptr pCopyContext(new
-											CCopyContext(this, _T("Inserting data from clipboard..."), _T("Paste")));
-
-		if ( ! pCopyContext->InitCopy(m_WavFile, Start, Channel,
-									SrcFile, 0, ChannelToCopyFrom, NumSamplesToPasteFrom))
-		{
-			return FALSE;
-		}
-
-		pStagedContext->AddContext(pCopyContext.release());
-	}
-	else
-	{
-		if ( ! InitInsertCopy(pStagedContext.get(), m_WavFile, Start, End - Start, Channel,
-							SrcFile, 0, NumSamplesToPasteFrom, ChannelToCopyFrom))
-		{
-			return FALSE;
-		}
+		return FALSE;
 	}
 
 	if (UndoEnabled()
