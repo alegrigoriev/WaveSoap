@@ -101,6 +101,12 @@ BEGIN_MESSAGE_MAP(CWaveSoapFileDialog, CFileDialog)
 	//}}AFX_MSG_MAP
 END_MESSAGE_MAP()
 
+BEGIN_MESSAGE_MAP(CWaveSoapFrontStatusBar, CStatusBar)
+	//{{AFX_MSG_MAP(CWaveSoapFrontStatusBar)
+	ON_WM_CONTEXTMENU()
+	//}}AFX_MSG_MAP
+END_MESSAGE_MAP()
+
 BEGIN_MESSAGE_MAP(CWaveSoapFrontApp, CWinApp)
 	//{{AFX_MSG_MAP(CWaveSoapFrontApp)
 	ON_COMMAND(ID_APP_ABOUT, OnAppAbout)
@@ -136,6 +142,7 @@ CWaveSoapFrontApp::CWaveSoapFrontApp()
 	m_ThousandSeparator(','),
 	m_bUseCountrySpecificNumberAndTime(false),
 	m_bUndoEnabled(true),
+	m_bRedoEnabled(true),
 	m_pActiveDocument(NULL)
 {
 	// Place all significant initialization in InitInstance
@@ -182,7 +189,7 @@ BOOL CWaveSoapFrontApp::InitInstance()
 	Profile.AddItem(_T("Settings\\Colors"), _T("WaveColor"), m_WaveColor,
 					RGB(0x00, 72, 0x00));
 	Profile.AddItem(_T("Settings\\Colors"), _T("SelectedWaveColor"), m_SelectedWaveColor,
-					RGB(0x00, 193, 0x00));
+					RGB(0x00, 192, 0x00));
 	Profile.AddItem(_T("Settings\\Colors"), _T("ZeroLineColor"), m_ZeroLineColor,
 					RGB(0x00, 0x00, 240));
 	Profile.AddItem(_T("Settings\\Colors"), _T("SelectedZeroLineColor"), m_SelectedZeroLineColor,
@@ -193,19 +200,36 @@ BOOL CWaveSoapFrontApp::InitInstance()
 					RGB(192, 192, 192));
 	Profile.AddItem(_T("Settings\\Colors"), _T("ChannelSeparatorColor"), m_ChannelSeparatorColor,
 					RGB(0x00, 0x00, 0x00));
-	Profile.AddItem(_T("Settings\\Colors"), _T("m_SelectedChannelSeparatorColor"), m_SelectedChannelSeparatorColor,
+	Profile.AddItem(_T("Settings\\Colors"), _T("SelectedChannelSeparatorColor"), m_SelectedChannelSeparatorColor,
 					RGB(0x00, 0x00, 0x00));
 	Profile.AddItem(_T("Settings\\Colors"), _T("InterpolatedColor"), m_InterpolatedColor,
 					RGB(72, 0x00, 0x00));
 	Profile.AddItem(_T("Settings\\Colors"), _T("SelectedInterpolatedColor"), m_SelectedInterpolatedColor,
-					RGB(193, 0x00, 0x00));
-	Profile.AddItem(_T("Settings"), _T("UseCountrySpecificNumberAndTime"), m_bUseCountrySpecificNumberAndTime,
-					FALSE);
+					RGB(192, 0x00, 0x00));
+
+	Profile.AddItem(_T("Settings\\Colors"), _T("MarkerColor"), m_MarkerColor,
+					RGB(192, 0x00, 0x00));
+	Profile.AddItem(_T("Settings\\Colors"), _T("SelectedMarkerColor"), m_SelectedMarkerColor,
+					RGB(72, 0x00, 0x00));
+	Profile.AddItem(_T("Settings\\Colors"), _T("RegionColor"), m_RegionColor,
+					RGB(0, 0x00, 0x00));
+	Profile.AddItem(_T("Settings\\Colors"), _T("SelectedRegionColor"), m_SelectedRegionColor,
+					RGB(192, 192, 192));
+
+	Profile.AddBoolItem(_T("Settings"), _T("UseCountrySpecificNumberAndTime"), m_bUseCountrySpecificNumberAndTime,
+						FALSE);
 
 	LoadStdProfileSettings();  // Load standard INI file options (including MRU)
-	Profile.AddItem(_T("Settings"), _T("OpenAsReadOnly"), m_bReadOnly, FALSE);
-	Profile.AddItem(_T("Settings"), _T("OpenInDirectMode"), m_bDirectMode, FALSE);
-	Profile.AddItem(_T("Settings"), _T("UndoEnabled"), m_bUndoEnabled, TRUE);
+	Profile.AddBoolItem(_T("Settings"), _T("OpenAsReadOnly"), m_bReadOnly, FALSE);
+	Profile.AddBoolItem(_T("Settings"), _T("OpenInDirectMode"), m_bDirectMode, FALSE);
+	Profile.AddBoolItem(_T("Settings"), _T("UndoEnabled"), m_bUndoEnabled, TRUE);
+	Profile.AddBoolItem(_T("Settings"), _T("RedoEnabled"), m_bRedoEnabled, TRUE);
+	Profile.AddItem(_T("Settings"), _T("MaxUndoDepth"), m_MaxUndoDepth, 0, 1000, 100);
+	Profile.AddItem(_T("Settings"), _T("MaxRedoDepth"), m_MaxRedoDepth, 0, 1000, 100);
+	Profile.AddItem(_T("Settings"), _T("MaxUndoSize"), m_MaxUndoSize,
+					0, 0xC0000000, 0x40000000);
+	Profile.AddItem(_T("Settings"), _T("MaxRedoSize"), m_MaxRedoSize,
+					0, 0xC0000000, 0x40000000);
 
 	if (m_bUseCountrySpecificNumberAndTime)
 	{
@@ -1088,6 +1112,7 @@ CString TimeToHhMmSs(unsigned TimeMs, int Flags)
 	return s;
 }
 
+
 int CWaveSoapFrontStatusBar::OnToolHitTest(CPoint point, TOOLINFO* pTI) const
 {
 	for (int i = 1; i < m_nCount; i++)
@@ -1109,6 +1134,51 @@ int CWaveSoapFrontStatusBar::OnToolHitTest(CPoint point, TOOLINFO* pTI) const
 		}
 	}
 	return -1;
+}
+
+void CWaveSoapFrontStatusBar::OnContextMenu(CWnd* pWnd, CPoint point)
+{
+	// make sure window is active
+	GetParentFrame()->ActivateFrame();
+	CPoint pclient = point;
+	ScreenToClient(& pclient);
+	int nHit = -1;
+	for (int i = 1; i < m_nCount; i++)
+	{
+		CRect r;
+		GetItemRect(i, & r);
+		if (r.PtInRect(pclient))
+		{
+			nHit = GetItemID(i);
+			// found matching rect, return the ID
+			break;
+		}
+	}
+	UINT id;
+	CMenu menu;
+	switch(nHit)
+	{
+	case ID_INDICATOR_SAMPLE_RATE:
+		id = IDR_MENU_POPUP_SAMPLE_RATE;
+		break;
+	case ID_INDICATOR_SAMPLE_SIZE:
+		id = IDR_MENU_POPUP_SAMPLE_SIZE;
+		break;
+	case ID_INDICATOR_CHANNELS:
+		id = IDR_MENU_POPUP_CHANNELS;
+		break;
+	default:
+		Default();
+		return;
+	}
+	menu.LoadMenu(id);
+	CMenu* pPopup = menu.GetSubMenu(0);
+	if(pPopup != NULL)
+	{
+		pPopup->TrackPopupMenu(TPM_LEFTALIGN | TPM_RIGHTBUTTON,
+								point.x, point.y,
+								AfxGetMainWnd()); // use main window for cmds
+	}
 }
 
 void SetStatusString(CCmdUI* pCmdUI, const CString & string,
@@ -1163,7 +1233,10 @@ void CWaveSoapFrontApp::OnEditPasteNew()
 		CWaveSoapFrontDoc * pDoc = (CWaveSoapFrontDoc *)pTemplate->OpenDocumentFile(NULL);
 		if (NULL != pDoc)
 		{
+			BOOL TmpUndo = pDoc->UndoEnabled();
+			pDoc->EnableUndo(FALSE);
 			pDoc->DoEditPaste();
+			pDoc->EnableUndo(TmpUndo);
 		}
 		m_NewTemplateFile.Close();
 	}
