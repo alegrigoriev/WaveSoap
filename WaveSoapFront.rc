@@ -1377,7 +1377,7 @@ END
 IDD_DIALOG_DECLICKING DIALOGEX 0, 0, 230, 272
 STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | 
     WS_SYSMENU
-CAPTION "Click removal parameters"
+CAPTION "Click Removal"
 FONT 8, "MS Shell Dlg", 0, 0, 0x0
 BEGIN
     LTEXT           "Min click amplitude:",IDC_STATIC,31,9,76,8
