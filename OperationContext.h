@@ -545,10 +545,10 @@ public:
 	int m_MaxLeft;
 	int m_MinRight;
 	int m_MaxRight;
-	SAMPLE_INDEX m_PosMinLeft;
-	SAMPLE_INDEX m_PosMaxLeft;
-	SAMPLE_INDEX m_PosMinRight;
-	SAMPLE_INDEX m_PosMaxRight;
+	SAMPLE_POSITION m_PosMinLeft;
+	SAMPLE_POSITION m_PosMaxLeft;
+	SAMPLE_POSITION m_PosMinRight;
+	SAMPLE_POSITION m_PosMaxRight;
 	LONGLONG m_EnergyLeft;
 	LONGLONG m_EnergyRight;
 	LONGLONG m_SumLeft;
@@ -565,6 +565,8 @@ public:
 	DWORD m_Checksum;
 
 	virtual BOOL ProcessBuffer(void * buf, size_t BufferLength, SAMPLE_POSITION offset, BOOL bBackward = FALSE);
+
+	SAMPLE_INDEX GetMaxSamplePosition(CHANNEL_MASK * pChannel = NULL) const;
 
 	virtual void PostRetire();
 };
