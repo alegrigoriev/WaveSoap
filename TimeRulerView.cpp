@@ -194,7 +194,7 @@ void CTimeRulerView::DrawRulerHhMmSs(CDC* pDC)
 
 	// calculate position string length
 	int nTickCount;
-	float SampleRate = float(pDoc->m_WavFile.SampleRate());
+	float SampleRate = float(pDoc->WaveSampleRate());
 
 	int nLength = pDC->GetTextExtent(_T("00:00:00.0000"), 13).cx;
 
@@ -379,7 +379,7 @@ void CTimeRulerView::DrawRulerSeconds(CDC* pDC)
 
 	// calculate position string length
 	int nTickCount;
-	float SampleRate = float(pDoc->m_WavFile.SampleRate());
+	float SampleRate = float(pDoc->WaveSampleRate());
 
 	int nLength = pDC->GetTextExtent(_T("00,000.0000"), 14).cx;
 
