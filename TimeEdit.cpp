@@ -72,6 +72,13 @@ SAMPLE_INDEX CTimeEdit::ChangeTimeFormat(int format)
 	return sample;
 }
 
+SAMPLE_INDEX CTimeEdit::UpdateTimeSample()
+{
+	SAMPLE_INDEX tmp = GetTimeSample();
+	SetTimeSample(tmp);
+	return tmp;
+}
+
 SAMPLE_INDEX CTimeEdit::GetTimeSample()
 {
 	CString s;
