@@ -864,8 +864,36 @@ BOOL CWaveSoapFrontView::OnEraseBkgnd(CDC* pDC)
 	CBrush backBrush(pApp->m_WaveBackground);
 	CRect r;
 	GetClientRect( & r);
+	CRect gr = r;
 	int SelBegin = WorldToWindowX(pDoc->m_SelectionStart);
 	int SelEnd = WorldToWindowX(pDoc->m_SelectionEnd);
+	int FileEnd = WorldToWindowX(pDoc->WaveFileSamples());
+	if (FileEnd < r.right)
+	{
+		CBitmap bmp;
+		unsigned char pattern[] =
+		{
+			0x55, 0,  // aligned to WORD
+			0xAA, 0,
+			0x55, 0,
+			0xAA, 0,
+			0x55, 0,
+			0xAA, 0,
+			0x55, 0,
+			0xAA, 0,
+		};
+		try {
+			bmp.CreateBitmap(8, 8, 1, 1, pattern);
+			CBrush GrayBrush( & bmp);
+			r.right = FileEnd;
+			gr.left = FileEnd;
+			pDC->FillRect(gr, & GrayBrush);
+		}
+		catch (CResourceException)
+		{
+			TRACE("CResourceException\n");
+		}
+	}
 	if (pDoc->m_SelectionEnd != pDoc->m_SelectionStart
 		&& SelEnd == SelBegin)
 	{
@@ -1205,6 +1233,51 @@ void CWaveSoapFrontView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
 		}
 		CreateAndShowCaret();
 	}
+	else if (lHint == CWaveSoapFrontDoc::UpdateSoundChanged
+			&& NULL != pHint)
+	{
+		CSoundUpdateInfo * pInfo = (CSoundUpdateInfo *) pHint;
+		CWaveSoapFrontDoc * pDoc = GetDocument();
+		CRect r;
+		GetClientRect( & r);
+		CRect r1;
+
+		r1.top = r.top;
+		r1.bottom = r.bottom;
+		if (pInfo->Length != -1)
+		{
+			// length changed, set new extents and caret position
+			int nLowExtent = -32768;
+			int nHighExtent = 32767;
+			if (GetDocument()->WaveChannels() > 1)
+			{
+				nLowExtent = -0x10000;
+				nHighExtent = 0x10000;
+			}
+			SetMaxExtents(0, pInfo->Length, nLowExtent, nHighExtent);
+		}
+
+		// calculate update boundaries
+		r1.left = WorldToWindowX(pInfo->Begin);
+		r1.right = 1+WorldToWindowX(pInfo->End);
+
+		if (r1.left != r1.right
+			// limit the rectangles with the window boundaries
+			&& r1.left < r.right
+			&& r1.right > r.left)
+		{
+			// non-empty, in the client
+			if (r1.left < r.left)
+			{
+				r1.left = r.left;
+			}
+			if(r1.right > r.right)
+			{
+				r1.right = r.right;
+			}
+			InvalidateRect(& r1, FALSE);
+		}
+	}
 	else
 	{
 		CScaledScrollView::OnUpdate(pSender, lHint, pHint);
@@ -1451,13 +1524,32 @@ void CWaveSoapFrontView::UpdateCaretPosition()
 
 void CWaveSoapFrontView::OnActivateView(BOOL bActivate, CView* pActivateView, CView* pDeactiveView)
 {
-	if (bActivate)
+	if (NULL == pActivateView
+		|| NULL == pDeactiveView
+		|| pActivateView->GetDocument() != pDeactiveView->GetDocument())
 	{
-		GetApp()->m_pActiveDocument = (CWaveSoapFrontDoc*)pActivateView->GetDocument();
-	}
-	else if (pDeactiveView == this)
-	{
-		GetApp()->m_pActiveDocument = NULL;
+		CWaveSoapFrontDoc * pDoc;
+		if (bActivate)
+		{
+			pDoc = DYNAMIC_DOWNCAST(CWaveSoapFrontDoc, pActivateView->GetDocument());
+			GetApp()->m_pActiveDocument = pDoc;
+			if (pDoc)
+			{
+				TRACE("Document thread priority increased\n");
+				pDoc->SetThreadPriority(THREAD_PRIORITY_BELOW_NORMAL);
+			}
+		}
+		else if (pDeactiveView == this)
+		{
+			GetApp()->m_pActiveDocument = NULL;
+			pDoc = DYNAMIC_DOWNCAST(CWaveSoapFrontDoc, pDeactiveView->GetDocument());
+			if (pDoc)
+			{
+				TRACE("Document thread priority lowered\n");
+				pDoc->SetThreadPriority(THREAD_PRIORITY_LOWEST);
+			}
+		}
 	}
 	CScaledScrollView::OnActivateView(bActivate, pActivateView, pDeactiveView);
 }
+
