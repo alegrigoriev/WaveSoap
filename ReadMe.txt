@@ -1,11 +1,12 @@
 Known problems and tasks:
 
-In outline view, change mouse cursor over caret and view and selection boundaries
 Add CD grabbing
 Load sound from AVI
 Add options dialog
+Save WAVEFORMAT of an open WMA/MP3 file
 Enter WMA file attributes (title, author, etc)
 Enter MP3 file attributes
+In outline view, change mouse cursor over caret and view and selection boundaries
 
 Add noise reduction estimation in spectrum section view
 Add sound recording

@@ -130,6 +130,7 @@ class CCdGrabbingDialog : public CDialog
 // Construction
 public:
 	CCdGrabbingDialog(CWnd* pParent = NULL);   // standard constructor
+	~CCdGrabbingDialog();
 
 // Dialog Data
 	//{{AFX_DATA(CCdGrabbingDialog)
@@ -141,6 +142,11 @@ public:
 	int m_NumberOfDrives;
 	int m_CDDriveSelected;
 	CDROM_TOC m_toc;
+
+	DWORD m_DiskID;
+	HANDLE m_DriveHandle;
+	HANDLE m_DriveAttributesHandle;
+	DWORD m_MediaChangeCount;
 
 // Overrides
 	// ClassWizard generated virtual function overrides
@@ -154,18 +160,29 @@ protected:
 	CSize m_PreviousSize;
 	MINMAXINFO m_mmxi;
 	void FillTrackList(TCHAR letter);
+	void ReloadTrackList();
+
+	BOOL OpenDrive(TCHAR letter);
+	void CloseDrive();
 	void FillDriveList();
 	void CreateImageList();
+	void CheckForDiskChanged();
 
 	// Generated message map functions
 	//{{AFX_MSG(CCdGrabbingDialog)
 	virtual BOOL OnInitDialog();
+	afx_msg BOOL OnEraseBkgnd(CDC* pDC);
 	afx_msg void OnSize(UINT nType, int cx, int cy);
 	afx_msg void OnSizing(UINT fwSide, LPRECT pRect);
 	afx_msg UINT OnNcHitTest(CPoint point);
 	afx_msg void OnGetMinMaxInfo(MINMAXINFO FAR* lpMMI);
+	afx_msg void OnTimer(UINT nIDEvent);
+	afx_msg void OnButtonMore();
+	afx_msg void OnSelchangeComboDrives();
+	afx_msg void OnDestroy();
 	//}}AFX_MSG
 	void OnMetricsChange();
+	afx_msg LRESULT OnDeviceChange(UINT, DWORD);
 	DECLARE_MESSAGE_MAP()
 };
 /////////////////////////////////////////////////////////////////////////////

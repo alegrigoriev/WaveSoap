@@ -55,7 +55,6 @@ static UINT indicators[] =
 CMainFrame::CMainFrame()
 {
 	m_nRotateChildIndex = 0;
-
 }
 
 CMainFrame::~CMainFrame()
