@@ -44,7 +44,7 @@ protected:
 	virtual void AssertValid() const;
 	virtual void Dump(CDumpContext& dc) const;
 #endif
-	unsigned HitTest(POINT p, RECT * pHitRect = NULL) const;
+	unsigned HitTest(POINT p, RECT * pHitRect = NULL, int * OffsetX = NULL) const;
 	void InvalidateMarkerRegion(WAVEREGIONINFO const * pInfo);
 
 	enum {
@@ -59,6 +59,7 @@ protected:
 protected:
 	int m_CurrentDisplayMode;
 	unsigned m_DraggedMarkerHitTest;
+	int m_HitOffset;
 	unsigned m_PopupMenuHitTest;
 	WAVEREGIONINFO m_PopupMenuHit;
 

@@ -9,8 +9,8 @@
 #include "WaveSoapFrontDoc.h"
 #include "GdiObjectSave.h"
 #include "TimeToStr.h"
-#include ".\timerulerview.h"
 #include "resource.h"       // main symbols
+#include "OperationDialogs2.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -43,6 +43,7 @@ CTimeRulerView::CTimeRulerView()
 	, m_AutoscrollTimerID(0)
 	, m_MarkerHeight(10)
 	, m_PopupMenuHitTest(0)
+	, m_HitOffset(0)
 {
 	memzero(m_PopupMenuHit);
 }
@@ -591,7 +592,9 @@ int CTimeRulerView::CalculateHeight()
 	return tm.tmHeight + tm.tmAveCharWidth + 7;
 }
 
-unsigned CTimeRulerView::HitTest(POINT p, RECT * pHitRect) const
+// the function accepts point coordinates relative to the client area
+// it puts the marker rectangle into optional *pHitRect, and offset from the marker origin to *OffsetX
+unsigned CTimeRulerView::HitTest(POINT p, RECT * pHitRect, int * OffsetX) const
 {
 	unsigned result = HitTestNone;
 	CWaveSoapFrontDoc * pDoc = GetDocument();
@@ -642,6 +645,11 @@ unsigned CTimeRulerView::HitTest(POINT p, RECT * pHitRect) const
 						pHitRect->top = cr.bottom - m_MarkerHeight;
 						pHitRect->bottom = cr.bottom;
 					}
+
+					if (NULL != OffsetX)
+					{
+						*OffsetX = p.x - x;
+					}
 					break;
 				}
 			}
@@ -669,6 +677,10 @@ unsigned CTimeRulerView::HitTest(POINT p, RECT * pHitRect) const
 						pHitRect->top = cr.bottom - m_MarkerHeight;
 						pHitRect->bottom = cr.bottom;
 					}
+					if (NULL != OffsetX)
+					{
+						*OffsetX = p.x - x;
+					}
 					break;
 				}
 
@@ -694,6 +706,10 @@ unsigned CTimeRulerView::HitTest(POINT p, RECT * pHitRect) const
 						pHitRect->right = x;
 						pHitRect->top = cr.bottom - m_MarkerHeight;
 						pHitRect->bottom = cr.bottom;
+					}
+					if (NULL != OffsetX)
+					{
+						*OffsetX = p.x - x;
 					}
 					break;
 				}
@@ -813,16 +829,47 @@ void CTimeRulerView::OnToolTipText(UINT /*id*/, NMHDR* pNMHDR, LRESULT* pResult)
 
 void CTimeRulerView::OnLButtonDblClk(UINT nFlags, CPoint point)
 {
-	// TODO: Add your message handler code here and/or call default
-	// if the marker or region is double-clicked, open the marker editing dialog
-	// if double clicked between markers, select
+	CWaveSoapFrontDoc * pDoc = GetDocument();
+	unsigned hit = HitTest(point);
+
+	WAVEREGIONINFO info;
+
+	info.Flags = info.CuePointIndex | info.ChangeAll;
+	info.MarkerCueID = hit & HitTestCueIndexMask;
+
 	BaseClass::OnLButtonDblClk(nFlags, point);
+
+	if (hit & (HitTestRegionBegin | HitTestRegionEnd | HitTestMarker))
+	{
+		// if the marker or region is double-clicked, open the marker editing dialog
+		if ( ! GetDocument()->m_WavFile.GetWaveMarker( & info))
+		{
+			info.Flags = 0;
+		}
+
+		CMarkerRegionDialog dlg( & info, pDoc->m_CaretPosition,
+								pDoc->m_WavFile, GetApp()->m_SoundTimeFormat);
+
+		if (IDOK != dlg.DoModal())
+		{
+			return;
+		}
+
+		pDoc->BeginMarkerChange(CWaveFile::InstanceDataWav::MetadataCopyAllCueData);
+		pDoc->ChangeWaveMarker( & info);
+	}
+	else
+	{
+		// TODO: Add your message handler code here and/or call default
+		// if double clicked between markers, select
+	}
 }
 
 void CTimeRulerView::OnLButtonDown(UINT nFlags, CPoint point)
 {
 	// if clicked on a marker, wait for marker drag
-	m_DraggedMarkerHitTest = HitTest(point);
+	m_DraggedMarkerHitTest = HitTest(point, NULL, & m_HitOffset);
+
 	if (GetDocument()->IsReadOnly()
 		|| HitTestLowerHalf == m_DraggedMarkerHitTest)
 	{
@@ -906,6 +953,8 @@ void CTimeRulerView::OnMouseMove(UINT nFlags, CPoint point)
 		bool DoRightAutoscroll = false;
 
 		int DataEnd = WorldToWindowXceil(pDoc->WaveFileSamples());
+		point.x -= m_HitOffset;
+
 		if (point.x < DataEnd
 			&& cr.right > AutoscrollWidth)
 		{
@@ -1319,6 +1368,18 @@ void CTimeRulerView::OnUpdateMoveMarkerToCurrent(CCmdUI *pCmdUI)
 void CTimeRulerView::OnEditMarker()
 {
 	// TODO: Add your command handler code here
+	CWaveSoapFrontDoc * pDoc = GetDocument();
+
+	CMarkerRegionDialog dlg( & m_PopupMenuHit, pDoc->m_CaretPosition,
+							pDoc->m_WavFile, GetApp()->m_SoundTimeFormat);
+
+	if (IDOK != dlg.DoModal())
+	{
+		return;
+	}
+
+	pDoc->BeginMarkerChange(CWaveFile::InstanceDataWav::MetadataCopyAllCueData);
+	pDoc->ChangeWaveMarker( & m_PopupMenuHit);
 }
 
 void CTimeRulerView::OnUpdateEditMarker(CCmdUI *pCmdUI)
