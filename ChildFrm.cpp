@@ -116,6 +116,8 @@ CWaveMDIChildClient::CWaveMDIChildClient()
 	m_bShowOutline(TRUE),
 	m_bShowTimeRuler(TRUE),
 	m_bShowVerticalRuler(TRUE),
+	m_bShowSpectrumSection(FALSE),
+	m_SpectrumSectionWidth(100),
 	m_bShowFft(FALSE)
 {
 }
@@ -140,6 +142,8 @@ BEGIN_MESSAGE_MAP(CWaveMDIChildClient, CWnd)
 	ON_UPDATE_COMMAND_UI(ID_VIEW_TIME_RULER, OnUpdateViewTimeRuler)
 	ON_UPDATE_COMMAND_UI(ID_VIEW_VERTICAL_RULER, OnUpdateViewVerticalRuler)
 	ON_COMMAND(ID_VIEW_VERTICAL_RULER, OnViewVerticalRuler)
+	ON_UPDATE_COMMAND_UI(ID_VIEW_SPECTRUMSECTION, OnUpdateViewSpectrumsection)
+	ON_COMMAND(ID_VIEW_SPECTRUMSECTION, OnViewSpectrumsection)
 	//}}AFX_MSG_MAP
 END_MESSAGE_MAP()
 
@@ -260,15 +264,31 @@ void CWaveMDIChildClient::RecalcLayout()
 	int RulerWidth = CAmplitudeRuler::CalculateWidth();
 	int cyhscroll = GetSystemMetrics(SM_CYHSCROLL);
 	int OutlineHeight = 2 * cyhscroll;
-	CWnd * pOutline = GetDlgItem(OutlineViewID);
+	int SpectrumSectionWidth = m_SpectrumSectionWidth;
+	int VerticalTrackerWidth = GetSystemMetrics(SM_CXSIZEFRAME);
+	if ( ! m_bShowSpectrumSection)
+	{
+		SpectrumSectionWidth = 0;
+		VerticalTrackerWidth = 0;
+	}
+	else if (SpectrumSectionWidth + VerticalTrackerWidth > cr.right - 2)
+	{
+		SpectrumSectionWidth = cr.right - 2 - VerticalTrackerWidth;
+		if (SpectrumSectionWidth <= 0)
+		{
+			SpectrumSectionWidth = 0;
+			VerticalTrackerWidth = 0;
+		}
+	}
 	if ( ! m_bShowVerticalRuler)
 	{
 		RulerWidth = 0;
 	}
 
+	CWnd * pOutline = GetDlgItem(OutlineViewID);
 	if (pOutline && m_bShowOutline)
 	{
-		r.left = RulerWidth;
+		r.left = 0;
 		r.top = 0;
 		r.bottom = OutlineHeight;
 		r.right = cr.right;
@@ -288,7 +308,7 @@ void CWaveMDIChildClient::RecalcLayout()
 
 	if (pHorRuler && m_bShowTimeRuler)
 	{
-		r.left = RulerWidth;
+		r.left = SpectrumSectionWidth + VerticalTrackerWidth + RulerWidth;
 		r.top = OutlineHeight;
 		r.bottom = OutlineHeight + RulerHeight;
 		r.right = cr.right;
@@ -358,11 +378,47 @@ void CWaveMDIChildClient::RecalcLayout()
 	CWnd * pScroll = GetDlgItem(AFX_IDW_HSCROLL_FIRST);
 	if (pScroll)
 	{
-		r.left = RulerWidth;
+		r.left = SpectrumSectionWidth + VerticalTrackerWidth + RulerWidth;
 		r.right = cr.right;
 		r.top = cr.bottom - cyhscroll;
 		r.bottom = cr.bottom;
 		DeferClientPos(&layout, pScroll, r, TRUE);
+	}
+
+	CWnd * pSpectrumSection = GetDlgItem(SpectrumSectionViewID);
+	if (pSpectrumSection)
+	{
+		r.left = RulerWidth;
+		r.right = RulerWidth + SpectrumSectionWidth;
+		r.top = OutlineHeight + RulerHeight;
+		r.bottom = cr.bottom;
+		if (0 != SpectrumSectionWidth)
+		{
+			pSpectrumSection->ShowWindow(SW_SHOWNOACTIVATE);
+		}
+		else
+		{
+			pSpectrumSection->ShowWindow(SW_HIDE);
+		}
+		DeferClientPos(&layout, pSpectrumSection, r, FALSE);
+	}
+
+	CWnd * pVerticalTracker = GetDlgItem(VerticalTrackerID);
+	if (pVerticalTracker)
+	{
+		r.left = RulerWidth + SpectrumSectionWidth;
+		r.right = RulerWidth + SpectrumSectionWidth + VerticalTrackerWidth;
+		r.top = OutlineHeight + RulerHeight;
+		r.bottom = cr.bottom;
+		if (0 != VerticalTrackerWidth)
+		{
+			pVerticalTracker->ShowWindow(SW_SHOWNOACTIVATE);
+		}
+		else
+		{
+			pVerticalTracker->ShowWindow(SW_HIDE);
+		}
+		DeferClientPos(&layout, pVerticalTracker, r, FALSE);
 	}
 
 	r.left = 0;
@@ -379,7 +435,9 @@ void CWaveMDIChildClient::RecalcLayout()
 		wStatic1.ShowWindow(SW_HIDE);
 	}
 
-	r.top = 0;
+	r.left = 0;
+	r.right = RulerWidth + SpectrumSectionWidth + VerticalTrackerWidth;
+	r.top = OutlineHeight;
 	r.bottom = OutlineHeight + RulerHeight;
 	if (r.right != 0 && r.bottom != 0)
 	{
@@ -391,19 +449,35 @@ void CWaveMDIChildClient::RecalcLayout()
 		wStatic.ShowWindow(SW_HIDE);
 	}
 
-	r.left = RulerWidth;
+	r.left = SpectrumSectionWidth + VerticalTrackerWidth + RulerWidth;
 	r.top = OutlineHeight + RulerHeight;
 	r.bottom = cr.bottom - cyhscroll;
 	r.right = cr.right;
 	CWnd * pWaveView = GetDlgItem(WaveViewID);
 	if (pWaveView)
 	{
+		if (m_bShowWaveform)
+		{
+			pWaveView->ShowWindow(SW_SHOW);
+		}
+		else
+		{
+			pWaveView->ShowWindow(SW_HIDE);
+		}
 		DeferClientPos(&layout, pWaveView, r, FALSE);
 	}
 
 	CWnd * pFftView = GetDlgItem(FftViewID);
 	if (pFftView)
 	{
+		if (m_bShowFft)
+		{
+			pFftView->ShowWindow(SW_SHOW);
+		}
+		else
+		{
+			pFftView->ShowWindow(SW_HIDE);
+		}
 		DeferClientPos(&layout, pFftView, r, FALSE);
 	}
 	// move and resize all the windows at once!
@@ -575,6 +649,10 @@ int CWaveMDIChildClient::OnCreate(LPCREATESTRUCT lpCreateStruct)
 
 	// create scrollbar
 	m_sb.Create(SBS_HORZ | WS_VISIBLE | WS_CHILD, r, this, AFX_IDW_HSCROLL_FIRST);
+	wTracker.Create(AfxRegisterWndClass(CS_HREDRAW | CS_VREDRAW,
+										AfxGetApp()->LoadStandardCursor(IDC_SIZEWE),
+										HBRUSH(COLOR_ACTIVEBORDER + 1)), _T(""),
+					WS_CHILD, r, this, VerticalTrackerID);
 
 	CWnd * pFftView = CreateView(RUNTIME_CLASS(CWaveFftView),
 								r10, FftViewID, pContext, FALSE); //do not show
@@ -583,12 +661,18 @@ int CWaveMDIChildClient::OnCreate(LPCREATESTRUCT lpCreateStruct)
 							r10, WaveViewID, pContext);
 
 	CWnd * pTrackView = CreateView(RUNTIME_CLASS(CSpectrumSectionView),
-									r10, SpectrumSectionViewID, pContext);
+									r10, SpectrumSectionViewID, pContext, FALSE);
 
 	if (pView && pFftView)
 	{
 		(DYNAMIC_DOWNCAST(CScaledScrollView, pFftView))->SyncHorizontal
 			(DYNAMIC_DOWNCAST(CScaledScrollView, pView));
+	}
+
+	if (pTrackView && pFftView)
+	{
+		(DYNAMIC_DOWNCAST(CScaledScrollView, pTrackView))->SyncVertical
+			(DYNAMIC_DOWNCAST(CScaledScrollView, pFftView));
 	}
 
 	GetParentFrame()->SetActiveView(DYNAMIC_DOWNCAST(CView, pView));
@@ -619,27 +703,7 @@ void CWaveMDIChildClient::OnViewShowFft()
 	m_bShowFft = TRUE;
 	m_bShowWaveform = FALSE;
 
-	CWnd * pView = GetDlgItem(FftViewID);
-	if (pView != NULL)
-	{
-		pView->ShowWindow(SW_SHOW);
-		((CFrameWnd*)GetParent())->SetActiveView((CView *)pView);
-		pView = GetDlgItem(VerticalFftRulerID);
-		if (NULL != pView)
-		{
-			pView->ShowWindow(SW_SHOWNOACTIVATE);
-		}
-		pView = GetDlgItem(WaveViewID);
-		if (NULL != pView)
-		{
-			pView->ShowWindow(SW_HIDE);
-		}
-		pView = GetDlgItem(VerticalWaveRulerID);
-		if (NULL != pView)
-		{
-			pView->ShowWindow(SW_HIDE);
-		}
-	}
+	RecalcLayout();
 }
 
 void CWaveMDIChildClient::OnUpdateViewShowFft(CCmdUI* pCmdUI)
@@ -657,27 +721,7 @@ void CWaveMDIChildClient::OnViewWaveform()
 	m_bShowFft = FALSE;
 	m_bShowWaveform = TRUE;
 
-	CWnd * pView = GetDlgItem(WaveViewID);
-	if (pView != NULL)
-	{
-		pView->ShowWindow(SW_SHOW);
-		((CFrameWnd*)GetParent())->SetActiveView((CView *)pView);
-		pView = GetDlgItem(VerticalWaveRulerID);
-		if (NULL != pView)
-		{
-			pView->ShowWindow(SW_SHOWNOACTIVATE);
-		}
-		pView = GetDlgItem(FftViewID);
-		if (NULL != pView)
-		{
-			pView->ShowWindow(SW_HIDE);
-		}
-		pView = GetDlgItem(VerticalFftRulerID);
-		if (NULL != pView)
-		{
-			pView->ShowWindow(SW_HIDE);
-		}
-	}
+	RecalcLayout();
 }
 
 void CWaveMDIChildClient::OnUpdateViewWaveform(CCmdUI* pCmdUI)
@@ -765,6 +809,7 @@ void CWaveMDIChildClient::OnViewVerticalRuler()
 
 CVerticalTrackerBar::CVerticalTrackerBar()
 {
+	m_bTracking = FALSE;
 }
 
 CVerticalTrackerBar::~CVerticalTrackerBar()
@@ -774,17 +819,13 @@ CVerticalTrackerBar::~CVerticalTrackerBar()
 
 BEGIN_MESSAGE_MAP(CVerticalTrackerBar, CWnd)
 	//{{AFX_MSG_MAP(CVerticalTrackerBar)
-		// NOTE - the ClassWizard will add and remove mapping macros here.
+	ON_WM_PAINT()
+	ON_WM_LBUTTONDOWN()
+	ON_WM_LBUTTONUP()
+	ON_WM_MOUSEMOVE()
+	ON_WM_CAPTURECHANGED()
 	//}}AFX_MSG_MAP
 END_MESSAGE_MAP()
-
-/////////////////////////////////////////////////////////////////////////////
-// CVerticalTrackerBar drawing
-
-void CVerticalTrackerBar::OnDraw(CDC* pDC)
-{
-	// TODO: add draw code here
-}
 
 /////////////////////////////////////////////////////////////////////////////
 // CVerticalTrackerBar diagnostics
@@ -803,3 +844,70 @@ void CVerticalTrackerBar::Dump(CDumpContext& dc) const
 
 /////////////////////////////////////////////////////////////////////////////
 // CVerticalTrackerBar message handlers
+
+void CWaveMDIChildClient::OnUpdateViewSpectrumsection(CCmdUI* pCmdUI)
+{
+	pCmdUI->SetCheck(m_bShowSpectrumSection);
+}
+
+void CWaveMDIChildClient::OnViewSpectrumsection()
+{
+	m_bShowSpectrumSection = ! m_bShowSpectrumSection;
+	RecalcLayout();
+}
+
+/////////////////////////////////////////////////////////////////////////////
+// CVerticalTrackerBar drawing
+
+void CVerticalTrackerBar::OnPaint()
+{
+	CPaintDC dc(this); // device context for painting
+	CRect rect;
+	GetClientRect( &rect);
+	dc.Draw3dRect(rect, GetSysColor(COLOR_3DHIGHLIGHT), GetSysColor(COLOR_3DSHADOW));
+}
+
+void CVerticalTrackerBar::OnLButtonDown(UINT nFlags, CPoint point)
+{
+	m_bTracking = TRUE;
+	SetCapture();
+	m_ClickPointX = point.x;
+	CWnd::OnLButtonDown(nFlags, point);
+}
+
+void CVerticalTrackerBar::OnLButtonUp(UINT nFlags, CPoint point)
+{
+	m_bTracking = FALSE;
+	ReleaseCapture();
+	CWnd::OnLButtonUp(nFlags, point);
+}
+
+void CVerticalTrackerBar::OnMouseMove(UINT nFlags, CPoint point)
+{
+	if(m_bTracking)
+	{
+		CWaveMDIChildClient * pParent = dynamic_cast<CWaveMDIChildClient *>(GetParent());
+		if (NULL != pParent)
+		{
+			point.x -= m_ClickPointX;
+			ClientToScreen( & point);
+			CSpectrumSectionView * pSpectrumSection =
+				dynamic_cast<CSpectrumSectionView *>
+				(pParent->GetDlgItem(CWaveMDIChildClient::SpectrumSectionViewID));
+
+			if (NULL != pSpectrumSection)
+			{
+				pSpectrumSection->ScreenToClient( & point);
+				pParent->m_SpectrumSectionWidth = point.x;
+				pParent->RecalcLayout();
+			}
+		}
+	}
+	CWnd::OnMouseMove(nFlags, point);
+}
+
+void CVerticalTrackerBar::OnCaptureChanged(CWnd *pWnd)
+{
+	m_bTracking = FALSE;
+	CWnd::OnCaptureChanged(pWnd);
+}
