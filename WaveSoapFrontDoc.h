@@ -228,20 +228,20 @@ public:
 	BOOL OnSaveDocument(LPCTSTR lpszPathName, DWORD flags, WAVEFORMATEX const * pWf);
 
 	BOOL OnSaveFileOrPart(class COperationContext ** ppOp, int flags, LPCTSTR FullTargetName, WAVEFORMATEX const * pWf,
-						SAMPLE_INDEX Begin = 0, SAMPLE_INDEX End = LAST_SAMPLE);
+						SAMPLE_INDEX Begin = 0, SAMPLE_INDEX End = LAST_SAMPLE, CHANNEL_MASK ChannelsToCopy = 0);
 
 	BOOL OnSaveDirectFile();
 	BOOL OnSaveBufferedPcmFile(class COperationContext ** ppOp, int flags, LPCTSTR FullTargetName);
 	BOOL OnSaveBufferedPcmFileCopy(class COperationContext ** ppOp, int flags, LPCTSTR FullTargetName);
 
 	BOOL OnSaveConvertedFile(class COperationContext ** ppOp, int flags, LPCTSTR FullTargetName, WAVEFORMATEX const * pWf,
-							SAMPLE_INDEX Begin = 0, SAMPLE_INDEX End = LAST_SAMPLE);
+							SAMPLE_INDEX Begin, SAMPLE_INDEX End, CHANNEL_MASK ChannelsToCopy);
 	BOOL OnSaveMp3File(class COperationContext ** ppOp, int flags, LPCTSTR FullTargetName, WAVEFORMATEX const * pWf,
-						SAMPLE_INDEX Begin = 0, SAMPLE_INDEX End = LAST_SAMPLE);
+						SAMPLE_INDEX Begin, SAMPLE_INDEX End, CHANNEL_MASK ChannelsToCopy);
 	BOOL OnSaveWmaFile(class COperationContext ** ppOp, int flags, LPCTSTR FullTargetName, WAVEFORMATEX const * pWf,
-						SAMPLE_INDEX Begin = 0, SAMPLE_INDEX End = LAST_SAMPLE);
+						SAMPLE_INDEX Begin, SAMPLE_INDEX End, CHANNEL_MASK ChannelsToCopy);
 	BOOL OnSaveRawFile(class COperationContext ** ppOp, int flags, LPCTSTR FullTargetName, WAVEFORMATEX const * pWf,
-						SAMPLE_INDEX Begin = 0, SAMPLE_INDEX End = LAST_SAMPLE);
+						SAMPLE_INDEX Begin, SAMPLE_INDEX End, CHANNEL_MASK ChannelsToCopy);
 
 	// flags OpenDocumentReadOnly - ReadOnly, 2 - DirectMode
 	virtual BOOL OnOpenDocument(LPCTSTR lpszPathName, int flags);
