@@ -50,11 +50,11 @@ END_MESSAGE_MAP()
 // CPasteModeDialog dialog
 
 
-CPasteModeDialog::CPasteModeDialog(CWnd* pParent /*=NULL*/)
-	: CDialog(CPasteModeDialog::IDD, pParent)
+CPasteModeDialog::CPasteModeDialog(int PasteMode, CWnd* pParent /*=NULL*/)
+	: CDialog(CPasteModeDialog::IDD, pParent),
+	m_PasteMode(PasteMode)
 {
 	//{{AFX_DATA_INIT(CPasteModeDialog)
-	m_PasteMode = -1;
 	//}}AFX_DATA_INIT
 }
 
