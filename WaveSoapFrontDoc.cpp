@@ -4836,29 +4836,34 @@ void CWaveSoapFrontDoc::OnProcessDoDeclicking()
 		return;
 	}
 
-	CWaveProcContext::auto_ptr pContext
-	(new CWaveProcContext(this, IDS_DECLICK_STATUS_PROMPT,
-						IDS_DECLICK_OPERATION_NAME));
+	CWaveProcContext::auto_ptr pContext(
+										new CWaveProcContext(
+															this, IDS_DECLICK_STATUS_PROMPT, IDS_DECLICK_OPERATION_NAME));
 
-	CClickRemoval * pDeclick = new CClickRemoval(WaveFormat(), dlg.GetChannel());
-	pContext->AddWaveProc(pDeclick);
+	DeclickParameters dp;
+	dlg.GetDeclickParameters( & dp);
 
-	dlg.SetDeclickData(pDeclick);
+	pContext->AddWaveProc(new CClickRemoval(WaveFormat(), dlg.GetChannel(), dp));
 
-	if (dlg.UndoEnabled())
+	BOOL UndoEnabled = dlg.UndoEnabled() && ! (dp.m_bLogClicksOnly & dp.m_bLogClicks) && ! dp.m_ClickLogFilename.IsEmpty();
+
+	if (UndoEnabled)
 	{
 		pContext->AddSelectionUndo(dlg.GetStart(), dlg.GetEnd(), dlg.GetStart(), dlg.GetChannel());
 	}
 
 	if ( ! pContext->InitDestination(m_WavFile, dlg.GetStart(),
-									dlg.GetEnd(), dlg.GetChannel(), dlg.UndoEnabled()))
+									dlg.GetEnd(), dlg.GetChannel(), UndoEnabled))
 	{
 		return;
 	}
 
 	pContext.release()->Execute();
-	SetModifiedFlag(TRUE, dlg.UndoEnabled());
 
+	if ( ! (dp.m_bLogClicksOnly & dp.m_bLogClicks) && ! dp.m_ClickLogFilename.IsEmpty())
+	{
+		SetModifiedFlag(TRUE, UndoEnabled);
+	}
 }
 
 void CWaveSoapFrontDoc::OnUpdateProcessNoiseReduction(CCmdUI* pCmdUI)
