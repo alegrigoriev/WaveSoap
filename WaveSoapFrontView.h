@@ -20,6 +20,7 @@ protected: // create from serialization only
 
 // Attributes
 public:
+	friend class CAmplitudeRuler;
 	CWaveSoapFrontDoc* GetDocument();
 
 // Operations
