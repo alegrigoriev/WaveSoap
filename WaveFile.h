@@ -256,7 +256,7 @@ public:
 	// the function returns number of bytes written. If -1, means failure
 	int WriteChunkString(CStringW const & String);    // will save as either ANSI, or UTF8 or UTF-16
 	int WriteChunkString(CStringA const & String);
-	int WriteChunkStringW(CString const & String);
+	int WriteChunkStringW(CStringW const & String);
 
 	int ChunkStringLength(CStringW const & String) const;
 	int ChunkStringLength(CStringA const & String) const;

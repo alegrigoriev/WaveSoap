@@ -670,7 +670,7 @@ BOOL CMmioFile::ReadChunkString(ULONG Length, CStringW & String)
 	return TRUE;
 }
 
-BOOL CMmioFile::ReadChunkStringW(ULONG Length, CString & String)
+BOOL CMmioFile::ReadChunkStringW(ULONG Length, CStringW & String)
 {
 	// the string is unicode
 	if (0 == Length)
@@ -811,7 +811,7 @@ int CMmioFile::ChunkStringLength(CStringA const & String) const
 	return Length;
 }
 
-int CMmioFile::WriteChunkStringW(CString const & String)
+int CMmioFile::WriteChunkStringW(CStringW const & String)
 {
 	// write UNICODE string, but without BOM
 	int Length = String.GetLength() * sizeof (WCHAR);
@@ -2310,7 +2310,8 @@ DWORD CWaveFile::GetMetadataLength() const
 	{
 		return 0;
 	}
-	DWORD size = 0;
+
+	size_t size = 0;
 
 	if ( ! inst->m_CuePoints.empty())
 	{
