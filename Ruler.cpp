@@ -36,6 +36,7 @@ BEGIN_MESSAGE_MAP(CHorizontalRuler, CScaledScrollView)
 	ON_WM_MOUSEACTIVATE()
 	ON_WM_CAPTURECHANGED()
 	ON_WM_CREATE()
+	ON_WM_ERASEBKGND()
 	//}}AFX_MSG_MAP
 END_MESSAGE_MAP()
 
@@ -88,7 +89,7 @@ void CHorizontalRuler::OnSetFocus(CWnd* pOldWnd)
 BOOL CHorizontalRuler::PreCreateWindow(CREATESTRUCT& cs)
 {
 	cs.lpszClass = AfxRegisterWndClass(CS_VREDRAW | CS_DBLCLKS, AfxGetApp()->LoadStandardCursor(IDC_SIZEWE),
-										GetSysColorBrush(COLOR_MENU), NULL);
+										NULL, NULL);
 
 	return CScaledScrollView::PreCreateWindow(cs);
 }
@@ -187,6 +188,7 @@ BEGIN_MESSAGE_MAP(CVerticalRuler, CScaledScrollView)
 	ON_WM_MOUSEACTIVATE()
 	ON_WM_CAPTURECHANGED()
 	ON_WM_CREATE()
+	ON_WM_ERASEBKGND()
 	//}}AFX_MSG_MAP
 END_MESSAGE_MAP()
 
@@ -238,7 +240,7 @@ void CVerticalRuler::OnSetFocus(CWnd* pOldWnd)
 BOOL CVerticalRuler::PreCreateWindow(CREATESTRUCT& cs)
 {
 	cs.lpszClass = AfxRegisterWndClass(CS_HREDRAW | CS_DBLCLKS, AfxGetApp()->LoadStandardCursor(IDC_SIZENS),
-										GetSysColorBrush(COLOR_MENU), NULL);
+										NULL, NULL);
 
 	return CScaledScrollView::PreCreateWindow(cs);
 }
@@ -356,4 +358,24 @@ int CHorizontalRuler::CalculateHeight()
 	int height = dc.GetTextExtent("0", 1).cy;
 	dc.SelectObject(pOldFont);
 	return height + 9;
+}
+
+BOOL CVerticalRuler::OnEraseBkgnd(CDC* pDC)
+{
+	CBrush brush(GetSysColor(COLOR_MENU));
+	CRect cr;
+	GetClientRect( & cr);
+	pDC->FillRect( & cr, & brush);
+
+	return TRUE;
+}
+
+BOOL CHorizontalRuler::OnEraseBkgnd(CDC* pDC)
+{
+	CBrush brush(GetSysColor(COLOR_MENU));
+	CRect cr;
+	GetClientRect( & cr);
+	pDC->FillRect( & cr, & brush);
+
+	return TRUE;
 }
