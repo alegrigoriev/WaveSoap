@@ -308,6 +308,7 @@ struct WaveFileSegment
 	SAMPLE_INDEX Begin;
 	SAMPLE_INDEX End;
 	CString Name;
+	CString FullFilename;
 };
 
 typedef std::vector<WaveFileSegment> WaveFileSegmentVector;
@@ -509,7 +510,7 @@ public:
 	CWaveFile(CWaveFile & f);
 	~CWaveFile();
 
-	BOOL CreateWaveFile(CWaveFile * pTemplateFile, WAVEFORMATEX * pTemplateFormat,
+	BOOL CreateWaveFile(CWaveFile * pTemplateFile, WAVEFORMATEX const * pTemplateFormat,
 						CHANNEL_MASK Channels, WAV_FILE_SIZE SizeOrSamples,
 						long flags, LPCTSTR FileName);
 
