@@ -21,6 +21,7 @@ public:
 	void SetNumberOfBands(int NumBands);
 
 	complex<float> CalculateResponse(double Frequency);
+	void CalculateCoefficients(double Gain, double Frequency, double Width, double Coeffs[6]);
 
 	double m_BandGain[MaxNumberOfEqualizerBands];   // target gain in the band
 	double m_UsedBandGain[MaxNumberOfEqualizerBands];   // gain in the band used to calculate coefficients
@@ -29,6 +30,7 @@ public:
 	// the coefficients are: 3 numerator's coeffs and 3 denominator's coeffs
 	double m_BandCoefficients[MaxNumberOfEqualizerBands][6];
 	int m_NumOfFilters;    // 2-MaxNumberOfEqualizerBands
+	BOOL	m_bZeroPhase;
 };
 
 class CEqualizerGraphWnd : public CWnd, public Equalizer
@@ -174,6 +176,7 @@ protected:
 	afx_msg void OnKillfocusEditBandGain();
 	afx_msg void OnRadioEqualizerType();
 	afx_msg void OnRadio2();
+	afx_msg void OnCheckZeroPhase();
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 };

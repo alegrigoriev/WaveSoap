@@ -18,9 +18,11 @@ public:
 	virtual ~COperationContext();
 
 	virtual BOOL OperationProc();
-	virtual BOOL ProcessBuffer(void * buf, size_t len, DWORD offset) { return TRUE; }
+	virtual BOOL ProcessBuffer(void * buf, size_t len, DWORD offset, BOOL bBackward = FALSE) { return TRUE; }
 
-	virtual BOOL Init() { return TRUE; }
+	virtual BOOL Init() { return InitPass(1); }
+	virtual BOOL InitPass(int nPass) { return TRUE; }
+
 	virtual BOOL DeInit() { return TRUE; }
 	virtual void Retire();
 	virtual void PostRetire(BOOL bChildContext = FALSE);
@@ -39,6 +41,9 @@ public:
 
 	int m_GetBufferFlags;
 	int m_ReturnBufferFlags;
+	int m_NumberOfForwardPasses;
+	int m_NumberOfBackwardPasses;
+	int m_CurrentPass;
 
 	int m_DstChan;
 	CWaveFile m_DstFile;
@@ -287,7 +292,7 @@ public:
 	double m_MaxClipped;
 
 	//virtual BOOL OperationProc();
-	virtual BOOL ProcessBuffer(void * buf, size_t len, DWORD offset);
+	virtual BOOL ProcessBuffer(void * buf, size_t len, DWORD offset, BOOL bBackward = FALSE);
 	virtual void PostRetire(BOOL bChildContext = FALSE);
 
 };
@@ -306,7 +311,7 @@ public:
 	class CStatisticsContext * m_pScanContext;
 
 	virtual BOOL OperationProc();
-	virtual BOOL ProcessBuffer(void * buf, size_t len, DWORD offset);
+	virtual BOOL ProcessBuffer(void * buf, size_t len, DWORD offset, BOOL bBackward = FALSE);
 	virtual void PostRetire(BOOL bChildContext = FALSE);
 	virtual CString GetStatusString();
 
@@ -336,7 +341,7 @@ public:
 	LONGLONG m_SumRight;
 
 	//virtual BOOL OperationProc();
-	virtual BOOL ProcessBuffer(void * buf, size_t BufferLength, DWORD offset);
+	virtual BOOL ProcessBuffer(void * buf, size_t BufferLength, DWORD offset, BOOL bBackward = FALSE);
 
 	virtual void PostRetire(BOOL bChildContext = FALSE);
 };

@@ -170,7 +170,8 @@ BEGIN
     BEGIN
         MENUITEM "&New\tCtrl+N",                ID_FILE_NEW
         MENUITEM "&Open...\tCtrl+O",            ID_FILE_OPEN
-        MENUITEM "CD &Grabber..",               ID_TOOLS_CDGRAB
+        MENUITEM "New From Clipboard\tCtrl+E",  ID_EDIT_PASTE_NEW
+        MENUITEM "Read Audio CD Tracks...",     ID_TOOLS_CDGRAB
         MENUITEM SEPARATOR
         MENUITEM "&Preferences...",             ID_TOOLS_OPTIONS
         MENUITEM "P&rint Setup...",             ID_FILE_PRINT_SETUP
@@ -199,6 +200,7 @@ BEGIN
         MENUITEM "&New\tCtrl+N",                ID_FILE_NEW
         MENUITEM "Ne&w From Clipboard\tCtrl+E", ID_EDIT_PASTE_NEW
         MENUITEM "&Open...\tCtrl+O",            ID_FILE_OPEN
+        MENUITEM "Read Audio CD Tracks...",     ID_TOOLS_CDGRAB
         MENUITEM "Reopen For Editing",          ID_FILE_REOPENFOREDITING
         MENUITEM "&Close",                      ID_FILE_CLOSE
         MENUITEM "&Save\tCtrl+S",               ID_FILE_SAVE
@@ -244,24 +246,25 @@ BEGIN
         MENUITEM "Select &All\tCtrl+A",         ID_EDIT_SELECT_ALL
         MENUITEM "&Selection...\tCtrl+D",       ID_EDIT_SELECTION
         MENUITEM "&Lock Channels",              ID_EDIT_CHANNELS_LOCK
+        MENUITEM "Stop\tEsc",                   ID_EDIT_STOP
     END
     POPUP "&View"
     BEGIN
         MENUITEM "&Toolbar",                    ID_VIEW_TOOLBAR
         MENUITEM "Status &Bar",                 ID_VIEW_STATUS_BAR
         MENUITEM SEPARATOR
-        MENUITEM "&Waveform",                   IDC_VIEW_WAVEFORM
-        MENUITEM "&FFT Spectrum",               IDC_VIEW_SHOW_FFT
+        MENUITEM "&Waveform\tAlt+1",            IDC_VIEW_WAVEFORM
+        MENUITEM "&FFT Spectrum\tAlt+2",        IDC_VIEW_SHOW_FFT
         MENUITEM SEPARATOR
-        MENUITEM "&Outline",                    ID_VIEW_OUTLINE
-        MENUITEM "Spectrum Section",            ID_VIEW_SPECTRUMSECTION
+        MENUITEM "Spectrum Section\tAlt+3",     ID_VIEW_SPECTRUMSECTION
+        MENUITEM "&Outline\tAlt+4",             ID_VIEW_OUTLINE
         MENUITEM SEPARATOR
         MENUITEM "Zoom In Time\tGray +",        ID_VIEW_ZOOMINHOR2
         MENUITEM "Zoom Out Time\tGray -",       ID_VIEW_ZOOMOUTHOR2
         MENUITEM "Zoom To Selection",           ID_VIEW_ZOOM_SELECTION
         POPUP "Time Ruler"
         BEGIN
-            MENUITEM "Enable",                      ID_VIEW_TIME_RULER
+            MENUITEM "Enable\tAlt+5",               ID_VIEW_TIME_RULER
             MENUITEM SEPARATOR
             MENUITEM "Samples",                     IDC_VIEW_RULER_SAMPLES
             MENUITEM "HH:MM:SS",                    IDC_VIEW_RULER_HHMMSS
@@ -272,7 +275,7 @@ BEGIN
         MENUITEM "Zoom Out Amplitude\tAlt+Down", ID_VIEW_ZOOMOUTVERT
         POPUP "Amplitude Ruler"
         BEGIN
-            MENUITEM "Enable",                      ID_VIEW_VERTICAL_RULER
+            MENUITEM "Enable\tAlt+6",               ID_VIEW_VERTICAL_RULER
             MENUITEM SEPARATOR
             MENUITEM "&Sample Value",               IDC_VIEW_AMPL_RULER_SAMPLES
 
@@ -297,6 +300,8 @@ BEGIN
         MENUITEM "&Resample...",                ID_PROCESS_RESAMPLE
         MENUITEM "C&hange Channels...",         ID_PROCESS_CHANNELS
         MENUITEM "E&qualizer...",               ID_PROCESS_EQUALIZER
+        MENUITEM SEPARATOR
+        MENUITEM "Stop\tEsc",                   ID_EDIT_STOP
     END
     POPUP "&Tools"
     BEGIN
@@ -771,6 +776,12 @@ END
 
 IDR_MAINFRAME ACCELERATORS PRELOAD MOVEABLE PURE 
 BEGIN
+    "1",            IDC_VIEW_WAVEFORM,      VIRTKEY, ALT, NOINVERT
+    "2",            IDC_VIEW_SHOW_FFT,      VIRTKEY, ALT, NOINVERT
+    "3",            ID_VIEW_SPECTRUMSECTION, VIRTKEY, ALT, NOINVERT
+    "4",            ID_VIEW_OUTLINE,        VIRTKEY, ALT, NOINVERT
+    "5",            ID_VIEW_TIME_RULER,     VIRTKEY, ALT, NOINVERT
+    "6",            ID_VIEW_VERTICAL_RULER, VIRTKEY, ALT, NOINVERT
     "A",            ID_EDIT_SELECT_ALL,     VIRTKEY, CONTROL, NOINVERT
     "C",            ID_EDIT_COPY,           VIRTKEY, CONTROL, NOINVERT
     "D",            ID_EDIT_SELECTION,      VIRTKEY, CONTROL, NOINVERT
@@ -787,6 +798,7 @@ BEGIN
                                                     NOINVERT
     "V",            ID_EDIT_PASTE,          VIRTKEY, CONTROL, NOINVERT
     VK_ADD,         ID_VIEW_ZOOMINHOR2,     VIRTKEY, NOINVERT
+    VK_ADD,         ID_VIEW_INCREASE_FFT_BANDS, VIRTKEY, CONTROL, NOINVERT
     VK_BACK,        ID_EDIT_UNDO,           VIRTKEY, ALT, NOINVERT
     VK_DELETE,      ID_EDIT_DELETE,         VIRTKEY, NOINVERT
     VK_DELETE,      ID_EDIT_CUT,            VIRTKEY, SHIFT, NOINVERT
@@ -802,6 +814,7 @@ BEGIN
     VK_RETURN,      ID_FILE_PROPERTIES,     VIRTKEY, ALT, NOINVERT
     VK_SPACE,       IDC_PLAY_AND_STOP,      VIRTKEY, NOINVERT
     VK_SUBTRACT,    ID_VIEW_ZOOMOUTHOR2,    VIRTKEY, NOINVERT
+    VK_SUBTRACT,    ID_VIEW_DECREASE_FFT_BANDS, VIRTKEY, CONTROL, NOINVERT
     VK_UP,          ID_VIEW_ZOOMINVERT,     VIRTKEY, ALT, NOINVERT
     "X",            ID_EDIT_CUT,            VIRTKEY, CONTROL, NOINVERT
     "Y",            ID_EDIT_REDO,           VIRTKEY, CONTROL, NOINVERT
@@ -1626,7 +1639,7 @@ BEGIN
     PUSHBUTTON      "More...",IDC_BUTTON_MORE,316,45,50,14
 END
 
-IDD_PROPPAGE_FILE_PREFERENCES DIALOG DISCARDABLE  0, 0, 267, 211
+IDD_PROPPAGE_FILE_PREFERENCES DIALOG DISCARDABLE  0, 0, 267, 207
 STYLE WS_CHILD | WS_DISABLED | WS_CAPTION
 CAPTION "File"
 FONT 8, "MS Sans Serif"
@@ -1773,37 +1786,39 @@ BEGIN
                     WS_VSCROLL | WS_TABSTOP
 END
 
-IDD_DIALOG_SIMPLE_EQUALIZER DIALOG DISCARDABLE  0, 0, 219, 193
+IDD_DIALOG_SIMPLE_EQUALIZER DIALOG DISCARDABLE  0, 0, 235, 208
 STYLE WS_POPUP | WS_CAPTION | WS_SYSMENU | WS_THICKFRAME
 CAPTION "Equalizer"
 FONT 8, "MS Sans Serif"
 BEGIN
-    LTEXT           "",IDC_STATIC_RESPONSE_TEMPLATE,7,7,205,77
-    LTEXT           "Frequency response in the selected band:",IDC_STATIC1,7,
-                    87,105,18
+    LTEXT           "",IDC_STATIC_RESPONSE_TEMPLATE,7,7,221,77
+    LTEXT           "&Frequency response in the selected band:",IDC_STATIC1,
+                    7,87,105,18
     EDITTEXT        IDC_EDIT_BAND_GAIN,113,88,31,14,ES_AUTOHSCROLL | 
                     ES_WANTRETURN
     CTEXT           "dB",IDC_STATIC2,145,90,14,8
-    CONTROL         "Simple",IDC_RADIO_EQUALIZER_TYPE,"Button",
-                    BS_AUTORADIOBUTTON | WS_GROUP | WS_TABSTOP,7,112,39,10
-    CONTROL         "Multiband:",IDC_RADIO2,"Button",BS_AUTORADIOBUTTON,54,
-                    112,47,10
-    EDITTEXT        IDC_EDIT_BANDS,107,110,23,14,ES_AUTOHSCROLL | WS_GROUP
+    CONTROL         "Sim&ple",IDC_RADIO_EQUALIZER_TYPE,"Button",
+                    BS_AUTORADIOBUTTON | WS_GROUP | WS_TABSTOP,7,124,39,10
+    CONTROL         "&Multiband:",IDC_RADIO2,"Button",BS_AUTORADIOBUTTON,54,
+                    124,47,10
+    EDITTEXT        IDC_EDIT_BANDS,107,122,23,14,ES_AUTOHSCROLL | WS_GROUP
     CONTROL         "Spin1",IDC_SPIN_BANDS,"msctls_updown32",UDS_SETBUDDYINT | 
-                    UDS_ALIGNRIGHT | UDS_AUTOBUDDY | UDS_ARROWKEYS,123,108,
+                    UDS_ALIGNRIGHT | UDS_AUTOBUDDY | UDS_ARROWKEYS,123,120,
                     10,14
-    LTEXT           "bands",IDC_STATIC3,134,113,27,8
+    LTEXT           "bands",IDC_STATIC3,134,125,27,8
     CONTROL         "Save &Undo",IDC_CHECK_UNDO,"Button",BS_AUTOCHECKBOX | 
-                    WS_TABSTOP,7,126,50,10
-    LTEXT           "Selection:\nChannels:",IDC_STATIC_SELECTION,7,142,153,
+                    WS_TABSTOP,7,138,50,10
+    LTEXT           "Selection:\nChannels:",IDC_STATIC_SELECTION,7,154,153,
                     25
-    PUSHBUTTON      "Reset all",IDC_BUTTON_RESET_BANDS,162,87,50,14
-    PUSHBUTTON      "Save As...",IDC_BUTTON_SAVE_AS,162,105,50,14
-    PUSHBUTTON      "Load...",IDC_BUTTON_LOAD,162,122,50,14
-    PUSHBUTTON      "&Selection...",IDC_BUTTON_SELECTION,162,140,50,14
-    DEFPUSHBUTTON   "OK",IDOK,52,172,50,14
-    PUSHBUTTON      "Cancel",IDCANCEL,107,172,50,14
-    PUSHBUTTON      "&Help",IDHELP,162,172,50,14
+    PUSHBUTTON      "&Reset all",IDC_BUTTON_RESET_BANDS,178,87,50,14
+    PUSHBUTTON      "Save &As...",IDC_BUTTON_SAVE_AS,178,105,50,14
+    PUSHBUTTON      "&Load...",IDC_BUTTON_LOAD,178,122,50,14
+    PUSHBUTTON      "&Selection...",IDC_BUTTON_SELECTION,7,187,50,14
+    DEFPUSHBUTTON   "OK",IDOK,64,187,50,14
+    PUSHBUTTON      "Cancel",IDCANCEL,121,187,50,14
+    PUSHBUTTON      "&Help",IDHELP,178,187,50,14
+    CONTROL         "&Zero phase shift",IDC_CHECK_ZERO_PHASE,"Button",
+                    BS_AUTOCHECKBOX | WS_TABSTOP,7,107,113,10
 END
 
 IDD_SELECTION_DIALOG_MONO DIALOG DISCARDABLE  0, 0, 177, 132
@@ -2253,7 +2268,7 @@ BEGIN
         LEFTMARGIN, 7
         RIGHTMARGIN, 260
         TOPMARGIN, 7
-        BOTTOMMARGIN, 204
+        BOTTOMMARGIN, 200
     END
 
     IDD_PROPPAGE_VIEW_PREFERENCES, DIALOG
@@ -2299,9 +2314,9 @@ BEGIN
     IDD_DIALOG_SIMPLE_EQUALIZER, DIALOG
     BEGIN
         LEFTMARGIN, 7
-        RIGHTMARGIN, 212
+        RIGHTMARGIN, 228
         TOPMARGIN, 7
-        BOTTOMMARGIN, 186
+        BOTTOMMARGIN, 201
     END
 
     IDD_SELECTION_DIALOG_MONO, DIALOG

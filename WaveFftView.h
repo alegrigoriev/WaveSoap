@@ -103,6 +103,8 @@ protected:
 	afx_msg void OnUpdateFftWindowSine(CCmdUI* pCmdUI);
 	afx_msg void OnFftWindowHamming();
 	afx_msg void OnUpdateFftWindowHamming(CCmdUI* pCmdUI);
+	afx_msg void OnViewDecreaseFftBands();
+	afx_msg void OnViewIncreaseFftBands();
 	//}}AFX_MSG
 	void OnUpdateBands(CCmdUI* pCmdUI, int number);
 	void OnSetBands(int order);

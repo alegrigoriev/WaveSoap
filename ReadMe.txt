@@ -1,15 +1,17 @@
 Known problems and tasks:
 
+Make "CRC" field for the statristics
+Save peak info for compressed files, too
 Add low/high frequency filters functions
 Test "reload compressed file" dialogs
 Add options dialog
-Try to load sound from AVI with WM functions
+Put zoom buttons in the static fields in the view
 
 Add CD grabbing
 Add noise reduction estimation in spectrum section view
 Add MP3 save
 Add WMA save
-Add RAW format open
+Try to load sound from AVI with WM functions
 Add RAW format save
 Add sound recording
 Support "Play" in selection dialog
@@ -45,6 +47,7 @@ Add splash screen
 Make recording from Internet stream
 
 Problems:
+Paste operation doesn't check if sampling rate is the same. Add dialog to resample
 Click on outline view moves the wave view a bit after the button released
 After file length increased to 1 sample from 0, scroll bar set to wrond scale
 Expression evaluation selection longer than file length doesn't update file length
@@ -62,6 +65,7 @@ Save As dialog is not centered first time (comdlg problem?)
 ??? When time/seconds format is set for status bar, MM:SS is actually shown
 
 Fixed:
+Right-only volume change skipped some samples
 Use document title rather than filename in dialogs
 Drag distance too little in WinME (use resize border size)
 No non-client painting under WinME
@@ -70,6 +74,17 @@ No status bar in WinME
 FFT doesn't invaludate some areas
 
 Done:
+Add "Zero phase" option to the equalizer
+Make shortcuts:
+    show waveform: Alt+1
+    Show FFT: Alt+2
+    Toggle Spectrum section: Alt+3
+    Toggle outline view:Alt+4
+    Toggle horizontal ruler: Alt+5
+    Toggle vertical ruler: Alt+6
+    Increase number of FFT bands: Ctrl+Gray+
+    Decrease number of FFT bands: Ctrl+Gray-
+Add RAW format open
 Include MP3 and WMA filters even if there is no WMP, but show warning, if the filter is selected
 Use circular array for FFT data (for performance reason).
 Add "Simple" equalizer. Multiband equalizer done.
