@@ -681,6 +681,7 @@ void CWaveSoapFileSaveDialog::OnComboFormatsChange()
 		break;
 	case SoundFileWma:
 		// WMA file
+		FillWmaFormatArray();
 		break;
 	case SoundFileRaw:
 		// RAW file
@@ -945,6 +946,11 @@ void CWaveSoapFileSaveDialog::FillLameEncoderFormats()
 			m_AttributesCombo.SetCurSel(i);
 		}
 	}
+}
+
+void CWaveSoapFileSaveDialog::FillWmaFormatArray()
+{
+	// enum VMA V1 and V2 formats
 }
 
 void CWaveSoapFileSaveDialog::FillMp3FormatArray()

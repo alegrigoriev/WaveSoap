@@ -1,5 +1,6 @@
 Known problems and tasks:
 
+Fill WMA formats combo
 Add WMA save
 Pass saved Raw file parameters back for reopen
 Load sound from AVI
@@ -44,7 +45,6 @@ Add splash screen
 Make recording from Internet stream
 
 Problems:
-Save copy reopen file dialog has "Close" instead of "Cancel"
 During playback, scroll is done without hiding playback cursor
 When FFT array is reallocated, it is invalidated
 Paste operation doesn't check if sampling rate is the same. Add dialog to resample
@@ -65,6 +65,7 @@ Save As dialog is not centered first time (comdlg problem?)
 ??? When time/seconds format is set for status bar, MM:SS is actually shown
 
 Fixed:
+Save copy reopen file dialog has "Close" instead of "Cancel"
 OpenWmaFile crashes if the temporary file couldn't be created
 File dialog didn't open in Win98
 Equalizer and filter views invalidated wrong area (CXDRAG instead of CXSIZEFRAME)
