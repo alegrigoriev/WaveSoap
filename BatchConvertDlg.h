@@ -7,6 +7,7 @@
 #endif // _MSC_VER > 1000
 // BatchConvertDlg.h : header file
 //
+#include "resource.h"       // main symbols
 
 /////////////////////////////////////////////////////////////////////////////
 // CBatchConvertDlg dialog

@@ -9,6 +9,7 @@
 #include "WaveSoapFrontDoc.h"
 #include <algorithm>
 #include "TimeToStr.h"
+#include "resource.h"       // main symbols
 
 #define DUMP_ON_EXECUTE 1
 

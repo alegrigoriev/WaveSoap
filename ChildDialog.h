@@ -8,6 +8,7 @@
 // ChildDialog.h : header file
 //
 #include "NumEdit.h"
+#include "resource.h"       // main symbols
 #include <vector>
 /////////////////////////////////////////////////////////////////////////////
 // CChildDialog dialog

@@ -6,6 +6,7 @@
 #include "MessageMapT.h"
 /////////////////////////////////////////////////////////////////////////////
 // CDialogWithSelection dialog
+#include "resource.h"       // main symbols
 
 template<typename B = CUiUpdatedDlg>
 class CDialogWithSelectionT : public B

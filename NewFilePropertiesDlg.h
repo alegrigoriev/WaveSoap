@@ -11,6 +11,7 @@
 /////////////////////////////////////////////////////////////////////////////
 // CNewFilePropertiesDlg dialog
 #include "TimeEdit.h"
+#include "resource.h"       // main symbols
 
 class CNewFilePropertiesDlg : public CDialog
 {

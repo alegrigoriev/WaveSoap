@@ -7,6 +7,7 @@
 #endif // _MSC_VER > 1000
 // CustomSampleRateDlg.h : header file
 //
+#include "resource.h"       // main symbols
 
 /////////////////////////////////////////////////////////////////////////////
 // CCustomSampleRateDlg dialog

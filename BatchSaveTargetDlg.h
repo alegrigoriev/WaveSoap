@@ -9,6 +9,7 @@
 //
 #include "NumEdit.h"
 #include "ApplicationProfile.h"
+#include "resource.h"       // main symbols
 
 /////////////////////////////////////////////////////////////////////////////
 // CBatchSaveTargetDlg dialog

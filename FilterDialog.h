@@ -11,6 +11,7 @@
 #include "ResizableDialog.h"
 #include "DialogWithSelection.h"
 #include "NumEdit.h"
+#include "resource.h"       // main symbols
 
 enum { MaxFilterOrder = 16, };
 enum
