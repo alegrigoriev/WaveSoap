@@ -2663,6 +2663,8 @@ BOOL CStatisticsContext::ProcessBuffer(void * buf, size_t const BufferLength,
 	NUMBER_OF_SAMPLES nSamples = BufferLength / sizeof pSrc[0];
 
 	ASSERT(0 == (BufferLength % m_DstFile.SampleSize()));
+	// offset is relative to start, but we want absolute offset in file
+	offset += m_DstStart;
 
 	if (nChannels == 1)
 	{
@@ -2815,7 +2817,7 @@ void CStatisticsContext::PostRetire()
 		if (pDocument->m_CaretPosition < pDocument->WaveFileSamples())
 		{
 			int SampleSize = pDocument->WaveSampleSize();
-			DWORD offset = pDocument->m_WavFile.SampleToPosition(pDocument->m_CaretPosition);
+			SAMPLE_POSITION offset = pDocument->m_WavFile.SampleToPosition(pDocument->m_CaretPosition);
 
 			if (SampleSize > sizeof Value)
 			{
