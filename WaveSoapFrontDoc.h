@@ -95,7 +95,8 @@ public:
 	int WaveFileSamples() const;
 	LPMMCKINFO WaveDataChunk() const;
 	LPWAVEFORMATEX WaveFormat() const;
-	NUMBER_OF_SAMPLES WaveChannels() const;
+	NUMBER_OF_CHANNELS WaveChannels() const;
+
 	int WaveSampleRate() const;
 	int WaveSampleSize() const;
 	ULONG_PTR WaveFileID() const;
@@ -163,9 +164,10 @@ public:
 
 	//WAVEFORMATEX WavFileFormat;
 
-	LONG m_CaretPosition;
-	LONG m_SelectionStart;
-	LONG m_SelectionEnd;
+	SAMPLE_INDEX m_CaretPosition;
+	SAMPLE_INDEX m_SelectionStart;
+	SAMPLE_INDEX m_SelectionEnd;
+
 	CHANNEL_MASK m_SelectedChannel; // 0, 1, 2
 	bool m_TimeSelectionMode;
 
@@ -283,7 +285,7 @@ protected:
 
 	void OnUpdateSampleRate(CCmdUI* pCmdUI, unsigned SampleRate);
 	void SetSampleRate(unsigned SampleRate);
-	void ChangeChannels(int nChannels);
+	void ChangeChannels(NUMBER_OF_CHANNELS nChannels);
 
 	//{{AFX_MSG(CWaveSoapFrontDoc)
 	afx_msg void OnEditCopy();

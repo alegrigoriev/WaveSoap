@@ -271,12 +271,14 @@ void CWaveSoapFrontView::OnDraw(CDC* pDC)
 
 	if (left < 0.) left = 0.;
 
-	int nChannels = pDoc->WaveChannels();
+	NUMBER_OF_CHANNELS nChannels = pDoc->WaveChannels();
 	int nNumberOfPoints = r.right - r.left;
+
 	int ChannelSeparatorY = fround((0 - dOrgY) * GetYScaleDev());
 	double YScaleDev = GetYScaleDev();
 	int SelBegin = WorldToWindowX(pDoc->m_SelectionStart);
 	int SelEnd = WorldToWindowX(pDoc->m_SelectionEnd);
+
 	if (pDoc->m_SelectionEnd != pDoc->m_SelectionStart
 		&& SelEnd == SelBegin)
 	{
@@ -383,9 +385,9 @@ void CWaveSoapFrontView::OnDraw(CDC* pDC)
 
 					int nIndexOfSample =
 						ch + NumOfFirstSample * nChannels - m_FirstSampleInBuffer;
-					__int16 * pWaveSamples = & m_pWaveBuffer[nIndexOfSample];
+					WAVE_SAMPLE * pWaveSamples = & m_pWaveBuffer[nIndexOfSample];
 #else
-					__int16 * pWaveSamples = NULL;
+					WAVE_SAMPLE * pWaveSamples = NULL;
 					int nSample = 0;
 					if (NumOfFirstSample < 0)
 					{
@@ -520,123 +522,8 @@ void CWaveSoapFrontView::OnDraw(CDC* pDC)
 	}
 	CScaledScrollView::OnDraw(pDC);
 }
-#if 0
-// NumOfSamples - number of 16-bit words needed
-// Position - offset in data chunk in 16-bit words
-void CWaveSoapFrontView::GetWaveSamples(ULONG Position, size_t NumOfSamples)
-{
-	int nSamples = NumOfSamples;
-	if (Position < 0)
-	{
-		Position = 0;
-	}
-	CWaveSoapFrontDoc * pDoc = GetDocument();
-	if (NULL == pDoc)
-	{
-		return;
-	}
-
-	if (NULL == m_pWaveBuffer
-		|| NumOfSamples > m_WaveBufferSize)
-	{
-		// reallocate the buffer
-		if (NULL != m_pWaveBuffer)
-		{
-			delete[] m_pWaveBuffer;
-			m_pWaveBuffer = NULL;
-		}
-		m_pWaveBuffer = new __int16[NumOfSamples];
-		if (NULL == m_pWaveBuffer)
-		{
-			return;
-		}
-		m_WaveBufferSize = NumOfSamples;
-		m_WaveDataSizeInBuffer = 0;
-	}
-	unsigned nTotalWaveFileSamples = pDoc->WaveDataChunk()->cksize / sizeof(__int16);
-	if (Position >= nTotalWaveFileSamples)
-	{
-		m_WaveDataSizeInBuffer = 0;
-		return;
-	}
-	if (Position + NumOfSamples > nTotalWaveFileSamples)
-	{
-		NumOfSamples = nTotalWaveFileSamples - Position;
-	}
-	//check if we can reuse some of the data in the buffer
-	// use Position, NumOfSamples, m_FirstSampleInBuffer, m_WaveDataSizeInBuffer
-	if (Position + NumOfSamples <= m_FirstSampleInBuffer
-		|| Position >= m_FirstSampleInBuffer + m_WaveDataSizeInBuffer)
-	{
-		// none of the data in the buffer can be reused
-		m_FirstSampleInBuffer = Position;
-		m_WaveDataSizeInBuffer = 0;
-	}
-
-	if (Position < m_FirstSampleInBuffer)
-	{
-		// move data up
-		int MoveBy = m_FirstSampleInBuffer - Position;
-		if (m_WaveDataSizeInBuffer + MoveBy > m_WaveBufferSize)
-		{
-			m_WaveDataSizeInBuffer = m_WaveBufferSize - MoveBy;
-		}
-		memmove(m_pWaveBuffer + MoveBy, m_pWaveBuffer,
-				m_WaveDataSizeInBuffer * sizeof(__int16));
-		m_WaveDataSizeInBuffer += MoveBy;
-		ASSERT(m_WaveDataSizeInBuffer <= m_WaveBufferSize);
-		pDoc->m_WavFile.ReadAt(m_pWaveBuffer,
-								MoveBy * sizeof(__int16),
-								pDoc->WaveDataChunk()->dwDataOffset + Position * sizeof(__int16));
-		m_FirstSampleInBuffer = Position;
-	}
-
-	if (Position + NumOfSamples >
-		m_FirstSampleInBuffer + m_WaveDataSizeInBuffer)
-	{
-		// move data down
-		unsigned int MoveBy = Position + NumOfSamples -
-							(m_FirstSampleInBuffer + m_WaveDataSizeInBuffer);
-		if (MoveBy != 0)
-		{
-			ASSERT(m_WaveDataSizeInBuffer > MoveBy);
-			m_WaveDataSizeInBuffer -= MoveBy;
-			memmove(m_pWaveBuffer, m_pWaveBuffer + MoveBy,
-					m_WaveDataSizeInBuffer * sizeof(__int16));
-			m_FirstSampleInBuffer += MoveBy;
-		}
-		// adjust NumOfSamples:
-		NumOfSamples -= m_FirstSampleInBuffer + m_WaveDataSizeInBuffer - Position;
-		ASSERT(m_WaveDataSizeInBuffer + NumOfSamples <= m_WaveBufferSize);
-		NumOfSamples = pDoc->m_WavFile.ReadAt(m_pWaveBuffer + m_WaveDataSizeInBuffer,
-											NumOfSamples * sizeof(__int16),
-											pDoc->WaveDataChunk()->dwDataOffset + (m_FirstSampleInBuffer + m_WaveDataSizeInBuffer)  * sizeof(__int16))
-						/ sizeof(__int16);
-		m_WaveDataSizeInBuffer += NumOfSamples;
-	}
-	else
-	{
-		// all requested data is already in the buffer
-	}
-#if 0//def _DEBUG
-	// verify that the buffer contains the correct data
-	__int16 * pVerBuf = new __int16[nSamples];
-	int ReadSamples = pDoc->m_WavFile.ReadAt(pVerBuf,
-											nSamples * sizeof(__int16),
-											pDoc->WaveDataChunk()->dwDataOffset + Position * sizeof(__int16))
-					/ sizeof(__int16);
-	ASSERT (Position >= m_FirstSampleInBuffer
-			&& Position + ReadSamples <= m_FirstSampleInBuffer + m_WaveDataSizeInBuffer
-			&& 0 == memcmp(pVerBuf, m_pWaveBuffer + Position - m_FirstSampleInBuffer,
-							ReadSamples * sizeof(__int16)));
-	delete[] pVerBuf;
-#endif
-	return;
-}
-#endif
-
-int CDataSection<__int16, CWaveSoapFrontView>::ReadData(__int16 * pBuf, ULONGLONG nOffset,
-														unsigned int nCount, CWaveSoapFrontView * pSource)
+int CDataSection<WAVE_SAMPLE, CWaveSoapFrontView>::ReadData(WAVE_SAMPLE * pBuf, ULONGLONG nOffset,
+															unsigned int nCount, CWaveSoapFrontView * pSource)
 {
 	CWaveSoapFrontDoc * pDoc = pSource->GetDocument();
 	if (NULL == pDoc
@@ -644,16 +531,16 @@ int CDataSection<__int16, CWaveSoapFrontView>::ReadData(__int16 * pBuf, ULONGLON
 	{
 		return 0;
 	}
-	long Read = pDoc->m_WavFile.ReadAt(pBuf, nCount * sizeof (__int16),
-										pDoc->m_WavFile.GetDataChunk()->dwDataOffset + nOffset * sizeof (__int16));
+	long Read = pDoc->m_WavFile.ReadAt(pBuf, nCount * sizeof (WAVE_SAMPLE),
+										pDoc->m_WavFile.GetDataChunk()->dwDataOffset + nOffset * sizeof (WAVE_SAMPLE));
 	if (-1 == Read)
 	{
 		return 0;
 	}
-	return Read / sizeof (__int16);
+	return Read / sizeof (WAVE_SAMPLE);
 }
 
-ULONGLONG CDataSection<__int16, CWaveSoapFrontView>::GetSourceCount(CWaveSoapFrontView * pSource)
+ULONGLONG CDataSection<WAVE_SAMPLE, CWaveSoapFrontView>::GetSourceCount(CWaveSoapFrontView * pSource)
 {
 	CWaveSoapFrontDoc * pDoc = pSource->GetDocument();
 	if (NULL == pDoc
@@ -661,7 +548,7 @@ ULONGLONG CDataSection<__int16, CWaveSoapFrontView>::GetSourceCount(CWaveSoapFro
 	{
 		return 0;
 	}
-	return pDoc->m_WavFile.GetDataChunk()->cksize / sizeof (__int16);
+	return pDoc->m_WavFile.GetDataChunk()->cksize / sizeof (WAVE_SAMPLE);
 }
 
 void CWaveSoapFrontView::AdjustNewScale(double OldScaleX, double OldScaleY,
@@ -685,7 +572,7 @@ void CWaveSoapFrontView::AdjustNewScale(double OldScaleX, double OldScaleY,
 	}
 	m_HorizontalScale = 1L <<i;
 	NewScaleX = 1. / m_HorizontalScale;
-	if(0)TRACE("Old scale X=%g, New scale X=%g, Old scale Y=%g, New scale Y=%g\n",
+	if(0) TRACE("Old scale X=%g, New scale X=%g, Old scale Y=%g, New scale Y=%g\n",
 				OldScaleX, NewScaleX, OldScaleY, NewScaleY);
 }
 
@@ -705,7 +592,7 @@ BOOL CWaveSoapFrontView::PlaybackCursorVisible()
 	}
 }
 
-void CWaveSoapFrontView::DrawPlaybackCursor(CDC * pDC, long Sample, int Channel)
+void CWaveSoapFrontView::DrawPlaybackCursor(CDC * pDC, SAMPLE_INDEX Sample, CHANNEL_MASK Channel)
 {
 	CDC * pDrawDC = pDC;
 	if ( ! IsWindowVisible())
@@ -1194,9 +1081,9 @@ void CWaveSoapFrontView::OnLButtonDown(UINT nFlags, CPoint point)
 	{
 		return;
 	}
-	int nSampleUnderMouse = int(WindowToWorldX(point.x));
-	int SelectionStart = pDoc->m_SelectionStart;
-	int SelectionEnd = pDoc->m_SelectionEnd;
+	SAMPLE_INDEX nSampleUnderMouse = int(WindowToWorldX(point.x));
+	SAMPLE_INDEX SelectionStart = pDoc->m_SelectionStart;
+	SAMPLE_INDEX SelectionEnd = pDoc->m_SelectionEnd;
 
 	if (nSampleUnderMouse < 0)
 	{
@@ -1349,7 +1236,7 @@ void CWaveSoapFrontView::OnMouseMove(UINT nFlags, CPoint point)
 		}
 	}
 
-	long nSampleUnderMouse = long(WindowToWorldX(point.x));
+	SAMPLE_INDEX nSampleUnderMouse = long(WindowToWorldX(point.x));
 	if (nSampleUnderMouse < 0)
 	{
 		nSampleUnderMouse = 0;
@@ -1358,8 +1245,9 @@ void CWaveSoapFrontView::OnMouseMove(UINT nFlags, CPoint point)
 	{
 		nSampleUnderMouse = pDoc->WaveFileSamples();
 	}
-	int SelectionStart = pDoc->m_SelectionStart;
-	int SelectionEnd = pDoc->m_SelectionEnd;
+
+	SAMPLE_INDEX SelectionStart = pDoc->m_SelectionStart;
+	SAMPLE_INDEX SelectionEnd = pDoc->m_SelectionEnd;
 
 	if (pDoc->m_TimeSelectionMode)
 	{
@@ -1717,10 +1605,10 @@ void CWaveSoapFrontView::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 	// process cursor control commands
 	CWaveSoapFrontDoc * pDoc = GetDocument();
 
-	long nCaret = pDoc->m_CaretPosition;
-	int nSelBegin = pDoc->m_SelectionStart;
-	int nSelEnd = pDoc->m_SelectionEnd;
-	int nChan = pDoc->m_SelectedChannel;
+	SAMPLE_INDEX nCaret = pDoc->m_CaretPosition;
+	SAMPLE_INDEX nSelBegin = pDoc->m_SelectionStart;
+	SAMPLE_INDEX nSelEnd = pDoc->m_SelectionEnd;
+	CHANNEL_MASK nChan = pDoc->m_SelectedChannel;
 
 	BOOL KeepSelection = (0 != (0x8000 & GetKeyState(VK_SHIFT)));
 	BOOL CtrlPressed = (0 != (0x8000 & GetKeyState(VK_CONTROL)));
@@ -1734,7 +1622,7 @@ void CWaveSoapFrontView::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 		nCaretMove *= 32;
 	}
 
-	int nTotalSamples = pDoc->WaveFileSamples();
+	NUMBER_OF_SAMPLES nTotalSamples = pDoc->WaveFileSamples();
 
 	CRect r;
 	GetClientRect( & r);
@@ -1863,7 +1751,7 @@ void CWaveSoapFrontView::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 	CView::OnKeyDown(nChar, nRepCnt, nFlags);
 }
 
-void CWaveSoapFrontView::MovePointIntoView(int nCaret, BOOL bCenter)
+void CWaveSoapFrontView::MovePointIntoView(SAMPLE_INDEX nCaret, BOOL bCenter)
 {
 	CRect r;
 	GetClientRect( & r);
@@ -1927,7 +1815,7 @@ int CWaveSoapFrontView::OnCreate(LPCREATESTRUCT lpCreateStruct)
 	CRect r;
 	GetClientRect( r);
 	// set m_HorizontalScale to stretch the file in the view
-	long nSamples = GetDocument()->WaveFileSamples();
+	NUMBER_OF_SAMPLES nSamples = GetDocument()->WaveFileSamples();
 
 	SetExtents(0., double(r.Width()) * m_HorizontalScale, 0., 0.);
 	UpdateMaxExtents(nSamples);
@@ -1952,7 +1840,7 @@ BOOL CWaveSoapFrontView::MasterScrollBy(double dx, double dy, BOOL bDoScroll)
 		GetClientRect( & r);
 		int nHeight = r.Height();
 
-		int nChannels = pDoc->WaveChannels();
+		NUMBER_OF_CHANNELS nChannels = pDoc->WaveChannels();
 		if (0 != nChannels)
 		{
 			nHeight /= nChannels;
@@ -2023,7 +1911,7 @@ BOOL CWaveSoapFrontView::MasterScrollBy(double dx, double dy, BOOL bDoScroll)
 void CWaveSoapFrontView::OnSize(UINT nType, int cx, int cy)
 {
 	// set m_HorizontalScale to stretch the file in the view
-	long nSamples = GetDocument()->WaveFileSamples();
+	NUMBER_OF_SAMPLES nSamples = GetDocument()->WaveFileSamples();
 	if (nSamples != 0
 		&& (cx - 100) * m_HorizontalScale / 2 > nSamples)
 	{
@@ -2079,7 +1967,7 @@ BOOL CWaveSoapFrontView::OnScrollBy(CSize sizeScroll, BOOL bDoScroll)
 	return bRet;
 }
 
-void CWaveSoapFrontView::UpdatePlaybackCursor(long sample, int channel)
+void CWaveSoapFrontView::UpdatePlaybackCursor(SAMPLE_INDEX sample, CHANNEL_MASK channel)
 {
 	if (-2 == m_PlaybackCursorChannel)
 	{
@@ -2141,7 +2029,7 @@ void CWaveSoapFrontView::UpdatePlaybackCursor(long sample, int channel)
 	//GdiFlush();
 }
 
-void CWaveSoapFrontView::UpdateMaxExtents(unsigned Length)
+void CWaveSoapFrontView::UpdateMaxExtents(NUMBER_OF_SAMPLES Length)
 {
 	CRect r;
 	GetClientRect( & r);

@@ -75,8 +75,8 @@ protected:
 	void CreateAndShowCaret();
 	DWORD ClientHitTest(CPoint p);
 	virtual POINT GetZoomCenter();
-	void MovePointIntoView(int nCaret, BOOL Center = FALSE);
-	void UpdateMaxExtents(unsigned Length);
+	void MovePointIntoView(SAMPLE_INDEX nCaret, BOOL Center = FALSE);
+	void UpdateMaxExtents(NUMBER_OF_SAMPLES Length);
 	void UpdateVertExtents();
 	virtual void NotifySlaveViews(DWORD flag);
 
@@ -91,19 +91,19 @@ protected:
 #if 0
 	void GetWaveSamples(ULONG Position, size_t NumOfSamples);
 	DWORD m_FirstSampleInBuffer;    // in 16-bit numbers
-	__int16 * m_pWaveBuffer;
+	WAVE_SAMPLE * m_pWaveBuffer;
 	size_t m_WaveBufferSize;    // in 16-bit samples
 	size_t m_WaveDataSizeInBuffer;  // in 16-bit samples
 #else
-	CDataSection<__int16, CWaveSoapFrontView> m_WaveBuffer;
+	CDataSection<WAVE_SAMPLE, CWaveSoapFrontView> m_WaveBuffer;
 #endif
-	virtual void DrawPlaybackCursor(CDC * pDC, long Sample, int Channel);
+	virtual void DrawPlaybackCursor(CDC * pDC, SAMPLE_INDEX Sample, CHANNEL_MASK Channel);
 	virtual void ShowPlaybackCursor(CDC * pDC = NULL);
 	virtual void HidePlaybackCursor(CDC * pDC = NULL);
-	void UpdatePlaybackCursor(long sample, int channel);
+	void UpdatePlaybackCursor(SAMPLE_INDEX sample, CHANNEL_MASK channel);
 	BOOL PlaybackCursorVisible();
 
-	int m_PlaybackCursorChannel;  // -2 = not playing
+	CHANNEL_MASK m_PlaybackCursorChannel;  // -2 = not playing
 	bool m_PlaybackCursorDrawn;
 	bool m_NewSelectionMade;
 	bool m_bAutoscrollTimerStarted;
