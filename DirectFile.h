@@ -182,14 +182,12 @@ private:
 	// this structure should be a base class of the application class
 struct DirectFileParameters
 {
-	int m_MaxMemoryFileSize;    // in Kbytes
+	int m_MaxMemoryFileSize;    // in Kbytes, if 0 - don't use
 	int m_MaxFileCache;        // in megabytes
-	bool m_bUseMemoryFiles;  // File proppage
 	CString m_sTempDir;         // File proppage
 
 	DirectFileParameters()
-		: m_bUseMemoryFiles(true),
-		m_MaxMemoryFileSize(64),
+		: m_MaxMemoryFileSize(64),
 		m_MaxFileCache(64)
 	{
 	}
