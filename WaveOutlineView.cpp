@@ -6,6 +6,7 @@
 #include "WaveSoapFront.h"
 #include "WaveOutlineView.h"
 #include "GdiObjectSave.h"
+#include "WaveSoapFrontDoc.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW

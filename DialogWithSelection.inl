@@ -2,6 +2,7 @@
 // DialogWithSelection.inl: function definition for CDialogWithSelectionT
 //
 //////////////////////////////////////////////////////////////////////
+#pragma once
 template<typename B>
 void CDialogWithSelectionT<B>::OnButtonSelection()
 {

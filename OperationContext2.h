@@ -462,7 +462,7 @@ protected:
 	NUMBER_OF_SAMPLES m_NewSamples;
 };
 
-class CMoveOperation : protected CCopyContext
+class CMoveOperation : public CCopyContext
 {
 	// move data in the same file
 	typedef CMoveOperation ThisClass;
@@ -470,10 +470,7 @@ class CMoveOperation : protected CCopyContext
 public:
 	typedef std::auto_ptr<ThisClass> auto_ptr;
 
-	CMoveOperation(CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString, LPCTSTR OperationName)
-		: BaseClass(pDoc, StatusString, OperationName)
-	{
-	}
+	CMoveOperation(CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString, LPCTSTR OperationName);
 
 	BOOL InitMove(CWaveFile & File,
 				SAMPLE_INDEX SrcStartSample,
@@ -488,6 +485,63 @@ protected:
 
 	virtual BOOL CreateUndo(BOOL IsRedo = FALSE);
 	virtual BOOL OperationProc();
+};
+
+class CExpandContext : public CMoveOperation
+{
+	typedef CExpandContext ThisClass;
+	typedef CMoveOperation BaseClass;
+	//friend class CWaveSoapFrontDoc;
+	// Start, End and position are in bytes
+
+public:
+	typedef std::auto_ptr<ThisClass> auto_ptr;
+	virtual BOOL CreateUndo(BOOL IsRedo = FALSE);
+
+	CExpandContext(CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString, LPCTSTR OperationName)
+		: BaseClass(pDoc, StatusString, OperationName)
+	{
+
+	}
+	BOOL InitExpand(CWaveFile & File, SAMPLE_INDEX StartSample, NUMBER_OF_SAMPLES Length, CHANNEL_MASK Channel);
+	virtual BOOL OperationProc();
+};
+
+class CShrinkContext : public CMoveOperation
+{
+	typedef CShrinkContext ThisClass;
+	typedef CMoveOperation BaseClass;
+	//friend class CWaveSoapFrontDoc;
+	// Start, End and position are in bytes
+
+public:
+	typedef std::auto_ptr<ThisClass> auto_ptr;
+	virtual BOOL CreateUndo(BOOL IsRedo = FALSE);
+
+	CShrinkContext(CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString, LPCTSTR OperationName)
+		: BaseClass(pDoc, StatusString, OperationName)
+	{
+
+	}
+	BOOL InitShrink(CWaveFile & File, SAMPLE_INDEX StartSample, NUMBER_OF_SAMPLES Length, CHANNEL_MASK Channel);
+	virtual BOOL OperationProc();
+};
+
+class CInsertContext : public CStagedContext
+{
+	typedef CInsertContext ThisClass;
+	typedef CStagedContext BaseClass;
+	//friend class CWaveSoapFrontDoc;
+	// Start, End and position are in bytes
+
+public:
+	typedef std::auto_ptr<ThisClass> auto_ptr;
+	CInsertContext(CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString, LPCTSTR OperationName)
+		: BaseClass(pDoc, StatusString, OperationContextDiskIntensive, OperationName)
+	{
+
+	}
+	//virtual BOOL CreateUndo(BOOL IsRedo = FALSE);
 };
 
 class CMetadataChangeOperation : public COperationContext

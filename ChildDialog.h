@@ -89,7 +89,7 @@ struct Expr
 struct ExprGroup
 {
 	CString name;
-	vector<Expr> exprs;
+	std::vector<Expr> exprs;
 };
 };
 
@@ -97,6 +97,11 @@ class CInsertExpressionDialog : public CDialog
 {
 	typedef Expressions::Expr Expr;
 	typedef Expressions::ExprGroup ExprGroup;
+	typedef std::vector<ExprGroup> ExprGroupVector;
+	typedef ExprGroupVector::iterator ExprGroupIterator;
+	typedef std::vector<Expr> ExprVector;
+	typedef ExprVector::iterator ExprIterator;
+	typedef CDialog BaseClass;
 // Construction
 public:
 	CInsertExpressionDialog(CWnd* pParent = NULL);   // standard constructor
@@ -113,8 +118,8 @@ public:
 	int m_ExpressionSelected;
 	bool m_ExpressionsChanged;
 
-	vector<Expressions::ExprGroup> m_Expressions;
-	static void LoadExpressions(vector<Expressions::ExprGroup> & Expressions,
+	ExprGroupVector m_Expressions;
+	static void LoadExpressions(ExprGroupVector & Expressions,
 								LPCTSTR ProfileName = NULL);
 	void UnloadExpressions(LPCTSTR ProfileName = NULL);
 	void RebuildAllExpressionsList();

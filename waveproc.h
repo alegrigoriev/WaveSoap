@@ -10,7 +10,7 @@
 #include "BladeMP3EncDll.h"
 #include "WaveSupport.h"
 
-using namespace std;
+//using namespace std;
 
 template <class T_ext, class T_int=T_ext> class CBackBuffer
 {
@@ -34,6 +34,86 @@ private:
 	int nCurrIndex;
 	DWORD dwIndexMask;
 };
+
+template <class T_ext, class T_int>
+CBackBuffer<T_ext, T_int>::CBackBuffer()
+	: pBuf(NULL),
+	BufSize(0),nCurrIndex(0),
+	dwIndexMask(0)
+{
+}
+
+template <class T_ext, class T_int>
+CBackBuffer<T_ext, T_int>::~CBackBuffer()
+{
+	if (pBuf != NULL)
+	{
+		delete[] pBuf;
+		pBuf = NULL;
+	}
+}
+
+template <class T_ext, class T_int>
+BOOL CBackBuffer<T_ext, T_int>::Allocate(int size)
+{
+	ASSERT(size != 0 && size <= 0x10000000 / sizeof(T_int));
+	// make size a "round" number
+	for (int i = 1; i <= 0x10000000; i <<= 1)
+	{
+		if (i >= size)
+		{
+			break;
+		}
+	}
+	size = i;
+	if (pBuf != NULL)
+	{
+		if (BufSize == size)
+		{
+			nCurrIndex = 0;
+			return TRUE;
+		}
+		delete[] pBuf;
+		pBuf = NULL;
+	}
+	pBuf = new T_int[size];
+	if (NULL == pBuf)
+	{
+		return FALSE;
+	}
+
+	for (i = 0; i < size; i++)
+	{
+		pBuf[i] = T_int(0);
+	}
+
+	BufSize = size;
+	dwIndexMask = size - 1;
+	nCurrIndex = 0;
+	return TRUE;
+}
+
+template <class T_ext, class T_int>
+inline T_ext CBackBuffer<T_ext, T_int>::Get(int index)
+{
+	ASSERT(pBuf != NULL);
+	return pBuf[(index + nCurrIndex) & dwIndexMask];
+}
+
+template <class T_ext, class T_int>
+inline void CBackBuffer<T_ext, T_int>::Put(int index, T_ext data)
+{
+	ASSERT(pBuf != NULL);
+	pBuf[(index + nCurrIndex) & dwIndexMask] = data;
+}
+
+template <class T_ext, class T_int>
+inline T_int& CBackBuffer<T_ext, T_int>::operator[](int index)
+{
+	ASSERT(pBuf != NULL);
+	return pBuf[(index + nCurrIndex) & dwIndexMask];
+}
+
 
 class CWaveProc
 {
@@ -180,6 +260,11 @@ struct StoredClickData
 	short Length[2];   // length in left and right channel (0 if none)
 };
 
+enum
+{
+	MaxInterpolatedLength = 128,
+};
+
 class CClickRemoval: public CWaveProc
 {
 	typedef CClickRemoval ThisClass;
@@ -316,9 +401,9 @@ public:
 	{
 		// current and previous samples are stored. Result of current analysis
 		// is used for the previous sample
-		complex<DATA> sp_FftIn[2];
+		std::complex<DATA> sp_FftIn[2];
 		//complex<DATA> sp_PrevFftOut;
-		void AnalyzeFftSample(complex<DATA> smp, CNoiseReduction * pNr, int nSample);
+		void AnalyzeFftSample(std::complex<DATA> smp, CNoiseReduction * pNr, int nSample);
 		// average frequency and amplitude in the band
 		float sp_AvgFreq; // filtered arg(x[n] / x[n-1])
 		float sp_AvgPhase;
@@ -342,7 +427,7 @@ public:
 	};
 	SIGNAL_PARAMS * m_pParams[2];
 	friend struct SIGNAL_PARAMS;
-	complex<DATA> * m_FftOutBuffer[2];
+	std::complex<DATA> * m_FftOutBuffer[2];
 #ifdef _DEBUG
 public:
 	int m_TotalBandProcessed;

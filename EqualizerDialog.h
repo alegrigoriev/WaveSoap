@@ -25,7 +25,7 @@ public:
 	void ResetBands();
 	void SetNumberOfBands(int NumBands);
 
-	complex<float> CalculateResponse(double Frequency);
+	std::complex<float> CalculateResponse(double Frequency);
 	void CalculateCoefficients(double Gain, double Frequency, double Width, double Coeffs[6]);
 
 	double m_BandGain[MaxNumberOfEqualizerBands];   // target gain in the band

@@ -4,13 +4,14 @@
 
 #include "stdafx.h"
 #include "WaveSoapFront.h"
+#include "WaveSoapFrontDoc.h"
 #include "OperationDialogs2.h"
-#include <dbt.h>
 #include "FolderDialog.h"
 #include "FileDialogWithHistory.h"
-#include <afxpriv.h>
 #include "WaveSoapFileDialogs.h"
 #include "GdiObjectSave.h"
+#include <dbt.h>
+//#include <afxpriv.h>
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -718,7 +719,7 @@ void CCdGrabbingDialog::ReloadTrackList(CdMediaChangeState NewMediaState)
 	m_Tracks.resize(m_toc.LastTrack - m_toc.FirstTrack + 1);
 
 	int tr;
-	vector<CdTrackInfo>::iterator pTrack;
+	std::vector<CdTrackInfo>::iterator pTrack;
 	UINT FocusedState = LVIS_FOCUSED | LVIS_SELECTED;
 	for (tr = 0, pTrack = m_Tracks.begin()
 		; tr <= m_toc.LastTrack - m_toc.FirstTrack; tr++, pTrack++)

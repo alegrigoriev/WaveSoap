@@ -9,6 +9,8 @@
 //
 #include "FilterMath.h"
 #include "ResizableDialog.h"
+#include "DialogWithSelection.h"
+#include "NumEdit.h"
 
 enum { MaxFilterOrder = 16, };
 enum
@@ -32,7 +34,7 @@ public:
 	void ResetBands();
 
 	// frequency is in radians
-	complex<float> CalculateResponse(double Frequency);
+	std::complex<float> CalculateResponse(double Frequency);
 	void CalculateCoefficients(double Gain1, double Frequency1,
 								double Gain2, double Frequency2);
 	BOOL CreateLowpassElliptic(double PassFreq, double PassLoss,

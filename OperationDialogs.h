@@ -367,7 +367,7 @@ public:
 	CStatic	m_FileName;
 	//}}AFX_DATA
 
-	CStatisticsContext * m_pContext;
+	class CStatisticsContext * m_pContext;
 	long m_SamplesPerSec;
 	long m_CaretPosition;
 	int m_ValueAtCursorLeft;
@@ -401,7 +401,7 @@ class CNormalizeSoundDialog : public CDialogWithSelection
 public:
 	CNormalizeSoundDialog(SAMPLE_INDEX begin, SAMPLE_INDEX end, SAMPLE_INDEX caret,
 						CHANNEL_MASK Channels,
-						CWaveFile & File,
+						class CWaveFile & File,
 						BOOL ChannelsLocked, BOOL UndoEnabled,
 						int TimeFormat = SampleToString_HhMmSs | TimeToHhMmSs_NeedsHhMm | TimeToHhMmSs_NeedsMs,
 						CWnd* pParent = NULL);   // standard constructor
@@ -651,7 +651,7 @@ public:
 
 	// Dialog Data
 	CApplicationProfile Profile;
-	void SetDeclickData(CClickRemoval * pCr);
+	void SetDeclickData(class CClickRemoval * pCr);
 protected:
 	//{{AFX_DATA(CDeclickDialog)
 	enum { IDD = IDD_DIALOG_DECLICKING };
@@ -728,7 +728,7 @@ public:
 	{
 		return m_dLowerFrequency;
 	}
-	void SetNoiseReductionData(CNoiseReduction * pNr);
+	void SetNoiseReductionData(class CNoiseReduction * pNr);
 
 protected:
 // Dialog Data

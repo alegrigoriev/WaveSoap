@@ -7,6 +7,8 @@
 #include "SpectrumSectionView.h"
 #include "fft.h"
 #include "GdiObjectSave.h"
+#include "WaveSoapFrontDoc.h"
+#include "WaveFftView.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW

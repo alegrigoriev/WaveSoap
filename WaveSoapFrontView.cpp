@@ -11,6 +11,7 @@
 #include "ChildFrm.h"
 #include "WaveOutlineView.h"
 #include "GdiObjectSave.h"
+#include <float.h>
 
 #ifdef _DEBUG
 #define new DEBUG_NEW

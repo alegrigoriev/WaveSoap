@@ -10,6 +10,7 @@
 #include "TimeEdit.h"
 #include "TimeToStr.h"
 #include "UiUpdatedDlg.h"
+#include "ResizableDialog.h"
 #include "DialogWithSelection.h"
 
 #include "CdDrive.h"
@@ -198,7 +199,7 @@ public:
 	int m_PreviousDriveLetter;
 
 	CDROM_TOC m_toc;
-	vector<CdTrackInfo> m_Tracks;
+	std::vector<CdTrackInfo> m_Tracks;
 	DWORD m_DiskID;
 
 	// Format to save the files:

@@ -1,7 +1,12 @@
 //#include "Complex.h"
 #include "stdafx.h"
 #include "PolyRatio.h"
-#include "float.h"
+#include <float.h>
+#ifdef NOMINMAX
+#include <algorithm>
+using std::min;
+using std::max;
+#endif
 
 polyRatio::polyRatio(Complex first, int MaxOrder)
 	: m_denom(0, Complex(1.), MaxOrder), m_numer(0, first, MaxOrder)

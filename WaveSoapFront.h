@@ -16,11 +16,10 @@
 #include "resource.h"       // main symbols
 
 #include "ApplicationProfile.h"
-#include "DirectFile.h"
-#include "OperationContext2.h"
+#include "WaveFile.h"
+//#include "OperationContext2.h"
 #include "KListEntry.h"
 #include "LocaleUtilities.h"
-
 /////////////////////////////////////////////////////////////////////////////
 // CWaveSoapFrontApp:
 // See WaveSoapFront.cpp for the implementation of this class
@@ -60,7 +59,7 @@ struct NewFileParameters
 	LPCTSTR m_pInitialName;
 	LONG InitialSamples;
 	DWORD m_FileTypeFlags;
-	CWaveFile * m_pFile;
+	class CWaveFile * m_pFile;
 	NewFileParameters()
 	{
 		memzero(*this);
@@ -99,6 +98,8 @@ protected:
 	DWORD m_OpenDocumentFlags;
 };
 
+class COperationContext;
+
 class CWaveSoapFrontApp : public CWinApp,
 	public DirectFileParameters,
 	public LocaleParameters
@@ -107,7 +108,7 @@ public:
 	CWaveSoapFrontApp();
 	void QueueOperation(COperationContext * pContext);
 	void LoadStdProfileSettings(UINT nMaxMRU);
-	void OnActivateDocument(CWaveSoapFrontDoc * pDocument, BOOL bActivate);
+	void OnActivateDocument(class CWaveSoapFrontDoc * pDocument, BOOL bActivate);
 
 	BOOL CanOpenWindowsMedia() const { return NULL != m_hWMVCORE_DLL_Handle; }
 // Overrides

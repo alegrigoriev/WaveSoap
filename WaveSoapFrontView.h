@@ -13,6 +13,7 @@
 #include "ScaledScrollView.h"
 #include "WaveSoapFrontDoc.h"
 #include "DataSection.h"
+#include <math.h>
 
 class CWaveSoapFrontView : public CScaledScrollView
 {

@@ -143,7 +143,7 @@ END_MESSAGE_MAP()
 
 BOOL CInsertExpressionDialog::OnInitDialog()
 {
-	CDialog::OnInitDialog();
+	BaseClass::OnInitDialog();
 	// load expressions
 	LoadExpressions(m_Expressions);
 	if (m_Expressions.size() <= 1)
@@ -169,7 +169,7 @@ BOOL CInsertExpressionDialog::OnInitDialog()
 void CInsertExpressionDialog::BuildExpressionGroupCombobox(unsigned nGroupSelected, unsigned nExprSelected)
 {
 	m_ExpressionGroupCombo.ResetContent();
-	for (vector<ExprGroup>::iterator ii = m_Expressions.begin()
+	for (ExprGroupIterator ii = m_Expressions.begin()
 		; ii < m_Expressions.end(); ii++)
 	{
 		m_ExpressionGroupCombo.AddString(ii->name);
@@ -198,7 +198,7 @@ void CInsertExpressionDialog::LoadExpressionCombobox(unsigned nGroupSelected, un
 		OnSelchangeComboSavedExpressions();
 		return;
 	}
-	for (vector<Expr>::iterator jj = m_Expressions[nGroupSelected].exprs.begin()
+	for (ExprIterator jj = m_Expressions[nGroupSelected].exprs.begin()
 		; jj < m_Expressions[nGroupSelected].exprs.end(); jj++)
 	{
 		m_SavedExpressionCombo.AddString(jj->name);
@@ -226,7 +226,7 @@ void CInsertExpressionDialog::OnSelchangeComboSavedExpressions()
 {
 	unsigned sel = m_SavedExpressionCombo.GetCurSel();
 
-	vector<ExprGroup>::iterator ii = m_Expressions.begin() + m_ExpressionGroupSelected;
+	ExprGroupIterator ii = m_Expressions.begin() + m_ExpressionGroupSelected;
 
 	if (sel < ii->exprs.size())
 	{
@@ -250,7 +250,7 @@ void CInsertExpressionDialog::OnButtonInsertExpression()
 	{
 		unsigned sel = m_SavedExpressionCombo.GetCurSel();
 
-		vector<ExprGroup>::iterator ii = m_Expressions.begin() + m_ExpressionGroupSelected;
+		ExprGroupVector::iterator ii = m_Expressions.begin() + m_ExpressionGroupSelected;
 
 		if (sel < ii->exprs.size())
 		{
@@ -271,7 +271,7 @@ void CInsertExpressionDialog::OnButtonDeleteExpression()
 	{
 		return;
 	}
-	vector<ExprGroup>::iterator ii = m_Expressions.begin() + nGroup;
+	ExprGroupIterator ii = m_Expressions.begin() + nGroup;
 	if (0 == nGroup)
 	{
 		// All Expressions selected, find one in the group
@@ -290,7 +290,7 @@ void CInsertExpressionDialog::OnButtonDeleteExpression()
 			return;
 		}
 	}
-	vector<Expr>::iterator jj = ii->exprs.begin() + ExprSel;
+	ExprIterator jj = ii->exprs.begin() + ExprSel;
 	s.Format(IDS_DELETE_EXPRESSION, LPCTSTR(jj->name),
 			LPCTSTR(ii->name));
 
@@ -318,7 +318,7 @@ void CInsertExpressionDialog::RebuildAllExpressionsList()
 {
 	m_Expressions[0].exprs.clear();
 
-	for (vector<ExprGroup>::iterator ii = m_Expressions.begin() + 1
+	for (ExprGroupIterator ii = m_Expressions.begin() + 1
 		; ii < m_Expressions.end(); ii++)
 	{
 		m_Expressions[0].exprs.insert(m_Expressions[0].exprs.end(),
@@ -348,13 +348,13 @@ void CInsertExpressionDialog::SaveExpressionAs(const CString & expr)
 BOOL CInsertExpressionDialog::FindExpression(LPCTSTR Group, LPCTSTR Name, int * nGroup, int * nExpr)
 {
 	// find if there is such group
-	for (vector<ExprGroup>::iterator ii = m_Expressions.begin()
+	for (ExprGroupIterator ii = m_Expressions.begin()
 		; ii < m_Expressions.end(); ii++)
 	{
 		if (0 == ii->name.CompareNoCase(Group))
 		{
 			// check if there is already an expression with the same name
-			for (vector<Expr>::iterator jj = ii->exprs.begin()
+			for (ExprIterator jj = ii->exprs.begin()
 				; jj < ii->exprs.end(); jj++)
 			{
 				if (0 == jj->name.CompareNoCase(Name))
@@ -375,7 +375,7 @@ BOOL CInsertExpressionDialog::SaveExpression(const CString & expr,
 											const CString & Group, const CString & Comment, bool bEnableCancel)
 {
 	// find if there is such group
-	for (vector<ExprGroup>::iterator ii = m_Expressions.begin()
+	for (ExprGroupIterator ii = m_Expressions.begin()
 		; ii < m_Expressions.end(); ii++)
 	{
 		if (0 == ii->name.CompareNoCase(Group))
@@ -390,7 +390,7 @@ BOOL CInsertExpressionDialog::SaveExpression(const CString & expr,
 		ii->name = Group;
 	}
 	// check if there is already an expression with the same name
-	for (vector<Expr>::iterator jj = ii->exprs.begin()
+	for (ExprIterator jj = ii->exprs.begin()
 		; jj < ii->exprs.end(); jj++)
 	{
 		if (0 == jj->name.CompareNoCase(Name))
@@ -450,7 +450,7 @@ void CInsertExpressionDialog::OnUpdateInsertExpression(CCmdUI* pCmdUI)
 	pCmdUI->Enable(m_Expressions.size() > 1);
 }
 
-void CInsertExpressionDialog::LoadExpressions(vector<Expressions::ExprGroup> & Expressions, LPCTSTR ProfileName)
+void CInsertExpressionDialog::LoadExpressions(ExprGroupVector & Expressions, LPCTSTR ProfileName)
 {
 	CApplicationProfile profile;
 	if (NULL != ProfileName)
@@ -509,7 +509,7 @@ void CInsertExpressionDialog::UnloadExpressions(LPCTSTR ProfileName)
 	profile.WriteProfileInt(_T("Expressions"), _T("NumOfGroups"), m_Expressions.size() - 1);
 
 	int i = 1;
-	for (vector<ExprGroup>::iterator ii = m_Expressions.begin() + 1
+	for (ExprGroupIterator ii = m_Expressions.begin() + 1
 		; ii < m_Expressions.end(); ii++, i++)
 	{
 		s.Format(_T("ExprsInGroup%d"), i);
@@ -518,7 +518,7 @@ void CInsertExpressionDialog::UnloadExpressions(LPCTSTR ProfileName)
 		profile.WriteProfileString(_T("Expressions"), s, ii->name);
 
 		int j = 1;
-		for (vector<Expr>::iterator jj = ii->exprs.begin(); jj < ii->exprs.end(); j++, jj++)
+		for (ExprIterator jj = ii->exprs.begin(); jj < ii->exprs.end(); j++, jj++)
 		{
 			s.Format(_T("Name%d.%d"), i, j);
 			profile.WriteProfileString(_T("Expressions"), s, jj->name);
@@ -575,13 +575,13 @@ void CInsertExpressionDialog::OnButtonImportExpressions()
 		return;
 	}
 	FileName = dlg.GetPathName();
-	vector<Expressions::ExprGroup> vExpressions;
+	ExprGroupVector vExpressions;
 	LoadExpressions(vExpressions, FileName);
 	// merge with m_Expressions
-	for (vector<ExprGroup>::iterator gr = vExpressions.begin() + 1
+	for (ExprGroupIterator gr = vExpressions.begin() + 1
 		; gr < vExpressions.end(); gr++)
 	{
-		for (vector<Expr>::iterator jj = gr->exprs.begin(); jj < gr->exprs.end(); jj++)
+		for (ExprIterator jj = gr->exprs.begin(); jj < gr->exprs.end(); jj++)
 		{
 			if ( ! SaveExpression(jj->expr, jj->name, gr->name, jj->comment, true))
 			{
