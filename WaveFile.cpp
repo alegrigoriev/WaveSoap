@@ -1,5 +1,5 @@
 // WaveFile.cpp
-#include <afx.h>
+#include "stdafx.h"
 #include "WaveFile.h"
 
 CMmioFile::CMmioFile(HANDLE hFile)
@@ -20,8 +20,9 @@ CMmioFile::CMmioFile( LPCTSTR lpszFileName, UINT nOpenFlags )
 CMmioFile::~CMmioFile()
 {
 	Close();
-	delete m_pReadBuffer;
-	m_pReadBuffer = 0;
+	if (m_pReadBuffer != NULL) VirtualFree(m_pReadBuffer, 0, MEM_RELEASE);
+	m_pReadBuffer = NULL;
+
 }
 
 static DWORD GetSectorSize(LPCTSTR szFilename)
@@ -131,6 +132,17 @@ BOOL CMmioFile::Open( LPCTSTR szFileName, UINT nOpenFlags)
 		return FALSE;
 	}
 
+	m_riffck.ckid = FOURCC_RIFF;
+	m_riffck.cksize = 0;
+	m_riffck.fccType = 0;
+	m_riffck.dwDataOffset = 0;
+	m_riffck.dwFlags = 0;
+	if ( ! FindRiff())
+	{
+		Close();
+		return FALSE;
+	}
+
 	return TRUE;
 }
 
@@ -186,6 +198,18 @@ LRESULT PASCAL CMmioFile::BufferedIOProc(LPSTR lpmmioinfo, UINT wMsg,
 	}
 }
 
+	// read data at the specified position
+	// current position won't change after this function
+LONG CMmioFile::ReadAt(void * lpBuf, LONG nCount, LONG Position)
+{
+	CSingleLock( & m_cs, TRUE);
+	LONG OldPosition = Seek(0, SEEK_CUR);
+	Seek(Position);
+	LONG cRead = Read(lpBuf, nCount);
+	Seek(OldPosition);
+	return cRead;
+}
+
 size_t CMmioFile::BufferedRead(void * pBuf, size_t size)
 {
 	char * buf = (char *) pBuf;
@@ -206,7 +230,7 @@ size_t CMmioFile::BufferedRead(void * pBuf, size_t size)
 			m_BufFileOffset = m_CurrFileOffset & -(int)m_SectorSize;
 			DWORD cbRead = 0;
 			if (0xFFFFFFFF == SetFilePointer(m_hFile, m_BufFileOffset, NULL, FILE_BEGIN)
-				|| -1 == (cbRead = Read(m_pReadBuffer, ReadBufferSize)))
+				|| -1 == (cbRead = FileRead(m_pReadBuffer, ReadBufferSize)))
 				return -1;
 			if (0 == cbRead)
 			{
@@ -229,6 +253,19 @@ size_t CMmioFile::BufferedRead(void * pBuf, size_t size)
 	return size_read;
 }
 
+LONG CMmioFile::FileRead(void * pBuf, size_t size)
+{
+	DWORD BytesRead;
+	if (ReadFile(m_hFile, pBuf, size, & BytesRead, NULL))
+	{
+		return BytesRead;
+	}
+	else
+	{
+		return 0;
+	}
+}
+
 void CMmioFile::Close( )
 {
 	if (m_hmmio != NULL)
@@ -243,6 +280,89 @@ void CMmioFile::Close( )
 	}
 }
 
+
+CWaveFile::CWaveFile(HANDLE hFile)
+	: CMmioFile(hFile), m_pWf(NULL)
+{
+}
+
+CWaveFile::CWaveFile( LPCTSTR lpszFileName, UINT nOpenFlags )
+	: CMmioFile(), m_pWf(NULL)
+{
+	Open(lpszFileName, nOpenFlags);
+}
+
+CWaveFile::~CWaveFile()
+{
+	if (NULL != m_pWf)
+	{
+		delete [] (char*) m_pWf;
+		m_pWf = NULL;
+	}
+}
+
+BOOL CWaveFile::Open( LPCTSTR lpszFileName, UINT nOpenFlags)
+{
+	return CMmioFile::Open(lpszFileName, nOpenFlags);
+}
+
+void CWaveFile::Close( )
+{
+	CMmioFile::Close();
+}
+
+BOOL CWaveFile::LoadWaveformat()
+{
+	if (NULL != m_pWf)
+	{
+		delete [] (char*) m_pWf;
+		m_pWf = NULL;
+	}
+
+	MMCKINFO ck = {mmioFOURCC('f', 'm', 't', ' '), 0, 0, 0, 0};
+	if ( ! FindChunk(ck, & m_riffck))
+	{
+		return FALSE;
+	}
+	if (ck.cksize > 0x20000) // 128K
+	{
+		TRACE("fmt chunk is too big: > 128K\n");
+		Ascend(ck);
+		return FALSE;
+	}
+	// allocate structure
+	int WaveformatSize = ck.cksize;
+	if (WaveformatSize < sizeof (WAVEFORMATEX))
+	{
+		WaveformatSize = sizeof (WAVEFORMATEX);
+	}
+	LPWAVEFORMATEX pWf = (LPWAVEFORMATEX) new char[WaveformatSize];
+	memset(pWf, 0, WaveformatSize);
+	if (NULL != pWf)
+	{
+		if (ck.cksize == Read(pWf, ck.cksize))
+		{
+			m_pWf = pWf;
+			return TRUE;
+		}
+		else
+		{
+			delete [] (char*) pWf;
+			return FALSE;
+		}
+	}
+	else
+	{
+		Ascend(ck);
+	}
+	return FALSE;
+}
+
+BOOL CWaveFile::FindData()
+{
+	m_datack.ckid = mmioFOURCC('d', 'a', 't', 'a');
+	return FindChunk(m_datack, & m_riffck);
+}
 
 //DWORD CAviFile::Seek(DWORD position)
 	//{
