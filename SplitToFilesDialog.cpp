@@ -426,6 +426,16 @@ bool CSplitToFilesDialog::GetFileData(unsigned index, CString & FileName, CStrin
 }
 
 BEGIN_MESSAGE_MAP(CSplitToFilesDialog, BaseClass)
+	ON_UPDATE_COMMAND_UI(IDC_BUTTON_DELETE, EnableIfItemSelected)
+	ON_UPDATE_COMMAND_UI(IDC_COMBO_START, EnableIfItemSelected)
+	ON_UPDATE_COMMAND_UI(IDC_COMBO_END, EnableIfItemSelected)
+	ON_UPDATE_COMMAND_UI(IDC_COMBO_SELECTION, EnableIfItemSelected)
+	ON_UPDATE_COMMAND_UI(IDC_EDIT_LENGTH, EnableIfItemSelected)
+	ON_UPDATE_COMMAND_UI(IDC_SPIN_START, EnableIfItemSelected)
+	ON_UPDATE_COMMAND_UI(IDC_SPIN_END, EnableIfItemSelected)
+	ON_UPDATE_COMMAND_UI(IDC_SPIN_LENGTH, EnableIfItemSelected)
+	ON_UPDATE_COMMAND_UI(IDOK, OnUpdateOK)
+
 	ON_BN_CLICKED(IDC_BUTTON_BROWSE_FOLDER, OnBnClickedButtonBrowseFolder)
 	ON_BN_CLICKED(IDC_CHECK_COMPATIBLE_FORMATS, OnCompatibleFormatsClicked)
 	ON_BN_CLICKED(IDC_BUTTON_NEW, OnBnClickedButtonNew)
@@ -710,6 +720,21 @@ BOOL CSplitToFilesDialog::OnInitDialog()
 	// EXCEPTION: OCX Property Pages should return FALSE
 }
 
+void CSplitToFilesDialog::OnUpdateOK(CCmdUI * pCmdUI)
+{
+	BOOL bEnable = FALSE;
+	for (WaveFileSegmentVector::const_iterator i = m_Files.begin();
+		i < m_Files.end(); i++)
+	{
+		if (i->Begin < i->End)
+		{
+			bEnable = TRUE;
+			break;
+		}
+	}
+	pCmdUI->Enable(bEnable);
+}
+
 void CSplitToFilesDialog::OnOK()
 {
 	// TODO: Add your specialized code here and/or call the base class
@@ -786,6 +811,7 @@ void CSplitToFilesDialog::SaveChangedSelectionRange()
 	unsigned nSelItem = m_FilesList.GetNextItem(-1, LVNI_SELECTED);
 	TRACE("Item %d selection saved\n", nSelItem);
 	SetFileArrayItem(nSelItem, m_Start, m_End);
+	NeedUpdateControls();
 }
 
 void CSplitToFilesDialog::OnLvnItemchangedListFiles(NMHDR *pNMHDR, LRESULT *pResult)
@@ -800,6 +826,7 @@ void CSplitToFilesDialog::OnLvnItemchangedListFiles(NMHDR *pNMHDR, LRESULT *pRes
 			TRACE("List item %d selected\n", pNMLV->iItem);
 			// set new range to the selection combo-boxes
 			SetSelection(m_Files[pNMLV->iItem].Begin, m_Files[pNMLV->iItem].End);
+			NeedUpdateControls();
 		}
 		if (pNMLV->uOldState & LVIS_SELECTED)
 		{
@@ -807,6 +834,7 @@ void CSplitToFilesDialog::OnLvnItemchangedListFiles(NMHDR *pNMHDR, LRESULT *pRes
 			// save range from the selection combo-boxes
 			UpdateAllSelections();  // KILLFOCUS doesn't come yet, have to just update all
 			SetFileArrayItem(pNMLV->iItem, m_Start, m_End);
+			NeedUpdateControls();
 		}
 	}
 	*pResult = 0;
@@ -824,7 +852,8 @@ void CSplitToFilesDialog::OnBnClickedButtonNew()
 	}
 	else
 	{
-		nSelItem = 0;
+		nSelItem = m_Files.size();
+		i = m_Files.end();
 	}
 
 	WaveFileSegment seg;
@@ -847,6 +876,13 @@ void CSplitToFilesDialog::OnBnClickedButtonNew()
 	m_FilesList.SetFocus();
 	m_FilesList.SetItemState(nSelItem, LVIS_SELECTED, LVIS_SELECTED);
 	m_FilesList.EditLabel(nSelItem);
+	NeedUpdateControls();
+}
+
+void CSplitToFilesDialog::EnableIfItemSelected(CCmdUI * pCmdUI)
+{
+	unsigned nSelItem = m_FilesList.GetNextItem(-1, LVNI_SELECTED);
+	pCmdUI->Enable(nSelItem != unsigned(-1));
 }
 
 void CSplitToFilesDialog::OnBnClickedButtonDelete()
@@ -859,6 +895,7 @@ void CSplitToFilesDialog::OnBnClickedButtonDelete()
 		if (m_FilesList.DeleteItem(nSelItem))
 		{
 			m_Files.erase(m_Files.begin() + nSelItem);
+			NeedUpdateControls();
 
 			if ( ! m_Files.empty())
 			{
