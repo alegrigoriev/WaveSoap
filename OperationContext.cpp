@@ -1721,6 +1721,7 @@ CDecompressContext::CDecompressContext(CWaveSoapFrontDoc * pDoc, LPCTSTR StatusS
 
 	m_DstStart = m_DstFile.SampleToPosition(0);
 	m_DstPos = m_DstStart;
+	m_DstEnd = m_DstStart;
 
 	m_SrcStart = SrcStart;
 	m_SrcPos = SrcStart;
@@ -1851,13 +1852,15 @@ BOOL CSoundPlayContext::Init()
 		return FALSE;
 	}
 
+	pDocument->PlaybackPositionNotify(-1, 0);// sample=-1, channel=0
+
 	SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_ABOVE_NORMAL);
 	return TRUE;
 }
 
 void CSoundPlayContext::DeInit()
 {
-	pDocument->PlaybackPositionNotify(-1, -2);// sample=-1, channel=-2
+	pDocument->PlaybackPositionNotify(-1, 0);// sample=-1, channel=0
 	SetThreadPriority(GetCurrentThread(), m_OldThreadPriority);
 	m_WaveOut.Reset();
 }

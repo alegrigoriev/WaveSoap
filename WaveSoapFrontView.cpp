@@ -104,7 +104,7 @@ CWaveSoapFrontView::CWaveSoapFrontView()
 //m_FirstSampleInBuffer(0),
 //m_pWaveBuffer(NULL),
 //m_WaveBufferSize(0),
-	m_PlaybackCursorChannel(-2),
+	m_PlaybackCursorChannel(0),
 	m_PlaybackCursorDrawn(false),
 	m_NewSelectionMade(false),
 	m_bAutoscrollTimerStarted(false),
@@ -1643,7 +1643,8 @@ void CWaveSoapFrontView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
 			&& NULL != pHint)
 	{
 		CSoundUpdateInfo * pInfo = static_cast<CSoundUpdateInfo *> (pHint);
-		UpdatePlaybackCursor(pInfo->m_Begin, pInfo->m_End);
+
+		UpdatePlaybackCursor(pInfo->m_PlaybackPosition, pInfo->m_PlaybackChannel);
 	}
 	else if (lHint == ThisDoc::UpdateSampleRateChanged
 			&& NULL == pHint)
@@ -2100,14 +2101,16 @@ BOOL CWaveSoapFrontView::OnScrollBy(CSize sizeScroll, BOOL bDoScroll)
 
 void CWaveSoapFrontView::UpdatePlaybackCursor(SAMPLE_INDEX sample, CHANNEL_MASK channel)
 {
-	if (-2 == m_PlaybackCursorChannel)
+	if (0 == m_PlaybackCursorChannel)
 	{
 		// first call after playback start
 		m_PlaybackCursorDrawnSamplePos = sample;
 		m_NewSelectionMade = false; // to hide the caret
 	}
+
 	int pos = WorldToWindowX(sample);
 	int OldPos = WorldToWindowX(m_PlaybackCursorDrawnSamplePos);
+
 	if (pos == OldPos
 		&& channel == m_PlaybackCursorChannel)
 	{
@@ -2116,11 +2119,12 @@ void CWaveSoapFrontView::UpdatePlaybackCursor(SAMPLE_INDEX sample, CHANNEL_MASK 
 	}
 
 	HidePlaybackCursor();
+
 	m_PlaybackCursorDrawnSamplePos = sample;
 	m_PlaybackCursorChannel = channel;
 
 	CreateAndShowCaret();
-	if (-2 == channel)
+	if (0 == channel)
 	{
 		// not playing now
 		return;

@@ -441,27 +441,29 @@ void CWaveOutlineView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
 	{
 		CSoundUpdateInfo * pInfo = static_cast<CSoundUpdateInfo *>(pHint);
 		SAMPLE_INDEX OldPosition = MulDiv(m_PlaybackCursorPosition, cr.Width(), nSamples);
-		SAMPLE_INDEX NewPosition = MulDiv(pInfo->m_Begin, cr.Width(), nSamples);
+		SAMPLE_INDEX NewPosition = MulDiv(pInfo->m_PlaybackPosition, cr.Width(), nSamples);
 
 		if (NewPosition != OldPosition)
 		{
 			CRect r;
 			r.top = cr.top;
 			r.bottom = cr.bottom;
+
 			if (-1 != m_PlaybackCursorPosition)
 			{
 				r.left = OldPosition;
 				r.right = OldPosition + 1;
 				InvalidateRect( & r, FALSE);
 			}
-			if (-1 != pInfo->m_Begin)
+			if (-1 != pInfo->m_PlaybackPosition)
 			{
 				r.left = NewPosition;
 				r.right = NewPosition + 1;
 				InvalidateRect( & r, FALSE);
 			}
 		}
-		m_PlaybackCursorPosition = pInfo->m_Begin;
+
+		m_PlaybackCursorPosition = pInfo->m_PlaybackPosition;
 	}
 	else
 	{

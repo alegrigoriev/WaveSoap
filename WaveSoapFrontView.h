@@ -107,7 +107,7 @@ protected:
 	void UpdatePlaybackCursor(SAMPLE_INDEX sample, CHANNEL_MASK channel);
 	BOOL PlaybackCursorVisible();
 
-	CHANNEL_MASK m_PlaybackCursorChannel;  // -2 = not playing
+	CHANNEL_MASK m_PlaybackCursorChannel;  // 0 = not playing
 	bool m_PlaybackCursorDrawn;
 	bool m_NewSelectionMade;
 	bool m_bAutoscrollTimerStarted;

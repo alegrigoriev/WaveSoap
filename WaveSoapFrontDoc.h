@@ -47,16 +47,45 @@ public:
 	CSoundUpdateInfo(int UpdateCode, ULONG_PTR FileID,
 					SAMPLE_INDEX Begin, SAMPLE_INDEX End, long NewLength)
 		: m_UpdateCode(UpdateCode)
-		, m_Begin(Begin)
-		, m_End(End)
 		, m_NewLength(NewLength)
 		, m_FileID(FileID)
 	{
+		if (Begin <= End)
+		{
+			m_Begin = Begin;
+			m_End = End;
+		}
+		else
+		{
+			m_Begin = End;
+			m_End = Begin;
+		}
 	}
+
+	CSoundUpdateInfo(int UpdateCode, ULONG_PTR FileID,
+					SAMPLE_INDEX PlaybackPosition, CHANNEL_MASK PlaybackChannel)
+		: m_UpdateCode(UpdateCode)
+		, m_NewLength(-1)
+		, m_FileID(FileID)
+	{
+		m_PlaybackPosition = PlaybackPosition;
+		m_PlaybackChannel = PlaybackChannel;
+	}
+
 	ULONG_PTR m_FileID;
 	int m_UpdateCode;
-	SAMPLE_INDEX m_Begin;
-	SAMPLE_INDEX m_End;
+
+	union
+	{
+		SAMPLE_INDEX m_Begin;
+		SAMPLE_INDEX m_PlaybackPosition;
+	};
+
+	union
+	{
+		SAMPLE_INDEX m_End;
+		CHANNEL_MASK m_PlaybackChannel;
+	};
 	NUMBER_OF_SAMPLES m_NewLength;
 };
 
@@ -252,6 +281,9 @@ public:
 	BOOL OpenWaveFile(CWaveFile & WaveFile, LPCTSTR szName, DWORD flags);
 	void QueueSoundUpdate(int UpdateCode, ULONG_PTR FileID,
 						SAMPLE_INDEX Begin, SAMPLE_INDEX End, NUMBER_OF_SAMPLES NewLength, int flags = 0);
+	void CWaveSoapFrontDoc::QueuePlaybackUpdate(int UpdateCode, ULONG_PTR FileID,
+												SAMPLE_INDEX PlaybackPosition, CHANNEL_MASK PlaybackChannel);
+
 	enum {
 		QueueSoundUpdateMerge = 1,  // merge update range
 		QueueSoundUpdateReplace = 2, // replace existing item

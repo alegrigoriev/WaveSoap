@@ -530,7 +530,8 @@ void CSpectrumSectionView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint
 			&& NULL != pHint)
 	{
 		CSoundUpdateInfo * pInfo = static_cast<CSoundUpdateInfo *>(pHint);
-		m_PlaybackSample = pInfo->m_Begin;
+		m_PlaybackSample = pInfo->m_PlaybackPosition;
+
 		Invalidate();
 		return;
 	}
