@@ -100,4 +100,5 @@ class CAudioMixer
 {
 	HMIXER m_hmix;
 };
+WAVEFORMATEX * CopyWaveformat(const WAVEFORMATEX * src);
 #endif // #ifndef WAVESUPPORT_H__
