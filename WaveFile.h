@@ -271,22 +271,23 @@ public:
 		MMCKINFO factck;
 		CWaveFormat wf;
 		// TODO: use Unicode?
-		CString Author;
-		CString DisplayTitle;
-		CString Album;
-		CString Copyright;
-		CString RecordingEngineer;
+		CString Author;         // WM/Author
+		CString DisplayTitle;   // WM/Title
+		CString Album;          // WM/AlbumTitle
+		CString Copyright;      // ICOP
+		CString RecordingEngineer;  // IENG
 
 		CString Title;
-		CString Date;
-		CString Genre;
-		CString Comment;
-		CString Subject;
-		CString Keywords;
-		CString Medium;
-		CString Source;
-		CString Digitizer;
-		CString DigitizationSource;
+		CString OriginalArtist; // IART
+		CString Date;       // WM/Year
+		CString Genre;      // IGNR, WM/Genre
+		CString Comment;    // ICMT
+		CString Subject;   // ISBJ
+		CString Keywords;  // IKEY
+		CString Medium;  // IMED
+		CString Source; // ISRC
+		CString Digitizer; // ITCH
+		CString DigitizationSource; // ISRF
 
 		std::vector<WaveMarker> Markers;
 		std::vector<WavePlaylistItem> Playlist;
