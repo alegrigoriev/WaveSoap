@@ -293,6 +293,7 @@ struct WavePeak
 		: low(Low), high(High) {}
 	WavePeak() {}
 };
+
 class CWavePeaks
 {
 

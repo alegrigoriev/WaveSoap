@@ -1064,6 +1064,7 @@ BOOL CWaveFile::SetDatachunkLength(DWORD Length)
 		pck->cksize = Length;
 		pck->dwFlags |= MMIO_DIRTY;
 	}
+	// TODO: make it to save metadata
 	CommitChanges();
 	return TRUE;
 }
