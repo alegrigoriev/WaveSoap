@@ -73,7 +73,7 @@ void CTimeRulerView::DrawRulerSamples(CDC* pDC)
 	int nLength;
 	int dist, nTickDist;
 	unsigned nSamples, k;
-	nLength = pDC->GetTextExtent("0000000000", 10).cx;
+	nLength = pDC->GetTextExtent("0,000,000,000", 13).cx;
 	nSamples = 1.5 * nLength / GetXScaleDev();
 	// calculate how much samples can be between the numbers
 	if (nSamples > INT_MAX / 10)
@@ -146,10 +146,9 @@ void CTimeRulerView::DrawRulerSamples(CDC* pDC)
 		{
 			// draw bigger tick (6 pixels high) and the number
 			pDC->LineTo(x - 1, cr.bottom - 12);
-			char s[16];
-			ltoa(nFirstSample, s, 10);
+			CString s = LtoaCS(nFirstSample);
 
-			pDC->TextOut(x + 2, cr.bottom - 9, s, strlen(s));
+			pDC->TextOut(x + 2, cr.bottom - 9, s);
 
 			pDC->SelectStockObject(WHITE_PEN);
 			pDC->MoveTo(x, cr.bottom - 6);
@@ -293,10 +292,8 @@ void CTimeRulerView::DrawRulerHhMmSs(CDC* pDC)
 	pDC->MoveTo(cr.left, cr.bottom - 6);
 	pDC->LineTo(cr.right, cr.bottom - 6);
 
-	TCHAR TimeSeparator[] = _T(":");
-	TCHAR DecimalPoint[] = _T(".");
-	GetLocaleInfo(LOCALE_USER_DEFAULT, LOCALE_SDECIMAL, DecimalPoint, 1);
-	GetLocaleInfo(LOCALE_USER_DEFAULT, LOCALE_STIME, TimeSeparator, 2);
+	TCHAR TimeSeparator = GetApp()->m_TimeSeparator;
+	TCHAR DecimalPoint = GetApp()->m_DecimalPoint;
 
 	for(int nTick = 0; ; nTick++)
 	{
@@ -325,57 +322,7 @@ void CTimeRulerView::DrawRulerHhMmSs(CDC* pDC)
 		{
 			// draw bigger tick (6 pixels high) and the number
 			pDC->LineTo(x - 1, cr.bottom - 12);
-			CString s;
-
-			time += 0.0005;
-			int hh = time / 3600.;
-			time -= hh * 3600;
-			int mm = time / 60.;
-			time -= mm * 60;
-			int ss = time;
-			time -= ss;
-			int ms = time * 1000.;
-
-			if (DistTime < 1.)
-			{
-				if (hh != 0)
-				{
-					s.Format(_T("%d%c%02d%c%02d%c%03d"),
-							hh, TimeSeparator[0],
-							mm, TimeSeparator[0],
-							ss, DecimalPoint[0],
-							ms);
-				}
-				else if (mm != 0)
-				{
-					s.Format(_T("%d%c%02d%c%03d"),
-							mm, TimeSeparator[0],
-							ss, DecimalPoint[0],
-							ms);
-				}
-				else
-				{
-					s.Format(_T("%d%c%03d"),
-							ss, DecimalPoint[0],
-							ms);
-				}
-			}
-			else
-			{
-				if (hh != 0)
-				{
-					s.Format(_T("%d%c%02d%c%02d"),
-							hh, TimeSeparator[0],
-							mm, TimeSeparator[0],
-							ss);
-				}
-				else
-				{
-					s.Format(_T("%d%c%02d"),
-							mm, TimeSeparator[0],
-							ss);
-				}
-			}
+			CString s = TimeToHhMmSs((time + 0.0005) * 1000, DistTime < 1.);
 
 			pDC->TextOut(x + 2, cr.bottom - 9, s);
 
@@ -413,7 +360,7 @@ void CTimeRulerView::DrawRulerSeconds(CDC* pDC)
 	int nTickCount;
 	float SampleRate = pDoc->m_WavFile.SampleRate();
 
-	int nLength = pDC->GetTextExtent("00000.0000", 13).cx;
+	int nLength = pDC->GetTextExtent("00,000.0000", 14).cx;
 	double DistTime = 1.5 * nLength / GetXScaleDev() / SampleRate;
 	// select distance between ticks
 	double multiplier = 1.;
@@ -473,8 +420,7 @@ void CTimeRulerView::DrawRulerSeconds(CDC* pDC)
 	pDC->MoveTo(cr.left, cr.bottom - 6);
 	pDC->LineTo(cr.right, cr.bottom - 6);
 
-	TCHAR DecimalPoint[] = _T(".");
-	GetLocaleInfo(LOCALE_USER_DEFAULT, LOCALE_SDECIMAL, DecimalPoint, 1);
+	TCHAR DecimalPoint = GetApp()->m_DecimalPoint;
 
 	for(int nTick = 0; ; nTick++)
 	{
@@ -505,22 +451,22 @@ void CTimeRulerView::DrawRulerSeconds(CDC* pDC)
 			// draw bigger tick (6 pixels high) and the number
 			pDC->LineTo(x - 1, cr.bottom - 12);
 			CString s;
-
 			time += 0.0005;
 			int ss = time;
 			time -= ss;
 			int ms = time * 1000.;
+			CString s1 = LtoaCS(ss);
 
 			if (DistTime < 1.)
 			{
-				s.Format(_T("%d%c%03d"),
-						ss, DecimalPoint[0],
+				s.Format(_T("%s%c%03d"),
+						s1, DecimalPoint,
 						ms);
 			}
 			else
 			{
-				s.Format(_T("%d%c0"),
-						ss, DecimalPoint[0]);
+				s.Format(_T("%s%c0"),
+						s1, DecimalPoint);
 			}
 
 			pDC->TextOut(x + 2, cr.bottom - 9, s);
