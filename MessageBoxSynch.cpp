@@ -76,3 +76,51 @@ INT_PTR MessageBoxSync(UINT nIDPrompt, UINT nType, UINT nIDHelp)
 						reinterpret_cast<LPARAM>( & Params));
 }
 
+BOOL WaitForSingleObjectAcceptSends(HANDLE handle, ULONG timeout)
+{
+	DWORD StartTime = GetTickCount();
+	DWORD WaitTimeout = timeout;
+	while (1)
+	{
+		DWORD WaitResult = MsgWaitForMultipleObjectsEx(1, & handle, WaitTimeout,
+														QS_SENDMESSAGE, 0);
+
+		if (WAIT_TIMEOUT == WaitResult)
+		{
+			return FALSE;
+		}
+		else if (WAIT_OBJECT_0 == WaitResult)
+		{
+			return TRUE;
+		}
+		else if (WAIT_OBJECT_0 + 1 != WaitResult)
+		{
+			return FALSE;
+		}
+		// execute messages
+		MSG msg;
+		PeekMessage( & msg, NULL, 0, 0, PM_NOREMOVE | PM_QS_SENDMESSAGE);
+
+		if (timeout != INFINITE)
+		{
+			DWORD NewTime = GetTickCount();
+			DWORD Elapsed = NewTime - StartTime;
+			if (Elapsed < 0x8000000)
+			{
+				if (Elapsed >= WaitTimeout)
+				{
+					WaitTimeout = 0;
+				}
+				else
+				{
+					WaitTimeout -= Elapsed;
+				}
+			}
+			else
+			{
+				// time stepped back
+			}
+			StartTime = NewTime;
+		}
+	}
+}

@@ -34,6 +34,7 @@ public:
 
 protected:
 	DECLARE_MESSAGE_MAP();
+//    DECLARE_DYNAMIC(DialogProxyWnd);
 
 private:
 	LRESULT OnRunModalSync(WPARAM, LPARAM lparam)
@@ -77,8 +78,15 @@ AFX_COMDAT const AFX_MSGMAP_ENTRY DialogProxyWnd<BaseClass>::_messageEntries[] =
 {0, 0, 0, 0, AfxSig_end, (AFX_PMSG)0 }
 };
 
+// synchronously runs the dialog from a worker thread in the main thread context
 INT_PTR RunModalDialogSync(CDialog & dlg);
 
 INT_PTR MessageBoxSync(LPCTSTR lpszText, UINT nType = MB_OK, UINT nIDHelp = -1);
 
 INT_PTR MessageBoxSync(UINT nIDPrompt, UINT nType = MB_OK, UINT nIDHelp = 0);
+
+// use this function to wait for completion of a thread
+// which can call SendMessage to the main thread.
+// To avoid deadlock, this function will schedule messages while waiting
+BOOL WaitForSingleObjectAcceptSends(HANDLE handle, ULONG timeout);
+
