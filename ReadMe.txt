@@ -1,14 +1,6 @@
 TODO tasks:
 
 Check if after file extension metadata gets saved again.
-ULF reduction should be put to disk-intensive queue
-Noise reduction threshold should be independent from FFT order. Max may be over 0 dB.
-Rescale markers on resample
-Delete markers on expression evaluation
-Modify markers for reverse operation
-Add Marker command to FFT view context menu
-Add Marker command to the main menu
-Make an accelerator for Marker/Region command
 Check all loading/saving of compressed files
 Make Fade In/Out command
 Make Paste Special command (with Fade In/Fade Out etc)
@@ -18,7 +10,6 @@ If metadata doesn't come as the very last chunk of the file, copy the original f
 Allow dragging NR threshold points
 Show FFT of NR result in spectrum view
 Show/edit markers as a table
-Show tooltip on a marker in outline view
 Make context menu for outline view
 
 Fix GetBufferWriteOnly flag support (do zero instead of read)
@@ -102,6 +93,7 @@ Windows2000 is trying to zero the allocated file
 Log Off query doesn't close the active dialog. Recursion is possible. Make sure to check after Cancel
 
 Fixed:
+Resample doesn't set modified flag
 If a clipboard operation gets stopped, need to cancel all the operations that depend on it.
 MRU list doesn't show directories
 Simple sample rate change did not work
@@ -183,11 +175,22 @@ Save As dialog is not centered first time (comdlg problem?)
 ??? When time/seconds format is set for status bar, MM:SS is actually shown
 
 Done:
+Show tooltip on a marker in outline view
+Make right click to move caret (unless inside a selection)
+Add Marker command to the main menu
+Add Marker command to FFT view context menu
+Make an accelerator for Marker/Region command
+If an operation is aborted, in the status string say "Stopped"
+Rescale markers on resample
+Modify markers for reverse operation
+Delete markers on expression evaluation
+ULF reduction should be put to disk-intensive queue
 Return selection on click interpolation UNDO
 Status string shows full file names for MRU items
 Add support for markers and regions: save on copy and with undo, move and delete on Cut, move on Paste
 InitCopyMarkers should not do immediate copy!
 Fade in/out in Mute command
+Noise reduction threshold should be independent from FFT order. Max may be over 0 dB.
 Add noise reduction estimation in spectrum section view
 When noise threshold is shown, fix the FFT resolution to the NR
 Make WSPK file hidden (optional)
