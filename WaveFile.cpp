@@ -850,7 +850,7 @@ BOOL CWaveFile::LoadListMetadata(MMCKINFO & chunk)
 }
 // creates a file based on template format from pTemplateFile
 BOOL CWaveFile::CreateWaveFile(CWaveFile * pTemplateFile, WAVEFORMATEX * pTemplateFormat,
-								NUMBER_OF_CHANNELS Channels, WAV_FILE_SIZE SizeOrSamples, DWORD flags, LPCTSTR FileName)
+								CHANNEL_MASK Channels, WAV_FILE_SIZE SizeOrSamples, DWORD flags, LPCTSTR FileName)
 {
 	CString name;
 	TCHAR NameBuf[512];
@@ -864,6 +864,7 @@ BOOL CWaveFile::CreateWaveFile(CWaveFile * pTemplateFile, WAVEFORMATEX * pTempla
 	{
 		pTemplateFormat = pTemplateFile->GetWaveFormat();
 	}
+
 	if (flags & CreateWaveFileAllowMemoryFile)
 	{
 		// check file size
@@ -1961,3 +1962,7 @@ void CWaveFile::CopyMetadata(CWaveFile const & src)
 	}
 }
 
+NUMBER_OF_CHANNELS CWaveFile::NumChannelsFromMask(CHANNEL_MASK ChannelMask) const
+{
+	return GetInstanceData()->wf.NumChannelsFromMask(ChannelMask);
+}
