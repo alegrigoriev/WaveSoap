@@ -16,6 +16,76 @@
 static char THIS_FILE[] = __FILE__;
 #endif
 
+
+CDialogWithSelection::CDialogWithSelection(SAMPLE_INDEX Start,
+											SAMPLE_INDEX End, SAMPLE_INDEX CaretPos,
+											CHANNEL_MASK Channel,
+											CWaveFile & File, int TimeFormat,
+											UINT TemplateID,
+											CWnd* pParent)
+	: BaseClass(TemplateID, pParent)
+	, m_Start(Start)
+	, m_End(End)
+	, m_CaretPosition(CaretPos)
+	, m_Chan(Channel)
+	, m_WaveFile(File)
+	, m_TimeFormat(TimeFormat)
+	, m_bUndo(FALSE)
+	, m_bLockChannels(FALSE)
+{
+}
+
+BEGIN_MESSAGE_MAP(CDialogWithSelection, BaseClass)
+	//{{AFX_MSG_MAP(CDialogWithSelection)
+	ON_BN_CLICKED(IDC_CHECKLOCK_CHANNELS, OnChecklockChannels)
+	ON_BN_CLICKED(IDC_BUTTON_SELECTION, OnButtonSelection)
+	ON_UPDATE_COMMAND_UI(IDC_STATIC_SELECTION, OnUpdateSelectionStatic)
+	//}}AFX_MSG_MAP
+END_MESSAGE_MAP()
+
+void CDialogWithSelection::OnButtonSelection()
+{
+	CSelectionDialog dlg(m_Start, m_End, m_CaretPosition, m_Chan + 1,
+						m_WaveFile.NumberOfSamples(), m_WaveFile.GetWaveFormat(), m_TimeFormat);
+
+	if (IDOK != dlg.DoModal())
+	{
+		return;
+	}
+
+	m_Start = dlg.GetStart();
+	m_End = dlg.GetEnd();
+	m_Chan = dlg.GetChannel() - 1;
+
+	NeedUpdateControls();
+}
+
+void CDialogWithSelection::OnChecklockChannels()
+{
+	m_bLockChannels = IsDlgButtonChecked(IDC_CHECKLOCK_CHANNELS);
+	NeedUpdateControls();
+}
+
+void CDialogWithSelection::OnUpdateSelectionStatic(CCmdUI * pCmdUI)
+{
+	pCmdUI->SetText(GetSelectionText(m_Start, m_End, m_Chan,
+									m_WaveFile.Channels(), m_bLockChannels,
+									m_WaveFile.SampleRate(), m_TimeFormat));
+}
+
+void CDialogWithSelection::DoDataExchange(CDataExchange* pDX)
+{
+	BaseClass::DoDataExchange(pDX);
+	// initialize slider control dirst, then edit control
+	//{{AFX_DATA_MAP(CDialogWithSelection)
+	//}}AFX_DATA_MAP
+	// get data first, then get new selection of the combobox
+	if ( ! pDX->m_bSaveAndValidate)
+	{
+		NeedUpdateControls();
+	}
+}
+
 /////////////////////////////////////////////////////////////////////////////
 // CCopyChannelsSelectDlg dialog
 
@@ -28,17 +98,16 @@ CCopyChannelsSelectDlg::CCopyChannelsSelectDlg(CHANNEL_MASK Channels, CWnd* pPar
 	//}}AFX_DATA_INIT
 }
 
-
 void CCopyChannelsSelectDlg::DoDataExchange(CDataExchange* pDX)
 {
-	CDialog::DoDataExchange(pDX);
+	BaseClass::DoDataExchange(pDX);
 	//{{AFX_DATA_MAP(CCopyChannelsSelectDlg)
 	DDX_Radio(pDX, IDC_RADIO_CHANNEL_BOTH, m_ChannelToCopy);
 	//}}AFX_DATA_MAP
 }
 
 
-BEGIN_MESSAGE_MAP(CCopyChannelsSelectDlg, CDialog)
+BEGIN_MESSAGE_MAP(CCopyChannelsSelectDlg, BaseClass)
 //{{AFX_MSG_MAP(CCopyChannelsSelectDlg)
 // NOTE: the ClassWizard will add message map macros here
 //}}AFX_MSG_MAP
@@ -51,7 +120,7 @@ END_MESSAGE_MAP()
 
 
 CPasteModeDialog::CPasteModeDialog(int PasteMode, CWnd* pParent /*=NULL*/)
-	: CDialog(CPasteModeDialog::IDD, pParent),
+	: BaseClass(CPasteModeDialog::IDD, pParent),
 	m_PasteMode(PasteMode)
 {
 	//{{AFX_DATA_INIT(CPasteModeDialog)
@@ -61,14 +130,14 @@ CPasteModeDialog::CPasteModeDialog(int PasteMode, CWnd* pParent /*=NULL*/)
 
 void CPasteModeDialog::DoDataExchange(CDataExchange* pDX)
 {
-	CDialog::DoDataExchange(pDX);
+	BaseClass::DoDataExchange(pDX);
 	//{{AFX_DATA_MAP(CPasteModeDialog)
 	DDX_Radio(pDX, IDC_RADIO_SELECT, m_PasteMode);
 	//}}AFX_DATA_MAP
 }
 
 
-BEGIN_MESSAGE_MAP(CPasteModeDialog, CDialog)
+BEGIN_MESSAGE_MAP(CPasteModeDialog, BaseClass)
 //{{AFX_MSG_MAP(CPasteModeDialog)
 	//}}AFX_MSG_MAP
 END_MESSAGE_MAP()
@@ -82,29 +151,24 @@ END_MESSAGE_MAP()
 
 CVolumeChangeDialog::CVolumeChangeDialog(SAMPLE_INDEX begin, SAMPLE_INDEX end, SAMPLE_INDEX caret,
 										CHANNEL_MASK Channels,
-										NUMBER_OF_SAMPLES FileLength, WAVEFORMATEX const * pWf,
+										CWaveFile & File,
 										BOOL ChannelsLocked, BOOL UndoEnabled,
 										int TimeFormat,
 										CWnd* pParent /*=NULL*/)
-	: CDialog(CVolumeChangeDialog::IDD, pParent),
-	m_TimeFormat(TimeFormat),
-	m_pWf(pWf)
-	, m_FileLength(FileLength)
-	, m_Start(begin)
-	, m_End(end)
-	, m_CaretPosition(caret)
-	, m_Chan(Channels)
-	, m_bUndo(UndoEnabled)
-	, m_bLockChannels(ChannelsLocked)
+	: BaseClass(begin, end, caret, Channels, File, TimeFormat,
+				IDD, pParent)
 	, m_dVolumeLeftDb(0.)
 	, m_dVolumeRightDb(0.)
 	, m_dVolumeLeftPercent(100.)
 	, m_dVolumeRightPercent(100.)
 {
+	m_bUndo = UndoEnabled;
+	m_bLockChannels = ChannelsLocked;
+
 	//{{AFX_DATA_INIT(CVolumeChangeDialog)
 	//}}AFX_DATA_INIT
 
-	if (1 == pWf->nChannels)
+	if (1 == m_WaveFile.Channels())
 	{
 		m_lpszTemplateName = MAKEINTRESOURCE(IDD_DIALOG_VOLUME_CHANGE_MONO);
 	}
@@ -133,7 +197,7 @@ double CVolumeChangeDialog::GetRightVolume()
 {
 	if (0 == m_DbPercent)   // dBs
 	{
-		if (m_bLockChannels || m_pWf->nChannels == 1)
+		if (m_bLockChannels || m_WaveFile.Channels() == 1)
 		{
 			return pow(10., m_dVolumeLeftDb / 20.);
 		}
@@ -144,7 +208,7 @@ double CVolumeChangeDialog::GetRightVolume()
 	}
 	else // percents
 	{
-		if (m_bLockChannels || m_pWf->nChannels == 1)
+		if (m_bLockChannels || m_WaveFile.Channels() == 1)
 		{
 			return 0.01 * m_dVolumeLeftPercent;
 		}
@@ -163,7 +227,7 @@ void CVolumeChangeDialog::UpdateVolumeData(CDataExchange* pDX, BOOL InPercents)
 		// decibels
 		m_eVolumeLeft.ExchangeData(pDX, m_dVolumeLeftDb,
 									_T("Volume change"), _T("dB"), -40., 40.);
-		if (m_pWf->nChannels > 1)
+		if (m_WaveFile.Channels() > 1)
 		{
 			m_eVolumeRight.ExchangeData(pDX, m_dVolumeRightDb,
 										_T("Volume change"), _T("dB"), -40., 40.);
@@ -174,7 +238,7 @@ void CVolumeChangeDialog::UpdateVolumeData(CDataExchange* pDX, BOOL InPercents)
 		// percents
 		m_eVolumeLeft.ExchangeData(pDX, m_dVolumeLeftPercent,
 									_T("Volume change"), _T("%"), 1., 10000.);
-		if (m_pWf->nChannels > 1)
+		if (m_WaveFile.Channels() > 1)
 		{
 			m_eVolumeRight.ExchangeData(pDX, m_dVolumeRightPercent,
 										_T("Volume change"), _T("%"), 1., 10000.);
@@ -182,25 +246,17 @@ void CVolumeChangeDialog::UpdateVolumeData(CDataExchange* pDX, BOOL InPercents)
 	}
 }
 
-void CVolumeChangeDialog::UpdateSelectionStatic()
-{
-	m_SelectionStatic.SetWindowText(GetSelectionText(m_Start, m_End, m_Chan,
-													m_pWf->nChannels, m_bLockChannels,
-													m_pWf->nSamplesPerSec, m_TimeFormat));
-}
-
 void CVolumeChangeDialog::DoDataExchange(CDataExchange* pDX)
 {
-	CDialog::DoDataExchange(pDX);
+	BaseClass::DoDataExchange(pDX);
 	// initialize slider control dirst, then edit control
 	//{{AFX_DATA_MAP(CVolumeChangeDialog)
 	DDX_Control(pDX, IDC_SLIDER_VOLUME_LEFT, m_SliderVolumeLeft);
 	DDX_Control(pDX, IDC_EDIT_VOLUME_LEFT, m_eVolumeLeft);
-	DDX_Control(pDX, IDC_STATIC_SELECTION, m_SelectionStatic);
 	DDX_Check(pDX, IDC_CHECK_UNDO, m_bUndo);
 	//}}AFX_DATA_MAP
 	// get data first, then get new selection of the combobox
-	if (m_pWf->nChannels > 1)
+	if (m_WaveFile.Channels() > 1)
 	{
 		DDX_Check(pDX, IDC_CHECKLOCK_CHANNELS, m_bLockChannels);
 		DDX_Control(pDX, IDC_SLIDER_VOLUME_RIGHT, m_SliderVolumeRight);
@@ -211,7 +267,7 @@ void CVolumeChangeDialog::DoDataExchange(CDataExchange* pDX)
 	DDX_CBIndex(pDX, IDC_COMBODB_PERCENT, m_DbPercent);
 	if ( ! pDX->m_bSaveAndValidate)
 	{
-		UpdateSelectionStatic();
+		NeedUpdateControls();
 	}
 	else
 	{
@@ -220,11 +276,9 @@ void CVolumeChangeDialog::DoDataExchange(CDataExchange* pDX)
 }
 
 
-BEGIN_MESSAGE_MAP(CVolumeChangeDialog, CDialog)
+BEGIN_MESSAGE_MAP(CVolumeChangeDialog, BaseClass)
 //{{AFX_MSG_MAP(CVolumeChangeDialog)
-ON_BN_CLICKED(IDC_CHECKLOCK_CHANNELS, OnChecklockChannels)
-ON_BN_CLICKED(IDC_BUTTON_SELECTION, OnButtonSelection)
-ON_CBN_SELCHANGE(IDC_COMBODB_PERCENT, OnSelchangeCombodbPercent)
+	ON_CBN_SELCHANGE(IDC_COMBODB_PERCENT, OnSelchangeCombodbPercent)
 	ON_WM_HSCROLL()
 	ON_EN_KILLFOCUS(IDC_EDIT_VOLUME_LEFT, OnKillfocusEditVolumeLeft)
 	ON_EN_KILLFOCUS(IDC_EDIT_VOLUME_RIGHT, OnKillfocusEditVolumeRight)
@@ -233,13 +287,6 @@ END_MESSAGE_MAP()
 
 /////////////////////////////////////////////////////////////////////////////
 // CVolumeChangeDialog message handlers
-
-void CVolumeChangeDialog::OnChecklockChannels()
-{
-	m_bLockChannels = IsDlgButtonChecked(IDC_CHECKLOCK_CHANNELS);
-	UpdateEnables();
-	UpdateSelectionStatic();
-}
 
 void CVolumeChangeDialog::UpdateEnables()
 {
@@ -253,21 +300,6 @@ void CVolumeChangeDialog::UpdateEnables()
 	m_eVolumeRight.EnableWindow(EnableRight);
 	m_SliderVolumeRight.EnableWindow(EnableRight);
 	GetDlgItem(IDC_STATIC_RIGHT_CHANNEL)->EnableWindow(EnableRight);
-}
-
-void CVolumeChangeDialog::OnButtonSelection()
-{
-	CSelectionDialog dlg(m_Start, m_End, m_CaretPosition, m_Chan + 1, m_FileLength, m_pWf, m_TimeFormat);
-
-	if (IDOK != dlg.DoModal())
-	{
-		return;
-	}
-	m_Start = dlg.GetStart();
-	m_End = dlg.GetEnd();
-	m_Chan = dlg.GetChannel() - 1;
-
-	UpdateSelectionStatic();
 }
 
 void CVolumeChangeDialog::OnSelchangeCombodbPercent()
@@ -349,7 +381,7 @@ CSelectionDialog::CSelectionDialog(SAMPLE_INDEX Start, SAMPLE_INDEX End,
 									NUMBER_OF_SAMPLES TotalSamples,
 									const WAVEFORMATEX * pWf, int TimeFormat,
 									CWnd* pParent /*=NULL*/)
-	: CDialog(CSelectionDialog::IDD, pParent)
+	: BaseClass(CSelectionDialog::IDD, pParent)
 	, m_Chan(Channel)
 	, m_Start(Start)
 	, m_End(End)
@@ -363,6 +395,10 @@ CSelectionDialog::CSelectionDialog(SAMPLE_INDEX Start, SAMPLE_INDEX End,
 	, m_eLength(TimeFormat)
 
 {
+	if (m_pWf->nChannels < 2)
+	{
+		m_lpszTemplateName = MAKEINTRESOURCE(IDD_SELECTION_DIALOG_MONO);
+	}
 	//{{AFX_DATA_INIT(CSelectionDialog)
 	m_TimeFormatIndex = 0;
 	m_SelectionNumber = 0;
@@ -375,7 +411,8 @@ CSelectionDialog::CSelectionDialog(SAMPLE_INDEX Start, SAMPLE_INDEX End,
 	case SampleToString_HhMmSs:
 		m_TimeFormatIndex = 1;
 		break;
-	case SampleToString_Seconds: default:
+	case SampleToString_Seconds:
+	default:
 		m_TimeFormatIndex = 2;
 		break;
 	}
@@ -391,7 +428,7 @@ CSelectionDialog::CSelectionDialog(SAMPLE_INDEX Start, SAMPLE_INDEX End,
 
 void CSelectionDialog::DoDataExchange(CDataExchange* pDX)
 {
-	CDialog::DoDataExchange(pDX);
+	BaseClass::DoDataExchange(pDX);
 	//{{AFX_DATA_MAP(CSelectionDialog)
 	DDX_Control(pDX, IDC_COMBO_SELECTION, m_SelectionCombo);
 	DDX_Control(pDX, IDC_SPIN_START, m_SpinStart);
@@ -413,7 +450,7 @@ void CSelectionDialog::DoDataExchange(CDataExchange* pDX)
 }
 
 
-BEGIN_MESSAGE_MAP(CSelectionDialog, CDialog)
+BEGIN_MESSAGE_MAP(CSelectionDialog, BaseClass)
 //{{AFX_MSG_MAP(CSelectionDialog)
 	ON_CBN_SELCHANGE(IDC_COMBO_TIME_FORMAT, OnSelchangeComboTimeFormat)
 	ON_CBN_KILLFOCUS(IDC_COMBO_END, OnKillfocusEditEnd)
@@ -428,11 +465,13 @@ END_MESSAGE_MAP()
 
 BOOL CVolumeChangeDialog::OnInitDialog()
 {
-	CDialog::OnInitDialog();
+	BaseClass::OnInitDialog();
+
 	m_SliderVolumeLeft.SetRange(-400, 400);
 	m_SliderVolumeLeft.SetTicFreq(100);
 	m_SliderVolumeLeft.SetLineSize(10);
 	m_SliderVolumeLeft.SetPageSize(50);
+
 	if (0 == m_DbPercent)
 	{
 		// decibel
@@ -443,7 +482,7 @@ BOOL CVolumeChangeDialog::OnInitDialog()
 		m_SliderVolumeLeft.SetPos(int(200. * log10(m_dVolumeLeftPercent / 100.)));
 	}
 
-	if (m_pWf->nChannels > 1)
+	if (m_WaveFile.Channels() > 1)
 	{
 		m_SliderVolumeRight.SetRange(-400, 400);
 		m_SliderVolumeRight.SetTicFreq(100);
@@ -466,7 +505,7 @@ BOOL CVolumeChangeDialog::OnInitDialog()
 
 void CVolumeChangeDialog::OnHScroll(UINT nSBCode, UINT nPos, CScrollBar* pScrollBar)
 {
-	CDialog::OnHScroll(nSBCode, nPos, pScrollBar);
+	BaseClass::OnHScroll(nSBCode, nPos, pScrollBar);
 	CSliderCtrl * pSlider = dynamic_cast<CSliderCtrl *>(pScrollBar);
 	if (NULL != pSlider)
 	{
@@ -484,7 +523,7 @@ void CVolumeChangeDialog::OnHScroll(UINT nSBCode, UINT nPos, CScrollBar* pScroll
 		if (IDC_SLIDER_VOLUME_LEFT == id)
 		{
 			SetDlgItemText(IDC_EDIT_VOLUME_LEFT, s);
-			if (2 == m_pWf->nChannels
+			if (2 == m_WaveFile.Channels()
 				&& m_bLockChannels)
 			{
 				SetDlgItemText(IDC_EDIT_VOLUME_RIGHT, s);
@@ -564,7 +603,7 @@ void CVolumeChangeDialog::OnKillfocusEditVolumeRight()
 
 BOOL CSelectionDialog::OnInitDialog()
 {
-	CDialog::OnInitDialog();
+	BaseClass::OnInitDialog();
 
 	m_eStart.AddPosition(IDS_BEGIN_OF_SAMPLE, 0);
 	m_eEnd.AddPosition(IDS_BEGIN_OF_SAMPLE, 0);
@@ -642,6 +681,7 @@ void CSelectionDialog::OnKillfocusEditEnd()
 	m_End = m_eEnd.GetTimeSample();
 	m_eEnd.SetTimeSample(m_End);
 	m_Length = m_End - m_Start;
+
 	if (m_Length < 0) m_Length = 0;
 	m_eLength.SetTimeSample(m_Length);
 }
@@ -666,13 +706,16 @@ void CSelectionDialog::OnKillfocusEditStart()
 void CSelectionDialog::OnSelchangeComboSelection()
 {
 	unsigned sel = m_SelectionCombo.GetCurSel();
+
 	if (sel < m_Selections.size())
 	{
 		m_Start = m_Selections[sel].begin;
 		m_eStart.SetTimeSample(m_Start);
 		m_End = m_Selections[sel].end;
+
 		m_eEnd.SetTimeSample(m_End);
 		m_Length = m_End - m_Start;
+
 		if (m_Length < 0) m_Length = 0;
 		m_eLength.SetTimeSample(m_Length);
 	}
@@ -713,7 +756,7 @@ CGotoDialog::CGotoDialog(SAMPLE_INDEX Position,
 						NUMBER_OF_SAMPLES FileLength,
 						const WAVEFORMATEX * pWf,
 						int TimeFormat, CWnd* pParent /*=NULL*/)
-	: CDialog(CGotoDialog::IDD, pParent),
+	: BaseClass(CGotoDialog::IDD, pParent),
 	m_Position(Position),
 	m_FileLength(FileLength),
 	m_TimeFormat(TimeFormat),
@@ -743,7 +786,7 @@ CGotoDialog::CGotoDialog(SAMPLE_INDEX Position,
 
 void CGotoDialog::DoDataExchange(CDataExchange* pDX)
 {
-	CDialog::DoDataExchange(pDX);
+	BaseClass::DoDataExchange(pDX);
 	//{{AFX_DATA_MAP(CGotoDialog)
 	DDX_Control(pDX, IDC_SPIN_START, m_StartSpin);
 	DDX_Control(pDX, IDC_COMBO_START, m_eStart);
@@ -753,7 +796,7 @@ void CGotoDialog::DoDataExchange(CDataExchange* pDX)
 }
 
 
-BEGIN_MESSAGE_MAP(CGotoDialog, CDialog)
+BEGIN_MESSAGE_MAP(CGotoDialog, BaseClass)
 	//{{AFX_MSG_MAP(CGotoDialog)
 	ON_CBN_SELCHANGE(IDC_COMBO_TIME_FORMAT, OnSelchangeComboTimeFormat)
 	//}}AFX_MSG_MAP
@@ -766,7 +809,7 @@ END_MESSAGE_MAP()
 
 
 CDcOffsetDialog::CDcOffsetDialog(CWnd* pParent /*=NULL*/)
-	: CDialog(CDcOffsetDialog::IDD, pParent)
+	: BaseClass(CDcOffsetDialog::IDD, pParent)
 {
 	//{{AFX_DATA_INIT(CDcOffsetDialog)
 	m_b5SecondsDC = FALSE;
@@ -784,7 +827,7 @@ CDcOffsetDialog::CDcOffsetDialog(CWnd* pParent /*=NULL*/)
 
 void CDcOffsetDialog::DoDataExchange(CDataExchange* pDX)
 {
-	CDialog::DoDataExchange(pDX);
+	BaseClass::DoDataExchange(pDX);
 	//{{AFX_DATA_MAP(CDcOffsetDialog)
 	DDX_Control(pDX, IDC_SPIN1, m_OffsetSpin);
 	DDX_Check(pDX, IDC_CHECK_5SECONDS, m_b5SecondsDC);
@@ -815,7 +858,7 @@ void CDcOffsetDialog::UpdateSelectionStatic()
 														m_pWf->nSamplesPerSec, m_TimeFormat));
 }
 
-BEGIN_MESSAGE_MAP(CDcOffsetDialog, CDialog)
+BEGIN_MESSAGE_MAP(CDcOffsetDialog, BaseClass)
 	//{{AFX_MSG_MAP(CDcOffsetDialog)
 	ON_BN_CLICKED(IDC_BUTTON_SELECTION, OnButtonSelection)
 	ON_BN_CLICKED(IDC_RADIO_DC_SELECT, OnRadioDcSelect)
@@ -855,7 +898,7 @@ void CDcOffsetDialog::OnRadioAdjustSelectEdit()
 
 
 CStatisticsDialog::CStatisticsDialog(CWnd* pParent /*=NULL*/)
-	: CDialog(CStatisticsDialog::IDD, pParent)
+	: BaseClass(CStatisticsDialog::IDD, pParent)
 {
 	//{{AFX_DATA_INIT(CStatisticsDialog)
 	// NOTE: the ClassWizard will add member initialization here
@@ -865,14 +908,14 @@ CStatisticsDialog::CStatisticsDialog(CWnd* pParent /*=NULL*/)
 
 void CStatisticsDialog::DoDataExchange(CDataExchange* pDX)
 {
-	CDialog::DoDataExchange(pDX);
+	BaseClass::DoDataExchange(pDX);
 	//{{AFX_DATA_MAP(CStatisticsDialog)
 	DDX_Control(pDX, IDC_STATIC_FILE_NAME, m_FileName);
 	//}}AFX_DATA_MAP
 }
 
 
-BEGIN_MESSAGE_MAP(CStatisticsDialog, CDialog)
+BEGIN_MESSAGE_MAP(CStatisticsDialog, BaseClass)
 	//{{AFX_MSG_MAP(CStatisticsDialog)
 	//}}AFX_MSG_MAP
 END_MESSAGE_MAP()
@@ -882,7 +925,7 @@ END_MESSAGE_MAP()
 
 BOOL CStatisticsDialog::OnInitDialog()
 {
-	CDialog::OnInitDialog();
+	BaseClass::OnInitDialog();
 
 	CString s;
 
@@ -1103,7 +1146,7 @@ BOOL CStatisticsDialog::OnInitDialog()
 
 
 CNormalizeSoundDialog::CNormalizeSoundDialog(CWnd* pParent /*=NULL*/)
-	: CDialog(CNormalizeSoundDialog::IDD, pParent)
+	: BaseClass(CNormalizeSoundDialog::IDD, pParent)
 {
 	//{{AFX_DATA_INIT(CNormalizeSoundDialog)
 	m_bLockChannels = FALSE;
@@ -1118,7 +1161,7 @@ CNormalizeSoundDialog::CNormalizeSoundDialog(CWnd* pParent /*=NULL*/)
 
 void CNormalizeSoundDialog::DoDataExchange(CDataExchange* pDX)
 {
-	CDialog::DoDataExchange(pDX);
+	BaseClass::DoDataExchange(pDX);
 	//{{AFX_DATA_MAP(CNormalizeSoundDialog)
 	DDX_Control(pDX, IDC_STATIC_SELECTION, m_SelectionStatic);
 	DDX_Control(pDX, IDC_SLIDER_LEVEL, m_SliderLevel);
@@ -1150,7 +1193,7 @@ void CNormalizeSoundDialog::DoDataExchange(CDataExchange* pDX)
 }
 
 
-BEGIN_MESSAGE_MAP(CNormalizeSoundDialog, CDialog)
+BEGIN_MESSAGE_MAP(CNormalizeSoundDialog, BaseClass)
 	//{{AFX_MSG_MAP(CNormalizeSoundDialog)
 	ON_EN_KILLFOCUS(IDC_EDIT_LEVEL, OnKillfocusEditLevel)
 	ON_BN_CLICKED(IDC_BUTTON_SELECTION, OnButtonSelection)
@@ -1263,7 +1306,7 @@ void CNormalizeSoundDialog::UpdateSelectionStatic()
 
 BOOL CNormalizeSoundDialog::OnInitDialog()
 {
-	CDialog::OnInitDialog();
+	BaseClass::OnInitDialog();
 	m_SliderLevel.SetRange(-400, 0);
 	m_SliderLevel.SetTicFreq(100);
 	m_SliderLevel.SetLineSize(10);
@@ -1288,7 +1331,7 @@ BOOL CNormalizeSoundDialog::OnInitDialog()
 
 void CNormalizeSoundDialog::OnHScroll(UINT nSBCode, UINT nPos, CScrollBar* pScrollBar)
 {
-	CDialog::OnHScroll(nSBCode, nPos, pScrollBar);
+	BaseClass::OnHScroll(nSBCode, nPos, pScrollBar);
 	CSliderCtrl * pSlider = dynamic_cast<CSliderCtrl *>(pScrollBar);
 	if (NULL != pSlider)
 	{
@@ -1335,7 +1378,7 @@ void CGotoDialog::OnSelchangeComboTimeFormat()
 
 BOOL CGotoDialog::OnInitDialog()
 {
-	CDialog::OnInitDialog();
+	BaseClass::OnInitDialog();
 
 	m_eStart.AddPosition(IDS_BEGIN_OF_SAMPLE, 0);
 	m_eStart.AddPosition(IDS_END_OF_SAMPLE, m_FileLength);
@@ -1348,7 +1391,7 @@ BOOL CGotoDialog::OnInitDialog()
 
 
 CResampleDialog::CResampleDialog(CWnd* pParent /*=NULL*/)
-	: CDialog(CResampleDialog::IDD, pParent)
+	: BaseClass(CResampleDialog::IDD, pParent)
 {
 	//{{AFX_DATA_INIT(CResampleDialog)
 	m_bChangeRateOnly = FALSE;
@@ -1366,7 +1409,7 @@ CResampleDialog::CResampleDialog(CWnd* pParent /*=NULL*/)
 
 void CResampleDialog::DoDataExchange(CDataExchange* pDX)
 {
-	CDialog::DoDataExchange(pDX);
+	BaseClass::DoDataExchange(pDX);
 	//{{AFX_DATA_MAP(CResampleDialog)
 	DDX_Control(pDX, IDC_SLIDER_TEMPO, m_SliderTempo);
 	DDX_Control(pDX, IDC_SLIDER_RATE, m_SliderRate);
@@ -1391,7 +1434,7 @@ void CResampleDialog::DoDataExchange(CDataExchange* pDX)
 }
 
 
-BEGIN_MESSAGE_MAP(CResampleDialog, CDialog)
+BEGIN_MESSAGE_MAP(CResampleDialog, BaseClass)
 	//{{AFX_MSG_MAP(CResampleDialog)
 	ON_BN_CLICKED(IDC_RADIO_CHANGE_RATE, OnRadioChangeRate)
 	ON_BN_CLICKED(IDC_RADIO_CHANGE_PITCH, OnRadioChangeTempo)
@@ -1424,7 +1467,7 @@ void CResampleDialog::OnRadioChangeTempo()
 
 void CResampleDialog::OnHScroll(UINT nSBCode, UINT nPos, CScrollBar* pScrollBar)
 {
-	CDialog::OnHScroll(nSBCode, nPos, pScrollBar);
+	BaseClass::OnHScroll(nSBCode, nPos, pScrollBar);
 	int nId = pScrollBar->GetDlgCtrlID();
 	if (IDC_SLIDER_TEMPO == nId
 		&& m_SliderTempo.m_hWnd != NULL)
@@ -1488,7 +1531,7 @@ BOOL CResampleDialog::OnInitDialog()
 	{
 		m_bChangeRateOnly = true;
 	}
-	CDialog::OnInitDialog();
+	BaseClass::OnInitDialog();
 
 	m_SliderTempo.SetRange(25, 400);
 	m_SliderTempo.SetTicFreq(25);
@@ -1525,14 +1568,14 @@ int CStatisticsDialog::DoModal()
 	{
 		m_lpszTemplateName = MAKEINTRESOURCE(IDD_DIALOG_STATISTICS_MONO);
 	}
-	return CDialog::DoModal();
+	return BaseClass::DoModal();
 }
 /////////////////////////////////////////////////////////////////////////////
 // CLowFrequencySuppressDialog dialog
 
 
 CLowFrequencySuppressDialog::CLowFrequencySuppressDialog(CWnd* pParent /*=NULL*/)
-	: CDialog(CLowFrequencySuppressDialog::IDD, pParent)
+	: BaseClass(CLowFrequencySuppressDialog::IDD, pParent)
 {
 	//{{AFX_DATA_INIT(CLowFrequencySuppressDialog)
 	m_DifferentialModeSuppress = FALSE;
@@ -1549,7 +1592,7 @@ CLowFrequencySuppressDialog::CLowFrequencySuppressDialog(CWnd* pParent /*=NULL*/
 
 void CLowFrequencySuppressDialog::DoDataExchange(CDataExchange* pDX)
 {
-	CDialog::DoDataExchange(pDX);
+	BaseClass::DoDataExchange(pDX);
 	//{{AFX_DATA_MAP(CLowFrequencySuppressDialog)
 	DDX_Control(pDX, IDC_STATIC_SELECTION, m_SelectionStatic);
 	DDX_Control(pDX, IDC_EDIT_LF_NOISE_RANGE, m_eLfNoiseRange);
@@ -1570,7 +1613,7 @@ void CLowFrequencySuppressDialog::DoDataExchange(CDataExchange* pDX)
 }
 
 
-BEGIN_MESSAGE_MAP(CLowFrequencySuppressDialog, CDialog)
+BEGIN_MESSAGE_MAP(CLowFrequencySuppressDialog, BaseClass)
 	//{{AFX_MSG_MAP(CLowFrequencySuppressDialog)
 	ON_BN_CLICKED(IDC_BUTTON_SELECTION, OnButtonSelection)
 	ON_BN_CLICKED(IDC_CHECK_DIFFERENTIAL_MODE_SUPPRESS, OnCheckDifferentialModeSuppress)
@@ -1646,7 +1689,7 @@ void CLowFrequencySuppressDialog::UpdateSelectionStatic()
 
 BOOL CLowFrequencySuppressDialog::OnInitDialog()
 {
-	CDialog::OnInitDialog();
+	BaseClass::OnInitDialog();
 
 	if (! m_LowFrequencySuppress
 		&& ! m_DifferentialModeSuppress)
@@ -1665,7 +1708,7 @@ BOOL CLowFrequencySuppressDialog::OnInitDialog()
 
 
 CExpressionEvaluationDialog::CExpressionEvaluationDialog(CWnd* pParent /*=NULL*/)
-	: CDialog(CExpressionEvaluationDialog::IDD, pParent),
+	: BaseClass(CExpressionEvaluationDialog::IDD, pParent),
 	m_ExpressionGroupSelected(0),
 	m_ExpressionSelected(0),
 	m_ExpressionTabSelected(0)
@@ -1679,7 +1722,7 @@ CExpressionEvaluationDialog::CExpressionEvaluationDialog(CWnd* pParent /*=NULL*/
 
 void CExpressionEvaluationDialog::DoDataExchange(CDataExchange* pDX)
 {
-	CDialog::DoDataExchange(pDX);
+	BaseClass::DoDataExchange(pDX);
 	//{{AFX_DATA_MAP(CExpressionEvaluationDialog)
 	DDX_Control(pDX, IDC_TAB_TOKENS, m_TabTokens);
 	DDX_Control(pDX, IDC_EDIT_EXPRESSION, m_eExpression);
@@ -1695,7 +1738,7 @@ void CExpressionEvaluationDialog::DoDataExchange(CDataExchange* pDX)
 }
 
 
-BEGIN_MESSAGE_MAP(CExpressionEvaluationDialog, CDialog)
+BEGIN_MESSAGE_MAP(CExpressionEvaluationDialog, BaseClass)
 	//{{AFX_MSG_MAP(CExpressionEvaluationDialog)
 	ON_BN_CLICKED(IDC_BUTTON_SELECTION, OnButtonSelection)
 	ON_NOTIFY(TCN_SELCHANGE, IDC_TAB_TOKENS, OnSelchangeTabTokens)
@@ -1821,7 +1864,7 @@ void CExpressionEvaluationDialog::OnOK()
 
 
 CDeclickDialog::CDeclickDialog(CWnd* pParent /*=NULL*/)
-	: CDialog(CDeclickDialog::IDD, pParent)
+	: BaseClass(CDeclickDialog::IDD, pParent)
 {
 	//{{AFX_DATA_INIT(CDeclickDialog)
 	m_ClickLogFilename = _T("");
@@ -1845,7 +1888,7 @@ CDeclickDialog::~CDeclickDialog()
 
 void CDeclickDialog::DoDataExchange(CDataExchange* pDX)
 {
-	CDialog::DoDataExchange(pDX);
+	BaseClass::DoDataExchange(pDX);
 	//{{AFX_DATA_MAP(CDeclickDialog)
 	DDX_Control(pDX, IDC_STATIC_SELECTION, m_SelectionStatic);
 	DDX_Control(pDX, IDC_EDIT_DECAY_RATE, m_EnvelopDecayRate);
@@ -1871,7 +1914,7 @@ void CDeclickDialog::DoDataExchange(CDataExchange* pDX)
 }
 
 
-BEGIN_MESSAGE_MAP(CDeclickDialog, CDialog)
+BEGIN_MESSAGE_MAP(CDeclickDialog, BaseClass)
 	//{{AFX_MSG_MAP(CDeclickDialog)
 	ON_BN_CLICKED(IDC_CHECK_LOG_CLICKS, OnCheckLogClicks)
 	ON_BN_CLICKED(IDC_CHECK_IMPORT_CLICKS, OnCheckImportClicks)
@@ -1970,7 +2013,7 @@ void CDeclickDialog::LoadValuesFromRegistry()
 BOOL CDeclickDialog::OnInitDialog()
 {
 	LoadValuesFromRegistry();
-	CDialog::OnInitDialog();
+	BaseClass::OnInitDialog();
 
 	GetDlgItem(IDC_EDIT_CLICK_LOG_FILENAME)->EnableWindow(m_bLogClicks);
 	GetDlgItem(IDC_CLICK_LOG_BROWSE_BUTTON)->EnableWindow(m_bLogClicks);
@@ -2040,7 +2083,7 @@ void CDeclickDialog::SetDeclickData(CClickRemoval * pCr)
 
 
 CNoiseReductionDialog::CNoiseReductionDialog(CWnd* pParent /*=NULL*/)
-	: CDialog(CNoiseReductionDialog::IDD, pParent)
+	: BaseClass(CNoiseReductionDialog::IDD, pParent)
 {
 	//{{AFX_DATA_INIT(CNoiseReductionDialog)
 	m_nFftOrderExp = -1;
@@ -2065,7 +2108,7 @@ CNoiseReductionDialog::~CNoiseReductionDialog()
 
 void CNoiseReductionDialog::DoDataExchange(CDataExchange* pDX)
 {
-	CDialog::DoDataExchange(pDX);
+	BaseClass::DoDataExchange(pDX);
 	//{{AFX_DATA_MAP(CNoiseReductionDialog)
 	DDX_Control(pDX, IDC_STATIC_SELECTION, m_SelectionStatic);
 	DDX_Control(pDX, IDC_EDIT_TONE_PREFERENCE, m_eToneOverNoisePreference);
@@ -2100,7 +2143,7 @@ void CNoiseReductionDialog::DoDataExchange(CDataExchange* pDX)
 }
 
 
-BEGIN_MESSAGE_MAP(CNoiseReductionDialog, CDialog)
+BEGIN_MESSAGE_MAP(CNoiseReductionDialog, BaseClass)
 	//{{AFX_MSG_MAP(CNoiseReductionDialog)
 	ON_BN_CLICKED(IDC_BUTTON_MORE, OnButtonMore)
 	ON_BN_CLICKED(IDC_BUTTON_SELECTION, OnButtonSelection)
@@ -2201,7 +2244,7 @@ void CNoiseReductionDialog::SetNoiseReductionData(CNoiseReduction * pNr)
 
 
 CMoreNoiseDialog::CMoreNoiseDialog(CWnd* pParent /*=NULL*/)
-	: CDialog(CMoreNoiseDialog::IDD, pParent)
+	: BaseClass(CMoreNoiseDialog::IDD, pParent)
 {
 	//{{AFX_DATA_INIT(CMoreNoiseDialog)
 	// NOTE: the ClassWizard will add member initialization here
@@ -2211,7 +2254,7 @@ CMoreNoiseDialog::CMoreNoiseDialog(CWnd* pParent /*=NULL*/)
 
 void CMoreNoiseDialog::DoDataExchange(CDataExchange* pDX)
 {
-	CDialog::DoDataExchange(pDX);
+	BaseClass::DoDataExchange(pDX);
 	//{{AFX_DATA_MAP(CMoreNoiseDialog)
 	DDX_Control(pDX, IDC_EDIT_NEAR_MASKING_COEFF, m_eNearMaskingCoeff);
 	DDX_Control(pDX, IDC_EDIT_FAR_MASKING_COEFF, m_eFarMaskingCoeff);
@@ -2233,7 +2276,7 @@ void CMoreNoiseDialog::DoDataExchange(CDataExchange* pDX)
 }
 
 
-BEGIN_MESSAGE_MAP(CMoreNoiseDialog, CDialog)
+BEGIN_MESSAGE_MAP(CMoreNoiseDialog, BaseClass)
 	//{{AFX_MSG_MAP(CMoreNoiseDialog)
 		// NOTE: the ClassWizard will add message map macros here
 	//}}AFX_MSG_MAP
@@ -2289,7 +2332,7 @@ void CNoiseReductionDialog::UpdateSelectionStatic()
 BOOL CNoiseReductionDialog::OnInitDialog()
 {
 	LoadValuesFromRegistry();
-	CDialog::OnInitDialog();
+	BaseClass::OnInitDialog();
 
 	UpdateSelectionStatic();
 
@@ -2367,7 +2410,7 @@ BOOL CExpressionEvaluationDialog::OnInitDialog()
 	m_OperandsTabDlg.Create(IDD_OPERANDS_TAB, this);
 	m_SavedExprTabDlg.Create(IDD_SAVED_EXPRESSIONS_TAB, this);
 
-	CDialog::OnInitDialog();
+	BaseClass::OnInitDialog();
 
 	m_OperandsTabDlg.UpdateData(FALSE);
 	m_SavedExprTabDlg.UpdateData(FALSE);
@@ -2437,19 +2480,9 @@ void CExpressionEvaluationDialog::OnChangeEditExpression()
 	m_bNeedUpdateControls = TRUE;
 }
 
-
-int CSelectionDialog::DoModal()
-{
-	if (m_pWf->nChannels < 2)
-	{
-		m_lpszTemplateName = MAKEINTRESOURCE(IDD_SELECTION_DIALOG_MONO);
-	}
-	return CDialog::DoModal();
-}
-
 BOOL CDcOffsetDialog::OnInitDialog()
 {
-	CDialog::OnInitDialog();
+	BaseClass::OnInitDialog();
 
 	m_OffsetSpin.SetRange32(-0x8000, 0x7FFF);
 	return TRUE;  // return TRUE unless you set the focus to a control
