@@ -2751,6 +2751,25 @@ CReverseOperation::~CReverseOperation()
 	delete m_pUndoHigh;
 }
 
+BOOL CReverseOperation::InitDestination(CWaveFile & DstFile, SAMPLE_INDEX StartSample, SAMPLE_INDEX EndSample,
+										CHANNEL_MASK chan, BOOL NeedUndo)
+{
+	if ( ! CTwoFilesOperation::InitDestination(DstFile, StartSample, StartSample + (EndSample - StartSample) / 2,
+												chan, FALSE))
+	{
+		return FALSE;
+	}
+
+	InitSource(DstFile, EndSample, EndSample - (EndSample - StartSample) / 2,
+				chan);
+
+	if (NeedUndo)
+	{
+		return CreateUndo();
+	}
+	return TRUE;
+}
+
 BOOL CReverseOperation::CreateUndo()
 {
 	if (NULL != m_pUndoLow
@@ -2763,12 +2782,12 @@ BOOL CReverseOperation::CreateUndo()
 	CCopyUndoContext::auto_ptr pUndo1(new CCopyUndoContext(pDocument));
 	CCopyUndoContext::auto_ptr pUndo2(new CCopyUndoContext(pDocument));
 
-	if ( ! pUndo1->InitUndoCopy(m_DstFile, m_DstStart, m_DstStart + (m_DstEnd - m_DstStart) / 2, m_DstChan))
+	if ( ! pUndo1->InitUndoCopy(m_DstFile, m_DstStart, m_DstEnd, m_DstChan))
 	{
 		return FALSE;
 	}
 
-	if ( ! pUndo2->InitUndoCopy(m_DstFile, m_DstEnd, m_DstStart + (m_DstEnd - m_DstStart) / 2, m_DstChan))
+	if ( ! pUndo2->InitUndoCopy(m_DstFile, m_SrcStart, m_SrcEnd, m_DstChan))
 	{
 		return FALSE;
 	}
@@ -2786,16 +2805,27 @@ ListHead<COperationContext> * CReverseOperation::GetUndoChain()
 		m_pUndoLow->m_DstEnd = m_pUndoLow->m_DstPos;
 		m_pUndoLow->m_SrcEnd = m_pUndoLow->m_SrcPos;
 
-		m_UndoChain.InsertHead(m_pUndoLow);
+		// save for REDO all undone
+		m_pUndoLow->m_UndoStartPos = m_pUndoLow->m_DstStart;
+		m_pUndoLow->m_UndoEndPos = m_pUndoLow->m_DstEnd;
+
+		m_UndoChain.InsertTail(m_pUndoLow);
 		m_pUndoLow = NULL;
 	}
 
 	if (NULL != m_pUndoHigh)
 	{
-		m_pUndoLow->m_DstEnd = m_pUndoLow->m_DstPos;
-		m_pUndoLow->m_SrcEnd = m_pUndoLow->m_SrcPos;
+		// UNDO only works from low to high
+		m_pUndoHigh->m_DstEnd = m_pUndoHigh->m_DstStart;
+		m_pUndoHigh->m_DstStart = m_pUndoHigh->m_DstPos;
 
-		m_UndoChain.InsertHead(m_pUndoHigh);
+		m_pUndoHigh->m_UndoStartPos = m_pUndoHigh->m_DstStart;
+		m_pUndoHigh->m_UndoEndPos = m_pUndoHigh->m_DstEnd;
+
+		m_pUndoHigh->m_SrcEnd = m_pUndoHigh->m_SrcStart;
+		m_pUndoHigh->m_SrcStart = m_pUndoHigh->m_SrcPos;
+
+		m_UndoChain.InsertTail(m_pUndoHigh);
 		m_pUndoHigh = NULL;
 	}
 
@@ -2815,7 +2845,83 @@ void CReverseOperation::DeleteUndo()
 
 BOOL CReverseOperation::OperationProc()
 {
-	return FALSE;
+	// get buffers from source file and copy them to m_CopyFile
+	if (m_Flags & OperationContextStopRequested)
+	{
+		m_Flags |= OperationContextStop;
+		return TRUE;
+	}
+
+	if (m_DstPos >= m_DstEnd)
+	{
+		m_Flags |= OperationContextFinished;
+		return TRUE;
+	}
+
+	// m_DstPos goes from begin up.
+	// m_SrcPos goes from end down
+	DWORD dwStartTime = GetTickCount();
+	SAMPLE_POSITION dwOperationBeginTop = m_SrcPos;
+	SAMPLE_POSITION dwOperationBeginBottom = m_DstPos;
+
+	WAVE_SAMPLE BufBottom[MAX_NUMBER_OF_CHANNELS];
+	WAVE_SAMPLE BufTop[MAX_NUMBER_OF_CHANNELS];
+
+	int const DstSampleSize = m_DstFile.SampleSize();
+
+	NUMBER_OF_CHANNELS const NumDstChannels = m_DstFile.Channels();
+	ASSERT(m_DstFile.GetSampleType() == SampleType16bit);
+
+	do
+	{
+		m_SrcPos -= DstSampleSize;
+
+		if (1 != m_DstFile.ReadSamples(ALL_CHANNELS,
+										m_SrcPos, 1, BufTop, m_DstFile.GetSampleType())
+			|| 1 != m_DstFile.ReadSamples(ALL_CHANNELS,
+										m_DstPos, 1, BufBottom, m_DstFile.GetSampleType()))
+		{
+			// error
+			TRACE("Reading samples was unsuccessful!\n");
+			m_Flags |= OperationContextFinished;
+			break;
+		}
+
+		// save the changed data to undo buffer
+		if (NULL != m_pUndoLow)
+		{
+			m_pUndoLow->SaveUndoData(BufBottom,
+									DstSampleSize, m_DstPos, NumDstChannels);
+		}
+
+		if (NULL != m_pUndoHigh)
+		{
+			m_pUndoHigh->SaveUndoData(BufTop + NumDstChannels,
+									-DstSampleSize, m_SrcPos + DstSampleSize, NumDstChannels);
+		}
+
+		if (1 != m_DstFile.WriteSamples(m_DstChan,
+										m_SrcPos, 1, BufBottom, m_DstChan, NumDstChannels, m_DstFile.GetSampleType())
+			|| 1 != m_DstFile.WriteSamples(m_DstChan,
+											m_DstPos, 1, BufTop, m_DstChan, NumDstChannels, m_DstFile.GetSampleType()))
+		{
+			// error
+			TRACE("Writing samples was unsuccessful!\n");
+			m_Flags |= OperationContextFinished;
+			break;
+		}
+
+		m_DstPos += DstSampleSize;
+	}
+	while ((m_DstPos < m_DstEnd
+				&& GetTickCount() - dwStartTime < 200)
+			);
+
+	// notify the view
+	pDocument->FileChanged(m_DstFile, dwOperationBeginBottom, m_DstPos);
+	pDocument->FileChanged(m_DstFile, m_SrcPos, dwOperationBeginTop);
+
+	return TRUE;
 }
 //////////////////////// CMetadataChangeOperation
 

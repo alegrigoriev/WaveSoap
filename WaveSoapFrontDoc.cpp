@@ -4655,9 +4655,7 @@ void CWaveSoapFrontDoc::OnToolsInterpolate()
 
 void CWaveSoapFrontDoc::OnUpdateProcessDoUlf(CCmdUI* pCmdUI)
 {
-	pCmdUI->Enable(CanStartOperation(17, false, true)
-					&& (m_SelectionEnd - m_SelectionStart > 16
-						|| m_SelectionEnd == m_SelectionStart));
+	pCmdUI->Enable(CanStartOperation(17, false, true));
 
 }
 
@@ -5073,7 +5071,7 @@ void CWaveSoapFrontDoc::OnUpdateEditClearRedo(CCmdUI* pCmdUI)
 
 void CWaveSoapFrontDoc::OnProcessEqualizer()
 {
-	if ( ! CanStartOperation(2, false, true))
+	if ( ! CanStartOperation(3, false, true))
 	{
 		return;
 	}
@@ -5250,6 +5248,8 @@ bool CWaveSoapFrontDoc::CanStartOperation(NUMBER_OF_SAMPLES SamplesNecessary,
 {
 	return m_OperationInProgress == 0
 			&& WaveFileSamples() >= SamplesNecessary
+			&& (m_SelectionEnd == m_SelectionStart
+				|| m_SelectionEnd - m_SelectionStart >= SamplesNecessary)
 			&& ( ! SelectionNecessary || m_SelectionEnd > m_SelectionStart)
 			&& ! (Modify && IsReadOnly());
 }
@@ -5276,17 +5276,15 @@ void CWaveSoapFrontDoc::OnProcessReverse()
 		end = WaveFileSamples();
 	}
 
-	CReverseOperation * pContext =
-		new CReverseOperation(this, IDS_REVERSE_STATUS_PROMPT, IDS_REVERSE_OPERATION_NAME);
+	CReverseOperation::auto_ptr pContext(new CReverseOperation(this, IDS_REVERSE_STATUS_PROMPT, IDS_REVERSE_OPERATION_NAME));
 
 	if ( ! pContext->InitDestination(m_WavFile, start,
 									end, GetSelectedChannel(), UndoEnabled()))
 	{
-		delete pContext;
 		return;
 	}
 
-	pContext->Execute();
+	pContext.release()->Execute();
 	SetModifiedFlag(TRUE);
 }
 
