@@ -2,6 +2,7 @@
 // Microsoft Visual C++ generated include file.
 // Used by WaveSoapFront.rc
 //
+#define CREATEPROCESS_MANIFEST_RESOURCE_ID 1
 #define IDD_ABOUTBOX                    100
 #define IDS_WAV_FILTER                  102
 #define IDD_FUNCTIONS_TAB               102
@@ -427,18 +428,18 @@
 #define ID_SOUND_STOP                   32776
 #define ID_VIEW_SHOW_FFT                32777
 #define ID_VIEW_WAVEFORM                32778
-#define ID_PROCESS_DO_ULF              32780
-#define ID_PROCESS_DO_DECLICKING       32781
-#define ID_PROCESS_NOISE_REDUCTION     32782
+#define ID_PROCESS_DO_ULF               32780
+#define ID_PROCESS_DO_DECLICKING        32781
+#define ID_PROCESS_NOISE_REDUCTION      32782
 #define ID_EDIT_DELETE                  32783
 #define ID_EDIT_STOP                    32784
 #define ID_FILE_SAVE_ALL                32786
 #define ID_EDIT_PASTE_NEW               32787
 #define ID_EDIT_GOTO                    32788
-#define ID_VIEW_AMPL_RULER_SAMPLES     32789
+#define ID_VIEW_AMPL_RULER_SAMPLES      32789
 #define ID_VIEW_ZOOMIN                  32790
 #define ID_VIEW_ZOOMOUT                 32791
-#define ID_VIEW_AMPL_RULER_DECIBELS    32792
+#define ID_VIEW_AMPL_RULER_DECIBELS     32792
 #define ID_VIEW_ZOOM_OUT2               32793
 #define ID_VIEW_ZOOMIN2                 32794
 #define ID_VIEW_ZOOMINHOR               32795
@@ -551,7 +552,7 @@
 #define IDS_UNKNOWN_FILE_CREATION_ERROR 32897
 #define IDS_OVERWRITE_ACCESS_DENIED_TEMP 32898
 #define IDS_UNKNOWN_FILE_CREATION_ERROR_TEMP 32899
-#define ID_VIEW_AMPL_RULER_PERCENT     32900
+#define ID_VIEW_AMPL_RULER_PERCENT      32900
 #define IDS_COPY_OF                     32901
 #define IDS_FILE_MAY_GET_TOO_BIG        32902
 #define IDS_WRONG_NEW_FILE_LENGTH       32903
@@ -794,7 +795,7 @@
 #define ID_EDIT_REVERTALLCHANGES        40011
 #define ID_EDIT_UNDO_ALL_CHANGES        40012
 #define ID_STOP_ALL                     40013
-#define ID_PLAY_AND_STOP               40014
+#define ID_PLAY_AND_STOP                40014
 #define ID_EDIT_MORE_UNDO_REDO          40015
 #define ID_EDIT_CHANNELS_LOCK           40016
 #define ID_SAMPLERATE_7200              40023
@@ -820,8 +821,8 @@
 #define ID_FFT_BANDS_4096               40043
 #define ID_FFT_BANDS_8192               40044
 #define ID_VIEW_STATUS_SAMPLES          40047
-#define ID_VIEW_STATUS_HHMMSS          40048
-#define ID_VIEW_STATUS_SECONDS         40049
+#define ID_VIEW_STATUS_HHMMSS           40048
+#define ID_VIEW_STATUS_SECONDS          40049
 #define ID_FILE_STATISTICS              40050
 #define ID_PROCESS_INVERT               40051
 #define ID_VIEW_OUTLINE                 40052
@@ -876,17 +877,17 @@
 #define ID_CDGRAB_UNCHECK               40111
 #define ID_PROCESS_REVERSE              40114
 #define ID_GOTO_MARKER                  40116
-#define ID_DELETE_MARKER               40118
-#define ID_MOVE_MARKER_TO_CURRENT      40120
-#define ID_EDIT_MARKER                 40123
-#define ID_SELECT_REGION               40125
-#define ID_EDIT_WAVE_MARKER            40127
-#define ID_EDIT_MARKER_REGION          40128
-#define ID_EDIT_WAVE_REGION            40131
+#define ID_DELETE_MARKER                40118
+#define ID_MOVE_MARKER_TO_CURRENT       40120
+#define ID_EDIT_MARKER                  40123
+#define ID_SELECT_REGION                40125
+#define ID_EDIT_WAVE_MARKER             40127
+#define ID_EDIT_MARKER_REGION           40128
+#define ID_EDIT_WAVE_REGION             40131
 #define ID_SAVE_SAVESELECTIONAS         40132
 #define ID_VIEW_ZOOMPREVIOUS            40138
-#define ID_VIEW_STATUS_HHMMSSFF        40140
-#define ID_VIEW_RULER_HHMMSSFF         40141
+#define ID_VIEW_STATUS_HHMMSSFF         40140
+#define ID_VIEW_RULER_HHMMSSFF          40141
 #define ID_TOOLS_SYNTHESIS              40142
 #define ID_SAVE_SPLIT_TO_FILES          40144
 #define ID_EDIT_INSERTFROMFILE          40145
@@ -896,7 +897,7 @@
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_3D_CONTROLS                     1
-#define _APS_NEXT_RESOURCE_VALUE        197
+#define _APS_NEXT_RESOURCE_VALUE        199
 #define _APS_NEXT_COMMAND_VALUE         40146
 #define _APS_NEXT_CONTROL_VALUE         1284
 #define _APS_NEXT_SYMED_VALUE           101

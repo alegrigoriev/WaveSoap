@@ -327,6 +327,8 @@ void CMyCommandLineInfo::ParseLast(BOOL bLast)
 
 BOOL CWaveSoapFrontApp::InitInstance()
 {
+	InitCommonControls();
+	BaseClass::InitInstance();
 #ifdef _DEBUG
 	LoadLibrary(_T("thrdtime.dll"));
 #endif

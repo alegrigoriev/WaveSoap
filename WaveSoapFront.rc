@@ -8,7 +8,7 @@
 // Generated from the TEXTINCLUDE 2 resource.
 //
 #include "afxres.h"
-
+#include "winuser.rh"
 /////////////////////////////////////////////////////////////////////////////
 #undef APSTUDIO_READONLY_SYMBOLS
 
@@ -35,7 +35,7 @@ END
 2 TEXTINCLUDE 
 BEGIN
     "#include ""afxres.h""\r\n"
-    "\0"
+    "#include ""winuser.rh""\0"
 END
 
 3 TEXTINCLUDE 
@@ -314,7 +314,6 @@ BEGIN
         POPUP "Sound &Cleanup"
         BEGIN
             MENUITEM "&Click Removal...",           ID_PROCESS_DO_DECLICKING
-
             MENUITEM "&Turntable Noise Reduction...", ID_PROCESS_DO_ULF
             MENUITEM "&White Noise Reduction...",   ID_PROCESS_NOISE_REDUCTION
 
@@ -900,12 +899,12 @@ BEGIN
     VK_SUBTRACT,    ID_VIEW_ZOOMOUTHOR2,    VIRTKEY, NOINVERT
     VK_DOWN,        ID_VIEW_ZOOMOUTVERT,    VIRTKEY, ALT, NOINVERT
     VK_SUBTRACT,    ID_VIEW_ZOOMPREVIOUS,   VIRTKEY, CONTROL, NOINVERT
-    "M",            ID_EDIT_WAVE_MARKER,   VIRTKEY, NOINVERT
-    "R",            ID_EDIT_WAVE_REGION,   VIRTKEY, NOINVERT
-    VK_SPACE,       ID_PLAY_AND_STOP,      VIRTKEY, NOINVERT
-    VK_RETURN,      ID_SOUND_PAUSE,        VIRTKEY, NOINVERT
-    "2",            ID_VIEW_SHOW_FFT,      VIRTKEY, ALT, NOINVERT
-    "1",            ID_VIEW_WAVEFORM,      VIRTKEY, ALT, NOINVERT
+    "M",            ID_EDIT_WAVE_MARKER,    VIRTKEY, NOINVERT
+    "R",            ID_EDIT_WAVE_REGION,    VIRTKEY, NOINVERT
+    VK_SPACE,       ID_PLAY_AND_STOP,       VIRTKEY, NOINVERT
+    VK_RETURN,      ID_SOUND_PAUSE,         VIRTKEY, NOINVERT
+    "2",            ID_VIEW_SHOW_FFT,       VIRTKEY, ALT, NOINVERT
+    "1",            ID_VIEW_WAVEFORM,       VIRTKEY, ALT, NOINVERT
     VK_ADD,         ID_VIEW_ZOOM_SELECTION, VIRTKEY, SHIFT, NOINVERT
 END
 
@@ -3094,6 +3093,13 @@ IDC_CURSOR_BEAM         CURSOR                  "res\\cur00002.cur"
 
 /////////////////////////////////////////////////////////////////////////////
 //
+// RT_MANIFEST
+//
+
+CREATEPROCESS_MANIFEST_RESOURCE_ID RT_MANIFEST             "WaveSoap.manifest"
+
+/////////////////////////////////////////////////////////////////////////////
+//
 // String Table
 //
 
@@ -3280,19 +3286,18 @@ END
 
 STRINGTABLE 
 BEGIN
-    ID_VIEW_RULER_SAMPLES  "Show time in samples\nShow samples"
-    ID_VIEW_RULER_HHMMSS   "Show time as hour:minute:seconds\nShow hh:mm:ss"
-    ID_VIEW_RULER_SECONDS  "Show time in seconds\nShow seconds"
-    ID_SOUND_PLAY          "Play from the current cursor position\nPlay"
-    ID_SOUND_PAUSE         "Stop playback and leave the cursor at the current position\nPause"
-    ID_SOUND_STOP          "Stop playback and return to the last known cursor position\nStop"
-    ID_VIEW_SHOW_FFT       "Show the wave spectrum\nSpectral view"
-    ID_VIEW_WAVEFORM       "Show the sound as waveform\nShow waveform"
-    ID_PROCESS_DO_ULF      "Ultra-low frequency noise suppression (for vinyl recordings)\nTurntable noise suppression"
+    ID_VIEW_RULER_SAMPLES   "Show time in samples\nShow samples"
+    ID_VIEW_RULER_HHMMSS    "Show time as hour:minute:seconds\nShow hh:mm:ss"
+    ID_VIEW_RULER_SECONDS   "Show time in seconds\nShow seconds"
+    ID_SOUND_PLAY           "Play from the current cursor position\nPlay"
+    ID_SOUND_PAUSE          "Stop playback and leave the cursor at the current position\nPause"
+    ID_SOUND_STOP           "Stop playback and return to the last known cursor position\nStop"
+    ID_VIEW_SHOW_FFT        "Show the wave spectrum\nSpectral view"
+    ID_VIEW_WAVEFORM        "Show the sound as waveform\nShow waveform"
+    ID_PROCESS_DO_ULF       "Ultra-low frequency noise suppression (for vinyl recordings)\nTurntable noise suppression"
     ID_PROCESS_DO_DECLICKING 
                             "Click removal (for vinyl recordings)\nClick removal"
-    ID_PROCESS_NOISE_REDUCTION 
-                            "White noise (hiss) reduction\nNoise reduction"
+    ID_PROCESS_NOISE_REDUCTION "White noise (hiss) reduction\nNoise reduction"
     ID_EDIT_DELETE          "Delete the selection\nDelete"
 END
 
@@ -3424,13 +3429,13 @@ BEGIN
     ID_CHANNELS_STEREO      "Change the file to stereo\nStereo"
     ID_SAMPLE_16BIT         "Set sample size to 16 bit\n16 bit"
     ID_SAMPLE_8BIT          "Set sample size to 8 bit"
-    ID_VIEW_STATUS_SAMPLES "Show time in samples\nShow samples"
+    ID_VIEW_STATUS_SAMPLES  "Show time in samples\nShow samples"
 END
 
 STRINGTABLE 
 BEGIN
-    ID_VIEW_STATUS_HHMMSS  "Show time as hour:minute:seconds\nShow hh:mm:ss"
-    ID_VIEW_STATUS_SECONDS "Show time in seconds\nShow seconds"
+    ID_VIEW_STATUS_HHMMSS   "Show time as hour:minute:seconds\nShow hh:mm:ss"
+    ID_VIEW_STATUS_SECONDS  "Show time in seconds\nShow seconds"
     ID_FILE_STATISTICS      "Calculate file statistics\nStatistics"
     ID_PROCESS_INVERT       "Invert the sample sign\nInvert"
     ID_VIEW_OUTLINE         "Toggle outline view\nOutline"
@@ -3652,12 +3657,12 @@ END
 STRINGTABLE 
 BEGIN
     ID_PROCESS_REVERSE      "Reverse sound - make it go backwards"
-    ID_GOTO_MARKER         "Set current edit position to this cue mark"
-    ID_DELETE_MARKER       "Delete this cue mark"
+    ID_GOTO_MARKER          "Set current edit position to this cue mark"
+    ID_DELETE_MARKER        "Delete this cue mark"
     ID_MOVE_MARKER_TO_CURRENT "Move cue mark to the current edit position"
-    ID_EDIT_MARKER         "Edit this cue mark"
-    ID_SELECT_REGION       "Select this region"
-    ID_EDIT_WAVE_MARKER    "Add or edit a marker in the current position"
+    ID_EDIT_MARKER          "Edit this cue mark"
+    ID_SELECT_REGION        "Select this region"
+    ID_EDIT_WAVE_MARKER     "Add or edit a marker in the current position"
 END
 
 STRINGTABLE 
@@ -3831,13 +3836,12 @@ END
 
 STRINGTABLE 
 BEGIN
-    ID_EDIT_MARKER_REGION  "Add or edit marker or region"
-    ID_EDIT_WAVE_REGION    "Add or edit a region at the current selection"
+    ID_EDIT_MARKER_REGION   "Add or edit marker or region"
+    ID_EDIT_WAVE_REGION     "Add or edit a region at the current selection"
     ID_SAVE_SAVESELECTIONAS "Save the current selection to a file\nSave selection"
     ID_VIEW_ZOOMPREVIOUS    "Change to the previous zoom\nPrevious zoom"
-    ID_VIEW_STATUS_HHMMSSFF 
-                            "Show time as hour:minute:seconds.CD frames (75 fps)\nShow hh:mm:ss.ff75"
-    ID_VIEW_RULER_HHMMSSFF "Show time as hour:minute:seconds.CD frames (75 fps)\nShow hh:mm:ss.ff75"
+    ID_VIEW_STATUS_HHMMSSFF "Show time as hour:minute:seconds.CD frames (75 fps)\nShow hh:mm:ss.ff75"
+    ID_VIEW_RULER_HHMMSSFF  "Show time as hour:minute:seconds.CD frames (75 fps)\nShow hh:mm:ss.ff75"
 END
 
 STRINGTABLE 
