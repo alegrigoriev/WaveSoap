@@ -104,14 +104,40 @@ BOOL CMainFrame::PreCreateWindow(CREATESTRUCT& cs)
 
 void CMainFrame::GetMessageString(UINT nID, CString& rMessage) const
 {
-	if (GetApp()->m_CurrentStatusString.IsEmpty())
+	// find, starting with the topmost frame,
+	// a document which performs an operation
+	CFrameWnd * pWnd = const_cast<CMainFrame *>(this)->GetActiveFrame();
+	CWaveSoapFrontDoc * pDoc = NULL;
+	BOOL Topmost = TRUE;
+	while (NULL != pWnd)
 	{
-		CMDIFrameWnd::GetMessageString(nID, rMessage);
+		CView * pView = pWnd->GetActiveView();
+		if (NULL != pView)
+		{
+			pDoc = DYNAMIC_DOWNCAST(CWaveSoapFrontDoc,
+									pView->GetDocument());
+			if ( ! pDoc->m_CurrentStatusString.IsEmpty())
+			{
+				if (Topmost)
+				{
+					rMessage = pDoc->m_CurrentStatusString;
+				}
+				else
+				{
+					rMessage.Format(_T("%s: %s"), LPCTSTR(pDoc->GetTitle()),
+									LPCTSTR(pDoc->m_CurrentStatusString));
+				}
+				if ( ! pDoc->m_OperationInProgress)
+				{
+					pDoc->m_CurrentStatusString.Empty();
+				}
+				return;
+			}
+		}
+		Topmost = false;
+		pWnd = DYNAMIC_DOWNCAST(CFrameWnd, pWnd->GetWindow(GW_HWNDNEXT));
 	}
-	else
-	{
-		rMessage = GetApp()->m_CurrentStatusString;
-	}
+	CMDIFrameWnd::GetMessageString(nID, rMessage);
 }
 
 /////////////////////////////////////////////////////////////////////////////

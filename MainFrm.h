@@ -21,6 +21,10 @@ public:
 
 // Operations
 public:
+	void ResetLastStatusMessage()
+	{
+		m_nIDLastMessage = 0;
+	}
 
 // Overrides
 	// ClassWizard generated virtual function overrides
