@@ -15,7 +15,7 @@
 class COperationContext : public KListEntry<COperationContext>
 {
 public:
-	COperationContext(class CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString, DWORD Flags, LPCTSTR OperationName = "");
+	COperationContext(class CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString, DWORD Flags, LPCTSTR OperationName = _T(""));
 	virtual ~COperationContext();
 
 	virtual BOOL OperationProc();
@@ -175,7 +175,7 @@ public:
 	DWORD m_End;
 	int m_GranuleSize;
 	CScanPeaksContext(CWaveSoapFrontDoc * pDoc)
-		: COperationContext(pDoc, "Scanning the file for peaks...", OperationContextDiskIntensive, "Peak Scan"),
+		: COperationContext(pDoc, _T("Scanning the file for peaks..."), OperationContextDiskIntensive, _T("Peak Scan")),
 		m_Start(0), m_End(0), m_Position(0)
 	{
 	}
@@ -264,7 +264,7 @@ public:
 	WAVEFORMATEX m_OldWaveFormat;
 
 	CUndoRedoContext(CWaveSoapFrontDoc * pDoc, LPCTSTR OperationName)
-		: CCopyContext(pDoc, "", OperationName),
+		: CCopyContext(pDoc, _T(""), OperationName),
 		m_pOldPeaks(NULL)
 	{
 	}
@@ -297,7 +297,7 @@ class CDecompressContext : public COperationContext
 	size_t m_DstBufSize;
 	ACMSTREAMHEADER m_ash;
 	DWORD m_ConvertFlags;
-	WAVEFORMATEX * m_pWf;
+	CWaveFormat m_Wf;
 
 public:
 	HACMSTREAM m_acmStr;
@@ -313,7 +313,7 @@ public:
 		m_acmDrv(NULL),
 		m_acmStr(NULL),
 		m_bSwapBytes(FALSE),
-		m_pWf(CopyWaveformat(pWf)),
+		m_Wf(pWf),
 		m_MmResult(MMSYSERR_NOERROR)
 	{
 		memzero(m_ash);
@@ -321,7 +321,6 @@ public:
 	~CDecompressContext()
 	{
 		DeInit();
-		delete m_pWf;
 	}
 	virtual BOOL OperationProc();
 	virtual BOOL Init();
@@ -346,7 +345,7 @@ public:
 public:
 	CSoundPlayContext(CWaveSoapFrontDoc * pDoc)
 		: COperationContext(pDoc, _T("Playing"),
-							OperationContextDontAdjustPriority, "Play"),
+							OperationContextDontAdjustPriority, _T("Play")),
 		m_bPauseRequested(false)
 	{
 		PercentCompleted = -1;  // no percents

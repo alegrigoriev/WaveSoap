@@ -11,10 +11,12 @@
 
 #include "stdafx.h"
 #include "fixalloc.h"
-#include "CStringW.h"
-#ifdef AFX_CORE1_SEG
-#pragma code_seg(AFX_CORE1_SEG)
+#include <malloc.h>
+
+#ifndef _AFX_ENABLE_INLINES
+#define _AFX_INLINE
 #endif
+#include "CStringW.h"
 
 #ifdef _DEBUG
 #undef THIS_FILE
@@ -27,7 +29,7 @@ static char THIS_FILE[] = __FILE__;
 // static class data, special inlines
 
 // afxChNil is left for backward compatibility
-AFX_DATADEF NTCHAR afxChNil = '\0';
+AFX_DATADEF NTCHAR afxChNilN = '\0';
 
 // For an empty string, m_pchData will point here
 // (note: avoids special case of checking for NULL m_pchData)
@@ -36,8 +38,10 @@ AFX_STATIC_DATA int _afxInitData[] = { -1, 0, 0, 0 };
 AFX_STATIC_DATA CStringDataN* _afxDataNilN = (CStringDataN*)&_afxInitData;
 AFX_COMDAT LPCNTSTR _afxPchNilN = (LPCNTSTR)(((BYTE*)&_afxInitData)+sizeof(CStringDataN));
 // special function to make afxEmptyString work even during initialization
-const CStringN& AFXAPI AfxGetEmptyString()
+const CStringN& AFXAPI AfxGetEmptyStringN()
 { return *(CStringN*)&_afxPchNilN; }
+
+#define _countof(array) (sizeof(array)/sizeof(array[0]))
 
 //////////////////////////////////////////////////////////////////////////////
 // Construction/Destruction
@@ -262,7 +266,7 @@ CStringN::CStringN(LPCNTSTR lpsz)
 /////////////////////////////////////////////////////////////////////////////
 // Special conversion constructors
 
-#ifdef _UNICODE
+#ifndef _UNICODE
 CStringN::CStringN(LPCSTR lpsz)
 {
 	Init();
@@ -350,7 +354,7 @@ const CStringN& CStringN::operator=(LPCNTSTR lpsz)
 /////////////////////////////////////////////////////////////////////////////
 // Special conversion assignment
 
-#ifdef _UNICODE
+#ifndef _UNICODE
 const CStringN& CStringN::operator=(LPCSTR lpsz)
 {
 	int nSrcLen = lpsz != NULL ? lstrlenA(lpsz) : 0;
@@ -475,7 +479,7 @@ const CStringN& CStringN::operator+=(const CStringN& string)
 ///////////////////////////////////////////////////////////////////////////////
 // Advanced direct buffer access
 
-LPTSTR CStringN::GetBuffer(int nMinBufLength)
+LPNTSTR CStringN::GetBuffer(int nMinBufLength)
 {
 	ASSERT(nMinBufLength >= 0);
 
@@ -508,14 +512,14 @@ void CStringN::ReleaseBuffer(int nNewLength)
 	CopyBeforeWrite();  // just in case GetBuffer was not called
 
 	if (nNewLength == -1)
-		nNewLength = lstrlen(m_pchData); // zero terminated
+		nNewLength = lstrlenN(m_pchData); // zero terminated
 
 	ASSERT(nNewLength <= GetData()->nAllocLength);
 	GetData()->nDataLength = nNewLength;
 	m_pchData[nNewLength] = '\0';
 }
 
-LPTSTR CStringN::GetBufferSetLength(int nNewLength)
+LPNTSTR CStringN::GetBufferSetLength(int nNewLength)
 {
 	ASSERT(nNewLength >= 0);
 
@@ -539,9 +543,9 @@ void CStringN::FreeExtra()
 	ASSERT(GetData() != NULL);
 }
 
-LPTSTR CStringN::LockBuffer()
+LPNTSTR CStringN::LockBuffer()
 {
-	LPTSTR lpsz = GetBuffer(0);
+	LPNTSTR lpsz = GetBuffer(0);
 	GetData()->nRefs = -1;
 	return lpsz;
 }
@@ -568,7 +572,7 @@ int CStringN::Find(NTCHAR ch, int nStart) const
 		return -1;
 
 	// find first single character
-	LPTSTR lpsz = _tcschr(m_pchData + nStart, (_TUCHAR)ch);
+	LPNTSTR lpsz = _tcschrN(m_pchData + nStart, (_TUCHAR)ch);
 
 	// return -1 if not found and index otherwise
 	return (lpsz == NULL) ? -1 : (int)(lpsz - m_pchData);
@@ -577,26 +581,26 @@ int CStringN::Find(NTCHAR ch, int nStart) const
 int CStringN::FindOneOf(LPCNTSTR lpszCharSet) const
 {
 	ASSERT(AfxIsValidString(lpszCharSet));
-	LPTSTR lpsz = _tcspbrk(m_pchData, lpszCharSet);
+	LPNTSTR lpsz = _tcspbrkN(m_pchData, lpszCharSet);
 	return (lpsz == NULL) ? -1 : (int)(lpsz - m_pchData);
 }
 
 void CStringN::MakeUpper()
 {
 	CopyBeforeWrite();
-	_tcsupr(m_pchData);
+	_tcsuprN(m_pchData);
 }
 
 void CStringN::MakeLower()
 {
 	CopyBeforeWrite();
-	_tcslwr(m_pchData);
+	_tcslwrN(m_pchData);
 }
 
 void CStringN::MakeReverse()
 {
 	CopyBeforeWrite();
-	_tcsrev(m_pchData);
+	_tcsrevN(m_pchData);
 }
 
 void CStringN::SetAt(int nIndex, NTCHAR ch)
@@ -608,7 +612,7 @@ void CStringN::SetAt(int nIndex, NTCHAR ch)
 	m_pchData[nIndex] = ch;
 }
 
-#ifndef _UNICODE
+#ifdef _UNICODE
 void CStringN::AnsiToOem()
 {
 	CopyBeforeWrite();
@@ -691,17 +695,6 @@ LPSTR AFXAPI AfxW2AHelper(LPSTR lpa, LPCWSTR lpw, int nChars)
 
 #include <afxtempl.h>
 
-#ifdef AFX_AUX_SEG
-#pragma code_seg(AFX_AUX_SEG)
-#endif
-
-#ifdef _DEBUG
-#undef THIS_FILE
-static char THIS_FILE[] = __FILE__;
-#endif
-
-#define new DEBUG_NEW
-
 //////////////////////////////////////////////////////////////////////////////
 // More sophisticated construction
 
@@ -734,7 +727,7 @@ CStringN::CStringN(LPCNTSTR lpch, int nLength)
 /////////////////////////////////////////////////////////////////////////////
 // Special conversion constructors
 
-#ifdef _UNICODE
+#ifndef _UNICODE
 CStringN::CStringN(LPCSTR lpsz, int nLength)
 {
 	Init();
@@ -821,7 +814,7 @@ int CStringN::Insert(int nIndex, NTCHAR ch)
 	if (GetData()->nAllocLength < nNewLength)
 	{
 		CStringDataN* pOldData = GetData();
-		LPTSTR pstr = m_pchData;
+		LPNTSTR pstr = m_pchData;
 		AllocBuffer(nNewLength);
 		memcpy(m_pchData, pstr, (pOldData->nDataLength+1)*sizeof(NTCHAR));
 		CStringN::Release(pOldData);
@@ -853,7 +846,7 @@ int CStringN::Insert(int nIndex, LPCNTSTR pstr)
 		if (GetData()->nAllocLength < nNewLength)
 		{
 			CStringDataN* pOldData = GetData();
-			LPTSTR pstr = m_pchData;
+			LPNTSTR pstr = m_pchData;
 			AllocBuffer(nNewLength);
 			memcpy(m_pchData, pstr, (pOldData->nDataLength+1)*sizeof(NTCHAR));
 			CStringN::Release(pOldData);
@@ -880,8 +873,8 @@ int CStringN::Replace(NTCHAR chOld, NTCHAR chNew)
 	{
 		// otherwise modify each character that matches in the string
 		CopyBeforeWrite();
-		LPTSTR psz = m_pchData;
-		LPTSTR pszEnd = psz + GetData()->nDataLength;
+		LPNTSTR psz = m_pchData;
+		LPNTSTR pszEnd = psz + GetData()->nDataLength;
 		while (psz < pszEnd)
 		{
 			// replace instances of the specified character only
@@ -890,7 +883,7 @@ int CStringN::Replace(NTCHAR chOld, NTCHAR chNew)
 				*psz = chNew;
 				nCount++;
 			}
-			psz = _tcsinc(psz);
+			psz = _tcsincN(psz);
 		}
 	}
 	return nCount;
@@ -907,17 +900,17 @@ int CStringN::Replace(LPCNTSTR lpszOld, LPCNTSTR lpszNew)
 
 	// loop once to figure out the size of the result string
 	int nCount = 0;
-	LPTSTR lpszStart = m_pchData;
-	LPTSTR lpszEnd = m_pchData + GetData()->nDataLength;
-	LPTSTR lpszTarget;
+	LPNTSTR lpszStart = m_pchData;
+	LPNTSTR lpszEnd = m_pchData + GetData()->nDataLength;
+	LPNTSTR lpszTarget;
 	while (lpszStart < lpszEnd)
 	{
-		while ((lpszTarget = _tcsstr(lpszStart, lpszOld)) != NULL)
+		while ((lpszTarget = _tcsstrN(lpszStart, lpszOld)) != NULL)
 		{
 			nCount++;
 			lpszStart = lpszTarget + nSourceLen;
 		}
-		lpszStart += lstrlen(lpszStart) + 1;
+		lpszStart += lstrlenN(lpszStart) + 1;
 	}
 
 	// if any changes were made, make them
@@ -932,7 +925,7 @@ int CStringN::Replace(LPCNTSTR lpszOld, LPCNTSTR lpszNew)
 		if (GetData()->nAllocLength < nNewLength || GetData()->nRefs > 1)
 		{
 			CStringDataN* pOldData = GetData();
-			LPTSTR pstr = m_pchData;
+			LPNTSTR pstr = m_pchData;
 			AllocBuffer(nNewLength);
 			memcpy(m_pchData, pstr, pOldData->nDataLength*sizeof(NTCHAR));
 			CStringN::Release(pOldData);
@@ -944,7 +937,7 @@ int CStringN::Replace(LPCNTSTR lpszOld, LPCNTSTR lpszNew)
 		// loop again to actually do the work
 		while (lpszStart < lpszEnd)
 		{
-			while ( (lpszTarget = _tcsstr(lpszStart, lpszOld)) != NULL)
+			while ( (lpszTarget = _tcsstrN(lpszStart, lpszOld)) != NULL)
 			{
 				int nBalance = nOldLength - (lpszTarget - m_pchData + nSourceLen);
 				memmove(lpszTarget + nReplacementLen, lpszTarget + nSourceLen,
@@ -954,7 +947,7 @@ int CStringN::Replace(LPCNTSTR lpszOld, LPCNTSTR lpszNew)
 				lpszStart[nBalance] = '\0';
 				nOldLength += (nReplacementLen - nSourceLen);
 			}
-			lpszStart += lstrlen(lpszStart) + 1;
+			lpszStart += lstrlenN(lpszStart) + 1;
 		}
 		ASSERT(m_pchData[nNewLength] == '\0');
 		GetData()->nDataLength = nNewLength;
@@ -967,18 +960,18 @@ int CStringN::Remove(NTCHAR chRemove)
 {
 	CopyBeforeWrite();
 
-	LPTSTR pstrSource = m_pchData;
-	LPTSTR pstrDest = m_pchData;
-	LPTSTR pstrEnd = m_pchData + GetData()->nDataLength;
+	LPNTSTR pstrSource = m_pchData;
+	LPNTSTR pstrDest = m_pchData;
+	LPNTSTR pstrEnd = m_pchData + GetData()->nDataLength;
 
 	while (pstrSource < pstrEnd)
 	{
 		if (*pstrSource != chRemove)
 		{
 			*pstrDest = *pstrSource;
-			pstrDest = _tcsinc(pstrDest);
+			pstrDest = _tcsincN(pstrDest);
 		}
-		pstrSource = _tcsinc(pstrSource);
+		pstrSource = _tcsincN(pstrSource);
 	}
 	*pstrDest = '\0';
 	int nCount = pstrSource - pstrDest;
@@ -1048,14 +1041,14 @@ CStringN CStringN::Left(int nCount) const
 CStringN CStringN::SpanIncluding(LPCNTSTR lpszCharSet) const
 {
 	ASSERT(AfxIsValidString(lpszCharSet));
-	return Left(_tcsspn(m_pchData, lpszCharSet));
+	return Left(_tcsspnN(m_pchData, lpszCharSet));
 }
 
 // strcspn equivalent
 CStringN CStringN::SpanExcluding(LPCNTSTR lpszCharSet) const
 {
 	ASSERT(AfxIsValidString(lpszCharSet));
-	return Left(_tcscspn(m_pchData, lpszCharSet));
+	return Left(_tcscspnN(m_pchData, lpszCharSet));
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -1064,7 +1057,7 @@ CStringN CStringN::SpanExcluding(LPCNTSTR lpszCharSet) const
 int CStringN::ReverseFind(NTCHAR ch) const
 {
 	// find last single character
-	LPTSTR lpsz = _tcsrchr(m_pchData, (_TUCHAR) ch);
+	LPNTSTR lpsz = _tcsrchrN(m_pchData, (_NTUCHAR) ch);
 
 	// return -1 if not found, distance from beginning otherwise
 	return (lpsz == NULL) ? -1 : (int)(lpsz - m_pchData);
@@ -1085,7 +1078,7 @@ int CStringN::Find(LPCNTSTR lpszSub, int nStart) const
 		return -1;
 
 	// find first matching substring
-	LPTSTR lpsz = _tcsstr(m_pchData + nStart, lpszSub);
+	LPNTSTR lpsz = _tcsstrN(m_pchData + nStart, lpszSub);
 
 	// return -1 for not found, distance from beginning otherwise
 	return (lpsz == NULL) ? -1 : (int)(lpsz - m_pchData);
@@ -1117,12 +1110,12 @@ void CStringN::FormatV(LPCNTSTR lpszFormat, va_list argList)
 
 	// make a guess at the maximum length of the resulting string
 	int nMaxLen = 0;
-	for (LPCNTSTR lpsz = lpszFormat; *lpsz != '\0'; lpsz = _tcsinc(lpsz))
+	for (LPCNTSTR lpsz = lpszFormat; *lpsz != '\0'; lpsz = _tcsincN(lpsz))
 	{
 		// handle '%' character, but watch out for '%%'
-		if (*lpsz != '%' || *(lpsz = _tcsinc(lpsz)) == '%')
+		if (*lpsz != '%' || *(lpsz = _tcsincN(lpsz)) == '%')
 		{
-			nMaxLen += _tclen(lpsz);
+			nMaxLen += _tclenN(lpsz);
 			continue;
 		}
 
@@ -1130,7 +1123,7 @@ void CStringN::FormatV(LPCNTSTR lpszFormat, va_list argList)
 
 		// handle '%' character with format
 		int nWidth = 0;
-		for (; *lpsz != '\0'; lpsz = _tcsinc(lpsz))
+		for (; *lpsz != '\0'; lpsz = _tcsincN(lpsz))
 		{
 			// check for valid flags
 			if (*lpsz == '#')
@@ -1147,8 +1140,8 @@ void CStringN::FormatV(LPCNTSTR lpszFormat, va_list argList)
 		if (nWidth == 0)
 		{
 			// width indicated by
-			nWidth = _ttoi(lpsz);
-			for (; *lpsz != '\0' && _istdigit(*lpsz); lpsz = _tcsinc(lpsz))
+			nWidth = _ttoiN(lpsz);
+			for (; *lpsz != '\0' && _istdigitN(*lpsz); lpsz = _tcsincN(lpsz))
 				;
 		}
 		ASSERT(nWidth >= 0);
@@ -1157,18 +1150,18 @@ void CStringN::FormatV(LPCNTSTR lpszFormat, va_list argList)
 		if (*lpsz == '.')
 		{
 			// skip past '.' separator (width.precision)
-			lpsz = _tcsinc(lpsz);
+			lpsz = _tcsincN(lpsz);
 
 			// get precision and skip it
 			if (*lpsz == '*')
 			{
 				nPrecision = va_arg(argList, int);
-				lpsz = _tcsinc(lpsz);
+				lpsz = _tcsincN(lpsz);
 			}
 			else
 			{
-				nPrecision = _ttoi(lpsz);
-				for (; *lpsz != '\0' && _istdigit(*lpsz); lpsz = _tcsinc(lpsz))
+				nPrecision = _ttoiN(lpsz);
+				for (; *lpsz != '\0' && _istdigitN(*lpsz); lpsz = _tcsincN(lpsz))
 					;
 			}
 			ASSERT(nPrecision >= 0);
@@ -1176,7 +1169,7 @@ void CStringN::FormatV(LPCNTSTR lpszFormat, va_list argList)
 
 		// should be on type modifier or specifier
 		int nModifier = 0;
-		if (_tcsncmp(lpsz, _T("I64"), 3) == 0)
+		if (_tcsncmpN(lpsz, _nT("I64"), 3) == 0)
 		{
 			lpsz += 3;
 			nModifier = FORCE_INT64;
@@ -1192,18 +1185,18 @@ void CStringN::FormatV(LPCNTSTR lpszFormat, va_list argList)
 				// modifiers that affect size
 			case 'h':
 				nModifier = FORCE_ANSI;
-				lpsz = _tcsinc(lpsz);
+				lpsz = _tcsincN(lpsz);
 				break;
 			case 'l':
 				nModifier = FORCE_UNICODE;
-				lpsz = _tcsinc(lpsz);
+				lpsz = _tcsincN(lpsz);
 				break;
 
 				// modifiers that do not affect size
 			case 'F':
 			case 'N':
 			case 'L':
-				lpsz = _tcsinc(lpsz);
+				lpsz = _tcsincN(lpsz);
 				break;
 			}
 		}
@@ -1236,7 +1229,7 @@ void CStringN::FormatV(LPCNTSTR lpszFormat, va_list argList)
 				nItemLen = 6;  // "(null)"
 			else
 			{
-				nItemLen = lstrlen(pstrNextArg);
+				nItemLen = lstrlenN(pstrNextArg);
 				nItemLen = max(1, nItemLen);
 			}
 		}
@@ -1332,17 +1325,17 @@ void CStringN::FormatV(LPCNTSTR lpszFormat, va_list argList)
 			case 'f':
 			{
 				double f;
-				LPTSTR pszTemp;
+				LPNTSTR pszTemp;
 
 				// 312 == strlen("-1+(309 zeroes).")
 				// 309 zeroes == max precision of a double
 				// 6 == adjustment in case precision is not specified,
 				//   which means that the precision defaults to 6
-				pszTemp = (LPTSTR)_alloca(max(nWidth, 312+nPrecision+6));
+				pszTemp = (LPNTSTR)_alloca(max(nWidth, 312+nPrecision+6));
 
 				f = va_arg(argList, double);
-				_stprintf( pszTemp, _T( "%*.*f" ), nWidth, nPrecision+6, f );
-				nItemLen = _tcslen(pszTemp);
+				_stprintfN( pszTemp, _nT( "%*.*f" ), nWidth, nPrecision+6, f );
+				nItemLen = _tcslenN(pszTemp);
 			}
 				break;
 
@@ -1367,7 +1360,7 @@ void CStringN::FormatV(LPCNTSTR lpszFormat, va_list argList)
 	}
 
 	GetBuffer(nMaxLen);
-	VERIFY(_vstprintf(m_pchData, lpszFormat, argListSave) <= GetAllocLength());
+	VERIFY(_vstprintfN(m_pchData, lpszFormat, argListSave) <= GetAllocLength());
 	ReleaseBuffer();
 
 	va_end(argListSave);
@@ -1401,10 +1394,10 @@ void AFX_CDECL CStringN::FormatMessage(LPCNTSTR lpszFormat, ...)
 	// format message into temporary buffer lpszTemp
 	va_list argList;
 	va_start(argList, lpszFormat);
-	LPTSTR lpszTemp;
+	LPNTSTR lpszTemp;
 
-	if (::FormatMessage(FORMAT_MESSAGE_FROM_STRING|FORMAT_MESSAGE_ALLOCATE_BUFFER,
-						lpszFormat, 0, 0, (LPTSTR)&lpszTemp, 0, &argList) == 0 ||
+	if (::FormatMessageN(FORMAT_MESSAGE_FROM_STRING|FORMAT_MESSAGE_ALLOCATE_BUFFER,
+						lpszFormat, 0, 0, (LPNTSTR)&lpszTemp, 0, &argList) == 0 ||
 		lpszTemp == NULL)
 	{
 		AfxThrowMemoryException();
@@ -1425,9 +1418,9 @@ void AFX_CDECL CStringN::FormatMessage(UINT nFormatID, ...)
 	// format message into temporary buffer lpszTemp
 	va_list argList;
 	va_start(argList, nFormatID);
-	LPTSTR lpszTemp;
-	if (::FormatMessage(FORMAT_MESSAGE_FROM_STRING|FORMAT_MESSAGE_ALLOCATE_BUFFER,
-						strFormat, 0, 0, (LPTSTR)&lpszTemp, 0, &argList) == 0 ||
+	LPNTSTR lpszTemp;
+	if (::FormatMessageN(FORMAT_MESSAGE_FROM_STRING|FORMAT_MESSAGE_ALLOCATE_BUFFER,
+						strFormat, 0, 0, (LPNTSTR)&lpszTemp, 0, &argList) == 0 ||
 		lpszTemp == NULL)
 	{
 		AfxThrowMemoryException();
@@ -1445,19 +1438,19 @@ void CStringN::TrimRight(LPCNTSTR lpszTargetList)
 	// by starting at beginning (DBCS aware)
 
 	CopyBeforeWrite();
-	LPTSTR lpsz = m_pchData;
-	LPTSTR lpszLast = NULL;
+	LPNTSTR lpsz = m_pchData;
+	LPNTSTR lpszLast = NULL;
 
 	while (*lpsz != '\0')
 	{
-		if (_tcschr(lpszTargetList, *lpsz) != NULL)
+		if (_tcschrN(lpszTargetList, *lpsz) != NULL)
 		{
 			if (lpszLast == NULL)
 				lpszLast = lpsz;
 		}
 		else
 			lpszLast = NULL;
-		lpsz = _tcsinc(lpsz);
+		lpsz = _tcsincN(lpsz);
 	}
 
 	if (lpszLast != NULL)
@@ -1474,8 +1467,8 @@ void CStringN::TrimRight(NTCHAR chTarget)
 	// by starting at beginning (DBCS aware)
 
 	CopyBeforeWrite();
-	LPTSTR lpsz = m_pchData;
-	LPTSTR lpszLast = NULL;
+	LPNTSTR lpsz = m_pchData;
+	LPNTSTR lpszLast = NULL;
 
 	while (*lpsz != '\0')
 	{
@@ -1486,7 +1479,7 @@ void CStringN::TrimRight(NTCHAR chTarget)
 		}
 		else
 			lpszLast = NULL;
-		lpsz = _tcsinc(lpsz);
+		lpsz = _tcsincN(lpsz);
 	}
 
 	if (lpszLast != NULL)
@@ -1502,19 +1495,19 @@ void CStringN::TrimRight()
 	// find beginning of trailing spaces by starting at beginning (DBCS aware)
 
 	CopyBeforeWrite();
-	LPTSTR lpsz = m_pchData;
-	LPTSTR lpszLast = NULL;
+	LPNTSTR lpsz = m_pchData;
+	LPNTSTR lpszLast = NULL;
 
 	while (*lpsz != '\0')
 	{
-		if (_istspace(*lpsz))
+		if (_istspaceN(*lpsz))
 		{
 			if (lpszLast == NULL)
 				lpszLast = lpsz;
 		}
 		else
 			lpszLast = NULL;
-		lpsz = _tcsinc(lpsz);
+		lpsz = _tcsincN(lpsz);
 	}
 
 	if (lpszLast != NULL)
@@ -1536,9 +1529,9 @@ void CStringN::TrimLeft(LPCNTSTR lpszTargets)
 
 	while (*lpsz != '\0')
 	{
-		if (_tcschr(lpszTargets, *lpsz) == NULL)
+		if (_tcschrN(lpszTargets, *lpsz) == NULL)
 			break;
-		lpsz = _tcsinc(lpsz);
+		lpsz = _tcsincN(lpsz);
 	}
 
 	if (lpsz != m_pchData)
@@ -1558,7 +1551,7 @@ void CStringN::TrimLeft(NTCHAR chTarget)
 	LPCNTSTR lpsz = m_pchData;
 
 	while (chTarget == *lpsz)
-		lpsz = _tcsinc(lpsz);
+		lpsz = _tcsincN(lpsz);
 
 	if (lpsz != m_pchData)
 	{
@@ -1576,8 +1569,8 @@ void CStringN::TrimLeft()
 	CopyBeforeWrite();
 	LPCNTSTR lpsz = m_pchData;
 
-	while (_istspace(*lpsz))
-		lpsz = _tcsinc(lpsz);
+	while (_istspaceN(*lpsz))
+		lpsz = _tcsincN(lpsz);
 
 	if (lpsz != m_pchData)
 	{
@@ -1601,7 +1594,7 @@ void AFXAPI ConstructElements(CStringN* pElements, int nCount)
 			AfxIsValidAddress(pElements, nCount * sizeof(CStringN)));
 
 	for (; nCount--; ++pElements)
-		memcpy(pElements, &afxEmptyString, sizeof(*pElements));
+		memcpy(pElements, &afxEmptyStringN, sizeof(*pElements));
 }
 
 #if _MSC_VER >= 1100
@@ -1659,12 +1652,13 @@ UINT AFXAPI HashKey(LPCSTR key)
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-#ifdef _UNICODE
+#ifndef _UNICODE
 #define CHAR_FUDGE 1    // one NTCHAR unused is good enough
 #else
 #define CHAR_FUDGE 2    // two BYTES unused for case of DBC last char
 #endif
 //WINSTR.CPP
+int AFXAPI AfxLoadStringN(UINT nID, LPNTSTR lpszBuf, UINT nMaxBuf);
 BOOL CStringN::LoadString(UINT nID)
 {
 	// try fixed buffer first (to avoid wasting space in the heap)
@@ -1689,7 +1683,7 @@ BOOL CStringN::LoadString(UINT nID)
 }
 
 #ifndef _AFXDLL
-int AFXAPI AfxLoadStringN(UINT nID, LPTSTR lpszBuf, UINT nMaxBuf)
+int AFXAPI AfxLoadStringN(UINT nID, LPNTSTR lpszBuf, UINT nMaxBuf)
 {
 	ASSERT(AfxIsValidAddress(lpszBuf, nMaxBuf*sizeof(NTCHAR)));
 #ifdef UNICODE
@@ -1697,7 +1691,7 @@ int AFXAPI AfxLoadStringN(UINT nID, LPTSTR lpszBuf, UINT nMaxBuf)
 	// LoadString without annoying warning from the Debug kernel if the
 	//  segment containing the string is not present
 	if (::FindResourceA(AfxGetResourceHandle(),
-						MAKEINTRESOURCE((nID>>4)+1), RT_STRING) == NULL)
+						MAKEINTRESOURCEA((nID>>4)+1), MAKEINTRESOURCEA(RT_STRING)) == NULL)
 	{
 		lpszBuf[0] = '\0';
 		return 0; // not found
@@ -1712,7 +1706,7 @@ int AFXAPI AfxLoadStringN(UINT nID, LPTSTR lpszBuf, UINT nMaxBuf)
 	//  segment containing the string is not present
 #ifdef _DEBUG
 	if (::FindResourceW(AfxGetResourceHandle(),
-						MAKEINTRESOURCE((nID>>4)+1), RT_STRING) == NULL)
+						MAKEINTRESOURCEW((nID>>4)+1), MAKEINTRESOURCEW(RT_STRING)) == NULL)
 	{
 		lpszBuf[0] = '\0';
 		return 0; // not found
@@ -1732,10 +1726,6 @@ int AFXAPI AfxLoadStringN(UINT nID, LPTSTR lpszBuf, UINT nMaxBuf)
 BSTR CStringN::AllocSysString() const
 {
 #if defined(_UNICODE) || defined(OLE2ANSI)
-	BSTR bstr = ::SysAllocStringLen(m_pchData, GetData()->nDataLength);
-	if (bstr == NULL)
-		AfxThrowMemoryException();
-#else
 	int nLen = MultiByteToWideChar(CP_ACP, 0, m_pchData,
 									GetData()->nDataLength, NULL, NULL);
 	BSTR bstr = ::SysAllocStringLen(NULL, nLen);
@@ -1743,6 +1733,10 @@ BSTR CStringN::AllocSysString() const
 		AfxThrowMemoryException();
 	MultiByteToWideChar(CP_ACP, 0, m_pchData, GetData()->nDataLength,
 						bstr, nLen);
+#else
+	BSTR bstr = ::SysAllocStringLen(m_pchData, GetData()->nDataLength);
+	if (bstr == NULL)
+		AfxThrowMemoryException();
 #endif
 
 	return bstr;
