@@ -197,18 +197,6 @@ public:
 
 	BOOL m_bReadOnly;
 	BOOL m_bDirectMode;
-	// Undo/Redo parameters
-	BOOL m_bUndoEnabled;              // File proppage
-	BOOL m_bRedoEnabled;              // File proppage
-	int m_MaxUndoDepth;               // File proppage
-	int m_MaxRedoDepth;               // File proppage
-	DWORD m_MaxUndoSize;              // File proppage
-	DWORD m_MaxRedoSize;              // File proppage
-	BOOL m_bEnableUndoLimit;          // File proppage
-	BOOL m_bEnableRedoLimit;          // File proppage
-	BOOL m_bEnableUndoDepthLimit;     // File proppage
-	BOOL m_bEnableRedoDepthLimit;     // File proppage
-	BOOL m_bRememberSelectionInUndo;  // File proppage
 
 	BOOL m_bUseCountrySpecificNumberAndTime;
 

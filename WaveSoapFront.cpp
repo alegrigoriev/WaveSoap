@@ -26,6 +26,7 @@
 #include "GdiObjectSave.h"
 #include "OperationContext.h"
 #include "OperationContext2.h"
+#include "ApplicationParameters.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -154,14 +155,6 @@ CWaveSoapFrontApp::CWaveSoapFrontApp()
 	m_bDirectMode(false),
 
 	m_bUseCountrySpecificNumberAndTime(false),
-
-	m_bUndoEnabled(true),
-	m_bRedoEnabled(true),
-	m_bRememberSelectionInUndo(false),
-	m_bEnableUndoLimit(true),
-	m_bEnableRedoLimit(true),
-	m_bEnableUndoDepthLimit(false),
-	m_bEnableRedoDepthLimit(false),
 
 	m_bShowToolbar(true),
 	m_bShowStatusBar(true),
@@ -391,19 +384,7 @@ BOOL CWaveSoapFrontApp::InitInstance()
 	Profile.AddBoolItem(_T("Settings"), _T("OpenAsReadOnly"), m_bReadOnly, FALSE);
 	Profile.AddBoolItem(_T("Settings"), _T("OpenInDirectMode"), m_bDirectMode, FALSE);
 
-	Profile.AddBoolItem(_T("Settings"), _T("UndoEnabled"), m_bUndoEnabled, TRUE);
-	Profile.AddBoolItem(_T("Settings"), _T("RedoEnabled"), m_bRedoEnabled, TRUE);
-	Profile.AddBoolItem(_T("Settings"), _T("EnableUndoLimit"), m_bEnableUndoLimit, FALSE);
-	Profile.AddBoolItem(_T("Settings"), _T("EnableRedoLimit"), m_bEnableRedoLimit, FALSE);
-	Profile.AddBoolItem(_T("Settings"), _T("EnableUndoDepthLimit"), m_bEnableUndoDepthLimit, FALSE);
-	Profile.AddBoolItem(_T("Settings"), _T("EnableRedoDepthLimit"), m_bEnableRedoDepthLimit, FALSE);
-	Profile.AddBoolItem(_T("Settings"), _T("RememberSelectionInUndo"), m_bRememberSelectionInUndo, FALSE);
-	Profile.AddItem(_T("Settings"), _T("MaxUndoDepth"), m_MaxUndoDepth, 100, 0, 1000);
-	Profile.AddItem(_T("Settings"), _T("MaxRedoDepth"), m_MaxRedoDepth, 100, 0, 1000);
-	Profile.AddItem(_T("Settings"), _T("MaxUndoSize"), m_MaxUndoSize, 0x40000000u,
-					0u, 0xC0000000u);
-	Profile.AddItem(_T("Settings"), _T("MaxRedoSize"), m_MaxRedoSize, 0x40000000u,
-					0u, 0xC0000000u);
+	PersistentUndoRedo::LoadData(Profile);
 
 	Profile.AddBoolItem(_T("Settings"), _T("DontShowMediaPlayerWarning"), m_DontShowMediaPlayerWarning, FALSE);
 
@@ -2404,18 +2385,6 @@ void CWaveSoapFrontApp::OnToolsOptions()
 	dlg.m_FilePage.m_MaxFileCache = m_MaxFileCache;
 	dlg.m_FilePage.m_FileTextEncoding = CMmioFile::m_TextEncodingInFiles;
 
-	dlg.m_UndoPage.m_bEnableUndo = m_bUndoEnabled;
-	dlg.m_UndoPage.m_bEnableRedo = m_bRedoEnabled;
-	dlg.m_UndoPage.m_UndoDepthLimit = m_MaxUndoDepth;
-	dlg.m_UndoPage.m_RedoDepthLimit = m_MaxRedoDepth;
-	dlg.m_UndoPage.m_UndoSizeLimit = m_MaxUndoSize / 0x100000;
-	dlg.m_UndoPage.m_RedoSizeLimit = m_MaxRedoSize / 0x100000;
-	dlg.m_UndoPage.m_bLimitUndoSize = m_bEnableUndoLimit;
-	dlg.m_UndoPage.m_bLimitRedoSize = m_bEnableRedoLimit;
-	dlg.m_UndoPage.m_bLimitUndoDepth = m_bEnableUndoDepthLimit;
-	dlg.m_UndoPage.m_bLimitRedoDepth = m_bEnableRedoDepthLimit;
-	dlg.m_UndoPage.m_bRememberSelectionInUndo = m_bRememberSelectionInUndo;
-
 	dlg.m_SoundPage.m_PlaybackDevice = m_DefaultPlaybackDevice + 1;
 	dlg.m_SoundPage.m_NumPlaybackBuffers = m_NumPlaybackBuffers;
 	dlg.m_SoundPage.m_PlaybackBufferSize = m_SizePlaybackBuffers / 1024;
@@ -2437,22 +2406,7 @@ void CWaveSoapFrontApp::OnToolsOptions()
 		m_MaxFileCache = dlg.m_FilePage.m_MaxFileCache;
 		CMmioFile::m_TextEncodingInFiles = dlg.m_FilePage.m_FileTextEncoding;
 
-		m_bUndoEnabled = dlg.m_UndoPage.m_bEnableUndo;
-		m_bRedoEnabled = dlg.m_UndoPage.m_bEnableRedo;
-
-		m_MaxUndoDepth = dlg.m_UndoPage.m_UndoDepthLimit;
-		m_MaxRedoDepth = dlg.m_UndoPage.m_RedoDepthLimit;
-
-		m_MaxUndoSize = dlg.m_UndoPage.m_UndoSizeLimit * 0x100000;
-		m_MaxRedoSize = dlg.m_UndoPage.m_RedoSizeLimit * 0x100000;
-
-		m_bEnableUndoLimit = dlg.m_UndoPage.m_bLimitUndoSize;
-		m_bEnableRedoLimit = dlg.m_UndoPage.m_bLimitRedoSize;
-
-		m_bEnableUndoDepthLimit = dlg.m_UndoPage.m_bLimitUndoDepth;
-		m_bEnableRedoDepthLimit = dlg.m_UndoPage.m_bLimitRedoDepth;
-
-		m_bRememberSelectionInUndo = dlg.m_UndoPage.m_bRememberSelectionInUndo;
+		PersistentUndoRedo::SaveData(dlg.m_UndoPage.GetParams());
 
 		m_DefaultPlaybackDevice = dlg.m_SoundPage.m_PlaybackDevice - 1;
 		m_NumPlaybackBuffers = dlg.m_SoundPage.m_NumPlaybackBuffers;
