@@ -638,6 +638,16 @@ public:
 		BOOL CopyMarkers(InstanceDataWav const * pSrc,
 						SAMPLE_INDEX SrcBegin, SAMPLE_INDEX DstBegin, NUMBER_OF_SAMPLES Length);
 
+		bool IsChanged() const
+		{
+			return m_InfoChanged;
+		}
+
+		void SetChanged(bool Changed = true)
+		{
+			m_InfoChanged = Changed;
+		}
+
 		InstanceDataWav & operator =(InstanceDataWav const & src);
 
 		virtual void MoveDataTo(InstanceData * dst)
