@@ -537,6 +537,8 @@ BOOL CSelectionDialog::OnInitDialog()
 	m_eEnd.FillFileTimes();
 	m_eStart.GetComboBox().SetExtendedUI(TRUE);
 	m_eEnd.GetComboBox().SetExtendedUI(TRUE);
+
+	CWaveFile::InstanceDataWav * pInst = m_WaveFile.GetInstanceData();
 	NUMBER_OF_SAMPLES FileLength = m_WaveFile.NumberOfSamples();
 
 	if ((0 != m_Start || FileLength != m_End)
@@ -557,8 +559,33 @@ BOOL CSelectionDialog::OnInitDialog()
 
 	}
 
-	m_SelectionCombo.SetCurSel(FindSelection(m_Start, m_End));
+	CString s;
 	// TODO: add regions
+	for (std::vector<WaveMarker>::iterator i = pInst->Markers.begin();
+		i < pInst->Markers.end(); i++)
+	{
+		// TODO: include positions in HH:mm:ss and the tooltips
+		SAMPLE_INDEX StartSample = i->StartSample;
+		SAMPLE_INDEX EndSample = StartSample + i->LengthSamples;
+
+		if (StartSample > 0
+			&& StartSample < EndSample
+			&& StartSample < FileLength
+			&& EndSample <= FileLength)
+		{
+			if (i->Comment.IsEmpty())
+			{
+				s = i->Name;
+			}
+			else
+			{
+				s.Format(_T("%s (%s)"), LPCTSTR(i->Name), LPCTSTR(i->Comment));
+			}
+
+			AddSelection(s, StartSample, EndSample);
+		}
+	}
+	m_SelectionCombo.SetCurSel(FindSelection(m_Start, m_End));
 	return TRUE;  // return TRUE unless you set the focus to a control
 }
 
