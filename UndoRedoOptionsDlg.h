@@ -9,7 +9,6 @@
 class CUndoRedoOptionsDlg : public CUiUpdatedDlg, UndoRedoParameters
 {
 	typedef CUiUpdatedDlg BaseClass;
-	DECLARE_DYNAMIC(CUndoRedoOptionsDlg)
 
 public:
 	CUndoRedoOptionsDlg(class CWaveSoapFrontDoc * pDoc, CWnd* pParent = NULL);   // standard constructor
