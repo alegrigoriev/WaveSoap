@@ -129,6 +129,8 @@
 #define IDI_ICON_EQIALIZER              200
 #define IDI_ICON_FILTER_DIALOG          201
 #define IDD_DIALOG_UNDO_REDO_OPTIONS    202
+#define IDD_DIALOG_FADE_IN_OUT          203
+#define IDD_DIALOG_EDIT_FADE_IN_OUT     203
 #define IDC_EDIT_MIN_CLICK_AMPLITUDE    1000
 #define IDC_TAB_SWITCH_VIEW_MODE        1000
 #define IDC_CHECK_LOG_CLICKS            1001
@@ -441,6 +443,8 @@
 #define IDC_EDIT_UNDO_SIZE_LIMIT        1294
 #define IDC_STATIC_UNDO_MB              1295
 #define IDC_STATIC_REDO_MB              1296
+#define IDC_RADIO_FADE_IN               1297
+#define IDC_RADIO_FADE_OUT              1298
 #define ID_VIEW_RULER_SAMPLES           32771
 #define ID_VIEW_RULER_HHMMSS            32772
 #define ID_VIEW_RULER_SECONDS           32773
@@ -915,15 +919,18 @@
 #define ID_SAVE_SPLIT_TO_FILES          40144
 #define ID_EDIT_INSERTFROMFILE          40145
 #define ID_FFT_WINDOW_NUTTALL           40147
+#define ID_EDIT_FADE                    40151
+#define ID_EDIT_FADE_IN                 40154
+#define ID_EDIT_FADE_OUT                40155
 
 // Next default values for new objects
 //
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_3D_CONTROLS                     1
-#define _APS_NEXT_RESOURCE_VALUE        203
-#define _APS_NEXT_COMMAND_VALUE         40151
-#define _APS_NEXT_CONTROL_VALUE         1297
+#define _APS_NEXT_RESOURCE_VALUE        204
+#define _APS_NEXT_COMMAND_VALUE         40156
+#define _APS_NEXT_CONTROL_VALUE         1299
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif
