@@ -268,6 +268,7 @@ void CWaveMDIChildClient::RecalcLayout()
 	int OutlineHeight = 2 * cyhscroll;
 	int SpectrumSectionWidth = m_SpectrumSectionWidth;
 	int VerticalTrackerWidth = GetSystemMetrics(SM_CXSIZEFRAME);
+
 	if ( ! m_bShowSpectrumSection)
 	{
 		SpectrumSectionWidth = 0;
@@ -282,19 +283,24 @@ void CWaveMDIChildClient::RecalcLayout()
 			VerticalTrackerWidth = 0;
 		}
 	}
+
 	if ( ! m_bShowVerticalRuler)
 	{
 		RulerWidth = 0;
 		FftRulerWidth = 0;
 	}
+
 	if ( ! m_bShowFft && ! m_bShowSpectrumSection)
 	{
 		FftRulerWidth = 0;
 	}
+
 	if (m_bShowFft)
 	{
 		RulerWidth = 0;
 	}
+
+	// resize outline view
 	CWnd * pOutline = GetDlgItem(OutlineViewID);
 	if (NULL != pOutline && m_bShowOutline)
 	{
@@ -307,6 +313,7 @@ void CWaveMDIChildClient::RecalcLayout()
 	}
 	else
 	{
+		// not shown, set its height to 0
 		OutlineHeight = 0;
 		if (NULL != pOutline)
 		{
@@ -319,17 +326,22 @@ void CWaveMDIChildClient::RecalcLayout()
 
 	if (m_bShowTimeRuler)
 	{
+		// time ruler shown: show both spectrum section decibel ruler and time tulers
 		r.left = SpectrumSectionWidth + VerticalTrackerWidth + RulerWidth + FftRulerWidth;
-		r.top = OutlineHeight;
-		r.bottom = OutlineHeight + RulerHeight;
 		r.right = cr.right;
+
+		r.top = OutlineHeight;
+		r.bottom = r.top + RulerHeight;
+
 		if (NULL != pHorRuler)
 		{
 			pHorRuler->ShowWindow(SW_SHOWNOACTIVATE);
 			DeferClientPos(&layout, pHorRuler, r, FALSE);
 		}
+
 		r.left = FftRulerWidth;
-		r.right = SpectrumSectionWidth + FftRulerWidth;
+		r.right = SpectrumSectionWidth + r.left;
+
 		if (NULL != pSpectrumSectionRuler)
 		{
 			pSpectrumSectionRuler->ShowWindow(SW_SHOWNOACTIVATE);
@@ -338,6 +350,7 @@ void CWaveMDIChildClient::RecalcLayout()
 	}
 	else
 	{
+		// time ruler NOT shown: hide both spectrum section decibel ruler and time tulers
 		RulerHeight = 0;
 		if (NULL != pHorRuler)
 		{
@@ -351,14 +364,18 @@ void CWaveMDIChildClient::RecalcLayout()
 
 	CWnd * pVertRuler = GetDlgItem(VerticalWaveRulerID);
 	CWnd * pVertFftRuler = GetDlgItem(VerticalFftRulerID);
+
 	if (m_bShowVerticalRuler)
 	{
+		// vertical amplitude ruler
 		if (NULL != pVertRuler)
 		{
 			r.left = SpectrumSectionWidth + FftRulerWidth + VerticalTrackerWidth;
 			r.right = r.left + RulerWidth;
+
 			r.top = OutlineHeight + RulerHeight;
 			r.bottom = cr.bottom - cyhscroll;
+
 			if (m_bShowWaveform)
 			{
 				pVertRuler->ShowWindow(SW_SHOWNOACTIVATE);
@@ -370,10 +387,12 @@ void CWaveMDIChildClient::RecalcLayout()
 			DeferClientPos(&layout, pVertRuler, r, FALSE);
 		}
 
+		// vertical frequency ruler
 		if (pVertFftRuler)
 		{
 			r.left = 0;
 			r.right = FftRulerWidth;
+
 			r.top = OutlineHeight + RulerHeight;
 			r.bottom = cr.bottom - cyhscroll;
 			if (m_bShowFft || m_bShowSpectrumSection)
@@ -400,6 +419,7 @@ void CWaveMDIChildClient::RecalcLayout()
 		RulerWidth = 0;
 	}
 
+	// Horizontal scroll bar
 	CWnd * pScroll = GetDlgItem(AFX_IDW_HSCROLL_FIRST);
 	if (pScroll)
 	{
@@ -410,13 +430,16 @@ void CWaveMDIChildClient::RecalcLayout()
 		DeferClientPos(&layout, pScroll, r, TRUE);
 	}
 
+	// spectrum section view
 	CWnd * pSpectrumSection = GetDlgItem(SpectrumSectionViewID);
 	if (pSpectrumSection)
 	{
 		r.left = FftRulerWidth;
 		r.right = FftRulerWidth + SpectrumSectionWidth;
+
 		r.top = OutlineHeight + RulerHeight;
 		r.bottom = cr.bottom;
+
 		if (0 != SpectrumSectionWidth)
 		{
 			pSpectrumSection->ShowWindow(SW_SHOWNOACTIVATE);
@@ -428,11 +451,13 @@ void CWaveMDIChildClient::RecalcLayout()
 		DeferClientPos(&layout, pSpectrumSection, r, FALSE);
 	}
 
+	// tracker bar (to split wave view and spectrum section
 	CWnd * pVerticalTracker = GetDlgItem(VerticalTrackerID);
 	if (pVerticalTracker)
 	{
 		r.left = FftRulerWidth + SpectrumSectionWidth;
 		r.right = r.left + VerticalTrackerWidth;
+
 		r.top = OutlineHeight;
 		r.bottom = cr.bottom;
 		if (0 != VerticalTrackerWidth)
@@ -446,10 +471,13 @@ void CWaveMDIChildClient::RecalcLayout()
 		DeferClientPos(&layout, pVerticalTracker, r, FALSE);
 	}
 
+	// Waveform view vertical zoom bar
 	r.left = FftRulerWidth + SpectrumSectionWidth + VerticalTrackerWidth;
 	r.right = RulerWidth + r.left;
+
 	r.top = cr.bottom - cyhscroll;
 	r.bottom = cr.bottom;
+
 	if (RulerWidth != 0)
 	{
 		m_AmplZoomBar.ShowWindow(SW_SHOWNOACTIVATE);
@@ -462,6 +490,7 @@ void CWaveMDIChildClient::RecalcLayout()
 
 	r.top = OutlineHeight;
 	r.bottom = OutlineHeight + RulerHeight;
+
 	if (RulerWidth != 0 && RulerHeight != 0)
 	{
 		m_TimeZoomBar.ShowWindow(SW_SHOWNOACTIVATE);
@@ -476,10 +505,9 @@ void CWaveMDIChildClient::RecalcLayout()
 	r.right = FftRulerWidth;
 	r.top = cr.bottom - cyhscroll;
 	r.bottom = cr.bottom;
+
 	if (r.right != r.left)
 	{
-		CRect r1(0, r.Width() / 2, 0, r.Height());
-		CRect r2(0, r.Width() - r1.right, 0, r.Height());
 		m_FftZoomBar.ShowWindow(SW_SHOWNOACTIVATE);
 		DeferClientPos(&layout, & m_FftZoomBar, r, FALSE);
 	}
@@ -490,18 +518,22 @@ void CWaveMDIChildClient::RecalcLayout()
 
 	r.top = OutlineHeight;
 	r.bottom = OutlineHeight + RulerHeight;
-	if (r.right != 0 && r.bottom != 0)
+
+	if (FftRulerWidth != 0 && RulerHeight != 0)
 	{
 		if (0 != SpectrumSectionWidth)
 		{
+			// show spectrum section zoom buttons
 			m_SsZoomBar.ShowWindow(SW_SHOWNOACTIVATE);
 			DeferClientPos(&layout, & m_SsZoomBar, r, FALSE);
 		}
 		else
 		{
+			// hide spectrum section zoom buttons
 			m_SsZoomBar.ShowWindow(SW_HIDE);
+			// show time zoom buttons instead
 			m_TimeZoomBar.ShowWindow(SW_SHOWNOACTIVATE);
-			DeferClientPos(&layout, & m_SsZoomBar, r, FALSE);
+			DeferClientPos(&layout, & m_TimeZoomBar, r, FALSE);
 		}
 	}
 	else
@@ -515,22 +547,27 @@ void CWaveMDIChildClient::RecalcLayout()
 
 	r.left = SpectrumSectionWidth + VerticalTrackerWidth + RulerWidth + FftRulerWidth;
 	r.top = OutlineHeight + RulerHeight;
+
 	r.bottom = cr.bottom - cyhscroll;
 	r.right = cr.right;
-	CWnd * pWaveView = GetDlgItem(WaveViewID);
+
+	CView * pWaveView = DYNAMIC_DOWNCAST(CView, GetDlgItem(WaveViewID));
 	if (pWaveView)
 	{
 		DeferClientPos(&layout, pWaveView, r, FALSE);
 	}
 
-	CWnd * pFftView = GetDlgItem(FftViewID);
+	CView * pFftView = DYNAMIC_DOWNCAST(CView, GetDlgItem(FftViewID));
 	if (pFftView)
 	{
 		DeferClientPos(&layout, pFftView, r, FALSE);
 	}
+
 	// move and resize all the windows at once!
 	if (layout.hDWP == NULL || !::EndDeferWindowPos(layout.hDWP))
+	{
 		TRACE0("Warning: DeferWindowPos failed - low system resources.\n");
+	}
 
 	if (NULL != pFftView
 		&& NULL != pWaveView)
@@ -547,12 +584,12 @@ void CWaveMDIChildClient::RecalcLayout()
 		if (m_bShowFft)
 		{
 			pFftView->ShowWindow(SW_SHOW);
-			GetParentFrame()->SetActiveView(DYNAMIC_DOWNCAST(CView, pFftView));
+			GetParentFrame()->SetActiveView(pFftView);
 		}
 		else
 		{
 			pWaveView->ShowWindow(SW_SHOW);
-			GetParentFrame()->SetActiveView(DYNAMIC_DOWNCAST(CView, pWaveView));
+			GetParentFrame()->SetActiveView(pWaveView);
 		}
 	}
 }
