@@ -248,6 +248,8 @@ BEGIN_MESSAGE_MAP(CWaveFftView, BaseClass)
 	ON_UPDATE_COMMAND_UI(ID_FFT_WINDOW_SINE, OnUpdateFftWindowSine)
 	ON_COMMAND(ID_FFT_WINDOW_HAMMING, OnFftWindowHamming)
 	ON_UPDATE_COMMAND_UI(ID_FFT_WINDOW_HAMMING, OnUpdateFftWindowHamming)
+	ON_COMMAND(ID_FFT_WINDOW_NUTTALL, OnFftWindowNuttall)
+	ON_UPDATE_COMMAND_UI(ID_FFT_WINDOW_NUTTALL, OnUpdateFftWindowNuttall)
 	ON_COMMAND(ID_VIEW_DECREASE_FFT_BANDS, OnViewDecreaseFftBands)
 	ON_COMMAND(ID_VIEW_INCREASE_FFT_BANDS, OnViewIncreaseFftBands)
 	//}}AFX_MSG_MAP
@@ -943,20 +945,29 @@ void CWaveFftView::CalculateFftRange(SAMPLE_INDEX left, SAMPLE_INDEX right)
 
 		for (int w = 0; w < m_FftOrder * 2; w++)
 		{
+			// X changes from 0 to 2pi
+			double X = (w + 0.5) * M_PI /  m_FftOrder;
+
 			switch (m_FftWindowType)
 			{
 			default:
 			case WindowTypeSquaredSine:
 				// squared sine
-				m_pFftWindow[w] = float(0.5 - 0.5 * cos ((w + 0.5) * M_PI /  m_FftOrder));
+				m_pFftWindow[w] = float(0.5 - 0.5 * cos (X));
 				break;
 			case WindowTypeHalfSine:
 				// half sine
-				m_pFftWindow[w] = float(0.707107 * sin ((w + 0.5) * M_PI /  (2*m_FftOrder)));
+				m_pFftWindow[w] = float(0.707107 * sin (0.5 * X));
 				break;
 			case WindowTypeHamming:
 				// Hamming window (sucks!!!)
-				m_pFftWindow[w] = float(0.9 * (0.54 - 0.46 * cos ((w + 0.5) * M_PI /  m_FftOrder)));
+				m_pFftWindow[w] = float(0.9 * (0.54 - 0.46 * cos (X)));
+				break;
+
+			case WindowTypeNuttall:
+				// Nuttall window:
+				// w(n) = 0.355768 - 0.487396*cos(2pn/N) + 0.144232*cos(4pn/N) - 0.012604*cos(6pn/N)
+				m_pFftWindow[w] = float(0.355768 - 0.487396*cos(X) + 0.144232*cos(2 * X) - 0.012604*cos(3 * X));
 				break;
 			}
 		}
@@ -1659,6 +1670,16 @@ void CWaveFftView::OnFftWindowHamming()
 void CWaveFftView::OnUpdateFftWindowHamming(CCmdUI* pCmdUI)
 {
 	pCmdUI->SetRadio(WindowTypeHamming == m_FftWindowType);
+}
+
+void CWaveFftView::OnFftWindowNuttall()
+{
+	OnSetWindowType(WindowTypeNuttall);
+}
+
+void CWaveFftView::OnUpdateFftWindowNuttall(CCmdUI* pCmdUI)
+{
+	pCmdUI->SetRadio(WindowTypeNuttall == m_FftWindowType);
 }
 
 void CWaveFftView::OnViewDecreaseFftBands()

@@ -891,6 +891,7 @@
 #define ID_TOOLS_SYNTHESIS              40142
 #define ID_SAVE_SPLIT_TO_FILES          40144
 #define ID_EDIT_INSERTFROMFILE          40145
+#define ID_FFT_WINDOW_NUTTALL           40147
 
 // Next default values for new objects
 //
@@ -898,7 +899,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_3D_CONTROLS                     1
 #define _APS_NEXT_RESOURCE_VALUE        199
-#define _APS_NEXT_COMMAND_VALUE         40146
+#define _APS_NEXT_COMMAND_VALUE         40149
 #define _APS_NEXT_CONTROL_VALUE         1285
 #define _APS_NEXT_SYMED_VALUE           101
 #endif

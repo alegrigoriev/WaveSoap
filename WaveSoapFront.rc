@@ -275,7 +275,7 @@ BEGIN
         MENUITEM "Status &Bar",                 ID_VIEW_STATUS_BAR
         MENUITEM SEPARATOR
         MENUITEM "&Waveform\tAlt+1",            ID_VIEW_WAVEFORM
-        MENUITEM "&FFT Spectrum\tAlt+2",        ID_VIEW_SHOW_FFT
+        MENUITEM "Spectr&um\tAlt+2",            ID_VIEW_SHOW_FFT
         MENUITEM SEPARATOR
         MENUITEM "&Spectrum Section\tAlt+3",    ID_VIEW_SPECTRUMSECTION
         MENUITEM "&Outline\tAlt+4",             ID_VIEW_OUTLINE
@@ -491,7 +491,7 @@ BEGIN
         MENUITEM "Zoom In Frequency\tAlt+Up",   ID_VIEW_ZOOMINVERT
         MENUITEM "Zoom Out Frequency\tAlt+Down", ID_VIEW_ZOOMOUTVERT
         MENUITEM SEPARATOR
-        POPUP "Number of FFT bands"
+        POPUP "Number of frequency bins"
         BEGIN
             MENUITEM "&64",                         ID_FFT_BANDS_64
             MENUITEM "&128",                        ID_FFT_BANDS_128
@@ -502,12 +502,12 @@ BEGIN
             MENUITEM "40&96",                       ID_FFT_BANDS_4096
             MENUITEM "&8192",                       ID_FFT_BANDS_8192
         END
-        POPUP "FFT window type"
+        POPUP "Windowing function type"
         BEGIN
-            MENUITEM "Squared Sine",                ID_FFT_WINDOW_SQUARED_SINE
+            MENUITEM "Squared Sine (Hanning)",      ID_FFT_WINDOW_SQUARED_SINE
 
-            MENUITEM "Half-sine",                   ID_FFT_WINDOW_SINE
             MENUITEM "Hamming",                     ID_FFT_WINDOW_HAMMING
+            MENUITEM "Nuttall",                     ID_FFT_WINDOW_NUTTALL
         END
     END
 END
@@ -559,7 +559,7 @@ BEGIN
         MENUITEM "Zoom In Frequency",           ID_VIEW_SS_ZOOMINVERT
         MENUITEM "Zoom Out Frequency",          ID_VIEW_SS_ZOOMOUTVERT
         MENUITEM SEPARATOR
-        POPUP "Number of FFT bands"
+        POPUP "Number of frequency bins"
         BEGIN
             MENUITEM "64",                          ID_FFT_BANDS_64
             MENUITEM "128",                         ID_FFT_BANDS_128
@@ -570,12 +570,12 @@ BEGIN
             MENUITEM "4096",                        ID_FFT_BANDS_4096
             MENUITEM "8192",                        ID_FFT_BANDS_8192
         END
-        POPUP "FFT window type"
+        POPUP "Windowing function type"
         BEGIN
-            MENUITEM "Squared Sine",                ID_FFT_WINDOW_SQUARED_SINE
+            MENUITEM "Squared Sine (Hanning)",      ID_FFT_WINDOW_SQUARED_SINE
 
-            MENUITEM "Half-sine",                   ID_FFT_WINDOW_SINE
             MENUITEM "Hamming",                     ID_FFT_WINDOW_HAMMING
+            MENUITEM "Nuttall",                     ID_FFT_WINDOW_NUTTALL
         END
         MENUITEM "Show Noise Masking",          ID_VIEW_SS_SHOW_NOISE_THRESHOLD
 
@@ -3867,6 +3867,7 @@ END
 STRINGTABLE 
 BEGIN
     ID_SAVE_SPLIT_TO_FILES  "Save as multiple files, split by default on the markers"
+    ID_FFT_WINDOW_NUTTALL   "Apply Nuttall window to the data before FFT"
 END
 
 STRINGTABLE 

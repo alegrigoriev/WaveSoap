@@ -75,7 +75,9 @@ protected:
 		WindowTypeSquaredSine = 0,
 		WindowTypeHalfSine = 1,
 		WindowTypeHamming = 2,
+		WindowTypeNuttall = 3,
 	};
+
 	int m_FftWindowType;
 	int m_FftOrder;     // frequencies in FFT conversions (window width=2*FFT order)
 	int m_FftSpacing;   // samples between FFT columns
@@ -120,6 +122,8 @@ protected:
 	afx_msg void OnUpdateFftWindowSine(CCmdUI* pCmdUI);
 	afx_msg void OnFftWindowHamming();
 	afx_msg void OnUpdateFftWindowHamming(CCmdUI* pCmdUI);
+	afx_msg void OnFftWindowNuttall();
+	afx_msg void OnUpdateFftWindowNuttall(CCmdUI* pCmdUI);
 	afx_msg void OnViewDecreaseFftBands();
 	afx_msg void OnViewIncreaseFftBands();
 	//}}AFX_MSG
