@@ -210,21 +210,7 @@ public:
 	void PrintElapsedTime() {}
 #endif
 	// utility functions
-	enum eSampleType
-	{
-		SampleType16bit,
-		SampleType32Bit,
-		SampleTypeFloat32,
-		SampleTypeFloat64,
-	};
 
-	static long ReadSamples(CWaveFile & File, CHANNEL_MASK Channels,
-							SAMPLE_POSITION Pos, long Samples, void * pBuf,
-							eSampleType type = SampleType16bit);
-	static long WriteSamples(CWaveFile & File, CHANNEL_MASK DstChannels,
-							SAMPLE_POSITION Pos, long Samples,
-							void const * pBuf, CHANNEL_MASK SrcChannels,
-							NUMBER_OF_CHANNELS NumSrcChannels, eSampleType type = SampleType16bit);
 };
 
 class CTwoFilesOperation : public COperationContext
