@@ -1295,6 +1295,7 @@ CCommitFileSaveContext::CCommitFileSaveContext(CWaveSoapFrontDoc * pDoc,
 	, m_FileSaveFlags(flags)
 	, m_TargetName(TargetName)
 	, m_File(WavFile)
+	, m_TotalCommitted(0)
 {
 }
 
@@ -1305,7 +1306,7 @@ BOOL CCommitFileSaveContext::OperationProc()
 		m_Flags |= OperationContextStop;
 		return TRUE;
 	}
-	if (m_File.InitializeTheRestOfFile(500, & m_PercentCompleted))
+	if (m_File.InitializeTheRestOfFile(500, & m_TotalCommitted))
 	{
 		m_Flags |= OperationContextFinished;
 	}
@@ -2158,8 +2159,6 @@ BOOL CMoveOperation::PrepareUndo()
 {
 	m_SrcFile = pDocument->m_WavFile;
 	m_DstFile = pDocument->m_WavFile;
-
-
 	return TRUE;
 }
 
@@ -2385,8 +2384,6 @@ BOOL CMoveOperation::OperationProc()
 
 	// notify the view
 	pDocument->FileChanged(m_DstFile, dwOperationBegin, m_DstPos);
-
-	UpdateCompletedPercent();
 
 	return TRUE;
 }
