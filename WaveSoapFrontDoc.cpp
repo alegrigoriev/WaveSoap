@@ -904,7 +904,7 @@ void CWaveSoapFrontDoc::FileChanged(CWaveFile & File, SAMPLE_POSITION begin,
 				m_WavFile.PositionToSample(end), length, flags);
 }
 
-void CWaveSoapFrontDoc::SoundChanged(DWORD FileID, SAMPLE_INDEX begin, SAMPLE_INDEX end,
+void CWaveSoapFrontDoc::SoundChanged(ULONG_PTR FileID, SAMPLE_INDEX begin, SAMPLE_INDEX end,
 									NUMBER_OF_SAMPLES FileLength, DWORD flags)
 {
 	// notify all views that the sound appearance changed
@@ -1954,13 +1954,7 @@ BOOL CWaveSoapFrontDoc::OnSaveConvertedFile(int flags, LPCTSTR FullTargetName, W
 	pSaveContext->m_NewName = FullTargetName;
 
 	CConversionContext * pConvert =
-		new CConversionContext(this, 0, 0, m_WavFile, NewWaveFile);
-
-	if (NULL == pConvert)
-	{
-		NotEnoughMemoryMessageBox();
-		return FALSE;
-	}
+		new CConversionContext(this, 0, 0, m_WavFile, NewWaveFile, FALSE);
 
 	pSaveContext->AddContext(pConvert);
 
@@ -2089,61 +2083,19 @@ BOOL CWaveSoapFrontDoc::OnSaveMp3File(int flags, LPCTSTR FullTargetName, WAVEFOR
 	CFileSaveContext::auto_ptr pContext(new CFileSaveContext(this,
 															IDS_MP3_SAVE_STATUS_PROMPT, IDS_MP3_SAVE_OPERATION_NAME));
 
-	if (NULL == pContext.get())
-	{
-		NotEnoughMemoryMessageBox();
-		return FALSE;
-	}
-
 	pContext->m_NewName = FullTargetName;
 	pContext->m_NewFileTypeFlags = OpenDocumentMp3File;
+	pContext->m_SrcFile = m_WavFile;
+	pContext->m_DstFile = NewWaveFile;
 
-	CConversionContext * pConvert = new CConversionContext(this);
-
-	if (NULL == pConvert)
-	{
-		NotEnoughMemoryMessageBox();
-		return FALSE;
-	}
+	CConversionContext * pConvert = new CConversionContext(this, 0, 0, m_WavFile, NewWaveFile, TRUE);
 
 	pContext->AddContext(pConvert);
-
-	pConvert->m_SrcFile = m_WavFile;
-	pConvert->m_DstFile = NewWaveFile;
-	pConvert->m_SrcStart = m_WavFile.SampleToPosition(0);
-	pConvert->m_DstStart = 0;
-	pConvert->m_SrcPos = pConvert->m_SrcStart;
-	pConvert->m_DstPos = pConvert->m_DstStart;
-	pConvert->m_SrcEnd = m_WavFile.SampleToPosition(LAST_SAMPLE);
-	pConvert->m_DstEnd = pConvert->m_DstStart;
-
-	pConvert->m_SrcChan = ALL_CHANNELS;
-	pConvert->m_DstChan = ALL_CHANNELS;
-
-	pContext->m_SrcFile = pConvert->m_SrcFile;
-	pContext->m_DstFile = pConvert->m_DstFile;
-
-#if 0
-	// fill unused data members:
-	pContext->m_SrcStart = pConvert->m_SrcStart;
-	pContext->m_DstStart = pConvert->m_DstStart;
-	pContext->m_SrcPos = pContext->m_SrcStart;
-	pContext->m_DstPos = pContext->m_DstPos;
-	pContext->m_SrcEnd = pConvert->m_SrcEnd;
-	pContext->m_DstEnd = pContext->m_DstStart;
-
-	pContext->m_SrcChan = ALL_CHANNELS;
-	pContext->m_DstChan = ALL_CHANNELS;
-#endif
 
 	if (WAVE_FORMAT_MPEGLAYER3 == pWf->wFormatTag)
 	{
 		CAudioConvertor * pAcmConvertor = new CAudioConvertor;
-		if (NULL == pAcmConvertor)
-		{
-			NotEnoughMemoryMessageBox();
-			return FALSE;
-		}
+
 		pConvert->AddWaveProc(pAcmConvertor);
 
 		WAVEFORMATEX SrcFormat;
@@ -2291,41 +2243,17 @@ BOOL CWaveSoapFrontDoc::OnSaveRawFile(int flags, LPCTSTR FullTargetName, WAVEFOR
 
 	pContext->m_NewName = FullTargetName;
 	pContext->m_NewFileTypeFlags = OpenDocumentMp3File;
+	pContext->m_SrcFile = m_WavFile;
+	pContext->m_DstFile = NewWaveFile;
 
-	CConversionContext * pConvert = new CConversionContext(this);
-
-	if (NULL == pConvert)
-	{
-		NotEnoughMemoryMessageBox();
-		return FALSE;
-	}
+	CConversionContext * pConvert = new CConversionContext(this, 0, 0, m_WavFile, NewWaveFile, TRUE);
 
 	pContext->AddContext(pConvert);
-
-	pConvert->m_SrcFile = m_WavFile;
-	pConvert->m_DstFile = NewWaveFile;
-	pConvert->m_SrcStart = m_WavFile.SampleToPosition(0);
-	pConvert->m_DstStart = 0;
-	pConvert->m_SrcPos = pConvert->m_SrcStart;
-	pConvert->m_DstPos = pConvert->m_DstStart;
-	pConvert->m_SrcEnd = m_WavFile.SampleToPosition(LAST_SAMPLE);
-	pConvert->m_DstEnd = pConvert->m_DstStart;
-
-	pConvert->m_SrcChan = ALL_CHANNELS;
-	pConvert->m_DstChan = ALL_CHANNELS;
-
-	pContext->m_SrcFile = pConvert->m_SrcFile;
-	pContext->m_DstFile = pConvert->m_DstFile;
 
 	if (WAVE_FORMAT_PCM != pWf->wFormatTag
 		|| 16 != pWf->wBitsPerSample)
 	{
 		CAudioConvertor * pAcmConvertor = new CAudioConvertor;
-		if (NULL == pAcmConvertor)
-		{
-			NotEnoughMemoryMessageBox();
-			return FALSE;
-		}
 
 		pConvert->AddWaveProc(pAcmConvertor);
 
@@ -3506,42 +3434,6 @@ void CWaveSoapFrontDoc::ChangeChannels(NUMBER_OF_CHANNELS nChannels)
 														0, IDS_CHANNELS_CHANGE_STATUS_PROMPT,
 														IDS_CHANNELS_CHANGE_OPERATION_NAME));
 
-	if (NULL == pContext.get())
-	{
-		NotEnoughMemoryMessageBox();
-		return;
-	}
-	CConversionContext * pConversionContext = new CConversionContext(this);
-
-	if (NULL == pConversionContext)
-	{
-		NotEnoughMemoryMessageBox();
-		return;
-	}
-
-	pContext->AddContext(pConversionContext);
-
-	CChannelConvertor * pConvert =
-		new CChannelConvertor(WaveChannels(), nChannels, nSrcChan);
-	if (NULL == pConvert)
-	{
-		NotEnoughMemoryMessageBox();
-		return;
-	}
-
-	pConversionContext->AddWaveProc(pConvert);
-
-	CReplaceFileContext * pReplaceFile =
-		new CReplaceFileContext(this, _T(""), m_WavFile, false);
-
-	if (NULL == pReplaceFile)
-	{
-		NotEnoughMemoryMessageBox();
-		return;
-	}
-
-	pContext->AddContext(pReplaceFile);
-
 	// create new temporary file
 	CWaveFile DstFile;
 	if ( ! DstFile.CreateWaveFile( & m_WavFile, NewFormat, ALL_CHANNELS, SampleCount,
@@ -3554,8 +3446,19 @@ void CWaveSoapFrontDoc::ChangeChannels(NUMBER_OF_CHANNELS nChannels)
 		return;
 	}
 
-	pConversionContext->InitDestination(DstFile, 0, SampleCount, ALL_CHANNELS, FALSE);
-	pConversionContext->InitSource(m_WavFile, 0, SampleCount, ALL_CHANNELS);
+	CConversionContext * pConversionContext = new CConversionContext(this, 0, 0, m_WavFile, DstFile, FALSE);
+
+	pContext->AddContext(pConversionContext);
+
+	CChannelConvertor * pConvert =
+		new CChannelConvertor(WaveChannels(), nChannels, nSrcChan);
+
+	pConversionContext->AddWaveProc(pConvert);
+
+	CReplaceFileContext * pReplaceFile =
+		new CReplaceFileContext(this, _T(""), m_WavFile, false);
+
+	pContext->AddContext(pReplaceFile);
 
 	if (UndoEnabled())
 	{
@@ -4678,9 +4581,9 @@ void CWaveSoapFrontDoc::OnProcessDoUlf()
 		return;
 	}
 
-	CConversionContext::auto_ptr pContext
-	(new CConversionContext(this, IDS_ULF_REDUCTION_STATUS_PROMPT,
-							IDS_ULF_REDUCTION_OPERATION_NAME));
+	CWaveProcContext::auto_ptr pContext
+	(new CWaveProcContext(this, IDS_ULF_REDUCTION_STATUS_PROMPT,
+						IDS_ULF_REDUCTION_OPERATION_NAME));
 
 	if ( ! pContext->InitDestination(m_WavFile, dlg.GetStart(),
 									dlg.GetEnd(), dlg.GetChannel(), dlg.UndoEnabled()))
@@ -4731,9 +4634,9 @@ void CWaveSoapFrontDoc::OnProcessDoDeclicking()
 	{
 		return;
 	}
-	CConversionContext::auto_ptr pContext
-	(new CConversionContext(this, IDS_DECLICK_STATUS_PROMPT,
-							IDS_DECLICK_OPERATION_NAME));
+	CWaveProcContext::auto_ptr pContext
+	(new CWaveProcContext(this, IDS_DECLICK_STATUS_PROMPT,
+						IDS_DECLICK_OPERATION_NAME));
 
 	CClickRemoval * pDeclick = new CClickRemoval;
 	pContext->AddWaveProc(pDeclick);
@@ -4792,7 +4695,7 @@ void CWaveSoapFrontDoc::OnProcessNoiseReduction()
 				pSectionView->m_bShowNoiseThreshold = TRUE;
 				pSectionView->m_dNoiseThresholdLow = dlg.GetNoiseThresholdLow();
 				pSectionView->m_dNoiseThresholdHigh = dlg.GetNoiseThresholdHigh();
-				pSectionView->nBeginFrequency = int(dlg.GetLowerFrequency());
+				pSectionView->m_nBeginFrequency = int(dlg.GetLowerFrequency());
 
 				if (! pFrame->m_wClient.m_bShowSpectrumSection)
 				{
@@ -4812,16 +4715,20 @@ void CWaveSoapFrontDoc::OnProcessNoiseReduction()
 		return;
 	}
 
-	CConversionContext::auto_ptr pContext
-	(new CConversionContext(this, IDS_DENOISE_STATUS_PROMPT,
-							IDS_DENOISE_OPERATION_NAME));
+	CWaveProcContext::auto_ptr pContext
+	(new CWaveProcContext(this, IDS_DENOISE_STATUS_PROMPT,
+						IDS_DENOISE_OPERATION_NAME));
 
-	CNoiseReduction * pNoiseReduction = new CNoiseReduction;
+
+	NoiseReductionParameters NrParms;
+	dlg.GetNoiseReductionData( & NrParms);
+	CNoiseReduction * pNoiseReduction =
+		new CNoiseReduction(dlg.GetNoiseReductionFftOrder(),
+							m_WavFile.NumChannelsFromMask(dlg.GetChannel()), NrParms);
 
 	pContext->AddWaveProc(pNoiseReduction);
 
 	pNoiseReduction->SetAndValidateWaveformat(WaveFormat());
-	dlg.SetNoiseReductionData(pNoiseReduction);
 
 	if ( ! pContext->InitDestination(m_WavFile, dlg.GetStart(),
 									dlg.GetEnd(), dlg.GetChannel(), dlg.UndoEnabled()))
