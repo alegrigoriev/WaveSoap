@@ -818,17 +818,6 @@ BOOL CWaveSoapFrontDoc::DoSave(LPCTSTR lpszPathName, BOOL bReplace)
 			break;
 		case SoundFileMp3:
 			SaveFlags |= SaveFile_Mp3File;
-			// get encoder type and bitrate
-			switch (dlg.m_Mp3Encoders[dlg.m_SelectedMp3Encoder])
-			{
-			case Mp3EncoderAcm:
-				// waveformat is there
-				break;
-			case Mp3EncoderLameencoder:
-				Wf.FormatTag() = -1;
-				Wf.BytesPerSec() = dlg.GetLameEncBitrate() / 8;
-				break;
-			}
 			break;
 		case SoundFileWma:
 			SaveFlags |= SaveFile_WmaFile;

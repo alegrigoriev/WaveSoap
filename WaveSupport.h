@@ -161,6 +161,7 @@ struct CWaveFormat
 	void InitFormat(WORD wFormatTag, DWORD nSampleRate,
 					WORD nNumChannels, WORD nBitsPerSample = 16, WORD Size = 0)
 	{
+		Allocate(Size, true);
 		m_pWf->cbSize = Size;
 		m_pWf->wFormatTag = wFormatTag;
 		m_pWf->nSamplesPerSec = nSampleRate;
@@ -324,13 +325,21 @@ public:
 	std::vector<FormatTagItem> m_FormatTags;
 	std::vector<FormatItem> m_Formats;
 
-	void FillFormatArray(unsigned nSel, int Flags);
+	void FillMultiFormatArray(unsigned nSelFrom, unsigned nSelTo, int Flags);
+	void FillFormatArray(unsigned nSel, int Flags)
+	{
+		FillMultiFormatArray(nSel, nSel, Flags);
+	}
 	void FillFormatTagArray(WAVEFORMATEX * pwf,
 							WaveFormatTagEx const ListOfTags[],
 							int NumTags, DWORD flags = 0);
 	void FillWmaFormatTags();
 	void FillMp3EncoderTags();
 	void FillMp3FormatArray();
+	void FillLameEncoderFormats();
+
+	static CString GetFormatName(HACMDRIVER had, WAVEFORMATEX const * pWf);
+
 	static BOOL _stdcall FormatTestEnumCallback(
 												HACMDRIVERID hadid, LPACMFORMATDETAILS pafd,
 												DWORD dwInstance, DWORD fdwSupport);

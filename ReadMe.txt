@@ -1,5 +1,8 @@
 Known problems and tasks:
 
+For WMA format: When saving from non-WMA file, remember selected bitrate, restore
+For MP3 format: When saving from non-MP3 file, remember selected bitrate, restore
+Raw file: make format tag and save attributes
 Add file format selection for CD grabbing
 When PCM is selected for CD grabbing, show default format
 When showing a dialog for a document, make the doc active, then restore the previous one.
