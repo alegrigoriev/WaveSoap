@@ -2,6 +2,7 @@
 //
 
 #include "stdafx.h"
+#include "resource.h"
 #include "WaveSoapFront.h"
 
 #include "WaveSoapFrontDoc.h"
@@ -26,6 +27,11 @@ BEGIN_MESSAGE_MAP(CWaveSoapFrontView, CScaledScrollView)
 	ON_COMMAND(ID_VIEW_ZOOMOUTVERT, OnViewZoomOutVert)
 	ON_UPDATE_COMMAND_UI(ID_VIEW_ZOOMINVERT, OnUpdateViewZoomInVert)
 	ON_UPDATE_COMMAND_UI(ID_VIEW_ZOOMOUTVERT, OnUpdateViewZoomOutVert)
+	ON_WM_SETCURSOR()
+	ON_WM_KILLFOCUS()
+	ON_WM_SETFOCUS()
+	ON_WM_SIZE()
+	ON_WM_ERASEBKGND()
 	//}}AFX_MSG_MAP
 	// Standard printing commands
 	ON_COMMAND(ID_FILE_PRINT, CScaledScrollView::OnFilePrint)
@@ -63,6 +69,7 @@ BOOL CWaveSoapFrontView::PreCreateWindow(CREATESTRUCT& cs)
 {
 	// TODO: Modify the Window class or styles here by modifying
 	//  the CREATESTRUCT cs
+	cs.lpszClass = AfxRegisterWndClass(CS_VREDRAW | CS_DBLCLKS, NULL, NULL, NULL);
 	TRACE("CWaveSoapFrontView::PreCreateWindow(CREATESTRUCT)\n");
 	return CScaledScrollView::PreCreateWindow(cs);
 }
@@ -89,8 +96,8 @@ void CWaveSoapFrontView::DrawHorizontalWithSelection(CDC * pDC,
 	// find positions of the selection start and and
 	// and check whether the selected area is visible
 	double XScaleDev = GetXScaleDev();
-	int SelectionLeft = fround((pDoc->m_SelectionStart - dOrgX) * XScaleDev);
-	int SelectionRight = fround((pDoc->m_SelectionEnd - dOrgX) * XScaleDev);
+	int SelectionLeft = WorldToWindowX(pDoc->m_SelectionStart);
+	int SelectionRight = WorldToWindowX(pDoc->m_SelectionEnd);
 	if (pDoc->m_SelectionEnd != pDoc->m_SelectionStart
 		&& SelectionRight == SelectionLeft)
 	{
@@ -162,10 +169,12 @@ void CWaveSoapFrontView::OnDraw(CDC* pDC)
 	//}
 	CGdiObject * pOldPen = pDC->SelectObject(& ZeroLinePen);
 	RECT r;
-	double y;
+	//double y;
 	double left, right, top, bottom;
 
 	GetClientRect(&r);
+	r.left--;   // make additional
+	r.right++;
 	if (0 && pDC->IsKindOf(RUNTIME_CLASS(CPaintDC)))
 	{
 		RECT r_upd = ((CPaintDC*)pDC)->m_ps.rcPaint;
@@ -204,6 +213,13 @@ void CWaveSoapFrontView::OnDraw(CDC* pDC)
 	int nNumberOfPoints = r.right - r.left;
 	int ChannelSeparatorY = fround((0 - dOrgY) * GetYScaleDev());
 	double YScaleDev = GetYScaleDev();
+	int SelBegin = WorldToWindowX(pDoc->m_SelectionStart);
+	int SelEnd = WorldToWindowX(pDoc->m_SelectionEnd);
+	if (pDoc->m_SelectionEnd != pDoc->m_SelectionStart
+		&& SelEnd == SelBegin)
+	{
+		SelEnd++;
+	}
 	if (nChannels > 1)
 	{
 		// draw channel separator line
@@ -235,10 +251,33 @@ void CWaveSoapFrontView::OnDraw(CDC* pDC)
 					}
 				}
 
-				DrawHorizontalWithSelection(pDC, r.left, r.right,
-											fround(WaveOffset * GetYScaleDev()),
-											& ZeroLinePen,
-											& SelectedZeroLinePen);
+				int ZeroLinePos = fround(WaveOffset * YScaleDev);
+				if (ZeroLinePos >= ClipLow &&
+					ZeroLinePos < ClipHigh)
+				{
+					DrawHorizontalWithSelection(pDC, r.left, r.right,
+												ZeroLinePos,
+												& ZeroLinePen,
+												& SelectedZeroLinePen);
+				}
+				int n6DBLine = fround((16384.* m_VerticalScale + WaveOffset) * YScaleDev);
+				if (n6DBLine >= ClipLow &&
+					n6DBLine < ClipHigh)
+				{
+					DrawHorizontalWithSelection(pDC, r.left, r.right,
+												n6DBLine,
+												& SixDBLinePen,
+												& SelectedSixDBLinePen);
+				}
+				n6DBLine = fround((-16384.* m_VerticalScale + WaveOffset) * YScaleDev);
+				if (n6DBLine >= ClipLow &&
+					n6DBLine < ClipHigh)
+				{
+					DrawHorizontalWithSelection(pDC, r.left, r.right,
+												n6DBLine,
+												& SixDBLinePen,
+												& SelectedSixDBLinePen);
+				}
 
 				int i;
 				if (SamplesPerPoint >= pDoc->m_PeakDataGranularity)
@@ -339,12 +378,14 @@ void CWaveSoapFrontView::OnDraw(CDC* pDC)
 				// make sure the graph is continuous
 				int LastY0 = ppArray[0][0].y;
 				int LastY1 = ppArray[0][1].y;
+				CPen * pLastPen = NULL;
 				for (i = 0; i < nNumberOfPoints; i ++)
 				{
 					if (ppArray[i][0].y >= ppArray[i][1].y)
 					{
 						ppArray[i][0].y++;
-						if (i < nNumberOfPoints - 1)
+						if (i < nNumberOfPoints - 1
+							&& ppArray[i + 1][0].y >= ppArray[i + 1][1].y)
 						{
 							if (ppArray[i][0].y < ppArray[i + 1][1].y)
 							{
@@ -372,7 +413,7 @@ void CWaveSoapFrontView::OnDraw(CDC* pDC)
 
 						if (ppArray[i][0].y < ClipLow)
 						{
-							ppArray[i][0].y = ClipLow;
+							continue;
 						}
 						else if (ppArray[i][0].y > ClipHigh)
 						{
@@ -381,11 +422,22 @@ void CWaveSoapFrontView::OnDraw(CDC* pDC)
 
 						if (ppArray[i][1].y < ClipLow)
 						{
-							ppArray[i][1].y = ClipLow;
+							ppArray[i][1].y = ClipLow-1;
 						}
 						else if (ppArray[i][1].y > ClipHigh)
 						{
-							ppArray[i][1].y = ClipHigh;
+							continue;
+						}
+						CPen * pPenToDraw = & WaveformPen;
+						if (ppArray[i][0].x >= SelBegin
+							&& ppArray[i][0].x < SelEnd)
+						{
+							pPenToDraw = & SelectedWaveformPen;
+						}
+						if (pPenToDraw != pLastPen)
+						{
+							pDC->SelectObject(pPenToDraw);
+							pLastPen = pPenToDraw;
 						}
 						pDC->MoveTo(ppArray[i][0]);
 						pDC->LineTo(ppArray[i][1]);
@@ -402,6 +454,10 @@ void CWaveSoapFrontView::OnDraw(CDC* pDC)
 // Position - offset in data chunk in 16-bit words
 void CWaveSoapFrontView::GetWaveSamples(int Position, int NumOfSamples)
 {
+	if (Position < 0)
+	{
+		Position = 0;
+	}
 	CWaveSoapFrontDoc * pDoc = GetDocument();
 	if (NULL == pDoc)
 	{
@@ -618,4 +674,149 @@ void CWaveSoapFrontView::OnUpdateViewZoomInVert(CCmdUI* pCmdUI)
 void CWaveSoapFrontView::OnUpdateViewZoomOutVert(CCmdUI* pCmdUI)
 {
 	pCmdUI->Enable(m_VerticalScale > 1.);
+}
+
+BOOL CWaveSoapFrontView::OnSetCursor(CWnd* pWnd, UINT nHitTest, UINT message)
+{
+	if (pWnd == this
+		&& HTCLIENT == nHitTest)
+	{
+		CWaveSoapFrontDoc * pDoc = GetDocument();
+		CPoint p;
+		CRect r;
+		GetClientRect(r);
+		GetCursorPos( & p);
+		ScreenToClient( & p);
+
+		if (bIsTrackingSelection)
+		{
+			SetCursor(AfxGetApp()->LoadStandardCursor(IDC_SIZEWE));
+			return TRUE;
+		}
+		if (pDoc->WaveChannels() > 1)
+		{
+			// if Y is
+			if (p.y > ((-32768. - dOrgY) * GetYScaleDev()))
+			{
+				SetCursor(AfxGetApp()->LoadCursor(IDC_CURSOR_BEAM_RIGHT));
+				return TRUE;
+			}
+			if (p.y < ((32768. - dOrgY) * GetYScaleDev()))
+			{
+				SetCursor(AfxGetApp()->LoadCursor(IDC_CURSOR_BEAM_LEFT));
+				return TRUE;
+			}
+		}
+		SetCursor(AfxGetApp()->LoadCursor(IDC_CURSOR_BEAM));
+		return TRUE;
+	}
+	return CScaledScrollView::OnSetCursor(pWnd, nHitTest, message);
+}
+
+void CWaveSoapFrontView::OnKillFocus(CWnd* pNewWnd)
+{
+	DestroyCaret();
+	CScaledScrollView::OnKillFocus(pNewWnd);
+
+}
+
+void CWaveSoapFrontView::OnSetFocus(CWnd* pOldWnd)
+{
+	CScaledScrollView::OnSetFocus(pOldWnd);
+	CreateAndShowCaret();
+}
+
+void CWaveSoapFrontView::CreateAndShowCaret()
+{
+	// create caret
+	if (this != GetFocus())
+	{
+		return;
+	}
+	CRect r;
+	GetClientRect( & r);
+	CPoint p(WorldToWindowX(GetDocument()->m_CaretPosition), 0);
+	TRACE("Client rect height=%d, caret poisition=%d\n", r.Height(), p.x);
+	CreateSolidCaret(1, r.Height());
+	if (p.x >= 0 && p.x < r.right)
+	{
+		SetCaretPos(p);
+		ShowCaret();
+	}
+}
+
+void CWaveSoapFrontView::OnSize(UINT nType, int cx, int cy)
+{
+	CScaledScrollView::OnSize(nType, cx, cy);
+
+	CreateAndShowCaret();
+}
+
+BOOL CWaveSoapFrontView::OnScrollBy(CSize sizeScroll, BOOL bDoScroll)
+{
+	// TODO: Add your specialized code here and/or call the base class
+
+	BOOL ret = CScaledScrollView::OnScrollBy(sizeScroll, bDoScroll);
+	CreateAndShowCaret();
+	return ret;
+}
+
+void CWaveSoapFrontView::OnChangeOrgExt(double left, double width,
+										double top, double height, DWORD flag)
+{
+	CScaledScrollView::OnChangeOrgExt(left, width, top, height, flag);
+	CreateAndShowCaret();
+}
+
+BOOL CWaveSoapFrontView::OnEraseBkgnd(CDC* pDC)
+{
+	// TODO: Add your message handler code here and/or call default
+	CWaveSoapFrontApp * pApp = (CWaveSoapFrontApp *) AfxGetApp();
+	RemoveSelectionRect();
+	CBrush backBrush(pApp->m_WaveBackground);
+	CRect r;
+	GetClientRect( & r);
+	int SelBegin = WorldToWindowX(GetDocument()->m_SelectionStart);
+	int SelEnd = WorldToWindowX(GetDocument()->m_SelectionEnd);
+	if (GetDocument()->m_SelectionEnd != GetDocument()->m_SelectionStart
+		&& SelEnd == SelBegin)
+	{
+		SelEnd++;
+	}
+	if (SelBegin >= r.right
+		|| SelEnd < r.left
+		|| GetDocument()->m_SelectionStart >= GetDocument()->m_SelectionEnd)
+	{
+		// erase using only one brush
+		pDC->FillRect(r, & backBrush);
+	}
+	else
+	{
+		if (SelBegin > r.left)
+		{
+			CRect r1 = r;
+			r1.right = SelBegin;
+			pDC->FillRect(r1, & backBrush);
+		}
+		else
+		{
+			SelBegin = r.left;
+		}
+
+		if (SelEnd < r.right)
+		{
+			CRect r1 = r;
+			r1.left = SelEnd;
+			pDC->FillRect(r1, & backBrush);
+		}
+		else
+		{
+			SelEnd = r.right;
+		}
+		r.left = SelBegin;
+		r.right = SelEnd;
+		CBrush SelectedBackBrush(pApp->m_SelectedWaveBackground);
+		pDC->FillRect(r, & SelectedBackBrush);
+	}
+	return TRUE;
 }
