@@ -66,15 +66,11 @@ public:
 	// Attributes
 public:
 
-	void SetPointGain(int nPoint, double Gain);
+	void SetPointGainDb(int nPoint, double Gain);
 	void SetPointFrequency(int nPoint, double Frequency);
 	void SetPointFrequencyHz(int nPoint, double Frequency)
 	{
 		SetPointFrequency(nPoint, Frequency / m_SamplingRate * (2. * M_PI));
-	}
-	void SetCurrentPointGain(double Gain)
-	{
-		SetPointGain(m_PointWithFocus, Gain);
 	}
 	void SetCurrentPointFrequency(double Frequency)
 	{
@@ -102,7 +98,7 @@ public:
 	}
 	void SetCurrentPointGainDb(double GainDb)
 	{
-		SetPointGain(m_PointWithFocus, pow(10., GainDb / 20.));
+		SetPointGainDb(m_PointWithFocus, GainDb);
 	}
 	double GetCurrentPointGainDb()
 	{
@@ -222,6 +218,7 @@ protected:
 	afx_msg void OnCheckHighpass();
 	virtual BOOL OnInitDialog();
 	virtual void OnOK();
+	afx_msg void OnKillfocusEditFrequency();
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 };
