@@ -1,3 +1,4 @@
+// Copyright Alexander Grigoriev, 1997-2002, All Rights Reserved
 // OperationContext.cpp
 #include "stdafx.h"
 #include "OperationContext.h"
@@ -2402,11 +2403,11 @@ CString CUndoRedoContext::GetStatusString()
 {
 	if (m_Flags & RedoContext)
 	{
-		return "Redoing " + m_OperationName + "...";
+		return _T("Redoing ") + m_OperationName + _T("...");
 	}
 	else
 	{
-		return "Undoing " + m_OperationName + "...";
+		return _T("Undoing ") + m_OperationName + _T("...");
 	}
 }
 
@@ -3353,10 +3354,9 @@ BOOL CWmaDecodeContext::OperationProc()
 	do
 	{
 		m_Decoder.DeliverNextSample();
-		WaitForSingleObject(m_Decoder.m_SignalEvent, 200);
+		WaitForSingleObject(m_Decoder.m_SampleEvent, 200);
 	}
-	while ((m_Decoder.ReaderStatus == WMT_STARTED
-				|| m_Decoder.ReaderStatus == WMT_OPENED)
+	while (m_Decoder.IsStarted()
 			&& timeGetTime() - dwStartTime < 500);
 
 	// notify the view
@@ -3373,7 +3373,7 @@ BOOL CWmaDecodeContext::OperationProc()
 	{
 		NewSampleCount = -1;
 	}
-	if (m_Decoder.ReaderStatus == WMT_STOPPED)
+	if ( ! m_Decoder.IsStarted())
 	{
 		m_Flags |= OperationContextFinished;
 		NewSampleCount = m_CurrentSamples;

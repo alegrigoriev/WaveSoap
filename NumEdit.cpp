@@ -1,3 +1,4 @@
+// Copyright Alexander Grigoriev, 1997-2002, All Rights Reserved
 // NumEdit.cpp : implementation file
 //
 
@@ -68,11 +69,11 @@ void CNumEdit::OnUpdate()
 	CString str;
 	GetWindowText(str);
 	double d;
-	if(str != "." && str != "-" && str != "-."
+	if(str != _T(".") && str != _T("-") && str != ("-.")
 		&&SimpleFloatParse(str, d) == FALSE)
 	{
 		CString str1(sLastValid);
-		sLastValid = "";    // to prevent recursion
+		sLastValid = _T("");    // to prevent recursion
 		SetWindowText(str1);
 		SetSel(iSelStart, iSelEnd);
 	}
