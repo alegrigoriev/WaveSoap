@@ -413,6 +413,11 @@
 #define IDC_STATIC_FORMAT_ATTRIBUTES    1277
 #define IDC_COMBO4                      1278
 #define IDC_COMBO_FILENAME_PREFIX       1278
+#define IDC_BUTTON_NEW                  1279
+#define IDC_STATIC5                     1280
+#define IDC_STATIC6                     1281
+#define IDC_STATIC7                     1282
+#define IDC_STATIC8                     1283
 #define IDC_VIEW_RULER_SAMPLES          32771
 #define IDC_VIEW_RULER_HHMMSS           32772
 #define IDC_VIEW_RULER_SECONDS          32773
@@ -890,7 +895,7 @@
 #define _APS_3D_CONTROLS                     1
 #define _APS_NEXT_RESOURCE_VALUE        196
 #define _APS_NEXT_COMMAND_VALUE         40145
-#define _APS_NEXT_CONTROL_VALUE         1279
+#define _APS_NEXT_CONTROL_VALUE         1284
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif
