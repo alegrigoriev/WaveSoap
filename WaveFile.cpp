@@ -6,6 +6,7 @@
 #include <atlbase.h>
 #include <atlpath.h>
 #include "PathEx.h"
+#include <algorithm>
 
 #define DEBUG_RESCAN_PEAKS 0
 
@@ -1037,8 +1038,8 @@ BOOL CWaveFile::InstanceDataWav::SetWaveMarker(WAVEREGIONINFO * pInfo)
 	if (info.Flags & info.AddNew)
 	{
 		// find a CueID not used yet
-		int cue = 1;
-		for (cue = 1;
+		int cue;
+		for (cue = m_FreeCuePointNumber;
 			NULL != GetCuePoint(cue)
 			|| NULL != GetCueLabel(cue)
 			|| NULL != GetRegionMarker(cue)
@@ -1049,6 +1050,7 @@ BOOL CWaveFile::InstanceDataWav::SetWaveMarker(WAVEREGIONINFO * pInfo)
 		// found unused index
 		info.MarkerCueID = cue;
 		pInfo->MarkerCueID = cue;
+		m_FreeCuePointNumber = cue + 1;
 
 		// add cue point
 		CuePointChunkItem item;
@@ -1094,6 +1096,7 @@ BOOL CWaveFile::InstanceDataWav::SetWaveMarker(WAVEREGIONINFO * pInfo)
 			{
 				// delete text
 				i = m_CuePoints.erase(i);
+				m_FreeCuePointNumber = info.MarkerCueID;
 				break;
 			}
 		}
@@ -2537,6 +2540,7 @@ void InstanceDataWav::CopyMetadata(InstanceDataWav const * pSrc, unsigned CopyFl
 	if (CopyFlags & MetadataCopyCue)
 	{
 		m_CuePoints = pSrc->m_CuePoints;
+		m_FreeCuePointNumber = pSrc->m_FreeCuePointNumber;
 	}
 
 	if (CopyFlags & MetadataCopyPlaylist)
@@ -2581,6 +2585,7 @@ void CWaveFile::InstanceDataWav::SwapMetadata(InstanceDataWav * pSrc, unsigned C
 	if (CopyFlags & MetadataCopyCue)
 	{
 		m_CuePoints.swap(pSrc->m_CuePoints);
+		std::swap(m_FreeCuePointNumber, pSrc->m_FreeCuePointNumber);
 	}
 
 	if (CopyFlags & MetadataCopyPlaylist)
