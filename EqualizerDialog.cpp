@@ -824,31 +824,23 @@ void CEqualizerGraphWnd::OnNcPaint(UINT wParam)
 {
 	TRACE("CEqualizerGraphWnd::OnNcPaint, hrgn=%X\n", wParam);
 	// copy region, because it will be deleted
-	CRgn rgn;
-	if (wParam != 1)
-	{
-		rgn.CreateRectRgn(0, 0, 1, 1);
-		CRgn rgn1;
-		rgn1.Attach((HRGN)wParam);
-		rgn.CopyRgn(& rgn1);
-		rgn1.Detach();
-	}
-	else
-	{
-		rgn.Attach(HRGN(1));
-	}
-	CDC * pDC = GetDCEx(& rgn,
-						// DCX_CACHE is necessary!
-						DCX_CACHE | DCX_WINDOW | DCX_INTERSECTRGN);
-	// GetDCEx deletes the region
-	rgn.Detach();
+	CRect wr;
+	GetWindowRect( & wr);
 
+	CDC * pDC = GetWindowDC();
 	if (NULL == pDC)
 	{
 		return;
 	}
-	CRect wr;
-	GetWindowRect( & wr);
+	if (wParam != 1)
+	{
+		CRgn rgn;
+		rgn.CreateRectRgn(0, 0, 1, 1);
+		rgn.CopyRgn(CRgn::FromHandle((HRGN)wParam));
+		rgn.OffsetRgn( -wr.left, -wr.top);
+		pDC->SelectClipRgn( & rgn, RGN_AND);
+	}
+
 	NCCALCSIZE_PARAMS ncp;
 	wr.right = wr.Width();
 	wr.left = 0;
