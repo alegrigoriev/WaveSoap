@@ -1,11 +1,12 @@
 // KInterlocked.h
 #pragma once
+#pragma warning(disable:4197)
 
 template <typename T>
 inline T InterlockedIncrementT(T * src)
 {
-	return static_cast<T>(InterlockedIncrement((
-													const_cast<LONG *>(& reinterpret_cast<LONG volatile &>(*src)))));
+	C_ASSERT(sizeof(LONG) == sizeof(T));
+	return static_cast<T>(InterlockedIncrement(reinterpret_cast<LONG volatile*>(src)));
 }
 
 inline LONG InterlockedIncrementT(LONG * src)
@@ -18,8 +19,8 @@ inline LONG InterlockedIncrementT(LONG * src)
 template <typename T>
 inline T InterlockedDecrementT(T * src)
 {
-	return static_cast<T>(InterlockedDecrement(
-												const_cast<LONG *>(& reinterpret_cast<LONG volatile &>(*src))));
+	C_ASSERT(sizeof(LONG) == sizeof(T));
+	return static_cast<T>(InterlockedDecrement(reinterpret_cast<LONG volatile*>(src)));
 }
 
 inline LONG InterlockedDecrementT(LONG * src)
