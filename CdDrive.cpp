@@ -1350,7 +1350,7 @@ BOOL CCdDrive::SetReadSpeed(ULONG BytesPerSec, ULONG BeginLba, ULONG NumSectors)
 		m_bStreamingFeatureSuported = false;
 	}
 
-	SetCdSpeedCDB SetSpeed(USHORT(BytesPerSec / 1024));
+	SetCdSpeedCDB SetSpeed(USHORT(std::min(BytesPerSec / 1024, 0xFFFFul)));
 	DWORD Length = 0;
 	BOOL res = SendScsiCommand( & SetSpeed, NULL, & Length,
 								SCSI_IOCTL_DATA_UNSPECIFIED, NULL);
