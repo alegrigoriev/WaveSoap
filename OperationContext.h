@@ -70,6 +70,7 @@ enum {
 	CopyCreatingUndo = 0x20000000,
 	RedoContext = 0x10000000,
 	UndoContextReplaceWholeFile = 0x08000000,
+	ConvertContextReplaceWholeFile = 0x08000000,
 	ContextScanning = 0x04000000,
 	StatisticsContext_DcOnly = 0x02000000,
 	StatisticsContext_MinMaxOnly = 0x01000000,
@@ -151,6 +152,8 @@ public:
 				CWaveFile & SrcFile,
 				LONG SrcStartSample, LONG SrcLength, LONG SrcChannel
 				);
+	void InitSource(CWaveFile & SrcFile, long StartSample,
+					long EndSample, int chan);
 	//BOOL InitExpand(LONG StartSample, LONG Length, int Channel);
 	virtual BOOL OperationProc();
 	virtual void PostRetire(BOOL bChildContext = FALSE);
@@ -367,7 +370,8 @@ public:
 	CBatchProcessing m_ProcBatch;
 	WAVEFORMATEX * m_pWf;
 	virtual BOOL OperationProc();
-	BOOL SetTargetFormat(WAVEFORMATEX * pwf);
+	//BOOL SetTargetFormat(WAVEFORMATEX * pwf);
+	virtual void PostRetire(BOOL bChildContext = FALSE);
 };
 
 class CFileSaveContext : public CCopyContext
@@ -407,7 +411,7 @@ public:
 	//virtual void PostRetire(BOOL bChildContext = FALSE);
 	//virtual BOOL Init();
 	//virtual BOOL DeInit();
-	BOOL SetTargetFormat(WAVEFORMATEX * pwf);
+	//BOOL SetTargetFormat(WAVEFORMATEX * pwf);
 
 };
 

@@ -1121,6 +1121,21 @@ CString CCopyContext::GetStatusString()
 	return sOp;
 }
 
+void CCopyContext::InitSource(CWaveFile & SrcFile, long StartSample,
+							long EndSample, int SrcChannel)
+{
+	m_SrcFile = SrcFile;
+
+	m_SrcChan = SrcChannel;
+
+	DWORD SrcSampleSize = m_SrcFile.SampleSize();
+	m_SrcStart = m_SrcFile.GetDataChunk()->dwDataOffset +
+				StartSample * SrcSampleSize;
+	m_SrcCopyPos = m_SrcStart;
+	m_SrcEnd = m_SrcFile.GetDataChunk()->dwDataOffset +
+				EndSample * SrcSampleSize;
+}
+
 BOOL CCopyContext::InitCopy(CWaveFile & DstFile,
 							LONG DstStartSample, LONG DstLength, LONG DstChannel,
 							CWaveFile & SrcFile,
@@ -1986,7 +2001,8 @@ BOOL CUndoRedoContext::InitUndoCopy(CWaveFile & SrcFile,
 
 BOOL CUndoRedoContext::SaveUndoData(void * pBuf, long BufSize, DWORD Position, int Channel)
 {
-	if (Position >= m_SrcSaveEnd
+	if ((m_Flags & UndoContextReplaceWholeFile)
+		|| Position >= m_SrcSaveEnd
 		|| Position + BufSize <= m_SrcSavePos
 		|| BufSize <= 0)
 	{
@@ -3126,7 +3142,7 @@ BOOL CConversionContext::OperationProc()
 			m_Flags |= OperationContextFinished;
 			break;
 		}
-		if (0) TRACE("ResampleContext: SrcPos=%d (0x%X), DstPos=%d (0x%X), src: %d bytes, dst: %d bytes\n",
+		if (0) TRACE("ConversionContext: SrcPos=%d (0x%X), DstPos=%d (0x%X), src: %d bytes, dst: %d bytes\n",
 					m_SrcCopyPos, m_SrcCopyPos, m_DstCopyPos, m_DstCopyPos,
 					SrcBufUsed, DstBufUsed);
 		LeftToRead -= SrcBufUsed;
