@@ -15,10 +15,25 @@
 #include "UiUpdatedDlg.h"
 
 /////////////////////////////////////////////////////////////////////////////
-// CCopyChannelsSelectDlg dialog
+// CFileTimesCombo control
+
+class CFileTimesCombo : public CTimeEditCombo
+{
+	typedef CTimeEditCombo BaseClass;
+
+public:
+	CFileTimesCombo(SAMPLE_INDEX caret,
+					CWaveFile & WaveFile, int TimeFormat);
+
+	void FillFileTimes();
+
+protected:
+	CWaveFile & m_WaveFile;
+	SAMPLE_INDEX const m_CaretPosition;
+};
 
 /////////////////////////////////////////////////////////////////////////////
-// CSelectionDialog dialog
+// CDialogWithSelection dialog
 
 class CDialogWithSelection : public CUiUpdatedDlg
 {
@@ -103,6 +118,9 @@ protected:
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 };
+
+/////////////////////////////////////////////////////////////////////////////
+// CCopyChannelsSelectDlg dialog
 
 class CCopyChannelsSelectDlg : public CDialog
 {
@@ -321,20 +339,22 @@ class CGotoDialog : public CDialog
 // Construction
 public:
 	CGotoDialog(SAMPLE_INDEX Position,
-				NUMBER_OF_SAMPLES FileLength,
-				const WAVEFORMATEX * pWf,
+				CWaveFile & WaveFile,
 				int TimeFormat, CWnd* pParent = NULL);   // standard constructor
+
+	SAMPLE_INDEX GetSelectedPosition() const
+	{
+		return m_Position;
+	}
 
 // Dialog Data
 	//{{AFX_DATA(CGotoDialog)
 	enum { IDD = IDD_DIALOG_GOTO };
 	CTimeSpinCtrl	m_StartSpin;
-	CTimeEditCombo	m_eStart;
+	CFileTimesCombo	m_eStart;
 	int		m_TimeFormatIndex;
 	//}}AFX_DATA
 	int m_TimeFormat;
-	SAMPLE_INDEX m_Position;
-	NUMBER_OF_SAMPLES m_FileLength;
 // Overrides
 	// ClassWizard generated virtual function overrides
 	//{{AFX_VIRTUAL(CGotoDialog)
@@ -345,6 +365,7 @@ protected:
 // Implementation
 protected:
 
+	SAMPLE_INDEX m_Position;
 	// Generated message map functions
 	//{{AFX_MSG(CGotoDialog)
 	afx_msg void OnSelchangeComboTimeFormat();
@@ -572,36 +593,29 @@ protected:
 /////////////////////////////////////////////////////////////////////////////
 // CLowFrequencySuppressDialog dialog
 
-class CLowFrequencySuppressDialog : public CDialog
+class CLowFrequencySuppressDialog : public CDialogWithSelection
 {
-	typedef CDialog BaseClass;
+	typedef CDialogWithSelection BaseClass;
 // Construction
 public:
-	CLowFrequencySuppressDialog(CWnd* pParent = NULL);   // standard constructor
+	CLowFrequencySuppressDialog(SAMPLE_INDEX begin, SAMPLE_INDEX end, SAMPLE_INDEX caret,
+								CHANNEL_MASK Channels,
+								CWaveFile & File,
+								BOOL ChannelsLocked, BOOL UndoEnabled,
+								int TimeFormat = SampleToString_HhMmSs | TimeToHhMmSs_NeedsHhMm | TimeToHhMmSs_NeedsMs,
+								CWnd* pParent = NULL);   // standard constructor
 
 // Dialog Data
 	//{{AFX_DATA(CLowFrequencySuppressDialog)
 	enum { IDD = IDD_DIALOG_ULF_REDUCTION };
-	CStatic	m_SelectionStatic;
 	CNumEdit	m_eLfNoiseRange;
 	CNumEdit	m_eDiffNoiseRange;
 	BOOL	m_DifferentialModeSuppress;
 	BOOL	m_LowFrequencySuppress;
-	BOOL	m_bUndo;
 	//}}AFX_DATA
 
 	double m_dLfNoiseRange;
 	double m_dDiffNoiseRange;
-
-
-	BOOL	m_bLockChannels;
-	long m_Start;
-	long m_End;
-	long m_CaretPosition;
-	long m_FileLength;
-	int m_Chan;
-	int m_TimeFormat;
-	const WAVEFORMATEX * m_pWf;
 
 	CApplicationProfile m_Profile;
 // Overrides
@@ -613,11 +627,9 @@ protected:
 
 // Implementation
 protected:
-	void UpdateSelectionStatic();
 
 	// Generated message map functions
 	//{{AFX_MSG(CLowFrequencySuppressDialog)
-	afx_msg void OnButtonSelection();
 	afx_msg void OnCheckDifferentialModeSuppress();
 	afx_msg void OnCheckLowFrequency();
 	virtual BOOL OnInitDialog();
@@ -627,42 +639,36 @@ protected:
 /////////////////////////////////////////////////////////////////////////////
 // CExpressionEvaluationDialog dialog
 
-class CExpressionEvaluationDialog : public CDialog
+class CExpressionEvaluationDialog : public CDialogWithSelection
 {
-	typedef CDialog BaseClass;
+	typedef CDialogWithSelection BaseClass;
 // Construction
 public:
-	CExpressionEvaluationDialog(CWnd* pParent = NULL);   // standard constructor
+	CExpressionEvaluationDialog(SAMPLE_INDEX begin, SAMPLE_INDEX end, SAMPLE_INDEX caret,
+								CHANNEL_MASK Channels,
+								CWaveFile & File,
+								BOOL ChannelsLocked, BOOL UndoEnabled,
+								int TimeFormat = SampleToString_HhMmSs | TimeToHhMmSs_NeedsHhMm | TimeToHhMmSs_NeedsMs,
+								CWnd* pParent = NULL);   // standard constructor
 
 // Dialog Data
 	//{{AFX_DATA(CExpressionEvaluationDialog)
 	enum { IDD = IDD_DIALOG_EXPRESSION_EVALUATION };
 	CTabCtrl	m_TabTokens;
 	CEdit	m_eExpression;
-	CStatic	m_SelectionStatic;
-	BOOL	m_bUndo;
 	CString m_sExpression;
 	//}}AFX_DATA
+
 	CChildDialog m_FunctionsTabDlg;
 	COperandsDialog m_OperandsTabDlg;
 	CInsertExpressionDialog m_SavedExprTabDlg;
 
-	BOOL	m_bLockChannels;
-	long m_Start;
-	long m_End;
-	long m_CaretPosition;
-	long m_FileLength;
-	int m_Chan;
-	int m_TimeFormat;
-	const WAVEFORMATEX * m_pWf;
 	class CExpressionEvaluationContext * m_pContext;
-
 
 	int m_ExpressionGroupSelected;
 	int m_ExpressionSelected;
 	int m_ExpressionTabSelected;
 
-	void UpdateSelectionStatic();
 // Overrides
 	// ClassWizard generated virtual function overrides
 	//{{AFX_VIRTUAL(CExpressionEvaluationDialog)
@@ -671,9 +677,6 @@ protected:
 	//}}AFX_VIRTUAL
 // Implementation
 protected:
-	bool m_bNeedUpdateControls;
-	//afx_msg LONG OnIdleUpdateCmdUI(UINT wParam, LONG);
-	LRESULT OnKickIdle(WPARAM, LPARAM);
 	void ShowHideTabDialogs();
 	afx_msg BOOL OnButtonText(UINT id);
 	afx_msg void OnUpdateOk(CCmdUI* pCmdUI);
@@ -681,12 +684,12 @@ protected:
 
 	// Generated message map functions
 	//{{AFX_MSG(CExpressionEvaluationDialog)
-	afx_msg void OnButtonSelection();
 	virtual void OnOK();
 	afx_msg void OnSelchangeTabTokens(NMHDR* pNMHDR, LRESULT* pResult);
 	virtual BOOL OnInitDialog();
 	afx_msg void OnButtonSaveExpressionAs();
 	afx_msg void OnChangeEditExpression();
+	virtual LRESULT OnKickIdle(WPARAM, LPARAM);
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 	// m_Profile will be conrtructed last and destructed first

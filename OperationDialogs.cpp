@@ -16,6 +16,50 @@
 static char THIS_FILE[] = __FILE__;
 #endif
 
+CFileTimesCombo::CFileTimesCombo(SAMPLE_INDEX caret,
+								CWaveFile & WaveFile, int TimeFormat)
+	: BaseClass(TimeFormat)
+	, m_WaveFile(WaveFile)
+	, m_CaretPosition(caret)
+{
+	SetSamplingRate(WaveFile.SampleRate());
+}
+
+void CFileTimesCombo::FillFileTimes()
+{
+	AddPosition(IDS_BEGIN_OF_SAMPLE, 0);
+
+	NUMBER_OF_SAMPLES FileLength = m_WaveFile.NumberOfSamples();
+	AddPosition(IDS_END_OF_SAMPLE, FileLength);
+
+	if (0 != m_CaretPosition
+		&& FileLength != m_CaretPosition)
+	{
+		AddPosition(IDS_CURSOR, m_CaretPosition);
+	}
+	CWaveFile::InstanceDataWav * pInst = m_WaveFile.GetInstanceData();
+
+	CString s;
+	for (std::vector<WaveMarker>::iterator i = pInst->Markers.begin();
+		i < pInst->Markers.end(); i++)
+	{
+		// TODO: include positions in HH:mm:ss and the tooltips
+		if (0 == i->LengthSamples
+			&& i->StartSample <= FileLength)
+		{
+			if (i->Comment.IsEmpty())
+			{
+				s = i->Name;
+			}
+			else
+			{
+				s.Format(_T("%s (%s)"), LPCTSTR(i->Name), LPCTSTR(i->Comment));
+			}
+
+			AddPosition(s, i->StartSample);
+		}
+	}
+}
 
 CDialogWithSelection::CDialogWithSelection(SAMPLE_INDEX Start,
 											SAMPLE_INDEX End, SAMPLE_INDEX CaretPos,
@@ -613,8 +657,8 @@ BOOL CSelectionDialog::OnInitDialog()
 	m_eEnd.AddPosition(IDS_BEGIN_OF_SAMPLE, 0);
 
 	// TODO: add markers
-	((CComboBox*) & m_eStart)->SetExtendedUI(TRUE);
-	((CComboBox*) & m_eEnd)->SetExtendedUI(TRUE);
+	m_eStart.GetComboBox().SetExtendedUI(TRUE);
+	m_eEnd.GetComboBox().SetExtendedUI(TRUE);
 
 	if ((0 != m_Start || m_FileLength != m_End)
 		&& (0 != m_Start || m_CaretPosition != m_End)
@@ -757,14 +801,12 @@ int CSelectionDialog::FindSelection(SAMPLE_INDEX begin, SAMPLE_INDEX end)
 
 
 CGotoDialog::CGotoDialog(SAMPLE_INDEX Position,
-						NUMBER_OF_SAMPLES FileLength,
-						const WAVEFORMATEX * pWf,
+						CWaveFile & WaveFile,
 						int TimeFormat, CWnd* pParent /*=NULL*/)
 	: BaseClass(CGotoDialog::IDD, pParent),
 	m_Position(Position),
-	m_FileLength(FileLength),
 	m_TimeFormat(TimeFormat),
-	m_eStart(TimeFormat)
+	m_eStart(Position, WaveFile, TimeFormat)
 {
 	//{{AFX_DATA_INIT(CGotoDialog)
 	m_TimeFormatIndex = -1;
@@ -780,10 +822,6 @@ CGotoDialog::CGotoDialog(SAMPLE_INDEX Position,
 	case SampleToString_Seconds: default:
 		m_TimeFormatIndex = 2;
 		break;
-	}
-	if (NULL != pWf)
-	{
-		m_eStart.SetSamplingRate(pWf->nSamplesPerSec);
 	}
 }
 
@@ -879,6 +917,15 @@ void CDcOffsetDialog::OnRadioDcSelect()
 void CDcOffsetDialog::OnRadioAdjustSelectEdit()
 {
 	GetDlgItem(IDC_EDIT_DC_OFFSET)->EnableWindow(TRUE);
+}
+
+BOOL CDcOffsetDialog::OnInitDialog()
+{
+	BaseClass::OnInitDialog();
+
+	m_OffsetSpin.SetRange32(-0x8000, 0x7FFF);
+	return TRUE;  // return TRUE unless you set the focus to a control
+	// EXCEPTION: OCX Property Pages should return FALSE
 }
 /////////////////////////////////////////////////////////////////////////////
 // CStatisticsDialog dialog
@@ -1362,10 +1409,10 @@ BOOL CGotoDialog::OnInitDialog()
 {
 	BaseClass::OnInitDialog();
 
-	m_eStart.AddPosition(IDS_BEGIN_OF_SAMPLE, 0);
-	m_eStart.AddPosition(IDS_END_OF_SAMPLE, m_FileLength);
-	((CComboBox*) & m_eStart)->SetExtendedUI(TRUE);
-	// TODO: add markers
+	m_eStart.FillFileTimes();
+
+	m_eStart.GetComboBox().SetExtendedUI(TRUE);
+
 	return TRUE;  // return TRUE unless you set the focus to a control
 }
 /////////////////////////////////////////////////////////////////////////////
@@ -1386,6 +1433,7 @@ CResampleDialog::CResampleDialog(BOOL bUndoEnabled,
 	m_bChangeSamplingRate = -1;
 	m_NewSampleRate = 0;
 	//}}AFX_DATA_INIT
+
 	m_bCanOnlyChangeSamplerate = false;
 	m_Profile.AddItem(_T("Settings"), _T("ResampleChangeRateOnly"), m_bChangeRateOnly, 0, 0, 1);
 	m_Profile.AddItem(_T("Settings"), _T("ResampleChangeSamplingRate"), m_bChangeSamplingRate, 1, 0, 1);
@@ -1561,13 +1609,24 @@ int CStatisticsDialog::DoModal()
 // CLowFrequencySuppressDialog dialog
 
 
-CLowFrequencySuppressDialog::CLowFrequencySuppressDialog(CWnd* pParent /*=NULL*/)
-	: BaseClass(CLowFrequencySuppressDialog::IDD, pParent)
+CLowFrequencySuppressDialog::CLowFrequencySuppressDialog(
+														SAMPLE_INDEX begin, SAMPLE_INDEX end, SAMPLE_INDEX caret,
+														CHANNEL_MASK Channels,
+														CWaveFile & File,
+														BOOL ChannelsLocked, BOOL UndoEnabled,
+														int TimeFormat,
+														CWnd* pParent /*=NULL*/)
+	: BaseClass(begin, end, caret, Channels, File,
+				TimeFormat,
+				IDD, pParent)
+	, m_DifferentialModeSuppress(TRUE)
+	, m_LowFrequencySuppress(TRUE)
+	, m_dLfNoiseRange(20.)
+	, m_dDiffNoiseRange(200.)
 {
+	m_bUndo = UndoEnabled;
+	m_bLockChannels = ChannelsLocked;
 	//{{AFX_DATA_INIT(CLowFrequencySuppressDialog)
-	m_DifferentialModeSuppress = FALSE;
-	m_LowFrequencySuppress = FALSE;
-	m_bUndo = FALSE;
 	//}}AFX_DATA_INIT
 	m_Profile.AddItem(_T("Settings"), _T("SuppressDifferentialRange"), m_dDiffNoiseRange, 200., 1., 1000.);
 	m_Profile.AddItem(_T("Settings"), _T("SuppressLowFreqRange"), m_dLfNoiseRange, 20., 1., 1000.);
@@ -1581,13 +1640,13 @@ void CLowFrequencySuppressDialog::DoDataExchange(CDataExchange* pDX)
 {
 	BaseClass::DoDataExchange(pDX);
 	//{{AFX_DATA_MAP(CLowFrequencySuppressDialog)
-	DDX_Control(pDX, IDC_STATIC_SELECTION, m_SelectionStatic);
 	DDX_Control(pDX, IDC_EDIT_LF_NOISE_RANGE, m_eLfNoiseRange);
 	DDX_Control(pDX, IDC_EDIT_DIFF_NOISE_RANGE, m_eDiffNoiseRange);
 	DDX_Check(pDX, IDC_CHECK_DIFFERENTIAL_MODE_SUPPRESS, m_DifferentialModeSuppress);
 	DDX_Check(pDX, IDC_CHECK_LOW_FREQUENCY, m_LowFrequencySuppress);
-	DDX_Check(pDX, IDC_CHECK_UNDO, m_bUndo);
 	//}}AFX_DATA_MAP
+	DDX_Check(pDX, IDC_CHECK_UNDO, m_bUndo);
+
 	m_eLfNoiseRange.ExchangeData(pDX, m_dLfNoiseRange,
 								_T("Low frequency suppression range"), _T("Hz"), 1., 1000.);
 	m_eDiffNoiseRange.ExchangeData(pDX, m_dDiffNoiseRange,
@@ -1602,7 +1661,6 @@ void CLowFrequencySuppressDialog::DoDataExchange(CDataExchange* pDX)
 
 BEGIN_MESSAGE_MAP(CLowFrequencySuppressDialog, BaseClass)
 	//{{AFX_MSG_MAP(CLowFrequencySuppressDialog)
-	ON_BN_CLICKED(IDC_BUTTON_SELECTION, OnButtonSelection)
 	ON_BN_CLICKED(IDC_CHECK_DIFFERENTIAL_MODE_SUPPRESS, OnCheckDifferentialModeSuppress)
 	ON_BN_CLICKED(IDC_CHECK_LOW_FREQUENCY, OnCheckLowFrequency)
 	//}}AFX_MSG_MAP
@@ -1611,25 +1669,11 @@ END_MESSAGE_MAP()
 /////////////////////////////////////////////////////////////////////////////
 // CLowFrequencySuppressDialog message handlers
 
-void CLowFrequencySuppressDialog::OnButtonSelection()
-{
-	CSelectionDialog dlg(m_Start, m_End, m_CaretPosition, m_Chan + 1, m_FileLength, m_pWf, m_TimeFormat);
-
-	if (IDOK != dlg.DoModal())
-	{
-		return;
-	}
-	m_Start = dlg.GetStart();
-	m_End = dlg.GetEnd();
-	m_Chan = dlg.GetChannel() - 1;
-
-	UpdateSelectionStatic();
-}
-
 void CLowFrequencySuppressDialog::OnCheckDifferentialModeSuppress()
 {
 	m_DifferentialModeSuppress = IsDlgButtonChecked(IDC_CHECK_DIFFERENTIAL_MODE_SUPPRESS);
 	m_eDiffNoiseRange.EnableWindow(m_DifferentialModeSuppress);
+
 	if ( ! m_DifferentialModeSuppress)
 	{
 		// check second button
@@ -1637,6 +1681,7 @@ void CLowFrequencySuppressDialog::OnCheckDifferentialModeSuppress()
 		{
 			return;
 		}
+
 		CButton * pCheck = (CButton *)GetDlgItem(IDC_CHECK_LOW_FREQUENCY);
 		if (pCheck)
 		{
@@ -1650,6 +1695,7 @@ void CLowFrequencySuppressDialog::OnCheckLowFrequency()
 {
 	m_LowFrequencySuppress = IsDlgButtonChecked(IDC_CHECK_LOW_FREQUENCY);
 	m_eLfNoiseRange.EnableWindow(m_LowFrequencySuppress);
+
 	if ( ! m_LowFrequencySuppress)
 	{
 		// check second button
@@ -1666,14 +1712,6 @@ void CLowFrequencySuppressDialog::OnCheckLowFrequency()
 	}
 }
 
-void CLowFrequencySuppressDialog::UpdateSelectionStatic()
-{
-	m_SelectionStatic.SetWindowText(GetSelectionText(m_Start, m_End, m_Chan,
-													m_pWf->nChannels, m_bLockChannels,
-													m_pWf->nSamplesPerSec, m_TimeFormat));
-}
-
-
 BOOL CLowFrequencySuppressDialog::OnInitDialog()
 {
 	BaseClass::OnInitDialog();
@@ -1686,7 +1724,7 @@ BOOL CLowFrequencySuppressDialog::OnInitDialog()
 	}
 	m_eLfNoiseRange.EnableWindow(m_LowFrequencySuppress);
 	m_eDiffNoiseRange.EnableWindow(m_DifferentialModeSuppress);
-	UpdateSelectionStatic();
+
 	return TRUE;  // return TRUE unless you set the focus to a control
 	// EXCEPTION: OCX Property Pages should return FALSE
 }
@@ -1694,16 +1732,24 @@ BOOL CLowFrequencySuppressDialog::OnInitDialog()
 // CExpressionEvaluationDialog dialog
 
 
-CExpressionEvaluationDialog::CExpressionEvaluationDialog(CWnd* pParent /*=NULL*/)
-	: BaseClass(CExpressionEvaluationDialog::IDD, pParent),
+CExpressionEvaluationDialog::CExpressionEvaluationDialog(SAMPLE_INDEX begin,
+														SAMPLE_INDEX end, SAMPLE_INDEX caret,
+														CHANNEL_MASK Channels,
+														CWaveFile & File,
+														BOOL ChannelsLocked, BOOL UndoEnabled,
+														int TimeFormat,
+														CWnd* pParent /*=NULL*/)
+	: BaseClass(begin, end, caret, Channels, File,
+				TimeFormat,
+				IDD, pParent),
 	m_ExpressionGroupSelected(0),
 	m_ExpressionSelected(0),
 	m_ExpressionTabSelected(0)
 {
+	m_bUndo = UndoEnabled;
+	m_bLockChannels = ChannelsLocked;
 	//{{AFX_DATA_INIT(CExpressionEvaluationDialog)
-	m_bUndo = FALSE;
 	//}}AFX_DATA_INIT
-	m_bNeedUpdateControls = false;
 }
 
 
@@ -1713,7 +1759,6 @@ void CExpressionEvaluationDialog::DoDataExchange(CDataExchange* pDX)
 	//{{AFX_DATA_MAP(CExpressionEvaluationDialog)
 	DDX_Control(pDX, IDC_TAB_TOKENS, m_TabTokens);
 	DDX_Control(pDX, IDC_EDIT_EXPRESSION, m_eExpression);
-	DDX_Control(pDX, IDC_STATIC_SELECTION, m_SelectionStatic);
 	DDX_Check(pDX, IDC_CHECK_UNDO, m_bUndo);
 	DDX_Text(pDX, IDC_EDIT_EXPRESSION, m_sExpression);
 	//}}AFX_DATA_MAP
@@ -1721,13 +1766,11 @@ void CExpressionEvaluationDialog::DoDataExchange(CDataExchange* pDX)
 	{
 		m_Profile.FlushAll();
 	}
-
 }
 
 
 BEGIN_MESSAGE_MAP(CExpressionEvaluationDialog, BaseClass)
 	//{{AFX_MSG_MAP(CExpressionEvaluationDialog)
-	ON_BN_CLICKED(IDC_BUTTON_SELECTION, OnButtonSelection)
 	ON_NOTIFY(TCN_SELCHANGE, IDC_TAB_TOKENS, OnSelchangeTabTokens)
 	ON_BN_CLICKED(IDC_BUTTON_SAVEAS, OnButtonSaveExpressionAs)
 	ON_EN_CHANGE(IDC_EDIT_EXPRESSION, OnChangeEditExpression)
@@ -1773,7 +1816,6 @@ BEGIN_MESSAGE_MAP(CExpressionEvaluationDialog, BaseClass)
 #endif
 	ON_UPDATE_COMMAND_UI(IDOK, OnUpdateOk)
 	ON_UPDATE_COMMAND_UI(IDC_BUTTON_SAVEAS, OnUpdateSaveAs)
-	ON_MESSAGE(WM_KICKIDLE, OnKickIdle)
 END_MESSAGE_MAP()
 
 /////////////////////////////////////////////////////////////////////////////
@@ -1786,38 +1828,13 @@ BOOL CExpressionEvaluationDialog::OnButtonText(UINT id)
 	{
 		CString Substr;
 		AfxExtractSubString(Substr, s, 0, '\n');
-		CEdit * pEdit = (CEdit *) GetDlgItem(IDC_EDIT_EXPRESSION);
-		if (NULL != pEdit)
-		{
-			pEdit->ReplaceSel(Substr, TRUE);
-			pEdit->SetFocus();
-			return TRUE;
-		}
+
+		m_eExpression.ReplaceSel(Substr, TRUE);
+		m_eExpression.SetFocus();
+		return TRUE;
 	}
 	return FALSE;
 }
-
-void CExpressionEvaluationDialog::OnButtonSelection()
-{
-	CSelectionDialog dlg(m_Start, m_End, m_CaretPosition, m_Chan + 1, m_FileLength, m_pWf, m_TimeFormat);
-
-	if (IDOK != dlg.DoModal())
-	{
-		return;
-	}
-	m_Start = dlg.GetStart();
-	m_End = dlg.GetEnd();
-	m_Chan = dlg.GetChannel() - 1;
-	UpdateSelectionStatic();
-}
-
-void CExpressionEvaluationDialog::UpdateSelectionStatic()
-{
-	m_SelectionStatic.SetWindowText(GetSelectionText(m_Start, m_End, m_Chan,
-													m_pWf->nChannels, m_bLockChannels,
-													m_pWf->nSamplesPerSec, m_TimeFormat));
-}
-
 
 void CExpressionEvaluationDialog::OnOK()
 {
@@ -1844,7 +1861,8 @@ void CExpressionEvaluationDialog::OnOK()
 			return;
 		}
 	}
-	EndDialog(IDOK);
+
+	BaseClass::OnOK();
 }
 /////////////////////////////////////////////////////////////////////////////
 // CDeclickDialog dialog
@@ -2425,9 +2443,6 @@ BOOL CExpressionEvaluationDialog::OnInitDialog()
 	m_TabTokens.SetCurSel(m_ExpressionTabSelected);
 	ShowHideTabDialogs();
 
-	UpdateSelectionStatic();
-	m_bNeedUpdateControls = TRUE;
-
 	return TRUE;  // return TRUE unless you set the focus to a control
 	// EXCEPTION: OCX Property Pages should return FALSE
 }
@@ -2440,17 +2455,6 @@ void CExpressionEvaluationDialog::OnButtonSaveExpressionAs()
 	m_SavedExprTabDlg.SaveExpressionAs(s);
 }
 
-LRESULT CExpressionEvaluationDialog::OnKickIdle(WPARAM, LPARAM)
-{
-	if (m_bNeedUpdateControls)
-	{
-		UpdateDialogControls(this, FALSE);
-	}
-	m_SavedExprTabDlg.UpdateDialogControls( & m_SavedExprTabDlg, FALSE);
-	m_bNeedUpdateControls = FALSE;
-	return 0;
-}
-
 void CExpressionEvaluationDialog::OnUpdateOk(CCmdUI* pCmdUI)
 {
 	pCmdUI->Enable(m_eExpression.GetWindowTextLength() != 0);
@@ -2461,17 +2465,14 @@ void CExpressionEvaluationDialog::OnUpdateSaveAs(CCmdUI* pCmdUI)
 	pCmdUI->Enable(m_eExpression.GetWindowTextLength() != 0);
 }
 
-
 void CExpressionEvaluationDialog::OnChangeEditExpression()
 {
-	m_bNeedUpdateControls = TRUE;
+	NeedUpdateControls();
 }
 
-BOOL CDcOffsetDialog::OnInitDialog()
+LRESULT CExpressionEvaluationDialog::OnKickIdle(WPARAM w, LPARAM l)
 {
-	BaseClass::OnInitDialog();
-
-	m_OffsetSpin.SetRange32(-0x8000, 0x7FFF);
-	return TRUE;  // return TRUE unless you set the focus to a control
-	// EXCEPTION: OCX Property Pages should return FALSE
+	m_SavedExprTabDlg.UpdateDialogControls( & m_SavedExprTabDlg, FALSE);
+	return BaseClass::OnKickIdle(w, l);
 }
+
