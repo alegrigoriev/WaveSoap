@@ -480,11 +480,19 @@ BOOL CWaveSoapFrontDoc::DoSave(LPCTSTR lpszPathName, BOOL bReplace)
 	}
 	else
 	{
-		Wf = m_OriginalWaveFormat;
 		// sample rate and number of channels might change from the original file
 		// new format may not be quite valid for some convertors!!
-		Wf.SampleRate() = WaveSampleRate();
-		Wf.NumChannels() = WaveChannels();
+		if (WAVE_FORMAT_PCM == m_OriginalWaveFormat.FormatTag())
+		{
+			Wf.InitFormat(WAVE_FORMAT_PCM,
+						WaveSampleRate(), WaveChannels(), m_OriginalWaveFormat.BitsPerSample());
+		}
+		else
+		{
+			Wf = m_OriginalWaveFormat;
+			Wf.SampleRate() = WaveSampleRate();
+			Wf.NumChannels() = WaveChannels();
+		}
 	}
 
 
@@ -508,7 +516,7 @@ BOOL CWaveSoapFrontDoc::DoSave(LPCTSTR lpszPathName, BOOL bReplace)
 			// AGr: changed from the original CDocument::
 			// space and # are allowed characters, and '?*":' are illegal
 			// in the file title
-			int iBad = newName.FindOneOf(_T("?*%:;/\\\""));
+			int iBad = newName.FindOneOf(_T("?*:<>|/\\\""));
 			if (iBad != -1)
 				newName.ReleaseBuffer(iBad);
 
