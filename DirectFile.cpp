@@ -1018,44 +1018,14 @@ LONGLONG CDirectFile::Seek(LONGLONG position, int origin)
 // read data ('count' bytes) from the current position to *buf
 long CDirectFile::Read(void *buf, long count)
 {
-	long TotalRead = 0;
-	char * pDstBuf = (char *)buf;
-	ASSERT(m_pFile);
-	if (NULL == m_pFile)
-	{
-		return 0;
-	}
+	long TotalRead = ReadAt(buf, count, m_FilePointer);
+	m_FilePointer += TotalRead;
 
-	if (m_FilePointer >= m_pFile->FileLength)
-	{
-		// beyond end of file
-		return 0;
-	}
-	if (count > 0 && count + m_FilePointer > m_pFile->FileLength)
-	{
-		count = long(m_pFile->FileLength - m_FilePointer);
-	}
-
-	while(count > 0)
-	{
-		void * pSrcBuf;
-		long nRead = GetDataBuffer( & pSrcBuf, count, m_FilePointer, GetBufferAndPrefetchNext);
-		if (0 == nRead)
-		{
-			break;
-		}
-		memmove(pDstBuf, pSrcBuf, nRead);
-		ReturnDataBuffer(pSrcBuf, nRead, 0);
-
-		TotalRead += nRead;
-		pDstBuf += nRead;
-		m_FilePointer += nRead;
-		count -= nRead;
-	}
 	return TotalRead;
 }
 
 // read data ('count' bytes) from the given 'position' to *buf
+// if count < 0, read backward
 long CDirectFile::ReadAt(void *buf, long count, LONGLONG Position)
 {
 	long TotalRead = 0;
@@ -1066,71 +1036,77 @@ long CDirectFile::ReadAt(void *buf, long count, LONGLONG Position)
 		return 0;
 	}
 
-	if (Position >= m_pFile->FileLength)
+	if (Position <= 0
+		|| Position >= m_pFile->FileLength)
 	{
 		// beyond end of file
 		return 0;
 	}
-	if (count > 0 && count + Position > m_pFile->FileLength)
-	{
-		count = long(m_pFile->FileLength - Position);
-	}
 
-	while(count > 0)
+	if (count > 0)
 	{
-		void * pSrcBuf;
-		long nRead = GetDataBuffer( & pSrcBuf, count, Position, GetBufferAndPrefetchNext);
-		if (0 == nRead)
+		if (count + Position > m_pFile->FileLength)
 		{
-			break;
+			count = long(m_pFile->FileLength - Position);
 		}
-		memmove(pDstBuf, pSrcBuf, nRead);
-		ReturnDataBuffer(pSrcBuf, nRead, 0);
 
-		Position += nRead;
-		TotalRead += nRead;
-		pDstBuf += nRead;
-		count -= nRead;
+		while(count > 0)
+		{
+			void * pSrcBuf;
+			long nRead = GetDataBuffer( & pSrcBuf, count, Position, GetBufferAndPrefetchNext);
+			if (0 == nRead)
+			{
+				break;
+			}
+			memmove(pDstBuf, pSrcBuf, nRead);
+			ReturnDataBuffer(pSrcBuf, nRead, 0);
+
+			Position += nRead;
+			TotalRead += nRead;
+			pDstBuf += nRead;
+			count -= nRead;
+		}
+	}
+	else if (count < 0)
+	{
+		if (-count > Position)
+		{
+			count = -long(Position & 0x7FFFFFFF);
+		}
+
+		while(count < 0)
+		{
+			void * pSrcBuf;
+			long nRead = GetDataBuffer( & pSrcBuf, count, Position, GetBufferAndPrefetchNext);
+			if (0 == nRead)
+			{
+				break;
+			}
+			ASSERT(nRead < 0);
+
+			pDstBuf += nRead;
+			memmove(pDstBuf, nRead + (char *)pSrcBuf, -nRead);
+			ReturnDataBuffer(pSrcBuf, nRead, 0);
+
+			Position += nRead;
+			TotalRead += nRead;
+			count -= nRead;
+		}
 	}
 	return TotalRead;
 }
 
 // write data ('count' bytes) from the current position to *buf
+// if count < 0, write backward
 long CDirectFile::Write(const void *pBuf, long count)
 {
-	long TotalWritten = 0;
-	const char * pSrcBuf = (const char *)pBuf;
-	ASSERT(m_pFile);
-	if (NULL == m_pFile)
-	{
-		return 0;
-	}
-
-	while(count > 0)
-	{
-		void * pDstBuf;
-		long nWritten = GetDataBuffer( & pDstBuf, count, m_FilePointer, GetBufferWriteOnly);
-		if (0 == nWritten)
-		{
-			break;
-		}
-		memmove(pDstBuf, pSrcBuf, nWritten);
-		ReturnDataBuffer(pDstBuf, nWritten, ReturnBufferDirty);
-
-		TotalWritten += nWritten;
-		pSrcBuf += nWritten;
-		m_FilePointer += nWritten;
-		count -= nWritten;
-	}
-	if (TotalWritten != 0
-		&& m_FilePointer > m_pFile->FileLength)
-	{
-		m_pFile->FileLength = m_FilePointer;
-	}
+	long TotalWritten = WriteAt(pBuf, count, m_FilePointer);
+	m_FilePointer += TotalWritten;
 	return TotalWritten;
 }
 
 // write data ('count' bytes) at the given 'position' from *buf
+// if count < 0, write backward
 long CDirectFile::WriteAt(const void *buf, long count, LONGLONG Position)
 {
 	long TotalWritten = 0;
@@ -1140,26 +1116,68 @@ long CDirectFile::WriteAt(const void *buf, long count, LONGLONG Position)
 	{
 		return 0;
 	}
-	while(count > 0)
-	{
-		void * pDstBuf;
-		long nWritten = GetDataBuffer( & pDstBuf, count, Position, GetBufferWriteOnly);
-		if (0 == nWritten)
-		{
-			break;
-		}
-		memmove(pDstBuf, pSrcBuf, nWritten);
-		ReturnDataBuffer(pDstBuf, nWritten, ReturnBufferDirty);
 
-		Position += nWritten;
-		TotalWritten += nWritten;
-		pSrcBuf += nWritten;
-		count -= nWritten;
-	}
-	if (TotalWritten != 0
-		&& Position > m_pFile->FileLength)
+	if (Position <= 0)
 	{
-		m_pFile->FileLength = Position;
+		// beyond end of file
+		return 0;
+	}
+
+	void * pDstBuf;
+	if (count > 0)
+	{
+		while(count > 0)
+		{
+			long nWritten = GetDataBuffer( & pDstBuf, count, Position, GetBufferWriteOnly);
+
+			if (0 == nWritten)
+			{
+				break;
+			}
+			memmove(pDstBuf, pSrcBuf, nWritten);
+			ReturnDataBuffer(pDstBuf, nWritten, ReturnBufferDirty);
+
+			Position += nWritten;
+			TotalWritten += nWritten;
+			pSrcBuf += nWritten;
+			count -= nWritten;
+		}
+		if (TotalWritten != 0
+			&& Position > m_pFile->FileLength)
+		{
+			m_pFile->FileLength = Position;
+		}
+	}
+	else
+	{
+		if (Position < -count)
+		{
+			count = -long(Position & 0x7FFFFFFF);
+		}
+		LONGLONG StartPosition = Position;
+		while(count < 0)
+		{
+			long nWritten = GetDataBuffer( & pDstBuf, count, Position, GetBufferWriteOnly);
+
+			if (0 == nWritten)
+			{
+				break;
+			}
+			ASSERT(nWritten < 0);
+			pSrcBuf += nWritten;
+			memmove(nWritten + (char*)pDstBuf, pSrcBuf, -nWritten);
+
+			ReturnDataBuffer(pDstBuf, nWritten, ReturnBufferDirty);
+
+			Position += nWritten;
+			TotalWritten += nWritten;
+			count -= nWritten;
+		}
+		if (TotalWritten != 0
+			&& StartPosition > m_pFile->FileLength)
+		{
+			m_pFile->FileLength = StartPosition;
+		}
 	}
 	return TotalWritten;
 }
