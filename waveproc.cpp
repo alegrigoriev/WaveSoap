@@ -16,7 +16,7 @@
 
 #include "FFT.h"
 
-#define TRACE_WAVEPROC 0
+#define TRACE_WAVEPROC 1
 
 template <typename T = UCHAR, unsigned s = 512>
 struct FixedRingBufferBase
@@ -2760,6 +2760,8 @@ BOOL CResampleFilter::InitResample(double ResampleRatio,
 	m_DstBufUsed = 0;
 	m_DstBufSaved = 0;
 	m_InputChannels = nChannels;
+	m_OutputChannels = nChannels;
+
 	// compute normalization coefficient
 	// apply DC to the filter
 	for (int i = 0; i < SrcBufSize; i++)
