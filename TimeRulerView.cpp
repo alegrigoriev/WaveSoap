@@ -66,8 +66,6 @@ BEGIN_MESSAGE_MAP(CTimeRulerView, CHorizontalRuler)
 	//}}AFX_MSG_MAP
 	ON_WM_CONTEXTMENU()
 	ON_WM_SETCURSOR()
-	ON_NOTIFY_RANGE(TTN_NEEDTEXTW, 0, 0xFFFF, OnToolTipText)
-	ON_NOTIFY_RANGE(TTN_NEEDTEXTA, 0, 0xFFFF, OnToolTipText)
 	ON_WM_LBUTTONDBLCLK()
 	ON_WM_LBUTTONDOWN()
 	ON_WM_LBUTTONUP()
@@ -1573,4 +1571,16 @@ void CTimeRulerView::OnSelectRegion()
 
 	pDoc->SetSelection(m_PopupMenuHit.Sample, m_PopupMenuHit.Sample + m_PopupMenuHit.Length,
 						pDoc->m_SelectedChannel, Caret, 0);
+}
+
+BOOL CTimeRulerView::OnNotify(WPARAM wParam, LPARAM lParam, LRESULT* pResult)
+{
+	// TODO: Add your specialized code here and/or call the base class
+	NMHDR * pNMHDR = (NMHDR *) lParam;
+	if (pNMHDR->code == TTN_NEEDTEXTA || pNMHDR->code == TTN_NEEDTEXTW)
+	{
+		OnToolTipText(wParam, pNMHDR, pResult);
+		return 0;
+	}
+	return BaseClass::OnNotify(wParam, lParam, pResult);
 }
