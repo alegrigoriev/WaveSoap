@@ -18,7 +18,48 @@ different regions of the active sound file into separate files. By default, the
 program splits the original file by the markers and regions and give each file 
 the marker or region name. You can add a prefix to each file name.</P>
 <P>You can save the data into WAV, MP3 and WMA files.</P>
-<p>TODO: dialog description</p>
+<P>The following resizeable dialog box is shown:</P>
+<P><img border="0" src="../../images/SplitToFilesDialog.png"></P>
+<p>The file list shows the base names, the segment begin, end and length. The 
+list is pre-filled with markers and region names. To edit the name, select it 
+and press <b>F2</b> key, or click on it one more time. The name is also saved as 
+the file title.</p>
+<p>To add a segment to the list, click &quot;<b>New</b>&quot; button, or press <b>Insert</b> 
+key while in the list.</p>
+<p>To delete a segment from the list, click &quot;<b>Delete</b>&quot; button, or press <b>
+Delete</b> key.</p>
+<p>You can edit the selected segment's start and end positions, or length. See
+<a href="../SpecifyingPositionAndSelection.htm">Specifying position and 
+selection</a> for <b>Time Format </b>explanation.</p>
+<p>&quot;<b>Filename prefix</b>&quot; edit field allows to add some text and an 
+incrementing number to the file names. It can consist of arbitrary text and 
+number formatting sequences, starting with percent sign:</p>
+<blockquote>
+  <p>%d - segment number, zero-based. First segment gets number zero, second 
+  gets number one, etc.</p>
+  <p>%<i>n</i>d - segment number, with the start specified. For example, %2d - 
+  start numbering from 2: 2, 3, 4, 5...</p>
+  <p>%0nd - segment number, with the start specified, padded with zeros. For 
+  example, %01d gives the following sequence: 01, 02, 03, and so on. %005d 
+  gives: 005, 006, 007, and so on.</p>
+  <p>%% - insert a single percent sign to the file name.</p>
+</blockquote>
+<p>Enter the target directory name &quot;<b>Save to</b>&quot; edit field, or select one of 
+the previous names from the drop-down list, or click [...] button to browse for 
+the directory.</p>
+<p>&quot;<b>Save as type</b>&quot; drop-down list allows to select the target file type: 
+Windows sound files (WAV), MPEG audio files (MP3), Windows Media files (WMA).
+</p>
+<p>For WAV files, &quot;<b>Format</b>&quot; drop-down list allows to select the target 
+encoding. PCM stands for uncompressed file.</p>
+<p>&quot;<b>Attributes</b>&quot; drop-down list selects one of available target formats 
+for the selected endoding.</p>
+<p>If &quot;<b>Compatible formats only</b>&quot; box is checked, only the formats with the 
+same number of channels and sample rate will be shown in &quot;<b>Format</b>&quot;<b> </b>
+and &quot;<b>Attributes</b>&quot; lists.</p>
+<p>For MP3 files, &quot;<b>Encoder</b>&quot; drop-down list will be shown with the 
+encoders available.</p>
+<p>&nbsp;</p>
 
 </body>
 

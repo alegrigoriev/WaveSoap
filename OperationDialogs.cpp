@@ -1240,9 +1240,32 @@ BOOL CDcOffsetDialog::OnInitDialog()
 // CStatisticsDialog dialog
 
 
-CStatisticsDialog::CStatisticsDialog(CWnd* pParent /*=NULL*/)
+CStatisticsDialog::CStatisticsDialog(class CStatisticsContext * pContext,
+									CWaveFile & WaveFile, SAMPLE_INDEX CaretPosition,
+									LPCTSTR FileName,
+									CWnd* pParent /*=NULL*/)
 	: BaseClass(IDD, pParent)
+	, m_pContext(pContext)
+	, m_CaretPosition(CaretPosition)
+	, m_SamplesPerSec(WaveFile.SampleRate())
+	, m_sFilename(FileName)
 {
+	// read sample value at cursor
+	WAVE_SAMPLE Value[2] = {0, 0};
+	if (m_CaretPosition < WaveFile.NumberOfSamples())
+	{
+		int SampleSize = WaveFile.SampleSize();
+		SAMPLE_POSITION offset = WaveFile.SampleToPosition(m_CaretPosition);
+
+		if (SampleSize > sizeof Value)
+		{
+			SampleSize = sizeof Value;
+		}
+		WaveFile.ReadAt(Value, SampleSize, offset);
+
+		m_ValueAtCursorLeft = Value[0];
+		m_ValueAtCursorRight = Value[1];
+	}
 	//{{AFX_DATA_INIT(CStatisticsDialog)
 	// NOTE: the ClassWizard will add member initialization here
 	//}}AFX_DATA_INIT
