@@ -1,35 +1,40 @@
 TODO tasks:
 
-Allow Save Selection to save with compression
+Synchronize m_WaveFile file creation with the document object.
+
+File save dialog: get file type and extension from template flag table, created during filling the filter string
+
+Support VBR WMA
+Check loading of lossless WMA and VBR WMA
+Set icons to all resizable dialogs (for XP)
+
+Show/edit markers as a table
+Delete/Insert operations can auto add markers and regions
+Unnamed region name is composed from its boundaries. Marker name - from its position
+Show the marker position when dragging it.
 
 When saving the selection as, set the file title from the marker at beginning of the selection (unless all the file is selected)
-Make Fade In/Out command (and toolbar buttons, too).
+
 Add prefix to CD-saved files
 Add "Single file" option to CD-grab dialog
+Make "URL-safe filenames" option in CD grab dialog and file split dialog.
 
 Make Paste Special command (with Fade In/Fade Out etc)
 Make Paste From File command
 When doing Paste from file, make the file title a region name.
 
 Make color-neutral theme (for color-blind users).
-Check all loading/saving of compressed files
 If metadata doesn't come as the very last chunk of the file, copy the original file to 
  a file where it does (for non-compressed file, that is)
 
 Allow dragging NR threshold points
 Show FFT of NR result in spectrum view
 
-Show/edit markers as a table
-
-Delete/Insert operations can auto add markers and regions
-Unnamed region name is composed from its boundaries. Marker name - from its position
 Make context menu for outline view
-Show the marker position when dragging it.
+In outline view, change mouse cursor over caret and view and selection boundaries
 
 Make "Lock channels" more consistent (disable items in the dialogs, if channels are locked).
-Use MakeCompatibleFormat function in DoPaste
 
-Make "URL-safe filenames" option in CD grab dialog and file split dialog.
 Do rewriting from a source file to the work file in background thread.
 
 Move "Import/Export clicks" to "Advanced" dialog
@@ -39,31 +44,28 @@ Put copyright notices to all files
 When starting playing selection, bring the playback cursor into active view
 Add "Show" button to the selection dialog
 Put "Save As" and "Save Copy As" files to file MRU
+Make option to ask for file reopen
 Don't ask to replace the file if Save As with the same name
 Add "Retry" to error dialog boxes
 Enter WMA file attributes (title, author, etc)
 Enter MP3 file attributes
 
+Support "arrow up/down" during label editing
 Support CD grabbing under Win9x
 If CD recording not supported, SET SPEED WriteSpeed set to zero
 Restore CD speed to max rather than current!
 Set speed doesn't work on Goldstar CDRW	 SetSpeed returned sense 5/24
 Process Loss Of Streaming error
-
-Make option to ask for file reopen
 Read CD text
 Open CDA files
-Raw file: make format tag and save attributes
-Handle "Compatible/All" formats for MP3, WMA
-Support VBR WMA
-Check loading of lossless WMA and VBR WMA
-Set icons to all resizable dialogs (for XP)
-Try Nuttall window for resample
-Implement Undo/Redo options command
+
+Make sure file read doesn't lock the critical section, so other requests won't have to wait
+For network-based files: use FILE_FLAG_SEQUENTIAL_SCAN option
+In SetDeclickData: use a member function. Make a structure for declick parameters.
+Remove all CArray use
 
 Load sound from AVI
 Add options dialog
-In outline view, change mouse cursor over caret and view and selection boundaries
 check 4GB WAV files
 
 Add sound recording
@@ -108,15 +110,14 @@ Don't show contents bar by default.
 Show the help window maximized by height
 Instead of "Failed to launch help" show default help page
 
+Add 48000 Hz to the PCM format list (deferred)
 
 Problems:
 
-When dialogs are resized, combo box edit text is selected and reset to default.
-After Save As, The document title is still the old one.
-Reopen files dialog size too small.
-Selection dialog spin boxes stop when upper limit has reached, even if expansion is allowed.
+Progress procent wrong during resample (peak scan interference?) TODO: allow percent per stage
+22050->44100 resample takes too long: scanning for peaks gets stuck.
+Ctrl+S doesn't always work
 When playing, zoom should use the playback point as a center.
-"Statistics" dialog shows only file name instead of full path (Sound1.wav opened from MRU).
 WMA format list shows only compatible formats, even when checkbox not checked.
 sweep.wav passed through noise reduction gives a ghost reflected off Fsampling/4.
 WMA encoded/decoded is delayed by 2048 samples.
@@ -124,8 +125,8 @@ SaveAs shows AVI as possible type
 Last columns (of the file) in FFT view are not getting erased/drawn properly
 Operation status text may get sticky after undo/redo ???
 Vertical scroll in the wave view makes marker labels blinking
+If there is not enough space to load a compressed file, doesn't show an error
 During exit, asks to reopen the file
-Ctrl+S doesn't always work
 Save As adds "Copy of" for direct file
 Save As fails if the file replaced is read-only
 WinXP doesn't have CDRAL
@@ -138,6 +139,21 @@ Log Off query doesn't close the active dialog. Recursion is possible. Make sure 
 
 Fixed:
 
+WMA decorer gives wrong length.
+Set custom sample rate dialog: focus not set
+Resample dialog doesn't init the slider to the correct position
+After resample, prompts to save with 8 bit format
+Double click marker edit not disabled in read-only mode.
+Save with resample 22050 stereo to 44100 stereo doesn't give correct number of samples.
+When a file is connected as source, format chunk address and all RIFF info if not copied over
+File length is wrong for 8 bit file.
+Peak info saved wrong for 8 bit file
+Save as 8 bit doesn't work
+"Statistics" dialog shows only file name instead of full path (Sound1.wav opened from MRU).
+Insert Silence and GoTo allows position beyound the file.
+Reopen files dialog size too small.
+After Save As, The document title is still the old one.
+When dialogs are resized, combo box edit text is selected and reset to default.
 Selection dialog does not find region in the Selection combo.
 Mute undo (and all other UNDO) doesn't restore selection
 Resample: selection not adjusted
@@ -237,6 +253,27 @@ Save As dialog is not centered first time (comdlg problem?)
 ??? When time/seconds format is set for status bar, MM:SS is actually shown
 
 Done:
+Change volume: if Lock checked, disable controls for the right channel.
+Make sure m_OriginalWaveFormat is set for raw file
+Make sure m_OriginalWaveFormat is set for compressed file
+Make sure m_OriginalWaveFormat is set for MP3 file
+Review use of m_OriginalWaveFile and m_OriginalWaveFormat. Make sure they synchronized.
+Make sure m_OriginalWaveFormat is set for WMA file
+Raw file: make format tag and save attributes (to use during next Save As).
+Allow Save Selection to save with compression
+Handle "Compatible/All" formats for MP3
+Handle "Compatible/All" formats for WMA
+Optimize resample for integral ratios: don't use filter interpolation and use shorter arrays
+Try longer filter for resample. 
+Resample dialog: use UiUpdatedDlg
+Try Nuttall window for resample
+Initialize FFT window to Nuttall
+Increase "Copy saved" dialog size
+Check all loading/saving of compressed files
+Add UiUpdate to Undo/Redo property page
+Make Fade In/Out command (and toolbar buttons, too).
+Add UiUpdate to Undo/Redo dialog
+Implement Undo/Redo options command
 In "Selection" combo, show marker names
 Hot keys in Split to files dialog. Support Del and Ins key.
 Change split to files status prompt to Saving audio region
