@@ -31,6 +31,7 @@ BEGIN_MESSAGE_MAP(CWaveSoapFrontDoc, CDocument)
 	ON_COMMAND(ID_EDIT_STOP, OnEditStop)
 	ON_UPDATE_COMMAND_UI(ID_EDIT_STOP, OnUpdateEditStop)
 	ON_UPDATE_COMMAND_UI(ID_FILE_SAVE, OnUpdateFileSave)
+	ON_COMMAND(ID_EDIT_SELECT_ALL, OnEditSelectAll)
 	//}}AFX_MSG_MAP
 END_MESSAGE_MAP()
 
@@ -47,6 +48,7 @@ CWaveSoapFrontDoc::CWaveSoapFrontDoc()
 	m_hThreadEvent(NULL),
 	m_bRunThread(false),
 	m_bReadOnly(true),
+	m_bDirectMode(false),
 	m_pCurrentContext(NULL),
 	m_pQueuedOperation(NULL),
 	m_pUndoList(NULL),
@@ -2083,4 +2085,20 @@ void CWaveSoapFrontDoc::OnIdle()
 void CWaveSoapFrontDoc::OnUpdateFileSave(CCmdUI* pCmdUI)
 {
 	pCmdUI->Enable(IsModified() && ! m_bReadOnly);
+}
+
+void CWaveSoapFrontDoc::SetModifiedFlag(BOOL bModified)
+{
+	BOOL OldModified = m_bModified;
+	CDocument::SetModifiedFlag(bModified);
+	if ((bModified != 0) != (OldModified != 0))
+	{
+		UpdateFrameCounts();        // will cause name change in views
+	}
+}
+
+void CWaveSoapFrontDoc::OnEditSelectAll()
+{
+	long len = WaveFileSamples();
+	SetSelection(0, len, 2, len);
 }
