@@ -1,17 +1,14 @@
 Known problems and tasks:
 
-Put zoom buttons instead of the static fields in the view:
-  On top static: horizontal zoom,
-  On Bottom static: vertical zoom
+Add RAW format save
+Add MP3 save
+Add WMA save
+Load sound from AVI
 Test "reload compressed file" dialogs
 Add options dialog
 
 Add CD grabbing
 Add noise reduction estimation in spectrum section view
-Add RAW format save
-Add MP3 save
-Add WMA save
-Load sound from AVI
 Add sound recording
 Support "Play" in selection dialog
 Make Paste Special command (with Fade In/Fade Out etc)
@@ -28,6 +25,7 @@ Use secondary stream to keep peak info
 Support filenames with stream extension
 Add "phase corrected" stereo to mono conversion
 Add VU meter for playback
+Add volume control
 Add Application Close Pending flag
 Make tooltips in wave view and other important views
 Show File Properties
@@ -47,6 +45,7 @@ Add splash screen
 Make recording from Internet stream
 
 Problems:
+During playback, scroll is done without hiding playback cursor
 When FFT array is reallocated, it is invalidated
 Paste operation doesn't check if sampling rate is the same. Add dialog to resample
 Click on outline view moves the wave view a bit after the button released
@@ -66,6 +65,7 @@ Save As dialog is not centered first time (comdlg problem?)
 ??? When time/seconds format is set for status bar, MM:SS is actually shown
 
 Fixed:
+Tooltips could be shown only after TTN_GETTEXT failed once, otherwise the tis was inactive
 in FFT view, sound modification doesn't invalidate enough FFT data
 in 1:1 scale, need to invalidate 1 more column
 CEqualizerContext didn't set Dirty flag in the buffers
@@ -80,6 +80,10 @@ No status bar in WinME
 FFT doesn't invaludate some areas
 
 Done:
+File/New and File/Save items moved to submenus
+Put zoom buttons instead of the static fields in the view:
+  On top static: horizontal zoom,
+  On Bottom static: vertical zoom
 Save peak info for compressed files, too, but recalculate it when loading
 Add low/high frequency and notch filters functions
 Add "Swap Channels" function

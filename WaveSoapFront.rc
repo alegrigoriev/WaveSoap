@@ -59,18 +59,6 @@ END
 
 #endif    // APSTUDIO_INVOKED
 
-
-/////////////////////////////////////////////////////////////////////////////
-//
-// String Table
-//
-
-STRINGTABLE DISCARDABLE 
-BEGIN
-    ID_VIEW_ZOOMINVERT      "Zoom in vertical\nZoom in vertical"
-    ID_VIEW_ZOOMOUTVERT     "Zoom out vertical\nZoom out vertical"
-END
-
 #endif    // Russian resources
 /////////////////////////////////////////////////////////////////////////////
 
@@ -213,16 +201,23 @@ IDR_WAVESOTYPE MENU PRELOAD DISCARDABLE
 BEGIN
     POPUP "&File"
     BEGIN
-        MENUITEM "&New\tCtrl+N",                ID_FILE_NEW
-        MENUITEM "Ne&w From Clipboard\tCtrl+E", ID_EDIT_PASTE_NEW
+        POPUP "&New"
+        BEGIN
+            MENUITEM "Blank sound\tCtrl+N",         ID_FILE_NEW
+            MENUITEM "Ne&w From Clipboard\tCtrl+E", ID_EDIT_PASTE_NEW
+        END
         MENUITEM "&Open...\tCtrl+O",            ID_FILE_OPEN
         MENUITEM "Read Audio CD Tracks...",     ID_TOOLS_CDGRAB
         MENUITEM "Reopen For Editing",          ID_FILE_REOPENFOREDITING
+        , GRAYED
+        POPUP "&Save"
+        BEGIN
+            MENUITEM "&Save\tCtrl+S",               ID_FILE_SAVE
+            MENUITEM "Save &As...\tF12",            ID_FILE_SAVE_AS
+            MENUITEM "Save &Copy As...\tShift+F12", ID_FILE_SAVE_COPY_AS
+            MENUITEM "Save Al&l\tCtrl+Shift+S",     ID_FILE_SAVE_ALL
+        END
         MENUITEM "&Close\tCtrl+Shift+F4",       ID_FILE_CLOSE
-        MENUITEM "&Save\tCtrl+S",               ID_FILE_SAVE
-        MENUITEM "Save &As...\tF12",            ID_FILE_SAVE_AS
-        MENUITEM "Save Cop&y As...\tShift+F12", ID_FILE_SAVE_COPY_AS
-        MENUITEM "Save Al&l\tCtrl+Shift+S",     ID_FILE_SAVE_ALL
         MENUITEM SEPARATOR
         MENUITEM "&Print...\tCtrl+P",           ID_FILE_PRINT
         MENUITEM "Print Pre&view",              ID_FILE_PRINT_PREVIEW
@@ -305,19 +300,24 @@ BEGIN
     END
     POPUP "&Process"
     BEGIN
-        MENUITEM "&Click Removal...",           IDC_PROCESS_DO_DECLICKING
-        MENUITEM "&Turntable Noise Reduction...", IDC_PROCESS_DO_ULF
-        MENUITEM "&White Noise Reduction...",   IDC_PROCESS_NOISE_REDUCTION
-        MENUITEM "DC &Offset...",               ID_PROCESS_DCOFFSET
+        POPUP "Sound Cleanup"
+        BEGIN
+            MENUITEM "&Click Removal...",           IDC_PROCESS_DO_DECLICKING
+
+            MENUITEM "&Turntable Noise Reduction...", IDC_PROCESS_DO_ULF
+            MENUITEM "&White Noise Reduction...",   IDC_PROCESS_NOISE_REDUCTION
+
+        END
+        MENUITEM "E&qualizer...",               ID_PROCESS_EQUALIZER
+        MENUITEM "Filter...",                   ID_PROCESS_FILTER
         MENUITEM "&Normalize...",               ID_PROCESS_NORMALIZE
+        MENUITEM "DC &Offset...",               ID_PROCESS_DCOFFSET
         MENUITEM "Change &Volume...",           ID_PROCESS_CHANGEVOLUME
         MENUITEM "&Mute",                       ID_PROCESS_MUTE
         MENUITEM "Inv&ert",                     ID_PROCESS_INVERT
         MENUITEM "&Resample...",                ID_PROCESS_RESAMPLE
         MENUITEM "C&hange Channels...",         ID_PROCESS_CHANNELS
-        MENUITEM "E&qualizer...",               ID_PROCESS_EQUALIZER
         MENUITEM "Swap Channels",               ID_PROCESS_SWAPCHANNELS
-        MENUITEM "Filter...",                   ID_PROCESS_FILTER
         MENUITEM SEPARATOR
         MENUITEM "Stop\tEsc",                   ID_EDIT_STOP
     END
@@ -853,8 +853,8 @@ CAPTION "About WaveSoap"
 FONT 8, "MS Sans Serif"
 BEGIN
     ICON            IDR_MAINFRAME,IDC_STATIC,11,17,20,20
-    CTEXT           "WaveSoap Version 0.59 beta",IDC_STATIC_VERSION,58,8,110,
-                    10,SS_NOPREFIX
+    CTEXT           "WaveSoap Version 0.591 beta",IDC_STATIC_VERSION,58,8,
+                    110,10,SS_NOPREFIX
     CTEXT           "Copyright (C) Alexander Grigoriev, 2000-2001",
                     IDC_STATIC,41,27,145,12
     DEFPUSHBUTTON   "OK",IDOK,178,7,50,14,WS_GROUP
@@ -1641,19 +1641,19 @@ IDD_DIALOG_SAVE_TEMPLATE_V5 DIALOG DISCARDABLE  0, 0, 376, 109
 STYLE DS_3DLOOK | DS_CONTROL | WS_CHILD | WS_CLIPSIBLINGS
 FONT 8, "MS Sans Serif"
 BEGIN
-    RTEXT           "Re&cent:",IDC_STATIC,19,5,40,8
+    RTEXT           "Re&cent:",-1,19,5,40,8
     COMBOBOX        IDC_COMBO_RECENT,66,3,228,68,CBS_DROPDOWNLIST | 
                     WS_VSCROLL | WS_TABSTOP
     RTEXT           "",1119,0,18,376,8,NOT WS_VISIBLE
     CONTROL         "Compatible formats only",IDC_CHECK_COMPATIBLE_FORMATS,
                     "Button",BS_AUTOCHECKBOX | WS_TABSTOP,3,29,88,10
-    RTEXT           "Format: ",IDC_STATIC,93,30,34,8
+    RTEXT           "Format: ",IDC_STATIC_FORMAT,93,30,34,8
     COMBOBOX        IDC_COMBO_FORMAT,129,27,165,91,CBS_DROPDOWNLIST | 
                     WS_VSCROLL | WS_TABSTOP
-    RTEXT           "Attributes:",IDC_STATIC,85,46,41,8
+    RTEXT           "Attributes:",IDC_STATIC_ATTRIBUTES,85,46,41,8
     COMBOBOX        IDC_COMBO_ATTRIBUTES,129,44,165,91,CBS_DROPDOWNLIST | 
                     WS_VSCROLL | WS_TABSTOP
-    RTEXT           "&Comments: ",IDC_STATIC,15,61,49,8
+    RTEXT           "&Comments: ",IDC_STATIC_COMMENTS,15,61,49,8
     EDITTEXT        IDC_EDIT_COMMENT,66,60,228,45
     PUSHBUTTON      "Help",IDHELP,316,28,50,14
     PUSHBUTTON      "More...",IDC_BUTTON_MORE,316,45,50,14
@@ -3084,6 +3084,17 @@ BEGIN
     IDS_FILTER_FILE_FILTER  "Filter files (*.Fltr)|*.Fltr|All Files (*.*)|*||"
     IDS_FILTER_SAVE_TITLE   "Save Filter As"
     IDS_FILTER_LOAD_TITLE   "Load Filter"
+    IDS_RAW_16BIT_LSB       "16 bits, least significant byte first (Wintel)"
+END
+
+STRINGTABLE DISCARDABLE 
+BEGIN
+    IDS_RAW_16BIT_MSB       "16 bits, most significant byte first (RISC)"
+    IDS_RAW_8BITS_ALAW      "8 bits CCITT A-law"
+    IDS_RAW_8BITS_ULAW      "8 bits CCITT u-law"
+    IDS_RAW_8BITS_PCM       "8 bits PCM"
+    IDS_ENCODER             "Encoder:"
+    IDS_FORMAT              "Format:"
 END
 
 #endif    // English (U.S.) resources
