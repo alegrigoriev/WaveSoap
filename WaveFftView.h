@@ -48,12 +48,15 @@ protected:
 	virtual void Dump(CDumpContext& dc) const;
 #endif
 
+	// FFT array is stored as circular.
+	// m_IndexOfFftBegin is index of row with m_FftResultBegin
 	unsigned char * m_pFftResultArray;
 	size_t m_FftArraySize;
 	int m_FftResultArrayWidth;    // number of FFT sets
 	int m_FftResultArrayHeight;   // number of frequencies
-	int m_FftResultBegin;     // number of the first sample
-	int m_FftResultEnd;     // number of the sample after the last
+	int m_IndexOfFftBegin;
+	long m_FftResultBegin;     // number of the first sample
+	long m_FftResultEnd;     // number of the sample after the last
 	//int m_FftSamplesCalculated;
 	double m_FftLogRange;     // what dB zero value corresponds
 	double m_FirstbandVisible;     // how much the chart is scrolled. 0 = DC is visible
@@ -67,8 +70,8 @@ protected:
 	int m_FftOrder;
 	int m_FftSpacing;
 	void OnSetWindowType(int window);
-	void MakeFftArray(int left, int right);
-	void CalculateFftRange(int left, int right);
+	void MakeFftArray(long left, long right);
+	void CalculateFftRange(long left, long right);
 	static HBRUSH m_Brush;
 	// Generated message map functions
 protected:

@@ -1,8 +1,6 @@
 Known problems and tasks:
 
-Add "Simple" equalizer
-Add equalizer and low/high frequency filters functions
-Use list instead of array for FFT data (for performance reason).
+Add low/high frequency filters functions
 Include MP3 and WMA filters even if there is no WMP, but show warning, if the filter is selected
 Test "reload compressed file" dialogs
 Add options dialog
@@ -73,6 +71,8 @@ No status bar in WinME
 FFT doesn't invaludate some areas
 
 Done:
+Use circular array for FFT data (for performance reason).
+Add "Simple" equalizer. Multiband equalizer done.
 Support f1, f2, f3 in Evaluate expr
 Put line breaks to the replace expression message
 Add "Export", "Import" to Evaluate Expression dialog
