@@ -1156,7 +1156,7 @@ void CCdGrabbingDialog::InitReadSpeedCombobox()
 	if (i == countof(CdSpeeds)
 		|| m_MaxReadSpeed > CdSpeeds[i] * 176400)
 	{
-		m_SpeedCombo.AddString(_T("Default"));  // TODO: LoadString
+		m_SpeedCombo.AddString(LoadCString(IDS_CDGRAB_DEFAULT_SPEED));
 		m_SpeedCombo.SetCurSel(i);
 	}
 	else if (LB_ERR == m_SpeedCombo.GetCurSel())
