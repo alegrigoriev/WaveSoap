@@ -1950,9 +1950,9 @@ BOOL CReplaceFormatContext::CreateUndo()
 BOOL CReplaceFormatContext::OperationProc()
 {
 	// replace format to the one in m_NewWaveFormat
-	*pDocument->WaveFormat() = *(LPWAVEFORMATEX)m_NewWaveFormat;
-	// BUGBUG: set "dirty" bit
-	pDocument->UpdateFrameTitles();        // will cause name change in views
+	pDocument->SetWaveFormat(m_NewWaveFormat);
+
+//    pDocument->UpdateFrameTitles();        // will cause name change in views
 	pDocument->UpdateAllViews(NULL, CWaveSoapFrontDoc::UpdateSampleRateChanged);
 	return TRUE;
 }
