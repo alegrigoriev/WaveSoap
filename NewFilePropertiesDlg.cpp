@@ -5,6 +5,7 @@
 #include "stdafx.h"
 #include "WaveSoapFront.h"
 #include "NewFilePropertiesDlg.h"
+#include "TimeToStr.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
