@@ -94,6 +94,7 @@ struct WaveFormatTagEx
 		return Tag == wfx.Tag
 				&& (Tag != WAVE_FORMAT_EXTENSIBLE || SubFormat == wfx.SubFormat);
 	}
+	bool IsCompressed() const;
 
 	bool operator ==(WAVEFORMATEX const * wfx) const
 	{
