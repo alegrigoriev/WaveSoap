@@ -218,8 +218,8 @@ void CWaveOutlineView::OnDraw(CDC* pDC)
 	{
 		if (pPeaks[i].low <= pPeaks[i].high)
 		{
-			int y1 = (PeakMax - pPeaks[i].low) * (cr.bottom - 1)/ (PeakMax+PeakMax);
-			int y2 = (PeakMax - pPeaks[i].high) * (cr.bottom - 1)/ (PeakMax+PeakMax);
+			int y1 = (PeakMax - pPeaks[i].low) * (cr.bottom - 1) / (PeakMax+PeakMax+1);
+			int y2 = (PeakMax - pPeaks[i].high) * (cr.bottom - 1) / (PeakMax+PeakMax+1);
 			pDC->MoveTo(i, y1);
 			pDC->LineTo(i, y2 - 1);
 		}
