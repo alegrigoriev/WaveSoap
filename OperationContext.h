@@ -755,7 +755,6 @@ public:
 	virtual BOOL ProcessBuffer(void * buf, size_t len, SAMPLE_POSITION offset, BOOL bBackward = FALSE);
 	virtual BOOL OperationProc();
 	//BOOL SetTargetFormat(WAVEFORMATEX * pwf);
-	virtual void PostRetire();
 private:
 	CoInitHelper m_CoInit;
 };
