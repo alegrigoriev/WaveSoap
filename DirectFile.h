@@ -330,7 +330,7 @@ protected:
 		// when it is read first time.
 		File * pSourceFile;
 		LONGLONG UseSourceFileLength;
-		LONGLONG FilePointer;
+		LONGLONG m_FilePointer;
 		LONGLONG RealFileLength;
 		LONGLONG FileLength;
 		CSimpleCriticalSection mutable m_ListLock;    // synchronize BufferList changes
@@ -362,6 +362,7 @@ protected:
 		BOOL Commit(DWORD flags);
 		BOOL Rename(LPCTSTR NewName, DWORD flags);
 
+		void ReadDataBuffer(BufferHeader * pBuf, DWORD MaskToRead);
 		// read data, lock the buffer
 		// and return the buffer address
 		long GetDataBuffer(void * * ppBuf, LONGLONG length, LONGLONG position, DWORD flags = 0)
@@ -372,7 +373,7 @@ protected:
 		File(CString name) : hFile(NULL),
 			sName(name),
 			m_Flags(0),
-			FilePointer(0),
+			m_FilePointer(0),
 			FileLength(0),
 			RealFileLength(0),
 			BuffersListHead(NULL),
@@ -439,7 +440,6 @@ public:
 							long count, DWORD flags);
 
 		BufferHeader * GetFreeBuffer(unsigned MaxMRU = 0xFFFFFFFFu);
-		void ReadDataBuffer(BufferHeader * pBuf, DWORD MaskToRead);
 		File * Open(LPCTSTR szName, DWORD flags);
 		void RequestPrefetch(File * pFile, LONGLONG PrefetchPosition,
 							LONGLONG PrefetchLength, unsigned MaxMRU);
