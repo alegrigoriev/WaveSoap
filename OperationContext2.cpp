@@ -1,6 +1,6 @@
 // OperationContext2.cpp
 #include "stdafx.h"
-#include "OperationContext.h"
+#include "OperationContext2.h"
 #include "OperationDialogs.h"
 
 static int fround(double d)
@@ -13,6 +13,19 @@ static int fround(double d)
 	{
 		return int(d - 0.5);
 	}
+}
+
+void SkipWhitespace(LPCSTR * ppStr)
+{
+	LPCSTR str = *ppStr;
+	while (' ' == *str
+			|| '\n' == *str
+			|| '\t' == *str
+			|| '\r' == *str)
+	{
+		str++;
+	}
+	*ppStr = str;
 }
 
 CExpressionEvaluationContext::CExpressionEvaluationContext(CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString, LPCTSTR OperationName)

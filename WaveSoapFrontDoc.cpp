@@ -3,7 +3,7 @@
 
 #include "stdafx.h"
 #include "MainFrm.h"
-#include "OperationContext.h"
+#include "OperationContext2.h"
 #include "Resample.h"
 #include "ChildFrm.h"
 #include "SpectrumSectionView.h"
