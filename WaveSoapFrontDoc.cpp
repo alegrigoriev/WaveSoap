@@ -719,7 +719,6 @@ BOOL CWaveSoapFrontDoc::DoSave(LPCTSTR lpszPathName, BOOL bReplace)
 			}
 
 			// If there is no extension, add wav
-			// TODO: Add the extension for the supported type
 			if (Ext.IsEmpty())
 			{
 				name += _T(".wav");
@@ -2856,6 +2855,12 @@ void CWaveSoapFrontDoc::PostFileSave(CFileSaveContext * pContext)
 	if (m_bDirectMode || m_bReadOnly)
 	{
 		m_WavFile.Close();   // close to allow delete and rename
+	}
+	else
+	{
+		// commit all source file data and detach
+		m_WavFile.InitializeTheRestOfFile();
+		m_WavFile.DetachSourceFile();
 	}
 	// delete the old file
 	DeleteFile(pContext->m_NewName);
