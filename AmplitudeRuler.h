@@ -100,10 +100,6 @@ protected:
 	virtual void AssertValid() const;
 	virtual void Dump(CDumpContext& dc) const;
 #endif
-	int m_DrawMode;
-	void DrawSamples(CDC * pDC);
-	void DrawPercents(CDC * pDC);
-	void DrawDecibels(CDC * pDC);
 
 	// Generated message map functions
 protected:

@@ -198,7 +198,7 @@ void CSpectrumSectionView::OnDraw(CDC* pDC)
 				break;
 			case pFftView->WindowTypeHamming:
 				// Hamming window (sucks!!!)
-				m_pWindow[w] = float(0.54 - 0.46 * cos ((w + 0.5)* M_PI /  m_FftOrder));
+				m_pWindow[w] = float(0.9 *(0.54 - 0.46 * cos ((w + 0.5)* M_PI /  m_FftOrder)));
 				break;
 			}
 		}
@@ -320,13 +320,13 @@ void CSpectrumSectionView::OnDraw(CDC* pDC)
 				double re2 = pSrcArray[i * 2] - pSrcArray[(m_FftOrder * 2 - i) * 2];
 				double im1 = pSrcArray[i * 2 + 1] - pSrcArray[(m_FftOrder * 2 - i) * 2 + 1];
 				double im2 = pSrcArray[i * 2 + 1] + pSrcArray[(m_FftOrder * 2 - i) * 2 + 1];
-				m_pFftSum[i * 2] += re1 * re1 + im1 * im1;
-				m_pFftSum[i * 2 + 1] += re2 * re2 + im2 * im2;
+				m_pFftSum[i * 2] += 0.25 * (re1 * re1 + im1 * im1);
+				m_pFftSum[i * 2 + 1] += 0.25 * (re2 * re2 + im2 * im2);
 			}
 		}
 	}
 
-	double PowerScaleCoeff = 1. / (NumberOfFftSamplesAveraged * 65536. * m_FftOrder * 65536 * m_FftOrder);
+	double PowerScaleCoeff = 10. / (NumberOfFftSamplesAveraged * 65536. * m_FftOrder * 65536 * m_FftOrder);
 	// now that we have calculated the FFT
 	for (ch = 0; ch < nChannels; ch++)
 	{
@@ -346,7 +346,7 @@ void CSpectrumSectionView::OnDraw(CDC* pDC)
 				{
 					temp = -150.;
 				}
-				int pos = WorldToWindowX(temp);
+				int pos = WorldToWindowXrnd(temp);
 				if (pIdArray[i].nMin > pos)
 				{
 					pIdArray[i].nMin = pos;

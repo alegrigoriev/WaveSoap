@@ -229,6 +229,7 @@ BEGIN_MESSAGE_MAP(CWaveFftView, CWaveSoapFrontView)
 	//}}AFX_MSG_MAP
 	ON_COMMAND(ID_VIEW_SS_ZOOMINVERT, OnViewZoomInVert)
 	ON_COMMAND(ID_VIEW_SS_ZOOMOUTVERT, OnViewZoomOutVert)
+	ON_COMMAND(ID_VIEW_SS_ZOOMVERT_NORMAL, OnViewZoomvertNormal)
 END_MESSAGE_MAP()
 
 static int fround(double d)
@@ -761,7 +762,7 @@ void CWaveFftView::CalculateFftRange(int left, int right)
 				break;
 			case WindowTypeHamming:
 				// Hamming window (sucks!!!)
-				m_pFftWindow[w] = float(0.54 - 0.46 * cos (w * M_PI /  m_FftOrder));
+				m_pFftWindow[w] = float(0.9 * (0.54 - 0.46 * cos (w * M_PI /  m_FftOrder)));
 				break;
 			}
 		}
@@ -770,7 +771,11 @@ void CWaveFftView::CalculateFftRange(int left, int right)
 	int i = (FirstSampleRequired - m_FftResultBegin) / m_FftSpacing * m_FftResultArrayHeight;
 	int j = (LastSampleRequired - m_FftResultBegin) / m_FftSpacing * m_FftResultArrayHeight;
 	float * buf = NULL;
-	double PowerOffset = log(65536. * m_FftOrder) * 2.;
+	double PowerOffset = log(65536. * m_FftOrder * 0.31622) * 2.;
+#ifdef _DEBUG
+	int MaxRes = 0;
+	int MinRes = 128;
+#endif
 	for (; i < j; i += m_FftResultArrayHeight, FirstSampleRequired += m_FftSpacing)
 	{
 		if (0 == m_pFftResultArray[i])
@@ -813,6 +818,10 @@ void CWaveFftView::CalculateFftRange(int left, int right)
 					{
 						// max power= (32768 * m_FftOrder * 2) ^ 2
 						int res = m_FftLogRange * (PowerOffset - log(power));
+#ifdef _DEBUG
+						if (MaxRes < res) MaxRes = res;
+						if (MinRes > res) MinRes = res;
+#endif
 						if (res < 0)
 						{
 							pRes[0] = 0;
@@ -836,6 +845,9 @@ void CWaveFftView::CalculateFftRange(int left, int right)
 			m_pFftResultArray[i] = 1;   // mark as valid
 		}
 	}
+#ifdef _DEBUG
+	TRACE("MaxRes=%d, MinRes=%d\n", MaxRes, MinRes);
+#endif
 	delete[] buf;
 }
 

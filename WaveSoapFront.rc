@@ -341,9 +341,9 @@ IDR_MENU_FFT_RULER MENU DISCARDABLE
 BEGIN
     POPUP " "
     BEGIN
-        MENUITEM "&Zoom In",                    ID_VIEW_ZOOMINVERT
-        MENUITEM "Zoom &Out",                   ID_VIEW_ZOOMOUTVERT
-        MENUITEM "Zoom Out &Full",              ID_VIEW_ZOOMVERT_NORMAL
+        MENUITEM "&Zoom In",                    ID_VIEW_SS_ZOOMINVERT
+        MENUITEM "Zoom &Out",                   ID_VIEW_SS_ZOOMOUTVERT
+        MENUITEM "Zoom Out &Full",              ID_VIEW_SS_ZOOMVERT_NORMAL
     END
 END
 

@@ -1,9 +1,8 @@
 Known problems and tasks:
 
-Draw decibels in Spectrum Section view
+Add decibel view to CAmplitudeRuler
 Add options dialog
 Show File Properties
-Add decibel view to CAmplitudeRuler
 Add equalizer and low/high frequency filters functions
 Use list instead of array for FFT data (for performance reason).
 Include MP3 and WMA filters even if there is no WMP, but show warning, if the filter is selected
@@ -85,6 +84,10 @@ Wrong minimum/maximum valies shown for a zero length file in Statistics (command
 ???? When a file is opened in non-direct mode, peak info is saved with wrong time stamp
 
 Done:
+Result of FFT normalized to maximum for max square wave, fro FFT view and spectrum section
+FFT ruler menu command changed to frequency-related
+Draw decibels in Spectrum Section view
+If Wave view and spectrum section are shown, show both amplitude ruler (along wave view) and frequency ruler
 Draw crosshair in Spectrum Section view
 Make sliders working in Resample Dialog
 Max WAV file size: [x] 2GB [ ] 4 GB

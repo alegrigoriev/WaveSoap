@@ -308,14 +308,22 @@ void CScaledScrollView::PointToDoubleDev(POINT pt,
 
 int CScaledScrollView::WorldToWindowX(double x) const
 {
-	return //fround
-		((x - dOrgX) * GetXScaleDev());
+	return (x - dOrgX) * GetXScaleDev();
 }
 
 int CScaledScrollView::WorldToWindowY(double y) const
 {
-	return //fround
-		((y - dOrgY) * GetYScaleDev());
+	return (y - dOrgY) * GetYScaleDev();
+}
+
+int CScaledScrollView::WorldToWindowXrnd(double x) const
+{
+	return fround((x - dOrgX) * GetXScaleDev());
+}
+
+int CScaledScrollView::WorldToWindowYrnd(double y) const
+{
+	return fround((y - dOrgY) * GetYScaleDev());
 }
 
 double CScaledScrollView::WindowToWorldX(int x) const
