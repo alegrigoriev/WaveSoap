@@ -3082,7 +3082,7 @@ void CWaveSoapFrontDoc::OnSoundPlay()
 		CThisApp * pApp = GetApp();
 
 		INT_PTR PlaybackDevice = pApp->m_DefaultPlaybackDevice;
-		if (PlaybackDevice >= CWaveOut::GetNumDevs())
+		if (PlaybackDevice >= INT_PTR(CWaveOut::GetNumDevs()))
 		{
 			PlaybackDevice = WAVE_MAPPER;
 		}
