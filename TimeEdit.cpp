@@ -64,6 +64,14 @@ void CTimeEdit::UpdateEditControl()
 	SetWindowText(m_OriginalString);
 }
 
+SAMPLE_INDEX CTimeEdit::ChangeTimeFormat(int format)
+{
+	SAMPLE_INDEX sample = GetTimeSample();
+	SetTimeFormat(format);
+	SetTimeSample(sample);
+	return sample;
+}
+
 SAMPLE_INDEX CTimeEdit::GetTimeSample()
 {
 	CString s;

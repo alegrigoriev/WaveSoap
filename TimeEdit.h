@@ -34,6 +34,8 @@ public:
 		m_nSamplesPerSec = nSamplesPerSec;
 	}
 	void UpdateEditControl();
+
+	SAMPLE_INDEX ChangeTimeFormat(int format);
 	// Overrides
 	// ClassWizard generated virtual function overrides
 	//{{AFX_VIRTUAL(CTimeEdit)
