@@ -15,8 +15,10 @@ static char THIS_FILE[] = __FILE__;
 // CSaveExpressionDialog dialog
 
 
-CSaveExpressionDialog::CSaveExpressionDialog(CWnd* pParent /*=NULL*/)
-	: CDialog(CSaveExpressionDialog::IDD, pParent)
+CSaveExpressionDialog::CSaveExpressionDialog(const vector<ExprGroup> & Exprs,
+											CWnd* pParent /*=NULL*/)
+	: CDialog(CSaveExpressionDialog::IDD, pParent),
+	m_Expressions(Exprs)
 {
 	//{{AFX_DATA_INIT(CSaveExpressionDialog)
 	m_GroupName = _T("");
@@ -41,8 +43,13 @@ void CSaveExpressionDialog::DoDataExchange(CDataExchange* pDX)
 	DDX_Control(pDX, IDC_COMBO_GROUP, m_ExpressionGroupCombo);
 	DDX_Text(pDX, IDC_COMBO_GROUP, m_GroupName);
 	//}}AFX_DATA_MAP
+	if (pDX->m_bSaveAndValidate
+		&& m_GroupName == "All Expressions")
+	{
+		AfxMessageBox("Group name cannot be \"All Expressions\"");
+		pDX->Fail();
+	}
 }
-
 
 BEGIN_MESSAGE_MAP(CSaveExpressionDialog, CDialog)
 	//{{AFX_MSG_MAP(CSaveExpressionDialog)
@@ -67,15 +74,17 @@ BOOL CSaveExpressionDialog::OnInitDialog()
 
 void CSaveExpressionDialog::BuildExpressionGroupCombobox(int nGroupSelected, int nExprSelected)
 {
-	CThisApp * pApp = GetApp();
 	m_ExpressionGroupCombo.ResetContent();
-	for (int i = 0; i < pApp->m_NumOfExprGroups; i++)
+
+	for (vector<ExprGroup>::const_iterator ii = m_Expressions.begin() + 1
+		; ii < m_Expressions.end(); ii++)
 	{
-		m_ExpressionGroupCombo.AddString(pApp->m_ExpressionGroups[i]);
+		m_ExpressionGroupCombo.AddString(ii->name);
 	}
-	if (nGroupSelected >= pApp->m_NumOfExprGroups)
+
+	if (nGroupSelected > m_Expressions.size() - 1)
 	{
-		nGroupSelected = pApp->m_NumOfExprGroups - 1;
+		nGroupSelected = 0;
 	}
 	m_ExpressionGroupSelected = nGroupSelected;
 	m_CurrExpressionGroupSelected = nGroupSelected;
@@ -85,14 +94,14 @@ void CSaveExpressionDialog::BuildExpressionGroupCombobox(int nGroupSelected, int
 
 void CSaveExpressionDialog::LoadExpressionCombobox(int nGroupSelected, int nExprSelected)
 {
-	CThisApp * pApp = GetApp();
 	m_ExpressionGroupSelected = nGroupSelected;
 	m_CurrExpressionGroupSelected = nGroupSelected;
 
 	while(m_SavedExpressionCombo.DeleteString(0) > 0);
 
 	if (nGroupSelected < 0
-		|| nGroupSelected >= pApp->m_NumOfExprGroups)
+		|| m_Expressions.size() <= 1
+		|| nGroupSelected > m_Expressions.size() - 1)
 	{
 		m_CurrExpressionGroupSelected = -1;
 		m_SavedExpressionCombo.SetCurSel(-1);
@@ -100,15 +109,18 @@ void CSaveExpressionDialog::LoadExpressionCombobox(int nGroupSelected, int nExpr
 		return;
 	}
 
-	for (int i = 0; i < pApp->m_NumExpressions[nGroupSelected]; i++)
+	for (vector<Expr>::const_iterator jj = m_Expressions[nGroupSelected + 1].exprs.begin()
+		; jj < m_Expressions[nGroupSelected + 1].exprs.end(); jj++)
 	{
-		m_SavedExpressionCombo.AddString(
-										pApp->m_ExpressionNames[i + pApp->m_IndexOfGroupBegin[nGroupSelected]]);
+		m_SavedExpressionCombo.AddString(jj->name);
 	}
-	if (nExprSelected >= i)
+	int NumExpressions =  m_Expressions[nGroupSelected + 1].exprs.size();
+	if (nExprSelected >= NumExpressions)
 	{
-		nExprSelected = i - 1;
+		nExprSelected = NumExpressions - 1;
 	}
+	m_SavedExpressionCombo.SetCurSel(nExprSelected);
+	OnSelchangeComboName();
 }
 
 void CSaveExpressionDialog::OnSelchangeComboGroup()
@@ -126,18 +138,17 @@ void CSaveExpressionDialog::OnSelchangeComboName()
 	// if name selected, set comment edit box
 	if ( ! m_bCommentChanged)
 	{
-		CThisApp * pApp = GetApp();
 		int sel = m_SavedExpressionCombo.GetCurSel();
-		if (sel >= 0 && sel < pApp->m_NumExpressions[m_ExpressionGroupSelected])
+
+		vector<ExprGroup>::const_iterator ii = m_Expressions.begin() + m_ExpressionGroupSelected + 1;
+		if (sel >= 0 && sel < ii->exprs.size())
 		{
-			int ExprIndex = sel + pApp->m_IndexOfGroupBegin[m_ExpressionGroupSelected];
-			m_eComment.SetWindowText(pApp->m_ExpressionComments[ExprIndex]);
+			m_eComment.SetWindowText(ii->exprs[sel].comment);
 		}
 		else
 		{
 			m_eComment.SetWindowText("");
 		}
-
 		m_bCommentChanged = false;
 	}
 }

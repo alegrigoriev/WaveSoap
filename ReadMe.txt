@@ -1,7 +1,5 @@
 Known problems and tasks:
 
-Make group "All Expressions" in expression evaluation dialog
-Notify when there is overflow during expression evaluation
 Make "New File parameters" dialog
 Support "Play" in selection dialog
 Move most persistent dialog parameters to dialogs, to update registry dynamically
@@ -56,6 +54,8 @@ Insert Silence of zero length still tries to modify the file
 Multiple MP3 files open: all but one get stuck
 
 Done:
+Notify when there is overflow during expression evaluation
+Make group "All Expressions" in expression evaluation dialog
 Make "Custom samplerate" dialog
 Add Resample... command to sample rate context menu
 Add Channels... command to menu

@@ -365,8 +365,6 @@ BOOL CWaveSoapFrontApp::InitInstance()
 	Profile.AddItem(_T("Settings"), _T("OpenChildMaximized"), m_bOpenChildMaximized, true);
 	Profile.AddItem(_T("Settings"), _T("OpenMaximized"), m_bOpenMaximized, true);
 
-	LoadSavedExpressions();
-
 	LoadStdProfileSettings(10);  // Load standard INI file options (including MRU)
 
 	if (m_bUseCountrySpecificNumberAndTime)
@@ -2485,95 +2483,3 @@ void CWaveSoapFrontApp::SetStatusStringAndDoc(const CString & str, CWaveSoapFron
 	m_StatusStringLock.Unlock();
 }
 
-void CWaveSoapFrontApp::LoadSavedExpressions()
-{
-	Profile.AddItem(_T("Expressions"), _T("NumberOfGroups"), m_NumOfExprGroups, -1, -1, MaxSavedExpressionGroups);
-	// create items for ALL
-	int i;
-	CString s;
-	for (i = 0; i < MaxSavedExpressionGroups; i++)
-	{
-		s.Format(_T("Group%02d"), i + 1);
-		Profile.AddItem(_T("Expressions"), s, m_ExpressionGroups[i]);
-		s.Format(_T("ExprsInGroup%02d"), i + 1);
-		Profile.AddItem(_T("Expressions"), s, m_NumExpressions[i], 0, 0, MaxSavedTotalExpressions);
-	}
-	for (i = 0; i < MaxSavedTotalExpressions; i++)
-	{
-		s.Format(_T("ExprName%03d"), i + 1);
-		Profile.AddItem(_T("Expressions"), s, m_ExpressionNames[i]);
-		s.Format(_T("ExprComment%03d"), i + 1);
-		Profile.AddItem(_T("Expressions"), s, m_ExpressionComments[i]);
-		s.Format(_T("Expr%03d"), i + 1);
-		Profile.AddItem(_T("Expressions"), s, m_Expressions[i]);
-	}
-	Profile.AddItem(_T("Expressions"), _T("ExpressionGroupSelected"),
-					m_ExpressionGroupSelected, 0, 0, MaxSavedExpressionGroups);
-	Profile.AddItem(_T("Expressions"), _T("ExpressionSelected"),
-					m_ExpressionSelected, 0, 0, MaxSavedTotalExpressions);
-	Profile.AddItem(_T("Expressions"), _T("ExpressionTabSelected"),
-					m_ExpressionTabSelected, 0, 0, 3);
-	Profile.AddItem(_T("Expressions"), _T("FrequencyArgument"),
-					m_dFrequencyArgument, 100., 0., 1000000.);
-
-	if (-1 == m_NumOfExprGroups)
-	{
-		// load default expressions
-		TCHAR ModuleName[MAX_PATH] = {0};
-		TCHAR FullPathName[MAX_PATH];
-		LPTSTR FilePart = FullPathName;
-		GetModuleFileName(NULL, ModuleName, MAX_PATH);
-		GetFullPathName(ModuleName, MAX_PATH, FullPathName, & FilePart);
-		*FilePart = 0;
-		CString ProfileName(FullPathName);
-		ProfileName += _T("Expressions.ini");
-
-		enum { MaxExprChars = 1024 };
-		TCHAR Buf[MaxExprChars];
-		for (i = 0; i < MaxSavedExpressionGroups; i++)
-		{
-			s.Format(_T("Group%02d"), i + 1);
-			GetPrivateProfileString(_T("Expressions"), s, "", Buf, MaxExprChars, ProfileName);
-			m_ExpressionGroups[i] = Buf;
-
-			s.Format(_T("ExprsInGroup%02d"), i + 1);
-			m_NumExpressions[i] = GetPrivateProfileInt(_T("Expressions"), s, 0, ProfileName);
-			if (m_NumExpressions[i] < 0)
-			{
-				m_NumExpressions[i] = 0;
-			}
-			if (m_NumExpressions[i] > MaxSavedTotalExpressions)
-			{
-				m_NumExpressions[i] = MaxSavedTotalExpressions;
-			}
-			if (m_NumExpressions[i] != 0)
-			{
-				m_NumOfExprGroups = i + 1;
-			}
-		}
-		for (i = 0; i < MaxSavedTotalExpressions; i++)
-		{
-			s.Format(_T("ExprName%03d"), i + 1);
-			GetPrivateProfileString(_T("Expressions"), s, "", Buf, MaxExprChars, ProfileName);
-			m_ExpressionNames[i] = Buf;
-
-			s.Format(_T("ExprComment%03d"), i + 1);
-			GetPrivateProfileString(_T("Expressions"), s, "", Buf, MaxExprChars, ProfileName);
-			m_ExpressionComments[i] = Buf;
-
-			s.Format(_T("Expr%03d"), i + 1);
-			GetPrivateProfileString(_T("Expressions"), s, "", Buf, MaxExprChars, ProfileName);
-			m_Expressions[i] = Buf;
-		}
-	}
-	int index = 0;
-	for (i = 0; i < MaxSavedExpressionGroups; i++)
-	{
-		m_IndexOfGroupBegin[i] = index;
-		if (index + m_NumExpressions[i] > MaxSavedTotalExpressions)
-		{
-			m_NumExpressions[i] = MaxSavedTotalExpressions - index;
-		}
-		index += m_NumExpressions[i];
-	}
-}
