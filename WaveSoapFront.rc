@@ -2294,8 +2294,6 @@ CAPTION "Marker/Region"
 FONT 8, "MS Shell Dlg", 0, 0, 0x0
 BEGIN
     LTEXT           "&Name:",IDC_STATIC,16,10,63,8
-    COMBOBOX        IDC_COMBO_MARKER_NAME,16,22,209,72,CBS_DROPDOWN | 
-                    WS_VSCROLL | WS_TABSTOP
     LTEXT           "Type:",IDC_STATIC,16,41,51,8
     CONTROL         "&Marker",IDC_RADIO_MARKER,"Button",BS_AUTORADIOBUTTON | 
                     WS_GROUP,71,40,58,10
@@ -2325,6 +2323,7 @@ BEGIN
     PUSHBUTTON      "Cancel",IDCANCEL,252,39,50,14
     PUSHBUTTON      "&Play",IDC_BUTTON_PLAY,252,57,50,14,WS_DISABLED | 
                     WS_GROUP
+    EDITTEXT        IDC_EDIT_MARKER_NAME,15,22,210,14,ES_AUTOHSCROLL
 END
 
 
