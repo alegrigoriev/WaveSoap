@@ -2017,38 +2017,37 @@ void CClickRemoval::InterpolateGap(WAVE_SAMPLE data[], int nLeftIndex, int Click
 	// Take 5 points to left with ClickLength/2 step
 	// and 5 points to right
 	// 2 farthest points to the left are spaced by ClickLength
-	double Y[20], X[20];
-	int n;
-	int InterpolationOrder;
-	if (ClickLength <= 32)
+	int const MaxInterpolationOrder = 15;
+	double Y[MaxInterpolationOrder], X[MaxInterpolationOrder];
+
+	ASSERT(ClickLength >= 2);
+	int const InterpolationOrder = std::min(ClickLength, MaxInterpolationOrder);
+	int const InterpolationStep = std::max(2, std::min(ClickLength / 4, 6));
+
+	for (int n = 0; n < InterpolationOrder; n ++)
 	{
-		InterpolationOrder = 10;
-		ASSERT(nLeftIndex - (ClickLength * (InterpolationOrder - 2) / 2 + 1) >= 0);
-		for (n = 0; n < InterpolationOrder - 1; n += 2)
+		int index = (n / 2 * InterpolationStep + 1);
+		if (n & 1)
 		{
-			X[n] = - (ClickLength * n / 2 + 1);
-			Y[n] = data[nChans * (nLeftIndex - (ClickLength * n / 2 + 1))];
-			X[n + 1] = ClickLength + ClickLength * n / 2;
-			Y[n + 1] = data[nChans * (nLeftIndex + ClickLength + ClickLength * n / 2)];
+			index = - index;
 		}
-	}
-	else
-	{
-		InterpolationOrder = 20;
-		ASSERT(nLeftIndex - (ClickLength * (InterpolationOrder - 2) / 4 + 1) >= 0);
-		for (n = 0; n < InterpolationOrder - 1; n += 2)
+		else
 		{
-			X[n] = - (ClickLength * n / 4 + 1);
-			Y[n] = data[nChans * (nLeftIndex - (ClickLength * n / 4 + 1))];
-			X[n + 1] = ClickLength + ClickLength * n / 4;
-			Y[n + 1] = data[nChans * (nLeftIndex + ClickLength + ClickLength * n / 4)];
+			index += ClickLength;
 		}
+
+		ASSERT(nLeftIndex + index >= 0);
+		X[n] = index;
+		Y[n] = data[nChans * (nLeftIndex + index)];
 	}
+
 	// perform Lagrange interpolation
-	for (n = 0; n < ClickLength; n++)
+	for (int n = 0; n < ClickLength; n++)
 	{
 		double x = n;
-		double y = 0;
+		double y = 0.;
+		double y_neg = 0.;
+
 		for (int k = 0; k < InterpolationOrder; k++)
 		{
 			double a = Y[k];
@@ -2059,9 +2058,17 @@ void CClickRemoval::InterpolateGap(WAVE_SAMPLE data[], int nLeftIndex, int Click
 					a *= (x - X[j]) / (X[k] - X[j]);
 				}
 			}
-			y += a;
+
+			if (a >= 0)
+			{
+				y += a;
+			}
+			else
+			{
+				y_neg += a;
+			}
 		}
-		data[nChans * (nLeftIndex + n)] = DoubleToShort(y);
+		data[nChans * (nLeftIndex + n)] = DoubleToShort(y + y_neg);
 	}
 }
 
