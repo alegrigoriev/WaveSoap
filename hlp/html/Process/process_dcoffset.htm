@@ -3,15 +3,32 @@
 <head>
 <meta name="GENERATOR" content="Microsoft FrontPage 6.0">
 <meta name="ProgId" content="FrontPage.Editor.Document">
-<meta http-equiv="Content-Type" content="text/html; charset=windows-1251">
-<title>New Page 0</title>
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>Process DC offset command</title>
 </head>
 
 <body>
 
-<P><B>&nbsp;command (<a href="process_menu.htm">Process menu</a>)</B></P>
+<h3><B>DC offset&nbsp;command (<a href="process_menu.htm">Process menu</a>)</B></h3>
 
-<P>Use this command to .</P>
+<P>Use this command to add a constant value to all the selected samples, to 
+compensate for DC offset introduced during analog recording.</P>
+
+<P>The following dialog box is shown:</P>
+<p><img border="0" src="../../images/DCOffsetDialog.png"></p>
+<p>WaveSoap can automatically detect DC offset, or an explicitly specified value 
+can be used.</p>
+<p>If &quot;<b>Automatically detect and remove</b>&quot;<b> </b>is selected, the necessary 
+offset is calculated by averaging the samples. If &quot;<b>Compute DC offset from 5 
+seconds only</b>&quot;, only the first 5.4 seconds worth of data is averaged. Such 
+duration is chosen because it's exactly 3 rotations of an LP.</p>
+<p>If &quot;<b>Adjust DC offset by</b>&quot; is selected, any desired value can be 
+entered, from -32768 to 32767.</p>
+<P><b>Save Undo</b> checkbox enables undoing the operation. If it's not checked, 
+you won't be able to undo the operation and all previous operations.</P>
+<P><b>Selection</b> button allows to specify range and channels to perform the 
+operation. It opens a
+<a href="../Dialogs/Selection/SelectionDialog.htm">selection dialog</a>.</P>
 
 </body>
 
