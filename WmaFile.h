@@ -257,8 +257,9 @@ protected:
 	SAMPLE_POSITION m_DstPos;
 	SAMPLE_INDEX m_DstCopySample;
 
-	IWMReader * m_Reader;
-	IWMReaderAdvanced2 * m_pAdvReader;
+	CComPtr<IWMReader> m_Reader;
+	CComQIPtr<IWMReaderAdvanced2> m_pAdvReader;
+
 	CDirectFileStream m_InputStream;
 
 	bool m_bOpened;
@@ -357,19 +358,23 @@ public:
 	void SetArtist(LPCTSTR szArtist);
 	void SetAlbum(LPCTSTR szAlbum);
 	void SetGenre(LPCTSTR szGenre);
-	BOOL SetFormat(WAVEFORMATEX * pDstWfx);
+	BOOL SetDestinationFormat(WAVEFORMATEX const * pDstWfx);
 	BOOL Write(void * Buf, size_t size);
-
-	WAVEFORMATEX m_SrcWfx;
-protected:
-	IWMWriter * m_pWriter;
-	IWMWriterAdvanced * m_pWriterAdvanced;
-	IWMProfileManager * m_pProfileManager;
+	void SetSourceWaveFormat(WAVEFORMATEX const * pSrcWfx);
+	WAVEFORMATEX const * GetSourceWaveFormat() const
+	{
+		return m_SrcWfx;
+	}
+private:
+	CWaveFormat m_SrcWfx;
+	CComPtr<IWMWriter> m_pWriter;
+	CComQIPtr<IWMWriterAdvanced, &IID_IWMWriterAdvanced> m_pWriterAdvanced;
+	CComPtr<IWMProfileManager> m_pProfileManager;
 
 	FileWriter m_FileWriter;
 	DWORD m_SampleTimeMs;
-	IWMHeaderInfo * m_pHeaderInfo;
-	INSSBuffer * m_pBuffer;
+	CComQIPtr<IWMHeaderInfo, &IID_IWMHeaderInfo> m_pHeaderInfo;
+	CComPtr<INSSBuffer> m_pBuffer;
 };
 
 #endif
