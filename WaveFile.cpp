@@ -5,6 +5,7 @@
 #include "WaveFile.h"
 #include <atlbase.h>
 #include <atlpath.h>
+#include "PathEx.h"
 
 CMmioFile::CMmioFile()
 	: m_hmmio(NULL),
@@ -863,23 +864,32 @@ BOOL CWaveFile::CreateWaveFile(CWaveFile * pTemplateFile, WAVEFORMATEX * pTempla
 	CThisApp * pApp = GetApp();
 	// if the name is empty, create a temp name
 	DWORD OpenFlags = MmioFileOpenCreateAlways;
+	CWaveFormat wf;
+
 	// create new WAVEFORMATEX
-	if (NULL == pTemplateFormat
-		&& NULL != pTemplateFile
-		&& pTemplateFile->IsOpen())
+	if (NULL != pTemplateFormat)
 	{
-		pTemplateFormat = pTemplateFile->GetWaveFormat();
+		wf = pTemplateFormat;
 	}
+	else if (NULL != pTemplateFile
+			&& pTemplateFile->IsOpen())
+	{
+		wf = pTemplateFile->GetWaveFormat();
+	}
+	else
+	{
+		//ASSERT(NULL != pTemplateFormat || NULL != pTemplateFile);
+		wf.InitCdAudioFormat();
+	}
+
+	int nNumChannels = wf.NumChannelsFromMask(Channels);
 
 	if (flags & CreateWaveFileAllowMemoryFile)
 	{
 		// check file size
-		int nSampleSize = 4;
-		if (Channels != ALL_CHANNELS
-			|| (pTemplateFormat != NULL && pTemplateFormat->nChannels < 2))
-		{
-			nSampleSize = 2;
-		}
+		int nSampleSize =
+			sizeof (WAVE_SAMPLE) * nNumChannels;
+
 		LONGLONG size = SizeOrSamples * nSampleSize;
 		if ( ! pApp->m_bUseMemoryFiles
 			|| size > pApp->m_MaxMemoryFileSize * 1024)
@@ -900,11 +910,13 @@ BOOL CWaveFile::CreateWaveFile(CWaveFile * pTemplateFile, WAVEFORMATEX * pTempla
 	}
 	else
 	{
-		CString dir;
+		CPathEx dir;
+
 		if (0 == (flags & CreateWaveFileTempDir))
 		{
 			// get directory name from template file or FileName
 			LPCTSTR OriginalName = NULL;
+
 			if ((flags & CreateWaveFileTemp)
 				&& NULL != FileName
 				&& FileName[0] != 0)
@@ -916,36 +928,32 @@ BOOL CWaveFile::CreateWaveFile(CWaveFile * pTemplateFile, WAVEFORMATEX * pTempla
 			{
 				OriginalName = pTemplateFile->GetName();
 			}
-			LPTSTR pFilePart = NULL;
+
 			if (NULL != OriginalName
-				&& 0 != OriginalName[0]
-				&& 0 != GetFullPathName(OriginalName,
-										countof(NameBuf), NameBuf, & pFilePart)
-				&& pFilePart != NULL)
+				&& 0 != OriginalName[0])
 			{
-				*pFilePart = 0;
-				dir = NameBuf;
+				if (dir.MakeFullPath(OriginalName))
+				{
+					dir.RemoveFileSpec();
+				}
 			}
 		}
 
 		if (dir.IsEmpty())
 		{
 			dir = GetApp()->m_sTempDir;
-			if (dir.IsEmpty())
-			{
-				if (GetTempPath(countof(NameBuf), NameBuf))
-				{
-					dir = NameBuf;
-				}
-			}
 		}
 
-		if ( ! dir.IsEmpty()
-			&& dir[dir.GetLength() - 1] != '\\'
-			&& dir[dir.GetLength() - 1] != '/')
+		if (dir.IsEmpty())
 		{
-			dir += _T("\\");
+			dir.GetTempPath();
 		}
+
+		if ( ! dir.IsEmpty())
+		{
+			dir.AddBackslash();
+		}
+
 		if (GetTempFileName(dir, _T("wav"), 0, NameBuf))
 		{
 			name = NameBuf;
@@ -981,115 +989,36 @@ BOOL CWaveFile::CreateWaveFile(CWaveFile * pTemplateFile, WAVEFORMATEX * pTempla
 		}
 		return TRUE;
 	}
+
 	if (FALSE == Open(name, OpenFlags))
 	{
 		Close();
 		return FALSE;
 	}
 
-	if (NULL == AllocateInstanceData<InstanceDataWav>())
+	InstanceDataWav * pInst = AllocateInstanceData<InstanceDataWav>();
+	if (NULL == pInst)
 	{
 		Close();
 		return FALSE;
 	}
 
-	WAVEFORMATEX * pWF = NULL;
-	int FormatSize = sizeof (PCMWAVEFORMAT);
-	if (NULL != pTemplateFormat)
+	if ((flags & CreateWaveFilePcmFormat)
+		|| WAVE_FORMAT_PCM == wf.FormatTag())
 	{
-		if ((flags & CreateWaveFilePcmFormat)
-			|| WAVE_FORMAT_PCM == pTemplateFormat->wFormatTag)
-		{
-			GetInstanceData()->wf.Allocate(0);
-			pWF = GetWaveFormat();
-			if (pWF)
-			{
-				pWF->nSamplesPerSec = pTemplateFormat->nSamplesPerSec;
-				pWF->wFormatTag = WAVE_FORMAT_PCM;
-				if (flags & CreateWaveFileTemp)
-				{
-					pWF->wBitsPerSample = 16;
-				}
-				else
-				{
-					pWF->wBitsPerSample = pTemplateFormat->wBitsPerSample;
-				}
-				if (ALL_CHANNELS == Channels)
-				{
-					pWF->nChannels = pTemplateFormat->nChannels;
-				}
-				else
-				{
-					pWF->nChannels = 1;
-				}
-				pWF->nBlockAlign = pWF->wBitsPerSample / 8 * pWF->nChannels;
-				pWF->nAvgBytesPerSec = pWF->nBlockAlign * pWF->nSamplesPerSec;
-			}
-			else
-			{
-				Close();
-				return FALSE;
-			}
-		}
-		else
-		{
-			GetInstanceData()->wf = pTemplateFormat;
-			FormatSize = sizeof (WAVEFORMATEX) + pTemplateFormat->cbSize;
-			pWF = GetWaveFormat();
-			if (pWF)
-			{
-				if (ALL_CHANNELS == Channels)
-				{
-					pWF->nChannels = pTemplateFormat->nChannels;
-				}
-				else
-				{
-					pWF->nChannels = 1;
-					if (pTemplateFormat->nChannels != 1)
-					{
-						// it may not be correct, better query the compressor
-						pWF->nBlockAlign /= 2;
-						pWF->nAvgBytesPerSec /= 2;
-					}
-				}
-			}
-			else
-			{
-				Close();
-				return FALSE;
-			}
-		}
+		pInst->wf.InitFormat(WAVE_FORMAT_PCM, wf.SampleRate(),
+							nNumChannels, wf.BitsPerSample());
 	}
 	else
 	{
-		// create default PCM descriptor
-		GetInstanceData()->wf.InitCdAudioFormat();
-		pWF = GetWaveFormat();
-
-		if (pWF)
-		{
-			if (ALL_CHANNELS == Channels)
-			{
-				pWF->nChannels = 2;
-			}
-			else
-			{
-				pWF->nChannels = 1;
-			}
-			pWF->nBlockAlign = pWF->wBitsPerSample / 8 * pWF->nChannels;
-			pWF->nAvgBytesPerSec = pWF->nBlockAlign * pWF->nSamplesPerSec;
-		}
-		else
-		{
-			Close();
-			return FALSE;
-		}
+		pInst->wf = wf;
 	}
+
 	// RIFF created in Open()
 	MMCKINFO * pfck = GetFmtChunk();
 	pfck->ckid = mmioFOURCC('f', 'm', 't', ' ');
 	CreateChunk(* pfck, 0);
-	Write(pWF, FormatSize);
+	Write(LPWAVEFORMATEX(pInst->wf), pInst->wf.FormatSize());
 	Ascend(* pfck);
 
 	// write fact chunk
