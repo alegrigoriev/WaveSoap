@@ -335,13 +335,13 @@ class CSoundPlayContext : public COperationContext
 public:
 	CWaveOut m_WaveOut;
 	CWaveFile m_PlayFile;
-	long m_Begin;
-	long m_End;
-	long m_CurrentPlaybackPos;
-	int m_Chan;
-	int m_SamplePlayed;
-	int m_FirstSamplePlayed;
-	int m_LastSamplePlayed;
+	SAMPLE_POSITION m_Begin;
+	SAMPLE_POSITION m_End;
+	SAMPLE_POSITION m_CurrentPlaybackPos;
+	CHANNEL_MASK m_Chan;
+	SAMPLE_INDEX m_SamplePlayed;
+	SAMPLE_INDEX m_FirstSamplePlayed;
+	SAMPLE_INDEX m_LastSamplePlayed;
 	bool m_bPauseRequested;
 	int m_PlaybackDevice;
 	int m_OldThreadPriority;
@@ -350,7 +350,7 @@ public:
 
 public:
 	CSoundPlayContext(CWaveSoapFrontDoc * pDoc, CWaveFile & WavFile,
-					long PlaybackStart, long PlaybackEnd, int Channel,
+					SAMPLE_INDEX PlaybackStart, SAMPLE_INDEX PlaybackEnd, CHANNEL_MASK Channel,
 					int PlaybackDevice, int PlaybackBuffers, size_t PlaybackBufferSize);
 
 	virtual ~CSoundPlayContext() {}
