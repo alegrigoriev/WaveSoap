@@ -81,6 +81,7 @@ using std::min;
 using std::max;
 #endif
 #include "WaveSoapFront.h"
+#include <afxdlgs.h>
 //{{AFX_INSERT_LOCATION}}
 // Microsoft Visual C++ will insert additional declarations immediately before the previous line.
 
