@@ -144,6 +144,12 @@ protected:
 	virtual void ChangeSelection(double left, double right,
 								double bottom, double top);
 	virtual void CancelSelection();
+	virtual void AdjustNewScale(double OldScaleX, double OldScaleY,
+								double & NewScaleX, double & NewScaleY)
+	{
+		// change nothing
+		// the derived class function can change the new scale
+	}
 
 	void UpdateScrollbars(BOOL bRedraw = TRUE);
 	int GetMappingInfo();
