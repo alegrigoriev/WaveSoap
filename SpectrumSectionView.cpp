@@ -402,7 +402,6 @@ void CSpectrumSectionView::OnDraw(CDC* pDC)
 	ATL::CHeapPtr<FftGraphBand> pIdArray;
 	ATL::CHeapPtr<DoublePoint> ppArray;
 
-	double PowerScaleCoeff = 1.;
 	// if there is selection, calculate the whole region sum
 	if (m_bShowNoiseThreshold
 		&& NULL != m_pNoiseReduction)
@@ -452,7 +451,7 @@ void CSpectrumSectionView::OnDraw(CDC* pDC)
 			}
 		}
 
-		PowerScaleCoeff = 1. / (32768. * 32768. * m_FftOrder);
+		double const PowerScaleCoeff = 1. / (32768. * 32768.);
 
 		// now that we have calculated the FFT
 
@@ -523,7 +522,7 @@ void CSpectrumSectionView::OnDraw(CDC* pDC)
 
 		CalculateFftPowerSum(m_pFftSum, nStartSample, NumberOfFftSamplesAveraged, m_FftOrder);
 
-		PowerScaleCoeff = 4. / (NumberOfFftSamplesAveraged * 32768. * m_FftOrder * 32768. * m_FftOrder);
+		double const PowerScaleCoeff = 4. / (NumberOfFftSamplesAveraged * 32768. * m_FftOrder * 32768. * m_FftOrder);
 
 		// now that we have calculated the FFT
 
