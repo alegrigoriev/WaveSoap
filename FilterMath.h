@@ -14,6 +14,7 @@
 #include "PolyMath.h"
 #include "PolyRatio.h"
 
+#define M_PI        3.14159265358979323846
 #define TWO_PI (M_PI*2.)
 
 int LaguerreMethod(	POLY &coef,
@@ -26,8 +27,8 @@ void UnwrapPhase( int ix, double *phase);
 
 void EllipticPolesZeros(double omegaPass,
 						double omegaStop,
-						double &minStopLossDB,
-						double &maxPassLossDB,
+						double minStopLossDB,
+						double maxPassLossDB,
 						int order,
 						POLY_ROOTS &zeros,
 						POLY_ROOTS &poles,

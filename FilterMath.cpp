@@ -159,18 +159,18 @@ int LaguerreMethod(POLY &coef,
 		f = dP_dz / P;
 		fSqrd = (f * f);
 		g = fSqrd - d2P_dz2 / P;
-		radical = (coef.order()-1) * g - fSqrd;
+		radical = double(coef.order()-1) * g - fSqrd;
 		fwork = coef.order();
 		radical = sqrt( fwork * radical);
 		fPlusRad = f + radical;
 		fMinusRad = f - radical;
 		if( abs(fPlusRad) > abs(fMinusRad) )
 		{
-			deltaZ = (coef.order()-1) / fPlusRad;
+			deltaZ = double(coef.order()-1) / fPlusRad;
 		}
 		else
 		{
-			deltaZ = (coef.order()-1) / fMinusRad;
+			deltaZ = double(coef.order()-1) / fMinusRad;
 		}
 		z = z - deltaZ;
 		if( (iteration > 6)	&& (abs(deltaZ) > oldMagZ) )
@@ -261,8 +261,8 @@ void EllipticOrderEstim(double omegaPass,
 
 void EllipticPolesZeros(double omegaPass,
 						double omegaStop,
-						double &minStopLossDB,
-						double &maxPassLossDB, // 0 - power-symmetric filter
+						double minStopLoss,
+						double maxPassLoss, // 1 - power-symmetric filter
 						int order,
 						POLY_ROOTS &zeros,
 						POLY_ROOTS &poles,
@@ -270,67 +270,78 @@ void EllipticPolesZeros(double omegaPass,
 {
 	ASSERT (&poles != NULL);
 	ASSERT (&zeros != NULL);
-	/* estimating required filter order (odd) */
 	double k, u, q, kk, ww, mu;
-	ldouble sum;
-	double denom, numer, vv, minStopLoss, xx, yy;
-	double maxPassLoss;
+	double sum;
+	double denom, numer, vv, xx, yy;
 	double CenterFreq = sqrt(omegaPass * omegaStop);
 	int i, m;
+	BOOL PowerSymmetric = FALSE;
 
-	if (minStopLossDB < 0) minStopLossDB = -minStopLossDB;
-	if (maxPassLossDB < 0) maxPassLossDB = -maxPassLossDB;
+	minStopLoss *= minStopLoss;
+	maxPassLoss *= maxPassLoss;  // < 1.
+	if (minStopLoss > 1)
+	{
+		minStopLoss = 1. / minStopLoss;
+	}
+	if (maxPassLoss > 1)
+	{
+		maxPassLoss = 1. / maxPassLoss;
+	}
 
-	minStopLoss = pow(10., -minStopLossDB /10.);  // < 1.
-	maxPassLoss = pow(10., -maxPassLossDB /10.);  // < 1.
-	if(maxPassLoss == double(1.)) maxPassLoss = 1. - minStopLoss;
-	k = omegaPass/omegaStop;				/* Alg. 5.1, step 3 */
+	if(maxPassLoss == 1.)
+	{
+		maxPassLoss = 1. - minStopLoss;
+		PowerSymmetric = TRUE;
+	}
 
-	kk = sqrt(sqrt(1.0 - k * k));			/* Eq (5.2) */
+	// estimating required filter order (odd)
+	k = omegaPass/omegaStop;				// Alg. 5.1, step 3
+
+	kk = sqrt(sqrt(1.0 - k * k));			// Eq (5.2)
 	u = 0.5 * (1.0 - kk) / (1.0 + kk);
 
 	q = 150.0 * ipow(u,13) + 15.0 * ipow(u,9) + 2.0 * ipow(u,5) + u;
-	/* Eq (5.3) */
+	// Eq (5.3)
 	if(order <= 1)
 	{
 		order &= 1;
 		order |= int(ceil(-log( 16. * (1. / minStopLoss - 1.)/
-								(1. / maxPassLoss - 1.)) / log ( q )));
+								(1. / maxPassLoss - 1.)) / log(q)));
 	}
 
-	if(maxPassLossDB == 0.)
+	if(PowerSymmetric)
 	{
 		order |=1;
 		minStopLoss = 4. / (pow(q, - order / 2.) + 4.); // in power terms
 		maxPassLoss = 1. - minStopLoss;
-		maxPassLossDB = -10.*log10(maxPassLoss);
-
 		/* Eq (5.12) */
 		//	vv = log( pow(q, - order / 2.) + 3 ) / (2.0 * order);
 	}
 	else
 	{
-		minStopLoss = 1. / ((1./maxPassLoss - 1.) / (16. *ipow(q, order)) +1.);
+		minStopLoss = 1. / ((1. / maxPassLoss - 1.) / (16. * ipow(q, order)) + 1.);
 	}
 	poles.SetCount(0);
 	zeros.SetCount(0);
 
-	vv = log((sqrt(maxPassLoss)+1.)/(1.-sqrt(maxPassLoss))) / (2.0 * order);
-	minStopLossDB = -10.*log10(minStopLoss);
+	vv = log((sqrt(maxPassLoss) + 1.)/(1. - sqrt(maxPassLoss))) / (2.0 * order);
 
 	sum = 0.0;					/* Eq (5.13) */
-	for( m=0; m<ELLIPTIC_FUNCTION_TERMS; m++)
-		sum += ipow(-1.0,m) * ipow(q, m*(m+1)) * sinh((2*m+1.) * vv);
-
+	for (m = 0; m < ELLIPTIC_FUNCTION_TERMS; m++)
+	{
+		sum += ipow(-1.0, m) * ipow(q, m * (m + 1)) * sinh((2 * m + 1.) * vv);
+	}
 	numer = 2.0 * sum * sqrt(sqrt(q));
 
 	sum = 0.0;
 
-	for( m=1; m<ELLIPTIC_FUNCTION_TERMS; m++)
-		sum += ipow(-1.0,m) * ipow(q,m*m) * cosh(2.0 * m * vv);
+	for (m = 1; m < ELLIPTIC_FUNCTION_TERMS; m++)
+	{
+		sum += ipow(-1.0, m) * ipow(q, m * m) * cosh(2.0 * m * vv);
+	}
 
 	denom = 1.0 + 2.0*sum;
-	COMPLEX cFirstTerm = -fabs(numer/denom);
+	COMPLEX cFirstTerm = -fabs(numer / denom);
 
 	mu = 0.5;
 	if (order & 1)
@@ -339,22 +350,24 @@ void EllipticPolesZeros(double omegaPass,
 	}
 	/* Eq (5.14) */
 	ww = sqrt((1.0 + k * real(cFirstTerm) * real(cFirstTerm))
-			* (1.0 + real(cFirstTerm) * real(cFirstTerm)/k));
+			* (1.0 + real(cFirstTerm) * real(cFirstTerm) / k));
 
 	for(i = order >> 1, mu += i - 1; i > 0 ; i--, mu -= 1.)
 	{
 		sum = 0.0;					/* Eq (5.15) numerator */
 		for(m = 0; m < ELLIPTIC_FUNCTION_TERMS; m++)
 		{
-			sum += ipow(-1.0,m) * ipow(q, m*(m+1)) *
+			sum += ipow(-1.0, m) * ipow(q, m * (m + 1)) *
 					sin( (2*m+1) * M_PI * mu / order);
 		}
 
 		numer = 2.0 * sum * sqrt(sqrt(q));
 
 		sum = 0.0;					/* Eq (5.15) denominator */
-		for(m=1; m<ELLIPTIC_FUNCTION_TERMS; m++)
-			sum += ipow(-1.0,m) * ipow(q,m*m) * cos(2.0 * M_PI * m * mu / order);
+		for(m = 1; m < ELLIPTIC_FUNCTION_TERMS; m++)
+		{
+			sum += ipow(-1.0, m) * ipow(q, m * m) * cos(2.0 * M_PI * m * mu / order);
+		}
 
 		denom = 1.0 + 2.0 * sum;
 		xx = numer/denom;
@@ -443,7 +456,7 @@ void EllipticHilbertPoles(double omegaPass,
 		yy = -sqrt((1.0 - k * xx*xx) * (1.0-(xx*xx/k)))/denom;
 		xx = xx * ww / denom;
 		poles += Complex(yy, xx) * 2.;
-		poles += Complex(yy, -xx) * 2;
+		poles += Complex(yy, -xx) * 2.;
 	}
 
 	poles += -2.;
@@ -822,8 +835,7 @@ void besselFreqResponse(	int order,
 
 	for( i=order-1; i>=0; i--)
 	{
-		denom = omega * denom;
-		denom.re = denom.re + coef[i];
+		denom = omega * denom + coef[i];
 	}
 	transferFunction = numer / denom;
 
@@ -855,8 +867,7 @@ void besselGroupDelay(	int order,
 	omega = Complex( 0.0, frequency);
 
 	for( i=order-1; i>=0; i--) {
-		denom = omega / denom;
-		denom.re = denom.re + coef[i];
+		denom = omega / denom + coef[i];
 	}
 	transferFunction = numer / denom;
 	phase = arg(transferFunction);
@@ -865,42 +876,13 @@ void besselGroupDelay(	int order,
 	omegaPlus = Complex(0.0, frequency + delta);
 
 	for( i=order-1; i>=0; i--) {
-		denom = omegaPlus / denom;
-		denom.re = denom.re + coef[i];
+		denom = omegaPlus / denom + coef[i];
 	}
 	transferFunction = numer / denom;
 	phase2 = arg(transferFunction);
 	*groupDelay = (phase2 - phase)/delta;
 	return;
 }
-/**********************************/
-/*                                */
-/*   Listing 8.1                  */
-/*                                */
-/*   dft()                        */
-/*                                */
-/**********************************/
-
-void dft(	Complex x[],
-			Complex xx[],
-			int N)
-{
-	int n, m;
-	double sumRe, sumIm, phi;
-
-	for( m=0; m<N; m++) {
-		sumRe = 0.0;
-		sumIm = 0.0;
-		for( n=0; n<N; n++) {
-			phi = 2.0 * M_PI * m * n /N;
-			sumRe += x[n].re * cos(phi) + x[n].im * sin(phi);
-			sumIm += x[n].im * cos(phi) - x[n].re * sin(phi);
-		}
-		xx[m] = Complex(sumRe, sumIm);
-	}
-	return;
-}
-
 /**********************************/
 /*                                */
 /*   Listing 15.1                 */
@@ -1012,42 +994,6 @@ COMPLEX BilinearNormCoeff(const POLY_ROOTS & SrcPoles,
 	return NormCoeff * bilinearNorm;
 }
 
-#if 0
-void fakeFilter(Complex pole[],
-				int numPoles,
-				Complex zero[],
-				int numZeros,
-				double ,
-				double bigT,
-				Complex a[],
-				Complex b[])
-{
-	// simply convert poles and zeros
-	Complex beta, denom, numer;
-	a[0] = 1.;
-	denom = 1.;
-	for (int k=1; k <= numPoles; k++)
-	{
-		beta = exp(pole[k] /bigT);
-		denom *= 1.-beta;
-		a[k] = 0;
-		for(int j= k; j>=1; j--) a[j] -= beta * a[j-1];
-	}
-	b[0] = 1.;
-	numer = 1.;
-	for (k=1; k <= numZeros; k++)
-	{
-		beta = exp(zero[k] /bigT);
-		b[k] = 0;
-		numer *= 1.-beta;
-		for(int j= k; j>=1; j--) b[j] -= beta * b[j-1];
-	}
-// scale to obtain unit zero responce
-	denom /= numer;
-	for (k=0; k <= numZeros; k++) b[k] *= denom;
-}
-#endif
-
 void LowpassToBandpass(const POLY_ROOTS & SrcPoles,
 						const POLY_ROOTS & SrcZeros,
 						double W0, // center frequency
@@ -1076,204 +1022,10 @@ void LowpassToBandpass(const POLY_ROOTS & SrcPoles,
 	Denom.FromRoots(zzeros, 2.);
 	for (m = 0; m <= Denom.order(); m++)
 	{
-		Denom[m].im = 0.;
+		Denom[m].imag(0.);
 	}
 }
 
-#if 0
-void BilinearPassband(const POLY_ROOTS & SrcPoles,
-					const POLY_ROOTS & SrcZeros,
-					double W0, // center frequency
-					double T,
-					POLY_ROOTS & ZPlanePoles,
-					POLY & Denom)
-{
-	int m;
-	POLY_ROOTS zpoles, zzeros;
-	int numPoles = SrcPoles.count();
-	int numZeros = SrcZeros.count();
-	COMPLEX rotator(cos(W0 * T), sin(W0 * T));
-
-	/*-------------------------------------*/
-	/*  compute numerator coefficients     */
-	for( m = 0; m < numZeros; m++)
-	{
-		Complex srczero = SrcZeros[m];
-		Complex zero = (2.0 / T + SrcZeros[m]) / (2.0/ T - SrcZeros[m]);
-		zzeros += zero;
-	}
-
-	for( ; m < numPoles; m++)
-	{
-		zzeros += COMPLEX(-1., 0.);
-		zzeros += COMPLEX(1., 0.);
-	}
-
-	/*-------------------------------------*/
-	/*  compute denominator coefficients   */
-
-	for( m = 0; m < numPoles; m++)
-	{
-		zpoles += (2.0 / T + SrcPoles[m]) / (2.0 / T - SrcPoles[m]);
-	}
-
-	ZPlanePoles = zpoles;
-	ZPlaneZeros = zzeros;
-	return;
-}
-
-#elif 0
-/*
- Passband filter synthesis through poles/zeros splitting around
- the center frequency.
-	  1    z^2 - 2*z*cos(w0*T) + 1
-  s= - * ------------------------
-	  T    z^2 - 1
-*/
-void bilinearPassBand(Complex pole[],
-					int numPoles,
-					Complex zero[],
-					int numZeros,
-					Complex hZero,
-					double W0, // center frequency
-					double T,
-					Complex a[],
-					Complex b[])
-{
-	int j, m,n, maxCoef;
-	Complex hC;
-	Complex beta, gamma;
-	Complex work;
-	double cosW0T = 2 * cos(W0 * T);
-	double secW0T = 1 / sin(W0 * T); // secans
-/*-------------------------------------*/
-/*  compute constant gain factor       */
-	hC = hZero;
-	work = 1.;
-//for(n=1; n <= numPoles; n++) work *= 1. - T /2. * pole[n];
-//for(n=1; n <= numPoles; n++) work *= secW0T/ T - pole[n];
-	for(n=1; n <= numPoles; n++) work *= 1./ T - pole[n];
-	hC /= work;
-	work = 1.;
-//for(n=1; n <= numZeros; n++) work *= 1. - T /2. * zero[n];
-//for(n=1; n <= numZeros; n++) work *= secW0T/ T - zero[n];
-	for(n=1; n <= numZeros; n++) work *= 1./ T - zero[n];
-	hC *= work;
-/*-------------------------------------*/
-/*  compute numerator coefficients     */
-	b[0] = hC;
-	maxCoef = 0;
-	for( m=1; m<=(numPoles-numZeros); m++)
-	{
-		b[++maxCoef] = 0.;
-		b[++maxCoef] = 0.;
-		for( j= maxCoef; j>=2; j--)  b[j] -= b[j-2];
-	}
-	for( m=1; m<=numZeros; m++)
-	{
-		b[++maxCoef] = 0.;
-		b[++maxCoef] = 0.;
-//		beta = (secW0T/T + zero[m]) / (secW0T/T - zero[m]);
-//		gamma = cosW0T / (1 - T/secW0T * zero[m]);
-		beta = (1./T + zero[m]) / (1./T - zero[m]);
-		gamma = cosW0T / (1 - T * zero[m]);
-		for(j= maxCoef; j>=2; j--) b[j] += beta * b[j-2], b[j-1] -= gamma * b[j-2];
-	}
-
-/*-------------------------------------*/
-/*  compute denominator coefficients   */
-	a[0] = 1.;
-	maxCoef = 0;
-	for( m=1; m<=numPoles; m++)
-	{
-		a[++maxCoef] = 0.;
-		a[++maxCoef] = 0.;
-//		beta = (secW0T/T + pole[m]) / (secW0T/T - pole[m]);
-//		gamma = cosW0T / (1 - T/secW0T * pole[m]);
-		beta = (1./T + pole[m]) / (1./T - pole[m]);
-		gamma = cosW0T / (1 - T * pole[m]);
-		for(j= maxCoef; j>=2; j--) a[j] += beta * a[j-2], a[j-1] -= gamma * a[j-2];
-	}
-	return;
-}
-#elif 0
-/*
-Passband filter synthesys through poles/zeros splitting.
-Low-pass prototype filter is conversed to the digital prototype
-through the bilinear transform. Poles of the
-digital prototype are rotated to the +/- exp(j*W0*T).
-Zeros are transformed through the bi-square transform.
-	  A    z^2 - 2*z*cos(w0a*T) + 1
-  s= - * ------------------------
-	  T    z^2 - 1
-w0a and A is chosen so that first digital and prototype zeros are set
-on the same frequency.
-*/
-void bilinearPassBand(Complex pole[],
-					int numPoles,
-					Complex zero[],
-					int numZeros,
-					Complex hZero,
-					double W0, // center frequency
-					double T,
-					Complex a[],
-					Complex b[])
-{
-	int j,k,m,n, maxCoef;
-	double beta1, gamma1;
-	Complex beta, gamma;
-	Complex work, hC;
-	double cosW0T = 2 * cos(W0 * T);
-	Complex rot = exp (Complex(0., W0 * T));
-/*-------------------------------------*/
-/*  compute constant gain factor       */
-	hC = hZero;
-	work = 1.;
-//for(n=1; n <= numPoles; n++) work *= 1. - T /2. * pole[n];
-	for(n=1; n <= numPoles; n++) work *= 2./ T - pole[n];
-	hC /= work;
-	work = 1.;
-//for(n=1; n <= numZeros; n++) hC *= 1. - T /2. * zero[n];
-	for(n=1; n <= numZeros; n++) hC *= 2./ T - zero[n];
-/*-------------------------------------*/
-/*  compute numerator coefficients     */
-	b[0] = hC;
-	maxCoef = 0;
-	for( m=1; m<=(numPoles-numZeros); m++) {
-		b[++maxCoef] = 0.;
-		for( j= maxCoef; j>=1; j--) b[j] += rot * b[j-1];
-	}
-
-	for( m=1; m<=numZeros; m++) {
-		b[++maxCoef] = 0.;
-		beta = rot * (2.0/T + zero[m]) / (2.0/T - zero[m]);
-		for(j= maxCoef; j>=1; j--) b[j] -= beta * b[j-1];
-	}
-
-	for( m=1; m<=numPoles; m++) {
-		b[++maxCoef] = 0.;
-		beta = conj(rot * (2.0/T + pole[m]) / (2.0/T - pole[m]));
-		for(j= maxCoef; j>=1; j--) b[j] -= beta * b[j-1];
-	}
-
-	for(j= 0; j<=maxCoef; j++) b[j] = 2*real(b[j]);
-
-/*-------------------------------------*/
-/*  compute denominator coefficients   */
-	a[0] = 1.;
-	maxCoef = 0;
-	for( m=1; m<=numPoles; m++) {
-		a[++maxCoef] = 0.;
-		a[++maxCoef] = 0.;
-		beta = (2.0/T + pole[m]) / (2.0/T - pole[m]);
-		gamma1 = 2*real(rot * beta);
-		beta1 = real(beta)*real(beta) + imag(beta)*imag(beta);
-		for(j = maxCoef; j>=2; j--)
-			a[j] += beta1 * a[j-2], a[j-1] -= gamma1 * a[j-2];
-	}
-	return;
-}
-#else
 /*
 Passband filter synthesys through poles/zeros splitting.
 Low-pass prototype filter is conversed to the digital prototype
@@ -1297,55 +1049,74 @@ void bilinearPassBand(Complex pole[],
 	Complex work, hC;
 	double cosW0T = 2 * cos(W0 * T);
 	Complex rot = exp (Complex(0., W0 * T));
-/*-------------------------------------*/
-/*  compute constant gain factor       */
+	/*-------------------------------------*/
+	/*  compute constant gain factor       */
 	hC = hZero;
 	work = 1.;
-//for(n=1; n <= numPoles; n++) work *= 1. - T /2. * pole[n];
-	for(n=1; n <= numPoles; n++) work *= 2./ T - pole[n];
+	//for(n=1; n <= numPoles; n++) work *= 1. - T /2. * pole[n];
+	for(n=1; n <= numPoles; n++)
+	{
+		work *= 2./ T - pole[n];
+	}
 	hC /= work;
 	work = 1.;
-//for(n=1; n <= numZeros; n++) hC *= 1. - T /2. * zero[n];
-	for(n=1; n <= numZeros; n++) hC *= 2./ T - zero[n];
-/*-------------------------------------*/
-/*  compute numerator coefficients     */
+	//for(n=1; n <= numZeros; n++) hC *= 1. - T /2. * zero[n];
+	for(n=1; n <= numZeros; n++)
+	{
+		hC *= 2./ T - zero[n];
+	}
+	/*-------------------------------------*/
+	/*  compute numerator coefficients     */
 	b[0] = hC;
 	maxCoef = 0;
-	for( m=1; m<=(numPoles-numZeros); m++) {
+	for( m=1; m<=(numPoles-numZeros); m++)
+	{
 		b[++maxCoef] = 0.;
 		for( j= maxCoef; j>=1; j--) b[j] += rot * b[j-1];
 	}
 
-	for( m=1; m<=numZeros; m++) {
+	for( m=1; m<=numZeros; m++)
+	{
 		b[++maxCoef] = 0.;
 		beta = rot * (2.0/T + zero[m]) / (2.0/T - zero[m]);
-		for(j= maxCoef; j>=1; j--) b[j] -= beta * b[j-1];
+		for(j= maxCoef; j>=1; j--)
+		{
+			b[j] -= beta * b[j-1];
+		}
 	}
 
-	for( m=1; m<=numPoles; m++) {
+	for( m=1; m<=numPoles; m++)
+	{
 		b[++maxCoef] = 0.;
 		beta = conj(rot * (2.0/T + pole[m]) / (2.0/T - pole[m]));
-		for(j= maxCoef; j>=1; j--) b[j] -= beta * b[j-1];
+		for(j= maxCoef; j>=1; j--)
+		{
+			b[j] -= beta * b[j-1];
+		}
 	}
 
-	for(j= 0; j<=maxCoef; j++) b[j] = 2*real(b[j]);
+	for(j= 0; j<=maxCoef; j++)
+	{
+		b[j] = 2*real(b[j]);
+	}
 
-/*-------------------------------------*/
-/*  compute denominator coefficients   */
+	/*-------------------------------------*/
+	/*  compute denominator coefficients   */
 	a[0] = 1.;
 	maxCoef = 0;
-	for( m=1; m<=numPoles; m++) {
+	for( m=1; m<=numPoles; m++)
+	{
 		a[++maxCoef] = 0.;
 		a[++maxCoef] = 0.;
 		beta = (2.0/T + pole[m]) / (2.0/T - pole[m]);
 		gamma1 = 2*real(rot * beta);
 		beta1 = real(beta)*real(beta) + imag(beta)*imag(beta);
 		for(j = maxCoef; j>=2; j--)
+		{
 			a[j] += beta1 * a[j-2], a[j-1] -= gamma1 * a[j-2];
+		}
 	}
-	return;
 }
-#endif
 /**********************************/
 /*                                */
 /*   Listing 11.1                 */
