@@ -188,7 +188,7 @@ BOOL CClickRemoval::SetClickSourceFile(LPCTSTR szFilename)
 	}
 	PredefinedClicks.RemoveAll();
 	InClickFilename = szFilename;
-	pInClicksFile = fopen(szFilename, "rt");
+	pInClicksFile = _tfopen(szFilename, _T("rt"));
 	if (NULL == pInClicksFile)
 	{
 		InClickFilename.Empty();
@@ -262,7 +262,7 @@ BOOL CClickRemoval::SetClickLogFile(LPCTSTR szFilename)
 	if (NULL != szFilename && szFilename[0] != 0)
 	{
 		OutClickFilename = szFilename;
-		pOutClicksFile = fopen(szFilename, "wt");
+		pOutClicksFile = _tfopen(szFilename, _T("wt"));
 	}
 	return pOutClicksFile != 0;
 }
@@ -2493,7 +2493,7 @@ CString BladeMp3Encoder::GetVersionString()
 	GetDateFormat(LOCALE_USER_DEFAULT, DATE_SHORTDATE, & time, NULL, str, TimeBufSize - 1);
 
 	CString s;
-	s.Format("LameEnc DLL Version %d.%02d, (%s) Engine %d.%02d",
+	s.Format(_T("LameEnc DLL Version %d.%02d, (%s) Engine %d.%02d"),
 			ver.byDLLMajorVersion, ver.byDLLMinorVersion,
 			str, ver.byMajorVersion, ver.byMinorVersion);
 	return s;

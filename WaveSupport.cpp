@@ -669,7 +669,7 @@ BOOL _stdcall CAudioCompressionManager::FormatTestEnumCallback(
 {
 	FormatEnumCallbackStruct * pFcs = (FormatEnumCallbackStruct *) dwInstance;
 
-	TRACE("FormatTestEnumCallback: format=%s, tag=%d, \n", pafd->szFormat, pafd->dwFormatTag);
+	TRACE(_T("FormatTestEnumCallback: format=%s, tag=%d, \n"), pafd->szFormat, pafd->dwFormatTag);
 
 	// check if the format should be excluded
 	if (0 != pFcs->m_NumTagsToCompare
@@ -771,7 +771,7 @@ BOOL _stdcall CAudioCompressionManager::FormatTagEnumCallback(
 	pwfx.Allocate(0xFFF0);
 	ACMFORMATDETAILS afd;
 
-	TRACE("FormatTagEnum: name=%s, driverID=%x, tag=%d, formats=%d, max size=%d\n", paftd->szFormatTag,
+	TRACE(_T("FormatTagEnum: name=%s, driverID=%x, tag=%d, formats=%d, max size=%d\n"), paftd->szFormatTag,
 		hadid, paftd->dwFormatTag, paftd->cStandardFormats, paftd->cbFormatSize);
 
 	pwfx.InitFormat(WORD(paftd->dwFormatTag),
@@ -876,7 +876,7 @@ BOOL _stdcall CAudioCompressionManager::FormatEnumCallback(
 	FormatEnumCallbackStruct * pfcs = (FormatEnumCallbackStruct *) dwInstance;
 
 	CAudioCompressionManager * pAcm = pfcs->pAcm;
-	TRACE("FormatEnum: format=%s, tag=%d\n", pafd->szFormat, pafd->dwFormatTag);
+	TRACE(_T("FormatEnum: format=%s, tag=%d\n"), pafd->szFormat, pafd->dwFormatTag);
 
 	int match = pfcs->FormatToMatch.MatchFormat(pafd->pwfx);
 	// include only formats with the same tag.

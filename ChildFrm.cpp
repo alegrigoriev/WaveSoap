@@ -1434,7 +1434,7 @@ BOOL CMiniToolbar::Create(CWnd * pParent, UINT nID, RECT const & rect,
 						DWORD dwStyle)
 {
 	return CWnd::Create(AfxRegisterWndClass(CS_HREDRAW | CS_VREDRAW,
-											AfxGetApp()->LoadStandardCursor(IDC_ARROW), NULL, NULL), "",
+											AfxGetApp()->LoadStandardCursor(IDC_ARROW), NULL, NULL), _T(""),
 						dwStyle, rect, pParent, nID, NULL);
 }
 

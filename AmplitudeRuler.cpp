@@ -374,7 +374,7 @@ int CAmplitudeRuler::CalculateWidth()
 	CWnd * pW = GetDesktopWindow();
 	CDC * pDC = pW->GetWindowDC();
 	CGdiObject * pOld = pDC->SelectStockObject(ANSI_VAR_FONT);
-	int Width = 4 + pDC->GetTextExtent("-000,000", 8).cx;
+	int Width = 4 + pDC->GetTextExtent(_T("-000,000"), 8).cx;
 
 	pDC->SelectObject(pOld);
 	pW->ReleaseDC(pDC);
@@ -540,14 +540,14 @@ void CSpectrumSectionRuler::OnDraw(CDC* pDC)
 	LPCTSTR FormatText;
 	if (ExtDiff < 2)
 	{
-		MaxText = "-100.0";
+		MaxText = _T("-100.0");
 	}
 	else
 	{
-		MaxText = "-100";
+		MaxText = _T("-100");
 	}
 
-	int nLength = pDC->GetTextExtent(MaxText, strlen(MaxText)).cx;
+	int nLength = pDC->GetTextExtent(MaxText, _tcslen(MaxText)).cx;
 
 	double Dist = fabs(1.5 * nLength / GetXScaleDev());
 	// select distance between ticks
@@ -564,13 +564,13 @@ void CSpectrumSectionRuler::OnDraw(CDC* pDC)
 		{
 			Dist = ceil(Dist);
 		}
-		FormatText = "%.f";
+		FormatText = _T("%.f");
 	}
 	else    // DistDb < 1
 	{
 		divisor = 10.;
 		Dist = ceil(Dist * 10.);
-		FormatText = "%.1f";
+		FormatText = _T("%.1f");
 	}
 	// find the closest bigger 1,2,5, 10,
 	if (Dist <= 1.)

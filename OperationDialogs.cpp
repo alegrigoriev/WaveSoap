@@ -105,22 +105,22 @@ void CVolumeChangeDialog::UpdateVolumeData(CDataExchange* pDX, BOOL InPercents)
 	{
 		// decibels
 		m_eVolumeLeft.ExchangeData(pDX, m_dVolumeLeftDb,
-									"Volume change", "dB", -40., 40.);
+									_T("Volume change"), _T("dB"), -40., 40.);
 		if (m_pWf->nChannels > 1)
 		{
 			m_eVolumeRight.ExchangeData(pDX, m_dVolumeRightDb,
-										"Volume change", "dB", -40., 40.);
+										_T("Volume change"), _T("dB"), -40., 40.);
 		}
 	}
 	else
 	{
 		// percents
 		m_eVolumeLeft.ExchangeData(pDX, m_dVolumeLeftPercent,
-									"Volume change", "%", 1., 10000.);
+									_T("Volume change"), _T("%"), 1., 10000.);
 		if (m_pWf->nChannels > 1)
 		{
 			m_eVolumeRight.ExchangeData(pDX, m_dVolumeRightPercent,
-										"Volume change", "%", 1., 10000.);
+										_T("Volume change"), _T("%"), 1., 10000.);
 		}
 	}
 }
@@ -390,11 +390,11 @@ void CVolumeChangeDialog::OnHScroll(UINT nSBCode, UINT nPos, CScrollBar* pScroll
 		CString s;
 		if (0 == m_DbPercent)
 		{
-			s.Format("%.2f", pos / 10.);
+			s.Format(_T("%.2f"), pos / 10.);
 		}
 		else
 		{
-			s.Format("%.0f", 100. * pow(10., pos / 200.));
+			s.Format(_T("%.0f"), 100. * pow(10., pos / 200.));
 		}
 		int id = pSlider->GetDlgCtrlID();
 		if (IDC_SLIDER_VOLUME_LEFT == id)
@@ -837,48 +837,48 @@ BOOL CStatisticsDialog::OnInitDialog()
 
 	if (m_ValueAtCursorLeft != 0)
 	{
-		AtCursorDb.Format("%.2f", 20. * log10(abs(m_ValueAtCursorLeft) / 32768.));
+		AtCursorDb.Format(_T("%.2f"), 20. * log10(abs(m_ValueAtCursorLeft) / 32768.));
 	}
 	else
 	{
-		AtCursorDb = "-Inf.";
+		AtCursorDb = _T("-Inf.");
 	}
 	if (m_pContext->m_MinLeft != 0)
 	{
-		MinDb.Format("%.2f", 20. * log10(abs(m_pContext->m_MinLeft) / 32768.));
+		MinDb.Format(_T("%.2f"), 20. * log10(abs(m_pContext->m_MinLeft) / 32768.));
 	}
 	else
 	{
-		MinDb = "-Inf.";
+		MinDb = _T("-Inf.");
 	}
 	if (m_pContext->m_MinLeft != 0)
 	{
-		MaxDb.Format("%.2f", 20. * log10(abs(m_pContext->m_MaxLeft) / 32768.));
+		MaxDb.Format(_T("%.2f"), 20. * log10(abs(m_pContext->m_MaxLeft) / 32768.));
 	}
 	else
 	{
-		MaxDb = "-Inf.";
+		MaxDb = _T("-Inf.");
 	}
 	if (m_pContext->m_EnergyLeft != 0)
 	{
-		RmsDb.Format("%.2f",
+		RmsDb.Format(_T("%.2f"),
 					10. * log10(fabs(double(m_pContext->m_EnergyLeft)) / (nSamples * 1073741824.)));
 	}
 	else
 	{
-		RmsDb = "-Inf.";
+		RmsDb = _T("-Inf.");
 	}
 	if (m_pContext->m_SumLeft / nSamples != 0)
 	{
-		DcDb.Format("%.2f",
+		DcDb.Format(_T("%.2f"),
 					20. * log10(fabs(double(m_pContext->m_SumLeft) / nSamples) / 32768.));
 	}
 	else
 	{
-		DcDb = "-Inf.";
+		DcDb = _T("-Inf.");
 	}
 
-	sprintf(s.GetBuffer(1024), format,
+	_stprintf(s.GetBuffer(1024), format,
 			//%s (%s)\r\n"
 			LPCTSTR(SampleToString(m_CaretPosition, m_SamplesPerSec,
 									SampleToString_HhMmSs | TimeToHhMmSs_NeedsMs | TimeToHhMmSs_NeedsHhMm)),
@@ -928,48 +928,48 @@ BOOL CStatisticsDialog::OnInitDialog()
 	{
 		if (m_ValueAtCursorRight != 0)
 		{
-			AtCursorDb.Format("%.2f", 20. * log10(abs(m_ValueAtCursorRight) / 32768.));
+			AtCursorDb.Format(_T("%.2f"), 20. * log10(abs(m_ValueAtCursorRight) / 32768.));
 		}
 		else
 		{
-			AtCursorDb = "-Inf.";
+			AtCursorDb = _T("-Inf.");
 		}
 		if (m_pContext->m_MinRight != 0)
 		{
-			MinDb.Format("%.2f", 20. * log10(fabs(double(m_pContext->m_MaxRight)) / 32768.));
+			MinDb.Format(_T("%.2f"), 20. * log10(fabs(double(m_pContext->m_MaxRight)) / 32768.));
 		}
 		else
 		{
-			MinDb = "-Inf.";
+			MinDb = _T("-Inf.");
 		}
 		if (m_pContext->m_MinRight != 0)
 		{
-			MaxDb.Format("%.2f", 20. * log10(fabs(double(m_pContext->m_MaxRight)) / 32768.));
+			MaxDb.Format(_T("%.2f"), 20. * log10(fabs(double(m_pContext->m_MaxRight)) / 32768.));
 		}
 		else
 		{
-			MaxDb = "-Inf.";
+			MaxDb = _T("-Inf.");
 		}
 		if (m_pContext->m_EnergyRight != 0)
 		{
-			RmsDb.Format("%.2f",
+			RmsDb.Format(_T("%.2f"),
 						10. * log10(fabs(double(m_pContext->m_EnergyRight)) / (nSamples * 1073741824.)));
 		}
 		else
 		{
-			RmsDb = "-Inf.";
+			RmsDb = _T("-Inf.");
 		}
 		if (m_pContext->m_SumRight / nSamples != 0)
 		{
-			DcDb.Format("%.2f",
+			DcDb.Format(_T("%.2f"),
 						20. * log10(fabs(double(m_pContext->m_SumRight) / nSamples) / 32768.));
 		}
 		else
 		{
-			DcDb = "-Inf.";
+			DcDb = _T("-Inf.");
 		}
 
-		sprintf(s.GetBuffer(1024), formatRight,
+		_stprintf(s.GetBuffer(1024), formatRight,
 				//%s (%s)\r\n"
 				LPCTSTR(SampleToString(m_CaretPosition, m_SamplesPerSec,
 										SampleToString_HhMmSs | TimeToHhMmSs_NeedsMs | TimeToHhMmSs_NeedsHhMm)),
@@ -1051,13 +1051,13 @@ void CNormalizeSoundDialog::DoDataExchange(CDataExchange* pDX)
 	{
 		// decibels
 		m_eLevel.ExchangeData(pDX, m_dLevelDb,
-							"Target level", "dB", -40., 0.);
+							_T("Target level"), _T("dB"), -40., 0.);
 	}
 	else
 	{
 		// percents
 		m_eLevel.ExchangeData(pDX, m_dLevelPercent,
-							"Target level", "%", 1., 100.);
+							_T("Target level"), _T("%"), 1., 100.);
 	}
 	DDX_CBIndex(pDX, IDC_COMBODB_PERCENT, m_DbPercent);
 	if ( ! pDX->m_bSaveAndValidate)
@@ -1224,11 +1224,11 @@ void CNormalizeSoundDialog::OnHScroll(UINT nSBCode, UINT nPos, CScrollBar* pScro
 		CString s;
 		if (0 == m_DbPercent)
 		{
-			s.Format("%.2f", pos / 10.);
+			s.Format(_T("%.2f"), pos / 10.);
 		}
 		else
 		{
-			s.Format("%.0f", 100. * pow(10., pos / 200.));
+			s.Format(_T("%.0f"), 100. * pow(10., pos / 200.));
 		}
 		SetDlgItemText(IDC_EDIT_LEVEL, s);
 	}
@@ -1323,7 +1323,7 @@ void CResampleDialog::DoDataExchange(CDataExchange* pDX)
 	//}}AFX_DATA_MAP
 	DDV_MinMaxUInt(pDX, m_NewSampleRate, m_OldSampleRate / 4, m_OldSampleRate * 4);
 	m_EditTempo.ExchangeData(pDX, m_TempoChange,
-							"Tempo/pitch change", "%", 25., 400.);
+							_T("Tempo/pitch change"), _T("%"), 25., 400.);
 	if (pDX->m_bSaveAndValidate)
 	{
 		if (m_bCanOnlyChangeSamplerate)
@@ -1376,7 +1376,7 @@ void CResampleDialog::OnHScroll(UINT nSBCode, UINT nPos, CScrollBar* pScrollBar)
 	{
 		int pos = m_SliderTempo.GetPos();
 		CString s;
-		s.Format("%d", pos);
+		s.Format(_T("%d"), pos);
 		SetDlgItemText(IDC_EDIT_TEMPO, s);
 	}
 	else if (IDC_SLIDER_RATE == nId
@@ -1384,7 +1384,7 @@ void CResampleDialog::OnHScroll(UINT nSBCode, UINT nPos, CScrollBar* pScrollBar)
 	{
 		int pos = m_SliderRate.GetPos();
 		CString s;
-		s.Format("%d", pos);
+		s.Format(_T("%d"), pos);
 		SetDlgItemText(IDC_EDIT_RATE, s);
 	}
 }
@@ -1504,9 +1504,9 @@ void CLowFrequencySuppressDialog::DoDataExchange(CDataExchange* pDX)
 	DDX_Check(pDX, IDC_CHECK_UNDO, m_bUndo);
 	//}}AFX_DATA_MAP
 	m_eLfNoiseRange.ExchangeData(pDX, m_dLfNoiseRange,
-								"Low frequency suppression range", "Hz", 1., 1000.);
+								_T("Low frequency suppression range"), _T("Hz"), 1., 1000.);
 	m_eDiffNoiseRange.ExchangeData(pDX, m_dDiffNoiseRange,
-									"Differential static suppression range", "Hz", 1., 1000.);
+									_T("Differential static suppression range"), _T("Hz"), 1., 1000.);
 
 	if (pDX->m_bSaveAndValidate)
 	{
@@ -1763,8 +1763,8 @@ void CExpressionEvaluationDialog::OnOK()
 	{
 		//CString expr;
 		//m_eExpression.GetWindowText(expr);
-		LPCSTR str = m_sExpression;
-		LPCSTR str1 = str;
+		LPCTSTR str = m_sExpression;
+		LPCTSTR str1 = str;
 		if ( ! m_pContext->SetExpression( & str))
 		{
 			AfxMessageBox(m_pContext->m_ErrorString);
@@ -1823,11 +1823,11 @@ void CDeclickDialog::DoDataExchange(CDataExchange* pDX)
 	DDX_Check(pDX, IDC_CHECK_UNDO, m_bUndo);
 	//}}AFX_DATA_MAP
 	m_AttackRate.ExchangeData(pDX, m_dAttackRate,
-							"Attack rate", "", 0.01, 0.9);
+							_T("Attack rate"), _T(""), 0.01, 0.9);
 	m_ClickToNoise.ExchangeData(pDX, m_dClickToNoise,
-								"Click to noise rate", "", 1., 10.);
+								_T("Click to noise rate"), _T(""), 1., 10.);
 	m_EnvelopDecayRate.ExchangeData(pDX, m_dEnvelopDecayRate,
-									"Envelop decay rate", "", 0.01, 0.99);
+									_T("Envelop decay rate"), _T(""), 0.01, 0.99);
 }
 
 
@@ -1861,11 +1861,11 @@ void CDeclickDialog::OnCheckImportClicks()
 
 void CDeclickDialog::OnClickLogBrowseButton()
 {
-	CString filter("Text files (*.txt)|*.txt|All Files (*.*)|*.*||");
+	CString filter(_T("Text files (*.txt)|*.txt|All Files (*.*)|*.*||"));
 
 	GetDlgItem(IDC_EDIT_CLICK_LOG_FILENAME)->GetWindowText(m_ClickLogFilename);
 
-	CFileDialog fdlg(TRUE, "txt", m_ClickLogFilename,
+	CFileDialog fdlg(TRUE, _T("txt"), m_ClickLogFilename,
 					OFN_EXPLORER
 					//| OFN_FILEMUSTEXIST
 					| OFN_HIDEREADONLY,
@@ -1882,11 +1882,11 @@ void CDeclickDialog::OnClickLogBrowseButton()
 
 void CDeclickDialog::OnClickImportBrowseButton()
 {
-	CString filter("Text files (*.txt)|*.txt|All Files (*.*)|*.*||");
+	CString filter(_T("Text files (*.txt)|*.txt|All Files (*.*)|*.*||"));
 
 	GetDlgItem(IDC_EDIT_CLICK_IMPORT_FILENAME)->GetWindowText(m_ClickImportFilename);
 
-	CFileDialog fdlg(TRUE, "txt", m_ClickImportFilename,
+	CFileDialog fdlg(TRUE, _T("txt"), m_ClickImportFilename,
 					OFN_EXPLORER
 					| OFN_FILEMUSTEXIST
 					| OFN_HIDEREADONLY,
@@ -2052,19 +2052,19 @@ void CNoiseReductionDialog::DoDataExchange(CDataExchange* pDX)
 										"Transient threshold", "", 0.3, 2);
 #endif
 	m_eNoiseReduction.ExchangeData(pDX, m_dNoiseReduction,
-									"Noise reduction", "dB", 0., 100.);
+									_T("Noise reduction"), _T("dB"), 0., 100.);
 	m_eNoiseCriterion.ExchangeData(pDX, m_dNoiseCriterion,
-									"Noise/continuous criterion", "", 0.0, 1.);
+									_T("Noise/continuous criterion"), _T(""), 0.0, 1.);
 	m_eNoiseThresholdHigh.ExchangeData(pDX, m_dNoiseThresholdHigh,
-										"Noise floor for noise in higher frequencies", "dB", -100., -10.);
+										_T("Noise floor for noise in higher frequencies"), _T("dB"), -100., -10.);
 	m_eNoiseThresholdLow.ExchangeData(pDX, m_dNoiseThresholdLow,
-									"Noise floor for noise in lower frequencies", "dB", -100., -10.);
+									_T("Noise floor for noise in lower frequencies"), _T("dB"), -100., -10.);
 	m_EditAggressivness.ExchangeData(pDX, m_dNoiseReductionAggressivness,
-									"Noise suppression aggressiveness", "", 0.1, 3.);
+									_T("Noise suppression aggressiveness"), _T(""), 0.1, 3.);
 	m_eToneOverNoisePreference.ExchangeData(pDX, m_dToneOverNoisePreference,
-											"Tone over noise preference", "dB", 0., 20.);
+											_T("Tone over noise preference"), _T("dB"), 0., 20.);
 	m_eLowerFrequency.ExchangeData(pDX, m_dLowerFrequency,
-									"Frequency", "Hz", 100., 48000.);
+									_T("Frequency"), _T("Hz"), 100., 48000.);
 }
 
 
@@ -2189,15 +2189,15 @@ void CMoreNoiseDialog::DoDataExchange(CDataExchange* pDX)
 	DDX_Control(pDX, IDC_EDIT_NEAR_MASKING_DISTANCE_HIGH, m_eNearMaskingDistanceHigh);
 	//}}AFX_DATA_MAP
 	m_eNearMaskingDistanceHigh.ExchangeData(pDX, m_NearMaskingDecayDistanceHigh,
-											"Near masking distance in higher frequencies", "Hz", 1., 2000.);
+											_T("Near masking distance in higher frequencies"), _T("Hz"), 1., 2000.);
 	m_eNearMaskingDistanceLow.ExchangeData(pDX, m_NearMaskingDecayDistanceLow,
-											"Near masking distance in lower frequencies", "Hz", 1., 2000.);
+											_T("Near masking distance in lower frequencies"), _T("Hz"), 1., 2000.);
 	m_eNearMaskingTimeHigh.ExchangeData(pDX, m_NearMaskingDecayTimeHigh,
-										"Near masking time in higher frequencies", "ms", 1., 1000.);
+										_T("Near masking time in higher frequencies"), _T("ms"), 1., 1000.);
 	m_eNearMaskingTimeLow.ExchangeData(pDX, m_NearMaskingDecayTimeLow,
-										"Near masking time in lower frequencies", "ms", 1., 1000.);
+										_T("Near masking time in lower frequencies"), _T("ms"), 1., 1000.);
 	m_eNearMaskingCoeff.ExchangeData(pDX, m_NearMaskingCoeff,
-									"Near masking coefficient", "", 0., 1.);
+									_T("Near masking coefficient"), _T(""), 0., 1.);
 }
 
 

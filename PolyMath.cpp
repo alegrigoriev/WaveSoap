@@ -1023,12 +1023,12 @@ void poly::FromPoints(const Complex * pArguments,
 void poly::Dump(CDumpContext & dc)
 {
 	CString s;
-	s.Format("poly: order = %d\n", iOrder);
+	s.Format(_T("poly: order = %d\n"), iOrder);
 	dc << s;
 	for (int i = 0; i <= iOrder; i++)
 	{
 		Complex x = array()[i];
-		s.Format("x[%d]=(%.8g, %.8g)\n", i, x.real(), x.imag());
+		s.Format(_T("x[%d]=(%.8g, %.8g)\n"), i, x.real(), x.imag());
 		dc << s;
 	}
 }
@@ -1193,12 +1193,12 @@ Complex polyRoots::eval(Complex arg) const
 void polyRoots::Dump(CDumpContext & dc)
 {
 	CString s;
-	s.Format("polyRoots: count = %d\n", iCount);
+	s.Format(_T("polyRoots: count = %d\n"), iCount);
 	dc << s;
 	for (int i = 0; i < iCount; i++)
 	{
 		Complex x = array()[i];
-		s.Format("x[%d]=(%.8g, %.8g)\n", i, x.real(), x.imag());
+		s.Format(_T("x[%d]=(%.8g, %.8g)\n"), i, x.real(), x.imag());
 		dc << s;
 	}
 }

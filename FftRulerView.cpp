@@ -173,7 +173,7 @@ int CFftRulerView::CalculateWidth()
 	CWnd * pW = GetDesktopWindow();
 	CDC * pDC = pW->GetWindowDC();
 	CGdiObject * pOld = pDC->SelectStockObject(ANSI_VAR_FONT);
-	int Width = 4 + pDC->GetTextExtent("-000,000", 8).cx;
+	int Width = 4 + pDC->GetTextExtent(_T("-000,000"), 8).cx;
 
 	pDC->SelectObject(pOld);
 	pW->ReleaseDC(pDC);

@@ -747,7 +747,7 @@ BOOL CResizeContext::InitUndoRedo(CString UndoOperationString)
 	{
 		return FALSE;
 	}
-	CResizeContext * pResize = new CResizeContext(pDocument, _T("File Resize"), "File Resize");
+	CResizeContext * pResize = new CResizeContext(pDocument, _T("File Resize"), _T("File Resize"));
 	if (NULL == pResize)
 	{
 		delete pUndo;
@@ -1343,7 +1343,7 @@ BOOL CCopyContext::InitCopy(CWaveFile & DstFile,
 	m_DstChan = DstChannel;
 	if (SrcLength > DstLength)
 	{
-		m_pExpandShrinkContext = new CResizeContext(pDocument, _T("Expanding the file..."), "");
+		m_pExpandShrinkContext = new CResizeContext(pDocument, _T("Expanding the file..."), _T(""));
 		if (NULL == m_pExpandShrinkContext)
 		{
 			NotEnoughMemoryMessageBox();
@@ -1361,7 +1361,7 @@ BOOL CCopyContext::InitCopy(CWaveFile & DstFile,
 	}
 	else if (SrcLength < DstLength)
 	{
-		m_pExpandShrinkContext = new CResizeContext(pDocument, _T("Shrinking  the file..."), "");
+		m_pExpandShrinkContext = new CResizeContext(pDocument, _T("Shrinking  the file..."), _T(""));
 		if (NULL == m_pExpandShrinkContext)
 		{
 			NotEnoughMemoryMessageBox();

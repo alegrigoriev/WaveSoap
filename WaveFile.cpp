@@ -677,7 +677,7 @@ BOOL CWaveFile::CreateWaveFile(CWaveFile * pTemplateFile, WAVEFORMATEX * pTempla
 								int Channels, unsigned long SizeOrSamples, DWORD flags, LPCTSTR FileName)
 {
 	CString name;
-	char NameBuf[512];
+	TCHAR NameBuf[512];
 	CThisApp * pApp = GetApp();
 	// if the name is empty, create a temp name
 	DWORD OpenFlags = MmioFileOpenCreateAlways;
@@ -737,7 +737,7 @@ BOOL CWaveFile::CreateWaveFile(CWaveFile * pTemplateFile, WAVEFORMATEX * pTempla
 			if (NULL != OriginalName
 				&& 0 != OriginalName[0]
 				&& 0 != GetFullPathName(OriginalName,
-										sizeof NameBuf, NameBuf, & pFilePart)
+										countof(NameBuf), NameBuf, & pFilePart)
 				&& pFilePart != NULL)
 			{
 				*pFilePart = 0;
@@ -750,7 +750,7 @@ BOOL CWaveFile::CreateWaveFile(CWaveFile * pTemplateFile, WAVEFORMATEX * pTempla
 			dir = GetApp()->m_sTempDir;
 			if (dir.IsEmpty())
 			{
-				if (GetTempPath(sizeof NameBuf, NameBuf))
+				if (GetTempPath(countof(NameBuf), NameBuf))
 				{
 					dir = NameBuf;
 				}

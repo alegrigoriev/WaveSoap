@@ -345,7 +345,7 @@ int CHorizontalRuler::CalculateHeight()
 {
 	CWindowDC dc(NULL);
 	CFont * pOldFont = (CFont * )dc.SelectStockObject(ANSI_VAR_FONT);
-	int height = dc.GetTextExtent("0", 1).cy;
+	int height = dc.GetTextExtent(_T("0"), 1).cy;
 	dc.SelectObject(pOldFont);
 	return height + 9;
 }

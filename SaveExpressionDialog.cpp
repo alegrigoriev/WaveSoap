@@ -44,9 +44,9 @@ void CSaveExpressionDialog::DoDataExchange(CDataExchange* pDX)
 	DDX_Text(pDX, IDC_COMBO_GROUP, m_GroupName);
 	//}}AFX_DATA_MAP
 	if (pDX->m_bSaveAndValidate
-		&& m_GroupName == "All Expressions")
+		&& m_GroupName == _T("All Expressions"))
 	{
-		AfxMessageBox("Group name cannot be \"All Expressions\"");
+		AfxMessageBox(_T("Group name cannot be \"All Expressions\""));
 		pDX->Fail();
 	}
 }
@@ -145,7 +145,7 @@ void CSaveExpressionDialog::OnSelchangeComboName()
 		}
 		else
 		{
-			m_eComment.SetWindowText("");
+			m_eComment.SetWindowText(_T(""));
 		}
 		m_bCommentChanged = false;
 	}

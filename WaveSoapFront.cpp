@@ -22,8 +22,6 @@
 #include "BatchConvertDlg.h"
 #include <imagehlp.h>
 
-#define _countof(array) (sizeof(array)/sizeof(array[0]))
-
 #ifdef _DEBUG
 #define new DEBUG_NEW
 #undef THIS_FILE
@@ -294,7 +292,7 @@ void CMyCommandLineInfo::ParseLast(BOOL bLast)
 BOOL CWaveSoapFrontApp::InitInstance()
 {
 #ifdef _DEBUG
-	LoadLibrary("thrdtime.dll");
+	LoadLibrary(_T("thrdtime.dll"));
 #endif
 	// Standard initialization
 	// If you are not using these features and wish to reduce the size
@@ -593,7 +591,7 @@ void CWaveSoapFrontApp::OnAppAbout()
 double CWaveSoapFrontApp::GetProfileDouble(LPCTSTR Section, LPCTSTR ValueName,
 											double Default, double MinVal, double MaxVal)
 {
-	CString s = GetProfileString(Section, ValueName, "");
+	CString s = GetProfileString(Section, ValueName, _T(""));
 	double val;
 	TCHAR * endptr;
 
@@ -615,7 +613,7 @@ void CWaveSoapFrontApp::WriteProfileDouble(LPCTSTR Section, LPCTSTR ValueName,
 											double value)
 {
 	CString s;
-	s.Format("%g", value);
+	s.Format(_T("%g"), value);
 	WriteProfileString(Section, ValueName, s);
 }
 
@@ -826,7 +824,7 @@ int CWaveSoapFrontApp::ExitInstance()
 		GetCurrentDirectory(MAX_PATH+1, dirbuf);
 		m_CurrentDir.ReleaseBuffer();
 	}
-	for (int i = 0; i < sizeof AppColors / sizeof AppColors[0]; i++)
+	for (int i = 0; i < countof(AppColors); i++)
 	{
 		AppColors[i] &= 0x00FFFFFF;
 	}
@@ -1128,7 +1126,7 @@ void CWaveSoapDocManager::OnFileOpen()
 		// check how many names selected,
 		// open all of selected files
 		CString fileName = dlgFile.GetNextPathName(pos);
-		TRACE("Opening file: %s\n", LPCTSTR(fileName));
+		TRACE(_T("Opening file: %s\n"), LPCTSTR(fileName));
 		pApp->OpenDocumentFile(fileName, flags);
 	}
 	fileNameBuf.ReleaseBuffer();
@@ -1137,12 +1135,12 @@ void CWaveSoapDocManager::OnFileOpen()
 // long to string, thousands separated by commas
 CString LtoaCS(long num)
 {
-	char s[20];
-	char s1[30];
-	char * p = s;
-	char * p1 = s1;
+	TCHAR s[20];
+	TCHAR s1[30];
+	TCHAR * p = s;
+	TCHAR * p1 = s1;
 	TCHAR ThSep = GetApp()->m_ThousandSeparator;
-	ltoa(num, s, 10);
+	_ltot(num, s, 10);
 	if (0 == ThSep)
 	{
 		return s;
@@ -1153,13 +1151,13 @@ CString LtoaCS(long num)
 		p++;
 		p1++;
 	}
-	int len = strlen(p);
+	int len = _tcslen(p);
 	int first = len % 3;
 	if (0 == first && len > 0)
 	{
 		first = 3;
 	}
-	strncpy(p1, p, first);
+	_tcsncpy(p1, p, first);
 	p1 += first;
 	p += first;
 	len -= first;
@@ -1422,7 +1420,7 @@ void SetStatusString(CCmdUI* pCmdUI, const CString & string,
 			VERIFY(pFont);
 			CFont *pOldFont = dc.SelectObject(pFont);
 			VERIFY(::GetTextExtentPoint32(dc,
-										MaxString, strlen(MaxString), & size));
+										MaxString, _tcslen(MaxString), & size));
 			dc.SelectObject(pOldFont);
 		}
 		UINT nID, nStyle;
@@ -1565,7 +1563,7 @@ static void AFXAPI _AfxAbbreviateName(LPTSTR lpszCanon, int cchMax, BOOL bAtLeas
 	// If cchMax isn't enough to hold at least the basename, we're done
 	if (cchMax < cchFileName)
 	{
-		lstrcpy(lpszCanon, (bAtLeastName) ? lpszFileName : "");
+		lstrcpy(lpszCanon, (bAtLeastName) ? lpszFileName : _T(""));
 		return;
 	}
 
@@ -1693,14 +1691,14 @@ BOOL CWaveSoapFileList::GetDisplayName(CString& strName, int nIndex,
 	{
 		// copy file name only since directories are same
 		TCHAR szTemp[_MAX_PATH];
-		AfxGetFileTitle(lpch+nCurDir, szTemp, _countof(szTemp));
+		AfxGetFileTitle(lpch+nCurDir, szTemp, countof(szTemp));
 		lstrcpyn(lpch, szTemp, _MAX_PATH);
 	}
 	else if (m_nMaxDisplayLength != -1)
 	{
 		// strip the extension if the system calls for it
 		TCHAR szTemp[_MAX_PATH];
-		AfxGetFileTitle(lpch+nLenDir, szTemp, _countof(szTemp));
+		AfxGetFileTitle(lpch+nLenDir, szTemp, countof(szTemp));
 		lstrcpyn(lpch+nLenDir, szTemp, _MAX_PATH-nLenDir);
 
 		// abbreviate name based on what will fit in limited space
@@ -1847,7 +1845,7 @@ CDocument* CWaveSoapDocManager::OpenDocumentFile(LPCTSTR lpszFileName, int flags
 	CDocument* pOpenDocument = NULL;
 
 	TCHAR szPath[_MAX_PATH];
-	ASSERT(lstrlen(lpszFileName) < _countof(szPath));
+	ASSERT(lstrlen(lpszFileName) < countof(szPath));
 	TCHAR szTemp[_MAX_PATH];
 	if (lpszFileName[0] == '\"')
 		++lpszFileName;
@@ -1971,7 +1969,7 @@ void CWaveSoapFrontApp::CreatePalette()
 		PALETTEENTRY pe[255];
 	} p = {0x300, 0};
 	TRACE("CMainFrame::CreateFftPalette\n");
-	CWaveFftView::FillLogPalette( & p.lp, sizeof p.pe / sizeof p.pe[0]);
+	CWaveFftView::FillLogPalette( & p.lp, countof(p.pe));
 	// add wave color entries and make negative entries
 	PALETTEENTRY SysColors[20];
 	CDC * pDC = AfxGetMainWnd()->GetDC();
@@ -1979,7 +1977,7 @@ void CWaveSoapFrontApp::CreatePalette()
 	GetSystemPaletteEntries(*pDC, 0, 10, SysColors);
 	GetSystemPaletteEntries(*pDC, 246, 10, &SysColors[10]);
 	AfxGetMainWnd()->ReleaseDC(pDC);
-	for (int k = 0, n = 256 / 2; k < sizeof AppColors / sizeof AppColors[0]; k++)
+	for (int k = 0, n = 256 / 2; k < countof(AppColors); k++)
 	{
 		// if the color is in system palette, don't put it to the application palette
 		AppColors[k] &= 0x00FFFFFF;
@@ -2492,8 +2490,8 @@ CString GetSelectionText(long Start, long End, int Chan,
 				sChans = _T("Right");
 			}
 		}
-		s.Format("Selection : %s to %s (%s)\n"
-				"Channels: %s",
+		s.Format(_T("Selection : %s to %s (%s)\n")
+				_T("Channels: %s"),
 				SampleToString(Start, nSamplesPerSec, TimeFormat),
 				SampleToString(End, nSamplesPerSec, TimeFormat),
 				SampleToString(End - Start, nSamplesPerSec, TimeFormat),
@@ -2501,7 +2499,7 @@ CString GetSelectionText(long Start, long End, int Chan,
 	}
 	else
 	{
-		s.Format("Selection : %s to %s (%s)",
+		s.Format(_T("Selection : %s to %s (%s)"),
 				SampleToString(Start, nSamplesPerSec, TimeFormat),
 				SampleToString(End, nSamplesPerSec, TimeFormat),
 				SampleToString(End - Start, nSamplesPerSec, TimeFormat));
@@ -2526,15 +2524,15 @@ BOOL VerifyCreateDirectory(LPCTSTR pszPath)
 		= (BOOL (_stdcall * )(HWND, LPCTSTR, SECURITY_ATTRIBUTES *))
 			GetProcAddress(GetModuleHandle(_T("Shell32.dll")),
 #ifdef _UNICODE
-							_T("SHCreateDirectoryExW")
+							"SHCreateDirectoryExW"
 #else
-							_T("SHCreateDirectoryExA")
+							"SHCreateDirectoryExA"
 #endif
 							);
 
 	CString s;
 	CString DirPath(pszPath);
-	DirPath.TrimRight("\\/");
+	DirPath.TrimRight(_T("\\/"));
 	DWORD attr = GetFileAttributes(DirPath);
 	if (~0 == attr)
 	{
@@ -2558,7 +2556,8 @@ BOOL VerifyCreateDirectory(LPCTSTR pszPath)
 		}
 		else
 		{
-			MakeSureDirectoryPathExists(DirPathWithSlash);
+			// SHCreateDirectoryEx is supported on all UNICODE platforms
+			MakeSureDirectoryPathExists(CStringA(DirPathWithSlash));
 			error = GetLastError();
 			if (ERROR_ACCESS_DENIED == error)
 			{

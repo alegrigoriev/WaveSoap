@@ -32,10 +32,10 @@ CRawFileParametersDlg::CRawFileParametersDlg(CWnd* pParent /*=NULL*/)
 	m_Params.m_Compression = 0;
 	m_Params.m_bMsbFirst = 0;
 
-	m_Profile.AddItem("Settings", "RawFileSamplingRate", m_SamplingRate, 44100, 1, 1000000);
-	m_Profile.AddItem("Settings", "RawFileHeaderLength", m_HeaderLength, 0, 0, 0x20000000);
-	m_Profile.AddItem("Settings", "RawFileTrailerLength", m_TrailerLength, 0, 0, 0x20000000);
-	m_Profile.AddItem("Settings", "RawFileSettings", m_dwParams, m_dwParams, 0, 0xFFFFFFFF);
+	m_Profile.AddItem(_T("Settings"), _T("RawFileSamplingRate"), m_SamplingRate, 44100, 1, 1000000);
+	m_Profile.AddItem(_T("Settings"), _T("RawFileHeaderLength"), m_HeaderLength, 0, 0, 0x20000000);
+	m_Profile.AddItem(_T("Settings"), _T("RawFileTrailerLength"), m_TrailerLength, 0, 0, 0x20000000);
+	m_Profile.AddItem(_T("Settings"), _T("RawFileSettings"), m_dwParams, m_dwParams, 0, 0xFFFFFFFF);
 
 	m_bStereo = m_Params.m_bStereo;
 	m_bBits16 = m_Params.m_bBits16;
@@ -192,7 +192,7 @@ CSaveRawFileDlg::CSaveRawFileDlg(CWnd* pParent /*=NULL*/)
 	m_Params.m_Compression = 0;
 	m_Params.m_bMsbFirst = 0;
 
-	m_Profile.AddItem("Settings", "RawFileSettings", m_dwParams, m_dwParams, 0, 0xFFFFFFFF);
+	m_Profile.AddItem(_T("Settings"), _T("RawFileSettings"), m_dwParams, m_dwParams, 0, 0xFFFFFFFF);
 
 	m_b16Bits = m_Params.m_bBits16;
 	m_Compression = m_Params.m_Compression;

@@ -129,12 +129,12 @@ CDirectFile::File * CDirectFile::CDirectFileCache::Open(LPCTSTR szName, DWORD fl
 		return pFile;
 	}
 	CString FullName;
-	char * pName = FullName.GetBuffer(512);
+	TCHAR * pName = FullName.GetBuffer(512);
 
 	LPTSTR pFilePart = NULL;
 	GetFullPathName(szName, 511, pName, & pFilePart);
 	FullName.ReleaseBuffer();
-	TRACE("Full name: %s\n", (LPCTSTR) FullName);
+	TRACE(_T("Full name: %s\n"), (LPCTSTR) FullName);
 
 	HANDLE hf;
 	BY_HANDLE_FILE_INFORMATION info;
@@ -157,7 +157,7 @@ CDirectFile::File * CDirectFile::CDirectFileCache::Open(LPCTSTR szName, DWORD fl
 		if (::GetFileInformationByHandle(hf, & info))
 		{
 			CloseHandle(hf);
-			TRACE("Volume ID: %08X, File index: %08X%08X\n",
+			TRACE(_T("Volume ID: %08X, File index: %08X%08X\n"),
 				info.dwVolumeSerialNumber, info.nFileIndexHigh,
 				info.nFileIndexLow);
 			// find a File struct with the same parameters
@@ -440,7 +440,7 @@ BOOL CDirectFile::File::Rename(LPCTSTR NewName, DWORD flags)
 	}
 	else
 	{
-		TRACE("Couldn't rename the file from %s to %s, last error=%X\n",
+		TRACE(_T("Couldn't rename the file from %s to %s, last error=%X\n"),
 			LPCTSTR(sName), LPCTSTR(NewName), ::GetLastError());
 	}
 	if (flags & CommitFileDontReopen)
@@ -510,7 +510,7 @@ BOOL CDirectFile::File::Close(DWORD flags)
 	// if this file was set to prefetch, cancel prefetch
 	InterlockedCompareExchangePointer((void **) & pCache->m_pPrefetchFile, NULL, this);
 
-	TRACE("Closing file %s, flags=%X\n", LPCTSTR(sName), m_Flags);
+	TRACE(_T("Closing file %s, flags=%X\n"), LPCTSTR(sName), m_Flags);
 	// If the use count is 0, copy all remaining data
 	// from the source file or init the rest and flush all the buffers,
 	if (0 == (m_Flags & FileFlagsDeleteAfterClose))
@@ -625,7 +625,7 @@ BOOL CDirectFile::File::Close(DWORD flags)
 		}
 	}
 
-	TRACE("Closed file %s\n", LPCTSTR(sName));
+	TRACE(_T("Closed file %s\n"), LPCTSTR(sName));
 	delete this;
 
 	// allow background thread to run along

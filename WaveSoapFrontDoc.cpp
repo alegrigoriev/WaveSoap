@@ -732,7 +732,7 @@ BOOL CWaveSoapFrontDoc::DoSave(LPCTSTR lpszPathName, BOOL bReplace)
 		}
 
 
-		CWaveSoapFileSaveDialog dlg(FALSE, "wav", newName,
+		CWaveSoapFileSaveDialog dlg(FALSE, _T("wav"), newName,
 									OFN_HIDEREADONLY
 									| OFN_PATHMUSTEXIST
 									| OFN_EXPLORER
@@ -1646,7 +1646,7 @@ void CWaveSoapFrontDoc::DoCopy(LONG Start, LONG End, LONG Channel, LPCTSTR FileN
 	CWaveFile DstFile;
 	if (NULL != FileName && FileName[0] != 0)
 	{
-		OpName.Format("Copying the selection to \"%s\"...", FileName);
+		OpName.Format(_T("Copying the selection to \"%s\"..."), FileName);
 		OpenFlags = 0;  // default options
 		OperationFlags = 0; // default
 	}
@@ -1661,7 +1661,7 @@ void CWaveSoapFrontDoc::DoCopy(LONG Start, LONG End, LONG Channel, LPCTSTR FileN
 					| CreateWaveFileTemp;
 		OperationFlags = OperationContextClipboard;
 	}
-	CCopyContext * pContext = new CCopyContext(this, OpName, "Copy");
+	CCopyContext * pContext = new CCopyContext(this, OpName, _T("Copy"));
 	if (NULL == pContext)
 	{
 		NotEnoughMemoryMessageBox();
@@ -1730,7 +1730,7 @@ void CWaveSoapFrontDoc::DoPaste(LONG Start, LONG End, LONG Channel, LPCTSTR File
 		}
 
 		NumSamplesToPasteFrom = long(NumSamplesToPasteFrom64);
-		pResampleContext = new CResampleContext(this, "Changing sample rate of clipboard data...", "Resample");
+		pResampleContext = new CResampleContext(this, _T("Changing sample rate of clipboard data..."), _T("Resample"));
 		if (NULL == pResampleContext)
 		{
 			NotEnoughMemoryMessageBox();
@@ -1812,7 +1812,7 @@ void CWaveSoapFrontDoc::DoPaste(LONG Start, LONG End, LONG Channel, LPCTSTR File
 		return;
 	}
 
-	CCopyContext * pContext = new CCopyContext(this, _T("Inserting data from clipboard..."), "Paste");
+	CCopyContext * pContext = new CCopyContext(this, _T("Inserting data from clipboard..."), _T("Paste"));
 	if (NULL == pContext)
 	{
 		delete pResampleContext;
@@ -1856,7 +1856,7 @@ void CWaveSoapFrontDoc::DoCut(LONG Start, LONG End, LONG Channel)
 {
 	// save the cut area to Undo context, then shrink the file
 	// create a operation context
-	CCopyContext * pContext = new CCopyContext(this, _T("Copying data to clipboard..."), "Cut");
+	CCopyContext * pContext = new CCopyContext(this, _T("Copying data to clipboard..."), _T("Cut"));
 	if (NULL == pContext)
 	{
 		NotEnoughMemoryMessageBox();
@@ -1888,7 +1888,7 @@ void CWaveSoapFrontDoc::DoCut(LONG Start, LONG End, LONG Channel)
 	GetApp()->m_ClipboardFile = DstFile;
 	// set operation context to the queue
 	pContext->Execute();
-	CResizeContext * pResizeContext = new CResizeContext(this, _T("Shrinking the file..."), "File Resize");
+	CResizeContext * pResizeContext = new CResizeContext(this, _T("Shrinking the file..."), _T("File Resize"));
 	pResizeContext->InitShrink(m_WavFile, Start, End - Start, Channel);
 	pResizeContext->InitUndoRedo("Cut");
 	SetSelection(Start, Start, Channel, Start);
@@ -1901,7 +1901,7 @@ void CWaveSoapFrontDoc::DoDelete(LONG Start, LONG End, LONG Channel)
 	{
 		End++;
 	}
-	CResizeContext * pResizeContext = new CResizeContext(this, _T("Deleting the selection..."), "Delete");
+	CResizeContext * pResizeContext = new CResizeContext(this, _T("Deleting the selection..."), _T("Delete"));
 	pResizeContext->InitShrink(m_WavFile, Start, End - Start, Channel);
 	pResizeContext->InitUndoRedo("Delete");
 	SetSelection(Start, Start, Channel, Start);
@@ -1924,7 +1924,7 @@ void CWaveSoapFrontDoc::OnUpdateEditStop(CCmdUI* pCmdUI)
 BOOL CWaveSoapFrontDoc::OnOpenDocument(LPCTSTR lpszPathName, int DocOpenFlags)
 {
 
-	TRACE("CWaveSoapFrontDoc::OnOpenDocument(%s)\n", lpszPathName);
+	TRACE(_T("CWaveSoapFrontDoc::OnOpenDocument(%s)\n"), lpszPathName);
 	m_WavFile.Close();
 	m_OriginalWavFile.Close();
 
@@ -2043,7 +2043,7 @@ BOOL CWaveSoapFrontDoc::OnOpenDocument(LPCTSTR lpszPathName, int DocOpenFlags)
 		if (bNeedConversion)
 		{
 			CDecompressContext * pContext =
-				new CDecompressContext(this, "Loading the compressed file...", m_OriginalWavFile.GetWaveFormat());
+				new CDecompressContext(this, _T("Loading the compressed file..."), m_OriginalWavFile.GetWaveFormat());
 
 			pContext->m_Flags |= DecompressSavePeakFile;
 
@@ -2132,7 +2132,7 @@ BOOL CWaveSoapFrontDoc::OnSaveBufferedPcmFile(int flags, LPCTSTR FullTargetName)
 	}
 	// InitializeTheRestOfFile in the thread
 	//prepare context and queue it
-	CCommitFileSaveContext * pContext = new CCommitFileSaveContext(this, "Saving the file...");
+	CCommitFileSaveContext * pContext = new CCommitFileSaveContext(this, _T("Saving the file..."));
 	if (NULL == pContext)
 	{
 		NotEnoughMemoryMessageBox();
@@ -2169,12 +2169,12 @@ BOOL CWaveSoapFrontDoc::OnSaveBufferedPcmFileCopy(int flags, LPCTSTR FullTargetN
 		FileCreationErrorMessageBox(NewTempFilename);
 		return FALSE;
 	}
-	LPCTSTR sOp = "Saving the file...";
+	LPCTSTR sOp = _T("Saving the file...");
 	if (flags & SaveFile_SaveCopy)
 	{
-		sOp = "Saving the file copy...";
+		sOp = _T("Saving the file copy...");
 	}
-	CFileSaveContext * pContext = new CFileSaveContext(this, sOp, "File Save");
+	CFileSaveContext * pContext = new CFileSaveContext(this, sOp, _T("File Save"));
 	if (NULL == pContext)
 	{
 		NotEnoughMemoryMessageBox();
@@ -2250,13 +2250,13 @@ BOOL CWaveSoapFrontDoc::OnSaveConvertedFile(int flags, LPCTSTR FullTargetName, W
 			return FALSE;
 		}
 	}
-	LPCTSTR sOp = "Converting and saving the file...";
+	LPCTSTR sOp = _T("Converting and saving the file...");
 	if (flags & SaveFile_SaveCopy)
 	{
-		sOp = "Saving the file copy...";
+		sOp = _T("Saving the file copy...");
 	}
 
-	CFileSaveContext * pContext = new CFileSaveContext(this, sOp, "File Convert and Save");
+	CFileSaveContext * pContext = new CFileSaveContext(this, sOp, _T("File Convert and Save"));
 	if (NULL == pContext)
 	{
 		NotEnoughMemoryMessageBox();
@@ -2265,7 +2265,7 @@ BOOL CWaveSoapFrontDoc::OnSaveConvertedFile(int flags, LPCTSTR FullTargetName, W
 
 	pContext->m_NewName = FullTargetName;
 
-	CConversionContext * pConvert = new CConversionContext(this, "", "");
+	CConversionContext * pConvert = new CConversionContext(this, _T(""), _T(""));
 	if (NULL == pConvert)
 	{
 		delete pContext;
@@ -2414,7 +2414,7 @@ BOOL CWaveSoapFrontDoc::OnSaveMp3File(int flags, LPCTSTR FullTargetName, WAVEFOR
 	}
 
 	CFileSaveContext * pContext = new CFileSaveContext(this,
-														"Compressing and saving Mp3 file...", "Mp3 File Compress and Save");
+									_T("Compressing and saving Mp3 file..."), _T("Mp3 File Compress and Save"));
 	if (NULL == pContext)
 	{
 		NotEnoughMemoryMessageBox();
@@ -2423,7 +2423,7 @@ BOOL CWaveSoapFrontDoc::OnSaveMp3File(int flags, LPCTSTR FullTargetName, WAVEFOR
 
 	pContext->m_NewName = FullTargetName;
 	pContext->m_NewFileTypeFlags = OpenDocumentMp3File;
-	CConversionContext * pConvert = new CConversionContext(this, "", "");
+	CConversionContext * pConvert = new CConversionContext(this, _T(""), _T(""));
 
 	if (NULL == pConvert)
 	{
@@ -2530,7 +2530,7 @@ BOOL CWaveSoapFrontDoc::OnSaveWmaFile(int flags, LPCTSTR FullTargetName, WAVEFOR
 	}
 
 	CFileSaveContext * pContext = new CFileSaveContext(this,
-														"Compressing and saving Windows Media file...", "");
+														_T("Compressing and saving Windows Media file..."), _T(""));
 	if (NULL == pContext)
 	{
 		NotEnoughMemoryMessageBox();
@@ -2540,7 +2540,7 @@ BOOL CWaveSoapFrontDoc::OnSaveWmaFile(int flags, LPCTSTR FullTargetName, WAVEFOR
 	pContext->m_NewName = FullTargetName;
 	pContext->m_DstFile = NewWaveFile;
 	pContext->m_NewFileTypeFlags = OpenDocumentWmaFile;
-	CWmaSaveContext * pConvert = new CWmaSaveContext(this, "", "");
+	CWmaSaveContext * pConvert = new CWmaSaveContext(this, _T(""), _T(""));
 
 	if (NULL == pConvert)
 	{
@@ -2621,7 +2621,7 @@ BOOL CWaveSoapFrontDoc::OnSaveRawFile(int flags, LPCTSTR FullTargetName, WAVEFOR
 	}
 
 	CFileSaveContext * pContext = new CFileSaveContext(this,
-														"Saving the file in raw binary format...", "Raw File Save");
+														_T("Saving the file in raw binary format..."), _T("Raw File Save"));
 	if (NULL == pContext)
 	{
 		NotEnoughMemoryMessageBox();
@@ -2630,7 +2630,7 @@ BOOL CWaveSoapFrontDoc::OnSaveRawFile(int flags, LPCTSTR FullTargetName, WAVEFOR
 
 	pContext->m_NewName = FullTargetName;
 	pContext->m_NewFileTypeFlags = OpenDocumentMp3File;
-	CConversionContext * pConvert = new CConversionContext(this, "", "");
+	CConversionContext * pConvert = new CConversionContext(this, _T(""), _T(""));
 
 	if (NULL == pConvert)
 	{
@@ -3719,7 +3719,7 @@ void CWaveSoapFrontDoc::SetSampleRate(unsigned SampleRate)
 	}
 	if (UndoEnabled())
 	{
-		CUndoRedoContext * pContext = new CUndoRedoContext(this, "Sample Rate Change");
+		CUndoRedoContext * pContext = new CUndoRedoContext(this, _T("Sample Rate Change"));
 		if (NULL == pContext)
 		{
 		}
@@ -3850,7 +3850,7 @@ void CWaveSoapFrontDoc::ChangeChannels(int nChannels)
 		// easy change
 		if (UndoEnabled())
 		{
-			CUndoRedoContext * pContext = new CUndoRedoContext(this, "Number Of Channels Change");
+			CUndoRedoContext * pContext = new CUndoRedoContext(this, _T("Number Of Channels Change"));
 			if (NULL == pContext)
 			{
 				NotEnoughMemoryMessageBox();
@@ -3906,8 +3906,8 @@ void CWaveSoapFrontDoc::ChangeChannels(int nChannels)
 		NotEnoughMemoryMessageBox();
 		return;
 	}
-	CConversionContext * pContext = new CConversionContext(this, "Changing number of channels...",
-															"Number Of Channels Change");
+	CConversionContext * pContext = new CConversionContext(this, _T("Changing number of channels..."),
+															_T("Number Of Channels Change"));
 	if (NULL == pContext)
 	{
 		delete pConvert;
@@ -3936,7 +3936,7 @@ void CWaveSoapFrontDoc::ChangeChannels(int nChannels)
 
 	if (UndoEnabled())
 	{
-		CUndoRedoContext * pUndo = new CUndoRedoContext(this, "Number Of Channels Change");
+		CUndoRedoContext * pUndo = new CUndoRedoContext(this, _T("Number Of Channels Change"));
 		if (NULL == pUndo)
 		{
 			NotEnoughMemoryMessageBox();
@@ -4022,7 +4022,7 @@ void CWaveSoapFrontDoc::OnProcessChangevolume()
 	}
 
 	CVolumeChangeContext * pContext =
-		new CVolumeChangeContext(this, "Changing volume...", "Volume Change");
+		new CVolumeChangeContext(this, _T("Changing volume..."), _T("Volume Change"));
 	if (NULL == pContext)
 	{
 		NotEnoughMemoryMessageBox();
@@ -4288,7 +4288,7 @@ void CWaveSoapFrontDoc::OnProcessDcoffset()
 	}
 
 	CDcOffsetContext * pContext =
-		new CDcOffsetContext(this, "Adjusting DC...", "DC Adjust");
+		new CDcOffsetContext(this, _T("Adjusting DC..."), _T("DC Adjust"));
 	if (NULL == pContext)
 	{
 		NotEnoughMemoryMessageBox();
@@ -4299,7 +4299,7 @@ void CWaveSoapFrontDoc::OnProcessDcoffset()
 	{
 		pContext->m_OffsetLeft = 0;
 		pContext->m_OffsetRight = 0;
-		pContext->m_pScanContext = new CStatisticsContext(this, "Scanning for DC offset...", "");
+		pContext->m_pScanContext = new CStatisticsContext(this, _T("Scanning for DC offset..."), _T(""));
 		if (NULL == pContext->m_pScanContext)
 		{
 			delete pContext;
@@ -4432,7 +4432,7 @@ void CWaveSoapFrontDoc::OnProcessInsertsilence()
 	}
 
 	CInsertSilenceContext * pContext = new CInsertSilenceContext(this,
-																"Inserting silence...", "Insert Silence");
+																_T("Inserting silence..."), _T("Insert Silence"));
 
 	if (NULL == pContext)
 	{
@@ -4476,7 +4476,7 @@ void CWaveSoapFrontDoc::OnProcessMute()
 	}
 
 	CVolumeChangeContext * pContext =
-		new CVolumeChangeContext(this, "Muting the selection...", "Mute");
+		new CVolumeChangeContext(this, _T("Muting the selection..."), _T("Mute"));
 	if (NULL == pContext)
 	{
 		NotEnoughMemoryMessageBox();
@@ -4544,7 +4544,7 @@ void CWaveSoapFrontDoc::OnProcessNormalize()
 	}
 
 	CNormalizeContext * pContext =
-		new CNormalizeContext(this, "Normalizing sound level...", "Normalize");
+		new CNormalizeContext(this, _T("Normalizing sound level..."), _T("Normalize"));
 	if (NULL == pContext)
 	{
 		NotEnoughMemoryMessageBox();
@@ -4571,7 +4571,7 @@ void CWaveSoapFrontDoc::OnProcessNormalize()
 		return;
 	}
 	CStatisticsContext * pStatContext =
-		new CStatisticsContext(this, "Scanning for maximum amplitude...", "");
+		new CStatisticsContext(this, _T("Scanning for maximum amplitude..."), _T(""));
 	if (NULL == pStatContext)
 	{
 		delete pContext;
@@ -4642,7 +4642,7 @@ void CWaveSoapFrontDoc::OnProcessResample()
 		return;
 	}
 
-	CResampleContext * pContext = new CResampleContext(this, "Changing sample rate...", "Resample");
+	CResampleContext * pContext = new CResampleContext(this, _T("Changing sample rate..."), _T("Resample"));
 	if (NULL == pContext)
 	{
 		NotEnoughMemoryMessageBox();
@@ -4673,7 +4673,7 @@ void CWaveSoapFrontDoc::OnProcessResample()
 	// add UNDO
 	if (UndoEnabled())
 	{
-		CUndoRedoContext * pUndo = new CUndoRedoContext(this, "Resample");
+		CUndoRedoContext * pUndo = new CUndoRedoContext(this, _T("Resample"));
 		if (NULL == pUndo)
 		{
 			NotEnoughMemoryMessageBox();
@@ -4695,7 +4695,7 @@ void CWaveSoapFrontDoc::OnFileStatistics()
 	{
 		return;
 	}
-	CStatisticsContext * pContext = new CStatisticsContext(this, "Scanning the file for statistics...", "");
+	CStatisticsContext * pContext = new CStatisticsContext(this, _T("Scanning the file for statistics..."), _T(""));
 	if (NULL == pContext)
 	{
 		NotEnoughMemoryMessageBox();
@@ -4771,7 +4771,7 @@ void CWaveSoapFrontDoc::OnProcessInvert()
 	}
 
 	CVolumeChangeContext * pContext =
-		new CVolumeChangeContext(this, "Inverting the waveform...", "Inversion");
+		new CVolumeChangeContext(this, _T("Inverting the waveform..."), _T("Inversion"));
 	if (NULL == pContext)
 	{
 		NotEnoughMemoryMessageBox();
@@ -4845,8 +4845,8 @@ void CWaveSoapFrontDoc::OnProcessSynthesisExpressionEvaluation()
 	dlg.m_TimeFormat = pApp->m_SoundTimeFormat;
 	dlg.m_FileLength = WaveFileSamples();
 
-	CExpressionEvaluationContext * pContext = new CExpressionEvaluationContext(this, "Calculating the waveform...",
-												"Expression evaluation");
+	CExpressionEvaluationContext * pContext = new CExpressionEvaluationContext(this, _T("Calculating the waveform..."),
+												_T("Expression evaluation"));
 	dlg.m_pContext = pContext;
 	if (NULL == pContext)
 	{
@@ -5007,7 +5007,7 @@ BOOL CWaveSoapFrontDoc::OpenRawFileDocument(LPCTSTR lpszPathName)
 	}
 
 	CDecompressContext * pContext =
-		new CDecompressContext(this, "Loading the raw sound file...", & wf);
+		new CDecompressContext(this, _T("Loading the raw sound file..."), & wf);
 
 	m_OriginalWaveFormat = & wf;
 
@@ -5045,7 +5045,7 @@ BOOL CWaveSoapFrontDoc::OpenAviFileDocument(LPCTSTR lpszPathName)
 BOOL CWaveSoapFrontDoc::OpenWmaFileDocument(LPCTSTR lpszPathName)
 {
 
-	TRACE("CWaveSoapFrontDoc::OpenWmaFileDocument(%s)\n", lpszPathName);
+	TRACE(_T("CWaveSoapFrontDoc::OpenWmaFileDocument(%s)\n"), lpszPathName);
 
 	CThisApp * pApp = GetApp();
 	if ( ! pApp->CanOpenWindowsMedia())
@@ -5083,7 +5083,7 @@ BOOL CWaveSoapFrontDoc::OpenWmaFileDocument(LPCTSTR lpszPathName)
 		return FALSE;
 	}
 
-	CWmaDecodeContext * pWmaContext = new CWmaDecodeContext(this, "Loading the compressed file...");
+	CWmaDecodeContext * pWmaContext = new CWmaDecodeContext(this, _T("Loading the compressed file..."));
 	if (NULL == pWmaContext)
 	{
 		NotEnoughMemoryMessageBox();
@@ -5304,8 +5304,8 @@ void CWaveSoapFrontDoc::OnProcessDoUlf()
 		return;
 	}
 
-	CConversionContext * pContext = new CConversionContext(this, "Reducing low frequency static...",
-															"Low Frequency Suppression");
+	CConversionContext * pContext = new CConversionContext(this, _T("Reducing low frequency static..."),
+															_T("Low Frequency Suppression"));
 	if (NULL == pContext)
 	{
 		NotEnoughMemoryMessageBox();
@@ -5388,8 +5388,8 @@ void CWaveSoapFrontDoc::OnProcessDoDeclicking()
 	{
 		return;
 	}
-	CConversionContext * pContext = new CConversionContext(this, "Removing vinyl disk clicks...",
-															"Declicking");
+	CConversionContext * pContext = new CConversionContext(this, _T("Removing vinyl disk clicks..."),
+															_T("Declicking"));
 	if (NULL == pContext)
 	{
 		NotEnoughMemoryMessageBox();
@@ -5504,8 +5504,8 @@ void CWaveSoapFrontDoc::OnProcessNoiseReduction()
 		return;
 	}
 
-	CConversionContext * pContext = new CConversionContext(this, "Removing background noise...",
-															"Noise Reduction");
+	CConversionContext * pContext = new CConversionContext(this, _T("Removing background noise..."),
+															_T("Noise Reduction"));
 	if (NULL == pContext)
 	{
 		NotEnoughMemoryMessageBox();
@@ -5811,7 +5811,7 @@ void CWaveSoapFrontDoc::OnProcessEqualizer()
 		return;
 	}
 	CEqualizerContext * pContext =
-		new CEqualizerContext(this, "Applying equalizer...", "Equalizer");
+		new CEqualizerContext(this, _T("Applying equalizer..."), _T("Equalizer"));
 	if (NULL == pContext)
 	{
 		NotEnoughMemoryMessageBox();
@@ -5866,7 +5866,7 @@ void CWaveSoapFrontDoc::OnProcessSwapchannels()
 	}
 
 	CSwapChannelsContext * pContext =
-		new CSwapChannelsContext(this, "Swapping the channels...", "Swap channels");
+		new CSwapChannelsContext(this, _T("Swapping the channels..."), _T("Swap channels"));
 	if (NULL == pContext)
 	{
 		NotEnoughMemoryMessageBox();
@@ -5933,7 +5933,7 @@ void CWaveSoapFrontDoc::OnProcessFilter()
 		return;
 	}
 	CFilterContext * pContext =
-		new CFilterContext(this, "Applying filter...", "Filter");
+		new CFilterContext(this, _T("Applying filter..."), _T("Filter"));
 	if (NULL == pContext)
 	{
 		NotEnoughMemoryMessageBox();
