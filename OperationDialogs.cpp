@@ -2461,6 +2461,8 @@ BEGIN_MESSAGE_MAP(CNoiseReductionDialog, BaseClass)
 	ON_BN_CLICKED(IDC_BUTTON_SET_THRESHOLD, OnButtonSetThreshold)
 	ON_BN_CLICKED(IDC_BUTTON_SAVE, OnButtonSaveSettings)
 	ON_BN_CLICKED(IDC_BUTTON_LOAD, OnButtonLoadSettings)
+	ON_BN_CLICKED(IDC_BUTTON_RESET_DEFAULT, OnButtonSetDefaults)
+	ON_BN_CLICKED(IDC_BUTTON_REVERT_INITIAL, OnButtonRevert)
 	//}}AFX_MSG_MAP
 END_MESSAGE_MAP()
 
@@ -2706,6 +2708,21 @@ void CNoiseReductionDialog::OnButtonLoadSettings()
 	UpdateData(FALSE);
 }
 
+void CNoiseReductionDialog::OnButtonSetDefaults()
+{
+	UpdateData(TRUE);
+	Profile.ResetAllToDefault();
+	UpdateData(FALSE);
+}
+
+void CNoiseReductionDialog::OnButtonRevert()
+{
+	UpdateData(TRUE);
+	Profile.RevertAllToInitial();
+	UpdateData(FALSE);
+}
+
+///////////////////////////////////////////////////////////////////////////////
 void CExpressionEvaluationDialog::OnSelchangeTabTokens(NMHDR* /*pNMHDR*/, LRESULT* pResult)
 {
 	ShowHideTabDialogs();
