@@ -540,7 +540,10 @@ void CSpectrumSectionView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint
 		delete[] m_pWindow;
 		m_pWindow = NULL;
 	}
-	CScaledScrollView::OnUpdate(pSender, lHint, pHint);
+	else if (0 == lHint)
+	{
+		BaseClass::OnUpdate(pSender, lHint, pHint);
+	}
 }
 
 void CSpectrumSectionView::OnUpdateViewSsShowNoiseThreshold(CCmdUI* pCmdUI)
