@@ -33,7 +33,7 @@ public:
 		{
 			return * this;
 		}
-		virtual void MoveDataTo(InstanceData * dst)
+		virtual void MoveDataTo(InstanceData * /*dst*/)
 		{
 		}
 	};

@@ -28,7 +28,7 @@ CMmioFile & CMmioFile::operator=(CMmioFile & SourceFile)
 	mmii.fccIOProc = 0;
 	mmii.pIOProc = BufferedIOProc;
 
-	mmii.adwInfo[0] = (DWORD)this;
+	mmii.adwInfo[0] = (DWORD)(DWORD_PTR)this;   // TODO
 	m_hmmio = mmioOpen(NULL, & mmii, MMIO_READ //| MMIO_ALLOCBUF
 						);
 	Seek(0);
@@ -149,7 +149,7 @@ BOOL CMmioFile::Open(LPCTSTR szFileName, UINT nOpenFlags)
 		mmii.fccIOProc = 0;
 		mmii.pIOProc = BufferedIOProc;
 
-		mmii.adwInfo[0] = (DWORD)this;
+		mmii.adwInfo[0] = (DWORD)(DWORD_PTR)this;  // TODO
 
 		m_hmmio = mmioOpen(NULL, & mmii,
 							MMIO_READ //| MMIO_ALLOCBUF
@@ -181,7 +181,7 @@ BOOL CMmioFile::Open(LPCTSTR szFileName, UINT nOpenFlags)
 		mmii.fccIOProc = 0;
 		mmii.pIOProc = BufferedIOProc;
 
-		mmii.adwInfo[0] = (DWORD)this;
+		mmii.adwInfo[0] = (DWORD)(DWORD_PTR)this;  // TODO
 
 		m_hmmio = mmioOpen(NULL, & mmii,
 							MMIO_READ | MMIO_WRITE //| MMIO_ALLOCBUF
@@ -244,7 +244,7 @@ LRESULT PASCAL CMmioFile::BufferedIOProc(LPSTR lpmmioinfo, UINT wMsg,
 										LPARAM lParam1, LPARAM lParam2)
 {
 	LPMMIOINFO pmmi = (LPMMIOINFO) lpmmioinfo;
-	CMmioFile * pFile = (CMmioFile *) pmmi->adwInfo[0];
+	CMmioFile * pFile = (CMmioFile *) (DWORD_PTR)pmmi->adwInfo[0];
 
 	switch(wMsg)
 	{
@@ -257,9 +257,11 @@ LRESULT PASCAL CMmioFile::BufferedIOProc(LPSTR lpmmioinfo, UINT wMsg,
 	case MMIOM_READ:
 	{
 		//TRACE("MMIOM_READ at %08x, %x bytes\n", pmmi->lDiskOffset, lParam2);
-		DWORD cbRead = pFile->ReadAt((LPVOID) lParam1, lParam2, pmmi->lDiskOffset);
+		DWORD cbRead = pFile->ReadAt((LPVOID) lParam1, (long)lParam2, pmmi->lDiskOffset);
 		if (-1 == cbRead)
+		{
 			return -1;
+		}
 		pmmi->lDiskOffset += cbRead;
 		return cbRead;
 	}
@@ -269,7 +271,7 @@ LRESULT PASCAL CMmioFile::BufferedIOProc(LPSTR lpmmioinfo, UINT wMsg,
 	case MMIOM_WRITE:
 	{
 		//TRACE("MMIOM_WRITE at %08x, %x bytes\n", pmmi->lDiskOffset, lParam2);
-		DWORD cbWritten = pFile->WriteAt((LPVOID) lParam1, lParam2, ULONG(pmmi->lDiskOffset));
+		DWORD cbWritten = pFile->WriteAt((LPVOID) lParam1, (long)lParam2, ULONG(pmmi->lDiskOffset));
 		if (-1 == cbWritten)
 			return -1;
 		pmmi->lDiskOffset += cbWritten;
@@ -280,7 +282,7 @@ LRESULT PASCAL CMmioFile::BufferedIOProc(LPSTR lpmmioinfo, UINT wMsg,
 		switch (lParam2)
 		{
 		case SEEK_CUR:
-			pmmi->lDiskOffset += lParam1;
+			pmmi->lDiskOffset += (LONG)lParam1;
 			//TRACE("MMIOM_SEEK SEEK_CUR pmmi->lDiskOffset=%08x\n", pmmi->lDiskOffset);
 			return pmmi->lDiskOffset;
 			break;
@@ -290,7 +292,7 @@ LRESULT PASCAL CMmioFile::BufferedIOProc(LPSTR lpmmioinfo, UINT wMsg,
 			return pmmi->lDiskOffset;
 			break;
 		case SEEK_SET:
-			pmmi->lDiskOffset = lParam1;
+			pmmi->lDiskOffset = (LONG)lParam1;
 			//TRACE("MMIOM_SEEK SEEK_SET pmmi->lDiskOffset=%08x\n", pmmi->lDiskOffset);
 			return pmmi->lDiskOffset;
 			break;
@@ -344,7 +346,7 @@ BOOL CWaveFile::Open( LPCTSTR lpszFileName, UINT nOpenFlags)
 void CWaveFile::Close( )
 {
 	CMmioFile::Close();
-	m_FactSamples = -1;
+	m_FactSamples = ~0UL;
 }
 
 BOOL CWaveFile::LoadWaveformat()
@@ -355,9 +357,9 @@ BOOL CWaveFile::LoadWaveformat()
 	{
 		return FALSE;
 	}
-	if (ck.cksize > 0x20000) // 128K
+	if (ck.cksize > 0xFFF0) // 64K
 	{
-		TRACE("fmt chunk is too big: > 128K\n");
+		TRACE("fmt chunk is too big: > 64K\n");
 		Ascend(ck);
 		return FALSE;
 	}
@@ -366,7 +368,7 @@ BOOL CWaveFile::LoadWaveformat()
 
 	if (NULL != pWf)
 	{
-		if (ck.cksize == Read(pWf, ck.cksize))
+		if (ck.cksize == (DWORD) Read(pWf, (LONG)ck.cksize))
 		{
 			Ascend(ck);
 			// try to find 'fact' chunk
@@ -374,7 +376,7 @@ BOOL CWaveFile::LoadWaveformat()
 			pFact->ckid = mmioFOURCC('f', 'a', 'c', 't');
 			// save current position
 			DWORD CurrPos = Seek(0, SEEK_CUR);
-			m_FactSamples = -1;
+			m_FactSamples = ~0LU;
 			if (FindChunk(* pFact, GetRiffChunk()))
 			{
 				if (pFact->cksize >= sizeof (DWORD))
@@ -468,7 +470,7 @@ BOOL CMmioFile::ReadChunkString(ULONG Length, CString & String)
 	}
 
 	CStringA s;
-	if (Length != Read(s.GetBuffer(Length), Length))
+	if (Length != (ULONG)Read(s.GetBuffer(Length), Length))
 	{
 		return FALSE;
 	}
@@ -500,7 +502,7 @@ BOOL CMmioFile::ReadChunkStringW(ULONG Length, CString & String)
 	}
 
 	CStringW s;
-	if (Length != Read(s.GetBuffer(Length / sizeof (WCHAR)), Length))
+	if (Length != (ULONG)Read(s.GetBuffer(Length / sizeof (WCHAR)), Length))
 	{
 		return FALSE;
 	}
@@ -1023,7 +1025,7 @@ BOOL CWaveFile::CreateWaveFile(CWaveFile * pTemplateFile, WAVEFORMATEX * pTempla
 		{
 			size_t DataLength = SizeOrSamples * SampleSize();
 			SetFileLength(pDatachunk->dwDataOffset + DataLength);
-			Seek(DataLength, SEEK_CUR);
+			Seek(LONG(DataLength), SEEK_CUR);
 		}
 	}
 	Ascend( * pDatachunk);
@@ -1253,7 +1255,7 @@ WavePeak * CWavePeaks::AllocatePeakData(NUMBER_OF_SAMPLES NewNumberOfSamples,
 		{
 			m_WavePeakSize = 0;
 		}
-		for (unsigned i = m_WavePeakSize; i < NewWavePeakSize; i++)
+		for (PEAK_INDEX i = m_WavePeakSize; i < NewWavePeakSize; i++)
 		{
 			NewPeaks[i].high = -0x8000;
 			NewPeaks[i].low = 0x7FFF;
@@ -1270,7 +1272,7 @@ WavePeak * CWavePeaks::AllocatePeakData(NUMBER_OF_SAMPLES NewNumberOfSamples,
 	}
 	else
 	{
-		for (unsigned i = m_WavePeakSize; i < NewWavePeakSize; i++)
+		for (PEAK_INDEX i = m_WavePeakSize; i < NewWavePeakSize; i++)
 		{
 			m_pPeaks[i].high = -0x8000;
 			m_pPeaks[i].low = 0x7FFF;
@@ -1339,7 +1341,7 @@ unsigned CWaveFile::GetPeaksSize() const
 	CWavePeaks const * pPeaks = GetWavePeaks();
 	if (NULL != pPeaks)
 	{
-		return pPeaks->GetPeaksSize();
+		return (unsigned) pPeaks->GetPeaksSize();
 	}
 	return 0;
 }
@@ -1470,8 +1472,8 @@ void CWaveFile::RescanPeaks(SAMPLE_INDEX begin, SAMPLE_INDEX end)
 						pWaveData++;
 					}
 
-					pPeaks->SetPeakData(index, wpl_l, wpl_h);
-					pPeaks->SetPeakData(index + 1, wpr_l, wpr_h);
+					pPeaks->SetPeakData(index, WAVE_SAMPLE(wpl_l), WAVE_SAMPLE(wpl_h));
+					pPeaks->SetPeakData(index + 1, WAVE_SAMPLE(wpr_l), WAVE_SAMPLE(wpr_h));
 					index += 2;
 
 					DataForGranule = GranuleSize;
@@ -1514,7 +1516,7 @@ void CWaveFile::RescanPeaks(SAMPLE_INDEX begin, SAMPLE_INDEX end)
 						}
 					}
 
-					pPeaks->SetPeakData(index, wp_l, wp_h);
+					pPeaks->SetPeakData(index, WAVE_SAMPLE(wp_l), WAVE_SAMPLE(wp_h));
 					index++;
 
 					DataForGranule = GranuleSize;
@@ -1543,7 +1545,7 @@ WavePeak CWavePeaks::GetPeakMinMax(PEAK_INDEX from, PEAK_INDEX to, NUMBER_OF_CHA
 
 	if (to > m_WavePeakSize)
 	{
-		to = m_WavePeakSize;
+		to = PEAK_INDEX(m_WavePeakSize);
 	}
 
 	for (unsigned j = from; j < to; j += stride)

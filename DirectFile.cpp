@@ -28,12 +28,12 @@ typedef NUM_volatile<DWORD> SUBBLOCK_MASK;
 #define MASK_OFFSET_IN_BLOCK (CACHE_BLOCK_SIZE - 1)
 #define MASK_OFFSET_IN_SUBBLOCK (CACHE_SUBBLOCK_SIZE - 1)
 #define FILE_OFFSET_TO_BLOCK_NUMBER(offset) \
-	(size_t((offset) >> BLOCK_SIZE_SHIFT))
+	(BLOCK_INDEX((offset) >> BLOCK_SIZE_SHIFT))
 #define FILE_OFFSET_TO_WRITTEN_MASK_OFFSET(offset) \
-	(size_t((offset) >> (BLOCK_SIZE_SHIFT + 3)))
+	(unsigned((offset) >> (BLOCK_SIZE_SHIFT + 3)))
 
 #define FILE_LENGTH_TO_WRITTEN_MASK_LENGTH(length) \
-	(size_t((length + (1 << (BLOCK_SIZE_SHIFT + 3)) - 1) >> (BLOCK_SIZE_SHIFT + 3)))
+	(unsigned((length + (1 << (BLOCK_SIZE_SHIFT + 3)) - 1) >> (BLOCK_SIZE_SHIFT + 3)))
 
 #define MEMORY_FILE_SIZE_LIMIT 0x100000UL
 #define MAX_PREFETCH_REGIONS    6
@@ -104,7 +104,7 @@ protected:
 	void FreeBuffer(BufferHeader * pBuf);
 	// get a buffer header by its buffer addr
 	BufferHeader * GetBufferHeader(void * pAddr);
-	size_t GetOffsetInBuffer(void * pAddr);
+	unsigned GetOffsetInBuffer(void * pAddr);
 
 	void MakeBufferLeastRecent(BufferHeader * pBuf);
 
@@ -131,7 +131,7 @@ private:
 	ListHead<BufferMruEntry> m_MruList;
 
 	void * m_pBuffersArray;    // allocated area
-	int m_NumberOfBuffers; // number of allocated buffers
+	unsigned m_NumberOfBuffers; // number of allocated buffers
 	ListHead<BufferHeader> m_FreeBuffers;
 	ListHead<File> m_FileList;
 
@@ -140,7 +140,7 @@ private:
 	ListHead<PrefetchDescriptor> m_ListPrefetched;  // or empty
 
 	// max number of 64K block allowed to read ahead
-	DWORD m_MaxBlocksToPrefetch;
+	unsigned m_MaxBlocksToPrefetch;
 
 	//DWORD m_Flags;
 	ULONG_volatile m_MRU_Count;
@@ -631,7 +631,7 @@ File * CDirectFileCache::Open(LPCTSTR szName, DWORD flags)
 		memset(pFile->m_pWrittenMask, 0xFF, LastByteOffset);
 
 		pFile->m_pWrittenMask[LastByteOffset] =
-			0xFF >> (8 - (((pFile->FileLength + MASK_OFFSET_IN_BLOCK) >> BLOCK_SIZE_SHIFT) & 7));
+			char(0xFF >> (8 - (((pFile->FileLength + MASK_OFFSET_IN_BLOCK) >> BLOCK_SIZE_SHIFT) & 7)));
 	}
 	else
 	{
@@ -844,7 +844,7 @@ BOOL File::Rename(LPCTSTR NewName, DWORD flags)
 	return result;
 }
 
-BOOL File::Close(DWORD flags)
+BOOL File::Close(DWORD /*flags*/)
 {
 	// dereference File structure.
 	// stop all background operations on the files
@@ -1205,7 +1205,7 @@ void CDirectFileCache::InitCache(size_t MaxCacheSize)
 	TRACE("Direct file CacheSize = %d MB\n", CacheSize / 0x100000);
 	CacheSize = (CacheSize + CACHE_BLOCK_SIZE - 1) & ~MASK_OFFSET_IN_BLOCK;
 	m_pBuffersArray = VirtualAlloc(NULL, CacheSize, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
-	m_NumberOfBuffers = CacheSize / CACHE_BLOCK_SIZE;
+	m_NumberOfBuffers = unsigned(CacheSize / CACHE_BLOCK_SIZE);
 
 	m_pHeaders = new BufferHeader[m_NumberOfBuffers];
 
@@ -1240,7 +1240,7 @@ void CDirectFileCache::InitCache(size_t MaxCacheSize)
 		}
 		else
 		{
-			TerminateThread(m_hThread, -1);
+			TerminateThread(m_hThread, 0xFF);
 			CloseHandle(m_hThread);
 			m_hThread = NULL;
 		}
@@ -1277,7 +1277,7 @@ void CDirectFileCache::DeInitCache()
 		SetEvent(m_hEvent);
 		if (WAIT_TIMEOUT == WaitForSingleObjectAcceptSends(m_hThread, 20000))
 		{
-			TerminateThread(m_hThread, -1);
+			TerminateThread(m_hThread, 0xFF);
 		}
 #ifdef _DEBUG
 		TRACE("File Cache Thread finished in %d ms\n",
@@ -1317,7 +1317,7 @@ void CDirectFileCache::DeInitCache()
 // get a buffer header by its buffer addr
 BufferHeader * CDirectFileCache::GetBufferHeader(void * pAddr)
 {
-	int BufferNumber = (PUCHAR(pAddr) - PUCHAR(m_pBuffersArray)) / CACHE_BLOCK_SIZE;
+	unsigned BufferNumber = unsigned((PUCHAR(pAddr) - PUCHAR(m_pBuffersArray)) / CACHE_BLOCK_SIZE);
 	ASSERT(BufferNumber >= 0 && BufferNumber < m_NumberOfBuffers);
 
 	BufferHeader * pBuf = & m_pHeaders[BufferNumber];
@@ -1329,9 +1329,9 @@ BufferHeader * CDirectFileCache::GetBufferHeader(void * pAddr)
 	return pBuf;
 }
 
-inline size_t CDirectFileCache::GetOffsetInBuffer(void * pAddr)
+inline unsigned CDirectFileCache::GetOffsetInBuffer(void * pAddr)
 {
-	return (PUCHAR(pAddr) - PUCHAR(m_pBuffersArray)) % CACHE_BLOCK_SIZE;
+	return unsigned((PUCHAR(pAddr) - PUCHAR(m_pBuffersArray)) % CACHE_BLOCK_SIZE);
 }
 
 void CDirectFileCache::MakeBufferLeastRecent(BufferHeader * pBuf)
@@ -1478,7 +1478,8 @@ long CDirectFileCache::GetDataBuffer(File * pFile,
 			{
 				return 0;
 			}
-			long MaxLength = pFile->m_MemoryFileBufferSize - long(position);
+			long MaxLength = long(pFile->m_MemoryFileBufferSize - position);
+
 			if (long_length > MaxLength)
 			{
 				long_length = MaxLength;
@@ -1612,7 +1613,7 @@ long CDirectFileCache::GetDataBuffer(File * pFile,
 		{
 			CSimpleCriticalSectionLock lock(m_cs);
 			// change it to 0x80000000, subtract 0x80000000 from all counters
-			for (int i = 0; i < m_NumberOfBuffers; i++)
+			for (unsigned i = 0; i < m_NumberOfBuffers; i++)
 			{
 				if (m_pHeaders[i].MRU_Count > 0x80000000u)
 				{
@@ -1803,7 +1804,7 @@ CString DumpQueue(ListHead<PrefetchDescriptor> & list, File * pFile)
 
 void CDirectFileCache::RequestPrefetch(File * pFile,
 										LONGLONG PrefetchPosition,
-										LONGLONG PrefetchLength, unsigned MaxMRU)
+										LONGLONG PrefetchLength, unsigned /*MaxMRU*/)
 {
 	BLOCK_INDEX PrefetchBlockBegin;
 	BLOCK_INDEX PrefetchBlockEnd;
@@ -2267,6 +2268,7 @@ BufferHeader * CDirectFileCache::GetFreeBuffer(unsigned MaxMRU)
 	return NULL;
 }
 
+#if 0
 // read the data by 32-bit MaskToRead (each bit corresponds to 2K)
 // to the buffer defined by BufferHeader *pBuf
 BOOL File::ReadFileAt(LONGLONG Position, void * pBuf, DWORD ToRead, DWORD * pWasRead)
@@ -2361,14 +2363,13 @@ BOOL File::ReadFileAt(LONGLONG Position, void * pBuf, DWORD ToRead, DWORD * pWas
 
 	return result;
 }
-
 BOOL File::WriteFileAt(LONGLONG Position, void const * pBuf,
 						DWORD ToWrite, DWORD * pWasWritten)
 {
 	//TODO
 	return 0;
 }
-
+#endif
 void File::ReadDataBuffer(BufferHeader * pBuf, DWORD MaskToRead)
 {
 	// check if the required data is already in the buffer
@@ -2396,7 +2397,7 @@ void File::ReadDataBuffer(BufferHeader * pBuf, DWORD MaskToRead)
 			size_t WrittenMaskOffset = pBuf->PositionKey >> 3;
 			if (WrittenMaskOffset >= WrittenMaskSize)
 			{
-				int NewWrittenMaskSize = WrittenMaskOffset + 512;   // 256 more megs
+				size_t NewWrittenMaskSize = WrittenMaskOffset + 512;   // 256 more megs
 				char * NewWrittenMask = new char[NewWrittenMaskSize];
 				if (NULL == NewWrittenMask)
 				{
@@ -2479,7 +2480,7 @@ void File::ReadDataBuffer(BufferHeader * pBuf, DWORD MaskToRead)
 		DWORD mask = MaskToRead;
 		while (mask != 0)
 		{
-			size_t ToRead;
+			unsigned ToRead;
 			if (mask == 0xFFFFFFFF)
 			{
 				mask = 0;
@@ -2609,7 +2610,7 @@ void File::FlushDirtyBuffers(BufferHeader * pDirtyBuf, BLOCK_INDEX MaxKey)
 
 			while (mask != 0)
 			{
-				size_t ToWrite;
+				unsigned ToWrite;
 				if (mask == 0xFFFFFFFF)
 				{
 					mask = 0;
@@ -2705,7 +2706,7 @@ void File::ValidateList() const
 
 	BufferHeader * pBuf = BuffersList.First();
 
-	int BufCount = 0;
+	unsigned BufCount = 0;
 	int DirtyBufCount = 0;
 	while (BuffersList.NotEnd(pBuf))
 	{
@@ -2822,7 +2823,7 @@ unsigned CDirectFileCache::_ThreadProc()
 			// check already prefetched ranges
 			LONGLONG PrefetchPosition = LONGLONG(pPrefetch->m_PrefetchPosition) << BLOCK_SIZE_SHIFT;
 
-			LONG PrefetchLength = CACHE_BLOCK_SIZE;
+			//LONG PrefetchLength = CACHE_BLOCK_SIZE;
 
 			void * pBuf = NULL;
 
