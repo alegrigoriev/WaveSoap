@@ -117,7 +117,7 @@ LRESULT CBatchSaveTargetDlg::OnKickIdle(WPARAM, LPARAM)
 void CBatchSaveTargetDlg::OnButtonBrowseDstFolder()
 {
 	m_eSaveFolder.GetWindowText(m_sSaveFolder);
-	CFolderDialog dlg(_T("Save Files To Folder"),
+	CFolderDialog dlg(IDS_SELECT_SAVE_TO_FOLDER,
 					m_sSaveFolder, TRUE);
 	if (IDOK == dlg.DoModal())
 	{
