@@ -165,11 +165,7 @@ END_MESSAGE_MAP()
 // CWaveSoapFrontDoc construction/destruction
 
 CWaveSoapFrontDoc::CWaveSoapFrontDoc()
-	:m_pPeaks(NULL),
-	m_WavePeakSize(0),
-	m_AllocatedWavePeakSize(0),
-	m_PeakDataGranularity(512),
-	m_CaretPosition(0),
+	:m_CaretPosition(0),
 	m_TimeSelectionMode(TRUE),
 	m_SelectionStart(0),
 	m_SelectionEnd(0),
@@ -227,7 +223,7 @@ CWaveSoapFrontDoc::~CWaveSoapFrontDoc()
 		DWORD Time = timeGetTime();
 #endif
 		SetEvent(m_hThreadEvent);
-		if (WAIT_TIMEOUT == WaitForSingleObject(m_Thread.m_hThread, 5000))
+		if (WAIT_TIMEOUT == WaitForSingleObjectAcceptSends(m_Thread.m_hThread, 20000))
 		{
 			TerminateThread(m_Thread.m_hThread, -1);
 		}
@@ -241,11 +237,7 @@ CWaveSoapFrontDoc::~CWaveSoapFrontDoc()
 		CloseHandle(m_hThreadEvent);
 		m_hThreadEvent = NULL;
 	}
-	if (m_pPeaks != NULL)
-	{
-		delete[] m_pPeaks;
-		m_pPeaks = NULL;
-	}
+
 	CWaveSoapFrontDoc * pTmpDoc = NULL;
 	CString str;
 	CThisApp * pApp = GetApp();
@@ -346,159 +338,27 @@ BOOL CWaveSoapFrontDoc::OnNewDocument(NewFileParameters * pParams)
 	}
 
 	m_OriginalWaveFormat = pWfx;
-	AllocatePeakData(nSamples);
-	// zero wave peak data
-	if (NULL != m_pPeaks)
+	if (m_WavFile.AllocatePeakData(nSamples))
 	{
-		memset(m_pPeaks, 0, m_AllocatedWavePeakSize * sizeof (WavePeak));
+		// zero wave peak data
+		m_WavFile.SetPeaks(0, nSamples * m_WavFile.Channels(),
+							m_WavFile.Channels(), WavePeak(0, 0));
 	}
 	return TRUE;
-}
-
-void CWaveSoapFrontDoc::CheckAndLoadPeakFile(CWaveFile & WaveFile)
-{
-	// if peak file exists and the wav file length/date/time matches the stored
-	// length/date/time, then use this peak file.
-	// otherwise scan the wav file and build the new peak file
-	CFile PeakFile;
-	PeakFileHeader pfh;
-	CString szPeakFilename(WaveFile.GetName());
-
-	if (0 == szPeakFilename.Right(4).CompareNoCase(_T(".WAV")))
-	{
-		szPeakFilename.Delete(szPeakFilename.GetLength() - 4, 4);
-	}
-	szPeakFilename += _T(".wspk");
-	if (PeakFile.Open(szPeakFilename,
-					CFile::modeRead | CFile::shareDenyWrite | CFile::typeBinary))
-	{
-		if (offsetof(PeakFileHeader, WaveFileTime)
-			== PeakFile.Read( & pfh, offsetof(PeakFileHeader, WaveFileTime))
-			&& PeakFileHeader::pfhSignature == pfh.dwSignature
-			&& pfh.dwVersion == PeakFileHeader::pfhMaxVersion
-			&& pfh.wSize == sizeof (PeakFileHeader)
-			// read the rest of the header
-			&& pfh.wSize - offsetof(PeakFileHeader, WaveFileTime)
-			== PeakFile.Read( & pfh.WaveFileTime, pfh.wSize - offsetof(PeakFileHeader, WaveFileTime))
-			&& pfh.WaveFileTime.dwHighDateTime == WaveFile.GetFileInformation().ftLastWriteTime.dwHighDateTime
-			&& pfh.WaveFileTime.dwLowDateTime == WaveFile.GetFileInformation().ftLastWriteTime.dwLowDateTime
-			&& pfh.dwWaveFileSize == WaveFile.GetFileInformation().nFileSizeLow
-			&& 0 == memcmp(& pfh.wfFormat, WaveFile.GetWaveFormat(), sizeof pfh.wfFormat)
-			&& m_PeakDataGranularity == pfh.Granularity
-			&& pfh.PeakInfoSize
-			== CalculatePeakInfoSize() * sizeof (WavePeak)
-			)
-		{
-			// allocate data and read it
-			m_WavePeakSize = 0;
-			if ( ! AllocatePeakData(WaveFile.NumberOfSamples()))
-			{
-				TRACE("Unable to allocate peak info buffer\n");
-				return;
-			}
-
-			if (pfh.PeakInfoSize <= m_WavePeakSize * sizeof (WavePeak)
-				&& pfh.PeakInfoSize == PeakFile.Read(m_pPeaks, pfh.PeakInfoSize))
-			{
-				return;
-			}
-			TRACE("Unable to read peak data\n");
-			// rebuild the info from the WAV file
-		}
-		else
-		{
-			TRACE("Peak Info modification time = 0x%08X%08X, open file time=0x%08X%08X\n",
-				pfh.WaveFileTime.dwHighDateTime, pfh.WaveFileTime.dwLowDateTime,
-				WaveFile.GetFileInformation().ftLastWriteTime.dwHighDateTime,
-				WaveFile.GetFileInformation().ftLastWriteTime.dwLowDateTime);
-		}
-		PeakFile.Close();
-	}
-	BuildPeakInfo(TRUE);
-}
-
-// the function is called to load peak info for a compressed file
-// WaveFile argument - temporary wave file
-// OriginalWaveFile - compressed file
-void CWaveSoapFrontDoc::LoadPeaksForCompressedFile(CWaveFile & WaveFile, CWaveFile & OriginalWaveFile)
-{
-
-	// don't check peak file data size, just make sure source file parameters match
-	// if peak file exists and the wav file length/date/time matches the stored
-	// length/date/time, then use this peak file.
-	// otherwise don't use it.
-	// the peak info will be rebuilt in any case during file load
-	CFile PeakFile;
-	PeakFileHeader pfh;
-	CString szPeakFilename(OriginalWaveFile.GetName());
-
-	if (0 == szPeakFilename.Right(4).CompareNoCase(_T(".WAV")))
-	{
-		szPeakFilename.Delete(szPeakFilename.GetLength() - 4, 4);
-	}
-	szPeakFilename += _T(".wspk");
-	if (PeakFile.Open(szPeakFilename,
-					CFile::modeRead | CFile::shareDenyWrite | CFile::typeBinary))
-	{
-		if (offsetof(PeakFileHeader, WaveFileTime)
-			== PeakFile.Read( & pfh, offsetof(PeakFileHeader, WaveFileTime))
-			&& PeakFileHeader::pfhSignature == pfh.dwSignature
-			&& pfh.dwVersion == PeakFileHeader::pfhMaxVersion
-			&& pfh.wSize == sizeof (PeakFileHeader)
-			// read the rest of the header
-			&& pfh.wSize - offsetof(PeakFileHeader, WaveFileTime)
-			== PeakFile.Read( & pfh.WaveFileTime, pfh.wSize - offsetof(PeakFileHeader, WaveFileTime))
-			// check date and time
-			&& pfh.WaveFileTime.dwHighDateTime == OriginalWaveFile.GetFileInformation().ftLastWriteTime.dwHighDateTime
-			&& pfh.WaveFileTime.dwLowDateTime == OriginalWaveFile.GetFileInformation().ftLastWriteTime.dwLowDateTime
-			// check source file size
-			&& pfh.dwWaveFileSize == OriginalWaveFile.GetFileInformation().nFileSizeLow
-			// check PCM number of channels and sampling rate
-			&& 0 == memcmp(& pfh.wfFormat, WaveFile.GetWaveFormat(), sizeof pfh.wfFormat)
-			&& m_PeakDataGranularity == pfh.Granularity
-			)
-		{
-			// allocate data and read it
-			m_WavePeakSize = 0;
-			if ( ! AllocatePeakData(pfh.NumOfSamples))
-			{
-				TRACE("Unable to allocate peak info buffer\n");
-				return;
-			}
-
-			if (pfh.PeakInfoSize <= m_WavePeakSize * sizeof (WavePeak)
-				&& pfh.PeakInfoSize == PeakFile.Read(m_pPeaks, pfh.PeakInfoSize))
-			{
-				return;
-			}
-			TRACE("Unable to read peak data\n");
-			// rebuild the info from the WAV file
-		}
-		else
-		{
-			TRACE("Peak Info modification time = 0x%08X%08X, open file time=0x%08X%08X\n",
-				pfh.WaveFileTime.dwHighDateTime, pfh.WaveFileTime.dwLowDateTime,
-				WaveFile.GetFileInformation().ftLastWriteTime.dwHighDateTime,
-				WaveFile.GetFileInformation().ftLastWriteTime.dwLowDateTime);
-		}
-		PeakFile.Close();
-	}
 }
 
 void CWaveSoapFrontDoc::BuildPeakInfo(BOOL bSavePeakFile)
 {
 	// read the DATA chunk of wavefile
-	if ( ! AllocatePeakData(m_WavFile.NumberOfSamples()))
+	if ( ! m_WavFile.AllocatePeakData(m_WavFile.NumberOfSamples()))
 	{
 		NotEnoughMemoryMessageBox();
 		return;
 	}
 
-	for (unsigned i = 0; i < m_WavePeakSize; i++)
-	{
-		m_pPeaks[i].high = -0x8000;
-		m_pPeaks[i].low = 0x7FFF;
-	}
+	m_WavFile.SetPeaks(0, m_WavFile.NumberOfSamples() * m_WavFile.Channels(),
+						m_WavFile.Channels(), WavePeak(0x7FFF, -0x8000));
+
 	CScanPeaksContext * pContext = new CScanPeaksContext(this);
 	if (NULL == pContext)
 	{
@@ -513,46 +373,14 @@ void CWaveSoapFrontDoc::BuildPeakInfo(BOOL bSavePeakFile)
 	pContext->m_Position = pContext->m_Start;
 	pContext->m_End = pContext->m_Start + WaveDataChunk()->cksize;
 	pContext->m_GranuleSize =
-		WaveChannels() * m_PeakDataGranularity * sizeof(__int16);
+		m_WavFile.Channels() * m_WavFile.GetPeakGranularity() * sizeof(__int16);
+
 	if (pContext->m_End <= pContext->m_Start)
 	{
 		delete pContext;
 		return;
 	}
 	pContext->Execute();
-}
-
-void CWaveSoapFrontDoc::SavePeakInfo(CWaveFile & WaveFile, CWaveFile & SavedWaveFile)
-{
-	CFile PeakFile;
-	PeakFileHeader pfh;
-	CString szPeakFilename(SavedWaveFile.GetName());
-
-	if (0 == szPeakFilename.Right(4).CompareNoCase(_T(".WAV")))
-	{
-		szPeakFilename.Delete(szPeakFilename.GetLength() - 4, 4);
-	}
-	szPeakFilename += _T(".wspk");
-
-	if (PeakFile.Open(szPeakFilename,
-					CFile::modeCreate | CFile::modeWrite | CFile::shareExclusive | CFile::typeBinary))
-	{
-		pfh.wSize = sizeof PeakFileHeader;
-		pfh.dwSignature = PeakFileHeader::pfhSignature;
-		pfh.dwVersion = PeakFileHeader::pfhMaxVersion;
-		pfh.dwWaveFileSize = SavedWaveFile.GetFileSize(NULL);
-		pfh.Granularity = m_PeakDataGranularity;
-		pfh.PeakInfoSize = CalculatePeakInfoSize() * sizeof (WavePeak);
-		pfh.WaveFileTime = SavedWaveFile.GetFileInformation().ftLastWriteTime;
-		pfh.NumOfSamples = WaveFile.NumberOfSamples();
-		pfh.wfFormat = * WaveFile.GetWaveFormat();
-
-		PeakFile.Write( & pfh, sizeof pfh);
-		PeakFile.Write(m_pPeaks, pfh.PeakInfoSize);
-
-		PeakFile.Close();
-	}
-
 }
 
 
@@ -994,56 +822,6 @@ void CWaveSoapFrontDoc::SetSelection(long begin, long end, int channel, int care
 	UpdateAllViews(NULL, UpdateSelectionChanged, & ui);
 }
 
-BOOL CWaveSoapFrontDoc::AllocatePeakData(long NewNumberOfSamples)
-{
-	// change m_pPeaks size
-	// need to synchronize with OnDraw
-	unsigned NewWavePeakSize = WaveChannels() * ((NewNumberOfSamples + m_PeakDataGranularity - 1) / m_PeakDataGranularity);
-	if (NULL == m_pPeaks
-		|| NewWavePeakSize > m_AllocatedWavePeakSize)
-	{
-		int NewAllocatedWavePeakSize = NewWavePeakSize + 1024;  // reserve more
-		WavePeak * NewPeaks = new WavePeak[NewAllocatedWavePeakSize];
-		if (NULL == NewPeaks)
-		{
-			return FALSE;
-		}
-		if (NULL != m_pPeaks
-			&& 0 != m_WavePeakSize)
-		{
-			memcpy(NewPeaks, m_pPeaks, m_WavePeakSize * sizeof (WavePeak));
-		}
-		else
-		{
-			m_WavePeakSize = 0;
-		}
-		for (unsigned i = m_WavePeakSize; i < NewWavePeakSize; i++)
-		{
-			NewPeaks[i].high = -0x8000;
-			NewPeaks[i].low = 0x7FFF;
-		}
-		WavePeak * OldPeaks;
-		{
-			CSimpleCriticalSectionLock lock(m_PeakLock);
-			OldPeaks = m_pPeaks;
-			m_pPeaks = NewPeaks;
-			m_WavePeakSize = NewWavePeakSize;
-			m_AllocatedWavePeakSize = NewAllocatedWavePeakSize;
-		}
-		delete[] OldPeaks;
-	}
-	else
-	{
-		for (unsigned i = m_WavePeakSize; i < NewWavePeakSize; i++)
-		{
-			m_pPeaks[i].high = -0x8000;
-			m_pPeaks[i].low = 0x7FFF;
-		}
-		m_WavePeakSize = NewWavePeakSize;
-	}
-	return TRUE;
-}
-
 void CWaveSoapFrontDoc::SoundChanged(DWORD FileID, long begin, long end,
 									int FileLength, DWORD flags)
 {
@@ -1055,13 +833,12 @@ void CWaveSoapFrontDoc::SoundChanged(DWORD FileID, long begin, long end,
 	}
 	// update peak data
 	if ((FileLength == -1
-			|| AllocatePeakData(FileLength))
+			|| m_WavFile.AllocatePeakData(FileLength))
 		&& 0 == (flags & UpdateSoundDontRescanPeaks)
 		&& FileID != NULL
 		&& begin != end)
 	{
-		// rescan peaks
-		RescanPeaks(begin, end);
+		m_WavFile.RescanPeaks(begin, end);
 	}
 
 	if (flags & UpdateSoundSamplingRateChanged)
@@ -1078,8 +855,8 @@ void CWaveSoapFrontDoc::SoundChanged(DWORD FileID, long begin, long end,
 	{
 		CSimpleCriticalSectionLock lock(m_cs);
 
-		for (CSoundUpdateInfo * pEntry = m_UpdateList.Next()
-			; pEntry != m_UpdateList.Head(); pEntry = pEntry->Next())
+		for (CSoundUpdateInfo * pEntry = m_UpdateList.First()
+			;  m_UpdateList.NotEnd(pEntry); pEntry = m_UpdateList.Next(pEntry))
 		{
 			// see if the ranges overlap
 			if (FileID == pEntry->FileID
@@ -1109,181 +886,6 @@ void CWaveSoapFrontDoc::SoundChanged(DWORD FileID, long begin, long end,
 	::PostMessage(GetApp()->m_pMainWnd->m_hWnd, WM_KICKIDLE, 0, 0);
 }
 
-void CWaveSoapFrontDoc::RescanPeaks(long begin, long end)
-{
-	// if called immediately after data modification, it will get
-	// the data directly from the cache
-	TRACE("RescanPeaks from %d to %d\n", begin, end);
-	int nSampleSize = WaveSampleSize();
-	LPMMCKINFO datack = WaveDataChunk();
-	DWORD dwDataChunkOffset = datack->dwDataOffset;
-	unsigned GranuleSize = WaveChannels() * m_PeakDataGranularity * sizeof(__int16);
-
-	DWORD Pos = nSampleSize * (begin & -m_PeakDataGranularity) + dwDataChunkOffset;
-
-	DWORD EndPos = nSampleSize * ((end | (m_PeakDataGranularity - 1)) + 1);
-	if (EndPos > datack->cksize)
-	{
-		EndPos = datack->cksize;
-	}
-	EndPos += dwDataChunkOffset;
-
-	while (Pos < EndPos)
-	{
-		DWORD SizeToRead = EndPos - Pos;
-		void * pBuf;
-		long lRead = m_WavFile.GetDataBuffer( & pBuf,
-											SizeToRead, Pos, 0);
-		if (lRead > 0)
-		{
-			unsigned i;
-			unsigned DataToProcess = lRead;
-			__int16 * pWaveData = (__int16 *) pBuf;
-			DWORD DataOffset = Pos - dwDataChunkOffset;
-			unsigned DataForGranule = GranuleSize - DataOffset % GranuleSize;
-
-			if (2 == WaveChannels())
-			{
-				WavePeak * pPeak = m_pPeaks + (DataOffset / GranuleSize) * 2;
-				while (0 != DataToProcess)
-				{
-					int wpl_l;
-					int wpl_h;
-					int wpr_l;
-					int wpr_h;
-					if (0 == DataOffset % GranuleSize)
-					{
-						wpl_l = 0x7FFF;
-						wpl_h = -0x8000;
-						wpr_l = 0x7FFF;
-						wpr_h = -0x8000;
-					}
-					else
-					{
-						wpl_l = pPeak[0].low;
-						wpl_h = pPeak[0].high;
-						wpr_l = pPeak[1].low;
-						wpr_h = pPeak[1].high;
-					}
-
-					if (DataForGranule > DataToProcess)
-					{
-						DataForGranule = DataToProcess;
-					}
-					DataToProcess -= DataForGranule;
-
-					if (DataOffset & 2)
-					{
-						if (pWaveData[0] < wpr_l)
-						{
-							wpr_l = pWaveData[0];
-						}
-						if (pWaveData[0] > wpr_h)
-						{
-							wpr_h = pWaveData[0];
-						}
-						pWaveData++;
-						DataOffset += 2;
-						DataForGranule -= 2;
-					}
-
-					DataOffset += DataForGranule;
-					for (i = 0; i < DataForGranule / (sizeof(__int16) * 2); i++, pWaveData += 2)
-					{
-						if (pWaveData[0] < wpl_l)
-						{
-							wpl_l = pWaveData[0];
-						}
-						if (pWaveData[0] > wpl_h)
-						{
-							wpl_h = pWaveData[0];
-						}
-						if (pWaveData[1] < wpr_l)
-						{
-							wpr_l = pWaveData[1];
-						}
-						if (pWaveData[1] > wpr_h)
-						{
-							wpr_h = pWaveData[1];
-						}
-					}
-
-					if (DataForGranule & 2)
-					{
-						if (pWaveData[0] < wpl_l)
-						{
-							wpl_l = pWaveData[0];
-						}
-						if (pWaveData[0] > wpl_h)
-						{
-							wpl_h = pWaveData[0];
-						}
-						pWaveData++;
-					}
-
-					ASSERT(unsigned(pPeak - m_pPeaks) < m_WavePeakSize);
-					pPeak[0].low = wpl_l;
-					pPeak[0].high = wpl_h;
-					pPeak[1].low = wpr_l;
-					pPeak[1].high = wpr_h;
-					pPeak += 2;
-					DataForGranule = GranuleSize;
-				}
-			}
-			else
-			{
-				WavePeak * pPeak = m_pPeaks + DataOffset / GranuleSize;
-				while (0 != DataToProcess)
-				{
-					int wp_l;
-					int wp_h;
-					if (0 == DataOffset % GranuleSize)
-					{
-						wp_l = 0x7FFF;
-						wp_h = -0x8000;
-					}
-					else
-					{
-						wp_l = pPeak[0].low;
-						wp_h = pPeak[0].high;
-					}
-
-					if (DataForGranule > DataToProcess)
-					{
-						DataForGranule = DataToProcess;
-					}
-					DataToProcess -= DataForGranule;
-					DataOffset += DataForGranule;
-
-					for (i = 0; i < DataForGranule / sizeof(__int16); i++, pWaveData ++)
-					{
-						if (pWaveData[0] < wp_l)
-						{
-							wp_l = pWaveData[0];
-						}
-						if (pWaveData[0] > wp_h)
-						{
-							wp_h = pWaveData[0];
-						}
-					}
-
-					ASSERT(unsigned(pPeak - m_pPeaks) < m_WavePeakSize);
-					pPeak[0].low = wp_l;
-					pPeak[0].high = wp_h;
-					pPeak ++;
-					DataForGranule = GranuleSize;
-				}
-			}
-
-			Pos += lRead;
-			m_WavFile.ReturnDataBuffer(pBuf, lRead, 0);
-		}
-		else
-		{
-			break;
-		}
-	}
-}
 
 /////////////////////////////////////////////////////////////////////////////
 // CWaveSoapFrontDoc diagnostics
@@ -1420,7 +1022,7 @@ UINT CWaveSoapFrontDoc::_ThreadProc(void)
 		if ( ! m_OpList.IsEmpty())
 		{
 			m_OpList.Lock();
-			COperationContext * pContext = m_OpList.Next();
+			COperationContext * pContext = m_OpList.First();
 			m_OpList.Unlock();
 			// TODO: set the status message before calling Init
 			if (0 == (pContext->m_Flags & OperationContextInitialized))
@@ -2071,9 +1673,9 @@ BOOL CWaveSoapFrontDoc::OnOpenDocument(LPCTSTR lpszPathName, int DocOpenFlags)
 			pContext->m_DstCopyPos = pContext->m_DstStart;
 			pContext->m_CurrentSamples = m_WavFile.NumberOfSamples();
 
-			AllocatePeakData(pContext->m_CurrentSamples);
 			// peak data will be created during decompression
-			LoadPeaksForCompressedFile(m_WavFile, m_OriginalWavFile);
+			m_WavFile.LoadPeaksForCompressedFile(m_OriginalWavFile, pContext->m_CurrentSamples);
+
 			SoundChanged(m_WavFile.GetFileID(), 0, 0, WaveFileSamples(), UpdateSoundDontRescanPeaks);
 			pContext->Execute();
 		}
@@ -2081,6 +1683,8 @@ BOOL CWaveSoapFrontDoc::OnOpenDocument(LPCTSTR lpszPathName, int DocOpenFlags)
 		{
 			// just link the files
 			UINT ErrorFormatID = 0;
+			BOOL PeaksLoaded = m_OriginalWavFile.CheckAndLoadPeakFile();
+
 			if (m_WavFile.SetSourceFile( & m_OriginalWavFile)
 				&& m_WavFile.LoadRiffChunk()
 				&& m_WavFile.LoadWaveformat())
@@ -2089,12 +1693,16 @@ BOOL CWaveSoapFrontDoc::OnOpenDocument(LPCTSTR lpszPathName, int DocOpenFlags)
 				{
 					ErrorFormatID = IDS_UNABLE_TO_FIND_DATA_CHUNK;
 				}
-				m_WavFile.LoadMetadata();
+				else
+				{
+					m_WavFile.LoadMetadata();
+				}
 			}
 			else
 			{
 				ErrorFormatID = IDS_UNABLE_TO_LOAD_WAVEFORMAT;
 			}
+
 			if (ErrorFormatID)
 			{
 				CString s;
@@ -2102,13 +1710,20 @@ BOOL CWaveSoapFrontDoc::OnOpenDocument(LPCTSTR lpszPathName, int DocOpenFlags)
 				AfxMessageBox(s, MB_OK | MB_ICONEXCLAMATION);
 				return FALSE;
 			}
-			CheckAndLoadPeakFile(m_OriginalWavFile);
+
+			if ( ! PeaksLoaded)
+			{
+				BuildPeakInfo(TRUE);
+			}
 			SoundChanged(m_WavFile.GetFileID(), 0, 0, WaveFileSamples());
 		}
 	}
 	else
 	{
-		CheckAndLoadPeakFile(m_WavFile);
+		if ( ! m_WavFile.CheckAndLoadPeakFile())
+		{
+			BuildPeakInfo(TRUE);
+		}
 		SoundChanged(m_WavFile.GetFileID(), 0, 0, WaveFileSamples());
 	}
 	// if file is open in direct mode or read-only, leave it as is,
@@ -2121,14 +1736,14 @@ BOOL CWaveSoapFrontDoc::OnSaveDirectFile()
 	//Close and reopen the file
 	if ( ! m_WavFile.Commit())
 	{
-		SavePeakInfo(m_WavFile, m_WavFile);
+		m_WavFile.SavePeakInfo(m_WavFile);
 		AfxMessageBox(IDS_CANT_COMMIT_FILE_DATA, MB_OK | MB_ICONEXCLAMATION);
 		SetModifiedFlag(FALSE);
 		m_bCloseThisDocumentNow = true;
 		return FALSE;
 	}
 	SetModifiedFlag(FALSE);
-	SavePeakInfo(m_WavFile, m_WavFile);
+	m_WavFile.SavePeakInfo(m_WavFile);
 	// direct file saved with the same format and name
 	// information committed, peak info saved, file remains open
 	return TRUE;
@@ -2910,7 +2525,8 @@ void CWaveSoapFrontDoc::PostFileSave(CFileSaveContext * pContext)
 		if (WAVE_FORMAT_PCM == NewFormat.wFormatTag
 			&& 16 == NewFormat.wBitsPerSample)
 		{
-			SavePeakInfo(m_WavFile, pContext->m_DstFile);
+			m_WavFile.SavePeakInfo(pContext->m_DstFile);
+
 			if (m_bClosePending)
 			{
 				pContext->m_DstFile.Close();
@@ -2947,7 +2563,7 @@ void CWaveSoapFrontDoc::PostFileSave(CFileSaveContext * pContext)
 				if (OldFormat.nSamplesPerSec == NewFormat.nSamplesPerSec
 					&& OldFormat.nChannels == NewFormat.nChannels)
 				{
-					SavePeakInfo(m_WavFile, pContext->m_DstFile);
+					m_WavFile.SavePeakInfo(pContext->m_DstFile);
 				}
 				pContext->m_DstFile.Close();
 				SetModifiedFlag(FALSE);
@@ -2959,7 +2575,7 @@ void CWaveSoapFrontDoc::PostFileSave(CFileSaveContext * pContext)
 			if (OldFormat.nSamplesPerSec == NewFormat.nSamplesPerSec
 				&& OldFormat.nChannels == NewFormat.nChannels)
 			{
-				SavePeakInfo(m_WavFile, pContext->m_DstFile);
+				m_WavFile.SavePeakInfo(pContext->m_DstFile);
 				CReopenCompressedFileDialog dlg;
 				dlg.m_Text.Format(IDS_RELOAD_COMPRESSED_FILE, LPCTSTR(pContext->m_NewName));
 
@@ -3091,8 +2707,9 @@ BOOL CWaveSoapFrontDoc::PostCommitFileSave(int flags, LPCTSTR FullTargetName)
 	if (m_WavFile.Rename(FullTargetName, 0))
 	{
 		// if PCM format and non-direct, ask about reopening as direct
-		SavePeakInfo(m_WavFile, m_WavFile);
+		m_WavFile.SavePeakInfo(m_WavFile);
 		SetModifiedFlag(FALSE);
+
 		if (m_bClosePending)
 		{
 			m_WavFile.Close();
@@ -3221,12 +2838,12 @@ void CWaveSoapFrontDoc::OnUpdateEditSelection(CCmdUI* pCmdUI)
 	pCmdUI->Enable( ! m_OperationInProgress);
 }
 
-static void LimitUndoRedo(KListEntry<COperationContext> * pEntry, int MaxNum, size_t MaxSize)
+static void LimitUndoRedo(ListHead<COperationContext> * pEntry, int MaxNum, size_t MaxSize)
 {
 	size_t Size = 0;
 	int Num = 0;
-	for (COperationContext * pContext = pEntry->Next()
-		; pContext != pEntry->Head(); pContext = pContext->Next())
+	for (COperationContext * pContext = pEntry->First()
+		;  pEntry->NotEnd(pContext); pContext = pEntry->Next(pContext))
 	{
 		Num++;
 		CUndoRedoContext * pUndoRedo = dynamic_cast<CUndoRedoContext *>(pContext);
@@ -3238,9 +2855,9 @@ static void LimitUndoRedo(KListEntry<COperationContext> * pEntry, int MaxNum, si
 		if ((MaxNum != 0 && Num > MaxNum)
 			|| (MaxSize != 0 && Size > MaxSize))
 		{
-			while (pContext->Next() != pEntry->Head())
+			while (pContext != pEntry->Last())
 			{
-				delete pContext->RemoveHead();
+				delete pEntry->RemoveTail();
 			}
 			break;
 		}
@@ -3299,42 +2916,20 @@ void CWaveSoapFrontDoc::OnSoundPlay()
 	{
 		return;
 	}
-	CSoundPlayContext * pContext = new CSoundPlayContext(this);
-	MMCKINFO * pDatack = WaveDataChunk();
-	pContext->m_SamplePlayed = m_SelectionStart;
-	pContext->m_FirstSamplePlayed = m_SelectionStart;
-	pContext->m_Begin = m_SelectionStart * WaveSampleSize() + pDatack->dwDataOffset;
-	if (m_SelectionStart == m_SelectionEnd)
-	{
-		pContext->m_End = pDatack->dwDataOffset + pDatack->cksize;
-	}
-	else
-	{
-		pContext->m_End = m_SelectionEnd * WaveSampleSize() + pDatack->dwDataOffset;
-	}
-	pContext->m_CurrentPlaybackPos = pContext->m_Begin;
-	pContext->m_Chan = m_SelectedChannel;
-
 	CThisApp * pApp = GetApp();
-	pContext->m_PlaybackDevice = pApp->m_DefaultPlaybackDevice;
-	if (false == pContext->m_WaveOut.AllocateBuffers(pApp->m_SizePlaybackBuffers,
-													pApp->m_NumPlaybackBuffers))
+
+	CSoundPlayContext * pContext = new CSoundPlayContext(this,
+														m_WavFile,
+														m_SelectionStart, m_SelectionEnd, m_SelectedChannel,
+														pApp->m_DefaultPlaybackDevice,
+														pApp->m_NumPlaybackBuffers,
+														pApp->m_SizePlaybackBuffers);
+
+	if (NULL != pContext)
 	{
-		AfxMessageBox(IDS_STRING_UNABLE_TO_ALLOCATE_AUDIO_BUFFERS,
-					MB_OK | MB_ICONEXCLAMATION);
-		delete pContext;
-		return;
+		m_PlayingSound = true;
+		pContext->Execute();
 	}
-	if (MMSYSERR_NOERROR != pContext->m_WaveOut.Open(
-													pContext->m_PlaybackDevice, WaveFormat(), WAVE_FORMAT_QUERY))
-	{
-		AfxMessageBox(IDS_STRING_UNABLE_TO_OPEN_AUDIO_DEVICE,
-					MB_OK | MB_ICONEXCLAMATION);
-		delete pContext;
-		return;
-	}
-	m_PlayingSound = true;
-	pContext->Execute();
 }
 
 void CWaveSoapFrontDoc::OnUpdateSoundStop(CCmdUI* pCmdUI)
@@ -3384,7 +2979,7 @@ void CWaveSoapFrontDoc::OnUpdateIndicatorCurrentPos(CCmdUI* pCmdUI)
 	CSoundPlayContext * pCx = NULL;
 	if (m_PlayingSound && ! m_OpList.IsEmpty())
 	{
-		pCx = dynamic_cast<CSoundPlayContext *>(m_OpList.Next());
+		pCx = dynamic_cast<CSoundPlayContext *>(m_OpList.First());
 	}
 
 	if (m_PlayingSound && NULL != pCx)
@@ -3472,7 +3067,7 @@ void CWaveSoapFrontDoc::OnSoundPause()
 		CSoundPlayContext * pCx = NULL;
 		if ( ! m_OpList.IsEmpty())
 		{
-			pCx = dynamic_cast<CSoundPlayContext *>(m_OpList.Next());
+			pCx = dynamic_cast<CSoundPlayContext *>(m_OpList.First());
 			if (pCx)
 			{
 				pCx->m_bPauseRequested = true;
@@ -3630,8 +3225,8 @@ void CWaveSoapFrontDoc::PlaybackPositionNotify(long position, int channel)
 	{
 		CSimpleCriticalSectionLock lock(m_cs);
 
-		for (CSoundUpdateInfo * pEntry = m_UpdateList.Next()
-			; pEntry != m_UpdateList.Head(); pEntry = pEntry->Next())
+		for (CSoundUpdateInfo * pEntry = m_UpdateList.First()
+			; m_UpdateList.NotEnd(pEntry); pEntry = m_UpdateList.Next(pEntry))
 		{
 			if (pEntry->UpdateCode == UpdatePlaybackPositionChanged)
 			{
@@ -3652,8 +3247,8 @@ BOOL CWaveSoapFrontDoc::ProcessUpdatePlaybackPosition()
 {
 	m_cs.Lock();
 
-	for (CSoundUpdateInfo * pEntry = m_UpdateList.Next()
-		; pEntry != m_UpdateList.Head(); pEntry = pEntry->Next())
+	for (CSoundUpdateInfo * pEntry = m_UpdateList.First()
+		; m_UpdateList.NotEnd(pEntry); pEntry = m_UpdateList.Next(pEntry))
 	{
 		if (pEntry->UpdateCode == UpdatePlaybackPositionChanged)
 		{
@@ -4089,8 +3684,15 @@ void CWaveSoapFrontDoc::OnProcessChangevolume()
 		return;
 	}
 	// check if the values can exceed the maximum
-	int MinL, MaxL, MinR, MaxR;
-	GetSoundMinMax(MinL, MaxL, MinR, MaxR, dlg.m_Start, dlg.m_End);
+	WavePeak LeftPeak, RightPeak;
+
+	GetSoundMinMax(LeftPeak, RightPeak, dlg.m_Start, dlg.m_End);
+
+	long MinL = LeftPeak.low;
+	long MaxL = LeftPeak.high;
+	long MinR = RightPeak.low;
+	long MaxR = RightPeak.high;
+
 	if (MinL < 0)
 	{
 		MinL = - MinL;
@@ -4134,82 +3736,36 @@ void CWaveSoapFrontDoc::OnProcessChangevolume()
 	SetModifiedFlag(TRUE, dlg.m_bUndo);
 }
 
-void CWaveSoapFrontDoc::GetSoundMinMax(int & MinL, int & MaxL,
-										int & MinR, int & MaxR,
+void CWaveSoapFrontDoc::GetSoundMinMax(WavePeak & Left,
+										WavePeak & Right,
 										long begin, long end)
 {
-	MinL = 0;
-	MinR = 0;
-	MaxL = 0;
-	MaxR = 0;
-	int IntMinR = 0x7FFF;
-	int IntMinL = 0x7FFF;
-	int IntMaxR = -0x8000;
-	int IntMaxL = -0x8000;
-	unsigned PeakBegin = (begin & ~m_PeakDataGranularity) / m_PeakDataGranularity;
-	unsigned PeakEnd = ((end + m_PeakDataGranularity - 1) & ~m_PeakDataGranularity) / m_PeakDataGranularity;
-	if (NULL == m_pPeaks)
+	unsigned Granularity = m_WavFile.GetPeakGranularity();
+	unsigned PeakBegin = (begin & ~Granularity) / Granularity;
+	unsigned PeakEnd = ((end + Granularity - 1) & ~Granularity) / Granularity;
+
+	if (0 == m_WavFile.GetPeaksSize())
 	{
+		Left.low = 0;
+		Left.high = 0;
+		Right.low = 0;
+		Right.high = 0;
 		return;
 	}
-	if (WaveChannels() == 1)
+
+	int Channels = WaveChannels();
+	if (Channels == 1)
 	{
-		if (PeakEnd > m_WavePeakSize)
-		{
-			PeakEnd = m_WavePeakSize;
-		}
-		for (unsigned i = PeakBegin; i < PeakEnd; i++)
-		{
-			if (m_pPeaks[i].high > m_pPeaks[i].low)
-			{
-				if (IntMaxL < m_pPeaks[i].high)
-				{
-					IntMaxL = m_pPeaks[i].high;
-				}
-				if (IntMinL > m_pPeaks[i].low)
-				{
-					IntMinL = m_pPeaks[i].low;
-				}
-			}
-		}
-		MaxL = IntMaxL;
-		MinL = IntMinL;
+		Left = m_WavFile.GetPeakMinMax(PeakBegin, PeakEnd);
+	}
+	else if (Channels == 2)
+	{
+		Left = m_WavFile.GetPeakMinMax(PeakBegin * 2, PeakEnd * 2, 2);
+		Right = m_WavFile.GetPeakMinMax(1 + PeakBegin * 2, 1 + PeakEnd * 2, 2);
 	}
 	else
 	{
-		if (PeakEnd > m_WavePeakSize / 2)
-		{
-			PeakEnd = m_WavePeakSize / 2;
-		}
-		for (unsigned i = PeakBegin; i < PeakEnd; i++)
-		{
-			if (m_pPeaks[i * 2].high > m_pPeaks[i * 2].low)
-			{
-				if (IntMaxL < m_pPeaks[i * 2].high)
-				{
-					IntMaxL = m_pPeaks[i * 2].high;
-				}
-				if (IntMinL > m_pPeaks[i * 2].low)
-				{
-					IntMinL = m_pPeaks[i * 2].low;
-				}
-			}
-			if (m_pPeaks[i * 2 + 1].high > m_pPeaks[i * 2 + 1].low)
-			{
-				if (IntMaxR < m_pPeaks[i * 2 + 1].high)
-				{
-					IntMaxR = m_pPeaks[i * 2 + 1].high;
-				}
-				if (IntMinR > m_pPeaks[i * 2 + 1].low)
-				{
-					IntMinR = m_pPeaks[i * 2 + 1].low;
-				}
-			}
-		}
-		MinL = IntMinL;
-		MinR = IntMinR;
-		MaxL = IntMaxL;
-		MaxR = IntMaxR;
+		ASSERT(0);  // TODO
 	}
 }
 
@@ -4360,13 +3916,14 @@ void CWaveSoapFrontDoc::OnProcessDcoffset()
 			delete pContext;
 			return;
 		}
-		int MinL, MaxL, MinR, MaxR;
-		GetSoundMinMax(MinL, MaxL, MinR, MaxR, dlg.m_Start, dlg.m_End);
 
-		MinL += dlg.m_nDcOffset;
-		MaxL += dlg.m_nDcOffset;
-		MinR += dlg.m_nDcOffset;
-		MaxR += dlg.m_nDcOffset;
+		WavePeak LeftPeak, RightPeak;
+		GetSoundMinMax(LeftPeak, RightPeak, dlg.m_Start, dlg.m_End);
+
+		long MinL = LeftPeak.low + dlg.m_nDcOffset;
+		long MaxL = LeftPeak.high + dlg.m_nDcOffset;
+		long MinR = RightPeak.low + dlg.m_nDcOffset;
+		long MaxR = RightPeak.high + dlg.m_nDcOffset;
 
 		if ((dlg.m_Chan != 1 && (MaxL > 0x7FFF || MinL < -0x8000))
 			|| (WaveChannels() > 1 && dlg.m_Chan != 0
@@ -5058,7 +4615,7 @@ BOOL CWaveSoapFrontDoc::OpenRawFileDocument(LPCTSTR lpszPathName)
 		}
 	}
 
-	AllocatePeakData(nNewFileSamples);
+	m_WavFile.AllocatePeakData(nNewFileSamples);
 	// peak data will be created during decompression
 	pContext->Execute();
 	return TRUE;
@@ -5110,7 +4667,9 @@ BOOL CWaveSoapFrontDoc::OpenWmaFileDocument(LPCTSTR lpszPathName)
 		return FALSE;
 	}
 
-	CWmaDecodeContext * pWmaContext = new CWmaDecodeContext(this, _T("Loading the compressed file..."));
+	CWmaDecodeContext * pWmaContext = new CWmaDecodeContext(this,
+															_T("Loading the compressed file..."), m_OriginalWavFile);
+
 	if (NULL == pWmaContext)
 	{
 		NotEnoughMemoryMessageBox();
@@ -5118,39 +4677,7 @@ BOOL CWaveSoapFrontDoc::OpenWmaFileDocument(LPCTSTR lpszPathName)
 	}
 	pWmaContext->m_Flags |= DecompressSavePeakFile;
 
-	CoInitializeEx(NULL, COINIT_MULTITHREADED );
-	BOOL res = pWmaContext->Open(m_OriginalWavFile);
-	if ( ! res)
-	{
-		delete pWmaContext;
-		CString s;
-		s.Format(IDS_CANT_OPEN_WMA_DECODER, lpszPathName);
-		AfxMessageBox(s, MB_ICONEXCLAMATION | MB_OK);
-		CoUninitialize();
-		return FALSE;
-	}
-
-	if ( ! m_WavFile.CreateWaveFile(NULL, pWmaContext->m_Decoder.m_DstWf,
-									ALL_CHANNELS, pWmaContext->m_CurrentSamples,  // initiali sample count
-									CreateWaveFileTempDir
-									| CreateWaveFileDeleteAfterClose
-									| CreateWaveFilePcmFormat
-									| CreateWaveFileTemp, NULL))
-	{
-		AfxMessageBox(IDS_UNABLE_TO_CREATE_TEMPORARY_FILE, MB_OK | MB_ICONEXCLAMATION);
-		delete pWmaContext;
-		CoUninitialize();
-		return FALSE;
-	}
-
-	m_OriginalWaveFormat = pWmaContext->m_Decoder.m_DstWf;
-	pWmaContext->SetDstFile(m_WavFile);
-	AllocatePeakData(pWmaContext->m_CurrentSamples);
-
-	LoadPeaksForCompressedFile(m_WavFile, m_OriginalWavFile);
-
 	pWmaContext->Execute();
-	CoUninitialize();
 	return TRUE;
 }
 
@@ -5705,31 +5232,31 @@ void CWaveSoapFrontDoc::OnUpdateSamplerateCustom(CCmdUI* pCmdUI)
 void CWaveSoapFrontDoc::DeletePermanentUndoRedo()
 {
 	COperationContext * pContext;
-	for (pContext = m_UndoList.Next()
-		; pContext != m_UndoList.Head(); pContext = pContext->Next())
+	for (pContext = m_UndoList.First()
+		; m_UndoList.NotEnd(pContext); pContext = m_UndoList.Next(pContext))
 	{
 		if ((pContext->m_Flags & UndoContextReplaceWholeFile)
 			&& ! ((CUndoRedoContext *)pContext)->m_SrcFile.IsTemporaryFile())
 		{
-			pContext = pContext->Prev();
-			while (pContext->Next() != m_UndoList.Head())
+			while (pContext != m_UndoList.Last())
 			{
-				delete pContext->RemoveHead();
+				delete m_UndoList.RemoveTail();
 			}
+			delete m_UndoList.RemoveTail();
 			break;
 		}
 	}
-	for (pContext = m_RedoList.Next()
-		; pContext != m_RedoList.Head(); pContext = pContext->Next())
+	for (pContext = m_RedoList.First()
+		; m_RedoList.NotEnd(pContext); pContext = m_RedoList.Next(pContext))
 	{
 		if ((pContext->m_Flags & UndoContextReplaceWholeFile)
 			&& ! ((CUndoRedoContext *)pContext)->m_SrcFile.IsTemporaryFile())
 		{
-			pContext = pContext->Prev();
-			while (pContext->Next() != m_RedoList.Head())
+			while (pContext != m_RedoList.Last())
 			{
-				delete pContext->RemoveHead();
+				delete m_RedoList.RemoveTail();
 			}
+			delete m_RedoList.RemoveTail();
 			break;
 		}
 	}

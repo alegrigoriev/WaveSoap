@@ -4,6 +4,7 @@
 #include "OperationContext.h"
 #include "OperationDialogs.h"
 #include "ReopenSavedFileCopyDlg.h"
+#include "MessageBoxSynch.h"
 
 static int fround(double d)
 {
@@ -390,22 +391,6 @@ void CUndoRedoContext::Execute()
 			TmpFile = m_SrcFile;
 			m_SrcFile = pDocument->m_WavFile;
 			pDocument->m_WavFile = TmpFile;
-			// replace peak info
-			WavePeak * pTmpPeaks = pDocument->m_pPeaks;
-			pDocument->m_pPeaks = m_pOldPeaks;
-			m_pOldPeaks = pTmpPeaks;
-
-			size_t tmpsize = pDocument->m_WavePeakSize;
-			pDocument->m_WavePeakSize = m_OldWavePeakSize;
-			m_OldWavePeakSize = tmpsize;
-
-			tmpsize = pDocument->m_AllocatedWavePeakSize;
-			pDocument->m_AllocatedWavePeakSize = m_OldAllocatedWavePeakSize;
-			m_OldAllocatedWavePeakSize = tmpsize;
-
-			int tmpgr = pDocument->m_PeakDataGranularity;
-			pDocument->m_PeakDataGranularity = m_OldPeakDataGranularity;
-			m_OldPeakDataGranularity = tmpgr;
 
 			int nSamples = pDocument->WaveFileSamples();
 
@@ -424,15 +409,7 @@ void CUndoRedoContext::Execute()
 		else
 		{
 			pDocument->m_WavFile = m_SrcFile;
-			// replace peak info
-			if (pDocument->m_pPeaks)
-			{
-				delete[] pDocument->m_pPeaks;
-			}
-			pDocument->m_pPeaks = m_pOldPeaks;
-			pDocument->m_WavePeakSize = m_OldWavePeakSize;
-			pDocument->m_AllocatedWavePeakSize = m_OldAllocatedWavePeakSize;
-			pDocument->m_PeakDataGranularity = m_OldPeakDataGranularity;
+
 			int nSamples = pDocument->WaveFileSamples();
 
 			pDocument->SoundChanged(pDocument->WaveFileID(),
@@ -519,13 +496,17 @@ BOOL CScanPeaksContext::OperationProc()
 
 			if (2 == pDocument->WaveChannels())
 			{
-				WavePeak * pPeak = pDocument->m_pPeaks + (DataOffset / m_GranuleSize) * 2;
+				unsigned PeakIndex = (DataOffset / m_GranuleSize) * 2;
+
 				while (0 != DataToProcess)
 				{
-					int wpl_l = pPeak[0].low;
-					int wpl_h = pPeak[0].high;
-					int wpr_l = pPeak[1].low;
-					int wpr_h = pPeak[1].high;
+					WavePeak peak = pDocument->m_WavFile.GetPeakMinMax(PeakIndex, PeakIndex + 1);
+					int wpl_l = peak.low;
+					int wpl_h = peak.high;
+
+					peak = pDocument->m_WavFile.GetPeakMinMax(PeakIndex + 1, PeakIndex + 2);
+					int wpr_l = peak.low;
+					int wpr_h = peak.high;
 
 					if (DataForGranule > DataToProcess)
 					{
@@ -580,34 +561,21 @@ BOOL CScanPeaksContext::OperationProc()
 						pWaveData++;
 					}
 
-					ASSERT(unsigned(pPeak - pDocument->m_pPeaks) < pDocument->m_WavePeakSize);
-					if (pPeak[0].low > wpl_l)
-					{
-						pPeak[0].low = wpl_l;
-					}
-					if (pPeak[0].high < wpl_h)
-					{
-						pPeak[0].high = wpl_h;
-					}
-					if (pPeak[1].low > wpr_l)
-					{
-						pPeak[1].low = wpr_l;
-					}
-					if (pPeak[1].high < wpr_h)
-					{
-						pPeak[1].high = wpr_h;
-					}
-					pPeak += 2;
+					pDocument->m_WavFile.SetPeakData(PeakIndex, wpl_l, wpl_h);
+					pDocument->m_WavFile.SetPeakData(PeakIndex + 1, wpr_l, wpr_h);
+
+					PeakIndex += 2;
 					DataForGranule = m_GranuleSize;
 				}
 			}
 			else
 			{
-				WavePeak * pPeak = pDocument->m_pPeaks + DataOffset / m_GranuleSize;
+				unsigned PeakIndex = DataOffset / m_GranuleSize;
 				while (0 != DataToProcess)
 				{
-					int wp_l = pPeak[0].low;
-					int wp_h = pPeak[0].high;
+					WavePeak peak = pDocument->m_WavFile.GetPeakMinMax(PeakIndex, PeakIndex + 1);
+					int wp_l = peak.low;
+					int wp_h = peak.high;
 
 					if (DataForGranule > DataToProcess)
 					{
@@ -627,16 +595,9 @@ BOOL CScanPeaksContext::OperationProc()
 						}
 					}
 
-					ASSERT(unsigned(pPeak - pDocument->m_pPeaks) < pDocument->m_WavePeakSize);
-					if (pPeak[0].low > wp_l)
-					{
-						pPeak[0].low = wp_l;
-					}
-					if (pPeak[0].high < wp_h)
-					{
-						pPeak[0].high = wp_h;
-					}
-					pPeak ++;
+					pDocument->m_WavFile.SetPeakData(PeakIndex, wp_l, wp_h);
+
+					PeakIndex ++;
 					DataForGranule = m_GranuleSize;
 				}
 			}
@@ -653,8 +614,11 @@ BOOL CScanPeaksContext::OperationProc()
 	}
 	while (m_Position < m_End
 			&& timeGetTime() - dwStartTime < 200);
+
+	TRACE("CScanPeaksContext current position=%X\n", m_Position);
 	if (m_End > m_Start)
 	{
+
 		PercentCompleted = 100i64 * (m_Position - m_Start) / (m_End - m_Start);
 	}
 	// notify the view
@@ -674,7 +638,7 @@ void CScanPeaksContext::PostRetire(BOOL bChildContext)
 		&& (m_Flags & OperationContextFinished)
 		&& pDocument->m_OriginalWavFile.IsOpen())
 	{
-		pDocument->SavePeakInfo(pDocument->m_WavFile, pDocument->m_OriginalWavFile);
+		pDocument->m_WavFile.SavePeakInfo(pDocument->m_OriginalWavFile);
 	}
 	COperationContext::PostRetire(bChildContext);
 }
@@ -1909,7 +1873,7 @@ BOOL CDecompressContext::OperationProc()
 		// update data chunk length
 		pck->cksize = datasize;
 		pck->dwFlags |= MMIO_DIRTY;
-		pDocument->AllocatePeakData(nLastSample);
+		pDocument->m_WavFile.AllocatePeakData(nLastSample);
 	}
 	TRACE("Decompress: sound changed from %d to %d, length=%d\n",
 		nFirstSample, nLastSample, TotalSamples);
@@ -2046,29 +2010,74 @@ void CDecompressContext::PostRetire(BOOL bChildContext)
 	}
 	else if (m_Flags & DecompressSavePeakFile)
 	{
-		pDocument->SavePeakInfo(pDocument->m_WavFile, pDocument->m_OriginalWavFile);
+		pDocument->m_WavFile.SavePeakInfo(pDocument->m_OriginalWavFile);
 	}
 	COperationContext::PostRetire(bChildContext);
 }
 
 ////////// CSoundPlayContext
+CSoundPlayContext::CSoundPlayContext(CWaveSoapFrontDoc * pDoc, CWaveFile & WavFile,
+									long PlaybackStart, long PlaybackEnd, int Channel,
+									int PlaybackDevice, int PlaybackBuffers, size_t PlaybackBufferSize)
+	: COperationContext(pDoc, _T("Playing"),
+						OperationContextDontAdjustPriority, _T("Play"))
+	, m_bPauseRequested(false)
+	, m_FirstSamplePlayed(PlaybackStart)
+	, m_SamplePlayed(PlaybackStart)
+	, m_CurrentPlaybackPos(PlaybackStart)
+	, m_LastSamplePlayed(PlaybackEnd)
+	, m_Begin(0)
+	, m_End(0)
+	, m_PlaybackDevice(PlaybackDevice)
+	, m_PlaybackBuffers(PlaybackBuffers)
+	, m_PlaybackBufferSize(PlaybackBufferSize)
+{
+	PercentCompleted = -1;  // no percents
+	m_PlayFile = WavFile;
+	m_Chan = Channel;
+}
+
 BOOL CSoundPlayContext::Init()
 {
+	MMCKINFO * pDatack = m_PlayFile.GetDataChunk();
+
+	m_Begin = m_FirstSamplePlayed * m_PlayFile.SampleSize() + pDatack->dwDataOffset;
+
+	if (m_FirstSamplePlayed == m_LastSamplePlayed)
+	{
+		m_End = pDatack->dwDataOffset + pDatack->cksize;
+	}
+	else
+	{
+		m_End = m_LastSamplePlayed * m_PlayFile.SampleSize() + pDatack->dwDataOffset;
+	}
+
 	m_OldThreadPriority = GetThreadPriority(GetCurrentThread());
+
 	// if mono playback requested, open it as mono
-	WAVEFORMATEX wfx = *(pDocument->WaveFormat());
+	WAVEFORMATEX wfx = * m_PlayFile.GetWaveFormat();
 
 	if (m_Chan != ALL_CHANNELS) wfx.nChannels = 1;
 	wfx.nBlockAlign = wfx.nChannels * wfx.wBitsPerSample / 8;
 	wfx.nAvgBytesPerSec = wfx.nSamplesPerSec * wfx.nBlockAlign;
 
 	MMRESULT mmres = m_WaveOut.Open(m_PlaybackDevice, & wfx, 0);
+
 	if (MMSYSERR_NOERROR != mmres)
 	{
-		// TODO:
-		// notify document
+		MessageBoxSync(IDS_STRING_UNABLE_TO_OPEN_AUDIO_DEVICE,
+						MB_OK | MB_ICONEXCLAMATION);
 		return FALSE;
 	}
+
+	if (false == m_WaveOut.AllocateBuffers(m_PlaybackBufferSize,
+											m_PlaybackBuffers))
+	{
+		MessageBoxSync(IDS_STRING_UNABLE_TO_ALLOCATE_AUDIO_BUFFERS,
+						MB_OK | MB_ICONEXCLAMATION);
+		return FALSE;
+	}
+
 	SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_ABOVE_NORMAL);
 	return TRUE;
 }
@@ -2156,8 +2165,8 @@ BOOL CSoundPlayContext::OperationProc()
 					if (len > size * 2) len = size * 2;
 				}
 				void * pFileBuf = NULL;
-				long lRead = pDocument->m_WavFile.GetDataBuffer( & pFileBuf,
-								len, m_CurrentPlaybackPos, CDirectFile::GetBufferAndPrefetchNext);
+				long lRead = m_PlayFile.GetDataBuffer( & pFileBuf,
+														len, m_CurrentPlaybackPos, CDirectFile::GetBufferAndPrefetchNext);
 				if (lRead <= 0)
 				{
 					m_WaveOut.ReturnBuffer(nBuf);
@@ -2166,8 +2175,8 @@ BOOL CSoundPlayContext::OperationProc()
 				if (ALL_CHANNELS == m_Chan)
 				{
 					memcpy(pBuf, pFileBuf, lRead);
-					pDocument->m_WavFile.ReturnDataBuffer(pFileBuf,
-														lRead, CDirectFile::ReturnBufferDiscard);
+					m_PlayFile.ReturnDataBuffer(pFileBuf,
+												lRead, CDirectFile::ReturnBufferDiscard);
 					m_CurrentPlaybackPos += lRead;
 					pBuf += lRead;
 					size -= lRead;
@@ -2191,8 +2200,8 @@ BOOL CSoundPlayContext::OperationProc()
 					TotalInBuf += i * 2;
 					pBuf += i * 2;
 
-					pDocument->m_WavFile.ReturnDataBuffer(pFileBuf,
-														lRead, CDirectFile::ReturnBufferDiscard);
+					m_PlayFile.ReturnDataBuffer(pFileBuf,
+												lRead, CDirectFile::ReturnBufferDiscard);
 					m_CurrentPlaybackPos += lRead;
 				}
 			}
@@ -2204,8 +2213,8 @@ BOOL CSoundPlayContext::OperationProc()
 	while(0);
 	// notify the document
 	m_SamplePlayed = m_WaveOut.GetPosition() +
-					(m_Begin - pDocument->m_WavFile.GetDataChunk()->dwDataOffset)
-					/ pDocument->WaveSampleSize();
+					(m_Begin - m_PlayFile.GetDataChunk()->dwDataOffset)
+					/ m_PlayFile.SampleSize();
 	pDocument->PlaybackPositionNotify(m_SamplePlayed, m_Chan);
 	return TRUE;
 }
@@ -3102,7 +3111,7 @@ void CFileSaveContext::PostRetire(BOOL bChildContext)
 		{
 			// will be closed by the destructor
 			m_DstFile.CommitChanges();
-			pDocument->SavePeakInfo(pDocument->m_WavFile, m_DstFile);
+			pDocument->m_WavFile.SavePeakInfo(m_DstFile);
 
 			// ask about opening the file
 			CReopenSavedFileCopyDlg dlg;
@@ -3328,18 +3337,6 @@ BOOL CConversionContext::OperationProc()
 	return TRUE;
 }
 
-BOOL CWmaDecodeContext::Open(CDirectFile & file)
-{
-	// m_Decoder.m_SrcFile = file;
-	if (m_Decoder.Init()
-		&& S_OK == m_Decoder.Open(file))
-	{
-		m_CurrentSamples = m_Decoder.m_CurrentSamples;
-		return TRUE;
-	}
-	return FALSE;
-}
-
 BOOL CWmaDecodeContext::OperationProc()
 {
 	if (m_Flags & OperationContextStopRequested)
@@ -3353,8 +3350,7 @@ BOOL CWmaDecodeContext::OperationProc()
 
 	do
 	{
-		m_Decoder.DeliverNextSample();
-		WaitForSingleObject(m_Decoder.m_SampleEvent, 200);
+		m_Decoder.DeliverNextSample(200);
 	}
 	while (m_Decoder.IsStarted()
 			&& timeGetTime() - dwStartTime < 500);
@@ -3362,13 +3358,15 @@ BOOL CWmaDecodeContext::OperationProc()
 	// notify the view
 
 	int nFirstSample = m_DstCopySample;
-	int nLastSample = m_Decoder.m_DstCopySample;
+	int nLastSample = m_Decoder.GetCurrentSample();
 	m_DstCopySample = nLastSample;
+
 	TRACE("Changed from %d to %d\n", nFirstSample, nLastSample);
 
 	ULONG OldSampleCount = m_CurrentSamples;
-	ULONG NewSampleCount = m_Decoder.m_CurrentSamples;
+	ULONG NewSampleCount = m_Decoder.GetTotalSamples();
 	m_CurrentSamples = NewSampleCount;
+
 	if (NewSampleCount == OldSampleCount)
 	{
 		NewSampleCount = -1;
@@ -3381,7 +3379,7 @@ BOOL CWmaDecodeContext::OperationProc()
 	if (nFirstSample != nLastSample
 		|| -1 != NewSampleCount)
 	{
-		pDocument->SoundChanged( m_Decoder.m_DstFile.GetFileID(), nFirstSample, nLastSample, NewSampleCount);
+		pDocument->SoundChanged(m_DstFile.GetFileID(), nFirstSample, nLastSample, NewSampleCount);
 	}
 
 	DWORD SrcLength = m_Decoder.SrcLength();
@@ -3391,38 +3389,72 @@ BOOL CWmaDecodeContext::OperationProc()
 	}
 	return TRUE;
 }
+
 BOOL CWmaDecodeContext::Init()
 {
-	CoInitializeEx(NULL, COINIT_MULTITHREADED );
+	m_CoInit.InitializeCom(COINIT_MULTITHREADED);
+
+	if ( ! m_Decoder.Init()
+		|| S_OK != m_Decoder.Open(m_WmaFile))
+	{
+
+		CString s;
+		s.Format(IDS_CANT_OPEN_WMA_DECODER, m_WmaFile.GetName());
+		MessageBoxSync(s, MB_ICONEXCLAMATION | MB_OK);
+		return FALSE;
+	}
+
+	m_CurrentSamples = m_Decoder.GetTotalSamples();
+
+	// create a wave file in the document
+	if ( ! pDocument->m_WavFile.CreateWaveFile(NULL, m_Decoder.GetDstFormat(),
+												ALL_CHANNELS, m_CurrentSamples,  // initial sample count
+												CreateWaveFileTempDir
+												| CreateWaveFileDeleteAfterClose
+												| CreateWaveFilePcmFormat
+												| CreateWaveFileTemp, NULL))
+	{
+		MessageBoxSync(IDS_UNABLE_TO_CREATE_TEMPORARY_FILE, MB_OK | MB_ICONEXCLAMATION);
+		pDocument->m_bCloseThisDocumentNow = true;
+		return FALSE;
+	}
+
+	pDocument->m_OriginalWaveFormat = m_Decoder.GetDstFormat();
+	SetDstFile(pDocument->m_WavFile);
+	pDocument->SoundChanged(pDocument->m_WavFile.GetFileID(), 0, 0, m_CurrentSamples);
+
+	pDocument->m_WavFile.LoadPeaksForCompressedFile(pDocument->m_OriginalWavFile, m_CurrentSamples);
+
 	if (S_OK == m_Decoder.Start())
 	{
 		return TRUE;
 	}
-	CoUninitialize();
+	m_CoInit.UninitializeCom();
 	return FALSE;
 }
 
 void CWmaDecodeContext::DeInit()
 {
 	m_Decoder.Stop();
-	CoUninitialize();
+	m_Decoder.DeInit();
+	m_CoInit.UninitializeCom();
 }
 
 void CWmaDecodeContext::SetDstFile(CWaveFile & file)
 {
 	m_DstFile = file;
-	m_DstStart = file.GetDataChunk()->dwDataOffset;
+	m_DstStart = m_DstFile.GetDataChunk()->dwDataOffset;
 	m_DstCopyPos = m_DstStart;
-	m_Decoder.m_DstCopyPos = m_DstStart;
 	m_DstCopySample = 0;
-	m_Decoder.m_DstCopySample = 0;
-	m_Decoder.m_DstFile = file;
-	m_Decoder.m_DstFile.CDirectFile::Seek(m_DstStart, FILE_BEGIN);
+
+	m_Decoder.SetDstFile(file);
 }
 
 void CWmaDecodeContext::PostRetire(BOOL bChildContext)
 {
-	if (0)// TODO:m_MmResult != MMSYSERR_NOERROR)
+	if (0
+		//&& m_MmResult != MMSYSERR_NOERROR
+		)
 	{
 		CString s;
 		if (m_Flags & OperationContextInitFailed)
@@ -3435,12 +3467,12 @@ void CWmaDecodeContext::PostRetire(BOOL bChildContext)
 		{
 			s.Format(IDS_ERROR_WHILE_DECOMPRESSING_FILE,
 					LPCTSTR(pDocument->m_OriginalWavFile.GetName()), 0);
+			AfxMessageBox(s, MB_ICONSTOP);
 		}
-		AfxMessageBox(s, MB_ICONSTOP);
 	}
 	else if (m_Flags & DecompressSavePeakFile)
 	{
-		pDocument->SavePeakInfo(m_DstFile, pDocument->m_OriginalWavFile);
+		m_DstFile.SavePeakInfo(pDocument->m_OriginalWavFile);
 	}
 	COperationContext::PostRetire(bChildContext);
 }
@@ -3449,7 +3481,9 @@ BOOL CWmaSaveContext::Init()
 {
 	SetBeginTime();
 	m_Enc.m_SrcWfx = * m_SrcFile.GetWaveFormat();
-	CoInitializeEx(NULL, COINIT_MULTITHREADED);
+
+	m_CoInit.InitializeCom(COINIT_MULTITHREADED);
+
 	if (! m_Enc.Init())
 	{
 		return FALSE;
@@ -3466,7 +3500,7 @@ BOOL CWmaSaveContext::Init()
 void CWmaSaveContext::DeInit()
 {
 	m_Enc.DeInit();
-	CoUninitialize();
+	m_CoInit.UninitializeCom();
 	m_DstCopyPos = m_Enc.GetWrittenLength();
 }
 
