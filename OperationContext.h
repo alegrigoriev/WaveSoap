@@ -381,6 +381,7 @@ public:
 						NUMBER_OF_SAMPLES SamplesToInsert);
 
 protected:
+	void RetireAllChildren();
 	// This list keeps items to execute. First() is executed first
 	ListHead<COperationContext> m_ContextList;
 	// This list keeps items done. First() was executed first, Last was executed last
