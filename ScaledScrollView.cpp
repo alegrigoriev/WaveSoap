@@ -541,6 +541,26 @@ void CScaledScrollView::OnChangeOrgExt(double left, double width,
 	}
 
 	AdjustNewScale(dScaleX, dScaleY, dNewScaleX, dNewScaleY);
+	TRACE("dNewScaleX = %g, dScaleX=%g, ExtX=%g\n",
+		dNewScaleX, dScaleX, dExtX);
+	TRACE("dNewScaleY = %g, dScaleY=%g, ExtY=%g\n",
+		dNewScaleY, dScaleY, dExtY);
+
+	if (dNewScaleX != dScaleX
+		&& r.right != r.left
+		&& 0 != (flag & CHANGE_WIDTH))
+	{
+		dExtX = (r.right - r.left) / (dNewScaleX * dLogScaleX);
+		dSizeX = fabs(dExtX);
+	}
+
+	if (dNewScaleY != dScaleY
+		&& r.top != r.bottom
+		&& 0 != (flag & CHANGE_HEIGHT))
+	{
+		dExtY = (r.top - r.bottom) / (dNewScaleY * dLogScaleY);
+		dSizeY = fabs(dExtY);
+	}
 
 	ArrangeMaxExtents();
 	if (dExtX > 0)
