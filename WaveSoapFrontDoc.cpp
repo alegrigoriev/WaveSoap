@@ -4854,18 +4854,9 @@ void CWaveSoapFrontDoc::OnProcessDoDeclicking()
 		channel = ALL_CHANNELS;
 	}
 
-	CDeclickDialog dlg;
-	CThisApp * pApp = GetApp();
+	CDeclickDialog dlg(start, end, m_CaretPosition, channel,
+						m_WavFile, ChannelsLocked(), UndoEnabled(), GetApp()->m_SoundTimeFormat);
 
-	dlg.m_bUndo = UndoEnabled();
-	dlg.m_Start = start;
-	dlg.m_End = end;
-	dlg.m_CaretPosition = m_CaretPosition;
-	dlg.m_Chan = channel;
-	dlg.m_pWf = WaveFormat();
-	dlg.m_bLockChannels = m_bChannelsLocked;
-	dlg.m_TimeFormat = pApp->m_SoundTimeFormat;
-	dlg.m_FileLength = WaveFileSamples();
 	if (IDOK != dlg.DoModal())
 	{
 		return;
@@ -4886,13 +4877,13 @@ void CWaveSoapFrontDoc::OnProcessDoDeclicking()
 		return;
 	}
 
-	pDeclick->SetAndValidateWaveformat(dlg.m_pWf);
+	pDeclick->SetAndValidateWaveformat(WaveFormat());
 	dlg.SetDeclickData(pDeclick);
 
 	pContext->AddWaveProc(pDeclick);
 
-	if ( ! pContext->InitDestination(m_WavFile, dlg.m_Start,
-									dlg.m_End, dlg.m_Chan, dlg.m_bUndo))
+	if ( ! pContext->InitDestination(m_WavFile, dlg.GetStart(),
+									dlg.GetEnd(), dlg.GetChannel(), dlg.UndoEnabled()))
 	{
 		delete pContext;
 		return;
@@ -4902,10 +4893,10 @@ void CWaveSoapFrontDoc::OnProcessDoDeclicking()
 	pContext->m_SrcPos = pContext->m_SrcStart;
 	pContext->m_SrcEnd = pContext->m_DstEnd;
 
-	pContext->m_SrcChan = dlg.m_Chan;
+	pContext->m_SrcChan = dlg.GetChannel();
 
 	pContext->Execute();
-	SetModifiedFlag(TRUE, dlg.m_bUndo);
+	SetModifiedFlag(TRUE, dlg.UndoEnabled());
 
 }
 

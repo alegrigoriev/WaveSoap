@@ -702,17 +702,24 @@ protected:
 /////////////////////////////////////////////////////////////////////////////
 // CDeclickDialog dialog
 
-class CDeclickDialog : public CDialog
+class CDeclickDialog : public CDialogWithSelection
 {
-	typedef CDialog BaseClass;
+	typedef CDialogWithSelection BaseClass;
 // Construction
 public:
-	CDeclickDialog(CWnd* pParent = NULL);   // standard constructor
-	~CDeclickDialog();
-// Dialog Data
+	CDeclickDialog(SAMPLE_INDEX begin, SAMPLE_INDEX end, SAMPLE_INDEX caret,
+					CHANNEL_MASK Channels,
+					CWaveFile & File,
+					BOOL ChannelsLocked, BOOL UndoEnabled,
+					int TimeFormat,
+					CWnd* pParent = NULL);   // standard constructor
+
+	// Dialog Data
+	CApplicationProfile Profile;
+	void SetDeclickData(CClickRemoval * pCr);
+protected:
 	//{{AFX_DATA(CDeclickDialog)
 	enum { IDD = IDD_DIALOG_DECLICKING };
-	CStatic	m_SelectionStatic;
 	CNumEdit	m_EnvelopDecayRate;
 	CNumEdit	m_ClickToNoise;
 	CNumEdit	m_AttackRate;
@@ -723,22 +730,11 @@ public:
 	BOOL	m_bLogClicksOnly;
 	BOOL	m_bImportClicks;
 	CString	m_ClickImportFilename;
-	BOOL	m_bUndo;
 	//}}AFX_DATA
-
 	double m_dAttackRate;
 	double m_dClickToNoise;
 	double m_dEnvelopDecayRate;
 
-	BOOL	m_bLockChannels;
-	long m_Start;
-	long m_End;
-	long m_CaretPosition;
-	long m_FileLength;
-	int m_Chan;
-	int m_TimeFormat;
-	const WAVEFORMATEX * m_pWf;
-	void SetDeclickData(CClickRemoval * pCr);
 // Overrides
 	// ClassWizard generated virtual function overrides
 	//{{AFX_VIRTUAL(CDeclickDialog)
@@ -757,11 +753,8 @@ protected:
 	afx_msg void OnClickLogBrowseButton();
 	afx_msg void OnClickImportBrowseButton();
 	afx_msg void OnButtonMoreSettings();
-	afx_msg void OnButtonSelection();
-	virtual void OnOK();
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
-	void UpdateSelectionStatic();
 	void LoadValuesFromRegistry();
 };
 /////////////////////////////////////////////////////////////////////////////
