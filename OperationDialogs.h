@@ -740,7 +740,12 @@ public:
 	{
 		return m_dLowerFrequency;
 	}
-	void SetNoiseReductionData(class CNoiseReduction * pNr);
+
+	unsigned GetNoiseReductionFftOrder() const
+	{
+		return m_FftOrder;
+	}
+	void GetNoiseReductionData(struct NoiseReductionParameters * pNr);
 
 protected:
 // Dialog Data
