@@ -19,7 +19,7 @@ public:
 // Dialog Data
 	//{{AFX_DATA(CReopenCompressedFileDialog)
 	enum { IDD = IDD_DIALOG_REOPEN_COMPRESSED };
-	// NOTE: the ClassWizard will add data members here
+	CString	m_Text;
 	//}}AFX_DATA
 
 

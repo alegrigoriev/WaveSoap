@@ -19,7 +19,7 @@ CReopenConvertedFileDlg::CReopenConvertedFileDlg(CWnd* pParent /*=NULL*/)
 	: CDialog(CReopenConvertedFileDlg::IDD, pParent)
 {
 	//{{AFX_DATA_INIT(CReopenConvertedFileDlg)
-	// NOTE: the ClassWizard will add member initialization here
+	m_Text = _T("");
 	//}}AFX_DATA_INIT
 }
 
@@ -28,7 +28,7 @@ void CReopenConvertedFileDlg::DoDataExchange(CDataExchange* pDX)
 {
 	CDialog::DoDataExchange(pDX);
 	//{{AFX_DATA_MAP(CReopenConvertedFileDlg)
-	// NOTE: the ClassWizard will add DDX and DDV calls here
+	DDX_Text(pDX, IDC_STATIC_PROMPT, m_Text);
 	//}}AFX_DATA_MAP
 }
 

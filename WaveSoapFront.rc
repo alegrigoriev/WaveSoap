@@ -794,10 +794,10 @@ CAPTION "About WaveSoap"
 FONT 8, "MS Sans Serif"
 BEGIN
     ICON            IDR_MAINFRAME,IDC_STATIC,11,17,20,20
-    CTEXT           "WaveSoap Version 0.54 beta",IDC_STATIC_VERSION,58,8,110,
+    CTEXT           "WaveSoap Version 0.55 beta",IDC_STATIC_VERSION,58,8,110,
                     10,SS_NOPREFIX
-    CTEXT           "Copyright (C) Alexander Grigoriev, 2000",IDC_STATIC,41,
-                    27,145,12
+    CTEXT           "Copyright (C) Alexander Grigoriev, 2000-2001",
+                    IDC_STATIC,41,27,145,12
     DEFPUSHBUTTON   "OK",IDOK,178,7,50,14,WS_GROUP
     PUSHBUTTON      "&mailto:alegr@earthlink.net",IDC_BUTTON_MAILTO,52,45,
                     128,14
@@ -1385,15 +1385,15 @@ BEGIN
                     WS_BORDER | WS_TABSTOP,7,39,286,117,WS_EX_CLIENTEDGE
 END
 
-IDD_DIALOG_REOPEN_DIRECT DIALOG DISCARDABLE  0, 0, 187, 108
+IDD_DIALOG_REOPEN_DIRECT DIALOG DISCARDABLE  0, 0, 187, 131
 STYLE DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
 CAPTION "Reopen Saved File"
 FONT 8, "MS Sans Serif"
 BEGIN
-    LTEXT           "File ""%s"" saved. ",IDC_STATIC_PROMPT,7,7,173,36
-    DEFPUSHBUTTON   "&Reopen in direct mode",IDOK,35,53,115,14
-    PUSHBUTTON      "Create &new temporary file",IDNO,35,70,115,14
-    PUSHBUTTON      "&Close the file",IDCANCEL,35,87,115,14
+    LTEXT           "File ""%s"" saved. ",IDC_STATIC_PROMPT,7,7,173,62
+    DEFPUSHBUTTON   "&Reopen in direct mode",IDOK,35,76,115,14
+    PUSHBUTTON      "Reopen on &Non-direct mode",IDNO,35,93,115,14
+    PUSHBUTTON      "&Close the file",IDCANCEL,35,110,115,14
 END
 
 IDD_FUNCTIONS_TAB DIALOGEX 0, 0, 230, 60
@@ -1608,6 +1608,27 @@ FONT 8, "MS Sans Serif"
 BEGIN
 END
 
+IDD_DIALOG_REOPEN_COMPRESSED DIALOG DISCARDABLE  0, 0, 187, 127
+STYLE DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "Reopen Saved Compressed File"
+FONT 8, "MS Sans Serif"
+BEGIN
+    LTEXT           "File ""%s"" saved. ",IDC_STATIC_PROMPT,7,7,173,60
+    DEFPUSHBUTTON   "Keep working on the current copy",IDOK,35,71,115,14
+    PUSHBUTTON      "&Reload compressed file",IDNO,35,88,115,14
+    PUSHBUTTON      "&Close the file",IDCANCEL,35,106,115,14
+END
+
+IDD_DIALOG_SHOULD_RELOAD_CONVERTED DIALOG DISCARDABLE  0, 0, 187, 109
+STYLE DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "Reopen File Saved With Conversion"
+FONT 8, "MS Sans Serif"
+BEGIN
+    LTEXT           "File ""%s"" saved. ",IDC_STATIC_PROMPT,7,7,173,59
+    DEFPUSHBUTTON   "&Reload compressed file",IDYES,35,72,115,14
+    PUSHBUTTON      "&Close the file",IDCANCEL,35,88,115,14
+END
+
 
 #ifndef _MAC
 /////////////////////////////////////////////////////////////////////////////
@@ -1616,8 +1637,8 @@ END
 //
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 0,54,0,1
- PRODUCTVERSION 0,54,0,1
+ FILEVERSION 0,55,0,1
+ PRODUCTVERSION 0,55,0,1
  FILEFLAGSMASK 0x3fL
 #ifdef _DEBUG
  FILEFLAGS 0x9L
@@ -1635,14 +1656,14 @@ BEGIN
             VALUE "Comments", "\0"
             VALUE "CompanyName", "Alexandre Grigoriev\0"
             VALUE "FileDescription", "WaveSoap - Sound Cleaning And Editing Application\0"
-            VALUE "FileVersion", "0, 54, 0, 1\0"
+            VALUE "FileVersion", "0, 55, 0, 1\0"
             VALUE "InternalName", "WaveSoap\0"
             VALUE "LegalCopyright", "Copyright (C) 2000-2001 Alexandre Grigoriev\0"
             VALUE "LegalTrademarks", "\0"
             VALUE "OriginalFilename", "WaveSoap.EXE\0"
-            VALUE "PrivateBuild", "Beta 0.54\0"
+            VALUE "PrivateBuild", "Beta 0.55\0"
             VALUE "ProductName", "WaveSoap Application\0"
-            VALUE "ProductVersion", "0, 54, 0, 1\0"
+            VALUE "ProductVersion", "0, 55, 0, 1\0"
             VALUE "SpecialBuild", "\0"
         END
     END
@@ -1851,7 +1872,7 @@ BEGIN
         LEFTMARGIN, 7
         RIGHTMARGIN, 180
         TOPMARGIN, 7
-        BOTTOMMARGIN, 101
+        BOTTOMMARGIN, 124
     END
 
     IDD_DIALOG_SAVE_EXPRESSION, DIALOG
@@ -1910,6 +1931,22 @@ BEGIN
         RIGHTMARGIN, 203
         TOPMARGIN, 7
         BOTTOMMARGIN, 147
+    END
+
+    IDD_DIALOG_REOPEN_COMPRESSED, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 180
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 120
+    END
+
+    IDD_DIALOG_SHOULD_RELOAD_CONVERTED, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 180
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 102
     END
 END
 #endif    // APSTUDIO_INVOKED
@@ -2299,6 +2336,8 @@ BEGIN
                             "Unable to find or initialize codec to load compressed file ""%s"".\nCompression format tag = 0x%04X, MMSYSERR error code=0x%08X"
     IDS_ERROR_WHILE_DECOMPRESSING_FILE 
                             "Error occured while decompressing file ""%s""\nThe file may be corrupted or unreadable\nMMSYSERR error code=0x%08X"
+    IDS_SHOULD_RELOAD_COMPRESSED_FILE 
+                            "File ""%s"" saved with channel or sample rate conversion.\nYou can reload the saved file, or close it."
 END
 
 STRINGTABLE DISCARDABLE 
@@ -2335,9 +2374,9 @@ BEGIN
     IDS_M_UNABLE_TO_CREATE_UNDO "Unable to save undo data, continue?"
     IDS_STATISTICS_FORMAT   "%s (%s)\r\n%s (%s dB; %.2f%%)\r\n\r\n%s (%s)\r\n%s (%s dB; %.2f%%)\r\n\r\n%s (%s)\r\n%s (%s dB; %.2f%%)\r\n\r\n%s dB (%.2f%%)\r\n%s (%s dB; %.2f%%)\r\n%.2f Hz"
     IDS_REOPEN_IN_DIRECT_MODE 
-                            "File ""%s"" saved. \nWhat do you want to do with it:"
+                            "File ""%s"" saved. \nYou can reopen it in either direct or non-direct mode, or close it. If you choose to reopen in non-direct mode, a new temporary file will be created."
     IDS_RELOAD_COMPRESSED_FILE 
-                            "Sound data might change because of compression loss, reload it?"
+                            "File ""%s"" saved. \nSound data might change because of compression loss. You can keep working on the current data (recommended), or reload the compressed file, or close it. If you choose to reload, keep in mind that multiple save/reloads adds more ""compression loss""."
     ID_INDICATOR_SCALE      "\nHorizontal Scale"
     IDS_UNABLE_TO_OPEN_WMA_FILE "Audio file ""%s"" couldn't be opened"
     IDS_CANT_OPEN_WMA_DECODER "Unable to decode audio info from file ""%s"""
