@@ -2320,16 +2320,10 @@ BOOL CWaveSoapFrontDoc::OnSaveRawFile(class COperationContext ** ppOp, int flags
 
 		pConvert->AddWaveProc(pAcmConvertor);
 
-		WAVEFORMATEX SrcFormat;
-		SrcFormat.nChannels = pWf->nChannels;
-		SrcFormat.nSamplesPerSec = pWf->nSamplesPerSec;
-		SrcFormat.nBlockAlign = SrcFormat.nChannels * sizeof (WAVE_SAMPLE);
-		SrcFormat.nAvgBytesPerSec = SrcFormat.nBlockAlign * SrcFormat.nSamplesPerSec;
-		SrcFormat.cbSize = 0;
-		SrcFormat.wFormatTag = WAVE_FORMAT_PCM;
-		SrcFormat.wBitsPerSample = 16;
+		CWaveFormat SrcFormat;
+		SrcFormat.InitFormat(WAVE_FORMAT_PCM, pWf->nSamplesPerSec, pWf->nChannels);
 
-		if (! pAcmConvertor->InitConversion( & SrcFormat, pWf))
+		if (! pAcmConvertor->InitConversion(SrcFormat, pWf))
 		{
 			//todo: unable to convert dialog
 			return FALSE;
@@ -2344,6 +2338,14 @@ BOOL CWaveSoapFrontDoc::OnSaveRawFile(class COperationContext ** ppOp, int flags
 	{
 		pContext->m_Flags |= FileSaveContext_SavingCopy;
 	}
+
+	// save raw file parameters
+	FileParameters * pParams = PersistentFileParameters::GetData();
+
+	pParams->RawFileFormat = * pWf;
+	pParams->RawFileHeaderLength = 0;
+	pParams->RawFileTrailerLength = 0;
+	pParams->RawFileBigEnded = 0 != (flags & SaveRawFileMsbFirst);
 
 	if (NULL != ppOp)
 	{
@@ -4498,6 +4500,7 @@ BOOL CWaveSoapFrontDoc::OpenRawFileDocument(LPCTSTR lpszPathName)
 	}
 
 	MEDIA_FILE_SIZE RawFileSize = m_OriginalWavFile.GetLength();
+
 	CRawFileParametersDlg dlg(RawFileSize);
 
 	if (IDOK != dlg.DoModal())
@@ -4505,18 +4508,7 @@ BOOL CWaveSoapFrontDoc::OpenRawFileDocument(LPCTSTR lpszPathName)
 		return FALSE;
 	}
 
-	WAVEFORMATEX wf;
-	wf.cbSize = 0;
-	wf.nChannels = dlg.NumberOfChannels();
-
-	wf.wBitsPerSample = dlg.NumberOfBits();
-
-	wf.nSamplesPerSec = dlg.SamplingRate();
-
-	wf.wFormatTag = dlg.GetFormatTag();
-
-	wf.nBlockAlign = wf.wBitsPerSample * wf.nChannels / 8;
-	wf.nAvgBytesPerSec = wf.nBlockAlign * wf.nSamplesPerSec;
+	WAVEFORMATEX wf = *dlg.GetWaveFormat();
 
 	LONG nNewFileSamples = (DWORD(RawFileSize) - dlg.HeaderLength() - dlg.TrailerLength())
 							/ wf.nBlockAlign;
