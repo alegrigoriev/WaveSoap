@@ -586,7 +586,8 @@ void CWaveSoapFrontView::OnDraw(CDC* pDC)
 						WaveRegionMarker * pMarker = pInst->GetRegionMarker(i->CuePointID);
 
 						// draw text
-						if (x < cr.right)
+						if (0 == ch
+							&& x < cr.right)
 						{
 							LPCTSTR txt = pInst->GetCueText(i->CuePointID);
 							if (NULL != txt)
@@ -595,7 +596,7 @@ void CWaveSoapFrontView::OnDraw(CDC* pDC)
 								CPoint size = pDC->GetTextExtent(txt, count);
 								if (x + size.x > cr.left)
 								{
-									pDC->DrawText(txt, count, CRect(x, cr.top, x + size.x, cr.top + size.y),
+									pDC->DrawText(txt, count, CRect(x, ChanR.top, x + size.x, ChanR.top + size.y),
 												DT_LEFT | DT_NOPREFIX | DT_SINGLELINE | DT_TOP);
 								}
 							}
@@ -605,7 +606,8 @@ void CWaveSoapFrontView::OnDraw(CDC* pDC)
 							&& x <= cr.right)
 						{
 							DWORD BrushRop = DstAndBrushRop;    // black dashes
-							if (x >= SelBegin && x < SelEnd)
+							if (0 != (pDoc->m_SelectedChannel & (1 << ch))
+								&& x >= SelBegin && x < SelEnd)
 							{
 								BrushRop = DstOrBrushRop; // white dashes
 							}
@@ -632,7 +634,8 @@ void CWaveSoapFrontView::OnDraw(CDC* pDC)
 								&& x <= cr.right)
 							{
 								DWORD BrushRop = DstAndBrushRop;
-								if (x >= SelBegin && x < SelEnd)
+								if (0 != (pDoc->m_SelectedChannel & (1 << ch))
+									&& x >= SelBegin && x < SelEnd)
 								{
 									BrushRop = DstOrBrushRop;
 								}
