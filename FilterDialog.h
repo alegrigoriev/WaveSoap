@@ -182,9 +182,19 @@ protected:
 
 class CFilterDialog : public CResizableDialog
 {
+	typedef CResizableDialog BaseClass;
 // Construction
 public:
-	CFilterDialog(CWnd* pParent = NULL);   // standard constructor
+	CFilterDialog(SAMPLE_INDEX Start,
+				SAMPLE_INDEX End,
+				SAMPLE_INDEX CaretPosition,
+				CHANNEL_MASK Channels,
+				NUMBER_OF_SAMPLES FileLength,
+				const WAVEFORMATEX * pWf,
+				int m_TimeFormat,
+				BOOL bLockChannels,
+				BOOL	bUndoEnabled,
+				CWnd* pParent = NULL);   // standard constructor
 
 // Dialog Data
 	//{{AFX_DATA(CFilterDialog)
@@ -196,11 +206,11 @@ public:
 	CNumEdit m_EditFrequency;
 
 	BOOL	m_bLockChannels;
-	long m_Start;
-	long m_End;
-	long m_CaretPosition;
-	long m_FileLength;
-	int m_Chan;
+	SAMPLE_INDEX m_Start;
+	SAMPLE_INDEX m_End;
+	SAMPLE_INDEX m_CaretPosition;
+	NUMBER_OF_SAMPLES m_FileLength;
+	CHANNEL_MASK m_Chan;
 	int m_TimeFormat;
 	const WAVEFORMATEX * m_pWf;
 

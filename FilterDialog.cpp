@@ -18,11 +18,28 @@ static char THIS_FILE[] = __FILE__;
 // CFilterDialog dialog
 
 
-CFilterDialog::CFilterDialog(CWnd* pParent /*=NULL*/)
-	: CResizableDialog(CFilterDialog::IDD, pParent)
+CFilterDialog::CFilterDialog(SAMPLE_INDEX Start,
+							SAMPLE_INDEX End,
+							SAMPLE_INDEX CaretPosition,
+							CHANNEL_MASK Channels,
+							NUMBER_OF_SAMPLES FileLength,
+							const WAVEFORMATEX * pWf,
+							int TimeFormat,
+							BOOL bLockChannels,
+							BOOL	bUndoEnabled,
+							CWnd* pParent /*=NULL*/)
+	: BaseClass(CFilterDialog::IDD, pParent),
+	m_Start(Start),
+	m_End(End),
+	m_CaretPosition(CaretPosition),
+	m_Chan(Channels),
+	m_FileLength(FileLength),
+	m_pWf(pWf),
+	m_TimeFormat(TimeFormat),
+	m_bLockChannels(bLockChannels),
+	m_bUndo(bUndoEnabled)
 {
 	//{{AFX_DATA_INIT(CFilterDialog)
-	m_bUndo = FALSE;
 	//}}AFX_DATA_INIT
 
 	static ResizableDlgItem const ResizeItems[] =
@@ -122,7 +139,8 @@ CFilterDialog::CFilterDialog(CWnd* pParent /*=NULL*/)
 
 void CFilterDialog::DoDataExchange(CDataExchange* pDX)
 {
-	CResizableDialog::DoDataExchange(pDX);
+	BaseClass::DoDataExchange(pDX);
+
 	DDX_Control(pDX, IDC_EDIT_BAND_GAIN, m_EditGain);
 	DDX_Control(pDX, IDC_EDIT_FREQUENCY, m_EditFrequency);
 	//{{AFX_DATA_MAP(CFilterDialog)
@@ -141,7 +159,7 @@ void CFilterDialog::DoDataExchange(CDataExchange* pDX)
 }
 
 
-BEGIN_MESSAGE_MAP(CFilterDialog, CResizableDialog)
+BEGIN_MESSAGE_MAP(CFilterDialog, BaseClass)
 	//{{AFX_MSG_MAP(CFilterDialog)
 	ON_BN_CLICKED(IDC_BUTTON_LOAD, OnButtonLoad)
 	ON_BN_CLICKED(IDC_BUTTON_RESET_BANDS, OnButtonResetBands)
@@ -240,7 +258,7 @@ BOOL CFilterDialog::OnInitDialog()
 						SWP_NOACTIVATE | SWP_NOMOVE | SWP_NOSIZE);
 	pTemplateWnd->DestroyWindow();
 
-	CResizableDialog::OnInitDialog();
+	BaseClass::OnInitDialog();
 
 	m_EditGain.SetData(m_wGraph.GetCurrentPointGainDb());
 	m_EditFrequency.SetData(m_wGraph.GetCurrentPointFrequencyHz());
