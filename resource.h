@@ -101,6 +101,8 @@
 #define ID_BITMAP_ZOOMOUTHOR            182
 #define IDD_DIALOG_OPEN_AFTER_SAVE_COPY 182
 #define IDD_DIALOG_PASTE_RESAMPLE_MODE  183
+#define IDD_DIALOG_BATCH_CONVERSION     185
+#define IDD_DIALOG_BATCH_SAVE_TARGET    186
 #define IDC_EDIT_MIN_CLICK_AMPLITUDE    1000
 #define IDC_TAB_SWITCH_VIEW_MODE        1000
 #define IDC_CHECK_LOG_CLICKS            1001
@@ -114,6 +116,7 @@
 #define IDC_EDIT3                       1005
 #define IDC_EDIT_LENGTH                 1005
 #define IDC_EDIT_PLAYBACK_BUF_SIZE      1005
+#define IDC_EDIT_NORMALIZE              1005
 #define IDC_EDIT_MAX_CLICK_LENGTH       1006
 #define IDC_EDIT_RECORDING_BUF_SIZE     1006
 #define IDC_EDIT_ATTACK_RATE            1007
@@ -196,6 +199,7 @@
 #define IDC_RADIO2                      1041
 #define IDC_RADIO_CHANNEL               1042
 #define IDC_RADIO_16BITS                1042
+#define IDC_RADIO_WMA                   1042
 #define IDC_RADIO_DC_SELECT             1043
 #define IDC_EDIT_DC_OFFSET              1044
 #define IDC_CHECK_5SECONDS              1045
@@ -254,6 +258,7 @@
 #define IDC_BUTTON4                     1128
 #define IDC_CHECK_LIMIT_UNDO_DEPTH      1128
 #define IDC_CHECK_ENABLE_REDO           1129
+#define IDC_BUTTON_DELETE_FILES         1129
 #define IDC_EDIT_REDO_SIZE_LIMIT        1130
 #define IDC_CHECK_LIMIT_REDO_SIZE       1131
 #define IDC_CHECK_LIMIT_REDO_DEPTH      1132
@@ -312,6 +317,34 @@
 #define IDC_STATIC_FORMAT               1191
 #define IDC_STATIC_COMMENTS             1192
 #define IDC_STATIC_TITLE                1193
+#define IDC_BUTTON_SELECT_ALL           1194
+#define IDC_BUTTON_DESELECT_ALL         1195
+#define IDC_CHECK_MAKE_PLAYLIST         1196
+#define IDC_CHECK_MAKE_HTML             1197
+#define IDC_BUTTON_BROWSE_PLAYLIST      1198
+#define IDC_CHECK_MAKE_HTML1            1199
+#define IDC_BUTTON_BROWSE_WEBPAGE       1199
+#define IDC_EDIT_HTML                   1200
+#define IDC_BUTTON_BROWSE_PLAYLIST2     1201
+#define IDC_LIST1                       1206
+#define IDC_BUTTON_MOVE_UP              1207
+#define IDC_LIST_DESTINATIONS           1208
+#define IDC_BUTTON_DELETE_DESTINATION   1209
+#define IDC_BUTTON_ADD_DESTINATION      1210
+#define IDC_BUTTON_EDIT_DESTINATION     1211
+#define IDC_EDIT_SAVE_FOLDER            1212
+#define IDC_BUTTON_BROWSE_DST_FOLDER    1213
+#define IDC_EDIT_PLAYLIST               1214
+#define IDC_RADIO_SAVE_TYPE             1216
+#define IDC_BUTTON_FORMAT               1217
+#define IDC_STATIC_FORMAT_DETAILS       1218
+#define IDC_BUTTON_MOVE_DOWN            1219
+#define IDC_BUTTON_ADD_FILES            1220
+#define IDC_CHECK_MAKE_PLAYLIST_ONLY    1221
+#define IDC_CHECK_NORMALIZE             1222
+#define IDC_STATIC_NORMALIZE_DB         1223
+#define IDC_RADIO_MP3                   1224
+#define IDC_STATIC_SAVE_TYPE            1225
 #define IDC_VIEW_RULER_SAMPLES          32771
 #define IDC_VIEW_RULER_HHMMSS           32772
 #define IDC_VIEW_RULER_SECONDS          32773
@@ -485,6 +518,10 @@
 #define IDS_OPEN_SAVED_FILE_COPY_NONDIRECT 32938
 #define IDS_STRING_UNABLE_TO_CONVERT    32939
 #define IDS_SAVE_COPY_AS_TITLE          32940
+#define IDS_PLAYLIST_FILE_FILTER        32941
+#define IDS_HTML_FILE_FILTER            32942
+#define IDS_PLAYLIST_SAVE_TITLE         32943
+#define IDS_HTML_SAVE_TITLE             32944
 #define ID_FILE_PROPERTIES              40000
 #define ID_VIEW_ZOOMVERT_NORMAL         40001
 #define ID_VIEW_ZOOMIN_HOR_FULL         40002
@@ -576,6 +613,7 @@
 #define ID_VIEW_DECREASE_FFT_BANDS      40106
 #define ID_PROCESS_SWAPCHANNELS         40107
 #define ID_PROCESS_FILTER               40108
+#define ID_FILE_BATCHCONVERSION         40109
 #define ID_TOOLS_SYNTHESIS              65535
 
 // Next default values for new objects
@@ -583,9 +621,9 @@
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_3D_CONTROLS                     1
-#define _APS_NEXT_RESOURCE_VALUE        185
-#define _APS_NEXT_COMMAND_VALUE         40109
-#define _APS_NEXT_CONTROL_VALUE         1194
+#define _APS_NEXT_RESOURCE_VALUE        187
+#define _APS_NEXT_COMMAND_VALUE         40110
+#define _APS_NEXT_CONTROL_VALUE         1226
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif

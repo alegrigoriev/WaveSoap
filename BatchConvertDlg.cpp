@@ -4,6 +4,7 @@
 #include "stdafx.h"
 #include "wavesoapfront.h"
 #include "BatchConvertDlg.h"
+#include "BatchSaveTargetDlg.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -35,9 +36,60 @@ void CBatchConvertDlg::DoDataExchange(CDataExchange* pDX)
 
 BEGIN_MESSAGE_MAP(CBatchConvertDlg, CDialog)
 	//{{AFX_MSG_MAP(CBatchConvertDlg)
-		// NOTE: the ClassWizard will add message map macros here
+	ON_BN_CLICKED(IDC_BUTTON_ADD_DESTINATION, OnButtonAddDestination)
+	ON_BN_CLICKED(IDC_BUTTON_ADD_FILES, OnButtonAddFiles)
+	ON_BN_CLICKED(IDC_BUTTON_DELETE_DESTINATION, OnButtonDeleteDestination)
+	ON_BN_CLICKED(IDC_BUTTON_DELETE_FILES, OnButtonDeleteFiles)
+	ON_BN_CLICKED(IDC_BUTTON_EDIT_DESTINATION, OnButtonEditDestination)
+	ON_BN_CLICKED(IDC_BUTTON_MOVE_DOWN, OnButtonMoveDown)
+	ON_BN_CLICKED(IDC_BUTTON_MOVE_UP, OnButtonMoveUp)
 	//}}AFX_MSG_MAP
 END_MESSAGE_MAP()
 
 /////////////////////////////////////////////////////////////////////////////
 // CBatchConvertDlg message handlers
+
+void CBatchConvertDlg::OnButtonAddDestination()
+{
+	CBatchSaveTargetDlg dlg;
+	if (IDOK != dlg.DoModal())
+	{
+		return;
+	}
+}
+
+void CBatchConvertDlg::OnButtonAddFiles()
+{
+	// TODO: Add your control notification handler code here
+
+}
+
+void CBatchConvertDlg::OnButtonDeleteDestination()
+{
+	// TODO: Add your control notification handler code here
+
+}
+
+void CBatchConvertDlg::OnButtonDeleteFiles()
+{
+	// TODO: Add your control notification handler code here
+
+}
+
+void CBatchConvertDlg::OnButtonEditDestination()
+{
+	// TODO: Add your control notification handler code here
+
+}
+
+void CBatchConvertDlg::OnButtonMoveDown()
+{
+	// TODO: Add your control notification handler code here
+
+}
+
+void CBatchConvertDlg::OnButtonMoveUp()
+{
+	// TODO: Add your control notification handler code here
+
+}

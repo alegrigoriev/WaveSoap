@@ -138,15 +138,16 @@ public:
 	CComboBox	m_DrivesCombo;
 	CListCtrl	m_lbTracks;
 	//}}AFX_DATA
+
+	CCdDrive m_CdDrive;
+
 	TCHAR m_CDDrives['Z' - 'A' + 1];
 	int m_NumberOfDrives;
 	int m_CDDriveSelected;
+	TCHAR m_DriveLetterSelected;
 	CDROM_TOC m_toc;
 
 	DWORD m_DiskID;
-	HANDLE m_DriveHandle;
-	HANDLE m_DriveAttributesHandle;
-	DWORD m_MediaChangeCount;
 
 // Overrides
 	// ClassWizard generated virtual function overrides
@@ -163,10 +164,11 @@ protected:
 	void ReloadTrackList();
 
 	BOOL OpenDrive(TCHAR letter);
-	void CloseDrive();
-	void FillDriveList();
+
+	void FillDriveList(TCHAR SelectDrive);
 	void CreateImageList();
 	void CheckForDiskChanged();
+	void CheckForDrivesChanged();
 
 	// Generated message map functions
 	//{{AFX_MSG(CCdGrabbingDialog)
