@@ -2023,25 +2023,25 @@ void CClickRemoval::InterpolateGap(WAVE_SAMPLE data[], int nLeftIndex, int Click
 	if (ClickLength <= 32)
 	{
 		InterpolationOrder = 10;
-		ASSERT(nLeftIndex - (ClickLength / 2 * (InterpolationOrder - 2) + 1) >= 0);
+		ASSERT(nLeftIndex - (ClickLength * (InterpolationOrder - 2) / 2 + 1) >= 0);
 		for (n = 0; n < InterpolationOrder - 1; n += 2)
 		{
-			X[n] = - (ClickLength / 2 * n + 1);
-			Y[n] = data[nChans * (nLeftIndex - (ClickLength / 2 * n + 1))];
-			X[n + 1] = ClickLength + ClickLength / 2 * n;
-			Y[n + 1] = data[nChans * (nLeftIndex + ClickLength + ClickLength / 2 * n)];
+			X[n] = - (ClickLength * n / 2 + 1);
+			Y[n] = data[nChans * (nLeftIndex - (ClickLength * n / 2 + 1))];
+			X[n + 1] = ClickLength + ClickLength * n / 2;
+			Y[n + 1] = data[nChans * (nLeftIndex + ClickLength + ClickLength * n / 2)];
 		}
 	}
 	else
 	{
 		InterpolationOrder = 20;
-		ASSERT(nLeftIndex - (ClickLength / 4 * (InterpolationOrder - 2) + 1) >= 0);
+		ASSERT(nLeftIndex - (ClickLength * (InterpolationOrder - 2) / 4 + 1) >= 0);
 		for (n = 0; n < InterpolationOrder - 1; n += 2)
 		{
-			X[n] = - (ClickLength / 4 * n + 1);
-			Y[n] = data[nChans * (nLeftIndex - (ClickLength / 4 * n + 1))];
-			X[n + 1] = ClickLength + ClickLength / 4 * n;
-			Y[n + 1] = data[nChans * (nLeftIndex + ClickLength + ClickLength / 4 * n)];
+			X[n] = - (ClickLength * n / 4 + 1);
+			Y[n] = data[nChans * (nLeftIndex - (ClickLength * n / 4 + 1))];
+			X[n + 1] = ClickLength + ClickLength * n / 4;
+			Y[n + 1] = data[nChans * (nLeftIndex + ClickLength + ClickLength * n / 4)];
 		}
 	}
 	// perform Lagrange interpolation

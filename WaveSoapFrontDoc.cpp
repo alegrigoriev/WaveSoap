@@ -4469,6 +4469,7 @@ BOOL CWaveSoapFrontDoc::OpenWmaFileDocument(LPCTSTR lpszPathName)
 	return TRUE;
 }
 
+static int const BigGapLength = 16;
 void CWaveSoapFrontDoc::OnUpdateToolsInterpolate(CCmdUI* pCmdUI)
 {
 	// the area must be at least 5* length away from the file beginning and from the end
@@ -4476,7 +4477,7 @@ void CWaveSoapFrontDoc::OnUpdateToolsInterpolate(CCmdUI* pCmdUI)
 	int PreInterpolateSamples = 0;
 	int PostInterpolateSamples = 0;
 	int InterpolationOverlap;
-	bool BigGap = (InterpolateSamples > 32);
+	bool BigGap = (InterpolateSamples >= BigGapLength);
 	if (BigGap)
 	{
 		InterpolationOverlap = 2048 + InterpolateSamples + InterpolateSamples / 2;
@@ -4488,7 +4489,7 @@ void CWaveSoapFrontDoc::OnUpdateToolsInterpolate(CCmdUI* pCmdUI)
 		InterpolationOverlap = 5 * InterpolateSamples;
 	}
 	pCmdUI->Enable(CanModifyFile()
-					&& 0 != InterpolateSamples
+					&& InterpolateSamples >= 2
 					&& InterpolateSamples <= MaxInterpolatedLength   // 128
 					&& m_SelectionStart >= InterpolationOverlap
 					&& m_SelectionEnd + InterpolationOverlap < WaveFileSamples());
@@ -4501,7 +4502,7 @@ void CWaveSoapFrontDoc::OnToolsInterpolate()
 	int PostInterpolateSamples = 0;
 	int InterpolationOverlap;
 
-	bool BigGap = (InterpolateSamples > 16);
+	bool BigGap = (InterpolateSamples >= BigGapLength);
 	if (BigGap)
 	{
 		InterpolationOverlap = 2048 + InterpolateSamples + InterpolateSamples / 2;
@@ -4514,7 +4515,7 @@ void CWaveSoapFrontDoc::OnToolsInterpolate()
 	}
 
 	if ( ! CanModifyFile()
-		|| 0 == InterpolateSamples
+		|| InterpolateSamples < 2
 		|| InterpolateSamples > MaxInterpolatedLength   // 128
 		|| m_SelectionStart < InterpolationOverlap
 		|| m_SelectionEnd + InterpolationOverlap >= WaveFileSamples())
