@@ -235,6 +235,10 @@ hid_process_channels = html\Process\process_change_channels.htm
 hid_process_swapchannels = html\Process\process_swap_channels.htm
 hid_process_reverse = html\Process\process_reverse.htm
 
+hid_fft_window_squared_sine = html\MainWindow\fft_spectrum_view.htm#window_type
+hid_fft_window_sine = html\MainWindow\fft_spectrum_view.htm#window_type
+hid_fft_window_hamming = html\MainWindow\fft_spectrum_view.htm#window_type
+
 afx_hidw_toolbar = html\MainWindow\afx_hidw_toolbar.htm
 afx_hidw_status_bar = html\MainWindow\afx_hidw_status_bar.htm
 hid_window_new = html\Window\hid_window_new.htm

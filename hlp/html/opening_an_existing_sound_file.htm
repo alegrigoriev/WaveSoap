@@ -11,15 +11,16 @@
 <body>
 
 <h1 align="center">Opening an existing sound file</h1>
-<p align="left">The program supports standard WAV files with uncompressed PCM
+<p align="left">WaveSoap supports standard WAV files with uncompressed PCM
 data as well as compressed sound data. It also supports MP3 encoded files and
-Windows Media files. The files with unsupported internal structure can be opened
+Windows Media files. Files with unsupported internal structure can be opened
 as <b>raw</b> sound files.</p>
 <p align="left">The files can be opened for editing in <b>direct </b>or <b>buffered</b>
 mode, and also in <b>read-only</b> mode.</p>
 <p align="left">When a file is opened in <b>direct</b> mode, all editing
 operations change the file itself. Only uncompressed WAV files with 16-bit data
-can be opened in direct mode. This mode saves some little time when opening a
+can be opened in direct mode. This mode saves a little time when opening and 
+saving the
 file.</p>
 <p align="left">In <b>buffered</b> mode, though, a temporary file is created,
 which holds all the new contents of the file. As you open the 16 bit PCM sound
@@ -29,8 +30,8 @@ the same folder, where the original file is located, to speed file save
 operation. 8 bit PCM and compressed files, such as compressed WAV, MP3 and WMA,
 take some more time to open, because WaveSoap needs to convert them to 16 bit
 PCM format.</p>
-<p align="left">Files can also be opened as <b>read only</b>. WaveSoap won't
-allow to make any changes in such files.</p>
+<p align="left">Files can also be opened for <b>read only</b>. The application won't
+allow to make any changes in files opened that way.</p>
 
 </body>
 
