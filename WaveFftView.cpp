@@ -693,8 +693,8 @@ void CWaveFftView::CalculateFftRange(long left, long right)
 	int FirstSampleRequired = left - left % m_FftSpacing;
 	int LastSampleRequired = right + m_FftSpacing - right % m_FftSpacing;
 
-	TRACE("Samples required from %d to %d, in the buffer: from %d to %d\n",
-		FirstSampleRequired, LastSampleRequired, m_FftResultBegin, m_FftResultEnd);
+	if (0) TRACE("Samples required from %d to %d, in the buffer: from %d to %d\n",
+				FirstSampleRequired, LastSampleRequired, m_FftResultBegin, m_FftResultEnd);
 	ASSERT(LastSampleRequired > FirstSampleRequired);
 	ASSERT(m_FftResultEnd > m_FftResultBegin);
 	ASSERT(LastSampleRequired - FirstSampleRequired <= m_FftResultEnd - m_FftResultBegin);
@@ -880,7 +880,7 @@ void CWaveFftView::CalculateFftRange(long left, long right)
 		}
 	}
 #ifdef _DEBUG
-	TRACE("%d new FFT calculated\n", nNewFFtCalculated);
+	if (0) TRACE("%d new FFT calculated\n", nNewFFtCalculated);
 	if (0) TRACE("MaxRes=%d, MinRes=%d\n", MaxRes, MinRes);
 #endif
 	delete[] buf;
@@ -1126,39 +1126,40 @@ void CWaveFftView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
 		int right = pInfo->End;
 		int FirstSampleChanged = left - left % m_FftSpacing;
 		int LastSampleRequired = right - right % m_FftSpacing + m_FftSpacing;
+		if (FirstSampleChanged < m_FftResultBegin)
+		{
+			FirstSampleChanged = m_FftResultBegin;
+		}
+		if (LastSampleRequired > m_FftResultEnd)
+		{
+			LastSampleRequired = m_FftResultEnd;
+		}
 		if (LastSampleRequired > m_FftResultBegin
 			&& FirstSampleChanged < m_FftResultEnd)
 		{
-			if (FirstSampleChanged < m_FftResultBegin)
+			for (int Sample = FirstSampleChanged; Sample < LastSampleRequired; Sample += m_FftSpacing)
 			{
-				FirstSampleChanged = m_FftResultBegin;
-			}
-			size_t i = (FirstSampleChanged - m_FftResultBegin) / m_FftSpacing * m_FftResultArrayHeight;
-			size_t j = (LastSampleRequired - m_FftResultBegin) / m_FftSpacing * m_FftResultArrayHeight;
-			if (j > m_FftArraySize)
-			{
-				j = m_FftArraySize;
-			}
-			for ( ; i < j; i += m_FftResultArrayHeight)
-			{
+				size_t i = (((Sample - m_FftResultBegin) / m_FftSpacing + m_IndexOfFftBegin)
+								* m_FftResultArrayHeight) % m_FftArraySize;
 				// invalidate the column
 				m_pFftResultArray[i] = 0;
 			}
 		}
 		if (pInfo->Length != -1)
 		{
-			int samples = pInfo->Length;
-			samples -= samples % m_FftSpacing;
-			if (samples < m_FftResultBegin)
+			int sample = pInfo->Length;
+			sample -= sample % m_FftSpacing;
+			if (sample < m_FftResultBegin)
 			{
-				samples = m_FftResultBegin;
+				sample = m_FftResultBegin;
 			}
 
-			int i = (samples - m_FftResultBegin) / m_FftSpacing * m_FftResultArrayHeight;
 			// invalidate the columns that correspond to the deleted data
-			for ( ; i < m_FftArraySize; i += m_FftResultArrayHeight)
+			for (; sample < m_FftResultEnd; sample += m_FftSpacing)
 			{
 				// invalidate the column
+				size_t i = (((sample - m_FftResultBegin) / m_FftSpacing + m_IndexOfFftBegin)
+								* m_FftResultArrayHeight) % m_FftArraySize;
 				m_pFftResultArray[i] = 0;
 			}
 		}

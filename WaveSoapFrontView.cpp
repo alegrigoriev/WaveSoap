@@ -1559,7 +1559,7 @@ void CWaveSoapFrontView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
 
 		// calculate update boundaries
 		r1.left = WorldToWindowX(pInfo->Begin) - 1;
-		r1.right = WorldToWindowX(pInfo->End) + 1;
+		r1.right = WorldToWindowX(pInfo->End) + 2;
 
 		if (r1.left != r1.right
 			// limit the rectangles with the window boundaries

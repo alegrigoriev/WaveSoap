@@ -1,17 +1,17 @@
 Known problems and tasks:
 
+Put zoom buttons instead of the static fields in the view:
+  On top static: horizontal zoom,
+  On Bottom static: vertical zoom
 Test "reload compressed file" dialogs
 Add options dialog
-Put zoom buttons instead of the static fields in the view:
-  On top static: horiontal zoom,
-  On Bottom static: vertical zoom
 
 Add CD grabbing
 Add noise reduction estimation in spectrum section view
+Add RAW format save
 Add MP3 save
 Add WMA save
-Try to load sound from AVI with WM functions
-Add RAW format save
+Load sound from AVI
 Add sound recording
 Support "Play" in selection dialog
 Make Paste Special command (with Fade In/Fade Out etc)
@@ -47,8 +47,6 @@ Add splash screen
 Make recording from Internet stream
 
 Problems:
-in 1:1 scale, need to invalidate 1 more row
-in FFT view, sound modification doesn't invalidate enough FFT data
 Paste operation doesn't check if sampling rate is the same. Add dialog to resample
 Click on outline view moves the wave view a bit after the button released
 After file length increased to 1 sample from 0, scroll bar set to wrond scale
@@ -67,6 +65,8 @@ Save As dialog is not centered first time (comdlg problem?)
 ??? When time/seconds format is set for status bar, MM:SS is actually shown
 
 Fixed:
+in FFT view, sound modification doesn't invalidate enough FFT data
+in 1:1 scale, need to invalidate 1 more column
 CEqualizerContext didn't set Dirty flag in the buffers
 Min/Max sample position not divided by the sample size
 Save, Undo, Modify - causes to mark the file as unchanged

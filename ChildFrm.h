@@ -9,6 +9,7 @@
 #pragma once
 #endif // _MSC_VER > 1000
 #include "resource.h"
+#include <vector>
 
 /////////////////////////////////////////////////////////////////////////////
 // CVerticalTrackerBar view
@@ -52,6 +53,59 @@ protected:
 };
 
 /////////////////////////////////////////////////////////////////////////////
+// CMiniToolbar window
+
+class CMiniToolbar : public CWnd
+{
+// Construction
+public:
+	CMiniToolbar();
+
+// Attributes
+public:
+
+// Operations
+public:
+	void AddButton(CBitmap * pBitmap, int nID);
+
+	struct Button
+	{
+		CBitmap * pBitmap;
+		int nID;
+		bool bEnabled;
+	};
+	vector<Button> m_Buttons;
+	int GetHitCode(POINT point);
+	void HiliteButton(int nID, bool Hilite);
+
+	int m_ButtonClicked;
+	bool m_MouseCaptured;
+	bool m_LButtonPressed;
+	int m_ButtonHilit;
+// Overrides
+	// ClassWizard generated virtual function overrides
+	//{{AFX_VIRTUAL(CMiniToolbar)
+	//}}AFX_VIRTUAL
+
+// Implementation
+public:
+	virtual ~CMiniToolbar();
+
+	// Generated message map functions
+protected:
+	//{{AFX_MSG(CMiniToolbar)
+	afx_msg void OnCaptureChanged(CWnd *pWnd);
+	afx_msg BOOL OnEraseBkgnd(CDC* pDC);
+	afx_msg void OnLButtonDown(UINT nFlags, CPoint point);
+	afx_msg void OnLButtonUp(UINT nFlags, CPoint point);
+	afx_msg int OnMouseActivate(CWnd* pDesktopWnd, UINT nHitTest, UINT message);
+	afx_msg void OnMouseMove(UINT nFlags, CPoint point);
+	afx_msg void OnPaint();
+	//}}AFX_MSG
+	DECLARE_MESSAGE_MAP()
+};
+
+/////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////
 // CWaveMDIChildClient window
 class CWaveMDIChildClient : public CWnd
@@ -89,70 +143,20 @@ public:
 		FftViewID = AFX_IDW_PANE_FIRST + 16,
 	};
 
-	class CNoFocusButton : public CButton
-	{
-// Construction
-	public:
-		CNoFocusButton() {}
-
-// Attributes
-	public:
-
-// Operations
-	public:
-// Overrides
-		// ClassWizard generated virtual function overrides
-		//{{AFX_VIRTUAL(CNoFocusButton)
-	public:
-		//}}AFX_VIRTUAL
-	public:
-		// Generated message map functions
-	protected:
-		//{{AFX_MSG(CNoFocusButton)
-		afx_msg int OnMouseActivate(CWnd* pDesktopWnd, UINT nHitTest, UINT message);
-		afx_msg void OnSetFocus(CWnd* pOldWnd);
-		//}}AFX_MSG
-		DECLARE_MESSAGE_MAP()
-	};
-
-	class CNoFocusWnd : public CWnd
-	{
-// Construction
-	public:
-		CNoFocusWnd() {}
-
-// Attributes
-	public:
-
-// Operations
-	public:
-// Overrides
-		// ClassWizard generated virtual function overrides
-		//{{AFX_VIRTUAL(CNoFocusWnd)
-	public:
-		//}}AFX_VIRTUAL
-	public:
-		// Generated message map functions
-	protected:
-		//{{AFX_MSG(CNoFocusWnd)
-		afx_msg int OnMouseActivate(CWnd* pDesktopWnd, UINT nHitTest, UINT message);
-		//}}AFX_MSG
-		DECLARE_MESSAGE_MAP()
-	};
 
 	CWnd wStatic;
 	CWnd wStatic1;
 	CWnd wStaticFftU;
-	CNoFocusWnd wStaticFftL;
+	CWnd wStaticFftL;
 
-	CNoFocusButton m_btZoomInVert;
-	CNoFocusButton m_btZoomInHor;
-	CNoFocusButton m_btZoomOutVert;
-	CNoFocusButton m_btZoomOutHor;
-	CNoFocusButton m_btZoomInVertFft;
-	CNoFocusButton m_btZoomInHorSpSec;
-	CNoFocusButton m_btZoomOutVertFft;
-	CNoFocusButton m_btZoomOutHorSpSec;
+	CButton m_btZoomInVert;
+	CButton m_btZoomInHor;
+	CButton m_btZoomOutVert;
+	CButton m_btZoomOutHor;
+	CButton m_btZoomInVertFft;
+	CButton m_btZoomInHorSpSec;
+	CButton m_btZoomOutVertFft;
+	CButton m_btZoomOutHorSpSec;
 
 	CBitmap m_bmZoomInVert;
 	CBitmap m_bmZoomInHor;
@@ -163,7 +167,7 @@ public:
 	CBitmap m_bmZoomOutVertFft;
 	CBitmap m_bmZoomOutHorSpSec;
 
-	CToolBar m_FftZoomBar;
+	CMiniToolbar m_FftZoomBar;
 
 	CVerticalTrackerBar wTracker;
 	CScrollBar m_sb;
@@ -253,6 +257,7 @@ protected:
 /////////////////////////////////////////////////////////////////////////////
 
 
+/////////////////////////////////////////////////////////////////////////////
 //{{AFX_INSERT_LOCATION}}
 // Microsoft Visual C++ will insert additional declarations immediately before the previous line.
 
