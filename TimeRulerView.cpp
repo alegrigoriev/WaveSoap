@@ -140,7 +140,7 @@ void CTimeRulerView::DrawRulerSamples(CDC* pDC)
 		{
 			break;
 		}
-		int x = WorldToWindowX(nFirstSample);
+		int x = WorldToWindowXrnd(nFirstSample);
 
 		if (x > cr.right)
 		{
@@ -301,9 +301,6 @@ void CTimeRulerView::DrawRulerHhMmSs(CDC* pDC)
 	pDC->MoveTo(cr.left, cr.bottom - 6);
 	pDC->LineTo(cr.right, cr.bottom - 6);
 
-	TCHAR TimeSeparator = GetApp()->m_TimeSeparator;
-	TCHAR DecimalPoint = GetApp()->m_DecimalPoint;
-
 	double nFirstTime = floor(WindowToWorldX(cr.left - nLength) / (SampleRate * DistTime))
 						* DistTime;
 
@@ -323,7 +320,7 @@ void CTimeRulerView::DrawRulerHhMmSs(CDC* pDC)
 			break;
 		}
 
-		int x = WorldToWindowX(sample);
+		int x = WorldToWindowXrnd(sample);
 		if (x > cr.right)
 		{
 			break;
@@ -462,7 +459,7 @@ void CTimeRulerView::DrawRulerSeconds(CDC* pDC)
 			break;
 		}
 
-		int x = WorldToWindowX(sample);
+		int x = WorldToWindowXrnd(sample);
 
 		if (x > cr.right)
 		{
