@@ -197,6 +197,7 @@ public:
 
 	BOOL LoadRiffChunk();
 	BOOL ReadChunkString(ULONG Length, CString & String);
+	BOOL ReadChunkStringW(ULONG Length, CString & String);
 
 	BOOL IsOpen() const
 	{
@@ -436,63 +437,21 @@ public:
 			InfoChanged = false;
 		}
 		// move all data to a derived (bigger) type
-		InstanceDataWav & operator =(InstanceDataWav const & src)
-		{
-			if (this == & src)
-			{
-				return * this;
-			}
-			datack = src.datack;
-			fmtck = src.fmtck;
-			factck = src.factck;
-			wf = src.wf;
+		virtual void CopyMetadata(InstanceDataWav const & src);
 
-			Album = src.Album;
-			Author = src.Author;
-			Date = src.Date;
-			Genre = src.Genre;
-			Comment = src.Comment;
-			Title = src.Title;
-			DisplayTitle = src.DisplayTitle;
+		InstanceDataWav & operator =(InstanceDataWav const & src);
 
-			Markers = src.Markers;
-
-			Playlist = src.Playlist;
-			m_PeakData = src.m_PeakData;
-			InfoChanged = true;
-			BaseInstanceClass::operator =(src);
-			return *this;
-		}
 		virtual void MoveDataTo(InstanceData * dst)
 		{
 			InstanceDataWav * dst1 = static_cast<InstanceDataWav *>(dst);
 			*dst1 = *this;
 		}
-		void ResetMetadata()
-		{
-			Author.Empty();
-			DisplayTitle.Empty();
-			Album.Empty();
-			Copyright.Empty();
-			RecordingEngineer.Empty();
 
-			Title.Empty();
-			Date.Empty();
-			Genre.Empty();
-			Comment.Empty();
-			Subject.Empty();
-			Keywords.Empty();
-			Medium.Empty();
-			Source.Empty();
-			Digitizer.Empty();
-			DigitizationSource.Empty();
-
-			Markers.clear();
-			Playlist.clear();
-			InfoChanged = true;
-
-		}
+		virtual void ResetMetadata();
 	};
+
+	void CopyMetadata(CWaveFile const & src);
+
 	InstanceDataWav * GetInstanceData() const
 	{
 		return static_cast<InstanceDataWav *>(CDirectFile::GetInstanceData());

@@ -420,7 +420,7 @@ BOOL CWaveFile::LoadMetadata()
 		// scan subchunks and parse for data
 		switch (chunk.ckid)
 		{
-		case mmioFOURCC('L', 'I', 'S', 'T'):
+		case FOURCC_LIST:
 			if (! LoadListMetadata(chunk))
 			{
 				return FALSE;
@@ -490,6 +490,26 @@ BOOL CMmioFile::ReadChunkString(ULONG Length, CString & String)
 	return TRUE;
 }
 
+BOOL CMmioFile::ReadChunkStringW(ULONG Length, CString & String)
+{
+	// the string may be unicode or text
+	if (0 == Length)
+	{
+		String.Empty();
+		return TRUE;
+	}
+
+	CStringW s;
+	if (Length != Read(s.GetBuffer(Length / sizeof (WCHAR)), Length))
+	{
+		return FALSE;
+	}
+
+	s.ReleaseBuffer(Length - 1);
+	String = s;
+	return TRUE;
+}
+
 BOOL CWaveFile::ReadCueSheet(MMCKINFO & chunk)
 {
 	InstanceDataWav * pInstData = AllocateInstanceData<InstanceDataWav>();
@@ -504,6 +524,7 @@ BOOL CWaveFile::ReadCueSheet(MMCKINFO & chunk)
 		return FALSE;
 	}
 	pInstData->Markers.reserve(count);
+	pInstData->Markers.clear();
 
 	CuePointChunkItem item;
 	for (unsigned i = 0; i < count; i++)
@@ -535,6 +556,7 @@ BOOL CWaveFile::ReadPlaylist(MMCKINFO & chunk)
 		return FALSE;
 	}
 	pInstData->Playlist.reserve(count);
+	pInstData->Playlist.clear();
 
 	WavePlaylistItem item;
 	for (unsigned i = 0; i < count; i++)
@@ -572,10 +594,7 @@ WaveMarker * CWaveFile::GetCueItem(DWORD CueId)
 
 BOOL CWaveFile::LoadListMetadata(MMCKINFO & chunk)
 {
-	if (sizeof chunk.fccType != Read( & chunk.fccType, sizeof chunk.fccType))
-	{
-		return FALSE;
-	}
+	// fccType is already read
 	MMCKINFO subchunk;
 	InstanceDataWav * pInstData = AllocateInstanceData<InstanceDataWav>();
 
@@ -631,6 +650,58 @@ BOOL CWaveFile::LoadListMetadata(MMCKINFO & chunk)
 			Ascend(subchunk);
 		}
 		break;
+
+	case mmioFOURCC('U', 'N', 'F', 'O'):    // UNICODE INFO
+		while(Descend(subchunk, & chunk))
+		{
+			BOOL res = TRUE;
+			switch (subchunk.ckid)
+			{
+			case RIFFINFO_IART:
+				res = ReadChunkStringW(subchunk.cksize, pInstData->Author);
+				break;
+			case RIFFINFO_ICMT:
+				res = ReadChunkStringW(subchunk.cksize, pInstData->Comment);
+				break;
+			case RIFFINFO_ICOP:
+				res = ReadChunkStringW(subchunk.cksize, pInstData->Copyright);
+				break;
+			case RIFFINFO_IENG:
+				res = ReadChunkStringW(subchunk.cksize, pInstData->RecordingEngineer);
+				break;
+			case RIFFINFO_IGNR:
+				res = ReadChunkStringW(subchunk.cksize, pInstData->Genre);
+				break;
+			case RIFFINFO_IKEY:
+				res = ReadChunkStringW(subchunk.cksize, pInstData->Keywords);
+				break;
+			case RIFFINFO_IMED:
+				res = ReadChunkStringW(subchunk.cksize, pInstData->Medium);
+				break;
+			case RIFFINFO_INAM:
+				res = ReadChunkStringW(subchunk.cksize, pInstData->Title);
+				break;
+			case RIFFINFO_ISRC:
+				res = ReadChunkStringW(subchunk.cksize, pInstData->Source);
+				break;
+			case RIFFINFO_ITCH:
+				res = ReadChunkStringW(subchunk.cksize, pInstData->Digitizer);
+				break;
+			case RIFFINFO_ISBJ:
+				res = ReadChunkStringW(subchunk.cksize, pInstData->Subject);
+				break;
+			case RIFFINFO_ISRF:
+				res = ReadChunkStringW(subchunk.cksize, pInstData->DigitizationSource);
+				break;
+			}
+			if ( ! res)
+			{
+				return FALSE;
+			}
+			Ascend(subchunk);
+		}
+		break;
+
 	case mmioFOURCC('a', 'd', 't', 'l'):
 		while(Descend(subchunk, & chunk))
 		{
@@ -647,7 +718,7 @@ BOOL CWaveFile::LoadListMetadata(MMCKINFO & chunk)
 				{
 					return FALSE;
 				}
-				pMarker = GetCueItem(CueId);
+				pMarker = GetCueItem(ltxt.NameId);
 				pMarker->LengthSamples = ltxt.SampleLength;
 
 				break;
@@ -794,17 +865,17 @@ BOOL CWaveFile::CreateWaveFile(CWaveFile * pTemplateFile, WAVEFORMATEX * pTempla
 		{
 			return FALSE;
 		}
-		if (flags & CreateWaveFileSizeSpecified
-			&& 0 != SizeOrSamples)
-		{
-			return SetFileLength(SizeOrSamples);
-		}
 		if (NULL == AllocateInstanceData<InstanceDataWav>())
 		{
 			Close();
 			return FALSE;
 		}
 
+		if ((flags & CreateWaveFileSizeSpecified)
+			&& 0 != SizeOrSamples)
+		{
+			return SetFileLength(SizeOrSamples);
+		}
 		return TRUE;
 	}
 	if (FALSE == Open(name, OpenFlags))
@@ -1719,5 +1790,76 @@ SAMPLE_INDEX CWaveFile::PositionToSample(SAMPLE_POSITION position) const
 
 	ASSERT(position >= datack->dwDataOffset);
 	return (position - datack->dwDataOffset) / SampleSize();
+}
+
+using CWaveFile::InstanceDataWav;
+void InstanceDataWav::CopyMetadata(InstanceDataWav const & src)
+{
+	Album = src.Album;
+	Author = src.Author;
+	Date = src.Date;
+	Genre = src.Genre;
+	Comment = src.Comment;
+	Title = src.Title;
+	DisplayTitle = src.DisplayTitle;
+
+	Markers = src.Markers;
+
+	Playlist = src.Playlist;
+	m_PeakData = src.m_PeakData;
+	InfoChanged = true;
+}
+
+InstanceDataWav & InstanceDataWav::operator =(InstanceDataWav const & src)
+{
+	if (this == & src)
+	{
+		return * this;
+	}
+	datack = src.datack;
+	fmtck = src.fmtck;
+	factck = src.factck;
+	wf = src.wf;
+
+	CopyMetadata(src);
+
+	BaseInstanceClass::operator =(src);
+	return *this;
+}
+
+void InstanceDataWav::ResetMetadata()
+{
+	Author.Empty();
+	DisplayTitle.Empty();
+	Album.Empty();
+	Copyright.Empty();
+	RecordingEngineer.Empty();
+
+	Title.Empty();
+	Date.Empty();
+	Genre.Empty();
+	Comment.Empty();
+	Subject.Empty();
+	Keywords.Empty();
+	Medium.Empty();
+	Source.Empty();
+	Digitizer.Empty();
+	DigitizationSource.Empty();
+
+	Markers.clear();
+	Playlist.clear();
+	InfoChanged = true;
+
+}
+
+void CWaveFile::CopyMetadata(CWaveFile const & src)
+{
+	InstanceDataWav * pDst = GetInstanceData();
+	InstanceDataWav const * pSrc = src.GetInstanceData();
+	if (NULL != pDst
+		&& NULL != pSrc)
+	{
+		pDst->CopyMetadata(*pSrc);
+	}
 }
 
