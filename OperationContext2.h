@@ -13,7 +13,7 @@ class CExpressionEvaluationContext : public COperationContext
 {
 public:
 	CExpressionEvaluationContext(CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString, LPCTSTR OperationName);
-	virtual BOOL ProcessBuffer(void * buf, size_t len, DWORD offset);
+	virtual BOOL ProcessBuffer(void * buf, size_t len, DWORD offset, BOOL bBackward = FALSE);
 	BOOL SetExpression(LPCSTR * ppszExpression);
 	CString m_ErrorString;
 	void Evaluate();
@@ -225,7 +225,7 @@ public:
 		m_GetBufferFlags = CDirectFile::GetBufferWriteOnly;
 	}
 	virtual BOOL OperationProc();
-	virtual BOOL ProcessBuffer(void * buf, size_t len, DWORD offset);
+	virtual BOOL ProcessBuffer(void * buf, size_t len, DWORD offset, BOOL bBackward = FALSE);
 	BOOL InitExpand(CWaveFile & DstFile, long StartSample, long length,
 					int chan, BOOL NeedUndo);
 };
@@ -253,6 +253,8 @@ public:
 	~CEqualizerContext();
 
 	BOOL m_bClipped;
+	BOOL m_bZeroPhase;
+	BOOL m_bSecondPass;
 	double m_MaxClipped;
 
 	// the coefficients are: 3 numerator's coeffs and 3 denominator's coeffs
@@ -261,10 +263,10 @@ public:
 	// 2 channels, 2 prev input samples for each filter
 	// and 2 prev output samples
 	double m_PrevSamples[2][MaxNumberOfEqualizerBands][4];
-	//virtual BOOL OperationProc();
-	virtual BOOL ProcessBuffer(void * buf, size_t len, DWORD offset);
+	virtual BOOL ProcessBuffer(void * buf, size_t len, DWORD offset, BOOL bBackward = FALSE);
 	virtual void PostRetire(BOOL bChildContext = FALSE);
 	virtual BOOL Init();
+	virtual BOOL InitPass(int nPass);
 private:
 	double CalculateResult(int ch, int Input);
 };

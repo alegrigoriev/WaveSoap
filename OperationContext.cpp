@@ -24,6 +24,9 @@ COperationContext::COperationContext(class CWaveSoapFrontDoc * pDoc, LPCTSTR Ope
 	m_pUndoContext(NULL),
 	m_OperationName(OperationName),
 	PercentCompleted(0),
+	m_NumberOfForwardPasses(1),
+	m_NumberOfBackwardPasses(0),
+	m_CurrentPass(1),
 	m_GetBufferFlags(CDirectFile::GetBufferAndPrefetchNext),
 	m_ReturnBufferFlags(0)
 {
@@ -95,63 +98,164 @@ BOOL COperationContext::OperationProc()
 		m_Flags |= OperationContextFinished;
 		return TRUE;
 	}
-	if (m_DstCopyPos >= m_DstEnd)
-	{
-		m_Flags |= OperationContextFinished;
-		return TRUE;
-	}
 
 	DWORD dwStartTime = timeGetTime();
 	DWORD dwOperationBegin = m_DstCopyPos;
 
-	DWORD LeftToWrite = 0;
-	DWORD WasLockedToWrite = 0;
+	LONGLONG LeftToWrite = 0;
+	LONG WasLockedToWrite = 0;
 	void * pDstBuf;
-
-	do
+	if (m_CurrentPass > 0)
 	{
-		DWORD SizeToWrite = m_DstEnd - m_DstCopyPos;
-		WasLockedToWrite = m_DstFile.GetDataBuffer( & pDstBuf,
-													SizeToWrite, m_DstCopyPos, m_GetBufferFlags);
-
-		if (0 == WasLockedToWrite)
+		if (m_DstCopyPos >= m_DstEnd)
 		{
-			return FALSE;
+			m_CurrentPass++;
+			m_DstCopyPos = m_DstStart;
+			if (m_CurrentPass <= m_NumberOfForwardPasses)
+			{
+				if ( ! InitPass(m_CurrentPass))
+				{
+					return FALSE;
+				}
+			}
 		}
-
-		LeftToWrite = WasLockedToWrite;
-		// save the changed data to undo buffer
-		if (NULL != m_pUndoContext)
+		if (m_CurrentPass > m_NumberOfForwardPasses)
 		{
-			m_pUndoContext->SaveUndoData(pDstBuf, WasLockedToWrite,
-										m_DstCopyPos, m_DstChan);
-			m_pUndoContext->m_DstEnd = m_pUndoContext->m_SrcSavePos;
-			m_pUndoContext->m_SrcEnd = m_pUndoContext->m_DstSavePos;
+			m_DstCopyPos = m_DstEnd;
+			m_CurrentPass = -1;
+			if (m_CurrentPass >= -m_NumberOfBackwardPasses)
+			{
+				if ( ! InitPass(m_CurrentPass))
+				{
+					return FALSE;
+				}
+			}
 		}
-		// virtual function which modifies the actual data:
-		ProcessBuffer(pDstBuf, WasLockedToWrite, m_DstCopyPos - m_DstStart);
-
-		m_DstFile.ReturnDataBuffer(pDstBuf, WasLockedToWrite,
-									m_ReturnBufferFlags);
-		m_DstCopyPos += WasLockedToWrite;
 	}
-	while (m_DstCopyPos < m_DstEnd
-			&& timeGetTime() - dwStartTime < 200);
 
-	if (m_ReturnBufferFlags & CDirectFile::ReturnBufferDirty)
+	if (m_CurrentPass > 0)
 	{
-		// notify the view
-		int nSampleSize = m_DstFile.SampleSize();
-		int nFirstSample = (dwOperationBegin - m_DstFile.GetDataChunk()->dwDataOffset)
+		do
+		{
+			LONGLONG SizeToWrite = m_DstEnd - m_DstCopyPos;
+			WasLockedToWrite = m_DstFile.GetDataBuffer( & pDstBuf,
+														SizeToWrite, m_DstCopyPos, m_GetBufferFlags);
+
+			if (0 == WasLockedToWrite)
+			{
+				return FALSE;
+			}
+
+			LeftToWrite = WasLockedToWrite;
+			// save the data to be changed to undo buffer, but only on the first forward pass
+			if (1 == m_CurrentPass
+				&& NULL != m_pUndoContext)
+			{
+				m_pUndoContext->SaveUndoData(pDstBuf, WasLockedToWrite,
+											m_DstCopyPos, m_DstChan);
+				m_pUndoContext->m_DstEnd = m_pUndoContext->m_SrcSavePos;
+				m_pUndoContext->m_SrcEnd = m_pUndoContext->m_DstSavePos;
+			}
+			// virtual function which modifies the actual data:
+			ProcessBuffer(pDstBuf, WasLockedToWrite, m_DstCopyPos - m_DstStart, FALSE);
+
+			m_DstFile.ReturnDataBuffer(pDstBuf, WasLockedToWrite,
+										m_ReturnBufferFlags);
+			m_DstCopyPos += WasLockedToWrite;
+		}
+		while (m_DstCopyPos < m_DstEnd
+				&& timeGetTime() - dwStartTime < 200);
+
+		if (m_ReturnBufferFlags & CDirectFile::ReturnBufferDirty)
+		{
+			// notify the view
+			int nSampleSize = m_DstFile.SampleSize();
+			int nFirstSample = (dwOperationBegin - m_DstFile.GetDataChunk()->dwDataOffset)
+								/ nSampleSize;
+			int nLastSample = (m_DstCopyPos - m_DstFile.GetDataChunk()->dwDataOffset)
 							/ nSampleSize;
-		int nLastSample = (m_DstCopyPos - m_DstFile.GetDataChunk()->dwDataOffset)
-						/ nSampleSize;
-		pDocument->SoundChanged(m_DstFile.GetFileID(), nFirstSample, nLastSample);
-	}
+			pDocument->SoundChanged(m_DstFile.GetFileID(), nFirstSample, nLastSample);
+		}
 
-	if (m_DstEnd > m_DstStart)
+		if (m_DstEnd > m_DstStart)
+		{
+			PercentCompleted = int(100. * (m_DstCopyPos - m_DstStart + double(m_DstEnd - m_DstStart) * (m_CurrentPass - 1))
+									/ (double(m_DstEnd - m_DstStart) * (m_NumberOfForwardPasses + m_NumberOfBackwardPasses)));
+		}
+	}
+	else
 	{
-		PercentCompleted = 100i64 * (m_DstCopyPos - m_DstStart) / (m_DstEnd - m_DstStart);
+		// backward pass
+		if (m_DstCopyPos <= m_DstStart)
+		{
+			m_DstCopyPos = m_DstEnd;
+			m_CurrentPass--;
+			if (m_CurrentPass >= -m_NumberOfBackwardPasses)
+			{
+				if ( ! InitPass(m_CurrentPass))
+				{
+					return FALSE;
+				}
+			}
+		}
+		if (m_CurrentPass < -m_NumberOfBackwardPasses)
+		{
+			m_Flags |= OperationContextFinished;
+			return TRUE;
+		}
+
+		do
+		{
+			LONGLONG SizeToWrite = LONGLONG(m_DstStart) - LONGLONG(m_DstCopyPos);
+			// length requested and length returned are <0,
+			// pointer returned points on the end of the buffer
+			WasLockedToWrite = m_DstFile.GetDataBuffer( & pDstBuf,
+														SizeToWrite, m_DstCopyPos, m_GetBufferFlags);
+
+			if (0 == WasLockedToWrite)
+			{
+				return FALSE;
+			}
+
+			LeftToWrite = WasLockedToWrite;
+			// save the data to be changed to undo buffer, but only on the first forward pass
+			// TODO: make for backward pass only
+			if (0 && 1 == m_CurrentPass
+				&& NULL != m_pUndoContext)
+			{
+				m_pUndoContext->SaveUndoData(pDstBuf, WasLockedToWrite,
+											m_DstCopyPos, m_DstChan);
+				m_pUndoContext->m_DstEnd = m_pUndoContext->m_SrcSavePos;
+				m_pUndoContext->m_SrcEnd = m_pUndoContext->m_DstSavePos;
+			}
+			// virtual function which modifies the actual data:
+			ProcessBuffer(WasLockedToWrite + (PCHAR)pDstBuf, -WasLockedToWrite, m_DstCopyPos - m_DstStart, TRUE);   // backward=TRUE
+
+			m_DstFile.ReturnDataBuffer(pDstBuf, WasLockedToWrite,
+										m_ReturnBufferFlags);
+			// length requested and length returned are <0,
+			m_DstCopyPos += WasLockedToWrite;
+		}
+		while (m_DstCopyPos > m_DstStart
+				&& timeGetTime() - dwStartTime < 200);
+
+		if (m_ReturnBufferFlags & CDirectFile::ReturnBufferDirty)
+		{
+			// notify the view
+			int nSampleSize = m_DstFile.SampleSize();
+			int nLastSample = (dwOperationBegin - m_DstFile.GetDataChunk()->dwDataOffset)
+							/ nSampleSize;
+			int nFirstSample = (m_DstCopyPos - m_DstFile.GetDataChunk()->dwDataOffset)
+								/ nSampleSize;
+			pDocument->SoundChanged(m_DstFile.GetFileID(), nFirstSample, nLastSample);
+		}
+
+		if (m_DstEnd > m_DstStart)
+		{
+			PercentCompleted = int(100. * (m_DstEnd - m_DstCopyPos + double(m_DstEnd - m_DstStart)
+										* (- 1 - m_CurrentPass + m_NumberOfForwardPasses))
+									/ (double(m_DstEnd - m_DstStart) * (m_NumberOfForwardPasses + m_NumberOfBackwardPasses)));
+		}
 	}
 	return TRUE;
 }
@@ -2246,7 +2350,7 @@ CVolumeChangeContext::~CVolumeChangeContext()
 {
 }
 
-BOOL CVolumeChangeContext::ProcessBuffer(void * buf, size_t BufferLength, DWORD offset)
+BOOL CVolumeChangeContext::ProcessBuffer(void * buf, size_t BufferLength, DWORD offset, BOOL bBackward)
 {
 	__int16 * pDst = (__int16 *) buf;
 	if (m_DstFile.Channels() == 1)
@@ -2480,40 +2584,40 @@ BOOL CVolumeChangeContext::ProcessBuffer(void * buf, size_t BufferLength, DWORD 
 		// special code for mute and inverse
 		if (0 == volume)
 		{
-			for (int i = 0; i < BufferLength / (2 * sizeof pDst[0]); i++, pDst += 2)
+			for (int i = 0; i < BufferLength / sizeof pDst[0]; i+=2)
 			{
-				pDst[0] = 0;
+				pDst[i] = 0;
 			}
 		}
 		else if (-1. == volume)
 		{
-			for (int i = 0; i < BufferLength / (2 * sizeof pDst[0]); i++, pDst += 2)
+			for (int i = 0; i < BufferLength / sizeof pDst[0]; i += 2)
 			{
-				long tmp = -pDst[0];
+				long tmp = -pDst[i];
 				if (tmp == 0x8000)
 				{
-					pDst[0] = 0x7FFF;
+					pDst[i] = 0x7FFF;
 					m_bClipped = TRUE;
 					m_MaxClipped = 32768.;
 				}
 				else
 				{
-					pDst[0] = __int16(tmp);
+					pDst[i] = __int16(tmp);
 				}
 			}
 		}
 		else
 		{
-			for (i = 0; i < BufferLength / (2 * sizeof pDst[0]); i++, pDst += 2)
+			for (int i = 0; i < BufferLength / sizeof pDst[0]; i += 2)
 			{
-				long tmp = fround(pDst[0] * volume);
+				long tmp = fround(pDst[i] * volume);
 				if (tmp > 0x7FFF)
 				{
 					if (m_MaxClipped < tmp)
 					{
 						m_MaxClipped = tmp;
 					}
-					pDst[0] = 0x7FFF;
+					pDst[i] = 0x7FFF;
 					m_bClipped = TRUE;
 				}
 				else if (tmp < -0x8000)
@@ -2522,41 +2626,13 @@ BOOL CVolumeChangeContext::ProcessBuffer(void * buf, size_t BufferLength, DWORD 
 					{
 						m_MaxClipped = -tmp;
 					}
-					pDst[0] = -0x8000;
+					pDst[i] = -0x8000;
 					m_bClipped = TRUE;
 				}
 				else
 				{
-					pDst[0] = __int16(tmp);
+					pDst[i] = __int16(tmp);
 				}
-			}
-		}
-
-		BufferLength -= i * (2 * sizeof pDst[0]);
-		if (2 == BufferLength)
-		{
-			long tmp = fround(pDst[0] * volume);
-			if (tmp > 0x7FFF)
-			{
-				if (m_MaxClipped < tmp)
-				{
-					m_MaxClipped = tmp;
-				}
-				pDst[0] = 0x7FFF;
-				m_bClipped = TRUE;
-			}
-			else if (tmp < -0x8000)
-			{
-				if (m_MaxClipped < -tmp)
-				{
-					m_MaxClipped = -tmp;
-				}
-				pDst[0] = -0x8000;
-				m_bClipped = TRUE;
-			}
-			else
-			{
-				pDst[0] = __int16(tmp);
 			}
 		}
 	}
@@ -2644,7 +2720,7 @@ BOOL CDcOffsetContext::OperationProc()
 	return COperationContext::OperationProc();
 }
 
-BOOL CDcOffsetContext::ProcessBuffer(void * buf, size_t BufferLength, DWORD offset)
+BOOL CDcOffsetContext::ProcessBuffer(void * buf, size_t BufferLength, DWORD offset, BOOL bBackward)
 {
 	__int16 * pDst = (__int16 *) buf;
 	if (m_DstFile.Channels() == 1)
@@ -2915,7 +2991,7 @@ CStatisticsContext::CStatisticsContext(CWaveSoapFrontDoc * pDoc,
 	m_DstChan = ALL_CHANNELS;
 }
 
-BOOL CStatisticsContext::ProcessBuffer(void * buf, size_t BufferLength, DWORD offset)
+BOOL CStatisticsContext::ProcessBuffer(void * buf, size_t BufferLength, DWORD offset, BOOL bBackward)
 {
 	__int16 * pSrc = (__int16 *) buf;
 	if (m_DstFile.Channels() == 1)

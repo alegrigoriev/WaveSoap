@@ -297,6 +297,7 @@
 #define IDC_RADIO_COMPRESSION_NONE      1186
 #define IDC_RADIO_COMPRESSION_ALAW      1187
 #define IDC_STATIC_COMPRESSION          1188
+#define IDC_CHECK_ZERO_PHASE            1189
 #define IDC_VIEW_RULER_SAMPLES          32771
 #define IDC_VIEW_RULER_HHMMSS           32772
 #define IDC_VIEW_RULER_SECONDS          32773
@@ -538,6 +539,8 @@
 #define ID_VIEW_SHOW_CROSSHAIR          40098
 #define ID_VIEW_SS_ZOOMVERT_NORMAL      40099
 #define ID_PROCESS_EQUALIZER            40100
+#define ID_VIEW_INCREASE_FFT_BANDS      40105
+#define ID_VIEW_DECREASE_FFT_BANDS      40106
 #define ID_TOOLS_SYNTHESIS              65535
 
 // Next default values for new objects
@@ -546,8 +549,8 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_3D_CONTROLS                     1
 #define _APS_NEXT_RESOURCE_VALUE        179
-#define _APS_NEXT_COMMAND_VALUE         40105
-#define _APS_NEXT_CONTROL_VALUE         1189
+#define _APS_NEXT_COMMAND_VALUE         40107
+#define _APS_NEXT_CONTROL_VALUE         1190
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif

@@ -227,6 +227,8 @@ BEGIN_MESSAGE_MAP(CWaveFftView, CWaveSoapFrontView)
 	ON_UPDATE_COMMAND_UI(ID_FFT_WINDOW_SINE, OnUpdateFftWindowSine)
 	ON_COMMAND(ID_FFT_WINDOW_HAMMING, OnFftWindowHamming)
 	ON_UPDATE_COMMAND_UI(ID_FFT_WINDOW_HAMMING, OnUpdateFftWindowHamming)
+	ON_COMMAND(ID_VIEW_DECREASE_FFT_BANDS, OnViewDecreaseFftBands)
+	ON_COMMAND(ID_VIEW_INCREASE_FFT_BANDS, OnViewIncreaseFftBands)
 	//}}AFX_MSG_MAP
 	ON_COMMAND(ID_VIEW_SS_ZOOMINVERT, OnViewZoomInVert)
 	ON_COMMAND(ID_VIEW_SS_ZOOMOUTVERT, OnViewZoomOutVert)
@@ -1401,4 +1403,22 @@ void CWaveFftView::OnFftWindowHamming()
 void CWaveFftView::OnUpdateFftWindowHamming(CCmdUI* pCmdUI)
 {
 	pCmdUI->SetRadio(WindowTypeHamming == m_FftWindowType);
+}
+
+void CWaveFftView::OnViewDecreaseFftBands()
+{
+	int order = GetApp()->m_FftBandsOrder;
+	if (order > 6)
+	{
+		OnSetBands(order - 1);
+	}
+}
+
+void CWaveFftView::OnViewIncreaseFftBands()
+{
+	int order = GetApp()->m_FftBandsOrder;
+	if (order < 13)
+	{
+		OnSetBands(order + 1);
+	}
 }

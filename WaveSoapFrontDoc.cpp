@@ -5678,7 +5678,9 @@ void CWaveSoapFrontDoc::OnProcessEqualizer()
 			pContext->m_BandCoefficients[i][j] = dlg.m_wGraph.m_BandCoefficients[i][j];
 		}
 	}
+
 	pContext->m_NumOfBands = dlg.m_nBands;
+	pContext->m_bZeroPhase = dlg.m_wGraph.m_bZeroPhase;
 
 	if ( ! pContext->InitDestination(m_WavFile, dlg.m_Start,
 									dlg.m_End, dlg.m_Chan, dlg.m_bUndo))
