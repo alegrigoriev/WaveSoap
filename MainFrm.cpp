@@ -19,9 +19,9 @@ IMPLEMENT_DYNAMIC(CMainFrame, CMDIFrameWnd)
 
 BEGIN_MESSAGE_MAP(CMainFrame, CMDIFrameWnd)
 	//{{AFX_MSG_MAP(CMainFrame)
-		// NOTE - the ClassWizard will add and remove mapping macros here.
-		//    DO NOT EDIT what you see in these blocks of generated code !
 	ON_WM_CREATE()
+	ON_WM_PALETTECHANGED()
+	ON_WM_QUERYNEWPALETTE()
 	//}}AFX_MSG_MAP
 	// Global help commands
 	ON_COMMAND(ID_HELP_FINDER, CMDIFrameWnd::OnHelpFinder)
@@ -30,7 +30,7 @@ BEGIN_MESSAGE_MAP(CMainFrame, CMDIFrameWnd)
 	ON_COMMAND(ID_DEFAULT_HELP, CMDIFrameWnd::OnHelpFinder)
 	ON_UPDATE_COMMAND_UI(ID_INDICATOR_FILE_SIZE, OnUpdateIndicatorFileSize)
 	ON_UPDATE_COMMAND_UI(ID_INDICATOR_SAMPLE_RATE, OnUpdateIndicatorSampleRate)
-	ON_UPDATE_COMMAND_UI(ID_INDICATOR_SAMPLE_SIZE, OnUpdateIndicatorSampleSize)
+	//ON_UPDATE_COMMAND_UI(ID_INDICATOR_SAMPLE_SIZE, OnUpdateIndicatorSampleSize)
 	ON_UPDATE_COMMAND_UI(ID_INDICATOR_CHANNELS, OnUpdateIndicatorChannels)
 END_MESSAGE_MAP()
 
@@ -38,7 +38,7 @@ static UINT indicators[] =
 {
 	ID_SEPARATOR,           // status line indicator
 	ID_INDICATOR_SAMPLE_RATE,
-	ID_INDICATOR_SAMPLE_SIZE,
+//    ID_INDICATOR_SAMPLE_SIZE,
 	ID_INDICATOR_CHANNELS,
 	ID_INDICATOR_FILE_SIZE,
 };
@@ -223,4 +223,30 @@ void CMainFrame::Dump(CDumpContext& dc) const
 
 /////////////////////////////////////////////////////////////////////////////
 // CMainFrame message handlers
+
+
+void CMainFrame::OnPaletteChanged(CWnd* pFocusWnd)
+{
+	TRACE("CMainFrame::OnPaletteChanged\n");
+	if (pFocusWnd != this)
+	{
+		OnQueryNewPalette();
+	}
+}
+
+BOOL CMainFrame::OnQueryNewPalette()
+{
+	TRACE("CMainFrame::OnQueryNewPalette\n");
+	CDC * dc = GetDC();
+	CPalette* hOldPal = dc->SelectPalette(GetApp()->GetPalette(), FALSE);
+	int redraw = dc->RealizePalette();
+	if (redraw)
+	{
+		GetApp()->BroadcastUpdate();
+	}
+	dc->SelectPalette(hOldPal, FALSE);
+	ReleaseDC(dc);
+	//CMDIFrameWnd::OnQueryNewPalette();
+	return TRUE;
+}
 

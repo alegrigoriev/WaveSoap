@@ -18,7 +18,6 @@ public:
 // Attributes
 public:
 	void GetMessageString(UINT nID, CString& rMessage) const;
-
 // Operations
 public:
 	void ResetLastStatusMessage()
@@ -46,18 +45,17 @@ protected:  // control bar embedded members
 	CToolBar    m_wndToolBar;
 	CReBar      m_wndReBar;
 	CDialogBar      m_wndDlgBar;
-
 // Generated message map functions
 protected:
 	//{{AFX_MSG(CMainFrame)
 	afx_msg int OnCreate(LPCREATESTRUCT lpCreateStruct);
-	// NOTE - the ClassWizard will add and remove member functions here.
-	//    DO NOT EDIT what you see in these blocks of generated code!
+	afx_msg void OnPaletteChanged(CWnd* pFocusWnd);
+	afx_msg BOOL OnQueryNewPalette();
+	//}}AFX_MSG
 	afx_msg void OnUpdateIndicatorFileSize(CCmdUI* pCmdUI);
 	afx_msg void OnUpdateIndicatorSampleRate(CCmdUI* pCmdUI);
 	afx_msg void OnUpdateIndicatorSampleSize(CCmdUI* pCmdUI);
 	afx_msg void OnUpdateIndicatorChannels(CCmdUI* pCmdUI);
-	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 };
 
