@@ -21,6 +21,7 @@ public:
 public:
 	void ExchangeData(CDataExchange* pDX, SAMPLE_INDEX & sample);
 	SAMPLE_INDEX GetTimeSample();
+	SAMPLE_INDEX UpdateTimeSample();
 	// Operations
 public:
 	void SetTimeFormat(int format)
