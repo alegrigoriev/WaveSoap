@@ -20,6 +20,8 @@ public:
 // Dialog Data
 	//{{AFX_DATA(CInsertSilenceDialog)
 	enum { IDD = IDD_DIALOG_INSERT_SILENCE };
+	CSpinButtonCtrl	m_SpinStart;
+	CTimeSpinCtrl	m_SpinLength;
 	CTimeEdit	m_eLength;
 	CTimeEdit	m_eStart;
 	int		m_nChannel;
