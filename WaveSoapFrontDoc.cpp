@@ -3285,7 +3285,7 @@ void CWaveSoapFrontDoc::SetSampleRate(unsigned SampleRate)
 	{
 		return;
 	}
-	WAVEFORMATEX * pWf = WaveFormat();
+	//WAVEFORMATEX * pWf = WaveFormat();
 	if (WaveSampleRate() == SampleRate)
 	{
 		return;
@@ -3293,7 +3293,7 @@ void CWaveSoapFrontDoc::SetSampleRate(unsigned SampleRate)
 	CWaveFormat wf;
 	wf.InitFormat(WAVE_FORMAT_PCM, SampleRate, WaveChannels());
 
-	CReplaceFormatContext * pContext = new CReplaceFormatContext(this, IDS_SAMPLE_RATE_CHANGE_OPERATION_NAME, pWf);
+	CReplaceFormatContext * pContext = new CReplaceFormatContext(this, IDS_SAMPLE_RATE_CHANGE_OPERATION_NAME, wf);
 	if (UndoEnabled())
 	{
 		pContext->CreateUndo();
@@ -3310,6 +3310,7 @@ void CWaveSoapFrontDoc::OnUpdateSampleRate(CCmdUI* pCmdUI, unsigned SampleRate)
 		return;
 	}
 	pCmdUI->SetRadio(WaveSampleRate() == SampleRate);
+	pCmdUI->Enable( ! IsReadOnly());
 }
 
 void CWaveSoapFrontDoc::OnSamplerate11025()
@@ -4874,16 +4875,16 @@ void CWaveSoapFrontDoc::OnActivateDocument(BOOL bActivate)
 
 void CWaveSoapFrontDoc::GetCurrentStatusString(CString & str)
 {
-	m_StatusStringLock.Lock();
+	CSimpleCriticalSectionLock lock(m_StatusStringLock);
+
 	str = m_CurrentStatusString;
-	m_StatusStringLock.Unlock();
 }
 
 void CWaveSoapFrontDoc::SetCurrentStatusString(const CString & str)
 {
-	m_StatusStringLock.Lock();
+	CSimpleCriticalSectionLock lock(m_StatusStringLock);
+
 	m_CurrentStatusString = str;
-	m_StatusStringLock.Unlock();
 }
 
 void CWaveSoapFrontDoc::OnProcessChannels()
