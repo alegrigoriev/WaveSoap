@@ -2352,7 +2352,7 @@ BOOL CWaveSoapFrontDoc::OnSaveRawFile(class COperationContext ** ppOp, int flags
 	}
 	else
 	{
-		pContext->Execute();
+		pContext.release()->Execute();
 		return FALSE;   // not saved yet
 	}
 }
