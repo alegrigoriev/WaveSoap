@@ -46,7 +46,7 @@ void CDeclickPage::DoDataExchange(CDataExchange* pDX)
 	DDX_Control(pDX, IDC_EDIT_ATTACK_RATE, m_AttackRate);
 	DDX_Text(pDX, IDC_EDIT_CLICK_LOG_FILENAME, m_ClickLogFilename);
 	DDX_Text(pDX, IDC_EDIT_MAX_CLICK_LENGTH, m_MaxClickLength);
-	DDV_MinMaxInt(pDX, m_MaxClickLength, 6, 48);
+	DDV_MinMaxInt(pDX, m_MaxClickLength, 6, 64);
 	DDX_Text(pDX, IDC_EDIT_MIN_CLICK_AMPLITUDE, m_MinClickAmplitude);
 	DDV_MinMaxInt(pDX, m_MinClickAmplitude, 50, 5000);
 	DDX_Check(pDX, IDC_CHECK_LOG_CLICKS, m_bLogClicks);
@@ -83,7 +83,7 @@ void CDeclickPage::LoadValuesFromRegistry()
 	pApp->Profile.AddBoolItem(_T("Declicker"), _T("LogClicksOnly"), m_bLogClicksOnly, FALSE);
 	pApp->Profile.AddItem(_T("Declicker"), _T("ClickLogFilename"), m_ClickLogFilename, _T(""));
 	pApp->Profile.AddItem(_T("Declicker"), _T("ClickImportFilename"), m_ClickImportFilename, _T(""));
-	pApp->Profile.AddItem(_T("Declicker"), _T("MaxClickLength"), m_MaxClickLength, 32, 6, 48);
+	pApp->Profile.AddItem(_T("Declicker"), _T("MaxClickLength"), m_MaxClickLength, 32, 6, 64);
 	pApp->Profile.AddItem(_T("Declicker"), _T("MinClickAmplitude"), m_MinClickAmplitude, 200, 50, 5000);
 	pApp->Profile.AddItem(_T("Declicker"), _T("AttackRate"), m_dAttackRate, 0.5, 0.001, 0.99);
 	pApp->Profile.AddItem(_T("Declicker"), _T("DecayRate"), m_dEnvelopDecayRate, 0.01, 0.001, 0.99);

@@ -122,10 +122,10 @@ public:
 	BOOL SetClickSourceFile(LPCTSTR szFilename);
 	BOOL SetClickLogFile(LPCTSTR szFilename);
 
-	enum {PREV_BUF_SIZE = 256,
+	enum {PREV_BUF_SIZE = 2048,
 		PREV_MASK = PREV_BUF_SIZE-1,
 		CLICK_LENGTH = 64,
-		ANALYZE_LAG = 128};
+		ANALYZE_LAG = 1024};
 	CBackBuffer<int, int> m_prev[2];
 	CBackBuffer<int, int> m_prev3[2];
 //    int m_prev[2][PREV_BUF_SIZE];
@@ -155,6 +155,8 @@ protected:
 	FILE * pInClicksFile;
 	FILE * pOutClicksFile;
 };
+
+void InterpolateGap(CBackBuffer<int, int> & data, int nLeft, int n_Right);
 
 class CNoiseReduction: public CWaveProc
 {

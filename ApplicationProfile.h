@@ -6,7 +6,7 @@ class CApplicationProfileItem
 {
 public:
 	CApplicationProfileItem * Next;
-	virtual void WriteData() =0;
+	virtual void WriteData(BOOL bForceWrite=FALSE) =0;
 	virtual void ReadData() =0;
 	virtual void ResetToDefault() = 0;
 	virtual void ResetToInitial() = 0;
@@ -23,7 +23,7 @@ class CApplicationProfileItemStr: public CApplicationProfileItem
 	CString InitialData;
 	CString m_Default;
 public:
-	virtual void WriteData();
+	virtual void WriteData(BOOL bForceWrite=FALSE);
 	virtual void ReadData();
 	virtual void ResetToDefault();
 	virtual void ResetToInitial();
@@ -40,7 +40,7 @@ class CApplicationProfileItemLong: public CApplicationProfileItem
 	LONG m_MinVal;
 	LONG m_MaxVal;
 public:
-	virtual void WriteData();
+	virtual void WriteData(BOOL bForceWrite=FALSE);
 	virtual void ReadData();
 	virtual void ResetToDefault();
 	virtual void ResetToInitial();
@@ -57,7 +57,7 @@ class CApplicationProfileItemInt: public CApplicationProfileItem
 	int m_MinVal;
 	int m_MaxVal;
 public:
-	virtual void WriteData();
+	virtual void WriteData(BOOL bForceWrite=FALSE);
 	virtual void ReadData();
 	virtual void ResetToDefault();
 	virtual void ResetToInitial();
@@ -74,7 +74,7 @@ class CApplicationProfileItemUlong: public CApplicationProfileItem
 	ULONG m_MinVal;
 	ULONG m_MaxVal;
 public:
-	virtual void WriteData();
+	virtual void WriteData(BOOL bForceWrite);
 	virtual void ReadData();
 	virtual void ResetToDefault();
 	virtual void ResetToInitial();
@@ -91,7 +91,7 @@ class CApplicationProfileItemDouble: public CApplicationProfileItem
 	double m_MinVal;
 	double m_MaxVal;
 public:
-	virtual void WriteData();
+	virtual void WriteData(BOOL bForceWrite=FALSE);
 	virtual void ReadData();
 	virtual void ResetToDefault();
 	virtual void ResetToInitial();
@@ -106,7 +106,7 @@ class CApplicationProfileItemFloat: public CApplicationProfileItemDouble
 	double InitialData;
 	double IntermediateValue;
 public:
-	virtual void WriteData();
+	virtual void WriteData(BOOL bForceWrite=FALSE);
 	virtual void ReadData();
 	virtual void ResetToDefault();
 	virtual void ResetToInitial();
@@ -120,6 +120,12 @@ class CApplicationProfile
 public:
 	CApplicationProfile();
 	~CApplicationProfile();
+	// saves the section in INI file. If section name is empty,
+	// saves all of them
+	BOOL ExportSection(LPCTSTR Section, LPCTSTR szFilename);
+	// restores the section from INI file. If section name is empty,
+	// restores all of them.
+	BOOL ImportSection(LPCTSTR Section, LPCTSTR szFilename);
 	BOOL AddItem(LPCTSTR Section, LPCTSTR szName, CString & str,
 				LPCTSTR szDefault=_T(""),
 				int MaxLen=256);
