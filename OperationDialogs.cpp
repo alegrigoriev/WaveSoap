@@ -244,12 +244,12 @@ END_MESSAGE_MAP()
 
 void CVolumeChangeDialog::OnUpdateVolumeLeft(CCmdUI * pCmdUI)
 {
-	pCmdUI->Enable(m_bLockChannels || 1 != m_Chan);
+	pCmdUI->Enable(m_bLockChannels || (m_Chan & SPEAKER_FRONT_LEFT));
 }
 
 void CVolumeChangeDialog::OnUpdateVolumeRight(CCmdUI * pCmdUI)
 {
-	pCmdUI->Enable(m_bLockChannels || 0 != m_Chan);
+	pCmdUI->Enable(m_bLockChannels || (m_Chan & SPEAKER_FRONT_RIGHT));
 }
 
 void CVolumeChangeDialog::OnSelchangeCombodbPercent()
