@@ -218,6 +218,10 @@ public:
 	SAMPLE_POSITION m_SrcStart;
 	SAMPLE_POSITION m_SrcEnd;
 	SAMPLE_POSITION m_SrcPos;
+
+	virtual MEDIA_FILE_SIZE GetTotalOperationSize() const;
+
+	virtual MEDIA_FILE_SIZE GetCompletedOperationSize() const;
 };
 
 class CTwoFilesOperation : public COneFileOperation
@@ -246,13 +250,7 @@ class CThroughProcessOperation : public CTwoFilesOperation
 	typedef CThroughProcessOperation ThisClass;
 public:
 	CThroughProcessOperation(class CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString,
-							ULONG Flags, LPCTSTR OperationName = _T(""))
-		: BaseClass(pDoc, StatusString, Flags, OperationName)
-		, m_NumberOfForwardPasses(1)
-		, m_NumberOfBackwardPasses(0)
-		, m_CurrentPass(1)
-	{
-	}
+							ULONG Flags, LPCTSTR OperationName = _T(""));
 
 	typedef std::auto_ptr<ThisClass> auto_ptr;
 
@@ -260,9 +258,14 @@ public:
 	virtual BOOL InitPass(int nPass) { return TRUE; }
 	virtual BOOL OperationProc();
 	virtual BOOL ProcessBuffer(void * buf, size_t len, SAMPLE_POSITION offset, BOOL bBackward = FALSE) = 0;
+
 	int m_NumberOfForwardPasses;
 	int m_NumberOfBackwardPasses;
 	int m_CurrentPass;
+
+	virtual MEDIA_FILE_SIZE GetTotalOperationSize() const;
+
+	virtual MEDIA_FILE_SIZE GetCompletedOperationSize() const;
 };
 
 // additional custom flags for the contexts
@@ -304,6 +307,7 @@ public:
 protected:
 	ListHead<COperationContext> m_ContextList;
 	ListHead<COperationContext> m_DoneList;
+	MEDIA_FILE_SIZE m_DoneSize;
 };
 
 class CScanPeaksContext : public COneFileOperation
