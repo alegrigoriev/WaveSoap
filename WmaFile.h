@@ -254,7 +254,7 @@ protected:
 	BOOL volatile m_bNeedNextSample;
 	CWaveFile m_DstFile;
 
-	SAMPLE_POSITION m_DstCopyPos;
+	SAMPLE_POSITION m_DstPos;
 	SAMPLE_INDEX m_DstCopySample;
 
 	IWMReader * m_Reader;
