@@ -141,7 +141,6 @@ public:
 	CEdit	m_eArtist;
 	CEdit	m_eAlbum;
 	CEdit	m_eSaveFolderOrFile;
-	CStatic	m_StaticFormat;
 	CComboBox	m_SpeedCombo;
 	CComboBox	m_DrivesCombo;
 	CListCtrl	m_lbTracks;
@@ -179,6 +178,7 @@ public:
 		DiskStateReady,
 		DiskStateNotReady,
 		DiskStateNoCdDrive,
+		DiskStateBusy,
 	} m_DiskReady;
 
 // Overrides
@@ -201,7 +201,9 @@ protected:
 	CdAddressMSF m_PlaybackAddress;
 	LONG m_PlaybackSectors;
 	BOOL FillPlaybackBuffers();
+
 	void StopCdPlayback();
+	void StartCdPlayback(unsigned track);
 
 	CApplicationProfile m_Profile;
 
@@ -215,8 +217,6 @@ protected:
 	void CreateImageList();
 	void CheckForDiskChanged();
 	void CheckForDrivesChanged();
-
-	void UpdateFormatStatic();
 
 	// Generated message map functions
 	LRESULT OnKickIdle(WPARAM, LPARAM);
@@ -233,11 +233,9 @@ protected:
 	afx_msg void OnButtonMore();
 	afx_msg void OnSelchangeComboDrives();
 	afx_msg void OnDestroy();
-	afx_msg void OnButtonBrowseSaveFolder();
 	afx_msg void OnButtonCddb();
 	afx_msg void OnButtonDeselectAll();
 	afx_msg void OnButtonSelectAll();
-	afx_msg void OnButtonSetFormat();
 	afx_msg void OnChangeEditAlbum();
 	afx_msg void OnChangeEditArtist();
 	afx_msg void OnClickListTracks(NMHDR* pNMHDR, LRESULT* pResult);
@@ -249,6 +247,9 @@ protected:
 	afx_msg void OnSelchangeComboSpeed();
 	afx_msg void OnItemchangedListTracks(NMHDR* pNMHDR, LRESULT* pResult);
 	virtual void OnCancel();
+	afx_msg void OnButtonBrowseSaveFolder();
+	afx_msg void OnContextMenu(CWnd* pWnd, CPoint point);
+	afx_msg void OnDblclkListTracks(NMHDR* pNMHDR, LRESULT* pResult);
 	//}}AFX_MSG
 	void OnMetricsChange();
 	afx_msg LRESULT OnDeviceChange(UINT, DWORD);

@@ -787,6 +787,19 @@ BEGIN
     END
 END
 
+IDR_MENU_CDGRAB MENU DISCARDABLE 
+BEGIN
+    POPUP " "
+    BEGIN
+        MENUITEM "Play",                        IDC_BUTTON_PLAY
+        MENUITEM SEPARATOR
+        MENUITEM "Check",                       ID_CDGRAB_SETCHECK
+        MENUITEM "Check all",                   IDC_BUTTON_SELECT_ALL
+        MENUITEM "Uncheck",                     ID_CDGRAB_UNCHECK
+        MENUITEM "Uncheck all",                 IDC_BUTTON_DESELECT_ALL
+    END
+END
+
 
 /////////////////////////////////////////////////////////////////////////////
 //
@@ -1425,7 +1438,7 @@ BEGIN
                     "Button",BS_AUTOCHECKBOX | WS_TABSTOP,7,52,110,10
 END
 
-IDD_DIALOG_CD_GRABBING DIALOGEX 0, 0, 313, 295
+IDD_DIALOG_CD_GRABBING DIALOGEX 0, 0, 313, 310
 STYLE WS_POPUP | WS_CAPTION | WS_SYSMENU | WS_THICKFRAME
 CAPTION "CD Audio Extraction"
 FONT 8, "MS Sans Serif"
@@ -1435,34 +1448,32 @@ BEGIN
                     LVS_SHOWSELALWAYS | LVS_EDITLABELS | LVS_ALIGNLEFT | 
                     LVS_NOSORTHEADER | WS_BORDER | WS_TABSTOP,7,34,299,117,
                     WS_EX_CLIENTEDGE
-    CONTROL         "Assign to all tracks:",IDC_RADIO_ASSIGN_ATTRIBUTES,
-                    "Button",BS_AUTORADIOBUTTON | WS_GROUP | WS_TABSTOP,7,
-                    155,94,10
+    CONTROL         "Assign Album/Artist to all tracks:",
+                    IDC_RADIO_ASSIGN_ATTRIBUTES,"Button",BS_AUTORADIOBUTTON | 
+                    WS_GROUP | WS_TABSTOP,7,155,119,10
     CONTROL         "Assign to selected tracks only:",
                     IDC_RADIO_ASSIGN_SELECTED_TRACK,"Button",
-                    BS_AUTORADIOBUTTON,106,155,114,10
+                    BS_AUTORADIOBUTTON,134,155,113,10
     LTEXT           "Album:",IDC_STATIC_ALBUM,7,172,25,8
-    EDITTEXT        IDC_EDIT_ALBUM,33,169,203,14,ES_AUTOHSCROLL
-    LTEXT           "Artist:",IDC_STATIC_ARTIST,7,188,23,8
-    EDITTEXT        IDC_EDIT_ARTIST,33,186,203,14,ES_AUTOHSCROLL
-    CHECKBOX        " Play",IDC_BUTTON_PLAY,242,152,31,14,BS_PUSHLIKE
-    PUSHBUTTON      "Stop",IDC_BUTTON_STOP,277,152,29,14
-    PUSHBUTTON      "Lookup in CDDB...",IDC_BUTTON_CDDB,242,169,64,14
-    LTEXT           "Folder to store the files:",IDC_STATIC_STORE_FOLDER,7,
-                    204,104,8
-    EDITTEXT        IDC_EDIT_FOLDER_OR_FILE,7,217,230,14,ES_AUTOHSCROLL | 
+    EDITTEXT        IDC_EDIT_ALBUM,41,169,203,14,ES_AUTOHSCROLL
+    LTEXT           "Artist:",IDC_STATIC_ARTIST,7,189,23,8
+    EDITTEXT        IDC_EDIT_ARTIST,41,186,203,14,ES_AUTOHSCROLL
+    CHECKBOX        " Play",IDC_BUTTON_PLAY,247,152,18,14,BS_PUSHLIKE
+    PUSHBUTTON      "Stop",IDC_BUTTON_STOP,268,152,17,14
+    PUSHBUTTON      "Lookup in Internet database...",IDC_BUTTON_CDDB,256,169,
+                    50,31,BS_MULTILINE
+    LTEXT           "Save in:",IDC_STATIC_STORE_FOLDER,7,213,31,8
+    EDITTEXT        IDC_EDIT_FOLDER_OR_FILE,41,210,184,14,ES_AUTOHSCROLL | 
                     WS_GROUP
-    PUSHBUTTON      "...",IDC_BUTTON_BROWSE_SAVE_FOLDER,243,217,15,14
-    CONTROL         "Store file(s) immediately",IDC_RADIO_STORE_IMMEDIATELY,
-                    "Button",BS_AUTORADIOBUTTON | WS_GROUP | WS_TABSTOP,7,
-                    237,91,10
-    CONTROL         "Open file(s) for editing first",
+    PUSHBUTTON      "...",IDC_BUTTON_BROWSE_SAVE_FOLDER,229,210,15,14
+    CONTROL         "Save files immediately",IDC_RADIO_STORE_IMMEDIATELY,
+                    "Button",BS_AUTORADIOBUTTON | WS_GROUP | WS_TABSTOP,141,
+                    242,96,10
+    CONTROL         "Open files in the editor first",
                     IDC_RADIO_LOAD_FOR_EDITING,"Button",BS_AUTORADIOBUTTON,
-                    106,237,101,10
-    LTEXT           "Static",IDC_STATIC_FORMAT,7,254,150,34
-    PUSHBUTTON      "Set format...",IDC_BUTTON_SET_FORMAT,186,256,50,14
-    DEFPUSHBUTTON   "OK",IDOK,256,237,50,14,WS_GROUP
-    PUSHBUTTON      "Cancel",IDCANCEL,256,256,50,14
+                    141,256,97,10
+    DEFPUSHBUTTON   "OK",IDOK,256,252,50,14,WS_GROUP
+    PUSHBUTTON      "Cancel",IDCANCEL,256,270,50,14
     LTEXT           "&Drive:",IDC_STATIC,7,9,24,8
     COMBOBOX        IDC_COMBO_DRIVES,33,7,42,58,CBS_DROPDOWNLIST | 
                     WS_VSCROLL | WS_TABSTOP
@@ -1471,7 +1482,17 @@ BEGIN
                     WS_VSCROLL | WS_TABSTOP
     PUSHBUTTON      "Mark all tracks",IDC_BUTTON_SELECT_ALL,195,7,54,14
     PUSHBUTTON      "Unmark all",IDC_BUTTON_DESELECT_ALL,252,7,54,14
-    PUSHBUTTON      "Help",IDHELP,256,274,50,14
+    PUSHBUTTON      "Help",IDHELP,256,289,50,14
+    CONTROL         "Windows WAV file (WAV)",IDC_RADIO_WAV_FORMAT,"Button",
+                    BS_AUTORADIOBUTTON,10,243,126,10
+    CONTROL         "Windows Media Audio file (WMA)",IDC_RADIO_WMA_FORMAT,
+                    "Button",BS_AUTORADIOBUTTON,10,257,127,10
+    CONTROL         "MPEG-1 Layer III file (MP3)",IDC_RADIO3,"Button",
+                    BS_AUTORADIOBUTTON,10,271,108,10
+    GROUPBOX        "Save As",IDC_STATIC_SAVE_AS,7,232,238,70
+    COMBOBOX        IDC_COMBO_BITRATE,51,285,130,48,CBS_DROPDOWNLIST | 
+                    WS_VSCROLL | WS_TABSTOP
+    LTEXT           "Bitrate:",IDC_STATIC,11,287,33,8
 END
 
 IDD_DIALOG_REOPEN_DIRECT DIALOG DISCARDABLE  0, 0, 187, 131
@@ -2385,7 +2406,7 @@ BEGIN
         LEFTMARGIN, 7
         RIGHTMARGIN, 306
         TOPMARGIN, 7
-        BOTTOMMARGIN, 288
+        BOTTOMMARGIN, 303
     END
 
     IDD_DIALOG_REOPEN_DIRECT, DIALOG
@@ -3260,9 +3281,9 @@ BEGIN
                             "You do not have sufficient permissions to create folder ""%s"""
     IDS_CD_READING_ERROR_FORMAT 
                             "CD could not be read at address %d:%02d because of data error"
-    IDS_CD_SAVE_WAV_FORMAT  "Format: Windows WAV file\nEncoding: PCM, 16 bit, Stereo, 44100 samples/s"
-    IDS_CD_SAVE_MP3_FORMAT  "Format: MP3 file; encoder: %s\nBitrate: %d kbit/s"
-    IDS_CD_SAVE_WMA_FORMAT  "Format: Windows Media (.wma) file\nBitrate: %d kbit/s"
+    IDS_NO_CD_DRIVES        "CD drives not found"
+    IDS_CD_DRIVE_INACCESSIBLE "Could not get access to CD drive %c:"
+    IDS_CD_DRIVE_BUSY       "CD drive %c: is busy"
 END
 
 #endif    // English (U.S.) resources
