@@ -551,6 +551,7 @@ public:
 	}
 
 	NUMBER_OF_CHANNELS NumChannelsFromMask(CHANNEL_MASK Channels) const;
+	bool AllChannels(CHANNEL_MASK Channels) const;
 
 	NUMBER_OF_SAMPLES NumberOfSamples() const;
 	CWaveFile & operator =(CWaveFile &);
