@@ -47,6 +47,7 @@ Add splash screen
 Make recording from Internet stream
 
 Problems:
+When FFT array is reallocated, it is invalidated
 Paste operation doesn't check if sampling rate is the same. Add dialog to resample
 Click on outline view moves the wave view a bit after the button released
 After file length increased to 1 sample from 0, scroll bar set to wrond scale

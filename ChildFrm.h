@@ -57,6 +57,7 @@ protected:
 
 class CMiniToolbar : public CWnd
 {
+	DECLARE_DYNAMIC(CMiniToolbar)
 // Construction
 public:
 	CMiniToolbar();
@@ -77,6 +78,7 @@ public:
 	vector<Button> m_Buttons;
 	int GetHitCode(POINT point);
 	void HiliteButton(int nID, bool Hilite);
+	void EnableButton(int Index, BOOL bEnable);
 
 	int m_ButtonClicked;
 	bool m_MouseCaptured;
@@ -92,6 +94,9 @@ public:
 	virtual ~CMiniToolbar();
 
 	// Generated message map functions
+	void OnUpdateCmdUI(CFrameWnd* pTarget, BOOL bDisableIfNoHndler);
+	LRESULT OnIdleUpdateCmdUI(WPARAM wParam, LPARAM);
+	void RedrawButton(int Index);
 protected:
 	//{{AFX_MSG(CMiniToolbar)
 	afx_msg void OnCaptureChanged(CWnd *pWnd);
