@@ -364,6 +364,30 @@ BOOL CWaveFile::FindData()
 	return FindChunk(m_datack, & m_riffck);
 }
 
+unsigned CWaveFile::SampleRate() const
+{
+	if (m_pWf)
+	{
+		return m_pWf->nSamplesPerSec;
+	}
+	else
+	{
+		return 0;
+	}
+}
+
+int CWaveFile::Channels() const
+{
+	if (m_pWf)
+	{
+		return m_pWf->nChannels;
+	}
+	else
+	{
+		return 0;
+	}
+}
+
 //DWORD CAviFile::Seek(DWORD position)
 	//{
 	//return SetFilePointer(m_hFile, position, NULL, FILE_BEGIN);
