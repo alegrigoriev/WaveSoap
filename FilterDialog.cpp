@@ -89,10 +89,6 @@ void CFilterDialog::DoDataExchange(CDataExchange* pDX)
 	DDX_Check(pDX, IDC_CHECK_HIGHPASS, m_wGraph.m_bHighPass);
 	DDX_Check(pDX, IDC_CHECK_STOPBAND, m_wGraph.m_bNotchFilter);
 
-	if (pDX->m_bSaveAndValidate)
-	{
-		m_Profile.UnloadAll();
-	}
 }
 
 
@@ -265,6 +261,12 @@ CFilterGraphWnd::CFilterGraphWnd(CApplicationProfile & Profile, int SampleRate)
 		s.Format(_T("Frequency%d"), n + 1);
 		Profile.AddItem(_T("Filter"), s, m_Frequencies[n], m_Frequencies[n], 0.00314, 3.14);
 	}
+
+	ValidateFilterSettings();
+}
+
+void CFilterGraphWnd::ValidateFilterSettings()
+{
 	// check for correct frequencies and gain
 	if (m_Gain[HpfPassbandIndex] <= m_Gain[HpfStopbandIndex])
 	{
@@ -965,6 +967,8 @@ void CFilterDialog::OnButtonResetBands()
 
 void CFilterDialog::OnButtonLoad()
 {
+	UpdateData(TRUE);
+
 	CString FileName;
 	CString Filter;
 	Filter.LoadString(IDS_FILTER_FILE_FILTER);
@@ -983,14 +987,29 @@ void CFilterDialog::OnButtonLoad()
 	{
 		return;
 	}
+
 	FileName = dlg.GetPathName();
 	m_Profile.ImportSection(_T("Filter"), FileName);
-	//m_wGraph.SetNumberOfBands(m_nBands);
-	//m_Gain.SetData(m_wGraph.GetCurrentBandGainDb());
+
+	UpdateData(FALSE);
+
+	m_wGraph.ValidateFilterSettings();
+
+	m_EditGain.SetData(m_wGraph.GetCurrentPointGainDb());
+	m_EditFrequency.SetData(m_wGraph.GetCurrentPointFrequencyHz());
+	// init MINMAXINFO
+	m_wGraph.RebuildFilters();
 }
 
 void CFilterDialog::OnButtonSaveAs()
 {
+	if (!UpdateData(TRUE))
+	{
+		TRACE("UpdateData failed.\n");
+		// the UpdateData routine will set focus to correct item
+		return;
+	}
+
 	CString FileName;
 	CString Filter;
 	Filter.LoadString(IDS_FILTER_FILE_FILTER);
@@ -1379,7 +1398,8 @@ void CFilterDialog::OnOK()
 		return;
 	}
 
-	CResizableDialog::OnOK();
+	BaseClass::OnOK();
+	m_Profile.FlushAll();
 }
 
 void CFilterDialog::OnNotifyGraph(NMHDR * /*pNotifyStruct*/,
@@ -1602,8 +1622,6 @@ BOOL Filter::CreateHighpassElliptic(double PassFreq, double PassLoss,
 	delete pDecomposed;
 	return TRUE;
 }
-
-
 
 void CFilterDialog::OnKillfocusEditFrequency()
 {
