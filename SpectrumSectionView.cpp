@@ -98,7 +98,7 @@ void CSpectrumSectionView::OnDraw(CDC* pDC)
 
 	m_FftOrder = pFftView->m_FftOrder;
 	int nSampleSize = pDoc->WaveSampleSize();
-	int nChannels = pDoc->WaveChannels();
+	NUMBER_OF_CHANNELS nChannels = pDoc->WaveChannels();
 	LONG nStartSample = pDoc->m_SelectionStart;
 	int NumberOfFftSamplesAveraged =
 		(pDoc->m_SelectionEnd - pDoc->m_SelectionStart) / m_FftOrder + 1;
@@ -120,7 +120,7 @@ void CSpectrumSectionView::OnDraw(CDC* pDC)
 		nStartSample = 0;
 	}
 
-	DWORD start = nStartSample * nSampleSize + pDoc->WaveDataChunk()->dwDataOffset;
+	DWORD start = pDoc->m_WavFile.SampleToPosition(nStartSample);
 	DWORD FftStepInFile = m_FftOrder * nSampleSize;
 
 	int length = FftStepInFile * 2;
@@ -146,7 +146,8 @@ void CSpectrumSectionView::OnDraw(CDC* pDC)
 	int LastFftSample = int(m_FftOrder - pFftView->m_FirstbandVisible);
 	int FirstFftSample = LastFftSample + MulDiv(-rows, m_FftOrder, TotalRows);
 	int NoiseReductionBegin = MulDiv(nBeginFrequency, m_FftOrder,
-									pDoc->WaveFormat()->nSamplesPerSec);
+									pDoc->WaveSampleRate());
+
 	int NoiseReductionBeginY = NoiseReductionBegin;
 //    int NoiseReductionBeginX;
 //    int NoiseReductionEndX;
@@ -209,7 +210,7 @@ void CSpectrumSectionView::OnDraw(CDC* pDC)
 	{
 		return;
 	}
-	__int16 * pSrcIntArray = new __int16[m_FftOrder * 2 * nChannels];
+	WAVE_SAMPLE * pSrcIntArray = new WAVE_SAMPLE[m_FftOrder * 2 * nChannels];
 	if (NULL == pSrcIntArray)
 	{
 		delete[] pSrcArray;
