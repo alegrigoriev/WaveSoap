@@ -1590,19 +1590,20 @@ void CWaveSoapFrontView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
 		GetClientRect( & r);
 		CRect r1;
 		if (0) TRACE("OnUpdate Sound Changed from %d to %d, length=%d\n",
-					pInfo->Begin, pInfo->End, pInfo->Length);
+					pInfo->m_Begin, pInfo->m_End, pInfo->m_NewLength);
 
 		r1.top = r.top;
 		r1.bottom = r.bottom;
-		if (pInfo->Length != -1)
+		if (pInfo->m_NewLength != -1)
 		{
 			m_WaveBuffer.Invalidate(); // invalidate the data in draw buffer
 			// length changed, set new extents and caret position
-			if ((r.Width() - 100) * m_HorizontalScale / 2 > pInfo->Length)
+			if (r.Width() > 100
+				&& NUMBER_OF_SAMPLES((r.Width() - 100) * m_HorizontalScale / 2) > pInfo->m_NewLength)
 			{
-				SetExtents(0, pInfo->Length, 0, 0);
+				SetExtents(0, pInfo->m_NewLength, 0, 0);
 			}
-			UpdateMaxExtents(pInfo->Length);
+			UpdateMaxExtents(pInfo->m_NewLength);
 			Invalidate();
 		}
 		else
@@ -1612,8 +1613,8 @@ void CWaveSoapFrontView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
 		}
 
 		// calculate update boundaries
-		r1.left = WorldToWindowX(pInfo->Begin) - 1;
-		r1.right = WorldToWindowX(pInfo->End) + 2;
+		r1.left = WorldToWindowX(pInfo->m_Begin) - 1;
+		r1.right = WorldToWindowX(pInfo->m_End) + 2;
 
 		if (r1.left != r1.right
 			// limit the rectangles with the window boundaries
@@ -1637,7 +1638,7 @@ void CWaveSoapFrontView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
 			&& NULL != pHint)
 	{
 		CSoundUpdateInfo * pInfo = static_cast<CSoundUpdateInfo *> (pHint);
-		UpdatePlaybackCursor(pInfo->Begin, pInfo->End);
+		UpdatePlaybackCursor(pInfo->m_Begin, pInfo->m_End);
 	}
 	else if (lHint == CWaveSoapFrontDoc::UpdateSampleRateChanged
 			&& NULL == pHint)
