@@ -119,12 +119,19 @@ enum {
 	SaveFile_SameName = 4,
 	SaveFile_CloseAfterSave = 8,
 	SaveFile_SaveCopy = 0x10,
-	SaveFile_Mp3File = OpenDocumentMp3File,
-	SaveFile_WmaFile = OpenDocumentWmaFile,
-	SaveFile_RawFile = OpenDocumentRawFile,
-	SaveFile_AviFile = OpenDocumentAviFile,
-	SaveRawFileMsbFirst = OpenRawFileMsbFirst,
+	SaveFile_DontPromptReopen = 0x20,
+	SaveFile_DontCopyMetadata = 0x40,
+	SaveFile_SameFolder = 0x80,
+	SaveFile_SavePartial = 0x100,
+	SaveFile_SameFormat = 0x200,
+	SaveFile_WavFile = 0,
+	SaveFile_Mp3File = OpenDocumentMp3File,  // 0x1000
+	SaveFile_WmaFile = OpenDocumentWmaFile, //0x2000
+	SaveFile_RawFile = OpenDocumentRawFile, //0x4000
+	SaveFile_AviFile = OpenDocumentAviFile, //0x8000
+	SaveRawFileMsbFirst = OpenRawFileMsbFirst,   //0x10000
 	SaveFile_NonWavFile = OpenDocumentNonWavFile,
+
 };
 
 class CWaveSoapFrontDoc : public CDocument
@@ -205,14 +212,22 @@ public:
 	void DeletePermanentUndoRedo();
 	//BOOL InitUndoRedo(class CUndoRedoContext * pContext, BOOL IsRedo);
 
-	BOOL OnSaveDocument(LPCTSTR lpszPathName, DWORD flags, WAVEFORMATEX * pWf);
+	BOOL OnSaveDocument(LPCTSTR lpszPathName, DWORD flags, WAVEFORMATEX const * pWf);
+
+	BOOL OnSaveFileOrPart(int flags, LPCTSTR FullTargetName, WAVEFORMATEX const * pWf,
+						SAMPLE_INDEX Begin = 0, SAMPLE_INDEX End = LAST_SAMPLE);
 	BOOL OnSaveDirectFile();
 	BOOL OnSaveBufferedPcmFile(int flags, LPCTSTR FullTargetName);
 	BOOL OnSaveBufferedPcmFileCopy(int flags, LPCTSTR FullTargetName);
-	BOOL OnSaveConvertedFile(int flags, LPCTSTR FullTargetName, WAVEFORMATEX * pWf);
-	BOOL OnSaveMp3File(int flags, LPCTSTR FullTargetName, WAVEFORMATEX * pWf);
-	BOOL OnSaveWmaFile(int flags, LPCTSTR FullTargetName, WAVEFORMATEX * pWf);
-	BOOL OnSaveRawFile(int flags, LPCTSTR FullTargetName, WAVEFORMATEX * pWf);
+
+	BOOL OnSaveConvertedFile(int flags, LPCTSTR FullTargetName, WAVEFORMATEX const * pWf,
+							SAMPLE_INDEX Begin = 0, SAMPLE_INDEX End = LAST_SAMPLE);
+	BOOL OnSaveMp3File(int flags, LPCTSTR FullTargetName, WAVEFORMATEX const * pWf,
+						SAMPLE_INDEX Begin = 0, SAMPLE_INDEX End = LAST_SAMPLE);
+	BOOL OnSaveWmaFile(int flags, LPCTSTR FullTargetName, WAVEFORMATEX const * pWf,
+						SAMPLE_INDEX Begin = 0, SAMPLE_INDEX End = LAST_SAMPLE);
+	BOOL OnSaveRawFile(int flags, LPCTSTR FullTargetName, WAVEFORMATEX const * pWf,
+						SAMPLE_INDEX Begin = 0, SAMPLE_INDEX End = LAST_SAMPLE);
 
 	// flags OpenDocumentReadOnly - ReadOnly, 2 - DirectMode
 	virtual BOOL OnOpenDocument(LPCTSTR lpszPathName, int flags);
