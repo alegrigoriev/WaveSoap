@@ -586,14 +586,18 @@ void CChildFrame::OnUpdateFrameTitle(BOOL bAddToTitle)
 
 		if (NULL != pDocument)
 		{
+			CString s;
 			if (pDocument->m_bReadOnly)
 			{
-				szText += _T(" (Read Only)");
+				s.LoadString(IDS_SUFFIX_READ_ONLY);
+				szText += s;
 			}
 			else if (pDocument->m_bDirectMode)
 			{
-				szText += _T(" (Direct)");
+				s.LoadString(IDS_SUFFIX_DIRECT);
+				szText += s;
 			}
+
 			if (pDocument->IsModified())
 			{
 				szText += _T(" *");

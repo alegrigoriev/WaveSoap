@@ -8,6 +8,7 @@
 #include "FolderDialog.h"
 #include "FileDialogWithHistory.h"
 #include <afxpriv.h>
+#include "resource.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -58,7 +59,7 @@ void CBatchSaveTargetDlg::DoDataExchange(CDataExchange* pDX)
 	DDX_Radio(pDX, IDC_RADIO_SAVE_TYPE, m_FileSaveType);
 	//}}AFX_DATA_MAP
 	m_eNormalizeDb.ExchangeData(pDX, m_dNormalizeDb,
-								_T("Normalize level"), _T("dB"), -20., 0.);
+								IDS_INPUT_NAME_NORMALIZE_LEVEL, IDS_DECIBEL, -20., 0.);
 	if (pDX->m_bSaveAndValidate)
 	{
 		// check that folder exists and accessible
