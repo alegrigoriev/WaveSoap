@@ -68,12 +68,15 @@ struct NewFileParameters
 
 class CWaveSoapDocTemplate : public CMultiDocTemplate
 {
+	typedef CMultiDocTemplate BaseClass;
 public:
 	CWaveSoapDocTemplate( UINT nIDResource, UINT nIDStringResource,
 						CRuntimeClass* pDocClass,
-						CRuntimeClass* pFrameClass, CRuntimeClass* pViewClass )
-		:CMultiDocTemplate(nIDResource, pDocClass, pFrameClass, pViewClass),
-		m_OpenDocumentFlags(0)
+						CRuntimeClass* pFrameClass,
+						CRuntimeClass* pViewClass,
+						DWORD OpenFlags)
+		:BaseClass(nIDResource, pDocClass, pFrameClass, pViewClass),
+		m_OpenDocumentFlags(OpenFlags)
 	{
 		if ( ! m_strDocStrings.LoadString(nIDStringResource))
 		{
@@ -85,12 +88,14 @@ public:
 											//BOOL bMakeVisible = TRUE
 										);
 
-	DWORD m_OpenDocumentFlags;
 	virtual void OnIdle();
 	void BroadcastUpdate(UINT lHint);
 	BOOL IsAnyDocumentModified();
 	BOOL CanSaveAnyDocument();
 	void SaveAll();
+protected:
+	Confidence MatchDocType(LPCTSTR lpszPathName, CDocument*& rpDocMatch);
+	DWORD m_OpenDocumentFlags;
 };
 
 class CWaveSoapFrontApp : public CWinApp
@@ -176,6 +181,7 @@ public:
 	class CWaveSoapDocTemplate * m_pMP3TypeTemplate;
 	class CWaveSoapDocTemplate * m_pWavTypeTemplate;
 	class CWaveSoapDocTemplate * m_pWmaTypeTemplate;
+	class CWaveSoapDocTemplate * m_pAllWmTypeTemplate;
 	class CWaveSoapDocTemplate * m_pRawTypeTemplate;
 
 	int m_DefaultPlaybackDevice;
