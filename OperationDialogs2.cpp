@@ -218,6 +218,8 @@ CCdGrabbingDialog::CCdGrabbingDialog(CWnd* pParent /*=NULL*/)
 	, m_AlbumHistory( & m_Profile, _T("CdRead"), _T("Album%d"), 15, CStringHistory::CaseSensitive)
 	, m_ArtistHistory( & m_Profile, _T("CdRead"), _T("Artist%d"), 15, CStringHistory::CaseSensitive)
 	, m_FolderHistory( & m_Profile, _T("CdRead"), _T("SaveFolder%d"), 10)
+	, m_Acm( & CWaveFormat::CdAudioFormat)
+	, m_Wf( & CWaveFormat::CdAudioFormat)
 {
 	//{{AFX_DATA_INIT(CCdGrabbingDialog)
 	m_RadioAssignAttributes = -1;
@@ -311,8 +313,6 @@ CCdGrabbingDialog::CCdGrabbingDialog(CWnd* pParent /*=NULL*/)
 	m_pResizeItems = ResizeItems;
 	m_pResizeItemsCount = countof(ResizeItems);
 
-	m_Wf.InitCdAudioFormat();
-	m_Acm.m_Wf.InitCdAudioFormat();
 }
 
 CCdGrabbingDialog::~CCdGrabbingDialog()
@@ -1676,17 +1676,14 @@ void CCdGrabbingDialog::OnButtonEject()
 void CCdGrabbingDialog::FillFormatCombo()
 {
 	m_ComboBitrate.ResetContent();
+	static WaveFormatTagEx const tag(WAVE_FORMAT_PCM);
 	switch (m_RadioFileFormat)
 	{
 	case 0:
 		// WAV
-		m_Acm.m_FormatTags.resize(1);
-		m_Acm.m_FormatTags[0].Tag.Tag = WAVE_FORMAT_PCM;
-		m_Acm.m_FormatTags[0].Name = _T("PCM");
-		m_Acm.m_Formats.resize(1);
-		m_Acm.m_Formats[0].Name = m_Acm.GetFormatName(NULL, m_Acm.m_Wf);
-		m_Acm.m_Formats[0].Wf = m_Acm.m_Wf;
-		m_Acm.m_Formats[0].TagIndex = 0;
+
+		m_Acm.FillFormatTagArray( & CWaveFormat::CdAudioFormat, & tag, 1, WaveFormatAllFieldsMatch);
+		m_Acm.FillFormatArray(0, WaveFormatAllFieldsMatch);
 		break;
 	case 1:
 		// WMA
