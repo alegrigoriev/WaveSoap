@@ -1,52 +1,26 @@
 TODO tasks:
 
-Change "Normalize" to "Normalize Volume"
-Add "Hold Shift to specify fade in/out length" to Mute prompt
-Disable "Compute from 5 second" in CD dialog, if the offset is selected
-Change Click Removal dialog title
-Change Equalizer button in the toolbar
-Make Filter dialog show all frequencies and responses
-Filter dialog: Transfer loss should be positive.
-Filter: Transfer loss edit box should be disabled for the notch filter
-Make an icon for the filter and equalizer dialogs
-Change Expression button in the toolbar
-Change "FFT order for analyze" to "Number of frequency bands"
-Support "Set defaults" and "Revert" in Noise reduction dialog.
-"Aggressivness" is spelled with e:Aggressiveness
-"Transient area threshold" ???
-Change "Show spectrum" to "Show masking function and threshold"
-More noise settings: make group boxes
-Unused fields in More noise settings???
-Remove CD grabber from Tools menu
-"Restore selection" option: make sure to use values from the document, not Begin/End.
-Do Playback device selection in the preferences. Add kB label to buffer size selection.
-In expression dialog: set max number of digits for edit fields
-After last expression of a group is deleted, select another group.
-
-Support "What is it" help for the window parts
-Support popup help for dialogs.
-Make help index and contents
-Don't show contents bar by default.
-Show the help window maximized by height
-Instead of "Failed to launch help" show default help page
-In "Selection" combo, try showing marker names
 Allow Save Selection to save with compression
 
-Show warning when editing will cause offset between stereo channels.
-
 When saving the selection as, set the file title from the marker at beginning of the selection (unless all the file is selected)
-Make Fade In/Out command
+Make Fade In/Out command (and toolbar buttons, too).
 Add prefix to CD-saved files
 Add "Single file" option to CD-grab dialog
+
 Make Paste Special command (with Fade In/Fade Out etc)
 Make Paste From File command
 When doing Paste from file, make the file title a region name.
+
+Make color-neutral theme (for color-blind users).
 Check all loading/saving of compressed files
 If metadata doesn't come as the very last chunk of the file, copy the original file to 
  a file where it does (for non-compressed file, that is)
+
 Allow dragging NR threshold points
 Show FFT of NR result in spectrum view
+
 Show/edit markers as a table
+
 Delete/Insert operations can auto add markers and regions
 Unnamed region name is composed from its boundaries. Marker name - from its position
 Make context menu for outline view
@@ -84,6 +58,8 @@ Handle "Compatible/All" formats for MP3, WMA
 Support VBR WMA
 Check loading of lossless WMA and VBR WMA
 Set icons to all resizable dialogs (for XP)
+Try Nuttall window for resample
+Implement Undo/Redo options command
 
 Load sound from AVI
 Add options dialog
@@ -119,17 +95,30 @@ Add splash screen
 "Save As" in most process dialogs
 Make recording from Internet stream
 Find which alignment better for edit box labels: left or right
+Add Tools/Synthesis command.
+Support multimedia keys
+
+Change Home/End keys semantics, when no selection.
+
+Add help topics for all popup menus.
+Support "What is it" help for the window parts
+Support popup help for dialogs.
+Make help index and contents
+Don't show contents bar by default.
+Show the help window maximized by height
+Instead of "Failed to launch help" show default help page
+
 
 Problems:
 
-Mute undo doesn't restore selection
+When dialogs are resized, combo box edit text is selected and reset to default.
+After Save As, The document title is still the old one.
+Reopen files dialog size too small.
 Selection dialog spin boxes stop when upper limit has reached, even if expansion is allowed.
 When playing, zoom should use the playback point as a center.
-Spin doesn't work in DC dialog
-Selection dialog does not find region in the Selection combo.
 "Statistics" dialog shows only file name instead of full path (Sound1.wav opened from MRU).
-After Save As, The document title is still the old one.
 WMA format list shows only compatible formats, even when checkbox not checked.
+sweep.wav passed through noise reduction gives a ghost reflected off Fsampling/4.
 WMA encoded/decoded is delayed by 2048 samples.
 SaveAs shows AVI as possible type
 Last columns (of the file) in FFT view are not getting erased/drawn properly
@@ -149,6 +138,12 @@ Log Off query doesn't close the active dialog. Recursion is possible. Make sure 
 
 Fixed:
 
+Selection dialog does not find region in the Selection combo.
+Mute undo (and all other UNDO) doesn't restore selection
+Resample: selection not adjusted
+SaveAs with the same name fails (Unable to rename)
+Context menu in Decibel ruler over spectrum section is inherited from ScaledScrollView and doesn't work as expected.
+Spin doesn't work in DC dialog
 After Reset button, Filter graph mouse/keyboard interface doesn't work
 Stopped WMA save crashes the program.
 When Split To Files stopped, unsaved files are not deleted
@@ -242,6 +237,43 @@ Save As dialog is not centered first time (comdlg problem?)
 ??? When time/seconds format is set for status bar, MM:SS is actually shown
 
 Done:
+In "Selection" combo, show marker names
+Hot keys in Split to files dialog. Support Del and Ins key.
+Change split to files status prompt to Saving audio region
+Support Snap to Max sample option (enable/disable).
+Keep last property page selected in the preferences dialog
+Add kB label to buffer size selection.
+Do Playback device selection in the preferences. 
+"Restore selection" option: make sure to use values from the document, not Begin/End.
+"Transient area threshold" enabled
+More noise settings: make group boxes
+Some settings moved to "More noise settings"
+Unused fields in More noise settings removed
+When an expression is deleted, don't save the list immediately. Save on OK only.
+After last expression of a group is deleted, select another group.
+In expression dialog: set max number of digits for edit fields
+Equalizer: make member function to access the dialog members.
+Filter dialog: Transfer loss should be positive.
+Filter: hide FiterGraphWnd and Filter declarations
+Make Filter dialog show all frequencies and responses
+Filter: Transfer loss edit box should be disabled for the notch filter
+Make an icon for the filter dialog
+Make an icon for the equalizer dialog
+Change Equalizer button in the toolbar
+Show warning when editing will cause offset between stereo channels.
+Remove Half-sine window, as useless (still necessary for noise reduction?).
+Add Nuttall window: w(n) = a0 – a1cos(2pn/N) + a2cos(4pn/N) – a3cos(6pn/N). a0 = 0.355768, a1 = 0.487396, a2 = 0.144232, and a3 = 0.012604
+Remove FFT from the prompts and menus. Change to Spectrum view
+Change "Show spectrum" to "Show noise masking"
+Amplitude Ruler menu: set a radio check by UpdateUI handler.
+Support "Set defaults" and "Revert" in Noise reduction dialog.
+"Aggressivness" is spelled with e:Aggressiveness
+Change "FFT order for analyze" to "Number of frequency bins"
+Remove CD grabber from Tools menu
+Change "Click removal parameters" dialog title to Click Removal
+Disable "Compute from 5 second" in CD dialog, if the offset is selected
+Add "Hold Shift to specify fade in/out length" to Mute prompt
+Change "Normalize" title and menu to "Normalize Volume"
 Menu item IDs starting from IDC_ changed to ID_, otherwise they didn't go to HTMLDefines.h.
 Try better prefetch (little effect)
 Add hotkey 'p' to Split To Files command and other hotkeys to the main menu
