@@ -305,7 +305,6 @@ protected:
 	afx_msg void OnRadioWavFormat();
 	afx_msg void OnButtonEject();
 	afx_msg void OnSysColorChange();
-	virtual void OnOK();
 	//}}AFX_MSG
 	//void OnMetricsChange();
 	afx_msg BOOL OnDeviceChange(UINT, DWORD);
