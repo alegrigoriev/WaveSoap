@@ -495,9 +495,9 @@ void CSpectrumSectionView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint
 	{
 		CSoundUpdateInfo * pInfo = static_cast<CSoundUpdateInfo *>(pHint);
 
-		if ((pDoc->m_SelectionStart <= pInfo->End
-				&& pDoc->m_SelectionEnd + 2 * m_FftOrder >= pInfo->Begin)
-			|| pInfo->Length != -1)
+		if ((pDoc->m_SelectionStart <= pInfo->m_End
+				&& pDoc->m_SelectionEnd + 2 * m_FftOrder >= pInfo->m_Begin)
+			|| pInfo->m_NewLength != -1)
 		{
 			Invalidate();
 		}
@@ -511,7 +511,7 @@ void CSpectrumSectionView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint
 			&& NULL != pHint)
 	{
 		CSoundUpdateInfo * pInfo = static_cast<CSoundUpdateInfo *>(pHint);
-		m_PlaybackSample = pInfo->Begin;
+		m_PlaybackSample = pInfo->m_Begin;
 		Invalidate();
 		return;
 	}
