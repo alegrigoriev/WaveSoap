@@ -1,6 +1,6 @@
 // WaveSupport.cpp
 
-#include <afxwin.h>
+#include "stdafx.h"
 #include <mmsystem.h>
 #include "WaveSupport.h"
 
@@ -508,3 +508,8 @@ MMRESULT CWaveIn::Unprepare(UINT hBuffer)
 								sizeof m_pBufs[0].whd);
 }
 
+void CALLBACK CWaveIn::waveInProc(HWAVEIN hwi,
+								UINT uMsg,	DWORD dwInstance, DWORD dwParam1,
+								DWORD dwParam2	)
+{
+}
