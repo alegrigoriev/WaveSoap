@@ -247,6 +247,7 @@ BOOL CMmioFile::LoadRiffChunk()
 	return TRUE;
 }
 
+#ifndef OVERRIDE_MMLIB_FUNCTIONS
 LRESULT PASCAL CMmioFile::BufferedIOProc(LPSTR lpmmioinfo, UINT wMsg,
 										LPARAM lParam1, LPARAM lParam2)
 {
@@ -311,6 +312,7 @@ LRESULT PASCAL CMmioFile::BufferedIOProc(LPSTR lpmmioinfo, UINT wMsg,
 		return -1;
 	}
 }
+#endif
 
 void CMmioFile::Close( )
 {
