@@ -18,6 +18,7 @@
 
 class CWaveSoapFileOpenDialog : public CFileDialogWithHistory
 {
+	typedef CFileDialogWithHistory BaseClass;
 public:
 	CWaveSoapFileOpenDialog(BOOL bOpenFileDialog = TRUE, // TRUE for FileOpen, FALSE for FileSaveAs
 							LPCTSTR lpszDefExt = NULL,
@@ -97,6 +98,7 @@ enum
 
 class CWaveSoapFileSaveDialog : public CFileDialogWithHistory
 {
+	typedef CFileDialogWithHistory BaseClass;
 public:
 	CWaveSoapFileSaveDialog(BOOL bOpenFileDialog, // TRUE for FileOpen, FALSE for FileSaveAs
 							LPCTSTR lpszDefExt = NULL,

@@ -16,8 +16,8 @@ CWaveSoapFileOpenDialog::CWaveSoapFileOpenDialog(BOOL bOpenFileDialog, // TRUE f
 												DWORD dwFlags,
 												LPCTSTR lpszFilter,
 												CWnd* pParentWnd)
-	: CFileDialogWithHistory(bOpenFileDialog, lpszDefExt, lpszFileName, dwFlags,
-							lpszFilter, pParentWnd),
+	: BaseClass(bOpenFileDialog, lpszDefExt, lpszFileName, dwFlags,
+				lpszFilter, pParentWnd),
 	m_bReadOnly(false),
 	m_MinWmaFilter(0),
 	m_MaxWmaFilter(0),
@@ -54,7 +54,7 @@ CWaveSoapFileOpenDialog::CWaveSoapFileOpenDialog(BOOL bOpenFileDialog, // TRUE f
 	}
 }
 
-BEGIN_MESSAGE_MAP(CWaveSoapFileOpenDialog, CFileDialogWithHistory)
+BEGIN_MESSAGE_MAP(CWaveSoapFileOpenDialog, BaseClass)
 	//{{AFX_MSG_MAP(CWaveSoapFileOpenDialog)
 	ON_BN_CLICKED(IDC_CHECK_READONLY, OnCheckReadOnly)
 	ON_BN_CLICKED(IDC_CHECK_DIRECT, OnCheckDirectMode)
@@ -144,12 +144,12 @@ BOOL CWaveSoapFileOpenDialog::OnFileNameOK()
 {
 
 	m_WaveFile.Close();
-	return CFileDialogWithHistory::OnFileNameOK();
+	return BaseClass::OnFileNameOK();
 }
 
 void CWaveSoapFileOpenDialog::OnInitDone()
 {
-	CFileDialogWithHistory::OnInitDone();
+	BaseClass::OnInitDone();
 	ClearFileInfoDisplay();
 
 	CButton * pRO = (CButton *)GetDlgItem(IDC_CHECK_READONLY);
@@ -373,8 +373,8 @@ CWaveSoapFileSaveDialog::CWaveSoapFileSaveDialog(BOOL bOpenFileDialog, // TRUE f
 												LPCTSTR lpszFilter,
 												CWnd* pParentWnd)
 
-	: CFileDialogWithHistory(bOpenFileDialog, lpszDefExt, lpszFileName, dwFlags,
-							lpszFilter, pParentWnd),
+	: BaseClass(bOpenFileDialog, lpszDefExt, lpszFileName, dwFlags,
+				lpszFilter, pParentWnd),
 	m_SelectedFormat(-1),
 	m_SelectedMp3Encoder(0),
 	m_SelectedMp3Bitrate(LameEncBitrate128),
@@ -432,7 +432,7 @@ CWaveSoapFileSaveDialog::CWaveSoapFileSaveDialog(BOOL bOpenFileDialog, // TRUE f
 
 }
 
-BEGIN_MESSAGE_MAP(CWaveSoapFileSaveDialog, CFileDialogWithHistory)
+BEGIN_MESSAGE_MAP(CWaveSoapFileSaveDialog, BaseClass)
 	//{{AFX_MSG_MAP(CWaveSoapFileSaveDialog)
 	ON_BN_CLICKED(IDC_CHECK_COMPATIBLE_FORMATS, OnCompatibleFormatsClicked)
 	ON_CBN_SELCHANGE(IDC_COMBO_FORMAT, OnComboFormatsChange)
@@ -451,7 +451,7 @@ BOOL CWaveSoapFileSaveDialog::OnFileNameOK()
 		SetFileType(type);
 		return 1;   // don't close
 	}
-	CFileDialogWithHistory::OnFileNameOK();
+	BaseClass::OnFileNameOK();
 	// save format selection
 	m_SelectedFormat = m_AttributesCombo.GetCurSel();
 
@@ -737,7 +737,7 @@ void CWaveSoapFileSaveDialog::OnInitDone()
 	SetFileType(m_ofn.nFilterIndex);
 
 
-	CFileDialogWithHistory::OnInitDone();
+	BaseClass::OnInitDone();
 }
 
 void CWaveSoapFileSaveDialog::OnTypeChange()
