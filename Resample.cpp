@@ -53,9 +53,9 @@ BOOL CResampleContext::OperationProc()
 		if (0 == LeftToRead)
 		{
 			MEDIA_FILE_SIZE SizeToRead = m_SrcEnd - m_SrcPos;
-			if (SizeToRead > 0x10000)
+			if (SizeToRead > CDirectFile::CacheBufferSize())
 			{
-				SizeToRead = 0x10000;
+				SizeToRead = CDirectFile::CacheBufferSize();
 			}
 			if (SizeToRead != 0)
 			{
