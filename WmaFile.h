@@ -202,9 +202,15 @@ class FileWriter : public IWMWriterSink
 		return S_OK;
 	}
 
-	ULONG STDMETHODCALLTYPE AddRef( void ) { return 1; }
+	ULONG STDMETHODCALLTYPE AddRef( void )
+	{
+		return 1;
+	}
 
-	ULONG STDMETHODCALLTYPE Release( void ) { return 1; }
+	ULONG STDMETHODCALLTYPE Release( void )
+	{
+		return 1;
+	}
 public:
 	virtual HRESULT STDMETHODCALLTYPE OnHeader(
 												/* [in] */ INSSBuffer __RPC_FAR *pHeader);
@@ -221,12 +227,18 @@ public:
 
 	virtual HRESULT STDMETHODCALLTYPE OnEndWriting( void);
 
-	FileWriter() {}
+	FileWriter() : m_WrittenLength(0) {}
 	~FileWriter() {}
 	CDirectFile m_DstFile;
+	DWORD m_WrittenLength;
 	void Open(CDirectFile & File)
 	{
 		m_DstFile = File;
+		m_WrittenLength = 0;
+	}
+	DWORD GetWrittenLength()
+	{
+		return m_WrittenLength;
 	}
 };
 
@@ -236,6 +248,10 @@ public:
 	WmaEncoder();
 	~WmaEncoder();
 	BOOL OpenWrite(CDirectFile & File);
+	DWORD GetWrittenLength()
+	{
+		return m_FileWriter.GetWrittenLength();
+	}
 	BOOL Init();
 	void DeInit();
 	void SetArtist(LPCTSTR szArtist);
@@ -243,6 +259,7 @@ public:
 	void SetGenre(LPCTSTR szGenre);
 	BOOL SetBitrate(int Bitrate);
 	BOOL Write(void * Buf, size_t size);
+	WAVEFORMATEX m_SrcWfx;
 protected:
 	IWMWriter * m_pWriter;
 	IWMWriterAdvanced * m_pWriterAdvanced;
@@ -251,7 +268,7 @@ protected:
 	IWMStreamConfig * m_pStreamConfig;
 
 	FileWriter m_FileWriter;
-
+	DWORD m_SampleTimeMs;
 	IWMHeaderInfo * m_pHeaderInfo;
 	INSSBuffer * m_pBuffer;
 };
