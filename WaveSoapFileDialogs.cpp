@@ -1062,7 +1062,7 @@ void CFileSaveUiSupport::FillWmaFormatCombo()
 	}
 
 	m_SelectedTag = m_Acm.m_FormatTags[0].Tag;
-	m_SelectedFormat = FillFormatCombo(0, WaveFormatMatchCnannels | WaveFormatMatchSampleRate);
+	m_SelectedFormat = FillFormatCombo(0);
 }
 
 void CFileSaveUiSupport::FillMp3EncoderCombo()
