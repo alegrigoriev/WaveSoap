@@ -138,7 +138,7 @@ private:
 	int m_ConstantBufferIndex;
 	int * m_pResultAddress;
 
-	CArray<Operation, Operation&> m_OperationArray;
+	std::vector<Operation> m_OperationArray;
 	int m_nSelectionSampleArgument;
 	int m_nFileSampleArgument;
 	double m_dSelectionTimeArgument;
