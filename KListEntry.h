@@ -8,8 +8,8 @@
 template<class T>
 struct KListEntry
 {
-	KListEntry * pPrev;
-	KListEntry * pNext;
+	KListEntry<T> * pPrev;
+	KListEntry<T> * pNext;
 	// no destructor necessary
 	void Init() volatile
 	{
@@ -24,6 +24,8 @@ struct KListEntry
 	{
 		__assume(NULL != entry);
 		KListEntry<T> * tmp = static_cast<KListEntry<T> *>(entry);
+		ASSERT(tmp->pNext == tmp);
+		ASSERT(tmp->pPrev == tmp);
 		tmp->pPrev = this;
 		tmp->pNext = pNext;
 		pNext->pPrev = tmp;
@@ -33,6 +35,8 @@ struct KListEntry
 	{
 		__assume(NULL != entry);
 		KListEntry<T> volatile * tmp = static_cast<KListEntry<T> volatile *>(entry);
+		ASSERT(tmp->pNext == tmp);
+		ASSERT(tmp->pPrev == tmp);
 		tmp->pPrev = const_cast<KListEntry<T> *>(this);
 		tmp->pNext = pNext;
 		pNext->pPrev = const_cast<KListEntry<T> *>(tmp);
@@ -42,6 +46,8 @@ struct KListEntry
 	{
 		__assume(NULL != entry);
 		KListEntry<T> * tmp = static_cast<KListEntry<T> *>(entry);
+		ASSERT(tmp->pNext == tmp);
+		ASSERT(tmp->pPrev == tmp);
 		tmp->pNext = this;
 		tmp->pPrev = pPrev;
 		pPrev->pNext = tmp;
@@ -51,6 +57,8 @@ struct KListEntry
 	{
 		__assume(NULL != entry);
 		KListEntry<T> volatile * tmp = static_cast<KListEntry<T> volatile *>(entry);
+		ASSERT(tmp->pNext == tmp);
+		ASSERT(tmp->pPrev == tmp);
 		tmp->pNext = const_cast<KListEntry<T> *>(this);
 		tmp->pPrev = pPrev;
 		pPrev->pNext = const_cast<KListEntry<T> *>(tmp);
@@ -63,7 +71,7 @@ struct KListEntry
 	}
 	T * RemoveHead()
 	{
-		KListEntry * tmp = pNext;
+		KListEntry<T> * tmp = pNext;
 		tmp->pNext->pPrev = this;
 		pNext = tmp->pNext;
 		tmp->Init();
@@ -72,7 +80,7 @@ struct KListEntry
 	}
 	T * RemoveHead() volatile
 	{
-		KListEntry * tmp = pNext;
+		KListEntry<T> * tmp = pNext;
 		tmp->pNext->pPrev = const_cast<KListEntry<T> *>(this);
 		pNext = tmp->pNext;
 		tmp->Init();
@@ -81,7 +89,7 @@ struct KListEntry
 	}
 	T * RemoveTail()
 	{
-		KListEntry * tmp = pPrev;
+		KListEntry<T> * tmp = pPrev;
 		tmp->pPrev->pNext = this;
 		pPrev = tmp->pPrev;
 		tmp->Init();
@@ -90,7 +98,7 @@ struct KListEntry
 	}
 	T * RemoveTail() volatile
 	{
-		KListEntry * tmp = pPrev;
+		KListEntry<T> * tmp = pPrev;
 		tmp->pPrev->pNext = const_cast<KListEntry<T> *>(this);
 		pPrev = tmp->pPrev;
 		tmp->Init();

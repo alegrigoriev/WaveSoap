@@ -757,6 +757,41 @@ BOOL WmaEncoder::OpenWrite(CDirectFile & File)
 
 	HRESULT hr = m_pWriterAdvanced->AddSink( & m_FileWriter);
 
+	m_pWriter->SetProfileByID(WMProfile_V70_128Audio);
+
+	IWMHeaderInfo * pHeaderInfo = NULL;
+	hr = m_pWriter->QueryInterface(IID_IWMHeaderInfo, ( VOID ** )& pHeaderInfo);
+	if (SUCCEEDED(hr))
+	{
+		pHeaderInfo->SetAttribute(0, g_wszWMTitle, WMT_TYPE_STRING, (BYTE const *)L"Title", sizeof L"Title");
+		pHeaderInfo->SetAttribute(0, g_wszWMAuthor, WMT_TYPE_STRING, (BYTE const *)L"Author", sizeof L"Author");
+		pHeaderInfo->Release();
+	}
+
+	// open input properties
+	IWMInputMediaProps * pMediaProps = NULL;
+	hr = m_pWriter->GetInputProps(0, & pMediaProps);
+	if ( ! SUCCEEDED(hr))
+	{
+		return FALSE;
+	}
+	char * buf = NULL;
+	DWORD size = 0;
+	pMediaProps->GetMediaType(NULL, & size);
+	buf = new char[size];
+
+	WM_MEDIA_TYPE * pType = (WM_MEDIA_TYPE *) buf;
+	hr = pMediaProps->GetMediaType(pType, & size);
+	if (SUCCEEDED(hr))
+	{
+		WAVEFORMATEX * pwfx = (WAVEFORMATEX *)pType->pbFormat;
+
+		hr = m_pWriter->SetInputProps(0, pMediaProps);
+	}
+
+	delete[] buf;
+	pMediaProps->Release();
+
 	hr = m_pWriter->BeginWriting();
 	hr = m_pWriter->AllocateSample(0x10000, & m_pBuffer);
 	if ( ! SUCCEEDED(hr))
@@ -988,6 +1023,7 @@ BOOL WmaEncoder::SetBitrate(int Bitrate)
 
 	hr = m_pProfile->ReconfigStream(m_pStreamConfig);
 	TRACE("ReconfigBitrate returned %X\n", hr);
+	hr = m_pWriter->SetProfile(m_pProfile);
 	delete[] pBuf;
 
 	pProps->Release();
@@ -1033,7 +1069,8 @@ BOOL WmaEncoder::Write(void * Buf, size_t size)
 		{
 			QWORD WriterTime = 0;
 			m_pWriterAdvanced->GetWriterTime( & WriterTime);
-
+			TRACE("Writing src buf %p, time=%d ms\n",
+				m_pBuffer, DWORD(WriterTime / 10000));
 			if (! SUCCEEDED(m_pWriter->WriteSample(0, WriterTime, 0, m_pBuffer)))
 			{
 				return FALSE;
@@ -1048,6 +1085,7 @@ BOOL WmaEncoder::Write(void * Buf, size_t size)
 HRESULT STDMETHODCALLTYPE FileWriter::OnHeader(
 												/* [in] */ INSSBuffer __RPC_FAR *pHeader)
 {
+	TRACE("FileWriter::OnHeader\n");
 	return OnDataUnit(pHeader);
 }
 
@@ -1194,6 +1232,7 @@ HRESULT STDMETHODCALLTYPE FileWriter::OnDataUnit(
 {
 	PBYTE pData;
 	DWORD Length;
+	TRACE("FileWriter::OnDataUnit buf = %p\n", pDataUnit);
 	if (NULL == pDataUnit)
 	{
 		return E_POINTER;
