@@ -169,6 +169,7 @@
 #define IDC_COMBO_END                   1011
 #define IDC_CHECK_DIRECT                1012
 #define IDC_COMBO_FORMAT_TAG            1012
+#define IDC_CHECK_IMPORTED_CLICKS_ONLY  1012
 #define IDC_COMBO1                      1013
 #define IDC_COMBO_RECENT                1013
 #define IDC_COMBODB_PERCENT             1013
@@ -445,6 +446,7 @@
 #define IDC_STATIC_REDO_MB              1296
 #define IDC_RADIO_FADE_IN               1297
 #define IDC_RADIO_FADE_OUT              1298
+#define IDC_STATIC_MORE_IN_EFFECT       1299
 #define ID_VIEW_RULER_SAMPLES           32771
 #define ID_VIEW_RULER_HHMMSS            32772
 #define ID_VIEW_RULER_SECONDS           32773
@@ -808,6 +810,8 @@
 #define IDS_STRING_SPLIT_TO_FILES_OPERATION 33120
 #define IDS_CHANNELS_SHIFT_WARNING_PROMPT 33121
 #define IDS_SEGMENT_NAME_FROM_MARKERS   33122
+#define IDS_MORE_IN_EFFECT              33123
+#define IDS_MORE_CLICK_SETTINGS_IN_EFFECT 33123
 #define ID_FILE_PROPERTIES              40000
 #define ID_VIEW_ZOOMVERT_NORMAL         40001
 #define ID_VIEW_ZOOMIN_HOR_FULL         40002
@@ -928,9 +932,9 @@
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_3D_CONTROLS                     1
-#define _APS_NEXT_RESOURCE_VALUE        204
+#define _APS_NEXT_RESOURCE_VALUE        205
 #define _APS_NEXT_COMMAND_VALUE         40156
-#define _APS_NEXT_CONTROL_VALUE         1299
+#define _APS_NEXT_CONTROL_VALUE         1300
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif
