@@ -1119,8 +1119,10 @@ CMiniToolbar::~CMiniToolbar()
 {
 }
 
+IMPLEMENT_DYNAMIC(CMiniToolbar, CWnd)
 
 BEGIN_MESSAGE_MAP(CMiniToolbar, CWnd)
+ON_MESSAGE(WM_IDLEUPDATECMDUI, OnIdleUpdateCmdUI)
 //{{AFX_MSG_MAP(CMiniToolbar)
 ON_WM_CAPTURECHANGED()
 ON_WM_ERASEBKGND()
@@ -1209,6 +1211,7 @@ void CMiniToolbar::OnMouseMove(UINT nFlags, CPoint point)
 		if ( ! m_MouseCaptured)
 		{
 			SetCapture();
+			m_MouseCaptured = true;
 		}
 		if (GetHitCode(point) != m_ButtonClicked)
 		{
@@ -1229,8 +1232,6 @@ void CMiniToolbar::OnPaint()
 	CRect cr;
 	GetClientRect( & cr);
 	// draw the bitmaps
-	CDC cdc;
-	cdc.CreateCompatibleDC( & dc);
 
 	for (int i = 0; i < m_Buttons.size(); i++)
 	{
@@ -1240,15 +1241,21 @@ void CMiniToolbar::OnPaint()
 		int x = cr.Width() * i / m_Buttons.size()
 				+ (cr.Width() / m_Buttons.size() - bmp.bmWidth) / 2;
 		int y = (cr.Height() - bmp.bmHeight) / 2;
-		if (m_ButtonClicked == m_Buttons[i].nID)
+		int flags = DST_BITMAP | DSS_NORMAL | DSS_MONO;
+		if (m_Buttons[i].bEnabled)
 		{
-			x++;
-			y++;
+			if (m_ButtonClicked == m_Buttons[i].nID)
+			{
+				x++;
+				y++;
+			}
 		}
-
-		CBitmap * pOldBitmap = cdc.SelectObject( m_Buttons[i].pBitmap);
-		dc.BitBlt(x, y, bmp.bmWidth, bmp.bmHeight, & cdc, 0, 0, SRCAND);
-		cdc.SelectObject(pOldBitmap);
+		else
+		{
+			flags = DST_BITMAP | DSS_DISABLED | DSS_MONO;
+		}
+		dc.DrawState(CPoint(x, y), CSize(bmp.bmWidth, bmp.bmHeight),
+					m_Buttons[i].pBitmap, flags);
 	}
 }
 
@@ -1288,9 +1295,6 @@ void CMiniToolbar::HiliteButton(int nID, bool Hilite)
 		}
 		m_ButtonHilit = 0;
 	}
-	CRect cr;
-	GetClientRect( & cr);
-	CRect r = cr;
 	for (int i = 0; i < m_Buttons.size(); i++)
 	{
 		if (m_Buttons[i].nID == nID)
@@ -1303,8 +1307,16 @@ void CMiniToolbar::HiliteButton(int nID, bool Hilite)
 		m_ButtonHilit = 0;
 		return;
 	}
-	r.left = cr.Width() * i / m_Buttons.size();
-	r.right = cr.Width() * (i + 1) / m_Buttons.size();
+	RedrawButton(i);
+}
+
+void CMiniToolbar::RedrawButton(int Index)
+{
+	CRect cr;
+	GetClientRect( & cr);
+	CRect r = cr;
+	r.left = cr.Width() * Index / m_Buttons.size();
+	r.right = cr.Width() * (Index + 1) / m_Buttons.size();
 	InvalidateRect( & r);
 }
 
@@ -1317,3 +1329,86 @@ void CMiniToolbar::AddButton(CBitmap * pBitmap, int nID)
 	btn.bEnabled = true;
 	m_Buttons.push_back(btn);
 }
+
+void CMiniToolbar::EnableButton(int Index, BOOL bEnable)
+{
+	if (Index < 0 || Index >= m_Buttons.size())
+	{
+		return;
+	}
+	if (bEnable)
+	{
+		if (m_Buttons[Index].bEnabled)
+		{
+			return;
+		}
+		m_Buttons[Index].bEnabled = true;
+	}
+	else
+	{
+		if ( ! m_Buttons[Index].bEnabled)
+		{
+			return;
+		}
+		m_Buttons[Index].bEnabled = false;
+	}
+	RedrawButton(Index);
+}
+
+class CMiniToolbarCmdUI : public CCmdUI        // class private to this file !
+{
+public: // re-implementations only
+	virtual void Enable(BOOL bOn);
+	virtual void SetCheck(int nCheck);
+	virtual void SetText(LPCTSTR lpszText);
+};
+
+void CMiniToolbarCmdUI::Enable(BOOL bOn)
+{
+	m_bEnableChanged = TRUE;
+	CMiniToolbar* pToolBar = (CMiniToolbar*)m_pOther;
+	ASSERT(pToolBar != NULL);
+	ASSERT_KINDOF(CMiniToolbar, pToolBar);
+	ASSERT(m_nIndex < m_nIndexMax);
+
+	pToolBar->EnableButton(m_nIndex, bOn);
+}
+
+void CMiniToolbarCmdUI::SetCheck(int nCheck)
+{
+	// ignore it
+}
+
+void CMiniToolbarCmdUI::SetText(LPCTSTR)
+{
+	// ignore it
+}
+
+LRESULT CMiniToolbar::OnIdleUpdateCmdUI(WPARAM wParam, LPARAM)
+{
+	// the style must be visible
+	if (GetStyle() & WS_VISIBLE)
+	{
+		CFrameWnd* pTarget = GetParentFrame();
+		if (pTarget != NULL)
+		{
+			OnUpdateCmdUI(pTarget, (BOOL)wParam);
+		}
+	}
+	return 0L;
+}
+
+void CMiniToolbar::OnUpdateCmdUI(CFrameWnd* pTarget, BOOL bDisableIfNoHndler)
+{
+	CMiniToolbarCmdUI state;
+	state.m_pOther = this;
+
+	state.m_nIndexMax = m_Buttons.size();
+	for (state.m_nIndex = 0; state.m_nIndex < state.m_nIndexMax; state.m_nIndex++)
+	{
+		state.m_nID = m_Buttons[state.m_nIndex].nID;
+		state.DoUpdate(pTarget, bDisableIfNoHndler);
+	}
+
+}
+
