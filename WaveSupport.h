@@ -93,7 +93,7 @@ struct CWaveFormat
 	{
 	}
 	~CWaveFormat();
-	WAVEFORMATEX * Allocate(unsigned ExtraSize, bool bCopy = false);
+	WAVEFORMATEX * Allocate(unsigned ExtraSize, bool bCopy = true);
 	CWaveFormat & operator =(WAVEFORMATEX const * pWf);
 	CWaveFormat & operator =(CWaveFormat const & src)
 	{
