@@ -2261,9 +2261,9 @@ void CNoiseReductionDialog::DoDataExchange(CDataExchange* pDX)
 	m_eNoiseCriterion.ExchangeData(pDX, m_dNoiseCriterion,
 									IDS_INPUT_NAME_NOISE_VS_CONTINUOUS, 0, 0.0, 1.);
 	m_eNoiseThresholdHigh.ExchangeData(pDX, m_dNoiseThresholdHigh,
-										IDS_INPUT_NAME_NOISE_FLOOR_HIGH, IDS_DECIBEL, -100., -10.);
+										IDS_INPUT_NAME_NOISE_FLOOR_HIGH, IDS_DECIBEL, -120., -10.);
 	m_eNoiseThresholdLow.ExchangeData(pDX, m_dNoiseThresholdLow,
-									IDS_INPUT_NAME_NOISE_FLOOR_LOW, IDS_DECIBEL, -100., -10.);
+									IDS_INPUT_NAME_NOISE_FLOOR_LOW, IDS_DECIBEL, -120., -10.);
 	m_EditAggressivness.ExchangeData(pDX, m_dNoiseReductionAggressivness,
 									IDS_INPUT_NAME_NOISE_SUPPRESSION_AGGR, 0, 0.1, 3.);
 	m_eToneOverNoisePreference.ExchangeData(pDX, m_dToneOverNoisePreference,
@@ -2329,8 +2329,8 @@ void CNoiseReductionDialog::LoadValuesFromRegistry()
 	Profile.AddItem(_T("NoiseReduction"), _T("TransientThreshold"), m_dTransientThreshold, 1., 0.3, 2);
 	Profile.AddItem(_T("NoiseReduction"), _T("NoiseReduction"), m_dNoiseReduction, 10., 0., 100.);
 	Profile.AddItem(_T("NoiseReduction"), _T("NoiseCriterion"), m_dNoiseCriterion, 0.25, 0., 1.);
-	Profile.AddItem(_T("NoiseReduction"), _T("NoiseThresholdLow"), m_dNoiseThresholdLow, -70., -100., -10.);
-	Profile.AddItem(_T("NoiseReduction"), _T("NoiseThresholdHigh"), m_dNoiseThresholdHigh, -65., -100., -10.);
+	Profile.AddItem(_T("NoiseReduction"), _T("NoiseThresholdLow"), m_dNoiseThresholdLow, -70., -120., -10.);
+	Profile.AddItem(_T("NoiseReduction"), _T("NoiseThresholdHigh"), m_dNoiseThresholdHigh, -65., -120., -10.);
 	Profile.AddItem(_T("NoiseReduction"), _T("LowerFrequency"), m_dLowerFrequency, 1000., 100., 48000.);
 	Profile.AddItem(_T("NoiseReduction"), _T("ToneOverNoisePreference"), m_dToneOverNoisePreference, 10., 0., 20.);
 	Profile.AddItem(_T("NoiseReduction"), _T("NearMaskingDecayDistanceHigh"), m_NearMaskingDecayDistanceHigh, 1000., 1., 5000.);
@@ -2342,7 +2342,7 @@ void CNoiseReductionDialog::LoadValuesFromRegistry()
 }
 
 
-#define DB_TO_NEPER 0.115129254
+#define DB_TO_NEPER 0.23025851
 #define M_PI        3.14159265358979323846
 #define M_PI_2      1.57079632679489661923
 #define M_PI_4      0.785398163397448309616
