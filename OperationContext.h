@@ -657,18 +657,13 @@ public:
 	virtual BOOL Init();
 };
 
-class CConversionContext : public CTwoFilesOperation
+class CWaveProcContext : public CTwoFilesOperation
 {
-	typedef CConversionContext ThisClass;
+	typedef CWaveProcContext ThisClass;
 	typedef CTwoFilesOperation BaseClass;
 public:
 	typedef std::auto_ptr<ThisClass> auto_ptr;
-	CConversionContext(CWaveSoapFrontDoc * pDoc, UINT StatusStringId = 0, UINT OperationNameId = 0);
-
-	CConversionContext(CWaveSoapFrontDoc * pDoc, UINT StatusStringId,
-						UINT OperationNameId,
-						CWaveFile & SrcFile,
-						CWaveFile & DstFile);
+	CWaveProcContext(CWaveSoapFrontDoc * pDoc, UINT StatusStringId = 0, UINT OperationNameId = 0);
 
 	void AddWaveProc(CWaveProc * pProc, int index = -1)
 	{
@@ -688,16 +683,31 @@ public:
 	}
 	virtual BOOL OperationProc();
 
-	virtual void PostRetire();
 protected:
 	CBatchProcessing m_ProcBatch;
-	NUMBER_OF_SAMPLES m_CurrentSamples;
 };
 
-class CDecompressContext : public CConversionContext
+// is used to convert the whole file
+class CConversionContext : public CWaveProcContext
+{
+	typedef CConversionContext ThisClass;
+	typedef CWaveProcContext BaseClass;
+public:
+	typedef std::auto_ptr<ThisClass> auto_ptr;
+	CConversionContext(CWaveSoapFrontDoc * pDoc, UINT StatusStringId = 0, UINT OperationNameId = 0);
+
+	CConversionContext(CWaveSoapFrontDoc * pDoc, UINT StatusStringId,
+						UINT OperationNameId,
+						CWaveFile & SrcFile,
+						CWaveFile & DstFile, BOOL RawDstFile);
+
+	virtual void PostRetire();
+};
+
+class CDecompressContext : public CWaveProcContext
 {
 	typedef CDecompressContext ThisClass;
-	typedef CConversionContext BaseClass;
+	typedef CWaveProcContext BaseClass;
 	//friend class CWaveSoapFrontDoc;
 
 public:
@@ -715,7 +725,7 @@ public:
 	{
 		DeInit();
 	}
-//    virtual BOOL OperationProc();
+	virtual BOOL OperationProc();
 	virtual BOOL Init();
 	virtual void PostRetire();
 
@@ -723,6 +733,7 @@ protected:
 
 	MMRESULT m_MmResult;
 	CWaveFormat m_Wf;
+	NUMBER_OF_SAMPLES m_CurrentSamples;
 };
 
 class CFileSaveContext : public CStagedContext

@@ -333,7 +333,10 @@ void COneFileOperation::Dump(unsigned indent) const
 {
 	BaseClass::Dump(indent);
 
-	if (m_SrcFile.IsOpen())
+	if (m_SrcFile.IsOpen()
+		&& m_SrcStart != NULL
+		&& m_SrcEnd != NULL
+		&& m_SrcPos != NULL)
 	{
 		int SampleRate = m_SrcFile.SampleRate();
 		TRACE(_T(" %*.sSRC: start=%s, end=%s, pos=%s, chan=%d\n"), indent, _T(""),
@@ -477,7 +480,10 @@ void CTwoFilesOperation::Dump(unsigned indent) const
 {
 	BaseClass::Dump(indent);
 
-	if (m_DstFile.IsOpen())
+	if (m_DstFile.IsOpen()
+		&& m_DstStart != NULL
+		&& m_DstEnd != NULL
+		&& m_DstPos != NULL)
 	{
 		int SampleRate = m_DstFile.SampleRate();
 
@@ -1898,10 +1904,10 @@ CDecompressContext::CDecompressContext(CWaveSoapFrontDoc * pDoc, UINT StatusStri
 										NUMBER_OF_SAMPLES NumSamples,
 										WAVEFORMATEX const * pSrcWf,
 										BOOL SwapBytes)
-	: BaseClass(pDoc, StatusStringId),
-	m_MmResult(MMSYSERR_NOERROR)
+	: BaseClass(pDoc, StatusStringId)
+	, m_MmResult(MMSYSERR_NOERROR)
+	, m_CurrentSamples(NumSamples)
 {
-	m_CurrentSamples  = NumSamples;
 	// operation can be terminated by Close
 	m_Flags = OperationContextDiskIntensive | OperationContextNonCritical;
 	m_DstFile = DstFile;
@@ -3098,32 +3104,44 @@ void CFileSaveContext::PostRetire()
 	BaseClass::PostRetire();
 }
 
-CConversionContext::CConversionContext(CWaveSoapFrontDoc * pDoc, UINT StatusStringId, UINT OperationNameId)
-	: BaseClass(pDoc, 0, StatusStringId, OperationNameId),
-	m_CurrentSamples(0)
+CWaveProcContext::CWaveProcContext(CWaveSoapFrontDoc * pDoc, UINT StatusStringId, UINT OperationNameId)
+	: BaseClass(pDoc, 0, StatusStringId, OperationNameId)
 {
 	// delete the procs in the destructor
 	m_Flags &= ~OperationContextDiskIntensive;
 	m_ProcBatch.m_bAutoDeleteProcs = TRUE;
 }
 
+CConversionContext::CConversionContext(CWaveSoapFrontDoc * pDoc, UINT StatusStringId, UINT OperationNameId)
+	: BaseClass(pDoc, StatusStringId, OperationNameId)
+{
+}
+
 CConversionContext::CConversionContext(CWaveSoapFrontDoc * pDoc, UINT StatusStringId,
 										UINT OperationNameId,
 										CWaveFile & SrcFile,
-										CWaveFile & DstFile)
-	: BaseClass(pDoc, 0, StatusStringId, OperationNameId)
-	, m_CurrentSamples(0)
+										CWaveFile & DstFile, BOOL RawDstFile)
+	: BaseClass(pDoc, StatusStringId, OperationNameId)
 {
 	// delete the procs in the destructor
 	m_SrcFile = SrcFile;
 	m_DstFile = DstFile;
 
 	m_SrcStart = m_SrcFile.SampleToPosition(0);
-	m_DstStart = m_DstFile.SampleToPosition(0);
 	m_SrcPos = m_SrcStart;
-	m_DstPos = m_DstStart;
 	m_SrcEnd = m_SrcFile.SampleToPosition(LAST_SAMPLE);
-	m_DstEnd = m_DstStart;
+
+	if (RawDstFile)
+	{
+		m_DstStart = 0;
+	}
+	else
+	{
+		m_DstStart = m_DstFile.SampleToPosition(0);
+		m_DstEnd = m_DstFile.SampleToPosition(LAST_SAMPLE);
+	}
+
+	m_DstPos = m_DstStart;
 
 	m_SrcChan = ALL_CHANNELS;
 	m_DstChan = ALL_CHANNELS;
@@ -3132,7 +3150,7 @@ CConversionContext::CConversionContext(CWaveSoapFrontDoc * pDoc, UINT StatusStri
 	m_ProcBatch.m_bAutoDeleteProcs = TRUE;
 }
 
-BOOL CConversionContext::InitDestination(CWaveFile & DstFile, SAMPLE_INDEX StartSample, SAMPLE_INDEX EndSample,
+BOOL CWaveProcContext::InitDestination(CWaveFile & DstFile, SAMPLE_INDEX StartSample, SAMPLE_INDEX EndSample,
 										CHANNEL_MASK chan, BOOL NeedUndo)
 {
 	if ( ! BaseClass::InitDestination(DstFile, StartSample, EndSample,
@@ -3151,7 +3169,7 @@ BOOL CConversionContext::InitDestination(CWaveFile & DstFile, SAMPLE_INDEX Start
 	return TRUE;
 }
 
-BOOL CConversionContext::OperationProc()
+BOOL CWaveProcContext::OperationProc()
 {
 	SAMPLE_POSITION dwOperationBegin = m_DstPos;
 	DWORD dwStartTime = GetTickCount();
@@ -3292,6 +3310,20 @@ BOOL CConversionContext::OperationProc()
 	m_DstFile.ReturnDataBuffer(pOriginalDstBuf, WasLockedToWrite,
 								CDirectFile::ReturnBufferDirty);
 
+	// notify the view
+	pDocument->FileChanged(m_DstFile, dwOperationBegin, m_DstPos);
+
+	return TRUE;
+}
+
+BOOL CDecompressContext::OperationProc()
+{
+	SAMPLE_POSITION dwOperationBegin = m_DstPos;
+	if ( ! BaseClass::OperationProc())
+	{
+		return FALSE;
+	}
+
 	if (WAVE_FORMAT_PCM == m_DstFile.GetWaveFormat()->wFormatTag)
 	{
 		SAMPLE_INDEX nFirstSample = m_DstFile.PositionToSample(dwOperationBegin);
@@ -3320,12 +3352,6 @@ BOOL CConversionContext::OperationProc()
 			nFirstSample, nLastSample, TotalSamples);
 		pDocument->SoundChanged(m_DstFile.GetFileID(), nFirstSample, nLastSample, TotalSamples);
 	}
-	else
-	{
-		// notify the view
-		pDocument->FileChanged(m_DstFile, dwOperationBegin, m_DstPos);
-	}
-
 	return TRUE;
 }
 
