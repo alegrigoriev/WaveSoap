@@ -1942,25 +1942,16 @@ BOOL CWaveSoapFrontDoc::OnSaveConvertedFile(int flags, LPCTSTR FullTargetName, W
 
 	pContext->m_NewName = FullTargetName;
 
-	CConversionContext * pConvert = new CConversionContext(this, _T(""), _T(""));
+	CConversionContext * pConvert =
+		new CConversionContext(this, _T(""), _T(""), m_WavFile, NewWaveFile);
 	if (NULL == pConvert)
 	{
 		delete pContext;
 		NotEnoughMemoryMessageBox();
 		return FALSE;
 	}
-	pContext->m_pConvert = pConvert;
-	pConvert->m_SrcFile = m_WavFile;
-	pConvert->m_DstFile = NewWaveFile;
-	pConvert->m_SrcStart = m_WavFile.SampleToPosition(0);
-	pConvert->m_DstStart = NewWaveFile.SampleToPosition(0);
-	pConvert->m_SrcPos = pConvert->m_SrcStart;
-	pConvert->m_DstPos = pConvert->m_DstStart;
-	pConvert->m_SrcEnd = m_WavFile.SampleToPosition(LAST_SAMPLE);
-	pConvert->m_DstEnd = pConvert->m_DstStart;
 
-	pConvert->m_SrcChan = ALL_CHANNELS;
-	pConvert->m_DstChan = ALL_CHANNELS;
+	pContext->m_pConvert = pConvert;
 
 	pContext->m_SrcFile = pConvert->m_SrcFile;
 	pContext->m_DstFile = pConvert->m_DstFile;
@@ -2052,24 +2043,20 @@ BOOL CWaveSoapFrontDoc::OnSaveConvertedFile(int flags, LPCTSTR FullTargetName, W
 			NotEnoughMemoryMessageBox();
 			return FALSE;
 		}
-		pConvert->AddWaveProc(pAcmConvertor);
 
-		WAVEFORMATEX SrcFormat;
-		SrcFormat.nChannels = pWf->nChannels;
-		SrcFormat.nSamplesPerSec = pWf->nSamplesPerSec;
-		SrcFormat.nBlockAlign = SrcFormat.nChannels * sizeof (WAVE_SAMPLE);
-		SrcFormat.nAvgBytesPerSec = SrcFormat.nBlockAlign * SrcFormat.nSamplesPerSec;
-		SrcFormat.cbSize = 0;
-		SrcFormat.wFormatTag = WAVE_FORMAT_PCM;
-		SrcFormat.wBitsPerSample = 16;
+		CWaveFormat SrcFormat;
+		SrcFormat.InitFormat(WAVE_FORMAT_PCM, pWf->nSamplesPerSec,
+							pWf->nChannels);
 
 		//todo: init conversion in Context->Init, error dialog in PostRetire.
-		if (! pAcmConvertor->InitConversion( & SrcFormat, pWf))
+		if (! pAcmConvertor->InitConversion(SrcFormat, pWf))
 		{
+			delete pAcmConvertor;
 			delete pContext;
 			AfxMessageBox(IDS_STRING_UNABLE_TO_CONVERT);
 			return FALSE;
 		}
+		pConvert->AddWaveProc(pAcmConvertor);
 	}
 
 	pContext->Execute();
@@ -2383,8 +2370,7 @@ BOOL CWaveSoapFrontDoc::OnSaveRawFile(int flags, LPCTSTR FullTargetName, WAVEFOR
 	}
 	else if (flags & SaveRawFileMsbFirst)
 	{
-		CByteSwapConvertor * pSwapConvertor = new CByteSwapConvertor;
-		pConvert->AddWaveProc(pSwapConvertor);
+		pConvert->AddWaveProc(new CByteSwapConvertor);
 	}
 
 	if (flags & SaveFile_SaveCopy)
