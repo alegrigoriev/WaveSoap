@@ -1565,30 +1565,29 @@ void CWaveSoapFrontView::UpdateCaretPosition()
 
 void CWaveSoapFrontView::OnActivateView(BOOL bActivate, CView* pActivateView, CView* pDeactiveView)
 {
-	if (NULL == pActivateView
-		|| NULL == pDeactiveView
-		|| pActivateView->GetDocument() != pDeactiveView->GetDocument())
+	CWaveSoapFrontDoc * pDoc = GetDocument();
+	if (bActivate
+		&& pActivateView == this
+		&& (pActivateView == pDeactiveView
+			|| pDeactiveView == NULL
+			|| pDoc != pDeactiveView->GetDocument()))
 	{
-		CWaveSoapFrontDoc * pDoc;
-		if (bActivate)
+		GetApp()->m_pActiveDocument = pDoc;
+		TRACE("App::m_pActiveDocument set to %X\n", pDoc);
+		if (pDoc)
 		{
-			pDoc = DYNAMIC_DOWNCAST(CWaveSoapFrontDoc, pActivateView->GetDocument());
-			GetApp()->m_pActiveDocument = pDoc;
-			if (pDoc)
-			{
-				TRACE("Document thread priority increased\n");
-				pDoc->SetThreadPriority(THREAD_PRIORITY_BELOW_NORMAL);
-			}
+			TRACE("Document %x thread priority increased\n", pDoc);
+			pDoc->SetThreadPriority(THREAD_PRIORITY_BELOW_NORMAL);
 		}
-		else if (pDeactiveView == this)
+	}
+	if (pDeactiveView == this && ! bActivate)
+	{
+		GetApp()->m_pActiveDocument = NULL;
+		TRACE("App::m_pActiveDocument set to NULL\n");
+		if (pDoc)
 		{
-			GetApp()->m_pActiveDocument = NULL;
-			pDoc = DYNAMIC_DOWNCAST(CWaveSoapFrontDoc, pDeactiveView->GetDocument());
-			if (pDoc)
-			{
-				TRACE("Document thread priority lowered\n");
-				pDoc->SetThreadPriority(THREAD_PRIORITY_LOWEST);
-			}
+			TRACE("Document %x thread priority lowered\n", pDoc);
+			pDoc->SetThreadPriority(THREAD_PRIORITY_LOWEST);
 		}
 	}
 	CScaledScrollView::OnActivateView(bActivate, pActivateView, pDeactiveView);
