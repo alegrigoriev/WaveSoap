@@ -70,19 +70,6 @@ void FastFourierTransform(complex<float> * x, int order_power,
 void FastFourierTransform(complex<double> * x, int order_power,
 						int direction);
 
-#if 0
-template<float>
-void FastInverseFourierTransform(complex<float> * x, int order_power)
-{
-	FastFourierTransform(x, order_power, REV_FFT);
-}
-
-template<double>
-void FastInverseFourierTransform(complex<double> * x, int order_power)
-{
-	FastFourierTransform(x, order_power, REV_FFT);
-}
-#endif
 // FFT real -> complex.
 // converts (count) real source samples to (count / 2 + 1)
 // complex terms.
