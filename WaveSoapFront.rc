@@ -3632,6 +3632,7 @@ BEGIN
     IDS_INPUT_NAME_FREQUENCY_ARGUMENT2 "Frequency argument f2"
     IDS_INPUT_NAME_FREQUENCY_ARGUMENT3 "Frequency argument f3"
     IDS_INPUT_NAME_FREQUENCY_ARGUMENT1 "Frequency argument f1"
+    IDS_MARKER_REGION_CHANGE "Marker/region change"
 END
 
 #endif    // English (U.S.) resources
