@@ -234,6 +234,7 @@ public:
 	CPalette * GetPalette();
 	CPalette   m_Palette;
 	void CreatePalette();
+	BOOL GetMessageString(UINT nID, CString& rMessage);
 
 	void BroadcastUpdate(UINT lHint = 0);
 	BOOL IsAnyDocumentModified();
