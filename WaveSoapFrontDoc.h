@@ -94,6 +94,13 @@ struct MarkerRegionUpdateInfo : public CObject
 	WAVEREGIONINFO info;
 };
 
+struct NoiseThresholdUpdateInfo : public CObject
+{
+	double ThresholdLowDb;
+	double ThresholdHighDb;
+	double BeginFrequencyHz;
+};
+
 // Active document have highest priority for disk-intensive operations.
 // while it is executing a disk-intensive command,
 // such operations with non-active documents are suspended.
@@ -276,6 +283,7 @@ public:
 		UpdateWholeFileChanged,
 		UpdatePlaybackPositionChanged,
 		UpdateMarkerRegionChanged,
+		UpdateNoiseThresholdChanged,
 	};
 
 // Implementation
