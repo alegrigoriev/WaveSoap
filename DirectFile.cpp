@@ -12,6 +12,7 @@
 #include "LastError.h"
 #include "ElapsedTime.h"
 #include "PathEx.h"
+//#include <new>
 
 typedef DWORD BLOCK_INDEX;
 typedef NUM_volatile<DWORD> SUBBLOCK_MASK;
@@ -283,7 +284,7 @@ struct DirectFileCache::File : public ListItem<DirectFileCache::File>
 	BOOL Commit(DWORD flags);
 	BOOL Rename(LPCTSTR NewName, DWORD flags);
 
-	void ReadDataBuffer(BufferHeader * pBuf, DWORD MaskToRead);
+	void ReadDataBuffer(BufferHeader * pBuf, DWORD MaskToRead, DWORD RequestedMask);
 	BOOL ReadFileAt(LONGLONG Position, void * pBuf,
 					DWORD ToRead, DWORD * pWasRead);
 	BOOL WriteFileAt(LONGLONG Position, void const * pBuf,
@@ -1367,7 +1368,6 @@ void CDirectFileCache::MakeBufferLeastRecent(BufferHeader * pBuf)
 
 	m_MruList.RemoveEntry(pBuf);
 	// insert the buffer to the list tail
-	// to do: insert the buffer before the first with MRU_Count==1
 	pBuf->MRU_Count = 1;
 
 	BufferMruEntry * pBufAfter = m_MruList.Last();
@@ -1377,6 +1377,7 @@ void CDirectFileCache::MakeBufferLeastRecent(BufferHeader * pBuf)
 		pBufAfter = m_MruList.Prev(pBufAfter);
 	}
 
+	// insert the buffer before the first with MRU_Count==1
 	pBufAfter->InsertAsNextItem(pBuf);
 }
 
@@ -1485,11 +1486,6 @@ long CDirectFileCache::GetDataBuffer(File * pFile,
 	{
 		return 0;
 	}
-
-	// BUGBUG: If the buffer is requested for write only, it may be re-read!. We don't want
-	// that, unless we have file locking (which may be prone to deadlocks)
-	// For now, we ignore such flag.
-	flags &= ~CDirectFile::GetBufferWriteOnly;
 
 	long BytesRequested = 0;
 	long BytesReturned = 0;
@@ -1622,11 +1618,10 @@ long CDirectFileCache::GetDataBuffer(File * pFile,
 	}
 
 	DWORD MaskToRead = RequestedMask;
+
 	if (flags & CDirectFile::GetBufferWriteOnly)
 	{
-		// BUGBUG: If the buffer is requested for write only,
-		// make sure to not reread those pages!
-		MaskToRead = ~RequestedMask;
+		MaskToRead = 0;
 		if (OffsetInBuffer & MASK_OFFSET_IN_SUBBLOCK)
 		{
 			MaskToRead |= (1L << (OffsetInBuffer >> SUBBLOCK_SIZE_SHIFT));
@@ -1720,11 +1715,8 @@ long CDirectFileCache::GetDataBuffer(File * pFile,
 		m_MruList.InsertHead(pBuf);
 	}
 
-	if (MaskToRead != (pBuf->ReadMask & MaskToRead)
-		|| (flags & CDirectFile::GetBufferWriteOnly))
-	{
-		pFile->ReadDataBuffer(pBuf, MaskToRead);
-	}
+	pFile->ReadDataBuffer(pBuf, MaskToRead, RequestedMask);
+
 	// start prefetch for the rest of the data, if GetBufferWriteOnly is not set
 	// return number of bytes available
 
@@ -2168,13 +2160,14 @@ void File::ReturnDataBuffer(void * pBuffer, long count, DWORD flags)
 		}
 	}
 
-	if (0 == ((count + OffsetInBuffer) & MASK_OFFSET_IN_BLOCK)
-		&& (flags & CDirectFile::ReturnBufferDiscard))
-	{
-		CacheInstance.MakeBufferLeastRecent(pBuf);
-	}
+	// if the buffer is explicitly marked for discard, or to mark dirty, move it to the tail of the MRU
+	if (0) if (0 == ((count + OffsetInBuffer) & MASK_OFFSET_IN_BLOCK)
+				&& (flags & (CDirectFile::ReturnBufferDiscard | CDirectFile::ReturnBufferDirty)))
+		{
+			CacheInstance.MakeBufferLeastRecent(pBuf);
+		}
 
-	// decrement lock count
+		// decrement lock count
 	if (0 == --pBuf->LockCount)
 	{
 		// set a request for writing
@@ -2402,52 +2395,76 @@ BOOL File::WriteFileAt(LONGLONG Position, void const * pBuf,
 	return 0;
 }
 #endif
-void File::ReadDataBuffer(BufferHeader * pBuf, DWORD MaskToRead)
+
+// MaskToRead - mask of blocks that should be read from the file
+// Requested mask - mask of all blocks, including those that should be just zero-filled (write-only blocks)
+void File::ReadDataBuffer(BufferHeader * pBuf, DWORD MaskToRead, DWORD RequestedMask)
 {
+	//MaskToRead = RequestedMask;
 	// check if the required data is already in the buffer
-	if (0 != MaskToRead
-		&& (pBuf->ReadMask & MaskToRead) == MaskToRead)
+	if (0 == (RequestedMask & ~pBuf->ReadMask))
 	{
 		return;
 	}
+	// some blocks need to brought up
 	int OldPriority;
 	{
 		CSimpleCriticalSectionLock lock(m_FileLock);
 		// the operation in progress might change the mask
-		if (0 != MaskToRead
-			&& (pBuf->ReadMask & MaskToRead) == MaskToRead)
-		{
-			return;
-		}
-		MaskToRead &= ~ pBuf->ReadMask;
 		// read the required data
-		LONGLONG StartFilePtr = ULONGLONG(pBuf->PositionKey) << BLOCK_SIZE_SHIFT;
 		char * buf = (char *) pBuf->pBuf;
+
+		DWORD MaskToZeroFill = RequestedMask & ~MaskToRead & ~pBuf->ReadMask;
+		pBuf->ReadMask |= MaskToZeroFill;
+
+		for (char * BufToZero = buf; MaskToZeroFill != 0;
+			BufToZero += CACHE_SUBBLOCK_SIZE, MaskToZeroFill >>= 1)
+		{
+			if (MaskToZeroFill & 1)
+			{
+				memset(BufToZero, 0, CACHE_SUBBLOCK_SIZE);
+			}
+		}
+
+		MaskToRead &= ~ pBuf->ReadMask;
+
+		LONGLONG StartFilePtr = ULONGLONG(pBuf->PositionKey) << BLOCK_SIZE_SHIFT;
+
 		// check if the buffer is in the initialized part of the file
 		if (0 == (m_Flags & CDirectFile::FileFlagsReadOnly))
 		{
-			size_t WrittenMaskOffset = pBuf->PositionKey >> 3;
+			size_t const WrittenMaskOffset = pBuf->PositionKey >> 3;
+
+			bool NeedToReadFromSourceFile = false;
+
 			if (WrittenMaskOffset >= m_WrittenMaskSize)
 			{
-				size_t NewWrittenMaskSize = WrittenMaskOffset + 512;   // 256 more megs
-				char * NewWrittenMask = new char[NewWrittenMaskSize];
-				if (NULL == NewWrittenMask)
+				// assume we don't need to read the block, because it's beyound the current file length
+				size_t const NewWrittenMaskSize = WrittenMaskOffset + 512;   // 256 more megs
+				char * NewWrittenMask = new /*(nothrow)*/ char[NewWrittenMaskSize];
+
+				if (NULL != NewWrittenMask)
 				{
-					if (0) TRACE("NewWrittenMask == NULL\n");
-					memset(pBuf->pBuf, 0, CACHE_BLOCK_SIZE);
-					pBuf->ReadMask = 0xFFFFFFFF;
-					return;
+					if (0) TRACE("Allocated NewWrittenMask, size=%d\n", NewWrittenMaskSize);
+
+					memset(NewWrittenMask, 0, NewWrittenMaskSize);
+					memcpy(NewWrittenMask, m_pWrittenMask, m_WrittenMaskSize);
+
+					delete[] m_pWrittenMask;
+
+					m_pWrittenMask = NewWrittenMask;
+					m_WrittenMaskSize = NewWrittenMaskSize;
+					NeedToReadFromSourceFile = true;
 				}
-				if (0) TRACE("Allocated NewWrittenMask, size=%d\n", NewWrittenMaskSize);
-				memset(NewWrittenMask, 0, NewWrittenMaskSize);
-				memcpy(NewWrittenMask, m_pWrittenMask, m_WrittenMaskSize);
-				delete[] m_pWrittenMask;
-				m_pWrittenMask = NewWrittenMask;
-				m_WrittenMaskSize = NewWrittenMaskSize;
 			}
+			else
+			{
+				NeedToReadFromSourceFile = 0 ==
+											(m_pWrittenMask[WrittenMaskOffset] & (1 << (pBuf->PositionKey & 7)));
+			}
+
 			ASSERT(m_pWrittenMask);
-			if (0 == (m_pWrittenMask[WrittenMaskOffset]
-					& (1 << (pBuf->PositionKey & 7))))
+			if (NeedToReadFromSourceFile)
 			{
 				m_pWrittenMask[WrittenMaskOffset] |= 1 << (pBuf->PositionKey & 7);
 
@@ -2479,7 +2496,7 @@ void File::ReadDataBuffer(BufferHeader * pBuf, DWORD MaskToRead)
 							(ToRead + (CACHE_SUBBLOCK_SIZE - 1)) & ~MASK_OFFSET_IN_SUBBLOCK, & BytesRead, NULL);
 
 					if (TRACE_READ) TRACE("ReadFile(%08x, pos=0x%08X, bytes=%X), elapsed time=%d ms/10\n",
-										m_hFile, (ULONG)(StartFilePtr & 0xFFFFFFFF), ToRead, time.ElapsedTimeTenthMs());
+						m_pSourceFile->m_hFile, (ULONG)(StartFilePtr & 0xFFFFFFFF), ToRead, time.ElapsedTimeTenthMs());
 #ifdef _DEBUG
 					if (BytesRead < ToRead)
 					{
