@@ -192,7 +192,8 @@ public:
 public:
 	virtual ~CWaveSoapFrontDoc();
 	void UpdateDocumentTitle();
-	void LoadPeakFile(CWaveFile & WaveFile);
+	void LoadPeaksForCompressedFile(CWaveFile & WaveFile, CWaveFile & OriginalWaveFile);
+	void CheckAndLoadPeakFile(CWaveFile & WaveFile);
 	void BuildPeakInfo(BOOL bSavePeakFile);
 	void GetSoundMinMax(int & MinL, int & MaxL, int & MinR, int & MaxR, long begin, long end);
 	int CalculatePeakInfoSize() const
@@ -205,7 +206,7 @@ public:
 		return m_Thread.SetThreadPriority(priority);
 	}
 
-	void SavePeakInfo(CWaveFile & WaveFile);
+	void SavePeakInfo(CWaveFile & WaveFile, CWaveFile & SavedWaveFile);
 	BOOL OpenWaveFile(CWaveFile & WaveFile, LPCTSTR szName, DWORD flags);
 
 #ifdef _DEBUG
@@ -412,14 +413,15 @@ protected:
 #pragma pack(push, 2)
 struct PeakFileHeader
 {
-	DWORD dwSize;
 	DWORD dwSignature;
-	enum { pfhSignature = 'KPSW', pfhMaxVersion=1};
-	DWORD dwVersion;
+	WORD wSize;
+	enum { pfhSignature = 'KPSW', pfhMaxVersion=2};
+	WORD dwVersion;
 	FILETIME WaveFileTime;
 	DWORD dwWaveFileSize;   // WAV file is less than 4G
 	DWORD Granularity;      // number of WAV samples for each PeakFile value
 	DWORD PeakInfoSize;
+	DWORD NumOfSamples;
 	WAVEFORMATEX wfFormat;
 };
 
