@@ -465,7 +465,7 @@ void CVolumeChangeDialog::OnKillfocusEditVolumeRight()
 }
 
 /////////////////////////////////////////////////////////////////////////////
-// CSelectionDialog dialog
+// CSelectionUiSupport dialog
 CSelectionUiSupport::CSelectionUiSupport(SAMPLE_INDEX Start, SAMPLE_INDEX End, SAMPLE_INDEX CaretPos,
 										CHANNEL_MASK Channel,
 										CWaveFile & WaveFile, int TimeFormat,
@@ -535,6 +535,29 @@ CSelectionUiSupport::CSelectionUiSupport(SAMPLE_INDEX Start, SAMPLE_INDEX End, S
 			m_Chan = 2;
 		}
 	}
+}
+
+void CSelectionUiSupport::SetSelection(SAMPLE_INDEX Start, SAMPLE_INDEX End, CHANNEL_MASK Channel)
+{
+	m_Start = Start;
+	m_End = End;
+	m_Length = End - Start;
+
+	AdjustSelection(Start, End, End - Start);
+
+	if (m_WaveFile.AllChannels(Channel))
+	{
+		m_Chan = 0;
+	}
+	else if (Channel & SPEAKER_FRONT_LEFT)
+	{
+		m_Chan = 1;
+	}
+	else if (Channel & SPEAKER_FRONT_RIGHT)
+	{
+		m_Chan = 2;
+	}
+	// TODO: set radio button
 }
 
 void CSelectionUiSupport::InitSelectionUi()
@@ -721,13 +744,14 @@ void CSelectionUiSupport::AdjustSelection(SAMPLE_INDEX Start, SAMPLE_INDEX End,
 	{
 		// force the values into the file length
 
+		if (Start > FileLength)
+		{
+			Start = FileLength;
+		}
+
 		if (Start != m_Start)
 		{
 			// if start is greater than end, set end to start+Length
-			if (Start > FileLength)
-			{
-				Start = FileLength;
-			}
 			if (Start > End)
 			{
 				End = Start + Length;
