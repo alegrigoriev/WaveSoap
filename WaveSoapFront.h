@@ -153,7 +153,7 @@ public:
 	DECLARE_MESSAGE_MAP()
 	CWinThread m_Thread;
 	unsigned _ThreadProc();
-	bool m_RunThread;
+	bool volatile m_RunThread;
 	HANDLE m_hThreadEvent;
 	CSimpleCriticalSection m_cs;
 	static UINT AFX_CDECL ThreadProc(PVOID arg)

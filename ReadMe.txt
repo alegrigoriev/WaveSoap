@@ -1,6 +1,7 @@
 Known problems and tasks:
 
-Add spectrum section view
+Show playback position spectrum in Spectrum Section View
+Make horizontal zoom for Spectrum Section View.
 Noise reduction doesn't save aggressivness parameter.
 Lost sync between horz ruler scrolling and waveform.
 After zoom in max, cursor jumps to not the view center.
@@ -44,6 +45,7 @@ Wrong area invalidated in Spectrum View
 Add declicking: first dialog
 Add declicking: interpolation
 Add noise reduction dialog and processing
+Add spectrum section view
 
 File Save/Save As checklist:
 

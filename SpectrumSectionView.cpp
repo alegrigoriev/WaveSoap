@@ -4,6 +4,7 @@
 #include "stdafx.h"
 #include "WaveSoapFront.h"
 #include "SpectrumSectionView.h"
+#include "fft.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -18,16 +19,24 @@ IMPLEMENT_DYNCREATE(CSpectrumSectionView, CScaledScrollView)
 
 CSpectrumSectionView::CSpectrumSectionView()
 {
+	m_FftOrder = 512;
+	m_pFftSum = NULL;
+	m_pWindow = NULL;
+	m_FftPosition = -1;
+	m_nFftSumSize = 0;
 }
 
 CSpectrumSectionView::~CSpectrumSectionView()
 {
+	delete[] m_pFftSum;
+	delete[] m_pWindow;
 }
 
 
 BEGIN_MESSAGE_MAP(CSpectrumSectionView, CScaledScrollView)
 	//{{AFX_MSG_MAP(CSpectrumSectionView)
-		// NOTE - the ClassWizard will add and remove mapping macros here.
+	ON_WM_CREATE()
+	ON_WM_MOUSEACTIVATE()
 	//}}AFX_MSG_MAP
 END_MESSAGE_MAP()
 
@@ -37,7 +46,328 @@ END_MESSAGE_MAP()
 void CSpectrumSectionView::OnDraw(CDC* pDC)
 {
 	CWaveSoapFrontDoc* pDoc = GetDocument();
-	// TODO: add draw code here
+	if ( ! pDoc->m_WavFile.IsOpen())
+	{
+		CScaledScrollView::OnDraw(pDC);
+		return;
+	}
+	// calculate FFT
+	// if there is no selection, calculate only current position
+	// get FFT order from master window
+	CWaveFftView * pFftView = dynamic_cast<CWaveFftView *>(m_pVertMaster);
+	if (NULL == pFftView)
+	{
+		return;
+	}
+	CRect r;
+	CRect cr;
+	GetClientRect( & cr);
+	double left, right, top, bottom;
+
+	if (pDC->IsKindOf(RUNTIME_CLASS(CPaintDC)))
+	{
+		r = ((CPaintDC*)pDC)->m_ps.rcPaint;
+	}
+	else
+	{
+		pDC->GetClipBox(&r);
+	}
+	//int iClientWidth = r.right - r.left;
+	PointToDoubleDev(CPoint(r.left, cr.top), left, top);
+	PointToDoubleDev(CPoint(r.right, cr.bottom), right, bottom);
+
+	if (left < 0) left = 0;
+	// create an array of points
+	int nNumberOfPoints = r.bottom - r.top;
+
+	m_FftOrder = pFftView->m_FftOrder;
+	int nSampleSize = pDoc->WaveSampleSize();
+	int nChannels = pDoc->WaveChannels();
+	DWORD offset = pDoc->WaveDataChunk()->dwDataOffset;
+	DWORD start = pDoc->m_CaretPosition * nSampleSize + offset;
+	DWORD FftStepInFile = m_FftOrder * nSampleSize;
+	int NumberOfFftSamplesAveraged =
+		(pDoc->m_SelectionEnd - pDoc->m_SelectionStart) / m_FftOrder + 1;
+	if (NumberOfFftSamplesAveraged > 100)
+	{
+		NumberOfFftSamplesAveraged = 100;
+	}
+
+	int length = FftStepInFile * 2;
+
+	// calculate extents
+	// find vertical offset in the result array and how many
+	// rows to fill with this color
+	int rows = cr.Height() / nChannels;
+	// if all the chart was drawn, how many scans it would have:
+	int TotalRows = rows * pFftView->m_VerticalScale;
+
+	if (0 == TotalRows)
+	{
+		CScaledScrollView::OnDraw(pDC);
+		return;
+	}
+
+	int LastFftSample = m_FftOrder - pFftView->m_FirstbandVisible;
+	int FirstFftSample = LastFftSample + (-rows * m_FftOrder) / TotalRows;
+	if (FirstFftSample < 0)
+	{
+		LastFftSample -= FirstFftSample;
+		FirstFftSample = 0;
+	}
+	int FirstRowInView = FirstFftSample * TotalRows / m_FftOrder;
+	int FftSamplesInView = LastFftSample - FirstFftSample + 1;
+
+	int IdxSize1 = __min(rows, FftSamplesInView);
+
+	// Allocate FFT arrays
+	if (NULL == m_pFftSum
+		|| m_nFftSumSize < nChannels * (m_FftOrder * 2 + 2))
+	{
+		delete[] m_pFftSum;
+		delete[] m_pWindow;
+		m_pFftSum = NULL;
+		m_pWindow = NULL;
+		m_nFftSumSize = 0;
+		m_nFftSumSize = nChannels * (m_FftOrder * 2 + 2);
+		m_pFftSum = new double[m_nFftSumSize];
+		if (NULL == m_pFftSum)
+		{
+			return;
+		}
+		m_pWindow = new double[m_FftOrder * 2];
+		for (int w = 0; w < m_FftOrder * 2; w++)
+		{
+			// Hamming window (sucks!!!)
+			//m_pWindow[w] = 0.54 - 0.46 * cos (w * M_PI /  m_FftOrder);
+			// squared sine - best stopband loss
+			m_pWindow[w] = 0.5 - 0.5 * cos ((w + 0.5) * M_PI /  m_FftOrder);
+			// half sine
+			//m_pWindow[w] = 0.707107 * sin (w * M_PI * 0.5 / m_FftOrder);
+		}
+
+	}
+	float * pSrcArray = new float [nChannels * (m_FftOrder * 2 + 2)];
+	if (NULL == pSrcArray)
+	{
+		return;
+	}
+	__int16 * pSrcIntArray = new __int16[m_FftOrder * 2 * nChannels];
+	if (NULL == pSrcIntArray)
+	{
+		delete[] pSrcArray;
+		return;
+	}
+
+	// build an array
+	struct S
+	{
+		int nFftOffset;
+		int nNumOfRows;
+		int nMin;
+		int nMax;
+	};
+
+	S * pIdArray = new S[IdxSize1+1];
+	if (NULL == pIdArray)
+	{
+		delete[] pSrcIntArray;
+		delete[] pSrcArray;
+		return;
+	}
+	POINT (* ppArray)[2] = new POINT[nNumberOfPoints][2];
+	if (NULL == ppArray)
+	{
+		delete[] pIdArray;
+		delete[] pSrcIntArray;
+		delete[] pSrcArray;
+		return;
+	}
+
+	// fill the array
+	int LastRow = 0;
+	int k;
+	for (k = 0; k < IdxSize1; k++)
+	{
+		if (FirstFftSample >= m_FftOrder
+			|| LastRow >= rows)
+		{
+			break;
+		}
+		pIdArray[k].nFftOffset = FirstFftSample;
+		FirstFftSample++;
+		int NextRow = FirstFftSample * TotalRows / m_FftOrder - FirstRowInView;
+		if (NextRow == LastRow)
+		{
+			NextRow++;
+			FirstFftSample = (NextRow + FirstRowInView) * m_FftOrder / TotalRows;
+		}
+		if (NextRow > rows)
+		{
+			NextRow = rows;
+		}
+		pIdArray[k].nNumOfRows = NextRow - LastRow;
+		LastRow = NextRow;
+	}
+	TRACE("LastRow = %d, cr.height=%d\n", LastRow, cr.Height());
+	ASSERT(LastRow <= rows);
+	int IdxSize = k;
+	pIdArray[k].nFftOffset = m_FftOrder;
+	pIdArray[k].nNumOfRows = 0;
+
+	CPen pen(PS_SOLID, 0, COLORREF(0));   // black pen
+	CGdiObject * pOldPen = pDC->SelectObject( & pen);
+
+	int i;
+	int j;
+	int ch;
+	// read the data
+	// if there is selection, calculate the whole region sum
+	for (i = 0; i < m_nFftSumSize; i++)
+	{
+		m_pFftSum[i] = 0.;
+	}
+
+	for (int FftSample = 0; FftSample < NumberOfFftSamplesAveraged; FftSample++)
+	{
+		pDoc->m_WavFile.ReadAt(pSrcIntArray, length, start);
+		start += FftStepInFile;
+		if (1 == nChannels)
+		{
+			for (i = 0; i < m_FftOrder * 2; i++)
+			{
+				pSrcArray[i] = pSrcIntArray[i] * m_pWindow[i];
+			}
+			FastFourierTransform(pSrcArray, (complex<float>*)pSrcArray, m_FftOrder * 2);
+			pSrcArray[1] = 0;
+			for (i = 0; i < m_FftOrder; i++)
+			{
+				m_pFftSum[i] += pSrcArray[i * 2] * pSrcArray[i * 2]
+								+ pSrcArray[i * 2 + 1] * pSrcArray[i * 2 + 1];
+			}
+		}
+		else if (2 == nChannels)
+		{
+			for (i = 0; i < m_FftOrder * 2; i++)
+			{
+				pSrcArray[i * 2] = pSrcIntArray[i * 2] * m_pWindow[i];
+				pSrcArray[i * 2 + 1] = pSrcIntArray[i * 2 + 1] * m_pWindow[i];
+			}
+			FastFourierTransform((complex<float>*)pSrcArray,
+								(complex<float>*)pSrcArray, m_FftOrder * 2);
+			// channel 0 was in real part, ch 1 was imag part
+			// left result is (re1+re2)/2, (im1-im2)/2
+			// right result is (re1-re2)/2, (im1+im2)/2
+			for (i = 1; i < m_FftOrder; i++)
+			{
+				double re1 = pSrcArray[i * 2] + pSrcArray[(m_FftOrder * 2 - i) * 2];
+				double re2 = pSrcArray[i * 2] - pSrcArray[(m_FftOrder * 2 - i) * 2];
+				double im1 = pSrcArray[i * 2 + 1] - pSrcArray[(m_FftOrder * 2 - i) * 2 + 1];
+				double im2 = pSrcArray[i * 2 + 1] + pSrcArray[(m_FftOrder * 2 - i) * 2 + 1];
+				m_pFftSum[i * 2] += re1 * re1 + im1 * im1;
+				m_pFftSum[i * 2 + 1] += re2 * re2 + im2 * im2;
+			}
+		}
+	}
+
+	double PowerScaleCoeff = 1. / (NumberOfFftSamplesAveraged * 65536. * m_FftOrder * 65536 * m_FftOrder);
+	// now that we have calculated the FFT
+	for (ch = 0; ch < nChannels; ch++)
+	{
+		int ChannelOffset = rows * (nChannels - 1 - ch);
+		for (i = 0; i < IdxSize; i++)
+		{
+			pIdArray[i].nMin = 0x7FFFFF;
+			pIdArray[i].nMax = -0x7FFFFF;
+			for (j = pIdArray[i].nFftOffset; j < pIdArray[i+1].nFftOffset; j++)
+			{
+				double temp = PowerScaleCoeff * m_pFftSum[nChannels * (m_FftOrder-1-j) + ch];
+				if (0 != temp)
+				{
+					temp = 10. * log10(temp);
+				}
+				else
+				{
+					temp = -150.;
+				}
+				int pos = WorldToWindowX(temp);
+				if (pIdArray[i].nMin > pos)
+				{
+					pIdArray[i].nMin = pos;
+				}
+				if (pIdArray[i].nMax < pos)
+				{
+					pIdArray[i].nMax = pos;
+				}
+			}
+		}
+		for (i = 0, j = 0; i < IdxSize && j < nNumberOfPoints; i++)
+		{
+			for (int k = 0; k < pIdArray[i].nNumOfRows; k++, j++)
+			{
+				ppArray[j][0].x = pIdArray[i].nMax;
+				ppArray[j][1].x = pIdArray[i].nMin - 1;
+				ppArray[j][0].y = ChannelOffset + j;
+				ppArray[j][1].y = ChannelOffset + j;
+			}
+		}
+		int LastX0 = ppArray[0][0].x;
+		int LastX1 = ppArray[0][1].x;
+		for (i = 0; i < nNumberOfPoints; i++)
+		{
+			if (i < nNumberOfPoints - 1
+				&& ppArray[i + 1][0].x >= ppArray[i + 1][1].x)
+			{
+				if (ppArray[i][0].x < ppArray[i + 1][1].x)
+				{
+					ppArray[i][0].x = (ppArray[i + 1][1].x + ppArray[i][0].x) >> 1;
+				}
+				else if (ppArray[i + 1][0].x < ppArray[i][1].x)
+				{
+					ppArray[i][1].x = (ppArray[i][1].x + ppArray[i + 1][0].x) >> 1;
+				}
+			}
+			if (LastX0 >= LastX1)
+			{
+				if (ppArray[i][0].x < LastX1)
+				{
+					ppArray[i][0].x = LastX1;
+				}
+				else if (ppArray[i][1].x > LastX0)
+				{
+					ppArray[i][1].x = LastX0;
+				}
+			}
+
+			LastX0 = ppArray[i][0].x;
+			LastX1 = ppArray[i][1].x;
+
+			if (ppArray[i][0].x < 0)
+			{
+				continue;
+			}
+			else if (ppArray[i][0].x > cr.right)
+			{
+				ppArray[i][0].x = cr.right;
+			}
+
+			if (ppArray[i][1].x < 0)
+			{
+				ppArray[i][1].x = -1;
+			}
+			else if (ppArray[i][1].x > cr.right)
+			{
+				continue;
+			}
+			pDC->MoveTo(ppArray[i][0]);
+			pDC->LineTo(ppArray[i][1]);
+		}
+	}
+	pDC->SelectObject(pOldPen);
+	delete[] ppArray;
+	delete[] pIdArray;
+	delete[] pSrcIntArray;
+	delete[] pSrcArray;
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -63,3 +393,29 @@ CWaveSoapFrontDoc* CSpectrumSectionView::GetDocument() // non-debug version is i
 /////////////////////////////////////////////////////////////////////////////
 // CSpectrumSectionView message handlers
 /////////////////////////////////////////////////////////////////////////////
+
+int CSpectrumSectionView::OnCreate(LPCREATESTRUCT lpCreateStruct)
+{
+	if (CScaledScrollView::OnCreate(lpCreateStruct) == -1)
+		return -1;
+
+	KeepAspectRatio(FALSE);
+	KeepScaleOnResizeX(FALSE);
+	KeepScaleOnResizeY(FALSE);
+	KeepOrgOnResizeX(TRUE);
+	KeepOrgOnResizeY(FALSE);
+
+	SetMaxExtents(0, -120.,
+				0, 1000.);
+	SetExtents(0., -70., 0, 1000.);
+	ShowScrollBar(SB_VERT, FALSE);
+	ShowScrollBar(SB_HORZ, TRUE);
+	return 0;
+}
+
+int CSpectrumSectionView::OnMouseActivate(CWnd* pDesktopWnd, UINT nHitTest, UINT message)
+{
+	// don't call CView function, to avoid getting focus to the window
+
+	return CWnd::OnMouseActivate(pDesktopWnd, nHitTest, message);
+}
