@@ -856,6 +856,8 @@ void CTimeRulerView::OnLButtonDblClk(UINT nFlags, CPoint point)
 		}
 
 		pDoc->BeginMarkerChange(CWaveFile::InstanceDataWav::MetadataCopyAllCueData);
+		info.Flags |= info.CommitChanges;
+
 		pDoc->ChangeWaveMarker( & info);
 	}
 	else
@@ -1304,7 +1306,7 @@ void CTimeRulerView::OnMoveMarkerToCurrent()
 
 	if (m_PopupMenuHitTest & (HitTestMarker | HitTestRegionBegin))
 	{
-		m_PopupMenuHit.Flags |= m_PopupMenuHit.ChangeSample | m_PopupMenuHit.CommitChanges;
+		m_PopupMenuHit.Flags |= m_PopupMenuHit.ChangeSample;
 
 		if (m_PopupMenuHitTest & HitTestRegionBegin)
 		{
@@ -1324,7 +1326,7 @@ void CTimeRulerView::OnMoveMarkerToCurrent()
 	}
 	else if (m_PopupMenuHitTest & HitTestRegionEnd)
 	{
-		m_PopupMenuHit.Flags |= m_PopupMenuHit.ChangeLength | m_PopupMenuHit.CommitChanges;
+		m_PopupMenuHit.Flags |= m_PopupMenuHit.ChangeLength;
 		MarkerChangeMask = CWaveFile::InstanceDataWav::MetadataCopyLtxt;
 
 		if (pDoc->m_CaretPosition <= SAMPLE_INDEX(m_PopupMenuHit.Sample))
@@ -1338,7 +1340,10 @@ void CTimeRulerView::OnMoveMarkerToCurrent()
 	{
 		return;
 	}
+
 	pDoc->BeginMarkerChange(MarkerChangeMask);
+	m_PopupMenuHit.Flags |= m_PopupMenuHit.CommitChanges;
+
 	pDoc->ChangeWaveMarker( & m_PopupMenuHit);
 }
 
@@ -1379,6 +1384,8 @@ void CTimeRulerView::OnEditMarker()
 	}
 
 	pDoc->BeginMarkerChange(CWaveFile::InstanceDataWav::MetadataCopyAllCueData);
+	m_PopupMenuHit.Flags |= m_PopupMenuHit.CommitChanges;
+
 	pDoc->ChangeWaveMarker( & m_PopupMenuHit);
 }
 
