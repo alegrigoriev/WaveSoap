@@ -83,7 +83,6 @@ void CWaveOutlineView::OnDraw(CDC* pDC)
 		return;
 	}
 	long nSamples = pDoc->WaveFileSamples();
-	WavePeak * pDocPeaks = pDoc->m_pPeaks;
 
 	WavePeak * pPeaks = new WavePeak[width];
 	if (NULL == pPeaks)
@@ -108,6 +107,7 @@ void CWaveOutlineView::OnDraw(CDC* pDC)
 	pDC->MoveTo(cr.left, cr.bottom - 1);
 	pDC->LineTo(cr.right, cr.bottom - 1);
 
+	unsigned TotalPeaks = pDoc->m_WavFile.GetPeaksSize();
 	int i;
 	if (0 == nSamples)
 	{
@@ -117,35 +117,15 @@ void CWaveOutlineView::OnDraw(CDC* pDC)
 			pPeaks[i].high = 0;
 		}
 	}
-	else if (pDoc->m_WavePeakSize / channels >= width)
+	else if (TotalPeaks / channels >= width)
 	{
-		if (NULL == pDocPeaks)
-		{
-			pDC->SelectObject(pOldPen);
-			if (pOldPalette)
-			{
-				pDC->SelectPalette(pOldPalette, FALSE);
-			}
-			delete[] pPeaks;
-			return;
-		}
-		int PrevIdx = ur.left * pDoc->m_WavePeakSize / width;
+		int PrevIdx = ur.left * TotalPeaks / width;
 		for (i = ur.left; i < ur.right; i++)
 		{
-			pPeaks[i].high = -0x8000;
-			pPeaks[i].low = 0x7FFF;
-			int NewIdx = (i + 1) * pDoc->m_WavePeakSize / width;
-			for (int j = PrevIdx; j < NewIdx; j++)
-			{
-				if (pPeaks[i].low > pDocPeaks[j].low)
-				{
-					pPeaks[i].low = pDocPeaks[j].low;
-				}
-				if (pPeaks[i].high < pDocPeaks[j].high)
-				{
-					pPeaks[i].high = pDocPeaks[j].high;
-				}
-			}
+			int NewIdx = (i + 1) * TotalPeaks / width;
+
+			pPeaks[i] = pDoc->m_WavFile.GetPeakMinMax(PrevIdx, NewIdx);
+
 			PrevIdx = NewIdx;
 		}
 	}
@@ -208,16 +188,9 @@ void CWaveOutlineView::OnDraw(CDC* pDC)
 		PeakMax = 1;
 		PeakMin = 1;
 	}
-	else for (unsigned i = 0; i < pDoc->m_WavePeakSize; i++)
+	else
 	{
-		if (PeakMin > pDocPeaks[i].low)
-		{
-			PeakMin = pDocPeaks[i].low;
-		}
-		if (PeakMax < pDocPeaks[i].high)
-		{
-			PeakMax = pDocPeaks[i].high;
-		}
+		WavePeak Peak = pDoc->m_WavFile.GetPeakMinMax(0, TotalPeaks);
 	}
 
 	PeakMax = abs(PeakMax);
@@ -408,28 +381,20 @@ void CWaveOutlineView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
 			return;
 		}
 
-		int PeakMax = -0x8000;
-		int PeakMin = 0x7FFF;
-		WavePeak * pDocPeaks = pDoc->m_pPeaks;
-		if (NULL == pDocPeaks)
+		unsigned TotalPeaks = pDoc->m_WavFile.GetPeaksSize();
+
+		if (0 == TotalPeaks)
 		{
 			Invalidate();
 			return;
 		}
-		for (unsigned i = 0; i < pDoc->m_WavePeakSize; i++)
-		{
-			if (PeakMin > pDocPeaks[i].low)
-			{
-				PeakMin = pDocPeaks[i].low;
-			}
-			if (PeakMax < pDocPeaks[i].high)
-			{
-				PeakMax = pDocPeaks[i].high;
-			}
-		}
+		int PeakMax = -0x8000;
+		int PeakMin = 0x7FFF;
+		WavePeak Peak = pDoc->m_WavFile.GetPeakMinMax(0, TotalPeaks);
 
-		PeakMax = abs(PeakMax);
-		PeakMin = abs(PeakMin);
+		PeakMax = abs(Peak.high);
+		PeakMin = abs(Peak.low);
+
 		if (PeakMax < PeakMin)
 		{
 			PeakMax = PeakMin;
@@ -679,15 +644,14 @@ void CWaveOutlineView::OnLButtonDown(UINT nFlags, CPoint point)
 							ALL_CHANNELS, nSampleUnderMouse,
 							SetSelection_MoveCaretToCenter);
 	}
-	else
+	else if (0 != nSamples)
 	{
-		long nBegin = 0;
-		long nEnd = 0;
+		unsigned PeaksSamples = pDoc->m_WavFile.GetPeaksSize() / pDoc->WaveChannels();
+		unsigned Granularity = pDoc->m_WavFile.GetPeakGranularity();
 		// round to peak info granularity
-		nBegin = pDoc->m_PeakDataGranularity *
-				MulDiv(point.x, pDoc->m_WavePeakSize / pDoc->WaveChannels(), width);
-		nEnd = pDoc->m_PeakDataGranularity *
-				MulDiv(point.x + 1, pDoc->m_WavePeakSize / pDoc->WaveChannels(), width);
+		long nBegin = Granularity * MulDiv(point.x, PeaksSamples, width);
+		long nEnd = Granularity * MulDiv(point.x + 1, PeaksSamples, width);
+
 		pDoc->SetSelection(nBegin, nEnd, ALL_CHANNELS, nBegin,
 							SetSelection_SnapToMaximum | SetSelection_MoveCaretToCenter);
 	}
@@ -703,13 +667,14 @@ void CWaveOutlineView::OnLButtonUp(UINT nFlags, CPoint point)
 	long nBegin = 0;
 	long nEnd = 0;
 	int width = cr.Width();
-	if (0 != width)
+	if (0 != width && 0 != nSamples)
 	{
 		// round to peak info granularity
-		nBegin = pDoc->m_PeakDataGranularity *
-				MulDiv(point.x, pDoc->m_WavePeakSize / pDoc->WaveChannels(), width);
-		nEnd = pDoc->m_PeakDataGranularity *
-				MulDiv(point.x + 1, pDoc->m_WavePeakSize / pDoc->WaveChannels(), width);
+		unsigned PeaksSamples = pDoc->m_WavFile.GetPeaksSize() / pDoc->WaveChannels();
+		unsigned Granularity = pDoc->m_WavFile.GetPeakGranularity();
+		// round to peak info granularity
+		nBegin = Granularity * MulDiv(point.x, PeaksSamples, width);
+		nEnd = Granularity * MulDiv(point.x + 1, PeaksSamples, width);
 	}
 
 	if ( ! bIsTrackingSelection
@@ -741,16 +706,20 @@ void CWaveOutlineView::OnMouseMove(UINT nFlags, CPoint point)
 	GetClientRect( & cr);
 	int width = cr.Width();
 
-	if (width <= 0)
+	long nSamples = pDoc->WaveFileSamples();
+	if (width <= 0 || 0 == nSamples)
 	{
 		CView::OnMouseMove(nFlags, point);
 		return;
 	}
 
-	long nSamples = pDoc->WaveFileSamples();
 	// round to peak info granularity
-	long nBegin = pDoc->m_PeakDataGranularity *
-				MulDiv(point.x, pDoc->m_WavePeakSize / pDoc->WaveChannels(), width);
+	unsigned PeaksSamples = pDoc->m_WavFile.GetPeaksSize() / pDoc->WaveChannels();
+	unsigned Granularity = pDoc->m_WavFile.GetPeakGranularity();
+	// round to peak info granularity
+	long nBegin = Granularity * MulDiv(point.x, PeaksSamples, width);
+	long nEnd = Granularity * MulDiv(point.x + 1, PeaksSamples, width);
+
 	if (nBegin < 0)
 	{
 		nBegin = 0;
@@ -760,8 +729,6 @@ void CWaveOutlineView::OnMouseMove(UINT nFlags, CPoint point)
 		nBegin = nSamples;
 	}
 
-	long nEnd = pDoc->m_PeakDataGranularity *
-				MulDiv(point.x + 1, pDoc->m_WavePeakSize / pDoc->WaveChannels(), width);
 	if (nEnd < 0)
 	{
 		nEnd = 0;
