@@ -161,8 +161,9 @@ protected:
 /////////////////////////////////////////////////////////////////////////////
 // CSelectionDialog dialog
 
-class CSelectionDialog : public CDialog
+class CSelectionDialog : public CDialog //CUiUpdatedDlg
 {
+	//typedef CUiUpdatedDlg BaseClass;
 	typedef CDialog BaseClass;
 // Construction
 public:
@@ -218,7 +219,9 @@ protected:
 	NUMBER_OF_SAMPLES m_Length;
 
 	BOOL const m_bAllowFileExtension;
-	void AdjustSelection();
+
+	void AdjustSelection(SAMPLE_INDEX Start, SAMPLE_INDEX End,
+						NUMBER_OF_SAMPLES Length);
 
 	struct Selection
 	{
@@ -249,6 +252,7 @@ protected:
 	afx_msg void OnKillfocusEditLength();
 	afx_msg void OnKillfocusEditStart();
 	afx_msg void OnSelchangeComboSelection();
+	afx_msg void OnUpdateOk(CCmdUI * pCmdUI);
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 };
