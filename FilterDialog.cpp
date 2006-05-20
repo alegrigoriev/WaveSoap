@@ -2020,7 +2020,7 @@ BOOL CFilterDialog::OnInitDialog()
 	pTemplateWnd->DestroyWindow();
 
 	BaseClass::OnInitDialog();
-	SetWindowIcons(this, IDI_ICON_FILTER_DIALOG);
+	SetBigAndSmallIcons(IDI_ICON_FILTER_DIALOG);
 
 	return TRUE;  // return TRUE unless you set the focus to a control
 	// EXCEPTION: OCX Property Pages should return FALSE

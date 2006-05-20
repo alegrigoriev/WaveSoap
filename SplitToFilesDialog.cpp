@@ -647,7 +647,8 @@ BOOL CSplitToFilesDialog::OnInitDialog()
 	m_sFilenamePrefix = m_RecentFilenamePrefixes[0];
 
 	BaseClass::OnInitDialog();
-	SetWindowIcons(this, IDI_ICON_SPLIT_TO_FILES);
+
+	SetBigAndSmallIcons(IDI_ICON_SPLIT_TO_FILES);
 
 	InitSelectionUi();
 
