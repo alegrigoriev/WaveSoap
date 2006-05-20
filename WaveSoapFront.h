@@ -309,7 +309,6 @@ CString GetSelectionText(SAMPLE_INDEX Start, SAMPLE_INDEX End, CHANNEL_MASK Chan
 						int nSamplesPerSec, int TimeFormat);
 
 CString LoadCString(UINT id);
-void SetWindowIcons(CWnd * pWnd, UINT id);
 
 void _AfxAppendFilterSuffix(CString& filter, OPENFILENAME& ofn,
 							CDocTemplate* pTemplate, CString* pstrDefaultExt);
