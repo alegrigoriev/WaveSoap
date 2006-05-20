@@ -1349,7 +1349,7 @@ BOOL CEqualizerDialog::OnInitDialog()
 
 	BaseClass::OnInitDialog();
 
-	SetWindowIcons(this, IDI_ICON_EQIALIZER);
+	SetBigAndSmallIcons(IDI_ICON_EQIALIZER);
 
 	m_eBandTransfer.SetData(m_pEqualizerGraph->GetCurrentBandTransferDb());
 

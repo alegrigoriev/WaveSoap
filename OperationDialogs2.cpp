@@ -872,7 +872,7 @@ BOOL CCdGrabbingDialog::OnInitDialog()
 {
 	BaseClass::OnInitDialog();
 
-	SetWindowIcons(this, IDI_ICON_CD);
+	SetBigAndSmallIcons(IDI_ICON_CD);
 
 	m_BmpPlay.LoadBitmap(IDB_BITMAP_PLAY);
 	m_PlayButton.SetBitmap(m_BmpPlay);
