@@ -1,7 +1,8 @@
 TODO tasks:
-
-waveproc.cpp: Where it can affect throughput, instead of calling m_InputFormat.NumChannels(), save it in a local var.
 waveproc.cpp: refactor CDeclick::ProcessSoundBuffer.
+waveproc.cpp: split finding clicks and interpolating them to separate phases
+Change "Removing clicks" to "Detecting clicks"
+Fix CBatchProc::SetInputWaveformat
 Synchronize m_WaveFile file creation with the document object.
 Support VBR WMA
 Check loading of lossless WMA and VBR WMA
@@ -252,6 +253,8 @@ Save As dialog is not centered first time (comdlg problem?)
 ??? When time/seconds format is set for status bar, MM:SS is actually shown
 
 Done:
+Support m_bDontAutodetectClicks
+waveproc.cpp: Where it can affect throughput, instead of calling m_InputFormat.NumChannels(), save it in a local var.
 If channels are locked, disable channels select in the selection dialog.
 File save dialog: get file type and extension from template flag table, created during filling the filter string
 
