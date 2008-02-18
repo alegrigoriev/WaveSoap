@@ -3159,50 +3159,52 @@ BOOL CWaveFile::LoadPeaksForCompressedFile(CWaveFile & OriginalWaveFile,
 	PeakFileHeader pfh;
 	CPath PeakFilename(MakePeakFileName(OriginalWaveFile.GetName()));
 
-	if (PeakFile.Open(PeakFilename,
-					CFile::modeRead | CFile::shareDenyWrite | CFile::typeBinary))
+	if ( ! PeakFile.Open(PeakFilename,
+						CFile::modeRead | CFile::shareDenyWrite | CFile::typeBinary))
 	{
-		if (offsetof(PeakFileHeader, WaveFileTime)
-			== PeakFile.Read( & pfh, offsetof(PeakFileHeader, WaveFileTime))
-			&& PeakFileHeader::pfhSignature == pfh.dwSignature
-			&& pfh.dwVersion == PeakFileHeader::pfhMaxVersion
-			&& pfh.wSize == sizeof (PeakFileHeader)
-			// read the rest of the header
-			&& pfh.wSize - offsetof(PeakFileHeader, WaveFileTime)
-			== PeakFile.Read( & pfh.WaveFileTime, pfh.wSize - offsetof(PeakFileHeader, WaveFileTime))
-			// check date and time
-			&& pfh.WaveFileTime == OriginalWaveFile.GetFileInformation().ftLastWriteTime
-			// check source file size
-			&& pfh.dwWaveFileSize == OriginalWaveFile.GetFileInformation().nFileSizeLow
-			// check PCM number of channels and sampling rate
-			&& 0 == memcmp(& pfh.wfFormat, GetWaveFormat(), sizeof pfh.wfFormat)
-			&& pPeakInfo->GetGranularity() == pfh.Granularity
-			)
+		return FALSE;
+	}
+	if (offsetof(PeakFileHeader, WaveFileTime)
+		== PeakFile.Read( & pfh, offsetof(PeakFileHeader, WaveFileTime))
+		&& PeakFileHeader::pfhSignature == pfh.dwSignature
+		&& pfh.dwVersion == PeakFileHeader::pfhMaxVersion
+		&& pfh.wSize == sizeof (PeakFileHeader)
+		// read the rest of the header
+		&& pfh.wSize - offsetof(PeakFileHeader, WaveFileTime)
+		== PeakFile.Read( & pfh.WaveFileTime, pfh.wSize - offsetof(PeakFileHeader, WaveFileTime))
+		// check date and time
+		&& pfh.WaveFileTime == OriginalWaveFile.GetFileInformation().ftLastWriteTime
+		// check source file size
+		&& pfh.dwWaveFileSize == OriginalWaveFile.GetFileInformation().nFileSizeLow
+		// check PCM number of channels and sampling rate
+		&& 0 == memcmp(& pfh.wfFormat, GetWaveFormat(), sizeof pfh.wfFormat)
+		&& pPeakInfo->GetGranularity() == pfh.Granularity
+		&& pfh.NumOfSamples == NumberOfSamples
+		)
+	{
+		// allocate data and read it
+		WavePeak * pPeaks = pPeakInfo->AllocatePeakData(pfh.NumOfSamples, Channels());
+		if (NULL == pPeaks)
 		{
-			// allocate data and read it
-			WavePeak * pPeaks = pPeakInfo->AllocatePeakData(pfh.NumOfSamples, Channels());
-			if (NULL == pPeaks)
-			{
-				TRACE("Unable to allocate peak info buffer\n");
-				pPeakInfo->AllocatePeakData(0, 1);
-				return FALSE;
-			}
+			TRACE("Unable to allocate peak info buffer\n");
+			pPeakInfo->AllocatePeakData(0, 1);
+			return FALSE;
+		}
 
-			if (pfh.PeakInfoSize <= pPeakInfo->GetPeaksSize() * sizeof (WavePeak)
-				&& pfh.PeakInfoSize == PeakFile.Read(pPeaks, pfh.PeakInfoSize))
-			{
-				return TRUE;
-			}
-			TRACE("Unable to read peak data\n");
-			// rebuild the info from the WAV file
-		}
-		else
+		if (pfh.PeakInfoSize <= pPeakInfo->GetPeaksSize() * sizeof (WavePeak)
+			&& pfh.PeakInfoSize == PeakFile.Read(pPeaks, pfh.PeakInfoSize))
 		{
-			TRACE("Peak Info modification time = 0x%08X%08X, open file time=0x%08X%08X\n",
-				pfh.WaveFileTime.dwHighDateTime, pfh.WaveFileTime.dwLowDateTime,
-				GetFileInformation().ftLastWriteTime.dwHighDateTime,
-				GetFileInformation().ftLastWriteTime.dwLowDateTime);
+			return TRUE;
 		}
+		TRACE("Unable to read peak data\n");
+		// rebuild the info from the WAV file
+	}
+	else
+	{
+		TRACE("Peak Info modification time = 0x%08X%08X, open file time=0x%08X%08X\n",
+			pfh.WaveFileTime.dwHighDateTime, pfh.WaveFileTime.dwLowDateTime,
+			GetFileInformation().ftLastWriteTime.dwHighDateTime,
+			GetFileInformation().ftLastWriteTime.dwLowDateTime);
 	}
 	return FALSE;
 }
