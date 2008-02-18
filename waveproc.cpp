@@ -594,7 +594,10 @@ CClickRemoval::CClickRemoval(WAVEFORMATEX const * pWf, CHANNEL_MASK ChannelsToPr
 
 BOOL CClickRemoval::Init()
 {
-	// TODO: move to Init
+	if ( ! BaseClass::Init())
+	{
+		return FALSE;
+	}
 	if (m_bImportClicks)
 	{
 		if ( ! LoadClickSourceFile(m_ClickImportFilename))
@@ -2530,6 +2533,8 @@ BOOL CBatchProcessing::SetInputWaveformat(WAVEFORMATEX const * pWf)
 	{
 		if (FALSE == m_Stages[i].Proc->SetInputWaveformat(pWf))
 			return FALSE;
+		m_OutputFormat = m_Stages[i].Proc->GetOutputWaveformat();
+		pWf = GetOutputWaveformat();
 	}
 	return TRUE;
 }
@@ -2832,7 +2837,9 @@ CResampleFilter::CResampleFilter()
 }
 
 CResampleFilter::CResampleFilter(long OriginalSampleRate, long NewSampleRate,
-								int FilterLength, NUMBER_OF_CHANNELS nChannels)
+								int FilterLength,
+								NUMBER_OF_CHANNELS nChannels,
+								BOOL KeepSamplesPerSec)
 	: m_SrcBufUsed(0)
 	, m_DstBufUsed(0)
 	, m_DstBufSaved(0)
@@ -2847,7 +2854,7 @@ CResampleFilter::CResampleFilter(long OriginalSampleRate, long NewSampleRate,
 	, m_InputPeriod(0x80000000)
 	, m_OutputPeriod(0x80000000)
 {
-	InitResample(OriginalSampleRate, NewSampleRate, FilterLength, nChannels);
+	InitResample(OriginalSampleRate, NewSampleRate, FilterLength, nChannels, KeepSamplesPerSec);
 }
 
 CResampleFilter::~CResampleFilter()
@@ -2924,7 +2931,7 @@ void CResampleFilter::InitSlidingFilter(int FilterLength, unsigned long NumberOf
 		for (unsigned j = 0; j < m_SamplesInFilter; j++, p++)
 		{
 			double arg = double(j + 0.5 +
-					(InputOffset - double(i) * m_InputFormat.SampleRate() / m_OutputFormat.SampleRate())) / m_SamplesInFilter - 0.5;
+					(InputOffset - double(i) * m_InputFormat.SampleRate() / m_EffectiveOutputSampleRate)) / m_SamplesInFilter - 0.5;
 			*p = ResampleFilterTap(arg, NumSincWaves);
 
 			if (0) TRACE("Filter[%d][%d]=%f\n", i, j, *p);
@@ -2933,7 +2940,7 @@ void CResampleFilter::InitSlidingFilter(int FilterLength, unsigned long NumberOf
 		Accumulator += m_InputFormat.SampleRate();
 		while (Accumulator > 0)
 		{
-			Accumulator -= m_OutputFormat.SampleRate();
+			Accumulator -= m_EffectiveOutputSampleRate;
 			InputOffset++;
 		}
 	}
@@ -2982,20 +2989,20 @@ void CResampleFilter::InitSlidingInterpolatedFilter(int FilterLength)
 {
 	m_bUseInterpolatedFilter = TRUE;
 
-	if (m_OutputFormat.SampleRate() >= m_InputFormat.SampleRate())
+	if (m_EffectiveOutputSampleRate >= m_InputFormat.SampleRate())
 	{
 		// upsampling.
 		//
 		double InputPeriod = 0x100000000i64 / (FilterLength + 1.);
 		m_InputPeriod = unsigned __int32(InputPeriod);
-		m_OutputPeriod = unsigned __int32(InputPeriod * m_InputFormat.SampleRate() / m_OutputFormat.SampleRate());
+		m_OutputPeriod = unsigned __int32(InputPeriod * m_InputFormat.SampleRate() / m_EffectiveOutputSampleRate);
 	}
 	else
 	{
 		// downsampling
 		double OutputPeriod = 0x100000000i64 / (FilterLength + 1.);
 		m_OutputPeriod = unsigned __int32(OutputPeriod);
-		m_InputPeriod = unsigned __int32(OutputPeriod * m_OutputFormat.SampleRate() / m_InputFormat.SampleRate());
+		m_InputPeriod = unsigned __int32(OutputPeriod * m_EffectiveOutputSampleRate / m_InputFormat.SampleRate());
 	}
 	//TRACE("InputPeriod=%08x, OutputPeriod=%08x\n", m_InputPeriod, m_OutputPeriod);
 #ifdef _DEBUG
@@ -3052,7 +3059,7 @@ void CResampleFilter::InitSlidingInterpolatedFilter(int FilterLength)
 #ifdef _DEBUG
 	TRACE("Max err = %g\n", MaxErr);
 #endif
-	m_SrcFilterLength = int(0x100000000i64 / m_InputPeriod);
+	m_SrcFilterLength = int((0x100000000i64 + m_InputPeriod - 1) / m_InputPeriod);
 
 	ResetResample();
 
@@ -3093,15 +3100,22 @@ void CResampleFilter::InitSlidingInterpolatedFilter(int FilterLength)
 	ResetResample();
 }
 
+BOOL CResampleFilter::SetInputWaveformat(WAVEFORMATEX const * pWf)
+{
+	ASSERT(CWaveFormat(pWf) == m_InputFormat);
+	return TRUE;
+}
+
 void CResampleFilter::InitResample(long OriginalSampleRate, long NewSampleRate,
-									int FilterLength, NUMBER_OF_CHANNELS nChannels)
+									int FilterLength, NUMBER_OF_CHANNELS nChannels, BOOL KeepSamplesPerSec)
 {
 	// FilterLength is how many Sin periods are in the array
-
-	m_OutputFormat.SampleRate() = NewSampleRate;
+	m_EffectiveOutputSampleRate = NewSampleRate;
 
 	m_InputFormat.InitFormat(WAVE_FORMAT_PCM, OriginalSampleRate, nChannels);
-	m_OutputFormat.InitFormat(WAVE_FORMAT_PCM, NewSampleRate, nChannels);
+	m_OutputFormat.InitFormat(WAVE_FORMAT_PCM,
+							KeepSamplesPerSec ? OriginalSampleRate : NewSampleRate,
+							nChannels);
 
 	// find greatest common factor of the sampling rates
 	unsigned long common = GreatestCommonFactor(NewSampleRate, OriginalSampleRate);
@@ -3139,17 +3153,13 @@ void CResampleFilter::ResetResample()
 void CResampleFilter::DoSlidingInterpolatedFilterResample()
 {
 	unsigned const NumChannels = m_InputFormat.NumChannels();
+	unsigned const FilterLength = NumChannels * m_SrcFilterLength;
 
-	if (m_SrcBufFilled - m_SrcBufUsed <= NumChannels * m_SrcFilterLength)
-	{
-		return;
-	}
-
-	unsigned SrcSamples = m_SrcBufFilled - m_SrcBufUsed - NumChannels * m_SrcFilterLength;
 	FilterCoeff const * const pTable = m_InterpolatedFilterTable;
 
 	unsigned i;
-	for (i = m_DstBufUsed; SrcSamples >= NumChannels && i < DstBufSize; i+= NumChannels)
+	for (i = m_DstBufUsed; m_SrcBufFilled >= m_SrcBufUsed + FilterLength
+		&& i < DstBufSize; i+= NumChannels)
 	{
 		const float * src = m_pSrcBuf + m_SrcBufUsed;
 		unsigned __int32 Phase1 = m_Phase;
@@ -3193,7 +3203,6 @@ void CResampleFilter::DoSlidingInterpolatedFilterResample()
 		while (m_Phase & 0x80000000)
 		{
 			m_Phase += m_InputPeriod;
-			SrcSamples -= NumChannels;
 			m_SrcBufUsed += NumChannels;
 		}
 	}
@@ -3213,7 +3222,7 @@ void CResampleFilter::DoSlidingFilterResample()
 	float * dst = m_pDstBuf + m_DstBufUsed;
 
 	long const InputSampleRate = m_InputFormat.SampleRate();
-	long const OutputSampleRate = m_OutputFormat.SampleRate();
+	long const OutputSampleRate = m_EffectiveOutputSampleRate;
 
 	size_t i;
 	for (i = m_DstBufUsed;
@@ -3284,7 +3293,7 @@ size_t CResampleFilter::ProcessSoundBuffer(char const * pIn, char * pOut,
 	{
 		// adjust nOutSamples
 		unsigned long MaxOutSamples =
-			MulDiv(m_ProcessedInputSamples, m_OutputFormat.SampleRate(), m_InputFormat.SampleRate());
+			MulDiv(m_ProcessedInputSamples, m_EffectiveOutputSampleRate, m_InputFormat.SampleRate());
 
 		if (MaxOutSamples <= (unsigned long)m_SavedOutputSamples)
 		{
@@ -3474,6 +3483,12 @@ BOOL CAudioConvertor::InitConversion(WAVEFORMATEX const * SrcFormat, WAVEFORMATE
 	return TRUE;
 }
 
+BOOL CAudioConvertor::SetInputWaveformat(WAVEFORMATEX const * pWf)
+{
+	ASSERT(CWaveFormat(pWf) == m_InputFormat);
+	return TRUE;
+}
+
 size_t CAudioConvertor::ProcessSoundBuffer(char const * pIn, char * pOut,
 											size_t nInBytes, size_t nOutBytes, size_t * pUsedBytes)
 {
@@ -3565,6 +3580,31 @@ NUMBER_OF_SAMPLES CAudioConvertor::GetOutputNumberOfSamples() const
 
 ///////////////////////////////////////////////////////
 //////////////// CChannelConvertor
+CChannelConvertor::CChannelConvertor(NUMBER_OF_CHANNELS OldChannels,
+									NUMBER_OF_CHANNELS NewChannels, CHANNEL_MASK ChannelsToProcess)
+{
+	m_OutputFormat.InitFormat(WAVE_FORMAT_PCM, 44100, NewChannels,
+							16);
+	m_InputFormat.InitFormat(WAVE_FORMAT_PCM, 44100, OldChannels,
+							16);
+	m_ChannelsToProcess = ChannelsToProcess;
+}
+BOOL CChannelConvertor::SetInputWaveformat(WAVEFORMATEX const * pWf)
+{
+	ASSERT(pWf->nChannels == m_InputFormat.NumChannels());
+	if (pWf->nChannels != m_InputFormat.NumChannels())
+	{
+		return FALSE;
+	}
+
+	m_OutputFormat.InitFormat(pWf->wFormatTag, pWf->nSamplesPerSec, m_OutputFormat.NumChannels(),
+							pWf->wBitsPerSample);
+	m_InputFormat.InitFormat(pWf->wFormatTag, pWf->nSamplesPerSec, m_InputFormat.NumChannels(),
+							pWf->wBitsPerSample);
+
+	return TRUE;
+}
+
 size_t CChannelConvertor::ProcessSoundBuffer(char const * pIn, char * pOut,
 											size_t nInBytes, size_t nOutBytes, size_t * pUsedBytes)
 {
@@ -3715,6 +3755,10 @@ size_t CLameEncConvertor::ProcessSoundBuffer(char const * pInBuf, char * pOutBuf
 
 BOOL CLameEncConvertor::Init()
 {
+	if ( ! BaseClass::Init())
+	{
+		return FALSE;
+	}
 	BE_CONFIG cfg;
 	memzero(cfg);
 
