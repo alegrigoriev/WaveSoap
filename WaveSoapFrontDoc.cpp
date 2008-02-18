@@ -1338,7 +1338,7 @@ BOOL CWaveSoapFrontDoc::DoPaste(SAMPLE_INDEX Start, SAMPLE_INDEX End, CHANNEL_MA
 			CResampleContext::auto_ptr pResampleContext(
 														new CResampleContext(this, IDS_RESAMPLE_CLIPBOARD_STATUS_PROMPT,
 															0,
-															SrcFile, DstFile, SrcSampleRate, TargetSampleRate, 63));
+															SrcFile, DstFile, SrcSampleRate, TargetSampleRate, CResampleFilter::DefaultFilterLength, FALSE));
 
 			SrcFile = DstFile;
 
@@ -4248,7 +4248,8 @@ void CWaveSoapFrontDoc::OnProcessResample()
 	}
 
 	pContext->AddContext(new CResampleContext(this,
-											0, 0, m_WavFile, DstFile, OldSamplingRate, NewSamplingRate, 63));
+											0, 0, m_WavFile, DstFile, OldSamplingRate, NewSamplingRate,
+											CResampleFilter::DefaultFilterLength, FALSE));
 
 	pContext->AddContext(new CReplaceFileContext(this, _T(""), DstFile, false));
 
@@ -4790,8 +4791,8 @@ void CWaveSoapFrontDoc::OnProcessDoUlf()
 		pContext->AddSelectionUndo(dlg.GetStart(), dlg.GetEnd(), dlg.GetStart(), dlg.GetChannel());
 	}
 
-	if ( ! pContext->InitDestination(m_WavFile, dlg.GetStart(),
-									dlg.GetEnd(), dlg.GetChannel(), dlg.UndoEnabled()))
+	if ( ! pContext->InitInPlaceProcessing(m_WavFile, dlg.GetStart(),
+											dlg.GetEnd(), dlg.GetChannel(), dlg.UndoEnabled()))
 	{
 		return;
 	}
@@ -4852,8 +4853,8 @@ void CWaveSoapFrontDoc::OnProcessDoDeclicking()
 		pContext->AddSelectionUndo(dlg.GetStart(), dlg.GetEnd(), dlg.GetStart(), dlg.GetChannel());
 	}
 
-	if ( ! pContext->InitDestination(m_WavFile, dlg.GetStart(),
-									dlg.GetEnd(), dlg.GetChannel(), UndoEnabled))
+	if ( ! pContext->InitInPlaceProcessing(m_WavFile, dlg.GetStart(),
+											dlg.GetEnd(), dlg.GetChannel(), UndoEnabled))
 	{
 		return;
 	}
@@ -4943,8 +4944,8 @@ void CWaveSoapFrontDoc::OnProcessNoiseReduction()
 		pContext->AddSelectionUndo(dlg.GetStart(), dlg.GetEnd(), dlg.GetStart(), dlg.GetChannel());
 	}
 
-	if ( ! pContext->InitDestination(m_WavFile, dlg.GetStart(),
-									dlg.GetEnd(), dlg.GetChannel(), dlg.UndoEnabled()))
+	if ( ! pContext->InitInPlaceProcessing(m_WavFile, dlg.GetStart(),
+											dlg.GetEnd(), dlg.GetChannel(), dlg.UndoEnabled()))
 	{
 		return;
 	}
@@ -5404,8 +5405,8 @@ void CWaveSoapFrontDoc::OnProcessReverse()
 
 	pStagedContext->AddContext(pContext);
 
-	if ( ! pContext->InitDestination(m_WavFile, start,
-									end, GetSelectedChannel(), FALSE))
+	if ( ! pContext->InitInPlaceProcessing(m_WavFile, start,
+											end, GetSelectedChannel(), FALSE))
 	{
 		return;
 	}
