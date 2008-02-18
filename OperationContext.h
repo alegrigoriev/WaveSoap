@@ -710,8 +710,8 @@ public:
 		m_ProcBatch.AddWaveProc(pProc, index);
 	}
 
-	BOOL InitDestination(CWaveFile & DstFile, SAMPLE_INDEX StartSample, SAMPLE_INDEX EndSample,
-						CHANNEL_MASK chan, BOOL NeedUndo);
+	BOOL InitInPlaceProcessing(CWaveFile & DstFile, SAMPLE_INDEX StartSample, SAMPLE_INDEX EndSample,
+								CHANNEL_MASK chan, BOOL NeedUndo);
 
 	BOOL MakeCompatibleFormat(WAVEFORMATEX const * pSrcWf, WAVEFORMATEX const * pDstWf,
 							CHANNEL_MASK ChannelsToUse);

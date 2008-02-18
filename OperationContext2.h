@@ -695,13 +695,15 @@ class CReverseOperation : public CTwoFilesOperation
 	typedef CReverseOperation ThisClass;
 	typedef CTwoFilesOperation BaseClass;
 
+	BOOL InitDestination(CWaveFile & DstFile, SAMPLE_INDEX StartSample, SAMPLE_INDEX EndSample,
+						CHANNEL_MASK chan, BOOL NeedUndo);
 public:
 	typedef std::auto_ptr<ThisClass> auto_ptr;
 	CReverseOperation(CWaveSoapFrontDoc * pDoc, UINT StatusStringId, UINT OperationNameId);
 	~CReverseOperation();
 
-	BOOL InitDestination(CWaveFile & DstFile, SAMPLE_INDEX StartSample, SAMPLE_INDEX EndSample,
-						CHANNEL_MASK chan, BOOL NeedUndo);
+	BOOL InitInPlaceProcessing(CWaveFile & DstFile, SAMPLE_INDEX StartSample, SAMPLE_INDEX EndSample,
+								CHANNEL_MASK chan, BOOL NeedUndo);
 
 protected:
 

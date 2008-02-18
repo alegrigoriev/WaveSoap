@@ -3491,8 +3491,8 @@ CWaveProcContext::CWaveProcContext(CWaveSoapFrontDoc * pDoc, UINT StatusStringId
 
 // When the function creates UNDO, it also calls SetSaveForUndo to initialize range to save.
 // If UNDO should be created later, the UNDO range should be initialized by calling SetSaveForUndo otherwise.
-BOOL CWaveProcContext::InitDestination(CWaveFile & DstFile, SAMPLE_INDEX StartSample, SAMPLE_INDEX EndSample,
-										CHANNEL_MASK chan, BOOL NeedUndo)
+BOOL CWaveProcContext::InitInPlaceProcessing(CWaveFile & DstFile, SAMPLE_INDEX StartSample, SAMPLE_INDEX EndSample,
+											CHANNEL_MASK chan, BOOL NeedUndo)
 {
 	if ( ! BaseClass::InitDestination(DstFile, StartSample, EndSample,
 									chan, NeedUndo))
@@ -3526,7 +3526,7 @@ BOOL CWaveProcContext::MakeCompatibleFormat(WAVEFORMATEX const * pSrcWf, WAVEFOR
 	if (pDstWf->nSamplesPerSec != pSrcWf->nSamplesPerSec)
 	{
 		AddWaveProc(new CResampleFilter(pSrcWf->nSamplesPerSec, pDstWf->nSamplesPerSec,
-										63, OldChannels));
+										CResampleFilter::DefaultFilterLength, OldChannels, FALSE));
 
 		m_DstFile.GetInstanceData()->RescaleMarkers(pSrcWf->nSamplesPerSec, pDstWf->nSamplesPerSec);
 	}

@@ -2779,8 +2779,8 @@ CReverseOperation::~CReverseOperation()
 	delete m_pUndoHigh;
 }
 
-BOOL CReverseOperation::InitDestination(CWaveFile & DstFile, SAMPLE_INDEX StartSample, SAMPLE_INDEX EndSample,
-										CHANNEL_MASK chan, BOOL NeedUndo)
+BOOL CReverseOperation::InitInPlaceProcessing(CWaveFile & DstFile, SAMPLE_INDEX StartSample, SAMPLE_INDEX EndSample,
+											CHANNEL_MASK chan, BOOL NeedUndo)
 {
 	if ( ! CTwoFilesOperation::InitDestination(DstFile, StartSample, StartSample + (EndSample - StartSample) / 2,
 												chan, FALSE))
