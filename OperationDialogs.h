@@ -532,7 +532,7 @@ public:
 		}
 		else
 		{
-			return unsigned long(m_OldSampleRate * m_TempoChange);
+			return unsigned long(m_OldSampleRate * m_TempoChange / 100.);
 		}
 	}
 
@@ -544,7 +544,7 @@ public:
 		}
 		else
 		{
-			return m_TempoChange;
+			return m_TempoChange / 100.;
 		}
 	}
 // Dialog Data
@@ -570,7 +570,7 @@ protected:
 	BOOL	m_bChangeRateOnly;    // don't resample, set different rate only
 	int		m_bChangeSamplingRate; // set new rate for resampling. Otherwise the sound is just stretched.
 	BOOL	m_bUndo;
-	double m_TempoChange;
+	double m_TempoChange;         // in percents
 	unsigned long m_NewSampleRate;
 	unsigned long m_OldSampleRate;
 	bool m_bCanOnlyChangeSamplerate;    // if the file have zero length
