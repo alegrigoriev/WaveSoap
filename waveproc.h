@@ -541,16 +541,17 @@ public:
 	typedef std::auto_ptr<ThisClass> auto_ptr;
 	CResampleFilter();
 	CResampleFilter(long OriginalSampleRate, long NewSampleRate,
-					int FilterLength, NUMBER_OF_CHANNELS nChannels);
+					int FilterLength, NUMBER_OF_CHANNELS nChannels, BOOL KeepSamplesPerSec);
 
 	virtual ~CResampleFilter();
 
 	virtual size_t ProcessSoundBuffer(char const * pInBuf, char * pOutBuf,
 									size_t nInBytes, size_t nOutBytes, size_t * pUsedBytes);
-	//virtual BOOL SetInputWaveformat(WAVEFORMATEX const * pWf);
-	void InitResample(long OriginalSampleRate, long NewSampleRate, int FilterLength,
-					NUMBER_OF_CHANNELS nChannels);
+	virtual BOOL SetInputWaveformat(WAVEFORMATEX const * pWf);
 
+	void InitResample(long OriginalSampleRate, long NewSampleRate, int FilterLength,
+					NUMBER_OF_CHANNELS nChannels, BOOL KeepSamplesPerSec);
+	enum { DefaultFilterLength = 63, };
 private:
 	void InitSlidingInterpolatedFilter(int FilterLength);
 	void InitSlidingFilter(int FilterLength, unsigned long NumberOfFilterTables);
@@ -587,6 +588,7 @@ private:
 
 	size_t m_SrcBufFilled; // position to put new samples converted from __int16
 	size_t m_SrcFilterLength;
+	unsigned long    m_EffectiveOutputSampleRate;
 
 	struct FilterCoeff
 	{
@@ -621,6 +623,7 @@ public:
 	CAudioConvertor(HACMDRIVER had = NULL);
 	virtual ~CAudioConvertor();
 	BOOL InitConversion(WAVEFORMATEX const * SrcFormat, WAVEFORMATEX const * DstFormat);
+	virtual BOOL SetInputWaveformat(WAVEFORMATEX const * pWf);
 
 	// if input data is compressed and not sample-aligned, this should be 0
 	// it can be multiple of block size for compressed format
@@ -655,13 +658,9 @@ class CChannelConvertor : public CWaveProc
 public:
 	typedef std::auto_ptr<ThisClass> auto_ptr;
 	CChannelConvertor(NUMBER_OF_CHANNELS OldChannels,
-					NUMBER_OF_CHANNELS NewChannels, CHANNEL_MASK ChannelsToProcess)
-	{
-		m_InputFormat.NumChannels() = OldChannels;
-		m_OutputFormat.NumChannels() = NewChannels;
-		m_ChannelsToProcess = ChannelsToProcess;
-	}
+					NUMBER_OF_CHANNELS NewChannels, CHANNEL_MASK ChannelsToProcess);
 
+	virtual BOOL SetInputWaveformat(WAVEFORMATEX const * pWf);
 	// conversion either mono->stereo, or stereo->mono.
 	// if converting stereo->mono, the data can be left, right, or average
 	virtual size_t ProcessSoundBuffer(char const * pInBuf, char * pOutBuf,
