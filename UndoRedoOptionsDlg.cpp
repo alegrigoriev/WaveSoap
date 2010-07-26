@@ -4,7 +4,6 @@
 #include "stdafx.h"
 #include "WaveSoapFront.h"
 #include "UndoRedoOptionsDlg.h"
-#include ".\undoredooptionsdlg.h"
 #include "WaveSoapFrontDoc.h"
 
 // CUndoRedoOptionsDlg dialog

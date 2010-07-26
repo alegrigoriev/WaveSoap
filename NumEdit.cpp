@@ -238,7 +238,7 @@ BOOL CNumEdit::GetData(CDataExchange * pDX, double & num,
 			TCHAR szBuffer[32];
 			if (num < dLowLimit)
 			{
-				_stprintf(szBuffer, _T("%f"), dLowLimit);
+				_stprintf_s(szBuffer, 32, _T("%f"), dLowLimit);
 				CString sBuf(szBuffer);
 				if (szUnits != NULL)
 				{
@@ -248,7 +248,7 @@ BOOL CNumEdit::GetData(CDataExchange * pDX, double & num,
 			}
 			else
 			{
-				_stprintf(szBuffer, _T("%f"), dHighLimit);
+				_stprintf_s(szBuffer, 32, _T("%f"), dHighLimit);
 				CString sBuf(szBuffer);
 				if (szUnits != NULL)
 				{
@@ -276,7 +276,7 @@ void CNumEdit::SetData(double num)
 	else
 	{
 		TCHAR szBuffer[32];
-		_stprintf(szBuffer, _T("%.*f"), m_Precision, num);
+		_stprintf_s(szBuffer, 32, _T("%.*f"), m_Precision, num);
 		SetWindowText(szBuffer);
 	}
 }

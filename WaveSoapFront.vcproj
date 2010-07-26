@@ -1,120 +1,174 @@
 <?xml version="1.0" encoding="windows-1251"?>
 <VisualStudioProject
 	ProjectType="Visual C++"
-	Version="7.10"
+	Version="9.00"
 	Name="WaveSoapFront"
+	ProjectGUID="{468074C3-FD47-47C5-9D6A-44A99B23DEDD}"
 	RootNamespace="WaveSoapFront"
-	SccProjectName="&quot;$/WaveSoapFront&quot;, XGAAAAAA"
-	SccAuxPath=""
+	SccProjectName="&quot;$/WaveSoap&quot;, ZEAAAAAA"
 	SccLocalPath="."
 	SccProvider="MSSCCI:Microsoft Visual SourceSafe"
-	Keyword="MFCProj">
+	Keyword="MFCProj"
+	TargetFrameworkVersion="131072"
+	>
 	<Platforms>
 		<Platform
-			Name="Win32"/>
+			Name="Win32"
+		/>
 	</Platforms>
+	<ToolFiles>
+	</ToolFiles>
 	<Configurations>
 		<Configuration
 			Name="Debug|Win32"
 			OutputDirectory=".\Debug"
 			IntermediateDirectory=".\Debug"
 			ConfigurationType="1"
+			InheritedPropertySheets="$(VCInstallDir)VCProjectDefaults\UpgradeFromVC71.vsprops"
 			UseOfMFC="1"
-			ATLMinimizesCRunTimeLibraryUsage="FALSE"
-			CharacterSet="1">
+			ATLMinimizesCRunTimeLibraryUsage="false"
+			CharacterSet="1"
+			>
+			<Tool
+				Name="VCPreBuildEventTool"
+			/>
+			<Tool
+				Name="VCCustomBuildTool"
+			/>
+			<Tool
+				Name="VCXMLDataGeneratorTool"
+			/>
+			<Tool
+				Name="VCWebServiceProxyGeneratorTool"
+			/>
+			<Tool
+				Name="VCMIDLTool"
+				PreprocessorDefinitions="_DEBUG"
+				MkTypLibCompatible="true"
+				SuppressStartupBanner="true"
+				TargetEnvironment="1"
+				TypeLibraryName=".\Debug/WaveSoapFront.tlb"
+			/>
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="0"
-				AdditionalIncludeDirectories=".;&quot;C:\Program Files\WMSDK\WMFSDK\include&quot;;C:\WINDDK\3790\inc\ddk\w2k"
+				AdditionalIncludeDirectories="."
 				PreprocessorDefinitions="_DEBUG,WIN32,_WINDOWS,_WIN32_WINNT=0x0500,OEMRESOURCE,USE_MMCKINFO64,_CONVERSION_DONT_USE_THREAD_LOCALE"
 				GeneratePreprocessedFile="0"
-				StringPooling="FALSE"
+				StringPooling="false"
 				BasicRuntimeChecks="3"
-				SmallerTypeCheck="TRUE"
+				SmallerTypeCheck="true"
 				RuntimeLibrary="1"
-				BufferSecurityCheck="TRUE"
-				RuntimeTypeInfo="TRUE"
-				UsePrecompiledHeader="3"
+				BufferSecurityCheck="true"
+				RuntimeTypeInfo="true"
+				UsePrecompiledHeader="2"
 				PrecompiledHeaderThrough="stdafx.h"
 				PrecompiledHeaderFile=".\Debug/WaveSoapFront.pch"
 				AssemblerListingLocation=".\Debug/"
 				ObjectFile=".\Debug/"
 				ProgramDataBaseFileName=".\Debug/"
 				WarningLevel="4"
-				SuppressStartupBanner="TRUE"
+				SuppressStartupBanner="true"
 				DebugInformationFormat="4"
 				CompileAs="0"
-				ShowIncludes="FALSE"/>
+			/>
 			<Tool
-				Name="VCCustomBuildTool"/>
-			<Tool
-				Name="VCLinkerTool"
-				AdditionalOptions="/MACHINE:I386 /NODEFAULTLIB:msvcrt.lib"
-				AdditionalDependencies="unicows.lib kernel32.lib advapi32.lib user32.lib gdi32.lib shell32.lib comdlg32.lib version.lib mpr.lib rasapi32.lib winmm.lib winspool.lib vfw32.lib secur32.lib oleacc.lib oledlg.lib sensapi.lib winmm.lib msacm32.lib wmstub.lib wmvcore.lib setupapi.lib Imagehlp.lib"
-				ShowProgress="0"
-				OutputFile="Debug/WaveSoap.exe"
-				LinkIncremental="2"
-				SuppressStartupBanner="TRUE"
-				AdditionalLibraryDirectories="&quot;C:\Program Files\WMSDK\WMFSDK\lib&quot;"
-				IgnoreAllDefaultLibraries="FALSE"
-				IgnoreDefaultLibraryNames="msvcrt.lib kernel32.lib advapi32.lib user32.lib gdi32.lib shell32.lib comdlg32.lib version.lib mpr.lib rasapi32.lib winmm.lib winspool.lib vfw32.lib secur32.lib oleacc.lib oledlg.lib sensapi.lib"
-				DelayLoadDLLs="wmvcore.dll"
-				GenerateDebugInformation="TRUE"
-				ProgramDatabaseFile=".\Debug/WaveSoap.pdb"
-				GenerateMapFile="TRUE"
-				MapFileName=".\Debug/WaveSoap.map"
-				SubSystem="2"/>
-			<Tool
-				Name="VCMIDLTool"
-				PreprocessorDefinitions="_DEBUG"
-				MkTypLibCompatible="TRUE"
-				SuppressStartupBanner="TRUE"
-				TargetEnvironment="1"
-				TypeLibraryName=".\Debug/WaveSoapFront.tlb"/>
-			<Tool
-				Name="VCPostBuildEventTool"/>
-			<Tool
-				Name="VCPreBuildEventTool"/>
-			<Tool
-				Name="VCPreLinkEventTool"/>
+				Name="VCManagedResourceCompilerTool"
+			/>
 			<Tool
 				Name="VCResourceCompilerTool"
 				PreprocessorDefinitions="_DEBUG"
-				Culture="1033"/>
+				Culture="1033"
+			/>
 			<Tool
-				Name="VCWebServiceProxyGeneratorTool"/>
+				Name="VCPreLinkEventTool"
+			/>
 			<Tool
-				Name="VCXMLDataGeneratorTool"/>
+				Name="VCLinkerTool"
+				AdditionalOptions="/MACHINE:I386 /NODEFAULTLIB:msvcrt.lib"
+				AdditionalDependencies="winmm.lib msacm32.lib wmvcore.lib setupapi.lib Imagehlp.lib"
+				ShowProgress="0"
+				OutputFile="Debug/WaveSoap.exe"
+				LinkIncremental="2"
+				SuppressStartupBanner="true"
+				AdditionalLibraryDirectories="C:\WMSDK\WMFSDK11\lib"
+				GenerateManifest="true"
+				IgnoreAllDefaultLibraries="false"
+				IgnoreDefaultLibraryNames=""
+				DelayLoadDLLs="wmvcore.dll"
+				GenerateDebugInformation="true"
+				ProgramDatabaseFile=".\Debug/WaveSoap.pdb"
+				GenerateMapFile="true"
+				MapFileName=".\Debug/WaveSoap.map"
+				SubSystem="2"
+				RandomizedBaseAddress="1"
+				DataExecutionPrevention="0"
+			/>
 			<Tool
-				Name="VCWebDeploymentTool"/>
+				Name="VCALinkTool"
+			/>
 			<Tool
-				Name="VCManagedWrapperGeneratorTool"/>
+				Name="VCManifestTool"
+			/>
 			<Tool
-				Name="VCAuxiliaryManagedWrapperGeneratorTool"/>
+				Name="VCXDCMakeTool"
+			/>
+			<Tool
+				Name="VCBscMakeTool"
+			/>
+			<Tool
+				Name="VCFxCopTool"
+			/>
+			<Tool
+				Name="VCAppVerifierTool"
+			/>
+			<Tool
+				Name="VCPostBuildEventTool"
+			/>
 		</Configuration>
 		<Configuration
 			Name="Release|Win32"
 			OutputDirectory=".\Release"
 			IntermediateDirectory=".\Release"
 			ConfigurationType="1"
+			InheritedPropertySheets="$(VCInstallDir)VCProjectDefaults\UpgradeFromVC71.vsprops"
 			UseOfMFC="1"
-			ATLMinimizesCRunTimeLibraryUsage="FALSE"
+			ATLMinimizesCRunTimeLibraryUsage="false"
 			CharacterSet="1"
-			WholeProgramOptimization="TRUE">
+			WholeProgramOptimization="1"
+			>
+			<Tool
+				Name="VCPreBuildEventTool"
+			/>
+			<Tool
+				Name="VCCustomBuildTool"
+			/>
+			<Tool
+				Name="VCXMLDataGeneratorTool"
+			/>
+			<Tool
+				Name="VCWebServiceProxyGeneratorTool"
+			/>
+			<Tool
+				Name="VCMIDLTool"
+				PreprocessorDefinitions="NDEBUG"
+				MkTypLibCompatible="true"
+				SuppressStartupBanner="true"
+				TargetEnvironment="1"
+				TypeLibraryName=".\Release/WaveSoapFront.tlb"
+			/>
 			<Tool
 				Name="VCCLCompilerTool"
-				GlobalOptimizations="TRUE"
 				InlineFunctionExpansion="1"
-				EnableIntrinsicFunctions="TRUE"
-				OmitFramePointers="TRUE"
-				OptimizeForProcessor="3"
-				AdditionalIncludeDirectories=".;&quot;C:\Program Files\WMSDK\WMFSDK\include&quot;;C:\WINDDK\3790\inc\ddk\w2k"
+				EnableIntrinsicFunctions="true"
+				OmitFramePointers="true"
+				AdditionalIncludeDirectories=".;C:\WINDDK\6001.18000\inc\api"
 				PreprocessorDefinitions="NDEBUG,WIN32,_WINDOWS,_WIN32_WINNT=0x0500,OEMRESOURCE,USE_MMCKINFO64,_CONVERSION_DONT_USE_THREAD_LOCALE"
-				StringPooling="TRUE"
+				StringPooling="true"
 				RuntimeLibrary="0"
-				BufferSecurityCheck="FALSE"
-				EnableFunctionLevelLinking="TRUE"
-				RuntimeTypeInfo="TRUE"
+				BufferSecurityCheck="false"
+				EnableFunctionLevelLinking="true"
+				RuntimeTypeInfo="true"
 				UsePrecompiledHeader="0"
 				PrecompiledHeaderThrough="stdafx.h"
 				PrecompiledHeaderFile=".\Release/WaveSoapFront.pch"
@@ -122,127 +176,62 @@
 				ObjectFile=".\Release/"
 				ProgramDataBaseFileName=".\Release/"
 				WarningLevel="4"
-				SuppressStartupBanner="TRUE"
+				SuppressStartupBanner="true"
 				DebugInformationFormat="3"
 				CallingConvention="2"
-				CompileAs="0"/>
+				CompileAs="0"
+			/>
 			<Tool
-				Name="VCCustomBuildTool"/>
-			<Tool
-				Name="VCLinkerTool"
-				AdditionalOptions="/MACHINE:I386 /NODEFAULTLIB:msvcrt.lib"
-				AdditionalDependencies="unicows.lib kernel32.lib advapi32.lib user32.lib gdi32.lib shell32.lib comdlg32.lib version.lib mpr.lib rasapi32.lib winmm.lib winspool.lib vfw32.lib secur32.lib oleacc.lib oledlg.lib sensapi.lib winmm.lib msacm32.lib wmstub.lib wmvcore.lib setupapi.lib Imagehlp.lib"
-				OutputFile="Release/WaveSoap.exe"
-				LinkIncremental="1"
-				SuppressStartupBanner="TRUE"
-				AdditionalLibraryDirectories="&quot;C:\Program Files\WMSDK\WMFSDK\lib&quot;"
-				IgnoreDefaultLibraryNames="kernel32.lib advapi32.lib user32.lib gdi32.lib shell32.lib comdlg32.lib version.lib mpr.lib rasapi32.lib winmm.lib winspool.lib vfw32.lib secur32.lib oleacc.lib oledlg.lib sensapi.lib msvcrt.lib"
-				DelayLoadDLLs="wmvcore.dll"
-				GenerateDebugInformation="TRUE"
-				GenerateMapFile="TRUE"
-				MapFileName=".\Release/WaveSoap.map"
-				SubSystem="2"
-				EnableCOMDATFolding="2"
-				SetChecksum="TRUE"/>
-			<Tool
-				Name="VCMIDLTool"
-				PreprocessorDefinitions="NDEBUG"
-				MkTypLibCompatible="TRUE"
-				SuppressStartupBanner="TRUE"
-				TargetEnvironment="1"
-				TypeLibraryName=".\Release/WaveSoapFront.tlb"/>
-			<Tool
-				Name="VCPostBuildEventTool"/>
-			<Tool
-				Name="VCPreBuildEventTool"/>
-			<Tool
-				Name="VCPreLinkEventTool"/>
+				Name="VCManagedResourceCompilerTool"
+			/>
 			<Tool
 				Name="VCResourceCompilerTool"
 				PreprocessorDefinitions="NDEBUG"
-				Culture="1033"/>
+				Culture="1033"
+			/>
 			<Tool
-				Name="VCWebServiceProxyGeneratorTool"/>
-			<Tool
-				Name="VCXMLDataGeneratorTool"/>
-			<Tool
-				Name="VCWebDeploymentTool"/>
-			<Tool
-				Name="VCManagedWrapperGeneratorTool"/>
-			<Tool
-				Name="VCAuxiliaryManagedWrapperGeneratorTool"/>
-		</Configuration>
-		<Configuration
-			Name="Debug ANSI|Win32"
-			OutputDirectory="$(ConfigurationName)"
-			IntermediateDirectory="$(ConfigurationName)"
-			ConfigurationType="1"
-			UseOfMFC="1"
-			ATLMinimizesCRunTimeLibraryUsage="FALSE"
-			CharacterSet="2">
-			<Tool
-				Name="VCCLCompilerTool"
-				Optimization="0"
-				AdditionalIncludeDirectories=".;&quot;C:\Program Files\WMSDK\WMFSDK\include&quot;;C:\WINDDK\2600\inc\ddk\w2k"
-				PreprocessorDefinitions="_DEBUG,WIN32,_WINDOWS,_WIN32_WINNT=0x0500,OEMRESOURCE,USE_MMCKINFO64"
-				GeneratePreprocessedFile="0"
-				StringPooling="FALSE"
-				BasicRuntimeChecks="3"
-				SmallerTypeCheck="TRUE"
-				RuntimeLibrary="1"
-				BufferSecurityCheck="TRUE"
-				RuntimeTypeInfo="TRUE"
-				UsePrecompiledHeader="3"
-				PrecompiledHeaderThrough="stdafx.h"
-				WarningLevel="4"
-				SuppressStartupBanner="TRUE"
-				DebugInformationFormat="4"
-				CompileAs="0"
-				ShowIncludes="FALSE"/>
-			<Tool
-				Name="VCCustomBuildTool"/>
+				Name="VCPreLinkEventTool"
+			/>
 			<Tool
 				Name="VCLinkerTool"
 				AdditionalOptions="/MACHINE:I386 /NODEFAULTLIB:msvcrt.lib"
 				AdditionalDependencies="winmm.lib msacm32.lib wmstub.lib wmvcore.lib setupapi.lib Imagehlp.lib"
-				ShowProgress="0"
-				OutputFile="$(OutDir)/WaveSoap.exe"
-				LinkIncremental="2"
-				SuppressStartupBanner="TRUE"
+				OutputFile="Release/WaveSoap.exe"
+				LinkIncremental="1"
+				SuppressStartupBanner="true"
 				AdditionalLibraryDirectories="&quot;C:\Program Files\WMSDK\WMFSDK\lib&quot;"
-				IgnoreAllDefaultLibraries="FALSE"
 				IgnoreDefaultLibraryNames=""
 				DelayLoadDLLs="wmvcore.dll"
-				GenerateDebugInformation="TRUE"
-				GenerateMapFile="TRUE"
-				SubSystem="2"/>
+				GenerateDebugInformation="true"
+				GenerateMapFile="true"
+				MapFileName=".\Release/WaveSoap.map"
+				SubSystem="2"
+				EnableCOMDATFolding="2"
+				SetChecksum="true"
+				RandomizedBaseAddress="1"
+				DataExecutionPrevention="0"
+			/>
 			<Tool
-				Name="VCMIDLTool"
-				PreprocessorDefinitions="_DEBUG"
-				MkTypLibCompatible="TRUE"
-				SuppressStartupBanner="TRUE"
-				TargetEnvironment="1"
-				TypeLibraryName=".\Debug/WaveSoapFront.tlb"/>
+				Name="VCALinkTool"
+			/>
 			<Tool
-				Name="VCPostBuildEventTool"/>
+				Name="VCManifestTool"
+			/>
 			<Tool
-				Name="VCPreBuildEventTool"/>
+				Name="VCXDCMakeTool"
+			/>
 			<Tool
-				Name="VCPreLinkEventTool"/>
+				Name="VCBscMakeTool"
+			/>
 			<Tool
-				Name="VCResourceCompilerTool"
-				PreprocessorDefinitions="_DEBUG"
-				Culture="1033"/>
+				Name="VCFxCopTool"
+			/>
 			<Tool
-				Name="VCWebServiceProxyGeneratorTool"/>
+				Name="VCAppVerifierTool"
+			/>
 			<Tool
-				Name="VCXMLDataGeneratorTool"/>
-			<Tool
-				Name="VCWebDeploymentTool"/>
-			<Tool
-				Name="VCManagedWrapperGeneratorTool"/>
-			<Tool
-				Name="VCAuxiliaryManagedWrapperGeneratorTool"/>
+				Name="VCPostBuildEventTool"
+			/>
 		</Configuration>
 	</Configurations>
 	<References>
@@ -250,670 +239,776 @@
 	<Files>
 		<Filter
 			Name="Source Files"
-			Filter="cpp;c;cxx;rc;def;r;odl;idl;hpj;bat">
+			Filter="cpp;c;cxx;rc;def;r;odl;idl;hpj;bat"
+			>
 			<File
-				RelativePath=".\AmplitudeRuler.cpp">
+				RelativePath=".\AmplitudeRuler.cpp"
+				>
 			</File>
 			<File
-				RelativePath=".\ApplicationParameters.cpp">
+				RelativePath=".\ApplicationParameters.cpp"
+				>
 			</File>
 			<File
-				RelativePath=".\ApplicationProfile.cpp">
+				RelativePath=".\ApplicationProfile.cpp"
+				>
 			</File>
 			<File
-				RelativePath=".\BatchConvertDlg.cpp">
+				RelativePath=".\BatchConvertDlg.cpp"
+				>
 			</File>
 			<File
-				RelativePath=".\BatchSaveTargetDlg.cpp">
+				RelativePath=".\BatchSaveTargetDlg.cpp"
+				>
 			</File>
 			<File
-				RelativePath=".\BladeMp3Encoder.cpp">
+				RelativePath=".\BladeMp3Encoder.cpp"
+				>
 			</File>
 			<File
-				RelativePath=".\CdDrive.cpp">
+				RelativePath=".\CdDrive.cpp"
+				>
 			</File>
 			<File
-				RelativePath=".\ChildDialog.cpp">
+				RelativePath=".\ChildDialog.cpp"
+				>
 			</File>
 			<File
-				RelativePath=".\ChildFrm.cpp">
+				RelativePath=".\ChildFrm.cpp"
+				>
 			</File>
 			<File
-				RelativePath=".\CustomSampleRateDlg.cpp">
+				RelativePath=".\CustomSampleRateDlg.cpp"
+				>
 			</File>
 			<File
-				RelativePath=".\DirectFile.cpp">
+				RelativePath=".\DirectFile.cpp"
+				>
 			</File>
 			<File
-				RelativePath=".\EditFadeInOut.cpp">
+				RelativePath=".\EditFadeInOut.cpp"
+				>
 			</File>
 			<File
-				RelativePath=".\EqualizerDialog.cpp">
+				RelativePath=".\EqualizerDialog.cpp"
+				>
 			</File>
 			<File
-				RelativePath=".\FadeInOutDialog.cpp">
+				RelativePath=".\FadeInOutDialog.cpp"
+				>
 			</File>
 			<File
-				RelativePath=".\FftRulerView.cpp">
+				RelativePath=".\FftRulerView.cpp"
+				>
 			</File>
 			<File
-				RelativePath=".\FileDialogWithHistory.cpp">
+				RelativePath=".\FileDialogWithHistory.cpp"
+				>
 			</File>
 			<File
-				RelativePath=".\FilterDialog.cpp">
+				RelativePath=".\FilterDialog.cpp"
+				>
 			</File>
 			<File
-				RelativePath=".\FolderDialog.cpp">
+				RelativePath=".\FolderDialog.cpp"
+				>
 			</File>
 			<File
-				RelativePath=".\LocaleUtilities.cpp">
+				RelativePath=".\LocaleUtilities.cpp"
+				>
 			</File>
 			<File
-				RelativePath=".\MainFrm.cpp">
+				RelativePath=".\MainFrm.cpp"
+				>
 			</File>
 			<File
-				RelativePath=".\MessageBoxSynch.cpp">
+				RelativePath=".\MessageBoxSynch.cpp"
+				>
 			</File>
 			<File
-				RelativePath=".\NewFilePropertiesDlg.cpp">
+				RelativePath=".\NewFilePropertiesDlg.cpp"
+				>
 			</File>
 			<File
-				RelativePath=".\NumEdit.cpp">
+				RelativePath=".\NumEdit.cpp"
+				>
 			</File>
 			<File
-				RelativePath=".\OperationContext.cpp">
+				RelativePath=".\OperationContext.cpp"
+				>
 			</File>
 			<File
-				RelativePath=".\OperationContext2.cpp">
+				RelativePath=".\OperationContext2.cpp"
+				>
 			</File>
 			<File
-				RelativePath=".\OperationDialogs.cpp">
+				RelativePath=".\OperationDialogs.cpp"
+				>
 			</File>
 			<File
-				RelativePath=".\OperationDialogs2.cpp">
+				RelativePath=".\OperationDialogs2.cpp"
+				>
 			</File>
 			<File
-				RelativePath=".\PasteResampleModeDlg.cpp">
+				RelativePath=".\PasteResampleModeDlg.cpp"
+				>
 			</File>
 			<File
-				RelativePath=".\PreferencesPropertySheet.cpp">
+				RelativePath=".\PreferencesPropertySheet.cpp"
+				>
 			</File>
 			<File
-				RelativePath=".\RawFileParametersDlg.cpp">
+				RelativePath=".\RawFileParametersDlg.cpp"
+				>
 			</File>
 			<File
-				RelativePath=".\ReopenCompressedFileDialog.cpp">
+				RelativePath=".\ReopenCompressedFileDialog.cpp"
+				>
 			</File>
 			<File
-				RelativePath=".\ReopenConvertedFileDlg.cpp">
+				RelativePath=".\ReopenConvertedFileDlg.cpp"
+				>
 			</File>
 			<File
-				RelativePath=".\ReopenSavedFileCopyDlg.cpp">
+				RelativePath=".\ReopenSavedFileCopyDlg.cpp"
+				>
 			</File>
 			<File
-				RelativePath=".\Resample.cpp">
+				RelativePath=".\Resample.cpp"
+				>
 			</File>
 			<File
-				RelativePath=".\Ruler.cpp">
+				RelativePath=".\Ruler.cpp"
+				>
 			</File>
 			<File
-				RelativePath=".\SaveExpressionDialog.cpp">
+				RelativePath=".\SaveExpressionDialog.cpp"
+				>
 			</File>
 			<File
-				RelativePath=".\ScaledScrollView.cpp">
+				RelativePath=".\ScaledScrollView.cpp"
+				>
 			</File>
 			<File
-				RelativePath=".\shellink.cpp">
+				RelativePath=".\shellink.cpp"
+				>
 			</File>
 			<File
-				RelativePath=".\SpectrumSectionView.cpp">
+				RelativePath=".\SpectrumSectionView.cpp"
+				>
 			</File>
 			<File
-				RelativePath=".\SplitToFilesDialog.cpp">
+				RelativePath=".\SplitToFilesDialog.cpp"
+				>
 			</File>
 			<File
-				RelativePath=".\StdAfx.cpp">
+				RelativePath=".\StdAfx.cpp"
+				>
 				<FileConfiguration
-					Name="Debug|Win32">
+					Name="Debug|Win32"
+					>
 					<Tool
 						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="1"/>
+						UsePrecompiledHeader="1"
+					/>
 				</FileConfiguration>
 				<FileConfiguration
 					Name="Release|Win32"
-					ExcludedFromBuild="TRUE">
+					ExcludedFromBuild="true"
+					>
 					<Tool
 						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="Debug ANSI|Win32">
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="1"/>
+						UsePrecompiledHeader="0"
+					/>
 				</FileConfiguration>
 			</File>
 			<File
-				RelativePath=".\TimeEdit.cpp">
+				RelativePath=".\TimeEdit.cpp"
+				>
 			</File>
 			<File
-				RelativePath=".\TimeRulerView.cpp">
+				RelativePath=".\TimeRulerView.cpp"
+				>
 			</File>
 			<File
-				RelativePath=".\TimeToStr.cpp">
+				RelativePath=".\TimeToStr.cpp"
+				>
 			</File>
 			<File
-				RelativePath=".\UndoRedoOptionsDlg.cpp">
+				RelativePath=".\UndoRedoOptionsDlg.cpp"
+				>
 			</File>
 			<File
-				RelativePath=".\WaveFftView.cpp">
+				RelativePath=".\WaveFftView.cpp"
+				>
 			</File>
 			<File
-				RelativePath=".\WaveFile.cpp">
+				RelativePath=".\WaveFile.cpp"
+				>
 				<FileConfiguration
-					Name="Debug|Win32">
+					Name="Debug|Win32"
+					>
 					<Tool
 						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="3"/>
+						UsePrecompiledHeader="2"
+					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="Release|Win32">
+					Name="Release|Win32"
+					>
 					<Tool
 						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="Debug ANSI|Win32">
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="3"/>
+						UsePrecompiledHeader="0"
+					/>
 				</FileConfiguration>
 			</File>
 			<File
-				RelativePath=".\WaveOutlineView.cpp">
+				RelativePath=".\WaveOutlineView.cpp"
+				>
 			</File>
 			<File
-				RelativePath=".\waveproc.cpp">
+				RelativePath=".\waveproc.cpp"
+				>
 			</File>
 			<File
-				RelativePath=".\hlp\WaveSoap.hhp">
+				RelativePath=".\hlp\WaveSoap.hhp"
+				>
 				<FileConfiguration
-					Name="Debug|Win32">
+					Name="Debug|Win32"
+					>
 					<Tool
 						Name="VCCustomBuildTool"
 						Description="Making help file..."
-						CommandLine="start /wait hhc &quot;hlp\$(InputFileName)&quot;
-if not exist &quot;hlp\$(InputName).chm&quot; goto :HelpError
-copy &quot;hlp\$(InputName).chm&quot; &quot;$(OutDir)\$(InputName).chm&quot;
-goto :HelpDone
-:HelpError
-echo hlp\$(InputName).hhp(1) : error:Problem encountered creating help file
-echo.
-:HelpDone
-echo.
-"
+						CommandLine="start /wait hhc &quot;hlp\$(InputFileName)&quot;&#x0D;&#x0A;if not exist &quot;hlp\$(InputName).chm&quot; goto :HelpError&#x0D;&#x0A;copy &quot;hlp\$(InputName).chm&quot; &quot;$(OutDir)\$(InputName).chm&quot;&#x0D;&#x0A;goto :HelpDone&#x0D;&#x0A;:HelpError&#x0D;&#x0A;echo hlp\$(InputName).hhp(1) : error:Problem encountered creating help file&#x0D;&#x0A;echo.&#x0D;&#x0A;:HelpDone&#x0D;&#x0A;echo.&#x0D;&#x0A;"
 						AdditionalDependencies="hlp\HTMLDefines.h"
-						Outputs="$(OutDir)\$(InputName).chm"/>
+						Outputs="$(OutDir)\$(InputName).chm"
+					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="Release|Win32">
+					Name="Release|Win32"
+					>
 					<Tool
 						Name="VCCustomBuildTool"
 						Description="Making help file..."
-						CommandLine="start /wait hhc &quot;hlp\$(InputFileName)&quot;
-if not exist &quot;hlp\$(InputName).chm&quot; goto :HelpError
-copy &quot;hlp\$(InputName).chm&quot; &quot;$(OutDir)\$(InputName).chm&quot;
-goto :HelpDone
-:HelpError
-echo hlp\$(InputName).hhp(1) : error:Problem encountered creating help file
-echo.
-:HelpDone
-echo.
-"
+						CommandLine="start /wait hhc &quot;hlp\$(InputFileName)&quot;&#x0D;&#x0A;if not exist &quot;hlp\$(InputName).chm&quot; goto :HelpError&#x0D;&#x0A;copy &quot;hlp\$(InputName).chm&quot; &quot;$(OutDir)\$(InputName).chm&quot;&#x0D;&#x0A;goto :HelpDone&#x0D;&#x0A;:HelpError&#x0D;&#x0A;echo hlp\$(InputName).hhp(1) : error:Problem encountered creating help file&#x0D;&#x0A;echo.&#x0D;&#x0A;:HelpDone&#x0D;&#x0A;echo.&#x0D;&#x0A;"
 						AdditionalDependencies="hlp\HTMLDefines.h"
-						Outputs="$(OutDir)\$(InputName).chm"/>
+						Outputs="$(OutDir)\$(InputName).chm"
+					/>
 				</FileConfiguration>
 			</File>
 			<File
-				RelativePath=".\WaveSoapFileDialogs.cpp">
+				RelativePath=".\WaveSoapFileDialogs.cpp"
+				>
 			</File>
 			<File
-				RelativePath=".\WaveSoapFront.cpp">
+				RelativePath=".\WaveSoapFront.cpp"
+				>
 			</File>
 			<File
-				RelativePath=".\WaveSoapFront.rc">
+				RelativePath=".\WaveSoapFront.rc"
+				>
 			</File>
 			<File
-				RelativePath=".\WaveSoapFrontDoc.cpp">
+				RelativePath=".\WaveSoapFrontDoc.cpp"
+				>
 			</File>
 			<File
-				RelativePath=".\WaveSoapFrontView.cpp">
+				RelativePath=".\WaveSoapFrontView.cpp"
+				>
 			</File>
 			<File
-				RelativePath=".\WaveSupport.cpp">
+				RelativePath=".\WaveSupport.cpp"
+				>
 			</File>
 			<File
-				RelativePath=".\WmaFile.cpp">
+				RelativePath=".\WmaFile.cpp"
+				>
 			</File>
 		</Filter>
 		<Filter
 			Name="Header Files"
-			Filter="h;hpp;hxx;hm;inl">
+			Filter="h;hpp;hxx;hm;inl"
+			>
 			<File
-				RelativePath=".\AmplitudeRuler.h">
+				RelativePath=".\AmplitudeRuler.h"
+				>
 			</File>
 			<File
-				RelativePath=".\ApplicationParameters.h">
+				RelativePath=".\ApplicationParameters.h"
+				>
 			</File>
 			<File
-				RelativePath=".\ApplicationProfile.h">
+				RelativePath=".\ApplicationProfile.h"
+				>
 			</File>
 			<File
-				RelativePath=".\BatchConvertDlg.h">
+				RelativePath=".\BatchConvertDlg.h"
+				>
 			</File>
 			<File
-				RelativePath=".\BatchSaveTargetDlg.h">
+				RelativePath=".\BatchSaveTargetDlg.h"
+				>
 			</File>
 			<File
-				RelativePath=".\BladeMP3EncDLL.h">
+				RelativePath=".\BladeMP3EncDLL.h"
+				>
 			</File>
 			<File
-				RelativePath=".\CdDrive.h">
+				RelativePath=".\CdDrive.h"
+				>
 			</File>
 			<File
-				RelativePath=".\ChildDialog.h">
+				RelativePath=".\ChildDialog.h"
+				>
 			</File>
 			<File
-				RelativePath=".\ChildFrm.h">
+				RelativePath=".\ChildFrm.h"
+				>
 			</File>
 			<File
-				RelativePath=".\CoInitHelper.h">
+				RelativePath=".\CoInitHelper.h"
+				>
 			</File>
 			<File
-				RelativePath=".\CustomSampleRateDlg.h">
+				RelativePath=".\CustomSampleRateDlg.h"
+				>
 			</File>
 			<File
-				RelativePath="DataSection.h">
+				RelativePath="DataSection.h"
+				>
 			</File>
 			<File
-				RelativePath=".\DialogWithSelection.h">
+				RelativePath=".\DialogWithSelection.h"
+				>
 			</File>
 			<File
-				RelativePath=".\DialogWithSelection.inl">
+				RelativePath=".\DialogWithSelection.inl"
+				>
 			</File>
 			<File
-				RelativePath=".\DirectFile.h">
+				RelativePath=".\DirectFile.h"
+				>
 			</File>
 			<File
-				RelativePath=".\EditFadeInOut.h">
+				RelativePath=".\EditFadeInOut.h"
+				>
 			</File>
 			<File
-				RelativePath=".\ElapsedTime.h">
+				RelativePath=".\ElapsedTime.h"
+				>
 			</File>
 			<File
-				RelativePath=".\EqualizerDialog.h">
+				RelativePath=".\EqualizerDialog.h"
+				>
 			</File>
 			<File
-				RelativePath=".\FadeInOutDialog.h">
+				RelativePath=".\FadeInOutDialog.h"
+				>
 			</File>
 			<File
-				RelativePath=".\fft.h">
+				RelativePath=".\fft.h"
+				>
 			</File>
 			<File
-				RelativePath=".\FFT.inl">
+				RelativePath=".\FFT.inl"
+				>
 			</File>
 			<File
-				RelativePath=".\FftRulerView.h">
+				RelativePath=".\FftRulerView.h"
+				>
 			</File>
 			<File
-				RelativePath=".\FileDialogWithHistory.h">
+				RelativePath=".\FileDialogWithHistory.h"
+				>
 			</File>
 			<File
-				RelativePath=".\FilterDialog.h">
+				RelativePath=".\FilterDialog.h"
+				>
 			</File>
 			<File
-				RelativePath=".\FolderDialog.h">
+				RelativePath=".\FolderDialog.h"
+				>
 			</File>
 			<File
-				RelativePath=".\GdiObjectSave.h">
+				RelativePath=".\GdiObjectSave.h"
+				>
 			</File>
 			<File
-				RelativePath=".\KInterlocked.h">
+				RelativePath=".\KInterlocked.h"
+				>
 			</File>
 			<File
-				RelativePath=".\KListEntry.h">
+				RelativePath=".\KListEntry.h"
+				>
 			</File>
 			<File
-				RelativePath=".\LastError.h">
+				RelativePath=".\LastError.h"
+				>
 			</File>
 			<File
-				RelativePath=".\LocaleUtilities.h">
+				RelativePath=".\LocaleUtilities.h"
+				>
 			</File>
 			<File
-				RelativePath=".\MainFrameEx.h">
+				RelativePath=".\MainFrameEx.h"
+				>
 			</File>
 			<File
-				RelativePath=".\MainFrm.h">
+				RelativePath=".\MainFrm.h"
+				>
 			</File>
 			<File
-				RelativePath=".\MessageBoxSynch.h">
+				RelativePath=".\MessageBoxSynch.h"
+				>
 			</File>
 			<File
-				RelativePath=".\MessageMapT.h">
+				RelativePath=".\NewFilePropertiesDlg.h"
+				>
 			</File>
 			<File
-				RelativePath=".\NewFilePropertiesDlg.h">
+				RelativePath=".\NumEdit.h"
+				>
 			</File>
 			<File
-				RelativePath=".\NumEdit.h">
+				RelativePath=".\OperationContext.h"
+				>
 			</File>
 			<File
-				RelativePath=".\OperationContext.h">
+				RelativePath=".\OperationContext2.h"
+				>
 			</File>
 			<File
-				RelativePath=".\OperationContext2.h">
+				RelativePath=".\OperationDialogs.h"
+				>
 			</File>
 			<File
-				RelativePath=".\OperationDialogs.h">
+				RelativePath=".\OperationDialogs2.h"
+				>
 			</File>
 			<File
-				RelativePath=".\OperationDialogs2.h">
+				RelativePath=".\PasteResampleModeDlg.h"
+				>
 			</File>
 			<File
-				RelativePath=".\PasteResampleModeDlg.h">
+				RelativePath=".\PathEx.h"
+				>
 			</File>
 			<File
-				RelativePath=".\PathEx.h">
+				RelativePath=".\PreferencesPropertySheet.h"
+				>
 			</File>
 			<File
-				RelativePath=".\PreferencesPropertySheet.h">
+				RelativePath=".\RawFileParametersDlg.h"
+				>
 			</File>
 			<File
-				RelativePath=".\RawFileParametersDlg.h">
+				RelativePath=".\ReopenCompressedFileDialog.h"
+				>
 			</File>
 			<File
-				RelativePath=".\ReopenCompressedFileDialog.h">
+				RelativePath=".\ReopenConvertedFileDlg.h"
+				>
 			</File>
 			<File
-				RelativePath=".\ReopenConvertedFileDlg.h">
+				RelativePath=".\ReopenSavedFileCopyDlg.h"
+				>
 			</File>
 			<File
-				RelativePath=".\ReopenSavedFileCopyDlg.h">
+				RelativePath=".\Resample.h"
+				>
 			</File>
 			<File
-				RelativePath=".\Resample.h">
+				RelativePath=".\ResizableDialog.h"
+				>
 			</File>
 			<File
-				RelativePath=".\ResizableDialog.h">
-			</File>
-			<File
-				RelativePath=".\Resource.h">
+				RelativePath=".\Resource.h"
+				>
 				<FileConfiguration
-					Name="Debug|Win32">
+					Name="Debug|Win32"
+					>
 					<Tool
 						Name="VCCustomBuildTool"
 						Description="Making help include file..."
-						CommandLine="makehm /h ID_,HID_,0x10000 IDM_,HIDM_,0x10000 &quot;$(InputFileName)&quot; &gt; &quot;hlp\HTMLDefines.h&quot;
-echo. &gt;&gt; &quot;hlp\HTMLDefines.h&quot;
-echo // Prompts (IDP_*) &gt;&gt; &quot;hlp\HTMLDefines.h&quot;
-makehm /h IDP_,HIDP_,0x30000 &quot;$(InputFileName)&quot; &gt;&gt; &quot;hlp\HTMLDefines.h&quot;
-echo. &gt;&gt; &quot;hlp\HTMLDefines.h&quot;
-echo // Resources (IDR_*) &gt;&gt; &quot;hlp\HTMLDefines.h&quot;
-makehm /h IDR_,HIDR_,0x20000 &quot;$(InputFileName)&quot; &gt;&gt; &quot;hlp\HTMLDefines.h&quot;
-echo. &gt;&gt; &quot;hlp\HTMLDefines.h&quot;
-echo // Dialogs (IDD_*) &gt;&gt; &quot;hlp\HTMLDefines.h&quot;
-makehm /h IDD_,HIDD_,0x20000 &quot;$(InputFileName)&quot; &gt;&gt; &quot;hlp\HTMLDefines.h&quot;
-echo. &gt;&gt; &quot;hlp\HTMLDefines.h&quot;
-echo // Frame Controls (IDW_*) &gt;&gt; &quot;hlp\HTMLDefines.h&quot;
-makehm /h /a afxhh.h IDW_,HIDW_,0x50000 &quot;$(InputFileName)&quot; &gt;&gt; &quot;hlp\HTMLDefines.h&quot;
-"
-						Outputs="hlp\HTMLDefines.h"/>
+						CommandLine="makehm /h ID_,HID_,0x10000 IDM_,HIDM_,0x10000 &quot;$(InputFileName)&quot; &gt; &quot;hlp\HTMLDefines.h&quot;&#x0D;&#x0A;echo. &gt;&gt; &quot;hlp\HTMLDefines.h&quot;&#x0D;&#x0A;echo // Prompts (IDP_*) &gt;&gt; &quot;hlp\HTMLDefines.h&quot;&#x0D;&#x0A;makehm /h IDP_,HIDP_,0x30000 &quot;$(InputFileName)&quot; &gt;&gt; &quot;hlp\HTMLDefines.h&quot;&#x0D;&#x0A;echo. &gt;&gt; &quot;hlp\HTMLDefines.h&quot;&#x0D;&#x0A;echo // Resources (IDR_*) &gt;&gt; &quot;hlp\HTMLDefines.h&quot;&#x0D;&#x0A;makehm /h IDR_,HIDR_,0x20000 &quot;$(InputFileName)&quot; &gt;&gt; &quot;hlp\HTMLDefines.h&quot;&#x0D;&#x0A;echo. &gt;&gt; &quot;hlp\HTMLDefines.h&quot;&#x0D;&#x0A;echo // Dialogs (IDD_*) &gt;&gt; &quot;hlp\HTMLDefines.h&quot;&#x0D;&#x0A;makehm /h IDD_,HIDD_,0x20000 &quot;$(InputFileName)&quot; &gt;&gt; &quot;hlp\HTMLDefines.h&quot;&#x0D;&#x0A;echo. &gt;&gt; &quot;hlp\HTMLDefines.h&quot;&#x0D;&#x0A;echo // Frame Controls (IDW_*) &gt;&gt; &quot;hlp\HTMLDefines.h&quot;&#x0D;&#x0A;makehm /h /a afxhh.h IDW_,HIDW_,0x50000 &quot;$(InputFileName)&quot; &gt;&gt; &quot;hlp\HTMLDefines.h&quot;&#x0D;&#x0A;"
+						Outputs="hlp\HTMLDefines.h"
+					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="Release|Win32">
+					Name="Release|Win32"
+					>
 					<Tool
 						Name="VCCustomBuildTool"
 						Description="Making help include file..."
-						CommandLine="makehm /h ID_,HID_,0x10000 IDM_,HIDM_,0x10000 &quot;$(InputFileName)&quot; &gt; &quot;hlp\HTMLDefines.h&quot;
-echo. &gt;&gt; &quot;hlp\HTMLDefines.h&quot;
-echo // Prompts (IDP_*) &gt;&gt; &quot;hlp\HTMLDefines.h&quot;
-makehm /h IDP_,HIDP_,0x30000 &quot;$(InputFileName)&quot; &gt;&gt; &quot;hlp\HTMLDefines.h&quot;
-echo. &gt;&gt; &quot;hlp\HTMLDefines.h&quot;
-echo // Resources (IDR_*) &gt;&gt; &quot;hlp\HTMLDefines.h&quot;
-makehm /h IDR_,HIDR_,0x20000 &quot;$(InputFileName)&quot; &gt;&gt; &quot;hlp\HTMLDefines.h&quot;
-echo. &gt;&gt; &quot;hlp\HTMLDefines.h&quot;
-echo // Dialogs (IDD_*) &gt;&gt; &quot;hlp\HTMLDefines.h&quot;
-makehm /h IDD_,HIDD_,0x20000 &quot;$(InputFileName)&quot; &gt;&gt; &quot;hlp\HTMLDefines.h&quot;
-echo. &gt;&gt; &quot;hlp\HTMLDefines.h&quot;
-echo // Frame Controls (IDW_*) &gt;&gt; &quot;hlp\HTMLDefines.h&quot;
-makehm /h /a afxhh.h IDW_,HIDW_,0x50000 &quot;$(InputFileName)&quot; &gt;&gt; &quot;hlp\HTMLDefines.h&quot;
-"
-						Outputs="hlp\HTMLDefines.h"/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="Debug ANSI|Win32">
-					<Tool
-						Name="VCCustomBuildTool"
-						Description="Making help include file..."
-						CommandLine="makehm /h ID_,HID_,0x10000 IDM_,HIDM_,0x10000 &quot;$(InputFileName)&quot; &gt;&gt; &quot;hlp\HTMLDefines.h&quot;
-echo. &gt;&gt; &quot;hlp\HTMLDefines.h&quot;
-echo // Prompts (IDP_*) &gt;&gt; &quot;hlp\HTMLDefines.h&quot;
-makehm /h IDP_,HIDP_,0x30000 &quot;$(InputFileName)&quot; &gt;&gt; &quot;hlp\HTMLDefines.h&quot;
-echo. &gt;&gt; &quot;hlp\HTMLDefines.h&quot;
-echo // Resources (IDR_*) &gt;&gt; &quot;hlp\HTMLDefines.h&quot;
-makehm /h IDR_,HIDR_,0x20000 &quot;$(InputFileName)&quot; &gt;&gt; &quot;hlp\HTMLDefines.h&quot;
-echo. &gt;&gt; &quot;hlp\HTMLDefines.h&quot;
-echo // Dialogs (IDD_*) &gt;&gt; &quot;hlp\HTMLDefines.h&quot;
-makehm /h IDD_,HIDD_,0x20000 &quot;$(InputFileName)&quot; &gt;&gt; &quot;hlp\HTMLDefines.h&quot;
-echo. &gt;&gt; &quot;hlp\HTMLDefines.h&quot;
-echo // Frame Controls (IDW_*) &gt;&gt; &quot;hlp\HTMLDefines.h&quot;
-makehm /h /a afxhh.h IDW_,HIDW_,0x50000 &quot;$(InputFileName)&quot; &gt;&gt; &quot;hlp\HTMLDefines.h&quot;
-"
-						Outputs="hlp\HTMLDefines.h"/>
+						CommandLine="makehm /h ID_,HID_,0x10000 IDM_,HIDM_,0x10000 &quot;$(InputFileName)&quot; &gt; &quot;hlp\HTMLDefines.h&quot;&#x0D;&#x0A;echo. &gt;&gt; &quot;hlp\HTMLDefines.h&quot;&#x0D;&#x0A;echo // Prompts (IDP_*) &gt;&gt; &quot;hlp\HTMLDefines.h&quot;&#x0D;&#x0A;makehm /h IDP_,HIDP_,0x30000 &quot;$(InputFileName)&quot; &gt;&gt; &quot;hlp\HTMLDefines.h&quot;&#x0D;&#x0A;echo. &gt;&gt; &quot;hlp\HTMLDefines.h&quot;&#x0D;&#x0A;echo // Resources (IDR_*) &gt;&gt; &quot;hlp\HTMLDefines.h&quot;&#x0D;&#x0A;makehm /h IDR_,HIDR_,0x20000 &quot;$(InputFileName)&quot; &gt;&gt; &quot;hlp\HTMLDefines.h&quot;&#x0D;&#x0A;echo. &gt;&gt; &quot;hlp\HTMLDefines.h&quot;&#x0D;&#x0A;echo // Dialogs (IDD_*) &gt;&gt; &quot;hlp\HTMLDefines.h&quot;&#x0D;&#x0A;makehm /h IDD_,HIDD_,0x20000 &quot;$(InputFileName)&quot; &gt;&gt; &quot;hlp\HTMLDefines.h&quot;&#x0D;&#x0A;echo. &gt;&gt; &quot;hlp\HTMLDefines.h&quot;&#x0D;&#x0A;echo // Frame Controls (IDW_*) &gt;&gt; &quot;hlp\HTMLDefines.h&quot;&#x0D;&#x0A;makehm /h /a afxhh.h IDW_,HIDW_,0x50000 &quot;$(InputFileName)&quot; &gt;&gt; &quot;hlp\HTMLDefines.h&quot;&#x0D;&#x0A;"
+						Outputs="hlp\HTMLDefines.h"
+					/>
 				</FileConfiguration>
 			</File>
 			<File
-				RelativePath=".\Ruler.h">
+				RelativePath=".\Ruler.h"
+				>
 			</File>
 			<File
-				RelativePath=".\SaveExpressionDialog.h">
+				RelativePath=".\SaveExpressionDialog.h"
+				>
 			</File>
 			<File
-				RelativePath=".\ScaledScrollView.h">
+				RelativePath=".\ScaledScrollView.h"
+				>
 			</File>
 			<File
-				RelativePath=".\shellink.h">
+				RelativePath=".\shellink.h"
+				>
 			</File>
 			<File
-				RelativePath=".\SimpleCriticalSection.h">
+				RelativePath=".\SimpleCriticalSection.h"
+				>
 			</File>
 			<File
-				RelativePath=".\SpectrumSectionView.h">
+				RelativePath=".\SpectrumSectionView.h"
+				>
 			</File>
 			<File
-				RelativePath=".\SplitToFilesDialog.h">
+				RelativePath=".\SplitToFilesDialog.h"
+				>
 			</File>
 			<File
-				RelativePath=".\StdAfx.h">
+				RelativePath=".\StdAfx.h"
+				>
 			</File>
 			<File
-				RelativePath=".\TimeEdit.h">
+				RelativePath=".\TimeEdit.h"
+				>
 			</File>
 			<File
-				RelativePath=".\TimeRulerView.h">
+				RelativePath=".\TimeRulerView.h"
+				>
 			</File>
 			<File
-				RelativePath=".\TimeToStr.h">
+				RelativePath=".\TimeToStr.h"
+				>
 			</File>
 			<File
-				RelativePath="UiUpdatedDlg.h">
+				RelativePath="UiUpdatedDlg.h"
+				>
 			</File>
 			<File
-				RelativePath=".\UndoRedoOptionsDlg.h">
+				RelativePath=".\UndoRedoOptionsDlg.h"
+				>
 			</File>
 			<File
-				RelativePath=".\WaveFftView.h">
+				RelativePath=".\WaveFftView.h"
+				>
 			</File>
 			<File
-				RelativePath=".\WaveFile.h">
+				RelativePath=".\WaveFile.h"
+				>
 			</File>
 			<File
-				RelativePath=".\WaveOutlineView.h">
+				RelativePath=".\WaveOutlineView.h"
+				>
 			</File>
 			<File
-				RelativePath=".\waveproc.h">
+				RelativePath=".\waveproc.h"
+				>
 			</File>
 			<File
-				RelativePath=".\WaveSoapFileDialogs.h">
+				RelativePath=".\WaveSoapFileDialogs.h"
+				>
 			</File>
 			<File
-				RelativePath=".\WaveSoapFront.h">
+				RelativePath=".\WaveSoapFront.h"
+				>
 			</File>
 			<File
-				RelativePath=".\WaveSoapFrontDoc.h">
+				RelativePath=".\WaveSoapFrontDoc.h"
+				>
 			</File>
 			<File
-				RelativePath=".\WaveSoapFrontView.h">
+				RelativePath=".\WaveSoapFrontView.h"
+				>
 			</File>
 			<File
-				RelativePath=".\WaveSupport.h">
+				RelativePath=".\WaveSupport.h"
+				>
 			</File>
 			<File
-				RelativePath=".\WmaFile.h">
+				RelativePath=".\WmaFile.h"
+				>
 			</File>
 			<File
-				RelativePath=".\wnaspi32.h">
+				RelativePath=".\wnaspi32.h"
+				>
 			</File>
 		</Filter>
 		<Filter
 			Name="Resource Files"
-			Filter="ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe">
+			Filter="ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe"
+			>
 			<File
-				RelativePath=".\res\bitmap_load.bmp">
+				RelativePath=".\res\bitmap_load.bmp"
+				>
 			</File>
 			<File
-				RelativePath=".\res\bmp00001.bmp">
+				RelativePath=".\res\bmp00001.bmp"
+				>
 			</File>
 			<File
-				RelativePath=".\res\bmp00002.bmp">
+				RelativePath=".\res\bmp00002.bmp"
+				>
 			</File>
 			<File
-				RelativePath=".\res\bmp_eject.bmp">
+				RelativePath=".\res\bmp_eject.bmp"
+				>
 			</File>
 			<File
-				RelativePath=".\res\bmp_play.bmp">
+				RelativePath=".\res\bmp_play.bmp"
+				>
 			</File>
 			<File
-				RelativePath=".\res\bmp_stop.bmp">
+				RelativePath=".\res\bmp_stop.bmp"
+				>
 			</File>
 			<File
-				RelativePath=".\res\cur00001.cur">
+				RelativePath=".\res\cur00001.cur"
+				>
 			</File>
 			<File
-				RelativePath=".\res\cur00002.cur">
+				RelativePath=".\res\cur00002.cur"
+				>
 			</File>
 			<File
-				RelativePath=".\res\cursor_b.cur">
+				RelativePath=".\res\cursor_b.cur"
+				>
 			</File>
 			<File
-				RelativePath=".\res\icon1.ico">
+				RelativePath=".\res\icon1.ico"
+				>
 			</File>
 			<File
-				RelativePath=".\res\icon_cd.ico">
+				RelativePath=".\res\icon_cd.ico"
+				>
 			</File>
 			<File
-				RelativePath=".\res\icon_equalizer.ico">
+				RelativePath=".\res\icon_equalizer.ico"
+				>
 			</File>
 			<File
-				RelativePath=".\res\icon_filter_dialog.ico">
+				RelativePath=".\res\icon_filter_dialog.ico"
+				>
 			</File>
 			<File
-				RelativePath=".\res\icon_split_to_files.ico">
+				RelativePath=".\res\icon_split_to_files.ico"
+				>
 			</File>
 			<File
-				RelativePath=".\res\id_bitma.bmp">
+				RelativePath=".\res\id_bitma.bmp"
+				>
 			</File>
 			<File
-				RelativePath=".\res\idc_zoom.bmp">
+				RelativePath=".\res\idc_zoom.bmp"
+				>
 			</File>
 			<File
-				RelativePath=".\res\Toolbar.bmp">
+				RelativePath=".\res\Toolbar.bmp"
+				>
 			</File>
 			<File
-				RelativePath=".\res\toolbar1.bmp">
+				RelativePath=".\res\toolbar1.bmp"
+				>
 			</File>
 			<File
-				RelativePath=".\res\WaveSoap.ico">
+				RelativePath=".\res\WaveSoap.ico"
+				>
 			</File>
 			<File
-				RelativePath=".\WaveSoap.manifest">
+				RelativePath=".\WaveSoap.manifest"
+				>
 			</File>
 			<File
-				RelativePath=".\res\WaveSoapFront.ico">
+				RelativePath=".\res\WaveSoapFront.ico"
+				>
 			</File>
 			<File
-				RelativePath=".\res\WaveSoapFront.rc2">
+				RelativePath=".\res\WaveSoapFront.rc2"
+				>
 			</File>
 			<File
-				RelativePath=".\res\WaveSoapFrontDoc.ico">
+				RelativePath=".\res\WaveSoapFrontDoc.ico"
+				>
 			</File>
 		</Filter>
 		<Filter
 			Name="Help Files"
-			Filter="cnt;rtf">
+			Filter="cnt;rtf"
+			>
 			<File
-				RelativePath=".\hlp\wavesoap.hhc">
+				RelativePath=".\hlp\wavesoap.hhc"
+				>
 			</File>
 			<File
-				RelativePath=".\hlp\WaveSoapFront.hhk">
+				RelativePath=".\hlp\WaveSoapFront.hhk"
+				>
 			</File>
 			<Filter
 				Name="Topics"
-				Filter="">
+				>
 			</Filter>
 			<Filter
 				Name="Graphics"
-				Filter="">
+				>
 			</Filter>
 		</Filter>
 		<Filter
 			Name="FilterMath"
-			Filter="">
+			>
 			<File
-				RelativePath=".\FilterMath.cpp">
+				RelativePath=".\FilterMath.cpp"
+				>
 			</File>
 			<File
-				RelativePath=".\FilterMath.h">
+				RelativePath=".\FilterMath.h"
+				>
 			</File>
 			<File
-				RelativePath=".\PolyMath.cpp">
+				RelativePath=".\PolyMath.cpp"
+				>
 			</File>
 			<File
-				RelativePath=".\PolyMath.h">
+				RelativePath=".\PolyMath.h"
+				>
 			</File>
 			<File
-				RelativePath=".\PolyRatio.cpp">
+				RelativePath=".\PolyRatio.cpp"
+				>
 			</File>
 			<File
-				RelativePath=".\PolyRatio.h">
+				RelativePath=".\PolyRatio.h"
+				>
 			</File>
 		</Filter>
 		<File
-			RelativePath=".\aspi_w32.txt">
+			RelativePath=".\aspi_w32.txt"
+			>
 		</File>
 		<File
-			RelativePath=".\Project Classes.doc">
+			RelativePath=".\Project Classes.doc"
+			>
 		</File>
 		<File
-			RelativePath=".\ReadMe.txt">
+			RelativePath=".\ReadMe.txt"
+			>
 		</File>
 		<File
-			RelativePath=".\Test Plan.doc">
+			RelativePath=".\Test Plan.doc"
+			>
 		</File>
 	</Files>
 	<Globals>
 		<Global
 			Name="RESOURCE_FILE"
-			Value="WaveSoapFront.rc"/>
+			Value="WaveSoapFront.rc"
+		/>
 	</Globals>
 </VisualStudioProject>

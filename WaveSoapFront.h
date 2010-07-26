@@ -13,6 +13,7 @@
 	#error include 'stdafx.h' before including this file for PCH
 #endif
 
+#include <afxwinappex.h>
 #include "ApplicationProfile.h"
 #include "WaveFile.h"
 #include "KListEntry.h"
@@ -112,11 +113,11 @@ protected:
 
 class COperationContext;
 
-class CWaveSoapFrontApp : public CWinApp,
+class CWaveSoapFrontApp : public CWinAppEx,
 	public DirectFileParameters,
 	public LocaleParameters
 {
-	typedef CWinApp BaseClass;
+	typedef CWinAppEx BaseClass;
 public:
 	CWaveSoapFrontApp();
 	void QueueOperation(COperationContext * pContext);
@@ -309,7 +310,7 @@ CString GetSelectionText(SAMPLE_INDEX Start, SAMPLE_INDEX End, CHANNEL_MASK Chan
 						int nSamplesPerSec, int TimeFormat);
 
 CString LoadCString(UINT id);
-
+#define _AfxAppendFilterSuffix w_AfxAppendFilterSuffix
 void _AfxAppendFilterSuffix(CString& filter, OPENFILENAME& ofn,
 							CDocTemplate* pTemplate, CString* pstrDefaultExt);
 

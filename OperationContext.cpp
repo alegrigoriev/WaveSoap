@@ -3895,7 +3895,7 @@ BOOL CWmaDecodeContext::Init()
 		return FALSE;
 	}
 
-	m_CoInit.InitializeCom(COINIT_APARTMENTTHREADED);
+	m_CoInit.InitializeCom(COINIT_MULTITHREADED);
 
 	if ( ! m_Decoder.Init()
 		|| S_OK != m_Decoder.Open(m_WmaFile))

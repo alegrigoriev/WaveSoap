@@ -3272,7 +3272,7 @@ SAMPLE_INDEX CWaveFile::PositionToSample(SAMPLE_POSITION position) const
 	return SAMPLE_INDEX((position - datack->dwDataOffset) / SampleSize());
 }
 
-using CWaveFile::InstanceDataWav;
+typedef CWaveFile::InstanceDataWav InstanceDataWav;
 void InstanceDataWav::CopyMetadata(InstanceDataWav const * pSrc, unsigned CopyFlags)
 {
 	if (CopyFlags & MetadataCopyDisp)

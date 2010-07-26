@@ -1313,9 +1313,9 @@ CString CScaledScrollView::GetString(double x, double y)
 {
 	CString s;
 	TCHAR szBufferX[32];
-	_stprintf(szBufferX, _T("%f"), x);
+	_stprintf_s(szBufferX, 32, _T("%f"), x);
 	TCHAR szBufferY[32];
-	_stprintf(szBufferY, _T("%f"), y);
+	_stprintf_s(szBufferY, 32, _T("%f"), y);
 	s.Format(GetFormatStringID(), szBufferX, szBufferY);
 	return s;
 }
@@ -1770,7 +1770,7 @@ BOOL CScaledScrollView::OnNeedText( UINT /*id*/, NMHDR * pNotifyStruct, LRESULT 
 	if (lpttt != NULL)
 	{
 		lpttt->hinst = NULL;
-		_tcscpy(lpttt->szText, _T(" "));
+		_tcscpy_s(lpttt->szText, countof(lpttt->szText), _T(" "));
 		*result = 0;
 		return TRUE;    // the message is handled
 	}

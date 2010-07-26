@@ -9,7 +9,7 @@ CString LtoaCS(long num)
 	TCHAR * p = s;
 	TCHAR * p1 = s1;
 	TCHAR ThSep = GetApp()->m_ThousandSeparator;
-	_ltot(num, s, 10);
+	_ltot_s(num, s, 20, 10);
 	if (0 == ThSep)
 	{
 		return s;
@@ -27,7 +27,7 @@ CString LtoaCS(long num)
 	{
 		first = 3;
 	}
-	_tcsncpy(p1, p, first);
+	memcpy(p1, p, first*sizeof * p1);
 	p1 += first;
 	p += first;
 	len -= first;

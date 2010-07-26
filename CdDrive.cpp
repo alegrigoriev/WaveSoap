@@ -4,9 +4,938 @@
 //////////////////////////////////////////////////////////////////////
 
 #include "stdafx.h"
-//#include "WaveSoapFront.h"
 #include "CdDrive.h"
+#include <winioctl.h>
 #include <Setupapi.h>
+
+struct ReadCD_CDB : CD_CDB
+{
+	enum { OPCODE = 0xBE};
+	UCHAR Reladdr:1;    // set to 0
+	UCHAR Reserved1:1;
+	UCHAR ExpectedSectorType:3;
+	enum{ SectorTypeAllTypes = 0,
+		SectorTypeCDDA = 1,
+		SectorTypeMode1 = 2,
+		SectorTypeMode2Formless = 3,
+		SectorTypeMode2Form1 = 4,
+		SectorTypeMode2Form2 = 5};
+	UCHAR Reserved2:3;
+	BigEndDword StartLBA;  // MSB first
+	BigEndTriple TransferLength; // MSB first
+
+	UCHAR Reserved3:1;
+	UCHAR ErrorField:2;
+	enum { ErrorFieldNoError = 0,
+		ErrorFieldC2 = 1,   // return 2352 error bits
+		ErrorFieldC2AndBlockError = 2, };
+	UCHAR EccEdc:1;     // set to 1 if you want ECC EDC for data CD
+	UCHAR UserData:1;   // set to 1 to return data
+	UCHAR HeaderCodes:2;
+	UCHAR Sync:1;       // set to 1 if you want Sync field from the sector
+
+	UCHAR SubchannelSelect:3;
+	enum { SubchannelNone = 0,
+		SubchannelRAW = 1,
+		SubchannelQ = 2,
+		SubchannelPW = 4, };
+	UCHAR Reserved4:5;
+
+	UCHAR Control;
+	// constructor:
+	ReadCD_CDB(ULONG ReadLba, ULONG Length,
+				UCHAR SectorType = SectorTypeCDDA,
+				UCHAR Error = ErrorFieldNoError,
+				UCHAR Subchannel = SubchannelNone)
+	{
+		memzero(*this);
+		Opcode = OPCODE;
+		StartLBA = ReadLba;
+		TransferLength = Length;
+		ExpectedSectorType = SectorType;
+		ErrorField = Error;
+		SubchannelSelect = Subchannel;
+		UserData = 1;
+	}
+};
+
+struct ReadCD_Plextor : CD_CDB
+{
+	enum { OPCODE = 0xD8};
+	UCHAR reserved:5;
+	UCHAR Lun:3;
+
+	BigEndDword BeginBlock;
+	BigEndDword NumBlocks;
+
+	UCHAR Subcode;
+	UCHAR Control;
+
+	ReadCD_Plextor(ULONG BeginLba, ULONG nNumBlocks)
+	{
+		memzero(*this);
+		Opcode = OPCODE;
+		BeginBlock = BeginLba;
+		NumBlocks = nNumBlocks;
+	}
+};
+
+struct ReadCD_NEC : CD_CDB
+{
+	enum { OPCODE = 0xD4};
+	UCHAR reserved1;
+
+	BigEndDword BeginBlock;
+	UCHAR reserved2;
+	BigEndWord NumBlocks;
+
+	UCHAR Control;
+
+	ReadCD_NEC(ULONG BeginLba, USHORT nNumBlocks)
+	{
+		memzero(*this);
+		Opcode = OPCODE;
+		BeginBlock = BeginLba;
+		NumBlocks = nNumBlocks;
+	}
+};
+
+struct ReadCD_MSF_CDB : CD_CDB
+{
+	enum { OPCODE = 0xB9};
+	UCHAR Reserved1:2;
+	UCHAR ExpectedSectorType:3;
+	enum{ SectorTypeAllTypes = 0,
+		SectorTypeCDDA = 1,
+		SectorTypeMode1 = 2,
+		SectorTypeMode2Formless = 3,
+		SectorTypeMode2Form1 = 4,
+		SectorTypeMode2Form2 = 5};
+	UCHAR Reserved2:3;
+
+	UCHAR reserved3;
+	UCHAR StartMinute;
+	UCHAR StartSecond;
+	UCHAR StartFrame;
+	UCHAR EndMinute;
+	UCHAR EndSecond;
+	UCHAR EndFrame;
+
+	UCHAR Reserved3:1;
+	UCHAR ErrorField:2;
+	enum { ErrorFieldNoError = 0,
+		ErrorFieldC2 = 1,   // return 2352 error bits
+		ErrorFieldC2AndBlockError = 2, };
+	UCHAR EccEdc:1;     // set to 1 if you want ECC EDC for data CD
+	UCHAR UserData:1;   // set to 1 to return data
+	UCHAR HeaderCodes:2;
+	UCHAR Sync:1;       // set to 1 if you want Sync field from the sector
+
+	UCHAR SubchannelSelect:3;
+	enum { SubchannelNone = 0,
+		SubchannelRAW = 1,
+		SubchannelQ = 2,
+		SubchannelPW = 4, };
+	UCHAR Reserved4:5;
+
+	UCHAR Control;
+	// constructor:
+	ReadCD_MSF_CDB(CdAddressMSF StartAddr, CdAddressMSF EndAddr,
+					UCHAR SectorType = SectorTypeCDDA,
+					UCHAR Error = ErrorFieldNoError,
+					UCHAR Subchannel = SubchannelNone)
+	{
+		memzero(*this);
+		Opcode = OPCODE;
+
+		StartMinute = StartAddr.Minute;
+		StartSecond = StartAddr.Second;
+		StartFrame = StartAddr.Frame;
+
+		EndMinute = EndAddr.Minute;
+		EndSecond = EndAddr.Second;
+		EndFrame = EndAddr.Frame;
+
+		ExpectedSectorType = SectorType;
+		ErrorField = Error;
+		SubchannelSelect = Subchannel;
+		UserData = 1;
+	}
+};
+
+///////////////////////////////////////////////////////////////////////////
+// Get Performance command (MMC2)
+///////////////////////////////////////////////////////////////////////////
+struct CdPerformanceDataHeader
+{
+	BigEndDword DataLength;
+	UCHAR Except:1;
+	UCHAR Write:1;
+	UCHAR reserved1:6;
+
+	UCHAR reserved2[3];
+};
+
+struct CdNominalPerformanceDescriptor
+{
+	BigEndDword StartLba;
+	BigEndDword StartPerformance;
+	BigEndDword EndLba;
+	BigEndDword EndPerformance;
+};
+
+struct GetPerformanceCDB : CD_CDB
+{
+	enum { OPCODE = 0xAC};
+
+	UCHAR Except:2;
+	UCHAR Write:1;
+	UCHAR Tolerance:2;
+	UCHAR reserved1:3;
+
+	BigEndDword StartingLba;
+	UCHAR reserved2[2];
+	BigEndWord MaxNumberOfDescriptors;
+	UCHAR Reserved3;
+	UCHAR Control;
+
+	GetPerformanceCDB(USHORT nNumDescriptors,
+					long lStartLba = 0,
+					int nExcept = 0,
+					BOOL bWrite = FALSE)
+	{
+		memzero(*this);
+		Opcode = OPCODE;
+		Tolerance = 2;
+		Write = bWrite != 0;
+		Except = nExcept;
+		MaxNumberOfDescriptors = nNumDescriptors;
+		StartingLba = lStartLba;
+	}
+};
+
+///////////////////////////////////////////////////////////////////////////
+// Device inquiry command
+///////////////////////////////////////////////////////////////////////////
+struct InquiryCDB : CD_CDB
+{
+	enum { OPCODE = 0x12};
+	UCHAR EnableVitalProductData:1;
+	UCHAR CmdData:1;
+	UCHAR reserved1:6;
+
+	UCHAR PageOrOpcode;
+	UCHAR reserved;
+	UCHAR AllocationLength;
+	UCHAR Control;
+	InquiryCDB(int AllocLength, int nPageOrOpcode = 0, bool EVPD = false, bool CmdDt = false)
+	{
+		memzero(*this);
+		Opcode = OPCODE;
+		EnableVitalProductData = EVPD;
+		CmdData = CmdDt;
+		PageOrOpcode = UCHAR(nPageOrOpcode);
+		AllocationLength = UCHAR(AllocLength);
+	}
+};
+
+struct InquiryData
+{
+	UCHAR PeripheralDeviceType:5;
+	UCHAR PeripheralQualifier:3;
+
+	UCHAR reserved1:7;
+	UCHAR RemovableMedium:1;
+
+	UCHAR Version;
+
+	UCHAR ResponseDataFormat:4;
+	UCHAR HiSup:1;
+	UCHAR NormAca:1;
+	UCHAR Obsolete1:1;
+	UCHAR AsyncEventReporting:1;
+
+	UCHAR AdditionalLength;
+
+	UCHAR reserved2:7;
+	UCHAR SCC_Support:1;
+
+	UCHAR ADDR16:1;
+	UCHAR Obsolete2:2;
+	UCHAR MChanger:1;
+	UCHAR MultiPort:1;
+	UCHAR VS1:1;
+	UCHAR EncServ:1;
+	UCHAR BQue:1;
+
+	UCHAR VS2:1;
+	UCHAR CmdQue:1;
+	UCHAR TranDis:1;
+	UCHAR Linked:1;
+	UCHAR Sync:1;
+	UCHAR WBUS16:1;
+	UCHAR Obsolete3:1;
+	UCHAR RelAdr:1;
+
+	UCHAR VendorId[8];
+
+	UCHAR ProductID[16];
+	UCHAR ProductRevision[4];
+
+	UCHAR VendorSpecific[20];
+
+	UCHAR IUS:1;
+	UCHAR QAS:1;
+	UCHAR CLOCKING:2;
+	UCHAR reserved3:4;
+
+	UCHAR reserved4;
+
+	UCHAR VersionDescriptor[8][2];
+
+	UCHAR reserved5[22];
+};
+
+//C_ASSERT(96 == sizeof (InquiryData));
+///////////////////////////////////////////////////////////////////////////
+// Mode Sense command and Mode pages
+///////////////////////////////////////////////////////////////////////////
+struct ModeSenseCDB : CD_CDB
+{
+	enum { OPCODE = 0x1A};
+	UCHAR Reserved1:3;
+	UCHAR DisableBlockDescriptor:1;
+	UCHAR Reserved2:4;
+
+	UCHAR PageCode:6;
+	UCHAR PageControl:2;
+	enum {PageCurrentValues = 0,
+		PageChangeableValues = 1,
+		PageDefaultValues = 2,
+		PageSavedValues = 3
+	};
+
+	UCHAR Reserved3;
+	UCHAR AllocationLength;
+	UCHAR Control;
+	ModeSenseCDB(UCHAR nLength, int nPageCode,
+				int nPageControl = PageCurrentValues, bool dbd = true)
+	{
+		memzero(*this);
+		Opcode = OPCODE;
+		AllocationLength = nLength;
+		PageCode = nPageCode;
+		PageControl = nPageControl;
+		DisableBlockDescriptor = dbd;
+	}
+};
+
+struct ModeInfoHeader
+{
+	UCHAR ModeDataLength;
+	UCHAR MediumType;
+	UCHAR DeviceSpecific;
+	UCHAR BlockDescriptorLength;
+};
+
+struct CDParametersModePage
+{
+	UCHAR PageCode:6;
+	enum {Code = 0x0D, Length=6};
+	UCHAR Reserved1:1;
+	UCHAR PS:1; // parameter savable
+
+	UCHAR PageLength;
+
+	UCHAR Reserved2;
+
+	UCHAR InactivityTimerMultiplier:4;
+	UCHAR Reserved3:4;
+
+	BigEndWord NumberOf_S_per_M;  // S in M in MSF format (60), MSB first
+
+	BigEndWord NumberOf_F_per_F;  // F in S in MSF format (75), MSB first
+};
+
+struct CDErrorRecoveryModePage
+{
+	UCHAR PageCode:6;
+	enum {Code = 1, Length=0xA};
+	UCHAR Reserved1:1;
+	UCHAR PS:1; // parameter savable
+
+	UCHAR PageLength;
+
+	UCHAR DCR:1;
+	UCHAR DTE:1;
+	UCHAR PER:1;
+	UCHAR Reserved2:1;
+	UCHAR RC:1;
+	UCHAR TB:1;
+	UCHAR ARRE:1;
+	UCHAR ARWE:1;
+
+	UCHAR ReadRetryCount;
+
+	UCHAR Reserved3[4];
+
+	UCHAR WriteRetryCount;
+
+	UCHAR Reserved4;
+
+	BigEndWord RecoveryTimeLimit; // MSB first, should be set to zero
+};
+
+// Reduced Multimedia Command Set (obsolete)
+struct CDCurrentCapabilitiesModePage
+{
+	UCHAR PageCode:6;
+	enum {Code = 0x0C, Length=0x0E};
+	UCHAR Reserved1:1;
+	UCHAR PS:1; // parameter savable
+
+	UCHAR PageLength;
+
+	BigEndWord MaximumReadSpeed;
+	BigEndWord CurrentReadSpeed;
+
+	UCHAR ReadCDRW:1;
+	UCHAR ReadATIP:1;
+	UCHAR ReadData:1;
+	UCHAR CAV:1;
+	UCHAR reserved1:4;
+
+	BigEndWord MaximumWriteSpeed;
+	BigEndWord CurrentWriteSpeed;
+
+	UCHAR WriteCDR:1;
+	UCHAR WriteCDRW:1;
+	UCHAR WriteData:1;
+	UCHAR reserved2:5;
+
+	UCHAR reserved3[2];
+};
+
+// see T10/1228-D, NCITS 333, clause 5.5.10 table 137
+struct CDCapabilitiesMechStatusModePage
+{
+	UCHAR PageCode:6;
+	enum {Code = 0x2A, Length=0x18};
+	UCHAR Reserved1:1;
+	UCHAR PS:1; // parameter savable
+
+	UCHAR PageLength;
+
+	UCHAR CDRRead:1;
+	UCHAR CDRWRead:1;
+	UCHAR Method2:1;
+	UCHAR DVDROMRead:1;
+	UCHAR DVDR_Read:1;
+	UCHAR DVDRAMRead:1;
+	UCHAR Reserved2:2;
+
+	UCHAR CDR_Write:1;
+	UCHAR CDRW_Write:1;
+	UCHAR TestWrite:1;
+	UCHAR Reserved3:1;
+	UCHAR DVDR_Write:1;
+	UCHAR DVDRAM_Write:1;
+	UCHAR Reserved3a:2;
+
+	UCHAR AudioPlay:1;
+	UCHAR Composite:1;
+	UCHAR DigitalPort_1:1;
+	UCHAR DigitalPort_2:1;
+	UCHAR Mode2Form1:1;
+	UCHAR Mode2Form2:1;
+	UCHAR Multisession:1;
+	UCHAR Reserved4:1;
+
+	UCHAR CDDACommandsSupported:1;
+	UCHAR CDDAStreamAccurate:1;
+	UCHAR RWChanSupport:1;
+	UCHAR RWDeinterleavedCorrected:1;
+	UCHAR C2PointersSupported:1;
+	UCHAR ISRC:1;
+	UCHAR UPC:1;
+	UCHAR ReadBarCode:1;
+
+	UCHAR Lock:1;
+	UCHAR LockState:1;
+	UCHAR PreventJumper:1;
+	UCHAR Eject:1;  // supported
+	UCHAR Reserved5:1;
+	UCHAR LoadingMechanismType:3;
+
+	UCHAR SeparateVolumeLevels:1;
+	UCHAR SeparateChannelMute:1;
+	UCHAR ChangerSupportsDiskPresent:1;
+	UCHAR SW_SlotSelection:1;
+	UCHAR SideChangeCapable:1;
+	UCHAR PW_InLeadIn:1;
+	UCHAR Reserved6:2;
+
+	BigEndWord MaxReadSpeedSupported;   // obsolete
+
+	BigEndWord NumberOfVolumeLevelsSupported; // MSB first
+
+	BigEndWord BufferSizeSupported;   // MSB first
+
+	BigEndWord CurrentReadSpeedSelected; // obsolete
+
+	UCHAR Reserved9;
+
+	// byte 17:
+	UCHAR Reserved10:1;
+	UCHAR BCKF:1;
+	UCHAR RCK:1;
+	UCHAR LSBF:1;
+	UCHAR LengthBCKs:2;
+	UCHAR Reserved:2;
+
+	BigEndWord MaxWriteSpeedSupported;   // obsolete
+	BigEndWord CurrentWriteSpeedSelected; // obsolete
+	// may not be available:
+	BigEndWord CopyManagementRevision;
+
+	UCHAR Reserved11[2];
+};
+
+///////////////////////////////////////////////////////////////////////////
+// Get Configuration command and Feature descriptors
+///////////////////////////////////////////////////////////////////////////
+struct GetConfigurationCDB : CD_CDB
+{
+	enum { OPCODE = 0x46};
+	UCHAR RequestedType:2;
+	enum {
+		RequestedTypeAllDescriptors = 0,
+		RequestedTypeCurrentDescriptors = 1,
+		RequestedTypeOneDescriptor = 2};
+	UCHAR Reserved2:6;
+
+	BigEndWord StartingFeatureNumber;
+
+	UCHAR Reserved[3];
+
+	BigEndWord AllocationLength;
+
+	UCHAR Control;
+	GetConfigurationCDB(USHORT allocLength,
+						USHORT StartingFeature = 0, int RequestType = RequestedTypeAllDescriptors)
+	{
+		memzero(*this);
+		Opcode = OPCODE;
+		AllocationLength = allocLength;
+		StartingFeatureNumber = StartingFeature;
+		RequestedType = RequestType;
+	}
+};
+
+struct FeatureDescriptor
+{
+	BigEndWord FeatureCode;
+
+	UCHAR Current:1;
+	UCHAR Persistent:1;
+	UCHAR Version:4;
+	UCHAR Reserved:2;
+
+	UCHAR AdditionalLength;
+};
+
+struct FeatureHeader
+{
+	BigEndDword DataLength;    // msb first
+
+	UCHAR Reserved[2];
+	BigEndWord CurrentProfile;
+	// FeatureDescriptor Descriptor[0];
+};
+
+struct RealTimeStreamingFeatureDesc : FeatureDescriptor
+{
+	enum {Code = 0x0107, AddLength = 0};
+};
+
+struct CoreFeatureDesc : FeatureDescriptor
+{
+	enum {Code = 0x0001, AddLength = 4};
+	BigEndDword PhysicalInterfaceStandard; // MSB first
+	// 00000001 SCSI family
+	// 00000002 ATAPI
+	// 00000003 IEEE-1394/1995
+	// 00000004 IEEE-1394A
+};
+
+struct ProfileListDesc : FeatureDescriptor
+{
+	enum {Code = 0x0000, AddLength = 4*16};
+	struct ProfileDescriptor
+	{
+		BigEndWord ProfileNumber; // MSB first
+
+		UCHAR CurrentP:1;
+		UCHAR Reserved1:7;
+
+		UCHAR Reserved2;
+	}
+	Descriptors[16];
+};
+
+enum {
+	ProfileLsbCDROM = 0x08,
+	ProfileLsbCDR = 0x09,
+	ProfileLsbCDRW = 0x0A,
+	ProfileLsbDVDROM = 0x10,
+	ProfileLsbDVDR = 0x11,
+	ProfileLsbDVDRAMRW = 0x12
+};
+
+
+struct MultiReadFeatureDesc : FeatureDescriptor
+{
+	enum {Code = 0x001D, AddLength = 0};
+};
+
+struct CDReadFeatureDesc : FeatureDescriptor
+{
+	enum {Code = 0x001E, AddLength = 4};
+	UCHAR CDText:1;
+	UCHAR C2Flag:1; // supports C2 error pointers
+	UCHAR Reserved1:6;
+
+	UCHAR Reserved2[3];
+};
+
+struct SerialNumberFeatureDesc : FeatureDescriptor
+{
+	enum {Code = 0x0108, AddLength = 128};
+	UCHAR SerialNumber[128];  // number of bytes is in AdditionalLength
+};
+
+//////////////////////////////////////////////////////////////////
+// SET SPEED, SET STREAMING
+//////////////////////////////////////////////////////////////////
+struct SetCdSpeedCDB : CD_CDB
+{
+	enum { OPCODE = 0xBB};
+	UCHAR Reserved1;
+
+	BigEndWord ReadSpeed;
+	BigEndWord WriteSpeed;
+
+	UCHAR Reserved2[5];
+	UCHAR Control;
+
+	SetCdSpeedCDB(USHORT nReadSpeed, USHORT nWriteSpeed=0xFFFF)
+	{
+		memzero(*this);
+		Opcode = OPCODE;
+		ReadSpeed = nReadSpeed;
+		WriteSpeed = nWriteSpeed;
+	}
+};
+
+struct StreamingPerformanceDescriptor
+{
+	UCHAR RandomAccess:1;
+	UCHAR Exact:1;
+	UCHAR RestoreDefaults:1;
+	UCHAR Reserved1:5;
+	UCHAR Reserved2[3];
+
+	BigEndDword StartLBA;
+	BigEndDword EndLBA;
+
+	BigEndDword ReadSize;
+	BigEndDword ReadTime;
+
+	BigEndDword WriteSize;
+	BigEndDword WriteTime;
+	StreamingPerformanceDescriptor(ULONG nStart, ULONG nEnd,
+									ULONG ReadSpeed = 0xFFFF, ULONG WriteSpeed=0xFFFF)
+	{
+		memzero(*this);
+
+		StartLBA = nStart;
+		EndLBA = nEnd;
+
+		ReadSize = ReadSpeed;
+		ReadTime = 1000;
+
+		WriteSize = WriteSpeed;
+		WriteTime = 1000;
+	}
+};
+
+struct SetStreamingCDB : CD_CDB
+{
+	enum { OPCODE = 0xB6};
+	UCHAR Reserved1;
+	UCHAR Reserved2[7];
+
+	BigEndWord ParameterLength;
+
+	UCHAR Control;
+
+	SetStreamingCDB()
+	{
+		memzero(*this);
+		Opcode = OPCODE;
+		ParameterLength = sizeof (StreamingPerformanceDescriptor);
+	}
+};
+//////////////////////////////////////////////////////////////////
+// UNIT START/STOP
+//////////////////////////////////////////////////////////////////
+struct StartStopCdb : CD_CDB
+{
+	enum { OPCODE = 0x1B};
+	UCHAR Immediate:1;
+	UCHAR reserved1:7;
+
+	UCHAR reserved2[2];
+
+	UCHAR Start:1;
+	UCHAR LoadEject:1;
+	UCHAR reserved3:2;
+	UCHAR PowerConditions:4;
+
+	UCHAR Control;
+	enum {
+		NoChange = 0,
+		Active = 1,
+		Idle = 2,
+		Standby = 3,
+		Sleep = 5,
+		IdleTimerToExpire = 0xA,
+		StandbyTimerToExpire = 0xB,
+	};
+	StartStopCdb(int Power, bool bStart = false,
+				bool bLoadEject = false, bool bImmed = true)
+	{
+		memzero(*this);
+		Opcode = OPCODE;
+		Immediate = bImmed;
+		PowerConditions = Power;
+		Start = bStart;
+		LoadEject = bLoadEject;
+	}
+};
+
+//////////////////////////////////////////////////////////////////
+// Media removal
+//////////////////////////////////////////////////////////////////
+struct LockMediaCdb : CD_CDB
+{
+	enum { OPCODE = 0x1E};
+
+	UCHAR reserved1[3];
+
+	UCHAR LockDataTransport:1;
+	UCHAR LockMediaChanger:1;
+	UCHAR reserved2:6;
+
+	LockMediaCdb(bool LockTransport = true, bool LockChanger = false)
+	{
+		memzero(*this);
+		Opcode = OPCODE;
+		LockDataTransport = LockTransport;
+		LockMediaChanger = LockChanger;
+	}
+};
+
+//////////////////////////////////////////////////////////////////
+// Media removal
+//////////////////////////////////////////////////////////////////
+struct ReadTocCdb : CD_CDB
+{
+	enum { OPCODE = 0x43};
+
+	UCHAR reserved1:1;
+	UCHAR MSF:1;
+	UCHAR reserved2:6;
+
+	UCHAR DataFormat:4;
+
+	enum {
+		TOC = 0,
+		SessionInfo = 1,
+		FullToc = 2,
+		PMA = 3,
+		ATIP = 4,
+		CDTEXT = 5,
+	};
+	UCHAR reserved3:4;
+
+	UCHAR reserved4[3];
+
+	UCHAR TrackSessionNumber;
+
+	BigEndWord AllocationLength;
+
+	UCHAR Control;
+
+	ReadTocCdb(int TrackNum, WORD AllocLen, int nFormat=TOC, bool msf=true)
+	{
+		memzero(*this);
+		Opcode = OPCODE;
+		MSF = msf;
+		DataFormat = nFormat;
+		TrackSessionNumber = UCHAR(TrackNum);
+		AllocationLength = AllocLen;
+	}
+};
+//////////////////////////////////////////////////////////////////
+// Generic SCSI structures
+//////////////////////////////////////////////////////////////////
+
+struct SCSI_SenseInfo
+{
+	UCHAR ResponseCode:7;
+	enum { CurrentErrors=0x70, DeferredErrors=0x71 };
+	UCHAR Valid:1;
+
+	UCHAR SegmentNumber;
+
+	UCHAR SenseKey:4;
+	UCHAR Reserved1:1;
+	UCHAR IncorrectLengthIndicator:1;
+	UCHAR EndOfMedium:1;
+	UCHAR Filemark:1;
+
+	BigEndDword Unformation;
+	UCHAR AdditionalSenseLength;
+
+	BigEndDword CommandSpecificInfo;
+	UCHAR AdditionalSenseCode;
+	UCHAR AdditionalSenseQualifier;
+	UCHAR FieldReplaceableUnitCode;
+
+	UCHAR BitPointer:3;
+	UCHAR BitPointerValid:1;
+	UCHAR Reserved2:1;
+	UCHAR SegmentDescriptor:1;
+	UCHAR CommandOrData:1;
+	UCHAR SenseKeySpecificValid:1;
+	union {
+		BigEndWord FieldPointerBytes;
+		BigEndWord ActualRetryCount;
+		BigEndWord ProgressIndication;
+		BigEndWord FieldPointer;
+	};
+	UCHAR Extra[14];    // total 32
+};  // 18 bytes
+
+//////////////////////////////////////////////////////////////////
+// Media removal
+//////////////////////////////////////////////////////////////////
+struct TestUnitReadyCdb : CD_CDB
+{
+	enum { OPCODE = 0x00};
+	UCHAR reserved[4];
+	UCHAR Control;
+
+	TestUnitReadyCdb()
+	{
+		memzero(*this);
+		Opcode = OPCODE;
+	}
+	static CdMediaChangeState TranslateSenseInfo(SCSI_SenseInfo * pSense);
+	static bool CanOpenTray(SCSI_SenseInfo * pSense)
+	{
+		return pSense->SenseKey == 0
+				|| (pSense->SenseKey == 2   // not ready
+					&& 0x3A == pSense->AdditionalSenseCode
+					&& 1 == pSense->AdditionalSenseQualifier);
+	}
+	static bool CanCloseTray(SCSI_SenseInfo * pSense)
+	{
+		return pSense->SenseKey == 2   // not ready
+				&& 0x3A == pSense->AdditionalSenseCode
+				&& 2 == pSense->AdditionalSenseQualifier;
+	}
+};
+struct SRB
+{
+	BYTE        Command;            // ASPI command code
+	BYTE        Status;         // ASPI command status byte
+	BYTE        HostAdapter;           // ASPI host adapter number
+	BYTE        Flags;          // ASPI request flags
+	DWORD       dwReserved;       // Reserved, MUST = 0
+};
+
+struct SRB_HAInquiry : SRB
+{
+	BYTE        HA_Count;           // Number of host adapters present
+	BYTE        HA_SCSI_ID;         // SCSI ID of host adapter
+	BYTE        HA_ManagerId[16];   // String describing the manager
+	BYTE        HA_Identifier[16];  // String describing the host adapter
+	union {
+		BYTE        HA_Unique[16];      // Host Adapter Unique parameters
+		struct {
+			USHORT BufferAlignment;
+			UCHAR Reserved1:1;
+			UCHAR ResidualByteCountSupported:1;
+			UCHAR MaximumScsiTargets;
+			ULONG MaximumTransferLength;
+			// the rest is reserved
+		};
+	};
+	WORD        HA_Rsvd1;
+};
+
+struct SRB_ExecSCSICmd : SRB
+{
+	BYTE        Target;         // Target's SCSI ID
+	BYTE        Lun;            // Target's LUN number
+	WORD        Rsvd1;          // Reserved for Alignment
+	DWORD       BufLen;         // Data Allocation Length
+	void *      BufPointer;    // Data Buffer Point
+	BYTE        SenseLen;       // Sense Allocation Length
+	BYTE        CDBLen;         // CDB Length
+	BYTE        HostStatus;         // Host Adapter Status
+	BYTE        TargetStatus;       // Target Status
+	// to be defined: calling convention
+	union {
+		void        (_cdecl*SRB_PostProc)(SRB_ExecSCSICmd*);  // Post routine
+		HANDLE      hCompletionEvent;
+	};
+	void        *Reserved2;         // Reserved
+	BYTE        Reserved3[16];      // Reserved for expansion
+	BYTE        CDBByte[16];        // SCSI CDB
+	SCSI_SenseInfo  SenseInfo; // Request Sense buffer
+};
+
+typedef SRB_HAInquiry *PSRB_HAInquiry;
+
+struct SRB_Abort : SRB
+{
+	SRB * pSRBToAbort;
+	SRB_Abort(SRB * srb)
+	{
+		memzero(*this);
+		Command = SC_ABORT_SRB;  // 01
+		pSRBToAbort = srb;
+	}
+};
+
+struct SRB_GetDevType : SRB
+{
+	UCHAR Target;
+	UCHAR Lun;
+	UCHAR DeviceType;   // filled out
+	UCHAR reserved;
+	SRB_GetDevType(UCHAR adapter, UCHAR target, UCHAR lun)
+	{
+		memzero(*this);
+		Command = SC_GET_DEV_TYPE;  // 01
+		HostAdapter = adapter;
+		Target = target;
+		Lun = lun;
+	}
+};
 
 #ifdef _DEBUG
 #undef THIS_FILE
@@ -17,9 +946,440 @@ static char THIS_FILE[]=__FILE__;
 static LONG_volatile m_DriveBusyCount['Z' - 'A' + 1];
 static LONG_volatile m_MediaLockCount['Z' - 'A' + 1];
 
+/////////////////////////////////////////////////////////////////////
+// Include SCSI and CD declarations here, because DDK headers are
+// somehow incompatible with VC and SDK headers. If I specify
+// DDK include path in the project, it would not compile because of conflicts
+////////////////////////////////////////////////////////////////////
+
+#define IOCTL_CDROM_BASE                 FILE_DEVICE_CD_ROM
+
+#define IOCTL_CDROM_UNLOAD_DRIVER        CTL_CODE(IOCTL_CDROM_BASE, 0x0402, METHOD_BUFFERED, FILE_READ_ACCESS)
+
+//
+// CDROM Audio Device Control Functions
+//
+
+#define IOCTL_CDROM_READ_TOC              CTL_CODE(IOCTL_CDROM_BASE, 0x0000, METHOD_BUFFERED, FILE_READ_ACCESS)
+#define IOCTL_CDROM_SEEK_AUDIO_MSF        CTL_CODE(IOCTL_CDROM_BASE, 0x0001, METHOD_BUFFERED, FILE_READ_ACCESS)
+#define IOCTL_CDROM_STOP_AUDIO            CTL_CODE(IOCTL_CDROM_BASE, 0x0002, METHOD_BUFFERED, FILE_READ_ACCESS)
+#define IOCTL_CDROM_PAUSE_AUDIO           CTL_CODE(IOCTL_CDROM_BASE, 0x0003, METHOD_BUFFERED, FILE_READ_ACCESS)
+#define IOCTL_CDROM_RESUME_AUDIO          CTL_CODE(IOCTL_CDROM_BASE, 0x0004, METHOD_BUFFERED, FILE_READ_ACCESS)
+#define IOCTL_CDROM_GET_VOLUME            CTL_CODE(IOCTL_CDROM_BASE, 0x0005, METHOD_BUFFERED, FILE_READ_ACCESS)
+#define IOCTL_CDROM_PLAY_AUDIO_MSF        CTL_CODE(IOCTL_CDROM_BASE, 0x0006, METHOD_BUFFERED, FILE_READ_ACCESS)
+#define IOCTL_CDROM_SET_VOLUME            CTL_CODE(IOCTL_CDROM_BASE, 0x000A, METHOD_BUFFERED, FILE_READ_ACCESS)
+#define IOCTL_CDROM_READ_Q_CHANNEL        CTL_CODE(IOCTL_CDROM_BASE, 0x000B, METHOD_BUFFERED, FILE_READ_ACCESS)
+#if (NTDDI_VERSION < NTDDI_WS03)
+#define IOCTL_CDROM_GET_CONTROL           CTL_CODE(IOCTL_CDROM_BASE, 0x000D, METHOD_BUFFERED, FILE_READ_ACCESS)
+#else
+#define OBSOLETE_IOCTL_CDROM_GET_CONTROL  CTL_CODE(IOCTL_CDROM_BASE, 0x000D, METHOD_BUFFERED, FILE_READ_ACCESS)
+#endif
+#define IOCTL_CDROM_GET_LAST_SESSION      CTL_CODE(IOCTL_CDROM_BASE, 0x000E, METHOD_BUFFERED, FILE_READ_ACCESS)
+#define IOCTL_CDROM_RAW_READ              CTL_CODE(IOCTL_CDROM_BASE, 0x000F, METHOD_OUT_DIRECT,  FILE_READ_ACCESS)
+#define IOCTL_CDROM_DISK_TYPE             CTL_CODE(IOCTL_CDROM_BASE, 0x0010, METHOD_BUFFERED, FILE_ANY_ACCESS)
+
+#define IOCTL_CDROM_GET_DRIVE_GEOMETRY    CTL_CODE(IOCTL_CDROM_BASE, 0x0013, METHOD_BUFFERED, FILE_READ_ACCESS)
+#define IOCTL_CDROM_GET_DRIVE_GEOMETRY_EX CTL_CODE(IOCTL_CDROM_BASE, 0x0014, METHOD_BUFFERED, FILE_READ_ACCESS)
+
+#define IOCTL_CDROM_READ_TOC_EX           CTL_CODE(IOCTL_CDROM_BASE, 0x0015, METHOD_BUFFERED, FILE_READ_ACCESS)
+#define IOCTL_CDROM_GET_CONFIGURATION     CTL_CODE(IOCTL_CDROM_BASE, 0x0016, METHOD_BUFFERED, FILE_READ_ACCESS)
+
+#define IOCTL_CDROM_EXCLUSIVE_ACCESS      CTL_CODE(IOCTL_CDROM_BASE, 0x0017, METHOD_BUFFERED, FILE_READ_ACCESS | FILE_WRITE_ACCESS)
+#define IOCTL_CDROM_SET_SPEED             CTL_CODE(IOCTL_CDROM_BASE, 0x0018, METHOD_BUFFERED, FILE_READ_ACCESS)
+#define IOCTL_CDROM_GET_INQUIRY_DATA      CTL_CODE(IOCTL_CDROM_BASE, 0x0019, METHOD_BUFFERED, FILE_READ_ACCESS)
+
+
+// end_winioctl
+
+//
+// The following device control codes are common for all class drivers.  The
+// functions codes defined here must match all of the other class drivers.
+//
+// Warning: these codes will be replaced in the future with the IOCTL_STORAGE
+// codes included below
+//
+
+#define IOCTL_CDROM_CHECK_VERIFY    CTL_CODE(IOCTL_CDROM_BASE, 0x0200, METHOD_BUFFERED, FILE_READ_ACCESS)
+#define IOCTL_CDROM_MEDIA_REMOVAL   CTL_CODE(IOCTL_CDROM_BASE, 0x0201, METHOD_BUFFERED, FILE_READ_ACCESS)
+#define IOCTL_CDROM_EJECT_MEDIA     CTL_CODE(IOCTL_CDROM_BASE, 0x0202, METHOD_BUFFERED, FILE_READ_ACCESS)
+#define IOCTL_CDROM_LOAD_MEDIA      CTL_CODE(IOCTL_CDROM_BASE, 0x0203, METHOD_BUFFERED, FILE_READ_ACCESS)
+#define IOCTL_CDROM_RESERVE         CTL_CODE(IOCTL_CDROM_BASE, 0x0204, METHOD_BUFFERED, FILE_READ_ACCESS)
+#define IOCTL_CDROM_RELEASE         CTL_CODE(IOCTL_CDROM_BASE, 0x0205, METHOD_BUFFERED, FILE_READ_ACCESS)
+#define IOCTL_CDROM_FIND_NEW_DEVICES CTL_CODE(IOCTL_CDROM_BASE, 0x0206, METHOD_BUFFERED, FILE_READ_ACCESS)
+
+typedef enum _TRACK_MODE_TYPE {
+	YellowMode2,
+	XAForm2,
+	CDDA,
+	RawWithC2AndSubCode,   // CD_RAW_SECTOR_WITH_C2_AND_SUBCODE_SIZE per sector
+	RawWithC2,             // CD_RAW_SECTOR_WITH_C2_SIZE per sector
+	RawWithSubCode         // CD_RAW_SECTOR_WITH_SUBCODE_SIZE per sector
+} TRACK_MODE_TYPE, *PTRACK_MODE_TYPE;
+
+#define CD_RAW_READ_C2_SIZE                    (     296   )
+#define CD_RAW_READ_SUBCODE_SIZE               (         96)
+#define CD_RAW_SECTOR_WITH_C2_SIZE             (2352+296   )
+#define CD_RAW_SECTOR_WITH_SUBCODE_SIZE        (2352    +96)
+#define CD_RAW_SECTOR_WITH_C2_AND_SUBCODE_SIZE (2352+296+96)
+
+//
+// Passed to cdrom to describe the raw read, ie. Mode 2, Form 2, CDDA...
+//
+
+typedef struct __RAW_READ_INFO {
+	LARGE_INTEGER DiskOffset;
+	ULONG    SectorCount;
+	TRACK_MODE_TYPE TrackMode;
+} RAW_READ_INFO, *PRAW_READ_INFO;
+
+
+//
+// Define values for pass-through DataIn field.
+//
+
+#define SCSI_IOCTL_DATA_OUT          0
+#define SCSI_IOCTL_DATA_IN           1
+#define SCSI_IOCTL_DATA_UNSPECIFIED  2
+
+
+#define IOCTL_SCSI_BASE                 FILE_DEVICE_CONTROLLER
+#define IOCTL_SCSI_PASS_THROUGH         CTL_CODE(IOCTL_SCSI_BASE, 0x0401, METHOD_BUFFERED, FILE_READ_ACCESS | FILE_WRITE_ACCESS)
+#define IOCTL_SCSI_MINIPORT             CTL_CODE(IOCTL_SCSI_BASE, 0x0402, METHOD_BUFFERED, FILE_READ_ACCESS | FILE_WRITE_ACCESS)
+#define IOCTL_SCSI_GET_INQUIRY_DATA     CTL_CODE(IOCTL_SCSI_BASE, 0x0403, METHOD_BUFFERED, FILE_ANY_ACCESS)
+#define IOCTL_SCSI_GET_CAPABILITIES     CTL_CODE(IOCTL_SCSI_BASE, 0x0404, METHOD_BUFFERED, FILE_ANY_ACCESS)
+#define IOCTL_SCSI_PASS_THROUGH_DIRECT  CTL_CODE(IOCTL_SCSI_BASE, 0x0405, METHOD_BUFFERED, FILE_READ_ACCESS | FILE_WRITE_ACCESS)
+#define IOCTL_SCSI_GET_ADDRESS          CTL_CODE(IOCTL_SCSI_BASE, 0x0406, METHOD_BUFFERED, FILE_ANY_ACCESS)
+
+//
+// SCSI port driver capabilities structure.
+//
+
+typedef struct _IO_SCSI_CAPABILITIES {
+
+	//
+	// Length of this structure
+	//
+
+	ULONG Length;
+
+	//
+	// Maximum transfer size in single SRB
+	//
+
+	ULONG MaximumTransferLength;
+
+	//
+	// Maximum number of physical pages per data buffer
+	//
+
+	ULONG MaximumPhysicalPages;
+
+	//
+	// Async calls from port to class
+	//
+
+	ULONG SupportedAsynchronousEvents;
+
+	//
+	// Alignment mask for data transfers.
+	//
+
+	ULONG AlignmentMask;
+
+	//
+	// Supports tagged queuing
+	//
+
+	BOOLEAN TaggedQueuing;
+
+	//
+	// Host adapter scans down for bios devices.
+	//
+
+	BOOLEAN AdapterScansDown;
+
+	//
+	// The host adapter uses programmed I/O.
+	//
+
+	BOOLEAN AdapterUsesPio;
+
+} IO_SCSI_CAPABILITIES, *PIO_SCSI_CAPABILITIES;
+
+typedef struct _SCSI_ADDRESS {
+	ULONG Length;
+	UCHAR PortNumber;
+	UCHAR PathId;
+	UCHAR TargetId;
+	UCHAR Lun;
+}SCSI_ADDRESS, *PSCSI_ADDRESS;
+
+//
+// Define the SCSI pass through structure.
+//
+
+typedef struct _SCSI_PASS_THROUGH {
+	USHORT Length;
+	UCHAR ScsiStatus;
+	UCHAR PathId;
+	UCHAR TargetId;
+	UCHAR Lun;
+	UCHAR CdbLength;
+	UCHAR SenseInfoLength;
+	UCHAR DataIn;
+	ULONG DataTransferLength;
+	ULONG TimeOutValue;
+	ULONG_PTR DataBufferOffset;
+	ULONG SenseInfoOffset;
+	UCHAR Cdb[16];
+}SCSI_PASS_THROUGH, *PSCSI_PASS_THROUGH;
+
+//
+// Define the SCSI pass through direct structure.
+//
+
+typedef struct _SCSI_PASS_THROUGH_DIRECT {
+	USHORT Length;
+	UCHAR ScsiStatus;
+	UCHAR PathId;
+	UCHAR TargetId;
+	UCHAR Lun;
+	UCHAR CdbLength;
+	UCHAR SenseInfoLength;
+	UCHAR DataIn;
+	ULONG DataTransferLength;
+	ULONG TimeOutValue;
+	PVOID DataBuffer;
+	ULONG SenseInfoOffset;
+	UCHAR Cdb[16];
+}SCSI_PASS_THROUGH_DIRECT, *PSCSI_PASS_THROUGH_DIRECT;
+
+typedef struct _TRACK_DATA
+{
+	UCHAR Reserved;
+	UCHAR Control : 4;
+	UCHAR Adr : 4;
+	UCHAR TrackNumber;
+	UCHAR Reserved1;
+	UCHAR Address[4];
+} TRACK_DATA, *PTRACK_DATA;
+
+#define MAXIMUM_NUMBER_TRACKS 100
+#define MAXIMUM_CDROM_SIZE 804
+#define MINIMUM_CDROM_READ_TOC_EX_SIZE 2  // two bytes min transferred
+
+typedef struct _CDROM_TOC
+{
+
+	//
+	// Header
+	//
+
+	UCHAR Length[2];  // add two bytes for this field
+	UCHAR FirstTrack;
+	UCHAR LastTrack;
+
+	//
+	// Track data
+	//
+
+	TRACK_DATA TrackData[MAXIMUM_NUMBER_TRACKS];
+} CDROM_TOC, *PCDROM_TOC;
+
+#define CDROM_TOC_SIZE sizeof(CDROM_TOC)
+
+//
+// CD ROM Table OF Contents
+// Format 1 - Session Information
+//
+
+typedef struct _CDROM_TOC_SESSION_DATA {
+
+	//
+	// Header
+	//
+
+	UCHAR Length[2];  // add two bytes for this field
+	UCHAR FirstCompleteSession;
+	UCHAR LastCompleteSession;
+
+	//
+	// One track, representing the first track
+	// of the last finished session
+	//
+
+	TRACK_DATA TrackData[1];
+
+} CDROM_TOC_SESSION_DATA, *PCDROM_TOC_SESSION_DATA;
+
+
+
 //////////////////////////////////////////////////////////////////////
 // Construction/Destruction
 //////////////////////////////////////////////////////////////////////
+class CCdDrive : public ICdDrive
+{
+public:
+	CCdDrive(BOOL UseAspi = TRUE);
+	CCdDrive(CCdDrive const & Drive, BOOL UseAspi = TRUE);
+	virtual ~CCdDrive();
+
+	BOOL Open(TCHAR letter);
+	void Close();
+	int FindCdDrives(TCHAR Drives['Z' - 'A' + 1]);
+	DWORD GetDiskID();
+
+	BOOL GetMaxReadSpeed(int * pMaxSpeed, int * pCurrentSpeed); // bytes/s
+
+	BOOL SetReadSpeed(ULONG BytesPerSec, ULONG BeginLba = 0, ULONG NumSectors = 0);
+	BOOL ReadCdData(void * pBuf, long Address, int nSectors);
+	BOOL ReadCdData(void * pBuf, CdAddressMSF Address, int nSectors);
+	//BOOL SetStreaming(long BytesPerSecond);
+
+	//CString GetLastScsiErrorText();
+	//BOOL GetMediaChanged(); // TRUE if disk was changed after previous call
+	BOOL EnableMediaChangeDetection(bool Enable = true);
+	BOOL DisableMediaChangeDetection()
+	{
+		return EnableMediaChangeDetection(false);
+	}
+	BOOL LockDoor(bool Lock = true);
+	BOOL UnlockDoor()
+	{
+		return LockDoor(false);
+	}
+
+	BOOL ReadToc();
+	virtual BOOL IsTrackCDAudio(unsigned track)
+	{
+		return 0 == (m_Toc.TrackData[track].Control & 0xC);
+	}
+	UCHAR GetFirstTrack()
+	{
+		return m_Toc.FirstTrack;
+	}
+
+	UCHAR GetLastTrack()
+	{
+		return m_Toc.LastTrack;
+	}
+
+
+	UCHAR GetNumberOfTracks()
+	{
+		return m_Toc.LastTrack - m_Toc.FirstTrack + 1;
+	}
+	CdAddressMSF GetTrackBegin(unsigned track)
+	{
+		CdAddressMSF msf;
+		msf.Minute = m_Toc.TrackData[track].Address[1];
+		msf.Second = m_Toc.TrackData[track].Address[2];
+		msf.Frame = m_Toc.TrackData[track].Address[3];
+		return msf;
+	}
+
+	LONG GetNumSectors(unsigned track)
+	{
+		return LONG(GetTrackBegin(track+1)) - LONG(GetTrackBegin(track));
+	}
+
+	LONG GetTrackNumber(unsigned track)
+	{
+		return m_Toc.TrackData[track].TrackNumber;
+	}
+
+	BOOL ReadSessions();
+	void StopAudioPlay();
+
+	bool CanEjectMedia();
+	bool CanLoadMedia();
+	void EjectMedia();
+	void LoadMedia();
+	BOOL IsTrayOpen();
+	BOOL EjectSupported() const
+	{
+		return m_bEjectSupported;
+	}
+
+	BOOL IsSlotType() const
+	{
+		return m_bSlotLoading;
+	}
+	BOOL IsTrayType() const
+	{
+		return m_bTrayLoading;
+	}
+
+	void SetTrayOut(bool Out)
+	{
+		m_bTrayOut = Out;
+	}
+
+	CdMediaChangeState CheckForMediaChange();
+	void ForceMountCD();
+
+	BOOL SendScsiCommand(CD_CDB * pCdb, void * pData, DWORD * pDataLen,
+						int DataDirection,   // SCSI_IOCTL_DATA_IN, SCSI_IOCTL_DATA_OUT,
+						SCSI_SenseInfo * pSense,
+						unsigned timeout = 20);
+	BOOL ScsiInquiry(struct SRB_HAInquiry * pInq);
+	BOOL QueryVendor(CString & Vendor);
+	void StopDrive();
+
+	void SetDriveBusy(bool Busy = true);
+	bool IsDriveBusy(TCHAR letter) const;
+	bool IsDriveBusy() const
+	{
+		return IsDriveBusy(m_DriveLetter);
+	}
+
+	//BOOL GetEcMode(BOOL * C2ErrorPointersSupported);
+
+	//BOOL StartReading(int speed);
+
+	virtual ICdDrive * Clone() const;
+
+protected:
+	HANDLE m_hDrive;
+	HANDLE m_hDriveAttributes;
+	HANDLE m_hEvent;
+	TCHAR m_DriveLetter;
+
+	SCSI_ADDRESS m_ScsiAddr;
+
+	HMODULE m_hWinaspi32;
+	ULONG m_MaxTransferSize;
+	ULONG m_BufferAlignment;
+
+	DWORD m_MediaChangeCount;
+	ULONG m_OffsetBytesPerSector;
+	CDROM_TOC m_Toc;
+
+	bool m_bScsiCommandsAvailable;
+	bool m_bMediaChangeNotificationDisabled;
+	bool m_bDoorLocked;
+	bool m_bStreamingFeatureSuported;
+	bool m_bPlextorDrive;
+	bool m_bNECDrive;
+	bool m_bUseNonStandardRead;
+	bool m_bTrayLoading;
+	bool m_bSlotLoading;
+	bool m_bEjectSupported;
+	bool m_bTrayOut;
+	bool m_bDriveBusy;
+
+	void CommonInit(BOOL LoadAspi);
+	DWORD (_cdecl * GetASPI32DLLVersion)();
+	DWORD (_cdecl * GetASPI32SupportInfo)();
+	DWORD (_cdecl * SendASPI32Command)(SRB * lpSRB);
+	GETASPI32BUFFER GetAspi32Buffer;
+	FREEASPI32BUFFER FreeAspi32Buffer;
+	TRANSLATEASPI32ADDRESS TranslateAspi32Address;
+	GETASPI32DRIVELETTER GetAspi32DriveLetter;
+	GETASPI32HATARGETLUN GetAspi32HaTargetLun;
+
+	CCdDrive & CCdDrive::operator =(CCdDrive const & Drive);
+};
 
 void CCdDrive::CommonInit(BOOL LoadAspi)
 {
@@ -895,10 +2255,10 @@ BOOL CCdDrive::ScsiInquiry(SRB_HAInquiry * pInq)
 	return status == SS_COMP;
 }
 
-BOOL CCdDrive::ReadToc(CDROM_TOC * pToc)
+BOOL CCdDrive::ReadToc()
 {
 	m_OffsetBytesPerSector = 2048;
-	DWORD dwReturned = sizeof * pToc;
+	DWORD dwReturned = sizeof m_Toc;
 	BOOL res;
 	CDROM_TOC toc;
 	if (NULL == m_hDrive)
@@ -908,21 +2268,21 @@ BOOL CCdDrive::ReadToc(CDROM_TOC * pToc)
 		res = SendScsiCommand( & cdb, & toc, & dwReturned, SCSI_IOCTL_DATA_IN, NULL);
 		if (res)
 		{
-			*pToc = toc;
+			m_Toc = toc;
 		}
 	}
 	else
 	{
 		res = DeviceIoControl(m_hDrive, IOCTL_CDROM_READ_TOC,
 							NULL, 0,
-							pToc, sizeof *pToc,
+							&m_Toc, sizeof m_Toc,
 							& dwReturned,
 							NULL);
 	}
 
 	TRACE("Get TOC IoControl returned %x, bytes: %d, last error = %d, First track %d, last track: %d, Length:%02X%02X\n",
 		res, dwReturned, GetLastError(),
-		pToc->FirstTrack, pToc->LastTrack, pToc->Length[1], pToc->Length[0]);
+		m_Toc.FirstTrack, m_Toc.LastTrack, m_Toc.Length[1], m_Toc.Length[0]);
 
 	if (res)
 	{
@@ -940,18 +2300,18 @@ BOOL CCdDrive::ReadToc(CDROM_TOC * pToc)
 	return res;
 }
 
-BOOL CCdDrive::ReadSessions(CDROM_TOC * pToc)
+BOOL CCdDrive::ReadSessions()
 {
 	DWORD dwReturned = 0;
 	BOOL res = DeviceIoControl(m_hDrive, IOCTL_CDROM_GET_LAST_SESSION,
 								NULL, 0,
-								pToc, sizeof *pToc,
+								&m_Toc, sizeof m_Toc,
 								& dwReturned,
 								NULL);
 
 	TRACE("Get Last Session IoControl returned %x, bytes: %d, last error = %d, First track %d, last track: %d, Length:%02X%02X\n",
 		res, dwReturned, GetLastError(),
-		pToc->FirstTrack, pToc->LastTrack, pToc->Length[1], pToc->Length[0]);
+		m_Toc.FirstTrack, m_Toc.LastTrack, m_Toc.Length[1], m_Toc.Length[0]);
 	return res;
 }
 
@@ -1083,7 +2443,7 @@ DWORD CCdDrive::GetDiskID()
 	DWORD MaxCompLength, FilesysFlags, DiskId = 0;
 
 	TCHAR root[8];
-	_stprintf(root, _T("%c:\\"), m_DriveLetter);
+	_stprintf_s(root, 8, _T("%c:\\"), m_DriveLetter);
 
 	if (GetVolumeInformation(root, NULL, 0, & DiskId,
 							& MaxCompLength, & FilesysFlags, NULL, 0))
@@ -1418,7 +2778,7 @@ void CCdDrive::SetDriveBusy(bool Busy)
 	m_bDriveBusy = Busy;
 }
 
-bool CCdDrive::IsDriveBusy(TCHAR letter)
+bool CCdDrive::IsDriveBusy(TCHAR letter)const
 {
 	if (letter >= 'A'
 		&& letter <= 'Z')
@@ -1529,3 +2889,15 @@ CdMediaChangeState TestUnitReadyCdb::TranslateSenseInfo(SCSI_SenseInfo * pSense)
 	return CdMediaStateNotReady;
 }
 
+ICdDrive * CreateCdDrive(BOOL UseAspi)
+{
+	return new CCdDrive(UseAspi);
+}
+
+ICdDrive * CCdDrive::Clone() const
+{
+	CCdDrive * pDrive = new CCdDrive;
+	*pDrive = *this;
+
+	return pDrive;
+}

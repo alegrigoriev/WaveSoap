@@ -3264,8 +3264,6 @@ IDC_CURSOR_BEAM         CURSOR                  "res\\cur00002.cur"
 // RT_MANIFEST
 //
 
-1                       RT_MANIFEST             "WaveSoap.manifest"
-
 /////////////////////////////////////////////////////////////////////////////
 //
 // String Table

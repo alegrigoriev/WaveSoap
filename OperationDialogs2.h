@@ -193,7 +193,7 @@ public:
 	int		m_RadioFileFormat;
 	//}}AFX_DATA
 
-	CCdDrive m_CdDrive;
+	class ICdDrive *m_pCdDrive;
 
 	TCHAR m_CDDrives['Z' - 'A' + 1];
 	TCHAR m_DriveLetterSelected;
@@ -201,7 +201,6 @@ public:
 	int m_CDDriveSelected;
 	USHORT m_PreviousDriveLetter;
 
-	CDROM_TOC m_toc;
 	typedef std::vector<CdTrackInfo> CdTrackInfoVector;
 	CdTrackInfoVector m_Tracks;
 	DWORD m_DiskID;

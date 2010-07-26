@@ -1,10 +1,11 @@
 // Copyright Alexander Grigoriev, 1997-2002, All Rights Reserved
 // waveproc.cpp
 
+#include "stdafx.h"
 #include <math.h>
 #pragma intrinsic(sin, cos, exp, log, atan2)
-#include "stdafx.h"
 #include <complex>
+#include "wavefile.h"
 #include "Waveproc.h"
 #include <float.h>
 
@@ -636,6 +637,11 @@ bool operator <(StoredClickData const & r1,
 	return r1.Position < i;
 }
 
+bool operator <(SAMPLE_INDEX i, StoredClickData const & r1)
+{
+	return i < r1.Position;
+}
+
 ///////////////////////////////////////////////////////////
 BOOL CClickRemoval::SetInputWaveformat(WAVEFORMATEX const * pWf)
 {
@@ -967,7 +973,7 @@ size_t CClickRemoval::ProcessSoundBuffer(char const * pIn, char * pOut,
 				// check predefined click list
 				// TODO: use binary search
 				ClicksVectorConstIterator it = std::lower_bound(m_PredefinedClicks.begin(),
-																m_PredefinedClicks.end(), PrevIndex - ANALYZE_LAG);
+													m_PredefinedClicks.end(), SAMPLE_INDEX(PrevIndex - ANALYZE_LAG));
 
 				if (it < m_PredefinedClicks.end()
 					&& it->Position == SAMPLE_INDEX(PrevIndex) - ANALYZE_LAG
@@ -1127,7 +1133,8 @@ BOOL CClickRemoval::LoadClickSourceFile(LPCTSTR szFilename)
 {
 	m_PredefinedClicks.clear();
 
-	FILE * const pInClicksFile = _tfopen(szFilename, _T("rt"));
+	FILE * pInClicksFile = NULL;
+	_tfopen_s(& pInClicksFile, szFilename, _T("rt"));
 
 	if (NULL == pInClicksFile)
 	{
@@ -1146,7 +1153,7 @@ BOOL CClickRemoval::LoadClickSourceFile(LPCTSTR szFilename)
 		unsigned pos = 0, length_r = 0, length_l = 0;
 		// every line contains 3 numbers: click position (in samples),
 		//      Click length in the left channel, click length in the right
-		if ( 2 > sscanf(line, "%d %d %d", &pos, &length_l, &length_r))
+		if ( 2 > sscanf_s(line, "%d %d %d", &pos, &length_l, &length_r))
 		{
 			continue;
 		}
@@ -1161,7 +1168,8 @@ BOOL CClickRemoval::LoadClickSourceFile(LPCTSTR szFilename)
 	if ( ! m_PredefinedClicks.empty())
 	{
 		// merge duplicates
-		for (ClicksVectorIterator i1 = m_PredefinedClicks.begin(), i2 = i1 + 1;
+		ClicksVectorIterator i1, i2;
+		for (i1 = m_PredefinedClicks.begin(), i2 = i1 + 1;
 			i2 != m_PredefinedClicks.end(); i2++)
 		{
 			if (i1->Position == i2->Position)
@@ -1201,7 +1209,8 @@ BOOL CClickRemoval::SetClickLogFile(LPCTSTR szFilename)
 
 	if (NULL != szFilename && szFilename[0] != 0)
 	{
-		m_pOutClicksFile = _tfopen(szFilename, _T("wt"));
+		m_pOutClicksFile = NULL;
+		_tfopen_s(&m_pOutClicksFile, szFilename, _T("wt"));
 	}
 	return m_pOutClicksFile != 0;
 }

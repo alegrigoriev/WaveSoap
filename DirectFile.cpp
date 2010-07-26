@@ -782,7 +782,7 @@ BOOL File::Commit(DWORD flags)
 			TRACE("new modif. time=0x%08X%08X\n",
 				m_FileInfo.ftLastWriteTime.dwHighDateTime, m_FileInfo.ftLastWriteTime.dwLowDateTime);
 			m_RealFileLength = m_FileInfo.nFileSizeLow
-								| (ULONGLONG(m_FileInfo.nFileSizeHigh << 32));
+								| (ULONGLONG(m_FileInfo.nFileSizeHigh) << 32);
 		}
 	}
 	return TRUE;
@@ -883,7 +883,7 @@ BOOL File::Rename(LPCTSTR NewName, DWORD flags)
 		LoadFileInformation();
 
 		m_RealFileLength = m_FileInfo.nFileSizeLow
-							| (ULONGLONG(m_FileInfo.nFileSizeHigh << 32));
+							| (ULONGLONG(m_FileInfo.nFileSizeHigh) << 32);
 	}
 	return result;
 }
@@ -2849,7 +2849,8 @@ unsigned CDirectFileCache::_ThreadProc()
 
 					pFile = m_FileList.First();
 
-					for (int i = 0; m_FileList.NotEnd(pFile)
+					int i;
+					for (i = 0; m_FileList.NotEnd(pFile)
 						&& (i < nFile
 							|| 0 == pFile->m_DirtyBuffersCount
 							|| (pFile->m_Flags & CDirectFile::FileFlagsMemoryFile)); i++,

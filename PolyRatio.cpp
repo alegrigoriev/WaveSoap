@@ -435,7 +435,7 @@ CArray<polyRatio *, polyRatio *>
 			}
 		}
 		polyRatio cell;
-		for (j = 0; j < CellPoles.count(); j++)
+		for (int j = 0; j < CellPoles.count(); j++)
 		{
 			polyRoots SingleRoot;
 			polyRoots OtherRoots(OtherPoles);

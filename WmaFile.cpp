@@ -306,6 +306,7 @@ HRESULT STDMETHODCALLTYPE CWmaDecoder::OnStatus( /* [in] */ WMT_STATUS Status,
 
 	case WMT_ERROR:
 		TRACE(_T("CWmaDecoder::OnStatus WMT_ERROR\n"));
+		break;
 		m_bStarted = false;
 		m_StartedEvent.Set();
 		break;
@@ -520,8 +521,9 @@ HRESULT CWmaDecoder::Open(CDirectFile & file)
 
 	WM_MEDIA_TYPE* pMedia = NULL ;
 	ULONG cbType = 0 ;
+	DWORD i;
 
-	for(DWORD i = 0 ; i < cOutputs ; i++ )
+	for (i = 0 ; i < cOutputs ; i++ )
 	{
 		CComPtr<IWMOutputMediaProps> pProps;
 
@@ -565,7 +567,7 @@ HRESULT CWmaDecoder::Open(CDirectFile & file)
 		cbType = 0;
 	}
 
-	if( i >= cOutputs || NULL == pMedia)
+	if (i >= cOutputs || NULL == pMedia)
 	{
 		//
 		// Couldnt find any Audio output number in the file

@@ -623,7 +623,7 @@ void TwoAllpassDecompose(const POLY_ROOTS &poles,
 	// make reverce denominators
 	numer1.MakeUnique();
 	numer1.SetOrder(denom1.order());
-	for (i = 0; i <= denom1.order(); i++)
+	for (int i = 0; i <= denom1.order(); i++)
 	{
 		numer1[i] = conj(denom1[denom1.order() - i]) * 0.5;
 	}
@@ -632,7 +632,7 @@ void TwoAllpassDecompose(const POLY_ROOTS &poles,
 	numer2.SetOrder(denom2.order());
 	rotator = Complex(cos(angle * (denom2.order() - denom1.order())),
 					sin(angle * (denom2.order() - denom1.order())));
-	for (i = 0; i <= denom2.order(); i++)
+	for (int i = 0; i <= denom2.order(); i++)
 	{
 		numer2[i] = rotator * conj(denom2[denom2.order() - i]) * 0.5;
 	}
@@ -650,11 +650,14 @@ void HilbertTwoAllpassDecompose(const POLY_ROOTS & poles,
 // second cell uses pole[2], pole[3], pole[6], pole[7] ...
 // pole1 = 0 !
 	int order = poles.count();
+	int i;
+
 	POLY_ROOTS roots1, roots2;
 	ASSERT ((order & 1) != 0);
+
 	// perform bilinear transform for the poles
 	// poles[poles.count()-1] should be equal 2!
-	for (int i = 0; i < order; i ++)
+	for (i = 0; i < order; i ++)
 	{
 		COMPLEX ctmp = poles[i];
 		ctmp = Complex(0., -1.) * (2. + ctmp) / (2. - ctmp);
@@ -728,11 +731,13 @@ void TwoAllpassPassbandDecompose(const POLY_ROOTS & poles,
 // Another cell uses pole[2], pole[3], pole[6], pole[7] ...
 // Order must be odd!
 	int order = poles.count();
+	int i;
 	POLY_ROOTS roots1, roots2, dblpoles;
+
 	ASSERT ((order & 1) != 0);
 	Complex rot = exp ( Complex(0., -W0 * T));
 	// perform bilinear transform for the poles
-	for (int i = 0; i < order; i ++)
+	for (i = 0; i < order; i ++)
 	{
 		COMPLEX ctmp = poles[i];
 		// rotate the poles and double them
@@ -2564,8 +2569,8 @@ void remez(	int nn,
 /*   iirResponse()                */
 /*                                */
 /**********************************/
-const MAXPOINTS = 100;
-const MAXPOLES = 100;
+const int MAXPOINTS = 100;
+const int MAXPOLES = 100;
 
 void iirResponse(Complex a[],
 				int bigN,
