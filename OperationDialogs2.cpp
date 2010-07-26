@@ -254,6 +254,7 @@ CCdGrabbingDialog::CCdGrabbingDialog(CWnd* pParent /*=NULL*/)
 	, m_PreviousDriveLetter('Z')
 	, m_CDDriveSelected(0)
 	, m_TimerId(~0UL)
+	, m_pCdDrive(NULL)
 {
 	//{{AFX_DATA_INIT(CCdGrabbingDialog)
 	m_RadioAssignAttributes = -1;
@@ -346,10 +347,16 @@ CCdGrabbingDialog::CCdGrabbingDialog(CWnd* pParent /*=NULL*/)
 	};
 
 	SetResizeableItems(ResizeItems, countof(ResizeItems));
+
+	m_pCdDrive = CreateCdDrive();
 }
 
 CCdGrabbingDialog::~CCdGrabbingDialog()
 {
+	if (m_pCdDrive)
+	{
+		delete m_pCdDrive;
+	}
 }
 
 void CCdGrabbingDialog::DoDataExchange(CDataExchange* pDX)
@@ -582,7 +589,7 @@ END_MESSAGE_MAP()
 
 void CCdGrabbingDialog::FillDriveList(TCHAR SelectDrive)
 {
-	m_NumberOfDrives = m_CdDrive.FindCdDrives(m_CDDrives);;
+	m_NumberOfDrives = m_pCdDrive->FindCdDrives(m_CDDrives);;
 	m_DriveLetterSelected = 0;
 	m_CDDriveSelected = 0;
 	m_DiskReady = CdMediaStateUnknown;
@@ -626,17 +633,16 @@ LRESULT CCdGrabbingDialog::OnKickIdle(WPARAM, LPARAM)
 BOOL CCdGrabbingDialog::OpenDrive(TCHAR letter)
 {
 	m_DiskReady = CdMediaStateUnknown;
-	if ( ! m_CdDrive.Open(letter))
+	if ( ! m_pCdDrive->Open(letter))
 	{
 		return FALSE;
 	}
-	m_CdDrive.DisableMediaChangeDetection();
+	m_pCdDrive->DisableMediaChangeDetection();
 	return TRUE;
 }
 
 void CCdGrabbingDialog::FillTrackList(TCHAR letter)
 {
-	memzero(m_toc);
 	m_Tracks.clear();
 	CString s;
 	if (0 == m_NumberOfDrives)
@@ -669,13 +675,12 @@ void CCdGrabbingDialog::FillTrackList(TCHAR letter)
 void CCdGrabbingDialog::ReloadTrackList(CdMediaChangeState NewMediaState)
 {
 	BOOL res = FALSE;
-	if (m_CdDrive.IsDriveBusy(m_DriveLetterSelected))
+	if (m_pCdDrive->IsDriveBusy(m_DriveLetterSelected))
 	{
 		if (CdMediaStateBusy == m_DiskReady)
 		{
 			return;
 		}
-		memzero(m_toc);
 		m_Tracks.clear();
 		m_lbTracks.DeleteAllItems();
 		CString s;
@@ -688,9 +693,9 @@ void CCdGrabbingDialog::ReloadTrackList(CdMediaChangeState NewMediaState)
 
 	if (NewMediaState != CdMediaStateNotReady)
 	{
-		m_CdDrive.StopAudioPlay();
-		//m_CdDrive.ReadSessions( & m_toc);
-		res = m_CdDrive.ReadToc( & m_toc);
+		m_pCdDrive->StopAudioPlay();
+		//m_pCdDrive->ReadSessions( & m_toc);
+		res = m_pCdDrive->ReadToc();
 	}
 
 	if ( ! res)
@@ -701,7 +706,7 @@ void CCdGrabbingDialog::ReloadTrackList(CdMediaChangeState NewMediaState)
 		}
 		if (CdMediaStateReady == m_DiskReady)
 		{
-			m_CdDrive.SetTrayOut(true);
+			m_pCdDrive->SetTrayOut(true);
 		}
 		m_lbTracks.DeleteAllItems();
 		CString s;
@@ -709,7 +714,6 @@ void CCdGrabbingDialog::ReloadTrackList(CdMediaChangeState NewMediaState)
 		m_lbTracks.InsertItem(0, s);
 		m_Tracks.clear();
 
-		memzero(m_toc);
 		m_DiskReady = CdMediaStateNotReady;
 		m_bNeedUpdateControls = TRUE;
 		return;
@@ -717,14 +721,14 @@ void CCdGrabbingDialog::ReloadTrackList(CdMediaChangeState NewMediaState)
 
 	m_bNeedUpdateControls = TRUE;
 	// reset media change count:
-	m_CdDrive.CheckForMediaChange();
+	m_pCdDrive->CheckForMediaChange();
 
 	m_DiskReady = CdMediaStateReady;
 	m_lbTracks.DeleteAllItems();
 
 	// Get disk ID
-	m_CdDrive.ForceMountCD();
-	m_DiskID = m_CdDrive.GetDiskID();
+	m_pCdDrive->ForceMountCD();
+	m_DiskID = m_pCdDrive->GetDiskID();
 
 	CApplicationProfile CdPlayerIni;
 	CdPlayerIni.m_pszProfileName = _T("cdplayer.ini");
@@ -741,24 +745,20 @@ void CCdGrabbingDialog::ReloadTrackList(CdMediaChangeState NewMediaState)
 	//int NumTracks = CdPlayerIni.GetProfileInt(SectionName, _T("numtracks"), 0);
 	// TODO: verify that is's indeed the disk
 
-	m_Tracks.resize(m_toc.LastTrack - m_toc.FirstTrack + 1);
+	m_Tracks.resize(m_pCdDrive->GetNumberOfTracks());
 
 	int tr;
 	std::vector<CdTrackInfo>::iterator pTrack;
 	UINT FocusedState = LVIS_FOCUSED | LVIS_SELECTED;
 	for (tr = 0, pTrack = m_Tracks.begin()
-		; tr <= m_toc.LastTrack - m_toc.FirstTrack; tr++, pTrack++)
+		; tr <= m_pCdDrive->GetLastTrack() - m_pCdDrive->GetFirstTrack(); tr++, pTrack++)
 	{
-		CdAddressMSF NextTrackBegin;
 		// track descriptor after last track contains address of the disk end
-		NextTrackBegin.Minute = m_toc.TrackData[tr + 1].Address[1];
-		NextTrackBegin.Second = m_toc.TrackData[tr + 1].Address[2];
-		NextTrackBegin.Frame = m_toc.TrackData[tr + 1].Address[3];
 
 		CString s;
 
 		UINT State = 0, StateMask = 0;
-		if (m_toc.TrackData[tr].Control & 0xC)
+		if (! m_pCdDrive->IsTrackCDAudio(tr))
 		{
 			// data track
 			pTrack->Track.LoadString(IDS_DATA_TRACK);
@@ -768,9 +768,9 @@ void CCdGrabbingDialog::ReloadTrackList(CdMediaChangeState NewMediaState)
 		else
 		{
 			// audio track
-			s.Format(IDS_TRACK_NUM_FORMAT, m_toc.TrackData[tr].TrackNumber);
+			s.Format(IDS_TRACK_NUM_FORMAT, m_pCdDrive->GetTrackNumber(tr));
 			TCHAR buf[10];
-			_stprintf(buf, _T("%d"), tr);
+			_stprintf_s(buf, 10, _T("%d"), tr);
 			pTrack->Track = CdPlayerIni.GetProfileString(SectionName, buf, s);
 			if (pTrack->Track.IsEmpty())
 			{
@@ -785,11 +785,9 @@ void CCdGrabbingDialog::ReloadTrackList(CdMediaChangeState NewMediaState)
 			StateMask = LVIS_STATEIMAGEMASK | LVIS_FOCUSED | LVIS_SELECTED;
 			pTrack->Checked = TRUE;
 		}
-		pTrack->TrackBegin.Minute = m_toc.TrackData[tr].Address[1];
-		pTrack->TrackBegin.Second = m_toc.TrackData[tr].Address[2];
-		pTrack->TrackBegin.Frame = m_toc.TrackData[tr].Address[3];
-		pTrack->NumSectors =
-			LONG(NextTrackBegin) - LONG(pTrack->TrackBegin);
+		pTrack->TrackBegin = m_pCdDrive->GetTrackBegin(tr);
+		pTrack->NumSectors = m_pCdDrive->GetNumSectors(tr);
+
 
 		LVITEM item1 = {
 			LVIF_TEXT | LVIF_STATE,
@@ -806,14 +804,6 @@ void CCdGrabbingDialog::ReloadTrackList(CdMediaChangeState NewMediaState)
 				(pTrack->NumSectors + 37) / 75 % 60);
 
 		m_lbTracks.SetItemText(tr, 1, s);
-
-		TRACE("Track %d, addr: %d:%02d.%02d, Adr:%X, Control: %X\n",
-			m_toc.TrackData[tr].TrackNumber,
-			m_toc.TrackData[tr].Address[1],
-			m_toc.TrackData[tr].Address[2],
-			m_toc.TrackData[tr].Address[3],
-			m_toc.TrackData[tr].Adr,
-			m_toc.TrackData[tr].Control);
 	}
 }
 
@@ -1001,12 +991,12 @@ void CCdGrabbingDialog::OnTimer(UINT nIDEvent)
 
 void CCdGrabbingDialog::CheckForDiskChanged()
 {
-	bool CanCloseDoor = m_CdDrive.CanLoadMedia();
-	CdMediaChangeState CdChange = m_CdDrive.CheckForMediaChange();
+	bool CanCloseDoor = m_pCdDrive->CanLoadMedia();
+	CdMediaChangeState CdChange = m_pCdDrive->CheckForMediaChange();
 	switch (CdChange)
 	{
 	case CdMediaStateNotReady:
-		if (CanCloseDoor != m_CdDrive.CanLoadMedia())
+		if (CanCloseDoor != m_pCdDrive->CanLoadMedia())
 		{
 			m_bNeedUpdateControls = TRUE;
 		}
@@ -1141,7 +1131,7 @@ void CCdGrabbingDialog::InitReadSpeedCombobox()
 {
 	m_MaxReadSpeed = 0;
 	if (m_DiskReady != CdMediaStateReady
-		|| ! m_CdDrive.GetMaxReadSpeed( & m_MaxReadSpeed, & m_CurrentReadSpeed))
+		|| ! m_pCdDrive->GetMaxReadSpeed( & m_MaxReadSpeed, & m_CurrentReadSpeed))
 	{
 		if (m_SpeedCombo.IsWindowEnabled())
 		{
@@ -1158,7 +1148,8 @@ void CCdGrabbingDialog::InitReadSpeedCombobox()
 	m_MaxReadSpeed += 44100 * 4 / 2;
 	m_MaxReadSpeed -= m_MaxReadSpeed % (44100 * 4);
 
-	for (int i = 0; i < countof(CdSpeeds); i++)
+	int i;
+	for (i = 0; i < countof(CdSpeeds); i++)
 	{
 		if (m_MaxReadSpeed < CdSpeeds[i] * 176400)
 		{
@@ -1396,7 +1387,7 @@ void CCdGrabbingDialog::OnEndlabeleditListTracks(NMHDR* pNMHDR, LRESULT* pResult
 				return;
 			}
 		}
-		_tcscpy(pDispInfo->item.pszText, s);
+		_tcscpy_s(pDispInfo->item.pszText, pDispInfo->item.cchTextMax, s);
 		m_Tracks[pDispInfo->item.iItem].Track = s;
 	}
 	*pResult = TRUE;
@@ -1428,7 +1419,7 @@ void CCdGrabbingDialog::OnButtonPlay()
 
 void CCdGrabbingDialog::StartCdPlayback(unsigned track)
 {
-	if (m_CdDrive.IsDriveBusy()
+	if (m_pCdDrive->IsDriveBusy()
 		|| track >= m_Tracks.size()
 		|| ! m_Tracks[track].IsAudio)
 	{
@@ -1459,7 +1450,7 @@ void CCdGrabbingDialog::StartCdPlayback(unsigned track)
 		return;
 	}
 	m_bPlayingAudio = TRUE;
-	m_CdDrive.SetReadSpeed(176400 * 4);
+	m_pCdDrive->SetReadSpeed(176400 * 4);
 	FillPlaybackBuffers();
 
 	m_bNeedUpdateControls = TRUE;
@@ -1501,7 +1492,7 @@ BOOL CCdGrabbingDialog::FillPlaybackBuffers()
 		{
 			NumSectors = m_PlaybackSectors;
 		}
-		if ( ! m_CdDrive.ReadCdData(pBuffer, m_PlaybackAddress, NumSectors))
+		if ( ! m_pCdDrive->ReadCdData(pBuffer, m_PlaybackAddress, NumSectors))
 		{
 			m_WaveOut.ReturnBuffer(hBuffer);
 			StopCdPlayback();
@@ -1569,10 +1560,10 @@ void CCdGrabbingDialog::OnItemchangedListTracks(NMHDR* pNMHDR, LRESULT* pResult)
 
 void CCdGrabbingDialog::OnCancel()
 {
-	if (! m_CdDrive.IsDriveBusy())
+	if (! m_pCdDrive->IsDriveBusy())
 	{
-		m_CdDrive.SetReadSpeed(m_CurrentReadSpeed);
-		m_CdDrive.StopDrive();
+		m_pCdDrive->SetReadSpeed(m_CurrentReadSpeed);
+		m_pCdDrive->StopDrive();
 	}
 	//CStringW DosDevices;
 	//QueryDosDeviceW(_T("E:"), DosDevices.GetBuffer(4096), 4095);
@@ -1651,8 +1642,8 @@ void CCdGrabbingDialog::OnUpdateEject(CCmdUI* pCmdUI)
 	// the button enabled:
 	// always for tray-loadable drives
 	// if a disk is loaded to slot-load drive
-	if (m_CdDrive.IsDriveBusy()
-		|| ! m_CdDrive.EjectSupported())
+	if (m_pCdDrive->IsDriveBusy()
+		|| ! m_pCdDrive->EjectSupported())
 	{
 		Enable = FALSE;
 		if (m_EjectButton.GetBitmap() != m_BmpEject)
@@ -1660,7 +1651,7 @@ void CCdGrabbingDialog::OnUpdateEject(CCmdUI* pCmdUI)
 			m_EjectButton.SetBitmap(m_BmpEject);
 		}
 	}
-	else if (m_CdDrive.IsSlotType())
+	else if (m_pCdDrive->IsSlotType())
 	{
 		Enable = m_DiskReady == CdMediaStateReady;
 		if (m_EjectButton.GetBitmap() != m_BmpEject)
@@ -1668,11 +1659,11 @@ void CCdGrabbingDialog::OnUpdateEject(CCmdUI* pCmdUI)
 			m_EjectButton.SetBitmap(m_BmpEject);
 		}
 	}
-	else if (m_CdDrive.IsTrayType())
+	else if (m_pCdDrive->IsTrayType())
 	{
-		if (m_CdDrive.IsTrayOpen())
+		if (m_pCdDrive->IsTrayOpen())
 		{
-			Enable = m_CdDrive.CanLoadMedia();
+			Enable = m_pCdDrive->CanLoadMedia();
 			if (m_EjectButton.GetBitmap() != m_BmpLoad)
 			{
 				m_EjectButton.SetBitmap(m_BmpLoad);
@@ -1681,7 +1672,7 @@ void CCdGrabbingDialog::OnUpdateEject(CCmdUI* pCmdUI)
 		else
 		{
 			//
-			Enable = m_CdDrive.CanEjectMedia();
+			Enable = m_pCdDrive->CanEjectMedia();
 			if (m_EjectButton.GetBitmap() != m_BmpEject)
 			{
 				m_EjectButton.SetBitmap(m_BmpEject);
@@ -1695,17 +1686,17 @@ void CCdGrabbingDialog::OnUpdateEject(CCmdUI* pCmdUI)
 
 void CCdGrabbingDialog::OnButtonEject()
 {
-	if (m_CdDrive.IsDriveBusy())
+	if (m_pCdDrive->IsDriveBusy())
 	{
 		return;
 	}
-	if (m_CdDrive.IsTrayOpen())
+	if (m_pCdDrive->IsTrayOpen())
 	{
-		m_CdDrive.LoadMedia();
+		m_pCdDrive->LoadMedia();
 	}
 	else
 	{
-		m_CdDrive.EjectMedia();
+		m_pCdDrive->EjectMedia();
 	}
 	m_bNeedUpdateControls = TRUE;
 }

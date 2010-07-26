@@ -175,13 +175,15 @@ SAMPLE_INDEX CWaveFftView::FftColumnToDisplaySample(long Column)
 void CWaveFftView::FillLogPalette(LOGPALETTE * pal, int nEntries)
 {
 	pal->palVersion = 0x300;
-	for (BYTE i = 0; i < 10; i++)
+	unsigned i;
+	for (i = 0; i < 10; i++)
 	{
 		pal->palPalEntry[i].peFlags = PC_EXPLICIT;
 		pal->palPalEntry[i].peRed = i;
 		pal->palPalEntry[i].peGreen = 0;
 		pal->palPalEntry[i].peBlue = 0;
 	}
+
 	for (int j = 0; j < sizeof palette && i < nEntries; j += 3, i++)
 	{
 		pal->palPalEntry[i].peFlags = PC_NOCOLLAPSE;
@@ -189,7 +191,7 @@ void CWaveFftView::FillLogPalette(LOGPALETTE * pal, int nEntries)
 		pal->palPalEntry[i].peGreen = palette[j + 1];
 		pal->palPalEntry[i].peBlue = palette[j + 2];
 	}
-	pal->palNumEntries = i;
+	pal->palNumEntries = (WORD)i;
 }
 
 /////////////////////////////////////////////////////////////////////////////

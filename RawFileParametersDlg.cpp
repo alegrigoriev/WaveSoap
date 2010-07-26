@@ -95,7 +95,7 @@ void AFXAPI DDX_TextHex(CDataExchange* pDX, int nIDC, DWORD& value)
 	{
 		// the following works for %d, %u, %ld, %lu
 		pWnd->GetWindowText(szT, 31);
-		if (!_stscanf(szT, _T("%li"), &value))
+		if (!_stscanf_s(szT, _T("%li"), &value))
 		{
 			AfxMessageBox(AFX_IDP_PARSE_UINT);
 			pDX->Fail();        // throws exception

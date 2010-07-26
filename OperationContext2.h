@@ -362,7 +362,7 @@ public:
 
 	virtual ~CCdReadingContext();
 	virtual void Execute();
-	BOOL InitTrackInformation(CCdDrive const & Drive,
+	BOOL InitTrackInformation(class ICdDrive const * Drive,
 							struct CdTrackInfo * pTrack,
 							DWORD TargetFileType,
 							WAVEFORMATEX const * pTargetFormat);
@@ -372,7 +372,7 @@ public:
 	int m_OriginalReadSpeed;
 	BOOL m_bSaveImmediately;
 protected:
-	CCdDrive m_Drive;
+	ICdDrive * m_Drive;
 	CdAddressMSF m_CdAddress;
 	ULONG m_NumberOfSectors;
 	HANDLE m_hEvent;

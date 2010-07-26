@@ -384,7 +384,8 @@ BOOL CInsertExpressionDialog::SaveExpression(const CString & expr,
 											const CString & Group, const CString & Comment, bool bEnableCancel)
 {
 	// find if there is such group
-	for (ExprGroupIterator ii = m_Expressions.begin()
+	ExprGroupIterator ii;
+	for (ii = m_Expressions.begin()
 		; ii < m_Expressions.end(); ii++)
 	{
 		if (0 == ii->name.CompareNoCase(Group))
@@ -399,8 +400,8 @@ BOOL CInsertExpressionDialog::SaveExpression(const CString & expr,
 		ii->name = Group;
 	}
 	// check if there is already an expression with the same name
-	for (ExprIterator jj = ii->exprs.begin()
-		; jj < ii->exprs.end(); jj++)
+	ExprIterator jj;
+	for (jj = ii->exprs.begin(); jj < ii->exprs.end(); jj++)
 	{
 		if (0 == jj->name.CompareNoCase(Name))
 		{

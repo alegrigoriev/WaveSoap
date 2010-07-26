@@ -3,7 +3,6 @@
 //
 //////////////////////////////////////////////////////////////////////
 #pragma once
-#include "MessageMapT.h"
 /////////////////////////////////////////////////////////////////////////////
 // CDialogWithSelection dialog
 #include "resource.h"       // main symbols
@@ -88,7 +87,7 @@ protected:
 	DECLARE_MESSAGE_MAP()
 };
 
-BEGIN_MESSAGE_MAP_T(CDialogWithSelectionT, BaseClass)
+BEGIN_TEMPLATE_MESSAGE_MAP(CDialogWithSelectionT, B, BaseClass)
 	//{{AFX_MSG_MAP(CDialogWithSelectionT)
 	ON_BN_CLICKED(IDC_CHECKLOCK_CHANNELS, OnChecklockChannels)
 	ON_BN_CLICKED(IDC_BUTTON_SELECTION, OnButtonSelection)

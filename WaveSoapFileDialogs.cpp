@@ -894,14 +894,13 @@ void CWaveSoapFileSaveDialog::OnTypeChange()
 	// get file name
 	CString name;
 	// set new default extension
-	CWnd * pParent = GetParent();
-	pParent->SendMessage(CDM_SETDEFEXT, 0, LPARAM(LPCTSTR(m_DefExt[m_ofn.nFilterIndex]) + 1));
+	GetParent()->SendMessage(CDM_SETDEFEXT, 0, LPARAM(LPCTSTR(m_DefExt[m_ofn.nFilterIndex]) + 1));
 
-	CWnd * pTmp = pParent->GetDlgItem(edt1);
+	CWnd * pTmp = GetDlgItem(edt1);
 	if (NULL == pTmp)
 	{
 		// new style dialog
-		pTmp = pParent->GetDlgItem(cmb13);
+		pTmp = GetDlgItem(cmb13);
 	}
 	if (NULL != pTmp)
 	{
@@ -922,7 +921,7 @@ void CWaveSoapFileSaveDialog::OnTypeChange()
 				name += m_DefExt[m_ofn.nFilterIndex - 1];
 			}
 
-			pParent->SendMessage(CDM_SETCONTROLTEXT, edt1, LPARAM(LPCTSTR(name)));
+			GetParent()->SendMessage(CDM_SETCONTROLTEXT, edt1, LPARAM(LPCTSTR(name)));
 		}
 	}
 

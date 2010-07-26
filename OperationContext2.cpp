@@ -1637,7 +1637,7 @@ CCdReadingContext::CCdReadingContext(CWaveSoapFrontDoc * pDoc,
 	m_ReturnBufferFlags = CDirectFile::ReturnBufferDirty | CDirectFile::ReturnBufferFlush;
 }
 
-BOOL CCdReadingContext::InitTrackInformation(CCdDrive const & Drive,
+BOOL CCdReadingContext::InitTrackInformation(class ICdDrive const * Drive,
 											CdTrackInfo * pTrack,
 											DWORD TargetFileType,
 											WAVEFORMATEX const * pTargetFormat)
@@ -1645,7 +1645,7 @@ BOOL CCdReadingContext::InitTrackInformation(CCdDrive const & Drive,
 	CWaveFormat wfx;
 	wfx.InitCdAudioFormat();
 
-	m_Drive = Drive;
+	m_Drive = Drive->Clone();
 	m_CdAddress = pTrack->TrackBegin;
 	m_NumberOfSectors = pTrack->NumSectors;
 
@@ -1687,8 +1687,8 @@ BOOL CCdReadingContext::InitTrackInformation(CCdDrive const & Drive,
 
 	InitDestination(WaveFile, 0, nSamples, 2, FALSE);
 
-	m_Drive.DisableMediaChangeDetection();
-	m_Drive.LockDoor();
+	m_Drive->DisableMediaChangeDetection();
+	m_Drive->LockDoor();
 	return TRUE;
 }
 
@@ -1713,7 +1713,7 @@ BOOL CCdReadingContext::ProcessBuffer(void * buf, size_t len,
 			}
 
 			DWORD ReadBeginTime = timeGetTime();
-			if ( ! m_Drive.ReadCdData(m_pCdBuffer, m_CdAddress, SectorsToRead))
+			if ( ! m_Drive->ReadCdData(m_pCdBuffer, m_CdAddress, SectorsToRead))
 			{
 				return FALSE;
 			}
@@ -1752,7 +1752,7 @@ BOOL CCdReadingContext::ProcessBuffer(void * buf, size_t len,
 BOOL CCdReadingContext::Init()
 {
 	// allocate buffer. Round to sector size multiple
-	m_Drive.SetDriveBusy();
+	m_Drive->SetDriveBusy();
 	m_CdBufferFilled = 0;
 	m_CdDataOffset = 0;
 	m_CdBufferSize = 0x10000 - 0x10000 % CDDASectorSize;
@@ -1766,8 +1766,8 @@ BOOL CCdReadingContext::Init()
 		return FALSE;
 	}
 
-	m_Drive.SetReadSpeed(m_RequiredReadSpeed, m_CdAddress - 150, m_NumberOfSectors);
-	m_Drive.ReadCdData(m_pCdBuffer, m_CdAddress, m_CdBufferSize / CDDASectorSize);
+	m_Drive->SetReadSpeed(m_RequiredReadSpeed, m_CdAddress - 150, m_NumberOfSectors);
+	m_Drive->ReadCdData(m_pCdBuffer, m_CdAddress, m_CdBufferSize / CDDASectorSize);
 	return TRUE;
 }
 
@@ -1788,11 +1788,11 @@ void CCdReadingContext::DeInit()
 		|| NULL == m_pNextTrackContext)
 	{
 		TRACE("CD drive speed reset to original %d\n", m_OriginalReadSpeed);
-		m_Drive.SetReadSpeed(m_OriginalReadSpeed);
+		m_Drive->SetReadSpeed(m_OriginalReadSpeed);
 		// stop drive:
-		m_Drive.StopDrive();
+		m_Drive->StopDrive();
 	}
-	m_Drive.SetDriveBusy(false);
+	m_Drive->SetDriveBusy(false);
 }
 
 void CCdReadingContext::Execute()

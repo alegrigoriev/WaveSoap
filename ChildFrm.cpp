@@ -1346,19 +1346,17 @@ void CMiniToolbar::HiliteButton(UINT nID, bool Hilite)
 		}
 		m_ButtonHilit = 0;
 	}
+
 	for (unsigned i = 0; i < m_Buttons.size(); i++)
 	{
 		if (m_Buttons[i].nID == nID)
 		{
-			break;
+			RedrawButton(i);
+			return;
 		}
 	}
-	if (i == m_Buttons.size())
-	{
-		m_ButtonHilit = 0;
-		return;
-	}
-	RedrawButton(i);
+	m_ButtonHilit = 0;
+	return;
 }
 
 void CMiniToolbar::RedrawButton(int Index)

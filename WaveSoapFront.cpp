@@ -113,7 +113,7 @@ BEGIN_MESSAGE_MAP(CWaveSoapFrontStatusBar, CStatusBar)
 	ON_WM_LBUTTONDBLCLK()
 END_MESSAGE_MAP()
 
-BEGIN_MESSAGE_MAP(CWaveSoapFrontApp, CWinApp)
+BEGIN_MESSAGE_MAP(CWaveSoapFrontApp, BaseClass)
 	//{{AFX_MSG_MAP(CWaveSoapFrontApp)
 	ON_COMMAND(ID_FILE_NEW, OnFileNew)
 	ON_COMMAND(ID_APP_ABOUT, OnAppAbout)
@@ -130,9 +130,9 @@ BEGIN_MESSAGE_MAP(CWaveSoapFrontApp, CWinApp)
 	ON_COMMAND(ID_EDIT_PASTE, OnEditPasteNew)
 	ON_UPDATE_COMMAND_UI(ID_EDIT_PASTE, OnUpdateEditPasteNew)
 	// Standard file based document commands
-	ON_COMMAND(ID_FILE_OPEN, CWinApp::OnFileOpen)
+	ON_COMMAND(ID_FILE_OPEN, BaseClass::OnFileOpen)
 	// Standard print setup command
-	ON_COMMAND(ID_FILE_PRINT_SETUP, CWinApp::OnFilePrintSetup)
+	ON_COMMAND(ID_FILE_PRINT_SETUP, BaseClass::OnFilePrintSetup)
 END_MESSAGE_MAP()
 
 /////////////////////////////////////////////////////////////////////////////
@@ -211,6 +211,7 @@ CWaveSoapFrontApp::CWaveSoapFrontApp()
 	m_Thread.m_bAutoDelete = FALSE;
 	m_pDocManager = new CWaveSoapDocManager;
 
+	SetAppID(_T("AlegrSoft.WaveSoap.WaveSoap.0000"));
 	EnableHtmlHelp();
 }
 
@@ -327,6 +328,13 @@ BOOL CWaveSoapFrontApp::InitInstance()
 #ifdef _DEBUG
 	LoadLibrary(_T("thrdtime.dll"));
 #endif
+	EnableTaskbarInteraction();
+
+	InitContextMenuManager();
+
+	InitKeyboardManager();
+
+	InitTooltipManager();
 	// Standard initialization
 	// If you are not using these features and wish to reduce the size
 	//  of your final executable, you should remove from the following
@@ -897,7 +905,7 @@ int CWaveSoapFrontApp::ExitInstance()
 	delete m_pAllTypesTemplate; // need to delete, because it's not added to list of templates
 
 	m_Palette.DeleteObject();
-	return CWinApp::ExitInstance();
+	return BaseClass::ExitInstance();
 }
 
 void CWaveSoapFrontApp::QueueOperation(COperationContext * pContext)
@@ -1527,6 +1535,10 @@ public:
 	virtual void UpdateMenu(CCmdUI* pCmdUI);
 	virtual ~CWaveSoapFileList() {}
 	virtual void Add(LPCTSTR lpszPathName);
+	virtual void Add(LPCTSTR lpszPathName, LPCTSTR lpszAppID)
+	{
+		Add(lpszPathName);
+	}
 protected:
 
 	CString m_ReadOnlyFileSuffix;
@@ -1730,7 +1742,9 @@ void CWaveSoapFileList::UpdateMenu(CCmdUI* pCmdUI)
 		return;
 
 	for (int iMRU = 0; iMRU < m_nSize; iMRU++)
+	{
 		pCmdUI->m_pMenu->DeleteMenu(pCmdUI->m_nID + iMRU, MF_BYCOMMAND);
+	}
 
 	TCHAR szCurDir[_MAX_PATH + 2];
 	GetCurrentDirectory(_MAX_PATH, szCurDir);
@@ -1741,7 +1755,7 @@ void CWaveSoapFileList::UpdateMenu(CCmdUI* pCmdUI)
 
 	CString strName;
 	CString strTemp;
-	for (iMRU = 0; iMRU < m_nSize; iMRU++)
+	for (int iMRU = 0; iMRU < m_nSize; iMRU++)
 	{
 		if (!GetDisplayName(strName, iMRU, szCurDir, nCurDir))
 			break;
@@ -1787,7 +1801,8 @@ void CWaveSoapFileList::Add(LPCTSTR lpszPathName)
 	AfxFullPath(szTemp+1, lpszPathName+1);
 
 	// update the MRU list, if an existing MRU string matches file name
-	for (int iMRU = 0; iMRU < m_nSize-1; iMRU++)
+	int iMRU;
+	for (iMRU = 0; iMRU < m_nSize-1; iMRU++)
 	{
 		CString MruName = m_arrNames[iMRU];
 		if (MruName.GetLength() > 1
@@ -2014,7 +2029,8 @@ void CWaveSoapFrontApp::CreatePalette()
 		p.lp.palPalEntry[255-i].peGreen = ~p.lp.palPalEntry[i].peGreen;
 		p.lp.palPalEntry[255-i].peBlue = ~p.lp.palPalEntry[i].peBlue;
 	}
-	for (i = 0; i < 10; i++)
+
+	for (int i = 0; i < 10; i++)
 	{
 		p.lp.palPalEntry[i].peFlags = 0;
 		p.lp.palPalEntry[i].peRed = SysColors[i].peRed;
@@ -2022,7 +2038,7 @@ void CWaveSoapFrontApp::CreatePalette()
 		p.lp.palPalEntry[i].peBlue = SysColors[i].peBlue;
 	}
 	p.lp.palNumEntries = 246;
-	for (i = 0; i < 20; i++)
+	for (int i = 0; i < 20; i++)
 	{
 		TRACE("System color %d=%08X\n", i, SysColors[i]);
 	}
@@ -2099,10 +2115,9 @@ void CWaveSoapDocTemplate::SaveAll()
 	}
 }
 
-#include <devioctl.h>
-#include <ntddcdrm.h>
-#include <winioctl.h>
-#include ".\wavesoapfront.h"
+//#include <C:\WINDDK\6001.18000\inc\api\devioctl.h>
+//#include <ntddcdrm.h>
+//#include <winioctl.h>
 
 void CWaveSoapFrontApp::OnToolsCdgrab()
 {
@@ -2145,7 +2160,7 @@ void CWaveSoapFrontApp::OnToolsCdgrab()
 		pContext->m_OriginalReadSpeed = dlg.m_CurrentReadSpeed;
 		pContexts[n] = pContext;
 		n++;
-		if ( ! pContext->InitTrackInformation(dlg.m_CdDrive,
+		if ( ! pContext->InitTrackInformation(dlg.m_pCdDrive,
 											pTrack, dlg.m_FileTypeFlags, dlg.m_Wf))
 		{
 			delete pContexts[0];    // will delete all of them

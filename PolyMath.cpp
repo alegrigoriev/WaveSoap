@@ -126,7 +126,7 @@ void poly::FromRoots(const polyRoots & roots, Complex first)
 		}
 	}
 
-	for (i = (iInitOrder+1)/2; i > 1; i = (i + 1) /2)
+	for (int i = (iInitOrder+1)/2; i > 1; i = (i + 1) /2)
 	{
 		int j;
 		for (j = 0, pp2 = pp, pp1 = pp; j < i; j += 2, ++pp2, pp1 += 2)
@@ -418,7 +418,8 @@ poly & poly::operator >>=(int i)
 {
 	ASSERT(i >= 0);
 	SetOrder(iOrder + i);
-	for(int j=order(), k=j-i; k >= 0; --j, --k) (*this)[j] = (*this) [k];
+	int j, k;
+	for(j=order(), k=j-i; k >= 0; --j, --k) (*this)[j] = (*this) [k];
 	for(; j >= 0; j--) (*this)[j] = 0.;
 	return *this;
 }
@@ -523,7 +524,8 @@ BOOL poly::IsZero() const
 
 void poly::Normalize()
 {
-	for (int i = 0; i <= order(); i++)
+	int i;
+	for (i = 0; i <= order(); i++)
 	{
 		if (array()[i] != 0.) break;
 	}
@@ -577,8 +579,8 @@ polyRoots poly::roots(Complex start, int iIter) const
 	{
 		_clearfp();
 		poly r1(src), r2(srcderiv1),r3, r4;
-		int j;
-		for (int i=rootCount-1; i >0; i--)
+		int j, i;
+		for (i = rootCount-1; i >0; i--)
 		{
 			PolyDiv(&r4, &r3, r1, r2);
 // check if |r3| is small enough
@@ -958,7 +960,7 @@ void poly::FromPoints(const Complex * pArguments,
 		pp[i] = poly(0, pValues[i] / coeff);
 	}
 
-	for (i = nCount; i > 1; i = (i + 1) /2)
+	for (int i = nCount; i > 1; i = (i + 1) /2)
 	{
 		int j;
 		for (j = 0, pp2 = pp, pp1 = pp,
@@ -1168,7 +1170,7 @@ Complex polyRoots::eval(Complex arg) const
 		x[i] = arg - array()[i];
 	}
 	Complex *p1, *p2, tmp;
-	for (i = count(); i > 1; i = (i + 1) /2)
+	for (int i = count(); i > 1; i = (i + 1) /2)
 	{
 		int j;
 		for (j = 0, p2 = x, p1 = x; j < i; j += 2,

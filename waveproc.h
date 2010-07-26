@@ -58,7 +58,8 @@ BOOL CBackBuffer<T_ext, T_int>::Allocate(int size)
 {
 	ASSERT(size != 0 && size <= 0x10000000 / sizeof(T_int));
 	// make size a "round" number
-	for (int i = 1; i <= 0x10000000; i <<= 1)
+	int i;
+	for (i = 1; i <= 0x10000000; i <<= 1)
 	{
 		if (i >= size)
 		{

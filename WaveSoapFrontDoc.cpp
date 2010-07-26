@@ -2385,12 +2385,12 @@ BOOL CWaveSoapFrontDoc::OnSaveDocument(LPCTSTR lpszPathName, DWORD flags, WAVEFO
 	if (pTargetFilePart)
 	{
 		int TargetDirChars = pTargetFilePart - FullTargetName;
-		_tcsncpy(TargetDir, FullTargetName, TargetDirChars);
+		memcpy(TargetDir, FullTargetName, TargetDirChars*sizeof(TCHAR));
 		TargetDir[TargetDirChars] = 0;
 	}
 	else
 	{
-		_tcsncpy(TargetDir, FullTargetName, MAX_PATH);
+		_tcsncpy_s(TargetDir, MAX_PATH, FullTargetName, MAX_PATH);
 		TargetDir[MAX_PATH - 1] = 0;
 	}
 
@@ -2398,12 +2398,12 @@ BOOL CWaveSoapFrontDoc::OnSaveDocument(LPCTSTR lpszPathName, DWORD flags, WAVEFO
 	if (pOriginalFilePart)
 	{
 		int DirChars = pOriginalFilePart - FullOriginalName;
-		_tcsncpy(OriginalDir, FullOriginalName, DirChars);
+		memcpy(OriginalDir, FullOriginalName, DirChars*sizeof(TCHAR));
 		OriginalDir[DirChars] = 0;
 	}
 	else
 	{
-		_tcsncpy(OriginalDir, FullOriginalName, MAX_PATH);
+		_tcsncpy_s(OriginalDir, MAX_PATH, FullOriginalName, MAX_PATH);
 		OriginalDir[MAX_PATH - 1] = 0;
 	}
 
@@ -2411,12 +2411,12 @@ BOOL CWaveSoapFrontDoc::OnSaveDocument(LPCTSTR lpszPathName, DWORD flags, WAVEFO
 	if (pSourceFilePart)
 	{
 		int SourceDirChars = pSourceFilePart - FullSourceName;
-		_tcsncpy(SourceDir, FullSourceName, SourceDirChars);
+		memcpy(SourceDir, FullSourceName, SourceDirChars*sizeof(TCHAR));
 		SourceDir[SourceDirChars] = 0;
 	}
 	else
 	{
-		_tcsncpy(SourceDir, FullSourceName, MAX_PATH);
+		_tcsncpy_s(SourceDir, MAX_PATH, FullSourceName, MAX_PATH);
 		SourceDir[MAX_PATH - 1] = 0;
 	}
 
