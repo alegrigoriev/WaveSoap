@@ -58,7 +58,7 @@ BOOL BladeMp3Encoder::OpenStream(PBE_CONFIG pConfig)
 
 	m_bFlushStreamCalled = false;
 
-	m_InBufferSize = dwSamples * 2;
+	m_InBufferSize = dwSamples * sizeof (short);
 	if (pConfig->format.LHV1.nMode != BE_MP3_MODE_MONO)
 	{
 		m_InBufferSize *= 2;
