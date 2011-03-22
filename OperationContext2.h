@@ -161,17 +161,44 @@ private:
 	int m_nSamplingRate;
 	double m_SamplePeriod;
 	// op functions:
-	static void _fastcall AddDouble(Operation *t) { *t->dDst = *t->dSrc1 + *t->dSrc2; }
-	static void _fastcall AddInt(Operation *t) { *t->nDst = *t->nSrc1 + *t->nSrc2; }
-	static void _fastcall AddDoubleInt(Operation *t) { *t->dDst = *t->dSrc1 + *t->nSrc2; }
+	static void _fastcall AddDouble(Operation *t)
+	{
+		*t->dDst = *t->dSrc1 + *t->dSrc2;
+	}
+	static void _fastcall AddInt(Operation *t)
+	{
+		*t->nDst = *t->nSrc1 + *t->nSrc2;
+	}
+	static void _fastcall AddDoubleInt(Operation *t)
+	{
+		*t->dDst = *t->dSrc1 + *t->nSrc2;
+	}
 
-	static void _fastcall SubtractDouble(Operation *t) { *t->dDst = *t->dSrc1 - *t->dSrc2; }
-	static void _fastcall SubtractInt(Operation *t) { *t->dDst = *t->dSrc1 - *t->dSrc2; }
-	static void _fastcall SubtractDoubleInt(Operation *t) { *t->dDst = *t->dSrc1 - *t->nSrc2; }
-	static void _fastcall SubtractIntDouble(Operation *t) { *t->dDst = *t->nSrc1 - *t->dSrc2; }
+	static void _fastcall SubtractDouble(Operation *t)
+	{
+		*t->dDst = *t->dSrc1 - *t->dSrc2;
+	}
+	static void _fastcall SubtractInt(Operation *t)
+	{
+		*t->dDst = *t->dSrc1 - *t->dSrc2;
+	}
+	static void _fastcall SubtractDoubleInt(Operation *t)
+	{
+		*t->dDst = *t->dSrc1 - *t->nSrc2;
+	}
+	static void _fastcall SubtractIntDouble(Operation *t)
+	{
+		*t->dDst = *t->nSrc1 - *t->dSrc2;
+	}
 
-	static void _fastcall MultiplyDouble(Operation *t) { *t->dDst = *t->dSrc1 * *t->dSrc2; }
-	static void _fastcall MultiplyInt(Operation *t) { *t->nDst = *t->nSrc1 * *t->nSrc2; }
+	static void _fastcall MultiplyDouble(Operation *t)
+	{
+		*t->dDst = *t->dSrc1 * *t->dSrc2;
+	}
+	static void _fastcall MultiplyInt(Operation *t)
+	{
+		*t->nDst = *t->nSrc1 * *t->nSrc2;
+	}
 	static void _fastcall MultiplyDoubleInt(Operation *t)
 	{
 		*t->dDst = *t->dSrc1 * *t->nSrc2;
@@ -187,27 +214,60 @@ private:
 	static void _fastcall ModuloDoubleInt(Operation *t);
 	static void _fastcall ModuloIntDouble(Operation *t);
 
-	static void _fastcall NegateInt(Operation *t)  { *t->nDst = - *t->nSrc1; }
-	static void _fastcall ComplementInt(Operation *t)  { *t->nDst = ~ *t->nSrc1; }
-	static void _fastcall NegateDouble(Operation *t)  { *t->dDst = - *t->dSrc1; }
-	static void _fastcall Sin(Operation *t)  { *t->dDst = sin(fmod(*t->dSrc1, 6.2831853071795864769252867)); }
-	static void _fastcall Cos(Operation *t)  { *t->dDst = cos(*t->dSrc1); }
-	static void _fastcall Tan(Operation *t)  { *t->dDst = tan(*t->dSrc1); }
-	static void _fastcall SinH(Operation *t)  { *t->dDst = sinh(*t->dSrc1); }
+	static void _fastcall NegateInt(Operation *t)
+	{
+		*t->nDst = - *t->nSrc1;
+	}
+	static void _fastcall ComplementInt(Operation *t)
+	{
+		*t->nDst = ~ *t->nSrc1;
+	}
+	static void _fastcall NegateDouble(Operation *t)
+	{
+		*t->dDst = - *t->dSrc1;
+	}
+	static void _fastcall Sin(Operation *t)
+	{
+		*t->dDst = sin(fmod(*t->dSrc1, 6.2831853071795864769252867));
+	}
+	static void _fastcall Cos(Operation *t)
+	{
+		*t->dDst = cos(fmod(*t->dSrc1, 6.2831853071795864769252867));
+	}
+	static void _fastcall Tan(Operation *t)
+	{
+		*t->dDst = tan(*t->dSrc1);
+	}
+	static void _fastcall SinH(Operation *t)
+	{
+		*t->dDst = sinh(*t->dSrc1);
+	}
 	static void _fastcall CosH(Operation *t)  { *t->dDst = cosh(*t->dSrc1); }
 	static void _fastcall TanH(Operation *t)  { *t->dDst = tanh(*t->dSrc1); }
-	static void _fastcall Exp(Operation *t)  { *t->dDst = exp(*t->dSrc1); }
-	static void _fastcall Exp10(Operation *t)  { *t->dDst = exp(*t->dSrc1 * 2.3025850929940456840); }
+	static void _fastcall Exp(Operation *t)
+	{
+		*t->dDst = exp(*t->dSrc1);
+	}
+	static void _fastcall Exp10(Operation *t)
+	{
+		*t->dDst = exp(*t->dSrc1 * 2.3025850929940456840);
+	}
 	static void _fastcall Log(Operation *t);
 	static void _fastcall Log10(Operation *t);
 	static void _fastcall Sqrt(Operation *t);
 	static void _fastcall Noise(Operation *t);
-	static void _fastcall Abs(Operation *t)  { *t->dDst = fabs(*t->dSrc1); }
+	static void _fastcall Abs(Operation *t)
+	{
+		*t->dDst = fabs(*t->dSrc1);
+	}
 	static void _fastcall DoubleToInt(Operation *t)
 	{
 		*t->nDst = int(*t->dSrc1);
 	}
-	static void _fastcall IntToDouble(Operation *t)  { *t->dDst = *t->nSrc1; }
+	static void _fastcall IntToDouble(Operation *t)
+	{
+		*t->dDst = *t->nSrc1;
+	}
 	static void _fastcall AndInt(Operation *t)
 	{
 		*t->nDst = *t->nSrc1 & *t->nSrc2;

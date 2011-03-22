@@ -142,6 +142,8 @@ CString CExpressionEvaluationContext::GetToken(LPCTSTR * ppStr, TokenType * pTyp
 		_T("F"), eSamplingRate,
 		_T("dn"), eSelectionLengthSamples,
 		_T("DN"), eFileLengthSamples,
+		_T("n"), eSelectionSampleNumber,
+		_T("N"), eAbsoluteSampleNumber,
 		//_T("T", eSamplePeriod,
 		_T("f1"), eCurrentFrequencyArgument1,
 		_T("f2"), eCurrentFrequencyArgument2,
