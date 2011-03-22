@@ -955,7 +955,7 @@ BOOL WmaEncoder::Init()
 		return FALSE;
 	}
 
-#if 0//def _DEBUG
+#ifdef _DEBUG
 	PrintProfile(m_pProfileManager, WMProfile_V40_64Audio);
 	PrintProfile(m_pProfileManager, WMProfile_V40_96Audio);
 	PrintProfile(m_pProfileManager, WMProfile_V40_128Audio);
