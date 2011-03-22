@@ -695,8 +695,8 @@ void CClickRemoval::InterpolateGap(CBackBuffer<int, int> & data, int nLeftIndex,
 	if (BigGap)
 	{
 		InterpolationOverlap = MAX_FFT_ORDER + InterpolateSamples + InterpolateSamples / 2;
-		PostInterpolateSamples = InterpolateSamples / 2;
-		PreInterpolateSamples = InterpolateSamples - InterpolateSamples / 2;
+		PostInterpolateSamples = InterpolateSamples;
+		PreInterpolateSamples = InterpolateSamples;
 	}
 	else
 	{
@@ -1562,11 +1562,150 @@ void CClickRemoval::InterpolateBigGapSliding(WAVE_SAMPLE data[], int nLeftIndex,
 #endif
 }
 
+typedef std::vector<double> data_vec;
+typedef data_vec::iterator data_iter;
+typedef data_vec::const_iterator cdata_iter;
+
+double Average(data_vec const&X)
+{
+	size_t N = X.size();
+	double Sum = 0;
+	for (size_t i = 0; i != N; i++)
+	{
+		Sum += X[i];
+	}
+	return Sum / (long) N;
+}
+
+double Average(data_vec const&X, data_vec const& weight)
+{
+	size_t N = X.size();
+	ASSERT(N == weight.size());
+	double Sum = 0;
+	double Sum_W = 0;
+	for (size_t i = 0; i != N; i++)
+	{
+		Sum += X[i] * weight[i];
+		Sum_W += weight[i];
+	}
+	return Sum / Sum_W;
+}
+// Y = A + B*X
+void LinearRegression(data_vec const &X, data_vec const &Y, double &A, double &B)
+{
+	size_t N = X.size();
+	ASSERT(N == Y.size());
+
+	double x_avg = Average(X);
+	double y_avg = Average(Y);
+
+	double numer_sum = 0.;
+	double denom_sum = 0.;
+
+	for (size_t i = 0; i != N; i++)
+	{
+		numer_sum += (Y[i] - y_avg) * (X[i] - x_avg);
+		denom_sum += (X[i] - x_avg) * (X[i] - x_avg);
+	}
+
+	B = numer_sum / denom_sum;
+	A = y_avg - x_avg * B;
+}
+
+void LinearRegression(data_vec const &X, data_vec const &Y, data_vec const &weight, double &A, double &B)
+{
+	size_t N = X.size();
+	ASSERT(N == Y.size());
+	ASSERT(N == weight.size());
+
+	double x_avg = Average(X, weight);
+	double y_avg = Average(Y, weight);
+
+	double numer_sum = 0.;
+	double denom_sum = 0.;
+
+	for (size_t i = 0; i != N; i++)
+	{
+		numer_sum += weight[i] * (Y[i] - y_avg) * (X[i] - x_avg);
+		denom_sum += weight[i] * (X[i] - x_avg) * (X[i] - x_avg);
+	}
+
+	B = numer_sum / denom_sum;
+	A = y_avg - x_avg * B;
+}
+
+void CClickRemoval::InterpolateGapLeastSquares(WAVE_SAMPLE data[], int nLeftIndex, int ClickLength, int nChans, int TotalSamples)
+{
+	// nChan (1 or 2) is used as step between samples
+	// to interpolate stereo, call the function twice
+	// Perform spike interpolation
+	// Use interpolating polynom of 3rd order
+
+	// the click goes from nLeftIndex to nLeftIndex+ClickLength
+
+	// take ClickLength*2 to the left, and ClickLength*2 to the right, up to 32 samples
+
+	int const MaxInterpolationCount = 32;
+	double X_sq_sum = 0;
+
+	ASSERT(ClickLength >= 2);
+	int const InterpolationCount = std::min(std::min(std::min(ClickLength*2, MaxInterpolationCount), nLeftIndex), TotalSamples-(nLeftIndex+ClickLength));
+
+	data_vec Y_odd(InterpolationCount);
+	data_vec Y_even(InterpolationCount);
+	data_vec X(InterpolationCount);
+	data_vec X_sq(InterpolationCount);
+	data_vec W(InterpolationCount);
+	data_vec W_odd(InterpolationCount);
+
+	for (int n = 0; n < InterpolationCount; n ++)
+	{
+		X[n] = n + ClickLength /2. + 0.5;
+		X_sq[n] = X[n] * X[n];
+
+		W[n] = 1.;  // no weight by now
+		W_odd[n] = 1.;  // no weight by now
+
+		double y_left = data[nChans * (nLeftIndex - 1 - n)];
+		double y_right = data[nChans * (nLeftIndex + ClickLength + n)];
+
+		// regression on odd components is performed on Y/X data
+		Y_odd[n] = (y_right - y_left) / X[n];
+
+		Y_even[n] = y_right + y_left;
+	}
+
+	// A + B*X + C * X*X + D* X^3
+	double C=0;
+	double B=0;
+	double A=0;
+	double D=0;
+	LinearRegression(X_sq, Y_even, W, A, C);
+
+
+	// to separate B and D, we perform regression on Y/X, relative to X*X
+	// fill X centered and squared array
+
+	LinearRegression(X_sq, Y_odd, W_odd, B, D);
+
+	// perform polynomial interpolation
+	for (int n = 0; n < InterpolationCount * 2 + ClickLength; n++)
+	{
+		double x = n - (InterpolationCount + ClickLength /2. + 0.5);
+		double y = (A + x * (B + x * (C + x * D))) / 2.;
+
+		data[nChans * (nLeftIndex + n - InterpolationCount)] = DoubleToShort(y);
+	}
+}
+
+
 void CClickRemoval::InterpolateGap(WAVE_SAMPLE data[], int nLeftIndex, int ClickLength, int nChans, bool BigGap, int TotalSamples)
 {
+	InterpolateGapLeastSquares(data, nLeftIndex, ClickLength, nChans, TotalSamples);
+	return;
 	if (BigGap)
 	{
-//        InterpolateBigGapSliding(data, nLeftIndex, ClickLength, nChans, TotalSamples);
+		//        InterpolateBigGapSliding(data, nLeftIndex, ClickLength, nChans, TotalSamples);
 		InterpolateBigGap(data, nLeftIndex, ClickLength, nChans, TotalSamples);
 		return;
 	}
@@ -3751,14 +3890,14 @@ void CResampleFilter::InitSlidingInterpolatedFilter(int FilterLength)
 	{
 		// upsampling.
 		//
-		double InputPeriod = 0x100000000i64 / m_SamplesInFilter;
+		double InputPeriod = 0x100000000LL / m_SamplesInFilter;
 		m_InputPeriod = unsigned __int32(InputPeriod);
 		m_OutputPeriod = unsigned __int32(InputPeriod * m_InputFormat.SampleRate() / m_EffectiveOutputSampleRate);
 	}
 	else
 	{
 		// downsampling
-		double OutputPeriod = 0x100000000i64 / (FilterLength + 1.);
+		double OutputPeriod = 0x100000000LL / (FilterLength + 1.);
 		m_OutputPeriod = unsigned __int32(OutputPeriod);
 		m_InputPeriod = unsigned __int32(OutputPeriod * m_EffectiveOutputSampleRate / m_InputFormat.SampleRate());
 	}
