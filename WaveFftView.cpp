@@ -780,7 +780,7 @@ void CWaveFftView::MakeFftArray(SAMPLE_INDEX left, SAMPLE_INDEX right)
 		NumberOfFftPoints = 2 + r.Width() * m_HorizontalScale / m_FftOrder;
 	}
 	// for each FFT set we keep a byte to mark it valid or invalid
-	int NewFftArrayHeight = (m_FftOrder * pDoc->WaveChannels() + 1);
+	int NewFftArrayHeight = m_FftOrder * pDoc->WaveChannels() + 1;
 
 	size_t NecessaryArraySize =
 		NumberOfFftPoints * NewFftArrayHeight;
@@ -1010,8 +1010,8 @@ void CWaveFftView::CalculateFftRange(SAMPLE_INDEX left, SAMPLE_INDEX right)
 			if (FirstSampleRequired + m_FftOrder > pDoc->WaveFileSamples()
 				|| FirstSampleRequired < 0)
 			{
-				TRACE("The required samples from %d to %d are out of the file\n",
-					FirstSampleRequired, FirstSampleRequired + m_FftOrder);
+				if (0) TRACE("The required samples from %d to %d are out of the file\n",
+							FirstSampleRequired, FirstSampleRequired + m_FftOrder);
 				m_pFftResultArray[i] = 1;   // mark as valid
 				// make all black
 				memset(m_pFftResultArray + i + 1, 127, m_FftOrder * nChannels);
