@@ -13,7 +13,7 @@
 #include "resource.h"       // main symbols
 #include "ElapsedTime.h"
 
-#define DUMP_ON_EXECUTE 1
+#define DUMP_ON_EXECUTE 0
 
 static int fround(double d)
 {
@@ -504,7 +504,7 @@ BOOL CTwoFilesOperation::CreateUndo()
 
 	m_pUndoContext = pUndo.release();
 
-	TRACE("CreateUndo:\n"), m_pUndoContext->Dump();
+	if (DUMP_ON_EXECUTE) TRACE("CreateUndo:\n"), m_pUndoContext->Dump();
 
 	return TRUE;
 }
@@ -566,8 +566,7 @@ ListHead<COperationContext> * CTwoFilesOperation::GetUndoChain()
 			m_pUndoContext->m_UndoEndPos = m_pUndoContext->m_DstEnd;
 		}
 
-		TRACE("\nGetUndoChain insert:\n");
-		m_pUndoContext->Dump(0);
+		if (DUMP_ON_EXECUTE) TRACE("\nGetUndoChain insert:\n"), m_pUndoContext->Dump(0);
 
 		m_UndoChain.InsertHead(m_pUndoContext);
 
