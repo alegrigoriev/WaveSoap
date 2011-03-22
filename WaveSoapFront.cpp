@@ -407,6 +407,7 @@ BOOL CWaveSoapFrontApp::InitInstance()
 
 	Profile.AddItem(_T("Settings"), _T("NewFileLength"), m_NewFileLength, 10, 0, 4800);
 	Profile.AddItem(_T("Settings"), _T("NewFileSampleRate"), m_NewFileFormat.nSamplesPerSec, 44100, 1, 1000000);
+	Profile.AddItem(_T("Settings"), _T("NewFileChannels"), m_NewFileFormat.nChannels, 2, 1, 2);
 
 	Profile.AddItem(_T("Settings"), _T("SpectrumSectionWidth"), m_SpectrumSectionWidth, 100, 1, 1000);
 	Profile.AddItem(_T("Settings"), _T("FftBandsOrder"), m_FftBandsOrder, 9, 6, 13);
