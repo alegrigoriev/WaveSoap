@@ -2889,49 +2889,49 @@ unsigned CDirectFileCache::_ThreadProc()
 			}
 
 			// prune the prefetched queue from expired ranges
-
-			PrefetchDescriptor * pPrefetch;
-
-			for (pPrefetch = m_ListPrefetched.First(); m_ListPrefetched.NotEnd(pPrefetch);
-				pPrefetch = m_ListPrefetched.Next(pPrefetch))
-			{
-				if (NULL != pPrefetch->m_pFile
-					&& GetTickCount() - pPrefetch->m_LastPrefetchTick
-					> pPrefetch->PrefetchRangeExpirationTimeout)
-				{
-					if (TRACE_PREFETCH) TRACE("Item expired: %x: block 0x%x to 0x%x\n",
-						pPrefetch->m_pFile->m_hFile, pPrefetch->m_PrefetchedBeginBlock, pPrefetch->m_PrefetchedEndBlock);
-					pPrefetch->m_pFile = NULL;
-				}
-			}
-
-			if (m_ListToPrefetch.IsEmpty())
-			{
-				break;
-			}
-
-			pPrefetch = m_ListToPrefetch.First();
-
-			// if prefetch area is active
-			// check already prefetched ranges
-			LONGLONG PrefetchPosition = LONGLONG(pPrefetch->m_PrefetchPosition) << BLOCK_SIZE_SHIFT;
-
-			//LONG PrefetchLength = CACHE_BLOCK_SIZE;
-
-			void * pBuf = NULL;
-			DebugTimeStamp time;
-
-			long ReadLength = GetDataBuffer(pPrefetch->m_pFile,
-											& pBuf, CACHE_BLOCK_SIZE,
-											PrefetchPosition, CDirectFile::GetBufferNoPrefetch);
-
-			if (0 || TRACE_PREFETCH) TRACE("Prefetched block 0x%X file %x, time %d/10 ms\n",
-				pPrefetch->m_PrefetchPosition, pPrefetch->m_pFile->m_hFile, time.ElapsedTimeTenthMs());
-
-			pPrefetch->m_pFile->ReturnDataBuffer(pBuf, ReadLength, 0);
-
 			{
 				CSimpleCriticalSectionLock lock(m_cs);
+
+				PrefetchDescriptor * pPrefetch;
+
+				for (pPrefetch = m_ListPrefetched.First(); m_ListPrefetched.NotEnd(pPrefetch);
+					pPrefetch = m_ListPrefetched.Next(pPrefetch))
+				{
+					if (NULL != pPrefetch->m_pFile
+						&& GetTickCount() - pPrefetch->m_LastPrefetchTick
+						> pPrefetch->PrefetchRangeExpirationTimeout)
+					{
+						if (TRACE_PREFETCH) TRACE("Item expired: %x: block 0x%x to 0x%x\n",
+							pPrefetch->m_pFile->m_hFile, pPrefetch->m_PrefetchedBeginBlock, pPrefetch->m_PrefetchedEndBlock);
+						pPrefetch->m_pFile = NULL;
+					}
+				}
+
+				if (m_ListToPrefetch.IsEmpty())
+				{
+					break;
+				}
+
+				pPrefetch = m_ListToPrefetch.First();
+
+				// if prefetch area is active
+				// check already prefetched ranges
+				LONGLONG PrefetchPosition = LONGLONG(pPrefetch->m_PrefetchPosition) << BLOCK_SIZE_SHIFT;
+
+				//LONG PrefetchLength = CACHE_BLOCK_SIZE;
+
+				void * pBuf = NULL;
+				DebugTimeStamp time;
+
+				long ReadLength = GetDataBuffer(pPrefetch->m_pFile,
+												& pBuf, CACHE_BLOCK_SIZE,
+												PrefetchPosition, CDirectFile::GetBufferNoPrefetch);
+
+				if (0 || TRACE_PREFETCH) TRACE("Prefetched block 0x%X file %x, time %d/10 ms\n",
+					pPrefetch->m_PrefetchPosition, pPrefetch->m_pFile->m_hFile, time.ElapsedTimeTenthMs());
+
+				pPrefetch->m_pFile->ReturnDataBuffer(pBuf, ReadLength, 0);
+
 				if (pPrefetch->m_PrefetchedBeginBlock <= pPrefetch->m_PrefetchedEndBlock)
 				{
 					if (pPrefetch->m_PrefetchPosition < pPrefetch->m_PrefetchedEndBlock)
