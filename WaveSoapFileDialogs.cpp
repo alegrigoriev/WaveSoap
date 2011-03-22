@@ -896,11 +896,11 @@ void CWaveSoapFileSaveDialog::OnTypeChange()
 	// set new default extension
 	GetParent()->SendMessage(CDM_SETDEFEXT, 0, LPARAM(LPCTSTR(m_DefExt[m_ofn.nFilterIndex]) + 1));
 
-	CWnd * pTmp = GetDlgItem(edt1);
+	CWnd * pTmp = GetParent()->GetDlgItem(edt1);
 	if (NULL == pTmp)
 	{
 		// new style dialog
-		pTmp = GetDlgItem(cmb13);
+		pTmp = GetParent()->GetDlgItem(cmb13);
 	}
 	if (NULL != pTmp)
 	{
