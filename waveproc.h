@@ -300,8 +300,9 @@ public:
 	virtual BOOL SetInputWaveformat(WAVEFORMATEX const * pWf);
 
 	void InterpolateGap(CBackBuffer<int, int> & data, int nLeftIndex, int InterpolateSamples, bool BigGap);
-	void InterpolateGap(WAVE_SAMPLE data[], int nLeftIndex, int ClickLength, int nChans, bool BigGap);
-	void InterpolateBigGap(WAVE_SAMPLE data[], int nLeftIndex, int ClickLength, int nChans);
+	void InterpolateGap(WAVE_SAMPLE data[], int nLeftIndex, int ClickLength, int nChans, bool BigGap, int TotalSamples);
+	void InterpolateBigGap(WAVE_SAMPLE data[], int nLeftIndex, int ClickLength, int nChans, int TotalSamples);
+	void InterpolateBigGapSliding(WAVE_SAMPLE data[], int nLeftIndex, int ClickLength, int nChans, int TotalSamples);
 
 	BOOL LoadClickSourceFile(LPCTSTR szFilename);
 	BOOL SetClickLogFile(LPCTSTR szFilename);
@@ -552,7 +553,7 @@ public:
 
 	void InitResample(long OriginalSampleRate, long NewSampleRate, int FilterLength,
 					NUMBER_OF_CHANNELS nChannels, BOOL KeepSamplesPerSec);
-	enum { DefaultFilterLength = 63, };
+	enum { DefaultFilterLength = 125, };
 private:
 	void InitSlidingInterpolatedFilter(int FilterLength);
 	void InitSlidingFilter(int FilterLength, unsigned long NumberOfFilterTables);
@@ -573,7 +574,7 @@ private:
 	static double sinc(double arg);
 	double ResampleFilterTap(double arg, double FilterLength);
 
-	enum {ResampleTableBits = 10,
+	enum {ResampleTableBits = 11,
 		ResampleFilterSize = (1 << ResampleTableBits),
 		ResampleIndexShift = (32 - ResampleTableBits),
 		MaxNumberOfFilterSamples = 500*100,
@@ -583,12 +584,12 @@ private:
 	float m_pSrcBuf[SrcBufSize];
 	float m_pDstBuf[DstBufSize];
 
-	size_t m_SrcBufUsed;   // position to get samples
-	size_t m_DstBufUsed;   // position to put out samples
-	size_t m_DstBufSaved;  // position to get the samples and convert to __int16
+	unsigned m_SrcBufUsed;   // position to get samples
+	unsigned m_DstBufUsed;   // position to put out samples
+	unsigned m_DstBufSaved;  // position to get the samples and convert to __int16
 
-	size_t m_SrcBufFilled; // position to put new samples converted from __int16
-	size_t m_SrcFilterLength;
+	unsigned m_SrcBufFilled; // position to put new samples converted from __int16
+	unsigned m_SrcFilterLength;
 	unsigned long    m_EffectiveOutputSampleRate;
 
 	struct FilterCoeff
@@ -596,6 +597,7 @@ private:
 		double tap;
 		double deriv1;
 		double deriv2;
+		double deriv3;
 	};
 
 	ATL::CHeapPtr<FilterCoeff> m_InterpolatedFilterTable;
@@ -718,7 +720,7 @@ protected:
 	virtual BOOL Init();
 	virtual void DeInit();
 
-	CWaveFormat m_Wf;
+//    CWaveFormat m_Wf;
 };
 
 #endif //#ifndef __WAVEPROC_H_

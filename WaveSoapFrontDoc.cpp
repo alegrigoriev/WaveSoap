@@ -4614,7 +4614,7 @@ BOOL CWaveSoapFrontDoc::OpenWmaFileDocument(LPCTSTR lpszPathName)
 	return TRUE;
 }
 
-static int const BigGapLength = 32;
+static int const BigGapLength = 8;
 void CWaveSoapFrontDoc::OnUpdateToolsInterpolate(CCmdUI* pCmdUI)
 {
 	// the area must be at least 5* length away from the file beginning and from the end
@@ -4725,12 +4725,12 @@ void CWaveSoapFrontDoc::OnToolsInterpolate()
 	// now, do the interpolation
 	if (m_SelectedChannel & SPEAKER_FRONT_LEFT) // mono or not right channel only
 	{
-		crm.InterpolateGap(pBuf, InterpolateOffset, InterpolateSamples, nChannels, BigGap);
+		crm.InterpolateGap(pBuf, InterpolateOffset, InterpolateSamples, nChannels, BigGap, BufferSamples);
 	}
 	if (nChannels == 2
 		&& (m_SelectedChannel & SPEAKER_FRONT_RIGHT) != 0) // mono or not right channel only
 	{
-		crm.InterpolateGap(pBuf + 1, InterpolateOffset, InterpolateSamples, nChannels, BigGap);
+		crm.InterpolateGap(pBuf + 1, InterpolateOffset, InterpolateSamples, nChannels, BigGap, BufferSamples);
 	}
 
 	// write the data back
