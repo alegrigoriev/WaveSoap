@@ -1,4 +1,3 @@
-//#include "Complex.h"
 #include "stdafx.h"
 #include "PolyRatio.h"
 #include <float.h>
