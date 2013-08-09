@@ -579,27 +579,6 @@ int CClickRemoval::DeclickChannelData::Update3RdDerivativePowerThreshold(CClickR
 	return Deriv3Threshold;
 }
 
-void quad_regression(double const X[], double const Y[], unsigned NumPoints, double &A_result, double &B_result, double&C_result);
-void test_quad_regression(double X[], int NumPoints, double A, double B, double C)
-{
-	int const MAX_POINTS = 20;
-	double Y[MAX_POINTS];
-	int i;
-	// fill the array
-	if (NumPoints > MAX_POINTS)
-	{
-		return;
-	}
-	for (i = 0; i < NumPoints; i++)
-	{
-		Y[i] = A + B * X[i] + C * X[i] * X[i];
-	}
-	TRACE("Testing quad_regression for A=%f, B=%f, C=%f\n", A, B, C);
-	quad_regression(X, Y, NumPoints, A, B, C);
-	TRACE("Result of quad_regression is A=%f, B=%f, C=%f\n", A, B, C);
-}
-
-
 CClickRemoval::CClickRemoval(WAVEFORMATEX const * pWf, CHANNEL_MASK ChannelsToProcess,
 							DeclickParameters const & dp)
 	: DeclickParameters(dp)
@@ -612,6 +591,7 @@ CClickRemoval::CClickRemoval(WAVEFORMATEX const * pWf, CHANNEL_MASK ChannelsToPr
 	m_ChannelsToProcess = ChannelsToProcess;
 	SetInputWaveformat(pWf);
 
+#if 0
 	static int test_performed = 1;
 	if ( ! test_performed)
 	{
@@ -625,6 +605,7 @@ CClickRemoval::CClickRemoval(WAVEFORMATEX const * pWf, CHANNEL_MASK ChannelsToPr
 
 		test_performed = 1;
 	}
+#endif
 
 }
 
@@ -868,6 +849,28 @@ void CClickRemoval::InterpolateBigGap(WAVE_SAMPLE data[], int nLeftIndex, int Cl
 	}
 	ASSERT(pFftResult == x + FftOrder);
 }
+
+#if 0
+void quad_regression(double const X[], double const Y[], unsigned NumPoints, double &A_result, double &B_result, double&C_result);
+void test_quad_regression(double X[], int NumPoints, double A, double B, double C)
+{
+	int const MAX_POINTS = 20;
+	double Y[MAX_POINTS];
+	int i;
+	// fill the array
+	if (NumPoints > MAX_POINTS)
+	{
+		return;
+	}
+	for (i = 0; i < NumPoints; i++)
+	{
+		Y[i] = A + B * X[i] + C * X[i] * X[i];
+	}
+	TRACE("Testing quad_regression for A=%f, B=%f, C=%f\n", A, B, C);
+	quad_regression(X, Y, NumPoints, A, B, C);
+	TRACE("Result of quad_regression is A=%f, B=%f, C=%f\n", A, B, C);
+}
+
 
 void quad_regression(double const X[], double const Y[], unsigned NumPoints, double &A_result, double &B_result, double&C_result)
 {
@@ -1561,6 +1564,7 @@ void CClickRemoval::InterpolateBigGapSliding(WAVE_SAMPLE data[], int nLeftIndex,
 #endif
 #endif
 }
+#endif
 
 typedef std::vector<double> data_vec;
 typedef data_vec::iterator data_iter;
@@ -1645,8 +1649,7 @@ void CClickRemoval::InterpolateGapLeastSquares(WAVE_SAMPLE data[], int nLeftInde
 
 	// take ClickLength*2 to the left, and ClickLength*2 to the right, up to 32 samples
 
-	int const MaxInterpolationCount = 32;
-	double X_sq_sum = 0;
+	int const MaxInterpolationCount = 64;
 
 	ASSERT(ClickLength >= 2);
 	int const InterpolationCount = std::min(std::min(std::min(ClickLength*2, MaxInterpolationCount), nLeftIndex), TotalSamples-(nLeftIndex+ClickLength));
@@ -1693,8 +1696,21 @@ void CClickRemoval::InterpolateGapLeastSquares(WAVE_SAMPLE data[], int nLeftInde
 	{
 		double x = n - (InterpolationCount + ClickLength /2. + 0.5);
 		double y = (A + x * (B + x * (C + x * D))) / 2.;
+		int i = nLeftIndex + n - InterpolationCount;
 
-		data[nChans * (nLeftIndex + n - InterpolationCount)] = DoubleToShort(y);
+		if (i < nLeftIndex)
+		{
+			// blend with source
+			double c = (nLeftIndex - i) / double(InterpolationCount + 1);
+			y += (data[nChans * i] -y) * c;
+		}
+		else if (i >= nLeftIndex + ClickLength)
+		{
+			double c = (i - (nLeftIndex + ClickLength - 1)) / double(InterpolationCount + 1);
+			y += (data[nChans * i] -y) * c;
+		}
+
+		data[nChans * i] = DoubleToShort(y);
 	}
 }
 
@@ -2092,12 +2108,14 @@ struct SIGNAL_PARAMS
 	// is used for the previous sample
 	typedef NoiseReductionCore::DATA DATA;
 
-	std::complex<DATA> sp_FftIn[2];
-	//complex<DATA> sp_PrevFftOut;
-	void AnalyzeFftSample(std::complex<DATA> smp, NoiseReductionCore * pNr, int nSample);
+	std::complex<DATA> sp_FftIn[3];
+	NoiseReductionCore * pNr;
+
+	void AnalyzeFftSample(std::complex<DATA> smp, int nSample);
+	static void AnalyzeStereoFftSample(std::complex<DATA> left, std::complex<DATA> right, SIGNAL_PARAMS *pL, SIGNAL_PARAMS *pR, int nSample);
+	bool PreprocessFftSample(std::complex<DATA> smp, int nSample);  // return true - can apply post-processing. false - cannot apply post-processing
 	// average frequency and amplitude in the band
 	float sp_AvgFreq; // filtered arg(x[n] / x[n-1])
-	float sp_AvgPhase;
 	// AvgLevelChange = filter(log (abs(x[n]) / abs(x[n-1])))
 	float sp_AvgLevelChange;
 	//float sp_AvgLevel;
@@ -2108,17 +2126,23 @@ struct SIGNAL_PARAMS
 	float sp_FilteredLevelError;
 	float sp_FreqDev;
 	float sp_LevelDev;
-	float sp_PrevInstantLevel;
 	float sp_PrevPhase; // previous phase
 	float sp_Freq;  // current frequency
-	float sp_Power;     // current power
+	float Power[3];     // current power
 	float sp_MaskingPower; // masking function
 	float sp_PrevMaskingPower;
-	BOOL m_TonalBand;
+	bool m_TonalBand;
+	bool m_TransientBand;
+#ifdef _DEBUG
+	unsigned TransientBandCount;
+	unsigned TonalBandCount;
+	unsigned TotalBandsProcessed;
+	float MinLevelInBandNp;
+	float MaxLevelInBandNp;
+#endif
 
-	SIGNAL_PARAMS()
+	SIGNAL_PARAMS(NoiseReductionCore * Nr)
 		: sp_AvgFreq(0.f)
-		, sp_AvgPhase(0.f)
 		, sp_AvgLevelChange(0.f)
 		//, sp_AvgLevel(0.f)
 		, sp_FilteredLevel(0.f)
@@ -2126,43 +2150,59 @@ struct SIGNAL_PARAMS
 		, sp_FilteredLevelError(0.f)
 		, sp_FreqDev(0.f)
 		, sp_LevelDev(0.f)
-		, sp_PrevInstantLevel(0.f)
 		, sp_PrevPhase(0.f)
 		, sp_Freq(0.f)
-		, sp_Power(0.f)
 		, sp_MaskingPower(0.f)
 		, sp_PrevMaskingPower(0.f)
 		, m_TonalBand(false)
+		, m_TransientBand(false)
+		, pNr(Nr)
+#ifdef _DEBUG
+		, TransientBandCount(0)
+		, TonalBandCount(0)
+		, MinLevelInBandNp(100.)
+		, MaxLevelInBandNp(-100.)
+		, TotalBandsProcessed(0)
+#endif
 	{
 		sp_FftIn[0] = DATA(0.);
 		sp_FftIn[1] = DATA(0.);
+		sp_FftIn[2] = DATA(0.);
+		Power[0] = 0.;
+		Power[1] = 0.;
+		Power[2] = 0.;
+	}
+	void Dump(int n)
+	{
+		TRACE("%i: Power=%f, Freq=%f, AvgFreq=%f, FreqDev=%f, Tonal=%i, transient=%i\n", n, Power[0] / (32768.*32768.), sp_Freq, sp_AvgFreq, sp_FreqDev, m_TonalBand, m_TransientBand);
 	}
 };
 
 // smp - source FFT sample
 // pNr - points to the parent CNoiseReduction object
 // nSample - number of the sample in FFT set
-void SIGNAL_PARAMS::AnalyzeFftSample(complex<DATA> smp, NoiseReductionCore * pNr, int nSample)
+
+bool SIGNAL_PARAMS::PreprocessFftSample(std::complex<DATA> smp, int nSample)
 {
-	// find momentary frequency
-	complex<DATA> cZero(0., 0.);
-	double nrm = pNr->m_PowerScale *
-				(real(smp) * real(smp) + imag(smp) * imag(smp));
-	sp_Power = float(nrm);
+	Power[2] = Power[1];
+	Power[1] = Power[0];
+	Power[0] = float(pNr->m_PowerScale * (real(smp) * real(smp) + imag(smp) * imag(smp)));
+
+	sp_FftIn[2] = sp_FftIn[1];
 	sp_FftIn[1] = sp_FftIn[0];
 	sp_FftIn[0] = smp;
 
-	if (cZero  == sp_FftIn[1]
-		//|| cZero == sp_PrevFftOut
-		|| 0. == nrm)
-	{
-		m_TonalBand = FALSE;
-		//sp_PrevFftOut = smp;
-		sp_AvgFreq = 0;
-		sp_AvgPhase = arg(smp);
-		sp_PrevPhase = sp_AvgPhase;
 
-		if (smp != cZero)
+	if (0. == Power[0]
+		|| 0. == Power[1])
+	{
+		m_TonalBand = false;
+		m_TransientBand = false;
+
+		sp_AvgFreq = 0;
+		sp_PrevPhase = arg(smp);
+
+		if (Power[0] != 0.)
 		{
 			sp_FilteredLevel = float(log(abs(smp)));
 		}
@@ -2170,151 +2210,317 @@ void SIGNAL_PARAMS::AnalyzeFftSample(complex<DATA> smp, NoiseReductionCore * pNr
 		{
 			sp_FilteredLevel = -16.;    // in Nepers
 		}
-		sp_PrevInstantLevel = sp_FilteredLevel;
 		sp_FilteredFreqError = 0;
 		sp_FilteredLevelError = 0;
-		return;
+		return false;
 	}
 
 #ifdef _DEBUG
 	pNr->m_TotalBandProcessed++;
+	TotalBandsProcessed++;
 #endif
-
 #if 1
-	float dLevel = float(log(nrm) * 0.5);
 	float dPhase = (float)atan2(imag(smp), real(smp));
 
-	float dLevelChange = dLevel - sp_PrevInstantLevel;
-	sp_PrevInstantLevel = dLevel;
-	float dFreq = dPhase - sp_PrevPhase;
+	// find momentary frequency
+	sp_Freq = dPhase - sp_PrevPhase;
 
 	// odd samples have an additional pi of phase difference
 	if (nSample & 1)
 	{
-		if (dFreq < 0)
+		if (sp_Freq < 0)
 		{
-			dFreq += float(M_PI);
+			sp_Freq += float(M_PI);
 		}
 		else
 		{
-			dFreq -= float(M_PI);
+			sp_Freq -= float(M_PI);
 		}
 	}
-	sp_PrevPhase = dPhase;
-	if (dFreq < -M_PI)
+	if (sp_Freq < -M_PI)
 	{
-		dFreq += float(M_PI * 2);
+		sp_Freq += float(M_PI * 2);
 	}
-	else if (dFreq > M_PI)
+	else if (sp_Freq > M_PI)
 	{
-		dFreq -= float(M_PI * 2);
+		sp_Freq -= float(M_PI * 2);
 	}
-	sp_Freq = dFreq;
 #else
 	float dLevel = float(log(abs(smp)));
 	float dPhase = (float)arg(smp);
 
-	float dLevelChange = dLevel - sp_PrevInstantLevel;
-	sp_PrevInstantLevel = dLevel;
-	float dFreq = (float)arg(smp / sp_PrevFftIn);
+	sp_Freq = (float)arg(smp / sp_PrevFftIn);
 
 #endif
-#ifdef _DEBUG
-	if (pNr->m_MinLevelInBand > dLevel)
-		pNr->m_MinLevelInBand = dLevel;
-	if (pNr->m_MaxLevelInBand < dLevel)
-		pNr->m_MaxLevelInBand = dLevel;
-#endif
-	BOOL StationarySignal = FALSE;
-
-#if 1
-	// check if the signal may be considered stationary or transient
-	if (1 && (dLevelChange > pNr->m_ThresholdOfTransient
-			|| dLevelChange < -pNr->m_ThresholdOfTransient))
+	sp_PrevPhase = dPhase;
+	if (Power[2] * 30. < Power[0])
 	{
-		// transient signal
-		m_TonalBand = FALSE;
-#ifdef _DEBUG
-		pNr->m_TransientBandFound++;
-#endif
-		// signal in transient area
-		sp_AvgFreq = dFreq;
-		sp_FilteredLevel = dLevel;
-		sp_FilteredFreqError = 0;
-		sp_FilteredLevelError = 0;
-		sp_FreqDev -= sp_FreqDev * pNr->m_FreqDevDecayRate;
-		sp_LevelDev -= pNr->m_LevelDevDecayRate * sp_LevelDev;
+		sp_AvgFreq = sp_Freq;
+		sp_FreqDev = pNr->m_FreqThresholdOfNoiselike * 1.1;
+	}
+	return true;
+}
 
-		sp_AvgPhase += sp_AvgFreq;
-		if (sp_AvgPhase < -M_PI)
+void SIGNAL_PARAMS::AnalyzeStereoFftSample(std::complex<DATA> left, std::complex<DATA> right, SIGNAL_PARAMS *pL, SIGNAL_PARAMS *pR, int nSample)
+{
+	if ( ! pL->PreprocessFftSample(left, nSample))
+	{
+		pR->PreprocessFftSample(right, nSample);
+		return;
+	}
+
+	if ( ! pR->PreprocessFftSample(right, nSample))
+	{
+		return;
+	}
+	ASSERT(pL->Power[0] != 0. && pL->Power[0] != 0.);
+	ASSERT(pR->Power[0] != 0. && pR->Power[0] != 0.);
+
+	float dLevelChangeL = pL->Power[0] / pL->Power[1];
+	float dLevelL = float(log(pL->Power[0]) * 0.5);
+	float dLevelChangeR = pR->Power[0] / pR->Power[1];
+	float dLevelR = float(log(pR->Power[0]) * 0.5);
+
+	NoiseReductionCore * pNr = pL->pNr;
+
+	// check if the signal may be considered stationary or transient
+	if (dLevelChangeL + dLevelChangeR > pNr->m_ThresholdOfTransientAttack
+		|| (dLevelChangeL + dLevelChangeR) / 2 < pNr->m_ThresholdOfTransientDecay)
+	{
+		// transient
+		pL->m_TonalBand = false;
+		pL->m_TransientBand = true;
+
+		pR->m_TonalBand = false;
+		pR->m_TransientBand = true;
+		// signal in transient area
+
+		pL->sp_AvgFreq = pL->sp_Freq;
+		pL->sp_FilteredLevel = dLevelL;
+		pL->sp_FilteredFreqError = 0;
+		pL->sp_FilteredLevelError = 0;
+
+		pL->sp_FreqDev -= pL->sp_FreqDev * pNr->m_FreqDevDecayRate;
+		if (pL->sp_FreqDev < 1E-10)
 		{
-			sp_AvgPhase += float(M_PI * 2);
+			pL->sp_FreqDev = 0;
 		}
-		else if (sp_AvgPhase > M_PI)
+		pL->sp_LevelDev -= pNr->m_LevelDevDecayRate * pL->sp_LevelDev;
+		if (fabs(pL->sp_LevelDev) < 1E-20)
 		{
-			sp_AvgPhase -= float(M_PI * 2);
+			pL->sp_LevelDev = 0;
 		}
-		dPhase = sp_AvgPhase;
+		pR->sp_AvgFreq = pR->sp_Freq;
+		pR->sp_FilteredLevel = dLevelR;
+		pR->sp_FilteredFreqError = 0;
+		pR->sp_FilteredLevelError = 0;
+
+		pR->sp_FreqDev -= pR->sp_FreqDev * pNr->m_FreqDevDecayRate;
+		if (pR->sp_FreqDev < 1E-10)
+		{
+			pR->sp_FreqDev = 0;
+		}
+		pR->sp_LevelDev -= pNr->m_LevelDevDecayRate * pR->sp_LevelDev;
+		if (fabs(pR->sp_LevelDev) < 1E-20)
+		{
+			pR->sp_LevelDev = 0;
+		}
 	}
 	else
 	{
-		// stationary signal
+#if 0
+		// stationary signal, amplitude doesn't change
+		pL->m_TransientBand = false;
+		pR->m_TransientBand = false;
 		sp_AvgFreq +=
-			pNr->m_AvgFreqDecayRate * (dFreq - sp_AvgFreq);
-		sp_AvgPhase += sp_AvgFreq;
-//        double PhaseError = dPhase - sp_AvgPhase;
-		double FreqError = dFreq - sp_AvgFreq;
+			pNr->m_AvgFreqDecayRate * (sp_Freq - sp_AvgFreq);
+
+		double FreqError = sp_Freq - sp_AvgFreq;
 #if 0
 		sp_FilteredFreqError += float(
 									pNr->m_FreqErrorDecayRate * (FreqError - sp_FilteredFreqError));
 		sp_FreqDev += float((sp_FilteredFreqError * sp_FilteredFreqError - sp_FreqDev)
 							* pNr->m_FreqDevDecayRate);
+		if (sp_FreqDev < 1E-10)
+		{
+			sp_FreqDev = 0;
+		}
 #else
 		sp_FreqDev += float((FreqError * FreqError - sp_FreqDev)
 							* pNr->m_FreqDevDecayRate);
+		if (sp_FreqDev < 1E-10)
+		{
+			sp_FreqDev = 0;
+		}
 #endif
 		// if sp_FreqDev is greater than threshold, then the signal is noise-like
-		sp_AvgPhase += sp_AvgFreq + sp_FilteredFreqError;
-
-		if (sp_AvgPhase < -M_PI)
-		{
-			sp_AvgPhase += float(M_PI * 2);
-		}
-		else if (sp_AvgPhase > M_PI)
-		{
-			sp_AvgPhase -= float(M_PI * 2);
-		}
-
 		sp_AvgLevelChange +=
 			pNr->m_AvgLevelDecayRate * (dLevelChange - sp_AvgLevelChange);
+		if (fabs(sp_AvgLevelChange) < 1E-20)
+		{
+			sp_AvgLevelChange = 0;
+		}
+
 		sp_FilteredLevel +=
 			pNr->m_AvgLevelDecayRate * (dLevel - sp_FilteredLevel);
+
 		double LevelError = dLevel - sp_FilteredLevel;
+
 		sp_FilteredLevelError += float(pNr->m_LevelErrorDecayRate *
 										(LevelError - sp_FilteredLevelError));
-		sp_LevelDev += pNr->m_LevelDevDecayRate *
-						(sp_FilteredLevelError * sp_FilteredLevelError - sp_LevelDev);
+		if (fabs(sp_FilteredLevelError) < 1E-20)
+		{
+			sp_FilteredLevelError = 0;
+		}
+
+		pL->sp_LevelDev += pNr->m_LevelDevDecayRate *
+							(pL->sp_FilteredLevelError * pL->sp_FilteredLevelError - pL->sp_LevelDev);
+		if (pL->sp_LevelDev < 1E-20)
+		{
+			pL->sp_LevelDev = 0;
+		}
+
+		pR->sp_LevelDev += pNr->m_LevelDevDecayRate *
+							(pR->sp_FilteredLevelError * pR->sp_FilteredLevelError - pR->sp_LevelDev);
+		if (pR->sp_LevelDev < 1E-20)
+		{
+			pR->sp_LevelDev = 0;
+		}
 
 		if (sp_FreqDev > pNr->m_FreqThresholdOfNoiselike)
 		{
-			m_TonalBand = FALSE;
+			m_TonalBand = false;
 		}
 		else
 		{
-			m_TonalBand = TRUE;
+			m_TonalBand = true;
 #ifdef _DEBUG
 			pNr->m_PhaseFilteredInBands++;
 #endif
-			StationarySignal = TRUE;
+		}
+#endif
+	}
+}
+
+void SIGNAL_PARAMS::AnalyzeFftSample(complex<DATA> smp, int nSample)
+{
+
+	if ( ! PreprocessFftSample(smp, nSample))
+	{
+		return;
+	}
+
+	ASSERT(Power[0] != 0. && Power[0] != 0.);
+
+	float dLevelChange = Power[0] / Power[1];
+	float dLevel = float(log(Power[0]) * 0.5);
+
+#ifdef _DEBUG
+	if (pNr->m_MinLevelInBand > dLevel)
+		pNr->m_MinLevelInBand = dLevel;
+	if (pNr->m_MaxLevelInBand < dLevel)
+		pNr->m_MaxLevelInBand = dLevel;
+
+	if (MinLevelInBandNp > dLevel)
+		MinLevelInBandNp = dLevel;
+	if (MaxLevelInBandNp < dLevel)
+		MaxLevelInBandNp = dLevel;
+#endif
+
+#if 1
+	// check if the signal may be considered stationary or transient
+	if (dLevelChange > pNr->m_ThresholdOfTransientAttack
+		|| dLevelChange < pNr->m_ThresholdOfTransientDecay)
+	{
+		// transient signal by amplitude
+		m_TonalBand = false;
+		m_TransientBand = true;
+#ifdef _DEBUG
+		pNr->m_TransientBandFound++;
+#endif
+		// signal in transient area
+		sp_AvgFreq = sp_Freq;
+		sp_FilteredLevel = dLevel;
+		sp_FilteredFreqError = 0;
+		sp_FilteredLevelError = 0;
+
+		sp_FreqDev -= sp_FreqDev * pNr->m_FreqDevDecayRate;
+		if (sp_FreqDev < 1E-10)
+		{
+			sp_FreqDev = 0;
+		}
+		sp_LevelDev -= pNr->m_LevelDevDecayRate * sp_LevelDev;
+		if (fabs(sp_LevelDev) < 1E-20)
+		{
+			sp_LevelDev = 0;
+		}
+	}
+	else
+	{
+		// stationary signal, amplitude doesn't change
+		m_TransientBand = false;
+		sp_AvgFreq +=
+			pNr->m_AvgFreqDecayRate * (sp_Freq - sp_AvgFreq);
+
+		double FreqError = sp_Freq - sp_AvgFreq;
 #if 0
-			dPhase = sp_AvgPhase;
-			dLevel = sp_FilteredLevel + sp_FilteredLevelError;
+		sp_FilteredFreqError += float(
+									pNr->m_FreqErrorDecayRate * (FreqError - sp_FilteredFreqError));
+		sp_FreqDev += float((sp_FilteredFreqError * sp_FilteredFreqError - sp_FreqDev)
+							* pNr->m_FreqDevDecayRate);
+		if (sp_FreqDev < 1E-10)
+		{
+			sp_FreqDev = 0;
+		}
+#else
+		sp_FreqDev += float((FreqError * FreqError - sp_FreqDev)
+							* pNr->m_FreqDevDecayRate);
+		if (sp_FreqDev < 1E-10)
+		{
+			sp_FreqDev = 0;
+		}
+#endif
+		// if sp_FreqDev is greater than threshold, then the signal is noise-like
+		sp_AvgLevelChange +=
+			pNr->m_AvgLevelDecayRate * (dLevelChange - sp_AvgLevelChange);
+		if (fabs(sp_AvgLevelChange) < 1E-20)
+		{
+			sp_AvgLevelChange = 0;
+		}
+
+		sp_FilteredLevel +=
+			pNr->m_AvgLevelDecayRate * (dLevel - sp_FilteredLevel);
+
+		double LevelError = dLevel - sp_FilteredLevel;
+
+		sp_FilteredLevelError += float(pNr->m_LevelErrorDecayRate *
+										(LevelError - sp_FilteredLevelError));
+		if (fabs(sp_FilteredLevelError) < 1E-20)
+		{
+			sp_FilteredLevelError = 0;
+		}
+
+		sp_LevelDev += pNr->m_LevelDevDecayRate *
+						(sp_FilteredLevelError * sp_FilteredLevelError - sp_LevelDev);
+		if (sp_LevelDev < 1E-20)
+		{
+			sp_LevelDev = 0;
+		}
+
+		if (sp_FreqDev > pNr->m_FreqThresholdOfNoiselike)
+		{
+			m_TonalBand = false;
+		}
+		else
+		{
+			m_TonalBand = true;
+#ifdef _DEBUG
+			pNr->m_PhaseFilteredInBands++;
 #endif
 		}
 
 	}
 
-	//sp_PrevFftOut = std::polar(float(exp(dLevel)), dPhase);
 #endif
 	return;
 }
@@ -2329,8 +2535,8 @@ struct NoiseReductionChannelData
 	unsigned const m_FftOrder;            // number of frequency bands (number of samples is double of that)
 	int m_nSamplesReceived;         // total samples received in ProcessSoundBuffer
 	int m_nSamplesStored;           // total samples stored in ProcessSoundBuffer
-	BOOL m_PrerollSamplesSaved;
-	BOOL m_bPassThrough;        // pass the data through without change
+	bool m_PrerollSamplesSaved;
+	bool m_bPassThrough;        // pass the data through without change
 	int m_FftResultsProcessed;
 	// when all the processing is done, they should be the same
 
@@ -2343,7 +2549,7 @@ struct NoiseReductionChannelData
 	float * m_AccumBuffer;
 	DATA * m_FftInBuffer;
 	std::complex<DATA> * m_FftOutBuffer;
-	SIGNAL_PARAMS * m_pParams;
+	std::vector<SIGNAL_PARAMS> m_pParams;
 
 	NoiseReductionChannelData(NoiseReductionCore * nr, int FftOrder, BOOL PassThrough);
 	~NoiseReductionChannelData();
@@ -2360,15 +2566,16 @@ struct NoiseReductionChannelData
 		InputDataBuffer.Purge();
 		OutputDataBuffer.Purge();
 		PassThroughBuffer.Purge();
-		for (unsigned i = 0; i <= m_FftOrder; i++)
-		{
-			m_pParams[i] = SIGNAL_PARAMS();
-		}
+
+		std::fill(m_pParams.begin(), m_pParams.end(), SIGNAL_PARAMS(pNr));
+
 		m_nSamplesReceived = 0;
 		m_nSamplesStored = 0;
 		m_PrerollSamplesSaved = FALSE;
 		m_FftResultsProcessed = 0;
 	}
+
+	SIGNAL_PARAMS * GetSignalParams() { return & m_pParams.front(); }
 
 	void ProcessInputFft();
 	void AnalyzeInputFft();
@@ -2394,17 +2601,17 @@ struct NoiseReductionChannelData
 
 NoiseReductionParameters::NoiseReductionParameters()
 	: m_MinFrequencyToProcess(3000.),
-	m_AvgFreqDecayRate(0.1f),
+	m_AvgFreqDecayRate(0.3f),
 	m_AvgLevelDecayRate(0.2f),
-	m_FreqErrorDecayRate(0.2f),
+	m_FreqErrorDecayRate(0.3f),
 	m_LevelErrorDecayRate(0.5),
-	m_FreqDevDecayRate(0.3f),
+	m_FreqDevDecayRate(0.2f),
 	m_LevelDevDecayRate(0.2f),
-	m_ThresholdOfTransient(2.),  // Nepers
+	m_ThresholdOfTransientAttack(2.f),
+	m_ThresholdOfTransientDecay(0.3f),
 	m_FreqThresholdOfNoiselike(float(M_PI * M_PI / (4. * 4))),
 	m_LevelThresholdForNoiseLow(8.),   // Nepers
 	m_LevelThresholdForNoiseHigh(8.),   // Nepers
-//m_LevelThresholdForStationary(6.),   // Nepers
 	m_MaxNoiseSuppression(2.),      // Nepers
 
 	m_NearMaskingDecayDistanceHigh(500.f),
@@ -2429,8 +2636,8 @@ void NoiseReductionParameters::Dump(unsigned indent) const
 	TRACE(" %*.sFreqDevDecayRate=%f, LevelDevDecayRate=%f\n",
 		indent, "", m_FreqDevDecayRate, m_LevelDevDecayRate);
 
-	TRACE(" %*.sThresholdOfTransient=%f, FreqThresholdOfNoiselike=%f\n",
-		indent, "", m_ThresholdOfTransient, m_FreqThresholdOfNoiselike);
+	TRACE(" %*.sThresholdOfTransientAttack=%f, FreqThresholdOfNoiselike=%f\n",
+		indent, "", m_ThresholdOfTransientAttack, m_FreqThresholdOfNoiselike);
 
 	TRACE(" %*.sLevelThresholdForNoiseLow=%f, LevelThresholdForNoiseHigh=%f\n",
 		indent, "", m_LevelThresholdForNoiseLow, m_LevelThresholdForNoiseHigh);
@@ -2595,7 +2802,7 @@ void NoiseReductionCore::GetAudioMasking(DATA * pBuf)  // nChannels * FftOrder
 	{
 		DATA * pDst = pBuf + ch;
 		NoiseReductionChannelData * pCh = m_ChannelData[ch];
-		SIGNAL_PARAMS const * pParms = pCh->m_pParams;
+		SIGNAL_PARAMS const * pParms = & pCh->m_pParams.front();
 
 		for (unsigned i = 0; i < m_nFftOrder; i++, pParms++, pDst += m_nChannels)
 		{
@@ -2621,12 +2828,12 @@ void NoiseReductionCore::GetPowerInBands(DATA * pBuf)  // nChannels * FftOrder
 	for (int ch = 0; ch < m_nChannels; ch++)
 	{
 		NoiseReductionChannelData * pCh = m_ChannelData[ch];
-		SIGNAL_PARAMS const * pParms = pCh->m_pParams;
+		SIGNAL_PARAMS const * pParms = & pCh->m_pParams.front();
 		DATA * pDst = pBuf + ch;
 
 		for (unsigned i = 0; i < m_nFftOrder; i++, pParms++, pDst += m_nChannels)
 		{
-			*pDst = pParms->sp_Power;
+			*pDst = pParms->Power[0];
 		}
 	}
 }
@@ -2636,7 +2843,7 @@ void NoiseReductionCore::GetResultPowerInBands(DATA * pBuf)  // nChannels * FftO
 	for (int ch = 0; ch < m_nChannels; ch++)
 	{
 		NoiseReductionChannelData * pCh = m_ChannelData[ch];
-		SIGNAL_PARAMS const * pParms = pCh->m_pParams;
+		SIGNAL_PARAMS const * pParms = & pCh->m_pParams.front();
 
 		for (unsigned i = 0; i < m_nFftOrder; i++, pBuf++, pParms++)
 		{
@@ -2797,6 +3004,11 @@ void NoiseReductionCore::ProcessInverseFft()
 	}
 }
 
+bool NoiseReductionCore::IsTonalBand(int ch, int f) const
+{
+	return m_ChannelData[ch]->m_pParams[f].m_TonalBand;
+}
+
 ////////////////////////////////////////////////////////////////////////
 ///////////////  CNoiseReduction
 CNoiseReduction::CNoiseReduction(WAVEFORMATEX const * pWf, CHANNEL_MASK ChannelsToProcess, unsigned nFftOrder, NoiseReductionParameters const & nr)
@@ -2922,8 +3134,6 @@ size_t CNoiseReduction::ProcessSoundBuffer(char const * pIn, char * pOut,
 			TmpSamples *= nChans;
 			for (int i = 0; i < TmpSamples; i++, pOutBuf++)
 			{
-				ASSERT(tmp[i] <= 32767. && tmp[i] >= -32768.);
-
 				*pOutBuf = DoubleToShort(tmp[i]);
 			}
 		}
@@ -2946,11 +3156,11 @@ NoiseReductionChannelData::NoiseReductionChannelData(NoiseReductionCore * nr, in
 	, m_AccumBuffer(new float[nFftOrder])
 	, m_FftInBuffer(new DATA[nFftOrder * 2])
 	, m_FftOutBuffer(new complex<DATA>[nFftOrder + 1])
-	, m_pParams(new SIGNAL_PARAMS[nFftOrder + 1])
+	, m_pParams(nFftOrder + 1, SIGNAL_PARAMS(nr))
 	, m_nSamplesReceived(0)
 	, m_nSamplesStored(0)
 	, m_PrerollSamplesSaved(FALSE)
-	, m_bPassThrough(PassThrough)
+	, m_bPassThrough(PassThrough != FALSE)
 	, m_FftResultsProcessed(0)
 {
 	memset(m_AccumBuffer, 0, nFftOrder * (sizeof (float)));
@@ -2964,7 +3174,6 @@ NoiseReductionChannelData::~NoiseReductionChannelData()
 	delete[] m_AccumBuffer;
 	delete[] m_FftInBuffer;
 	delete[] m_FftOutBuffer;
-	delete[] m_pParams;
 }
 
 int NoiseReductionChannelData::FlushSamples(DATA * pBuf, int nOutSamples, int nChannels)
@@ -3080,20 +3289,24 @@ void NoiseReductionChannelData::AnalyzeInputFft()
 {
 	for (unsigned f = 0; f <= m_FftOrder; f++)
 	{
-		m_pParams[f].AnalyzeFftSample(m_FftOutBuffer[f], pNr, f);
+		m_pParams[f].AnalyzeFftSample(m_FftOutBuffer[f], f);
+		if (f == 1487)//f >= 16000 * m_FftOrder / 22050 -2 && f <= 16000 * m_FftOrder / 22050+2)
+		{
+			m_pParams[f].Dump(f);
+		}
 	}
 }
 
 void NoiseReductionChannelData::AccumulateSubbandPower(float SubbandPower[FAR_MASKING_GRANULARITY])
 {
 	int const BandsPerMaskGranule = m_FftOrder / FAR_MASKING_GRANULARITY;
-	SIGNAL_PARAMS * p = m_pParams;
+	SIGNAL_PARAMS * p = GetSignalParams();
 
 	for (int n = 0; n < FAR_MASKING_GRANULARITY; n++)
 	{
 		for (int k = 0; k < BandsPerMaskGranule; k++, p++)
 		{
-			SubbandPower[n] += p->sp_Power;
+			SubbandPower[n] += p->Power[0];
 		}
 	}
 }
@@ -3106,7 +3319,7 @@ int NoiseReductionChannelData::DrainOutBuffer(DATA * pBuf, int nOutSamples, int 
 
 	for (int i = 0; i < nSamples; i++, pBuf += nChannels)
 	{
-		ASSERT(OutputDataBuffer[0] <= 32767. && OutputDataBuffer[0] >= -32768.);
+		//ASSERT(OutputDataBuffer[0] <= 32767. && OutputDataBuffer[0] >= -32768.);
 
 		pBuf[0] = OutputDataBuffer.Read();
 	}
@@ -3139,7 +3352,7 @@ void NoiseReductionChannelData::ProcessInverseFft()
 			{
 				DATA tmp = Window[f] * m_FftInBuffer[f] + m_AccumBuffer[f];
 
-				ASSERT(tmp <= 32767. && tmp >= -32768.);
+				//ASSERT(tmp <= 32767. && tmp >= -32768.);
 
 				OutputDataBuffer.Write(tmp);
 
@@ -3173,19 +3386,19 @@ void NoiseReductionChannelData::AdjustFftBands(float const * pNoiseFloor, double
 
 		for (unsigned f = 2; f < m_FftOrder - 1; f++)
 		{
-			TotalPower1 += m_pParams[f].sp_Power;
+			TotalPower1 += m_pParams[f].Power[0];
 			TotalPower2 += m_pParams[f].sp_MaskingPower;
-			if (MaxBandPower1 < m_pParams[f].sp_Power)
+			if (MaxBandPower1 < m_pParams[f].Power[0])
 			{
-				MaxBandPower1 = m_pParams[f].sp_Power;
+				MaxBandPower1 = m_pParams[f].Power[0];
 			}
 			if (MaxBandPower2 < m_pParams[f].sp_MaskingPower)
 			{
 				MaxBandPower2 = m_pParams[f].sp_MaskingPower;
 			}
-			if (MinBandPower1 > m_pParams[f].sp_Power)
+			if (MinBandPower1 > m_pParams[f].Power[0])
 			{
-				MinBandPower1 = m_pParams[f].sp_Power;
+				MinBandPower1 = m_pParams[f].Power[0];
 			}
 			if (MinBandPower2 > m_pParams[f].sp_MaskingPower)
 			{
@@ -3226,7 +3439,7 @@ void NoiseReductionChannelData::AdjustFftBands(float const * pNoiseFloor, double
 	}
 #endif
 
-	SIGNAL_PARAMS * p = m_pParams;
+	SIGNAL_PARAMS * p = GetSignalParams();
 
 	for (unsigned f = 0; f <= m_FftOrder; f++, p++)
 	{
@@ -3278,17 +3491,17 @@ void NoiseReductionChannelData::ApplyFarMasking(float FarMasking[FAR_MASKING_GRA
 
 	int const BandsPerMaskGranule = m_FftOrder / FAR_MASKING_GRANULARITY;
 
-	SIGNAL_PARAMS * p = m_pParams;
+	SIGNAL_PARAMS * p = GetSignalParams();
 
 	for (int n = 0; n < FAR_MASKING_GRANULARITY; n++)
 	{
 		for (int k = 0; k < BandsPerMaskGranule; k++, p++)
 		{
-			p->sp_MaskingPower = float(p->sp_Power + FarMaskingFactor * FarMasking[n]);
+			p->sp_MaskingPower = float(p->Power[0] + FarMaskingFactor * FarMasking[n]);
 		}
 	}
 	// last FFT term
-	p->sp_MaskingPower = float(p->sp_Power + FarMaskingFactor * FarMasking[FAR_MASKING_GRANULARITY - 1]);
+	p->sp_MaskingPower = float(p->Power[0] + FarMaskingFactor * FarMasking[FAR_MASKING_GRANULARITY - 1]);
 }
 
 void NoiseReductionChannelData::CalculateMasking(double MaskingSpectralDecayNormLow,
@@ -3297,7 +3510,7 @@ void NoiseReductionChannelData::CalculateMasking(double MaskingSpectralDecayNorm
 	double const MaskingDistanceDelta =
 		(MaskingSpectralDecayNormHigh - MaskingSpectralDecayNormLow) / (m_FftOrder);
 
-	SIGNAL_PARAMS * p = m_pParams + m_FftOrder;
+	SIGNAL_PARAMS * p = GetSignalParams() + m_FftOrder;
 
 	double PrevFilteredPower = p->sp_MaskingPower;
 
@@ -3321,7 +3534,7 @@ void NoiseReductionChannelData::CalculateMasking(double MaskingSpectralDecayNorm
 		MaskingSpectralDecayNormHigh -= MaskingDistanceDelta;
 	}
 
-	p = m_pParams;
+	p = GetSignalParams();
 	for (unsigned f = 0; f <= m_FftOrder; f++, MaskingSpectralDecayNormLow += MaskingDistanceDelta, p++)
 	{
 		PrevFilteredPower += (p->sp_MaskingPower - PrevFilteredPower) / MaskingSpectralDecayNormLow;
@@ -3335,7 +3548,7 @@ void NoiseReductionChannelData::ProcessMaskingTemporalEnvelope(double MaskingTem
 																unsigned MinFrequencyBandToProcess)
 {
 	// filter in time
-	SIGNAL_PARAMS * p = m_pParams;
+	SIGNAL_PARAMS * p = GetSignalParams();
 	double const DecayDelta =
 		(MaskingTemporalDecayNormHigh - MaskingTemporalDecayNormLow) / (m_FftOrder - MinFrequencyBandToProcess);
 
@@ -3890,16 +4103,16 @@ void CResampleFilter::InitSlidingInterpolatedFilter(int FilterLength)
 	{
 		// upsampling.
 		//
-		double InputPeriod = 0x100000000LL / m_SamplesInFilter;
-		m_InputPeriod = unsigned __int32(InputPeriod);
-		m_OutputPeriod = unsigned __int32(InputPeriod * m_InputFormat.SampleRate() / m_EffectiveOutputSampleRate);
+		double InputPeriod = 4294967296. / m_SamplesInFilter; // 0x100000000LL
+		m_InputPeriod = (unsigned __int32)(InputPeriod);
+		m_OutputPeriod = (unsigned __int32)(InputPeriod * m_InputFormat.SampleRate() / m_EffectiveOutputSampleRate);
 	}
 	else
 	{
 		// downsampling
-		double OutputPeriod = 0x100000000LL / (FilterLength + 1.);
-		m_OutputPeriod = unsigned __int32(OutputPeriod);
-		m_InputPeriod = unsigned __int32(OutputPeriod * m_EffectiveOutputSampleRate / m_InputFormat.SampleRate());
+		double OutputPeriod = 4294967296. / (FilterLength + 1.); //0x100000000LL
+		m_OutputPeriod = (unsigned __int32)(OutputPeriod);
+		m_InputPeriod = (unsigned __int32)(OutputPeriod * m_EffectiveOutputSampleRate / m_InputFormat.SampleRate());
 	}
 	//TRACE("InputPeriod=%08x, OutputPeriod=%08x\n", m_InputPeriod, m_OutputPeriod);
 #ifdef _DEBUG

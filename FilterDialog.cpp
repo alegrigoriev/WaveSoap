@@ -27,17 +27,135 @@ enum
 	NotchZeroIndex,
 	LpfPassbandIndex,
 	LpfStopbandIndex,
+	HilbertPassIndex,
 	MaxFilterFrequencies,
 	LeftmostPoint = -1,
 	RightmostPoint = MaxFilterFrequencies + 1,
 
-	HighpassFilter = HpfStopbandIndex,
-	LowpassFilter = LpfPassbandIndex,
-	NotchFilter = NotchBeginIndex,
+	HighpassFilterIndex = HpfStopbandIndex,
+	LowpassFilterIndex = LpfPassbandIndex,
+	NotchFilterIndex = NotchBeginIndex,
+	HilbertFilterIndex = HilbertPassIndex,
 };
 
 //////////////////////////////////////////////////////////////////
 //////////////// Filter
+class LowpassFilter
+{
+public:
+	LowpassFilter()
+		: m_Order(0),
+		m_ZeroPhase(FALSE)
+	{
+		Reset();
+	}
+	void Rebuild();
+	void Reset();
+	int GetFilterOrder() const
+	{
+		return m_Order;
+	}
+	void SetZeroPhase(bool ZeroPhase)
+	{
+		m_ZeroPhase = ZeroPhase;
+	}
+	std::complex<double> CalculateResponse(std::complex<double> z) const;
+	BOOL CreateElliptic(double PassFreq, double PassLoss,
+						double StopFreq, double StopLoss);
+	void GetCoefficients(double Coeffs[MaxFilterOrder][6]) const;
+
+	bool	m_ZeroPhase;
+	int     m_Order;    // low pass filter order
+	double  m_Coeffs[MaxFilterOrder][6];
+};
+
+class HighpassFilter
+{
+public:
+	HighpassFilter()
+		: m_Order(0),
+		m_ZeroPhase(FALSE)
+	{
+		Reset();
+	}
+
+	void Rebuild();
+	void Reset();
+	int GetFilterOrder() const
+	{
+		return m_Order;
+	}
+	void SetZeroPhase(bool ZeroPhase)
+	{
+		m_ZeroPhase = ZeroPhase;
+	}
+	std::complex<double> CalculateResponse(std::complex<double> z) const;
+	BOOL CreateElliptic(double PassFreq, double PassLoss,
+						double StopFreq, double StopLoss);
+	void GetCoefficients(double Coeffs[MaxFilterOrder][6]) const;
+
+	BOOL	m_ZeroPhase;
+	int     m_Order;    // low pass filter order
+	double  m_Coeffs[MaxFilterOrder][6];
+};
+
+class NotchFilter
+{
+public:
+	NotchFilter()
+		: m_Order(0),
+		m_ZeroPhase(FALSE)
+	{
+		Reset();
+	}
+
+	void Rebuild();
+	void Reset();
+	int GetFilterOrder() const
+	{
+		return m_Order;
+	}
+	void SetZeroPhase(bool ZeroPhase)
+	{
+		m_ZeroPhase = ZeroPhase;
+	}
+	std::complex<double> CalculateResponse(std::complex<double> z) const;
+	void Create(double PassFreq, double StopFreq);
+	void GetCoefficients(double Coeffs[MaxFilterOrder][6]) const;
+
+	bool	m_ZeroPhase;
+	int     m_Order;    // low pass filter order
+	double  m_Coeffs[MaxFilterOrder][6];
+};
+
+class HilbertTransformFilter
+{
+public:
+	HilbertTransformFilter()
+		: m_Order(0)
+	{
+		Reset();
+	}
+
+	void Rebuild();
+	void Reset();
+	int GetFilterOrder() const
+	{
+		return m_Order;
+	}
+
+	std::complex<double> CalculateResponse(std::complex<double> z) const
+	{
+		return 1.;
+	}
+	BOOL CreateElliptic(double PassFreq, double PassLoss,
+						double StopFreq, double StopLoss);
+	void GetCoefficients(double Coeffs[MaxFilterOrder][6]) const;
+
+	int     m_Order;    // low pass filter order
+	double  m_Coeffs[MaxFilterOrder][6];
+};
+
 class Filter
 {
 public:
@@ -52,15 +170,22 @@ public:
 
 	BOOL LowPassEnabled() const
 	{
-		return m_bLowPass;
+		return m_LowPassEnabled && ! m_HilbertEnabled;
 	}
+
 	BOOL HighPassEnabled() const
 	{
-		return m_bHighPass;
+		return m_HighPassEnabled && ! m_HilbertEnabled;
 	}
+
 	BOOL NotchEnabled() const
 	{
-		return m_bNotchFilter;
+		return m_NotchEnabled && ! m_HilbertEnabled;
+	}
+
+	BOOL HilbertTransformEnabled() const
+	{
+		return m_HilbertEnabled;
 	}
 
 	int GetLowpassFilterOrder() const;
@@ -69,19 +194,39 @@ public:
 
 	int GetNotchFilterOrder() const;
 
-	void GetLpfCoefficients(double Coeffs[MaxFilterOrder][6]);
+	int GetHilbertFilterOrder() const
+	{
+		return m_HilbertTransform.GetFilterOrder();
+	}
 
-	void GetHpfCoefficients(double Coeffs[MaxFilterOrder][6]);
+	void GetLpfCoefficients(double Coeffs[MaxFilterOrder][6]) const
+	{
+		m_LowpassFilter.GetCoefficients(Coeffs);
+	}
 
-	void GetNotchCoefficients(double Coeffs[MaxFilterOrder][6]);
+	void GetHpfCoefficients(double Coeffs[MaxFilterOrder][6]) const
+	{
+		m_HighpassFilter.GetCoefficients(Coeffs);
+	}
+
+	void GetNotchCoefficients(double Coeffs[MaxFilterOrder][6]) const
+	{
+		m_NotchFilter.GetCoefficients(Coeffs);
+	}
+
+	void GetHilbertCoefficients(double Coeffs[MaxFilterOrder][6]) const
+	{
+		m_HilbertTransform.GetCoefficients(Coeffs);
+	}
 
 	void EnableLowPass(bool Enable = true);
 	void EnableHighPass(bool Enable = true);
 	void EnableNotch(bool Enable = true);
+	void EnableHilbert(bool Enable = true);
 	void SetZeroPhase(bool ZeroPhase = true);
 
 	// frequency is in radians
-	std::complex<float> CalculateResponse(double Frequency);
+	std::complex<float> CalculateResponse(double Frequency) const;
 	void CalculateCoefficients(double Gain1, double Frequency1,
 								double Gain2, double Frequency2);
 	BOOL CreateLowpassElliptic(double PassFreq, double PassLoss,
@@ -94,29 +239,24 @@ protected:
 	// frequencies are in radians/s
 	double m_Frequencies[MaxFilterFrequencies];
 	double m_Transfer[MaxFilterFrequencies];
+	BOOL        m_LowPassEnabled;
+	BOOL        m_HighPassEnabled;
+	BOOL        m_NotchEnabled;
+	BOOL        m_HilbertEnabled;
 
-	BOOL	m_bLowPass;
-	int     m_nLpfOrder;    // low pass filter order
-	double m_LpfCoeffs[MaxFilterOrder][6];
-
-	BOOL	m_bHighPass;
-	int     m_nHpfOrder;    // high pass filter order
-	double m_HpfCoeffs[MaxFilterOrder][6];
-
-	BOOL    m_bNotchFilter;
-	int     m_nNotchOrder;
-	double m_NotchCoeffs[MaxFilterOrder][6];
+	LowpassFilter       m_LowpassFilter;
+	HighpassFilter      m_HighpassFilter;
+	NotchFilter         m_NotchFilter;
+	HilbertTransformFilter   m_HilbertTransform;
 
 	BOOL	m_bZeroPhase;
 };
 
 Filter::Filter()
-	: m_bLowPass(FALSE),
-	m_nLpfOrder(0),
-	m_bHighPass(FALSE),
-	m_nHpfOrder(0),
-	m_bNotchFilter(FALSE),
-	m_nNotchOrder(0),
+	: m_LowPassEnabled(FALSE),
+	m_HighPassEnabled(FALSE),
+	m_NotchEnabled(FALSE),
+	m_HilbertEnabled(FALSE),
 	m_bZeroPhase(FALSE)
 {
 	ResetBands();
@@ -124,43 +264,75 @@ Filter::Filter()
 
 void Filter::ResetBands()
 {
-	int i;
-	for (i = 0; i < MaxFilterFrequencies; i++)
+	for (int i = 0; i < MaxFilterFrequencies; i++)
 	{
 		m_Frequencies[i] = 1.;
 		m_Transfer[i] = 1.;
 	}
 
-	for (i = 0; i < MaxFilterOrder; i++)
+	m_LowpassFilter.Reset();
+	m_HighpassFilter.Reset();
+	m_NotchFilter.Reset();
+	m_HilbertTransform.Reset();
+}
+
+void LowpassFilter::Reset()
+{
+	for (int i = 0; i < MaxFilterOrder; i++)
 	{
-		m_LpfCoeffs[i][0] = 0.;
-		m_LpfCoeffs[i][1] = 0.;
-		m_LpfCoeffs[i][2] = 0.;
-		m_LpfCoeffs[i][3] = 1.;
-		m_LpfCoeffs[i][4] = 0.;
-		m_LpfCoeffs[i][5] = 0.;
+		m_Coeffs[i][0] = 0.;
+		m_Coeffs[i][1] = 0.;
+		m_Coeffs[i][2] = 0.;
+		m_Coeffs[i][3] = 1.;
+		m_Coeffs[i][4] = 0.;
+		m_Coeffs[i][5] = 0.;
+	}
+}
 
-		m_HpfCoeffs[i][0] = 0.;
-		m_HpfCoeffs[i][1] = 0.;
-		m_HpfCoeffs[i][2] = 0.;
-		m_HpfCoeffs[i][3] = 1.;
-		m_HpfCoeffs[i][4] = 0.;
-		m_HpfCoeffs[i][5] = 0.;
+void HighpassFilter::Reset()
+{
+	for (int i = 0; i < MaxFilterOrder; i++)
+	{
+		m_Coeffs[i][0] = 0.;
+		m_Coeffs[i][1] = 0.;
+		m_Coeffs[i][2] = 0.;
+		m_Coeffs[i][3] = 1.;
+		m_Coeffs[i][4] = 0.;
+		m_Coeffs[i][5] = 0.;
+	}
+}
 
-		m_NotchCoeffs[i][0] = 0.;
-		m_NotchCoeffs[i][1] = 0.;
-		m_NotchCoeffs[i][2] = 0.;
-		m_NotchCoeffs[i][3] = 1.;
-		m_NotchCoeffs[i][4] = 0.;
-		m_NotchCoeffs[i][5] = 0.;
+void NotchFilter::Reset()
+{
+	for (int i = 0; i < MaxFilterOrder; i++)
+	{
+		m_Coeffs[i][0] = 0.;
+		m_Coeffs[i][1] = 0.;
+		m_Coeffs[i][2] = 0.;
+		m_Coeffs[i][3] = 1.;
+		m_Coeffs[i][4] = 0.;
+		m_Coeffs[i][5] = 0.;
+	}
+}
+
+void HilbertTransformFilter::Reset()
+{
+	for (int i = 0; i < MaxFilterOrder; i++)
+	{
+		m_Coeffs[i][0] = 0.;
+		m_Coeffs[i][1] = 0.;
+		m_Coeffs[i][2] = 0.;
+		m_Coeffs[i][3] = 1.;
+		m_Coeffs[i][4] = 0.;
+		m_Coeffs[i][5] = 0.;
 	}
 }
 
 int Filter::GetLowpassFilterOrder() const
 {
-	if (m_bLowPass)
+	if (LowPassEnabled())
 	{
-		return m_nLpfOrder;
+		return m_HighpassFilter.GetFilterOrder();
 	}
 	else
 	{
@@ -170,9 +342,9 @@ int Filter::GetLowpassFilterOrder() const
 
 int Filter::GetHighpassFilterOrder() const
 {
-	if (m_bHighPass)
+	if (HighPassEnabled())
 	{
-		return m_nHpfOrder;
+		return m_HighpassFilter.GetFilterOrder();
 	}
 	else
 	{
@@ -182,9 +354,9 @@ int Filter::GetHighpassFilterOrder() const
 
 int Filter::GetNotchFilterOrder() const
 {
-	if (m_bNotchFilter)
+	if (NotchEnabled())
 	{
-		return m_nNotchOrder;
+		return m_HighpassFilter.GetFilterOrder();
 	}
 	else
 	{
@@ -192,166 +364,224 @@ int Filter::GetNotchFilterOrder() const
 	}
 }
 
-void Filter::GetLpfCoefficients(double Coeffs[MaxFilterOrder][6])
+void LowpassFilter::GetCoefficients(double Coeffs[MaxFilterOrder][6]) const
 {
 	for (int i = 0; i < MaxFilterOrder; i++)
 	{
 		for (int j = 0; j < 6; j++)
 		{
-			Coeffs[i][j] = m_LpfCoeffs[i][j];
+			Coeffs[i][j] = m_Coeffs[i][j];
 		}
 	}
 }
 
-void Filter::GetHpfCoefficients(double Coeffs[MaxFilterOrder][6])
+void HighpassFilter::GetCoefficients(double Coeffs[MaxFilterOrder][6]) const
 {
 	for (int i = 0; i < MaxFilterOrder; i++)
 	{
 		for (int j = 0; j < 6; j++)
 		{
-			Coeffs[i][j] = m_HpfCoeffs[i][j];
+			Coeffs[i][j] = m_Coeffs[i][j];
 		}
 	}
 }
 
-void Filter::GetNotchCoefficients(double Coeffs[MaxFilterOrder][6])
+void NotchFilter::GetCoefficients(double Coeffs[MaxFilterOrder][6]) const
 {
 	for (int i = 0; i < MaxFilterOrder; i++)
 	{
 		for (int j = 0; j < 6; j++)
 		{
-			Coeffs[i][j] = m_NotchCoeffs[i][j];
+			Coeffs[i][j] = m_Coeffs[i][j];
+		}
+	}
+}
+
+void HilbertTransformFilter::GetCoefficients(double Coeffs[MaxFilterOrder][6]) const
+{
+	for (int i = 0; i < MaxFilterOrder; i++)
+	{
+		for (int j = 0; j < 6; j++)
+		{
+			Coeffs[i][j] = m_Coeffs[i][j];
 		}
 	}
 }
 
 void Filter::EnableLowPass(bool Enable)
 {
-	m_bLowPass = Enable;
+	m_LowPassEnabled = Enable;
 	RebuildFilters();
 }
 
 void Filter::EnableHighPass(bool Enable)
 {
-	m_bHighPass = Enable;
+	m_HighPassEnabled = Enable;
 	RebuildFilters();
 }
 
 void Filter::EnableNotch(bool Enable)
 {
-	m_bNotchFilter = Enable;
+	m_NotchEnabled = Enable;
+	RebuildFilters();
+}
+
+void Filter::EnableHilbert(bool Enable)
+{
+	m_HilbertEnabled = Enable;
 	RebuildFilters();
 }
 
 void Filter::SetZeroPhase(bool ZeroPhase)
 {
 	m_bZeroPhase = ZeroPhase;
+	m_LowpassFilter.SetZeroPhase(ZeroPhase);
+	m_HighpassFilter.SetZeroPhase(ZeroPhase);
+	m_NotchFilter.SetZeroPhase(ZeroPhase);
 	RebuildFilters();
 }
 
 using std::complex;
 // frequency is in radians
-complex<float> Filter::CalculateResponse(double Frequency)
+complex<double> LowpassFilter::CalculateResponse(complex<double> z) const
 {
-	complex<double> Numerator;
-	complex<double> Denominator;
+	complex<double> Result(0., 0.);
+	for (int i = 0; i < m_Order; i++)
+	{
+		Result += (m_Coeffs[i][0] + z * (m_Coeffs[i][1] + z * m_Coeffs[i][2]))
+				/ (m_Coeffs[i][3] + z * (m_Coeffs[i][4] + z * m_Coeffs[i][5]));
+	}
+
+	if (m_ZeroPhase)
+	{
+		// filter is applied twice
+		return Result * conj(Result);
+	}
+	else
+	{
+		return Result;
+	}
+}
+
+complex<double> NotchFilter::CalculateResponse(complex<double> z) const
+{
+	complex<double> Result(0., 0.);
+	for (int i = 0; i < m_Order; i++)
+	{
+		Result += (m_Coeffs[i][0] + z * (m_Coeffs[i][1] + z * m_Coeffs[i][2]))
+				/ (m_Coeffs[i][3] + z * (m_Coeffs[i][4] + z * m_Coeffs[i][5]));
+	}
+
+	if (m_ZeroPhase)
+	{
+		// filter is applied twice
+		return Result * conj(Result);
+	}
+	else
+	{
+		return Result;
+	}
+}
+
+complex<double> HighpassFilter::CalculateResponse(complex<double> z) const
+{
+	complex<double> Result(0., 0.);
+	for (int i = 0; i < m_Order; i++)
+	{
+		Result += (m_Coeffs[i][0] + z * (m_Coeffs[i][1] + z * m_Coeffs[i][2]))
+				/ (m_Coeffs[i][3] + z * (m_Coeffs[i][4] + z * m_Coeffs[i][5]));
+	}
+
+	if (m_ZeroPhase)
+	{
+		// filter is applied twice
+		return Result * conj(Result);
+	}
+	else
+	{
+		return Result;
+	}
+}
+
+complex<float> Filter::CalculateResponse(double Frequency) const
+{
 	complex<double> Result(1., 0.);
 
 	complex<double> z(cos(Frequency), -sin(Frequency));
-	complex<double> z2(cos(Frequency * 2), -sin(Frequency * 2));
 
-	if (m_bLowPass)
+	if (LowPassEnabled())
 	{
-		complex<double> LpfResult(0., 0.);
-		for (int i = 0; i < m_nLpfOrder; i++)
-		{
-			LpfResult += (m_LpfCoeffs[i][0] + z * m_LpfCoeffs[i][1]
-							+ z2 * m_LpfCoeffs[i][2])
-						/ (m_LpfCoeffs[i][3] + z * m_LpfCoeffs[i][4]
-							+ z2 * m_LpfCoeffs[i][5]);
-		}
-		Result *= LpfResult;
+		Result *= m_LowpassFilter.CalculateResponse(z);
 	}
 
-	if (m_bHighPass)
+	if (HighPassEnabled())
 	{
-		complex<double> HpfResult(0., 0.);
-		for (int i = 0; i < m_nHpfOrder; i++)
-		{
-			HpfResult += (m_HpfCoeffs[i][0] + z * m_HpfCoeffs[i][1]
-							+ z2 * m_HpfCoeffs[i][2])
-						/ (m_HpfCoeffs[i][3] + z * m_HpfCoeffs[i][4]
-							+ z2 * m_HpfCoeffs[i][5]);
-		}
-		Result *= HpfResult;
+		Result *= m_HighpassFilter.CalculateResponse(z);
 	}
 
-	if (m_bNotchFilter)
+	if (NotchEnabled())
 	{
-		complex<double> NotchResult(1., 0.);
-		for (int i = 0; i < m_nNotchOrder; i++)
-		{
-			NotchResult *= (m_NotchCoeffs[i][0] + z * m_NotchCoeffs[i][1]
-								+ z2 * m_NotchCoeffs[i][2])
-							/ (m_NotchCoeffs[i][3] + z * m_NotchCoeffs[i][4]
-								+ z2 * m_NotchCoeffs[i][5]);
-		}
-		Result *= NotchResult;
+		Result *= m_NotchFilter.CalculateResponse(z);
 	}
 
-	if (m_bZeroPhase)
+	if (HilbertTransformEnabled())
 	{
-		// filter is applied twice
-		Result *= conj(Result);
+		Result *= m_HilbertTransform.CalculateResponse(z);
 	}
+
 	return complex<float>(Result);
 }
 
 void Filter::RebuildFilters()
 {
-	if (m_bLowPass)
+	if (LowPassEnabled())
 	{
-		CreateLowpassElliptic(m_Frequencies[LpfPassbandIndex],
-							m_Transfer[LpfPassbandIndex],
-							m_Frequencies[LpfStopbandIndex],
-							m_Transfer[LpfStopbandIndex]);
+		m_LowpassFilter.CreateElliptic(m_Frequencies[LpfPassbandIndex],
+										m_Transfer[LpfPassbandIndex],
+										m_Frequencies[LpfStopbandIndex],
+										m_Transfer[LpfStopbandIndex]);
 	}
 
-	if (m_bHighPass)
+	if (HighPassEnabled())
 	{
-		CreateHighpassElliptic(m_Frequencies[HpfPassbandIndex],
-								m_Transfer[HpfPassbandIndex],
-								m_Frequencies[HpfStopbandIndex],
-								m_Transfer[HpfStopbandIndex]);
+		m_HighpassFilter.CreateElliptic(m_Frequencies[HpfPassbandIndex],
+										m_Transfer[HpfPassbandIndex],
+										m_Frequencies[HpfStopbandIndex],
+										m_Transfer[HpfStopbandIndex]);
 	}
 
-	if (m_bNotchFilter)
+	if (NotchEnabled())
 	{
-		// two zeros at unity circle, two poles
-		double f0 = m_Frequencies[NotchZeroIndex];
-		double Width = fabs(f0 - m_Frequencies[NotchBeginIndex]);
-		if (m_bZeroPhase)
-		{
-			Width /= 2.;
-		}
-		m_nNotchOrder = 1;
-		double RotC = cos(f0);
-		double pole = 1. - Width;
-		m_NotchCoeffs[0][0] = 1;
-		m_NotchCoeffs[0][1] = -2 * RotC;
-		m_NotchCoeffs[0][2] = 1;
-		m_NotchCoeffs[0][3] = 1;
-		m_NotchCoeffs[0][4] = -2 * pole * RotC;
-		m_NotchCoeffs[0][5] = pole * pole;
+		m_NotchFilter.Create(m_Frequencies[NotchBeginIndex], m_Frequencies[NotchZeroIndex]);
 	}
 }
 
-BOOL Filter::CreateLowpassElliptic(double PassFreq, double PassLoss,
+void NotchFilter::Create(double PassFreq, double StopFreq)
+{
+	// two zeros at unity circle, two poles
+	double Width = fabs(StopFreq - PassFreq);
+	if (m_ZeroPhase)
+	{
+		Width /= 2.;
+	}
+	m_Order = 1;
+	double RotC = cos(StopFreq);
+	double pole = 1. - Width;
+
+	m_Coeffs[0][0] = 1;
+	m_Coeffs[0][1] = -2 * RotC;
+	m_Coeffs[0][2] = 1;
+	m_Coeffs[0][3] = 1;
+	m_Coeffs[0][4] = -2 * pole * RotC;
+	m_Coeffs[0][5] = pole * pole;
+}
+
+BOOL LowpassFilter::CreateElliptic(double PassFreq, double PassLoss,
 									double StopFreq, double StopLoss)
 {
 	double OmegaPass = 2. * tan(PassFreq / 2.);
 	double OmegaStop = 2. * tan(StopFreq / 2.);
-	if (m_bZeroPhase)
+	if (m_ZeroPhase)
 	{
 		PassLoss = sqrt(PassLoss);
 		StopLoss = sqrt(StopLoss);
@@ -366,7 +596,7 @@ BOOL Filter::CreateLowpassElliptic(double PassFreq, double PassLoss,
 	CArray<polyRatio *, polyRatio *> * pDecomposed
 		= polyRatio(poly(zeros, NormCoeff), poly(poles)).Decompose(2, & poles);
 
-	m_nLpfOrder = pDecomposed->GetSize();
+	m_Order = pDecomposed->GetSize();
 
 	for (int i = 0; i < pDecomposed->GetSize(); i++)
 	{
@@ -378,26 +608,26 @@ BOOL Filter::CreateLowpassElliptic(double PassFreq, double PassLoss,
 		ASSERT(prBil.numer().order() == 2 || prBil.numer().order() == 1);
 		ASSERT(prBil.denom().order() == 2 || prBil.denom().order() == 1);
 
-		m_LpfCoeffs[i][0] = prBil.numer()[0].real();
-		m_LpfCoeffs[i][1] = prBil.numer()[1].real();
+		m_Coeffs[i][0] = prBil.numer()[0].real();
+		m_Coeffs[i][1] = prBil.numer()[1].real();
 		if (prBil.numer().order() > 1)
 		{
-			m_LpfCoeffs[i][2] = prBil.numer()[2].real();
+			m_Coeffs[i][2] = prBil.numer()[2].real();
 		}
 		else
 		{
-			m_LpfCoeffs[i][2] = 0.;
+			m_Coeffs[i][2] = 0.;
 		}
-		m_LpfCoeffs[i][3] = prBil.denom()[0].real();
-		m_LpfCoeffs[i][4] = prBil.denom()[1].real();
+		m_Coeffs[i][3] = prBil.denom()[0].real();
+		m_Coeffs[i][4] = prBil.denom()[1].real();
 
 		if (prBil.numer().order() > 1)
 		{
-			m_LpfCoeffs[i][5] = prBil.denom()[2].real();
+			m_Coeffs[i][5] = prBil.denom()[2].real();
 		}
 		else
 		{
-			m_LpfCoeffs[i][5] = 0.;
+			m_Coeffs[i][5] = 0.;
 		}
 
 		delete pDecomposed->GetAt(i);
@@ -406,12 +636,12 @@ BOOL Filter::CreateLowpassElliptic(double PassFreq, double PassLoss,
 	return TRUE;
 }
 
-BOOL Filter::CreateHighpassElliptic(double PassFreq, double PassLoss,
+BOOL HighpassFilter::CreateElliptic(double PassFreq, double PassLoss,
 									double StopFreq, double StopLoss)
 {
 	double OmegaPass = 2. / tan(PassFreq / 2.);
 	double OmegaStop = 2. / tan(StopFreq / 2.);
-	if (m_bZeroPhase)
+	if (m_ZeroPhase)
 	{
 		PassLoss = sqrt(PassLoss);
 		StopLoss = sqrt(StopLoss);
@@ -426,7 +656,7 @@ BOOL Filter::CreateHighpassElliptic(double PassFreq, double PassLoss,
 	CArray<polyRatio *, polyRatio *> * pDecomposed
 		= polyRatio(poly(zeros, NormCoeff), poly(poles)).Decompose(2, & poles);
 
-	m_nHpfOrder = pDecomposed->GetSize();
+	m_Order = pDecomposed->GetSize();
 
 	for (int i = 0; i < pDecomposed->GetSize(); i++)
 	{
@@ -438,26 +668,27 @@ BOOL Filter::CreateHighpassElliptic(double PassFreq, double PassLoss,
 		ASSERT(prBil.numer().order() == 2 || prBil.numer().order() == 1);
 		ASSERT(prBil.denom().order() == 2 || prBil.denom().order() == 1);
 
-		m_HpfCoeffs[i][0] = prBil.numer()[0].real();
-		m_HpfCoeffs[i][1] = -prBil.numer()[1].real();
-		if (prBil.numer().order() > 1)
-		{
-			m_HpfCoeffs[i][2] = prBil.numer()[2].real();
-		}
-		else
-		{
-			m_HpfCoeffs[i][2] = 0.;
-		}
-		m_HpfCoeffs[i][3] = prBil.denom()[0].real();
-		m_HpfCoeffs[i][4] = -prBil.denom()[1].real();
+		m_Coeffs[i][0] = prBil.numer()[0].real();
+		m_Coeffs[i][1] = -prBil.numer()[1].real();
 
 		if (prBil.numer().order() > 1)
 		{
-			m_HpfCoeffs[i][5] = prBil.denom()[2].real();
+			m_Coeffs[i][2] = prBil.numer()[2].real();
 		}
 		else
 		{
-			m_HpfCoeffs[i][5] = 0.;
+			m_Coeffs[i][2] = 0.;
+		}
+		m_Coeffs[i][3] = prBil.denom()[0].real();
+		m_Coeffs[i][4] = -prBil.denom()[1].real();
+
+		if (prBil.numer().order() > 1)
+		{
+			m_Coeffs[i][5] = prBil.denom()[2].real();
+		}
+		else
+		{
+			m_Coeffs[i][5] = 0.;
 		}
 
 		delete pDecomposed->GetAt(i);
@@ -485,6 +716,7 @@ public:
 	void EnableLowPass(bool Enable = true);
 	void EnableHighPass(bool Enable = true);
 	void EnableNotch(bool Enable = true);
+	void EnableHilbert(bool Enable = true);
 	void SetZeroPhase(bool ZeroPhase = true);
 
 	void SetPointTransferDb(int nPoint, double Transfer);
@@ -644,21 +876,28 @@ CFilterGraphWnd::CFilterGraphWnd(CApplicationProfile & Profile, int SampleRate)
 	m_Frequencies[LpfPassbandIndex] = M_PI * 0.8;
 	m_Frequencies[LpfStopbandIndex] = M_PI * 0.9;
 
-	Profile.AddBoolItem(_T("Filter"), _T("LowPassEnable"), m_bLowPass, TRUE);
+	Profile.AddBoolItem(_T("Filter"), _T("LowPassEnable"), m_LowPassEnabled, TRUE);
 	Profile.AddItem(_T("Filter"), _T("LowPass_PassLoss"), m_Transfer[LpfPassbandIndex], m_Transfer[LpfPassbandIndex], 0.00003, 1.);
 	Profile.AddItem(_T("Filter"), _T("LowPass_PassFrequency"), m_Frequencies[LpfPassbandIndex], m_Frequencies[LpfPassbandIndex], 0.00157, 3.14);
 	Profile.AddItem(_T("Filter"), _T("LowPass_StopLoss"), m_Transfer[LpfStopbandIndex], m_Transfer[LpfStopbandIndex], 0.00003, 1.);
 	Profile.AddItem(_T("Filter"), _T("LowPass_StopFrequency"), m_Frequencies[LpfStopbandIndex], m_Frequencies[LpfStopbandIndex], 0.00157, 3.14);
 
-	Profile.AddBoolItem(_T("Filter"), _T("HighPassEnable"), m_bHighPass, TRUE);
+	Profile.AddBoolItem(_T("Filter"), _T("HighPassEnable"), m_HighPassEnabled, TRUE);
 	Profile.AddItem(_T("Filter"), _T("HighPass_PassLoss"), m_Transfer[HpfPassbandIndex], m_Transfer[HpfPassbandIndex], 0.00003, 1.);
 	Profile.AddItem(_T("Filter"), _T("HighPass_PassFrequency"), m_Frequencies[HpfPassbandIndex], m_Frequencies[HpfPassbandIndex], 0.00157, 3.14);
 	Profile.AddItem(_T("Filter"), _T("HighPass_StopLoss"), m_Transfer[HpfStopbandIndex], m_Transfer[HpfStopbandIndex], 0.00003, 1.);
 	Profile.AddItem(_T("Filter"), _T("HighPass_StopFrequency"), m_Frequencies[HpfStopbandIndex], m_Frequencies[HpfStopbandIndex], 0.00157, 3.14);
 
-	Profile.AddBoolItem(_T("Filter"), _T("NotchEnable"), m_bNotchFilter, FALSE);
+	Profile.AddBoolItem(_T("Filter"), _T("NotchEnable"), m_NotchEnabled, FALSE);
 	Profile.AddItem(_T("Filter"), _T("Notch_PassFrequency"), m_Frequencies[NotchBeginIndex], m_Frequencies[NotchBeginIndex], 0.00157, 3.14);
 	Profile.AddItem(_T("Filter"), _T("Notch_StopFrequency"), m_Frequencies[NotchZeroIndex], m_Frequencies[NotchZeroIndex], 0.00157, 3.14);
+
+	Profile.AddBoolItem(_T("Filter"), _T("HilbertTransform"), m_HilbertEnabled, FALSE);
+	Profile.AddItem(_T("Filter"), _T("Hilbert_PassFrequency"), m_Frequencies[HilbertPassIndex], m_Frequencies[HilbertPassIndex], 0.00157, 3.14);
+
+	m_LowpassFilter.SetZeroPhase(m_bZeroPhase != 0);
+	m_HighpassFilter.SetZeroPhase(m_bZeroPhase != 0);
+	m_NotchFilter.SetZeroPhase(m_bZeroPhase != 0);
 
 	ValidateFilterSettings();
 }
@@ -686,9 +925,10 @@ double CFilterGraphWnd::GetCurrentPointFrequencyHz() const
 void CFilterGraphWnd::DoDataExchange(CDataExchange* pDX)
 {
 	DDX_Check(pDX, IDC_CHECK_ZERO_PHASE, m_bZeroPhase);
-	DDX_Check(pDX, IDC_CHECK_LOWPASS, m_bLowPass);
-	DDX_Check(pDX, IDC_CHECK_HIGHPASS, m_bHighPass);
-	DDX_Check(pDX, IDC_CHECK_STOPBAND, m_bNotchFilter);
+	DDX_Check(pDX, IDC_CHECK_LOWPASS, m_LowPassEnabled);
+	DDX_Check(pDX, IDC_CHECK_HIGHPASS, m_HighPassEnabled);
+	DDX_Check(pDX, IDC_CHECK_STOPBAND, m_NotchEnabled);
+	DDX_Check(pDX, IDC_CHECK_HILBERT_TRANSFORM, m_HilbertEnabled);
 }
 
 void CFilterGraphWnd::ResetToInitial()
@@ -733,40 +973,40 @@ void CFilterGraphWnd::ValidateFilterSettings()
 		m_Frequencies[NotchZeroIndex] = M_PI * 0.052;
 	}
 
-	if ( ! m_bHighPass
+	if ( ! HighPassEnabled()
 		&& (m_PointWithFocus == HpfStopbandIndex
 			|| m_PointWithFocus == HpfPassbandIndex))
 	{
 		m_PointWithFocus = NotchBeginIndex;
-		if ( ! m_bNotchFilter)
+		if ( ! NotchEnabled())
 		{
 			m_PointWithFocus = LpfPassbandIndex;
-			if ( ! m_bLowPass)
+			if ( ! LowPassEnabled())
 			{
 				m_PointWithFocus = HpfPassbandIndex;
 			}
 		}
 	}
-	else if ( ! m_bLowPass
+	else if ( ! LowPassEnabled()
 			&& (m_PointWithFocus == LpfStopbandIndex
 				|| m_PointWithFocus == LpfPassbandIndex))
 	{
 		m_PointWithFocus = HpfStopbandIndex;
-		if ( ! m_bHighPass)
+		if ( ! HighPassEnabled())
 		{
 			m_PointWithFocus = NotchBeginIndex;
-			if ( ! m_bNotchFilter)
+			if ( ! NotchEnabled())
 			{
 				m_PointWithFocus = HpfPassbandIndex;
 			}
 		}
 	}
-	else if ( ! m_bNotchFilter
+	else if ( ! NotchEnabled()
 			&& (m_PointWithFocus == NotchBeginIndex
 				|| m_PointWithFocus == NotchZeroIndex))
 	{
 		m_PointWithFocus = LpfStopbandIndex;
-		if ( ! m_bLowPass)
+		if ( ! LowPassEnabled())
 		{
 			m_PointWithFocus = HpfPassbandIndex;
 		}
@@ -780,17 +1020,17 @@ int CFilterGraphWnd::GetCurrentFilter() const
 	case HpfStopbandIndex:
 	case HpfPassbandIndex:
 	default:
-		return HighpassFilter;
+		return HighpassFilterIndex;
 		break;
 
 	case NotchBeginIndex:
 	case NotchZeroIndex:
-		return NotchFilter;
+		return NotchFilterIndex;
 		break;
 
 	case LpfPassbandIndex:
 	case LpfStopbandIndex:
-		return LowpassFilter;
+		return LowpassFilterIndex;
 		break;
 	}
 }
@@ -949,8 +1189,8 @@ void CFilterGraphWnd::OnPaint()
 			dc.LineTo(x, y);
 		}
 	}
-	int dx = GetSystemMetrics(SM_CXSIZEFRAME);
-	int dy = GetSystemMetrics(SM_CYSIZEFRAME);
+	int dx = std::min(GetSystemMetrics(SM_CXSIZEFRAME), GetSystemMetrics(SM_CXDOUBLECLK));
+	int dy = std::min(GetSystemMetrics(SM_CYSIZEFRAME), GetSystemMetrics(SM_CYDOUBLECLK));
 	// ATI drivers can't draw small circles, use intermediate memory bitmap
 	CBitmap bmp;
 	// bitmap width and height
@@ -992,21 +1232,21 @@ void CFilterGraphWnd::OnPaint()
 		}
 		if (i <= HpfPassbandIndex)
 		{
-			if ( ! m_bHighPass)
+			if ( ! HighPassEnabled())
 			{
 				continue;
 			}
 		}
 		else if (i >= LpfPassbandIndex)
 		{
-			if ( ! m_bLowPass)
+			if ( ! LowPassEnabled())
 			{
 				continue;
 			}
 		}
 		else
 		{
-			if ( ! m_bNotchFilter)
+			if ( ! NotchEnabled())
 			{
 				continue;
 			}
@@ -1165,6 +1405,27 @@ void CFilterGraphWnd::EnableNotch(bool Enable)
 	}
 
 	Filter::EnableNotch(Enable);
+	Invalidate();
+}
+
+void CFilterGraphWnd::EnableHilbert(bool Enable)
+{
+	if ( ! Enable)
+	{
+		if (m_PointWithFocus == HilbertPassIndex)
+		{
+			if (LowPassEnabled())
+			{
+				m_PointWithFocus = LpfPassbandIndex;
+			}
+			else if (HighPassEnabled())
+			{
+				m_PointWithFocus = HpfPassbandIndex;
+			}
+		}
+	}
+
+	Filter::EnableHilbert(Enable);
 	Invalidate();
 }
 
@@ -1639,7 +1900,7 @@ void CFilterGraphWnd::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 				NewFocusPoint = HpfStopbandIndex;
 				break;
 			case NotchBeginIndex:
-				if (m_bHighPass)
+				if (HighPassEnabled())
 				{
 					NewFocusPoint = HpfPassbandIndex;
 				}
@@ -1648,11 +1909,11 @@ void CFilterGraphWnd::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 				NewFocusPoint = NotchBeginIndex;
 				break;
 			case LpfPassbandIndex:
-				if (m_bNotchFilter)
+				if (NotchEnabled())
 				{
 					NewFocusPoint = NotchZeroIndex;
 				}
-				else if (m_bHighPass)
+				else if (HighPassEnabled())
 				{
 					NewFocusPoint = HpfPassbandIndex;
 				}
@@ -1693,11 +1954,11 @@ void CFilterGraphWnd::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 				NewFocusPoint = HpfPassbandIndex;
 				break;
 			case HpfPassbandIndex:
-				if (m_bNotchFilter)
+				if (NotchEnabled())
 				{
 					NewFocusPoint = NotchBeginIndex;
 				}
-				else if (m_bLowPass)
+				else if (LowPassEnabled())
 				{
 					NewFocusPoint = LpfPassbandIndex;
 				}
@@ -1706,7 +1967,7 @@ void CFilterGraphWnd::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 				NewFocusPoint = NotchZeroIndex;
 				break;
 			case NotchZeroIndex:
-				if (m_bLowPass)
+				if (LowPassEnabled())
 				{
 					NewFocusPoint = LpfPassbandIndex;
 				}
@@ -1741,8 +2002,8 @@ int CFilterGraphWnd::GetHitCode(POINT point)
 	{
 		return -0x100;
 	}
-	int dx = GetSystemMetrics(SM_CXSIZEFRAME);
-	int dy = GetSystemMetrics(SM_CYSIZEFRAME);
+	int dx = std::min(GetSystemMetrics(SM_CXSIZEFRAME), GetSystemMetrics(SM_CXDOUBLECLK));
+	int dy = std::min(GetSystemMetrics(SM_CYSIZEFRAME), GetSystemMetrics(SM_CYDOUBLECLK));
 
 	for (int i = 0; i < MaxFilterFrequencies; i++)
 	{
@@ -1755,21 +2016,21 @@ int CFilterGraphWnd::GetHitCode(POINT point)
 
 		if (i <= HpfPassbandIndex)
 		{
-			if ( ! m_bHighPass)
+			if ( ! HighPassEnabled())
 			{
 				continue;
 			}
 		}
 		else if (i >= LpfPassbandIndex)
 		{
-			if ( ! m_bLowPass)
+			if ( ! LowPassEnabled())
 			{
 				continue;
 			}
 		}
 		else
 		{
-			if ( ! m_bNotchFilter)
+			if ( ! NotchEnabled())
 			{
 				continue;
 			}
@@ -1808,8 +2069,8 @@ void CFilterGraphWnd::InvalidateGraphPoint(double Frequency, double Transfer)
 	int x = int((1. + log10(Frequency / M_PI) / 3.) * cr.Width() - 1);
 	int y = TransferToPosY(Transfer, cr.Height());
 
-	int dx = GetSystemMetrics(SM_CXSIZEFRAME);
-	int dy = GetSystemMetrics(SM_CYSIZEFRAME);
+	int dx = std::min(GetSystemMetrics(SM_CXSIZEFRAME), GetSystemMetrics(SM_CXDOUBLECLK));
+	int dy = std::min(GetSystemMetrics(SM_CYSIZEFRAME), GetSystemMetrics(SM_CYDOUBLECLK));
 
 	CRect r(x - dx, y - dy, x + dx, y + dy);
 	InvalidateRect( & r);
@@ -1905,6 +2166,7 @@ CFilterDialog::CFilterDialog(SAMPLE_INDEX Start,
 		{IDC_CHECK_LOWPASS, MoveDown},
 		{IDC_CHECK_STOPBAND, MoveDown},
 		{IDC_CHECK_HIGHPASS, MoveDown},
+		{IDC_CHECK_HILBERT_TRANSFORM, MoveDown},
 		{IDC_CHECK_ZERO_PHASE, MoveDown},
 		{IDC_CHECK_UNDO, MoveDown},
 		{IDC_STATIC_SELECTION, MoveDown},
@@ -1968,6 +2230,7 @@ BEGIN_MESSAGE_MAP(CFilterDialog, BaseClass)
 	ON_BN_CLICKED(IDC_CHECK_LOWPASS, OnCheckLowpass)
 	ON_BN_CLICKED(IDC_CHECK_HIGHPASS, OnCheckHighpass)
 	ON_BN_CLICKED(IDC_CHECK_STOPBAND, OnCheckStopband)
+	ON_BN_CLICKED(IDC_CHECK_HILBERT_TRANSFORM, OnCheckHilbertTransform)
 	ON_EN_KILLFOCUS(IDC_EDIT_FILTER_PASSBAND_LOSS, OnKillfocusEditPassbandLoss)
 	ON_EN_KILLFOCUS(IDC_EDIT_FILTER_PASS_FREQUENCY, OnKillfocusEditPassbandFrequency)
 	ON_EN_KILLFOCUS(IDC_EDIT_FILTER_STOPBAND_LOSS, OnKillfocusEditStopbandLoss)
@@ -1994,6 +2257,30 @@ void CFilterDialog::OnCheckHighpass()
 void CFilterDialog::OnCheckStopband()
 {
 	m_pGraphWnd->EnableNotch(1 == IsDlgButtonChecked(IDC_CHECK_STOPBAND));
+}
+
+void CFilterDialog::OnCheckHilbertTransform()
+{
+	if (1 == IsDlgButtonChecked(IDC_CHECK_HILBERT_TRANSFORM))
+	{
+		//m_pGraphWnd->EnableLowPass(FALSE);
+		//m_pGraphWnd->EnableHighPass(FALSE);
+		//m_pGraphWnd->EnableNotch(FALSE);
+		m_pGraphWnd->EnableHilbert(TRUE);
+		EnableDlgItem(IDC_CHECK_LOWPASS, FALSE);
+		EnableDlgItem(IDC_CHECK_HIGHPASS, FALSE);
+		EnableDlgItem(IDC_CHECK_STOPBAND, FALSE);
+	}
+	else
+	{
+		//m_pGraphWnd->EnableLowPass(1 == IsDlgButtonChecked(IDC_CHECK_LOWPASS));
+		//m_pGraphWnd->EnableHighPass(1 == IsDlgButtonChecked(IDC_CHECK_HIGHPASS));
+		//m_pGraphWnd->EnableNotch(1 == IsDlgButtonChecked(IDC_CHECK_STOPBAND));
+		EnableDlgItem(IDC_CHECK_LOWPASS, TRUE);
+		EnableDlgItem(IDC_CHECK_HIGHPASS, TRUE);
+		EnableDlgItem(IDC_CHECK_STOPBAND, TRUE);
+		m_pGraphWnd->EnableHilbert(FALSE);
+	}
 }
 
 BOOL CFilterDialog::OnInitDialog()
@@ -2214,12 +2501,12 @@ void CFilterDialog::OnKillfocusEditStopbandLoss()
 
 void CFilterDialog::OnUpdateEditPassbandLoss(CCmdUI * pCmdUI)
 {
-	pCmdUI->Enable(m_pGraphWnd->GetCurrentFilter() != NotchFilter);
+	pCmdUI->Enable(m_pGraphWnd->GetCurrentFilter() != NotchFilterIndex);
 }
 
 void CFilterDialog::OnUpdateEditStopbandLoss(CCmdUI * pCmdUI)
 {
-	pCmdUI->Enable(m_pGraphWnd->GetCurrentFilter() != NotchFilter);
+	pCmdUI->Enable(m_pGraphWnd->GetCurrentFilter() != NotchFilterIndex);
 }
 
 BOOL CFilterDialog::IsZeroPhase() const

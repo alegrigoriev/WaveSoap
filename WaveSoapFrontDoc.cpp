@@ -4653,8 +4653,8 @@ void CWaveSoapFrontDoc::OnToolsInterpolate()
 	if (BigGap)
 	{
 		InterpolationOverlap = 2048 + InterpolateSamples + InterpolateSamples / 2;
-		PostInterpolateSamples = InterpolateSamples / 2;
-		PreInterpolateSamples = InterpolateSamples - InterpolateSamples / 2;
+		PostInterpolateSamples = InterpolateSamples;
+		PreInterpolateSamples = InterpolateSamples;
 	}
 	else
 	{

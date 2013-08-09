@@ -395,27 +395,28 @@ void CSpectrumSectionView::OnDraw(CDC* pDC)
 	// build an array
 
 	CPen BlackPen(PS_SOLID, 0, COLORREF(0));   // black pen
-	CPen BluePen(PS_SOLID, 0, RGB(0, 0, 128));   // medium blue pen
 
 	CGdiObjectSaveT<CPen> OldPen(pDC, pDC->SelectObject( & BlackPen));
 
-	ATL::CHeapPtr<FftGraphBand> pIdArray;
-	ATL::CHeapPtr<DoublePoint> ppArray;
 
-	// if there is selection, calculate the whole region sum
 	if (m_bShowNoiseThreshold
 		&& NULL != m_pNoiseReduction)
 	{
+		CPen BluePen(PS_SOLID, 0, RGB(0, 0, 255));
+		CPen RedPen(PS_SOLID, 0, RGB(255, 0, 0));
+		CPen LightGreenPen(PS_SOLID, 0, RGB(64, 255, 64));
 		// todo: show second graph with blue color:
 		// calculate power distribution and masking function
 		// Items that can be shown:
 		// filtered power distribution
 		// masking function with noise threshold
+		ATL::CHeapPtr<DoublePoint> NrArrayXY;
 		ATL::CHeapPtr<float> NrResult;
+		ATL::CHeapPtr<FftGraphBand> NrIdArray;
 		NrResult.Allocate(m_NrFftOrder * nChannels);
 
 		// fill the array
-		int IdxSize = InitBandArray(pIdArray, rows, m_NrFftOrder);
+		int IdxSize = InitBandArray(NrIdArray, rows, m_NrFftOrder);
 
 		int const Preroll = 16;
 
@@ -452,23 +453,40 @@ void CSpectrumSectionView::OnDraw(CDC* pDC)
 			m_pNoiseReduction->ResetOutBuffer();
 		}
 
-		double const PowerScaleCoeff = 1. / (32768. * 32768.);
+		double const PowerScaleCoeff = 1. / (32768. * m_NrFftOrder * m_NrFftOrder) ;
 
 		// now that we have calculated the FFT
 
-		ppArray.Allocate(nNumberOfPoints);
+		NrArrayXY.Allocate(nNumberOfPoints);
 
 		m_pNoiseReduction->GetAudioMasking(NrResult);
 
-		pDC->SelectObject( & BlackPen);
 		for (int ch = 0; ch < nChannels; ch++)
 		{
-			BuildBandArray(PowerScaleCoeff, pIdArray, IdxSize, NrResult + ch, m_NrFftOrder);
+			// draw lines for "tonal" bands
+			pDC->SelectObject(LightGreenPen);
 
-			BuildPointArray(pIdArray, IdxSize, ppArray, nNumberOfPoints, rows * ch);
+			for (int n = 0; n < IdxSize-1; n++)
+			{
+				for (int f = NrIdArray[n].nFftOffset; f < NrIdArray[n+1].nFftOffset; f++)
+				{
+					if (m_pNoiseReduction->IsTonalBand(ch, f))
+					{
+						pDC->MoveTo(0, rows * (ch + 1) - n);
+						pDC->LineTo(cr.right, rows * (ch + 1) - n);
+						break;
+					}
+				}
+			}
 
-			DrawPointArray(pDC, ppArray, nNumberOfPoints, cr.right);
+			pDC->SelectObject( & RedPen);
+			BuildBandArray(PowerScaleCoeff, NrIdArray, IdxSize, NrResult + ch, m_NrFftOrder);
 
+			BuildPointArray(NrIdArray, IdxSize, NrArrayXY, nNumberOfPoints, rows * ch);
+
+			DrawPointArray(pDC, NrArrayXY, nNumberOfPoints, cr.right);
+
+			// draw a separator
 			if (nChannels > 1)
 			{
 				pDC->MoveTo(0, rows * ch);
@@ -482,12 +500,13 @@ void CSpectrumSectionView::OnDraw(CDC* pDC)
 		pDC->SelectObject( & BluePen);
 		for (int ch = 0; ch < nChannels; ch++)
 		{
-			BuildBandArray(PowerScaleCoeff, pIdArray, IdxSize, NrResult + ch, m_NrFftOrder);
+			BuildBandArray(PowerScaleCoeff, NrIdArray, IdxSize, NrResult + ch, m_NrFftOrder);
 
-			BuildPointArray(pIdArray, IdxSize, ppArray, nNumberOfPoints, rows * ch);
+			BuildPointArray(NrIdArray, IdxSize, NrArrayXY, nNumberOfPoints, rows * ch);
 
-			DrawPointArray(pDC, ppArray, nNumberOfPoints, cr.right);
+			DrawPointArray(pDC, NrArrayXY, nNumberOfPoints, cr.right);
 
+			// draw a separator
 			if (nChannels > 1)
 			{
 				pDC->MoveTo(0, rows * ch);
@@ -495,82 +514,60 @@ void CSpectrumSectionView::OnDraw(CDC* pDC)
 			}
 
 		}
+	}
+
+	pDC->SelectObject( & BlackPen);
+	// fill the array
+	ATL::CHeapPtr<FftGraphBand> IdArray;
+	int IdxSize = InitBandArray(IdArray, rows, m_FftOrder);
+
+	// if there is selection, calculate the whole region sum
+	int NumberOfFftSamplesAveraged =
+		(pDoc->m_SelectionEnd - pDoc->m_SelectionStart) / m_FftOrder + 1;
+	if (NumberOfFftSamplesAveraged > 100)
+	{
+		NumberOfFftSamplesAveraged = 100;
+	}
+	if (pDoc->m_PlayingSound)
+	{
+		NumberOfFftSamplesAveraged = 4;
+		nStartSample = m_PlaybackSample;
+	}
+	if (nStartSample > m_FftOrder)
+	{
+		nStartSample -= m_FftOrder;
 	}
 	else
 	{
-		// fill the array
-		int IdxSize = InitBandArray(pIdArray, rows, m_FftOrder);
-
-		int NumberOfFftSamplesAveraged =
-			(pDoc->m_SelectionEnd - pDoc->m_SelectionStart) / m_FftOrder + 1;
-		if (NumberOfFftSamplesAveraged > 100)
-		{
-			NumberOfFftSamplesAveraged = 100;
-		}
-		if (pDoc->m_PlayingSound)
-		{
-			NumberOfFftSamplesAveraged = 4;
-			nStartSample = m_PlaybackSample;
-		}
-		if (nStartSample > m_FftOrder)
-		{
-			nStartSample -= m_FftOrder;
-		}
-		else
-		{
-			nStartSample = 0;
-		}
-
-		CalculateFftPowerSum(m_pFftSum, nStartSample, NumberOfFftSamplesAveraged, m_FftOrder);
-
-		double const PowerScaleCoeff = 4. / (NumberOfFftSamplesAveraged * 32768. * m_FftOrder * 32768. * m_FftOrder);
-
-		// now that we have calculated the FFT
-
-		ppArray.Allocate(nNumberOfPoints);
-
-		for (int ch = 0; ch < nChannels; ch++)
-		{
-			BuildBandArray(PowerScaleCoeff, pIdArray, IdxSize, m_pFftSum + ch, m_FftOrder);
-
-			BuildPointArray(pIdArray, IdxSize, ppArray, nNumberOfPoints, rows * ch);
-
-			DrawPointArray(pDC, ppArray, nNumberOfPoints, cr.right);
-
-			if (nChannels > 1)
-			{
-				pDC->MoveTo(0, rows * ch);
-				pDC->LineTo(cr.right, rows * ch);
-			}
-
-		}
+		nStartSample = 0;
 	}
 
-#if 0
-	if (m_bShowNoiseThreshold)
+	CalculateFftPowerSum(m_pFftSum, nStartSample, NumberOfFftSamplesAveraged, m_FftOrder);
+
+	double const PowerScaleCoeff = 4. / (NumberOfFftSamplesAveraged * 32768. * m_FftOrder * 32768. * m_FftOrder);
+
+	// now that we have calculated the FFT
+
+	ATL::CHeapPtr<DoublePoint> ArrayXY;
+	ArrayXY.Allocate(nNumberOfPoints);
+
+	for (int ch = 0; ch < nChannels; ch++)
 	{
-		int NoiseReductionBegin = MulDiv(m_nBeginFrequency, m_FftOrder,
-										pDoc->WaveSampleRate());
+		BuildBandArray(PowerScaleCoeff, IdArray, IdxSize, m_pFftSum + ch, m_FftOrder);
 
-		CPen DotPen(PS_DOT, 0, RGB(255, 255, 255));   // XOR pen
-		pDC->SelectObject(& DotPen);
-		pDC->SetROP2(R2_XORPEN);
-		pDC->SetBkColor(RGB(0, 0, 0));
+		BuildPointArray(IdArray, IdxSize, ArrayXY, nNumberOfPoints, rows * ch);
 
-		for (int ch = 0; ch < nChannels; ch++)
+		DrawPointArray(pDC, ArrayXY, nNumberOfPoints, cr.right);
+
+		// draw a separator
+		if (nChannels > 1)
 		{
-			CRect ChanR;
-
-			GetChannelRect(ch, ChanR);
-			// draw with a dotted pen
-			int PosHighX = WorldToWindowXrnd(m_dNoiseThresholdHigh);
-			int PosLowX = WorldToWindowXrnd(m_dNoiseThresholdLow);
-
-			pDC->MoveTo(PosHighX, ChanR.top);
-			pDC->LineTo(PosLowX, ChanR.bottom);
+			pDC->MoveTo(0, rows * ch);
+			pDC->LineTo(cr.right, rows * ch);
 		}
+
 	}
-#endif
+
 	if (m_bCrossHairDrawn)
 	{
 		DrawCrossHair(m_PrevCrossHair, pDC);
@@ -954,7 +951,28 @@ void CSpectrumSectionView::GetChannelRect(int Channel, RECT * pR) const
 
 	int h = (pR->bottom - pR->top + 1) / nChannels;
 	// for all channels, the rectangle is of the same height
-	pR->top = h * Channel;
+	// for all channels, the rectangle is of the same height
+	pR->top = ((pR->bottom - pR->top + 1) * Channel) / nChannels;
 	pR->bottom = pR->top + h - 1;
+}
+
+void CSpectrumSectionView::GetChannelClipRect(int Channel, RECT * pR) const
+{
+	CWaveSoapFrontDoc * pDoc = GetDocument();
+	int nChannels = pDoc->WaveChannels();
+
+	GetClientRect(pR);
+	if (Channel >= nChannels)
+	{
+		pR->top = pR->bottom;
+		pR->bottom += 2;
+		return;
+	}
+
+	// for all channels, the rectangle is of the same height
+	// for all channels, the rectangle is of the same height
+	int h = pR->bottom - pR->top + 1;
+	pR->top = (h * Channel) / nChannels;
+	pR->bottom = (h * (Channel+1)) / nChannels - 1;
 }
 

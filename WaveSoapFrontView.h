@@ -81,6 +81,7 @@ protected:
 									CHANNEL_MASK nChannel);
 
 	void GetChannelRect(int Channel, RECT * r) const;
+	void GetChannelClipRect(int Channel, RECT * pR) const;
 	int GetChannelFromPoint(int y) const;
 
 	void CreateAndShowCaret();

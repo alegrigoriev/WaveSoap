@@ -2644,7 +2644,8 @@ void CNoiseReductionDialog::GetNoiseReductionData(NoiseReductionParameters * pNr
 {
 	//pNr->m_bApplyPhaseFilter = m_bPhaseFilter;
 	pNr->m_MinFrequencyToProcess = float(m_dLowerFrequency);
-	pNr->m_ThresholdOfTransient = float(DB_TO_NEPER * m_dTransientThreshold);
+	pNr->m_ThresholdOfTransientAttack = float(pow(10., m_dTransientThreshold / 10.));
+	pNr->m_ThresholdOfTransientDecay = float(pow(0.1, m_dTransientThreshold / 10.));
 	pNr->m_FreqThresholdOfNoiselike = float(M_PI_2 * M_PI_2 * m_dNoiseCriterion * m_dNoiseCriterion);
 	pNr->m_MaxNoiseSuppression = float(DB_TO_NEPER * m_dNoiseReduction);
 	pNr->m_LevelThresholdForNoiseLow = float(DB_TO_NEPER * (m_dNoiseThresholdLow));
@@ -2691,7 +2692,7 @@ CMoreNoiseDialog::CMoreNoiseDialog(CNoiseReductionDialog * pParentDlg, CWnd* pPa
 	m_eNearMaskingDistanceHigh.SetPrecision(1);
 
 	m_eToneOverNoisePreference.SetPrecision(1);
-	m_eNoiseCriterion.SetPrecision(2);
+	m_eNoiseCriterion.SetPrecision(4);
 	m_eTransientThreshold.SetPrecision(1);
 }
 

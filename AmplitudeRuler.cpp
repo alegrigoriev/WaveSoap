@@ -111,6 +111,8 @@ void CAmplitudeRuler::DrawSamples(CDC * pDC)
 	{
 		CRect chr;
 		pMasterView->GetChannelRect(ch, chr);
+		CRect clipr;
+		pMasterView->GetChannelClipRect(ch, clipr);
 
 		int nHeight = chr.Height();
 
@@ -134,8 +136,8 @@ void CAmplitudeRuler::DrawSamples(CDC * pDC)
 
 		WaveCalculate WaveToY(pMasterView->m_WaveOffsetY, VerticalScale, chr.top, chr.bottom);
 
-		int ClipHigh = chr.bottom - tm.tmHeight / 2;
-		int ClipLow = chr.top + tm.tmHeight / 2;
+		int ClipHigh = clipr.bottom - tm.tmHeight / 2;
+		int ClipLow = clipr.top + tm.tmHeight / 2;
 
 		int yLow = WaveToY.ConvertToSample(ClipHigh);
 		// round to the next multiple of step
@@ -202,6 +204,8 @@ void CAmplitudeRuler::DrawPercents(CDC * pDC)
 	{
 		CRect chr;
 		pMasterView->GetChannelRect(ch, chr);
+		CRect clipr;
+		pMasterView->GetChannelClipRect(ch, clipr);
 
 		int nHeight = chr.Height();
 
@@ -225,8 +229,8 @@ void CAmplitudeRuler::DrawPercents(CDC * pDC)
 
 		WaveCalculate WaveToY(pMasterView->m_WaveOffsetY, VerticalScale, chr.top, chr.bottom);
 
-		int ClipHigh = chr.bottom - tm.tmHeight / 2;
-		int ClipLow = chr.top + tm.tmHeight / 2;
+		int ClipHigh = clipr.bottom - tm.tmHeight / 2;
+		int ClipLow = clipr.top + tm.tmHeight / 2;
 
 		int yLow = int(100. / 32768. * WaveToY.ConvertToSample(ClipHigh));
 		// round to the next multiple of step
@@ -297,8 +301,11 @@ void CAmplitudeRuler::DrawDecibels(CDC * pDC)
 	{
 		CRect chr;
 		pMasterView->GetChannelRect(ch, chr);
-		int ClipHigh = chr.bottom - tm.tmHeight / 2;
-		int ClipLow = chr.top + tm.tmHeight / 2;
+		CRect clipr;
+		pMasterView->GetChannelClipRect(ch, clipr);
+
+		int ClipHigh = clipr.bottom - tm.tmHeight / 2;
+		int ClipLow = clipr.top + tm.tmHeight / 2;
 
 		WaveCalculate WaveToY(pMasterView->m_WaveOffsetY, VerticalScale, chr.top, chr.bottom);
 

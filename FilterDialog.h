@@ -84,6 +84,7 @@ protected:
 	afx_msg void OnCheckZeroPhase();
 	afx_msg void OnCheckLowpass();
 	afx_msg void OnCheckHighpass();
+	afx_msg void OnCheckHilbertTransform();
 	afx_msg void OnKillfocusEditPassbandFrequency();
 	afx_msg void OnKillfocusEditStopbandFrequency();
 	afx_msg void OnKillfocusEditPassbandLoss();
