@@ -316,6 +316,8 @@
 #define IDC_BUTTON8                     1152
 #define IDC_CHECK_HIGHPASS              1152
 #define IDC_RADIO4                      1153
+#define IDC_CHECK_HIGHPASS2             1153
+#define IDC_CHECK_HILBERT_TRANSFORM     1153
 #define IDC_RADIO_WAV_SIZE              1154
 #define IDC_RADIO_COMPRESSION_ULAW      1154
 #define IDC_COMBO_PLAYBACK_DEVICE       1155

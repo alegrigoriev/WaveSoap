@@ -595,8 +595,8 @@ void CEqualizerGraphWnd::OnPaint()
 			dc.LineTo(x, y);
 		}
 	}
-	int dx = GetSystemMetrics(SM_CXSIZEFRAME);
-	int dy = GetSystemMetrics(SM_CYSIZEFRAME);
+	int dx = std::min(GetSystemMetrics(SM_CXSIZEFRAME), GetSystemMetrics(SM_CXDOUBLECLK));
+	int dy = std::min(GetSystemMetrics(SM_CYSIZEFRAME), GetSystemMetrics(SM_CYDOUBLECLK));
 	// ATI drivers can't draw small circles, use intermediate memory bitmap
 	CBitmap bmp;
 	// bitmap width and height
@@ -1112,8 +1112,8 @@ int CEqualizerGraphWnd::GetHitCode(POINT point)
 	{
 		return -0x100;
 	}
-	int dx = GetSystemMetrics(SM_CXSIZEFRAME);
-	int dy = GetSystemMetrics(SM_CYSIZEFRAME);
+	int dx = std::min(GetSystemMetrics(SM_CXSIZEFRAME), GetSystemMetrics(SM_CXDOUBLECLK));
+	int dy = std::min(GetSystemMetrics(SM_CYSIZEFRAME), GetSystemMetrics(SM_CYDOUBLECLK));
 	for (int i = 0; i < m_NumOfBands; i++)
 	{
 		// find if the mouse gets into a focus point
@@ -1172,8 +1172,8 @@ void CEqualizerGraphWnd::DrawDotCaret(bool state)
 			x = cr.Width() * (m_BandWithFocus * 2 + 1) / (2 * m_NumOfBands);
 		}
 		int y = int((1 - log10(m_BandTransfer[m_BandWithFocus])) * cr.Height() / 2);
-		int dx = GetSystemMetrics(SM_CXSIZEFRAME);
-		int dy = GetSystemMetrics(SM_CYSIZEFRAME);
+		int dx = std::min(GetSystemMetrics(SM_CXSIZEFRAME), GetSystemMetrics(SM_CXDOUBLECLK));
+		int dy = std::min(GetSystemMetrics(SM_CYSIZEFRAME), GetSystemMetrics(SM_CYDOUBLECLK));
 		CRect r(x - dx, y - dy, x + dx, y + dy);
 		InvalidateRect( & r);
 	}

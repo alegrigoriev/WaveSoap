@@ -12,7 +12,6 @@
 #include "WaveOutlineView.h"
 #include "GdiObjectSave.h"
 #include <float.h>
-#include ".\wavesoapfrontview.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -210,6 +209,7 @@ void CWaveSoapFrontView::DrawHorizontalWithSelection(CDC * pDC,
 	}
 }
 
+// this is the rectangle for scaling purposes
 void CWaveSoapFrontView::GetChannelRect(int Channel, RECT * pR) const
 {
 	ThisDoc * pDoc = GetDocument();
@@ -231,8 +231,32 @@ void CWaveSoapFrontView::GetChannelRect(int Channel, RECT * pR) const
 
 	int h = (pR->bottom - pR->top + 1) / nChannels;
 	// for all channels, the rectangle is of the same height
-	pR->top = h * Channel;
+	pR->top = ((pR->bottom - pR->top + 1) * Channel) / nChannels;
 	pR->bottom = pR->top + h - 1;
+}
+
+// this is the rectangle for clipping purposes
+void CWaveSoapFrontView::GetChannelClipRect(int Channel, RECT * pR) const
+{
+	ThisDoc * pDoc = GetDocument();
+	int const nChannels = pDoc->WaveChannels();
+	int const FileEnd = WorldToWindowXceil(pDoc->WaveFileSamples());
+	GetClientRect(pR);
+	if (pR->right > FileEnd)
+	{
+		pR->right = FileEnd;
+	}
+
+	if (Channel >= nChannels)
+	{
+		pR->top = pR->bottom;
+		pR->bottom += 2;
+		return;
+	}
+
+	int h = pR->bottom - pR->top + 1;
+	pR->top = (h * Channel) / nChannels;
+	pR->bottom = (h * (Channel+1)) / nChannels - 1;
 }
 
 int CWaveSoapFrontView::GetChannelFromPoint(int y) const
@@ -367,7 +391,8 @@ void CWaveSoapFrontView::OnDraw(CDC* pDC)
 				{
 					CRect ChanR;
 					GetChannelRect(ch, ChanR);
-
+					CRect ClipR;
+					GetChannelClipRect(ch, ClipR);
 
 					// clip the channel rectangle with 'clip rect'
 					if (ChanR.left < cr.left)
@@ -379,8 +404,8 @@ void CWaveSoapFrontView::OnDraw(CDC* pDC)
 						ChanR.right = cr.right;
 					}
 
-					int const ClipHigh = ChanR.bottom;
-					int const ClipLow = ChanR.top;
+					int const ClipHigh = ClipR.bottom;
+					int const ClipLow = ClipR.top;
 
 					WaveCalculate WaveToY(m_WaveOffsetY, m_VerticalScale, ChanR.top, ChanR.bottom);
 
@@ -1236,7 +1261,7 @@ BOOL CWaveSoapFrontView::OnEraseBkgnd(CDC* pDC)
 			int SelEnd = WorldToWindowXfloor(pDoc->m_SelectionEnd);
 
 			CRect ChanR;
-			GetChannelRect(ch, ChanR);
+			GetChannelClipRect(ch, ChanR);
 
 			ChanR.right = std::min(cr.right, ClipRect.right);
 			ChanR.left = std::max(cr.left, ClipRect.left);
@@ -1597,7 +1622,7 @@ void CWaveSoapFrontView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
 		for (int ch = 0; ch < pDoc->WaveChannels(); ch++)
 		{
 			CRect ChanR;
-			GetChannelRect(ch, ChanR);
+			GetChannelClipRect(ch, ChanR);
 			// build rectangles with selection boundaries
 
 			CRect r1(SelBegin, ChanR.top, SelEnd, ChanR.bottom);
@@ -2308,7 +2333,7 @@ BOOL CWaveSoapFrontView::MasterScrollBy(double dx, double dy, BOOL bDoScroll)
 			for (int ch = 0; ch < nChannels; ch++)
 			{
 				CRect chr;
-				GetChannelRect(ch, chr);
+				GetChannelClipRect(ch, chr);
 #if 1
 				ScrollWindowEx(0, ndy, chr, chr, NULL, ir,
 								SW_INVALIDATE);

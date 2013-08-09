@@ -202,6 +202,9 @@
     <ClCompile Include="PolyRatio.cpp">
       <Filter>FilterMath</Filter>
     </ClCompile>
+    <ClCompile Include="TestOperation.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="DialogWithSelection.inl">
@@ -511,6 +514,9 @@
     </ClInclude>
     <ClInclude Include="PolyRatio.h">
       <Filter>FilterMath</Filter>
+    </ClInclude>
+    <ClInclude Include="TestOperation.h">
+      <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

@@ -183,12 +183,6 @@ public:
 
 protected:
 
-	//char m_TmpInBuf[32];
-	//char m_TmpOutBuf[32];
-	//size_t m_TmpInBufPut;
-	//size_t m_TmpInBufGet;
-	//size_t m_TmpOutBufPut;
-	//size_t m_TmpOutBufGet;
 	BOOL m_bClipped;
 	double m_MaxClipped;
 
@@ -197,7 +191,7 @@ protected:
 
 	// this function always gets whole samples on input
 	virtual size_t ProcessSoundBuffer(char const * pInBuf, char * pOutBuf,
-									size_t nInBytes, size_t nOutBytes, size_t * pUsedBytes);
+									size_t nInBytes, size_t nOutBytes, size_t * pUsedBytes) = 0;
 private:
 #ifdef _DEBUG
 	size_t m_ProcessedInputBytes;
@@ -206,6 +200,116 @@ private:
 	// assignment guard
 	CWaveProc(const CWaveProc &);
 	CWaveProc & operator =(const CWaveProc &);
+};
+
+template<typename TempInputType=WAVE_SAMPLE, typename TempOutputType=WAVE_SAMPLE> class CWaveConvertorProc
+	: public CWaveProc
+{
+public:
+	CWaveConvertorProc();
+	~CWaveConvertorProc() {}
+	int FlushSamples(typename DATA * pBuf, int nOutSamples) = 0;
+
+	virtual size_t ProcessSoundBuffer(char const * pInBuf, char * pOutBuf,
+									size_t nInBytes, size_t nOutBytes, size_t * pUsedBytes)
+	{
+		*pUsedBytes = 0;
+		NUMBER_OF_CHANNELS const nChans = m_InputFormat.NumChannels();
+		unsigned const SampleSize = m_InputFormat.SampleSize();
+		TempOutputType tmp[256];
+
+		unsigned nInSamples = nInBytes / SampleSize;
+		unsigned nOutSamples = nOutBytes / SampleSize;
+		unsigned nStoredSamples = 0;
+
+		WAVE_SAMPLE const * pInBuf = (WAVE_SAMPLE const *) pIn;
+		WAVE_SAMPLE * pOutBuf = (WAVE_SAMPLE *) pOut;
+
+		if (NULL == pInBuf)
+		{
+			if (NULL == m_pNrCore)
+			{
+				return 0;
+			}
+
+			while (0 != nOutSamples)
+			{
+				int TmpSamples = FlushSamples(tmp, std::min(unsigned(countof(tmp) / nChans), nOutSamples));
+
+				if (0 == TmpSamples)
+				{
+					break;
+				}
+
+				nOutSamples -= TmpSamples;
+				nStoredSamples += TmpSamples;
+				TmpSamples *= nChans;
+
+				for (int i = 0; i < TmpSamples; i++, pOutBuf++)
+				{
+					*pOutBuf = DoubleToShort(tmp[i]);
+				}
+			}
+			return nStoredSamples * SampleSize;
+		}
+
+		if (NULL == m_pNrCore)
+		{
+			*pUsedBytes = nInBytes;
+			return 0;
+		}
+
+		// process the samples
+		while (1)
+		{
+			int InputSamplesUsed = m_pNrCore->FillInBuffer(pInBuf, nInSamples);
+
+			pInBuf += InputSamplesUsed * nChans;
+			nInSamples -= InputSamplesUsed;
+			*pUsedBytes += InputSamplesUsed * SampleSize;
+
+			if (m_pNrCore->CanProcessFft())
+			{
+				// now we have enough samples to do FFT
+				m_pNrCore->AnalyseFft();
+				m_pNrCore->ProcessInverseFft();
+			}
+
+			// store the result
+			int nSavedSamples = 0;
+			while (0 != nOutSamples)
+			{
+				int TmpSamples = m_pNrCore->DrainOutBuffer(tmp, std::min(unsigned(countof(tmp) / nChans), nOutSamples));
+
+				if (0 == TmpSamples)
+				{
+					break;
+				}
+
+				nOutSamples -= TmpSamples;
+				nStoredSamples += TmpSamples;
+				nSavedSamples += TmpSamples;
+
+				TmpSamples *= nChans;
+				for (int i = 0; i < TmpSamples; i++, pOutBuf++)
+				{
+					*pOutBuf = DoubleToShort(tmp[i]);
+				}
+			}
+
+			if (0 == nSavedSamples && 0 == InputSamplesUsed)
+			{
+				// can do no more
+				break;
+			}
+		}
+
+		return SampleSize * nStoredSamples;
+	}
+private:
+	// assignment guard
+	CWaveConvertorProc(const CWaveConvertorProc &);
+	CWaveConvertorProc & operator =(const CWaveConvertorProc &);
 };
 
 class CHumRemoval : public CWaveProc
@@ -301,6 +405,7 @@ public:
 
 	void InterpolateGap(CBackBuffer<int, int> & data, int nLeftIndex, int InterpolateSamples, bool BigGap);
 	void InterpolateGap(WAVE_SAMPLE data[], int nLeftIndex, int ClickLength, int nChans, bool BigGap, int TotalSamples);
+	void InterpolateGapLeastSquares(WAVE_SAMPLE data[], int nLeftIndex, int ClickLength, int nChans, int TotalSamples);
 	void InterpolateBigGap(WAVE_SAMPLE data[], int nLeftIndex, int ClickLength, int nChans, int TotalSamples);
 	void InterpolateBigGapSliding(WAVE_SAMPLE data[], int nLeftIndex, int ClickLength, int nChans, int TotalSamples);
 
@@ -363,7 +468,8 @@ struct NoiseReductionParameters
 	float m_FreqDevDecayRate;
 	float m_LevelDevDecayRate;
 
-	float m_ThresholdOfTransient;
+	float m_ThresholdOfTransientAttack;     // powerNext/PowerPrev
+	float m_ThresholdOfTransientDecay;      // powerNext/PowerPrev
 	float m_FreqThresholdOfNoiselike; // compare with SIGNAL_PARAMS::sp_FreqDev
 
 	float m_LevelThresholdForNoiseLow;     // for low frequencies
@@ -411,6 +517,7 @@ public:
 	// get noise masking
 	void GetAudioMasking(DATA * pBuf);  // nChannels * FftOrder
 	void GetNoiseThreshold(DATA * pBuf); // precomputed treshold, nChannels *FftOrder count
+	bool IsTonalBand(int ch, int f) const;
 	// filtered FFT power
 	//void GetPerceptedPower(DATA * pBuf);  // nChannels * FftOrder
 	// FFT power of the source signal

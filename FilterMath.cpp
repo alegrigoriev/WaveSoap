@@ -357,8 +357,7 @@ void EllipticPolesZeros(double omegaPass,
 		sum = 0.0;					/* Eq (5.15) numerator */
 		for(m = 0; m < ELLIPTIC_FUNCTION_TERMS; m++)
 		{
-			sum += ipow(-1.0, m) * ipow(q, m * (m + 1)) *
-					sin( (2*m+1) * M_PI * mu / order);
+			sum += ipow(-1.0, m) * ipow(q, m * (m + 1)) * sin( (2*m+1) * M_PI * mu / order);
 		}
 
 		numer = 2.0 * sum * sqrt(sqrt(q));
@@ -440,15 +439,17 @@ void EllipticHilbertPoles(double omegaPass,
 	{
 		mu = i/2.;
 		sum = 0.0;					/* Eq (5.15) numerator */
-		for(m=0; m<ELLIPTIC_FUNCTION_TERMS; m++)	sum += ipow(-1.0,m) * ipow(q, m*(m+1)) *
-															sin( (2*m+1) * M_PI * mu / order);
-
+		for(m=0; m<ELLIPTIC_FUNCTION_TERMS; m++)
+		{
+			sum += ipow(-1.0,m) * ipow(q, m*(m+1)) * sin( (2*m+1) * M_PI * mu / order);
+		}
 		numer = 2.0 * sum * sqrt(sqrt(q));
 
 		sum = 0.0;					/* Eq (5.15) denominator */
 		for(m=1; m<ELLIPTIC_FUNCTION_TERMS; m++)
+		{
 			sum += ipow(-1.0,m) * ipow(q,m*m) * cos(2.0 * M_PI * m * mu / order);
-
+		}
 		denom = 1.0 + 2.0 * sum;
 		xx = numer/denom;
 		denom = 1.0 + xx*xx;		/* Eq (5.18) */
@@ -673,7 +674,7 @@ void HilbertTwoAllpassDecompose(const POLY_ROOTS & poles,
 
 	denom1 = POLY(roots1);
 	denom2 = POLY(roots2);
-	// make reverce denominators
+	// make reverse denominators
 	COMPLEX mult1(0.5, 0), mult2(0., 0.5);
 	if (poles.count() & 2)
 	{

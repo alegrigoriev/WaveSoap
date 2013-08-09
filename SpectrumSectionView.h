@@ -52,6 +52,7 @@ protected:
 	void HideCrossHair(CDC * pDC = NULL);
 	void DrawCrossHair(POINT point, CDC * pDC = NULL);
 	void GetChannelRect(int Channel, RECT * pR) const;
+	void GetChannelClipRect(int Channel, RECT * pR) const;
 
 	struct FftGraphBand;
 
