@@ -269,7 +269,7 @@ void CApplicationProfileItemBinary::WriteData(BOOL bForceWrite)
 {
 	if (bForceWrite || memcmp(m_Pointer, & m_InitialData.front(), m_Size))
 	{
-		m_pProfile->WriteProfileBinary(Section, Name, LPBYTE(m_Pointer), m_Size);
+		m_pProfile->WriteProfileBinary(Section, Name, LPBYTE(m_Pointer), (unsigned)m_Size);
 	}
 }
 
