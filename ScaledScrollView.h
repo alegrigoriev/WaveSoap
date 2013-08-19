@@ -176,8 +176,8 @@ protected:
 	virtual BOOL OnScrollBy(CSize sizeScroll, BOOL bDoScroll = TRUE);
 	virtual BOOL OnNotify(WPARAM wParam, LPARAM lParam, LRESULT* pResult);
 	//}}AFX_VIRTUAL
-	virtual BOOL OnNeedText( UINT id, NMHDR * pNotifyStruct, LRESULT * result );
-	virtual int OnToolHitTest( CPoint point, TOOLINFO* pTI ) const;
+	virtual BOOL OnNeedText( UINT_PTR id, NMHDR * pNotifyStruct, LRESULT * result );
+	virtual INT_PTR OnToolHitTest( CPoint point, TOOLINFO* pTI ) const;
 
 // Implementation
 protected:

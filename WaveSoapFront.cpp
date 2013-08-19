@@ -1214,7 +1214,7 @@ void CWaveSoapDocManager::OnFileOpen()
 		dlgFile.m_ofn.nFilterIndex = 1;
 	}
 
-	int nResult = dlgFile.DoModal();
+	INT_PTR nResult = dlgFile.DoModal();
 	if (nResult != IDOK)
 	{
 		fileNameBuf.ReleaseBuffer(0x2000-1);
@@ -1247,7 +1247,7 @@ void CWaveSoapDocManager::OnFileOpen()
 	fileNameBuf.ReleaseBuffer();
 }
 
-int CWaveSoapFrontStatusBar::OnToolHitTest(CPoint point, TOOLINFO* pTI) const
+INT_PTR CWaveSoapFrontStatusBar::OnToolHitTest(CPoint point, TOOLINFO* pTI) const
 {
 	for (int i = 1; i < m_nCount; i++)
 	{
@@ -1420,7 +1420,7 @@ void SetStatusString(CCmdUI* pCmdUI, const CString & string,
 			CGdiObjectSaveT<CFont> OldFont(dc, dc.SelectObject(pFont));
 
 			VERIFY(::GetTextExtentPoint32(dc,
-										MaxString, _tcslen(MaxString), & size));
+										MaxString, (int)_tcslen(MaxString), & size));
 		}
 
 		UINT nID, nStyle;
@@ -1553,10 +1553,10 @@ BOOL AFXAPI AfxComparePath(LPCTSTR lpszPath1, LPCTSTR lpszPath2);
 
 static void AFXAPI _AfxAbbreviateName(LPTSTR lpszCanon, int cchMax, BOOL bAtLeastName)
 {
-	int cchFullPath, cchFileName, cchVolName;
-	const TCHAR* lpszCur;
-	const TCHAR* lpszBase;
-	const TCHAR* lpszFileName;
+	ptrdiff_t cchFullPath, cchFileName, cchVolName;
+	LPCTSTR lpszCur;
+	LPCTSTR lpszBase;
+	LPCTSTR lpszFileName;
 
 	lpszBase = lpszCanon;
 	cchFullPath = lstrlen(lpszCanon);

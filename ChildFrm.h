@@ -104,7 +104,7 @@ public:
 	LRESULT OnIdleUpdateCmdUI(WPARAM wParam, LPARAM);
 	void RedrawButton(int Index);
 protected:
-	int OnToolHitTest(CPoint point, TOOLINFO* pTI) const;
+	INT_PTR OnToolHitTest(CPoint point, TOOLINFO* pTI) const;
 	BOOL OnToolTipText(UINT, NMHDR* pNMHDR, LRESULT* pResult);
 	//{{AFX_MSG(CMiniToolbar)
 	afx_msg void OnCaptureChanged(CWnd *pWnd);
@@ -180,7 +180,7 @@ public:
 	// Generated message map functions
 protected:
 	afx_msg LRESULT OnDisplayChange(WPARAM, LPARAM);
-	LRESULT OnSettingChange(WPARAM uFlags, LPARAM);
+	void OnSettingChange(UINT uFlags, LPCTSTR lpszSection);
 	//{{AFX_MSG(CWaveMDIChildClient)
 	afx_msg void OnSize(UINT nType, int cx, int cy);
 	afx_msg int OnCreate(LPCREATESTRUCT lpCreateStruct);

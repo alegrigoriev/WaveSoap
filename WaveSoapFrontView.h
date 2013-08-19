@@ -177,7 +177,7 @@ protected:
 	afx_msg void OnViewHorScale4096();
 	afx_msg void OnUpdateViewHorScale8192(CCmdUI* pCmdUI);
 	afx_msg void OnViewHorScale8192();
-	afx_msg void OnTimer(UINT nIDEvent);
+	afx_msg void OnTimer(UINT_PTR nIDEvent);
 	afx_msg void OnCaptureChanged(CWnd *pWnd);
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()

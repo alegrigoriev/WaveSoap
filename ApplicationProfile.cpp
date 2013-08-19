@@ -214,7 +214,7 @@ class CApplicationProfileItemBinary: public CApplicationProfileItem
 	void * const m_Pointer;
 	std::vector<UCHAR> m_InitialData;
 	std::vector<UCHAR> m_Default;
-	size_t const m_Size;
+	unsigned const m_Size;
 
 protected:
 	virtual void WriteData(BOOL bForceWrite=FALSE);

@@ -1498,7 +1498,7 @@ BOOL CStatisticsDialog::OnInitDialog()
 	// EXCEPTION: OCX Property Pages should return FALSE
 }
 
-int CStatisticsDialog::DoModal()
+INT_PTR CStatisticsDialog::DoModal()
 {
 	if (NULL != m_pContext
 		&& m_pContext->m_DstFile.Channels() == 1)

@@ -241,7 +241,7 @@ struct DirectFileCache::File : public ListItem<DirectFileCache::File>
 	InstanceData * m_pInstanceData;
 	InstanceData * ReplaceInstanceData(InstanceData * ptr)
 	{
-		InstanceData * pOld = InterlockedExchange( & m_pInstanceData, ptr);
+		InstanceData * pOld = (InstanceData *)InterlockedExchangePointer((PVOID*) & m_pInstanceData, ptr);
 		pOld->MoveDataTo(ptr);
 		return pOld;
 	}
@@ -442,7 +442,7 @@ BOOL File::DetachSourceFile()
 	}
 	// all data from the source file is copied to the target,
 	// we can detach it
-	File * pFile = InterlockedExchange( & m_pSourceFile, NULL);
+	File * pFile = (File *)InterlockedExchangePointer((PVOID*) & m_pSourceFile, NULL);
 
 	if (pFile)
 	{
@@ -2775,10 +2775,7 @@ void File::FlushDirtyBuffers(BufferHeader * pDirtyBuf, BLOCK_INDEX MaxKey)
 }
 
 #ifdef _DEBUG
-#define VL_ASSERT(expr) if ( ! (expr)) \
-	{ TRACE("FALSE ==(" #expr ")\n"); \
-	__asm int 3 \
-		}
+#define VL_ASSERT(expr) do if ( ! (expr)) { TRACE("FALSE ==(" #expr ")\n"); DebugBreak(); } while(0)
 
 void File::ValidateList() const
 {

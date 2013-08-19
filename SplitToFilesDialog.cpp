@@ -897,7 +897,7 @@ void CSplitToFilesDialog::OnBnClickedButtonNew()
 	}
 	else
 	{
-		nSelItem = m_Files.size();
+		nSelItem = (unsigned)m_Files.size();
 		i = m_Files.end();
 	}
 
@@ -946,7 +946,7 @@ void CSplitToFilesDialog::OnBnClickedButtonDelete()
 			{
 				if (nSelItem >= m_Files.size())
 				{
-					nSelItem = m_Files.size() - 1;
+					nSelItem = (unsigned)(m_Files.size() - 1);
 				}
 				m_FilesList.SetItemState(nSelItem, LVIS_SELECTED, LVIS_SELECTED);
 			}

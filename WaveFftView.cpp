@@ -175,16 +175,16 @@ SAMPLE_INDEX CWaveFftView::FftColumnToDisplaySample(long Column)
 void CWaveFftView::FillLogPalette(LOGPALETTE * pal, int nEntries)
 {
 	pal->palVersion = 0x300;
-	unsigned i;
+	int i;
 	for (i = 0; i < 10; i++)
 	{
 		pal->palPalEntry[i].peFlags = PC_EXPLICIT;
-		pal->palPalEntry[i].peRed = i;
+		pal->palPalEntry[i].peRed = (BYTE)i;
 		pal->palPalEntry[i].peGreen = 0;
 		pal->palPalEntry[i].peBlue = 0;
 	}
 
-	for (int j = 0; j < sizeof palette && i < nEntries; j += 3, i++)
+	for (unsigned j = 0; j < sizeof palette && i < nEntries; j += 3, i++)
 	{
 		pal->palPalEntry[i].peFlags = PC_NOCOLLAPSE;
 		pal->palPalEntry[i].peRed = palette[j];
@@ -330,9 +330,9 @@ void CWaveFftView::OnDraw(CDC* pDC)
 
 		void * pBits;
 		bool bUsePalette;
-		size_t width = r.right - r.left;
+		unsigned width = r.right - r.left;
 		long height = cr.bottom - cr.top;
-		size_t stride = (width * 3 + 3) & ~3;
+		unsigned stride = (width * 3 + 3) & ~3;
 		size_t BmpSize = stride * ::abs(height);
 		int BytesPerPixel = 3;
 		struct BM : BITMAPINFO
@@ -496,7 +496,7 @@ void CWaveFftView::OnDraw(CDC* pDC)
 		int IdxSize = k;
 
 		unsigned char * pColBmp = pBmp;
-		int nChanOffset = stride * rows;
+		unsigned nChanOffset = stride * rows;
 		unsigned char * pData = m_pFftResultArray +
 								(nFirstCol + m_IndexOfFftBegin) * m_FftResultArrayHeight;
 
@@ -725,7 +725,7 @@ void CWaveFftView::OnDraw(CDC* pDC)
 				LPCTSTR txt = pInst->GetCueText(i->CuePointID);
 				if (NULL != txt)
 				{
-					int count = _tcslen(txt);
+					int count = (int)_tcslen(txt);
 					CPoint size = pDC->GetTextExtent(txt, count);
 					if (x + size.x > r.left)
 					{

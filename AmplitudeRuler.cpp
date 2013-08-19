@@ -571,7 +571,7 @@ void CSpectrumSectionRuler::OnDraw(CDC* pDC)
 		MaxText = _T("-100");
 	}
 
-	int nLength = pDC->GetTextExtent(MaxText, _tcslen(MaxText)).cx;
+	int nLength = pDC->GetTextExtent(MaxText, (int)_tcslen(MaxText)).cx;
 
 	double Dist = fabs(1.5 * nLength / GetXScaleDev());
 	// select distance between ticks
