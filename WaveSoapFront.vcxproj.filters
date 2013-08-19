@@ -520,11 +520,6 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <Manifest Include="WaveSoap.manifest">
-      <Filter>Resource Files</Filter>
-    </Manifest>
-  </ItemGroup>
-  <ItemGroup>
     <CustomBuild Include="hlp\WaveSoap.hhp">
       <Filter>Source Files</Filter>
     </CustomBuild>
