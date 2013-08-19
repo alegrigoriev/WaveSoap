@@ -145,14 +145,14 @@ public:
 
 	// if input data is compressed and not sample-aligned, this should be 0
 	// it can be multiple of block size for compressed format
-	virtual size_t GetInputSampleSize() const
+	virtual unsigned GetInputSampleSize() const
 	{
 		return m_InputFormat.SampleSize();
 	}
 
 	// if output data is compressed and not sample-aligned, this should be 0
 	// it can be multiple of block size for compressed format
-	virtual size_t GetOutputSampleSize() const
+	virtual unsigned GetOutputSampleSize() const
 	{
 		return m_OutputFormat.SampleSize();
 	}
@@ -202,6 +202,7 @@ private:
 	CWaveProc & operator =(const CWaveProc &);
 };
 
+#if 0
 template<typename TempInputType=WAVE_SAMPLE, typename TempOutputType=WAVE_SAMPLE> class CWaveConvertorProc
 	: public CWaveProc
 {
@@ -311,6 +312,8 @@ private:
 	CWaveConvertorProc(const CWaveConvertorProc &);
 	CWaveConvertorProc & operator =(const CWaveConvertorProc &);
 };
+
+#endif
 
 class CHumRemoval : public CWaveProc
 {
@@ -611,11 +614,11 @@ public:
 
 	// if input data is compressed and not sample-aligned, this could be 0
 	// it can be multiple of block size for compressed format
-	virtual size_t GetInputSampleSize() const;
+	virtual unsigned GetInputSampleSize() const;
 
 	// if output data is compressed and not sample-aligned, this could be 0
 	// it can be multiple of block size for compressed format
-	virtual size_t GetOutputSampleSize() const;
+	virtual unsigned GetOutputSampleSize() const;
 
 	virtual NUMBER_OF_SAMPLES GetInputNumberOfSamples() const;
 
@@ -737,11 +740,11 @@ public:
 
 	// if input data is compressed and not sample-aligned, this should be 0
 	// it can be multiple of block size for compressed format
-	virtual size_t GetInputSampleSize() const;
+	virtual unsigned GetInputSampleSize() const;
 
 	// if input data is compressed and not sample-aligned, this should be 0
 	// it can be multiple of block size for compressed format
-	virtual size_t GetOutputSampleSize() const;
+	virtual unsigned GetOutputSampleSize() const;
 
 	virtual NUMBER_OF_SAMPLES GetInputNumberOfSamples() const;
 
@@ -751,8 +754,8 @@ private:
 	AudioStreamConvertor m_AcmConvertor;
 
 	DWORD m_ConvertFlags;
-	size_t m_InputSampleSize;
-	size_t m_OutputSampleSize;
+	unsigned m_InputSampleSize;
+	unsigned m_OutputSampleSize;
 
 protected:
 

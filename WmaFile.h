@@ -5,9 +5,9 @@
 #include <wmsdk.h>
 #include <atlsync.h>
 
-#if _MSC_VER > 1000
+#define USE_SYNC_READER
+
 #pragma once
-#endif // _MSC_VER > 1000
 
 class CDirectFileStream: public IStream
 {
@@ -17,18 +17,23 @@ class CDirectFileStream: public IStream
 	HRESULT STDMETHODCALLTYPE QueryInterface( REFIID riid,
 											void __RPC_FAR *__RPC_FAR *ppvObject )
 	{
-		if ( riid == IID_IStream )
+		if ( riid == IID_IUnknown)
 		{
-			*ppvObject = ( IStream* )this;
+			*ppvObject = static_cast<IUnknown*>(this);
+		}
+		else if ( riid == IID_IStream )
+		{
+			*ppvObject = static_cast<IStream*>(this);
 		}
 		else
 		{
+			*ppvObject = NULL;
 			return E_NOINTERFACE;
 		}
 		return S_OK;
 	}
 
-	ULONG STDMETHODCALLTYPE AddRef( void ) { return 1; }
+	ULONG STDMETHODCALLTYPE AddRef( void ) { return 2; }
 
 	ULONG STDMETHODCALLTYPE Release( void ) { return 1; }
 
@@ -98,9 +103,13 @@ private:
 	CDirectFile m_File;
 };
 #define USE_READER_CALLBACK_ADVANCED 1
-class CWmaDecoder : public IWMReaderCallback
+class CWmaDecoder
+
+#ifndef USE_SYNC_READER
+	: public IWMReaderCallback
 #if USE_READER_CALLBACK_ADVANCED
 	, public IWMReaderCallbackAdvanced
+#endif
 #endif
 {
 public:
@@ -110,10 +119,15 @@ public:
 	//
 	//Methods of IUnknown
 	//
+#ifndef USE_SYNC_READER
 	HRESULT STDMETHODCALLTYPE QueryInterface( REFIID riid,
 											void __RPC_FAR *__RPC_FAR *ppvObject )
 	{
-		if (riid == IID_IWMReaderCallback)
+		if (riid == IID_IUnknown)
+		{
+			*ppvObject = static_cast<IUnknown*>(static_cast<IWMReaderCallback*>(this));
+		}
+		else if (riid == IID_IWMReaderCallback)
 		{
 			*ppvObject = static_cast<IWMReaderCallback*>(this);
 		}
@@ -129,14 +143,18 @@ public:
 		}
 		else
 		{
+			*ppvObject = NULL;
 			return E_NOINTERFACE;
 		}
 		return S_OK;
 	}
 
-	ULONG STDMETHODCALLTYPE AddRef( void ) { return 1; }
+	ULONG STDMETHODCALLTYPE AddRef( void ) { return 2; }
 
 	ULONG STDMETHODCALLTYPE Release( void ) { return 1; }
+#endif
+
+#ifndef USE_SYNC_READER
 	//
 	//Methods of IWMReaderCallback
 	//
@@ -201,7 +219,7 @@ public:
 														/* [out] */ INSSBuffer __RPC_FAR *__RPC_FAR *ppBuffer,
 														/* [in] */ void __RPC_FAR *pvContext);
 #endif
-
+#endif
 	HRESULT Open(LPCTSTR szFilename);
 	HRESULT Open(CDirectFile & file);
 
@@ -228,7 +246,7 @@ public:
 	{
 		return m_bStarted;
 	}
-	void DeliverNextSample(DWORD timeout);
+	bool DeliverNextSample(DWORD timeout);
 	void SetDstFile(CWaveFile & file);
 	CWaveFormat const & GetSrcFormat() const
 	{
@@ -258,9 +276,12 @@ protected:
 	SAMPLE_POSITION m_DstPos;
 	SAMPLE_INDEX m_DstCopySample;
 
+#ifdef USE_SYNC_READER
+	CComPtr<IWMSyncReader> m_Reader;
+#else
 	CComPtr<IWMReader> m_Reader;
 	CComQIPtr<IWMReaderAdvanced2> m_pAdvReader;
-
+#endif
 	CDirectFileStream m_InputStream;
 
 	bool m_bOpened;
@@ -291,12 +312,17 @@ class FileWriter : public IWMWriterSink
 	HRESULT STDMETHODCALLTYPE QueryInterface( REFIID riid,
 											void __RPC_FAR *__RPC_FAR *ppvObject )
 	{
-		if ( riid == IID_IWMWriterSink )
+		if ( riid == IID_IUnknown)
 		{
-			*ppvObject = ( IWMWriterSink* )this;
+			*ppvObject = static_cast<IUnknown*>(this);
+		}
+		else if ( riid == IID_IWMWriterSink )
+		{
+			*ppvObject = static_cast<IWMWriterSink*>(this);
 		}
 		else
 		{
+			*ppvObject = NULL;
 			return E_NOINTERFACE;
 		}
 		return S_OK;
@@ -304,7 +330,7 @@ class FileWriter : public IWMWriterSink
 
 	ULONG STDMETHODCALLTYPE AddRef( void )
 	{
-		return 1;
+		return 2;
 	}
 
 	ULONG STDMETHODCALLTYPE Release( void )
