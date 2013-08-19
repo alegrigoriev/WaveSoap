@@ -270,11 +270,11 @@ size_t CWaveProc::ProcessSound(char const * pInBuf, char * pOutBuf,
 	size_t nSavedBytes = 0;
 	*pUsedBytes = 0;
 
-	size_t const InputSampleSize = GetInputSampleSize();
+	unsigned const InputSampleSize = GetInputSampleSize();
 	// input buffer is always multiple of sample size
 	ASSERT(0 == InputSampleSize || 0 == nInBytes % InputSampleSize);
 
-	size_t const OutputSampleSize = GetOutputSampleSize();
+	unsigned const OutputSampleSize = GetOutputSampleSize();
 	// output buffer is always multiple of sample size
 	ASSERT(0 == OutputSampleSize || 0 == nOutBytes % OutputSampleSize);
 
@@ -1717,8 +1717,9 @@ void CClickRemoval::InterpolateGapLeastSquares(WAVE_SAMPLE data[], int nLeftInde
 
 void CClickRemoval::InterpolateGap(WAVE_SAMPLE data[], int nLeftIndex, int ClickLength, int nChans, bool BigGap, int TotalSamples)
 {
+#if 1
 	InterpolateGapLeastSquares(data, nLeftIndex, ClickLength, nChans, TotalSamples);
-	return;
+#else
 	if (BigGap)
 	{
 		//        InterpolateBigGapSliding(data, nLeftIndex, ClickLength, nChans, TotalSamples);
@@ -1786,6 +1787,7 @@ void CClickRemoval::InterpolateGap(WAVE_SAMPLE data[], int nLeftIndex, int Click
 		}
 		data[nChans * (nLeftIndex + n)] = DoubleToShort(y + y_neg);
 	}
+#endif
 }
 
 size_t CClickRemoval::ProcessSoundBuffer(char const * pIn, char * pOut,
@@ -2256,7 +2258,7 @@ bool SIGNAL_PARAMS::PreprocessFftSample(std::complex<DATA> smp, int nSample)
 	if (Power[2] * 30. < Power[0])
 	{
 		sp_AvgFreq = sp_Freq;
-		sp_FreqDev = pNr->m_FreqThresholdOfNoiselike * 1.1;
+		sp_FreqDev = float(pNr->m_FreqThresholdOfNoiselike * 1.1);
 	}
 	return true;
 }
@@ -3822,22 +3824,22 @@ size_t CBatchProcessing::ProcessSoundBuffer(char const * pIn, char * pOut,
 
 // if input data is compressed and not sample-aligned, this could be 0
 // it can be multiple of block size for compressed format
-size_t CBatchProcessing::GetInputSampleSize() const
+unsigned CBatchProcessing::GetInputSampleSize() const
 {
 	if (m_Stages.IsEmpty())
 	{
-		return 0;
+		return 4;
 	}
 	return m_Stages[0].Proc->GetInputSampleSize();
 }
 
 // if output data is compressed and not sample-aligned, this could be 0
 // it can be multiple of block size for compressed format
-size_t CBatchProcessing::GetOutputSampleSize() const
+unsigned CBatchProcessing::GetOutputSampleSize() const
 {
 	if (m_Stages.IsEmpty())
 	{
-		return 0;
+		return 4;
 	}
 	return m_Stages[m_Stages.GetSize() - 1].Proc->GetOutputSampleSize();
 }
@@ -4705,13 +4707,13 @@ size_t CAudioConvertor::ProcessSoundBuffer(char const * pIn, char * pOut,
 }
 
 // if input data is compressed and not sample-aligned, this could be 0
-size_t CAudioConvertor::GetInputSampleSize() const
+unsigned CAudioConvertor::GetInputSampleSize() const
 {
 	return m_InputSampleSize;
 }
 
 // if input data is compressed and not sample-aligned, this could be 0
-size_t CAudioConvertor::GetOutputSampleSize() const
+unsigned CAudioConvertor::GetOutputSampleSize() const
 {
 	return m_OutputSampleSize;
 }

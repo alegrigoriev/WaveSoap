@@ -324,7 +324,7 @@ protected:
 	};
 	enum {BUF_USED = 1 };
 
-	UINT m_id;
+	INT m_id;
 	CWaveFormat m_wfe;
 	CRITICAL_SECTION cs;
 	HANDLE hEvent;

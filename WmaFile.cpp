@@ -4,14 +4,14 @@
 #include "WmaFile.h"
 #include <wmsysprf.h>
 #include "KInterlocked.h"
-#define TRACE_WMA_DECODER 0
+#define TRACE_WMA_DECODER 1
 
 HRESULT STDMETHODCALLTYPE CDirectFileStream::Read(
 												/* [length_is][size_is][out] */ void __RPC_FAR *pv,
 												/* [in] */ ULONG cb,
 												/* [out] */ ULONG __RPC_FAR *pcbRead)
 {
-	if (TRACE_WMA_DECODER) TRACE(_T("CDirectFileStream::Read %d bytes at pos %d, length=%d\n"),
+	if (TRACE_WMA_DECODER) TRACE(_T("Thread:%08X CDirectFileStream::Read %d bytes at pos %d, length=%d\n"), GetCurrentThreadId(),
 								cb, (DWORD)m_File.Seek(0, FILE_CURRENT), (DWORD)m_File.GetLength());
 
 	LONG lRead = m_File.Read(pv, cb);
@@ -27,7 +27,7 @@ HRESULT STDMETHODCALLTYPE CDirectFileStream::Read(
 	}
 	else
 	{
-		TRACE(_T("CDirectFileStream::Read failed, read %d bytes, requested %d\n"),
+		TRACE(_T("Thread:%08X CDirectFileStream::Read failed, read %d bytes, requested %d\n"), GetCurrentThreadId(),
 			lRead, cb);
 		return S_FALSE;
 	}
@@ -38,7 +38,7 @@ HRESULT STDMETHODCALLTYPE CDirectFileStream::Write(
 													/* [in] */ ULONG cb,
 													/* [out] */ ULONG __RPC_FAR *pcbWritten)
 {
-	if (TRACE_WMA_DECODER) TRACE(_T("CDirectFileStream::Write %d bytes\n"), cb);
+	if (TRACE_WMA_DECODER) TRACE(_T("Thread:%08X CDirectFileStream::Write %d bytes\n"), GetCurrentThreadId(), cb);
 	LONG lWritten = m_File.Write(pv, cb);
 	if (-1 != lWritten)
 	{
@@ -59,7 +59,7 @@ HRESULT STDMETHODCALLTYPE CDirectFileStream::Seek(
 												/* [in] */ DWORD dwOrigin,
 												/* [out] */ ULARGE_INTEGER __RPC_FAR *plibNewPosition)
 {
-	if (0 || TRACE_WMA_DECODER) TRACE(_T("CDirectFileStream::Seek to %08X%08X, %d\n"),
+	if (0 || TRACE_WMA_DECODER) TRACE(_T("Thread:%08X CDirectFileStream::Seek to %08X%08X, %d\n"), GetCurrentThreadId(),
 									dlibMove.HighPart, dlibMove.LowPart, dwOrigin);
 	int origin;
 	switch (dwOrigin)
@@ -108,7 +108,7 @@ HRESULT STDMETHODCALLTYPE CDirectFileStream::CopyTo(
 													/* [out] */ ULARGE_INTEGER __RPC_FAR *pcbWritten)
 {
 	// copy cb bytes from this stream to *pstrm
-	if (TRACE_WMA_DECODER) TRACE(_T("CDirectFileStream::CopyTo %d bytes\n"), cb);
+	if (TRACE_WMA_DECODER) TRACE(_T("Thread:%08X CDirectFileStream::CopyTo %d bytes\n"), GetCurrentThreadId(), cb);
 	LONGLONG FilePos = m_File.Seek(0, FILE_CURRENT);
 	LONGLONG FileLength = m_File.GetLength();
 	if (NULL != pcbRead)
@@ -204,7 +204,7 @@ HRESULT STDMETHODCALLTYPE CDirectFileStream::Stat(
 												/* [out] */ STATSTG __RPC_FAR *pstatstg,
 												/* [in] */ DWORD grfStatFlag)
 {
-	if (TRACE_WMA_DECODER) TRACE(_T("CDirectFileStream::Stat flag=%x\n"), grfStatFlag);
+	if (TRACE_WMA_DECODER) TRACE(_T("Thread:%08X CDirectFileStream::Stat flag=%x\n"), GetCurrentThreadId(), grfStatFlag);
 	if (! m_File.IsOpen())
 	{
 		return STG_E_ACCESSDENIED;
@@ -269,10 +269,13 @@ CWmaDecoder::~CWmaDecoder()
 
 void CWmaDecoder::DeInit()
 {
+#ifndef USE_SYNC_READER
 	m_pAdvReader.Release();
+#endif
 	m_Reader.Release();
 }
 
+#ifndef USE_SYNC_READER
 HRESULT STDMETHODCALLTYPE CWmaDecoder::OnStatus( /* [in] */ WMT_STATUS Status,
 															/* [in] */ HRESULT hr,
 															/* [in] */ WMT_ATTR_DATATYPE dwType,
@@ -288,31 +291,31 @@ HRESULT STDMETHODCALLTYPE CWmaDecoder::OnStatus( /* [in] */ WMT_STATUS Status,
 	switch (Status)
 	{
 	case WMT_OPENED:
-		TRACE(_T("CWmaDecoder::OnStatus WMT_OPENED\n"));
+		TRACE(_T("Thread:%08X CWmaDecoder::OnStatus WMT_OPENED\n"), GetCurrentThreadId());
 		m_bOpened = true;
 		m_OpenedEvent.Set();
 		break;
 	case WMT_STARTED:
-		TRACE(_T("CWmaDecoder::OnStatus WMT_STARTED\n"));
+		TRACE(_T("Thread:%08X CWmaDecoder::OnStatus WMT_STARTED\n"), GetCurrentThreadId());
 		m_bStarted = true;
 		m_StartedEvent.Set();
 		break;
 
 	case WMT_STOPPED:
-		TRACE(_T("CWmaDecoder::OnStatus WMT_STOPPED\n"));
+		TRACE(_T("Thread:%08X CWmaDecoder::OnStatus WMT_STOPPED\n"), GetCurrentThreadId());
 		m_bStarted = false;
 		m_StartedEvent.Set();
 		break;
 
 	case WMT_ERROR:
-		TRACE(_T("CWmaDecoder::OnStatus WMT_ERROR\n"));
+		TRACE(_T("Thread:%08X CWmaDecoder::OnStatus WMT_ERROR, hr=0x%08X, datatype=%d\n"), GetCurrentThreadId(), hr, dwType);
 		break;
 		m_bStarted = false;
 		m_StartedEvent.Set();
 		break;
 
 	case WMT_END_OF_FILE:
-		if (TRACE_WMA_DECODER) TRACE(_T("CWmaDecoder::OnStatus WMT_END_OF_FILE\n"));
+		if (TRACE_WMA_DECODER) TRACE(_T("Thread:%08X CWmaDecoder::OnStatus WMT_END_OF_FILE\n"), GetCurrentThreadId());
 		//m_bStarted = false;
 		m_StartedEvent.Set();
 		m_OpenedEvent.Set();
@@ -323,7 +326,7 @@ HRESULT STDMETHODCALLTYPE CWmaDecoder::OnStatus( /* [in] */ WMT_STATUS Status,
 		break;
 
 	case WMT_END_OF_STREAMING:
-		if (TRACE_WMA_DECODER) TRACE(_T("CWmaDecoder::OnStatus WMT_END_OF_STREAMING\n"));
+		if (TRACE_WMA_DECODER) TRACE(_T("Thread:%08X CWmaDecoder::OnStatus WMT_END_OF_STREAMING\n"), GetCurrentThreadId());
 //            m_bStarted = false;
 		m_StartedEvent.Set();
 		m_OpenedEvent.Set();
@@ -334,13 +337,15 @@ HRESULT STDMETHODCALLTYPE CWmaDecoder::OnStatus( /* [in] */ WMT_STATUS Status,
 		break;
 
 	default:
-		if (TRACE_WMA_DECODER) TRACE(_T("CWmaDecoder::OnStatus Status=%X, hr=%08X, DataType=%X, pValue=%X\n"),
+		if (TRACE_WMA_DECODER) TRACE(_T("Thread:%08X CWmaDecoder::OnStatus Status=%X, hr=%08X, DataType=%X, pValue=%X\n"), GetCurrentThreadId(),
 									Status, hr, dwType, pValue);
 		;
 	}
 	return S_OK;
 }
+#endif
 
+#ifndef USE_SYNC_READER
 HRESULT STDMETHODCALLTYPE CWmaDecoder::OnSample( /* [in] */ DWORD dwOutputNum,
 															/* [in] */ QWORD cnsSampleTime,
 															/* [in] */ QWORD cnsSampleDuration,
@@ -353,13 +358,13 @@ HRESULT STDMETHODCALLTYPE CWmaDecoder::OnSample( /* [in] */ DWORD dwOutputNum,
 	//
 	if (m_dwAudioOutputNum != dwOutputNum)
 	{
-		if (TRACE_WMA_DECODER) TRACE(_T("CWmaDecoder::OnSample m_dwAudioOutputNum != dwOutputNum\n"));
+		if (TRACE_WMA_DECODER) TRACE(_T("Thread:%08X CWmaDecoder::OnSample m_dwAudioOutputNum != dwOutputNum\n"), GetCurrentThreadId());
 		return S_OK;
 	}
 
 	if (! IsStarted())
 	{
-		if (TRACE_WMA_DECODER) TRACE(_T("CWmaDecoder::OnSample: ! IsStarted()\n"));
+		if (TRACE_WMA_DECODER) TRACE(_T("Thread:%08X CWmaDecoder::OnSample: ! IsStarted()\n"), GetCurrentThreadId());
 		return S_OK;
 	}
 
@@ -369,7 +374,7 @@ HRESULT STDMETHODCALLTYPE CWmaDecoder::OnSample( /* [in] */ DWORD dwOutputNum,
 
 	hr = pSample->GetBufferAndLength( &pData, &cbData);
 
-	if (TRACE_WMA_DECODER) TRACE(_T("CWmaDecoder::OnSample, time=%d ms, %d bytes, hr=%X\n"),
+	if (TRACE_WMA_DECODER) TRACE(_T("Thread:%08X CWmaDecoder::OnSample, time=%d ms, %d bytes, hr=%X\n"), GetCurrentThreadId(),
 								DWORD(cnsSampleTime/10000), cbData, hr);
 
 	if( FAILED( hr ) )
@@ -417,7 +422,7 @@ HRESULT STDMETHODCALLTYPE CWmaDecoder::OnTime(
 											/* [in] */ QWORD cnsCurrentTime,
 											/* [in] */ void __RPC_FAR * /*pvContext*/)
 {
-	if (0 || TRACE_WMA_DECODER) TRACE(_T("IWMReaderCallbackAdvancedOnTime(%I64d)\n"), cnsCurrentTime);
+	if (0 || TRACE_WMA_DECODER) TRACE(_T("Thread:%08X IWMReaderCallbackAdvancedOnTime(%I64d)\n"), GetCurrentThreadId(), cnsCurrentTime);
 	// ask for next buffer
 	m_CurrentStreamTime = cnsCurrentTime;
 
@@ -425,16 +430,17 @@ HRESULT STDMETHODCALLTYPE CWmaDecoder::OnTime(
 	m_SampleEvent.Set();
 	return S_OK;
 }
-
-void CWmaDecoder::DeliverNextSample(DWORD timeout)
+#endif
+bool CWmaDecoder::DeliverNextSample(DWORD timeout)
 {
+#ifndef USE_SYNC_READER
 	if (m_bNeedNextSample)
 	{
 		m_bNeedNextSample = false;
 		if (m_pAdvReader)
 		{
 			QWORD NextSampleTime = m_CurrentStreamTime + m_BufferLengthTime;
-			if (TRACE_WMA_DECODER) TRACE(_T("CWmaDecoder::DeliverNextSample:  m_CurrentStreamTime=%I64d, NextTime=%I64d\n"),
+			if (TRACE_WMA_DECODER) TRACE(_T("Thread:%08X CWmaDecoder::DeliverNextSample:  m_CurrentStreamTime=%I64d, NextTime=%I64d\n"), GetCurrentThreadId(),
 										m_CurrentStreamTime, NextSampleTime);
 
 			m_pAdvReader->DeliverTime(NextSampleTime);
@@ -452,11 +458,95 @@ void CWmaDecoder::DeliverNextSample(DWORD timeout)
 	{
 		WaitForSingleObject(m_SampleEvent, timeout);
 	}
+#else
+	INSSBuffer* pSample = NULL;
+	QWORD cnsSampleTime = 0;
+	QWORD cnsSampleDuration = 0;
+	DWORD dwFlags = 0;
+	DWORD dwOutputNum = 0;
+	WORD wStreamNum = 0;
+
+	HRESULT hr = m_Reader->GetNextSample( 0, &pSample,
+										&cnsSampleTime,
+										&cnsSampleDuration,
+										&dwFlags,
+										&dwOutputNum,
+										&wStreamNum );
+
+	if( FAILED( hr ) )
+	{
+		if( NS_E_NO_MORE_SAMPLES == hr )
+		{
+			Stop();
+			return false;
+		}
+	}
+	if (m_dwAudioOutputNum != dwOutputNum)
+	{
+		if (TRACE_WMA_DECODER) TRACE(_T("Thread:%08X CWmaDecoder::OnSample m_dwAudioOutputNum != dwOutputNum\n"), GetCurrentThreadId());
+		return true;
+	}
+
+	BYTE *pData = NULL;
+	DWORD cbData = 0;
+
+	hr = pSample->GetBufferAndLength( &pData, &cbData);
+
+	if (TRACE_WMA_DECODER) TRACE(_T("Thread:%08X CWmaDecoder::OnSample, sample time=%d ms, next time=%d ms, %d bytes, hr=%X\n"), GetCurrentThreadId(),
+								DWORD(cnsSampleTime/10000), DWORD((cnsSampleTime+cnsSampleDuration)/10000), cbData, hr);
+
+	if( FAILED( hr ) )
+	{
+		Stop();
+		return false;
+	}
+	m_DstFile.CDirectFile::Write(pData, cbData);
+
+	// update current number of samples
+	SAMPLE_POSITION DstCopyPos = (SAMPLE_POSITION)m_DstFile.CDirectFile::Seek(0, FILE_CURRENT);
+	SAMPLE_INDEX DstCopySample = m_DstFile.PositionToSample(DstCopyPos);
+
+	if (DstCopySample > m_CurrentSamples)
+	{
+		// calculate new length
+		NUMBER_OF_SAMPLES MaxNumberOfSamples = 0x7FFFFFFF / m_DstFile.SampleSize();
+		LONGLONG TotalSamplesEstimated = ULONG(double(DstCopySample) * SrcLength() / SrcPos());
+
+		if (TotalSamplesEstimated > MaxNumberOfSamples)
+		{
+			TotalSamplesEstimated = MaxNumberOfSamples;
+		}
+		if (NUMBER_OF_SAMPLES(TotalSamplesEstimated) < m_CurrentSamples)
+		{
+			TotalSamplesEstimated = m_CurrentSamples;
+		}
+
+		m_CurrentSamples = NUMBER_OF_SAMPLES(TotalSamplesEstimated);
+
+		m_DstFile.SetFileLengthSamples(m_CurrentSamples);
+	}
+	// modify positions after file length modified,
+	m_DstPos = DstCopyPos;  // to avoid race condition
+	m_DstCopySample = DstCopySample;
+
+	// ask for next buffer
+	m_CurrentStreamTime = cnsSampleTime + cnsSampleDuration;
+
+#endif
+	return IsStarted();
 }
 
 BOOL CWmaDecoder::Init()
 {
 	HRESULT hr;
+#ifdef USE_SYNC_READER
+	hr = WMCreateSyncReader( NULL, 0 , &m_Reader );
+	if( FAILED( hr ) )
+	{
+		return FALSE;
+	}
+
+#else
 	hr = WMCreateReader( NULL, 0 , &m_Reader );
 	if( FAILED( hr ) )
 	{
@@ -469,7 +559,7 @@ BOOL CWmaDecoder::Init()
 		m_Reader.Release();
 		return FALSE;
 	}
-
+#endif
 	m_CurrentStreamTime = 0;
 	m_bNeedNextSample = true;
 	return TRUE;
@@ -493,7 +583,14 @@ HRESULT CWmaDecoder::Open(CDirectFile & file)
 		return S_FALSE;
 	}
 	m_InputStream.SetFile(file);
-
+#ifdef USE_SYNC_READER
+	hr = m_Reader->OpenStream( & m_InputStream);
+	if (FAILED(hr))
+	{
+		m_InputStream.Close();
+		return hr;
+	}
+#else
 	hr = m_pAdvReader->OpenStream( & m_InputStream, /* (IWMReaderCallback *) */this, NULL);
 	if (FAILED(hr))
 	{
@@ -508,6 +605,7 @@ HRESULT CWmaDecoder::Open(CDirectFile & file)
 		m_InputStream.Close();
 		return S_FALSE;
 	}
+#endif
 	// select an audio stream
 	DWORD cOutputs = 0 ;
 	hr = m_Reader->GetOutputCount( & cOutputs);
@@ -592,7 +690,11 @@ HRESULT CWmaDecoder::Open(CDirectFile & file)
 
 		DWORD MaxSampleSize = 32768;
 
+#ifndef USE_SYNC_READER
 		hr = m_pAdvReader->GetMaxOutputSampleSize(m_dwAudioOutputNum, & MaxSampleSize);
+#else
+		hr = m_Reader->GetMaxOutputSampleSize(m_dwAudioOutputNum, & MaxSampleSize);
+#endif
 		if (TRACE_WMA_DECODER) TRACE(_T("m_pAdvReader->GetMaxOutputSampleSize=%d\n"), MaxSampleSize);
 		if (FAILED(hr))
 		{
@@ -697,8 +799,11 @@ HRESULT CWmaDecoder::Open(CDirectFile & file)
 							StreamSelection = WMT_OFF;
 						}
 
+#ifndef USE_SYNC_READER
 						m_pAdvReader->SetStreamsSelected(1, & iStreamNumber, & StreamSelection);
-
+#else
+						m_Reader->SetStreamsSelected(1, & iStreamNumber, & StreamSelection);
+#endif
 						m_SrcWf = (WAVEFORMATEX *) pType->pbFormat;
 						delete[] (char*) pType;
 					}
@@ -707,22 +812,28 @@ HRESULT CWmaDecoder::Open(CDirectFile & file)
 		}
 	}
 
+#ifndef USE_SYNC_READER
 	if (m_pAdvReader)
 	{
 		m_pAdvReader->SetUserProvidedClock(TRUE);   // use our clock for fast decompression
 	}
+#endif
 	return S_OK;
 }
 
 HRESULT CWmaDecoder::Start()
 {
-	if (1 || TRACE_WMA_DECODER) TRACE(_T("CWmaDecoder::Start()\n"));
+#ifdef USE_SYNC_READER
+	m_bStarted = true;
+	return S_OK;
+#else
+	if (1 || TRACE_WMA_DECODER) TRACE(_T("Thread:%08X CWmaDecoder::Start()\n"), GetCurrentThreadId());
 
 	if (m_Reader)
 	{
 		HRESULT hr = m_Reader->Start(0, 0, 1.0, NULL);
 
-		if (1 || TRACE_WMA_DECODER) TRACE(_T("m_Reader->Start=%X, Immediately after Start: IsStarted()=%X\n"),
+		if (1 || TRACE_WMA_DECODER) TRACE(_T("Thread:%08X m_Reader->Start=%X, Immediately after Start: IsStarted()=%X\n"), GetCurrentThreadId(),
 										hr, IsStarted());
 
 		WaitForSingleObject(m_StartedEvent, 5000);
@@ -735,7 +846,7 @@ HRESULT CWmaDecoder::Start()
 			&& m_pAdvReader)
 		{
 			HRESULT hr1 = m_pAdvReader->DeliverTime(m_BufferLengthTime);
-			if (1 || TRACE_WMA_DECODER) TRACE(_T("m_pAdvReader->DeliverTime returned %X\n"), hr1);
+			if (1 || TRACE_WMA_DECODER) TRACE(_T("Thread:%08X m_pAdvReader->DeliverTime returned %X\n"), GetCurrentThreadId(), hr1);
 		}
 		return hr;
 	}
@@ -743,17 +854,22 @@ HRESULT CWmaDecoder::Start()
 	{
 		return S_FALSE;
 	}
+#endif
 }
 
 HRESULT CWmaDecoder::Stop()
 {
-	if (1 || TRACE_WMA_DECODER) TRACE(_T("CWmaDecoder::Stop()\n"));
+#ifndef USE_SYNC_READER
+	if (1 || TRACE_WMA_DECODER) TRACE(_T("Thread:%08X CWmaDecoder::Stop()\n"), GetCurrentThreadId());
 	if (m_Reader
 		&& m_bStarted)
 	{
 		return m_Reader->Stop();
 	}
 	else
+#else
+	m_bStarted = false;
+#endif
 	{
 		return S_OK;
 	}
@@ -1130,7 +1246,7 @@ BOOL WmaEncoder::Write(void const * Buf, size_t size)
 			DWORD ToCopy = MaxLength - BufLength;
 			if (ToCopy > size)
 			{
-				ToCopy = size;
+				ToCopy = (DWORD)size;
 			}
 			memcpy(pBuf + BufLength, pSrcBuf, ToCopy);
 
@@ -1213,15 +1329,20 @@ private:
 	HRESULT STDMETHODCALLTYPE QueryInterface( REFIID riid,
 											void __RPC_FAR *__RPC_FAR *ppvObject )
 	{
-		if ( riid == IID_INSSBuffer )
+		if ( riid == IID_IUnknown)
 		{
-			AddRef();
-			*ppvObject = ( INSSBuffer* )this;
+			*ppvObject = static_cast<IUnknown*>(this);
+		}
+		else if ( riid == IID_INSSBuffer )
+		{
+			*ppvObject = static_cast<INSSBuffer*>(this);
 		}
 		else
 		{
+			*ppvObject = NULL;
 			return E_NOINTERFACE;
 		}
+		AddRef();
 		return S_OK;
 	}
 
@@ -1356,6 +1477,7 @@ HRESULT STDMETHODCALLTYPE FileWriter::OnEndWriting( void)
 	return S_OK;
 }
 
+#ifndef USE_SYNC_READER
 #if USE_READER_CALLBACK_ADVANCED
 HRESULT STDMETHODCALLTYPE CWmaDecoder::AllocateForStream(
 														/* [in] */ WORD /*wStreamNum*/,
@@ -1385,4 +1507,5 @@ HRESULT STDMETHODCALLTYPE CWmaDecoder::AllocateForOutput(
 	return S_OK;
 }
 
+#endif
 #endif
