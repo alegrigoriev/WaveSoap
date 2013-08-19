@@ -144,7 +144,7 @@ BEGIN_MESSAGE_MAP(CWaveMDIChildClient, CWnd)
 	ON_COMMAND(ID_VIEW_HIDE_SPECTRUMSECTION, OnViewHideSpectrumsection)
 	//}}AFX_MSG_MAP
 	ON_MESSAGE(WM_DISPLAYCHANGE, OnDisplayChange)
-	ON_MESSAGE(WM_SETTINGCHANGE, OnSettingChange)
+	ON_WM_SETTINGCHANGE()
 END_MESSAGE_MAP()
 
 CWnd * CWaveMDIChildClient::CreateView(CRuntimeClass* pViewClass,
@@ -1092,11 +1092,10 @@ void CWaveMDIChildClient::OnViewHideSpectrumsection()
 	RecalcLayout();
 }
 
-LRESULT CWaveMDIChildClient::OnSettingChange(WPARAM uFlags, LPARAM lParam)
+void CWaveMDIChildClient::OnSettingChange(UINT uFlags, LPCTSTR lpszSection)
 {
 	RecalcLayout();
-	CWnd::OnSettingChange(uFlags, (LPCTSTR) lParam);
-	return 0;
+	CWnd::OnSettingChange(uFlags, lpszSection);
 }
 
 LRESULT CWaveMDIChildClient::OnDisplayChange(WPARAM wParam, LPARAM lParam)
@@ -1145,17 +1144,17 @@ CMiniToolbar::~CMiniToolbar()
 IMPLEMENT_DYNAMIC(CMiniToolbar, CWnd)
 
 BEGIN_MESSAGE_MAP(CMiniToolbar, CWnd)
-ON_MESSAGE(WM_IDLEUPDATECMDUI, OnIdleUpdateCmdUI)
-//{{AFX_MSG_MAP(CMiniToolbar)
-ON_WM_CAPTURECHANGED()
-ON_WM_ERASEBKGND()
-ON_WM_LBUTTONDOWN()
-ON_WM_LBUTTONUP()
-ON_WM_MOUSEACTIVATE()
-ON_WM_MOUSEMOVE()
-ON_WM_PAINT()
-ON_WM_CREATE()
-//}}AFX_MSG_MAP
+	ON_MESSAGE(WM_IDLEUPDATECMDUI, OnIdleUpdateCmdUI)
+	//{{AFX_MSG_MAP(CMiniToolbar)
+	ON_WM_CAPTURECHANGED()
+	ON_WM_ERASEBKGND()
+	ON_WM_LBUTTONDOWN()
+	ON_WM_LBUTTONUP()
+	ON_WM_MOUSEACTIVATE()
+	ON_WM_MOUSEMOVE()
+	ON_WM_PAINT()
+	ON_WM_CREATE()
+	//}}AFX_MSG_MAP
 	ON_NOTIFY_EX_RANGE(TTN_NEEDTEXTW, 0, 0xFFFF, OnToolTipText)
 	ON_NOTIFY_EX_RANGE(TTN_NEEDTEXTA, 0, 0xFFFF, OnToolTipText)
 END_MESSAGE_MAP()
@@ -1268,8 +1267,8 @@ void CMiniToolbar::OnPaint()
 		BITMAP bmp;
 		m_Buttons[i].pBitmap->GetBitmap( & bmp);
 		// center the bitmap
-		int x = cr.Width() * i / m_Buttons.size()
-				+ (cr.Width() / m_Buttons.size() - bmp.bmWidth) / 2;
+		int x = cr.Width() * i / (int)m_Buttons.size()
+				+ (cr.Width() / (int)m_Buttons.size() - bmp.bmWidth) / 2;
 		int y = (cr.Height() - bmp.bmHeight) / 2;
 		int flags = DST_BITMAP | DSS_NORMAL | DSS_MONO;
 		if (m_Buttons[i].bEnabled)
@@ -1313,8 +1312,8 @@ void CMiniToolbar::GetItemRect(UINT nID, RECT & rect) const
 		{
 			rect.top = cr.top;
 			rect.bottom = cr.bottom;
-			rect.left = cr.Width() * i / m_Buttons.size();
-			rect.right = cr.Width() * (i + 1) / m_Buttons.size();
+			rect.left = cr.Width() * i / (int)m_Buttons.size();
+			rect.right = cr.Width() * (i + 1) / (int)m_Buttons.size();
 			return;
 		}
 	}
@@ -1365,8 +1364,8 @@ void CMiniToolbar::RedrawButton(int Index)
 	CRect cr;
 	GetClientRect( & cr);
 	CRect r = cr;
-	r.left = cr.Width() * Index / m_Buttons.size();
-	r.right = cr.Width() * (Index + 1) / m_Buttons.size();
+	r.left = cr.Width() * Index / (int)m_Buttons.size();
+	r.right = cr.Width() * (Index + 1) / (int)m_Buttons.size();
 	InvalidateRect( & r);
 }
 
@@ -1470,7 +1469,7 @@ void CMiniToolbar::OnUpdateCmdUI(CFrameWnd* pTarget, BOOL bDisableIfNoHndler)
 	CMiniToolbarCmdUI state;
 	state.m_pOther = this;
 
-	state.m_nIndexMax = m_Buttons.size();
+	state.m_nIndexMax = (int)m_Buttons.size();
 	for (state.m_nIndex = 0; state.m_nIndex < state.m_nIndexMax; state.m_nIndex++)
 	{
 		state.m_nID = m_Buttons[state.m_nIndex].nID;
@@ -1496,7 +1495,7 @@ int CMiniToolbar::OnCreate(LPCREATESTRUCT lpCreateStruct)
 	return 0;
 }
 
-int CMiniToolbar::OnToolHitTest(CPoint point, TOOLINFO* pTI) const
+INT_PTR CMiniToolbar::OnToolHitTest(CPoint point, TOOLINFO* pTI) const
 {
 	ASSERT_VALID(this);
 	ASSERT(::IsWindow(m_hWnd));
@@ -1520,7 +1519,7 @@ int CMiniToolbar::OnToolHitTest(CPoint point, TOOLINFO* pTI) const
 	return nHit;
 }
 
-BOOL CMiniToolbar::OnToolTipText(UINT, NMHDR* pNMHDR, LRESULT* pResult)
+BOOL CMiniToolbar::OnToolTipText(UINT /*id*/, NMHDR* pNMHDR, LRESULT* pResult)
 {
 	return ((CMainFrame*)AfxGetMainWnd())->OnToolTipText(0, pNMHDR, pResult);
 }

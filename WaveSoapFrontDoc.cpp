@@ -535,7 +535,7 @@ BOOL CWaveSoapFrontDoc::DoSave(LPCTSTR lpszPathName, BOOL bReplace)
 			TCHAR Buf[MAX_PATH * 2] = {0};
 			LPTSTR FilePart = Buf;
 			GetFullPathName(newName, MAX_PATH * 2, Buf, & FilePart);
-			CString path(Buf, FilePart - Buf);
+			CString path(Buf, int(FilePart - Buf));
 			CString name(FilePart);
 
 			CString Ext;
@@ -2384,7 +2384,7 @@ BOOL CWaveSoapFrontDoc::OnSaveDocument(LPCTSTR lpszPathName, DWORD flags, WAVEFO
 	LPTSTR pTargetFilePart = _tcsrchr(FullTargetName, '\\');
 	if (pTargetFilePart)
 	{
-		int TargetDirChars = pTargetFilePart - FullTargetName;
+		int TargetDirChars = int(pTargetFilePart - FullTargetName);
 		memcpy(TargetDir, FullTargetName, TargetDirChars*sizeof(TCHAR));
 		TargetDir[TargetDirChars] = 0;
 	}
@@ -2397,7 +2397,7 @@ BOOL CWaveSoapFrontDoc::OnSaveDocument(LPCTSTR lpszPathName, DWORD flags, WAVEFO
 	LPTSTR pOriginalFilePart = _tcsrchr(FullOriginalName, '\\');
 	if (pOriginalFilePart)
 	{
-		int DirChars = pOriginalFilePart - FullOriginalName;
+		int DirChars = int(pOriginalFilePart - FullOriginalName);
 		memcpy(OriginalDir, FullOriginalName, DirChars*sizeof(TCHAR));
 		OriginalDir[DirChars] = 0;
 	}
@@ -2410,7 +2410,7 @@ BOOL CWaveSoapFrontDoc::OnSaveDocument(LPCTSTR lpszPathName, DWORD flags, WAVEFO
 	LPTSTR pSourceFilePart = _tcsrchr(FullSourceName, '\\');
 	if (pSourceFilePart)
 	{
-		int SourceDirChars = pSourceFilePart - FullSourceName;
+		int SourceDirChars = int(pSourceFilePart - FullSourceName);
 		memcpy(SourceDir, FullSourceName, SourceDirChars*sizeof(TCHAR));
 		SourceDir[SourceDirChars] = 0;
 	}
@@ -2604,7 +2604,7 @@ void CWaveSoapFrontDoc::PostFileSave(CWaveFile & DstFile,
 				// if PCM format and read-only or non-direct, ask about reopening as direct
 				CReopenDialog ReopenDlg(IDS_REOPEN_IN_DIRECT_MODE, NewName);
 
-				int result = ReopenDlg.DoModalPopDocument(this);
+				INT_PTR result = ReopenDlg.DoModalPopDocument(this);
 				if (IDOK == result)
 				{
 					ReopenDocumentFlags = OpenDocumentDirectMode;
@@ -2642,7 +2642,7 @@ void CWaveSoapFrontDoc::PostFileSave(CWaveFile & DstFile,
 				dlg.m_Text.Format(IDS_RELOAD_COMPRESSED_FILE, LPCTSTR(NewName));
 
 				CDocumentPopup pop(this);
-				int result = dlg.DoModal();
+				INT_PTR result = dlg.DoModal();
 
 				if (IDOK == result)
 				{
@@ -2672,7 +2672,7 @@ void CWaveSoapFrontDoc::PostFileSave(CWaveFile & DstFile,
 
 				CDocumentPopup pop(this);
 
-				int result = dlg.DoModal();
+				INT_PTR result = dlg.DoModal();
 				if (IDCANCEL == result)
 				{
 					DstFile.Close();
@@ -2786,7 +2786,7 @@ BOOL CWaveSoapFrontDoc::PostCommitFileSave(int flags, LPCTSTR FullTargetName)
 
 		CReopenDialog ReopenDlg(IDS_REOPEN_IN_DIRECT_MODE, FullTargetName);
 
-		int result = ReopenDlg.DoModalPopDocument(this);
+		INT_PTR result = ReopenDlg.DoModalPopDocument(this);
 
 		if (IDOK == result)
 		{
@@ -2982,8 +2982,8 @@ void CWaveSoapFrontDoc::OnSoundPlay()
 	{
 		CThisApp * pApp = GetApp();
 
-		INT_PTR PlaybackDevice = pApp->m_DefaultPlaybackDevice;
-		if (PlaybackDevice >= INT_PTR(CWaveOut::GetNumDevs()))
+		INT PlaybackDevice = pApp->m_DefaultPlaybackDevice;
+		if (PlaybackDevice >= INT(CWaveOut::GetNumDevs()))
 		{
 			PlaybackDevice = WAVE_MAPPER;
 		}
@@ -4553,7 +4553,7 @@ BOOL CWaveSoapFrontDoc::OpenRawFileDocument(LPCTSTR lpszPathName)
 	return TRUE;
 }
 
-BOOL CWaveSoapFrontDoc::OpenAviFileDocument(LPCTSTR lpszPathName)
+BOOL CWaveSoapFrontDoc::OpenAviFileDocument(LPCTSTR /*lpszPathName*/)
 {
 	//return OpenWmaFileDocument(lpszPathName);
 	return FALSE;
@@ -4890,7 +4890,7 @@ void CWaveSoapFrontDoc::OnProcessNoiseReduction()
 	CNoiseReductionDialog dlg(start, end, m_CaretPosition, GetSelectedChannel(),
 							m_WavFile, ChannelsLocked(), UndoEnabled(), GetApp()->m_SoundTimeFormat);
 
-	ULONG result = dlg.DoModal();
+	INT_PTR result = dlg.DoModal();
 
 	if (IDC_BUTTON_SET_THRESHOLD == result)
 	{
@@ -5447,7 +5447,7 @@ void CWaveSoapFrontDoc::BeginMarkerChange(unsigned ChangeFlags)   // create undo
 	AddUndoRedo(pUndo.release());
 }
 
-void CWaveSoapFrontDoc::EndMarkerChange(BOOL bCommitChanges)
+void CWaveSoapFrontDoc::EndMarkerChange(BOOL /*bCommitChanges*/)
 {
 	SetModifiedFlag(TRUE, TRUE);
 	// put Undo

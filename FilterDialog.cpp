@@ -144,7 +144,7 @@ public:
 		return m_Order;
 	}
 
-	std::complex<double> CalculateResponse(std::complex<double> z) const
+	std::complex<double> CalculateResponse(std::complex<double> /*z*/) const
 	{
 		return 1.;
 	}
@@ -596,7 +596,7 @@ BOOL LowpassFilter::CreateElliptic(double PassFreq, double PassLoss,
 	CArray<polyRatio *, polyRatio *> * pDecomposed
 		= polyRatio(poly(zeros, NormCoeff), poly(poles)).Decompose(2, & poles);
 
-	m_Order = pDecomposed->GetSize();
+	m_Order = (int)pDecomposed->GetSize();
 
 	for (int i = 0; i < pDecomposed->GetSize(); i++)
 	{
@@ -656,7 +656,7 @@ BOOL HighpassFilter::CreateElliptic(double PassFreq, double PassLoss,
 	CArray<polyRatio *, polyRatio *> * pDecomposed
 		= polyRatio(poly(zeros, NormCoeff), poly(poles)).Decompose(2, & poles);
 
-	m_Order = pDecomposed->GetSize();
+	m_Order = (int)pDecomposed->GetSize();
 
 	for (int i = 0; i < pDecomposed->GetSize(); i++)
 	{
@@ -840,7 +840,7 @@ protected:
 	afx_msg BOOL OnSetCursor(CWnd* pWnd, UINT nHitTest, UINT message);
 	afx_msg void OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags);
 	afx_msg UINT OnGetDlgCode();
-	afx_msg void OnTimer(UINT nIDEvent);
+	afx_msg void OnTimer(UINT_PTR nIDEvent);
 	afx_msg void OnLButtonDblClk(UINT nFlags, CPoint point);
 	//}}AFX_MSG
 	afx_msg void OnNcPaint(UINT wParam);
@@ -2050,7 +2050,7 @@ int CFilterGraphWnd::GetHitCode(POINT point)
 	return -0x200;
 }
 
-void CFilterGraphWnd::OnTimer(UINT nIDEvent)
+void CFilterGraphWnd::OnTimer(UINT_PTR nIDEvent)
 {
 	// redraw blinking dot
 	if (m_bGotFocus && ! m_bButtonPressed)

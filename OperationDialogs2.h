@@ -283,7 +283,7 @@ protected:
 	//{{AFX_MSG(CCdGrabbingDialog)
 	afx_msg void OnSize(UINT nType, int cx, int cy);
 	virtual BOOL OnInitDialog();
-	afx_msg void OnTimer(UINT nIDEvent);
+	afx_msg void OnTimer(UINT_PTR nIDEvent);
 	afx_msg void OnSelchangeComboDrives();
 	afx_msg void OnDestroy();
 	afx_msg void OnButtonCddb();
@@ -308,7 +308,7 @@ protected:
 	afx_msg void OnSysColorChange();
 	//}}AFX_MSG
 	//void OnMetricsChange();
-	afx_msg BOOL OnDeviceChange(UINT, DWORD);
+	afx_msg BOOL OnDeviceChange(UINT, DWORD_PTR);
 	DECLARE_MESSAGE_MAP()
 };
 #pragma pack(pop)
@@ -328,7 +328,7 @@ public:
 	CString	m_Prompt;
 	//}}AFX_DATA
 
-	int DoModalPopDocument(CDocument * pDoc);
+	INT_PTR DoModalPopDocument(CDocument * pDoc);
 // Overrides
 	// ClassWizard generated virtual function overrides
 	//{{AFX_VIRTUAL(CReopenDialog)

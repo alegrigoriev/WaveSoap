@@ -2335,7 +2335,7 @@ BOOL CDecompressContext::OperationProc()
 ////////// CSoundPlayContext
 CSoundPlayContext::CSoundPlayContext(CWaveSoapFrontDoc * pDoc, CWaveFile & WavFile,
 									SAMPLE_INDEX PlaybackStart, SAMPLE_INDEX PlaybackEnd, CHANNEL_MASK Channel,
-									INT_PTR PlaybackDevice, int PlaybackBuffers, size_t PlaybackBufferSize)
+									INT PlaybackDevice, int PlaybackBuffers, size_t PlaybackBufferSize)
 	: BaseClass(pDoc, OperationContextDontAdjustPriority,
 				IDS_PLAYBACK_STATUS_PROMPT, IDS_PLAYBACK_OPERATION_NAME)
 	, m_bPauseRequested(false)
@@ -2469,7 +2469,7 @@ BOOL CSoundPlayContext::OperationProc()
 		}
 		else
 		{
-			unsigned Samples = size / m_Wf.SampleSize();
+			unsigned Samples = (unsigned)(size / m_Wf.SampleSize());
 			unsigned SrcSamples =
 				(m_End - m_CurrentPlaybackPos) / m_PlayFile.SampleSize();
 
@@ -2675,7 +2675,7 @@ BOOL CVolumeChangeContext::ProcessBuffer(void * buf, size_t BufferLength,
 {
 	WAVE_SAMPLE * pDst = (WAVE_SAMPLE *) buf;
 	int nChannels = m_DstFile.Channels();
-	unsigned nSamples = BufferLength / sizeof pDst[0];
+	unsigned nSamples = (unsigned)(BufferLength / sizeof pDst[0]);
 
 	if (nChannels == 1)
 	{
@@ -2883,7 +2883,7 @@ BOOL CDcOffsetContext::ProcessBuffer(void * buf, size_t BufferLength,
 	WAVE_SAMPLE * pDst = (WAVE_SAMPLE *) buf;
 
 	NUMBER_OF_CHANNELS nChannels = m_DstFile.Channels();
-	NUMBER_OF_SAMPLES nSamples = BufferLength / sizeof pDst[0];
+	NUMBER_OF_SAMPLES nSamples = (NUMBER_OF_SAMPLES)(BufferLength / sizeof pDst[0]);
 
 	ASSERT(0 == (BufferLength % m_DstFile.SampleSize()));
 	ASSERT(nChannels > 0);
@@ -3047,7 +3047,7 @@ BOOL CStatisticsContext::ProcessBuffer(void * buf, size_t const BufferLength,
 {
 	WAVE_SAMPLE * pSrc = (WAVE_SAMPLE *) buf;
 	int nChannels = m_DstFile.Channels();
-	NUMBER_OF_SAMPLES nSamples = BufferLength / sizeof pSrc[0];
+	NUMBER_OF_SAMPLES nSamples = (NUMBER_OF_SAMPLES)(BufferLength / sizeof pSrc[0]);
 
 	ASSERT(0 == (BufferLength % m_DstFile.SampleSize()));
 	// offset is relative to start, but we want absolute offset in file
@@ -3284,7 +3284,7 @@ BOOL CMaxScanContext::ProcessBuffer(void * buf, size_t BufferLength,
 	WAVE_SAMPLE * pSrc = (WAVE_SAMPLE *) buf;
 
 	int nChannels = m_DstFile.Channels();
-	NUMBER_OF_SAMPLES nSamples = BufferLength / sizeof pSrc[0];
+	NUMBER_OF_SAMPLES nSamples = (NUMBER_OF_SAMPLES)(BufferLength / sizeof pSrc[0]);
 
 	ASSERT(0 == (BufferLength % m_DstFile.SampleSize()));
 
@@ -3435,7 +3435,7 @@ void CFileSaveContext::PostRetire()
 				dlg.m_Prompt.Format(fmt, LPCTSTR(m_pDocument->GetTitle()),
 									LPCTSTR(m_NewName));
 
-				int res;
+				INT_PTR res;
 				{
 					CDocumentPopup pop(m_pDocument);
 					res = dlg.DoModal();
@@ -3849,13 +3849,20 @@ BOOL CWmaDecodeContext::OperationProc()
 
 	DWORD dwStartTime = GetTickCount();
 
+#ifndef USE_SYNC_READER
 	do
 	{
 		m_Decoder.DeliverNextSample(200);
 	}
 	while (m_Decoder.IsStarted()
 			&& GetTickCount() - dwStartTime < 500);
-
+#else
+	do
+	{
+	}
+	while (m_Decoder.DeliverNextSample(200)
+			&& GetTickCount() - dwStartTime < 500);
+#endif
 	// notify the view
 
 	SAMPLE_INDEX nFirstSample = m_DstCopySample;

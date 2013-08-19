@@ -631,7 +631,7 @@ void CWaveSoapFrontView::OnDraw(CDC* pDC)
 							LPCTSTR txt = pInst->GetCueText(i->CuePointID);
 							if (NULL != txt)
 							{
-								int count = _tcslen(txt);
+								int count = (int)_tcslen(txt);
 								CPoint size = pDC->GetTextExtent(txt, count);
 								if (x + size.x > cr.left)
 								{
@@ -1526,7 +1526,7 @@ void CWaveSoapFrontView::OnMouseMove(UINT nFlags, CPoint point)
 			{
 				if (NULL == m_AutoscrollTimerID)
 				{
-					m_AutoscrollTimerID = SetTimer(UINT_PTR(this) + sizeof *this, 50, NULL);
+					m_AutoscrollTimerID = SetTimer(UINT_PTR(this+1), 50, NULL);
 					if (TRACE_CARET) TRACE("Timer %X started\n", m_AutoscrollTimerID);
 				}
 			}
@@ -1861,7 +1861,7 @@ void CWaveSoapFrontView::InvalidateMarkerRegion(WAVEREGIONINFO const * pInfo)
 			CWindowDC dc(this);
 			CGdiObjectSave OldFont(dc, dc.SelectStockObject(ANSI_VAR_FONT));
 
-			CPoint p(dc.GetTextExtent(str, _tcslen(str)));
+			CPoint p(dc.GetTextExtent(str, (int)_tcslen(str)));
 
 			r.left = x;
 			r.top = cr.top;
@@ -2367,7 +2367,7 @@ BOOL CWaveSoapFrontView::MasterScrollBy(double dx, double dy, BOOL bDoScroll)
 				LPCTSTR txt = pInst->GetCueText(i->CuePointID);
 				if (NULL != txt)
 				{
-					CPoint p(dc.GetTextExtent(txt, _tcslen(txt)));
+					CPoint p(dc.GetTextExtent(txt, (int)_tcslen(txt)));
 
 					ir.left = x;
 					ir.top = cr.top;
@@ -2834,7 +2834,7 @@ void CWaveSoapFrontView::OnViewHorScale8192()
 	SetHorizontalScale(8192);
 }
 
-void CWaveSoapFrontView::OnTimer(UINT nIDEvent)
+void CWaveSoapFrontView::OnTimer(UINT_PTR nIDEvent)
 {
 	// get mouse position and hit code
 	if (NULL != m_AutoscrollTimerID

@@ -1764,7 +1764,7 @@ void CScaledScrollView::CancelSelection()
 	bHasSelection = FALSE;
 }
 
-BOOL CScaledScrollView::OnNeedText( UINT /*id*/, NMHDR * pNotifyStruct, LRESULT * result )
+BOOL CScaledScrollView::OnNeedText( UINT_PTR /*id*/, NMHDR * pNotifyStruct, LRESULT * result )
 {
 	LPTOOLTIPTEXT lpttt = (LPTOOLTIPTEXT) pNotifyStruct;
 	if (lpttt != NULL)
@@ -1780,7 +1780,7 @@ BOOL CScaledScrollView::OnNeedText( UINT /*id*/, NMHDR * pNotifyStruct, LRESULT 
 BOOL CScaledScrollView::OnNotify(WPARAM wParam, LPARAM lParam, LRESULT* pResult)
 {
 	NMHDR * pNotify = (NMHDR *) lParam;
-	if (pNotify != NULL && TTN_NEEDTEXTA == pNotify->code)
+	if (pNotify != NULL && (TTN_NEEDTEXTA == pNotify->code || TTN_NEEDTEXTW == pNotify->code))
 	{
 		OnNeedText(pNotify->idFrom, pNotify, pResult);
 		* pResult = 0;
@@ -1789,7 +1789,7 @@ BOOL CScaledScrollView::OnNotify(WPARAM wParam, LPARAM lParam, LRESULT* pResult)
 	return CView::OnNotify(wParam, lParam, pResult);
 }
 
-int CScaledScrollView::OnToolHitTest( CPoint point, TOOLINFO* pTI ) const
+INT_PTR CScaledScrollView::OnToolHitTest( CPoint point, TOOLINFO* pTI ) const
 {
 	if (pTI != NULL && pTI->cbSize >= sizeof(TOOLINFO))
 	{

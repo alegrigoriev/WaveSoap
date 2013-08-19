@@ -29,7 +29,7 @@ template<typename T> inline void memzero(T & obj)
 
 #define countof(a) (sizeof (a) / sizeof (a[0]))
 
-static size_t MultiSzLen(LPCSTR src)
+static unsigned MultiSzLen(LPCSTR src)
 {
 	size_t len = 0;
 	size_t len1;
@@ -37,10 +37,10 @@ static size_t MultiSzLen(LPCSTR src)
 	{
 		len += len1 + 1;
 	}
-	return len;
+	return (unsigned)len;
 }
 
-static size_t MultiSzLen(LPCWSTR src)
+static unsigned MultiSzLen(LPCWSTR src)
 {
 	size_t len = 0;
 	size_t len1;
@@ -48,7 +48,7 @@ static size_t MultiSzLen(LPCWSTR src)
 	{
 		len += len1 + 1;
 	}
-	return len;
+	return (unsigned)len;
 }
 
 inline void AssignMultiSz(CStringW & dst, LPCSTR src)

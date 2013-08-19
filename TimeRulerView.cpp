@@ -1105,7 +1105,7 @@ void CTimeRulerView::OnMouseMove(UINT nFlags, CPoint point)
 		{
 			if (NULL == m_AutoscrollTimerID)
 			{
-				m_AutoscrollTimerID = SetTimer(UINT_PTR(this) + sizeof *this, 50, NULL);
+				m_AutoscrollTimerID = SetTimer(UINT_PTR(this+1), 50, NULL);
 			}
 		}
 		else if (NULL != m_AutoscrollTimerID)
@@ -1204,7 +1204,7 @@ void CTimeRulerView::OnCaptureChanged(CWnd *pWnd)
 	BaseClass::OnCaptureChanged(pWnd);
 }
 
-void CTimeRulerView::OnTimer(UINT nIDEvent)
+void CTimeRulerView::OnTimer(UINT_PTR nIDEvent)
 {
 	// get mouse position and hit code
 	if (NULL != m_AutoscrollTimerID
@@ -1584,7 +1584,7 @@ BOOL CTimeRulerView::OnNotify(WPARAM wParam, LPARAM lParam, LRESULT* pResult)
 	NMHDR * pNMHDR = (NMHDR *) lParam;
 	if (pNMHDR->code == TTN_NEEDTEXTA || pNMHDR->code == TTN_NEEDTEXTW)
 	{
-		OnToolTipText(wParam, pNMHDR, pResult);
+		OnToolTipText((UINT)wParam, pNMHDR, pResult);
 		return 0;
 	}
 	return BaseClass::OnNotify(wParam, lParam, pResult);

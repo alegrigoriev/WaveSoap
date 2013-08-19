@@ -173,14 +173,14 @@ void CSoundPreferencesPage::DoDataExchange(CDataExchange* pDX)
 	if ( ! pDX->m_bSaveAndValidate)
 	{
 		// fill playback devices combo
-		INT_PTR const NumOutDevs = CWaveOut::GetNumDevs();
+		int const NumOutDevs = CWaveOut::GetNumDevs();
 
 		if (m_PlaybackDevice >= NumOutDevs)
 		{
 			m_PlaybackDevice = NumOutDevs;
 		}
 
-		for (INT_PTR i = WAVE_MAPPER; i < NumOutDevs; i++)
+		for (int i = WAVE_MAPPER; i < NumOutDevs; i++)
 		{
 			WAVEOUTCAPS woc;
 			if (MMSYSERR_NOERROR != CWaveOut::GetDevCaps(i, & woc))
@@ -191,14 +191,14 @@ void CSoundPreferencesPage::DoDataExchange(CDataExchange* pDX)
 			m_PlaybackDeviceCombo.AddString(woc.szPname);
 		}
 
-		INT_PTR const NumInDevs = CWaveIn::GetNumDevs();
+		int const NumInDevs = CWaveIn::GetNumDevs();
 
 		if (m_RecordingDevice >= NumInDevs)
 		{
 			m_RecordingDevice = NumInDevs;
 		}
 
-		for (INT_PTR i = WAVE_MAPPER; i < NumInDevs; i++)
+		for (int i = WAVE_MAPPER; i < NumInDevs; i++)
 		{
 			WAVEINCAPS wic;
 			if (MMSYSERR_NOERROR != CWaveIn::GetDevCaps(i, & wic))

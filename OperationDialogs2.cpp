@@ -945,7 +945,7 @@ CReopenDialog::CReopenDialog(UINT FormatId, LPCTSTR Name, CWnd* pParent /*=NULL*
 	m_Prompt.Format(FormatId, Name);
 }
 
-int CReopenDialog::DoModalPopDocument(CDocument * pDoc)
+INT_PTR CReopenDialog::DoModalPopDocument(CDocument * pDoc)
 {
 	CDocumentPopup pop(pDoc);
 	return DoModal();
@@ -974,7 +974,7 @@ void CReopenDialog::OnNo()
 	EndDialog(IDNO);
 }
 
-void CCdGrabbingDialog::OnTimer(UINT nIDEvent)
+void CCdGrabbingDialog::OnTimer(UINT_PTR nIDEvent)
 {
 	if (nIDEvent == m_TimerId)
 	{
@@ -1025,9 +1025,9 @@ void CCdGrabbingDialog::OnSelchangeComboDrives()
 	}
 }
 
-BOOL CCdGrabbingDialog::OnDeviceChange(UINT event, DWORD data)
+BOOL CCdGrabbingDialog::OnDeviceChange(UINT event, DWORD_PTR data)
 {
-	DEV_BROADCAST_HDR * pdbh = (DEV_BROADCAST_HDR *) data;;
+	DEV_BROADCAST_HDR * pdbh = (DEV_BROADCAST_HDR *) data;
 	switch (event)
 	{
 	case DBT_DEVICEARRIVAL:
@@ -1487,7 +1487,7 @@ BOOL CCdGrabbingDialog::FillPlaybackBuffers()
 	while (0 != m_PlaybackSectors
 			&& (hBuffer = m_WaveOut.GetBuffer( & pBuffer, & BufSize, FALSE)) > 0)
 	{
-		int NumSectors = BufSize / CDDASectorSize;
+		long NumSectors = long(BufSize / CDDASectorSize);
 		if (NumSectors > m_PlaybackSectors)
 		{
 			NumSectors = m_PlaybackSectors;
@@ -1716,12 +1716,12 @@ void CCdGrabbingDialog::FillFormatCombo()
 	case 1:
 		// WMA
 		m_Acm.FillWmaFormatTags();
-		m_Acm.FillMultiFormatArray(0, m_Acm.m_FormatTags.size() - 1,
+		m_Acm.FillMultiFormatArray(0, unsigned(m_Acm.m_FormatTags.size() - 1),
 									WaveFormatMatchCnannels | WaveFormatMatchSampleRate);
 		break;
 	case 2:
 		m_Acm.FillMp3EncoderTags(WaveFormatMatchCnannels | WaveFormatMatchSampleRate);
-		m_Acm.FillMultiFormatArray(0, m_Acm.m_FormatTags.size() - 1,
+		m_Acm.FillMultiFormatArray(0, unsigned(m_Acm.m_FormatTags.size() - 1),
 									WaveFormatMatchCnannels | WaveFormatMatchSampleRate);
 		break;
 	}

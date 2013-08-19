@@ -141,7 +141,7 @@ void CWaveOutlineView::OnDraw(CDC* pDC)
 	{
 		// use data from the file
 		int SampleSize = pDoc->WaveSampleSize();
-		size_t BufSize = (nSamples / width + 2) * SampleSize;
+		unsigned BufSize = (nSamples / width + 2) * SampleSize;
 		WAVE_SAMPLE * pBuf = new WAVE_SAMPLE[BufSize / sizeof(WAVE_SAMPLE)];
 
 		if (NULL == pBuf)
@@ -151,7 +151,7 @@ void CWaveOutlineView::OnDraw(CDC* pDC)
 		}
 
 		int PrevIdx = MulDiv(ur.left, nSamples, width);
-		size_t DataOffset = pDoc->m_WavFile.SampleToPosition(0);
+		SAMPLE_POSITION DataOffset = pDoc->m_WavFile.SampleToPosition(0);
 
 		for (i = ur.left; i < ur.right; i++)
 		{
@@ -159,7 +159,7 @@ void CWaveOutlineView::OnDraw(CDC* pDC)
 			pPeaks[i].high = -0x8000;
 			pPeaks[i].low = 0x7FFF;
 			DWORD Offset = DataOffset + SampleSize * PrevIdx;
-			size_t ToRead = (NewIdx - PrevIdx) * SampleSize;
+			unsigned long ToRead = (NewIdx - PrevIdx) * SampleSize;
 			if (ToRead != 0)
 			{
 				if (ToRead > BufSize)
@@ -944,7 +944,7 @@ BOOL CWaveOutlineView::OnNotify(WPARAM wParam, LPARAM lParam, LRESULT* pResult)
 	NMHDR * pNMHDR = (NMHDR *) lParam;
 	if (pNMHDR->code == TTN_NEEDTEXTA || pNMHDR->code == TTN_NEEDTEXTW)
 	{
-		OnToolTipText(wParam, pNMHDR, pResult);
+		OnToolTipText((UINT)wParam, pNMHDR, pResult);
 		return 0;
 	}
 	return BaseClass::OnNotify(wParam, lParam, pResult);

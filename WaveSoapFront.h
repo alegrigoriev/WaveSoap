@@ -27,7 +27,7 @@ class CWaveSoapFrontStatusBar : public CStatusBar
 public:
 	CWaveSoapFrontStatusBar() {}
 	~CWaveSoapFrontStatusBar() {}
-	virtual int OnToolHitTest(CPoint point, TOOLINFO* pTI) const;
+	virtual INT_PTR OnToolHitTest(CPoint point, TOOLINFO* pTI) const;
 	//{{AFX_MSG(CWaveSoapFrontStatusBar)
 	afx_msg void OnContextMenu( CWnd* pWnd, CPoint pos );
 	//}}AFX_MSG
@@ -196,11 +196,11 @@ public:
 	class CWaveSoapDocTemplate * m_pAllWmTypeTemplate;
 	class CWaveSoapDocTemplate * m_pRawTypeTemplate;
 
-	INT_PTR m_DefaultPlaybackDevice;
+	INT m_DefaultPlaybackDevice;
 	int m_NumPlaybackBuffers;
 	ULONG m_SizePlaybackBuffers;
 
-	INT_PTR m_DefaultRecordDevice;
+	INT m_DefaultRecordDevice;
 	int m_NumRecordBuffers;
 	ULONG m_SizeRecordBuffers;
 

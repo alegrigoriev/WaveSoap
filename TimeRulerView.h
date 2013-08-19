@@ -84,7 +84,7 @@ protected:
 	afx_msg void OnViewRulerHhmmssFf();
 	afx_msg void OnUpdateViewRulerHhmmssFf(CCmdUI* pCmdUI);
 
-	afx_msg void OnTimer(UINT nIDEvent);
+	afx_msg void OnTimer(UINT_PTR nIDEvent);
 	afx_msg BOOL OnSetCursor(CWnd* pWnd, UINT nHitTest, UINT message);
 	virtual void OnInitialUpdate();
 	virtual INT_PTR OnToolHitTest(CPoint point, TOOLINFO* pTI) const;
