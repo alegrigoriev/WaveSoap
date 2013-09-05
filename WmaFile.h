@@ -5,8 +5,6 @@
 #include <wmsdk.h>
 #include <atlsync.h>
 
-#define USE_SYNC_READER
-
 #pragma once
 
 class CDirectFileStream: public IStream
@@ -105,12 +103,6 @@ private:
 #define USE_READER_CALLBACK_ADVANCED 1
 class CWmaDecoder
 
-#ifndef USE_SYNC_READER
-	: public IWMReaderCallback
-#if USE_READER_CALLBACK_ADVANCED
-	, public IWMReaderCallbackAdvanced
-#endif
-#endif
 {
 public:
 
@@ -119,107 +111,6 @@ public:
 	//
 	//Methods of IUnknown
 	//
-#ifndef USE_SYNC_READER
-	HRESULT STDMETHODCALLTYPE QueryInterface( REFIID riid,
-											void __RPC_FAR *__RPC_FAR *ppvObject )
-	{
-		if (riid == IID_IUnknown)
-		{
-			*ppvObject = static_cast<IUnknown*>(static_cast<IWMReaderCallback*>(this));
-		}
-		else if (riid == IID_IWMReaderCallback)
-		{
-			*ppvObject = static_cast<IWMReaderCallback*>(this);
-		}
-#if USE_READER_CALLBACK_ADVANCED
-		else if (riid == IID_IWMReaderCallbackAdvanced)
-		{
-			*ppvObject = static_cast<IWMReaderCallbackAdvanced*>(this);
-		}
-#endif
-		else if (riid == IID_IWMStatusCallback)
-		{
-			*ppvObject = static_cast<IWMStatusCallback*>(this);
-		}
-		else
-		{
-			*ppvObject = NULL;
-			return E_NOINTERFACE;
-		}
-		return S_OK;
-	}
-
-	ULONG STDMETHODCALLTYPE AddRef( void ) { return 2; }
-
-	ULONG STDMETHODCALLTYPE Release( void ) { return 1; }
-#endif
-
-#ifndef USE_SYNC_READER
-	//
-	//Methods of IWMReaderCallback
-	//
-	HRESULT STDMETHODCALLTYPE OnSample( /* [in] */ DWORD dwOutputNum,
-													/* [in] */ QWORD cnsSampleTime,
-													/* [in] */ QWORD cnsSampleDuration,
-													/* [in] */ DWORD dwFlags,
-													/* [in] */ INSSBuffer __RPC_FAR *pSample,
-													/* [in] */ void __RPC_FAR *pvContext ) ;
-
-	HRESULT STDMETHODCALLTYPE OnStatus( /* [in] */ WMT_STATUS Status,
-													/* [in] */ HRESULT hr,
-													/* [in] */ WMT_ATTR_DATATYPE dwType,
-													/* [in] */ BYTE __RPC_FAR *pValue,
-													/* [in] */ void __RPC_FAR *pvContext ) ;
-
-#if USE_READER_CALLBACK_ADVANCED
-	//
-	//Methods of IWMReaderCallbackAdvanced
-	//
-	virtual HRESULT STDMETHODCALLTYPE OnStreamSample(
-													/* [in] */ WORD /*wStreamNum*/,
-													/* [in] */ QWORD /*cnsSampleTime*/,
-													/* [in] */ QWORD /*cnsSampleDuration*/,
-													/* [in] */ DWORD /*dwFlags*/,
-													/* [in] */ INSSBuffer __RPC_FAR * /*pSample*/,
-													/* [in] */ void __RPC_FAR * /*pvContext*/)
-	{
-		return S_OK;
-	}
-
-	virtual HRESULT STDMETHODCALLTYPE OnTime(
-											/* [in] */ QWORD cnsCurrentTime,
-											/* [in] */ void __RPC_FAR *pvContext);
-
-	virtual HRESULT STDMETHODCALLTYPE OnStreamSelection(
-														/* [in] */ WORD /*wStreamCount*/,
-														/* [in] */ WORD __RPC_FAR * /*pStreamNumbers*/,
-														/* [in] */ WMT_STREAM_SELECTION __RPC_FAR * /*pSelections*/,
-														/* [in] */ void __RPC_FAR * /*pvContext*/)
-	{
-		return S_OK;
-	}
-
-	virtual HRESULT STDMETHODCALLTYPE OnOutputPropsChanged(
-															/* [in] */ DWORD /*dwOutputNum*/,
-															/* [in] */ WM_MEDIA_TYPE __RPC_FAR * /*pMediaType*/,
-															/* [in] */ void __RPC_FAR * /*pvContext*/)
-	{
-		return S_OK;
-	}
-
-	virtual HRESULT STDMETHODCALLTYPE AllocateForStream(
-														/* [in] */ WORD wStreamNum,
-														/* [in] */ DWORD cbBuffer,
-														/* [out] */ INSSBuffer __RPC_FAR *__RPC_FAR *ppBuffer,
-														/* [in] */ void __RPC_FAR *pvContext);
-
-	virtual HRESULT STDMETHODCALLTYPE AllocateForOutput(
-														/* [in] */ DWORD dwOutputNum,
-														/* [in] */ DWORD cbBuffer,
-														/* [out] */ INSSBuffer __RPC_FAR *__RPC_FAR *ppBuffer,
-														/* [in] */ void __RPC_FAR *pvContext);
-#endif
-#endif
 	HRESULT Open(LPCTSTR szFilename);
 	HRESULT Open(CDirectFile & file);
 
@@ -246,7 +137,8 @@ public:
 	{
 		return m_bStarted;
 	}
-	bool DeliverNextSample(DWORD timeout);
+
+	bool DeliverNextSample();
 	void SetDstFile(CWaveFile & file);
 	CWaveFormat const & GetSrcFormat() const
 	{
@@ -276,12 +168,8 @@ protected:
 	SAMPLE_POSITION m_DstPos;
 	SAMPLE_INDEX m_DstCopySample;
 
-#ifdef USE_SYNC_READER
 	CComPtr<IWMSyncReader> m_Reader;
-#else
-	CComPtr<IWMReader> m_Reader;
-	CComQIPtr<IWMReaderAdvanced2> m_pAdvReader;
-#endif
+
 	CDirectFileStream m_InputStream;
 
 	bool m_bOpened;

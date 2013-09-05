@@ -697,7 +697,7 @@ void CWaveSoapFrontDoc::SetSelection(SAMPLE_INDEX begin, SAMPLE_INDEX end,
 			nReadChannels = 1;
 		}
 
-		long Max = 0;
+		WAVE_PEAK Max = 0;
 
 		while (SamplesToRead > 0)
 		{
@@ -714,7 +714,7 @@ void CWaveSoapFrontDoc::SetSelection(SAMPLE_INDEX begin, SAMPLE_INDEX end,
 
 			for (unsigned i = 0; i < nWordsToRead; i++)
 			{
-				long tmp = data[i];
+				WAVE_PEAK tmp = data[i];
 				if (tmp < 0)
 				{
 					tmp = -tmp;
@@ -3655,8 +3655,8 @@ void CWaveSoapFrontDoc::OnProcessChangevolume()
 		return;
 	}
 
-	CVolumeChangeContext::auto_ptr pContext(new CVolumeChangeContext(this, IDS_VOLUME_CHANGE_STATUS_PROMPT,
-												IDS_VOLUME_CHANGE_OPERATION_NAME, Volume, m_WavFile.Channels()));
+	CWaveProcContext::auto_ptr pContext(CreateVolumeChangeOperation(this, IDS_VOLUME_CHANGE_STATUS_PROMPT,
+											IDS_VOLUME_CHANGE_OPERATION_NAME, Volume, m_WavFile.Channels()));
 
 	if (NULL == pContext.get())
 	{
@@ -3669,10 +3669,10 @@ void CWaveSoapFrontDoc::OnProcessChangevolume()
 
 	GetSoundMinMax(LeftPeak, RightPeak, dlg.GetStart(), dlg.GetEnd());
 
-	long MinL = LeftPeak.low;
-	long MaxL = LeftPeak.high;
-	long MinR = RightPeak.low;
-	long MaxR = RightPeak.high;
+	WAVE_PEAK MinL = LeftPeak.low;
+	WAVE_PEAK MaxL = LeftPeak.high;
+	WAVE_PEAK MinR = RightPeak.low;
+	WAVE_PEAK MaxR = RightPeak.high;
 
 	if (MinL < 0)
 	{
@@ -3711,8 +3711,7 @@ void CWaveSoapFrontDoc::OnProcessChangevolume()
 		pContext->AddSelectionUndo(dlg.GetStart(), dlg.GetEnd(), dlg.GetStart(), dlg.GetChannel());
 	}
 
-	if ( ! pContext->InitDestination(m_WavFile, dlg.GetStart(),
-									dlg.GetEnd(), dlg.GetChannel(), dlg.UndoEnabled()))
+	if ( ! pContext->InitInPlaceProcessing(m_WavFile, dlg.GetStart(), dlg.GetEnd(), dlg.GetChannel(), dlg.UndoEnabled()))
 	{
 		return;
 	}
@@ -3849,21 +3848,18 @@ void CWaveSoapFrontDoc::OnProcessDcoffset()
 		return;
 	}
 
-	COperationContext * pContext = NULL;
-	CDcOffsetContext::auto_ptr pDcContext;
-
 	if (dlg.NeedToCalculateDcOffset())
 	{
 		CStagedContext::auto_ptr pStagedContext
 		(new CStagedContext(this, 0, IDS_DC_ADJUST_STATUS_PROMPT,
 							IDS_DC_ADJUST_OPERATION_NAME));
 
-		CDcScanContext * pScanContext =
-			new CDcScanContext(this, IDS_DC_SCAN_STATUS_PROMPT);
+		CScanContext * pScanContext = new CScanContext(this, IDS_DC_SCAN_STATUS_PROMPT);
 
 		pStagedContext->AddContext(pScanContext);
 
 		SAMPLE_INDEX EndScanSample = dlg.GetEnd();
+
 		if (dlg.ScanOnly5Seconds())
 		{
 			// 5.4 seconds is actually scanned, to compensate for turntable rotation
@@ -3875,26 +3871,25 @@ void CWaveSoapFrontDoc::OnProcessDcoffset()
 			}
 		}
 
-		pScanContext->InitDestination(m_WavFile, dlg.GetStart(),
-									EndScanSample, dlg.GetChannel(), FALSE, 0, 0);
+		pScanContext->InitSource(m_WavFile, dlg.GetStart(), EndScanSample, dlg.GetChannel());
 
-		pDcContext.reset(new CDcOffsetContext(this, IDS_DC_ADJUST_STATUS_PROMPT,
-											IDS_DC_ADJUST_OPERATION_NAME, pScanContext));
+		CDcOffsetContext::auto_ptr pDcContext(new CDcOffsetContext(this, IDS_DC_ADJUST_STATUS_PROMPT,
+												IDS_DC_ADJUST_OPERATION_NAME, pScanContext));
 
 		if (dlg.UndoEnabled())
 		{
 			pDcContext->AddSelectionUndo(dlg.GetStart(), dlg.GetEnd(), dlg.GetStart(), dlg.GetChannel());
 		}
 
-		if ( ! pDcContext->InitDestination(m_WavFile, dlg.GetStart(),
-											dlg.GetEnd(), dlg.GetChannel(), dlg.UndoEnabled()))
+		if ( ! pDcContext->InitInPlaceProcessing(m_WavFile, dlg.GetStart(), dlg.GetEnd(), dlg.GetChannel(), dlg.UndoEnabled()))
 		{
 			return;
 		}
 
 		pStagedContext->AddContext(pDcContext.release());
 		// staged operation becomes main context
-		pContext = pStagedContext.release();
+
+		ExecuteOperation(pStagedContext.release(), TRUE, dlg.UndoEnabled(), dlg.UndoEnabled());
 	}
 	else // Use specified DC offset
 	{
@@ -3910,10 +3905,10 @@ void CWaveSoapFrontDoc::OnProcessDcoffset()
 		WavePeak LeftPeak, RightPeak;
 		GetSoundMinMax(LeftPeak, RightPeak, dlg.GetStart(), dlg.GetEnd());
 
-		long MinL = LeftPeak.low + DcOffset;
-		long MaxL = LeftPeak.high + DcOffset;
-		long MinR = RightPeak.low + DcOffset;
-		long MaxR = RightPeak.high + DcOffset;
+		WAVE_PEAK MinL = LeftPeak.low + DcOffset;
+		WAVE_PEAK MaxL = LeftPeak.high + DcOffset;
+		WAVE_PEAK MinR = RightPeak.low + DcOffset;
+		WAVE_PEAK MaxR = RightPeak.high + DcOffset;
 
 		if (((dlg.GetChannel() & SPEAKER_FRONT_LEFT) && (MaxL > 0x7FFF || MinL < -0x8000))
 			|| (WaveChannels() > 1 && (dlg.GetChannel() & SPEAKER_FRONT_RIGHT)
@@ -3927,26 +3922,23 @@ void CWaveSoapFrontDoc::OnProcessDcoffset()
 			}
 		}
 
-		int offset[2] = { DcOffset, DcOffset, };
+		float offset[MAX_NUMBER_OF_CHANNELS] = { DcOffset, DcOffset, };
 
-		pDcContext.reset(new CDcOffsetContext(this, IDS_DC_ADJUST_STATUS_PROMPT,
-											IDS_DC_ADJUST_OPERATION_NAME, offset));
+		CDcOffsetContext::auto_ptr pDcContext(new CDcOffsetContext(this, IDS_DC_ADJUST_STATUS_PROMPT,
+												IDS_DC_ADJUST_OPERATION_NAME, offset, 2));
 
 		if (dlg.UndoEnabled())
 		{
 			pDcContext->AddSelectionUndo(dlg.GetStart(), dlg.GetEnd(), dlg.GetStart(), dlg.GetChannel());
 		}
 
-		if ( ! pDcContext->InitDestination(m_WavFile, dlg.GetStart(),
-											dlg.GetEnd(), dlg.GetChannel(), dlg.UndoEnabled()))
+		if ( ! pDcContext->InitInPlaceProcessing(m_WavFile, dlg.GetStart(), dlg.GetEnd(), dlg.GetChannel(), dlg.UndoEnabled()))
 		{
 			return;
 		}
 
-		pContext = pDcContext.release();
+		ExecuteOperation(pDcContext.release(), TRUE, dlg.UndoEnabled(), dlg.UndoEnabled());
 	}
-
-	ExecuteOperation(pContext, TRUE, dlg.UndoEnabled(), dlg.UndoEnabled());
 }
 
 void CWaveSoapFrontDoc::OnUpdateProcessInsertsilence(CCmdUI* pCmdUI)
@@ -4067,9 +4059,7 @@ void CWaveSoapFrontDoc::OnProcessMute()
 	CStagedContext::auto_ptr pContext(new CStagedContext(this, 0, IDS_MUTING_STATUS_PROMPT,
 														IDS_MUTING_OPERATION_NAME));
 
-	CVolumeChangeContext * pVolumeContext = new CVolumeChangeContext(this, 0, 0, 0.);
-
-	pContext->AddContext(pVolumeContext);
+	CWaveProcContext::auto_ptr pVolumeContext(CreateVolumeChangeOperation(this, 0, 0, 0.));
 
 	SAMPLE_INDEX Start = m_SelectionStart;
 	SAMPLE_INDEX End = m_SelectionEnd;
@@ -4083,14 +4073,27 @@ void CWaveSoapFrontDoc::OnProcessMute()
 			if (End < WaveFileSamples())
 			{
 				End -= FadeInOutLengthSamples;
-				pContext->AddContext(new CFadeInOutOperation(this, m_FadeInEnvelope, m_WavFile,
-															End, GetSelectedChannel(), FadeInOutLengthSamples, UndoEnabled()));
+				CWaveProcContext * pFade = CreateFadeInOutOperation(this, m_FadeInEnvelope, m_WavFile,
+												End, GetSelectedChannel(), FadeInOutLengthSamples, UndoEnabled());
+
+				if (pFade == NULL)
+				{
+					return;
+				}
+				pContext->AddContext(pFade);
 			}
 
 			if (Start != 0)
 			{
-				pContext->AddContext(new CFadeInOutOperation(this, m_FadeOutEnvelope, m_WavFile,
-										Start, GetSelectedChannel(), FadeInOutLengthSamples, UndoEnabled()));
+				CWaveProcContext * pFade = CreateFadeInOutOperation(this, m_FadeOutEnvelope, m_WavFile,
+												Start, GetSelectedChannel(), FadeInOutLengthSamples, UndoEnabled());
+
+				if (pFade == NULL)
+				{
+					return;
+				}
+
+				pContext->AddContext(pFade);
 
 				Start += FadeInOutLengthSamples;
 			}
@@ -4102,11 +4105,12 @@ void CWaveSoapFrontDoc::OnProcessMute()
 		pVolumeContext->AddSelectionUndo(Start, End, Start, GetSelectedChannel());
 	}
 
-	if ( ! pVolumeContext->InitDestination(m_WavFile, Start,
-											End, GetSelectedChannel(), UndoEnabled()))
+	if ( ! pVolumeContext->InitInPlaceProcessing(m_WavFile, Start, End, GetSelectedChannel(), UndoEnabled()))
 	{
 		return;
 	}
+
+	pContext->AddContext(pVolumeContext.release());
 
 	ExecuteOperation(pContext.release(), TRUE);
 }
@@ -4143,38 +4147,28 @@ void CWaveSoapFrontDoc::OnProcessNormalize()
 	CStagedContext::auto_ptr pContext(new CStagedContext(this,
 										0, IDS_NORMALIZE_VOLUME_STATUS_PROMPT, IDS_NORMALIZE_VOLUME_OPERATION_NAME));
 
-	CMaxScanContext * pStatContext =
-		new CMaxScanContext(this, IDS_MAX_SCAN_STATUS_PROMPT);
+	CScanContext::auto_ptr pStatContext(new CScanContext(this, IDS_MAX_SCAN_STATUS_PROMPT));
 
-	pStatContext->InitDestination(m_WavFile, dlg.GetStart(),
-								dlg.GetEnd(), dlg.GetChannel(), FALSE);
+	pStatContext->InitSource(m_WavFile, dlg.GetStart(), dlg.GetEnd(), dlg.GetChannel());
 
-	pContext->AddContext(pStatContext);
+	CNormalizeContext::auto_ptr pNormContext(new CNormalizeContext(this,
+												IDS_VOLUME_CHANGE_STATUS_PROMPT,
+												0, dlg.GetLimitLevel(),
+												dlg.ChannelsLocked(), pStatContext.get()));
 
-	CNormalizeContext * pNormContext =
-		new CNormalizeContext(this,
-							IDS_VOLUME_CHANGE_STATUS_PROMPT,
-							0, dlg.GetLimitLevel(),
-							dlg.ChannelsLocked(), pStatContext);
-
-	if (NULL == pNormContext)
-	{
-		NotEnoughMemoryMessageBox();
-		return;
-	}
-
-	pContext->AddContext(pNormContext);
+	pContext->AddContext(pStatContext.release());
 
 	if (dlg.UndoEnabled())
 	{
-		pContext->AddSelectionUndo(dlg.GetStart(), dlg.GetEnd(), dlg.GetStart(), dlg.GetChannel());
+		pNormContext->AddSelectionUndo(dlg.GetStart(), dlg.GetEnd(), dlg.GetStart(), dlg.GetChannel());
 	}
 
-	if ( ! pNormContext->InitDestination(m_WavFile, dlg.GetStart(),
-										dlg.GetEnd(), dlg.GetChannel(), dlg.UndoEnabled()))
+	if ( ! pNormContext->InitInPlaceProcessing(m_WavFile, dlg.GetStart(), dlg.GetEnd(), dlg.GetChannel(), dlg.UndoEnabled()))
 	{
 		return;
 	}
+
+	pContext->AddContext(pNormContext.release());
 
 	ExecuteOperation(pContext.release(), TRUE, dlg.UndoEnabled(), dlg.UndoEnabled());
 }
@@ -4291,13 +4285,13 @@ void CWaveSoapFrontDoc::OnFileStatistics()
 		end = WaveFileSamples();
 	}
 
-	pContext->InitDestination(m_WavFile, begin, end, ALL_CHANNELS, FALSE);
+	pContext->InitSource(m_WavFile, begin, end, ALL_CHANNELS);
 	pContext->Execute();
 }
 
 void CWaveSoapFrontDoc::OnUpdateFileStatistics(CCmdUI* pCmdUI)
 {
-	pCmdUI->Enable(CanReadFile());
+	pCmdUI->Enable(CanReadFile() && m_WavFile.Channels() <= 2);
 }
 
 void CWaveSoapFrontDoc::OnUpdateEditGoto(CCmdUI* pCmdUI)
@@ -4335,9 +4329,7 @@ void CWaveSoapFrontDoc::OnProcessInvert()
 		return;
 	}
 
-	CVolumeChangeContext::auto_ptr pContext
-	(new CVolumeChangeContext(this, IDS_INVERSION_STATUS_PROMPT,
-							IDS_INVERSION_OPERATION_NAME, -1.));
+	CWaveProcContext::auto_ptr pContext(CreateVolumeChangeOperation(this, IDS_INVERSION_STATUS_PROMPT, IDS_INVERSION_OPERATION_NAME, -1.));
 
 	SAMPLE_INDEX start = m_SelectionStart;
 	SAMPLE_INDEX end = m_SelectionEnd;
@@ -4354,8 +4346,7 @@ void CWaveSoapFrontDoc::OnProcessInvert()
 		pContext->AddSelectionUndo(m_SelectionStart, m_SelectionEnd, m_SelectionStart, m_SelectedChannel);
 	}
 
-	if ( ! pContext->InitDestination(m_WavFile, start,
-									end, GetSelectedChannel(), UndoEnabled()))
+	if ( ! pContext->InitInPlaceProcessing(m_WavFile, start, end, GetSelectedChannel(), UndoEnabled()))
 	{
 		return;
 	}
@@ -4399,24 +4390,73 @@ void CWaveSoapFrontDoc::OnProcessSynthesisExpressionEvaluation()
 
 	CExpressionEvaluationDialog dlg(start, end, m_CaretPosition, GetSelectedChannel(),
 									m_WavFile, ChannelsLocked(), UndoEnabled(), GetApp()->m_SoundTimeFormat,
-									new CExpressionEvaluationContext(this, 0, 0));
+									new CExpressionEvaluationProc);
 
 	if (IDOK != dlg.DoModal())
 	{
 		return;
 	}
 
-	COperationContext * pContext = dlg.GetExpressionContext();
+	CExpressionEvaluationProc::auto_ptr pProc(dlg.GetExpression());
 
-	if (NULL != pContext)
+	CWaveProcContext::auto_ptr pContext(new CWaveProcContext(this));
+
+	if ( ! pContext->InitInPlaceProcessing(m_WavFile,
+											dlg.GetStart(), dlg.GetEnd(), dlg.GetChannel(), FALSE))
 	{
-		if (dlg.UndoEnabled())
+		return;
+	}
+
+	pContext->AddWaveProc(pProc.release());
+
+	NUMBER_OF_SAMPLES const NumSamples = m_WavFile.NumberOfSamples();
+	NUMBER_OF_SAMPLES const Length = dlg.GetEnd() - dlg.GetStart();
+
+	CStagedContext::auto_ptr pStagedContext(new CStagedContext(this, 0,
+																IDS_EXPRESSION_STATUS_PROMPT, IDS_EXPRESSION_OPERATION_NAME));
+
+	if (dlg.GetEnd() > NumSamples)
+	{
+		// move markers and delete those inside the changed area (only if all channels are changed)
 		{
-			pContext->AddSelectionUndo(dlg.GetStart(), dlg.GetEnd(), dlg.GetStart(), dlg.GetChannel());
+			pStagedContext->InitMoveMarkers(m_WavFile, dlg.GetStart(), NumSamples - dlg.GetStart(), Length);
 		}
 
-		ExecuteOperation(pContext, TRUE, dlg.UndoEnabled(), dlg.UndoEnabled());
+		if ( ! pStagedContext->InitExpandOperation(m_WavFile, NumSamples, dlg.GetEnd() - NumSamples, dlg.GetChannel()))
+		{
+			return;
+		}
+
+		pContext->SetSaveForUndo(dlg.GetStart(), NumSamples);
+
+		pContext->m_UndoChain.InsertHead(new
+										CSaveTrimmedOperation(this, m_WavFile, NumSamples, dlg.GetEnd(), dlg.GetChannel()));
 	}
+	else
+	{
+		if (m_WavFile.AllChannels(dlg.GetChannel()))
+		{
+			// delete markers inside the changed area, if all channels are changed
+			pStagedContext->InitMoveMarkers(m_WavFile, dlg.GetStart(), Length, Length);
+		}
+
+		pContext->SetSaveForUndo(dlg.GetStart(), dlg.GetEnd());
+	}
+
+	pStagedContext->AddContext(pContext.release());
+
+	if (UndoEnabled()
+		&& ! pStagedContext->CreateUndo())
+	{
+		return;
+	}
+
+	if (dlg.UndoEnabled())
+	{
+		pStagedContext->AddSelectionUndo(dlg.GetStart(), dlg.GetEnd(), dlg.GetStart(), dlg.GetChannel());
+	}
+
+	ExecuteOperation(pStagedContext.release(), TRUE, dlg.UndoEnabled(), dlg.UndoEnabled());
 }
 
 void CWaveSoapFrontDoc::OnUpdateViewStatusHhmmss(CCmdUI* pCmdUI)
@@ -5222,8 +5262,7 @@ void CWaveSoapFrontDoc::OnProcessEqualizer()
 		pContext->AddSelectionUndo(dlg.GetStart(), dlg.GetEnd(), dlg.GetStart(), dlg.GetChannel());
 	}
 
-	if ( ! pContext->InitDestination(m_WavFile, dlg.GetStart(),
-									dlg.GetEnd(), dlg.GetChannel(), dlg.UndoEnabled()))
+	if ( ! pContext->InitInPlaceProcessing(m_WavFile, dlg.GetStart(), dlg.GetEnd(), dlg.GetChannel(), dlg.UndoEnabled()))
 	{
 		return;
 	}
@@ -5253,27 +5292,20 @@ void CWaveSoapFrontDoc::OnProcessSwapchannels()
 		start = 0;
 		end = WaveFileSamples();
 	}
-	CSwapChannelsContext * pContext =
-		new CSwapChannelsContext(this, IDS_CHANNELS_SWAP_STATUS_PROMPT, IDS_CHANNELS_SWAP_OPERATION_NAME);
-	if (NULL == pContext)
-	{
-		NotEnoughMemoryMessageBox();
-		return;
-	}
+
+	CSwapChannelsContext::auto_ptr pContext(new CSwapChannelsContext(this, IDS_CHANNELS_SWAP_STATUS_PROMPT, IDS_CHANNELS_SWAP_OPERATION_NAME));
 
 	if (UndoEnabled())
 	{
 		pContext->AddSelectionUndo(m_SelectionStart, m_SelectionEnd, m_SelectionStart, m_SelectedChannel);
 	}
 
-	if ( ! pContext->InitDestination(m_WavFile, start,
-									end, ALL_CHANNELS, UndoEnabled()))
+	if ( ! pContext->InitInPlaceProcessing(m_WavFile, start, end, ALL_CHANNELS, UndoEnabled()))
 	{
-		delete pContext;
 		return;
 	}
 
-	ExecuteOperation(pContext, TRUE);
+	ExecuteOperation(pContext.release(), TRUE);
 }
 
 void CWaveSoapFrontDoc::OnUpdateProcessSwapchannels(CCmdUI* pCmdUI)
@@ -5308,26 +5340,19 @@ void CWaveSoapFrontDoc::OnProcessFilter()
 		return;
 	}
 
-	CFilterContext::auto_ptr pContext
-	(new CFilterContext(this, IDS_FILTER_STATUS_PROMPT, IDS_FILTER_OPERATION_NAME));
+	CFilterContext::auto_ptr pContext(new CFilterContext(this, IDS_FILTER_STATUS_PROMPT, IDS_FILTER_OPERATION_NAME));
 
-	dlg.GetLpfCoefficients(pContext->m_LpfCoeffs);
-	dlg.GetHpfCoefficients(pContext->m_HpfCoeffs);
-	dlg.GetNotchCoefficients(pContext->m_NotchCoeffs);
+	FilterCoefficients coeffs;
+	dlg.GetFilterCoefficients(&coeffs);
 
-	pContext->m_bZeroPhase = dlg.IsZeroPhase();
-
-	pContext->m_nLpfOrder = dlg.GetLowpassFilterOrder();
-	pContext->m_nHpfOrder = dlg.GetHighpassFilterOrder();
-	pContext->m_nNotchOrder = dlg.GetNotchFilterOrder();
+	pContext->SetFilterCoefficients(coeffs);
 
 	if (dlg.UndoEnabled())
 	{
 		pContext->AddSelectionUndo(dlg.GetStart(), dlg.GetEnd(), dlg.GetStart(), dlg.GetChannel());
 	}
 
-	if ( ! pContext->InitDestination(m_WavFile, dlg.GetStart(),
-									dlg.GetEnd(), dlg.GetChannel(), dlg.UndoEnabled()))
+	if ( ! pContext->InitInPlaceProcessing(m_WavFile, dlg.GetStart(), dlg.GetEnd(), dlg.GetChannel(), dlg.UndoEnabled()))
 	{
 		return;
 	}
@@ -5849,11 +5874,14 @@ void CWaveSoapFrontDoc::DoFadeInOut(BOOL FadeOut)
 		Envelope = m_FadeInEnvelope;
 	}
 
-	CFadeInOutOperation * pContext = new CFadeInOutOperation(this,
+	CWaveProcContext * pContext = CreateFadeInOutOperation(this,
 															Envelope, m_WavFile,
 															m_SelectionStart, GetSelectedChannel(),
 															m_SelectionEnd - m_SelectionStart, UndoEnabled());
 
-	ExecuteOperation(pContext, TRUE);
+	if (pContext != NULL)
+	{
+		ExecuteOperation(pContext, TRUE);
+	}
 }
 

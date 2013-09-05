@@ -12,16 +12,30 @@
 #include "FilterDialog.h"
 #include "CdDrive.h"
 
-class CExpressionEvaluationContext : public CThroughProcessOperation
+class CExpressionEvaluationProc : public CWaveProc
 {
-	typedef CExpressionEvaluationContext ThisClass;
-	typedef CThroughProcessOperation BaseClass;
+	typedef CExpressionEvaluationProc ThisClass;
+	typedef CWaveProc BaseClass;
 public:
 	typedef std::auto_ptr<ThisClass> auto_ptr;
-	CExpressionEvaluationContext(CWaveSoapFrontDoc * pDoc, UINT StatusStringId, UINT OperationNameId);
+	CExpressionEvaluationProc();
 
-	virtual BOOL ProcessBuffer(void * buf, size_t len, SAMPLE_POSITION offset, BOOL bBackward = FALSE);
+	void SetSelectionSamples(SAMPLE_INDEX Start, SAMPLE_INDEX End)
+	{
+		m_NumberOfSelectionSamples = End - Start;
+		m_nFileSampleArgument = Start;
+	}
+
+	void SetFileLengthAndRate(SAMPLE_INDEX Length, long SampleRate)
+	{
+		m_NumberOfFileSamples = Length;
+		m_nSamplingRate = SampleRate;
+	}
+
+	virtual void ProcessSampleValue(void const * pInSample, void * pOutSample, unsigned channel);
+	virtual void ProcessSoundSample(char const * pInSample, char * pOutSample, unsigned NumChannels);
 	BOOL SetExpression(LPCTSTR * ppszExpression);
+
 	CString m_ErrorString;
 	void Evaluate();
 
@@ -87,7 +101,7 @@ private:
 	{
 		//Operation * Next;
 		//TokenType Type;
-		void (_fastcall * Function)(Operation * t);
+		void (* Function)(Operation * t);
 		union {
 			double * dSrc1;
 			int * nSrc1;
@@ -108,9 +122,9 @@ private:
 	TokenType CompileTerm(LPCTSTR * ppStr);
 	TokenType CompileExpression(LPCTSTR * ppStr);
 	TokenType CompileParenthesedExpression(LPCTSTR * ppStr);
-	void AddOperation(void (_fastcall * Function)(Operation * t),
+	void AddOperation(void (* Function)(Operation * t),
 					void * pDst, void * pSrc1, void * pSrc2);
-	void CompileFunctionOfDouble(void (_fastcall * Function)(Operation * t), LPCTSTR * ppStr);
+	void CompileFunctionOfDouble(void (* Function)(Operation * t), LPCTSTR * ppStr);
 	TokenType GetTopOfStackType();
 	void PushConstant(int data);
 	void PushConstant(double data);
@@ -154,128 +168,128 @@ public:
 	double m_dFrequencyArgument3;
 private:
 	double m_dSelectionLengthTime;
-	int m_NumberOfFileSamples;
-	int m_NumberOfSelectionSamples;
+	NUMBER_OF_SAMPLES m_NumberOfFileSamples;
+	NUMBER_OF_SAMPLES m_NumberOfSelectionSamples;
 	double m_dFileLengthTime;
 	double m_dCurrentSample;
 	int m_nSamplingRate;
 	double m_SamplePeriod;
 	// op functions:
-	static void _fastcall AddDouble(Operation *t)
+	static void AddDouble(Operation *t)
 	{
 		*t->dDst = *t->dSrc1 + *t->dSrc2;
 	}
-	static void _fastcall AddInt(Operation *t)
+	static void AddInt(Operation *t)
 	{
 		*t->nDst = *t->nSrc1 + *t->nSrc2;
 	}
-	static void _fastcall AddDoubleInt(Operation *t)
+	static void AddDoubleInt(Operation *t)
 	{
 		*t->dDst = *t->dSrc1 + *t->nSrc2;
 	}
 
-	static void _fastcall SubtractDouble(Operation *t)
+	static void SubtractDouble(Operation *t)
 	{
 		*t->dDst = *t->dSrc1 - *t->dSrc2;
 	}
-	static void _fastcall SubtractInt(Operation *t)
+	static void SubtractInt(Operation *t)
 	{
 		*t->dDst = *t->dSrc1 - *t->dSrc2;
 	}
-	static void _fastcall SubtractDoubleInt(Operation *t)
+	static void SubtractDoubleInt(Operation *t)
 	{
 		*t->dDst = *t->dSrc1 - *t->nSrc2;
 	}
-	static void _fastcall SubtractIntDouble(Operation *t)
+	static void SubtractIntDouble(Operation *t)
 	{
 		*t->dDst = *t->nSrc1 - *t->dSrc2;
 	}
 
-	static void _fastcall MultiplyDouble(Operation *t)
+	static void MultiplyDouble(Operation *t)
 	{
 		*t->dDst = *t->dSrc1 * *t->dSrc2;
 	}
-	static void _fastcall MultiplyInt(Operation *t)
+	static void MultiplyInt(Operation *t)
 	{
 		*t->nDst = *t->nSrc1 * *t->nSrc2;
 	}
-	static void _fastcall MultiplyDoubleInt(Operation *t)
+	static void MultiplyDoubleInt(Operation *t)
 	{
 		*t->dDst = *t->dSrc1 * *t->nSrc2;
 	}
 
-	static void _fastcall DivideDouble(Operation *t);
-	static void _fastcall DivideInt(Operation *t);
-	static void _fastcall DivideDoubleInt(Operation *t);
-	static void _fastcall DivideIntDouble(Operation *t);
+	static void DivideDouble(Operation *t);
+	static void DivideInt(Operation *t);
+	static void DivideDoubleInt(Operation *t);
+	static void DivideIntDouble(Operation *t);
 
-	static void _fastcall ModuloDouble(Operation *t);
-	static void _fastcall ModuloInt(Operation *t);
-	static void _fastcall ModuloDoubleInt(Operation *t);
-	static void _fastcall ModuloIntDouble(Operation *t);
+	static void ModuloDouble(Operation *t);
+	static void ModuloInt(Operation *t);
+	static void ModuloDoubleInt(Operation *t);
+	static void ModuloIntDouble(Operation *t);
 
-	static void _fastcall NegateInt(Operation *t)
+	static void NegateInt(Operation *t)
 	{
 		*t->nDst = - *t->nSrc1;
 	}
-	static void _fastcall ComplementInt(Operation *t)
+	static void ComplementInt(Operation *t)
 	{
 		*t->nDst = ~ *t->nSrc1;
 	}
-	static void _fastcall NegateDouble(Operation *t)
+	static void NegateDouble(Operation *t)
 	{
 		*t->dDst = - *t->dSrc1;
 	}
-	static void _fastcall Sin(Operation *t)
+	static void Sin(Operation *t)
 	{
 		*t->dDst = sin(fmod(*t->dSrc1, 6.2831853071795864769252867));
 	}
-	static void _fastcall Cos(Operation *t)
+	static void Cos(Operation *t)
 	{
 		*t->dDst = cos(fmod(*t->dSrc1, 6.2831853071795864769252867));
 	}
-	static void _fastcall Tan(Operation *t)
+	static void Tan(Operation *t)
 	{
 		*t->dDst = tan(*t->dSrc1);
 	}
-	static void _fastcall SinH(Operation *t)
+	static void SinH(Operation *t)
 	{
 		*t->dDst = sinh(*t->dSrc1);
 	}
-	static void _fastcall CosH(Operation *t)  { *t->dDst = cosh(*t->dSrc1); }
-	static void _fastcall TanH(Operation *t)  { *t->dDst = tanh(*t->dSrc1); }
-	static void _fastcall Exp(Operation *t)
+	static void CosH(Operation *t)  { *t->dDst = cosh(*t->dSrc1); }
+	static void TanH(Operation *t)  { *t->dDst = tanh(*t->dSrc1); }
+	static void Exp(Operation *t)
 	{
 		*t->dDst = exp(*t->dSrc1);
 	}
-	static void _fastcall Exp10(Operation *t)
+	static void Exp10(Operation *t)
 	{
 		*t->dDst = exp(*t->dSrc1 * 2.3025850929940456840);
 	}
-	static void _fastcall Log(Operation *t);
-	static void _fastcall Log10(Operation *t);
-	static void _fastcall Sqrt(Operation *t);
-	static void _fastcall Noise(Operation *t);
-	static void _fastcall Abs(Operation *t)
+	static void Log(Operation *t);
+	static void Log10(Operation *t);
+	static void Sqrt(Operation *t);
+	static void Noise(Operation *t);
+	static void Abs(Operation *t)
 	{
 		*t->dDst = fabs(*t->dSrc1);
 	}
-	static void _fastcall DoubleToInt(Operation *t)
+	static void DoubleToInt(Operation *t)
 	{
 		*t->nDst = int(*t->dSrc1);
 	}
-	static void _fastcall IntToDouble(Operation *t)
+	static void IntToDouble(Operation *t)
 	{
 		*t->dDst = *t->nSrc1;
 	}
-	static void _fastcall AndInt(Operation *t)
+	static void AndInt(Operation *t)
 	{
 		*t->nDst = *t->nSrc1 & *t->nSrc2;
 	}
-	static void _fastcall OrInt(Operation *t) { *t->nDst = *t->nSrc1 | *t->nSrc2; }
-	static void _fastcall XorInt(Operation *t) { *t->nDst = *t->nSrc1 ^ *t->nSrc2; }
-	//static void _fastcall (Operation *t)  { *t->Dst = *t->Src1  *t->Src2; }
-	//static void _fastcall (Operation *t)  { *t->Dst = *t->Src1  *t->Src2; }
+	static void OrInt(Operation *t) { *t->nDst = *t->nSrc1 | *t->nSrc2; }
+	static void XorInt(Operation *t) { *t->nDst = *t->nSrc1 ^ *t->nSrc2; }
+	//static void (Operation *t)  { *t->Dst = *t->Src1  *t->Src2; }
+	//static void (Operation *t)  { *t->Dst = *t->Src1  *t->Src2; }
 	virtual BOOL Init();
 };
 
@@ -326,10 +340,10 @@ protected:
 	LONGLONG m_TotalCommitted;
 };
 
-class CEqualizerContext : public CThroughProcessOperation
+class CEqualizerContext : public CWaveProcContext
 {
 	typedef CEqualizerContext ThisClass;
-	typedef CThroughProcessOperation BaseClass;
+	typedef CWaveProcContext BaseClass;
 public:
 	typedef std::auto_ptr<ThisClass> auto_ptr;
 
@@ -340,74 +354,136 @@ public:
 
 	~CEqualizerContext();
 
-	BOOL m_bZeroPhase;
+	class EqualizerProc : public CWaveProc
+	{
+	public:
+		EqualizerProc(double const BandCoefficients[MaxNumberOfEqualizerBands][6], int NumberOfBands, BOOL ZeroPhase);
 
-	// the coefficients are: 3 numerator's coeffs and 3 denominator's coeffs
-	double m_BandCoefficients[MaxNumberOfEqualizerBands][6];
-	int m_NumOfBands;    // 2-MaxNumberOfEqualizerBands
-	// 2 channels, 2 prev input samples for each filter
-	// and 2 prev output samples
-	double m_PrevSamples[MAX_NUMBER_OF_CHANNELS][MaxNumberOfEqualizerBands][4];
+		BOOL m_bZeroPhase;
 
-	virtual BOOL ProcessBuffer(void * buf, size_t len, SAMPLE_POSITION offset, BOOL bBackward = FALSE);
-	virtual BOOL Init();
-	virtual BOOL InitPass(int nPass);
-private:
-	double CalculateResult(int ch, int Input);
+		// the coefficients are: 3 numerator's coeffs and 3 denominator's coeffs
+		double m_BandCoefficients[MaxNumberOfEqualizerBands][6];
+		int m_NumOfBands;    // 2-MaxNumberOfEqualizerBands
+		// 2 channels, 2 prev input samples for each filter
+		// and 2 prev output samples
+		double m_PrevSamples[MAX_NUMBER_OF_CHANNELS][MaxNumberOfEqualizerBands][4];
+		virtual BOOL Init();
+		virtual void ProcessSampleValue(void const * pInSample, void * pOutSample, unsigned channel);
+
+	private:
+		double CalculateResult(int ch, float Input);
+	} m_Proc;
+
 };
 
-class CFilterContext: public CThroughProcessOperation
+struct FilterCoefficients
 {
-	typedef CFilterContext ThisClass;
-	typedef CThroughProcessOperation BaseClass;
-public:
-	typedef std::auto_ptr<ThisClass> auto_ptr;
-
-	CFilterContext(CWaveSoapFrontDoc * pDoc,
-					UINT StatusStringId, UINT OperationNameId);
-	~CFilterContext();
-
 	BOOL m_bZeroPhase;
-
 	// the coefficients are: 3 numerator's coeffs and 3 denominator's coeffs
 	// results of the filter sections are ADDED
 	// if order==0, no filter
 	int     m_nLpfOrder;    // low pass filter order
 	double m_LpfCoeffs[MaxFilterOrder][6];
-	double m_PrevLpfSamples[MAX_NUMBER_OF_CHANNELS][MaxFilterOrder][4];
 
 	// results of the filter sections are ADDED
 	int     m_nHpfOrder;    // high pass filter order
 	double m_HpfCoeffs[MaxFilterOrder][6];
-	double m_PrevHpfSamples[MAX_NUMBER_OF_CHANNELS][MaxFilterOrder][4];
 
 	// results of the filter sections are MULTIPLIED
 	int     m_nNotchOrder;
 	double m_NotchCoeffs[MaxFilterOrder][6];
-	double m_PrevNotchSamples[MAX_NUMBER_OF_CHANNELS][MaxFilterOrder][4];
-
-	virtual BOOL ProcessBuffer(void * buf, size_t len, SAMPLE_POSITION offset, BOOL bBackward = FALSE);
-	virtual BOOL Init();
-	virtual BOOL InitPass(int nPass);
-private:
-	double CalculateResult(int ch, int Input);
 };
 
-class CSwapChannelsContext : public CThroughProcessOperation
+class CFilterContext: public CWaveProcContext
 {
-	typedef CSwapChannelsContext ThisClass;
-	typedef CThroughProcessOperation BaseClass;
+	typedef CFilterContext ThisClass;
+	typedef CWaveProcContext BaseClass;
 public:
 	typedef std::auto_ptr<ThisClass> auto_ptr;
 
-	CSwapChannelsContext(CWaveSoapFrontDoc * pDoc,
-						UINT StatusStringId, UINT OperationNameId)
-		: BaseClass(pDoc, OperationContextDiskIntensive, StatusStringId,
-					OperationNameId)
+	CFilterContext(CWaveSoapFrontDoc * pDoc, UINT StatusStringId, UINT OperationNameId);
+	~CFilterContext();
+
+	class CFilterProc : public CWaveProc, public FilterCoefficients
+	{
+	public:
+		CFilterProc()
+		{
+			m_InputSampleType = SampleTypeFloat32;
+		}
+
+
+		virtual void ProcessSampleValue(void const * pInSample, void * pOutSample, unsigned channel);
+
+		virtual BOOL Init();
+		void SetFilterCoefficients(FilterCoefficients const & coeffs)
+		{
+			static_cast<FilterCoefficients&>(*this) = coeffs;
+		}
+
+	private:
+		double CalculateResult(unsigned ch, double Input);
+		double m_PrevLpfSamples[MAX_NUMBER_OF_CHANNELS][MaxFilterOrder][4];
+		double m_PrevHpfSamples[MAX_NUMBER_OF_CHANNELS][MaxFilterOrder][4];
+		double m_PrevNotchSamples[MAX_NUMBER_OF_CHANNELS][MaxFilterOrder][4];
+	} m_Proc;
+
+	void SetFilterCoefficients(FilterCoefficients const & coeffs)
+	{
+		m_Proc.SetFilterCoefficients(coeffs);
+	}
+	virtual BOOL Init();
+};
+
+class CSwapChannelsContext : public CWaveProcContext
+{
+	typedef CSwapChannelsContext ThisClass;
+	typedef CWaveProcContext BaseClass;
+public:
+	typedef std::auto_ptr<ThisClass> auto_ptr;
+
+	CSwapChannelsContext(CWaveSoapFrontDoc * pDoc, UINT StatusStringId, UINT OperationNameId)
+		: BaseClass(pDoc, StatusStringId, OperationNameId)
 	{
 	}
 
-	virtual BOOL ProcessBuffer(void * buf, size_t len, SAMPLE_POSITION offset, BOOL bBackward = FALSE);
+	class SwapChannelsProc: public CWaveProc
+	{
+		typedef CWaveProc BaseClass;
+	public:
+		virtual BOOL SetInputWaveformat(CWaveFormat const & Wf)
+		{
+			if (Wf.NumChannels() != 2)
+			{
+				return FALSE;
+			}
+			return BaseClass::SetInputWaveformat(Wf);
+		}
+		virtual void ProcessSoundSample(char const * pInSample, char * pOutSample, unsigned /*NumChannels*/)
+		{
+			switch (m_InputSampleType)
+			{
+			case SampleType16bit:
+			{
+				short const * In = (short const *)pInSample;
+				short * Out = (short *)pOutSample;
+				Out[0] = In[1];
+				Out[1] = In[0];
+			}
+				break;
+			case SampleType32bit:
+			case SampleTypeFloat32:
+			{
+				DWORD const * In = (DWORD const *)pInSample;
+				DWORD * Out = (DWORD *)pOutSample;
+				Out[0] = In[1];
+				Out[1] = In[0];
+			}
+				break;
+			}
+		}
+
+	} m_Proc;
 };
 
 class CCdReadingContext : public CThroughProcessOperation
@@ -448,7 +524,13 @@ protected:
 	CWaveFormat m_TargetFormat;
 	DWORD m_TargetFileType;
 
-	virtual BOOL ProcessBuffer(void * buf, size_t len, SAMPLE_POSITION offset, BOOL bBackward = FALSE);
+	virtual unsigned ProcessBuffer(char const * pInBuf, // if BACKWARD pass, points to the end of buffer
+									char * pOutBuf,    // if BACKWARD pass, points to the end of buffer
+									unsigned nInBytes, unsigned nOutBytes, unsigned * pUsedBytes,
+									SAMPLE_POSITION SrcOffset,  // if BACKWARD pass, offset of the end of source buffer
+									SAMPLE_POSITION DstOffset,  // if BACKWARD pass, offset of the end of destination buffer
+									signed pass);
+
 	virtual BOOL Init();
 	virtual void DeInit();
 	virtual void PostRetire();
@@ -635,7 +717,12 @@ protected:
 	virtual void DeInit();
 
 	virtual BOOL CreateUndo();
-	virtual BOOL ProcessBuffer(void * buf, size_t len, SAMPLE_POSITION offset, BOOL bBackward = FALSE);
+	virtual unsigned ProcessBuffer(char const * pInBuf, // if BACKWARD pass, points to the end of buffer
+									char * pOutBuf,    // if BACKWARD pass, points to the end of buffer
+									unsigned nInBytes, unsigned nOutBytes, unsigned * pUsedBytes,
+									SAMPLE_POSITION SrcOffset,  // if BACKWARD pass, offset of the end of source buffer
+									SAMPLE_POSITION DstOffset,  // if BACKWARD pass, offset of the end of destination buffer
+									signed pass);
 };
 
 // undo zero-fill a file area (does nothing, but produces a redo)
@@ -755,8 +842,6 @@ class CReverseOperation : public CTwoFilesOperation
 	typedef CReverseOperation ThisClass;
 	typedef CTwoFilesOperation BaseClass;
 
-	BOOL InitDestination(CWaveFile & DstFile, SAMPLE_INDEX StartSample, SAMPLE_INDEX EndSample,
-						CHANNEL_MASK chan, BOOL NeedUndo);
 public:
 	typedef std::auto_ptr<ThisClass> auto_ptr;
 	CReverseOperation(CWaveSoapFrontDoc * pDoc, UINT StatusStringId, UINT OperationNameId);
@@ -776,57 +861,6 @@ protected:
 	virtual ListHead<COperationContext> * GetUndoChain();
 	virtual void DeleteUndo();
 	virtual BOOL OperationProc();
-};
-
-class CWaveMixOperation : public CThroughProcessOperation
-{
-	typedef CThroughProcessOperation BaseClass;
-	typedef CWaveMixOperation ThisClass;
-
-public:
-
-	typedef std::auto_ptr<ThisClass> auto_ptr;
-	CWaveMixOperation(class CWaveSoapFrontDoc * pDoc, ULONG Flags = 0,
-					UINT StatusStringId = 0, UINT OperationNameId = 0);
-
-protected:
-	virtual BOOL ProcessBuffer(void * buf, size_t BufferLength, SAMPLE_POSITION offset, BOOL bBackward);
-	virtual double GetSrcMixCoefficient(SAMPLE_INDEX Sample, int Channel) const = 0;
-	virtual double GetDstMixCoefficient(SAMPLE_INDEX Sample, int Channel) const = 0;
-};
-
-enum { FadeInLinear = 1,
-	FadeOutLinear = -FadeInLinear,
-	FadeInSinSquared = 2,
-	FadeOutSinSquared = -FadeInSinSquared,
-	FadeInSine = 3,
-	FadeOutCosine = -FadeInSine,
-};
-
-class CFadeInOutOperation : public CWaveMixOperation
-{
-	typedef CWaveMixOperation BaseClass;
-	typedef CFadeInOutOperation ThisClass;
-
-public:
-
-	typedef std::auto_ptr<ThisClass> auto_ptr;
-	CFadeInOutOperation(class CWaveSoapFrontDoc * pDoc, int FadeCurveType);
-	// init cross fade
-	CFadeInOutOperation(class CWaveSoapFrontDoc * pDoc, int FadeCurveType,
-						CWaveFile & SrcFile, SAMPLE_INDEX SrcBegin, CHANNEL_MASK SrcChannel,
-						CWaveFile & DstFile, SAMPLE_INDEX DstBegin, CHANNEL_MASK DstChannel,
-						NUMBER_OF_SAMPLES Length, BOOL UndoEnabled);
-
-	// init fade in/out
-	CFadeInOutOperation(class CWaveSoapFrontDoc * pDoc, int FadeCurveType,
-						CWaveFile & DstFile, SAMPLE_INDEX DstBegin, CHANNEL_MASK DstChannel,
-						NUMBER_OF_SAMPLES Length, BOOL UndoEnabled);
-
-protected:
-	virtual double GetSrcMixCoefficient(SAMPLE_INDEX Sample, int Channel) const;
-	virtual double GetDstMixCoefficient(SAMPLE_INDEX Sample, int Channel) const;
-	int m_FadeCurveType;
 };
 
 #endif // AFX_OPERATIONCONTEXT2_H__FFA16C44_2FA7_11D4_9ADD_00C0F0583C4B__INCLUDED_

@@ -219,6 +219,325 @@ typename RingBufferT<L>::Type RingBufferT<L>::Read()
 		return Array[ReadIndex ++];
 	}
 }
+
+CBatchProcessing::Item::~Item()
+{
+	delete []InBuf;
+	delete []OutBuf;
+}
+CBatchProcessing::Item::Item()
+	: Proc(NULL), InBuf(NULL), OutBuf(NULL), InBufGetIndex(0), InBufPutIndex(0),  OutBufGetIndex(0), OutBufPutIndex(0), Flags(0)
+{
+}
+
+CBatchProcessing::Item::Item(CWaveProc * proc)
+	: Proc(proc), InBuf(NULL), OutBuf(NULL), InBufGetIndex(0), InBufPutIndex(0),  OutBufGetIndex(0), OutBufPutIndex(0), Flags(0)
+{
+	try
+	{
+		InBuf = new char[IntermediateBufSize];
+		OutBuf = new char[IntermediateBufSize];
+	}
+	catch(std::bad_alloc &)
+	{
+		delete[] InBuf;
+		throw;
+	}
+}
+
+CBatchProcessing::Item::Item(Item & item)
+	: Proc(item.Proc),
+	InBuf(item.InBuf), OutBuf(item.OutBuf),
+	InBufGetIndex(item.InBufGetIndex), InBufPutIndex(item.InBufPutIndex),
+	OutBufGetIndex(item.OutBufGetIndex), OutBufPutIndex(item.OutBufPutIndex), Flags(item.Flags)
+{
+	// we grabbed ownership
+	item.Proc = NULL;
+	item.InBuf = NULL;
+	item.OutBuf = NULL;
+}
+
+CBatchProcessing::Item & CBatchProcessing::Item::operator =(Item& item)
+{
+	Proc = item.Proc;
+	InBuf = item.InBuf;
+	OutBuf = item.OutBuf;
+	InBufGetIndex = item.InBufGetIndex;
+	InBufPutIndex = item.InBufPutIndex;
+	OutBufGetIndex = item.OutBufGetIndex;
+	OutBufPutIndex = item.OutBufPutIndex;
+	Flags = item.Flags;
+	// we grabbed ownership
+	item.Proc = NULL;
+	item.InBuf = NULL;
+	item.OutBuf = NULL;
+	return *this;
+}
+
+unsigned CBatchProcessing::Item::FillInputBuffer(const char * Buf, unsigned BufFilled, CWaveFormat const * pWf) // returns number bytes used
+{
+	unsigned BytesUsed = 0;
+
+	if (InBufGetIndex == InBufPutIndex)
+	{
+		InBufGetIndex = 0;
+		InBufPutIndex = 0;
+	}
+
+	unsigned BytesToFill = IntermediateBufSize - InBufPutIndex;
+
+	// all channels are copied even though not all be processed
+	// four cases:
+	// the input data is the same non-float format;
+	// input is SHORT and the required format is FLOAT
+	// input is FLOAT and the required format is SHORT
+	// input is FLOAT and the required format is FLOAT - check for NAN
+	if (pWf->IsFloat32())
+	{
+		if (Proc->GetInputWaveformat().IsFloat32())
+		{
+			ASSERT(BufFilled % sizeof(float) == 0);
+
+			if (BytesToFill > BufFilled)
+			{
+				BytesToFill = BufFilled;
+			}
+
+			unsigned NumSamples = BytesToFill / sizeof (float);
+			float const * src = (float const *) Buf;
+			float *dst = (float*)(InBuf + InBufPutIndex);
+
+			for (unsigned i = 0; i != NumSamples; i++)
+			{
+				if (_isnan(src[i]))
+				{
+					dst[i] = 0;
+				}
+				else if (src[i] > 1000000.)
+				{
+					dst[i] = 1000000.;
+				}
+				else if (src[i] < -1000000.)
+				{
+					dst[i] = -1000000.;
+				}
+				else
+				{
+					dst[i] = src[i];
+				}
+			}
+
+			InBufPutIndex += BytesToFill;
+			BytesUsed = NumSamples * sizeof (float);
+			return BytesUsed;
+		}
+		else
+		{
+			ASSERT(Proc->GetInputWaveformat().IsPcm16());
+			// convert from FLOAT to SHORT
+			ASSERT(BufFilled % sizeof(float) == 0);
+
+			if (BytesToFill > BufFilled/2)
+			{
+				BytesToFill = BufFilled/2;
+			}
+
+			unsigned NumSamples = BytesToFill / sizeof (short);
+			float const * src = (float const *) Buf;
+			short *dst = (short*)(InBuf + InBufPutIndex);
+
+			for (unsigned i = 0; i != NumSamples; i++)
+			{
+				if (_isnan(src[i]))
+				{
+					dst[i] = 0;
+				}
+				else if (src[i] > SHORT_MAX)
+				{
+					dst[i] = SHORT_MAX;
+				}
+				else if (src[i] < SHORT_MIN)
+				{
+					dst[i] = SHORT_MIN;
+				}
+				else
+				{
+					dst[i] = (short)floor(src[i] + 0.5);
+				}
+			}
+			InBufPutIndex += BytesToFill;
+			BytesUsed = NumSamples * sizeof (float);
+			return BytesUsed;
+		}
+	}
+	else if (pWf->IsPcm16() && Proc->GetInputWaveformat().IsFloat32())
+	{
+		// convert from SHORT to FLOAT
+		ASSERT(BufFilled % 2 == 0);
+
+		if (BytesToFill > BufFilled*2)
+		{
+			BytesToFill = BufFilled*2;
+		}
+
+		unsigned NumSamples = BytesToFill / sizeof (float);
+		SHORT const * src = (SHORT const *) Buf;
+		float *dst = (float*)(InBuf + InBufPutIndex);
+
+		for (unsigned i = 0; i != NumSamples; i++)
+		{
+			dst[i] = src[i];
+		}
+
+		InBufPutIndex += BytesToFill;
+		BytesUsed = NumSamples * sizeof (short);
+		return BytesUsed;
+	}
+	else
+	{
+		// all other cases - the data is simply copied
+		if (BytesToFill > BufFilled)
+		{
+			BytesToFill = BufFilled;
+		}
+		memcpy(InBuf + InBufPutIndex, Buf, BytesToFill);
+		BytesUsed = BytesToFill;
+		InBufPutIndex += BytesToFill;
+		return BytesUsed;
+	}
+}
+
+unsigned CBatchProcessing::Item::FillOutputBuffer(char * Buf, unsigned BytesToFill, CWaveFormat const * pWf) // returns number bytes used
+{
+	unsigned BytesFilled = 0;
+
+	// all channels are copied even though not all be processed
+	// four cases:
+	// the input data is the same non-float format;
+	// input is SHORT and the required format is FLOAT
+	// input is FLOAT and the required format is SHORT
+	// input is FLOAT and the required format is FLOAT - check for NAN
+
+	if (Proc->GetOutputWaveformat().IsFloat32())
+	{
+		// convert from FLOAT to FLOAT
+		if (pWf->IsFloat32())
+		{
+
+			if (BytesToFill > OutBufPutIndex - OutBufGetIndex)
+			{
+				BytesToFill = OutBufPutIndex - OutBufGetIndex;
+			}
+			ASSERT(BytesToFill % sizeof(float) == 0);
+
+			unsigned NumSamples = BytesToFill / sizeof (float);
+			float const * src = (float const *)(OutBuf + OutBufGetIndex);
+			float *dst = (float*) Buf;
+
+			for (unsigned i = 0; i != NumSamples; i++)
+			{
+				if (_isnan(src[i]))
+				{
+					dst[i] = 0;
+				}
+				else if (src[i] > 1000000.)
+				{
+					dst[i] = 1000000.;
+				}
+				else if (src[i] < -1000000.)
+				{
+					dst[i] = -1000000.;
+				}
+				else
+				{
+					dst[i] = src[i];
+				}
+			}
+
+			OutBufGetIndex += BytesToFill;
+			BytesFilled = NumSamples * sizeof (float);
+		}
+		else
+		{
+			ASSERT(pWf->IsPcm16());
+			// convert from FLOAT to SHORT
+
+			if (BytesToFill > (OutBufPutIndex - OutBufGetIndex)/2)
+			{
+				BytesToFill = (OutBufPutIndex - OutBufGetIndex)/2;
+			}
+			ASSERT(BytesToFill % sizeof(float) == 0);
+
+			unsigned NumSamples = BytesToFill / sizeof (short);
+			float const * src = (float const *) (OutBuf + OutBufGetIndex);
+			short *dst = (short*)Buf;
+
+			for (unsigned i = 0; i != NumSamples; i++)
+			{
+				if (_isnan(src[i]))
+				{
+					dst[i] = 0;
+				}
+				else if (src[i] > SHORT_MAX)
+				{
+					dst[i] = SHORT_MAX;
+				}
+				else if (src[i] < SHORT_MIN)
+				{
+					dst[i] = SHORT_MIN;
+				}
+				else
+				{
+					dst[i] = (short)floor(src[i] + 0.5);
+				}
+			}
+			OutBufGetIndex += NumSamples * sizeof (float);
+			BytesFilled = NumSamples * sizeof (short);
+		}
+	}
+	else if (Proc->GetOutputWaveformat().IsPcm16() && pWf->IsFloat32())
+	{
+		// convert from SHORT to FLOAT
+
+		if (BytesToFill > (OutBufPutIndex - OutBufGetIndex)*2)
+		{
+			BytesToFill = (OutBufPutIndex - OutBufGetIndex)*2;
+		}
+		ASSERT(BytesToFill % sizeof(float) == 0);
+
+		unsigned NumSamples = BytesToFill / sizeof (float);
+		SHORT const * src = (SHORT const *) (OutBuf + OutBufGetIndex);
+		float *dst = (float*)Buf;
+
+		for (unsigned i = 0; i != NumSamples; i++)
+		{
+			dst[i] = src[i];
+		}
+
+		OutBufGetIndex += NumSamples * sizeof (short);
+		BytesFilled = NumSamples * sizeof (float);
+	}
+	else
+	{
+		// all other cases - the data is simply copied
+		if (BytesToFill > OutBufPutIndex - OutBufGetIndex)
+		{
+			BytesToFill = OutBufPutIndex - OutBufGetIndex;
+		}
+		memcpy(Buf, OutBuf + OutBufGetIndex, BytesToFill);
+		BytesFilled = BytesToFill;
+		OutBufGetIndex += BytesToFill;
+	}
+
+	if (OutBufGetIndex == OutBufPutIndex)
+	{
+		OutBufGetIndex = 0;
+		OutBufPutIndex = 0;
+	}
+
+	return BytesFilled;
+}
+
 //////////////////////////////////////////////////////////////
 /////////// CWaveProc
 CWaveProc::CWaveProc()
@@ -227,6 +546,9 @@ CWaveProc::CWaveProc()
 	m_ChannelsToProcess(-1)
 	, m_SavedOutputSamples(0)
 	, m_ProcessedInputSamples(0)
+	, m_CurrentSample(0)
+	, m_InputSampleType(SampleTypeAny)
+	, m_OutputSampleType(SampleTypeAny)
 #ifdef _DEBUG
 	, m_ProcessedInputBytes(0)
 	, m_SavedOutputBytes(0)
@@ -236,30 +558,167 @@ CWaveProc::CWaveProc()
 	m_OutputFormat.InitCdAudioFormat();
 }
 
-size_t CWaveProc::ProcessSoundBuffer(char const * /*pInBuf*/, char * /*pOutBuf*/,
+size_t CWaveProc::ProcessSoundBuffer(char const * pInBuf, char * pOutBuf,
 									size_t nInBytes, size_t nOutBytes, size_t * pUsedBytes)
 {
-	* pUsedBytes = nInBytes;
+	*pUsedBytes = 0;
+
+	if (pInBuf == NULL)
+	{
+		unsigned const OutputSampleSize = m_OutputFormat.SampleSize();
+
+		size_t nOutSamples = nOutBytes / OutputSampleSize;
+		// process the data
+
+		if (0 == nOutSamples)
+		{
+			return 0;
+		}
+
+		unsigned const NumChannels = m_OutputFormat.NumChannels();
+
+		for (unsigned i = 0; i < nOutSamples; i ++, pOutBuf += OutputSampleSize)
+		{
+			ProcessSoundSample(NULL, pOutBuf, NumChannels);
+			m_CurrentSample++;
+		}
+
+		nOutBytes = nOutSamples * OutputSampleSize;
+	}
+	else if (pOutBuf == NULL)
+	{
+		unsigned const InputSampleSize = m_InputFormat.SampleSize();
+
+		size_t nInSamples = nInBytes / InputSampleSize;
+		// process the data
+
+		if (0 == nInSamples)
+		{
+			return 0;
+		}
+
+		unsigned const NumChannels = m_InputFormat.NumChannels();
+
+		for (unsigned i = 0; i < nInSamples; i ++, pInBuf += InputSampleSize)
+		{
+			ProcessSoundSample(pInBuf, NULL, NumChannels);
+			m_CurrentSample++;
+		}
+
+		* pUsedBytes = nInSamples * InputSampleSize;
+		nOutBytes = 0;
+	}
+	else
+	{
+		unsigned const InputSampleSize = m_InputFormat.SampleSize();
+		unsigned const OutputSampleSize = m_OutputFormat.SampleSize();
+
+		size_t nInSamples = nInBytes / InputSampleSize;
+		size_t nOutSamples = nOutBytes / OutputSampleSize;
+		// process the data
+		unsigned nSamples = std::min(nInSamples, nOutSamples);
+
+		if (0 == nSamples || NULL == pInBuf)
+		{
+			return 0;   // no delayed samples in history
+		}
+
+		unsigned const NumChannels = m_InputFormat.NumChannels();
+
+		for (unsigned i = 0; i < nSamples; i ++, pInBuf += InputSampleSize, pOutBuf += OutputSampleSize)
+		{
+			ProcessSoundSample(pInBuf, pOutBuf, NumChannels);
+			m_CurrentSample++;
+		}
+
+		* pUsedBytes = nSamples * InputSampleSize;
+		nOutBytes = nSamples * OutputSampleSize;
+	}
+
 	return nOutBytes;
 }
 
-BOOL CWaveProc::SetInputWaveformat(WAVEFORMATEX const * pWf)
+void CWaveProc::ProcessSoundSample(char const * pInSample, char * pOutSample, unsigned NumChannels)
 {
-	m_InputFormat = pWf;
-	m_OutputFormat = pWf;   // by default, the format doesn't change
+	unsigned InputSampleValueSize = 0;
 
-	return pWf->wFormatTag == WAVE_FORMAT_PCM
-			&& pWf->wBitsPerSample == 16
-			&& pWf->nBlockAlign == pWf->nChannels * 2 //pWf->wBitsPerSample / 8
-			&& pWf->nAvgBytesPerSec == pWf->nSamplesPerSec * pWf->nBlockAlign;
+	if (pInSample != NULL)
+	{
+		InputSampleValueSize = m_InputFormat.BitsPerSample() / 8;
+		ASSERT(InputSampleValueSize * 8 == m_InputFormat.BitsPerSample());
+	}
+
+	unsigned OutputSampleValueSize = 0;
+
+	if (pOutSample != NULL)
+	{
+		OutputSampleValueSize = m_OutputFormat.BitsPerSample() / 8;
+		ASSERT(OutputSampleValueSize * 8 == m_OutputFormat.BitsPerSample());
+	}
+
+	CHANNEL_MASK CurrentChannelBit = 1;
+
+	for (unsigned i = 0; i < NumChannels; i++, pInSample += InputSampleValueSize, pOutSample += OutputSampleValueSize, CurrentChannelBit <<= 1)
+	{
+		// find the next channel bit
+		if (m_ChannelsToProcess & CurrentChannelBit)
+		{
+			ProcessSampleValue(pInSample, pOutSample, i);
+		}
+		else
+		{
+		}
+	}
 }
 
-WAVEFORMATEX const * CWaveProc::GetInputWaveformat() const
+void CWaveProc::ProcessSampleValue(void const * pInSample, void * pOutSample, unsigned /*channel*/)
+{
+	// default implementation just copies the sample data
+	if (pInSample != NULL && pOutSample != NULL)
+	{
+		ASSERT(m_InputFormat.BitsPerSample() == m_OutputFormat.BitsPerSample());
+		memcpy(pOutSample, pInSample, m_InputFormat.BitsPerSample() / 8);
+	}
+}
+
+BOOL CWaveProc::SetInputWaveformat(CWaveFormat const & Wf)
+{
+	if (m_InputSampleType == SampleTypeAny
+		|| m_InputSampleType == Wf.GetSampleType())
+	{
+		m_InputFormat = Wf;
+	}
+	else if (m_InputSampleType == SampleType16bit)
+	{
+		m_InputFormat.InitFormat(WAVE_FORMAT_PCM, Wf.SampleRate(), m_InputFormat.NumChannels(),
+								16);
+		// FIXME: Use extended format to carry the channel assignments
+	}
+	else if (m_InputSampleType == SampleTypeFloat32)
+	{
+		m_InputFormat.InitFormat(WAVE_FORMAT_IEEE_FLOAT, Wf.SampleRate(), m_InputFormat.NumChannels(),
+								32);
+	}
+	else
+	{
+		return FALSE;
+	}
+
+	if (m_InputFormat.GetSampleType() == m_OutputSampleType
+		|| m_OutputSampleType == SampleTypeAny)
+	{
+		m_OutputFormat = m_InputFormat;   // the format doesn't change
+	}
+
+	return TRUE;
+}
+
+CWaveFormat const & CWaveProc::GetInputWaveformat() const
 {
 	return m_InputFormat;
 }
 
-WAVEFORMATEX const * CWaveProc::GetOutputWaveformat() const
+CWaveFormat const & CWaveProc::GetOutputWaveformat() const
 {
 	return m_OutputFormat;
 }
@@ -338,6 +797,7 @@ BOOL CWaveProc::Init()
 {
 	m_ProcessedInputSamples = 0;
 	m_SavedOutputSamples = 0;
+	m_CurrentSample = 0;
 	return TRUE;
 }
 
@@ -351,6 +811,116 @@ void CWaveProc::DeInit()
 #endif
 }
 
+
+////////////////// CVolumeChangeProc ///////////////////////
+CVolumeChangeProc::CVolumeChangeProc(double const * VolumeArray, unsigned VolumeArraySize)
+{
+	unsigned i;
+	ASSERT(VolumeArraySize != 0 && VolumeArraySize < countof(m_Volume));
+
+	m_InputSampleType = SampleTypeFloat32;
+
+	for (i = 0; i < VolumeArraySize; i++)
+	{
+		m_Volume[i] = VolumeArray[i];
+	}
+
+	// fill the rest
+	for ( ; i < countof(m_Volume); i++)
+	{
+		m_Volume[i] = m_Volume[VolumeArraySize - 1];
+	}
+}
+
+void CVolumeChangeProc::ProcessSampleValue(void const * pInSample, void * pOutSample, unsigned channel)
+{
+	*(float*)pOutSample = float(m_Volume[channel] * *(float const *)pInSample);
+}
+
+/////////////   CWaveMixOperation  /////////////////////////////////////////////
+void CWaveMixProc::ProcessSampleValue(void const * pInSample, void * pOutSample, unsigned channel)
+{
+	float * pDst = (float *) pOutSample;
+	float const* pSrc = (float const*) pInSample;
+
+	if (0)
+	{
+		*pDst = float(
+					*pSrc * GetDstMixCoefficient(m_CurrentSample, channel)
+					+ 1 * GetSrcMixCoefficient(m_CurrentSample, channel));
+	}
+	else
+	{
+		*pDst = float(*pSrc * GetDstMixCoefficient(m_CurrentSample, channel));
+	}
+
+}
+
+///////////// CFadeInOutOperation /////////////////////////////////////////////
+
+CFadeInOutProc::CFadeInOutProc(int FadeCurveType, NUMBER_OF_SAMPLES Length)
+	: m_FadeCurveType(FadeCurveType)
+	, m_CurveLength(Length)
+{
+}
+
+double CFadeInOutProc::GetSrcMixCoefficient(SAMPLE_INDEX Sample, int /*Channel*/) const
+{
+	double const Fraction = (Sample + 0.5) / m_CurveLength;
+
+	switch (m_FadeCurveType)
+	{
+	case FadeOutLinear:
+		return Fraction;
+		break;
+	case FadeInLinear:
+		return 1. - Fraction;
+		break;
+	case FadeOutSinSquared:
+		return 0.5 * (1. - cos(M_PI * Fraction));
+		break;
+	case FadeInSinSquared:
+		return 0.5 * (1. + cos(M_PI * Fraction));
+		break;
+	case FadeOutCosine:
+		return sin(M_PI * 0.5 * Fraction);
+		break;
+	case FadeInSine:
+		return cos(M_PI * 0.5 * Fraction);
+		break;
+	}
+	return 0.;
+}
+
+double CFadeInOutProc::GetDstMixCoefficient(SAMPLE_INDEX Sample, int /*Channel*/) const
+{
+	double const Fraction = (Sample + 0.5)  / m_CurveLength;
+
+	switch (m_FadeCurveType)
+	{
+	case FadeInLinear:
+		return Fraction;
+		break;
+	case FadeOutLinear:
+		return 1. - Fraction;
+		break;
+	case FadeInSinSquared:
+		return 0.5 * (1. - cos(M_PI * Fraction));
+		break;
+	case FadeOutSinSquared:
+		return 0.5 * (1. + cos(M_PI * Fraction));
+		break;
+	case FadeInSine:
+		return sin(M_PI * 0.5 * Fraction);
+		break;
+	case FadeOutCosine:
+		return cos(M_PI * 0.5 * Fraction);
+		break;
+	}
+	return 1.;
+}
+
+////////////////// CScanProc ///////////////////////
 
 ////////////////// CHumRemoval ///////////////////////
 CHumRemoval::CHumRemoval(WAVEFORMATEX const * pWf, CHANNEL_MASK ChannelsToProcess)
@@ -384,11 +954,6 @@ CHumRemoval::CHumRemoval(WAVEFORMATEX const * pWf, CHANNEL_MASK ChannelsToProces
 	SetInputWaveformat(pWf);
 }
 
-BOOL CHumRemoval::SetInputWaveformat(WAVEFORMATEX const * pWf)
-{
-	return CWaveProc::SetInputWaveformat(pWf);
-}
-
 void CHumRemoval::SetDifferentialCutoff(double frequency)
 {
 	m_DiffCutoffCoeffs[1] = 1. - M_PI * frequency / m_InputFormat.SampleRate();
@@ -412,68 +977,45 @@ void CHumRemoval::SetHighpassCutoff(double frequency)
 		m_HighpassCoeffs[1],  m_HighpassCoeffs[2]);
 }
 
-size_t CHumRemoval::ProcessSoundBuffer(char const * pIn, char * pOut,
-										size_t nInBytes, size_t nOutBytes, size_t * pUsedBytes)
+void CHumRemoval::ProcessSoundSample(char const * pInSample, char * pOutSample, unsigned NumChannels)
 {
-	size_t nSavedBytes = 0;
-	*pUsedBytes = 0;
+	float const * pInBuf = (float const *)pInSample;
+	float * pOutBuf = (float *)pOutSample;
 
-	unsigned const SampleSize = m_InputFormat.SampleSize();
-	ASSERT(m_InputFormat.SampleSize() == m_OutputFormat.SampleSize());
+	double curr[MAX_NUMBER_OF_CHANNELS];
 
-	size_t nInSamples = nInBytes / SampleSize;
-	size_t nOutSamples = nOutBytes / SampleSize;
-
-	WAVE_SAMPLE const * pInBuf = (WAVE_SAMPLE const *) pIn;
-	WAVE_SAMPLE * pOutBuf = (WAVE_SAMPLE *) pOut;
-
-	// process the data
-	unsigned nSamples = std::min(nInSamples, nOutSamples);
-
-	if (0 == nSamples || NULL == pInBuf)
+	if (m_ApplyCommonModeFilter
+		&& 2 == NumChannels)
 	{
-		return nSavedBytes;   // no delayed samples in history
+		m_prev_out[0] = (pInBuf[0] + m_prev_in[0]) * m_DiffCutoffCoeffs[0]
+						+ m_DiffCutoffCoeffs[1] * m_prev_out[0];
+
+		m_prev_out[1] = (pInBuf[1] + m_prev_in[1]) * m_DiffCutoffCoeffs[0]
+						+ m_DiffCutoffCoeffs[1] * m_prev_out[1];
+
+		double hpf_l = m_prev_in[0] - m_prev_out[0];
+		double hpf_r = m_prev_in[1] - m_prev_out[1];
+
+		m_prev_in[0] = pInBuf[0];
+		m_prev_in[1] = pInBuf[1];
+
+		curr[0] = hpf_l + m_prev_out[1];
+		curr[1] = hpf_r + m_prev_out[0];
 	}
-
-	ASSERT(m_InputFormat.NumChannels() == m_OutputFormat.NumChannels());
-
-	unsigned const NumChannels = m_InputFormat.NumChannels();
-
-	for (unsigned i = 0; i < nSamples; i ++,
-		pInBuf += NumChannels, pOutBuf += NumChannels)
+	else
 	{
-		double curr[MAX_NUMBER_OF_CHANNELS];
-
-		if (m_ApplyCommonModeFilter
-			&& 2 == NumChannels)
-		{
-			m_prev_out[0] = (pInBuf[0] + m_prev_in[0]) * m_DiffCutoffCoeffs[0]
-							+ m_DiffCutoffCoeffs[1] * m_prev_out[0];
-
-			m_prev_out[1] = (pInBuf[1] + m_prev_in[1]) * m_DiffCutoffCoeffs[0]
-							+ m_DiffCutoffCoeffs[1] * m_prev_out[1];
-
-			double hpf_l = m_prev_in[0] - m_prev_out[0];
-			double hpf_r = m_prev_in[1] - m_prev_out[1];
-
-			m_prev_in[0] = pInBuf[0];
-			m_prev_in[1] = pInBuf[1];
-
-			curr[0] = hpf_l + m_prev_out[1];
-			curr[1] = hpf_r + m_prev_out[0];
-		}
-		else
-		{
-			for (unsigned ch = 0; ch < NumChannels; ch++)
-			{
-				curr[ch] = pInBuf[ch];
-			}
-		}
-
 		for (unsigned ch = 0; ch < NumChannels; ch++)
 		{
-			if (m_ApplyHighpassFilter
-				&& 0 != (m_ChannelsToProcess & (1 << ch)))
+			curr[ch] = pInBuf[ch];
+		}
+	}
+
+	CHANNEL_MASK CurrentChannelBit = 1;
+	for (unsigned ch = 0; ch < NumChannels; ch++, CurrentChannelBit <<= 1)
+	{
+		if (m_ChannelsToProcess & CurrentChannelBit)
+		{
+			if (m_ApplyHighpassFilter)
 			{
 				double out = ((curr[ch] - m_PrevHpf[0][ch] - m_PrevHpf[0][ch] + m_PrevHpf[1][ch])
 								+ m_HighpassCoeffs[0] * m_PrevHpOut[0][ch] - m_HighpassCoeffs[1] * m_PrevHpOut[1][ch]);
@@ -490,25 +1032,18 @@ size_t CHumRemoval::ProcessSoundBuffer(char const * pIn, char * pOut,
 				// (1-2z + z^2)/(a^2 -2az + z^2)
 
 			}
+			pOutBuf[ch] = (float)curr[ch];
 		}
-
-		for (unsigned ch = 0; ch < NumChannels; ch++)
+		else
 		{
-			if (m_ChannelsToProcess & (1 << ch))
-			{
-				pOutBuf[ch] = DoubleToShort(curr[ch]);
-			}
-			else
-			{
-				pOutBuf[ch] = pInBuf[ch];
-			}
+			// copy the sample without processing
+			pOutBuf[ch] = (float)pInBuf[ch];
 		}
-
 	}
 
-	*pUsedBytes += nSamples * SampleSize;
-	return nSavedBytes + nSamples * SampleSize;
 }
+// the default implementation copies the sample
+//virtual void ProcessSampleValue(void const * pInSample, void * pOutSample, unsigned channel);
 
 /////////// CClickRemoval ////////////////////////////////////////////
 CClickRemoval::DeclickChannelData::DeclickChannelData()
@@ -660,11 +1195,6 @@ bool operator <(SAMPLE_INDEX i, StoredClickData const & r1)
 }
 
 ///////////////////////////////////////////////////////////
-BOOL CClickRemoval::SetInputWaveformat(WAVEFORMATEX const * pWf)
-{
-	return CWaveProc::SetInputWaveformat(pWf);
-}
-
 void CClickRemoval::InterpolateGap(CBackBuffer<int, int> & data, int nLeftIndex, int InterpolateSamples, bool BigGap)
 {
 	const int MAX_FFT_ORDER = 2048;
@@ -3018,6 +3548,7 @@ CNoiseReduction::CNoiseReduction(WAVEFORMATEX const * pWf, CHANNEL_MASK Channels
 	, m_NrParms(nr)
 	, m_FftOrder(nFftOrder)
 {
+	m_InputSampleType = SampleTypeFloat32;
 	m_ChannelsToProcess = ChannelsToProcess;
 	SetInputWaveformat(pWf);
 }
@@ -3036,21 +3567,18 @@ void CNoiseReduction::Dump(unsigned indent) const
 	}
 }
 
-BOOL CNoiseReduction::SetInputWaveformat(WAVEFORMATEX const * pWf)
+BOOL CNoiseReduction::SetInputWaveformat(CWaveFormat const & Wf)
 {
-	if (CWaveProc::SetInputWaveformat(pWf))
-	{
-		delete m_pNrCore;
-		m_pNrCore = NULL;
-
-		m_pNrCore = new NoiseReductionCore(m_FftOrder, pWf->nChannels, pWf->nSamplesPerSec, m_NrParms, m_ChannelsToProcess);
-		return TRUE;
-	}
-	else
+	if (! CWaveProc::SetInputWaveformat(Wf))
 	{
 		return FALSE;
 	}
 
+	delete m_pNrCore;
+	m_pNrCore = NULL;
+
+	m_pNrCore = new NoiseReductionCore(m_FftOrder, Wf.NumChannels(), Wf.SampleRate(), m_NrParms, m_ChannelsToProcess);
+	return TRUE;
 }
 
 size_t CNoiseReduction::ProcessSoundBuffer(char const * pIn, char * pOut,
@@ -3584,21 +4112,20 @@ void NoiseReductionChannelData::ProcessMaskingTemporalEnvelope(double MaskingTem
 
 CBatchProcessing::~CBatchProcessing()
 {
-	for (int i = 0; i < m_Stages.GetSize(); i++)
+	for (item_iterator i = m_Stages.begin(); i != m_Stages.end(); i++)
 	{
 		if (m_bAutoDeleteProcs)
 		{
-			delete m_Stages[i].Proc;
+			delete i->Proc;
 		}
-		delete[] m_Stages[i].Buf;
 	}
 }
 
 BOOL CBatchProcessing::WasClipped() const
 {
-	for (int i = 0; i < m_Stages.GetSize(); i++)
+	for (item_iterator_const i = m_Stages.begin(); i != m_Stages.end(); i++)
 	{
-		if (m_Stages[i].Proc->WasClipped())
+		if (i->Proc->WasClipped())
 		{
 			return true;
 		}
@@ -3609,9 +4136,9 @@ BOOL CBatchProcessing::WasClipped() const
 double CBatchProcessing::GetMaxClipped() const
 {
 	double MaxClipped = 0;
-	for (int i = 0; i < m_Stages.GetSize(); i++)
+	for (item_iterator_const i = m_Stages.begin(); i != m_Stages.end(); i++)
 	{
-		double StageClip = m_Stages[i].Proc->GetMaxClipped();
+		double StageClip = i->Proc->GetMaxClipped();
 		if (MaxClipped < StageClip)
 		{
 			MaxClipped = StageClip;
@@ -3620,15 +4147,29 @@ double CBatchProcessing::GetMaxClipped() const
 	return MaxClipped;
 }
 
-BOOL CBatchProcessing::SetInputWaveformat(WAVEFORMATEX const * pWf)
+BOOL CBatchProcessing::SetInputWaveformat(CWaveFormat const & Wf)
 {
-	for (int i = 0; i < m_Stages.GetSize(); i++)
+	m_InputFormat = Wf;
+
+	if (m_Stages.empty())
 	{
-		if (FALSE == m_Stages[i].Proc->SetInputWaveformat(pWf))
-			return FALSE;
-		m_OutputFormat = m_Stages[i].Proc->GetOutputWaveformat();
-		pWf = GetOutputWaveformat();
+		m_OutputFormat = m_InputFormat;
+		return TRUE;
 	}
+
+	if ( ! m_Stages.begin()->Proc->SetInputWaveformat(Wf))
+	{
+		return FALSE;
+	}
+
+	for (item_iterator i = m_Stages.begin(); i+1 != m_Stages.end(); i++)
+	{
+		if (! i[1].Proc->SetInputWaveformat(i->Proc->GetOutputWaveformat()))
+		{
+			return FALSE;
+		}
+	}
+	// set output format
 	return TRUE;
 }
 
@@ -3638,187 +4179,145 @@ size_t CBatchProcessing::ProcessSoundBuffer(char const * pIn, char * pOut,
 	size_t nSavedBytes = 0;
 	*pUsedBytes = 0;
 
-	if (NULL != pIn)
+	if (m_Stages.empty())
 	{
-		// regular processing of input data
-		if (0 == m_Stages.GetSize())
-		{
-			// just pass through
-			size_t ToCopy = __min(nInBytes, nOutBytes);
-			memcpy(pOut, pIn, ToCopy);
-			* pUsedBytes = ToCopy;
-			return ToCopy;
-		}
+		// just pass through
+		size_t ToCopy = std::min(nInBytes, nOutBytes);
+		memcpy(pOut, pIn, ToCopy);
+		* pUsedBytes = ToCopy;
+		return ToCopy;
+	}
 
-		bool bDataWasProcessed;
-		do
+	bool bDataWasProcessed;
+	do
+	{
+		bDataWasProcessed = false;
+		for (item_iterator pPrevItem, pItem = m_Stages.begin(); pItem != m_Stages.end(); pItem++)
 		{
-			bDataWasProcessed = false;
-			for (int i = 0; i < m_Stages.GetSize(); i++)
+			unsigned nCurrInputBytes;
+			// prepare input buffer. Do not use shortcut optimization - much pain, little gain
+
+			if (pItem != m_Stages.begin())
 			{
-				size_t nProcessedBytes;
-				size_t nCurrInputBytes;
-				size_t nCurrOutputBytes;
-				char const * inbuf;
-				char * outbuf;
-				Item * pItem = & m_Stages[i];
+				nCurrInputBytes = pItem->FillInputBuffer(pPrevItem->OutBuf + pPrevItem->OutBufGetIndex,
+														pPrevItem->OutBufPutIndex - pPrevItem->OutBufGetIndex,
+														&pPrevItem->Proc->GetOutputWaveformat());
 
-				if (i != 0)
+				pPrevItem->OutBufGetIndex += nCurrInputBytes;
+				if (pPrevItem->OutBufGetIndex == pPrevItem->OutBufPutIndex)
 				{
-					inbuf = pItem->Buf + pItem->BufGetIndex;
-					nCurrInputBytes = pItem->BufPutIndex - pItem->BufGetIndex;
+					pPrevItem->OutBufGetIndex = 0;
+					pPrevItem->OutBufPutIndex = 0;
 				}
-				else
+			}
+			else
+			{
+				if (m_BackwardPass)
 				{
-					inbuf = pIn;
-					nCurrInputBytes = nInBytes;
-				}
-
-				if (0 == nCurrInputBytes)
-				{
-					continue;
-				}
-				if (i < m_Stages.GetSize() - 1)
-				{
-					Item * pOutItem = & m_Stages[i + 1];
-					outbuf = pOutItem->Buf + pOutItem->BufPutIndex;
-					nCurrOutputBytes = IntermediateBufSize - pOutItem->BufPutIndex;
-				}
-				else
-				{
-					nCurrOutputBytes = nOutBytes;
-					outbuf = pOut;
-				}
-
-				if (0 == nCurrOutputBytes)
-				{
-					continue;
-				}
-				int nOutputBytes= pItem->Proc->ProcessSound(inbuf, outbuf,
-															nCurrInputBytes, nCurrOutputBytes, & nProcessedBytes);
-
-				if (nOutputBytes!= 0
-					|| nProcessedBytes != 0)
-				{
-					bDataWasProcessed = true;
-				}
-
-				if (i != 0)
-				{
-					pItem->BufGetIndex += nProcessedBytes;
-					if (pItem->BufGetIndex == pItem->BufPutIndex)
+					// swap order of samples
+					unsigned SampleSize = GetInputWaveformat().SampleSize();
+					// pIn points to the end of the buffer
+					while (nInBytes != 0)
 					{
-						pItem->BufGetIndex = 0;
-						pItem->BufPutIndex = 0;
+						nCurrInputBytes = pItem->FillInputBuffer(pIn - SampleSize, nInBytes, &GetInputWaveformat());
+
+						if (0 == nCurrInputBytes)
+						{
+							break;
+						}
+						pIn -= nCurrInputBytes;
+						nInBytes -= nCurrInputBytes;
+						*pUsedBytes += nInBytes;
 					}
 				}
 				else
 				{
-					pIn += nProcessedBytes;
-					nInBytes -= nProcessedBytes;
-					*pUsedBytes += nProcessedBytes;
+					nCurrInputBytes = pItem->FillInputBuffer(pIn, nInBytes, &GetInputWaveformat());
+					pIn += nCurrInputBytes;
+					nInBytes -= nCurrInputBytes;
+					*pUsedBytes += nInBytes;
 				}
 
-				if (i < m_Stages.GetSize() - 1)
+			}
+
+			pPrevItem = pItem;
+			const char * inbuf = pItem->InBuf+pItem->InBufGetIndex;
+
+			if (pIn == NULL && pItem->InBufPutIndex == pItem->InBufPutIndex)
+			{
+				// flushing this
+				inbuf = NULL;
+			}
+
+			unsigned BytesToStore = 0;
+			char * outbuf = NULL;
+
+			if (pItem + 1 != m_Stages.end()
+				|| NULL != pOut)
+			{
+				outbuf = pItem->OutBuf + pItem->OutBufPutIndex;
+				BytesToStore = IntermediateBufSize - pItem->OutBufPutIndex;
+			}
+
+			unsigned nProcessedBytes = 0;
+			unsigned nOutputBytes = (unsigned) pItem->Proc->ProcessSound(inbuf,
+										outbuf,
+										pItem->InBufPutIndex - pItem->InBufGetIndex,
+										BytesToStore, & nProcessedBytes);
+
+			if (nOutputBytes != 0
+				|| nProcessedBytes != 0)
+			{
+				bDataWasProcessed = true;
+			}
+
+			pItem->InBufGetIndex += nProcessedBytes;
+			if (pItem->InBufGetIndex == pItem->InBufPutIndex)
+			{
+				pItem->InBufGetIndex = 0;
+				pItem->InBufPutIndex = 0;
+			}
+			pItem->OutBufPutIndex += nOutputBytes;
+
+			if (pItem + 1 == m_Stages.end())
+			{
+				// now pull the data from the output buffer
+				if (m_BackwardPass)
 				{
-					m_Stages[i + 1].BufPutIndex += nOutputBytes;
+					unsigned SampleSize = GetOutputWaveformat().SampleSize();
+					while (nOutBytes != 0)
+					{
+						nOutputBytes = pItem->FillOutputBuffer(pOut - SampleSize, nOutBytes, &GetOutputWaveformat());
+						if (nOutputBytes == 0)
+						{
+							break;
+						}
+						nSavedBytes += nOutputBytes;
+						nOutBytes -= nOutputBytes;
+						pOut -= nOutputBytes;
+					}
 				}
 				else
 				{
-					pOut += nOutputBytes;
+					nOutputBytes = pItem->FillOutputBuffer(pOut, nOutBytes, &GetOutputWaveformat());
+					nSavedBytes += nOutputBytes;
 					nOutBytes -= nOutputBytes;
-					nSavedBytes += nOutputBytes;
-				}
-
-			}
-		} while (bDataWasProcessed);
-
-	}
-	else
-	{
-		// flush the data
-		if (0 == m_Stages.GetSize())
-		{
-			*pUsedBytes = 0;
-			return 0;
-		}
-		bool bDataWasProcessed;
-		do
-		{
-			bDataWasProcessed = false;
-			for (int i = 0; i < m_Stages.GetSize(); i++)
-			{
-				size_t nProcessedBytes;
-				size_t nCurrInputBytes;
-				size_t nCurrOutputBytes;
-				char const * inbuf;
-				char * outbuf;
-				Item * pItem = & m_Stages[i];
-				if (i != 0)
-				{
-					inbuf = pItem->Buf + pItem->BufGetIndex;
-					nCurrInputBytes = pItem->BufPutIndex - pItem->BufGetIndex;
-					if (0 == nCurrInputBytes)
-					{
-						inbuf = NULL;
-					}
-				}
-				else
-				{
-					inbuf = NULL;
-					nCurrInputBytes = 0;
-				}
-
-				if (i < m_Stages.GetSize() - 1)
-				{
-					Item * pOutItem = & m_Stages[i + 1];
-					outbuf = pOutItem->Buf + pOutItem->BufPutIndex;
-					nCurrOutputBytes = IntermediateBufSize - pOutItem->BufPutIndex;
-				}
-				else
-				{
-					nCurrOutputBytes = nOutBytes;
-					outbuf = pOut;
-				}
-
-				if (0 == nCurrOutputBytes)
-				{
-					continue;
-				}
-				int nOutputBytes = pItem->Proc->ProcessSound(inbuf, outbuf,
-															nCurrInputBytes, nCurrOutputBytes, & nProcessedBytes);
-
-				if (nOutputBytes != 0
-					|| nProcessedBytes != 0)
-				{
-					bDataWasProcessed = true;
-				}
-
-				if (i != 0)
-				{
-					pItem->BufGetIndex += nProcessedBytes;
-					if (pItem->BufGetIndex == pItem->BufPutIndex)
-					{
-						pItem->BufGetIndex = 0;
-						pItem->BufPutIndex = 0;
-					}
-				}
-
-				if (i < m_Stages.GetSize() - 1)
-				{
-					m_Stages[i + 1].BufPutIndex += nOutputBytes;
-				}
-				else
-				{
 					pOut += nOutputBytes;
-					nOutBytes-= nOutputBytes;
-					nSavedBytes += nOutputBytes;
 				}
-
 			}
-		} while (bDataWasProcessed);
+			else if (bDataWasProcessed && pItem->OutBufPutIndex == pItem->OutBufGetIndex)
+			{
+				// even though some data was processed, there was not enough data to add anything for the next stage
+				if (pItem[1].InBufGetIndex == pItem[1].InBufPutIndex)
+				{
+					// next input buffer is empty, too. Shortcut to the begin of the list
+					break;
+				}
+			}
+		}
 
-	}
+	} while (bDataWasProcessed);
+
 	return nSavedBytes;
 }
 
@@ -3826,7 +4325,7 @@ size_t CBatchProcessing::ProcessSoundBuffer(char const * pIn, char * pOut,
 // it can be multiple of block size for compressed format
 unsigned CBatchProcessing::GetInputSampleSize() const
 {
-	if (m_Stages.IsEmpty())
+	if (m_Stages.empty())
 	{
 		return 4;
 	}
@@ -3837,34 +4336,28 @@ unsigned CBatchProcessing::GetInputSampleSize() const
 // it can be multiple of block size for compressed format
 unsigned CBatchProcessing::GetOutputSampleSize() const
 {
-	if (m_Stages.IsEmpty())
+	if (m_Stages.empty())
 	{
 		return 4;
 	}
-	return m_Stages[m_Stages.GetSize() - 1].Proc->GetOutputSampleSize();
+	return m_Stages[m_Stages.size() - 1].Proc->GetOutputSampleSize();
 }
 
 void CBatchProcessing::AddWaveProc(CWaveProc * pProc, int index)
 {
-	Item item;
-	item.Proc = pProc;
-	item.BufGetIndex = 0;
-	item.BufPutIndex = 0;
-	item.Buf = new char[IntermediateBufSize];
-
-	if (-1 == index || index > m_Stages.GetSize())
+	if (-1 == index || index > (int)m_Stages.size())
 	{
-		index = m_Stages.GetSize();
+		index = m_Stages.size();
 	}
-	m_Stages.InsertAt(index, item);
+	m_Stages.insert(m_Stages.begin()+index, Item(pProc));
 }
 
 void CBatchProcessing::Dump(unsigned indent) const
 {
 	BaseClass::Dump(indent);
-	for (int i = 0; i < m_Stages.GetSize(); i++)
+	for (item_iterator_const pItem = m_Stages.begin(); pItem != m_Stages.end(); pItem++)
 	{
-		m_Stages[i].Proc->Dump(indent + 1);
+		pItem->Proc->Dump(indent + 1);
 	}
 }
 
@@ -3875,12 +4368,16 @@ BOOL CBatchProcessing::Init()
 		return FALSE;
 	}
 
-	for (int i = 0; i < m_Stages.GetSize(); i++)
+	for (item_iterator pItem = m_Stages.begin(); pItem != m_Stages.end(); pItem++)
 	{
-		if ( ! m_Stages[i].Proc->Init())
+		if ( ! pItem->Proc->Init())
 		{
 			return FALSE;
 		}
+		pItem->InBufGetIndex = 0;
+		pItem->InBufPutIndex = 0;
+		pItem->OutBufPutIndex = 0;
+		pItem->OutBufPutIndex = 0;
 	}
 
 	return TRUE;
@@ -3888,16 +4385,16 @@ BOOL CBatchProcessing::Init()
 
 void CBatchProcessing::DeInit()
 {
-	for (int i = 0; i < m_Stages.GetSize(); i++)
+	for (std::vector<Item>::reverse_iterator pItem = m_Stages.rbegin(); pItem != m_Stages.rend(); pItem++)
 	{
-		m_Stages[i].Proc->DeInit();
+		pItem->Proc->DeInit();
 	}
 	BaseClass::DeInit();
 }
 
 NUMBER_OF_SAMPLES CBatchProcessing::GetInputNumberOfSamples() const
 {
-	if (m_Stages.IsEmpty())
+	if (m_Stages.empty())
 	{
 		return 0;
 	}
@@ -3907,12 +4404,12 @@ NUMBER_OF_SAMPLES CBatchProcessing::GetInputNumberOfSamples() const
 
 NUMBER_OF_SAMPLES CBatchProcessing::GetOutputNumberOfSamples() const
 {
-	if (m_Stages.IsEmpty())
+	if (m_Stages.empty())
 	{
 		return 0;
 	}
 
-	return m_Stages[m_Stages.GetSize() - 1].Proc->GetOutputNumberOfSamples();
+	return m_Stages[m_Stages.size() - 1].Proc->GetOutputNumberOfSamples();
 }
 
 ////////////////////////////////////////
@@ -4243,9 +4740,9 @@ void CResampleFilter::InitSlidingInterpolatedFilter(int FilterLength)
 	ResetResample();
 }
 
-BOOL CResampleFilter::SetInputWaveformat(WAVEFORMATEX const * pWf)
+BOOL CResampleFilter::SetInputWaveformat(CWaveFormat const & Wf)
 {
-	ASSERT(CWaveFormat(pWf) == m_InputFormat);
+	ASSERT(Wf == m_InputFormat);
 	return TRUE;
 }
 
@@ -4645,9 +5142,9 @@ BOOL CAudioConvertor::InitConversion(WAVEFORMATEX const * SrcFormat, WAVEFORMATE
 	return TRUE;
 }
 
-BOOL CAudioConvertor::SetInputWaveformat(WAVEFORMATEX const * pWf)
+BOOL CAudioConvertor::SetInputWaveformat(CWaveFormat const & Wf)
 {
-	ASSERT(CWaveFormat(pWf) == m_InputFormat);
+	ASSERT(Wf == m_InputFormat);
 	return TRUE;
 }
 
@@ -4751,18 +5248,19 @@ CChannelConvertor::CChannelConvertor(NUMBER_OF_CHANNELS OldChannels,
 							16);
 	m_ChannelsToProcess = ChannelsToProcess;
 }
-BOOL CChannelConvertor::SetInputWaveformat(WAVEFORMATEX const * pWf)
+
+BOOL CChannelConvertor::SetInputWaveformat(CWaveFormat const & Wf)
 {
-	ASSERT(pWf->nChannels == m_InputFormat.NumChannels());
-	if (pWf->nChannels != m_InputFormat.NumChannels())
+	if (Wf.NumChannels() != m_InputFormat.NumChannels())
 	{
+		ASSERT(Wf.NumChannels() == m_InputFormat.NumChannels());
 		return FALSE;
 	}
 
-	m_OutputFormat.InitFormat(pWf->wFormatTag, pWf->nSamplesPerSec, m_OutputFormat.NumChannels(),
-							pWf->wBitsPerSample);
-	m_InputFormat.InitFormat(pWf->wFormatTag, pWf->nSamplesPerSec, m_InputFormat.NumChannels(),
-							pWf->wBitsPerSample);
+	m_OutputFormat.InitFormat(Wf.FormatTag(), Wf.SampleRate(), m_OutputFormat.NumChannels(),
+							Wf.BitsPerSample());
+	m_InputFormat.InitFormat(Wf.FormatTag(), Wf.SampleRate(), m_InputFormat.NumChannels(),
+							Wf.BitsPerSample());
 
 	return TRUE;
 }

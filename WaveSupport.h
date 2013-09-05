@@ -14,6 +14,7 @@ typedef long CHANNEL_MASK;
 
 typedef short NUMBER_OF_CHANNELS;
 typedef __int16 WAVE_SAMPLE;
+typedef float WAVE_PEAK;
 
 enum {
 	WaveFormatMatchBitsPerSample = 1,
@@ -53,12 +54,17 @@ enum   // flags for CWaveFormat::ValidateFormat
 	WaveFormatCompressed = 0x80000000,
 };
 
+// only 16 bit and float 32 bit are supported
 enum WaveSampleType
 {
 	SampleType16bit,
-	SampleType32Bit,
+	SampleType32bit,
 	SampleTypeFloat32,
 	SampleTypeFloat64,
+	SampleTypeOtherPcm,
+	SampleType8bit,
+	SampleTypeCompressed,
+	SampleTypeAny,
 };
 
 struct WaveFormatTagEx
@@ -94,7 +100,27 @@ struct WaveFormatTagEx
 		return Tag == wfx.Tag
 				&& (Tag != WAVE_FORMAT_EXTENSIBLE || SubFormat == wfx.SubFormat);
 	}
-	bool IsCompressed() const;
+	bool IsCompressed() const
+	{
+		if (WAVE_FORMAT_PCM == Tag
+			|| WAVE_FORMAT_IEEE_FLOAT == Tag)
+		{
+			// PCM integer or float format
+			return false;
+		}
+
+		if (WAVE_FORMAT_EXTENSIBLE == Tag)
+		{
+			if (SubFormat == KSDATAFORMAT_SUBTYPE_PCM
+				|| SubFormat == KSDATAFORMAT_SUBTYPE_IEEE_FLOAT)
+			{
+				return false;
+
+			}
+		}
+
+		return true;
+	}
 
 	bool operator ==(WAVEFORMATEX const * wfx) const
 	{
@@ -244,7 +270,23 @@ struct CWaveFormat
 		return sizeof (WAVEFORMATEX) + m_pWf->cbSize;
 	}
 
-	bool IsCompressed() const;
+	bool IsCompressed() const
+	{
+		return SampleTypeCompressed == GetSampleType();
+	}
+
+	WaveSampleType GetSampleType() const;
+
+	bool IsPcm16() const
+	{
+		return SampleType16bit == GetSampleType();
+	}
+
+	bool IsFloat32() const
+	{
+		return SampleTypeFloat32 == GetSampleType();
+	}
+
 	NUMBER_OF_CHANNELS NumChannelsFromMask(CHANNEL_MASK Channels) const;
 	// mask of all channels
 	CHANNEL_MASK ChannelsMask() const;

@@ -678,58 +678,67 @@ int CWaveFormat::MatchFormat(WAVEFORMATEX const * pwf)
 	return match;
 }
 
-bool CWaveFormat::IsCompressed() const
+WaveSampleType CWaveFormat::GetSampleType() const
 {
-	if (NULL == m_pWf)
+	if (WAVE_FORMAT_PCM == m_pWf->wFormatTag)
 	{
-		return false;
+		switch (m_pWf->wBitsPerSample)
+		{
+		case 16:
+			// PCM integer 16
+			return SampleType16bit;
+		case 8:
+			// PCM integer 16
+			return SampleType8bit;
+		case 32:
+			// PCM integer 16
+			return SampleType32bit;
+		default:
+			return SampleTypeOtherPcm;
+		}
 	}
-	if (WAVE_FORMAT_PCM == m_pWf->wFormatTag
-		|| WAVE_FORMAT_IEEE_FLOAT == m_pWf->wFormatTag)
-	{
-		// PCM integer or float format
-		return false;
-	}
-
-	if (WAVE_FORMAT_EXTENSIBLE == m_pWf->wFormatTag
-		|| FormatSize() >= sizeof (WAVEFORMATEXTENSIBLE))
+	else if (WAVE_FORMAT_EXTENSIBLE == m_pWf->wFormatTag
+			|| FormatSize() >= sizeof (WAVEFORMATEXTENSIBLE))
 	{
 		WAVEFORMATEXTENSIBLE * pWfe = (WAVEFORMATEXTENSIBLE *) m_pWf;
-		if (pWfe->SubFormat == KSDATAFORMAT_SUBTYPE_PCM
-			|| pWfe->SubFormat == KSDATAFORMAT_SUBTYPE_IEEE_FLOAT)
+		if (pWfe->SubFormat == KSDATAFORMAT_SUBTYPE_PCM)
 		{
-			return false;
+			switch (pWfe->Format.wBitsPerSample)
+			{
+			case 16:
+				// PCM integer 16
+				return SampleType16bit;
+			case 8:
+				// PCM integer 16
+				return SampleType8bit;
+			case 32:
+				// PCM integer 16
+				return SampleType32bit;
+			default:
+				return SampleTypeOtherPcm;
+			}
 		}
 	}
-
-	return true;
-}
-
-bool WaveFormatTagEx::IsCompressed() const
-{
-	if (WAVE_FORMAT_PCM == Tag
-		|| WAVE_FORMAT_IEEE_FLOAT == Tag)
+	else if (WAVE_FORMAT_IEEE_FLOAT == m_pWf->wFormatTag)
 	{
-		// PCM integer or float format
-		return false;
-	}
-
-	if (WAVE_FORMAT_EXTENSIBLE == Tag)
-	{
-		if (SubFormat == KSDATAFORMAT_SUBTYPE_PCM
-			|| SubFormat == KSDATAFORMAT_SUBTYPE_IEEE_FLOAT)
+		if (m_pWf->wBitsPerSample == 32)
 		{
-			return false;
+			// float format
+			return SampleTypeFloat32;
+		}
+		else if (m_pWf->wBitsPerSample == 64)
+		{
+			// float format
+			return SampleTypeFloat64;
 		}
 	}
-
-	return true;
+	return SampleTypeCompressed;      // other format
 }
 
 NUMBER_OF_CHANNELS CWaveFormat::NumChannelsFromMask(CHANNEL_MASK ChannelMask) const
 {
 	NUMBER_OF_CHANNELS Channels = 0;
-	for (int ch = 0; ch < 32 && Channels < NumChannels(); ch++)
+	for (unsigned ch = 0; ch < 32 && Channels < NumChannels(); ch++)
 	{
 		if (ChannelMask & (1 << ch))
 		{

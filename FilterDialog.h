@@ -37,19 +37,8 @@ public:
 	//{{AFX_DATA(CFilterDialog)
 	enum { IDD = IDD_DIALOG_FILTER };
 	//}}AFX_DATA
-	BOOL IsZeroPhase() const;
 
-	int GetLowpassFilterOrder() const;
-
-	int GetHighpassFilterOrder() const;
-
-	int GetNotchFilterOrder() const;
-
-	void GetLpfCoefficients(double Coeffs[MaxFilterOrder][6]) const;
-
-	void GetHpfCoefficients(double Coeffs[MaxFilterOrder][6]) const;
-
-	void GetNotchCoefficients(double Coeffs[MaxFilterOrder][6]) const;
+	void GetFilterCoefficients(struct FilterCoefficients * coeffs) const;
 
 protected:
 // Overrides

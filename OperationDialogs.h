@@ -647,10 +647,10 @@ public:
 								CWaveFile & File,
 								BOOL ChannelsLocked, BOOL UndoEnabled,
 								int TimeFormat,
-								class CExpressionEvaluationContext * pContext,
+								class CExpressionEvaluationProc * pProc,
 								CWnd* pParent = NULL);   // standard constructor
 	~CExpressionEvaluationDialog();
-	class COperationContext * GetExpressionContext();
+	class CExpressionEvaluationProc * GetExpression();
 
 protected:
 // Dialog Data
@@ -666,7 +666,7 @@ protected:
 	COperandsDialog m_OperandsTabDlg;
 	CInsertExpressionDialog m_SavedExprTabDlg;
 
-	class CExpressionEvaluationContext * m_pContext;
+	std::auto_ptr<CExpressionEvaluationProc> m_pProc;
 
 	int m_ExpressionGroupSelected;
 	int m_ExpressionSelected;

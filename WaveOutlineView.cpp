@@ -156,9 +156,10 @@ void CWaveOutlineView::OnDraw(CDC* pDC)
 		for (i = ur.left; i < ur.right; i++)
 		{
 			int NewIdx = MulDiv(i + 1, nSamples, width);
-			pPeaks[i].high = -0x8000;
-			pPeaks[i].low = 0x7FFF;
-			DWORD Offset = DataOffset + SampleSize * PrevIdx;
+			pPeaks[i].high = SHORT_MIN;
+			pPeaks[i].low = SHORT_MAX;
+
+			SAMPLE_POSITION Offset = DataOffset + SampleSize * PrevIdx;
 			unsigned long ToRead = (NewIdx - PrevIdx) * SampleSize;
 			if (ToRead != 0)
 			{
@@ -186,8 +187,8 @@ void CWaveOutlineView::OnDraw(CDC* pDC)
 		delete[] pBuf;
 	}
 
-	int PeakMax = -0x8000;
-	int PeakMin = 0x7FFF;
+	WAVE_PEAK PeakMax = SHORT_MIN;
+	WAVE_PEAK PeakMin = SHORT_MAX;
 	if (0 == nSamples)
 	{
 		PeakMax = 1;
@@ -200,8 +201,8 @@ void CWaveOutlineView::OnDraw(CDC* pDC)
 		PeakMin = Peak.low;
 	}
 
-	PeakMax = abs(PeakMax);
-	PeakMin = abs(PeakMin);
+	PeakMax = std::abs(PeakMax);
+	PeakMin = std::abs(PeakMin);
 	if (PeakMax < PeakMin)
 	{
 		PeakMax = PeakMin;
@@ -221,8 +222,8 @@ void CWaveOutlineView::OnDraw(CDC* pDC)
 	{
 		if (pPeaks[i].low <= pPeaks[i].high)
 		{
-			int y1 = (PeakMax - pPeaks[i].low) * (cr.bottom - 1) / (PeakMax+PeakMax);
-			int y2 = (PeakMax - pPeaks[i].high) * (cr.bottom - 1) / (PeakMax+PeakMax);
+			int y1 = int((PeakMax - pPeaks[i].low) * (cr.bottom - 1) / (PeakMax+PeakMax));
+			int y2 = int((PeakMax - pPeaks[i].high) * (cr.bottom - 1) / (PeakMax+PeakMax));
 			pDC->MoveTo(i, y1);
 			pDC->LineTo(i, y2 - 1);
 		}
@@ -432,8 +433,8 @@ void CWaveOutlineView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
 			Invalidate();
 			return;
 		}
-		int PeakMax = -0x8000;
-		int PeakMin = 0x7FFF;
+		WAVE_PEAK PeakMax = SHORT_MIN;
+		WAVE_PEAK PeakMin = SHORT_MAX;
 		WavePeak Peak = pDoc->m_WavFile.GetPeakMinMax(0, TotalPeaks);
 
 		PeakMax = abs(Peak.high);

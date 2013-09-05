@@ -12,6 +12,7 @@
 #include "GdiObjectSave.h"
 #include "DialogWithSelection.inl"
 #include "FilterMath.h"
+#include "OperationContext2.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -2509,39 +2510,16 @@ void CFilterDialog::OnUpdateEditStopbandLoss(CCmdUI * pCmdUI)
 	pCmdUI->Enable(m_pGraphWnd->GetCurrentFilter() != NotchFilterIndex);
 }
 
-BOOL CFilterDialog::IsZeroPhase() const
+void CFilterDialog::GetFilterCoefficients(FilterCoefficients * coeffs) const
 {
-	return m_pGraphWnd->IsZeroPhase();
-}
+	coeffs->m_bZeroPhase = m_pGraphWnd->IsZeroPhase();
+	coeffs->m_nLpfOrder = m_pGraphWnd->GetLowpassFilterOrder();
+	coeffs->m_nHpfOrder = m_pGraphWnd->GetHighpassFilterOrder();
+	coeffs->m_nNotchOrder = m_pGraphWnd->GetNotchFilterOrder();
 
-int CFilterDialog::GetLowpassFilterOrder() const
-{
-	return m_pGraphWnd->GetLowpassFilterOrder();
-}
-
-int CFilterDialog::GetHighpassFilterOrder() const
-{
-	return m_pGraphWnd->GetHighpassFilterOrder();
-}
-
-int CFilterDialog::GetNotchFilterOrder() const
-{
-	return m_pGraphWnd->GetNotchFilterOrder();
-}
-
-void CFilterDialog::GetLpfCoefficients(double Coeffs[MaxFilterOrder][6]) const
-{
-	m_pGraphWnd->GetLpfCoefficients(Coeffs);
-}
-
-void CFilterDialog::GetHpfCoefficients(double Coeffs[MaxFilterOrder][6]) const
-{
-	m_pGraphWnd->GetHpfCoefficients(Coeffs);
-}
-
-void CFilterDialog::GetNotchCoefficients(double Coeffs[MaxFilterOrder][6]) const
-{
-	m_pGraphWnd->GetNotchCoefficients(Coeffs);
+	m_pGraphWnd->GetLpfCoefficients(coeffs->m_LpfCoeffs);
+	m_pGraphWnd->GetHpfCoefficients(coeffs->m_HpfCoeffs);
+	m_pGraphWnd->GetNotchCoefficients(coeffs->m_NotchCoeffs);
 }
 
 void CFilterDialog::UpdateEditBoxes()
