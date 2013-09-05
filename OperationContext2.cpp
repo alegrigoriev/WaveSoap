@@ -36,68 +36,48 @@ void SkipWhitespace(LPCTSTR * ppStr)
 	*ppStr = str;
 }
 
-CExpressionEvaluationContext::CExpressionEvaluationContext(CWaveSoapFrontDoc * pDoc,
-															UINT StatusStringId, UINT OperationNameId)
-	:BaseClass(pDoc, 0, StatusStringId, OperationNameId)
+CExpressionEvaluationProc::CExpressionEvaluationProc()
 {
+	m_InputSampleType = SampleTypeFloat32;
 }
 
-BOOL CExpressionEvaluationContext::Init()
+BOOL CExpressionEvaluationProc::Init()
 {
-	m_nSamplingRate = m_DstFile.SampleRate();
 	m_SamplePeriod = 1. / m_nSamplingRate;
-
-	m_NumberOfFileSamples = m_DstFile.NumberOfSamples();
 	m_dFileLengthTime = m_NumberOfFileSamples / double(m_nSamplingRate);
-
-	m_NumberOfSelectionSamples = (m_DstEnd - m_DstStart) / m_DstFile.SampleSize();
 	m_dSelectionLengthTime = m_NumberOfSelectionSamples / double(m_nSamplingRate);
 
 	m_nSelectionSampleArgument = 0;
 	m_dSelectionTimeArgument = 0.;
-	m_nFileSampleArgument = m_DstFile.PositionToSample(m_DstStart);
 	m_dFileTimeArgument = m_nFileSampleArgument / double(m_nSamplingRate);
 	return TRUE;
 }
 
-BOOL CExpressionEvaluationContext::ProcessBuffer(void * buf,
-												size_t BufferLength, SAMPLE_POSITION /*offset*/, BOOL /*bBackward*/)
+void CExpressionEvaluationProc::ProcessSoundSample(char const * pInSample, char * pOutSample, unsigned NumChannels)
 {
-	// calculate number of sample, and time
-	int nChannels = m_DstFile.Channels();
-
-	WAVE_SAMPLE * pDst = (WAVE_SAMPLE *) buf;
-	NUMBER_OF_SAMPLES NumSamples = BufferLength / sizeof pDst[0];
-
 	try
 	{
-		for (NUMBER_OF_SAMPLES i = 0; i < NumSamples; i += nChannels)
-		{
-			for (int ch = 0; ch < nChannels; ch++)
-			{
-				if (m_DstChan & (1 << ch))
-				{
-					m_dCurrentSample = pDst[i + ch] * 0.00003051850947599719229;
-					Evaluate();
-					pDst[i + ch] = DoubleToShort(* m_pResultAddress);
-				}
-			}
-
-			m_nSelectionSampleArgument++;
-			m_nFileSampleArgument++;
-			m_dSelectionTimeArgument += m_SamplePeriod;
-			m_dFileTimeArgument += m_SamplePeriod;
-		}
+		BaseClass::ProcessSoundSample(pInSample, pOutSample, NumChannels);
+		m_nSelectionSampleArgument++;
+		m_nFileSampleArgument++;
+		m_dSelectionTimeArgument += m_SamplePeriod;
+		m_dFileTimeArgument += m_SamplePeriod;
 	}
 	catch (const char * pError)
 	{
 		m_ErrorString = pError;
-		return FALSE;
+		//return FALSE;
 	}
-	return TRUE;
 }
 
-CString CExpressionEvaluationContext::GetToken(LPCTSTR * ppStr, TokenType * pType)
+void CExpressionEvaluationProc::ProcessSampleValue(void const * pInSample, void * pOutSample, unsigned channel)
+{
+	m_dCurrentSample = *(float const*)pInSample * (1./32767.);
+	Evaluate();
+	*(float*)pOutSample = * m_pResultAddress;
+}
+
+CString CExpressionEvaluationProc::GetToken(LPCTSTR * ppStr, TokenType * pType)
 {
 	// get either delimiter, operand or operator
 	static struct TokenTable
@@ -184,8 +164,8 @@ CString CExpressionEvaluationContext::GetToken(LPCTSTR * ppStr, TokenType * pTyp
 	return str;
 }
 
-CExpressionEvaluationContext::TokenType
-CExpressionEvaluationContext::CompileParenthesedExpression(LPCTSTR * ppStr)
+CExpressionEvaluationProc::TokenType
+CExpressionEvaluationProc::CompileParenthesedExpression(LPCTSTR * ppStr)
 {
 	TokenType type;
 	//LPCTSTR prevStr = *ppStr;
@@ -198,7 +178,7 @@ CExpressionEvaluationContext::CompileParenthesedExpression(LPCTSTR * ppStr)
 	return eRightParenthesis;
 }
 
-void CExpressionEvaluationContext::CompileFunctionOfDouble(void (_fastcall * Function)(Operation * t), LPCTSTR * ppStr)
+void CExpressionEvaluationProc::CompileFunctionOfDouble(void (* Function)(Operation * t), LPCTSTR * ppStr)
 {
 	CompileParenthesedExpression( ppStr);
 	// can't put those right to the function call, because
@@ -209,8 +189,8 @@ void CExpressionEvaluationContext::CompileFunctionOfDouble(void (_fastcall * Fun
 	AddOperation(Function, pDst, pArg, NULL);
 }
 
-CExpressionEvaluationContext::TokenType
-	CExpressionEvaluationContext::CompileTerm(LPCTSTR * ppStr)
+CExpressionEvaluationProc::TokenType
+	CExpressionEvaluationProc::CompileTerm(LPCTSTR * ppStr)
 {
 	// term may be either expression in parentheses, or function call, or unary operation
 	// and a term
@@ -449,7 +429,7 @@ CExpressionEvaluationContext::TokenType
 	return type;
 }
 
-void CExpressionEvaluationContext::CompileAnd()
+void CExpressionEvaluationProc::CompileAnd()
 {
 	TokenType type = GetTopOfStackType();
 	if (eIntConstant == type
@@ -469,7 +449,7 @@ void CExpressionEvaluationContext::CompileAnd()
 	throw "Bitwise ""and"" operation arguments must be integer, use int() function";
 }
 
-void CExpressionEvaluationContext::CompileOr()
+void CExpressionEvaluationProc::CompileOr()
 {
 	TokenType type = GetTopOfStackType();
 	if (eIntConstant == type
@@ -489,7 +469,7 @@ void CExpressionEvaluationContext::CompileOr()
 	throw "Bitwise ""or"" operation arguments must be integer, use int() function";
 }
 
-void CExpressionEvaluationContext::CompileXor()
+void CExpressionEvaluationProc::CompileXor()
 {
 	TokenType type = GetTopOfStackType();
 	if (eIntConstant == type
@@ -509,7 +489,7 @@ void CExpressionEvaluationContext::CompileXor()
 	throw "Bitwise ""xor"" operation arguments must be integer, use int() function";
 }
 
-void CExpressionEvaluationContext::CompileAdd()
+void CExpressionEvaluationProc::CompileAdd()
 {
 	TokenType type = GetTopOfStackType();
 	if (eIntConstant == type
@@ -566,7 +546,7 @@ void CExpressionEvaluationContext::CompileAdd()
 	}
 }
 
-void CExpressionEvaluationContext::CompileSubtract()
+void CExpressionEvaluationProc::CompileSubtract()
 {
 	TokenType type = GetTopOfStackType();
 	if (eIntConstant == type
@@ -623,7 +603,7 @@ void CExpressionEvaluationContext::CompileSubtract()
 	}
 }
 
-void _fastcall CExpressionEvaluationContext::DivideDouble(Operation *t)
+void CExpressionEvaluationProc::DivideDouble(Operation *t)
 {
 	if (0 == *t->dSrc2)
 	{
@@ -632,7 +612,7 @@ void _fastcall CExpressionEvaluationContext::DivideDouble(Operation *t)
 	*t->dDst = *t->dSrc1 / *t->dSrc2;
 }
 
-void _fastcall CExpressionEvaluationContext::DivideInt(Operation *t)
+void CExpressionEvaluationProc::DivideInt(Operation *t)
 {
 	if (0 == *t->nSrc2)
 	{
@@ -641,7 +621,7 @@ void _fastcall CExpressionEvaluationContext::DivideInt(Operation *t)
 	*t->nDst = *t->nSrc1 / *t->nSrc2;
 }
 
-void _fastcall CExpressionEvaluationContext::DivideDoubleInt(Operation *t)
+void CExpressionEvaluationProc::DivideDoubleInt(Operation *t)
 {
 	if (0 == *t->nSrc2)
 	{
@@ -650,7 +630,7 @@ void _fastcall CExpressionEvaluationContext::DivideDoubleInt(Operation *t)
 	*t->dDst = *t->dSrc1 / *t->nSrc2;
 }
 
-void _fastcall CExpressionEvaluationContext::DivideIntDouble(Operation *t)
+void CExpressionEvaluationProc::DivideIntDouble(Operation *t)
 {
 	if (0 == *t->dSrc2)
 	{
@@ -659,7 +639,7 @@ void _fastcall CExpressionEvaluationContext::DivideIntDouble(Operation *t)
 	*t->dDst = *t->nSrc1 / *t->dSrc2;
 }
 
-void _fastcall CExpressionEvaluationContext::ModuloDouble(Operation *t)
+void CExpressionEvaluationProc::ModuloDouble(Operation *t)
 {
 	if (0 == *t->dSrc2)
 	{
@@ -668,7 +648,7 @@ void _fastcall CExpressionEvaluationContext::ModuloDouble(Operation *t)
 	*t->dDst = fmod(*t->dSrc1, *t->dSrc2);
 }
 
-void _fastcall CExpressionEvaluationContext::ModuloInt(Operation *t)
+void CExpressionEvaluationProc::ModuloInt(Operation *t)
 {
 	if (0 == *t->nSrc2)
 	{
@@ -677,7 +657,7 @@ void _fastcall CExpressionEvaluationContext::ModuloInt(Operation *t)
 	*t->nDst = *t->nSrc1 % *t->nSrc2;
 }
 
-void _fastcall CExpressionEvaluationContext::ModuloDoubleInt(Operation *t)
+void CExpressionEvaluationProc::ModuloDoubleInt(Operation *t)
 {
 	if (0 == *t->nSrc2)
 	{
@@ -686,7 +666,7 @@ void _fastcall CExpressionEvaluationContext::ModuloDoubleInt(Operation *t)
 	*t->dDst = fmod(*t->dSrc1, *t->nSrc2);
 }
 
-void _fastcall CExpressionEvaluationContext::ModuloIntDouble(Operation *t)
+void CExpressionEvaluationProc::ModuloIntDouble(Operation *t)
 {
 	if (0 == *t->dSrc2)
 	{
@@ -695,7 +675,7 @@ void _fastcall CExpressionEvaluationContext::ModuloIntDouble(Operation *t)
 	*t->dDst = fmod(*t->nSrc1, *t->dSrc2);
 }
 
-void _fastcall CExpressionEvaluationContext::Log(Operation *t)
+void CExpressionEvaluationProc::Log(Operation *t)
 {
 	if (*t->dSrc1 <= 0)
 	{
@@ -704,7 +684,7 @@ void _fastcall CExpressionEvaluationContext::Log(Operation *t)
 	*t->dDst = log(*t->dSrc1);
 }
 
-void _fastcall CExpressionEvaluationContext::Log10(Operation *t)
+void CExpressionEvaluationProc::Log10(Operation *t)
 {
 	if (*t->dSrc1 <= 0)
 	{
@@ -713,7 +693,7 @@ void _fastcall CExpressionEvaluationContext::Log10(Operation *t)
 	*t->dDst = log(*t->dSrc1) * 0.434294481903251827651;
 }
 
-void _fastcall CExpressionEvaluationContext::Sqrt(Operation *t)
+void CExpressionEvaluationProc::Sqrt(Operation *t)
 {
 	if (*t->dSrc1 < 0)
 	{
@@ -722,14 +702,14 @@ void _fastcall CExpressionEvaluationContext::Sqrt(Operation *t)
 	*t->dDst = sqrt(*t->dSrc1);
 }
 
-void _fastcall CExpressionEvaluationContext::Noise(Operation *t)
+void CExpressionEvaluationProc::Noise(Operation *t)
 {
 	C_ASSERT(RAND_MAX == 0x7FFF);
 	//long r = (rand() ^ (rand() << 9)) - 0x800000;    // 24 bits
 	*t->dDst = ((rand() ^ (rand() << 9)) - 0x800000) / double(0x800000);
 }
 
-void CExpressionEvaluationContext::CompileMultiply()
+void CExpressionEvaluationProc::CompileMultiply()
 {
 	TokenType type = GetTopOfStackType();
 	if (eIntConstant == type
@@ -786,7 +766,7 @@ void CExpressionEvaluationContext::CompileMultiply()
 	}
 }
 
-void CExpressionEvaluationContext::CompileModulo()
+void CExpressionEvaluationProc::CompileModulo()
 {
 	TokenType type = GetTopOfStackType();
 	if (eIntConstant == type
@@ -843,7 +823,7 @@ void CExpressionEvaluationContext::CompileModulo()
 	}
 }
 
-void CExpressionEvaluationContext::CompileDivide()
+void CExpressionEvaluationProc::CompileDivide()
 {
 	TokenType type = GetTopOfStackType();
 	if (eIntConstant == type
@@ -900,11 +880,11 @@ void CExpressionEvaluationContext::CompileDivide()
 	}
 }
 
-CExpressionEvaluationContext::TokenType
-	CExpressionEvaluationContext::CompileExpression(LPCTSTR * ppStr)
+CExpressionEvaluationProc::TokenType
+	CExpressionEvaluationProc::CompileExpression(LPCTSTR * ppStr)
 {
 	TokenType type, type1;
-	//void (_fastcall * Function)(Operation * t);
+	//void (* Function)(Operation * t);
 	type = CompileTerm(ppStr);
 	if (eEndOfExpression == type)
 	{
@@ -1025,8 +1005,8 @@ CExpressionEvaluationContext::TokenType
 	return eEndOfExpression;
 }
 
-void CExpressionEvaluationContext::AddOperation(void (_fastcall * Function)(Operation * t),
-												void * pDst, void * pSrc1, void * pSrc2)
+void CExpressionEvaluationProc::AddOperation(void (* Function)(Operation * t),
+											void * pDst, void * pSrc1, void * pSrc2)
 {
 	Operation t;
 	t.Function = Function;
@@ -1036,7 +1016,7 @@ void CExpressionEvaluationContext::AddOperation(void (_fastcall * Function)(Oper
 	m_OperationArray.push_back(t);
 }
 
-CExpressionEvaluationContext::TokenType CExpressionEvaluationContext::GetTopOfStackType()
+CExpressionEvaluationProc::TokenType CExpressionEvaluationProc::GetTopOfStackType()
 {
 	if (m_DataTypeStackIndex <= 0)
 	{
@@ -1064,7 +1044,7 @@ CExpressionEvaluationContext::TokenType CExpressionEvaluationContext::GetTopOfSt
 	throw "Internal Error";
 }
 
-void CExpressionEvaluationContext::PushConstant(int data)
+void CExpressionEvaluationProc::PushConstant(int data)
 {
 	if (m_ConstantBufferIndex >= NumberOfIntConstants)
 	{
@@ -1088,7 +1068,7 @@ void CExpressionEvaluationContext::PushConstant(int data)
 		m_ConstantBufferIndex, m_DataTypeStackIndex);
 }
 
-void CExpressionEvaluationContext::PushConstant(double data)
+void CExpressionEvaluationProc::PushConstant(double data)
 {
 	if (m_ConstantBufferIndex + 1 >= NumberOfIntConstants)
 	{
@@ -1113,7 +1093,7 @@ void CExpressionEvaluationContext::PushConstant(double data)
 		m_ConstantBufferIndex, m_DataTypeStackIndex);
 }
 
-void CExpressionEvaluationContext::PushVariable(int * pData)
+void CExpressionEvaluationProc::PushVariable(int * pData)
 {
 	if (m_DataStackIndex >= ExpressionStackSize * 2
 		|| m_DataTypeStackIndex >= ExpressionStackSize)
@@ -1130,7 +1110,7 @@ void CExpressionEvaluationContext::PushVariable(int * pData)
 		m_DataStackIndex, m_DataTypeStackIndex);
 }
 
-void CExpressionEvaluationContext::PushVariable(double * pData)
+void CExpressionEvaluationProc::PushVariable(double * pData)
 {
 	if (m_DataStackIndex >= ExpressionStackSize * 2
 		|| m_DataTypeStackIndex >= ExpressionStackSize)
@@ -1147,7 +1127,7 @@ void CExpressionEvaluationContext::PushVariable(double * pData)
 		m_DataStackIndex, m_DataTypeStackIndex);
 }
 
-int * CExpressionEvaluationContext::PushInt()
+int * CExpressionEvaluationProc::PushInt()
 {
 	if (m_DataStackIndex >= ExpressionStackSize * 2
 		|| m_DataTypeStackIndex >= ExpressionStackSize)
@@ -1163,7 +1143,7 @@ int * CExpressionEvaluationContext::PushInt()
 	return (int*)& m_DataStack[m_DataStackIndex - 1];
 }
 
-double * CExpressionEvaluationContext::PushDouble()
+double * CExpressionEvaluationProc::PushDouble()
 {
 	if (m_DataStackIndex + 1 >= ExpressionStackSize * 2
 		|| m_DataTypeStackIndex >= ExpressionStackSize)
@@ -1180,7 +1160,7 @@ double * CExpressionEvaluationContext::PushDouble()
 					sizeof (double) / sizeof m_DataStack[0]);
 }
 
-int * CExpressionEvaluationContext::PopInt()
+int * CExpressionEvaluationProc::PopInt()
 {
 	if (m_DataTypeStackIndex <= 0)
 	{
@@ -1222,7 +1202,7 @@ int * CExpressionEvaluationContext::PopInt()
 	throw "Internal Error";
 }
 
-double * CExpressionEvaluationContext::PopDouble()
+double * CExpressionEvaluationProc::PopDouble()
 {
 	if (m_DataTypeStackIndex <= 0)
 	{
@@ -1259,7 +1239,7 @@ double * CExpressionEvaluationContext::PopDouble()
 	throw "Internal Error";
 }
 
-BOOL CExpressionEvaluationContext::SetExpression(LPCTSTR * ppszExpression)
+BOOL CExpressionEvaluationProc::SetExpression(LPCTSTR * ppszExpression)
 {
 	// parse the string
 	m_ErrorString.Empty();
@@ -1286,7 +1266,7 @@ BOOL CExpressionEvaluationContext::SetExpression(LPCTSTR * ppszExpression)
 	return TRUE;
 }
 
-void CExpressionEvaluationContext::Evaluate()
+void CExpressionEvaluationProc::Evaluate()
 {
 	for (unsigned i = 0; i < m_OperationArray.size(); i++)
 	{
@@ -1341,10 +1321,27 @@ CEqualizerContext::CEqualizerContext(CWaveSoapFrontDoc * pDoc,
 									UINT StatusStringId, UINT OperationNameId,
 									double const BandCoefficients[MaxNumberOfEqualizerBands][6],
 									int NumberOfBands, BOOL ZeroPhase)
-	: BaseClass(pDoc, OperationContextDiskIntensive, StatusStringId, OperationNameId)
-	, m_bZeroPhase(ZeroPhase)
+	: BaseClass(pDoc, StatusStringId, OperationNameId)
+	, m_Proc(BandCoefficients, NumberOfBands, ZeroPhase)
+{
+	if (ZeroPhase)
+	{
+		m_NumberOfBackwardPasses = 1;
+	}
+	AddWaveProc( & m_Proc);
+	m_ProcBatch.m_bAutoDeleteProcs = false;
+}
+
+CEqualizerContext::~CEqualizerContext()
+{
+}
+
+CEqualizerContext::EqualizerProc::EqualizerProc(double const BandCoefficients[MaxNumberOfEqualizerBands][6], int NumberOfBands, BOOL ZeroPhase)
+	: m_bZeroPhase(ZeroPhase)
 	, m_NumOfBands(NumberOfBands)
 {
+	m_InputSampleType = SampleTypeFloat32;
+
 	for (int i = 0; i < NumberOfBands; i++)
 	{
 		for (int j = 0; j < 6; j++)
@@ -1354,20 +1351,7 @@ CEqualizerContext::CEqualizerContext(CWaveSoapFrontDoc * pDoc,
 	}
 }
 
-CEqualizerContext::~CEqualizerContext()
-{
-}
-
-BOOL CEqualizerContext::Init()
-{
-	if (m_bZeroPhase)
-	{
-		m_NumberOfBackwardPasses = 1;
-	}
-	return InitPass(1);
-}
-
-BOOL CEqualizerContext::InitPass(int /*nPass*/)
+BOOL CEqualizerContext::EqualizerProc::Init()
 {
 	//TRACE("CEqualizerContext::InitPass %d\n", nPass);
 
@@ -1384,7 +1368,7 @@ BOOL CEqualizerContext::InitPass(int /*nPass*/)
 	return TRUE;
 }
 
-double CEqualizerContext::CalculateResult(int ch, int Input)
+double CEqualizerContext::EqualizerProc::CalculateResult(int ch, float Input)
 {
 	double tmp = Input;
 	for (int i = 0; i < m_NumOfBands; i++)
@@ -1403,69 +1387,13 @@ double CEqualizerContext::CalculateResult(int ch, int Input)
 	return tmp;
 }
 
-BOOL CEqualizerContext::ProcessBuffer(void * buf, size_t BufferLength, SAMPLE_POSITION /*offset*/, BOOL bBackward)
+void CEqualizerContext::EqualizerProc::ProcessSampleValue(void const * pInSample, void * pOutSample, unsigned channel)
 {
-	// calculate number of sample, and time
-	int nChannels = m_DstFile.Channels();
-	//int nSample = (offset - m_DstStart) / nSampleSize;
-	WAVE_SAMPLE * pDst = (WAVE_SAMPLE *) buf;
-	NUMBER_OF_SAMPLES nSamples = BufferLength / sizeof pDst[0];
-
-	//ASSERT(0 == (offset % m_DstFile.SampleSize()));
-	ASSERT(0 == (BufferLength % nChannels));
-
-	if ( ! bBackward)
-	{
-		for (NUMBER_OF_SAMPLES i = 0; i < nSamples; i += nChannels)
-		{
-			for (int ch = 0; ch < nChannels; ch++)
-			{
-				if (m_DstChan & (1 << ch))
-				{
-					pDst[i + ch] = DoubleToShort(CalculateResult(ch, pDst[i + ch]));
-				}
-			}
-		}
-	}
-	else
-	{
-		for (NUMBER_OF_SAMPLES i = nSamples - nChannels; i >=0; i -= nChannels)
-		{
-			for (int ch = 0; ch < nChannels; ch++)
-			{
-				if (m_DstChan & (1 << ch))
-				{
-					pDst[i + ch] = DoubleToShort(CalculateResult(ch, pDst[i + ch]));
-				}
-			}
-		}
-	}
-
-	return TRUE;
+	*(float*)pOutSample = (float)CalculateResult(channel, *(float const*)pInSample);
 }
 
-BOOL CSwapChannelsContext::ProcessBuffer(void * buf, size_t BufferLength,
-										SAMPLE_POSITION /*offset*/,
-										BOOL /*bBackward*/)
-{
-	WAVE_SAMPLE * pDst = (WAVE_SAMPLE *) buf;
-	NUMBER_OF_SAMPLES nSamples = BufferLength / sizeof pDst[0];
-
-	ASSERT(2 == m_DstFile.Channels());
-
-	for (NUMBER_OF_SAMPLES i = 0; i < nSamples; i += 2)
-	{
-		WAVE_SAMPLE tmp = pDst[i];
-		pDst[i] = pDst[i + 1];
-		pDst[i + 1] = tmp;
-	}
-	return TRUE;
-}
-
-CFilterContext::CFilterContext(CWaveSoapFrontDoc * pDoc,
-								UINT StatusStringId, UINT OperationNameId)
-	: BaseClass(pDoc, OperationContextDiskIntensive, StatusStringId, OperationNameId),
-	m_bZeroPhase(FALSE)
+CFilterContext::CFilterContext(CWaveSoapFrontDoc * pDoc, UINT StatusStringId, UINT OperationNameId)
+	: BaseClass(pDoc, StatusStringId, OperationNameId)
 {
 }
 
@@ -1475,18 +1403,17 @@ CFilterContext::~CFilterContext()
 
 BOOL CFilterContext::Init()
 {
-	if (m_bZeroPhase)
+	if (m_Proc.m_bZeroPhase)
 	{
 		m_NumberOfBackwardPasses = 1;
 	}
-	return InitPass(1);
+	return BaseClass::Init();
 }
 
-BOOL CFilterContext::InitPass(int /*nPass*/)
+BOOL CFilterContext::CFilterProc::Init()
 {
-	//TRACE("CFilterContext::InitPass %d\n", nPass);
 
-	for (int ch = 0; ch < countof (m_PrevLpfSamples); ch++)
+	for (unsigned ch = 0; ch < countof (m_PrevLpfSamples); ch++)
 	{
 		for (int i = 0; i < MaxFilterOrder; i++)
 		{
@@ -1503,7 +1430,7 @@ BOOL CFilterContext::InitPass(int /*nPass*/)
 	return TRUE;
 }
 
-double CFilterContext::CalculateResult(int ch, int Input)
+double CFilterContext::CFilterProc::CalculateResult(unsigned ch, double Input)
 {
 	double in = Input;
 	if (0 != m_nLpfOrder)
@@ -1517,8 +1444,8 @@ double CFilterContext::CalculateResult(int ch, int Input)
 						- m_PrevLpfSamples[ch][i][2] * m_LpfCoeffs[i][4]
 						- m_PrevLpfSamples[ch][i][3] * m_LpfCoeffs[i][5];
 
-			// protect against underflow (it slows the calculations tremendously)
-			if (fabs(tmp) < 1E-32)
+			// protect against underflow (it may slow the calculations on some platforms)
+			if (fabs(tmp) < 1E-10)
 			{
 				tmp = 0;
 			}
@@ -1543,7 +1470,7 @@ double CFilterContext::CalculateResult(int ch, int Input)
 						- m_PrevHpfSamples[ch][i][3] * m_HpfCoeffs[i][5];
 
 			// protect against underflow (it slows the calculations tremendously)
-			if (fabs(tmp) < 1E-32)
+			if (fabs(tmp) < 1E-10)
 			{
 				tmp = 0;
 			}
@@ -1567,7 +1494,7 @@ double CFilterContext::CalculateResult(int ch, int Input)
 						- m_PrevNotchSamples[ch][i][3] * m_NotchCoeffs[i][5];
 
 			// protect against underflow (it slows the calculations tremendously)
-			if (fabs(tmp) < 1E-32)
+			if (fabs(tmp) < 1E-10)
 			{
 				tmp = 0;
 			}
@@ -1582,43 +1509,9 @@ double CFilterContext::CalculateResult(int ch, int Input)
 	return in;
 }
 
-BOOL CFilterContext::ProcessBuffer(void * buf, size_t BufferLength,
-									SAMPLE_POSITION /*offset*/, BOOL bBackward)
+void CFilterContext::CFilterProc::ProcessSampleValue(void const * pInSample, void * pOutSample, unsigned channel)
 {
-	// calculate number of sample, and time
-	int nChannels = m_DstFile.Channels();
-
-	WAVE_SAMPLE * pDst = (WAVE_SAMPLE *) buf;
-	NUMBER_OF_SAMPLES nSamples = BufferLength / sizeof pDst[0];
-
-	if ( ! bBackward)
-	{
-		for (NUMBER_OF_SAMPLES i = 0; i < nSamples; i += nChannels)
-		{
-			for (int ch = 0; ch < nChannels; ch++)
-			{
-				if (m_DstChan & (1 << ch))
-				{
-					pDst[i + ch] = DoubleToShort(CalculateResult(ch, pDst[i + ch]));
-				}
-			}
-		}
-	}
-	else
-	{
-		for (NUMBER_OF_SAMPLES i = nSamples - nChannels; i >=0; i -= nChannels)
-		{
-			for (int ch = 0; ch < nChannels; ch++)
-			{
-				if (m_DstChan & (1 << ch))
-				{
-					pDst[i + ch] = DoubleToShort(CalculateResult(ch, pDst[i + ch]));
-				}
-			}
-		}
-	}
-
-	return TRUE;
+	*(float*)pOutSample = (float) CalculateResult(channel, *(float const*)pInSample);
 }
 
 //////////////////////////////////////////////////
@@ -1687,19 +1580,22 @@ BOOL CCdReadingContext::InitTrackInformation(class ICdDrive const * Drive,
 		return FALSE;
 	}
 
-	InitDestination(WaveFile, 0, nSamples, 2, FALSE);
+	InitDestination(WaveFile, 0, nSamples, 3, FALSE);
 
 	m_Drive->DisableMediaChangeDetection();
 	m_Drive->LockDoor();
 	return TRUE;
 }
 
-BOOL CCdReadingContext::ProcessBuffer(void * buf, size_t len,
-									SAMPLE_POSITION /*offset*/,
-									BOOL /*bBackward*/)
+unsigned CCdReadingContext::ProcessBuffer(char const * /*pInBuf*/, // if BACKWARD pass, points to the end of buffer
+										char * pOutBuf,    // if BACKWARD pass, points to the end of buffer
+										unsigned /*nInBytes*/, unsigned nOutBytes, unsigned * pUsedBytes,
+										SAMPLE_POSITION /*SrcOffset*/,  // if BACKWARD pass, offset of the end of source buffer
+										SAMPLE_POSITION /*DstOffset*/,  // if BACKWARD pass, offset of the end of destination buffer
+										signed /*pass*/)
 {
-	char * pBuf = (char*) buf;
-	while (len != 0)
+	unsigned OutBufFilled = 0;
+	while (nOutBytes != 0)
 	{
 		if (0 == m_CdBufferFilled)
 		{
@@ -1710,14 +1606,13 @@ BOOL CCdReadingContext::ProcessBuffer(void * buf, size_t len,
 			}
 			if (0 == SectorsToRead)
 			{
-				memset(pBuf, 0, len);
-				return TRUE;
+				break;
 			}
 
 			DWORD ReadBeginTime = timeGetTime();
 			if ( ! m_Drive->ReadCdData(m_pCdBuffer, m_CdAddress, SectorsToRead))
 			{
-				return FALSE;
+				break;     // TODO: Set an error string
 			}
 
 			DWORD ElapsedReadTime = timeGetTime() - ReadBeginTime;
@@ -1736,19 +1631,20 @@ BOOL CCdReadingContext::ProcessBuffer(void * buf, size_t len,
 		}
 
 		size_t ToCopy = m_CdBufferFilled;
-		if (ToCopy > len)
+		if (ToCopy > nOutBytes)
 		{
-			ToCopy = len;
+			ToCopy = nOutBytes;
 		}
-		memcpy(pBuf, m_CdDataOffset + (char*)m_pCdBuffer, ToCopy);
+		memcpy(pOutBuf, m_CdDataOffset + (char*)m_pCdBuffer, ToCopy);
 
-		len -= ToCopy;
+		nOutBytes -= ToCopy;
 		m_CdBufferFilled -= ToCopy;
 
-		pBuf += ToCopy;
+		pOutBuf += ToCopy;
+		OutBufFilled += ToCopy;
 		m_CdDataOffset += ToCopy;
 	}
-	return TRUE;
+	return OutBufFilled;
 }
 
 BOOL CCdReadingContext::Init()
@@ -2673,43 +2569,16 @@ BOOL CInitChannels::CreateUndo()
 	return TRUE;
 }
 
-BOOL CInitChannels::ProcessBuffer(void * buf, size_t BufferLength,
-								SAMPLE_POSITION /*offset*/,
-								BOOL /*bBackward*/)
+unsigned CInitChannels::ProcessBuffer(char const * /*pInBuf*/, // if BACKWARD pass, points to the end of buffer
+									char * pOutBuf,    // if BACKWARD pass, points to the end of buffer
+									unsigned /*nInBytes*/, unsigned nOutBytes, unsigned * /*pUsedBytes*/,
+									SAMPLE_POSITION /*SrcOffset*/,  // if BACKWARD pass, offset of the end of source buffer
+									SAMPLE_POSITION /*DstOffset*/,  // if BACKWARD pass, offset of the end of destination buffer
+									signed pass)
 {
-	ASSERT(m_DstFile.GetSampleType() == SampleType16bit);
-	WAVE_SAMPLE * pDst = (WAVE_SAMPLE *) buf;
-
-	int nChannels = m_DstFile.Channels();
-
-	NUMBER_OF_SAMPLES nSamples = BufferLength / sizeof pDst[0];
-
-	//ASSERT(0 == (offset % m_DstFile.SampleSize()));
-	ASSERT(0 == (BufferLength % m_DstFile.SampleSize()));
-
-	NUMBER_OF_SAMPLES i;
-	if (m_DstFile.AllChannels(m_DstChan))
-	{
-		for (i = 0; i < nSamples; i++)
-		{
-			pDst[i] = 0;
-		}
-	}
-	else
-	{
-		for (i = 0; i < nSamples; i += nChannels)
-		{
-			for (long ch = 0, mask = 1; ch < nChannels; ch++, mask <<= 1)
-			{
-				if (m_DstChan & mask)
-				{
-					pDst[i + ch] = 0;
-				}
-			}
-		}
-	}
-
-	return TRUE;
+	ASSERT(pass == 1);
+	memset(pOutBuf, 0, nOutBytes);
+	return nOutBytes;
 }
 
 ////////////////// CInitChannelsUndo
@@ -2725,9 +2594,7 @@ CInitChannelsUndo::CInitChannelsUndo(CWaveSoapFrontDoc * pDoc,
 
 BOOL CInitChannelsUndo::CreateUndo()
 {
-	m_UndoChain.InsertHead(new CInitChannels(m_pDocument,
-											m_pDocument->m_WavFile,
-											m_SrcStart, m_SrcEnd, m_SrcChan));
+	m_UndoChain.InsertHead(new CInitChannels(m_pDocument,m_pDocument->m_WavFile, m_SrcStart, m_SrcEnd, m_SrcChan));
 	return TRUE;
 }
 
@@ -2908,7 +2775,7 @@ BOOL CReverseOperation::OperationProc()
 	do
 	{
 
-		NUMBER_OF_SAMPLES CanReadSamples = (m_DstEnd - m_DstPos) / DstSampleSize;
+		NUMBER_OF_SAMPLES CanReadSamples = NUMBER_OF_SAMPLES((m_DstEnd - m_DstPos) / DstSampleSize);
 		if (CanReadSamples > TempBufSamples)
 		{
 			CanReadSamples = TempBufSamples;
@@ -3176,153 +3043,20 @@ BOOL CInsertSilenceContext::InitExpand(CWaveFile & DstFile, SAMPLE_INDEX StartSa
 	}
 	return TRUE;
 }
-/////////////   CWaveMixOperation  /////////////////////////////////////////////
-CWaveMixOperation::CWaveMixOperation(class CWaveSoapFrontDoc * pDoc, ULONG Flags,
-									UINT StatusStringId, UINT OperationNameId)
-	: BaseClass(pDoc, Flags, StatusStringId, OperationNameId)
+
+CWaveProcContext * CreateFadeInOutOperation(class CWaveSoapFrontDoc * pDoc, int FadeCurveType,
+											CWaveFile & DstFile, SAMPLE_INDEX DstBegin, CHANNEL_MASK DstChannel,
+											NUMBER_OF_SAMPLES Length, BOOL UndoEnabled)
 {
-}
+	CWaveProcContext::auto_ptr pContext(new CWaveProcContext(pDoc));
 
-BOOL CWaveMixOperation::ProcessBuffer(void * buf, size_t BufferLength, SAMPLE_POSITION offset, BOOL /*bBackward*/)
-{
-	int const nChannels = m_DstFile.Channels();
-	ASSERT(m_DstFile.GetSampleType() == SampleType16bit);
+	CFadeInOutProc::auto_ptr pProc(new CFadeInOutProc(FadeCurveType, Length));
 
-	WAVE_SAMPLE * pDst = (WAVE_SAMPLE *) buf;
-	unsigned const SampleSize = m_DstFile.SampleSize();
-
-	NUMBER_OF_SAMPLES nSamples = BufferLength / sizeof pDst[0];
-	SAMPLE_INDEX SampleIndex = offset / SampleSize;
-
-	ASSERT(0 == (offset % m_DstFile.SampleSize()));
-	ASSERT(0 == (BufferLength % m_DstFile.SampleSize()));
-
-	NUMBER_OF_SAMPLES i;
-	bool UseSrc = (m_SrcStart != 0
-					&& m_SrcEnd > m_SrcStart
-					&& m_SrcFile.IsOpen());
-
-	for (i = 0; i < nSamples; i += nChannels, SampleIndex++)
+	if ( ! pContext->InitInPlaceProcessing(DstFile, DstBegin, DstBegin+Length, DstChannel, UndoEnabled))
 	{
-		WAVE_SAMPLE tmp[MAX_NUMBER_OF_CHANNELS];
-
-		if (UseSrc)
-		{
-			if (1 != m_SrcFile.ReadSamples(ALL_CHANNELS, offset + m_SrcStart, 1, tmp))
-			{
-				UseSrc = false;
-			}
-		}
-
-		for (long ch = 0, mask = 1; ch < nChannels; ch++, mask <<= 1)
-		{
-			if (m_DstChan & mask)
-			{
-				if (UseSrc)
-				{
-					pDst[i + ch] = DoubleToShort(
-												pDst[i + ch] * GetDstMixCoefficient(SampleIndex, ch)
-												+ tmp[ch] * GetSrcMixCoefficient(SampleIndex, ch));
-				}
-				else
-				{
-					pDst[i + ch] = DoubleToShort(pDst[i + ch] * GetDstMixCoefficient(SampleIndex, ch));
-				}
-			}
-		}
-		offset += SampleSize;
+		return NULL;
 	}
 
-	return TRUE;
+	pContext->AddWaveProc(pProc.release());
+	return pContext.release();
 }
-
-///////////// CFadeInOutOperation /////////////////////////////////////////////
-
-CFadeInOutOperation::CFadeInOutOperation(class CWaveSoapFrontDoc * pDoc, int FadeCurveType)
-	: BaseClass(pDoc)
-	, m_FadeCurveType(FadeCurveType)
-{
-}
-
-// init cross fade
-// When the function creates UNDO, it also calls SetSaveForUndo to initialize range to save.
-// If UNDO should be created later, the UNDO range should be initialized by calling SetSaveForUndo otherwise.
-CFadeInOutOperation::CFadeInOutOperation(class CWaveSoapFrontDoc * pDoc, int FadeCurveType,
-										CWaveFile & SrcFile, SAMPLE_INDEX SrcBegin, CHANNEL_MASK SrcChannel,
-										CWaveFile & DstFile, SAMPLE_INDEX DstBegin, CHANNEL_MASK DstChannel,
-										NUMBER_OF_SAMPLES Length, BOOL UndoEnabled)
-	: BaseClass(pDoc)
-	, m_FadeCurveType(FadeCurveType)
-{
-	InitDestination(DstFile, DstBegin, DstBegin + Length, DstChannel, UndoEnabled);
-	InitSource(SrcFile, SrcBegin, SrcBegin + Length, SrcChannel);
-}
-
-// init fade in/out
-// When the function creates UNDO, it also calls SetSaveForUndo to initialize range to save.
-// If UNDO should be created later, the UNDO range should be initialized by calling SetSaveForUndo otherwise.
-CFadeInOutOperation::CFadeInOutOperation(class CWaveSoapFrontDoc * pDoc, int FadeCurveType,
-										CWaveFile & DstFile, SAMPLE_INDEX DstBegin, CHANNEL_MASK DstChannel,
-										NUMBER_OF_SAMPLES Length, BOOL UndoEnabled)
-	: BaseClass(pDoc)
-	, m_FadeCurveType(FadeCurveType)
-{
-	InitDestination(DstFile, DstBegin, DstBegin + Length, DstChannel, UndoEnabled);
-}
-
-double CFadeInOutOperation::GetSrcMixCoefficient(SAMPLE_INDEX Sample, int /*Channel*/) const
-{
-	double const Fraction = (Sample + 0.5) * m_DstFile.SampleSize() / (m_DstEnd - m_DstStart);
-
-	switch (m_FadeCurveType)
-	{
-	case FadeOutLinear:
-		return Fraction;
-		break;
-	case FadeInLinear:
-		return 1. - Fraction;
-		break;
-	case FadeOutSinSquared:
-		return 0.5 * (1. - cos(M_PI * Fraction));
-		break;
-	case FadeInSinSquared:
-		return 0.5 * (1. + cos(M_PI * Fraction));
-		break;
-	case FadeOutCosine:
-		return sin(M_PI * 0.5 * Fraction);
-		break;
-	case FadeInSine:
-		return cos(M_PI * 0.5 * Fraction);
-		break;
-	}
-	return 0.;
-}
-
-double CFadeInOutOperation::GetDstMixCoefficient(SAMPLE_INDEX Sample, int /*Channel*/) const
-{
-	double const Fraction = (Sample + 0.5) * m_DstFile.SampleSize() / (m_DstEnd - m_DstStart);
-
-	switch (m_FadeCurveType)
-	{
-	case FadeInLinear:
-		return Fraction;
-		break;
-	case FadeOutLinear:
-		return 1. - Fraction;
-		break;
-	case FadeInSinSquared:
-		return 0.5 * (1. - cos(M_PI * Fraction));
-		break;
-	case FadeOutSinSquared:
-		return 0.5 * (1. + cos(M_PI * Fraction));
-		break;
-	case FadeInSine:
-		return sin(M_PI * 0.5 * Fraction);
-		break;
-	case FadeOutCosine:
-		return cos(M_PI * 0.5 * Fraction);
-		break;
-	}
-	return 1.;
-}
-

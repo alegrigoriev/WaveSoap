@@ -40,7 +40,7 @@ protected:
 	int m_PlaybackCursorPosition;
 	int m_LeftViewBoundary;
 	int m_RightViewBoundary;
-	int m_LastMaxAmplitude;
+	WAVE_PEAK m_LastMaxAmplitude;
 	bool bIsTrackingSelection;
 	int nKeyPressed;
 	virtual ~CWaveOutlineView();

@@ -656,7 +656,18 @@ CThroughProcessOperation::CThroughProcessOperation(class CWaveSoapFrontDoc * pDo
 	, m_CurrentPass(1)
 	, m_GetBufferFlags(CDirectFile::GetBufferAndPrefetchNext)
 	, m_ReturnBufferFlags(CDirectFile::ReturnBufferDirty)
+	, m_InputBuffer(new char[ThroughProcessBufferSize])
+	, m_OutputBuffer(NULL)
 {
+	try
+	{
+		m_OutputBuffer = new char[ThroughProcessBufferSize];
+	}
+	catch (std::bad_alloc &)
+	{
+		delete[] m_InputBuffer;
+		throw;
+	}
 }
 
 CThroughProcessOperation::CThroughProcessOperation(class CWaveSoapFrontDoc * pDoc,
@@ -667,7 +678,24 @@ CThroughProcessOperation::CThroughProcessOperation(class CWaveSoapFrontDoc * pDo
 	, m_CurrentPass(1)
 	, m_GetBufferFlags(CDirectFile::GetBufferAndPrefetchNext)
 	, m_ReturnBufferFlags(CDirectFile::ReturnBufferDirty)
+	, m_InputBuffer(new char[ThroughProcessBufferSize])
+	, m_OutputBuffer(NULL)
 {
+	try
+	{
+		m_OutputBuffer = new char[ThroughProcessBufferSize];
+	}
+	catch (std::bad_alloc &)
+	{
+		delete[] m_InputBuffer;
+		throw;
+	}
+}
+
+CThroughProcessOperation::~CThroughProcessOperation()
+{
+	delete[] m_InputBuffer;
+	delete[] m_OutputBuffer;
 }
 
 BOOL CThroughProcessOperation::OperationProc()
@@ -682,19 +710,26 @@ BOOL CThroughProcessOperation::OperationProc()
 
 	BOOL res = TRUE;    // function result
 	DWORD dwStartTime = GetTickCount();
-	SAMPLE_POSITION dwOperationBegin = m_DstPos;
-	int SampleSize = m_DstFile.SampleSize();
 
-	LONG SizeToProcess = 0;
-	LONG WasLockedToWrite = 0;
-	void * pDstBuf;
+	unsigned DstSampleSize = 1;
+	unsigned SrcSampleSize = 1;
+
+	if (m_DstFile.IsOpen())
+	{
+		DstSampleSize = m_DstFile.SampleSize();
+	}
+
+	if (m_SrcFile.IsOpen())
+	{
+		SrcSampleSize = m_SrcFile.SampleSize();
+	}
 
 	if (m_CurrentPass > 0)
 	{
-		if (m_DstPos >= m_DstEnd)
+		if (m_Flags & OperationContextPassFinished)
 		{
+			// re-intialize the pass position
 			m_CurrentPass++;
-			m_DstPos = m_DstStart;
 			if (m_CurrentPass <= m_NumberOfForwardPasses)
 			{
 				if ( ! InitPass(m_CurrentPass))
@@ -702,10 +737,12 @@ BOOL CThroughProcessOperation::OperationProc()
 					return FALSE;
 				}
 			}
+			m_Flags &= ~OperationContextPassFinished;
 		}
+
 		if (m_CurrentPass > m_NumberOfForwardPasses)
 		{
-			m_DstPos = m_DstEnd;
+			// operation with forward passes ended. Either run backward passes, or finish
 			m_CurrentPass = -1;
 			if (m_CurrentPass >= -m_NumberOfBackwardPasses)
 			{
@@ -717,83 +754,130 @@ BOOL CThroughProcessOperation::OperationProc()
 		}
 	}
 
-	WAVE_SAMPLE TempBuf[MAX_NUMBER_OF_CHANNELS];
-
 	if (m_CurrentPass > 0)
 	{
-		ASSERT(0 == ((m_DstEnd - m_DstPos) % SampleSize));
+		//ASSERT(0 == ((m_DstEnd - m_DstPos) % DstSampleSize));
+		SAMPLE_POSITION OperationBeginPos = m_DstPos;
 		do
 		{
-			// make sure ProcessBuffer gets integer number of complete samples, from sample boundary
+			// if there is not enough data in the input buffer, read more
+			const char * inbuf = NULL;
+			unsigned BytesToProcess = 0;
 
-			MEDIA_FILE_SIZE SizeToWrite = MEDIA_FILE_SIZE(m_DstEnd) - MEDIA_FILE_SIZE(m_DstPos);
-			WasLockedToWrite = m_DstFile.GetDataBuffer( & pDstBuf,
-														SizeToWrite, m_DstPos, m_GetBufferFlags);
-
-			if (0 == WasLockedToWrite)
+			if (m_SrcFile.IsOpen())
 			{
-				return FALSE;
-			}
-
-			if (WasLockedToWrite < SampleSize)
-			{
-				m_DstFile.ReturnDataBuffer(pDstBuf, WasLockedToWrite, 0);
-
-				ASSERT(SampleSize <= sizeof TempBuf);
-
-				if (SampleSize != m_DstFile.ReadAt(TempBuf, SampleSize, m_DstPos))
+				if (m_InputBufferPutIndex - m_InputBufferGetIndex < SrcSampleSize)
 				{
-					return FALSE;
+					memmove(m_InputBuffer, m_InputBuffer + m_InputBufferGetIndex, m_InputBufferPutIndex - m_InputBufferGetIndex);
+					m_InputBufferPutIndex -= m_InputBufferGetIndex;
+					m_InputBufferGetIndex = 0;
 				}
 
+				unsigned ToRead = ThroughProcessBufferSize - m_InputBufferPutIndex;
+				if (ToRead > ThroughProcessBufferSize / 2)
+				{
+					if (ToRead > m_SrcEnd - m_SrcPos)
+					{
+						ToRead = unsigned(m_SrcEnd - m_SrcPos);
+					}
+
+					if (ToRead != 0)
+					{
+						long WasRead = m_SrcFile.ReadAt(m_InputBuffer + m_InputBufferPutIndex, ToRead, m_SrcPos);
+						m_SrcPos += WasRead;
+						m_InputBufferPutIndex += WasRead;
+
+						if (WasRead == 0)
+						{
+							res = FALSE;
+							break;
+						}
+					}
+				}
+				inbuf = m_InputBuffer + m_InputBufferGetIndex;
+				BytesToProcess = m_InputBufferPutIndex - m_InputBufferGetIndex;
+			}
+
+			char * outbuf = NULL;
+			unsigned BytesToStore = 0;
+			unsigned OutputBufferFilled = m_OutputBufferPutIndex - m_OutputBufferGetIndex;
+
+			if (m_DstFile.IsOpen())
+			{
+				outbuf = m_OutputBuffer + m_OutputBufferPutIndex;
+				BytesToStore = ThroughProcessBufferSize - m_OutputBufferPutIndex;
+
+				if (BytesToStore > m_DstEnd - m_DstPos - OutputBufferFilled)
+				{
+					BytesToStore = unsigned(m_DstEnd - m_DstPos - OutputBufferFilled);
+				}
+			}
+
+			unsigned UsedBytes = 0;
+			// virtual function which modifies the actual data:
+			unsigned BytesStored = ProcessBuffer(inbuf, outbuf,
+												BytesToProcess,
+												BytesToStore, &UsedBytes,
+												m_SrcPos - BytesToProcess - m_SrcStart,
+												m_DstPos + OutputBufferFilled - m_DstStart,
+												m_CurrentPass);
+
+			m_OutputBufferPutIndex += BytesStored;
+			m_InputBufferGetIndex += UsedBytes;
+			OutputBufferFilled += BytesStored;
+
+			if (BytesStored == 0 && UsedBytes == 0)
+			{
+				m_Flags |= OperationContextPassFinished;
+			}
+			// write data if it's more than half of the buffer
+			if (m_DstFile.IsOpen()
+				&& ((m_Flags & OperationContextPassFinished)    // flush in any case
+					|| OutputBufferFilled >= ThroughProcessBufferSize/2))
+			{
 				if (1 == m_CurrentPass
 					&& NULL != m_pUndoContext)
 				{
-					m_pUndoContext->SaveUndoData(TempBuf, SampleSize,
-												m_DstPos, m_DstFile.Channels());
+					// save the data to be changed to undo buffer, but only on the first forward pass
+					// Read previous data
+					m_DstFile.ReadAt(m_UndoBuffer, OutputBufferFilled, m_DstPos);
+
+					m_pUndoContext->SaveUndoData(m_UndoBuffer, OutputBufferFilled, m_DstPos, m_DstFile.Channels());
 				}
 
-				res = ProcessBuffer(TempBuf, SampleSize, m_DstPos - m_DstStart, FALSE);
-
-				if (m_ReturnBufferFlags & CDirectFile::ReturnBufferDirty)
+				if (OutputBufferFilled / DstSampleSize != (unsigned)m_DstFile.WriteSamples(m_DstChan, m_DstPos, OutputBufferFilled / DstSampleSize,
+						m_OutputBuffer + m_OutputBufferGetIndex, m_DstChan, m_DstFile.Channels(), m_DstFile.GetSampleType()))
 				{
-					m_DstFile.WriteAt(TempBuf, SampleSize, m_DstPos);
+					res = FALSE;
+					break;
 				}
-				m_DstPos += SampleSize;
-				continue;
+
+				m_DstPos += OutputBufferFilled;
+
+				m_OutputBufferPutIndex = 0;
+				m_OutputBufferGetIndex = 0;
+
+				if (m_DstPos >= m_DstEnd)
+				{
+					m_Flags |= OperationContextPassFinished;
+				}
 			}
 
-			SizeToProcess = WasLockedToWrite - WasLockedToWrite % SampleSize;
-			// save the data to be changed to undo buffer, but only on the first forward pass
-			if (1 == m_CurrentPass
-				&& NULL != m_pUndoContext)
-			{
-				m_pUndoContext->SaveUndoData(pDstBuf, SizeToProcess,
-											m_DstPos, m_DstFile.Channels());
-			}
-			// virtual function which modifies the actual data:
-			res = ProcessBuffer(pDstBuf, SizeToProcess, m_DstPos - m_DstStart, FALSE);
-
-			m_DstFile.ReturnDataBuffer(pDstBuf, WasLockedToWrite,
-										m_ReturnBufferFlags);
-			m_DstPos += SizeToProcess;
 		}
-		while (res && m_DstPos < m_DstEnd
+		while (res && 0 == (m_Flags & OperationContextPassFinished)
 				&& GetTickCount() - dwStartTime < 200);
 
-		if (m_ReturnBufferFlags & CDirectFile::ReturnBufferDirty)
+		if (m_DstFile.IsOpen() && OperationBeginPos != m_DstPos)
 		{
 			// notify the view
-			m_pDocument->FileChanged(m_DstFile, dwOperationBegin, m_DstPos);
+			m_pDocument->FileChanged(m_DstFile, OperationBeginPos, m_DstPos);
 		}
-
 	}
 	else
 	{
 		// backward pass
-		if (m_DstPos <= m_DstStart)
+		if (m_Flags & OperationContextPassFinished)
 		{
-			m_DstPos = m_DstEnd;
 			m_CurrentPass--;
 			if (m_CurrentPass >= -m_NumberOfBackwardPasses)
 			{
@@ -802,83 +886,121 @@ BOOL CThroughProcessOperation::OperationProc()
 					return FALSE;
 				}
 			}
+			m_Flags &= ~OperationContextPassFinished;
 		}
+
 		if (m_CurrentPass < -m_NumberOfBackwardPasses)
 		{
 			m_Flags |= OperationContextFinished;
 			return TRUE;
 		}
 
-		ASSERT(0 == ((m_DstPos - m_DstStart) % SampleSize));
+		SAMPLE_POSITION OperationBeginPos = m_DstPos;
 		do
 		{
-			MEDIA_FILE_SIZE SizeToWrite = MEDIA_FILE_SIZE(m_DstStart) - MEDIA_FILE_SIZE(m_DstPos);
+			// if there is not enough data in the input buffer, read more
+			const char * inbuf = NULL;
+			unsigned BytesToProcess = 0;
 
-			// length requested and length returned are <0,
-			// pointer returned points on the end of the buffer
-			WasLockedToWrite = m_DstFile.GetDataBuffer( & pDstBuf,
-														SizeToWrite, m_DstPos, m_GetBufferFlags);
-
-			if (0 == WasLockedToWrite)
+			if (m_SrcFile.IsOpen())
 			{
-				return FALSE;
-			}
-
-			if (-WasLockedToWrite < SampleSize)
-			{
-				m_DstFile.ReturnDataBuffer(pDstBuf, WasLockedToWrite, 0);
-
-				ASSERT(SampleSize <= sizeof TempBuf);
-				if (SampleSize != m_DstFile.ReadAt(TempBuf, SampleSize, m_DstPos - SampleSize))
+				// the data is read and processed from the end toward begin of the buffer
+				if (m_InputBufferGetIndex - m_InputBufferPutIndex < SrcSampleSize)
 				{
-					return FALSE;
+					memmove(m_InputBuffer + ThroughProcessBufferSize - (m_InputBufferGetIndex - m_InputBufferPutIndex),
+							m_InputBuffer + m_InputBufferPutIndex, m_InputBufferGetIndex - m_InputBufferPutIndex);
+
+					m_InputBufferPutIndex += ThroughProcessBufferSize - m_InputBufferGetIndex;
+					m_InputBufferGetIndex = ThroughProcessBufferSize;
 				}
 
-				// save the data to be changed to undo buffer, but only on the first forward pass
-				if (1 == m_CurrentPass
-					&& NULL != m_pUndoContext)
+				unsigned ToRead = m_InputBufferPutIndex;
+				if (ToRead > ThroughProcessBufferSize / 2)
 				{
-					m_pUndoContext->SaveUndoData(TempBuf + m_DstFile.Channels(),
-												SampleSize,
-												m_DstPos, m_DstFile.Channels());
+					if (ToRead > m_SrcPos - m_SrcStart)
+					{
+						ToRead = unsigned(m_SrcPos - m_SrcStart);
+					}
+
+					if (ToRead != 0)
+					{
+						long WasRead = m_SrcFile.ReadAt(m_InputBuffer + m_InputBufferPutIndex - ToRead, ToRead, m_SrcPos - ToRead);
+						m_SrcPos -= WasRead;
+						m_InputBufferPutIndex -= WasRead;
+
+						if (WasRead != (long)ToRead)
+						{
+							res = FALSE;
+							break;
+						}
+					}
 				}
-
-				res = ProcessBuffer(TempBuf, SampleSize, m_DstPos - m_DstStart, TRUE);
-
-				if (m_ReturnBufferFlags & CDirectFile::ReturnBufferDirty)
-				{
-					m_DstFile.WriteAt(TempBuf, SampleSize, m_DstPos - SampleSize);
-				}
-
-				m_DstPos -= SampleSize;
-				continue;
+				inbuf = m_InputBuffer + m_InputBufferGetIndex;
+				BytesToProcess = m_InputBufferGetIndex - m_InputBufferPutIndex;
 			}
 
-			SizeToProcess = -WasLockedToWrite - (-WasLockedToWrite) % SampleSize;
-			// save the data to be changed to undo buffer, but only on the first forward pass
-			if (1 == m_CurrentPass
-				&& NULL != m_pUndoContext)
+			char * outbuf = NULL;
+			unsigned BytesToStore = 0;
+			unsigned OutputBufferFilled = m_OutputBufferGetIndex - m_OutputBufferPutIndex;
+
+			if (m_DstFile.IsOpen())
 			{
-				m_pUndoContext->SaveUndoData(pDstBuf, SizeToProcess,
-											m_DstPos, m_DstFile.Channels());
+				outbuf = m_OutputBuffer + m_OutputBufferPutIndex;
+				BytesToStore = m_OutputBufferPutIndex;
+
+				if (BytesToStore > m_DstPos - m_DstStart - OutputBufferFilled)
+				{
+					BytesToStore = unsigned(m_DstPos - m_DstStart - OutputBufferFilled);
+				}
 			}
+			unsigned UsedBytes = 0;
 			// virtual function which modifies the actual data:
-			res = ProcessBuffer(-SizeToProcess + (PCHAR)pDstBuf, SizeToProcess, m_DstPos - m_DstStart, TRUE);   // backward=TRUE
+			unsigned BytesStored = ProcessBuffer(inbuf, outbuf,
+												BytesToProcess,
+												BytesToStore, &UsedBytes,
+												m_SrcPos + BytesToProcess - m_SrcStart,
+												m_DstPos - OutputBufferFilled - m_DstStart,
+												m_CurrentPass);
 
-			m_DstFile.ReturnDataBuffer(pDstBuf, WasLockedToWrite,
-										m_ReturnBufferFlags);
-			// length requested and length returned are <0,
-			m_DstPos -= SizeToProcess;
+			m_OutputBufferPutIndex -= BytesStored;
+			m_InputBufferGetIndex -= UsedBytes;
+			OutputBufferFilled += BytesStored;
+
+			if (BytesStored == 0 && UsedBytes == 0)
+			{
+				m_Flags |= OperationContextPassFinished;
+			}
+			// write data if it's more than half of the buffer
+			if (m_DstFile.IsOpen()
+				&& ((m_Flags & OperationContextPassFinished)    // flush in any case
+					|| OutputBufferFilled >= ThroughProcessBufferSize/2))
+			{
+				m_DstPos -= OutputBufferFilled;
+				if (OutputBufferFilled / DstSampleSize != (unsigned)m_DstFile.WriteSamples(m_DstChan, m_DstPos, OutputBufferFilled / DstSampleSize,
+						m_OutputBuffer + m_OutputBufferPutIndex, m_DstChan, m_DstFile.Channels(), m_DstFile.GetSampleType()))
+				{
+					res = FALSE;
+					break;
+				}
+
+				m_OutputBufferPutIndex = ThroughProcessBufferSize;
+				m_OutputBufferGetIndex = ThroughProcessBufferSize;
+
+				if (m_DstPos <= m_DstStart)
+				{
+					m_Flags |= OperationContextPassFinished;
+				}
+			}
+
 		}
-		while (res && m_DstPos > m_DstStart
+		while (res && 0 == (m_Flags & OperationContextPassFinished)
 				&& GetTickCount() - dwStartTime < 200);
 
-		if (m_ReturnBufferFlags & CDirectFile::ReturnBufferDirty)
+		if (m_DstFile.IsOpen() && OperationBeginPos != m_DstPos)
 		{
 			// notify the view
-			m_pDocument->FileChanged(m_DstFile, dwOperationBegin, m_DstPos);
+			m_pDocument->FileChanged(m_DstFile, m_DstPos, OperationBeginPos);
 		}
-
 	}
 	return res;
 }
@@ -886,20 +1008,20 @@ BOOL CThroughProcessOperation::OperationProc()
 MEDIA_FILE_SIZE CThroughProcessOperation::GetTotalOperationSize() const
 {
 	return (m_NumberOfForwardPasses + m_NumberOfBackwardPasses)
-		* BaseClass::GetTotalOperationSize();
+		* (m_SrcEnd - m_SrcStart + m_DstEnd - m_DstStart);
 }
 
 MEDIA_FILE_SIZE CThroughProcessOperation::GetCompletedOperationSize() const
 {
 	if (m_CurrentPass < 0)
 	{
-		return (m_NumberOfForwardPasses - m_CurrentPass) * BaseClass::GetTotalOperationSize()
-			- BaseClass::GetCompletedOperationSize();
+		return (m_NumberOfForwardPasses - m_CurrentPass) * (m_SrcEnd - m_SrcStart + m_DstEnd - m_DstStart)
+			- (m_SrcPos - m_SrcStart + m_DstPos - m_DstStart);
 	}
 	else
 	{
-		return (m_CurrentPass - 1) * BaseClass::GetTotalOperationSize()
-			+ BaseClass::GetCompletedOperationSize();
+		return (m_CurrentPass - 1) * (m_SrcEnd - m_SrcStart + m_DstEnd - m_DstStart)
+			+ (m_SrcPos - m_SrcStart + m_DstPos - m_DstStart);
 	}
 }
 
@@ -908,8 +1030,26 @@ BOOL CThroughProcessOperation::Init()
 	return InitPass(1);
 }
 
-BOOL CThroughProcessOperation::InitPass(int /*nPass*/)
+BOOL CThroughProcessOperation::InitPass(int nPass)
 {
+	if (nPass >= 0)
+	{
+		m_DstPos = m_DstStart;
+		m_SrcPos = m_SrcStart;
+		m_InputBufferGetIndex = 0;
+		m_InputBufferPutIndex = 0;
+		m_OutputBufferGetIndex = 0;
+		m_OutputBufferPutIndex = 0;
+	}
+	else
+	{
+		m_DstPos = m_DstEnd;
+		m_SrcPos = m_SrcEnd;
+		m_InputBufferGetIndex = ThroughProcessBufferSize;
+		m_InputBufferPutIndex = ThroughProcessBufferSize;
+		m_OutputBufferGetIndex = ThroughProcessBufferSize;
+		m_OutputBufferPutIndex = ThroughProcessBufferSize;
+	}
 	return TRUE;
 }
 
@@ -1526,22 +1666,22 @@ BOOL CScanPeaksContext::OperationProc()
 			ULONG DataToProcess = lRead;
 			WAVE_SAMPLE * pWaveData = (WAVE_SAMPLE *) pBuf;
 
-			DWORD DataOffset = m_SrcPos - m_SrcStart;
+			MEDIA_FILE_POSITION DataOffset = m_SrcPos - m_SrcStart;
 			unsigned DataForGranule = m_GranuleSize - DataOffset % m_GranuleSize;
 
 			if (2 == m_SrcFile.Channels())
 			{
-				unsigned PeakIndex = (DataOffset / m_GranuleSize) * 2;
+				unsigned PeakIndex = unsigned((DataOffset / m_GranuleSize) * 2);
 
 				while (0 != DataToProcess)
 				{
 					WavePeak peak = m_SrcFile.GetPeakMinMax(PeakIndex, PeakIndex + 1);
-					int wpl_l = peak.low;
-					int wpl_h = peak.high;
+					WAVE_PEAK wpl_l = peak.low;
+					WAVE_PEAK wpl_h = peak.high;
 
 					peak = m_SrcFile.GetPeakMinMax(PeakIndex + 1, PeakIndex + 2);
-					int wpr_l = peak.low;
-					int wpr_h = peak.high;
+					WAVE_PEAK wpr_l = peak.low;
+					WAVE_PEAK wpr_h = peak.high;
 
 					if (DataForGranule > DataToProcess)
 					{
@@ -1597,9 +1737,9 @@ BOOL CScanPeaksContext::OperationProc()
 					}
 
 					m_SrcFile.SetPeakData(PeakIndex,
-										WAVE_SAMPLE(wpl_l), WAVE_SAMPLE(wpl_h));
+										WAVE_PEAK(wpl_l), WAVE_PEAK(wpl_h));
 					m_SrcFile.SetPeakData(PeakIndex + 1,
-										WAVE_SAMPLE(wpr_l), WAVE_SAMPLE(wpr_h));
+										WAVE_PEAK(wpr_l), WAVE_PEAK(wpr_h));
 
 					PeakIndex += 2;
 					DataForGranule = m_GranuleSize;
@@ -1607,12 +1747,12 @@ BOOL CScanPeaksContext::OperationProc()
 			}
 			else
 			{
-				unsigned PeakIndex = DataOffset / m_GranuleSize;
+				unsigned PeakIndex = unsigned(DataOffset / m_GranuleSize);
 				while (0 != DataToProcess)
 				{
 					WavePeak peak = m_SrcFile.GetPeakMinMax(PeakIndex, PeakIndex + 1);
-					int wp_l = peak.low;
-					int wp_h = peak.high;
+					WAVE_PEAK wp_l = peak.low;
+					WAVE_PEAK wp_h = peak.high;
 
 					if (DataForGranule > DataToProcess)
 					{
@@ -1633,7 +1773,7 @@ BOOL CScanPeaksContext::OperationProc()
 					}
 
 					m_SrcFile.SetPeakData(PeakIndex,
-										WAVE_SAMPLE(wp_l), WAVE_SAMPLE(wp_h));
+										WAVE_PEAK(wp_l), WAVE_PEAK(wp_h));
 
 					PeakIndex ++;
 					DataForGranule = m_GranuleSize;
@@ -1971,7 +2111,7 @@ BOOL CCopyUndoContext::NeedToSaveUndo(SAMPLE_POSITION Position, long length)
 		}
 		else
 		{
-			length = Position;
+			length = (long)Position;
 			Position = 0;
 		}
 	}
@@ -2003,10 +2143,10 @@ BOOL CCopyUndoContext::NeedToSaveUndo(SAMPLE_POSITION Position, long length)
 
 // init pointers and allocate a file to save the undo information
 // is called for a UNDO context when it's created
-BOOL CCopyUndoContext::InitUndoCopy(CWaveFile & SrcFile,
+BOOL CCopyUndoContext::InitUndoCopy(CWaveFile & SrcFile,     // the file with the data to be saved
 									SAMPLE_POSITION SaveStartPos, // source file position of data needed to save and restore
 									SAMPLE_POSITION SaveEndPos,
-									CHANNEL_MASK SaveChannel,
+									CHANNEL_MASK SaveChannel,     // 1 or 2 - one channel, 3 - two channels, etc
 									SAMPLE_POSITION RedoStartPos, // source file position of data needed to redo
 									SAMPLE_POSITION RedoEndPos)
 {
@@ -2015,6 +2155,8 @@ BOOL CCopyUndoContext::InitUndoCopy(CWaveFile & SrcFile,
 	m_DstStart = SaveStartPos;
 	m_DstPos = SaveStartPos;
 	m_DstEnd = SaveEndPos;
+	m_SrcSampleSize = SrcFile.SampleSize();
+	m_SrcNumberOfChannels = SrcFile.Channels();
 
 	if (SaveEndPos >= SaveStartPos)
 	{
@@ -2117,9 +2259,7 @@ BOOL CCopyUndoContext::SaveUndoData(void const * pBuf, long BufSize,
 									SAMPLE_POSITION Position,
 									NUMBER_OF_CHANNELS NumSrcChannels)
 {
-	int const SrcSampleSize = m_SrcFile.BitsPerSample() * NumSrcChannels / 8;
-
-	ASSERT(0 == BufSize % SrcSampleSize);
+	ASSERT(0 == BufSize % m_SrcSampleSize);
 
 	char const * pSrcBuf = (char const*) pBuf;
 
@@ -2142,7 +2282,7 @@ BOOL CCopyUndoContext::SaveUndoData(void const * pBuf, long BufSize,
 
 		if (Position > m_DstPos)
 		{
-			BufSize += Position - m_DstPos;
+			BufSize += long(Position - m_DstPos);
 			pSrcBuf -= Position - m_DstPos;
 			Position = m_DstPos;
 		}
@@ -2150,7 +2290,7 @@ BOOL CCopyUndoContext::SaveUndoData(void const * pBuf, long BufSize,
 		{
 			ASSERT(Position == m_DstPos);
 		}
-		ASSERT(0 == (m_DstStart - Position) % SrcSampleSize);
+		ASSERT(0 == (m_DstStart - Position) % m_SrcSampleSize);
 	}
 	else
 	{
@@ -2168,11 +2308,11 @@ BOOL CCopyUndoContext::SaveUndoData(void const * pBuf, long BufSize,
 		// saving data from the beginning to the end
 		if (Position + BufSize > m_DstEnd)
 		{
-			BufSize = m_DstEnd - Position;
+			BufSize = long(m_DstEnd - Position);
 		}
 		if (Position < m_DstPos)
 		{
-			BufSize -= m_DstPos - Position;
+			BufSize -= long(m_DstPos - Position);
 			pSrcBuf += m_DstPos - Position;
 			Position = m_DstPos;
 		}
@@ -2180,18 +2320,18 @@ BOOL CCopyUndoContext::SaveUndoData(void const * pBuf, long BufSize,
 		{
 			ASSERT(Position == m_DstPos);
 		}
-		ASSERT(0 == (Position - m_DstStart) % SrcSampleSize);
+		ASSERT(0 == (Position - m_DstStart) % m_SrcSampleSize);
 	}
 
-	ASSERT(0 == (BufSize % SrcSampleSize));
+	ASSERT(0 == (BufSize % m_SrcSampleSize));
 
-	NUMBER_OF_SAMPLES const Samples = BufSize / SrcSampleSize;
+	NUMBER_OF_SAMPLES const Samples = BufSize / m_SrcSampleSize;
 
 	long SamplesWritten = m_SrcFile.WriteSamples(ALL_CHANNELS,
-												m_SrcPos, Samples, pSrcBuf, m_DstChan, NumSrcChannels,
+												m_SrcPos, Samples, pSrcBuf, m_DstChan, m_SrcNumberOfChannels,
 												m_DstFile.GetSampleType());
 
-	m_DstPos += SamplesWritten * SrcSampleSize;
+	m_DstPos += SamplesWritten * m_SrcSampleSize;
 	m_SrcPos += SamplesWritten * m_SrcFile.SampleSize();
 
 	return SamplesWritten == Samples;
@@ -2469,9 +2609,9 @@ BOOL CSoundPlayContext::OperationProc()
 		}
 		else
 		{
-			unsigned Samples = (unsigned)(size / m_Wf.SampleSize());
-			unsigned SrcSamples =
-				(m_End - m_CurrentPlaybackPos) / m_PlayFile.SampleSize();
+			NUMBER_OF_SAMPLES Samples = NUMBER_OF_SAMPLES(size / m_Wf.SampleSize());
+			NUMBER_OF_SAMPLES SrcSamples =
+				NUMBER_OF_SAMPLES((m_End - m_CurrentPlaybackPos) / m_PlayFile.SampleSize());
 
 			if (0 == SrcSamples)
 			{
@@ -2483,8 +2623,8 @@ BOOL CSoundPlayContext::OperationProc()
 				Samples = SrcSamples;
 			}
 
-			if (Samples != (unsigned)m_PlayFile.ReadSamples(m_Chan, m_CurrentPlaybackPos,
-															Samples, pBuf))
+			if (Samples != (NUMBER_OF_SAMPLES)m_PlayFile.ReadSamples(m_Chan, m_CurrentPlaybackPos,
+					Samples, pBuf))
 			{
 				m_CurrentPlaybackPos = m_End;
 				break;
@@ -2647,326 +2787,213 @@ CString CUndoRedoContext::GetStatusString() const
 }
 
 ///////////////////  CVolumeChangeContext
-CVolumeChangeContext::CVolumeChangeContext(CWaveSoapFrontDoc * pDoc,
-											UINT StatusStringId, UINT OperationNameId,
-											double const * VolumeArray, int VolumeArraySize)
-	: BaseClass(pDoc, OperationContextDiskIntensive, StatusStringId, OperationNameId)
+CWaveProcContext * CreateVolumeChangeOperation(CWaveSoapFrontDoc * pDoc,
+												UINT StatusStringId, UINT OperationNameId,
+												double const * VolumeArray, int VolumeArraySize)
 {
-	ASSERT(VolumeArraySize <= countof (m_Volume));
+	CWaveProcContext::auto_ptr pContext(new CWaveProcContext(pDoc, StatusStringId, OperationNameId));
 
-	for (int ch = 0; ch < VolumeArraySize; ch++)
-	{
-		m_Volume[ch] = float(VolumeArray[ch]);
-	}
+	pContext->AddWaveProc(new CVolumeChangeProc(VolumeArray, VolumeArraySize));
+	return pContext.release();
 }
 
-CVolumeChangeContext::CVolumeChangeContext(CWaveSoapFrontDoc * pDoc,
-											UINT StatusStringId, UINT OperationNameId, float Volume)
-	: BaseClass(pDoc, OperationContextDiskIntensive, StatusStringId, OperationNameId)
+CWaveProcContext * CreateVolumeChangeOperation(CWaveSoapFrontDoc * pDoc,
+												UINT StatusStringId, UINT OperationNameId,
+												double Volume)
 {
-	for (int ch = 0; ch < countof (m_Volume); ch++)
-	{
-		m_Volume[ch] = Volume;
-	}
+	return CreateVolumeChangeOperation(pDoc, StatusStringId, OperationNameId, &Volume, 1);
 }
 
-BOOL CVolumeChangeContext::ProcessBuffer(void * buf, size_t BufferLength,
-										SAMPLE_POSITION /*offset*/, BOOL /*bBackward*/)
+CScanContext::CScanContext(CWaveSoapFrontDoc * pDoc,
+							UINT StatusStringId, UINT OperationNameId)
+	: BaseClass(pDoc, StatusStringId, OperationNameId)
 {
-	WAVE_SAMPLE * pDst = (WAVE_SAMPLE *) buf;
-	int nChannels = m_DstFile.Channels();
-	unsigned nSamples = (unsigned)(BufferLength / sizeof pDst[0]);
-
-	if (nChannels == 1)
-	{
-		float volume = m_Volume[0];
-		// special code for mute and inverse
-		if (0 == volume)
-		{
-			memset(buf, 0, BufferLength);
-		}
-		else if (-1. == volume)
-		{
-			for (unsigned i = 0; i < nSamples; i++)
-			{
-				pDst[i] = LongToShort(-long(pDst[i]));
-			}
-		}
-		else
-		{
-			for (unsigned i = 0; i < nSamples; i++)
-			{
-				pDst[i] = DoubleToShort(pDst[i] * volume);
-			}
-		}
-		return TRUE;
-	}
-	else if (nChannels == 2)
-	{
-		// special code for 2 channels
-		// special code for mute
-		if (0. == m_Volume[0] && 0. == m_Volume[1])
-		{
-			if (m_DstFile.AllChannels(m_DstChan))
-			{
-				memset(pDst, 0, BufferLength);
-			}
-			else
-			{
-				if (SPEAKER_FRONT_RIGHT & m_DstChan)
-				{
-					pDst ++;
-				}
-
-				for (unsigned i = 0; i < nSamples; i += 2)
-				{
-					pDst[i] = 0;
-				}
-			}
-			return TRUE;
-		}
-		// process both channels
-		// special code for mute and inverse
-
-		if ((-1. == m_Volume[0] || 0 == (SPEAKER_FRONT_LEFT & m_DstChan))
-			&& (-1. == m_Volume[1] || 0 == (SPEAKER_FRONT_RIGHT & m_DstChan)))
-		{
-			for (unsigned i = 0; i < nSamples; i += 2)
-			{
-				if (SPEAKER_FRONT_LEFT & m_DstChan)
-				{
-					pDst[i] = LongToShort(-long(pDst[i]));
-				}
-
-				if (SPEAKER_FRONT_RIGHT & m_DstChan)
-				{
-					pDst[i + 1] = LongToShort(-long(pDst[i + 1]));
-				}
-			}
-			return TRUE;
-		}
-	}
-
-	for (unsigned i = 0; i < nSamples; i += nChannels)
-	{
-		int ch;
-		CHANNEL_MASK mask;
-
-		for (ch = 0, mask = 1; ch < nChannels; ch++, mask <<= 1)
-		{
-			if (mask & m_DstChan)
-			{
-				pDst[i + ch] = DoubleToShort(pDst[i + ch] * m_Volume[ch]);
-			}
-		}
-	}
-	return TRUE;
+	m_ProcBatch.m_bAutoDeleteProcs = FALSE;
+	m_ProcBatch.AddWaveProc(&m_Proc);
 }
 
-CDcScanContext::CDcScanContext(CWaveSoapFrontDoc * pDoc,
-								UINT StatusStringId, UINT OperationNameId)
-	: BaseClass(pDoc, OperationContextDiskIntensive, StatusStringId, OperationNameId)
+CScanContext::CScanProc::CScanProc()
 {
-	m_ReturnBufferFlags = 0;    // no write back
+	m_InputSampleType = SampleTypeFloat32;
 
-	for (unsigned i = 0; i < countof (m_Sum); i++)
+	for (unsigned i = 0; i != countof(m_Sum); i++)
 	{
 		m_Sum[i] = 0;
+		m_MinSample[i] = 1000000.;
+		m_MaxSample[i] = -1000000.;
 	}
 }
 
-int CDcScanContext::GetDc(int channel)
+void CScanContext::CScanProc::ProcessSampleValue(void const * pInSample, void * /*pOutSample*/, unsigned channel)
 {
-	if (channel >= countof (m_Sum))
+	double sample = *(float const*)pInSample;
+	m_Sum[channel] += sample;
+
+	if (m_MinSample[channel] > sample)
 	{
-		return 0;
+		m_MinSample[channel] = sample;
 	}
-
-	NUMBER_OF_SAMPLES nSamples = (m_DstPos - m_DstStart) / m_DstFile.SampleSize();
-
-	if (0 == nSamples)
+	if (m_MaxSample[channel] < sample)
 	{
-		return 0;
+		m_MaxSample[channel] = sample;
 	}
-
-	return int(m_Sum[channel] / nSamples);
 }
 
-BOOL CDcScanContext::ProcessBuffer(void * buf, size_t BufferLength,
-									SAMPLE_POSITION /*offset*/, BOOL /*bBackward*/)
+double CScanContext::CScanProc::GetMax(unsigned channel) const
 {
-	WAVE_SAMPLE * pSrc = (WAVE_SAMPLE *) buf;
-
-	if (m_DstFile.Channels() == 1)
+	if (m_CurrentSample == 0)
 	{
-		for (unsigned i = 0; i < BufferLength / sizeof pSrc[0]; i++)
+		return 0;
+	}
+	double max = 0;
+	if (m_MaxSample[channel] > 0)
+	{
+		if (max < m_MaxSample[channel])
 		{
-			m_Sum[0] += pSrc[i];
+			max = m_MaxSample[channel];
 		}
 	}
 	else
 	{
-		ASSERT(2 == m_DstFile.Channels());
-
-		for (unsigned i = 0; i < BufferLength / (2 * sizeof pSrc[0]); i++)
+		if (max < -m_MaxSample[channel])
 		{
-			m_Sum[0] += pSrc[i * 2];
-			m_Sum[1] += pSrc[i * 2 + 1];
+			max = -m_MaxSample[channel];
 		}
 	}
-	return TRUE;
+	if (m_MinSample[channel] > 0)
+	{
+		if (max < m_MinSample[channel])
+		{
+			max = m_MinSample[channel];
+		}
+	}
+	else
+	{
+		if (max < -m_MinSample[channel])
+		{
+			max = -m_MinSample[channel];
+		}
+	}
+	return max;
+}
+
+double CScanContext::CScanProc::GetAverage(unsigned channel) const
+{
+	if (m_CurrentSample == 0)
+	{
+		return 0;
+	}
+	return m_Sum[channel] / m_CurrentSample;
 }
 
 CDcOffsetContext::CDcOffsetContext(CWaveSoapFrontDoc * pDoc,
 									UINT StatusStringId, UINT OperationNameId,
-									CDcScanContext * pScanContext)
-	: BaseClass(pDoc, OperationContextDiskIntensive, StatusStringId, OperationNameId),
-	m_pScanContext(pScanContext)
+									CScanContext * pScanContext)
+	: BaseClass(pDoc, StatusStringId, OperationNameId),
+	m_Proc(pScanContext)
 {
-	for (unsigned i = 0; i < countof (m_Offset); i++)
-	{
-		m_Offset[i] = 0;
-	}
-
+	AddWaveProc(&m_Proc);
+	m_ProcBatch.m_bAutoDeleteProcs = false;
 }
 
 CDcOffsetContext::CDcOffsetContext(CWaveSoapFrontDoc * pDoc,
 									UINT StatusStringId, UINT OperationNameId,
-									int offset[], unsigned OffsetArraySize)
-	: BaseClass(pDoc, OperationContextDiskIntensive, StatusStringId, OperationNameId),
-	m_pScanContext(NULL)
+									float const offset[], unsigned OffsetArraySize)
+	: BaseClass(pDoc, StatusStringId, OperationNameId),
+	m_Proc(NULL)
 {
-	ASSERT(OffsetArraySize <= countof (m_Offset));
+	ASSERT(OffsetArraySize <= countof (m_Proc.m_Offset));
+	ASSERT(OffsetArraySize != 0);
 
-	for (unsigned i = 0; i < OffsetArraySize; i++)
+	unsigned i;
+	for (i = 0; i < OffsetArraySize; i++)
 	{
-		m_Offset[i] = offset[i];
+		m_Proc.m_Offset[i] = offset[i];
+	}
+	for (; i < countof(m_Proc.m_Offset); i++)
+	{
+		m_Proc.m_Offset[i] = m_Proc.m_Offset[i-1];
 	}
 
+	AddWaveProc(&m_Proc);
+	m_ProcBatch.m_bAutoDeleteProcs = false;
 }
 
-BOOL CDcOffsetContext::Init()
+CDcOffsetContext::CDcOffsetProc::CDcOffsetProc(CScanContext * pScanContext)
+	:m_pScanContext(pScanContext)
 {
-	if ( ! BaseClass::Init())
+	m_InputSampleType = SampleTypeFloat32;
+}
+
+BOOL CDcOffsetContext::CDcOffsetProc::Init()
+{
+	if ( ! CWaveProc::Init())
 	{
 		return FALSE;
 	}
 
 	if (NULL != m_pScanContext)
 	{
-		bool GotJob = false;
-
-		for (NUMBER_OF_CHANNELS ch = 0; ch < m_DstFile.Channels(); ch ++)
+		for (NUMBER_OF_CHANNELS ch = 0; ch < MAX_NUMBER_OF_CHANNELS; ch ++)
 		{
-			m_Offset[ch] = -m_pScanContext->GetDc(ch);
-			if (0 != (m_DstChan & (1 << ch))
-				&& 0 != m_Offset[ch])
-			{
-				GotJob = true;
-			}
-		}
-
-		if ( ! GotJob)
-		{
-			// all offsets are zero, nothing to change
-			m_Flags |= OperationContextFinished;
-			DeleteUndo();
+			m_Offset[ch] = -m_pScanContext->GetAverage(ch);
 		}
 	}
 
 	return TRUE;
 }
 
-BOOL CDcOffsetContext::ProcessBuffer(void * buf, size_t BufferLength,
-									SAMPLE_POSITION /*offset*/, BOOL /*bBackward*/)
+void CDcOffsetContext::CDcOffsetProc::ProcessSampleValue(void const * pInSample, void * pOutSample, unsigned channel)
 {
-	WAVE_SAMPLE * pDst = (WAVE_SAMPLE *) buf;
-
-	NUMBER_OF_CHANNELS nChannels = m_DstFile.Channels();
-	NUMBER_OF_SAMPLES nSamples = (NUMBER_OF_SAMPLES)(BufferLength / sizeof pDst[0]);
-
-	ASSERT(0 == (BufferLength % m_DstFile.SampleSize()));
-	ASSERT(nChannels > 0);
-
-	if (nChannels == 1)
-	{
-		int DcOffset = m_Offset[0];
-		for (NUMBER_OF_SAMPLES i = 0; i < nSamples; i++)
-		{
-			pDst[i] = LongToShort(pDst[i] + DcOffset);
-		}
-	}
-	else if (2 == nChannels)
-	{
-		// process two channels
-		for (NUMBER_OF_SAMPLES i = 0; i < nSamples; i += 2)
-		{
-			if (SPEAKER_FRONT_LEFT & m_DstChan)
-			{
-				pDst[i] = LongToShort(pDst[i] + m_Offset[0]);
-			}
-
-			if (SPEAKER_FRONT_RIGHT & m_DstChan)
-			{
-				pDst[i + 1] = LongToShort(pDst[i + 1] + m_Offset[1]);
-			}
-		}
-	}
-	else
-	{
-		for (NUMBER_OF_SAMPLES i = 0; i < nSamples; i += nChannels)
-		{
-			for (int ch = 0, mask = 1; ch < nChannels; ch ++, mask <<= 1)
-			{
-				if (mask & m_DstChan)
-				{
-					pDst[i + ch] = LongToShort(pDst[i + ch] + m_Offset[ch]);
-				}
-			}
-		}
-	}
-
-	return TRUE;
+	*(float*)pOutSample = *(float const *)pInSample + m_Offset[channel];
 }
 
 CStatisticsContext::CStatisticsContext(CWaveSoapFrontDoc * pDoc,
 										UINT StatusStringId, UINT OperationNameId)
-	: BaseClass(pDoc, OperationContextDiskIntensive, StatusStringId, OperationNameId),
-	m_ZeroCrossingLeft(0),
-	m_ZeroCrossingRight(0),
-	m_MinLeft(INT_MAX),
-	m_MaxLeft(INT_MIN),
-	m_MinRight(INT_MAX),
-	m_MaxRight(INT_MIN),
-
-	m_PrevSampleLeft(0),
-	m_PrevSampleRight(0),
-
-	m_PosMinLeft(0),
-	m_PosMaxLeft(0),
-	m_PosMinRight(0),
-	m_PosMaxRight(0),
-
-	m_EnergyLeft(0),
-	m_EnergyRight(0),
-
-	m_CurrentLeftCrc(0),
-	m_CRC32Left(0),
-	m_CurrentRightCrc(0),
-	m_CRC32Right(0),
-	m_CurrentCommonCRC(0),
-	m_CRC32Common(0),
-
-	m_Checksum(0),
-	m_ChecksumSampleNumber(0),
-
-	m_SumLeft(0),
-	m_SumRight(0)
+	: BaseClass(pDoc, StatusStringId, OperationNameId)
 {
-	m_ReturnBufferFlags = 0;    // no write back
-	m_DstChan = ALL_CHANNELS;
+	m_SrcChan = ALL_CHANNELS;
+
+	AddWaveProc(&m_Proc);
+	m_ProcBatch.m_bAutoDeleteProcs = false;
 }
 
+CStatisticsContext::CStatisticsProc::CStatisticsProc()
+{
+	m_InputSampleType = SampleType16bit;
+
+	m_Energy[0] = 0;
+	m_Energy[1] = 0;
+
+	m_ZeroCrossing[0] = 0;
+	m_ZeroCrossing[1] = 0;
+
+	m_Min[0] = INT_MAX;
+	m_Max[0] = INT_MIN;
+	m_Min[1] = INT_MAX;
+	m_Max[1] = INT_MIN;
+
+	m_PrevSample[0] = 0;
+	m_PrevSample[1] = 0;
+
+	m_PosMin[0] = 0;
+	m_PosMax[0] = 0;
+	m_PosMin[1] = 0;
+	m_PosMax[1] = 0;
+
+	m_CurrentCrc[0] = 0;
+	m_CRC32[0] = 0;
+	m_CurrentCrc[1] = 0;
+	m_CRC32[1] = 0;
+	m_CurrentCommonCRC = 0;
+	m_CRC32Common = 0;
+
+	m_Checksum = 0;
+	m_ChecksumSampleNumber = 0;
+
+	m_Sum[0] = 0;
+	m_Sum[1] = 0;
+}
 // CRC32 Lookup Table generated from Charles Michael
 //  Heard's CRC-32 code
 static DWORD CRC32_Table[256] =
@@ -3042,156 +3069,46 @@ static inline DWORD CalcCrc32(DWORD PrevCrc, UCHAR byte)
 	return (PrevCrc << 8) ^ CRC32_Table[(( PrevCrc >> 24) ^ byte) & 0xff];
 }
 
-BOOL CStatisticsContext::ProcessBuffer(void * buf, size_t const BufferLength,
-										SAMPLE_POSITION offset, BOOL /*bBackward*/)
+void CStatisticsContext::CStatisticsProc::ProcessSampleValue(void const * pInSample, void * /*pOutSample*/, unsigned channel)
 {
-	WAVE_SAMPLE * pSrc = (WAVE_SAMPLE *) buf;
-	int nChannels = m_DstFile.Channels();
-	NUMBER_OF_SAMPLES nSamples = (NUMBER_OF_SAMPLES)(BufferLength / sizeof pSrc[0]);
-
-	ASSERT(0 == (BufferLength % m_DstFile.SampleSize()));
-	// offset is relative to start, but we want absolute offset in file
-	offset += m_DstStart;
-
-	if (nChannels == 1)
+	short sample = *(short const*)pInSample;
+	m_Sum[channel] += sample;
+	m_Energy[channel] += sample * sample;
+	if (m_Min[channel] > sample)
 	{
-		for (NUMBER_OF_SAMPLES i = 0; i < nSamples; i++)
-		{
-			int sample = pSrc[i];
-			m_SumLeft += sample;
-			m_EnergyLeft += sample * sample;
-			if (m_MinLeft > sample)
-			{
-				m_MinLeft = sample;
-				m_PosMinLeft = offset + i * sizeof pSrc[0];
-			}
-			if (m_MaxLeft < sample)
-			{
-				m_PosMaxLeft = offset + i * sizeof pSrc[0];
-				m_MaxLeft = sample;
-			}
-			if (0x8000 & (sample ^ m_PrevSampleLeft))
-			{
-				m_ZeroCrossingLeft++;
-			}
-			m_PrevSampleLeft = sample;
-			m_CurrentLeftCrc = CalcCrc32(CalcCrc32(m_CurrentLeftCrc,
-													UCHAR(sample & 0xFF)), UCHAR((sample >> 8) & 0xFF));
-
-			if (sample != 0)
-			{
-				m_CRC32Left = m_CurrentLeftCrc;
-			}
-
-			if (0 == m_ChecksumSampleNumber
-				&& (sample > 127 || sample < -127))
-			{
-				m_ChecksumSampleNumber = 1;
-			}
-
-			m_Checksum += m_ChecksumSampleNumber * sample;
-			m_ChecksumSampleNumber++;
-			if (m_ChecksumSampleNumber > 256)
-			{
-				m_ChecksumSampleNumber = 1;
-			}
-		}
+		m_Min[channel] = sample;
+		m_PosMin[channel] = m_CurrentSample;
 	}
-	else
+	if (m_Max[channel] < sample)
 	{
-		for (NUMBER_OF_SAMPLES i = 0; i < nSamples;
-			i += nChannels, offset += nChannels * sizeof (*pSrc))
-		{
-			int sample = pSrc[i];
-
-			m_SumLeft += sample;
-			m_EnergyLeft += sample * sample;
-			if (m_MinLeft > sample)
-			{
-				m_MinLeft = sample;
-				m_PosMinLeft = offset;
-			}
-			if (m_MaxLeft < sample)
-			{
-				m_MaxLeft = sample;
-				m_PosMaxLeft = offset;
-			}
-			if (0x8000 & (sample ^ m_PrevSampleLeft))
-			{
-				m_ZeroCrossingLeft++;
-			}
-			m_PrevSampleLeft = sample;
-			m_CurrentLeftCrc = CalcCrc32(CalcCrc32(m_CurrentLeftCrc,
-													UCHAR(sample & 0xFF)), UCHAR((sample >> 8) & 0xFF));
-
-			m_CurrentCommonCRC = CalcCrc32(CalcCrc32(m_CurrentCommonCRC,
-													UCHAR(sample & 0xFF)), UCHAR((sample >> 8) & 0xFF));
-
-			if (sample != 0)
-			{
-				m_CRC32Left = m_CurrentLeftCrc;
-				m_CRC32Common = m_CurrentCommonCRC;
-			}
-
-			if (0 == m_ChecksumSampleNumber
-				&& (sample > 127 || sample < -127))
-			{
-				m_ChecksumSampleNumber = 1;
-			}
-
-			m_Checksum += m_ChecksumSampleNumber * sample;
-			m_ChecksumSampleNumber++;
-			if (m_ChecksumSampleNumber > 256)
-			{
-				m_ChecksumSampleNumber = 1;
-			}
-
-			sample = pSrc[i + 1];
-
-			m_SumRight += sample;
-			m_EnergyRight += sample * sample;
-
-			if (m_MinRight > sample)
-			{
-				m_MinRight = sample;
-				m_PosMinRight = offset;
-			}
-			if (m_MaxRight < sample)
-			{
-				m_MaxRight = sample;
-				m_PosMaxRight = offset;
-			}
-			if (0x8000 & (sample ^ m_PrevSampleRight))
-			{
-				m_ZeroCrossingRight++;
-			}
-
-			m_PrevSampleRight = sample;
-			m_CurrentRightCrc = CalcCrc32(CalcCrc32(m_CurrentRightCrc,
-													UCHAR(sample & 0xFF)), UCHAR((sample >> 8) & 0xFF));
-			m_CurrentCommonCRC = CalcCrc32(CalcCrc32(m_CurrentCommonCRC,
-													UCHAR(sample & 0xFF)), UCHAR((sample >> 8) & 0xFF));
-
-			if (sample != 0)
-			{
-				m_CRC32Right = m_CurrentRightCrc;
-				m_CRC32Common = m_CurrentCommonCRC;
-			}
-
-			if (0 == m_ChecksumSampleNumber
-				&& (sample > 127 || sample < -127))
-			{
-				m_ChecksumSampleNumber = 1;
-			}
-			m_Checksum += m_ChecksumSampleNumber * sample;
-			m_ChecksumSampleNumber++;
-			if (m_ChecksumSampleNumber > 256)
-			{
-				m_ChecksumSampleNumber = 1;
-			}
-		}
+		m_PosMax[channel] = m_CurrentSample;
+		m_Max[channel] = sample;
 	}
-	return TRUE;
+	if (0x8000 & (sample ^ m_PrevSample[channel]))
+	{
+		m_ZeroCrossing[channel]++;
+	}
+	m_PrevSample[channel] = sample;
+	m_CurrentCrc[channel] = CalcCrc32(CalcCrc32(m_CurrentCrc[channel],
+												UCHAR(sample & 0xFF)), UCHAR((sample >> 8) & 0xFF));
+
+	if (sample != 0)
+	{
+		m_CRC32[channel] = m_CurrentCrc[channel];
+	}
+
+	if (0 == m_ChecksumSampleNumber
+		&& (sample > 127 || sample < -127))
+	{
+		m_ChecksumSampleNumber = 1;
+	}
+
+	m_Checksum += m_ChecksumSampleNumber * sample;
+	m_ChecksumSampleNumber++;
+	if (m_ChecksumSampleNumber > 256)
+	{
+		m_ChecksumSampleNumber = 1;
+	}
 }
 
 void CStatisticsContext::PostRetire()
@@ -3217,33 +3134,33 @@ void CStatisticsContext::PostRetire()
 	BaseClass::PostRetire();
 }
 
-SAMPLE_INDEX CStatisticsContext::GetMaxSamplePosition(CHANNEL_MASK * pChannel) const
+SAMPLE_POSITION CStatisticsContext::CStatisticsProc::GetMaxSamplePosition(CHANNEL_MASK * pChannel) const
 {
 	SAMPLE_POSITION SamplePos = 0;
 	CHANNEL_MASK Channel = ALL_CHANNELS;
 
-	SamplePos = m_PosMaxLeft;
-	long value = m_MaxLeft;
+	SamplePos = m_PosMax[0];
+	long value = m_Max[0];
 	Channel = (1 << 0);
 
-	if (-m_MinLeft > value)
+	if (-m_Min[0] > value)
 	{
-		value = -m_MinLeft;
-		SamplePos = m_PosMinLeft;
+		value = -m_Min[0];
+		SamplePos = m_PosMin[0];
 	}
 
-	if (m_DstFile.Channels() > 1)
+	if (m_InputFormat.NumChannels() > 1)
 	{
-		if (m_MaxRight > value)
+		if (m_Max[1] > value)
 		{
-			value = m_MaxRight;
-			SamplePos = m_PosMaxRight;
+			value = m_Max[1];
+			SamplePos = m_PosMax[1];
 			Channel = (1 << 1);
 		}
-		if (-m_MinRight > value)
+		if (-m_Min[1] > value)
 		{
-			value = -m_MinRight;
-			SamplePos = m_PosMinRight;
+			value = -m_Min[1];
+			SamplePos = m_PosMin[1];
 			Channel = (1 << 1);
 		}
 	}
@@ -3253,99 +3170,26 @@ SAMPLE_INDEX CStatisticsContext::GetMaxSamplePosition(CHANNEL_MASK * pChannel) c
 		*pChannel = Channel;
 	}
 
-	return m_DstFile.PositionToSample(SamplePos);
-}
-
-CMaxScanContext::CMaxScanContext(CWaveSoapFrontDoc * pDoc,
-								UINT StatusStringId, UINT OperationNameId)
-	: BaseClass(pDoc, OperationContextDiskIntensive, StatusStringId, OperationNameId)
-{
-	m_ReturnBufferFlags = 0;    // no write back
-
-	for (int i = 0; i < countof (m_Max); i++)
-	{
-		m_Max[i] = 0;
-	}
-}
-
-int CMaxScanContext::GetMax(unsigned channel)
-{
-	if (channel >= countof (m_Max))
-	{
-		return 0;
-	}
-
-	return m_Max[channel];
-}
-
-BOOL CMaxScanContext::ProcessBuffer(void * buf, size_t BufferLength,
-									SAMPLE_POSITION /*offset*/, BOOL /*bBackward*/)
-{
-	WAVE_SAMPLE * pSrc = (WAVE_SAMPLE *) buf;
-
-	int nChannels = m_DstFile.Channels();
-	NUMBER_OF_SAMPLES nSamples = (NUMBER_OF_SAMPLES)(BufferLength / sizeof pSrc[0]);
-
-	ASSERT(0 == (BufferLength % m_DstFile.SampleSize()));
-
-	if (nChannels == 1)
-	{
-		for (NUMBER_OF_SAMPLES i = 0; i < nSamples; i++)
-		{
-			int sample = pSrc[i];
-
-			if (m_Max[0] < sample)
-			{
-				m_Max[0] = sample;
-			}
-			else if (m_Max[0] < -sample)
-			{
-				m_Max[0] = -sample;
-			}
-		}
-	}
-	else
-	{
-		for (NUMBER_OF_SAMPLES i = 0; i < nSamples; i += nChannels)
-		{
-			for (int ch = 0; ch < nChannels; ch++)
-			{
-				long sample = pSrc[i + ch];
-
-				if (m_Max[ch] < sample)
-				{
-					m_Max[ch] = sample;
-				}
-				else if (m_Max[ch] < -sample)
-				{
-					m_Max[ch] = -sample;
-				}
-			}
-		}
-	}
-	return TRUE;
+	return SamplePos;
 }
 
 BOOL CNormalizeContext::Init()
 {
-	if ( ! BaseClass::Init())
-	{
-		return FALSE;
-	}
 	// calculate normalization
+	double Volume[MAX_NUMBER_OF_CHANNELS] = {1., 1.};
 	int nChannels = m_DstFile.Channels();
 
-	float MaxVolume = 1.;
+	double MaxVolume = 1.;
 	bool GotJob = false;
-	long MaxLevel = 0;
+	double MaxLevel = 0;
 
 	for (int ch = 0; ch < nChannels; ch++)
 	{
-		int Max = m_pScanContext->GetMax(ch);
+		double Max = m_pScanContext->GetMax(ch);
 
 		if (Max != 0)
 		{
-			m_Volume[ch] = float(32767. * m_LimitLevel / Max);
+			Volume[ch] = double(32767. * m_LimitLevel / Max);
 
 			if ((m_DstChan & (1 << ch))
 				&& MaxLevel < Max)
@@ -3355,13 +3199,13 @@ BOOL CNormalizeContext::Init()
 		}
 		else
 		{
-			m_Volume[ch] = 0.;
+			Volume[ch] = 0.;
 		}
 	}
 
 	if (0 != MaxLevel)
 	{
-		MaxVolume = float(32767. * m_LimitLevel / MaxLevel);
+		MaxVolume = 32767. * m_LimitLevel / MaxLevel;
 	}
 
 	if (MaxLevel == DoubleToShort(MaxVolume * MaxLevel))
@@ -3373,19 +3217,24 @@ BOOL CNormalizeContext::Init()
 	{
 		if (m_DstChan & (1 << ch))
 		{
-			if (m_Volume[ch] != 0.)
+			if (Volume[ch] != 0.)
 			{
 				if (m_bEqualChannels)
 				{
-					m_Volume[ch] = MaxVolume;
+					Volume[ch] = MaxVolume;
 				}
 
-				if (1. != m_Volume[ch])
+				if (1. != Volume[ch])
 				{
 					GotJob = true;
 				}
 			}
 		}
+	}
+
+	if ( ! BaseClass::Init())
+	{
+		return FALSE;
 	}
 
 	if ( ! GotJob)
@@ -3394,6 +3243,10 @@ BOOL CNormalizeContext::Init()
 		m_Flags |= OperationContextFinished;
 		DeleteUndo();
 	}
+
+	CVolumeChangeProc::auto_ptr VolumeChange(new CVolumeChangeProc(Volume, countof(Volume)));
+	AddWaveProc(VolumeChange.release());
+
 	return TRUE;
 }
 
@@ -3483,9 +3336,9 @@ void CFileSaveContext::PostRetire()
 CWaveProcContext::CWaveProcContext(CWaveSoapFrontDoc * pDoc, UINT StatusStringId, UINT OperationNameId)
 	: BaseClass(pDoc, 0, StatusStringId, OperationNameId)
 {
-	// delete the procs in the destructor
 	m_Flags &= ~OperationContextDiskIntensive;
-	m_ProcBatch.m_bAutoDeleteProcs = TRUE;
+	// delete the procs in the destructor
+	m_ProcBatch.m_bAutoDeleteProcs = true;
 }
 
 // When the function creates UNDO, it also calls SetSaveForUndo to initialize range to save.
@@ -3538,227 +3391,44 @@ BOOL CWaveProcContext::MakeCompatibleFormat(WAVEFORMATEX const * pSrcWf, WAVEFOR
 	return TRUE;
 }
 
-BOOL CWaveProcContext::OperationProc()
+unsigned CWaveProcContext::ProcessBuffer(char const * pInBuf, // if BACKWARD pass, points to the end of buffer
+										char * pOutBuf,    // if BACKWARD pass, points to the end of buffer
+										unsigned nInBytes, unsigned nOutBytes, unsigned * pUsedBytes,
+										SAMPLE_POSITION /*SrcOffset*/,  // if BACKWARD pass, offset of the end of source buffer
+										SAMPLE_POSITION /*DstOffset*/,  // if BACKWARD pass, offset of the end of destination buffer
+										signed pass)
 {
-	SAMPLE_POSITION dwOperationBegin = m_DstPos;
-	DWORD dwStartTime = GetTickCount();
+	size_t SrcBufUsed = 0;
 
-	if (m_Flags & OperationContextStopRequested)
-	{
-		m_Flags |= OperationContextStop;
-		return TRUE;
-	}
+	m_ProcBatch.SetBackwardPass(pass < 0);
 
-	long LeftToRead = 0;
-	long LeftToWrite = 0;
-	long WasRead = 0;
-	long WasLockedToWrite = 0;
+	unsigned DstBufUsed = m_ProcBatch.ProcessSound(pInBuf, pOutBuf, nInBytes,
+													nOutBytes, & SrcBufUsed);
+	*pUsedBytes = SrcBufUsed;
 
-	void * pOriginalSrcBuf = NULL;
-	char const * pSrcBuf = NULL;
-	void * pOriginalDstBuf = NULL;
-	char * pDstBuf = NULL;
-
-	WAVE_SAMPLE TmpReadBuffer[MAX_NUMBER_OF_CHANNELS];
-	WAVE_SAMPLE TmpWriteBuffer[MAX_NUMBER_OF_CHANNELS];
-
-	long const InputSampleSize = m_ProcBatch.GetInputSampleSize();
-	long const OutputSampleSize = m_ProcBatch.GetOutputSampleSize();
-
-	do
-	{
-		if (0 == LeftToRead)
-		{
-			MEDIA_FILE_SIZE SizeToRead = m_SrcEnd - m_SrcPos;
-			if (SizeToRead > CDirectFile::CacheBufferSize())
-			{
-				SizeToRead = CDirectFile::CacheBufferSize();
-			}
-
-			if (SizeToRead != 0)
-			{
-				//DebugTimeStamp time;
-
-				WasRead = m_SrcFile.GetDataBuffer( & pOriginalSrcBuf,
-													SizeToRead, m_SrcPos, CDirectFile::GetBufferAndPrefetchNext);
-
-				//if (1) TRACE("CWaveProcContext:block 0x%X file %p, time %d/10 ms\n",
-				//    DWORD(m_SrcPos >> 17), m_SrcFile.GetFileID(), time.ElapsedTimeTenthMs());
-
-				if (0 == WasRead)
-				{
-					m_DstFile.ReturnDataBuffer(pOriginalDstBuf, WasLockedToWrite,
-												CDirectFile::ReturnBufferDirty);
-					return FALSE;
-				}
-				pSrcBuf = (char const *) pOriginalSrcBuf;
-				LeftToRead = WasRead;
-
-				if (0 != InputSampleSize)
-				{
-					LeftToRead -= LeftToRead % InputSampleSize;
-
-					if (0 == LeftToRead)
-					{
-						m_SrcFile.ReturnDataBuffer(pOriginalSrcBuf, WasRead,
-													CDirectFile::ReturnBufferDiscard);
-
-						WasRead = 0;
-						if (InputSampleSize != m_SrcFile.ReadAt(TmpReadBuffer,
-																InputSampleSize, m_SrcPos))
-						{
-							m_DstFile.ReturnDataBuffer(pOriginalDstBuf, WasLockedToWrite,
-														CDirectFile::ReturnBufferDirty);
-							return FALSE;
-						}
-						pSrcBuf = (char const *) TmpReadBuffer;
-						LeftToRead = InputSampleSize;
-					}
-				}
-			}
-			else
-			{
-				pSrcBuf = NULL;
-				LeftToRead = 0;
-				WasRead = 0;
-			}
-		}
-
-		if (0 == LeftToWrite)
-		{
-			MEDIA_FILE_SIZE SizeToWrite = m_DstEnd - m_DstPos;
-			long flags = CDirectFile::GetBufferWriteOnly;
-
-			if (m_SrcFile.GetFileID() == m_DstFile.GetFileID()
-				|| NULL != m_pUndoContext)
-			{
-				flags = 0;
-			}
-
-			if (0 == SizeToWrite)
-			{
-				m_DstEnd = (m_DstPos + CDirectFile::CacheBufferSize()) & -CDirectFile::CacheBufferSize();
-				SizeToWrite = m_DstEnd - m_DstPos;
-
-				// don't allow zeroing after the specified area
-				flags = 0;
-			}
-
-			WasLockedToWrite = m_DstFile.GetDataBuffer( & pOriginalDstBuf,
-														SizeToWrite, m_DstPos, flags);
-
-			if (0 == WasLockedToWrite)
-			{
-				m_SrcFile.ReturnDataBuffer(pOriginalSrcBuf, WasRead,
-											CDirectFile::ReturnBufferDiscard);
-
-				return FALSE;
-			}
-			// save UNDO
-			// save the changed data to undo buffer
-			pDstBuf = (char *) pOriginalDstBuf;
-			LeftToWrite = WasLockedToWrite;
-
-			if (0 != OutputSampleSize)
-			{
-				LeftToWrite -= LeftToWrite % OutputSampleSize;
-
-				if (0 == LeftToWrite)
-				{
-					m_DstFile.ReturnDataBuffer(pOriginalDstBuf, WasLockedToWrite,
-												CDirectFile::ReturnBufferDiscard);
-
-					WasLockedToWrite = 0;
-
-					// only need to read the buffer if UNDO is necessary
-					if (NULL != m_pUndoContext
-						&& OutputSampleSize != m_DstFile.ReadAt(TmpWriteBuffer,
-																OutputSampleSize, m_DstPos))
-					{
-						m_SrcFile.ReturnDataBuffer(pOriginalSrcBuf, WasRead,
-													CDirectFile::ReturnBufferDiscard);
-						return FALSE;
-					}
-					pDstBuf = (char *) TmpWriteBuffer;
-					LeftToWrite = OutputSampleSize;
-				}
-			}
-			if (NULL != m_pUndoContext)
-			{
-				m_pUndoContext->SaveUndoData(pDstBuf, LeftToWrite,
-											m_DstPos, m_DstFile.Channels());
-			}
-		}
-
-		size_t SrcBufUsed = 0;
-		// Now process the input buffer and store the data to the output buffer
-		size_t DstBufUsed = m_ProcBatch.ProcessSound(pSrcBuf, pDstBuf, LeftToRead,
-													LeftToWrite, & SrcBufUsed);
-
-		if (0 == SrcBufUsed && 0 == DstBufUsed)
-		{
-			m_Flags |= OperationContextFinished;
-			break;
-		}
-
-		if (0) TRACE("ConversionContext: SrcPos=%d (0x%X), DstPos=%d (0x%X), src: %d bytes, dst: %d bytes\n",
-					m_SrcPos, m_SrcPos, m_DstPos, m_DstPos,
-					SrcBufUsed, DstBufUsed);
-
-		LeftToRead -= SrcBufUsed;
-		m_SrcPos += SrcBufUsed;
-		pSrcBuf += SrcBufUsed;
-
-		if (0 == LeftToRead)
-		{
-			m_SrcFile.ReturnDataBuffer(pOriginalSrcBuf, WasRead,
-										CDirectFile::ReturnBufferDiscard);
-			WasRead = 0;
-		}
-
-		if (0 == WasLockedToWrite
-			&& 0 != DstBufUsed)
-		{
-			// write data back
-			if (OutputSampleSize != m_DstFile.WriteAt(TmpWriteBuffer,
-													OutputSampleSize, m_DstPos))
-			{
-				m_SrcFile.ReturnDataBuffer(pOriginalSrcBuf, WasRead,
-											CDirectFile::ReturnBufferDiscard);
-				return FALSE;
-			}
-			LeftToWrite = 0;
-		}
-		else
-		{
-			LeftToWrite -= DstBufUsed;
-			pDstBuf += DstBufUsed;
-
-			if (0 == LeftToWrite)
-			{
-				m_DstFile.ReturnDataBuffer(pOriginalDstBuf, WasLockedToWrite,
-											CDirectFile::ReturnBufferDirty);
-				WasLockedToWrite = 0;
-			}
-		}
-
-		m_DstPos += DstBufUsed;
-	} while (GetTickCount() - dwStartTime < 1000);
-
-	m_SrcFile.ReturnDataBuffer(pOriginalSrcBuf, WasRead,
-								CDirectFile::ReturnBufferDiscard);
-
-	m_DstFile.ReturnDataBuffer(pOriginalDstBuf, WasLockedToWrite,
-								CDirectFile::ReturnBufferDirty);
-
-	// notify the view
-	m_pDocument->FileChanged(m_DstFile, dwOperationBegin, m_DstPos);
-
-	return TRUE;
+	return DstBufUsed;
 }
 
 BOOL CWaveProcContext::Init()
 {
+	if (m_SrcFile.IsOpen())
+	{
+		if ( ! m_ProcBatch.SetInputWaveformat(m_SrcFile.GetWaveFormat()))
+		{
+			return FALSE;
+		}
+		if ( ! m_ProcBatch.SetChannelsToProcess(m_SrcChan))
+		{
+			return FALSE;
+		}
+	}
+	if (m_DstFile.IsOpen())
+	{
+		if ( ! m_ProcBatch.SetOutputWaveformat(m_DstFile.GetWaveFormat()))
+		{
+			return FALSE;
+		}
+	}
 	if ( ! BaseClass::Init())
 	{
 		return FALSE;
@@ -3766,6 +3436,14 @@ BOOL CWaveProcContext::Init()
 	return m_ProcBatch.Init();
 }
 
+BOOL CWaveProcContext::InitPass(int nPass)
+{
+	if ( ! BaseClass::InitPass(nPass))
+	{
+		return FALSE;
+	}
+	return m_ProcBatch.Init();
+}
 void CWaveProcContext::DeInit()
 {
 	m_ProcBatch.DeInit();
@@ -3849,20 +3527,11 @@ BOOL CWmaDecodeContext::OperationProc()
 
 	DWORD dwStartTime = GetTickCount();
 
-#ifndef USE_SYNC_READER
-	do
-	{
-		m_Decoder.DeliverNextSample(200);
-	}
-	while (m_Decoder.IsStarted()
-			&& GetTickCount() - dwStartTime < 500);
-#else
 	do
 	{
 	}
-	while (m_Decoder.DeliverNextSample(200)
+	while (m_Decoder.DeliverNextSample()
 			&& GetTickCount() - dwStartTime < 500);
-#endif
 	// notify the view
 
 	SAMPLE_INDEX nFirstSample = m_DstCopySample;

@@ -129,14 +129,23 @@ public:
 	// The function checks for minimum buffer size
 	// and calls ProcessSoundBuffer with at least GetInputSampleSize()
 	// and GetOutputSampleSize()
+
+	// the default (and only by now) implementation calls ProcessSoundBuffer and updates number of samples
 	virtual size_t ProcessSound(char const * pInBuf, char * pOutBuf,
 								size_t nInBytes, size_t nOutBytes, size_t * pUsedBytes);
 
 	// SetInputWaveformat returns FALSE if the wave cannot be
 	// processed
-	virtual BOOL SetInputWaveformat(WAVEFORMATEX const * pWf);
-	virtual WAVEFORMATEX const * GetInputWaveformat() const;
-	virtual WAVEFORMATEX const * GetOutputWaveformat() const;
+	virtual BOOL SetInputWaveformat(CWaveFormat const & Wf);
+	virtual BOOL SetOutputWaveformat(CWaveFormat const & Wf);
+
+	virtual CWaveFormat const & GetInputWaveformat() const;
+	virtual CWaveFormat const & GetOutputWaveformat() const;
+	virtual bool SetChannelsToProcess(CHANNEL_MASK channels)
+	{
+		m_ChannelsToProcess = channels;
+		return true;
+	}
 
 	CWaveFormat m_InputFormat;
 	CWaveFormat m_OutputFormat;
@@ -183,15 +192,25 @@ public:
 
 protected:
 
-	BOOL m_bClipped;
+	bool m_bClipped;
 	double m_MaxClipped;
+	WaveSampleType m_InputSampleType;
+	WaveSampleType m_OutputSampleType;
 
+	NUMBER_OF_SAMPLES m_CurrentSample;
 	NUMBER_OF_SAMPLES m_ProcessedInputSamples;
 	NUMBER_OF_SAMPLES m_SavedOutputSamples;
 
 	// this function always gets whole samples on input
+	// The default implementation calls ProcessSoundSample for every sample
 	virtual size_t ProcessSoundBuffer(char const * pInBuf, char * pOutBuf,
-									size_t nInBytes, size_t nOutBytes, size_t * pUsedBytes) = 0;
+									size_t nInBytes, size_t nOutBytes, size_t * pUsedBytes);
+
+	// process samples for all channels. The default implementation calls ProcessSampleValue for all relevant channels
+	virtual void ProcessSoundSample(char const * pInSample, char * pOutSample, unsigned NumChannels);
+	// the default implementation copies the sample
+	virtual void ProcessSampleValue(void const * pInSample, void * pOutSample, unsigned channel);
+
 private:
 #ifdef _DEBUG
 	size_t m_ProcessedInputBytes;
@@ -202,118 +221,66 @@ private:
 	CWaveProc & operator =(const CWaveProc &);
 };
 
-#if 0
-template<typename TempInputType=WAVE_SAMPLE, typename TempOutputType=WAVE_SAMPLE> class CWaveConvertorProc
-	: public CWaveProc
+class CVolumeChangeProc : public CWaveProc
 {
+	typedef CVolumeChangeProc ThisClass;
+	typedef CWaveProc BaseClass;
+
 public:
-	CWaveConvertorProc();
-	~CWaveConvertorProc() {}
-	int FlushSamples(typename DATA * pBuf, int nOutSamples) = 0;
+	typedef std::auto_ptr<ThisClass> auto_ptr;
 
-	virtual size_t ProcessSoundBuffer(char const * pInBuf, char * pOutBuf,
-									size_t nInBytes, size_t nOutBytes, size_t * pUsedBytes)
-	{
-		*pUsedBytes = 0;
-		NUMBER_OF_CHANNELS const nChans = m_InputFormat.NumChannels();
-		unsigned const SampleSize = m_InputFormat.SampleSize();
-		TempOutputType tmp[256];
+	CVolumeChangeProc(double const * VolumeArray, unsigned VolumeArraySize);
 
-		unsigned nInSamples = nInBytes / SampleSize;
-		unsigned nOutSamples = nOutBytes / SampleSize;
-		unsigned nStoredSamples = 0;
+	virtual void ProcessSampleValue(void const * pInSample, void * pOutSample, unsigned channel);
 
-		WAVE_SAMPLE const * pInBuf = (WAVE_SAMPLE const *) pIn;
-		WAVE_SAMPLE * pOutBuf = (WAVE_SAMPLE *) pOut;
-
-		if (NULL == pInBuf)
-		{
-			if (NULL == m_pNrCore)
-			{
-				return 0;
-			}
-
-			while (0 != nOutSamples)
-			{
-				int TmpSamples = FlushSamples(tmp, std::min(unsigned(countof(tmp) / nChans), nOutSamples));
-
-				if (0 == TmpSamples)
-				{
-					break;
-				}
-
-				nOutSamples -= TmpSamples;
-				nStoredSamples += TmpSamples;
-				TmpSamples *= nChans;
-
-				for (int i = 0; i < TmpSamples; i++, pOutBuf++)
-				{
-					*pOutBuf = DoubleToShort(tmp[i]);
-				}
-			}
-			return nStoredSamples * SampleSize;
-		}
-
-		if (NULL == m_pNrCore)
-		{
-			*pUsedBytes = nInBytes;
-			return 0;
-		}
-
-		// process the samples
-		while (1)
-		{
-			int InputSamplesUsed = m_pNrCore->FillInBuffer(pInBuf, nInSamples);
-
-			pInBuf += InputSamplesUsed * nChans;
-			nInSamples -= InputSamplesUsed;
-			*pUsedBytes += InputSamplesUsed * SampleSize;
-
-			if (m_pNrCore->CanProcessFft())
-			{
-				// now we have enough samples to do FFT
-				m_pNrCore->AnalyseFft();
-				m_pNrCore->ProcessInverseFft();
-			}
-
-			// store the result
-			int nSavedSamples = 0;
-			while (0 != nOutSamples)
-			{
-				int TmpSamples = m_pNrCore->DrainOutBuffer(tmp, std::min(unsigned(countof(tmp) / nChans), nOutSamples));
-
-				if (0 == TmpSamples)
-				{
-					break;
-				}
-
-				nOutSamples -= TmpSamples;
-				nStoredSamples += TmpSamples;
-				nSavedSamples += TmpSamples;
-
-				TmpSamples *= nChans;
-				for (int i = 0; i < TmpSamples; i++, pOutBuf++)
-				{
-					*pOutBuf = DoubleToShort(tmp[i]);
-				}
-			}
-
-			if (0 == nSavedSamples && 0 == InputSamplesUsed)
-			{
-				// can do no more
-				break;
-			}
-		}
-
-		return SampleSize * nStoredSamples;
-	}
-private:
-	// assignment guard
-	CWaveConvertorProc(const CWaveConvertorProc &);
-	CWaveConvertorProc & operator =(const CWaveConvertorProc &);
+	double m_Volume[MAX_NUMBER_OF_CHANNELS];
 };
 
-#endif
+class CWaveMixProc : public CWaveProc
+{
+	typedef CWaveProc BaseClass;
+	typedef CWaveMixProc ThisClass;
+
+public:
+
+	typedef std::auto_ptr<ThisClass> auto_ptr;
+	CWaveMixProc()
+	{
+		m_InputSampleType = SampleTypeFloat32;
+	}
+
+protected:
+	void ProcessSampleValue(void const * pInSample, void * pOutSample, unsigned channel);
+	virtual double GetSrcMixCoefficient(SAMPLE_INDEX Sample, int Channel) const = 0;
+	virtual double GetDstMixCoefficient(SAMPLE_INDEX Sample, int Channel) const = 0;
+};
+
+enum { FadeInLinear = 1,
+	FadeOutLinear = -FadeInLinear,
+	FadeInSinSquared = 2,
+	FadeOutSinSquared = -FadeInSinSquared,
+	FadeInSine = 3,
+	FadeOutCosine = -FadeInSine,
+};
+
+class CFadeInOutProc : public CWaveMixProc
+{
+	typedef CWaveMixProc BaseClass;
+	typedef CFadeInOutProc ThisClass;
+
+public:
+
+	typedef std::auto_ptr<ThisClass> auto_ptr;
+	CFadeInOutProc(int FadeCurveType, NUMBER_OF_SAMPLES Length);
+	// init cross fade
+
+protected:
+	virtual double GetSrcMixCoefficient(SAMPLE_INDEX Sample, int Channel) const;
+	virtual double GetDstMixCoefficient(SAMPLE_INDEX Sample, int Channel) const;
+	int m_FadeCurveType;
+	NUMBER_OF_SAMPLES m_CurveLength;
+	CWaveFile m_SrcFile;
+};
 
 class CHumRemoval : public CWaveProc
 {
@@ -325,12 +292,14 @@ public:
 
 	CHumRemoval(WAVEFORMATEX const * pWf, CHANNEL_MASK ChannelsToProcess);
 
+#if 0
 	virtual size_t ProcessSoundBuffer(char const * pInBuf, char * pOutBuf,
 									size_t nInBytes, size_t nOutBytes, size_t * pUsedBytes);
-	virtual BOOL SetInputWaveformat(WAVEFORMATEX const * pWf);
+#endif
+	virtual void ProcessSoundSample(char const * pInSample, char * pOutSample, unsigned NumChannels);
 
 	double m_prev_out[MAX_NUMBER_OF_CHANNELS];
-	int m_prev_in[MAX_NUMBER_OF_CHANNELS];
+	double m_prev_in[MAX_NUMBER_OF_CHANNELS];
 
 	double m_PrevHpf[2][MAX_NUMBER_OF_CHANNELS];
 
@@ -403,8 +372,6 @@ public:
 
 	virtual size_t ProcessSoundBuffer(char const * pInBuf, char * pOutBuf,
 									size_t nInBytes, size_t nOutBytes, size_t * pUsedBytes);
-
-	virtual BOOL SetInputWaveformat(WAVEFORMATEX const * pWf);
 
 	void InterpolateGap(CBackBuffer<int, int> & data, int nLeftIndex, int InterpolateSamples, bool BigGap);
 	void InterpolateGap(WAVE_SAMPLE data[], int nLeftIndex, int ClickLength, int nChans, bool BigGap, int TotalSamples);
@@ -587,7 +554,7 @@ public:
 
 	virtual size_t ProcessSoundBuffer(char const * pInBuf, char * pOutBuf,
 									size_t nInBytes, size_t nOutBytes, size_t * pUsedBytes);
-	virtual BOOL SetInputWaveformat(WAVEFORMATEX const * pWf);
+	virtual BOOL SetInputWaveformat(CWaveFormat const & Wf);
 
 	NoiseReductionCore * m_pNrCore;
 	NoiseReductionParameters m_NrParms;
@@ -603,14 +570,17 @@ public:
 	typedef std::auto_ptr<ThisClass> auto_ptr;
 
 	CBatchProcessing()
-		:m_bAutoDeleteProcs(FALSE)
+		:m_bAutoDeleteProcs(false), m_BackwardPass(false)
 	{}
 	virtual ~CBatchProcessing();
 	virtual void Dump(unsigned indent=0) const;
 
 	virtual size_t ProcessSoundBuffer(char const * pInBuf, char * pOutBuf,
 									size_t nInBytes, size_t nOutBytes, size_t * pUsedBytes);
-	virtual BOOL SetInputWaveformat(WAVEFORMATEX const * pWf);
+
+	virtual BOOL SetInputWaveformat(CWaveFormat const & Wf);
+	virtual BOOL SetOutputWaveformat(CWaveFormat const & Wf);
+	virtual bool SetChannelsToProcess(CHANNEL_MASK channels);
 
 	// if input data is compressed and not sample-aligned, this could be 0
 	// it can be multiple of block size for compressed format
@@ -630,18 +600,44 @@ public:
 
 	virtual BOOL Init();
 	virtual void DeInit();
+	void SetBackwardPass(bool backward)
+	{
+		m_BackwardPass = backward;
+	}
 
-	BOOL m_bAutoDeleteProcs;
+	bool m_bAutoDeleteProcs;
+	bool m_BackwardPass;
 protected:
+	enum {IntermediateBufSize = 0x1000};
 	struct Item
 	{
 		CWaveProc * Proc;
-		char * Buf;
-		int BufGetIndex;
-		int BufPutIndex;
+		char * InBuf;             // temporary intermediate buffer for this stage input data
+		char * OutBuf;             // temporary intermediate buffer for this stage output data. If no format conversion necessary,
+		// the last stage may place directly to the output buffer
+		unsigned InBufGetIndex;
+		unsigned InBufPutIndex;
+		unsigned OutBufGetIndex;
+		unsigned OutBufPutIndex;
+		int Flags;
+		// implement destructive copy operator and assignment constructor
+		~Item();
+		Item();
+
+		Item(CWaveProc * proc);
+		Item(Item & item);
+		Item & operator =(Item& item);
+
+		unsigned FillInputBuffer(const char * Buf, unsigned BufFilled, CWaveFormat const * pWf); // returns number bytes used
+		unsigned FillOutputBuffer(char * Buf, unsigned BufFree, CWaveFormat const * pWf); // returns number bytes used
+
+	private:
+		//Item(Item const & item);
+		//Item & operator =(Item const& item);
 	};
-	enum {IntermediateBufSize = 0x1000};
-	CArray<Item, Item&> m_Stages;
+	std::vector<Item> m_Stages;
+	typedef std::vector<Item>::iterator item_iterator;
+	typedef std::vector<Item>::const_iterator item_iterator_const;
 };
 
 class CResampleFilter: public CWaveProc
@@ -659,7 +655,7 @@ public:
 
 	virtual size_t ProcessSoundBuffer(char const * pInBuf, char * pOutBuf,
 									size_t nInBytes, size_t nOutBytes, size_t * pUsedBytes);
-	virtual BOOL SetInputWaveformat(WAVEFORMATEX const * pWf);
+	virtual BOOL SetInputWaveformat(CWaveFormat const & Wf);
 
 	void InitResample(long OriginalSampleRate, long NewSampleRate, int FilterLength,
 					NUMBER_OF_CHANNELS nChannels, BOOL KeepSamplesPerSec);
@@ -736,7 +732,7 @@ public:
 	CAudioConvertor(HACMDRIVER had = NULL);
 	virtual ~CAudioConvertor();
 	BOOL InitConversion(WAVEFORMATEX const * SrcFormat, WAVEFORMATEX const * DstFormat);
-	virtual BOOL SetInputWaveformat(WAVEFORMATEX const * pWf);
+	virtual BOOL SetInputWaveformat(CWaveFormat const & Wf);
 
 	// if input data is compressed and not sample-aligned, this should be 0
 	// it can be multiple of block size for compressed format
@@ -773,7 +769,7 @@ public:
 	CChannelConvertor(NUMBER_OF_CHANNELS OldChannels,
 					NUMBER_OF_CHANNELS NewChannels, CHANNEL_MASK ChannelsToProcess);
 
-	virtual BOOL SetInputWaveformat(WAVEFORMATEX const * pWf);
+	virtual BOOL SetInputWaveformat(CWaveFormat const & Wf);
 	// conversion either mono->stereo, or stereo->mono.
 	// if converting stereo->mono, the data can be left, right, or average
 	virtual size_t ProcessSoundBuffer(char const * pInBuf, char * pOutBuf,

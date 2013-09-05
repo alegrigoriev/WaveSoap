@@ -31,7 +31,7 @@ CRawFileParametersDlg::CRawFileParametersDlg(ULONGLONG Length,
 	}
 	else if (m_HeaderLength > Length - 4)
 	{
-		m_HeaderLength = Length - 4;
+		m_HeaderLength = DWORD(Length - 4);
 	}
 
 	m_TrailerLength = DWORD(std::min<ULONGLONG>(pParams->RawFileTrailerLength, Length - 4 - m_HeaderLength));

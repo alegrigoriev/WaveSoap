@@ -6,9 +6,9 @@
 #define _USE_MATH_DEFINES   // for M_PI definition
 #include "WaveSoapFront.h"
 #include "resource.h"
-#include "OperationDialogs.h"
 #include "OperationContext.h"
 #include "OperationContext2.h"
+#include "OperationDialogs.h"
 #include "MainFrm.h"
 #include "SaveExpressionDialog.h"
 #include "DialogWithSelection.inl"
@@ -1284,9 +1284,9 @@ BOOL CStatisticsDialog::OnInitDialog()
 	m_FileName.SetWindowText(s);
 
 	int nSampleSize = m_pContext->m_DstFile.SampleSize();
-	long nSamples =
-		(m_pContext->m_DstPos - m_pContext->m_DstStart)
-		/ nSampleSize;
+
+	NUMBER_OF_SAMPLES nSamples = NUMBER_OF_SAMPLES((m_pContext->m_DstPos - m_pContext->m_DstStart) / nSampleSize);
+
 	if (0 == nSamples)
 	{
 		nSamples = 1;
@@ -1316,43 +1316,43 @@ BOOL CStatisticsDialog::OnInitDialog()
 	{
 		AtCursorDb = _T("-Inf.");
 	}
-	if (m_pContext->m_MinLeft != 0)
+	if (m_pContext->m_Proc.m_Min[0] != 0)
 	{
-		MinDb.Format(_T("%.2f"), 20. * log10(abs(m_pContext->m_MinLeft) / 32768.));
+		MinDb.Format(_T("%.2f"), 20. * log10(abs(m_pContext->m_Proc.m_Min[0]) / 32768.));
 	}
 	else
 	{
 		MinDb = _T("-Inf.");
 	}
-	if (m_pContext->m_MaxLeft != 0)
+	if (m_pContext->m_Proc.m_Max[0] != 0)
 	{
-		MaxDb.Format(_T("%.2f"), 20. * log10(abs(m_pContext->m_MaxLeft) / 32768.));
+		MaxDb.Format(_T("%.2f"), 20. * log10(abs(m_pContext->m_Proc.m_Max[0]) / 32768.));
 	}
 	else
 	{
 		MaxDb = _T("-Inf.");
 	}
-	if (m_pContext->m_EnergyLeft != 0)
+	if (m_pContext->m_Proc.m_Energy[0] != 0)
 	{
 		RmsDb.Format(_T("%.2f"),
-					10. * log10(fabs(double(m_pContext->m_EnergyLeft)) / (nSamples * 1073741824.)));
+					10. * log10(fabs(double(m_pContext->m_Proc.m_Energy[0])) / (nSamples * 1073741824.)));
 	}
 	else
 	{
 		RmsDb = _T("-Inf.");
 	}
-	if (m_pContext->m_SumLeft / nSamples != 0)
+	if (m_pContext->m_Proc.m_Sum[0] / nSamples != 0)
 	{
 		DcDb.Format(_T("%.2f"),
-					20. * log10(fabs(double(m_pContext->m_SumLeft) / nSamples) / 32768.));
+					20. * log10(fabs(double(m_pContext->m_Proc.m_Sum[0]) / nSamples) / 32768.));
 	}
 	else
 	{
 		DcDb = _T("-Inf.");
 	}
 
-	SAMPLE_INDEX MinPosSample = m_pContext->m_DstFile.PositionToSample(m_pContext->m_PosMinLeft);
-	SAMPLE_INDEX MaxPosSample = m_pContext->m_DstFile.PositionToSample(m_pContext->m_PosMaxLeft);
+	SAMPLE_INDEX MinPosSample = m_pContext->m_Proc.m_PosMin[0];
+	SAMPLE_INDEX MaxPosSample = m_pContext->m_Proc.m_PosMax[0];
 	_stprintf_s(s.GetBuffer(1024), 1025, format,
 				//%s (%s)\r\n"
 				LPCTSTR(SampleToString(m_CaretPosition, m_SamplesPerSec,
@@ -1369,8 +1369,8 @@ BOOL CStatisticsDialog::OnInitDialog()
 				LPCTSTR(SampleToString(MinPosSample, m_SamplesPerSec, SampleToString_Sample)),
 
 				//"%s (%.2f dB; %.2f%%)\r\n"
-				LPCTSTR(LtoaCS(m_pContext->m_MinLeft)), LPCTSTR(MinDb),
-				m_pContext->m_MinLeft / 327.68,
+				LPCTSTR(LtoaCS(m_pContext->m_Proc.m_Min[0])), LPCTSTR(MinDb),
+				m_pContext->m_Proc.m_Min[0] / 327.68,
 
 				//"%s (%s)\r\n"
 				LPCTSTR(SampleToString(MaxPosSample, m_SamplesPerSec,
@@ -1378,22 +1378,22 @@ BOOL CStatisticsDialog::OnInitDialog()
 				LPCTSTR(SampleToString(MaxPosSample, m_SamplesPerSec, SampleToString_Sample)),
 
 				//"%s (%.2f dB; %.2f%%)\r\n"
-				LPCTSTR(LtoaCS(m_pContext->m_MaxLeft)),
-				LPCTSTR(MaxDb), m_pContext->m_MaxLeft / 327.68,
+				LPCTSTR(LtoaCS(m_pContext->m_Proc.m_Max[0])),
+				LPCTSTR(MaxDb), m_pContext->m_Proc.m_Max[0] / 327.68,
 
 				//"%.2f dB (%.2f%%)\r\n"
 				// RMS
 				LPCTSTR(RmsDb),
-				100. * sqrt(fabs(double(m_pContext->m_EnergyLeft)) / (nSamples * 1073741824.)),
+				100. * sqrt(fabs(double(m_pContext->m_Proc.m_Energy[0])) / (nSamples * 1073741824.)),
 				//"%s (%.2f dB; %.2f%%)\r\n"
-				LPCTSTR(LtoaCS(long(m_pContext->m_SumLeft / nSamples))),
-				LPCTSTR(DcDb), (m_pContext->m_SumLeft / nSamples) / 327.68,
+				LPCTSTR(LtoaCS(long(m_pContext->m_Proc.m_Sum[0] / nSamples))),
+				LPCTSTR(DcDb), (m_pContext->m_Proc.m_Sum[0] / nSamples) / 327.68,
 				//"%.2f Hz\r\n\r\n"
 				// zero crossing
-				m_pContext->m_ZeroCrossingLeft / double(nSamples) * m_SamplesPerSec,
+				m_pContext->m_Proc.m_ZeroCrossing[0] / double(nSamples) * m_SamplesPerSec,
 				// %08X
-				m_pContext->m_CRC32Left,
-				m_pContext->m_Checksum
+				m_pContext->m_Proc.m_CRC32[0],
+				m_pContext->m_Proc.m_Checksum
 				);
 	s.ReleaseBuffer();
 	SetDlgItemText(IDC_EDIT_LEFT, s);
@@ -1409,43 +1409,43 @@ BOOL CStatisticsDialog::OnInitDialog()
 		{
 			AtCursorDb = _T("-Inf.");
 		}
-		if (m_pContext->m_MinRight != 0)
+		if (m_pContext->m_Proc.m_Min[1] != 0)
 		{
-			MinDb.Format(_T("%.2f"), 20. * log10(fabs(double(m_pContext->m_MinRight)) / 32768.));
+			MinDb.Format(_T("%.2f"), 20. * log10(fabs(double(m_pContext->m_Proc.m_Min[1])) / 32768.));
 		}
 		else
 		{
 			MinDb = _T("-Inf.");
 		}
-		if (m_pContext->m_MaxRight != 0)
+		if (m_pContext->m_Proc.m_Max[1] != 0)
 		{
-			MaxDb.Format(_T("%.2f"), 20. * log10(fabs(double(m_pContext->m_MaxRight)) / 32768.));
+			MaxDb.Format(_T("%.2f"), 20. * log10(fabs(double(m_pContext->m_Proc.m_Max[1])) / 32768.));
 		}
 		else
 		{
 			MaxDb = _T("-Inf.");
 		}
-		if (m_pContext->m_EnergyRight != 0)
+		if (m_pContext->m_Proc.m_Energy[1] != 0)
 		{
 			RmsDb.Format(_T("%.2f"),
-						10. * log10(fabs(double(m_pContext->m_EnergyRight)) / (nSamples * 1073741824.)));
+						10. * log10(fabs(double(m_pContext->m_Proc.m_Energy[1])) / (nSamples * 1073741824.)));
 		}
 		else
 		{
 			RmsDb = _T("-Inf.");
 		}
-		if (m_pContext->m_SumRight / nSamples != 0)
+		if (m_pContext->m_Proc.m_Sum[1] / nSamples != 0)
 		{
 			DcDb.Format(_T("%.2f"),
-						20. * log10(fabs(double(m_pContext->m_SumRight) / nSamples) / 32768.));
+						20. * log10(fabs(double(m_pContext->m_Proc.m_Sum[1]) / nSamples) / 32768.));
 		}
 		else
 		{
 			DcDb = _T("-Inf.");
 		}
 
-		MinPosSample = m_pContext->m_DstFile.PositionToSample(m_pContext->m_PosMinRight);
-		MaxPosSample = m_pContext->m_DstFile.PositionToSample(m_pContext->m_PosMaxRight);
+		MinPosSample = m_pContext->m_Proc.m_PosMin[1];
+		MaxPosSample = m_pContext->m_Proc.m_PosMax[1];
 
 		_stprintf_s(s.GetBuffer(1024), 1025, formatRight,
 					//%s (%s)\r\n"
@@ -1463,8 +1463,8 @@ BOOL CStatisticsDialog::OnInitDialog()
 					LPCTSTR(SampleToString(MinPosSample, m_SamplesPerSec, SampleToString_Sample)),
 
 					//"%s (%.2f dB; %.2f%%)\r\n"
-					LPCTSTR(LtoaCS(m_pContext->m_MinRight)), LPCTSTR(MinDb),
-					m_pContext->m_MinRight / 327.68,
+					LPCTSTR(LtoaCS(m_pContext->m_Proc.m_Min[1])), LPCTSTR(MinDb),
+					m_pContext->m_Proc.m_Min[1] / 327.68,
 
 					//"%s (%s)\r\n"
 					LPCTSTR(SampleToString(MaxPosSample, m_SamplesPerSec,
@@ -1472,23 +1472,23 @@ BOOL CStatisticsDialog::OnInitDialog()
 					LPCTSTR(SampleToString(MaxPosSample, m_SamplesPerSec, SampleToString_Sample)),
 
 					//"%s (%.2f dB; %.2f%%)\r\n"
-					LPCTSTR(LtoaCS(m_pContext->m_MaxRight)),
-					LPCTSTR(MaxDb), m_pContext->m_MaxRight / 327.68,
+					LPCTSTR(LtoaCS(m_pContext->m_Proc.m_Max[1])),
+					LPCTSTR(MaxDb), m_pContext->m_Proc.m_Max[1] / 327.68,
 
 					//"%.2f dB (%.2f%%)\r\n"
 					// RMS
 					LPCTSTR(RmsDb),
-					100. * sqrt(fabs(double(m_pContext->m_EnergyRight)) / (nSamples * 1073741824.)),
+					100. * sqrt(fabs(double(m_pContext->m_Proc.m_Energy[1])) / (nSamples * 1073741824.)),
 					//"%s (%.2f dB; %.2f%%)\r\n"
-					LPCTSTR(LtoaCS(long(double(m_pContext->m_SumRight) / nSamples))),
-					LPCTSTR(DcDb), (double(m_pContext->m_SumRight) / nSamples) / 327.68,
+					LPCTSTR(LtoaCS(long(double(m_pContext->m_Proc.m_Sum[1]) / nSamples))),
+					LPCTSTR(DcDb), (double(m_pContext->m_Proc.m_Sum[1]) / nSamples) / 327.68,
 					//"%.2f Hz"
 					// zero crossing
-					m_pContext->m_ZeroCrossingRight / double(nSamples) * m_SamplesPerSec,
+					m_pContext->m_Proc.m_ZeroCrossing[1] / double(nSamples) * m_SamplesPerSec,
 					// %08X\r\n
-					m_pContext->m_CRC32Right,
+					m_pContext->m_Proc.m_CRC32[1],
 					// %08X
-					m_pContext->m_CRC32Common
+					m_pContext->m_Proc.m_CRC32Common
 					);
 
 		s.ReleaseBuffer();
@@ -2037,149 +2037,6 @@ BOOL CLowFrequencySuppressDialog::OnInitDialog()
 	return TRUE;  // return TRUE unless you set the focus to a control
 	// EXCEPTION: OCX Property Pages should return FALSE
 }
-/////////////////////////////////////////////////////////////////////////////
-// CExpressionEvaluationDialog dialog
-
-
-CExpressionEvaluationDialog::CExpressionEvaluationDialog(SAMPLE_INDEX begin,
-														SAMPLE_INDEX end, SAMPLE_INDEX caret,
-														CHANNEL_MASK Channels,
-														CWaveFile & File,
-														BOOL ChannelsLocked, BOOL UndoEnabled,
-														int TimeFormat,
-														CExpressionEvaluationContext * pContext,
-														CWnd* pParent /*=NULL*/)
-	: BaseClass(begin, end, caret, Channels, File,
-				TimeFormat,
-				IDD, pParent, TRUE),
-	m_ExpressionGroupSelected(0),
-	m_ExpressionSelected(0),
-	m_ExpressionTabSelected(0),
-	m_pContext(pContext)
-{
-	m_bUndo = UndoEnabled;
-	m_bLockChannels = ChannelsLocked;
-	//{{AFX_DATA_INIT(CExpressionEvaluationDialog)
-	//}}AFX_DATA_INIT
-}
-
-CExpressionEvaluationDialog::~CExpressionEvaluationDialog()
-{
-	delete m_pContext;
-}
-
-void CExpressionEvaluationDialog::DoDataExchange(CDataExchange* pDX)
-{
-	BaseClass::DoDataExchange(pDX);
-	//{{AFX_DATA_MAP(CExpressionEvaluationDialog)
-	DDX_Control(pDX, IDC_TAB_TOKENS, m_TabTokens);
-	DDX_Control(pDX, IDC_EDIT_EXPRESSION, m_eExpression);
-	DDX_Check(pDX, IDC_CHECK_UNDO, m_bUndo);
-	DDX_Text(pDX, IDC_EDIT_EXPRESSION, m_sExpression);
-	//}}AFX_DATA_MAP
-	if (pDX->m_bSaveAndValidate)
-	{
-		m_Profile.UnloadAll();
-	}
-}
-
-
-BEGIN_MESSAGE_MAP(CExpressionEvaluationDialog, BaseClass)
-	//{{AFX_MSG_MAP(CExpressionEvaluationDialog)
-	ON_NOTIFY(TCN_SELCHANGE, IDC_TAB_TOKENS, OnSelchangeTabTokens)
-	ON_BN_CLICKED(IDC_BUTTON_SAVEAS, OnButtonSaveExpressionAs)
-	ON_EN_CHANGE(IDC_EDIT_EXPRESSION, OnChangeEditExpression)
-	//}}AFX_MSG_MAP
-#if 0
-	ON_COMMAND_EX(IDC_BUTTON_SIN, OnButtonText)
-	ON_COMMAND_EX(IDC_BUTTON_COS, OnButtonText)
-	ON_COMMAND_EX(IDC_BUTTON_TAN, OnButtonText)
-	ON_COMMAND_EX(IDC_BUTTON_SINH, OnButtonText)
-	ON_COMMAND_EX(IDC_BUTTON_COSH, OnButtonText)
-	ON_COMMAND_EX(IDC_BUTTON_TANH, OnButtonText)
-	ON_COMMAND_EX(IDC_BUTTON_EXP, OnButtonText)
-	ON_COMMAND_EX(IDC_BUTTON_LN, OnButtonText)
-	ON_COMMAND_EX(IDC_BUTTON_EXP10, OnButtonText)
-	ON_COMMAND_EX(IDC_BUTTON_LOG10, OnButtonText)
-	ON_COMMAND_EX(IDC_BUTTON_SQRT, OnButtonText)
-	ON_COMMAND_EX(IDC_BUTTON_ABS, OnButtonText)
-	ON_COMMAND_EX(IDC_BUTTON_INT, OnButtonText)
-	ON_COMMAND_EX(IDC_BUTTON_POW, OnButtonText)
-	ON_COMMAND_EX(IDC_BUTTON_NOISE, OnButtonText)
-	ON_COMMAND_EX(IDC_BUTTON_PI, OnButtonText)
-	ON_COMMAND_EX(IDC_BUTTON_T, OnButtonText)
-	ON_COMMAND_EX(IDC_BUTTON_LC_T, OnButtonText)
-	ON_COMMAND_EX(IDC_BUTTON_DT, OnButtonText)
-	ON_COMMAND_EX(IDC_BUTTON_LC_DT, OnButtonText)
-	ON_COMMAND_EX(IDC_BUTTON_DN, OnButtonText)
-	ON_COMMAND_EX(IDC_BUTTON_LC_DN, OnButtonText)
-	ON_COMMAND_EX(IDC_BUTTON_F, OnButtonText)
-	ON_COMMAND_EX(IDC_BUTTON_LC_F, OnButtonText)
-	ON_COMMAND_EX(IDC_BUTTON_WAVE, OnButtonText)
-	ON_COMMAND_EX(IDC_BUTTON_PLUS, OnButtonText)
-	ON_COMMAND_EX(IDC_BUTTON_MINUS, OnButtonText)
-	ON_COMMAND_EX(IDC_BUTTON_MULTIPLY, OnButtonText)
-	ON_COMMAND_EX(IDC_BUTTON_DIVIDE, OnButtonText)
-	ON_COMMAND_EX(IDC_BUTTON_MODULE, OnButtonText)
-	ON_COMMAND_EX(IDC_BUTTON_AND, OnButtonText)
-	ON_COMMAND_EX(IDC_BUTTON_OR, OnButtonText)
-	ON_COMMAND_EX(IDC_BUTTON_XOR, OnButtonText)
-	ON_COMMAND_EX(IDC_BUTTON_INVERSE, OnButtonText)
-	//ON_COMMAND_EX(IDC_BUTTON_, OnButtonText)
-#else
-	ON_COMMAND_EX_RANGE(IDC_BUTTON_SIN, IDC_BUTTON_INVERSE, OnButtonText)
-#endif
-	ON_UPDATE_COMMAND_UI(IDOK, OnUpdateOk)
-	ON_UPDATE_COMMAND_UI(IDC_BUTTON_SAVEAS, OnUpdateSaveAs)
-END_MESSAGE_MAP()
-
-/////////////////////////////////////////////////////////////////////////////
-// CExpressionEvaluationDialog message handlers
-BOOL CExpressionEvaluationDialog::OnButtonText(UINT id)
-{
-	TRACE("CExpressionEvaluationDialog::OnButtonText(%X)\n", id);
-	CString s;
-	if (s.LoadString(id))
-	{
-		CString Substr;
-		AfxExtractSubString(Substr, s, 0, '\n');
-
-		m_eExpression.ReplaceSel(Substr, TRUE);
-		m_eExpression.SetFocus();
-		return TRUE;
-	}
-	return FALSE;
-}
-
-void CExpressionEvaluationDialog::OnOK()
-{
-	if (! m_OperandsTabDlg.UpdateData(TRUE)
-		|| ! m_SavedExprTabDlg.UpdateData(TRUE)
-		|| !UpdateData(TRUE))
-	{
-		TRACE("UpdateData failed during dialog termination.\n");
-		// the UpdateData routine will set focus to correct item
-		return;
-	}
-	if (NULL != m_pContext)
-	{
-		//CString expr;
-		//m_eExpression.GetWindowText(expr);
-		LPCTSTR str = m_sExpression;
-		LPCTSTR str1 = str;
-		if ( ! m_pContext->SetExpression( & str))
-		{
-			AfxMessageBox(m_pContext->m_ErrorString);
-			int pos = str - str1;
-			m_eExpression.SetFocus();
-			m_eExpression.SetSel(pos, pos, FALSE);
-			return;
-		}
-	}
-
-	EndDialog(IDOK);
-}
-
 /////////////////////////////////////////////////////////////////////////////
 // CDeclickDialog dialog
 CDeclickDialog::CDeclickDialog(SAMPLE_INDEX begin, SAMPLE_INDEX end, SAMPLE_INDEX caret,
@@ -2841,6 +2698,144 @@ void CNoiseReductionDialog::OnButtonRevert()
 }
 
 ///////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////
+// CExpressionEvaluationDialog dialog
+
+
+CExpressionEvaluationDialog::CExpressionEvaluationDialog(SAMPLE_INDEX begin,
+														SAMPLE_INDEX end, SAMPLE_INDEX caret,
+														CHANNEL_MASK Channels,
+														CWaveFile & File,
+														BOOL ChannelsLocked, BOOL UndoEnabled,
+														int TimeFormat,
+														CExpressionEvaluationProc * pProc,
+														CWnd* pParent /*=NULL*/)
+	: BaseClass(begin, end, caret, Channels, File,
+				TimeFormat,
+				IDD, pParent, TRUE),
+	m_ExpressionGroupSelected(0),
+	m_ExpressionSelected(0),
+	m_ExpressionTabSelected(0),
+	m_pProc(pProc)
+{
+	m_bUndo = UndoEnabled;
+	m_bLockChannels = ChannelsLocked;
+	//{{AFX_DATA_INIT(CExpressionEvaluationDialog)
+	//}}AFX_DATA_INIT
+}
+
+CExpressionEvaluationDialog::~CExpressionEvaluationDialog()
+{
+}
+
+void CExpressionEvaluationDialog::DoDataExchange(CDataExchange* pDX)
+{
+	BaseClass::DoDataExchange(pDX);
+	//{{AFX_DATA_MAP(CExpressionEvaluationDialog)
+	DDX_Control(pDX, IDC_TAB_TOKENS, m_TabTokens);
+	DDX_Control(pDX, IDC_EDIT_EXPRESSION, m_eExpression);
+	DDX_Check(pDX, IDC_CHECK_UNDO, m_bUndo);
+	DDX_Text(pDX, IDC_EDIT_EXPRESSION, m_sExpression);
+	//}}AFX_DATA_MAP
+	if (pDX->m_bSaveAndValidate)
+	{
+		m_Profile.UnloadAll();
+	}
+}
+
+
+BEGIN_MESSAGE_MAP(CExpressionEvaluationDialog, BaseClass)
+	//{{AFX_MSG_MAP(CExpressionEvaluationDialog)
+	ON_NOTIFY(TCN_SELCHANGE, IDC_TAB_TOKENS, OnSelchangeTabTokens)
+	ON_BN_CLICKED(IDC_BUTTON_SAVEAS, OnButtonSaveExpressionAs)
+	ON_EN_CHANGE(IDC_EDIT_EXPRESSION, OnChangeEditExpression)
+	//}}AFX_MSG_MAP
+#if 0
+	ON_COMMAND_EX(IDC_BUTTON_SIN, OnButtonText)
+	ON_COMMAND_EX(IDC_BUTTON_COS, OnButtonText)
+	ON_COMMAND_EX(IDC_BUTTON_TAN, OnButtonText)
+	ON_COMMAND_EX(IDC_BUTTON_SINH, OnButtonText)
+	ON_COMMAND_EX(IDC_BUTTON_COSH, OnButtonText)
+	ON_COMMAND_EX(IDC_BUTTON_TANH, OnButtonText)
+	ON_COMMAND_EX(IDC_BUTTON_EXP, OnButtonText)
+	ON_COMMAND_EX(IDC_BUTTON_LN, OnButtonText)
+	ON_COMMAND_EX(IDC_BUTTON_EXP10, OnButtonText)
+	ON_COMMAND_EX(IDC_BUTTON_LOG10, OnButtonText)
+	ON_COMMAND_EX(IDC_BUTTON_SQRT, OnButtonText)
+	ON_COMMAND_EX(IDC_BUTTON_ABS, OnButtonText)
+	ON_COMMAND_EX(IDC_BUTTON_INT, OnButtonText)
+	ON_COMMAND_EX(IDC_BUTTON_POW, OnButtonText)
+	ON_COMMAND_EX(IDC_BUTTON_NOISE, OnButtonText)
+	ON_COMMAND_EX(IDC_BUTTON_PI, OnButtonText)
+	ON_COMMAND_EX(IDC_BUTTON_T, OnButtonText)
+	ON_COMMAND_EX(IDC_BUTTON_LC_T, OnButtonText)
+	ON_COMMAND_EX(IDC_BUTTON_DT, OnButtonText)
+	ON_COMMAND_EX(IDC_BUTTON_LC_DT, OnButtonText)
+	ON_COMMAND_EX(IDC_BUTTON_DN, OnButtonText)
+	ON_COMMAND_EX(IDC_BUTTON_LC_DN, OnButtonText)
+	ON_COMMAND_EX(IDC_BUTTON_F, OnButtonText)
+	ON_COMMAND_EX(IDC_BUTTON_LC_F, OnButtonText)
+	ON_COMMAND_EX(IDC_BUTTON_WAVE, OnButtonText)
+	ON_COMMAND_EX(IDC_BUTTON_PLUS, OnButtonText)
+	ON_COMMAND_EX(IDC_BUTTON_MINUS, OnButtonText)
+	ON_COMMAND_EX(IDC_BUTTON_MULTIPLY, OnButtonText)
+	ON_COMMAND_EX(IDC_BUTTON_DIVIDE, OnButtonText)
+	ON_COMMAND_EX(IDC_BUTTON_MODULE, OnButtonText)
+	ON_COMMAND_EX(IDC_BUTTON_AND, OnButtonText)
+	ON_COMMAND_EX(IDC_BUTTON_OR, OnButtonText)
+	ON_COMMAND_EX(IDC_BUTTON_XOR, OnButtonText)
+	ON_COMMAND_EX(IDC_BUTTON_INVERSE, OnButtonText)
+	//ON_COMMAND_EX(IDC_BUTTON_, OnButtonText)
+#else
+	ON_COMMAND_EX_RANGE(IDC_BUTTON_SIN, IDC_BUTTON_INVERSE, OnButtonText)
+#endif
+	ON_UPDATE_COMMAND_UI(IDOK, OnUpdateOk)
+	ON_UPDATE_COMMAND_UI(IDC_BUTTON_SAVEAS, OnUpdateSaveAs)
+END_MESSAGE_MAP()
+
+/////////////////////////////////////////////////////////////////////////////
+// CExpressionEvaluationDialog message handlers
+BOOL CExpressionEvaluationDialog::OnButtonText(UINT id)
+{
+	TRACE("CExpressionEvaluationDialog::OnButtonText(%X)\n", id);
+	CString s;
+	if (s.LoadString(id))
+	{
+		CString Substr;
+		AfxExtractSubString(Substr, s, 0, '\n');
+
+		m_eExpression.ReplaceSel(Substr, TRUE);
+		m_eExpression.SetFocus();
+		return TRUE;
+	}
+	return FALSE;
+}
+
+void CExpressionEvaluationDialog::OnOK()
+{
+	if (! m_OperandsTabDlg.UpdateData(TRUE)
+		|| ! m_SavedExprTabDlg.UpdateData(TRUE)
+		|| !UpdateData(TRUE))
+	{
+		TRACE("UpdateData failed during dialog termination.\n");
+		// the UpdateData routine will set focus to correct item
+		return;
+	}
+
+	LPCTSTR str = m_sExpression;
+	LPCTSTR str1 = str;
+	if ( ! m_pProc->SetExpression( & str))
+	{
+		AfxMessageBox(m_pProc->m_ErrorString);
+		int pos = str - str1;
+		m_eExpression.SetFocus();
+		m_eExpression.SetSel(pos, pos, FALSE);
+		return;
+	}
+
+	EndDialog(IDOK);
+}
+
 void CExpressionEvaluationDialog::OnSelchangeTabTokens(NMHDR* /*pNMHDR*/, LRESULT* pResult)
 {
 	ShowHideTabDialogs();
@@ -2948,68 +2943,13 @@ LRESULT CExpressionEvaluationDialog::OnKickIdle(WPARAM w, LPARAM l)
 	return BaseClass::OnKickIdle(w, l);
 }
 
-COperationContext * CExpressionEvaluationDialog::GetExpressionContext()
+CExpressionEvaluationProc * CExpressionEvaluationDialog::GetExpression()
 {
-	if (NULL == m_pContext)
-	{
-		return NULL;
-	}
+	m_pProc->m_dFrequencyArgument = m_OperandsTabDlg.m_dFrequency;
+	m_pProc->m_dFrequencyArgument1 = m_OperandsTabDlg.m_dFrequency1;
+	m_pProc->m_dFrequencyArgument2 = m_OperandsTabDlg.m_dFrequency2;
+	m_pProc->m_dFrequencyArgument3 = m_OperandsTabDlg.m_dFrequency3;
 
-	m_pContext->m_dFrequencyArgument = m_OperandsTabDlg.m_dFrequency;
-	m_pContext->m_dFrequencyArgument1 = m_OperandsTabDlg.m_dFrequency1;
-	m_pContext->m_dFrequencyArgument2 = m_OperandsTabDlg.m_dFrequency2;
-	m_pContext->m_dFrequencyArgument3 = m_OperandsTabDlg.m_dFrequency3;
-
-	if ( ! m_pContext->InitDestination(m_WaveFile,
-										GetStart(), GetEnd(), GetChannel(), FALSE))
-	{
-		return NULL;
-	}
-
-	NUMBER_OF_SAMPLES const NumSamples = m_WaveFile.NumberOfSamples();
-	NUMBER_OF_SAMPLES const Length = GetEnd() - GetStart();
-
-	CStagedContext::auto_ptr pStagedContext(new CStagedContext(m_pContext->m_pDocument, 0,
-																IDS_EXPRESSION_STATUS_PROMPT, IDS_EXPRESSION_OPERATION_NAME));
-
-	if (GetEnd() > NumSamples)
-	{
-		// move markers and delete those inside the changed area (only if all channels are changed)
-		{
-			pStagedContext->InitMoveMarkers(m_WaveFile, GetStart(), NumSamples - GetStart(), Length);
-		}
-
-		if ( ! pStagedContext->InitExpandOperation(m_WaveFile, NumSamples, GetEnd() - NumSamples, GetChannel()))
-		{
-			return NULL;
-		}
-
-		m_pContext->SetSaveForUndo(GetStart(), NumSamples);
-		CSaveTrimmedOperation * pSave = new CSaveTrimmedOperation(m_pContext->m_pDocument,
-																m_pContext->m_DstFile, NumSamples, GetEnd(), GetChannel());
-		m_pContext->m_UndoChain.InsertHead(pSave);
-	}
-	else
-	{
-		if (m_WaveFile.AllChannels(GetChannel()))
-		{
-			// delete markers inside the changed area, if all channels are changed
-			pStagedContext->InitMoveMarkers(m_WaveFile, GetStart(), Length, Length);
-		}
-
-		m_pContext->SetSaveForUndo(GetStart(), GetEnd());
-	}
-
-	pStagedContext->AddContext(m_pContext);
-
-	m_pContext = NULL;
-
-	if (UndoEnabled()
-		&& ! pStagedContext->CreateUndo())
-	{
-		return NULL;
-	}
-
-	return pStagedContext.release();
+	return m_pProc.release();
 }
 

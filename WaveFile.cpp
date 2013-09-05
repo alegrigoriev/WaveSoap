@@ -271,7 +271,7 @@ void CMmioFile::Close( )
 BOOL CMmioFile::Descend(MMCKINFO & ck, LPMMCKINFO lpckParent, UINT uFlags)
 {
 	if ( ! IsOpen()
-		|| (NULL != lpckParent && GetFilePointer() < lpckParent->dwDataOffset))
+		|| (NULL != lpckParent && (MEDIA_FILE_POSITION)GetFilePointer() < lpckParent->dwDataOffset))
 	{
 		return FALSE;
 	}
@@ -292,7 +292,7 @@ BOOL CMmioFile::Descend(MMCKINFO & ck, LPMMCKINFO lpckParent, UINT uFlags)
 
 	// uFlags can be: MMIO_FINDCHUNK, MMIO_FINDLIST, MMIO_FINDRIFF
 	while (NULL == lpckParent
-			|| GetFilePointer() + 8 <= lpckParent->dwDataOffset + lpckParent->cksize)
+			|| (MEDIA_FILE_POSITION)GetFilePointer() + 8 <= lpckParent->dwDataOffset + lpckParent->cksize)
 	{
 		DWORD ckhdr[2];
 		if (sizeof (ckhdr) != Read(ckhdr, sizeof ckhdr))
@@ -2741,7 +2741,7 @@ WavePeak * CWavePeaks::AllocatePeakData(NUMBER_OF_SAMPLES NewNumberOfSamples,
 	return m_pPeaks;
 }
 
-void CWaveFile::SetPeakData(PEAK_INDEX index, WAVE_SAMPLE low, WAVE_SAMPLE high)
+void CWaveFile::SetPeakData(PEAK_INDEX index, WAVE_PEAK low, WAVE_PEAK high)
 {
 	CWavePeaks * pPeaks = GetWavePeaks();
 	if (NULL != pPeaks)
@@ -2865,16 +2865,16 @@ void CWaveFile::RescanPeaks(SAMPLE_INDEX begin, SAMPLE_INDEX end)
 				unsigned index = unsigned(DataOffset / GranuleSize) * 2;
 				while (0 != DataToProcess)
 				{
-					int wpl_l;
-					int wpl_h;
-					int wpr_l;
-					int wpr_h;
+					WAVE_PEAK wpl_l;
+					WAVE_PEAK wpl_h;
+					WAVE_PEAK wpr_l;
+					WAVE_PEAK wpr_h;
 					if (0 == DataOffset % GranuleSize)
 					{
-						wpl_l = 0x7FFF;
-						wpl_h = -0x8000;
-						wpr_l = 0x7FFF;
-						wpr_h = -0x8000;
+						wpl_l = SHORT_MAX;
+						wpl_h = SHORT_MIN;
+						wpr_l = SHORT_MAX;
+						wpr_h = SHORT_MIN;
 					}
 					else
 					{
@@ -2939,8 +2939,8 @@ void CWaveFile::RescanPeaks(SAMPLE_INDEX begin, SAMPLE_INDEX end)
 						pWaveData++;
 					}
 
-					pPeaks->SetPeakData(index, WAVE_SAMPLE(wpl_l), WAVE_SAMPLE(wpl_h));
-					pPeaks->SetPeakData(index + 1, WAVE_SAMPLE(wpr_l), WAVE_SAMPLE(wpr_h));
+					pPeaks->SetPeakData(index, wpl_l, wpl_h);
+					pPeaks->SetPeakData(index + 1, wpr_l, wpr_h);
 					index += 2;
 
 					DataForGranule = GranuleSize;
@@ -2952,12 +2952,12 @@ void CWaveFile::RescanPeaks(SAMPLE_INDEX begin, SAMPLE_INDEX end)
 
 				while (0 != DataToProcess)
 				{
-					int wp_l;
-					int wp_h;
+					WAVE_PEAK wp_l;
+					WAVE_PEAK wp_h;
 					if (0 == DataOffset % GranuleSize)
 					{
-						wp_l = 0x7FFF;
-						wp_h = -0x8000;
+						wp_l = SHORT_MAX;
+						wp_h = SHORT_MIN;
 					}
 					else
 					{
@@ -2984,7 +2984,7 @@ void CWaveFile::RescanPeaks(SAMPLE_INDEX begin, SAMPLE_INDEX end)
 						}
 					}
 
-					pPeaks->SetPeakData(index, WAVE_SAMPLE(wp_l), WAVE_SAMPLE(wp_h));
+					pPeaks->SetPeakData(index, wp_l, wp_h);
 					index++;
 
 					DataForGranule = GranuleSize;

@@ -31,11 +31,11 @@ enum {
 	OperationContextDontAdjustPriority = 0x400,
 	OperationContextInitFailed = 0x800,
 	OperationContextUndoing = 0x1000,
-
 	// CreateUndo was called
 	OperationContextUndoCreated = 0x2000,
 	// when this operation was queued, modify count was incremented
 	OperationContextModifyCountIncremented = 0x4000,
+	OperationContextPassFinished = 0x8000,
 };
 
 class COperationContext : public ListItem<COperationContext>
@@ -216,6 +216,8 @@ public:
 
 };
 
+
+// base class for CScanPeaksContext, CInitChannelsUndo, CTwoFilesOperation. Only has the input file. Doesn't provide OperationProc.
 class COneFileOperation : public COperationContext
 {
 	typedef COperationContext BaseClass;
@@ -245,6 +247,9 @@ public:
 	virtual MEDIA_FILE_SIZE GetCompletedOperationSize() const;
 };
 
+// base class for CCopyContext, CReverseOperation, CThroughProcessOperation, CWaveProcContext, CWmaDecodeContext
+// it supports creating UNDO
+// It doesn't have its own OperationProc, thus is leaves that for the derived classes
 class CTwoFilesOperation : public COneFileOperation
 {
 	typedef COneFileOperation BaseClass;
@@ -292,6 +297,7 @@ protected:
 	virtual MEDIA_FILE_SIZE GetCompletedOperationSize() const;
 };
 
+// this class operates on a buffer of data from one file to another, and also supports UNDO. The data could be processed in forward and backward directons
 class CThroughProcessOperation : public CTwoFilesOperation
 {
 	typedef CTwoFilesOperation BaseClass;
@@ -301,14 +307,19 @@ public:
 							LPCTSTR OperationName = _T(""));
 	CThroughProcessOperation(class CWaveSoapFrontDoc * pDoc, ULONG Flags,
 							UINT StatusStringId = 0, UINT OperationNameId = 0);
-
+	~CThroughProcessOperation();
 	typedef std::auto_ptr<ThisClass> auto_ptr;
 
 	virtual BOOL Init();
 	virtual BOOL InitPass(int nPass);
 
 	virtual BOOL OperationProc();
-	virtual BOOL ProcessBuffer(void * buf, size_t len, SAMPLE_POSITION offset, BOOL bBackward = FALSE) = 0;
+	virtual unsigned ProcessBuffer(char const * pInBuf, // if BACKWARD pass, points to the end of buffer
+									char * pOutBuf,    // if BACKWARD pass, points to the end of buffer
+									unsigned nInBytes, unsigned nOutBytes, unsigned * pUsedBytes,
+									SAMPLE_POSITION SrcOffset,  // if BACKWARD pass, offset of the end of source buffer
+									SAMPLE_POSITION DstOffset,  // if BACKWARD pass, offset of the end of destination buffer
+									signed pass) = 0;
 
 	int m_NumberOfForwardPasses;
 	int m_NumberOfBackwardPasses;
@@ -316,9 +327,68 @@ public:
 	int m_GetBufferFlags;
 	int m_ReturnBufferFlags;
 
+	enum { ThroughProcessBufferSize = 0x10000}; // 64K
+
+	char * m_InputBuffer;
+	char * m_OutputBuffer;
+	char * m_UndoBuffer;
+	unsigned m_InputBufferGetIndex;
+	unsigned m_InputBufferPutIndex;
+	unsigned m_OutputBufferGetIndex;
+	unsigned m_OutputBufferPutIndex;
+
 	virtual MEDIA_FILE_SIZE GetTotalOperationSize() const;
 
 	virtual MEDIA_FILE_SIZE GetCompletedOperationSize() const;
+};
+
+// This is used to handle WaveProc operations in a batch
+class CWaveProcContext : public CThroughProcessOperation
+{
+	typedef CWaveProcContext ThisClass;
+	typedef CThroughProcessOperation BaseClass;
+public:
+	typedef std::auto_ptr<ThisClass> auto_ptr;
+	CWaveProcContext(CWaveSoapFrontDoc * pDoc, UINT StatusStringId = 0, UINT OperationNameId = 0);
+
+	virtual void Dump(unsigned indent) const
+	{
+		BaseClass::Dump(indent);
+		m_ProcBatch.Dump(indent+1);
+	}
+
+	void AddWaveProc(CWaveProc * pProc, int index = -1)
+	{
+		m_ProcBatch.AddWaveProc(pProc, index);
+	}
+
+	BOOL InitInPlaceProcessing(CWaveFile & DstFile, SAMPLE_INDEX StartSample, SAMPLE_INDEX EndSample,
+								CHANNEL_MASK chan, BOOL NeedUndo);
+
+	BOOL MakeCompatibleFormat(WAVEFORMATEX const * pSrcWf, WAVEFORMATEX const * pDstWf,
+							CHANNEL_MASK ChannelsToUse);
+
+	virtual BOOL WasClipped() const
+	{
+		return m_ProcBatch.WasClipped();
+	}
+	virtual double GetMaxClipped() const
+	{
+		return m_ProcBatch.GetMaxClipped();
+	}
+protected:
+
+	virtual unsigned ProcessBuffer(char const * pInBuf, // if BACKWARD pass, points to the end of buffer
+									char * pOutBuf,    // if BACKWARD pass, points to the end of buffer
+									unsigned nInBytes, unsigned nOutBytes, unsigned * pUsedBytes,
+									SAMPLE_POSITION SrcOffset,  // if BACKWARD pass, offset of the end of source buffer
+									SAMPLE_POSITION DstOffset,  // if BACKWARD pass, offset of the end of destination buffer
+									signed pass);
+
+	CBatchProcessing m_ProcBatch;
+	virtual BOOL Init();
+	virtual BOOL InitPass(int nPass);
+	virtual void DeInit();
 };
 
 // additional custom flags for the contexts
@@ -447,7 +517,7 @@ class CCopyUndoContext : public CCopyContext
 public:
 	typedef std::auto_ptr<ThisClass> auto_ptr;
 	CCopyUndoContext(CWaveSoapFrontDoc * pDoc)
-		: BaseClass(pDoc)
+		: BaseClass(pDoc), m_SrcSampleSize(4), m_SrcNumberOfChannels(2)
 	{
 	}
 
@@ -462,6 +532,9 @@ public:
 	virtual BOOL PrepareUndo();
 	virtual void UnprepareUndo();
 	//virtual void DeleteUndo();
+
+	unsigned m_SrcSampleSize;
+	NUMBER_OF_CHANNELS m_SrcNumberOfChannels;
 
 	virtual BOOL SaveUndoData(void const * pBuf, long BufSize,
 							SAMPLE_POSITION Position,
@@ -539,144 +612,154 @@ protected:
 	virtual void PostRetire();
 };
 
-class CVolumeChangeContext : public CThroughProcessOperation
-{
-	typedef CVolumeChangeContext ThisClass;
-	typedef CThroughProcessOperation BaseClass;
-public:
-	typedef std::auto_ptr<ThisClass> auto_ptr;
+CWaveProcContext * CreateVolumeChangeOperation(CWaveSoapFrontDoc * pDoc,
+												UINT StatusStringId, UINT OperationNameId,
+												double const * VolumeArray, int VolumeArraySize);
+CWaveProcContext * CreateVolumeChangeOperation(CWaveSoapFrontDoc * pDoc,
+												UINT StatusStringId, UINT OperationNameId,
+												double Volume);
 
-	CVolumeChangeContext(CWaveSoapFrontDoc * pDoc,
-						UINT StatusStringId, UINT OperationNameId,
-						double const * VolumeArray, int VolumeArraySize = 2);
-	CVolumeChangeContext(CWaveSoapFrontDoc * pDoc,
-						UINT StatusStringId, UINT OperationNameId,
-						float Volume = 1.f);
+CWaveProcContext * CreateFadeInOutOperation(class CWaveSoapFrontDoc * pDoc, int FadeCurveType,
+											CWaveFile & DstFile, SAMPLE_INDEX DstBegin, CHANNEL_MASK DstChannel,
+											NUMBER_OF_SAMPLES Length, BOOL UndoEnabled);
 
-protected:
-	float m_Volume[MAX_NUMBER_OF_CHANNELS];
+CWaveProcContext * CreateFadeInOutOperation(class CWaveSoapFrontDoc * pDoc, int FadeCurveType,
+											CWaveFile & SrcFile, SAMPLE_INDEX SrcBegin, CHANNEL_MASK SrcChannel,
+											CWaveFile & DstFile, SAMPLE_INDEX DstBegin, CHANNEL_MASK DstChannel,
+											NUMBER_OF_SAMPLES Length, BOOL UndoEnabled);
 
-	//virtual BOOL OperationProc();
-	virtual BOOL ProcessBuffer(void * buf, size_t len, SAMPLE_POSITION offset, BOOL bBackward = FALSE);
-
-};
-
-class CStatisticsContext : public CThroughProcessOperation
+class CStatisticsContext : public CWaveProcContext
 {
 	typedef CStatisticsContext ThisClass;
-	typedef CThroughProcessOperation BaseClass;
+	typedef CWaveProcContext BaseClass;
 public:
 	typedef std::auto_ptr<ThisClass> auto_ptr;
 
-	CStatisticsContext(CWaveSoapFrontDoc * pDoc,
-						UINT StatusStringId, UINT OperationNameId = 0);
+	CStatisticsContext(CWaveSoapFrontDoc * pDoc, UINT StatusStringId, UINT OperationNameId = 0);
 
-	int m_ZeroCrossingLeft;
-	int m_ZeroCrossingRight;
-	int m_PrevSampleLeft;
-	int m_PrevSampleRight;
-	int m_MinLeft;
-	int m_MaxLeft;
-	int m_MinRight;
-	int m_MaxRight;
-	SAMPLE_POSITION m_PosMinLeft;
-	SAMPLE_POSITION m_PosMaxLeft;
-	SAMPLE_POSITION m_PosMinRight;
-	SAMPLE_POSITION m_PosMaxRight;
-	LONGLONG m_EnergyLeft;
-	LONGLONG m_EnergyRight;
-	LONGLONG m_SumLeft;
-	LONGLONG m_SumRight;
-	DWORD m_CurrentLeftCrc;
-	DWORD m_CRC32Left;
-	DWORD m_CurrentRightCrc;
-	DWORD m_CRC32Right;
-	DWORD m_CurrentCommonCRC;
-	DWORD m_CRC32Common;
-
-	// sample number is limited at 256. If 0, checksum not started yet
-	int m_ChecksumSampleNumber;
-	DWORD m_Checksum;
-
-	virtual BOOL ProcessBuffer(void * buf, size_t BufferLength, SAMPLE_POSITION offset, BOOL bBackward = FALSE);
-
-	SAMPLE_INDEX GetMaxSamplePosition(CHANNEL_MASK * pChannel = NULL) const;
+	SAMPLE_INDEX GetMaxSamplePosition(CHANNEL_MASK * pChannel = NULL) const
+	{
+		return m_DstFile.PositionToSample(m_Proc.GetMaxSamplePosition(pChannel));
+	}
 
 	virtual void PostRetire();
+
+	class CStatisticsProc: public CWaveProc
+	{
+	public:
+		CStatisticsProc();
+
+		int m_ZeroCrossing[2];
+
+		int m_PrevSample[2];
+
+		int m_Min[2];
+		int m_Max[2];
+
+		SAMPLE_INDEX m_PosMin[2];
+		SAMPLE_INDEX m_PosMax[2];
+		LONGLONG m_Energy[2];
+		LONGLONG m_Sum[2];
+		DWORD m_CurrentCrc[2];
+		DWORD m_CRC32[2];
+		DWORD m_CurrentCommonCRC;
+		DWORD m_CRC32Common;
+
+		// sample number is limited at 256. If 0, checksum not started yet
+		int m_ChecksumSampleNumber;
+		DWORD m_Checksum;
+
+		virtual void ProcessSampleValue(void const * pInSample, void * pOutSample, unsigned channel);
+		SAMPLE_POSITION GetMaxSamplePosition(CHANNEL_MASK * pChannel = NULL) const;
+
+	} m_Proc;
+
 };
 
-class CDcScanContext : public CThroughProcessOperation
+class CScanContext : public CWaveProcContext
 {
-	typedef CDcScanContext ThisClass;
-	typedef CThroughProcessOperation BaseClass;
+	typedef CScanContext ThisClass;
+	typedef CWaveProcContext BaseClass;
 public:
 	typedef std::auto_ptr<ThisClass> auto_ptr;
 
-	CDcScanContext(CWaveSoapFrontDoc * pDoc,
-					UINT StatusStringId = 0, UINT OperationNameId = 0);
+	CScanContext(CWaveSoapFrontDoc * pDoc,
+				UINT StatusStringId = 0, UINT OperationNameId = 0);
 
-	int GetDc(int channel);
+	double GetMax(unsigned channel) const
+	{
+		return m_Proc.GetMax(channel);
+	}
+	double GetAverage(unsigned channel) const
+	{
+		return m_Proc.GetAverage(channel);
+	}
 
 protected:
-	LONGLONG m_Sum[MAX_NUMBER_OF_CHANNELS];
+	class CScanProc : public CWaveProc
+	{
+		typedef CScanProc ThisClass;
+		typedef CWaveProc BaseClass;
 
-	virtual BOOL ProcessBuffer(void * buf, size_t BufferLength, SAMPLE_POSITION offset, BOOL bBackward = FALSE);
+	public:
+		typedef std::auto_ptr<ThisClass> auto_ptr;
+
+		CScanProc();
+
+		virtual void ProcessSampleValue(void const * pInSample, void * pOutSample, unsigned channel);
+
+		double GetMax(unsigned channel) const;
+		double GetAverage(unsigned channel) const;
+
+		double m_Sum[MAX_NUMBER_OF_CHANNELS];
+		double m_MinSample[MAX_NUMBER_OF_CHANNELS];
+		double m_MaxSample[MAX_NUMBER_OF_CHANNELS];
+	} m_Proc;
+
 };
 
-class CDcOffsetContext : public CThroughProcessOperation
+class CDcOffsetContext : public CWaveProcContext
 {
 	typedef CDcOffsetContext ThisClass;
-	typedef CThroughProcessOperation BaseClass;
+	typedef CWaveProcContext BaseClass;
 public:
 	typedef std::auto_ptr<ThisClass> auto_ptr;
 
 	CDcOffsetContext(CWaveSoapFrontDoc * pDoc,
 					UINT StatusStringId, UINT OperationNameId,
-					CDcScanContext * pScanContext);
+					CScanContext * pScanContext);
 
 	CDcOffsetContext(CWaveSoapFrontDoc * pDoc,
 					UINT StatusStringId, UINT OperationNameId,
-					int offset[], unsigned OffsetArraySize = 2);
+					float const offset[], unsigned OffsetArraySize = 2);
 
 protected:
-	int m_Offset[MAX_NUMBER_OF_CHANNELS];
 
-	CDcScanContext * m_pScanContext;
+	class CDcOffsetProc: public CWaveProc
+	{
+	public:
+		CDcOffsetProc(CScanContext * pScanContext);
 
-	virtual BOOL Init();
-	virtual BOOL ProcessBuffer(void * buf, size_t len, SAMPLE_POSITION offset, BOOL bBackward = FALSE);
+		float m_Offset[MAX_NUMBER_OF_CHANNELS];
+		CScanContext * m_pScanContext;
+		virtual void ProcessSampleValue(void const * pInSample, void * pOutSample, unsigned channel);
+		virtual BOOL Init();
+	} m_Proc;
+
 
 };
 
-class CMaxScanContext : public CThroughProcessOperation
-{
-	typedef CMaxScanContext ThisClass;
-	typedef CThroughProcessOperation BaseClass;
-public:
-	typedef std::auto_ptr<ThisClass> auto_ptr;
-
-	CMaxScanContext(CWaveSoapFrontDoc * pDoc,
-					UINT StatusStringId, UINT OperationNameId = 0);
-
-	int GetMax(unsigned channel);
-
-protected:
-	int m_Max[MAX_NUMBER_OF_CHANNELS];
-
-	virtual BOOL ProcessBuffer(void * buf, size_t BufferLength, SAMPLE_POSITION offset, BOOL bBackward = FALSE);
-};
-
-class CNormalizeContext : public CVolumeChangeContext
+class CNormalizeContext : public CWaveProcContext
 {
 	typedef CNormalizeContext ThisClass;
-	typedef CVolumeChangeContext BaseClass;
+	typedef CWaveProcContext BaseClass;
 public:
 	typedef std::auto_ptr<ThisClass> auto_ptr;
 
 	CNormalizeContext(CWaveSoapFrontDoc * pDoc,
 					UINT StatusStringId, UINT OperationNameId,
 					double LimitLevel, BOOL EqualChannels,
-					CMaxScanContext * pScanContext)
+					CScanContext * pScanContext)
 		: BaseClass(pDoc, StatusStringId, OperationNameId)
 		, m_pScanContext(pScanContext)
 		, m_LimitLevel(LimitLevel)
@@ -686,50 +769,9 @@ public:
 
 	double m_LimitLevel;
 	BOOL m_bEqualChannels;
-	CMaxScanContext * m_pScanContext;
+	CScanContext * m_pScanContext;
 
 	virtual BOOL Init();
-};
-
-class CWaveProcContext : public CTwoFilesOperation
-{
-	typedef CWaveProcContext ThisClass;
-	typedef CTwoFilesOperation BaseClass;
-public:
-	typedef std::auto_ptr<ThisClass> auto_ptr;
-	CWaveProcContext(CWaveSoapFrontDoc * pDoc, UINT StatusStringId = 0, UINT OperationNameId = 0);
-
-	virtual void Dump(unsigned indent) const
-	{
-		BaseClass::Dump(indent);
-		m_ProcBatch.Dump(indent+1);
-	}
-
-	void AddWaveProc(CWaveProc * pProc, int index = -1)
-	{
-		m_ProcBatch.AddWaveProc(pProc, index);
-	}
-
-	BOOL InitInPlaceProcessing(CWaveFile & DstFile, SAMPLE_INDEX StartSample, SAMPLE_INDEX EndSample,
-								CHANNEL_MASK chan, BOOL NeedUndo);
-
-	BOOL MakeCompatibleFormat(WAVEFORMATEX const * pSrcWf, WAVEFORMATEX const * pDstWf,
-							CHANNEL_MASK ChannelsToUse);
-
-	virtual BOOL WasClipped() const
-	{
-		return m_ProcBatch.WasClipped();
-	}
-	virtual double GetMaxClipped() const
-	{
-		return m_ProcBatch.GetMaxClipped();
-	}
-protected:
-	virtual BOOL OperationProc();
-
-	CBatchProcessing m_ProcBatch;
-	virtual BOOL Init();
-	virtual void DeInit();
 };
 
 // is used to convert the file to save it

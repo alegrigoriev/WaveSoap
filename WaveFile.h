@@ -31,10 +31,10 @@ typedef long SAMPLE_INDEX;
 typedef long NUMBER_OF_SAMPLES;
 typedef unsigned PEAK_INDEX;
 
-typedef DWORD SAMPLE_POSITION;
 typedef DWORD WAV_FILE_SIZE;
 typedef LONGLONG MEDIA_FILE_SIZE;  // to be expanded to 64 bits
-typedef LONGLONG MEDIA_FILE_POSITION;
+typedef ULONGLONG MEDIA_FILE_POSITION;
+typedef MEDIA_FILE_POSITION SAMPLE_POSITION;
 
 #define LAST_SAMPLE (NUMBER_OF_SAMPLES(-1))
 #define LAST_SAMPLE_POSITION (SAMPLE_POSITION(-1))
@@ -431,9 +431,9 @@ typedef InfoListItemVectorW::const_iterator ConstInfoListItemIteratorW;
 
 struct WavePeak
 {
-	WAVE_SAMPLE low;
-	WAVE_SAMPLE high;
-	WavePeak(WAVE_SAMPLE Low, WAVE_SAMPLE High)
+	WAVE_PEAK low;
+	WAVE_PEAK high;
+	WavePeak(WAVE_PEAK Low, WAVE_PEAK High)
 		: low(Low), high(High) {}
 	WavePeak() {}
 };
@@ -448,19 +448,19 @@ public:
 	{
 		return m_PeakDataGranularity;
 	}
-	void SetPeakData(unsigned index, WAVE_SAMPLE low, WAVE_SAMPLE high)
+	void SetPeakData(unsigned index, WAVE_PEAK low, WAVE_PEAK high)
 	{
 		ASSERT(index < m_WavePeakSize);
 		m_pPeaks[index].low = low;
 		m_pPeaks[index].high = high;
 	}
 
-	WAVE_SAMPLE GetPeakDataLow(PEAK_INDEX index) const
+	WAVE_PEAK GetPeakDataLow(PEAK_INDEX index) const
 	{
 		ASSERT(index < m_WavePeakSize);
 		return m_pPeaks[index].low;
 	}
-	WAVE_SAMPLE GetPeakDataHigh(PEAK_INDEX index) const
+	WAVE_PEAK GetPeakDataHigh(PEAK_INDEX index) const
 	{
 		ASSERT(index < m_WavePeakSize);
 		return m_pPeaks[index].high;
@@ -555,7 +555,7 @@ public:
 		unsigned Granularity = GetPeakGranularity();
 		return (NumberOfSamples() + Granularity - 1) / Granularity * Channels();
 	}
-	void SetPeakData(PEAK_INDEX index, WAVE_SAMPLE low, WAVE_SAMPLE high);
+	void SetPeakData(PEAK_INDEX index, WAVE_PEAK low, WAVE_PEAK high);
 	BOOL LoadPeaksForCompressedFile(CWaveFile & OriginalWaveFile, ULONG NumberOfSamples);
 
 	BOOL CheckAndLoadPeakFile();

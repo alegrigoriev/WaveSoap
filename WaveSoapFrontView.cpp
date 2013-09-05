@@ -476,8 +476,8 @@ void CWaveSoapFrontView::OnDraw(CDC* pDC)
 							WavePeak peak =
 								pDoc->m_WavFile.GetPeakMinMax(index1, index2, nChannels);
 
-							ppArray[i][0] = CPoint(i + cr.left, WaveToY(peak.low));
-							ppArray[i][1] = CPoint(i + cr.left, WaveToY(peak.high));
+							ppArray[i][0] = CPoint(i + cr.left, (int)WaveToY(peak.low));
+							ppArray[i][1] = CPoint(i + cr.left, (int)WaveToY(peak.high));
 						}
 					}
 					else
@@ -493,8 +493,8 @@ void CWaveSoapFrontView::OnDraw(CDC* pDC)
 
 						for (i = 0; i < nNumberOfPoints; i++)
 						{
-							int low = 0x7FFF;
-							int high = -0x8000;
+							WAVE_PEAK low = SHORT_MAX;
+							WAVE_PEAK high = SHORT_MIN;
 							for (unsigned j = 0; j < SamplesPerPoint && nSample < nCountSamples;
 								j++, nSample += nChannels)
 							{
@@ -508,8 +508,8 @@ void CWaveSoapFrontView::OnDraw(CDC* pDC)
 								}
 							}
 
-							ppArray[i][0] = CPoint(i + cr.left, WaveToY(low));
-							ppArray[i][1] = CPoint(i + cr.left, WaveToY(high));
+							ppArray[i][0] = CPoint(i + cr.left, (int)WaveToY(low));
+							ppArray[i][1] = CPoint(i + cr.left, (int)WaveToY(high));
 //                        ASSERT(ppArray[i][0].y >= ppArray[i][1].y);
 						}
 					}

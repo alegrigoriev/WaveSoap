@@ -269,196 +269,11 @@ CWmaDecoder::~CWmaDecoder()
 
 void CWmaDecoder::DeInit()
 {
-#ifndef USE_SYNC_READER
-	m_pAdvReader.Release();
-#endif
 	m_Reader.Release();
 }
 
-#ifndef USE_SYNC_READER
-HRESULT STDMETHODCALLTYPE CWmaDecoder::OnStatus( /* [in] */ WMT_STATUS Status,
-															/* [in] */ HRESULT hr,
-															/* [in] */ WMT_ATTR_DATATYPE dwType,
-															/* [in] */ BYTE __RPC_FAR *pValue,
-															/* [in] */ void __RPC_FAR * /*pvContext*/ )
+bool CWmaDecoder::DeliverNextSample()
 {
-	// The following values are used:
-	// WMT_OPENED
-	// WMT_STOPPED
-	// WMT_STARTED
-	// WMT_END_OF_FILE
-	// WMT_ERROR
-	switch (Status)
-	{
-	case WMT_OPENED:
-		TRACE(_T("Thread:%08X CWmaDecoder::OnStatus WMT_OPENED\n"), GetCurrentThreadId());
-		m_bOpened = true;
-		m_OpenedEvent.Set();
-		break;
-	case WMT_STARTED:
-		TRACE(_T("Thread:%08X CWmaDecoder::OnStatus WMT_STARTED\n"), GetCurrentThreadId());
-		m_bStarted = true;
-		m_StartedEvent.Set();
-		break;
-
-	case WMT_STOPPED:
-		TRACE(_T("Thread:%08X CWmaDecoder::OnStatus WMT_STOPPED\n"), GetCurrentThreadId());
-		m_bStarted = false;
-		m_StartedEvent.Set();
-		break;
-
-	case WMT_ERROR:
-		TRACE(_T("Thread:%08X CWmaDecoder::OnStatus WMT_ERROR, hr=0x%08X, datatype=%d\n"), GetCurrentThreadId(), hr, dwType);
-		break;
-		m_bStarted = false;
-		m_StartedEvent.Set();
-		break;
-
-	case WMT_END_OF_FILE:
-		if (TRACE_WMA_DECODER) TRACE(_T("Thread:%08X CWmaDecoder::OnStatus WMT_END_OF_FILE\n"), GetCurrentThreadId());
-		//m_bStarted = false;
-		m_StartedEvent.Set();
-		m_OpenedEvent.Set();
-		if (m_Reader)
-		{
-			m_Reader->Stop();
-		}
-		break;
-
-	case WMT_END_OF_STREAMING:
-		if (TRACE_WMA_DECODER) TRACE(_T("Thread:%08X CWmaDecoder::OnStatus WMT_END_OF_STREAMING\n"), GetCurrentThreadId());
-//            m_bStarted = false;
-		m_StartedEvent.Set();
-		m_OpenedEvent.Set();
-		if (m_Reader)
-		{
-			m_Reader->Stop();
-		}
-		break;
-
-	default:
-		if (TRACE_WMA_DECODER) TRACE(_T("Thread:%08X CWmaDecoder::OnStatus Status=%X, hr=%08X, DataType=%X, pValue=%X\n"), GetCurrentThreadId(),
-									Status, hr, dwType, pValue);
-		;
-	}
-	return S_OK;
-}
-#endif
-
-#ifndef USE_SYNC_READER
-HRESULT STDMETHODCALLTYPE CWmaDecoder::OnSample( /* [in] */ DWORD dwOutputNum,
-															/* [in] */ QWORD cnsSampleTime,
-															/* [in] */ QWORD cnsSampleDuration,
-															/* [in] */ DWORD /*dwFlags*/,
-															/* [in] */ INSSBuffer __RPC_FAR *pSample,
-															/* [in] */ void __RPC_FAR * /*pvContext*/ )
-{
-	//
-	// Make sure its Audio sample
-	//
-	if (m_dwAudioOutputNum != dwOutputNum)
-	{
-		if (TRACE_WMA_DECODER) TRACE(_T("Thread:%08X CWmaDecoder::OnSample m_dwAudioOutputNum != dwOutputNum\n"), GetCurrentThreadId());
-		return S_OK;
-	}
-
-	if (! IsStarted())
-	{
-		if (TRACE_WMA_DECODER) TRACE(_T("Thread:%08X CWmaDecoder::OnSample: ! IsStarted()\n"), GetCurrentThreadId());
-		return S_OK;
-	}
-
-	HRESULT hr = S_OK;
-	BYTE *pData = NULL;
-	DWORD cbData = 0;
-
-	hr = pSample->GetBufferAndLength( &pData, &cbData);
-
-	if (TRACE_WMA_DECODER) TRACE(_T("Thread:%08X CWmaDecoder::OnSample, time=%d ms, %d bytes, hr=%X\n"), GetCurrentThreadId(),
-								DWORD(cnsSampleTime/10000), cbData, hr);
-
-	if( FAILED( hr ) )
-	{
-		return hr;
-	}
-	m_DstFile.CDirectFile::Write(pData, cbData);
-
-	// update current number of samples
-	SAMPLE_POSITION DstCopyPos = (SAMPLE_POSITION)m_DstFile.CDirectFile::Seek(0, FILE_CURRENT);
-	SAMPLE_INDEX DstCopySample = m_DstFile.PositionToSample(DstCopyPos);
-
-	if (DstCopySample > m_CurrentSamples)
-	{
-		// calculate new length
-		NUMBER_OF_SAMPLES MaxNumberOfSamples = 0x7FFFFFFF / m_DstFile.SampleSize();
-		LONGLONG TotalSamplesEstimated = ULONG(double(DstCopySample) * SrcLength() / SrcPos());
-
-		if (TotalSamplesEstimated > MaxNumberOfSamples)
-		{
-			TotalSamplesEstimated = MaxNumberOfSamples;
-		}
-		if (NUMBER_OF_SAMPLES(TotalSamplesEstimated) < m_CurrentSamples)
-		{
-			TotalSamplesEstimated = m_CurrentSamples;
-		}
-
-		m_CurrentSamples = NUMBER_OF_SAMPLES(TotalSamplesEstimated);
-
-		m_DstFile.SetFileLengthSamples(m_CurrentSamples);
-	}
-	// modify positions after file length modified,
-	m_DstPos = DstCopyPos;  // to avoid race condition
-	m_DstCopySample = DstCopySample;
-
-	// ask for next buffer
-	m_CurrentStreamTime = cnsSampleTime + cnsSampleDuration;
-
-	m_bNeedNextSample = true;
-	m_SampleEvent.Set();
-	return S_OK;
-}
-
-HRESULT STDMETHODCALLTYPE CWmaDecoder::OnTime(
-											/* [in] */ QWORD cnsCurrentTime,
-											/* [in] */ void __RPC_FAR * /*pvContext*/)
-{
-	if (0 || TRACE_WMA_DECODER) TRACE(_T("Thread:%08X IWMReaderCallbackAdvancedOnTime(%I64d)\n"), GetCurrentThreadId(), cnsCurrentTime);
-	// ask for next buffer
-	m_CurrentStreamTime = cnsCurrentTime;
-
-	m_bNeedNextSample = true;
-	m_SampleEvent.Set();
-	return S_OK;
-}
-#endif
-bool CWmaDecoder::DeliverNextSample(DWORD timeout)
-{
-#ifndef USE_SYNC_READER
-	if (m_bNeedNextSample)
-	{
-		m_bNeedNextSample = false;
-		if (m_pAdvReader)
-		{
-			QWORD NextSampleTime = m_CurrentStreamTime + m_BufferLengthTime;
-			if (TRACE_WMA_DECODER) TRACE(_T("Thread:%08X CWmaDecoder::DeliverNextSample:  m_CurrentStreamTime=%I64d, NextTime=%I64d\n"), GetCurrentThreadId(),
-										m_CurrentStreamTime, NextSampleTime);
-
-			m_pAdvReader->DeliverTime(NextSampleTime);
-		}
-		else
-		{
-			if (TRACE_WMA_DECODER) TRACE(_T("NULL == m_pAdvReader, m_Reader = %X\n"), m_Reader);
-		}
-	}
-	else
-	{
-		if (TRACE_WMA_DECODER) TRACE(_T("CWmaDecoder::DeliverNextSample:  ! m_bNeedNextSample\n"));
-	}
-	if (0 != timeout)
-	{
-		WaitForSingleObject(m_SampleEvent, timeout);
-	}
-#else
 	INSSBuffer* pSample = NULL;
 	QWORD cnsSampleTime = 0;
 	QWORD cnsSampleDuration = 0;
@@ -532,34 +347,18 @@ bool CWmaDecoder::DeliverNextSample(DWORD timeout)
 	// ask for next buffer
 	m_CurrentStreamTime = cnsSampleTime + cnsSampleDuration;
 
-#endif
 	return IsStarted();
 }
 
 BOOL CWmaDecoder::Init()
 {
 	HRESULT hr;
-#ifdef USE_SYNC_READER
 	hr = WMCreateSyncReader( NULL, 0 , &m_Reader );
 	if( FAILED( hr ) )
 	{
 		return FALSE;
 	}
 
-#else
-	hr = WMCreateReader( NULL, 0 , &m_Reader );
-	if( FAILED( hr ) )
-	{
-		return FALSE;
-	}
-
-	m_pAdvReader = m_Reader;
-	if( ! m_pAdvReader)
-	{
-		m_Reader.Release();
-		return FALSE;
-	}
-#endif
 	m_CurrentStreamTime = 0;
 	m_bNeedNextSample = true;
 	return TRUE;
@@ -583,29 +382,13 @@ HRESULT CWmaDecoder::Open(CDirectFile & file)
 		return S_FALSE;
 	}
 	m_InputStream.SetFile(file);
-#ifdef USE_SYNC_READER
+
 	hr = m_Reader->OpenStream( & m_InputStream);
 	if (FAILED(hr))
 	{
 		m_InputStream.Close();
 		return hr;
 	}
-#else
-	hr = m_pAdvReader->OpenStream( & m_InputStream, /* (IWMReaderCallback *) */this, NULL);
-	if (FAILED(hr))
-	{
-		m_InputStream.Close();
-		return hr;
-	}
-	WaitForSingleObject(m_OpenedEvent, 5000);
-
-	if ( ! IsOpened())
-	{
-		m_Reader->Close();
-		m_InputStream.Close();
-		return S_FALSE;
-	}
-#endif
 	// select an audio stream
 	DWORD cOutputs = 0 ;
 	hr = m_Reader->GetOutputCount( & cOutputs);
@@ -690,11 +473,8 @@ HRESULT CWmaDecoder::Open(CDirectFile & file)
 
 		DWORD MaxSampleSize = 32768;
 
-#ifndef USE_SYNC_READER
-		hr = m_pAdvReader->GetMaxOutputSampleSize(m_dwAudioOutputNum, & MaxSampleSize);
-#else
 		hr = m_Reader->GetMaxOutputSampleSize(m_dwAudioOutputNum, & MaxSampleSize);
-#endif
+
 		if (TRACE_WMA_DECODER) TRACE(_T("m_pAdvReader->GetMaxOutputSampleSize=%d\n"), MaxSampleSize);
 		if (FAILED(hr))
 		{
@@ -799,11 +579,7 @@ HRESULT CWmaDecoder::Open(CDirectFile & file)
 							StreamSelection = WMT_OFF;
 						}
 
-#ifndef USE_SYNC_READER
-						m_pAdvReader->SetStreamsSelected(1, & iStreamNumber, & StreamSelection);
-#else
 						m_Reader->SetStreamsSelected(1, & iStreamNumber, & StreamSelection);
-#endif
 						m_SrcWf = (WAVEFORMATEX *) pType->pbFormat;
 						delete[] (char*) pType;
 					}
@@ -812,67 +588,19 @@ HRESULT CWmaDecoder::Open(CDirectFile & file)
 		}
 	}
 
-#ifndef USE_SYNC_READER
-	if (m_pAdvReader)
-	{
-		m_pAdvReader->SetUserProvidedClock(TRUE);   // use our clock for fast decompression
-	}
-#endif
 	return S_OK;
 }
 
 HRESULT CWmaDecoder::Start()
 {
-#ifdef USE_SYNC_READER
 	m_bStarted = true;
 	return S_OK;
-#else
-	if (1 || TRACE_WMA_DECODER) TRACE(_T("Thread:%08X CWmaDecoder::Start()\n"), GetCurrentThreadId());
-
-	if (m_Reader)
-	{
-		HRESULT hr = m_Reader->Start(0, 0, 1.0, NULL);
-
-		if (1 || TRACE_WMA_DECODER) TRACE(_T("Thread:%08X m_Reader->Start=%X, Immediately after Start: IsStarted()=%X\n"), GetCurrentThreadId(),
-										hr, IsStarted());
-
-		WaitForSingleObject(m_StartedEvent, 5000);
-		if ( ! IsStarted())
-		{
-			m_Reader->Stop();
-			return S_FALSE;
-		}
-		if(SUCCEEDED(hr)
-			&& m_pAdvReader)
-		{
-			HRESULT hr1 = m_pAdvReader->DeliverTime(m_BufferLengthTime);
-			if (1 || TRACE_WMA_DECODER) TRACE(_T("Thread:%08X m_pAdvReader->DeliverTime returned %X\n"), GetCurrentThreadId(), hr1);
-		}
-		return hr;
-	}
-	else
-	{
-		return S_FALSE;
-	}
-#endif
 }
 
 HRESULT CWmaDecoder::Stop()
 {
-#ifndef USE_SYNC_READER
-	if (1 || TRACE_WMA_DECODER) TRACE(_T("Thread:%08X CWmaDecoder::Stop()\n"), GetCurrentThreadId());
-	if (m_Reader
-		&& m_bStarted)
-	{
-		return m_Reader->Stop();
-	}
-	else
-#else
 	m_bStarted = false;
-#endif
-	{
-		return S_OK;
-	}
+	return S_OK;
 }
 
 void CWmaDecoder::SetDstFile(CWaveFile & file)
@@ -1477,35 +1205,3 @@ HRESULT STDMETHODCALLTYPE FileWriter::OnEndWriting( void)
 	return S_OK;
 }
 
-#ifndef USE_SYNC_READER
-#if USE_READER_CALLBACK_ADVANCED
-HRESULT STDMETHODCALLTYPE CWmaDecoder::AllocateForStream(
-														/* [in] */ WORD /*wStreamNum*/,
-														/* [in] */ DWORD cbBuffer,
-														/* [out] */ INSSBuffer __RPC_FAR *__RPC_FAR *ppBuffer,
-														/* [in] */ void __RPC_FAR * /*pvContext*/)
-{
-	if (NULL == ppBuffer)
-	{
-		return E_POINTER;
-	}
-	* ppBuffer = new NSSBuffer(cbBuffer);
-	return S_OK;
-}
-
-HRESULT STDMETHODCALLTYPE CWmaDecoder::AllocateForOutput(
-														/* [in] */ DWORD /*dwOutputNum*/,
-														/* [in] */ DWORD cbBuffer,
-														/* [out] */ INSSBuffer __RPC_FAR *__RPC_FAR *ppBuffer,
-														/* [in] */ void __RPC_FAR * /*pvContext*/)
-{
-	if (NULL == ppBuffer)
-	{
-		return E_POINTER;
-	}
-	* ppBuffer = new NSSBuffer(cbBuffer);
-	return S_OK;
-}
-
-#endif
-#endif
