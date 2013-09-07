@@ -312,6 +312,7 @@ public:
 
 	virtual BOOL Init();
 	virtual BOOL InitPass(int nPass);
+	virtual BOOL CreateUndo();
 
 	virtual BOOL OperationProc();
 	virtual unsigned ProcessBuffer(char const * pInBuf, // if BACKWARD pass, points to the end of buffer
@@ -324,8 +325,6 @@ public:
 	int m_NumberOfForwardPasses;
 	int m_NumberOfBackwardPasses;
 	int m_CurrentPass;
-	int m_GetBufferFlags;
-	int m_ReturnBufferFlags;
 
 	enum { ThroughProcessBufferSize = 0x10000}; // 64K
 

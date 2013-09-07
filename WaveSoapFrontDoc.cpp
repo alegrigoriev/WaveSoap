@@ -4407,6 +4407,9 @@ void CWaveSoapFrontDoc::OnProcessSynthesisExpressionEvaluation()
 		return;
 	}
 
+	pProc->SetFileLengthAndRate(m_WavFile.NumberOfSamples(), m_WavFile.SampleRate());
+	pProc->SetSelectionSamples(dlg.GetStart(), dlg.GetEnd() - dlg.GetStart());
+
 	pContext->AddWaveProc(pProc.release());
 
 	NUMBER_OF_SAMPLES const NumSamples = m_WavFile.NumberOfSamples();
@@ -4443,17 +4446,17 @@ void CWaveSoapFrontDoc::OnProcessSynthesisExpressionEvaluation()
 		pContext->SetSaveForUndo(dlg.GetStart(), dlg.GetEnd());
 	}
 
+	if (dlg.UndoEnabled())
+	{
+		pStagedContext->AddSelectionUndo(dlg.GetStart(), dlg.GetEnd(), dlg.GetStart(), dlg.GetChannel());
+	}
+
 	pStagedContext->AddContext(pContext.release());
 
 	if (UndoEnabled()
 		&& ! pStagedContext->CreateUndo())
 	{
 		return;
-	}
-
-	if (dlg.UndoEnabled())
-	{
-		pStagedContext->AddSelectionUndo(dlg.GetStart(), dlg.GetEnd(), dlg.GetStart(), dlg.GetChannel());
 	}
 
 	ExecuteOperation(pStagedContext.release(), TRUE, dlg.UndoEnabled(), dlg.UndoEnabled());

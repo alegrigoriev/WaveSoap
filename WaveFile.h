@@ -28,7 +28,7 @@ helper.
 #include <atlpath.h>
 
 typedef long SAMPLE_INDEX;
-typedef long NUMBER_OF_SAMPLES;
+typedef long NUMBER_OF_SAMPLES; // MUST BE SIGNED!
 typedef unsigned PEAK_INDEX;
 
 typedef DWORD WAV_FILE_SIZE;
@@ -56,12 +56,12 @@ enum
 #pragma pack(push, 2)
 struct PeakFileHeader
 {
-	enum { pfhSignature = 'KPSW', pfhMaxVersion = 3};
+	enum { pfhSignature = 'KPSW', pfhMaxVersion = 4};
 	DWORD dwSignature;
 	WORD wSize;
 	WORD dwVersion;
 	FILETIME WaveFileTime;
-	WAV_FILE_SIZE dwWaveFileSize;   // WAV file is less than 4G
+	MEDIA_FILE_SIZE dwWaveFileSize;   // WAV file is less than 4G
 	DWORD Granularity;      // number of WAV samples for each PeakFile value
 	DWORD PeakInfoSize;
 	NUMBER_OF_SAMPLES NumOfSamples;
