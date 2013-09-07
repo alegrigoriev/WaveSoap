@@ -54,7 +54,8 @@ protected:
 protected:
 	unsigned HitTest(POINT p, RECT * pHitRect = NULL /*, int * OffsetX = NULL*/) const;
 
-	enum {
+	enum
+	{
 		HitTestNone = 0x00000000,          // non-specific area of the ruler hit - no bits set
 		HitTestRegionBegin = 0x40000000,    // mark of region begin hit
 		HitTestRegionEnd = 0x20000000,      // mark of region begin hit

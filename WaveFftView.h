@@ -72,7 +72,8 @@ protected:
 	ATL::CHeapPtr<float> m_pFftWindow;
 	typedef double DATA;
 	ATL::CHeapPtr<DATA> m_pFftBuf;  // for calculations, sized  m_FftOrder * 2 + 2
-	enum {
+	enum
+	{
 		WindowTypeSquaredSine = 0,
 		WindowTypeHalfSine = 1,
 		WindowTypeHamming = 2,

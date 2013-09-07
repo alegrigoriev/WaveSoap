@@ -181,7 +181,7 @@ private:
 	CDirectFile(CDirectFile const &);
 };
 
-	// this structure should be a base class of the application class
+// this structure should be a base class of the application class
 struct DirectFileParameters
 {
 	int m_MaxMemoryFileSize;    // in Kbytes, if 0 - don't use

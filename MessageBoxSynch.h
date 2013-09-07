@@ -43,7 +43,6 @@ public:
 
 protected:
 	DECLARE_MESSAGE_MAP();
-//    DECLARE_DYNAMIC(DialogProxyWnd);
 
 private:
 	LRESULT OnCallMainThread(WPARAM, LPARAM lparam)

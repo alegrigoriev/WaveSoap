@@ -103,7 +103,6 @@ INT_PTR CFolderDialog::DoModal()
 	}
 
 	HRESULT hr = OleInitialize(NULL);
-//#if 0
 	_AFX_THREAD_STATE* pThreadState = AfxGetThreadState();
 	ASSERT(pThreadState->m_pAlternateWndInit == NULL);
 
@@ -111,7 +110,6 @@ INT_PTR CFolderDialog::DoModal()
 		pThreadState->m_pAlternateWndInit = this;
 	else
 		AfxHookWindowCreate(this);
-//#endif
 
 	ASSERT(m_bi.lParam == (LPARAM) this);
 
@@ -138,11 +136,7 @@ INT_PTR CFolderDialog::DoModal()
 		OleUninitialize();
 	}
 
-//#if 0
-	//if (lpResult)
-	//	ASSERT(pThreadState->m_pAlternateWndInit == NULL);
 	pThreadState->m_pAlternateWndInit = NULL;
-//#endif
 
 	// WINBUG: Second part of special case for file open/save dialog.
 	if (bEnableParent)
@@ -184,7 +178,6 @@ void CFolderDialog::LoadHistoryCb()
 							| CBS_DROPDOWN,
 							r, this, 0x3744))
 	{
-		//m_HistoryCombo.Detach();
 		m_HistoryCombo.SetFont(pFont);
 		m_HistoryCombo.LimitText(MAX_PATH);
 

@@ -305,7 +305,9 @@ public:
 	void PlaybackPositionNotify(SAMPLE_INDEX position, CHANNEL_MASK channel);
 	BOOL ProcessUpdatePlaybackPosition();
 
-	enum {UpdateSelectionChanged = 1,
+	enum
+	{
+		UpdateSelectionChanged = 1,
 		UpdateSelectionModeChanged,
 		UpdateSoundChanged,
 		UpdateSampleRateChanged,

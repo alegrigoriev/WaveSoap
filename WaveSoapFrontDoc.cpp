@@ -189,7 +189,7 @@ BEGIN_MESSAGE_MAP(CWaveSoapFrontDoc, CDocument)
 	ON_COMMAND(ID_EDIT_FADE_IN, OnEditFadeIn)
 	ON_UPDATE_COMMAND_UI(ID_EDIT_FADE_IN, OnUpdateEditFadeIn)
 	ON_UPDATE_COMMAND_UI(ID_EDIT_FADE_OUT, OnUpdateEditFadeOut)
-	END_MESSAGE_MAP()
+END_MESSAGE_MAP()
 
 /////////////////////////////////////////////////////////////////////////////
 // CWaveSoapFrontDoc construction/destruction
@@ -2492,7 +2492,7 @@ BOOL CWaveSoapFrontDoc::OnSaveFileOrPart(COperationContext ** ppOp, int flags, L
 		&& pWf->nSamplesPerSec == WaveSampleRate()
 		&& pWf->nChannels == WaveChannels())
 	{
-// if direct file: commit all changes (including format change)
+		// if direct file: commit all changes (including format change)
 		if (m_bDirectMode
 			&& (flags & SaveFile_SameName)
 			&& 0 == (flags & SaveFile_SaveCopy))
@@ -2764,8 +2764,6 @@ BOOL CWaveSoapFrontDoc::PostCommitFileSave(int flags, LPCTSTR FullTargetName)
 	else
 	{
 		// the user was asked about replacing the file in the save file dialog
-
-//        DeleteFile(FullTargetName);
 	}
 	m_OriginalWavFile.Close();
 	// delete the original file

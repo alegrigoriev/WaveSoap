@@ -17,7 +17,6 @@ static char THIS_FILE[] = __FILE__;
 IMPLEMENT_DYNAMIC(CNumEdit, CEdit)
 
 CNumEdit::CNumEdit()
-//:iSelStart(0), iSelEnd(0)
 {
 	m_Precision = 6;
 }
@@ -62,32 +61,10 @@ BOOL CNumEdit::SimpleFloatParse(LPCTSTR lpszText,
 }
 /////////////////////////////////////////////////////////////////////////////
 // CNumEdit message handlers
-#if 0
-void CNumEdit::OnUpdate()
-{
-	// check if it contents a valid numeric string
-	CString str;
-	GetWindowText(str);
-	double d;
-	if(str != _T(".") && str != _T("-") && str != ("-.")
-		&&SimpleFloatParse(str, d) == FALSE)
-	{
-		CString str1(sLastValid);
-		sLastValid = _T("");    // to prevent recursion
-		SetWindowText(str1);
-		SetSel(iSelStart, iSelEnd);
-	}
-	else
-	{
-		sLastValid = str;
-	}
-}
-#endif
 
 void CNumEdit::OnChar(UINT nChar, UINT nRepCnt, UINT nFlags)
 {
 	// if it is alfanumeric char, filter all non-numeric characters
-//    GetSel(iSelStart, iSelEnd);
 	if (nChar >= ' ' && nChar <= 0xff)
 	{
 		if ((nChar < '0' || nChar > '9')
