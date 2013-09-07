@@ -40,7 +40,7 @@ protected:
 	virtual BOOL PreCreateWindow(CREATESTRUCT& cs);
 	virtual void OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint);
 	//}}AFX_VIRTUAL
-
+	enum { MaxDrawColumnPerOnDraw = 128};
 // Implementation
 protected:
 	virtual ~CWaveFftView();
@@ -61,16 +61,17 @@ protected:
 	unsigned char * m_pFftResultArray;
 	size_t m_FftArraySize;
 	int m_FftResultArrayWidth;    // number of FFT sets
-	int m_FftResultArrayHeight;   // number of frequencies
+	int m_FftResultArrayHeight;   // m_FftOrder * pDoc->WaveChannels() + 1;
 	int m_IndexOfFftBegin;
 
-	SAMPLE_INDEX m_FftResultBegin;
-	SAMPLE_INDEX m_FftResultEnd;
+	long         m_FirstFftColumn;      // at m_IndexOfFftBegin
 
 	double m_FftLogRange;     // what dB zero value corresponds
 	double m_FirstbandVisible;     // how much the chart is scrolled. 0 = DC is visible
 
 	ATL::CHeapPtr<float> m_pFftWindow;
+	typedef double DATA;
+	ATL::CHeapPtr<DATA> m_pFftBuf;  // for calculations, sized  m_FftOrder * 2 + 2
 	enum {
 		WindowTypeSquaredSine = 0,
 		WindowTypeHalfSine = 1,
@@ -80,16 +81,21 @@ protected:
 
 	int m_FftWindowType;
 	int m_FftOrder;     // frequencies in FFT conversions (window width=2*FFT order)
-	int m_FftSpacing;   // samples between FFT columns
+	int m_FftSpacing;   // samples between FFT columns. Minimum m_FftOrder, or m_HorizontalScale
 
 	void OnSetWindowType(int window);
-	void MakeFftArray(SAMPLE_INDEX left, SAMPLE_INDEX right);
-	void CalculateFftRange(SAMPLE_INDEX left, SAMPLE_INDEX right);
+
+	void AllocateFftArray(SAMPLE_INDEX SampleLeft, SAMPLE_INDEX SampleRight);
+
+	unsigned char const * GetFftResult(SAMPLE_INDEX sample, unsigned channel);
 
 	long SampleToFftColumn(SAMPLE_INDEX sample);
+	long SampleToFftColumnLowerBound(SAMPLE_INDEX sample);
+	long SampleToFftColumnUpperBound(SAMPLE_INDEX sample);
 	SAMPLE_INDEX FftColumnToDisplaySample(long Column);
 	SAMPLE_INDEX SampleToFftBaseSample(SAMPLE_INDEX sample);
 	SAMPLE_INDEX DisplaySampleToFftBaseSample(SAMPLE_INDEX sample);
+	void InvalidateFftColumnRange(long first_column, long last_column);  // including last
 
 	static HBRUSH m_Brush;
 	// Generated message map functions

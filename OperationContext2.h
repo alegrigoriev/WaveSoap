@@ -154,7 +154,7 @@ private:
 	int m_DataTypeStackIndex;
 	int m_ConstantBuffer[NumberOfIntConstants];
 	int m_ConstantBufferIndex;
-	int * m_pResultAddress;
+	double * m_pResultAddress;
 
 	std::vector<Operation> m_OperationArray;
 	int m_nSelectionSampleArgument;

@@ -3068,6 +3068,21 @@ bool operator ==(FILETIME const & t1, FILETIME const & t2)
 CPath CWaveFile::MakePeakFileName(LPCTSTR FileName)
 {
 	CPath path(FileName);
+	LPWSTR pFolderPath = NULL;
+
+	if (S_OK != SHGetKnownFolderPath(FOLDERID_LocalAppData, 0, NULL, & pFolderPath))
+	{
+		CPath AppDataPath(pFolderPath);
+		CoTaskMemFree(pFolderPath);
+
+		AppDataPath.Append(L"WaveSoap");
+		VerifyCreateDirectory(AppDataPath);
+
+		AppDataPath.Append(LPCTSTR(path) + path.FindFileName());
+
+		path = AppDataPath;
+	}
+
 	if (0 == path.GetExtension().CompareNoCase(_T(".WAV")))
 	{
 		path.RenameExtension(_T(".wspk"));
@@ -3191,7 +3206,7 @@ BOOL CWaveFile::LoadPeaksForCompressedFile(CWaveFile & OriginalWaveFile,
 			return FALSE;
 		}
 
-		if (pfh.PeakInfoSize <= pPeakInfo->GetPeaksSize() * sizeof (WavePeak)
+		if (pfh.PeakInfoSize == pPeakInfo->GetPeaksSize() * sizeof (WavePeak)
 			&& pfh.PeakInfoSize == PeakFile.Read(pPeaks, pfh.PeakInfoSize))
 		{
 			return TRUE;

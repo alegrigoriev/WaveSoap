@@ -321,6 +321,26 @@ void CMyCommandLineInfo::ParseLast(BOOL bLast)
 	}
 }
 
+#ifndef _WIN64
+BOOL
+WINAPI
+SetProcessUserModeExceptionPolicy(
+								__in DWORD dwFlags
+								);
+
+typedef BOOL (WINAPI * SETPROCESSUSERMODEEXCEPTIONPOLICY)(__in DWORD dwFlags);
+BOOL
+WINAPI
+GetProcessUserModeExceptionPolicy(
+								__out LPDWORD lpFlags
+								);
+
+typedef BOOL (WINAPI * GETPROCESSUSERMODEEXCEPTIONPOLICY)(__out LPDWORD lpFlags);
+
+#define PROCESS_CALLBACK_FILTER_ENABLED     0x1
+
+#endif
+
 BOOL CWaveSoapFrontApp::InitInstance()
 {
 	InitCommonControls();
@@ -328,6 +348,26 @@ BOOL CWaveSoapFrontApp::InitInstance()
 #ifdef _DEBUG
 	LoadLibrary(_T("thrdtime.dll"));
 #endif
+#ifndef _WIN64
+	{
+		SETPROCESSUSERMODEEXCEPTIONPOLICY pSetProcessUserModeExceptionPolicy =
+			(SETPROCESSUSERMODEEXCEPTIONPOLICY)GetProcAddress(GetModuleHandle(L"Kernel32.dll"), "SetProcessUserModeExceptionPolicy");
+
+		GETPROCESSUSERMODEEXCEPTIONPOLICY pGetProcessUserModeExceptionPolicy =
+			(GETPROCESSUSERMODEEXCEPTIONPOLICY)GetProcAddress(GetModuleHandle(L"Kernel32.dll"), "GetProcessUserModeExceptionPolicy");
+
+		if (pSetProcessUserModeExceptionPolicy != NULL
+			&& pGetProcessUserModeExceptionPolicy != NULL)
+		{
+			DWORD dwFlags;
+			if (pGetProcessUserModeExceptionPolicy(&dwFlags))
+			{
+				pSetProcessUserModeExceptionPolicy(dwFlags & ~PROCESS_CALLBACK_FILTER_ENABLED);
+			}
+		}
+	}
+#endif
+
 	EnableTaskbarInteraction();
 
 	InitContextMenuManager();

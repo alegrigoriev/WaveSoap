@@ -329,6 +329,7 @@ unsigned CBatchProcessing::Item::FillInputBuffer(const char * Buf, unsigned BufF
 
 			InBufPutIndex += BytesToFill;
 			BytesUsed = NumSamples * sizeof (float);
+			ASSERT(BytesUsed <= BufFilled);
 			return BytesUsed;
 		}
 		else
@@ -367,6 +368,7 @@ unsigned CBatchProcessing::Item::FillInputBuffer(const char * Buf, unsigned BufF
 			}
 			InBufPutIndex += BytesToFill;
 			BytesUsed = NumSamples * sizeof (float);
+			ASSERT(BytesUsed <= BufFilled);
 			return BytesUsed;
 		}
 	}
@@ -391,6 +393,7 @@ unsigned CBatchProcessing::Item::FillInputBuffer(const char * Buf, unsigned BufF
 
 		InBufPutIndex += BytesToFill;
 		BytesUsed = NumSamples * sizeof (short);
+		ASSERT(BytesUsed <= BufFilled);
 		return BytesUsed;
 	}
 	else
@@ -403,6 +406,8 @@ unsigned CBatchProcessing::Item::FillInputBuffer(const char * Buf, unsigned BufF
 		memcpy(InBuf + InBufPutIndex, Buf, BytesToFill);
 		BytesUsed = BytesToFill;
 		InBufPutIndex += BytesToFill;
+
+		ASSERT(BytesUsed <= BufFilled);
 		return BytesUsed;
 	}
 }
@@ -687,16 +692,17 @@ BOOL CWaveProc::SetInputWaveformat(CWaveFormat const & Wf)
 		|| m_InputSampleType == Wf.GetSampleType())
 	{
 		m_InputFormat = Wf;
+		m_InputSampleType = Wf.GetSampleType();
 	}
 	else if (m_InputSampleType == SampleType16bit)
 	{
-		m_InputFormat.InitFormat(WAVE_FORMAT_PCM, Wf.SampleRate(), m_InputFormat.NumChannels(),
+		m_InputFormat.InitFormat(WAVE_FORMAT_PCM, Wf.SampleRate(), Wf.NumChannels(),
 								16);
 		// FIXME: Use extended format to carry the channel assignments
 	}
 	else if (m_InputSampleType == SampleTypeFloat32)
 	{
-		m_InputFormat.InitFormat(WAVE_FORMAT_IEEE_FLOAT, Wf.SampleRate(), m_InputFormat.NumChannels(),
+		m_InputFormat.InitFormat(WAVE_FORMAT_IEEE_FLOAT, Wf.SampleRate(), Wf.NumChannels(),
 								32);
 	}
 	else
@@ -713,6 +719,31 @@ BOOL CWaveProc::SetInputWaveformat(CWaveFormat const & Wf)
 	return TRUE;
 }
 
+BOOL CWaveProc::SetOutputWaveformat(CWaveFormat const & Wf)
+{
+	if (m_OutputSampleType == SampleTypeAny
+		|| m_OutputSampleType == Wf.GetSampleType())
+	{
+		m_OutputFormat = Wf;
+		m_OutputSampleType = Wf.GetSampleType();
+	}
+	else if (m_OutputSampleType == SampleType16bit)
+	{
+		m_OutputFormat.InitFormat(WAVE_FORMAT_PCM, Wf.SampleRate(), Wf.NumChannels(),
+								16);
+		// FIXME: Use extended format to carry the channel assignments
+	}
+	else if (m_OutputSampleType == SampleTypeFloat32)
+	{
+		m_OutputFormat.InitFormat(WAVE_FORMAT_IEEE_FLOAT, Wf.SampleRate(), Wf.NumChannels(),
+								32);
+	}
+	else
+	{
+		return FALSE;
+	}
+	return TRUE;
+}
 CWaveFormat const & CWaveProc::GetInputWaveformat() const
 {
 	return m_InputFormat;
@@ -4150,6 +4181,7 @@ double CBatchProcessing::GetMaxClipped() const
 BOOL CBatchProcessing::SetInputWaveformat(CWaveFormat const & Wf)
 {
 	m_InputFormat = Wf;
+	m_InputSampleType = Wf.GetSampleType();
 
 	if (m_Stages.empty())
 	{
@@ -4170,6 +4202,14 @@ BOOL CBatchProcessing::SetInputWaveformat(CWaveFormat const & Wf)
 		}
 	}
 	// set output format
+	m_OutputFormat = m_Stages.rbegin()->Proc->GetOutputWaveformat();
+	return TRUE;
+}
+
+BOOL CBatchProcessing::SetOutputWaveformat(CWaveFormat const & Wf)
+{
+	m_OutputFormat = Wf;
+	m_OutputSampleType = Wf.GetSampleType();
 	return TRUE;
 }
 
@@ -4235,7 +4275,7 @@ size_t CBatchProcessing::ProcessSoundBuffer(char const * pIn, char * pOut,
 					nCurrInputBytes = pItem->FillInputBuffer(pIn, nInBytes, &GetInputWaveformat());
 					pIn += nCurrInputBytes;
 					nInBytes -= nCurrInputBytes;
-					*pUsedBytes += nInBytes;
+					*pUsedBytes += nCurrInputBytes;
 				}
 
 			}
@@ -4381,6 +4421,18 @@ BOOL CBatchProcessing::Init()
 	}
 
 	return TRUE;
+}
+
+bool CBatchProcessing::SetChannelsToProcess(CHANNEL_MASK channels)
+{
+	for (item_iterator pItem = m_Stages.begin(); pItem != m_Stages.end(); pItem++)
+	{
+		if ( ! pItem->Proc->SetChannelsToProcess(channels))
+		{
+			return false;
+		}
+	}
+	return true;
 }
 
 void CBatchProcessing::DeInit()

@@ -74,7 +74,7 @@ void CExpressionEvaluationProc::ProcessSampleValue(void const * pInSample, void 
 {
 	m_dCurrentSample = *(float const*)pInSample * (1./32767.);
 	Evaluate();
-	*(float*)pOutSample = * m_pResultAddress;
+	*(float*)pOutSample = (float)* m_pResultAddress;
 }
 
 CString CExpressionEvaluationProc::GetToken(LPCTSTR * ppStr, TokenType * pType)
@@ -1256,7 +1256,7 @@ BOOL CExpressionEvaluationProc::SetExpression(LPCTSTR * ppszExpression)
 		// norm the sample
 		PushConstant(32767);
 		CompileMultiply();
-		m_pResultAddress = PopInt();
+		m_pResultAddress = PopDouble();
 	}
 	catch (char * Error)
 	{
@@ -1528,8 +1528,6 @@ CCdReadingContext::CCdReadingContext(CWaveSoapFrontDoc * pDoc,
 	m_bSaveImmediately(FALSE),
 	m_CdBufferSize(0)
 {
-	m_GetBufferFlags = CDirectFile::GetBufferWriteOnly | CDirectFile::GetBufferNoPrefetch;
-	m_ReturnBufferFlags = CDirectFile::ReturnBufferDirty | CDirectFile::ReturnBufferFlush;
 }
 
 BOOL CCdReadingContext::InitTrackInformation(class ICdDrive const * Drive,
@@ -1589,7 +1587,7 @@ BOOL CCdReadingContext::InitTrackInformation(class ICdDrive const * Drive,
 
 unsigned CCdReadingContext::ProcessBuffer(char const * /*pInBuf*/, // if BACKWARD pass, points to the end of buffer
 										char * pOutBuf,    // if BACKWARD pass, points to the end of buffer
-										unsigned /*nInBytes*/, unsigned nOutBytes, unsigned * pUsedBytes,
+										unsigned /*nInBytes*/, unsigned nOutBytes, unsigned * /*pUsedBytes*/,
 										SAMPLE_POSITION /*SrcOffset*/,  // if BACKWARD pass, offset of the end of source buffer
 										SAMPLE_POSITION /*DstOffset*/,  // if BACKWARD pass, offset of the end of destination buffer
 										signed /*pass*/)

@@ -654,10 +654,9 @@ CThroughProcessOperation::CThroughProcessOperation(class CWaveSoapFrontDoc * pDo
 	, m_NumberOfForwardPasses(1)
 	, m_NumberOfBackwardPasses(0)
 	, m_CurrentPass(1)
-	, m_GetBufferFlags(CDirectFile::GetBufferAndPrefetchNext)
-	, m_ReturnBufferFlags(CDirectFile::ReturnBufferDirty)
 	, m_InputBuffer(new char[ThroughProcessBufferSize])
 	, m_OutputBuffer(NULL)
+	, m_UndoBuffer(NULL)
 {
 	try
 	{
@@ -676,8 +675,6 @@ CThroughProcessOperation::CThroughProcessOperation(class CWaveSoapFrontDoc * pDo
 	, m_NumberOfForwardPasses(1)
 	, m_NumberOfBackwardPasses(0)
 	, m_CurrentPass(1)
-	, m_GetBufferFlags(CDirectFile::GetBufferAndPrefetchNext)
-	, m_ReturnBufferFlags(CDirectFile::ReturnBufferDirty)
 	, m_InputBuffer(new char[ThroughProcessBufferSize])
 	, m_OutputBuffer(NULL)
 {
@@ -696,6 +693,7 @@ CThroughProcessOperation::~CThroughProcessOperation()
 {
 	delete[] m_InputBuffer;
 	delete[] m_OutputBuffer;
+	delete[] m_UndoBuffer;
 }
 
 BOOL CThroughProcessOperation::OperationProc()
@@ -1051,6 +1049,12 @@ BOOL CThroughProcessOperation::InitPass(int nPass)
 		m_OutputBufferPutIndex = ThroughProcessBufferSize;
 	}
 	return TRUE;
+}
+
+BOOL CThroughProcessOperation::CreateUndo()
+{
+	m_UndoBuffer = new char[ThroughProcessBufferSize];
+	return BaseClass::CreateUndo();
 }
 
 /////////////// CStagedContext ///////////////
@@ -2936,7 +2940,7 @@ BOOL CDcOffsetContext::CDcOffsetProc::Init()
 	{
 		for (NUMBER_OF_CHANNELS ch = 0; ch < MAX_NUMBER_OF_CHANNELS; ch ++)
 		{
-			m_Offset[ch] = -m_pScanContext->GetAverage(ch);
+			m_Offset[ch] = (float)-m_pScanContext->GetAverage(ch);
 		}
 	}
 
