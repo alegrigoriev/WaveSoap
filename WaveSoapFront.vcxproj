@@ -589,7 +589,6 @@ makehm /h /a afxhh.h IDW_,HIDW_,0x50000 "%(Filename)%(Extension)" &gt;&gt; "hlp\
     <ClInclude Include="SpectrumSectionView.h" />
     <ClInclude Include="SplitToFilesDialog.h" />
     <ClInclude Include="StdAfx.h" />
-    <ClInclude Include="TestOperation.h" />
     <ClInclude Include="TimeEdit.h" />
     <ClInclude Include="TimeRulerView.h" />
     <ClInclude Include="TimeToStr.h" />

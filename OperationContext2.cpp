@@ -1845,7 +1845,6 @@ BOOL CReplaceFormatContext::OperationProc()
 	// replace format to the one in m_NewWaveFormat
 	m_pDocument->SetWaveFormat(m_NewWaveFormat);
 
-//    m_pDocument->UpdateFrameTitles();        // will cause name change in views
 	m_pDocument->UpdateAllViews(NULL, CWaveSoapFrontDoc::UpdateSampleRateChanged);
 	return TRUE;
 }
@@ -2874,7 +2873,6 @@ BOOL CMetadataChangeOperation::CreateUndo()
 		m_pUndoData = new ThisClass(m_pDocument, m_WaveFile);
 	}
 
-//    m_pUndoData->SaveUndoMetadata(m_MetadataCopyFlags);
 
 	return TRUE;
 }

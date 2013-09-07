@@ -2524,7 +2524,6 @@ BOOL CSoundPlayContext::Init()
 	m_OldThreadPriority = GetThreadPriority(GetCurrentThread());
 
 	MMRESULT mmres = m_WaveOut.Open(m_PlaybackDevice, m_Wf, 0);
-//    CWaveOut::EnumFormats(0, NULL, 0);
 
 	if (MMSYSERR_NOERROR != mmres)
 	{
@@ -2669,10 +2668,6 @@ CString CSoundPlayContext::GetPlaybackTimeString(int TimeFormat) const
 		return TimeToHhMmSs(TimeMs, TimeFormat);
 	}
 }
-
-//CString CSoundPlayContext::GetStatusString() const
-	//{
-	//}
 
 CString CSoundPlayContext::GetCompletedStatusString() const
 {

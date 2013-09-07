@@ -144,7 +144,9 @@ private:
 	void CompileOr();
 	void CompileXor();
 
-	enum { ExpressionStackSize = 64,
+	enum
+	{
+		ExpressionStackSize = 64,
 		NumberOfIntConstants = 128,
 		NumberOfDoubleConstants = 64,
 	};

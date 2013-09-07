@@ -138,7 +138,9 @@ public:
 	CString m_CurrentDir;
 	int m_OpenFileDialogFilter;
 	int m_DefaultOpenMode;
-	enum { DefaultOpenReadOnly = 0,
+	enum
+	{
+		DefaultOpenReadOnly = 0,
 		DefaultOpenDirect = 1,
 		DefaultOpenBuffered = 2, };
 
@@ -148,8 +150,10 @@ public:
 	bool m_bShowNewFormatDialogWhenShiftOnly;
 	bool m_bAllow4GbWavFile;      // File proppage
 	// display colors:
-	union {
-		struct {
+	union
+	{
+		struct
+		{
 			DWORD m_WaveBackground;
 			DWORD m_SelectedWaveBackground;
 			DWORD m_WaveColor;
@@ -260,7 +264,6 @@ public:
 	unsigned _ThreadProc();
 	bool volatile m_RunThread;
 	HANDLE m_hThreadEvent;
-//    CSimpleCriticalSection m_cs;
 	static UINT AFX_CDECL ThreadProc(PVOID arg)
 	{
 		return ((CWaveSoapFrontApp *) arg)->_ThreadProc();

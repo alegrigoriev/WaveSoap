@@ -902,8 +902,8 @@ void CApplicationProfile::RevertSectionToInitial(LPCTSTR szSection)
 		}
 	}
 }
-		// saves the section in INI file. If section name is empty,
-		// saves all of them
+// saves the section in INI file. If section name is empty,
+// saves all of them
 BOOL CApplicationProfile::ExportSection(LPCTSTR szSection, LPCTSTR szFilename)
 {
 	if (NULL == szFilename || 0 == szFilename[0])

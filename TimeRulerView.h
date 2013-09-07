@@ -27,7 +27,9 @@ public:
 
 // Operations
 public:
-	enum {ShowSamples = SampleToString_Sample,
+	enum
+	{
+		ShowSamples = SampleToString_Sample,
 		ShowHhMmSs = SampleToString_HhMmSs/* | TimeToHhMmSs_NeedsHhMm | TimeToHhMmSs_NeedsMs*/,
 		ShowSeconds = SampleToString_Seconds/* | TimeToHhMmSs_NeedsMs*/,
 		ShowHhMmSsFf = SampleToString_HhMmSsFf,
@@ -52,7 +54,8 @@ protected:
 	unsigned HitTest(POINT p, RECT * pHitRect = NULL, int * OffsetX = NULL) const;
 	void InvalidateMarkerRegion(WAVEREGIONINFO const * pInfo);
 
-	enum {
+	enum
+	{
 		HitTestNone = 0x00000000,          // non-specific area of the ruler hit - no bits set
 		HitTestRegionBegin = 0x40000000,    // mark of region begin hit
 		HitTestRegionEnd = 0x20000000,      // mark of region begin hit

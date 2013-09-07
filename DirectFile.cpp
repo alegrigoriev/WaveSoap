@@ -145,7 +145,6 @@ private:
 	// max number of 64K block allowed to read ahead
 	unsigned m_MaxBlocksToPrefetch;
 
-	//DWORD m_Flags;
 	ULONG_volatile m_MRU_Count;
 
 	HANDLE m_hThread;
@@ -164,8 +163,6 @@ protected:
 	// ~0 (0xFFFFFFFF) - exit requested
 
 	BOOL volatile m_FlushRequest;
-
-	//unsigned volatile m_MinPrefetchMRU;
 
 	static unsigned __stdcall ThreadProc(void * arg)
 	{
@@ -1235,7 +1232,6 @@ CDirectFileCache::CDirectFileCache()
 	m_pBuffersArray(NULL),
 	m_MRU_Count(1),
 	m_NumberOfBuffers(0),
-//m_MinPrefetchMRU(0),
 	m_MaxBlocksToPrefetch(2),
 	m_FlushRequest(0)
 {
@@ -2099,7 +2095,6 @@ void CDirectFileCache::RequestPrefetch(File * pFile,
 								pFile->m_hFile, pUseDesc->m_PrefetchedBeginBlock, pUseDesc->m_PrefetchedEndBlock,
 								pUseDesc->m_PrefetchPosition);
 
-//        m_MinPrefetchMRU = MaxMRU;
 	}
 	SetEvent(m_hEvent);
 }
@@ -2263,17 +2258,6 @@ BufferHeader * CDirectFileCache::GetFreeBuffer(unsigned MaxMRU)
 		BufferMruEntry * pMru = m_MruList.Last();
 		// find least recent unlocked and non-dirty buffer (with lowest MRU)
 		// whose MRU is at most MaxMRU.
-#if 0
-		while (m_MruList.NotEnd(pMru)
-				&& pMru->MRU_Count < MaxMRU
-				&& (pMru->LockCount > 0
-					|| 0 != pMru->DirtyMask))
-		{
-			pMru = m_MruList.Prev(pMru);
-		}
-		// unlocked buffer not found or buffer was too recent
-		if (m_MruList.IsEnd(pMru) || pMru->MRU_Count >= MaxMRU)
-#endif
 		{
 			// try to find a dirty buffer
 
@@ -2329,109 +2313,6 @@ BufferHeader * CDirectFileCache::GetFreeBuffer(unsigned MaxMRU)
 	}
 	return NULL;
 }
-
-#if 0
-// read the data by 32-bit MaskToRead (each bit corresponds to 2K)
-// to the buffer defined by BufferHeader *pBuf
-BOOL File::ReadFileAt(LONGLONG Position, void * pBuf, DWORD ToRead, DWORD * pWasRead)
-{
-	BOOL result;
-	CLastError LastError;
-	while (1)
-	{
-		if (m_UseOverlappedIo)
-		{
-			OVERLAPPED ov;
-			ov.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
-			// no need to use m_FilePointer
-			ov.Offset = (ULONG)(Position & 0xFFFFFFFF);
-			ov.OffsetHigh = (ULONG)(Position >> 32);
-			ov.Internal = 0;
-			ov.InternalHigh = 0;
-
-			result = ReadFile(m_hFile, pBuf, ToRead, pWasRead, &ov);
-			if (FALSE == result
-				&& ERROR_IO_PENDING == GetLastError())
-			{
-				result = GetOverlappedResult(m_hFile, & ov, pWasRead, TRUE);
-			}
-
-			LastError.Get();
-			if (0 == m_LastError)
-			{
-				m_LastError = LastError;
-			}
-		}
-		else    // using synchronous I/O
-		{
-			CSimpleCriticalSectionLock lock(m_FileLock);
-			if (0) TRACE("Stored file pointer: %X, actual: %X\n",
-						long(m_FilePointer), SetFilePointer(m_hFile, 0, NULL, FILE_CURRENT));
-
-			DebugTimeStamp time;
-
-			if (Position != m_FilePointer)
-			{
-				LONG FilePtrH = LONG(Position >> 32);
-				SetFilePointer(m_hFile, (ULONG)(Position & 0xFFFFFFFF), & FilePtrH, FILE_BEGIN);
-				m_FilePointer = Position;
-			}
-
-			result = ReadFile(m_hFile, pBuf, ToRead, pWasRead, NULL);
-
-			if (TRACE_READ) TRACE("ReadFile(%08x, pos=0x%08X, bytes=%X), elapsed time=%d ms/10\n",
-								m_hFile, (ULONG)(Position & 0xFFFFFFFF), ToRead, time.ElapsedTimeTenthMs());
-			LastError.Get();
-			if (0 == m_LastError)
-			{
-				m_LastError = LastError;
-			}
-#ifdef _DEBUG
-			if (*pWasRead < ToRead)
-			{
-				if (0) TRACE("ToRead=%x, BytesRead=%x\n", ToRead, *pWasRead);
-			}
-#endif
-			m_FilePointer += *pWasRead;
-		}
-		if (result)
-		{
-			break;
-		}
-
-		CString s;
-		CHeapPtr<TCHAR, CLocalAllocator > pszTemp(NULL);
-
-		DWORD dwResult = FormatMessage(
-										FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_ALLOCATE_BUFFER,
-										NULL, LastError, 0, reinterpret_cast<LPTSTR>( & pszTemp),
-										0, NULL);
-
-		s.Format(IDS_FILE_READ_ERROR, LPCTSTR(m_FileName), LPCTSTR(pszTemp));
-
-		DWORD flags = MB_DEFBUTTON2 | MB_ICONERROR | MB_CANCELTRYCONTINUE | MB_SETFOREGROUND;
-		if (0x80000000 & GetVersion())
-		{
-			// Win9x
-			flags = MB_DEFBUTTON2 | MB_ICONERROR | MB_RETRYCANCEL | MB_SETFOREGROUND;
-		}
-
-		INT_PTR retcode = MessageBoxSync(s, flags);
-		if (IDRETRY != retcode)
-		{
-			break;
-		}
-	}
-
-	return result;
-}
-BOOL File::WriteFileAt(LONGLONG Position, void const * pBuf,
-						DWORD ToWrite, DWORD * pWasWritten)
-{
-	//TODO
-	return 0;
-}
-#endif
 
 // MaskToRead - mask of blocks that should be read from the file
 // Requested mask - mask of all blocks, including those that should be just zero-filled (write-only blocks)

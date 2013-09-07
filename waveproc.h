@@ -255,7 +255,9 @@ protected:
 	virtual double GetDstMixCoefficient(SAMPLE_INDEX Sample, int Channel) const = 0;
 };
 
-enum { FadeInLinear = 1,
+enum
+{
+	FadeInLinear = 1,
 	FadeOutLinear = -FadeInLinear,
 	FadeInSinSquared = 2,
 	FadeOutSinSquared = -FadeInSinSquared,
@@ -385,10 +387,13 @@ public:
 protected:
 	virtual BOOL Init();
 
-	enum {PREV_BUF_SIZE = 2048,
+	enum
+	{
+		PREV_BUF_SIZE = 2048,
 		PREV_MASK = PREV_BUF_SIZE-1,
 		CLICK_LENGTH = 64,
-		ANALYZE_LAG = 1024};
+		ANALYZE_LAG = 1024,
+	};
 
 	struct DeclickChannelData
 	{
@@ -671,7 +676,9 @@ private:
 
 	void ResetResample();
 
-	enum {WindowTypeSquareSine,
+	enum
+	{
+		WindowTypeSquareSine,
 		WindowTypeNuttall,
 		WindowType = WindowTypeNuttall,
 	};
@@ -680,12 +687,15 @@ private:
 	static double sinc(double arg);
 	double ResampleFilterTap(double arg, double FilterLength);
 
-	enum {ResampleTableBits = 11,
+	enum
+	{
+		ResampleTableBits = 11,
 		ResampleFilterSize = (1 << ResampleTableBits),
 		ResampleIndexShift = (32 - ResampleTableBits),
 		MaxNumberOfFilterSamples = 500*100,
 		SrcBufSize = 0x4000,
-		DstBufSize = 0x4000 };
+		DstBufSize = 0x4000,
+	};
 
 	float m_pSrcBuf[SrcBufSize];
 	float m_pDstBuf[DstBufSize];
@@ -825,8 +835,6 @@ protected:
 
 	virtual BOOL Init();
 	virtual void DeInit();
-
-//    CWaveFormat m_Wf;
 };
 
 #endif //#ifndef __WAVEPROC_H_

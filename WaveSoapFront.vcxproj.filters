@@ -515,9 +515,6 @@
     <ClInclude Include="PolyRatio.h">
       <Filter>FilterMath</Filter>
     </ClInclude>
-    <ClInclude Include="TestOperation.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <CustomBuild Include="hlp\WaveSoap.hhp">
