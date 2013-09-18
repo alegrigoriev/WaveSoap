@@ -617,7 +617,7 @@ void CSelectionUiSupport::InitSelectionUi()
 	m_WaveFile.GetSortedFileSegments(Segments, true);
 
 	for (WaveFileSegmentVector::iterator i = Segments.begin();
-		i < Segments.end(); i++)
+		i != Segments.end(); i++)
 	{
 		if (i->Begin > 0
 			&& i->Begin < i->End
@@ -2827,7 +2827,7 @@ void CExpressionEvaluationDialog::OnOK()
 	if ( ! m_pProc->SetExpression( & str))
 	{
 		AfxMessageBox(m_pProc->m_ErrorString);
-		int pos = str - str1;
+		int pos = int(str - str1);
 		m_eExpression.SetFocus();
 		m_eExpression.SetSel(pos, pos, FALSE);
 		return;

@@ -174,6 +174,11 @@ public:
 	BOOL m_bShowSpectrumSection;
 	int m_SpectrumSectionWidth;
 
+	// keep for updating the scrollbar
+	double m_CurrentTotalSamplesInExtent;
+	double m_CurrentFirstSampleInView;
+	double m_CurrentTotalSamplesInView;
+
 public:
 	virtual ~CWaveMDIChildClient();
 	void RecalcLayout();
@@ -201,6 +206,7 @@ protected:
 	afx_msg void OnViewHideSpectrumsection();
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
+	afx_msg LRESULT OnUwmNotifyViews(WPARAM wParam, LPARAM lParam);
 };
 
 

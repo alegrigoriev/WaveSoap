@@ -23,15 +23,20 @@ public:
 		m_nCountInBuffer = 0;
 	}
 	void InvalidateRange(LONGLONG nOffset, long nCount);
+
+	// returns number of items of type T. nCount is in units of type T.
+	// nOffset is in units of T.
 	int GetData(T ** ppBuf, LONGLONG nOffset, long nCount, C * pSource);
 
 protected:
+	// returns number of items of type T. nCount is in units of type T.
+	// nOffset is in units of T.
 	int ReadData(T * pBuf, LONGLONG nOffset, long nCount, C * pSource);
 	T * m_pBuffer;
 	LONGLONG GetSourceCount(C * pSource);
 	long m_nBufferSize; // in sizeof(T) units
 	long m_nCountInBuffer;
-	LONGLONG m_BufferOffset;
+	LONGLONG m_BufferOffset;   // in units of T
 };
 
 template <typename T, typename C>
@@ -50,7 +55,6 @@ bool CDataSection<T, C>::Allocate(long nCount)
 	}
 	if (NULL != m_pBuffer)
 	{
-		// TODO: copy data from the old buffer to the new
 		delete[] m_pBuffer;
 		m_pBuffer = NULL;
 	}
@@ -70,6 +74,8 @@ void CDataSection<T, C>::InvalidateRange(LONGLONG nOffset, long nCount)
 	}
 }
 
+// returns number of items of type T. nCount is in units of type T.
+// nOffset is in units of T.
 template <typename T, typename C>
 int CDataSection<T, C>::GetData(T ** ppBuf, LONGLONG nOffset, long nCount, C * pSource)
 {
@@ -136,9 +142,10 @@ int CDataSection<T, C>::GetData(T ** ppBuf, LONGLONG nOffset, long nCount, C * p
 		// adjust NumOfSamples:
 		long ReadCount = nCount + long(nOffset) - (long(m_BufferOffset) + m_nCountInBuffer);
 		ASSERT(m_nCountInBuffer + ReadCount <= m_nBufferSize);
-		ReadCount = ReadData(m_pBuffer + m_nCountInBuffer,
-							m_BufferOffset + m_nCountInBuffer, ReadCount, pSource);
-		m_nCountInBuffer += ReadCount;
+		long WasRead = ReadData(m_pBuffer + m_nCountInBuffer,
+								m_BufferOffset + m_nCountInBuffer, ReadCount, pSource);
+		ASSERT(ReadCount == WasRead);
+		m_nCountInBuffer += WasRead;
 		nCount = long(m_BufferOffset) + m_nCountInBuffer - long(nOffset);
 	}
 

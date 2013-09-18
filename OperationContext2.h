@@ -515,9 +515,9 @@ protected:
 	ULONG m_NumberOfSectors;
 	HANDLE m_hEvent;
 	void * m_pCdBuffer;
-	size_t m_CdBufferSize;
-	size_t m_CdBufferFilled;
-	size_t m_CdDataOffset;
+	unsigned m_CdBufferSize;
+	unsigned m_CdBufferFilled;
+	unsigned m_CdDataOffset;
 
 	CString m_TrackName;
 	CString m_TrackFileName;

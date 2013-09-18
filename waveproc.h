@@ -131,8 +131,8 @@ public:
 	// and GetOutputSampleSize()
 
 	// the default (and only by now) implementation calls ProcessSoundBuffer and updates number of samples
-	virtual size_t ProcessSound(char const * pInBuf, char * pOutBuf,
-								size_t nInBytes, size_t nOutBytes, size_t * pUsedBytes);
+	virtual unsigned ProcessSound(char const * pInBuf, char * pOutBuf,
+								unsigned nInBytes, unsigned nOutBytes, unsigned * pUsedBytes);
 
 	// SetInputWaveformat returns FALSE if the wave cannot be
 	// processed
@@ -203,8 +203,8 @@ protected:
 
 	// this function always gets whole samples on input
 	// The default implementation calls ProcessSoundSample for every sample
-	virtual size_t ProcessSoundBuffer(char const * pInBuf, char * pOutBuf,
-									size_t nInBytes, size_t nOutBytes, size_t * pUsedBytes);
+	virtual unsigned ProcessSoundBuffer(char const * pInBuf, char * pOutBuf,
+										unsigned nInBytes, unsigned nOutBytes, unsigned * pUsedBytes);
 
 	// process samples for all channels. The default implementation calls ProcessSampleValue for all relevant channels
 	virtual void ProcessSoundSample(char const * pInSample, char * pOutSample, unsigned NumChannels);
@@ -213,7 +213,7 @@ protected:
 
 private:
 #ifdef _DEBUG
-	size_t m_ProcessedInputBytes;
+	MEDIA_FILE_SIZE m_ProcessedInputBytes;
 	size_t m_SavedOutputBytes;
 #endif
 	// assignment guard
@@ -294,10 +294,6 @@ public:
 
 	CHumRemoval(WAVEFORMATEX const * pWf, CHANNEL_MASK ChannelsToProcess);
 
-#if 0
-	virtual size_t ProcessSoundBuffer(char const * pInBuf, char * pOutBuf,
-									size_t nInBytes, size_t nOutBytes, size_t * pUsedBytes);
-#endif
 	virtual void ProcessSoundSample(char const * pInSample, char * pOutSample, unsigned NumChannels);
 
 	double m_prev_out[MAX_NUMBER_OF_CHANNELS];
@@ -372,8 +368,8 @@ public:
 
 	virtual ~CClickRemoval();
 
-	virtual size_t ProcessSoundBuffer(char const * pInBuf, char * pOutBuf,
-									size_t nInBytes, size_t nOutBytes, size_t * pUsedBytes);
+	virtual unsigned ProcessSoundBuffer(char const * pInBuf, char * pOutBuf,
+										unsigned nInBytes, unsigned nOutBytes, unsigned * pUsedBytes);
 
 	void InterpolateGap(CBackBuffer<int, int> & data, int nLeftIndex, int InterpolateSamples, bool BigGap);
 	void InterpolateGap(WAVE_SAMPLE data[], int nLeftIndex, int ClickLength, int nChans, bool BigGap, int TotalSamples);
@@ -557,8 +553,8 @@ public:
 
 	virtual void Dump(unsigned indent=0) const;
 
-	virtual size_t ProcessSoundBuffer(char const * pInBuf, char * pOutBuf,
-									size_t nInBytes, size_t nOutBytes, size_t * pUsedBytes);
+	virtual unsigned ProcessSoundBuffer(char const * pInBuf, char * pOutBuf,
+										unsigned nInBytes, unsigned nOutBytes, unsigned * pUsedBytes);
 	virtual BOOL SetInputWaveformat(CWaveFormat const & Wf);
 
 	NoiseReductionCore * m_pNrCore;
@@ -580,8 +576,8 @@ public:
 	virtual ~CBatchProcessing();
 	virtual void Dump(unsigned indent=0) const;
 
-	virtual size_t ProcessSoundBuffer(char const * pInBuf, char * pOutBuf,
-									size_t nInBytes, size_t nOutBytes, size_t * pUsedBytes);
+	virtual unsigned ProcessSoundBuffer(char const * pInBuf, char * pOutBuf,
+										unsigned nInBytes, unsigned nOutBytes, unsigned * pUsedBytes);
 
 	virtual BOOL SetInputWaveformat(CWaveFormat const & Wf);
 	virtual BOOL SetOutputWaveformat(CWaveFormat const & Wf);
@@ -658,8 +654,8 @@ public:
 
 	virtual ~CResampleFilter();
 
-	virtual size_t ProcessSoundBuffer(char const * pInBuf, char * pOutBuf,
-									size_t nInBytes, size_t nOutBytes, size_t * pUsedBytes);
+	virtual unsigned ProcessSoundBuffer(char const * pInBuf, char * pOutBuf,
+										unsigned nInBytes, unsigned nOutBytes, unsigned * pUsedBytes);
 	virtual BOOL SetInputWaveformat(CWaveFormat const & Wf);
 
 	void InitResample(long OriginalSampleRate, long NewSampleRate, int FilterLength,
@@ -765,8 +761,8 @@ private:
 
 protected:
 
-	virtual size_t ProcessSoundBuffer(char const * pInBuf, char * pOutBuf,
-									size_t nInBytes, size_t nOutBytes, size_t * pUsedBytes);
+	virtual unsigned ProcessSoundBuffer(char const * pInBuf, char * pOutBuf,
+										unsigned nInBytes, unsigned nOutBytes, unsigned * pUsedBytes);
 };
 
 class CChannelConvertor : public CWaveProc
@@ -782,8 +778,8 @@ public:
 	virtual BOOL SetInputWaveformat(CWaveFormat const & Wf);
 	// conversion either mono->stereo, or stereo->mono.
 	// if converting stereo->mono, the data can be left, right, or average
-	virtual size_t ProcessSoundBuffer(char const * pInBuf, char * pOutBuf,
-									size_t nInBytes, size_t nOutBytes, size_t * pUsedBytes);
+	virtual unsigned ProcessSoundBuffer(char const * pInBuf, char * pOutBuf,
+										unsigned nInBytes, unsigned nOutBytes, unsigned * pUsedBytes);
 };
 
 class CByteSwapConvertor : public CWaveProc
@@ -797,8 +793,8 @@ public:
 	{
 	}
 	virtual ~CByteSwapConvertor() {}
-	virtual size_t ProcessSoundBuffer(char const * pInBuf, char * pOutBuf,
-									size_t nInBytes, size_t nOutBytes, size_t * pUsedBytes);
+	virtual unsigned ProcessSoundBuffer(char const * pInBuf, char * pOutBuf,
+										unsigned nInBytes, unsigned nOutBytes, unsigned * pUsedBytes);
 };
 
 class CLameEncConvertor : public CWaveProc
@@ -824,14 +820,14 @@ public:
 protected:
 	BladeMp3Encoder m_Enc;
 	char * m_pInputBuffer;
-	size_t m_InputBufferSize;
-	size_t m_InputBufferFilled;
+	unsigned m_InputBufferSize;
+	unsigned m_InputBufferFilled;
 
 	BYTE * m_pOutputBuffer;
-	size_t m_OutputBufferFilled;
-	size_t m_OutputBufferSize;
-	virtual size_t ProcessSoundBuffer(char const * pInBuf, char * pOutBuf,
-									size_t nInBytes, size_t nOutBytes, size_t * pUsedBytes);
+	unsigned m_OutputBufferFilled;
+	unsigned m_OutputBufferSize;
+	virtual unsigned ProcessSoundBuffer(char const * pInBuf, char * pOutBuf,
+										unsigned nInBytes, unsigned nOutBytes, unsigned * pUsedBytes);
 
 	virtual BOOL Init();
 	virtual void DeInit();

@@ -225,14 +225,14 @@ protected:
 
 	CApplicationProfileItemBinary(
 								CApplicationProfile * pProfile, LPCTSTR szSection, LPCTSTR szName,
-								void * Pointer, void const * pDefault, size_t size);
+								void * Pointer, void const * pDefault, unsigned size);
 
 	friend class CApplicationProfile;
 };
 
 CApplicationProfileItemBinary::CApplicationProfileItemBinary(
 															CApplicationProfile * pProfile, LPCTSTR szSection, LPCTSTR szName,
-															void * Pointer, void const * pDefault, size_t size)
+															void * Pointer, void const * pDefault, unsigned size)
 	: CApplicationProfileItem(pProfile, szSection, szName)
 	, m_Size(size)
 // save default data:
@@ -759,7 +759,7 @@ void CApplicationProfile::AddItem(LPCTSTR szSection, LPCTSTR szName, float & val
 }
 
 void CApplicationProfile::AddItem(LPCTSTR szSection, LPCTSTR szName,
-								void * pValue, void const * pDefault, size_t size)
+								void * pValue, void const * pDefault, unsigned size)
 {
 	RemoveItem(szSection, szName);
 

@@ -59,7 +59,7 @@ protected:
 	// m_FftResultBegin holds the median sample index of the first column.
 	// m_FftResultEnd holds the median sample index of the last column.
 	unsigned char * m_pFftResultArray;
-	size_t m_FftArraySize;
+	unsigned m_FftArraySize;
 	int m_FftResultArrayWidth;    // number of FFT sets
 	int m_FftResultArrayHeight;   // m_FftOrder * pDoc->WaveChannels() + 1;
 	int m_IndexOfFftBegin;
@@ -97,8 +97,10 @@ protected:
 	SAMPLE_INDEX SampleToFftBaseSample(SAMPLE_INDEX sample);
 	SAMPLE_INDEX DisplaySampleToFftBaseSample(SAMPLE_INDEX sample);
 	void InvalidateFftColumnRange(long first_column, long last_column);  // including last
+	void SetVerticalScale(double NewVerticalScale);
 
 	static HBRUSH m_Brush;
+	bool    m_SelectionRectDrawn;
 	// Generated message map functions
 protected:
 	//{{AFX_MSG(CWaveFftView)
@@ -136,10 +138,15 @@ protected:
 	//}}AFX_MSG
 	void OnUpdateBands(CCmdUI* pCmdUI, int number);
 	void OnSetBands(int order);
-	virtual void DrawSelectionRect(CDC * pDC,
-									double left, double right, double bottom, double top);
+	void DrawSelectionRect(CDC * pDC,
+							double left, double right, double bottom, double top);
+
+	void RemoveSelectionRect();
+	void ShowSelectionRect();
+
 	friend class CSpectrumSectionView;
 	DECLARE_MESSAGE_MAP()
+	afx_msg LRESULT OnUwmNotifyViews(WPARAM wParam, LPARAM lParam);
 };
 
 /////////////////////////////////////////////////////////////////////////////

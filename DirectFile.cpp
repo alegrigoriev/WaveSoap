@@ -96,7 +96,7 @@ public:
 	CDirectFileCache();
 	~CDirectFileCache();
 protected:
-	void InitCache(size_t MaxCacheSize);
+	void InitCache(unsigned MaxCacheSize);
 	void DeInitCache();
 
 	long GetDataBuffer(File * pFile, void * * ppBuf,
@@ -231,8 +231,8 @@ struct DirectFileCache::File : public ListItem<DirectFileCache::File>
 		char * m_pMemoryFileBuffer;
 	};
 	union {
-		size_t m_WrittenMaskSize;
-		size_t m_MemoryFileBufferSize;
+		unsigned m_WrittenMaskSize;
+		unsigned m_MemoryFileBufferSize;
 	};
 	// data common for all CDirectFile instances, attached to this File
 	InstanceData * m_pInstanceData;
@@ -635,7 +635,7 @@ File * CDirectFileCache::Open(LPCTSTR szName, DWORD flags)
 
 		pFile->m_WrittenMaskSize = WrittenMaskLength;
 		memset(pFile->m_pWrittenMask, 0, WrittenMaskLength);
-		size_t const LastByteOffset =
+		unsigned const LastByteOffset =
 			FILE_OFFSET_TO_WRITTEN_MASK_OFFSET(pFile->m_FileLength +
 												CACHE_BLOCK_SIZE - 1);
 
@@ -1245,13 +1245,13 @@ CDirectFileCache::CDirectFileCache()
 	// round up to 64K
 }
 
-void CDirectFileCache::InitCache(size_t MaxCacheSize)
+void CDirectFileCache::InitCache(unsigned MaxCacheSize)
 {
 	if (1 != ++m_InitCount)
 	{
 		return;
 	}
-	size_t CacheSize;
+	SIZE_T CacheSize;
 	MEMORYSTATUS st;
 	GlobalMemoryStatus( & st);
 	CacheSize = st.dwTotalPhys / 8;
@@ -2351,14 +2351,14 @@ void File::ReadDataBuffer(BufferHeader * pBuf, DWORD MaskToRead, DWORD Requested
 		// check if the buffer is in the initialized part of the file
 		if (0 == (m_Flags & CDirectFile::FileFlagsReadOnly))
 		{
-			size_t const WrittenMaskOffset = pBuf->PositionKey >> 3;
+			unsigned const WrittenMaskOffset = pBuf->PositionKey >> 3;
 
 			bool NeedToReadFromSourceFile = false;
 
 			if (WrittenMaskOffset >= m_WrittenMaskSize)
 			{
 				// assume we don't need to read the block, because it's beyound the current file length
-				size_t const NewWrittenMaskSize = WrittenMaskOffset + 512;   // 256 more megs
+				unsigned const NewWrittenMaskSize = WrittenMaskOffset + 512;   // 256 more megs
 				char * NewWrittenMask = new /*(nothrow)*/ char[NewWrittenMaskSize];
 
 				if (NULL != NewWrittenMask)
@@ -2564,7 +2564,7 @@ void File::FlushDirtyBuffers(BufferHeader * pDirtyBuf, BLOCK_INDEX MaxKey)
 
 			unsigned char * buf = (unsigned char *) pBuf->pBuf;
 
-			size_t WrittenMaskOffset = pBuf->PositionKey >> 3;
+			unsigned WrittenMaskOffset = pBuf->PositionKey >> 3;
 
 			ASSERT(WrittenMaskOffset < m_WrittenMaskSize);
 			ASSERT(m_pWrittenMask);
@@ -3297,7 +3297,7 @@ void CDirectFile::ResetLastError()
 		m_pFile->m_LastError = 0;
 }
 
-CDirectFileCacheProxy::CDirectFileCacheProxy(size_t MaxCacheSize)
+CDirectFileCacheProxy::CDirectFileCacheProxy(unsigned MaxCacheSize)
 {
 	CacheInstance.InitCache(MaxCacheSize);
 }

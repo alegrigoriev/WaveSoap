@@ -113,6 +113,9 @@ CWaveMDIChildClient::CWaveMDIChildClient()
 	m_bShowTimeRuler(TRUE),
 	m_bShowVerticalRuler(TRUE),
 	m_bShowSpectrumSection(FALSE),
+	m_CurrentTotalSamplesInExtent(2000.),
+	m_CurrentFirstSampleInView(0.),
+	m_CurrentTotalSamplesInView(1000.),
 	m_bShowFft(FALSE)
 {
 	m_SpectrumSectionWidth = GetApp()->m_SpectrumSectionWidth;
@@ -145,6 +148,7 @@ BEGIN_MESSAGE_MAP(CWaveMDIChildClient, CWnd)
 	//}}AFX_MSG_MAP
 	ON_MESSAGE(WM_DISPLAYCHANGE, OnDisplayChange)
 	ON_WM_SETTINGCHANGE()
+	ON_MESSAGE(UWM_NOTIFY_VIEWS, &CWaveMDIChildClient::OnUwmNotifyViews)
 END_MESSAGE_MAP()
 
 CWnd * CWaveMDIChildClient::CreateView(CRuntimeClass* pViewClass,
@@ -777,6 +781,9 @@ int CWaveMDIChildClient::OnCreate(LPCREATESTRUCT lpCreateStruct)
 
 	// create scrollbar
 	m_sb.Create(SBS_HORZ | WS_VISIBLE | WS_CHILD, r, this, AFX_IDW_HSCROLL_FIRST);
+
+	m_sb.SetScrollRange(-16384, 16384);
+
 	wTracker.Create(AfxRegisterWndClass(CS_HREDRAW | CS_VREDRAW,
 										AfxGetApp()->LoadStandardCursor(IDC_SIZEWE),
 										HBRUSH(COLOR_ACTIVEBORDER + 1)), _T(""),
@@ -786,41 +793,13 @@ int CWaveMDIChildClient::OnCreate(LPCREATESTRUCT lpCreateStruct)
 								r10, FftViewID, pContext, FALSE); //do not show
 
 	CWnd * pView = CreateView(RUNTIME_CLASS(CWaveSoapFrontView),
-							r10, WaveViewID, pContext);
+							r10, WaveViewID, pContext, TRUE);
 
 	CWnd * pTrackView = CreateView(RUNTIME_CLASS(CSpectrumSectionView),
 									r10, SpectrumSectionViewID, pContext, FALSE);
 
-	if (pView && pFftView)
-	{
-		(DYNAMIC_DOWNCAST(CScaledScrollView, pFftView))->SyncHorizontal
-			(DYNAMIC_DOWNCAST(CScaledScrollView, pView));
-	}
-
-	if (pTrackView && pFftView)
-	{
-		(DYNAMIC_DOWNCAST(CScaledScrollView, pTrackView))->SyncVertical
-			(DYNAMIC_DOWNCAST(CScaledScrollView, pFftView));
-	}
-
-	if (pTrackView && pSpectrumSectionRuler)
-	{
-		(DYNAMIC_DOWNCAST(CScaledScrollView, pSpectrumSectionRuler))->SyncHorizontal
-			(DYNAMIC_DOWNCAST(CScaledScrollView, pTrackView));
-	}
-
 	GetParentFrame()->SetActiveView(DYNAMIC_DOWNCAST(CView, pView));
 
-	CScaledScrollView * pRulerCast = DYNAMIC_DOWNCAST(CScaledScrollView, pHorRuler);
-	if (pRulerCast) pRulerCast->SyncHorizontal
-			(DYNAMIC_DOWNCAST(CScaledScrollView, pView));
-
-	pRulerCast = DYNAMIC_DOWNCAST(CScaledScrollView, pVertRuler);
-	if (pRulerCast) pRulerCast->SyncVertical
-			(DYNAMIC_DOWNCAST(CScaledScrollView, pView));
-	pRulerCast = DYNAMIC_DOWNCAST(CScaledScrollView, pFftRuler);
-	if (pRulerCast) pRulerCast->SyncVertical
-			(DYNAMIC_DOWNCAST(CScaledScrollView, pFftView));
 
 	RecalcLayout();
 	return 0;
@@ -870,16 +849,8 @@ void CWaveMDIChildClient::OnHScroll(UINT nSBCode, UINT nPos, CScrollBar* pScroll
 	pView = GetDlgItem(WaveViewID);
 	if (pView != NULL)
 	{
-		pView->SendMessage(WM_HSCROLL,
-							MAKELONG(nSBCode, nPos), (LPARAM)pScrollBar->m_hWnd);
+		pView->SendMessage(WM_HSCROLL,MAKELONG(nSBCode, nPos), (LPARAM)pScrollBar->m_hWnd);
 	}
-	pView = GetDlgItem(FftViewID);
-	if (pView != NULL)
-	{
-		pView->SendMessage(WM_HSCROLL,
-							MAKELONG(nSBCode, nPos), (LPARAM)pScrollBar->m_hWnd);
-	}
-
 }
 
 int CChildFrame::OnCreate(LPCREATESTRUCT lpCreateStruct)
@@ -1524,3 +1495,81 @@ BOOL CMiniToolbar::OnToolTipText(UINT /*id*/, NMHDR* pNMHDR, LRESULT* pResult)
 	return ((CMainFrame*)AfxGetMainWnd())->OnToolTipText(0, pNMHDR, pResult);
 }
 
+
+
+afx_msg LRESULT CWaveMDIChildClient::OnUwmNotifyViews(WPARAM wParam, LPARAM lParam)
+{
+	// reflect to child windows
+	SCROLLINFO scrollinfo = {sizeof scrollinfo};
+	m_sb.GetScrollInfo(&scrollinfo, SIF_ALL);
+
+	switch (wParam)
+	{
+	case HorizontalOriginChanged:
+		m_CurrentFirstSampleInView = *(double*)lParam;
+		if (m_CurrentTotalSamplesInView < m_CurrentTotalSamplesInExtent)
+		{
+			int new_pos = int(scrollinfo.nMin + (scrollinfo.nMax - scrollinfo.nMin) * m_CurrentFirstSampleInView / m_CurrentTotalSamplesInExtent);
+			if (new_pos == scrollinfo.nPos)
+			{
+				break;
+			}
+
+			scrollinfo.nPos = new_pos;
+			scrollinfo.fMask = SIF_POS;
+		}
+		else
+		{
+			scrollinfo.nPos = 0;
+			if (scrollinfo.nPage == scrollinfo.nMax - scrollinfo.nMin)
+			{
+				break;
+			}
+
+			scrollinfo.nPage = scrollinfo.nMax - scrollinfo.nMin;
+			scrollinfo.fMask = SIF_PAGE | SIF_POS;
+		}
+		m_sb.SetScrollInfo(&scrollinfo);
+		break;
+
+	case HorizontalExtentChanged:
+	{
+		NotifyViewsData * data = (NotifyViewsData *) lParam;
+		m_CurrentFirstSampleInView = data->HorizontalScroll.FirstSampleInView;
+		m_CurrentTotalSamplesInExtent = data->HorizontalScroll.TotalSamplesInExtent;
+		m_CurrentTotalSamplesInView = data->HorizontalScroll.TotalSamplesInView;
+
+		scrollinfo.fMask = 0;
+
+		int NewPage = int((scrollinfo.nMax - scrollinfo.nMin) * m_CurrentTotalSamplesInView / m_CurrentTotalSamplesInExtent);
+		if (NewPage != scrollinfo.nPage)
+		{
+			scrollinfo.nPage = NewPage;
+			scrollinfo.fMask |= SIF_PAGE;
+		}
+
+		int new_pos = int(scrollinfo.nMin + (scrollinfo.nMax - scrollinfo.nMin) * m_CurrentFirstSampleInView / m_CurrentTotalSamplesInExtent);
+		if (new_pos != scrollinfo.nPos)
+		{
+			scrollinfo.nPos = new_pos;
+			scrollinfo.fMask |= SIF_POS;
+		}
+		if (scrollinfo.fMask)
+		{
+			m_sb.SetScrollInfo(&scrollinfo);
+		}
+	}
+		break;
+	case HorizontalScaleChanged:
+		break;
+	}
+	SendDlgItemMessage(WaveViewID, UWM_NOTIFY_VIEWS, wParam, lParam);
+	SendDlgItemMessage(FftViewID, UWM_NOTIFY_VIEWS, wParam, lParam);
+	SendDlgItemMessage(HorizontalRulerID, UWM_NOTIFY_VIEWS, wParam, lParam);
+	SendDlgItemMessage(VerticalWaveRulerID, UWM_NOTIFY_VIEWS, wParam, lParam);
+	SendDlgItemMessage(VerticalFftRulerID, UWM_NOTIFY_VIEWS, wParam, lParam);
+	SendDlgItemMessage(SpectrumSectionViewID, UWM_NOTIFY_VIEWS, wParam, lParam);
+	SendDlgItemMessage(OutlineViewID, UWM_NOTIFY_VIEWS, wParam, lParam);
+	SendDlgItemMessage(SpectrumSectionRulerID, UWM_NOTIFY_VIEWS, wParam, lParam);
+	return 0;
+}

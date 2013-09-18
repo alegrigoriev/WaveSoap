@@ -443,7 +443,7 @@ void CCdGrabbingDialog::DoDataExchange(CDataExchange* pDX)
 			m_ArtistHistory.AddString(m_sArtist);
 		}
 
-		for (CdTrackInfoVector::iterator t = m_Tracks.begin(); t < m_Tracks.end(); t++)
+		for (CdTrackInfoVector::iterator t = m_Tracks.begin(); t != m_Tracks.end(); t++)
 		{
 			if ( ! t->Checked)
 			{
@@ -1283,16 +1283,16 @@ BOOL CCdGrabbingDialog::PreTranslateMessage(MSG* pMsg)
 		if (pMsg->wParam == VK_F2)
 		{
 			// find a selected item
-			unsigned nSelItem = unsigned(-1);
+			int nSelItem = -1;
 
-			while (unsigned(-1) != (nSelItem = m_lbTracks.GetNextItem(nSelItem, LVNI_SELECTED)))
+			while (-1 != (nSelItem = m_lbTracks.GetNextItem(nSelItem, LVNI_SELECTED)))
 			{
-				if (nSelItem < m_Tracks.size()
+				if (nSelItem < (int)m_Tracks.size()
 					&& m_Tracks[nSelItem].IsAudio)
 				{
 					// unselect all items
-					unsigned nItem = unsigned(-1);
-					while (unsigned(-1) != (nItem = m_lbTracks.GetNextItem(nItem, LVNI_SELECTED)))
+					int nItem = -1;
+					while (-1 != (nItem = m_lbTracks.GetNextItem(nItem, LVNI_SELECTED)))
 					{
 						if (nItem != nSelItem)
 						{
@@ -1482,12 +1482,12 @@ BOOL CCdGrabbingDialog::FillPlaybackBuffers()
 {
 	// get sound buffers, fill from CD
 	char * pBuffer;
-	size_t BufSize;
+	unsigned BufSize;
 	int hBuffer;
 	while (0 != m_PlaybackSectors
 			&& (hBuffer = m_WaveOut.GetBuffer( & pBuffer, & BufSize, FALSE)) > 0)
 	{
-		long NumSectors = long(BufSize / CDDASectorSize);
+		long NumSectors = BufSize / CDDASectorSize;
 		if (NumSectors > m_PlaybackSectors)
 		{
 			NumSectors = m_PlaybackSectors;

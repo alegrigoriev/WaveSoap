@@ -78,7 +78,7 @@ void CSaveExpressionDialog::BuildExpressionGroupCombobox(unsigned nGroupSelected
 	m_ExpressionGroupCombo.ResetContent();
 
 	for (ExprGroupVector::const_iterator ii = m_Expressions.begin() + 1
-		; ii < m_Expressions.end(); ii++)
+		; ii != m_Expressions.end(); ii++)
 	{
 		m_ExpressionGroupCombo.AddString(ii->name);
 	}
@@ -109,11 +109,11 @@ void CSaveExpressionDialog::LoadExpressionCombobox(unsigned nGroupSelected, unsi
 	}
 
 	for (ExprVector::const_iterator jj = m_Expressions[nGroupSelected + 1].exprs.begin()
-		; jj < m_Expressions[nGroupSelected + 1].exprs.end(); jj++)
+		; jj != m_Expressions[nGroupSelected + 1].exprs.end(); jj++)
 	{
 		m_SavedExpressionCombo.AddString(jj->name);
 	}
-	unsigned NumExpressions =  m_Expressions[nGroupSelected + 1].exprs.size();
+	unsigned NumExpressions =  (unsigned)m_Expressions[nGroupSelected + 1].exprs.size();
 	if (nExprSelected >= NumExpressions)
 	{
 		nExprSelected = NumExpressions - 1;

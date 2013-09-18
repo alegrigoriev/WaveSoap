@@ -38,7 +38,7 @@ protected:
 	RingBufferBase() : Array(NULL), size(0) {}
 
 	T * Array;
-	size_t size;
+	unsigned size;
 	typedef T Type;
 	typedef T_src Type_Src;
 };
@@ -119,7 +119,7 @@ public:
 	{
 		return Filled;
 	}
-	size_t Size() const
+	unsigned Size() const
 	{
 		return size;
 	}
@@ -147,7 +147,7 @@ public:
 			delete[] Array;
 		}
 	}
-	void SetBuffer(Type * pBuffer, size_t Count)
+	void SetBuffer(Type * pBuffer, unsigned Count)
 	{
 		ASSERT(Count < 0xFFFFu);
 		size = 0;
@@ -157,7 +157,7 @@ public:
 		Purge();
 	}
 
-	void AllocateBuffer(size_t Count)
+	void AllocateBuffer(unsigned Count)
 	{
 		if (bBufferAllocated)
 		{
@@ -563,8 +563,8 @@ CWaveProc::CWaveProc()
 	m_OutputFormat.InitCdAudioFormat();
 }
 
-size_t CWaveProc::ProcessSoundBuffer(char const * pInBuf, char * pOutBuf,
-									size_t nInBytes, size_t nOutBytes, size_t * pUsedBytes)
+unsigned CWaveProc::ProcessSoundBuffer(char const * pInBuf, char * pOutBuf,
+										unsigned nInBytes, unsigned nOutBytes, unsigned * pUsedBytes)
 {
 	*pUsedBytes = 0;
 
@@ -572,7 +572,7 @@ size_t CWaveProc::ProcessSoundBuffer(char const * pInBuf, char * pOutBuf,
 	{
 		unsigned const OutputSampleSize = m_OutputFormat.SampleSize();
 
-		size_t nOutSamples = nOutBytes / OutputSampleSize;
+		unsigned nOutSamples = nOutBytes / OutputSampleSize;
 		// process the data
 
 		if (0 == nOutSamples)
@@ -594,7 +594,7 @@ size_t CWaveProc::ProcessSoundBuffer(char const * pInBuf, char * pOutBuf,
 	{
 		unsigned const InputSampleSize = m_InputFormat.SampleSize();
 
-		size_t nInSamples = nInBytes / InputSampleSize;
+		unsigned nInSamples = nInBytes / InputSampleSize;
 		// process the data
 
 		if (0 == nInSamples)
@@ -618,8 +618,8 @@ size_t CWaveProc::ProcessSoundBuffer(char const * pInBuf, char * pOutBuf,
 		unsigned const InputSampleSize = m_InputFormat.SampleSize();
 		unsigned const OutputSampleSize = m_OutputFormat.SampleSize();
 
-		size_t nInSamples = nInBytes / InputSampleSize;
-		size_t nOutSamples = nOutBytes / OutputSampleSize;
+		unsigned nInSamples = nInBytes / InputSampleSize;
+		unsigned nOutSamples = nOutBytes / OutputSampleSize;
 		// process the data
 		unsigned nSamples = std::min(nInSamples, nOutSamples);
 
@@ -754,10 +754,10 @@ CWaveFormat const & CWaveProc::GetOutputWaveformat() const
 	return m_OutputFormat;
 }
 
-size_t CWaveProc::ProcessSound(char const * pInBuf, char * pOutBuf,
-								size_t nInBytes, size_t nOutBytes, size_t * pUsedBytes)
+unsigned CWaveProc::ProcessSound(char const * pInBuf, char * pOutBuf,
+								unsigned nInBytes, unsigned nOutBytes, unsigned * pUsedBytes)
 {
-	size_t nSavedBytes = 0;
+	unsigned nSavedBytes = 0;
 	*pUsedBytes = 0;
 
 	unsigned const InputSampleSize = GetInputSampleSize();
@@ -773,13 +773,13 @@ size_t CWaveProc::ProcessSound(char const * pInBuf, char * pOutBuf,
 	if (InputSampleSize != 0)
 	{
 		ASSERT(0 == *pUsedBytes % InputSampleSize);
-		m_ProcessedInputSamples += *pUsedBytes / InputSampleSize;
+		m_ProcessedInputSamples += NUMBER_OF_SAMPLES(*pUsedBytes / InputSampleSize);
 	}
 
 	if (OutputSampleSize != 0)
 	{
 		ASSERT(0 == nSavedBytes % OutputSampleSize);
-		m_SavedOutputSamples += nSavedBytes / OutputSampleSize;
+		m_SavedOutputSamples += NUMBER_OF_SAMPLES(nSavedBytes / OutputSampleSize);
 	}
 #ifdef _DEBUG
 	m_ProcessedInputBytes += *pUsedBytes;
@@ -2133,9 +2133,9 @@ typedef data_vec::const_iterator cdata_iter;
 
 double Average(data_vec const&X)
 {
-	size_t N = X.size();
+	long N = (long)X.size();
 	double Sum = 0;
-	for (size_t i = 0; i != N; i++)
+	for (long i = 0; i != N; i++)
 	{
 		Sum += X[i];
 	}
@@ -2144,11 +2144,11 @@ double Average(data_vec const&X)
 
 double Average(data_vec const&X, data_vec const& weight)
 {
-	size_t N = X.size();
+	unsigned N = (unsigned) X.size();
 	ASSERT(N == weight.size());
 	double Sum = 0;
 	double Sum_W = 0;
-	for (size_t i = 0; i != N; i++)
+	for (unsigned i = 0; i != N; i++)
 	{
 		Sum += X[i] * weight[i];
 		Sum_W += weight[i];
@@ -2158,7 +2158,7 @@ double Average(data_vec const&X, data_vec const& weight)
 // Y = A + B*X
 void LinearRegression(data_vec const &X, data_vec const &Y, double &A, double &B)
 {
-	size_t N = X.size();
+	unsigned N = (unsigned)X.size();
 	ASSERT(N == Y.size());
 
 	double x_avg = Average(X);
@@ -2167,7 +2167,7 @@ void LinearRegression(data_vec const &X, data_vec const &Y, double &A, double &B
 	double numer_sum = 0.;
 	double denom_sum = 0.;
 
-	for (size_t i = 0; i != N; i++)
+	for (unsigned i = 0; i != N; i++)
 	{
 		numer_sum += (Y[i] - y_avg) * (X[i] - x_avg);
 		denom_sum += (X[i] - x_avg) * (X[i] - x_avg);
@@ -2179,7 +2179,7 @@ void LinearRegression(data_vec const &X, data_vec const &Y, double &A, double &B
 
 void LinearRegression(data_vec const &X, data_vec const &Y, data_vec const &weight, double &A, double &B)
 {
-	size_t N = X.size();
+	unsigned N = (unsigned)X.size();
 	ASSERT(N == Y.size());
 	ASSERT(N == weight.size());
 
@@ -2189,7 +2189,7 @@ void LinearRegression(data_vec const &X, data_vec const &Y, data_vec const &weig
 	double numer_sum = 0.;
 	double denom_sum = 0.;
 
-	for (size_t i = 0; i != N; i++)
+	for (unsigned i = 0; i != N; i++)
 	{
 		numer_sum += weight[i] * (Y[i] - y_avg) * (X[i] - x_avg);
 		denom_sum += weight[i] * (X[i] - x_avg) * (X[i] - x_avg);
@@ -2351,8 +2351,8 @@ void CClickRemoval::InterpolateGap(WAVE_SAMPLE data[], int nLeftIndex, int Click
 #endif
 }
 
-size_t CClickRemoval::ProcessSoundBuffer(char const * pIn, char * pOut,
-										size_t nInBytes, size_t nOutBytes, size_t * pUsedBytes)
+unsigned CClickRemoval::ProcessSoundBuffer(char const * pIn, char * pOut,
+											unsigned nInBytes, unsigned nOutBytes, unsigned * pUsedBytes)
 {
 	int nSavedBytes = 0;
 	*pUsedBytes = 0;
@@ -3612,8 +3612,8 @@ BOOL CNoiseReduction::SetInputWaveformat(CWaveFormat const & Wf)
 	return TRUE;
 }
 
-size_t CNoiseReduction::ProcessSoundBuffer(char const * pIn, char * pOut,
-											size_t nInBytes, size_t nOutBytes, size_t * pUsedBytes)
+unsigned CNoiseReduction::ProcessSoundBuffer(char const * pIn, char * pOut,
+											unsigned nInBytes, unsigned nOutBytes, unsigned * pUsedBytes)
 {
 	*pUsedBytes = 0;
 	NUMBER_OF_CHANNELS const nChans = m_InputFormat.NumChannels();
@@ -4213,16 +4213,16 @@ BOOL CBatchProcessing::SetOutputWaveformat(CWaveFormat const & Wf)
 	return TRUE;
 }
 
-size_t CBatchProcessing::ProcessSoundBuffer(char const * pIn, char * pOut,
-											size_t nInBytes, size_t nOutBytes, size_t * pUsedBytes)
+unsigned CBatchProcessing::ProcessSoundBuffer(char const * pIn, char * pOut,
+											unsigned nInBytes, unsigned nOutBytes, unsigned * pUsedBytes)
 {
-	size_t nSavedBytes = 0;
+	unsigned nSavedBytes = 0;
 	*pUsedBytes = 0;
 
 	if (m_Stages.empty())
 	{
 		// just pass through
-		size_t ToCopy = std::min(nInBytes, nOutBytes);
+		unsigned ToCopy = std::min(nInBytes, nOutBytes);
 		memcpy(pOut, pIn, ToCopy);
 		* pUsedBytes = ToCopy;
 		return ToCopy;
@@ -4300,10 +4300,10 @@ size_t CBatchProcessing::ProcessSoundBuffer(char const * pIn, char * pOut,
 			}
 
 			unsigned nProcessedBytes = 0;
-			unsigned nOutputBytes = (unsigned) pItem->Proc->ProcessSound(inbuf,
-										outbuf,
-										pItem->InBufPutIndex - pItem->InBufGetIndex,
-										BytesToStore, & nProcessedBytes);
+			unsigned nOutputBytes = pItem->Proc->ProcessSound(inbuf,
+															outbuf,
+															pItem->InBufPutIndex - pItem->InBufGetIndex,
+															BytesToStore, & nProcessedBytes);
 
 			if (nOutputBytes != 0
 				|| nProcessedBytes != 0)
@@ -4387,7 +4387,7 @@ void CBatchProcessing::AddWaveProc(CWaveProc * pProc, int index)
 {
 	if (-1 == index || index > (int)m_Stages.size())
 	{
-		index = m_Stages.size();
+		index = (int)m_Stages.size();
 	}
 	m_Stages.insert(m_Stages.begin()+index, Item(pProc));
 }
@@ -4933,10 +4933,8 @@ void CResampleFilter::DoSlidingFilterResample()
 	long const InputSampleRate = m_InputFormat.SampleRate();
 	long const OutputSampleRate = m_EffectiveOutputSampleRate;
 
-	size_t i;
-	for (i = m_DstBufUsed;
-		SrcSamples >= FilterLength && i < DstBufSize;
-		i += NumChannels)
+	unsigned i;
+	for (i = m_DstBufUsed; SrcSamples >= FilterLength && i < DstBufSize; i += NumChannels)
 	{
 		double const * p = m_FilterIndex + m_FilterTable;
 
@@ -4985,8 +4983,8 @@ void CResampleFilter::FilterSoundResample()
 	}
 }
 
-size_t CResampleFilter::ProcessSoundBuffer(char const * pIn, char * pOut,
-											size_t nInBytes, size_t nOutBytes, size_t * pUsedBytes)
+unsigned CResampleFilter::ProcessSoundBuffer(char const * pIn, char * pOut,
+											unsigned nInBytes, unsigned nOutBytes, unsigned * pUsedBytes)
 {
 	*pUsedBytes = 0;
 
@@ -5200,16 +5198,16 @@ BOOL CAudioConvertor::SetInputWaveformat(CWaveFormat const & Wf)
 	return TRUE;
 }
 
-size_t CAudioConvertor::ProcessSoundBuffer(char const * pIn, char * pOut,
-											size_t nInBytes, size_t nOutBytes, size_t * pUsedBytes)
+unsigned CAudioConvertor::ProcessSoundBuffer(char const * pIn, char * pOut,
+											unsigned nInBytes, unsigned nOutBytes, unsigned * pUsedBytes)
 {
-	size_t nSavedBytes = 0;
+	unsigned nSavedBytes = 0;
 	*pUsedBytes = 0;
 
 	while (nOutBytes != 0 || nInBytes != 0)
 	{
 		// empty the output buffer
-		size_t const WasCopied = m_AcmConvertor.GetConvertedData(pOut, nOutBytes);
+		unsigned const WasCopied = m_AcmConvertor.GetConvertedData(pOut, nOutBytes);
 
 		nOutBytes -= WasCopied;
 		pOut += WasCopied;
@@ -5226,8 +5224,8 @@ size_t CAudioConvertor::ProcessSoundBuffer(char const * pIn, char * pOut,
 			m_ConvertFlags &= ~ACM_STREAMCONVERTF_BLOCKALIGN;
 		}
 		// do the conversion
-		size_t InUsed = 0;
-		size_t OutUsed = 0;
+		unsigned InUsed = 0;
+		unsigned OutUsed = 0;
 
 		if ( ! m_AcmConvertor.Convert(pIn, nInBytes, & InUsed, NULL,
 									& OutUsed, m_ConvertFlags))
@@ -5317,10 +5315,10 @@ BOOL CChannelConvertor::SetInputWaveformat(CWaveFormat const & Wf)
 	return TRUE;
 }
 
-size_t CChannelConvertor::ProcessSoundBuffer(char const * pIn, char * pOut,
-											size_t nInBytes, size_t nOutBytes, size_t * pUsedBytes)
+unsigned CChannelConvertor::ProcessSoundBuffer(char const * pIn, char * pOut,
+												unsigned nInBytes, unsigned nOutBytes, unsigned * pUsedBytes)
 {
-	size_t nSavedBytes = 0;
+	unsigned nSavedBytes = 0;
 	*pUsedBytes = 0;
 
 	WAVE_SAMPLE const * pInBuf = (WAVE_SAMPLE const *) pIn;
@@ -5373,7 +5371,7 @@ size_t CChannelConvertor::ProcessSoundBuffer(char const * pIn, char * pOut,
 	}
 	else
 	{
-		return size_t(-1);
+		return unsigned(-1);
 	}
 	return nSavedBytes;
 }
@@ -5390,12 +5388,12 @@ BOOL CLameEncConvertor::SetFormat(WAVEFORMATEX const * pWF)
 	return TRUE;
 }
 
-size_t CLameEncConvertor::ProcessSoundBuffer(char const * pInBuf, char * pOutBuf,
-											size_t nInBytes, size_t nOutBytes, size_t * pUsedBytes)
+unsigned CLameEncConvertor::ProcessSoundBuffer(char const * pInBuf, char * pOutBuf,
+												unsigned nInBytes, unsigned nOutBytes, unsigned * pUsedBytes)
 {
 	// save extra data from the output buffer
 	*pUsedBytes = 0;
-	size_t nSavedBytes = 0;
+	unsigned nSavedBytes = 0;
 	BOOL FlushBuffer = FALSE;
 	if (NULL == pInBuf)
 	{
@@ -5411,7 +5409,7 @@ size_t CLameEncConvertor::ProcessSoundBuffer(char const * pInBuf, char * pOutBuf
 	{
 		if (0 != m_OutputBufferFilled)
 		{
-			size_t ToCopy = __min(nOutBytes, m_OutputBufferFilled);
+			unsigned ToCopy = __min(nOutBytes, m_OutputBufferFilled);
 			memcpy(pOutBuf, m_pOutputBuffer, ToCopy);
 
 			m_OutputBufferFilled -= ToCopy;
@@ -5426,7 +5424,7 @@ size_t CLameEncConvertor::ProcessSoundBuffer(char const * pInBuf, char * pOutBuf
 			}
 		}
 
-		size_t ToCopy = m_InputBufferSize - m_InputBufferFilled;
+		unsigned ToCopy = m_InputBufferSize - m_InputBufferFilled;
 		if (ToCopy > nInBytes)
 		{
 			ToCopy = nInBytes;
@@ -5515,8 +5513,8 @@ void CLameEncConvertor::DeInit()
 
 //////////////////////////////////////////////////////////////////////////
 ////////////  CByteSwapConvertor
-size_t CByteSwapConvertor::ProcessSoundBuffer(char const * pIn, char * pOut,
-											size_t nInBytes, size_t nOutBytes, size_t * pUsedBytes)
+unsigned CByteSwapConvertor::ProcessSoundBuffer(char const * pIn, char * pOut,
+												unsigned nInBytes, unsigned nOutBytes, unsigned * pUsedBytes)
 {
 	if (NULL == pIn)
 	{
@@ -5524,8 +5522,8 @@ size_t CByteSwapConvertor::ProcessSoundBuffer(char const * pIn, char * pOut,
 		return 0;
 	}
 
-	size_t nBytes = __min(nInBytes, nOutBytes);
-	for (size_t i = 0; i < nBytes; i+= sizeof (WAVE_SAMPLE))
+	unsigned nBytes = __min(nInBytes, nOutBytes);
+	for (unsigned i = 0; i < nBytes; i+= sizeof (WAVE_SAMPLE))
 	{
 		pOut[i + 1] = pIn[i];
 		pOut[i] = pIn[i + 1];

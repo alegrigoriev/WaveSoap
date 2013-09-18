@@ -274,7 +274,7 @@ public:
 	void SetAlbum(LPCTSTR szAlbum);
 	void SetGenre(LPCTSTR szGenre);
 	BOOL SetDestinationFormat(WAVEFORMATEX const * pDstWfx);
-	BOOL Write(void const * Buf, size_t size);
+	BOOL Write(void const * Buf, unsigned size);
 	void SetSourceWaveFormat(WAVEFORMATEX const * pSrcWfx);
 	WAVEFORMATEX const * GetSourceWaveFormat() const
 	{

@@ -573,7 +573,7 @@ public:
 
 	CSoundPlayContext(CWaveSoapFrontDoc * pDoc, CWaveFile & WavFile,
 					SAMPLE_INDEX PlaybackStart, SAMPLE_INDEX PlaybackEnd, CHANNEL_MASK Channel,
-					INT PlaybackDevice, int PlaybackBuffers, size_t PlaybackBufferSize);
+					INT PlaybackDevice, int PlaybackBuffers, unsigned PlaybackBufferSize);
 
 	CString GetPlaybackTimeString(int TimeFormat) const;
 
@@ -603,7 +603,7 @@ protected:
 	INT m_PlaybackDevice;
 	int m_OldThreadPriority;
 	int m_PlaybackBuffers;
-	size_t m_PlaybackBufferSize;
+	unsigned m_PlaybackBufferSize;
 
 	virtual BOOL OperationProc();
 	virtual BOOL Init();

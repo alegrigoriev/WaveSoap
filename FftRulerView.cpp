@@ -33,6 +33,7 @@ BEGIN_MESSAGE_MAP(CFftRulerView, CVerticalRuler)
 	//{{AFX_MSG_MAP(CFftRulerView)
 	ON_WM_LBUTTONDBLCLK()
 	//}}AFX_MSG_MAP
+	ON_MESSAGE(UWM_NOTIFY_VIEWS, &CFftRulerView::OnUwmNotifyViews)
 END_MESSAGE_MAP()
 
 /////////////////////////////////////////////////////////////////////////////
@@ -242,3 +243,9 @@ CWaveSoapFrontDoc* CFftRulerView::GetDocument() // non-debug version is inline
 
 /////////////////////////////////////////////////////////////////////////////
 // CFftRulerView message handlers
+
+
+afx_msg LRESULT CFftRulerView::OnUwmNotifyViews(WPARAM wParam, LPARAM lParam)
+{
+	return 0;
+}

@@ -27,12 +27,14 @@ static char THIS_FILE[] = __FILE__;
 /////////////////////////////////////////////////////////////////////////////
 // CWaveSoapFrontView
 
-IMPLEMENT_DYNCREATE(CWaveSoapFrontView, CScaledScrollView)
+IMPLEMENT_DYNCREATE(CWaveSoapFrontView, CView);
 
 BEGIN_MESSAGE_MAP(CWaveSoapFrontView, BaseClass)
 	//{{AFX_MSG_MAP(CWaveSoapFrontView)
 	ON_UPDATE_COMMAND_UI(ID_VIEW_ZOOMINHOR, OnUpdateViewZoominhor)
 	ON_UPDATE_COMMAND_UI(ID_VIEW_ZOOMINHOR2, OnUpdateViewZoominhor2)
+	ON_COMMAND(ID_VIEW_ZOOMINHOR2, OnViewZoominHor2)
+	ON_COMMAND(ID_VIEW_ZOOMOUTHOR2, OnViewZoomOutHor2)
 	ON_COMMAND(ID_VIEW_ZOOMINVERT, OnViewZoomInVert)
 	ON_COMMAND(ID_VIEW_ZOOMOUTVERT, OnViewZoomOutVert)
 	ON_UPDATE_COMMAND_UI(ID_VIEW_ZOOMINVERT, OnUpdateViewZoomInVert)
@@ -57,43 +59,22 @@ BEGIN_MESSAGE_MAP(CWaveSoapFrontView, BaseClass)
 	ON_UPDATE_COMMAND_UI(ID_VIEW_ZOOM_SELECTION, OnUpdateViewZoomSelection)
 	ON_COMMAND(ID_VIEW_ZOOM_SELECTION, OnViewZoomSelection)
 	ON_UPDATE_COMMAND_UI(ID_INDICATOR_SCALE, OnUpdateIndicatorScale)
-	ON_UPDATE_COMMAND_UI(ID_VIEW_HOR_SCALE_1, OnUpdateViewHorScale1)
-	ON_COMMAND(ID_VIEW_HOR_SCALE_1, OnViewHorScale1)
-	ON_UPDATE_COMMAND_UI(ID_VIEW_HOR_SCALE_2, OnUpdateViewHorScale2)
-	ON_COMMAND(ID_VIEW_HOR_SCALE_2, OnViewHorScale2)
-	ON_UPDATE_COMMAND_UI(ID_VIEW_HOR_SCALE_4, OnUpdateViewHorScale4)
-	ON_COMMAND(ID_VIEW_HOR_SCALE_4, OnViewHorScale4)
-	ON_UPDATE_COMMAND_UI(ID_VIEW_HOR_SCALE_8, OnUpdateViewHorScale8)
-	ON_COMMAND(ID_VIEW_HOR_SCALE_8, OnViewHorScale8)
-	ON_UPDATE_COMMAND_UI(ID_VIEW_HOR_SCALE_16, OnUpdateViewHorScale16)
-	ON_COMMAND(ID_VIEW_HOR_SCALE_16, OnViewHorScale16)
-	ON_UPDATE_COMMAND_UI(ID_VIEW_HOR_SCALE_32, OnUpdateViewHorScale32)
-	ON_COMMAND(ID_VIEW_HOR_SCALE_32, OnViewHorScale32)
-	ON_UPDATE_COMMAND_UI(ID_VIEW_HOR_SCALE_64, OnUpdateViewHorScale64)
-	ON_COMMAND(ID_VIEW_HOR_SCALE_64, OnViewHorScale64)
-	ON_UPDATE_COMMAND_UI(ID_VIEW_HOR_SCALE_128, OnUpdateViewHorScale128)
-	ON_COMMAND(ID_VIEW_HOR_SCALE_128, OnViewHorScale128)
-	ON_UPDATE_COMMAND_UI(ID_VIEW_HOR_SCALE_256, OnUpdateViewHorScale256)
-	ON_COMMAND(ID_VIEW_HOR_SCALE_256, OnViewHorScale256)
-	ON_UPDATE_COMMAND_UI(ID_VIEW_HOR_SCALE_512, OnUpdateViewHorScale512)
-	ON_COMMAND(ID_VIEW_HOR_SCALE_512, OnViewHorScale512)
-	ON_UPDATE_COMMAND_UI(ID_VIEW_HOR_SCALE_1024, OnUpdateViewHorScale1024)
-	ON_COMMAND(ID_VIEW_HOR_SCALE_1024, OnViewHorScale1024)
-	ON_UPDATE_COMMAND_UI(ID_VIEW_HOR_SCALE_2048, OnUpdateViewHorScale2048)
-	ON_COMMAND(ID_VIEW_HOR_SCALE_2048, OnViewHorScale2048)
-	ON_UPDATE_COMMAND_UI(ID_VIEW_HOR_SCALE_4096, OnUpdateViewHorScale4096)
-	ON_COMMAND(ID_VIEW_HOR_SCALE_4096, OnViewHorScale4096)
-	ON_UPDATE_COMMAND_UI(ID_VIEW_HOR_SCALE_8192, OnUpdateViewHorScale8192)
-	ON_COMMAND(ID_VIEW_HOR_SCALE_8192, OnViewHorScale8192)
+	ON_UPDATE_COMMAND_UI_RANGE(ID_VIEW_HOR_SCALE_1, ID_VIEW_HOR_SCALE_8192, OnUpdateViewHorScale)
+	ON_COMMAND_RANGE(ID_VIEW_HOR_SCALE_1, ID_VIEW_HOR_SCALE_8192, OnViewHorScale)
 	ON_WM_TIMER()
 	ON_WM_CAPTURECHANGED()
 	ON_WM_LBUTTONDBLCLK()
 	ON_COMMAND(ID_VIEW_ZOOMPREVIOUS, OnViewZoomprevious)
+	ON_WM_CONTEXTMENU()
+	ON_WM_HSCROLL()
+	ON_WM_VSCROLL()
+	ON_WM_DESTROY()
 	//}}AFX_MSG_MAP
 	// Standard printing commands
 	//ON_COMMAND(ID_FILE_PRINT, OnFilePrint)
 	//ON_COMMAND(ID_FILE_PRINT_DIRECT, OnFilePrint)
 	//ON_COMMAND(ID_FILE_PRINT_PREVIEW, OnFilePrintPreview)
+	ON_MESSAGE(UWM_NOTIFY_VIEWS, &CWaveSoapFrontView::OnUwmNotifyViews)
 END_MESSAGE_MAP()
 
 /////////////////////////////////////////////////////////////////////////////
@@ -109,7 +90,10 @@ CWaveSoapFrontView::CWaveSoapFrontView()
 	m_NewSelectionMade(false),
 	m_AutoscrollTimerID(0),
 	m_PlaybackCursorDrawnSamplePos(0),
-	m_WheelAccumulator(0)
+	m_WheelAccumulator(0),
+	m_FirstSampleInView(0.),
+	bIsTrackingSelection(false),
+	nKeyPressed(0)
 {
 	TRACE("CWaveSoapFrontView::CWaveSoapFrontView()\n");
 }
@@ -145,19 +129,30 @@ static int fround(double d)
 void CWaveSoapFrontView::DrawHorizontalWithSelection(CDC * pDC,
 													int left, int right, int Y,
 													CPen * NormalPen, CPen * SelectedPen,
-													CHANNEL_MASK Channel)
+													CHANNEL_MASK Channel, LPCRECT ClipRect)
 {
 	if (left >= right)
 	{
 		return;
 	}
 
+	if (ClipRect != NULL)
+	{
+		if (Y < ClipRect->top)
+		{
+			return;
+		}
+		if (Y >= ClipRect->bottom)
+		{
+			return;
+		}
+	}
 	ThisDoc * pDoc = GetDocument();
 	// find positions of the selection start and and
 	// and check whether the selected area is visible
 	//double XScaleDev = GetXScaleDev();
-	int SelectionLeft = WorldToWindowXfloor(pDoc->m_SelectionStart);
-	int SelectionRight = WorldToWindowXfloor(pDoc->m_SelectionEnd);
+	int SelectionLeft = SampleToX(pDoc->m_SelectionStart);
+	int SelectionRight = SampleToXceil(pDoc->m_SelectionEnd);
 
 	// draw selection if Channel==ALL or all selected, or
 	// this channel is selected
@@ -214,7 +209,7 @@ void CWaveSoapFrontView::GetChannelRect(int Channel, RECT * pR) const
 {
 	ThisDoc * pDoc = GetDocument();
 	int const nChannels = pDoc->WaveChannels();
-	int const FileEnd = WorldToWindowXceil(pDoc->WaveFileSamples());
+	int const FileEnd = SampleToXceil(pDoc->WaveFileSamples());
 
 	GetClientRect(pR);
 	if (pR->right > FileEnd)
@@ -240,7 +235,7 @@ void CWaveSoapFrontView::GetChannelClipRect(int Channel, RECT * pR) const
 {
 	ThisDoc * pDoc = GetDocument();
 	int const nChannels = pDoc->WaveChannels();
-	int const FileEnd = WorldToWindowXceil(pDoc->WaveFileSamples());
+	int const FileEnd = SampleToXceil(pDoc->WaveFileSamples());
 	GetClientRect(pR);
 	if (pR->right > FileEnd)
 	{
@@ -257,6 +252,26 @@ void CWaveSoapFrontView::GetChannelClipRect(int Channel, RECT * pR) const
 	int h = pR->bottom - pR->top + 1;
 	pR->top = (h * Channel) / nChannels;
 	pR->bottom = (h * (Channel+1)) / nChannels - 1;
+}
+
+int CWaveSoapFrontView::SampleValueToY(double value, int ch) const
+{
+	ThisDoc * pDoc = GetDocument();
+	int const nChannels = pDoc->WaveChannels();
+
+	CRect cr;
+	GetClientRect(cr);
+
+	if (ch >= nChannels)
+	{
+		return cr.bottom;
+	}
+
+	int h = cr.bottom - cr.top + 1;
+	cr.top = (h * ch) / nChannels;
+	cr.bottom = (h * (ch+1)) / nChannels - 1;
+	int MidLine = (cr.top + cr.bottom) / 2;
+	return int((value - m_WaveOffsetY) * m_VerticalScale + MidLine);
 }
 
 int CWaveSoapFrontView::GetChannelFromPoint(int y) const
@@ -330,25 +345,25 @@ void CWaveSoapFrontView::OnDraw(CDC* pDC)
 		cr.left -= 2;   // make additional
 		cr.right += 2;
 
-		double left = WindowToWorldX(cr.left);
-		//double right = WindowToWorldX(cr.right);
+		double left = WindowXtoSample(cr.left);
+		//double right = WindowXtoSample(cr.right);
 		if (left < 0.)
 		{
 			left = 0.;
-			cr.left = WorldToWindowXfloor(0.);
+			cr.left = SampleToX(0);
 		}
 
 		// number of sample that corresponds to the cr.left position
 		SAMPLE_INDEX NumOfFirstSample = DWORD(left);
-		unsigned SamplesPerPoint = m_HorizontalScale;
+		double SamplesPerPoint = m_HorizontalScale;
 
 		// create an array of points
 
 		NUMBER_OF_CHANNELS nChannels = pDoc->WaveChannels();
 		int nNumberOfPoints = cr.right - cr.left;
 
-		int SelBegin = WorldToWindowXfloor(pDoc->m_SelectionStart);
-		int SelEnd = WorldToWindowXfloor(pDoc->m_SelectionEnd);
+		int SelBegin = SampleToX(pDoc->m_SelectionStart);
+		int SelEnd = SampleToX(pDoc->m_SelectionEnd);
 
 		if (pDoc->m_SelectionEnd != pDoc->m_SelectionStart
 			&& SelEnd == SelBegin)
@@ -414,39 +429,21 @@ void CWaveSoapFrontView::OnDraw(CDC* pDC)
 											ChanR.Height(), WaveToY(32767), WaveToY(-32768));
 					// Y = wave * m_VerticalScale + m_WaveOffsetY * m_VerticalScale
 					//     + (ChanR.bottom + ChanR.top) / 2
-					int ZeroLinePos = WaveToY(0);
 
-					if (ZeroLinePos >= ClipLow &&
-						ZeroLinePos < ClipHigh)
-					{
-						if (TRACE_DRAWING) TRACE("CWaveSoapFrontView Zero pos=%d\n", ZeroLinePos);
+					DrawHorizontalWithSelection(pDC, ChanR.left, ChanR.right,
+												WaveToY(0),     // zero line
+												& ZeroLinePen,
+												& SelectedZeroLinePen, 1 << ch, ClipR);
 
-						DrawHorizontalWithSelection(pDC, ChanR.left, ChanR.right,
-													ZeroLinePos,
-													& ZeroLinePen,
-													& SelectedZeroLinePen, 1 << ch);
-					}
+					DrawHorizontalWithSelection(pDC, ChanR.left, ChanR.right,
+												WaveToY(16384),         // 6 dB line
+												& SixDBLinePen,
+												& SelectedSixDBLinePen, 1 << ch, ClipR);
 
-					int n6DBLine = WaveToY(16384);
-					if (n6DBLine >= ClipLow &&
-						n6DBLine < ClipHigh)
-					{
-						DrawHorizontalWithSelection(pDC, ChanR.left, ChanR.right,
-													n6DBLine,
-													& SixDBLinePen,
-													& SelectedSixDBLinePen, 1 << ch);
-					}
-
-					n6DBLine = WaveToY(-16384);
-
-					if (n6DBLine >= ClipLow &&
-						n6DBLine < ClipHigh)
-					{
-						DrawHorizontalWithSelection(pDC, ChanR.left, ChanR.right,
-													n6DBLine,
-													& SixDBLinePen,
-													& SelectedSixDBLinePen, 1 << ch);
-					}
+					DrawHorizontalWithSelection(pDC, ChanR.left, ChanR.right,
+												WaveToY(-16384),       // low 6dB line
+												& SixDBLinePen,
+												& SelectedSixDBLinePen, 1 << ch);
 
 					int i;
 					unsigned PeakDataGranularity = pDoc->m_WavFile.GetPeakGranularity();
@@ -483,8 +480,8 @@ void CWaveSoapFrontView::OnDraw(CDC* pDC)
 					else
 					{
 						// use wave data for drawing
-						WAVE_SAMPLE * pWaveSamples = NULL;
-
+						float * pWaveSamples = NULL;
+						// GetData argument must be aligned to full sample boundary
 						int nCountSamples = m_WaveBuffer.GetData( & pWaveSamples,
 																NumOfFirstSample * nChannels,
 																nNumberOfPoints * SamplesPerPoint * nChannels, this);
@@ -619,9 +616,9 @@ void CWaveSoapFrontView::OnDraw(CDC* pDC)
 					pDC->SetBkMode(OPAQUE);
 
 					for (ConstCuePointVectorIterator i = pInst->m_CuePoints.begin();
-						i < pInst->m_CuePoints.end(); i++)
+						i != pInst->m_CuePoints.end(); i++)
 					{
-						long x = WorldToWindowXfloor(i->dwSampleOffset);
+						long x = SampleToX(i->dwSampleOffset);
 						WaveRegionMarker const * pMarker = pInst->GetRegionMarker(i->CuePointID);
 
 						// draw text
@@ -667,7 +664,7 @@ void CWaveSoapFrontView::OnDraw(CDC* pDC)
 						if (pMarker != NULL
 							&& pMarker->SampleLength != 0)
 						{
-							x = WorldToWindowXfloor(i->dwSampleOffset + pMarker->SampleLength);
+							x = SampleToX(i->dwSampleOffset + pMarker->SampleLength);
 
 							if (x >= ChanR.left
 								&& x < ChanR.right)
@@ -726,14 +723,52 @@ int CDataSection<WAVE_SAMPLE, CWaveSoapFrontView>::ReadData(WAVE_SAMPLE * pBuf, 
 	long Read = 0;
 	if (0 != nCount)
 	{
-		Read = pDoc->m_WavFile.ReadAt(pBuf, nCount * sizeof (WAVE_SAMPLE),
-									pDoc->m_WavFile.GetDataChunk()->dwDataOffset + nOffset * sizeof (WAVE_SAMPLE));
-		if (-1 == Read)
+		Read = pDoc->m_WavFile.ReadSamples(ALL_CHANNELS,
+					pDoc->m_WavFile.SampleToPosition((SAMPLE_INDEX)(nOffset / pDoc->m_WavFile.Channels())),
+					nCount / pDoc->m_WavFile.Channels(), pBuf, SampleType16bit);
+		if (0 == Read)
 		{
 			return 0;
 		}
 	}
-	return ToZero + Read / sizeof (WAVE_SAMPLE);
+	return ToZero + Read * pDoc->m_WavFile.Channels();
+}
+
+int CDataSection<float, CWaveSoapFrontView>::ReadData(float * pBuf, LONGLONG nOffset,
+													long nCount, CWaveSoapFrontView * pSource)
+{
+	CWaveSoapFrontDoc * pDoc = pSource->GetDocument();
+	if (NULL == pDoc
+		|| ! pDoc->m_WavFile.IsOpen())
+	{
+		return 0;
+	}
+	long ToZero = 0;
+	if (nOffset < 0)
+	{
+		ToZero = nCount;
+		if (ToZero > -nOffset)
+		{
+			ToZero = long(-nOffset);
+		}
+		memset(pBuf, 0, ToZero * sizeof *pBuf);
+		nOffset = 0;
+		nCount -= ToZero;
+		pBuf += ToZero;
+	}
+
+	long Read = 0;
+	if (0 != nCount)
+	{
+		Read = pDoc->m_WavFile.ReadSamples(ALL_CHANNELS,
+					pDoc->m_WavFile.SampleToPosition((SAMPLE_INDEX)(nOffset / pDoc->m_WavFile.Channels())),
+					nCount / pDoc->m_WavFile.Channels(), pBuf, SampleTypeFloat32);
+		if (0 == Read)
+		{
+			return 0;
+		}
+	}
+	return ToZero + Read * pDoc->m_WavFile.Channels();
 }
 
 LONGLONG CDataSection<WAVE_SAMPLE, CWaveSoapFrontView>::GetSourceCount(CWaveSoapFrontView * pSource)
@@ -744,9 +779,21 @@ LONGLONG CDataSection<WAVE_SAMPLE, CWaveSoapFrontView>::GetSourceCount(CWaveSoap
 	{
 		return 0;
 	}
-	return pDoc->m_WavFile.GetDataChunk()->cksize / sizeof (WAVE_SAMPLE);
+	return pDoc->m_WavFile.NumberOfSamples() * pDoc->m_WavFile.Channels();
 }
 
+LONGLONG CDataSection<float, CWaveSoapFrontView>::GetSourceCount(CWaveSoapFrontView * pSource)
+{
+	CWaveSoapFrontDoc * pDoc = pSource->GetDocument();
+	if (NULL == pDoc
+		|| ! pDoc->m_WavFile.IsOpen())
+	{
+		return 0;
+	}
+	return pDoc->m_WavFile.NumberOfSamples() * pDoc->m_WavFile.Channels();
+}
+
+#if 0
 void CWaveSoapFrontView::AdjustNewOrigin(double & NewOrgX, double & /*NewOrgY*/)
 {
 	// make sure the screen is aligned by a multiple of m_HorizontalScale
@@ -757,9 +804,9 @@ void CWaveSoapFrontView::AdjustNewScale(double OldScaleX, double OldScaleY,
 										double & NewScaleX, double & NewScaleY)
 {
 	//NewScaleY = OldScaleY;  // vertical scale never changes
-	int PreviousScaleX = m_HorizontalScale;
+	double PreviousScaleX = m_HorizontalScale;
 
-	m_HorizontalScale = int(1. / NewScaleX);
+	m_HorizontalScale = 1. / NewScaleX;
 	if (m_HorizontalScale < 1)
 	{
 		m_HorizontalScale = 1;
@@ -784,23 +831,16 @@ void CWaveSoapFrontView::AdjustNewScale(double OldScaleX, double OldScaleY,
 	if (TRACE_DRAWING) TRACE("Old scale X=%g, New scale X=%g, Old scale Y=%g, New scale Y=%g\n",
 							OldScaleX, NewScaleX, OldScaleY, NewScaleY);
 }
+#endif
 
-BOOL CWaveSoapFrontView::PlaybackCursorVisible()
+bool CWaveSoapFrontView::PlaybackCursorVisible() const
 {
-	int pos = WorldToWindowXfloor(m_PlaybackCursorDrawnSamplePos);
+	int pos = SampleToX(m_PlaybackCursorDrawnSamplePos);
 
 	CRect cr;
 	GetClientRect(cr);
 
-	if (pos < cr.left || pos >= cr.right)
-	{
-		// not in the view;
-		return FALSE;
-	}
-	else
-	{
-		return TRUE;
-	}
+	return pos >= cr.left && pos < cr.right;
 }
 
 void CWaveSoapFrontView::DrawPlaybackCursor(CDC * pDC, SAMPLE_INDEX Sample, CHANNEL_MASK Channel)
@@ -810,7 +850,7 @@ void CWaveSoapFrontView::DrawPlaybackCursor(CDC * pDC, SAMPLE_INDEX Sample, CHAN
 	{
 		return;
 	}
-	int pos = WorldToWindowXfloor(Sample);
+	int pos = SampleToX(Sample);
 
 	CRect r;
 	GetClientRect(r);
@@ -934,61 +974,96 @@ CWaveSoapFrontDoc* CWaveSoapFrontView::GetDocument() const// non-debug version i
 
 void CWaveSoapFrontView::OnInitialUpdate()
 {
-	if (0) TRACE("OnInitialUpdate style = %08X\n", GetStyle());
+	CRect r;
+	GetClientRect(r);
+	m_FirstSampleInView = 0.;
+	// if the file is short, set the scale to fit
+	NUMBER_OF_SAMPLES NumberOfSamples = WaveFileSamples();
+	NotifyViewsData data;
+	data.HorizontalScroll.FirstSampleInView = 0.;
+	data.HorizontalScroll.TotalSamplesInExtent = NumberOfSamples;
+
+	while (NumberOfSamples != 0
+			&& m_HorizontalScale > 1./8.
+			&& NumberOfSamples / m_HorizontalScale < r.Width() / 2)
+	{
+		m_HorizontalScale /= 2;
+	}
+
+	data.HorizontalScroll.FirstSampleInView = 0.;
+	NotifySiblingViews(HorizontalExtentChanged, &data);
+	NotifySiblingViews(HorizontalScaleChanged, &m_HorizontalScale);
 
 	BaseClass::OnInitialUpdate();
-	UpdateScrollbars();
-	if (0) TRACE("OnInitialUpdate final style = %08X\n", GetStyle());
 }
 
 void CWaveSoapFrontView::OnUpdateViewZoominhor(CCmdUI* pCmdUI)
 {
-	pCmdUI->Enable(m_HorizontalScale > 1);
+	pCmdUI->Enable(m_HorizontalScale > 1./8.);
 }
 
 void CWaveSoapFrontView::OnUpdateViewZoominhor2(CCmdUI* pCmdUI)
 {
-	pCmdUI->Enable(m_HorizontalScale > 1);
+	pCmdUI->Enable(m_HorizontalScale > 1./8.);
 }
 
 void CWaveSoapFrontView::OnViewZoomInVert()
 {
 	if (m_VerticalScale < 1024.)
 	{
-		m_VerticalScale	*= sqrt(2.);
-		InvalidateRgn(NULL);
-		NotifySlaveViews(WAVE_SCALE_CHANGED);
+		SetVerticalScale(m_VerticalScale * sqrt(2.));
 	}
+}
+
+void CWaveSoapFrontView::SetVerticalScale(double NewVerticalScale)
+{
+	// correct the offset, if necessary
+	// find max and min offset for this scale
+	double offset = m_WaveOffsetY;
+	double MaxOffset = 32768. * (1. - 1. / NewVerticalScale);
+	if (offset > MaxOffset)
+	{
+		offset = MaxOffset;
+	}
+	double MinOffset = -MaxOffset;
+	if (offset < MinOffset)
+	{
+		offset = MinOffset;
+	}
+	if (offset != m_WaveOffsetY)
+	{
+		m_WaveOffsetY = offset;
+	}
+
+	NotifySiblingViews(VerticalScaleChanged, &NewVerticalScale);
 }
 
 void CWaveSoapFrontView::OnViewZoomOutVert()
 {
 	if (m_VerticalScale > 1.)
 	{
-		m_VerticalScale	*= sqrt(0.5);
-		if (m_VerticalScale < 1.01)    // compensate any error
+		double scale = m_VerticalScale * sqrt(0.5);
+		if (scale < 1.01)    // compensate any error
 		{
-			m_VerticalScale = 1.;
+			scale = 1.;
 		}
-		// correct the offset, if necessary
-		// find max and min offset for this scale
-		double offset = m_WaveOffsetY;
-		double MaxOffset = 65536. * (1. - 1. / m_VerticalScale);
-		if (offset > MaxOffset)
-		{
-			offset = MaxOffset;
-		}
-		double MinOffset = -MaxOffset;
-		if (offset < MinOffset)
-		{
-			offset = MinOffset;
-		}
-		if (offset != m_WaveOffsetY)
-		{
-			m_WaveOffsetY = offset;
-		}
-		Invalidate();
-		NotifySlaveViews(WAVE_SCALE_CHANGED);
+		SetVerticalScale(scale);
+	}
+}
+
+void CWaveSoapFrontView::OnViewZoomOutHor2()
+{
+	if (m_HorizontalScale < 8192.)// fixme: depending on the file size
+	{
+		SetHorizontalScale(m_HorizontalScale * 2, INT_MAX);
+	}
+}
+
+void CWaveSoapFrontView::OnViewZoominHor2()
+{
+	if (m_HorizontalScale > 1./8.)
+	{
+		SetHorizontalScale(m_HorizontalScale / 2., INT_MAX);
 	}
 }
 
@@ -1016,8 +1091,9 @@ DWORD CWaveSoapFrontView::ClientHitTest(CPoint p) const
 		return VSHT_NONCLIENT;
 	}
 
-	//int Separator = WorldToWindowY(0.);
 	int ChannelUnderCursor = GetChannelFromPoint(p.y);
+	CRect ChannelRect;
+	GetChannelRect(ChannelUnderCursor, ChannelRect);
 
 	if (ChannelUnderCursor >= 0
 		&& ChannelUnderCursor < pDoc->WaveChannels())
@@ -1027,8 +1103,8 @@ DWORD CWaveSoapFrontView::ClientHitTest(CPoint p) const
 		if (0 != (pDoc->m_SelectedChannel & (1 << ChannelUnderCursor))
 			&& pDoc->m_SelectionStart <= pDoc->m_SelectionEnd)
 		{
-			int SelBegin = WorldToWindowXfloor(pDoc->m_SelectionStart);
-			int SelEnd = WorldToWindowXfloor(pDoc->m_SelectionEnd);
+			int SelBegin = SampleToX(pDoc->m_SelectionStart);
+			int SelEnd = SampleToX(pDoc->m_SelectionEnd);
 
 			if (pDoc->m_SelectionEnd != pDoc->m_SelectionStart
 				&& SelEnd == SelBegin)
@@ -1056,17 +1132,18 @@ DWORD CWaveSoapFrontView::ClientHitTest(CPoint p) const
 		}
 	}
 
-	int DataEnd = WorldToWindowXceil(pDoc->WaveFileSamples());
+	int DataEnd = SampleToXceil(pDoc->WaveFileSamples());
 
 	if (p.x < DataEnd)
 	{
-		if (pDoc->WaveChannels() > 1)
+		if (pDoc->WaveChannels() == 2)
 		{
-			if (p.y < ((32768. - dOrgY) * GetYScaleDev()))
+			int ch = GetChannelFromPoint(p.y);
+			if (ch == 0 && p.y < SampleValueToY(0., ch))
 			{
 				result |= VSHT_LEFT_CHAN;
 			}
-			else if (p.y > ((-32768. - dOrgY) * GetYScaleDev()))
+			else if (ch == 1 && p.y > SampleValueToY(0., ch))
 			{
 				result |= VSHT_RIGHT_CHAN;
 			}
@@ -1182,7 +1259,7 @@ void CWaveSoapFrontView::CreateAndShowCaret()
 	CRect r;
 	GetClientRect(r);
 
-	CPoint p(WorldToWindowXfloor(pDoc->m_CaretPosition), r.top);
+	CPoint p(SampleToX(pDoc->m_CaretPosition), r.top);
 
 	if (TRACE_CARET) TRACE("Client rect height=%d, caret position=%d\n", r.Height(), p.x);
 
@@ -1210,7 +1287,7 @@ BOOL CWaveSoapFrontView::OnEraseBkgnd(CDC* pDC)
 {
 	CThisApp * pApp = GetApp();
 	ThisDoc * pDoc = GetDocument();
-	RemoveSelectionRect();
+// FIXME    RemoveSelectionRect();
 
 	CBrush backBrush(pApp->m_WaveBackground);
 
@@ -1221,7 +1298,7 @@ BOOL CWaveSoapFrontView::OnEraseBkgnd(CDC* pDC)
 	CRect cr;
 	GetClientRect(cr);
 
-	int FileEnd = WorldToWindowXceil(pDoc->WaveFileSamples());
+	int FileEnd = SampleToXceil(pDoc->WaveFileSamples());
 
 	try
 	{
@@ -1257,8 +1334,8 @@ BOOL CWaveSoapFrontView::OnEraseBkgnd(CDC* pDC)
 
 		for (NUMBER_OF_CHANNELS ch = 0; ch < pDoc->WaveChannels(); ch++)
 		{
-			int SelBegin = WorldToWindowXfloor(pDoc->m_SelectionStart);
-			int SelEnd = WorldToWindowXfloor(pDoc->m_SelectionEnd);
+			int SelBegin = SampleToX(pDoc->m_SelectionStart);
+			int SelEnd = SampleToX(pDoc->m_SelectionEnd);
 
 			CRect ChanR;
 			GetChannelClipRect(ch, ChanR);
@@ -1331,7 +1408,7 @@ void CWaveSoapFrontView::OnLButtonDown(UINT nFlags, CPoint point)
 	{
 		return;
 	}
-	SAMPLE_INDEX nSampleUnderMouse = int(WindowToWorldX(point.x));
+	SAMPLE_INDEX nSampleUnderMouse = int(WindowXtoSample(point.x));
 	SAMPLE_INDEX SelectionStart = pDoc->m_SelectionStart;
 	SAMPLE_INDEX SelectionEnd = pDoc->m_SelectionEnd;
 
@@ -1400,8 +1477,8 @@ void CWaveSoapFrontView::OnLButtonUp(UINT nFlags, CPoint point)
 				// the whole area wasn't selected
 				&& pDoc->m_SelectionStart == pDoc->m_SelectionEnd)
 			{
-				SAMPLE_INDEX nBegin = SAMPLE_INDEX(WindowToWorldX(point.x));
-				SAMPLE_INDEX nEnd = SAMPLE_INDEX(WindowToWorldX(point.x + 1));
+				SAMPLE_INDEX nBegin = SAMPLE_INDEX(WindowXtoSample(point.x));
+				SAMPLE_INDEX nEnd = SAMPLE_INDEX(WindowXtoSample(point.x + 1));
 
 				pDoc->SetSelection(nBegin, nEnd, pDoc->m_SelectedChannel, nBegin,
 									SetSelection_SnapToMaximum
@@ -1409,7 +1486,7 @@ void CWaveSoapFrontView::OnLButtonUp(UINT nFlags, CPoint point)
 			}
 		}
 		ReleaseCapture();
-		bIsTrackingSelection = FALSE;
+		bIsTrackingSelection = false;
 		nKeyPressed = 0;
 
 		CView::OnLButtonUp(nFlags, point);
@@ -1492,7 +1569,7 @@ void CWaveSoapFrontView::OnMouseMove(UINT nFlags, CPoint point)
 		}
 	}
 
-	SAMPLE_INDEX nSampleUnderMouse = SAMPLE_INDEX(WindowToWorldX(point.x));
+	SAMPLE_INDEX nSampleUnderMouse = SAMPLE_INDEX(WindowXtoSample(point.x));
 	if (nSampleUnderMouse < 0)
 	{
 		nSampleUnderMouse = 0;
@@ -1513,12 +1590,12 @@ void CWaveSoapFrontView::OnMouseMove(UINT nFlags, CPoint point)
 			if ( ! bIsTrackingSelection)
 			{
 				if (pDoc->m_CaretPosition >= nSampleUnderMouse
-					&& pDoc->m_CaretPosition < SAMPLE_INDEX(WindowToWorldX(point.x + 1)))
+					&& pDoc->m_CaretPosition < SAMPLE_INDEX(WindowXtoSample(point.x + 1)))
 				{
 					// mouse didn't move outside this column
 					return;
 				}
-				bIsTrackingSelection = TRUE;
+				bIsTrackingSelection = true;
 				SetCapture();
 			}
 
@@ -1582,6 +1659,9 @@ void CWaveSoapFrontView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
 {
 	ThisDoc * pDoc = GetDocument();
 
+	CRect cr;
+	GetClientRect(cr);
+
 	if (lHint == ThisDoc::UpdateSelectionChanged
 		&& NULL != pHint)
 	{
@@ -1595,14 +1675,11 @@ void CWaveSoapFrontView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
 			return;
 		}
 
-		CRect cr;
-		GetClientRect(cr);
-
 		AdjustCaretVisibility(pInfo->CaretPos, pInfo->OldCaretPos, pInfo->Flags);
 
 		// calculate new selection boundaries
-		int SelBegin = WorldToWindowXfloor(pInfo->SelBegin);
-		int SelEnd = WorldToWindowXfloor(pInfo->SelEnd);
+		int SelBegin = SampleToX(pInfo->SelBegin);
+		int SelEnd = SampleToX(pInfo->SelEnd);
 
 		if (pInfo->SelEnd != pInfo->SelBegin
 			&& SelEnd == SelBegin)
@@ -1610,8 +1687,8 @@ void CWaveSoapFrontView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
 			SelEnd++;
 		}
 
-		int OldSelBegin = WorldToWindowXfloor(pInfo->OldSelBegin);
-		int OldSelEnd = WorldToWindowXfloor(pInfo->OldSelEnd);
+		int OldSelBegin = SampleToX(pInfo->OldSelBegin);
+		int OldSelEnd = SampleToX(pInfo->OldSelEnd);
 
 		if (pInfo->OldSelEnd != pInfo->OldSelBegin
 			&& OldSelEnd == OldSelBegin)
@@ -1726,12 +1803,8 @@ void CWaveSoapFrontView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
 		{
 			m_WaveBuffer.Invalidate(); // invalidate the data in draw buffer
 			// length changed, set new extents and caret position
-			if (r.Width() > 100
-				&& NUMBER_OF_SAMPLES((r.Width() - 100) * m_HorizontalScale / 2) > pInfo->m_NewLength)
-			{
-				SetExtents(0, pInfo->m_NewLength, 0, 0);
-			}
-			UpdateMaxHorExtents(pInfo->m_NewLength);
+
+			UpdateHorizontalExtents(pInfo->m_NewLength, r.Width());
 			Invalidate();
 		}
 		else
@@ -1741,8 +1814,8 @@ void CWaveSoapFrontView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
 		}
 
 		// calculate update boundaries
-		r1.left = WorldToWindowXfloor(pInfo->m_Begin);
-		r1.right = WorldToWindowXceil(pInfo->m_End) + 2;
+		r1.left = SampleToX(pInfo->m_Begin);
+		r1.right = SampleToXceil(pInfo->m_End) + 2;
 
 		if (r1.left != r1.right
 			// limit the rectangles with the window boundaries
@@ -1775,13 +1848,11 @@ void CWaveSoapFrontView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
 	{
 		// don't do anything
 	}
-	else if (lHint == ThisDoc::UpdateWholeFileChanged
-			&& NULL == pHint
-			)
+	else if (lHint == ThisDoc::UpdateWholeFileChanged)
 	{
 		// recalculate the extents
-		UpdateMaxHorExtents(GetDocument()->WaveFileSamples());
-		UpdateVertExtents();
+		UpdateHorizontalExtents(GetDocument()->WaveFileSamples(), cr.Width());
+		Invalidate();
 	}
 	else if (lHint == ThisDoc::UpdateMarkerRegionChanged
 			&& NULL != pHint)
@@ -1810,7 +1881,7 @@ void CWaveSoapFrontView::InvalidateMarkerRegion(WAVEREGIONINFO const * pInfo)
 	GetClientRect(cr);
 	CRect r;
 
-	long x = WorldToWindowXfloor(pInfo->Sample);
+	long x = SampleToX(pInfo->Sample);
 	if (0 != (pInfo->Flags & (pInfo->ChangeSample | pInfo->Delete))
 		&& x < cr.right && x >= cr.left)
 	{
@@ -1880,7 +1951,7 @@ void CWaveSoapFrontView::InvalidateMarkerRegion(WAVEREGIONINFO const * pInfo)
 			& (pInfo->ChangeSample | pInfo->ChangeLength | pInfo->Delete)))
 	{
 		// invalidate end marker
-		x = WorldToWindowXfloor(pInfo->Sample + pInfo->Length);
+		x = SampleToX(pInfo->Sample + pInfo->Length);
 		if (x < cr.right && x >= cr.left)
 		{
 			r.left = x;
@@ -1896,9 +1967,9 @@ void CWaveSoapFrontView::InvalidateMarkerRegion(WAVEREGIONINFO const * pInfo)
 POINT CWaveSoapFrontView::GetZoomCenter()
 {
 	ThisDoc * pDoc = GetDocument();
-	int caret = WorldToWindowXfloor(pDoc->m_CaretPosition);
-	int SelBegin = WorldToWindowXfloor(pDoc->m_SelectionStart);
-	int SelEnd = WorldToWindowXfloor(pDoc->m_SelectionEnd);
+	int caret = SampleToX(pDoc->m_CaretPosition);
+	int SelBegin = SampleToX(pDoc->m_SelectionStart);
+	int SelEnd = SampleToX(pDoc->m_SelectionEnd);
 	//int CenterY = WorldToWindowY(0);
 
 	CRect r;
@@ -1958,22 +2029,25 @@ void CWaveSoapFrontView::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 	BOOL MakeCaretVisible = TRUE;
 	BOOL KeepCaretVisible = FALSE;
 
-	int nCaretMove = m_HorizontalScale;
-
+	int nCaretMove = (int)m_HorizontalScale;
+	if (nCaretMove == 0)    // m_HorizontalScale < 1
+	{
+		nCaretMove = 1;
+	}
 	NUMBER_OF_SAMPLES nTotalSamples = pDoc->WaveFileSamples();
 
 	CRect r;
 	GetClientRect(r);
 
 	// page is one half of the window width
-	int nPage = r.Width() * m_HorizontalScale / 2;
+	double nPage = r.Width() * m_HorizontalScale / 2;
 	if (CtrlPressed)
 	{
 		// make it 7/8 of the window width
-		nPage = nPage * 7 * m_HorizontalScale / 4;
+		nPage = r.Width() * m_HorizontalScale * 7. / 8.;
 	}
 	// round to one pixel
-	nPage -= nPage % m_HorizontalScale;
+	nPage -= fmod(nPage, m_HorizontalScale);
 
 	switch (nChar)
 	{
@@ -1993,7 +2067,7 @@ void CWaveSoapFrontView::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 			}
 			else
 			{
-				// move caret 1 pixel to the left,
+				// move caret 1 pixel or 1 sample to the left,
 				nCaret -= nCaretMove;
 			}
 		}
@@ -2039,7 +2113,7 @@ void CWaveSoapFrontView::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 		}
 		else
 		{
-			nCaret = SAMPLE_INDEX(WindowToWorldX(r.left + 1)); // cursor to the left boundary + 1
+			nCaret = SAMPLE_INDEX(WindowXtoSample(r.left + 1)); // cursor to the left boundary + 1
 		}
 
 		break;
@@ -2062,7 +2136,7 @@ void CWaveSoapFrontView::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 		}
 		else
 		{
-			nCaret = SAMPLE_INDEX(WindowToWorldX(r.right - 2)); // cursor to the right boundary + 1
+			nCaret = SAMPLE_INDEX(WindowXtoSample(r.right - 2)); // cursor to the right boundary + 1
 		}
 
 		break;
@@ -2077,17 +2151,19 @@ void CWaveSoapFrontView::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 
 	case VK_UP:
 		// move the zoomed image up
+		KeepSelection = TRUE;
 		break;
 
 	case VK_DOWN:
 		// move the zoomed image down
+		KeepSelection = TRUE;
 		break;
 
 	case VK_TAB:
 		// toggle selection channel
 		if (pDoc->m_WavFile.AllChannels(nChan))
 		{
-			nChan = SPEAKER_FRONT_LEFT;
+			nChan = 1;
 		}
 		else
 		{
@@ -2158,7 +2234,7 @@ void CWaveSoapFrontView::MovePointIntoView(SAMPLE_INDEX nCaret, BOOL bCenter)
 	CRect r;
 	GetClientRect(r);
 
-	int nDesiredPos = WorldToWindowXfloor(nCaret);
+	int nDesiredPos = SampleToX(nCaret);
 	double scroll;
 	int AutoscrollWidth = GetSystemMetrics(SM_CXVSCROLL);
 
@@ -2180,7 +2256,7 @@ void CWaveSoapFrontView::MovePointIntoView(SAMPLE_INDEX nCaret, BOOL bCenter)
 	}
 	if (TRACE_SCROLL) TRACE("MovePointIntoView: DesiredPos=%d, left=%d, right=%d, scroll=%d\n",
 							nDesiredPos, r.left, r.right, scroll);
-	ScrollBy(scroll, 0, TRUE);
+	HorizontalScrollBy(scroll);
 	CreateAndShowCaret();
 }
 
@@ -2209,30 +2285,109 @@ int CWaveSoapFrontView::OnCreate(LPCREATESTRUCT lpCreateStruct)
 {
 	if (BaseClass::OnCreate(lpCreateStruct) == -1)
 		return -1;
-	KeepAspectRatio(FALSE);
-	KeepScaleOnResizeX(TRUE);
-	KeepScaleOnResizeY(FALSE);
-	KeepOrgOnResizeX(TRUE);
-	KeepOrgOnResizeY(FALSE);
-
-	CRect r;
-	GetClientRect(r);
-
-	SetExtents(0., double(r.Width()) * m_HorizontalScale, 0., 0.);
-
-	UpdateMaxHorExtents(GetDocument()->WaveFileSamples());
-	UpdateVertExtents();
 
 	ShowScrollBar(SB_VERT, FALSE);
 	ShowScrollBar(SB_HORZ, FALSE);
 	return 0;
 }
 
+void CWaveSoapFrontView::HorizontalScrollBy(double samples)
+{
+	SetFirstSampleInView(m_FirstSampleInView + samples);
+}
+
+void CWaveSoapFrontView::SetFirstSampleInView(double sample)
+{
+	NUMBER_OF_SAMPLES TotalSamples = WaveFileSamples();
+	CRect cr;
+	GetClientRect(cr);
+	double SamplesInView = cr.Width() * m_HorizontalScale;
+	int ReservedPixels = cr.Width() / 10;
+	if (ReservedPixels > 100)
+	{
+		ReservedPixels = 100;
+	}
+	double MaximumFirstSampleValue = TotalSamples + ReservedPixels * m_HorizontalScale - SamplesInView;
+	if (MaximumFirstSampleValue < 0.)
+	{
+		MaximumFirstSampleValue = 0.;
+	}
+
+	if (sample > MaximumFirstSampleValue)
+	{
+		sample = MaximumFirstSampleValue;
+	}
+
+	if (sample < 0.)
+	{
+		sample = 0.;
+	}
+	// adjust it for integer number of pixels
+	sample -= fmod(sample, m_HorizontalScale);
+	// the update will reflect here
+	NotifySiblingViews(HorizontalOriginChanged, &sample);
+}
+
+void CWaveSoapFrontView::OnHScroll(UINT nSBCode, UINT nPos, CScrollBar* pScrollBar)
+{
+	// calc new x position
+	NUMBER_OF_SAMPLES TotalSamples = WaveFileSamples();
+	CRect cr;
+	GetClientRect(cr);
+	double SamplesInView = cr.Width() * m_HorizontalScale;
+	// at the end of the file we reserve at least 100 pixels or up to 10% of the view width after EOF
+
+	switch (nSBCode)
+	{
+	case SB_LEFT:
+		SetFirstSampleInView(0.);
+		return;
+		break;
+	case SB_RIGHT:
+		SetFirstSampleInView(TotalSamples);
+		return;
+		break;
+	case SB_LINELEFT:
+		HorizontalScrollBy(-SamplesInView * 0.05);
+		break;
+	case SB_LINERIGHT:
+		HorizontalScrollBy(SamplesInView * 0.05);
+		break;
+	case SB_PAGELEFT:
+		HorizontalScrollBy(-SamplesInView * 0.9);
+		break;
+	case SB_PAGERIGHT:
+		HorizontalScrollBy(SamplesInView * 0.9);
+		break;
+		//case SB_THUMBPOSITION:    // sent when THUMBTRACK is released
+	case SB_THUMBTRACK:
+	{
+		int ReservedPixels = cr.Width() / 10;
+		if (ReservedPixels > 100)
+		{
+			ReservedPixels = 100;
+		}
+		SCROLLINFO scrollinfo = {sizeof scrollinfo};
+
+		pScrollBar->GetScrollInfo( & scrollinfo, SIF_ALL);
+		double MaximumFirstSampleValue = TotalSamples + ReservedPixels * m_HorizontalScale - SamplesInView;
+		TRACE("SB_THUMBTRACK pos=%d, trackpos=%d, new first sample=%f\n", nPos, scrollinfo.nTrackPos,
+			MaximumFirstSampleValue * double(scrollinfo.nTrackPos - scrollinfo.nMin) / (scrollinfo.nMax - scrollinfo.nMin));
+		SetFirstSampleInView(MaximumFirstSampleValue * double(scrollinfo.nTrackPos - scrollinfo.nMin) / (scrollinfo.nMax - scrollinfo.nMin));
+
+		break;
+	}
+	default:
+		break;
+	}
+
+}
+
 BOOL CWaveSoapFrontView::MasterScrollBy(double dx, double dy, BOOL bDoScroll)
 {
 	CWaveSoapFrontDoc * pDoc = GetDocument();
 
-	LONG FileEnd = WorldToWindowXceil(pDoc->WaveFileSamples());
+	LONG FileEnd = SampleToXceil(pDoc->WaveFileSamples());
 	LONG NewFileEnd = FileEnd;
 
 	CRect ir;
@@ -2242,41 +2397,7 @@ BOOL CWaveSoapFrontView::MasterScrollBy(double dx, double dy, BOOL bDoScroll)
 	int ndx = 0;
 	int ndy = 0;
 	bool PlaybackCursorHidden = false;
-
-	if (dx != 0.)
-	{
-		if (TRACE_SCROLL) TRACE("before MasterScrollBy: dOrgX=%f, dx=%f\n", dOrgX, dx);
-
-		CRect ScrollRect(cr);
-
-		// limit the scroll with the file area
-		if (FileEnd >= 0
-			&& FileEnd < ScrollRect.right)
-		{
-			ScrollRect.right = FileEnd;
-		}
-
-		BaseClass::MasterScrollBy(dx, 0, bDoScroll, ScrollRect, ScrollRect);
-
-		NewFileEnd = WorldToWindowXceil(pDoc->WaveFileSamples());
-		ndx = NewFileEnd - FileEnd;
-
-		// if scrolled to the right, invalidate checkered background beyond the file
-		if (NewFileEnd > FileEnd
-			&& FileEnd < cr.right)
-		{
-			CRect ir(cr);
-			ir.left = FileEnd;
-			ir.right = std::min(NewFileEnd, cr.right);
-
-			InvalidateRect(ir);
-		}
-
-		// TODO: invalidate all labels of markers, if they fall to the moved area
-		// make sure the new position will be on the multiple of m_HorizontalScale
-		ASSERT(0 == SAMPLE_INDEX(dOrgX) % m_HorizontalScale);
-	}
-
+#if 0
 	if (dy != 0.)
 	{
 		// check for the limits
@@ -2317,7 +2438,7 @@ BOOL CWaveSoapFrontView::MasterScrollBy(double dx, double dy, BOOL bDoScroll)
 			// calculate how much zero line would move
 
 			m_WaveOffsetY = offset;
-			NotifySlaveViews(WAVE_OFFSET_CHANGED);
+// FIXME            NotifySlaveViews(WAVE_OFFSET_CHANGED);
 
 			if (NoScroll)
 			{
@@ -2346,7 +2467,10 @@ BOOL CWaveSoapFrontView::MasterScrollBy(double dx, double dy, BOOL bDoScroll)
 
 		}
 	}
+#endif
 
+	//  invalidate all labels of markers, if they fall to the moved area
+	// make sure the new position will be on the multiple of m_HorizontalScale
 	if (ndy != 0
 		|| ndx != 0)
 	{
@@ -2357,9 +2481,9 @@ BOOL CWaveSoapFrontView::MasterScrollBy(double dx, double dy, BOOL bDoScroll)
 		CWaveFile::InstanceDataWav * pInst = pDoc->m_WavFile.GetInstanceData();
 
 		for (CuePointVectorIterator i = pInst->m_CuePoints.begin();
-			i < pInst->m_CuePoints.end(); i++)
+			i != pInst->m_CuePoints.end(); i++)
 		{
-			long x = WorldToWindowXfloor(i->dwSampleOffset);
+			long x = SampleToX(i->dwSampleOffset);
 
 			// invalidate text
 			if (x < cr.right)
@@ -2419,29 +2543,16 @@ BOOL CWaveSoapFrontView::MasterScrollBy(double dx, double dy, BOOL bDoScroll)
 
 void CWaveSoapFrontView::OnSize(UINT nType, int cx, int cy)
 {
-	// set m_HorizontalScale to stretch the file in the view
-	NUMBER_OF_SAMPLES nSamples = GetDocument()->WaveFileSamples();
-	if (nSamples != 0
-		&& (cx - 100) * m_HorizontalScale / 2 > nSamples)
-	{
-		SetExtents(0, nSamples, 0, 0);
-		Invalidate();
-	}
+	UpdateHorizontalExtents(WaveFileSamples(), cx);
+
 	BaseClass::OnSize(nType, cx, cy);
 
-	UpdateVertExtents();
 	CreateAndShowCaret();
 }
 
 void CWaveSoapFrontView::OnViewZoomvertNormal()
 {
-	if (m_VerticalScale != 1.)
-	{
-		m_VerticalScale = 1.;
-		m_WaveOffsetY = 0.;
-		Invalidate();
-		NotifySlaveViews(WAVE_SCALE_CHANGED);
-	}
+	SetVerticalScale(1.);
 }
 
 void CWaveSoapFrontView::OnUpdateViewZoomvertNormal(CCmdUI* pCmdUI)
@@ -2451,8 +2562,7 @@ void CWaveSoapFrontView::OnUpdateViewZoomvertNormal(CCmdUI* pCmdUI)
 
 void CWaveSoapFrontView::OnViewZoominHorFull()
 {
-	Zoom(m_HorizontalScale, 1., CPoint(INT_MAX, INT_MAX));
-	MovePointIntoView(GetDocument()->m_CaretPosition, TRUE);
+	SetHorizontalScale(1., INT_MAX);
 }
 
 void CWaveSoapFrontView::OnUpdateViewZoominHorFull(CCmdUI* pCmdUI)
@@ -2461,6 +2571,7 @@ void CWaveSoapFrontView::OnUpdateViewZoominHorFull(CCmdUI* pCmdUI)
 }
 
 // the function scrolls the real image, and modifies dOrgX, dOrgY.
+#if 0
 BOOL CWaveSoapFrontView::OnScrollBy(CSize sizeScroll, BOOL bDoScroll, RECT const * pScrollRect, RECT const * pClipRect)
 {
 	if (bDoScroll)
@@ -2475,6 +2586,7 @@ BOOL CWaveSoapFrontView::OnScrollBy(CSize sizeScroll, BOOL bDoScroll, RECT const
 	}
 	return bRet;
 }
+#endif
 
 void CWaveSoapFrontView::UpdatePlaybackCursor(SAMPLE_INDEX sample, CHANNEL_MASK channel)
 {
@@ -2485,8 +2597,8 @@ void CWaveSoapFrontView::UpdatePlaybackCursor(SAMPLE_INDEX sample, CHANNEL_MASK 
 		m_NewSelectionMade = false; // to hide the caret
 	}
 
-	int pos = WorldToWindowXfloor(sample);
-	int OldPos = WorldToWindowXfloor(m_PlaybackCursorDrawnSamplePos);
+	int pos = SampleToX(sample);
+	int OldPos = SampleToX(m_PlaybackCursorDrawnSamplePos);
 
 	if (pos == OldPos
 		&& channel == m_PlaybackCursorChannel)
@@ -2517,6 +2629,7 @@ void CWaveSoapFrontView::UpdatePlaybackCursor(SAMPLE_INDEX sample, CHANNEL_MASK 
 		return;
 	}
 	// scroll the cursor to the center
+	// FIXME: if the selection to play is completely visible, do not scroll
 	if (pos > r.right / 2)
 	{
 		long NewPos;
@@ -2533,71 +2646,49 @@ void CWaveSoapFrontView::UpdatePlaybackCursor(SAMPLE_INDEX sample, CHANNEL_MASK 
 		{
 			NewPos = r.right / 2;
 		}
-		double dScroll = m_HorizontalScale * (pos - NewPos);
-		if (dOrgX + dExtX + dScroll < dMaxRight)
-		{
-			ScrollBy(m_HorizontalScale * (pos - NewPos), 0, TRUE);
-		}
+		HorizontalScrollBy(m_HorizontalScale * (pos - NewPos));
 	}
 	ShowPlaybackCursor();
 	//GdiFlush();
 }
 
-void CWaveSoapFrontView::UpdateMaxHorExtents(NUMBER_OF_SAMPLES Length)
+void CWaveSoapFrontView::UpdateHorizontalExtents(NUMBER_OF_SAMPLES Length, int WindowWidth)
 {
-	CRect r;
-	GetClientRect(r);
-
-	long nRightMaxExtent = long(Length - Length % m_HorizontalScale + 100. * m_HorizontalScale);
-	long MinWidth = r.Width() * m_HorizontalScale;
-	long nRightExtent = 0;
-
-	if (nRightMaxExtent < MinWidth)
-	{
-		nRightMaxExtent = MinWidth;
-		nRightExtent = nRightMaxExtent;
-	}
-
 	// if the file fits into the view, adjust the horizontal scale
 	// if the previous view l
-	SetMaxExtents(0, nRightMaxExtent, 0, 0);
-	SetExtents(0., nRightExtent, 0, 0);
-	UpdateScrollbars();
-}
-
-void CWaveSoapFrontView::UpdateVertExtents()
-{
-	CRect r;
-	GetClientRect(r);
-
-	if (0 == r.Height())
+	double SamplesInView = WindowWidth * m_HorizontalScale;
+	int ReservedPixels = WindowWidth / 10;
+	if (ReservedPixels > 100)
 	{
-		return;
+		ReservedPixels = 100;
 	}
-	int nLowExtent = -32768 - 32768 / r.Height();
-	int nHighExtent = 32767;
-	if (GetDocument()->WaveChannels() > 1)
+	double EquivalentSamplesInExtent = Length + ReservedPixels * m_HorizontalScale;
+	double MaximumFirstSampleValue =  EquivalentSamplesInExtent - SamplesInView;
+	if (MaximumFirstSampleValue < 0.)
 	{
-		nLowExtent = -0x10000 - 0x20000 / r.Height();
-		nHighExtent = 0x10000;
+		MaximumFirstSampleValue = 0.;
 	}
-	SetMaxExtents(0, 0, nLowExtent, nHighExtent);
-	SetExtents(0., 0., nLowExtent, nHighExtent);
-	//ShowScrollBar(SB_VERT, FALSE);
-}
 
-void CWaveSoapFrontView::OnMasterChangeOrgExt(double left, double width,
-											double top, double height, DWORD flag)
-{
-	int OldHorScale = m_HorizontalScale;
+	double sample = m_FirstSampleInView;
 
-	BaseClass::OnMasterChangeOrgExt(left, width,
-									top, height, flag);
-
-	if (OldHorScale != m_HorizontalScale)
+	if (sample > MaximumFirstSampleValue)
 	{
-		UpdateMaxHorExtents(GetDocument()->WaveFileSamples());
+		sample = MaximumFirstSampleValue;
 	}
+
+	if (sample < 0.)
+	{
+		sample = 0.;
+	}
+	// adjust it for integer number of pixels
+	sample -= fmod(sample, m_HorizontalScale);
+
+	NotifyViewsData data;
+	data.HorizontalScroll.FirstSampleInView = sample;
+	data.HorizontalScroll.TotalSamplesInView = SamplesInView;
+	data.HorizontalScroll.TotalSamplesInExtent = EquivalentSamplesInExtent;
+
+	NotifySiblingViews(HorizontalExtentChanged, &data);
 }
 
 UINT CWaveSoapFrontView::GetPopupMenuID(CPoint point)
@@ -2628,8 +2719,8 @@ void CWaveSoapFrontView::OnRButtonDown(UINT nFlags, CPoint point)
 
 	ThisDoc * pDoc = GetDocument();
 
-	SAMPLE_INDEX nBegin = SAMPLE_INDEX(WindowToWorldX(point.x));
-	SAMPLE_INDEX nEnd = SAMPLE_INDEX(WindowToWorldX(point.x + 1));
+	SAMPLE_INDEX nBegin = SAMPLE_INDEX(WindowXtoSample(point.x));
+	SAMPLE_INDEX nEnd = SAMPLE_INDEX(WindowXtoSample(point.x + 1));
 
 	CHANNEL_MASK nChan = ALL_CHANNELS;
 	if (nHit & VSHT_LEFT_CHAN)
@@ -2662,176 +2753,72 @@ void CWaveSoapFrontView::OnUpdateViewZoomSelection(CCmdUI* pCmdUI)
 void CWaveSoapFrontView::OnViewZoomSelection()
 {
 	ThisDoc * pDoc = GetDocument();
-	SetExtents(pDoc->m_SelectionStart, pDoc->m_SelectionEnd, 0, 0);
-}
+	NUMBER_OF_SAMPLES SamplesInSelection = pDoc->m_SelectionStart - pDoc->m_SelectionEnd;
 
-void CWaveSoapFrontView::NotifySlaveViews(DWORD flag)
-{
-	if (flag & (CHANGE_HOR_EXTENTS | CHANGE_MAX_HOR_EXTENTS))
+	CRect cr;
+	GetClientRect(cr);
+	if (SamplesInSelection < 0)
 	{
-		CWnd * pOutlineWnd = GetParent()->GetDlgItem(CWaveMDIChildClient::OutlineViewID);
-		CWaveOutlineView * pOutlineView = dynamic_cast<CWaveOutlineView *>(pOutlineWnd);
-		if (NULL != pOutlineView)
+		SamplesInSelection = - SamplesInSelection;
+	}
+	double hor_scale = 1;
+	if (cr.Width() > SamplesInSelection)
+	{
+		while (cr.Width() > SamplesInSelection && hor_scale > 1./8.)
 		{
-			double left, right, top, bottom;
-			GetExtents(left, right, bottom, top);
-			pOutlineView->NotifyViewExtents(SAMPLE_INDEX(left), SAMPLE_INDEX(right));
+			SamplesInSelection *= 2;
+			hor_scale /= 2;
 		}
 	}
-	BaseClass::NotifySlaveViews(flag);
+	else
+	{
+		// Width < samples)
+		while (cr.Width() < SamplesInSelection)
+		{
+			SamplesInSelection /= 2;
+			hor_scale *= 2;
+		}
+	}
+	SetHorizontalScale(hor_scale, pDoc->m_SelectionStart + (pDoc->m_SelectionEnd - pDoc->m_SelectionStart) / 2);
 }
 
 void CWaveSoapFrontView::OnUpdateIndicatorScale(CCmdUI* pCmdUI)
 {
 	CString s;
-	s.Format(_T("1:%d"), int(m_HorizontalScale));
+	if (m_HorizontalScale >= 1)
+	{
+		s.Format(_T("1:%d"), int(m_HorizontalScale));
+	}
+	else
+	{
+		s.Format(_T("%d:1"), int(1. / m_HorizontalScale));
+	}
+
 	SetStatusString(pCmdUI, s);
 }
 
-void CWaveSoapFrontView::SetHorizontalScale(int HorScale)
+void CWaveSoapFrontView::OnUpdateViewHorScale(CCmdUI* pCmdUI)
 {
-	Zoom(double(m_HorizontalScale) / HorScale, 1., CPoint(INT_MAX, INT_MAX));
-	MovePointIntoView(GetDocument()->m_CaretPosition, TRUE);
+	C_ASSERT(ID_VIEW_HOR_SCALE_2 == ID_VIEW_HOR_SCALE_1 + 1);
+	C_ASSERT(ID_VIEW_HOR_SCALE_4 == ID_VIEW_HOR_SCALE_1 + 2);
+	C_ASSERT(ID_VIEW_HOR_SCALE_8 == ID_VIEW_HOR_SCALE_1 + 3);
+	C_ASSERT(ID_VIEW_HOR_SCALE_16 == ID_VIEW_HOR_SCALE_1 + 4);
+	C_ASSERT(ID_VIEW_HOR_SCALE_32 == ID_VIEW_HOR_SCALE_1 + 5);
+	C_ASSERT(ID_VIEW_HOR_SCALE_64 == ID_VIEW_HOR_SCALE_1 + 6);
+	C_ASSERT(ID_VIEW_HOR_SCALE_128 == ID_VIEW_HOR_SCALE_1 + 7);
+	C_ASSERT(ID_VIEW_HOR_SCALE_256 == ID_VIEW_HOR_SCALE_1 + 8);
+	C_ASSERT(ID_VIEW_HOR_SCALE_512 == ID_VIEW_HOR_SCALE_1 + 9);
+	C_ASSERT(ID_VIEW_HOR_SCALE_1024 == ID_VIEW_HOR_SCALE_1 + 10);
+	C_ASSERT(ID_VIEW_HOR_SCALE_2048 == ID_VIEW_HOR_SCALE_1 + 11);
+	C_ASSERT(ID_VIEW_HOR_SCALE_4096 == ID_VIEW_HOR_SCALE_1 + 12);
+	C_ASSERT(ID_VIEW_HOR_SCALE_8192 == ID_VIEW_HOR_SCALE_1 + 13);
+
+	pCmdUI->SetRadio((1 << (pCmdUI->m_nID - ID_VIEW_HOR_SCALE_1)) == m_HorizontalScale);
 }
 
-void CWaveSoapFrontView::OnUpdateViewHorScale1(CCmdUI* pCmdUI)
+void CWaveSoapFrontView::OnViewHorScale(UINT command)
 {
-	pCmdUI->SetRadio(1 == m_HorizontalScale);
-}
-
-void CWaveSoapFrontView::OnViewHorScale1()
-{
-	SetHorizontalScale(1);
-}
-
-void CWaveSoapFrontView::OnUpdateViewHorScale2(CCmdUI* pCmdUI)
-{
-	pCmdUI->SetRadio(2 == m_HorizontalScale);
-}
-
-void CWaveSoapFrontView::OnViewHorScale2()
-{
-	SetHorizontalScale(2);
-}
-
-void CWaveSoapFrontView::OnUpdateViewHorScale4(CCmdUI* pCmdUI)
-{
-	pCmdUI->SetRadio(4 == m_HorizontalScale);
-}
-
-void CWaveSoapFrontView::OnViewHorScale4()
-{
-	SetHorizontalScale(4);
-}
-
-void CWaveSoapFrontView::OnUpdateViewHorScale8(CCmdUI* pCmdUI)
-{
-	pCmdUI->SetRadio(8 == m_HorizontalScale);
-}
-
-void CWaveSoapFrontView::OnViewHorScale8()
-{
-	SetHorizontalScale(8);
-}
-
-void CWaveSoapFrontView::OnUpdateViewHorScale16(CCmdUI* pCmdUI)
-{
-	pCmdUI->SetRadio(16 == m_HorizontalScale);
-}
-
-void CWaveSoapFrontView::OnViewHorScale16()
-{
-	SetHorizontalScale(16);
-}
-
-void CWaveSoapFrontView::OnUpdateViewHorScale32(CCmdUI* pCmdUI)
-{
-	pCmdUI->SetRadio(32 == m_HorizontalScale);
-}
-
-void CWaveSoapFrontView::OnViewHorScale32()
-{
-	SetHorizontalScale(32);
-}
-
-void CWaveSoapFrontView::OnUpdateViewHorScale64(CCmdUI* pCmdUI)
-{
-	pCmdUI->SetRadio(64 == m_HorizontalScale);
-}
-
-void CWaveSoapFrontView::OnViewHorScale64()
-{
-	SetHorizontalScale(64);
-}
-
-void CWaveSoapFrontView::OnUpdateViewHorScale128(CCmdUI* pCmdUI)
-{
-	pCmdUI->SetRadio(128 == m_HorizontalScale);
-}
-
-void CWaveSoapFrontView::OnViewHorScale128()
-{
-	SetHorizontalScale(128);
-}
-
-void CWaveSoapFrontView::OnUpdateViewHorScale256(CCmdUI* pCmdUI)
-{
-	pCmdUI->SetRadio(256 == m_HorizontalScale);
-}
-
-void CWaveSoapFrontView::OnViewHorScale256()
-{
-	SetHorizontalScale(256);
-}
-
-void CWaveSoapFrontView::OnUpdateViewHorScale512(CCmdUI* pCmdUI)
-{
-	pCmdUI->SetRadio(512 == m_HorizontalScale);
-}
-
-void CWaveSoapFrontView::OnViewHorScale512()
-{
-	SetHorizontalScale(512);
-}
-
-void CWaveSoapFrontView::OnUpdateViewHorScale1024(CCmdUI* pCmdUI)
-{
-	pCmdUI->SetRadio(1024 == m_HorizontalScale);
-}
-
-void CWaveSoapFrontView::OnViewHorScale1024()
-{
-	SetHorizontalScale(1024);
-}
-
-void CWaveSoapFrontView::OnUpdateViewHorScale2048(CCmdUI* pCmdUI)
-{
-	pCmdUI->SetRadio(2048 == m_HorizontalScale);
-}
-
-void CWaveSoapFrontView::OnViewHorScale2048()
-{
-	SetHorizontalScale(2048);
-}
-
-void CWaveSoapFrontView::OnUpdateViewHorScale4096(CCmdUI* pCmdUI)
-{
-	pCmdUI->SetRadio(4096 == m_HorizontalScale);
-}
-
-void CWaveSoapFrontView::OnViewHorScale4096()
-{
-	SetHorizontalScale(4096);
-}
-
-void CWaveSoapFrontView::OnUpdateViewHorScale8192(CCmdUI* pCmdUI)
-{
-	pCmdUI->SetRadio(8192 == m_HorizontalScale);
-}
-
-void CWaveSoapFrontView::OnViewHorScale8192()
-{
-	SetHorizontalScale(8192);
+	SetHorizontalScale(1 << (command - ID_VIEW_HOR_SCALE_1), INT_MAX);
 }
 
 void CWaveSoapFrontView::OnTimer(UINT_PTR nIDEvent)
@@ -2874,7 +2861,8 @@ void CWaveSoapFrontView::OnTimer(UINT_PTR nIDEvent)
 			{
 				scroll *= 1 << nDistance;
 			}
-			ScrollBy(scroll, 0, TRUE);
+
+			HorizontalScrollBy(scroll);
 
 			CreateAndShowCaret();
 			UINT flags = 0;
@@ -2917,12 +2905,16 @@ void CWaveSoapFrontView::OnTimer(UINT_PTR nIDEvent)
 
 void CWaveSoapFrontView::OnCaptureChanged(CWnd *pWnd)
 {
-	if (pWnd != this
-		&& NULL != m_AutoscrollTimerID)
+	if (pWnd != this)
 	{
-		if (TRACE_SCROLL) TRACE("Killing timer in CWaveSoapFrontView::OnCaptureChanged\n");
-		KillTimer(m_AutoscrollTimerID);
-		m_AutoscrollTimerID = NULL;
+		if (NULL != m_AutoscrollTimerID)
+		{
+			if (TRACE_SCROLL) TRACE("Killing timer in CWaveSoapFrontView::OnCaptureChanged\n");
+			KillTimer(m_AutoscrollTimerID);
+			m_AutoscrollTimerID = NULL;
+		}
+		bIsTrackingSelection = FALSE;
+		nKeyPressed = 0;
 	}
 	BaseClass::OnCaptureChanged(pWnd);
 }
@@ -2931,7 +2923,7 @@ void CWaveSoapFrontView::OnLButtonDblClk(UINT nFlags, CPoint point)
 {
 	BaseClass::OnLButtonDblClk(nFlags, point);
 
-	GetDocument()->SelectBetweenMarkers(SAMPLE_INDEX(WindowToWorldX(point.x)));
+	GetDocument()->SelectBetweenMarkers(SAMPLE_INDEX(WindowXtoSample(point.x)));
 }
 
 void CWaveSoapFrontView::AdjustCaretVisibility(SAMPLE_INDEX CaretPos, SAMPLE_INDEX OldCaretPos,
@@ -2953,8 +2945,8 @@ void CWaveSoapFrontView::AdjustCaretVisibility(SAMPLE_INDEX CaretPos, SAMPLE_IND
 			// if the caret was from the left side, allow it to stay on the left side,
 			// but when moved to the right, keep it in center.
 			// If the caret was or becomes not visible, bring it to center
-			long PrevX = WorldToWindowXfloor(OldCaretPos);
-			long NewX = WorldToWindowXfloor(CaretPos);
+			long PrevX = SampleToX(OldCaretPos);
+			long NewX = SampleToX(CaretPos);
 			int Center = (cr.left + cr.right) / 2;
 
 			if (PrevX < cr.left
@@ -3005,7 +2997,7 @@ void CWaveSoapFrontView::AdjustCaretVisibility(SAMPLE_INDEX CaretPos, SAMPLE_IND
 	if (Flags & SetSelection_MakeFileVisible)
 	{
 		SAMPLE_INDEX LastSample = pDoc->WaveFileSamples();
-		if (WindowToWorldX(0) > LastSample)
+		if (WindowXtoSample(0) > LastSample)
 		{
 			MovePointIntoView(LastSample, TRUE);
 		}
@@ -3014,13 +3006,170 @@ void CWaveSoapFrontView::AdjustCaretVisibility(SAMPLE_INDEX CaretPos, SAMPLE_IND
 
 void CWaveSoapFrontView::OnViewZoomprevious()
 {
-	// TODO: Add your command handler code here
 	if (m_PrevHorizontalScale >= 1)
 	{
-		double zoom = double(m_HorizontalScale) / m_PrevHorizontalScale;
+		double zoom = m_PrevHorizontalScale;
 		m_PrevHorizontalScale = m_HorizontalScale;
 
-		Zoom(zoom, 1., CPoint(INT_MAX, INT_MAX));
-		MovePointIntoView(GetDocument()->m_CaretPosition, TRUE);
+		SetHorizontalScale(zoom, INT_MAX);
 	}
+}
+
+// if ZoomCenter is INT_MAX, use current caret position
+void CWaveSoapFrontView::SetHorizontalScale(double NewHorizontalScale, int ZoomCenter)
+{
+	// TODO
+	NotifySiblingViews(HorizontalScaleChanged, &NewHorizontalScale);
+	MovePointIntoView(GetDocument()->m_CaretPosition, TRUE);
+}
+
+int CWaveSoapFrontView::SampleToXceil(SAMPLE_INDEX sample) const
+{
+	double pos = (sample - m_FirstSampleInView) / m_HorizontalScale;
+	if (pos > INT_MAX / 2)
+	{
+		return INT_MAX / 2;
+	}
+	else if (pos < INT_MIN / 2)
+	{
+		return INT_MIN / 2;
+	}
+	else
+	{
+		return (int)ceil(pos);
+	}
+}
+
+int CWaveSoapFrontView::SampleToX(SAMPLE_INDEX sample) const
+{
+	double pos = (sample - m_FirstSampleInView) / m_HorizontalScale;
+	if (pos > INT_MAX / 2)
+	{
+		return INT_MAX / 2;
+	}
+	else if (pos < INT_MIN / 2)
+	{
+		return INT_MIN / 2;
+	}
+	else
+	{
+		return (int)floor(pos);
+	}
+}
+
+SAMPLE_INDEX CWaveSoapFrontView::WindowXtoSample(int x) const
+{
+	return (SAMPLE_INDEX)floor(x * m_HorizontalScale + m_FirstSampleInView);
+}
+
+afx_msg LRESULT CWaveSoapFrontView::OnUwmNotifyViews(WPARAM wParam, LPARAM lParam)
+{
+	CRect cr;
+	GetClientRect(cr);
+
+	switch (wParam)
+	{
+	case ChannelHeightChanged:
+
+		break;
+	case FftBandChanged:
+		break;
+	case HorizontalScaleChanged:
+		if (m_HorizontalScale != *(double*)lParam)
+		{
+			m_HorizontalScale = *(double*)lParam;
+			Invalidate();
+		}
+		// notify the siblings of the change in extents:
+		{
+			NotifyViewsData data;
+			data.HorizontalScroll.TotalSamplesInView = cr.Width() * m_HorizontalScale;
+
+			NUMBER_OF_SAMPLES TotalSamples = WaveFileSamples();
+
+			int ReservedPixels = cr.Width() / 10;
+			if (ReservedPixels > 100)
+			{
+				ReservedPixels = 100;
+			}
+			data.HorizontalScroll.TotalSamplesInExtent = TotalSamples + ReservedPixels * m_HorizontalScale;
+			double MaximumFirstSampleValue = data.HorizontalScroll.TotalSamplesInExtent - data.HorizontalScroll.TotalSamplesInView;
+
+			if (MaximumFirstSampleValue < 0.)
+			{
+				MaximumFirstSampleValue = 0.;
+			}
+
+			data.HorizontalScroll.FirstSampleInView = m_FirstSampleInView;
+			if (data.HorizontalScroll.FirstSampleInView > MaximumFirstSampleValue)
+			{
+				data.HorizontalScroll.FirstSampleInView = MaximumFirstSampleValue;
+			}
+
+			if (data.HorizontalScroll.FirstSampleInView < 0.)
+			{
+				data.HorizontalScroll.FirstSampleInView = 0.;
+			}
+			// adjust it for integer number of pixels
+			data.HorizontalScroll.FirstSampleInView -= fmod(data.HorizontalScroll.FirstSampleInView, m_HorizontalScale);
+			NotifySiblingViews(HorizontalExtentChanged, &data);
+		}
+		break;
+	case VerticalScaleChanged:
+		// lParam points to double new scale
+		if (m_VerticalScale != *(double*)lParam)
+		{
+			m_VerticalScale = *(double*)lParam;
+			Invalidate();
+		}
+		break;
+	case AmplitudeOffsetChanged:
+		// lParam points to double new vertical offset
+		break;
+	case FftVerticalScaleChanged:
+		// lParam points to double new scale
+		break;
+	case FftOffsetChanged:
+		break;
+	case HorizontalExtentChanged:
+	{
+		NotifyViewsData *data = (NotifyViewsData *) lParam;
+		m_FirstSampleInView = data->HorizontalScroll.FirstSampleInView;
+	}
+		break;
+	case HorizontalOriginChanged:
+		double NewFirstSample = *(double*) lParam;  // it's validated to be in the proper range and adjusted for whole pixels
+		// see if we do scroll or invalidation
+		double offset_pixels = (NewFirstSample - m_FirstSampleInView) / m_HorizontalScale;
+		ASSERT(0. == fmod(offset_pixels, 1.));
+		m_FirstSampleInView = NewFirstSample;
+
+		if (offset_pixels > 0.)     // shift image to the left
+		{
+			if (offset_pixels < cr.Width())
+			{
+				ScrollWindow(-int(offset_pixels), 0, cr, cr);
+			}
+			else
+			{
+				Invalidate(FALSE);
+			}
+		}
+		else if (offset_pixels < 0.)    // shift image to the right
+		{
+			if (-offset_pixels < cr.Width())
+			{
+				ScrollWindow(-int(offset_pixels), 0, cr, cr);
+			}
+			else
+			{
+				Invalidate(FALSE);
+			}
+		}
+		else
+		{
+			// do nothing
+		}
+	}
+	return 0;
 }

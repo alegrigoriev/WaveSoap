@@ -3920,10 +3920,10 @@ void CWaveSoapFrontDoc::OnProcessDcoffset()
 			}
 		}
 
-		float offset[MAX_NUMBER_OF_CHANNELS] = { DcOffset, DcOffset, };
+		float offset = (float)DcOffset;
 
 		CDcOffsetContext::auto_ptr pDcContext(new CDcOffsetContext(this, IDS_DC_ADJUST_STATUS_PROMPT,
-												IDS_DC_ADJUST_OPERATION_NAME, offset, 2));
+												IDS_DC_ADJUST_OPERATION_NAME, &offset, 1));
 
 		if (dlg.UndoEnabled())
 		{
@@ -4430,8 +4430,11 @@ void CWaveSoapFrontDoc::OnProcessSynthesisExpressionEvaluation()
 
 		pContext->SetSaveForUndo(dlg.GetStart(), NumSamples);
 
-		pContext->m_UndoChain.InsertHead(new
-										CSaveTrimmedOperation(this, m_WavFile, NumSamples, dlg.GetEnd(), dlg.GetChannel()));
+		if (dlg.UndoEnabled())
+		{
+			pContext->m_UndoChain.InsertHead(new
+											CSaveTrimmedOperation(this, m_WavFile, NumSamples, dlg.GetEnd(), dlg.GetChannel()));
+		}
 	}
 	else
 	{
@@ -4451,7 +4454,7 @@ void CWaveSoapFrontDoc::OnProcessSynthesisExpressionEvaluation()
 
 	pStagedContext->AddContext(pContext.release());
 
-	if (UndoEnabled()
+	if (dlg.UndoEnabled()
 		&& ! pStagedContext->CreateUndo())
 	{
 		return;

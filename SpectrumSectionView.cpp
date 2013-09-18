@@ -48,7 +48,7 @@ CSpectrumSectionView::~CSpectrumSectionView()
 }
 
 
-BEGIN_MESSAGE_MAP(CSpectrumSectionView, CScaledScrollView)
+BEGIN_MESSAGE_MAP(CSpectrumSectionView, BaseClass)
 	//{{AFX_MSG_MAP(CSpectrumSectionView)
 	ON_WM_CREATE()
 	ON_WM_MOUSEACTIVATE()
@@ -63,6 +63,7 @@ BEGIN_MESSAGE_MAP(CSpectrumSectionView, CScaledScrollView)
 	ON_COMMAND(ID_VIEW_SHOW_CROSSHAIR, OnViewShowCrosshair)
 	//}}AFX_MSG_MAP
 	ON_MESSAGE(WM_MOUSELEAVE, OnMouseLeave)
+	ON_MESSAGE(UWM_NOTIFY_VIEWS, &CSpectrumSectionView::OnUwmNotifyViews)
 END_MESSAGE_MAP()
 
 /////////////////////////////////////////////////////////////////////////////
@@ -648,12 +649,12 @@ BOOL CSpectrumSectionView::AllocateFftArrays()
 #ifdef _DEBUG
 void CSpectrumSectionView::AssertValid() const
 {
-	CScaledScrollView::AssertValid();
+	BaseClass::AssertValid();
 }
 
 void CSpectrumSectionView::Dump(CDumpContext& dc) const
 {
-	CScaledScrollView::Dump(dc);
+	BaseClass::Dump(dc);
 }
 CWaveSoapFrontDoc* CSpectrumSectionView::GetDocument() const // non-debug version is inline
 {
@@ -668,7 +669,7 @@ CWaveSoapFrontDoc* CSpectrumSectionView::GetDocument() const // non-debug versio
 
 int CSpectrumSectionView::OnCreate(LPCREATESTRUCT lpCreateStruct)
 {
-	if (CScaledScrollView::OnCreate(lpCreateStruct) == -1)
+	if (BaseClass::OnCreate(lpCreateStruct) == -1)
 		return -1;
 
 	KeepAspectRatio(FALSE);
@@ -788,7 +789,7 @@ void CSpectrumSectionView::OnViewSsShowNoiseThreshold()
 
 void CSpectrumSectionView::OnViewSsZoominhor2()
 {
-	CScaledScrollView::OnViewZoominHor2();
+	BaseClass::OnViewZoominHor2();
 }
 
 void CSpectrumSectionView::OnUpdateViewSsZoominhor2(CCmdUI* pCmdUI)
@@ -798,7 +799,7 @@ void CSpectrumSectionView::OnUpdateViewSsZoominhor2(CCmdUI* pCmdUI)
 
 void CSpectrumSectionView::OnViewSsZoomouthor2()
 {
-	CScaledScrollView::OnViewZoomOutHor2();
+	BaseClass::OnViewZoomOutHor2();
 }
 
 void CSpectrumSectionView::OnUpdateViewSsZoomouthor2(CCmdUI* pCmdUI)
@@ -976,3 +977,9 @@ void CSpectrumSectionView::GetChannelClipRect(int Channel, RECT * pR) const
 	pR->bottom = (h * (Channel+1)) / nChannels - 1;
 }
 
+
+
+afx_msg LRESULT CSpectrumSectionView::OnUwmNotifyViews(WPARAM wParam, LPARAM lParam)
+{
+	return 0;
+}

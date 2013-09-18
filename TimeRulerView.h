@@ -110,6 +110,7 @@ public:
 	afx_msg void OnSelectRegion();
 protected:
 	virtual BOOL OnNotify(WPARAM wParam, LPARAM lParam, LRESULT* pResult);
+	afx_msg LRESULT OnUwmNotifyViews(WPARAM wParam, LPARAM lParam);
 };
 
 #ifndef _DEBUG  // debug version in TimeRulerView.cpp
