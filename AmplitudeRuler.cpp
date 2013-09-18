@@ -43,6 +43,7 @@ BEGIN_MESSAGE_MAP(CAmplitudeRuler, CVerticalRuler)
 	ON_UPDATE_COMMAND_UI(ID_VIEW_AMPL_RULER_PERCENT, OnUpdateAmplRulerPercent)
 	ON_UPDATE_COMMAND_UI(ID_VIEW_AMPL_RULER_DECIBELS, OnUpdateAmplRulerDecibels)
 	//}}AFX_MSG_MAP
+	ON_MESSAGE(UWM_NOTIFY_VIEWS, &CAmplitudeRuler::OnUwmNotifyViews)
 END_MESSAGE_MAP()
 
 /////////////////////////////////////////////////////////////////////////////
@@ -294,8 +295,7 @@ void CAmplitudeRuler::DrawDecibels(CDC * pDC)
 
 	double VerticalScale = pMasterView->m_VerticalScale;
 
-	double nVertStep = -GetSystemMetrics(SM_CYMENU) /
-						(VerticalScale * pMasterView->GetYScaleDev());
+	double nVertStep = -GetSystemMetrics(SM_CYMENU) / (VerticalScale /** pMasterView->GetYScaleDev()*/);// FIXME
 
 	for (int ch = 0; ch < nChannels; ch++)
 	{
@@ -391,14 +391,8 @@ void CAmplitudeRuler::OnUpdate(CView* /*pSender*/, LPARAM lHint, CObject* pHint)
 {
 	if (lHint == CWaveSoapFrontDoc::UpdateWholeFileChanged)
 	{
-		UpdateMaxExtents();
-		Invalidate();
-	}
-	else if ((lHint == CWaveSoapFrontView::WAVE_OFFSET_CHANGED
-				|| lHint == CWaveSoapFrontView::WAVE_SCALE_CHANGED)
-			&& NULL == pHint)
-	{
-		Invalidate();
+		// the main view takes care of it
+		return;
 	}
 }
 
@@ -525,6 +519,7 @@ BEGIN_MESSAGE_MAP(CSpectrumSectionRuler, CHorizontalRuler)
 	//{{AFX_MSG_MAP(CSpectrumSectionRuler)
 	//}}AFX_MSG_MAP
 	//ON_WM_CREATE()
+	ON_MESSAGE(UWM_NOTIFY_VIEWS, &CSpectrumSectionRuler::OnUwmNotifyViews)
 END_MESSAGE_MAP()
 
 /////////////////////////////////////////////////////////////////////////////
@@ -743,3 +738,15 @@ void CSpectrumSectionRuler::UpdateMaxExtents()
 #endif
 }
 
+
+
+afx_msg LRESULT CAmplitudeRuler::OnUwmNotifyViews(WPARAM wParam, LPARAM lParam)
+{
+	return 0;
+}
+
+
+afx_msg LRESULT CSpectrumSectionRuler::OnUwmNotifyViews(WPARAM wParam, LPARAM lParam)
+{
+	return 0;
+}

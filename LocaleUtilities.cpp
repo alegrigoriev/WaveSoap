@@ -20,8 +20,8 @@ CString LtoaCS(long num)
 		p++;
 		p1++;
 	}
-	size_t len = _tcslen(p);
-	size_t first = len % 3;
+	unsigned len = (unsigned)_tcslen(p);
+	unsigned first = len % 3;
 
 	if (0 == first && len > 0)
 	{

@@ -66,6 +66,7 @@ protected:
 	afx_msg void OnUpdateAmplRulerDecibels(CCmdUI * pCmdUI);
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
+	afx_msg LRESULT OnUwmNotifyViews(WPARAM wParam, LPARAM lParam);
 };
 
 #ifndef _DEBUG  // debug version in AmplitudeRuler.cpp
@@ -112,6 +113,7 @@ protected:
 	//{{AFX_MSG(CSpectrumSectionRuler)
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
+	afx_msg LRESULT OnUwmNotifyViews(WPARAM wParam, LPARAM lParam);
 };
 
 #ifndef _DEBUG  // debug version in AmplitudeRuler.cpp

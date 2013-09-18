@@ -27,7 +27,7 @@ public:
 	struct InstanceData
 	{
 		virtual ~InstanceData() {}
-		size_t m_size;
+		unsigned m_size;
 		InstanceData() : m_size(sizeof (InstanceData)) {}
 		virtual InstanceData & operator = (InstanceData const &)
 		{
@@ -198,7 +198,7 @@ struct DirectFileParameters
 class CDirectFileCacheProxy
 {
 public:
-	CDirectFileCacheProxy(size_t MaxCacheSize);
+	CDirectFileCacheProxy(unsigned MaxCacheSize);
 	~CDirectFileCacheProxy();
 };
 

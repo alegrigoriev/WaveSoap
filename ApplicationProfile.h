@@ -42,7 +42,7 @@ public:
 				bool nDefault = false);
 
 	void AddItem(LPCTSTR szSection, LPCTSTR szName,
-				void * pValue, void const * pDefault, size_t size);
+				void * pValue, void const * pDefault, unsigned size);
 
 	template <class T> void AddItem(LPCTSTR szSection, LPCTSTR szName,
 									T & value, T const & Default)

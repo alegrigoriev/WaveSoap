@@ -262,7 +262,7 @@ void CWaveOutlineView::OnDraw(CDC* pDC)
 	long prev_x = 0x7FFFFFFF;
 
 	for (SAMPLE_INDEX_Vector::const_iterator i = markers.begin();
-		i < markers.end(); i++)
+		i != markers.end(); i++)
 	{
 		long x = MulDiv( *i, cr.right, nSamples);
 
@@ -791,7 +791,7 @@ void CWaveOutlineView::OnLButtonUp(UINT /*nFlags*/, CPoint point)
 			pDoc->m_WavFile.GetSortedMarkers(markers, FALSE);
 
 			unsigned Flags = SetSelection_SnapToMaximum | SetSelection_MoveCaretToCenter;
-			for (SAMPLE_INDEX_Vector::const_iterator i = markers.begin(); i < markers.end(); i++)
+			for (SAMPLE_INDEX_Vector::const_iterator i = markers.begin(); i != markers.end(); i++)
 			{
 				long x = MulDiv( *i, cr.right, nSamples);
 
@@ -1040,7 +1040,7 @@ unsigned CWaveOutlineView::HitTest(POINT p, RECT * pHitRect/*, int * OffsetX*/) 
 	CuePointVectorIterator i;
 
 	for (n = 0, i = pInst->m_CuePoints.begin();
-		i < pInst->m_CuePoints.end(); i++, n++)
+		i != pInst->m_CuePoints.end(); i++, n++)
 	{
 		long x = MulDiv(i->dwSampleOffset, ClientWidth, NumberOfSamples);
 		WaveRegionMarker * pMarker = pInst->GetRegionMarker(i->CuePointID);

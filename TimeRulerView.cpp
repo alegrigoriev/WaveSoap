@@ -80,6 +80,7 @@ BEGIN_MESSAGE_MAP(CTimeRulerView, CHorizontalRuler)
 	ON_COMMAND(ID_EDIT_MARKER, OnEditMarker)
 	ON_UPDATE_COMMAND_UI(ID_EDIT_MARKER, OnUpdateEditMarker)
 	ON_COMMAND(ID_SELECT_REGION, OnSelectRegion)
+	ON_MESSAGE(UWM_NOTIFY_VIEWS, &CTimeRulerView::OnUwmNotifyViews)
 END_MESSAGE_MAP()
 
 /////////////////////////////////////////////////////////////////////////////
@@ -556,7 +557,7 @@ void CTimeRulerView::OnDraw(CDC* pDC)
 	CGdiObjectSave OldBrush(pDC, pDC->SelectStockObject(WHITE_BRUSH));
 
 	for (CuePointVectorIterator i = pInst->m_CuePoints.begin();
-		i < pInst->m_CuePoints.end(); i++)
+		i != pInst->m_CuePoints.end(); i++)
 	{
 		long x = WorldToWindowXfloor(i->dwSampleOffset);
 		WaveRegionMarker * pMarker = pInst->GetRegionMarker(i->CuePointID);
@@ -745,7 +746,7 @@ unsigned CTimeRulerView::HitTest(POINT p, RECT * pHitRect, int * OffsetX) const
 		CuePointVectorIterator i;
 
 		for (n = 0, i = pInst->m_CuePoints.begin();
-			i < pInst->m_CuePoints.end(); i++, n++)
+			i != pInst->m_CuePoints.end(); i++, n++)
 		{
 			long x = WorldToWindowXfloor(i->dwSampleOffset);
 			WaveRegionMarker * pMarker = pInst->GetRegionMarker(i->CuePointID);
@@ -1588,4 +1589,10 @@ BOOL CTimeRulerView::OnNotify(WPARAM wParam, LPARAM lParam, LRESULT* pResult)
 		return 0;
 	}
 	return BaseClass::OnNotify(wParam, lParam, pResult);
+}
+
+
+afx_msg LRESULT CTimeRulerView::OnUwmNotifyViews(WPARAM wParam, LPARAM lParam)
+{
+	return 0;
 }

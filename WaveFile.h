@@ -699,7 +699,7 @@ public:
 	NUMBER_OF_SAMPLES NumberOfSamples() const;
 	CWaveFile & operator =(CWaveFile &);
 
-	WAVEFORMATEX * AllocateWaveformat(size_t FormatSize = sizeof (WAVEFORMATEX));
+	WAVEFORMATEX * AllocateWaveformat(unsigned FormatSize = sizeof (WAVEFORMATEX));
 
 	bool IsCompressed() const;
 

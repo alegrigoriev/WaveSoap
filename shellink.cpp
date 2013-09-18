@@ -58,7 +58,7 @@ CString ResolveShellLink(LPCTSTR file)
 
 CString ResolveIfShellLink(LPCTSTR file)
 {
-	size_t len = _tcslen(file);
+	unsigned len = (unsigned)_tcslen(file);
 	if (len > 4
 		&& 0 == _tcsicmp(file + len - 4, _T(".lnk")))
 	{

@@ -28,7 +28,7 @@ CWaveDevice::~CWaveDevice()
 	DeleteCriticalSection( & cs);
 }
 
-BOOL CWaveDevice::AllocateBuffers(size_t size, int count)
+BOOL CWaveDevice::AllocateBuffers(unsigned size, int count)
 {
 	ASSERT(count != 0);
 	ASSERT(size != 0);
@@ -70,7 +70,7 @@ void CWaveDevice::DeallocateBuffers()
 	m_pBufs = NULL;
 }
 
-int CWaveDevice::GetBuffer(char ** ppbuf, size_t * pSize, BOOL bWait)
+int CWaveDevice::GetBuffer(char ** ppbuf, unsigned * pSize, BOOL bWait)
 {
 	ASSERT(this && ppbuf && pSize);
 
@@ -1799,15 +1799,15 @@ BOOL AudioStreamConvertor::Open(WAVEFORMATEX const * pWfSrc,
 	return MMSYSERR_NOERROR == m_MmResult;
 }
 
-BOOL AudioStreamConvertor::AllocateBuffers(size_t PreferredInBufSize,
-											size_t PreferredOutBufSize)
+BOOL AudioStreamConvertor::AllocateBuffers(unsigned PreferredInBufSize,
+											unsigned PreferredOutBufSize)
 {
 	ASSERT(NULL != m_acmStr);
 	ASSERT(NULL == m_ash.pbSrc);
 	ASSERT(NULL == m_ash.pbDst);
 
-	m_SrcBufSize = DWORD(PreferredInBufSize);
-	m_DstBufSize = DWORD(PreferredOutBufSize);
+	m_SrcBufSize = PreferredInBufSize;
+	m_DstBufSize = PreferredOutBufSize;
 
 	if (0 == PreferredInBufSize)
 	{
@@ -1849,8 +1849,8 @@ BOOL AudioStreamConvertor::AllocateBuffers(size_t PreferredInBufSize,
 	return MMSYSERR_NOERROR == m_MmResult;
 }
 
-BOOL AudioStreamConvertor::Convert(void const * pSrc, size_t SrcSize, size_t * pSrcBufUsed,
-									void* * ppDstBuf, size_t * pDstBufFilled,
+BOOL AudioStreamConvertor::Convert(void const * pSrc, unsigned SrcSize, unsigned * pSrcBufUsed,
+									void* * ppDstBuf, unsigned * pDstBufFilled,
 									DWORD flags)
 {
 	ASSERT(NULL != m_acmStr);
@@ -1859,7 +1859,7 @@ BOOL AudioStreamConvertor::Convert(void const * pSrc, size_t SrcSize, size_t * p
 
 	if (ToCopy > SrcSize)
 	{
-		ToCopy = unsigned(SrcSize);
+		ToCopy = SrcSize;
 	}
 
 	if (NULL != pDstBufFilled)
@@ -1914,11 +1914,11 @@ BOOL AudioStreamConvertor::Convert(void const * pSrc, size_t SrcSize, size_t * p
 	return TRUE;
 }
 
-size_t AudioStreamConvertor::GetConvertedData(void * pDstBuf, size_t DstBufSize)
+unsigned AudioStreamConvertor::GetConvertedData(void * pDstBuf, unsigned DstBufSize)
 {
 	ASSERT(m_ash.cbDstLengthUsed >= m_DstBufRead);
 
-	size_t const ToRead = std::min<size_t>(m_ash.cbDstLengthUsed - m_DstBufRead, DstBufSize);
+	unsigned const ToRead = std::min<unsigned>(m_ash.cbDstLengthUsed - m_DstBufRead, DstBufSize);
 
 #ifdef _DEBUG
 	if (0) TRACE("AudioStreamConvertor::GetConvertedData: DstUsed=%d, DstRead=%d, returned %d\n",

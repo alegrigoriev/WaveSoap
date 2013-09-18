@@ -199,7 +199,7 @@ void CSplitToFilesDialog::DoDataExchange(CDataExchange* pDX)
 		unsigned FileIndex;
 		WaveFileSegmentVector::iterator t;
 
-		for (FileIndex = 0, t = m_Files.begin(); t < m_Files.end(); t++, FileIndex++)
+		for (FileIndex = 0, t = m_Files.begin(); t != m_Files.end(); t++, FileIndex++)
 		{
 			CString Name;
 			// add the prefix if any
@@ -510,11 +510,11 @@ BOOL CSplitToFilesDialog::PreTranslateMessage(MSG* pMsg)
 		if (pMsg->wParam == VK_F2)
 		{
 			// find a selected item
-			unsigned nSelItem = unsigned(-1);
+			int nSelItem = -1;
 
-			if (unsigned(-1) != (nSelItem = m_FilesList.GetNextItem(nSelItem, LVNI_SELECTED)))
+			if (-1 != (nSelItem = m_FilesList.GetNextItem(nSelItem, LVNI_SELECTED)))
 			{
-				if (nSelItem < m_Files.size())
+				if (nSelItem < (int)m_Files.size())
 				{
 					m_FilesList.SetItemState(nSelItem, LVIS_FOCUSED, LVIS_FOCUSED);
 					TRACE("m_FilesList.EditLabel(%d)\n", nSelItem);
@@ -698,7 +698,7 @@ BOOL CSplitToFilesDialog::OnInitDialog()
 	int ItemIdx = 0;
 	CString s;
 	for (WaveFileSegmentVector::const_iterator i = m_Files.begin();
-		i < m_Files.end(); i++, ItemIdx++)
+		i != m_Files.end(); i++, ItemIdx++)
 	{
 		InsertFileListItem(ItemIdx, i->Name, i->Begin, i->End);
 	}
@@ -747,7 +747,7 @@ void CSplitToFilesDialog::OnUpdateOK(CCmdUI * pCmdUI)
 {
 	BOOL bEnable = FALSE;
 	for (WaveFileSegmentVector::const_iterator i = m_Files.begin();
-		i < m_Files.end(); i++)
+		i != m_Files.end(); i++)
 	{
 		if (i->Begin < i->End)
 		{
@@ -780,7 +780,7 @@ void CSplitToFilesDialog::OnSelchangeComboTimeFormat()
 	// fill the list view
 	unsigned ItemIdx = 0;
 	for (WaveFileSegmentVector::const_iterator i = m_Files.begin();
-		i < m_Files.end(); i++, ItemIdx++)
+		i != m_Files.end(); i++, ItemIdx++)
 	{
 		SetFileListItem(ItemIdx, i->Begin, i->End);
 	}
@@ -926,16 +926,16 @@ void CSplitToFilesDialog::OnBnClickedButtonNew()
 
 void CSplitToFilesDialog::EnableIfItemSelected(CCmdUI * pCmdUI)
 {
-	unsigned nSelItem = m_FilesList.GetNextItem(-1, LVNI_SELECTED);
-	pCmdUI->Enable(nSelItem != unsigned(-1));
+	int nSelItem = m_FilesList.GetNextItem(-1, LVNI_SELECTED);
+	pCmdUI->Enable(nSelItem != -1);
 }
 
 void CSplitToFilesDialog::OnBnClickedButtonDelete()
 {
 	// find a selected item
-	unsigned nSelItem = m_FilesList.GetNextItem(-1, LVNI_SELECTED);
+	int nSelItem = m_FilesList.GetNextItem(-1, LVNI_SELECTED);
 
-	if (nSelItem < m_Files.size())
+	if ((unsigned)nSelItem < m_Files.size())
 	{
 		if (m_FilesList.DeleteItem(nSelItem))
 		{

@@ -914,7 +914,7 @@ CuePointChunkItem const * CWaveFile::GetCuePoint(DWORD CueId) const
 CuePointChunkItem * CWaveFile::InstanceDataWav::GetCuePoint(DWORD CueId)
 {
 	for (CuePointVectorIterator i = m_CuePoints.begin();
-		i < m_CuePoints.end(); i++)
+		i != m_CuePoints.end(); i++)
 	{
 		if (CueId == i->CuePointID)
 		{
@@ -928,7 +928,7 @@ CuePointChunkItem * CWaveFile::InstanceDataWav::GetCuePoint(DWORD CueId)
 CuePointChunkItem const * CWaveFile::InstanceDataWav::GetCuePoint(DWORD CueId) const
 {
 	for (ConstCuePointVectorIterator i = m_CuePoints.begin();
-		i < m_CuePoints.end(); i++)
+		i != m_CuePoints.end(); i++)
 	{
 		if (CueId == i->CuePointID)
 		{
@@ -947,7 +947,7 @@ LPCTSTR CWaveFile::GetCueLabel(DWORD CueId) const
 LPCTSTR CWaveFile::InstanceDataWav::GetCueLabel(DWORD CueId) const
 {
 	for (ConstLabelVectorIterator i = m_Labels.begin();
-		i < m_Labels.end(); i++)
+		i != m_Labels.end(); i++)
 	{
 		if (CueId == i->CuePointID)
 		{
@@ -965,7 +965,7 @@ LPCTSTR CWaveFile::GetCueComment(DWORD CueId) const
 LPCTSTR CWaveFile::InstanceDataWav::GetCueComment(DWORD CueId) const
 {
 	for (ConstLabelVectorIterator i = m_Notes.begin();
-		i < m_Notes.end(); i++)
+		i != m_Notes.end(); i++)
 	{
 		if (CueId == i->CuePointID)
 		{
@@ -1034,7 +1034,7 @@ WaveRegionMarker const * CWaveFile::GetRegionMarker(DWORD CueId) const
 WaveRegionMarker * CWaveFile::InstanceDataWav::GetRegionMarker(DWORD CueId)
 {
 	for (RegionMarkerIterator i = m_RegionMarkers.begin();
-		i < m_RegionMarkers.end(); i++)
+		i != m_RegionMarkers.end(); i++)
 	{
 		if (CueId == i->CuePointID)
 		{
@@ -1047,7 +1047,7 @@ WaveRegionMarker * CWaveFile::InstanceDataWav::GetRegionMarker(DWORD CueId)
 WaveRegionMarker const * CWaveFile::InstanceDataWav::GetRegionMarker(DWORD CueId) const
 {
 	for (ConstRegionMarkerIterator i = m_RegionMarkers.begin();
-		i < m_RegionMarkers.end(); i++)
+		i != m_RegionMarkers.end(); i++)
 	{
 		if (CueId == i->CuePointID)
 		{
@@ -1065,7 +1065,7 @@ BOOL CWaveFile::InstanceDataWav::MoveMarkers(SAMPLE_INDEX BeginSample, NUMBER_OF
 	BOOL HasChanged = FALSE;
 
 	for (CuePointVectorIterator i = m_CuePoints.begin();
-		i < m_CuePoints.end(); )
+		i != m_CuePoints.end(); )
 	{
 		CuePointVectorIterator next = i + 1;
 
@@ -1260,7 +1260,7 @@ BOOL CWaveFile::InstanceDataWav::ReverseMarkers(SAMPLE_INDEX BeginSample, NUMBER
 	BOOL HasChanged = FALSE;
 
 	for (CuePointVectorIterator i = m_CuePoints.begin();
-		i < m_CuePoints.end(); i++)
+		i != m_CuePoints.end(); i++)
 	{
 		WaveRegionMarker * pMarker = GetRegionMarker(i->CuePointID);
 
@@ -1324,7 +1324,7 @@ BOOL CWaveFile::InstanceDataWav::RescaleMarkers(long OldSampleRate, long NewSamp
 	}
 
 	for (CuePointVectorIterator i = m_CuePoints.begin();
-		i < m_CuePoints.end(); i++)
+		i != m_CuePoints.end(); i++)
 	{
 		WaveRegionMarker * pMarker = GetRegionMarker(i->CuePointID);
 
@@ -1509,7 +1509,7 @@ BOOL CWaveFile::InstanceDataWav::GetWaveMarker(WAVEREGIONINFO * pInfo) const
 		pInfo->Flags &= ~pInfo->FindCue;
 
 		for (ConstCuePointVectorIterator i = m_CuePoints.begin();
-			i < m_CuePoints.end(); i++)
+			i != m_CuePoints.end(); i++)
 		{
 			if (pInfo->Sample == i->dwSampleOffset)
 			{
@@ -2068,7 +2068,7 @@ BOOL CWaveFile::CreateWaveFile(CWaveFile * pTemplateFile, WAVEFORMATEX const * p
 		}
 		else
 		{
-			size_t DataLength = SizeOrSamples * SampleSize();
+			unsigned DataLength = SizeOrSamples * SampleSize();
 			SetFileLength(pDatachunk->dwDataOffset + DataLength);
 			Seek(LONG(DataLength), SEEK_CUR);
 		}
@@ -2111,14 +2111,14 @@ DWORD CWaveFile::SaveMetadata()
 			return 0;
 		}
 
-		DWORD count = inst->m_CuePoints.size();
+		DWORD count = (DWORD)inst->m_CuePoints.size();
 		if (sizeof (count) != Write( & count, sizeof count))
 		{
 			return 0;
 		}
 
 		for (CuePointVectorIterator i = inst->m_CuePoints.begin();
-			i < inst->m_CuePoints.end(); i++)
+			i != inst->m_CuePoints.end(); i++)
 		{
 			if (sizeof (CuePointChunkItem) != Write(i.operator->(), sizeof (CuePointChunkItem)))
 			{
@@ -2141,7 +2141,7 @@ DWORD CWaveFile::SaveMetadata()
 			return 0;
 		}
 
-		DWORD count = inst->m_Playlist.size();
+		DWORD count = (DWORD)inst->m_Playlist.size();
 
 		if (sizeof (count) != Write( & count, sizeof count))
 		{
@@ -2149,7 +2149,7 @@ DWORD CWaveFile::SaveMetadata()
 		}
 
 		for (PlaylistVectorIterator i = inst->m_Playlist.begin();
-			i < inst->m_Playlist.end(); i++)
+			i != inst->m_Playlist.end(); i++)
 		{
 			if (sizeof (PlaylistSegment) != Write(i.operator->(), sizeof (PlaylistSegment)))
 			{
@@ -2176,7 +2176,7 @@ DWORD CWaveFile::SaveMetadata()
 		}
 
 		for (RegionMarkerIterator ri = inst->m_RegionMarkers.begin();
-			ri < inst->m_RegionMarkers.end();
+			ri != inst->m_RegionMarkers.end();
 			ri++)
 		{
 			ck.ckid = mmioFOURCC('l', 't', 'x', 't');
@@ -2198,7 +2198,7 @@ DWORD CWaveFile::SaveMetadata()
 		}
 
 		LabelVectorIterator i;
-		for (i = inst->m_Labels.begin(); i < inst->m_Labels.end(); i++)
+		for (i = inst->m_Labels.begin(); i != inst->m_Labels.end(); i++)
 		{
 			if ( ! i->Text.IsEmpty())
 			{
@@ -2221,7 +2221,7 @@ DWORD CWaveFile::SaveMetadata()
 			}
 		}
 
-		for (i = inst->m_Notes.begin(); i < inst->m_Notes.end(); i++)
+		for (i = inst->m_Notes.begin(); i != inst->m_Notes.end(); i++)
 		{
 			if ( ! i->Text.IsEmpty())
 			{
@@ -2259,7 +2259,7 @@ DWORD CWaveFile::SaveMetadata()
 		}
 
 		for (InfoListItemIterator i = inst->m_InfoList.begin();
-			i < inst->m_InfoList.end(); i++)
+			i != inst->m_InfoList.end(); i++)
 		{
 			ck.ckid = i->fccCode;
 			ck.cksize = 0;
@@ -2293,7 +2293,7 @@ DWORD CWaveFile::SaveMetadata()
 		}
 
 		for (InfoListItemIteratorW i = inst->m_InfoListW.begin();
-			i < inst->m_InfoListW.end(); i++)
+			i != inst->m_InfoListW.end(); i++)
 		{
 			ck.ckid = i->fccCode;
 			ck.cksize = 0;
@@ -2328,20 +2328,20 @@ DWORD CWaveFile::GetMetadataLength() const
 		return 0;
 	}
 
-	size_t size = 0;
+	unsigned size = 0;
 
 	if ( ! inst->m_CuePoints.empty())
 	{
 		// add chunk header and cue count
 		C_ASSERT(0 == (1 & sizeof (CuePointChunkItem)));
-		size += inst->m_CuePoints.size() * sizeof (CuePointChunkItem) + 3 * sizeof (DWORD);
+		size += (unsigned)inst->m_CuePoints.size() * sizeof (CuePointChunkItem) + 3 * sizeof (DWORD);
 	}
 
 	if ( ! inst->m_Playlist.empty())
 	{
 		// add chunk header and playlist count
 		C_ASSERT(0 == (1 & sizeof (PlaylistSegment)));
-		size += inst->m_Playlist.size() * sizeof (PlaylistSegment) + 3 * sizeof (DWORD);
+		size += (unsigned)inst->m_Playlist.size() * sizeof (PlaylistSegment) + 3 * sizeof (DWORD);
 	}
 
 	if ( ! inst->m_Labels.empty()
@@ -2352,7 +2352,7 @@ DWORD CWaveFile::GetMetadataLength() const
 		size += 3 * sizeof (DWORD);
 
 		for (ConstRegionMarkerIterator ri = inst->m_RegionMarkers.begin();
-			ri < inst->m_RegionMarkers.end();
+			ri != inst->m_RegionMarkers.end();
 			ri++)
 		{
 			size += (ChunkStringLength(ri->Name) + 1) & ~1UL;
@@ -2360,7 +2360,7 @@ DWORD CWaveFile::GetMetadataLength() const
 		}
 
 		ConstLabelVectorIterator i;
-		for (i = inst->m_Labels.begin(); i < inst->m_Labels.end(); i++)
+		for (i = inst->m_Labels.begin(); i != inst->m_Labels.end(); i++)
 		{
 			if ( ! i->Text.IsEmpty())
 			{
@@ -2368,7 +2368,7 @@ DWORD CWaveFile::GetMetadataLength() const
 			}
 		}
 
-		for (i = inst->m_Notes.begin(); i < inst->m_Notes.end(); i++)
+		for (i = inst->m_Notes.begin(); i != inst->m_Notes.end(); i++)
 		{
 			if ( ! i->Text.IsEmpty())
 			{
@@ -2382,7 +2382,7 @@ DWORD CWaveFile::GetMetadataLength() const
 		size += 3 * sizeof (DWORD); // INFO list header
 
 		for (ConstInfoListItemIterator i = inst->m_InfoList.begin();
-			i < inst->m_InfoList.end(); i++)
+			i != inst->m_InfoList.end(); i++)
 		{
 			size += 3 * sizeof (DWORD) + ((ChunkStringLength(i->Text) + 1) & ~1UL);
 		}
@@ -2393,7 +2393,7 @@ DWORD CWaveFile::GetMetadataLength() const
 		size += 3 * sizeof (DWORD); // INFO list header
 
 		for (ConstInfoListItemIteratorW i = inst->m_InfoListW.begin();
-			i < inst->m_InfoListW.end(); i++)
+			i != inst->m_InfoListW.end(); i++)
 		{
 			size += 3 * sizeof (DWORD) + sizeof (WCHAR) * ((i->Text.GetLength() + 1));   // zero-terminated
 		}
@@ -2521,13 +2521,13 @@ NUMBER_OF_CHANNELS CWaveFile::Channels() const
 	return pWf->nChannels;
 }
 
-WAVEFORMATEX * CWaveFile::AllocateWaveformat(size_t FormatSize)
+WAVEFORMATEX * CWaveFile::AllocateWaveformat(unsigned FormatSize)
 {
 	if (FormatSize < sizeof (WAVEFORMATEX))
 	{
 		FormatSize = sizeof (WAVEFORMATEX);
 	}
-	return AllocateInstanceData<InstanceDataWav>()->wf.Allocate(unsigned(FormatSize - sizeof (WAVEFORMATEX)));
+	return AllocateInstanceData<InstanceDataWav>()->wf.Allocate(FormatSize - sizeof (WAVEFORMATEX));
 }
 
 bool CWaveFile::IsCompressed() const
@@ -3466,7 +3466,7 @@ void CWaveFile::InstanceDataWav::GetSortedMarkers(SAMPLE_INDEX_Vector & markers)
 {
 	markers.reserve(markers.size() + m_CuePoints.size() + m_RegionMarkers.size());
 
-	for (ConstCuePointVectorIterator i = m_CuePoints.begin(); i < m_CuePoints.end(); i++)
+	for (ConstCuePointVectorIterator i = m_CuePoints.begin(); i != m_CuePoints.end(); i++)
 	{
 		markers.push_back(SAMPLE_INDEX(i->dwSampleOffset));
 
@@ -3505,7 +3505,7 @@ void CWaveFile::InstanceDataWav::GetSortedFileSegments(WaveFileSegmentVector & s
 
 	WaveFileSegment seg;
 
-	for (ConstCuePointVectorIterator i = m_CuePoints.begin(); i < m_CuePoints.end(); i++)
+	for (ConstCuePointVectorIterator i = m_CuePoints.begin(); i != m_CuePoints.end(); i++)
 	{
 		seg.Begin = SAMPLE_INDEX(i->dwSampleOffset);
 		seg.Name = GetCueText(i->CuePointID);
@@ -3580,11 +3580,10 @@ void CWaveFile::SetWaveFormat(WAVEFORMATEX const * pWf)
 }
 
 long CWaveFile::ReadSamples(CHANNEL_MASK SrcChannels,
-							SAMPLE_POSITION Pos,
+							SAMPLE_POSITION Pos,    // absolute position in file
 							long Samples, void * pBuf, WaveSampleType type)
 {
-	ASSERT(type == SampleType16bit);    // the only one supported yet
-	ASSERT(type == GetSampleType());
+	WaveSampleType FileSampleType = GetSampleType();
 	// it is assumed the buffer is big enough to load all samples
 	// The buffer contains complete samples to process
 	// if Samples > 0, read forward from Pos, Buf points to the buffer begin
@@ -3598,24 +3597,22 @@ long CWaveFile::ReadSamples(CHANNEL_MASK SrcChannels,
 	long TotalSamplesRead = 0;
 
 	ASSERT(0 != SrcChannels);
-	int const SrcSampleSize = SampleSize();
+	int const SrcSampleSize = SampleSize();            // must be signed type
 	int const FileChannels = Channels();
 	WAVE_SAMPLE tmp[MAX_NUMBER_OF_CHANNELS];
+	float   ftmp[MAX_NUMBER_OF_CHANNELS];
 
-	if (FileChannelsMask == SrcChannels)
+	if (FileChannelsMask == SrcChannels
+		&& type == FileSampleType)
 	{
-		// simply copy the data (TODO: convert sample format)
-		ASSERT(SampleType16bit == type);
+		// simply copy the data
 		LONG Read = ReadAt(pBuf, Samples * SrcSampleSize, Pos);
 		return Read / SrcSampleSize;
 	}
 
 	if (Samples > 0)
 	{
-
 		// read some of channels
-		ASSERT(2 == FileChannels);
-		ASSERT(1 == SrcChannels || 2 == SrcChannels);
 
 		while (Samples > 0)
 		{
@@ -3623,13 +3620,13 @@ long CWaveFile::ReadSamples(CHANNEL_MASK SrcChannels,
 			void * pOriginalSrcBuf;
 
 			int SizeToRead = Samples * SrcSampleSize;
-			if (SizeToRead > CDirectFile::CacheBufferSize())
+			if (SizeToRead > CacheBufferSize())
 			{
-				SizeToRead = CDirectFile::CacheBufferSize();
+				SizeToRead = CacheBufferSize();
 			}
 
 			WasRead = GetDataBuffer( & pOriginalSrcBuf,
-									SizeToRead, Pos, CDirectFile::GetBufferAndPrefetchNext);
+									SizeToRead, Pos, GetBufferAndPrefetchNext);
 
 			if (0 == WasRead)
 			{
@@ -3637,64 +3634,161 @@ long CWaveFile::ReadSamples(CHANNEL_MASK SrcChannels,
 			}
 
 			unsigned SamplesRead = WasRead / SrcSampleSize;
-			WAVE_SAMPLE const * pSrc = (WAVE_SAMPLE const *) pOriginalSrcBuf;
 
-			if (0 == SamplesRead)
+			if (FileSampleType == SampleType16bit)
 			{
-				if (SrcSampleSize != ReadAt(tmp, SrcSampleSize, Pos))
+				SHORT const * pSrc = (SHORT const *) pOriginalSrcBuf;
+
+				if (0 == SamplesRead)
 				{
-					ReturnDataBuffer(pOriginalSrcBuf, WasRead,
-									CDirectFile::ReturnBufferDiscard);
-					return TotalSamplesRead;
+					if (SrcSampleSize != ReadAt(tmp, SrcSampleSize, Pos))
+					{
+						ReturnDataBuffer(pOriginalSrcBuf, WasRead,
+										ReturnBufferDiscard);
+						return TotalSamplesRead;
+					}
+
+					pSrc = tmp;
+					SamplesRead = 1;
 				}
 
-				pSrc = tmp;
-				SamplesRead = 1;
-			}
+				if (SampleType16bit == type)
+				{
+					SHORT * pDst = (SHORT *) pBuf;
 
-			if (SPEAKER_FRONT_RIGHT == SrcChannels)
+					for (unsigned i = 0; i < SamplesRead; i++, pSrc += FileChannels)
+					{
+						CHANNEL_MASK mask = 1;
+						for (int j = 0; j < FileChannels; j++, mask <<= 1)
+						{
+							if (mask & SrcChannels)
+							{
+								*(pDst++) = pSrc[j];
+							}
+						}
+					}
+					pBuf = pDst;
+				}
+				else if (SampleTypeFloat32 == type)
+				{
+					float * pDst = (float *) pBuf;
+
+					for (unsigned i = 0; i < SamplesRead; i++, pSrc += FileChannels)
+					{
+						CHANNEL_MASK mask = 1;
+						for (int j = 0; j < FileChannels; j++, mask <<= 1)
+						{
+							if (mask & SrcChannels)
+							{
+								*(pDst++) = pSrc[j];
+							}
+						}
+					}
+					pBuf = pDst;
+				}
+			}
+			else if (FileSampleType == SampleTypeFloat32)
 			{
-				// channel #1
-				pSrc++;
+				float const * pSrc = (float const *) pOriginalSrcBuf;
+
+				if (0 == SamplesRead)
+				{
+					if (SrcSampleSize != ReadAt(ftmp, SrcSampleSize, Pos))
+					{
+						ReturnDataBuffer(pOriginalSrcBuf, WasRead,
+										ReturnBufferDiscard);
+						return TotalSamplesRead;
+					}
+
+					pSrc = ftmp;
+					SamplesRead = 1;
+				}
+
+				if (SampleType16bit == type)
+				{
+					SHORT * pDst = (SHORT *) pBuf;
+
+					for (unsigned i = 0; i < SamplesRead; i++, pSrc += FileChannels)
+					{
+						CHANNEL_MASK mask = 1;
+						for (int j = 0; j < FileChannels; j++, mask <<= 1)
+						{
+							if (mask & SrcChannels)
+							{
+								double d = pSrc[j];
+								if (_isnan(d))
+								{
+									*pDst = 0;
+								}
+								else if (d < double(SHORT_MIN))
+								{
+									*pDst = SHORT_MIN;
+								}
+								else if (d > double(SHORT_MAX))
+								{
+									*pDst = SHORT_MAX;
+								}
+								else
+								{
+									*pDst = SHORT(d);
+								}
+								pDst++;
+							}
+						}
+					}
+					pBuf = pDst;
+				}
+				else if (SampleTypeFloat32 == type)
+				{
+					float * pDst = (float *) pBuf;
+
+					for (unsigned i = 0; i < SamplesRead; i++, pSrc += FileChannels)
+					{
+						CHANNEL_MASK mask = 1;
+						for (int j = 0; j < FileChannels; j++, mask <<= 1)
+						{
+							if (mask & SrcChannels)
+							{
+								if (_isnan(pSrc[j]))
+								{
+									*pDst = 0;
+								}
+								else
+								{
+									*pDst = pSrc[j];
+								}
+								pDst++;
+							}
+						}
+					}
+					pBuf = pDst;
+				}
 			}
-
-			WAVE_SAMPLE * pDst = (WAVE_SAMPLE *) pBuf;
-
-			for (unsigned i = 0; i < SamplesRead; i++, pSrc += FileChannels)
-			{
-				pDst[i] = *pSrc;
-			}
-
 			TotalSamplesRead += SamplesRead;
 			Pos += SamplesRead * SrcSampleSize;
 			Samples -= SamplesRead;
-			pBuf = pDst + SamplesRead;
 
-			ReturnDataBuffer(pOriginalSrcBuf, WasRead,
-							CDirectFile::ReturnBufferDiscard);
+			ReturnDataBuffer(pOriginalSrcBuf, WasRead, ReturnBufferDiscard);
 		}
 		return TotalSamplesRead;
 	}
-	else if (Samples < 0)
+	else if (Samples < 0)               // read backward
 	{
-
 		// read some of channels
-		ASSERT(2 == FileChannels);
-		ASSERT(SPEAKER_FRONT_LEFT == SrcChannels || SPEAKER_FRONT_RIGHT == SrcChannels);
 
 		while (Samples < 0)
 		{
 			long WasRead = 0;
 			void * pOriginalSrcBuf;
 
-			int SizeToRead = Samples * SrcSampleSize;
-			if (SizeToRead < -CDirectFile::CacheBufferSize())
+			long SizeToRead = Samples * SrcSampleSize;
+			if (SizeToRead < -CacheBufferSize())
 			{
-				SizeToRead = -CDirectFile::CacheBufferSize();
+				SizeToRead = -CacheBufferSize();
 			}
 
 			WasRead = GetDataBuffer( & pOriginalSrcBuf,
-									SizeToRead, Pos, CDirectFile::GetBufferAndPrefetchNext);
+									SizeToRead, Pos, GetBufferAndPrefetchNext);
 
 			if (0 == WasRead)
 			{
@@ -3702,36 +3796,143 @@ long CWaveFile::ReadSamples(CHANNEL_MASK SrcChannels,
 			}
 
 			unsigned SamplesRead = -WasRead / SrcSampleSize;
-			WAVE_SAMPLE const * pSrc = (WAVE_SAMPLE const *) pOriginalSrcBuf;
 
-			if (0 == SamplesRead)
+			if (FileSampleType == SampleType16bit)
 			{
-				if (SrcSampleSize != ReadAt(tmp + FileChannels, -SrcSampleSize, Pos))
+				SHORT const * pSrc = (SHORT const *) pOriginalSrcBuf;
+
+				if (0 == SamplesRead)
 				{
-					ReturnDataBuffer(pOriginalSrcBuf, WasRead,
-									CDirectFile::ReturnBufferDiscard);
-					return TotalSamplesRead;
+					if (SrcSampleSize != ReadAt(tmp, SrcSampleSize, Pos - SrcSampleSize))
+					{
+						ReturnDataBuffer(pOriginalSrcBuf, WasRead,
+										ReturnBufferDiscard);
+						return TotalSamplesRead;
+					}
+
+					pSrc = tmp + FileChannels;
+					SamplesRead = 1;
 				}
 
-				pSrc = tmp + FileChannels;
-				SamplesRead = 1;
+				if (SampleType16bit == type)
+				{
+					SHORT * pDst = (SHORT *) pBuf;
+
+					for (unsigned i = 0; i < SamplesRead; i++)
+					{
+						DWORD mask = 1 << (FileChannels - 1);
+
+						for (int j = 0; j < FileChannels; j++, mask >>= 1)
+						{
+							pSrc--;
+							if (mask & SrcChannels)
+							{
+								*(--pDst) = *pSrc;
+							}
+						}
+					}
+					pBuf = pDst;
+				}
+				else if (SampleTypeFloat32 == type)
+				{
+					float * pDst = (float *) pBuf;
+
+					for (unsigned i = 0; i < SamplesRead; i++)
+					{
+						DWORD mask = 1 << (FileChannels - 1);
+
+						for (int j = 0; j < FileChannels; j++, mask >>= 1)
+						{
+							pSrc--;
+							if (mask & SrcChannels)
+							{
+								*(--pDst) = *pSrc;
+							}
+						}
+					}
+					pBuf = pDst;
+				}
 			}
-
-			if (SPEAKER_FRONT_RIGHT == SrcChannels)
+			else if (FileSampleType == SampleTypeFloat32)
 			{
-				// channel #1
-				pSrc++;
-			}
+				float const * pSrc = (float const *) pOriginalSrcBuf;
 
-			WAVE_SAMPLE * pDst = (WAVE_SAMPLE *) pBuf;
-			pDst -= SamplesRead;
-			pSrc -= SamplesRead * FileChannels;
+				if (0 == SamplesRead)
+				{
+					if (SrcSampleSize != ReadAt(ftmp, SrcSampleSize, Pos - SrcSampleSize))
+					{
+						ReturnDataBuffer(pOriginalSrcBuf, WasRead,
+										ReturnBufferDiscard);
+						return TotalSamplesRead;
+					}
 
-			pBuf = pDst;
+					pSrc = ftmp + FileChannels;
+					SamplesRead = 1;
+				}
 
-			for (unsigned i = 0; i < SamplesRead; i++, pSrc += FileChannels)
-			{
-				pDst[i] = *pSrc;
+				if (SampleType16bit == type)
+				{
+					SHORT * pDst = (SHORT *) pBuf;
+
+					for (unsigned i = 0; i < SamplesRead; i++)
+					{
+						DWORD mask = 1 << (FileChannels - 1);
+
+						for (int j = 0; j < FileChannels; j++, mask >>= 1)
+						{
+							pSrc--;
+							if (mask & SrcChannels)
+							{
+								double d = *pSrc;
+								pDst--;
+								if (_isnan(d))
+								{
+									*pDst = 0;
+								}
+								else if (d < double(SHORT_MIN))
+								{
+									*pDst = SHORT_MIN;
+								}
+								else if (d > double(SHORT_MAX))
+								{
+									*pDst = SHORT_MAX;
+								}
+								else
+								{
+									*pDst = SHORT(d);
+								}
+							}
+						}
+					}
+					pBuf = pDst;
+				}
+				else if (SampleTypeFloat32 == type)
+				{
+					float * pDst = (float *) pBuf;
+
+					for (unsigned i = 0; i < SamplesRead; i++)
+					{
+						DWORD mask = 1 << (FileChannels - 1);
+
+						for (int j = 0; j < FileChannels; j++, mask >>= 1)
+						{
+							pSrc--;
+							if (mask & SrcChannels)
+							{
+								pDst--;
+								if (_isnan(pSrc[j]))
+								{
+									*pDst = 0;
+								}
+								else
+								{
+									*pDst = *pSrc;
+								}
+							}
+						}
+					}
+					pBuf = pDst;
+				}
 			}
 
 			TotalSamplesRead -= SamplesRead;

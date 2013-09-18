@@ -677,6 +677,7 @@ CThroughProcessOperation::CThroughProcessOperation(class CWaveSoapFrontDoc * pDo
 	, m_CurrentPass(1)
 	, m_InputBuffer(new char[ThroughProcessBufferSize])
 	, m_OutputBuffer(NULL)
+	, m_UndoBuffer(NULL)
 {
 	try
 	{
@@ -2479,7 +2480,7 @@ BOOL CDecompressContext::OperationProc()
 ////////// CSoundPlayContext
 CSoundPlayContext::CSoundPlayContext(CWaveSoapFrontDoc * pDoc, CWaveFile & WavFile,
 									SAMPLE_INDEX PlaybackStart, SAMPLE_INDEX PlaybackEnd, CHANNEL_MASK Channel,
-									INT PlaybackDevice, int PlaybackBuffers, size_t PlaybackBufferSize)
+									INT PlaybackDevice, int PlaybackBuffers, unsigned PlaybackBufferSize)
 	: BaseClass(pDoc, OperationContextDontAdjustPriority,
 				IDS_PLAYBACK_STATUS_PROMPT, IDS_PLAYBACK_OPERATION_NAME)
 	, m_bPauseRequested(false)
@@ -2601,7 +2602,7 @@ BOOL CSoundPlayContext::OperationProc()
 		}
 
 		char * pBuf;
-		size_t size;
+		unsigned size;
 		int nBuf = m_WaveOut.GetBuffer( & pBuf, & size, FALSE);
 
 		if (nBuf <= 0)
@@ -3397,15 +3398,9 @@ unsigned CWaveProcContext::ProcessBuffer(char const * pInBuf, // if BACKWARD pas
 										SAMPLE_POSITION /*DstOffset*/,  // if BACKWARD pass, offset of the end of destination buffer
 										signed pass)
 {
-	size_t SrcBufUsed = 0;
-
 	m_ProcBatch.SetBackwardPass(pass < 0);
 
-	unsigned DstBufUsed = m_ProcBatch.ProcessSound(pInBuf, pOutBuf, nInBytes,
-													nOutBytes, & SrcBufUsed);
-	*pUsedBytes = SrcBufUsed;
-
-	return DstBufUsed;
+	return m_ProcBatch.ProcessSound(pInBuf, pOutBuf, nInBytes, nOutBytes, pUsedBytes);
 }
 
 BOOL CWaveProcContext::Init()
@@ -3800,10 +3795,10 @@ BOOL CWmaSaveContext::OperationProc()
 			}
 		}
 
-		size_t SrcBufUsed = 0;
+		unsigned SrcBufUsed = 0;
 
-		size_t DstBufUsed = m_ProcBatch.ProcessSound(pSrc, m_TmpBuffer + m_TmpBufferFilled, LeftToRead,
-													m_TmpBufferSize - m_TmpBufferFilled, & SrcBufUsed);
+		unsigned DstBufUsed = m_ProcBatch.ProcessSound(pSrc, m_TmpBuffer + m_TmpBufferFilled, LeftToRead,
+														m_TmpBufferSize - m_TmpBufferFilled, & SrcBufUsed);
 
 		m_TmpBufferFilled += DstBufUsed;
 

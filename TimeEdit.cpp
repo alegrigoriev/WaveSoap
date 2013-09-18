@@ -403,7 +403,7 @@ void CFileTimesCombo::FillFileTimes()
 	CString s;
 
 	for (CuePointVectorIterator i = pInst->m_CuePoints.begin();
-		i < pInst->m_CuePoints.end(); i++)
+		i != pInst->m_CuePoints.end(); i++)
 	{
 		// TODO: include positions in HH:mm:ss and the tooltips
 		LPCTSTR pNote = pInst->GetCueComment(i->CuePointID);
@@ -453,7 +453,7 @@ void CFileTimesCombo::FillFileTimes()
 		}
 		else
 		{
-			if (i->dwSampleOffset <= unsigned(FileLength))
+			if (i->dwSampleOffset <= MEDIA_FILE_POSITION(FileLength))
 			{
 				AddPosition(pLabel, i->dwSampleOffset);
 			}

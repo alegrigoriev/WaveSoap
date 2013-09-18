@@ -1597,7 +1597,7 @@ unsigned CCdReadingContext::ProcessBuffer(char const * /*pInBuf*/, // if BACKWAR
 	{
 		if (0 == m_CdBufferFilled)
 		{
-			size_t SectorsToRead = m_CdBufferSize / CDDASectorSize;
+			unsigned SectorsToRead = m_CdBufferSize / CDDASectorSize;
 			if (SectorsToRead > m_NumberOfSectors)
 			{
 				SectorsToRead = m_NumberOfSectors;
@@ -1628,7 +1628,7 @@ unsigned CCdReadingContext::ProcessBuffer(char const * /*pInBuf*/, // if BACKWAR
 			m_CdBufferFilled = SectorsToRead * CDDASectorSize;
 		}
 
-		size_t ToCopy = m_CdBufferFilled;
+		unsigned ToCopy = m_CdBufferFilled;
 		if (ToCopy > nOutBytes)
 		{
 			ToCopy = nOutBytes;
@@ -1713,7 +1713,7 @@ void CCdReadingContext::Execute()
 
 	m_pDocument = (CWaveSoapFrontDoc *)pTemplate->OpenDocumentFile(
 					(LPCTSTR) & Params,
-					OpenDocumentCreateNewWithParameters);
+					OpenDocumentCreateNewWithParameters|1);
 	if (NULL == m_pDocument)
 	{
 		delete this;

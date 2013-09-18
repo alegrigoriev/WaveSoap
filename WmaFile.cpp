@@ -938,7 +938,7 @@ BOOL WmaEncoder::SetDestinationFormat(WAVEFORMATEX const * pDstWfx)
 	return SUCCEEDED(hr);
 }
 
-BOOL WmaEncoder::Write(void const * Buf, size_t size)
+BOOL WmaEncoder::Write(void const * Buf, unsigned size)
 {
 	UCHAR const * pSrcBuf = static_cast<UCHAR const *>(Buf);
 

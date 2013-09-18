@@ -719,7 +719,7 @@ CDocument* CWaveSoapFrontApp::OpenDocumentFile(LPCTSTR lpszPathName)
 	{
 		flags |= OpenDocumentDirectMode;
 	}
-	return OpenDocumentFile(lpszPathName, flags);
+	return OpenDocumentFile(lpszPathName, flags|1);
 }
 
 CDocTemplate::Confidence CWaveSoapDocTemplate::MatchDocType(LPCTSTR lpszPathName,
@@ -1364,8 +1364,9 @@ void CWaveSoapFrontStatusBar::OnContextMenu(CWnd* /*pWnd*/, CPoint point)
 					dynamic_cast<CWaveSoapFrontView *>(pClient->GetDlgItem(CWaveMDIChildClient::WaveViewID));
 				if (NULL != pView)
 				{
-					switch (pView->GetHorizontalScale())
+					switch (int(pView->GetHorizontalScale()))
 					{
+					default:
 					case 1:
 						id = IDR_MENU_POPUP_HOR_SCALE1;
 						break;
@@ -1405,7 +1406,6 @@ void CWaveSoapFrontStatusBar::OnContextMenu(CWnd* /*pWnd*/, CPoint point)
 					case 4096:
 						id = IDR_MENU_POPUP_HOR_SCALE4096;
 						break;
-					default:
 					case 8192:
 						id = IDR_MENU_POPUP_HOR_SCALE8192;
 						break;
@@ -1513,7 +1513,7 @@ void CWaveSoapFrontApp::OnFileNew()
 								m_NewFileLength * m_NewFileFormat.nSamplesPerSec);
 
 		pTemplate->OpenDocumentFile((LPCTSTR) & Params,
-									OpenDocumentCreateNewWithParameters);
+									OpenDocumentCreateNewWithParameters|1);
 
 	}
 }
@@ -1534,7 +1534,7 @@ void CWaveSoapFrontApp::OnEditPasteNew()
 		CWaveSoapFrontDoc * pDoc =
 			(CWaveSoapFrontDoc *)pTemplate->OpenDocumentFile(
 															(LPCTSTR) & Params,
-															OpenDocumentCreateNewWithParameters);
+															OpenDocumentCreateNewWithParameters|1);
 
 		if (NULL != pDoc)
 		{

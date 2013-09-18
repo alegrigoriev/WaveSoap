@@ -346,8 +346,8 @@ public:
 	virtual ~CWaveDevice();
 
 	virtual BOOL IsOpen() const = 0;
-	BOOL AllocateBuffers(size_t size = 8192, int count = 4);
-	int GetBuffer(char ** ppbuf, size_t * pSize, BOOL bWait = TRUE);
+	BOOL AllocateBuffers(unsigned size = 8192, int count = 4);
+	int GetBuffer(char ** ppbuf, unsigned * pSize, BOOL bWait = TRUE);
 	BOOL ReturnBuffer(UINT hBuffer);    // return unused buffer
 	BOOL ResetBuffers();
 	BOOL WaitForQueueEmpty(DWORD timeout);
@@ -361,7 +361,7 @@ protected:
 	{
 		WAVEHDR whd;
 		char * pBuf;
-		size_t size;
+		unsigned size;
 		DWORD dwFlags;
 	};
 	enum {BUF_USED = 1 };
@@ -617,17 +617,17 @@ public:
 	void Close();
 	BOOL Reset(DWORD flags = 0);
 
-	BOOL AllocateBuffers(size_t PreferredInBufSize = 0x10000,
-						size_t PreferredOutBufSize = 0x10000);
+	BOOL AllocateBuffers(unsigned PreferredInBufSize = 0x10000,
+						unsigned PreferredOutBufSize = 0x10000);
 
 	// convert data to the internal buffer
-	BOOL Convert(void const * pSrcBuf, size_t SrcBufSize, size_t * pSrcBufUsed,
+	BOOL Convert(void const * pSrcBuf, unsigned SrcBufSize, unsigned * pSrcBufUsed,
 				void* * ppDstBuf /*optional*/,
-				size_t * pDstBufFilled /*optional*/,
+				unsigned * pDstBufFilled /*optional*/,
 				DWORD flags = ACM_STREAMCONVERTF_BLOCKALIGN);
 
 	// read data from the internal buffer
-	size_t GetConvertedData(void * pDstBuf, size_t DstBufSize);
+	unsigned GetConvertedData(void * pDstBuf, unsigned DstBufSize);
 
 protected:
 	ACMSTREAMHEADER m_ash;
@@ -642,9 +642,9 @@ protected:
 	// the class doesn't allow assignment and copy
 private:
 #ifdef _DEBUG
-	size_t m_ProcessedInputBytes;
-	size_t m_SavedOutputBytes;
-	size_t m_GotOutputBytes;
+	ULONG64 m_ProcessedInputBytes;
+	ULONG64 m_SavedOutputBytes;
+	ULONG64 m_GotOutputBytes;
 #endif
 
 	AudioStreamConvertor(const AudioStreamConvertor &);

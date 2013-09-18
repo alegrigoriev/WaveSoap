@@ -10,14 +10,13 @@
 #pragma once
 #endif // _MSC_VER > 1000
 
-#include "ScaledScrollView.h"
 #include "WaveSoapFrontDoc.h"
 #include "DataSection.h"
 #include <math.h>
 
-class CWaveSoapFrontView : public CScaledScrollView
+class CWaveSoapFrontView : public CView
 {
-	typedef CScaledScrollView BaseClass;
+	typedef CView BaseClass;
 protected: // create from serialization only
 	typedef CWaveSoapFrontDoc ThisDoc;
 	CWaveSoapFrontView();
@@ -27,11 +26,25 @@ protected: // create from serialization only
 public:
 	friend class CAmplitudeRuler;
 	ThisDoc * GetDocument() const;
-	int GetHorizontalScale() const { return m_HorizontalScale; }
-	void SetHorizontalScale(int HorScale);
-	virtual BOOL OnScrollBy(CSize sizeScroll, BOOL bDoScroll, RECT const * pScrollRect, RECT const * pClipRect);
+	double GetHorizontalScale() const { return m_HorizontalScale; }
+	int SampleToX(SAMPLE_INDEX sample) const;      // floor
+	int SampleToXceil(SAMPLE_INDEX sample) const;
+	SAMPLE_INDEX WindowXtoSample(int x) const;
+	int SampleValueToY(double value, int ch) const;
 
-// Operations
+	void SetHorizontalScale(double NewHorizontalScale, int ZoomCenter);    // if ZoomCenter MAX_INT, center the current selection
+	void SetVerticalScale(double NewVerticalScale);
+
+	virtual POINT GetZoomCenter();
+
+	//virtual BOOL OnScrollBy(CSize sizeScroll, BOOL bDoScroll, RECT const * pScrollRect, RECT const * pClipRect);
+	void HorizontalScrollBy(double samples);
+
+	NUMBER_OF_SAMPLES WaveFileSamples() const
+	{
+		return GetDocument()->WaveFileSamples();
+	}
+	// Operations
 public:
 
 // Overrides
@@ -54,12 +67,6 @@ public:
 	virtual ~CWaveSoapFrontView();
 	virtual void UpdateCaretPosition();
 	void InvalidateRect( LPCRECT lpRect, BOOL bErase = TRUE );
-	virtual void OnMasterChangeOrgExt(double left, double width,
-									double top, double height, DWORD flag);
-	enum {
-		WAVE_OFFSET_CHANGED = 0x10000,
-		WAVE_SCALE_CHANGED = 0x20000,
-	};
 
 #ifdef _DEBUG
 	virtual void AssertValid() const;
@@ -70,15 +77,14 @@ protected:
 
 	virtual UINT GetPopupMenuID(CPoint point);
 	// how many samples in the display point
-	virtual void AdjustNewScale(double OldScaleX, double OldScaleY,
-								double & NewScaleX, double & NewScaleY);
-	virtual void AdjustNewOrigin(double & NewOrgX, double & NewOrgY);
+	//virtual void AdjustNewScale(double OldScaleX, double OldScaleY, double & NewScaleX, double & NewScaleY);
+	//virtual void AdjustNewOrigin(double & NewOrgX, double & NewOrgY);
 
-	virtual BOOL MasterScrollBy(double dx, double dy, BOOL bDoScroll);
+	BOOL MasterScrollBy(double dx, double dy, BOOL bDoScroll);  // TODO: remove
 	void DrawHorizontalWithSelection(CDC * pDC,
 									int left, int right, int Y,
 									CPen * NormalPen, CPen * SelectedPen,
-									CHANNEL_MASK nChannel);
+									CHANNEL_MASK nChannel, LPCRECT ClipRect = NULL);
 
 	void GetChannelRect(int Channel, RECT * r) const;
 	void GetChannelClipRect(int Channel, RECT * pR) const;
@@ -87,39 +93,44 @@ protected:
 	void CreateAndShowCaret();
 	DWORD ClientHitTest(CPoint p) const;
 
-	virtual POINT GetZoomCenter();
 	void MovePointIntoView(SAMPLE_INDEX nCaret, BOOL Center = FALSE);
 	void AdjustCaretVisibility(SAMPLE_INDEX CaretPos, SAMPLE_INDEX OldCaretPos,
 								unsigned Flags);
 
-	void UpdateMaxHorExtents(NUMBER_OF_SAMPLES Length);
-	void UpdateVertExtents();
+	void UpdateHorizontalExtents(NUMBER_OF_SAMPLES Length, int WindowWidth);
 
-	virtual void NotifySlaveViews(DWORD flag);
+	void SetFirstSampleInView(double sample);
 
-	int m_HorizontalScale;
-	int m_PrevHorizontalScale;
+	double m_HorizontalScale;   // number of samples per window pixel. Can be 0.5, .25, etc for additional stretch
+	double m_PrevHorizontalScale;
+
+	double m_FirstSampleInView; // first sample that maps to client.x=0; Can be fractional if m_HorizontalScale < 1. Always multiple of m_HorScale.
 	// multiply the wave to get the additional magnification.
 	// m_VerticalScale means all the range is shown, scale 2 means the wave
 	// is magnified 2 times.
-	double m_VerticalScale;
-	// additional vertical offset, to see a region of magnified wave
-	double m_WaveOffsetY;
+	double m_VerticalScale;     // full sweep divided by channel rectangle height (for full height channels only). 1 - full sweep equal rect height, > 1 - show magnified.
+	// minimum height channels are shown with scale 1.
 
-	CDataSection<WAVE_SAMPLE, CWaveSoapFrontView> m_WaveBuffer;
+	double m_WaveOffsetY; // additional vertical offset, to see a region of magnified wave. Only full height channels are scrolled vertically. This is the sample value
+	// of the center line of the channel clip rect
+
+	CDataSection<float, CWaveSoapFrontView> m_WaveBuffer;
 
 	virtual void DrawPlaybackCursor(CDC * pDC, SAMPLE_INDEX Sample, CHANNEL_MASK Channel);
 	virtual void ShowPlaybackCursor(CDC * pDC = NULL);
 	virtual void HidePlaybackCursor(CDC * pDC = NULL);
 	void UpdatePlaybackCursor(SAMPLE_INDEX sample, CHANNEL_MASK channel);
-	BOOL PlaybackCursorVisible();
+	bool PlaybackCursorVisible() const;
 
+	// cursor and selection:
 	CHANNEL_MASK m_PlaybackCursorChannel;  // 0 = not playing
 	bool m_PlaybackCursorDrawn;
 	bool m_NewSelectionMade;
 	UINT_PTR m_AutoscrollTimerID;
 	SAMPLE_INDEX m_PlaybackCursorDrawnSamplePos;
 	int m_WheelAccumulator;
+	int nKeyPressed;
+	bool bIsTrackingSelection;
 	// Generated message map functions
 protected:
 	//{{AFX_MSG(CWaveSoapFrontView)
@@ -149,55 +160,37 @@ protected:
 	afx_msg void OnUpdateViewZoomSelection(CCmdUI* pCmdUI);
 	afx_msg void OnViewZoomSelection();
 	afx_msg void OnUpdateIndicatorScale(CCmdUI* pCmdUI);
-	afx_msg void OnUpdateViewHorScale1(CCmdUI* pCmdUI);
-	afx_msg void OnViewHorScale1();
-	afx_msg void OnUpdateViewHorScale2(CCmdUI* pCmdUI);
-	afx_msg void OnViewHorScale2();
-	afx_msg void OnUpdateViewHorScale4(CCmdUI* pCmdUI);
-	afx_msg void OnViewHorScale4();
-	afx_msg void OnUpdateViewHorScale8(CCmdUI* pCmdUI);
-	afx_msg void OnViewHorScale8();
-	afx_msg void OnUpdateViewHorScale16(CCmdUI* pCmdUI);
-	afx_msg void OnViewHorScale16();
-	afx_msg void OnUpdateViewHorScale32(CCmdUI* pCmdUI);
-	afx_msg void OnViewHorScale32();
-	afx_msg void OnUpdateViewHorScale64(CCmdUI* pCmdUI);
-	afx_msg void OnViewHorScale64();
-	afx_msg void OnUpdateViewHorScale128(CCmdUI* pCmdUI);
-	afx_msg void OnViewHorScale128();
-	afx_msg void OnUpdateViewHorScale256(CCmdUI* pCmdUI);
-	afx_msg void OnViewHorScale256();
-	afx_msg void OnUpdateViewHorScale512(CCmdUI* pCmdUI);
-	afx_msg void OnViewHorScale512();
-	afx_msg void OnUpdateViewHorScale1024(CCmdUI* pCmdUI);
-	afx_msg void OnViewHorScale1024();
-	afx_msg void OnUpdateViewHorScale2048(CCmdUI* pCmdUI);
-	afx_msg void OnViewHorScale2048();
-	afx_msg void OnUpdateViewHorScale4096(CCmdUI* pCmdUI);
-	afx_msg void OnViewHorScale4096();
-	afx_msg void OnUpdateViewHorScale8192(CCmdUI* pCmdUI);
-	afx_msg void OnViewHorScale8192();
+	afx_msg void OnUpdateViewHorScale(CCmdUI* pCmdUI);
+	afx_msg void OnViewHorScale(UINT command);
 	afx_msg void OnTimer(UINT_PTR nIDEvent);
 	afx_msg void OnCaptureChanged(CWnd *pWnd);
+	afx_msg void OnViewZoominHor2();
+	afx_msg void OnViewZoomOutHor2();
+	afx_msg void OnHScroll(UINT nSBCode, UINT nPos, CScrollBar* pScrollBar);
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 public:
 	afx_msg void OnLButtonDblClk(UINT nFlags, CPoint point);
 	afx_msg void OnViewZoomprevious();
+	enum
+	{
+		VSHT_RIGHT_AUTOSCROLL  = 0x40000,    // autoscroll area
+		VSHT_LEFT_AUTOSCROLL   = 0x20000,    // autoscroll area
+		VSHT_BCKGND            = 0x10000,     // in the middle area (selecting both channels
+		VSHT_LEFT_CHAN         = 0x08000,     // in the upper half of the left chan
+		VSHT_RIGHT_CHAN        = 0x04000,     // in the lower half of the right chan
+		VSHT_SEL_BOUNDARY_L    = 0x02000,
+		VSHT_SEL_BOUNDARY_R    = 0x01000,     // on the selection boundary
+		VSHT_NOWAVE            = 0x00800,     // after the data end
+		VSHT_SELECTION         = 0x00400,     // inside the selection
+		VSHT_WAVEFORM          = 0x00200,     // on the waveform (allows drag)
+		VSHT_NONCLIENT         = 0x00100,     // out of the client area
+		VSHT_CHANNEL_MASK      = 0x0001F,     // index of the hit channel
+	};
+protected:
+	afx_msg LRESULT OnUwmNotifyViews(WPARAM wParam, LPARAM lParam);
 };
 
-#define VSHT_RIGHT_AUTOSCROLL 0x40000    // autoscroll area
-#define VSHT_LEFT_AUTOSCROLL 0x20000    // autoscroll area
-#define VSHT_BCKGND         0x10000     // in the middle area (selecting both channels
-#define VSHT_LEFT_CHAN      0x08000     // in the upper half of the left chan
-#define VSHT_RIGHT_CHAN     0x04000     // in the lower half of the right chan
-#define VSHT_SEL_BOUNDARY_L 0x02000
-#define VSHT_SEL_BOUNDARY_R 0x01000     // on the selection boundary
-#define VSHT_NOWAVE         0x00800     // after the data end
-#define VSHT_SELECTION      0x00400     // inside the selection
-#define VSHT_WAVEFORM       0x00200     // on the waveform (allows drag)
-#define VSHT_NONCLIENT      0x00100     // out of the client area
-#define VSHT_CHANNEL_MASK   0x0001F     // index of the hit channel
 //#define VSHT_
 
 #ifndef _DEBUG  // debug version in WaveSoapFrontView.cpp

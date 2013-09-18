@@ -31,24 +31,24 @@ template<typename T> inline void memzero(T & obj)
 
 static unsigned MultiSzLen(LPCSTR src)
 {
-	size_t len = 0;
-	size_t len1;
-	while(0 != (len1 = strlen(src + len)))
+	unsigned len = 0;
+	unsigned len1;
+	while(0 != (len1 = (unsigned)strlen(src + len)))
 	{
 		len += len1 + 1;
 	}
-	return (unsigned)len;
+	return len;
 }
 
 static unsigned MultiSzLen(LPCWSTR src)
 {
-	size_t len = 0;
-	size_t len1;
-	while(0 != (len1 = wcslen(src + len)))
+	unsigned len = 0;
+	unsigned len1;
+	while(0 != (len1 = (unsigned)wcslen(src + len)))
 	{
 		len += len1 + 1;
 	}
-	return (unsigned)len;
+	return len;
 }
 
 inline void AssignMultiSz(CStringW & dst, LPCSTR src)
@@ -83,5 +83,43 @@ using std::max;
 #include <afxdlgs.h>
 //{{AFX_INSERT_LOCATION}}
 // Microsoft Visual C++ will insert additional declarations immediately before the previous line.
+#define UWM_NOTIFY_VIEWS    (WM_APP+1)  // notify siblings in the child frame for view changes. Only those changes that don't reflect document updates
+
+enum SiblingNotifyCode
+{
+	ChannelHeightChanged,
+	FftBandChanged,
+	HorizontalScaleChanged,
+	HorizontalOriginChanged,     // NotifyViewsData.HorizontalScroll
+	HorizontalExtentChanged,     // NotifyViewsData.HorizontalScroll
+	VerticalScaleChanged,
+	AmplitudeOffsetChanged,
+	FftVerticalScaleChanged,
+	FftOffsetChanged,
+};
+
+struct NotifyViewsData
+{
+	int code;
+	union {
+		struct {
+			double FirstSampleInView;
+			double TotalSamplesInView;
+			double TotalSamplesInExtent;    // adjusted for the reserved empty space after the end
+		} HorizontalScroll;
+		struct {
+		} Amplitude;
+		struct {
+		} Fft;
+	};
+};
+
+#define NotifySiblingViews(NotifyCode, data) NotifySiblingViews_(this, NotifyCode, data)
+
+inline LRESULT NotifySiblingViews_(CWnd *wnd, int NotifyCode, PVOID data)
+{
+	ASSERT(wnd->GetParent() != NULL);
+	return wnd->GetParent()->SendMessage(UWM_NOTIFY_VIEWS, NotifyCode, (LPARAM) data);
+}
 
 #endif // !defined(AFX_STDAFX_H__FFA16C46_2FA7_11D4_9ADD_00C0F0583C4B__INCLUDED_)

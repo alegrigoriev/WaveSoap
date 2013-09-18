@@ -29,7 +29,7 @@ CHorizontalRuler::~CHorizontalRuler()
 }
 
 
-BEGIN_MESSAGE_MAP(CHorizontalRuler, CScaledScrollView)
+BEGIN_MESSAGE_MAP(CHorizontalRuler, BaseClass)
 	//{{AFX_MSG_MAP(CHorizontalRuler)
 	ON_WM_SETFOCUS()
 	ON_WM_MOUSEMOVE()
@@ -55,12 +55,12 @@ void CHorizontalRuler::OnDraw(CDC* /*pDC*/)
 #ifdef _DEBUG
 void CHorizontalRuler::AssertValid() const
 {
-	CScaledScrollView::AssertValid();
+	BaseClass::AssertValid();
 }
 
 void CHorizontalRuler::Dump(CDumpContext& dc) const
 {
-	CScaledScrollView::Dump(dc);
+	BaseClass::Dump(dc);
 }
 #endif //_DEBUG
 
@@ -91,7 +91,7 @@ BOOL CHorizontalRuler::PreCreateWindow(CREATESTRUCT& cs)
 	cs.lpszClass = AfxRegisterWndClass(CS_VREDRAW | CS_DBLCLKS, AfxGetApp()->LoadStandardCursor(IDC_SIZEWE),
 										NULL, NULL);
 
-	return CScaledScrollView::PreCreateWindow(cs);
+	return BaseClass::PreCreateWindow(cs);
 }
 
 void CHorizontalRuler::OnMouseMove(UINT nFlags, CPoint point)
@@ -144,8 +144,8 @@ int CHorizontalRuler::OnMouseActivate(CWnd* pDesktopWnd, UINT nHitTest, UINT mes
 BOOL CHorizontalRuler::OnScrollBy(CSize sizeScroll, BOOL /*bDoScroll*/)
 {
 
-// the function scrolls the real image, and modifies dOrgX, dOrgY.
-	CScaledScrollView::OnScrollBy(sizeScroll, TRUE);
+	// the function scrolls the real image, and modifies dOrgX, dOrgY.
+	BaseClass::OnScrollBy(sizeScroll, TRUE);
 	if (//sizeScroll.cx != 0 ||
 		sizeScroll.cy != 0)
 	{
@@ -178,7 +178,7 @@ CVerticalRuler::~CVerticalRuler()
 }
 
 
-BEGIN_MESSAGE_MAP(CVerticalRuler, CScaledScrollView)
+BEGIN_MESSAGE_MAP(CVerticalRuler, BaseClass)
 	//{{AFX_MSG_MAP(CVerticalRuler)
 	ON_WM_SETFOCUS()
 	ON_WM_MOUSEMOVE()
@@ -204,12 +204,12 @@ void CVerticalRuler::OnDraw(CDC* /*pDC*/)
 #ifdef _DEBUG
 void CVerticalRuler::AssertValid() const
 {
-	CScaledScrollView::AssertValid();
+	BaseClass::AssertValid();
 }
 
 void CVerticalRuler::Dump(CDumpContext& dc) const
 {
-	CScaledScrollView::Dump(dc);
+	BaseClass::Dump(dc);
 }
 #endif //_DEBUG
 
@@ -239,7 +239,7 @@ BOOL CVerticalRuler::PreCreateWindow(CREATESTRUCT& cs)
 	cs.lpszClass = AfxRegisterWndClass(CS_HREDRAW | CS_DBLCLKS, AfxGetApp()->LoadStandardCursor(IDC_SIZENS),
 										NULL, NULL);
 
-	return CScaledScrollView::PreCreateWindow(cs);
+	return BaseClass::PreCreateWindow(cs);
 }
 void CVerticalRuler::OnMouseMove(UINT nFlags, CPoint point)
 {
@@ -291,8 +291,8 @@ int CVerticalRuler::OnMouseActivate(CWnd* pDesktopWnd, UINT nHitTest, UINT messa
 BOOL CVerticalRuler::OnScrollBy(CSize sizeScroll, BOOL /*bDoScroll*/)
 {
 
-// the function scrolls the real image, and modifies dOrgX, dOrgY.
-	CScaledScrollView::OnScrollBy(sizeScroll, TRUE);
+	// the function scrolls the real image, and modifies dOrgX, dOrgY.
+	BaseClass::OnScrollBy(sizeScroll, TRUE);
 	if (sizeScroll.cx != 0 || sizeScroll.cy != 0)
 	{
 		// force window redraw, but don't erase it
@@ -312,7 +312,7 @@ void CVerticalRuler::OnCaptureChanged(CWnd *pWnd)
 
 int CVerticalRuler::OnCreate(LPCREATESTRUCT lpCreateStruct)
 {
-	if (CScaledScrollView::OnCreate(lpCreateStruct) == -1)
+	if (BaseClass::OnCreate(lpCreateStruct) == -1)
 		return -1;
 
 	KeepAspectRatio(FALSE);
@@ -329,7 +329,7 @@ int CVerticalRuler::OnCreate(LPCREATESTRUCT lpCreateStruct)
 
 int CHorizontalRuler::OnCreate(LPCREATESTRUCT lpCreateStruct)
 {
-	if (CScaledScrollView::OnCreate(lpCreateStruct) == -1)
+	if (BaseClass::OnCreate(lpCreateStruct) == -1)
 		return -1;
 
 	KeepAspectRatio(FALSE);

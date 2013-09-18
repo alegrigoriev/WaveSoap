@@ -14,6 +14,7 @@
 
 class CHorizontalRuler : public CScaledScrollView
 {
+	typedef CScaledScrollView BaseClass;
 protected:
 	CHorizontalRuler();           // protected constructor used by dynamic creation
 	DECLARE_DYNCREATE(CHorizontalRuler)
@@ -65,6 +66,7 @@ protected:
 
 class CVerticalRuler : public CScaledScrollView
 {
+	typedef CScaledScrollView BaseClass;
 protected:
 	CVerticalRuler();           // protected constructor used by dynamic creation
 	DECLARE_DYNCREATE(CVerticalRuler)
