@@ -34,7 +34,7 @@ public:
 protected:
 	virtual void OnDraw(CDC* pDC);      // overridden to draw this view
 	//}}AFX_VIRTUAL
-
+	virtual void VerticalScrollPixels(int Pixels);
 // Implementation
 protected:
 	virtual ~CFftRulerView();
@@ -43,6 +43,10 @@ protected:
 	virtual void AssertValid() const;
 	virtual void Dump(CDumpContext& dc) const;
 #endif
+	double m_VerticalScale;
+	double m_FirstbandVisible;     // how much the chart is scrolled. 0 = DC is visible
+	NotifyChannelHeightsData m_Heights;
+	int m_FftOrder;
 
 	// Generated message map functions
 protected:

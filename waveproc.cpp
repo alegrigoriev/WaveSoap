@@ -4365,22 +4365,14 @@ unsigned CBatchProcessing::ProcessSoundBuffer(char const * pIn, char * pOut,
 // it can be multiple of block size for compressed format
 unsigned CBatchProcessing::GetInputSampleSize() const
 {
-	if (m_Stages.empty())
-	{
-		return 4;
-	}
-	return m_Stages[0].Proc->GetInputSampleSize();
+	return m_InputFormat.SampleSize();
 }
 
 // if output data is compressed and not sample-aligned, this could be 0
 // it can be multiple of block size for compressed format
 unsigned CBatchProcessing::GetOutputSampleSize() const
 {
-	if (m_Stages.empty())
-	{
-		return 4;
-	}
-	return m_Stages[m_Stages.size() - 1].Proc->GetOutputSampleSize();
+	return m_OutputFormat.SampleSize();
 }
 
 void CBatchProcessing::AddWaveProc(CWaveProc * pProc, int index)

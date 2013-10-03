@@ -7,7 +7,7 @@
 #include "WaveOutlineView.h"
 #include "GdiObjectSave.h"
 #include "WaveSoapFrontDoc.h"
-#include ".\waveoutlineview.h"
+#include "waveoutlineview.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -521,7 +521,7 @@ void CWaveOutlineView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
 			r.top = cr.top;
 			r.bottom = cr.bottom;
 
-			InvalidateRect(r);
+			InvalidateRect(r, FALSE);
 		}
 
 		if (0 != pInfo->Length
@@ -538,7 +538,7 @@ void CWaveOutlineView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
 				r.top = cr.top;
 				r.bottom = cr.bottom;
 
-				InvalidateRect(r);
+				InvalidateRect(r, FALSE);
 			}
 		}
 	}

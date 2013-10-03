@@ -1,5 +1,6 @@
 // Copyright Alexander Grigoriev, 1997-2002, All Rights Reserved
 // DataSection.h
+#pragma once
 #define DEBUG_DATASECTION_GETDATA 0
 
 template <typename T, typename C>
@@ -95,8 +96,8 @@ int CDataSection<T, C>::GetData(T ** ppBuf, LONGLONG nOffset, long nCount, C * p
 	}
 	//check if we can reuse some of the data in the buffer
 	// use nOffset, NumOfSamples, m_BufferOffset, m_nCountInBuffer
-	if (nOffset + nCount <= m_BufferOffset
-		|| nOffset >= m_BufferOffset + m_nCountInBuffer)
+	if (nOffset + nCount < m_BufferOffset
+		|| nOffset > m_BufferOffset + m_nCountInBuffer)
 	{
 		// none of the data in the buffer can be reused
 		m_BufferOffset = nOffset;
@@ -106,7 +107,7 @@ int CDataSection<T, C>::GetData(T ** ppBuf, LONGLONG nOffset, long nCount, C * p
 	if (nOffset < m_BufferOffset)
 	{
 		// move data up
-		long MoveBy = long(m_BufferOffset) - long(nOffset);
+		long MoveBy = long(m_BufferOffset - nOffset);
 		if (m_nCountInBuffer + MoveBy > m_nBufferSize)
 		{
 			m_nCountInBuffer = m_nBufferSize - MoveBy;
@@ -124,11 +125,10 @@ int CDataSection<T, C>::GetData(T ** ppBuf, LONGLONG nOffset, long nCount, C * p
 		m_BufferOffset + m_nBufferSize)
 	{
 		// move data down
-		long MoveBy = long(nOffset) + nCount -
-					(long(m_BufferOffset) + m_nBufferSize);
+		long MoveBy = long((nOffset + nCount) - (m_BufferOffset + m_nBufferSize));
 		if (MoveBy != 0)
 		{
-			ASSERT(m_nCountInBuffer > MoveBy);
+			ASSERT(m_nCountInBuffer >= MoveBy);
 			m_nCountInBuffer -= MoveBy;
 			memmove(m_pBuffer, m_pBuffer + MoveBy,
 					m_nCountInBuffer * sizeof(T));
@@ -146,7 +146,7 @@ int CDataSection<T, C>::GetData(T ** ppBuf, LONGLONG nOffset, long nCount, C * p
 								m_BufferOffset + m_nCountInBuffer, ReadCount, pSource);
 		ASSERT(ReadCount == WasRead);
 		m_nCountInBuffer += WasRead;
-		nCount = long(m_BufferOffset) + m_nCountInBuffer - long(nOffset);
+		//nCount = long(m_BufferOffset + m_nCountInBuffer - nOffset);
 	}
 
 	ASSERT (nOffset >= m_BufferOffset

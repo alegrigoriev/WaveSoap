@@ -812,13 +812,14 @@ void CWaveSoapFrontDoc::QueuePlaybackUpdate(int UpdateCode, ULONG_PTR FileID,
 
 	{
 		CSimpleCriticalSectionLock lock(m_UpdateList);
-
-		for (CSoundUpdateInfo * pEntry = m_UpdateList.First()
-			;  m_UpdateList.NotEnd(pEntry); )
+		// remove any existing entry
+		for (CSoundUpdateInfo * pEntry = m_UpdateList.First();  m_UpdateList.NotEnd(pEntry); )
 		{
 			CSoundUpdateInfo * next = m_UpdateList.Next(pEntry);
 			if (FileID == pEntry->m_FileID
-				&& pEntry->m_UpdateCode == UpdateCode)
+				&& pEntry->m_UpdateCode == UpdateCode
+				// don't remove special notifications
+				&& pEntry->m_PlaybackChannel == PlaybackChannel)
 			{
 				m_UpdateList.RemoveEntryUnsafe(pEntry);
 				delete pEntry;

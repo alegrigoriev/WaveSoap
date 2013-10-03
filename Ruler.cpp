@@ -16,10 +16,11 @@ static char THIS_FILE[] = __FILE__;
 /////////////////////////////////////////////////////////////////////////////
 // CHorizontalRuler
 
-IMPLEMENT_DYNCREATE(CHorizontalRuler, CScaledScrollView)
+IMPLEMENT_DYNAMIC(CHorizontalRuler, CView);
 
 CHorizontalRuler::CHorizontalRuler()
 	: ButtonPressed(0),
+	m_bIsTrackingSelection(false),
 	PrevMouseX(0)
 {
 }
@@ -79,10 +80,8 @@ void CHorizontalRuler::OnSetFocus(CWnd* pOldWnd)
 	else
 	{
 		CWnd * pWnd = GetParent()->GetDlgItem(1);
-		//pWnd->BringWindowToTop();
-		pWnd->SetFocus();
-		// set focus to window with
-		//CView::OnSetFocus(pOldWnd);
+
+		pWnd->SetFocus();   // FIXME
 	}
 }
 
@@ -100,17 +99,15 @@ void CHorizontalRuler::OnMouseMove(UINT nFlags, CPoint point)
 	if (WM_LBUTTONDOWN == ButtonPressed
 		&& PrevMouseX != point.x)
 	{
-		if (! bIsTrackingSelection)
+		if (! m_bIsTrackingSelection)
 		{
 			SetCapture();
-			bIsTrackingSelection = TRUE;
+			m_bIsTrackingSelection = TRUE;
 		}
 		// do scroll
-		double dx = (PrevMouseX - point.x) / GetXScaleDev();
-		if (0) TRACE("OnMouseMove: Scroll by % d points (%f)\n", PrevMouseX - point.x, dx);
 
+		HorizontalScrollByPixels(PrevMouseX - point.x);
 		PrevMouseX = point.x;
-		ScrollBy(dx, 0, TRUE);
 	}
 }
 
@@ -118,21 +115,20 @@ void CHorizontalRuler::OnLButtonDown(UINT nFlags, CPoint point)
 {
 	// store the starting mouse position
 
-	CView::OnLButtonDown(nFlags, point);
+	BaseClass::OnLButtonDown(nFlags, point);
 	PrevMouseX = point.x;
 	ButtonPressed = WM_LBUTTONDOWN;
-	//SetCapture();
 }
 
 void CHorizontalRuler::OnLButtonUp(UINT nFlags, CPoint point)
 {
 	ButtonPressed = 0;
-	if (bIsTrackingSelection)
+	if (m_bIsTrackingSelection)
 	{
 		ReleaseCapture();
-		bIsTrackingSelection = FALSE;
+		m_bIsTrackingSelection = FALSE;
 	}
-	CView::OnLButtonUp(nFlags, point);
+	BaseClass::OnLButtonUp(nFlags, point);
 }
 
 int CHorizontalRuler::OnMouseActivate(CWnd* pDesktopWnd, UINT nHitTest, UINT message)
@@ -157,7 +153,7 @@ BOOL CHorizontalRuler::OnScrollBy(CSize sizeScroll, BOOL /*bDoScroll*/)
 
 void CHorizontalRuler::OnCaptureChanged(CWnd *pWnd)
 {
-	bIsTrackingSelection = FALSE;
+	m_bIsTrackingSelection = FALSE;
 	ButtonPressed = 0;
 
 	CView::OnCaptureChanged(pWnd);
@@ -165,10 +161,11 @@ void CHorizontalRuler::OnCaptureChanged(CWnd *pWnd)
 
 // CVerticalRuler
 
-IMPLEMENT_DYNCREATE(CVerticalRuler, CScaledScrollView)
+IMPLEMENT_DYNAMIC(CVerticalRuler, CView);
 
 CVerticalRuler::CVerticalRuler()
 	: ButtonPressed(0),
+	m_bIsTrackingSelection(false),
 	PrevMouseY(0)
 {
 }
@@ -227,10 +224,8 @@ void CVerticalRuler::OnSetFocus(CWnd* pOldWnd)
 	else
 	{
 		CWnd * pWnd = GetParent()->GetDlgItem(1);
-		//pWnd->BringWindowToTop();
-		pWnd->SetFocus();
-		// set focus to window with
-		//CView::OnSetFocus(pOldWnd);
+
+		pWnd->SetFocus();       // FIXME
 	}
 }
 
@@ -248,15 +243,16 @@ void CVerticalRuler::OnMouseMove(UINT nFlags, CPoint point)
 	if (WM_LBUTTONDOWN == ButtonPressed
 		&& PrevMouseY != point.y)
 	{
-		if (! bIsTrackingSelection)
+		if (! m_bIsTrackingSelection)
 		{
 			SetCapture();
-			bIsTrackingSelection = TRUE;
+			m_bIsTrackingSelection = TRUE;
 		}
 		// do scroll
-		double dy = (PrevMouseY - point.y) / m_pVertMaster->GetYScaleDev();
+		// scroll_offset < 0 - image moves to the right, first pixel in view decremented
+		// scroll_offset > 0 - image moves to the left, first pixel in view incremented
+		VerticalScrollPixels(PrevMouseY - point.y);
 		PrevMouseY = point.y;
-		ScrollBy(0, dy, TRUE);
 	}
 }
 
@@ -267,17 +263,15 @@ void CVerticalRuler::OnLButtonDown(UINT nFlags, CPoint point)
 	CView::OnLButtonDown(nFlags, point);
 	PrevMouseY = point.y;
 	ButtonPressed = WM_LBUTTONDOWN;
-	//SetCapture();
 }
 
 void CVerticalRuler::OnLButtonUp(UINT nFlags, CPoint point)
 {
-
 	ButtonPressed = 0;
-	if (bIsTrackingSelection)
+	if (m_bIsTrackingSelection)
 	{
 		ReleaseCapture();
-		bIsTrackingSelection = FALSE;
+		m_bIsTrackingSelection = FALSE;
 	}
 	CView::OnLButtonUp(nFlags, point);
 }
@@ -303,7 +297,7 @@ BOOL CVerticalRuler::OnScrollBy(CSize sizeScroll, BOOL /*bDoScroll*/)
 
 void CVerticalRuler::OnCaptureChanged(CWnd *pWnd)
 {
-	bIsTrackingSelection = FALSE;
+	m_bIsTrackingSelection = FALSE;
 	ButtonPressed = 0;
 
 	CView::OnCaptureChanged(pWnd);
@@ -315,15 +309,7 @@ int CVerticalRuler::OnCreate(LPCREATESTRUCT lpCreateStruct)
 	if (BaseClass::OnCreate(lpCreateStruct) == -1)
 		return -1;
 
-	KeepAspectRatio(FALSE);
-	KeepScaleOnResizeX(FALSE);
-	KeepScaleOnResizeY(TRUE);
-	KeepOrgOnResizeX(FALSE);
-	KeepOrgOnResizeY(TRUE);
-	SetMaxExtents(0., 0., 0, 1);
-	//SetExtents(0., 0., 0, 1);
-
-	ShowScrollBar(SB_HORZ, FALSE);
+//    ShowScrollBar(SB_HORZ, FALSE);
 	return 0;
 }
 
@@ -332,27 +318,19 @@ int CHorizontalRuler::OnCreate(LPCREATESTRUCT lpCreateStruct)
 	if (BaseClass::OnCreate(lpCreateStruct) == -1)
 		return -1;
 
-	KeepAspectRatio(FALSE);
-	KeepScaleOnResizeX(TRUE);
-	KeepScaleOnResizeY(FALSE);
-	KeepOrgOnResizeX(TRUE);
-	KeepOrgOnResizeY(FALSE);
-	SetMaxExtents(0., 0., 0, 1);
-	//SetExtents(0., 0., 0, 1);
-
-	ShowScrollBar(SB_VERT, FALSE);
+//    ShowScrollBar(SB_VERT, FALSE);
 
 	return 0;
 }
 
 int CHorizontalRuler::CalculateHeight()
 {
-	CWindowDC dc(GetDesktopWindow());
+	CWindowDC dc(GetDesktopWindow());   // FIXME: Why DesktopWindow?
 	CGdiObjectSave OldFont(dc, dc.SelectStockObject(ANSI_VAR_FONT));
 
 	int height = dc.GetTextExtent(_T("0"), 1).cy;
 
-	return height + 9;
+	return height + 9;              // FIXME: Why 9?
 }
 
 BOOL CVerticalRuler::OnEraseBkgnd(CDC* pDC)

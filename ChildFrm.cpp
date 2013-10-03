@@ -747,17 +747,17 @@ int CWaveMDIChildClient::OnCreate(LPCREATESTRUCT lpCreateStruct)
 	CRect r10(0, 0, 10, 10);
 
 
-	CWnd * pHorRuler = CreateView(RUNTIME_CLASS(CTimeRulerView),
-								r, HorizontalRulerID, pContext);
+	CreateView(RUNTIME_CLASS(CTimeRulerView),
+				r, HorizontalRulerID, pContext);
 
-	CWnd * pVertRuler = CreateView(RUNTIME_CLASS(CAmplitudeRuler),
-									r, VerticalWaveRulerID, pContext);
+	CreateView(RUNTIME_CLASS(CAmplitudeRuler),
+				r, VerticalWaveRulerID, pContext);
 
-	CWnd * pFftRuler = CreateView(RUNTIME_CLASS(CFftRulerView),
-								r, VerticalFftRulerID, pContext, FALSE);    // not visible
+	CreateView(RUNTIME_CLASS(CFftRulerView),
+				r, VerticalFftRulerID, pContext, FALSE);    // not visible
 
-	CWnd * pSpectrumSectionRuler = CreateView(RUNTIME_CLASS(CSpectrumSectionRuler),
-											r, SpectrumSectionRulerID, pContext, FALSE);    // not visible
+	CreateView(RUNTIME_CLASS(CSpectrumSectionRuler),
+				r, SpectrumSectionRulerID, pContext, FALSE);    // not visible
 
 	//CWnd * pOutlineView =
 	CreateView(RUNTIME_CLASS(CWaveOutlineView),
@@ -789,14 +789,14 @@ int CWaveMDIChildClient::OnCreate(LPCREATESTRUCT lpCreateStruct)
 										HBRUSH(COLOR_ACTIVEBORDER + 1)), _T(""),
 					WS_CHILD, r, this, VerticalTrackerID);
 
-	CWnd * pFftView = CreateView(RUNTIME_CLASS(CWaveFftView),
-								r10, FftViewID, pContext, FALSE); //do not show
+	CreateView(RUNTIME_CLASS(CWaveFftView),
+				r10, FftViewID, pContext, FALSE); //do not show
 
 	CWnd * pView = CreateView(RUNTIME_CLASS(CWaveSoapFrontView),
 							r10, WaveViewID, pContext, TRUE);
 
-	CWnd * pTrackView = CreateView(RUNTIME_CLASS(CSpectrumSectionView),
-									r10, SpectrumSectionViewID, pContext, FALSE);
+	CreateView(RUNTIME_CLASS(CSpectrumSectionView),
+				r10, SpectrumSectionViewID, pContext, FALSE);
 
 	GetParentFrame()->SetActiveView(DYNAMIC_DOWNCAST(CView, pView));
 
@@ -849,7 +849,7 @@ void CWaveMDIChildClient::OnHScroll(UINT nSBCode, UINT nPos, CScrollBar* pScroll
 	pView = GetDlgItem(WaveViewID);
 	if (pView != NULL)
 	{
-		pView->SendMessage(WM_HSCROLL,MAKELONG(nSBCode, nPos), (LPARAM)pScrollBar->m_hWnd);
+		pView->SendMessage(WM_HSCROLL,MAKELONG(nSBCode, nPos), (LPARAM) pScrollBar->GetSafeHwnd());
 	}
 }
 
@@ -1044,10 +1044,7 @@ void CVerticalTrackerBar::OnMouseMove(UINT nFlags, CPoint point)
 
 void CVerticalTrackerBar::OnCaptureChanged(CWnd *pWnd)
 {
-	if (pWnd != this)
-	{
-		m_bTracking = FALSE;
-	}
+	m_bTracking = FALSE;
 	CWnd::OnCaptureChanged(pWnd);
 }
 
@@ -1541,14 +1538,20 @@ afx_msg LRESULT CWaveMDIChildClient::OnUwmNotifyViews(WPARAM wParam, LPARAM lPar
 
 		scrollinfo.fMask = 0;
 
-		int NewPage = int((scrollinfo.nMax - scrollinfo.nMin) * m_CurrentTotalSamplesInView / m_CurrentTotalSamplesInExtent);
+		UINT NewPage = UINT((scrollinfo.nMax + 1 - scrollinfo.nMin) * m_CurrentTotalSamplesInView / m_CurrentTotalSamplesInExtent);
+		if (NewPage > scrollinfo.nMax + 1 - scrollinfo.nMin)
+		{
+			// scrollinfo ranges are inclusive
+			NewPage = scrollinfo.nMax + 1 - scrollinfo.nMin;
+		}
+
 		if (NewPage != scrollinfo.nPage)
 		{
 			scrollinfo.nPage = NewPage;
 			scrollinfo.fMask |= SIF_PAGE;
 		}
 
-		int new_pos = int(scrollinfo.nMin + (scrollinfo.nMax - scrollinfo.nMin) * m_CurrentFirstSampleInView / m_CurrentTotalSamplesInExtent);
+		int new_pos = int(scrollinfo.nMin + (scrollinfo.nMax + 1 - scrollinfo.nMin) * m_CurrentFirstSampleInView / m_CurrentTotalSamplesInExtent);
 		if (new_pos != scrollinfo.nPos)
 		{
 			scrollinfo.nPos = new_pos;
