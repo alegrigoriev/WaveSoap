@@ -24,6 +24,8 @@ IMPLEMENT_DYNCREATE(CAmplitudeRuler, CVerticalRuler)
 
 CAmplitudeRuler::CAmplitudeRuler()
 	:m_DrawMode(PercentView)
+	, m_VerticalScale(1.)
+	, m_WaveOffsetY(0.)
 {
 }
 
@@ -32,7 +34,7 @@ CAmplitudeRuler::~CAmplitudeRuler()
 }
 
 
-BEGIN_MESSAGE_MAP(CAmplitudeRuler, CVerticalRuler)
+BEGIN_MESSAGE_MAP(CAmplitudeRuler, BaseClass)
 	//{{AFX_MSG_MAP(CAmplitudeRuler)
 	ON_WM_CREATE()
 	ON_WM_LBUTTONDBLCLK()
@@ -63,105 +65,51 @@ static int fround(double d)
 
 void CAmplitudeRuler::OnDraw(CDC* pDC)
 {
+	CWaveSoapFrontDoc* pDoc = GetDocument();
+	if (! pDoc->m_WavFile.IsOpen())
+	{
+		return;
+	}
+
 	CGdiObjectSave OldFont(pDC, pDC->SelectStockObject(ANSI_VAR_FONT));
 	CGdiObjectSave OldPen(pDC, pDC->SelectStockObject(BLACK_PEN));
 
-	switch (m_DrawMode)
-	{
-	case PercentView:
-		DrawPercents(pDC);
-		break;
-	case DecibelView:
-		DrawDecibels(pDC);
-		break;
-	default:
-		DrawSamples(pDC);
-		break;
-	}
-}
-
-void CAmplitudeRuler::DrawSamples(CDC * pDC)
-{
-	CWaveSoapFrontDoc* pDoc = GetDocument();
-	if (! pDoc->m_WavFile.IsOpen())
-	{
-		return;
-	}
-
-	CWaveSoapFrontView * pMasterView = DYNAMIC_DOWNCAST(CWaveSoapFrontView, m_pVertMaster);
-	if (NULL == pMasterView)
-	{
-		return; // not attached
-	}
-
 	CRect cr;
 	GetClientRect(cr);
 
-	TEXTMETRIC tm;
-	pDC->GetTextMetrics( & tm);
 	pDC->SetTextAlign(TA_BOTTOM | TA_RIGHT);
 	pDC->SetTextColor(0x000000);   // black
 	pDC->SetBkMode(TRANSPARENT);
-
-	int nVertStep = GetSystemMetrics(SM_CYMENU);
-	double VerticalScale = pMasterView->m_VerticalScale;
 
 	NUMBER_OF_CHANNELS nChannels = pDoc->WaveChannels();
 
 	for (int ch = 0; ch < nChannels; ch++)
 	{
 		CRect chr;
-		pMasterView->GetChannelRect(ch, chr);
-		CRect clipr;
-		pMasterView->GetChannelClipRect(ch, clipr);
+		// for all channels, the rectangle is of the same height
+		chr.top = m_Heights.ch[ch].top; //((cr.bottom - cr.top + 1) * ch) / nChannels;
+		chr.bottom = m_Heights.ch[ch].bottom;    //chr.top + (cr.bottom - cr.top + 1) / nChannels - 1;
+		chr.left = cr.left;
+		chr.right = cr.right;
 
-		int nHeight = chr.Height();
+		CRect clipr;    // channel clip rect
+		// for all channels, the rectangle is of the same height
+		clipr.top = m_Heights.ch[ch].clip_top;   //(cr.bottom - cr.top + 1) * ch / nChannels;
+		clipr.bottom = m_Heights.ch[ch].clip_bottom;    //(cr.bottom - cr.top + 1) * (ch + 1) / nChannels - 1;
+		clipr.left = cr.left;
+		clipr.right = cr.right;
 
-		int nSampleUnits = int(nVertStep * 65536. / (nHeight * VerticalScale));
-
-		// round sample units to 10 or 5
-		int step;
-		for (step = 1; step < nSampleUnits; step *= 10)
+		switch (m_DrawMode)
 		{
-			if (step * 2 >= nSampleUnits)
-			{
-				step *= 2;
-				break;
-			}
-			if (step * 5 >= nSampleUnits)
-			{
-				step *= 5;
-				break;
-			}
-		}
-
-		WaveCalculate WaveToY(pMasterView->m_WaveOffsetY, VerticalScale, chr.top, chr.bottom);
-
-		int ClipHigh = clipr.bottom - tm.tmHeight / 2;
-		int ClipLow = clipr.top + tm.tmHeight / 2;
-
-		int yLow = WaveToY.ConvertToSample(ClipHigh);
-		// round to the next multiple of step
-		yLow += (step * 0x10000 - yLow) % step;
-
-		int yHigh = WaveToY.ConvertToSample(ClipLow);
-		yHigh -= (step * 0x10000 + yHigh) % step;
-		ASSERT(yLow <= yHigh);
-
-		for (int y = yLow; y <= yHigh; y += step)
-		{
-			int yDev = WaveToY(y);
-
-			if (0 == y)
-			{
-				if (TRACE_DRAWING) TRACE("CAmplitudeRuler Zero pos=%d\n", yDev);
-			}
-
-			pDC->MoveTo(cr.right - 3, yDev);
-			pDC->LineTo(cr.right, yDev);
-			CString s = LtoaCS(y);
-
-			pDC->TextOut(cr.right - 3, yDev + tm.tmHeight / 2, s);
+		case PercentView:
+			DrawChannelPercents(pDC, chr, clipr);
+			break;
+		case DecibelView:
+			DrawChannelDecibels(pDC, chr, clipr);
+			break;
+		default:
+			DrawChannelSamples(pDC, chr, clipr);
+			break;
 		}
 
 		if (ch < nChannels - 1)
@@ -172,209 +120,194 @@ void CAmplitudeRuler::DrawSamples(CDC * pDC)
 	}
 }
 
-void CAmplitudeRuler::DrawPercents(CDC * pDC)
+void CAmplitudeRuler::DrawChannelSamples(CDC * pDC, CRect const & chr, CRect const & clipr)
 {
-	CWaveSoapFrontDoc* pDoc = GetDocument();
-	if (! pDoc->m_WavFile.IsOpen())
-	{
-		return;
-	}
-
-	CWaveSoapFrontView * pMasterView = DYNAMIC_DOWNCAST(CWaveSoapFrontView, m_pVertMaster);
-	if (NULL == pMasterView)
-	{
-		return; // not attached
-	}
-
-	CRect cr;
-	GetClientRect(cr);
-
 	TEXTMETRIC tm;
 	pDC->GetTextMetrics( & tm);
-	pDC->SetTextAlign(TA_BOTTOM | TA_RIGHT);
-	pDC->SetTextColor(0x000000);   // black
-	pDC->SetBkMode(TRANSPARENT);
+
+	int nHeight = chr.Height();
 
 	int nVertStep = GetSystemMetrics(SM_CYMENU);
 
-	NUMBER_OF_CHANNELS nChannels = pDoc->WaveChannels();
+	int nSampleUnits = int(nVertStep * 65536. / (nHeight * m_VerticalScale));
 
-	double VerticalScale = pMasterView->m_VerticalScale;
-
-	for (int ch = 0; ch < nChannels; ch++)
+	// round sample units to 10 or 5
+	int step;
+	for (step = 1; step < nSampleUnits; step *= 10)
 	{
-		CRect chr;
-		pMasterView->GetChannelRect(ch, chr);
-		CRect clipr;
-		pMasterView->GetChannelClipRect(ch, clipr);
-
-		int nHeight = chr.Height();
-
-		double nSampleUnits = nVertStep * 200. / (nHeight * VerticalScale);
-
-		// round sample units to 10 or 5
-		int step;
-		for (step = 1; step < nSampleUnits; step *= 10)
+		if (step * 2 >= nSampleUnits)
 		{
-			if (step * 2 >= nSampleUnits)
-			{
-				step *= 2;
-				break;
-			}
-			if (step * 5 >= nSampleUnits)
-			{
-				step *= 5;
-				break;
-			}
+			step *= 2;
+			break;
+		}
+		if (step * 5 >= nSampleUnits)
+		{
+			step *= 5;
+			break;
+		}
+	}
+
+	WaveCalculate WaveToY(m_WaveOffsetY, m_VerticalScale, chr.top, chr.bottom);
+
+	int ClipHigh = clipr.bottom - tm.tmHeight / 2;
+	int ClipLow = clipr.top + tm.tmHeight / 2;
+
+	int yLow = WaveToY.ConvertToSample(ClipHigh);
+	// round to the next multiple of step
+	yLow += (step * 0x10000 - yLow) % step;
+
+	int yHigh = WaveToY.ConvertToSample(ClipLow);
+	yHigh -= (step * 0x10000 + yHigh) % step;
+	ASSERT(yLow <= yHigh);
+
+	for (int y = yLow; y <= yHigh; y += step)
+	{
+		int yDev = WaveToY(y);
+
+		if (0 == y)
+		{
+			if (TRACE_DRAWING) TRACE("CAmplitudeRuler Zero pos=%d\n", yDev);
 		}
 
-		WaveCalculate WaveToY(pMasterView->m_WaveOffsetY, VerticalScale, chr.top, chr.bottom);
+		pDC->MoveTo(chr.right - 3, yDev);
+		pDC->LineTo(chr.right, yDev);
+		CString s = LtoaCS(y);
 
-		int ClipHigh = clipr.bottom - tm.tmHeight / 2;
-		int ClipLow = clipr.top + tm.tmHeight / 2;
-
-		int yLow = int(100. / 32768. * WaveToY.ConvertToSample(ClipHigh));
-		// round to the next multiple of step
-		yLow += (step * 0x10000 - yLow) % step;
-
-		int yHigh = int(100. / 32768. * WaveToY.ConvertToSample(ClipLow));
-
-		yHigh -= (step * 0x10000 + yHigh) % step;
-
-		for (int y = yLow; y <= yHigh; y += step)
-		{
-			int yDev= WaveToY(int(fround(y * 32768. / 100.)));
-
-			if (0 == y)
-			{
-				if (TRACE_DRAWING) TRACE("CAmplitudeRuler Zero pos=%d\n", yDev);
-			}
-
-			pDC->MoveTo(cr.right - 3, yDev);
-			pDC->LineTo(cr.right, yDev);
-			CString s;
-			s.Format(_T("%d%%"), y);
-
-			pDC->TextOut(cr.right - 3, yDev + tm.tmHeight / 2, s);
-		}
-
-		if (ch < nChannels - 1)
-		{
-			pDC->MoveTo(0, chr.bottom);
-			pDC->LineTo(cr.right, chr.bottom);
-		}
+		pDC->TextOut(chr.right - 3, yDev + tm.tmHeight / 2, s);
 	}
 }
 
-void CAmplitudeRuler::DrawDecibels(CDC * pDC)
+void CAmplitudeRuler::DrawChannelPercents(CDC * pDC, CRect const & chr, CRect const & clipr)
+{
+	TEXTMETRIC tm;
+	pDC->GetTextMetrics( & tm);
+
+	int nVertStep = GetSystemMetrics(SM_CYMENU);
+
+	int nHeight = chr.Height();
+
+	double nSampleUnits = nVertStep * 200. / (nHeight * m_VerticalScale);
+
+	// round sample units to 10 or 5
+	int step;
+	for (step = 1; step < nSampleUnits; step *= 10)
+	{
+		if (step * 2 >= nSampleUnits)
+		{
+			step *= 2;
+			break;
+		}
+		if (step * 5 >= nSampleUnits)
+		{
+			step *= 5;
+			break;
+		}
+	}
+
+	WaveCalculate WaveToY(m_WaveOffsetY, m_VerticalScale, chr.top, chr.bottom);
+
+	int ClipHigh = clipr.bottom - tm.tmHeight / 2;
+	int ClipLow = clipr.top + tm.tmHeight / 2;
+
+	int yLow = int(100. / 32768. * WaveToY.ConvertToSample(ClipHigh));
+	// round to the next multiple of step
+	yLow += (step * 0x10000 - yLow) % step;
+
+	int yHigh = int(100. / 32768. * WaveToY.ConvertToSample(ClipLow));
+
+	yHigh -= (step * 0x10000 + yHigh) % step;
+
+	for (int y = yLow; y <= yHigh; y += step)
+	{
+		int yDev= WaveToY(int(fround(y * 32768. / 100.)));
+
+		if (0 == y)
+		{
+			if (TRACE_DRAWING) TRACE("CAmplitudeRuler Zero pos=%d\n", yDev);
+		}
+
+		pDC->MoveTo(chr.right - 3, yDev);
+		pDC->LineTo(chr.right, yDev);
+		CString s;
+		s.Format(_T("%d%%"), y);
+
+		pDC->TextOut(chr.right - 3, yDev + tm.tmHeight / 2, s);
+	}
+}
+
+void CAmplitudeRuler::DrawChannelDecibels(CDC * pDC, CRect const & chr, CRect const & clipr)
 {
 	// decibels are drawn with 1.5 dB step
 	// if there is not enough space to draw next 2*step, it doubles the step
-	CWaveSoapFrontDoc* pDoc = GetDocument();
-	if (! pDoc->m_WavFile.IsOpen())
-	{
-		return;
-	}
-
-	CWaveSoapFrontView * pMasterView = DYNAMIC_DOWNCAST(CWaveSoapFrontView, m_pVertMaster);
-	if (NULL == pMasterView)
-	{
-		return; // not attached
-	}
-
-	CRect cr;
-	GetClientRect(cr);
-
 	TEXTMETRIC tm;
 	pDC->GetTextMetrics( & tm);
-	pDC->SetTextAlign(TA_BOTTOM | TA_RIGHT);
-	pDC->SetTextColor(0x000000);   // black
-	pDC->SetBkMode(TRANSPARENT);
 
-	NUMBER_OF_CHANNELS nChannels = pDoc->WaveChannels();
+	double nVertStep = -GetSystemMetrics(SM_CYMENU) / (m_VerticalScale);// FIXME
 
-	double VerticalScale = pMasterView->m_VerticalScale;
+	int ClipHigh = clipr.bottom - tm.tmHeight / 2;
+	int ClipLow = clipr.top + tm.tmHeight / 2;
 
-	double nVertStep = -GetSystemMetrics(SM_CYMENU) / (VerticalScale /** pMasterView->GetYScaleDev()*/);// FIXME
+	WaveCalculate WaveToY(m_WaveOffsetY, m_VerticalScale, chr.top, chr.bottom);
 
-	for (int ch = 0; ch < nChannels; ch++)
+	int yLow = WaveToY.ConvertToSample(ClipHigh);
+
+	int yHigh = WaveToY.ConvertToSample(ClipLow);
+
+	ASSERT(yLow <= yHigh);
+
+	double MultStep = 0.841395141; //pow(10., -1.5 / 20.);
+	double DbStep = -1.5;
+
+	double CurrDb = -1.5;
+	double CurrVal = 27570.836;
+
+	while (CurrDb > -120.)
 	{
-		CRect chr;
-		pMasterView->GetChannelRect(ch, chr);
-		CRect clipr;
-		pMasterView->GetChannelClipRect(ch, clipr);
-
-		int ClipHigh = clipr.bottom - tm.tmHeight / 2;
-		int ClipLow = clipr.top + tm.tmHeight / 2;
-
-		WaveCalculate WaveToY(pMasterView->m_WaveOffsetY, VerticalScale, chr.top, chr.bottom);
-
-		int yLow = WaveToY.ConvertToSample(ClipHigh);
-
-		int yHigh = WaveToY.ConvertToSample(ClipLow);
-
-		ASSERT(yLow <= yHigh);
-
-		double MultStep = 0.841395141; //pow(10., -1.5 / 20.);
-		double DbStep = -1.5;
-
-		double CurrDb = -1.5;
-		double CurrVal = 27570.836;
-
-		while (CurrDb > -120.)
+		double yDev1 = CurrVal;
+		if (yDev1 < nVertStep)
 		{
-			double yDev1 = CurrVal;
-			if (yDev1 < nVertStep)
-			{
-				break;  // can't draw anymore
-			}
-			// if it's not multiple of DbStep*2, see if we need to multiply step and skip this value
-			if (0. != fmod(CurrDb, DbStep * 2.))
-			{
-				// check if we have enough space to draw the next value
-				double yDev2 = CurrVal * MultStep;
-
-				if (yDev1 - yDev2 < nVertStep)
-				{
-					CurrVal *= MultStep;
-					MultStep *= MultStep;
-
-					CurrDb += DbStep;
-					DbStep *= 2;
-					continue;
-				}
-			}
-
-			CString s;
-			s.Format(_T("%.1f dB"), CurrDb);
-
-			if (CurrVal >= yLow && CurrVal <= yHigh)
-			{
-				int yDev = (int)WaveToY(CurrVal);
-
-				pDC->MoveTo(cr.right - 3, yDev);
-				pDC->LineTo(cr.right, yDev);
-
-				pDC->TextOut(cr.right - 3, yDev + tm.tmHeight / 2, s);
-			}
-			if (-CurrVal >= yLow && -CurrVal <= yHigh)
-			{
-				int yDev = (int)WaveToY(-CurrVal);
-				pDC->MoveTo(cr.right - 3, yDev);
-				pDC->LineTo(cr.right, yDev);
-
-				pDC->TextOut(cr.right - 3, yDev + tm.tmHeight / 2, s);
-			}
-
-			if (ch < nChannels - 1)
-			{
-				pDC->MoveTo(0, chr.bottom);
-				pDC->LineTo(cr.right, chr.bottom);
-			}
-
-			CurrVal *= MultStep;
-			CurrDb += DbStep;
+			break;  // can't draw anymore
 		}
+		// if it's not multiple of DbStep*2, see if we need to multiply step and skip this value
+		if (0. != fmod(CurrDb, DbStep * 2.))
+		{
+			// check if we have enough space to draw the next value
+			double yDev2 = CurrVal * MultStep;
+
+			if (yDev1 - yDev2 < nVertStep)
+			{
+				CurrVal *= MultStep;
+				MultStep *= MultStep;
+
+				CurrDb += DbStep;
+				DbStep *= 2;
+				continue;
+			}
+		}
+
+		CString s;
+		s.Format(_T("%.1f dB"), CurrDb);
+
+		if (CurrVal >= yLow && CurrVal <= yHigh)
+		{
+			int yDev = (int)WaveToY(CurrVal);
+
+			pDC->MoveTo(chr.right - 3, yDev);
+			pDC->LineTo(chr.right, yDev);
+
+			pDC->TextOut(chr.right - 3, yDev + tm.tmHeight / 2, s);
+		}
+		if (-CurrVal >= yLow && -CurrVal <= yHigh)
+		{
+			int yDev = (int)WaveToY(-CurrVal);
+			pDC->MoveTo(chr.right - 3, yDev);
+			pDC->LineTo(chr.right, yDev);
+
+			pDC->TextOut(chr.right - 3, yDev + tm.tmHeight / 2, s);
+		}
+
+		CurrVal *= MultStep;
+		CurrDb += DbStep;
 	}
 }
 
@@ -387,7 +320,7 @@ int CAmplitudeRuler::CalculateWidth()
 	return Width;
 }
 
-void CAmplitudeRuler::OnUpdate(CView* /*pSender*/, LPARAM lHint, CObject* pHint)
+void CAmplitudeRuler::OnUpdate(CView* /*pSender*/, LPARAM lHint, CObject* /*pHint*/)
 {
 	if (lHint == CWaveSoapFrontDoc::UpdateWholeFileChanged)
 	{
@@ -396,18 +329,24 @@ void CAmplitudeRuler::OnUpdate(CView* /*pSender*/, LPARAM lHint, CObject* pHint)
 	}
 }
 
+void CAmplitudeRuler::VerticalScrollPixels(int Pixels)
+{
+	double scroll = Pixels * m_VerticalScale;
+	NotifySiblingViews(AmplitudeOffsetChanged, &scroll);
+}
+
 /////////////////////////////////////////////////////////////////////////////
 // CAmplitudeRuler diagnostics
 
 #ifdef _DEBUG
 void CAmplitudeRuler::AssertValid() const
 {
-	CVerticalRuler::AssertValid();
+	BaseClass::AssertValid();
 }
 
 void CAmplitudeRuler::Dump(CDumpContext& dc) const
 {
-	CVerticalRuler::Dump(dc);
+	BaseClass::Dump(dc);
 }
 
 CWaveSoapFrontDoc* CAmplitudeRuler::GetDocument() // non-debug version is inline
@@ -425,47 +364,15 @@ int CAmplitudeRuler::OnCreate(LPCREATESTRUCT lpCreateStruct)
 	if (CVerticalRuler::OnCreate(lpCreateStruct) == -1)
 		return -1;
 
-	KeepAspectRatio(FALSE);
-	KeepScaleOnResizeX(FALSE);
-	KeepScaleOnResizeY(FALSE);
-	KeepOrgOnResizeX(FALSE);
-	KeepOrgOnResizeY(TRUE);
-
-	UpdateMaxExtents();
-
-	ShowScrollBar(SB_VERT, FALSE);
-	ShowScrollBar(SB_HORZ, FALSE);
-
 	return 0;
-}
-
-void CAmplitudeRuler::UpdateMaxExtents()
-{
-	NUMBER_OF_CHANNELS nChannels = GetDocument()->WaveChannels();
-
-	int nLowExtent = -32768;
-	int nHighExtent = 32767;
-	if (nChannels > 1)
-	{
-		nLowExtent = -0x10000;
-		nHighExtent = 0x10000;
-	}
-
-	// don't want to go through the master window
-	SetMaxExtentsMaster(0., 1., nLowExtent, nHighExtent);
-	SetExtents(0., 1., nLowExtent, nHighExtent);
 }
 
 void CAmplitudeRuler::OnLButtonDblClk(UINT nFlags, CPoint point)
 {
 	CVerticalRuler::OnLButtonDblClk(nFlags, point);
 	// set default scale
-	CWaveSoapFrontView * pView =
-		DYNAMIC_DOWNCAST(CWaveSoapFrontView, m_pVertMaster);
-	if (NULL != pView)
-	{
-		pView->OnViewZoomvertNormal();
-	}
+	double one = 1.0;
+	NotifySiblingViews(FftVerticalScaleChanged, &one);
 }
 
 void CAmplitudeRuler::OnViewAmplRulerSamples()
@@ -501,12 +408,42 @@ void CAmplitudeRuler::OnUpdateAmplRulerDecibels(CCmdUI * pCmdUI)
 	pCmdUI->SetRadio(DecibelView == m_DrawMode);
 }
 
+afx_msg LRESULT CAmplitudeRuler::OnUwmNotifyViews(WPARAM wParam, LPARAM lParam)
+{
+	switch (wParam)
+	{
+	case VerticalScaleChanged:
+		m_VerticalScale = *(double*) lParam;
+		Invalidate();
+		break;
+
+	case AmplitudeOffsetChanged:
+		break;
+
+	case AmplitudeScrollPixels:
+		break;
+
+	case ChannelHeightsChanged:
+	{
+		NotifyChannelHeightsData * data = (NotifyChannelHeightsData*) lParam;
+		m_Heights = *data;
+	}
+		break;
+	}
+
+	return 0;
+}
+
 /////////////////////////////////////////////////////////////////////////////
 // CSpectrumSectionRuler
 
 IMPLEMENT_DYNCREATE(CSpectrumSectionRuler, CHorizontalRuler)
 
 CSpectrumSectionRuler::CSpectrumSectionRuler()
+	: m_DbOffset(0.)
+	, m_DbRange(120.)   // max dB range
+	, m_DbRangeInView(70.)
+	, m_DbPerPixel(1.)
 {
 }
 
@@ -515,7 +452,7 @@ CSpectrumSectionRuler::~CSpectrumSectionRuler()
 }
 
 
-BEGIN_MESSAGE_MAP(CSpectrumSectionRuler, CHorizontalRuler)
+BEGIN_MESSAGE_MAP(CSpectrumSectionRuler, BaseClass)
 	//{{AFX_MSG_MAP(CSpectrumSectionRuler)
 	//}}AFX_MSG_MAP
 	//ON_WM_CREATE()
@@ -525,18 +462,22 @@ END_MESSAGE_MAP()
 /////////////////////////////////////////////////////////////////////////////
 // CSpectrumSectionRuler drawing
 
+double CSpectrumSectionRuler::WindowXToDb(int x) const
+{
+	return x * m_DbPerPixel + m_DbOffset;
+}
+
+int CSpectrumSectionRuler::DbToWindowX(double db) const
+{
+	return int((db - m_DbOffset) / m_DbPerPixel + 0.5);     // round
+}
+
 void CSpectrumSectionRuler::OnDraw(CDC* pDC)
 {
 	CWaveSoapFrontDoc* pDoc = GetDocument();
 	if (! pDoc->m_WavFile.IsOpen())
 	{
 		return;
-	}
-
-	CSpectrumSectionView * pMasterView = DYNAMIC_DOWNCAST(CSpectrumSectionView, m_pHorMaster);
-	if (NULL == pMasterView)
-	{
-		return; // not attached
 	}
 
 	CGdiObjectSave OldFont(pDC, pDC->SelectStockObject(ANSI_VAR_FONT));
@@ -547,8 +488,8 @@ void CSpectrumSectionRuler::OnDraw(CDC* pDC)
 	GetClientRect( & cr);
 
 	int nTickCount;
-	double LeftExt = fabs(WindowToWorldX(cr.left));
-	double RightExt = fabs(WindowToWorldX(cr.right));
+	double LeftExt = fabs(WindowXToDb(cr.left));
+	double RightExt = fabs(WindowXToDb(cr.right));
 	double MaxExt = RightExt;
 	if (MaxExt < LeftExt)
 	{
@@ -568,7 +509,7 @@ void CSpectrumSectionRuler::OnDraw(CDC* pDC)
 
 	int nLength = pDC->GetTextExtent(MaxText, (int)_tcslen(MaxText)).cx;
 
-	double Dist = fabs(1.5 * nLength / GetXScaleDev());
+	double Dist = fabs(1.5 * nLength / m_DbPerPixel);
 	// select distance between ticks
 	double multiplier = 1.;
 	double divisor = 1.;
@@ -631,13 +572,13 @@ void CSpectrumSectionRuler::OnDraw(CDC* pDC)
 	pDC->LineTo(cr.right, cr.bottom - 3);
 
 	double DistDb = Dist * multiplier / divisor;
-	double nFirstDb = floor(WindowToWorldX(cr.right + nLength)
+	double nFirstDb = floor(WindowXToDb(cr.right + nLength)
 							/ DistDb) * DistDb;
 
 	for(int nTick = 0; ; nTick++)
 	{
 		double Db = nFirstDb + DistDb * nTick / double(nTickCount);
-		int x = WorldToWindowXrnd(Db);
+		int x = DbToWindowX(Db);
 
 		if (x < cr.left - nLength)
 		{
@@ -675,6 +616,7 @@ void CSpectrumSectionRuler::OnDraw(CDC* pDC)
 void CSpectrumSectionRuler::OnUpdate( CView* /*pSender*/,
 									LPARAM /*lHint*/, CObject* /*pHint*/ )
 {
+	// empty. Don't invalidate on updates
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -703,50 +645,26 @@ CWaveSoapFrontDoc* CSpectrumSectionRuler::GetDocument() // non-debug version is 
 
 int CSpectrumSectionRuler::OnCreate(LPCREATESTRUCT lpCreateStruct)
 {
-	if (CHorizontalRuler::OnCreate(lpCreateStruct) == -1)
-		return -1;
-#if 0
-	KeepAspectRatio(FALSE);
-	KeepScaleOnResizeX(FALSE);
-	KeepScaleOnResizeY(FALSE);
-	KeepOrgOnResizeX(FALSE);
-	KeepOrgOnResizeY(TRUE);
-
-	UpdateMaxExtents();
-
-	ShowScrollBar(SB_VERT, FALSE);
-	ShowScrollBar(SB_HORZ, FALSE);
-#endif
-	return 0;
+	return CHorizontalRuler::OnCreate(lpCreateStruct);
 }
-
-void CSpectrumSectionRuler::UpdateMaxExtents()
+void CSpectrumSectionRuler::HorizontalScrollByPixels(int Pixels)
 {
-#if 0
-	NUMBER_OF_CHANNELS nChannels = GetDocument()->WaveChannels();
-	int nLowExtent = -32768;
-	int nHighExtent = 32767;
-	if (nChannels > 1)
-	{
-		nLowExtent = -0x10000;
-		nHighExtent = 0x10000;
-	}
-
-	// don't want to go through the master window
-	SetMaxExtentsMaster(0., 1., nLowExtent, nHighExtent);
-	SetExtents(0., 1., nLowExtent, nHighExtent);
-#endif
+	// TODO
 }
-
-
-
-afx_msg LRESULT CAmplitudeRuler::OnUwmNotifyViews(WPARAM wParam, LPARAM lParam)
-{
-	return 0;
-}
-
 
 afx_msg LRESULT CSpectrumSectionRuler::OnUwmNotifyViews(WPARAM wParam, LPARAM lParam)
 {
+	switch (wParam)
+	{
+	case SpectrumSectionDbOffsetChange:
+		break;
+
+	case SpectrumSectionDbScaleChange:
+		break;
+
+	case SpectrumSectionScrollPixels:
+		break;
+	}
+
 	return 0;
 }

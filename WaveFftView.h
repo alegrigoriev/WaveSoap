@@ -12,22 +12,15 @@
 // CWaveFftView view
 #include "WaveSoapFrontView.h"
 
-class CWaveFftView : public CWaveSoapFrontView
+class CWaveFftView : public CWaveSoapViewBase
 {
-	typedef CWaveSoapFrontView BaseClass;
+	typedef CWaveSoapViewBase BaseClass;
 protected:
 	CWaveFftView();           // protected constructor used by dynamic creation
 	DECLARE_DYNCREATE(CWaveFftView)
 
 // Attributes
 public:
-	friend class CFftRulerView;
-	enum
-	{
-		FFT_OFFSET_CHANGED = 0x00300000,
-		FFT_SCALE_CHANGED = 0x00400000,
-		FFT_BANDS_CHANGED = 0x00500000,
-	};
 	static void FillLogPalette(LOGPALETTE * pal, int nEntries);
 // Operations
 public:
@@ -51,6 +44,7 @@ protected:
 	virtual void Dump(CDumpContext& dc) const;
 #endif
 
+	DWORD ClientHitTest(CPoint p) const;
 	// FFT array is stored as circular buffer of FFT columns.
 	// each column is a row of the array of m_FftResultArrayHeight bytes
 	// m_IndexOfFftBegin is number of row with m_FftResultBegin
@@ -68,6 +62,7 @@ protected:
 
 	double m_FftLogRange;     // what dB zero value corresponds
 	double m_FirstbandVisible;     // how much the chart is scrolled. 0 = DC is visible
+	double m_VerticalScale;
 
 	ATL::CHeapPtr<float> m_pFftWindow;
 	typedef double DATA;
@@ -93,6 +88,7 @@ protected:
 	long SampleToFftColumn(SAMPLE_INDEX sample);
 	long SampleToFftColumnLowerBound(SAMPLE_INDEX sample);
 	long SampleToFftColumnUpperBound(SAMPLE_INDEX sample);
+
 	SAMPLE_INDEX FftColumnToDisplaySample(long Column);
 	SAMPLE_INDEX SampleToFftBaseSample(SAMPLE_INDEX sample);
 	SAMPLE_INDEX DisplaySampleToFftBaseSample(SAMPLE_INDEX sample);
@@ -135,6 +131,9 @@ protected:
 	afx_msg void OnUpdateFftWindowNuttall(CCmdUI* pCmdUI);
 	afx_msg void OnViewDecreaseFftBands();
 	afx_msg void OnViewIncreaseFftBands();
+	afx_msg void OnUpdateViewZoomInVert(CCmdUI* pCmdUI);
+	afx_msg void OnUpdateViewZoomOutVert(CCmdUI* pCmdUI);
+	afx_msg void OnUpdateViewZoomvertNormal(CCmdUI* pCmdUI);
 	//}}AFX_MSG
 	void OnUpdateBands(CCmdUI* pCmdUI, int number);
 	void OnSetBands(int order);

@@ -14,6 +14,7 @@
 
 class CAmplitudeRuler : public CVerticalRuler
 {
+	typedef CVerticalRuler BaseClass;
 protected:
 	CAmplitudeRuler();           // protected constructor used by dynamic creation
 	DECLARE_DYNCREATE(CAmplitudeRuler)
@@ -32,10 +33,9 @@ public:
 protected:
 	virtual void OnDraw(CDC* pDC);      // overridden to draw this view
 	//}}AFX_VIRTUAL
-
+	virtual void VerticalScrollPixels(int Pixels);
 // Implementation
 protected:
-	void UpdateMaxExtents();
 	virtual ~CAmplitudeRuler();
 	virtual UINT GetPopupMenuID(CPoint) { return IDR_MENU_AMPLITUDE_RULER; }
 #ifdef _DEBUG
@@ -43,6 +43,10 @@ protected:
 	virtual void Dump(CDumpContext& dc) const;
 #endif
 protected:
+	double m_VerticalScale;
+	double m_WaveOffsetY;
+	NotifyChannelHeightsData m_Heights;
+
 	enum eDrawMode
 	{
 		SampleView = 0,
@@ -50,9 +54,10 @@ protected:
 		DecibelView = 2,
 	};
 	eDrawMode m_DrawMode;
-	void DrawSamples(CDC * pDC);
-	void DrawPercents(CDC * pDC);
-	void DrawDecibels(CDC * pDC);
+
+	void DrawChannelSamples(CDC * pDC, CRect const & chr, CRect const & clipr);
+	void DrawChannelPercents(CDC * pDC, CRect const & chr, CRect const & clipr);
+	void DrawChannelDecibels(CDC * pDC, CRect const & chr, CRect const & clipr);
 
 	// Generated message map functions
 	//{{AFX_MSG(CAmplitudeRuler)
@@ -79,6 +84,7 @@ inline CWaveSoapFrontDoc* CAmplitudeRuler::GetDocument()
 
 class CSpectrumSectionRuler : public CHorizontalRuler
 {
+	typedef CHorizontalRuler BaseClass;
 protected:
 	CSpectrumSectionRuler();           // protected constructor used by dynamic creation
 	DECLARE_DYNCREATE(CSpectrumSectionRuler)
@@ -95,10 +101,12 @@ public:
 protected:
 	virtual void OnDraw(CDC* pDC);      // overridden to draw this view
 	//}}AFX_VIRTUAL
+	virtual void HorizontalScrollByPixels(int Pixels);
+	double WindowXToDb(int x) const;
+	int DbToWindowX(double db) const;
 
 	// Implementation
 protected:
-	void UpdateMaxExtents();
 	virtual ~CSpectrumSectionRuler();
 	virtual UINT GetPopupMenuID(CPoint) { return IDR_MENU_POPUP_SS_RULER; }
 #ifdef _DEBUG
@@ -106,6 +114,10 @@ protected:
 	virtual void Dump(CDumpContext& dc) const;
 #endif
 
+	double m_DbOffset;
+	double m_DbRange;
+	double m_DbRangeInView;
+	double m_DbPerPixel;
 	// Generated message map functions
 protected:
 	afx_msg int OnCreate(LPCREATESTRUCT lpCreateStruct);

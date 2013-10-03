@@ -37,7 +37,12 @@ CSpectrumSectionView::CSpectrumSectionView()
 	, m_nFftSumSize(0)
 	, m_PlaybackSample(0)
 	, m_pNoiseReduction(NULL)
+	, m_DbOffset(0.)
+	, m_DbRange(120.)   // max dB range
+	, m_DbRangeInView(70.)
+	, m_DbPerPixel(1.)
 {
+	memzero(m_Heights);
 }
 
 CSpectrumSectionView::~CSpectrumSectionView()
@@ -727,13 +732,6 @@ void CSpectrumSectionView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint
 		Invalidate();
 		return;
 	}
-	else if (lHint == CWaveFftView::FFT_BANDS_CHANGED)
-	{
-		m_bShowNoiseThreshold = false;
-		delete[] m_pWindow;
-		m_pWindow = NULL;
-		Invalidate();
-	}
 	else if (lHint == pDoc->UpdateNoiseThresholdChanged
 			&& NULL != pHint)
 	{
@@ -939,47 +937,49 @@ UINT CSpectrumSectionView::GetPopupMenuID(CPoint /*point*/)
 
 void CSpectrumSectionView::GetChannelRect(int Channel, RECT * pR) const
 {
-	CWaveSoapFrontDoc * pDoc = GetDocument();
-	int nChannels = pDoc->WaveChannels();
-
 	GetClientRect(pR);
-	if (Channel >= nChannels)
+	if (Channel >= m_Heights.NumChannels)
 	{
 		pR->top = pR->bottom;
 		pR->bottom += 2;
 		return;
 	}
 
-	int h = (pR->bottom - pR->top + 1) / nChannels;
-	// for all channels, the rectangle is of the same height
-	// for all channels, the rectangle is of the same height
-	pR->top = ((pR->bottom - pR->top + 1) * Channel) / nChannels;
-	pR->bottom = pR->top + h - 1;
+	pR->top = m_Heights.ch[Channel].top;
+	pR->bottom = m_Heights.ch[Channel].bottom;
 }
 
 void CSpectrumSectionView::GetChannelClipRect(int Channel, RECT * pR) const
 {
-	CWaveSoapFrontDoc * pDoc = GetDocument();
-	int nChannels = pDoc->WaveChannels();
-
 	GetClientRect(pR);
-	if (Channel >= nChannels)
+	if (Channel >= m_Heights.NumChannels)
 	{
 		pR->top = pR->bottom;
 		pR->bottom += 2;
 		return;
 	}
 
-	// for all channels, the rectangle is of the same height
-	// for all channels, the rectangle is of the same height
-	int h = pR->bottom - pR->top + 1;
-	pR->top = (h * Channel) / nChannels;
-	pR->bottom = (h * (Channel+1)) / nChannels - 1;
+	pR->top = m_Heights.ch[Channel].clip_top;
+	pR->bottom = m_Heights.ch[Channel].clip_bottom;
 }
 
 
 
 afx_msg LRESULT CSpectrumSectionView::OnUwmNotifyViews(WPARAM wParam, LPARAM lParam)
 {
+	switch (wParam)
+	{
+	case FftBandsChanged:
+		m_bShowNoiseThreshold = false;
+		delete[] m_pWindow;
+		m_pWindow = NULL;
+		Invalidate();
+		break;
+	case ChannelHeightsChanged:
+		m_Heights = *(NotifyChannelHeightsData*)lParam;
+		Invalidate();
+		break;
+	}
+
 	return 0;
 }

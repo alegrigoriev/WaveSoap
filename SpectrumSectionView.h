@@ -78,6 +78,13 @@ protected:
 
 	int m_nFftSumSize;
 	long m_PlaybackSample;
+
+	double m_DbOffset;
+	double m_DbRange;
+	double m_DbRangeInView;
+	double m_DbPerPixel;
+	NotifyChannelHeightsData m_Heights;
+
 	virtual ~CSpectrumSectionView();
 #ifdef _DEBUG
 	virtual void AssertValid() const;

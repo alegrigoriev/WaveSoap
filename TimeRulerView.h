@@ -53,7 +53,20 @@ protected:
 #endif
 	unsigned HitTest(POINT p, RECT * pHitRect = NULL, int * OffsetX = NULL) const;
 	void InvalidateMarkerRegion(WAVEREGIONINFO const * pInfo);
-
+	virtual void HorizontalScrollByPixels(int Pixels);
+	void HorizontalScrollTo(double first_sample_in_view);
+	double WindowXToSample(int x) const
+	{
+		return x * m_HorizontalScale + m_FirstSampleInView;
+	}
+	int SampleToWindowXfloor(double sample) const
+	{
+		return (int)floor((sample - m_FirstSampleInView) / m_HorizontalScale);
+	}
+	int SampleToWindowXceil(double sample) const
+	{
+		return (int)ceil((sample - m_FirstSampleInView) / m_HorizontalScale);
+	}
 	enum
 	{
 		HitTestNone = 0x00000000,          // non-specific area of the ruler hit - no bits set
@@ -70,6 +83,11 @@ protected:
 	int m_HitOffset;
 	unsigned m_PopupMenuHitTest;
 	WAVEREGIONINFO m_PopupMenuHit;
+
+	double m_FirstSampleInView;
+	double m_HorizontalScale;
+	double m_TotalSamplesInView;
+	double m_TotalSamplesInExtent;
 
 	UINT_PTR m_AutoscrollTimerID;
 	int m_MarkerHeight;

@@ -944,7 +944,7 @@ void CSplitToFilesDialog::OnBnClickedButtonDelete()
 
 			if ( ! m_Files.empty())
 			{
-				if (nSelItem >= m_Files.size())
+				if ((unsigned)nSelItem >= m_Files.size())
 				{
 					nSelItem = (unsigned)(m_Files.size() - 1);
 				}

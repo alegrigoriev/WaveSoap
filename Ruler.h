@@ -12,12 +12,12 @@
 /////////////////////////////////////////////////////////////////////////////
 // CHorizontalRuler view
 
-class CHorizontalRuler : public CScaledScrollView
+class CHorizontalRuler : public CView
 {
-	typedef CScaledScrollView BaseClass;
+	typedef CView BaseClass;
 protected:
 	CHorizontalRuler();           // protected constructor used by dynamic creation
-	DECLARE_DYNCREATE(CHorizontalRuler)
+	DECLARE_DYNAMIC(CHorizontalRuler)
 
 // Attributes
 public:
@@ -33,6 +33,7 @@ protected:
 	virtual BOOL PreCreateWindow(CREATESTRUCT& cs);
 	virtual BOOL OnScrollBy(CSize sizeScroll, BOOL bDoScroll = TRUE);
 	//}}AFX_VIRTUAL
+	virtual void HorizontalScrollByPixels(int Pixels) = 0;
 
 // Implementation
 protected:
@@ -43,6 +44,7 @@ protected:
 #endif
 	int PrevMouseX;
 	int ButtonPressed;
+	bool m_bIsTrackingSelection;
 
 	// Generated message map functions
 protected:
@@ -64,12 +66,12 @@ protected:
 /////////////////////////////////////////////////////////////////////////////
 // CVerticalRuler view
 
-class CVerticalRuler : public CScaledScrollView
+class CVerticalRuler : public CView
 {
-	typedef CScaledScrollView BaseClass;
+	typedef CView BaseClass;
 protected:
 	CVerticalRuler();           // protected constructor used by dynamic creation
-	DECLARE_DYNCREATE(CVerticalRuler)
+	DECLARE_DYNAMIC(CVerticalRuler)
 
 // Attributes
 public:
@@ -85,7 +87,7 @@ protected:
 	virtual BOOL PreCreateWindow(CREATESTRUCT& cs);
 	virtual BOOL OnScrollBy(CSize sizeScroll, BOOL bDoScroll = TRUE);
 	//}}AFX_VIRTUAL
-
+	virtual void VerticalScrollPixels(int Pixels) = 0;
 // Implementation
 protected:
 	virtual ~CVerticalRuler();
@@ -95,6 +97,7 @@ protected:
 #endif
 	int PrevMouseY;
 	int ButtonPressed;
+	bool m_bIsTrackingSelection;
 
 	// Generated message map functions
 protected:

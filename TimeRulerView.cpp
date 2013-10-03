@@ -44,6 +44,10 @@ CTimeRulerView::CTimeRulerView()
 	, m_MarkerHeight(10)
 	, m_PopupMenuHitTest(0)
 	, m_HitOffset(0)
+	, m_FirstSampleInView(0.)
+	, m_HorizontalScale(2048.)
+	, m_TotalSamplesInView(100.)
+	, m_TotalSamplesInExtent(100.)
 {
 	memzero(m_PopupMenuHit);
 }
@@ -140,7 +144,7 @@ void CTimeRulerView::OnDraw(CDC* pDC)
 	int nLength;
 
 	CString s;
-	ASSERT(0 == fmod(dOrgX, dScaleX * dLogScaleX));
+	//ASSERT(0 == fmod(dOrgX, dScaleX * dLogScaleX));
 
 	switch (m_CurrentDisplayMode)
 	{
@@ -150,7 +154,7 @@ void CTimeRulerView::OnDraw(CDC* pDC)
 
 		nLength = pDC->GetTextExtent(_T("0,000,000,000"), 13).cx;
 
-		NUMBER_OF_SAMPLES nSamples = NUMBER_OF_SAMPLES(1.5 * nLength / GetXScaleDev());
+		NUMBER_OF_SAMPLES nSamples = NUMBER_OF_SAMPLES(1.5 * nLength * m_HorizontalScale);
 		// calculate how much samples can be between the numbers
 		if (nSamples > INT_MAX / 10)
 		{
@@ -199,7 +203,7 @@ void CTimeRulerView::OnDraw(CDC* pDC)
 
 		nLength = pDC->GetTextExtent(_T("00:00:00.0000"), 13).cx;
 
-		DistTime = 1.5 * nLength / GetXScaleDev() / SampleRate;
+		DistTime = 1.5 * nLength * m_HorizontalScale / SampleRate;
 		// select distance between ticks
 		double multiplier = 1.;
 		double divisor = 1.;
@@ -295,7 +299,7 @@ void CTimeRulerView::OnDraw(CDC* pDC)
 
 		nLength = pDC->GetTextExtent(_T("00,000.0000"), 14).cx;
 
-		DistTime = 1.5 * nLength / GetXScaleDev() / SampleRate;
+		DistTime = 1.5 * nLength * m_HorizontalScale / SampleRate;
 		// select distance between ticks
 		double multiplier = 1.;
 		double divisor = 1.;
@@ -343,7 +347,7 @@ void CTimeRulerView::OnDraw(CDC* pDC)
 
 		nLength = pDC->GetTextExtent(_T("00:00:00.00f"), 12).cx;
 
-		DistTime = 1.5 * nLength / GetXScaleDev() / SampleRate;
+		DistTime = 1.5 * nLength * m_HorizontalScale / SampleRate;
 		// select distance between ticks
 		double multiplier = 1.;
 		double divisor = 1.;
@@ -441,7 +445,7 @@ void CTimeRulerView::OnDraw(CDC* pDC)
 		return;
 	}
 
-	nFirstTime = floor(WindowToWorldX(cr.left - nLength) / (SampleRate * DistTime))
+	nFirstTime = floor(WindowXToSample(cr.left - nLength) / (SampleRate * DistTime))
 				* DistTime;
 
 	if (nFirstTime < 0)
@@ -463,7 +467,7 @@ void CTimeRulerView::OnDraw(CDC* pDC)
 			break;
 		}
 
-		int x = WorldToWindowXfloor(sample);
+		int x = SampleToWindowXfloor(sample);
 
 		if (x > cr.right)
 		{
@@ -559,7 +563,7 @@ void CTimeRulerView::OnDraw(CDC* pDC)
 	for (CuePointVectorIterator i = pInst->m_CuePoints.begin();
 		i != pInst->m_CuePoints.end(); i++)
 	{
-		long x = WorldToWindowXfloor(i->dwSampleOffset);
+		long x = SampleToWindowXfloor(i->dwSampleOffset);
 		WaveRegionMarker * pMarker = pInst->GetRegionMarker(i->CuePointID);
 
 		if (x >= cr.left - m_MarkerHeight
@@ -596,7 +600,7 @@ void CTimeRulerView::OnDraw(CDC* pDC)
 		if (pMarker != NULL
 			&& pMarker->SampleLength != 0)
 		{
-			x = WorldToWindowXfloor(i->dwSampleOffset + pMarker->SampleLength);
+			x = SampleToWindowXfloor(i->dwSampleOffset + pMarker->SampleLength);
 
 			if (x >= cr.left - m_MarkerHeight
 				&& x <= cr.right + m_MarkerHeight)
@@ -621,12 +625,12 @@ void CTimeRulerView::OnDraw(CDC* pDC)
 #ifdef _DEBUG
 void CTimeRulerView::AssertValid() const
 {
-	CScaledScrollView::AssertValid();
+	BaseClass::AssertValid();
 }
 
 void CTimeRulerView::Dump(CDumpContext& dc) const
 {
-	CScaledScrollView::Dump(dc);
+	BaseClass::Dump(dc);
 }
 
 CWaveSoapFrontDoc* CTimeRulerView::GetDocument() const// non-debug version is inline
@@ -748,7 +752,7 @@ unsigned CTimeRulerView::HitTest(POINT p, RECT * pHitRect, int * OffsetX) const
 		for (n = 0, i = pInst->m_CuePoints.begin();
 			i != pInst->m_CuePoints.end(); i++, n++)
 		{
-			long x = WorldToWindowXfloor(i->dwSampleOffset);
+			long x = SampleToWindowXfloor(i->dwSampleOffset);
 			WaveRegionMarker * pMarker = pInst->GetRegionMarker(i->CuePointID);
 
 			if (NULL == pMarker
@@ -815,7 +819,7 @@ unsigned CTimeRulerView::HitTest(POINT p, RECT * pHitRect, int * OffsetX) const
 					break;
 				}
 
-				x = WorldToWindowXfloor(i->dwSampleOffset + pMarker->SampleLength);
+				x = SampleToWindowXfloor(i->dwSampleOffset + pMarker->SampleLength);
 
 				if (p.x >= x - m_MarkerHeight
 					&& p.x <= x)
@@ -995,7 +999,7 @@ void CTimeRulerView::OnLButtonDblClk(UINT nFlags, CPoint point)
 	else
 	{
 		// if double clicked between markers, select
-		pDoc->SelectBetweenMarkers(SAMPLE_INDEX(WindowToWorldX(point.x)));
+		pDoc->SelectBetweenMarkers(SAMPLE_INDEX(WindowXToSample(point.x)));
 	}
 }
 
@@ -1023,7 +1027,7 @@ void CTimeRulerView::BeginMarkerDrag()
 {
 	CWaveSoapFrontDoc * pDoc = GetDocument();
 	if (0 != m_DraggedMarkerHitTest
-		&& bIsTrackingSelection
+		&& m_bIsTrackingSelection
 		&& ! pDoc->IsReadOnly())
 	{
 		pDoc->BeginMarkerChange(CWaveFile::InstanceDataWav::MetadataCopyCue
@@ -1035,7 +1039,7 @@ void CTimeRulerView::EndMarkerDrag()
 {
 	CWaveSoapFrontDoc * pDoc = GetDocument();
 	if (0 != m_DraggedMarkerHitTest
-		&& bIsTrackingSelection
+		&& m_bIsTrackingSelection
 		&& ! pDoc->IsReadOnly())
 	{
 		// if it's being dragged, finalize UNDO
@@ -1066,7 +1070,7 @@ void CTimeRulerView::OnMouseMove(UINT nFlags, CPoint point)
 	if (WM_LBUTTONDOWN == ButtonPressed
 		&& point.x != PrevMouseX)
 	{
-		if (! bIsTrackingSelection)
+		if (! m_bIsTrackingSelection)
 		{
 			// check if drag threshold exceeded
 			if (abs(point.x - PrevMouseX) < GetSystemMetrics(SM_CXDRAG) / 2)
@@ -1074,7 +1078,7 @@ void CTimeRulerView::OnMouseMove(UINT nFlags, CPoint point)
 				return;
 			}
 			SetCapture();
-			bIsTrackingSelection = TRUE;
+			m_bIsTrackingSelection = TRUE;
 			BeginMarkerDrag();
 		}
 
@@ -1086,11 +1090,11 @@ void CTimeRulerView::OnMouseMove(UINT nFlags, CPoint point)
 		bool DoLeftAutoscroll = false;
 		bool DoRightAutoscroll = false;
 
-		int DataEnd = WorldToWindowXceil(pDoc->WaveFileSamples());
+		int DataEnd = SampleToWindowXceil(pDoc->WaveFileSamples());
 		point.x -= m_HitOffset;
 
 		if (point.x < DataEnd
-			&& cr.right > AutoscrollWidth)
+			&& cr.right > AutoscrollWidth * 2)
 		{
 			if (point.x > cr.right - AutoscrollWidth)
 			{
@@ -1117,7 +1121,7 @@ void CTimeRulerView::OnMouseMove(UINT nFlags, CPoint point)
 		// do drag
 		NUMBER_OF_SAMPLES const nSamples = pDoc->WaveFileSamples();
 
-		SAMPLE_INDEX NewPosition = SAMPLE_INDEX(WindowToWorldX(point.x));
+		SAMPLE_INDEX NewPosition = SAMPLE_INDEX(WindowXToSample(point.x));
 		if (NewPosition > nSamples
 			|| NewPosition < 0)
 		{
@@ -1208,103 +1212,82 @@ void CTimeRulerView::OnCaptureChanged(CWnd *pWnd)
 void CTimeRulerView::OnTimer(UINT_PTR nIDEvent)
 {
 	// get mouse position and hit code
-	if (NULL != m_AutoscrollTimerID
-		&& nIDEvent == m_AutoscrollTimerID)
+	if (NULL == m_AutoscrollTimerID
+		|| nIDEvent != m_AutoscrollTimerID)
 	{
-		CWaveSoapFrontDoc * pDoc = GetDocument();
-
-		CPoint p;
-		GetCursorPos( & p);
-		ScreenToClient( & p);
-
-		CRect cr;
-		GetClientRect(cr);
-
-		int const AutoscrollWidth = GetSystemMetrics(SM_CXVSCROLL);
-
-		bool DoLeftAutoscroll = false;
-		bool DoRightAutoscroll = false;
-
-		int DataEnd = WorldToWindowXceil(pDoc->WaveFileSamples());
-		if (p.x < DataEnd
-			&& cr.right > AutoscrollWidth)
-		{
-			if (p.x > cr.right - AutoscrollWidth)
-			{
-				DoRightAutoscroll = true;
-			}
-			else if (p.x < AutoscrollWidth)
-			{
-				DoLeftAutoscroll = true;
-			}
-		}
-
-		if (DoLeftAutoscroll || DoRightAutoscroll)
-		{
-			//TRACE("OnTimer: VSHT_RIGHT_AUTOSCROLL\n");
-			double scroll;
-			int nDistance;
-
-			scroll = 1. / m_pHorMaster->GetXScale();
-
-			if (DoRightAutoscroll)
-			{
-				CRect r;
-				GetClientRect(r);
-
-				nDistance = p.x - r.right + AutoscrollWidth - 1;
-			}
-			else
-			{
-				scroll = -scroll;
-				nDistance = AutoscrollWidth - p.x - 1;
-			}
-
-			if (TRACE_SCROLL) TRACE("nDistance = %d\n", nDistance);
-			if (nDistance > 14)
-			{
-				nDistance = 14;
-			}
-			if (nDistance > 0)
-			{
-				scroll *= 1 << nDistance;
-			}
-			ScrollBy(scroll, 0, TRUE);
-
-			UINT flags = 0;
-			if (0x8000 & GetKeyState(VK_CONTROL))
-			{
-				flags |= MK_CONTROL;
-			}
-			if (0x8000 & GetKeyState(VK_SHIFT))
-			{
-				flags |= MK_SHIFT;
-			}
-			if (0x8000 & GetKeyState(VK_LBUTTON))
-			{
-				flags |= MK_LBUTTON;
-			}
-			if (0x8000 & GetKeyState(VK_RBUTTON))
-			{
-				flags |= MK_RBUTTON;
-			}
-			if (0x8000 & GetKeyState(VK_MBUTTON))
-			{
-				flags |= MK_MBUTTON;
-			}
-			OnMouseMove(flags, p);
-			return;
-		}
-		else
-		{
-			KillTimer(m_AutoscrollTimerID);
-			m_AutoscrollTimerID = NULL;
-		}
+		BaseClass::OnTimer(nIDEvent);
+		return;
 	}
 
-	if (TRACE_SCROLL) TRACE("Timer ID=%X\n", nIDEvent);
+	CWaveSoapFrontDoc * pDoc = GetDocument();
 
-	BaseClass::OnTimer(nIDEvent);
+	CPoint p;
+	GetCursorPos( & p);
+	ScreenToClient( & p);
+
+	CRect cr;
+	GetClientRect(cr);
+
+	int const AutoscrollWidth = GetSystemMetrics(SM_CXVSCROLL);
+
+	int DataEnd = SampleToWindowXceil(pDoc->WaveFileSamples());
+
+	if (p.x >= DataEnd
+		|| cr.right <= AutoscrollWidth * 2)
+	{
+		KillTimer(m_AutoscrollTimerID);
+		m_AutoscrollTimerID = NULL;
+		return;
+	}
+
+	if (p.x > cr.right - AutoscrollWidth)
+	{
+		int nDistance = p.x - (cr.right - AutoscrollWidth) - 1;
+		if (nDistance > 14)
+		{
+			nDistance = 14;
+		}
+		HorizontalScrollByPixels(1 << nDistance);
+	}
+	else if (p.x < AutoscrollWidth)
+	{
+		int nDistance = AutoscrollWidth - p.x - 1;
+		if (nDistance > 14)
+		{
+			nDistance = 14;
+		}
+
+		HorizontalScrollByPixels(-1 << nDistance);
+	}
+	else
+	{
+		KillTimer(m_AutoscrollTimerID);
+		m_AutoscrollTimerID = NULL;
+		return;
+	}
+
+	UINT flags = 0;
+	if (0x8000 & GetKeyState(VK_CONTROL))
+	{
+		flags |= MK_CONTROL;
+	}
+	if (0x8000 & GetKeyState(VK_SHIFT))
+	{
+		flags |= MK_SHIFT;
+	}
+	if (0x8000 & GetKeyState(VK_LBUTTON))
+	{
+		flags |= MK_LBUTTON;
+	}
+	if (0x8000 & GetKeyState(VK_RBUTTON))
+	{
+		flags |= MK_RBUTTON;
+	}
+	if (0x8000 & GetKeyState(VK_MBUTTON))
+	{
+		flags |= MK_MBUTTON;
+	}
+	OnMouseMove(flags, p);
 }
 
 void CTimeRulerView::InvalidateMarkerRegion(WAVEREGIONINFO const * pInfo)
@@ -1313,7 +1296,7 @@ void CTimeRulerView::InvalidateMarkerRegion(WAVEREGIONINFO const * pInfo)
 	GetClientRect(cr);
 	CRect r;
 
-	long x = WorldToWindowXfloor(pInfo->Sample);
+	long x = SampleToWindowXfloor(pInfo->Sample);
 
 	if (0 != (pInfo->Flags & (pInfo->ChangeSample | pInfo->Delete)))
 	{
@@ -1347,7 +1330,7 @@ void CTimeRulerView::InvalidateMarkerRegion(WAVEREGIONINFO const * pInfo)
 			& (pInfo->ChangeSample | pInfo->ChangeLength | pInfo->Delete)))
 	{
 		// invalidate region end marker
-		x = WorldToWindowXfloor(pInfo->Sample + pInfo->Length);
+		x = SampleToWindowXfloor(pInfo->Sample + pInfo->Length);
 
 		if (x < cr.right + m_MarkerHeight && x >= cr.left)
 		{
@@ -1381,7 +1364,15 @@ void CTimeRulerView::OnContextMenu(CWnd* /*pWnd*/, CPoint point)
 	GetParentFrame()->ActivateFrame();
 
 	CMenu menu;
-	CMenu* pPopup = GetPopupMenu( & menu, point);
+	CMenu* pPopup = NULL;
+
+	UINT uID = GetPopupMenuID(point);
+
+	if (uID != 0 && menu.LoadMenu(uID))
+	{
+		pPopup = menu.GetSubMenu(0);
+	}
+
 	if(pPopup != NULL)
 	{
 		int Command = pPopup->TrackPopupMenu(
@@ -1594,5 +1585,37 @@ BOOL CTimeRulerView::OnNotify(WPARAM wParam, LPARAM lParam, LRESULT* pResult)
 
 afx_msg LRESULT CTimeRulerView::OnUwmNotifyViews(WPARAM wParam, LPARAM lParam)
 {
+	switch (wParam)
+	{
+	case HorizontalOriginChanged:
+		HorizontalScrollTo(*(double*)lParam);
+		break;
+	case HorizontalExtentChanged:
+	{
+		NotifyViewsData * data = (NotifyViewsData*)lParam;
+		m_TotalSamplesInExtent = data->HorizontalScroll.TotalSamplesInExtent;
+		m_TotalSamplesInView = data->HorizontalScroll.TotalSamplesInView;
+		m_FirstSampleInView = data->HorizontalScroll.FirstSampleInView;
+		m_HorizontalScale = data->HorizontalScroll.HorizontalScale;
+
+		Invalidate();
+	}
+		break;
+	}
 	return 0;
+}
+
+void CTimeRulerView::HorizontalScrollByPixels(int Pixels)
+{
+	NotifySiblingViews(HorizontalScrollPixels, &Pixels);
+}
+
+void CTimeRulerView::HorizontalScrollTo(double first_sample_in_view)
+{
+	// FirstSample is aligned to multiple of HorizontalScale
+	int ScrollPixels = int((first_sample_in_view - m_FirstSampleInView) / m_HorizontalScale);
+	ASSERT( 0. == fmod(first_sample_in_view - m_FirstSampleInView, m_HorizontalScale));
+	m_FirstSampleInView = first_sample_in_view;
+
+	ScrollWindow(-ScrollPixels, 0);
 }
