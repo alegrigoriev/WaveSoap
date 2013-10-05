@@ -19,8 +19,8 @@
 static char THIS_FILE[] = __FILE__;
 #endif
 
-#define TRACE_DRAWING 0
-#define TRACE_MOUSE 0
+#define TRACE_DRAWING 1
+#define TRACE_MOUSE 1
 #define TRACE_SCROLL 0
 #define TRACE_CARET 0
 #define TRACE_UPDATE 0
@@ -112,6 +112,8 @@ CWaveSoapViewBase::CWaveSoapViewBase()
 	, m_CurrentCaretChannels(0)
 {
 	memzero(m_Heights);
+	memzero(m_InvalidAreaTop);
+	memzero(m_InvalidAreaBottom);
 
 	TRACE("CWaveSoapFrontView::CWaveSoapFrontView()\n");
 }
@@ -292,11 +294,11 @@ int CWaveSoapFrontView::SampleValueToY(double value, int ch) const
 
 	if (m_Heights.ch[ch].minimized)
 	{
-		return int(value / 65536. * (bottom - top)  + MidLine);
+		return int(value / 65536. * (top - bottom)  + MidLine);
 	}
 	else
 	{
-		return int((value - m_WaveOffsetY) / 65536. * (bottom - top) * m_VerticalScale + MidLine);
+		return int((value - m_WaveOffsetY) / 65536. * (top - bottom) * m_VerticalScale + MidLine);
 	}
 }
 
@@ -332,6 +334,9 @@ void CWaveSoapFrontView::OnDraw(CDC* pDC)
 		return;
 	}
 	CThisApp * pApp = GetApp();
+
+	memzero(m_InvalidAreaTop);
+	memzero(m_InvalidAreaBottom);
 
 	try {
 		CPushDcPalette OldPalette(pDC, NULL);
@@ -463,9 +468,9 @@ void CWaveSoapFrontView::OnDraw(CDC* pDC)
 									ChannelMinimized ? 1. : m_VerticalScale,
 									ChanR.top, ChanR.bottom);
 
-				if (TRACE_DRAWING) TRACE("V Scale=%f, m_WaveOffsetY=%f, top = %d, bottom = %d, height=%d, W2Y(32767)=%d, W2Y(-32768)=%d\n",
+				if (TRACE_DRAWING) TRACE("V Scale=%f, m_WaveOffsetY=%f, top = %d, bottom = %d, height=%d, W2Y(0)=%d, W2Y(32767)=%d, W2Y(-32768)=%d\n",
 										m_VerticalScale, m_WaveOffsetY, ChanR.top, ChanR.bottom,
-										ChanR.Height(), WaveToY(32767), WaveToY(-32768));
+										ChanR.Height(), (int)WaveToY(0.), (int)WaveToY(32767.), (int)WaveToY(-32768.));
 				// Y = wave * m_VerticalScale + m_WaveOffsetY * m_VerticalScale
 				//     + (ChanR.bottom + ChanR.top) / 2
 
@@ -2513,164 +2518,6 @@ void CWaveSoapFrontView::OnHScroll(UINT nSBCode, UINT nPos, CScrollBar* pScrollB
 	// not calling base class handler
 }
 
-BOOL CWaveSoapFrontView::MasterScrollBy(double dx, double dy, BOOL bDoScroll)
-{
-	CWaveSoapFrontDoc * pDoc = GetDocument();
-
-	LONG FileEnd = SampleToXceil(pDoc->WaveFileSamples());
-	LONG NewFileEnd = FileEnd;
-
-	CRect ir;
-	CRect cr;
-	GetClientRect(cr);
-
-	int ndx = 0;
-	int ndy = 0;
-	bool PlaybackCursorHidden = false;
-#if 0
-	if (dy != 0.)
-	{
-		// check for the limits
-		// ndy is in pixels
-
-		CRect r;
-		GetChannelRect(0, r);
-
-		ndy = -fround(dy * GetYScaleDev());
-
-		double offset = m_WaveOffsetY - 65536. * ndy / (r.Height() * m_VerticalScale);
-		// find max and min offset for this scale
-		double MaxOffset = 32768. * (1 - 1. / m_VerticalScale);
-		BOOL NoScroll = false;
-		if (offset > MaxOffset)
-		{
-			offset = MaxOffset;
-			NoScroll = true;
-		}
-		double MinOffset = -MaxOffset;
-		if (offset < MinOffset)
-		{
-			offset = MinOffset;
-			NoScroll = true;
-		}
-
-		int y1 = WaveCalculate
-				(m_WaveOffsetY, m_VerticalScale, r.top, r.bottom)(0);
-		int y2 = WaveCalculate
-				(offset, m_VerticalScale, r.top, r.bottom)(0);
-
-		ndy = y2 - y1;
-
-		if (0 != ndy)
-		{
-			if (TRACE_SCROLL) TRACE("New offset = %g, MaxOffset=%g, VerticalScale = %g\n",
-									offset, MaxOffset, m_VerticalScale);
-			// calculate how much zero line would move
-
-			m_WaveOffsetY = offset;
-// FIXME            NotifySlaveViews(WAVE_OFFSET_CHANGED);
-
-			if (NoScroll)
-			{
-				Invalidate();
-				return TRUE;
-			}
-
-			int nChannels = pDoc->WaveChannels();
-
-			HidePlaybackCursor();
-			PlaybackCursorHidden = true;
-
-			for (int ch = 0; ch < nChannels; ch++)
-			{
-				CRect chr;
-				GetChannelClipRect(ch, chr);
-#if 1
-				ScrollWindowEx(0, ndy, chr, chr, NULL, ir,
-								SW_INVALIDATE);
-				InvalidateRect(ir);
-#else
-				ScrollWindowEx(0, ndy, NULL, NULL, NULL, NULL,
-								SW_INVALIDATE | SW_ERASE);
-#endif
-			}
-
-		}
-	}
-#endif
-
-	//  invalidate all labels of markers, if they fall to the moved area
-	// make sure the new position will be on the multiple of m_HorizontalScale
-	if (ndy != 0
-		|| ndx != 0)
-	{
-		// invalidate marker labels
-		CWindowDC dc(this);
-		CGdiObjectSave OldFont(dc, dc.SelectStockObject(ANSI_VAR_FONT));
-
-		CWaveFile::InstanceDataWav * pInst = pDoc->m_WavFile.GetInstanceData();
-
-		for (CuePointVectorIterator i = pInst->m_CuePoints.begin();
-			i != pInst->m_CuePoints.end(); i++)
-		{
-			long x = SampleToX(i->dwSampleOffset);
-
-			// invalidate text
-			if (x < cr.right)
-			{
-				LPCTSTR txt = pInst->GetCueText(i->CuePointID);
-				if (NULL != txt)
-				{
-					CPoint p(dc.GetTextExtent(txt, (int)_tcslen(txt)));
-
-					ir.left = x;
-					ir.top = cr.top;
-					ir.bottom = cr.top + p.y;
-					ir.right = x + p.x;
-
-					// in the wave area, invalidate old and new position,
-					// only if vertical scroll was done.
-					// In the background area, invalidate only if horizontal scroll was done
-					if (x + p.x > cr.left)
-					{
-						if (ndy != 0)
-						{
-							InvalidateRect(ir);
-							if (ndy > 0)
-							{
-								// scroll down
-								// invalidate old position
-								if (ndy < cr.bottom - cr.top)
-								{
-									InvalidateRect(CRect(x, cr.top + ndy, x + p.x, cr.top + p.y + ndy));
-								}
-							}
-						}
-
-						if (ndx != 0
-							&& x + p.x > NewFileEnd)
-						{
-							InvalidateRect(ir, FALSE);
-							if (ndx < 0)
-							{
-								ir.left = ir.right;
-								ir.right -= ndx;
-								InvalidateRect(ir, TRUE);
-							}
-						}
-					}
-				}
-			}
-		}
-	}
-	if (PlaybackCursorHidden)
-	{
-		ShowPlaybackCursor();
-	}
-
-	return TRUE;
-}
-
 void CWaveSoapViewBase::RecalculateChannelHeight(int cy)
 {
 	ThisDoc * pDoc = GetDocument();
@@ -3331,20 +3178,110 @@ afx_msg LRESULT CWaveSoapFrontView::OnUwmNotifyViews(WPARAM wParam, LPARAM lPara
 		{
 			m_VerticalScale = *(double*)lParam;
 			Invalidate();
+			// check for the proper offset, correct if necessary
+			if (m_WaveOffsetY >= 32768. * (1. - 1./ m_VerticalScale))
+			{
+				m_WaveOffsetY = 32768. * (1. - 1./ m_VerticalScale);
+			}
+			else if (m_WaveOffsetY <= -32768. * (1. - 1./ m_VerticalScale))
+			{
+				m_WaveOffsetY = -32768. * (1. - 1./ m_VerticalScale);
+			}
 		}
+		break;
+	case AmplitudeScrollPixels:
+		// lParam points to int offset
+		// check for the proper offset, correct if necessary
+	{
+		double offset = m_WaveOffsetY + *(int*)lParam / m_VerticalScale * 65536. / m_Heights.NominalChannelHeight;
+		TRACE("Scroll by %d pixels, offset changes by %f\n", *(int*)lParam, *(int*)lParam / m_VerticalScale * 65536. / m_Heights.NominalChannelHeight);
+
+		if (offset >= 32768. * (1. - 1./ m_VerticalScale))
+		{
+			offset = 32768. * (1. - 1./ m_VerticalScale);
+		}
+		else if (offset <= -32768. * (1. - 1./ m_VerticalScale))
+		{
+			offset = -32768. * (1. - 1./ m_VerticalScale);
+		}
+		NotifySiblingViews(AmplitudeOffsetChanged, & offset);
+	}
 		break;
 	case AmplitudeOffsetChanged:
 		// lParam points to double new vertical offset
-		break;
-	case FftVerticalScaleChanged:
-		// lParam points to double new scale
-		break;
-	case FftOffsetChanged:
+		SetNewAmplitudeOffset(*(double*) lParam);
 		break;
 	default:
 		return BaseClass::OnUwmNotifyViews(wParam, lParam);
 	}
 	return 0;
+}
+
+void CWaveSoapFrontView::SetNewAmplitudeOffset(double offset)
+{
+	// scroll channels rectangles
+	CWaveSoapFrontDoc * pDoc = GetDocument();
+	int nChannels = pDoc->WaveChannels();
+	CRect cr;
+	GetClientRect(cr);
+	int const FileEnd = SampleToXceil(pDoc->WaveFileSamples());
+	if (cr.right > FileEnd)
+	{
+		cr.right = FileEnd;
+	}
+
+	for (int ch = 0; ch < nChannels; ch++)
+	{
+		if (m_Heights.ch[ch].minimized)
+		{
+			continue;
+		}
+
+		// offset of the zero line down
+		int OldOffsetPixels = (int)floor(m_WaveOffsetY / 65536. * m_Heights.NominalChannelHeight * m_VerticalScale + 0.5);
+		int NewOffsetPixels = (int)floor(offset / 65536. * m_Heights.NominalChannelHeight * m_VerticalScale + 0.5);
+		int ToScroll = NewOffsetPixels - OldOffsetPixels;       // >0 - down, <0 - up
+
+		CRect ClipRect(cr.left, m_Heights.ch[ch].clip_top, cr.right, m_Heights.ch[ch].clip_bottom);
+		CRect ScrollRect(ClipRect);
+		ScrollRect.top += m_InvalidAreaTop[ch];
+		ScrollRect.bottom -= m_InvalidAreaBottom[ch];
+		if (ToScroll > 0)
+		{
+			// down
+			m_InvalidAreaTop[ch] += ToScroll;
+			ScrollRect.bottom -= ToScroll;
+			if (ScrollRect.Height() <= 0)
+			{
+				InvalidateRect(ClipRect);
+				continue;
+			}
+			CRect ToInvalidate(cr.left, ScrollRect.top, cr.right, ScrollRect.top + ToScroll);
+
+			ScrollWindow(0, ToScroll, ScrollRect, ClipRect);
+			InvalidateRect(ToInvalidate);
+		}
+		else if (ToScroll < 0)
+		{
+			// up
+			m_InvalidAreaBottom[ch] -= ToScroll;
+			ScrollRect.top -= ToScroll;
+			if (ScrollRect.Height() <= 0)
+			{
+				InvalidateRect(ClipRect);
+				continue;
+			}
+			CRect ToInvalidate(cr.left, ScrollRect.top, cr.right, ScrollRect.top + ToScroll);
+
+			ScrollWindow(0, ToScroll, ScrollRect, ClipRect);
+			InvalidateRect(ToInvalidate);
+		}
+		else
+		{
+			continue;
+		}
+	}
+	m_WaveOffsetY = offset;
 }
 
 afx_msg LRESULT CWaveSoapViewBase::OnUwmNotifyViews(WPARAM wParam, LPARAM lParam)
@@ -3358,9 +3295,6 @@ afx_msg LRESULT CWaveSoapViewBase::OnUwmNotifyViews(WPARAM wParam, LPARAM lParam
 
 		break;
 
-	case AmplitudeOffsetChanged:
-		// lParam points to double new vertical offset
-		break;
 	case FftVerticalScaleChanged:
 		// lParam points to double new scale
 		break;

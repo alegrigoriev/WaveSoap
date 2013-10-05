@@ -238,20 +238,20 @@ BOOL CVerticalRuler::PreCreateWindow(CREATESTRUCT& cs)
 }
 void CVerticalRuler::OnMouseMove(UINT nFlags, CPoint point)
 {
-	//TRACE("CVerticalRuler::OnMouseMove: Y=%d, PrevY = %d\n", point.y, PrevMouseY);
-	CView::OnMouseMove(nFlags, point);
+	//CView::OnMouseMove(nFlags, point);
 	if (WM_LBUTTONDOWN == ButtonPressed
 		&& PrevMouseY != point.y)
 	{
+		TRACE("CVerticalRuler::OnMouseMove: Y=%d, PrevY = %d\n", point.y, PrevMouseY);
 		if (! m_bIsTrackingSelection)
 		{
 			SetCapture();
 			m_bIsTrackingSelection = TRUE;
 		}
 		// do scroll
-		// scroll_offset < 0 - image moves to the right, first pixel in view decremented
-		// scroll_offset > 0 - image moves to the left, first pixel in view incremented
-		VerticalScrollPixels(PrevMouseY - point.y);
+		// scroll_offset < 0 - image moves up
+		// scroll_offset > 0 - image moves down
+		VerticalScrollPixels(point.y - PrevMouseY);
 		PrevMouseY = point.y;
 	}
 }
@@ -260,7 +260,7 @@ void CVerticalRuler::OnLButtonDown(UINT nFlags, CPoint point)
 {
 	// store the starting mouse position
 
-	CView::OnLButtonDown(nFlags, point);
+	//CView::OnLButtonDown(nFlags, point);
 	PrevMouseY = point.y;
 	ButtonPressed = WM_LBUTTONDOWN;
 }
@@ -273,7 +273,7 @@ void CVerticalRuler::OnLButtonUp(UINT nFlags, CPoint point)
 		ReleaseCapture();
 		m_bIsTrackingSelection = FALSE;
 	}
-	CView::OnLButtonUp(nFlags, point);
+	//CView::OnLButtonUp(nFlags, point);
 }
 
 int CVerticalRuler::OnMouseActivate(CWnd* pDesktopWnd, UINT nHitTest, UINT message)

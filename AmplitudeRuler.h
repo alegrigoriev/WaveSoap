@@ -34,6 +34,7 @@ protected:
 	virtual void OnDraw(CDC* pDC);      // overridden to draw this view
 	//}}AFX_VIRTUAL
 	virtual void VerticalScrollPixels(int Pixels);
+
 // Implementation
 protected:
 	virtual ~CAmplitudeRuler();
@@ -43,10 +44,15 @@ protected:
 	virtual void Dump(CDumpContext& dc) const;
 #endif
 protected:
-	double m_VerticalScale;
-	double m_WaveOffsetY;
+	double m_VerticalScale;    // full sweep divided by channel rectangle height (for full height channels only). 1 - full sweep equal rect height, > 1 - show magnified.
+	// minimum height channels are shown with scale 1.
+	double m_WaveOffsetY;      // additional vertical offset, to see a region of magnified wave. Only full height channels are scrolled vertically. This is the sample value
+	// of the center line of the channel clip rect
 	NotifyChannelHeightsData m_Heights;
+	int m_InvalidAreaTop[MAX_NUMBER_OF_CHANNELS];
+	int m_InvalidAreaBottom[MAX_NUMBER_OF_CHANNELS];
 
+	void SetNewAmplitudeOffset(double offset);
 	enum eDrawMode
 	{
 		SampleView = 0,

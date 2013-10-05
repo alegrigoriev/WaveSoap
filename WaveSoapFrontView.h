@@ -101,6 +101,8 @@ public:
 
 	double m_FirstSampleInView; // first sample that maps to client.x=0; Can be fractional if m_HorizontalScale < 1. Always multiple of m_HorScale.
 	NotifyChannelHeightsData m_Heights;
+	int m_InvalidAreaTop[MAX_NUMBER_OF_CHANNELS];
+	int m_InvalidAreaBottom[MAX_NUMBER_OF_CHANNELS];
 
 	CDataSection<float, CWaveSoapViewBase> m_WaveBuffer;
 
@@ -183,7 +185,6 @@ protected:
 	virtual UINT GetPopupMenuID(CPoint point);
 	// how many samples in the display point
 
-	BOOL MasterScrollBy(double dx, double dy, BOOL bDoScroll);  // TODO: remove
 	void DrawHorizontalWithSelection(CDC * pDC,
 									int SelectionLeft, int SelectionRight, int Y,
 									CPen * NormalPen, CPen * SelectedPen,
@@ -199,6 +200,8 @@ protected:
 
 	double m_WaveOffsetY; // additional vertical offset, to see a region of magnified wave. Only full height channels are scrolled vertically. This is the sample value
 	// of the center line of the channel clip rect
+	void SetNewAmplitudeOffset(double offset);
+
 	// Generated message map functions
 protected:
 	//{{AFX_MSG(CWaveSoapFrontView)
@@ -242,45 +245,41 @@ inline CWaveSoapFrontDoc* CWaveSoapViewBase::GetDocument() const
 class WaveCalculate
 {
 public:
-	WaveCalculate(double offset, double scale, int bottom, int top)
+	WaveCalculate(double offset, double scale, int top, int bottom)
 	{
-		m_Scale = -((top - bottom) * scale) / 65536.;
+		m_Scale = ((bottom - top) * scale) / 65536.;
 
-		double MaxOffset = 65535.99 * (1. - 1. / scale);
+		double MaxOffset = 32767.99 * (1. - 1. / scale);
 
 		if (offset >= MaxOffset)
 		{
-			m_Offset = 65536. * (1. - 1. / scale);
+			offset = 32768. * (1. - 1. / scale);
 		}
 		else if (offset <= -MaxOffset)
 		{
-			m_Offset = -65536. * (1. - 1. / scale);
+			offset = -32768. * (1. - 1. / scale);
 		}
-		else
-		{
-			m_Offset = offset;
-		}
-		m_Offset = m_Offset * m_Scale + (bottom + top) / 2.;
+		m_Offset = offset * m_Scale + (bottom + top) / 2.;
 	}
 
 	int operator()(int w)
 	{
-		return (int)floor((w + 1) * m_Scale + m_Offset);
+		return (int)floor(m_Offset - (w + 1) * m_Scale);
 	}
 
 	int ConvertToSample(int y)
 	{
-		return (int)floor((y - m_Offset) / m_Scale - 1);
+		return (int)floor((m_Offset - y) / m_Scale - 1);
 	}
 
 	double operator()(double w)
 	{
-		return (w + 1.) * m_Scale + m_Offset;
+		return m_Offset - (w + 1.) * m_Scale;
 	}
 
 	double ConvertToSample(double y)
 	{
-		return (y - m_Offset) / m_Scale - 1.;
+		return (m_Offset - y) / m_Scale - 1.;
 	}
 
 protected:
