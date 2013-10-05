@@ -108,6 +108,7 @@ public:
 
 	enum
 	{
+		VSHT_CHANNEL_MINIMIZED = 0x80000,    // the channel is shown minimized
 		VSHT_RIGHT_AUTOSCROLL  = 0x40000,    // autoscroll area
 		VSHT_LEFT_AUTOSCROLL   = 0x20000,    // autoscroll area
 		VSHT_BCKGND            = 0x10000,     // in the middle area (selecting both channels
@@ -201,7 +202,7 @@ protected:
 	double m_WaveOffsetY; // additional vertical offset, to see a region of magnified wave. Only full height channels are scrolled vertically. This is the sample value
 	// of the center line of the channel clip rect
 	void SetNewAmplitudeOffset(double offset);
-
+	void InvalidateMarkerLabels(int dy = 0);
 	// Generated message map functions
 protected:
 	//{{AFX_MSG(CWaveSoapFrontView)
@@ -225,12 +226,16 @@ protected:
 	afx_msg void OnUpdateViewHorScale(CCmdUI* pCmdUI);
 	afx_msg void OnViewHorScale(UINT command);
 	afx_msg void OnHScroll(UINT nSBCode, UINT nPos, CScrollBar* pScrollBar);
+	afx_msg void OnContextMenu(CWnd* pWnd, CPoint point);
+	afx_msg void OnViewMinimize0(UINT id);
+	afx_msg void OnViewMaximize0(UINT id);
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 public:
 	afx_msg void OnViewZoomprevious();
 protected:
 	afx_msg LRESULT OnUwmNotifyViews(WPARAM wParam, LPARAM lParam);
+public:
 };
 
 //#define VSHT_

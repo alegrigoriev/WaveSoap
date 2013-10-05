@@ -56,7 +56,6 @@ CTimeRulerView::~CTimeRulerView()
 {
 }
 
-
 BEGIN_MESSAGE_MAP(CTimeRulerView, CHorizontalRuler)
 	//{{AFX_MSG_MAP(CTimeRulerView)
 	ON_COMMAND(ID_VIEW_RULER_HHMMSS, OnViewRulerHhmmss)
@@ -1619,3 +1618,4 @@ void CTimeRulerView::HorizontalScrollTo(double first_sample_in_view)
 
 	ScrollWindow(-ScrollPixels, 0);
 }
+

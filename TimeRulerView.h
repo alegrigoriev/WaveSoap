@@ -46,7 +46,6 @@ protected:
 protected:
 	virtual ~CTimeRulerView();
 	virtual UINT GetPopupMenuID(CPoint);
-	virtual void OnContextMenu(CWnd* pWnd, CPoint point);
 #ifdef _DEBUG
 	virtual void AssertValid() const;
 	virtual void Dump(CDumpContext& dc) const;
@@ -115,6 +114,7 @@ protected:
 	afx_msg void OnLButtonUp(UINT nFlags, CPoint point);
 	afx_msg void OnMouseMove(UINT nFlags, CPoint point);
 	afx_msg void OnCaptureChanged(CWnd *pWnd);
+	afx_msg void OnContextMenu(CWnd* /*pWnd*/, CPoint point);
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 public:

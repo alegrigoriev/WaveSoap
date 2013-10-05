@@ -65,6 +65,9 @@ BEGIN_MESSAGE_MAP(CWaveSoapFrontView, BaseClass)
 	//ON_COMMAND(ID_FILE_PRINT_DIRECT, OnFilePrint)
 	//ON_COMMAND(ID_FILE_PRINT_PREVIEW, OnFilePrintPreview)
 	ON_MESSAGE(UWM_NOTIFY_VIEWS, &CWaveSoapFrontView::OnUwmNotifyViews)
+	ON_COMMAND_RANGE(ID_VIEW_MINIMIZE_0, ID_VIEW_MINIMIZE_31, &CWaveSoapFrontView::OnViewMinimize0)
+	ON_COMMAND_RANGE(ID_VIEW_MAXIMIZE_0, ID_VIEW_MAXIMIZE_31, &CWaveSoapFrontView::OnViewMaximize0)
+	//ON_UPDATE_COMMAND_UI(ID_VIEW_MINIMIZE_0, &CWaveSoapFrontView::OnUpdateViewMinimize0)
 END_MESSAGE_MAP()
 
 BEGIN_MESSAGE_MAP(CWaveSoapViewBase, BaseClass)
@@ -85,7 +88,7 @@ BEGIN_MESSAGE_MAP(CWaveSoapViewBase, BaseClass)
 	ON_WM_TIMER()
 	ON_WM_CAPTURECHANGED()
 	ON_WM_LBUTTONDBLCLK()
-	ON_WM_CONTEXTMENU()
+	//ON_WM_CONTEXTMENU()
 	ON_WM_DESTROY()
 	//}}AFX_MSG_MAP
 	ON_MESSAGE(UWM_NOTIFY_VIEWS, &CWaveSoapViewBase::OnUwmNotifyViews)
@@ -658,11 +661,11 @@ void CWaveSoapFrontView::OnDraw(CDC* pDC)
 												CRect(ClipR.left, ClipR.top, ClipR.right, ClipR.bottom + 1));   // now include the separator line into it
 				}
 
-				DashBrush.UnrealizeObject();
-
 				// Raster OP: Destination AND brush pattern
 				DWORD const DstAndBrushRop = 0x00A000C9;
 				DWORD const DstOrBrushRop = 0x00AF0229;
+
+				DashBrush.UnrealizeObject();
 
 				// the brush origin is reset for each channel to allow for scroll
 				pDC->SetBrushOrg(0, WaveToY(-32768) % DashLength);
@@ -1192,6 +1195,10 @@ DWORD CWaveSoapFrontView::ClientHitTest(CPoint p) const
 		&& ChannelUnderCursor < pDoc->WaveChannels())
 	{
 		result |= ChannelUnderCursor;
+		if (m_Heights.ch[ChannelUnderCursor].minimized)
+		{
+			result |= VSHT_CHANNEL_MINIMIZED;
+		}
 
 		if (0 != (pDoc->m_SelectedChannel & (1 << ChannelUnderCursor))
 			&& pDoc->m_SelectionStart <= pDoc->m_SelectionEnd)
@@ -1440,10 +1447,11 @@ BOOL CWaveSoapFrontView::OnEraseBkgnd(CDC* pDC)
 					0xAAAA,
 					0x5555,
 					0xAAAA,
+					0x5555,
 				};
 
-				// Windows98 can only use 8x8 bitmap for a brush
-				bmp.CreateBitmap(8, 8, 1, 1, pattern);
+				// alternate the pattern to adjust for add/even scrolling, to avoid discontinuity
+				bmp.CreateBitmap(8, 8, 1, 1, pattern + FileEnd % 2);
 
 				CBrush GrayBrush( & bmp);
 				CRect GrayRect = cr;
@@ -2752,17 +2760,33 @@ UINT CWaveSoapFrontView::GetPopupMenuID(CPoint point)
 	DWORD hit = ClientHitTest(point);
 	if (hit & VSHT_SELECTION)
 	{
-		return IDR_MENU_WAVE_VIEW_SELECTION;
+		if (hit & VSHT_CHANNEL_MINIMIZED)
+		{
+			return IDR_MENU_WAVE_VIEW_SELECTION_MINIMIZED;
+		}
+		else
+		{
+			return IDR_MENU_WAVE_VIEW_SELECTION;
+		}
 	}
 	else
 	{
-		return IDR_MENU_WAVE_VIEW;
+		if (hit & VSHT_CHANNEL_MINIMIZED)
+		{
+			return IDR_MENU_WAVE_VIEW_MINIMIZED;
+		}
+		else
+		{
+			return IDR_MENU_WAVE_VIEW;
+		}
 	}
 }
 
 void CWaveSoapViewBase::OnRButtonDown(UINT nFlags, CPoint point)
 {
 	// point is in client coordinates
+	nKeyPressed = WM_RBUTTONDOWN;
+
 	CView::OnRButtonDown(nFlags, point);
 	DWORD nHit = ClientHitTest(point);
 	if ((nHit & VSHT_NONCLIENT)
@@ -2795,6 +2819,7 @@ void CWaveSoapViewBase::OnRButtonDown(UINT nFlags, CPoint point)
 
 void CWaveSoapViewBase::OnRButtonUp(UINT nFlags, CPoint point)
 {
+	nKeyPressed = 0;
 	CView::OnRButtonUp(nFlags, point);
 }
 
@@ -3124,8 +3149,10 @@ afx_msg LRESULT CWaveSoapFrontView::OnUwmNotifyViews(WPARAM wParam, LPARAM lPara
 	switch (wParam)
 	{
 	case ChannelHeightsChanged:
-
+		Invalidate();
+		CreateAndShowCaret(true);
 		break;
+
 	case HorizontalScrollPixels:
 		HorizontalScrollByPixels(*(int*)lParam);
 		break;
@@ -3217,6 +3244,70 @@ afx_msg LRESULT CWaveSoapFrontView::OnUwmNotifyViews(WPARAM wParam, LPARAM lPara
 	return 0;
 }
 
+void CWaveSoapFrontView::InvalidateMarkerLabels(int dy)
+{
+	bool PlaybackCursorHidden = false;
+
+	CWaveSoapFrontDoc * pDoc = GetDocument();
+	int nChannels = pDoc->WaveChannels();
+	CRect cr;
+	GetClientRect(cr);
+	int const FileEnd = SampleToXceil(pDoc->WaveFileSamples());
+
+	// invalidate marker labels
+	CWindowDC dc(this);
+	CGdiObjectSave OldFont(dc, dc.SelectStockObject(ANSI_VAR_FONT));
+
+	CWaveFile::InstanceDataWav * pInst = pDoc->m_WavFile.GetInstanceData();
+
+	for (ConstCuePointVectorIterator i = pInst->m_CuePoints.begin();
+		i < pInst->m_CuePoints.end(); i++)
+	{
+		long x = SampleToX(i->dwSampleOffset);
+
+		// invalidate text
+		if (x >= cr.right)
+		{
+			continue;
+		}
+
+		LPCTSTR txt = pInst->GetCueText(i->CuePointID);
+		if (NULL == txt)
+		{
+			continue;
+		}
+
+		CRect ir;
+		CPoint TextSize(dc.GetTextExtent(txt, (int)_tcslen(txt)));
+
+		ir.left = x;
+		ir.top = cr.top;
+		ir.bottom = cr.top + TextSize.y;
+		ir.right = x + TextSize.x;
+
+		// in the wave area, invalidate old and new position,
+		// only if vertical scroll was done.
+		// In the background area, invalidate only if horizontal scroll was done
+		if (x + TextSize.x > cr.left
+			&& dy != 0)
+		{
+			InvalidateRect(ir);
+			if (dy > 0
+				&& dy < cr.bottom - cr.top)
+			{
+				// scroll down
+				// invalidate old position
+				InvalidateRect(CRect(x, cr.top + dy, x + TextSize.x, cr.top + TextSize.y + dy));
+			}
+		}
+	}
+
+	if (PlaybackCursorHidden)
+	{
+		ShowPlaybackCursor();
+	}
+}
+
 void CWaveSoapFrontView::SetNewAmplitudeOffset(double offset)
 {
 	// scroll channels rectangles
@@ -3230,17 +3321,17 @@ void CWaveSoapFrontView::SetNewAmplitudeOffset(double offset)
 		cr.right = FileEnd;
 	}
 
+	// offset of the zero line down
+	int OldOffsetPixels = (int)floor(m_WaveOffsetY / 65536. * m_Heights.NominalChannelHeight * m_VerticalScale + 0.5);
+	int NewOffsetPixels = (int)floor(offset / 65536. * m_Heights.NominalChannelHeight * m_VerticalScale + 0.5);
+	int ToScroll = NewOffsetPixels - OldOffsetPixels;       // >0 - down, <0 - up
+
 	for (int ch = 0; ch < nChannels; ch++)
 	{
 		if (m_Heights.ch[ch].minimized)
 		{
 			continue;
 		}
-
-		// offset of the zero line down
-		int OldOffsetPixels = (int)floor(m_WaveOffsetY / 65536. * m_Heights.NominalChannelHeight * m_VerticalScale + 0.5);
-		int NewOffsetPixels = (int)floor(offset / 65536. * m_Heights.NominalChannelHeight * m_VerticalScale + 0.5);
-		int ToScroll = NewOffsetPixels - OldOffsetPixels;       // >0 - down, <0 - up
 
 		CRect ClipRect(cr.left, m_Heights.ch[ch].clip_top, cr.right, m_Heights.ch[ch].clip_bottom);
 		CRect ScrollRect(ClipRect);
@@ -3281,7 +3372,64 @@ void CWaveSoapFrontView::SetNewAmplitudeOffset(double offset)
 			continue;
 		}
 	}
+
+	InvalidateMarkerLabels(ToScroll);
+
 	m_WaveOffsetY = offset;
+}
+
+void CWaveSoapFrontView::OnContextMenu(CWnd* /*pWnd*/, CPoint point)
+{
+	// make sure window is active
+	GetParentFrame()->ActivateFrame();
+
+	CMenu menu;
+	CMenu* pPopup = NULL;
+
+	UINT uID = GetPopupMenuID(point);
+
+	if (uID != 0 && menu.LoadMenu(uID))
+	{
+		pPopup = menu.GetSubMenu(0);
+	}
+
+	// modify "Minimize" menu item (or remove altogether)
+	CPoint client(point);
+	ScreenToClient(&client);
+
+	DWORD HitTest = ClientHitTest(client);
+
+	if (HitTest & VSHT_CHANNEL_MINIMIZED)
+	{
+		MENUITEMINFO info = {sizeof info, MIIM_ID};
+		info.wID = ID_VIEW_MAXIMIZE_0 + (HitTest & VSHT_CHANNEL_MASK);
+
+		pPopup->SetMenuItemInfoW(ID_VIEW_MAXIMIZE_0, &info, FALSE);
+	}
+	else if (GetDocument()->WaveChannels() >= 2)
+	{
+		MENUITEMINFO info = {sizeof info, MIIM_ID};
+		info.wID = ID_VIEW_MINIMIZE_0 + (HitTest & VSHT_CHANNEL_MASK);
+
+		pPopup->SetMenuItemInfoW(ID_VIEW_MINIMIZE_0, &info, FALSE);
+	}
+	else
+	{
+		// delete the "minimize" and the last separator before it
+	}
+
+	if(pPopup != NULL)
+	{
+		int Command = pPopup->TrackPopupMenu(
+											TPM_LEFTALIGN | TPM_RIGHTBUTTON | TPM_RETURNCMD,
+											point.x, point.y,
+											AfxGetMainWnd()); // use main window for cmds
+
+		if (0 != Command)
+		{
+			AfxGetMainWnd()->SendMessage(WM_COMMAND, Command & 0xFFFF, 0);
+		}
+	}
 }
 
 afx_msg LRESULT CWaveSoapViewBase::OnUwmNotifyViews(WPARAM wParam, LPARAM lParam)
@@ -3346,3 +3494,55 @@ afx_msg LRESULT CWaveSoapViewBase::OnUwmNotifyViews(WPARAM wParam, LPARAM lParam
 	}
 	return 0;
 }
+
+
+void CWaveSoapFrontView::OnViewMinimize0(UINT id)
+{
+	// TODO: Add your command handler code here
+	int Channel = id - ID_VIEW_MINIMIZE_0;
+	int nChannels = GetDocument()->WaveChannels();
+
+	if (Channel >= nChannels)
+	{
+		return;
+	}
+
+	// check if there is any non-minimized channel
+	int i;
+	for (i = 0; i < nChannels; i++)
+	{
+		if (i != Channel && ! m_Heights.ch[i].minimized)
+		{
+			break;
+		}
+	}
+
+	m_Heights.ch[Channel].minimized = true;
+	if (i >= nChannels)
+	{
+		m_Heights.ch[(Channel + 1) % nChannels].minimized = false;
+	}
+
+	CRect cr;
+	GetClientRect(cr);
+	RecalculateChannelHeight(cr.Height());
+}
+
+void CWaveSoapFrontView::OnViewMaximize0(UINT id)
+{
+	// TODO: Add your command handler code here
+	int Channel = id - ID_VIEW_MAXIMIZE_0;
+	int nChannels = GetDocument()->WaveChannels();
+
+	if (Channel >= nChannels)
+	{
+		return;
+	}
+
+	m_Heights.ch[Channel].minimized = false;
+
+	CRect cr;
+	GetClientRect(cr);
+	RecalculateChannelHeight(cr.Height());
+}
+
