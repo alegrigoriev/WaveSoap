@@ -16,7 +16,7 @@
 static char THIS_FILE[] = __FILE__;
 #endif
 
-#define TRACE_DRAWING 0
+#define TRACE_DRAWING 1
 /////////////////////////////////////////////////////////////////////////////
 // CAmplitudeRuler
 
@@ -27,6 +27,9 @@ CAmplitudeRuler::CAmplitudeRuler()
 	, m_VerticalScale(1.)
 	, m_WaveOffsetY(0.)
 {
+	memzero(m_Heights);
+	memzero(m_InvalidAreaTop);
+	memzero(m_InvalidAreaBottom);
 }
 
 CAmplitudeRuler::~CAmplitudeRuler()
@@ -63,7 +66,7 @@ static int fround(double d)
 	}
 }
 
-void CAmplitudeRuler::OnDraw(CDC* pDC)
+void CAmplitudeRuler::OnDraw(CDC* pDrawDC)
 {
 	CWaveSoapFrontDoc* pDoc = GetDocument();
 	if (! pDoc->m_WavFile.IsOpen())
@@ -71,31 +74,54 @@ void CAmplitudeRuler::OnDraw(CDC* pDC)
 		return;
 	}
 
-	CGdiObjectSave OldFont(pDC, pDC->SelectStockObject(ANSI_VAR_FONT));
-	CGdiObjectSave OldPen(pDC, pDC->SelectStockObject(BLACK_PEN));
-
+	memzero(m_InvalidAreaBottom);
+	memzero(m_InvalidAreaTop);
+	// Draw with double buffering
 	CRect cr;
 	GetClientRect(cr);
 
+	CDC dc;
+	dc.CreateCompatibleDC(NULL);
+	CBitmap DrawBitmap;
+	DrawBitmap.CreateCompatibleBitmap(pDrawDC, cr.Width(), cr.Height());
+
+	CDC * pDC = & dc;
+
+	CGdiObjectSaveT<CBitmap> OldBitmap(pDC, pDC->SelectObject(& DrawBitmap));
+	CGdiObjectSave OldFont(pDC, pDC->SelectStockObject(ANSI_VAR_FONT));
+	CGdiObjectSave OldPen(pDC, pDC->SelectStockObject(BLACK_PEN));
+
+	CBrush bkgnd;
+	TRACE("SysColor(COLOR_WINDOW)=%X\n", GetSysColor(COLOR_WINDOW));
+	bkgnd.CreateSysColorBrush(COLOR_WINDOW);
+
 	pDC->SetTextAlign(TA_BOTTOM | TA_RIGHT);
 	pDC->SetTextColor(0x000000);   // black
+	pDC->FillRect(cr, &bkgnd);
 	pDC->SetBkMode(TRANSPARENT);
 
 	NUMBER_OF_CHANNELS nChannels = pDoc->WaveChannels();
 
 	for (int ch = 0; ch < nChannels; ch++)
 	{
+		if ( m_Heights.ch[ch].minimized)
+		{
+			continue;
+		}
+
+		TRACE("CAmplitudeRuler::OnDraw: ch %d zero pos =%d\n",
+			ch, (int)WaveCalculate(m_WaveOffsetY, m_VerticalScale, m_Heights.ch[ch].top, m_Heights.ch[ch].bottom)(0.));
 		CRect chr;
 		// for all channels, the rectangle is of the same height
-		chr.top = m_Heights.ch[ch].top; //((cr.bottom - cr.top + 1) * ch) / nChannels;
-		chr.bottom = m_Heights.ch[ch].bottom;    //chr.top + (cr.bottom - cr.top + 1) / nChannels - 1;
+		chr.top = m_Heights.ch[ch].top;
+		chr.bottom = m_Heights.ch[ch].bottom;
 		chr.left = cr.left;
 		chr.right = cr.right;
 
 		CRect clipr;    // channel clip rect
 		// for all channels, the rectangle is of the same height
-		clipr.top = m_Heights.ch[ch].clip_top;   //(cr.bottom - cr.top + 1) * ch / nChannels;
-		clipr.bottom = m_Heights.ch[ch].clip_bottom;    //(cr.bottom - cr.top + 1) * (ch + 1) / nChannels - 1;
+		clipr.top = m_Heights.ch[ch].clip_top;
+		clipr.bottom = m_Heights.ch[ch].clip_bottom;
 		clipr.left = cr.left;
 		clipr.right = cr.right;
 
@@ -118,6 +144,7 @@ void CAmplitudeRuler::OnDraw(CDC* pDC)
 			pDC->LineTo(cr.right, chr.bottom);
 		}
 	}
+	pDrawDC->BitBlt(0, 0, cr.Width(), cr.Height(), pDC, 0, 0, SRCCOPY);
 }
 
 void CAmplitudeRuler::DrawChannelSamples(CDC * pDC, CRect const & chr, CRect const & clipr)
@@ -331,8 +358,7 @@ void CAmplitudeRuler::OnUpdate(CView* /*pSender*/, LPARAM lHint, CObject* /*pHin
 
 void CAmplitudeRuler::VerticalScrollPixels(int Pixels)
 {
-	double scroll = Pixels * m_VerticalScale;
-	NotifySiblingViews(AmplitudeOffsetChanged, &scroll);
+	NotifySiblingViews(AmplitudeScrollPixels, &Pixels);
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -408,19 +434,94 @@ void CAmplitudeRuler::OnUpdateAmplRulerDecibels(CCmdUI * pCmdUI)
 	pCmdUI->SetRadio(DecibelView == m_DrawMode);
 }
 
+void CAmplitudeRuler::SetNewAmplitudeOffset(double offset)
+{
+	// scroll channels rectangles
+	CWaveSoapFrontDoc * pDoc = GetDocument();
+	int nChannels = pDoc->WaveChannels();
+	CRect cr;
+	GetClientRect(cr);
+
+	for (int ch = 0; ch < nChannels; ch++)
+	{
+		if (m_Heights.ch[ch].minimized)
+		{
+			continue;
+		}
+
+		// offset of the zero line down
+		int OldOffsetPixels = (int)floor(m_WaveOffsetY / 65536. * m_Heights.NominalChannelHeight * m_VerticalScale + 0.5);
+		int NewOffsetPixels = (int)floor(offset / 65536. * m_Heights.NominalChannelHeight * m_VerticalScale + 0.5);
+
+		int ToScroll = NewOffsetPixels - OldOffsetPixels;       // >0 - down, <0 - up
+
+		CRect ClipRect(cr.left, m_Heights.ch[ch].clip_top, cr.right, m_Heights.ch[ch].clip_bottom);
+		CRect ScrollRect(ClipRect);
+		ScrollRect.top += m_InvalidAreaTop[ch];
+		ScrollRect.bottom -= m_InvalidAreaBottom[ch];
+		if (ToScroll > 0)
+		{
+			// down
+			m_InvalidAreaTop[ch] += ToScroll;
+			ScrollRect.bottom -= ToScroll;
+			if (ScrollRect.Height() <= 0)
+			{
+//                InvalidateRect(ClipRect);
+				continue;
+			}
+			CRect ToInvalidate(cr.left, ScrollRect.top, cr.right, ScrollRect.top + ToScroll);
+
+			ScrollWindowEx(0, ToScroll, ScrollRect, ClipRect, NULL, NULL, 0);
+//            InvalidateRect(ToInvalidate);
+		}
+		else if (ToScroll < 0)
+		{
+			// up
+			m_InvalidAreaBottom[ch] -= ToScroll;
+			ScrollRect.top -= ToScroll;
+			if (ScrollRect.Height() <= 0)
+			{
+				InvalidateRect(ClipRect, FALSE);
+				continue;
+			}
+			CRect ToInvalidate(cr.left, ScrollRect.top, cr.right, ScrollRect.top + ToScroll);
+
+			ScrollWindowEx(0, ToScroll, ScrollRect, ClipRect, NULL, NULL, 0);
+			InvalidateRect(ToInvalidate, FALSE);
+		}
+		else
+		{
+			continue;
+		}
+	}
+	m_WaveOffsetY = offset;
+	Invalidate(FALSE);
+}
+
 afx_msg LRESULT CAmplitudeRuler::OnUwmNotifyViews(WPARAM wParam, LPARAM lParam)
 {
 	switch (wParam)
 	{
 	case VerticalScaleChanged:
-		m_VerticalScale = *(double*) lParam;
-		Invalidate();
+		// lParam points to double new scale
+		if (m_VerticalScale != *(double*)lParam)
+		{
+			m_VerticalScale = *(double*)lParam;
+			Invalidate();
+			// check for the proper offset, correct if necessary
+			if (m_WaveOffsetY >= 32768. * (1. - 1./ m_VerticalScale))
+			{
+				m_WaveOffsetY = 32768. * (1. - 1./ m_VerticalScale);
+			}
+			else if (m_WaveOffsetY <= -32768. * (1. - 1./ m_VerticalScale))
+			{
+				m_WaveOffsetY = -32768. * (1. - 1./ m_VerticalScale);
+			}
+		}
 		break;
 
 	case AmplitudeOffsetChanged:
-		break;
-
-	case AmplitudeScrollPixels:
+		SetNewAmplitudeOffset(*(double*) lParam);
 		break;
 
 	case ChannelHeightsChanged:

@@ -91,14 +91,13 @@ void CFftRulerView::OnDraw(CDC* pDC)
 
 		int ClipHigh = m_Heights.ch[ch].clip_bottom;
 		int ClipLow = m_Heights.ch[ch].clip_top;
-		double Offset = m_Heights.NominalChannelHeight;
 
 		// if all the chart was drawn, how many scans it would have:
 		int TotalRows = int(m_Heights.NominalChannelHeight * m_VerticalScale);
 
 		if (0 == TotalRows)
 		{
-			return;
+			continue;
 		}
 
 		int LastFftSample = int(m_FftOrder - m_FirstbandVisible);
@@ -132,8 +131,7 @@ void CFftRulerView::OnDraw(CDC* pDC)
 		ClipLow += tm.tmHeight / 2;
 		ClipHigh -= tm.tmHeight / 2;
 
-		int yLow = int(m_FirstbandVisible *
-						0.5 * pDoc->WaveSampleRate() / m_FftOrder);
+		int yLow = int(m_FirstbandVisible * 0.5 * pDoc->WaveSampleRate() / m_FftOrder);
 		// round to the next multiple of step
 		yLow += (step*0x10000-yLow) % step;
 
@@ -146,7 +144,7 @@ void CFftRulerView::OnDraw(CDC* pDC)
 			// y is frequency
 			double band = double(y) / (0.5 * pDoc->WaveSampleRate())
 						* m_FftOrder;
-			int yDev= int(Offset - fround((band - m_FirstbandVisible) / m_FftOrder * m_Heights.NominalChannelHeight * m_VerticalScale));
+			int yDev= m_Heights.ch[ch].clip_bottom - (int)fround((band - m_FirstbandVisible) / m_FftOrder * m_Heights.NominalChannelHeight * m_VerticalScale);
 
 			if (yDev - tm.tmHeight/2 < ClipLow
 				|| yDev + tm.tmHeight/2 > ClipHigh)
