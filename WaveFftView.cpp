@@ -1698,6 +1698,35 @@ void CWaveFftView::OnViewIncreaseFftBands()
 	}
 }
 
+void CWaveFftView::OnContextMenu(CWnd* /*pWnd*/, CPoint point)
+{
+	// make sure window is active
+	GetParentFrame()->ActivateFrame();
+
+	CMenu menu;
+	CMenu* pPopup = NULL;
+
+	UINT uID = GetPopupMenuID(point);
+
+	if (uID != 0 && menu.LoadMenu(uID))
+	{
+		pPopup = menu.GetSubMenu(0);
+	}
+
+	if(pPopup != NULL)
+	{
+		int Command = pPopup->TrackPopupMenu(
+											TPM_LEFTALIGN | TPM_RIGHTBUTTON | TPM_RETURNCMD,
+											point.x, point.y,
+											AfxGetMainWnd()); // use main window for cmds
+
+		if (0 != Command)
+		{
+			AfxGetMainWnd()->SendMessage(WM_COMMAND, Command & 0xFFFF, 0);
+		}
+	}
+}
+
 afx_msg LRESULT CWaveFftView::OnUwmNotifyViews(WPARAM wParam, LPARAM lParam)
 {
 	switch(wParam)

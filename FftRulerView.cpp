@@ -35,6 +35,7 @@ CFftRulerView::~CFftRulerView()
 BEGIN_MESSAGE_MAP(CFftRulerView, CVerticalRuler)
 	//{{AFX_MSG_MAP(CFftRulerView)
 	ON_WM_LBUTTONDBLCLK()
+	ON_WM_CONTEXTMENU()
 	//}}AFX_MSG_MAP
 	ON_MESSAGE(UWM_NOTIFY_VIEWS, &CFftRulerView::OnUwmNotifyViews)
 END_MESSAGE_MAP()
@@ -237,5 +238,34 @@ void CFftRulerView::VerticalScrollPixels(int Pixels)
 {
 	//double scroll = Pixels * m_VerticalScale;
 	NotifySiblingViews(FftScrollPixels, &Pixels);
+}
+
+void CFftRulerView::OnContextMenu(CWnd* /*pWnd*/, CPoint point)
+{
+	// make sure window is active
+	GetParentFrame()->ActivateFrame();
+
+	CMenu menu;
+	CMenu* pPopup = NULL;
+
+	UINT uID = GetPopupMenuID(point);
+
+	if (uID != 0 && menu.LoadMenu(uID))
+	{
+		pPopup = menu.GetSubMenu(0);
+	}
+
+	if(pPopup != NULL)
+	{
+		int Command = pPopup->TrackPopupMenu(
+											TPM_LEFTALIGN | TPM_RIGHTBUTTON | TPM_RETURNCMD,
+											point.x, point.y,
+											AfxGetMainWnd()); // use main window for cmds
+
+		if (0 != Command)
+		{
+			AfxGetMainWnd()->SendMessage(WM_COMMAND, Command & 0xFFFF, 0);
+		}
+	}
 }
 

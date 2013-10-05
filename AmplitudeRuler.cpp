@@ -47,6 +47,7 @@ BEGIN_MESSAGE_MAP(CAmplitudeRuler, BaseClass)
 	ON_UPDATE_COMMAND_UI(ID_VIEW_AMPL_RULER_SAMPLES, OnUpdateAmplRulerSamples)
 	ON_UPDATE_COMMAND_UI(ID_VIEW_AMPL_RULER_PERCENT, OnUpdateAmplRulerPercent)
 	ON_UPDATE_COMMAND_UI(ID_VIEW_AMPL_RULER_DECIBELS, OnUpdateAmplRulerDecibels)
+	ON_WM_CONTEXTMENU()
 	//}}AFX_MSG_MAP
 	ON_MESSAGE(UWM_NOTIFY_VIEWS, &CAmplitudeRuler::OnUwmNotifyViews)
 END_MESSAGE_MAP()
@@ -498,6 +499,58 @@ void CAmplitudeRuler::SetNewAmplitudeOffset(double offset)
 	Invalidate(FALSE);
 }
 
+UINT CAmplitudeRuler::GetPopupMenuID(CPoint point)
+{
+	// point is in screen coordinates
+	CWaveSoapFrontDoc * pDoc = GetDocument();
+	ScreenToClient( & point);
+	for (int i = 0; i < pDoc->WaveChannels(); i++)
+	{
+		if (point.y > m_Heights.ch[i].clip_bottom)
+		{
+			continue;
+		}
+		if (m_Heights.ch[i].minimized)
+		{
+			return IDR_MENU_AMPLITUDE_RULER_MINIMIZED;
+		}
+		else
+		{
+			return IDR_MENU_AMPLITUDE_RULER;
+		}
+	}
+	return IDR_MENU_AMPLITUDE_RULER;
+}
+
+void CAmplitudeRuler::OnContextMenu(CWnd* /*pWnd*/, CPoint point)
+{
+	// make sure window is active
+	GetParentFrame()->ActivateFrame();
+
+	CMenu menu;
+	CMenu* pPopup = NULL;
+
+	UINT uID = GetPopupMenuID(point);
+
+	if (uID != 0 && menu.LoadMenu(uID))
+	{
+		pPopup = menu.GetSubMenu(0);
+	}
+
+	if(pPopup != NULL)
+	{
+		int Command = pPopup->TrackPopupMenu(
+											TPM_LEFTALIGN | TPM_RIGHTBUTTON | TPM_RETURNCMD,
+											point.x, point.y,
+											AfxGetMainWnd()); // use main window for cmds
+
+		if (0 != Command)
+		{
+			AfxGetMainWnd()->SendMessage(WM_COMMAND, Command & 0xFFFF, 0);
+		}
+	}
+}
+
 afx_msg LRESULT CAmplitudeRuler::OnUwmNotifyViews(WPARAM wParam, LPARAM lParam)
 {
 	switch (wParam)
@@ -528,6 +581,7 @@ afx_msg LRESULT CAmplitudeRuler::OnUwmNotifyViews(WPARAM wParam, LPARAM lParam)
 	{
 		NotifyChannelHeightsData * data = (NotifyChannelHeightsData*) lParam;
 		m_Heights = *data;
+		Invalidate(FALSE);
 	}
 		break;
 	}

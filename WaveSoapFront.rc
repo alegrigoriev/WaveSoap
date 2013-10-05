@@ -388,6 +388,7 @@ BEGIN
         MENUITEM "&Zoom In",                    ID_VIEW_ZOOMINVERT
         MENUITEM "Zoom &Out",                   ID_VIEW_ZOOMOUTVERT
         MENUITEM "Zoom Out &Full",              ID_VIEW_ZOOMVERT_NORMAL
+        MENUITEM "Minimize",                    ID_VIEW_MINIMIZE_0
     END
 END
 
@@ -449,6 +450,7 @@ BEGIN
         MENUITEM SEPARATOR
         MENUITEM "Zoom In Amplitude\tAlt+Up",   ID_VIEW_ZOOMINVERT
         MENUITEM "Zoom Out Amplitude\tAlt+Down", ID_VIEW_ZOOMOUTVERT
+        MENUITEM "Minimize",                    ID_VIEW_MINIMIZE_0
     END
 END
 
@@ -474,6 +476,7 @@ BEGIN
         MENUITEM SEPARATOR
         MENUITEM "Zoom In Amplitude\tAlt+Up",   ID_VIEW_ZOOMINVERT
         MENUITEM "Zoom Out Amplitude\tAlt+Down", ID_VIEW_ZOOMOUTVERT
+        MENUITEM "Minimize",                    ID_VIEW_MINIMIZE_0
     END
 END
 
@@ -845,6 +848,54 @@ BEGIN
     BEGIN
         MENUITEM "Zoom In",                     ID_VIEW_SS_ZOOMINHOR2
         MENUITEM "Zoom Out",                    ID_VIEW_SS_ZOOMOUTHOR2
+    END
+END
+
+IDR_MENU_WAVE_VIEW_MINIMIZED MENU
+BEGIN
+    POPUP " "
+    BEGIN
+        MENUITEM "Marker...\tM",                ID_EDIT_WAVE_MARKER
+        MENUITEM "Paste\tCtrl+V",               ID_EDIT_PASTE
+        MENUITEM SEPARATOR
+        MENUITEM "&Zoom In Time\tNum +",        ID_VIEW_ZOOMINHOR2
+        MENUITEM "Zoom &Out Time\tNum -",       ID_VIEW_ZOOMOUTHOR2
+        MENUITEM "Zoom In &Full\tCtrl+Num +",   ID_VIEW_ZOOMIN_HOR_FULL
+        MENUITEM "Zoom Previous\tCtrl+Num -",   ID_VIEW_ZOOMPREVIOUS
+        MENUITEM SEPARATOR
+        MENUITEM "Normal height",               ID_VIEW_MAXIMIZE_0
+    END
+END
+
+IDR_MENU_AMPLITUDE_RULER_MINIMIZED MENU
+BEGIN
+    POPUP " "
+    BEGIN
+        MENUITEM "Normal height",               ID_VIEW_MAXIMIZE_0
+    END
+END
+
+IDR_MENU_WAVE_VIEW_SELECTION_MINIMIZED MENU
+BEGIN
+    POPUP " "
+    BEGIN
+        MENUITEM "Copy\tCtrl+C",                ID_EDIT_COPY
+        MENUITEM "Paste\tCtrl+V",               ID_EDIT_PASTE
+        MENUITEM "Cut\tCtrl+X",                 ID_EDIT_CUT
+        MENUITEM "Delete\tDel",                 ID_EDIT_DELETE
+        POPUP "Fade"
+        BEGIN
+            MENUITEM "In",                          ID_EDIT_FADE_IN
+            MENUITEM "Out",                         ID_EDIT_FADE_OUT
+        END
+        MENUITEM "&Region...\tR",               ID_EDIT_WAVE_REGION
+        MENUITEM SEPARATOR
+        MENUITEM "&Zoom In Time\tNum +",        ID_VIEW_ZOOMINHOR2
+        MENUITEM "Zoom &Out Time\tNum -",       ID_VIEW_ZOOMOUTHOR2
+        MENUITEM "Zoom In &Full\tCtrl+Num +",   ID_VIEW_ZOOMIN_HOR_FULL
+        MENUITEM "Zoom To Selection\tShift+Num +", ID_VIEW_ZOOM_SELECTION
+        MENUITEM SEPARATOR
+        MENUITEM "Normal height",               ID_VIEW_MAXIMIZE_0
     END
 END
 
@@ -3645,6 +3696,8 @@ BEGIN
     ID_FFT_WINDOW_NUTTALL   "Apply Nuttall window to the data before FFT"
     ID_EDIT_FADE_IN         "Fade the sound from silence to full volume (hold Shift for options)\nFade In"
     ID_EDIT_FADE_OUT        "Fade the sound from full volume to silence (hold Shift for options)\nFade Out"
+    ID_VIEW_MINIMIZE_0      "Show channel with minimum height"
+    ID_VIEW_MINIMIZE_1      "Show channel with minimum height"
 END
 
 STRINGTABLE
@@ -3655,6 +3708,84 @@ BEGIN
     IDS_SEGMENT_NAME_FROM_MARKERS "From '%s' to '%s'"
     IDS_MORE_CLICK_SETTINGS_IN_EFFECT 
                             "Click logging settings are in effect, click [More settings] button"
+END
+
+STRINGTABLE
+BEGIN
+    ID_VIEW_MINIMIZE_2      "Show channel with minimum height"
+    ID_VIEW_MINIMIZE_3      "Show channel with minimum height"
+    ID_VIEW_MINIMIZE_4      "Show channel with minimum height"
+    ID_VIEW_MINIMIZE_5      "Show channel with minimum height"
+    ID_VIEW_MINIMIZE_6      "Show channel with minimum height"
+    ID_VIEW_MINIMIZE_7      "Show channel with minimum height"
+    ID_VIEW_MINIMIZE_8      "Show channel with minimum height"
+    ID_VIEW_MINIMIZE_9      "Show channel with minimum height"
+    ID_VIEW_MINIMIZE_10     "Show channel with minimum height"
+    ID_VIEW_MINIMIZE_11     "Show channel with minimum height"
+    ID_VIEW_MINIMIZE_12     "Show channel with minimum height"
+    ID_VIEW_MINIMIZE_13     "Show channel with minimum height"
+    ID_VIEW_MINIMIZE_14     "Show channel with minimum height"
+    ID_VIEW_MINIMIZE_15     "Show channel with minimum height"
+    ID_VIEW_MINIMIZE_16     "Show channel with minimum height"
+    ID_VIEW_MINIMIZE_17     "Show channel with minimum height"
+END
+
+STRINGTABLE
+BEGIN
+    ID_VIEW_MINIMIZE_18     "Show channel with minimum height"
+    ID_VIEW_MINIMIZE_19     "Show channel with minimum height"
+    ID_VIEW_MINIMIZE_20     "Show channel with minimum height"
+    ID_VIEW_MINIMIZE_21     "Show channel with minimum height"
+    ID_VIEW_MINIMIZE_22     "Show channel with minimum height"
+    ID_VIEW_MINIMIZE_23     "Show channel with minimum height"
+    ID_VIEW_MINIMIZE_24     "Show channel with minimum height"
+    ID_VIEW_MINIMIZE_25     "Show channel with minimum height"
+    ID_VIEW_MINIMIZE_26     "Show channel with minimum height"
+    ID_VIEW_MINIMIZE_27     "Show channel with minimum height"
+    ID_VIEW_MINIMIZE_28     "Show channel with minimum height"
+    ID_VIEW_MINIMIZE_29     "Show channel with minimum height"
+    ID_VIEW_MINIMIZE_30     "Show channel with minimum height"
+    ID_VIEW_MINIMIZE_31     "Show channel with minimum height"
+    ID_VIEW_MAXIMIZE_0      "Show channel with normal height"
+    ID_VIEW_MAXIMIZE_1      "Show channel with normal height"
+END
+
+STRINGTABLE
+BEGIN
+    ID_VIEW_MAXIMIZE_2      "Show channel with normal height"
+    ID_VIEW_MAXIMIZE_3      "Show channel with normal height"
+    ID_VIEW_MAXIMIZE_4      "Show channel with normal height"
+    ID_VIEW_MAXIMIZE_5      "Show channel with normal height"
+    ID_VIEW_MAXIMIZE_6      "Show channel with normal height"
+    ID_VIEW_MAXIMIZE_7      "Show channel with normal height"
+    ID_VIEW_MAXIMIZE_8      "Show channel with normal height"
+    ID_VIEW_MAXIMIZE_9      "Show channel with normal height"
+    ID_VIEW_MAXIMIZE_10     "Show channel with normal height"
+    ID_VIEW_MAXIMIZE_11     "Show channel with normal height"
+    ID_VIEW_MAXIMIZE_12     "Show channel with normal height"
+    ID_VIEW_MAXIMIZE_13     "Show channel with normal height"
+    ID_VIEW_MAXIMIZE_14     "Show channel with normal height"
+    ID_VIEW_MAXIMIZE_15     "Show channel with normal height"
+    ID_VIEW_MAXIMIZE_16     "Show channel with normal height"
+    ID_VIEW_MAXIMIZE_17     "Show channel with normal height"
+END
+
+STRINGTABLE
+BEGIN
+    ID_VIEW_MAXIMIZE_18     "Show channel with normal height"
+    ID_VIEW_MAXIMIZE_19     "Show channel with normal height"
+    ID_VIEW_MAXIMIZE_20     "Show channel with normal height"
+    ID_VIEW_MAXIMIZE_21     "Show channel with normal height"
+    ID_VIEW_MAXIMIZE_22     "Show channel with normal height"
+    ID_VIEW_MAXIMIZE_23     "Show channel with normal height"
+    ID_VIEW_MAXIMIZE_24     "Show channel with normal height"
+    ID_VIEW_MAXIMIZE_25     "Show channel with normal height"
+    ID_VIEW_MAXIMIZE_26     "Show channel with normal height"
+    ID_VIEW_MAXIMIZE_27     "Show channel with normal height"
+    ID_VIEW_MAXIMIZE_28     "Show channel with normal height"
+    ID_VIEW_MAXIMIZE_29     "Show channel with normal height"
+    ID_VIEW_MAXIMIZE_30     "Show channel with normal height"
+    ID_VIEW_MAXIMIZE_31     "Show channel with normal height"
 END
 
 #endif    // English (United States) resources

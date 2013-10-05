@@ -38,7 +38,8 @@ protected:
 // Implementation
 protected:
 	virtual ~CAmplitudeRuler();
-	virtual UINT GetPopupMenuID(CPoint) { return IDR_MENU_AMPLITUDE_RULER; }
+	virtual UINT GetPopupMenuID(CPoint);
+
 #ifdef _DEBUG
 	virtual void AssertValid() const;
 	virtual void Dump(CDumpContext& dc) const;
@@ -75,6 +76,7 @@ protected:
 	afx_msg void OnUpdateAmplRulerSamples(CCmdUI * pCmdUI);
 	afx_msg void OnUpdateAmplRulerPercent(CCmdUI * pCmdUI);
 	afx_msg void OnUpdateAmplRulerDecibels(CCmdUI * pCmdUI);
+	afx_msg void OnContextMenu(CWnd* pWnd, CPoint point);
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 	afx_msg LRESULT OnUwmNotifyViews(WPARAM wParam, LPARAM lParam);
@@ -129,6 +131,7 @@ protected:
 	afx_msg int OnCreate(LPCREATESTRUCT lpCreateStruct);
 	afx_msg void OnLButtonDblClk(UINT nFlags, CPoint point);
 	//{{AFX_MSG(CSpectrumSectionRuler)
+	afx_msg void OnContextMenu(CWnd* pWnd, CPoint point);
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 	afx_msg LRESULT OnUwmNotifyViews(WPARAM wParam, LPARAM lParam);

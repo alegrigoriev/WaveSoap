@@ -134,6 +134,7 @@ protected:
 	afx_msg void OnUpdateViewZoomInVert(CCmdUI* pCmdUI);
 	afx_msg void OnUpdateViewZoomOutVert(CCmdUI* pCmdUI);
 	afx_msg void OnUpdateViewZoomvertNormal(CCmdUI* pCmdUI);
+	afx_msg void OnContextMenu(CWnd* pWnd, CPoint point);
 	//}}AFX_MSG
 	void OnUpdateBands(CCmdUI* pCmdUI, int number);
 	void OnSetBands(int order);
