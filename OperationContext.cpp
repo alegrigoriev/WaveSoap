@@ -710,8 +710,8 @@ BOOL CThroughProcessOperation::OperationProc()
 	BOOL res = TRUE;    // function result
 	DWORD dwStartTime = GetTickCount();
 
-	unsigned DstSampleSize = 1;
-	unsigned SrcSampleSize = 1;
+	int DstSampleSize = 1;
+	int SrcSampleSize = 1;
 
 	if (m_DstFile.IsOpen())
 	{

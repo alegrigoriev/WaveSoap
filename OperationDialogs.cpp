@@ -1283,16 +1283,16 @@ BOOL CStatisticsDialog::OnInitDialog()
 	s.Format(IDS_STAT_DIALOG_FILE_NAME_FORMAT, LPCTSTR(m_sFilename));
 	m_FileName.SetWindowText(s);
 
-	int nSampleSize = m_pContext->m_DstFile.SampleSize();
+	int nSampleSize = m_pContext->m_SrcFile.SampleSize();
 
-	NUMBER_OF_SAMPLES nSamples = NUMBER_OF_SAMPLES((m_pContext->m_DstPos - m_pContext->m_DstStart) / nSampleSize);
+	NUMBER_OF_SAMPLES nSamples = NUMBER_OF_SAMPLES((m_pContext->m_SrcPos - m_pContext->m_SrcStart) / nSampleSize);
 
 	if (0 == nSamples)
 	{
 		nSamples = 1;
 	}
 	CString format, formatRight;
-	if (m_pContext->m_DstFile.Channels() > 1)
+	if (m_pContext->m_SrcFile.Channels() > 1)
 	{
 		format.LoadString(IDS_STATISTICS_FORMAT_LEFT);
 		formatRight.LoadString(IDS_STATISTICS_FORMAT_RIGHT);
@@ -1399,7 +1399,7 @@ BOOL CStatisticsDialog::OnInitDialog()
 	SetDlgItemText(IDC_EDIT_LEFT, s);
 
 	// right channel
-	if (m_pContext->m_DstFile.Channels() > 1)
+	if (m_pContext->m_SrcFile.Channels() > 1)
 	{
 		if (m_ValueAtCursorRight != 0)
 		{
@@ -1501,7 +1501,7 @@ BOOL CStatisticsDialog::OnInitDialog()
 INT_PTR CStatisticsDialog::DoModal()
 {
 	if (NULL != m_pContext
-		&& m_pContext->m_DstFile.Channels() == 1)
+		&& m_pContext->m_SrcFile.Channels() == 1)
 	{
 		m_lpszTemplateName = MAKEINTRESOURCE(IDD_DIALOG_STATISTICS_MONO);
 	}

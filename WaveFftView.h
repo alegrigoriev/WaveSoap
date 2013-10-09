@@ -30,6 +30,7 @@ public:
 	//{{AFX_VIRTUAL(CWaveFftView)
 protected:
 	virtual void OnDraw(CDC* pDC);      // overridden to draw this view
+	virtual void OnInitialUpdate();
 	virtual BOOL PreCreateWindow(CREATESTRUCT& cs);
 	virtual void OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint);
 	//}}AFX_VIRTUAL
@@ -37,7 +38,6 @@ protected:
 // Implementation
 protected:
 	virtual ~CWaveFftView();
-	virtual BOOL MasterScrollBy(double dx, double dy, BOOL bDoScroll = TRUE);
 	virtual UINT GetPopupMenuID(CPoint point);
 #ifdef _DEBUG
 	virtual void AssertValid() const;
@@ -95,7 +95,9 @@ protected:
 	void InvalidateFftColumnRange(long first_column, long last_column);  // including last
 	void SetVerticalScale(double NewVerticalScale);
 
-	static HBRUSH m_Brush;
+	double AdjustOffset(double offset) const;
+	void SetNewFftOffset(double first_band);
+
 	bool    m_SelectionRectDrawn;
 	// Generated message map functions
 protected:
@@ -105,22 +107,8 @@ protected:
 	afx_msg void OnViewZoomOutVert();
 	afx_msg void OnPaint();
 	afx_msg BOOL OnEraseBkgnd(CDC* pDC);
-	afx_msg void OnFftBands1024();
-	afx_msg void OnUpdateFftBands1024(CCmdUI* pCmdUI);
-	afx_msg void OnFftBands128();
-	afx_msg void OnUpdateFftBands128(CCmdUI* pCmdUI);
-	afx_msg void OnFftBands2048();
-	afx_msg void OnUpdateFftBands2048(CCmdUI* pCmdUI);
-	afx_msg void OnFftBands256();
-	afx_msg void OnUpdateFftBands256(CCmdUI* pCmdUI);
-	afx_msg void OnFftBands4096();
-	afx_msg void OnUpdateFftBands4096(CCmdUI* pCmdUI);
-	afx_msg void OnFftBands512();
-	afx_msg void OnUpdateFftBands512(CCmdUI* pCmdUI);
-	afx_msg void OnFftBands64();
-	afx_msg void OnUpdateFftBands64(CCmdUI* pCmdUI);
-	afx_msg void OnFftBands8192();
-	afx_msg void OnUpdateFftBands8192(CCmdUI* pCmdUI);
+	afx_msg void OnFftBands(UINT id);
+	afx_msg void OnUpdateFftBands(CCmdUI* pCmdUI);
 	afx_msg void OnFftWindowSquaredSine();
 	afx_msg void OnUpdateFftWindowSquaredSine(CCmdUI* pCmdUI);
 	afx_msg void OnFftWindowSine();
@@ -136,8 +124,8 @@ protected:
 	afx_msg void OnUpdateViewZoomvertNormal(CCmdUI* pCmdUI);
 	afx_msg void OnContextMenu(CWnd* pWnd, CPoint point);
 	//}}AFX_MSG
-	void OnUpdateBands(CCmdUI* pCmdUI, int number);
 	void OnSetBands(int order);
+
 	void DrawSelectionRect(CDC * pDC,
 							double left, double right, double bottom, double top);
 

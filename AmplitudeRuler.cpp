@@ -26,6 +26,8 @@ CAmplitudeRuler::CAmplitudeRuler()
 	:m_DrawMode(PercentView)
 	, m_VerticalScale(1.)
 	, m_WaveOffsetY(0.)
+	, m_WaveOffsetBeforeScroll(0)
+	, m_MouseYOffsetForScroll(0)
 {
 	memzero(m_Heights);
 	memzero(m_InvalidAreaTop);
@@ -48,6 +50,7 @@ BEGIN_MESSAGE_MAP(CAmplitudeRuler, BaseClass)
 	ON_UPDATE_COMMAND_UI(ID_VIEW_AMPL_RULER_PERCENT, OnUpdateAmplRulerPercent)
 	ON_UPDATE_COMMAND_UI(ID_VIEW_AMPL_RULER_DECIBELS, OnUpdateAmplRulerDecibels)
 	ON_WM_CONTEXTMENU()
+	ON_WM_CAPTURECHANGED()
 	//}}AFX_MSG_MAP
 	ON_MESSAGE(UWM_NOTIFY_VIEWS, &CAmplitudeRuler::OnUwmNotifyViews)
 END_MESSAGE_MAP()
@@ -180,11 +183,11 @@ void CAmplitudeRuler::DrawChannelSamples(CDC * pDC, CRect const & chr, CRect con
 	int ClipHigh = clipr.bottom - tm.tmHeight / 2;
 	int ClipLow = clipr.top + tm.tmHeight / 2;
 
-	int yLow = WaveToY.ConvertToSample(ClipHigh);
+	int yLow = (int)WaveToY.ConvertToSample(ClipHigh);
 	// round to the next multiple of step
 	yLow += (step * 0x10000 - yLow) % step;
 
-	int yHigh = WaveToY.ConvertToSample(ClipLow);
+	int yHigh = (int)WaveToY.ConvertToSample(ClipLow);
 	yHigh -= (step * 0x10000 + yHigh) % step;
 	ASSERT(yLow <= yHigh);
 
@@ -277,9 +280,9 @@ void CAmplitudeRuler::DrawChannelDecibels(CDC * pDC, CRect const & chr, CRect co
 
 	WaveCalculate WaveToY(m_WaveOffsetY, m_VerticalScale, chr.top, chr.bottom);
 
-	int yLow = WaveToY.ConvertToSample(ClipHigh);
+	int yLow = (int)WaveToY.ConvertToSample(ClipHigh);
 
-	int yHigh = WaveToY.ConvertToSample(ClipLow);
+	int yHigh = (int)WaveToY.ConvertToSample(ClipLow);
 
 	ASSERT(yLow <= yHigh);
 
@@ -359,7 +362,14 @@ void CAmplitudeRuler::OnUpdate(CView* /*pSender*/, LPARAM lHint, CObject* /*pHin
 
 void CAmplitudeRuler::VerticalScrollPixels(int Pixels)
 {
-	NotifySiblingViews(AmplitudeScrollPixels, &Pixels);
+	if (m_MouseYOffsetForScroll == 0)
+	{
+		m_WaveOffsetBeforeScroll = m_WaveOffsetY;
+	}
+	m_MouseYOffsetForScroll += Pixels;
+
+	double offset = m_WaveOffsetBeforeScroll + m_MouseYOffsetForScroll / m_VerticalScale * 65536. / m_Heights.NominalChannelHeight;
+	NotifySiblingViews(AmplitudeScrollTo, &offset);
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -399,7 +409,7 @@ void CAmplitudeRuler::OnLButtonDblClk(UINT nFlags, CPoint point)
 	CVerticalRuler::OnLButtonDblClk(nFlags, point);
 	// set default scale
 	double one = 1.0;
-	NotifySiblingViews(FftVerticalScaleChanged, &one);
+	NotifySiblingViews(VerticalScaleChanged, &one);
 }
 
 void CAmplitudeRuler::OnViewAmplRulerSamples()
@@ -451,8 +461,8 @@ void CAmplitudeRuler::SetNewAmplitudeOffset(double offset)
 		}
 
 		// offset of the zero line down
-		int OldOffsetPixels = (int)floor(m_WaveOffsetY / 65536. * m_Heights.NominalChannelHeight * m_VerticalScale + 0.5);
-		int NewOffsetPixels = (int)floor(offset / 65536. * m_Heights.NominalChannelHeight * m_VerticalScale + 0.5);
+		long OldOffsetPixels = WaveCalculate(m_WaveOffsetY, m_VerticalScale,  m_Heights.ch[ch].top, m_Heights.ch[ch].bottom)(0.);
+		long NewOffsetPixels = WaveCalculate(offset, m_VerticalScale,  m_Heights.ch[ch].top, m_Heights.ch[ch].bottom)(0.);
 
 		int ToScroll = NewOffsetPixels - OldOffsetPixels;       // >0 - down, <0 - up
 
@@ -497,6 +507,12 @@ void CAmplitudeRuler::SetNewAmplitudeOffset(double offset)
 	}
 	m_WaveOffsetY = offset;
 	Invalidate(FALSE);
+}
+
+void CAmplitudeRuler::OnCaptureChanged(CWnd *pWnd)
+{
+	m_MouseYOffsetForScroll = 0;
+	CVerticalRuler::OnCaptureChanged(pWnd);
 }
 
 UINT CAmplitudeRuler::GetPopupMenuID(CPoint point)
@@ -560,16 +576,15 @@ afx_msg LRESULT CAmplitudeRuler::OnUwmNotifyViews(WPARAM wParam, LPARAM lParam)
 		if (m_VerticalScale != *(double*)lParam)
 		{
 			m_VerticalScale = *(double*)lParam;
+			if (m_bIsTrackingSelection)
+			{
+				ReleaseCapture();
+				//m_bIsTrackingSelection = FALSE;   // will be reset in WM_CAPTURECHANGED
+			}
+
 			Invalidate();
 			// check for the proper offset, correct if necessary
-			if (m_WaveOffsetY >= 32768. * (1. - 1./ m_VerticalScale))
-			{
-				m_WaveOffsetY = 32768. * (1. - 1./ m_VerticalScale);
-			}
-			else if (m_WaveOffsetY <= -32768. * (1. - 1./ m_VerticalScale))
-			{
-				m_WaveOffsetY = -32768. * (1. - 1./ m_VerticalScale);
-			}
+			m_WaveOffsetY = WaveCalculate(m_WaveOffsetY, m_VerticalScale, 0, m_Heights.NominalChannelHeight).AdjustOffset(m_WaveOffsetY);
 		}
 		break;
 
@@ -581,6 +596,10 @@ afx_msg LRESULT CAmplitudeRuler::OnUwmNotifyViews(WPARAM wParam, LPARAM lParam)
 	{
 		NotifyChannelHeightsData * data = (NotifyChannelHeightsData*) lParam;
 		m_Heights = *data;
+		if (m_bIsTrackingSelection)
+		{
+			ReleaseCapture();
+		}
 		Invalidate(FALSE);
 	}
 		break;

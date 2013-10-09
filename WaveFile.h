@@ -648,7 +648,7 @@ public:
 		BOOL MoveWaveMarker(unsigned long MarkerCueID, SAMPLE_INDEX Sample);
 		BOOL SetMarkerLabel(unsigned long MarkerCueID, LPCTSTR Label);
 
-		void GetSortedMarkers(SAMPLE_INDEX_Vector & markers) const;
+		void GetSortedMarkers(SAMPLE_INDEX_Vector & markers) const;    // returns unique positions
 		void GetSortedFileSegments(WaveFileSegmentVector & segments, bool IncludeEndMarkerName) const;
 
 		BOOL MoveMarkers(SAMPLE_INDEX SampleBegin, NUMBER_OF_SAMPLES SrcLength, NUMBER_OF_SAMPLES DstLength);
