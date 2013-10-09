@@ -1538,7 +1538,7 @@ afx_msg LRESULT CWaveMDIChildClient::OnUwmNotifyViews(WPARAM wParam, LPARAM lPar
 
 		scrollinfo.fMask = 0;
 
-		UINT NewPage = UINT((scrollinfo.nMax + 1 - scrollinfo.nMin) * m_CurrentTotalSamplesInView / m_CurrentTotalSamplesInExtent);
+		int NewPage = int((scrollinfo.nMax + 1 - scrollinfo.nMin) * m_CurrentTotalSamplesInView / m_CurrentTotalSamplesInExtent);
 		if (NewPage > scrollinfo.nMax + 1 - scrollinfo.nMin)
 		{
 			// scrollinfo ranges are inclusive

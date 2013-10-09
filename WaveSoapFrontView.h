@@ -87,6 +87,7 @@ public:
 
 	// cursor and selection:
 	void CreateAndShowCaret(bool ForceCreateCaret = false);
+	void InvalidateMarkerLabels(int dy = 0);
 
 	bool m_NewSelectionMade;             // during playback, the caret is hidden unless a different selection were made
 	UINT_PTR m_AutoscrollTimerID;
@@ -202,7 +203,6 @@ protected:
 	double m_WaveOffsetY; // additional vertical offset, to see a region of magnified wave. Only full height channels are scrolled vertically. This is the sample value
 	// of the center line of the channel clip rect
 	void SetNewAmplitudeOffset(double offset);
-	void InvalidateMarkerLabels(int dy = 0);
 	// Generated message map functions
 protected:
 	//{{AFX_MSG(CWaveSoapFrontView)
@@ -250,46 +250,25 @@ inline CWaveSoapFrontDoc* CWaveSoapViewBase::GetDocument() const
 class WaveCalculate
 {
 public:
-	WaveCalculate(double offset, double scale, int top, int bottom)
+	WaveCalculate(double offset, double scale, int top, int bottom);
+
+	long operator()(double w)
 	{
-		m_Scale = ((bottom - top) * scale) / 65536.;
-
-		double MaxOffset = 32767.99 * (1. - 1. / scale);
-
-		if (offset >= MaxOffset)
-		{
-			offset = 32768. * (1. - 1. / scale);
-		}
-		else if (offset <= -MaxOffset)
-		{
-			offset = -32768. * (1. - 1. / scale);
-		}
-		m_Offset = offset * m_Scale + (bottom + top) / 2.;
+		return m_Offset - (long)floor((w + 0.5)* m_Scale + 0.5);
 	}
 
-	int operator()(int w)
+	double ConvertToSample(int y)
 	{
-		return (int)floor(m_Offset - (w + 1) * m_Scale);
+		return (m_Offset - y - 0.5) / m_Scale - 0.5;
 	}
 
-	int ConvertToSample(int y)
-	{
-		return (int)floor((m_Offset - y) / m_Scale - 1);
-	}
-
-	double operator()(double w)
-	{
-		return m_Offset - (w + 1.) * m_Scale;
-	}
-
-	double ConvertToSample(double y)
-	{
-		return (m_Offset - y) / m_Scale - 1.;
-	}
+	double AdjustOffset(double offset);
 
 protected:
-	double m_Offset;
 	double m_Scale;
+	long m_Offset;
+	int m_ViewHeight;
+	int m_Height;
 };
 /////////////////////////////////////////////////////////////////////////////
 

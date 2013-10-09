@@ -23,8 +23,12 @@ IMPLEMENT_DYNCREATE(CFftRulerView, CVerticalRuler)
 CFftRulerView::CFftRulerView()
 	: m_VerticalScale(1.)
 	, m_FirstbandVisible(0.)
+	, m_FftOffsetBeforeScroll(0)
+	, m_MouseYOffsetForScroll(0)
 {
 	memzero(m_Heights);
+	memzero(m_InvalidAreaTop);
+	memzero(m_InvalidAreaBottom);
 }
 
 CFftRulerView::~CFftRulerView()
@@ -36,6 +40,7 @@ BEGIN_MESSAGE_MAP(CFftRulerView, CVerticalRuler)
 	//{{AFX_MSG_MAP(CFftRulerView)
 	ON_WM_LBUTTONDBLCLK()
 	ON_WM_CONTEXTMENU()
+	ON_WM_CAPTURECHANGED()
 	//}}AFX_MSG_MAP
 	ON_MESSAGE(UWM_NOTIFY_VIEWS, &CFftRulerView::OnUwmNotifyViews)
 END_MESSAGE_MAP()
@@ -55,7 +60,7 @@ static int fround(double d)
 	}
 }
 
-void CFftRulerView::OnDraw(CDC* pDC)
+void CFftRulerView::OnDraw(CDC* pDrawDC)
 {
 	CWaveSoapFrontDoc* pDoc = GetDocument();
 	if (! pDoc->m_WavFile.IsOpen())
@@ -66,6 +71,8 @@ void CFftRulerView::OnDraw(CDC* pDC)
 	CRect cr;
 	GetClientRect(cr);
 
+	memzero(m_InvalidAreaBottom);
+	memzero(m_InvalidAreaTop);
 	int nVertStep = GetSystemMetrics(SM_CYMENU);
 
 	NUMBER_OF_CHANNELS nChannels = pDoc->WaveChannels();
@@ -74,8 +81,21 @@ void CFftRulerView::OnDraw(CDC* pDC)
 		return;
 	}
 
+	CDC dc;
+	dc.CreateCompatibleDC(NULL);
+	CBitmap DrawBitmap;
+	DrawBitmap.CreateCompatibleBitmap(pDrawDC, cr.Width(), cr.Height());
+
+	CDC * pDC = & dc;
+
+	CGdiObjectSaveT<CBitmap> OldBitmap(pDC, pDC->SelectObject(& DrawBitmap));
 	CGdiObjectSave OldFont(pDC, pDC->SelectStockObject(ANSI_VAR_FONT));
 	CGdiObjectSave OldPen(pDC, pDC->SelectStockObject(BLACK_PEN));
+
+	CBrush bkgnd;
+	TRACE("SysColor(COLOR_WINDOW)=%X\n", GetSysColor(COLOR_WINDOW));
+	bkgnd.CreateSysColorBrush(COLOR_WINDOW);
+	pDC->FillRect(cr, &bkgnd);
 
 	TEXTMETRIC tm;
 	pDC->GetTextMetrics( & tm);
@@ -166,6 +186,7 @@ void CFftRulerView::OnDraw(CDC* pDC)
 			pDC->LineTo(cr.right, m_Heights.ch[ch].clip_bottom);
 		}
 	}
+	pDrawDC->BitBlt(0, 0, cr.Width(), cr.Height(), pDC, 0, 0, SRCCOPY);
 }
 
 int CFftRulerView::CalculateWidth()
@@ -217,17 +238,132 @@ CWaveSoapFrontDoc* CFftRulerView::GetDocument() // non-debug version is inline
 /////////////////////////////////////////////////////////////////////////////
 // CFftRulerView message handlers
 
+double CFftRulerView::AdjustOffset(double offset) const
+{
+	if (offset < 0.)
+	{
+		return 0;
+	}
+
+	int ScaledHeight = int(m_Heights.NominalChannelHeight * m_VerticalScale);
+	int MaxOffsetPixels = ScaledHeight - m_Heights.NominalChannelHeight;
+
+	double MaxOffset = double(MaxOffsetPixels) * m_FftOrder / ScaledHeight;
+	ASSERT(MaxOffset >= 0);
+	ASSERT(offset >= 0);
+	if (offset > MaxOffset)
+	{
+		return MaxOffset;
+	}
+	return offset;
+}
+
+void CFftRulerView::SetNewFftOffset(double first_band)
+{
+	// scroll channels rectangles
+	CWaveSoapFrontDoc * pDoc = GetDocument();
+	int nChannels = pDoc->WaveChannels();
+	CRect cr;
+	GetClientRect(cr);
+
+	long OldOffsetPixels = long(m_FirstbandVisible * int(m_VerticalScale * m_Heights.NominalChannelHeight) / m_FftOrder);
+	long NewOffsetPixels = long(first_band * int(m_VerticalScale * m_Heights.NominalChannelHeight) / m_FftOrder);
+
+	int ToScroll = NewOffsetPixels - OldOffsetPixels;       // >0 - down, <0 - up
+
+	for (int ch = 0; ch < nChannels; ch++)
+	{
+		if (m_Heights.ch[ch].minimized)
+		{
+			continue;
+		}
+
+		// offset of the zero line down
+
+		CRect ClipRect(cr.left, m_Heights.ch[ch].clip_top, cr.right, m_Heights.ch[ch].clip_bottom);
+		CRect ScrollRect(ClipRect);
+		ScrollRect.top += m_InvalidAreaTop[ch];
+		ScrollRect.bottom -= m_InvalidAreaBottom[ch];
+		if (ToScroll > 0)
+		{
+			// down
+			m_InvalidAreaTop[ch] += ToScroll;
+			ScrollRect.bottom -= ToScroll;
+			if (ScrollRect.Height() <= 0)
+			{
+//                InvalidateRect(ClipRect);
+				continue;
+			}
+			CRect ToInvalidate(cr.left, ScrollRect.top, cr.right, ScrollRect.top + ToScroll);
+
+			ScrollWindowEx(0, ToScroll, ScrollRect, ClipRect, NULL, NULL, 0);
+//            InvalidateRect(ToInvalidate);
+		}
+		else if (ToScroll < 0)
+		{
+			// up
+			m_InvalidAreaBottom[ch] -= ToScroll;
+			ScrollRect.top -= ToScroll;
+			if (ScrollRect.Height() <= 0)
+			{
+//                InvalidateRect(ClipRect, FALSE);
+				continue;
+			}
+			CRect ToInvalidate(cr.left, ScrollRect.top, cr.right, ScrollRect.top + ToScroll);
+
+			ScrollWindowEx(0, ToScroll, ScrollRect, ClipRect, NULL, NULL, 0);
+//            InvalidateRect(ToInvalidate, FALSE);
+		}
+		else
+		{
+			continue;
+		}
+	}
+	m_FirstbandVisible = first_band;
+	Invalidate(FALSE);
+}
 
 afx_msg LRESULT CFftRulerView::OnUwmNotifyViews(WPARAM wParam, LPARAM lParam)
 {
 	switch (wParam)
 	{
-	case FftOffsetChanged:
+	case FftVerticalScaleChanged:
+		// lParam points to double new scale
+		if (m_VerticalScale != *(double*)lParam)
+		{
+			m_VerticalScale = *(double*)lParam;
+			if (m_bIsTrackingSelection)
+			{
+				ReleaseCapture();
+				//m_bIsTrackingSelection = FALSE;   // will be reset in WM_CAPTURECHANGED
+			}
+
+			Invalidate(FALSE);
+			// check for the proper offset, correct if necessary
+			m_FirstbandVisible = AdjustOffset(m_FirstbandVisible);
+		}
 		break;
-	case FftScrollPixels:
+
+	case FftBandsChanged:
+	{
+		int NewBands = *(int*)lParam;
+		if (NewBands != m_FftOrder)
+		{
+			m_FirstbandVisible = m_FirstbandVisible * NewBands / m_FftOrder;
+			m_FftOrder = NewBands;
+			Invalidate(FALSE);
+		}
+	}
+		break;
+	case FftOffsetChanged:
+		SetNewFftOffset(*(double*) lParam);
 		break;
 	case ChannelHeightsChanged:
 		m_Heights = *(NotifyChannelHeightsData*)lParam;
+		if (m_bIsTrackingSelection)
+		{
+			ReleaseCapture();
+		}
 		Invalidate();
 		break;
 	}
@@ -236,8 +372,20 @@ afx_msg LRESULT CFftRulerView::OnUwmNotifyViews(WPARAM wParam, LPARAM lParam)
 
 void CFftRulerView::VerticalScrollPixels(int Pixels)
 {
-	//double scroll = Pixels * m_VerticalScale;
-	NotifySiblingViews(FftScrollPixels, &Pixels);
+	if (m_MouseYOffsetForScroll == 0)
+	{
+		m_FftOffsetBeforeScroll = m_FirstbandVisible;
+	}
+	m_MouseYOffsetForScroll += Pixels;
+
+	double offset = m_FftOffsetBeforeScroll + (double)m_MouseYOffsetForScroll * m_FftOrder / int(m_Heights.NominalChannelHeight * m_VerticalScale);
+	NotifySiblingViews(FftScrollTo, &offset);
+}
+
+void CFftRulerView::OnCaptureChanged(CWnd *pWnd)
+{
+	m_MouseYOffsetForScroll = 0;
+	CVerticalRuler::OnCaptureChanged(pWnd);
 }
 
 void CFftRulerView::OnContextMenu(CWnd* /*pWnd*/, CPoint point)

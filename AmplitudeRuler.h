@@ -49,6 +49,9 @@ protected:
 	// minimum height channels are shown with scale 1.
 	double m_WaveOffsetY;      // additional vertical offset, to see a region of magnified wave. Only full height channels are scrolled vertically. This is the sample value
 	// of the center line of the channel clip rect
+	double m_WaveOffsetBeforeScroll;
+	int m_MouseYOffsetForScroll;
+
 	NotifyChannelHeightsData m_Heights;
 	int m_InvalidAreaTop[MAX_NUMBER_OF_CHANNELS];
 	int m_InvalidAreaBottom[MAX_NUMBER_OF_CHANNELS];
@@ -77,6 +80,7 @@ protected:
 	afx_msg void OnUpdateAmplRulerPercent(CCmdUI * pCmdUI);
 	afx_msg void OnUpdateAmplRulerDecibels(CCmdUI * pCmdUI);
 	afx_msg void OnContextMenu(CWnd* pWnd, CPoint point);
+	afx_msg void OnCaptureChanged(CWnd *pWnd);
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 	afx_msg LRESULT OnUwmNotifyViews(WPARAM wParam, LPARAM lParam);

@@ -95,7 +95,8 @@ enum SiblingNotifyCode
 	HorizontalScrollPixels,   // lParam is pointer to int pixels (signed)
 	VerticalScaleChanged,
 	AmplitudeOffsetChanged,
-	AmplitudeScrollPixels,
+	AmplitudeScrollTo,
+	FftScrollTo,
 	FftVerticalScaleChanged,
 	SpectrumSectionDbOffsetChange,
 	SpectrumSectionDbScaleChange,

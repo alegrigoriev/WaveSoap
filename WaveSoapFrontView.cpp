@@ -280,29 +280,9 @@ void CWaveSoapViewBase::GetChannelClipRect(int Channel, RECT * pR) const
 
 int CWaveSoapFrontView::SampleValueToY(double value, int ch) const
 {
-	ThisDoc * pDoc = GetDocument();
-	int const nChannels = pDoc->WaveChannels();
+	ASSERT(ch < GetDocument()->WaveChannels());
 
-	CRect cr;
-	GetClientRect(cr);
-
-	if (ch >= nChannels)
-	{
-		return cr.bottom;
-	}
-
-	int top = m_Heights.ch[ch].top;
-	int bottom = m_Heights.ch[ch].bottom;
-	int MidLine = (top + bottom) / 2;
-
-	if (m_Heights.ch[ch].minimized)
-	{
-		return int(value / 65536. * (top - bottom)  + MidLine);
-	}
-	else
-	{
-		return int((value - m_WaveOffsetY) / 65536. * (top - bottom) * m_VerticalScale + MidLine);
-	}
+	return WaveCalculate(m_WaveOffsetY, m_VerticalScale, m_Heights.ch[ch].clip_top, m_Heights.ch[ch].clip_bottom)(value);
 }
 
 int CWaveSoapViewBase::GetChannelFromPoint(int y) const
@@ -3206,31 +3186,17 @@ afx_msg LRESULT CWaveSoapFrontView::OnUwmNotifyViews(WPARAM wParam, LPARAM lPara
 			m_VerticalScale = *(double*)lParam;
 			Invalidate();
 			// check for the proper offset, correct if necessary
-			if (m_WaveOffsetY >= 32768. * (1. - 1./ m_VerticalScale))
-			{
-				m_WaveOffsetY = 32768. * (1. - 1./ m_VerticalScale);
-			}
-			else if (m_WaveOffsetY <= -32768. * (1. - 1./ m_VerticalScale))
-			{
-				m_WaveOffsetY = -32768. * (1. - 1./ m_VerticalScale);
-			}
+			m_WaveOffsetY = WaveCalculate(m_WaveOffsetY, m_VerticalScale, 0, m_Heights.NominalChannelHeight).AdjustOffset(m_WaveOffsetY);
 		}
 		break;
-	case AmplitudeScrollPixels:
-		// lParam points to int offset
+	case AmplitudeScrollTo:
+		// lParam points to double offset
 		// check for the proper offset, correct if necessary
 	{
-		double offset = m_WaveOffsetY + *(int*)lParam / m_VerticalScale * 65536. / m_Heights.NominalChannelHeight;
-		TRACE("Scroll by %d pixels, offset changes by %f\n", *(int*)lParam, *(int*)lParam / m_VerticalScale * 65536. / m_Heights.NominalChannelHeight);
+		double offset = *(double*) lParam;
 
-		if (offset >= 32768. * (1. - 1./ m_VerticalScale))
-		{
-			offset = 32768. * (1. - 1./ m_VerticalScale);
-		}
-		else if (offset <= -32768. * (1. - 1./ m_VerticalScale))
-		{
-			offset = -32768. * (1. - 1./ m_VerticalScale);
-		}
+		offset = WaveCalculate(m_WaveOffsetY, m_VerticalScale, 0, m_Heights.NominalChannelHeight).AdjustOffset(offset);
+
 		NotifySiblingViews(AmplitudeOffsetChanged, & offset);
 	}
 		break;
@@ -3244,7 +3210,7 @@ afx_msg LRESULT CWaveSoapFrontView::OnUwmNotifyViews(WPARAM wParam, LPARAM lPara
 	return 0;
 }
 
-void CWaveSoapFrontView::InvalidateMarkerLabels(int dy)
+void CWaveSoapViewBase::InvalidateMarkerLabels(int dy)
 {
 	bool PlaybackCursorHidden = false;
 
@@ -3322,10 +3288,6 @@ void CWaveSoapFrontView::SetNewAmplitudeOffset(double offset)
 	}
 
 	// offset of the zero line down
-	int OldOffsetPixels = (int)floor(m_WaveOffsetY / 65536. * m_Heights.NominalChannelHeight * m_VerticalScale + 0.5);
-	int NewOffsetPixels = (int)floor(offset / 65536. * m_Heights.NominalChannelHeight * m_VerticalScale + 0.5);
-	int ToScroll = NewOffsetPixels - OldOffsetPixels;       // >0 - down, <0 - up
-
 	for (int ch = 0; ch < nChannels; ch++)
 	{
 		if (m_Heights.ch[ch].minimized)
@@ -3333,10 +3295,21 @@ void CWaveSoapFrontView::SetNewAmplitudeOffset(double offset)
 			continue;
 		}
 
+		long OldOffsetPixels = WaveCalculate(m_WaveOffsetY, m_VerticalScale,  m_Heights.ch[ch].top, m_Heights.ch[ch].bottom)(0.);
+		long NewOffsetPixels = WaveCalculate(offset, m_VerticalScale,  m_Heights.ch[ch].top, m_Heights.ch[ch].bottom)(0.);
+
+		int ToScroll = NewOffsetPixels - OldOffsetPixels;       // >0 - down, <0 - up
+
 		CRect ClipRect(cr.left, m_Heights.ch[ch].clip_top, cr.right, m_Heights.ch[ch].clip_bottom);
 		CRect ScrollRect(ClipRect);
 		ScrollRect.top += m_InvalidAreaTop[ch];
 		ScrollRect.bottom -= m_InvalidAreaBottom[ch];
+
+		if (ch == 0)
+		{
+			InvalidateMarkerLabels(ToScroll);
+		}
+
 		if (ToScroll > 0)
 		{
 			// down
@@ -3372,8 +3345,6 @@ void CWaveSoapFrontView::SetNewAmplitudeOffset(double offset)
 			continue;
 		}
 	}
-
-	InvalidateMarkerLabels(ToScroll);
 
 	m_WaveOffsetY = offset;
 }
@@ -3443,15 +3414,11 @@ afx_msg LRESULT CWaveSoapViewBase::OnUwmNotifyViews(WPARAM wParam, LPARAM lParam
 
 		break;
 
-	case FftVerticalScaleChanged:
-		// lParam points to double new scale
-		break;
-	case FftOffsetChanged:
-		break;
 	case HorizontalExtentChanged:
 	{
 		NotifyViewsData *data = (NotifyViewsData *) lParam;
 		m_FirstSampleInView = data->HorizontalScroll.FirstSampleInView;
+		UpdateCaretPosition();
 	}
 		break;
 	case HorizontalOriginChanged:
@@ -3544,5 +3511,46 @@ void CWaveSoapFrontView::OnViewMaximize0(UINT id)
 	CRect cr;
 	GetClientRect(cr);
 	RecalculateChannelHeight(cr.Height());
+}
+
+WaveCalculate::WaveCalculate(double offset, double scale, int top, int bottom)
+{
+	// adjusted for display scale, the full range shall always take whole number of pixels
+	m_ViewHeight = bottom - top;
+	m_Height = int(m_ViewHeight * scale);
+
+	if (m_Height % 2)
+	{
+		// the zero wave line is always in the middle of pixel. The full sweep of 65536 will fit to Height, add 1 for rounding errors
+		m_Scale = m_Height / 65537.;
+	}
+	else
+	{
+		m_Scale = (m_Height - 1)/ 65536.;
+	}
+
+	m_Offset = long((bottom + top) / 2 + offset * m_Scale);
+}
+
+double WaveCalculate::AdjustOffset(double offset)
+{
+	// limit offset to make the full range fit to the view
+	if (offset < 0.)
+	{
+		double MinOffset = -32768. * (1. - double(m_ViewHeight) / m_Height);
+		if (offset < MinOffset)
+		{
+			offset = MinOffset;
+		}
+	}
+	else
+	{
+		double MaxOffset = 32767. * (1. - double(m_ViewHeight) / m_Height);
+		if (offset > MaxOffset)
+		{
+			offset = MaxOffset;
+		}
+	}
+	return offset;
 }
 

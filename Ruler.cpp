@@ -236,7 +236,7 @@ BOOL CVerticalRuler::PreCreateWindow(CREATESTRUCT& cs)
 
 	return BaseClass::PreCreateWindow(cs);
 }
-void CVerticalRuler::OnMouseMove(UINT nFlags, CPoint point)
+void CVerticalRuler::OnMouseMove(UINT /*nFlags*/, CPoint point)
 {
 	//CView::OnMouseMove(nFlags, point);
 	if (WM_LBUTTONDOWN == ButtonPressed
@@ -256,16 +256,14 @@ void CVerticalRuler::OnMouseMove(UINT nFlags, CPoint point)
 	}
 }
 
-void CVerticalRuler::OnLButtonDown(UINT nFlags, CPoint point)
+void CVerticalRuler::OnLButtonDown(UINT /*nFlags*/, CPoint point)
 {
 	// store the starting mouse position
-
-	//CView::OnLButtonDown(nFlags, point);
 	PrevMouseY = point.y;
 	ButtonPressed = WM_LBUTTONDOWN;
 }
 
-void CVerticalRuler::OnLButtonUp(UINT nFlags, CPoint point)
+void CVerticalRuler::OnLButtonUp(UINT /*nFlags*/, CPoint /*point*/)
 {
 	ButtonPressed = 0;
 	if (m_bIsTrackingSelection)
@@ -273,7 +271,6 @@ void CVerticalRuler::OnLButtonUp(UINT nFlags, CPoint point)
 		ReleaseCapture();
 		m_bIsTrackingSelection = FALSE;
 	}
-	//CView::OnLButtonUp(nFlags, point);
 }
 
 int CVerticalRuler::OnMouseActivate(CWnd* pDesktopWnd, UINT nHitTest, UINT message)

@@ -47,6 +47,14 @@ protected:
 	double m_FirstbandVisible;     // how much the chart is scrolled. 0 = DC is visible
 	NotifyChannelHeightsData m_Heights;
 	int m_FftOrder;
+	double m_FftOffsetBeforeScroll;
+	int m_MouseYOffsetForScroll;
+
+	int m_InvalidAreaTop[MAX_NUMBER_OF_CHANNELS];
+	int m_InvalidAreaBottom[MAX_NUMBER_OF_CHANNELS];
+
+	double AdjustOffset(double offset) const;
+	void SetNewFftOffset(double first_band);
 
 	// Generated message map functions
 protected:
@@ -54,6 +62,7 @@ protected:
 	// NOTE - the ClassWizard will add and remove member functions here.
 	afx_msg void OnLButtonDblClk(UINT nFlags, CPoint point);
 	afx_msg void OnContextMenu(CWnd* /*pWnd*/, CPoint point);
+	afx_msg void OnCaptureChanged(CWnd *pWnd);
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 	afx_msg LRESULT OnUwmNotifyViews(WPARAM wParam, LPARAM lParam);

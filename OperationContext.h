@@ -532,7 +532,7 @@ public:
 	virtual void UnprepareUndo();
 	//virtual void DeleteUndo();
 
-	unsigned m_SrcSampleSize;
+	int m_SrcSampleSize;
 	NUMBER_OF_CHANNELS m_SrcNumberOfChannels;
 
 	virtual BOOL SaveUndoData(void const * pBuf, long BufSize,
