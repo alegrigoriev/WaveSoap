@@ -418,7 +418,10 @@ public:
 	BOOL DoPaste(SAMPLE_INDEX Start, SAMPLE_INDEX End, CHANNEL_MASK Channel,
 				ULONG PasteFlags = 0, LPCTSTR FileName = NULL);
 
-	enum { PasteFlagSetNewSelection = 1, };
+	enum {
+		PasteFlagSetNewSelection = 1,
+		PasteFlagReplaceSelectionQuiet = 2,
+	};
 
 	BOOL ChangeWaveMarker(WAVEREGIONINFO * pInfo);
 	void UpdateAllMarkers();

@@ -52,7 +52,7 @@ protected:
 	// m_IndexOfFftBegin is offset in the array of the beginning column.
 	// m_FftResultBegin holds the median sample index of the first column.
 	// m_FftResultEnd holds the median sample index of the last column.
-	unsigned char * m_pFftResultArray;
+	float * m_pFftResultArray;
 	unsigned m_FftArraySize;
 	int m_FftResultArrayWidth;    // number of FFT sets
 	int m_FftResultArrayHeight;   // m_FftOrder * pDoc->WaveChannels() + 1;
@@ -83,7 +83,7 @@ protected:
 
 	void AllocateFftArray(SAMPLE_INDEX SampleLeft, SAMPLE_INDEX SampleRight);
 
-	unsigned char const * GetFftResult(SAMPLE_INDEX sample, unsigned channel);
+	float const * GetFftResult(SAMPLE_INDEX sample, unsigned channel);
 
 	long SampleToFftColumn(SAMPLE_INDEX sample);
 	long SampleToFftColumnLowerBound(SAMPLE_INDEX sample);

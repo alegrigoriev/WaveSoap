@@ -26,6 +26,9 @@
     <Filter Include="FilterMath">
       <UniqueIdentifier>{2da38ec8-7465-4b5b-b8e3-d2d5b34c240e}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Matrix math">
+      <UniqueIdentifier>{962a36b5-7bf0-49f6-93ce-683c9c1f5b29}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="AmplitudeRuler.cpp">
@@ -204,6 +207,9 @@
     </ClCompile>
     <ClCompile Include="TestOperation.cpp">
       <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Matrix.cpp">
+      <Filter>Matrix math</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -514,6 +520,9 @@
     </ClInclude>
     <ClInclude Include="PolyRatio.h">
       <Filter>FilterMath</Filter>
+    </ClInclude>
+    <ClInclude Include="Matrix.h">
+      <Filter>Matrix math</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

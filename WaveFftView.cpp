@@ -216,7 +216,7 @@ void CWaveFftView::InvalidateFftColumnRange(long first_column, long last_column)
 	}
 }
 
-unsigned char const * CWaveFftView::GetFftResult(SAMPLE_INDEX sample, unsigned channel)
+float const * CWaveFftView::GetFftResult(SAMPLE_INDEX sample, unsigned channel)
 {
 	long FftColumn = SampleToFftColumn(sample);
 	// see if it's within the array
@@ -256,8 +256,8 @@ unsigned char const * CWaveFftView::GetFftResult(SAMPLE_INDEX sample, unsigned c
 			InvalidateFftColumnRange(m_FirstFftColumn + m_FftResultArrayWidth - ColumnsToShift, m_FirstFftColumn + m_FftResultArrayWidth - 1);
 		}
 	}
-	unsigned char * pFftColumn = m_pFftResultArray +
-		m_FftResultArrayHeight * ((m_IndexOfFftBegin + FftColumn - m_FirstFftColumn) % m_FftResultArrayWidth);
+	float * pFftColumn = m_pFftResultArray +
+						m_FftResultArrayHeight * ((m_IndexOfFftBegin + FftColumn - m_FirstFftColumn) % m_FftResultArrayWidth);
 
 	if (pFftColumn[0] == 1)
 	{
@@ -279,7 +279,7 @@ unsigned char const * CWaveFftView::GetFftResult(SAMPLE_INDEX sample, unsigned c
 					FirstSampleRequired, FirstSampleRequired + m_FftOrder);
 		pFftColumn[0] = 1;   // mark as valid
 		// make all black
-		memset(pFftColumn + 1, 127, m_FftOrder * nChannels);
+		std::fill_n(pFftColumn + 1, m_FftOrder * nChannels, 0.f);
 		return pFftColumn;
 	}
 
@@ -323,14 +323,14 @@ unsigned char const * CWaveFftView::GetFftResult(SAMPLE_INDEX sample, unsigned c
 		m_pFftBuf.Allocate(m_FftOrder * 2 + 2);
 	}
 
-	unsigned char * pRes = pFftColumn + 1;
+	float * pRes = pFftColumn + 1;
 	float * pWaveSamples;
 
 	long NeedSamples = m_FftOrder * 2 * nChannels;
 
 	if (NeedSamples != m_WaveBuffer.GetData( & pWaveSamples, FirstSampleRequired * nChannels, NeedSamples, this))
 	{
-		memset(pRes, 127, m_FftOrder * nChannels);
+		std::fill_n(pRes, m_FftOrder * nChannels, 0.f);
 		pFftColumn[0] = 1;
 		return pFftColumn;
 	}
@@ -348,34 +348,9 @@ unsigned char const * CWaveFftView::GetFftResult(SAMPLE_INDEX sample, unsigned c
 		FastFourierTransform(buf, reinterpret_cast<complex<DATA> *>(buf),
 							m_FftOrder * 2);
 
-		double PowerOffset = log(65536. * m_FftOrder * 0.31622) * 2.;
-
 		for (int i = 0, k = 0; i < m_FftOrder; i++, k += 2)
 		{
-			double power = buf[k] * buf[k] + buf[k + 1] * buf[k + 1];
-
-			if (power != 0.)
-			{
-				// max power= (32768 * m_FftOrder * 2) ^ 2
-				int res = int(m_FftLogRange * (PowerOffset - log(power)));
-
-				if (res < 0)
-				{
-					pRes[i] = 0;
-				}
-				else if (res > 127)
-				{
-					pRes[i] = 127;
-				}
-				else
-				{
-					pRes[i] = unsigned char(res);
-				}
-			}
-			else
-			{
-				pRes[i] = 127;
-			}
+			pRes[i] = buf[k] * buf[k] + buf[k + 1] * buf[k + 1];
 		}
 	}
 
@@ -736,7 +711,7 @@ void CWaveFftView::OnDraw(CDC* pDC)
 			{
 				for (int ch = 0; ch < nChannels; ch++)
 				{
-					unsigned char const *pData = GetFftResult(FftColumnToDisplaySample(nCurrentFftColumn), ch);
+					float const *pData = GetFftResult(FftColumnToDisplaySample(nCurrentFftColumn), ch);
 					for (ff = 0; ff < m_FftOrder; ff++)
 					{
 						S const * pId = &pIdArray[ff][ch];
@@ -749,11 +724,36 @@ void CWaveFftView::OnDraw(CDC* pDC)
 						unsigned char b;
 						if (pData != NULL)
 						{
-							// TODO: sum the bands
 							ASSERT(pId->FftBand < m_FftOrder);
 							ASSERT(pId->FftBand + pId->NumBandsToSum <= m_FftOrder);
 
-							unsigned char const * pColor = & palette[pData[pId->FftBand] * 3];
+							double PowerOffset = log(65536. * m_FftOrder * 0.31622) * 2.;
+
+							float sum = 0.;
+							for (int f = pId->FftBand; f < pId->FftBand + pId->NumBandsToSum; f++)
+							{
+								sum += pData[f];
+							}
+							sum /= pId->NumBandsToSum;
+
+							int PaletteIndex = 127;
+
+							if (sum != 0.)
+							{
+								// max power= (32768 * m_FftOrder * 2) ^ 2
+								PaletteIndex = int(m_FftLogRange * (PowerOffset - log(sum)));
+
+								if (PaletteIndex < 0)
+								{
+									PaletteIndex = 0;
+								}
+								else if (PaletteIndex > 127)
+								{
+									PaletteIndex = 127;
+								}
+							}
+
+							unsigned char const * pColor = & palette[PaletteIndex * 3];
 							// set the color to pId->nNumOfRows rows
 							r = pColor[0];
 							g = pColor[1];
@@ -801,7 +801,7 @@ void CWaveFftView::OnDraw(CDC* pDC)
 			{   // use palette
 				for (int ch = 0; ch < nChannels; ch++)
 				{
-					unsigned char const *pData = GetFftResult(FftColumnToDisplaySample(nCurrentFftColumn), ch);
+					float const *pData = GetFftResult(FftColumnToDisplaySample(nCurrentFftColumn), ch);
 
 					for (ff = 0; ff < m_FftOrder; ff++)
 					{
@@ -813,7 +813,33 @@ void CWaveFftView::OnDraw(CDC* pDC)
 						unsigned char ColorIndex = 0;
 						if (pData != NULL)
 						{
-							ColorIndex = 10 + pData[pId->FftBand];
+							double PowerOffset = log(65536. * m_FftOrder * 0.31622) * 2.;
+
+							float sum = 0.;
+							for (int f = pId->FftBand; f < pId->FftBand + pId->NumBandsToSum; f++)
+							{
+								sum += pData[f];
+							}
+							sum /= pId->NumBandsToSum;
+
+							int PaletteIndex = 127;
+
+							if (sum != 0.)
+							{
+								// max power= (32768 * m_FftOrder * 2) ^ 2
+								PaletteIndex = int(m_FftLogRange * (PowerOffset - log(sum)));
+
+								if (PaletteIndex < 0)
+								{
+									PaletteIndex = 0;
+								}
+								else if (PaletteIndex > 127)
+								{
+									PaletteIndex = 127;
+								}
+							}
+
+							PaletteIndex += 10;
 						}
 						// set the color to pId->nNumOfRows rows
 						BYTE * pPal = pColBmp + pId->y * stride;
@@ -964,7 +990,7 @@ void CWaveFftView::AllocateFftArray(SAMPLE_INDEX SampleLeft, SAMPLE_INDEX Sample
 		return;
 	}
 
-	unsigned char * pOldArray = m_pFftResultArray;
+	float * pOldArray = m_pFftResultArray;
 	m_pFftResultArray = NULL;
 	if (m_FftResultArrayHeight != NewFftArrayHeight)
 	{
@@ -974,7 +1000,7 @@ void CWaveFftView::AllocateFftArray(SAMPLE_INDEX SampleLeft, SAMPLE_INDEX Sample
 	}
 	try
 	{
-		m_pFftResultArray = new unsigned char[NecessaryArraySize];
+		m_pFftResultArray = new float[NecessaryArraySize];
 	}
 	catch (std::bad_alloc&)
 	{
@@ -985,7 +1011,7 @@ void CWaveFftView::AllocateFftArray(SAMPLE_INDEX SampleLeft, SAMPLE_INDEX Sample
 	TRACE("New FFT array allocated, height=%d, FFT spacing=%d\n",
 		NewFftArrayHeight, NewFftSpacing);
 
-	unsigned char * pTmp = m_pFftResultArray;
+	float * pTmp = m_pFftResultArray;
 	int i;
 
 	for (i = 0; i < NumberOfFftPoints; i++, pTmp += NewFftArrayHeight)
@@ -1009,11 +1035,11 @@ void CWaveFftView::AllocateFftArray(SAMPLE_INDEX SampleLeft, SAMPLE_INDEX Sample
 			continue;
 		}
 
-		unsigned char * p = pOldArray + (m_IndexOfFftBegin + OldFftColumn - m_FirstFftColumn) % m_FftResultArrayWidth * m_FftResultArrayHeight;
+		float * p = pOldArray + (m_IndexOfFftBegin + OldFftColumn - m_FirstFftColumn) % m_FftResultArrayWidth * m_FftResultArrayHeight;
 		ASSERT(p >= pOldArray && p + m_FftResultArrayHeight <= pOldArray + m_FftArraySize);
 		if (p[0] == 1)
 		{
-			memcpy(pTmp, p, NewFftArrayHeight);
+			memcpy(pTmp, p, NewFftArrayHeight * sizeof *p);
 		}
 	}
 
@@ -1235,11 +1261,31 @@ void CWaveFftView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
 			InvalidateFftColumnRange(SampleToFftColumnLowerBound(pInfo->m_NewLength), SampleToFftColumnUpperBound(LONG_MAX));
 		}
 
-		pInfo->m_Begin = SampleToFftColumnLowerBound(left) * m_FftSpacing - m_FftSpacing / 2;
-		pInfo->m_End = SampleToFftColumnUpperBound(right) * m_FftSpacing + m_FftSpacing / 2;
-		BaseClass::OnUpdate(pSender, lHint, pInfo);
-		pInfo->m_Begin = left;
-		pInfo->m_End = right;
+		CRect r;
+		GetClientRect(r);
+
+		CRect r1(r);
+		// calculate update boundaries
+		r1.left = SampleToX(SampleToFftColumnLowerBound(left) * m_FftSpacing - m_FftSpacing / 2);
+		r1.right = SampleToXceil(SampleToFftColumnUpperBound(right) * m_FftSpacing + m_FftSpacing / 2) + 2;
+
+		if (r1.left != r1.right
+			// limit the rectangles with the window boundaries
+			&& r1.left < r.right
+			&& r1.right > r.left)
+		{
+			// non-empty, in the client
+			if (r1.left < r.left)
+			{
+				r1.left = r.left;
+			}
+			if(r1.right > r.right)
+			{
+				r1.right = r.right;
+			}
+			//if (TRACE_UPDATE) TRACE("OnUpdate: SoundChanged: Invalidating from %d to %d\n", r1.left, r1.right);
+			InvalidateRect(& r1, TRUE);
+		}
 	}
 	else if (lHint == CWaveSoapFrontDoc::UpdateSelectionChanged
 			&& NULL != pHint)

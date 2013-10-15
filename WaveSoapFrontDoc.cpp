@@ -1349,30 +1349,37 @@ BOOL CWaveSoapFrontDoc::DoPaste(SAMPLE_INDEX Start, SAMPLE_INDEX End, CHANNEL_MA
 
 	if (End > Start)
 	{
-		CPasteModeDialog dlg(m_DefaultPasteMode);
-
-		if (dlg.DoModal() != IDOK)
+		if (PasteFlags & PasteFlagReplaceSelectionQuiet)
 		{
-			return FALSE;
-		}
-
-		m_DefaultPasteMode = dlg.GetPasteMode();
-		switch (m_DefaultPasteMode)
-		{
-		case 0:
 			// selection will be replaced with clipboard
-			break;
-		case 1:
-			// paste as much as selection length, replace extra with silence
-			if (NumSamplesToPasteFrom > End - Start)
+		}
+		else
+		{
+			CPasteModeDialog dlg(m_DefaultPasteMode);
+
+			if (dlg.DoModal() != IDOK)
 			{
-				NumSamplesToPasteFrom = End - Start;
+				return FALSE;
 			}
-			break;
-		default:
-			// insert at the current position
-			End = Start;
-			break;
+
+			m_DefaultPasteMode = dlg.GetPasteMode();
+			switch (m_DefaultPasteMode)
+			{
+			case 0:
+				// selection will be replaced with clipboard
+				break;
+			case 1:
+				// paste as much as selection length, replace extra with silence
+				if (NumSamplesToPasteFrom > End - Start)
+				{
+					NumSamplesToPasteFrom = End - Start;
+				}
+				break;
+			default:
+				// insert at the current position
+				End = Start;
+				break;
+			}
 		}
 	}
 
@@ -4678,11 +4685,19 @@ void CWaveSoapFrontDoc::OnUpdateToolsInterpolate(CCmdUI* pCmdUI)
 	{
 		InterpolationOverlap = 5 * InterpolateSamples;
 	}
+	TRACE("InterpolateSamples=%d, m_SelectionStart=%d, InterpolationOverlap=%d, m_SelectionEnd=%d, WaveFileSamples()=%d\n",
+		InterpolateSamples, m_SelectionStart, InterpolationOverlap, m_SelectionEnd, WaveFileSamples());
+
 	pCmdUI->Enable(CanModifyFile()
+#ifdef _DEBUG
+					&& InterpolateSamples >= 2048
+#else
 					&& InterpolateSamples >= 2
 					&& InterpolateSamples <= MaxInterpolatedLength   // 128
 					&& m_SelectionStart >= InterpolationOverlap
-					&& m_SelectionEnd + InterpolationOverlap < WaveFileSamples());
+					&& m_SelectionEnd + InterpolationOverlap < WaveFileSamples()
+#endif
+					);
 }
 
 void CWaveSoapFrontDoc::OnToolsInterpolate()
@@ -4691,12 +4706,38 @@ void CWaveSoapFrontDoc::OnToolsInterpolate()
 	int PreInterpolateSamples = 0;
 	int PostInterpolateSamples = 0;
 	int InterpolationOverlap;
+	ATL::CHeapPtr<WAVE_SAMPLE> pBuf;
+	int SampleSize = WaveSampleSize();
+	NUMBER_OF_CHANNELS nChannels = WaveChannels();
 
 	CClickRemoval crm(WaveFormat(), GetSelectedChannel());
 
 	bool BigGap = (InterpolateSamples >= BigGapLength);
 	if (BigGap)
 	{
+#ifdef _DEBUG
+		if (InterpolateSamples >= 2048)
+		{
+			// now, do the interpolation
+
+			if ( ! pBuf.Allocate(InterpolateSamples * nChannels))
+			{
+				return;
+			}
+
+			if (InterpolateSamples != m_WavFile.ReadSamples(ALL_CHANNELS, m_WavFile.SampleToPosition(m_SelectionStart), InterpolateSamples, pBuf))
+			{
+				return;
+			}
+			for (int ch = 0; ch < WaveChannels(); ch++)
+			{
+				if (m_SelectedChannel & (1 << ch))
+				{
+					crm.InterpolateGap(pBuf+ch, 0, InterpolateSamples, nChannels, BigGap, InterpolateSamples);
+				}
+			}
+		}
+#endif
 		InterpolationOverlap = 2048 + InterpolateSamples + InterpolateSamples / 2;
 		PostInterpolateSamples = InterpolateSamples;
 		PreInterpolateSamples = InterpolateSamples;
@@ -4705,7 +4746,9 @@ void CWaveSoapFrontDoc::OnToolsInterpolate()
 	{
 		InterpolationOverlap = 5 * InterpolateSamples;
 	}
-
+#ifdef _DEBUG
+	return;
+#endif
 	if ( ! CanModifyFile()
 		|| InterpolateSamples < 2
 		|| InterpolateSamples > MaxInterpolatedLength   // 128
@@ -4715,8 +4758,6 @@ void CWaveSoapFrontDoc::OnToolsInterpolate()
 		return;
 	}
 	// interpolate the selected area.
-	int SampleSize = WaveSampleSize();
-	NUMBER_OF_CHANNELS nChannels = WaveChannels();
 
 	SAMPLE_POSITION ReadStartOffset = m_WavFile.SampleToPosition(m_SelectionStart - InterpolationOverlap);
 	SAMPLE_POSITION WriteStartOffset = m_WavFile.SampleToPosition(m_SelectionStart - PreInterpolateSamples);
@@ -4725,7 +4766,6 @@ void CWaveSoapFrontDoc::OnToolsInterpolate()
 	int InterpolateOffset = InterpolationOverlap;
 	int WriteBufferOffset = InterpolationOverlap  - PreInterpolateSamples;
 
-	ATL::CHeapPtr<WAVE_SAMPLE> pBuf;
 	pBuf.Allocate(BufferSamples * nChannels);
 
 	if (NULL == (WAVE_SAMPLE*)pBuf)
@@ -4768,16 +4808,13 @@ void CWaveSoapFrontDoc::OnToolsInterpolate()
 	}
 
 	// now, do the interpolation
-	if (m_SelectedChannel & SPEAKER_FRONT_LEFT) // mono or not right channel only
+	for (int ch = 0; ch < WaveChannels(); ch++)
 	{
-		crm.InterpolateGap(pBuf, InterpolateOffset, InterpolateSamples, nChannels, BigGap, BufferSamples);
+		if (m_SelectedChannel & (1 << ch))
+		{
+			crm.InterpolateGap(pBuf+ch, InterpolateOffset, InterpolateSamples, nChannels, BigGap, BufferSamples);
+		}
 	}
-	if (nChannels == 2
-		&& (m_SelectedChannel & SPEAKER_FRONT_RIGHT) != 0) // mono or not right channel only
-	{
-		crm.InterpolateGap(pBuf + 1, InterpolateOffset, InterpolateSamples, nChannels, BigGap, BufferSamples);
-	}
-
 	// write the data back
 	m_WavFile.WriteSamples(m_SelectedChannel, WriteStartOffset, WrittenSamples,
 							pBuf + WriteBufferOffset * nChannels, m_SelectedChannel, nChannels);
