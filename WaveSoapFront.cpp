@@ -1529,7 +1529,7 @@ void CWaveSoapFrontApp::OnEditPasteNew()
 
 	if (pTemplate != NULL)
 	{
-		NewFileParameters Params(m_ClipboardFile.GetWaveFormat());
+		NewFileParameters Params(m_ClipboardFile.GetWaveFormat(), m_ClipboardFile.NumberOfSamples());
 
 		CWaveSoapFrontDoc * pDoc =
 			(CWaveSoapFrontDoc *)pTemplate->OpenDocumentFile(
@@ -1541,7 +1541,7 @@ void CWaveSoapFrontApp::OnEditPasteNew()
 			BOOL TmpUndo = pDoc->UndoEnabled();
 			pDoc->EnableUndo(FALSE);
 
-			if ( ! pDoc->DoPaste(0, 0, ALL_CHANNELS, 0))
+			if ( ! pDoc->DoPaste(0, m_ClipboardFile.NumberOfSamples(), ALL_CHANNELS, pDoc->PasteFlagReplaceSelectionQuiet))
 			{
 				pDoc->OnCloseDocument();
 			}

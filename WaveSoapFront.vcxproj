@@ -222,7 +222,7 @@
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <OmitFramePointers>true</OmitFramePointers>
       <AdditionalIncludeDirectories>.;C:\WINDDK\6001.18000\inc\api;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>NDEBUG;WIN32;_WINDOWS;_WIN32_WINNT=0x0500;WINVER=0x0500;OEMRESOURCE;USE_MMCKINFO64;_CONVERSION_DONT_USE_THREAD_LOCALE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>NDEBUG;WIN32;_WINDOWS;_WIN32_WINNT=0x0600;WINVER=0x0500;OEMRESOURCE;USE_MMCKINFO64;_CONVERSION_DONT_USE_THREAD_LOCALE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <StringPooling>true</StringPooling>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <BufferSecurityCheck>false</BufferSecurityCheck>
@@ -268,7 +268,7 @@
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <OmitFramePointers>true</OmitFramePointers>
       <AdditionalIncludeDirectories>.;C:\WINDDK\6001.18000\inc\api;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>NDEBUG;WIN32;_WINDOWS;_WIN32_WINNT=0x0500;WINVER=0x0500;OEMRESOURCE;USE_MMCKINFO64;_CONVERSION_DONT_USE_THREAD_LOCALE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>NDEBUG;WIN32;_WINDOWS;_WIN32_WINNT=0x0600;WINVER=0x0500;OEMRESOURCE;USE_MMCKINFO64;_CONVERSION_DONT_USE_THREAD_LOCALE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <StringPooling>true</StringPooling>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <BufferSecurityCheck>false</BufferSecurityCheck>
@@ -323,6 +323,7 @@
     <ClCompile Include="FolderDialog.cpp" />
     <ClCompile Include="LocaleUtilities.cpp" />
     <ClCompile Include="MainFrm.cpp" />
+    <ClCompile Include="Matrix.cpp" />
     <ClCompile Include="MessageBoxSynch.cpp" />
     <ClCompile Include="NewFilePropertiesDlg.cpp" />
     <ClCompile Include="NumEdit.cpp" />
@@ -499,6 +500,7 @@ echo.
     <ClInclude Include="LocaleUtilities.h" />
     <ClInclude Include="MainFrameEx.h" />
     <ClInclude Include="MainFrm.h" />
+    <ClInclude Include="Matrix.h" />
     <ClInclude Include="MessageBoxSynch.h" />
     <ClInclude Include="NewFilePropertiesDlg.h" />
     <ClInclude Include="NumEdit.h" />

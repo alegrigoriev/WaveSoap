@@ -8,6 +8,7 @@
 #include "wavefile.h"
 #include "Waveproc.h"
 #include <float.h>
+#include "Matrix.h"
 
 #ifndef _CONSOLE
 #define puts(t) AfxMessageBox(_T(t), MB_OK | MB_ICONEXCLAMATION)
@@ -1411,7 +1412,7 @@ void CClickRemoval::InterpolateBigGap(WAVE_SAMPLE data[], int nLeftIndex, int Cl
 	ASSERT(pFftResult == x + FftOrder);
 }
 
-#if 0
+#if 1
 void quad_regression(double const X[], double const Y[], unsigned NumPoints, double &A_result, double &B_result, double&C_result);
 void test_quad_regression(double X[], int NumPoints, double A, double B, double C)
 {
@@ -1488,9 +1489,17 @@ void quad_regression(double const X[], double const Y[], unsigned NumPoints, dou
 	C_result = C;
 }
 
-complex<double> int_power(complex<double> arg, unsigned power)
+typedef complex<double> complex_d;
+typedef std::vector<complex_d> complex_vector;
+typedef std::vector<double> double_vector;
+typedef double_vector::iterator double_iterator;
+typedef double_vector::const_iterator double_const_iterator;
+typedef complex_vector::iterator complex_iterator;
+typedef complex_vector::const_iterator complex_const_iterator;
+
+complex_d int_power(complex_d arg, unsigned power)
 {
-	complex<double> result(1., 0.);
+	complex_d result(1., 0.);
 	while (power != 0)
 	{
 		if (power & 1)
@@ -1516,56 +1525,178 @@ double CalculatePower(double const data[], int NumSamples)
 	return Sum / NumSamples;
 }
 
-void FilterSeries(double const source[], double destination[], int NumSamples, complex<double> FilterZero, complex<double> FilterPole)
+double CalculatePower(double_vector const& data)
 {
-	double coeffs[3] = { 1., FilterZero.real() * -2., FilterZero.real() * FilterZero.real() + FilterZero.imag() * FilterZero.imag()};
-	double denom_coeffs[3] = { 1., FilterPole.real() * -2., FilterPole.real() * FilterPole.real() + FilterPole.imag() * FilterPole.imag()};
-	double History[2] = {0., 0.};
+	return CalculatePower(&data[0], (int)data.size());
+}
 
-	double correction = abs((FilterPole + 1./FilterPole)/ (FilterZero + 1./FilterZero));
-	for (int i = 0; i <  NumSamples - 2; i++)
+typedef double_vector::iterator data_iter;
+typedef double_vector::const_iterator cdata_iter;
+
+double Average(double_vector const&X)
+{
+	long N = (long)X.size();
+	double Sum = 0;
+	for (long i = 0; i != N; i++)
 	{
-		double tmp = correction * (source[i] + coeffs[1] * source[i+1] + coeffs[2] * source[i + 2]);
-		destination[i] = tmp - History[0] * denom_coeffs[1] - History[1] * denom_coeffs[2];
-		History[1] = History[0];
-		History[0] = destination[i];
+		Sum += X[i];
+	}
+	return Sum / (long) N;
+}
+
+double Average(double_vector const&X, double_vector const& weight)
+{
+	unsigned N = (unsigned) X.size();
+	ASSERT(N == weight.size());
+	double Sum = 0;
+	double Sum_W = 0;
+	for (unsigned i = 0; i != N; i++)
+	{
+		Sum += X[i] * weight[i];
+		Sum_W += weight[i];
+	}
+	return Sum / Sum_W;
+}
+// Y = A + B*X
+void LinearRegression(double_vector const &X, double_vector const &Y, double &A, double &B)
+{
+	unsigned N = (unsigned)X.size();
+	ASSERT(N == Y.size());
+
+	double x_avg = Average(X);
+	double y_avg = Average(Y);
+
+	double numer_sum = 0.;
+	double denom_sum = 0.;
+
+	for (unsigned i = 0; i != N; i++)
+	{
+		numer_sum += (Y[i] - y_avg) * (X[i] - x_avg);
+		denom_sum += (X[i] - x_avg) * (X[i] - x_avg);
+	}
+
+	B = numer_sum / denom_sum;
+	A = y_avg - x_avg * B;
+}
+
+void LinearRegression(double_vector const &X, double_vector const &Y, double_vector const &weight, double &A, double &B)
+{
+	unsigned N = (unsigned)X.size();
+	ASSERT(N == Y.size());
+	ASSERT(N == weight.size());
+
+	double x_avg = Average(X, weight);
+	double y_avg = Average(Y, weight);
+
+	double numer_sum = 0.;
+	double denom_sum = 0.;
+
+	for (unsigned i = 0; i != N; i++)
+	{
+		numer_sum += weight[i] * (Y[i] - y_avg) * (X[i] - x_avg);
+		denom_sum += weight[i] * (X[i] - x_avg) * (X[i] - x_avg);
+	}
+
+	B = numer_sum / denom_sum;
+	A = y_avg - x_avg * B;
+}
+
+void FilterSeries(double const source[], double destination[], int NumSamples, complex_d FilterZero, complex_d FilterPole)
+{
+	double coeffs[3] = { 1., -2. * FilterZero.real(), FilterZero.real() * FilterZero.real() + FilterZero.imag() * FilterZero.imag()};
+	double denom_coeffs[3] = { 1., -2. * FilterPole.real(), FilterPole.real() * FilterPole.real() + FilterPole.imag() * FilterPole.imag()};
+	double History[2] = {source[0], source[1]};
+
+	double correction = 1.;
+	if (FilterZero != complex_d(0., 0.))
+	{
+		correction /= abs(FilterZero);
+	}
+
+	if (FilterPole != complex_d(0., 0.))
+	{
+		correction *= abs(FilterPole + 1./FilterPole);
+		for (int i = 0; i + 2 < NumSamples; i++)
+		{
+			double tmp = correction * (source[i] + coeffs[1] * source[i+1] + coeffs[2] * source[i + 2]);
+			destination[i] = tmp - History[0] * denom_coeffs[1] - History[1] * denom_coeffs[2];
+			History[1] = History[0];
+			History[0] = destination[i];
+		}
+	}
+	else
+	{
+		for (int i = 0; i + 2 < NumSamples; i++)
+		{
+			destination[i] = correction * (source[i] + coeffs[1] * source[i+1] + coeffs[2] * source[i + 2]);
+		}
 	}
 }
 
-void FilterSeriesBackwards(double const source[], double destination[], int NumSamples, complex<double> FilterZero, complex<double> FilterPole)
+void FilterSeries(double_vector const &source, double_vector &destination, complex_d const&FilterZero, complex_d const&FilterPole)
+{
+	destination.resize(source.size()-2);
+	FilterSeries(&source[0], &destination[0], (int)source.size(), FilterZero, FilterPole);
+}
+
+void FilterSeriesInPlace(double_vector &source, complex_d const&FilterZero, complex_d const&FilterPole)
+{
+	FilterSeries(&source[0], &source[0], (int)source.size(), FilterZero, FilterPole);
+	source.erase(source.end()-2, source.end());
+}
+
+void FilterSeriesBackwards(double const source[], double destination[], int NumSamples, complex_d FilterZero, complex_d FilterPole)
 {
 	double coeffs[3] = { 1.,
 						FilterZero.real() * -2.,
 						FilterZero.real() * FilterZero.real() + FilterZero.imag() * FilterZero.imag()};
+
+	double correction = 1.;
+	ASSERT(FilterPole != complex_d(0., 0.));
+
+	if (FilterPole != complex_d(0., 0.))
+	{
+		correction *= abs(FilterPole + 1./FilterPole);
+	}
+
+	if (FilterZero != complex_d(0., 0.))
+	{
+		correction /= abs(FilterZero);
+	}
 	// use 1/FilterPole for filtering backwards
 	double denom_coeffs[3] = { 1.,
 		FilterPole.real() * -2. /(FilterPole.real() * FilterPole.real() + FilterPole.imag() * FilterPole.imag()),
 		1/(FilterPole.real() * FilterPole.real() + FilterPole.imag() * FilterPole.imag())};
-	double History[2] = {0., 0.};
+	double History[2] = {source[NumSamples-2], source[NumSamples-1]};
 
-	double correction = abs((FilterPole + 1./FilterPole)/ (FilterZero + 1./FilterZero));
-	for (int i = NumSamples - 3; i >= 0; i++)
+	for (int i = NumSamples - 3; i >= 0; i--)
 	{
-		double tmp = correction * (source[i] + coeffs[1] * source[i+1] + coeffs[2] * source[i + 2]);
+		double tmp = correction * (coeffs[2] * source[i] + coeffs[1] * source[i+1] + source[i + 2]);
 		destination[i] = tmp - History[0] * denom_coeffs[1] - History[1] * denom_coeffs[2];
 		History[1] = History[0];
 		History[0] = destination[i];
 	}
 }
 
-void FindZeroApproximation(double const source[], int NumSamples, complex<double> &FilterZero, int & MaxBinNumber, complex<double> &Amplitude)
+void FilterSeriesBackwards(double_vector const &source, double_vector &destination, complex_d const&FilterZero, complex_d const&FilterPole)
+{
+	destination.resize(source.size()-2);
+	FilterSeriesBackwards(&source[0], &destination[0], (int)source.size(), FilterZero, FilterPole);
+}
+
+void FindZeroApproximation(double const source[], int NumSamples, complex_d &FilterZero, int & MaxBinNumber, double &Power)
 {
 	// NumSamples - power of 2
 	ASSERT(NumSamples == (NumSamples & -NumSamples));
 
-	std::vector<complex<double> > f(NumSamples / 2 + 1, 0.);
+	complex_vector f(NumSamples / 2 + 1, 0.);
 	// run FFT, find maximum line, return its amplitude and phase
 	FastFourierTransform(source, &f[0], NumSamples);
 
 	int i;
 	double MaxPower = 0;
 	int MaxPowerPos= 0;
-	std::vector<complex<double> >::iterator pf;
+	complex_iterator pf;
 
 	for (i = 1, pf = f.begin() +1; i < NumSamples / 2; i++, pf++)
 	{
@@ -1577,7 +1708,7 @@ void FindZeroApproximation(double const source[], int NumSamples, complex<double
 		}
 	}
 
-	Amplitude = f[MaxPowerPos];
+	Power = MaxPower;
 	MaxBinNumber = MaxPowerPos;
 	FilterZero.real(cos(MaxPowerPos * M_PI / (NumSamples / 2)));
 	FilterZero.imag(sin(MaxPowerPos * M_PI / (NumSamples / 2)));
@@ -1590,6 +1721,7 @@ void FindMinimum2D(double x_init, double y_init, double x_delta, double y_delta,
 					double &x_result, double &y_result)
 {
 	// x_delta, y_delta - max deviation by x and y from initial point
+	static int Do_TRACE_FindMinimum2D = 0;
 	double TargetArray[3][3];
 	double x = x_init;
 	double y = y_init;
@@ -1601,16 +1733,19 @@ void FindMinimum2D(double x_init, double y_init, double x_delta, double y_delta,
 	double CurrentDeltaX = x_delta / 32;
 	double CurrentDeltaY = y_delta / 32;
 
-	while (1)
+	int iteration;
+	for (iteration = 0; iteration < 200; iteration++)
 	{
-		int i, j;
 		// fill 3x3 array
 		double SmallestTarget = 0;
 		int sm_i = 0;
 		int sm_j = 0;
-		for (i = 0; i < 3; i++)
+
+		if (Do_TRACE_FindMinimum2D) TRACE("FindMinimum2D: y=%f, dy=%f, x=%f (%f Hz), dx=%f\n", y, CurrentDeltaY, x, x * 22050 / M_PI, CurrentDeltaX);
+
+		for (int j = 0; j < 3; j++)
 		{
-			for (j = 0; j < 3; j++)
+			for (int i = 0; i < 3; i++)
 			{
 				TargetArray[i][j] = Func(FuncArg, x + CurrentDeltaX * (i - 1), y + CurrentDeltaY * (j - 1));
 				if ((i == 0 && j == 0)
@@ -1621,19 +1756,26 @@ void FindMinimum2D(double x_init, double y_init, double x_delta, double y_delta,
 					sm_j = j;
 				}
 			}
+			if (Do_TRACE_FindMinimum2D) TRACE("FindMinimum2D %d: LOG(T)=%f, %f, %f\n",
+											j, log(TargetArray[0][j]), log(TargetArray[1][j]), log(TargetArray[2][j]));
 		}
 		// take new smallest point
-		if (sm_i == 1 && sm_j == 1)
+#if 0
+		if (sm_i == 1)
 		{
 			// divide the step in half
 			CurrentDeltaX /= 2.;
+		}
+		if (sm_j == 1)
+		{
+			// divide the step in half
 			CurrentDeltaY /= 2.;
 		}
-		else
-		{
-			x += CurrentDeltaX * (sm_i - 1);
-			y += CurrentDeltaY * (sm_j - 1);
-			if (x < x_min)
+
+		x += CurrentDeltaX * (sm_i - 1);
+		y += CurrentDeltaY * (sm_j - 1);
+
+		if (1) if (x < x_min)
 			{
 				x = x_min;
 				CurrentDeltaX /= 2.;
@@ -1643,66 +1785,146 @@ void FindMinimum2D(double x_init, double y_init, double x_delta, double y_delta,
 				x = x_max;
 				CurrentDeltaX /= 2.;
 			}
-			if (y < y_min)
+		if (1) if (y < y_min)
 			{
 				y = y_min;
 				CurrentDeltaY /= 2.;
 			}
-			if (y > y_max)
+			else if (y > y_max)
 			{
 				y = y_max;
 				CurrentDeltaY /= 2.;
 			}
-		}
-		if (CurrentDeltaX < x_delta / 1024.
-			&& CurrentDeltaY < y_delta / 1024.)
+
+		if (CurrentDeltaX < x_delta / 8192.
+			&& CurrentDeltaY < y_delta / 8192.)
 		{
 			x_result = x;
 			y_result = y;
 			return;
 		}
+#else
+		if (sm_i == 1
+			&& sm_j == 1)
+		{
+			// divide the step in half
+			CurrentDeltaX /= 2.;
+			CurrentDeltaY /= 2.;
+		}
+		else
+		{
+			x += CurrentDeltaX * (sm_i - 1);
+			y += CurrentDeltaY * (sm_j - 1);
+
+			if (1) if (x < x_min)
+				{
+					x = x_min;
+					CurrentDeltaX /= 2.;
+				}
+				else if (x > x_max)
+				{
+					x = x_max;
+					CurrentDeltaX /= 2.;
+				}
+			if (1) if (y < y_min)
+				{
+					y = y_min;
+					CurrentDeltaY /= 2.;
+				}
+				else if (y > y_max)
+				{
+					y = y_max;
+					CurrentDeltaY /= 2.;
+				}
+		}
+
+		if (CurrentDeltaX < x_delta / 8192.
+			&& CurrentDeltaY < y_delta / 8192.)
+		{
+			x_result = x;
+			y_result = y;
+			return;
+		}
+#endif
 	}
+	TRACE("FindMinimum2D didn't converge in %d iterations: y=%f, x=%f\n", iteration, y, x);
+	x_result = x;
+	y_result = y;
+	return;
 }
 
 struct FilterResidualTargetFuncContext
 {
-	double const * source;
-	std::vector<double> result;
-	int NumSamples;
+	double_vector source;
+	double_vector result;
 };
 
 TargetFunc FilterResidualTargetFunc;
 double FilterResidualTargetFunc(void * arg, double x, double y)
 {
 	FilterResidualTargetFuncContext *ctx = (FilterResidualTargetFuncContext*)arg;
-	ctx->result.resize(ctx->NumSamples, 0.);
-	complex<double> FilterZero(y*cos(x), y*sin(x));
-	double PoleRadius;
-	if (y <= 1.01)
-	{
-		PoleRadius = y * 0.98;
-	}
-	else
-	{
-		PoleRadius = y * 1.02;
-	}
-	complex<double> FilterPole(PoleRadius*cos(x), PoleRadius*sin(x));
 
-	if (PoleRadius <= 1.)
+	if (0)
 	{
-		FilterSeries(ctx->source, & ctx->result[0], ctx->NumSamples, FilterZero, FilterPole);
+		complex_d FilterZero(y*cos(x), y*sin(x));
+		double PoleRadius;
+		if (y <= 1.01)
+		{
+			PoleRadius = y * 0.98;
+		}
+		else
+		{
+			PoleRadius = y * 1.02;
+		}
+		complex_d FilterPole(PoleRadius*cos(x), PoleRadius*sin(x));
+
+		if (PoleRadius <= 1.)
+		{
+			FilterSeries(ctx->source, ctx->result, FilterZero, FilterPole);
+		}
+		else
+		{
+			FilterSeriesBackwards(ctx->source, ctx->result, FilterZero, FilterPole);
+		}
 	}
 	else
 	{
-		FilterSeriesBackwards(ctx->source, & ctx->result[0], ctx->NumSamples, FilterZero, FilterPole);
+		FilterSeries(ctx->source, ctx->result, complex_d(y*cos(x), y*sin(x)), complex_d(0.,0.));
 	}
-	return CalculatePower(& ctx->result[20], ctx->NumSamples-40);
+	return CalculatePower(ctx->result);
 }
 
-void EstimateLocalFrequency(double const source[], int const NumSamples, double FrequencyEstimation, double &FrequencyResult, double &decay, complex<double> &amplitude)
+TargetFunc FilterExciteTargetFunc;
+double FilterExciteTargetFunc(void * arg, double x, double y)
 {
-	std::vector<complex<double> > signal(NumSamples, 0.);
-	std::vector<complex<double> >::iterator p;
+	// find the max resonance
+	// x is frequency, y is decay (1 - no decay)
+	FilterResidualTargetFuncContext *ctx = (FilterResidualTargetFuncContext*)arg;
+
+	if (y <= 1.)
+	{
+		if (y >= 0.99999)
+		{
+			y = 0.99999;
+		}
+		FilterSeries(ctx->source, ctx->result, complex_d(0., 0.), complex_d(y*cos(x), y*sin(x)));
+		return 1. / CalculatePower(& ctx->result[(int)ctx->result.size()-(int)ctx->result.size()/2], (int)ctx->result.size()/2);    // maximum power - minimum target function
+	}
+	else
+	{
+		if (y < 1.000001)
+		{
+			y = 1.000001;
+		}
+		FilterSeriesBackwards(ctx->source, ctx->result, complex_d(0., 0.), complex_d(y*cos(x), y*sin(x)));
+		return 1. / CalculatePower(& ctx->result[0], (int)ctx->result.size()/2);    // maximum power - minimum target function
+	}
+}
+
+void EstimateLocalFrequency(double const source[], int const NumSamples, double FrequencyEstimation, double &FrequencyResult, double &decay, complex_d &amplitude)
+{
+	complex_vector signal(NumSamples, 0.);
+	complex_iterator p;
 	int i;
 
 	// move the estimated frequency to zero neighborhood (making it a complex signal)
@@ -1712,7 +1934,7 @@ void EstimateLocalFrequency(double const source[], int const NumSamples, double 
 		p->imag(source[i] * sin(fmod(FrequencyEstimation * (NumSamples - i), 2*M_PI)));
 	}
 	// filter it with zero-phase FIR (Hamming window)
-	std::vector<double> fir(NumSamples / 2);
+	double_vector fir(NumSamples / 2);
 	// build the Hamming window
 	for (i = 0, p = signal.begin(); i < NumSamples / 2; i++, p++)
 	{
@@ -1724,9 +1946,9 @@ void EstimateLocalFrequency(double const source[], int const NumSamples, double 
 	// run the filter
 	for (i = 0, p = signal.begin(); i < NumSamples/2; i++, p++)
 	{
-		std::vector<complex<double> >::iterator p1;
-		std::vector<double>::iterator pf;
-		complex<double> tmp(0.);
+		complex_iterator p1;
+		double_vector::iterator pf;
+		complex_d tmp(0.);
 		for (pf = fir.begin(), p1 = p; pf != fir.end(); p1++, pf++)
 		{
 			tmp += *pf * *p1;
@@ -1789,55 +2011,48 @@ void EstimateLocalFrequency(double const source[], int const NumSamples, double 
 	amplitude.imag(sin(NextPhase)*NextAmplitude);
 }
 
-void FindComponent(double const source[], int NumSamples, double &frequency, double &decay, complex<double> &Amplitude)
-{
-	// find first approximation
-	complex<double> FilterZero;
-	double freq_init;
-	int MaxBinNumber;
-
-	FindZeroApproximation(source, NumSamples, FilterZero, MaxBinNumber, Amplitude);
-	// find best frequency approximation
-	freq_init = MaxBinNumber * M_PI * 2 / NumSamples;
-	if (0) TRACE("First frequency approx found= %f, Amplitude = %f\n", MaxBinNumber * 44100. / NumSamples, abs(Amplitude) / NumSamples);
-#if 0
-	FilterResidualTargetFuncContext ctx;
-	ctx.source = source;
-	ctx.NumSamples = NumSamples;
-	FindMinimum2D(freq_init, 1., M_PI / NumSamples * 2, 0.05, FilterResidualTargetFunc, & ctx, frequency, decay);
-	// find best amplitude/phase approx
-	TRACE("Frequency result found= %f, decay = %f\n", FrequencyResult * 22050. / M_PI, Decay);
-#else
-	// turn the frequency to zero neighborhood (making it a complex signal),
-	EstimateLocalFrequency(source, NumSamples, freq_init, frequency, decay, Amplitude);
-	if (0) TRACE("First frequency result found= %f\n", frequency * 22050. / M_PI);
-	// repeat estimation
-	EstimateLocalFrequency(source, NumSamples, frequency, frequency, decay, Amplitude);
-	TRACE("Second frequency result found= %f\n", frequency * 22050. / M_PI);
-//    EstimateLocalFrequency(source, NumSamples, frequency, frequency, decay, Amplitude);
-//    TRACE("Third frequency result found= %f, decay = %f, amplitude=%f\n", frequency * 22050. / M_PI, decay, abs(Amplitude));
-	// Find its exact frequency
-#endif
-}
-
-void CancelComponent(double const source[], double destination[], int NumSamples, complex<double> FilterZero, complex<double> Amplitude)
-{
-	// generate wave and subtract from source
-}
 struct SpectralComponent
 {
 	double frequency, decay;
-	complex<double> Amplitude;
+	double Power;
+	complex_d FilterZero;
+	complex_d FilterPole;
+	double InitialAmplitude, AmplitudeDecay;
+	double InitialPhase, Frequency;
+	SpectralComponent() : FilterZero(0., 0.), FilterPole(0., 0.) {}
 };
+
+void FindComponent(const double_vector &source, int FftOrder, SpectralComponent & comp)
+{
+	// find first approximation
+	int const DO_FindComponent_TRACE = 0;
+	int MaxBinNumber;
+
+	FindZeroApproximation(&source[0], FftOrder, comp.FilterZero, MaxBinNumber, comp.Power);
+	// find best frequency approximation
+	double freq_init = MaxBinNumber * M_PI * 2 / FftOrder;
+
+	if (DO_FindComponent_TRACE) TRACE("First frequency approx found= %f, Amplitude = %f\n", MaxBinNumber * 44100. / FftOrder, sqrt(comp.Power*2) / FftOrder);
+
+	double_vector Residual;
+	FilterResidualTargetFuncContext ctx;
+	ctx.source = source;
+
+	FindMinimum2D(freq_init, 1., M_PI *4/ FftOrder, 0.1, FilterResidualTargetFunc, & ctx, comp.frequency, comp.decay);
+	//FindMinimum2D(freq_init, 1., M_PI / NumSamples*2, 0.1, FilterExciteTargetFunc, & ctx, comp.frequency, comp.decay);
+	comp.FilterZero.real(comp.decay * cos(comp.frequency));
+	comp.FilterZero.imag(comp.decay * sin(comp.frequency));
+	if (DO_FindComponent_TRACE) TRACE("Frequency result found= %f, decay = %f\n", comp.frequency * 22050. / M_PI, comp.decay);
+}
 
 void DiscreteCosineTransform(double const source[], double destination[], int NumSamples)
 {
-	std::vector<double> x(NumSamples*2, 0.);
-	std::vector<complex<double> > f1(NumSamples+1);
+	double_vector x(NumSamples*2, 0.);
+	complex_vector f1(NumSamples+1);
 	std::copy(&source[0], &source[NumSamples], x.begin()+NumSamples/2);
 	FastFourierTransform(&x[0], &f1[0], NumSamples*2);
 
-	std::vector<complex<double> >::iterator p = f1.begin();
+	complex_iterator p = f1.begin();
 	for (int i = 0; i < NumSamples; i+=2, p+=2)
 	{
 		destination[i] = p->real()*2.;
@@ -1849,12 +2064,11 @@ void CClickRemoval::InterpolateBigGapSliding(WAVE_SAMPLE data[], int nLeftIndex,
 {
 	const int MAX_FFT_ORDER = 2048;
 	// nLeftIndex: 2048 + ClickLength + ClickLength / 2
-	std::vector<double> x;
+	double_vector x;
 
-	std::vector<complex<double> > f1;
-	std::vector<complex<double> > f2;
-	std::vector<complex<double> > Frequency(1, 1.);
-	typedef std::vector<complex<double> >::iterator complex_ptr;
+	complex_vector f1;
+	complex_vector f2;
+	complex_vector Frequency(1, 1.);
 	//float xl[MAX_FFT_ORDER];  // to save extrapolation from the left neighborhood
 
 	int FftOrder = 64;
@@ -1869,46 +2083,147 @@ void CClickRemoval::InterpolateBigGapSliding(WAVE_SAMPLE data[], int nLeftIndex,
 		return;
 	}
 
-	FftOrder = 1024;
+	FftOrder = 512;
 	Frequency.resize(FftOrder/2 + 1, 0.);
 	// extrapolate ClickLength + ClickLength / 2 - the gap and
 	// the right neighborhood
 	int const ExtrapolatedLength = ClickLength;// + ClickLength / 2;
 	int i;
-	x.resize(TotalSamples, 0.);
 
 	ASSERT(nLeftIndex >= FftOrder - ExtrapolatedLength);
+#if 1
 #if 0
+	x.resize(FftOrder + ExtrapolatedLength, 0.);
 	for (i = 0; i < FftOrder + ExtrapolatedLength; i++)
 	{
 		x[i] = data[nChans * (nLeftIndex - FftOrder - ExtrapolatedLength+ i)];
 	}
-	int MaxBinNumber;
-	double OriginalPower = CalculatePower(&x[0], FftOrder);
-	double CurrentResidualPower = OriginalPower;
-	int NumComponent;
+#else
+	x.resize(TotalSamples, 0.);
+	for (i = 0; i < TotalSamples; i++)
+	{
+		x[i] = data[nChans * i];
+	}
+#endif
 
 	std::vector<SpectralComponent> Components;
+	typedef std::vector<SpectralComponent>::iterator comp_iter;
 	int const MaxNumComponent = 4;
-	for (NumComponent = 0; NumComponent < MaxNumComponent && CurrentResidualPower*10000 >OriginalPower; NumComponent++)
+
+	double OriginalPower = CalculatePower(x);
+	double CurrentResidualPower = OriginalPower;
+	double_vector Residual(x);
+
+	static int const DO_FindComponents_TRACE = 1;
+
+	for (int n = 0; n< MaxNumComponent && CurrentResidualPower*1000000 >OriginalPower; n++)
 	{
 		SpectralComponent comp;
-		FindComponent(&x[0], FftOrder, comp.frequency, comp.decay, comp.Amplitude);
+		FindComponent(Residual, FftOrder, comp);
 		Components.push_back(comp);
-		// subtract the found component from source array
-		for (int t = 0; t < FftOrder; t++)
+		if (DO_FindComponents_TRACE) TRACE("First approx frequency result %d found= %f, decay = %f\n", Components.size(), comp.frequency * 22050. / M_PI, comp.decay);
+
+		// now find the better approximation for all
+		for (comp_iter i = Components.begin(); i != Components.end(); i++)
 		{
-			x[t] -= (comp.Amplitude.real() * cos(fmod(comp.frequency * (t - FftOrder), 2*M_PI)) - comp.Amplitude.imag() * sin(fmod(comp.frequency * (t - FftOrder), 2*M_PI)))
-					* exp(comp.decay * (t - FftOrder));
+			Residual = x;
+			for (comp_iter j = Components.begin(); j != Components.end(); j++)
+			{
+				if (j != i)
+				{
+					FilterSeriesInPlace(Residual, j->FilterZero, j->FilterPole);
+				}
+			}
+			if (Components.size() != 1)
+			{
+				FindComponent(Residual, FftOrder, *i);
+				if (DO_FindComponents_TRACE) TRACE("New frequency result %d approx = %f, decay = %f\n", (i - Components.begin()) + 1, i->frequency * 22050. / M_PI, i->decay);
+			}
+			if (i+1 == Components.end())
+			{
+				FilterSeriesInPlace(Residual, i->FilterZero, i->FilterPole);
+				// now Residual has the required contents for the next iteration
+			}
 		}
-		CurrentResidualPower = CalculatePower(&x[0], FftOrder);
-		TRACE("Relative component power=%f, Residual power left after component %d=%f\n",
-			(comp.Amplitude.real() * comp.Amplitude.real() + comp.Amplitude.imag() * comp.Amplitude.imag()) / OriginalPower,
-			NumComponent,
-			CurrentResidualPower / OriginalPower);
+
+		CurrentResidualPower = CalculatePower(Residual);
+		if (DO_FindComponents_TRACE) TRACE("Original power=%f (ampl=%f), residual power=%f (ampl=%f)\n",
+											OriginalPower, sqrt(2*OriginalPower),
+											CurrentResidualPower, sqrt(2*CurrentResidualPower));
 	}
 
-	std::vector<double> dst(TotalSamples, 0.);
+	// now find components amplitude and phase
+	complex_vector result;
+	double_vector amplitudes;
+	double_vector phases;
+	double_vector X;
+
+	for (comp_iter i = Components.begin(); i != Components.end(); i++)
+	{
+		Residual = x;
+		complex_d correction(1., 0.);
+		for (comp_iter j = Components.begin(); j != Components.end(); j++)
+		{
+			if (j != i)
+			{
+				FilterSeriesInPlace(Residual, j->FilterZero, j->FilterPole);
+
+				// FilterSeries will correct the result by 1/abs(j->FilterZero). Here, we want to adjust it back
+				correction *= abs(j->FilterZero);
+				if (j->FilterPole != complex_d(0., 0.))
+				{
+					correction /= abs(j->FilterPole);
+				}
+				// now correct for the target frequency
+				correction /= 1. + conj(i->FilterZero) *
+					(conj(i->FilterZero) * (j->FilterZero.real() * j->FilterZero.real() + j->FilterZero.imag() * j->FilterZero.imag()) - 2. * j->FilterZero.real());
+			}
+			else
+			{
+				// correct for the single zero filter. The zero and the target signal are complex conjugates
+				correction /= 1. - conj(i->FilterZero) / i->FilterZero;
+			}
+		}
+		// filter with complex coefficients to suppress negative frequency part
+		result.resize(Residual.size() - 1);
+		amplitudes.resize(Residual.size() - 1);
+		phases.resize(Residual.size() - 1);
+		X.resize(Residual.size() - 1);
+
+		double_const_iterator i1 = Residual.begin();
+		double_iterator amp = amplitudes.begin();
+		double_iterator ph = phases.begin();
+		double phase_correction = 0.;
+
+		for (complex_iterator i2 = result.begin(); i2 != result.end(); i1++, i2++, amp++, ph++)
+		{
+			i2->real(i1[0] - i1[1] * i->FilterZero.real());
+
+			i2->imag( - i1[1] * i->FilterZero.imag());
+			*i2 *= correction;
+
+			*amp = log(i2->real() * i2->real() + i2->imag() * i2->imag());
+			*ph = arg(*i2) + phase_correction;
+			// the phases go to the increasing direction
+			if (ph != phases.begin()
+				&& ph[0] + M_PI < ph[-1])
+			{
+				phase_correction += 2 * M_PI;
+				ph[0] += 2 * M_PI;
+			}
+
+			X[ph - phases.begin()] = int(ph - phases.begin());
+		}
+
+		LinearRegression(X, amplitudes, i->InitialAmplitude, i->AmplitudeDecay);
+		LinearRegression(X, phases, i->InitialPhase, i->Frequency);
+		TRACE("Initial amplitude for f=%f: %f, amplitude decay: %f dB/s\n",
+			i->frequency * 22050. / M_PI, exp(i->InitialAmplitude/2), i->AmplitudeDecay * 44100 / log(10.) * 20.);
+		TRACE("Initial phase for f=%f: %f, exact frequency: %f Hz\n",
+			i->frequency * 22050. / M_PI, i->InitialPhase, i->Frequency * 22050. / M_PI);
+	}
+	return;
+	double_vector dst(TotalSamples, 0.);
 	// fill with the found signal
 
 	for (int pos = nLeftIndex - ExtrapolatedLength, t = 0; pos < nLeftIndex + ClickLength; pos++, t++)
@@ -1918,19 +2233,20 @@ void CClickRemoval::InterpolateBigGapSliding(WAVE_SAMPLE data[], int nLeftIndex,
 		for (tmp = 0., pc = Components.begin(); pc != Components.end(); pc++)
 		{
 			double phase = fmod(pc->frequency * t, 2*M_PI);
-			tmp += (pc->Amplitude.real() * cos(phase) - pc->Amplitude.imag() * sin(phase))* exp(pc->decay * t);
+			//tmp += (pc->Amplitude.real() * cos(phase) - pc->Amplitude.imag() * sin(phase))* exp(pc->decay * t);
 		}
 		data[pos*nChans] = DoubleToShort(tmp);
 	}
 	return;
 #else
+	x.resize(FftOrder, 0.);
 	FftOrder = 256;
 	for (i = 0; i < FftOrder; i++)
 	{
 		x[i] = data[nChans * (nLeftIndex - FftOrder - ExtrapolatedLength+ i)];
 	}
 
-	std::vector<double> y(FftOrder/2);
+	double_vector y(FftOrder/2);
 	f1.resize(FftOrder/2+1);
 	if (1) for (i = 0; i < FftOrder / 2; i++)
 		{
@@ -1951,7 +2267,7 @@ void CClickRemoval::InterpolateBigGapSliding(WAVE_SAMPLE data[], int nLeftIndex,
 
 
 
-	std::vector<double> dst(FftOrder, 0.);
+	double_vector dst(FftOrder, 0.);
 	//FastInverseFourierTransform(&f1[0], &dst[0], FftOrder);
 	// fill with the found signal
 
@@ -1965,7 +2281,7 @@ void CClickRemoval::InterpolateBigGapSliding(WAVE_SAMPLE data[], int nLeftIndex,
 #if 0
 	double signal_power = 0.;
 	// calculate total power except for DC
-	complex_ptr p1, p2;
+	complex_iterator p1, p2;
 
 	vector<double> DC;
 	vector<double> DC_x;
@@ -2127,76 +2443,120 @@ void CClickRemoval::InterpolateBigGapSliding(WAVE_SAMPLE data[], int nLeftIndex,
 }
 #endif
 
-typedef std::vector<double> data_vec;
-typedef data_vec::iterator data_iter;
-typedef data_vec::const_iterator cdata_iter;
-
-double Average(data_vec const&X)
+void CClickRemoval::InterpolateGapSpecialFourier(WAVE_SAMPLE data[], int nLeftIndex, int ClickLength, int nChans, int TotalSamples)
 {
-	long N = (long)X.size();
-	double Sum = 0;
-	for (long i = 0; i != N; i++)
+	ASSERT(ClickLength >= 2);
+
+	int LeftSamples = ClickLength * 2;
+	int RightSamples = ClickLength * 2;
+	if (nLeftIndex + RightSamples + ClickLength > TotalSamples)
 	{
-		Sum += X[i];
+		return;
 	}
-	return Sum / (long) N;
-}
+	using namespace MatrixMath;
+	Matrix fourier(LeftSamples + RightSamples, LeftSamples + ClickLength + RightSamples);
 
-double Average(data_vec const&X, data_vec const& weight)
-{
-	unsigned N = (unsigned) X.size();
-	ASSERT(N == weight.size());
-	double Sum = 0;
-	double Sum_W = 0;
-	for (unsigned i = 0; i != N; i++)
+	// fill it with the basic functions
+	for (int f = 0; f < fourier.Width(); f++)
 	{
-		Sum += X[i] * weight[i];
-		Sum_W += weight[i];
-	}
-	return Sum / Sum_W;
-}
-// Y = A + B*X
-void LinearRegression(data_vec const &X, data_vec const &Y, double &A, double &B)
-{
-	unsigned N = (unsigned)X.size();
-	ASSERT(N == Y.size());
-
-	double x_avg = Average(X);
-	double y_avg = Average(Y);
-
-	double numer_sum = 0.;
-	double denom_sum = 0.;
-
-	for (unsigned i = 0; i != N; i++)
-	{
-		numer_sum += (Y[i] - y_avg) * (X[i] - x_avg);
-		denom_sum += (X[i] - x_avg) * (X[i] - x_avg);
+		for (int t = 0; t < fourier.Height(); t++)
+		{
+			// discrete cosine transfer
+			fourier[t][f] = cos((t + 0.5) * f * M_PI / fourier.Height());
+		}
 	}
 
-	B = numer_sum / denom_sum;
-	A = y_avg - x_avg * B;
-}
-
-void LinearRegression(data_vec const &X, data_vec const &Y, data_vec const &weight, double &A, double &B)
-{
-	unsigned N = (unsigned)X.size();
-	ASSERT(N == Y.size());
-	ASSERT(N == weight.size());
-
-	double x_avg = Average(X, weight);
-	double y_avg = Average(Y, weight);
-
-	double numer_sum = 0.;
-	double denom_sum = 0.;
-
-	for (unsigned i = 0; i != N; i++)
+	if (0)
 	{
-		numer_sum += weight[i] * (Y[i] - y_avg) * (X[i] - x_avg);
-		denom_sum += weight[i] * (X[i] - x_avg) * (X[i] - x_avg);
+		Matrix f1(7, 7);
+
+		// fill it with the basic functions
+		for (int f = 0; f < f1.Height(); f++)
+		{
+			for (int t = 0; t < f1.Width(); t++)
+			{
+				// discrete cosine transfer
+				f1[f][t] = cos((t + 0.5) * f * M_PI / f1.Width());
+			}
+		}
+		f1.Inverse();
+
+		for (int t = 0; t < f1.Width(); t++)
+		{
+			for (int f = 0; f < f1.Height(); f++)
+			{
+				TRACE("f1 inv[%d, %d]=%f\n", f, t, f1[f][t]);
+			}
+		}
+		return;
+	}
+	Matrix m1(fourier.Width(), fourier.Width());
+
+	// assemble the matrix from parts of fourier
+	Matrix(m1, 0, 0, m1.Width(), LeftSamples) = Matrix(fourier, 0, 0, fourier.Width(), LeftSamples);
+	Matrix(m1, 0, LeftSamples, m1.Width(), RightSamples) = Matrix(fourier, 0, LeftSamples + ClickLength, fourier.Width(), RightSamples);
+
+	Vector samples(LeftSamples + RightSamples);
+	Vector new_data;
+	Vector old_data(LeftSamples + ClickLength + RightSamples);
+
+	for (int i = 0; i < LeftSamples; i++)
+	{
+		samples[i] = data[nChans * (i + nLeftIndex - LeftSamples)];
 	}
 
-	B = numer_sum / denom_sum;
-	A = y_avg - x_avg * B;
+	for (int i = 0; i < RightSamples; i++)
+	{
+		samples[i + LeftSamples] = data[nChans * (i + nLeftIndex + ClickLength)];
+	}
+
+	for (int i = 0; i < LeftSamples + ClickLength + RightSamples; i++)
+	{
+		old_data[i] = data[nChans * (i + nLeftIndex - LeftSamples)];
+	}
+
+	Vector result_coeffs;
+
+	if (0)
+	{
+		Matrix test(m1);
+		m1.Inverse();
+
+		Matrix MustBeUnity;
+		MustBeUnity.Product(test, m1);
+		for (int i = 0; i < 8; i++)
+		{
+			TRACE("MustBeUnity[%d]= %f, %f, %f, %f, %f, %f, %f, %f, \n", i,
+				MustBeUnity[i][0], MustBeUnity[i][1],
+				MustBeUnity[i][2], MustBeUnity[i][3],
+				MustBeUnity[i][4], MustBeUnity[i][5],
+				MustBeUnity[i][6], MustBeUnity[i][7]);
+		}
+		result_coeffs.Multiply(m1, samples);
+	}
+	else
+	{
+		LinearEquationSolution(m1, samples, result_coeffs);
+	}
+
+	for (int i = 0; i < result_coeffs.Order(); i++)
+	{
+		TRACE("Result coeff[%d]=%f\n", i, result_coeffs[i]);
+	}
+
+	new_data.Multiply(fourier, result_coeffs);
+
+	TRACE("Interpolation: LeftSamples=%d, ClickLength=%d\n", LeftSamples, ClickLength);
+
+	for (int i = 0; i < LeftSamples + ClickLength + RightSamples; i++)
+	{
+		TRACE("Interpolation: %d old=%f, new=%f, diff=%f\n", i, old_data[i], new_data[i], new_data[i] - old_data[i]);
+	}
+
+	for (int i = 0; i < ClickLength; i++)
+	{
+		data[nChans * (i + nLeftIndex)] = (WAVE_SAMPLE)new_data[i + LeftSamples];
+	}
 }
 
 void CClickRemoval::InterpolateGapLeastSquares(WAVE_SAMPLE data[], int nLeftIndex, int ClickLength, int nChans, int TotalSamples)
@@ -2215,12 +2575,12 @@ void CClickRemoval::InterpolateGapLeastSquares(WAVE_SAMPLE data[], int nLeftInde
 	ASSERT(ClickLength >= 2);
 	int const InterpolationCount = std::min(std::min(std::min(ClickLength*2, MaxInterpolationCount), nLeftIndex), TotalSamples-(nLeftIndex+ClickLength));
 
-	data_vec Y_odd(InterpolationCount);
-	data_vec Y_even(InterpolationCount);
-	data_vec X(InterpolationCount);
-	data_vec X_sq(InterpolationCount);
-	data_vec W(InterpolationCount);
-	data_vec W_odd(InterpolationCount);
+	double_vector Y_odd(InterpolationCount);
+	double_vector Y_even(InterpolationCount);
+	double_vector X(InterpolationCount);
+	double_vector X_sq(InterpolationCount);
+	double_vector W(InterpolationCount);
+	double_vector W_odd(InterpolationCount);
 
 	for (int n = 0; n < InterpolationCount; n ++)
 	{
@@ -2278,13 +2638,16 @@ void CClickRemoval::InterpolateGapLeastSquares(WAVE_SAMPLE data[], int nLeftInde
 
 void CClickRemoval::InterpolateGap(WAVE_SAMPLE data[], int nLeftIndex, int ClickLength, int nChans, bool BigGap, int TotalSamples)
 {
-#if 1
+#if 0
 	InterpolateGapLeastSquares(data, nLeftIndex, ClickLength, nChans, TotalSamples);
+#elif 0
+	InterpolateGapSpecialFourier(data, nLeftIndex, ClickLength, nChans, TotalSamples);
+
 #else
-	if (BigGap)
+	if (1 || BigGap)
 	{
-		//        InterpolateBigGapSliding(data, nLeftIndex, ClickLength, nChans, TotalSamples);
-		InterpolateBigGap(data, nLeftIndex, ClickLength, nChans, TotalSamples);
+		InterpolateBigGapSliding(data, nLeftIndex, ClickLength, nChans, TotalSamples);
+		//InterpolateBigGap(data, nLeftIndex, ClickLength, nChans, TotalSamples);
 		return;
 	}
 	// nChan (1 or 2) is used as step between samples

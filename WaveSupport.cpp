@@ -327,19 +327,19 @@ void CALLBACK CWaveOut::waveOutProc(HWAVEOUT hwo,
 									DWORD /*dwParam2*/)
 {
 	CWaveOut * pWo = (CWaveOut *) dwInstance;
-	// can't use ASSERT in wave out callback
-#ifdef _DEBUG
-	if (pWo == NULL || pWo->m_hwo != hwo)
-	{
-		TRACE("Wrong dwInstance in waveOutProc");
-	}
-#endif
 	switch (uMsg)
 	{
 	case WOM_OPEN:
 		TRACE("WOM_OPEN\r\n");
 		break;
 	case WOM_DONE:
+#ifdef _DEBUG
+		if (pWo == NULL || pWo->m_hwo != hwo)
+		{
+			// can't use ASSERT in wave out callback
+			TRACE("Wrong dwInstance in waveOutProc\n");
+		}
+#endif
 	{
 		WAVEHDR * pWhdr = (WAVEHDR *) dwParam1;
 		BUFFER_STRUCT * pBufStruct = (BUFFER_STRUCT *)pWhdr->dwUser;
