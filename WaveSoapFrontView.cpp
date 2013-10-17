@@ -2495,7 +2495,7 @@ void CWaveSoapFrontView::OnHScroll(UINT nSBCode, UINT nPos, CScrollBar* pScrollB
 		pScrollBar->GetScrollInfo( & scrollinfo, SIF_ALL);
 		double TotalSamplesInExtent = TotalSamples + ReservedPixels * m_HorizontalScale;
 		double NewFirstSampleInView = TotalSamplesInExtent * double(scrollinfo.nTrackPos - scrollinfo.nMin) / (scrollinfo.nMax - scrollinfo.nMin);
-		TRACE("SB_THUMBTRACK pos=%d, trackpos=%d, new first sample=%f\n", nPos, scrollinfo.nTrackPos, NewFirstSampleInView);
+		if (0) TRACE("SB_THUMBTRACK pos=%d, trackpos=%d, new first sample=%f\n", nPos, scrollinfo.nTrackPos, NewFirstSampleInView);
 
 		SetFirstSampleInView(NewFirstSampleInView);
 		break;

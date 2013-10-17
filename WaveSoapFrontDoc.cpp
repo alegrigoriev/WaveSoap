@@ -4689,7 +4689,7 @@ void CWaveSoapFrontDoc::OnUpdateToolsInterpolate(CCmdUI* pCmdUI)
 		InterpolateSamples, m_SelectionStart, InterpolationOverlap, m_SelectionEnd, WaveFileSamples());
 
 	pCmdUI->Enable(CanModifyFile()
-#ifdef _DEBUG
+#if 0 //def _DEBUG
 					&& InterpolateSamples >= 2048
 #else
 					&& InterpolateSamples >= 2
@@ -4715,7 +4715,7 @@ void CWaveSoapFrontDoc::OnToolsInterpolate()
 	bool BigGap = (InterpolateSamples >= BigGapLength);
 	if (BigGap)
 	{
-#ifdef _DEBUG
+#if 0 //def _DEBUG
 		if (InterpolateSamples >= 2048)
 		{
 			// now, do the interpolation
@@ -4736,6 +4736,11 @@ void CWaveSoapFrontDoc::OnToolsInterpolate()
 					crm.InterpolateGap(pBuf+ch, 0, InterpolateSamples, nChannels, BigGap, InterpolateSamples);
 				}
 			}
+			m_WavFile.WriteSamples(m_SelectedChannel, m_WavFile.SampleToPosition(m_SelectionStart), InterpolateSamples,
+									pBuf, m_SelectedChannel, nChannels);
+
+			SetModifiedFlag(TRUE);
+			SoundChanged(WaveFileID(), m_SelectionStart, m_SelectionEnd);
 		}
 #endif
 		InterpolationOverlap = 2048 + InterpolateSamples + InterpolateSamples / 2;
@@ -4746,7 +4751,7 @@ void CWaveSoapFrontDoc::OnToolsInterpolate()
 	{
 		InterpolationOverlap = 5 * InterpolateSamples;
 	}
-#ifdef _DEBUG
+#if 0//def _DEBUG
 	return;
 #endif
 	if ( ! CanModifyFile()
