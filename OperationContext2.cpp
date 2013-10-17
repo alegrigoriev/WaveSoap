@@ -10,6 +10,8 @@
 #include "TimeToStr.h"
 #include "resource.h"       // main symbols
 
+#define TRACE_EXPRESSION 0
+
 static int _fastcall fround(double d)
 {
 	return (int)floor(d + 0.5);
@@ -1064,8 +1066,8 @@ void CExpressionEvaluationProc::PushConstant(int data)
 	m_ConstantBuffer[m_ConstantBufferIndex] = data;
 	m_ConstantBufferIndex++;
 
-	TRACE("Push int constant %d, constant index = %d, type index = %d\n", data,
-		m_ConstantBufferIndex, m_DataTypeStackIndex);
+	if (TRACE_EXPRESSION) TRACE("Push int constant %d, constant index = %d, type index = %d\n", data,
+								m_ConstantBufferIndex, m_DataTypeStackIndex);
 }
 
 void CExpressionEvaluationProc::PushConstant(double data)
@@ -1089,8 +1091,8 @@ void CExpressionEvaluationProc::PushConstant(double data)
 	*(double*)(m_ConstantBuffer + m_ConstantBufferIndex) = data;
 	m_ConstantBufferIndex += sizeof (double) / sizeof m_ConstantBuffer[0];
 
-	TRACE("Push Double constant %f, constant index = %d, type index = %d\n", data,
-		m_ConstantBufferIndex, m_DataTypeStackIndex);
+	if (TRACE_EXPRESSION) TRACE("Push Double constant %f, constant index = %d, type index = %d\n", data,
+								m_ConstantBufferIndex, m_DataTypeStackIndex);
 }
 
 void CExpressionEvaluationProc::PushVariable(int * pData)
@@ -1106,8 +1108,8 @@ void CExpressionEvaluationProc::PushVariable(int * pData)
 	m_DataStack[m_DataStackIndex] = int(pData);  // store pointer to data
 	m_DataStackIndex++;
 
-	TRACE("Push int variable, data index = %d, type index = %d\n",
-		m_DataStackIndex, m_DataTypeStackIndex);
+	if (TRACE_EXPRESSION) TRACE("Push int variable, data index = %d, type index = %d\n",
+								m_DataStackIndex, m_DataTypeStackIndex);
 }
 
 void CExpressionEvaluationProc::PushVariable(double * pData)
@@ -1123,8 +1125,8 @@ void CExpressionEvaluationProc::PushVariable(double * pData)
 	m_DataStack[m_DataStackIndex] = int(pData);  // store pointer to data
 	m_DataStackIndex++;
 
-	TRACE("Push Double variable, data index = %d, type index = %d\n",
-		m_DataStackIndex, m_DataTypeStackIndex);
+	if (TRACE_EXPRESSION) TRACE("Push Double variable, data index = %d, type index = %d\n",
+								m_DataStackIndex, m_DataTypeStackIndex);
 }
 
 int * CExpressionEvaluationProc::PushInt()
@@ -1138,8 +1140,8 @@ int * CExpressionEvaluationProc::PushInt()
 	m_DataTypeStackIndex++;
 	m_DataStackIndex++;
 
-	TRACE("Push int, data index = %d, type index = %d\n",
-		m_DataStackIndex, m_DataTypeStackIndex);
+	if (TRACE_EXPRESSION) TRACE("Push int, data index = %d, type index = %d\n",
+								m_DataStackIndex, m_DataTypeStackIndex);
 	return (int*)& m_DataStack[m_DataStackIndex - 1];
 }
 
@@ -1154,8 +1156,8 @@ double * CExpressionEvaluationProc::PushDouble()
 	m_DataTypeStackIndex++;
 
 	m_DataStackIndex += sizeof (double) / sizeof m_ConstantBuffer[0];
-	TRACE("Push Double, data index = %d, type index = %d\n",
-		m_DataStackIndex, m_DataTypeStackIndex);
+	if (TRACE_EXPRESSION) TRACE("Push Double, data index = %d, type index = %d\n",
+								m_DataStackIndex, m_DataTypeStackIndex);
 	return (double*)(m_DataStack + m_DataStackIndex -
 					sizeof (double) / sizeof m_DataStack[0]);
 }
@@ -1172,16 +1174,16 @@ int * CExpressionEvaluationProc::PopInt()
 	{
 		m_DataTypeStackIndex--;
 		m_DataStackIndex--;
-		TRACE("Pop int constant, data index = %d, type index = %d\n",
-			m_DataStackIndex, m_DataTypeStackIndex);
+		if (TRACE_EXPRESSION) TRACE("Pop int constant, data index = %d, type index = %d\n",
+									m_DataStackIndex, m_DataTypeStackIndex);
 		return (int *) m_DataStack[m_DataStackIndex];
 	}
 	else if (eIntExpression == type)
 	{
 		m_DataTypeStackIndex--;
 		m_DataStackIndex--;
-		TRACE("Pop int expression, data index = %d, type index = %d\n",
-			m_DataStackIndex, m_DataTypeStackIndex);
+		if (TRACE_EXPRESSION) TRACE("Pop int expression, data index = %d, type index = %d\n",
+									m_DataStackIndex, m_DataTypeStackIndex);
 		return (int *) & m_DataStack[m_DataStackIndex];
 	}
 	else if (eDoubleConstant == type)
@@ -1214,16 +1216,16 @@ double * CExpressionEvaluationProc::PopDouble()
 	{
 		m_DataTypeStackIndex--;
 		m_DataStackIndex--;
-		TRACE("Pop double constant, data index = %d, type index = %d\n",
-			m_DataStackIndex, m_DataTypeStackIndex);
+		if (TRACE_EXPRESSION) TRACE("Pop double constant, data index = %d, type index = %d\n",
+									m_DataStackIndex, m_DataTypeStackIndex);
 		return (double *) m_DataStack[m_DataStackIndex];
 	}
 	else if (eDoubleExpression == type)
 	{
 		m_DataTypeStackIndex--;
 		m_DataStackIndex -= 2;
-		TRACE("Pop double expression, data index = %d, type index = %d\n",
-			m_DataStackIndex, m_DataTypeStackIndex);
+		if (TRACE_EXPRESSION) TRACE("Pop double expression, data index = %d, type index = %d\n",
+									m_DataStackIndex, m_DataTypeStackIndex);
 		return (double *) & m_DataStack[m_DataStackIndex];
 	}
 	else if (eIntConstant == type

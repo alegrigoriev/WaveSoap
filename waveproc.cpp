@@ -1618,7 +1618,7 @@ void FilterSeries(double const source[], double destination[], int NumSamples, c
 		correction *= abs(FilterPole + 1./FilterPole);
 		for (int i = 0; i + 2 < NumSamples; i++)
 		{
-			double tmp = correction * (source[i] + coeffs[1] * source[i+1] + coeffs[2] * source[i + 2]);
+			double tmp = correction * (source[i + 2] + coeffs[1] * source[i+1] + coeffs[2] * source[i]);
 			destination[i] = tmp - History[0] * denom_coeffs[1] - History[1] * denom_coeffs[2];
 			History[1] = History[0];
 			History[0] = destination[i];
@@ -1628,7 +1628,7 @@ void FilterSeries(double const source[], double destination[], int NumSamples, c
 	{
 		for (int i = 0; i + 2 < NumSamples; i++)
 		{
-			destination[i] = correction * (source[i] + coeffs[1] * source[i+1] + coeffs[2] * source[i + 2]);
+			destination[i] = correction * (source[i + 2] + coeffs[1] * source[i+1] + coeffs[2] * source[i]);
 		}
 	}
 }
@@ -2059,56 +2059,13 @@ void DiscreteCosineTransform(double const source[], double destination[], int Nu
 		destination[i+1] = p[1].imag()*2;
 	}
 }
+typedef std::vector<SpectralComponent> comp_vector;
+typedef comp_vector::iterator comp_iter;
+typedef comp_vector::const_iterator comp_const_iter;
 
-void CClickRemoval::InterpolateBigGapSliding(WAVE_SAMPLE data[], int nLeftIndex, int ClickLength, int nChans, int TotalSamples)
+void FindComponents(double_vector const& x, comp_vector &Components, int FftOrder, int const MaxNumComponent = 4)
 {
-	const int MAX_FFT_ORDER = 2048;
-	// nLeftIndex: 2048 + ClickLength + ClickLength / 2
-	double_vector x;
-
-	complex_vector f1;
-	complex_vector f2;
-	complex_vector Frequency(1, 1.);
-	//float xl[MAX_FFT_ORDER];  // to save extrapolation from the left neighborhood
-
-	int FftOrder = 64;
-	while (FftOrder < ClickLength * 8)
-	{
-		FftOrder *= 2;
-	}
-
-	//TRACE("FFtOrder used for interpolation: %d\n", FftOrder);
-	if (0 && FftOrder > MAX_FFT_ORDER)
-	{
-		return;
-	}
-
-	FftOrder = 512;
-	Frequency.resize(FftOrder/2 + 1, 0.);
-	// extrapolate ClickLength + ClickLength / 2 - the gap and
-	// the right neighborhood
-	int const ExtrapolatedLength = ClickLength;// + ClickLength / 2;
-	int i;
-
-	ASSERT(nLeftIndex >= FftOrder - ExtrapolatedLength);
-#if 1
-#if 0
-	x.resize(FftOrder + ExtrapolatedLength, 0.);
-	for (i = 0; i < FftOrder + ExtrapolatedLength; i++)
-	{
-		x[i] = data[nChans * (nLeftIndex - FftOrder - ExtrapolatedLength+ i)];
-	}
-#else
-	x.resize(TotalSamples, 0.);
-	for (i = 0; i < TotalSamples; i++)
-	{
-		x[i] = data[nChans * i];
-	}
-#endif
-
-	std::vector<SpectralComponent> Components;
-	typedef std::vector<SpectralComponent>::iterator comp_iter;
-	int const MaxNumComponent = 4;
+	Components.clear();
 
 	double OriginalPower = CalculatePower(x);
 	double CurrentResidualPower = OriginalPower;
@@ -2136,7 +2093,17 @@ void CClickRemoval::InterpolateBigGapSliding(WAVE_SAMPLE data[], int nLeftIndex,
 			}
 			if (Components.size() != 1)
 			{
+#if 0
 				FindComponent(Residual, FftOrder, *i);
+#else
+				FilterResidualTargetFuncContext ctx;
+				ctx.source = Residual;
+
+				FindMinimum2D(i->frequency, 1., M_PI *4/ FftOrder, 0.1, FilterResidualTargetFunc, & ctx, i->frequency, i->decay);
+				//FindMinimum2D(freq_init, 1., M_PI / NumSamples*2, 0.1, FilterExciteTargetFunc, & ctx, comp.frequency, comp.decay);
+				i->FilterZero.real(i->decay * cos(i->frequency));
+				i->FilterZero.imag(i->decay * sin(i->frequency));
+#endif
 				if (DO_FindComponents_TRACE) TRACE("New frequency result %d approx = %f, decay = %f\n", (i - Components.begin()) + 1, i->frequency * 22050. / M_PI, i->decay);
 			}
 			if (i+1 == Components.end())
@@ -2157,11 +2124,14 @@ void CClickRemoval::InterpolateBigGapSliding(WAVE_SAMPLE data[], int nLeftIndex,
 	double_vector amplitudes;
 	double_vector phases;
 	double_vector X;
+	double_vector Weight;
 
 	for (comp_iter i = Components.begin(); i != Components.end(); i++)
 	{
 		Residual = x;
-		complex_d correction(1., 0.);
+		complex_d correction = 2. * i->FilterZero / (i->FilterZero - conj(i->FilterZero));
+		// correct for the single zero filter. The zero and the target signal are complex conjugates
+
 		for (comp_iter j = Components.begin(); j != Components.end(); j++)
 		{
 			if (j != i)
@@ -2175,13 +2145,8 @@ void CClickRemoval::InterpolateBigGapSliding(WAVE_SAMPLE data[], int nLeftIndex,
 					correction /= abs(j->FilterPole);
 				}
 				// now correct for the target frequency
-				correction /= 1. + conj(i->FilterZero) *
-					(conj(i->FilterZero) * (j->FilterZero.real() * j->FilterZero.real() + j->FilterZero.imag() * j->FilterZero.imag()) - 2. * j->FilterZero.real());
-			}
-			else
-			{
-				// correct for the single zero filter. The zero and the target signal are complex conjugates
-				correction /= 1. - conj(i->FilterZero) / i->FilterZero;
+				correction /= 1. + i->FilterZero *
+					(i->FilterZero * (j->FilterZero.real() * j->FilterZero.real() + j->FilterZero.imag() * j->FilterZero.imag()) - 2. * j->FilterZero.real());
 			}
 		}
 		// filter with complex coefficients to suppress negative frequency part
@@ -2189,257 +2154,141 @@ void CClickRemoval::InterpolateBigGapSliding(WAVE_SAMPLE data[], int nLeftIndex,
 		amplitudes.resize(Residual.size() - 1);
 		phases.resize(Residual.size() - 1);
 		X.resize(Residual.size() - 1);
+		Weight.resize(Residual.size() - 1);
 
 		double_const_iterator i1 = Residual.begin();
 		double_iterator amp = amplitudes.begin();
 		double_iterator ph = phases.begin();
+		complex_iterator i2 = result.begin();
 		double phase_correction = 0.;
 
-		for (complex_iterator i2 = result.begin(); i2 != result.end(); i1++, i2++, amp++, ph++)
+		for (int x = 0; i2 != result.end(); i1++, i2++, amp++, ph++, x++)
 		{
-			i2->real(i1[0] - i1[1] * i->FilterZero.real());
-
-			i2->imag( - i1[1] * i->FilterZero.imag());
+			i2->real(i1[1] - i1[0] * i->FilterZero.real());
+			// use complex conjugate of the zero, to filter out negative frequencies
+			i2->imag( + i1[0] * i->FilterZero.imag());
 			*i2 *= correction;
 
-			*amp = log(i2->real() * i2->real() + i2->imag() * i2->imag());
+			*amp = 0.5* log(i2->real() * i2->real() + i2->imag() * i2->imag());
 			*ph = arg(*i2) + phase_correction;
 			// the phases go to the increasing direction
-			if (ph != phases.begin()
-				&& ph[0] + M_PI < ph[-1])
+			if (ph != phases.begin())
 			{
-				phase_correction += 2 * M_PI;
-				ph[0] += 2 * M_PI;
+				if (ph[0] + M_PI < ph[-1])
+				{
+					phase_correction += 2 * M_PI;
+					ph[0] += 2 * M_PI;
+				}
+				else if (ph[0] - M_PI > ph[-1])
+				{
+					phase_correction -= 2 * M_PI;
+					ph[0] -= 2 * M_PI;
+				}
 			}
-
-			X[ph - phases.begin()] = int(ph - phases.begin());
+			X[x] = x;
+			Weight[x] = Weight.size() - x;
 		}
 
-		LinearRegression(X, amplitudes, i->InitialAmplitude, i->AmplitudeDecay);
-		LinearRegression(X, phases, i->InitialPhase, i->Frequency);
+		LinearRegression(X, amplitudes, Weight, i->InitialAmplitude, i->AmplitudeDecay);
+		LinearRegression(X, phases, Weight, i->InitialPhase, i->Frequency);
 		TRACE("Initial amplitude for f=%f: %f, amplitude decay: %f dB/s\n",
-			i->frequency * 22050. / M_PI, exp(i->InitialAmplitude/2), i->AmplitudeDecay * 44100 / log(10.) * 20.);
+			i->frequency * 22050. / M_PI, exp(i->InitialAmplitude), i->AmplitudeDecay * 44100 / log(10.) * 20.);
 		TRACE("Initial phase for f=%f: %f, exact frequency: %f Hz\n",
 			i->frequency * 22050. / M_PI, i->InitialPhase, i->Frequency * 22050. / M_PI);
 	}
-	return;
-	double_vector dst(TotalSamples, 0.);
-	// fill with the found signal
+}
 
-	for (int pos = nLeftIndex - ExtrapolatedLength, t = 0; pos < nLeftIndex + ClickLength; pos++, t++)
+void GenerateReconstructedSignal(comp_vector const& Components, double_iterator p, int Number, int FirstTime)
+{
+	if (Number >= 0)
 	{
-		std::vector<SpectralComponent>::iterator pc;
-		double tmp;
-		for (tmp = 0., pc = Components.begin(); pc != Components.end(); pc++)
+		for (int pos = 0, t = FirstTime-1; pos < Number; pos++, t++, p++)
 		{
-			double phase = fmod(pc->frequency * t, 2*M_PI);
-			//tmp += (pc->Amplitude.real() * cos(phase) - pc->Amplitude.imag() * sin(phase))* exp(pc->decay * t);
-		}
-		data[pos*nChans] = DoubleToShort(tmp);
-	}
-	return;
-#else
-	x.resize(FftOrder, 0.);
-	FftOrder = 256;
-	for (i = 0; i < FftOrder; i++)
-	{
-		x[i] = data[nChans * (nLeftIndex - FftOrder - ExtrapolatedLength+ i)];
-	}
-
-	double_vector y(FftOrder/2);
-	f1.resize(FftOrder/2+1);
-	if (1) for (i = 0; i < FftOrder / 2; i++)
-		{
-			int m = 64;
-			DiscreteCosineTransform(&x[i], &y[0], FftOrder/2);
-			TRACE("%f %f %f %f %f %f %f %f %f\n", y[0+m], y[1+m], y[2+m], y[3+m], y[4+m], y[5+m], y[6+m], y[7+m], y[8+m]);
-		}
-	else for (i = 0; i < FftOrder / 2; i++)
-	{
-		FastFourierTransform(&x[i], &f1[0], FftOrder/2);
-		TRACE("%f %f %f %f %f %f %f %f\n", f1[0].real(),
-			f1[1].real(), f1[1].imag(),
-			f1[2].real(), f1[2].imag(),
-			f1[3].real(), f1[3].imag(),
-			f1[4].real(), f1[4].imag()
-			);
-	}
-
-
-
-	double_vector dst(FftOrder, 0.);
-	//FastInverseFourierTransform(&f1[0], &dst[0], FftOrder);
-	// fill with the found signal
-
-	for (int pos = nLeftIndex - ExtrapolatedLength, i = FftOrder * 3 / 4; pos < nLeftIndex + ClickLength; pos++, i++)
-	{
-		//data[pos*nChans] = DoubleToShort(dst[i]);
-	}
-	return;
-#endif
-	// move by one sample from pos-ClickLength, calculate FFT and calculate freuquencies
-#if 0
-	double signal_power = 0.;
-	// calculate total power except for DC
-	complex_iterator p1, p2;
-
-	vector<double> DC;
-	vector<double> DC_x;
-	DC.resize(ExtrapolatedLength, 0.);
-	DC_x.resize(ExtrapolatedLength, 0.);
-
-	for (int pos = 0; pos < ExtrapolatedLength; pos++)
-	{
-		// save previous result in f2
-		// on the first pass, the arrays are zero-filled
-		std::copy(f1.begin(), f1.end(), f2.begin());
-		double prev_signal_power = signal_power;
-
-		FastFourierTransform(&x[pos], &f1[0], FftOrder);
-		signal_power = 0.;
-		// calculate total power except for DC
-		for (p1 = f1.begin() +1, i = 1; i < FftOrder/2; i++, p1++)
-		{
-			signal_power += p1->real() * p1->real() + p1->imag() * p1->imag();
-		}
-		signal_power /= (FftOrder/2 - 1) * (16384*16384.) *16;
-		// average rotation for the components over average power
-		for (p1 = f1.begin() + 1, p2 = f2.begin() + 1, i = 1; i < FftOrder/2; i++, p1++, p2++)
-		{
-			double power1 = (p1->real() * p1->real() + p1->imag() * p1->imag()) / (16384*16384.);
-			double power2 = (p2->real() * p2->real() + p2->imag() * p2->imag()) / (16384*16384.);
-			if (0) TRACE("%d, %d, %f, %f, %f\n", i, pos, i * 44100. / FftOrder, p1->real() / 16384., p1->imag() / 16384.);
-			if (power1 > signal_power && power2 > prev_signal_power)
+			double tmp = 0.;
+			for (comp_const_iter pc = Components.begin(); pc != Components.end(); pc++)
 			{
-				Frequency[i] += *p1 / *p2;
-				NumberSignificantFrequencySamples[i] += 1;
+				tmp += cos(fmod(pc->Frequency * t + pc->InitialPhase, 2*M_PI)) * exp(pc->InitialAmplitude + pc->AmplitudeDecay * t);
 			}
-		}
-		DC[pos] = f1[0].real();
-		DC_x[pos] = pos - ExtrapolatedLength;
-	}
-
-	// calculate DC approximation coefficients
-	double A, B, C;
-	quad_regression(&DC_x[0], &DC[0], ExtrapolatedLength, A, B, C);
-	// calculate another set of coefficients
-	// leave only those frequencies with up to ClickLength/10 period
-	//if (nMaxFreq > FftOrder/2)
-
-	for (p1 = Frequency.begin() +1, i = 1; i < FftOrder/2+1; i++, p1++)
-	{
-		if (1 && NumberSignificantFrequencySamples[i])
-		{
-			*p1 /= double(NumberSignificantFrequencySamples[i]);
-			if (0) TRACE("Rotation at FFT bin %d f=%f is: %f dB, %f rad\n", i, i * 44100. / FftOrder, 20.*log10(abs(*p1)), arg(*p1));
-		}
-		else
-		{
-			p1->real(cos(-i * M_PI / (FftOrder / 2)));
-			p1->imag(sin(-i * M_PI / (FftOrder / 2)));
+			*p = tmp;
 		}
 	}
-
-	WAVE_SAMPLE * pWaveData = & data[nChans * nLeftIndex];
-	for (int pos = 0; pos < ClickLength; pos++, pWaveData+= nChans)
+	else
 	{
-		f2[0] = A + pos * B + pos * pos * C;
-		for (i = 1; i < FftOrder/2+1; i++)
+		// if Number is negative, time goes back. p will post-increment, so the time is inversed.
+		for (int pos = -1, t = FirstTime-2; pos >= Number; pos--, t--, p++)
 		{
-			if ( 1 || NumberSignificantFrequencySamples[i])
+			double tmp = 0.;
+			for (comp_const_iter pc = Components.begin(); pc != Components.end(); pc++)
 			{
-				f2[i] = f1[i] * int_power(Frequency[i], pos+2);
+				tmp += cos(fmod(pc->Frequency * t + pc->InitialPhase, 2*M_PI)) * exp(pc->InitialAmplitude + pc->AmplitudeDecay * t);
 			}
-			else
-			{
-				f2[i] = 0.;
-			}
+			*p = tmp;
 		}
-		FastInverseFourierTransform(&f2[0], &x[0], FftOrder);
-		*pWaveData = DoubleToShort(x[FftOrder-1]);
 	}
-	// last ClickLength*2 samples are of interest
-	// save the result
-#if 0
-	int const ClickLen1 = ClickLength - ClickLength / 2;
+}
 
-	// calculate DC adjustment
-	double DcAdjustLeft = 0.; // difference from the previous data and the calculated data
-	for (i = 0; i < ClickLen1; i++)
+void CClickRemoval::InterpolateBigGapSliding(WAVE_SAMPLE data[], int nLeftIndex, int ClickLength, int nChans, int TotalSamples)
+{
+	const int MAX_FFT_ORDER = 2048;
+	// nLeftIndex: 2048 + ClickLength + ClickLength / 2
+	double_vector x;
+
+	int FftOrder = 64;
+	while (FftOrder < ClickLength * 4)
 	{
-		DcAdjustLeft += data[nChans * (nLeftIndex - ClickLen1 + i)] - x[FftOrder - ClickLength * 2 + i];
+		FftOrder *= 2;
 	}
-	DcAdjustLeft /= ClickLen1;
 
-	double DcAdjustRight = 0.; // difference from the previous data and the calculated data
-	for (i = 0; i < ClickLength / 2; i++)
+	//TRACE("FFtOrder used for interpolation: %d\n", FftOrder);
+	if (FftOrder > MAX_FFT_ORDER)
 	{
-		DcAdjustRight += data[nChans * (nLeftIndex + ClickLength + i)]
-						- x[FftOrder - ClickLength / 2 + i];
+		return;
 	}
-	DcAdjustRight /= ClickLength / 2;
 
-	double DcAdjustDelta = (DcAdjustRight - DcAdjustLeft) / (ClickLength + ClickLength / 2);
-	DcAdjustLeft -= DcAdjustDelta * (ClickLength / 4);
+	// extrapolate ClickLength + ClickLength / 2 - the gap and
+	// the right neighborhood
+	int const ExtrapolatedLength = ClickLength;// + ClickLength / 2;
+	int i;
 
-	bool const ShowExtrapolatedFft = false;
-	// ClickLength-ClickLength/2 are merged with the samples before the extrapolation,
-	double const * pFftResult = & x[FftOrder - ClickLength * 2];
-	WAVE_SAMPLE * pWaveData = & data[nChans * (nLeftIndex - ClickLen1)];
+	ASSERT(nLeftIndex >= FftOrder - ExtrapolatedLength);
 
-	for (i = 0; i < ClickLen1; i++, DcAdjustLeft += DcAdjustDelta,
-		pWaveData += nChans, pFftResult ++)
+	x.resize(TotalSamples, 0.);
+	for (i = 0; i < TotalSamples; i++)
 	{
-		if ( ! ShowExtrapolatedFft)
-		{
-			double tmp = (( *pFftResult + DcAdjustLeft) * (i + 0.5)
-							+ *pWaveData * (ClickLen1 - i - 0.5))
-						/ float(ClickLen1);
-			*pWaveData = DoubleToShort(tmp);
-		}
-		else
-		{
-			*pWaveData =
-				DoubleToShort( *pFftResult);
-		}
+		x[i] = data[nChans * i];
 	}
 
-	ASSERT((FftOrder - ClickLength * 2 + ClickLen1) == FftOrder - ExtrapolatedLength);
-	// ClickLength is copied to the extrapolated area,
-	for (i = 0; i < ClickLength; i++, DcAdjustLeft += DcAdjustDelta,
-		pWaveData += nChans, pFftResult ++)
+	comp_vector LeftComponents;
+	comp_vector RightComponents;
+
+	// left components are done in inversed time
+	FindComponents(double_vector(x.rend() - nLeftIndex, x.rend()), LeftComponents, FftOrder);
+	// Generate the reconstructed signal back and forward from the initial conditions
+
+	FindComponents(double_vector(x.begin() + nLeftIndex + ClickLength, x.end()), RightComponents, FftOrder);
+
+	double_vector LeftReconstruction(ClickLength * 2, 0.);
+	double_vector RightReconstruction(ClickLength * 2, 0.);
+
+	GenerateReconstructedSignal(LeftComponents, LeftReconstruction.begin(), -ClickLength * 2, ClickLength);
+	GenerateReconstructedSignal(RightComponents, RightReconstruction.begin(), ClickLength * 2, -ClickLength);
+
+	for (int i = nLeftIndex - ClickLength, j = 0; j < ClickLength; i++, j++)
 	{
-		if ( ! ShowExtrapolatedFft)
-		{
-			double tmp =  *pFftResult + DcAdjustLeft;
-			*pWaveData = DoubleToShort(tmp);
-		}
-		else
-		{
-			*pWaveData = DoubleToShort( *pFftResult);
-		}
+		data[i*nChans] = DoubleToShort((data[i*nChans] * (ClickLength - (j + 0.5)) + LeftReconstruction[j] * (j + 0.5)) / ClickLength);
 	}
 
-	// ClickLength/2 are merged with the samples after the extrapolation,
-	for (i = 0; i < ClickLength / 2; i++, DcAdjustLeft += DcAdjustDelta,
-		pWaveData += nChans, pFftResult ++)
+	for (int i = nLeftIndex, j = 0; j < ClickLength; i++, j++)
 	{
-		if ( ! ShowExtrapolatedFft)
-		{
-			double tmp = (( *pFftResult + DcAdjustLeft) * (ClickLength / 2 - i - 0.5)
-							+ *pWaveData * (i + 0.5))
-						/ float(ClickLength / 2);
-
-			*pWaveData = DoubleToShort(tmp);
-		}
-		else
-		{
-			*pWaveData = DoubleToShort( *pFftResult);
-		}
+		data[i*nChans] = DoubleToShort((LeftReconstruction[j+ClickLength] * (ClickLength - (j + 0.5)) + RightReconstruction[j] * (j + 0.5)) / ClickLength);
 	}
-	//ASSERT(pFftResult == x + FftOrder);
-#endif
-#endif
+
+	for (int i = nLeftIndex + ClickLength, j = 0; j < ClickLength; i++, j++)
+	{
+		data[i*nChans] = DoubleToShort((RightReconstruction[j+ClickLength] * (ClickLength - (j + 0.5)) + data[i*nChans] * (j + 0.5)) / ClickLength);
+	}
+
+	return;
 }
 #endif
 
