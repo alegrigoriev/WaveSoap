@@ -32,7 +32,6 @@ IMPLEMENT_DYNAMIC(CWaveSoapViewBase, CView);
 
 BEGIN_MESSAGE_MAP(CWaveSoapFrontView, BaseClass)
 	//{{AFX_MSG_MAP(CWaveSoapFrontView)
-	ON_WM_SETCURSOR()
 	ON_WM_ERASEBKGND()
 	ON_WM_CREATE()
 	ON_UPDATE_COMMAND_UI(ID_VIEW_ZOOMINVERT, OnUpdateViewZoomInVert)
@@ -1256,7 +1255,7 @@ DWORD CWaveSoapFrontView::ClientHitTest(CPoint p) const
 	return result;
 }
 
-BOOL CWaveSoapFrontView::OnSetCursor(CWnd* pWnd, UINT nHitTest, UINT message)
+BOOL CWaveSoapViewBase::OnSetCursor(CWnd* pWnd, UINT nHitTest, UINT message)
 {
 	if (pWnd == this
 		&& HTCLIENT == nHitTest)
