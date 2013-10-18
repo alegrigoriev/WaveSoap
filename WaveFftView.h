@@ -85,8 +85,12 @@ protected:
 
 	float const * GetFftResult(SAMPLE_INDEX sample, unsigned channel);
 
+	// to which FFT displayed column the sample falls in (samples from N*m_FftSpacing +/- m_FftSpacing/2).
+	// Use for display conversion only
 	long SampleToFftColumn(SAMPLE_INDEX sample);
+	// which leftmost FFT column the sample affects:
 	long SampleToFftColumnLowerBound(SAMPLE_INDEX sample);
+	// which rightmost FFT column the sample affects:
 	long SampleToFftColumnUpperBound(SAMPLE_INDEX sample);
 
 	SAMPLE_INDEX FftColumnToDisplaySample(long Column);
@@ -98,7 +102,15 @@ protected:
 	double AdjustOffset(double offset) const;
 	void SetNewFftOffset(double first_band);
 
-	bool    m_SelectionRectDrawn;
+	void RedrawSelectionRect(CDC * pDC, SAMPLE_INDEX OldSelectionStart, SAMPLE_INDEX OldSelectionEnd, CHANNEL_MASK OldSelectedChannel,
+							SAMPLE_INDEX NewSelectionStart, SAMPLE_INDEX NewSelectionEnd, CHANNEL_MASK NewSelectedChannel);
+
+	void RemoveSelectionRect();
+	void ShowSelectionRect();
+
+	SAMPLE_INDEX m_PrevSelectionStart;
+	SAMPLE_INDEX m_PrevSelectionEnd;
+	CHANNEL_MASK m_PrevSelectedChannel;
 	// Generated message map functions
 protected:
 	//{{AFX_MSG(CWaveFftView)
@@ -125,12 +137,6 @@ protected:
 	afx_msg void OnContextMenu(CWnd* pWnd, CPoint point);
 	//}}AFX_MSG
 	void OnSetBands(int order);
-
-	void DrawSelectionRect(CDC * pDC,
-							double left, double right, double bottom, double top);
-
-	void RemoveSelectionRect();
-	void ShowSelectionRect();
 
 	friend class CSpectrumSectionView;
 	DECLARE_MESSAGE_MAP()
