@@ -172,7 +172,11 @@ long CWaveFftView::SampleToFftColumn(SAMPLE_INDEX sample)
 // to calculate the first column to be invalidated. The sample belongs to this column and possibly next
 long CWaveFftView::SampleToFftColumnLowerBound(SAMPLE_INDEX sample)
 {
-	return sample / m_FftSpacing;
+	if (sample < m_FftOrder)
+	{
+		return 0;
+	}
+	return (sample - m_FftOrder) / m_FftSpacing;
 }
 
 // to calculate the last column to be invalidated. The sample belongs to this column and possibly before it
@@ -269,7 +273,11 @@ float const * CWaveFftView::GetFftResult(SAMPLE_INDEX sample, unsigned channel)
 	}
 
 	NUMBER_OF_CHANNELS nChannels = GetDocument()->WaveChannels();
-	NUMBER_OF_SAMPLES FirstSampleRequired = FftColumnToDisplaySample(FftColumn);
+	NUMBER_OF_SAMPLES FirstSampleRequired = FftColumn * m_FftSpacing - m_FftOrder;
+	if (FirstSampleRequired < 0)
+	{
+		FirstSampleRequired = 0;
+	}
 
 	// calculate the FFT for this column
 	if (FirstSampleRequired + m_FftOrder * 2 > GetDocument()->WaveFileSamples()
@@ -277,10 +285,9 @@ float const * CWaveFftView::GetFftResult(SAMPLE_INDEX sample, unsigned channel)
 	{
 		if (0) TRACE("The required samples from %d to %d are out of the file\n",
 					FirstSampleRequired, FirstSampleRequired + m_FftOrder);
-		pFftColumn[0] = 1;   // mark as valid
+		pFftColumn[0] = 0;   // mark as invalid
 		// make all black
-		std::fill_n(pFftColumn + 1, m_FftOrder * nChannels, 0.f);
-		return pFftColumn;
+		return NULL;
 	}
 
 	if (NULL == (float*)m_pFftWindow)
@@ -330,9 +337,8 @@ float const * CWaveFftView::GetFftResult(SAMPLE_INDEX sample, unsigned channel)
 
 	if (NeedSamples != m_WaveBuffer.GetData( & pWaveSamples, FirstSampleRequired * nChannels, NeedSamples, this))
 	{
-		std::fill_n(pRes, m_FftOrder * nChannels, 0.f);
-		pFftColumn[0] = 1;
-		return pFftColumn;
+		pFftColumn[0] = 0;
+		return NULL;
 	}
 
 	for (int ch = 0; ch < nChannels; ch++, pRes += m_FftOrder)
@@ -350,7 +356,7 @@ float const * CWaveFftView::GetFftResult(SAMPLE_INDEX sample, unsigned channel)
 
 		for (int i = 0, k = 0; i < m_FftOrder; i++, k += 2)
 		{
-			pRes[i] = buf[k] * buf[k] + buf[k + 1] * buf[k + 1];
+			pRes[i] = float(buf[k] * buf[k] + buf[k + 1] * buf[k + 1]);
 		}
 	}
 
@@ -394,8 +400,10 @@ CWaveFftView::CWaveFftView()
 	m_FftWindowType(WindowTypeNuttall),
 	m_IndexOfFftBegin(0),
 	m_FftArraySize(0),
-	m_SelectionRectDrawn(false)
-	, m_VerticalScale(1.)
+	m_PrevSelectionEnd(0),
+	m_PrevSelectionStart(0),
+	m_PrevSelectedChannel(0),
+	m_VerticalScale(1.)
 
 {
 	m_FftOrder = 1 << GetApp()->m_FftBandsOrder;
@@ -856,7 +864,8 @@ void CWaveFftView::OnDraw(CDC* pDC)
 				}
 			}
 		}
-		// TODO: draw markers as inverted dashed lines into the bitmap
+
+		// draw markers as inverted dashed lines into the bitmap
 		SAMPLE_INDEX_Vector markers;
 		pDoc->m_WavFile.GetSortedMarkers(markers, FALSE);     // unique positions
 
@@ -955,6 +964,7 @@ void CWaveFftView::OnDraw(CDC* pDC)
 	{
 		DrawPlaybackCursor(pDC, m_PlaybackCursorDrawnSamplePos, m_PlaybackCursorChannel);
 	}
+	RedrawSelectionRect(pDC, 0, 0, 0, m_PrevSelectionStart, m_PrevSelectionEnd, m_PrevSelectedChannel);
 }
 
 void CWaveFftView::AllocateFftArray(SAMPLE_INDEX SampleLeft, SAMPLE_INDEX SampleRight)
@@ -1301,6 +1311,7 @@ void CWaveFftView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
 		AdjustCaretVisibility(pInfo->CaretPos, pInfo->OldCaretPos, pInfo->Flags);
 
 		//ChangeSelection(pInfo->SelBegin, pInfo->SelEnd, nLowExtent, nHighExtent); // FIXME: Draw selection rectangles
+		ShowSelectionRect();
 		CreateAndShowCaret();
 		return; // don't call Wave view OnUpdate in this case
 		// we don't want to invalidate
@@ -1471,57 +1482,98 @@ void CWaveFftView::OnUpdateViewZoomvertNormal(CCmdUI* pCmdUI)
 
 void CWaveFftView::RemoveSelectionRect()
 {
-	if (m_SelectionRectDrawn)
-	{
-#if FIXME
-		DrawSelectionRect(NULL, m_dXSelectionBegin, m_dXSelectionEnd,
-						m_dYSelectionBegin, m_dYSelectionEnd);
-#endif
-		m_SelectionRectDrawn = false;
-	}
+	RedrawSelectionRect(NULL, m_PrevSelectionStart, m_PrevSelectionEnd, m_PrevSelectedChannel,
+						0, 0, 0);
+
+	m_PrevSelectionStart = 0;
+	m_PrevSelectionEnd = 0;
+	m_PrevSelectedChannel = 0;
 }
 
 void CWaveFftView::ShowSelectionRect()
 {
-#if FIXME
-	if (bHasSelection && !m_SelectionRectDrawn)
-	{
-		DrawSelectionRect(NULL, m_dXSelectionBegin, m_dXSelectionEnd,
-						m_dYSelectionBegin, m_dYSelectionEnd);
-		m_SelectionRectDrawn = true;
-	}
-#endif
+	ThisDoc * pDoc = GetDocument();
+
+	RedrawSelectionRect(NULL, m_PrevSelectionStart, m_PrevSelectionEnd, m_PrevSelectedChannel,
+						pDoc->m_SelectionStart, pDoc->m_SelectionEnd, pDoc->m_SelectedChannel);
+
+	m_PrevSelectionStart = pDoc->m_SelectionStart;
+	m_PrevSelectionEnd = pDoc->m_SelectionEnd;
+	m_PrevSelectedChannel = pDoc->m_SelectedChannel;
 }
 
-void CWaveFftView::DrawSelectionRect(CDC * pDC,
-									double left, double right, double bottom, double top)
+void CWaveFftView::RedrawSelectionRect(CDC * pDC, SAMPLE_INDEX OldSelectionStart, SAMPLE_INDEX OldSelectionEnd, CHANNEL_MASK OldSelectedChannel,
+										SAMPLE_INDEX NewSelectionStart, SAMPLE_INDEX NewSelectionEnd, CHANNEL_MASK NewSelectedChannel)
 {
-	CDC * pDrawDC = pDC;
-	if (NULL == pDrawDC)
+	RECT const *pOldSelectionRect = NULL;
+	RECT const *pNewSelectionRect = NULL;
+
+	CRect cr;
+	GetClientRect(cr);
+
+	RECT OldSelectionRect = cr;
+	RECT NewSelectionRect = cr;
+
+	if (OldSelectionStart != OldSelectionEnd
+		&& OldSelectedChannel != 0)
 	{
-		pDrawDC = GetDC();
+
+		OldSelectionRect.left = SampleToX(OldSelectionStart);
+		OldSelectionRect.right = SampleToX(OldSelectionEnd);
+
+		if (OldSelectionRect.left == OldSelectionRect.right)
+		{
+			OldSelectionRect.right++;
+		}
+
+		if (OldSelectionRect.left < cr.right
+			&& OldSelectionRect.right > cr.left)
+		{
+			pOldSelectionRect = &OldSelectionRect;
+		}
+	}
+
+	if (NewSelectionStart != NewSelectionEnd
+		&& NewSelectedChannel != 0)
+	{
+
+		NewSelectionRect.left = SampleToX(NewSelectionStart);
+		NewSelectionRect.right = SampleToX(NewSelectionEnd);
+
+		if (NewSelectionRect.left == NewSelectionRect.right)
+		{
+			NewSelectionRect.right++;
+		}
+
+		if (NewSelectionRect.left < cr.right
+			&& NewSelectionRect.right > cr.left)
+		{
+			pNewSelectionRect = &NewSelectionRect;
+		}
+	}
+
+	if (pNewSelectionRect != NULL
+		|| pOldSelectionRect != NULL)
+	{
+		CSize size(GetSystemMetrics(SM_CXSIZEFRAME), GetSystemMetrics(SM_CYSIZEFRAME));
+
+		CDC * pDrawDC = pDC;
 		if (NULL == pDrawDC)
 		{
-			return;
+			pDrawDC = GetDC();
+			if (NULL == pDrawDC)
+			{
+				return;
+			}
+			pDrawDC->ExcludeUpdateRgn(this);
 		}
-		pDrawDC->ExcludeUpdateRgn(this);
+
+		pDrawDC->DrawDragRect(pNewSelectionRect, size, pOldSelectionRect, size, NULL, NULL);
+		if (NULL == pDC)
+		{
+			ReleaseDC(pDrawDC);
+		}
 	}
-#if FIXME
-	CRect r(DoubleToPoint(left, bottom), DoubleToPoint(right, top));
-	r.NormalizeRect();
-
-	CRect r0(0, 0, 0, 0);
-	CSize size;
-	size.cx = GetSystemMetrics(SM_CXSIZEFRAME);
-	size.cy = GetSystemMetrics(SM_CYSIZEFRAME);
-
-	pDrawDC->DrawDragRect( & r, size, & r0, size, NULL, NULL);
-
-	if (NULL == pDC)
-	{
-		ReleaseDC(pDrawDC);
-	}
-#endif
 }
 
 
