@@ -160,6 +160,14 @@ void CAmplitudeRuler::DrawChannelSamples(CDC * pDC, CRect const & chr, CRect con
 
 	int nVertStep = GetSystemMetrics(SM_CYMENU);
 
+	int ClipHigh = clipr.bottom - tm.tmHeight / 2;
+	int ClipLow = clipr.top + tm.tmHeight / 2;
+
+	if (ClipHigh <= ClipLow)
+	{
+		return;
+	}
+
 	int nSampleUnits = int(nVertStep * 65536. / (nHeight * m_VerticalScale));
 
 	// round sample units to 10 or 5
@@ -179,9 +187,6 @@ void CAmplitudeRuler::DrawChannelSamples(CDC * pDC, CRect const & chr, CRect con
 	}
 
 	WaveCalculate WaveToY(m_WaveOffsetY, m_VerticalScale, chr.top, chr.bottom);
-
-	int ClipHigh = clipr.bottom - tm.tmHeight / 2;
-	int ClipLow = clipr.top + tm.tmHeight / 2;
 
 	int yLow = (int)WaveToY.ConvertToSample(ClipHigh);
 	// round to the next multiple of step
@@ -217,6 +222,14 @@ void CAmplitudeRuler::DrawChannelPercents(CDC * pDC, CRect const & chr, CRect co
 
 	int nHeight = chr.Height();
 
+	int ClipHigh = clipr.bottom - tm.tmHeight / 2;
+	int ClipLow = clipr.top + tm.tmHeight / 2;
+
+	if (ClipHigh <= ClipLow)
+	{
+		return;
+	}
+
 	double nSampleUnits = nVertStep * 200. / (nHeight * m_VerticalScale);
 
 	// round sample units to 10 or 5
@@ -236,9 +249,6 @@ void CAmplitudeRuler::DrawChannelPercents(CDC * pDC, CRect const & chr, CRect co
 	}
 
 	WaveCalculate WaveToY(m_WaveOffsetY, m_VerticalScale, chr.top, chr.bottom);
-
-	int ClipHigh = clipr.bottom - tm.tmHeight / 2;
-	int ClipLow = clipr.top + tm.tmHeight / 2;
 
 	int yLow = int(100. / 32768. * WaveToY.ConvertToSample(ClipHigh));
 	// round to the next multiple of step
@@ -273,10 +283,15 @@ void CAmplitudeRuler::DrawChannelDecibels(CDC * pDC, CRect const & chr, CRect co
 	TEXTMETRIC tm;
 	pDC->GetTextMetrics( & tm);
 
-	double nVertStep = -GetSystemMetrics(SM_CYMENU) / (m_VerticalScale);// FIXME
-
 	int ClipHigh = clipr.bottom - tm.tmHeight / 2;
 	int ClipLow = clipr.top + tm.tmHeight / 2;
+
+	if (ClipHigh <= ClipLow)
+	{
+		return;
+	}
+
+	double nVertStep = -GetSystemMetrics(SM_CYMENU) / (m_VerticalScale);// FIXME
 
 	WaveCalculate WaveToY(m_WaveOffsetY, m_VerticalScale, chr.top, chr.bottom);
 
