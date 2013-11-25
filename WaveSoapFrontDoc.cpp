@@ -2275,7 +2275,7 @@ BOOL CWaveSoapFrontDoc::OnSaveWmaFile(class COperationContext ** ppOp, int flags
 }
 
 BOOL CWaveSoapFrontDoc::OnSaveRawFile(class COperationContext ** ppOp, int flags, LPCTSTR FullTargetName, WAVEFORMATEX const * pWf,
-									SAMPLE_INDEX Begin, SAMPLE_INDEX End, CHANNEL_MASK ChannelsToCopy)
+									SAMPLE_INDEX /*Begin*/, SAMPLE_INDEX End, CHANNEL_MASK /*ChannelsToCopy*/)
 {
 	if (LAST_SAMPLE == End)
 	{

@@ -1266,152 +1266,6 @@ void CClickRemoval::InterpolateGap(CBackBuffer<int, int> & data, int nLeftIndex,
 	}
 }
 
-void CClickRemoval::InterpolateBigGap(WAVE_SAMPLE data[], int nLeftIndex, int ClickLength, int nChans, int TotalSamples)
-{
-	const int MAX_FFT_ORDER = 2048;
-	float x[MAX_FFT_ORDER + MAX_FFT_ORDER / 4];
-	// FFT order is >=64 and >= ClickLength * 4
-	// take 2 FFT in [nLeftIndex-FftOrder... nLeftIndex-1] range
-	// and [nLeftIndex-FftOrder-ClickLength...nLeftIndex-ClickLength-1] offset
-	// Find next FFT estimation as FFT2*(FFT2/FFT1/abs(FFT2/FFT1))
-	// Then take 2 FFT in [nLeftIndex+ClickLength...nLeftIndex+ClickLength+FftOrder-1]
-	// and [nLeftIndex+2*ClickLength...nLeftIndex+2*ClickLength+FftOrder-1]
-	// and find another FFT estimation. Perform backward FFT and combine source and
-	// FFT results using squared-sine window
-	complex<float> y1[MAX_FFT_ORDER/2+1];
-	complex<float> y2[MAX_FFT_ORDER/2+1];
-	//float xl[MAX_FFT_ORDER];  // to save extrapolation from the left neighborhood
-
-	int FftOrder = 512;
-	while (FftOrder < ClickLength * 8)
-	{
-		FftOrder += FftOrder;
-	}
-
-	TRACE("FFtOrder used for interpolation: %d\n", FftOrder);
-	if (FftOrder > MAX_FFT_ORDER)
-	{
-		return;
-	}
-
-	// extrapolate ClickLength + ClickLength / 2 - the gap and
-	// the right neighborhood
-	int const ExtrapolatedLength = ClickLength + ClickLength / 2;
-	int i;
-	for (i = 0; i < FftOrder + ExtrapolatedLength; i++)
-	{
-		x[i] = float(data[nChans * (nLeftIndex - FftOrder - ExtrapolatedLength+ i)]);
-	}
-
-	FastFourierTransform(x, y1, FftOrder);
-	FastFourierTransform(x + ExtrapolatedLength, y2, FftOrder);
-	// calculate another set of coefficients
-	// leave only those frequencies with up to ClickLength/10 period
-	//if (nMaxFreq > FftOrder/2)
-
-	for (i = 1; i <= FftOrder/2; i++)
-	{
-		if ((y1[i].real() != 0.
-				|| y1[i].imag() != 0.)
-			&& (y2[i].real() != 0.
-				|| y2[i].imag() != 0.))
-		{
-			complex<float> rot = y2[i] / y1[i];
-			float Abs = abs(rot);
-
-			//if (Abs <= 2.)
-			{
-				y2[i] *= rot / Abs;
-			}
-		}
-	}
-
-	// extrapolate DC
-	//y2[0].real(y2[0].real() * 2 - y1[0].real());
-
-	FastInverseFourierTransform(y2, x, FftOrder);
-	// last ClickLength*2 samples are of interest
-	// save the result
-
-	int const ClickLen1 = ClickLength - ClickLength / 2;
-
-	// calculate DC adjustment
-	double DcAdjustLeft = 0.; // difference from the previous data and the calculated data
-	for (i = 0; i < ClickLen1; i++)
-	{
-		DcAdjustLeft += data[nChans * (nLeftIndex - ClickLen1 + i)] - x[FftOrder - ClickLength * 2 + i];
-	}
-	DcAdjustLeft /= ClickLen1;
-
-	double DcAdjustRight = 0.; // difference from the previous data and the calculated data
-	for (i = 0; i < ClickLength / 2; i++)
-	{
-		DcAdjustRight += data[nChans * (nLeftIndex + ClickLength + i)]
-						- x[FftOrder - ClickLength / 2 + i];
-	}
-	DcAdjustRight /= ClickLength / 2;
-
-	double DcAdjustDelta = (DcAdjustRight - DcAdjustLeft) / (ClickLength + ClickLength / 2);
-	DcAdjustLeft -= DcAdjustDelta * (ClickLength / 4);
-
-	bool const ShowExtrapolatedFft = false;
-	// ClickLength-ClickLength/2 are merged with the samples before the extrapolation,
-	float const * pFftResult = & x[FftOrder - ClickLength * 2];
-	WAVE_SAMPLE * pWaveData = & data[nChans * (nLeftIndex - ClickLen1)];
-
-	for (i = 0; i < ClickLen1; i++, DcAdjustLeft += DcAdjustDelta,
-		pWaveData += nChans, pFftResult ++)
-	{
-		if ( ! ShowExtrapolatedFft)
-		{
-			double tmp = (( *pFftResult + DcAdjustLeft) * (i + 0.5)
-							+ *pWaveData * (ClickLen1 - i - 0.5))
-						/ float(ClickLen1);
-			*pWaveData = DoubleToShort(tmp);
-		}
-		else
-		{
-			*pWaveData =
-				DoubleToShort( *pFftResult);
-		}
-	}
-
-	ASSERT((FftOrder - ClickLength * 2 + ClickLen1) == FftOrder - ExtrapolatedLength);
-	// ClickLength is copied to the extrapolated area,
-	for (i = 0; i < ClickLength; i++, DcAdjustLeft += DcAdjustDelta,
-		pWaveData += nChans, pFftResult ++)
-	{
-		if ( ! ShowExtrapolatedFft)
-		{
-			double tmp =  *pFftResult + DcAdjustLeft;
-			*pWaveData = DoubleToShort(tmp);
-		}
-		else
-		{
-			*pWaveData = DoubleToShort( *pFftResult);
-		}
-	}
-
-	// ClickLength/2 are merged with the samples after the extrapolation,
-	for (i = 0; i < ClickLength / 2; i++, DcAdjustLeft += DcAdjustDelta,
-		pWaveData += nChans, pFftResult ++)
-	{
-		if ( ! ShowExtrapolatedFft)
-		{
-			double tmp = (( *pFftResult + DcAdjustLeft) * (ClickLength / 2 - i - 0.5)
-							+ *pWaveData * (i + 0.5))
-						/ float(ClickLength / 2);
-
-			*pWaveData = DoubleToShort(tmp);
-		}
-		else
-		{
-			*pWaveData = DoubleToShort( *pFftResult);
-		}
-	}
-	ASSERT(pFftResult == x + FftOrder);
-}
-
 #if 1
 void quad_regression(double const X[], double const Y[], unsigned NumPoints, double &A_result, double &B_result, double&C_result);
 void test_quad_regression(double X[], int NumPoints, double A, double B, double C)
@@ -2292,122 +2146,6 @@ void CClickRemoval::InterpolateBigGapSliding(WAVE_SAMPLE data[], int nLeftIndex,
 }
 #endif
 
-void CClickRemoval::InterpolateGapSpecialFourier(WAVE_SAMPLE data[], int nLeftIndex, int ClickLength, int nChans, int TotalSamples)
-{
-	ASSERT(ClickLength >= 2);
-
-	int LeftSamples = ClickLength * 2;
-	int RightSamples = ClickLength * 2;
-	if (nLeftIndex + RightSamples + ClickLength > TotalSamples)
-	{
-		return;
-	}
-	using namespace MatrixMath;
-	Matrix fourier(LeftSamples + RightSamples, LeftSamples + ClickLength + RightSamples);
-
-	// fill it with the basic functions
-	for (int f = 0; f < fourier.Width(); f++)
-	{
-		for (int t = 0; t < fourier.Height(); t++)
-		{
-			// discrete cosine transfer
-			fourier[t][f] = cos((t + 0.5) * f * M_PI / fourier.Height());
-		}
-	}
-
-	if (0)
-	{
-		Matrix f1(7, 7);
-
-		// fill it with the basic functions
-		for (int f = 0; f < f1.Height(); f++)
-		{
-			for (int t = 0; t < f1.Width(); t++)
-			{
-				// discrete cosine transfer
-				f1[f][t] = cos((t + 0.5) * f * M_PI / f1.Width());
-			}
-		}
-		f1.Inverse();
-
-		for (int t = 0; t < f1.Width(); t++)
-		{
-			for (int f = 0; f < f1.Height(); f++)
-			{
-				TRACE("f1 inv[%d, %d]=%f\n", f, t, f1[f][t]);
-			}
-		}
-		return;
-	}
-	Matrix m1(fourier.Width(), fourier.Width());
-
-	// assemble the matrix from parts of fourier
-	Matrix(m1, 0, 0, m1.Width(), LeftSamples) = Matrix(fourier, 0, 0, fourier.Width(), LeftSamples);
-	Matrix(m1, 0, LeftSamples, m1.Width(), RightSamples) = Matrix(fourier, 0, LeftSamples + ClickLength, fourier.Width(), RightSamples);
-
-	Vector samples(LeftSamples + RightSamples);
-	Vector new_data;
-	Vector old_data(LeftSamples + ClickLength + RightSamples);
-
-	for (int i = 0; i < LeftSamples; i++)
-	{
-		samples[i] = data[nChans * (i + nLeftIndex - LeftSamples)];
-	}
-
-	for (int i = 0; i < RightSamples; i++)
-	{
-		samples[i + LeftSamples] = data[nChans * (i + nLeftIndex + ClickLength)];
-	}
-
-	for (int i = 0; i < LeftSamples + ClickLength + RightSamples; i++)
-	{
-		old_data[i] = data[nChans * (i + nLeftIndex - LeftSamples)];
-	}
-
-	Vector result_coeffs;
-
-	if (0)
-	{
-		Matrix test(m1);
-		m1.Inverse();
-
-		Matrix MustBeUnity;
-		MustBeUnity.Product(test, m1);
-		for (int i = 0; i < 8; i++)
-		{
-			TRACE("MustBeUnity[%d]= %f, %f, %f, %f, %f, %f, %f, %f, \n", i,
-				MustBeUnity[i][0], MustBeUnity[i][1],
-				MustBeUnity[i][2], MustBeUnity[i][3],
-				MustBeUnity[i][4], MustBeUnity[i][5],
-				MustBeUnity[i][6], MustBeUnity[i][7]);
-		}
-		result_coeffs.Multiply(m1, samples);
-	}
-	else
-	{
-		LinearEquationSolution(m1, samples, result_coeffs);
-	}
-
-	for (int i = 0; i < result_coeffs.Order(); i++)
-	{
-		TRACE("Result coeff[%d]=%f\n", i, result_coeffs[i]);
-	}
-
-	new_data.Multiply(fourier, result_coeffs);
-
-	TRACE("Interpolation: LeftSamples=%d, ClickLength=%d\n", LeftSamples, ClickLength);
-
-	for (int i = 0; i < LeftSamples + ClickLength + RightSamples; i++)
-	{
-		TRACE("Interpolation: %d old=%f, new=%f, diff=%f\n", i, old_data[i], new_data[i], new_data[i] - old_data[i]);
-	}
-
-	for (int i = 0; i < ClickLength; i++)
-	{
-		data[nChans * (i + nLeftIndex)] = (WAVE_SAMPLE)new_data[i + LeftSamples];
-	}
-}
-
 void CClickRemoval::InterpolateGapLeastSquares(WAVE_SAMPLE data[], int nLeftIndex, int ClickLength, int nChans, int TotalSamples)
 {
 	// nChan (1 or 2) is used as step between samples
@@ -2487,16 +2225,9 @@ void CClickRemoval::InterpolateGapLeastSquares(WAVE_SAMPLE data[], int nLeftInde
 
 void CClickRemoval::InterpolateGap(WAVE_SAMPLE data[], int nLeftIndex, int ClickLength, int nChans, bool BigGap, int TotalSamples)
 {
-#if 0
-	InterpolateGapLeastSquares(data, nLeftIndex, ClickLength, nChans, TotalSamples);
-#elif 0
-	InterpolateGapSpecialFourier(data, nLeftIndex, ClickLength, nChans, TotalSamples);
-
-#else
-	if (1 || BigGap)
+	if (BigGap)
 	{
 		InterpolateBigGapSliding(data, nLeftIndex, ClickLength, nChans, TotalSamples);
-		//InterpolateBigGap(data, nLeftIndex, ClickLength, nChans, TotalSamples);
 		return;
 	}
 	// nChan (1 or 2) is used as step between samples
@@ -2507,7 +2238,7 @@ void CClickRemoval::InterpolateGap(WAVE_SAMPLE data[], int nLeftIndex, int Click
 	// Take 5 points to left with ClickLength/2 step
 	// and 5 points to right
 	// 2 farthest points to the left are spaced by ClickLength
-	int const MaxInterpolationOrder = 15;
+	int const MaxInterpolationOrder = 5;
 	double Y[MaxInterpolationOrder], X[MaxInterpolationOrder];
 
 	ASSERT(ClickLength >= 2);
@@ -2560,7 +2291,6 @@ void CClickRemoval::InterpolateGap(WAVE_SAMPLE data[], int nLeftIndex, int Click
 		}
 		data[nChans * (nLeftIndex + n)] = DoubleToShort(y + y_neg);
 	}
-#endif
 }
 
 unsigned CClickRemoval::ProcessSoundBuffer(char const * pIn, char * pOut,

@@ -218,14 +218,13 @@ private:
 	bool m_bOpenMaximized;
 	CRect m_NormalWindowSize;
 
-	afx_msg LRESULT OnDisplayChange(WPARAM wParam, LPARAM lParam)
+	afx_msg void OnDisplayChange(UINT BitsPerPixel, int Width, int Height)
 	{
-		LRESULT result = BaseClass::OnDisplayChange(wParam, lParam);
+		BaseClass::OnDisplayChange(BitsPerPixel, Width, Height);
 		if (Feature & MainFrameRecalcLayoutOnDisplayChange)
 		{
 			RecalcLayout();
 		}
-		return result;
 	}
 
 	afx_msg void OnSettingChange(UINT uFlags, LPCTSTR lpszSection)
@@ -305,8 +304,8 @@ BEGIN_TEMPLATE_MESSAGE_MAP(CMainFrameExT, Parameters, BaseClass)
 	ON_WM_PALETTECHANGED()
 	ON_WM_QUERYNEWPALETTE()
 	ON_WM_DESTROY()
-	ON_MESSAGE(WM_DISPLAYCHANGE, OnDisplayChange)
 	ON_WM_SETTINGCHANGE()
-END_MESSAGE_MAP()
+	ON_WM_DISPLAYCHANGE()
+	END_MESSAGE_MAP()
 
 typedef CMainFrameExT<> CMainFrameEx;

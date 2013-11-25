@@ -104,6 +104,8 @@ protected:
 
 	void RedrawSelectionRect(CDC * pDC, SAMPLE_INDEX OldSelectionStart, SAMPLE_INDEX OldSelectionEnd, CHANNEL_MASK OldSelectedChannel,
 							SAMPLE_INDEX NewSelectionStart, SAMPLE_INDEX NewSelectionEnd, CHANNEL_MASK NewSelectedChannel);
+	int BuildSelectionRegion(CRgn * NormalRgn, CRgn* MinimizedRgn,
+							SAMPLE_INDEX SelectionStart, SAMPLE_INDEX SelectionEnd, CHANNEL_MASK selected);
 
 	void RemoveSelectionRect();
 	void ShowSelectionRect();

@@ -55,7 +55,7 @@ public:
 	virtual void OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint);
 	virtual void OnActivateView(BOOL bActivate, CView* pActivateView, CView* pDeactiveView);
 	//}}AFX_VIRTUAL
-	void InvalidateRect( LPCRECT lpRect, BOOL bErase = TRUE );
+
 	void InvalidateMarkerRegion(WAVEREGIONINFO const * pInfo);
 
 	void RecalculateChannelHeight(int cy);

@@ -1164,7 +1164,6 @@ BOOL CWaveFftView::OnEraseBkgnd(CDC* pDC)
 				0x5555,
 			};
 
-			// Windows98 can only use 8x8 bitmap for a brush
 			bmp.CreateBitmap(8, 8, 1, 1, pattern + FileEnd % 2);
 			CBrush GrayBrush( & bmp);
 
@@ -1502,77 +1501,243 @@ void CWaveFftView::ShowSelectionRect()
 	m_PrevSelectedChannel = pDoc->m_SelectedChannel;
 }
 
-void CWaveFftView::RedrawSelectionRect(CDC * pDC, SAMPLE_INDEX OldSelectionStart, SAMPLE_INDEX OldSelectionEnd, CHANNEL_MASK OldSelectedChannel,
-										SAMPLE_INDEX NewSelectionStart, SAMPLE_INDEX NewSelectionEnd, CHANNEL_MASK NewSelectedChannel)
+struct RgnData
 {
-	RECT const *pOldSelectionRect = NULL;
-	RECT const *pNewSelectionRect = NULL;
+	RGNDATAHEADER hdr;
+	RECT rect[4 * MAX_NUMBER_OF_CHANNELS];
 
+	RgnData();
+	void AddRect(int left, int top, int right, int bottom);
+
+	operator RGNDATA*() { return CONTAINING_RECORD(&hdr, RGNDATA, rdh); }
+};
+
+RgnData::RgnData()
+{
+	hdr.dwSize = sizeof hdr;
+	hdr.iType = RDH_RECTANGLES;
+	hdr.nCount = 0;
+	hdr.nRgnSize = sizeof hdr;
+	hdr.rcBound.top = 0;
+	hdr.rcBound.bottom = 0;
+	hdr.rcBound.left = 0;
+	hdr.rcBound.right = 0;
+}
+
+void RgnData::AddRect(int left, int top, int right, int bottom)
+{
+	if (hdr.nCount < countof(rect))
+	{
+		rect[hdr.nCount].left = left;
+		rect[hdr.nCount].top = top;
+		rect[hdr.nCount].right = right;
+		rect[hdr.nCount].bottom = bottom;
+
+		if (hdr.nCount == 0)
+		{
+			hdr.rcBound = rect[0];
+		}
+		else
+		{
+			if (hdr.rcBound.left > left)
+			{
+				hdr.rcBound.left = left;
+			}
+			if (hdr.rcBound.right < right)
+			{
+				hdr.rcBound.right = right;
+			}
+			if (hdr.rcBound.top > top)
+			{
+				hdr.rcBound.top = top;
+			}
+			if (hdr.rcBound.bottom < bottom)
+			{
+				hdr.rcBound.bottom = bottom;
+			}
+		}
+		hdr.nCount++;
+		hdr.nRgnSize += sizeof (RECT);
+	}
+}
+
+int CWaveFftView::BuildSelectionRegion(CRgn * NormalRgn, CRgn* MinimizedRgn,
+										SAMPLE_INDEX SelectionStart, SAMPLE_INDEX SelectionEnd, CHANNEL_MASK selected)
+{
 	CRect cr;
 	GetClientRect(cr);
 
-	RECT OldSelectionRect = cr;
-	RECT NewSelectionRect = cr;
+	int cx = GetSystemMetrics(SM_CXSIZEFRAME);
+	int cy = GetSystemMetrics(SM_CYSIZEFRAME);
 
-	if (OldSelectionStart != OldSelectionEnd
-		&& OldSelectedChannel != 0)
+	RgnData data, data_min;
+
+	if (SelectionStart == SelectionEnd
+		|| selected == 0)
 	{
-
-		OldSelectionRect.left = SampleToX(OldSelectionStart);
-		OldSelectionRect.right = SampleToX(OldSelectionEnd);
-
-		if (OldSelectionRect.left == OldSelectionRect.right)
-		{
-			OldSelectionRect.right++;
-		}
-
-		if (OldSelectionRect.left < cr.right
-			&& OldSelectionRect.right > cr.left)
-		{
-			pOldSelectionRect = &OldSelectionRect;
-		}
+		NormalRgn->CreateRectRgn(0, 0, 0, 0);
+		MinimizedRgn->CreateRectRgn(0, 0, 0, 0);
+		return 0;
 	}
 
-	if (NewSelectionStart != NewSelectionEnd
-		&& NewSelectedChannel != 0)
+	int left = SampleToX(SelectionStart);
+	int right = SampleToX(SelectionEnd);
+
+	if (left == right)
 	{
-
-		NewSelectionRect.left = SampleToX(NewSelectionStart);
-		NewSelectionRect.right = SampleToX(NewSelectionEnd);
-
-		if (NewSelectionRect.left == NewSelectionRect.right)
-		{
-			NewSelectionRect.right++;
-		}
-
-		if (NewSelectionRect.left < cr.right
-			&& NewSelectionRect.right > cr.left)
-		{
-			pNewSelectionRect = &NewSelectionRect;
-		}
+		right++;
 	}
 
-	if (pNewSelectionRect != NULL
-		|| pOldSelectionRect != NULL)
+	if (left >= cr.right
+		|| right <= cr.left)
 	{
-		CSize size(GetSystemMetrics(SM_CXSIZEFRAME), GetSystemMetrics(SM_CYSIZEFRAME));
+		NormalRgn->CreateRectRgn(0, 0, 0, 0);
+		MinimizedRgn->CreateRectRgn(0, 0, 0, 0);
+		return 0;
+	}
 
-		CDC * pDrawDC = pDC;
+	if (cx > right - left)
+	{
+		cx = right - left;
+	}
+	NUMBER_OF_CHANNELS NumChannels = GetDocument()->WaveChannels();
+
+	for (int chan = 0; chan < NumChannels; chan++)
+	{
+		if (selected & (1 << chan))
+		{
+			RgnData * rgn;
+			if (m_Heights.ch[chan].minimized)
+			{
+				rgn = &data_min;
+			}
+			else
+			{
+				rgn = &data;
+			}
+
+			rgn->AddRect(left, m_Heights.ch[chan].clip_top, left + cx, m_Heights.ch[chan].clip_bottom);
+			rgn->AddRect(right - cx, m_Heights.ch[chan].clip_top, right, m_Heights.ch[chan].clip_bottom);
+
+			if (right - left <= cx * 2)
+			{
+				continue;
+			}
+
+			if (chan == 0 || 0 == (selected & (1 << (chan - 1))))
+			{
+				rgn->AddRect(left + cx, m_Heights.ch[chan].clip_top, right - cx, m_Heights.ch[chan].clip_top + cy);
+			}
+			if (chan + 1 == NumChannels || 0 == (selected & (1 << (chan + 1))))
+			{
+				rgn->AddRect(left + cx, m_Heights.ch[chan].clip_bottom - cy, right - cx, m_Heights.ch[chan].clip_bottom);
+			}
+		}
+	}
+	NormalRgn->CreateFromData(NULL, data.hdr.nRgnSize, data);
+	MinimizedRgn->CreateFromData(NULL, data_min.hdr.nRgnSize, data_min);
+
+	return data.hdr.nCount + (data_min.hdr.nCount << 16);
+}
+
+void CWaveFftView::RedrawSelectionRect(CDC * pDC, SAMPLE_INDEX OldSelectionStart, SAMPLE_INDEX OldSelectionEnd, CHANNEL_MASK OldSelectedChannel,
+										SAMPLE_INDEX NewSelectionStart, SAMPLE_INDEX NewSelectionEnd, CHANNEL_MASK NewSelectedChannel)
+{
+	CRgn OldRgn;
+	CRgn OldRgnMinimized;
+
+	CRgn NewRgn;
+	CRgn NewRgnMinimized;   // for minimized channels
+
+	int OldRgnRectCount = BuildSelectionRegion(&OldRgn, &OldRgnMinimized, OldSelectionStart, OldSelectionEnd, OldSelectedChannel);
+
+	int NewRgnRectCount = BuildSelectionRegion(&NewRgn, &NewRgnMinimized, NewSelectionStart, NewSelectionEnd, NewSelectedChannel);
+
+	if ((OldRgnRectCount | NewRgnRectCount) == 0)
+	{
+		return;
+	}
+
+	CDC * pDrawDC = pDC;
+	if (NULL == pDrawDC)
+	{
+		pDrawDC = GetDC();
 		if (NULL == pDrawDC)
 		{
-			pDrawDC = GetDC();
-			if (NULL == pDrawDC)
-			{
-				return;
-			}
-			pDrawDC->ExcludeUpdateRgn(this);
+			return;
+		}
+		pDrawDC->ExcludeUpdateRgn(this);
+	}
+
+	try {
+		CBitmap bmp;
+		static const WORD pattern[] =
+		{
+			0x5555,   // aligned to WORD
+			0xAAAA,
+			0x5555,
+			0xAAAA,
+			0x5555,
+			0xAAAA,
+			0x5555,
+			0xAAAA,
+			0x5555,
+		};
+
+		int OddFileOffset = (int)fmod(floor(m_FirstSampleInView / m_HorizontalScale), 2.);
+
+		int VerticalOddOffset = 1 & int(m_FirstbandVisible * int(m_VerticalScale * m_Heights.NominalChannelHeight) / m_FftOrder);
+		bmp.CreateBitmap(8, 8, 1, 1, pattern + (OddFileOffset ^ VerticalOddOffset));
+
+		CBrush brush(&bmp);
+
+		CRgn R;
+		CRgn OldClipRgn;
+		CRect clip;
+		CBitmap bmp_min;
+		CBrush brush_min;
+
+		OldClipRgn.CreateRectRgn(0, 0, 0, 0);
+		::GetClipRgn((HDC)*pDrawDC, (HRGN)OldClipRgn);
+
+		R.CreateRectRgn(0, 0, 0, 0);
+		R.CombineRgn(&OldRgn, &NewRgn, RGN_XOR);
+
+		pDrawDC->SelectClipRgn(&R, RGN_AND);
+
+		CGdiObjectSave OldBrush(pDrawDC, pDrawDC->SelectObject(&brush));
+
+		pDrawDC->GetClipBox(clip);
+
+		pDrawDC->PatBlt(clip.left, clip.top, clip.Width(), clip.Height(), PATINVERT);
+
+		if (((OldRgnRectCount | NewRgnRectCount) & 0xFFFF0000) != 0)
+		{
+			bmp_min.CreateBitmap(8, 8, 1, 1, pattern + OddFileOffset);
+			brush_min.CreatePatternBrush(&bmp_min);
+			pDrawDC->SelectObject(&brush_min);
+
+			R.CombineRgn(&OldRgnMinimized, &NewRgnMinimized, RGN_XOR);
+
+			pDrawDC->SelectClipRgn(&OldClipRgn, RGN_COPY);
+			pDrawDC->SelectClipRgn(&R, RGN_AND);
+
+			pDrawDC->GetClipBox(clip);
+
+			pDrawDC->PatBlt(clip.left, clip.top, clip.Width(), clip.Height(), PATINVERT);
 		}
 
-		pDrawDC->DrawDragRect(pNewSelectionRect, size, pOldSelectionRect, size, NULL, NULL);
-		if (NULL == pDC)
-		{
-			ReleaseDC(pDrawDC);
-		}
+		pDrawDC->SelectClipRgn(&OldClipRgn, RGN_COPY);
+	}
+	catch (CResourceException * e)
+	{
+		TRACE("CResourceException\n");
+		e->Delete();
+	}
+
+	if (NULL == pDC)
+	{
+		ReleaseDC(pDrawDC);
 	}
 }
 
@@ -1700,9 +1865,18 @@ void CWaveFftView::SetNewFftOffset(double first_band)
 
 	long OldOffsetPixels = long(m_FirstbandVisible * int(m_VerticalScale * m_Heights.NominalChannelHeight) / m_FftOrder);
 	long NewOffsetPixels = long(first_band * int(m_VerticalScale * m_Heights.NominalChannelHeight) / m_FftOrder);
+	int cy = GetSystemMetrics(SM_CYSIZEFRAME);
 
-	int ToScroll = NewOffsetPixels - OldOffsetPixels;       // >0 - down, <0 - up
+	CHANNEL_MASK Selected = m_PrevSelectedChannel;
+	if (pDoc->m_SelectionStart == pDoc->m_SelectionEnd)
+	{
+		Selected = 0;
+	}
 	// offset of the zero line down
+	int ToScroll = NewOffsetPixels - OldOffsetPixels;       // >0 - down, <0 - up
+
+	HideCaret();
+
 	for (int ch = 0; ch < nChannels; ch++)
 	{
 		if (m_Heights.ch[ch].minimized)
@@ -1733,8 +1907,23 @@ void CWaveFftView::SetNewFftOffset(double first_band)
 
 			CRect ToInvalidate(cr.left, ClipRect.top, cr.right, ClipRect.top + m_InvalidAreaTop[ch]);
 
+			// see if there is a selection boundary on the top
+			if ((Selected & (1 << ch))
+				&& (ch == 0 || 0 == (Selected & (1 << (ch - 1))))
+				&& m_InvalidAreaTop[ch] < cy + ToScroll)
+			{
+				ToInvalidate.bottom = ClipRect.top + cy + ToScroll;
+			}
+
 			ScrollWindow(0, ToScroll, ScrollRect, ClipRect);
 			InvalidateRect(ToInvalidate);
+
+			// see if there is a selection boundary on the bottom
+			if ((Selected & (1 << ch))
+				&& (ch + 1 == nChannels || 0 == (Selected & (1 << (ch + 1)))))
+			{
+				InvalidateRect(CRect(cr.left, ClipRect.bottom - cy, cr.right, ClipRect.bottom));
+			}
 		}
 		else if (ToScroll < 0)
 		{
@@ -1743,15 +1932,30 @@ void CWaveFftView::SetNewFftOffset(double first_band)
 
 			CRect ToInvalidate(cr.left, ClipRect.bottom - m_InvalidAreaBottom[ch], cr.right, ClipRect.bottom);
 
+			// see if there is a selection boundary on the bottom
+			if ((Selected & (1 << ch))
+				&& (ch + 1 == nChannels || 0 == (Selected & (1 << (ch + 1))))
+				&& m_InvalidAreaBottom[ch] < cy - ToScroll)
+			{
+				ToInvalidate.top = ClipRect.bottom - cy + ToScroll;
+			}
+
 			ScrollWindow(0, ToScroll, ScrollRect, ClipRect);
 			InvalidateRect(ToInvalidate);
+
+			// see if there is a selection boundary on the top
+			if ((Selected & (1 << ch))
+				&& (ch == 0 || 0 == (Selected & (1 << (ch - 1)))))
+			{
+				InvalidateRect(CRect(cr.left, ClipRect.top, cr.right, ClipRect.top + cy));
+			}
 		}
 		else
 		{
 			continue;
 		}
 	}
-
+	ShowCaret();
 	m_FirstbandVisible = first_band;
 }
 

@@ -37,7 +37,7 @@ static double sinc( double x)
 		result = sin(x)/x;
 	return result;
 }
-
+#if 0
 /**********************************/
 /*                                */
 /*   acosh()                       */
@@ -50,7 +50,7 @@ static double acosh( double x)
 	result = log(x+sqrt(x*x-1.0));
 	return result;
 }
-
+#endif
 /**********************************/
 /*                                */
 /*   bitRev()                     */

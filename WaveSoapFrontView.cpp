@@ -512,7 +512,7 @@ void CWaveSoapFrontView::OnDraw(CDC* pDC)
 					// use wave data for drawing
 					float * pWaveSamples = NULL;
 					// GetData argument must be aligned to full sample boundary
-					int LastSampleRequired = floor(FirstFractionalSample + nNumberOfPoints * SamplesPerPoint);
+					int LastSampleRequired = (int)floor(FirstFractionalSample + nNumberOfPoints * SamplesPerPoint);
 					int nCountSamples = m_WaveBuffer.GetData( & pWaveSamples,
 															NumOfFirstSample * nChannels,
 															(LastSampleRequired - NumOfFirstSample + 1) * nChannels, this);
@@ -521,8 +521,6 @@ void CWaveSoapFrontView::OnDraw(CDC* pDC)
 						TRACE("OnDraw: nCountSamples=%d, LastSampleRequired=%d, NumOfFirstSample=%d, (LastSampleRequired - NumOfFirstSample) * nChannels=%d\n",
 							nCountSamples, LastSampleRequired, NumOfFirstSample, (LastSampleRequired - NumOfFirstSample) * nChannels);
 					}
-
-					double CurrentSample = FirstFractionalSample;
 
 					for (i = 0; i < nNumberOfPoints; i++)
 					{
@@ -1948,7 +1946,7 @@ void CWaveSoapFrontView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
 	}
 }
 
-void CWaveSoapViewBase::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
+void CWaveSoapViewBase::OnUpdate(CView* /*pSender*/, LPARAM lHint, CObject* pHint)
 {
 	if (lHint == ThisDoc::UpdatePlaybackPositionChanged
 		&& NULL != pHint)
@@ -1970,6 +1968,7 @@ void CWaveSoapViewBase::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
 
 		// recalculate the extents
 		UpdateHorizontalExtents(GetDocument()->WaveFileSamples(), cr.Width());
+		RecalculateChannelHeight(cr.Height());
 		Invalidate();
 
 		CreateAndShowCaret(true);   // create new bitmap
@@ -1982,13 +1981,6 @@ void CWaveSoapViewBase::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
 
 		InvalidateMarkerRegion( & pInfo->info);
 	}
-}
-
-void CWaveSoapViewBase::InvalidateRect( LPCRECT lpRect, BOOL bErase)
-{
-	//HideCaret();
-	BaseClass::InvalidateRect(lpRect, bErase);
-	//ShowCaret();
 }
 
 void CWaveSoapViewBase::InvalidateMarkerRegion(WAVEREGIONINFO const * pInfo)
@@ -3214,10 +3206,9 @@ void CWaveSoapViewBase::InvalidateMarkerLabels(int dy)
 	bool PlaybackCursorHidden = false;
 
 	CWaveSoapFrontDoc * pDoc = GetDocument();
-	int nChannels = pDoc->WaveChannels();
+
 	CRect cr;
 	GetClientRect(cr);
-	int const FileEnd = SampleToXceil(pDoc->WaveFileSamples());
 
 	// invalidate marker labels
 	CWindowDC dc(this);
