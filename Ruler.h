@@ -7,7 +7,6 @@
 #endif // _MSC_VER > 1000
 // Ruler.h : header file
 //
-#include "ScaledScrollView.h"
 
 /////////////////////////////////////////////////////////////////////////////
 // CHorizontalRuler view

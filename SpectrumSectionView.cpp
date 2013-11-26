@@ -21,7 +21,7 @@ static char THIS_FILE[] = __FILE__;
 /////////////////////////////////////////////////////////////////////////////
 // CSpectrumSectionView
 
-IMPLEMENT_DYNCREATE(CSpectrumSectionView, CScaledScrollView)
+IMPLEMENT_DYNCREATE(CSpectrumSectionView, CView)
 
 CSpectrumSectionView::CSpectrumSectionView()
 	: m_dNoiseThresholdLow(-60.)

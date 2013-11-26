@@ -139,9 +139,6 @@
     <ClCompile Include="SaveExpressionDialog.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="ScaledScrollView.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="shellink.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -204,9 +201,6 @@
     </ClCompile>
     <ClCompile Include="PolyRatio.cpp">
       <Filter>FilterMath</Filter>
-    </ClCompile>
-    <ClCompile Include="TestOperation.cpp">
-      <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Matrix.cpp">
       <Filter>Matrix math</Filter>
@@ -444,9 +438,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="SaveExpressionDialog.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="ScaledScrollView.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="shellink.h">
