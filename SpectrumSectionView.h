@@ -10,11 +10,10 @@
 
 /////////////////////////////////////////////////////////////////////////////
 // CSpectrumSectionView view
-#include "ScaledScrollView.h"
 
-class CSpectrumSectionView : public CScaledScrollView
+class CSpectrumSectionView : public CView
 {
-	typedef CScaledScrollView BaseClass;
+	typedef CView BaseClass;
 protected:
 	CSpectrumSectionView();           // protected constructor used by dynamic creation
 	DECLARE_DYNCREATE(CSpectrumSectionView)
