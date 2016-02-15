@@ -370,12 +370,14 @@ afx_msg LRESULT CFftRulerView::OnUwmNotifyViews(WPARAM wParam, LPARAM lParam)
 	return 0;
 }
 
-void CFftRulerView::VerticalScrollPixels(int Pixels)
+void CFftRulerView::BeginMouseTracking()
 {
-	if (m_MouseYOffsetForScroll == 0)
-	{
-		m_FftOffsetBeforeScroll = m_FirstbandVisible;
-	}
+	m_MouseYOffsetForScroll = 0;
+	m_FftOffsetBeforeScroll = m_FirstbandVisible;
+}
+
+void CFftRulerView::VerticalScrollByPixels(int Pixels)
+{
 	m_MouseYOffsetForScroll += Pixels;
 
 	double offset = m_FftOffsetBeforeScroll + (double)m_MouseYOffsetForScroll * m_FftOrder / int(m_Heights.NominalChannelHeight * m_VerticalScale);

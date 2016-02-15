@@ -34,8 +34,9 @@ public:
 protected:
 	virtual void OnDraw(CDC* pDC);      // overridden to draw this view
 	//}}AFX_VIRTUAL
-	virtual void VerticalScrollPixels(int Pixels);
-// Implementation
+	virtual void VerticalScrollByPixels(int Pixels);
+	virtual void BeginMouseTracking();
+	// Implementation
 protected:
 	virtual ~CFftRulerView();
 	virtual UINT GetPopupMenuID(CPoint) { return IDR_MENU_FFT_RULER; }

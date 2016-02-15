@@ -33,6 +33,7 @@ protected:
 	virtual BOOL OnScrollBy(CSize sizeScroll, BOOL bDoScroll = TRUE);
 	//}}AFX_VIRTUAL
 	virtual void HorizontalScrollByPixels(int Pixels) = 0;
+	virtual void BeginMouseTracking();
 
 // Implementation
 protected:
@@ -86,7 +87,8 @@ protected:
 	virtual BOOL PreCreateWindow(CREATESTRUCT& cs);
 	virtual BOOL OnScrollBy(CSize sizeScroll, BOOL bDoScroll = TRUE);
 	//}}AFX_VIRTUAL
-	virtual void VerticalScrollPixels(int Pixels) = 0;
+	virtual void VerticalScrollByPixels(int Pixels) = 0;
+	virtual void BeginMouseTracking();
 // Implementation
 protected:
 	virtual ~CVerticalRuler();
