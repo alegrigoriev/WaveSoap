@@ -3549,7 +3549,7 @@ BOOL CWmaDecodeContext::OperationProc()
 	if (nFirstSample != nLastSample
 		|| -1 != NewSampleCount)
 	{
-		TRACE("Changed from %d to %d, length=%d\n", nFirstSample, nLastSample, NewSampleCount);
+		if (0) TRACE("Changed from %d to %d, length=%d\n", nFirstSample, nLastSample, NewSampleCount);
 
 		m_pDocument->SoundChanged(m_DstFile.GetFileID(), nFirstSample, nLastSample, NewSampleCount);
 	}

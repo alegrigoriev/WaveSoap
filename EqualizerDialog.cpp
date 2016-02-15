@@ -855,7 +855,7 @@ void CEqualizerGraphWnd::OnNcCalcSize(BOOL /*bCalcValidRects*/,
 
 void CEqualizerGraphWnd::OnNcPaint(UINT wParam)
 {
-	if (0) TRACE("CEqualizerGraphWnd::OnNcPaint, hrgn=%X\n", wParam);
+	if (0) TRACE("CEqualizerGraphWnd::OnNcPaint, hrgn=%P\n", wParam);
 	// copy region, because it will be deleted
 	try
 	{

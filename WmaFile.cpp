@@ -4,7 +4,7 @@
 #include "WmaFile.h"
 #include <wmsysprf.h>
 #include "KInterlocked.h"
-#define TRACE_WMA_DECODER 1
+#define TRACE_WMA_DECODER 0
 
 HRESULT STDMETHODCALLTYPE CDirectFileStream::Read(
 												/* [length_is][size_is][out] */ void __RPC_FAR *pv,
