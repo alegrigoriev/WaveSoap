@@ -52,6 +52,14 @@ public:
 	//{{AFX_MSG(CWaveSoapFileOpenDialog)
 	afx_msg void OnCheckReadOnly();
 	afx_msg void OnCheckDirectMode();
+	CWnd* GetFileDlg()
+	{
+#if _WIN32_WINNT < _WIN32_WINNT_WIN6
+		return GetParent();
+#else
+		return this;
+#endif
+	}
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 };
@@ -204,6 +212,14 @@ protected:
 	afx_msg void OnComboAttributesChange();
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
+	CWnd* GetFileDlg()
+	{
+#if _WIN32_WINNT < _WIN32_WINNT_WIN6
+		return GetParent();
+#else
+		return this;
+#endif
+	}
 };
 
 
