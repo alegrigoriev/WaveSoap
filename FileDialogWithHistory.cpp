@@ -140,6 +140,14 @@ void CFileDialogWithHistory::OnComboSelendOK()
 		return;
 	}
 	FindClose(hFind);
+	if (0 == (wfd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY))
+	{
+		m_RecentFolders.DeleteString(str);
+
+		pCb->DeleteString(sel);
+		pCb->SetCurSel(-1); // no selection
+		return;
+	}
 
 	TRACE("FindFirstFile success\n");
 	CWnd *pTmp;
