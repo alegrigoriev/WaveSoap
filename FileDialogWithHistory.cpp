@@ -4,6 +4,8 @@
 
 #include "stdafx.h"
 //#include "WaveSoapFront.h"
+#if _WIN32_WINNT < 0x0600	// XP
+
 #include "FileDialogWithHistory.h"
 #include <Dlgs.h>
 #include "resource.h"
@@ -148,24 +150,31 @@ void CFileDialogWithHistory::OnComboSelendOK()
 
 	if (NULL == pTmp)
 	{
+		pTmp = GetParent()->GetDlgItem(ItemId);
+	}
+	if (NULL == pTmp)
+	{
 		// new style dialog
 		ItemId = cmb13;
 		pTmp = GetDlgItem(ItemId);
+	}
+	if (NULL == pTmp)
+	{
+		pTmp = GetParent()->GetDlgItem(ItemId);
 	}
 	if (NULL != pTmp
 		&& ! m_bOpenFileDialog)
 	{
 		pTmp->GetWindowText(name);
 	}
-	SendMessage(CDM_SETCONTROLTEXT, ItemId, LPARAM(LPCTSTR(str)));
-	SendMessage(WM_COMMAND, IDOK, 0);
+	GetParent()->SendMessage(CDM_SETCONTROLTEXT, ItemId, LPARAM(LPCTSTR(str)));
+	GetParent()->SendMessage(WM_COMMAND, IDOK, 0);
 
-	SendMessage(CDM_SETCONTROLTEXT, ItemId, LPARAM(LPCTSTR(name)));
+	GetParent()->SendMessage(CDM_SETCONTROLTEXT, ItemId, LPARAM(LPCTSTR(name)));
 	if (NULL != pTmp)
 	{
 		pTmp->SetFocus();
 	}
-
 }
 
 INT_PTR CResizableFileDialog::DoModal()
@@ -413,3 +422,4 @@ void CResizableFileDialog::OnSize(UINT nType, int cx, int cy)
 
 }
 
+#endif

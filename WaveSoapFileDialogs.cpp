@@ -26,6 +26,7 @@ CWaveSoapFileOpenDialog::CWaveSoapFileOpenDialog(BOOL bOpenFileDialog, // TRUE f
 	m_PrevFilter(~0u),
 	m_bDirectMode(false)
 {
+#if _WIN32_WINNT < _WIN32_WINNT_WIN6
 	m_ofn.lpTemplateName = MAKEINTRESOURCE(IDD_DIALOG_OPEN_TEMPLATE_V5);
 	static ResizableDlgItem const ItemsV5[] =
 	{
@@ -37,6 +38,12 @@ CWaveSoapFileOpenDialog::CWaveSoapFileOpenDialog(BOOL bOpenFileDialog, // TRUE f
 	};
 	m_pResizeItems = ItemsV5;
 	m_ResizeItemsCount = countof(ItemsV5);
+#else
+	CString ReadOnlyButton(MAKEINTRESOURCE(IDS_RADIO_OPEN_AS_READ_ONLY));
+	AddCheckButton(IDC_CHECK_READONLY, ReadOnlyButton, m_bReadOnly);
+	CString DirectButton(MAKEINTRESOURCE(IDS_RADIO_OPEN_AS_READ_ONLY));
+	AddCheckButton(IDC_CHECK_DIRECT, DirectButton, m_bDirectMode);
+#endif
 }
 
 BEGIN_MESSAGE_MAP(CWaveSoapFileOpenDialog, BaseClass)
@@ -72,6 +79,7 @@ void CWaveSoapFileOpenDialog::ShowWmaFileInfo(CDirectFile & File)
 		{
 			pWnd->EnableWindow(FALSE);
 		}
+#if _WIN32_WINNT < _WIN32_WINNT_WIN6
 		if (WmaFile.GetSrcFormat().FormatTag() == WAVE_FORMAT_MPEGLAYER3)
 		{
 			SetDlgItemText(IDC_STATIC_FILE_TYPE, LoadCString(IDS_MP3_FILE_TYPE));
@@ -82,6 +90,7 @@ void CWaveSoapFileOpenDialog::ShowWmaFileInfo(CDirectFile & File)
 			SetDlgItemText(IDC_STATIC_FILE_TYPE, LoadCString(IDS_WMA_FILE_TYPE));
 			SetDlgItemText(IDC_STATIC_FILE_FORMAT, LoadCString(IDS_WMA_FILE_FORMAT));
 		}
+#endif
 		// length
 		CString s;
 		s.Format(_T("%s (%s)"),
@@ -170,7 +179,7 @@ void CWaveSoapFileOpenDialog::OnFileNameChange()
 		ClearFileInfoDisplay();
 		return;
 	}
-	if (GetParent()->SendMessage(CDM_GETFILEPATH, (WPARAM)m_ofn.nMaxFile,
+	if (GetFileDlg()->SendMessage(CDM_GETFILEPATH, (WPARAM)m_ofn.nMaxFile,
 								(LPARAM)pBuf) < 0)
 	{
 		ClearFileInfoDisplay();
@@ -417,6 +426,7 @@ CWaveSoapFileSaveDialog::CWaveSoapFileSaveDialog(BOOL bOpenFileDialog, // TRUE f
 	, m_pDocument(pDoc)
 {
 	m_ofn.lpTemplateName = MAKEINTRESOURCE(IDD_DIALOG_SAVE_TEMPLATE_V5);
+#if _WIN32_WINNT < _WIN32_WINNT_WIN6
 	static ResizableDlgItem const ItemsV5[] =
 	{
 		{ IDC_COMBO_RECENT, ExpandRight},
@@ -432,6 +442,7 @@ CWaveSoapFileSaveDialog::CWaveSoapFileSaveDialog(BOOL bOpenFileDialog, // TRUE f
 	};
 	m_pResizeItems = ItemsV5;
 	m_ResizeItemsCount = countof(ItemsV5);
+#endif
 }
 
 CWaveSoapFileSaveDialog::~CWaveSoapFileSaveDialog()
@@ -856,13 +867,13 @@ void CWaveSoapFileSaveDialog::OnTypeChange()
 	// get file name
 	CString name;
 	// set new default extension
-	GetParent()->SendMessage(CDM_SETDEFEXT, 0, LPARAM(LPCTSTR(m_DefExt[m_ofn.nFilterIndex]) + 1));
+	GetFileDlg()->SendMessage(CDM_SETDEFEXT, 0, LPARAM(LPCTSTR(m_DefExt[m_ofn.nFilterIndex]) + 1));
 
-	CWnd * pTmp = GetParent()->GetDlgItem(edt1);
+	CWnd * pTmp = GetFileDlg()->GetDlgItem(edt1);
 	if (NULL == pTmp)
 	{
 		// new style dialog
-		pTmp = GetParent()->GetDlgItem(cmb13);
+		pTmp = GetFileDlg()->GetDlgItem(cmb13);
 	}
 	if (NULL != pTmp)
 	{
@@ -883,7 +894,7 @@ void CWaveSoapFileSaveDialog::OnTypeChange()
 				name += m_DefExt[m_ofn.nFilterIndex - 1];
 			}
 
-			GetParent()->SendMessage(CDM_SETCONTROLTEXT, edt1, LPARAM(LPCTSTR(name)));
+			GetFileDlg()->SendMessage(CDM_SETCONTROLTEXT, edt1, LPARAM(LPCTSTR(name)));
 		}
 	}
 
