@@ -39,6 +39,7 @@ public:
 protected:
 	virtual void OnDraw(CDC* pDC);      // overridden to draw this view
 	virtual void OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint);
+	virtual void OnInitialUpdate();
 	//}}AFX_VIRTUAL
 
 // Implementation
@@ -53,37 +54,41 @@ protected:
 	void GetChannelRect(int Channel, RECT * pR) const;
 	void GetChannelClipRect(int Channel, RECT * pR) const;
 
-	struct FftGraphBand;
-
 	BOOL AllocateFftArrays();
-	int InitBandArray(ATL::CHeapPtr<FftGraphBand> & pBands, int rows, int FftOrder);
 	void CalculateFftPowerSum(float * pFftSum, SAMPLE_INDEX FirstSample,
 							int NumberOfSamplesAveraged, int FftOrder);
-
-	void BuildBandArray(double PowerScaleCoeff, FftGraphBand * pBands, int NumBands,
-						float const * pFftSum, int FftOrder);
-
-	typedef POINT DoublePoint[2];
-
-	void BuildPointArray(FftGraphBand * pBands, int NumBands, DoublePoint * ppArray, int nNumberOfPoints, int OffsetY);
-	void DrawPointArray(CDC * pDC, DoublePoint * ppArray, int NumberOfPoints, int right);
 
 	int m_FftOrder;     // frequencies in FFT conversions (window width=2*FFT order)
 
 	float * m_pFftSum;
-	float * m_pWindow;
+	ATL::CHeapPtr<float> m_pFftWindow;
+	bool m_FftWindowValid;
+
 	class NoiseReductionCore * m_pNoiseReduction;
 	int m_NrFftOrder;
-
+	int m_FftWindowType;
 	int m_nFftSumSize;
 	long m_PlaybackSample;
 
-	double m_DbOffset;
-	double m_DbRange;
-	double m_DbRangeInView;
+	double m_DbOffset;	// dB for the rightmost pixel
+	double m_DbMin;
+	double m_DbMax;
 	double m_DbPerPixel;
+	double m_Scale;		// DbRange / m_DbRangeInView, max 256, min 1
+	int m_XOrigin;
+
+	double WindowXToDb(int x) const;
+	int DbToWindowX(double db) const;
+
 	NotifyChannelHeightsData m_Heights;
 
+	int m_InvalidAreaTop[MAX_NUMBER_OF_CHANNELS];
+	int m_InvalidAreaBottom[MAX_NUMBER_OF_CHANNELS];
+
+	double m_FirstbandVisible;     // how much the chart is scrolled. 0 = DC is visible
+	double m_VerticalScale;
+
+	bool m_bIsTrackingSelection;
 	virtual ~CSpectrumSectionView();
 #ifdef _DEBUG
 	virtual void AssertValid() const;
@@ -94,8 +99,11 @@ protected:
 protected:
 	virtual void RemoveSelectionRect();
 	virtual void RestoreSelectionRect();
+	void SetNewFftOffset(double first_band);
+	double AdjustOffset(double offset) const;
 	LRESULT OnMouseLeave(WPARAM wParam, LPARAM lParam);
 	//{{AFX_MSG(CSpectrumSectionView)
+	afx_msg void OnContextMenu(CWnd* /*pWnd*/, CPoint point);
 	afx_msg int OnCreate(LPCREATESTRUCT lpCreateStruct);
 	afx_msg int OnMouseActivate(CWnd* pDesktopWnd, UINT nHitTest, UINT message);
 	afx_msg void OnUpdateViewSsShowNoiseThreshold(CCmdUI* pCmdUI);
@@ -107,6 +115,7 @@ protected:
 	afx_msg void OnMouseMove(UINT nFlags, CPoint point);
 	afx_msg void OnUpdateViewShowCrosshair(CCmdUI* pCmdUI);
 	afx_msg void OnViewShowCrosshair();
+	afx_msg void OnSize(UINT nType, int cx, int cy);
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 	afx_msg LRESULT OnUwmNotifyViews(WPARAM wParam, LPARAM lParam);
