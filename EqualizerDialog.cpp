@@ -482,7 +482,7 @@ protected:
 	afx_msg void OnTimer(UINT_PTR nIDEvent);
 	afx_msg void OnLButtonDblClk(UINT nFlags, CPoint point);
 	//}}AFX_MSG
-	afx_msg void OnNcPaint(UINT wParam);
+	afx_msg void OnNcPaint(WPARAM wparam, LPARAM lparam);
 	DECLARE_MESSAGE_MAP()
 };
 
@@ -512,7 +512,7 @@ CEqualizerGraphWnd::~CEqualizerGraphWnd()
 {
 }
 
-typedef void (CWnd::*NcPaintFunc)(UINT);
+typedef void (CWnd::*NcPaintFunc)(WPARAM, LPARAM);
 BEGIN_MESSAGE_MAP(CEqualizerGraphWnd, CWnd)
 	//{{AFX_MSG_MAP(CEqualizerGraphWnd)
 	ON_WM_PAINT()
@@ -531,7 +531,7 @@ BEGIN_MESSAGE_MAP(CEqualizerGraphWnd, CWnd)
 	ON_WM_TIMER()
 	ON_WM_LBUTTONDBLCLK()
 	//}}AFX_MSG_MAP
-{ WM_NCPAINT, 0, 0, 0, AfxSig_vw,
+{ WM_NCPAINT, 0, 0, 0, AfxSig_v_w_l,
 	(AFX_PMSG)(AFX_PMSGW)
 	static_cast< NcPaintFunc >(OnNcPaint)
 },
@@ -853,7 +853,7 @@ void CEqualizerGraphWnd::OnNcCalcSize(BOOL /*bCalcValidRects*/,
 
 }
 
-void CEqualizerGraphWnd::OnNcPaint(UINT wParam)
+void CEqualizerGraphWnd::OnNcPaint(WPARAM wParam, LPARAM )
 {
 	if (0) TRACE("CEqualizerGraphWnd::OnNcPaint, hrgn=%P\n", wParam);
 	// copy region, because it will be deleted
