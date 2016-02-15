@@ -765,7 +765,7 @@ BOOL CThroughProcessOperation::OperationProc()
 
 			if (m_SrcFile.IsOpen())
 			{
-				if (m_InputBufferPutIndex - m_InputBufferGetIndex < SrcSampleSize)
+				if (m_InputBufferPutIndex - m_InputBufferGetIndex < (unsigned)SrcSampleSize)
 				{
 					memmove(m_InputBuffer, m_InputBuffer + m_InputBufferGetIndex, m_InputBufferPutIndex - m_InputBufferGetIndex);
 					m_InputBufferPutIndex -= m_InputBufferGetIndex;
@@ -904,7 +904,7 @@ BOOL CThroughProcessOperation::OperationProc()
 			if (m_SrcFile.IsOpen())
 			{
 				// the data is read and processed from the end toward begin of the buffer
-				if (m_InputBufferGetIndex - m_InputBufferPutIndex < SrcSampleSize)
+				if (m_InputBufferGetIndex - m_InputBufferPutIndex < (unsigned)SrcSampleSize)
 				{
 					memmove(m_InputBuffer + ThroughProcessBufferSize - (m_InputBufferGetIndex - m_InputBufferPutIndex),
 							m_InputBuffer + m_InputBufferPutIndex, m_InputBufferGetIndex - m_InputBufferPutIndex);
@@ -3399,6 +3399,7 @@ unsigned CWaveProcContext::ProcessBuffer(char const * pInBuf, // if BACKWARD pas
 										signed pass)
 {
 	m_ProcBatch.SetBackwardPass(pass < 0);
+	ASSERT(m_Flags & OperationContextInitialized);
 
 	return m_ProcBatch.ProcessSound(pInBuf, pOutBuf, nInBytes, nOutBytes, pUsedBytes);
 }
