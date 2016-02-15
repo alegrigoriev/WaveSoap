@@ -848,7 +848,7 @@ void CWaveProc::DeInit()
 CVolumeChangeProc::CVolumeChangeProc(double const * VolumeArray, unsigned VolumeArraySize)
 {
 	unsigned i;
-	ASSERT(VolumeArraySize != 0 && VolumeArraySize < countof(m_Volume));
+	ASSERT(VolumeArraySize != 0 && VolumeArraySize <= countof(m_Volume));
 
 	m_InputSampleType = SampleTypeFloat32;
 
@@ -4244,6 +4244,8 @@ unsigned CBatchProcessing::ProcessSoundBuffer(char const * pIn, char * pOut,
 															outbuf,
 															pItem->InBufPutIndex - pItem->InBufGetIndex,
 															BytesToStore, & nProcessedBytes);
+			ASSERT(nOutputBytes <= BytesToStore);
+			ASSERT(nProcessedBytes <= pItem->InBufPutIndex - pItem->InBufGetIndex);
 
 			if (nOutputBytes != 0
 				|| nProcessedBytes != 0)

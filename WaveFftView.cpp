@@ -702,7 +702,7 @@ void CWaveFftView::OnDraw(CDC* pDC)
 			else
 			{
 				nCurrentFftColumn = long(0.5 + WindowXtoSample(col) / m_FftSpacing);
-				CurrentColumnRight = SampleToX((nCurrentFftColumn + 0.5) * m_FftSpacing);
+				CurrentColumnRight = (int)SampleToX((nCurrentFftColumn + 0.5) * m_FftSpacing);
 			}
 
 			ASSERT(nCurrentFftColumn >= 0);
