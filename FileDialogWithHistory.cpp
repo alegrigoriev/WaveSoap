@@ -19,32 +19,6 @@ static char THIS_FILE[] = __FILE__;
 BOOL AFXAPI AfxUnhookWindowCreate();
 /////////////////////////////////////////////////////////////////////////////
 // CFileDialogWithHistory
-bool CResizableFileDialog::SupportsV5FileDialog()
-{
-	OSVERSIONINFO VersionInfo;
-	VersionInfo.dwOSVersionInfoSize = sizeof VersionInfo;
-
-	GetVersionEx( & VersionInfo);
-
-	TRACE("Major version=%d, minor version=%d, build=%X\n",
-		VersionInfo.dwMajorVersion,
-		VersionInfo.dwMinorVersion,
-		VersionInfo.dwBuildNumber);
-	switch (VersionInfo.dwPlatformId)
-	{
-	case VER_PLATFORM_WIN32_NT:
-		return VersionInfo.dwMajorVersion >= 5;
-		break;
-	case VER_PLATFORM_WIN32_WINDOWS:
-		return VersionInfo.dwMajorVersion > 4
-				|| (VersionInfo.dwMajorVersion == 4
-					&& VersionInfo.dwMinorVersion >= 90);
-		break;
-	default:
-		return FALSE;
-
-	}
-}
 
 IMPLEMENT_DYNAMIC(CResizableFileDialog, CFileDialog)
 
@@ -75,14 +49,7 @@ CFileDialogWithHistory::CFileDialogWithHistory(BOOL bOpenFileDialog, // TRUE for
 	: BaseClass(bOpenFileDialog, lpszDefExt, lpszFileName, dwFlags, lpszFilter, pParentWnd)
 	, m_RecentFolders(& m_Profile, Section, KeyFormat, NumStrings)
 {
-	if (SupportsV5FileDialog())
-	{
-		m_ofn.lpTemplateName = MAKEINTRESOURCE(IDD_DIALOG_WITH_HISTORY_TEMPLATE_V5);
-	}
-	else
-	{
-		m_ofn.lpTemplateName = MAKEINTRESOURCE(IDD_DIALOG_WITH_HISTORY_TEMPLATE_V4);
-	}
+	m_ofn.lpTemplateName = MAKEINTRESOURCE(IDD_DIALOG_WITH_HISTORY_TEMPLATE_V5);
 
 	m_ofn.Flags |= OFN_ENABLETEMPLATE;
 
@@ -100,14 +67,7 @@ CFileDialogWithHistory::CFileDialogWithHistory(BOOL bOpenFileDialog, // TRUE for
 	: BaseClass(bOpenFileDialog, lpszDefExt, lpszFileName, dwFlags, lpszFilter, pParentWnd)
 	, m_RecentFolders(pSourceHistory)
 {
-	if (SupportsV5FileDialog())
-	{
-		m_ofn.lpTemplateName = MAKEINTRESOURCE(IDD_DIALOG_WITH_HISTORY_TEMPLATE_V5);
-	}
-	else
-	{
-		m_ofn.lpTemplateName = MAKEINTRESOURCE(IDD_DIALOG_WITH_HISTORY_TEMPLATE_V4);
-	}
+	m_ofn.lpTemplateName = MAKEINTRESOURCE(IDD_DIALOG_WITH_HISTORY_TEMPLATE_V5);
 
 	m_ofn.Flags |= OFN_ENABLETEMPLATE;
 
@@ -177,46 +137,30 @@ void CFileDialogWithHistory::OnComboSelendOK()
 		pCb->SetCurSel(-1); // no selection
 		return;
 	}
+	FindClose(hFind);
 
 	TRACE("FindFirstFile success\n");
-	FindClose(hFind);
-	CWnd * pTmp = GetDlgItem(edt1);
+	CWnd *pTmp;
 	CString name;
+
+	int ItemId = edt1;
+	pTmp = GetDlgItem(ItemId);
+
 	if (NULL == pTmp)
 	{
 		// new style dialog
-		pTmp = GetDlgItem(cmb13);
+		ItemId = cmb13;
+		pTmp = GetDlgItem(ItemId);
 	}
 	if (NULL != pTmp
 		&& ! m_bOpenFileDialog)
 	{
 		pTmp->GetWindowText(name);
 	}
-#ifdef _UNICODE
-	OSVERSIONINFO vi;
-	ZeroMemory(&vi, sizeof(OSVERSIONINFO));
-	vi.dwOSVersionInfoSize = sizeof(OSVERSIONINFO);
-	::GetVersionEx(&vi);
+	SendMessage(CDM_SETCONTROLTEXT, ItemId, LPARAM(LPCTSTR(str)));
+	SendMessage(WM_COMMAND, IDOK, 0);
 
-	if (vi.dwPlatformId != VER_PLATFORM_WIN32_NT)
-	{
-		if (NULL != pTmp)
-		{
-			pTmp->SetWindowText(str);
-
-			SendMessage(WM_COMMAND, IDOK, 0);
-
-			pTmp->SetWindowText(name);
-		}
-	}
-	else
-#endif
-	{
-		SendMessage(CDM_SETCONTROLTEXT, edt1, LPARAM(LPCTSTR(str)));
-		SendMessage(WM_COMMAND, IDOK, 0);
-
-		SendMessage(CDM_SETCONTROLTEXT, edt1, LPARAM(LPCTSTR(name)));
-	}
+	SendMessage(CDM_SETCONTROLTEXT, ItemId, LPARAM(LPCTSTR(name)));
 	if (NULL != pTmp)
 	{
 		pTmp->SetFocus();
@@ -397,26 +341,6 @@ CString CResizableFileDialog::GetNextPathName(POSITION& pos) const
 	}
 
 	return FullPath;
-}
-
-DWORD CResizableFileDialog::OpenfilenameSize()
-{
-	OSVERSIONINFO vi;
-	vi.dwOSVersionInfoSize = sizeof vi;
-	GetVersionEx( & vi);
-
-	if ((vi.dwPlatformId == VER_PLATFORM_WIN32_NT
-			&& vi.dwMajorVersion >= 5)
-		|| (vi.dwPlatformId == VER_PLATFORM_WIN32_WINDOWS
-			&& vi.dwMajorVersion == 4
-			&& vi.dwMinorVersion >= 90))
-	{
-		return sizeof (OPENFILENAME);
-	}
-	else
-	{
-		return OPENFILENAME_SIZE_VERSION_400;
-	}
 }
 
 void CResizableFileDialog::OnSize(UINT nType, int cx, int cy)

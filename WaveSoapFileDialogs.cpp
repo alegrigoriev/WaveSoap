@@ -26,34 +26,17 @@ CWaveSoapFileOpenDialog::CWaveSoapFileOpenDialog(BOOL bOpenFileDialog, // TRUE f
 	m_PrevFilter(~0u),
 	m_bDirectMode(false)
 {
-	if (SupportsV5FileDialog())
+	m_ofn.lpTemplateName = MAKEINTRESOURCE(IDD_DIALOG_OPEN_TEMPLATE_V5);
+	static ResizableDlgItem const ItemsV5[] =
 	{
-		m_ofn.lpTemplateName = MAKEINTRESOURCE(IDD_DIALOG_OPEN_TEMPLATE_V5);
-		static ResizableDlgItem const ItemsV5[] =
-		{
-			{ IDC_STATIC_GROUPBOX, ExpandRight},
-			{ IDC_COMBO_RECENT, ExpandRight},
-			{ IDC_EDIT_FILE_COMMENTS, ExpandRight},
-			{ IDC_BUTTON_MORE, MoveRight},
-			{ IDHELP, MoveRight},
-		};
-		m_pResizeItems = ItemsV5;
-		m_ResizeItemsCount = countof(ItemsV5);
-	}
-	else
-	{
-		m_ofn.lpTemplateName = MAKEINTRESOURCE(IDD_DIALOG_OPEN_TEMPLATE_V4);
-		static ResizableDlgItem const ItemsV4[] =
-		{
-			{ IDC_STATIC_GROUPBOX, ExpandRight},
-			{ IDC_COMBO_RECENT, ExpandRight},
-			{ IDC_EDIT_FILE_COMMENTS, ExpandRight},
-			{ IDC_BUTTON_MORE, MoveRight},
-			{ IDHELP, MoveRight},
-		};
-		m_pResizeItems = ItemsV4;
-		m_ResizeItemsCount = countof(ItemsV4);
-	}
+		{ IDC_STATIC_GROUPBOX, ExpandRight},
+		{ IDC_COMBO_RECENT, ExpandRight},
+		{ IDC_EDIT_FILE_COMMENTS, ExpandRight},
+		{ IDC_BUTTON_MORE, MoveRight},
+		{ IDHELP, MoveRight},
+	};
+	m_pResizeItems = ItemsV5;
+	m_ResizeItemsCount = countof(ItemsV5);
 }
 
 BEGIN_MESSAGE_MAP(CWaveSoapFileOpenDialog, BaseClass)
@@ -433,43 +416,22 @@ CWaveSoapFileSaveDialog::CWaveSoapFileSaveDialog(BOOL bOpenFileDialog, // TRUE f
 	, CFileSaveUiSupport(Wf)
 	, m_pDocument(pDoc)
 {
-	if (SupportsV5FileDialog())
+	m_ofn.lpTemplateName = MAKEINTRESOURCE(IDD_DIALOG_SAVE_TEMPLATE_V5);
+	static ResizableDlgItem const ItemsV5[] =
 	{
-		static ResizableDlgItem const ItemsV5[] =
-		{
-			{ IDC_COMBO_RECENT, ExpandRight},
-			{ IDC_COMBO_FORMAT, ExpandRight},
-			{ IDC_COMBO_ATTRIBUTES, ExpandRight},
-			{ IDC_COMBO_TITLE, ExpandRight},
-			{ IDC_COMBO_ARTIST, ExpandRight},
-			{ IDC_COMBO_ALBUM, ExpandRight},
-			{ IDC_CHECK_COMPATIBLE_FORMATS, MoveRight},
-			{ IDC_STATIC_COMMENTS, MoveRight},
-			{ IDC_EDIT_COMMENT, MoveRight},
-			{ IDHELP, MoveRight},
-		};
-		m_ofn.lpTemplateName = MAKEINTRESOURCE(IDD_DIALOG_SAVE_TEMPLATE_V5);
-		m_pResizeItems = ItemsV5;
-		m_ResizeItemsCount = countof(ItemsV5);
-	}
-	else
-	{
-		static ResizableDlgItem const ItemsV4[] =
-		{
-			{ IDC_COMBO_RECENT, ExpandRight},
-			{ IDC_COMBO_FORMAT, ExpandRight},
-			{ IDC_COMBO_ATTRIBUTES, ExpandRight},
-			{ IDC_COMBO_TITLE, ExpandRight},
-			{ IDC_COMBO_ARTIST, ExpandRight},
-			{ IDC_COMBO_ALBUM, ExpandRight},
-			{ IDC_EDIT_COMMENT, ExpandRight},
-			{ IDHELP, MoveRight},
-		};
-		m_ofn.lpTemplateName = MAKEINTRESOURCE(IDD_DIALOG_SAVE_TEMPLATE_V4);
-		m_pResizeItems = ItemsV4;
-		m_ResizeItemsCount = countof(ItemsV4);
-	}
-
+		{ IDC_COMBO_RECENT, ExpandRight},
+		{ IDC_COMBO_FORMAT, ExpandRight},
+		{ IDC_COMBO_ATTRIBUTES, ExpandRight},
+		{ IDC_COMBO_TITLE, ExpandRight},
+		{ IDC_COMBO_ARTIST, ExpandRight},
+		{ IDC_COMBO_ALBUM, ExpandRight},
+		{ IDC_CHECK_COMPATIBLE_FORMATS, MoveRight},
+		{ IDC_STATIC_COMMENTS, MoveRight},
+		{ IDC_EDIT_COMMENT, MoveRight},
+		{ IDHELP, MoveRight},
+	};
+	m_pResizeItems = ItemsV5;
+	m_ResizeItemsCount = countof(ItemsV5);
 }
 
 CWaveSoapFileSaveDialog::~CWaveSoapFileSaveDialog()

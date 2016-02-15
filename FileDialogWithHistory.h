@@ -34,10 +34,7 @@ public:
 	}
 	CString GetNextPathName(POSITION& pos) const;
 
-	static bool SupportsV5FileDialog();
-
 protected:
-	static DWORD OpenfilenameSize();
 
 	CSize m_PrevSize;
 	enum
