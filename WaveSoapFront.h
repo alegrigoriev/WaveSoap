@@ -292,6 +292,79 @@ inline CThisApp * GetApp()
 	return static_cast<CThisApp *>(AfxGetApp());
 }
 
+enum FftWindowType
+{
+	WindowTypeSquaredSine = 0,
+	WindowTypeHalfSine = 1,
+	WindowTypeHamming = 2,
+	WindowTypeNuttall = 3,
+};
+
+enum SiblingNotifyCode
+{
+	ChannelHeightsChanged,
+	FftBandsChanged,
+	FftWindowChanged,
+
+	HorizontalScaleChanged,
+	HorizontalOriginChanged,     // NotifyViewsData.HorizontalScroll
+	HorizontalExtentChanged,     // NotifyViewsData.HorizontalScroll
+	HorizontalScrollPixels,   // lParam is pointer to int pixels (signed)
+	VerticalScaleChanged,
+	AmplitudeOffsetChanged,
+	AmplitudeScrollTo,
+
+	FftScrollTo,
+	FftOffsetChanged,
+	FftVerticalScaleChanged,
+
+	SpectrumSectionDbOriginChange,	// set current origin, sent by the view
+	SpectrumSectionDbScaleChange,	// set current scale in dB per pixel, double, is sent by the view to itself and to the ruler
+	SpectrumSectionScaleChange,		// change current scale, double 1 to 256
+	SpectrumSectionHorScrollTo,		// scroll to position, unclipped, sent by the ruler
+};
+
+struct NotifyViewsData
+{
+	int code;
+	union {
+		struct {
+			double HorizontalScale;
+			double FirstSampleInView;
+			double TotalSamplesInView;
+			double TotalSamplesInExtent;    // adjusted for the reserved empty space after the end
+		} HorizontalScroll;
+		struct {
+		} Amplitude;
+		struct {
+		} Fft;
+	};
+};
+
+struct ChannelHeight
+{
+	// bottom, clip_bottom excludes the separator line.
+	int top;
+	int bottom;               // top+NominalChannelHeight or +MinimizedChannelHeight
+	int clip_top;             // == top
+	int clip_bottom;          // top+NominalChannelHeight+OddPixel or +MinimizedChannelHeight+OddPixel
+	bool minimized;
+};
+struct NotifyChannelHeightsData
+{
+	int NumChannels;
+	int NominalChannelHeight;      // non-minimized channel height, not including the separator line. This is used for scroll calculation
+	ChannelHeight ch[MAX_NUMBER_OF_CHANNELS];
+};
+
+#define NotifySiblingViews(NotifyCode, data) NotifySiblingViews_(this, NotifyCode, data)
+
+inline LRESULT NotifySiblingViews_(CWnd *wnd, int NotifyCode, PVOID data)
+{
+	ASSERT(wnd->GetParent() != NULL);
+	return wnd->GetParent()->SendMessage(UWM_NOTIFY_VIEWS, NotifyCode, (LPARAM)data);
+}
+
 // long to string, thousands separated by commas
 void SetStatusString(CCmdUI* pCmdUI, const CString & string,
 					LPCTSTR MaxString = NULL, BOOL bForceSize = FALSE);
