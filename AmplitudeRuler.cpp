@@ -375,12 +375,14 @@ void CAmplitudeRuler::OnUpdate(CView* /*pSender*/, LPARAM lHint, CObject* /*pHin
 	}
 }
 
-void CAmplitudeRuler::VerticalScrollPixels(int Pixels)
+void CAmplitudeRuler::BeginMouseTracking()
 {
-	if (m_MouseYOffsetForScroll == 0)
-	{
-		m_WaveOffsetBeforeScroll = m_WaveOffsetY;
-	}
+	m_MouseYOffsetForScroll = 0;
+	m_WaveOffsetBeforeScroll = m_WaveOffsetY;
+}
+
+void CAmplitudeRuler::VerticalScrollByPixels(int Pixels)
+{
 	m_MouseYOffsetForScroll += Pixels;
 
 	double offset = m_WaveOffsetBeforeScroll + m_MouseYOffsetForScroll / m_VerticalScale * 65536. / m_Heights.NominalChannelHeight;
@@ -630,9 +632,11 @@ IMPLEMENT_DYNCREATE(CSpectrumSectionRuler, CHorizontalRuler)
 
 CSpectrumSectionRuler::CSpectrumSectionRuler()
 	: m_DbOffset(0.)
-	, m_DbRange(120.)   // max dB range
-	, m_DbRangeInView(70.)
 	, m_DbPerPixel(1.)
+	, m_Scale(2.)
+	, m_MouseXOffsetForScroll(0)
+	, m_DbOffsetBeforeScroll(0.)
+	, m_XOrigin(0)
 {
 }
 
@@ -643,8 +647,10 @@ CSpectrumSectionRuler::~CSpectrumSectionRuler()
 
 BEGIN_MESSAGE_MAP(CSpectrumSectionRuler, BaseClass)
 	//{{AFX_MSG_MAP(CSpectrumSectionRuler)
+	ON_WM_LBUTTONDBLCLK()
+	ON_WM_CONTEXTMENU()
 	//}}AFX_MSG_MAP
-	//ON_WM_CREATE()
+	ON_WM_SIZE()
 	ON_MESSAGE(UWM_NOTIFY_VIEWS, &CSpectrumSectionRuler::OnUwmNotifyViews)
 END_MESSAGE_MAP()
 
@@ -653,12 +659,12 @@ END_MESSAGE_MAP()
 
 double CSpectrumSectionRuler::WindowXToDb(int x) const
 {
-	return x * m_DbPerPixel + m_DbOffset;
+	return (x - m_XOrigin) * m_DbPerPixel + m_DbOffset;
 }
 
 int CSpectrumSectionRuler::DbToWindowX(double db) const
 {
-	return int((db - m_DbOffset) / m_DbPerPixel + 0.5);     // round
+	return m_XOrigin + int((db - m_DbOffset) / m_DbPerPixel + 0.5);     // round
 }
 
 void CSpectrumSectionRuler::OnDraw(CDC* pDC)
@@ -677,8 +683,8 @@ void CSpectrumSectionRuler::OnDraw(CDC* pDC)
 	GetClientRect( & cr);
 
 	int nTickCount;
-	double LeftExt = fabs(WindowXToDb(cr.left));
-	double RightExt = fabs(WindowXToDb(cr.right));
+	double LeftExt = floor(WindowXToDb(cr.left));
+	double RightExt = ceil(WindowXToDb(cr.right));
 	double MaxExt = RightExt;
 	if (MaxExt < LeftExt)
 	{
@@ -698,7 +704,7 @@ void CSpectrumSectionRuler::OnDraw(CDC* pDC)
 
 	int nLength = pDC->GetTextExtent(MaxText, (int)_tcslen(MaxText)).cx;
 
-	double Dist = fabs(1.5 * nLength / m_DbPerPixel);
+	double Dist = fabs(1.5 * nLength * m_DbPerPixel);
 	// select distance between ticks
 	double multiplier = 1.;
 	double divisor = 1.;
@@ -766,7 +772,7 @@ void CSpectrumSectionRuler::OnDraw(CDC* pDC)
 
 	for(int nTick = 0; ; nTick++)
 	{
-		double Db = nFirstDb + DistDb * nTick / double(nTickCount);
+		double Db = nFirstDb - DistDb * nTick / double(nTickCount);
 		int x = DbToWindowX(Db);
 
 		if (x < cr.left - nLength)
@@ -799,6 +805,12 @@ void CSpectrumSectionRuler::OnDraw(CDC* pDC)
 			pDC->LineTo(x, cr.bottom - 5);
 		}
 	}
+}
+
+void CSpectrumSectionRuler::OnSize(UINT nType, int cx, int cy)
+{
+	m_XOrigin = cx;
+	BaseClass::OnSize(nType, cx, cy);
 }
 
 
@@ -836,23 +848,85 @@ int CSpectrumSectionRuler::OnCreate(LPCREATESTRUCT lpCreateStruct)
 {
 	return CHorizontalRuler::OnCreate(lpCreateStruct);
 }
+
+void CSpectrumSectionRuler::BeginMouseTracking()
+{
+	m_MouseXOffsetForScroll = 0;
+	m_DbOffsetBeforeScroll = m_DbOffset;
+}
+
+void CSpectrumSectionRuler::OnLButtonDblClk(UINT /*nFlags*/, CPoint /*point*/)
+{
+	double scale = 1.;
+	NotifySiblingViews(SpectrumSectionScaleChange, &scale);
+}
+
 void CSpectrumSectionRuler::HorizontalScrollByPixels(int Pixels)
 {
-	// TODO
+	m_MouseXOffsetForScroll += Pixels;
+	double offset = m_DbOffsetBeforeScroll + m_MouseXOffsetForScroll * m_DbPerPixel;
+
+	NotifySiblingViews(SpectrumSectionHorScrollTo, &offset);
+}
+
+void CSpectrumSectionRuler::HorizontalScrollTo(double DbOffset)
+{
+	// FirstSample is aligned to multiple of HorizontalScale
+	int ScrollPixels = int (-DbOffset / m_DbPerPixel + 0.5) - int(-m_DbOffset / m_DbPerPixel + 0.5);
+	m_DbOffset = DbOffset;
+
+	ScrollWindow(-ScrollPixels, 0);
+}
+
+void CSpectrumSectionRuler::OnContextMenu(CWnd* /*pWnd*/, CPoint point)
+{
+	// make sure window is active
+	GetParentFrame()->ActivateFrame();
+
+	CMenu menu;
+	CMenu* pPopup = NULL;
+
+	UINT uID = GetPopupMenuID(point);
+
+	if (uID != 0 && menu.LoadMenu(uID))
+	{
+		pPopup = menu.GetSubMenu(0);
+	}
+
+	if (pPopup != NULL)
+	{
+		int Command = pPopup->TrackPopupMenu(
+											TPM_LEFTALIGN | TPM_RIGHTBUTTON | TPM_RETURNCMD,
+											point.x, point.y,
+											AfxGetMainWnd()); // use main window for cmds
+
+		if (0 != Command)
+		{
+			AfxGetMainWnd()->SendMessage(WM_COMMAND, Command & 0xFFFF, 0);
+		}
+	}
 }
 
 afx_msg LRESULT CSpectrumSectionRuler::OnUwmNotifyViews(WPARAM wParam, LPARAM lParam)
 {
 	switch (wParam)
 	{
-	case SpectrumSectionDbOffsetChange:
+	case SpectrumSectionDbOriginChange:
+		HorizontalScrollTo(*(double*)lParam);
 		break;
 
 	case SpectrumSectionDbScaleChange:
+	{
+		double scale = *(double*)lParam;
+		if (scale == m_DbPerPixel)
+		{
+			break;
+		}
+		m_DbPerPixel = scale;
+		Invalidate(FALSE);
+	}
 		break;
 
-	case SpectrumSectionScrollPixels:
-		break;
 	}
 
 	return 0;

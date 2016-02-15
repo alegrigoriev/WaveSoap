@@ -33,7 +33,8 @@ public:
 protected:
 	virtual void OnDraw(CDC* pDC);      // overridden to draw this view
 	//}}AFX_VIRTUAL
-	virtual void VerticalScrollPixels(int Pixels);
+	virtual void VerticalScrollByPixels(int Pixels);
+	virtual void BeginMouseTracking();
 
 // Implementation
 protected:
@@ -114,8 +115,11 @@ protected:
 	virtual void OnDraw(CDC* pDC);      // overridden to draw this view
 	//}}AFX_VIRTUAL
 	virtual void HorizontalScrollByPixels(int Pixels);
+	virtual void BeginMouseTracking();
+
 	double WindowXToDb(int x) const;
 	int DbToWindowX(double db) const;
+	void HorizontalScrollTo(double DbOffset);
 
 	// Implementation
 protected:
@@ -126,16 +130,19 @@ protected:
 	virtual void Dump(CDumpContext& dc) const;
 #endif
 
-	double m_DbOffset;
-	double m_DbRange;
-	double m_DbRangeInView;
+	double m_DbOffset;	// dB level for the pixel at m_XOrigin, 0 or negative. For floating point source, overshoot is allowed
 	double m_DbPerPixel;
+	double m_Scale;
+	int m_XOrigin;		// usually the window width
+	int m_MouseXOffsetForScroll;
+	double m_DbOffsetBeforeScroll;
 	// Generated message map functions
 protected:
 	afx_msg int OnCreate(LPCREATESTRUCT lpCreateStruct);
-	afx_msg void OnLButtonDblClk(UINT nFlags, CPoint point);
 	//{{AFX_MSG(CSpectrumSectionRuler)
 	afx_msg void OnContextMenu(CWnd* pWnd, CPoint point);
+	afx_msg void OnSize(UINT nType, int cx, int cy);
+	afx_msg void OnLButtonDblClk(UINT nFlags, CPoint point);
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 	afx_msg LRESULT OnUwmNotifyViews(WPARAM wParam, LPARAM lParam);
