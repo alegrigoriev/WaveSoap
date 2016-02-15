@@ -3068,13 +3068,25 @@ bool operator ==(FILETIME const & t1, FILETIME const & t2)
 CPath CWaveFile::MakePeakFileName(LPCTSTR FileName)
 {
 	CPath path(FileName);
+	CPath AppDataPath;
+
+
+#if _WIN32_WINNT >= 0x0600	// XP
 	LPWSTR pFolderPath = NULL;
-
-	if (S_OK != SHGetKnownFolderPath(FOLDERID_LocalAppData, 0, NULL, & pFolderPath))
+	if (S_OK == SHGetKnownFolderPath(FOLDERID_LocalAppData, 0, NULL, & pFolderPath))
 	{
-		CPath AppDataPath(pFolderPath);
+		AppDataPath = pFolderPath;
 		CoTaskMemFree(pFolderPath);
-
+	}
+#else
+	TCHAR FolderPath[MAX_PATH];
+	if (S_OK == SHGetFolderPath(NULL, CSIDL_LOCAL_APPDATA | CSIDL_FLAG_CREATE, NULL, 0, FolderPath))
+	{
+		AppDataPath = FolderPath;
+	}
+#endif
+	if ( ! ((CString&)AppDataPath).IsEmpty())
+	{
 		AppDataPath.Append(L"WaveSoap");
 		VerifyCreateDirectory(AppDataPath);
 
