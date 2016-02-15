@@ -454,7 +454,7 @@ BOOL CWaveSoapFrontApp::InitInstance()
 	Profile.AddItem(_T("Settings"), _T("FftWindowType"), m_FftWindowType, 0, 0, 2);
 	Profile.AddItem(_T("Settings"), _T("DefaultOpenMode"), m_DefaultOpenMode, DefaultOpenBuffered, 0, 2);
 
-	Profile.AddItem(_T("Settings"), _T("MaxMemoryFileSize"), m_MaxMemoryFileSize, 64, 1, 1024);
+	Profile.AddItem(_T("Settings"), _T("MaxMemoryFileSize"), m_MaxMemoryFileSize, 64, 1, 16*1024);
 	Profile.AddItem(_T("Settings"), _T("Allow4GbWavFile"), m_bAllow4GbWavFile, FALSE);
 	Profile.AddItem(_T("Settings"), _T("MetaTextEncoding"), CMmioFile::m_TextEncodingInFiles, 0, 0, 2);
 
@@ -465,7 +465,7 @@ BOOL CWaveSoapFrontApp::InitInstance()
 	Profile.AddItem(_T("Settings"), _T("RecordingDevice"), m_DefaultRecordDevice, WAVE_MAPPER, WAVE_MAPPER, 64);
 	Profile.AddItem(_T("Settings"), _T("NumRecordBuffers"), m_NumRecordBuffers, 8, 2, 32);
 	Profile.AddItem(_T("Settings"), _T("SizeRecordBuffers"), m_SizeRecordBuffers, 0x10000, 0x1000, 0x40000);
-	Profile.AddItem(_T("Settings"), _T("MaxFileCache"), m_MaxFileCache, 64, 1, 512);
+	Profile.AddItem(_T("Settings"), _T("MaxFileCache"), m_MaxFileCache, 64, 1, 1024);
 
 	Profile.AddItem(_T("Settings"), _T("PasteMode"), m_DefaultPasteMode, 0, 0, 2);
 	Profile.AddItem(_T("Settings"), _T("PasteResampleMode"), m_PasteResampleMode, 0, 0, 1);
