@@ -290,10 +290,13 @@ float const * CWaveFftView::GetFftResult(SAMPLE_INDEX sample, unsigned channel)
 		return NULL;
 	}
 
-	if (NULL == (float*)m_pFftWindow)
+	if (!m_FftWindowValid)
 	{
 		TRACE("Calculating FFT window\n");
-		m_pFftWindow.Allocate(m_FftOrder * 2);
+		if (!m_pFftWindow)
+		{
+			m_pFftWindow.Allocate(m_FftOrder * 2);
+		}
 
 		for (int w = 0; w < m_FftOrder * 2; w++)
 		{
@@ -323,6 +326,7 @@ float const * CWaveFftView::GetFftResult(SAMPLE_INDEX sample, unsigned channel)
 				break;
 			}
 		}
+		m_FftWindowValid = true;
 	}
 
 	if (NULL == m_pFftBuf)
@@ -397,14 +401,14 @@ CWaveFftView::CWaveFftView()
 	m_FftResultArrayHeight(0),
 	m_FftLogRange(10. * M_LOG10E),
 	m_FirstbandVisible(0),
-	m_FftWindowType(WindowTypeNuttall),
+	m_FftWindowType(WindowTypeSquaredSine),
 	m_IndexOfFftBegin(0),
 	m_FftArraySize(0),
 	m_PrevSelectionEnd(0),
 	m_PrevSelectionStart(0),
 	m_PrevSelectedChannel(0),
 	m_VerticalScale(1.)
-
+	, m_FftWindowValid(false)
 {
 	m_FftOrder = 1 << GetApp()->m_FftBandsOrder;
 	m_FftSpacing = m_FftOrder;
@@ -629,9 +633,7 @@ void CWaveFftView::OnDraw(CDC* pDC)
 			int top = m_Heights.ch[ch].clip_top;
 			int bottom = m_Heights.ch[ch].clip_bottom;
 
-			int height = m_Heights.ch[ch].bottom - m_Heights.ch[ch].top;
-
-			int ScaledHeight = height;
+			int ScaledHeight = m_Heights.ch[ch].bottom - m_Heights.ch[ch].top;
 			int OffsetPixels = 0;
 
 			if (! m_Heights.ch[ch].minimized)
@@ -1088,6 +1090,7 @@ void CWaveFftView::Dump(CDumpContext& dc) const
 void CWaveFftView::OnInitialUpdate()
 {
 	NotifySiblingViews(FftBandsChanged, &m_FftOrder);
+	NotifySiblingViews(FftWindowChanged, &m_FftWindowType);
 	return BaseClass::OnInitialUpdate();
 }
 
@@ -1333,6 +1336,7 @@ void CWaveFftView::OnSetBands(int order)
 		delete[] m_pFftResultArray;
 		m_pFftResultArray = NULL;
 
+		m_FftWindowValid = false;
 		m_pFftWindow.Free();
 		m_pFftBuf.Free();
 
@@ -1348,13 +1352,12 @@ void CWaveFftView::OnSetWindowType(int window)
 		m_FftWindowType = window;
 		GetApp()->m_FftWindowType = window;
 
-		delete[] m_pFftResultArray;
-		m_pFftResultArray = NULL;
+		InvalidateFftColumnRange(0, LONG_MAX);
 
-		m_pFftWindow.Free();
+		m_FftWindowValid = false;
 
 		Invalidate();
-//FIXME        NotifySlaveViews(FFT_BANDS_CHANGED);           // update spectrum section, too
+		NotifySiblingViews(FftWindowChanged, &m_FftWindowType);           // update spectrum section, too
 	}
 }
 

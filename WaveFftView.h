@@ -65,6 +65,7 @@ protected:
 	double m_VerticalScale;
 
 	ATL::CHeapPtr<float> m_pFftWindow;
+	bool m_FftWindowValid;
 	typedef double DATA;
 	ATL::CHeapPtr<DATA> m_pFftBuf;  // for calculations, sized  m_FftOrder * 2 + 2
 	enum
