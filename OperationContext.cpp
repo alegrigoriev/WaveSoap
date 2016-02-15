@@ -3228,6 +3228,12 @@ BOOL CNormalizeContext::Init()
 		}
 	}
 
+	if (GotJob)
+	{
+		CVolumeChangeProc::auto_ptr VolumeChange(new CVolumeChangeProc(Volume, countof(Volume)));
+		AddWaveProc(VolumeChange.release());
+	}
+
 	if ( ! BaseClass::Init())
 	{
 		return FALSE;
@@ -3239,9 +3245,6 @@ BOOL CNormalizeContext::Init()
 		m_Flags |= OperationContextFinished;
 		DeleteUndo();
 	}
-
-	CVolumeChangeProc::auto_ptr VolumeChange(new CVolumeChangeProc(Volume, countof(Volume)));
-	AddWaveProc(VolumeChange.release());
 
 	return TRUE;
 }
@@ -3633,7 +3636,7 @@ void CWmaDecodeContext::PostRetire()
 	if (0 == (m_Flags & OperationContextFinished))
 	{
 		CString s;
-		if (m_Flags & OperationContextInitFailed)
+		if (m_Flags & (OperationContextInitFailed | OperationContextStopRequested))
 		{
 			//s.Format(IDS_CANT_DECOMPRESS_FILE, LPCTSTR(m_pDocument->m_OriginalWavFile.GetName()), -1, 0);
 			//AfxMessageBox(s, MB_ICONSTOP);
