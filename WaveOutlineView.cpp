@@ -261,10 +261,10 @@ void CWaveOutlineView::OnDraw(CDC* pDC)
 
 	long prev_x = 0x7FFFFFFF;
 
-	for (SAMPLE_INDEX_Vector::const_iterator i = markers.begin();
-		i != markers.end(); i++)
+	for (SAMPLE_INDEX_Vector::const_iterator ii = markers.begin();
+		ii != markers.end(); ii++)
 	{
-		long x = MulDiv( *i, cr.right, nSamples);
+		long x = MulDiv( *ii, cr.right, nSamples);
 
 		if (x != prev_x
 			&& x >= ur.left

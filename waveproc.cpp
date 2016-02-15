@@ -2016,7 +2016,7 @@ void FindComponents(double_vector const& x, comp_vector &Components, int FftOrde
 		complex_iterator i2 = result.begin();
 		double phase_correction = 0.;
 
-		for (int x = 0; i2 != result.end(); i1++, i2++, amp++, ph++, x++)
+		for (int xx = 0; i2 != result.end(); i1++, i2++, amp++, ph++, xx++)
 		{
 			i2->real(i1[1] - i1[0] * i->FilterZero.real());
 			// use complex conjugate of the zero, to filter out negative frequencies
@@ -2039,8 +2039,8 @@ void FindComponents(double_vector const& x, comp_vector &Components, int FftOrde
 					ph[0] -= 2 * M_PI;
 				}
 			}
-			X[x] = x;
-			Weight[x] = Weight.size() - x;
+			X[xx] = xx;
+			Weight[xx] = (int)Weight.size() - xx;
 		}
 
 		LinearRegression(X, amplitudes, Weight, i->InitialAmplitude, i->AmplitudeDecay);
@@ -2102,12 +2102,11 @@ void CClickRemoval::InterpolateBigGapSliding(WAVE_SAMPLE data[], int nLeftIndex,
 	// extrapolate ClickLength + ClickLength / 2 - the gap and
 	// the right neighborhood
 	int const ExtrapolatedLength = ClickLength;// + ClickLength / 2;
-	int i;
 
 	ASSERT(nLeftIndex >= FftOrder - ExtrapolatedLength);
 
 	x.resize(TotalSamples, 0.);
-	for (i = 0; i < TotalSamples; i++)
+	for (int i = 0; i < TotalSamples; i++)
 	{
 		x[i] = data[nChans * i];
 	}
@@ -3305,22 +3304,21 @@ void NoiseReductionCore::GetAudioMasking(DATA * pBuf)  // nChannels * FftOrder
 {
 	for (int ch = 0; ch < m_nChannels; ch++)
 	{
-		DATA * pDst = pBuf + ch;
 		NoiseReductionChannelData * pCh = m_ChannelData[ch];
-		SIGNAL_PARAMS const * pParms = & pCh->m_pParams.front();
+		auto pParms = pCh->m_pParams.cbegin();
 
-		for (unsigned i = 0; i < m_nFftOrder; i++, pParms++, pDst += m_nChannels)
+		for (unsigned i = 0; i < m_nFftOrder; i++, pParms++, pBuf++)
 		{
-			*pDst = pParms->sp_MaskingPower;
+			*pBuf = pParms->sp_MaskingPower;
 		}
 	}
 }
 
 void NoiseReductionCore::GetNoiseThreshold(DATA * pBuf) // precomputed threshold, nChannels *FftOrder count
 {
-	for (unsigned i = 0; i < m_nFftOrder; i++)
+	for (int ch = 0; ch < m_nChannels; ch++)
 	{
-		for (int ch = 0; ch < m_nChannels; ch++, pBuf ++)
+		for (unsigned i = 0; i < m_nFftOrder; i++, pBuf++)
 		{
 			*pBuf = m_pNoiseFloor[i];
 		}

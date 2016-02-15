@@ -727,7 +727,7 @@ void CWaveFftView::OnDraw(CDC* pDC)
 						{
 							break;
 						}
-						unsigned char r;
+						unsigned char red;
 						unsigned char g;
 						unsigned char b;
 						if (pData != NULL)
@@ -763,13 +763,13 @@ void CWaveFftView::OnDraw(CDC* pDC)
 
 							unsigned char const * pColor = & palette[PaletteIndex * 3];
 							// set the color to pId->nNumOfRows rows
-							r = pColor[0];
+							red = pColor[0];
 							g = pColor[1];
 							b = pColor[2];
 						}
 						else
 						{
-							r = 0;    // B
+							red = 0;    // B
 							g = 0;    // G
 							b = 0;    // R
 						}
@@ -786,7 +786,7 @@ void CWaveFftView::OnDraw(CDC* pDC)
 								ASSERT(pRgb >= pBmp && pRgb + 3 <= pBmp + BmpSize);
 								pRgb[0] = b;    // B
 								pRgb[1] = g;    // G
-								pRgb[2] = r;    // R
+								pRgb[2] = red;    // R
 							}
 						}
 					}
