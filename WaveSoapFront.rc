@@ -3633,6 +3633,7 @@ BEGIN
     IDS_SEGMENT_NAME_FROM_MARKERS "From '%s' to '%s'"
     IDS_MORE_CLICK_SETTINGS_IN_EFFECT 
                             "Click logging settings are in effect, click [More settings] button"
+    IDS_RADIO_OPEN_AS_READ_ONLY "Open as &read-only"
 END
 
 STRINGTABLE
