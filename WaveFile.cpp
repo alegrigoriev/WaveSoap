@@ -1635,21 +1635,21 @@ BOOL CWaveFile::InstanceDataWav::SetWaveMarker(WAVEREGIONINFO * pInfo)
 		// add region length
 		if (info.Length != 0)
 		{
-			WaveRegionMarker item;
+			WaveRegionMarker wrm;
 			if (NULL != info.Ltxt)
 			{
-				item.Name = info.Ltxt;
+				wrm.Name = info.Ltxt;
 			}
 
-			item.Codepage = 0;  // TODO
-			item.Country = 0;
-			item.CuePointID = info.MarkerCueID;
-			item.Dialect = 0;
-			item.Language = 0; //0x409;
-			item.Purpose = mmioFOURCC('r', 'g', 'n', ' ');
-			item.SampleLength = info.Length;
+			wrm.Codepage = 0;  // TODO
+			wrm.Country = 0;
+			wrm.CuePointID = info.MarkerCueID;
+			wrm.Dialect = 0;
+			wrm.Language = 0; //0x409;
+			wrm.Purpose = mmioFOURCC('r', 'g', 'n', ' ');
+			wrm.SampleLength = info.Length;
 
-			m_RegionMarkers.push_back(item);
+			m_RegionMarkers.push_back(wrm);
 		}
 		// continue
 		// set label, comment, length, etc

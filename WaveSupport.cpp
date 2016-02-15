@@ -1259,19 +1259,19 @@ bool CAudioCompressionManager::FillMultiFormatArray(unsigned nSelFrom, unsigned 
 					// mono/stereo counterpart (if compatible not selected).
 					for (int j = 0; j != 2; j++)
 					{
-						ACMFORMATDETAILS afd;
-						afd.cbStruct = sizeof afd;
-						afd.dwFormatIndex = 0;
-						afd.dwFormatTag = WAVE_FORMAT_PCM;
-						afd.fdwSupport = 0;
-						afd.pwfx = pwfx;
-						afd.cbwfx = sizeof (PCMWAVEFORMAT);
+						ACMFORMATDETAILS afd1;
+						afd1.cbStruct = sizeof afd1;
+						afd1.dwFormatIndex = 0;
+						afd1.dwFormatTag = WAVE_FORMAT_PCM;
+						afd1.fdwSupport = 0;
+						afd1.pwfx = pwfx;
+						afd1.cbwfx = sizeof (PCMWAVEFORMAT);
 
-						res = acmFormatDetails(had, & afd, ACM_FORMATDETAILSF_FORMAT);
+						res = acmFormatDetails(had, & afd1, ACM_FORMATDETAILSF_FORMAT);
 						if (MMSYSERR_NOERROR == res)
 						{
 							m_Formats.insert(m_Formats.end(),
-											FormatItem(afd.pwfx, afd.szFormat, sel));
+											FormatItem(afd1.pwfx, afd1.szFormat, sel));
 						}
 						if (16 == pwfx.BitsPerSample())
 						{
@@ -1303,19 +1303,19 @@ bool CAudioCompressionManager::FillMultiFormatArray(unsigned nSelFrom, unsigned 
 							|| MMSYSERR_NOERROR == acmFormatSuggest(had, m_Wf, pwfx, pwfx.m_AllocatedSize,
 								ACM_FORMATSUGGESTF_WFORMATTAG))
 						{
-							ACMFORMATDETAILS afd;
-							afd.cbStruct = sizeof afd;
-							afd.dwFormatIndex = 0;
-							afd.dwFormatTag = pwfx.FormatTag();
-							afd.fdwSupport = 0;
-							afd.pwfx = pwfx;
-							afd.cbwfx = sizeof (WAVEFORMATEX) + pwfx.m_pWf->cbSize;
+							ACMFORMATDETAILS afd2;
+							afd2.cbStruct = sizeof afd2;
+							afd2.dwFormatIndex = 0;
+							afd2.dwFormatTag = pwfx.FormatTag();
+							afd2.fdwSupport = 0;
+							afd2.pwfx = pwfx;
+							afd2.cbwfx = sizeof (WAVEFORMATEX) + pwfx.m_pWf->cbSize;
 
-							res = acmFormatDetails(had, & afd, ACM_FORMATDETAILSF_FORMAT);
+							res = acmFormatDetails(had, & afd2, ACM_FORMATDETAILSF_FORMAT);
 							if (MMSYSERR_NOERROR == res)
 							{
 								m_Formats.insert(m_Formats.end(),
-												FormatItem(afd.pwfx, afd.szFormat, sel));
+												FormatItem(afd2.pwfx, afd2.szFormat, sel));
 							}
 						}
 						TRACE("acmFormatEnum SUGGEST returned %x\n", res);

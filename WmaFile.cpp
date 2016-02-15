@@ -510,7 +510,7 @@ HRESULT CWmaDecoder::Open(CDirectFile & file)
 
 		pHeaderInfo->GetAttributeCount(stream, & AttributeCount);
 		TRACE("HeaderInfo::stream=%d, %d attributes\n", stream, AttributeCount);
-		for (WORD i = 0; i < AttributeCount; i++)
+		for (WORD ii = 0; i < AttributeCount; ii++)
 		{
 			WCHAR name[1024];
 			name[0] = 0;
@@ -518,10 +518,10 @@ HRESULT CWmaDecoder::Open(CDirectFile & file)
 			WMT_ATTR_DATATYPE Type;
 			BYTE value[1024];
 			WORD Length=1024;
-			if (SUCCEEDED(pHeaderInfo->GetAttributeByIndex(i,
+			if (SUCCEEDED(pHeaderInfo->GetAttributeByIndex(ii,
 															&stream, name, & NameLen, & Type, value, & Length)))
 			{
-				TRACE(L"Attribute %d name=%s\n", i, name);
+				TRACE(L"Attribute %d name=%s\n", ii, name);
 			}
 		}
 #endif

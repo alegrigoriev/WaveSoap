@@ -1935,10 +1935,10 @@ CDocument* CWaveSoapDocManager::OpenDocumentFile(LPCTSTR lpszFileName, int flags
 
 	if (pOpenDocument != NULL)
 	{
-		POSITION pos = pOpenDocument->GetFirstViewPosition();
-		if (pos != NULL)
+		POSITION vpos = pOpenDocument->GetFirstViewPosition();
+		if (vpos != NULL)
 		{
-			CView* pView = pOpenDocument->GetNextView(pos); // get first one
+			CView* pView = pOpenDocument->GetNextView(vpos); // get first one
 			ASSERT_VALID(pView);
 			CFrameWnd* pFrame = pView->GetParentFrame();
 			if (pFrame != NULL)
