@@ -93,7 +93,7 @@ void CFftRulerView::OnDraw(CDC* pDrawDC)
 	CGdiObjectSave OldPen(pDC, pDC->SelectStockObject(BLACK_PEN));
 
 	CBrush bkgnd;
-	TRACE("SysColor(COLOR_WINDOW)=%X\n", GetSysColor(COLOR_WINDOW));
+	if (0) TRACE("SysColor(COLOR_WINDOW)=%X\n", GetSysColor(COLOR_WINDOW));
 	bkgnd.CreateSysColorBrush(COLOR_WINDOW);
 	pDC->FillRect(cr, &bkgnd);
 

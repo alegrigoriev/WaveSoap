@@ -1571,7 +1571,7 @@ void CFilterGraphWnd::OnNcCalcSize(BOOL /*bCalcValidRects*/,
 
 void CFilterGraphWnd::OnNcPaint(UINT wParam)
 {
-	if (0) TRACE("CFilterGraphWnd::OnNcPaint, hrgn=%X\n", wParam);
+	if (0) TRACE("CFilterGraphWnd::OnNcPaint, hrgn=%P\n", wParam);
 	// copy region, because it will be deleted
 	CRect wr;
 	GetWindowRect( & wr);

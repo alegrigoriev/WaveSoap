@@ -16,7 +16,7 @@
 static char THIS_FILE[] = __FILE__;
 #endif
 
-#define TRACE_DRAWING 1
+#define TRACE_DRAWING 0
 /////////////////////////////////////////////////////////////////////////////
 // CAmplitudeRuler
 
@@ -96,7 +96,7 @@ void CAmplitudeRuler::OnDraw(CDC* pDrawDC)
 	CGdiObjectSave OldPen(pDC, pDC->SelectStockObject(BLACK_PEN));
 
 	CBrush bkgnd;
-	TRACE("SysColor(COLOR_WINDOW)=%X\n", GetSysColor(COLOR_WINDOW));
+	if (0) TRACE("SysColor(COLOR_WINDOW)=%X\n", GetSysColor(COLOR_WINDOW));
 	bkgnd.CreateSysColorBrush(COLOR_WINDOW);
 
 	pDC->SetTextAlign(TA_BOTTOM | TA_RIGHT);
@@ -113,8 +113,8 @@ void CAmplitudeRuler::OnDraw(CDC* pDrawDC)
 			continue;
 		}
 
-		TRACE("CAmplitudeRuler::OnDraw: ch %d zero pos =%d\n",
-			ch, (int)WaveCalculate(m_WaveOffsetY, m_VerticalScale, m_Heights.ch[ch].top, m_Heights.ch[ch].bottom)(0.));
+		if (0) TRACE("CAmplitudeRuler::OnDraw: ch %d zero pos =%d\n",
+					ch, (int)WaveCalculate(m_WaveOffsetY, m_VerticalScale, m_Heights.ch[ch].top, m_Heights.ch[ch].bottom)(0.));
 		CRect chr;
 		// for all channels, the rectangle is of the same height
 		chr.top = m_Heights.ch[ch].top;
