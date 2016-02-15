@@ -4802,8 +4802,7 @@ void CWaveSoapFrontDoc::OnToolsInterpolate()
 			return;
 		}
 
-		pCopy->SaveUndoData(pBuf + WriteBufferOffset * nChannels, WriteBytes,
-							WriteStartOffset, nChannels);
+		pCopy->SaveUndoData(pBuf + WriteBufferOffset * nChannels, WriteBytes, WriteStartOffset);
 
 		pUndo->AddContext(new CSelectionChangeOperation(this,
 														m_SelectionStart, m_SelectionEnd,

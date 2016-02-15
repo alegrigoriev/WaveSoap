@@ -2227,8 +2227,7 @@ BOOL CMoveOperation::OperationProc()
 			if (NULL != m_pUndoContext)
 			{
 				m_pUndoContext->SaveUndoData(pDstBuf,
-											-signed(Samples) * DstSampleSize,
-											m_DstPos, NumDstChannels);
+											-signed(Samples) * DstSampleSize, m_DstPos);
 			}
 			// CopyWaveSamples doesn't work backwards
 			for (unsigned i = 0; i < Samples; i++)
@@ -2260,7 +2259,7 @@ BOOL CMoveOperation::OperationProc()
 									m_DstFile.GetSampleType());
 
 				m_pUndoContext->SaveUndoData(tmp + NumSrcChannels,
-											-DstSampleSize, m_DstPos, NumDstChannels);
+											-DstSampleSize, m_DstPos);
 			}
 			// read one sample directly
 			if (-1 != m_SrcFile.ReadSamples(ALL_CHANNELS,
@@ -2799,14 +2798,12 @@ BOOL CReverseOperation::OperationProc()
 		// save the old data to undo buffer
 		if (NULL != m_pUndoLow)
 		{
-			m_pUndoLow->SaveUndoData(p1,
-									DataSize, m_DstPos, NumDstChannels);
+			m_pUndoLow->SaveUndoData(p1, DataSize, m_DstPos);
 		}
 
 		if (NULL != m_pUndoHigh)
 		{
-			m_pUndoHigh->SaveUndoData(p2,
-									-DataSize, m_SrcPos, NumDstChannels);
+			m_pUndoHigh->SaveUndoData(p2, -DataSize, m_SrcPos);
 		}
 
 
