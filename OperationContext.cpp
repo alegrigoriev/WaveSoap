@@ -841,7 +841,7 @@ BOOL CThroughProcessOperation::OperationProc()
 					// Read previous data
 					m_DstFile.ReadAt(m_UndoBuffer, OutputBufferFilled, m_DstPos);
 
-					m_pUndoContext->SaveUndoData(m_UndoBuffer, OutputBufferFilled, m_DstPos, m_DstFile.Channels());
+					m_pUndoContext->SaveUndoData(m_UndoBuffer, OutputBufferFilled, m_DstPos);
 				}
 
 				if (OutputBufferFilled / DstSampleSize != (unsigned)m_DstFile.WriteSamples(m_DstChan, m_DstPos, OutputBufferFilled / DstSampleSize,
@@ -1989,8 +1989,7 @@ BOOL CCopyContext::OperationProc()
 			// save the changed data to undo buffer
 			if (NULL != m_pUndoContext)
 			{
-				m_pUndoContext->SaveUndoData(pDstBuf,
-											Samples * DstSampleSize, m_DstPos, NumDstChannels);
+				m_pUndoContext->SaveUndoData(pDstBuf, Samples * DstSampleSize, m_DstPos);
 			}
 
 			CopyWaveSamples(pDstBuf, m_DstChan, NumDstChannels,
@@ -2017,8 +2016,7 @@ BOOL CCopyContext::OperationProc()
 				m_DstFile.ReadSamples(ALL_CHANNELS,
 									m_DstPos, 1, tmp, m_DstFile.GetSampleType());
 
-				m_pUndoContext->SaveUndoData(tmp,
-											DstSampleSize, m_DstPos, NumDstChannels);
+				m_pUndoContext->SaveUndoData(tmp, DstSampleSize, m_DstPos);
 			}
 
 			if (1 != m_SrcFile.ReadSamples(ALL_CHANNELS,
@@ -2260,9 +2258,7 @@ BOOL CCopyUndoContext::InitUndoCopy(CWaveFile & SrcFile,     // the file with th
 // save the data being overwritten by other operation
 // Position is source position. It goes to DstPos of this context.
 // Channels saved from buffer are specified in m_DstChan
-BOOL CCopyUndoContext::SaveUndoData(void const * pBuf, long BufSize,
-									SAMPLE_POSITION Position,
-									NUMBER_OF_CHANNELS NumSrcChannels)
+BOOL CCopyUndoContext::SaveUndoData(void const * pBuf, long BufSize, SAMPLE_POSITION Position)
 {
 	ASSERT(0 == BufSize % m_SrcSampleSize);
 

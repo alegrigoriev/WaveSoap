@@ -535,9 +535,7 @@ public:
 	int m_SrcSampleSize;
 	NUMBER_OF_CHANNELS m_SrcNumberOfChannels;
 
-	virtual BOOL SaveUndoData(void const * pBuf, long BufSize,
-							SAMPLE_POSITION Position,
-							NUMBER_OF_CHANNELS NumSrcChannels);
+	virtual BOOL SaveUndoData(void const * pBuf, long BufSize, SAMPLE_POSITION Position);
 
 	virtual BOOL NeedToSaveUndo(SAMPLE_POSITION Position, long length);
 };
