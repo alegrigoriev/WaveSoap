@@ -102,6 +102,7 @@ void CHorizontalRuler::OnMouseMove(UINT nFlags, CPoint point)
 		if (! m_bIsTrackingSelection)
 		{
 			SetCapture();
+			BeginMouseTracking();
 			m_bIsTrackingSelection = TRUE;
 		}
 		// do scroll
@@ -109,6 +110,10 @@ void CHorizontalRuler::OnMouseMove(UINT nFlags, CPoint point)
 		HorizontalScrollByPixels(PrevMouseX - point.x);
 		PrevMouseX = point.x;
 	}
+}
+
+void CHorizontalRuler::BeginMouseTracking()
+{
 }
 
 void CHorizontalRuler::OnLButtonDown(UINT nFlags, CPoint point)
@@ -246,14 +251,19 @@ void CVerticalRuler::OnMouseMove(UINT /*nFlags*/, CPoint point)
 		if (! m_bIsTrackingSelection)
 		{
 			SetCapture();
+			BeginMouseTracking();
 			m_bIsTrackingSelection = TRUE;
 		}
 		// do scroll
 		// scroll_offset < 0 - image moves up
 		// scroll_offset > 0 - image moves down
-		VerticalScrollPixels(point.y - PrevMouseY);
+		VerticalScrollByPixels(point.y - PrevMouseY);
 		PrevMouseY = point.y;
 	}
+}
+
+void CVerticalRuler::BeginMouseTracking()
+{
 }
 
 void CVerticalRuler::OnLButtonDown(UINT /*nFlags*/, CPoint point)
