@@ -38,7 +38,7 @@ typedef NUM_volatile<DWORD> SUBBLOCK_MASK;
 #define FILE_LENGTH_TO_WRITTEN_MASK_LENGTH(length) \
 	(unsigned((length + (1 << (BLOCK_SIZE_SHIFT + 3)) - 1) >> (BLOCK_SIZE_SHIFT + 3)))
 
-#define MEMORY_FILE_SIZE_LIMIT 0x100000UL
+#define MEMORY_FILE_SIZE_LIMIT 0x1000000UL
 #define MAX_PREFETCH_REGIONS    6
 
 #ifdef _DEBUG
@@ -1235,10 +1235,6 @@ CDirectFileCache::CDirectFileCache()
 	m_MaxBlocksToPrefetch(2),
 	m_FlushRequest(0)
 {
-	if (0 == (GetVersion() & 0x80000000))
-	{
-//        UseOverlappedIo = TRUE;
-	}
 	m_hEvent = CreateEvent(NULL, FALSE, FALSE, NULL);
 	// this is manual reset event
 	m_hThreadSuspendedEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
@@ -2525,7 +2521,7 @@ void File::ReadDataBuffer(BufferHeader * pBuf, DWORD MaskToRead, DWORD Requested
 	::SetThreadPriority(GetCurrentThread(), OldPriority);
 }
 
-void File::FlushDirtyBuffers(BufferHeader * pDirtyBuf, BLOCK_INDEX MaxKey)
+void DirectFileCache::File::FlushDirtyBuffers(BufferHeader * pDirtyBuf, BLOCK_INDEX MaxKey)
 {
 	// flush all unlocked dirty buffers in sequence with pBuf;
 

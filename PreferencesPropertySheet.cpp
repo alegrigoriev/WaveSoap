@@ -96,11 +96,11 @@ void CFilePreferencesPage::DoDataExchange(CDataExchange* pDX)
 	DDX_Control(pDX, IDC_EDIT_TEMP_FILE_LOCATION, m_eTempFileLocation);
 	DDX_Text(pDX, IDC_EDIT_TEMP_FILE_LOCATION, m_sTempFileLocation);
 	DDX_Text(pDX, IDC_EDIT_TEMP_MEMORY_FILE_LIMIT, m_MaxMemoryFileSize);
-	DDV_MinMaxUInt(pDX, m_MaxMemoryFileSize, 1, 4096);
+	DDV_MinMaxUInt(pDX, m_MaxMemoryFileSize, 1, 16*1024);
 	DDX_Radio(pDX, IDC_RADIO_OPEN_FILE_MODE, m_DefaultFileOpenMode);
 	DDX_Radio(pDX, IDC_RADIO_WAV_SIZE, m_bEnable4GbWavFile);
 	DDX_Text(pDX, IDC_EDIT_MAX_FILE_CACHE, m_MaxFileCache);
-	DDV_MinMaxUInt(pDX, m_MaxFileCache, 1, 512);
+	DDV_MinMaxUInt(pDX, m_MaxFileCache, 1, 1024);
 	DDX_Radio(pDX, IDC_RADIO_TEXT_ANSI, m_FileTextEncoding);
 	//}}AFX_DATA_MAP
 }
