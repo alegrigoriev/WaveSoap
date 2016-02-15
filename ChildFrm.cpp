@@ -1506,7 +1506,7 @@ afx_msg LRESULT CWaveMDIChildClient::OnUwmNotifyViews(WPARAM wParam, LPARAM lPar
 		m_CurrentFirstSampleInView = *(double*)lParam;
 		if (m_CurrentTotalSamplesInView < m_CurrentTotalSamplesInExtent)
 		{
-			int new_pos = int(scrollinfo.nMin + (scrollinfo.nMax - scrollinfo.nMin) * m_CurrentFirstSampleInView / m_CurrentTotalSamplesInExtent);
+			int new_pos = int(scrollinfo.nMin + (scrollinfo.nMax + 1 - scrollinfo.nMin) * m_CurrentFirstSampleInView / m_CurrentTotalSamplesInExtent);
 			if (new_pos == scrollinfo.nPos)
 			{
 				break;
@@ -1518,12 +1518,12 @@ afx_msg LRESULT CWaveMDIChildClient::OnUwmNotifyViews(WPARAM wParam, LPARAM lPar
 		else
 		{
 			scrollinfo.nPos = 0;
-			if (scrollinfo.nPage == scrollinfo.nMax - scrollinfo.nMin)
+			if ((int)scrollinfo.nPage == scrollinfo.nMax + 1 - scrollinfo.nMin)
 			{
 				break;
 			}
 
-			scrollinfo.nPage = scrollinfo.nMax - scrollinfo.nMin;
+			scrollinfo.nPage = scrollinfo.nMax +1 - scrollinfo.nMin;
 			scrollinfo.fMask = SIF_PAGE | SIF_POS;
 		}
 		m_sb.SetScrollInfo(&scrollinfo);
