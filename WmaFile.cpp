@@ -299,6 +299,10 @@ bool CWmaDecoder::DeliverNextSample()
 	if (m_dwAudioOutputNum != dwOutputNum)
 	{
 		if (TRACE_WMA_DECODER) TRACE(_T("Thread:%08X CWmaDecoder::OnSample m_dwAudioOutputNum != dwOutputNum\n"), GetCurrentThreadId());
+		if (pSample != NULL)
+		{
+			pSample->Release();
+		}
 		return true;
 	}
 
@@ -312,6 +316,7 @@ bool CWmaDecoder::DeliverNextSample()
 
 	if( FAILED( hr ) )
 	{
+		pSample->Release();
 		Stop();
 		return false;
 	}
@@ -347,6 +352,7 @@ bool CWmaDecoder::DeliverNextSample()
 	// ask for next buffer
 	m_CurrentStreamTime = cnsSampleTime + cnsSampleDuration;
 
+	pSample->Release();
 	return IsStarted();
 }
 
