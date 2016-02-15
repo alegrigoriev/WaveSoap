@@ -79,69 +79,10 @@ inline void AssignMultiSz(CStringA & dst, LPCWSTR src)
 using std::min;
 using std::max;
 #endif
+#define UWM_NOTIFY_VIEWS    (WM_APP+1)  // notify siblings in the child frame for view changes. Only those changes that don't reflect document updates
 #include "WaveSoapFront.h"
 #include <afxdlgs.h>
 //{{AFX_INSERT_LOCATION}}
 // Microsoft Visual C++ will insert additional declarations immediately before the previous line.
-#define UWM_NOTIFY_VIEWS    (WM_APP+1)  // notify siblings in the child frame for view changes. Only those changes that don't reflect document updates
-
-enum SiblingNotifyCode
-{
-	ChannelHeightsChanged,
-	FftBandsChanged,
-	HorizontalScaleChanged,
-	HorizontalOriginChanged,     // NotifyViewsData.HorizontalScroll
-	HorizontalExtentChanged,     // NotifyViewsData.HorizontalScroll
-	HorizontalScrollPixels,   // lParam is pointer to int pixels (signed)
-	VerticalScaleChanged,
-	AmplitudeOffsetChanged,
-	AmplitudeScrollTo,
-	FftScrollTo,
-	FftVerticalScaleChanged,
-	SpectrumSectionDbOffsetChange,
-	SpectrumSectionDbScaleChange,
-	SpectrumSectionScrollPixels,
-	FftScrollPixels,
-	FftOffsetChanged,
-};
-
-struct NotifyViewsData
-{
-	int code;
-	union {
-		struct {
-			double HorizontalScale;
-			double FirstSampleInView;
-			double TotalSamplesInView;
-			double TotalSamplesInExtent;    // adjusted for the reserved empty space after the end
-		} HorizontalScroll;
-		struct {
-		} Amplitude;
-		struct {
-		} Fft;
-	};
-};
-
-struct NotifyChannelHeightsData
-{
-	int NumChannels;
-	int NominalChannelHeight;      // non-minimized channel height, not including the separator line. This is used for scroll calculation
-	struct {
-		// bottom, clip_bottom excludes the separator line.
-		int top;
-		int bottom;               // top+NominalChannelHeight or +MinimizedChannelHeight
-		int clip_top;             // == top
-		int clip_bottom;          // top+NominalChannelHeight+OddPixel or +MinimizedChannelHeight+OddPixel
-		bool minimized;
-	} ch[MAX_NUMBER_OF_CHANNELS];
-};
-
-#define NotifySiblingViews(NotifyCode, data) NotifySiblingViews_(this, NotifyCode, data)
-
-inline LRESULT NotifySiblingViews_(CWnd *wnd, int NotifyCode, PVOID data)
-{
-	ASSERT(wnd->GetParent() != NULL);
-	return wnd->GetParent()->SendMessage(UWM_NOTIFY_VIEWS, NotifyCode, (LPARAM) data);
-}
 
 #endif // !defined(AFX_STDAFX_H__FFA16C46_2FA7_11D4_9ADD_00C0F0583C4B__INCLUDED_)
