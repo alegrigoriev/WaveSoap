@@ -65,7 +65,7 @@ void CExpressionEvaluationProc::ProcessSoundSample(char const * pInSample, char 
 		m_dSelectionTimeArgument += m_SamplePeriod;
 		m_dFileTimeArgument += m_SamplePeriod;
 	}
-	catch (const char * pError)
+	catch (wchar_t const * pError)
 	{
 		m_ErrorString = pError;
 		//return FALSE;
@@ -74,7 +74,7 @@ void CExpressionEvaluationProc::ProcessSoundSample(char const * pInSample, char 
 
 void CExpressionEvaluationProc::ProcessSampleValue(void const * pInSample, void * pOutSample, unsigned channel)
 {
-	m_dCurrentSample = *(float const*)pInSample * (1./32767.);
+	m_dCurrentSample = *(float const*)pInSample * (1./32768.);
 	Evaluate();
 	*(float*)pOutSample = (float)* m_pResultAddress;
 }
@@ -175,7 +175,7 @@ CExpressionEvaluationProc::CompileParenthesedExpression(LPCTSTR * ppStr)
 	if (type != eLeftParenthesis
 		|| eRightParenthesis != CompileExpression(ppStr))
 	{
-		throw "Right parenthesis expected";
+		throw L"Right parenthesis expected";
 	}
 	return eRightParenthesis;
 }
@@ -206,7 +206,7 @@ CExpressionEvaluationProc::TokenType
 	switch (type)
 	{
 	case eEndOfExpression:
-		throw "Syntax error";
+		throw L"Syntax error";
 		break;
 
 	case ePlusOp:
@@ -237,7 +237,7 @@ CExpressionEvaluationProc::TokenType
 		}
 		else
 		{
-			throw "Internal Error";
+			throw L"Internal Error";
 		}
 		break;
 
@@ -256,7 +256,7 @@ CExpressionEvaluationProc::TokenType
 		}
 		else
 		{
-			throw "Binary complement operation arguments must be integer, use int() function";
+			throw L"Binary complement operation arguments must be integer, use int() function";
 		}
 		break;
 
@@ -318,10 +318,10 @@ CExpressionEvaluationProc::TokenType
 		CompileParenthesedExpression( ppStr);
 		// can't put those right to the function call, because
 		// order of evaluation would be unpredicted
-		TokenType type = GetTopOfStackType();
-		if (type != eIntConstant
-			&& type != eIntExpression
-			&& type != eIntVariable)
+		TokenType top_type = GetTopOfStackType();
+		if (top_type != eIntConstant
+			&& top_type != eIntExpression
+			&& top_type != eIntVariable)
 		{
 			PopInt();
 			PushInt();
@@ -334,10 +334,10 @@ CExpressionEvaluationProc::TokenType
 		CompileParenthesedExpression( ppStr);
 		// can't put those right to the function call, because
 		// order of evaluation would be unpredicted
-		TokenType type = GetTopOfStackType();
-		if (type != eDoubleConstant
-			&& type != eDoubleExpression
-			&& type != eDoubleVariable)
+		TokenType top_type = GetTopOfStackType();
+		if (top_type != eDoubleConstant
+			&& top_type != eDoubleExpression
+			&& top_type != eDoubleVariable)
 		{
 			PopDouble();
 			PushDouble();
@@ -354,7 +354,7 @@ CExpressionEvaluationProc::TokenType
 			token = GetToken( ppStr, & type);
 			if (eRightParenthesis != type)
 			{
-				throw "Invalud argument of \"noise\" function";
+				throw L"Invalud argument of \"noise\" function";
 			}
 		}
 		else
@@ -425,7 +425,7 @@ CExpressionEvaluationProc::TokenType
 		break;
 	default:
 		*ppStr = prevStr;
-		throw "Unrecognized syntax";
+		throw L"Unrecognized syntax";
 		break;
 	}
 	return type;
@@ -448,7 +448,7 @@ void CExpressionEvaluationProc::CompileAnd()
 			return;
 		}
 	}
-	throw "Bitwise ""and"" operation arguments must be integer, use int() function";
+	throw L"Bitwise ""and"" operation arguments must be integer, use int() function";
 }
 
 void CExpressionEvaluationProc::CompileOr()
@@ -468,7 +468,7 @@ void CExpressionEvaluationProc::CompileOr()
 			return;
 		}
 	}
-	throw "Bitwise ""or"" operation arguments must be integer, use int() function";
+	throw L"Bitwise ""or"" operation arguments must be integer, use int() function";
 }
 
 void CExpressionEvaluationProc::CompileXor()
@@ -488,7 +488,7 @@ void CExpressionEvaluationProc::CompileXor()
 			return;
 		}
 	}
-	throw "Bitwise ""xor"" operation arguments must be integer, use int() function";
+	throw L"Bitwise ""xor"" operation arguments must be integer, use int() function";
 }
 
 void CExpressionEvaluationProc::CompileAdd()
@@ -515,7 +515,7 @@ void CExpressionEvaluationProc::CompileAdd()
 		}
 		else
 		{
-			throw "Internal Error";
+			throw L"Internal Error";
 		}
 	}
 	else if (eDoubleConstant == type
@@ -539,12 +539,12 @@ void CExpressionEvaluationProc::CompileAdd()
 		}
 		else
 		{
-			throw "Internal Error";
+			throw L"Internal Error";
 		}
 	}
 	else
 	{
-		throw "Internal Error";
+		throw L"Internal Error";
 	}
 }
 
@@ -572,7 +572,7 @@ void CExpressionEvaluationProc::CompileSubtract()
 		}
 		else
 		{
-			throw "Internal Error";
+			throw L"Internal Error";
 		}
 	}
 	else if (eDoubleConstant == type
@@ -596,12 +596,12 @@ void CExpressionEvaluationProc::CompileSubtract()
 		}
 		else
 		{
-			throw "Internal Error";
+			throw L"Internal Error";
 		}
 	}
 	else
 	{
-		throw "Internal Error";
+		throw L"Internal Error";
 	}
 }
 
@@ -609,7 +609,7 @@ void CExpressionEvaluationProc::DivideDouble(Operation *t)
 {
 	if (0 == *t->dSrc2)
 	{
-		throw "Divide by zero";
+		throw L"Divide by zero";
 	}
 	*t->dDst = *t->dSrc1 / *t->dSrc2;
 }
@@ -618,7 +618,7 @@ void CExpressionEvaluationProc::DivideInt(Operation *t)
 {
 	if (0 == *t->nSrc2)
 	{
-		throw "Divide by zero";
+		throw L"Divide by zero";
 	}
 	*t->nDst = *t->nSrc1 / *t->nSrc2;
 }
@@ -627,7 +627,7 @@ void CExpressionEvaluationProc::DivideDoubleInt(Operation *t)
 {
 	if (0 == *t->nSrc2)
 	{
-		throw "Divide by zero";
+		throw L"Divide by zero";
 	}
 	*t->dDst = *t->dSrc1 / *t->nSrc2;
 }
@@ -636,7 +636,7 @@ void CExpressionEvaluationProc::DivideIntDouble(Operation *t)
 {
 	if (0 == *t->dSrc2)
 	{
-		throw "Divide by zero";
+		throw L"Divide by zero";
 	}
 	*t->dDst = *t->nSrc1 / *t->dSrc2;
 }
@@ -645,7 +645,7 @@ void CExpressionEvaluationProc::ModuloDouble(Operation *t)
 {
 	if (0 == *t->dSrc2)
 	{
-		throw "Divide by zero";
+		throw L"Divide by zero";
 	}
 	*t->dDst = fmod(*t->dSrc1, *t->dSrc2);
 }
@@ -654,7 +654,7 @@ void CExpressionEvaluationProc::ModuloInt(Operation *t)
 {
 	if (0 == *t->nSrc2)
 	{
-		throw "Divide by zero";
+		throw L"Divide by zero";
 	}
 	*t->nDst = *t->nSrc1 % *t->nSrc2;
 }
@@ -663,7 +663,7 @@ void CExpressionEvaluationProc::ModuloDoubleInt(Operation *t)
 {
 	if (0 == *t->nSrc2)
 	{
-		throw "Divide by zero";
+		throw L"Divide by zero";
 	}
 	*t->dDst = fmod(*t->dSrc1, *t->nSrc2);
 }
@@ -672,7 +672,7 @@ void CExpressionEvaluationProc::ModuloIntDouble(Operation *t)
 {
 	if (0 == *t->dSrc2)
 	{
-		throw "Divide by zero";
+		throw L"Divide by zero";
 	}
 	*t->dDst = fmod(*t->nSrc1, *t->dSrc2);
 }
@@ -681,7 +681,7 @@ void CExpressionEvaluationProc::Log(Operation *t)
 {
 	if (*t->dSrc1 <= 0)
 	{
-		throw "Logarithm argument <= 0";
+		throw L"Logarithm argument <= 0";
 	}
 	*t->dDst = log(*t->dSrc1);
 }
@@ -690,7 +690,7 @@ void CExpressionEvaluationProc::Log10(Operation *t)
 {
 	if (*t->dSrc1 <= 0)
 	{
-		throw "Logarithm argument <= 0";
+		throw L"Logarithm argument <= 0";
 	}
 	*t->dDst = log(*t->dSrc1) * 0.434294481903251827651;
 }
@@ -699,7 +699,7 @@ void CExpressionEvaluationProc::Sqrt(Operation *t)
 {
 	if (*t->dSrc1 < 0)
 	{
-		throw "Square root argument < 0";
+		throw L"Square root argument < 0";
 	}
 	*t->dDst = sqrt(*t->dSrc1);
 }
@@ -735,7 +735,7 @@ void CExpressionEvaluationProc::CompileMultiply()
 		}
 		else
 		{
-			throw "Internal Error";
+			throw L"Internal Error";
 		}
 	}
 	else if (eDoubleConstant == type
@@ -759,12 +759,12 @@ void CExpressionEvaluationProc::CompileMultiply()
 		}
 		else
 		{
-			throw "Internal Error";
+			throw L"Internal Error";
 		}
 	}
 	else
 	{
-		throw "Internal Error";
+		throw L"Internal Error";
 	}
 }
 
@@ -792,7 +792,7 @@ void CExpressionEvaluationProc::CompileModulo()
 		}
 		else
 		{
-			throw "Internal Error";
+			throw L"Internal Error";
 		}
 	}
 	else if (eDoubleConstant == type
@@ -816,12 +816,12 @@ void CExpressionEvaluationProc::CompileModulo()
 		}
 		else
 		{
-			throw "Internal Error";
+			throw L"Internal Error";
 		}
 	}
 	else
 	{
-		throw "Internal Error";
+		throw L"Internal Error";
 	}
 }
 
@@ -849,7 +849,7 @@ void CExpressionEvaluationProc::CompileDivide()
 		}
 		else
 		{
-			throw "Internal Error";
+			throw L"Internal Error";
 		}
 	}
 	else if (eDoubleConstant == type
@@ -873,12 +873,12 @@ void CExpressionEvaluationProc::CompileDivide()
 		}
 		else
 		{
-			throw "Internal Error";
+			throw L"Internal Error";
 		}
 	}
 	else
 	{
-		throw "Internal Error";
+		throw L"Internal Error";
 	}
 }
 
@@ -890,7 +890,7 @@ CExpressionEvaluationProc::TokenType
 	type = CompileTerm(ppStr);
 	if (eEndOfExpression == type)
 	{
-		throw "Expression syntax error";
+		throw L"Expression syntax error";
 	}
 	LPCTSTR str = *ppStr;
 
@@ -911,7 +911,7 @@ CExpressionEvaluationProc::TokenType
 			type1 = CompileTerm(ppStr);
 			if (eEndOfExpression == type1)
 			{
-				throw "Right operand missing";
+				throw L"Right operand missing";
 			}
 			// check if the next operator has higher precedence
 			while (1)
@@ -1000,7 +1000,7 @@ CExpressionEvaluationProc::TokenType
 		default:
 		case eUnknownToken:
 			*ppStr = prevStr;
-			throw "Unrecognized syntax";
+			throw L"Unrecognized syntax";
 			break;
 		}
 	}
@@ -1022,7 +1022,7 @@ CExpressionEvaluationProc::TokenType CExpressionEvaluationProc::GetTopOfStackTyp
 {
 	if (m_DataTypeStackIndex <= 0)
 	{
-		throw "Expression Evaluation Stack Underflow";
+		throw L"Expression Evaluation Stack Underflow";
 	}
 	TokenType type = m_DataTypeStack[m_DataTypeStackIndex - 1];
 	if (eIntConstant == type)
@@ -1043,27 +1043,27 @@ CExpressionEvaluationProc::TokenType CExpressionEvaluationProc::GetTopOfStackTyp
 	{
 		return eDoubleExpression;
 	}
-	throw "Internal Error";
+	throw L"Internal Error";
 }
 
 void CExpressionEvaluationProc::PushConstant(int data)
 {
 	if (m_ConstantBufferIndex >= NumberOfIntConstants)
 	{
-		throw "Expression too complex: too many constants";
+		throw L"Expression too complex: too many constants";
 	}
-	if (m_DataStackIndex >= ExpressionStackSize * 2
+	if (m_DataStackIndex >= DataStackSize
 		|| m_DataTypeStackIndex >= ExpressionStackSize)
 	{
-		throw "Expression Evaluation Stack Overflow";
+		throw L"Expression Evaluation Stack Overflow";
 	}
 	m_DataTypeStack[m_DataTypeStackIndex] = eIntConstant;
 	m_DataTypeStackIndex++;
 
-	m_DataStack[m_DataStackIndex] = int(m_ConstantBuffer + m_ConstantBufferIndex);  // store pointer to data
+	m_DataStack[m_DataStackIndex].pInt = & m_ConstantBuffer[m_ConstantBufferIndex].Int;
 	m_DataStackIndex++;
 
-	m_ConstantBuffer[m_ConstantBufferIndex] = data;
+	m_ConstantBuffer[m_ConstantBufferIndex].Int = data;
 	m_ConstantBufferIndex++;
 
 	if (TRACE_EXPRESSION) TRACE("Push int constant %d, constant index = %d, type index = %d\n", data,
@@ -1072,24 +1072,24 @@ void CExpressionEvaluationProc::PushConstant(int data)
 
 void CExpressionEvaluationProc::PushConstant(double data)
 {
-	if (m_ConstantBufferIndex + 1 >= NumberOfIntConstants)
+	if (m_ConstantBufferIndex >= NumberOfIntConstants)
 	{
-		throw "Expression too complex: too many constants";
+		throw L"Expression too complex: too many constants";
 	}
 
-	if (m_DataStackIndex >= ExpressionStackSize * 2
+	if (m_DataStackIndex >= DataStackSize
 		|| m_DataTypeStackIndex >= ExpressionStackSize)
 	{
-		throw "Expression Evaluation Stack Overflow";
+		throw L"Expression Evaluation Stack Overflow";
 	}
 	m_DataTypeStack[m_DataTypeStackIndex] = eDoubleConstant;
 	m_DataTypeStackIndex++;
 
-	m_DataStack[m_DataStackIndex] = int(m_ConstantBuffer + m_ConstantBufferIndex);  // store pointer to data
+	m_DataStack[m_DataStackIndex].pDouble = &m_ConstantBuffer[m_ConstantBufferIndex].Double;
 	m_DataStackIndex++;
 
-	*(double*)(m_ConstantBuffer + m_ConstantBufferIndex) = data;
-	m_ConstantBufferIndex += sizeof (double) / sizeof m_ConstantBuffer[0];
+	m_ConstantBuffer[m_ConstantBufferIndex].Double = data;
+	m_ConstantBufferIndex++;
 
 	if (TRACE_EXPRESSION) TRACE("Push Double constant %f, constant index = %d, type index = %d\n", data,
 								m_ConstantBufferIndex, m_DataTypeStackIndex);
@@ -1097,15 +1097,15 @@ void CExpressionEvaluationProc::PushConstant(double data)
 
 void CExpressionEvaluationProc::PushVariable(int * pData)
 {
-	if (m_DataStackIndex >= ExpressionStackSize * 2
+	if (m_DataStackIndex >= DataStackSize
 		|| m_DataTypeStackIndex >= ExpressionStackSize)
 	{
-		throw "Expression Evaluation Stack Overflow";
+		throw L"Expression Evaluation Stack Overflow";
 	}
 	m_DataTypeStack[m_DataTypeStackIndex] = eIntVariable;
 	m_DataTypeStackIndex++;
 
-	m_DataStack[m_DataStackIndex] = int(pData);  // store pointer to data
+	m_DataStack[m_DataStackIndex].pInt = pData;
 	m_DataStackIndex++;
 
 	if (TRACE_EXPRESSION) TRACE("Push int variable, data index = %d, type index = %d\n",
@@ -1114,15 +1114,15 @@ void CExpressionEvaluationProc::PushVariable(int * pData)
 
 void CExpressionEvaluationProc::PushVariable(double * pData)
 {
-	if (m_DataStackIndex >= ExpressionStackSize * 2
+	if (m_DataStackIndex >= DataStackSize
 		|| m_DataTypeStackIndex >= ExpressionStackSize)
 	{
-		throw "Expression Evaluation Stack Overflow";
+		throw L"Expression Evaluation Stack Overflow";
 	}
 	m_DataTypeStack[m_DataTypeStackIndex] = eDoubleVariable;
 	m_DataTypeStackIndex++;
 
-	m_DataStack[m_DataStackIndex] = int(pData);  // store pointer to data
+	m_DataStack[m_DataStackIndex].pDouble = pData;
 	m_DataStackIndex++;
 
 	if (TRACE_EXPRESSION) TRACE("Push Double variable, data index = %d, type index = %d\n",
@@ -1131,10 +1131,10 @@ void CExpressionEvaluationProc::PushVariable(double * pData)
 
 int * CExpressionEvaluationProc::PushInt()
 {
-	if (m_DataStackIndex >= ExpressionStackSize * 2
+	if (m_DataStackIndex >= DataStackSize
 		|| m_DataTypeStackIndex >= ExpressionStackSize)
 	{
-		throw "Expression Evaluation Stack Overflow";
+		throw L"Expression Evaluation Stack Overflow";
 	}
 	m_DataTypeStack[m_DataTypeStackIndex] = eIntExpression;
 	m_DataTypeStackIndex++;
@@ -1142,31 +1142,30 @@ int * CExpressionEvaluationProc::PushInt()
 
 	if (TRACE_EXPRESSION) TRACE("Push int, data index = %d, type index = %d\n",
 								m_DataStackIndex, m_DataTypeStackIndex);
-	return (int*)& m_DataStack[m_DataStackIndex - 1];
+	return & m_DataStack[m_DataStackIndex - 1].Int;
 }
 
 double * CExpressionEvaluationProc::PushDouble()
 {
-	if (m_DataStackIndex + 1 >= ExpressionStackSize * 2
+	if (m_DataStackIndex >= DataStackSize
 		|| m_DataTypeStackIndex >= ExpressionStackSize)
 	{
-		throw "Expression Evaluation Stack Overflow";
+		throw L"Expression Evaluation Stack Overflow";
 	}
 	m_DataTypeStack[m_DataTypeStackIndex] = eDoubleExpression;
 	m_DataTypeStackIndex++;
 
-	m_DataStackIndex += sizeof (double) / sizeof m_ConstantBuffer[0];
+	m_DataStackIndex ++;
 	if (TRACE_EXPRESSION) TRACE("Push Double, data index = %d, type index = %d\n",
 								m_DataStackIndex, m_DataTypeStackIndex);
-	return (double*)(m_DataStack + m_DataStackIndex -
-					sizeof (double) / sizeof m_DataStack[0]);
+	return &m_DataStack[m_DataStackIndex - 1].Double;
 }
 
 int * CExpressionEvaluationProc::PopInt()
 {
 	if (m_DataTypeStackIndex <= 0)
 	{
-		throw "Expression Evaluation Stack Underflow";
+		throw L"Expression Evaluation Stack Underflow";
 	}
 	TokenType type = m_DataTypeStack[m_DataTypeStackIndex - 1];
 	if (eIntConstant == type
@@ -1176,7 +1175,7 @@ int * CExpressionEvaluationProc::PopInt()
 		m_DataStackIndex--;
 		if (TRACE_EXPRESSION) TRACE("Pop int constant, data index = %d, type index = %d\n",
 									m_DataStackIndex, m_DataTypeStackIndex);
-		return (int *) m_DataStack[m_DataStackIndex];
+		return m_DataStack[m_DataStackIndex].pInt;
 	}
 	else if (eIntExpression == type)
 	{
@@ -1184,7 +1183,7 @@ int * CExpressionEvaluationProc::PopInt()
 		m_DataStackIndex--;
 		if (TRACE_EXPRESSION) TRACE("Pop int expression, data index = %d, type index = %d\n",
 									m_DataStackIndex, m_DataTypeStackIndex);
-		return (int *) & m_DataStack[m_DataStackIndex];
+		return & m_DataStack[m_DataStackIndex].Int;
 	}
 	else if (eDoubleConstant == type)
 	{
@@ -1201,14 +1200,14 @@ int * CExpressionEvaluationProc::PopInt()
 		AddOperation(DoubleToInt, pDst, pSrc, NULL);
 		return PopInt();
 	}
-	throw "Internal Error";
+	throw L"Internal Error";
 }
 
 double * CExpressionEvaluationProc::PopDouble()
 {
 	if (m_DataTypeStackIndex <= 0)
 	{
-		throw "Expression Evaluation Stack Underflow";
+		throw L"Expression Evaluation Stack Underflow";
 	}
 	TokenType type = m_DataTypeStack[m_DataTypeStackIndex - 1];
 	if (eDoubleConstant == type
@@ -1218,15 +1217,15 @@ double * CExpressionEvaluationProc::PopDouble()
 		m_DataStackIndex--;
 		if (TRACE_EXPRESSION) TRACE("Pop double constant, data index = %d, type index = %d\n",
 									m_DataStackIndex, m_DataTypeStackIndex);
-		return (double *) m_DataStack[m_DataStackIndex];
+		return m_DataStack[m_DataStackIndex].pDouble;
 	}
 	else if (eDoubleExpression == type)
 	{
 		m_DataTypeStackIndex--;
-		m_DataStackIndex -= 2;
+		m_DataStackIndex --;
 		if (TRACE_EXPRESSION) TRACE("Pop double expression, data index = %d, type index = %d\n",
 									m_DataStackIndex, m_DataTypeStackIndex);
-		return (double *) & m_DataStack[m_DataStackIndex];
+		return & m_DataStack[m_DataStackIndex].Double;
 	}
 	else if (eIntConstant == type
 			|| eIntVariable == type
@@ -1238,7 +1237,7 @@ double * CExpressionEvaluationProc::PopDouble()
 		AddOperation(IntToDouble, pDst, pSrc, NULL);
 		return PopDouble();
 	}
-	throw "Internal Error";
+	throw L"Internal Error";
 }
 
 BOOL CExpressionEvaluationProc::SetExpression(LPCTSTR * ppszExpression)
@@ -1253,14 +1252,14 @@ BOOL CExpressionEvaluationProc::SetExpression(LPCTSTR * ppszExpression)
 
 		if (eEndOfExpression != CompileExpression(ppszExpression))
 		{
-			throw "Expression syntax error";
+			throw L"Expression syntax error";
 		}
 		// norm the sample
 		PushConstant(32767);
 		CompileMultiply();
 		m_pResultAddress = PopDouble();
 	}
-	catch (char * Error)
+	catch (wchar_t const * Error)
 	{
 		m_ErrorString = Error;
 		return FALSE;
@@ -1528,7 +1527,8 @@ CCdReadingContext::CCdReadingContext(CWaveSoapFrontDoc * pDoc,
 	m_pNextTrackContext(NULL),
 	m_TargetFileType(0),
 	m_bSaveImmediately(FALSE),
-	m_CdBufferSize(0)
+	m_CdBufferSize(0),
+	m_Drive(NULL)
 {
 }
 
@@ -1609,12 +1609,15 @@ unsigned CCdReadingContext::ProcessBuffer(char const * /*pInBuf*/, // if BACKWAR
 				break;
 			}
 
+#if CD_READ_PACE_ENABLE
 			DWORD ReadBeginTime = timeGetTime();
+#endif
 			if ( ! m_Drive->ReadCdData(m_pCdBuffer, m_CdAddress, SectorsToRead))
 			{
 				break;     // TODO: Set an error string
 			}
 
+#if CD_READ_PACE_ENABLE
 			DWORD ElapsedReadTime = timeGetTime() - ReadBeginTime;
 			// pace the reading process
 			DWORD delay;
@@ -1623,7 +1626,7 @@ unsigned CCdReadingContext::ProcessBuffer(char const * /*pInBuf*/, // if BACKWAR
 				timeSetEvent(delay, 2, LPTIMECALLBACK(m_hEvent), NULL, TIME_CALLBACK_EVENT_SET);
 				WaitForSingleObject(m_hEvent, INFINITE);
 			}
-
+#endif
 			m_NumberOfSectors -= SectorsToRead;
 			m_CdAddress = LONG(m_CdAddress) + SectorsToRead;
 			m_CdDataOffset = 0;
@@ -1649,14 +1652,19 @@ unsigned CCdReadingContext::ProcessBuffer(char const * /*pInBuf*/, // if BACKWAR
 
 BOOL CCdReadingContext::Init()
 {
+	if (!BaseClass::Init())
+	{
+		return FALSE;
+	}
 	// allocate buffer. Round to sector size multiple
 	m_Drive->SetDriveBusy();
 	m_CdBufferFilled = 0;
 	m_CdDataOffset = 0;
 	m_CdBufferSize = 0x10000 - 0x10000 % CDDASectorSize;
 
+#if CD_READ_PACE_ENABLE
 	timeBeginPeriod(2);
-
+#endif
 	m_hEvent = CreateEvent(NULL, FALSE, FALSE, NULL);
 	m_pCdBuffer = VirtualAlloc(NULL, m_CdBufferSize, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
 	if (NULL == m_pCdBuffer)
@@ -1681,7 +1689,11 @@ void CCdReadingContext::DeInit()
 		CloseHandle(m_hEvent);
 		m_hEvent = NULL;
 	}
+
+#if CD_READ_PACE_ENABLE
 	timeEndPeriod(2);
+#endif
+
 	if (0 == (m_Flags & OperationContextFinished)
 		|| NULL == m_pNextTrackContext)
 	{
@@ -1691,6 +1703,7 @@ void CCdReadingContext::DeInit()
 		m_Drive->StopDrive();
 	}
 	m_Drive->SetDriveBusy(false);
+	BaseClass::DeInit();
 }
 
 void CCdReadingContext::Execute()
@@ -1771,6 +1784,7 @@ void CCdReadingContext::PostRetire()
 
 CCdReadingContext::~CCdReadingContext()
 {
+	delete m_Drive;
 	delete m_pNextTrackContext;
 }
 
