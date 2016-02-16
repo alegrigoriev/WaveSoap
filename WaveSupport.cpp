@@ -682,6 +682,10 @@ WaveSampleType CWaveFormat::GetSampleType() const
 {
 	if (WAVE_FORMAT_PCM == m_pWf->wFormatTag)
 	{
+		if (m_pWf->wBitsPerSample > 16)
+		{
+			return SampleType32bit;
+		}
 		switch (m_pWf->wBitsPerSample)
 		{
 		case 16:
@@ -703,6 +707,10 @@ WaveSampleType CWaveFormat::GetSampleType() const
 		WAVEFORMATEXTENSIBLE * pWfe = (WAVEFORMATEXTENSIBLE *) m_pWf;
 		if (pWfe->SubFormat == KSDATAFORMAT_SUBTYPE_PCM)
 		{
+			if (m_pWf->wBitsPerSample > 16)
+			{
+				return SampleType32bit;
+			}
 			switch (pWfe->Format.wBitsPerSample)
 			{
 			case 16:
@@ -711,9 +719,6 @@ WaveSampleType CWaveFormat::GetSampleType() const
 			case 8:
 				// PCM integer 16
 				return SampleType8bit;
-			case 32:
-				// PCM integer 16
-				return SampleType32bit;
 			default:
 				return SampleTypeOtherPcm;
 			}

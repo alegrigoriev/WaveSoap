@@ -199,6 +199,12 @@ static void BuildBandArray(double X_Offset, double dBToPixel,
 							FftGraphBand * pBands,
 							int NumBands, float const * pFftSum, double PowerCoeff)
 {
+#ifdef _DEBUG
+	double dBMin = 200;
+	double dBMax = -200;
+	int FftBandsProcessed = 0;
+	int MaxY = 0;
+#endif
 	for (int n = 0; n < NumBands; n++, pBands++)
 	{
 		pBands->nMin = 0x7FFFFF;
@@ -211,6 +217,18 @@ static void BuildBandArray(double X_Offset, double dBToPixel,
 			if (0 != temp)
 			{
 				temp = 10. * log10(temp);
+#ifdef _DEBUG
+				if (temp < dBMin)
+				{
+					dBMin = temp;
+				}
+				if (dBMax < temp)
+				{
+					dBMax = temp;
+					MaxY = pBands->y;
+				}
+				FftBandsProcessed++;
+#endif
 			}
 			else
 			{
@@ -228,6 +246,7 @@ static void BuildBandArray(double X_Offset, double dBToPixel,
 			}
 		}
 	}
+	TRACE(L"BuildBandArray %d FFT bands, min %f dB, max %f dB at Y=%d\n", FftBandsProcessed, dBMin, dBMax, MaxY);
 }
 
 // the array contains pairs of points with the same Y coordinate, and X coordinates corresponding to min and max ranges
@@ -1201,9 +1220,9 @@ LRESULT CSpectrumSectionView::OnUwmNotifyViews(WPARAM wParam, LPARAM lParam)
 		{
 			origin = m_DbMax;
 		}
-		else if (origin < m_DbMax + DbInView)
+		else if (origin < m_DbMin + DbInView)
 		{
-			origin = m_DbMax + DbInView;
+			origin = m_DbMin + DbInView;
 		}
 		NotifySiblingViews(SpectrumSectionDbOriginChange, &origin);
 	}
@@ -1233,9 +1252,9 @@ LRESULT CSpectrumSectionView::OnUwmNotifyViews(WPARAM wParam, LPARAM lParam)
 		{
 			origin = m_DbMax;
 		}
-		else if (origin < m_DbMax + DbInView)
+		else if (origin < m_DbMin + DbInView)
 		{
-			origin = m_DbMax + DbInView;
+			origin = m_DbMin + DbInView;
 		}
 		if (r.Width() != 0)
 		{
@@ -1266,7 +1285,7 @@ LRESULT CSpectrumSectionView::OnUwmNotifyViews(WPARAM wParam, LPARAM lParam)
 			break;
 		}
 		m_DbPerPixel = scale;
-		Invalidate(FALSE);
+		Invalidate(TRUE);
 	}
 		break;
 	}

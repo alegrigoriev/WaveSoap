@@ -144,17 +144,23 @@ private:
 	void CompileOr();
 	void CompileXor();
 
-	enum
-	{
-		ExpressionStackSize = 64,
+	enum { ExpressionStackSize = 64,
+		DataStackSize = ExpressionStackSize * 2,
 		NumberOfIntConstants = 128,
 		NumberOfDoubleConstants = 64,
 	};
-	DWORD m_DataStack[ExpressionStackSize * 2];
+	union uDataStack
+	{
+		int Int;
+		int * pInt;
+		double Double;
+		double* pDouble;
+	};
+	uDataStack m_DataStack[DataStackSize];
 	int m_DataStackIndex;
 	TokenType m_DataTypeStack[ExpressionStackSize];
 	int m_DataTypeStackIndex;
-	int m_ConstantBuffer[NumberOfIntConstants];
+	uDataStack m_ConstantBuffer[NumberOfIntConstants];
 	int m_ConstantBufferIndex;
 	double * m_pResultAddress;
 
@@ -488,6 +494,7 @@ public:
 	} m_Proc;
 };
 
+#define CD_READ_PACE_ENABLE 0
 class CCdReadingContext : public CThroughProcessOperation
 {
 	typedef CCdReadingContext ThisClass;

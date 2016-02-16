@@ -11,7 +11,9 @@
 #endif // _MSC_VER > 1000
 
 #include "KInterlocked.h"
+#define USE_ASPI_ENABLE  0
 
+#if USE_ASPI_ENABLE
 #define SRB_HAInquiry    _SRB_HAInquiry
 #define PSRB_HAInquiry   _PSRB_HAInquiry
 #define SRB_ExecSCSICmd  _SRB_ExecSCSICmd
@@ -35,7 +37,7 @@
 #undef PSRB_BusDeviceReset
 #undef SRB_GetDiskInfo
 #undef PSRB_GetDiskInfo
-
+#endif
 #pragma pack(push, 1)
 
 enum CdMediaChangeState
@@ -46,11 +48,6 @@ enum CdMediaChangeState
 	CdMediaStateDiskChanged,
 	CdMediaStateBusy,
 	CdMediaStateNoDrives,
-};
-
-struct CD_CDB
-{
-	UCHAR Opcode;
 };
 
 struct CdAddressMSF
@@ -77,57 +74,7 @@ struct CdAddressMSF
 	}
 };
 
-struct BigEndWord
-{
-	UCHAR num[2];
-
-	BigEndWord & operator =(USHORT src)
-	{
-		num[0] = UCHAR((src >> 8) & 0xFF);
-		num[1] = UCHAR(src & 0xFF);
-		return * this;
-	}
-	operator USHORT() { return num[1] | (num[0] << 8); }
-};
-
-struct BigEndTriple
-{
-	UCHAR num[3];
-	BigEndTriple & operator =(ULONG src)
-	{
-		num[0] = UCHAR((src >> 16) & 0xFF);
-		num[1] = UCHAR((src >> 8) & 0xFF);
-		num[2] = UCHAR(src & 0xFF);
-		return * this;
-	}
-	operator ULONG()
-	{
-		return num[2]
-				| (num[1] << 8)
-				| (num[0] << 16);
-	}
-};
-
-struct BigEndDword
-{
-	UCHAR num[4];
-
-	BigEndDword & operator =(ULONG src)
-	{
-		num[0] = UCHAR((src >> 24) & 0xFF);
-		num[1] = UCHAR((src >> 16) & 0xFF);
-		num[2] = UCHAR((src >> 8) & 0xFF);
-		num[3] = UCHAR(src & 0xFF);
-		return * this;
-	}
-	operator ULONG()
-	{
-		return num[3]
-				| (num[2] << 8)
-				| (num[1] << 16)
-				| (num[0] << 24);
-	}
-};
+#pragma pack(pop)
 
 enum { CDDASectorSize = 2352} ;
 
@@ -165,12 +112,6 @@ struct CdTrackInfo
 		TrackBegin.Frame = 0;
 	}
 };
-
-typedef struct _CDROM_TOC CDROM_TOC;
-struct SCSI_SenseInfo;
-struct SRB_HAInquiry;
-struct SRB;
-
 
 class ICdDrive
 {
@@ -223,7 +164,6 @@ public:
 	virtual CdMediaChangeState CheckForMediaChange() = 0;
 	virtual void ForceMountCD() = 0;
 
-	virtual BOOL ScsiInquiry(struct SRB_HAInquiry * pInq) = 0;
 	virtual BOOL QueryVendor(CString & Vendor) = 0;
 	virtual void StopDrive() = 0;
 
@@ -239,7 +179,6 @@ public:
 
 };
 
-ICdDrive * CreateCdDrive(BOOL UseAspi = TRUE);
+ICdDrive * CreateCdDrive(BOOL UseAspi = USE_ASPI_ENABLE);
 
-#pragma pack(pop)
 #endif // !defined(AFX_CDDRIVE_H__444EC2DA_90D7_4205_BD0C_E0A478C802CD__INCLUDED_)

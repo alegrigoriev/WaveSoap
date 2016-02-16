@@ -7,7 +7,51 @@
 #include "CdDrive.h"
 #include <winioctl.h>
 #include <Setupapi.h>
+#define _NTSCSI_USER_MODE_
+#include <ntddscsi.h>
+#include <scsi.h>
+#if !WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_DESKTOP)
+#error !WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_DESKTOP)
+#endif
+#include <ntddcdrm.h>
 
+USHORT BigEndianToWord(const UCHAR s[2])
+{
+	return (s[0] << 8) | s[1];
+}
+
+ULONG BigEndianToDword(const UCHAR s[4])
+{
+	return (s[0] << 24) | (s[1] << 16) | (s[2] << 8) | s[3];
+}
+
+ULONG BigEndianTripleToDword(const UCHAR s[3])
+{
+	return (s[0] << 16) | (s[1] << 8) | s[2];
+}
+
+void WordToBigEndian(USHORT s, UCHAR d[2])
+{
+	d[0] = s >> 8;
+	d[1] = s & 0xFF;
+}
+
+void DwordToBigEndian(ULONG s, UCHAR d[4])
+{
+	d[0] = (s >> 24) & 0xFF;
+	d[1] = (s >> 16) & 0xFF;
+	d[2] = (s >> 8) & 0xFF;
+	d[3] = s & 0xFF;
+}
+
+void DwordToBigEndianTriple(ULONG s, UCHAR d[3])
+{
+	d[0] = (s >> 16) & 0xFF;
+	d[1] = (s >> 8) & 0xFF;
+	d[2] = s & 0xFF;
+}
+
+#if 0
 struct ReadCD_CDB : CD_CDB
 {
 	enum { OPCODE = 0xBE};
@@ -162,10 +206,11 @@ struct ReadCD_MSF_CDB : CD_CDB
 		UserData = 1;
 	}
 };
-
+#endif
 ///////////////////////////////////////////////////////////////////////////
 // Get Performance command (MMC2)
 ///////////////////////////////////////////////////////////////////////////
+#if 0
 struct CdPerformanceDataHeader
 {
 	BigEndDword DataLength;
@@ -214,177 +259,6 @@ struct GetPerformanceCDB : CD_CDB
 	}
 };
 
-///////////////////////////////////////////////////////////////////////////
-// Device inquiry command
-///////////////////////////////////////////////////////////////////////////
-struct InquiryCDB : CD_CDB
-{
-	enum { OPCODE = 0x12};
-	UCHAR EnableVitalProductData:1;
-	UCHAR CmdData:1;
-	UCHAR reserved1:6;
-
-	UCHAR PageOrOpcode;
-	UCHAR reserved;
-	UCHAR AllocationLength;
-	UCHAR Control;
-	InquiryCDB(int AllocLength, int nPageOrOpcode = 0, bool EVPD = false, bool CmdDt = false)
-	{
-		memzero(*this);
-		Opcode = OPCODE;
-		EnableVitalProductData = EVPD;
-		CmdData = CmdDt;
-		PageOrOpcode = UCHAR(nPageOrOpcode);
-		AllocationLength = UCHAR(AllocLength);
-	}
-};
-
-struct InquiryData
-{
-	UCHAR PeripheralDeviceType:5;
-	UCHAR PeripheralQualifier:3;
-
-	UCHAR reserved1:7;
-	UCHAR RemovableMedium:1;
-
-	UCHAR Version;
-
-	UCHAR ResponseDataFormat:4;
-	UCHAR HiSup:1;
-	UCHAR NormAca:1;
-	UCHAR Obsolete1:1;
-	UCHAR AsyncEventReporting:1;
-
-	UCHAR AdditionalLength;
-
-	UCHAR reserved2:7;
-	UCHAR SCC_Support:1;
-
-	UCHAR ADDR16:1;
-	UCHAR Obsolete2:2;
-	UCHAR MChanger:1;
-	UCHAR MultiPort:1;
-	UCHAR VS1:1;
-	UCHAR EncServ:1;
-	UCHAR BQue:1;
-
-	UCHAR VS2:1;
-	UCHAR CmdQue:1;
-	UCHAR TranDis:1;
-	UCHAR Linked:1;
-	UCHAR Sync:1;
-	UCHAR WBUS16:1;
-	UCHAR Obsolete3:1;
-	UCHAR RelAdr:1;
-
-	UCHAR VendorId[8];
-
-	UCHAR ProductID[16];
-	UCHAR ProductRevision[4];
-
-	UCHAR VendorSpecific[20];
-
-	UCHAR IUS:1;
-	UCHAR QAS:1;
-	UCHAR CLOCKING:2;
-	UCHAR reserved3:4;
-
-	UCHAR reserved4;
-
-	UCHAR VersionDescriptor[8][2];
-
-	UCHAR reserved5[22];
-};
-
-//C_ASSERT(96 == sizeof (InquiryData));
-///////////////////////////////////////////////////////////////////////////
-// Mode Sense command and Mode pages
-///////////////////////////////////////////////////////////////////////////
-struct ModeSenseCDB : CD_CDB
-{
-	enum { OPCODE = 0x1A};
-	UCHAR Reserved1:3;
-	UCHAR DisableBlockDescriptor:1;
-	UCHAR Reserved2:4;
-
-	UCHAR PageCode:6;
-	UCHAR PageControl:2;
-	enum {PageCurrentValues = 0,
-		PageChangeableValues = 1,
-		PageDefaultValues = 2,
-		PageSavedValues = 3
-	};
-
-	UCHAR Reserved3;
-	UCHAR AllocationLength;
-	UCHAR Control;
-	ModeSenseCDB(UCHAR nLength, int nPageCode,
-				int nPageControl = PageCurrentValues, bool dbd = true)
-	{
-		memzero(*this);
-		Opcode = OPCODE;
-		AllocationLength = nLength;
-		PageCode = nPageCode;
-		PageControl = nPageControl;
-		DisableBlockDescriptor = dbd;
-	}
-};
-
-struct ModeInfoHeader
-{
-	UCHAR ModeDataLength;
-	UCHAR MediumType;
-	UCHAR DeviceSpecific;
-	UCHAR BlockDescriptorLength;
-};
-
-struct CDParametersModePage
-{
-	UCHAR PageCode:6;
-	enum {Code = 0x0D, Length=6};
-	UCHAR Reserved1:1;
-	UCHAR PS:1; // parameter savable
-
-	UCHAR PageLength;
-
-	UCHAR Reserved2;
-
-	UCHAR InactivityTimerMultiplier:4;
-	UCHAR Reserved3:4;
-
-	BigEndWord NumberOf_S_per_M;  // S in M in MSF format (60), MSB first
-
-	BigEndWord NumberOf_F_per_F;  // F in S in MSF format (75), MSB first
-};
-
-struct CDErrorRecoveryModePage
-{
-	UCHAR PageCode:6;
-	enum {Code = 1, Length=0xA};
-	UCHAR Reserved1:1;
-	UCHAR PS:1; // parameter savable
-
-	UCHAR PageLength;
-
-	UCHAR DCR:1;
-	UCHAR DTE:1;
-	UCHAR PER:1;
-	UCHAR Reserved2:1;
-	UCHAR RC:1;
-	UCHAR TB:1;
-	UCHAR ARRE:1;
-	UCHAR ARWE:1;
-
-	UCHAR ReadRetryCount;
-
-	UCHAR Reserved3[4];
-
-	UCHAR WriteRetryCount;
-
-	UCHAR Reserved4;
-
-	BigEndWord RecoveryTimeLimit; // MSB first, should be set to zero
-};
 
 // Reduced Multimedia Command Set (obsolete)
 struct CDCurrentCapabilitiesModePage
@@ -414,91 +288,6 @@ struct CDCurrentCapabilitiesModePage
 	UCHAR reserved2:5;
 
 	UCHAR reserved3[2];
-};
-
-// see T10/1228-D, NCITS 333, clause 5.5.10 table 137
-struct CDCapabilitiesMechStatusModePage
-{
-	UCHAR PageCode:6;
-	enum {Code = 0x2A, Length=0x18};
-	UCHAR Reserved1:1;
-	UCHAR PS:1; // parameter savable
-
-	UCHAR PageLength;
-
-	UCHAR CDRRead:1;
-	UCHAR CDRWRead:1;
-	UCHAR Method2:1;
-	UCHAR DVDROMRead:1;
-	UCHAR DVDR_Read:1;
-	UCHAR DVDRAMRead:1;
-	UCHAR Reserved2:2;
-
-	UCHAR CDR_Write:1;
-	UCHAR CDRW_Write:1;
-	UCHAR TestWrite:1;
-	UCHAR Reserved3:1;
-	UCHAR DVDR_Write:1;
-	UCHAR DVDRAM_Write:1;
-	UCHAR Reserved3a:2;
-
-	UCHAR AudioPlay:1;
-	UCHAR Composite:1;
-	UCHAR DigitalPort_1:1;
-	UCHAR DigitalPort_2:1;
-	UCHAR Mode2Form1:1;
-	UCHAR Mode2Form2:1;
-	UCHAR Multisession:1;
-	UCHAR Reserved4:1;
-
-	UCHAR CDDACommandsSupported:1;
-	UCHAR CDDAStreamAccurate:1;
-	UCHAR RWChanSupport:1;
-	UCHAR RWDeinterleavedCorrected:1;
-	UCHAR C2PointersSupported:1;
-	UCHAR ISRC:1;
-	UCHAR UPC:1;
-	UCHAR ReadBarCode:1;
-
-	UCHAR Lock:1;
-	UCHAR LockState:1;
-	UCHAR PreventJumper:1;
-	UCHAR Eject:1;  // supported
-	UCHAR Reserved5:1;
-	UCHAR LoadingMechanismType:3;
-
-	UCHAR SeparateVolumeLevels:1;
-	UCHAR SeparateChannelMute:1;
-	UCHAR ChangerSupportsDiskPresent:1;
-	UCHAR SW_SlotSelection:1;
-	UCHAR SideChangeCapable:1;
-	UCHAR PW_InLeadIn:1;
-	UCHAR Reserved6:2;
-
-	BigEndWord MaxReadSpeedSupported;   // obsolete
-
-	BigEndWord NumberOfVolumeLevelsSupported; // MSB first
-
-	BigEndWord BufferSizeSupported;   // MSB first
-
-	BigEndWord CurrentReadSpeedSelected; // obsolete
-
-	UCHAR Reserved9;
-
-	// byte 17:
-	UCHAR Reserved10:1;
-	UCHAR BCKF:1;
-	UCHAR RCK:1;
-	UCHAR LSBF:1;
-	UCHAR LengthBCKs:2;
-	UCHAR Reserved:2;
-
-	BigEndWord MaxWriteSpeedSupported;   // obsolete
-	BigEndWord CurrentWriteSpeedSelected; // obsolete
-	// may not be available:
-	BigEndWord CopyManagementRevision;
-
-	UCHAR Reserved11[2];
 };
 
 ///////////////////////////////////////////////////////////////////////////
@@ -592,7 +381,6 @@ enum {
 	ProfileLsbDVDRAMRW = 0x12
 };
 
-
 struct MultiReadFeatureDesc : FeatureDescriptor
 {
 	enum {Code = 0x001D, AddLength = 0};
@@ -637,115 +425,6 @@ struct SetCdSpeedCDB : CD_CDB
 	}
 };
 
-struct StreamingPerformanceDescriptor
-{
-	UCHAR RandomAccess:1;
-	UCHAR Exact:1;
-	UCHAR RestoreDefaults:1;
-	UCHAR Reserved1:5;
-	UCHAR Reserved2[3];
-
-	BigEndDword StartLBA;
-	BigEndDword EndLBA;
-
-	BigEndDword ReadSize;
-	BigEndDword ReadTime;
-
-	BigEndDword WriteSize;
-	BigEndDword WriteTime;
-	StreamingPerformanceDescriptor(ULONG nStart, ULONG nEnd,
-									ULONG ReadSpeed = 0xFFFF, ULONG WriteSpeed=0xFFFF)
-	{
-		memzero(*this);
-
-		StartLBA = nStart;
-		EndLBA = nEnd;
-
-		ReadSize = ReadSpeed;
-		ReadTime = 1000;
-
-		WriteSize = WriteSpeed;
-		WriteTime = 1000;
-	}
-};
-
-struct SetStreamingCDB : CD_CDB
-{
-	enum { OPCODE = 0xB6};
-	UCHAR Reserved1;
-	UCHAR Reserved2[7];
-
-	BigEndWord ParameterLength;
-
-	UCHAR Control;
-
-	SetStreamingCDB()
-	{
-		memzero(*this);
-		Opcode = OPCODE;
-		ParameterLength = sizeof (StreamingPerformanceDescriptor);
-	}
-};
-//////////////////////////////////////////////////////////////////
-// UNIT START/STOP
-//////////////////////////////////////////////////////////////////
-struct StartStopCdb : CD_CDB
-{
-	enum { OPCODE = 0x1B};
-	UCHAR Immediate:1;
-	UCHAR reserved1:7;
-
-	UCHAR reserved2[2];
-
-	UCHAR Start:1;
-	UCHAR LoadEject:1;
-	UCHAR reserved3:2;
-	UCHAR PowerConditions:4;
-
-	UCHAR Control;
-	enum {
-		NoChange = 0,
-		Active = 1,
-		Idle = 2,
-		Standby = 3,
-		Sleep = 5,
-		IdleTimerToExpire = 0xA,
-		StandbyTimerToExpire = 0xB,
-	};
-	StartStopCdb(int Power, bool bStart = false,
-				bool bLoadEject = false, bool bImmed = true)
-	{
-		memzero(*this);
-		Opcode = OPCODE;
-		Immediate = bImmed;
-		PowerConditions = Power;
-		Start = bStart;
-		LoadEject = bLoadEject;
-	}
-};
-
-//////////////////////////////////////////////////////////////////
-// Media removal
-//////////////////////////////////////////////////////////////////
-struct LockMediaCdb : CD_CDB
-{
-	enum { OPCODE = 0x1E};
-
-	UCHAR reserved1[3];
-
-	UCHAR LockDataTransport:1;
-	UCHAR LockMediaChanger:1;
-	UCHAR reserved2:6;
-
-	LockMediaCdb(bool LockTransport = true, bool LockChanger = false)
-	{
-		memzero(*this);
-		Opcode = OPCODE;
-		LockDataTransport = LockTransport;
-		LockMediaChanger = LockChanger;
-	}
-};
-
 //////////////////////////////////////////////////////////////////
 // Media removal
 //////////////////////////////////////////////////////////////////
@@ -787,46 +466,6 @@ struct ReadTocCdb : CD_CDB
 		AllocationLength = AllocLen;
 	}
 };
-//////////////////////////////////////////////////////////////////
-// Generic SCSI structures
-//////////////////////////////////////////////////////////////////
-
-struct SCSI_SenseInfo
-{
-	UCHAR ResponseCode:7;
-	enum { CurrentErrors=0x70, DeferredErrors=0x71 };
-	UCHAR Valid:1;
-
-	UCHAR SegmentNumber;
-
-	UCHAR SenseKey:4;
-	UCHAR Reserved1:1;
-	UCHAR IncorrectLengthIndicator:1;
-	UCHAR EndOfMedium:1;
-	UCHAR Filemark:1;
-
-	BigEndDword Unformation;
-	UCHAR AdditionalSenseLength;
-
-	BigEndDword CommandSpecificInfo;
-	UCHAR AdditionalSenseCode;
-	UCHAR AdditionalSenseQualifier;
-	UCHAR FieldReplaceableUnitCode;
-
-	UCHAR BitPointer:3;
-	UCHAR BitPointerValid:1;
-	UCHAR Reserved2:1;
-	UCHAR SegmentDescriptor:1;
-	UCHAR CommandOrData:1;
-	UCHAR SenseKeySpecificValid:1;
-	union {
-		BigEndWord FieldPointerBytes;
-		BigEndWord ActualRetryCount;
-		BigEndWord ProgressIndication;
-		BigEndWord FieldPointer;
-	};
-	UCHAR Extra[14];    // total 32
-};  // 18 bytes
 
 //////////////////////////////////////////////////////////////////
 // Media removal
@@ -842,21 +481,24 @@ struct TestUnitReadyCdb : CD_CDB
 		memzero(*this);
 		Opcode = OPCODE;
 	}
-	static CdMediaChangeState TranslateSenseInfo(SCSI_SenseInfo * pSense);
-	static bool CanOpenTray(SCSI_SenseInfo * pSense)
+	static CdMediaChangeState TranslateSenseInfo(SENSE_DATA * pSense);
+	static bool CanOpenTray(SENSE_DATA * pSense)
 	{
 		return pSense->SenseKey == 0
 				|| (pSense->SenseKey == 2   // not ready
 					&& 0x3A == pSense->AdditionalSenseCode
-					&& 1 == pSense->AdditionalSenseQualifier);
+					&& 1 == pSense->AdditionalSenseCodeQualifier);
 	}
-	static bool CanCloseTray(SCSI_SenseInfo * pSense)
+	static bool CanCloseTray(SENSE_DATA * pSense)
 	{
 		return pSense->SenseKey == 2   // not ready
 				&& 0x3A == pSense->AdditionalSenseCode
-				&& 2 == pSense->AdditionalSenseQualifier;
+				&& 2 == pSense->AdditionalSenseCodeQualifier;
 	}
 };
+#endif
+
+#if USE_ASPI_ENABLE
 struct SRB
 {
 	BYTE        Command;            // ASPI command code
@@ -905,7 +547,7 @@ struct SRB_ExecSCSICmd : SRB
 	void        *Reserved2;         // Reserved
 	BYTE        Reserved3[16];      // Reserved for expansion
 	BYTE        CDBByte[16];        // SCSI CDB
-	SCSI_SenseInfo  SenseInfo; // Request Sense buffer
+	SENSE_DATA  SenseInfo; // Request Sense buffer
 };
 
 typedef SRB_HAInquiry *PSRB_HAInquiry;
@@ -936,6 +578,7 @@ struct SRB_GetDevType : SRB
 		Lun = lun;
 	}
 };
+#endif
 
 #ifdef _DEBUG
 #undef THIS_FILE
@@ -951,7 +594,7 @@ static LONG_volatile m_MediaLockCount['Z' - 'A' + 1];
 // somehow incompatible with VC and SDK headers. If I specify
 // DDK include path in the project, it would not compile because of conflicts
 ////////////////////////////////////////////////////////////////////
-
+#if 0
 #define IOCTL_CDROM_BASE                 FILE_DEVICE_CD_ROM
 
 #define IOCTL_CDROM_UNLOAD_DRIVER        CTL_CODE(IOCTL_CDROM_BASE, 0x0402, METHOD_BUFFERED, FILE_READ_ACCESS)
@@ -1007,15 +650,6 @@ static LONG_volatile m_MediaLockCount['Z' - 'A' + 1];
 #define IOCTL_CDROM_RELEASE         CTL_CODE(IOCTL_CDROM_BASE, 0x0205, METHOD_BUFFERED, FILE_READ_ACCESS)
 #define IOCTL_CDROM_FIND_NEW_DEVICES CTL_CODE(IOCTL_CDROM_BASE, 0x0206, METHOD_BUFFERED, FILE_READ_ACCESS)
 
-typedef enum _TRACK_MODE_TYPE {
-	YellowMode2,
-	XAForm2,
-	CDDA,
-	RawWithC2AndSubCode,   // CD_RAW_SECTOR_WITH_C2_AND_SUBCODE_SIZE per sector
-	RawWithC2,             // CD_RAW_SECTOR_WITH_C2_SIZE per sector
-	RawWithSubCode         // CD_RAW_SECTOR_WITH_SUBCODE_SIZE per sector
-} TRACK_MODE_TYPE, *PTRACK_MODE_TYPE;
-
 #define CD_RAW_READ_C2_SIZE                    (     296   )
 #define CD_RAW_READ_SUBCODE_SIZE               (         96)
 #define CD_RAW_SECTOR_WITH_C2_SIZE             (2352+296   )
@@ -1026,17 +660,10 @@ typedef enum _TRACK_MODE_TYPE {
 // Passed to cdrom to describe the raw read, ie. Mode 2, Form 2, CDDA...
 //
 
-typedef struct __RAW_READ_INFO {
-	LARGE_INTEGER DiskOffset;
-	ULONG    SectorCount;
-	TRACK_MODE_TYPE TrackMode;
-} RAW_READ_INFO, *PRAW_READ_INFO;
-
-
 //
 // Define values for pass-through DataIn field.
 //
-
+#if 0
 #define SCSI_IOCTL_DATA_OUT          0
 #define SCSI_IOCTL_DATA_IN           1
 #define SCSI_IOCTL_DATA_UNSPECIFIED  2
@@ -1049,170 +676,18 @@ typedef struct __RAW_READ_INFO {
 #define IOCTL_SCSI_GET_CAPABILITIES     CTL_CODE(IOCTL_SCSI_BASE, 0x0404, METHOD_BUFFERED, FILE_ANY_ACCESS)
 #define IOCTL_SCSI_PASS_THROUGH_DIRECT  CTL_CODE(IOCTL_SCSI_BASE, 0x0405, METHOD_BUFFERED, FILE_READ_ACCESS | FILE_WRITE_ACCESS)
 #define IOCTL_SCSI_GET_ADDRESS          CTL_CODE(IOCTL_SCSI_BASE, 0x0406, METHOD_BUFFERED, FILE_ANY_ACCESS)
-
+#endif
 //
 // SCSI port driver capabilities structure.
 //
-
-typedef struct _IO_SCSI_CAPABILITIES {
-
-	//
-	// Length of this structure
-	//
-
-	ULONG Length;
-
-	//
-	// Maximum transfer size in single SRB
-	//
-
-	ULONG MaximumTransferLength;
-
-	//
-	// Maximum number of physical pages per data buffer
-	//
-
-	ULONG MaximumPhysicalPages;
-
-	//
-	// Async calls from port to class
-	//
-
-	ULONG SupportedAsynchronousEvents;
-
-	//
-	// Alignment mask for data transfers.
-	//
-
-	ULONG AlignmentMask;
-
-	//
-	// Supports tagged queuing
-	//
-
-	BOOLEAN TaggedQueuing;
-
-	//
-	// Host adapter scans down for bios devices.
-	//
-
-	BOOLEAN AdapterScansDown;
-
-	//
-	// The host adapter uses programmed I/O.
-	//
-
-	BOOLEAN AdapterUsesPio;
-
-} IO_SCSI_CAPABILITIES, *PIO_SCSI_CAPABILITIES;
-
-typedef struct _SCSI_ADDRESS {
-	ULONG Length;
-	UCHAR PortNumber;
-	UCHAR PathId;
-	UCHAR TargetId;
-	UCHAR Lun;
-}SCSI_ADDRESS, *PSCSI_ADDRESS;
 
 //
 // Define the SCSI pass through structure.
 //
 
-typedef struct _SCSI_PASS_THROUGH {
-	USHORT Length;
-	UCHAR ScsiStatus;
-	UCHAR PathId;
-	UCHAR TargetId;
-	UCHAR Lun;
-	UCHAR CdbLength;
-	UCHAR SenseInfoLength;
-	UCHAR DataIn;
-	ULONG DataTransferLength;
-	ULONG TimeOutValue;
-	ULONG_PTR DataBufferOffset;
-	ULONG SenseInfoOffset;
-	UCHAR Cdb[16];
-}SCSI_PASS_THROUGH, *PSCSI_PASS_THROUGH;
-
-//
-// Define the SCSI pass through direct structure.
-//
-
-typedef struct _SCSI_PASS_THROUGH_DIRECT {
-	USHORT Length;
-	UCHAR ScsiStatus;
-	UCHAR PathId;
-	UCHAR TargetId;
-	UCHAR Lun;
-	UCHAR CdbLength;
-	UCHAR SenseInfoLength;
-	UCHAR DataIn;
-	ULONG DataTransferLength;
-	ULONG TimeOutValue;
-	PVOID DataBuffer;
-	ULONG SenseInfoOffset;
-	UCHAR Cdb[16];
-}SCSI_PASS_THROUGH_DIRECT, *PSCSI_PASS_THROUGH_DIRECT;
-
-typedef struct _TRACK_DATA
-{
-	UCHAR Reserved;
-	UCHAR Control : 4;
-	UCHAR Adr : 4;
-	UCHAR TrackNumber;
-	UCHAR Reserved1;
-	UCHAR Address[4];
-} TRACK_DATA, *PTRACK_DATA;
-
-#define MAXIMUM_NUMBER_TRACKS 100
 #define MAXIMUM_CDROM_SIZE 804
 #define MINIMUM_CDROM_READ_TOC_EX_SIZE 2  // two bytes min transferred
-
-typedef struct _CDROM_TOC
-{
-
-	//
-	// Header
-	//
-
-	UCHAR Length[2];  // add two bytes for this field
-	UCHAR FirstTrack;
-	UCHAR LastTrack;
-
-	//
-	// Track data
-	//
-
-	TRACK_DATA TrackData[MAXIMUM_NUMBER_TRACKS];
-} CDROM_TOC, *PCDROM_TOC;
-
-#define CDROM_TOC_SIZE sizeof(CDROM_TOC)
-
-//
-// CD ROM Table OF Contents
-// Format 1 - Session Information
-//
-
-typedef struct _CDROM_TOC_SESSION_DATA {
-
-	//
-	// Header
-	//
-
-	UCHAR Length[2];  // add two bytes for this field
-	UCHAR FirstCompleteSession;
-	UCHAR LastCompleteSession;
-
-	//
-	// One track, representing the first track
-	// of the last finished session
-	//
-
-	TRACK_DATA TrackData[1];
-
-} CDROM_TOC_SESSION_DATA, *PCDROM_TOC_SESSION_DATA;
-
-
+#endif
 
 //////////////////////////////////////////////////////////////////////
 // Construction/Destruction
@@ -1318,12 +793,17 @@ public:
 	CdMediaChangeState CheckForMediaChange();
 	void ForceMountCD();
 
-	BOOL SendScsiCommand(CD_CDB * pCdb, void * pData, DWORD * pDataLen,
+	BOOL SendScsiCommand(CDB * pCdb, void * pData, DWORD * pDataLen,
 						int DataDirection,   // SCSI_IOCTL_DATA_IN, SCSI_IOCTL_DATA_OUT,
-						SCSI_SenseInfo * pSense,
+						SENSE_DATA * pSense,
 						unsigned timeout = 20);
-	BOOL ScsiInquiry(struct SRB_HAInquiry * pInq);
+	BOOL SendModeSenseCommand(void * pData, DWORD * pDataLen, unsigned char nPageCode,
+							unsigned char nPageControl = MODE_SENSE_CURRENT_VALUES, bool DisableBlockDescriptor = true);
+
 	BOOL QueryVendor(CString & Vendor);
+	BOOL SendStartStopCdb(bool bStart = false,
+						bool bLoadEject = false, bool bImmed = true);
+
 	void StopDrive();
 
 	void SetDriveBusy(bool Busy = true);
@@ -1369,6 +849,7 @@ protected:
 	bool m_bDriveBusy;
 
 	void CommonInit(BOOL LoadAspi);
+#if USE_ASPI_ENABLE
 	DWORD (_cdecl * GetASPI32DLLVersion)();
 	DWORD (_cdecl * GetASPI32SupportInfo)();
 	DWORD (_cdecl * SendASPI32Command)(SRB * lpSRB);
@@ -1377,7 +858,7 @@ protected:
 	TRANSLATEASPI32ADDRESS TranslateAspi32Address;
 	GETASPI32DRIVELETTER GetAspi32DriveLetter;
 	GETASPI32HATARGETLUN GetAspi32HaTargetLun;
-
+#endif
 	CCdDrive & CCdDrive::operator =(CCdDrive const & Drive);
 };
 
@@ -1389,6 +870,7 @@ void CCdDrive::CommonInit(BOOL LoadAspi)
 	m_DriveLetter = 0;
 	m_hWinaspi32 = NULL;
 
+#if USE_ASPI_ENABLE
 	GetASPI32DLLVersion = NULL;
 	GetASPI32SupportInfo = NULL;
 	SendASPI32Command = NULL;
@@ -1397,6 +879,7 @@ void CCdDrive::CommonInit(BOOL LoadAspi)
 	TranslateAspi32Address = NULL;
 	GetAspi32DriveLetter = NULL;
 	GetAspi32HaTargetLun = NULL;
+#endif
 	m_MaxTransferSize = 0x10000;
 	m_BufferAlignment = 1;
 	m_MediaChangeCount = ~0UL;
@@ -1417,6 +900,7 @@ void CCdDrive::CommonInit(BOOL LoadAspi)
 
 	memzero(m_ScsiAddr);
 
+#if USE_ASPI_ENABLE
 	if (LoadAspi)
 	{
 		m_hWinaspi32 = LoadLibrary(_T("cdral.dll"));
@@ -1526,6 +1010,7 @@ void CCdDrive::CommonInit(BOOL LoadAspi)
 			}
 		}
 	}
+#endif
 }
 
 CCdDrive::CCdDrive(CCdDrive const & Drive, BOOL UseAspi)
@@ -1693,7 +1178,7 @@ CCdDrive::CCdDrive(BOOL UseAspi)
 										& m_ScsiAddr, sizeof m_ScsiAddr,
 										& bytes, NULL);
 
-			struct OP : SCSI_PASS_THROUGH, SCSI_SenseInfo
+			struct OP : SCSI_PASS_THROUGH, SENSE_DATA
 			{
 				char CdConfig[1024];
 			} spt;
@@ -1701,7 +1186,7 @@ CCdDrive::CCdDrive(BOOL UseAspi)
 			spt.PathId = m_ScsiAddr.PathId;
 			spt.TargetId = m_ScsiAddr.TargetId;
 			spt.Lun = m_ScsiAddr.Lun;
-			spt.SenseInfoLength = sizeof SCSI_SenseInfo;
+			spt.SenseInfoLength = sizeof SENSE_DATA;
 			spt.SenseInfoOffset = sizeof SCSI_PASS_THROUGH;
 
 			GetConfigurationCDB cdb(sizeof spt.CdConfig);
@@ -1712,7 +1197,7 @@ CCdDrive::CCdDrive(BOOL UseAspi)
 			spt.DataIn = FALSE;
 
 			spt.DataTransferLength = sizeof spt.CdConfig;
-			spt.DataBufferOffset = sizeof SCSI_PASS_THROUGH + sizeof SCSI_SenseInfo;
+			spt.DataBufferOffset = sizeof SCSI_PASS_THROUGH + sizeof SENSE_DATA;
 			spt.TimeOutValue = 1000;
 
 			res = DeviceIoControl(hFile, IOCTL_SCSI_PASS_THROUGH,
@@ -1765,6 +1250,7 @@ BOOL CCdDrive::Open(TCHAR letter)
 
 	if (INVALID_HANDLE_VALUE == Drive || NULL == Drive)
 	{
+#if USE_ASPI_ENABLE
 		// it is windows9x
 		if (0 && NULL != GetAspi32HaTargetLun)
 		{
@@ -1813,6 +1299,7 @@ BOOL CCdDrive::Open(TCHAR letter)
 			}
 		}
 		else
+#endif
 		{
 			return FALSE;
 		}
@@ -1856,6 +1343,7 @@ BOOL CCdDrive::Open(TCHAR letter)
 				m_MaxTransferSize, m_BufferAlignment);
 		}
 
+#if USE_ASPI_ENABLE
 		if (NULL != GetAspi32HaTargetLun)
 		{
 			// find its equivalent in ASPI. The adapter number is supposed to be the same.
@@ -1868,6 +1356,7 @@ BOOL CCdDrive::Open(TCHAR letter)
 			m_ScsiAddr.TargetId = Addr.TargetId;
 		}
 		else
+#endif
 		{
 			res = DeviceIoControl(m_hDrive, IOCTL_SCSI_GET_ADDRESS,
 								NULL, 0,
@@ -1905,16 +1394,18 @@ BOOL CCdDrive::Open(TCHAR letter)
 			m_bNECDrive = true;
 		}
 	}
-	struct MODE: ModeInfoHeader, CDCapabilitiesMechStatusModePage
+
+	struct
 	{
+		MODE_PARAMETER_HEADER hdr;
+		CDVD_CAPABILITIES_PAGE page;
 	} mode;
-	ModeSenseCDB msc(sizeof mode, mode.Code);
 	bytes = sizeof mode;
-	if (SendScsiCommand( & msc, & mode, & bytes, SCSI_IOCTL_DATA_IN, NULL))
+	if (SendModeSenseCommand(&mode, &bytes, MODE_PAGE_CAPABILITIES))
 	{
-		m_bSlotLoading = mode.LoadingMechanismType == 2;
-		m_bTrayLoading = mode.LoadingMechanismType == 1;
-		m_bEjectSupported = mode.Eject;
+		m_bSlotLoading = mode.page.LoadingMechanismType == 2;
+		m_bTrayLoading = mode.page.LoadingMechanismType == 1;
+		m_bEjectSupported = mode.page.Eject;
 	}
 	return TRUE;
 }
@@ -2004,7 +1495,11 @@ BOOL CCdDrive::LockDoor(bool Lock)
 			}
 		}
 
-		LockMediaCdb cdb(Lock);
+
+		CDB cdb = { 0 };
+		cdb.MEDIA_REMOVAL.OperationCode = SCSIOP_MEDIUM_REMOVAL;
+		cdb.MEDIA_REMOVAL.Prevent = Lock;
+		cdb.MEDIA_REMOVAL.LogicalUnitNumber = m_ScsiAddr.Lun;
 		DWORD Bytes = 0;
 
 		SendScsiCommand(& cdb, & Bytes, & Bytes, SCSI_IOCTL_DATA_UNSPECIFIED, NULL);
@@ -2014,7 +1509,7 @@ BOOL CCdDrive::LockDoor(bool Lock)
 	}
 
 	DWORD BytesReturned;
-	BOOLEAN LockMedia = Lock;
+	PREVENT_MEDIA_REMOVAL LockMedia = { Lock };
 
 	if (DeviceIoControl(m_hDriveAttributes, IOCTL_STORAGE_EJECTION_CONTROL,
 						& LockMedia, sizeof LockMedia,
@@ -2027,10 +1522,37 @@ BOOL CCdDrive::LockDoor(bool Lock)
 	return TRUE;
 }
 
-BOOL CCdDrive::SendScsiCommand(CD_CDB * pCdb,
+BOOL CCdDrive::SendModeSenseCommand(void * pData, DWORD * pDataLen, unsigned char nPageCode,
+									unsigned char nPageControl, bool DisableBlockDescriptor)
+{
+	CDB cdb = { 0 };
+	if (*pDataLen <= 255)
+	{
+		cdb.MODE_SENSE.OperationCode = { SCSIOP_MODE_SENSE };
+		cdb.MODE_SENSE.Dbd = DisableBlockDescriptor;
+		cdb.MODE_SENSE.LogicalUnitNumber = m_ScsiAddr.Lun;
+		cdb.MODE_SENSE.AllocationLength = UCHAR(*pDataLen);
+		cdb.MODE_SENSE.PageCode = nPageCode;
+		cdb.MODE_SENSE.Pc = nPageControl >> 6;
+	}
+	else
+	{
+		cdb.MODE_SENSE10.OperationCode = { SCSIOP_MODE_SENSE10 };
+		cdb.MODE_SENSE10.Dbd = DisableBlockDescriptor;
+		cdb.MODE_SENSE10.LogicalUnitNumber = m_ScsiAddr.Lun;
+
+		WordToBigEndian(USHORT(*pDataLen), cdb.MODE_SENSE10.AllocationLength);
+		cdb.MODE_SENSE10.PageCode = nPageCode;
+		cdb.MODE_SENSE10.Pc = nPageControl >> 6;
+	}
+
+	return SendScsiCommand(&cdb, pData, pDataLen, SCSI_IOCTL_DATA_IN, NULL);
+}
+
+BOOL CCdDrive::SendScsiCommand(CDB * pCdb,
 								void * pData, DWORD * pDataLen,
 								int DataDirection,   // SCSI_IOCTL_DATA_IN, SCSI_IOCTL_DATA_OUT,
-								SCSI_SenseInfo * pSense,
+								SENSE_DATA * pSense,
 								unsigned timeout)
 {
 	// issue IOCTL_SCSI_PASS_THROUGH_DIRECT or IOCTL_SCSI_PASS_THROUGH
@@ -2042,7 +1564,7 @@ BOOL CCdDrive::SendScsiCommand(CD_CDB * pCdb,
 		return FALSE;
 	}
 
-	switch (pCdb->Opcode >> 5)  // command group
+	switch (pCdb->CDB6GENERIC.OperationCode >> 5)  // command group
 	{
 	case 0:
 		CdbLength = 6;
@@ -2063,6 +1585,7 @@ BOOL CCdDrive::SendScsiCommand(CD_CDB * pCdb,
 		CdbLength = 16; // unknown??
 		break;
 	}
+#if USE_ASPI_ENABLE
 	if (NULL != m_hWinaspi32)
 	{
 		SRB_ExecSCSICmd srb;
@@ -2115,48 +1638,52 @@ BOOL CCdDrive::SendScsiCommand(CD_CDB * pCdb,
 		return SS_COMP == srb.Status;
 	}
 	else
+#endif
 	{
 		// try to use IOCTL_SCSI_PASS_TROUGH or
 		// IOCTL_SCSI_PASS_TROUGH_DIRECT
 		if (*pDataLen <= 512)
 		{
 			// use IOCTL_SCSI_PASS_TROUGH
-			struct OP : SCSI_PASS_THROUGH, SCSI_SenseInfo
+			struct OP
 			{
+				SCSI_PASS_THROUGH sp;
+				SENSE_DATA ssi;
 				char MoreBuffer[512];
 			} spt;
 
-			memzero(static_cast<SCSI_SenseInfo &>(spt));
-			spt.Length = sizeof SCSI_PASS_THROUGH;
-			spt.PathId = m_ScsiAddr.PathId;
-			spt.TargetId = m_ScsiAddr.TargetId;
-			spt.Lun = m_ScsiAddr.Lun;
+			memzero(spt.ssi);
+			memzero(spt.sp);
+			spt.sp.Length = sizeof SCSI_PASS_THROUGH;
+			spt.sp.PathId = m_ScsiAddr.PathId;
+			spt.sp.TargetId = m_ScsiAddr.TargetId;
+			spt.sp.Lun = m_ScsiAddr.Lun;
 
-			spt.SenseInfoLength = sizeof SCSI_SenseInfo;
-			spt.SenseInfoOffset = sizeof SCSI_PASS_THROUGH;
+			spt.sp.SenseInfoLength = sizeof SENSE_DATA;
+			spt.sp.SenseInfoOffset = offsetof(OP, ssi);
 
-			memcpy(spt.Cdb, pCdb, CdbLength);
+			memcpy(spt.sp.Cdb, pCdb, CdbLength);
 
-			spt.CdbLength = CdbLength;
-			spt.DataIn = UCHAR(DataDirection);
-			spt.DataTransferLength = * pDataLen;
+			spt.sp.CdbLength = CdbLength;
+			spt.sp.DataIn = UCHAR(DataDirection);
+			spt.sp.DataTransferLength = * pDataLen;
 
 			DWORD InLength, OutLength;
 
 			if (SCSI_IOCTL_DATA_OUT == DataDirection)
 			{
-				memcpy(spt.MoreBuffer, pData, spt.DataTransferLength);
-				InLength = offsetof (OP, MoreBuffer) + spt.DataTransferLength;
+				memcpy(spt.MoreBuffer, pData, spt.sp.DataTransferLength);
+				InLength = offsetof (OP, MoreBuffer)+ spt.sp.DataTransferLength;
 				OutLength = offsetof (OP, MoreBuffer);
 			}
 			else
 			{
 				InLength = sizeof (SCSI_PASS_THROUGH);
-				OutLength = offsetof (OP, MoreBuffer) + spt.DataTransferLength;
+				OutLength = offsetof (OP, MoreBuffer) + spt.sp.DataTransferLength;
 			}
 
-			spt.DataBufferOffset = offsetof (OP, MoreBuffer);
-			spt.TimeOutValue = timeout;
+			spt.sp.DataBufferOffset = offsetof (OP, MoreBuffer);
+			spt.sp.TimeOutValue = timeout;
 
 			BOOL res = DeviceIoControl(m_hDrive, IOCTL_SCSI_PASS_THROUGH,
 										& spt, InLength,
@@ -2165,19 +1692,19 @@ BOOL CCdDrive::SendScsiCommand(CD_CDB * pCdb,
 
 			if (res)
 			{
-				*pDataLen = spt.DataTransferLength;
+				*pDataLen = spt.sp.DataTransferLength;
 
 				if (pSense)
 				{
-					memcpy(pSense, (SCSI_SenseInfo *) & spt, sizeof * pSense);
+					memcpy(pSense, (SENSE_DATA *) & spt, sizeof * pSense);
 				}
 				// copy data back:
 				if (SCSI_IOCTL_DATA_IN == DataDirection)
 				{
-					memcpy(pData, spt.MoreBuffer, spt.DataTransferLength);
+					memcpy(pData, spt.MoreBuffer, spt.sp.DataTransferLength);
 				}
 
-				return 0 == spt.ScsiStatus;
+				return 0 == spt.sp.ScsiStatus;
 			}
 			else
 			{
@@ -2186,14 +1713,14 @@ BOOL CCdDrive::SendScsiCommand(CD_CDB * pCdb,
 					m_bScsiCommandsAvailable = false;
 				}
 				TRACE("IOCTL_SCSI_PASS_THROUGH Opcode=0x%02X returned %d, error=%d, Sense=%x/%x\n",
-					pCdb->Opcode, res, GetLastError(), spt.SenseKey, spt.AdditionalSenseCode);
+					pCdb->CDB10.OperationCode, res, GetLastError(), spt.ssi.SenseKey, spt.ssi.AdditionalSenseCode);
 				return FALSE;
 			}
 		}
 		else
 		{
 			// use IOCTL_SCSI_PASS_TROUGH_DIRECT
-			struct OP : SCSI_PASS_THROUGH_DIRECT, SCSI_SenseInfo
+			struct OP : SCSI_PASS_THROUGH_DIRECT, SENSE_DATA
 			{
 			} spt;
 
@@ -2202,7 +1729,7 @@ BOOL CCdDrive::SendScsiCommand(CD_CDB * pCdb,
 			spt.TargetId = m_ScsiAddr.TargetId;
 			spt.Lun = m_ScsiAddr.Lun;
 
-			spt.SenseInfoLength = sizeof SCSI_SenseInfo;
+			spt.SenseInfoLength = sizeof SENSE_DATA;
 			spt.SenseInfoOffset = sizeof SCSI_PASS_THROUGH_DIRECT;
 
 			memcpy(spt.Cdb, pCdb, CdbLength);
@@ -2225,7 +1752,7 @@ BOOL CCdDrive::SendScsiCommand(CD_CDB * pCdb,
 
 				if (pSense)
 				{
-					memcpy(pSense, (SCSI_SenseInfo *) & spt, sizeof * pSense);
+					memcpy(pSense, (SENSE_DATA *) & spt, sizeof * pSense);
 				}
 				return 0 == spt.ScsiStatus;
 			}
@@ -2235,24 +1762,18 @@ BOOL CCdDrive::SendScsiCommand(CD_CDB * pCdb,
 				{
 					m_bScsiCommandsAvailable = false;
 				}
-				TRACE("IOCTL_SCSI_PASS_THROUGH_DIRECT Opcode=0x%02X returned %d, error=%d, Sense=%x/%x\n",
-					pCdb->Opcode, res, GetLastError(), spt.SenseKey, spt.AdditionalSenseCode);
+				else
+				{
+					TRACE("IOCTL_SCSI_PASS_THROUGH_DIRECT Opcode=0x%02X returned %d, error=%d, Sense=%x/%x\n",
+						pCdb->CDB10.OperationCode, res, GetLastError(), spt.SenseKey, spt.AdditionalSenseCode);
+
+				}
 
 				return FALSE;
 			}
 		}
-//        return FALSE;
 	}
 
-}
-
-BOOL CCdDrive::ScsiInquiry(SRB_HAInquiry * pInq)
-{
-	pInq->Command = SC_HA_INQUIRY;
-	pInq->Flags = 0;
-	pInq->HostAdapter = m_ScsiAddr.PortNumber;
-	DWORD status = SendASPI32Command(pInq);
-	return status == SS_COMP;
 }
 
 BOOL CCdDrive::ReadToc()
@@ -2260,25 +1781,12 @@ BOOL CCdDrive::ReadToc()
 	m_OffsetBytesPerSector = 2048;
 	DWORD dwReturned = sizeof m_Toc;
 	BOOL res;
-	CDROM_TOC toc;
-	if (NULL == m_hDrive)
-	{
-		ReadTocCdb cdb(0, sizeof toc);
 
-		res = SendScsiCommand( & cdb, & toc, & dwReturned, SCSI_IOCTL_DATA_IN, NULL);
-		if (res)
-		{
-			m_Toc = toc;
-		}
-	}
-	else
-	{
-		res = DeviceIoControl(m_hDrive, IOCTL_CDROM_READ_TOC,
-							NULL, 0,
-							&m_Toc, sizeof m_Toc,
-							& dwReturned,
-							NULL);
-	}
+	res = DeviceIoControl(m_hDrive, IOCTL_CDROM_READ_TOC,
+						NULL, 0,
+						&m_Toc, sizeof m_Toc,
+						& dwReturned,
+						NULL);
 
 	TRACE("Get TOC IoControl returned %x, bytes: %d, last error = %d, First track %d, last track: %d, Length:%02X%02X\n",
 		res, dwReturned, GetLastError(),
@@ -2329,96 +1837,88 @@ void CCdDrive::ForceMountCD()
 	}
 }
 
+static bool CanOpenTray(SENSE_DATA * pSense)
+{
+	return pSense->SenseKey == 0
+			|| (pSense->SenseKey == 2   // not ready
+				&& 0x3A == pSense->AdditionalSenseCode
+				&& 1 == pSense->AdditionalSenseCodeQualifier);
+}
+static bool CanCloseTray(SENSE_DATA * pSense)
+{
+	return pSense->SenseKey == 2   // not ready
+			&& 0x3A == pSense->AdditionalSenseCode
+			&& 2 == pSense->AdditionalSenseCodeQualifier;
+}
 CdMediaChangeState CCdDrive::CheckForMediaChange()
 {
-	TestUnitReadyCdb cdb;
-	SCSI_SenseInfo sense;
-	DWORD bytes = 0;
-	memzero(sense);
+	DWORD res = 0;
+	DWORD MediaChangeCount = 0;
+	DWORD BytesReturned;
+	DWORD error = 0;
 
-	if (NULL != m_hDrive)
+	if (NULL != m_hDriveAttributes)
 	{
-		DWORD MediaChangeCount = 0;
-		DWORD BytesReturned;
-		DWORD res = DeviceIoControl(m_hDrive,
-									IOCTL_STORAGE_CHECK_VERIFY2,
-									NULL, 0,
-									& MediaChangeCount, sizeof MediaChangeCount,
-									& BytesReturned, NULL);
+		res = DeviceIoControl(m_hDriveAttributes,
+							IOCTL_STORAGE_CHECK_VERIFY2,
+							NULL, 0,
+							&MediaChangeCount, sizeof MediaChangeCount,
+							&BytesReturned, NULL);
 
-		DWORD error = GetLastError();
+		error = GetLastError();
 
-		if (0) TRACE("GetLastError=%d, MediaChange=%d\n",
-					error, MediaChangeCount);
-
-		if (! res && error != ERROR_NOT_READY)
-		{
-			res = DeviceIoControl(m_hDrive,
-								IOCTL_STORAGE_CHECK_VERIFY,
-								NULL, 0,
-								& MediaChangeCount, sizeof MediaChangeCount,
-								& BytesReturned, NULL);
-			TRACE("GetLastError=%d, MediaChange=%d\n",
-				GetLastError(),
-				MediaChangeCount);
-		}
-
-		if (! res)
-		{
-			if (m_bTrayLoading
-				&& m_bScsiCommandsAvailable)
-			{
-				SendScsiCommand( & cdb, NULL, & bytes,
-								SCSI_IOCTL_DATA_UNSPECIFIED, & sense);
-				if (cdb.CanCloseTray( & sense))
-				{
-					m_bTrayOut = true;
-				}
-				if (cdb.CanOpenTray( & sense))
-				{
-					m_bTrayOut = false;
-				}
-			}
-			//if (~0UL != m_MediaChangeCount)
-			{
-				m_MediaChangeCount = ~0UL;
-				//TRACE("device not ready\n");
-				// check door state
-				return CdMediaStateNotReady;
-			}
-		}
-		else if (MediaChangeCount != m_MediaChangeCount)
-		{
-			m_MediaChangeCount = MediaChangeCount;
-			return CdMediaStateDiskChanged;
-		}
-		else
-		{
-			return CdMediaStateReady;
-		}
+		TRACE("IOCTL_STORAGE_CHECK_VERIFY2 res=%d,GetLastError=%d, MediaChange=%d\n",
+			res, error, MediaChangeCount);
 	}
-	else
+	if (! res && error != ERROR_NOT_READY)
 	{
-		if ( ! SendScsiCommand( & cdb, NULL, & bytes,
-								SCSI_IOCTL_DATA_UNSPECIFIED, & sense))
+		res = DeviceIoControl(m_hDrive,
+							IOCTL_STORAGE_CHECK_VERIFY,
+							NULL, 0,
+							& MediaChangeCount, sizeof MediaChangeCount,
+							& BytesReturned, NULL);
+		TRACE("GetLastError=%d, MediaChange=%d\n",
+			GetLastError(),
+			MediaChangeCount);
+	}
+	if (!res)
+	{
+		if (m_bTrayLoading
+			&& m_bScsiCommandsAvailable)
 		{
-			if (m_bTrayLoading
-				&& cdb.CanCloseTray( & sense))
+			CDB cdb = { 0 };
+			cdb.CDB6GENERIC.OperationCode = SCSIOP_TEST_UNIT_READY;
+			SENSE_DATA sense = { 0 };
+			DWORD bytes = 0;
+
+			SendScsiCommand(&cdb, NULL, &bytes,
+							SCSI_IOCTL_DATA_UNSPECIFIED, &sense);
+			if (CanCloseTray(&sense))
 			{
 				m_bTrayOut = true;
 			}
-			if (cdb.CanOpenTray( & sense))
+			if (CanOpenTray(&sense))
 			{
 				m_bTrayOut = false;
 			}
-			return cdb.TranslateSenseInfo( & sense);
 		}
-		else
+		//if (~0UL != m_MediaChangeCount)
 		{
-			return CdMediaStateReady;
+			m_MediaChangeCount = ~0UL;
+			//TRACE("device not ready\n");
+			// check door state
+			return CdMediaStateNotReady;
 		}
 	}
-//    return CdMediaStateNotReady;
+	else if (MediaChangeCount != m_MediaChangeCount)
+	{
+		m_MediaChangeCount = MediaChangeCount;
+		return CdMediaStateDiskChanged;
+	}
+	else
+	{
+		return CdMediaStateReady;
+	}
 
 }
 
@@ -2455,13 +1955,34 @@ DWORD CCdDrive::GetDiskID()
 
 BOOL CCdDrive::GetMaxReadSpeed(int * pMaxSpeed, int * pCurrentSpeed) // bytes/s
 {
-	SCSI_SenseInfo ssi;
 	DWORD DataLen;
 	BOOL res;
+
+	CDROM_PERFORMANCE_REQUEST spr = { CdromPerformanceRequest, CdromReadPerformance, CdromNominalPerformance, Cdrom10Nominal20Exceptions, 150 };
+
+	ULONG Result[(FIELD_OFFSET(CDROM_PERFORMANCE_HEADER, Data) + sizeof (CDROM_NOMINAL_PERFORMANCE_DESCRIPTOR))/4];
+	CDROM_PERFORMANCE_HEADER *hdr = (CDROM_PERFORMANCE_HEADER *)Result;
+	CDROM_NOMINAL_PERFORMANCE_DESCRIPTOR *perf = (CDROM_NOMINAL_PERFORMANCE_DESCRIPTOR *)&hdr->Data[0];
+
+	ZeroMemory(Result, sizeof(Result));
+
+	res = DeviceIoControl(m_hDrive, IOCTL_CDROM_GET_PERFORMANCE, &spr, sizeof spr, &Result, sizeof Result, &DataLen, NULL);
+	if (res)
+	{
+		TRACE("CD speed obtained by IOCTL_CDROM_GET_PERFORMANCE,start = %d, end=%d\n",
+			BigEndianToDword(perf->StartPerformance), BigEndianToDword(perf->EndPerformance));
+		*pMaxSpeed = BigEndianToDword(perf->EndPerformance) * 1000;
+		if (pCurrentSpeed != NULL)
+		{
+			*pCurrentSpeed = BigEndianToDword(perf->EndPerformance) * 1000;
+		}
+		return TRUE;
+	}
+#if 0
+	SENSE_DATA ssi;
 	// try to use Get Performance command
 	// if the command is not supported, use Set Speed and get the max speed
 	// from mech status mode page (offset 8 / 176.4)
-
 	struct PERF : CdPerformanceDataHeader
 	{
 		CdNominalPerformanceDescriptor desc[10];
@@ -2507,18 +2028,19 @@ BOOL CCdDrive::GetMaxReadSpeed(int * pMaxSpeed, int * pCurrentSpeed) // bytes/s
 	m_bStreamingFeatureSuported = false;
 	// use CD MAE current capabilities page
 	// use mech status mode page
-	struct CdCaps: ModeInfoHeader, CDCapabilitiesMechStatusModePage
+	struct
 	{
+		MODE_PARAMETER_HEADER hdr;
+		CDVD_CAPABILITIES_PAGE page;
 	} cdmp;
-	ModeSenseCDB msdb(sizeof cdmp, cdmp.Code);
 	DataLen = sizeof cdmp;
 
-	res = SendScsiCommand( & msdb, & cdmp, & DataLen, SCSI_IOCTL_DATA_IN, & ssi);
+	res = SendModeSenseCommand( &cdmp, & DataLen, MODE_PAGE_CAPABILITIES);
 
 	if (res)
 	{
-		TRACE("CD speed obtained by CDCapabilitiesMechStatusModePage,current = %d, max=%d\n",
-			LONG(cdmp.CurrentReadSpeedSelected), LONG(cdmp.MaxReadSpeedSupported));
+		TRACE("CD speed obtained by CDVD_CAPABILITIES_PAGE,current = %d, max=%d\n",
+			BigEndianToUlong(cdmp.page.CurrentReadSpeedSelected), BigEndianToUlong(cdmp.page.MaxReadSpeedSupported));
 		* pMaxSpeed = cdmp.MaxReadSpeedSupported * 1000;
 		if (pCurrentSpeed != NULL)
 		{
@@ -2526,26 +2048,7 @@ BOOL CCdDrive::GetMaxReadSpeed(int * pMaxSpeed, int * pCurrentSpeed) // bytes/s
 		}
 		return TRUE;
 	}
-
-	struct CdCaps: ModeInfoHeader, CDCurrentCapabilitiesModePage
-	{
-	} cdcp;
-	ModeSenseCDB msdb2(sizeof cdcp, cdcp.Code);
-	DataLen = sizeof cdcp;
-
-	res = SendScsiCommand( & msdb2, & cdcp, & DataLen, SCSI_IOCTL_DATA_IN, & ssi);
-
-	if (res)
-	{
-		TRACE("CD speed obtained by CDCurrentCapabilitiesModePage,current = %d, max=%d\n",
-			LONG(cdcp.CurrentReadSpeed), LONG(cdcp.MaximumReadSpeed));
-		* pMaxSpeed = cdcp.MaximumReadSpeed * 1000;
-		if (pCurrentSpeed != NULL)
-		{
-			*pCurrentSpeed = cdcp.CurrentReadSpeed * 1000;
-		}
-		return TRUE;
-	}
+#endif
 
 	return FALSE;
 
@@ -2567,12 +2070,12 @@ BOOL CCdDrive::ReadCdData(void * pBuf, long Address, int nSectors)
 {
 	DWORD Length = nSectors * CDDASectorSize;
 	BOOL res = FALSE;
-
+#if 0
 	if (m_bScsiCommandsAvailable)
 	{
 		ReadCD_CDB rcd(Address, Length);
 
-		SCSI_SenseInfo ssi;
+		SENSE_DATA ssi;
 
 		if (! m_bUseNonStandardRead)
 		{
@@ -2585,7 +2088,7 @@ BOOL CCdDrive::ReadCdData(void * pBuf, long Address, int nSectors)
 			TRACE("READ CD error, SenseKey=%d, AdditionalSenseCode=%X\n",
 				ssi.SenseKey, ssi.AdditionalSenseCode);
 		}
-		if (m_bPlextorDrive)
+		else if (m_bPlextorDrive)
 		{
 			ReadCD_Plextor rcdpx(Address, nSectors);
 			res = SendScsiCommand( & rcdpx, pBuf, & Length,
@@ -2600,6 +2103,7 @@ BOOL CCdDrive::ReadCdData(void * pBuf, long Address, int nSectors)
 		return res;
 	}
 	else
+#endif
 	{
 		RAW_READ_INFO rri;
 		rri.SectorCount = nSectors;
@@ -2626,7 +2130,7 @@ BOOL CCdDrive::ReadCdData(void * pBuf, CdAddressMSF Address, int nSectors)
 {
 	DWORD Length = nSectors * CDDASectorSize;
 	BOOL res = FALSE;
-
+#if 0
 	if (m_bScsiCommandsAvailable)
 	{
 		TRACE("ReadCdData using SCSI, ADDR=%d:%02d.%02d\n",
@@ -2634,7 +2138,7 @@ BOOL CCdDrive::ReadCdData(void * pBuf, CdAddressMSF Address, int nSectors)
 		CdAddressMSF EndAddress;
 		EndAddress = LONG(Address) + nSectors;
 
-		SCSI_SenseInfo ssi;
+		SENSE_DATA ssi;
 		if (! m_bUseNonStandardRead)
 		{
 			ReadCD_MSF_CDB rcd(Address, EndAddress);
@@ -2648,8 +2152,7 @@ BOOL CCdDrive::ReadCdData(void * pBuf, CdAddressMSF Address, int nSectors)
 			TRACE("READ CD error, SenseKey=%d, AdditionalSenseCode=%X\n",
 				ssi.SenseKey, ssi.AdditionalSenseCode);
 		}
-
-		if (m_bPlextorDrive)
+		else if (m_bPlextorDrive)
 		{
 			ReadCD_Plextor rcdpx(Address - 150, nSectors);
 			res = SendScsiCommand( & rcdpx, pBuf, & Length,
@@ -2664,9 +2167,10 @@ BOOL CCdDrive::ReadCdData(void * pBuf, CdAddressMSF Address, int nSectors)
 		return res;
 	}
 	else
+#endif
 	{
-		TRACE("ReadCdData using IOCTL_CDROM_RAW_READ, ADDR=%d:%02d.%02d\n",
-			Address.Minute, Address.Second, Address.Frame);
+		if (0) TRACE("ReadCdData using IOCTL_CDROM_RAW_READ, ADDR=%d:%02d.%02d\n",
+					Address.Minute, Address.Second, Address.Frame);
 		RAW_READ_INFO rri;
 		rri.SectorCount = nSectors;
 		rri.TrackMode = CDDA;
@@ -2691,15 +2195,53 @@ BOOL CCdDrive::ReadCdData(void * pBuf, CdAddressMSF Address, int nSectors)
 
 BOOL CCdDrive::SetReadSpeed(ULONG BytesPerSec, ULONG BeginLba, ULONG NumSectors)
 {
+	DWORD Length = 0;
+	{
+		CDROM_SET_STREAMING streaming = {
+			CdromSetStreaming,
+			BytesPerSec / 1024,
+			1000,
+			BytesPerSec / 1024,
+			1000,
+			BeginLba,
+			BeginLba + NumSectors - 1,
+			CdromDefaultRotation,
+
+		};
+		if (0 == NumSectors)
+		{
+			streaming.RestoreDefaults = TRUE;
+		}
+
+		// try the IOCTL
+		BOOL res = DeviceIoControl(m_hDrive, IOCTL_CDROM_SET_SPEED, &streaming, sizeof streaming, NULL, 0, &Length, NULL);
+		TRACE("IOCTL_CDROM_SET_SPEED for streaming returned %d, LastError=%d\n", res, GetLastError());
+		if (res)
+		{
+			return TRUE;
+		}
+	}
 	if (m_bStreamingFeatureSuported)
 	{
-		StreamingPerformanceDescriptor spd(BeginLba, BeginLba + NumSectors, BytesPerSec / 1024);
-		SetStreamingCDB cdb;
+
+		CDB cdb = { 0 };
+		PERFORMANCE_DESCRIPTOR spd = { 0 };
+		DwordToBigEndian(BeginLba, spd.StartLba);
+		DwordToBigEndian(BeginLba + NumSectors - 1, spd.EndLba);
+		DwordToBigEndian(BytesPerSec / 1024, spd.ReadSize);		// kilobytes
+		DwordToBigEndian(1000, spd.ReadTime);					// per 1000 ms
+		DwordToBigEndian(600, spd.WriteSize);
+		DwordToBigEndian(1000, spd.WriteTime);
+
+		cdb.SET_STREAMING.OperationCode = SCSIOP_SET_STREAMING;
+
+		WordToBigEndian(sizeof spd, cdb.SET_STREAMING.ParameterListLength);
+
 		if (0 == NumSectors)
 		{
 			spd.RestoreDefaults = TRUE;
 		}
-		DWORD Length = sizeof spd;
+
 		BOOL res = SendScsiCommand( & cdb, & spd, & Length,
 									SCSI_IOCTL_DATA_OUT, NULL);
 		TRACE("Set Streaming returned %d\n", res);
@@ -2710,36 +2252,37 @@ BOOL CCdDrive::SetReadSpeed(ULONG BytesPerSec, ULONG BeginLba, ULONG NumSectors)
 		m_bStreamingFeatureSuported = false;
 	}
 
-	SetCdSpeedCDB SetSpeed(USHORT(std::min(BytesPerSec / 1024, 0xFFFFul)));
-	DWORD Length = 0;
-	BOOL res = SendScsiCommand( & SetSpeed, NULL, & Length,
-								SCSI_IOCTL_DATA_UNSPECIFIED, NULL);
-	TRACE("Set CD Speed returned %d\n", res);
+	CDROM_SET_SPEED speed = { CdromSetSpeed , USHORT(BytesPerSec / 1024), USHORT(BytesPerSec / 1024), CdromDefaultRotation };
+
+	BOOL res = DeviceIoControl(m_hDrive, IOCTL_CDROM_SET_SPEED, &speed, sizeof speed, NULL, 0, &Length, NULL);
+	TRACE("IOCTL_CDROM_SET_SPEED returned %d\n", res);
 	return res;
 }
 
 BOOL CCdDrive::QueryVendor(CString & Vendor)
 {
-	InquiryData iqd;
-	InquiryCDB iqcdb(sizeof iqd);
+	INQUIRYDATA iqd;
+
+	CDB cdb = { 0 };
+	cdb.CDB6INQUIRY.OperationCode = SCSIOP_INQUIRY;
+	cdb.CDB6INQUIRY.LogicalUnitNumber = m_ScsiAddr.Lun;
+	cdb.CDB6INQUIRY.AllocationLength = sizeof iqd;
+
 	DWORD Length = sizeof iqd;
-	BOOL res = SendScsiCommand( & iqcdb, & iqd, & Length,
+	BOOL res = SendScsiCommand( & cdb, & iqd, & Length,
 								SCSI_IOCTL_DATA_IN, NULL);
+
 	if (res)
 	{
 		Vendor = CString(PSTR(iqd.VendorId), sizeof iqd.VendorId);
 		return TRUE;
 	}
 	return FALSE;
-
 }
 
 void CCdDrive::StopDrive()
 {
-	DWORD Length = 0;
-	StartStopCdb sscbd(StartStopCdb::NoChange, false);
-	SendScsiCommand( & sscbd, & Length, & Length,
-					SCSI_IOCTL_DATA_UNSPECIFIED, NULL);
+	SendStartStopCdb(false);
 }
 
 void CCdDrive::SetDriveBusy(bool Busy)
@@ -2819,6 +2362,20 @@ bool CCdDrive::CanLoadMedia()
 	return m_bTrayLoading && m_bTrayOut;
 }
 
+BOOL CCdDrive::SendStartStopCdb(bool bStart,
+								bool bLoadEject, bool bImmed)
+{
+	DWORD length = 0;
+	CDB cdb = { 0 };
+	cdb.START_STOP.OperationCode = SCSIOP_START_STOP_UNIT;
+	cdb.START_STOP.Immediate = bImmed;
+	cdb.START_STOP.LogicalUnitNumber = m_ScsiAddr.Lun;
+	cdb.START_STOP.Start = bStart;
+	cdb.START_STOP.LoadEject = bLoadEject;
+
+	return SendScsiCommand(&cdb, NULL, &length, SCSI_IOCTL_DATA_UNSPECIFIED, NULL);
+}
+
 void CCdDrive::EjectMedia()
 {
 	DWORD bytes = 0;
@@ -2831,9 +2388,7 @@ void CCdDrive::EjectMedia()
 	}
 	else if (m_bScsiCommandsAvailable)
 	{
-		StartStopCdb ssc(StartStopCdb::NoChange, false, true, false);
-		m_bTrayOut = 0 != SendScsiCommand( & ssc, NULL, & bytes, SCSI_IOCTL_DATA_UNSPECIFIED, NULL)
-					|| m_bTrayOut;
+		m_bTrayOut = 0 != SendStartStopCdb(false, true, false)|| m_bTrayOut;
 	}
 }
 
@@ -2848,8 +2403,7 @@ void CCdDrive::LoadMedia()
 	}
 	else if (m_bScsiCommandsAvailable)
 	{
-		StartStopCdb ssc(StartStopCdb::NoChange, true, true, false);
-		SendScsiCommand( & ssc, NULL, & bytes, SCSI_IOCTL_DATA_UNSPECIFIED, NULL);
+		SendStartStopCdb(true, true, false);
 	}
 	m_bTrayOut = false;
 }
@@ -2859,12 +2413,12 @@ BOOL CCdDrive::IsTrayOpen()
 	return m_bTrayOut;
 }
 
-CdMediaChangeState TestUnitReadyCdb::TranslateSenseInfo(SCSI_SenseInfo * pSense)
+CdMediaChangeState TranslateSenseInfo(SENSE_DATA * pSense)
 {
 	if (pSense->SenseKey == 2   // not ready
 		&& 0x3A == pSense->AdditionalSenseCode)
 	{
-		switch (pSense->AdditionalSenseQualifier)
+		switch (pSense->AdditionalSenseCodeQualifier)
 		{
 		case 0:
 			// medium not present
