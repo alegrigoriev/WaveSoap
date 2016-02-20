@@ -2603,7 +2603,11 @@ unsigned CInitChannels::ProcessBuffer(char const * /*pInBuf*/, // if BACKWARD pa
 									unsigned /*nInBytes*/, unsigned nOutBytes, unsigned * /*pUsedBytes*/,
 									SAMPLE_POSITION /*SrcOffset*/,  // if BACKWARD pass, offset of the end of source buffer
 									SAMPLE_POSITION /*DstOffset*/,  // if BACKWARD pass, offset of the end of destination buffer
-									signed pass)
+									signed
+#ifdef _DEBUG
+									pass
+#endif
+									)
 {
 	ASSERT(pass == 1);
 	memset(pOutBuf, 0, nOutBytes);

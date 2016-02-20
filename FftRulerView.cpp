@@ -338,7 +338,7 @@ afx_msg LRESULT CFftRulerView::OnUwmNotifyViews(WPARAM wParam, LPARAM lParam)
 				//m_bIsTrackingSelection = FALSE;   // will be reset in WM_CAPTURECHANGED
 			}
 
-			Invalidate(FALSE);
+			Invalidate(TRUE);
 			// check for the proper offset, correct if necessary
 			m_FirstbandVisible = AdjustOffset(m_FirstbandVisible);
 		}

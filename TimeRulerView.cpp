@@ -1241,22 +1241,22 @@ void CTimeRulerView::OnTimer(UINT_PTR nIDEvent)
 
 	if (p.x > cr.right - AutoscrollWidth)
 	{
-		int nDistance = p.x - (cr.right - AutoscrollWidth) - 1;
+		int nDistance = (p.x - (cr.right - AutoscrollWidth) - 1) / 2;
 		if (nDistance > 14)
 		{
 			nDistance = 14;
 		}
-		HorizontalScrollByPixels(1 << nDistance);
+		HorizontalScrollByPixels(-1 << nDistance);
 	}
 	else if (p.x < AutoscrollWidth)
 	{
-		int nDistance = AutoscrollWidth - p.x - 1;
+		int nDistance = (AutoscrollWidth - p.x - 1) / 2;
 		if (nDistance > 14)
 		{
 			nDistance = 14;
 		}
 
-		HorizontalScrollByPixels(-1 << nDistance);
+		HorizontalScrollByPixels(1 << nDistance);
 	}
 	else
 	{

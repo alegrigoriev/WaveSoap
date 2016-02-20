@@ -114,7 +114,7 @@ public:
 protected:
 	virtual void OnDraw(CDC* pDC);      // overridden to draw this view
 	//}}AFX_VIRTUAL
-	virtual void HorizontalScrollByPixels(int Pixels);
+	virtual void HorizontalScrollByPixels(int Pixels);	// Pixels >0 - picture moves to the right, pixels <0 - picture moves to the left
 	virtual void BeginMouseTracking();
 
 	double WindowXToDb(int x) const;

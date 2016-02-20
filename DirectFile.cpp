@@ -2397,8 +2397,9 @@ void File::ReadDataBuffer(BufferHeader * pBuf, DWORD MaskToRead, DWORD Requested
 
 					CSimpleCriticalSectionLock lock1(m_pSourceFile->m_FileLock);
 
+#ifdef _DEBUG
 					DebugTimeStamp time;
-
+#endif
 					if (StartFilePtr != m_pSourceFile->m_FilePointer)
 					{
 						LONG FilePtrH = LONG(StartFilePtr >> 32);
@@ -2409,9 +2410,9 @@ void File::ReadDataBuffer(BufferHeader * pBuf, DWORD MaskToRead, DWORD Requested
 					ReadFile(m_pSourceFile->m_hFile, buf,
 							(ToRead + (CACHE_SUBBLOCK_SIZE - 1)) & ~MASK_OFFSET_IN_SUBBLOCK, & BytesRead, NULL);
 
+#ifdef _DEBUG
 					if (TRACE_READ) TRACE("ReadFile(%08x, pos=0x%08X, bytes=%X), elapsed time=%d ms/10\n",
 						m_pSourceFile->m_hFile, (ULONG)(StartFilePtr & 0xFFFFFFFF), ToRead, time.ElapsedTimeTenthMs());
-#ifdef _DEBUG
 					if (BytesRead < ToRead)
 					{
 						if (0) TRACE("ToRead=%x, BytesRead=%x\n", ToRead, BytesRead);
@@ -2469,7 +2470,9 @@ void File::ReadDataBuffer(BufferHeader * pBuf, DWORD MaskToRead, DWORD Requested
 			if (0) TRACE("Stored file pointer: %X, actual: %X\n",
 						long(m_FilePointer), SetFilePointer(m_hFile, 0, NULL, FILE_CURRENT));
 
+#ifdef _DEBUG
 			DebugTimeStamp time;
+#endif
 
 			if (StartFilePtr != m_FilePointer)
 			{
@@ -2480,9 +2483,10 @@ void File::ReadDataBuffer(BufferHeader * pBuf, DWORD MaskToRead, DWORD Requested
 
 			ReadFile(m_hFile, buf, ToRead, & BytesRead, NULL);
 
+#ifdef _DEBUG
 			if (TRACE_READ) TRACE("ReadFile(%08x, pos=0x%08X, bytes=%X), elapsed time=%d ms/10\n",
 								m_hFile, (ULONG)(StartFilePtr & 0xFFFFFFFF), ToRead, time.ElapsedTimeTenthMs());
-
+#endif
 			if (0 == m_LastError)
 			{
 				m_LastError = ::GetLastError();
@@ -2598,7 +2602,9 @@ void DirectFileCache::File::FlushDirtyBuffers(BufferHeader * pDirtyBuf, BLOCK_IN
 				if (0) TRACE("Stored file pointer: %X, actual: %X\n",
 							long(m_FilePointer), SetFilePointer(m_hFile, 0, NULL, FILE_CURRENT));
 
+#ifdef _DEBUG
 				DebugTimeStamp time;
+#endif
 
 				if (StartFilePtr != m_FilePointer)
 				{
@@ -2620,9 +2626,10 @@ void DirectFileCache::File::FlushDirtyBuffers(BufferHeader * pDirtyBuf, BLOCK_IN
 					m_LastError = ::GetLastError();
 				}
 
+#ifdef _DEBUG
 				if (TRACE_WRITE) TRACE("WriteFile(%08x, pos=0x%08X, bytes=%X), elapsed time=%d ms/10\n",
 										m_hFile, (ULONG)(StartFilePtr & 0xFFFFFFFF), ToWrite, time.ElapsedTimeTenthMs());
-
+#endif
 				m_FilePointer += BytesWritten;
 				if (BytesWritten != ToWrite)
 				{
@@ -2795,15 +2802,18 @@ unsigned CDirectFileCache::_ThreadProc()
 				//LONG PrefetchLength = CACHE_BLOCK_SIZE;
 
 				void * pBuf = NULL;
+#ifdef _DEBUG
 				DebugTimeStamp time;
+#endif
 
 				long ReadLength = GetDataBuffer(pPrefetch->m_pFile,
 												& pBuf, CACHE_BLOCK_SIZE,
 												PrefetchPosition, CDirectFile::GetBufferNoPrefetch);
 
+#ifdef _DEBUG
 				if (0 || TRACE_PREFETCH) TRACE("Prefetched block 0x%X file %x, time %d/10 ms\n",
 					pPrefetch->m_PrefetchPosition, pPrefetch->m_pFile->m_hFile, time.ElapsedTimeTenthMs());
-
+#endif
 				pPrefetch->m_pFile->ReturnDataBuffer(pBuf, ReadLength, 0);
 
 				if (pPrefetch->m_PrefetchedBeginBlock <= pPrefetch->m_PrefetchedEndBlock)

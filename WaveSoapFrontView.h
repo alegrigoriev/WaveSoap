@@ -34,7 +34,7 @@ protected: // create from serialization only
 	// scroll_offset < 0 - image moves to the right, first pixel in view decremented
 	// scroll_offset > 0 - image moves to the left, first pixel in view incremented
 	void HorizontalScrollBy(double samples);
-	void HorizontalScrollByPixels(int pixels);
+	void HorizontalScrollByPixels(int pixels);	// Pixels >0 - picture moves to the right, pixels <0 - picture moves to the left
 
 	NUMBER_OF_SAMPLES WaveFileSamples() const
 	{

@@ -1221,7 +1221,7 @@ void CWaveFftView::SetVerticalScale(double NewVerticalScale)
 
 	m_FirstbandVisible = AdjustOffset(m_FirstbandVisible);
 
-	Invalidate(FALSE);
+	Invalidate(TRUE);
 
 	NotifySiblingViews(FftVerticalScaleChanged, &NewVerticalScale);
 }
@@ -1341,7 +1341,7 @@ void CWaveFftView::OnSetBands(int order)
 		m_pFftBuf.Free();
 
 		Invalidate();
-		NotifySiblingViews(FftBandsChanged, &order);
+		NotifySiblingViews(FftBandsChanged, &m_FftOrder);
 	}
 }
 
