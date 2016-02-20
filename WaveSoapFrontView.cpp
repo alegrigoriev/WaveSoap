@@ -2395,11 +2395,11 @@ int CWaveSoapFrontView::OnCreate(LPCREATESTRUCT lpCreateStruct)
 	return 0;
 }
 
-// scroll_offset < 0 - image moves to the right, first pixel in view decremented
-// scroll_offset > 0 - image moves to the left, first pixel in view incremented
+// scroll_offset > 0 - image moves to the right, first pixel in view decremented
+// scroll_offset < 0 - image moves to the left, first pixel in view incremented
 void CWaveSoapViewBase::HorizontalScrollByPixels(int pixels)
 {
-	HorizontalScrollBy(pixels * m_HorizontalScale);
+	HorizontalScrollBy(-pixels * m_HorizontalScale);
 }
 
 void CWaveSoapViewBase::HorizontalScrollBy(double samples)

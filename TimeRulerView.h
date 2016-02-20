@@ -52,7 +52,7 @@ protected:
 #endif
 	unsigned HitTest(POINT p, RECT * pHitRect = NULL, int * OffsetX = NULL) const;
 	void InvalidateMarkerRegion(WAVEREGIONINFO const * pInfo);
-	virtual void HorizontalScrollByPixels(int Pixels);
+	virtual void HorizontalScrollByPixels(int Pixels);	// Pixels >0 - picture moves to the right, pixels <0 - picture moves to the left
 	void HorizontalScrollTo(double first_sample_in_view);
 	double WindowXToSample(int x) const
 	{

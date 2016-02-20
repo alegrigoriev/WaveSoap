@@ -107,7 +107,7 @@ void CHorizontalRuler::OnMouseMove(UINT nFlags, CPoint point)
 		}
 		// do scroll
 
-		HorizontalScrollByPixels(PrevMouseX - point.x);
+		HorizontalScrollByPixels(point.x - PrevMouseX);
 		PrevMouseX = point.x;
 	}
 }

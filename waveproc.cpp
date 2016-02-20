@@ -4572,7 +4572,11 @@ void CResampleFilter::InitSlidingInterpolatedFilter(int FilterLength)
 	ResetResample();
 }
 
-BOOL CResampleFilter::SetInputWaveformat(CWaveFormat const & Wf)
+BOOL CResampleFilter::SetInputWaveformat(CWaveFormat const &
+#ifdef _DEBUG
+										Wf
+#endif
+										)
 {
 	ASSERT(Wf == m_InputFormat);
 	return TRUE;
@@ -4972,7 +4976,11 @@ BOOL CAudioConvertor::InitConversion(WAVEFORMATEX const * SrcFormat, WAVEFORMATE
 	return TRUE;
 }
 
-BOOL CAudioConvertor::SetInputWaveformat(CWaveFormat const & Wf)
+BOOL CAudioConvertor::SetInputWaveformat(CWaveFormat const &
+#ifdef _DEBUG
+										Wf
+#endif
+										)
 {
 	ASSERT(Wf == m_InputFormat);
 	return TRUE;

@@ -260,7 +260,7 @@ void CAmplitudeRuler::DrawChannelPercents(CDC * pDC, CRect const & chr, CRect co
 
 	for (int y = yLow; y <= yHigh; y += step)
 	{
-		int yDev= WaveToY(y * 327.68);
+		int yDev= WaveToY(y / 100.);
 
 		if (0 == y)
 		{
@@ -515,7 +515,7 @@ void CAmplitudeRuler::SetNewAmplitudeOffset(double offset)
 			CRect ToInvalidate(cr.left, ScrollRect.top, cr.right, ScrollRect.top + ToScroll);
 
 			ScrollWindowEx(0, ToScroll, ScrollRect, ClipRect, NULL, NULL, 0);
-			InvalidateRect(ToInvalidate, FALSE);
+			InvalidateRect(ToInvalidate, TRUE);
 		}
 		else
 		{
@@ -523,7 +523,7 @@ void CAmplitudeRuler::SetNewAmplitudeOffset(double offset)
 		}
 	}
 	m_WaveOffsetY = offset;
-	Invalidate(FALSE);
+	Invalidate(TRUE);
 }
 
 void CAmplitudeRuler::OnCaptureChanged(CWnd *pWnd)
@@ -617,7 +617,7 @@ afx_msg LRESULT CAmplitudeRuler::OnUwmNotifyViews(WPARAM wParam, LPARAM lParam)
 		{
 			ReleaseCapture();
 		}
-		Invalidate(FALSE);
+		Invalidate(TRUE);
 	}
 		break;
 	}
@@ -863,6 +863,7 @@ void CSpectrumSectionRuler::OnLButtonDblClk(UINT /*nFlags*/, CPoint /*point*/)
 
 void CSpectrumSectionRuler::HorizontalScrollByPixels(int Pixels)
 {
+// Pixels >0 - picture moves to the right, pixels <0 - picture moves to the left
 	m_MouseXOffsetForScroll += Pixels;
 	double offset = m_DbOffsetBeforeScroll - m_MouseXOffsetForScroll * m_DbPerPixel;
 
@@ -924,7 +925,7 @@ afx_msg LRESULT CSpectrumSectionRuler::OnUwmNotifyViews(WPARAM wParam, LPARAM lP
 			break;
 		}
 		m_DbPerPixel = scale;
-		Invalidate(FALSE);
+		Invalidate(TRUE);
 	}
 		break;
 

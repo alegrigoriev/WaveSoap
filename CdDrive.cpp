@@ -862,7 +862,11 @@ protected:
 	CCdDrive & CCdDrive::operator =(CCdDrive const & Drive);
 };
 
-void CCdDrive::CommonInit(BOOL LoadAspi)
+void CCdDrive::CommonInit(BOOL
+#if USE_ASPI_ENABLE
+						LoadAspi
+#endif
+						)
 {
 	m_hDrive = NULL;
 	m_hDriveAttributes = NULL;
@@ -1910,7 +1914,7 @@ CdMediaChangeState CCdDrive::CheckForMediaChange()
 			return CdMediaStateNotReady;
 		}
 	}
-	else if (MediaChangeCount != m_MediaChangeCount)
+	else  if (MediaChangeCount != m_MediaChangeCount)
 	{
 		m_MediaChangeCount = MediaChangeCount;
 		return CdMediaStateDiskChanged;

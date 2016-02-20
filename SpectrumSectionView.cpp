@@ -97,7 +97,13 @@ struct FftGraphBand
 	int nMax; // max X coordinate of the power value in the band
 };
 }
-typedef POINT DoublePoint[2];
+struct DoublePoint
+{
+	int y;
+	int x_min;	// x_min - 1, actually
+	int x_max;
+};
+
 double CSpectrumSectionView::WindowXToDb(int x) const
 {
 	return (x - m_XOrigin) * m_DbPerPixel + m_DbOffset;
@@ -246,7 +252,9 @@ static void BuildBandArray(double X_Offset, double dBToPixel,
 			}
 		}
 	}
+#ifdef _DEBUG
 	TRACE(L"BuildBandArray %d FFT bands, min %f dB, max %f dB at Y=%d\n", FftBandsProcessed, dBMin, dBMax, MaxY);
+#endif
 }
 
 // the array contains pairs of points with the same Y coordinate, and X coordinates corresponding to min and max ranges
@@ -258,14 +266,13 @@ static int BuildPointArray(FftGraphBand * pBands, int NumBands,
 							)
 {
 	int i, j;
-	for (i = 0, j = 0; i < NumBands && j < nNumberOfPoints; i++, pBands++)
+	for (i = 0, j = 0, pBands += NumBands-1; i < NumBands && j < nNumberOfPoints; i++, pBands--)
 	{
 		for (int k = 0; k < pBands->NumDisplayRows && j < nNumberOfPoints; k++, j++, ppArray++)
 		{
-			ppArray[0][0].x = pBands->nMax;
-			ppArray[0][1].x = pBands->nMin - 1;
-			ppArray[0][0].y = pBands->y + j;
-			ppArray[0][1].y = ppArray[0][0].y;
+			ppArray->x_max = pBands->nMax+1;
+			ppArray->x_min = pBands->nMin;
+			ppArray->y = pBands->y + k;
 		}
 	}
 	return j;	// filled pairs in ppArray
@@ -274,59 +281,57 @@ static int BuildPointArray(FftGraphBand * pBands, int NumBands,
 // The array contains pairs of points
 static void DrawPointArray(CDC * pDC, DoublePoint * ppArray, int NumberOfPoints, int right)
 {
-	int LastX0 = ppArray[0][0].x;
-	int LastX1 = ppArray[0][1].x;
+	int LastXmax = ppArray[0].x_max;
+	int LastXmin = ppArray[0].x_min;
 
 	for (int n = 0; n < NumberOfPoints; n++, ppArray++)
 	{
-		//TRACE("ppArray[%d].x = %d, %d\n", n, ppArray[0][1].x, ppArray[0][0].x);
-		if (n < NumberOfPoints - 1
-			&& ppArray[1][0].x >= ppArray[1][1].x)
+		//TRACE("ppArray[%d].x = %d, %d\n", n, ppArray[0].x_min, ppArray[0].x_max);
+		if (n < NumberOfPoints - 1)
 		{
-			if (ppArray[0][0].x < ppArray[1][1].x)
+			ASSERT(ppArray[1].y == ppArray[0].y + 1);
+
+			if (ppArray[0].x_max < ppArray[1].x_min)
 			{
-				ppArray[0][0].x = (ppArray[1][1].x + ppArray[0][0].x) >> 1;
+				ppArray[0].x_max = (ppArray[1].x_min + ppArray[0].x_max) >> 1;
 			}
-			else if (ppArray[1][0].x < ppArray[0][1].x)
+			else if (ppArray[0].x_min > ppArray[1].x_max)
 			{
-				ppArray[0][1].x = (ppArray[0][1].x + ppArray[1][0].x) >> 1;
+				ppArray[0].x_min = (ppArray[0].x_min + ppArray[1].x_max) >> 1;
 			}
 		}
 
-		if (LastX0 >= LastX1)
+		if (ppArray[0].x_max < LastXmin)
 		{
-			if (ppArray[0][0].x < LastX1)
-			{
-				ppArray[0][0].x = LastX1;
-			}
-			else if (ppArray[0][1].x > LastX0)
-			{
-				ppArray[0][1].x = LastX0;
-			}
+			ppArray[0].x_max = LastXmin;
+		}
+		else if (ppArray[0].x_min > LastXmax)
+		{
+			ppArray[0].x_min = LastXmax;
 		}
 
-		LastX0 = ppArray[0][0].x;
-		LastX1 = ppArray[0][1].x;
+		LastXmax = ppArray[0].x_max;
+		LastXmin = ppArray[0].x_min;
 
-		if (ppArray[0][0].x < 0)
+		if (ppArray[0].x_max < 0)
 		{
 			continue;
 		}
-		else if (ppArray[0][0].x > right)
+		else if (ppArray[0].x_max > right)
 		{
-			ppArray[0][0].x = right;
+			ppArray[0].x_max = right;
 		}
 
-		if (ppArray[0][1].x < 0)
+		if (ppArray[0].x_min < 0)
 		{
-			ppArray[0][1].x = -1;
+			ppArray[0].x_min = -1;
 		}
-		else if (ppArray[0][1].x > right)
+		else if (ppArray[0].x_min > right)
 		{
 			continue;
 		}
-		pDC->MoveTo(ppArray[0][0]);
-		pDC->LineTo(ppArray[0][1]);
+		pDC->MoveTo(ppArray[0].x_min, ppArray[0].y);
+		pDC->LineTo(ppArray[0].x_max, ppArray[0].y);
 	}
 }
 
@@ -377,6 +382,7 @@ int CalculateFftBandArray(ATL::CHeapPtr<FftGraphBand> &IdArray, NotifyChannelHei
 			if (NextFftSample >= FftOrder)
 			{
 				IdArray[k].NumBandsToSum = FftOrder - FirstFftSample;
+				IdArray[k].NumDisplayRows += y - top;
 				y = top;
 				break;
 			}
@@ -858,7 +864,7 @@ void CSpectrumSectionView::OnViewSsZoominhor2()
 
 void CSpectrumSectionView::OnUpdateViewSsZoominhor2(CCmdUI* pCmdUI)
 {
-	pCmdUI->Enable(m_Scale > 256.);
+	pCmdUI->Enable(m_Scale < 16.);
 }
 
 void CSpectrumSectionView::OnViewSsZoomouthor2()
@@ -1121,7 +1127,7 @@ void CSpectrumSectionView::SetNewFftOffset(double first_band)
 		}
 	}
 	m_FirstbandVisible = first_band;
-	Invalidate(FALSE);
+	Invalidate(TRUE);
 }
 
 void CSpectrumSectionView::OnSize(UINT nType, int cx, int cy)
@@ -1171,7 +1177,7 @@ LRESULT CSpectrumSectionView::OnUwmNotifyViews(WPARAM wParam, LPARAM lParam)
 				//m_bIsTrackingSelection = FALSE;   // will be reset in WM_CAPTURECHANGED
 			}
 
-			Invalidate(FALSE);
+			Invalidate(TRUE);
 			// check for the proper offset, correct if necessary
 			m_FirstbandVisible = AdjustOffset(m_FirstbandVisible);
 		}
@@ -1186,6 +1192,7 @@ LRESULT CSpectrumSectionView::OnUwmNotifyViews(WPARAM wParam, LPARAM lParam)
 		{
 			break;
 		}
+		m_FftOrder = NewFftBands;
 		m_bShowNoiseThreshold = false;
 		m_pFftWindow.Free();
 		m_FftWindowValid = false;
@@ -1236,9 +1243,9 @@ LRESULT CSpectrumSectionView::OnUwmNotifyViews(WPARAM wParam, LPARAM lParam)
 		{
 			*scale = 1.;
 		}
-		else if (*scale > 256.)
+		else if (*scale > 16.)
 		{
-			*scale = 256.;
+			*scale = 16.;
 		}
 		m_Scale = *scale;
 
@@ -1273,7 +1280,7 @@ LRESULT CSpectrumSectionView::OnUwmNotifyViews(WPARAM wParam, LPARAM lParam)
 		int ScrollPixels = int(-origin / m_DbPerPixel + 0.5) - int(-m_DbOffset / m_DbPerPixel + 0.5);
 		m_DbOffset = origin;
 
-		ScrollWindow(-ScrollPixels, 0);
+		ScrollWindow(ScrollPixels, 0);
 	}
 		break;
 
