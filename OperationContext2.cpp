@@ -72,9 +72,9 @@ void CExpressionEvaluationProc::ProcessSoundSample(char const * pInSample, char 
 	}
 }
 
-void CExpressionEvaluationProc::ProcessSampleValue(void const * pInSample, void * pOutSample, unsigned channel)
+void CExpressionEvaluationProc::ProcessSampleValue(void const * pInSample, void * pOutSample, unsigned /*channel*/)
 {
-	m_dCurrentSample = *(float const*)pInSample * (1./32768.);
+	m_dCurrentSample = *(float const*)pInSample;
 	Evaluate();
 	*(float*)pOutSample = (float)* m_pResultAddress;
 }
@@ -1255,8 +1255,8 @@ BOOL CExpressionEvaluationProc::SetExpression(LPCTSTR * ppszExpression)
 			throw L"Expression syntax error";
 		}
 		// norm the sample
-		PushConstant(32767);
-		CompileMultiply();
+//        PushConstant(32767);
+//        CompileMultiply();
 		m_pResultAddress = PopDouble();
 	}
 	catch (wchar_t const * Error)
@@ -2163,9 +2163,11 @@ BOOL CMoveOperation::OperationProc()
 	char * pDstBuf = NULL;
 
 	DWORD DstFileFlags = CDirectFile::GetBufferAndPrefetchNext;
-	WAVE_SAMPLE tmp[MAX_NUMBER_OF_CHANNELS];
+	UCHAR tmp[4*MAX_NUMBER_OF_CHANNELS];
 	int const SrcSampleSize = m_SrcFile.SampleSize();
 	int const DstSampleSize = m_DstFile.SampleSize();
+	WaveSampleType const SrcSampleType = m_SrcFile.GetSampleType();
+	WaveSampleType const DstSampleType = m_DstFile.GetSampleType();
 	NUMBER_OF_CHANNELS const NumSrcChannels = m_SrcFile.Channels();
 	NUMBER_OF_CHANNELS const NumDstChannels = m_DstFile.Channels();
 
@@ -2244,14 +2246,29 @@ BOOL CMoveOperation::OperationProc()
 											-signed(Samples) * DstSampleSize, m_DstPos);
 			}
 			// CopyWaveSamples doesn't work backwards
-			for (unsigned i = 0; i < Samples; i++)
+			for (unsigned i = 0; i < Samples; )
 			{
-				pDstBuf -= DstSampleSize;
-				pSrcBuf -= SrcSampleSize;
-				// copy one by one sample
+				unsigned SamplesToCopy = Samples - i;
+				// see if the buffers overlap
+				if (pSrcBuf - SrcSampleSize*SamplesToCopy < pDstBuf - DstSampleSize*SamplesToCopy
+					&& pDstBuf - DstSampleSize*SamplesToCopy < pSrcBuf)
+				{
+					// there is overlap, copy by parts
+					SamplesToCopy = (pDstBuf - pSrcBuf + (SrcSampleSize - DstSampleSize) * SamplesToCopy) / SrcSampleSize;
+					if (SamplesToCopy == 0)
+					{
+						SamplesToCopy = 1;
+					}
+					ASSERT(SamplesToCopy <= Samples - i);
+				}
+				pDstBuf -= DstSampleSize * SamplesToCopy;
+				pSrcBuf -= SrcSampleSize * SamplesToCopy;
+
 				CopyWaveSamples(pDstBuf, m_DstChan, NumDstChannels,
 								pSrcBuf, m_SrcChan, NumSrcChannels,
-								1, m_DstFile.GetSampleType(), m_SrcFile.GetSampleType());
+								SamplesToCopy, DstSampleType, SrcSampleType);
+
+				i += SamplesToCopy;
 			}
 
 			unsigned DstCopied = Samples * DstSampleSize;
@@ -2269,17 +2286,17 @@ BOOL CMoveOperation::OperationProc()
 				&& m_pUndoContext->NeedToSaveUndo(m_DstPos, -DstSampleSize))
 			{
 				m_DstFile.ReadSamples(ALL_CHANNELS,
-									m_DstPos, -1, tmp + NumSrcChannels,
+									m_DstPos, -1, tmp + DstSampleSize,
 									m_DstFile.GetSampleType());
 
-				m_pUndoContext->SaveUndoData(tmp + NumSrcChannels,
+				m_pUndoContext->SaveUndoData(tmp + DstSampleSize,
 											-DstSampleSize, m_DstPos);
 			}
 			// read one sample directly
-			if (-1 != m_SrcFile.ReadSamples(ALL_CHANNELS,
-											m_SrcPos, -1, tmp + NumSrcChannels, m_SrcFile.GetSampleType())
-				|| -1 != m_DstFile.WriteSamples(m_DstChan, m_DstPos, -1,
-												tmp + NumSrcChannels, m_SrcChan, NumSrcChannels, m_SrcFile.GetSampleType()))
+			if (1 != m_SrcFile.ReadSamples(ALL_CHANNELS,
+											m_SrcPos - SrcSampleSize, 1, tmp, SrcSampleType)
+				|| 1 != m_DstFile.WriteSamples(m_DstChan, m_DstPos - DstSampleSize, 1,
+												tmp, m_SrcChan, NumSrcChannels, SrcSampleType))
 			{
 				// error
 				TRACE("Transfering a split sample was unsuccessful!\n");
@@ -2328,7 +2345,7 @@ BOOL CMoveOperation::OperationProc()
 				// cannot exit while write-only buffer is incomplete
 				&& 0 != WasLockedToWrite)
 			|| (m_SrcPos > m_SrcEnd
-				&& GetTickCount() - dwStartTime < 200)
+				&& GetTickCount() - dwStartTime < 1000)
 			);
 
 	m_SrcFile.ReturnDataBuffer(pOriginalSrcBuf, WasRead,
@@ -2852,7 +2869,7 @@ BOOL CReverseOperation::OperationProc()
 		m_DstPos += CanReadSamples * DstSampleSize;
 	}
 	while ((m_DstPos < m_DstEnd
-				&& GetTickCount() - dwStartTime < 200)
+				&& GetTickCount() - dwStartTime < 1000)
 			);
 
 	// notify the view

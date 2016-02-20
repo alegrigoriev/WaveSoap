@@ -337,6 +337,14 @@ BOOL CWaveSoapFrontDoc::OnNewDocument(NewFileParameters * pParams)
 	TRACE("CWaveSoapFrontDoc::OnNewDocument\n");
 	// (SDI documents will reuse this document)
 	WAVEFORMATEX * pWfx = pParams->pWf;
+
+	if (NULL == pWfx)
+	{
+		pParams->pWf.InitFormat((WaveSampleType)(GetApp()->m_NewFileSampleType), GetApp()->m_NewFileSamplesPerSecond,
+								WORD(GetApp()->m_NewFileChannels));
+		pWfx = pParams->pWf;
+	}
+
 	m_CaretPosition = 0;
 	m_SelectionStart = 0;
 	m_SelectionEnd = 0;
@@ -355,14 +363,8 @@ BOOL CWaveSoapFrontDoc::OnNewDocument(NewFileParameters * pParams)
 	}
 	else
 	{
-		if (NULL == pWfx)
-		{
-			pWfx = & GetApp()->m_NewFileFormat;
-		}
-
 		ULONG flags = CreateWaveFileTempDir
 					| CreateWaveFileDeleteAfterClose
-					| CreateWaveFilePcmFormat
 					| CreateWaveFileTemp;
 
 		LPCTSTR FileName = NULL;
@@ -371,7 +373,6 @@ BOOL CWaveSoapFrontDoc::OnNewDocument(NewFileParameters * pParams)
 			&& WAVE_FORMAT_PCM == pWfx->wFormatTag)
 		{
 			flags = CreateWaveFileDeleteAfterClose
-					| CreateWaveFilePcmFormat
 					| CreateWaveFileTemp;
 			FileName = pParams->m_pInitialName;
 		}
@@ -1205,7 +1206,6 @@ void CWaveSoapFrontDoc::DoCopy(SAMPLE_INDEX Start, SAMPLE_INDEX End,
 					| CreateWaveFileDeleteAfterClose
 					| CreateWaveFileAllowMemoryFile
 					| CreateWaveFileDontCopyInfo
-					| CreateWaveFilePcmFormat
 					| CreateWaveFileTemp;
 		// This operation creates clipboard file
 		OperationFlags = OperationContextClipboard | OperationContextWriteToClipboard;
@@ -1321,12 +1321,11 @@ BOOL CWaveSoapFrontDoc::DoPaste(SAMPLE_INDEX Start, SAMPLE_INDEX End, CHANNEL_MA
 			CWaveFile DstFile;
 
 			CWaveFormat wf;
-			wf.InitFormat(WAVE_FORMAT_PCM, TargetSampleRate, SrcFile.Channels());
+			wf.InitFormat(SrcFile.GetSampleType(), TargetSampleRate, SrcFile.Channels());
 
 			if ( ! DstFile.CreateWaveFile(& SrcFile, wf, ALL_CHANNELS, NumSamplesToPasteFrom,
 										CreateWaveFileTempDir
 										| CreateWaveFileDeleteAfterClose
-										| CreateWaveFilePcmFormat
 										| CreateWaveFileTemp,
 										NULL))
 			{
@@ -1461,7 +1460,6 @@ void CWaveSoapFrontDoc::DoCut(SAMPLE_INDEX Start, SAMPLE_INDEX End, CHANNEL_MASK
 										| CreateWaveFileDeleteAfterClose
 										| CreateWaveFileAllowMemoryFile
 										| CreateWaveFileDontCopyInfo
-										| CreateWaveFilePcmFormat
 										| CreateWaveFileTemp,
 										NULL))
 	{
@@ -1605,31 +1603,28 @@ BOOL CWaveSoapFrontDoc::OnOpenDocument(LPCTSTR lpszPathName, int DocOpenFlags)
 		return FALSE;
 	}
 
-	// check if the file can be opened in direct mode
-	WAVEFORMATEX * pWf = WaveFormat();
-	bool bNeedConversion = FALSE;
-	if (pWf != NULL)
+	m_OriginalWavFile = m_WavFile;
+	m_OriginalWaveFormat = m_OriginalWavFile.GetWaveFormat();
+
+	bool bNeedDecompression = false;
+	bool bNeedConversion = false;
+	WaveSampleType SampleType = m_OriginalWaveFormat.GetSampleType();
+	// bNeedConversion is set for PCM files with resolution different from 16 bit
+	if (SampleType == SampleTypeCompressed
+		|| SampleType == SampleType8bit)
 	{
-		int nChannels = pWf->nChannels;
-		int nBitsPerSample = pWf->wBitsPerSample;
-		if (16 == nBitsPerSample
-			&& WAVE_FORMAT_PCM == pWf->wFormatTag
-			&& (nChannels == 1 || nChannels == 2))
-		{
-			// can open direct and readonly
-		}
-		else
-		{
-			bNeedConversion = TRUE;
-		}
+		bNeedDecompression = true;
 	}
-	else
+	else if (SampleType != SampleType16bit
+			&& SampleType != SampleType32bit
+			&& SampleType != SampleTypeFloat32)
 	{
-		return FALSE;
+		bNeedConversion = true;
 	}
 
+	// check if the file can be opened in direct mode
 	// if could only open in Read-Only mode, disable DirectMode
-	if ( ! bNeedConversion
+	if ( !bNeedDecompression
 		&& m_bDirectMode
 		&& ! m_bReadOnly)
 	{
@@ -1638,31 +1633,58 @@ BOOL CWaveSoapFrontDoc::OnOpenDocument(LPCTSTR lpszPathName, int DocOpenFlags)
 			CString s;
 			s.Format(IDS_FILE_OPENED_NONDIRECT, lpszPathName);
 			AfxMessageBox(s, MB_OK | MB_ICONINFORMATION);
-			m_bDirectMode = FALSE;
+			m_bDirectMode = false;
 		}
 	}
-	if (bNeedConversion)
+	if (bNeedDecompression || bNeedConversion)
 	{
-		m_bDirectMode = FALSE;
+		m_bDirectMode = false;
 	}
 	if ( ! m_bDirectMode)
 	{
-		m_bReadOnly = FALSE;
+		m_bReadOnly = false;
 	}
 
 	// create peak file name
 	// remove WAV extension and add ".wspk" extension
 	// we need the full pathname.
 	SetModifiedFlag(FALSE);     // start off with unmodified
-	m_OriginalWavFile = m_WavFile;
-	m_OriginalWaveFormat = WaveFormat();
+	CWaveFormat TempFileWf;
+	WAVEFORMATEX const * pTempFileWf = NULL;
 
 	// if non-direct mode, create a temp file.
 	if ( ! m_bDirectMode)
 	{
 		m_WavFile.Close();
 		int nNewFileSamples = m_OriginalWavFile.NumberOfSamples();
+
 		if (bNeedConversion)
+		{
+			flags = CreateWaveFileTempDir
+					// don't keep the file
+					| CreateWaveFileDeleteAfterClose
+					| CreateWaveFileTemp;
+			switch (SampleType)
+			{
+			case SampleType16bit:
+				break;
+			case SampleType32bit:
+				break;
+			case SampleType24bit:
+				SampleType = SampleType32bit;
+				break;
+			case SampleTypeFloat32:
+				break;
+			}
+			TempFileWf.InitFormat(SampleType, m_OriginalWaveFormat.SampleRate(), m_OriginalWaveFormat.NumChannels());
+			pTempFileWf = TempFileWf;
+			if (m_OriginalWaveFormat.FormatTag() == WAVE_FORMAT_EXTENSIBLE
+				&& TempFileWf.FormatTag() == WAVE_FORMAT_EXTENSIBLE)
+			{
+				((PWAVEFORMATEXTENSIBLE)pTempFileWf)->dwChannelMask = ((PWAVEFORMATEXTENSIBLE)(PWAVEFORMATEX)m_OriginalWaveFormat)->dwChannelMask;
+			}
+		}
+		else if (bNeedDecompression)
 		{
 			flags = CreateWaveFileTempDir
 					// don't keep the file
@@ -1671,8 +1693,8 @@ BOOL CWaveSoapFrontDoc::OnOpenDocument(LPCTSTR lpszPathName, int DocOpenFlags)
 					| CreateWaveFileTemp;
 			// if the file contains 'fact' chunk, get number of samples
 			if (m_OriginalWavFile.m_FactSamples != -1
-				&& (pWf->wFormatTag != WAVE_FORMAT_PCM
-					|| (pWf->wBitsPerSample != 16 && pWf->wBitsPerSample != 8)))
+				&& (m_OriginalWaveFormat.FormatTag() != WAVE_FORMAT_PCM
+					|| (m_OriginalWaveFormat.BitsPerSample() != 16 && m_OriginalWaveFormat.BitsPerSample() != 8)))
 			{
 				nNewFileSamples = m_OriginalWavFile.m_FactSamples;
 			}
@@ -1682,22 +1704,21 @@ BOOL CWaveSoapFrontDoc::OnOpenDocument(LPCTSTR lpszPathName, int DocOpenFlags)
 			flags = // Create in the original file folder
 				// don't keep the file
 				CreateWaveFileDeleteAfterClose
-				| CreateWaveFilePcmFormat
 				| CreateWaveFileDontInitStructure
 				| CreateWaveFileTemp;
 		}
 
-		if (! m_WavFile.CreateWaveFile( & m_OriginalWavFile, NULL, ALL_CHANNELS,
+		if (! m_WavFile.CreateWaveFile( & m_OriginalWavFile, pTempFileWf, ALL_CHANNELS,
 										nNewFileSamples, flags, NULL))
 		{
 			AfxMessageBox(IDS_UNABLE_TO_CREATE_TEMPORARY_FILE, MB_OK | MB_ICONEXCLAMATION);
 			return FALSE;
 		}
 
-		m_WavFile.CopyMetadata(m_OriginalWavFile);
+		//m_WavFile.CopyMetadata(m_OriginalWavFile);	// it is done in CreateWaveFile
 		// for compressed file, actual size of file may differ from the
 		// initial size
-		if (bNeedConversion)
+		if (bNeedDecompression)
 		{
 			NUMBER_OF_SAMPLES NumSamples = WaveFileSamples();
 			CDecompressContext * pContext =
@@ -1708,6 +1729,23 @@ BOOL CWaveSoapFrontDoc::OnOpenDocument(LPCTSTR lpszPathName, int DocOpenFlags)
 										m_OriginalWavFile.SampleToPosition(LAST_SAMPLE),
 										NumSamples,
 										m_OriginalWavFile.GetWaveFormat());
+
+			pContext->m_Flags |= DecompressSavePeakFile;
+
+			// peak data will be created during decompression
+			m_WavFile.LoadPeaksForCompressedFile(m_OriginalWavFile, NumSamples);
+
+			SoundChanged(WaveFileID(), 0, 0, NumSamples, UpdateSoundDontRescanPeaks);
+			pContext->Execute();
+		}
+		else if (bNeedConversion)
+		{
+			NUMBER_OF_SAMPLES NumSamples = WaveFileSamples();
+			CCopyContext * pContext =
+				new CCopyContext(this, IDS_LOAD_FILE_STATUS_PROMPT);
+
+			pContext->InitSource(m_OriginalWavFile, 0, LAST_SAMPLE, ALL_CHANNELS);
+			pContext->InitDestination(m_WavFile, 0, NumSamples, ALL_CHANNELS, FALSE);
 
 			pContext->m_Flags |= DecompressSavePeakFile;
 
@@ -3570,7 +3608,6 @@ void CWaveSoapFrontDoc::ChangeChannels(NUMBER_OF_CHANNELS nChannels)
 	CWaveFile DstFile;
 	if ( ! DstFile.CreateWaveFile( & m_WavFile, NewFormat, ALL_CHANNELS, SampleCount,
 									CreateWaveFileDeleteAfterClose
-									| CreateWaveFilePcmFormat
 									| CreateWaveFileTemp,
 									NULL))
 	{
@@ -4224,12 +4261,11 @@ void CWaveSoapFrontDoc::OnProcessResample()
 	// create new temporary file
 	CWaveFile DstFile;
 	CWaveFormat NewFormat;
-	NewFormat.InitFormat(WAVE_FORMAT_PCM, NewFileSamplingRate, WaveChannels());
+	NewFormat.InitFormat(m_WavFile.GetSampleType(), NewFileSamplingRate, WaveChannels());
 
 	if ( ! DstFile.CreateWaveFile( & m_WavFile, NewFormat, ALL_CHANNELS, ULONG(NewSampleCount),
 									//CreateWaveFileTempDir |
 									CreateWaveFileDeleteAfterClose
-									| CreateWaveFilePcmFormat
 									| CreateWaveFileTemp,
 									NULL))
 	{
@@ -4371,7 +4407,7 @@ void CWaveSoapFrontDoc::OnViewRescanPeaks()
 	{
 		return;
 	}
-	BuildPeakInfo(FALSE);   // don't save it right now
+	BuildPeakInfo(TRUE);
 }
 
 void CWaveSoapFrontDoc::OnUpdateProcessSynthesisExpressionEvaluation(CCmdUI* pCmdUI)
@@ -4653,7 +4689,7 @@ BOOL CWaveSoapFrontDoc::OpenWmaFileDocument(LPCTSTR lpszPathName)
 	}
 
 	CWmaDecodeContext * pWmaContext = new CWmaDecodeContext(this,
-															IDS_LOAD_COMPRESSED_STATUS_PROMPT, m_OriginalWavFile);
+															IDS_LOADING_COMPRESSED_FILE_STATUS_PROMPT, m_OriginalWavFile);
 
 	if (NULL == pWmaContext)
 	{

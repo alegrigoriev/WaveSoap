@@ -478,11 +478,13 @@ public:
 	//~CScanPeaksContext() {}
 protected:
 	CWaveFile m_OriginalFile;
-	int m_GranuleSize;
+	SAMPLE_INDEX m_PosSample;
+	SAMPLE_INDEX m_EndSample;
 	BOOL m_bSavePeakFile;
 	virtual BOOL OperationProc();
 	virtual void PostRetire();
 	virtual BOOL Init();
+	// FIXME: done percent calculation
 };
 
 class CCopyContext : public CTwoFilesOperation

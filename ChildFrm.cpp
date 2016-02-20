@@ -1545,7 +1545,7 @@ afx_msg LRESULT CWaveMDIChildClient::OnUwmNotifyViews(WPARAM wParam, LPARAM lPar
 			NewPage = scrollinfo.nMax + 1 - scrollinfo.nMin;
 		}
 
-		if (NewPage != scrollinfo.nPage)
+		if ((unsigned)NewPage != scrollinfo.nPage)
 		{
 			scrollinfo.nPage = (unsigned)NewPage;
 			scrollinfo.fMask |= SIF_PAGE;

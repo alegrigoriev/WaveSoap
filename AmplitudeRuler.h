@@ -49,7 +49,7 @@ protected:
 	double m_VerticalScale;    // full sweep divided by channel rectangle height (for full height channels only). 1 - full sweep equal rect height, > 1 - show magnified.
 	// minimum height channels are shown with scale 1.
 	double m_WaveOffsetY;      // additional vertical offset, to see a region of magnified wave. Only full height channels are scrolled vertically. This is the sample value
-	// of the center line of the channel clip rect
+	// of the center line of the channel clip rect. Full range is from -1. to + 1. float
 	double m_WaveOffsetBeforeScroll;
 	int m_MouseYOffsetForScroll;
 

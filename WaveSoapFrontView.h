@@ -202,7 +202,7 @@ protected:
 	// minimum height channels are shown with scale 1.
 
 	double m_WaveOffsetY; // additional vertical offset, to see a region of magnified wave. Only full height channels are scrolled vertically. This is the sample value
-	// of the center line of the channel clip rect
+	// of the center line of the channel clip rect. Full range is from -1. to + 1. float
 	void SetNewAmplitudeOffset(double offset);
 	// Generated message map functions
 protected:
@@ -251,24 +251,33 @@ class WaveCalculate
 {
 public:
 	WaveCalculate(double offset, double scale, int top, int bottom);
-
+	// full range is from -1. to 1.
 	long operator()(double w)
 	{
-		return m_Offset - (long)floor((w + 0.5)* m_Scale + 0.5);
+		return m_Offset - (long)floor((w)* m_Scale + 0.5);
 	}
-
-	double ConvertToSample(int y)
+	long operator()(int w)
 	{
-		return (m_Offset - y - 0.5) / m_Scale - 0.5;
+		return m_Offset - (long)floor(((w + 0.5) / 32768.)* m_Scale + 0.5);
 	}
 
-	double AdjustOffset(double offset);
+	// integer sample in range -32768 to + 32768
+	int ConvertToSample(int y)
+	{
+		return int((32768 * (m_Offset - y - 0.5) / m_Scale) - 0.5);
+	}
+
+	double ConvertToDoubleSample(int y)
+	{
+		return (m_Offset - y - 0.5) / m_Scale;
+	}
+	double AdjustOffset(double offset, double MinRange = -1., double MaxRange = 1.);
 
 protected:
-	double m_Scale;
-	long m_Offset;
-	int m_ViewHeight;
-	int m_Height;
+	double m_Scale;		//
+	long m_Offset;		// Y coordinate of the zero line
+	int m_ViewHeight;	// height of actual view
+	int m_Height;		// height of full range from -1. to 1. Float samples can take larger range
 };
 /////////////////////////////////////////////////////////////////////////////
 

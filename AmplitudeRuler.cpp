@@ -188,11 +188,11 @@ void CAmplitudeRuler::DrawChannelSamples(CDC * pDC, CRect const & chr, CRect con
 
 	WaveCalculate WaveToY(m_WaveOffsetY, m_VerticalScale, chr.top, chr.bottom);
 
-	int yLow = (int)WaveToY.ConvertToSample(ClipHigh);
+	int yLow = WaveToY.ConvertToSample(ClipHigh);
 	// round to the next multiple of step
 	yLow += (step * 0x10000 - yLow) % step;
 
-	int yHigh = (int)WaveToY.ConvertToSample(ClipLow);
+	int yHigh = WaveToY.ConvertToSample(ClipLow);
 	yHigh -= (step * 0x10000 + yHigh) % step;
 	ASSERT(yLow <= yHigh);
 
@@ -250,17 +250,17 @@ void CAmplitudeRuler::DrawChannelPercents(CDC * pDC, CRect const & chr, CRect co
 
 	WaveCalculate WaveToY(m_WaveOffsetY, m_VerticalScale, chr.top, chr.bottom);
 
-	int yLow = int(100. / 32768. * WaveToY.ConvertToSample(ClipHigh));
+	int yLow = WaveToY.ConvertToSample(ClipHigh) * 100 / 32768;
 	// round to the next multiple of step
 	yLow += (step * 0x10000 - yLow) % step;
 
-	int yHigh = int(100. / 32768. * WaveToY.ConvertToSample(ClipLow));
+	int yHigh = WaveToY.ConvertToSample(ClipLow) * 100 / 32768;
 
 	yHigh -= (step * 0x10000 + yHigh) % step;
 
 	for (int y = yLow; y <= yHigh; y += step)
 	{
-		int yDev= WaveToY(int(fround(y * 32768. / 100.)));
+		int yDev= WaveToY(y * 327.68);
 
 		if (0 == y)
 		{
@@ -295,9 +295,9 @@ void CAmplitudeRuler::DrawChannelDecibels(CDC * pDC, CRect const & chr, CRect co
 
 	WaveCalculate WaveToY(m_WaveOffsetY, m_VerticalScale, chr.top, chr.bottom);
 
-	int yLow = (int)WaveToY.ConvertToSample(ClipHigh);
+	int yLow = WaveToY.ConvertToSample(ClipHigh);
 
-	int yHigh = (int)WaveToY.ConvertToSample(ClipLow);
+	int yHigh = WaveToY.ConvertToSample(ClipLow);
 
 	ASSERT(yLow <= yHigh);
 
@@ -864,7 +864,7 @@ void CSpectrumSectionRuler::OnLButtonDblClk(UINT /*nFlags*/, CPoint /*point*/)
 void CSpectrumSectionRuler::HorizontalScrollByPixels(int Pixels)
 {
 	m_MouseXOffsetForScroll += Pixels;
-	double offset = m_DbOffsetBeforeScroll + m_MouseXOffsetForScroll * m_DbPerPixel;
+	double offset = m_DbOffsetBeforeScroll - m_MouseXOffsetForScroll * m_DbPerPixel;
 
 	NotifySiblingViews(SpectrumSectionHorScrollTo, &offset);
 }
@@ -875,7 +875,8 @@ void CSpectrumSectionRuler::HorizontalScrollTo(double DbOffset)
 	int ScrollPixels = int (-DbOffset / m_DbPerPixel + 0.5) - int(-m_DbOffset / m_DbPerPixel + 0.5);
 	m_DbOffset = DbOffset;
 
-	ScrollWindow(-ScrollPixels, 0);
+	//ScrollWindow(-ScrollPixels, 0);
+	Invalidate(TRUE);
 }
 
 void CSpectrumSectionRuler::OnContextMenu(CWnd* /*pWnd*/, CPoint point)

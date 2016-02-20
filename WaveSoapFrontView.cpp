@@ -452,7 +452,7 @@ void CWaveSoapFrontView::OnDraw(CDC* pDC)
 
 				if (TRACE_DRAWING) TRACE("V Scale=%f, m_WaveOffsetY=%f, top = %d, bottom = %d, height=%d, W2Y(0)=%d, W2Y(32767)=%d, W2Y(-32768)=%d\n",
 										m_VerticalScale, m_WaveOffsetY, ChanR.top, ChanR.bottom,
-										ChanR.Height(), (int)WaveToY(0.), (int)WaveToY(32767.), (int)WaveToY(-32768.));
+										ChanR.Height(), (int)WaveToY(0), (int)WaveToY(32767), (int)WaveToY(-32768));
 				// Y = wave * m_VerticalScale + m_WaveOffsetY * m_VerticalScale
 				//     + (ChanR.bottom + ChanR.top) / 2
 
@@ -502,9 +502,9 @@ void CWaveSoapFrontView::OnDraw(CDC* pDC)
 							pDoc->m_WavFile.GetPeakMinMax(index1, index2, nChannels);
 
 						ppArray[i][0].x = i + cr.left;
-						ppArray[i][0].y = (int)WaveToY(peak.low);
+						ppArray[i][0].y = WaveToY(peak.low);
 						ppArray[i][1].x = i + cr.left;
-						ppArray[i][1].y = (int)WaveToY(peak.high);
+						ppArray[i][1].y = WaveToY(peak.high);
 					}
 				}
 				else
@@ -542,9 +542,9 @@ void CWaveSoapFrontView::OnDraw(CDC* pDC)
 						}
 
 						ppArray[i][0].x = i + cr.left;
-						ppArray[i][0].y = (int)WaveToY(low);
+						ppArray[i][0].y = WaveToY(low);
 						ppArray[i][1].x = i + cr.left;
-						ppArray[i][1].y = (int)WaveToY(high);
+						ppArray[i][1].y = WaveToY(high);
 					}
 				}
 
@@ -654,17 +654,17 @@ void CWaveSoapFrontView::OnDraw(CDC* pDC)
 				pDC->SetBkColor(pApp->m_WaveBackground);
 				pDC->SetBkMode(OPAQUE);
 
-				for (ConstCuePointVectorIterator i = pInst->m_CuePoints.begin();
-					i != pInst->m_CuePoints.end(); i++)
+				for (ConstCuePointVectorIterator ii = pInst->m_CuePoints.begin();
+					ii != pInst->m_CuePoints.end(); ii++)
 				{
-					long x = SampleToX(i->dwSampleOffset);
-					WaveRegionMarker const * pMarker = pInst->GetRegionMarker(i->CuePointID);
+					long x = SampleToX(ii->dwSampleOffset);
+					WaveRegionMarker const * pMarker = pInst->GetRegionMarker(ii->CuePointID);
 
 					// draw text
 					if (0 == ch
 						&& x < cr.right)
 					{
-						LPCTSTR txt = pInst->GetCueText(i->CuePointID);
+						LPCTSTR txt = pInst->GetCueText(ii->CuePointID);
 						if (NULL != txt)
 						{
 							int count = (int)_tcslen(txt);
@@ -694,7 +694,7 @@ void CWaveSoapFrontView::OnDraw(CDC* pDC)
 					if (pMarker != NULL
 						&& pMarker->SampleLength != 0)
 					{
-						x = SampleToX(i->dwSampleOffset + pMarker->SampleLength);
+						x = SampleToX(ii->dwSampleOffset + pMarker->SampleLength);
 
 						if (x >= ChanR.left
 							&& x < ChanR.right)
@@ -2147,14 +2147,12 @@ void CWaveSoapViewBase::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 	GetClientRect(r);
 
 	// page is one half of the window width
-	double nPage = r.Width() * m_HorizontalScale / 2;
+	long nPage = long((r.Width()  / 2) * m_HorizontalScale);
 	if (CtrlPressed)
 	{
 		// make it 7/8 of the window width
-		nPage = r.Width() * m_HorizontalScale * 7. / 8.;
+		nPage = long((r.Width() * 7 / 8) * m_HorizontalScale);
 	}
-	// round to one pixel
-	nPage -= fmod(nPage, m_HorizontalScale);
 
 	switch (nChar)
 	{
@@ -3512,22 +3510,23 @@ WaveCalculate::WaveCalculate(double offset, double scale, int top, int bottom)
 	if (m_Height % 2)
 	{
 		// the zero wave line is always in the middle of pixel. The full sweep of 65536 will fit to Height, add 1 for rounding errors
-		m_Scale = m_Height / 65537.;
+		m_Scale = 32768. * m_Height / 65537.;
 	}
 	else
 	{
-		m_Scale = (m_Height - 1)/ 65536.;
+		m_Scale = (m_Height - 1) / 2.;
 	}
 
 	m_Offset = long((bottom + top) / 2 + offset * m_Scale);
 }
 
-double WaveCalculate::AdjustOffset(double offset)
+double WaveCalculate::AdjustOffset(double offset, double MinRange, double MaxRange)
 {
+	// The sample range is from -1. to + 1. float
 	// limit offset to make the full range fit to the view
 	if (offset < 0.)
 	{
-		double MinOffset = -32768. * (1. - double(m_ViewHeight) / m_Height);
+		double MinOffset = MinRange + double(m_ViewHeight) / m_Height;
 		if (offset < MinOffset)
 		{
 			offset = MinOffset;
@@ -3535,7 +3534,7 @@ double WaveCalculate::AdjustOffset(double offset)
 	}
 	else
 	{
-		double MaxOffset = 32767. * (1. - double(m_ViewHeight) / m_Height);
+		double MaxOffset = MaxRange - double(m_ViewHeight) / m_Height;
 		if (offset > MaxOffset)
 		{
 			offset = MaxOffset;

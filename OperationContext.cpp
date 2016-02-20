@@ -864,7 +864,7 @@ BOOL CThroughProcessOperation::OperationProc()
 
 		}
 		while (res && 0 == (m_Flags & OperationContextPassFinished)
-				&& GetTickCount() - dwStartTime < 200);
+				&& GetTickCount() - dwStartTime < 1000);
 
 		if (m_DstFile.IsOpen() && OperationBeginPos != m_DstPos)
 		{
@@ -993,7 +993,7 @@ BOOL CThroughProcessOperation::OperationProc()
 
 		}
 		while (res && 0 == (m_Flags & OperationContextPassFinished)
-				&& GetTickCount() - dwStartTime < 200);
+				&& GetTickCount() - dwStartTime < 1000);
 
 		if (m_DstFile.IsOpen() && OperationBeginPos != m_DstPos)
 		{
@@ -1627,18 +1627,30 @@ CScanPeaksContext::CScanPeaksContext(CWaveSoapFrontDoc * pDoc,
 									BOOL bSavePeaks)
 	: BaseClass(pDoc, OperationContextDiskIntensive,
 				IDS_PEAK_SCAN_STATUS_PROMPT, IDS_PEAK_SCAN_OPERATION_NAME)
-	, m_GranuleSize(WavFile.SampleSize() * WavFile.GetPeakGranularity())
 	, m_bSavePeakFile(bSavePeaks)
+	, m_PosSample(0)
+	, m_EndSample(0)
 {
-	WavFile.SetPeaks(0, WavFile.NumberOfSamples() * WavFile.Channels(),
-					1, WavePeak(0x7FFF, -0x8000));
-
 	m_OriginalFile = OriginalFile;
 	m_SrcFile = WavFile;
-	m_SrcStart = WavFile.SampleToPosition(0);
-	m_SrcPos = m_SrcStart;
+}
 
-	m_SrcEnd = WavFile.SampleToPosition(LAST_SAMPLE);
+BOOL CScanPeaksContext::Init()
+{
+	if (!BaseClass::Init())
+	{
+		return FALSE;
+	}
+
+	m_PosSample = 0;
+	m_EndSample = m_SrcFile.NumberOfSamples();
+
+	if (m_SrcFile.AllocatePeakData(m_EndSample))
+	{
+		return TRUE;
+	}
+	NotEnoughMemoryMessageBox();
+	return FALSE;
 }
 
 BOOL CScanPeaksContext::OperationProc()
@@ -1648,161 +1660,36 @@ BOOL CScanPeaksContext::OperationProc()
 		m_Flags |= OperationContextStop;
 		return TRUE;
 	}
-	if (m_SrcPos >= m_SrcEnd)
+	if (m_PosSample >= m_EndSample)
 	{
 		m_Flags |= OperationContextFinished;
 		return TRUE;
 	}
 
 	DWORD dwStartTime = GetTickCount();
+	unsigned Granularity = m_SrcFile.GetPeakGranularity();
+	SAMPLE_INDEX Current = m_PosSample & (0 - Granularity);
 
-	SAMPLE_POSITION dwOperationBegin = m_SrcPos;
 	do
 	{
-		MEDIA_FILE_SIZE SizeToRead = m_SrcEnd - m_SrcPos;
-
-		void * pBuf;
-		long lRead = m_SrcFile.GetDataBuffer( & pBuf,
-											SizeToRead, m_SrcPos, CDirectFile::GetBufferAndPrefetchNext);
-
-		if (lRead > 0)
+		SAMPLE_INDEX end = Current + Granularity * 16;
+		if (end > m_EndSample)
 		{
-			unsigned i;
-			ULONG DataToProcess = lRead;
-			WAVE_SAMPLE * pWaveData = (WAVE_SAMPLE *) pBuf;
-
-			MEDIA_FILE_POSITION DataOffset = m_SrcPos - m_SrcStart;
-			unsigned DataForGranule = m_GranuleSize - DataOffset % m_GranuleSize;
-
-			if (2 == m_SrcFile.Channels())
-			{
-				unsigned PeakIndex = unsigned((DataOffset / m_GranuleSize) * 2);
-
-				while (0 != DataToProcess)
-				{
-					WavePeak peak = m_SrcFile.GetPeakMinMax(PeakIndex, PeakIndex + 1);
-					WAVE_PEAK wpl_l = peak.low;
-					WAVE_PEAK wpl_h = peak.high;
-
-					peak = m_SrcFile.GetPeakMinMax(PeakIndex + 1, PeakIndex + 2);
-					WAVE_PEAK wpr_l = peak.low;
-					WAVE_PEAK wpr_h = peak.high;
-
-					if (DataForGranule > DataToProcess)
-					{
-						DataForGranule = DataToProcess;
-					}
-					DataToProcess -= DataForGranule;
-
-					if (DataOffset & 2)
-					{
-						if (pWaveData[0] < wpr_l)
-						{
-							wpr_l = pWaveData[0];
-						}
-						if (pWaveData[0] > wpr_h)
-						{
-							wpr_h = pWaveData[0];
-						}
-						pWaveData++;
-						DataForGranule -= 2;
-					}
-
-					for (i = 0; i < DataForGranule / (sizeof(WAVE_SAMPLE) * 2); i++, pWaveData += 2)
-					{
-						if (pWaveData[0] < wpl_l)
-						{
-							wpl_l = pWaveData[0];
-						}
-						if (pWaveData[0] > wpl_h)
-						{
-							wpl_h = pWaveData[0];
-						}
-						if (pWaveData[1] < wpr_l)
-						{
-							wpr_l = pWaveData[1];
-						}
-						if (pWaveData[1] > wpr_h)
-						{
-							wpr_h = pWaveData[1];
-						}
-					}
-
-					if (DataForGranule & 2)
-					{
-						if (pWaveData[0] < wpl_l)
-						{
-							wpl_l = pWaveData[0];
-						}
-						if (pWaveData[0] > wpl_h)
-						{
-							wpl_h = pWaveData[0];
-						}
-						pWaveData++;
-					}
-
-					m_SrcFile.SetPeakData(PeakIndex,
-										WAVE_PEAK(wpl_l), WAVE_PEAK(wpl_h));
-					m_SrcFile.SetPeakData(PeakIndex + 1,
-										WAVE_PEAK(wpr_l), WAVE_PEAK(wpr_h));
-
-					PeakIndex += 2;
-					DataForGranule = m_GranuleSize;
-				}
-			}
-			else
-			{
-				unsigned PeakIndex = unsigned(DataOffset / m_GranuleSize);
-				while (0 != DataToProcess)
-				{
-					WavePeak peak = m_SrcFile.GetPeakMinMax(PeakIndex, PeakIndex + 1);
-					WAVE_PEAK wp_l = peak.low;
-					WAVE_PEAK wp_h = peak.high;
-
-					if (DataForGranule > DataToProcess)
-					{
-						DataForGranule = DataToProcess;
-					}
-					DataToProcess -= DataForGranule;
-
-					for (i = 0; i < DataForGranule / sizeof(pWaveData[0]); i++, pWaveData ++)
-					{
-						if (pWaveData[0] < wp_l)
-						{
-							wp_l = pWaveData[0];
-						}
-						if (pWaveData[0] > wp_h)
-						{
-							wp_h = pWaveData[0];
-						}
-					}
-
-					m_SrcFile.SetPeakData(PeakIndex,
-										WAVE_PEAK(wp_l), WAVE_PEAK(wp_h));
-
-					PeakIndex ++;
-					DataForGranule = m_GranuleSize;
-				}
-			}
-
-			m_SrcPos += lRead;
-			m_SrcFile.ReturnDataBuffer(pBuf, lRead, 0);
+			end = m_EndSample;
 		}
-		else
-		{
-			m_Flags |= OperationContextStop;
-			break;
-		}
+		m_SrcFile.RescanPeaks(Current, end);
+		Current = end;
 	}
-	while (m_SrcPos < m_SrcEnd
-			&& GetTickCount() - dwStartTime < 200);
+	while (Current < m_EndSample
+			&& GetTickCount() - dwStartTime < 1000);
 
-	TRACE("CScanPeaksContext current position=%X\n", m_SrcPos);
+	if (0) TRACE("CScanPeaksContext current sample=%d\n", Current);
 
 	// notify the view
-	m_pDocument->FileChanged(m_SrcFile, dwOperationBegin,
-							m_SrcPos, -1, UpdateSoundDontRescanPeaks);
+	m_pDocument->FileChanged(m_SrcFile, m_SrcFile.SampleToPosition(m_PosSample),
+							m_SrcFile.SampleToPosition(Current), -1, UpdateSoundDontRescanPeaks);
 
+	m_PosSample = Current;
 	return TRUE;
 }
 
@@ -1815,21 +1702,6 @@ void CScanPeaksContext::PostRetire()
 		m_SrcFile.SavePeakInfo(m_OriginalFile);
 	}
 	BaseClass::PostRetire();
-}
-
-BOOL CScanPeaksContext::Init()
-{
-	if ( ! BaseClass::Init())
-	{
-		return FALSE;
-	}
-
-	if ( ! m_SrcFile.AllocatePeakData(m_SrcFile.NumberOfSamples()))
-	{
-		NotEnoughMemoryMessageBox();
-		return FALSE;
-	}
-	return TRUE;
 }
 
 ///////// CCopyContext
@@ -1914,7 +1786,7 @@ BOOL CCopyContext::OperationProc()
 
 	DWORD DstFileFlags = CDirectFile::GetBufferAndPrefetchNext;
 
-	WAVE_SAMPLE tmp[MAX_NUMBER_OF_CHANNELS];
+	LONG32 tmp[MAX_NUMBER_OF_CHANNELS];
 	int const SrcSampleSize = m_SrcFile.SampleSize();
 	int const DstSampleSize = m_DstFile.SampleSize();
 
@@ -2020,9 +1892,9 @@ BOOL CCopyContext::OperationProc()
 			}
 
 			if (1 != m_SrcFile.ReadSamples(ALL_CHANNELS,
-											m_SrcPos, 1, tmp, m_SrcFile.GetSampleType())
+											m_SrcPos, 1, tmp, m_DstFile.GetSampleType())
 				|| 1 != m_DstFile.WriteSamples(m_DstChan, m_DstPos, 1,
-												tmp, m_SrcChan, NumSrcChannels, m_SrcFile.GetSampleType()))
+												tmp, m_SrcChan, NumSrcChannels, m_DstFile.GetSampleType()))
 			{
 				// error
 				TRACE("Transfering a split sample was unsuccessful!\n");
@@ -2070,7 +1942,7 @@ BOOL CCopyContext::OperationProc()
 				// cannot exit while write-only buffer is incomplete
 				&& 0 != WasLockedToWrite)
 			|| (m_SrcPos < m_SrcEnd
-				&& GetTickCount() - dwStartTime < 200)
+				&& GetTickCount() - dwStartTime < 1000)
 			);
 
 	m_SrcFile.ReturnDataBuffer(pOriginalSrcBuf, WasRead,
@@ -2169,7 +2041,6 @@ BOOL CCopyUndoContext::InitUndoCopy(CWaveFile & SrcFile,     // the file with th
 										CreateWaveFileTempDir
 										| CreateWaveFileDeleteAfterClose
 										| CreateWaveFileDontCopyInfo
-										| CreateWaveFilePcmFormat
 										| CreateWaveFileAllowMemoryFile
 										| CreateWaveFileTemp,
 										NULL))
@@ -2208,7 +2079,6 @@ BOOL CCopyUndoContext::InitUndoCopy(CWaveFile & SrcFile,     // the file with th
 										CreateWaveFileTempDir
 										| CreateWaveFileDeleteAfterClose
 										| CreateWaveFileDontCopyInfo
-										| CreateWaveFilePcmFormat
 										| CreateWaveFileAllowMemoryFile
 										| CreateWaveFileTemp,
 										NULL))
@@ -2330,7 +2200,7 @@ BOOL CCopyUndoContext::SaveUndoData(void const * pBuf, long BufSize, SAMPLE_POSI
 
 	long SamplesWritten = m_SrcFile.WriteSamples(ALL_CHANNELS,
 												m_SrcPos, Samples, pSrcBuf, m_DstChan, m_SrcNumberOfChannels,
-												m_DstFile.GetSampleType());
+												m_SrcFile.GetSampleType());
 
 	m_DstPos += SamplesWritten * m_SrcSampleSize;
 	m_SrcPos += SamplesWritten * m_SrcFile.SampleSize();
@@ -2454,7 +2324,7 @@ BOOL CDecompressContext::OperationProc()
 			// calculate new length
 			NUMBER_OF_SAMPLES MaxNumberOfSamples = 0x7FFFFFFF / m_DstFile.SampleSize();
 
-			TotalSamples = MulDiv(nLastSample, m_SrcEnd - m_SrcStart, m_SrcPos - m_SrcStart);
+			TotalSamples = (nLastSample * (m_SrcEnd - m_SrcStart)) / (m_SrcPos - m_SrcStart);
 
 			if (TotalSamples > MaxNumberOfSamples)
 			{
@@ -3739,6 +3609,7 @@ BOOL CWmaSaveContext::OperationProc()
 
 	WAVE_SAMPLE TmpReadBuffer[MAX_NUMBER_OF_CHANNELS];
 	BOOL TmpReadBufferUsed = FALSE;
+	ASSERT(m_SrcFile.GetSampleType() == SampleType16bit);
 
 	do
 	{
