@@ -76,11 +76,17 @@ LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
 // Icon with lowest ID value placed first to ensure application icon
 // remains consistent on all systems.
 IDR_MAINFRAME           ICON                    "res\\WaveSoap.ico"
+
 IDR_WAVESOTYPE          ICON                    "res\\WaveSoapFrontDoc.ico"
+
 IDI_ICON_CD             ICON                    "res\\icon_cd.ico"
+
 IDI_ICON_SPLIT_TO_FILES ICON                    "res\\icon_split_to_files.ico"
+
 IDI_ICON_EQIALIZER      ICON                    "res\\icon_equalizer.ico"
+
 IDI_ICON_FILTER_DIALOG  ICON                    "res\\icon_filter_dialog.ico"
+
 
 /////////////////////////////////////////////////////////////////////////////
 //
@@ -88,15 +94,25 @@ IDI_ICON_FILTER_DIALOG  ICON                    "res\\icon_filter_dialog.ico"
 //
 
 IDR_MAINFRAME           BITMAP                  "res\\Toolbar.bmp"
+
 IDR_CHILDFRAME          BITMAP                  "res\\toolbar1.bmp"
+
 ID_BITMAP_ZOOMINVERT    BITMAP                  "res\\idc_zoom.bmp"
+
 ID_BITMAP_ZOOMOUTVERT   BITMAP                  "res\\id_bitma.bmp"
+
 ID_BITMAP_ZOOMINHOR     BITMAP                  "res\\bmp00001.bmp"
+
 ID_BITMAP_ZOOMOUTHOR    BITMAP                  "res\\bmp00002.bmp"
+
 IDB_BITMAP_PLAY         BITMAP                  "res\\bmp_play.bmp"
+
 IDB_BITMAP_EJECT        BITMAP                  "res\\bmp_eject.bmp"
+
 IDB_BITMAP_STOP         BITMAP                  "res\\bmp_stop.bmp"
+
 IDB_BITMAP_LOAD         BITMAP                  "res\\bitmap_load.bmp"
+
 
 /////////////////////////////////////////////////////////////////////////////
 //
@@ -1580,23 +1596,24 @@ BEGIN
     PUSHBUTTON      "Cancel",IDCANCEL,103,85,50,14
 END
 
-IDD_DIALOG_NEW_FILE_PARAMETERS DIALOGEX 0, 0, 159, 113
+IDD_DIALOG_NEW_FILE_PARAMETERS DIALOGEX 0, 0, 206, 145
 STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | WS_SYSMENU
 CAPTION "New File Properties"
 FONT 8, "MS Shell Dlg", 0, 0, 0x0
 BEGIN
     LTEXT           "I&nitial length:",IDC_STATIC,7,10,61,8
-    EDITTEXT        IDC_EDIT_LENGTH,69,7,75,14,ES_AUTOHSCROLL
-    CONTROL         "Spin1",IDC_SPIN_LENGTH,"msctls_updown32",UDS_ALIGNRIGHT | UDS_AUTOBUDDY | UDS_ARROWKEYS,142,8,10,14
-    LTEXT           "Sampling &rate:",IDC_STATIC,7,27,58,8
-    COMBOBOX        IDC_COMBO_SAMPLING_RATE,69,25,75,70,CBS_DROPDOWN | WS_VSCROLL | WS_TABSTOP
-    CONTROL         "&Mono",IDC_RADIO_MONO,"Button",BS_AUTORADIOBUTTON | WS_GROUP,7,46,38,10
-    CONTROL         "&Stereo",IDC_RADIO_STEREO,"Button",BS_AUTORADIOBUTTON,56,46,40,10
-    CONTROL         "24-bit resolution",IDC_CHECK_24BIT,"Button",BS_AUTOCHECKBOX | WS_DISABLED | WS_GROUP | WS_TABSTOP,7,62,71,10
+    EDITTEXT        IDC_EDIT_LENGTH,87,7,75,14,ES_AUTOHSCROLL
+    CONTROL         "Spin1",IDC_SPIN_LENGTH,"msctls_updown32",UDS_ALIGNRIGHT | UDS_AUTOBUDDY | UDS_ARROWKEYS,189,8,10,14
+    LTEXT           "Sampling &rate:",IDC_STATIC,7,30,58,8
+    COMBOBOX        IDC_COMBO_SAMPLING_RATE,87,28,75,70,CBS_DROPDOWN | WS_VSCROLL | WS_TABSTOP
+    LTEXT           "Sample type:",IDC_STATIC,7,51,58,8
+    COMBOBOX        IDC_COMBO_SAMPLE_TYPE,87,50,75,70,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+    LTEXT           "Number of Channels:",IDC_STATIC,7,73,77,8
+    COMBOBOX        IDC_COMBO_NUMBER_OF_CHANNELS,87,72,75,70,CBS_DROPDOWN | WS_VSCROLL | WS_TABSTOP
     CONTROL         "Show this dialog box only if Shift pressed",IDC_CHECK_SHOW_ONLY_WHEN_SHIFT,
-                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,7,78,145,10
-    DEFPUSHBUTTON   "OK",IDOK,24,92,50,14
-    PUSHBUTTON      "Cancel",IDCANCEL,84,92,50,14
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,7,100,192,10
+    DEFPUSHBUTTON   "OK",IDOK,48,124,50,14
+    PUSHBUTTON      "Cancel",IDCANCEL,108,124,50,14
 END
 
 IDD_DIALOG_SAVE_TEMPLATE_V5 DIALOGEX 0, 0, 376, 107
@@ -2441,9 +2458,9 @@ BEGIN
     IDD_DIALOG_NEW_FILE_PARAMETERS, DIALOG
     BEGIN
         LEFTMARGIN, 7
-        RIGHTMARGIN, 152
+        RIGHTMARGIN, 199
         TOPMARGIN, 7
-        BOTTOMMARGIN, 106
+        BOTTOMMARGIN, 138
     END
 
     IDD_DIALOG_SAVE_TEMPLATE_V5, DIALOG
@@ -2761,6 +2778,76 @@ BEGIN
 0x3834, 0x3030, 0x0030, 
     IDC_COMBO_SAMPLING_RATE, 0x403, 6, 0
 0x3639, 0x3030, 0x0030, 
+    IDC_COMBO_SAMPLE_TYPE, 0x403, 11, 0
+0x4350, 0x204d, 0x3631, 0x6220, 0x7469, "\000" 
+    IDC_COMBO_SAMPLE_TYPE, 0x403, 11, 0
+0x4350, 0x204d, 0x3233, 0x6220, 0x7469, "\000" 
+    IDC_COMBO_SAMPLE_TYPE, 0x403, 13, 0
+0x6c46, 0x616f, 0x2074, 0x3233, 0x6220, 0x7469, "\000" 
+    IDC_COMBO_NUMBER_OF_CHANNELS, 0x403, 2, 0
+0x0031, 
+    IDC_COMBO_NUMBER_OF_CHANNELS, 0x403, 2, 0
+0x0032, 
+    IDC_COMBO_NUMBER_OF_CHANNELS, 0x403, 2, 0
+0x0033, 
+    IDC_COMBO_NUMBER_OF_CHANNELS, 0x403, 2, 0
+0x0034, 
+    IDC_COMBO_NUMBER_OF_CHANNELS, 0x403, 2, 0
+0x0035, 
+    IDC_COMBO_NUMBER_OF_CHANNELS, 0x403, 2, 0
+0x0036, 
+    IDC_COMBO_NUMBER_OF_CHANNELS, 0x403, 2, 0
+0x0037, 
+    IDC_COMBO_NUMBER_OF_CHANNELS, 0x403, 2, 0
+0x0038, 
+    IDC_COMBO_NUMBER_OF_CHANNELS, 0x403, 2, 0
+0x0039, 
+    IDC_COMBO_NUMBER_OF_CHANNELS, 0x403, 3, 0
+0x3031, "\000" 
+    IDC_COMBO_NUMBER_OF_CHANNELS, 0x403, 3, 0
+0x3131, "\000" 
+    IDC_COMBO_NUMBER_OF_CHANNELS, 0x403, 3, 0
+0x3231, "\000" 
+    IDC_COMBO_NUMBER_OF_CHANNELS, 0x403, 3, 0
+0x3331, "\000" 
+    IDC_COMBO_NUMBER_OF_CHANNELS, 0x403, 3, 0
+0x3431, "\000" 
+    IDC_COMBO_NUMBER_OF_CHANNELS, 0x403, 3, 0
+0x3531, "\000" 
+    IDC_COMBO_NUMBER_OF_CHANNELS, 0x403, 3, 0
+0x3631, "\000" 
+    IDC_COMBO_NUMBER_OF_CHANNELS, 0x403, 3, 0
+0x3731, "\000" 
+    IDC_COMBO_NUMBER_OF_CHANNELS, 0x403, 3, 0
+0x3831, "\000" 
+    IDC_COMBO_NUMBER_OF_CHANNELS, 0x403, 3, 0
+0x3931, "\000" 
+    IDC_COMBO_NUMBER_OF_CHANNELS, 0x403, 3, 0
+0x3032, "\000" 
+    IDC_COMBO_NUMBER_OF_CHANNELS, 0x403, 3, 0
+0x3132, "\000" 
+    IDC_COMBO_NUMBER_OF_CHANNELS, 0x403, 3, 0
+0x3232, "\000" 
+    IDC_COMBO_NUMBER_OF_CHANNELS, 0x403, 3, 0
+0x3332, "\000" 
+    IDC_COMBO_NUMBER_OF_CHANNELS, 0x403, 3, 0
+0x3432, "\000" 
+    IDC_COMBO_NUMBER_OF_CHANNELS, 0x403, 3, 0
+0x3532, "\000" 
+    IDC_COMBO_NUMBER_OF_CHANNELS, 0x403, 3, 0
+0x3632, "\000" 
+    IDC_COMBO_NUMBER_OF_CHANNELS, 0x403, 3, 0
+0x3732, "\000" 
+    IDC_COMBO_NUMBER_OF_CHANNELS, 0x403, 3, 0
+0x3832, "\000" 
+    IDC_COMBO_NUMBER_OF_CHANNELS, 0x403, 3, 0
+0x3932, "\000" 
+    IDC_COMBO_NUMBER_OF_CHANNELS, 0x403, 3, 0
+0x3033, "\000" 
+    IDC_COMBO_NUMBER_OF_CHANNELS, 0x403, 3, 0
+0x3133, "\000" 
+    IDC_COMBO_NUMBER_OF_CHANNELS, 0x403, 3, 0
+0x3233, "\000" 
     0
 END
 
@@ -2846,8 +2933,22 @@ END
 //
 
 IDC_CURSOR_BEAM_RIGHT   CURSOR                  "res\\cursor_b.cur"
+
 IDC_CURSOR_BEAM_LEFT    CURSOR                  "res\\cur00001.cur"
+
 IDC_CURSOR_BEAM         CURSOR                  "res\\cur00002.cur"
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// AFX_DIALOG_LAYOUT
+//
+
+IDD_DIALOG_NEW_FILE_PARAMETERS AFX_DIALOG_LAYOUT
+BEGIN
+    0
+END
+
 
 /////////////////////////////////////////////////////////////////////////////
 //
@@ -3539,7 +3640,7 @@ BEGIN
     IDS_EXPRESSION_STATUS_PROMPT "Calculating the waveform"
     IDS_EXPRESSION_OPERATION_NAME "Expression evaluation"
     IDS_LOAD_RAW_STATUS_PROMPT "Loading the raw sound file"
-    IDS_LOAD_COMPRESSED_STATUS_PROMPT "Loading the compressed file"
+    IDS_LOAD_FILE_STATUS_PROMPT "Loading the sound file"
     IDS_INTERPOLATE_OPERATION_NAME "Interpolate"
 END
 

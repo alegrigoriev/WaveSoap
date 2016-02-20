@@ -2475,6 +2475,16 @@ WAVEFORMATEX * CWaveFile::GetWaveFormat() const
 	}
 }
 
+WaveSampleType CWaveFile::GetSampleType() const
+{
+	InstanceDataWav * pInstData = GetInstanceData();
+	if (pInstData)
+	{
+		return pInstData->wf.GetSampleType();
+	}
+	return SampleTypeNotSupported;
+}
+
 MMCKINFO * CWaveFile::GetFmtChunk() const
 {
 	InstanceDataWav * tmp = GetInstanceData();
@@ -2523,11 +2533,7 @@ NUMBER_OF_CHANNELS CWaveFile::Channels() const
 
 WAVEFORMATEX * CWaveFile::AllocateWaveformat(unsigned FormatSize)
 {
-	if (FormatSize < sizeof (WAVEFORMATEX))
-	{
-		FormatSize = sizeof (WAVEFORMATEX);
-	}
-	return AllocateInstanceData<InstanceDataWav>()->wf.Allocate(FormatSize - sizeof (WAVEFORMATEX));
+	return AllocateInstanceData<InstanceDataWav>()->wf.Allocate(FormatSize);
 }
 
 bool CWaveFile::IsCompressed() const
@@ -2823,12 +2829,16 @@ void CWaveFile::RescanPeaks(SAMPLE_INDEX begin, SAMPLE_INDEX end)
 
 	CWavePeaks * pPeaks = GetWavePeaks();
 	unsigned Granularity = pPeaks->GetGranularity();
+	unsigned nChannels = Channels();
 
-	int nSampleSize = SampleSize();
-	LPMMCKINFO datack = GetDataChunk();
-	MEDIA_FILE_POSITION dwDataChunkOffset = datack->dwDataOffset;
+	float samples[MAX_NUMBER_OF_CHANNELS * 16];	// 512. 2kB
 
-	unsigned GranuleSize = Channels() * Granularity * sizeof(WAVE_SAMPLE);
+	// Granularity should be divisible by NumSamplesToRead
+	unsigned NumSamplesToRead = Granularity;
+	while (NumSamplesToRead > countof(samples) / nChannels)
+	{
+		NumSamplesToRead /= 2;
+	}
 
 	if (begin > end)
 	{
@@ -2837,167 +2847,53 @@ void CWaveFile::RescanPeaks(SAMPLE_INDEX begin, SAMPLE_INDEX end)
 		end = tmp;
 	}
 
-	MEDIA_FILE_POSITION Pos = nSampleSize * (begin & -int(Granularity)) + dwDataChunkOffset;
+	begin = begin & (0-Granularity);
+	end = ((end - 1) | (Granularity - 1)) + 1;
 
-	MEDIA_FILE_POSITION EndPos = nSampleSize * ((end | (Granularity - 1)) + 1);
-	if (EndPos > datack->cksize)
+	WavePeak wp[MAX_NUMBER_OF_CHANNELS];
+	unsigned PeakIndex = (begin / Granularity) * nChannels;
+
+	while (begin < end)
 	{
-		EndPos = datack->cksize;
-	}
-	EndPos += dwDataChunkOffset;
+		int SamplesRead = ReadSamples(ALL_CHANNELS, SampleToPosition(begin), NumSamplesToRead, samples, SampleTypeFloat32);
 
-	while (Pos < EndPos)
-	{
-		MEDIA_FILE_SIZE SizeToRead = EndPos - Pos;
-		void * pBuf;
-		long lRead = GetDataBuffer( & pBuf, SizeToRead, Pos, 0);
-
-		if (lRead > 0)
-		{
-			unsigned i;
-			unsigned DataToProcess = lRead;
-			WAVE_SAMPLE * pWaveData = (WAVE_SAMPLE *) pBuf;
-			MEDIA_FILE_POSITION DataOffset = Pos - dwDataChunkOffset;
-			unsigned DataForGranule = GranuleSize - unsigned(DataOffset % GranuleSize);
-
-			if (2 == Channels())
-			{
-				unsigned index = unsigned(DataOffset / GranuleSize) * 2;
-				while (0 != DataToProcess)
-				{
-					WAVE_PEAK wpl_l;
-					WAVE_PEAK wpl_h;
-					WAVE_PEAK wpr_l;
-					WAVE_PEAK wpr_h;
-					if (0 == DataOffset % GranuleSize)
-					{
-						wpl_l = SHORT_MAX;
-						wpl_h = SHORT_MIN;
-						wpr_l = SHORT_MAX;
-						wpr_h = SHORT_MIN;
-					}
-					else
-					{
-						wpl_l = pPeaks->GetPeakDataLow(index);
-						wpl_h = pPeaks->GetPeakDataHigh(index);
-						wpr_l = pPeaks->GetPeakDataLow(index + 1);
-						wpr_h = pPeaks->GetPeakDataHigh(index + 1);
-					}
-
-					if (DataForGranule > DataToProcess)
-					{
-						DataForGranule = DataToProcess;
-					}
-					DataToProcess -= DataForGranule;
-
-					if (DataOffset & 2)
-					{
-						if (pWaveData[0] < wpr_l)
-						{
-							wpr_l = pWaveData[0];
-						}
-						if (pWaveData[0] > wpr_h)
-						{
-							wpr_h = pWaveData[0];
-						}
-						pWaveData++;
-						DataOffset += 2;
-						DataForGranule -= 2;
-					}
-
-					DataOffset += DataForGranule;
-					for (i = 0; i < DataForGranule / (sizeof(WAVE_SAMPLE) * 2); i++, pWaveData += 2)
-					{
-						if (pWaveData[0] < wpl_l)
-						{
-							wpl_l = pWaveData[0];
-						}
-						if (pWaveData[0] > wpl_h)
-						{
-							wpl_h = pWaveData[0];
-						}
-						if (pWaveData[1] < wpr_l)
-						{
-							wpr_l = pWaveData[1];
-						}
-						if (pWaveData[1] > wpr_h)
-						{
-							wpr_h = pWaveData[1];
-						}
-					}
-
-					if (DataForGranule & 2)
-					{
-						if (pWaveData[0] < wpl_l)
-						{
-							wpl_l = pWaveData[0];
-						}
-						if (pWaveData[0] > wpl_h)
-						{
-							wpl_h = pWaveData[0];
-						}
-						pWaveData++;
-					}
-
-					pPeaks->SetPeakData(index, wpl_l, wpl_h);
-					pPeaks->SetPeakData(index + 1, wpr_l, wpr_h);
-					index += 2;
-
-					DataForGranule = GranuleSize;
-				}
-			}
-			else
-			{
-				unsigned index = unsigned(DataOffset / GranuleSize);
-
-				while (0 != DataToProcess)
-				{
-					WAVE_PEAK wp_l;
-					WAVE_PEAK wp_h;
-					if (0 == DataOffset % GranuleSize)
-					{
-						wp_l = SHORT_MAX;
-						wp_h = SHORT_MIN;
-					}
-					else
-					{
-						wp_l = pPeaks->GetPeakDataLow(index);
-						wp_h = pPeaks->GetPeakDataHigh(index);
-					}
-
-					if (DataForGranule > DataToProcess)
-					{
-						DataForGranule = DataToProcess;
-					}
-					DataToProcess -= DataForGranule;
-					DataOffset += DataForGranule;
-
-					for (i = 0; i < DataForGranule / sizeof(WAVE_SAMPLE); i++, pWaveData ++)
-					{
-						if (pWaveData[0] < wp_l)
-						{
-							wp_l = pWaveData[0];
-						}
-						if (pWaveData[0] > wp_h)
-						{
-							wp_h = pWaveData[0];
-						}
-					}
-
-					pPeaks->SetPeakData(index, wp_l, wp_h);
-					index++;
-
-					DataForGranule = GranuleSize;
-				}
-			}
-
-			Pos += lRead;
-
-			ReturnDataBuffer(pBuf, lRead, 0);
-		}
-		else
+		if (SamplesRead <= 0)
 		{
 			break;
+		}
+		unsigned ch;
+		if (0 == (begin & (Granularity - 1)))
+		{
+			// clear wp
+			for (ch = 0; ch < nChannels; ch++)
+			{
+				wp[ch].low = 10.;
+				wp[ch].high = -10.;
+			}
+		}
+		for (unsigned i = 0, j = 0; i < NumSamplesToRead; i++)
+		{
+			for (ch = 0; ch < nChannels; ch++, j++)
+			{
+				if (samples[j] < wp[ch].low)
+				{
+					wp[ch].low = samples[j];
+				}
+				if (samples[j] > wp[ch].high)
+				{
+					wp[ch].high = samples[j];
+				}
+			}
+		}
+
+		begin += SamplesRead;
+		if (0 == (begin & (Granularity - 1))
+			|| begin >= end)
+		{
+			for (ch = 0; ch < nChannels; ch++, PeakIndex++)
+			{
+				pPeaks->SetPeakData(PeakIndex, wp[ch].low, wp[ch].high);
+			}
 		}
 	}
 }
@@ -3005,8 +2901,8 @@ void CWaveFile::RescanPeaks(SAMPLE_INDEX begin, SAMPLE_INDEX end)
 WavePeak CWavePeaks::GetPeakMinMax(PEAK_INDEX from, PEAK_INDEX to, NUMBER_OF_CHANNELS stride) const
 {
 	WavePeak peak;
-	peak.high = -0x8000;
-	peak.low = 0x7FFF;
+	peak.high = -10.;
+	peak.low = 10;
 
 	CSimpleCriticalSectionLock lock(m_PeakLock);
 
@@ -3183,7 +3079,7 @@ BOOL CWaveFile::LoadPeaksForCompressedFile(CWaveFile & OriginalWaveFile,
 	AllocatePeakData(NumberOfSamples);
 
 	CFile PeakFile;
-	PeakFileHeader pfh;
+	PeakFileHeader pfh = { 0 };
 	CPath PeakFilename(MakePeakFileName(OriginalWaveFile.GetName()));
 
 	if ( ! PeakFile.Open(PeakFilename,
@@ -3591,6 +3487,18 @@ void CWaveFile::SetWaveFormat(WAVEFORMATEX const * pWf)
 	pInst->fmtck.dwFlags |= MMIO_DIRTY;
 }
 
+static short NumberBitsInMask(CHANNEL_MASK mask)
+{
+	short n = 0;
+	for (unsigned ch = 0; ch < 32; ch++)
+	{
+		if (mask & (1 << ch))
+		{
+			n++;
+		}
+	}
+	return n;
+}
 long CWaveFile::ReadSamples(CHANNEL_MASK SrcChannels,
 							SAMPLE_POSITION Pos,    // absolute position in file
 							long Samples, void * pBuf, WaveSampleType type)
@@ -3605,26 +3513,32 @@ long CWaveFile::ReadSamples(CHANNEL_MASK SrcChannels,
 	// the function returns count how many samples successfully read
 	CHANNEL_MASK const FileChannelsMask = ChannelsMask();
 	SrcChannels &= FileChannelsMask;
-
+	NUMBER_OF_CHANNELS NumDstChannels = NumberBitsInMask(SrcChannels);
 	long TotalSamplesRead = 0;
 
 	ASSERT(0 != SrcChannels);
 	int const SrcSampleSize = SampleSize();            // must be signed type
-	int const FileChannels = Channels();
-	WAVE_SAMPLE tmp[MAX_NUMBER_OF_CHANNELS];
-	float   ftmp[MAX_NUMBER_OF_CHANNELS];
+	int DstSampleSize = 2;
+	NUMBER_OF_CHANNELS const FileChannels = Channels();
+	LONG32   ltmp[MAX_NUMBER_OF_CHANNELS];
 
-	if (FileChannelsMask == SrcChannels
-		&& type == FileSampleType)
+	switch (type)
 	{
-		// simply copy the data
-		LONG Read = ReadAt(pBuf, Samples * SrcSampleSize, Pos);
-		return Read / SrcSampleSize;
+	case SampleType16bit:
+		DstSampleSize = 2 * NumDstChannels;
+		break;
+	case SampleType32bit:
+	case SampleTypeFloat32:
+		DstSampleSize = 4 * NumDstChannels;
+		break;
+	default:
+		ASSERT(type == SampleType16bit || type == SampleType32bit || type == SampleTypeFloat32);
+		return 0;
 	}
 
 	if (Samples > 0)
 	{
-		// read some of channels
+		// read some of channels, and/or possibly with format conversion
 
 		while (Samples > 0)
 		{
@@ -3647,137 +3561,25 @@ long CWaveFile::ReadSamples(CHANNEL_MASK SrcChannels,
 
 			unsigned SamplesRead = WasRead / SrcSampleSize;
 
-			if (FileSampleType == SampleType16bit)
+			if (0 == SamplesRead)
 			{
-				SHORT const * pSrc = (SHORT const *) pOriginalSrcBuf;
-
-				if (0 == SamplesRead)
+				if (SrcSampleSize != ReadAt(ltmp, SrcSampleSize, Pos))
 				{
-					if (SrcSampleSize != ReadAt(tmp, SrcSampleSize, Pos))
-					{
-						ReturnDataBuffer(pOriginalSrcBuf, WasRead,
-										ReturnBufferDiscard);
-						return TotalSamplesRead;
-					}
-
-					pSrc = tmp;
-					SamplesRead = 1;
+					ReturnDataBuffer(pOriginalSrcBuf, WasRead,
+									ReturnBufferDiscard);
+					return TotalSamplesRead;
 				}
-
-				if (SampleType16bit == type)
-				{
-					SHORT * pDst = (SHORT *) pBuf;
-
-					for (unsigned i = 0; i < SamplesRead; i++, pSrc += FileChannels)
-					{
-						CHANNEL_MASK mask = 1;
-						for (int j = 0; j < FileChannels; j++, mask <<= 1)
-						{
-							if (mask & SrcChannels)
-							{
-								*(pDst++) = pSrc[j];
-							}
-						}
-					}
-					pBuf = pDst;
-				}
-				else if (SampleTypeFloat32 == type)
-				{
-					float * pDst = (float *) pBuf;
-
-					for (unsigned i = 0; i < SamplesRead; i++, pSrc += FileChannels)
-					{
-						CHANNEL_MASK mask = 1;
-						for (int j = 0; j < FileChannels; j++, mask <<= 1)
-						{
-							if (mask & SrcChannels)
-							{
-								*(pDst++) = pSrc[j];
-							}
-						}
-					}
-					pBuf = pDst;
-				}
+				CopyWaveSamples(pBuf, ALL_CHANNELS, NumDstChannels, ltmp, SrcChannels, FileChannels, 1, type, FileSampleType);
+				SamplesRead = 1;
 			}
-			else if (FileSampleType == SampleTypeFloat32)
+			else
 			{
-				float const * pSrc = (float const *) pOriginalSrcBuf;
-
-				if (0 == SamplesRead)
-				{
-					if (SrcSampleSize != ReadAt(ftmp, SrcSampleSize, Pos))
-					{
-						ReturnDataBuffer(pOriginalSrcBuf, WasRead,
-										ReturnBufferDiscard);
-						return TotalSamplesRead;
-					}
-
-					pSrc = ftmp;
-					SamplesRead = 1;
-				}
-
-				if (SampleType16bit == type)
-				{
-					SHORT * pDst = (SHORT *) pBuf;
-
-					for (unsigned i = 0; i < SamplesRead; i++, pSrc += FileChannels)
-					{
-						CHANNEL_MASK mask = 1;
-						for (int j = 0; j < FileChannels; j++, mask <<= 1)
-						{
-							if (mask & SrcChannels)
-							{
-								double d = pSrc[j];
-								if (_isnan(d))
-								{
-									*pDst = 0;
-								}
-								else if (d < double(SHORT_MIN))
-								{
-									*pDst = SHORT_MIN;
-								}
-								else if (d > double(SHORT_MAX))
-								{
-									*pDst = SHORT_MAX;
-								}
-								else
-								{
-									*pDst = SHORT(d);
-								}
-								pDst++;
-							}
-						}
-					}
-					pBuf = pDst;
-				}
-				else if (SampleTypeFloat32 == type)
-				{
-					float * pDst = (float *) pBuf;
-
-					for (unsigned i = 0; i < SamplesRead; i++, pSrc += FileChannels)
-					{
-						CHANNEL_MASK mask = 1;
-						for (int j = 0; j < FileChannels; j++, mask <<= 1)
-						{
-							if (mask & SrcChannels)
-							{
-								if (_isnan(pSrc[j]))
-								{
-									*pDst = 0;
-								}
-								else
-								{
-									*pDst = pSrc[j];
-								}
-								pDst++;
-							}
-						}
-					}
-					pBuf = pDst;
-				}
+				CopyWaveSamples(pBuf, ALL_CHANNELS, NumDstChannels, pOriginalSrcBuf, SrcChannels, FileChannels, SamplesRead, type, FileSampleType);
 			}
+
 			TotalSamplesRead += SamplesRead;
 			Pos += SamplesRead * SrcSampleSize;
+			pBuf = SamplesRead * DstSampleSize + (PUCHAR)pBuf;
 			Samples -= SamplesRead;
 
 			ReturnDataBuffer(pOriginalSrcBuf, WasRead, ReturnBufferDiscard);
@@ -3809,144 +3611,26 @@ long CWaveFile::ReadSamples(CHANNEL_MASK SrcChannels,
 
 			unsigned SamplesRead = -WasRead / SrcSampleSize;
 
-			if (FileSampleType == SampleType16bit)
+			if (0 == SamplesRead)
 			{
-				SHORT const * pSrc = (SHORT const *) pOriginalSrcBuf;
-
-				if (0 == SamplesRead)
+				if (SrcSampleSize != ReadAt(ltmp, SrcSampleSize, Pos - SrcSampleSize))
 				{
-					if (SrcSampleSize != ReadAt(tmp, SrcSampleSize, Pos - SrcSampleSize))
-					{
-						ReturnDataBuffer(pOriginalSrcBuf, WasRead,
-										ReturnBufferDiscard);
-						return TotalSamplesRead;
-					}
-
-					pSrc = tmp + FileChannels;
-					SamplesRead = 1;
+					ReturnDataBuffer(pOriginalSrcBuf, WasRead,
+									ReturnBufferDiscard);
+					return TotalSamplesRead;
 				}
-
-				if (SampleType16bit == type)
-				{
-					SHORT * pDst = (SHORT *) pBuf;
-
-					for (unsigned i = 0; i < SamplesRead; i++)
-					{
-						DWORD mask = 1 << (FileChannels - 1);
-
-						for (int j = 0; j < FileChannels; j++, mask >>= 1)
-						{
-							pSrc--;
-							if (mask & SrcChannels)
-							{
-								*(--pDst) = *pSrc;
-							}
-						}
-					}
-					pBuf = pDst;
-				}
-				else if (SampleTypeFloat32 == type)
-				{
-					float * pDst = (float *) pBuf;
-
-					for (unsigned i = 0; i < SamplesRead; i++)
-					{
-						DWORD mask = 1 << (FileChannels - 1);
-
-						for (int j = 0; j < FileChannels; j++, mask >>= 1)
-						{
-							pSrc--;
-							if (mask & SrcChannels)
-							{
-								*(--pDst) = *pSrc;
-							}
-						}
-					}
-					pBuf = pDst;
-				}
+				CopyWaveSamples(((PUCHAR)pBuf) - SrcSampleSize, ALL_CHANNELS, NumDstChannels, ltmp, SrcChannels, FileChannels, 1, type, FileSampleType);
+				SamplesRead = 1;
 			}
-			else if (FileSampleType == SampleTypeFloat32)
+			else
 			{
-				float const * pSrc = (float const *) pOriginalSrcBuf;
-
-				if (0 == SamplesRead)
-				{
-					if (SrcSampleSize != ReadAt(ftmp, SrcSampleSize, Pos - SrcSampleSize))
-					{
-						ReturnDataBuffer(pOriginalSrcBuf, WasRead,
-										ReturnBufferDiscard);
-						return TotalSamplesRead;
-					}
-
-					pSrc = ftmp + FileChannels;
-					SamplesRead = 1;
-				}
-
-				if (SampleType16bit == type)
-				{
-					SHORT * pDst = (SHORT *) pBuf;
-
-					for (unsigned i = 0; i < SamplesRead; i++)
-					{
-						DWORD mask = 1 << (FileChannels - 1);
-
-						for (int j = 0; j < FileChannels; j++, mask >>= 1)
-						{
-							pSrc--;
-							if (mask & SrcChannels)
-							{
-								double d = *pSrc;
-								pDst--;
-								if (_isnan(d))
-								{
-									*pDst = 0;
-								}
-								else if (d < double(SHORT_MIN))
-								{
-									*pDst = SHORT_MIN;
-								}
-								else if (d > double(SHORT_MAX))
-								{
-									*pDst = SHORT_MAX;
-								}
-								else
-								{
-									*pDst = SHORT(d);
-								}
-							}
-						}
-					}
-					pBuf = pDst;
-				}
-				else if (SampleTypeFloat32 == type)
-				{
-					float * pDst = (float *) pBuf;
-
-					for (unsigned i = 0; i < SamplesRead; i++)
-					{
-						DWORD mask = 1 << (FileChannels - 1);
-
-						for (int j = 0; j < FileChannels; j++, mask >>= 1)
-						{
-							pSrc--;
-							if (mask & SrcChannels)
-							{
-								pDst--;
-								if (_isnan(pSrc[j]))
-								{
-									*pDst = 0;
-								}
-								else
-								{
-									*pDst = *pSrc;
-								}
-							}
-						}
-					}
-					pBuf = pDst;
-				}
+				CopyWaveSamples(((PUCHAR)pBuf) - SamplesRead * SrcSampleSize,
+								ALL_CHANNELS, NumDstChannels,
+								((PUCHAR)pOriginalSrcBuf) - SamplesRead * SrcSampleSize,
+								SrcChannels, FileChannels, SamplesRead, type, FileSampleType);
 			}
 
+			pBuf = ((PUCHAR)pBuf) - SamplesRead * SrcSampleSize;
 			TotalSamplesRead -= SamplesRead;
 			Pos -= SamplesRead * SrcSampleSize;
 			Samples += SamplesRead;
@@ -3964,8 +3648,6 @@ long CWaveFile::WriteSamples(CHANNEL_MASK DstChannels,
 							void const * pBuf, CHANNEL_MASK SrcChannels,
 							NUMBER_OF_CHANNELS NumSrcChannels, WaveSampleType type)
 {
-	ASSERT(type == SampleType16bit);    // the only one supported yet
-	ASSERT(type == GetSampleType());
 	// The buffer contains complete samples to process
 	// if Samples > 0, write forward from Pos, Buf points to the buffer begin
 
@@ -3983,19 +3665,15 @@ long CWaveFile::WriteSamples(CHANNEL_MASK DstChannels,
 
 	ASSERT(0 != DstChannels);
 	ASSERT(0 != SrcChannels);
-	ASSERT(NumSrcChannels <= 2);
 
 	int const DstSampleSize = SampleSize();
 	NUMBER_OF_CHANNELS const NumFileChannels = Channels();
 
-	ASSERT(NumFileChannels <= 2);
-
-	if (FileChannelsMask == DstChannels
+	if (type == GetSampleType()
+		&& FileChannelsMask == DstChannels
 		&& SrcChannelsMask == SrcChannels
 		&& DstChannels == SrcChannels)
 	{
-		// simply copy the data (TODO: convert sample format)
-		ASSERT(SampleType16bit == type);
 		LONG Written = WriteAt(pBuf, Samples * DstSampleSize, Pos);
 		return Written / DstSampleSize;
 	}

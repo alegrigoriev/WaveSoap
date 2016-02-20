@@ -198,15 +198,11 @@ CWaveSoapFrontApp::CWaveSoapFrontApp()
 	, m_FadeOutEnvelope(FadeOutSinSquared)
 
 	, m_LastPrefsPropertyPageSelected(0)
+	, m_NewFileChannels(2)
+	, m_NewFileSamplesPerSecond(44100)
+	, m_NewFileSampleType(SampleType16bit)
 {
 	// Place all significant initialization in InitInstance
-	m_NewFileFormat.wFormatTag = WAVE_FORMAT_PCM;
-	m_NewFileFormat.nChannels = 2;
-	m_NewFileFormat.nSamplesPerSec = 44100;
-	m_NewFileFormat.nAvgBytesPerSec = 44100 * 4;
-	m_NewFileFormat.wBitsPerSample = 16;
-	m_NewFileFormat.nBlockAlign = 4;
-	m_NewFileFormat.cbSize = 0;
 
 	m_Thread.m_bAutoDelete = FALSE;
 	m_pDocManager = new CWaveSoapDocManager;
@@ -446,8 +442,9 @@ BOOL CWaveSoapFrontApp::InitInstance()
 	Profile.AddItem(_T("Settings"), _T("Allow4GbWavFile"), m_bAllow4GbWavFile, false);
 
 	Profile.AddItem(_T("Settings"), _T("NewFileLength"), m_NewFileLength, 10, 0, 4800);
-	Profile.AddItem(_T("Settings"), _T("NewFileSampleRate"), m_NewFileFormat.nSamplesPerSec, 44100, 1, 1000000);
-	Profile.AddItem(_T("Settings"), _T("NewFileChannels"), m_NewFileFormat.nChannels, 2, 1, 2);
+	Profile.AddItem(_T("Settings"), _T("NewFileSampleRate"), m_NewFileSamplesPerSecond, 44100, 1, 1000000);
+	Profile.AddItem(_T("Settings"), _T("NewFileChannels"), m_NewFileChannels, 2, 1, 32);
+	Profile.AddItem(_T("Settings"), _T("NewFileSampleType"), m_NewFileSampleType, 0, 0, 2);
 
 	Profile.AddItem(_T("Settings"), _T("SpectrumSectionWidth"), m_SpectrumSectionWidth, 100, 1, 1000);
 	Profile.AddItem(_T("Settings"), _T("FftBandsOrder"), m_FftBandsOrder, 9, 6, 13);
@@ -1483,12 +1480,14 @@ void CWaveSoapFrontApp::OnFileNew()
 
 	if (pTemplate != NULL)
 	{
+		CWaveFormat wf;
 
 		if (! m_bShowNewFormatDialogWhenShiftOnly
 			|| (0x8000 & GetKeyState(VK_SHIFT)))
 		{
-			CNewFilePropertiesDlg dlg(m_NewFileFormat.nSamplesPerSec,
-									m_NewFileFormat.nChannels, m_NewFileLength,
+			CNewFilePropertiesDlg dlg(m_NewFileSamplesPerSecond,
+									m_NewFileChannels, m_NewFileLength,
+									(WaveSampleType)m_NewFileSampleType,
 									m_bShowNewFormatDialogWhenShiftOnly);
 
 			if (IDOK != dlg.DoModal())
@@ -1500,17 +1499,15 @@ void CWaveSoapFrontApp::OnFileNew()
 
 			m_bShowNewFormatDialogWhenShiftOnly = dlg.ShowWhenShiftOnly();
 
-			m_NewFileFormat.nSamplesPerSec = dlg.GetSamplingRate();
+			m_NewFileSamplesPerSecond = dlg.GetSamplingRate();
 
-			m_NewFileFormat.nChannels = dlg.NumberOfChannels();
+			m_NewFileChannels = dlg.NumberOfChannels();
+			m_NewFileSampleType = dlg.SampleType();
 		}
 
-		CWaveFormat wf;
-		wf.InitFormat(WAVE_FORMAT_PCM, m_NewFileFormat.nSamplesPerSec,
-					m_NewFileFormat.nChannels);
+		wf.InitFormat((WaveSampleType)m_NewFileSampleType, m_NewFileSamplesPerSecond, m_NewFileChannels);
 
-		NewFileParameters Params(wf,
-								m_NewFileLength * m_NewFileFormat.nSamplesPerSec);
+		NewFileParameters Params(wf, m_NewFileLength * m_NewFileSamplesPerSecond);
 
 		pTemplate->OpenDocumentFile((LPCTSTR) & Params,
 									OpenDocumentCreateNewWithParameters|1);

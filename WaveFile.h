@@ -56,7 +56,7 @@ enum
 #pragma pack(push, 2)
 struct PeakFileHeader
 {
-	enum { pfhSignature = 'KPSW', pfhMaxVersion = 4};
+	enum { pfhSignature = 'KPSW', pfhMaxVersion = 5};
 	DWORD dwSignature;
 	WORD wSize;
 	WORD dwVersion;
@@ -282,7 +282,7 @@ enum {
 	CreateWaveFileAllowMemoryFile = MmioFileMemoryFile,
 	CreateWaveFileTempDir = 0x00100000,
 	CreateWaveFileDontCopyInfo = 0x00200000,
-	CreateWaveFilePcmFormat = 0x00400000,
+	CreateWaveFilePcmFormat = 0x00400000,		// force 16 bit PCM format
 	CreateWaveFileTemp = 0x00800000, // create temporary name
 	CreateWaveFileAttachTemplateAsSource = 0x01000000,
 	CreateWaveFileSizeSpecified = 0x02000000,
@@ -517,11 +517,7 @@ public:
 	virtual BOOL Open(LPCTSTR lpszFileName, long nOpenFlags);
 	virtual void Close();
 
-	WaveSampleType GetSampleType() const
-	{
-		// todo
-		return SampleType16bit;
-	}
+	WaveSampleType GetSampleType() const;
 
 	long ReadSamples(CHANNEL_MASK Channels,
 					SAMPLE_POSITION Pos, long Samples, void * pBuf,
@@ -536,7 +532,7 @@ public:
 	BOOL SetSourceFile(CWaveFile * const pOriginalFile);
 	void SetWaveFormat(WAVEFORMATEX const * pWf);
 
-	void RescanPeaks(SAMPLE_INDEX begin, SAMPLE_INDEX end);
+	void RescanPeaks(SAMPLE_INDEX begin, SAMPLE_INDEX end);		// end is last sample to scan+1
 	BOOL AllocatePeakData(NUMBER_OF_SAMPLES NewNumberOfSamples);
 	WavePeak GetPeakMinMax(PEAK_INDEX from, PEAK_INDEX to, NUMBER_OF_CHANNELS stride = 1) const;
 

@@ -8,7 +8,7 @@
 #include <mmreg.h>
 #include <msacm.h>
 
-typedef long CHANNEL_MASK;
+typedef ULONG CHANNEL_MASK;
 #define ALL_CHANNELS ((CHANNEL_MASK)-1)
 #define MAX_NUMBER_OF_CHANNELS 32
 
@@ -58,11 +58,13 @@ enum   // flags for CWaveFormat::ValidateFormat
 enum WaveSampleType
 {
 	SampleType16bit,
+	SampleType24bit,
 	SampleType32bit,
+	SampleType8bit,
 	SampleTypeFloat32,
 	SampleTypeFloat64,
 	SampleTypeOtherPcm,
-	SampleType8bit,
+	SampleTypeNotSupported,
 	SampleTypeCompressed,
 	SampleTypeAny,
 };
@@ -147,14 +149,14 @@ struct WaveFormatTagEx
 struct CWaveFormat
 {
 	WAVEFORMATEX * m_pWf;
-	int m_AllocatedSize;
+	unsigned m_AllocatedSize;
 	CWaveFormat()
 		: m_pWf(NULL),
 		m_AllocatedSize(0)
 	{
 	}
 	~CWaveFormat();
-	WAVEFORMATEX * Allocate(unsigned ExtraSize, bool bCopy = true);
+	WAVEFORMATEX * Allocate(unsigned Size = sizeof (WAVEFORMATEX), bool bCopy = true);
 	CWaveFormat & operator =(WAVEFORMATEX const * pWf);
 	CWaveFormat & operator =(CWaveFormat const & src)
 	{
@@ -294,17 +296,9 @@ struct CWaveFormat
 	ULONG ValidateFormat() const;
 
 	void InitFormat(WORD wFormatTag, DWORD nSampleRate,
-					WORD nNumChannels, WORD nBitsPerSample = 16, WORD Size = 0)
-	{
-		Allocate(Size, true);
-		m_pWf->cbSize = Size;
-		m_pWf->wFormatTag = wFormatTag;
-		m_pWf->nSamplesPerSec = nSampleRate;
-		m_pWf->nChannels = nNumChannels;
-		m_pWf->wBitsPerSample = nBitsPerSample;
-		m_pWf->nBlockAlign = nBitsPerSample * nNumChannels / 8;
-		m_pWf->nAvgBytesPerSec = nSampleRate * nNumChannels * nBitsPerSample / 8;
-	}
+					WORD nNumChannels, WORD nBitsPerSample = 16, WORD Size = sizeof (WAVEFORMATEX));
+
+	void InitFormat(WaveSampleType type, DWORD nSampleRate, WORD nNumChannels);
 	int MatchFormat(WAVEFORMATEX const * pWf);
 	//comparision operator is used for sorting
 	bool operator <(CWaveFormat const & cmp) const

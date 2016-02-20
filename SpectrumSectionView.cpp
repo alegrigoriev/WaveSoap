@@ -541,7 +541,7 @@ void CSpectrumSectionView::OnDraw(CDC* pDC)
 
 	CalculateFftPowerSum(m_pFftSum, nStartSample, NumberOfFftSamplesAveraged, m_FftOrder);
 
-	double const PowerScaleCoeff = 4. / (NumberOfFftSamplesAveraged * 32768. * m_FftOrder * 32768. * m_FftOrder);
+	double const PowerScaleCoeff = 4. / (NumberOfFftSamplesAveraged * m_FftOrder * m_FftOrder);
 
 	double const NrPowerScaleCoeff = 1. / (32768. * m_NrFftOrder * m_NrFftOrder);
 

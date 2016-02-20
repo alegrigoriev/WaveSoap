@@ -279,125 +279,19 @@ unsigned CBatchProcessing::Item::FillInputBuffer(const char * Buf, unsigned BufF
 {
 	unsigned BytesUsed = 0;
 
-	if (InBufGetIndex == InBufPutIndex)
+	unsigned BufferSampleSize = Proc->GetInputWaveformat().SampleSize();
+	if (InBufPutIndex - InBufGetIndex < BufferSampleSize)
 	{
+		memmove(InBuf, InBuf + InBufGetIndex, InBufPutIndex - InBufGetIndex);
+		InBufPutIndex -= InBufGetIndex;
 		InBufGetIndex = 0;
-		InBufPutIndex = 0;
 	}
 
 	unsigned BytesToFill = IntermediateBufSize - InBufPutIndex;
-
-	// all channels are copied even though not all be processed
-	// four cases:
-	// the input data is the same non-float format;
-	// input is SHORT and the required format is FLOAT
-	// input is FLOAT and the required format is SHORT
-	// input is FLOAT and the required format is FLOAT - check for NAN
-	if (pWf->IsFloat32())
-	{
-		if (Proc->GetInputWaveformat().IsFloat32())
-		{
-			ASSERT(BufFilled % sizeof(float) == 0);
-
-			if (BytesToFill > BufFilled)
-			{
-				BytesToFill = BufFilled;
-			}
-
-			unsigned NumSamples = BytesToFill / sizeof (float);
-			float const * src = (float const *) Buf;
-			float *dst = (float*)(InBuf + InBufPutIndex);
-
-			for (unsigned i = 0; i != NumSamples; i++)
-			{
-				if (_isnan(src[i]))
-				{
-					dst[i] = 0;
-				}
-				else if (src[i] > 1000000.)
-				{
-					dst[i] = 1000000.;
-				}
-				else if (src[i] < -1000000.)
-				{
-					dst[i] = -1000000.;
-				}
-				else
-				{
-					dst[i] = src[i];
-				}
-			}
-
-			InBufPutIndex += BytesToFill;
-			BytesUsed = NumSamples * sizeof (float);
-			ASSERT(BytesUsed <= BufFilled);
-			return BytesUsed;
-		}
-		else
-		{
-			ASSERT(Proc->GetInputWaveformat().IsPcm16());
-			// convert from FLOAT to SHORT
-			ASSERT(BufFilled % sizeof(float) == 0);
-
-			if (BytesToFill > BufFilled/2)
-			{
-				BytesToFill = BufFilled/2;
-			}
-
-			unsigned NumSamples = BytesToFill / sizeof (short);
-			float const * src = (float const *) Buf;
-			short *dst = (short*)(InBuf + InBufPutIndex);
-
-			for (unsigned i = 0; i != NumSamples; i++)
-			{
-				if (_isnan(src[i]))
-				{
-					dst[i] = 0;
-				}
-				else if (src[i] > SHORT_MAX)
-				{
-					dst[i] = SHORT_MAX;
-				}
-				else if (src[i] < SHORT_MIN)
-				{
-					dst[i] = SHORT_MIN;
-				}
-				else
-				{
-					dst[i] = (short)floor(src[i] + 0.5);
-				}
-			}
-			InBufPutIndex += BytesToFill;
-			BytesUsed = NumSamples * sizeof (float);
-			ASSERT(BytesUsed <= BufFilled);
-			return BytesUsed;
-		}
-	}
-	else if (pWf->IsPcm16() && Proc->GetInputWaveformat().IsFloat32())
-	{
-		// convert from SHORT to FLOAT
-		ASSERT(BufFilled % 2 == 0);
-
-		if (BytesToFill > BufFilled*2)
-		{
-			BytesToFill = BufFilled*2;
-		}
-
-		unsigned NumSamples = BytesToFill / sizeof (float);
-		SHORT const * src = (SHORT const *) Buf;
-		float *dst = (float*)(InBuf + InBufPutIndex);
-
-		for (unsigned i = 0; i != NumSamples; i++)
-		{
-			dst[i] = src[i];
-		}
-
-		InBufPutIndex += BytesToFill;
-		BytesUsed = NumSamples * sizeof (short);
-		ASSERT(BytesUsed <= BufFilled);
-		return BytesUsed;
-	}
-	else
+	WaveSampleType SourceType = pWf->GetSampleType();
+	if (SourceType == SampleTypeCompressed
+		|| SourceType == SampleType8bit
+		|| SourceType == SampleTypeNotSupported)
 	{
 		// all other cases - the data is simply copied
 		if (BytesToFill > BufFilled)
@@ -411,6 +305,22 @@ unsigned CBatchProcessing::Item::FillInputBuffer(const char * Buf, unsigned BufF
 		ASSERT(BytesUsed <= BufFilled);
 		return BytesUsed;
 	}
+	else
+	{
+		NUMBER_OF_SAMPLES SamplesToFill = BytesToFill / BufferSampleSize;
+		NUMBER_OF_SAMPLES SourceSamples = BufFilled / pWf->SampleSize();
+
+		if (SamplesToFill > SourceSamples)
+		{
+			SamplesToFill = SourceSamples;
+		}
+		BytesUsed = SamplesToFill * pWf->SampleSize();
+		CopyWaveSamples(InBuf + InBufPutIndex, ALL_CHANNELS, Proc->GetInputWaveformat().NumChannels(),
+			Buf, ALL_CHANNELS, pWf->NumChannels(), SamplesToFill, Proc->GetInputWaveformat().GetSampleType(), SourceType);
+
+		InBufPutIndex += SamplesToFill * BufferSampleSize;
+		return BytesUsed;
+	}
 }
 
 unsigned CBatchProcessing::Item::FillOutputBuffer(char * Buf, unsigned BytesToFill, CWaveFormat const * pWf) // returns number bytes used
@@ -418,127 +328,47 @@ unsigned CBatchProcessing::Item::FillOutputBuffer(char * Buf, unsigned BytesToFi
 	unsigned BytesFilled = 0;
 
 	// all channels are copied even though not all be processed
-	// four cases:
-	// the input data is the same non-float format;
-	// input is SHORT and the required format is FLOAT
-	// input is FLOAT and the required format is SHORT
-	// input is FLOAT and the required format is FLOAT - check for NAN
 
-	if (Proc->GetOutputWaveformat().IsFloat32())
-	{
-		// convert from FLOAT to FLOAT
-		if (pWf->IsFloat32())
-		{
+	unsigned BytesToUse = OutBufPutIndex - OutBufGetIndex;
+	WaveSampleType TargetType = pWf->GetSampleType();
+	unsigned SrcSampleSize = Proc->GetInputWaveformat().SampleSize();
 
-			if (BytesToFill > OutBufPutIndex - OutBufGetIndex)
-			{
-				BytesToFill = OutBufPutIndex - OutBufGetIndex;
-			}
-			ASSERT(BytesToFill % sizeof(float) == 0);
-
-			unsigned NumSamples = BytesToFill / sizeof (float);
-			float const * src = (float const *)(OutBuf + OutBufGetIndex);
-			float *dst = (float*) Buf;
-
-			for (unsigned i = 0; i != NumSamples; i++)
-			{
-				if (_isnan(src[i]))
-				{
-					dst[i] = 0;
-				}
-				else if (src[i] > 1000000.)
-				{
-					dst[i] = 1000000.;
-				}
-				else if (src[i] < -1000000.)
-				{
-					dst[i] = -1000000.;
-				}
-				else
-				{
-					dst[i] = src[i];
-				}
-			}
-
-			OutBufGetIndex += BytesToFill;
-			BytesFilled = NumSamples * sizeof (float);
-		}
-		else
-		{
-			ASSERT(pWf->IsPcm16());
-			// convert from FLOAT to SHORT
-
-			if (BytesToFill > (OutBufPutIndex - OutBufGetIndex)/2)
-			{
-				BytesToFill = (OutBufPutIndex - OutBufGetIndex)/2;
-			}
-			ASSERT(BytesToFill % sizeof(float) == 0);
-
-			unsigned NumSamples = BytesToFill / sizeof (short);
-			float const * src = (float const *) (OutBuf + OutBufGetIndex);
-			short *dst = (short*)Buf;
-
-			for (unsigned i = 0; i != NumSamples; i++)
-			{
-				if (_isnan(src[i]))
-				{
-					dst[i] = 0;
-				}
-				else if (src[i] > SHORT_MAX)
-				{
-					dst[i] = SHORT_MAX;
-				}
-				else if (src[i] < SHORT_MIN)
-				{
-					dst[i] = SHORT_MIN;
-				}
-				else
-				{
-					dst[i] = (short)floor(src[i] + 0.5);
-				}
-			}
-			OutBufGetIndex += NumSamples * sizeof (float);
-			BytesFilled = NumSamples * sizeof (short);
-		}
-	}
-	else if (Proc->GetOutputWaveformat().IsPcm16() && pWf->IsFloat32())
-	{
-		// convert from SHORT to FLOAT
-
-		if (BytesToFill > (OutBufPutIndex - OutBufGetIndex)*2)
-		{
-			BytesToFill = (OutBufPutIndex - OutBufGetIndex)*2;
-		}
-		ASSERT(BytesToFill % sizeof(float) == 0);
-
-		unsigned NumSamples = BytesToFill / sizeof (float);
-		SHORT const * src = (SHORT const *) (OutBuf + OutBufGetIndex);
-		float *dst = (float*)Buf;
-
-		for (unsigned i = 0; i != NumSamples; i++)
-		{
-			dst[i] = src[i];
-		}
-
-		OutBufGetIndex += NumSamples * sizeof (short);
-		BytesFilled = NumSamples * sizeof (float);
-	}
-	else
+	if (TargetType == SampleTypeCompressed
+		|| TargetType == SampleType8bit
+		|| TargetType == SampleTypeNotSupported)
 	{
 		// all other cases - the data is simply copied
-		if (BytesToFill > OutBufPutIndex - OutBufGetIndex)
+		if (BytesToFill > BytesToUse)
 		{
-			BytesToFill = OutBufPutIndex - OutBufGetIndex;
+			BytesToFill = BytesToUse;
 		}
 		memcpy(Buf, OutBuf + OutBufGetIndex, BytesToFill);
 		BytesFilled = BytesToFill;
 		OutBufGetIndex += BytesToFill;
 	}
-
-	if (OutBufGetIndex == OutBufPutIndex)
+	else
 	{
+		NUMBER_OF_SAMPLES SamplesToFill = BytesToFill / pWf->SampleSize();
+		NUMBER_OF_SAMPLES SourceSamples = BytesToUse / SrcSampleSize;
+
+		if (SamplesToFill > SourceSamples)
+		{
+			SamplesToFill = SourceSamples;
+		}
+		BytesFilled = SamplesToFill * pWf->SampleSize();
+
+		CopyWaveSamples(Buf, ALL_CHANNELS, pWf->NumChannels(),
+						OutBuf + OutBufGetIndex, ALL_CHANNELS, Proc->GetInputWaveformat().NumChannels(),
+						SamplesToFill, TargetType, Proc->GetInputWaveformat().GetSampleType());
+
+		OutBufGetIndex += SamplesToFill * SrcSampleSize;
+	}
+
+	if (OutBufPutIndex - OutBufGetIndex < SrcSampleSize)
+	{
+		memmove(OutBuf, OutBuf + OutBufGetIndex, OutBufPutIndex - OutBufGetIndex);
+		OutBufPutIndex -= OutBufGetIndex;
 		OutBufGetIndex = 0;
-		OutBufPutIndex = 0;
 	}
 
 	return BytesFilled;
@@ -549,7 +379,7 @@ unsigned CBatchProcessing::Item::FillOutputBuffer(char * Buf, unsigned BytesToFi
 CWaveProc::CWaveProc()
 	: m_bClipped(FALSE),
 	m_MaxClipped(0),
-	m_ChannelsToProcess(-1)
+	m_ChannelsToProcess(ALL_CHANNELS)
 	, m_SavedOutputSamples(0)
 	, m_ProcessedInputSamples(0)
 	, m_CurrentSample(0)
@@ -701,6 +531,11 @@ BOOL CWaveProc::SetInputWaveformat(CWaveFormat const & Wf)
 								16);
 		// FIXME: Use extended format to carry the channel assignments
 	}
+	else if (m_InputSampleType == SampleType32bit)
+	{
+		m_InputFormat.InitFormat(WAVE_FORMAT_PCM, Wf.SampleRate(), Wf.NumChannels(),
+								32);
+	}
 	else if (m_InputSampleType == SampleTypeFloat32)
 	{
 		m_InputFormat.InitFormat(WAVE_FORMAT_IEEE_FLOAT, Wf.SampleRate(), Wf.NumChannels(),
@@ -739,6 +574,11 @@ BOOL CWaveProc::SetOutputWaveformat(CWaveFormat const & Wf)
 		m_OutputFormat.InitFormat(WAVE_FORMAT_IEEE_FLOAT, Wf.SampleRate(), Wf.NumChannels(),
 								32);
 	}
+	else if (m_OutputSampleType == SampleType32bit)
+	{
+		m_OutputFormat.InitFormat(WAVE_FORMAT_PCM, Wf.SampleRate(), Wf.NumChannels(),
+								32);
+	}
 	else
 	{
 		return FALSE;
@@ -762,12 +602,18 @@ unsigned CWaveProc::ProcessSound(char const * pInBuf, char * pOutBuf,
 	*pUsedBytes = 0;
 
 	unsigned const InputSampleSize = GetInputSampleSize();
-	// input buffer is always multiple of sample size
-	ASSERT(0 == InputSampleSize || 0 == nInBytes % InputSampleSize);
+	// make input buffer multiple of sample size
+	if (InputSampleSize != 0)
+	{
+		nInBytes -= nInBytes % InputSampleSize;
+	}
 
 	unsigned const OutputSampleSize = GetOutputSampleSize();
-	// output buffer is always multiple of sample size
-	ASSERT(0 == OutputSampleSize || 0 == nOutBytes % OutputSampleSize);
+	// make input buffer multiple of sample size
+	if (OutputSampleSize != 0)
+	{
+		nOutBytes -= nOutBytes % OutputSampleSize;
+	}
 
 	nSavedBytes = ProcessSoundBuffer(pInBuf, pOutBuf, nInBytes, nOutBytes, pUsedBytes);
 
@@ -5241,10 +5087,8 @@ BOOL CChannelConvertor::SetInputWaveformat(CWaveFormat const & Wf)
 		return FALSE;
 	}
 
-	m_OutputFormat.InitFormat(Wf.FormatTag(), Wf.SampleRate(), m_OutputFormat.NumChannels(),
-							Wf.BitsPerSample());
-	m_InputFormat.InitFormat(Wf.FormatTag(), Wf.SampleRate(), m_InputFormat.NumChannels(),
-							Wf.BitsPerSample());
+	m_OutputFormat.InitFormat(Wf.GetSampleType(), Wf.SampleRate(), m_OutputFormat.NumChannels());
+	m_InputFormat.InitFormat(Wf.GetSampleType(), Wf.SampleRate(), m_InputFormat.NumChannels());
 
 	return TRUE;
 }

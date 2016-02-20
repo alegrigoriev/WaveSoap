@@ -10,6 +10,7 @@
 #include "resource.h"
 #include <ks.h>
 #include <ksmedia.h>
+#include <new>
 /////////////////////////////////
 // CWaveDevice stuff
 /////////////////////////////////
@@ -557,19 +558,22 @@ CWaveFormat::~CWaveFormat()
 	delete[] (char*) m_pWf;
 }
 
-WAVEFORMATEX * CWaveFormat::Allocate(unsigned ExtraSize, bool bCopy)
+WAVEFORMATEX * CWaveFormat::Allocate(unsigned Size, bool bCopy)
 {
-	if (ExtraSize > 0xFFFF)
+	if (Size > 0xFFFF)
 	{
-		ExtraSize = 0xFFFF;
+		Size = 0xFFFF;
+	}
+	if (Size < sizeof(WAVEFORMATEX))
+	{
+		Size = sizeof(WAVEFORMATEX);
 	}
 
-	int SizeToAllocate = ExtraSize + sizeof (WAVEFORMATEX);
-	if (m_AllocatedSize >= SizeToAllocate)
+	if (m_AllocatedSize >= Size)
 	{
 		return m_pWf;
 	}
-	void * NewBuf = new char[SizeToAllocate];
+	void * NewBuf = new(std::nothrow) char[Size];
 	if (NULL == NewBuf)
 	{
 		return NULL;
@@ -582,18 +586,89 @@ WAVEFORMATEX * CWaveFormat::Allocate(unsigned ExtraSize, bool bCopy)
 		}
 		else
 		{
-			memset(NewBuf, 0, SizeToAllocate);
+			memset(NewBuf, 0, Size);
 		}
 		delete[] (char*) m_pWf;
 	}
 	m_pWf = (WAVEFORMATEX *)NewBuf;
-	m_AllocatedSize = SizeToAllocate;
+	m_AllocatedSize = Size;
 	return m_pWf;
+}
+
+void CWaveFormat::InitFormat(WORD wFormatTag, DWORD nSampleRate,
+							WORD nNumChannels, WORD nBitsPerSample, WORD Size)
+{
+	Allocate(Size);
+	m_pWf->cbSize = Size - sizeof (WAVEFORMATEX);
+	m_pWf->wFormatTag = wFormatTag;
+	m_pWf->nSamplesPerSec = nSampleRate;
+	m_pWf->nChannels = nNumChannels;
+	m_pWf->wBitsPerSample = nBitsPerSample;
+	m_pWf->nBlockAlign = nBitsPerSample * nNumChannels / 8;
+	m_pWf->nAvgBytesPerSec = nSampleRate * nNumChannels * nBitsPerSample / 8;
+}
+
+void CWaveFormat::InitFormat(WaveSampleType type, DWORD nSampleRate, WORD nNumChannels)
+{
+	WORD NumBits = 16;
+	if (nNumChannels <= 2)
+	{
+		switch (type)
+		{
+		case SampleType32bit:
+			NumBits += 8;
+		case SampleType24bit:
+			NumBits += 8;
+			// fall through
+		case SampleType16bit:
+			InitFormat(WAVE_FORMAT_PCM, nSampleRate, nNumChannels, NumBits);
+			return;
+		case SampleTypeFloat32:
+			InitFormat(WAVE_FORMAT_IEEE_FLOAT, nSampleRate, nNumChannels, 32);
+			return;
+		case SampleTypeFloat64:
+			InitFormat(WAVE_FORMAT_IEEE_FLOAT, nSampleRate, nNumChannels, 64);
+			return;
+		}
+	}
+
+	switch (type)
+	{
+	case SampleType16bit:
+		NumBits = 16;
+		break;
+	case SampleType24bit:
+		NumBits = 24;
+		break;
+	case SampleType32bit:
+		NumBits = 32;
+		break;
+	case SampleTypeFloat32:
+		NumBits = 32;
+		break;
+	case SampleTypeFloat64:
+		NumBits = 64;
+		break;
+	}
+
+	InitFormat(WAVE_FORMAT_EXTENSIBLE, nSampleRate, nNumChannels, NumBits, sizeof (WAVEFORMATEXTENSIBLE));
+	WAVEFORMATEXTENSIBLE * pWfe = (WAVEFORMATEXTENSIBLE *)m_pWf;
+	pWfe->Samples.wValidBitsPerSample = NumBits;
+	pWfe->dwChannelMask = ~(0xFFFFFFFF << nNumChannels);
+
+	if (type == SampleTypeFloat32 || type == SampleTypeFloat64)
+	{
+		pWfe->SubFormat = KSDATAFORMAT_SUBTYPE_IEEE_FLOAT;
+	}
+	else
+	{
+		pWfe->SubFormat = KSDATAFORMAT_SUBTYPE_PCM;
+	}
 }
 
 void CWaveFormat::InitCdAudioFormat()
 {
-	Allocate(0);
+	Allocate();
 	m_pWf->cbSize = 0;
 	m_pWf->nSamplesPerSec = 44100;
 	m_pWf->wFormatTag = WAVE_FORMAT_PCM;
@@ -613,13 +688,13 @@ CWaveFormat & CWaveFormat::operator =(WAVEFORMATEX const * pWf)
 	{
 		if (WAVE_FORMAT_PCM == pWf->wFormatTag)
 		{
-			Allocate(0);
+			Allocate();
 			memcpy(m_pWf, pWf, sizeof (PCMWAVEFORMAT));
 			m_pWf->cbSize = 0;
 		}
 		else
 		{
-			Allocate(pWf->cbSize);
+			Allocate(pWf->cbSize + sizeof (WAVEFORMATEX));
 			memcpy(m_pWf, pWf, pWf->cbSize + sizeof (WAVEFORMATEX));
 		}
 	}
@@ -684,21 +759,29 @@ WaveSampleType CWaveFormat::GetSampleType() const
 	{
 		if (m_pWf->wBitsPerSample > 16)
 		{
-			return SampleType32bit;
+			if (m_pWf->wBitsPerSample > 32)
+			{
+				return SampleTypeNotSupported;
+			}
+			else if (m_pWf->wBitsPerSample > 24)
+			{
+				return SampleType32bit;
+			}
+			else
+			{
+				return SampleType24bit;
+			}
 		}
 		switch (m_pWf->wBitsPerSample)
 		{
-		case 16:
-			// PCM integer 16
-			return SampleType16bit;
 		case 8:
 			// PCM integer 16
 			return SampleType8bit;
-		case 32:
+		case 16:
 			// PCM integer 16
-			return SampleType32bit;
+			return SampleType16bit;
 		default:
-			return SampleTypeOtherPcm;
+			return SampleTypeNotSupported;
 		}
 	}
 	else if (WAVE_FORMAT_EXTENSIBLE == m_pWf->wFormatTag
@@ -709,18 +792,43 @@ WaveSampleType CWaveFormat::GetSampleType() const
 		{
 			if (m_pWf->wBitsPerSample > 16)
 			{
-				return SampleType32bit;
+				if (m_pWf->wBitsPerSample > 32)
+				{
+					return SampleTypeNotSupported;
+				}
+				else if (m_pWf->wBitsPerSample > 24)
+				{
+					return SampleType32bit;
+				}
+				else
+				{
+					return SampleType24bit;
+				}
 			}
-			switch (pWfe->Format.wBitsPerSample)
+			switch (m_pWf->wBitsPerSample)
 			{
-			case 16:
-				// PCM integer 16
-				return SampleType16bit;
 			case 8:
 				// PCM integer 16
 				return SampleType8bit;
+			case 16:
+				// PCM integer 16
+				return SampleType16bit;
 			default:
-				return SampleTypeOtherPcm;
+				return SampleTypeNotSupported;
+			}
+		}
+		else if (pWfe->SubFormat == KSDATAFORMAT_SUBTYPE_IEEE_FLOAT)
+		{
+			switch (m_pWf->wBitsPerSample)
+			{
+			case 32:
+				// float
+				return SampleTypeFloat32;
+			case 64:
+				// double
+				return SampleTypeFloat64;
+			default:
+				return SampleTypeNotSupported;
 			}
 		}
 	}
@@ -735,6 +843,10 @@ WaveSampleType CWaveFormat::GetSampleType() const
 		{
 			// float format
 			return SampleTypeFloat64;
+		}
+		else
+		{
+			return SampleTypeNotSupported;
 		}
 	}
 	return SampleTypeCompressed;      // other format
@@ -1191,7 +1303,7 @@ bool CAudioCompressionManager::FillMultiFormatArray(unsigned nSelFrom, unsigned 
 	m_Formats.clear();
 
 	CWaveFormat pwfx;
-	pwfx.Allocate(0xFFF0, true);
+	pwfx.Allocate(0xFFF0);
 	for (unsigned sel = nSelFrom; sel <= nSelTo && sel < m_FormatTags.size(); sel++)
 	{
 
@@ -1397,7 +1509,7 @@ void CAudioCompressionManager::FillLameEncoderFormats()
 		m_Formats[i].Name.Format(f, Mp3Bitrates[i], LPCTSTR(ms));
 		m_Formats[i].Wf.InitFormat(WAVE_FORMAT_EXTENSIBLE, 44100,
 									2, 16,
-									sizeof (WAVEFORMATEXTENSIBLE) - sizeof (WAVEFORMATEX));
+									sizeof (WAVEFORMATEXTENSIBLE));
 		m_Formats[i].Wf.m_pWf->nAvgBytesPerSec = Mp3Bitrates[i] * 125;
 		((WAVEFORMATEXTENSIBLE*)(m_Formats[i].Wf.m_pWf))->SubFormat =
 			BladeMp3Encoder::GetTag().SubFormat;
@@ -1979,6 +2091,935 @@ void AudioStreamConvertor::Close()
 	}
 }
 
+static unsigned NumberBitsInMask(CHANNEL_MASK mask)
+{
+	unsigned n = 0;
+	for (unsigned ch = 0; ch < 32 ; ch++)
+	{
+		if (mask & (1 << ch))
+		{
+			n++;
+		}
+	}
+	return n;
+}
+
+static unsigned LeastBitInMask(CHANNEL_MASK mask)
+{
+	ASSERT(mask != 0);
+	for (unsigned ch = 0; ch < 32; ch++)
+	{
+		if (mask & (1 << ch))
+		{
+			return ch;
+		}
+	}
+	return 32;
+}
+
+void CopySamples16to16(WAVE_SAMPLE * pDst, CHANNEL_MASK DstChannels,
+						int const NumDstChannels,
+						WAVE_SAMPLE const * pSrc, CHANNEL_MASK SrcChannels,
+						int const NumSrcChannels,
+						unsigned Samples)
+{
+	typedef WAVE_SAMPLE DST_WAVE_SAMPLE;
+	// the following variants are possible:
+	// copying one selected channel to one selected channel
+	// copying one channel to all channels
+	// copying all channels to one channel
+	// arbitrary copy of number of channels to same number of channels
+	int NumSrcChannelsToCopy = NumberBitsInMask(SrcChannels);
+	int NumDstChannelsToCopy = NumberBitsInMask(DstChannels);
+	unsigned i, j;
+	unsigned long mask, dst_mask;
+	DST_WAVE_SAMPLE tmp;
+
+	if (NumSrcChannelsToCopy == NumSrcChannels
+		&& NumDstChannelsToCopy == NumDstChannels
+		&& NumSrcChannels == NumDstChannels)
+	{
+		// copy exerything
+		Samples *= NumSrcChannels;
+		for (i = 0; i < Samples; i++, pSrc ++, pDst ++)
+		{
+			*pDst = *pSrc;
+		}
+		return;
+	}
+
+	if (NumSrcChannelsToCopy == 1)
+	{
+		if (NumDstChannelsToCopy == 1)
+		{
+			// copy one channel to one channel
+			for (i = 0; i < Samples; i++, pSrc += NumSrcChannels, pDst += NumDstChannels)
+			{
+				*pDst = *pSrc;
+			}
+			return;
+		}
+		// copy one channel to multiple channels
+		for (i = 0; i < Samples; i++, pSrc += NumSrcChannels, pDst += NumDstChannels)
+		{
+			tmp = *pSrc;
+			for (j = 0, mask = DstChannels; mask != 0; j++, mask >>= 1)
+			{
+				if (mask & 1)
+				{
+					pDst[j] = tmp;
+				}
+			}
+		}
+		return;
+	}
+
+	if (NumDstChannelsToCopy == 1)
+	{
+		// NumSrcChannelsToCopy != 1
+		// copy sum of multiple channels to one channel
+		for (i = 0; i < Samples; i++, pSrc += NumSrcChannels, pDst += NumDstChannels)
+		{
+			long sum = 0;
+			for (j = 0, mask = SrcChannels; mask != 0; j++, mask >>= 1)
+			{
+				if (mask & 1)
+				{
+					sum += pSrc[j];
+				}
+			}
+			*pDst = DST_WAVE_SAMPLE(sum / NumSrcChannelsToCopy);
+		}
+		return;
+	}
+
+	for (i = 0; i < Samples; i++, pSrc += NumSrcChannels, pDst += NumDstChannels)
+	{
+		unsigned k = 0;
+		for (j = 0, mask = SrcChannels, dst_mask = DstChannels; mask != 0; j++, k++, mask >>= 1, dst_mask >>= 1)
+		{
+			while (0 == (dst_mask & 1))
+			{
+				dst_mask >>= 1;
+				k++;
+			}
+			pDst[k] = pSrc[j];
+		}
+	}
+}
+
+void CopySamples32to32(LONG32 * pDst, CHANNEL_MASK DstChannels,
+						int const NumDstChannels,
+						LONG32 const * pSrc, CHANNEL_MASK SrcChannels,
+						int const NumSrcChannels,
+						unsigned Samples)
+{
+	typedef LONG32 DST_WAVE_SAMPLE;
+	// the following variants are possible:
+	// copying one selected channel to one selected channel
+	// copying one channel to all channels
+	// copying all channels to one channel
+	// arbitrary copy of number of channels to same number of channels
+	int NumSrcChannelsToCopy = NumberBitsInMask(SrcChannels);
+	int NumDstChannelsToCopy = NumberBitsInMask(DstChannels);
+	unsigned i, j;
+	unsigned long mask, dst_mask;
+	DST_WAVE_SAMPLE tmp;
+
+	if (NumSrcChannelsToCopy == NumSrcChannels
+		&& NumDstChannelsToCopy == NumDstChannels
+		&& NumSrcChannels == NumDstChannels)
+	{
+		// copy exerything
+		Samples *= NumSrcChannels;
+		for (i = 0; i < Samples; i++, pSrc++, pDst++)
+		{
+			*pDst = *pSrc;
+		}
+		return;
+	}
+
+	if (NumSrcChannelsToCopy == 1)
+	{
+		if (NumDstChannelsToCopy == 1)
+		{
+			// copy one channel to one channel
+			for (i = 0; i < Samples; i++, pSrc += NumSrcChannels, pDst += NumDstChannels)
+			{
+				*pDst = *pSrc;
+			}
+			return;
+		}
+		// copy one channel to multiple channels
+		for (i = 0; i < Samples; i++, pSrc += NumSrcChannels, pDst += NumDstChannels)
+		{
+			tmp = *pSrc;
+			for (j = 0, mask = DstChannels; mask != 0; j++, mask >>= 1)
+			{
+				if (mask & 1)
+				{
+					pDst[j] = tmp;
+				}
+			}
+		}
+		return;
+	}
+
+	if (NumDstChannelsToCopy == 1)
+	{
+		// NumSrcChannelsToCopy != 1
+		// copy sum of multiple channels to one channel
+		for (i = 0; i < Samples; i++, pSrc += NumSrcChannels, pDst += NumDstChannels)
+		{
+			long long sum = 0;
+			for (j = 0, mask = SrcChannels; mask != 0; j++, mask >>= 1)
+			{
+				if (mask & 1)
+				{
+					sum += pSrc[j];
+				}
+			}
+			*pDst = DST_WAVE_SAMPLE(sum / NumSrcChannelsToCopy);
+		}
+		return;
+	}
+
+	for (i = 0; i < Samples; i++, pSrc += NumSrcChannels, pDst += NumDstChannels)
+	{
+		unsigned k = 0;
+		for (j = 0, mask = SrcChannels, dst_mask = DstChannels; mask != 0; j++, k++, mask >>= 1, dst_mask >>= 1)
+		{
+			while (0 == (dst_mask & 1))
+			{
+				dst_mask >>= 1;
+				k++;
+			}
+			pDst[k] = pSrc[j];
+		}
+	}
+}
+
+void CopySamplesFloat32toFloat32(float * pDst, CHANNEL_MASK DstChannels,
+								int const NumDstChannels,
+								float const * pSrc, CHANNEL_MASK SrcChannels,
+								int const NumSrcChannels,
+								unsigned Samples)
+{
+	typedef float DST_WAVE_SAMPLE;
+	// the following variants are possible:
+	// copying one selected channel to one selected channel
+	// copying one channel to all channels
+	// copying all channels to one channel
+	// arbitrary copy of number of channels to same number of channels
+	int NumSrcChannelsToCopy = NumberBitsInMask(SrcChannels);
+	int NumDstChannelsToCopy = NumberBitsInMask(DstChannels);
+	unsigned i, j;
+	unsigned long mask, dst_mask;
+	DST_WAVE_SAMPLE tmp;
+
+	if (NumSrcChannelsToCopy == NumSrcChannels
+		&& NumDstChannelsToCopy == NumDstChannels
+		&& NumSrcChannels == NumDstChannels)
+	{
+		// copy exerything
+		Samples *= NumSrcChannels;
+		for (i = 0; i < Samples; i++, pSrc++, pDst++)
+		{
+			*pDst = *pSrc;
+		}
+		return;
+	}
+
+	if (NumSrcChannelsToCopy == 1)
+	{
+		if (NumDstChannelsToCopy == 1)
+		{
+			// copy one channel to one channel
+			for (i = 0; i < Samples; i++, pSrc += NumSrcChannels, pDst += NumDstChannels)
+			{
+				*pDst = *pSrc;
+			}
+			return;
+		}
+		// copy one channel to multiple channels
+		for (i = 0; i < Samples; i++, pSrc += NumSrcChannels, pDst += NumDstChannels)
+		{
+			tmp = *pSrc;
+			for (j = 0, mask = DstChannels; mask != 0; j++, mask >>= 1)
+			{
+				if (mask & 1)
+				{
+					pDst[j] = tmp;
+				}
+			}
+		}
+		return;
+	}
+
+	if (NumDstChannelsToCopy == 1)
+	{
+		// NumSrcChannelsToCopy != 1
+		// copy sum of multiple channels to one channel
+		for (i = 0; i < Samples; i++, pSrc += NumSrcChannels, pDst += NumDstChannels)
+		{
+			double sum = 0.;
+			for (j = 0, mask = SrcChannels; mask != 0; j++, mask >>= 1)
+			{
+				if (mask & 1)
+				{
+					sum += pSrc[j];
+				}
+			}
+			*pDst = DST_WAVE_SAMPLE(sum / NumSrcChannelsToCopy);
+		}
+		return;
+	}
+
+	for (i = 0; i < Samples; i++, pSrc += NumSrcChannels, pDst += NumDstChannels)
+	{
+		unsigned k = 0;
+		for (j = 0, mask = SrcChannels, dst_mask = DstChannels; mask != 0; j++, k++, mask >>= 1, dst_mask >>= 1)
+		{
+			while (0 == (dst_mask & 1))
+			{
+				dst_mask >>= 1;
+				k++;
+			}
+			pDst[k] = pSrc[j];
+		}
+	}
+}
+
+#define SAMPLE16TO32(x) ((x) << 16)
+
+void CopySamples16to32(LONG32 * pDst, CHANNEL_MASK DstChannels,
+						int const NumDstChannels,
+						WAVE_SAMPLE const * pSrc, CHANNEL_MASK SrcChannels,
+						int const NumSrcChannels,
+						unsigned Samples)
+{
+	typedef LONG32 DST_WAVE_SAMPLE;
+	// the following variants are possible:
+	// copying one selected channel to one selected channel
+	// copying one channel to all channels
+	// copying all channels to one channel
+	// arbitrary copy of number of channels to same number of channels
+	int NumSrcChannelsToCopy = NumberBitsInMask(SrcChannels);
+	int NumDstChannelsToCopy = NumberBitsInMask(DstChannels);
+	unsigned i, j;
+	unsigned long mask, dst_mask;
+	DST_WAVE_SAMPLE tmp;
+
+	if (NumSrcChannelsToCopy == NumSrcChannels
+		&& NumDstChannelsToCopy == NumDstChannels
+		&& NumSrcChannels == NumDstChannels)
+	{
+		// copy exerything
+		Samples *= NumSrcChannels;
+		for (i = 0; i < Samples; i++, pSrc++, pDst++)
+		{
+			*pDst = SAMPLE16TO32(*pSrc);
+		}
+		return;
+	}
+
+	if (NumSrcChannelsToCopy == 1)
+	{
+		if (NumDstChannelsToCopy == 1)
+		{
+			// copy one channel to one channel
+			for (i = 0; i < Samples; i++, pSrc += NumSrcChannels, pDst += NumDstChannels)
+			{
+				*pDst = SAMPLE16TO32(*pSrc);
+			}
+			return;
+		}
+		// copy one channel to multiple channels
+		for (i = 0; i < Samples; i++, pSrc += NumSrcChannels, pDst += NumDstChannels)
+		{
+			tmp = SAMPLE16TO32(*pSrc);
+			for (j = 0, mask = DstChannels; mask != 0; j++, mask >>= 1)
+			{
+				if (mask & 1)
+				{
+					pDst[j] = tmp;
+				}
+			}
+		}
+		return;
+	}
+
+	if (NumDstChannelsToCopy == 1)
+	{
+		// NumSrcChannelsToCopy != 1
+		// copy sum of multiple channels to one channel
+		for (i = 0; i < Samples; i++, pSrc += NumSrcChannels, pDst += NumDstChannels)
+		{
+			long long sum = 0;
+			for (j = 0, mask = SrcChannels; mask != 0; j++, mask >>= 1)
+			{
+				if (mask & 1)
+				{
+					sum += pSrc[j];
+				}
+			}
+			*pDst = DST_WAVE_SAMPLE(SAMPLE16TO32(sum) / NumSrcChannelsToCopy);
+		}
+		return;
+	}
+
+	for (i = 0; i < Samples; i++, pSrc += NumSrcChannels, pDst += NumDstChannels)
+	{
+		unsigned k = 0;
+		for (j = 0, mask = SrcChannels, dst_mask = DstChannels; mask != 0; j++, k++, mask >>= 1, dst_mask >>= 1)
+		{
+			while (0 == (dst_mask & 1))
+			{
+				dst_mask >>= 1;
+				k++;
+			}
+			pDst[k] = SAMPLE16TO32(pSrc[j]);
+		}
+	}
+}
+
+#define SAMPLE24TO32(x) (((x)[2] << 24) | ((x)[1] << 16)| ((x)[0] << 8))
+
+void CopySamples24to32(LONG32 * pDst, CHANNEL_MASK DstChannels,
+						int const NumDstChannels,
+						UCHAR const * pSrc, CHANNEL_MASK SrcChannels,
+						int const NumSrcChannels,
+						unsigned Samples)
+{
+	typedef LONG32 DST_WAVE_SAMPLE;
+	// the following variants are possible:
+	// copying one selected channel to one selected channel
+	// copying one channel to all channels
+	// copying all channels to one channel
+	// arbitrary copy of number of channels to same number of channels
+	int NumSrcChannelsToCopy = NumberBitsInMask(SrcChannels);
+	int NumDstChannelsToCopy = NumberBitsInMask(DstChannels);
+
+	if (NumSrcChannelsToCopy == NumSrcChannels
+		&& NumDstChannelsToCopy == NumDstChannels
+		&& NumSrcChannels == NumDstChannels)
+	{
+		// copy exerything
+		Samples *= NumSrcChannels;
+		for (unsigned i = 0; i < Samples; i++, pSrc+=3, pDst++)
+		{
+			*pDst = SAMPLE24TO32(pSrc);
+		}
+		return;
+	}
+
+	ASSERT(NumSrcChannelsToCopy == NumSrcChannels
+			&& NumDstChannelsToCopy == NumDstChannels
+			&& NumSrcChannels == NumDstChannels);
+}
+
+#define SAMPLE32TO16(x) WAVE_SAMPLE(((x) >= 0x7FFF8000L) ? 0x7FFFL : ((x) + 0x8000L) >> 16)
+
+void CopySamples32to16(WAVE_SAMPLE * pDst, CHANNEL_MASK DstChannels,
+						int const NumDstChannels,
+						LONG32 const * pSrc, CHANNEL_MASK SrcChannels,
+						int const NumSrcChannels,
+						unsigned Samples)
+{
+	typedef WAVE_SAMPLE DST_WAVE_SAMPLE;
+	// the following variants are possible:
+	// copying one selected channel to one selected channel
+	// copying one channel to all channels
+	// copying all channels to one channel
+	// arbitrary copy of number of channels to same number of channels
+	int NumSrcChannelsToCopy = NumberBitsInMask(SrcChannels);
+	int NumDstChannelsToCopy = NumberBitsInMask(DstChannels);
+	unsigned i, j;
+	unsigned long mask, dst_mask;
+	DST_WAVE_SAMPLE tmp;
+
+	if (NumSrcChannelsToCopy == NumSrcChannels
+		&& NumDstChannelsToCopy == NumDstChannels
+		&& NumSrcChannels == NumDstChannels)
+	{
+		// copy exerything
+		Samples *= NumSrcChannels;
+		for (i = 0; i < Samples; i++, pSrc++, pDst++)
+		{
+			*pDst = SAMPLE32TO16(*pSrc);
+		}
+		return;
+	}
+
+	if (NumSrcChannelsToCopy == 1)
+	{
+		if (NumDstChannelsToCopy == 1)
+		{
+			// copy one channel to one channel
+			for (i = 0; i < Samples; i++, pSrc += NumSrcChannels, pDst += NumDstChannels)
+			{
+				*pDst = SAMPLE32TO16(*pSrc);
+			}
+			return;
+		}
+		// copy one channel to multiple channels
+		for (i = 0; i < Samples; i++, pSrc += NumSrcChannels, pDst += NumDstChannels)
+		{
+			tmp = SAMPLE32TO16(*pSrc);
+			for (j = 0, mask = DstChannels; mask != 0; j++, mask >>= 1)
+			{
+				if (mask & 1)
+				{
+					pDst[j] = tmp;
+				}
+			}
+		}
+		return;
+	}
+
+	if (NumDstChannelsToCopy == 1)
+	{
+		// NumSrcChannelsToCopy != 1
+		// copy sum of multiple channels to one channel
+		for (i = 0; i < Samples; i++, pSrc += NumSrcChannels, pDst += NumDstChannels)
+		{
+			long long sum = 0;
+			for (j = 0, mask = SrcChannels; mask != 0; j++, mask >>= 1)
+			{
+				if (mask & 1)
+				{
+					sum += pSrc[j];
+				}
+			}
+			sum /= NumSrcChannelsToCopy;
+			*pDst = SAMPLE32TO16(LONG32(sum));
+		}
+		return;
+	}
+
+	for (i = 0; i < Samples; i++, pSrc += NumSrcChannels, pDst += NumDstChannels)
+	{
+		unsigned k = 0;
+		for (j = 0, mask = SrcChannels, dst_mask = DstChannels; mask != 0; j++, k++, mask >>= 1, dst_mask >>= 1)
+		{
+			while (0 == (dst_mask & 1))
+			{
+				dst_mask >>= 1;
+				k++;
+			}
+			pDst[k] = SAMPLE32TO16(pSrc[j]);
+		}
+	}
+}
+
+static WAVE_SAMPLE Float32to16(float src)
+{
+	static const float short_max = 32767. / 32768.;
+	if (_isnan(src))
+	{
+		return 0;
+	}
+
+	if (src < -1.)
+	{
+		return SHORT_MIN;
+	}
+
+	if (src > short_max)
+	{
+		return SHORT_MAX;
+	}
+	return short(src * 32768.);
+}
+
+void CopySamplesFloat32to16(WAVE_SAMPLE * pDst, CHANNEL_MASK DstChannels,
+							int const NumDstChannels,
+							float const * pSrc, CHANNEL_MASK SrcChannels,
+							int const NumSrcChannels,
+							unsigned Samples)
+{
+	typedef WAVE_SAMPLE DST_WAVE_SAMPLE;
+	// the following variants are possible:
+	// copying one selected channel to one selected channel
+	// copying one channel to all channels
+	// copying all channels to one channel
+	// arbitrary copy of number of channels to same number of channels
+	int NumSrcChannelsToCopy = NumberBitsInMask(SrcChannels);
+	int NumDstChannelsToCopy = NumberBitsInMask(DstChannels);
+	unsigned i, j;
+	unsigned long mask, dst_mask;
+	DST_WAVE_SAMPLE tmp;
+
+	if (NumSrcChannelsToCopy == NumSrcChannels
+		&& NumDstChannelsToCopy == NumDstChannels
+		&& NumSrcChannels == NumDstChannels)
+	{
+		// copy exerything
+		Samples *= NumSrcChannels;
+		for (i = 0; i < Samples; i++, pSrc++, pDst++)
+		{
+			*pDst = Float32to16(*pSrc);
+		}
+		return;
+	}
+
+	if (NumSrcChannelsToCopy == 1)
+	{
+		if (NumDstChannelsToCopy == 1)
+		{
+			// copy one channel to one channel
+			for (i = 0; i < Samples; i++, pSrc += NumSrcChannels, pDst += NumDstChannels)
+			{
+				*pDst = Float32to16(*pSrc);
+			}
+			return;
+		}
+		// copy one channel to multiple channels
+		for (i = 0; i < Samples; i++, pSrc += NumSrcChannels, pDst += NumDstChannels)
+		{
+			tmp = Float32to16(*pSrc);
+			for (j = 0, mask = DstChannels; mask != 0; j++, mask >>= 1)
+			{
+				if (mask & 1)
+				{
+					pDst[j] = tmp;
+				}
+			}
+		}
+		return;
+	}
+
+	if (NumDstChannelsToCopy == 1)
+	{
+		// NumSrcChannelsToCopy != 1
+		// copy sum of multiple channels to one channel
+		for (i = 0; i < Samples; i++, pSrc += NumSrcChannels, pDst += NumDstChannels)
+		{
+			double sum = 0.;
+			for (j = 0, mask = SrcChannels; mask != 0; j++, mask >>= 1)
+			{
+				if (mask & 1)
+				{
+					sum += pSrc[j];
+				}
+			}
+			*pDst = Float32to16(float(sum / NumSrcChannelsToCopy));
+		}
+		return;
+	}
+
+	for (i = 0; i < Samples; i++, pSrc += NumSrcChannels, pDst += NumDstChannels)
+	{
+		unsigned k = 0;
+		for (j = 0, mask = SrcChannels, dst_mask = DstChannels; mask != 0; j++, k++, mask >>= 1, dst_mask >>= 1)
+		{
+			while (0 == (dst_mask & 1))
+			{
+				dst_mask >>= 1;
+				k++;
+			}
+			pDst[k] = Float32to16(pSrc[j]);
+		}
+	}
+}
+
+static LONG32 Float32to32(double src)
+{
+	static const double long_max = double(LONG_MAX) / (32768.*65536.);
+	if (_isnan(src))
+	{
+		return 0;
+	}
+
+	if (src < -1.)
+	{
+		return LONG_MIN;
+	}
+
+	if (src > long_max)
+	{
+		return LONG_MAX;
+	}
+	return LONG32(src * (32768.*65536.));
+}
+
+void CopySamplesFloat32to32(LONG32 * pDst, CHANNEL_MASK DstChannels,
+							int const NumDstChannels,
+							float const * pSrc, CHANNEL_MASK SrcChannels,
+							int const NumSrcChannels,
+							unsigned Samples)
+{
+	typedef LONG32 DST_WAVE_SAMPLE;
+	// the following variants are possible:
+	// copying one selected channel to one selected channel
+	// copying one channel to all channels
+	// copying all channels to one channel
+	// arbitrary copy of number of channels to same number of channels
+	int NumSrcChannelsToCopy = NumberBitsInMask(SrcChannels);
+	int NumDstChannelsToCopy = NumberBitsInMask(DstChannels);
+	unsigned i, j;
+	unsigned long mask, dst_mask;
+	DST_WAVE_SAMPLE tmp;
+
+	if (NumSrcChannelsToCopy == NumSrcChannels
+		&& NumDstChannelsToCopy == NumDstChannels
+		&& NumSrcChannels == NumDstChannels)
+	{
+		// copy exerything
+		Samples *= NumSrcChannels;
+		for (i = 0; i < Samples; i++, pSrc++, pDst++)
+		{
+			*pDst = Float32to32(*pSrc);
+		}
+		return;
+	}
+
+	if (NumSrcChannelsToCopy == 1)
+	{
+		if (NumDstChannelsToCopy == 1)
+		{
+			// copy one channel to one channel
+			for (i = 0; i < Samples; i++, pSrc += NumSrcChannels, pDst += NumDstChannels)
+			{
+				*pDst = Float32to32(*pSrc);
+			}
+			return;
+		}
+		// copy one channel to multiple channels
+		for (i = 0; i < Samples; i++, pSrc += NumSrcChannels, pDst += NumDstChannels)
+		{
+			tmp = Float32to32(*pSrc);
+			for (j = 0, mask = DstChannels; mask != 0; j++, mask >>= 1)
+			{
+				if (mask & 1)
+				{
+					pDst[j] = tmp;
+				}
+			}
+		}
+		return;
+	}
+
+	if (NumDstChannelsToCopy == 1)
+	{
+		// NumSrcChannelsToCopy != 1
+		// copy sum of multiple channels to one channel
+		for (i = 0; i < Samples; i++, pSrc += NumSrcChannels, pDst += NumDstChannels)
+		{
+			double sum = 0.;
+			for (j = 0, mask = SrcChannels; mask != 0; j++, mask >>= 1)
+			{
+				if (mask & 1)
+				{
+					sum += pSrc[j];
+				}
+			}
+			*pDst = Float32to32(sum / NumSrcChannelsToCopy);
+		}
+		return;
+	}
+
+	for (i = 0; i < Samples; i++, pSrc += NumSrcChannels, pDst += NumDstChannels)
+	{
+		unsigned k = 0;
+		for (j = 0, mask = SrcChannels, dst_mask = DstChannels; mask != 0; j++, k++, mask >>= 1, dst_mask >>= 1)
+		{
+			while (0 == (dst_mask & 1))
+			{
+				dst_mask >>= 1;
+				k++;
+			}
+			pDst[k] = Float32to32(pSrc[j]);
+		}
+	}
+}
+
+#define SAMPLE16TOFLOAT32(x) float((x) * (1./32768.))
+
+void CopySamples16toFloat32(float * pDst, CHANNEL_MASK DstChannels,
+							int const NumDstChannels,
+							WAVE_SAMPLE const * pSrc, CHANNEL_MASK SrcChannels,
+							int const NumSrcChannels,
+							unsigned Samples)
+{
+	typedef float DST_WAVE_SAMPLE;
+	// the following variants are possible:
+	// copying one selected channel to one selected channel
+	// copying one channel to all channels
+	// copying all channels to one channel
+	// arbitrary copy of number of channels to same number of channels
+	int NumSrcChannelsToCopy = NumberBitsInMask(SrcChannels);
+	int NumDstChannelsToCopy = NumberBitsInMask(DstChannels);
+	unsigned i, j;
+	unsigned long mask, dst_mask;
+	DST_WAVE_SAMPLE tmp;
+
+	if (NumSrcChannelsToCopy == NumSrcChannels
+		&& NumDstChannelsToCopy == NumDstChannels
+		&& NumSrcChannels == NumDstChannels)
+	{
+		// copy exerything
+		Samples *= NumSrcChannels;
+		for (i = 0; i < Samples; i++, pSrc++, pDst++)
+		{
+			*pDst = SAMPLE16TOFLOAT32(*pSrc);
+		}
+		return;
+	}
+
+	if (NumSrcChannelsToCopy == 1)
+	{
+		if (NumDstChannelsToCopy == 1)
+		{
+			// copy one channel to one channel
+			for (i = 0; i < Samples; i++, pSrc += NumSrcChannels, pDst += NumDstChannels)
+			{
+				*pDst = SAMPLE16TOFLOAT32(*pSrc);
+			}
+			return;
+		}
+		// copy one channel to multiple channels
+		for (i = 0; i < Samples; i++, pSrc += NumSrcChannels, pDst += NumDstChannels)
+		{
+			tmp = SAMPLE16TOFLOAT32(*pSrc);
+			for (j = 0, mask = DstChannels; mask != 0; j++, mask >>= 1)
+			{
+				if (mask & 1)
+				{
+					pDst[j] = tmp;
+				}
+			}
+		}
+		return;
+	}
+
+	if (NumDstChannelsToCopy == 1)
+	{
+		// NumSrcChannelsToCopy != 1
+		// copy sum of multiple channels to one channel
+		for (i = 0; i < Samples; i++, pSrc += NumSrcChannels, pDst += NumDstChannels)
+		{
+			long sum = 0;
+			for (j = 0, mask = SrcChannels; mask != 0; j++, mask >>= 1)
+			{
+				if (mask & 1)
+				{
+					sum += pSrc[j];
+				}
+			}
+			*pDst = DST_WAVE_SAMPLE(SAMPLE16TOFLOAT32(sum) / NumSrcChannelsToCopy);
+		}
+		return;
+	}
+
+	for (i = 0; i < Samples; i++, pSrc += NumSrcChannels, pDst += NumDstChannels)
+	{
+		unsigned k = 0;
+		for (j = 0, mask = SrcChannels, dst_mask = DstChannels; mask != 0; j++, k++, mask >>= 1, dst_mask >>= 1)
+		{
+			while (0 == (dst_mask & 1))
+			{
+				dst_mask >>= 1;
+				k++;
+			}
+			pDst[k] = SAMPLE16TOFLOAT32(pSrc[j]);
+		}
+	}
+}
+
+#define SAMPLE32TOFLOAT32(x) float((x) * (1./32768./65536.))
+
+void CopySamples32toFloat32(float * pDst, CHANNEL_MASK DstChannels,
+							int const NumDstChannels,
+							LONG32 const * pSrc, CHANNEL_MASK SrcChannels,
+							int const NumSrcChannels,
+							unsigned Samples)
+{
+	typedef float DST_WAVE_SAMPLE;
+	// the following variants are possible:
+	// copying one selected channel to one selected channel
+	// copying one channel to all channels
+	// copying all channels to one channel
+	// arbitrary copy of number of channels to same number of channels
+	int NumSrcChannelsToCopy = NumberBitsInMask(SrcChannels);
+	int NumDstChannelsToCopy = NumberBitsInMask(DstChannels);
+	unsigned i, j;
+	unsigned long mask, dst_mask;
+	DST_WAVE_SAMPLE tmp;
+
+	if (NumSrcChannelsToCopy == NumSrcChannels
+		&& NumDstChannelsToCopy == NumDstChannels
+		&& NumSrcChannels == NumDstChannels)
+	{
+		// copy exerything
+		Samples *= NumSrcChannels;
+		for (i = 0; i < Samples; i++, pSrc++, pDst++)
+		{
+			*pDst = SAMPLE32TOFLOAT32(*pSrc);
+		}
+		return;
+	}
+
+	if (NumSrcChannelsToCopy == 1)
+	{
+		if (NumDstChannelsToCopy == 1)
+		{
+			// copy one channel to one channel
+			for (i = 0; i < Samples; i++, pSrc += NumSrcChannels, pDst += NumDstChannels)
+			{
+				*pDst = SAMPLE32TOFLOAT32(*pSrc);
+			}
+			return;
+		}
+		// copy one channel to multiple channels
+		for (i = 0; i < Samples; i++, pSrc += NumSrcChannels, pDst += NumDstChannels)
+		{
+			tmp = SAMPLE32TOFLOAT32(*pSrc);
+			for (j = 0, mask = DstChannels; mask != 0; j++, mask >>= 1)
+			{
+				if (mask & 1)
+				{
+					pDst[j] = tmp;
+				}
+			}
+		}
+		return;
+	}
+
+	if (NumDstChannelsToCopy == 1)
+	{
+		// NumSrcChannelsToCopy != 1
+		// copy sum of multiple channels to one channel
+		for (i = 0; i < Samples; i++, pSrc += NumSrcChannels, pDst += NumDstChannels)
+		{
+			long long sum = 0;
+			for (j = 0, mask = SrcChannels; mask != 0; j++, mask >>= 1)
+			{
+				if (mask & 1)
+				{
+					sum += pSrc[j];
+				}
+			}
+			*pDst = DST_WAVE_SAMPLE(SAMPLE32TOFLOAT32(sum) / NumSrcChannelsToCopy);
+		}
+		return;
+	}
+
+	for (i = 0; i < Samples; i++, pSrc += NumSrcChannels, pDst += NumDstChannels)
+	{
+		unsigned k = 0;
+		for (j = 0, mask = SrcChannels, dst_mask = DstChannels; mask != 0; j++, k++, mask >>= 1, dst_mask >>= 1)
+		{
+			while (0 == (dst_mask & 1))
+			{
+				dst_mask >>= 1;
+				k++;
+			}
+			pDst[k] = SAMPLE32TOFLOAT32(pSrc[j]);
+		}
+	}
+}
+
 void CopyWaveSamples(void * pDstBuf, CHANNEL_MASK DstChannels,
 					NUMBER_OF_CHANNELS const NumDstChannels,
 					void const * pSrcBuf, CHANNEL_MASK SrcChannels,
@@ -1986,9 +3027,7 @@ void CopyWaveSamples(void * pDstBuf, CHANNEL_MASK DstChannels,
 					unsigned Samples,
 					WaveSampleType DstType, WaveSampleType SrcType)
 {
-	ASSERT(DstType == SampleType16bit);
-	ASSERT(SrcType == SampleType16bit);
-
+	// Used by CCopyContext, CMoveContext, WriteFileSamples,
 	CHANNEL_MASK const DstChannelsMask = ~((~0UL) << NumDstChannels);
 
 	DstChannels &= DstChannelsMask;
@@ -1999,85 +3038,118 @@ void CopyWaveSamples(void * pDstBuf, CHANNEL_MASK DstChannels,
 	SrcChannels &= SrcChannelsMask;
 	ASSERT(0 != SrcChannels);
 
-	ASSERT(NumSrcChannels <= 2 && NumSrcChannels > 0);
-	int const SrcSampleSize = sizeof (WAVE_SAMPLE) * NumSrcChannels;
+	ASSERT(NumSrcChannels <= 32 && NumSrcChannels > 0);
 
-	ASSERT(NumDstChannels <= 2 && NumDstChannels > 0);
-	//int const DstSampleSize = sizeof (WAVE_SAMPLE) * NumDstChannels;
+	ASSERT(NumDstChannels <= 32 && NumDstChannels > 0);
 
-	if (DstType == SrcType
-		&& DstChannelsMask == DstChannels
-		&& SrcChannelsMask == SrcChannels
-		&& DstChannels == SrcChannels)
+	unsigned FirstSrcChannel = LeastBitInMask(SrcChannels);
+	SrcChannels >>= FirstSrcChannel;
+
+	unsigned FirstDstChannel = LeastBitInMask(DstChannels);
+	DstChannels >>= FirstDstChannel;
+
+	ASSERT(NumberBitsInMask(SrcChannels) == NumberBitsInMask(DstChannels)
+			|| NumberBitsInMask(SrcChannels) == 1
+			|| NumberBitsInMask(DstChannels) == 1);
+
+	switch (SrcType)
 	{
-		// simply copy the data
-		memmove(pDstBuf, pSrcBuf, Samples * SrcSampleSize);
+	case SampleType16bit:
+		switch (DstType)
+		{
+		case SampleType16bit:
+			if (DstChannelsMask == DstChannels
+				&& SrcChannelsMask == SrcChannels
+				&& DstChannels == SrcChannels)
+			{
+				int const SrcSampleSize = sizeof(WAVE_SAMPLE) * NumSrcChannels;
+				// simply copy the data
+				memmove(pDstBuf, pSrcBuf, Samples * SrcSampleSize);
+				return;
+			}
+			CopySamples16to16(FirstDstChannel + (WAVE_SAMPLE *) pDstBuf, DstChannels, NumDstChannels,
+							FirstSrcChannel + (WAVE_SAMPLE const *) pSrcBuf, SrcChannels, NumSrcChannels, Samples);
+			break;
+		case SampleType32bit:
+			CopySamples16to32(FirstDstChannel + (LONG32*)pDstBuf, DstChannels, NumDstChannels,
+							FirstSrcChannel + (WAVE_SAMPLE const *)pSrcBuf, SrcChannels, NumSrcChannels, Samples);
+			break;
+		case SampleTypeFloat32:
+			CopySamples16toFloat32(FirstDstChannel + (float*)pDstBuf, DstChannels, NumDstChannels,
+									FirstSrcChannel + (WAVE_SAMPLE const *)pSrcBuf, SrcChannels, NumSrcChannels, Samples);
+			break;
+		default:
+			ASSERT(DstType == SampleType16bit || DstType == SampleType32bit || DstType == SampleTypeFloat32);
+			return;
+		}
+		break;
+
+	case SampleType32bit:
+		switch (DstType)
+		{
+		case SampleType16bit:
+			CopySamples32to16(FirstDstChannel + (WAVE_SAMPLE *)pDstBuf, DstChannels, NumDstChannels,
+							FirstSrcChannel + (LONG32 const *)pSrcBuf, SrcChannels, NumSrcChannels, Samples);
+			break;
+		case SampleType32bit:
+			if (DstChannelsMask == DstChannels
+				&& SrcChannelsMask == SrcChannels
+				&& DstChannels == SrcChannels)
+			{
+				int const SrcSampleSize = sizeof(LONG32) * NumSrcChannels;
+				// simply copy the data
+				memmove(pDstBuf, pSrcBuf, Samples * SrcSampleSize);
+				return;
+			}
+			CopySamples32to32(FirstDstChannel + (LONG32*)pDstBuf, DstChannels, NumDstChannels,
+							FirstSrcChannel + (LONG32 const *)pSrcBuf, SrcChannels, NumSrcChannels, Samples);
+			break;
+		case SampleTypeFloat32:
+			CopySamples32toFloat32(FirstDstChannel + (float*)pDstBuf, DstChannels, NumDstChannels,
+									FirstSrcChannel + (LONG32 const *)pSrcBuf, SrcChannels, NumSrcChannels, Samples);
+			break;
+		default:
+			ASSERT(DstType == SampleType16bit || DstType == SampleType32bit || DstType == SampleTypeFloat32);
+			return;
+		}
+		break;
+
+	case SampleTypeFloat32:
+		switch (DstType)
+		{
+		case SampleType16bit:
+			CopySamplesFloat32to16(FirstDstChannel + (WAVE_SAMPLE *)pDstBuf, DstChannels, NumDstChannels,
+									FirstSrcChannel + (float const *)pSrcBuf, SrcChannels, NumSrcChannels, Samples);
+			break;
+		case SampleType32bit:
+			CopySamplesFloat32to32(FirstDstChannel + (LONG32*)pDstBuf, DstChannels, NumDstChannels,
+									FirstSrcChannel + (float const *)pSrcBuf, SrcChannels, NumSrcChannels, Samples);
+			break;
+		case SampleTypeFloat32:
+			CopySamplesFloat32toFloat32(FirstDstChannel + (float*)pDstBuf, DstChannels, NumDstChannels,
+										FirstSrcChannel + (float const *)pSrcBuf, SrcChannels, NumSrcChannels, Samples);
+			break;
+		default:
+			ASSERT(DstType == SampleType16bit || DstType == SampleType32bit || DstType == SampleTypeFloat32);
+			return;
+		}
+		break;
+
+	case SampleType24bit:
+		switch (DstType)
+		{
+		case SampleType32bit:
+			CopySamples24to32(FirstDstChannel + (LONG32*)pDstBuf, DstChannels, NumDstChannels,
+							FirstSrcChannel * 3 + (UCHAR const *)pSrcBuf, SrcChannels, NumSrcChannels, Samples);
+			break;
+		default:
+			ASSERT(DstType == SampleType32bit);
+			return;
+		}
+		break;
+	default:
+		ASSERT(SrcType == SampleType16bit || SrcType == SampleType24bit || SrcType == SampleType32bit || SrcType == SampleTypeFloat32);
 		return;
-	}
-
-	// the following variants are possible:
-	// copying one channel to one channel
-	// copying one channel to two channels
-	// copying two channels to one channel
-	WAVE_SAMPLE const * pSrc = (WAVE_SAMPLE const *) pSrcBuf;
-	WAVE_SAMPLE * pDst = (WAVE_SAMPLE *) pDstBuf;
-
-	if ((SPEAKER_FRONT_LEFT | SPEAKER_FRONT_RIGHT) == DstChannels)
-	{
-		ASSERT(SPEAKER_FRONT_RIGHT == SrcChannels
-				|| SPEAKER_FRONT_LEFT == SrcChannels);
-		// copy one src channel to two dst channels
-		if (SPEAKER_FRONT_RIGHT == SrcChannels)
-		{
-			// channel #1
-			pSrc++;
-		}
-
-		for (unsigned i = 0; i < Samples;
-			i++, pSrc += NumSrcChannels, pDst += NumDstChannels)
-		{
-			WAVE_SAMPLE temp = *pSrc;
-			pDst[0] = temp;
-			pDst[1] = temp;
-		}
-	}
-	else if ((SPEAKER_FRONT_LEFT | SPEAKER_FRONT_RIGHT) == SrcChannels)
-	{
-		// copy two src channels to one dst channel
-		ASSERT(SPEAKER_FRONT_RIGHT == DstChannels
-				|| SPEAKER_FRONT_LEFT == DstChannels);
-
-		if (SPEAKER_FRONT_RIGHT == DstChannels)
-		{
-			// channel #1
-			pDst++;
-		}
-
-		for (unsigned i = 0; i < Samples;
-			i++, pSrc += NumSrcChannels, pDst += NumDstChannels)
-		{
-			pDst[0] = (pSrc[0] + pSrc[1]) / 2;
-		}
-	}
-	else
-	{
-		// copying one channel to one channel
-		if (SPEAKER_FRONT_RIGHT == SrcChannels)
-		{
-			// channel #1
-			pSrc++;
-		}
-		if (SPEAKER_FRONT_RIGHT == DstChannels)
-		{
-			// channel #1
-			pDst++;
-		}
-
-		for (unsigned i = 0; i < Samples;
-			i++, pSrc += NumSrcChannels, pDst += NumDstChannels)
-		{
-			pDst[0] = pSrc[0];
-		}
 	}
 }
 

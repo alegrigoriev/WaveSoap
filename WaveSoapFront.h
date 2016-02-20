@@ -18,6 +18,7 @@
 #include "WaveFile.h"
 #include "KListEntry.h"
 #include "LocaleUtilities.h"
+#include "WaveSupport.h"
 /////////////////////////////////////////////////////////////////////////////
 // CWaveSoapFrontApp:
 // See WaveSoapFront.cpp for the implementation of this class
@@ -189,7 +190,9 @@ public:
 	void SetStatusStringAndDoc(const CString & str, CWaveSoapFrontDoc * pDoc);
 
 	CWaveFile m_ClipboardFile;
-	WAVEFORMATEX m_NewFileFormat;
+	unsigned m_NewFileSamplesPerSecond;
+	NUMBER_OF_CHANNELS m_NewFileChannels;
+	int m_NewFileSampleType;
 	LONG m_NewFileLength;   // seconds
 
 	class CWaveSoapDocTemplate * m_pAllTypesTemplate;

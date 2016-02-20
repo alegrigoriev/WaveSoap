@@ -737,7 +737,7 @@ void CWaveFftView::OnDraw(CDC* pDC)
 							ASSERT(pId->FftBand < m_FftOrder);
 							ASSERT(pId->FftBand + pId->NumBandsToSum <= m_FftOrder);
 
-							double PowerOffset = log(65536. * m_FftOrder * 0.31622) * 2.;
+							double PowerOffset = log(2. * m_FftOrder * 0.31622) * 2.;
 
 							float sum = 0.;
 							for (int f = pId->FftBand; f < pId->FftBand + pId->NumBandsToSum; f++)
@@ -823,7 +823,7 @@ void CWaveFftView::OnDraw(CDC* pDC)
 						unsigned char ColorIndex = 0;
 						if (pData != NULL)
 						{
-							double PowerOffset = log(65536. * m_FftOrder * 0.31622) * 2.;
+							double PowerOffset = log(2. * m_FftOrder * 0.31622) * 2.;
 
 							float sum = 0.;
 							for (int f = pId->FftBand; f < pId->FftBand + pId->NumBandsToSum; f++)

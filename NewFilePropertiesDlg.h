@@ -12,6 +12,7 @@
 // CNewFilePropertiesDlg dialog
 #include "TimeEdit.h"
 #include "resource.h"       // main symbols
+#include "WaveSupport.h"
 
 class CNewFilePropertiesDlg : public CDialog
 {
@@ -21,6 +22,7 @@ public:
 	CNewFilePropertiesDlg(long SamplingRate,
 						NUMBER_OF_CHANNELS nChannels,
 						long LengthSeconds,
+						WaveSampleType SampleType,
 						bool WhenShiftOnly,
 						CWnd* pParent = NULL);   // standard constructor
 
@@ -38,13 +40,19 @@ public:
 	}
 	WORD NumberOfChannels() const
 	{
-		if (m_MonoStereo)
+		return m_NumberOfChannels;
+	}
+	WaveSampleType SampleType() const
+	{
+		switch (m_SampleType)
 		{
-			return 2;
-		}
-		else
-		{
-			return 1;
+		case 0:
+		default:
+			return SampleType16bit;
+		case 1:
+			return SampleType32bit;
+		case 2:
+			return SampleTypeFloat32;
 		}
 	}
 protected:
@@ -54,8 +62,9 @@ protected:
 	CTimeEdit	m_eLength;
 	CTimeSpinCtrl	m_SpinLength;
 	BOOL	m_bShowOnlyWhenShift;
-	int		m_MonoStereo;
+	short	m_NumberOfChannels;
 	int m_nSamplingRate;
+	int m_SampleType;
 	//}}AFX_DATA
 	long m_Length;
 
