@@ -1056,7 +1056,7 @@ void CWaveFftView::AllocateFftArray(SAMPLE_INDEX SampleLeft, SAMPLE_INDEX Sample
 	}
 
 	m_FftArraySize = NecessaryArraySize;
-	m_FirstFftColumn = m_FirstFftColumn;
+	m_FirstFftColumn = FftColumnLeft;
 
 	m_IndexOfFftBegin = 0;
 	delete[] pOldArray;
