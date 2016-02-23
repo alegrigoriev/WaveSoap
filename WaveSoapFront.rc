@@ -2966,10 +2966,11 @@ BEGIN
     IDR_WAVESOTYPE          "\nSound\nWindowsSound file\nWindows Sound files (*.wav)\n.wav\nWaveSoap.Document\nWaveSoap Document"
     IDR_MP3TYPE             "\nSound\nMPEG Layer3 file\nMPEG Audio files (*.mp3)\n.mp3\nWaveSoap.Document\nWaveSoap Document"
     IDR_WMATYPE             "\nSound\nWindows Media file\nWindows Media files (*.wma)\n.wma\nWaveSoap.Document\nWaveSoap Document"
-    IDR_ALLTYPES            "\nSound\nWindows Audio file\nAll Supported Types (wav, mp3, wma, wmv, asf, avi)\n.wav;.mp3;.wma;.wmv;.asf;.avi\nWaveSoap.Document\nWaveSoap Document"
+    IDR_ALLTYPES            "\nSound\nWindows Audio file\nAll Supported Types (wav, mp3, wma, wmv, asf, avi)\n.wav;.mp3;.wma;.wmv;.asf;.flac;.ogg;.avi\nWaveSoap.Document\nWaveSoap Document"
     IDR_RAWTYPE             "\nSound\nRaw sound file\nRaw (unformatted) sound files (*.raw)\n.raw\nWaveSoap.Document\nWaveSoap Document"
     IDR_WMTYPES             "\nSound\nWindows Media file\nAll Windows Media files (*.wma,*.wmv,*.asf)\n.wma;.wmv;.asf\nWaveSoap.Document\nWaveSoap Document"
     IDR_AVITYPE             "\nSound\nAVI Video file\nAVI video files (*.avi)\n.avi\nWaveSoap.Document\nWaveSoap Document"
+    IDR_DSHOW_TYPE          "\nSound\nOther Media file\nOther Media files (*.flac,*.ogg)\n.flac;.ogg\nWaveSoap.Document\nWaveSoap Document"
 END
 
 STRINGTABLE
@@ -3092,7 +3093,7 @@ END
 
 STRINGTABLE
 BEGIN
-    AFX_IDS_PREVIEW_CLOSE   "Close print preview mode\nCancel Preview"
+    AFX_IDS_PREVIEW_CLOSE   "\nSound\nOther Media file\nOther Media files (*.ogg,*.flac)\n.flac;.ogg\nWaveSoap.Document\nWaveSoap Document"
 END
 
 STRINGTABLE

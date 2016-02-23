@@ -50,8 +50,9 @@ enum
 	OpenDocumentRawFile = 0x4000,
 	OpenDocumentAviFile = 0x8000,
 	OpenRawFileMsbFirst = 0x10000,
+	OpenDocumentDShowFile = 0x20000,
 	OpenDocumentNonWavFile = OpenDocumentMp3File | OpenRawFileMsbFirst
-							| OpenDocumentWmaFile | OpenDocumentRawFile | OpenDocumentAviFile,
+							| OpenDocumentWmaFile | OpenDocumentRawFile | OpenDocumentAviFile | OpenDocumentDShowFile,
 };
 
 struct NewFileParameters
@@ -199,6 +200,7 @@ public:
 	class CWaveSoapDocTemplate * m_pMP3TypeTemplate;
 	class CWaveSoapDocTemplate * m_pWavTypeTemplate;
 	class CWaveSoapDocTemplate * m_pWmaTypeTemplate;
+	class CWaveSoapDocTemplate * m_pDShowTypeTemplate;
 	class CWaveSoapDocTemplate * m_pAviTypeTemplate;
 	class CWaveSoapDocTemplate * m_pAllWmTypeTemplate;
 	class CWaveSoapDocTemplate * m_pRawTypeTemplate;

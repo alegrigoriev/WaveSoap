@@ -258,6 +258,7 @@ protected:
 	virtual void OnIdle();
 	virtual BOOL DoSave(LPCTSTR lpszPathName, BOOL bReplace = TRUE);
 	BOOL OpenWmaFileDocument(LPCTSTR lpszPathName);
+	BOOL OpenDShowFileDocument(LPCTSTR lpszPathName);
 	BOOL OpenRawFileDocument(LPCTSTR lpszPathName);
 	BOOL OpenMp3FileDocument(LPCTSTR lpszPathName)
 	{
@@ -350,7 +351,7 @@ public:
 #endif
 
 	LONG_volatile m_OperationInProgress;
-	bool volatile m_StopOperation;
+	long volatile m_StopOperation;
 	bool m_OperationNonCritical;
 	bool m_PlayingSound;
 	bool m_bInOnIdle;
@@ -404,8 +405,10 @@ public:
 	void OnActivateDocument(BOOL bActivate);
 
 	void QueueOperation(COperationContext * pContext);
+	void KickDocumentThread();
 
 	void ExecuteOperation(COperationContext * pContext, BOOL SetModify = FALSE, int UndoCreated = -1, int KeepPreviousUndo = -1);
+	void SignalStopOperation();
 
 	void UpdateFrameTitles()
 	{

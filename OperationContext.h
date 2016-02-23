@@ -36,6 +36,7 @@ enum {
 	// when this operation was queued, modify count was incremented
 	OperationContextModifyCountIncremented = 0x4000,
 	OperationContextPassFinished = 0x8000,
+	OperationContextYield		= 0x10000,		// wait for the thread event to resume handling this operation
 };
 
 class COperationContext : public ListItem<COperationContext>
@@ -884,11 +885,62 @@ protected:
 	}
 
 private:
+	CoInitHelper m_CoInit;		// before all other members, to be destroyed last
 	NUMBER_OF_SAMPLES m_CurrentSamples;
 	SAMPLE_INDEX m_DstCopySample;
-	CWmaDecoder m_Decoder;
 	CDirectFile & m_WmaFile;
-	CoInitHelper m_CoInit;
+	CWmaDecoderSync m_Decoder;
+};
+
+class CDirectShowDecodeContext : public CTwoFilesOperation, CDirectShowDecoderDataSink
+{
+	typedef CDirectShowDecodeContext ThisClass;
+	typedef CTwoFilesOperation BaseClass;
+
+public:
+	typedef std::auto_ptr<ThisClass> auto_ptr;
+
+	CDirectShowDecodeContext(CWaveSoapFrontDoc * pDoc, UINT StatusStringId,
+							CDirectFile & SrcFile);
+	~CDirectShowDecodeContext();
+
+protected:
+	// opens m_Decoder, loads wave format to its SrcFile
+	void SetDstFile(CWaveFile & file);
+	virtual BOOL OperationProc();
+	virtual BOOL Init();
+	virtual void DeInit();
+	virtual void PostRetire();
+
+	virtual MEDIA_FILE_SIZE GetTotalOperationSize() const
+	{
+		return m_DstFile.SampleToPosition(m_CurrentLengthSamples);
+	}
+
+	virtual MEDIA_FILE_SIZE GetCompletedOperationSize() const
+	{
+		return m_DstFile.SampleToPosition(m_DstWrittenSample);
+	}
+
+private:
+
+	virtual HRESULT STDMETHODCALLTYPE Receive(
+											/* [in] */ IMediaSample *pSample);
+
+	virtual HRESULT STDMETHODCALLTYPE EndOfStream(void);
+	virtual HRESULT STDMETHODCALLTYPE Stop(void);
+
+	CoInitHelper m_CoInit;		// before all other members, to be destroyed last
+	NUMBER_OF_SAMPLES m_CurrentLengthSamples;
+	NUMBER_OF_SAMPLES m_LastSamplesUpdate;
+	NUMBER_OF_SAMPLES m_LastLengthSamplesUpdate;
+	DWORD m_LastTickCountUpdate;
+	SAMPLE_INDEX m_DstWrittenSample;
+
+	CDirectShowDecoder m_DshowDecoder;
+	IUnknown * m_UnknownDelegate;
+	CDirectFile & m_OriginalFile;
+	bool m_StopRequested;
 };
 
 class CWmaSaveContext : public CWaveProcContext

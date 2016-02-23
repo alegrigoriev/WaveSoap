@@ -82,7 +82,6 @@ void CWaveSoapDocTemplate::OnIdle()
 
 void CWaveSoapFrontStatusBar::OnLButtonDblClk(UINT nFlags, CPoint point)
 {
-	// TODO: Add your message handler code here and/or call default
 	// make sure window is active
 	int nHit = -1;
 	for (int i = 1; i < m_nCount; i++)
@@ -173,6 +172,7 @@ CWaveSoapFrontApp::CWaveSoapFrontApp()
 	m_pWavTypeTemplate(NULL),
 	m_pRawTypeTemplate(NULL),
 	m_pWmaTypeTemplate(NULL),
+	m_pDShowTypeTemplate(NULL),
 	m_pAviTypeTemplate(NULL),
 	m_pAllWmTypeTemplate(NULL),
 
@@ -515,6 +515,16 @@ BOOL CWaveSoapFrontApp::InitInstance()
 												OpenDocumentWmaFile);
 
 	AddDocTemplate(m_pWmaTypeTemplate);
+
+	// register DShow document
+	m_pDShowTypeTemplate = new CWaveSoapDocTemplate(
+													IDR_WAVESOTYPE, IDR_DSHOW_TYPE,
+													RUNTIME_CLASS(CWaveSoapFrontDoc),
+													RUNTIME_CLASS(CChildFrame), // custom MDI child frame
+													RUNTIME_CLASS(CWaveSoapFrontView),
+													OpenDocumentDShowFile);
+
+	AddDocTemplate(m_pDShowTypeTemplate);
 
 	// register AVI document
 	m_pAviTypeTemplate = new CWaveSoapDocTemplate(
@@ -1213,6 +1223,10 @@ void CWaveSoapDocManager::OnFileOpen()
 	if (pApp->m_pWmaTypeTemplate)
 	{
 		_AfxAppendFilterSuffix(strFilter, dlgFile.m_ofn, pApp->m_pWmaTypeTemplate, NULL);
+	}
+	if (pApp->m_pDShowTypeTemplate)
+	{
+		_AfxAppendFilterSuffix(strFilter, dlgFile.m_ofn, pApp->m_pDShowTypeTemplate, NULL);
 	}
 	if (pApp->m_pAviTypeTemplate)
 	{
