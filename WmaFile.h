@@ -4,6 +4,8 @@
 #include <wtypes.h>
 #include <wmsdk.h>
 #include <atlsync.h>
+#define _INC_WINDOWSX	// DO NOT PARSE windowsx.h
+#include <dshow.h>
 
 #pragma once
 
@@ -100,14 +102,14 @@ public:
 private:
 	CDirectFile m_File;
 };
-#define USE_READER_CALLBACK_ADVANCED 1
-class CWmaDecoder
+
+class CWmaDecoderSync
 
 {
 public:
 
-	CWmaDecoder();
-	~CWmaDecoder();
+	CWmaDecoderSync();
+	~CWmaDecoderSync();
 	//
 	//Methods of IUnknown
 	//
@@ -189,6 +191,224 @@ protected:
 	CWaveFormat m_DstWf;
 	CWaveFormat m_SrcWf;
 	DWORD m_Bitrate;
+};
+
+#include <streams.h>
+//#include <pullpin.h>
+
+class CDirectShowDecoderDataSink
+{
+public:
+	virtual HRESULT STDMETHODCALLTYPE Receive(
+											/* [in] */ IMediaSample *pSample) = 0;
+
+	virtual HRESULT STDMETHODCALLTYPE EndOfStream(void) = 0;
+	virtual HRESULT STDMETHODCALLTYPE Stop(void) = 0;
+};
+
+class CDirectShowDecoder : public IPin, public IBaseFilter, IMemInputPin
+{
+public:
+	CDirectShowDecoder(CDirectShowDecoderDataSink * MemInputPinDelegate);
+	~CDirectShowDecoder();
+	HRESULT Open(LPCWSTR szFilename);
+	void Close();
+
+	BOOL Init();
+	void DeInit();
+
+	HRESULT StartDecode();
+	HRESULT StopDecode();
+
+	bool IsOpened() const
+	{
+		return m_DecoderState >= DecoderStateOpened;
+	}
+	bool IsStarted() const
+	{
+		return m_DecoderState >= DecoderStateRunning;
+	}
+
+	CWaveFormat const & GetDstFormat() const
+	{
+		return m_DstWf;
+	}
+
+	NUMBER_OF_SAMPLES GetTotalSamples() const;
+
+	enum DecoderState
+	{
+		DecoderStateUninitialized,
+		DecoderStateInitialized,
+		DecoderStateOpened,
+		DecoderStatePaused,
+		DecoderStateStopped,
+		DecoderStateRunning,
+	};
+
+	DecoderState GetDecoderState() const
+	{
+		return m_DecoderState;
+	}
+
+	FILTER_STATE GetFilterState() const
+	{
+		return m_FilterState;
+	}
+
+protected:
+	// IUnknown overrides:
+	virtual HRESULT STDMETHODCALLTYPE QueryInterface(
+													/* [in] */ REFIID riid,
+													/* [iid_is][out] */ _COM_Outptr_ void __RPC_FAR *__RPC_FAR *ppvObject);
+
+	virtual ULONG STDMETHODCALLTYPE AddRef(void);
+
+	virtual ULONG STDMETHODCALLTYPE Release(void);
+	// IPin overrides:
+	virtual HRESULT STDMETHODCALLTYPE Connect(
+											/* [in] */ IPin *pReceivePin,
+		/* [annotation][in] */
+											_In_opt_  const AM_MEDIA_TYPE *pmt);
+
+	virtual HRESULT STDMETHODCALLTYPE ReceiveConnection(
+														/* [in] */ IPin *pConnector,
+														/* [in] */ const AM_MEDIA_TYPE *pmt);
+
+	virtual HRESULT STDMETHODCALLTYPE Disconnect(void);
+
+	virtual HRESULT STDMETHODCALLTYPE ConnectedTo(
+		/* [annotation][out] */
+												_Out_  IPin **pPin);
+
+	virtual HRESULT STDMETHODCALLTYPE ConnectionMediaType(
+		/* [annotation][out] */
+														_Out_  AM_MEDIA_TYPE *pmt);
+
+	virtual HRESULT STDMETHODCALLTYPE QueryPinInfo(
+		/* [annotation][out] */
+													_Out_  PIN_INFO *pInfo);
+
+	virtual HRESULT STDMETHODCALLTYPE QueryDirection(
+		/* [annotation][out] */
+													_Out_  PIN_DIRECTION *pPinDir);
+
+	virtual HRESULT STDMETHODCALLTYPE QueryId(
+		/* [annotation][out] */
+											_Out_  LPWSTR *Id);
+
+	virtual HRESULT STDMETHODCALLTYPE QueryAccept(
+												/* [in] */ const AM_MEDIA_TYPE *pmt);
+
+	virtual HRESULT STDMETHODCALLTYPE EnumMediaTypes(
+		/* [annotation][out] */
+													_Out_  IEnumMediaTypes **ppEnum);
+
+	virtual HRESULT STDMETHODCALLTYPE QueryInternalConnections(
+		/* [annotation][out] */
+																_Out_writes_to_opt_(*nPin, *nPin)  IPin **apPin,
+																/* [out][in] */ ULONG *nPin);
+
+	virtual HRESULT STDMETHODCALLTYPE EndOfStream(void);
+
+	virtual HRESULT STDMETHODCALLTYPE BeginFlush(void);
+
+	virtual HRESULT STDMETHODCALLTYPE EndFlush(void);
+
+	virtual HRESULT STDMETHODCALLTYPE NewSegment(
+												/* [in] */ REFERENCE_TIME tStart,
+												/* [in] */ REFERENCE_TIME tStop,
+												/* [in] */ double dRate);
+	/////////////////////////////////////////////////////////////////////////////////////
+	// IBaseFilter overrides
+	virtual HRESULT STDMETHODCALLTYPE EnumPins(
+		/* [annotation][out] */
+												_Out_  IEnumPins **ppEnum);
+
+	virtual HRESULT STDMETHODCALLTYPE FindPin(
+											/* [string][in] */ LPCWSTR Id,
+		/* [annotation][out] */
+											_Out_  IPin **ppPin);
+
+	virtual HRESULT STDMETHODCALLTYPE QueryFilterInfo(
+		/* [annotation][out] */
+													_Out_  FILTER_INFO *pInfo);
+
+	virtual HRESULT STDMETHODCALLTYPE JoinFilterGraph(
+		/* [annotation][in] */
+													_In_opt_  IFilterGraph *pGraph,
+		/* [annotation][string][in] */
+													_In_opt_  LPCWSTR pName);
+
+	virtual HRESULT STDMETHODCALLTYPE QueryVendorInfo(
+		/* [annotation][string][out] */
+													_Out_  LPWSTR *pVendorInfo);
+	////////////////////////////////////////////////////////////////
+	// IMediaFilter overrides
+	virtual HRESULT STDMETHODCALLTYPE Stop(void);
+
+	virtual HRESULT STDMETHODCALLTYPE Pause(void);
+
+	virtual HRESULT STDMETHODCALLTYPE Run(
+										REFERENCE_TIME tStart);
+
+	virtual HRESULT STDMETHODCALLTYPE GetState(
+												/* [in] */ DWORD dwMilliSecsTimeout,
+		/* [annotation][out] */
+												_Out_  FILTER_STATE *State);
+
+	virtual HRESULT STDMETHODCALLTYPE SetSyncSource(
+		/* [annotation][in] */
+													_In_opt_  IReferenceClock *pClock);
+
+	virtual HRESULT STDMETHODCALLTYPE GetSyncSource(
+		/* [annotation][out] */
+													_Outptr_result_maybenull_  IReferenceClock **pClock);
+	///////////////////////////////////////////////////////////////////////
+	// IPersist overrides
+	virtual HRESULT STDMETHODCALLTYPE GetClassID(
+												/* [out] */ __RPC__out CLSID *pClassID);
+
+	/////////////////////////////////////////////////////////////////////
+	// IMemInputPin overrides
+	virtual HRESULT STDMETHODCALLTYPE GetAllocator(
+		/* [annotation][out] */
+													_Out_  IMemAllocator **ppAllocator);
+
+	virtual HRESULT STDMETHODCALLTYPE NotifyAllocator(
+													/* [in] */ IMemAllocator *pAllocator,
+													/* [in] */ BOOL bReadOnly);
+
+	virtual HRESULT STDMETHODCALLTYPE GetAllocatorRequirements(
+		/* [annotation][out] */
+																_Out_  ALLOCATOR_PROPERTIES *pProps);
+
+	virtual HRESULT STDMETHODCALLTYPE Receive(
+											/* [in] */ IMediaSample *pSample);
+
+	virtual HRESULT STDMETHODCALLTYPE ReceiveMultiple(
+		/* [annotation][size_is][in] */
+													_In_reads_(nSamples)  IMediaSample **pSamples,
+													/* [in] */ long nSamples,
+		/* [annotation][out] */
+													_Out_  long *nSamplesProcessed);
+
+	virtual HRESULT STDMETHODCALLTYPE ReceiveCanBlock(void);
+
+	CStringW m_FilterName;
+
+	CComPtr<IGraphBuilder> m_GraphBuilder;
+	CMediaType m_ConnectedMediaType;
+
+	CComPtr<IReferenceClock> m_RefClock;
+	CComPtr<IPin> m_ConnectedPin;
+	CComQIPtr<IAsyncReader> m_AsyncReader;
+	CComPtr<IFilterGraph> m_FilterGraph;
+	CDirectShowDecoderDataSink * m_DataSink;
+
+	CWaveFormat m_DstWf;
+	FILTER_STATE m_FilterState;
+	DecoderState m_DecoderState;
 };
 
 class FileWriter : public IWMWriterSink

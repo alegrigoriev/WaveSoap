@@ -3433,8 +3433,12 @@ BOOL CWmaDecodeContext::Init()
 	{
 		return FALSE;
 	}
-
-	m_CoInit.InitializeCom(COINIT_MULTITHREADED);
+	HRESULT hr;
+	hr = m_CoInit.InitializeCom(COINIT_MULTITHREADED);
+	if (FAILED(hr))
+	{
+		return FALSE;
+	}
 
 	if ( ! m_Decoder.Init()
 		|| S_OK != m_Decoder.Open(m_WmaFile))
@@ -3477,7 +3481,7 @@ BOOL CWmaDecodeContext::Init()
 	{
 		return TRUE;
 	}
-	m_CoInit.UninitializeCom();
+
 	return FALSE;
 }
 
@@ -3535,6 +3539,260 @@ void CWmaDecodeContext::PostRetire()
 	}
 	BaseClass::PostRetire();
 }
+
+//////////////// CWmaDecodeContext
+CDirectShowDecodeContext::CDirectShowDecodeContext(CWaveSoapFrontDoc * pDoc, UINT StatusStringId,
+													CDirectFile & SrcFile)
+	: BaseClass(pDoc,
+				// operation can be terminated by Close
+				/*OperationContextDiskIntensive |*/ OperationContextNonCritical, StatusStringId)
+	, m_OriginalFile(SrcFile)
+	, m_CurrentLengthSamples(0)
+	, m_DstWrittenSample(0)
+	, m_LastSamplesUpdate(0)
+	, m_LastTickCountUpdate(0)
+	, m_LastLengthSamplesUpdate(0)
+	, m_DshowDecoder(this)
+	, m_StopRequested(false)
+{
+	m_UnknownDelegate = static_cast<IPin*>(&m_DshowDecoder);
+}
+
+CDirectShowDecodeContext::~CDirectShowDecodeContext()
+{
+
+}
+
+HRESULT STDMETHODCALLTYPE CDirectShowDecodeContext::Receive(
+															/* [in] */ IMediaSample *pSample)
+{
+	// write the data immediately
+
+	if (m_DshowDecoder.GetFilterState() != State_Running)
+	{
+		return VFW_E_WRONG_STATE;
+	}
+
+	LPBYTE pData = NULL;
+	LONG Length = 0;
+	HRESULT hr;
+	hr = pSample->GetPointer(&pData);
+	Length = pSample->GetActualDataLength();
+
+	long Written = m_DstFile.WriteAt(pData, Length, m_DstPos);
+
+	m_DstPos += Length;
+	m_DstWrittenSample = m_DstFile.PositionToSample(m_DstPos);
+
+	if (Written == Length)
+	{
+		//
+		m_pDocument->KickDocumentThread();
+		return S_OK;
+	}
+	return S_FALSE;
+}
+
+HRESULT STDMETHODCALLTYPE CDirectShowDecodeContext::EndOfStream(void)
+{
+	if (!m_StopRequested)
+	{
+		m_StopRequested = true;
+		m_DshowDecoder.StopDecode();
+	}
+	return S_OK;
+}
+
+HRESULT STDMETHODCALLTYPE CDirectShowDecodeContext::Stop(void)
+{
+	m_pDocument->KickDocumentThread();
+	return S_OK;
+}
+
+BOOL CDirectShowDecodeContext::OperationProc()
+{
+	if (m_Flags & OperationContextStopRequested)
+	{
+		TRACE("CWmaDecodeContext::OperationProc: Stop Requested\n");
+		if (!m_StopRequested)
+		{
+			m_StopRequested = true;
+			m_DshowDecoder.StopDecode();
+		}
+		if (m_DshowDecoder.GetDecoderState() == m_DshowDecoder.DecoderStateStopped)
+		{
+			m_Flags |= OperationContextStop;
+		}
+		else
+		{
+			m_Flags |= OperationContextYield;
+		}
+		return TRUE;
+	}
+
+	if (m_DshowDecoder.GetDecoderState() == m_DshowDecoder.DecoderStateStopped)
+	{
+		m_Flags |= OperationContextFinished;
+		return TRUE;
+	}
+
+	DWORD dwTime = GetTickCount();
+	if (dwTime - m_LastTickCountUpdate < 500)
+	{
+		m_Flags |= OperationContextYield;
+		return TRUE;
+	}
+	// notify the view
+
+	SAMPLE_INDEX nFirstSample = m_LastSamplesUpdate;
+	SAMPLE_INDEX nLastSample = m_DstWrittenSample;
+	m_LastSamplesUpdate = m_DstWrittenSample;
+
+	NUMBER_OF_SAMPLES NewSampleCount = -1;
+
+	if (m_DshowDecoder.GetDecoderState() == m_DshowDecoder.DecoderStateStopped)
+	{
+		m_Flags |= OperationContextFinished;
+		if (m_CurrentLengthSamples != m_DstWrittenSample)
+		{
+			NewSampleCount = m_DstWrittenSample;
+			m_CurrentLengthSamples = m_DstWrittenSample;
+		}
+	}
+	else if (m_DstWrittenSample > m_CurrentLengthSamples)
+	{
+		NewSampleCount = m_DstWrittenSample + 44100 * 30;	// add 30 seconds more
+		m_CurrentLengthSamples = NewSampleCount;
+	}
+
+
+	if (nFirstSample != nLastSample
+		|| -1 != NewSampleCount)
+	{
+		if (0) TRACE("Changed from %d to %d, length=%d\n", nFirstSample, nLastSample, NewSampleCount);
+
+		m_pDocument->SoundChanged(m_DstFile.GetFileID(), nFirstSample, nLastSample, NewSampleCount);
+	}
+	m_Flags |= OperationContextYield;
+
+	return TRUE;
+}
+
+BOOL CDirectShowDecodeContext::Init()
+{
+	if (!BaseClass::Init())
+	{
+		return FALSE;
+	}
+	HRESULT hr;
+	hr = m_CoInit.InitializeCom(COINIT_MULTITHREADED);
+	if (FAILED(hr))
+	{
+		return FALSE;
+	}
+
+	if (!m_DshowDecoder.Init())
+	{
+		m_pDocument->m_bCloseThisDocumentNow = true;
+		return FALSE;
+	}
+	hr = m_DshowDecoder.Open(m_OriginalFile.GetName());
+	if (FAILED(hr))
+	{
+
+		CString s;
+		s.Format(IDS_CANT_OPEN_WMA_DECODER, m_OriginalFile.GetName());
+		MessageBoxSync(s, MB_ICONEXCLAMATION | MB_OK);
+
+		m_pDocument->m_bCloseThisDocumentNow = true;
+		return FALSE;
+	}
+
+	m_CurrentLengthSamples = m_DshowDecoder.GetTotalSamples();
+
+	// create a wave file in the document
+	if (!m_pDocument->m_WavFile.CreateWaveFile(NULL, m_DshowDecoder.GetDstFormat(),
+												ALL_CHANNELS, m_CurrentLengthSamples,  // initial sample count
+												CreateWaveFileTempDir
+												| CreateWaveFileDeleteAfterClose
+												| CreateWaveFileTemp, NULL))
+	{
+		MessageBoxSync(IDS_UNABLE_TO_CREATE_TEMPORARY_FILE, MB_OK | MB_ICONEXCLAMATION);
+
+		m_pDocument->m_bCloseThisDocumentNow = true;
+		return FALSE;
+	}
+
+	SetDstFile(m_pDocument->m_WavFile);
+
+	m_pDocument->m_WavFile.LoadPeaksForCompressedFile(m_pDocument->m_OriginalWavFile, m_CurrentLengthSamples);
+
+	// FIXME??
+	//m_pDocument->SoundChanged(m_pDocument->WaveFileID(), 0, m_CurrentLengthSamples, m_CurrentLengthSamples, UpdateSoundDontRescanPeaks);
+
+	m_pDocument->QueueSoundUpdate(m_pDocument->UpdateWholeFileChanged,
+								m_pDocument->WaveFileID(), 0, 0, m_CurrentLengthSamples);
+
+	m_LastTickCountUpdate = GetTickCount();
+
+	if (SUCCEEDED(m_DshowDecoder.StartDecode()))
+	{
+		return TRUE;
+	}
+	return FALSE;
+}
+
+void CDirectShowDecodeContext::DeInit()
+{
+	m_DshowDecoder.DeInit();
+	m_CoInit.UninitializeCom();
+
+	BaseClass::DeInit();
+}
+
+void CDirectShowDecodeContext::SetDstFile(CWaveFile & file)
+{
+	m_DstFile = file;
+	m_DstWrittenSample = 0;
+	m_DstStart = m_DstFile.SampleToPosition(0);
+	m_DstPos = m_DstStart;
+}
+
+void CDirectShowDecodeContext::PostRetire()
+{
+	if (0 == (m_Flags & OperationContextFinished))
+	{
+		CString s;
+		if (m_Flags & (OperationContextInitFailed | OperationContextStopRequested))
+		{
+			//s.Format(IDS_CANT_DECOMPRESS_FILE, LPCTSTR(m_pDocument->m_OriginalWavFile.GetName()), -1, 0);
+			//AfxMessageBox(s, MB_ICONSTOP);
+			m_pDocument->m_bCloseThisDocumentNow = true;
+		}
+		else
+		{
+			s.Format(IDS_ERROR_WHILE_DECOMPRESSING_FILE,
+					LPCTSTR(m_pDocument->m_OriginalWavFile.GetName()), 0);
+			AfxMessageBox(s, MB_ICONSTOP);
+		}
+	}
+	else
+	{
+		// set the file length, according to the actual number of samples decompressed
+		m_pDocument->m_OriginalWaveFormat = m_DshowDecoder.GetDstFormat();
+
+		m_DstFile.SetFileLengthSamples(m_DstWrittenSample);
+
+		m_pDocument->SoundChanged(m_DstFile.GetFileID(), 0, 0, m_DstWrittenSample, UpdateSoundDontRescanPeaks);
+
+		if (m_Flags & DecompressSavePeakFile)
+		{
+			m_DstFile.SavePeakInfo(m_pDocument->m_OriginalWavFile);
+		}
+	}
+	BaseClass::PostRetire();
+}
+
 
 //////////////////////////////////////////////////////////////////
 ///////////////// CWmaSaveContext

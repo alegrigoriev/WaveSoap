@@ -64,7 +64,7 @@ void CWaveSoapFileOpenDialog::ShowWmaFileInfo(CDirectFile & File)
 
 	CoInitHelper CoInit(COINIT_APARTMENTTHREADED);
 
-	CWmaDecoder WmaFile;
+	CWmaDecoderSync WmaFile;
 	if (WmaFile.Init()
 		&& SUCCEEDED(WmaFile.Open(File)))
 	{

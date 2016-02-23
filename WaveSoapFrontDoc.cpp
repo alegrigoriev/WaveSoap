@@ -605,7 +605,6 @@ BOOL CWaveSoapFrontDoc::DoSave(LPCTSTR lpszPathName, BOOL bReplace)
 		dlg.AddAllTypeFilters(pApp->m_pDocManager);
 
 		// add the proper file type extension
-		// todo: get from saved in the registry, if name is empty
 
 		if (IDOK != dlg.DoModal())
 		{
@@ -1044,26 +1043,56 @@ UINT CWaveSoapFrontDoc::_ThreadProc(void)
 				}
 			}
 
-			if (pContext->m_Flags &
-				(OperationContextStop | OperationContextFinished))
+			if (pContext->m_Flags & OperationContextYield)
 			{
-				SetCurrentStatusString(pContext->GetCompletedStatusString());
-
-				NeedKickIdle = true;
-
-				m_OpList.RemoveEntry(pContext);
-
-				pContext->DeInit();
-				TRACE("Retire context %X\n", pContext);
-				pContext->Retire();     // puts it in the document queue
+				pContext->m_Flags &= ~OperationContextYield;
+				// fall through to WaitForSingleEvent
 			}
-			continue;
+			else
+			{
+				if (pContext->m_Flags &
+					(OperationContextStop | OperationContextFinished))
+				{
+					SetCurrentStatusString(pContext->GetCompletedStatusString());
+
+					NeedKickIdle = true;
+
+					m_OpList.RemoveEntry(pContext);
+
+					pContext->DeInit();
+					TRACE("Retire context %X\n", pContext);
+					pContext->Retire();     // puts it in the document queue
+				}
+				continue;
+			}
 		}
 		else
 		{
 			m_OpList.Unlock();
 		}
-		WaitForSingleObject(m_hThreadEvent, INFINITE);
+#if 0
+		WaitForSingleObjectAcceptSends(m_hThreadEvent, INFINITE);
+#else
+		DWORD WaitResult = MsgWaitForMultipleObjectsEx(1, &m_hThreadEvent, INFINITE,
+														QS_ALLEVENTS, MWMO_INPUTAVAILABLE);
+
+		if (WAIT_OBJECT_0 == WaitResult)
+		{
+			continue;
+		}
+		else if (//WAIT_TIMEOUT == WaitResult ||
+				WAIT_OBJECT_0 + 1 != WaitResult)    // error or timeout occured
+		{
+			break;
+		}
+		// execute messages
+		MSG msg;
+		if (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE | PM_QS_POSTMESSAGE | PM_QS_SENDMESSAGE))
+		{
+			// this is not GUI thread, no need to TranslateMessage and handle WM_QUIT
+			DispatchMessage(&msg);
+		}
+#endif
 	}
 #ifdef _DEBUG
 	GetThreadTimes(GetCurrentThread(), & tmp, & tmp, & tmp, & EndTime);
@@ -1174,8 +1203,19 @@ void CWaveSoapFrontDoc::QueueOperation(COperationContext * pContext)
 	else
 	{
 		m_OpList.InsertTail(pContext);
-		SetEvent(m_hThreadEvent);
+		KickDocumentThread();
 	}
+}
+
+void CWaveSoapFrontDoc::KickDocumentThread()
+{
+	SetEvent(m_hThreadEvent);
+}
+
+void CWaveSoapFrontDoc::SignalStopOperation()
+{
+	m_StopOperation = true;
+	KickDocumentThread();
 }
 
 void CWaveSoapFrontDoc::DoCopy(SAMPLE_INDEX Start, SAMPLE_INDEX End,
@@ -1554,7 +1594,7 @@ void CWaveSoapFrontDoc::OnEditStop()
 {
 	if (IsBusy())
 	{
-		m_StopOperation = true;
+		SignalStopOperation();
 	}
 }
 
@@ -2326,7 +2366,7 @@ BOOL CWaveSoapFrontDoc::OnSaveRawFile(class COperationContext ** ppOp, int flags
 	{
 		NewTempFilename += _T(".temp");
 	}
-	// TODO
+
 	DWORD FileSize = MulDiv(pWf->nAvgBytesPerSec, m_WavFile.GetDataChunk()->cksize,
 							WaveFormat()->nAvgBytesPerSec);
 	if (FALSE == NewWaveFile.CreateWaveFile(& m_OriginalWavFile, pWf, ALL_CHANNELS,
@@ -3135,7 +3175,7 @@ void CWaveSoapFrontDoc::OnSoundStop()
 {
 	if (m_PlayingSound)
 	{
-		m_StopOperation = true;
+		SignalStopOperation();
 	}
 }
 
@@ -3147,13 +3187,13 @@ void CWaveSoapFrontDoc::OnPlayAndStop()
 	}
 	else if (m_PlayingSound)
 	{
-		m_StopOperation = true;
+		SignalStopOperation();
 	}
 }
 
 void CWaveSoapFrontDoc::OnStopAll()
 {
-	m_StopOperation = true;
+	SignalStopOperation();
 }
 
 void CWaveSoapFrontDoc::OnSoundPause()
@@ -3168,7 +3208,6 @@ void CWaveSoapFrontDoc::OnSoundPause()
 			pCx = dynamic_cast<CSoundPlayContext *>(m_OpList.First());
 			if (pCx)
 			{
-				// TODO: Make sure to protect m_OpList
 				pCx->Pause();
 			}
 		}
@@ -3188,7 +3227,7 @@ BOOL CWaveSoapFrontDoc::SaveModified()
 	{
 		if (m_OperationNonCritical)
 		{
-			m_StopOperation = TRUE;
+			SignalStopOperation();
 			DWORD BeginTime = GetTickCount();
 			do {
 				WaitForSingleObjectAcceptSends(m_Thread.m_hThread, 50);
@@ -4543,6 +4582,11 @@ BOOL CWaveSoapFrontDoc::OpenNonWavFileDocument(LPCTSTR lpszPathName, int flags)
 		m_FileTypeFlags = OpenDocumentWmaFile;
 		return OpenWmaFileDocument(lpszPathName);
 	}
+	if (flags & OpenDocumentDShowFile)
+	{
+		m_FileTypeFlags = OpenDocumentDShowFile;
+		return OpenDShowFileDocument(lpszPathName);
+	}
 	if (flags & OpenDocumentMp3File)
 	{
 		m_FileTypeFlags = OpenDocumentMp3File;
@@ -4702,6 +4746,53 @@ BOOL CWaveSoapFrontDoc::OpenWmaFileDocument(LPCTSTR lpszPathName)
 	return TRUE;
 }
 
+BOOL CWaveSoapFrontDoc::OpenDShowFileDocument(LPCTSTR lpszPathName)
+{
+
+	TRACE(_T("CWaveSoapFrontDoc::OpenDShowFileDocument(%s)\n"), lpszPathName);
+
+	CThisApp * pApp = GetApp();
+	m_bDirectMode = FALSE;
+	m_bReadOnly = FALSE;
+
+	m_szWaveFilename = lpszPathName;
+	if ( ! m_OriginalWavFile.Open(lpszPathName,
+								MmioFileOpenExisting
+								| MmioFileOpenReadOnly
+								| MmioFileOpenDontLoadRiff))
+	{
+		CString s;
+		UINT format;
+		switch(GetLastError())
+		{
+		case ERROR_ACCESS_DENIED:
+			format = IDS_FILE_OPEN_ACCESS_DENIED;
+			break;
+		case ERROR_SHARING_VIOLATION:
+			format = IDS_FILE_OPEN_SHARING_VIOLATION;
+			break;
+		default:
+			format = IDS_UNABLE_TO_OPEN_WMA_FILE;
+			break;
+		}
+		s.Format(format, lpszPathName);
+		AfxMessageBox(s, MB_ICONEXCLAMATION | MB_OK);
+		return FALSE;
+	}
+
+	CDirectShowDecodeContext * pDShowContext = new CDirectShowDecodeContext(this,
+													IDS_LOADING_COMPRESSED_FILE_STATUS_PROMPT, m_OriginalWavFile);
+
+	if (NULL == pDShowContext)
+	{
+		NotEnoughMemoryMessageBox();
+		return FALSE;
+	}
+	pDShowContext->m_Flags |= DecompressSavePeakFile;
+
+	pDShowContext->Execute();
+	return TRUE;
+}
 static int const BigGapLength = 8;
 void CWaveSoapFrontDoc::OnUpdateToolsInterpolate(CCmdUI* pCmdUI)
 {
