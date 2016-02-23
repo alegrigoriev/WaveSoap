@@ -941,7 +941,6 @@ void CWaveOutlineView::OnLButtonDblClk(UINT nFlags, CPoint point)
 
 BOOL CWaveOutlineView::OnNotify(WPARAM wParam, LPARAM lParam, LRESULT* pResult)
 {
-	// TODO: Add your specialized code here and/or call the base class
 	NMHDR * pNMHDR = (NMHDR *) lParam;
 	if (pNMHDR->code == TTN_NEEDTEXTA || pNMHDR->code == TTN_NEEDTEXTW)
 	{

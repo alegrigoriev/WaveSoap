@@ -466,11 +466,6 @@ void CSpectrumSectionView::OnDraw(CDC* pDC)
 	if (m_bShowNoiseThreshold
 		&& NULL != m_pNoiseReduction)
 	{
-		// todo: show second graph with blue color:
-		// calculate power distribution and masking function
-		// Items that can be shown:
-		// filtered power distribution
-		// masking function with noise threshold
 		NrMasking.Allocate(m_NrFftOrder * nChannels);
 		NrResult.Allocate(m_NrFftOrder * nChannels);
 

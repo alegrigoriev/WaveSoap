@@ -1192,19 +1192,39 @@ DWORD CWaveSoapFrontView::ClientHitTest(CPoint p) const
 			// check whether the cursor is on the selection boundary
 			// TODO: separate left edge and right edge for narrow selection
 
-			if (p.x >= SelBegin - BorderWidth
-				&& p.x < SelBegin + BorderWidth)
+			if (p.x >= SelBegin && p.x < SelEnd)
+			{
+				if (SelBegin - SelEnd < BorderWidth * 2)
+				{
+					if (p.x < (SelBegin + SelEnd) / 2)
+					{
+						result |= VSHT_SEL_BOUNDARY_L;
+					}
+					else
+					{
+						result |= VSHT_SEL_BOUNDARY_R;
+					}
+				}
+				else if (p.x < SelBegin + BorderWidth)
+				{
+					result |= VSHT_SEL_BOUNDARY_L;
+				}
+				else if (p.x >= SelEnd - BorderWidth)
+				{
+					result |= VSHT_SEL_BOUNDARY_R;
+				}
+				else
+				{
+					result |= VSHT_SELECTION;
+				}
+			}
+			else if (p.x >= SelBegin - BorderWidth)
 			{
 				result |= VSHT_SEL_BOUNDARY_L;
 			}
-			if (p.x >= SelEnd - BorderWidth
-				&& p.x < SelEnd + BorderWidth)
+			else if (p.x < SelEnd + BorderWidth)
 			{
 				result |= VSHT_SEL_BOUNDARY_R;
-			}
-			if (p.x >= SelBegin && p.x < SelEnd)
-			{
-				result |= VSHT_SELECTION;
 			}
 		}
 	}
@@ -3065,7 +3085,6 @@ void CWaveSoapFrontView::OnViewZoomprevious()
 // if ZoomCenter is INT_MAX, use current caret position
 void CWaveSoapViewBase::SetHorizontalScale(double NewHorizontalScale, int ZoomCenter)
 {
-	// TODO
 	m_PrevHorizontalScale = m_HorizontalScale;
 	NotifySiblingViews(HorizontalScaleChanged, &NewHorizontalScale);
 	MovePointIntoView(GetDocument()->m_CaretPosition, TRUE);
@@ -3453,7 +3472,6 @@ afx_msg LRESULT CWaveSoapViewBase::OnUwmNotifyViews(WPARAM wParam, LPARAM lParam
 
 void CWaveSoapFrontView::OnViewMinimize0(UINT id)
 {
-	// TODO: Add your command handler code here
 	int Channel = id - ID_VIEW_MINIMIZE_0;
 	int nChannels = GetDocument()->WaveChannels();
 
@@ -3485,7 +3503,6 @@ void CWaveSoapFrontView::OnViewMinimize0(UINT id)
 
 void CWaveSoapFrontView::OnViewMaximize0(UINT id)
 {
-	// TODO: Add your command handler code here
 	int Channel = id - ID_VIEW_MAXIMIZE_0;
 	int nChannels = GetDocument()->WaveChannels();
 

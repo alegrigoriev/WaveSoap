@@ -2254,7 +2254,7 @@ BOOL CMoveOperation::OperationProc()
 					&& pDstBuf - DstSampleSize*SamplesToCopy < pSrcBuf)
 				{
 					// there is overlap, copy by parts
-					SamplesToCopy = (pDstBuf - pSrcBuf + (SrcSampleSize - DstSampleSize) * SamplesToCopy) / SrcSampleSize;
+					SamplesToCopy = unsigned((pDstBuf - pSrcBuf + (SrcSampleSize - DstSampleSize) * SamplesToCopy) / SrcSampleSize);
 					if (SamplesToCopy == 0)
 					{
 						SamplesToCopy = 1;

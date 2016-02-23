@@ -1194,7 +1194,6 @@ void CTimeRulerView::OnMouseMove(UINT nFlags, CPoint point)
 
 void CTimeRulerView::OnCaptureChanged(CWnd *pWnd)
 {
-	// TODO: Add your message handler code here
 	if (pWnd != this
 		&& NULL != m_AutoscrollTimerID)
 	{
@@ -1521,7 +1520,6 @@ void CTimeRulerView::OnUpdateMoveMarkerToCurrent(CCmdUI *pCmdUI)
 
 void CTimeRulerView::OnEditMarker()
 {
-	// TODO: Add your command handler code here
 	CWaveSoapFrontDoc * pDoc = GetDocument();
 
 	CMarkerRegionDialog dlg( & m_PopupMenuHit, pDoc->m_CaretPosition,
@@ -1540,14 +1538,12 @@ void CTimeRulerView::OnEditMarker()
 
 void CTimeRulerView::OnUpdateEditMarker(CCmdUI *pCmdUI)
 {
-	// TODO: Add your command update UI handler code here
 	pCmdUI->Enable(0 != (m_PopupMenuHitTest & (HitTestRegionBegin | HitTestRegionEnd | HitTestMarker))
 					&& ! GetDocument()->IsReadOnly());
 }
 
 void CTimeRulerView::OnSelectRegion()
 {
-	// TODO: Add your command handler code here
 	SAMPLE_INDEX Caret;
 
 	CWaveSoapFrontDoc * pDoc = GetDocument();
@@ -1571,7 +1567,6 @@ void CTimeRulerView::OnSelectRegion()
 
 BOOL CTimeRulerView::OnNotify(WPARAM wParam, LPARAM lParam, LRESULT* pResult)
 {
-	// TODO: Add your specialized code here and/or call the base class
 	NMHDR * pNMHDR = (NMHDR *) lParam;
 	if (pNMHDR->code == TTN_NEEDTEXTA || pNMHDR->code == TTN_NEEDTEXTW)
 	{

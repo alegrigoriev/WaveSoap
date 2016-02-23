@@ -405,7 +405,6 @@ void CFileTimesCombo::FillFileTimes()
 	for (CuePointVectorIterator i = pInst->m_CuePoints.begin();
 		i != pInst->m_CuePoints.end(); i++)
 	{
-		// TODO: include positions in HH:mm:ss and the tooltips
 		LPCTSTR pNote = pInst->GetCueComment(i->CuePointID);
 		LPCTSTR pLabel = pInst->GetCueLabel(i->CuePointID);
 		WaveRegionMarker * pMarker = pInst->GetRegionMarker(i->CuePointID);

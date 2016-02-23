@@ -485,7 +485,6 @@ void CSplitToFilesDialog::OnComboFileTypeSelChange()
 
 void CSplitToFilesDialog::OnBnClickedButtonBrowseFolder()
 {
-	// TODO: Add your control notification handler code here
 	m_eSaveToFolder.GetWindowText(m_sSaveToFolder);
 
 	CFolderDialog dlg(IDS_SELECT_SAVE_TO_FOLDER,
@@ -760,8 +759,6 @@ void CSplitToFilesDialog::OnUpdateOK(CCmdUI * pCmdUI)
 
 void CSplitToFilesDialog::OnOK()
 {
-	// TODO: Add your specialized code here and/or call the base class
-
 	__super::OnOK();
 	// save format selection
 

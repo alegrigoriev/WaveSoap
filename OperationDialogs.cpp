@@ -2115,7 +2115,6 @@ END_MESSAGE_MAP()
 // CDeclickDialog message handlers
 void CDeclickDialog::OnButtonMoreSettings()
 {
-	// TODO: Add your control notification handler code here
 	CMoreDeclickDialog dlg( *this);
 	// set the data to dlg
 	if (IDOK == dlg.DoModal())

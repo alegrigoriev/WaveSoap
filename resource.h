@@ -27,6 +27,8 @@
 #define IDR_WMATYPE3                    135
 #define IDR_AVITYPE                     135
 #define IDD_DIALOG_OPEN_TEMPLATE        136
+#define IDR_WMATYPE4                    136
+#define IDR_DSHOW_TYPE                  136
 #define IDR_MENU_POPUP_SAMPLE_RATE      137
 #define IDR_MENU_POPUP_CHANNELS         138
 #define IDD_DIALOG_COPY_CHANNELS_SELECT 138
@@ -1009,7 +1011,7 @@
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_3D_CONTROLS                     1
-#define _APS_NEXT_RESOURCE_VALUE        206
+#define _APS_NEXT_RESOURCE_VALUE        207
 #define _APS_NEXT_COMMAND_VALUE         40159
 #define _APS_NEXT_CONTROL_VALUE         1300
 #define _APS_NEXT_SYMED_VALUE           101
