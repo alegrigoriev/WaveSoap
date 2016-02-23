@@ -58,7 +58,6 @@ END_MESSAGE_MAP()
 
 BOOL CPreferencesPropertySheet::OnWndMsg(UINT message, WPARAM wParam, LPARAM lParam, LRESULT* pResult)
 {
-	// TODO: Add your specialized code here and/or call the base class
 	if (WM_COMMAND == message
 		&& BN_CLICKED == HIWORD(wParam)
 		&& IDOK == LOWORD(wParam))
