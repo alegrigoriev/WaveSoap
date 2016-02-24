@@ -3741,6 +3741,11 @@ BEGIN
     IDS_MORE_CLICK_SETTINGS_IN_EFFECT 
                             "Click logging settings are in effect, click [More settings] button"
     IDS_RADIO_OPEN_AS_READ_ONLY "Open as &read-only"
+    IDS_STATUS_STRING32BIT  "32 bit"
+    IDS_STATUS_STRING8BIT   "8 bit"
+    IDS_STATUS_STRING24BIT  "24 bit"
+    IDS_STATUS_STRING_FLOAT32 "Float 32"
+    IDS_STATUS_STRING_FLOAT64 "Float 64"
 END
 
 STRINGTABLE
