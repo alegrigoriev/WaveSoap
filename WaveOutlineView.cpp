@@ -218,7 +218,7 @@ void CWaveOutlineView::OnDraw(CDC* pDC)
 
 			while (CurrSample < RightSampleInBuffer)
 			{
-				for (int ch = 1; ch < channels; ch++)
+				for (int ch = 0; ch < channels; ch++)
 				{
 					if (pPeaks[i].high < pCurSample[ch])
 					{
