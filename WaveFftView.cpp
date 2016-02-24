@@ -1408,39 +1408,44 @@ DWORD CWaveFftView::ClientHitTest(CPoint p) const
 			int BorderWidth = GetSystemMetrics(SM_CXEDGE);
 			// check whether the cursor is on the selection boundary
 
-			if (p.x >= SelBegin && p.x < SelEnd)
+			if (p.x < SelBegin - BorderWidth)
 			{
-				if (SelBegin - SelEnd < BorderWidth * 2)
-				{
-					if (p.x < (SelBegin + SelEnd) / 2)
-					{
-						result |= VSHT_SEL_BOUNDARY_L;
-					}
-					else
-					{
-						result |= VSHT_SEL_BOUNDARY_R;
-					}
-				}
-				else if (p.x < SelBegin + BorderWidth)
-				{
-					result |= VSHT_SEL_BOUNDARY_L;
-				}
-				else if (p.x >= SelEnd - BorderWidth)
-				{
-					result |= VSHT_SEL_BOUNDARY_R;
-				}
-				else
-				{
-					result |= VSHT_SELECTION;
-				}
+				// nothing
 			}
-			else if (p.x >= SelBegin - BorderWidth)
+			else if (p.x < SelBegin)
 			{
 				result |= VSHT_SEL_BOUNDARY_L;
 			}
-			else if (p.x < SelEnd + BorderWidth)
+			else if (p.x >= SelEnd + BorderWidth)
+			{
+				// nothing
+			}
+			else if (p.x >= SelEnd)
 			{
 				result |= VSHT_SEL_BOUNDARY_R;
+			}
+			else if (SelEnd - SelBegin < BorderWidth * 2)
+			{
+				if (p.x < (SelBegin + SelEnd) / 2)
+				{
+					result |= VSHT_SEL_BOUNDARY_L;
+				}
+				else
+				{
+					result |= VSHT_SEL_BOUNDARY_R;
+				}
+			}
+			else if (p.x < SelBegin + BorderWidth)
+			{
+				result |= VSHT_SEL_BOUNDARY_L;
+			}
+			else if (p.x >= SelEnd - BorderWidth)
+			{
+				result |= VSHT_SEL_BOUNDARY_R;
+			}
+			else
+			{
+				result |= VSHT_SELECTION;
 			}
 		}
 	}
