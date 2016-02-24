@@ -788,7 +788,7 @@ public:
 						CWaveFile & SrcFile,
 						CWaveFile & DstFile, BOOL RawDstFile, SAMPLE_INDEX SrcBegin = 0, SAMPLE_INDEX SrcEnd = LAST_SAMPLE);
 
-	virtual void PostRetire();
+	virtual void DeInit();
 };
 
 class CDecompressContext : public CWaveProcContext
@@ -941,6 +941,7 @@ private:
 	IUnknown * m_UnknownDelegate;
 	CDirectFile & m_OriginalFile;
 	bool m_StopRequested;
+	bool m_EndOfStream;
 };
 
 class CWmaSaveContext : public CWaveProcContext

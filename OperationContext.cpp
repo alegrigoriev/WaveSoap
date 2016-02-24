@@ -3350,7 +3350,7 @@ CConversionContext::CConversionContext(CWaveSoapFrontDoc * pDoc, UINT StatusStri
 	m_DstChan = ALL_CHANNELS;
 }
 
-void CConversionContext::PostRetire()
+void CConversionContext::DeInit()
 {
 	// For non-RIFF file, don't do post-processing
 	MEDIA_FILE_POSITION DataOffset = m_DstFile.GetDataChunk()->dwDataOffset;
@@ -3362,7 +3362,7 @@ void CConversionContext::PostRetire()
 		m_DstFile.SetDatachunkLength(DWORD(m_DstPos - DataOffset));
 	}
 
-	BaseClass::PostRetire();
+	BaseClass::DeInit();
 }
 
 //////////////// CWmaDecodeContext
@@ -3554,6 +3554,7 @@ CDirectShowDecodeContext::CDirectShowDecodeContext(CWaveSoapFrontDoc * pDoc, UIN
 	, m_LastLengthSamplesUpdate(0)
 	, m_DshowDecoder(this)
 	, m_StopRequested(false)
+	, m_EndOfStream(false)
 {
 	m_UnknownDelegate = static_cast<IPin*>(&m_DshowDecoder);
 }
@@ -3595,11 +3596,8 @@ HRESULT STDMETHODCALLTYPE CDirectShowDecodeContext::Receive(
 
 HRESULT STDMETHODCALLTYPE CDirectShowDecodeContext::EndOfStream(void)
 {
-	if (!m_StopRequested)
-	{
-		m_StopRequested = true;
-		m_DshowDecoder.StopDecode();
-	}
+	m_EndOfStream = true;
+	m_pDocument->KickDocumentThread();
 	return S_OK;
 }
 
@@ -3611,6 +3609,15 @@ HRESULT STDMETHODCALLTYPE CDirectShowDecodeContext::Stop(void)
 
 BOOL CDirectShowDecodeContext::OperationProc()
 {
+	if (m_EndOfStream)
+	{
+		if (!m_StopRequested)
+		{
+			m_StopRequested = true;
+			m_DshowDecoder.StopDecode();
+		}
+	}
+
 	if (m_Flags & OperationContextStopRequested)
 	{
 		TRACE("CWmaDecodeContext::OperationProc: Stop Requested\n");
