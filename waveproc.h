@@ -779,6 +779,11 @@ public:
 	// if converting stereo->mono, the data can be left, right, or average
 	virtual unsigned ProcessSoundBuffer(char const * pInBuf, char * pOutBuf,
 										unsigned nInBytes, unsigned nOutBytes, unsigned * pUsedBytes);
+	virtual bool SetChannelsToProcess(CHANNEL_MASK /*channels*/)
+	{
+		// don't change channel mask
+		return true;
+	}
 };
 
 class CByteSwapConvertor : public CWaveProc
