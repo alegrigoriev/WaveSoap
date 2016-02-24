@@ -331,7 +331,7 @@ unsigned CBatchProcessing::Item::FillOutputBuffer(char * Buf, unsigned BytesToFi
 
 	unsigned BytesToUse = OutBufPutIndex - OutBufGetIndex;
 	WaveSampleType TargetType = pWf->GetSampleType();
-	unsigned SrcSampleSize = Proc->GetInputWaveformat().SampleSize();
+	unsigned SrcSampleSize = Proc->GetOutputWaveformat().SampleSize();
 
 	if (TargetType == SampleTypeCompressed
 		|| TargetType == SampleType8bit
@@ -358,8 +358,8 @@ unsigned CBatchProcessing::Item::FillOutputBuffer(char * Buf, unsigned BytesToFi
 		BytesFilled = SamplesToFill * pWf->SampleSize();
 
 		CopyWaveSamples(Buf, ALL_CHANNELS, pWf->NumChannels(),
-						OutBuf + OutBufGetIndex, ALL_CHANNELS, Proc->GetInputWaveformat().NumChannels(),
-						SamplesToFill, TargetType, Proc->GetInputWaveformat().GetSampleType());
+						OutBuf + OutBufGetIndex, ALL_CHANNELS, Proc->GetOutputWaveformat().NumChannels(),
+						SamplesToFill, TargetType, Proc->GetOutputWaveformat().GetSampleType());
 
 		OutBufGetIndex += SamplesToFill * SrcSampleSize;
 	}
@@ -5107,58 +5107,17 @@ unsigned CChannelConvertor::ProcessSoundBuffer(char const * pIn, char * pOut,
 	unsigned nSavedBytes = 0;
 	*pUsedBytes = 0;
 
-	WAVE_SAMPLE const * pInBuf = (WAVE_SAMPLE const *) pIn;
-	WAVE_SAMPLE * pOutBuf = (WAVE_SAMPLE *) pOut;
 	int nInSamples = nInBytes / m_InputFormat.SampleSize();
 	int nOutSamples = nOutBytes / m_OutputFormat.SampleSize();
 
 	int nSamples = std::min(nInSamples, nOutSamples);
 
-	int i;
-	if (2 == m_InputFormat.NumChannels()
-		&& 1 == m_OutputFormat.NumChannels())
-	{
-		if (SPEAKER_FRONT_LEFT == m_ChannelsToProcess
-			|| SPEAKER_FRONT_RIGHT == m_ChannelsToProcess)
-		{
-			if (SPEAKER_FRONT_RIGHT == m_ChannelsToProcess)
-			{
-				pInBuf++;
-			}
+	CopyWaveSamples(pOut, ALL_CHANNELS, m_OutputFormat.NumChannels(),
+					pIn, m_ChannelsToProcess, m_InputFormat.NumChannels(),
+					nSamples, m_OutputFormat.GetSampleType(), m_InputFormat.GetSampleType());
 
-			for (i = 0; i < nSamples; i++,
-				pInBuf += 2, pOutBuf ++)
-			{
-				*pOutBuf = * pInBuf;
-			}
-		}
-		else
-		{
-			for (i = 0; i < nSamples; i++,
-				pInBuf += 2, pOutBuf += 1)
-			{
-				*pOutBuf = (pInBuf[0] + pInBuf[1]) / 2;
-			}
-		}
-		nSavedBytes += i * sizeof pOutBuf[0];
-		*pUsedBytes += i * 2 * sizeof pInBuf[0];
-	}
-	else if (1 == m_InputFormat.NumChannels()
-			&& 2 == m_OutputFormat.NumChannels())
-	{
-		for (i = 0; i < nSamples; i++,
-			pInBuf += 1, pOutBuf += 2)
-		{
-			pOutBuf[0] = * pInBuf;
-			pOutBuf[1] = * pInBuf;
-		}
-		nSavedBytes += 2 * i * sizeof pOutBuf[0];
-		*pUsedBytes += i * sizeof pInBuf[0];
-	}
-	else
-	{
-		return unsigned(-1);
-	}
+	nSavedBytes = nSamples * m_OutputFormat.SampleSize();
+	*pUsedBytes = nSamples * m_InputFormat.SampleSize();
 	return nSavedBytes;
 }
 
