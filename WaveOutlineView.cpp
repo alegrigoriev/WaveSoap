@@ -7,7 +7,6 @@
 #include "WaveOutlineView.h"
 #include "GdiObjectSave.h"
 #include "WaveSoapFrontDoc.h"
-#include "waveoutlineview.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -57,7 +56,7 @@ void CWaveOutlineView::OnDraw(CDC* pDC)
 	// the whole file is here
 	CRect cr;
 	GetClientRect( & cr);
-	CRect ur;
+	CRect ur(cr);
 	if (pDC->IsKindOf(RUNTIME_CLASS(CPaintDC)))
 	{
 		CPaintDC* pPaintDC = (CPaintDC*)pDC;
@@ -67,17 +66,20 @@ void CWaveOutlineView::OnDraw(CDC* pDC)
 		}
 		ur = pPaintDC->m_ps.rcPaint;
 	}
-	else
-	{
-		pDC->GetClipBox( & ur);
-	}
 
 	if (ur.right > cr.right)
 	{
 		ur.right = cr.right;
 	}
+	if (ur.left < 0)
+	{
+		ur.left = 0;
+	}
+
 	unsigned width = cr.Width();
-	if (width == 0)
+	unsigned update_width = ur.Width();
+
+	if (update_width == 0)
 	{
 		return;
 	}
@@ -88,8 +90,8 @@ void CWaveOutlineView::OnDraw(CDC* pDC)
 	}
 	NUMBER_OF_SAMPLES nSamples = pDoc->WaveFileSamples();
 
-	WavePeak * pPeaks = new WavePeak[width];
-	if (NULL == pPeaks)
+	ATL::CHeapPtr<WavePeak> pPeaks;
+	if (!pPeaks.Allocate(width))
 	{
 		return;
 	}
@@ -141,50 +143,103 @@ void CWaveOutlineView::OnDraw(CDC* pDC)
 	{
 		// use data from the file
 		int SampleSize = pDoc->WaveSampleSize();
-		unsigned BufSize = (nSamples / width + 2) * SampleSize;
-		WAVE_SAMPLE * pBuf = new WAVE_SAMPLE[BufSize / sizeof(WAVE_SAMPLE)];
-
-		if (NULL == pBuf)
+		unsigned BufSamples = 4096 / SampleSize;
+		if (BufSamples > nSamples)
 		{
-			delete[] pPeaks;
+			BufSamples = nSamples;
+		}
+
+		ATL::CHeapPtr<float> pBuf;
+
+		if (! pBuf.Allocate(BufSamples * channels))
+		{
 			return;
 		}
 
-		int PrevIdx = MulDiv(ur.left, nSamples, width);
-		SAMPLE_POSITION DataOffset = pDoc->m_WavFile.SampleToPosition(0);
-
-		for (i = ur.left; i < ur.right; i++)
+		SAMPLE_INDEX LeftSampleInBuffer = 0, RightSampleInBuffer = 0;
+		float * pCurSample = pBuf;
+		int CurrSample = 0;
+		for (i = ur.left; i < ur.right; )
 		{
-			int NewIdx = MulDiv(i + 1, nSamples, width);
-			pPeaks[i].high = SHORT_MIN;
-			pPeaks[i].low = SHORT_MAX;
+			int PrevSample = MulDiv(i, nSamples, width);
+			int NextSample = MulDiv(i + 1, nSamples, width);
 
-			SAMPLE_POSITION Offset = DataOffset + SampleSize * PrevIdx;
-			unsigned long ToRead = (NewIdx - PrevIdx) * SampleSize;
-			if (ToRead != 0)
+			// read some more samples to the buffer
+			if (CurrSample >= RightSampleInBuffer)
 			{
-				if (ToRead > BufSize)
+				LeftSampleInBuffer = CurrSample;
+				unsigned long ToRead = nSamples - LeftSampleInBuffer;
+				if (ToRead > BufSamples)
 				{
-					ToRead = BufSize;
-					TRACE("Miscalculation: ToRead > BufSize\n");
+					ToRead = BufSamples;
 				}
-				ToRead = pDoc->m_WavFile.ReadAt(pBuf, ToRead, Offset);
-				for (unsigned j = 0; j < ToRead / sizeof (WAVE_SAMPLE); j++)
+				if (ToRead != pDoc->m_WavFile.ReadSamples(ALL_CHANNELS,
+						pDoc->m_WavFile.SampleToPosition(LeftSampleInBuffer), ToRead, pBuf, SampleTypeFloat32))
 				{
-					if (pPeaks[i].low > pBuf[j])
+					return;
+				}
+				RightSampleInBuffer = LeftSampleInBuffer + ToRead;
+				pCurSample = pBuf;
+			}
+
+			if (CurrSample <= PrevSample)
+			{
+				CurrSample = PrevSample;
+
+				pPeaks[i].high = pCurSample[0];
+				pPeaks[i].low = pCurSample[0];
+				for (int ch = 1; ch < channels; ch++)
+				{
+					if (pPeaks[i].high < pCurSample[ch])
 					{
-						pPeaks[i].low = pBuf[j];
+						pPeaks[i].high = pCurSample[ch];
 					}
-					if (pPeaks[i].high < pBuf[j])
+					if (pPeaks[i].low > pCurSample[ch])
 					{
-						pPeaks[i].high = pBuf[j];
+						pPeaks[i].low = pCurSample[ch];
+					}
+				}
+				if (CurrSample == NextSample)
+				{
+					i++;
+					// next column will use the same sample value
+					continue;
+				}
+			}
+
+			pCurSample += channels;
+			CurrSample++;
+
+			if (CurrSample == NextSample)
+			{
+				i++;
+				continue;
+			}
+
+			while (CurrSample < RightSampleInBuffer)
+			{
+				for (int ch = 1; ch < channels; ch++)
+				{
+					if (pPeaks[i].high < pCurSample[ch])
+					{
+						pPeaks[i].high = pCurSample[ch];
+					}
+					if (pPeaks[i].low > pCurSample[ch])
+					{
+						pPeaks[i].low = pCurSample[ch];
 					}
 				}
 
+				pCurSample += channels;
+				CurrSample++;
+
+				if (CurrSample == NextSample)
+				{
+					i++;
+					break;
+				}
 			}
-			PrevIdx = NewIdx;
 		}
-		delete[] pBuf;
 	}
 
 	WAVE_PEAK PeakMax = SHORT_MIN;
@@ -249,7 +304,6 @@ void CWaveOutlineView::OnDraw(CDC* pDC)
 			pDC->LineTo(nCursorPos, cr.bottom - 1);
 		}
 	}
-	delete[] pPeaks;
 	// draw markers
 	SAMPLE_INDEX_Vector markers;
 	pDoc->m_WavFile.GetSortedMarkers(markers, FALSE);
