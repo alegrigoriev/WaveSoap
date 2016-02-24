@@ -27,7 +27,6 @@
 #define IDR_WMATYPE3                    135
 #define IDR_AVITYPE                     135
 #define IDD_DIALOG_OPEN_TEMPLATE        136
-#define IDR_WMATYPE4                    136
 #define IDR_DSHOW_TYPE                  136
 #define IDR_MENU_POPUP_SAMPLE_RATE      137
 #define IDR_MENU_POPUP_CHANNELS         138
@@ -822,6 +821,12 @@
 #define IDS_MORE_IN_EFFECT              33123
 #define IDS_MORE_CLICK_SETTINGS_IN_EFFECT 33123
 #define IDS_RADIO_OPEN_AS_READ_ONLY     33124
+#define IDS_STATUS_STRING32BIT          33125
+#define IDS_STATUS_STRING8BIT           33126
+#define IDS_STATUS_STRING24BIT          33127
+#define IDS_STATUS_STRING_FLOAT32       33128
+#define IDS_STATUS_STRING24BIT3         33129
+#define IDS_STATUS_STRING_FLOAT64       33129
 #define ID_FILE_PROPERTIES              40000
 #define ID_VIEW_ZOOMVERT_NORMAL         40001
 #define ID_VIEW_ZOOMIN_HOR_FULL         40002

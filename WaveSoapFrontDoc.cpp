@@ -1070,7 +1070,7 @@ UINT CWaveSoapFrontDoc::_ThreadProc(void)
 		{
 			m_OpList.Unlock();
 		}
-#if 0
+#if 1
 		WaitForSingleObjectAcceptSends(m_hThreadEvent, INFINITE);
 #else
 		DWORD WaitResult = MsgWaitForMultipleObjectsEx(1, &m_hThreadEvent, INFINITE,
@@ -3158,7 +3158,36 @@ void CWaveSoapFrontDoc::OnUpdateIndicatorSampleRate(CCmdUI* pCmdUI)
 
 void CWaveSoapFrontDoc::OnUpdateIndicatorSampleSize(CCmdUI* pCmdUI)
 {
-	SetStatusString(pCmdUI, IDS_STATUS_STRING16BIT);
+	WaveSampleType type = m_OriginalWaveFormat.GetSampleType();
+	if (type == SampleTypeCompressed
+		|| type == SampleTypeNotSupported)
+	{
+		type = m_WavFile.GetSampleType();
+	}
+	UINT string_id = 0;
+	switch (type)
+	{
+	default:
+	case SampleType16bit:
+		string_id = IDS_STATUS_STRING16BIT;
+		break;
+	case SampleType24bit:
+		string_id = IDS_STATUS_STRING24BIT;
+		break;
+	case SampleType32bit:
+		string_id = IDS_STATUS_STRING32BIT;
+		break;
+	case SampleType8bit:
+		string_id = IDS_STATUS_STRING8BIT;
+		break;
+	case SampleTypeFloat32:
+		string_id = IDS_STATUS_STRING_FLOAT32;
+		break;
+	case SampleTypeFloat64:
+		string_id = IDS_STATUS_STRING_FLOAT64;
+		break;
+	}
+	SetStatusString(pCmdUI, string_id);
 }
 
 void CWaveSoapFrontDoc::OnUpdateIndicatorChannels(CCmdUI* pCmdUI)
@@ -3655,8 +3684,7 @@ void CWaveSoapFrontDoc::ChangeChannels(NUMBER_OF_CHANNELS nChannels)
 	}
 
 	CConversionContext * pConversionContext = new CConversionContext(this, 0, 0, m_WavFile, DstFile, FALSE);
-
-	// for exaception safety, add pConversionContext immediately
+	// for exception safety, add pConversionContext immediately
 	pContext->AddContext(pConversionContext);
 
 	pConversionContext->AddWaveProc(new CChannelConvertor(WaveChannels(), nChannels, nSrcChan));
