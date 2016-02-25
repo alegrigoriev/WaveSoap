@@ -143,7 +143,7 @@ void CWaveOutlineView::OnDraw(CDC* pDC)
 	{
 		// use data from the file
 		int SampleSize = pDoc->WaveSampleSize();
-		unsigned BufSamples = 4096 / SampleSize;
+		NUMBER_OF_SAMPLES BufSamples = 4096 / SampleSize;
 		if (BufSamples > nSamples)
 		{
 			BufSamples = nSamples;
