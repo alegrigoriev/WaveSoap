@@ -2435,7 +2435,7 @@ void CWaveFile::SetFactNumberOfSamples(NUMBER_OF_SAMPLES samples)
 
 BOOL CWaveFile::SetFileLengthSamples(NUMBER_OF_SAMPLES length)
 {
-	ASSERT(WAVE_FORMAT_PCM == GetWaveFormat()->wFormatTag);
+// FIXME    ASSERT(WAVE_FORMAT_PCM == GetWaveFormat()->wFormatTag);
 
 	return SetDatachunkLength(length * SampleSize());
 }

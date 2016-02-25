@@ -54,9 +54,9 @@ enum   // flags for CWaveFormat::ValidateFormat
 	WaveFormatCompressed = 0x80000000,
 };
 
-// only 16 bit and float 32 bit are supported
 enum WaveSampleType
 {
+	SampleTypeUnknown,
 	SampleType16bit,
 	SampleType24bit,
 	SampleType32bit,
@@ -148,37 +148,33 @@ struct WaveFormatTagEx
 
 struct CWaveFormat
 {
+private:
+	WAVEFORMATEXTENSIBLE wfx;
 	WAVEFORMATEX * m_pWf;
 	unsigned m_AllocatedSize;
-	CWaveFormat()
-		: m_pWf(NULL),
-		m_AllocatedSize(0)
-	{
-	}
+public:
+	CWaveFormat();
+	CWaveFormat(CWaveFormat const & src);
+	CWaveFormat(WAVEFORMATEX const * pWf);
 	~CWaveFormat();
+
 	WAVEFORMATEX * Allocate(unsigned Size = sizeof (WAVEFORMATEX), bool bCopy = true);
 	CWaveFormat & operator =(WAVEFORMATEX const * pWf);
 	CWaveFormat & operator =(CWaveFormat const & src)
 	{
 		return operator=(src.m_pWf);
 	}
-	CWaveFormat(CWaveFormat const & src)
-		: m_pWf(NULL),
-		m_AllocatedSize(0)
-	{
-		*this = src;
-	}
-	CWaveFormat(WAVEFORMATEX const * pWf)
-		: m_pWf(NULL),
-		m_AllocatedSize(0)
-	{
-		*this = pWf;
-	}
-	operator WAVEFORMATEX *() const
+	operator const WAVEFORMATEX *() const
 	{
 		return m_pWf;
 	}
+	operator WAVEFORMATEX *()
+	{
+		return m_pWf;
+	}
+
 	void InitCdAudioFormat();
+#if 0
 	WAVEFORMATEX * Detach()
 	{
 		WAVEFORMATEX * pwf = m_pWf;
@@ -186,7 +182,7 @@ struct CWaveFormat
 		m_AllocatedSize = 0;
 		return pwf;
 	}
-
+#endif
 	WORD & FormatTag()
 	{
 		return m_pWf->wFormatTag;

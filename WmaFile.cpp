@@ -2041,6 +2041,7 @@ HRESULT STDMETHODCALLTYPE CDirectShowDecoder::QueryInternalConnections(
 
 HRESULT STDMETHODCALLTYPE CDirectShowDecoder::EndOfStream(void)
 {
+	TRACE(L"CDirectShowDecoder::EndOfStream(void)\n");
 	if (m_DataSink)
 	{
 		m_DataSink->EndOfStream();
@@ -2050,11 +2051,13 @@ HRESULT STDMETHODCALLTYPE CDirectShowDecoder::EndOfStream(void)
 
 HRESULT STDMETHODCALLTYPE CDirectShowDecoder::BeginFlush(void)
 {
+	TRACE(L"CDirectShowDecoder::BeginFlush(void)\n");
 	return S_OK;
 }
 
 HRESULT STDMETHODCALLTYPE CDirectShowDecoder::EndFlush(void)
 {
+	TRACE(L"CDirectShowDecoder::EndFlush(void)\n");
 	return S_OK;
 }
 
@@ -2161,6 +2164,7 @@ HRESULT STDMETHODCALLTYPE CDirectShowDecoder::QueryVendorInfo(
 // IMediaFilter overrides
 HRESULT STDMETHODCALLTYPE CDirectShowDecoder::Stop(void)
 {
+	TRACE(L"CDirectShowDecoder::Stop(void)\n");
 	m_FilterState = State_Stopped;
 	m_DecoderState = DecoderStateStopped;
 	if (m_DataSink)
@@ -2172,6 +2176,7 @@ HRESULT STDMETHODCALLTYPE CDirectShowDecoder::Stop(void)
 
 HRESULT STDMETHODCALLTYPE CDirectShowDecoder::Pause(void)
 {
+	TRACE(L"CDirectShowDecoder::Pause(void)\n");
 	m_FilterState = State_Paused;
 	m_DecoderState = DecoderStatePaused;
 	return S_OK;
@@ -2180,6 +2185,7 @@ HRESULT STDMETHODCALLTYPE CDirectShowDecoder::Pause(void)
 HRESULT STDMETHODCALLTYPE CDirectShowDecoder::Run(
 												REFERENCE_TIME tStart)
 {
+	TRACE(L"CDirectShowDecoder::Run(REFERENCE_TIME tStart)\n");
 	m_FilterState = State_Running;
 	m_DecoderState = DecoderStateRunning;
 	return S_OK;
@@ -2465,7 +2471,9 @@ HRESULT CDirectShowDecoder::Open(LPCWSTR szFilename)
 					// the new format tag is either same as previous, or extensible
 				}
 			}
+			ChosenMediaType.ResetFormatBuffer();
 			ChosenMediaType = *pMediaType;
+			PinToConnect.Release();
 			PinToConnect = Pin;
 		}
 	}
@@ -2474,7 +2482,7 @@ HRESULT CDirectShowDecoder::Open(LPCWSTR szFilename)
 		&& SUCCEEDED(m_GraphBuilder->ConnectDirect(PinToConnect, this, &ChosenMediaType)))
 	{
 		PIN_INFO pin_info = { 0 };
-		if (S_OK == PinToConnect->QueryPinInfo(&pin_info))
+		if (0 && S_OK == PinToConnect->QueryPinInfo(&pin_info))
 		{
 			if (pin_info.pFilter)
 			{
@@ -2482,7 +2490,7 @@ HRESULT CDirectShowDecoder::Open(LPCWSTR szFilename)
 				pin_info.pFilter->Release();
 			}
 		}
-		TRACE(L"Connected to the pin!");
+		TRACE(L"Connected to the pin!\n");
 		m_DecoderState = DecoderStateOpened;
 		return S_OK;
 	}
