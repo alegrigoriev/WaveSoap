@@ -80,6 +80,7 @@ using std::min;
 using std::max;
 #endif
 #define UWM_NOTIFY_VIEWS    (WM_APP+1)  // notify siblings in the child frame for view changes. Only those changes that don't reflect document updates
+#define UWM_RESET_LAST_STATUS_MESSAGE    (WM_APP+2)
 #include "WaveSoapFront.h"
 #include <afxdlgs.h>
 //{{AFX_INSERT_LOCATION}}

@@ -33,10 +33,6 @@ public:
 	void GetMessageString(UINT nID, CString& rMessage) const;
 // Operations
 public:
-	void ResetLastStatusMessage()
-	{
-		m_nIDLastMessage = 0;
-	}
 	using CMDIFrameWnd::OnToolTipText;
 // Overrides
 	// ClassWizard generated virtual function overrides
@@ -74,6 +70,11 @@ protected:
 	afx_msg void OnUpdateIndicatorSampleSize(CCmdUI* pCmdUI);
 	afx_msg void OnUpdateIndicatorChannels(CCmdUI* pCmdUI);
 	DECLARE_MESSAGE_MAP()
+	LRESULT OnResetLastStatusMessage(WPARAM, LPARAM)
+	{
+		m_nIDLastMessage = 0;
+		return 0;
+	}
 };
 
 /////////////////////////////////////////////////////////////////////////////

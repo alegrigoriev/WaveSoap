@@ -139,8 +139,6 @@ END_MESSAGE_MAP()
 
 CWaveSoapFrontApp::CWaveSoapFrontApp()
 	: m_FileCache(NULL),
-	m_Thread(ThreadProc, this),
-	m_RunThread(false),
 
 	m_DefaultPlaybackDevice(WAVE_MAPPER),
 	m_NumPlaybackBuffers(4),
@@ -201,10 +199,11 @@ CWaveSoapFrontApp::CWaveSoapFrontApp()
 	, m_NewFileChannels(2)
 	, m_NewFileSamplesPerSecond(44100)
 	, m_NewFileSampleType(SampleType16bit)
+
+	, m_Thread(this, THREAD_PRIORITY_BELOW_NORMAL)
 {
 	// Place all significant initialization in InitInstance
 
-	m_Thread.m_bAutoDelete = FALSE;
 	m_pDocManager = new CWaveSoapDocManager;
 
 	SetAppID(_T("AlegrSoft.WaveSoap.WaveSoap.0000"));
@@ -576,9 +575,7 @@ BOOL CWaveSoapFrontApp::InitInstance()
 	ParseCommandLine(cmdInfo);
 
 	// start the processing thread
-	m_hThreadEvent = CreateEvent(NULL, FALSE, FALSE, NULL);
-	m_RunThread = true;
-	m_Thread.CreateThread(0, 0x10000);
+	m_Thread.Start();
 
 	m_pMainWnd->DragAcceptFiles();
 	// The main window has been initialized, so show and update it.
@@ -906,26 +903,8 @@ CDocument* CWaveSoapDocTemplate::OpenDocumentFile(LPCTSTR lpszPathName,
 
 int CWaveSoapFrontApp::ExitInstance()
 {
-	if (m_Thread.m_hThread)
-	{
-		m_RunThread = false;
-#ifdef _DEBUG
-		DWORD Time = timeGetTime();
-		TRACE("Signalled App thread stop\n");
-#endif
-		SetEvent(m_hThreadEvent);
-		if (WAIT_TIMEOUT == WaitForSingleObjectAcceptSends(m_Thread.m_hThread, 20000))
-		{
-			TRACE("Terminating App Thread\n");
-			TerminateThread(m_Thread.m_hThread, ~0UL);
-		}
-#ifdef _DEBUG
-		TRACE("App Thread finished in %d ms\n",
-			timeGetTime() - Time);
-#endif
-	}
-	CloseHandle(m_hThreadEvent);
-	m_hThreadEvent = NULL;
+	m_Thread.Stop();
+
 
 	LPTSTR dirbuf = m_CurrentDir.GetBuffer(MAX_PATH+1);
 	if (dirbuf)
@@ -954,180 +933,6 @@ int CWaveSoapFrontApp::ExitInstance()
 
 	m_Palette.DeleteObject();
 	return BaseClass::ExitInstance();
-}
-
-void CWaveSoapFrontApp::QueueOperation(COperationContext * pContext)
-{
-	m_OpList.InsertTail(pContext);
-	SetEvent(m_hThreadEvent);
-}
-
-unsigned CWaveSoapFrontApp::_ThreadProc()
-{
-	m_Thread.SetThreadPriority(THREAD_PRIORITY_BELOW_NORMAL);
-
-	bool NeedKickIdle = false;
-	COperationContext * pLastContext = NULL;
-	while (m_RunThread)
-	{
-		if (NeedKickIdle)
-		{
-			if (m_pMainWnd)
-			{
-				((CMainFrame *)m_pMainWnd)->ResetLastStatusMessage();
-				if (::PostMessage(m_pMainWnd->m_hWnd, WM_KICKIDLE, 0, 0))
-				{
-					NeedKickIdle = false;    // otherwise keep bugging
-				}
-			}
-		}
-		COperationContext * pContext = NULL;
-		if ( ! m_OpList.IsEmpty())
-		{
-			CSimpleCriticalSectionLock lock(m_OpList);
-			// find if stop requested for any document
-
-			for (pContext = m_OpList.First();
-				m_OpList.NotEnd(pContext); pContext = m_OpList.Next(pContext))
-			{
-				if ((pContext->m_Flags & OperationContextStopRequested)
-					|| pContext->m_pDocument->m_StopOperation)
-				{
-					break;
-				}
-			}
-
-			if (m_OpList.IsEnd(pContext))
-			{
-				// Find if there is an operation for the active document
-				for (pContext = m_OpList.First();
-					m_OpList.NotEnd(pContext); pContext = m_OpList.Next(pContext))
-				{
-					if (pContext->m_pDocument == m_pActiveDocument)
-					{
-						break;
-					}
-				}
-				// But if it is clipboard operation,
-				// the first clipboard op will be executed instead
-				if (m_OpList.NotEnd(pContext)
-					&& (pContext->m_Flags & OperationContextClipboard))
-				{
-					for (pContext = m_OpList.First();
-						m_OpList.NotEnd(pContext); pContext = m_OpList.Next(pContext))
-					{
-						if (pContext->m_Flags & OperationContextClipboard)
-						{
-							break;
-						}
-					}
-				}
-				if (m_OpList.IsEnd(pContext))
-				{
-					pContext = m_OpList.First();
-				}
-			}
-		}
-		if (pContext != pLastContext)
-		{
-			pLastContext = pContext;
-			NeedKickIdle = true;
-		}
-
-		if (pContext != NULL)
-		{
-			// execute one step
-			if (pContext->m_Flags & OperationContextSynchronous)
-			{
-				pContext->ExecuteSynch();
-				pContext->m_Flags |= OperationContextFinished;
-			}
-			else if (0 == (pContext->m_Flags & OperationContextInitialized))
-			{
-				if ( ! pContext->Init())
-				{
-					pContext->m_Flags |= OperationContextInitFailed | OperationContextStop;
-				}
-				pContext->m_Flags |= OperationContextInitialized;
-				NeedKickIdle = true;
-			}
-
-			if (pContext->m_pDocument->m_StopOperation)
-			{
-				pContext->m_Flags |= OperationContextStopRequested;
-			}
-
-			int LastPercent = pContext->PercentCompleted();
-			if ( 0 == (pContext->m_Flags & (OperationContextStop | OperationContextFinished)))
-			{
-				if ( ! pContext->OperationProc())
-				{
-					pContext->m_Flags |= OperationContextStop;
-				}
-			}
-
-			int NewPercent = pContext->PercentCompleted();
-			// signal for status update
-			if (LastPercent != NewPercent)
-			{
-				NeedKickIdle = true;
-			}
-
-			if (pContext->m_Flags & (OperationContextStop | OperationContextFinished))
-			{
-				// remove the context from the list and delete the context
-				m_OpList.RemoveEntry(pContext);
-
-				bool ClipboardCreationAborted = 0 == (pContext->m_Flags & OperationContextFinished)
-												&& 0 != (pContext->m_Flags & OperationContextWriteToClipboard);
-
-				// send a signal to the document, that the operation completed
-				SetStatusStringAndDoc(pContext->GetCompletedStatusString(),
-									pContext->m_pDocument);
-
-				pContext->DeInit();
-
-				pContext->Retire();     // puts it in the document queue
-				// send a signal to the document, that the operation completed
-				NeedKickIdle = true;    // this will reenable all commands
-
-				if (ClipboardCreationAborted)
-				{
-					// remove all operations that use the clipboard, to the next clipboard create operation
-					for (pContext = m_OpList.First();
-						m_OpList.NotEnd(pContext); )
-					{
-						COperationContext * pNext = m_OpList.Next(pContext);
-						if (pContext->m_Flags & OperationContextWriteToClipboard)
-						{
-							break;
-						}
-
-						if (pContext->m_Flags & OperationContextClipboard)
-						{
-							m_OpList.RemoveEntry(pContext);
-							pContext->Retire();
-						}
-
-						pContext = pNext;
-					}
-				}
-			}
-			else
-			{
-				if (NeedKickIdle)
-				{
-					CString s;
-					s.Format(_T("%s %d%%"),
-							(LPCTSTR)pContext->GetStatusString(), NewPercent);
-					SetStatusStringAndDoc(s, pContext->m_pDocument);
-				}
-			}
-			continue;
-		}
-		WaitForSingleObject(m_hThreadEvent, 1000);
-	}
-	return 0;
 }
 
 void _AfxAppendFilterSuffix(CString& filter, OPENFILENAME& ofn,
@@ -2236,6 +2041,7 @@ void CWaveSoapFrontApp::OnActivateDocument(CWaveSoapFrontDoc *pDocument, BOOL bA
 		{
 			m_pActiveDocument = pDocument;
 			pDocument->OnActivateDocument(TRUE);
+			m_Thread.SetForegroundDocument(pDocument);
 		}
 	}
 	else
@@ -2244,6 +2050,7 @@ void CWaveSoapFrontApp::OnActivateDocument(CWaveSoapFrontDoc *pDocument, BOOL bA
 		{
 			m_pActiveDocument = NULL;
 			pDocument->OnActivateDocument(FALSE);
+			m_Thread.SetForegroundDocument(NULL);
 		}
 	}
 }

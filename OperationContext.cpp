@@ -12,6 +12,7 @@
 #include "TimeToStr.h"
 #include "resource.h"       // main symbols
 #include "ElapsedTime.h"
+#include "ContextWorkerThread.h"
 
 #define DUMP_ON_EXECUTE 0
 
@@ -42,9 +43,9 @@ void COperationContext::PrintElapsedTime()
 	GetThreadTimes(GetCurrentThread(),
 					& tmp, & tmp, & tmp, & UserTime);
 	DWORD TickCount = GetTickCount();
-	TRACE("Elapsed thread time : %d ms, elapsed real time=%d\n",
-		(UserTime.dwLowDateTime - m_ThreadUserTime.dwLowDateTime) / 10000,
-		TickCount - m_BeginSystemTime);
+	if (0) TRACE("Elapsed thread time : %d ms, elapsed real time=%d\n",
+				(UserTime.dwLowDateTime - m_ThreadUserTime.dwLowDateTime) / 10000,
+				TickCount - m_BeginSystemTime);
 }
 
 #endif
@@ -2391,7 +2392,8 @@ BOOL CSoundPlayContext::Init()
 	m_OldThreadPriority = GetThreadPriority(GetCurrentThread());
 
 	MMRESULT mmres = m_WaveOut.Open(m_PlaybackDevice, m_Wf, 0);
-
+	//    CWaveOut::EnumFormats(0, NULL, 0);
+	TRACE(L"CSoundPlayContext::Init m_WaveOut.Open()\n");
 	if (MMSYSERR_NOERROR != mmres)
 	{
 		MessageBoxSync(IDS_STRING_UNABLE_TO_OPEN_AUDIO_DEVICE,
@@ -2417,7 +2419,12 @@ void CSoundPlayContext::DeInit()
 {
 	m_pDocument->PlaybackPositionNotify(-1, 0);// sample=-1, channel=0
 	SetThreadPriority(GetCurrentThread(), m_OldThreadPriority);
+
 	m_WaveOut.Reset();
+	TRACE(L"CSoundPlayContext::DeInit m_WaveOut.Reset()\n");
+
+	m_WaveOut.Close();
+	TRACE(L"CSoundPlayContext::DeInit m_WaveOut.Close()\n");
 
 	BaseClass::DeInit();
 }
@@ -2425,6 +2432,8 @@ void CSoundPlayContext::DeInit()
 void CSoundPlayContext::PostRetire()
 {
 	m_pDocument->m_PlayingSound = false;
+	m_pDocument->m_pSoundPlayContext = NULL;
+
 	if (m_bPauseRequested)
 	{
 		// TODO: keep selection and pause cursor inside a selection?
@@ -2474,6 +2483,7 @@ BOOL CSoundPlayContext::OperationProc()
 		if (nBuf <= 0)
 		{
 			// buffer not available yet
+			//m_Flags |= OperationContextYield;
 			Sleep(50);
 			break;
 		}
@@ -3664,11 +3674,12 @@ BOOL CDirectShowDecodeContext::OperationProc()
 	}
 
 	DWORD dwTime = GetTickCount();
-	if (dwTime - m_LastTickCountUpdate < 500)
+	if (dwTime - m_LastTickCountUpdate < 200)
 	{
 		m_Flags |= OperationContextYield;
 		return TRUE;
 	}
+	m_LastTickCountUpdate = dwTime;
 	// notify the view
 
 	SAMPLE_INDEX nFirstSample = m_LastSamplesUpdate;
@@ -4009,3 +4020,257 @@ BOOL CWmaSaveContext::OperationProc()
 
 	return TRUE;
 }
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+///////// CContextWorkerThread
+////////////////////////////////////////////////////////
+
+CContextWorkerThread::CContextWorkerThread(CThisApp * pApp, int Priority)
+	: m_pApp(pApp)
+	, m_pForegroundDocument(NULL)
+	, m_RunThread(false)
+	, m_Priority(Priority)
+	, CWinThread(ThreadProc, this)
+	, m_hThreadEvent(CreateEvent(NULL, FALSE, FALSE, NULL))
+{
+	m_bAutoDelete = FALSE;
+}
+
+CContextWorkerThread::~CContextWorkerThread()
+{
+	CloseHandle(m_hThreadEvent);
+}
+
+void CContextWorkerThread::Kick()
+{
+	// set the event
+	::SetEvent(m_hThreadEvent);
+}
+
+bool CContextWorkerThread::Start()
+{
+	m_RunThread = true;
+	return FALSE != CreateThread(0, 0x10000);
+}
+
+bool CContextWorkerThread::Stop()
+{
+	if (m_hThread)
+	{
+		m_RunThread = false;
+
+		SetEvent(m_hThreadEvent);
+		if (WAIT_TIMEOUT == WaitForSingleObjectAcceptSends(m_hThread, 20000))
+		{
+			TRACE("Terminating App Thread\n");
+			TerminateThread(m_hThread, ~0UL);
+			return false;
+		}
+	}
+	return true;
+}
+
+void CContextWorkerThread::SetForegroundDocument(CDocument* pDoc)
+{
+	m_pForegroundDocument = pDoc;
+}
+
+void CContextWorkerThread::QueueOperation(COperationContext * pContext)
+{
+	m_OpList.InsertTail(pContext);
+	SetEvent(m_hThreadEvent);
+}
+
+unsigned CContextWorkerThread::_ThreadProc()
+{
+	SetThreadPriority(m_Priority);
+
+	bool NeedKickIdle = false;
+	COperationContext * pLastContext = NULL;
+	COperationContext * pYieldingContext = NULL;
+
+	while (m_RunThread)
+	{
+		if (NeedKickIdle)
+		{
+			if (m_pApp->m_pMainWnd)
+			{
+				::SendMessage(m_pApp->m_pMainWnd->m_hWnd, UWM_RESET_LAST_STATUS_MESSAGE, 0, 0);
+				if (::PostMessage(m_pApp->m_pMainWnd->m_hWnd, WM_KICKIDLE, 0, 0))
+				{
+					NeedKickIdle = false;    // otherwise keep bugging
+				}
+			}
+		}
+		COperationContext * pContext = NULL;
+		if (!m_OpList.IsEmpty())
+		{
+			CSimpleCriticalSectionLock lock(m_OpList);
+			// find if stop requested for any document
+
+			for (pContext = m_OpList.First();
+				m_OpList.NotEnd(pContext); pContext = m_OpList.Next(pContext))
+			{
+				if ((pContext->m_Flags & OperationContextStopRequested)
+					|| pContext->m_pDocument->m_StopOperation)
+				{
+					break;
+				}
+			}
+
+			if (m_OpList.IsEnd(pContext))
+			{
+				// Find if there is an operation for the active document, unless it's yielding
+				for (pContext = m_OpList.First(); m_OpList.NotEnd(pContext); pContext = m_OpList.Next(pContext))
+				{
+					if (pContext != pYieldingContext
+						&& pContext->m_pDocument == m_pForegroundDocument)
+					{
+						break;
+					}
+				}
+				// But if it is clipboard operation,
+				// the first clipboard op will be executed instead
+				if (m_OpList.NotEnd(pContext)
+					&& (pContext->m_Flags & OperationContextClipboard))
+				{
+					for (pContext = m_OpList.First(); m_OpList.NotEnd(pContext); pContext = m_OpList.Next(pContext))
+					{
+						if (pContext->m_Flags & OperationContextClipboard)
+						{
+							break;
+						}
+					}
+				}
+				if (m_OpList.IsEnd(pContext))
+				{
+					pContext = m_OpList.First();
+				}
+				if (pContext == pYieldingContext)
+				{
+					pContext = NULL;
+				}
+			}
+		}
+
+		if (pContext != pLastContext)
+		{
+			pLastContext = pContext;
+			NeedKickIdle = true;
+		}
+
+		if (pContext == pYieldingContext)
+		{
+			pContext = NULL;
+		}
+		pYieldingContext = NULL;
+
+		if (pContext != NULL)
+		{
+			// execute one step
+			if (pContext->m_Flags & OperationContextSynchronous)
+			{
+				pContext->ExecuteSynch();
+				pContext->m_Flags |= OperationContextFinished;
+			}
+			else if (0 == (pContext->m_Flags & OperationContextInitialized))
+			{
+				if (!pContext->Init())
+				{
+					pContext->m_Flags |= OperationContextInitFailed | OperationContextStop;
+				}
+				//SetCurrentStatusString(pContext->GetStatusString());
+				pContext->m_Flags |= OperationContextInitialized;
+				NeedKickIdle = true;
+			}
+
+			if (pContext->m_pDocument->m_StopOperation)
+			{
+				pContext->m_Flags |= OperationContextStopRequested;
+			}
+
+			int LastPercent = pContext->PercentCompleted();
+			if (0 == (pContext->m_Flags & (OperationContextStop | OperationContextFinished)))
+			{
+				if (!pContext->OperationProc())
+				{
+					pContext->m_Flags |= OperationContextStop;
+				}
+			}
+
+			int NewPercent = pContext->PercentCompleted();
+			// signal for status update
+			if (LastPercent != NewPercent)
+			{
+				NeedKickIdle = true;
+			}
+
+			if (pContext->m_Flags & (OperationContextStop | OperationContextFinished))
+			{
+				// remove the context from the list and delete the context
+				m_OpList.RemoveEntry(pContext);
+
+				bool ClipboardCreationAborted = (pContext->m_Flags & OperationContextWriteToClipboard)
+												&& 0 == (pContext->m_Flags & OperationContextFinished);
+
+				// send a signal to the document, that the operation completed
+				m_pApp->SetStatusStringAndDoc(pContext->GetCompletedStatusString(),
+											pContext->m_pDocument);
+
+				pContext->DeInit();
+
+				pContext->Retire();     // puts it in the document queue
+				// send a signal to the document, that the operation completed
+				NeedKickIdle = true;    // this will reenable all commands
+
+				if (ClipboardCreationAborted)
+				{
+					// remove all operations that use the clipboard, to the next clipboard create operation
+					for (pContext = m_OpList.First();
+						m_OpList.NotEnd(pContext); )
+					{
+						COperationContext * pNext = m_OpList.Next(pContext);
+						if (pContext->m_Flags & OperationContextWriteToClipboard)
+						{
+							break;
+						}
+
+						if (pContext->m_Flags & OperationContextClipboard)
+						{
+							m_OpList.RemoveEntry(pContext);
+							pContext->Retire();
+						}
+
+						pContext = pNext;
+					}
+				}
+				continue;
+			}
+
+			if (NeedKickIdle)
+			{
+				if (NewPercent >= 0)
+				{
+					CString s;
+					s.Format(_T("%s %d%%"),
+							(LPCTSTR)pContext->GetStatusString(), NewPercent);
+					m_pApp->SetStatusStringAndDoc(s, pContext->m_pDocument);
+				}
+				else
+				{
+					m_pApp->SetStatusStringAndDoc(pContext->GetStatusString(), pContext->m_pDocument);
+				}
+				CString s;
+			}
+			if (pContext->m_Flags & OperationContextYield)
+			{
+				pContext->m_Flags &= ~OperationContextYield;
+				pYieldingContext = pContext;
+			}
+			continue;
+		}
+		WaitForSingleObjectAcceptSends(m_hThreadEvent, INFINITE);
+	}
+	return 0;
+}
+

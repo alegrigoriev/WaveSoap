@@ -199,8 +199,6 @@ CWaveSoapFrontDoc::CWaveSoapFrontDoc()
 	m_TimeSelectionMode(TRUE),
 	m_SelectionStart(0),
 	m_SelectionEnd(0),
-	m_hThreadEvent(NULL),
-	m_bRunThread(false),
 	m_bReadOnly(true),
 	m_bClosing(false),
 	m_bClosePending(false),
@@ -210,9 +208,10 @@ CWaveSoapFrontDoc::CWaveSoapFrontDoc()
 	m_bChannelsLocked(true),
 	m_OperationInProgress(0),
 	m_PlayingSound(false),
+	m_pSoundPlayContext(NULL),
 	m_OperationNonCritical(false),
 	m_StopOperation(false),
-	m_Thread(ThreadProc, this),
+	m_Thread(GetApp(), THREAD_PRIORITY_BELOW_NORMAL),
 	m_ModificationSequenceNumber(0),
 	m_PrevChannelToCopy(ALL_CHANNELS),
 	m_DefaultPasteMode(0),
@@ -234,40 +233,16 @@ CWaveSoapFrontDoc::CWaveSoapFrontDoc()
 	m_FadeInEnvelope = pApp->m_FadeInEnvelope;
 	m_FadeOutEnvelope = -m_FadeInEnvelope;
 
-	m_Thread.m_bAutoDelete = FALSE;
-	m_hThreadEvent = CreateEvent(NULL, FALSE, FALSE, NULL);
 	TRACE("CWaveSoapFrontDoc::CWaveSoapFrontDoc()\n");
-	m_bRunThread = TRUE;
-	m_Thread.CreateThread(0, 0x10000);
 
+	m_Thread.Start();
 }
 
 CWaveSoapFrontDoc::~CWaveSoapFrontDoc()
 {
 	TRACE("CWaveSoapFrontDoc::~CWaveSoapFrontDoc()\n");
 	ASSERT(0 == m_OperationInProgress);
-	// stop the thread
-	if (NULL != m_Thread.m_hThread)
-	{
-		m_bRunThread = FALSE;
-#ifdef _DEBUG
-		DWORD Time = timeGetTime();
-#endif
-		SetEvent(m_hThreadEvent);
-		if (WAIT_TIMEOUT == WaitForSingleObjectAcceptSends(m_Thread.m_hThread, 20000))
-		{
-			TerminateThread(m_Thread.m_hThread, ~0UL);
-		}
-#ifdef _DEBUG
-		TRACE("Doc Thread finished in %d ms\n",
-			timeGetTime() - Time);
-#endif
-	}
-	if (m_hThreadEvent != NULL)
-	{
-		CloseHandle(m_hThreadEvent);
-		m_hThreadEvent = NULL;
-	}
+	m_Thread.Stop();
 
 	// free RetiredList and UpdateList
 	while ( ! m_RetiredList.IsEmpty())
@@ -958,150 +933,6 @@ void CWaveSoapFrontDoc::OnUpdateEditUndo(CCmdUI* pCmdUI)
 	pCmdUI->Enable( ! m_UndoList.IsEmpty() && CanWriteFile());
 }
 
-UINT CWaveSoapFrontDoc::_ThreadProc(void)
-{
-#ifdef _DEBUG
-	FILETIME UserTime, EndTime, tmp;
-	GetThreadTimes(GetCurrentThread(), & tmp, & tmp, & tmp, & UserTime);
-#endif
-	::SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_BELOW_NORMAL);
-	bool NeedKickIdle = false;
-	while (m_bRunThread)
-	{
-		if (NeedKickIdle)
-		{
-			CWinApp * pApp = GetApp();
-			if (pApp->m_pMainWnd)
-			{
-				((CMainFrame *)pApp->m_pMainWnd)->ResetLastStatusMessage();
-				if(::PostMessage(pApp->m_pMainWnd->m_hWnd, WM_KICKIDLE, 0, 0))
-				{
-					NeedKickIdle = false;    // otherwise keep bugging
-				}
-			}
-		}
-
-		m_OpList.Lock();
-		if ( ! m_OpList.IsEmpty())
-		{
-			COperationContext * pContext = m_OpList.First();
-			m_OpList.Unlock();
-
-			// TODO: set the status message before calling Init
-			if (pContext->m_Flags & OperationContextSynchronous)
-			{
-				pContext->ExecuteSynch();
-				pContext->m_Flags |= OperationContextFinished;
-			}
-			else if (0 == (pContext->m_Flags & OperationContextInitialized))
-			{
-				if ( ! pContext->Init())
-				{
-					pContext->m_Flags |= OperationContextInitFailed | OperationContextStop;
-				}
-				SetCurrentStatusString(pContext->GetStatusString());
-				pContext->m_Flags |= OperationContextInitialized;
-				NeedKickIdle = true;
-			}
-
-			if (m_StopOperation)
-			{
-				pContext->m_Flags |= OperationContextStopRequested;
-			}
-
-			int LastPercent = pContext->PercentCompleted();
-			// execute one step
-			if (0 == (pContext->m_Flags &
-					(OperationContextStop | OperationContextFinished)))
-			{
-				if (! pContext->OperationProc())
-				{
-					pContext->m_Flags |= OperationContextStop;
-				}
-
-				int NewPercent = pContext->PercentCompleted();
-				// signal for status update
-				if (LastPercent != NewPercent)
-				{
-					NeedKickIdle = true;
-				}
-
-				if (NeedKickIdle)
-				{
-					if (NewPercent >= 0)
-					{
-						CString s;
-						s.Format(_T("%s %d%%"),
-								(LPCTSTR)pContext->GetStatusString(),
-								NewPercent);
-						SetCurrentStatusString(s);
-					}
-					else
-					{
-						SetCurrentStatusString(pContext->GetStatusString());
-					}
-				}
-			}
-
-			if (pContext->m_Flags & OperationContextYield)
-			{
-				pContext->m_Flags &= ~OperationContextYield;
-				// fall through to WaitForSingleEvent
-			}
-			else
-			{
-				if (pContext->m_Flags &
-					(OperationContextStop | OperationContextFinished))
-				{
-					SetCurrentStatusString(pContext->GetCompletedStatusString());
-
-					NeedKickIdle = true;
-
-					m_OpList.RemoveEntry(pContext);
-
-					pContext->DeInit();
-					TRACE("Retire context %X\n", pContext);
-					pContext->Retire();     // puts it in the document queue
-				}
-				continue;
-			}
-		}
-		else
-		{
-			m_OpList.Unlock();
-		}
-#if 1
-		WaitForSingleObjectAcceptSends(m_hThreadEvent, INFINITE);
-#else
-		DWORD WaitResult = MsgWaitForMultipleObjectsEx(1, &m_hThreadEvent, INFINITE,
-														QS_ALLEVENTS, MWMO_INPUTAVAILABLE);
-
-		if (WAIT_OBJECT_0 == WaitResult)
-		{
-			continue;
-		}
-		else if (//WAIT_TIMEOUT == WaitResult ||
-				WAIT_OBJECT_0 + 1 != WaitResult)    // error or timeout occured
-		{
-			break;
-		}
-		// execute messages
-		MSG msg;
-		if (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE | PM_QS_POSTMESSAGE | PM_QS_SENDMESSAGE))
-		{
-			// this is not GUI thread, no need to TranslateMessage and handle WM_QUIT
-			DispatchMessage(&msg);
-		}
-#endif
-	}
-#ifdef _DEBUG
-	GetThreadTimes(GetCurrentThread(), & tmp, & tmp, & tmp, & EndTime);
-	TRACE("Document thread used time=%d ms\n",
-		(EndTime.dwLowDateTime - UserTime.dwLowDateTime) / 10000);
-#endif
-	return 0;
-}
-
 void CWaveSoapFrontDoc::OnEditUndo()
 {
 	if (IsBusy()
@@ -1202,14 +1033,13 @@ void CWaveSoapFrontDoc::QueueOperation(COperationContext * pContext)
 	// the operation is performed by the document thread
 	else
 	{
-		m_OpList.InsertTail(pContext);
-		KickDocumentThread();
+		m_Thread.QueueOperation(pContext);
 	}
 }
 
 void CWaveSoapFrontDoc::KickDocumentThread()
 {
-	SetEvent(m_hThreadEvent);
+	m_Thread.Kick();
 }
 
 void CWaveSoapFrontDoc::SignalStopOperation()
@@ -3081,6 +2911,7 @@ void CWaveSoapFrontDoc::OnSoundPlay()
 
 		m_PlayingSound = true;
 		pContext->Execute();
+		m_pSoundPlayContext = pContext;
 	}
 }
 
@@ -3125,14 +2956,12 @@ void CWaveSoapFrontDoc::OnUpdateIndicatorCurrentPos(CCmdUI* pCmdUI)
 		return;
 	}
 
-	CSoundPlayContext * pCx = NULL;
+	CSoundPlayContext * pCx = m_pSoundPlayContext;
 
-	m_OpList.Lock();
-	if (m_PlayingSound && ! m_OpList.IsEmpty())
+	if (! m_PlayingSound)
 	{
-		pCx = dynamic_cast<CSoundPlayContext *>(m_OpList.First());
+		pCx = NULL;
 	}
-	m_OpList.Unlock();
 
 	CString s;
 	int TimeFormat = GetApp()->m_SoundTimeFormat;
@@ -3159,8 +2988,9 @@ void CWaveSoapFrontDoc::OnUpdateIndicatorSampleRate(CCmdUI* pCmdUI)
 void CWaveSoapFrontDoc::OnUpdateIndicatorSampleSize(CCmdUI* pCmdUI)
 {
 	WaveSampleType type = m_OriginalWaveFormat.GetSampleType();
-	if (type == SampleTypeCompressed
-		|| type == SampleTypeNotSupported)
+	if (m_WavFile.IsOpen() &&
+		(type == SampleTypeCompressed
+			|| type == SampleTypeNotSupported))
 	{
 		type = m_WavFile.GetSampleType();
 	}
@@ -3168,6 +2998,7 @@ void CWaveSoapFrontDoc::OnUpdateIndicatorSampleSize(CCmdUI* pCmdUI)
 	switch (type)
 	{
 	default:
+		return;
 	case SampleType16bit:
 		string_id = IDS_STATUS_STRING16BIT;
 		break;
@@ -3229,18 +3060,13 @@ void CWaveSoapFrontDoc::OnSoundPause()
 {
 	if (m_PlayingSound)
 	{
-		CSoundPlayContext * pCx = NULL;
-		m_OpList.Lock();
+		CSoundPlayContext * pCx = m_pSoundPlayContext;
 
-		if ( ! m_OpList.IsEmpty())
+		if (pCx)
 		{
-			pCx = dynamic_cast<CSoundPlayContext *>(m_OpList.First());
-			if (pCx)
-			{
-				pCx->Pause();
-			}
+			pCx->Pause();
 		}
-		m_OpList.Unlock();
+
 		m_StopOperation = true;
 	}
 }
@@ -4807,6 +4633,8 @@ BOOL CWaveSoapFrontDoc::OpenDShowFileDocument(LPCTSTR lpszPathName)
 		AfxMessageBox(s, MB_ICONEXCLAMATION | MB_OK);
 		return FALSE;
 	}
+
+	m_OriginalWaveFormat.InitFormat(0, 44100, 2);		// reset so it won't show
 
 	CDirectShowDecodeContext * pDShowContext = new CDirectShowDecodeContext(this,
 													IDS_LOADING_COMPRESSED_FILE_STATUS_PROMPT, m_OriginalWavFile);

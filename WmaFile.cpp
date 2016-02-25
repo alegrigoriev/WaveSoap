@@ -720,7 +720,7 @@ HRESULT CWmaDecoderSync::Open(CDirectFile & file)
 
 		pHeaderInfo->GetAttributeCount(stream, & AttributeCount);
 		TRACE("HeaderInfo::stream=%d, %d attributes\n", stream, AttributeCount);
-		for (WORD ii = 0; i < AttributeCount; ii++)
+		for (WORD ii = 0; ii < AttributeCount; ii++)
 		{
 			WCHAR name[1024];
 			name[0] = 0;
