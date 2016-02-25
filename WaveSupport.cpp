@@ -553,9 +553,31 @@ WAVEFORMATEX * CopyWaveformat(const WAVEFORMATEX * src)
 	return dst;
 }
 
+CWaveFormat::CWaveFormat()
+	: m_pWf(&wfx.Format),
+	m_AllocatedSize(sizeof (WAVEFORMATEXTENSIBLE))
+{
+	memset(&wfx, 0, sizeof wfx);
+}
+
+CWaveFormat::CWaveFormat(CWaveFormat const & src)
+	: m_pWf(&wfx.Format),
+	m_AllocatedSize(sizeof(WAVEFORMATEXTENSIBLE))
+{
+	*this = src;
+}
+CWaveFormat::CWaveFormat(WAVEFORMATEX const * pWf)
+	: m_pWf(&wfx.Format),
+	m_AllocatedSize(sizeof(WAVEFORMATEXTENSIBLE))
+{
+	*this = pWf;
+}
 CWaveFormat::~CWaveFormat()
 {
-	delete[] (char*) m_pWf;
+	if (m_pWf != &wfx.Format)
+	{
+		delete[](char*) m_pWf;
+	}
 }
 
 WAVEFORMATEX * CWaveFormat::Allocate(unsigned Size, bool bCopy)
@@ -578,18 +600,21 @@ WAVEFORMATEX * CWaveFormat::Allocate(unsigned Size, bool bCopy)
 	{
 		return NULL;
 	}
-	if (m_pWf)
+	ASSERT(m_pWf != NULL);
+
+	if (bCopy)
 	{
-		if (bCopy)
-		{
-			memcpy(NewBuf, m_pWf, m_AllocatedSize);
-		}
-		else
-		{
-			memset(NewBuf, 0, Size);
-		}
-		delete[] (char*) m_pWf;
+		memcpy(NewBuf, m_pWf, m_AllocatedSize);
 	}
+	else
+	{
+		memset(NewBuf, 0, Size);
+	}
+	if (m_pWf != &wfx.Format)
+	{
+		delete[](char*) m_pWf;
+	}
+
 	m_pWf = (WAVEFORMATEX *)NewBuf;
 	m_AllocatedSize = Size;
 	return m_pWf;
@@ -682,7 +707,8 @@ CWaveFormat & CWaveFormat::operator =(WAVEFORMATEX const * pWf)
 {
 	if (NULL == pWf)
 	{
-		delete [] (char*)Detach();
+		memset(m_pWf, 0, m_AllocatedSize);
+		m_pWf->wFormatTag = WAVE_FORMAT_UNKNOWN;
 	}
 	else if (pWf != m_pWf)
 	{
@@ -755,6 +781,10 @@ int CWaveFormat::MatchFormat(WAVEFORMATEX const * pwf)
 
 WaveSampleType CWaveFormat::GetSampleType() const
 {
+	if (WAVE_FORMAT_UNKNOWN == m_pWf->wFormatTag)
+	{
+		return SampleTypeUnknown;
+	}
 	if (WAVE_FORMAT_PCM == m_pWf->wFormatTag)
 	{
 		if (m_pWf->wBitsPerSample > 16)
@@ -1142,7 +1172,8 @@ BOOL _stdcall CAudioCompressionManager::FormatTagEnumCallback(
 	fcs.TagIndex = 0;
 
 	CWaveFormat pwfx;
-	pwfx.Allocate(0xFFF0);
+	int const AllocateFormatSize = 0xFF00;
+	pwfx.Allocate(AllocateFormatSize);
 	ACMFORMATDETAILS afd;
 
 	TRACE(_T("FormatTagEnum: name=%s, driverID=%x, tag=%d, formats=%d, max size=%d\n"), paftd->szFormatTag,
@@ -1153,7 +1184,7 @@ BOOL _stdcall CAudioCompressionManager::FormatTagEnumCallback(
 
 	memzero(afd);
 	afd.cbStruct = sizeof afd;
-	afd.cbwfx = pwfx.m_AllocatedSize;
+	afd.cbwfx = AllocateFormatSize;
 	afd.dwFormatTag = paftd->dwFormatTag;
 	afd.pwfx = pwfx;
 
@@ -1199,7 +1230,7 @@ BOOL _stdcall CAudioCompressionManager::FormatTagEnumCallback(
 				pwfx.InitFormat(WAVE_FORMAT_PCM,
 								pfts->pWf->nSamplesPerSec, pfts->pWf->nChannels);
 				res = acmFormatSuggest(had, const_cast<LPWAVEFORMATEX>(pfts->pWf),
-										pwfx, pwfx.m_AllocatedSize, ACM_FORMATSUGGESTF_WFORMATTAG);
+										pwfx, AllocateFormatSize, ACM_FORMATSUGGESTF_WFORMATTAG);
 				if (MMSYSERR_NOERROR == res)
 				{
 					TRACE("No format enumerated, but acmSuggestFormat returned one\n");
@@ -1303,7 +1334,8 @@ bool CAudioCompressionManager::FillMultiFormatArray(unsigned nSelFrom, unsigned 
 	m_Formats.clear();
 
 	CWaveFormat pwfx;
-	pwfx.Allocate(0xFFF0);
+	int const AllocateFormatSize = 0xFF00;
+	pwfx.Allocate(AllocateFormatSize);
 	for (unsigned sel = nSelFrom; sel <= nSelTo && sel < m_FormatTags.size(); sel++)
 	{
 
@@ -1323,7 +1355,7 @@ bool CAudioCompressionManager::FillMultiFormatArray(unsigned nSelFrom, unsigned 
 
 		memzero(afd);
 		afd.cbStruct = sizeof afd;
-		afd.cbwfx = pwfx.m_AllocatedSize;
+		afd.cbwfx = AllocateFormatSize;
 		afd.dwFormatTag = wFormatTag;
 		afd.pwfx = pwfx;
 
@@ -1404,7 +1436,7 @@ bool CAudioCompressionManager::FillMultiFormatArray(unsigned nSelFrom, unsigned 
 				{
 					memzero(afd);
 					afd.cbStruct = sizeof afd;
-					afd.cbwfx = pwfx.m_AllocatedSize;
+					afd.cbwfx = AllocateFormatSize;
 					afd.dwFormatTag = wFormatTag;
 					afd.pwfx = pwfx;
 					fcs.FormatFound = FALSE;
@@ -1417,7 +1449,7 @@ bool CAudioCompressionManager::FillMultiFormatArray(unsigned nSelFrom, unsigned 
 						// try acmFormatSuggest
 						res = 0;
 						if (WAVE_FORMAT_PCM == wFormatTag
-							|| MMSYSERR_NOERROR == acmFormatSuggest(had, m_Wf, pwfx, pwfx.m_AllocatedSize,
+							|| MMSYSERR_NOERROR == acmFormatSuggest(had, m_Wf, pwfx, AllocateFormatSize,
 								ACM_FORMATSUGGESTF_WFORMATTAG))
 						{
 							ACMFORMATDETAILS afd2;
@@ -1426,7 +1458,7 @@ bool CAudioCompressionManager::FillMultiFormatArray(unsigned nSelFrom, unsigned 
 							afd2.dwFormatTag = pwfx.FormatTag();
 							afd2.fdwSupport = 0;
 							afd2.pwfx = pwfx;
-							afd2.cbwfx = sizeof (WAVEFORMATEX) + pwfx.m_pWf->cbSize;
+							afd2.cbwfx = pwfx.FormatSize();
 
 							res = acmFormatDetails(had, & afd2, ACM_FORMATDETAILSF_FORMAT);
 							if (MMSYSERR_NOERROR == res)
@@ -1510,8 +1542,8 @@ void CAudioCompressionManager::FillLameEncoderFormats()
 		m_Formats[i].Wf.InitFormat(WAVE_FORMAT_EXTENSIBLE, 44100,
 									2, 16,
 									sizeof (WAVEFORMATEXTENSIBLE));
-		m_Formats[i].Wf.m_pWf->nAvgBytesPerSec = Mp3Bitrates[i] * 125;
-		((WAVEFORMATEXTENSIBLE*)(m_Formats[i].Wf.m_pWf))->SubFormat =
+		m_Formats[i].Wf.BytesPerSec() = Mp3Bitrates[i] * 125;
+		((WAVEFORMATEXTENSIBLE*)(WAVEFORMATEX*)(m_Formats[i].Wf))->SubFormat =
 			BladeMp3Encoder::GetTag().SubFormat;
 		m_Formats[i].TagIndex = 0;
 	}

@@ -1073,7 +1073,7 @@ void CFileSaveUiSupport::FillLameEncoderFormats()
 	for (unsigned i = 0; i < m_Acm.m_Formats.size(); i++)
 	{
 		m_AttributesCombo.AddString(m_Acm.m_Formats[i].Name);
-		if (int(m_Acm.m_Formats[i].Wf.m_pWf->nAvgBytesPerSec / 125) == m_SelectedMp3Bitrate)
+		if (int(m_Acm.m_Formats[i].Wf.BytesPerSec() / 125) == m_SelectedMp3Bitrate)
 		{
 			sel = i;
 		}
