@@ -3568,8 +3568,9 @@ HRESULT STDMETHODCALLTYPE CDirectShowDecodeContext::Receive(
 															/* [in] */ IMediaSample *pSample)
 {
 	// write the data immediately
-
-	if (m_DshowDecoder.GetFilterState() != State_Running)
+	FILTER_STATE filter_state = m_DshowDecoder.GetFilterState();
+	if (filter_state != State_Paused
+		&& filter_state != State_Running)
 	{
 		return VFW_E_WRONG_STATE;
 	}
