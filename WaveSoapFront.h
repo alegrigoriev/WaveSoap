@@ -12,13 +12,15 @@
 #ifndef __AFXWIN_H__
 	#error include 'stdafx.h' before including this file for PCH
 #endif
+typedef class CWaveSoapFrontApp CWaveSoapApp;
+typedef class CWaveSoapFrontApp CThisApp;
 
 #include <afxwinappex.h>
 #include "ApplicationProfile.h"
 #include "WaveFile.h"
-#include "KListEntry.h"
 #include "LocaleUtilities.h"
 #include "WaveSupport.h"
+#include "ContextWorkerThread.h"
 /////////////////////////////////////////////////////////////////////////////
 // CWaveSoapFrontApp:
 // See WaveSoapFront.cpp for the implementation of this class
@@ -122,7 +124,10 @@ class CWaveSoapFrontApp : public CWinAppEx,
 	typedef CWinAppEx BaseClass;
 public:
 	CWaveSoapFrontApp();
-	void QueueOperation(COperationContext * pContext);
+	void QueueOperation(COperationContext * pContext)
+	{
+		m_Thread.QueueOperation(pContext);
+	}
 	void LoadStdProfileSettings(UINT nMaxMRU);
 	void OnActivateDocument(class CWaveSoapFrontDoc * pDocument, BOOL bActivate);
 
@@ -180,8 +185,6 @@ public:
 
 	CDirectFileCacheProxy * m_FileCache;
 	CWaveSoapFrontDoc * m_pActiveDocument;
-
-	LockedListHead<COperationContext> m_OpList;
 
 	CString m_CurrentStatusString;
 	CWaveSoapFrontDoc * m_pLastStatusDocument;
@@ -265,14 +268,7 @@ public:
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 
-	CWinThread m_Thread;
-	unsigned _ThreadProc();
-	bool volatile m_RunThread;
-	HANDLE m_hThreadEvent;
-	static UINT AFX_CDECL ThreadProc(PVOID arg)
-	{
-		return ((CWaveSoapFrontApp *) arg)->_ThreadProc();
-	}
+	CContextWorkerThread m_Thread;
 
 	HINSTANCE m_hWMVCORE_DLL_Handle;
 public:
@@ -290,8 +286,6 @@ protected:
 	CFrameWnd * m_pFrameAbove;
 };
 
-typedef CWaveSoapFrontApp CWaveSoapApp;
-typedef CWaveSoapFrontApp CThisApp;
 inline CThisApp * GetApp()
 {
 	return static_cast<CThisApp *>(AfxGetApp());

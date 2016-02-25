@@ -355,6 +355,7 @@ public:
 	bool m_OperationNonCritical;
 	bool m_PlayingSound;
 	bool m_bInOnIdle;
+	class CSoundPlayContext *m_pSoundPlayContext;
 
 	bool m_bChannelsLocked;
 	CHANNEL_MASK m_PrevChannelToCopy;
@@ -377,27 +378,13 @@ public:
 	bool m_bClosePending;   // Save is in progress, request close afterwards
 	bool m_bCloseThisDocumentNow;   // CDocTemplate should close it in OnIdle
 
-	LockedListHead<COperationContext> m_OpList;
 	ListHead<COperationContext> m_UndoList;
 	ListHead<COperationContext> m_RedoList;
 	LockedListHead<COperationContext> m_RetiredList;
 	LockedListHead<CSoundUpdateInfo> m_UpdateList;
 
 protected:
-	HANDLE m_hThreadEvent;
-	bool volatile m_bRunThread;
-	CWinThread m_Thread;
-	UINT _ThreadProc();
-	static UINT AFX_CDECL ThreadProc(LPVOID arg)
-	{
-		CWaveSoapFrontDoc * pDoc = DYNAMIC_DOWNCAST(CWaveSoapFrontDoc, (CObject *)arg);
-		if (NULL == pDoc)
-		{
-			return ~0U;
-		}
-		return pDoc->_ThreadProc();
-	}
-
+	CContextWorkerThread m_Thread;
 
 // Generated message map functions
 public:
