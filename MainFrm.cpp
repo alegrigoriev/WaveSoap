@@ -34,7 +34,7 @@ BEGIN_MESSAGE_MAP(CMainFrame, BaseClass)
 	ON_COMMAND(ID_DEFAULT_HELP, BaseClass::OnHelpFinder)
 	ON_UPDATE_COMMAND_UI(ID_INDICATOR_FILE_SIZE, OnUpdateIndicatorFileSize)
 	ON_UPDATE_COMMAND_UI(ID_INDICATOR_SAMPLE_RATE, OnUpdateIndicatorSampleRate)
-	//ON_UPDATE_COMMAND_UI(ID_INDICATOR_SAMPLE_SIZE, OnUpdateIndicatorSampleSize)
+	ON_UPDATE_COMMAND_UI(ID_INDICATOR_SAMPLE_SIZE, OnUpdateIndicatorSampleSize)
 	ON_UPDATE_COMMAND_UI(ID_INDICATOR_CHANNELS, OnUpdateIndicatorChannels)
 
 END_MESSAGE_MAP()
@@ -42,8 +42,8 @@ END_MESSAGE_MAP()
 static UINT indicators[] =
 {
 	ID_SEPARATOR,           // status line indicator
+	ID_INDICATOR_SAMPLE_SIZE,
 	ID_INDICATOR_SAMPLE_RATE,
-//    ID_INDICATOR_SAMPLE_SIZE,
 	ID_INDICATOR_CHANNELS,
 	ID_INDICATOR_FILE_SIZE,
 };
@@ -295,21 +295,25 @@ void CMainFrame::OnUpdateFrameTitle(BOOL bAddToTitle)
 
 void CMainFrame::OnUpdateIndicatorFileSize(CCmdUI* pCmdUI)
 {
+	// size the pane to the max expected size and set empty string
 	SetStatusString(pCmdUI, CString(), _T("00:00:00.000"), TRUE);
 }
 
 void CMainFrame::OnUpdateIndicatorSampleRate(CCmdUI* pCmdUI)
 {
+	// size the pane to the max expected size and set empty string
 	SetStatusString(pCmdUI, CString(), _T("44,100"), TRUE);
 }
 
 void CMainFrame::OnUpdateIndicatorSampleSize(CCmdUI* pCmdUI)
 {
+	// size the pane to the max expected size and set empty string
 	SetStatusString(pCmdUI, CString(), LoadCString(IDS_STATUS_STRING16BIT), TRUE);
 }
 
 void CMainFrame::OnUpdateIndicatorChannels(CCmdUI* pCmdUI)
 {
+	// size the pane to the max expected size and set empty string
 	SetStatusString(pCmdUI, CString(), LoadCString(IDS_STATUS_STRING_STEREO), TRUE);
 }
 
