@@ -3454,16 +3454,35 @@ BOOL CWmaDecodeContext::Init()
 
 	m_CurrentSamples = m_Decoder.GetTotalSamples();
 
-	// create a wave file in the document
-	if ( ! m_pDocument->m_WavFile.CreateWaveFile(NULL, m_Decoder.GetDstFormat(),
-												ALL_CHANNELS, m_CurrentSamples,  // initial sample count
-												CreateWaveFileTempDir
-												| CreateWaveFileDeleteAfterClose
-												| CreateWaveFilePcmFormat
-												| CreateWaveFileTemp, NULL))
+	// create the file in the main thread context
+	class CreateWaveFile : public MainThreadCall
 	{
-		MessageBoxSync(IDS_UNABLE_TO_CREATE_TEMPORARY_FILE, MB_OK | MB_ICONEXCLAMATION);
+	public:
+		CreateWaveFile(CWmaDecodeContext * pContext)
+			: m_pContext(pContext)
+		{
+		}
+	protected:
+		virtual LRESULT Exec()
+		{
+			BOOL result = m_pContext->m_pDocument->m_WavFile.CreateWaveFile(NULL, m_pContext->m_Decoder.GetDstFormat(),
+							ALL_CHANNELS, m_pContext->m_CurrentSamples,  // initial sample count
+							CreateWaveFileTempDir
+							| CreateWaveFileDeleteAfterClose
+							| CreateWaveFilePcmFormat
+							| CreateWaveFileTemp, NULL);
 
+			if (FALSE == result)
+			{
+				AfxMessageBox(IDS_UNABLE_TO_CREATE_TEMPORARY_FILE, MB_OK | MB_ICONEXCLAMATION);
+			}
+			return result;
+		}
+		CWmaDecodeContext * const m_pContext;
+	} call(this);
+
+	if (FALSE == call.Call())
+	{
 		m_pDocument->m_bCloseThisDocumentNow = true;
 		return FALSE;
 	}
@@ -3718,15 +3737,34 @@ BOOL CDirectShowDecodeContext::Init()
 
 	m_CurrentLengthSamples = m_DshowDecoder.GetTotalSamples();
 
-	// create a wave file in the document
-	if (!m_pDocument->m_WavFile.CreateWaveFile(NULL, m_DshowDecoder.GetDstFormat(),
-												ALL_CHANNELS, m_CurrentLengthSamples,  // initial sample count
-												CreateWaveFileTempDir
-												| CreateWaveFileDeleteAfterClose
-												| CreateWaveFileTemp, NULL))
+	// create the file in the main thread context
+	class CreateWaveFile : public MainThreadCall
 	{
-		MessageBoxSync(IDS_UNABLE_TO_CREATE_TEMPORARY_FILE, MB_OK | MB_ICONEXCLAMATION);
+	public:
+		CreateWaveFile(CDirectShowDecodeContext * pContext)
+			: m_pContext(pContext)
+		{
+		}
+	protected:
+		virtual LRESULT Exec()
+		{
+			BOOL result = m_pContext->m_pDocument->m_WavFile.CreateWaveFile(NULL, m_pContext->m_DshowDecoder.GetDstFormat(),
+							ALL_CHANNELS, m_pContext->m_CurrentLengthSamples,  // initial sample count
+							CreateWaveFileTempDir
+							| CreateWaveFileDeleteAfterClose
+							| CreateWaveFileTemp, NULL);
 
+			if (FALSE == result)
+			{
+				AfxMessageBox(IDS_UNABLE_TO_CREATE_TEMPORARY_FILE, MB_OK | MB_ICONEXCLAMATION);
+			}
+			return result;
+		}
+		CDirectShowDecodeContext * const m_pContext;
+	} call(this);
+
+	if (FALSE == call.Call())
+	{
 		m_pDocument->m_bCloseThisDocumentNow = true;
 		return FALSE;
 	}
