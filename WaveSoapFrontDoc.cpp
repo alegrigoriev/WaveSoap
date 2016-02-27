@@ -5369,12 +5369,20 @@ void CWaveSoapFrontDoc::OnProcessFilter()
 		return;
 	}
 
-	CFilterContext::auto_ptr pContext(new CFilterContext(this, IDS_FILTER_STATUS_PROMPT, IDS_FILTER_OPERATION_NAME));
+	CWaveProcContext::auto_ptr pContext(new CWaveProcContext(this, IDS_FILTER_STATUS_PROMPT, IDS_FILTER_OPERATION_NAME));
 
 	FilterCoefficients coeffs;
 	dlg.GetFilterCoefficients(&coeffs);
 
-	pContext->SetFilterCoefficients(coeffs);
+	CFilterProc * pProc = new CFilterProc;
+
+	pProc->SetFilterCoefficients(coeffs);
+	if (pProc->m_bZeroPhase)
+	{
+		pContext->m_NumberOfBackwardPasses = 1;
+	}
+
+	pContext->AddWaveProc(pProc);
 
 	if (dlg.UndoEnabled())
 	{
