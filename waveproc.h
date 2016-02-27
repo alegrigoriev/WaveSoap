@@ -226,10 +226,10 @@ protected:
 	virtual void ProcessSampleValue(void const * pInSample, void * pOutSample, unsigned channel);
 
 private:
-#ifdef _DEBUG
+
 	MEDIA_FILE_SIZE m_ProcessedInputBytes;
 	size_t m_SavedOutputBytes;
-#endif
+
 	// assignment guard
 	CWaveProc(const CWaveProc &);
 	CWaveProc & operator =(const CWaveProc &);
