@@ -5077,28 +5077,17 @@ NUMBER_OF_SAMPLES CAudioConvertor::GetOutputNumberOfSamples() const
 
 ///////////////////////////////////////////////////////
 //////////////// CChannelConvertor
-CChannelConvertor::CChannelConvertor(NUMBER_OF_CHANNELS OldChannels,
-									NUMBER_OF_CHANNELS NewChannels, CHANNEL_MASK ChannelsToProcess)
+CChannelConvertor::CChannelConvertor(NUMBER_OF_CHANNELS NewChannels)
+	: m_NewChannels(NewChannels)
 {
-	m_OutputFormat.InitFormat(WAVE_FORMAT_PCM, 44100, NewChannels,
-							16);
-	m_InputFormat.InitFormat(WAVE_FORMAT_PCM, 44100, OldChannels,
-							16);
-	m_ChannelsToProcess = ChannelsToProcess;
 }
 
-BOOL CChannelConvertor::SetInputWaveformat(CWaveFormat const & Wf)
+BOOL CChannelConvertor::SetInputWaveformat(CWaveFormat const & Wf, CHANNEL_MASK /*channels*/)
 {
-	if (Wf.NumChannels() != m_InputFormat.NumChannels())
-	{
-		ASSERT(Wf.NumChannels() == m_InputFormat.NumChannels());
-		return FALSE;
-	}
+	CWaveFormat NewFormat;
+	NewFormat.InitFormat(Wf.GetSampleType(), Wf.SampleRate(), m_NewChannels);
 
-	m_OutputFormat.InitFormat(Wf.GetSampleType(), Wf.SampleRate(), m_OutputFormat.NumChannels());
-	m_InputFormat.InitFormat(Wf.GetSampleType(), Wf.SampleRate(), m_InputFormat.NumChannels());
-
-	return TRUE;
+	return BaseClass::SetInputWaveformat(NewFormat, ALL_CHANNELS);
 }
 
 unsigned CChannelConvertor::ProcessSoundBuffer(char const * pIn, char * pOut,

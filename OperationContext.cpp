@@ -3250,7 +3250,7 @@ BOOL CWaveProcContext::MakeCompatibleFormat(WAVEFORMATEX const * pSrcWf, WAVEFOR
 
 	if (NewChannels < OldChannels)
 	{
-		AddWaveProc(new CChannelConvertor(OldChannels, NewChannels, ChannelsToUse));
+		AddWaveProc(new CChannelConvertor(NewChannels));
 		OldChannels = NewChannels;
 	}
 
@@ -3262,11 +3262,6 @@ BOOL CWaveProcContext::MakeCompatibleFormat(WAVEFORMATEX const * pSrcWf, WAVEFOR
 		m_DstFile.GetInstanceData()->RescaleMarkers(pSrcWf->nSamplesPerSec, pDstWf->nSamplesPerSec);
 	}
 
-	// if target channels is more than source, convert it after resampling,
-	if (NewChannels > OldChannels)
-	{
-		AddWaveProc(new CChannelConvertor(OldChannels, NewChannels, ALL_CHANNELS));
-	}
 	return TRUE;
 }
 

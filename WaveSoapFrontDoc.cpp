@@ -3513,7 +3513,7 @@ void CWaveSoapFrontDoc::ChangeChannels(NUMBER_OF_CHANNELS nChannels)
 	// for exception safety, add pConversionContext immediately
 	pContext->AddContext(pConversionContext);
 
-	pConversionContext->AddWaveProc(new CChannelConvertor(WaveChannels(), nChannels, nSrcChan));
+	pConversionContext->AddWaveProc(new CChannelConvertor(nChannels));
 
 	pContext->AddContext(new CReplaceFileContext(this, _T(""), DstFile, false));
 
