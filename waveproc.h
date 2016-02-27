@@ -137,21 +137,28 @@ public:
 
 	// SetInputWaveformat returns FALSE if the wave cannot be
 	// processed
-	virtual BOOL SetInputWaveformat(CWaveFormat const & Wf);
-	virtual BOOL SetOutputWaveformat(CWaveFormat const & Wf);
+	virtual BOOL SetInputWaveformat(CWaveFormat const & Wf, CHANNEL_MASK channels);
+	virtual BOOL SetOutputWaveformat(CWaveFormat const & Wf, CHANNEL_MASK channels);
 
 	virtual CWaveFormat const & GetInputWaveformat() const;
 	virtual CWaveFormat const & GetOutputWaveformat() const;
+
+	CHANNEL_MASK GetInputChannelsMask() const
+	{
+		return m_ChannelsToProcess;
+	}
+
+	CHANNEL_MASK GetOutputChannelsMask() const
+	{
+		return m_ResultChannels;
+	}
+
 	virtual bool SetChannelsToProcess(CHANNEL_MASK channels)
 	{
 		m_ChannelsToProcess = channels;
+		m_ResultChannels = channels;
 		return true;
 	}
-
-	CWaveFormat m_InputFormat;
-	CWaveFormat m_OutputFormat;
-
-	CHANNEL_MASK m_ChannelsToProcess;
 
 	// if input data is compressed and not sample-aligned, this should be 0
 	// it can be multiple of block size for compressed format
@@ -197,6 +204,12 @@ protected:
 	double m_MaxClipped;
 	WaveSampleType m_InputSampleType;
 	WaveSampleType m_OutputSampleType;
+
+	CWaveFormat m_InputFormat;
+	CWaveFormat m_OutputFormat;
+
+	CHANNEL_MASK m_ChannelsToProcess;
+	CHANNEL_MASK m_ResultChannels;
 
 	NUMBER_OF_SAMPLES m_CurrentSample;
 	NUMBER_OF_SAMPLES m_ProcessedInputSamples;
@@ -555,7 +568,7 @@ public:
 
 	virtual unsigned ProcessSoundBuffer(char const * pInBuf, char * pOutBuf,
 										unsigned nInBytes, unsigned nOutBytes, unsigned * pUsedBytes);
-	virtual BOOL SetInputWaveformat(CWaveFormat const & Wf);
+	virtual BOOL SetInputWaveformat(CWaveFormat const & Wf, CHANNEL_MASK channels = ALL_CHANNELS);
 
 	NoiseReductionCore * m_pNrCore;
 	NoiseReductionParameters m_NrParms;
@@ -572,16 +585,17 @@ public:
 
 	CBatchProcessing()
 		:m_bAutoDeleteProcs(false), m_BackwardPass(false)
-	{}
+	{
+		m_Stages.reserve(32);
+	}
 	virtual ~CBatchProcessing();
 	virtual void Dump(unsigned indent=0) const;
 
 	virtual unsigned ProcessSoundBuffer(char const * pInBuf, char * pOutBuf,
 										unsigned nInBytes, unsigned nOutBytes, unsigned * pUsedBytes);
 
-	virtual BOOL SetInputWaveformat(CWaveFormat const & Wf);
-	virtual BOOL SetOutputWaveformat(CWaveFormat const & Wf);
-	virtual bool SetChannelsToProcess(CHANNEL_MASK channels);
+	virtual BOOL SetInputWaveformat(CWaveFormat const & Wf, CHANNEL_MASK channels = ALL_CHANNELS);
+	virtual BOOL SetOutputWaveformat(CWaveFormat const & Wf, CHANNEL_MASK channels);
 
 	// if input data is compressed and not sample-aligned, this could be 0
 	// it can be multiple of block size for compressed format
@@ -624,13 +638,14 @@ protected:
 		// implement destructive copy operator and assignment constructor
 		~Item();
 		Item();
+		BOOL Init();
 
 		Item(CWaveProc * proc);
 		Item(Item & item);
 		Item & operator =(Item& item);
 
-		unsigned FillInputBuffer(const char * Buf, unsigned BufFilled, CWaveFormat const * pWf); // returns number bytes used
-		unsigned FillOutputBuffer(char * Buf, unsigned BufFree, CWaveFormat const * pWf); // returns number bytes used
+		unsigned FillInputBuffer(const char * Buf, unsigned BufFilled, CWaveFormat const * pWf, CHANNEL_MASK SrcChannelMask); // returns number bytes used
+		unsigned FillOutputBuffer(char * Buf, unsigned BufFree, CWaveFormat const * pWf, CHANNEL_MASK DstChannelMask); // returns number bytes used
 
 	private:
 		//Item(Item const & item);
@@ -656,7 +671,7 @@ public:
 
 	virtual unsigned ProcessSoundBuffer(char const * pInBuf, char * pOutBuf,
 										unsigned nInBytes, unsigned nOutBytes, unsigned * pUsedBytes);
-	virtual BOOL SetInputWaveformat(CWaveFormat const & Wf);
+	virtual BOOL SetInputWaveformat(CWaveFormat const & Wf, CHANNEL_MASK channels = ALL_CHANNELS);
 
 	void InitResample(long OriginalSampleRate, long NewSampleRate, int FilterLength,
 					NUMBER_OF_CHANNELS nChannels, BOOL KeepSamplesPerSec);
@@ -738,7 +753,7 @@ public:
 	CAudioConvertor(HACMDRIVER had = NULL);
 	virtual ~CAudioConvertor();
 	BOOL InitConversion(WAVEFORMATEX const * SrcFormat, WAVEFORMATEX const * DstFormat);
-	virtual BOOL SetInputWaveformat(CWaveFormat const & Wf);
+	virtual BOOL SetInputWaveformat(CWaveFormat const & Wf, CHANNEL_MASK channels = ALL_CHANNELS);
 
 	// if input data is compressed and not sample-aligned, this should be 0
 	// it can be multiple of block size for compressed format

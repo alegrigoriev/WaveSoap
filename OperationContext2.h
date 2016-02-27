@@ -400,13 +400,13 @@ public:
 	{
 		typedef CWaveProc BaseClass;
 	public:
-		virtual BOOL SetInputWaveformat(CWaveFormat const & Wf)
+		virtual BOOL SetInputWaveformat(CWaveFormat const & Wf, CHANNEL_MASK channels)
 		{
 			if (Wf.NumChannels() != 2)
 			{
 				return FALSE;
 			}
-			return BaseClass::SetInputWaveformat(Wf);
+			return BaseClass::SetInputWaveformat(Wf, channels);
 		}
 		virtual void ProcessSoundSample(char const * pInSample, char * pOutSample, unsigned /*NumChannels*/)
 		{

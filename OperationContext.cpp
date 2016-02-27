@@ -3274,26 +3274,23 @@ unsigned CWaveProcContext::ProcessBuffer(char const * pInBuf, // if BACKWARD pas
 {
 	m_ProcBatch.SetBackwardPass(pass < 0);
 	ASSERT(m_Flags & OperationContextInitialized);
-
+	// The data arrives exactly as read from file without conversion and without channel collapse
 	return m_ProcBatch.ProcessSound(pInBuf, pOutBuf, nInBytes, nOutBytes, pUsedBytes);
+	// The output buffer should be filled with the same number of channels as the destination file and with the target channel mask
 }
 
 BOOL CWaveProcContext::Init()
 {
 	if (m_SrcFile.IsOpen())
 	{
-		if ( ! m_ProcBatch.SetInputWaveformat(m_SrcFile.GetWaveFormat()))
-		{
-			return FALSE;
-		}
-		if ( ! m_ProcBatch.SetChannelsToProcess(m_SrcChan))
+		if ( ! m_ProcBatch.SetInputWaveformat(m_SrcFile.GetWaveFormat(), m_SrcChan))
 		{
 			return FALSE;
 		}
 	}
 	if (m_DstFile.IsOpen())
 	{
-		if ( ! m_ProcBatch.SetOutputWaveformat(m_DstFile.GetWaveFormat()))
+		if ( ! m_ProcBatch.SetOutputWaveformat(m_DstFile.GetWaveFormat(), m_DstChan))
 		{
 			return FALSE;
 		}
