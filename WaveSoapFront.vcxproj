@@ -106,7 +106,7 @@
     <ClCompile>
       <Optimization>Disabled</Optimization>
       <AdditionalIncludeDirectories>.;BaseClasses;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>_DEBUG;WIN32;_WINDOWS;_WIN32_WINNT=_WIN32_WINNT_WIN6;OEMRESOURCE;USE_MMCKINFO64;_CONVERSION_DONT_USE_THREAD_LOCALE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_DEBUG;WIN32;_WINDOWS;_WIN32_WINNT=_WIN32_WINNT_WIN7;OEMRESOURCE;USE_MMCKINFO64;_CONVERSION_DONT_USE_THREAD_LOCALE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <PreprocessToFile>false</PreprocessToFile>
       <PreprocessSuppressLineNumbers>false</PreprocessSuppressLineNumbers>
       <StringPooling>false</StringPooling>
@@ -201,7 +201,7 @@
     <ClCompile>
       <Optimization>Disabled</Optimization>
       <AdditionalIncludeDirectories>.;BaseClasses;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>_DEBUG;WIN32;_WINDOWS;_WIN32_WINNT=_WIN32_WINNT_WIN6;OEMRESOURCE;USE_MMCKINFO64;_CONVERSION_DONT_USE_THREAD_LOCALE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_DEBUG;WIN32;_WINDOWS;_WIN32_WINNT=_WIN32_WINNT_WIN7;OEMRESOURCE;USE_MMCKINFO64;_CONVERSION_DONT_USE_THREAD_LOCALE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <PreprocessToFile>false</PreprocessToFile>
       <PreprocessSuppressLineNumbers>false</PreprocessSuppressLineNumbers>
       <StringPooling>false</StringPooling>
@@ -248,7 +248,7 @@
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <OmitFramePointers>true</OmitFramePointers>
       <AdditionalIncludeDirectories>.;BaseClasses;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>NDEBUG;WIN32;_WINDOWS;_WIN32_WINNT=_WIN32_WINNT_WIN6;OEMRESOURCE;USE_MMCKINFO64;_CONVERSION_DONT_USE_THREAD_LOCALE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>NDEBUG;WIN32;_WINDOWS;_WIN32_WINNT=_WIN32_WINNT_WIN7;OEMRESOURCE;USE_MMCKINFO64;_CONVERSION_DONT_USE_THREAD_LOCALE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <StringPooling>true</StringPooling>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <BufferSecurityCheck>false</BufferSecurityCheck>
@@ -343,7 +343,7 @@
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <OmitFramePointers>true</OmitFramePointers>
       <AdditionalIncludeDirectories>.;BaseClasses;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>NDEBUG;WIN32;_WINDOWS;_WIN32_WINNT=_WIN32_WINNT_WIN6;OEMRESOURCE;USE_MMCKINFO64;_CONVERSION_DONT_USE_THREAD_LOCALE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>NDEBUG;WIN32;_WINDOWS;_WIN32_WINNT=_WIN32_WINNT_WIN7;OEMRESOURCE;USE_MMCKINFO64;_CONVERSION_DONT_USE_THREAD_LOCALE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <StringPooling>true</StringPooling>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <BufferSecurityCheck>false</BufferSecurityCheck>
