@@ -5967,7 +5967,7 @@ void CWaveSoapFrontDoc::OnProcessGilbertTransform()
 	coeffs.m_nLpfOrder = lpf.GetFilterOrder();
 
 	CWaveProcContext::auto_ptr pProcContext1(new CWaveProcContext(this,
-												IDS_NORMALIZE_VOLUME_STATUS_PROMPT, IDS_NORMALIZE_VOLUME_OPERATION_NAME));
+												IDS_GILBERT_TRANSFORM_STATUS_PROMPT, IDS_GILBERT_TRANSFORM_OPERATION_NAME));
 	CGilbertPrefilter * pPrefilter = new CGilbertPrefilter;
 	pProcContext1->AddWaveProc(pPrefilter);
 
