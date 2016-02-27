@@ -343,6 +343,7 @@ BEGIN
         MENUITEM "C&hange Channels...",         ID_PROCESS_CHANNELS
         MENUITEM "S&wap Channels",              ID_PROCESS_SWAPCHANNELS
         MENUITEM "R&everse",                    ID_PROCESS_REVERSE
+        MENUITEM "Gilbert Transform",           ID_PROCESS_GILBERT_TRANSFORM
         MENUITEM SEPARATOR
         MENUITEM "&Stop\tEsc",                  ID_EDIT_STOP
     END
@@ -3746,6 +3747,8 @@ BEGIN
     IDS_STATUS_STRING24BIT  "24 bit"
     IDS_STATUS_STRING_FLOAT32 "Float 32"
     IDS_STATUS_STRING_FLOAT64 "Float 64"
+    IDS_GILBERT_TRANSFORM_STATUS_PROMPT "Performing Gilbert transform"
+    IDS_GILBERT_TRANSFORM_OPERATION_NAME "Gilbert transform"
 END
 
 STRINGTABLE
@@ -3824,6 +3827,8 @@ BEGIN
     ID_VIEW_MAXIMIZE_29     "Show channel with normal height"
     ID_VIEW_MAXIMIZE_30     "Show channel with normal height"
     ID_VIEW_MAXIMIZE_31     "Show channel with normal height"
+    ID_PROCESS_GILBERT_TRANSFORM 
+                            "Perform Gilbert transform (calculate imaginary part)"
 END
 
 #endif    // English (United States) resources

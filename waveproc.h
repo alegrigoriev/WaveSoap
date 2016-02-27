@@ -856,6 +856,44 @@ private:
 	double m_PrevNotchSamples[MAX_NUMBER_OF_CHANNELS][MaxFilterOrder][4];
 };
 
+class CGilbertPrefilter : public CWaveProc
+{
+	typedef CGilbertPrefilter ThisClass;
+	typedef CWaveProc BaseClass;
+
+public:
+	typedef std::auto_ptr<ThisClass> auto_ptr;
+	CGilbertPrefilter()
+	{
+		m_InputSampleType = SampleTypeFloat32;
+	}
+
+	virtual BOOL SetInputWaveformat(CWaveFormat const & Wf, CHANNEL_MASK channels = ALL_CHANNELS);
+
+	void ProcessSoundSample(char const * pInSample, char * pOutSample, unsigned NumChannels);
+
+private:
+};
+
+class CGilbertPostfilter : public CWaveProc
+{
+	typedef CGilbertPostfilter ThisClass;
+	typedef CWaveProc BaseClass;
+
+public:
+	typedef std::auto_ptr<ThisClass> auto_ptr;
+	CGilbertPostfilter()
+	{
+		m_InputSampleType = SampleTypeFloat32;
+	}
+
+	virtual BOOL SetInputWaveformat(CWaveFormat const & Wf, CHANNEL_MASK channels = ALL_CHANNELS);
+
+	void ProcessSoundSample(char const * pInSample, char * pOutSample, unsigned NumChannels);
+
+private:
+};
+
 class CLameEncConvertor : public CWaveProc
 {
 	typedef CLameEncConvertor ThisClass;

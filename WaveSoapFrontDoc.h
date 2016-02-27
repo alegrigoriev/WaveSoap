@@ -594,6 +594,8 @@ public:
 	afx_msg void OnEditFadeIn();
 	afx_msg void OnUpdateEditFadeIn(CCmdUI *pCmdUI);
 	afx_msg void OnUpdateEditFadeOut(CCmdUI *pCmdUI);
+	afx_msg void OnProcessGilbertTransform();
+	afx_msg void OnUpdateProcessGilbertTransform(CCmdUI *pCmdUI);
 };
 
 #pragma pack(push, 1)
