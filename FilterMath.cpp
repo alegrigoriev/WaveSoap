@@ -2,55 +2,16 @@
 #include "stdafx.h"
 #include "Filtermath.h"
 #include <limits.h>
+#include <complex>
 /**********************************/
 /*                                */
 /*   sincSqrd()                   */
 /*                                */
 /**********************************/
+const int MAXPOINTS = 100;
+const int MAXPOLES = 100;
 
-static double sincSqrd( double x)
-{
-	double result;
-	if( x==0.0)
-	{
-		result = 1.0;
-	}
-	else
-	{
-		result = sin(x)/x;
-		result = result * result;
-	}
-	return result;
-}
-/**********************************/
-/*                                */
-/*   sinc()                       */
-/*                                */
-/**********************************/
 
-static double sinc( double x)
-{
-	double result;
-	if( x==0.0)
-		result = 1.0;
-	else
-		result = sin(x)/x;
-	return result;
-}
-#if 0
-/**********************************/
-/*                                */
-/*   acosh()                       */
-/*                                */
-/**********************************/
-
-static double acosh( double x)
-{
-	double result;
-	result = log(x+sqrt(x*x-1.0));
-	return result;
-}
-#endif
 /**********************************/
 /*                                */
 /*   bitRev()                     */
@@ -228,6 +189,35 @@ void UnwrapPhase(	int ix,
 	return;
 }
 
+
+int EstimateChebyshev2FilterOrder(double w_pass, double passband_attenuation, double w_stop, double stopband_attenuation)
+{
+	double epsylon = sqrt(1 - passband_attenuation*passband_attenuation) / passband_attenuation;
+
+	int N = (int)ceil(acosh(sqrt(1. - stopband_attenuation*stopband_attenuation) / (epsylon*stopband_attenuation))
+					/ acosh(w_stop / w_pass));
+	return N;
+}
+
+using std::complex;
+void CalculateChebyshev2FilterPolesAndZeros(int order,
+											complex<double> poles[], complex<double> zeros[],
+											double w_stop, double stopband_attenuation)
+{
+	double GG = pow((1. +  sqrt(1.- stopband_attenuation*stopband_attenuation)) / stopband_attenuation, 1. / order);
+
+	double coeff_real = GG - 1. / GG;
+	double coeff_imag = GG + 1. / GG;
+	for (int i = 0; i < order; i++)
+	{
+		poles[i] = 2.*w_stop / complex<double>(coeff_real * -sin((2*i + 1)*M_PI/(2*order)),
+												coeff_imag * cos((2 * i + 1)*M_PI / (2 * order)));
+	}
+	for (int i = 0; i < (order & ~1); i++)
+	{
+		zeros[i] = complex<double>(0., w_stop / cos((2*i+1)*M_PI/(2*order)));
+	}
+}
 /*  POWER SYMMETRIC ELLIPTIC FILTER DECOMPOSED TO TWO ALLPASS CELLS */
 
 void EllipticOrderEstim(double omegaPass,
@@ -1271,31 +1261,6 @@ void idealBandstop( int numbTaps,
 
 /***********************************/
 /*                                 */
-/*   Listing 11.5                  */
-/*                                 */
-/*   contRectangularResponse()     */
-/*                                 */
-/***********************************/
-
-#define TINY 3.16e-5
-
-double contRectangularResponse( double freq, double tau, int dbScale)
-{
-	double x;
-
-	x = sinc(M_PI * freq * tau);
-	if(dbScale)
-	{
-		if(fabs(x) < TINY)
-		{x = -90.0;}
-		else
-		{x = 20.0*log10(fabs(x));}
-	}
-	return(x);
-}
-
-/***********************************/
-/*                                 */
 /*   Listing 11.6                  */
 /*                                 */
 /*   discRectangularResponse()     */
@@ -1319,32 +1284,6 @@ double discRectangularResponse( double freq,
 }
 
 
-/**********************************/
-/*                                */
-/*   Listing 11.7                 */
-/*                                */
-/*   contTriangularResponse()     */
-/*                                */
-/**********************************/
-
-
-double contTriangularResponse( 	double freq,
-								double tau,
-								int dbScale)
-{
-	double amp0, x;
-	amp0 = 0.5 * tau;
-	x = M_PI * freq * tau / 2.0;
-	x = 0.5 * tau * sincSqrd(x);
-	if(dbScale)
-	{
-		if(fabs(x/amp0) < TINY)
-		{x = -90.0;}
-		else
-		{x = 20.0*log10(fabs(x/amp0));}
-	}
-	return(x);
-}
 
 /**********************************/
 /*                                */
@@ -1700,935 +1639,6 @@ void setTrans(	int bandConfig[],
 	return;
 }
 
-/**********************************/
-/*                                */
-/*   Listing 10.2                 */
-/*                                */
-/*   normalizeResponse()          */
-/*                                */
-/**********************************/
-
-void normalizeResponse(	int dbScale,
-						int numPts,
-						double H[])
-{
-	int n;
-	double biggest;
-
-	if(dbScale)
-	{
-		biggest = -100.0;
-		for( n=0; n<=numPts-1; n++)
-		{if(H[n]>biggest) biggest = H[n];}
-		for( n=0; n<=numPts-1; n++)
-		{H[n] = H[n]-biggest;}
-	}
-	else
-	{
-		biggest = 0.0;
-		for( n=0; n<=numPts-1; n++)
-		{if(H[n]>biggest) biggest = H[n];}
-		for( n=0; n<=numPts-1; n++)
-		{H[n] = H[n]/biggest;}
-	}
-	return;
-}
-
-/**********************************/
-/*                                */
-/*   Listing 12.3                 */
-/*                                */
-/*   goldenSearch()               */
-/*                                */
-/**********************************/
-#if 0
-double goldenSearch(	int firType,
-						int numbTaps,
-						double Hd[],
-						double tol,
-						int numFreqPts,
-						int bandConfig[],
-						double *fmin)
-{
-	double x0, x1, x2, x3, xmin, f0, f1, f2, f3, oldXmin;
-	double leftOrd, rightOrd, midOrd, midAbsc, x, xb;
-	double delta;
-	static double hh[100], H[610];
-	int n;
-	int dbScale;
-	FILE *logPtr;
-
-	printf("in goldenSearch\n");
-	logPtr = fopen("search.log","w");
-
-	dbScale = TRUE;
-/*--------------------------------------------*/
-	setTrans( bandConfig, 0, Hd);
-	fsDesign( numbTaps, firType, Hd, hh);
-	cgdFirResponse(firType,numbTaps, hh, dbScale, numFreqPts,H);
-	normalizeResponse(dbScale,numFreqPts,H);
-	leftOrd = findSbPeak(bandConfig,numFreqPts,H);
-	printf("leftOrd = %f\n",leftOrd);
-
-	setTrans( bandConfig, 1.0, Hd);
-	fsDesign( numbTaps, firType, Hd, hh);
-	cgdFirResponse(firType,numbTaps, hh, dbScale, numFreqPts,H);
-	normalizeResponse(dbScale,numFreqPts,H);
-	rightOrd = findSbPeak(bandConfig,numFreqPts,H);
-	printf("rightOrd = %f\n",rightOrd);
-
-	if(leftOrd < rightOrd) {
-		midAbsc=1.0;
-		for(;;) {
-			printf("checkpoint 3\n");
-			midAbsc = GOLD3 * midAbsc;
-			setTrans( bandConfig, midAbsc, Hd);
-			fsDesign( numbTaps, firType, Hd, hh);
-			cgdFirResponse(firType,numbTaps, hh, dbScale, numFreqPts,H);
-			normalizeResponse(dbScale,numFreqPts,H);
-			midOrd = findSbPeak(bandConfig,numFreqPts,H);
-			printf("midOrd = %f\n",midOrd);
-			if(midOrd < leftOrd) break;
-		}
-	}
-	else {
-		x = 1.0;
-		for(;;) {
-			x = GOLD3 * x;
-			midAbsc = 1.0 - x;
-			printf("checkpoint 4\n");
-			setTrans( bandConfig, midAbsc, Hd);
-			fsDesign( numbTaps, firType, Hd, hh);
-			cgdFirResponse(firType,numbTaps, hh, dbScale, numFreqPts,H);
-			normalizeResponse(dbScale,numFreqPts,H);
-			midOrd = findSbPeak(bandConfig,numFreqPts,H);
-			printf("midOrd = %f\n",midOrd);
-			if(midOrd < rightOrd) break;
-		}
-	}
-	xb = midAbsc;
-/*--------------------------------------------*/
-	x0 = 0.0;
-	x3 = 1.0;
-	x1 = xb;
-	x2 = xb + GOLD3 * (1.0 - xb);
-	printf("x0= %f, x1= %f, x2= %f, x3= %f\n",x0,x1,x2,x3);
-
-	setTrans( bandConfig, x1, Hd);
-	fsDesign( numbTaps, firType, Hd, hh);
-	cgdFirResponse(firType,numbTaps, hh, dbScale, numFreqPts,H);
-	normalizeResponse(dbScale,numFreqPts,H);
-	f1 = findSbPeak(bandConfig,numFreqPts,H);
-
-	setTrans( bandConfig, x2, Hd);
-	fsDesign( numbTaps, firType, Hd, hh);
-	cgdFirResponse(firType,numbTaps, hh, dbScale, numFreqPts,H);
-	normalizeResponse(dbScale,numFreqPts,H);
-	f2 = findSbPeak(bandConfig,numFreqPts,H);
-
-	oldXmin = 0.0;
-
-	for(n=1; n<=100; n++) {
-		if(f1<=f2) {
-			x3 = x2;
-			x2 = x1;
-			x1 = GOLD6 * x2 + GOLD3 * x0;
-			f3 = f2;
-			f2 = f1;
-			setTrans( bandConfig, x1, Hd);
-			fsDesign( numbTaps, firType, Hd, hh);
-			cgdFirResponse(firType,numbTaps, hh, dbScale, numFreqPts,H);
-			normalizeResponse(dbScale,numFreqPts,H);
-			f1 = findSbPeak(bandConfig,numFreqPts,H);
-			printf("x0= %f, x1= %f, x2= %f, x3= %f\n",x0,x1,x2,x3);
-		}
-		else {
-			x0 = x1;
-			x1 = x2;
-			x2 = GOLD6 * x1 + GOLD3 * x3;
-			f0 = f1;
-			f1 = f2;
-			setTrans( bandConfig, x2, Hd);
-			fsDesign( numbTaps, firType, Hd, hh);
-			cgdFirResponse(firType,numbTaps, hh, dbScale, numFreqPts,H);
-			normalizeResponse(dbScale,numFreqPts,H);
-			f2 = findSbPeak(bandConfig,numFreqPts,H);
-			printf("x0= %f, x1= %f, x2= %f, x3= %f\n",x0,x1,x2,x3);
-		}
-
-		delta = fabs(x3 - x0);
-		oldXmin = xmin;
-		printf("at iter %d, delta = %f\n",n,delta);
-		printf("tol = %f\n",tol);
-		if(delta <= tol) break;
-	}
-	if(f1<f2)
-	{xmin = x1;
-		*fmin=f1;}
-	else
-	{xmin = x2;
-		*fmin=f2;}
-	printf("minimum of %f at x = %f\n", *fmin, xmin);
-	fprintf(logFptr,"minimum of %f at x = %f\n", *fmin, xmin);
-	return(xmin);
-}
-#endif
-
-/**********************************/
-/*                                */
-/*   Listing 12.6                 */
-/*                                */
-/*   setTransition()              */
-/*                                */
-/**********************************/
-
-
-void setTransition(	double origins[],
-					double slopes[],
-					int bandConfig[],
-					double x,
-					double Hd[])
-{
-	int n, nnn, n1, n2, n3, n4;
-
-	nnn = bandConfig[2] - bandConfig[1] - 1;
-	n1 = bandConfig[1];
-	n2 = bandConfig[2];
-	n3 = bandConfig[3];
-	n4 = bandConfig[4];
-
-	switch (bandConfig[0]) {
-	case 1:					/* lowpass */
-		for( n=1; n<=nnn; n++) {
-			Hd[n2-n] = origins[n] + x * slopes[n];
-		}
-		break;
-	case 2:					/* highpass */
-		for( n=1; n<=nnn; n++){
-			Hd[n1+n] = origins[n] + x * slopes[n];
-		}
-		break;
-	case 3:					/* bandpass */
-		for( n=1; n<=nnn; n++) {
-			Hd[n1+n] = origins[n] + x * slopes[n];
-			Hd[n4-n] = Hd[n1+n];
-		}
-		break;
-	case 4:					/* bandstop */
-		for( n=1; n<=nnn; n++) {
-			Hd[n2-n] = origins[n] + x * slopes[n];
-			Hd[n3+n] = Hd[n2-n];
-		}
-		break;
-	}
-	return;
-}
-
-/**********************************/
-/*                                */
-/*   Listing 12.5                 */
-/*                                */
-/*   goldenSearch2()              */
-/*                                */
-/**********************************/
-
-#if 0
-double goldenSearch2(	double rhoMin,
-						double rhoMax,
-						int firType,
-						int numbTaps,
-						double Hd[],
-						double tol,
-						int numFreqPts,
-						double origins[],
-						double slopes[],
-						int bandConfig[],
-						double *fmin)
-{
-	double x0, x1, x2, x3, xmin, f0, f1, f2, f3, oldXmin;
-	double leftOrd, rightOrd, midOrd, midAbsc, x, xb;
-	double delta;
-	static double hh[100], H[610];
-	int n;
-	int dbScale;
-
-	dbScale = TRUE;
-
-/*--------------------------------------------*/
-	setTransition( origins, slopes, bandConfig, 0, Hd);
-	fsDesign( numbTaps, firType, Hd, hh);
-	cgdFirResponse(firType,numbTaps, hh, dbScale, numFreqPts,H);
-	normalizeResponse(dbScale,numFreqPts,H);
-	leftOrd = findSbPeak(bandConfig,numFreqPts,H);
-
-	setTransition( origins, slopes, bandConfig, rhoMax, Hd);
-	fsDesign( numbTaps, firType, Hd, hh);
-	cgdFirResponse(firType,numbTaps, hh, dbScale, numFreqPts,H);
-	normalizeResponse(dbScale,numFreqPts,H);
-	rightOrd = findSbPeak(bandConfig,numFreqPts,H);
-
-	if(leftOrd < rightOrd) {
-		midAbsc=rhoMax;
-		for(;;) {
-			midAbsc = GOLD3 * midAbsc;
-			setTransition( origins, slopes, bandConfig, midAbsc, Hd);
-			fsDesign( numbTaps, firType, Hd, hh);
-			cgdFirResponse(firType,numbTaps, hh, dbScale, numFreqPts,H);
-			normalizeResponse(dbScale,numFreqPts,H);
-			midOrd = findSbPeak(bandConfig,numFreqPts,H);
-			if(midOrd < leftOrd) break;
-		}
-	}
-	else {
-		x = rhoMax;
-		for(;;) {
-			x = GOLD3 * x;
-			midAbsc = rhoMax - x;
-			setTransition( origins, slopes, bandConfig, midAbsc, Hd);
-			fsDesign( numbTaps, firType, Hd, hh);
-			cgdFirResponse(firType,numbTaps, hh, dbScale, numFreqPts,H);
-			normalizeResponse(dbScale,numFreqPts,H);
-			midOrd = findSbPeak(bandConfig,numFreqPts,H);
-			if(midOrd < rightOrd) break;
-		}
-	}
-	xb = midAbsc;
-/*--------------------------------------------*/
-	x0 = rhoMin;
-	x3 = rhoMax;
-	x1 = xb;
-	x2 = xb + GOLD3 * (rhoMax - xb);
-
-	setTransition( origins, slopes, bandConfig, x1, Hd);
-	fsDesign( numbTaps, firType, Hd, hh);
-	cgdFirResponse(firType,numbTaps, hh, dbScale, numFreqPts,H);
-	normalizeResponse(dbScale,numFreqPts,H);
-	f1 = findSbPeak(bandConfig,numFreqPts,H);
-
-	setTransition( origins, slopes, bandConfig, x2, Hd);
-	fsDesign( numbTaps, firType, Hd, hh);
-	cgdFirResponse(firType,numbTaps, hh, dbScale, numFreqPts,H);
-	normalizeResponse(dbScale,numFreqPts,H);
-	f2 = findSbPeak(bandConfig,numFreqPts,H);
-
-	oldXmin = 0.0;
-
-	for(n=1; n<=100; n++) {
-		if(f1<=f2) {
-			x3 = x2;
-			x2 = x1;
-			x1 = GOLD6 * x2 + GOLD3 * x0;
-			f3 = f2;
-			f2 = f1;
-			setTransition( origins, slopes, bandConfig, x1, Hd);
-			fsDesign( numbTaps, firType, Hd, hh);
-			cgdFirResponse(firType,numbTaps, hh, dbScale, numFreqPts,H);
-			normalizeResponse(dbScale,numFreqPts,H);
-			f1 = findSbPeak(bandConfig,numFreqPts,H);
-		}
-		else {
-			x0 = x1;
-			x1 = x2;
-			x2 = GOLD6 * x1 + GOLD3 * x3;
-			f0 = f1;
-			f1 = f2;
-			setTransition( origins, slopes, bandConfig, x2, Hd);
-			fsDesign( numbTaps, firType, Hd, hh);
-			cgdFirResponse(firType,numbTaps, hh, dbScale, numFreqPts,H);
-			normalizeResponse(dbScale,numFreqPts,H);
-			f2 = findSbPeak(bandConfig,numFreqPts,H);
-		}
-
-		delta = fabs(x3 - x0);
-		oldXmin = xmin;
-		if(delta <= tol) break;
-	}
-	if(f1<f2)
-	{xmin = x1;
-		*fmin=f1;}
-	else
-	{xmin = x2;
-		*fmin=f2;}
-	return(xmin);
-}
-#endif
-/**********************************/
-/*                                */
-/*   Listing 12.7                 */
-/*                                */
-/*   optimize2()                  */
-/*                                */
-/**********************************/
-
-#if 0
-void optimize2(	double yBase,
-				int firType,
-				int numbTaps,
-				double Hd[],
-				double gsTol,
-				int numFreqPts,
-				int bandConfig[],
-				double tweakFactor,
-				double rectComps[])
-{
-	double r1, r2, r3, x1, x2, x3, y3, minFuncVal;
-	double slopes[5], origins[5];
-	double oldMin, xMax;
-	for(;;)
-	{
-	/*---------------------------------------------------*/
-	/*  do starting point for new steepest descent line  */
-		slopes[1] = 1.0;
-		slopes[2] = 0.0;
-		origins[1] = 0.0;
-		origins[2] = yBase;
-
-		x1 = goldenSearch2(	0.0, 1.0,
-							firType,numbTaps,Hd,gsTol,numFreqPts,
-							origins,slopes,bandConfig,&minFuncVal);
-
-	/*-------------------------------------*/
-	/*  do perturbed point to get          */
-	/*    slope for steepest descent line  */
-
-		origins[2]=yBase * tweakFactor;
-
-		x2 = goldenSearch2(	0.0, 1.0, firType,numbTaps,Hd,
-							gsTol,numFreqPts,origins,slopes,
-							bandConfig,&minFuncVal);
-
-	/*-------------------------------------*/
-	/* define line of steepest descent     */
-	/*  and find optimal point along line  */
-
-		slopes[2] = yBase*(1-tweakFactor)/(x1-x2);
-		origins[2] = yBase - slopes[2] * x1;
-		xMax = (1.0 - origins[2])/slopes[2];
-
-		x3 = goldenSearch2(	0.0, xMax, firType,numbTaps,Hd,
-							gsTol,numFreqPts,
-							origins,slopes,bandConfig,&minFuncVal);
-		y3=origins[2] + x3 * slopes[2];
-
-	/*---------------------------------------------------------------*/
-	/*  if ripple at best point on current line is within specified  */
-	/*    tolerance of ripple at best point on previous line,        */
-	/*    then stop; otherwise stay in loop and define a new line    */
-	/*    starting at the best point on line just completed.         */
-
-		if(fabs(oldMin-minFuncVal)<0.01) break;
-		oldMin = minFuncVal;
-		yBase = y3;
-	}
-	rectComps[0] = x3;
-	rectComps[1] = origins[2] + x3 * slopes[2];
-	return;
-}
-#endif
-/**********************************/
-/*                                */
-/*   Listing 12.8                 */
-/*                                */
-/*   dumpRectComps()              */
-/*                                */
-/**********************************/
-
-
-void dumpRectComps(	double origins[],
-					double slopes[],
-					int numTransSamps,
-					double x)
-{
-	double rectComp;
-	int n;
-
-	for(n=0; n<numTransSamps; n++)
-	{
-		rectComp = origins[n+1] + x * slopes[n+1];
-		printf("rectComp[%d] = %f\n",n,rectComp);
-	}
-	return;
-}
-
-/**********************************/
-/*                                */
-/*   Listing 13.2                 */
-/*                                */
-/*   desLpfResp()                 */
-/*                                */
-/**********************************/
-
-double desLpfResp( double freqP, double freq)
-{
-	double result;
-	result = 0.0;
-	if(freq <= freqP) result = 1.0;
-	return(result);
-}
-
-
-/**********************************/
-/*                                */
-/*   Listing 13.3                 */
-/*                                */
-/*   weightLp()                   */
-/*                                */
-/**********************************/
-
-double weightLp( double kk, double freqP, double freq)
-{
-	double result;
-
-	result = 1.0;
-	if(freq <= freqP) result = 1.0/kk;
-	return(result);
-}
-
-/**********************************/
-/*                                */
-/*   Lisitng 13.1                 */
-/*                                */
-/*   gridFreq()                   */
-/*                                */
-/**********************************/
-
-double gridFreq(	double gridParam[],
-					int gI)
-{
-	double work;
-	static double incP, incS, freqP, freqS;
-	static int r, gridDensity, mP, mS, gP;
-
-	if(gridParam[0] == 1.0) {
-		gridParam[0] = 0.0;
-		freqP = gridParam[1];
-		freqS = gridParam[2];
-		r = (int) gridParam[3];
-		gridDensity = (int) gridParam[4];
-		work = (0.5 + freqP - freqS)/r;
-		mP = (int) floor(0.5 + freqP/work);
-		gridParam[5] = mP;
-		gP = mP * gridDensity;
-		gridParam[7] = gP;
-		mS = r +1 - mP;
-		gridParam[6] = mS;
-		incP = freqP / gP;
-		incS = (0.5-freqS) / ((mS-1) * gridDensity);
-	}
-	else {
-		work = (gI<=gP) ? (gI*incP) : (freqS+(gI-(gP+1))*incS);
-	}
-	return(work);
-}
-
-/**********************************/
-/*                                */
-/*   Listing 13.5                 */
-/*                                */
-/*   computeRemezA()              */
-/*                                */
-/**********************************/
-
-double computeRemezA(	double gridParam[],
-						int r,
-						double kk,
-						double freqP,
-						int iFF[],
-						int initFlag,
-						double contFreq)
-{
-	static int i, j, k, sign;
-	static double freq, denom, numer, alpha, delta;
-	static double absDelta, xCont, term;
-	static double x[50], beta[50], gamma[50];
-	double aa = 0.;
-
-	if(initFlag)
-	{
-		for(j=0; j<=r; j++)
-		{
-			freq = gridFreq(gridParam,iFF[j]);
-			x[j] = cos(TWO_PI * freq);
-		}
-
-		/*  compute delta  */
-		denom = 0.0;
-		numer = 0.0;
-		sign = -1;
-		for( k=0; k<=r; k++)
-		{
-			sign = -sign;
-			alpha = 1.0;
-			for( i=0; i<=(r-1); i++)
-			{
-				if(i==k) continue;
-				alpha = alpha / (x[k] - x[i]);
-			}
-			beta[k] = alpha;
-			if( k != r ) alpha = alpha/(x[k] - x[r]);
-			freq =  gridFreq(gridParam,iFF[k]);
-			numer = numer + alpha * desLpfResp(freqP,freq);
-			denom = denom + sign*(alpha/
-								weightLp(kk, freqP, freq));
-		}
-		delta = numer/denom;
-		absDelta = fabs(delta);
-
-		sign = -1;
-		for( k=0; k<=r-1; k++)
-		{
-			sign = -sign;
-			freq = gridFreq(gridParam,iFF[k]);
-			gamma[k] = desLpfResp(freqP, freq) - sign * delta /
-						weightLp(kk,freqP,freq);
-		}
-
-	}
-	else
-	{
-		xCont = cos(TWO_PI * contFreq);
-		numer = 0.0;
-		denom = 0.0;
-		for( k=0; k<r; k++)
-		{
-			term = xCont - x[k];
-			if(fabs(term)<1.0e-7)
-			{
-				aa = gamma[k];
-				return aa;
-			}
-			else
-			{
-				term = beta[k]/(xCont - x[k]);
-				denom += term;
-				numer += gamma[k]*term;
-			}
-		}
-		aa = numer/denom;
-	}
-	return(aa);
-}
-/**********************************/
-/*                                */
-/*   Listing 13.7                 */
-/*                                */
-/*   remezStop()                  */
-/*                                */
-/**********************************/
-
-int remezStop(	int iFF[],
-				int r)
-{
-	static int oldIFF[50];
-	int j,result;
-
-	result = 1;
-	for(j=0; j<=r; j++) {
-		if(iFF[j] != oldIFF[j]) result = 0;
-		oldIFF[j] = iFF[j];
-	}
-	return(result);
-}
-
-/**********************************/
-/*                                */
-/*   Listing 13.8                 */
-/*                                */
-/*   remezStop2()                 */
-/*                                */
-/**********************************/
-
-int remezStop2(	double ee[],
-				int iFF[],
-				int r)
-{
-	double biggestVal, smallestVal,qq;
-	int j,result;
-
-	result = 0;
-	biggestVal = fabs(ee[iFF[0]]);
-	smallestVal = fabs(ee[iFF[0]]);
-	for(j=1; j<=r; j++) {
-		if(fabs(ee[iFF[j]]) < smallestVal) smallestVal = fabs(ee[iFF[j]]);
-		if(fabs(ee[iFF[j]]) > biggestVal) biggestVal = fabs(ee[iFF[j]]);
-	}
-	qq = (biggestVal - smallestVal)/biggestVal;
-	if(qq<0.01) result=1;
-	return(result);
-}
-
-/**********************************/
-/*                                */
-/*   Listing 13.9                 */
-/*                                */
-/*   remezFinish()                */
-/*                                */
-/**********************************/
-
-void remezFinish(	double /*extFreq*/[],
-					int nn,
-					int r,
-					double freqP,
-					double kk,
-					double aa[],
-					double h[])
-{
-	int k, iFF[1];
-	double freq;
-	static double gridParam[1];
-
-	for(k=0; k<r; k++) {
-		freq = (double) k/ (double) nn;
-		aa[k] = computeRemezA(	gridParam, r, kk,
-								freqP, iFF, 0,freq);
-	}
-	fsDesign( nn, 1, aa, h);
-	return;
-}
-
-/**********************************/
-/*                                */
-/*   Listing 13.4                 */
-/*                                */
-/*   remezError()                 */
-/*                                */
-/**********************************/
-void remezError(	double gridParam[],
-					int gridMax,
-					int r,
-					double kk,
-					double freqP,
-					int iFF[],
-					double ee[])
-{
-	int j;
-	double freq,aa;
-
-	aa = computeRemezA(	gridParam, r, kk,
-						freqP, iFF, 1, 0.0);
-
-	for( j=0; j<=gridMax; j++) {
-		freq = gridFreq(gridParam,j);
-		aa = computeRemezA(	gridParam,
-							r, kk, freqP,
-							iFF, 0,freq);
-		ee[j] = weightLp(kk,freqP,freq) *
-				(desLpfResp(freqP,freq) - aa);
-	}
-	return;
-}
-
-/**********************************/
-/*                                */
-/*   Listing 13.6                 */
-/*                                */
-/*   remezSearch()                */
-/*                                */
-/**********************************/
-
-void remezSearch(	double ee[],
-					double absDelta,
-					int gP,
-					int iFF[],
-					int gridMax,
-					int r,
-					double /*gridParam*/[])
-{
-	int i,j,k,extras,indexOfSmallest;
-	double smallestVal;
-
-	k=0;
-
-/* test for extremum at f=0  */
-	if(	( (ee[0]>0.0) && (ee[0]>ee[1]) && (fabs(ee[0])>=absDelta) ) ||
-		( (ee[0]<0.0) && (ee[0]<ee[1]) && (fabs(ee[0])>=absDelta) ) ) {
-		iFF[k]=0;
-		k++;
-	}
-
-/*  search for extrema in passband  */
-	for(j=1; j<gP; j++) {
-		if( ( (ee[j]>=ee[j-1]) && (ee[j]>ee[j+1]) && (ee[j]>0.0) ) ||
-			( (ee[j]<=ee[j-1]) && (ee[j]<ee[j+1]) && (ee[j]<0.0) )) {
-			iFF[k] = j;
-			k++;
-		}
-	}
-
-/* pick up an extremal frequency at passband edge  */
-	iFF[k]=gP;
-	k++;
-
-/* pick up an extremal frequency at stopband edge  */
-	j=gP+1;
-	iFF[k]=j;
-	k++;
-
-/*  search for extrema in stopband  */
-
-	for(j=gP+2; j<gridMax; j++) {
-		if( ( (ee[j]>=ee[j-1]) && (ee[j]>ee[j+1]) && (ee[j]>0.0) ) ||
-			( (ee[j]<=ee[j-1]) && (ee[j]<ee[j+1]) && (ee[j]<0.0) )) {
-			iFF[k] = j;
-			k++;
-		}
-	}
-/* test for extremum at f=0.5  */
-	j = gridMax;
-	if(	( (ee[j]>0.0) && (ee[j]>ee[j-1]) && (fabs(ee[j])>=absDelta) ) ||
-		( (ee[j]<0.0) && (ee[j]<ee[j-1]) && (fabs(ee[j])>=absDelta) ) ) {
-		iFF[k]=gridMax;
-		k++;
-	}
-/*----------------------------------------------------*/
-/*  find and remove superfluous extremal frequencies  */
-	if( k>r+1) {
-		extras = k - (r+1);
-		for(i=1; i<=extras; i++) {
-			smallestVal = fabs(ee[iFF[0]]);
-			indexOfSmallest = 0;
-			for(j=1; j< k; j++) {
-				if(fabs(ee[iFF[j]]) >= smallestVal) continue;
-				smallestVal = fabs(ee[iFF[j]]);
-				indexOfSmallest = j;
-			}
-			k--;
-			for(j=indexOfSmallest; j<k; j++) iFF[j] = iFF[j+1];
-		}
-	}
-	return;
-}
-
-/**********************************/
-/*                                */
-/*   Listing 13.10                */
-/*                                */
-/*   remez()                      */
-/*                                */
-/**********************************/
-
-void remez(	int nn,
-			int r,
-			int gridDensity,
-			double kk,
-			double freqP,
-			double freqS,
-			double extFreq[],
-			double h[])
-{
-	int m, gridMax, j, mP, gP, mS;
-	double absDelta = 0.0001,freq;
-	static double gridParam[10];
-	static int iFF[50];
-	static double ee[1024];
-
-/*--------------------------------*/
-/*  set up frequency grid         */
-	gridParam[0] = 1.0;
-	gridParam[1] = freqP;
-	gridParam[2] = freqS;
-	gridParam[3] = r;
-	gridParam[4] = gridDensity;
-	freq = gridFreq(gridParam,0);
-	mP = (int) gridParam[5];
-	mS = (int) gridParam[6];
-	gP = (int) gridParam[7];
-	freqP = freqP + (freqP/(2.0*gP));
-	gridMax = 1 + gridDensity*(mP+mS-1);
-
-/*----------------------------------------------*/
-/*  make initial guess of extremal frequencies  */
-
-	for(j=0; j<mP; j++) iFF[j] = (j+1)* gridDensity;
-
-	for(j=0; j<mS; j++) iFF[j+mP] = gP + 1 + j * gridDensity;
-
-/*----------------------------------------------------*/
-/*  find optimal locations for extremal frequencies   */
-
-	for(m=1;m<=20;m++) {
-
-		remezError(	gridParam, gridMax, r, kk, freqP, iFF, ee);
-
-		remezSearch( ee, absDelta, gP, iFF, gridMax, r, gridParam);
-
-		remezStop2(ee,iFF,r);
-		if(remezStop(iFF,r)) break;
-	}
-
-	for(j=0; j<=r; j++) {
-		extFreq[j] = gridFreq(gridParam,iFF[j]);
-	}
-	remezFinish( extFreq, nn, r, freqP,kk, ee, h);
-	return;
-}
-
-/**********************************/
-/*                                */
-/*   Listing 14.1                 */
-/*                                */
-/*   iirResponse()                */
-/*                                */
-/**********************************/
-const int MAXPOINTS = 100;
-const int MAXPOLES = 100;
-
-void iirResponse(Complex a[],
-				int bigN,
-				Complex b[],
-				int bigM,
-				int numberOfPoints,
-				int dbScale,
-				double magnitude[],
-				double phase[])
-{
-	Complex response[MAXPOINTS];
-	int n, m;
-	double phi;
-
-/*----------------------------------------------------*/
-/*  compute DFT of H(z) numerator                     */
-
-	for( m=0; m<numberOfPoints; m++) {
-		Complex sum(0.);
-		printf("\r%d  000",m);
-		for(n=0; n<=bigM; n++) {
-			printf("\b\b\b%3d",n);
-			phi = 2.0 * M_PI * m * n / (2.0*numberOfPoints);
-//		printf("b[%d] = (%e, %e)\n",n,double(b[n]),imag(b[n]));
-			sum += b[n] * Complex(cos(phi), - sin(phi));
-//		sumRe += b[n].re * cos(phi) + b[n].im * sin(phi);
-//		sumIm += b[n].im * cos(phi) - b[n].re * sin(phi);
-		}
-		response[m] = sum;
-		printf("response = (%e, %e)\n",real(response[m]), imag(response[m]));
-	}
-
-/*----------------------------------------------------*/
-/*  compute DFT of H(z) denominator                   */
-
-	for( m=0; m<numberOfPoints; m++) {
-		Complex sum = 1.0;
-
-		for(n=1; n<=bigN; n++) {
-			phi = 2.0 * M_PI * m * n / (2.0*numberOfPoints);
-			sum -= a[n] * Complex(cos(phi), - sin(phi));
-		}
-		response[m] /= sum;
-	}
-/*--------------------------------------------------*/
-/*  compute magnitude and phase of response         */
-
-	for( m=0; m<numberOfPoints; m++) {
-		phase[m] = arg(response[m]);
-		if(dbScale)
-		{magnitude[m] = 20.0 * log10(abs(response[m]));}
-		else
-		{magnitude[m] = abs(response[m]);}
-		printf("mag = %e\n",magnitude[m]);
-	}
-	return;
-}
 
 /**********************************/
 /*                                */
@@ -2778,5 +1788,307 @@ void stepInvar(Complex pole[],
 	}
 	for( j=1; j<=numPoles; j++) a[j] = -a[j];
 	return;
+}
+
+void LowpassFilter::Reset()
+{
+	for (int i = 0; i < MaxFilterOrder; i++)
+	{
+		m_Coeffs[i][0] = 0.;
+		m_Coeffs[i][1] = 0.;
+		m_Coeffs[i][2] = 0.;
+		m_Coeffs[i][3] = 1.;
+		m_Coeffs[i][4] = 0.;
+		m_Coeffs[i][5] = 0.;
+	}
+}
+
+void HighpassFilter::Reset()
+{
+	for (int i = 0; i < MaxFilterOrder; i++)
+	{
+		m_Coeffs[i][0] = 0.;
+		m_Coeffs[i][1] = 0.;
+		m_Coeffs[i][2] = 0.;
+		m_Coeffs[i][3] = 1.;
+		m_Coeffs[i][4] = 0.;
+		m_Coeffs[i][5] = 0.;
+	}
+}
+
+void NotchFilter::Reset()
+{
+	for (int i = 0; i < MaxFilterOrder; i++)
+	{
+		m_Coeffs[i][0] = 0.;
+		m_Coeffs[i][1] = 0.;
+		m_Coeffs[i][2] = 0.;
+		m_Coeffs[i][3] = 1.;
+		m_Coeffs[i][4] = 0.;
+		m_Coeffs[i][5] = 0.;
+	}
+}
+
+void HilbertTransformFilter::Reset()
+{
+	for (int i = 0; i < MaxFilterOrder; i++)
+	{
+		m_Coeffs[i][0] = 0.;
+		m_Coeffs[i][1] = 0.;
+		m_Coeffs[i][2] = 0.;
+		m_Coeffs[i][3] = 1.;
+		m_Coeffs[i][4] = 0.;
+		m_Coeffs[i][5] = 0.;
+	}
+}
+
+void LowpassFilter::GetCoefficients(double Coeffs[MaxFilterOrder][6]) const
+{
+	for (int i = 0; i < MaxFilterOrder; i++)
+	{
+		for (int j = 0; j < 6; j++)
+		{
+			Coeffs[i][j] = m_Coeffs[i][j];
+		}
+	}
+}
+
+void HighpassFilter::GetCoefficients(double Coeffs[MaxFilterOrder][6]) const
+{
+	for (int i = 0; i < MaxFilterOrder; i++)
+	{
+		for (int j = 0; j < 6; j++)
+		{
+			Coeffs[i][j] = m_Coeffs[i][j];
+		}
+	}
+}
+
+void NotchFilter::GetCoefficients(double Coeffs[MaxFilterOrder][6]) const
+{
+	for (int i = 0; i < MaxFilterOrder; i++)
+	{
+		for (int j = 0; j < 6; j++)
+		{
+			Coeffs[i][j] = m_Coeffs[i][j];
+		}
+	}
+}
+
+void HilbertTransformFilter::GetCoefficients(double Coeffs[MaxFilterOrder][6]) const
+{
+	for (int i = 0; i < MaxFilterOrder; i++)
+	{
+		for (int j = 0; j < 6; j++)
+		{
+			Coeffs[i][j] = m_Coeffs[i][j];
+		}
+	}
+}
+
+using std::complex;
+// frequency is in radians
+complex<double> LowpassFilter::CalculateResponse(complex<double> z) const
+{
+	complex<double> Result(0., 0.);
+	for (int i = 0; i < m_Order; i++)
+	{
+		Result += (m_Coeffs[i][0] + z * (m_Coeffs[i][1] + z * m_Coeffs[i][2]))
+				/ (m_Coeffs[i][3] + z * (m_Coeffs[i][4] + z * m_Coeffs[i][5]));
+	}
+
+	if (m_ZeroPhase)
+	{
+		// filter is applied twice
+		return Result * conj(Result);
+	}
+	else
+	{
+		return Result;
+	}
+}
+
+complex<double> NotchFilter::CalculateResponse(complex<double> z) const
+{
+	complex<double> Result(0., 0.);
+	for (int i = 0; i < m_Order; i++)
+	{
+		Result += (m_Coeffs[i][0] + z * (m_Coeffs[i][1] + z * m_Coeffs[i][2]))
+				/ (m_Coeffs[i][3] + z * (m_Coeffs[i][4] + z * m_Coeffs[i][5]));
+	}
+
+	if (m_ZeroPhase)
+	{
+		// filter is applied twice
+		return Result * conj(Result);
+	}
+	else
+	{
+		return Result;
+	}
+}
+
+complex<double> HighpassFilter::CalculateResponse(complex<double> z) const
+{
+	complex<double> Result(0., 0.);
+	for (int i = 0; i < m_Order; i++)
+	{
+		Result += (m_Coeffs[i][0] + z * (m_Coeffs[i][1] + z * m_Coeffs[i][2]))
+				/ (m_Coeffs[i][3] + z * (m_Coeffs[i][4] + z * m_Coeffs[i][5]));
+	}
+
+	if (m_ZeroPhase)
+	{
+		// filter is applied twice
+		return Result * conj(Result);
+	}
+	else
+	{
+		return Result;
+	}
+}
+
+void NotchFilter::Create(double PassFreq, double StopFreq)
+{
+	// two zeros at unity circle, two poles
+	double Width = fabs(StopFreq - PassFreq);
+	if (m_ZeroPhase)
+	{
+		Width /= 2.;
+	}
+	m_Order = 1;
+	double RotC = cos(StopFreq);
+	double pole = 1. - Width;
+
+	m_Coeffs[0][0] = 1;
+	m_Coeffs[0][1] = -2 * RotC;
+	m_Coeffs[0][2] = 1;
+	m_Coeffs[0][3] = 1;
+	m_Coeffs[0][4] = -2 * pole * RotC;
+	m_Coeffs[0][5] = pole * pole;
+}
+
+BOOL LowpassFilter::CreateElliptic(double PassFreq, double PassLoss,
+									double StopFreq, double StopLoss)
+{
+	double OmegaPass = 2. * tan(PassFreq / 2.);
+	double OmegaStop = 2. * tan(StopFreq / 2.);
+	if (m_ZeroPhase)
+	{
+		PassLoss = sqrt(PassLoss);
+		StopLoss = sqrt(StopLoss);
+	}
+	POLY_ROOTS zeros;
+	POLY_ROOTS poles;
+	COMPLEX NormCoeff;
+
+	EllipticPolesZeros(OmegaPass, OmegaStop, StopLoss,
+						PassLoss, 1, zeros, poles, NormCoeff);
+
+	CArray<polyRatio *, polyRatio *> * pDecomposed
+		= polyRatio(poly(zeros, NormCoeff), poly(poles)).Decompose(2, &poles);
+
+	m_Order = (int)pDecomposed->GetSize();
+
+	int chebyshev_order = EstimateChebyshev2FilterOrder(OmegaPass, PassLoss, OmegaStop, StopLoss);
+	TRACE("Pass loss=%f, stop loss=%f, EllipticOrder=%d, chebyshev order=%d\n", PassLoss, StopLoss, m_Order, chebyshev_order);
+
+	for (int i = 0; i < pDecomposed->GetSize(); i++)
+	{
+#if 0 && defined(_DEBUG)
+		pDecomposed->GetAt(i)->Dump();
+#endif
+		polyRatio prBil;
+		BilinearTransform(*pDecomposed->GetAt(i), prBil, 1.);
+		ASSERT(prBil.numer().order() == 2 || prBil.numer().order() == 1);
+		ASSERT(prBil.denom().order() == 2 || prBil.denom().order() == 1);
+
+		m_Coeffs[i][0] = prBil.numer()[0].real();
+		m_Coeffs[i][1] = prBil.numer()[1].real();
+		if (prBil.numer().order() > 1)
+		{
+			m_Coeffs[i][2] = prBil.numer()[2].real();
+		}
+		else
+		{
+			m_Coeffs[i][2] = 0.;
+		}
+		m_Coeffs[i][3] = prBil.denom()[0].real();
+		m_Coeffs[i][4] = prBil.denom()[1].real();
+
+		if (prBil.numer().order() > 1)
+		{
+			m_Coeffs[i][5] = prBil.denom()[2].real();
+		}
+		else
+		{
+			m_Coeffs[i][5] = 0.;
+		}
+
+		delete pDecomposed->GetAt(i);
+	}
+	delete pDecomposed;
+	return TRUE;
+}
+
+BOOL HighpassFilter::CreateElliptic(double PassFreq, double PassLoss,
+									double StopFreq, double StopLoss)
+{
+	double OmegaPass = 2. / tan(PassFreq / 2.);
+	double OmegaStop = 2. / tan(StopFreq / 2.);
+	if (m_ZeroPhase)
+	{
+		PassLoss = sqrt(PassLoss);
+		StopLoss = sqrt(StopLoss);
+	}
+	POLY_ROOTS zeros;
+	POLY_ROOTS poles;
+	COMPLEX NormCoeff;
+
+	EllipticPolesZeros(OmegaPass, OmegaStop, StopLoss,
+						PassLoss, 1, zeros, poles, NormCoeff);
+
+	CArray<polyRatio *, polyRatio *> * pDecomposed
+		= polyRatio(poly(zeros, NormCoeff), poly(poles)).Decompose(2, &poles);
+
+	m_Order = (int)pDecomposed->GetSize();
+
+	for (int i = 0; i < pDecomposed->GetSize(); i++)
+	{
+#if 0 && defined(_DEBUG)
+		pDecomposed->GetAt(i)->Dump();
+#endif
+		polyRatio prBil;
+		BilinearTransform(*pDecomposed->GetAt(i), prBil, 1.);
+		ASSERT(prBil.numer().order() == 2 || prBil.numer().order() == 1);
+		ASSERT(prBil.denom().order() == 2 || prBil.denom().order() == 1);
+
+		m_Coeffs[i][0] = prBil.numer()[0].real();
+		m_Coeffs[i][1] = -prBil.numer()[1].real();
+
+		if (prBil.numer().order() > 1)
+		{
+			m_Coeffs[i][2] = prBil.numer()[2].real();
+		}
+		else
+		{
+			m_Coeffs[i][2] = 0.;
+		}
+		m_Coeffs[i][3] = prBil.denom()[0].real();
+		m_Coeffs[i][4] = -prBil.denom()[1].real();
+
+		if (prBil.numer().order() > 1)
+		{
+			m_Coeffs[i][5] = prBil.denom()[2].real();
+		}
+		else
+		{
+			m_Coeffs[i][5] = 0.;
+		}
+
+		delete pDecomposed->GetAt(i);
+	}
+	delete pDecomposed;
+	return TRUE;
 }
 

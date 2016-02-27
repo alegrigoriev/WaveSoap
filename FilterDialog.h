@@ -15,7 +15,6 @@
 
 /////////////////////////////////////////////////////////////////////////////
 // CFilterDialog dialog
-enum { MaxFilterOrder = 16, };
 
 class CFilterDialog : public CDialogWithSelectionT<CResizableDialog>
 {
