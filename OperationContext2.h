@@ -384,65 +384,6 @@ public:
 
 };
 
-struct FilterCoefficients
-{
-	BOOL m_bZeroPhase;
-	// the coefficients are: 3 numerator's coeffs and 3 denominator's coeffs
-	// results of the filter sections are ADDED
-	// if order==0, no filter
-	int     m_nLpfOrder;    // low pass filter order
-	double m_LpfCoeffs[MaxFilterOrder][6];
-
-	// results of the filter sections are ADDED
-	int     m_nHpfOrder;    // high pass filter order
-	double m_HpfCoeffs[MaxFilterOrder][6];
-
-	// results of the filter sections are MULTIPLIED
-	int     m_nNotchOrder;
-	double m_NotchCoeffs[MaxFilterOrder][6];
-};
-
-class CFilterContext: public CWaveProcContext
-{
-	typedef CFilterContext ThisClass;
-	typedef CWaveProcContext BaseClass;
-public:
-	typedef std::auto_ptr<ThisClass> auto_ptr;
-
-	CFilterContext(CWaveSoapFrontDoc * pDoc, UINT StatusStringId, UINT OperationNameId);
-	~CFilterContext();
-
-	class CFilterProc : public CWaveProc, public FilterCoefficients
-	{
-	public:
-		CFilterProc()
-		{
-			m_InputSampleType = SampleTypeFloat32;
-		}
-
-
-		virtual void ProcessSampleValue(void const * pInSample, void * pOutSample, unsigned channel);
-
-		virtual BOOL Init();
-		void SetFilterCoefficients(FilterCoefficients const & coeffs)
-		{
-			static_cast<FilterCoefficients&>(*this) = coeffs;
-		}
-
-	private:
-		double CalculateResult(unsigned ch, double Input);
-		double m_PrevLpfSamples[MAX_NUMBER_OF_CHANNELS][MaxFilterOrder][4];
-		double m_PrevHpfSamples[MAX_NUMBER_OF_CHANNELS][MaxFilterOrder][4];
-		double m_PrevNotchSamples[MAX_NUMBER_OF_CHANNELS][MaxFilterOrder][4];
-	} m_Proc;
-
-	void SetFilterCoefficients(FilterCoefficients const & coeffs)
-	{
-		m_Proc.SetFilterCoefficients(coeffs);
-	}
-	virtual BOOL Init();
-};
-
 class CSwapChannelsContext : public CWaveProcContext
 {
 	typedef CSwapChannelsContext ThisClass;
