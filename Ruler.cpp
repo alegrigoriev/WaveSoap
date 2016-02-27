@@ -247,7 +247,7 @@ void CVerticalRuler::OnMouseMove(UINT /*nFlags*/, CPoint point)
 	if (WM_LBUTTONDOWN == ButtonPressed
 		&& PrevMouseY != point.y)
 	{
-		TRACE("CVerticalRuler::OnMouseMove: Y=%d, PrevY = %d\n", point.y, PrevMouseY);
+		if(0) TRACE("CVerticalRuler::OnMouseMove: Y=%d, PrevY = %d\n", point.y, PrevMouseY);
 		if (! m_bIsTrackingSelection)
 		{
 			SetCapture();
