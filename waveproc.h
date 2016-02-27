@@ -772,19 +772,14 @@ class CChannelConvertor : public CWaveProc
 
 public:
 	typedef std::auto_ptr<ThisClass> auto_ptr;
-	CChannelConvertor(NUMBER_OF_CHANNELS OldChannels,
-					NUMBER_OF_CHANNELS NewChannels, CHANNEL_MASK ChannelsToProcess);
+	CChannelConvertor(NUMBER_OF_CHANNELS NewChannels);
 
-	virtual BOOL SetInputWaveformat(CWaveFormat const & Wf);
+	virtual BOOL SetInputWaveformat(CWaveFormat const & Wf, CHANNEL_MASK channels = ALL_CHANNELS);
 	// conversion either mono->stereo, or stereo->mono.
 	// if converting stereo->mono, the data can be left, right, or average
 	virtual unsigned ProcessSoundBuffer(char const * pInBuf, char * pOutBuf,
 										unsigned nInBytes, unsigned nOutBytes, unsigned * pUsedBytes);
-	virtual bool SetChannelsToProcess(CHANNEL_MASK /*channels*/)
-	{
-		// don't change channel mask
-		return true;
-	}
+	NUMBER_OF_CHANNELS m_NewChannels;
 };
 
 class CByteSwapConvertor : public CWaveProc
