@@ -400,10 +400,8 @@ CWaveProc::CWaveProc()
 	, m_InputSampleType(SampleTypeAny)
 	, m_OutputSampleType(SampleTypeAny)
 	, m_ResultChannels(ALL_CHANNELS)
-#ifdef _DEBUG
 	, m_ProcessedInputBytes(0)
 	, m_SavedOutputBytes(0)
-#endif
 {
 	m_InputFormat.InitCdAudioFormat();
 	m_OutputFormat.InitCdAudioFormat();
@@ -646,10 +644,8 @@ unsigned CWaveProc::ProcessSound(char const * pInBuf, char * pOutBuf,
 		ASSERT(0 == nSavedBytes % OutputSampleSize);
 		m_SavedOutputSamples += NUMBER_OF_SAMPLES(nSavedBytes / OutputSampleSize);
 	}
-#ifdef _DEBUG
 	m_ProcessedInputBytes += *pUsedBytes;
 	m_SavedOutputBytes += nSavedBytes;
-#endif
 	return nSavedBytes;
 }
 
