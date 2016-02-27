@@ -5378,3 +5378,96 @@ void CFilterProc::ProcessSampleValue(void const * pInSample, void * pOutSample, 
 {
 	*(float*)pOutSample = (float)CalculateResult(channel, *(float const*)pInSample);
 }
+
+
+/////////////////////////////////////////////////////////////////////////////////////////////
+///////// CGilbertFilter
+///////////////////////////////
+
+BOOL CGilbertPrefilter::SetInputWaveformat(CWaveFormat const & Wf, CHANNEL_MASK channels)
+{
+	if (!BaseClass::SetInputWaveformat(Wf, channels))
+	{
+		return FALSE;
+	}
+	m_OutputFormat.InitFormat(SampleTypeFloat32, m_InputFormat.SampleRate(), m_InputFormat.NumChannels() * 2);
+
+	return TRUE;
+}
+
+void CGilbertPrefilter::ProcessSoundSample(char const * pInSample, char * pOutSample, unsigned NumChannels)
+{
+	ASSERT(m_InputFormat.BitsPerSample() == 32);
+	ASSERT(m_OutputFormat.BitsPerSample() == 32);
+
+	ASSERT((m_InputFormat.ChannelsMask() & m_ChannelsToProcess) == m_InputFormat.ChannelsMask());
+	float * pOut = (float*)pOutSample;
+	const float * pIn = (const float*)pInSample;
+	for (unsigned i = 0; i < NumChannels; i++, pIn++, pOut += 2)
+	{
+		// Convert real signal to complex and spin it by Z=i * PI/2
+		switch (m_CurrentSample & 3)
+		{
+		case 0:
+			pOut[0] = pIn[0];
+			pOut[1] = 0.;
+			break;
+		case 1:
+			pOut[0] = 0.;
+			pOut[1] = pIn[0];
+			break;
+		case 2:
+			pOut[0] = -pIn[0];
+			pOut[1] = 0.;
+			break;
+		case 3:
+			pOut[0] = 0.;
+			pOut[1] = -pIn[0];
+			break;
+		}
+	}
+}
+
+BOOL CGilbertPostfilter::SetInputWaveformat(CWaveFormat const & Wf, CHANNEL_MASK channels)
+{
+	ASSERT(0 == (Wf.NumChannels() & 1));
+
+	if (!BaseClass::SetInputWaveformat(Wf, channels))
+	{
+		return FALSE;
+	}
+	m_OutputFormat.InitFormat(SampleTypeFloat32, m_InputFormat.SampleRate(), m_InputFormat.NumChannels() / 2);
+
+	return TRUE;
+}
+
+void CGilbertPostfilter::ProcessSoundSample(char const * pInSample, char * pOutSample, unsigned NumChannels)
+{
+	ASSERT(m_InputFormat.BitsPerSample() == 32);
+	ASSERT(m_OutputFormat.BitsPerSample() == 32);
+
+	ASSERT((m_InputFormat.ChannelsMask() & m_ChannelsToProcess) == m_InputFormat.ChannelsMask());
+	float * pOut = (float*)pOutSample;
+	const float * pIn = (const float*)pInSample;
+	for (unsigned i = 0; i < NumChannels; i++, pIn++, pOut += 2)
+	{
+		// Convert real signal to complex and spin it by Z=i * PI/2
+		switch (m_CurrentSample & 3)
+		{
+		case 0:
+			pOut[0] = 2.f * pIn[0];
+			break;
+		case 1:
+			pOut[0] = -2.f * pIn[1];
+			break;
+		case 2:
+			pOut[0] = -2.f * pIn[0];
+			break;
+		case 3:
+			pOut[0] = 2.f * pIn[1];
+			break;
+		}
+	}
+}
+
+

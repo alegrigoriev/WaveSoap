@@ -189,6 +189,8 @@ BEGIN_MESSAGE_MAP(CWaveSoapFrontDoc, CDocument)
 	ON_COMMAND(ID_EDIT_FADE_IN, OnEditFadeIn)
 	ON_UPDATE_COMMAND_UI(ID_EDIT_FADE_IN, OnUpdateEditFadeIn)
 	ON_UPDATE_COMMAND_UI(ID_EDIT_FADE_OUT, OnUpdateEditFadeOut)
+	ON_COMMAND(ID_PROCESS_GILBERT_TRANSFORM, &CWaveSoapFrontDoc::OnProcessGilbertTransform)
+	ON_UPDATE_COMMAND_UI(ID_PROCESS_GILBERT_TRANSFORM, &CWaveSoapFrontDoc::OnUpdateProcessGilbertTransform)
 END_MESSAGE_MAP()
 
 /////////////////////////////////////////////////////////////////////////////
@@ -5922,3 +5924,88 @@ void CWaveSoapFrontDoc::DoFadeInOut(BOOL FadeOut)
 	}
 }
 
+void CWaveSoapFrontDoc::OnProcessGilbertTransform()
+{
+	// TODO: Add your command handler code here
+	if (!CanModifyFile())
+	{
+		return;
+	}
+
+	SAMPLE_INDEX start = m_SelectionStart;
+	SAMPLE_INDEX end = m_SelectionEnd;
+	if (start == end)
+	{
+		// select all
+		start = 0;
+		end = WaveFileSamples();
+	}
+	// create temporary wave file
+	CWaveFile TmpFile;
+	CWaveFormat TmpWf;
+	TmpWf.InitFormat(SampleTypeFloat32, WaveSampleRate(), WaveChannels() * 2);
+
+	if (!TmpFile.CreateWaveFile(NULL, TmpWf, ALL_CHANNELS, end - start + 1000,
+								CreateWaveFileDeleteAfterClose
+								| CreateWaveFileAllowMemoryFile
+								| CreateWaveFileTempDir
+								| CreateWaveFileTemp, NULL))
+	{
+		AfxMessageBox(IDS_UNABLE_TO_CREATE_TEMPORARY_FILE, MB_OK | MB_ICONEXCLAMATION);
+		return;
+	}
+	// perform forward pass with conversion to complex and writing to the temp file
+	// perform backward pass with writing the imaginary part to the original file
+	FilterCoefficients coeffs = { 0 };
+	LowpassFilter lpf;
+	lpf.SetZeroPhase(true);
+
+	lpf.CreateElliptic((WaveSampleRate() / 4. - 20.) * M_PI / (WaveSampleRate() / 2.), 0.995,
+						(WaveSampleRate() / 4. + 20.) * M_PI / (WaveSampleRate() / 2.), 0.001);
+
+	lpf.GetCoefficients(coeffs.m_LpfCoeffs);
+	coeffs.m_nLpfOrder = lpf.GetFilterOrder();
+
+	CWaveProcContext::auto_ptr pProcContext1(new CWaveProcContext(this,
+												IDS_NORMALIZE_VOLUME_STATUS_PROMPT, IDS_NORMALIZE_VOLUME_OPERATION_NAME));
+	CGilbertPrefilter * pPrefilter = new CGilbertPrefilter;
+	pProcContext1->AddWaveProc(pPrefilter);
+
+	CFilterProc * pFilter = new CFilterProc;
+
+	pFilter->SetFilterCoefficients(coeffs);
+	pProcContext1->AddWaveProc(pFilter);
+
+	pProcContext1->InitSource(m_WavFile, start, end, GetSelectedChannel());
+	pProcContext1->InitDestination(TmpFile, 0, start - end /*+ 1000*/, ALL_CHANNELS, FALSE);
+
+	CWaveProcContext::auto_ptr pProcContext2(new CWaveProcContext(this,
+												IDS_GILBERT_TRANSFORM_STATUS_PROMPT, IDS_GILBERT_TRANSFORM_OPERATION_NAME));
+
+	pFilter = new CFilterProc;
+	pFilter->SetFilterCoefficients(coeffs);
+	pProcContext2->AddWaveProc(pFilter);
+
+	CGilbertPostfilter * pPostfilter = new CGilbertPostfilter;
+	pProcContext2->AddWaveProc(pPostfilter);
+	pProcContext2->m_NumberOfBackwardPasses = 1;
+	pProcContext2->m_NumberOfForwardPasses = 0;
+
+	pProcContext2->InitSource(TmpFile, 0, end - start /*+ 1000*/, ALL_CHANNELS);
+	pProcContext2->InitDestination(m_WavFile, start, end, GetSelectedChannel(), UndoEnabled());
+
+	CStagedContext * pContext = new CStagedContext(this,
+									0, IDS_GILBERT_TRANSFORM_STATUS_PROMPT, IDS_GILBERT_TRANSFORM_OPERATION_NAME);
+
+	pContext->AddContext(pProcContext1.release());
+	pContext->AddContext(pProcContext2.release());
+
+	pContext->Execute();
+}
+
+
+void CWaveSoapFrontDoc::OnUpdateProcessGilbertTransform(CCmdUI *pCmdUI)
+{
+	// TODO: Add your command update UI handler code here
+	pCmdUI->Enable(CanModifyFile() && WaveChannels() <= 16);
+}
