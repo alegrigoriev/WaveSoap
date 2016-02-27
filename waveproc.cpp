@@ -226,6 +226,20 @@ CBatchProcessing::Item::~Item()
 	delete []InBuf;
 	delete []OutBuf;
 }
+
+BOOL CBatchProcessing::Item::Init()
+{
+	InBufGetIndex = 0;
+	InBufPutIndex = 0;
+	OutBufPutIndex = 0;
+	OutBufPutIndex = 0;
+
+	if (Proc)
+	{
+		return Proc->Init();
+	}
+	return FALSE;
+}
 CBatchProcessing::Item::Item()
 	: Proc(NULL), InBuf(NULL), OutBuf(NULL), InBufGetIndex(0), InBufPutIndex(0),  OutBufGetIndex(0), OutBufPutIndex(0), Flags(0)
 {
@@ -275,7 +289,7 @@ CBatchProcessing::Item & CBatchProcessing::Item::operator =(Item& item)
 	return *this;
 }
 
-unsigned CBatchProcessing::Item::FillInputBuffer(const char * Buf, unsigned BufFilled, CWaveFormat const * pWf) // returns number bytes used
+unsigned CBatchProcessing::Item::FillInputBuffer(const char * Buf, unsigned BufFilled, CWaveFormat const * pWf, CHANNEL_MASK SrcChannelMask) // returns number bytes used
 {
 	unsigned BytesUsed = 0;
 
@@ -290,7 +304,7 @@ unsigned CBatchProcessing::Item::FillInputBuffer(const char * Buf, unsigned BufF
 	unsigned BytesToFill = IntermediateBufSize - InBufPutIndex;
 	WaveSampleType SourceType = pWf->GetSampleType();
 	if (SourceType == SampleTypeCompressed
-		|| SourceType == SampleType8bit
+		|| (SourceType == SampleType8bit && SrcChannelMask == ALL_CHANNELS)	// FIXME
 		|| SourceType == SampleTypeNotSupported)
 	{
 		// all other cases - the data is simply copied
@@ -315,15 +329,15 @@ unsigned CBatchProcessing::Item::FillInputBuffer(const char * Buf, unsigned BufF
 			SamplesToFill = SourceSamples;
 		}
 		BytesUsed = SamplesToFill * pWf->SampleSize();
-		CopyWaveSamples(InBuf + InBufPutIndex, ALL_CHANNELS, Proc->GetInputWaveformat().NumChannels(),
-			Buf, ALL_CHANNELS, pWf->NumChannels(), SamplesToFill, Proc->GetInputWaveformat().GetSampleType(), SourceType);
+		CopyWaveSamples(InBuf + InBufPutIndex, Proc->GetInputChannelsMask(), Proc->GetInputWaveformat().NumChannels(),
+			Buf, SrcChannelMask, pWf->NumChannels(), SamplesToFill, Proc->GetInputWaveformat().GetSampleType(), SourceType);
 
 		InBufPutIndex += SamplesToFill * BufferSampleSize;
 		return BytesUsed;
 	}
 }
 
-unsigned CBatchProcessing::Item::FillOutputBuffer(char * Buf, unsigned BytesToFill, CWaveFormat const * pWf) // returns number bytes used
+unsigned CBatchProcessing::Item::FillOutputBuffer(char * Buf, unsigned BytesToFill, CWaveFormat const * pWf, CHANNEL_MASK DstChannelMask) // returns number bytes used
 {
 	unsigned BytesFilled = 0;
 
@@ -334,7 +348,7 @@ unsigned CBatchProcessing::Item::FillOutputBuffer(char * Buf, unsigned BytesToFi
 	unsigned SrcSampleSize = Proc->GetOutputWaveformat().SampleSize();
 
 	if (TargetType == SampleTypeCompressed
-		|| TargetType == SampleType8bit
+		|| (TargetType == SampleType8bit && DstChannelMask == ALL_CHANNELS)	// FIXME
 		|| TargetType == SampleTypeNotSupported)
 	{
 		// all other cases - the data is simply copied
@@ -357,8 +371,8 @@ unsigned CBatchProcessing::Item::FillOutputBuffer(char * Buf, unsigned BytesToFi
 		}
 		BytesFilled = SamplesToFill * pWf->SampleSize();
 
-		CopyWaveSamples(Buf, ALL_CHANNELS, pWf->NumChannels(),
-						OutBuf + OutBufGetIndex, ALL_CHANNELS, Proc->GetOutputWaveformat().NumChannels(),
+		CopyWaveSamples(Buf, DstChannelMask, pWf->NumChannels(),
+						OutBuf + OutBufGetIndex, Proc->GetOutputChannelsMask(), Proc->GetOutputWaveformat().NumChannels(),
 						SamplesToFill, TargetType, Proc->GetOutputWaveformat().GetSampleType());
 
 		OutBufGetIndex += SamplesToFill * SrcSampleSize;
@@ -385,6 +399,7 @@ CWaveProc::CWaveProc()
 	, m_CurrentSample(0)
 	, m_InputSampleType(SampleTypeAny)
 	, m_OutputSampleType(SampleTypeAny)
+	, m_ResultChannels(ALL_CHANNELS)
 #ifdef _DEBUG
 	, m_ProcessedInputBytes(0)
 	, m_SavedOutputBytes(0)
@@ -517,29 +532,41 @@ void CWaveProc::ProcessSampleValue(void const * pInSample, void * pOutSample, un
 	}
 }
 
-BOOL CWaveProc::SetInputWaveformat(CWaveFormat const & Wf)
+BOOL CWaveProc::SetInputWaveformat(CWaveFormat const & Wf, CHANNEL_MASK channels)
 {
+	// The arguments are the source format and the channels to use from it
+	// If 'channels' specify less channels than the source format provides,
+	// the function implementation has a choice to either:
+	// 1) Keep the channel mask and use original number of channels. The caller will provide data with original channels and channel mask
+	// 2) collapse the channel mask and make new format with fewer channels. The caller will provide data with fewer channels.
+	// This default implementation chooses option 2.
+	// by default, the channel mask conversion is done on read and write, outside of context, and we save all channels
+
+	m_ChannelsToProcess = ALL_CHANNELS;
+	NUMBER_OF_CHANNELS mask_channels = Wf.NumChannelsFromMask(channels);
+	if (mask_channels == 0)
+	{
+		return FALSE;
+	}
+
 	if (m_InputSampleType == SampleTypeAny
 		|| m_InputSampleType == Wf.GetSampleType())
 	{
-		m_InputFormat = Wf;
+		if (Wf.GetSampleType() == SampleTypeCompressed)
+		{
+			m_InputFormat = Wf;
+		}
+		else
+		{
+			m_InputFormat.InitFormat(Wf.GetSampleType(), Wf.SampleRate(), mask_channels);
+		}
 		m_InputSampleType = Wf.GetSampleType();
 	}
-	else if (m_InputSampleType == SampleType16bit)
+	else if (m_InputSampleType == SampleType16bit
+			|| m_InputSampleType == SampleType32bit
+			|| m_InputSampleType == SampleTypeFloat32)
 	{
-		m_InputFormat.InitFormat(WAVE_FORMAT_PCM, Wf.SampleRate(), Wf.NumChannels(),
-								16);
-		// FIXME: Use extended format to carry the channel assignments
-	}
-	else if (m_InputSampleType == SampleType32bit)
-	{
-		m_InputFormat.InitFormat(WAVE_FORMAT_PCM, Wf.SampleRate(), Wf.NumChannels(),
-								32);
-	}
-	else if (m_InputSampleType == SampleTypeFloat32)
-	{
-		m_InputFormat.InitFormat(WAVE_FORMAT_IEEE_FLOAT, Wf.SampleRate(), Wf.NumChannels(),
-								32);
+		m_InputFormat.InitFormat(m_InputSampleType, Wf.SampleRate(), mask_channels);
 	}
 	else
 	{
@@ -555,7 +582,7 @@ BOOL CWaveProc::SetInputWaveformat(CWaveFormat const & Wf)
 	return TRUE;
 }
 
-BOOL CWaveProc::SetOutputWaveformat(CWaveFormat const & Wf)
+BOOL CWaveProc::SetOutputWaveformat(CWaveFormat const & Wf, CHANNEL_MASK channels)
 {
 	if (m_OutputSampleType == SampleTypeAny
 		|| m_OutputSampleType == Wf.GetSampleType())
@@ -563,26 +590,17 @@ BOOL CWaveProc::SetOutputWaveformat(CWaveFormat const & Wf)
 		m_OutputFormat = Wf;
 		m_OutputSampleType = Wf.GetSampleType();
 	}
-	else if (m_OutputSampleType == SampleType16bit)
+	else if (m_OutputSampleType == SampleType16bit
+			|| m_OutputSampleType == SampleType32bit
+			|| m_OutputSampleType == SampleTypeFloat32)
 	{
-		m_OutputFormat.InitFormat(WAVE_FORMAT_PCM, Wf.SampleRate(), Wf.NumChannels(),
-								16);
-		// FIXME: Use extended format to carry the channel assignments
-	}
-	else if (m_OutputSampleType == SampleTypeFloat32)
-	{
-		m_OutputFormat.InitFormat(WAVE_FORMAT_IEEE_FLOAT, Wf.SampleRate(), Wf.NumChannels(),
-								32);
-	}
-	else if (m_OutputSampleType == SampleType32bit)
-	{
-		m_OutputFormat.InitFormat(WAVE_FORMAT_PCM, Wf.SampleRate(), Wf.NumChannels(),
-								32);
+		m_OutputFormat.InitFormat(m_OutputSampleType, Wf.SampleRate(), Wf.NumChannels());
 	}
 	else
 	{
 		return FALSE;
 	}
+	m_ResultChannels = channels;
 	return TRUE;
 }
 CWaveFormat const & CWaveProc::GetInputWaveformat() const
@@ -828,8 +846,7 @@ CHumRemoval::CHumRemoval(WAVEFORMATEX const * pWf, CHANNEL_MASK ChannelsToProces
 	m_HighpassCoeffs[1] = 0.996363312f;
 	m_HighpassCoeffs[2] = 1.;
 
-	m_ChannelsToProcess = ChannelsToProcess;
-	SetInputWaveformat(pWf);
+	SetInputWaveformat(pWf, ChannelsToProcess);
 }
 
 void CHumRemoval::SetDifferentialCutoff(double frequency)
@@ -1001,8 +1018,7 @@ CClickRemoval::CClickRemoval(WAVEFORMATEX const * pWf, CHANNEL_MASK ChannelsToPr
 {
 	//m_Deriv2Threshold = 60.;
 
-	m_ChannelsToProcess = ChannelsToProcess;
-	SetInputWaveformat(pWf);
+	SetInputWaveformat(pWf, ChannelsToProcess);
 
 #if 0
 	static int test_performed = 1;
@@ -3366,8 +3382,7 @@ CNoiseReduction::CNoiseReduction(WAVEFORMATEX const * pWf, CHANNEL_MASK Channels
 	, m_FftOrder(nFftOrder)
 {
 	m_InputSampleType = SampleTypeFloat32;
-	m_ChannelsToProcess = ChannelsToProcess;
-	SetInputWaveformat(pWf);
+	SetInputWaveformat(pWf, ChannelsToProcess);
 }
 
 CNoiseReduction::~CNoiseReduction()
@@ -3384,9 +3399,9 @@ void CNoiseReduction::Dump(unsigned indent) const
 	}
 }
 
-BOOL CNoiseReduction::SetInputWaveformat(CWaveFormat const & Wf)
+BOOL CNoiseReduction::SetInputWaveformat(CWaveFormat const & Wf, CHANNEL_MASK channels)
 {
-	if (! CWaveProc::SetInputWaveformat(Wf))
+	if (! CWaveProc::SetInputWaveformat(Wf, channels))
 	{
 		return FALSE;
 	}
@@ -3964,38 +3979,44 @@ double CBatchProcessing::GetMaxClipped() const
 	return MaxClipped;
 }
 
-BOOL CBatchProcessing::SetInputWaveformat(CWaveFormat const & Wf)
+BOOL CBatchProcessing::SetInputWaveformat(CWaveFormat const & Wf, CHANNEL_MASK channels)
 {
-	m_InputFormat = Wf;
-	m_InputSampleType = Wf.GetSampleType();
-
 	if (m_Stages.empty())
 	{
-		m_OutputFormat = m_InputFormat;
-		return TRUE;
+		return BaseClass::SetInputWaveformat(Wf, channels);
 	}
+	// The source data is as it's read from the file
+	m_InputFormat = Wf;
+	m_InputSampleType = m_InputFormat.GetSampleType();
+	m_ChannelsToProcess = channels;
 
-	if ( ! m_Stages.begin()->Proc->SetInputWaveformat(Wf))
-	{
-		return FALSE;
-	}
+	CWaveFormat PrevWf = m_InputFormat;
+	CHANNEL_MASK PrevChannels = channels;
 
-	for (item_iterator i = m_Stages.begin(); i+1 != m_Stages.end(); i++)
+	for (item_iterator ii = m_Stages.begin(); ii != m_Stages.end(); ii++)
 	{
-		if (! i[1].Proc->SetInputWaveformat(i->Proc->GetOutputWaveformat()))
+		if (! ii->Proc->SetInputWaveformat(PrevWf, PrevChannels))
 		{
 			return FALSE;
 		}
+		PrevWf = ii->Proc->GetOutputWaveformat();
+		PrevChannels = ii->Proc->GetOutputChannelsMask();
 	}
+
 	// set output format
-	m_OutputFormat = m_Stages.rbegin()->Proc->GetOutputWaveformat();
+	m_OutputFormat = PrevWf;
+	m_OutputSampleType = m_OutputFormat.GetSampleType();
+	m_ResultChannels = PrevChannels;
+
 	return TRUE;
 }
 
-BOOL CBatchProcessing::SetOutputWaveformat(CWaveFormat const & Wf)
+BOOL CBatchProcessing::SetOutputWaveformat(CWaveFormat const & Wf, CHANNEL_MASK channels)
 {
 	m_OutputFormat = Wf;
 	m_OutputSampleType = Wf.GetSampleType();
+	m_ResultChannels = channels;
+
 	return TRUE;
 }
 
@@ -4023,21 +4044,9 @@ unsigned CBatchProcessing::ProcessSoundBuffer(char const * pIn, char * pOut,
 			unsigned nCurrInputBytes;
 			// prepare input buffer. Do not use shortcut optimization - much pain, little gain
 
-			if (pItem != m_Stages.begin())
+			if (pItem == m_Stages.begin())
 			{
-				nCurrInputBytes = pItem->FillInputBuffer(pPrevItem->OutBuf + pPrevItem->OutBufGetIndex,
-														pPrevItem->OutBufPutIndex - pPrevItem->OutBufGetIndex,
-														&pPrevItem->Proc->GetOutputWaveformat());
-
-				pPrevItem->OutBufGetIndex += nCurrInputBytes;
-				if (pPrevItem->OutBufGetIndex == pPrevItem->OutBufPutIndex)
-				{
-					pPrevItem->OutBufGetIndex = 0;
-					pPrevItem->OutBufPutIndex = 0;
-				}
-			}
-			else
-			{
+				// fill the first stage buffer
 				if (m_BackwardPass)
 				{
 					// swap order of samples
@@ -4045,7 +4054,7 @@ unsigned CBatchProcessing::ProcessSoundBuffer(char const * pIn, char * pOut,
 					// pIn points to the end of the buffer
 					while (nInBytes != 0)
 					{
-						nCurrInputBytes = pItem->FillInputBuffer(pIn - SampleSize, nInBytes, &GetInputWaveformat());
+						nCurrInputBytes = pItem->FillInputBuffer(pIn - SampleSize, SampleSize, &GetInputWaveformat(), GetInputChannelsMask());
 
 						if (0 == nCurrInputBytes)
 						{
@@ -4053,17 +4062,33 @@ unsigned CBatchProcessing::ProcessSoundBuffer(char const * pIn, char * pOut,
 						}
 						pIn -= nCurrInputBytes;
 						nInBytes -= nCurrInputBytes;
-						*pUsedBytes += nInBytes;
+						*pUsedBytes += nCurrInputBytes;
 					}
 				}
 				else
 				{
-					nCurrInputBytes = pItem->FillInputBuffer(pIn, nInBytes, &GetInputWaveformat());
+					nCurrInputBytes = pItem->FillInputBuffer(pIn, nInBytes, &GetInputWaveformat(), GetInputChannelsMask());
 					pIn += nCurrInputBytes;
 					nInBytes -= nCurrInputBytes;
 					*pUsedBytes += nCurrInputBytes;
 				}
 
+			}
+			else
+			{
+				// intermediate stage
+				nCurrInputBytes = pItem->FillInputBuffer(pPrevItem->OutBuf + pPrevItem->OutBufGetIndex,
+														pPrevItem->OutBufPutIndex - pPrevItem->OutBufGetIndex,
+														&pPrevItem->Proc->GetOutputWaveformat(), pPrevItem->Proc->GetOutputChannelsMask());
+
+				pPrevItem->OutBufGetIndex += nCurrInputBytes;
+
+				if (pPrevItem->OutBufPutIndex - pPrevItem->OutBufGetIndex < pPrevItem->Proc->GetOutputSampleSize())
+				{
+					memmove(pPrevItem->OutBuf, pPrevItem->OutBuf + pPrevItem->OutBufGetIndex, pPrevItem->OutBufPutIndex - pPrevItem->OutBufGetIndex);
+					pPrevItem->OutBufPutIndex -= pPrevItem->OutBufGetIndex;
+					pPrevItem->OutBufGetIndex = 0;
+				}
 			}
 
 			pPrevItem = pItem;
@@ -4109,13 +4134,14 @@ unsigned CBatchProcessing::ProcessSoundBuffer(char const * pIn, char * pOut,
 
 			if (pItem + 1 == m_Stages.end())
 			{
-				// now pull the data from the output buffer
+				// this is the last processing item
+				// now pull the data from the item's output buffer to the batch output buffer
 				if (m_BackwardPass)
 				{
 					unsigned SampleSize = GetOutputWaveformat().SampleSize();
 					while (nOutBytes != 0)
 					{
-						nOutputBytes = pItem->FillOutputBuffer(pOut - SampleSize, nOutBytes, &GetOutputWaveformat());
+						nOutputBytes = pItem->FillOutputBuffer(pOut - SampleSize, SampleSize, &GetOutputWaveformat(), GetOutputChannelsMask());
 						if (nOutputBytes == 0)
 						{
 							break;
@@ -4127,7 +4153,7 @@ unsigned CBatchProcessing::ProcessSoundBuffer(char const * pIn, char * pOut,
 				}
 				else
 				{
-					nOutputBytes = pItem->FillOutputBuffer(pOut, nOutBytes, &GetOutputWaveformat());
+					nOutputBytes = pItem->FillOutputBuffer(pOut, nOutBytes, &GetOutputWaveformat(), GetOutputChannelsMask());
 					nSavedBytes += nOutputBytes;
 					nOutBytes -= nOutputBytes;
 					pOut += nOutputBytes;
@@ -4188,31 +4214,15 @@ BOOL CBatchProcessing::Init()
 		return FALSE;
 	}
 
-	for (item_iterator pItem = m_Stages.begin(); pItem != m_Stages.end(); pItem++)
+	for (auto pItem = m_Stages.begin(); pItem != m_Stages.end(); pItem++)
 	{
-		if ( ! pItem->Proc->Init())
+		if ( ! pItem->Init())
 		{
 			return FALSE;
 		}
-		pItem->InBufGetIndex = 0;
-		pItem->InBufPutIndex = 0;
-		pItem->OutBufPutIndex = 0;
-		pItem->OutBufPutIndex = 0;
 	}
 
 	return TRUE;
-}
-
-bool CBatchProcessing::SetChannelsToProcess(CHANNEL_MASK channels)
-{
-	for (item_iterator pItem = m_Stages.begin(); pItem != m_Stages.end(); pItem++)
-	{
-		if ( ! pItem->Proc->SetChannelsToProcess(channels))
-		{
-			return false;
-		}
-	}
-	return true;
 }
 
 void CBatchProcessing::DeInit()
@@ -4576,7 +4586,7 @@ BOOL CResampleFilter::SetInputWaveformat(CWaveFormat const &
 #ifdef _DEBUG
 										Wf
 #endif
-										)
+										, CHANNEL_MASK /*channels*/)
 {
 	ASSERT(Wf == m_InputFormat);
 	return TRUE;
@@ -4980,7 +4990,7 @@ BOOL CAudioConvertor::SetInputWaveformat(CWaveFormat const &
 #ifdef _DEBUG
 										Wf
 #endif
-										)
+										, CHANNEL_MASK /*channels*/)
 {
 	ASSERT(Wf == m_InputFormat);
 	return TRUE;
