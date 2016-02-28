@@ -168,7 +168,7 @@ void CWaveOutlineView::OnDraw(CDC* pDC)
 			if (CurrSample >= RightSampleInBuffer)
 			{
 				LeftSampleInBuffer = CurrSample;
-				unsigned long ToRead = nSamples - LeftSampleInBuffer;
+				long ToRead = nSamples - LeftSampleInBuffer;
 				if (ToRead > BufSamples)
 				{
 					ToRead = BufSamples;
