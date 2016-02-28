@@ -3651,16 +3651,8 @@ HRESULT STDMETHODCALLTYPE CDirectShowDecodeContext::Stop(void)
 
 BOOL CDirectShowDecodeContext::OperationProc()
 {
-	if (m_EndOfStream)
-	{
-		if (!m_StopRequested)
-		{
-			m_StopRequested = true;
-			m_DshowDecoder.StopDecode();
-		}
-	}
-
-	if (m_Flags & OperationContextStopRequested)
+	if (m_EndOfStream
+		|| (m_Flags & OperationContextStopRequested))
 	{
 		TRACE("CWmaDecodeContext::OperationProc: Stop Requested\n");
 		if (!m_StopRequested)
@@ -3668,25 +3660,21 @@ BOOL CDirectShowDecodeContext::OperationProc()
 			m_StopRequested = true;
 			m_DshowDecoder.StopDecode();
 		}
-		if (m_DshowDecoder.GetDecoderState() == m_DshowDecoder.DecoderStateStopped)
+		if (m_DshowDecoder.GetDecoderState() != m_DshowDecoder.DecoderStateStopped)
 		{
-			m_Flags |= OperationContextStop;
+			m_Flags |= OperationContextYield;
+			return TRUE;
 		}
 		else
 		{
-			m_Flags |= OperationContextYield;
+			// Go forward - handle the decoder stop
 		}
-		return TRUE;
-	}
-
-	if (m_DshowDecoder.GetDecoderState() == m_DshowDecoder.DecoderStateStopped)
-	{
-		m_Flags |= OperationContextFinished;
-		return TRUE;
 	}
 
 	DWORD dwTime = GetTickCount();
-	if (dwTime - m_LastTickCountUpdate < 200)
+	if (dwTime - m_LastTickCountUpdate < 200
+		// force file update when the decoder is stopped
+		&& m_DshowDecoder.GetDecoderState() != m_DshowDecoder.DecoderStateStopped)
 	{
 		m_Flags |= OperationContextYield;
 		return TRUE;
@@ -3702,7 +3690,14 @@ BOOL CDirectShowDecodeContext::OperationProc()
 
 	if (m_DshowDecoder.GetDecoderState() == m_DshowDecoder.DecoderStateStopped)
 	{
-		m_Flags |= OperationContextFinished;
+		if (m_Flags & OperationContextStopRequested)
+		{
+			m_Flags |= OperationContextStop;
+		}
+		else
+		{
+			m_Flags |= OperationContextFinished;
+		}
 		if (m_CurrentLengthSamples != m_DstWrittenSample)
 		{
 			NewSampleCount = m_DstWrittenSample;
@@ -3713,6 +3708,11 @@ BOOL CDirectShowDecodeContext::OperationProc()
 	{
 		NewSampleCount = m_DstWrittenSample + 44100 * 30;	// add 30 seconds more
 		m_CurrentLengthSamples = NewSampleCount;
+		m_Flags |= OperationContextYield;
+	}
+	else
+	{
+		m_Flags |= OperationContextYield;
 	}
 
 
@@ -3723,7 +3723,6 @@ BOOL CDirectShowDecodeContext::OperationProc()
 
 		m_pDocument->SoundChanged(m_DstFile.GetFileID(), nFirstSample, nLastSample, NewSampleCount);
 	}
-	m_Flags |= OperationContextYield;
 
 	return TRUE;
 }
@@ -3852,7 +3851,7 @@ void CDirectShowDecodeContext::PostRetire()
 
 		m_DstFile.SetFileLengthSamples(m_DstWrittenSample);
 
-		m_pDocument->SoundChanged(m_DstFile.GetFileID(), 0, 0, m_DstWrittenSample, UpdateSoundDontRescanPeaks);
+		m_pDocument->SoundChanged(m_DstFile.GetFileID(), m_LastSamplesUpdate, m_DstWrittenSample, m_DstWrittenSample, UpdateSoundDontRescanPeaks);
 
 		if (m_Flags & DecompressSavePeakFile)
 		{
