@@ -235,14 +235,16 @@ void CWaveSoapFileOpenDialog::OnFileNameChange()
 		&& m_WaveFile.FindData())
 	{
 		m_WaveFile.LoadMetadata();
-		WAVEFORMATEX * pWf = m_WaveFile.GetWaveFormat();
-		if (pWf != NULL)
+		try
 		{
-			nChannels = pWf->nChannels;
-			nBitsPerSample = pWf->wBitsPerSample;
-			if (16 == nBitsPerSample
-				&& WAVE_FORMAT_PCM == pWf->wFormatTag
-				&& (nChannels == 1 || nChannels == 2))
+			CWaveFormat &wf = m_WaveFile.GetWaveFormat();
+			nChannels = wf.NumChannels();
+			nBitsPerSample = wf.BitsPerSample();
+			WaveSampleType sample_type = wf.GetSampleType();
+
+			if (sample_type == SampleType16bit
+				|| sample_type == SampleType32bit
+				|| sample_type == SampleTypeFloat32)
 			{
 				// can open direct and readonly
 				CWnd * pWnd = GetDlgItem(IDC_CHECK_READONLY);
@@ -270,10 +272,9 @@ void CWaveSoapFileOpenDialog::OnFileNameChange()
 					pWnd->EnableWindow(FALSE);
 				}
 			}
-			nSamplingRate = pWf->nSamplesPerSec;
+			nSamplingRate = wf.SampleRate();
 			if (m_WaveFile.m_FactSamples != -1
-				&& (pWf->wFormatTag != WAVE_FORMAT_PCM
-					|| (pWf->wBitsPerSample != 16 && pWf->wBitsPerSample != 8)))
+				&& wf.IsCompressed())
 			{
 				nSamples = m_WaveFile.m_FactSamples;
 			}
@@ -289,7 +290,7 @@ void CWaveSoapFileOpenDialog::OnFileNameChange()
 
 			// get format name
 			SetDlgItemText(IDC_STATIC_ATTRIBUTES,
-							CAudioCompressionManager::GetFormatName(NULL, pWf));
+							CAudioCompressionManager::GetFormatName(NULL, wf));
 
 			s2.Format(_T("%s (%s)"),
 					LPCTSTR(TimeToHhMmSs(MulDiv(nSamples, 1000, nSamplingRate))),
@@ -299,7 +300,7 @@ void CWaveSoapFileOpenDialog::OnFileNameChange()
 			ACMFORMATTAGDETAILS aft;
 			memzero(aft);
 			aft.cbStruct = sizeof aft;
-			aft.dwFormatTag = pWf->wFormatTag;
+			aft.dwFormatTag = wf.FormatTag();
 
 			if (MMSYSERR_NOERROR == acmFormatTagDetails(NULL, & aft,
 														ACM_FORMATTAGDETAILSF_FORMATTAG))
@@ -311,9 +312,11 @@ void CWaveSoapFileOpenDialog::OnFileNameChange()
 				SetDlgItemText(IDC_STATIC_FILE_FORMAT, LoadCString(IDS_UNKNOWN_FILE_TYPE_FORMAT));
 			}
 		}
-		else
+		catch (bad_get_waveformat)
 		{
 			ClearFileInfoDisplay();
+			m_WaveFile.Close(); // don't want to keep it in use
+			return;
 		}
 	}
 	else

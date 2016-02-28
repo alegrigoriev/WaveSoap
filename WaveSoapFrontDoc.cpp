@@ -1134,12 +1134,18 @@ BOOL CWaveSoapFrontDoc::DoPaste(SAMPLE_INDEX Start, SAMPLE_INDEX End, CHANNEL_MA
 		{
 			return FALSE;
 		}
-		// TODO: check for non-PCM file
-		if (SrcFile.GetWaveFormat()->wFormatTag != WAVE_FORMAT_PCM)
+
+		try
+		{
+			if (!SrcFile.GetWaveFormat().IsPcm())
+			{
+				return FALSE;
+			}
+		}
+		catch (bad_get_waveformat)
 		{
 			return FALSE;
 		}
-
 		sOp.Format(IDS_PASTE_FROM_FILE_STATUS_PROMPT, FileName);
 		sPrompt.Format(IDS_PASTE_FROM_FILE_STATUS_PROMPT, FileName);
 	}
@@ -1476,8 +1482,13 @@ BOOL CWaveSoapFrontDoc::OnOpenDocument(LPCTSTR lpszPathName, int DocOpenFlags)
 	}
 
 	m_OriginalWavFile = m_WavFile;
-	m_OriginalWaveFormat = m_OriginalWavFile.GetWaveFormat();
-
+	try {
+		m_OriginalWaveFormat = m_OriginalWavFile.GetWaveFormat();
+	}
+	catch (std::bad_alloc)
+	{
+		ASSERT(0);
+	}
 	bool bNeedDecompression = false;
 	bool bNeedConversion = false;
 	WaveSampleType SampleType = m_OriginalWaveFormat.GetSampleType();
@@ -2447,8 +2458,9 @@ BOOL CWaveSoapFrontDoc::OnSaveFileOrPart(COperationContext ** ppOp, int flags, L
 void CWaveSoapFrontDoc::PostFileSave(CWaveFile & DstFile,
 									LPCTSTR NewName, BOOL SameName)
 {
-	WAVEFORMATEX OldFormat = * WaveFormat();
-	WAVEFORMATEX NewFormat = * DstFile.GetWaveFormat();
+	CWaveFormat OldFormat = WaveFormat();
+	CWaveFormat NewFormat = DstFile.GetWaveFormat();
+	WaveSampleType new_sample_type = NewFormat.GetSampleType();
 
 	// copy security descriptor
 	if (m_OriginalWavFile.IsOpen()
@@ -2505,8 +2517,9 @@ void CWaveSoapFrontDoc::PostFileSave(CWaveFile & DstFile,
 		// need to commit file to save its peak info with the correct timestamp
 		DstFile.Commit();
 		// we always reopen the document
-		if (WAVE_FORMAT_PCM == NewFormat.wFormatTag
-			&& 16 == NewFormat.wBitsPerSample)
+		if (new_sample_type == SampleType16bit
+			|| new_sample_type == SampleType32bit
+			|| new_sample_type == SampleTypeFloat32)
 		{
 			m_WavFile.SavePeakInfo(DstFile);
 
@@ -2540,8 +2553,8 @@ void CWaveSoapFrontDoc::PostFileSave(CWaveFile & DstFile,
 		{
 			if (m_bClosePending)
 			{
-				if (OldFormat.nSamplesPerSec == NewFormat.nSamplesPerSec
-					&& OldFormat.nChannels == NewFormat.nChannels)
+				if (OldFormat.SampleRate() == NewFormat.SampleRate()
+					&& OldFormat.NumChannels() == NewFormat.NumChannels())
 				{
 					m_WavFile.SavePeakInfo(DstFile);
 				}
@@ -2552,8 +2565,8 @@ void CWaveSoapFrontDoc::PostFileSave(CWaveFile & DstFile,
 			}
 			// if non-PCM format, ask about reloading the file
 			// if format changed, always reload
-			if (OldFormat.nSamplesPerSec == NewFormat.nSamplesPerSec
-				&& OldFormat.nChannels == NewFormat.nChannels)
+			if (OldFormat.SampleRate() == NewFormat.SampleRate()
+				&& OldFormat.NumChannels() == NewFormat.NumChannels())
 			{
 				m_WavFile.SavePeakInfo(DstFile);
 				CReopenCompressedFileDialog dlg;
@@ -2609,20 +2622,20 @@ void CWaveSoapFrontDoc::PostFileSave(CWaveFile & DstFile,
 
 	DstFile.Close();
 	// file will be reopened
-	if (OldFormat.nSamplesPerSec != NewFormat.nSamplesPerSec)
+	if (OldFormat.SampleRate() != NewFormat.SampleRate())
 	{
 		DeleteUndo();
 		DeleteRedo();
 		// recalculate selection
-		SAMPLE_INDEX SelStart = MulDiv(m_SelectionStart, NewFormat.nSamplesPerSec,
-										OldFormat.nSamplesPerSec);
-		SAMPLE_INDEX SelEnd = MulDiv(m_SelectionEnd, NewFormat.nSamplesPerSec,
-									OldFormat.nSamplesPerSec);
-		SAMPLE_INDEX Caret = MulDiv(m_CaretPosition, NewFormat.nSamplesPerSec,
-									OldFormat.nSamplesPerSec);
+		SAMPLE_INDEX SelStart = MulDiv(m_SelectionStart, NewFormat.SampleRate(),
+										OldFormat.SampleRate());
+		SAMPLE_INDEX SelEnd = MulDiv(m_SelectionEnd, NewFormat.SampleRate(),
+									OldFormat.SampleRate());
+		SAMPLE_INDEX Caret = MulDiv(m_CaretPosition, NewFormat.SampleRate(),
+									OldFormat.SampleRate());
 
 		CHANNEL_MASK Chan = m_SelectedChannel;
-		if (OldFormat.nChannels != NewFormat.nChannels)
+		if (OldFormat.NumChannels() != NewFormat.NumChannels())
 		{
 			Chan = ALL_CHANNELS;
 		}
@@ -2631,7 +2644,7 @@ void CWaveSoapFrontDoc::PostFileSave(CWaveFile & DstFile,
 					SetSelection_MakeFileVisible | SetSelection_MakeCaretVisible);
 		// view length will be adjusted in OpenDocument?
 	}
-	else if (OldFormat.nChannels != NewFormat.nChannels)
+	else if (OldFormat.NumChannels() != NewFormat.NumChannels())
 	{
 		DeleteUndo();
 		DeleteRedo();
@@ -4497,12 +4510,12 @@ BOOL CWaveSoapFrontDoc::OpenRawFileDocument(LPCTSTR lpszPathName)
 		return FALSE;
 	}
 
-	WAVEFORMATEX wf = *dlg.GetWaveFormat();
+	CWaveFormat wf = dlg.GetWaveFormat();
 
 	LONG nNewFileSamples = (DWORD(RawFileSize) - dlg.HeaderLength() - dlg.TrailerLength())
-							/ wf.nBlockAlign;
+							/ wf.BlockAlign();
 
-	if (! m_WavFile.CreateWaveFile( NULL, & wf, ALL_CHANNELS,
+	if (! m_WavFile.CreateWaveFile( NULL, wf, ALL_CHANNELS,
 									nNewFileSamples,
 									CreateWaveFileDeleteAfterClose
 									| CreateWaveFileTempDir
@@ -4514,7 +4527,7 @@ BOOL CWaveSoapFrontDoc::OpenRawFileDocument(LPCTSTR lpszPathName)
 		return FALSE;
 	}
 
-	if (16 == wf.wBitsPerSample)
+	if (16 == wf.BitsPerSample())
 	{
 		if (dlg.MsbFirst())
 		{
@@ -4522,7 +4535,7 @@ BOOL CWaveSoapFrontDoc::OpenRawFileDocument(LPCTSTR lpszPathName)
 		}
 	}
 
-	m_OriginalWaveFormat = & wf;
+	m_OriginalWaveFormat = wf;
 
 	m_WavFile.AllocatePeakData(nNewFileSamples);
 
@@ -4533,7 +4546,7 @@ BOOL CWaveSoapFrontDoc::OpenRawFileDocument(LPCTSTR lpszPathName)
 								dlg.HeaderLength(),
 								DWORD(RawFileSize) - dlg.TrailerLength(),
 								nNewFileSamples,
-								& wf,
+								wf,
 								0 != (m_FileTypeFlags & OpenRawFileMsbFirst));
 
 	// peak data will be created during decompression

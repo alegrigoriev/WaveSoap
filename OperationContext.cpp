@@ -2288,7 +2288,7 @@ void CDecompressContext::PostRetire()
 		if (m_Flags & OperationContextInitFailed)
 		{
 			s.Format(IDS_CANT_DECOMPRESS_FILE, LPCTSTR(m_SrcFile.GetName()),
-					m_SrcFile.GetWaveFormat()->wFormatTag, m_MmResult);
+					m_SrcFile.GetWaveFormat().FormatTag(), m_MmResult);
 			m_pDocument->m_bCloseThisDocumentNow = true;
 		}
 		else
@@ -2313,7 +2313,7 @@ BOOL CDecompressContext::OperationProc()
 		return FALSE;
 	}
 
-	if (WAVE_FORMAT_PCM == m_DstFile.GetWaveFormat()->wFormatTag)
+	if (m_DstFile.GetWaveFormat().IsPcm())
 	{
 		SAMPLE_INDEX nFirstSample = m_DstFile.PositionToSample(dwOperationBegin);
 		SAMPLE_INDEX nLastSample = m_DstFile.PositionToSample(m_DstPos);
@@ -3156,10 +3156,13 @@ void CFileSaveContext::PostRetire()
 				// ask about opening the file
 				CReopenSavedFileCopyDlg dlg;
 				UINT fmt = IDS_OPEN_SAVED_FILE_COPY;
+				WaveSampleType DstSampleType = m_DstFile.GetWaveFormat().GetSampleType();
 				if (m_NewFileTypeFlags != 0
-					|| m_DstFile.GetWaveFormat()->wFormatTag != WAVE_FORMAT_PCM
-					|| m_DstFile.GetWaveFormat()->wBitsPerSample != 16)
+					|| DstSampleType != SampleType16bit
+					|| DstSampleType != SampleType32bit
+					|| DstSampleType != SampleTypeFloat32)
 				{
+					// only those types can be opened direct
 					fmt = IDS_OPEN_SAVED_FILE_COPY_NONDIRECT;
 					dlg.m_bDisableDirect = TRUE;
 				}
