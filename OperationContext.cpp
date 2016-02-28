@@ -14,7 +14,7 @@
 #include "ElapsedTime.h"
 #include "ContextWorkerThread.h"
 
-#define DUMP_ON_EXECUTE 0
+#define DUMP_ON_EXECUTE 1
 
 static int fround(double d)
 {
@@ -29,23 +29,25 @@ static int fround(double d)
 }
 
 #ifdef _DEBUG
-void COperationContext::SetBeginTime()
+void COperationContext::SetBeginTime(HANDLE hThread)
 {
 	FILETIME tmp;
 	GetThreadTimes(GetCurrentThread(),
+					& tmp, & tmp, & tmp, & m_pDocument->m_ThreadUserTime);
+	GetThreadTimes(hThread,
 					& tmp, & tmp, & tmp, & m_ThreadUserTime);
 	m_BeginSystemTime = GetTickCount();
 }
 
-void COperationContext::PrintElapsedTime()
+void COperationContext::PrintElapsedTime(HANDLE hThread)
 {
 	FILETIME tmp, UserTime;
-	GetThreadTimes(GetCurrentThread(),
+	GetThreadTimes(hThread,
 					& tmp, & tmp, & tmp, & UserTime);
 	DWORD TickCount = GetTickCount();
-	if (0) TRACE("Elapsed thread time : %d ms, elapsed real time=%d\n",
-				(UserTime.dwLowDateTime - m_ThreadUserTime.dwLowDateTime) / 10000,
-				TickCount - m_BeginSystemTime);
+	if (1) TRACE("Elapsed worker thread time : %.f s, elapsed real time=%.3f s\n",
+				(UserTime.dwLowDateTime - m_ThreadUserTime.dwLowDateTime) / 10000000.,
+				(TickCount - m_BeginSystemTime) / 1000.);
 }
 
 #endif
@@ -142,7 +144,7 @@ void COperationContext::Retire()
 {
 	// all context go to retirement list
 	// queue it to the Doc
-	PrintElapsedTime();
+	PrintElapsedTime(GetCurrentThread());
 
 	m_pDocument->m_RetiredList.InsertTail(this);
 }
@@ -184,7 +186,6 @@ void COperationContext::Execute()
 		Dump(); // for debug
 	}
 
-	SetBeginTime();
 	m_pDocument->QueueOperation(this);
 }
 
@@ -4073,6 +4074,7 @@ void CContextWorkerThread::SetForegroundDocument(CDocument* pDoc)
 void CContextWorkerThread::QueueOperation(COperationContext * pContext)
 {
 	m_OpList.InsertTail(pContext);
+	pContext->SetBeginTime(m_hThread);
 	SetEvent(m_hThreadEvent);
 }
 

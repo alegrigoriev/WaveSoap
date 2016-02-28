@@ -382,6 +382,7 @@ public:
 	ListHead<COperationContext> m_RedoList;
 	LockedListHead<COperationContext> m_RetiredList;
 	LockedListHead<CSoundUpdateInfo> m_UpdateList;
+	FILETIME m_ThreadUserTime;
 
 protected:
 	CContextWorkerThread m_Thread;
