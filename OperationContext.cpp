@@ -617,18 +617,23 @@ void CTwoFilesOperation::DeInit()
 
 MEDIA_FILE_SIZE CTwoFilesOperation::GetTotalOperationSize() const
 {
-	if (m_SrcStart != m_SrcEnd)
+	MEDIA_FILE_SIZE SrcOpSize = 0;
+	if (m_SrcStart <= m_SrcEnd)
 	{
-		return BaseClass::GetTotalOperationSize();
+		SrcOpSize = m_SrcEnd - m_SrcStart;
+	}
+	else
+	{
+		SrcOpSize = m_SrcStart - m_SrcEnd;
 	}
 
 	if (m_DstStart <= m_DstEnd)
 	{
-		return m_DstEnd - m_DstStart;
+		return SrcOpSize + m_DstEnd - m_DstStart;
 	}
 	else
 	{
-		return m_DstStart - m_DstEnd;
+		return SrcOpSize + m_DstStart - m_DstEnd;
 	}
 }
 
@@ -639,13 +644,23 @@ MEDIA_FILE_SIZE CTwoFilesOperation::GetCompletedOperationSize() const
 		return BaseClass::GetCompletedOperationSize();
 	}
 
-	if (m_DstStart <= m_DstEnd)
+	MEDIA_FILE_SIZE SrcCompleted = 0;
+	if (m_SrcStart <= m_SrcEnd)
 	{
-		return m_DstPos - m_DstStart;
+		SrcCompleted = m_SrcPos - m_SrcStart;
 	}
 	else
 	{
-		return m_DstStart - m_DstPos;
+		SrcCompleted = m_SrcStart - m_SrcPos;
+	}
+
+	if (m_DstStart <= m_DstEnd)
+	{
+		return SrcCompleted + m_DstPos - m_DstStart;
+	}
+	else
+	{
+		return SrcCompleted + m_DstStart - m_DstPos;
 	}
 }
 
@@ -1009,20 +1024,21 @@ BOOL CThroughProcessOperation::OperationProc()
 MEDIA_FILE_SIZE CThroughProcessOperation::GetTotalOperationSize() const
 {
 	return (m_NumberOfForwardPasses + m_NumberOfBackwardPasses)
-		* (m_SrcEnd - m_SrcStart + m_DstEnd - m_DstStart);
+		* (ULONGLONG(m_SrcEnd) - m_SrcStart + m_DstEnd - m_DstStart);
 }
 
 MEDIA_FILE_SIZE CThroughProcessOperation::GetCompletedOperationSize() const
 {
 	if (m_CurrentPass < 0)
 	{
-		return (m_NumberOfForwardPasses - m_CurrentPass) * (m_SrcEnd - m_SrcStart + m_DstEnd - m_DstStart)
-			- (m_SrcPos - m_SrcStart + m_DstPos - m_DstStart);
+		// backward pass
+		return (m_NumberOfForwardPasses - m_CurrentPass) * (ULONGLONG(m_SrcEnd) - m_SrcStart + m_DstEnd - m_DstStart)
+			- (ULONGLONG(m_SrcPos) - m_SrcStart + m_DstPos - m_DstStart);
 	}
 	else
 	{
-		return (m_CurrentPass - 1) * (m_SrcEnd - m_SrcStart + m_DstEnd - m_DstStart)
-			+ (m_SrcPos - m_SrcStart + m_DstPos - m_DstStart);
+		return (m_CurrentPass - 1) * (ULONGLONG(m_SrcEnd) - m_SrcStart + m_DstEnd - m_DstStart)
+			+ (ULONGLONG(m_SrcPos) - m_SrcStart + m_DstPos - m_DstStart);
 	}
 }
 
@@ -2378,7 +2394,7 @@ CSoundPlayContext::CSoundPlayContext(CWaveSoapFrontDoc * pDoc, CWaveFile & WavFi
 		m_End = m_PlayFile.SampleToPosition(m_LastSamplePlayed);
 	}
 	// if mono playback requested, open it as mono
-
+	// TODO: Try different formats to play
 	m_Wf.InitFormat(WAVE_FORMAT_PCM, m_PlayFile.SampleRate(),
 					m_PlayFile.NumChannelsFromMask(m_Chan));
 }
