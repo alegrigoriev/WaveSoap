@@ -2785,6 +2785,12 @@ void CWaveSoapFrontDoc::OnIdle()
 		COperationContext * pContext = m_RetiredList.RemoveHead();
 		pContext->PostRetire();     // deletes it usually
 
+		FILETIME tmp, UserTime;
+		GetThreadTimes(GetCurrentThread(),
+						&tmp, &tmp, &tmp, &UserTime);
+		if (1) TRACE("Elapsed main thread time : %.3f s\n",
+					(UserTime.dwLowDateTime - m_ThreadUserTime.dwLowDateTime) / 10000000.);
+
 		--m_OperationInProgress;
 	}
 	m_bInOnIdle = false;

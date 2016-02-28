@@ -207,11 +207,11 @@ public:
 #ifdef _DEBUG
 	FILETIME m_ThreadUserTime;
 	DWORD m_BeginSystemTime;
-	void SetBeginTime();
-	void PrintElapsedTime();
+	void SetBeginTime(HANDLE hThread);
+	void PrintElapsedTime(HANDLE hThread);
 #else
-	void SetBeginTime() {}
-	void PrintElapsedTime() {}
+	void SetBeginTime(HANDLE /*hThread*/) {}
+	void PrintElapsedTime(HANDLE /*hThread*/){}
 #endif
 	// utility functions
 
