@@ -5996,7 +5996,7 @@ void CWaveSoapFrontDoc::OnProcessGilbertTransform()
 	pProcContext1->AddWaveProc(pFilter);
 
 	pProcContext1->InitSource(m_WavFile, start, end, GetSelectedChannel());
-	pProcContext1->InitDestination(TmpFile, 0, start - end /*+ 1000*/, ALL_CHANNELS, FALSE);
+	pProcContext1->InitDestination(TmpFile, 0, end - start /*+ 1000*/, ALL_CHANNELS, FALSE);
 
 	CWaveProcContext::auto_ptr pProcContext2(new CWaveProcContext(this,
 												IDS_GILBERT_TRANSFORM_STATUS_PROMPT, IDS_GILBERT_TRANSFORM_OPERATION_NAME));
