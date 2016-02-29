@@ -157,7 +157,7 @@ CWaveSoapFrontApp::CWaveSoapFrontApp()
 	m_bShowStatusBar(true),
 	m_bOpenChildMaximized(true),
 
-	m_bAllow4GbWavFile(false),
+	m_bAllow4GbWavFile(true),
 	m_DefaultOpenMode(DefaultOpenBuffered),
 
 	m_SoundTimeFormat(SampleToString_HhMmSs | TimeToHhMmSs_NeedsHhMm | TimeToHhMmSs_NeedsMs),
@@ -1650,7 +1650,6 @@ void CWaveSoapFileList::Add(LPCTSTR lpszPathName)
 {
 	ASSERT(m_arrNames != NULL);
 	ASSERT(lpszPathName != NULL);
-	ASSERT(AfxIsValidString(lpszPathName));
 
 	// fully qualify the path name
 	TCHAR szTemp[_MAX_PATH+1];
