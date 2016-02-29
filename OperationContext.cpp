@@ -615,6 +615,15 @@ void CTwoFilesOperation::DeInit()
 	BaseClass::DeInit();
 }
 
+void CTwoFilesOperation::PostRetire()
+{
+	if (m_Flags & PostRetireSavePeakFile)
+	{
+		m_DstFile.SavePeakInfo(m_pDocument->m_OriginalWavFile);
+	}
+	BaseClass::PostRetire();
+}
+
 MEDIA_FILE_SIZE CTwoFilesOperation::GetTotalOperationSize() const
 {
 	MEDIA_FILE_SIZE SrcOpSize = 0;
@@ -2312,10 +2321,7 @@ void CDecompressContext::PostRetire()
 					LPCTSTR(m_SrcFile.GetName()), m_MmResult);
 		}
 		AfxMessageBox(s, MB_ICONSTOP);
-	}
-	else if (m_Flags & DecompressSavePeakFile)
-	{
-		m_DstFile.SavePeakInfo(m_pDocument->m_OriginalWavFile);
+		m_Flags &= ~PostRetireSavePeakFile;
 	}
 	BaseClass::PostRetire();
 }
@@ -3485,36 +3491,44 @@ BOOL CWmaDecodeContext::Init()
 	protected:
 		virtual LRESULT Exec()
 		{
-			BOOL result = m_pContext->m_pDocument->m_WavFile.CreateWaveFile(NULL, m_pContext->m_Decoder.GetDstFormat(),
-							ALL_CHANNELS, m_pContext->m_CurrentSamples,  // initial sample count
-							CreateWaveFileTempDir
-							| CreateWaveFileDeleteAfterClose
-							| CreateWaveFilePcmFormat
-							| CreateWaveFileTemp, NULL);
-
-			if (FALSE == result)
+			CWaveSoapFrontDoc *pDoc = m_pContext->m_pDocument;
+			if (!pDoc->m_WavFile.CreateWaveFile(NULL, m_pContext->m_Decoder.GetDstFormat(),
+												ALL_CHANNELS, m_pContext->m_CurrentSamples,  // initial sample count
+												CreateWaveFileTempDir
+												| CreateWaveFileDeleteAfterClose
+												| CreateWaveFilePcmFormat
+												| CreateWaveFileTemp, NULL))
 			{
 				AfxMessageBox(IDS_UNABLE_TO_CREATE_TEMPORARY_FILE, MB_OK | MB_ICONEXCLAMATION);
+				//pDoc->m_bCloseThisDocumentNow = true;
+				// will be done for InitFailed
+				return FALSE;
 			}
-			return result;
+
+			pDoc->m_OriginalWaveFormat = m_pContext->m_Decoder.GetSrcFormat();
+			pDoc->m_OriginalWavFile.SetWaveFormat(pDoc->m_OriginalWaveFormat);
+
+			if (!pDoc->m_WavFile.LoadPeaksForOriginalFile(pDoc->m_OriginalWavFile, m_pContext->m_CurrentSamples))
+			{
+				// peak data will be created during conversion
+				m_pContext->m_Flags |= PostRetireSavePeakFile;
+			}
+
+			pDoc->SoundChanged(pDoc->WaveFileID(), 0, 0, m_pContext->m_CurrentSamples, UpdateSoundDontRescanPeaks);
+			pDoc->QueueSoundUpdate(pDoc->UpdateWholeFileChanged,
+									pDoc->WaveFileID(), 0, 0, m_pContext->m_CurrentSamples);
+
+			m_pContext->SetDstFile(pDoc->m_WavFile);
+			return TRUE;
 		}
 		CWmaDecodeContext * const m_pContext;
 	} call(this);
 
 	if (FALSE == call.Call())
 	{
-		m_pDocument->m_bCloseThisDocumentNow = true;
 		return FALSE;
 	}
 
-	SetDstFile(m_pDocument->m_WavFile);
-
-	m_pDocument->SoundChanged(m_pDocument->WaveFileID(), 0, m_CurrentSamples, m_CurrentSamples, UpdateSoundDontRescanPeaks);
-
-	m_pDocument->QueueSoundUpdate(m_pDocument->UpdateWholeFileChanged,
-								m_pDocument->WaveFileID(), 0, 0, m_CurrentSamples);
-
-	m_pDocument->m_WavFile.LoadPeaksForOriginalFile(m_pDocument->m_OriginalWavFile, m_CurrentSamples);
 
 	if (S_OK == m_Decoder.Start())
 	{
@@ -3561,20 +3575,15 @@ void CWmaDecodeContext::PostRetire()
 					LPCTSTR(m_pDocument->m_OriginalWavFile.GetName()), 0);
 			AfxMessageBox(s, MB_ICONSTOP);
 		}
+		m_Flags &= ~PostRetireSavePeakFile;
 	}
 	else
 	{
 		// set the file length, according to the actual number of samples decompressed
-		m_pDocument->m_OriginalWaveFormat = m_Decoder.GetSrcFormat();
 
 		m_DstFile.SetFileLengthSamples(m_DstCopySample);
 
 		m_pDocument->SoundChanged(m_DstFile.GetFileID(), 0, 0, m_DstCopySample, UpdateSoundDontRescanPeaks);
-
-		if (m_Flags & DecompressSavePeakFile)
-		{
-			m_DstFile.SavePeakInfo(m_pDocument->m_OriginalWavFile);
-		}
 	}
 	BaseClass::PostRetire();
 }
@@ -3841,6 +3850,7 @@ void CDirectShowDecodeContext::PostRetire()
 					LPCTSTR(m_pDocument->m_OriginalWavFile.GetName()), 0);
 			AfxMessageBox(s, MB_ICONSTOP);
 		}
+		m_Flags &= ~PostRetireSavePeakFile;
 	}
 	else
 	{
@@ -3850,11 +3860,7 @@ void CDirectShowDecodeContext::PostRetire()
 		m_DstFile.SetFileLengthSamples(m_DstWrittenSample);
 
 		m_pDocument->SoundChanged(m_DstFile.GetFileID(), m_LastSamplesUpdate, m_DstWrittenSample, m_DstWrittenSample, UpdateSoundDontRescanPeaks);
-
-		if (m_Flags & DecompressSavePeakFile)
-		{
-			m_DstFile.SavePeakInfo(m_pDocument->m_OriginalWavFile);
-		}
+		// peak file will be saved by the base class
 	}
 	BaseClass::PostRetire();
 }

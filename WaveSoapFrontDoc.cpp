@@ -1574,7 +1574,6 @@ BOOL CWaveSoapFrontDoc::OnOpenDocument(LPCTSTR lpszPathName, int DocOpenFlags)
 			flags = CreateWaveFileTempDir
 					// don't keep the file
 					| CreateWaveFileDeleteAfterClose
-					| CreateWaveFilePcmFormat
 					| CreateWaveFileTemp;
 			// if the file contains 'fact' chunk, get number of samples
 			if (m_OriginalWavFile.m_FactSamples != -1
@@ -1582,6 +1581,14 @@ BOOL CWaveSoapFrontDoc::OnOpenDocument(LPCTSTR lpszPathName, int DocOpenFlags)
 					|| (m_OriginalWaveFormat.BitsPerSample() != 16 && m_OriginalWaveFormat.BitsPerSample() != 8)))
 			{
 				nNewFileSamples = m_OriginalWavFile.m_FactSamples;
+			}
+			// TODO: see if the format can be recompressed to bigger size
+			TempFileWf.InitFormat(SampleType16bit, m_OriginalWaveFormat.SampleRate(), m_OriginalWaveFormat.NumChannels());
+			pTempFileWf = TempFileWf;
+			if (m_OriginalWaveFormat.FormatTag() == WAVE_FORMAT_EXTENSIBLE
+				&& TempFileWf.FormatTag() == WAVE_FORMAT_EXTENSIBLE)
+			{
+				((PWAVEFORMATEXTENSIBLE)pTempFileWf)->dwChannelMask = ((PWAVEFORMATEXTENSIBLE)(PWAVEFORMATEX)m_OriginalWaveFormat)->dwChannelMask;
 			}
 		}
 		else
@@ -1615,10 +1622,11 @@ BOOL CWaveSoapFrontDoc::OnOpenDocument(LPCTSTR lpszPathName, int DocOpenFlags)
 										NumSamples,
 										m_OriginalWavFile.GetWaveFormat());
 
-			pContext->m_Flags |= DecompressSavePeakFile;
-
-			// peak data will be created during decompression
-			m_WavFile.LoadPeaksForOriginalFile(m_OriginalWavFile, NumSamples);
+			if (!m_WavFile.LoadPeaksForOriginalFile(m_OriginalWavFile, NumSamples))
+			{
+				// peak data will be created during conversion
+				pContext->m_Flags |= PostRetireSavePeakFile;
+			}
 
 			SoundChanged(WaveFileID(), 0, 0, NumSamples, UpdateSoundDontRescanPeaks);
 			pContext->Execute();
@@ -1632,19 +1640,19 @@ BOOL CWaveSoapFrontDoc::OnOpenDocument(LPCTSTR lpszPathName, int DocOpenFlags)
 			pContext->InitSource(m_OriginalWavFile, 0, LAST_SAMPLE, ALL_CHANNELS);
 			pContext->InitDestination(m_WavFile, 0, NumSamples, ALL_CHANNELS, FALSE);
 
-			pContext->m_Flags |= DecompressSavePeakFile;
+			if (!m_WavFile.LoadPeaksForOriginalFile(m_OriginalWavFile, NumSamples))
+			{
+				// peak data will be created during conversion
+				pContext->m_Flags |= PostRetireSavePeakFile;
+			}
 
-			// peak data will be created during decompression
-			m_WavFile.LoadPeaksForOriginalFile(m_OriginalWavFile, NumSamples);
-
-			SoundChanged(WaveFileID(), 0, 0, NumSamples, UpdateSoundDontRescanPeaks);
+			SoundChanged(WaveFileID(), 0, 0, NumSamples);
 			pContext->Execute();
 		}
 		else
 		{
 			// just link the files
 			UINT ErrorFormatID = 0;
-			BOOL PeaksLoaded = m_OriginalWavFile.CheckAndLoadPeakFile();
 
 			if (m_WavFile.SetSourceFile( & m_OriginalWavFile)
 				&& m_WavFile.LoadRiffChunk()
@@ -1672,7 +1680,8 @@ BOOL CWaveSoapFrontDoc::OnOpenDocument(LPCTSTR lpszPathName, int DocOpenFlags)
 				return FALSE;
 			}
 
-			if ( ! PeaksLoaded)
+			BOOL PeaksLoaded = m_OriginalWavFile.LoadPeakFile();
+			if ( !m_WavFile.LoadPeaksForOriginalFile(m_OriginalWavFile, WaveFileSamples()))
 			{
 				BuildPeakInfo(TRUE);
 			}
@@ -1681,7 +1690,7 @@ BOOL CWaveSoapFrontDoc::OnOpenDocument(LPCTSTR lpszPathName, int DocOpenFlags)
 	}
 	else
 	{
-		if ( ! m_WavFile.CheckAndLoadPeakFile())
+		if ( ! m_WavFile.LoadPeakFile())
 		{
 			BuildPeakInfo(TRUE);
 		}
@@ -2718,13 +2727,13 @@ BOOL CWaveSoapFrontDoc::PostCommitFileSave(int flags, LPCTSTR FullTargetName)
 				SetPathName(FullTargetName, TRUE);
 				return TRUE;
 			}
+			else if (OnOpenDocument(FullTargetName, OpenDocumentReadOnly))
+			{
+				SetPathName(FullTargetName, TRUE);
+				return TRUE;
+			}
 			else
 			{
-				if (OnOpenDocument(FullTargetName, OpenDocumentReadOnly))
-				{
-					SetPathName(FullTargetName, TRUE);
-					return TRUE;
-				}
 				return FALSE;
 			}
 		}
@@ -4590,12 +4599,7 @@ BOOL CWaveSoapFrontDoc::OpenWmaFileDocument(LPCTSTR lpszPathName)
 	CWmaDecodeContext * pWmaContext = new CWmaDecodeContext(this,
 															IDS_LOADING_COMPRESSED_FILE_STATUS_PROMPT, m_OriginalWavFile);
 
-	if (NULL == pWmaContext)
-	{
-		NotEnoughMemoryMessageBox();
-		return FALSE;
-	}
-	pWmaContext->m_Flags |= DecompressSavePeakFile;
+	pWmaContext->m_Flags |= PostRetireSavePeakFile;
 
 	pWmaContext->Execute();
 	return TRUE;
@@ -4645,7 +4649,7 @@ BOOL CWaveSoapFrontDoc::OpenDShowFileDocument(LPCTSTR lpszPathName)
 		NotEnoughMemoryMessageBox();
 		return FALSE;
 	}
-	pDShowContext->m_Flags |= DecompressSavePeakFile;
+	pDShowContext->m_Flags |= PostRetireSavePeakFile;
 
 	pDShowContext->Execute();
 	return TRUE;
