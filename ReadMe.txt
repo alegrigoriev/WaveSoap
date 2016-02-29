@@ -2,10 +2,6 @@ TODO tasks:
 waveproc.cpp: refactor CDeclick::ProcessSoundBuffer.
 waveproc.cpp: split finding clicks and interpolating them to separate phases
 Change "Removing clicks" to "Detecting clicks"
-Fix CBatchProc::SetInputWaveformat
-Synchronize m_WaveFile file creation with the document object.
-Support VBR WMA
-Check loading of lossless WMA and VBR WMA
 Set icons to all resizable dialogs (for XP)
 
 Show/edit markers as a table
@@ -51,10 +47,8 @@ Enter WMA file attributes (title, author, etc)
 Enter MP3 file attributes
 
 Support "arrow up/down" during label editing
-Support CD grabbing under Win9x
 If CD recording not supported, SET SPEED WriteSpeed set to zero
 Restore CD speed to max rather than current!
-Set speed doesn't work on Goldstar CDRW	 SetSpeed returned sense 5/24
 Process Loss Of Streaming error
 Read CD text
 Open CDA files
@@ -74,9 +68,6 @@ If displaying data without peak info, call RescanPeaks for this range.
 Support CFSTR_FILECONTENTS clipboard format
 Save current workspace
 Write operation log on the MDI client background
-Use temp directory to keep peak info
-Support filenames with stream extension
-Add "phase corrected" stereo to mono conversion
 Add VU meter for playback
 Add volume control
 Add Application Close Pending flag
@@ -253,179 +244,10 @@ Save As dialog is not centered first time (comdlg problem?)
 ??? When time/seconds format is set for status bar, MM:SS is actually shown
 
 Done:
-Support m_bDontAutodetectClicks
-waveproc.cpp: Where it can affect throughput, instead of calling m_InputFormat.NumChannels(), save it in a local var.
-If channels are locked, disable channels select in the selection dialog.
-File save dialog: get file type and extension from template flag table, created during filling the filter string
-
-Change volume: if Lock checked, disable controls for the right channel.
-Make sure m_OriginalWaveFormat is set for raw file
-Make sure m_OriginalWaveFormat is set for compressed file
-Make sure m_OriginalWaveFormat is set for MP3 file
-Review use of m_OriginalWaveFile and m_OriginalWaveFormat. Make sure they synchronized.
-Make sure m_OriginalWaveFormat is set for WMA file
-Raw file: make format tag and save attributes (to use during next Save As).
-Allow Save Selection to save with compression
-Handle "Compatible/All" formats for MP3
-Handle "Compatible/All" formats for WMA
-Optimize resample for integral ratios: don't use filter interpolation and use shorter arrays
-Try longer filter for resample. 
-Resample dialog: use UiUpdatedDlg
-Try Nuttall window for resample
-Initialize FFT window to Nuttall
-Increase "Copy saved" dialog size
-Check all loading/saving of compressed files
-Add UiUpdate to Undo/Redo property page
-Make Fade In/Out command (and toolbar buttons, too).
-Add UiUpdate to Undo/Redo dialog
-Implement Undo/Redo options command
-In "Selection" combo, show marker names
-Hot keys in Split to files dialog. Support Del and Ins key.
-Change split to files status prompt to Saving audio region
-Support Snap to Max sample option (enable/disable).
-Keep last property page selected in the preferences dialog
-Add kB label to buffer size selection.
-Do Playback device selection in the preferences. 
-"Restore selection" option: make sure to use values from the document, not Begin/End.
-"Transient area threshold" enabled
-More noise settings: make group boxes
-Some settings moved to "More noise settings"
-Unused fields in More noise settings removed
-When an expression is deleted, don't save the list immediately. Save on OK only.
-After last expression of a group is deleted, select another group.
-In expression dialog: set max number of digits for edit fields
-Equalizer: make member function to access the dialog members.
-Filter dialog: Transfer loss should be positive.
-Filter: hide FiterGraphWnd and Filter declarations
-Make Filter dialog show all frequencies and responses
-Filter: Transfer loss edit box should be disabled for the notch filter
-Make an icon for the filter dialog
-Make an icon for the equalizer dialog
-Change Equalizer button in the toolbar
-Show warning when editing will cause offset between stereo channels.
-Remove Half-sine window, as useless (still necessary for noise reduction?).
-Add Nuttall window: w(n) = a0 – a1cos(2pn/N) + a2cos(4pn/N) – a3cos(6pn/N). a0 = 0.355768, a1 = 0.487396, a2 = 0.144232, and a3 = 0.012604
-Remove FFT from the prompts and menus. Change to Spectrum view
-Change "Show spectrum" to "Show noise masking"
-Amplitude Ruler menu: set a radio check by UpdateUI handler.
-Support "Set defaults" and "Revert" in Noise reduction dialog.
-"Aggressivness" is spelled with e:Aggressiveness
-Change "FFT order for analyze" to "Number of frequency bins"
-Remove CD grabber from Tools menu
-Change "Click removal parameters" dialog title to Click Removal
-Disable "Compute from 5 second" in CD dialog, if the offset is selected
-Add "Hold Shift to specify fade in/out length" to Mute prompt
-Change "Normalize" title and menu to "Normalize Volume"
-Menu item IDs starting from IDC_ changed to ID_, otherwise they didn't go to HTMLDefines.h.
-Try better prefetch (little effect)
-Add hotkey 'p' to Split To Files command and other hotkeys to the main menu
-Make possible MP3/WMA save with different sampling rate
-Limit filename length in "Split to files status".
-Beta 0.710:
-Do enable/disable buttons in Split to files dialog
-When saving partial file, show the file name in the status prompt, don't show the source name
-Make an icon for Split To Files dialog as scissors.
-Save changed range back to the list view on KillFocus
-Add Delete and New functions to Split File, and also editing of the segments.
-Add Selection choice handling
-When time format changes, rebuild the list.
-Add prefix to the "Split to files" files: index and/or text
-Make "Save: Split to files" command
-Check if after file extension metadata gets saved again.
-Fix GetBufferWriteOnly flag support (do zero instead of read)
-Show tooltip on a marker in outline view
-Make right click to move caret (unless inside a selection)
-Add Marker command to the main menu
-Add Marker command to FFT view context menu
-Make an accelerator for Marker/Region command
-If an operation is aborted, in the status string say "Stopped"
-Rescale markers on resample
-Modify markers for reverse operation
-Delete markers on expression evaluation
-ULF reduction should be put to disk-intensive queue
-Return selection on click interpolation UNDO
-Status string shows full file names for MRU items
-Add support for markers and regions: save on copy and with undo, move and delete on Cut, move on Paste
-InitCopyMarkers should not do immediate copy!
-Fade in/out in Mute command
-Noise reduction threshold should be independent from FFT order. Max may be over 0 dB.
-Add noise reduction estimation in spectrum section view
-When noise threshold is shown, fix the FFT resolution to the NR
-Make WSPK file hidden (optional)
-Add Save Selection As function
-Optimize use of ReadWaveSamples
-Double click on the outline view should select between markers
-Complete "Reverse" command
-Complete "Insert silence" command
-Show markers on the outline view as dotted XOR lines
-Impletent time format with CD frames (75 fps)
-Implement "Zoom to previous scale" command
-Add Ctrl+I accelerator for "Interpolate" command
-Add "Goto" button to the statistics dialog
-Save/Load metadata strings in UTF-8 codepage
-Add a new marker/region
-Implement Marker/Region dialog
-Draw markers in the FFT view
-Double click selects between two markers
-Ctrl+Arrow goes to next marker
-When dragging a marker, keep the same position relative to click position
-Make Undo/redo save the selection and regions
-Handle markers/regions in the hor. ruler
-Limit marker/region movement to the file limits
-Don't change cursor to a hand for a read-only file
-Add different context menu for the markers/regions - Select/Go To, Delete, Set To Current (marker), Split (region)
-Change cursor to an arrow in the lower part of time ruler.
-Implement SaveMetaData
-Draw markers/regions on the view
-Load operation prompts from resources
-Fix all operation status prompts
-Made "percent" through file size
-Add keyboard accelerators to selection dialog
-Interrupted operations: UNDO and REDO
-detach CScanPeaksContext from a document, associate with a file
-Now recognizes ASF files as Windows Media
-Save CD grabbing selected format (WAV/MP3/WMA) and bitrate
-Save CD grabbing dialog position
-Remove "Arrange Icons" from the window menu
-If main window is minimized, save its state before minimization
-When Open/Save dialog is resized, resize/move the controls
-Handle "Save from CD immediately" option
-Pass wave format to CD grabbing dialog
-Add saved from CD files to the MRU list
-When showing a dialog for a document, make the doc active, then restore the previous one.
-Add file format selection for CD grabbing
-When PCM is selected for CD grabbing, show default format
-For WMA format: When saving from non-WMA file, remember selected bitrate, restore
-For MP3 format: When saving from non-MP3 file, remember selected bitrate, restore
-Add CD grabbing
-Include PCM format always
-If there is no compatible PCM format, add one
-Enumerate format tags (filter by tag)
-If no format was returned on EnumFormats, try to call SuggestFormat.
-Sort formats in datarate order
-Add eject CD button, CD buttons with bitmaps
-Make a few retries to read TOC after disk change
-CD grab: prompt for file replacement
-Handle situation when the CD file save directory is not accessible for writing
-Add comboboxes to Author, Album, Folder
-Save WAVEFORMAT of an open WMA/MP3 file
-Process Space key in track list
-Get rid of "grab CD to a single file" mode
-Call default OnContextMenu!
-Created CWaveFormat class
-During CD read, create next document during Context::Execute()
-Use temporary filename for CD temp files
-Add file extension to CD track file name
-Set CD reading speed !
-use CDRALW2K.sys service before trying ASPI
-check file length param on new file creation
-Add flush control to CDirectFile
-make CDRAL.DLL first choice
-Disable label edit, if the track is not audio
-Draw gray background outside file area on FFT
-Add overflow dialog on resample	and other waveproc
-Test "reload compressed file" dialogs
-
+Support WAVEFORMATEXTENSIBLE.
+Make multichannel editing
+allow 24/32 bit data
+Allow "Minimized" channels
 
 For Version 2:
 Make customizable context menu in views
@@ -435,10 +257,6 @@ Make a few source samples available in expression and a few output samples too
     use wave[-63...63]
     wave(1)
     wave_ch[1, 1...63]
-Support WAVEFORMATEXTENSIBLE.
-Make multichannel editing
-allow 24/32 bit data
-Allow "Minimized" channels
 
 File Save/Save As checklist:
 

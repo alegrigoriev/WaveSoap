@@ -291,6 +291,7 @@ protected:
 	virtual ListHead<COperationContext> * GetUndoChain();
 	virtual void DeleteUndo();
 	virtual void DeInit();
+	virtual void PostRetire();
 
 	virtual MEDIA_FILE_SIZE GetTotalOperationSize() const;
 	virtual bool KeepsPermanentFileReference() const;
@@ -398,7 +399,7 @@ enum {
 	FileSaveContext_DontPromptReopen =   0x10000000,
 	FileSaveContext_DontSavePeakInfo =   0x08000000,
 	FileSaveContext_SavingPartial    = 0x04000000,
-	DecompressSavePeakFile = 0x20000000,
+	PostRetireSavePeakFile = 0x20000000,
 };
 
 class CStagedContext : public COperationContext
