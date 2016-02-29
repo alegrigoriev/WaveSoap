@@ -535,7 +535,6 @@ echo.
     <None Include="res\WaveSoapFrontDoc.ico" />
     <None Include="hlp\wavesoap.hhc" />
     <None Include="hlp\WaveSoapFront.hhk" />
-    <None Include="aspi_w32.txt" />
     <None Include="Project Classes.doc" />
     <None Include="ReadMe.txt" />
     <None Include="Test Plan.doc" />
