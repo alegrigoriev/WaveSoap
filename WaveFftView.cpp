@@ -1089,9 +1089,9 @@ void CWaveFftView::Dump(CDumpContext& dc) const
 
 void CWaveFftView::OnInitialUpdate()
 {
+	BaseClass::OnInitialUpdate();
 	NotifySiblingViews(FftBandsChanged, &m_FftOrder);
 	NotifySiblingViews(FftWindowChanged, &m_FftWindowType);
-	return BaseClass::OnInitialUpdate();
 }
 
 void CWaveFftView::OnPaint()
