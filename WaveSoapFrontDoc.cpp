@@ -27,6 +27,7 @@
 
 #include "UndoRedoOptionsDlg.h"
 #include "EditFadeInOut.h"
+#include "PathEx.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -284,7 +285,7 @@ LPMMCKINFO CWaveSoapFrontDoc::WaveDataChunk() const
 {
 	return m_WavFile.GetDataChunk();
 }
-LPWAVEFORMATEX CWaveSoapFrontDoc::WaveFormat() const
+CWaveFormat const & CWaveSoapFrontDoc::WaveFormat() const
 {
 	return m_WavFile.GetWaveFormat();
 }
@@ -452,7 +453,7 @@ BOOL CWaveSoapFrontDoc::DoSave(LPCTSTR lpszPathName, BOOL bReplace)
 
 	CWaveFormat Wf;
 
-	if (NULL == (WAVEFORMATEX*)m_OriginalWaveFormat)
+	if (NULL == (WAVEFORMATEX*)m_OriginalWaveFormat)	// FIXME: check the tag for invalid instead
 	{
 		Wf = WaveFormat();
 	}
@@ -460,7 +461,7 @@ BOOL CWaveSoapFrontDoc::DoSave(LPCTSTR lpszPathName, BOOL bReplace)
 	{
 		// sample rate and number of channels might change from the original file
 		// new format may not be quite valid for some convertors!!
-		if (WAVE_FORMAT_PCM == m_OriginalWaveFormat.FormatTag())
+		if (WAVE_FORMAT_PCM == m_OriginalWaveFormat.FormatTag())		// FIXME
 		{
 			Wf.InitFormat(WAVE_FORMAT_PCM,
 						WaveSampleRate(), WaveChannels(), m_OriginalWaveFormat.BitsPerSample());
@@ -1441,6 +1442,7 @@ void CWaveSoapFrontDoc::OnUpdateEditStop(CCmdUI* pCmdUI)
 	pCmdUI->Enable(IsBusy() && ! m_PlayingSound);
 }
 
+// most of this function is for WAVE file
 BOOL CWaveSoapFrontDoc::OnOpenDocument(LPCTSTR lpszPathName, int DocOpenFlags)
 {
 	TRACE(_T("CWaveSoapFrontDoc::OnOpenDocument(%s)\n"), lpszPathName);
@@ -1616,7 +1618,7 @@ BOOL CWaveSoapFrontDoc::OnOpenDocument(LPCTSTR lpszPathName, int DocOpenFlags)
 			pContext->m_Flags |= DecompressSavePeakFile;
 
 			// peak data will be created during decompression
-			m_WavFile.LoadPeaksForCompressedFile(m_OriginalWavFile, NumSamples);
+			m_WavFile.LoadPeaksForOriginalFile(m_OriginalWavFile, NumSamples);
 
 			SoundChanged(WaveFileID(), 0, 0, NumSamples, UpdateSoundDontRescanPeaks);
 			pContext->Execute();
@@ -1633,7 +1635,7 @@ BOOL CWaveSoapFrontDoc::OnOpenDocument(LPCTSTR lpszPathName, int DocOpenFlags)
 			pContext->m_Flags |= DecompressSavePeakFile;
 
 			// peak data will be created during decompression
-			m_WavFile.LoadPeaksForCompressedFile(m_OriginalWavFile, NumSamples);
+			m_WavFile.LoadPeaksForOriginalFile(m_OriginalWavFile, NumSamples);
 
 			SoundChanged(WaveFileID(), 0, 0, NumSamples, UpdateSoundDontRescanPeaks);
 			pContext->Execute();
@@ -1693,7 +1695,7 @@ BOOL CWaveSoapFrontDoc::OnOpenDocument(LPCTSTR lpszPathName, int DocOpenFlags)
 BOOL CWaveSoapFrontDoc::OnSaveDirectFile()
 {
 	//Close and reopen the file
-	if ( ! m_WavFile.Commit())
+	if ( ! m_WavFile.Commit())		// Flush buffers by default
 	{
 		m_WavFile.SavePeakInfo(m_WavFile);
 		AfxMessageBox(IDS_CANT_COMMIT_FILE_DATA, MB_OK | MB_ICONEXCLAMATION);
@@ -1993,7 +1995,7 @@ BOOL CWaveSoapFrontDoc::OnSaveMp3File(class COperationContext ** ppOp, int flags
 	}
 
 	DWORD FileSize = MulDiv(pWf->nAvgBytesPerSec, (End - Begin) * WaveSampleSize(),
-							WaveFormat()->nAvgBytesPerSec);
+							WaveFormat().BytesPerSec());
 
 	if (FALSE == NewWaveFile.CreateWaveFile(& m_OriginalWavFile, pWf, ALL_CHANNELS,
 											FileSize,
@@ -2114,7 +2116,7 @@ BOOL CWaveSoapFrontDoc::OnSaveWmaFile(class COperationContext ** ppOp, int flags
 	}
 
 	DWORD FileSize = MulDiv(pWf->nAvgBytesPerSec, (End - Begin) * WaveSampleSize(),
-							WaveFormat()->nAvgBytesPerSec);
+							WaveFormat().BytesPerSec());
 
 	CWaveFile NewWaveFile;
 
@@ -2211,7 +2213,7 @@ BOOL CWaveSoapFrontDoc::OnSaveRawFile(class COperationContext ** ppOp, int flags
 	}
 
 	DWORD FileSize = MulDiv(pWf->nAvgBytesPerSec, m_WavFile.GetDataChunk()->cksize,
-							WaveFormat()->nAvgBytesPerSec);
+							WaveFormat().BytesPerSec());
 	if (FALSE == NewWaveFile.CreateWaveFile(& m_OriginalWavFile, pWf, ALL_CHANNELS,
 											FileSize,
 											CreateWaveFileDontInitStructure
@@ -2293,77 +2295,55 @@ BOOL CWaveSoapFrontDoc::OnSaveDocument(LPCTSTR lpszPathName, DWORD flags, WAVEFO
 	m_bClosePending = m_bClosing;
 
 	// file where the data is currently kept
-	TCHAR SourceDir[MAX_PATH];
-	TCHAR FullSourceName[MAX_PATH];
+	CPathEx FullSourceName;
+	CPathEx SourceDir;
 	// Original file where the data is currently kept
-	TCHAR OriginalDir[MAX_PATH] = {0};
-	TCHAR FullOriginalName[MAX_PATH] = {0};
+	CPathEx OriginalDir;
+	CPathEx FullOriginalName;
 	// file where to copy the data
-	TCHAR TargetDir[MAX_PATH];
-	TCHAR FullTargetName[MAX_PATH];
+	CPathEx TargetDir;
+	CPathEx FullTargetName;
 
-	if ( ! AfxFullPath(FullTargetName, lpszPathName)
-		|| ! AfxFullPath(FullSourceName, m_WavFile.GetName())
-		|| (m_OriginalWavFile.IsOpen()
-			&& ! AfxFullPath(FullOriginalName, m_OriginalWavFile.GetName())))
+	if ( ! FullTargetName.MakeFullPath(lpszPathName)
+		|| ! FullSourceName.MakeFullPath(m_WavFile.GetName()))
 	{
 		// incorrect name????
 		return FALSE;
 	}
-	LPTSTR pTargetFilePart = _tcsrchr(FullTargetName, '\\');
-	if (pTargetFilePart)
+
+	TargetDir = FullTargetName;
+	TargetDir.RemoveFileSpec();
+
+	SourceDir = FullSourceName;
+	SourceDir.RemoveFileSpec();
+
+	if (m_OriginalWavFile.IsOpen())
 	{
-		int TargetDirChars = int(pTargetFilePart - FullTargetName);
-		memcpy(TargetDir, FullTargetName, TargetDirChars*sizeof(TCHAR));
-		TargetDir[TargetDirChars] = 0;
-	}
-	else
-	{
-		_tcsncpy_s(TargetDir, MAX_PATH, FullTargetName, MAX_PATH);
-		TargetDir[MAX_PATH - 1] = 0;
+		if ( !FullOriginalName.MakeFullPath(m_OriginalWavFile.GetName()))
+		{
+			// incorrect name????
+			return FALSE;
+		}
+		OriginalDir = FullOriginalName;
+		OriginalDir.RemoveFileSpec();
+
+		if (0 == ((CString&)FullTargetName).CompareNoCase(FullOriginalName))
+		{
+			flags |= SaveFile_SameName;
+		}
 	}
 
-	LPTSTR pOriginalFilePart = _tcsrchr(FullOriginalName, '\\');
-	if (pOriginalFilePart)
+	if (0 == ((CString&)SourceDir).CompareNoCase(TargetDir))
 	{
-		int DirChars = int(pOriginalFilePart - FullOriginalName);
-		memcpy(OriginalDir, FullOriginalName, DirChars*sizeof(TCHAR));
-		OriginalDir[DirChars] = 0;
-	}
-	else
-	{
-		_tcsncpy_s(OriginalDir, MAX_PATH, FullOriginalName, MAX_PATH);
-		OriginalDir[MAX_PATH - 1] = 0;
-	}
-
-	LPTSTR pSourceFilePart = _tcsrchr(FullSourceName, '\\');
-	if (pSourceFilePart)
-	{
-		int SourceDirChars = int(pSourceFilePart - FullSourceName);
-		memcpy(SourceDir, FullSourceName, SourceDirChars*sizeof(TCHAR));
-		SourceDir[SourceDirChars] = 0;
-	}
-	else
-	{
-		_tcsncpy_s(SourceDir, MAX_PATH, FullSourceName, MAX_PATH);
-		SourceDir[MAX_PATH - 1] = 0;
-	}
-
-	if (AfxComparePath(FullTargetName, FullOriginalName))
-	{
-		flags |= SaveFile_SameName;
-	}
-
-	if (0 == _tcsicmp(SourceDir, TargetDir))
-	{
-		flags |= SaveFile_SameFolder;
+		flags |= SaveFile_SameFolder;	// can simply rename the file
 	}
 
 	m_WavFile.CommitChanges();
 
 	DeletePermanentUndoRedo();
-
-	ASSERT((m_WavFile.GetFileID() == m_OriginalWavFile.GetFileID()
+	// make sure m_WavFile doesn't have another reference anywhere, except for the OriginalWavFile
+	ASSERT(!m_OriginalWavFile.IsOpen()
+			|| (m_WavFile.GetFileID() == m_OriginalWavFile.GetFileID()
 				&& 2 == m_WavFile.GetFileRefCount())
 			|| (m_WavFile.GetFileID() != m_OriginalWavFile.GetFileID()
 				&& 1 == m_WavFile.GetFileRefCount()));
@@ -2415,7 +2395,7 @@ BOOL CWaveSoapFrontDoc::OnSaveFileOrPart(COperationContext ** ppOp, int flags, L
 	}
 
 	if (0 == (flags & SaveFile_SavePartial)
-		&& WAVE_FORMAT_PCM == pWf->wFormatTag
+		&& WAVE_FORMAT_PCM == pWf->wFormatTag		// FIXME
 		// the same format
 		&& 16 == pWf->wBitsPerSample
 		&& pWf->nSamplesPerSec == WaveSampleRate()
@@ -5678,7 +5658,7 @@ void CWaveSoapFrontDoc::OnSaveSaveselectionas()
 {
 	CWaveFormat Wf;
 
-	if (NULL == (WAVEFORMATEX*)m_OriginalWaveFormat)
+	if (NULL == (WAVEFORMATEX*)m_OriginalWaveFormat)	//FIXME check for null tag instead
 	{
 		Wf = WaveFormat();
 	}

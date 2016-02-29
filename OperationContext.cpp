@@ -1520,8 +1520,7 @@ BOOL CStagedContext::InitShrinkOperation(CWaveFile & File,
 	{
 		// not all channels are moved
 		// special zero context used, with empty undo
-		AddContext(new CInitChannels(m_pDocument, File, NewSamples, NumberOfSamples,
-									Channel));
+		AddContext(new CInitChannels(m_pDocument, File, NewSamples, NumberOfSamples, Channel));
 	}
 	else
 	{
@@ -1529,8 +1528,7 @@ BOOL CStagedContext::InitShrinkOperation(CWaveFile & File,
 		// TODO
 
 		// 4. If all channels moved: Change number of samples
-		AddContext(new
-					CWaveSamplesChangeOperation(m_pDocument, File, NewSamples));
+		AddContext(new CWaveSamplesChangeOperation(m_pDocument, File, NewSamples));
 	}
 	return TRUE;
 }
@@ -3516,7 +3514,7 @@ BOOL CWmaDecodeContext::Init()
 	m_pDocument->QueueSoundUpdate(m_pDocument->UpdateWholeFileChanged,
 								m_pDocument->WaveFileID(), 0, 0, m_CurrentSamples);
 
-	m_pDocument->m_WavFile.LoadPeaksForCompressedFile(m_pDocument->m_OriginalWavFile, m_CurrentSamples);
+	m_pDocument->m_WavFile.LoadPeaksForOriginalFile(m_pDocument->m_OriginalWavFile, m_CurrentSamples);
 
 	if (S_OK == m_Decoder.Start())
 	{
@@ -3567,7 +3565,7 @@ void CWmaDecodeContext::PostRetire()
 	else
 	{
 		// set the file length, according to the actual number of samples decompressed
-		m_pDocument->m_OriginalWaveFormat = m_Decoder.GetDstFormat();
+		m_pDocument->m_OriginalWaveFormat = m_Decoder.GetSrcFormat();
 
 		m_DstFile.SetFileLengthSamples(m_DstCopySample);
 
@@ -3793,7 +3791,7 @@ BOOL CDirectShowDecodeContext::Init()
 
 	SetDstFile(m_pDocument->m_WavFile);
 
-	m_pDocument->m_WavFile.LoadPeaksForCompressedFile(m_pDocument->m_OriginalWavFile, m_CurrentLengthSamples);
+	m_pDocument->m_WavFile.LoadPeaksForOriginalFile(m_pDocument->m_OriginalWavFile, m_CurrentLengthSamples);
 
 	// FIXME??
 	//m_pDocument->SoundChanged(m_pDocument->WaveFileID(), 0, m_CurrentLengthSamples, m_CurrentLengthSamples, UpdateSoundDontRescanPeaks);

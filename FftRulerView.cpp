@@ -25,6 +25,7 @@ CFftRulerView::CFftRulerView()
 	, m_FirstbandVisible(0.)
 	, m_FftOffsetBeforeScroll(0)
 	, m_MouseYOffsetForScroll(0)
+	, m_FftOrder(1024)
 {
 	memzero(m_Heights);
 	memzero(m_InvalidAreaTop);

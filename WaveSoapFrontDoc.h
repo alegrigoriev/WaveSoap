@@ -171,7 +171,7 @@ public:
 
 	NUMBER_OF_SAMPLES WaveFileSamples() const;
 	LPMMCKINFO WaveDataChunk() const;
-	LPWAVEFORMATEX WaveFormat() const;
+	CWaveFormat const & WaveFormat() const;
 	NUMBER_OF_CHANNELS WaveChannels() const;
 
 	unsigned int WaveSampleRate() const;
@@ -275,6 +275,10 @@ public:
 	// original file with the name which was open
 	// for new file, it isn't open
 	CWaveFile m_OriginalWavFile;
+
+	// this is waveformat for the original file (OriginalWavFile).
+	// OriginalWavFile may not carry valid waveformat, if it's raw or other non-WAV
+	// m_OriginalWaveFormat is set to PCM format after decompression of WMA file.
 	CWaveFormat m_OriginalWaveFormat;
 
 	int m_ModificationSequenceNumber;
