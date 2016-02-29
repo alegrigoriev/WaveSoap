@@ -1712,16 +1712,16 @@ BOOL CReplaceFileContext::OperationProc()
 
 ///////////// CReplaceFormatContext //////////////////
 CReplaceFormatContext::CReplaceFormatContext(CWaveSoapFrontDoc * pDoc, LPCTSTR OperationName,
-											WAVEFORMATEX const * pNewFormat)
+											CWaveFormat const & NewFormat)
 	: BaseClass(pDoc, OperationContextSynchronous, OperationName, OperationName),
-	m_NewWaveFormat(pNewFormat)
+	m_NewWaveFormat(NewFormat)
 {
 }
 
 CReplaceFormatContext::CReplaceFormatContext(CWaveSoapFrontDoc * pDoc, UINT OperationNameId,
-											WAVEFORMATEX const * pNewFormat)
+											CWaveFormat const & NewFormat)
 	: BaseClass(pDoc, OperationContextSynchronous, OperationNameId, OperationNameId),
-	m_NewWaveFormat(pNewFormat)
+	m_NewWaveFormat(NewFormat)
 {
 }
 
@@ -2505,7 +2505,10 @@ CInitChannelsUndo::CInitChannelsUndo(CWaveSoapFrontDoc * pDoc,
 
 BOOL CInitChannelsUndo::CreateUndo()
 {
-	m_UndoChain.InsertHead(new CInitChannels(m_pDocument,m_pDocument->m_WavFile, m_SrcStart, m_SrcEnd, m_SrcChan));
+	m_UndoChain.InsertHead(new CInitChannels(m_pDocument, m_pDocument->m_WavFile,
+											m_pDocument->m_WavFile.PositionToSample(m_SrcStart),
+											m_pDocument->m_WavFile.PositionToSample(m_SrcEnd), m_SrcChan));
+
 	return TRUE;
 }
 
@@ -2674,7 +2677,7 @@ BOOL CReverseOperation::OperationProc()
 
 	int const TempBufCount = 1024;
 	ASSERT(m_DstFile.GetSampleType() == SampleType16bit);
-	WAVE_SAMPLE BufBottom[TempBufCount];
+	WAVE_SAMPLE BufBottom[TempBufCount];		// FIXME: handle 32 bit formats
 	WAVE_SAMPLE BufTop[TempBufCount];
 
 	int const DstSampleSize = m_DstFile.SampleSize();

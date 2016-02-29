@@ -513,9 +513,9 @@ public:
 	typedef std::auto_ptr<ThisClass> auto_ptr;
 
 	CReplaceFormatContext(CWaveSoapFrontDoc * pDoc, LPCTSTR OperationName,
-						WAVEFORMATEX const * pNewFormat);
+						CWaveFormat const & NewFormat);
 	CReplaceFormatContext(CWaveSoapFrontDoc * pDoc, UINT OperationNameId,
-						WAVEFORMATEX const * pNewFormat);
+						CWaveFormat const & NewFormat);
 
 	virtual BOOL CreateUndo();
 	virtual BOOL OperationProc();

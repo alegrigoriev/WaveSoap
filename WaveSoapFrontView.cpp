@@ -1050,6 +1050,8 @@ void CWaveSoapFrontView::OnInitialUpdate()
 {
 	CRect r;
 	GetClientRect(r);
+	BaseClass::OnInitialUpdate();
+
 	m_FirstSampleInView = 0.;
 	// if the file is short, set the scale to fit
 	NUMBER_OF_SAMPLES NumberOfSamples = WaveFileSamples();
@@ -1072,7 +1074,6 @@ void CWaveSoapFrontView::OnInitialUpdate()
 
 	RecalculateChannelHeight(r.Height());
 
-	BaseClass::OnInitialUpdate();
 }
 
 void CWaveSoapFrontView::OnUpdateViewZoominhor2(CCmdUI* pCmdUI)
