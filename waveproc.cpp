@@ -5261,12 +5261,28 @@ unsigned CByteSwapConvertor::ProcessSoundBuffer(char const * pIn, char * pOut,
 		*pUsedBytes = 0;
 		return 0;
 	}
-
+	// The buffers are guarantted to be whole number of samples
 	unsigned nBytes = __min(nInBytes, nOutBytes);
-	for (unsigned i = 0; i < nBytes; i+= sizeof (WAVE_SAMPLE))
+	ASSERT(m_InputSampleType == SampleType16bit
+			|| m_InputSampleType == SampleType32bit
+			|| m_InputSampleType == SampleTypeFloat32);
+	if (m_InputSampleType == SampleType16bit)
 	{
-		pOut[i + 1] = pIn[i];
-		pOut[i] = pIn[i + 1];
+		for (unsigned i = 0; i < nBytes; i+= 2)
+		{
+			pOut[i + 1] = pIn[i];
+			pOut[i] = pIn[i + 1];
+		}
+	}
+	else
+	{
+		for (unsigned i = 0; i < nBytes; i+= 4)
+		{
+			pOut[i + 3] = pIn[i];
+			pOut[i + 2] = pIn[i + 1];
+			pOut[i + 1] = pIn[i + 2];
+			pOut[i] = pIn[i + 3];
+		}
 	}
 	*pUsedBytes = nBytes;
 	return nBytes;
