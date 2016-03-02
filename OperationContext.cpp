@@ -2857,39 +2857,33 @@ CStatisticsContext::CStatisticsContext(CWaveSoapFrontDoc * pDoc,
 
 CStatisticsContext::CStatisticsProc::CStatisticsProc()
 {
-	m_InputSampleType = SampleType16bit;
+	for (unsigned i = 0; i < MAX_NUMBER_OF_CHANNELS; i++)
+	{
+		m_Stats[i].m_Energy = 0.;
 
-	m_Energy[0] = 0;
-	m_Energy[1] = 0;
+		m_Stats[i].m_ZeroCrossing = 0;
 
-	m_ZeroCrossing[0] = 0;
-	m_ZeroCrossing[1] = 0;
+		m_Stats[i].m_Min = INT_MAX;
+		m_Stats[i].m_Max = INT_MIN;
 
-	m_Min[0] = INT_MAX;
-	m_Max[0] = INT_MIN;
-	m_Min[1] = INT_MAX;
-	m_Max[1] = INT_MIN;
+		m_Stats[i].m_PrevSample = 0.;
+		m_Stats[i].m_PrevSampleInt = 0;
 
-	m_PrevSample[0] = 0;
-	m_PrevSample[1] = 0;
+		m_Stats[i].m_PosMin = 0;
+		m_Stats[i].m_PosMax = 0;
 
-	m_PosMin[0] = 0;
-	m_PosMax[0] = 0;
-	m_PosMin[1] = 0;
-	m_PosMax[1] = 0;
+		m_Stats[i].m_CurrentCrc = 0;
+		m_Stats[i].m_CRC32 = 0;
 
-	m_CurrentCrc[0] = 0;
-	m_CRC32[0] = 0;
-	m_CurrentCrc[1] = 0;
-	m_CRC32[1] = 0;
+		m_Stats[i].m_Sum = 0.;
+	}
+	m_TotalPosMin = 0;
+	m_TotalPosMax = 0;
 	m_CurrentCommonCRC = 0;
 	m_CRC32Common = 0;
 
 	m_Checksum = 0;
 	m_ChecksumSampleNumber = 0;
-
-	m_Sum[0] = 0;
-	m_Sum[1] = 0;
 }
 // CRC32 Lookup Table generated from Charles Michael
 //  Heard's CRC-32 code
@@ -2968,43 +2962,108 @@ static inline DWORD CalcCrc32(DWORD PrevCrc, UCHAR byte)
 
 void CStatisticsContext::CStatisticsProc::ProcessSampleValue(void const * pInSample, void * /*pOutSample*/, unsigned channel)
 {
-	short sample = *(short const*)pInSample;
-	m_Sum[channel] += sample;
-	m_Energy[channel] += sample * sample;
-	if (m_Min[channel] > sample)
+	ChannelStats* stats = &m_Stats[channel];
+	UCHAR const * pUchar = (UCHAR const *)pInSample;
+	switch (m_InputSampleType)
 	{
-		m_Min[channel] = sample;
-		m_PosMin[channel] = m_CurrentSample;
-	}
-	if (m_Max[channel] < sample)
+	case SampleType16bit:
 	{
-		m_PosMax[channel] = m_CurrentSample;
-		m_Max[channel] = sample;
-	}
-	if (0x8000 & (sample ^ m_PrevSample[channel]))
-	{
-		m_ZeroCrossing[channel]++;
-	}
-	m_PrevSample[channel] = sample;
-	m_CurrentCrc[channel] = CalcCrc32(CalcCrc32(m_CurrentCrc[channel],
-												UCHAR(sample & 0xFF)), UCHAR((sample >> 8) & 0xFF));
+		short sample = *(short const*)pInSample;
+		stats->m_Sum += sample;
+		stats->m_Energy += sample * sample;
+		if (stats->m_Min > sample)
+		{
+			stats->m_Min = sample;
+			stats->m_PosMin = m_CurrentSample;
+		}
+		if (stats->m_Max < sample)
+		{
+			stats->m_PosMax = m_CurrentSample;
+			stats->m_Max = sample;
+		}
+		if (0x8000 & (sample ^ stats->m_PrevSampleInt))
+		{
+			stats->m_ZeroCrossing++;
+		}
+		stats->m_PrevSampleInt = sample;
+		stats->m_CurrentCrc = CalcCrc32(stats->m_CurrentCrc, pUchar[0]);
+		stats->m_CurrentCrc = CalcCrc32(stats->m_CurrentCrc, pUchar[1]);
 
-	if (sample != 0)
-	{
-		m_CRC32[channel] = m_CurrentCrc[channel];
-	}
+		if (sample != 0)
+		{
+			stats->m_CRC32 = stats->m_CurrentCrc;
+		}
+		if (0 == m_ChecksumSampleNumber
+			&& (sample > 127 || sample < -127))
+		{
+			m_ChecksumSampleNumber = 1;
+		}
 
-	if (0 == m_ChecksumSampleNumber
-		&& (sample > 127 || sample < -127))
-	{
-		m_ChecksumSampleNumber = 1;
+		m_Checksum += m_ChecksumSampleNumber * sample;
+		m_ChecksumSampleNumber++;
+		if (m_ChecksumSampleNumber > 256)
+		{
+			m_ChecksumSampleNumber = 1;
+		}
 	}
-
-	m_Checksum += m_ChecksumSampleNumber * sample;
-	m_ChecksumSampleNumber++;
-	if (m_ChecksumSampleNumber > 256)
+		break;
+	case SampleType32bit:
 	{
-		m_ChecksumSampleNumber = 1;
+		long sample = *(long const*)pInSample;
+		stats->m_Sum += sample;
+		stats->m_Energy += sample * sample;
+		if (stats->m_Min > sample)
+		{
+			stats->m_Min = sample;
+			stats->m_PosMin = m_CurrentSample;
+		}
+		if (stats->m_Max < sample)
+		{
+			stats->m_PosMax = m_CurrentSample;
+			stats->m_Max = sample;
+		}
+		if (0x8000 & (sample ^ stats->m_PrevSampleInt))
+		{
+			stats->m_ZeroCrossing++;
+		}
+		stats->m_PrevSampleInt = sample;
+		stats->m_CurrentCrc = CalcCrc32(stats->m_CurrentCrc, pUchar[0]);
+		stats->m_CurrentCrc = CalcCrc32(stats->m_CurrentCrc, pUchar[1]);
+		stats->m_CurrentCrc = CalcCrc32(stats->m_CurrentCrc, pUchar[2]);
+		stats->m_CurrentCrc = CalcCrc32(stats->m_CurrentCrc, pUchar[3]);
+
+		if (sample != 0)
+		{
+			stats->m_CRC32 = stats->m_CurrentCrc;
+		}
+	}
+		break;
+	case SampleTypeFloat32:
+	{
+		float sample = *(float const*)pInSample;
+		if (_isnan(sample))
+		{
+			break;
+		}
+		stats->m_Sum += sample;
+		stats->m_Energy += sample * sample;
+		if (stats->m_Min > sample)
+		{
+			stats->m_Min = sample;
+			stats->m_PosMin = m_CurrentSample;
+		}
+		if (stats->m_Max < sample)
+		{
+			stats->m_PosMax = m_CurrentSample;
+			stats->m_Max = sample;
+		}
+		if ((sample < 0.) != (stats->m_PrevSample < 0.))
+		{
+			stats->m_ZeroCrossing++;
+		}
+		stats->m_PrevSample = sample;
+	}
+		break;
 	}
 }
 
@@ -3022,43 +3081,40 @@ void CStatisticsContext::PostRetire()
 
 		if (IDC_BUTTON_GOTO_MAX == dlg.DoModal())
 		{
-			CHANNEL_MASK Channel;
+			unsigned Channel;
 			SAMPLE_INDEX Sample = dlg.GetMaxSamplePosition( & Channel);
 
-			m_pDocument->SetSelection(Sample, Sample, Channel, Sample, SetSelection_MoveCaretToCenter);
+			m_pDocument->SetSelection(Sample, Sample, 1 << Channel, Sample, SetSelection_MoveCaretToCenter);
 		}
 	}
 	BaseClass::PostRetire();
 }
 
-SAMPLE_POSITION CStatisticsContext::CStatisticsProc::GetMaxSamplePosition(CHANNEL_MASK * pChannel) const
+SAMPLE_POSITION CStatisticsContext::CStatisticsProc::GetMaxSamplePosition(unsigned * pChannel) const
 {
 	SAMPLE_POSITION SamplePos = 0;
-	CHANNEL_MASK Channel = ALL_CHANNELS;
+	unsigned Channel = 0;
 
-	SamplePos = m_PosMax[0];
-	long value = m_Max[0];
-	Channel = (1 << 0);
+	double value = fabs(m_Stats[0].m_Max);
+	SamplePos = m_Stats[0].m_PosMax;
 
-	if (-m_Min[0] > value)
+	for (unsigned i = 0; i < m_InputFormat.NumChannels(); i++)
 	{
-		value = -m_Min[0];
-		SamplePos = m_PosMin[0];
-	}
+		ChannelStats const* stats = &m_Stats[i];
 
-	if (m_InputFormat.NumChannels() > 1)
-	{
-		if (m_Max[1] > value)
+		SamplePos = stats->m_PosMax;
+
+		if (fabs(stats->m_Min) > value)
 		{
-			value = m_Max[1];
-			SamplePos = m_PosMax[1];
-			Channel = (1 << 1);
+			value = fabs(fabs(stats->m_Min));
+			SamplePos = stats->m_PosMin;
+			Channel = i;
 		}
-		if (-m_Min[1] > value)
+		if (fabs(stats->m_Max) > value)
 		{
-			value = -m_Min[1];
-			SamplePos = m_PosMin[1];
-			Channel = (1 << 1);
+			value = fabs(stats->m_Max);
+			SamplePos = stats->m_PosMax;
+			Channel = i;
 		}
 	}
 
@@ -3148,6 +3204,28 @@ BOOL CNormalizeContext::Init()
 	}
 
 	return TRUE;
+}
+
+CFileSaveContext::CFileSaveContext(CWaveSoapFrontDoc * pDoc, UINT StatusStringId, UINT OperationNameId,
+									LPCTSTR NewName,
+									CWaveFile & DstFile, CWaveFile & SrcFile, DWORD ContextFlags, DWORD NewFileTypeFlags)
+	: BaseClass(pDoc, ContextFlags, StatusStringId, OperationNameId)
+	, m_NewFileTypeFlags(NewFileTypeFlags)
+	, m_NewName(NewName)
+	, m_SrcFile(SrcFile)
+	, m_DstFile(DstFile)
+{
+}
+
+CFileSaveContext::CFileSaveContext(CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString, LPCTSTR OperationName,
+									LPCTSTR NewName,
+									CWaveFile & DstFile, CWaveFile & SrcFile, DWORD ContextFlags, DWORD NewFileTypeFlags)
+	: BaseClass(pDoc, ContextFlags, StatusString, OperationName)
+	, m_NewFileTypeFlags(NewFileTypeFlags)
+	, m_NewName(NewName)
+	, m_SrcFile(SrcFile)
+	, m_DstFile(DstFile)
+{
 }
 
 void CFileSaveContext::PostRetire()
@@ -3496,7 +3574,6 @@ BOOL CWmaDecodeContext::Init()
 												ALL_CHANNELS, m_pContext->m_CurrentSamples,  // initial sample count
 												CreateWaveFileTempDir
 												| CreateWaveFileDeleteAfterClose
-												| CreateWaveFilePcmFormat
 												| CreateWaveFileTemp, NULL))
 			{
 				AfxMessageBox(IDS_UNABLE_TO_CREATE_TEMPORARY_FILE, MB_OK | MB_ICONEXCLAMATION);
@@ -3563,10 +3640,8 @@ void CWmaDecodeContext::PostRetire()
 	if (0 == (m_Flags & OperationContextFinished))
 	{
 		CString s;
-		if (m_Flags & (OperationContextInitFailed | OperationContextStopRequested))
+		if (m_Flags & (OperationContextInitFailed | OperationContextStop))
 		{
-			//s.Format(IDS_CANT_DECOMPRESS_FILE, LPCTSTR(m_pDocument->m_OriginalWavFile.GetName()), -1, 0);
-			//AfxMessageBox(s, MB_ICONSTOP);
 			m_pDocument->m_bCloseThisDocumentNow = true;
 		}
 		else
@@ -3636,7 +3711,6 @@ HRESULT STDMETHODCALLTYPE CDirectShowDecodeContext::Receive(
 
 	if (Written == Length)
 	{
-		//
 		m_pDocument->KickDocumentThread();
 		return S_OK;
 	}
@@ -3749,7 +3823,6 @@ BOOL CDirectShowDecodeContext::Init()
 
 	if (!m_DshowDecoder.Init())
 	{
-		m_pDocument->m_bCloseThisDocumentNow = true;
 		return FALSE;
 	}
 	hr = m_DshowDecoder.Open(m_OriginalFile.GetName());
@@ -3760,7 +3833,6 @@ BOOL CDirectShowDecodeContext::Init()
 		s.Format(IDS_CANT_OPEN_WMA_DECODER, m_OriginalFile.GetName());
 		MessageBoxSync(s, MB_ICONEXCLAMATION | MB_OK);
 
-		m_pDocument->m_bCloseThisDocumentNow = true;
 		return FALSE;
 	}
 
@@ -3777,36 +3849,40 @@ BOOL CDirectShowDecodeContext::Init()
 	protected:
 		virtual LRESULT Exec()
 		{
-			BOOL result = m_pContext->m_pDocument->m_WavFile.CreateWaveFile(NULL, m_pContext->m_DshowDecoder.GetDstFormat(),
-							ALL_CHANNELS, m_pContext->m_CurrentLengthSamples,  // initial sample count
-							CreateWaveFileTempDir
-							| CreateWaveFileDeleteAfterClose
-							| CreateWaveFileTemp, NULL);
-
-			if (FALSE == result)
+			CWaveSoapFrontDoc *pDoc = m_pContext->m_pDocument;
+			if (!pDoc->m_WavFile.CreateWaveFile(NULL, m_pContext->m_DshowDecoder.GetDstFormat(),
+												ALL_CHANNELS, m_pContext->m_CurrentLengthSamples,  // initial sample count
+												CreateWaveFileTempDir
+												| CreateWaveFileDeleteAfterClose
+												| CreateWaveFileTemp, NULL))
 			{
 				AfxMessageBox(IDS_UNABLE_TO_CREATE_TEMPORARY_FILE, MB_OK | MB_ICONEXCLAMATION);
+				//pDoc->m_bCloseThisDocumentNow = true;
+				// will be done for InitFailed
+				return FALSE;
 			}
-			return result;
+
+			m_pContext->SetDstFile(pDoc->m_WavFile);
+			// the decoded data format will be used to write the peak file
+			pDoc->m_OriginalWaveFormat = m_pContext->m_DshowDecoder.GetDstFormat();
+			pDoc->m_OriginalWavFile.SetWaveFormat(pDoc->m_OriginalWaveFormat);
+			if (!pDoc->m_WavFile.LoadPeaksForOriginalFile(pDoc->m_OriginalWavFile, m_pContext->m_CurrentLengthSamples))
+			{
+				// peak data will be created during conversion
+				m_pContext->m_Flags |= PostRetireSavePeakFile;
+			}
+			pDoc->SoundChanged(pDoc->WaveFileID(), 0, 0, m_pContext->m_CurrentLengthSamples, UpdateSoundDontRescanPeaks);
+			pDoc->QueueSoundUpdate(pDoc->UpdateWholeFileChanged,
+									pDoc->WaveFileID(), 0, 0, m_pContext->m_CurrentLengthSamples);
+			return TRUE;
 		}
 		CDirectShowDecodeContext * const m_pContext;
 	} call(this);
 
 	if (FALSE == call.Call())
 	{
-		m_pDocument->m_bCloseThisDocumentNow = true;
 		return FALSE;
 	}
-
-	SetDstFile(m_pDocument->m_WavFile);
-
-	m_pDocument->m_WavFile.LoadPeaksForOriginalFile(m_pDocument->m_OriginalWavFile, m_CurrentLengthSamples);
-
-	// FIXME??
-	//m_pDocument->SoundChanged(m_pDocument->WaveFileID(), 0, m_CurrentLengthSamples, m_CurrentLengthSamples, UpdateSoundDontRescanPeaks);
-
-	m_pDocument->QueueSoundUpdate(m_pDocument->UpdateWholeFileChanged,
-								m_pDocument->WaveFileID(), 0, 0, m_CurrentLengthSamples);
 
 	m_LastTickCountUpdate = GetTickCount();
 
@@ -3838,10 +3914,8 @@ void CDirectShowDecodeContext::PostRetire()
 	if (0 == (m_Flags & OperationContextFinished))
 	{
 		CString s;
-		if (m_Flags & (OperationContextInitFailed | OperationContextStopRequested))
+		if (m_Flags & (OperationContextInitFailed | OperationContextStop))
 		{
-			//s.Format(IDS_CANT_DECOMPRESS_FILE, LPCTSTR(m_pDocument->m_OriginalWavFile.GetName()), -1, 0);
-			//AfxMessageBox(s, MB_ICONSTOP);
 			m_pDocument->m_bCloseThisDocumentNow = true;
 		}
 		else
@@ -3855,12 +3929,10 @@ void CDirectShowDecodeContext::PostRetire()
 	else
 	{
 		// set the file length, according to the actual number of samples decompressed
-		m_pDocument->m_OriginalWaveFormat = m_DshowDecoder.GetDstFormat();
 
 		m_DstFile.SetFileLengthSamples(m_DstWrittenSample);
 
 		m_pDocument->SoundChanged(m_DstFile.GetFileID(), m_LastSamplesUpdate, m_DstWrittenSample, m_DstWrittenSample, UpdateSoundDontRescanPeaks);
-		// peak file will be saved by the base class
 	}
 	BaseClass::PostRetire();
 }

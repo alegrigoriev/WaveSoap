@@ -486,7 +486,6 @@ protected:
 	virtual BOOL OperationProc();
 	virtual void PostRetire();
 	virtual BOOL Init();
-	// FIXME: done percent calculation
 };
 
 class CCopyContext : public CTwoFilesOperation
@@ -638,40 +637,47 @@ public:
 
 	CStatisticsContext(CWaveSoapFrontDoc * pDoc, UINT StatusStringId, UINT OperationNameId = 0);
 
-	SAMPLE_INDEX GetMaxSamplePosition(CHANNEL_MASK * pChannel = NULL) const
+	SAMPLE_INDEX GetMaxSamplePosition(unsigned * pChannel = NULL) const
 	{
 		return m_DstFile.PositionToSample(m_Proc.GetMaxSamplePosition(pChannel));
 	}
 
 	virtual void PostRetire();
+	struct ChannelStats
+	{
+		int m_ZeroCrossing;
+
+		float m_PrevSample;
+		long m_PrevSampleInt;
+
+		double m_Min;
+		double m_Max;
+
+		SAMPLE_INDEX m_PosMin;
+		SAMPLE_INDEX m_PosMax;
+		double m_Energy;
+		double m_Sum;
+		DWORD m_CurrentCrc;
+		DWORD m_CRC32;
+	};
 
 	class CStatisticsProc: public CWaveProc
 	{
 	public:
 		CStatisticsProc();
 
-		int m_ZeroCrossing[2];
-
-		int m_PrevSample[2];
-
-		int m_Min[2];
-		int m_Max[2];
-
-		SAMPLE_INDEX m_PosMin[2];
-		SAMPLE_INDEX m_PosMax[2];
-		LONGLONG m_Energy[2];
-		LONGLONG m_Sum[2];
-		DWORD m_CurrentCrc[2];
-		DWORD m_CRC32[2];
+		ChannelStats m_Stats[MAX_NUMBER_OF_CHANNELS];
 		DWORD m_CurrentCommonCRC;
 		DWORD m_CRC32Common;
+		SAMPLE_INDEX m_TotalPosMin;
+		SAMPLE_INDEX m_TotalPosMax;
 
 		// sample number is limited at 256. If 0, checksum not started yet
 		int m_ChecksumSampleNumber;
 		DWORD m_Checksum;
 
 		virtual void ProcessSampleValue(void const * pInSample, void * pOutSample, unsigned channel);
-		SAMPLE_POSITION GetMaxSamplePosition(CHANNEL_MASK * pChannel = NULL) const;
+		SAMPLE_POSITION GetMaxSamplePosition(unsigned * pChannel = NULL) const;
 
 	} m_Proc;
 
@@ -831,22 +837,18 @@ class CFileSaveContext : public CStagedContext
 public:
 	typedef std::auto_ptr<ThisClass> auto_ptr;
 
-	CFileSaveContext(CWaveSoapFrontDoc * pDoc, UINT StatusStringId = 0, UINT OperationNameId = 0)
-		: BaseClass(pDoc, 0, StatusStringId, OperationNameId),
-		m_NewFileTypeFlags(0)
-	{
-	}
+	CFileSaveContext(CWaveSoapFrontDoc * pDoc, UINT StatusStringId, UINT OperationNameId,
+					LPCTSTR NewName,
+					CWaveFile & DstFile, CWaveFile & SrcFile, DWORD ContextFlags, DWORD NewFileTypeFlags);
 
-	CFileSaveContext(CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString, LPCTSTR OperationName)
-		: BaseClass(pDoc, 0, StatusString, OperationName),
-		m_NewFileTypeFlags(0)
-	{
-	}
+	CFileSaveContext(CWaveSoapFrontDoc * pDoc, LPCTSTR StatusString, LPCTSTR OperationName,
+					LPCTSTR NewName,
+					CWaveFile & DstFile, CWaveFile & SrcFile, DWORD ContextFlags, DWORD NewFileTypeFlags);
 
 	~CFileSaveContext()
 	{
 	}
-
+private:
 	CString m_NewName;
 	CWaveFile m_DstFile;
 	CWaveFile m_SrcFile;
