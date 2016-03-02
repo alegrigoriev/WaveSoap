@@ -3011,7 +3011,7 @@ void CStatisticsContext::CStatisticsProc::ProcessSampleValue(void const * pInSam
 	{
 		long sample = *(long const*)pInSample;
 		stats->m_Sum += sample;
-		stats->m_Energy += sample * sample;
+		stats->m_Energy += double(sample) * sample;
 		if (stats->m_Min > sample)
 		{
 			stats->m_Min = sample;
