@@ -1188,22 +1188,6 @@ BEGIN
     PUSHBUTTON      "&Help",IDHELP,158,124,50,14
 END
 
-IDD_DIALOG_STATISTICS DIALOGEX 0, 0, 330, 188
-STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | WS_SYSMENU
-CAPTION "File statistics"
-FONT 8, "MS Shell Dlg", 0, 0, 0x0
-BEGIN
-    DEFPUSHBUTTON   "OK",IDOK,182,167,77,14
-    EDITTEXT        IDC_EDIT_LEFT,112,39,100,124,ES_MULTILINE | ES_AUTOVSCROLL | ES_AUTOHSCROLL | ES_READONLY | NOT WS_BORDER
-    EDITTEXT        IDC_EDIT_RIGHT,220,39,100,124,ES_MULTILINE | ES_AUTOHSCROLL | ES_READONLY | NOT WS_BORDER
-    CONTROL         "Cursor position:\nSample value at cursor:\n\nMax negative peak position:\nMax negative peak value:\n\nMax positive peak position:\nMax positive peak value:\n\nRMS power:\nAverage value (DC offset):\nZero crossings:\n\nCRC:",IDC_STATIC,
-                    "Static",SS_LEFTNOWORDWRAP | WS_GROUP,7,39,102,124
-    LTEXT           "Left channel: ",IDC_STATIC,112,27,54,8
-    LTEXT           "Right channel:",IDC_STATIC,220,27,54,8
-    LTEXT           "File:",IDC_STATIC_FILE_NAME,7,7,316,18
-    PUSHBUTTON      "&Go to max sample",IDC_BUTTON_GOTO_MAX,72,167,77,14
-END
-
 IDD_DIALOG_NORMALIZE DIALOGEX 0, 0, 214, 122
 STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | WS_SYSMENU
 CAPTION "Normalize volume"
@@ -1245,17 +1229,15 @@ BEGIN
     LTEXT           "All the file will be processed",IDC_STATIC,7,83,190,8
 END
 
-IDD_DIALOG_STATISTICS_MONO DIALOGEX 0, 0, 232, 185
+IDD_DIALOG_STATISTICS DIALOGEX 0, 0, 232, 227
 STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | WS_SYSMENU
 CAPTION "File statistics"
 FONT 8, "MS Shell Dlg", 0, 0, 0x0
 BEGIN
-    DEFPUSHBUTTON   "OK",IDOK,124,164,77,14
-    EDITTEXT        IDC_EDIT_LEFT,113,37,100,125,ES_MULTILINE | ES_AUTOVSCROLL | ES_AUTOHSCROLL | ES_READONLY | NOT WS_BORDER
-    CONTROL         "Cursor position:\nSample value at cursor:\n\nMax negative peak position:\nMax negative peak value:\n\nMax positive peak position:\nMax positive peak value:\n\nRMS power:\nAverage value (DC offset):\nZero crossings:\n\nCRC:\nChecksum:",IDC_STATIC,
-                    "Static",SS_LEFTNOWORDWRAP | WS_GROUP,8,37,102,125
-    LTEXT           "File:",IDC_STATIC_FILE_NAME,7,7,219,28
-    PUSHBUTTON      "&Go to max sample",IDC_BUTTON_GOTO_MAX,30,164,77,14
+    DEFPUSHBUTTON   "OK",IDOK,124,206,77,14
+    EDITTEXT        IDC_EDIT,7,37,219,163,ES_MULTILINE | ES_AUTOVSCROLL | ES_AUTOHSCROLL | ES_READONLY | NOT WS_BORDER | WS_VSCROLL
+    LTEXT           "File:",IDC_STATIC_FILE_NAME,7,7,219,28,SS_WORDELLIPSIS
+    PUSHBUTTON      "&Go to max sample",IDC_BUTTON_GOTO_MAX,30,206,77,14
 END
 
 IDD_DIALOG_OPEN_TEMPLATE_V5 DIALOGEX 0, 0, 372, 136
@@ -2331,14 +2313,6 @@ BEGIN
         BOTTOMMARGIN, 138
     END
 
-    IDD_DIALOG_STATISTICS, DIALOG
-    BEGIN
-        LEFTMARGIN, 7
-        RIGHTMARGIN, 323
-        TOPMARGIN, 7
-        BOTTOMMARGIN, 181
-    END
-
     IDD_DIALOG_NORMALIZE, DIALOG
     BEGIN
         LEFTMARGIN, 7
@@ -2355,12 +2329,12 @@ BEGIN
         BOTTOMMARGIN, 114
     END
 
-    IDD_DIALOG_STATISTICS_MONO, DIALOG
+    IDD_DIALOG_STATISTICS, DIALOG
     BEGIN
         LEFTMARGIN, 7
         RIGHTMARGIN, 226
         TOPMARGIN, 7
-        BOTTOMMARGIN, 178
+        BOTTOMMARGIN, 220
     END
 
     IDD_DIALOG_OPEN_TEMPLATE_V5, DIALOG
@@ -2951,6 +2925,11 @@ BEGIN
 END
 
 IDD_ABOUTBOX AFX_DIALOG_LAYOUT
+BEGIN
+    0
+END
+
+IDD_DIALOG_STATISTICS AFX_DIALOG_LAYOUT
 BEGIN
     0
 END
@@ -3749,6 +3728,12 @@ BEGIN
     IDS_STATUS_STRING_FLOAT64 "Float 64"
     IDS_GILBERT_TRANSFORM_STATUS_PROMPT "Performing Gilbert transform"
     IDS_GILBERT_TRANSFORM_OPERATION_NAME "Gilbert transform"
+    IDS_STATISTICS_FORMAT_LINE1 "Cursor position:\t%s (%s)\r\n"
+    IDS_STATISTICS_FORMAT_LINE2 
+                            "Sample value at cursor:\t%s (%s dB; %.2f%%)\r\n\r\n"
+    IDS_STATISTICS_FORMAT_LINE3 "Max negative peak position:\t%s (%s)\r\n"
+    IDS_STATISTICS_FORMAT_LINE4 
+                            "Max negative peak value:\t%s (%s dB; %.2f%%)\r\n\r\n"
 END
 
 STRINGTABLE
@@ -3829,6 +3814,20 @@ BEGIN
     ID_VIEW_MAXIMIZE_31     "Show channel with normal height"
     ID_PROCESS_GILBERT_TRANSFORM 
                             "Perform Gilbert transform (calculate imaginary part)"
+END
+
+STRINGTABLE
+BEGIN
+    IDS_STATISTICS_FORMAT_LINE5 "Max positive peak position:\t%s (%s)\r\n"
+    IDS_STATISTICS_FORMAT_LINE6 
+                            "Max positive peak value:\t%s dB (%.2f%%)\r\n\r\n"
+    IDS_STATISTICS_FORMAT_LINE7 "RMS power:\t%s (%s dB; %.2f%%)\r\n"
+    IDS_STATISTICS_FORMAT_LINE8 
+                            "Average value (DC offset):\t%s (%s dB; %.2f%%)\r\n"
+    IDS_STATISTICS_FORMAT_LINE9 "Zero crossings:\t%.2f Hz\r\n\r\n"
+    IDS_STATISTICS_FORMAT_LINE10 "CRC:\t%08X\r\n"
+    IDS_STATISTICS_FORMAT_LINE11 "Checksum:%08X\r\n"
+    IDS_STATISTICS_FORMAT_LINE_CHANNEL "Channel: %d\r\n"
 END
 
 #endif    // English (United States) resources
