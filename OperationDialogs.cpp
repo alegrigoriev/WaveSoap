@@ -1414,7 +1414,7 @@ BOOL CStatisticsDialog::OnInitDialog()
 		}
 		else if (SampleType == SampleType32bit)
 		{
-			if (m_ValueAtCursor[ch] != 0)
+			if (m_ValueAtCursor32[ch] != 0)
 			{
 				AtCursorDb.Format(_T("%.2f"), 20. * log10(fabs(m_ValueAtCursor32[ch]) / (32768.*65536.)));
 			}
@@ -1472,7 +1472,7 @@ BOOL CStatisticsDialog::OnInitDialog()
 		}
 		else if(SampleType == SampleTypeFloat32)
 		{
-			if (m_ValueAtCursor[ch] != 0)
+			if (m_fValueAtCursor[ch] != 0)
 			{
 				AtCursorDb.Format(_T("%.2f"), 20. * log10(fabs(m_fValueAtCursor[ch])));
 			}
@@ -1596,7 +1596,7 @@ BOOL CStatisticsDialog::OnInitDialog()
 		text += s;
 	}
 
-	INT TabStops[2] = { 110, 220 };
+	INT TabStops[2] = { 90, 220 };
 	m_EditBox.SetTabStops(2, TabStops);
 	m_EditBox.ReplaceSel(text);
 	m_EditBox.SetSel(0, 0);
