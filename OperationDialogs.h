@@ -421,21 +421,23 @@ public:
 	//{{AFX_DATA(CStatisticsDialog)
 	enum { IDD = IDD_DIALOG_STATISTICS };
 	CStatic	m_FileName;
+	CEdit m_EditBox;
 	//}}AFX_DATA
 
-	SAMPLE_INDEX GetMaxSamplePosition(CHANNEL_MASK * pChannel = NULL) const;
+	SAMPLE_INDEX GetMaxSamplePosition(unsigned * pChannel = NULL) const;
 
 	class CStatisticsContext * m_pContext;
 	long m_SamplesPerSec;
 	SAMPLE_INDEX m_CaretPosition;
-	int m_ValueAtCursorLeft;
-	int m_ValueAtCursorRight;
+	short m_ValueAtCursor[MAX_NUMBER_OF_CHANNELS];
+	long m_ValueAtCursor32[MAX_NUMBER_OF_CHANNELS];
+	FLOAT m_fValueAtCursor[MAX_NUMBER_OF_CHANNELS];
+
 	CString m_sFilename;
 // Overrides
 	// ClassWizard generated virtual function overrides
 	//{{AFX_VIRTUAL(CStatisticsDialog)
 public:
-	virtual INT_PTR DoModal();
 protected:
 	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV support
 	//}}AFX_VIRTUAL

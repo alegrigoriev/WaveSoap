@@ -1234,21 +1234,32 @@ CStatisticsDialog::CStatisticsDialog(class CStatisticsContext * pContext,
 	, m_SamplesPerSec(WaveFile.SampleRate())
 	, m_sFilename(FileName)
 {
+	// FIXME: handle 32 bit formats
 	// read sample value at cursor
-	WAVE_SAMPLE Value[2] = {0, 0};
+	memzero(m_ValueAtCursor);
+	memzero(m_ValueAtCursor32);
+	memzero(m_fValueAtCursor);
+
 	if (m_CaretPosition < WaveFile.NumberOfSamples())
 	{
-		int SampleSize = WaveFile.SampleSize();
-		SAMPLE_POSITION offset = WaveFile.SampleToPosition(m_CaretPosition);
-
-		if (SampleSize > sizeof Value)
+		void * buf;
+		WaveSampleType type = WaveFile.GetSampleType();
+		switch (type)
 		{
-			SampleSize = sizeof Value;
+		case SampleType16bit:
+			buf = &m_ValueAtCursor;
+			break;
+		case SampleType32bit:
+			buf = &m_ValueAtCursor32;
+			break;
+		case SampleTypeFloat32:
+			buf = &m_fValueAtCursor;
+			break;
+		default:
+			ASSERT(type == SampleType16bit || type == SampleType32bit || type == SampleTypeFloat32);
+			return;
 		}
-		WaveFile.ReadAt(Value, SampleSize, offset);
-
-		m_ValueAtCursorLeft = Value[0];
-		m_ValueAtCursorRight = Value[1];
+		WaveFile.ReadSamples(ALL_CHANNELS, WaveFile.SampleToPosition(m_CaretPosition), 1, buf, type);
 	}
 	//{{AFX_DATA_INIT(CStatisticsDialog)
 	// NOTE: the ClassWizard will add member initialization here
@@ -1261,6 +1272,7 @@ void CStatisticsDialog::DoDataExchange(CDataExchange* pDX)
 	BaseClass::DoDataExchange(pDX);
 	//{{AFX_DATA_MAP(CStatisticsDialog)
 	DDX_Control(pDX, IDC_STATIC_FILE_NAME, m_FileName);
+	DDX_Control(pDX, IDC_EDIT, m_EditBox);
 	//}}AFX_DATA_MAP
 }
 
@@ -1279,6 +1291,7 @@ BOOL CStatisticsDialog::OnInitDialog()
 	BaseClass::OnInitDialog();
 
 	CString s;
+	s.Preallocate(1023);
 
 	s.Format(IDS_STAT_DIALOG_FILE_NAME_FORMAT, LPCTSTR(m_sFilename));
 	m_FileName.SetWindowText(s);
@@ -1291,221 +1304,304 @@ BOOL CStatisticsDialog::OnInitDialog()
 	{
 		nSamples = 1;
 	}
-	CString format, formatRight;
-	if (m_pContext->m_SrcFile.Channels() > 1)
-	{
-		format.LoadString(IDS_STATISTICS_FORMAT_LEFT);
-		formatRight.LoadString(IDS_STATISTICS_FORMAT_RIGHT);
-	}
-	else
-	{
-		format.LoadString(IDS_STATISTICS_FORMAT);
-	}
+	CString format_channel;
+	format_channel.LoadStringW(IDS_STATISTICS_FORMAT_LINE_CHANNEL);
+	CString format1;
+	format1.LoadStringW(IDS_STATISTICS_FORMAT_LINE1);
+	CString format2;
+	format2.LoadStringW(IDS_STATISTICS_FORMAT_LINE2);
+	CString format3;
+	format3.LoadStringW(IDS_STATISTICS_FORMAT_LINE3);
+	CString format4;
+	format4.LoadStringW(IDS_STATISTICS_FORMAT_LINE4);
+	CString format5;
+	format5.LoadStringW(IDS_STATISTICS_FORMAT_LINE5);
+	CString format6;
+	format6.LoadStringW(IDS_STATISTICS_FORMAT_LINE6);
+	CString format7;
+	format7.LoadStringW(IDS_STATISTICS_FORMAT_LINE7);
+	CString format8;
+	format8.LoadStringW(IDS_STATISTICS_FORMAT_LINE8);
+	CString format9;
+	format9.LoadStringW(IDS_STATISTICS_FORMAT_LINE9);
+	CString format10;
+	format10.LoadStringW(IDS_STATISTICS_FORMAT_LINE10);
+	CString format11;
+	format11.LoadStringW(IDS_STATISTICS_FORMAT_LINE11);
 
-	CString AtCursorDb;
-	CString MinDb;
-	CString MaxDb;
-	CString RmsDb;
-	CString DcDb;
+	CString text;
+	text.Preallocate(4096);
 
-	if (m_ValueAtCursorLeft != 0)
-	{
-		AtCursorDb.Format(_T("%.2f"), 20. * log10(abs(m_ValueAtCursorLeft) / 32768.));
-	}
-	else
-	{
-		AtCursorDb = _T("-Inf.");
-	}
-	if (m_pContext->m_Proc.m_Min[0] != 0)
-	{
-		MinDb.Format(_T("%.2f"), 20. * log10(abs(m_pContext->m_Proc.m_Min[0]) / 32768.));
-	}
-	else
-	{
-		MinDb = _T("-Inf.");
-	}
-	if (m_pContext->m_Proc.m_Max[0] != 0)
-	{
-		MaxDb.Format(_T("%.2f"), 20. * log10(abs(m_pContext->m_Proc.m_Max[0]) / 32768.));
-	}
-	else
-	{
-		MaxDb = _T("-Inf.");
-	}
-	if (m_pContext->m_Proc.m_Energy[0] != 0)
-	{
-		RmsDb.Format(_T("%.2f"),
-					10. * log10(fabs(double(m_pContext->m_Proc.m_Energy[0])) / (nSamples * 1073741824.)));
-	}
-	else
-	{
-		RmsDb = _T("-Inf.");
-	}
-	if (m_pContext->m_Proc.m_Sum[0] / nSamples != 0)
-	{
-		DcDb.Format(_T("%.2f"),
-					20. * log10(fabs(double(m_pContext->m_Proc.m_Sum[0]) / nSamples) / 32768.));
-	}
-	else
-	{
-		DcDb = _T("-Inf.");
-	}
+	WaveSampleType SampleType = m_pContext->m_SrcFile.GetSampleType();
 
-	SAMPLE_INDEX MinPosSample = m_pContext->m_Proc.m_PosMin[0];
-	SAMPLE_INDEX MaxPosSample = m_pContext->m_Proc.m_PosMax[0];
-	_stprintf_s(s.GetBuffer(1024), 1025, format,
-				//%s (%s)\r\n"
-				LPCTSTR(SampleToString(m_CaretPosition, m_SamplesPerSec,
-										SampleToString_HhMmSs | TimeToHhMmSs_NeedsMs | TimeToHhMmSs_NeedsHhMm)),
-				LPCTSTR(SampleToString(m_CaretPosition, m_SamplesPerSec, SampleToString_Sample)),
-
-				//"%s (%.2f dB; %.2f%%)\r\n"
-				LPCTSTR(LtoaCS(m_ValueAtCursorLeft)), LPCTSTR(AtCursorDb),
-				m_ValueAtCursorLeft / 327.68,
-
-				//"%s (%s)\r\n"
-				LPCTSTR(SampleToString(MinPosSample, m_SamplesPerSec,
-										SampleToString_HhMmSs | TimeToHhMmSs_NeedsMs | TimeToHhMmSs_NeedsHhMm)),
-				LPCTSTR(SampleToString(MinPosSample, m_SamplesPerSec, SampleToString_Sample)),
-
-				//"%s (%.2f dB; %.2f%%)\r\n"
-				LPCTSTR(LtoaCS(m_pContext->m_Proc.m_Min[0])), LPCTSTR(MinDb),
-				m_pContext->m_Proc.m_Min[0] / 327.68,
-
-				//"%s (%s)\r\n"
-				LPCTSTR(SampleToString(MaxPosSample, m_SamplesPerSec,
-										SampleToString_HhMmSs | TimeToHhMmSs_NeedsMs | TimeToHhMmSs_NeedsHhMm)),
-				LPCTSTR(SampleToString(MaxPosSample, m_SamplesPerSec, SampleToString_Sample)),
-
-				//"%s (%.2f dB; %.2f%%)\r\n"
-				LPCTSTR(LtoaCS(m_pContext->m_Proc.m_Max[0])),
-				LPCTSTR(MaxDb), m_pContext->m_Proc.m_Max[0] / 327.68,
-
-				//"%.2f dB (%.2f%%)\r\n"
-				// RMS
-				LPCTSTR(RmsDb),
-				100. * sqrt(fabs(double(m_pContext->m_Proc.m_Energy[0])) / (nSamples * 1073741824.)),
-				//"%s (%.2f dB; %.2f%%)\r\n"
-				LPCTSTR(LtoaCS(long(m_pContext->m_Proc.m_Sum[0] / nSamples))),
-				LPCTSTR(DcDb), (m_pContext->m_Proc.m_Sum[0] / nSamples) / 327.68,
-				//"%.2f Hz\r\n\r\n"
-				// zero crossing
-				m_pContext->m_Proc.m_ZeroCrossing[0] / double(nSamples) * m_SamplesPerSec,
-				// %08X
-				m_pContext->m_Proc.m_CRC32[0],
-				m_pContext->m_Proc.m_Checksum
-				);
-	s.ReleaseBuffer();
-	SetDlgItemText(IDC_EDIT_LEFT, s);
-
-	// right channel
-	if (m_pContext->m_SrcFile.Channels() > 1)
+	for (int ch = 0; ch < m_pContext->m_SrcFile.Channels(); ch++)
 	{
-		if (m_ValueAtCursorRight != 0)
+		CString AtCursorDb;
+		CString MinDb;
+		CString MaxDb;
+		CString RmsDb;
+		CString DcDb;
+		CString AtCursor;
+		CString Min;
+		CString Max;
+		CString Rms;
+		CString Dc;
+		double ValueAtCursorPercent = 0.;
+		double MinPercent = 0.;
+		double MaxPercent = 0.;
+		double DcPercent = 0.;
+		double RmsPercent = 0.;
+
+		CStatisticsContext::ChannelStats const * stats = &m_pContext->m_Proc.m_Stats[ch];
+
+		if (SampleType == SampleType16bit)
 		{
-			AtCursorDb.Format(_T("%.2f"), 20. * log10(abs(m_ValueAtCursorRight) / 32768.));
+			if (m_ValueAtCursor[ch] != 0)
+			{
+				AtCursorDb.Format(_T("%.2f"), 20. * log10(fabs(m_ValueAtCursor[ch]) / 32768.));
+			}
+			else
+			{
+				AtCursorDb = _T("-Inf.");
+			}
+			AtCursor = LtoaCS(m_ValueAtCursor[ch]);
+			ValueAtCursorPercent = m_ValueAtCursor[ch] / 327.68;
+
+			if (stats->m_Min != 0)
+			{
+				MinDb.Format(_T("%.2f"), 20. * log10(fabs(stats->m_Min) / 32768.));
+			}
+			else
+			{
+				MinDb = _T("-Inf.");
+			}
+			Min = LtoaCS(long(stats->m_Min));
+			MinPercent = stats->m_Min / 327.68;
+
+			if (stats->m_Max != 0)
+			{
+				MaxDb.Format(_T("%.2f"), 20. * log10(fabs(stats->m_Max) / 32768.));
+			}
+			else
+			{
+				MaxDb = _T("-Inf.");
+			}
+			Max = LtoaCS(long(stats->m_Max));
+			MaxPercent = stats->m_Max / 327.68;
+
+			if (stats->m_Energy != 0)
+			{
+				RmsDb.Format(_T("%.2f"),
+							10. * log10(stats->m_Energy / (nSamples * 1073741824.)));
+			}
+			else
+			{
+				RmsDb = _T("-Inf.");
+			}
+			RmsPercent = 100. * sqrt(stats->m_Energy / (nSamples * 1073741824.));
+
+			if (stats->m_Sum / nSamples != 0)
+			{
+				DcDb.Format(_T("%.2f"),
+							20. * log10(fabs(stats->m_Sum) / (nSamples * 32768.)));
+			}
+			else
+			{
+				DcDb = _T("-Inf.");
+			}
+			Dc = LtoaCS(long(stats->m_Sum / nSamples));
+			DcPercent = (stats->m_Sum / nSamples) / 327.68;
 		}
-		else
+		else if (SampleType == SampleType32bit)
 		{
-			AtCursorDb = _T("-Inf.");
+			if (m_ValueAtCursor[ch] != 0)
+			{
+				AtCursorDb.Format(_T("%.2f"), 20. * log10(fabs(m_ValueAtCursor32[ch]) / (32768.*65536.)));
+			}
+			else
+			{
+				AtCursorDb = _T("-Inf.");
+			}
+			AtCursor = LtoaCS(m_ValueAtCursor32[ch]);
+			ValueAtCursorPercent = m_ValueAtCursor32[ch] / (327.68*65536.);
+
+			if (stats->m_Min != 0)
+			{
+				MinDb.Format(_T("%.2f"), 20. * log10(fabs(stats->m_Min) / (32768.*65536.)));
+			}
+			else
+			{
+				MinDb = _T("-Inf.");
+			}
+			Min = LtoaCS(long(stats->m_Min));
+			MinPercent = stats->m_Min / (327.68*65536.);
+
+			if (stats->m_Max != 0)
+			{
+				MaxDb.Format(_T("%.2f"), 20. * log10(fabs(stats->m_Max) / (32768.*65536.)));
+			}
+			else
+			{
+				MaxDb = _T("-Inf.");
+			}
+			Max = LtoaCS(long(stats->m_Max));
+			MaxPercent = stats->m_Max / (327.68*65536.);
+
+			if (stats->m_Energy != 0)
+			{
+				RmsDb.Format(_T("%.2f"),
+							10. * log10(stats->m_Energy / (nSamples * (32768.*65536.*32768.*65536.))));
+			}
+			else
+			{
+				RmsDb = _T("-Inf.");
+			}
+			RmsPercent = 100. * sqrt(stats->m_Energy / (nSamples * (32768.*65536.*32768.*65536.)));
+
+			if (stats->m_Sum / nSamples != 0)
+			{
+				DcDb.Format(_T("%.2f"),
+							20. * log10(fabs(stats->m_Sum) / (nSamples * (32768.*65536.))));
+			}
+			else
+			{
+				DcDb = _T("-Inf.");
+			}
+			Dc = LtoaCS(long(stats->m_Sum / nSamples));
+			DcPercent = (stats->m_Sum / nSamples) / (327.68*65536.);
 		}
-		if (m_pContext->m_Proc.m_Min[1] != 0)
+		else if(SampleType == SampleTypeFloat32)
 		{
-			MinDb.Format(_T("%.2f"), 20. * log10(fabs(double(m_pContext->m_Proc.m_Min[1])) / 32768.));
-		}
-		else
-		{
-			MinDb = _T("-Inf.");
-		}
-		if (m_pContext->m_Proc.m_Max[1] != 0)
-		{
-			MaxDb.Format(_T("%.2f"), 20. * log10(fabs(double(m_pContext->m_Proc.m_Max[1])) / 32768.));
-		}
-		else
-		{
-			MaxDb = _T("-Inf.");
-		}
-		if (m_pContext->m_Proc.m_Energy[1] != 0)
-		{
-			RmsDb.Format(_T("%.2f"),
-						10. * log10(fabs(double(m_pContext->m_Proc.m_Energy[1])) / (nSamples * 1073741824.)));
-		}
-		else
-		{
-			RmsDb = _T("-Inf.");
-		}
-		if (m_pContext->m_Proc.m_Sum[1] / nSamples != 0)
-		{
-			DcDb.Format(_T("%.2f"),
-						20. * log10(fabs(double(m_pContext->m_Proc.m_Sum[1]) / nSamples) / 32768.));
-		}
-		else
-		{
-			DcDb = _T("-Inf.");
+			if (m_ValueAtCursor[ch] != 0)
+			{
+				AtCursorDb.Format(_T("%.2f"), 20. * log10(fabs(m_fValueAtCursor[ch])));
+			}
+			else
+			{
+				AtCursorDb = _T("-Inf.");
+			}
+			AtCursor.Format(_T("%.6f"), m_fValueAtCursor[ch]);
+			ValueAtCursorPercent = m_fValueAtCursor[ch] / 100.;
+
+			if (stats->m_Min != 0)
+			{
+				MinDb.Format(_T("%.2f"), 20. * log10(fabs(stats->m_Min)));
+			}
+			else
+			{
+				MinDb = _T("-Inf.");
+			}
+			Min.Format(_T("%.6f"), stats->m_Min);
+			MinPercent = stats->m_Min / 100.;
+
+			if (stats->m_Max != 0)
+			{
+				MaxDb.Format(_T("%.2f"), 20. * log10(fabs(stats->m_Max)));
+			}
+			else
+			{
+				MaxDb = _T("-Inf.");
+			}
+			Max.Format(_T("%.6f"), stats->m_Max);
+			MaxPercent = stats->m_Max / 100.;
+
+			if (stats->m_Energy != 0)
+			{
+				RmsDb.Format(_T("%.2f"),
+							10. * log10(stats->m_Energy / nSamples));
+			}
+			else
+			{
+				RmsDb = _T("-Inf.");
+			}
+			RmsPercent = 100. * sqrt(stats->m_Energy / nSamples);
+
+			if (stats->m_Sum / nSamples != 0)
+			{
+				DcDb.Format(_T("%.2f"),
+							20. * log10(fabs(stats->m_Sum) / nSamples));
+			}
+			else
+			{
+				DcDb = _T("-Inf.");
+			}
+			Dc.Format(_T("%.6f"), stats->m_Sum / nSamples);
+			DcPercent = (stats->m_Sum / nSamples) / 100.;
 		}
 
-		MinPosSample = m_pContext->m_Proc.m_PosMin[1];
-		MaxPosSample = m_pContext->m_Proc.m_PosMax[1];
+		if (m_pContext->m_SrcFile.Channels() > 1)
+		{
+			//Channel: %d\r\n
+			s.Format(format_channel, ch);
+			text += s;
+		}
+		//Cursor position:\t%s (%s)\r\n
+		s.Format(format1, LPCTSTR(SampleToString(m_CaretPosition, m_SamplesPerSec,
+												SampleToString_HhMmSs | TimeToHhMmSs_NeedsMs | TimeToHhMmSs_NeedsHhMm)),
+				LPCTSTR(SampleToString(m_CaretPosition, m_SamplesPerSec, SampleToString_Sample)));
+		text += s;
 
-		_stprintf_s(s.GetBuffer(1024), 1025, formatRight,
-					//%s (%s)\r\n"
-					LPCTSTR(SampleToString(m_CaretPosition, m_SamplesPerSec,
-											SampleToString_HhMmSs | TimeToHhMmSs_NeedsMs | TimeToHhMmSs_NeedsHhMm)),
-					LPCTSTR(SampleToString(m_CaretPosition, m_SamplesPerSec, SampleToString_Sample)),
+		// Sample value at cursor:\t%s (%s dB; %.2f%%)\r\n\r\n
+		s.Format(format2, LPCTSTR(AtCursor), LPCTSTR(AtCursorDb), ValueAtCursorPercent);
+		text += s;
 
-					//"%s (%.2f dB; %.2f%%)\r\n"
-					LPCTSTR(LtoaCS(m_ValueAtCursorRight)), LPCTSTR(AtCursorDb),
-					m_ValueAtCursorRight / 327.68,
+		// Max negative peak position:\t%s (%s)\r\n
+		SAMPLE_INDEX MinPosSample = stats->m_PosMin;
+		s.Format(format3, LPCTSTR(SampleToString(MinPosSample, m_SamplesPerSec,
+												SampleToString_HhMmSs | TimeToHhMmSs_NeedsMs | TimeToHhMmSs_NeedsHhMm)),
+				LPCTSTR(SampleToString(MinPosSample, m_SamplesPerSec, SampleToString_Sample)));
+		text += s;
 
-					//"%s (%s)\r\n"
-					LPCTSTR(SampleToString(MinPosSample, m_SamplesPerSec,
-											SampleToString_HhMmSs | TimeToHhMmSs_NeedsMs | TimeToHhMmSs_NeedsHhMm)),
-					LPCTSTR(SampleToString(MinPosSample, m_SamplesPerSec, SampleToString_Sample)),
+		// Max negative peak value:\t%s (%s dB; %.2f%%)\r\n\r\n
+		s.Format(format4, LPCTSTR(Min), LPCTSTR(MinDb), MinPercent);
+		text += s;
 
-					//"%s (%.2f dB; %.2f%%)\r\n"
-					LPCTSTR(LtoaCS(m_pContext->m_Proc.m_Min[1])), LPCTSTR(MinDb),
-					m_pContext->m_Proc.m_Min[1] / 327.68,
+		// Max positive peak position:\t%s (%s)\r\n
+		SAMPLE_INDEX MaxPosSample = stats->m_PosMax;
+		s.Format(format5, LPCTSTR(SampleToString(MaxPosSample, m_SamplesPerSec,
+												SampleToString_HhMmSs | TimeToHhMmSs_NeedsMs | TimeToHhMmSs_NeedsHhMm)),
+				LPCTSTR(SampleToString(MaxPosSample, m_SamplesPerSec, SampleToString_Sample)));
+		text += s;
 
-					//"%s (%s)\r\n"
-					LPCTSTR(SampleToString(MaxPosSample, m_SamplesPerSec,
-											SampleToString_HhMmSs | TimeToHhMmSs_NeedsMs | TimeToHhMmSs_NeedsHhMm)),
-					LPCTSTR(SampleToString(MaxPosSample, m_SamplesPerSec, SampleToString_Sample)),
+		// Max positive peak value:\t%s dB (%.2f%%)\r\n\r\n
+		s.Format(format6, LPCTSTR(Max), LPCTSTR(MaxDb), MaxPercent);
+		text += s;
 
-					//"%s (%.2f dB; %.2f%%)\r\n"
-					LPCTSTR(LtoaCS(m_pContext->m_Proc.m_Max[1])),
-					LPCTSTR(MaxDb), m_pContext->m_Proc.m_Max[1] / 327.68,
+		// RMS power:\t%s (%s dB; %.2f%%)\r\n
+		s.Format(format7, LPCTSTR(Rms), LPCTSTR(RmsDb), RmsPercent);
+		text += s;
 
-					//"%.2f dB (%.2f%%)\r\n"
-					// RMS
-					LPCTSTR(RmsDb),
-					100. * sqrt(fabs(double(m_pContext->m_Proc.m_Energy[1])) / (nSamples * 1073741824.)),
-					//"%s (%.2f dB; %.2f%%)\r\n"
-					LPCTSTR(LtoaCS(long(double(m_pContext->m_Proc.m_Sum[1]) / nSamples))),
-					LPCTSTR(DcDb), (double(m_pContext->m_Proc.m_Sum[1]) / nSamples) / 327.68,
-					//"%.2f Hz"
-					// zero crossing
-					m_pContext->m_Proc.m_ZeroCrossing[1] / double(nSamples) * m_SamplesPerSec,
-					// %08X\r\n
-					m_pContext->m_Proc.m_CRC32[1],
-					// %08X
-					m_pContext->m_Proc.m_CRC32Common
-					);
+		// Average value (DC offset):%s (%s dB; %.2f%%)\r\n
+		s.Format(format8, LPCTSTR(Dc), LPCTSTR(DcDb), DcPercent);
+		text += s;
 
-		s.ReleaseBuffer();
-		SetDlgItemText(IDC_EDIT_RIGHT, s);
+		// Zero crossings:\t%.2f Hz\r\n\r\n
+		s.Format(format9, stats->m_ZeroCrossing / double(nSamples) * m_SamplesPerSec);
+		text += s;
+
+		if (SampleType != SampleTypeFloat32)
+		{
+			// CRC:\t%08X\r\n
+			s.Format(format10, stats->m_CRC32);
+			text += s;
+		}
+		text += L"\r\n\r\n";
+
 	}
+
+	if (SampleType == SampleType16bit)
+	{
+		// Checksum:%08X\r\n
+		s.Format(format11, m_pContext->m_Proc.m_Checksum);
+		text += s;
+	}
+
+	INT TabStops[2] = { 110, 220 };
+	m_EditBox.SetTabStops(2, TabStops);
+	m_EditBox.ReplaceSel(text);
+	m_EditBox.SetSel(0, 0);
 	return TRUE;  // return TRUE unless you set the focus to a control
 	// EXCEPTION: OCX Property Pages should return FALSE
-}
-
-INT_PTR CStatisticsDialog::DoModal()
-{
-	if (NULL != m_pContext
-		&& m_pContext->m_SrcFile.Channels() == 1)
-	{
-		m_lpszTemplateName = MAKEINTRESOURCE(IDD_DIALOG_STATISTICS_MONO);
-	}
-	return BaseClass::DoModal();
 }
 
 void CStatisticsDialog::OnBnClickedButtonGotoMax()
@@ -1513,7 +1609,7 @@ void CStatisticsDialog::OnBnClickedButtonGotoMax()
 	EndDialog(IDC_BUTTON_GOTO_MAX);
 }
 
-SAMPLE_INDEX CStatisticsDialog::GetMaxSamplePosition(CHANNEL_MASK * pChannel) const
+SAMPLE_INDEX CStatisticsDialog::GetMaxSamplePosition(unsigned * pChannel) const
 {
 	if (NULL != m_pContext)
 	{
