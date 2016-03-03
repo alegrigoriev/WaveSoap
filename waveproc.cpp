@@ -303,8 +303,11 @@ unsigned CBatchProcessing::Item::FillInputBuffer(const char * Buf, unsigned BufF
 
 	unsigned BytesToFill = IntermediateBufSize - InBufPutIndex;
 	WaveSampleType SourceType = pWf->GetSampleType();
+
+	ASSERT(SourceType != SampleType8bit || SrcChannelMask == ALL_CHANNELS);// for 8 bit data, we only handle all channels
+
 	if (SourceType == SampleTypeCompressed
-		|| (SourceType == SampleType8bit && SrcChannelMask == ALL_CHANNELS)	// FIXME
+		|| (SourceType == SampleType8bit && SrcChannelMask == ALL_CHANNELS)
 		|| SourceType == SampleTypeNotSupported)
 	{
 		// all other cases - the data is simply copied
@@ -347,8 +350,10 @@ unsigned CBatchProcessing::Item::FillOutputBuffer(char * Buf, unsigned BytesToFi
 	WaveSampleType TargetType = pWf->GetSampleType();
 	unsigned SrcSampleSize = Proc->GetOutputWaveformat().SampleSize();
 
+	ASSERT(TargetType != SampleType8bit || DstChannelMask == ALL_CHANNELS);// for 8 bit data, we only handle all channels
+
 	if (TargetType == SampleTypeCompressed
-		|| (TargetType == SampleType8bit && DstChannelMask == ALL_CHANNELS)	// FIXME
+		|| (TargetType == SampleType8bit && DstChannelMask == ALL_CHANNELS)
 		|| TargetType == SampleTypeNotSupported)
 	{
 		// all other cases - the data is simply copied
