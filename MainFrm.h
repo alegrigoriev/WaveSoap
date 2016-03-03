@@ -70,6 +70,7 @@ protected:
 	afx_msg void OnUpdateIndicatorSampleSize(CCmdUI* pCmdUI);
 	afx_msg void OnUpdateIndicatorChannels(CCmdUI* pCmdUI);
 	DECLARE_MESSAGE_MAP()
+	LRESULT OnUpdateDocumentOnIdle(WPARAM, LPARAM);
 	LRESULT OnResetLastStatusMessage(WPARAM, LPARAM)
 	{
 		m_nIDLastMessage = 0;

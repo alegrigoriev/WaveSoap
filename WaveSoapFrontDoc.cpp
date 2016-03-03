@@ -778,7 +778,7 @@ void CWaveSoapFrontDoc::QueueSoundUpdate(int UpdateCode, ULONG_PTR FileID,
 		m_UpdateList.InsertTailUnsafe(pui);
 	}
 
-	::PostMessage(GetApp()->m_pMainWnd->m_hWnd, WM_KICKIDLE, 0, 0);
+	::PostMessage(GetApp()->m_pMainWnd->m_hWnd, UWM_UPDATE_DOCUMENT_ON_IDLE, 0, (LPARAM)(CDocument*)this);
 }
 
 void CWaveSoapFrontDoc::QueuePlaybackUpdate(int UpdateCode, ULONG_PTR FileID,
@@ -806,7 +806,7 @@ void CWaveSoapFrontDoc::QueuePlaybackUpdate(int UpdateCode, ULONG_PTR FileID,
 
 		m_UpdateList.InsertTailUnsafe(pui);
 	}
-	::PostMessage(GetApp()->m_pMainWnd->m_hWnd, WM_KICKIDLE, 0, 0);
+	::PostMessage(GetApp()->m_pMainWnd->m_hWnd, UWM_UPDATE_DOCUMENT_ON_IDLE, 0, (LPARAM)(CDocument*)this);
 }
 
 void CWaveSoapFrontDoc::FileChanged(CWaveFile & File, SAMPLE_POSITION begin,

@@ -109,6 +109,8 @@ public:
 	BOOL CanSaveAnyDocument();
 	void SaveAll();
 
+	BOOL OnIdleForDocument(CDocument * pDoc);	// returns TRUE if pDoc was found
+
 protected:
 	Confidence MatchDocType(LPCTSTR lpszPathName, CDocument*& rpDocMatch);
 
@@ -138,6 +140,7 @@ public:
 public:
 	virtual BOOL InitInstance();
 	virtual int ExitInstance();
+	virtual BOOL IsIdleMessage(MSG* pMsg);  // checks for special messages
 	//}}AFX_VIRTUAL
 
 // Implementation

@@ -775,6 +775,21 @@ CDocTemplate::Confidence CWaveSoapDocTemplate::MatchDocType(LPCTSTR lpszPathName
 	return yesAttemptForeign;
 }
 
+BOOL CWaveSoapDocTemplate::OnIdleForDocument(CDocument * pDoc)
+{
+	POSITION pos = GetFirstDocPosition();
+	while (pos != NULL)
+	{
+		CDocument * pTmpDoc = GetNextDoc(pos);
+		if (pTmpDoc == pDoc)
+		{
+			pDoc->OnIdle();
+			return TRUE;
+		}
+	}
+	return FALSE;
+}
+
 CDocument* CWaveSoapDocTemplate::OpenDocumentFile(LPCTSTR lpszPathName,
 												int flags/* BOOL bMakeVisible */)
 {
@@ -2176,6 +2191,15 @@ BOOL CWaveSoapFrontApp::IsAnyDocumentModified()
 	{
 		return FALSE;
 	}
+}
+
+BOOL CWaveSoapFrontApp::IsIdleMessage(MSG* pMsg)
+{
+	if (pMsg->message == UWM_UPDATE_DOCUMENT_ON_IDLE)
+	{
+		return FALSE;
+	}
+	return CWinApp::IsIdleMessage(pMsg);
 }
 
 BOOL CWaveSoapDocManager::CanSaveAnyDocument()
