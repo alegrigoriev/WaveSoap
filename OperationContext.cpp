@@ -1967,7 +1967,7 @@ BOOL CCopyContext::OperationProc()
 				// cannot exit while write-only buffer is incomplete
 				&& 0 != WasLockedToWrite)
 			|| (m_SrcPos < m_SrcEnd
-				&& GetTickCount() - dwStartTime < 1000)
+				&& GetTickCount() - dwStartTime < 200)
 			);
 
 	m_SrcFile.ReturnDataBuffer(pOriginalSrcBuf, WasRead,
