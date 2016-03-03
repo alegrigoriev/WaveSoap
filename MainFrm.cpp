@@ -37,6 +37,7 @@ BEGIN_MESSAGE_MAP(CMainFrame, BaseClass)
 	ON_UPDATE_COMMAND_UI(ID_INDICATOR_SAMPLE_SIZE, OnUpdateIndicatorSampleSize)
 	ON_UPDATE_COMMAND_UI(ID_INDICATOR_CHANNELS, OnUpdateIndicatorChannels)
 	ON_MESSAGE(UWM_RESET_LAST_STATUS_MESSAGE, OnResetLastStatusMessage)
+	ON_MESSAGE(UWM_UPDATE_DOCUMENT_ON_IDLE, OnUpdateDocumentOnIdle)
 END_MESSAGE_MAP()
 
 static UINT indicators[] =
@@ -315,6 +316,32 @@ void CMainFrame::OnUpdateIndicatorChannels(CCmdUI* pCmdUI)
 {
 	// size the pane to the max expected size and set empty string
 	SetStatusString(pCmdUI, CString(), LoadCString(IDS_STATUS_STRING_STEREO), TRUE);
+}
+
+LRESULT CMainFrame::OnUpdateDocumentOnIdle(WPARAM, LPARAM lParam)
+{
+	// LPARAM is pointer to document object
+	CDocument * pDoc = (CDocument *) lParam;
+	CThisApp * pApp = GetApp();
+	POSITION pos = NULL;
+	if (pApp->m_pDocManager != NULL)
+	{
+		pos = pApp->m_pDocManager->GetFirstDocTemplatePosition();
+	}
+	while (pos != NULL)
+	{
+		CDocTemplate* pTemplate = pApp->m_pDocManager->GetNextDocTemplate(pos);
+		ASSERT_KINDOF(CDocTemplate, pTemplate);
+		CWaveSoapDocTemplate * pWTemplate = dynamic_cast<CWaveSoapDocTemplate *>(pTemplate);
+		if (pWTemplate)
+		{
+			if (pWTemplate->OnIdleForDocument(pDoc))
+			{
+				break;
+			}
+		}
+	}
+	return 0;
 }
 
 /////////////////////////////////////////////////////////////////////////////
