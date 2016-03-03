@@ -818,7 +818,9 @@ void CSpectrumSectionView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint
 	}
 	else if (lHint == CWaveSoapFrontDoc::UpdateWholeFileChanged)
 	{
-		// set dB ranges, TODO
+		// set dB ranges,
+		AdjustDbRange();
+		Invalidate();
 	}
 	else if (0 == pHint)
 	{
@@ -1157,6 +1159,38 @@ double CSpectrumSectionView::AdjustOffset(double offset) const
 	return offset;
 }
 
+void CSpectrumSectionView::AdjustDbRange()
+{
+	CWaveSoapFrontDoc * pDoc = GetDocument();
+	if (!pDoc->m_WavFile.IsOpen())
+	{
+		return;
+	}
+
+	double OldMin = m_DbMin;
+	double OldMax = m_DbMax;
+	if (pDoc->m_WavFile.GetSampleType() == SampleTypeFloat32)
+	{
+		m_DbMax = 10.;
+		m_DbMin = -140. - 10.*log10(m_FftOrder / 512.);
+	}
+	else
+	{
+		m_DbMax = 0.;
+		m_DbMin = -120. - 10.*log10(m_FftOrder / 512.);
+		if (pDoc->m_WavFile.GetSampleType() == SampleType32bit)
+		{
+			m_DbMin -= 20.;
+		}
+	}
+	if (OldMin != m_DbMin
+		|| OldMax != m_DbMax)
+	{
+		// recalculate db per pixel
+		NotifySiblingViews(SpectrumSectionScaleChange, &m_Scale);
+	}
+}
+
 LRESULT CSpectrumSectionView::OnUwmNotifyViews(WPARAM wParam, LPARAM lParam)
 {
 	switch (wParam)
@@ -1171,7 +1205,6 @@ LRESULT CSpectrumSectionView::OnUwmNotifyViews(WPARAM wParam, LPARAM lParam)
 				ReleaseCapture();
 				//m_bIsTrackingSelection = FALSE;   // will be reset in WM_CAPTURECHANGED
 			}
-
 			Invalidate(TRUE);
 			// check for the proper offset, correct if necessary
 			m_FirstbandVisible = AdjustOffset(m_FirstbandVisible);
@@ -1191,6 +1224,7 @@ LRESULT CSpectrumSectionView::OnUwmNotifyViews(WPARAM wParam, LPARAM lParam)
 		m_bShowNoiseThreshold = false;
 		m_pFftWindow.Free();
 		m_FftWindowValid = false;
+		AdjustDbRange();
 		Invalidate();
 	}
 		break;

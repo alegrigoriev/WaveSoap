@@ -101,6 +101,7 @@ protected:
 	virtual void RestoreSelectionRect();
 	void SetNewFftOffset(double first_band);
 	double AdjustOffset(double offset) const;
+	void AdjustDbRange();
 	LRESULT OnMouseLeave(WPARAM wParam, LPARAM lParam);
 	//{{AFX_MSG(CSpectrumSectionView)
 	afx_msg void OnContextMenu(CWnd* /*pWnd*/, CPoint point);
