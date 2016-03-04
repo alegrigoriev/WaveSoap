@@ -308,21 +308,25 @@ float const * CWaveFftView::GetFftResult(SAMPLE_INDEX sample, unsigned channel)
 			default:
 			case WindowTypeSquaredSine:
 				// squared sine
-				m_pFftWindow[w] = float(0.5 - 0.5 * cos (X));
+				m_pFftWindow[w] = float((0.5 - 0.5 * cos(X))
+										/ (m_FftOrder * 0.46518375880479441036888825236993));
 				break;
 			case WindowTypeHalfSine:
 				// half sine
-				m_pFftWindow[w] = float(0.707107 * sin (0.5 * X));
+				m_pFftWindow[w] = float((0.707107 * sin (0.5 * X))
+										/ (m_FftOrder * 0.34132424511039137114306807472343));
 				break;
 			case WindowTypeHamming:
 				// Hamming window (sucks!!!)
-				m_pFftWindow[w] = float(0.9 * (0.54 - 0.46 * cos (X)));
+				m_pFftWindow[w] = float((0.9 * (0.54 - 0.46 * cos (X)))
+										/ (m_FftOrder * 0.44467411795859108283066893223012));
 				break;
 
 			case WindowTypeNuttall:
 				// Nuttall window:
-				// w(n) = 0.355768 - 0.487396*cos(2pn/N) + 0.144232*cos(4pn/N) - 0.012604*cos(6pn/N)
-				m_pFftWindow[w] = float(0.355768 - 0.487396*cos(X) + 0.144232*cos(2 * X) - 0.012604*cos(3 * X));
+				// w(n) = 0.355768 – 0.487396*cos(2pn/N) + 0.144232*cos(4pn/N) – 0.012604*cos(6pn/N)
+				m_pFftWindow[w] = float((0.355768 - 0.487396*cos(X) + 0.144232*cos(2 * X) - 0.012604*cos(3 * X))
+										/ (m_FftOrder * 0.34132424511039137114306807472343));
 				break;
 			}
 		}
@@ -399,7 +403,6 @@ CWaveFftView::CWaveFftView()
 	: m_pFftResultArray(NULL),
 	m_FftResultArrayWidth(0),
 	m_FftResultArrayHeight(0),
-	m_FftLogRange(10. * M_LOG10E),
 	m_FirstbandVisible(0),
 	m_FftWindowType(WindowTypeSquaredSine),
 	m_IndexOfFftBegin(0),
@@ -522,21 +525,30 @@ void CWaveFftView::OnDraw(CDC* pDC)
 		unsigned stride = (width * 3 + 3) & ~3;
 		unsigned BmpSize = stride * height;
 		int BytesPerPixel = 3;
+		double DbRange = 130. + 10. * log10(m_FftOrder / 512.);
 
-		struct BM : BITMAPINFO
+		if (0) if (pDoc->m_WavFile.GetSampleType() != SampleType16bit)
+			{
+				DbRange += 20.;
+			}
+		double PowerLogToPalIndex;
+
+		struct BM
 		{
+			BITMAPINFO bmi;
 			RGBQUAD MorebmiColors[256];
-		} bmi;
-		bmi.bmiHeader.biSize = sizeof BITMAPINFOHEADER;
-		bmi.bmiHeader.biWidth = r.right - r.left;
-		bmi.bmiHeader.biHeight = -height;
-		bmi.bmiHeader.biPlanes = 1;
-		bmi.bmiHeader.biCompression = BI_RGB;
-		bmi.bmiHeader.biSizeImage = 0;
-		bmi.bmiHeader.biXPelsPerMeter = 0;
-		bmi.bmiHeader.biYPelsPerMeter = 0;
-		bmi.bmiHeader.biClrUsed = 0;
-		bmi.bmiHeader.biClrImportant = 0;
+		} bmi = {sizeof (BITMAPINFOHEADER) };
+
+		bmi.bmi.bmiHeader.biSize = sizeof (BITMAPINFOHEADER);
+		bmi.bmi.bmiHeader.biWidth = r.right - r.left;
+		bmi.bmi.bmiHeader.biHeight = -height;
+		bmi.bmi.bmiHeader.biPlanes = 1;
+		bmi.bmi.bmiHeader.biCompression = BI_RGB;
+		bmi.bmi.bmiHeader.biSizeImage = 0;
+		bmi.bmi.bmiHeader.biXPelsPerMeter = 0;
+		bmi.bmi.bmiHeader.biYPelsPerMeter = 0;
+		bmi.bmi.bmiHeader.biClrUsed = 0;
+		bmi.bmi.bmiHeader.biClrImportant = 0;
 
 		CPushDcPalette OldPalette(pDC, NULL);
 
@@ -545,47 +557,70 @@ void CWaveFftView::OnDraw(CDC* pDC)
 		{
 			BytesPerPixel = 1;
 			bUsePalette = true;
-			bmi.bmiHeader.biBitCount = 8;
+			bmi.bmi.bmiHeader.biBitCount = 8;
 
 			int i;
 			PALETTEENTRY SysPalette[256];
 			GetSystemPaletteEntries(*pDC, 0, 256, SysPalette);
 			for (i = 0; i < 10; i++)
 			{
-				bmi.bmiColors[i].rgbReserved = 0;
-				bmi.bmiColors[i].rgbRed = SysPalette[i].peRed;
-				bmi.bmiColors[i].rgbGreen = SysPalette[i].peGreen;
-				bmi.bmiColors[i].rgbBlue = SysPalette[i].peBlue;
+				bmi.bmi.bmiColors[i].rgbReserved = 0;
+				bmi.bmi.bmiColors[i].rgbRed = SysPalette[i].peRed;
+				bmi.bmi.bmiColors[i].rgbGreen = SysPalette[i].peGreen;
+				bmi.bmi.bmiColors[i].rgbBlue = SysPalette[i].peBlue;
 			}
 			for (int j = 0; j < sizeof palette && i < 255; j += 3, i++)
 			{
-				bmi.bmiColors[i].rgbReserved = 0;
-				bmi.bmiColors[i].rgbRed = palette[j];
-				bmi.bmiColors[i].rgbGreen = palette[j + 1];
-				bmi.bmiColors[i].rgbBlue = palette[j + 2];
+				bmi.bmi.bmiColors[i].rgbReserved = 0;
+				bmi.bmi.bmiColors[i].rgbRed = palette[j];
+				bmi.bmi.bmiColors[i].rgbGreen = palette[j + 1];
+				bmi.bmi.bmiColors[i].rgbBlue = palette[j + 2];
 			}
 			for ( ; i < 256; i++)
 			{
-				bmi.bmiColors[i].rgbReserved = 0;
-				bmi.bmiColors[i].rgbRed = SysPalette[i].peRed;
-				bmi.bmiColors[i].rgbGreen = SysPalette[i].peGreen;
-				bmi.bmiColors[i].rgbBlue = SysPalette[i].peBlue;
+				bmi.bmi.bmiColors[i].rgbReserved = 0;
+				bmi.bmi.bmiColors[i].rgbRed = SysPalette[i].peRed;
+				bmi.bmi.bmiColors[i].rgbGreen = SysPalette[i].peGreen;
+				bmi.bmi.bmiColors[i].rgbBlue = SysPalette[i].peBlue;
 			}
 
-			bmi.bmiHeader.biClrUsed = i;
+			bmi.bmi.bmiHeader.biClrUsed = i;
 			stride = (width + 3) & ~3;
 			BmpSize = stride * height;
 			OldPalette.PushPalette(GetApp()->GetPalette(), FALSE);
+
+			PowerLogToPalIndex = 127 / (DbRange / 10. * log(10.));
 		}
 		else
 		{
 			BytesPerPixel = 3;
 			bUsePalette = false;
-			bmi.bmiHeader.biBitCount = 24;
+			bmi.bmi.bmiHeader.biBitCount = 24;
+			// fill interpolated palette for 256 RGB colors
+			bmi.MorebmiColors[0].rgbRed = 255;
+			bmi.MorebmiColors[0].rgbGreen = 255;
+			bmi.MorebmiColors[0].rgbBlue = 255;
+			unsigned char const * pPal = palette;
+			for (int i = 0; i < 256-2; i += 2, pPal+=3)
+			{
+				bmi.MorebmiColors[i + 2].rgbRed = pPal[0];
+				bmi.MorebmiColors[i + 2].rgbGreen = pPal[1];
+				bmi.MorebmiColors[i + 2].rgbBlue = pPal[2];
+				bmi.MorebmiColors[i + 1].rgbRed = (bmi.MorebmiColors[i].rgbRed + bmi.MorebmiColors[i + 2].rgbRed) /2;
+				bmi.MorebmiColors[i + 1].rgbGreen = (bmi.MorebmiColors[i].rgbGreen + bmi.MorebmiColors[i + 2].rgbGreen) / 2;
+				bmi.MorebmiColors[i + 1].rgbBlue = (bmi.MorebmiColors[i].rgbBlue + bmi.MorebmiColors[i + 2].rgbBlue) / 2;
+			}
+			bmi.MorebmiColors[255].rgbRed = 0;
+			bmi.MorebmiColors[255].rgbGreen = 0;
+			bmi.MorebmiColors[255].rgbBlue = 0;
+			PowerLogToPalIndex = 255 / (DbRange / 10. * log(10.));
 		}
 
+		// log of FFT slot power to map to zero palette index
+		double const PowerOffset = log(2. * m_FftOrder) * 2.;
+
 		CBitmap hbm;
-		hbm.Attach(CreateDIBSection(pDC->GetSafeHdc(), & bmi, DIB_RGB_COLORS,
+		hbm.Attach(CreateDIBSection(pDC->GetSafeHdc(), & bmi.bmi, DIB_RGB_COLORS,
 									& pBits, NULL, 0));
 
 		if (HGDIOBJ(hbm) == NULL)
@@ -686,7 +721,6 @@ void CWaveFftView::OnDraw(CDC* pDC)
 			}
 		}
 
-
 		for(int col = r.left; col < r.right; )
 		{
 			int ff;
@@ -722,6 +756,16 @@ void CWaveFftView::OnDraw(CDC* pDC)
 				for (int ch = 0; ch < nChannels; ch++)
 				{
 					float const *pData = GetFftResult(FftColumnToDisplaySample(nCurrentFftColumn), ch);
+#if 0
+					double MaxResult = 0.;
+					for (ff = 0; ff < m_FftOrder; ff++)
+					{
+						if (MaxResult < pData[ff])
+						{
+							MaxResult = pData[ff];
+						}
+					}
+#endif
 					for (ff = 0; ff < m_FftOrder; ff++)
 					{
 						S const * pId = &pIdArray[ff][ch];
@@ -729,15 +773,13 @@ void CWaveFftView::OnDraw(CDC* pDC)
 						{
 							break;
 						}
-						unsigned char red;
-						unsigned char g;
-						unsigned char b;
+						unsigned char red = 0;
+						unsigned char g = 0;
+						unsigned char b = 0;
 						if (pData != NULL)
 						{
 							ASSERT(pId->FftBand < m_FftOrder);
 							ASSERT(pId->FftBand + pId->NumBandsToSum <= m_FftOrder);
-
-							double PowerOffset = log(2. * m_FftOrder * 0.31622) * 2.;
 
 							float sum = 0.;
 							for (int f = pId->FftBand; f < pId->FftBand + pId->NumBandsToSum; f++)
@@ -746,35 +788,30 @@ void CWaveFftView::OnDraw(CDC* pDC)
 							}
 							sum /= pId->NumBandsToSum;
 
-							int PaletteIndex = 127;
+							int PaletteIndex = 255;
 
 							if (sum != 0.)
 							{
 								// max power= (32768 * m_FftOrder * 2) ^ 2
-								PaletteIndex = int(m_FftLogRange * (PowerOffset - log(sum)));
+								PaletteIndex = int(PowerLogToPalIndex * -log(sum));
 
 								if (PaletteIndex < 0)
 								{
 									PaletteIndex = 0;
 								}
-								else if (PaletteIndex > 127)
+								else if (PaletteIndex > 255)
 								{
-									PaletteIndex = 127;
+									PaletteIndex = 255;
 								}
 							}
 
-							unsigned char const * pColor = & palette[PaletteIndex * 3];
+							RGBQUAD const * pColor = &bmi.MorebmiColors[PaletteIndex];
 							// set the color to pId->nNumOfRows rows
-							red = pColor[0];
-							g = pColor[1];
-							b = pColor[2];
+							red = pColor->rgbRed;
+							g = pColor->rgbGreen;
+							b = pColor->rgbBlue;
 						}
-						else
-						{
-							red = 0;    // B
-							g = 0;    // G
-							b = 0;    // R
-						}
+
 						BYTE * pRgb = pColBmp + pId->y * stride;
 
 						ASSERT(pId->y >= m_Heights.ch[ch].clip_top);
@@ -823,8 +860,6 @@ void CWaveFftView::OnDraw(CDC* pDC)
 						unsigned char ColorIndex = 0;
 						if (pData != NULL)
 						{
-							double PowerOffset = log(2. * m_FftOrder * 0.31622) * 2.;
-
 							float sum = 0.;
 							for (int f = pId->FftBand; f < pId->FftBand + pId->NumBandsToSum; f++)
 							{
@@ -837,7 +872,7 @@ void CWaveFftView::OnDraw(CDC* pDC)
 							if (sum != 0.)
 							{
 								// max power= (32768 * m_FftOrder * 2) ^ 2
-								PaletteIndex = int(m_FftLogRange * (PowerOffset - log(sum)));
+								PaletteIndex = int(PowerLogToPalIndex * - log(sum));
 
 								if (PaletteIndex < 0)
 								{
@@ -925,7 +960,7 @@ void CWaveFftView::OnDraw(CDC* pDC)
 		// stretch bitmap to output window
 		SetDIBitsToDevice(pDC->GetSafeHdc(), r.left, cr.top,
 						width, height,
-						0, 0, 0, height, pBits, & bmi,
+						0, 0, 0, height, pBits, & bmi.bmi,
 						DIB_RGB_COLORS);
 
 		CGdiObjectSave OldFont(pDC, pDC->SelectStockObject(ANSI_VAR_FONT));
