@@ -60,7 +60,6 @@ protected:
 
 	long         m_FirstFftColumn;      // at m_IndexOfFftBegin
 
-	double m_FftLogRange;     // what dB zero value corresponds
 	double m_FirstbandVisible;     // how much the chart is scrolled. 0 = DC is visible
 	double m_VerticalScale;
 
