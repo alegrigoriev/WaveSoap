@@ -129,6 +129,7 @@ private:
 	void PushConstant(int data);
 	void PushConstant(double data);
 	void PushVariable(int * pData);
+	void PushVariable(long * pData);
 	void PushVariable(double * pData);
 
 	int * PushInt();

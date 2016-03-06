@@ -117,21 +117,20 @@ CString CExpressionEvaluationProc::GetToken(LPCTSTR * ppStr, TokenType * pType)
 		_T("abs"), eAbsFunc,
 		_T("noise"), eNoiseFunc,
 		_T("pi"), ePiConstant,
-		_T("T"), eAbsoluteTime,
+		_T("n"), eSelectionSampleNumber,
+		_T("N"), eAbsoluteSampleNumber,
 		_T("t"), eSelectionTime,
 		_T("dt"), eSelectionLengthTime,
+		_T("T"), eAbsoluteTime,
 		_T("DT"), eFileLengthTime,
 		_T("F"), eSamplingRate,
 		_T("dn"), eSelectionLengthSamples,
 		_T("DN"), eFileLengthSamples,
-		_T("n"), eSelectionSampleNumber,
-		_T("N"), eAbsoluteSampleNumber,
-		//_T("T", eSamplePeriod,
 		_T("f1"), eCurrentFrequencyArgument1,
 		_T("f2"), eCurrentFrequencyArgument2,
 		_T("f3"), eCurrentFrequencyArgument3,
 		_T("f"), eCurrentFrequencyArgument,
-		_T("wave"), eCurrentSampleValue,
+		_T("wave"), eCurrentSampleValue,	// TODO: make it a function
 	};
 	SkipWhitespace(ppStr);
 	LPCTSTR str = *ppStr;
@@ -405,6 +404,16 @@ CExpressionEvaluationProc::TokenType
 	case eAbsoluteTime:
 		PushVariable( & m_dFileTimeArgument);
 		break;
+	case eFileLengthTime:
+		PushVariable( & m_dFileLengthTime);
+		break;
+	case eSelectionLengthSamples:
+		PushVariable(&m_NumberOfSelectionSamples);
+		break;
+	case eFileLengthSamples:
+		PushVariable(&m_NumberOfFileSamples);
+		break;
+
 	case eCurrentFrequencyArgument:
 		PushVariable( & m_dFrequencyArgument);
 		break;
@@ -1109,6 +1118,23 @@ void CExpressionEvaluationProc::PushVariable(int * pData)
 	m_DataStackIndex++;
 
 	if (TRACE_EXPRESSION) TRACE("Push int variable, data index = %d, type index = %d\n",
+								m_DataStackIndex, m_DataTypeStackIndex);
+}
+
+void CExpressionEvaluationProc::PushVariable(long * pData)
+{
+	if (m_DataStackIndex >= DataStackSize
+		|| m_DataTypeStackIndex >= ExpressionStackSize)
+	{
+		throw L"Expression Evaluation Stack Overflow";
+	}
+	m_DataTypeStack[m_DataTypeStackIndex] = eIntVariable;
+	m_DataTypeStackIndex++;
+
+	m_DataStack[m_DataStackIndex].pInt = (int*)pData;
+	m_DataStackIndex++;
+
+	if (TRACE_EXPRESSION) TRACE("Push long (same as int) variable, data index = %d, type index = %d\n",
 								m_DataStackIndex, m_DataTypeStackIndex);
 }
 
