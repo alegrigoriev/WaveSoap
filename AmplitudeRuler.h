@@ -39,7 +39,6 @@ protected:
 // Implementation
 protected:
 	virtual ~CAmplitudeRuler();
-	virtual UINT GetPopupMenuID(CPoint);
 
 #ifdef _DEBUG
 	virtual void AssertValid() const;
@@ -124,7 +123,6 @@ protected:
 	// Implementation
 protected:
 	virtual ~CSpectrumSectionRuler();
-	virtual UINT GetPopupMenuID(CPoint) { return IDR_MENU_POPUP_SS_RULER; }
 #ifdef _DEBUG
 	virtual void AssertValid() const;
 	virtual void Dump(CDumpContext& dc) const;

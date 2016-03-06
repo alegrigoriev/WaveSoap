@@ -1511,21 +1511,6 @@ DWORD CWaveFftView::ClientHitTest(CPoint p) const
 	return result;
 }
 
-UINT CWaveFftView::GetPopupMenuID(CPoint point)
-{
-	// point is in screen coordinates
-	ScreenToClient( & point);
-	DWORD hit = ClientHitTest(point);
-	if (hit & VSHT_SELECTION)
-	{
-		return IDR_MENU_WAVE_VIEW_SELECTION;
-	}
-	else
-	{
-		return IDR_MENU_FFT_VIEW;
-	}
-}
-
 void CWaveFftView::OnUpdateViewZoomInVert(CCmdUI* pCmdUI)
 {
 	pCmdUI->Enable(m_VerticalScale < 1024.);
@@ -1865,30 +1850,22 @@ void CWaveFftView::OnViewIncreaseFftBands()
 void CWaveFftView::OnContextMenu(CWnd* /*pWnd*/, CPoint point)
 {
 	// make sure window is active
-	GetParentFrame()->ActivateFrame();
-
-	CMenu menu;
-	CMenu* pPopup = NULL;
-
-	UINT uID = GetPopupMenuID(point);
-
-	if (uID != 0 && menu.LoadMenu(uID))
+	NotifyViewsData notify = { 0 };
+	notify.PopupMenu.p = point;
+	ScreenToClient(&point);
+	DWORD hit = ClientHitTest(point);
+	if (hit & VSHT_SELECTION)
 	{
-		pPopup = menu.GetSubMenu(0);
+		notify.PopupMenu.NormalMenuId = IDR_MENU_FFT_VIEW_SELECTION;
+		notify.PopupMenu.MinimizedMenuId = IDR_MENU_FFT_VIEW_SELECTION_MINIMIZED;
+	}
+	else
+	{
+		notify.PopupMenu.NormalMenuId = IDR_MENU_FFT_VIEW;
+		notify.PopupMenu.MinimizedMenuId = IDR_MENU_FFT_VIEW_MINIMIZED;
 	}
 
-	if(pPopup != NULL)
-	{
-		int Command = pPopup->TrackPopupMenu(
-											TPM_LEFTALIGN | TPM_RIGHTBUTTON | TPM_RETURNCMD,
-											point.x, point.y,
-											AfxGetMainWnd()); // use main window for cmds
-
-		if (0 != Command)
-		{
-			AfxGetMainWnd()->SendMessage(WM_COMMAND, Command & 0xFFFF, 0);
-		}
-	}
+	NotifySiblingViews(ShowChannelPopupMenu, &notify);
 }
 
 double CWaveFftView::AdjustOffset(double offset) const

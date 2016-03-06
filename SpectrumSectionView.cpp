@@ -901,28 +901,12 @@ void CSpectrumSectionView::OnContextMenu(CWnd* /*pWnd*/, CPoint point)
 	// make sure window is active
 	GetParentFrame()->ActivateFrame();
 
-	CMenu menu;
-	CMenu* pPopup = NULL;
+	NotifyViewsData notify = { 0 };
+	notify.PopupMenu.p = point;
+	notify.PopupMenu.NormalMenuId = IDR_MENU_SPECTRUMSECTION_VIEW;
+	notify.PopupMenu.MinimizedMenuId = IDR_MENU_SPECTRUMSECTION_MINIMIZED;
 
-	UINT uID = GetPopupMenuID(point);
-
-	if (uID != 0 && menu.LoadMenu(uID))
-	{
-		pPopup = menu.GetSubMenu(0);
-	}
-
-	if (pPopup != NULL)
-	{
-		int Command = pPopup->TrackPopupMenu(
-											TPM_LEFTALIGN | TPM_RIGHTBUTTON | TPM_RETURNCMD,
-											point.x, point.y,
-											AfxGetMainWnd()); // use main window for cmds
-
-		if (0 != Command)
-		{
-			AfxGetMainWnd()->SendMessage(WM_COMMAND, Command & 0xFFFF, 0);
-		}
-	}
+	NotifySiblingViews(ShowChannelPopupMenu, &notify);
 }
 
 void CSpectrumSectionView::ShowCrossHair(POINT point, CDC * pDC)
@@ -1027,11 +1011,6 @@ void CSpectrumSectionView::OnViewShowCrosshair()
 	RemoveSelectionRect();
 	m_bShowCrossHair = ! m_bShowCrossHair;
 	RestoreSelectionRect();
-}
-
-UINT CSpectrumSectionView::GetPopupMenuID(CPoint /*point*/)
-{
-	return IDR_MENU_SPECTRUMSECTION_VIEW;
 }
 
 void CSpectrumSectionView::GetChannelRect(int Channel, RECT * pR) const

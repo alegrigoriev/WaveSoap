@@ -39,7 +39,6 @@ protected:
 	// Implementation
 protected:
 	virtual ~CFftRulerView();
-	virtual UINT GetPopupMenuID(CPoint) { return IDR_MENU_FFT_RULER; }
 #ifdef _DEBUG
 	virtual void AssertValid() const;
 	virtual void Dump(CDumpContext& dc) const;
