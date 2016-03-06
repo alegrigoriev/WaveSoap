@@ -94,7 +94,7 @@ void CFftRulerView::OnDraw(CDC* pDrawDC)
 	CGdiObjectSave OldPen(pDC, pDC->SelectStockObject(BLACK_PEN));
 
 	CBrush bkgnd;
-	if (0) TRACE("SysColor(COLOR_WINDOW)=%X\n", GetSysColor(COLOR_WINDOW));
+	if (1) TRACE("SysColor(COLOR_WINDOW)=%X\n", GetSysColor(COLOR_WINDOW));
 	bkgnd.CreateSysColorBrush(COLOR_WINDOW);
 	pDC->FillRect(cr, &bkgnd);
 
@@ -103,6 +103,8 @@ void CFftRulerView::OnDraw(CDC* pDrawDC)
 	pDC->SetTextAlign(TA_BOTTOM | TA_RIGHT);
 	pDC->SetTextColor(0x000000);   // black
 	pDC->SetBkMode(TRANSPARENT);
+	pDC->MoveTo(cr.right - 1, cr.top);
+	pDC->LineTo(cr.right - 1, cr.bottom);
 
 	for (int ch = 0; ch < nChannels; ch++)
 	{
@@ -133,19 +135,21 @@ void CFftRulerView::OnDraw(CDC* pDrawDC)
 		//int FirstRowInView = FirstFftSample * TotalRows / pMasterView->m_FftOrder;
 		//int FftSamplesInView = LastFftSample - FirstFftSample + 1;
 
-		int nSampleUnits = int(nVertStep * pDoc->WaveSampleRate() / (m_Heights.NominalChannelHeight * m_VerticalScale));
+		int nSampleUnits = int(nVertStep * pDoc->WaveSampleRate() / 2 / (m_Heights.NominalChannelHeight * m_VerticalScale));
 		// round sample units to 10 or 5
 		int step;
-		for (step = 1; step < nSampleUnits; step *= 10)
+		int ticks = 1;
+		for (step = 1; ticks = 2, step*ticks < nSampleUnits; step *= 5)
 		{
+			step *= 2;
 			if (step * 2 >= nSampleUnits)
 			{
-				step *= 2;
+				ticks = 2;
 				break;
 			}
 			if (step * 5 >= nSampleUnits)
 			{
-				step *= 5;
+				ticks = 5;
 				break;
 			}
 		}
@@ -153,32 +157,36 @@ void CFftRulerView::OnDraw(CDC* pDrawDC)
 		ClipLow += tm.tmHeight / 2;
 		ClipHigh -= tm.tmHeight / 2;
 
+		// round to previous multiple of step
 		int yLow = int(m_FirstbandVisible * 0.5 * pDoc->WaveSampleRate() / m_FftOrder);
-		// round to the next multiple of step
-		yLow += (step*0x10000-yLow) % step;
+		// round to the next or current multiple of step
+		yLow += ((step*ticks)*(pDoc->WaveSampleRate()/ (step*ticks) +1)-yLow) % (step*ticks);
 
 		int yHigh = int(yLow + 0.5 * pDoc->WaveSampleRate() / m_VerticalScale);
-		yHigh -= (step*0x10000+yHigh) % step;
+		yHigh -= ((step*ticks)*(pDoc->WaveSampleRate() / (step*ticks) + 1) +yHigh) % (step*ticks);
 		ASSERT(yLow <= yHigh);
 
-		for (int y = yLow; y <= yHigh; y += step)
+		for (int y = yLow, j = 0; y <= yHigh; y += step, j++)
 		{
 			// y is frequency
 			double band = double(y) / (0.5 * pDoc->WaveSampleRate())
 						* m_FftOrder;
 			int yDev= m_Heights.ch[ch].clip_bottom - (int)fround((band - m_FirstbandVisible) / m_FftOrder * m_Heights.NominalChannelHeight * m_VerticalScale);
 
-			if (yDev - tm.tmHeight/2 < ClipLow
-				|| yDev + tm.tmHeight/2 > ClipHigh)
+			if (yDev >= ClipLow
+				&& yDev < ClipHigh)
 			{
-				continue;
+				pDC->MoveTo(cr.right - 3, yDev);
+				pDC->LineTo(cr.right, yDev);
 			}
 
-			pDC->MoveTo(cr.right - 3, yDev);
-			pDC->LineTo(cr.right, yDev);
-			CString s = LtoaCS(y);
-
-			pDC->TextOut(cr.right - 3, yDev + tm.tmHeight / 2, s);
+			if (0 == j % ticks
+				&& yDev - tm.tmHeight/2 >= ClipLow
+				&& yDev + tm.tmHeight/2 <= ClipHigh)
+			{
+				CString s = LtoaCS(y);
+				pDC->TextOut(cr.right - 3, yDev + tm.tmHeight / 2, s);
+			}
 		}
 
 		if (ch != nChannels - 1)
