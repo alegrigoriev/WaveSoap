@@ -19,7 +19,7 @@
 #include "FFT.h"
 
 #define TRACE_WAVEPROC 0
-#define USE_CUBIC_INTERPOLATION
+#define USE_CUBIC_INTERPOLATION 1
 
 template <typename T = UCHAR, unsigned s = 512>
 struct FixedRingBufferBase
@@ -4259,23 +4259,6 @@ NUMBER_OF_SAMPLES CBatchProcessing::GetOutputNumberOfSamples() const
 //////////// CResampleFilter
 CResampleFilter::CResampleFilter()
 	: m_SrcBufUsed(0)
-	, m_DstBufUsed(0)
-	, m_DstBufSaved(0)
-	, m_SrcBufFilled(0)
-	, m_SrcFilterLength(0)
-	, m_Phase(0)
-	, m_InputPeriod(0x80000000)
-	, m_OutputPeriod(0x80000000)
-{
-}
-
-CResampleFilter::CResampleFilter(long OriginalSampleRate, long NewSampleRate,
-								int FilterLength,
-								NUMBER_OF_CHANNELS nChannels,
-								BOOL KeepSamplesPerSec)
-	: m_SrcBufUsed(0)
-	, m_DstBufUsed(0)
-	, m_DstBufSaved(0)
 	, m_SrcBufFilled(0)
 	, m_SrcFilterLength(0)
 	, m_bUseInterpolatedFilter(FALSE)
@@ -4286,55 +4269,128 @@ CResampleFilter::CResampleFilter(long OriginalSampleRate, long NewSampleRate,
 	, m_FilterIndex(0)
 	, m_InputPeriod(0x80000000)
 	, m_OutputPeriod(0x80000000)
+	, m_RequestedFilterLength(0)
+	, m_KeepOriginalSampleRate(false)
 {
-	InitResample(OriginalSampleRate, NewSampleRate, FilterLength, nChannels, KeepSamplesPerSec);
+	m_InputSampleType = SampleTypeFloat32;
+}
+
+CResampleFilter::CResampleFilter(long NewSampleRate, int FilterLength, BOOL KeepSamplesPerSec)
+	: m_SrcBufUsed(0)
+	, m_SrcBufFilled(0)
+	, m_SrcFilterLength(0)
+	, m_bUseInterpolatedFilter(FALSE)
+	, m_Phase(0)
+	, m_SamplesInFilter(1)
+	, m_FilterArraySize(0)
+	, m_RationalResampleFraction(0)
+	, m_FilterIndex(0)
+	, m_InputPeriod(0x80000000)
+	, m_OutputPeriod(0x80000000)
+	, m_RequestedFilterLength(0)
+	, m_KeepOriginalSampleRate(false)
+{
+	m_InputSampleType = SampleTypeFloat32;
+	InitResample(NewSampleRate, FilterLength, KeepSamplesPerSec);
 }
 
 CResampleFilter::~CResampleFilter()
 {
 }
 
-double CResampleFilter::FilterWindow(double arg)
+void CResampleFilter::FilterWindow(double arg, FilterCoeff & Result)
 {
 	// arg is from -0.5 to +0.5
-	double Window;
 	double x = M_PI * (1. + 2 * arg);
 	if (arg < -0.5 || arg > 0.5)
 	{
-		return 0.;
+		Result.value = 0;
+		Result.deriv1 = 0;
+		Result.deriv2 = 0;
+		Result.deriv3 = 0;
+		return;
 	}
 
 	// x goes from 0 to 2pi
+	double A0 = 0.5;
+	double A1 = -0.5;
+	double A2 = 0;
+	double A3 = 0;
+
 	switch (WindowType)
 	{
-	case WindowTypeNuttall:
-		return 0.355768 - 0.487396 * cos(x) + 0.144232 * cos(2 * x) - 0.012604 * cos(3 * x);
-		break;
-
 	case WindowTypeSquareSine:
 	default:
-		Window = 0.5 - 0.5 * cos(x);
-		return Window * Window;
+		break;
+	case WindowTypeNuttall:
+		A1 = -0.487396;
+		A2 = 0.144232;
+		A3 = -0.012604;
+		A0 = -(A1 + A2 + A3);
+		break;
+
+	case WindowTypeBlackman:
+		A1 = -9240. / 18608;
+		A2 = 1430. / 18608.;
+		A3 = 0;
+		A0 = -(A1 + A2 + A3);
+		break;
+
+		return;
 	}
+	Result.value = A0 + A1*cos(x) + A2*cos(2.*x) + A3*cos(3.*x);
+	Result.deriv1 = -2. *M_PI* (A1*sin(x) + 2.*A2*sin(2.*x) + 3.*A3*sin(3.*x));
+	Result.deriv2 = -4. *M_PI*M_PI* (A1*cos(x) + 4.*A2*cos(2.*x) + 9.*A3*cos(3.*x));
+	Result.deriv3 = 8. *M_PI*M_PI*M_PI* (A1*sin(x) + 8.*A2*sin(2.*x) + 27.*A3*sin(3.*x));
 }
 
-double CResampleFilter::sinc(double arg)
+void CResampleFilter::sinc(double x, FilterCoeff & Result)
 {
-	if (arg != 0.)
+	if (x != 0.)
 	{
-		return sin(arg) / arg;
+		double sx = sin(x);
+		double cx = cos(x);
+		Result.value = sx / x;
+		Result.deriv1 = (x*cx- sx) / (x*x);
+		Result.deriv2 = (x*(2 * sx - x*(2 * cx + x*sx))) / (x*x*x*x);
+		if (x > 0.01 || x < -0.01)
+		{
+			Result.deriv3 = -(x*x*x*cx - 3 * x*x*sx - 6 * x* cx + 6 * sx) / (x*x*x*x);
+		}
+		else
+		{
+			Result.deriv3 = x / 5.;
+		}
 	}
 	else
 	{
-		return 1.;
+		Result.value = 1;
+		Result.deriv1 = 0;
+		Result.deriv2 = -0.3333333333333;
+		Result.deriv3 = 0.;
 	}
 }
 
-double CResampleFilter::ResampleFilterTap(double arg, double FilterLength)
+void CResampleFilter::ResampleFilterTap(double arg, double FilterLength, FilterCoeff & Result)
 {
 	// arg goes from -0.5 to +0.5
 	// FilterLength is number of sin periods in the filter
-	return sinc(arg * FilterLength * M_PI) * FilterWindow(arg);
+	FilterCoeff Window;
+	FilterWindow(arg, Window);
+	FilterCoeff Sinc;
+	sinc(arg * FilterLength * M_PI, Sinc);
+	Sinc.deriv1 *= FilterLength * M_PI;
+	Sinc.deriv2 *= (FilterLength * M_PI) * (FilterLength * M_PI);
+	Sinc.deriv3 *= (FilterLength * M_PI) * (FilterLength * M_PI) * (FilterLength * M_PI);
+
+	Result.value = Window.value * Sinc.value;
+	Result.deriv1 = Window.value * Sinc.deriv1 + Window.deriv1 * Sinc.value;
+	Result.deriv2 = Window.value * Sinc.deriv2
+					+ 2. * Window.deriv1 * Sinc.deriv1
+					+ Window.deriv2 * Sinc.value;
+	Result.deriv3 = Window.value * Sinc.deriv3
+					+ 3. * (Window.deriv1 * Sinc.deriv2 + Window.deriv2 * Sinc.deriv1)
+					+ Window.deriv3 * Sinc.value;
 }
 
 static unsigned long GreatestCommonFactor(unsigned long x1, unsigned long x2)
@@ -4367,6 +4423,28 @@ void CResampleFilter::InitSlidingFilter(int FilterLength, unsigned long NumberOf
 	signed Accumulator = 0;
 	double NumSincWaves = (FilterLength - 1) * 2;
 
+	FilterCoeff coeff;
+#if 0
+	double x = 1.;
+	FilterCoeff coeff1;
+	FilterCoeff coeff2;
+	sinc(x, coeff1);
+	sinc(x+0.000001, coeff2);
+	coeff.deriv1 = 1000000.*(coeff2.tap - coeff1.tap);
+	coeff.deriv2 = 1000000.*(coeff2.deriv1 - coeff1.deriv1);
+	coeff.deriv3 = 1000000.*(coeff2.deriv2 - coeff1.deriv2);
+	FilterWindow(x, coeff1);
+	FilterWindow(x + 0.000001, coeff2);
+	coeff.deriv1 = 1000000.*(coeff2.tap - coeff1.tap);
+	coeff.deriv2 = 1000000.*(coeff2.deriv1 - coeff1.deriv1);
+	coeff.deriv3 = 1000000.*(coeff2.deriv2 - coeff1.deriv2);
+	ResampleFilterTap(x, NumSincWaves, coeff1);
+	ResampleFilterTap(x + 0.000001, NumSincWaves, coeff2);
+	coeff.deriv1 = 1000000.*(coeff2.tap - coeff1.tap);
+	coeff.deriv2 = 1000000.*(coeff2.deriv1 - coeff1.deriv1);
+	coeff.deriv3 = 1000000.*(coeff2.deriv2 - coeff1.deriv2);
+#endif
+
 	for (unsigned i = 0; i < NumberOfFilterTables; i++)
 	{
 		//TRACE("i=%d, InputOffset=%d\n", i, InputOffset);
@@ -4376,7 +4454,9 @@ void CResampleFilter::InitSlidingFilter(int FilterLength, unsigned long NumberOf
 			double arg = double(j + 0.5 +
 					(InputOffset - double(i) * m_InputFormat.SampleRate() / m_EffectiveOutputSampleRate)) / m_SamplesInFilter - 0.5;
 			//ASSERT(arg >= -0.5 && arg <= 0.5);
-			*p = ResampleFilterTap(arg, NumSincWaves);
+
+			ResampleFilterTap(arg, NumSincWaves, coeff);
+			*p = coeff.value;
 
 			if (0) TRACE("Filter[%d][%d]=%f\n", i, j, *p);
 		}
@@ -4401,44 +4481,45 @@ void CResampleFilter::InitSlidingFilter(int FilterLength, unsigned long NumberOf
 		m_pSrcBuf[i] = 1.;
 	}
 
-	m_SrcBufFilled = SrcBufSize;
-	FilterSoundResample();
+	int SrcBufUsed = 0;
+	float DstBuf[4096];
+	int SamplesFilled = FilterSoundResample(DstBuf, countof(DstBuf), m_pSrcBuf, SrcBufSize, &SrcBufUsed, 1);
 
 	float Max = 0;
 	double Sum = 0.;
 	double SumSq = 0.;
-	for (unsigned i = 2; i < m_DstBufUsed; i++)
+	for (int i = 2; i < SamplesFilled; i++)
 	{
-		Sum += m_pDstBuf[i];
-		SumSq += m_pDstBuf[i] * m_pDstBuf[i];
-		if (Max < m_pDstBuf[i])
+		Sum += DstBuf[i];
+		SumSq += DstBuf[i] * DstBuf[i];
+		if (Max < DstBuf[i])
 		{
-			Max = m_pDstBuf[i];
+			Max = DstBuf[i];
 		}
 	}
 
-	TRACE("Induced filter noise for DC input=%f\n", sqrt((SumSq * (m_DstBufUsed - 2) - Sum*Sum) / Sum*Sum));
+	TRACE("Induced filter noise power for DC input=%f\n", /*(SumSq * (SamplesFilled - 2) - Sum*Sum)*/
+		sqrt((SumSq * (SamplesFilled - 2) - Sum*Sum) / Sum*Sum));
 
 	for (unsigned i = 0; i < NumberOfFilterTables * m_SamplesInFilter; i++)
 	{
 		m_FilterTable[i] /= Max;
 	}
 
-
 	// prefill at filter length
-	for (int i = 0; i < SrcBufSize; i++)
+	m_SrcBufFilled = m_SamplesInFilter / 2 * m_InputFormat.NumChannels();
+	for (unsigned i = 0; i < m_SrcBufFilled; i++)
 	{
 		m_pSrcBuf[i] = 0.;
 	}
 
-	m_SrcBufFilled = m_SamplesInFilter / 2 * m_InputFormat.NumChannels();
-
 	ResetResample();
 }
 
-void CResampleFilter::InitSlidingInterpolatedFilter(int FilterLength)
+void CResampleFilter::InitSlidingInterpolatedFilter(int FilterLength, int TableSize)
 {
 	m_bUseInterpolatedFilter = TRUE;
+	// first zero position is defined be the window shape
 
 	// number of source taps should be m_SamplesInFilter
 	if (1 || m_EffectiveOutputSampleRate >= m_InputFormat.SampleRate())
@@ -4457,88 +4538,92 @@ void CResampleFilter::InitSlidingInterpolatedFilter(int FilterLength)
 		m_InputPeriod = (unsigned __int32)(OutputPeriod * m_EffectiveOutputSampleRate / m_InputFormat.SampleRate());
 	}
 	//TRACE("InputPeriod=%08x, OutputPeriod=%08x\n", m_InputPeriod, m_OutputPeriod);
-#ifdef _DEBUG
-	double MaxErr = 0;
-#endif
-	m_InterpolatedFilterTable.Allocate(ResampleFilterSize);
-	double NumSincWaves = (FilterLength - 1)* 2.;
+
+	m_InterpolatedFilterTable.Allocate(TableSize);
+	double NumSincWaves = (FilterLength)* 2.;
+	double DerivScale = 1. / (1 << ResampleIndexShift);
 	// use sliding squared interpolation
-	for (signed i = 0; i < ResampleFilterSize; i++)
+	FilterCoeff T0, T1;
+	ResampleFilterTap(-0.5, NumSincWaves, T1);
+	T1.deriv1 *= TableSize;
+	T1.deriv2 *= TableSize*TableSize;
+	T1.deriv3 *= TableSize*TableSize*TableSize;
+
+	for (signed i = 0; i < TableSize; i++)
 	{
-#ifndef USE_CUBIC_INTERPOLATION
-
-		double arg = (i + 0.5) / ResampleFilterSize - 0.5;
-		double arg05 = (i + 1.) / ResampleFilterSize - 0.5;
-		double arg1 = (i + 1.5) / ResampleFilterSize - 0.5;
-
+		double arg = double(i+1) / TableSize - 0.5;
+		T0 = T1;
 		// arg should be from -0.5 to 0.5
-		double val = ResampleFilterTap(arg, NumSincWaves);
-		double val05 = ResampleFilterTap(arg05, NumSincWaves);
-		double val1 = ResampleFilterTap(arg1, NumSincWaves);
+		ResampleFilterTap(arg, NumSincWaves, T1);
 
-		double dif1 = val05 - val;
-		double dif2 = val1 - val05;
+		// 1 step corresponds to 1./ ResampleFilterSize argument
+		T1.deriv1 /= TableSize;
+		T1.deriv2 /= TableSize*TableSize;
+		T1.deriv3 /= TableSize*TableSize*TableSize;
+		// the derivatives are now scaled for the step equal 1. THis will simplify the calculations
 
-		m_InterpolatedFilterTable[i].tap = val;
-		m_InterpolatedFilterTable[i].deriv1 = (3. * dif1 - dif2) / 2. / (1 << (ResampleIndexShift - 1));
-		m_InterpolatedFilterTable[i].deriv2 = (dif2 - dif1) / 2. / (1 << (ResampleIndexShift - 1)) / (1 << (ResampleIndexShift - 1));
-		m_InterpolatedFilterTable[i].deriv3 = 0.;
+		// scale the table and adjust it for contiguous first and second derivative
+		double A = T0.deriv1;
+		double B = T0.deriv2 / 2.;
 
-		TRACE("[%03d] Window=%f, sinc=%f, Resample filter=%.9f, next extrapolated=%.9f\n",
-			i, FilterWindow(arg), sinc(arg * FilterLength * M_PI), m_InterpolatedFilterTable[i].tap,
-			m_InterpolatedFilterTable[i].tap + (1 << ResampleIndexShift) *
-			(m_InterpolatedFilterTable[i].deriv1 + (1 << ResampleIndexShift) * m_InterpolatedFilterTable[i].deriv2));
-#else
-		double arg = (i + 0.5) / ResampleFilterSize - 0.5;
-		double arg1 = (i + 0.8333333333333) / ResampleFilterSize - 0.5;
-		double arg2 = (i + 1.1666666666666) / ResampleFilterSize - 0.5;
-		double arg3 = (i + 1.5) / ResampleFilterSize - 0.5;
+		// Y0=C+D+F=tap[1]-tap[0]-(A+B)
+		// Y1=3C+4D+5F=d1[1]-(A+2B)
+		// Y2=6C+12D+20F=d2[1]-2B
 
-		// arg should be from -0.5 to 0.5
-		double val0 = ResampleFilterTap(arg, NumSincWaves);
-		double val1 = ResampleFilterTap(arg1, NumSincWaves);
-		double val2 = ResampleFilterTap(arg2, NumSincWaves);
-		double val3 = ResampleFilterTap(arg3, NumSincWaves);
+		double Y[3];
+		Y[0] = T1.value - T0.value - (A + B);
+		Y[1] = T1.deriv1 - (A + 2.*B);
+		Y[2] = T1.deriv2 - 2. * B;
+		// C+D+F=Y0
+		//  D+2F=Y1-3*Y0
+		//  6D+14F=Y2-6*Y0
 
-		double dif30 = val3 - val0;
-		double dif10 = val1 - val0;
-		double dif21 = val2 - val1;
+		// C+D+F=Y0
+		//  D+2F=Y1-3*Y0
+		//  2F=Y2-6*Y1+12*Y0
 
-		m_InterpolatedFilterTable[i].tap = val0;
-		m_InterpolatedFilterTable[i].deriv1 = (dif30 + 4.5 *(dif10 - dif21)) / (1 << ResampleIndexShift);
-		m_InterpolatedFilterTable[i].deriv2 = (4 * dif21 - (dif10 + dif30)) * 4.5 / (1 << ResampleIndexShift) / (1 << ResampleIndexShift);
-		m_InterpolatedFilterTable[i].deriv3 = (dif30 - 3* dif21) * 4.5 / (1 << ResampleIndexShift) / (1 << ResampleIndexShift) / (1 << ResampleIndexShift);
-#endif
+		// C=10*Y0-4*Y1+0.5*Y2
+		//  D=7*Y1-15*Y0-Y2
+		//  F=0.5*Y2-3*Y1+6*Y0
+		double C = 10.*Y[0] - 4.*Y[1] + 0.5*Y[2];
+		double D = -15.*Y[0] + 7.*Y[1] - Y[2];
+		double F = 6.*Y[0] - 3.*Y[1] + 0.5*Y[2];
 
-#ifndef USE_CUBIC_INTERPOLATION
-#ifdef _DEBUG
-		if (i > 0)
-		{
-			double arg25 = (i + 0.75) / ResampleFilterSize - 0.5;
-			double arg75 = (i + 1.25) / ResampleFilterSize - 0.5;
-
-			double err = fabs(ResampleFilterTap(arg25, FilterLength) -
-							(val + (1 << ResampleIndexShift) * 0.25 *
-								(m_InterpolatedFilterTable[i].deriv1 + (1 << ResampleIndexShift) * 0.25 * m_InterpolatedFilterTable[i].deriv2)));
-			if (MaxErr < err)
-			{
-				MaxErr = err;
-			}
-
-			err = fabs(ResampleFilterTap(arg75, FilterLength) -
-						(val + (1 << ResampleIndexShift) * 0.75 *
-							(m_InterpolatedFilterTable[i].deriv1 + (1 << ResampleIndexShift) * 0.75 * m_InterpolatedFilterTable[i].deriv2)));
-			if (MaxErr < err)
-			{
-				MaxErr = err;
-			}
-		}
-#endif
-#endif
+		m_InterpolatedFilterTable[i].tap = T0.value;
+		m_InterpolatedFilterTable[i].A = A * DerivScale;
+		m_InterpolatedFilterTable[i].B = B * DerivScale * DerivScale;
+		m_InterpolatedFilterTable[i].C = C * DerivScale * DerivScale * DerivScale;
+		m_InterpolatedFilterTable[i].D = D * DerivScale * DerivScale * DerivScale * DerivScale;
+		m_InterpolatedFilterTable[i].F = F * DerivScale * DerivScale * DerivScale * DerivScale * DerivScale;
 	}
-#ifdef _DEBUG
-	TRACE("Max err = %g\n", MaxErr);
+#if 1 && defined( _DEBUG)
+	// calculate error MSR and max error in the full range
+	double sqsum = 0., max_error=0;
+	int max_error_pos = -1;
+	int const test_points = TableSize * 128;
+	for (signed i = 0; i < test_points; i++)
+	{
+		double arg = double(i) / test_points - 0.5;
+		ResampleFilterTap(arg, NumSincWaves, T0);
+
+		int index = i / (test_points / TableSize);
+		double rem = (i % (test_points / TableSize))/ DerivScale / (test_points / TableSize);
+
+		FilterPolyCoeff fpc = m_InterpolatedFilterTable[index];
+		double tap_value = ((((fpc.F*rem + fpc.D)*rem + fpc.C)*rem + fpc.B)*rem +  fpc.A)*rem +fpc.tap;
+
+		double err = fabs(tap_value - T0.value);
+
+		if (max_error < err)
+		{
+			max_error = err;
+			max_error_pos = i;
+		}
+		sqsum += err*err;
+	}
+	TRACE("Max err = %g, pos=%d, err MSR=%g\n", max_error, max_error_pos, sqrt(sqsum/ test_points));
 #endif
+	// number of input samples necessary to cover the whole filter
 	m_SrcFilterLength = int((0x100000000i64 + m_InputPeriod - 1) / m_InputPeriod);
 
 	ResetResample();
@@ -4550,75 +4635,67 @@ void CResampleFilter::InitSlidingInterpolatedFilter(int FilterLength)
 		m_pSrcBuf[i] = 1.;
 	}
 
-	m_SrcBufFilled = SrcBufSize;
-	FilterSoundResample();
-
+	int SrcBufUsed = 0;
+	float DstBuf[4096];
+	int SamplesFilled = FilterSoundResample(DstBuf, countof(DstBuf), m_pSrcBuf, SrcBufSize, &SrcBufUsed, 1);
 	float Max = 0;
-	for (unsigned i = 2; i < m_DstBufUsed; i++)
+	for (int i = 2; i < SamplesFilled; i++)
 	{
-		if (Max < m_pDstBuf[i])
+		if (Max < DstBuf[i])
 		{
-			Max = m_pDstBuf[i];
+			Max = DstBuf[i];
 		}
 	}
 
-	for (int i = 0; i < ResampleFilterSize; i++)
+	// normalize the coefficients
+	for (int i = 0; i < TableSize; i++)
 	{
 		m_InterpolatedFilterTable[i].tap /= Max;
-		m_InterpolatedFilterTable[i].deriv1 /= Max;
-		m_InterpolatedFilterTable[i].deriv2 /= Max;
-#ifdef USE_CUBIC_INTERPOLATION
-		m_InterpolatedFilterTable[i].deriv3 /= Max;
-#endif
+		m_InterpolatedFilterTable[i].A /= Max;
+		m_InterpolatedFilterTable[i].B /= Max;
+		m_InterpolatedFilterTable[i].C /= Max;
+		m_InterpolatedFilterTable[i].D /= Max;
+		m_InterpolatedFilterTable[i].F /= Max;
 	}
 
-
-	for (int i = 0; i < SrcBufSize; i++)
+	// prefill the input buffer at 1/2 filter length. This will keep the filter output at the same time as input
+	m_SrcBufFilled = (0x80000000u / m_InputPeriod) * m_InputFormat.NumChannels();
+	for (unsigned i = 0; i < m_SrcBufFilled; i++)
 	{
 		m_pSrcBuf[i] = 0.;
 	}
-	// prefill at 1/2 filter length
-	m_SrcBufFilled = (0x80000000u / m_InputPeriod) * m_InputFormat.NumChannels();
 
 	ResetResample();
 }
 
-BOOL CResampleFilter::SetInputWaveformat(CWaveFormat const &
-#ifdef _DEBUG
-										Wf
-#endif
-										, CHANNEL_MASK /*channels*/)
+BOOL CResampleFilter::SetInputWaveformat(CWaveFormat const & Wf, CHANNEL_MASK channels)
 {
-	ASSERT(Wf == m_InputFormat);
-	return TRUE;
-}
-
-void CResampleFilter::InitResample(long OriginalSampleRate, long NewSampleRate,
-									int FilterLength, NUMBER_OF_CHANNELS nChannels, BOOL KeepSamplesPerSec)
-{
-	// FilterLength is how many Sin periods are in the array.
-	//
-	m_EffectiveOutputSampleRate = NewSampleRate;
-
-	m_InputFormat.InitFormat(WAVE_FORMAT_PCM, OriginalSampleRate, nChannels);
-	m_OutputFormat.InitFormat(WAVE_FORMAT_PCM,
-							KeepSamplesPerSec ? OriginalSampleRate : NewSampleRate,
-							nChannels);
+	if (!CWaveProc::SetInputWaveformat(Wf, channels))
+	{
+		return FALSE;
+	}
+	LONG OriginalSampleRate = m_InputFormat.SampleRate();
+	// the ourput format will also be set
+	if (!m_KeepOriginalSampleRate)
+	{
+		m_OutputFormat.SampleRate() = m_EffectiveOutputSampleRate;
+		m_OutputFormat.BytesPerSec() = m_EffectiveOutputSampleRate * m_OutputFormat.BlockAlign();
+	}
 
 	// the cutoff frequency is the half of lower sampling rate, minus 1/filter_length
 	// find greatest common factor of the sampling rates
-	unsigned long common = GreatestCommonFactor(NewSampleRate, OriginalSampleRate);
+	unsigned long common = GreatestCommonFactor(m_EffectiveOutputSampleRate, OriginalSampleRate);
 	// after this number of output samples, the filter coefficients repeat
-	unsigned long NumberOfFilterTables = NewSampleRate / common;
+	unsigned long NumberOfFilterTables = m_EffectiveOutputSampleRate / common;
 
 	// this is number of taps in each filter
-	m_SamplesInFilter = (FilterLength + 1) * 2;
+	m_SamplesInFilter = (m_RequestedFilterLength + 1) * 2;
 
-	if (NewSampleRate < OriginalSampleRate)
+	if (m_EffectiveOutputSampleRate < OriginalSampleRate)
 	{
 		// when downsampling, the filter number of sin periods is in new sample rate times.
 		// Thus, the filter needs to be longer
-		m_SamplesInFilter = MulDiv(m_SamplesInFilter, OriginalSampleRate, NewSampleRate);
+		m_SamplesInFilter = MulDiv(m_SamplesInFilter, OriginalSampleRate, m_EffectiveOutputSampleRate);
 	}
 
 	if (NumberOfFilterTables * m_SamplesInFilter <= MaxNumberOfFilterSamples)
@@ -4626,66 +4703,76 @@ void CResampleFilter::InitResample(long OriginalSampleRate, long NewSampleRate,
 		// we can use precomputed exact filters
 		// the filter arrays correspond to output sample positions
 		// NumberOfFilterTables of them are generated
-		InitSlidingFilter(FilterLength, NumberOfFilterTables);
+		InitSlidingFilter(m_RequestedFilterLength, NumberOfFilterTables);
 	}
 	else
 	{
 		// we need to use a sliding filter
-		InitSlidingInterpolatedFilter(FilterLength);
+		InitSlidingInterpolatedFilter(m_RequestedFilterLength, ResampleFilterSize);
 	}
+	return TRUE;
+}
+
+void CResampleFilter::InitResample(long NewSampleRate, int FilterLength, BOOL KeepSamplesPerSec)
+{
+	// FilterLength is how many Sin periods are in the array.
+	//
+	m_EffectiveOutputSampleRate = NewSampleRate;
+	m_KeepOriginalSampleRate = KeepSamplesPerSec;
+	m_RequestedFilterLength = FilterLength;
 }
 
 void CResampleFilter::ResetResample()
 {
 	m_SrcBufUsed = 0;
-	m_DstBufUsed = 0;
-	m_DstBufSaved = 0;
 	m_RationalResampleFraction = 0;
 	m_FilterIndex = 0;
 
 	m_Phase = 0x80000000u % m_InputPeriod;
 }
 
-void CResampleFilter::DoSlidingInterpolatedFilterResample()
+int CResampleFilter::DoSlidingInterpolatedFilterResample(float * pOut, int OutBufferSamples,
+														float const * pIn, int InSamples, int* pInSamplesUsed, int Channels)
 {
-	unsigned const NumChannels = m_InputFormat.NumChannels();
-	unsigned const FilterLength = NumChannels * m_SrcFilterLength;
+	FilterPolyCoeff const * const pTable = m_InterpolatedFilterTable;
 
-	FilterCoeff const * const pTable = m_InterpolatedFilterTable;
-
-	unsigned i;
-	for (i = m_DstBufUsed; m_SrcBufUsed + FilterLength <= m_SrcBufFilled
-		&& i < DstBufSize; i+= NumChannels)
+	int SamplesFilled, SamplesUsed;
+	for (SamplesFilled = 0, SamplesUsed = 0; SamplesUsed + m_SrcFilterLength <= InSamples
+		&& SamplesFilled < OutBufferSamples; SamplesFilled++)
 	{
-		const float * src = m_pSrcBuf + m_SrcBufUsed;
 		unsigned __int32 Phase1 = m_Phase;
 		double OutSample[MAX_NUMBER_OF_CHANNELS];
-		for (unsigned ch = 0; ch < NumChannels; ch++)
+		for (int ch = 0; ch < Channels; ch++)
 		{
 			OutSample[ch] = 0;
 		}
 
-		for (unsigned j = 0; ; j+= NumChannels)
+		for (unsigned j = 0; ; j+= Channels)
 		{
-			ASSERT(src + j + NumChannels <= m_pSrcBuf + m_SrcBufFilled);
+			ASSERT(pIn + j + Channels <= pIn + InSamples-SamplesUsed);
 
 			int const TableIndex = Phase1 >> ResampleIndexShift;
 			double PhaseFraction = int(Phase1 & ~(0xFFFFFFFF << ResampleIndexShift));
 
-#ifndef USE_CUBIC_INTERPOLATION
+#if !USE_CUBIC_INTERPOLATION
+			// use 3rd order for contiguous 1st derivative
 			double const coeff = (pTable[TableIndex].tap +
-									PhaseFraction * (pTable[TableIndex].deriv1
-										+ PhaseFraction * pTable[TableIndex].deriv2));
+									PhaseFraction * (pTable[TableIndex].A
+										+ PhaseFraction * (pTable[TableIndex].B
+											+ PhaseFraction * (pTable[TableIndex].C/*
+							+ PhaseFraction * (pTable[TableIndex].D
+								+ PhaseFraction * pTable[TableIndex].F)*/))));
 #else
 			double const coeff = (pTable[TableIndex].tap +
-									PhaseFraction * (pTable[TableIndex].deriv1
-										+ PhaseFraction * (pTable[TableIndex].deriv2
-											+ PhaseFraction * pTable[TableIndex].deriv3)));
+									PhaseFraction * (pTable[TableIndex].A
+										+ PhaseFraction * (pTable[TableIndex].B
+											+ PhaseFraction * (pTable[TableIndex].C
+												+ PhaseFraction * (pTable[TableIndex].D
+													+ PhaseFraction * pTable[TableIndex].F)))));
 #endif
-			for (unsigned ch = 0; ch < NumChannels; ch++)
+			for (int ch = 0; ch < Channels; ch++)
 			{
-				ASSERT(src + j + ch < m_pSrcBuf + m_SrcBufFilled);
-				OutSample[ch] += src[j + ch] * coeff;
+				OutSample[ch] += pIn[j + ch] * coeff;
 			}
 
 			unsigned __int32 Phase2 = Phase1 + m_InputPeriod;
@@ -4696,65 +4783,54 @@ void CResampleFilter::DoSlidingInterpolatedFilterResample()
 			Phase1 = Phase2;
 		}
 
-		for (unsigned ch = 0; ch < NumChannels; ch++)
+		for (int ch = 0; ch < Channels; ch++, pOut++)
 		{
-			m_pDstBuf[i + ch] = float(OutSample[ch]);
+			*pOut = float(OutSample[ch]);
 		}
-		m_DstBufUsed += NumChannels;
 		m_Phase -= m_OutputPeriod;
 
 		while (m_Phase & 0x80000000)
 		{
 			m_Phase += m_InputPeriod;
-			m_SrcBufUsed += NumChannels;
+			SamplesUsed++;
+			pIn += Channels;
 		}
 	}
+	*pInSamplesUsed = SamplesUsed;
+	return SamplesFilled;
 }
 
-void CResampleFilter::DoSlidingFilterResample()
+int CResampleFilter::DoSlidingFilterResample(float * pOut, int OutBufferSamples,
+											float const * pIn, int InSamples, int* pInSamplesUsed, int Channels)
 {
-	unsigned const NumChannels = m_InputFormat.NumChannels();
-
-	if (m_SrcBufFilled <= m_SrcBufUsed + NumChannels * m_SamplesInFilter)
-	{
-		return;
-	}
-
-	long SrcSamples = (long)(m_SrcBufFilled - m_SrcBufUsed);
-	int const FilterLength = (int)(NumChannels * m_SamplesInFilter);
-
-	float * dst = m_pDstBuf + m_DstBufUsed;
-
 	long const InputSampleRate = m_InputFormat.SampleRate();
 	long const OutputSampleRate = m_EffectiveOutputSampleRate;
-
-	unsigned i;
-	for (i = m_DstBufUsed; SrcSamples >= FilterLength && i < DstBufSize; i += NumChannels)
+	int SamplesFilled, SamplesUsed;
+	for (SamplesFilled = 0, SamplesUsed = 0; SamplesUsed + m_SamplesInFilter <= InSamples
+		&& SamplesFilled < OutBufferSamples; SamplesFilled++)
 	{
 		double const * p = m_FilterIndex + m_FilterTable;
 
-		const float * src = m_pSrcBuf + m_SrcBufUsed;
-		for (unsigned ch = 0; ch < NumChannels; ch++, dst++)
+		for (int ch = 0; ch < Channels; ch++, pOut++)
 		{
 			double OutSample = 0.;
-			float const * FilterSrc = src + ch;
+			float const * FilterSrc = pIn + ch;
 
-			for (unsigned j = 0; j != m_SamplesInFilter; j++, FilterSrc += NumChannels)
+			for (unsigned j = 0; j != m_SamplesInFilter; j++, FilterSrc += Channels)
 			{
-				ASSERT(FilterSrc < m_pSrcBuf + m_SrcBufFilled);
+				ASSERT(FilterSrc < pIn + InSamples - SamplesUsed);
 				OutSample += *FilterSrc * p[j];
 			}
 
-			*dst = float(OutSample);
-			ASSERT(dst < m_pDstBuf + DstBufSize);
+			*pOut = float(OutSample);
 		}
 
 		m_RationalResampleFraction += InputSampleRate;
 		while (m_RationalResampleFraction > 0)
 		{
 			m_RationalResampleFraction -= OutputSampleRate;
-			SrcSamples -= NumChannels;
-			m_SrcBufUsed += NumChannels;
+			pIn += Channels;
+			SamplesUsed++;
 		}
 
 		m_FilterIndex += m_SamplesInFilter;
@@ -4763,18 +4839,20 @@ void CResampleFilter::DoSlidingFilterResample()
 			m_FilterIndex = 0;
 		}
 	}
-	m_DstBufUsed = i;
+	*pInSamplesUsed = SamplesUsed;
+	return SamplesFilled;
 }
 
-void CResampleFilter::FilterSoundResample()
+int CResampleFilter::FilterSoundResample(float * pOut, int OutBufferSamples,
+										float const * pIn, int InSamples, int* InSamplesUsed, int Channels)
 {
 	if (0 != m_bUseInterpolatedFilter)
 	{
-		DoSlidingInterpolatedFilterResample();
+		return DoSlidingInterpolatedFilterResample(pOut, OutBufferSamples, pIn, InSamples, InSamplesUsed, Channels);
 	}
 	else
 	{
-		DoSlidingFilterResample();
+		return DoSlidingFilterResample(pOut, OutBufferSamples, pIn, InSamples, InSamplesUsed, Channels);
 	}
 }
 
@@ -4783,110 +4861,86 @@ unsigned CResampleFilter::ProcessSoundBuffer(char const * pIn, char * pOut,
 {
 	*pUsedBytes = 0;
 
-	// raw samples, multiplied by number of channels
-	unsigned nInSamples = nInBytes / sizeof (WAVE_SAMPLE);
-	unsigned nOutSamples = nOutBytes / sizeof (WAVE_SAMPLE);
+	float const * pInBuf = (float const*) pIn;
+	float * pOutBuf = (float *) pOut;
 
-	WAVE_SAMPLE const * pInBuf = (WAVE_SAMPLE const*) pIn;
-	WAVE_SAMPLE * pOutBuf = (WAVE_SAMPLE *) pOut;
-
+	// Always multiple of number of channels
+	unsigned Channels = m_OutputFormat.NumChannels();
+	unsigned nInSamples = nInBytes / sizeof *pInBuf;
+	unsigned nOutSamples = nOutBytes / (Channels * sizeof *pOutBuf);
 	unsigned nUsedSamples = 0;
 	unsigned nSavedSamples = 0;
 
-	if (0 == pInBuf)
+	if (nInSamples == 0)
 	{
-		// adjust nOutSamples
-		unsigned long MaxOutSamples =
-			MulDiv(m_ProcessedInputSamples, m_EffectiveOutputSampleRate, m_InputFormat.SampleRate());
-
-		if (MaxOutSamples <= (unsigned long)m_SavedOutputSamples)
+		NUMBER_OF_SAMPLES MaxOutSamples = nOutSamples;
+		MaxOutSamples = MulDiv(m_ProcessedInputSamples, m_EffectiveOutputSampleRate, m_InputFormat.SampleRate());
+		if (MaxOutSamples <= m_SavedOutputSamples)
 		{
 			nOutSamples = 0;
 		}
 		else
 		{
-			nOutSamples = std::min<unsigned long>(nOutSamples,
-												(MaxOutSamples - m_SavedOutputSamples) * m_OutputFormat.NumChannels());
+			nOutSamples = std::min<NUMBER_OF_SAMPLES>(nOutSamples, MaxOutSamples - m_SavedOutputSamples);
 		}
 	}
 
 	while(nOutSamples != 0)
 	{
-		// move data in the internal buffer, if necessary
+		int SrcUsed = 0;
+		int SamplesFilled = FilterSoundResample(pOutBuf, nOutSamples,
+								m_pSrcBuf+ m_SrcBufUsed, (m_SrcBufFilled - m_SrcBufUsed) / Channels, &SrcUsed, Channels);
 
-		if (m_SrcBufFilled < SrcBufSize)
+		m_SrcBufUsed += SrcUsed * Channels;
+		pOutBuf += SamplesFilled*Channels;
+		nOutSamples -= SamplesFilled;
+		nSavedSamples += SamplesFilled;
+
+		if (SrcUsed == 0 && SamplesFilled == 0)
 		{
+			// need to fill the source buffer
+			// move it down to the begin of the buffer, to fill more input data
+			for (unsigned i = 0, j = m_SrcBufUsed; j < m_SrcBufFilled; j++, i++)
+			{
+				m_pSrcBuf[i] = m_pSrcBuf[j];
+			}
+			m_SrcBufFilled -= m_SrcBufUsed;
+			m_SrcBufUsed = 0;
+
 			unsigned ToCopy = std::min(SrcBufSize - m_SrcBufFilled, nInSamples);
+			ToCopy -= ToCopy % Channels;
 
 			if (0 == pInBuf)
 			{
 				// fill the rest of the input buffer with zeros
-				for (unsigned j = m_SrcBufFilled; j != SrcBufSize; j++)
+				for (unsigned j = m_SrcBufFilled; j != m_SrcBufFilled + ToCopy; j++)
 				{
 					m_pSrcBuf[j] = 0.f;
 				}
-				m_SrcBufFilled = SrcBufSize;
 			}
-			else
+			else if (ToCopy != 0)
 			{
 				for (unsigned i = 0, j = m_SrcBufFilled; i != ToCopy; i++, j++)
 				{
 					m_pSrcBuf[j] = pInBuf[i];
 				}
 
-				m_SrcBufFilled += ToCopy;
 				pInBuf += ToCopy;
 
 				nInSamples -= ToCopy;
 				nUsedSamples += ToCopy;
 			}
-		}
-
-		FilterSoundResample();
-
-		if (m_DstBufSaved == m_DstBufUsed)
-		{
-			m_DstBufSaved = 0;
-			m_DstBufUsed = 0;
-
-			if (m_SrcBufFilled != m_SrcBufUsed
-				&& 0 != m_SrcBufUsed)
+			else
 			{
-				// move data in the buffer, to allow to give the resample more data
-				unsigned i = 0;
-				for (unsigned j = m_SrcBufUsed; j < m_SrcBufFilled; i++, j++)
-				{
-					m_pSrcBuf[i] = m_pSrcBuf[j];
-				}
-				m_SrcBufUsed = 0;
-				m_SrcBufFilled = i;
-				continue;
+				// nothing to fill anymore
+				break;
 			}
-			break;
-		}
-
-		unsigned const ToCopy = std::min(m_DstBufUsed - m_DstBufSaved, nOutSamples);
-
-		for (unsigned i = 0, j = m_DstBufSaved; i != ToCopy; i++, j++)
-		{
-			pOutBuf[i] = DoubleToShort(m_pDstBuf[j]);
-		}
-
-		m_DstBufSaved += ToCopy;
-
-		pOutBuf += ToCopy;
-		nOutSamples -= ToCopy;
-		nSavedSamples += ToCopy;
-
-		if (m_DstBufSaved == m_DstBufUsed)
-		{
-			m_DstBufSaved = 0;
-			m_DstBufUsed = 0;
+			m_SrcBufFilled += ToCopy;
 		}
 	}
 
 	* pUsedBytes += nUsedSamples * sizeof pInBuf[0];
-	return nSavedSamples * sizeof pOutBuf[0];
+	return nSavedSamples * (Channels * sizeof *pOutBuf);
 }
 
 ////////////////////////////////////////////////////////////////////

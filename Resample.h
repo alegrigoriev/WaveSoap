@@ -21,9 +21,7 @@ public:
 	CResampleContext(CWaveSoapFrontDoc * pDoc,
 					UINT StatusStringId, UINT OperationNameId,
 					CWaveFile & SrcFile, CWaveFile & DstFile,
-					long OriginalSampleRate, long NewSampleRate,
-					int FilterLength,
-					BOOL KeepSamplesPerSec);
+					long NewSampleRate, int FilterLength, BOOL KeepSamplesPerSec);
 
 	virtual void DeInit();
 };

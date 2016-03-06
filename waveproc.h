@@ -664,8 +664,7 @@ class CResampleFilter: public CWaveProc
 public:
 	typedef std::auto_ptr<ThisClass> auto_ptr;
 	CResampleFilter();
-	CResampleFilter(long OriginalSampleRate, long NewSampleRate,
-					int FilterLength, NUMBER_OF_CHANNELS nChannels, BOOL KeepSamplesPerSec);
+	CResampleFilter(long NewSampleRate, int FilterLength, BOOL KeepSamplesPerSec);
 
 	virtual ~CResampleFilter();
 
@@ -673,17 +672,18 @@ public:
 										unsigned nInBytes, unsigned nOutBytes, unsigned * pUsedBytes);
 	virtual BOOL SetInputWaveformat(CWaveFormat const & Wf, CHANNEL_MASK channels = ALL_CHANNELS);
 
-	void InitResample(long OriginalSampleRate, long NewSampleRate, int FilterLength,
-					NUMBER_OF_CHANNELS nChannels, BOOL KeepSamplesPerSec);
+	void InitResample(long NewSampleRate, int FilterLength, BOOL KeepSamplesPerSec);
 	enum { DefaultFilterLength = 125, };
 private:
-	void InitSlidingInterpolatedFilter(int FilterLength);
+	void InitSlidingInterpolatedFilter(int FilterLength, int TableSize);
 	void InitSlidingFilter(int FilterLength, unsigned long NumberOfFilterTables);
 
-	void FilterSoundResample();
+	// returns samples filled in units of (float*Channels)
+	// OutSamples and InSamples are in units of (float*Channels)
+	int FilterSoundResample(float * pOut, int OutBufferSamples, float const * pIn, int InSamples, int* InSamplesUsed, int Channels);
 
-	void DoSlidingInterpolatedFilterResample();
-	void DoSlidingFilterResample();
+	int DoSlidingInterpolatedFilterResample(float * pOut, int OutBufferSamples, float const * pIn, int InSamples, int* InSamplesUsed, int Channels);
+	int DoSlidingFilterResample(float * pOut, int OutBufferSamples, float const * pIn, int InSamples, int* InSamplesUsed, int Channels);
 
 	void ResetResample();
 
@@ -691,12 +691,31 @@ private:
 	{
 		WindowTypeSquareSine,
 		WindowTypeNuttall,
-		WindowType = WindowTypeNuttall,
+		WindowTypeBlackman,
+		WindowType = WindowTypeBlackman,
 	};
 
-	double FilterWindow(double arg);
-	static double sinc(double arg);
-	double ResampleFilterTap(double arg, double FilterLength);
+	struct FilterCoeff
+	{
+		double value;
+		double deriv1;
+		double deriv2;
+		double deriv3;		// will not use it
+	};
+
+	struct FilterPolyCoeff
+	{
+		double tap;
+		double A;	// polynomial coefficients
+		double B;
+		double C;
+		double D;
+		double F;
+	};
+
+	void FilterWindow(double arg, FilterCoeff & Result);
+	static void sinc(double arg, FilterCoeff & Result);
+	void ResampleFilterTap(double arg, double FilterLength, FilterCoeff & Result);
 
 	enum
 	{
@@ -704,41 +723,44 @@ private:
 		ResampleFilterSize = (1 << ResampleTableBits),
 		ResampleIndexShift = (32 - ResampleTableBits),
 		MaxNumberOfFilterSamples = 500*100,
-		SrcBufSize = 0x4000,
-		DstBufSize = 0x4000,
-	};
+		SrcBufSize = 0x1000 };
 
 	float m_pSrcBuf[SrcBufSize];
-	float m_pDstBuf[DstBufSize];
 
 	unsigned m_SrcBufUsed;   // position to get samples
-	unsigned m_DstBufUsed;   // position to put out samples
-	unsigned m_DstBufSaved;  // position to get the samples and convert to __int16
 
 	unsigned m_SrcBufFilled; // position to put new samples converted from __int16
-	unsigned m_SrcFilterLength;
-	unsigned long    m_EffectiveOutputSampleRate;
+	long    m_EffectiveOutputSampleRate;
+	int m_RequestedFilterLength;
+	BOOL m_KeepOriginalSampleRate;
 
-	struct FilterCoeff
-	{
-		double tap;
-		double deriv1;
-		double deriv2;
-		double deriv3;
-	};
-
-	ATL::CHeapPtr<FilterCoeff> m_InterpolatedFilterTable;
+	// m_InterpolatedFilterTable covers the full range from -0.5 to +0.5 of contiguous sinc(x)*window(x) filter function
+	ATL::CHeapPtr<FilterPolyCoeff> m_InterpolatedFilterTable;
 	ATL::CHeapPtr<double> m_FilterTable;
 
-	unsigned __int32 m_InputPeriod;
-	unsigned __int32 m_OutputPeriod;
-	unsigned __int32 m_Phase;
-	BOOL m_bUseInterpolatedFilter;
+	BOOL m_bUseInterpolatedFilter;		// TRUE if using InterpolatedFilterTable instead of precalculated exact m_FilterTable
+	unsigned m_SrcFilterLength;		// number of input samples necessary to cover the whole interpolating filter
+	// Upsampling:
+	// m_InputPeriod = 0x100000000LL/((FilterLength+1)*2)
+	// m_OutputPeriod = F_old/F_new*0x100000000LL/((FilterLength+1)*2)
+	// Upsampling:
+	// m_InputPeriod = F_new/F_old*0x100000000LL/((FilterLength+1)*2)
+	// m_OutputPeriod = 0x100000000LL/((FilterLength+1)*2)
+	// how much m_Phase is changed (incremented) for each input sample
+	unsigned __int32 m_InputPeriod;		// 0x100000000LL/SamplesInFilter
+	// how much m_Phase is changed (decremented) for each output sample
+	unsigned __int32 m_OutputPeriod;	// 0x100000000LL/SamplesInFilter*F_old/F_new
 
-	unsigned m_SamplesInFilter;
-	unsigned m_FilterArraySize;
+	// m_Phase is current fractional offset of the current input sample in the filter.
+	// Full 0x100000000LL range corresponds to full length of the filter
+	unsigned __int32 m_Phase;
+
+	// For upsampling, SamplesInFilter is (FilterLength+1)*2). By default FilterLength is 125
+	// For downsampling, SamplesInFilter is F_old/F_new(FilterLength+1)*2). By default FilterLength is 125
+	unsigned m_SamplesInFilter;		// minimum number of input samples needed to run the filter
+	unsigned m_FilterArraySize;		// size of m_FilterTable array = Number Of Filter Tables * m_SamplesInFilter
 	signed m_RationalResampleFraction;
-	unsigned m_FilterIndex;
+	unsigned m_FilterIndex;			// current index of filter in m_FilterTable
 
 };
 

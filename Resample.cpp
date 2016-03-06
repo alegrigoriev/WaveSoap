@@ -12,14 +12,12 @@
 CResampleContext::CResampleContext(CWaveSoapFrontDoc * pDoc,
 									UINT StatusStringId, UINT OperationNameId,
 									CWaveFile & SrcFile, CWaveFile &DstFile,
-									long OriginalSampleRate, long NewSampleRate,
-									int FilterLength,
-									BOOL KeepSamplesPerSec)
+									long NewSampleRate, int FilterLength, BOOL KeepSamplesPerSec)
 	: BaseClass(pDoc, StatusStringId, OperationNameId)
 {
 	InitSource(SrcFile, 0, LAST_SAMPLE, ALL_CHANNELS);
 	InitDestination(DstFile, 0, LAST_SAMPLE, ALL_CHANNELS, FALSE);
-	AddWaveProc(new CResampleFilter(OriginalSampleRate, NewSampleRate, FilterLength, SrcFile.Channels(), KeepSamplesPerSec));
+	AddWaveProc(new CResampleFilter(NewSampleRate, FilterLength, KeepSamplesPerSec));
 }
 
 void CResampleContext::DeInit()
