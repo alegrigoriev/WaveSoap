@@ -324,22 +324,33 @@ enum SiblingNotifyCode
 	SpectrumSectionDbScaleChange,	// set current scale in dB per pixel, double, is sent by the view to itself and to the ruler
 	SpectrumSectionScaleChange,		// change current scale, double 1 to 256
 	SpectrumSectionHorScrollTo,		// scroll to position, unclipped, sent by the ruler
+
+	ShowChannelPopupMenu,		// finds out channel number and whether it's minimized, and modifies the maximize/minimize command
 };
 
 struct NotifyViewsData
 {
 	int code;
 	union {
-		struct {
+		struct
+		{
 			double HorizontalScale;
 			double FirstSampleInView;
 			double TotalSamplesInView;
 			double TotalSamplesInExtent;    // adjusted for the reserved empty space after the end
 		} HorizontalScroll;
-		struct {
+		struct
+		{
 		} Amplitude;
-		struct {
+		struct
+		{
 		} Fft;
+		struct
+		{
+			UINT	NormalMenuId;
+			UINT	MinimizedMenuId;
+			POINT p;		// menu position in screen coordinates
+		} PopupMenu;
 	};
 };
 

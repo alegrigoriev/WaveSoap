@@ -21,7 +21,6 @@ protected:
 // Attributes
 public:
 	CWaveSoapFrontDoc* GetDocument() const;
-	virtual UINT GetPopupMenuID(CPoint point);
 
 	BOOL m_bShowNoiseThreshold;
 

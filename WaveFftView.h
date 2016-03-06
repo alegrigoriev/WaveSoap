@@ -38,7 +38,6 @@ protected:
 // Implementation
 protected:
 	virtual ~CWaveFftView();
-	virtual UINT GetPopupMenuID(CPoint point);
 #ifdef _DEBUG
 	virtual void AssertValid() const;
 	virtual void Dump(CDumpContext& dc) const;

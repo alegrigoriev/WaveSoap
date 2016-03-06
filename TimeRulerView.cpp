@@ -1361,16 +1361,23 @@ void CTimeRulerView::OnContextMenu(CWnd* /*pWnd*/, CPoint point)
 	// make sure window is active
 	GetParentFrame()->ActivateFrame();
 
-	CMenu menu;
-	CMenu* pPopup = NULL;
-
-	UINT uID = GetPopupMenuID(point);
-
-	if (uID != 0 && menu.LoadMenu(uID))
+	UINT uID = IDR_MENU_TIME_RULER;
+	if (m_PopupMenuHitTest & HitTestMarker)
 	{
-		pPopup = menu.GetSubMenu(0);
+		uID = IDR_MENU_TIME_RULER_MARKER;
+	}
+	else if (m_PopupMenuHitTest & (HitTestRegionBegin | HitTestRegionEnd))
+	{
+		uID = IDR_MENU_TIME_RULER_REGION;
 	}
 
+	CMenu menu;
+	if ( !menu.LoadMenu(uID))
+	{
+		return;
+	}
+
+	CMenu* pPopup = menu.GetSubMenu(0);
 	if(pPopup != NULL)
 	{
 		int Command = pPopup->TrackPopupMenu(
@@ -1386,26 +1393,6 @@ void CTimeRulerView::OnContextMenu(CWnd* /*pWnd*/, CPoint point)
 
 	m_PopupMenuHitTest = 0;
 	m_PopupMenuHit.Flags = 0;
-}
-
-UINT CTimeRulerView::GetPopupMenuID(CPoint point)
-{
-	// point is in screen coordinates
-	ScreenToClient( & point);
-	unsigned hit = HitTest(point);
-
-	if (hit & HitTestMarker)
-	{
-		return IDR_MENU_TIME_RULER_MARKER;
-	}
-	else if (hit & (HitTestRegionBegin | HitTestRegionEnd))
-	{
-		return IDR_MENU_TIME_RULER_REGION;
-	}
-	else
-	{
-		return IDR_MENU_TIME_RULER;
-	}
 }
 
 void CTimeRulerView::OnGotoMarker()

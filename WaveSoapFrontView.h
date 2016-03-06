@@ -185,7 +185,6 @@ public:
 #endif
 protected:
 
-	virtual UINT GetPopupMenuID(CPoint point);
 	// how many samples in the display point
 
 	void DrawHorizontalWithSelection(CDC * pDC,

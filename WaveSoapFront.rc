@@ -368,15 +368,6 @@ BEGIN
     END
 END
 
-IDR_POPUP_SCALED_SCROLL_VIEW MENU
-BEGIN
-    POPUP ""
-    BEGIN
-        MENUITEM "Zoom in\tGray +",             ID_VIEW_ZOOMIN
-        MENUITEM "Zoom out\tGray -",            ID_VIEW_ZOOMOUT
-    END
-END
-
 IDR_MENU_TIME_RULER MENU
 BEGIN
     POPUP " "
@@ -402,9 +393,9 @@ BEGIN
         MENUITEM "&Percents",                   ID_VIEW_AMPL_RULER_PERCENT
         MENUITEM "&dB",                         ID_VIEW_AMPL_RULER_DECIBELS
         MENUITEM SEPARATOR
-        MENUITEM "&Zoom In",                    ID_VIEW_ZOOMINVERT
-        MENUITEM "Zoom &Out",                   ID_VIEW_ZOOMOUTVERT
-        MENUITEM "Zoom Out &Full",              ID_VIEW_ZOOMVERT_NORMAL
+        MENUITEM "&Zoom In\tAlt+Up",            ID_VIEW_ZOOMINVERT
+        MENUITEM "Zoom &Out\tAlt+Down",         ID_VIEW_ZOOMOUTVERT
+        MENUITEM "Zoom Out &Full\tDbl Click",   ID_VIEW_ZOOMVERT_NORMAL
         MENUITEM "Minimize",                    ID_VIEW_MINIMIZE_0
     END
 END
@@ -413,9 +404,21 @@ IDR_MENU_FFT_RULER MENU
 BEGIN
     POPUP " "
     BEGIN
-        MENUITEM "&Zoom In",                    ID_VIEW_SS_ZOOMINVERT
-        MENUITEM "Zoom &Out",                   ID_VIEW_SS_ZOOMOUTVERT
-        MENUITEM "Zoom Out &Full",              ID_VIEW_SS_ZOOMVERT_NORMAL
+        MENUITEM "&Zoom In\tAlt+Up",            ID_VIEW_SS_ZOOMINVERT
+        MENUITEM "Zoom &Out\tAlt+Down",         ID_VIEW_SS_ZOOMOUTVERT
+        MENUITEM "Zoom Out &Full\tDbl Click",   ID_VIEW_SS_ZOOMVERT_NORMAL
+        POPUP "Number of frequency bins"
+        BEGIN
+            MENUITEM "&64",                         ID_FFT_BANDS_64
+            MENUITEM "&128",                        ID_FFT_BANDS_128
+            MENUITEM "&256",                        ID_FFT_BANDS_256
+            MENUITEM "&512",                        ID_FFT_BANDS_512
+            MENUITEM "102&4",                       ID_FFT_BANDS_1024
+            MENUITEM "20&48",                       ID_FFT_BANDS_2048
+            MENUITEM "40&96",                       ID_FFT_BANDS_4096
+            MENUITEM "&8192",                       ID_FFT_BANDS_8192
+        END
+        MENUITEM "Minimize",                    ID_VIEW_MINIMIZE_0
     END
 END
 
@@ -490,6 +493,7 @@ BEGIN
         MENUITEM "Zoom &Out Time\tNum -",       ID_VIEW_ZOOMOUTHOR2
         MENUITEM "Zoom In &Full\tCtrl+Num +",   ID_VIEW_ZOOMIN_HOR_FULL
         MENUITEM "Zoom To Selection\tShift+Num +", ID_VIEW_ZOOM_SELECTION
+        MENUITEM "Zoom Previous\tCtrl+Num -",   ID_VIEW_ZOOMPREVIOUS
         MENUITEM SEPARATOR
         MENUITEM "Zoom In Amplitude\tAlt+Up",   ID_VIEW_ZOOMINVERT
         MENUITEM "Zoom Out Amplitude\tAlt+Down", ID_VIEW_ZOOMOUTVERT
@@ -507,7 +511,6 @@ BEGIN
         MENUITEM "&Zoom In Time\tNum +",        ID_VIEW_ZOOMINHOR2
         MENUITEM "Zoom &Out Time\tNum -",       ID_VIEW_ZOOMOUTHOR2
         MENUITEM "Zoom In &Full\tCtrl+Num +",   ID_VIEW_ZOOMIN_HOR_FULL
-        MENUITEM "Zoom To Selection\tShift+Num +", ID_VIEW_ZOOM_SELECTION
         MENUITEM "Zoom Previous\tCtrl+Num -",   ID_VIEW_ZOOMPREVIOUS
         MENUITEM SEPARATOR
         MENUITEM "Zoom In Frequency\tAlt+Up",   ID_VIEW_ZOOMINVERT
@@ -530,6 +533,7 @@ BEGIN
             MENUITEM "Hamming",                     ID_FFT_WINDOW_HAMMING
             MENUITEM "Nuttall",                     ID_FFT_WINDOW_NUTTALL
         END
+        MENUITEM "Minimize",                    ID_VIEW_MINIMIZE_0
     END
 END
 
@@ -577,8 +581,8 @@ BEGIN
         MENUITEM "&Zoom In",                    ID_VIEW_SS_ZOOMINHOR2
         MENUITEM "Zoom &Out",                   ID_VIEW_SS_ZOOMOUTHOR2
         MENUITEM SEPARATOR
-        MENUITEM "Zoom In Frequency",           ID_VIEW_SS_ZOOMINVERT
-        MENUITEM "Zoom Out Frequency",          ID_VIEW_SS_ZOOMOUTVERT
+        MENUITEM "Zoom In Frequency\tAlt+Up",   ID_VIEW_SS_ZOOMINVERT
+        MENUITEM "Zoom Out Frequency\tAlt+Down", ID_VIEW_SS_ZOOMOUTVERT
         MENUITEM SEPARATOR
         POPUP "Number of frequency bins"
         BEGIN
@@ -601,6 +605,8 @@ BEGIN
         MENUITEM SEPARATOR
         MENUITEM "Hide",                        ID_VIEW_HIDE_SPECTRUMSECTION
         MENUITEM "Show &Crosshair Cursor",      ID_VIEW_SHOW_CROSSHAIR
+        MENUITEM SEPARATOR
+        MENUITEM "Minimize",                    ID_VIEW_MINIMIZE_0
     END
 END
 
@@ -865,6 +871,7 @@ BEGIN
     BEGIN
         MENUITEM "Zoom In",                     ID_VIEW_SS_ZOOMINHOR2
         MENUITEM "Zoom Out",                    ID_VIEW_SS_ZOOMOUTHOR2
+        MENUITEM "Zoom Out Full\tDbl Click",    ID__ZOOMNORMAL
     END
 END
 
@@ -911,8 +918,111 @@ BEGIN
         MENUITEM "Zoom &Out Time\tNum -",       ID_VIEW_ZOOMOUTHOR2
         MENUITEM "Zoom In &Full\tCtrl+Num +",   ID_VIEW_ZOOMIN_HOR_FULL
         MENUITEM "Zoom To Selection\tShift+Num +", ID_VIEW_ZOOM_SELECTION
+        MENUITEM "Zoom Previous\tCtrl+Num -",   ID_VIEW_ZOOMPREVIOUS
         MENUITEM SEPARATOR
         MENUITEM "Normal height",               ID_VIEW_MAXIMIZE_0
+    END
+END
+
+IDR_MENU_FFT_VIEW_MINIMIZED MENU
+BEGIN
+    POPUP " "
+    BEGIN
+        MENUITEM "&Marker...\tM",               ID_EDIT_WAVE_MARKER
+        MENUITEM "Paste\tCtrl+V",               ID_EDIT_PASTE
+        MENUITEM SEPARATOR
+        MENUITEM "&Zoom In Time\tNum +",        ID_VIEW_ZOOMINHOR2
+        MENUITEM "Zoom &Out Time\tNum -",       ID_VIEW_ZOOMOUTHOR2
+        MENUITEM "Zoom In &Full\tCtrl+Num +",   ID_VIEW_ZOOMIN_HOR_FULL
+        MENUITEM "Zoom Previous\tCtrl+Num -",   ID_VIEW_ZOOMPREVIOUS
+        MENUITEM SEPARATOR
+        MENUITEM "Normal height",               ID_VIEW_MAXIMIZE_0
+    END
+END
+
+IDR_MENU_FFT_RULER_MINIMIZED MENU
+BEGIN
+    POPUP " "
+    BEGIN
+        MENUITEM "Normal height",               ID_VIEW_MAXIMIZE_0
+    END
+END
+
+IDR_MENU_SPECTRUMSECTION_MINIMIZED MENU
+BEGIN
+    POPUP " "
+    BEGIN
+        MENUITEM "Db &Zoom In",                 ID_VIEW_SS_ZOOMINHOR2
+        MENUITEM "dB Zoom &Out",                ID_VIEW_SS_ZOOMOUTHOR2
+        MENUITEM SEPARATOR
+        POPUP "Number of frequency bins"
+        BEGIN
+            MENUITEM "64",                          ID_FFT_BANDS_64
+            MENUITEM "128",                         ID_FFT_BANDS_128
+            MENUITEM "256",                         ID_FFT_BANDS_256
+            MENUITEM "512",                         ID_FFT_BANDS_512
+            MENUITEM "1024",                        ID_FFT_BANDS_1024
+            MENUITEM "2048",                        ID_FFT_BANDS_2048
+            MENUITEM "4096",                        ID_FFT_BANDS_4096
+            MENUITEM "8192",                        ID_FFT_BANDS_8192
+        END
+        MENUITEM SEPARATOR
+        MENUITEM "Hide",                        ID_VIEW_HIDE_SPECTRUMSECTION
+        MENUITEM "Normal height",               ID_VIEW_MAXIMIZE_0
+    END
+END
+
+IDR_MENU_FFT_VIEW_SELECTION_MINIMIZED MENU
+BEGIN
+    POPUP " "
+    BEGIN
+        MENUITEM "&Marker...\tM",               ID_EDIT_WAVE_MARKER
+        MENUITEM "Paste\tCtrl+V",               ID_EDIT_PASTE
+        MENUITEM SEPARATOR
+        MENUITEM "&Zoom In Time\tNum +",        ID_VIEW_ZOOMINHOR2
+        MENUITEM "Zoom &Out Time\tNum -",       ID_VIEW_ZOOMOUTHOR2
+        MENUITEM "Zoom In &Full\tCtrl+Num +",   ID_VIEW_ZOOMIN_HOR_FULL
+        MENUITEM "Zoom To Selection\tShift+Num +", ID_VIEW_ZOOM_SELECTION
+        MENUITEM "Zoom Previous\tCtrl+Num -",   ID_VIEW_ZOOMPREVIOUS
+        MENUITEM SEPARATOR
+        MENUITEM "Normal height",               ID_VIEW_MAXIMIZE_0
+    END
+END
+
+IDR_MENU_FFT_VIEW_SELECTION MENU
+BEGIN
+    POPUP " "
+    BEGIN
+        MENUITEM "&Marker...\tM",               ID_EDIT_WAVE_MARKER
+        MENUITEM "Paste\tCtrl+V",               ID_EDIT_PASTE
+        MENUITEM SEPARATOR
+        MENUITEM "&Zoom In Time\tNum +",        ID_VIEW_ZOOMINHOR2
+        MENUITEM "Zoom &Out Time\tNum -",       ID_VIEW_ZOOMOUTHOR2
+        MENUITEM "Zoom In &Full\tCtrl+Num +",   ID_VIEW_ZOOMIN_HOR_FULL
+        MENUITEM "Zoom To Selection\tShift+Num +", ID_VIEW_ZOOM_SELECTION
+        MENUITEM "Zoom Previous\tCtrl+Num -",   ID_VIEW_ZOOMPREVIOUS
+        MENUITEM SEPARATOR
+        MENUITEM "Zoom In Frequency\tAlt+Up",   ID_VIEW_ZOOMINVERT
+        MENUITEM "Zoom Out Frequency\tAlt+Down", ID_VIEW_ZOOMOUTVERT
+        MENUITEM SEPARATOR
+        POPUP "Number of frequency bins"
+        BEGIN
+            MENUITEM "&64",                         ID_FFT_BANDS_64
+            MENUITEM "&128",                        ID_FFT_BANDS_128
+            MENUITEM "&256",                        ID_FFT_BANDS_256
+            MENUITEM "&512",                        ID_FFT_BANDS_512
+            MENUITEM "102&4",                       ID_FFT_BANDS_1024
+            MENUITEM "20&48",                       ID_FFT_BANDS_2048
+            MENUITEM "40&96",                       ID_FFT_BANDS_4096
+            MENUITEM "&8192",                       ID_FFT_BANDS_8192
+        END
+        POPUP "Windowing function type"
+        BEGIN
+            MENUITEM "Squared Sine (Hanning)",      ID_FFT_WINDOW_SQUARED_SINE
+            MENUITEM "Hamming",                     ID_FFT_WINDOW_HAMMING
+            MENUITEM "Nuttall",                     ID_FFT_WINDOW_NUTTALL
+        END
+        MENUITEM "Minimize",                    ID_VIEW_MINIMIZE_0
     END
 END
 

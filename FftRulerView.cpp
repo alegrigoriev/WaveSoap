@@ -141,12 +141,17 @@ void CFftRulerView::OnDraw(CDC* pDrawDC)
 		int ticks = 1;
 		for (step = 1; ticks = 2, step*ticks < nSampleUnits; step *= 5)
 		{
-			step *= 2;
 			if (step * 2 >= nSampleUnits)
 			{
 				ticks = 2;
 				break;
 			}
+			if (step * 5 >= nSampleUnits)
+			{
+				ticks = 5;
+				break;
+			}
+			step *= 2;
 			if (step * 5 >= nSampleUnits)
 			{
 				ticks = 5;
@@ -404,27 +409,11 @@ void CFftRulerView::OnContextMenu(CWnd* /*pWnd*/, CPoint point)
 	// make sure window is active
 	GetParentFrame()->ActivateFrame();
 
-	CMenu menu;
-	CMenu* pPopup = NULL;
+	NotifyViewsData notify = { 0 };
+	notify.PopupMenu.p = point;
+	notify.PopupMenu.NormalMenuId = IDR_MENU_FFT_RULER;
+	notify.PopupMenu.MinimizedMenuId = IDR_MENU_FFT_RULER_MINIMIZED;
 
-	UINT uID = GetPopupMenuID(point);
-
-	if (uID != 0 && menu.LoadMenu(uID))
-	{
-		pPopup = menu.GetSubMenu(0);
-	}
-
-	if(pPopup != NULL)
-	{
-		int Command = pPopup->TrackPopupMenu(
-											TPM_LEFTALIGN | TPM_RIGHTBUTTON | TPM_RETURNCMD,
-											point.x, point.y,
-											AfxGetMainWnd()); // use main window for cmds
-
-		if (0 != Command)
-		{
-			AfxGetMainWnd()->SendMessage(WM_COMMAND, Command & 0xFFFF, 0);
-		}
-	}
+	NotifySiblingViews(ShowChannelPopupMenu, &notify);
 }
 

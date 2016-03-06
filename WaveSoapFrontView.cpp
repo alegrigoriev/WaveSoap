@@ -2748,35 +2748,6 @@ void CWaveSoapViewBase::UpdateHorizontalExtents(NUMBER_OF_SAMPLES Length, int Wi
 	NotifySiblingViews(HorizontalExtentChanged, &data);
 }
 
-UINT CWaveSoapFrontView::GetPopupMenuID(CPoint point)
-{
-	// point is in screen coordinates
-	ScreenToClient( & point);
-	DWORD hit = ClientHitTest(point);
-	if (hit & VSHT_SELECTION)
-	{
-		if (hit & VSHT_CHANNEL_MINIMIZED)
-		{
-			return IDR_MENU_WAVE_VIEW_SELECTION_MINIMIZED;
-		}
-		else
-		{
-			return IDR_MENU_WAVE_VIEW_SELECTION;
-		}
-	}
-	else
-	{
-		if (hit & VSHT_CHANNEL_MINIMIZED)
-		{
-			return IDR_MENU_WAVE_VIEW_MINIMIZED;
-		}
-		else
-		{
-			return IDR_MENU_WAVE_VIEW;
-		}
-	}
-}
-
 void CWaveSoapViewBase::OnRButtonDown(UINT nFlags, CPoint point)
 {
 	// point is in client coordinates
@@ -3218,6 +3189,79 @@ afx_msg LRESULT CWaveSoapFrontView::OnUwmNotifyViews(WPARAM wParam, LPARAM lPara
 		// lParam points to double new vertical offset
 		SetNewAmplitudeOffset(*(double*) lParam);
 		break;
+
+	case ShowChannelPopupMenu:
+	{
+		NotifyViewsData * data = (NotifyViewsData *) lParam;
+
+		CPoint client(data->PopupMenu.p);
+		ScreenToClient(&client);
+		client.x = 0;
+
+		DWORD HitTest = ClientHitTest(client);
+
+		UINT uID = data->PopupMenu.NormalMenuId;
+
+		if ((HitTest & VSHT_CHANNEL_MINIMIZED)
+			&& data->PopupMenu.MinimizedMenuId != 0)
+		{
+			uID = data->PopupMenu.MinimizedMenuId;
+		}
+
+		CMenu menu;
+		if (uID == 0 || !menu.LoadMenu(uID))
+		{
+			break;
+		}
+
+		CMenu* pPopup = menu.GetSubMenu(0);
+		// modify "Minimize" menu item (or remove altogether)
+		if (pPopup == NULL)
+		{
+			break;
+		}
+
+		if (HitTest & VSHT_CHANNEL_MINIMIZED)
+		{
+			MENUITEMINFO info = { sizeof info, MIIM_ID };
+			info.wID = ID_VIEW_MAXIMIZE_0 + (HitTest & VSHT_CHANNEL_MASK);
+
+			pPopup->SetMenuItemInfoW(ID_VIEW_MAXIMIZE_0, &info, FALSE);
+		}
+		else if (GetDocument()->WaveChannels() >= 2)
+		{
+			MENUITEMINFO info = { sizeof info, MIIM_ID };
+			info.wID = ID_VIEW_MINIMIZE_0 + (HitTest & VSHT_CHANNEL_MASK);
+
+			pPopup->SetMenuItemInfoW(ID_VIEW_MINIMIZE_0, &info, FALSE);
+		}
+		else
+		{
+			// delete the "minimize" and the last separator before it
+			pPopup->RemoveMenu(ID_VIEW_MINIMIZE_0, MF_BYCOMMAND);
+			int count = pPopup->GetMenuItemCount();
+			MENUITEMINFO info = { sizeof info, MIIM_TYPE };
+			if (count > 2)
+			{
+				pPopup->GetMenuItemInfoW(count - 1, &info, TRUE);
+				if (info.fType & MFT_SEPARATOR)
+				{
+					pPopup->RemoveMenu(count - 1, MF_BYPOSITION);
+				}
+			}
+		}
+
+		int Command = pPopup->TrackPopupMenu(
+											TPM_LEFTALIGN | TPM_RIGHTBUTTON | TPM_RETURNCMD,
+											data->PopupMenu.p.x, data->PopupMenu.p.y,
+											AfxGetMainWnd()); // use main window for cmds
+
+		if (0 != Command)
+		{
+			AfxGetMainWnd()->SendMessage(WM_COMMAND, Command & 0xFFFF, 0);
+		}
+		break;
+	}
 	default:
 		return BaseClass::OnUwmNotifyViews(wParam, lParam);
 	}
@@ -3367,53 +3411,23 @@ void CWaveSoapFrontView::OnContextMenu(CWnd* /*pWnd*/, CPoint point)
 	// make sure window is active
 	GetParentFrame()->ActivateFrame();
 
-	CMenu menu;
-	CMenu* pPopup = NULL;
-
-	UINT uID = GetPopupMenuID(point);
-
-	if (uID != 0 && menu.LoadMenu(uID))
+	NotifyViewsData notify = { 0 };
+	notify.PopupMenu.p = point;
+	ScreenToClient(&point);
+	DWORD hit = ClientHitTest(point);
+	if (hit & VSHT_SELECTION)
 	{
-		pPopup = menu.GetSubMenu(0);
-	}
-
-	// modify "Minimize" menu item (or remove altogether)
-	CPoint client(point);
-	ScreenToClient(&client);
-
-	DWORD HitTest = ClientHitTest(client);
-
-	if (HitTest & VSHT_CHANNEL_MINIMIZED)
-	{
-		MENUITEMINFO info = {sizeof info, MIIM_ID};
-		info.wID = ID_VIEW_MAXIMIZE_0 + (HitTest & VSHT_CHANNEL_MASK);
-
-		pPopup->SetMenuItemInfoW(ID_VIEW_MAXIMIZE_0, &info, FALSE);
-	}
-	else if (GetDocument()->WaveChannels() >= 2)
-	{
-		MENUITEMINFO info = {sizeof info, MIIM_ID};
-		info.wID = ID_VIEW_MINIMIZE_0 + (HitTest & VSHT_CHANNEL_MASK);
-
-		pPopup->SetMenuItemInfoW(ID_VIEW_MINIMIZE_0, &info, FALSE);
+		notify.PopupMenu.NormalMenuId = IDR_MENU_WAVE_VIEW_SELECTION;
+		notify.PopupMenu.MinimizedMenuId = IDR_MENU_WAVE_VIEW_SELECTION_MINIMIZED;
 	}
 	else
 	{
-		// delete the "minimize" and the last separator before it
+		notify.PopupMenu.NormalMenuId = IDR_MENU_WAVE_VIEW;
+		notify.PopupMenu.MinimizedMenuId = IDR_MENU_WAVE_VIEW_MINIMIZED;
 	}
 
-	if(pPopup != NULL)
-	{
-		int Command = pPopup->TrackPopupMenu(
-											TPM_LEFTALIGN | TPM_RIGHTBUTTON | TPM_RETURNCMD,
-											point.x, point.y,
-											AfxGetMainWnd()); // use main window for cmds
+	NotifySiblingViews(ShowChannelPopupMenu, &notify);
 
-		if (0 != Command)
-		{
-			AfxGetMainWnd()->SendMessage(WM_COMMAND, Command & 0xFFFF, 0);
-		}
-	}
 }
 
 afx_msg LRESULT CWaveSoapViewBase::OnUwmNotifyViews(WPARAM wParam, LPARAM lParam)
