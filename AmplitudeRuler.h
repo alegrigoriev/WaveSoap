@@ -53,8 +53,6 @@ protected:
 	int m_MouseYOffsetForScroll;
 
 	NotifyChannelHeightsData m_Heights;
-	int m_InvalidAreaTop[MAX_NUMBER_OF_CHANNELS];
-	int m_InvalidAreaBottom[MAX_NUMBER_OF_CHANNELS];
 
 	void SetNewAmplitudeOffset(double offset);
 	enum eDrawMode
@@ -86,7 +84,6 @@ protected:
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 	afx_msg LRESULT OnUwmNotifyViews(WPARAM wParam, LPARAM lParam);
-	virtual BOOL PreCreateWindow(CREATESTRUCT& cs);
 public:
 	afx_msg BOOL OnEraseBkgnd(CDC* pDC);
 };

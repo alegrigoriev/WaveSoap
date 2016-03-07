@@ -30,8 +30,6 @@ CAmplitudeRuler::CAmplitudeRuler()
 	, m_MouseYOffsetForScroll(0)
 {
 	memzero(m_Heights);
-	memzero(m_InvalidAreaTop);
-	memzero(m_InvalidAreaBottom);
 }
 
 CAmplitudeRuler::~CAmplitudeRuler()
@@ -79,11 +77,15 @@ void CAmplitudeRuler::OnDraw(CDC* pDrawDC)
 		return;
 	}
 
-	memzero(m_InvalidAreaBottom);
-	memzero(m_InvalidAreaTop);
 	// Draw with double buffering
 	CRect cr;
 	GetClientRect(cr);
+
+	NUMBER_OF_CHANNELS nChannels = pDoc->WaveChannels();
+	if (0 == nChannels)
+	{
+		return;
+	}
 
 	CDC dc;
 	dc.CreateCompatibleDC(NULL);
@@ -96,15 +98,11 @@ void CAmplitudeRuler::OnDraw(CDC* pDrawDC)
 	CGdiObjectSave OldFont(pDC, pDC->SelectStockObject(ANSI_VAR_FONT));
 	CGdiObjectSave OldPen(pDC, pDC->SelectStockObject(BLACK_PEN));
 
-	CBrush bkgnd;
 	if (0) TRACE("SysColor(COLOR_WINDOW)=%X\n", GetSysColor(COLOR_WINDOW));
-	bkgnd.CreateSysColorBrush(COLOR_WINDOW);
 
 	pDC->SetTextAlign(TA_BOTTOM | TA_RIGHT);
 	pDC->SetTextColor(0x000000);   // black
 	pDC->SetBkMode(TRANSPARENT);
-
-	NUMBER_OF_CHANNELS nChannels = pDoc->WaveChannels();
 
 	for (int ch = 0; ch < nChannels; ch++)
 	{
@@ -144,8 +142,9 @@ void CAmplitudeRuler::OnDraw(CDC* pDrawDC)
 
 		if (ch < nChannels - 1)
 		{
-			pDC->MoveTo(0, chr.bottom);
-			pDC->LineTo(cr.right, chr.bottom);
+			pDC->MoveTo(0, clipr.bottom);
+			pDC->LineTo(cr.right, clipr.bottom);
+			clipr.bottom++;
 		}
 		pDrawDC->BitBlt(clipr.left, clipr.top, clipr.Width(), clipr.Height(), pDC, clipr.left, clipr.top, SRCCOPY);
 	}
@@ -476,8 +475,6 @@ void CAmplitudeRuler::SetNewAmplitudeOffset(double offset)
 	CRect cr;
 	GetClientRect(cr);
 	CWindowDC dc(this);
-	CBrush bk_brush;
-	bk_brush.CreateSysColorBrush(COLOR_WINDOW);
 
 	for (int ch = 0; ch < nChannels; ch++)
 	{
@@ -499,14 +496,12 @@ void CAmplitudeRuler::SetNewAmplitudeOffset(double offset)
 		if (ToScroll > 0)
 		{
 			// down
-			m_InvalidAreaTop[ch] += ToScroll;
 			ToFillBkgnd.bottom = ToFillBkgnd.top + ToScroll;
 
 		}
 		else if (ToScroll < 0)
 		{
 			// up
-			m_InvalidAreaBottom[ch] -= ToScroll;
 			ToFillBkgnd.top = ToFillBkgnd.bottom + ToScroll;
 		}
 		else
@@ -888,15 +883,6 @@ afx_msg LRESULT CSpectrumSectionRuler::OnUwmNotifyViews(WPARAM wParam, LPARAM lP
 
 	return 0;
 }
-
-BOOL CAmplitudeRuler::PreCreateWindow(CREATESTRUCT& cs)
-{
-	cs.lpszClass = AfxRegisterWndClass(CS_VREDRAW | CS_HREDRAW | CS_DBLCLKS, NULL,
-										NULL, NULL);
-
-	return CVerticalRuler::PreCreateWindow(cs);
-}
-
 
 BOOL CAmplitudeRuler::OnEraseBkgnd(CDC* pDC)
 {
