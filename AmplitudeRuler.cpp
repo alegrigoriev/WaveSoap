@@ -53,6 +53,7 @@ BEGIN_MESSAGE_MAP(CAmplitudeRuler, BaseClass)
 	ON_WM_CAPTURECHANGED()
 	//}}AFX_MSG_MAP
 	ON_MESSAGE(UWM_NOTIFY_VIEWS, &CAmplitudeRuler::OnUwmNotifyViews)
+	ON_WM_ERASEBKGND()
 END_MESSAGE_MAP()
 
 /////////////////////////////////////////////////////////////////////////////
@@ -101,20 +102,12 @@ void CAmplitudeRuler::OnDraw(CDC* pDrawDC)
 
 	pDC->SetTextAlign(TA_BOTTOM | TA_RIGHT);
 	pDC->SetTextColor(0x000000);   // black
-	pDC->FillRect(cr, &bkgnd);
 	pDC->SetBkMode(TRANSPARENT);
 
 	NUMBER_OF_CHANNELS nChannels = pDoc->WaveChannels();
 
 	for (int ch = 0; ch < nChannels; ch++)
 	{
-		if ( m_Heights.ch[ch].minimized)
-		{
-			continue;
-		}
-
-		if (0) TRACE("CAmplitudeRuler::OnDraw: ch %d zero pos =%d\n",
-					ch, (int)WaveCalculate(m_WaveOffsetY, m_VerticalScale, m_Heights.ch[ch].top, m_Heights.ch[ch].bottom)(0.));
 		CRect chr;
 		// for all channels, the rectangle is of the same height
 		chr.top = m_Heights.ch[ch].top;
@@ -129,17 +122,24 @@ void CAmplitudeRuler::OnDraw(CDC* pDrawDC)
 		clipr.left = cr.left;
 		clipr.right = cr.right;
 
-		switch (m_DrawMode)
+		pDC->FillSolidRect(clipr, GetSysColor(COLOR_WINDOW));
+
+		if (!m_Heights.ch[ch].minimized)
 		{
-		case PercentView:
-			DrawChannelPercents(pDC, chr, clipr);
-			break;
-		case DecibelView:
-			DrawChannelDecibels(pDC, chr, clipr);
-			break;
-		default:
-			DrawChannelSamples(pDC, chr, clipr);
-			break;
+			if (0) TRACE("CAmplitudeRuler::OnDraw: ch %d zero pos =%d\n",
+				ch, (int)WaveCalculate(m_WaveOffsetY, m_VerticalScale, m_Heights.ch[ch].top, m_Heights.ch[ch].bottom)(0.));
+			switch (m_DrawMode)
+			{
+			case PercentView:
+				DrawChannelPercents(pDC, chr, clipr);
+				break;
+			case DecibelView:
+				DrawChannelDecibels(pDC, chr, clipr);
+				break;
+			default:
+				DrawChannelSamples(pDC, chr, clipr);
+				break;
+			}
 		}
 
 		if (ch < nChannels - 1)
@@ -147,8 +147,8 @@ void CAmplitudeRuler::OnDraw(CDC* pDrawDC)
 			pDC->MoveTo(0, chr.bottom);
 			pDC->LineTo(cr.right, chr.bottom);
 		}
+		pDrawDC->BitBlt(clipr.left, clipr.top, clipr.Width(), clipr.Height(), pDC, clipr.left, clipr.top, SRCCOPY);
 	}
-	pDrawDC->BitBlt(0, 0, cr.Width(), cr.Height(), pDC, 0, 0, SRCCOPY);
 }
 
 void CAmplitudeRuler::DrawChannelSamples(CDC * pDC, CRect const & chr, CRect const & clipr)
@@ -469,6 +469,9 @@ void CAmplitudeRuler::SetNewAmplitudeOffset(double offset)
 	int nChannels = pDoc->WaveChannels();
 	CRect cr;
 	GetClientRect(cr);
+	CWindowDC dc(this);
+	CBrush bk_brush;
+	bk_brush.CreateSysColorBrush(COLOR_WINDOW);
 
 	for (int ch = 0; ch < nChannels; ch++)
 	{
@@ -485,45 +488,31 @@ void CAmplitudeRuler::SetNewAmplitudeOffset(double offset)
 
 		CRect ClipRect(cr.left, m_Heights.ch[ch].clip_top, cr.right, m_Heights.ch[ch].clip_bottom);
 		CRect ScrollRect(ClipRect);
-		ScrollRect.top += m_InvalidAreaTop[ch];
-		ScrollRect.bottom -= m_InvalidAreaBottom[ch];
+
+		CRect ToFillBkgnd(ScrollRect);
 		if (ToScroll > 0)
 		{
 			// down
 			m_InvalidAreaTop[ch] += ToScroll;
-			ScrollRect.bottom -= ToScroll;
-			if (ScrollRect.Height() <= 0)
-			{
-//                InvalidateRect(ClipRect);
-				continue;
-			}
-			CRect ToInvalidate(cr.left, ScrollRect.top, cr.right, ScrollRect.top + ToScroll);
+			ToFillBkgnd.bottom = ToFillBkgnd.top + ToScroll;
 
-			ScrollWindowEx(0, ToScroll, ScrollRect, ClipRect, NULL, NULL, 0);
-//            InvalidateRect(ToInvalidate);
 		}
 		else if (ToScroll < 0)
 		{
 			// up
 			m_InvalidAreaBottom[ch] -= ToScroll;
-			ScrollRect.top -= ToScroll;
-			if (ScrollRect.Height() <= 0)
-			{
-				InvalidateRect(ClipRect, FALSE);
-				continue;
-			}
-			CRect ToInvalidate(cr.left, ScrollRect.top, cr.right, ScrollRect.top + ToScroll);
-
-			ScrollWindowEx(0, ToScroll, ScrollRect, ClipRect, NULL, NULL, 0);
-			InvalidateRect(ToInvalidate, TRUE);
+			ToFillBkgnd.top = ToFillBkgnd.bottom + ToScroll;
 		}
 		else
 		{
 			continue;
 		}
+		ScrollWindow(0, ToScroll, ScrollRect, ClipRect);
+		dc.FillSolidRect(ToFillBkgnd, GetSysColor(COLOR_WINDOW));
 	}
 	m_WaveOffsetY = offset;
-	Invalidate(TRUE);
+	// make it redraw the whole window without erasing the background
+	Invalidate(FALSE);
 }
 
 void CAmplitudeRuler::OnCaptureChanged(CWnd *pWnd)
@@ -838,7 +827,7 @@ void CSpectrumSectionRuler::HorizontalScrollTo(double DbOffset)
 	m_DbOffset = DbOffset;
 
 	//ScrollWindow(-ScrollPixels, 0);
-	Invalidate(TRUE);
+	Invalidate(FALSE);
 }
 
 void CSpectrumSectionRuler::OnContextMenu(CWnd* /*pWnd*/, CPoint point)
@@ -892,4 +881,19 @@ afx_msg LRESULT CSpectrumSectionRuler::OnUwmNotifyViews(WPARAM wParam, LPARAM lP
 	}
 
 	return 0;
+}
+
+BOOL CAmplitudeRuler::PreCreateWindow(CREATESTRUCT& cs)
+{
+	cs.lpszClass = AfxRegisterWndClass(CS_VREDRAW | CS_HREDRAW | CS_DBLCLKS, NULL,
+										NULL, NULL);
+
+	return CVerticalRuler::PreCreateWindow(cs);
+}
+
+
+BOOL CAmplitudeRuler::OnEraseBkgnd(CDC* pDC)
+{
+	// TODO: Add your message handler code here and/or call default
+	return TRUE;
 }

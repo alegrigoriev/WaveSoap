@@ -84,6 +84,9 @@ protected:
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 	afx_msg LRESULT OnUwmNotifyViews(WPARAM wParam, LPARAM lParam);
+	virtual BOOL PreCreateWindow(CREATESTRUCT& cs);
+public:
+	afx_msg BOOL OnEraseBkgnd(CDC* pDC);
 };
 
 #ifndef _DEBUG  // debug version in AmplitudeRuler.cpp
