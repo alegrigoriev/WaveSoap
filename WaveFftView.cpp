@@ -1250,14 +1250,6 @@ void CWaveFftView::OnViewZoomOutVert()
 
 void CWaveFftView::SetVerticalScale(double NewVerticalScale)
 {
-	// correct the offset, if necessary
-	// find max and min offset for this scale
-	m_VerticalScale = NewVerticalScale;
-
-	m_FirstbandVisible = AdjustOffset(m_FirstbandVisible);
-
-	Invalidate(TRUE);
-
 	NotifySiblingViews(FftVerticalScaleChanged, &NewVerticalScale);
 }
 
@@ -2030,6 +2022,15 @@ afx_msg LRESULT CWaveFftView::OnUwmNotifyViews(WPARAM wParam, LPARAM lParam)
 		break;
 	case FftOffsetChanged:
 		SetNewFftOffset(*(double*) lParam);
+		break;
+	case FftVerticalScaleChanged:
+		// correct the offset, if necessary
+		// find max and min offset for this scale
+		m_VerticalScale = *(double*)lParam;
+
+		m_FirstbandVisible = AdjustOffset(m_FirstbandVisible);
+
+		Invalidate(TRUE);
 		break;
 	default:
 		return BaseClass::OnUwmNotifyViews(wParam, lParam);

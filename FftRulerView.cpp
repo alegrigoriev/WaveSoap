@@ -28,8 +28,6 @@ CFftRulerView::CFftRulerView()
 	, m_FftOrder(1024)
 {
 	memzero(m_Heights);
-	memzero(m_InvalidAreaTop);
-	memzero(m_InvalidAreaBottom);
 }
 
 CFftRulerView::~CFftRulerView()
@@ -44,6 +42,7 @@ BEGIN_MESSAGE_MAP(CFftRulerView, CVerticalRuler)
 	ON_WM_CAPTURECHANGED()
 	//}}AFX_MSG_MAP
 	ON_MESSAGE(UWM_NOTIFY_VIEWS, &CFftRulerView::OnUwmNotifyViews)
+	ON_WM_ERASEBKGND()
 END_MESSAGE_MAP()
 
 /////////////////////////////////////////////////////////////////////////////
@@ -72,8 +71,7 @@ void CFftRulerView::OnDraw(CDC* pDrawDC)
 	CRect cr;
 	GetClientRect(cr);
 
-	memzero(m_InvalidAreaBottom);
-	memzero(m_InvalidAreaTop);
+	// Draw with double buffering
 	int nVertStep = GetSystemMetrics(SM_CYMENU);
 
 	NUMBER_OF_CHANNELS nChannels = pDoc->WaveChannels();
@@ -93,10 +91,7 @@ void CFftRulerView::OnDraw(CDC* pDrawDC)
 	CGdiObjectSave OldFont(pDC, pDC->SelectStockObject(ANSI_VAR_FONT));
 	CGdiObjectSave OldPen(pDC, pDC->SelectStockObject(BLACK_PEN));
 
-	CBrush bkgnd;
-	if (1) TRACE("SysColor(COLOR_WINDOW)=%X\n", GetSysColor(COLOR_WINDOW));
-	bkgnd.CreateSysColorBrush(COLOR_WINDOW);
-	pDC->FillRect(cr, &bkgnd);
+	if (0) TRACE("SysColor(COLOR_WINDOW)=%X\n", GetSysColor(COLOR_WINDOW));
 
 	TEXTMETRIC tm;
 	pDC->GetTextMetrics( & tm);
@@ -108,99 +103,102 @@ void CFftRulerView::OnDraw(CDC* pDrawDC)
 
 	for (int ch = 0; ch < nChannels; ch++)
 	{
-		if (m_Heights.ch[ch].minimized)
+		CRect clipr;    // channel clip rect
+		// for all channels, the rectangle is of the same height
+		clipr.top = m_Heights.ch[ch].clip_top;
+		clipr.bottom = m_Heights.ch[ch].clip_bottom;
+		clipr.left = cr.left;
+		clipr.right = cr.right;
+
+		pDC->FillSolidRect(clipr, GetSysColor(COLOR_WINDOW));
+
+		if (!m_Heights.ch[ch].minimized)
 		{
-			continue;
-		}
+			// if all the chart was drawn, how many scans it would have:
+			int TotalRows = int(m_Heights.NominalChannelHeight * m_VerticalScale);
 
-		int ClipHigh = m_Heights.ch[ch].clip_bottom;
-		int ClipLow = m_Heights.ch[ch].clip_top;
-
-		// if all the chart was drawn, how many scans it would have:
-		int TotalRows = int(m_Heights.NominalChannelHeight * m_VerticalScale);
-
-		if (0 == TotalRows)
-		{
-			continue;
-		}
-
-		int LastFftSample = int(m_FftOrder - m_FirstbandVisible);
-		int FirstFftSample = LastFftSample + (-m_Heights.NominalChannelHeight * m_FftOrder) / TotalRows;
-		if (FirstFftSample < 0)
-		{
-			LastFftSample -= FirstFftSample;
-			FirstFftSample = 0;
-		}
-
-		//int FirstRowInView = FirstFftSample * TotalRows / pMasterView->m_FftOrder;
-		//int FftSamplesInView = LastFftSample - FirstFftSample + 1;
-
-		int nSampleUnits = int(nVertStep * pDoc->WaveSampleRate() / 2 / (m_Heights.NominalChannelHeight * m_VerticalScale));
-		// round sample units to 10 or 5
-		int step;
-		int ticks = 1;
-		for (step = 1; ticks = 2, step*ticks < nSampleUnits; step *= 5)
-		{
-			if (step * 2 >= nSampleUnits)
+			if (0 == TotalRows)
 			{
-				ticks = 2;
-				break;
-			}
-			if (step * 5 >= nSampleUnits)
-			{
-				ticks = 5;
-				break;
-			}
-			step *= 2;
-			if (step * 5 >= nSampleUnits)
-			{
-				ticks = 5;
-				break;
-			}
-		}
-
-		ClipLow += tm.tmHeight / 2;
-		ClipHigh -= tm.tmHeight / 2;
-
-		// round to previous multiple of step
-		int yLow = int(m_FirstbandVisible * 0.5 * pDoc->WaveSampleRate() / m_FftOrder);
-		// round to the next or current multiple of step
-		yLow += ((step*ticks)*(pDoc->WaveSampleRate()/ (step*ticks) +1)-yLow) % (step*ticks);
-
-		int yHigh = int(yLow + 0.5 * pDoc->WaveSampleRate() / m_VerticalScale);
-		yHigh -= ((step*ticks)*(pDoc->WaveSampleRate() / (step*ticks) + 1) +yHigh) % (step*ticks);
-		ASSERT(yLow <= yHigh);
-
-		for (int y = yLow, j = 0; y <= yHigh; y += step, j++)
-		{
-			// y is frequency
-			double band = double(y) / (0.5 * pDoc->WaveSampleRate())
-						* m_FftOrder;
-			int yDev= m_Heights.ch[ch].clip_bottom - (int)fround((band - m_FirstbandVisible) / m_FftOrder * m_Heights.NominalChannelHeight * m_VerticalScale);
-
-			if (yDev >= ClipLow
-				&& yDev < ClipHigh)
-			{
-				pDC->MoveTo(cr.right - 3, yDev);
-				pDC->LineTo(cr.right, yDev);
+				continue;
 			}
 
-			if (0 == j % ticks
-				&& yDev - tm.tmHeight/2 >= ClipLow
-				&& yDev + tm.tmHeight/2 <= ClipHigh)
+			int LastFftSample = int(m_FftOrder - m_FirstbandVisible);
+			int FirstFftSample = LastFftSample + (-m_Heights.NominalChannelHeight * m_FftOrder) / TotalRows;
+			if (FirstFftSample < 0)
 			{
-				CString s = LtoaCS(y);
-				pDC->TextOut(cr.right - 3, yDev + tm.tmHeight / 2, s);
+				LastFftSample -= FirstFftSample;
+				FirstFftSample = 0;
 			}
+
+			//int FirstRowInView = FirstFftSample * TotalRows / pMasterView->m_FftOrder;
+			//int FftSamplesInView = LastFftSample - FirstFftSample + 1;
+
+			int nSampleUnits = int(nVertStep * pDoc->WaveSampleRate() / 2 / (m_Heights.NominalChannelHeight * m_VerticalScale));
+			// round sample units to 10 or 5
+			int step;
+			int ticks = 1;
+			for (step = 1; ticks = 2, step*ticks < nSampleUnits; step *= 5)
+			{
+				if (step * 2 >= nSampleUnits)
+				{
+					ticks = 2;
+					break;
+				}
+				if (step * 5 >= nSampleUnits)
+				{
+					ticks = 5;
+					break;
+				}
+				step *= 2;
+				if (step * 5 >= nSampleUnits)
+				{
+					ticks = 5;
+					break;
+				}
+			}
+
+			// round to previous multiple of step
+			long F_low = int(m_FirstbandVisible * 0.5 * pDoc->WaveSampleRate() / m_FftOrder);
+			// round to the next or current multiple of step
+			F_low -= F_low % (step*ticks);
+
+			for (long F = F_low, j = 0; ; F += step, j++)
+			{
+				// F is frequency
+				double band = double(F) / (0.5 * pDoc->WaveSampleRate())
+							* m_FftOrder;
+				int yDev = m_Heights.ch[ch].clip_bottom - (int)fround((band - m_FirstbandVisible) / m_FftOrder * m_Heights.NominalChannelHeight * m_VerticalScale);
+
+				if (yDev < clipr.top)
+				{
+					break;
+				}
+
+				if (yDev < clipr.bottom)
+				{
+					pDC->MoveTo(cr.right - 3, yDev);
+					pDC->LineTo(cr.right, yDev);
+				}
+
+				if (0 == j % ticks
+					&& yDev - tm.tmHeight / 2 > clipr.top
+					&& yDev + tm.tmHeight / 2 <= clipr.bottom)
+				{
+					CString s = LtoaCS(F);
+					pDC->TextOut(cr.right - 3, yDev + tm.tmHeight / 2, s);
+				}
+			}
+
 		}
 
 		if (ch != nChannels - 1)
 		{
-			pDC->MoveTo(0, m_Heights.ch[ch].clip_bottom);
-			pDC->LineTo(cr.right, m_Heights.ch[ch].clip_bottom);
+			pDC->MoveTo(0, clipr.bottom);
+			pDC->LineTo(cr.right, clipr.bottom);
+			clipr.bottom++;
 		}
+		pDrawDC->BitBlt(clipr.left, clipr.top, clipr.Width(), clipr.Height(), pDC, clipr.left, clipr.top, SRCCOPY);
 	}
-	pDrawDC->BitBlt(0, 0, cr.Width(), cr.Height(), pDC, 0, 0, SRCCOPY);
 }
 
 int CFftRulerView::CalculateWidth()
@@ -225,8 +223,9 @@ void CFftRulerView::OnUpdate( CView* /*pSender*/, LPARAM lHint, CObject* /*pHint
 void CFftRulerView::OnLButtonDblClk(UINT nFlags, CPoint point)
 {
 	CVerticalRuler::OnLButtonDblClk(nFlags, point);
+	double one1 = 1.;
 	// set default scale
-	AfxGetMainWnd()->SendMessage(WM_COMMAND, ID_VIEW_SS_ZOOMVERT_NORMAL);
+	NotifySiblingViews(FftVerticalScaleChanged, &one1);
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -279,6 +278,7 @@ void CFftRulerView::SetNewFftOffset(double first_band)
 	int nChannels = pDoc->WaveChannels();
 	CRect cr;
 	GetClientRect(cr);
+	CWindowDC dc(this);
 
 	long OldOffsetPixels = long(m_FirstbandVisible * int(m_VerticalScale * m_Heights.NominalChannelHeight) / m_FftOrder);
 	long NewOffsetPixels = long(first_band * int(m_VerticalScale * m_Heights.NominalChannelHeight) / m_FftOrder);
@@ -296,44 +296,27 @@ void CFftRulerView::SetNewFftOffset(double first_band)
 
 		CRect ClipRect(cr.left, m_Heights.ch[ch].clip_top, cr.right, m_Heights.ch[ch].clip_bottom);
 		CRect ScrollRect(ClipRect);
-		ScrollRect.top += m_InvalidAreaTop[ch];
-		ScrollRect.bottom -= m_InvalidAreaBottom[ch];
+		CRect ToFillBkgnd(ScrollRect);
+
 		if (ToScroll > 0)
 		{
 			// down
-			m_InvalidAreaTop[ch] += ToScroll;
-			ScrollRect.bottom -= ToScroll;
-			if (ScrollRect.Height() <= 0)
-			{
-//                InvalidateRect(ClipRect);
-				continue;
-			}
-			CRect ToInvalidate(cr.left, ScrollRect.top, cr.right, ScrollRect.top + ToScroll);
-
-			ScrollWindowEx(0, ToScroll, ScrollRect, ClipRect, NULL, NULL, 0);
-//            InvalidateRect(ToInvalidate);
+			ToFillBkgnd.bottom = ToFillBkgnd.top + ToScroll;
 		}
 		else if (ToScroll < 0)
 		{
 			// up
-			m_InvalidAreaBottom[ch] -= ToScroll;
-			ScrollRect.top -= ToScroll;
-			if (ScrollRect.Height() <= 0)
-			{
-//                InvalidateRect(ClipRect, FALSE);
-				continue;
-			}
-			CRect ToInvalidate(cr.left, ScrollRect.top, cr.right, ScrollRect.top + ToScroll);
-
-			ScrollWindowEx(0, ToScroll, ScrollRect, ClipRect, NULL, NULL, 0);
-//            InvalidateRect(ToInvalidate, FALSE);
+			ToFillBkgnd.top = ToFillBkgnd.bottom + ToScroll;
 		}
 		else
 		{
 			continue;
 		}
+		ScrollWindow(0, ToScroll, ScrollRect, ClipRect);
+		dc.FillSolidRect(ToFillBkgnd, GetSysColor(COLOR_WINDOW));
 	}
 	m_FirstbandVisible = first_band;
+	// make it redraw the whole window without erasing the background
 	Invalidate(FALSE);
 }
 
@@ -417,3 +400,11 @@ void CFftRulerView::OnContextMenu(CWnd* /*pWnd*/, CPoint point)
 	NotifySiblingViews(ShowChannelPopupMenu, &notify);
 }
 
+
+
+BOOL CFftRulerView::OnEraseBkgnd(CDC* pDC)
+{
+	// No actual erase required
+
+	return TRUE;
+}

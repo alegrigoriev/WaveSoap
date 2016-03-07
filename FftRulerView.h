@@ -50,9 +50,6 @@ protected:
 	double m_FftOffsetBeforeScroll;
 	int m_MouseYOffsetForScroll;
 
-	int m_InvalidAreaTop[MAX_NUMBER_OF_CHANNELS];
-	int m_InvalidAreaBottom[MAX_NUMBER_OF_CHANNELS];
-
 	double AdjustOffset(double offset) const;
 	void SetNewFftOffset(double first_band);
 
@@ -66,6 +63,8 @@ protected:
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 	afx_msg LRESULT OnUwmNotifyViews(WPARAM wParam, LPARAM lParam);
+public:
+	afx_msg BOOL OnEraseBkgnd(CDC* pDC);
 };
 
 #ifndef _DEBUG  // debug version in FftRulerView.cpp
