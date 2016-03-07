@@ -213,24 +213,21 @@ void CAmplitudeRuler::DrawChannelSamples(CDC * pDC, CRect const & chr, CRect con
 	}
 }
 
-void CAmplitudeRuler::DrawChannelPercents(CDC * pDC, CRect const & chr, CRect const & clipr)
+void CAmplitudeRuler::DrawChannelPercents(CDC * pDC, CRect const & ChannelRect, CRect const & clipr)
 {
 	TEXTMETRIC tm;
 	pDC->GetTextMetrics( & tm);
 
-	int nVertStep = GetSystemMetrics(SM_CYMENU);
-
-	int nHeight = chr.Height();
-
-	int ClipHigh = clipr.bottom - tm.tmHeight / 2;
-	int ClipLow = clipr.top + tm.tmHeight / 2;
+	int ClipHigh = clipr.bottom - (tm.tmHeight + 1) / 2;
+	int ClipLow = clipr.top + (tm.tmHeight + 1) / 2;
 
 	if (ClipHigh <= ClipLow)
 	{
 		return;
 	}
 
-	double nSampleUnits = nVertStep * 200. / (nHeight * m_VerticalScale);
+	// this is minimum delta in tenths of percent between two text labels
+	int nSampleUnits = int(GetSystemMetrics(SM_CYMENU) * 200 / (ChannelRect.Height() * m_VerticalScale));
 
 	// round sample units to 10 or 5
 	int step;
@@ -248,13 +245,13 @@ void CAmplitudeRuler::DrawChannelPercents(CDC * pDC, CRect const & chr, CRect co
 		}
 	}
 
-	WaveCalculate WaveToY(m_WaveOffsetY, m_VerticalScale, chr.top, chr.bottom);
+	WaveCalculate WaveToY(m_WaveOffsetY, m_VerticalScale, ChannelRect.top, ChannelRect.bottom);
 
-	int yLow = WaveToY.ConvertToSample(ClipHigh) * 100 / 32768;
+	int yLow = int(WaveToY.ConvertToDoubleSample(ClipHigh) * 100);
 	// round to the next multiple of step
 	yLow += (step * 0x10000 - yLow) % step;
 
-	int yHigh = WaveToY.ConvertToSample(ClipLow) * 100 / 32768;
+	int yHigh = int(WaveToY.ConvertToDoubleSample(ClipLow) * 100);
 
 	yHigh -= (step * 0x10000 + yHigh) % step;
 
@@ -267,16 +264,15 @@ void CAmplitudeRuler::DrawChannelPercents(CDC * pDC, CRect const & chr, CRect co
 			if (TRACE_DRAWING) TRACE("CAmplitudeRuler Zero pos=%d\n", yDev);
 		}
 
-		pDC->MoveTo(chr.right - 3, yDev);
-		pDC->LineTo(chr.right, yDev);
+		pDC->MoveTo(ChannelRect.right - 3, yDev);
+		pDC->LineTo(ChannelRect.right, yDev);
 		CString s;
 		s.Format(_T("%d%%"), y);
-
-		pDC->TextOut(chr.right - 3, yDev + tm.tmHeight / 2, s);
+		pDC->TextOut(ChannelRect.right - 3, yDev + tm.tmHeight / 2, s);
 	}
 }
 
-void CAmplitudeRuler::DrawChannelDecibels(CDC * pDC, CRect const & chr, CRect const & clipr)
+void CAmplitudeRuler::DrawChannelDecibels(CDC * pDC, CRect const & ChannelRect, CRect const & clipr)
 {
 	// decibels are drawn with 1.5 dB step
 	// if there is not enough space to draw next 2*step, it doubles the step
@@ -291,13 +287,15 @@ void CAmplitudeRuler::DrawChannelDecibels(CDC * pDC, CRect const & chr, CRect co
 		return;
 	}
 
-	double nVertStep = -GetSystemMetrics(SM_CYMENU) / (m_VerticalScale);// FIXME
+	// this is minimum delta in value units (corresponding to -1...1 range) between two text labels
+	// it is twice menu height
+	double nVertStep = GetSystemMetrics(SM_CYMENU) * 2 / (ChannelRect.Height() * m_VerticalScale);
 
-	WaveCalculate WaveToY(m_WaveOffsetY, m_VerticalScale, chr.top, chr.bottom);
+	WaveCalculate WaveToY(m_WaveOffsetY, m_VerticalScale, ChannelRect.top, ChannelRect.bottom);
 
-	int yLow = WaveToY.ConvertToSample(ClipHigh);
+	double yLow = WaveToY.ConvertToDoubleSample(ClipHigh);
 
-	int yHigh = WaveToY.ConvertToSample(ClipLow);
+	double yHigh = WaveToY.ConvertToDoubleSample(ClipLow);
 
 	ASSERT(yLow <= yHigh);
 
@@ -305,12 +303,12 @@ void CAmplitudeRuler::DrawChannelDecibels(CDC * pDC, CRect const & chr, CRect co
 	double DbStep = -1.5;
 
 	double CurrDb = -1.5;
-	double CurrVal = 27570.836;
+	double CurrVal = 0.841395141;
 
-	while (CurrDb > -120.)
+	while (CurrDb > -140.)
 	{
 		double yDev1 = CurrVal;
-		if (yDev1 < nVertStep)
+		if (yDev1 * 2 < nVertStep)
 		{
 			break;  // can't draw anymore
 		}
@@ -338,18 +336,18 @@ void CAmplitudeRuler::DrawChannelDecibels(CDC * pDC, CRect const & chr, CRect co
 		{
 			int yDev = (int)WaveToY(CurrVal);
 
-			pDC->MoveTo(chr.right - 3, yDev);
-			pDC->LineTo(chr.right, yDev);
+			pDC->MoveTo(ChannelRect.right - 3, yDev);
+			pDC->LineTo(ChannelRect.right, yDev);
 
-			pDC->TextOut(chr.right - 3, yDev + tm.tmHeight / 2, s);
+			pDC->TextOut(ChannelRect.right - 3, yDev + tm.tmHeight / 2, s);
 		}
 		if (-CurrVal >= yLow && -CurrVal <= yHigh)
 		{
 			int yDev = (int)WaveToY(-CurrVal);
-			pDC->MoveTo(chr.right - 3, yDev);
-			pDC->LineTo(chr.right, yDev);
+			pDC->MoveTo(ChannelRect.right - 3, yDev);
+			pDC->LineTo(ChannelRect.right, yDev);
 
-			pDC->TextOut(chr.right - 3, yDev + tm.tmHeight / 2, s);
+			pDC->TextOut(ChannelRect.right - 3, yDev + tm.tmHeight / 2, s);
 		}
 
 		CurrVal *= MultStep;
@@ -383,9 +381,10 @@ void CAmplitudeRuler::BeginMouseTracking()
 
 void CAmplitudeRuler::VerticalScrollByPixels(int Pixels)
 {
+	// Positive Pixels correspond to mouse moving down. It should change m_WaveOffsetY to positive direction
 	m_MouseYOffsetForScroll += Pixels;
 
-	double offset = m_WaveOffsetBeforeScroll + m_MouseYOffsetForScroll / m_VerticalScale * 65536. / m_Heights.NominalChannelHeight;
+	double offset = m_WaveOffsetBeforeScroll + m_MouseYOffsetForScroll / (m_VerticalScale * m_Heights.NominalChannelHeight);
 	NotifySiblingViews(AmplitudeScrollTo, &offset);
 }
 
