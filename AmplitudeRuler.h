@@ -65,9 +65,11 @@ protected:
 	};
 	eDrawMode m_DrawMode;
 
-	void DrawChannelSamples(CDC * pDC, CRect const & chr, CRect const & clipr);
-	void DrawChannelPercents(CDC * pDC, CRect const & chr, CRect const & clipr);
-	void DrawChannelDecibels(CDC * pDC, CRect const & chr, CRect const & clipr);
+	// ChannelRect - rectangle occupied by the waveform
+	// ClipRect - includes ChannelRect, and also the optional separator line.
+	void DrawChannelSamples(CDC * pDC, CRect const & ChannelRect, CRect const & ClipRect);
+	void DrawChannelPercents(CDC * pDC, CRect const & ChannelRect, CRect const & ClipRect);
+	void DrawChannelDecibels(CDC * pDC, CRect const & ChannelRect, CRect const & ClipRect);
 
 	// Generated message map functions
 	//{{AFX_MSG(CAmplitudeRuler)
