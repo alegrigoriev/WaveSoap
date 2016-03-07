@@ -227,7 +227,7 @@ void CAmplitudeRuler::DrawChannelPercents(CDC * pDC, CRect const & ChannelRect, 
 	}
 
 	// this is minimum delta in tenths of percent between two text labels
-	int nSampleUnits = int(GetSystemMetrics(SM_CYMENU) * 200 / (ChannelRect.Height() * m_VerticalScale));
+	int nSampleUnits = int(GetSystemMetrics(SM_CYMENU) * 2000 / (ChannelRect.Height() * m_VerticalScale));
 
 	// round sample units to 10 or 5
 	int step;
@@ -247,17 +247,17 @@ void CAmplitudeRuler::DrawChannelPercents(CDC * pDC, CRect const & ChannelRect, 
 
 	WaveCalculate WaveToY(m_WaveOffsetY, m_VerticalScale, ChannelRect.top, ChannelRect.bottom);
 
-	int yLow = int(WaveToY.ConvertToDoubleSample(ClipHigh) * 100);
+	int yLow = int(WaveToY.ConvertToDoubleSample(ClipHigh) * 1000);
 	// round to the next multiple of step
 	yLow += (step * 0x10000 - yLow) % step;
 
-	int yHigh = int(WaveToY.ConvertToDoubleSample(ClipLow) * 100);
+	int yHigh = int(WaveToY.ConvertToDoubleSample(ClipLow) * 1000);
 
 	yHigh -= (step * 0x10000 + yHigh) % step;
 
 	for (int y = yLow; y <= yHigh; y += step)
 	{
-		int yDev= WaveToY(y / 100.);
+		int yDev= WaveToY(y / 1000.);
 
 		if (0 == y)
 		{
@@ -267,7 +267,14 @@ void CAmplitudeRuler::DrawChannelPercents(CDC * pDC, CRect const & ChannelRect, 
 		pDC->MoveTo(ChannelRect.right - 3, yDev);
 		pDC->LineTo(ChannelRect.right, yDev);
 		CString s;
-		s.Format(_T("%d%%"), y);
+		if (step >= 10)
+		{
+			s.Format(_T("%d%%"), y/10);
+		}
+		else
+		{
+			s.Format(_T("%d.%d%%"), y/10, abs(y%10));
+		}
 		pDC->TextOut(ChannelRect.right - 3, yDev + tm.tmHeight / 2, s);
 	}
 }
