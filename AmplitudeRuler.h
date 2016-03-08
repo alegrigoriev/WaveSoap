@@ -49,6 +49,7 @@ protected:
 	// minimum height channels are shown with scale 1.
 	double m_WaveOffsetY;      // additional vertical offset, to see a region of magnified wave. Only full height channels are scrolled vertically. This is the sample value
 	// of the center line of the channel clip rect. Full range is from -1. to + 1. float
+	double m_MaxAmplitudeRange;		// 1. for integer data, sqrt(10) for float data
 	double m_WaveOffsetBeforeScroll;
 	int m_MouseYOffsetForScroll;
 
