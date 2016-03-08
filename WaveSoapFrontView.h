@@ -156,7 +156,7 @@ public:
 	friend class CAmplitudeRuler;
 	int SampleValueToY(double value, int ch) const;
 
-	void SetVerticalScale(double NewVerticalScale);
+	void SetVerticalScaleIndex(int NewVerticalScaleIndex);
 
 	//virtual BOOL OnScrollBy(CSize sizeScroll, BOOL bDoScroll, RECT const * pScrollRect, RECT const * pClipRect);
 	// Operations
@@ -199,9 +199,10 @@ protected:
 	// is magnified 2 times.
 	double m_VerticalScale;     // full sweep divided by channel rectangle height (for full height channels only). 1 - full sweep equal rect height, > 1 - show magnified.
 	// minimum height channels are shown with scale 1.
-
+	int m_VerticalScaleIndex;
 	double m_WaveOffsetY; // additional vertical offset, to see a region of magnified wave. Only full height channels are scrolled vertically.
 	//	This is the sample value of the center line of the channel clip rect. Full range is from -1. to + 1. float
+	double m_MaxAmplitudeRange;		// 1. for integer data, sqrt(10) for float data
 	void SetNewAmplitudeOffset(double offset);
 	// Generated message map functions
 protected:

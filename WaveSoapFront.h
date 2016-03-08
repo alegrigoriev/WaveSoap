@@ -312,7 +312,8 @@ enum SiblingNotifyCode
 	HorizontalOriginChanged,     // NotifyViewsData.HorizontalScroll
 	HorizontalExtentChanged,     // NotifyViewsData.HorizontalScroll
 	HorizontalScrollPixels,   // lParam is pointer to int pixels (signed)
-	VerticalScaleChanged,
+	VerticalScaleAndOffsetChanged,
+	VerticalScaleIndexChanged,
 	AmplitudeOffsetChanged,
 	AmplitudeScrollTo,
 
@@ -341,6 +342,9 @@ struct NotifyViewsData
 		} HorizontalScroll;
 		struct
 		{
+			double NewScale;
+			double NewOffset;
+			double MaxRange;
 		} Amplitude;
 		struct
 		{

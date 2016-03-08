@@ -121,8 +121,10 @@ CWaveSoapViewBase::CWaveSoapViewBase()
 }
 
 CWaveSoapFrontView::CWaveSoapFrontView()
-	: m_VerticalScale(1.),
-	m_WaveOffsetY(0.)
+	: m_VerticalScale(1.)
+	, m_VerticalScaleIndex(0)
+	, m_WaveOffsetY(0.)
+	, m_MaxAmplitudeRange(1.)
 {
 }
 
@@ -1083,46 +1085,17 @@ void CWaveSoapFrontView::OnUpdateViewZoominhor2(CCmdUI* pCmdUI)
 
 void CWaveSoapFrontView::OnViewZoomInVert()
 {
-	if (m_VerticalScale < 1024.)
-	{
-		SetVerticalScale(m_VerticalScale * sqrt(2.));
-	}
+	SetVerticalScaleIndex(m_VerticalScaleIndex + 1);
 }
 
-void CWaveSoapFrontView::SetVerticalScale(double NewVerticalScale)
+void CWaveSoapFrontView::SetVerticalScaleIndex(int NewVerticalScaleIndex)
 {
-	// correct the offset, if necessary
-	// find max and min offset for this scale
-	double offset = m_WaveOffsetY;
-	double MaxOffset = 32768. * (1. - 1. / NewVerticalScale);
-	if (offset > MaxOffset)
-	{
-		offset = MaxOffset;
-	}
-	double MinOffset = -MaxOffset;
-	if (offset < MinOffset)
-	{
-		offset = MinOffset;
-	}
-	if (offset != m_WaveOffsetY)
-	{
-		m_WaveOffsetY = offset;
-	}
-
-	NotifySiblingViews(VerticalScaleChanged, &NewVerticalScale);
+	NotifySiblingViews(VerticalScaleIndexChanged, &NewVerticalScaleIndex);
 }
 
 void CWaveSoapFrontView::OnViewZoomOutVert()
 {
-	if (m_VerticalScale > 1.)
-	{
-		double scale = m_VerticalScale * sqrt(0.5);
-		if (scale < 1.01)    // compensate any error
-		{
-			scale = 1.;
-		}
-		SetVerticalScale(scale);
-	}
+	SetVerticalScaleIndex(m_VerticalScaleIndex - 1);
 }
 
 void CWaveSoapFrontView::OnViewZoomOutHor2()
@@ -1968,6 +1941,11 @@ void CWaveSoapFrontView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
 	}
 	else
 	{
+		if (lHint == ThisDoc::UpdateWholeFileChanged)
+		{
+			// recalculate limits in case PCM type changed to/from float
+			NotifySiblingViews(VerticalScaleIndexChanged, &m_VerticalScaleIndex);
+		}
 		BaseClass::OnUpdate(pSender, lHint, pHint);
 	}
 }
@@ -2607,7 +2585,7 @@ void CWaveSoapViewBase::OnSize(UINT nType, int cx, int cy)
 
 void CWaveSoapFrontView::OnViewZoomvertNormal()
 {
-	SetVerticalScale(1.);
+	SetVerticalScaleIndex(0);
 }
 
 void CWaveSoapFrontView::OnUpdateViewZoomvertNormal(CCmdUI* pCmdUI)
@@ -3164,15 +3142,85 @@ afx_msg LRESULT CWaveSoapFrontView::OnUwmNotifyViews(WPARAM wParam, LPARAM lPara
 			NotifySiblingViews(HorizontalExtentChanged, &data);
 		}
 		break;
-	case VerticalScaleChanged:
-		// lParam points to double new scale
-		if (m_VerticalScale != *(double*)lParam)
+	case VerticalScaleAndOffsetChanged:
+	{
+		NotifyViewsData * data = (NotifyViewsData *)lParam;
+		if (m_VerticalScale != data->Amplitude.NewScale
+			|| data->Amplitude.NewOffset != m_WaveOffsetY
+			|| data->Amplitude.MaxRange != m_MaxAmplitudeRange)
 		{
-			m_VerticalScale = *(double*)lParam;
+			m_WaveOffsetY = data->Amplitude.NewOffset;
+			m_VerticalScale = data->Amplitude.NewScale;
+			m_MaxAmplitudeRange = data->Amplitude.MaxRange;
 			Invalidate();
-			// check for the proper offset, correct if necessary
-			m_WaveOffsetY = WaveCalculate(m_WaveOffsetY, m_VerticalScale, 0, m_Heights.NominalChannelHeight).AdjustOffset(m_WaveOffsetY);
 		}
+	}
+		break;
+
+	case VerticalScaleIndexChanged:
+		// lParam points to double new scale
+	{
+		NotifyViewsData data = { 0 };
+		static const double VerticalScaleIndexTable[] =
+		{
+			0.316227766,	// step is sqrt(sqrt(sqrt(10))), for float data only
+			0.421696503,
+			0.562341325,
+			0.749894209,
+			1.,
+			1.41421356,
+			2,
+			2.82842712,
+			4,
+			5.65685424,
+			8,
+			11.3137084,
+			16,
+			22.6274169,
+			32,
+			45.2548339,
+			64,
+			90.5096679,
+			128,
+			181.019335,
+			256,
+			362.038671,
+			512,
+			724.077343,
+			1024,
+		};
+
+		m_VerticalScaleIndex = *(int*)lParam;
+		double MaxRange = 1.;
+		if (GetDocument()->m_WavFile.IsOpen()
+			&& GetDocument()->m_WavFile.GetWaveFormat().GetSampleType() == SampleTypeFloat32)
+		{
+			MaxRange = 3.16227766016;
+
+			if (m_VerticalScaleIndex < -4)
+			{
+				m_VerticalScaleIndex = -4;
+			}
+		}
+		else if (m_VerticalScaleIndex < 0)
+		{
+			m_VerticalScaleIndex = 0;
+		}
+		if (m_VerticalScaleIndex+4 >= int(countof (VerticalScaleIndexTable)))
+		{
+			m_VerticalScaleIndex = countof (VerticalScaleIndexTable)-5;
+		}
+
+		data.Amplitude.NewScale = VerticalScaleIndexTable[m_VerticalScaleIndex +4];
+		data.Amplitude.MaxRange = MaxRange;
+		// check for the proper offset, correct if necessary
+		// correct the offset, if necessary
+		// find max and min offset for this scale
+		data.Amplitude.NewOffset = WaveCalculate(m_WaveOffsetY, data.Amplitude.NewScale, 0, m_Heights.NominalChannelHeight)
+									.AdjustOffset(m_WaveOffsetY, -MaxRange, MaxRange);
+
+		NotifySiblingViews(VerticalScaleAndOffsetChanged, &data);
+	}
 		break;
 	case AmplitudeScrollTo:
 		// lParam points to double offset
@@ -3180,7 +3228,8 @@ afx_msg LRESULT CWaveSoapFrontView::OnUwmNotifyViews(WPARAM wParam, LPARAM lPara
 	{
 		double offset = *(double*) lParam;
 
-		offset = WaveCalculate(m_WaveOffsetY, m_VerticalScale, 0, m_Heights.NominalChannelHeight).AdjustOffset(offset);
+		offset = WaveCalculate(m_WaveOffsetY, m_VerticalScale, 0, m_Heights.NominalChannelHeight)
+				.AdjustOffset(offset, -m_MaxAmplitudeRange, m_MaxAmplitudeRange);
 
 		NotifySiblingViews(AmplitudeOffsetChanged, & offset);
 	}

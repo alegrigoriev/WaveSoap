@@ -28,6 +28,7 @@ CAmplitudeRuler::CAmplitudeRuler()
 	, m_WaveOffsetY(0.)
 	, m_WaveOffsetBeforeScroll(0)
 	, m_MouseYOffsetForScroll(0)
+	, m_MaxAmplitudeRange(1.)
 {
 	memzero(m_Heights);
 }
@@ -299,65 +300,118 @@ void CAmplitudeRuler::DrawChannelDecibels(CDC * pDC, CRect const & ChannelRect, 
 
 	WaveCalculate WaveToY(m_WaveOffsetY, m_VerticalScale, ChannelRect.top, ChannelRect.bottom);
 
-	double yLow = WaveToY.ConvertToDoubleSample(ClipHigh);
+	double yLow = WaveToY.ConvertToDoubleSample(clipr.bottom);
 
-	double yHigh = WaveToY.ConvertToDoubleSample(ClipLow);
+	double yHigh = WaveToY.ConvertToDoubleSample(clipr.top);
 
 	ASSERT(yLow <= yHigh);
+	// We'll allow signal up to 10 dB ( 3.162 amplitude)
+	int CurrDb = 1000;	// 10dB, in 0.01 dB units
+	double CurrVal = pow(10., CurrDb / 2000.);
 
-	double MultStep = 0.841395141; //pow(10., -1.5 / 20.);
-	double DbStep = -1.5;
+	int DbStep = 10;	// 0.1, in 0.01 dB units
 
-	double CurrDb = -1.5;
-	double CurrVal = 0.841395141;
+	int DbTickStep = 2;	// 0.02 in 0.01 dB units
+	double MultTickStep = pow(10., -DbTickStep / 2000.);
 
-	while (CurrDb > -140.)
+	while (CurrDb > -16000 // -160 dB
+	&& CurrVal * 2 > nVertStep)  // if CurrVal * 2 > nVertStep, can't draw anymore, or positive and negative will overlap
 	{
-		double yDev1 = CurrVal;
-		if (yDev1 * 2 < nVertStep)
+		int NextDbStep;
+		int NextDbTickStep;
+		switch (DbStep)
 		{
-			break;  // can't draw anymore
+		case 10:	// from 0.1 dB to 0.2 dB
+			NextDbStep = 20;
+			NextDbTickStep = 5;
+			break;
+		case 20:	// from 0.2 dB to 0.5 dB
+			NextDbStep = 50;
+			NextDbTickStep = 10;
+			break;
+		case 50:	// from 0.5 dB to 1 dB
+			NextDbStep = 100;
+			NextDbTickStep = 20;
+			break;
+		case 100:	// from 1 dB to 2 dB
+#if 0
+			NextDbStep = 200;
+			NextDbTickStep = 50;
+			break;
+		case 200:	// from 2 dB to 3 dB
+#endif
+			NextDbStep = 300;
+			NextDbTickStep = 100;
+			break;
+		case 300:	// from 3 dB to 6 dB
+			NextDbStep = 600;
+			NextDbTickStep = 100;
+			break;
+		case 600:	// from 6 dB to 12 dB
+			NextDbStep = 1200;
+			NextDbTickStep = 300;
+			break;
+		case 1200:	// from 12 dB to 20 dB
+			NextDbStep = 2000;
+			NextDbTickStep = 500;
+			break;
+		default:
+			NextDbStep = DbStep * 2;
+			NextDbTickStep = DbTickStep * 2;
+			break;
 		}
-		// if it's not multiple of DbStep*2, see if we need to multiply step and skip this value
-		if (0. != fmod(CurrDb, DbStep * 2.))
+		//
+		// if it's multiple of NextDbStep, see if we need to multiply step and skip this value
+		if (0 == (CurrDb % NextDbStep))
 		{
-			// check if we have enough space to draw the next value
-			double yDev2 = CurrVal * MultStep;
-
-			if (yDev1 - yDev2 < nVertStep)
+			// check if we have enough space to draw each intermediate value before next multiple of NextDbStep
+			if (pow(10., (CurrDb - NextDbStep + DbStep) / 2000.) - pow(10., (CurrDb - NextDbStep) / 2000.) < nVertStep)
 			{
-				CurrVal *= MultStep;
-				MultStep *= MultStep;
+				// we don't have enough space to draw the next value
+				DbStep = NextDbStep;
+				DbTickStep = NextDbTickStep;
 
-				CurrDb += DbStep;
-				DbStep *= 2;
+				MultTickStep = pow(10., -DbTickStep / 2000.);
 				continue;
 			}
 		}
 
+		bool DrawTextLabel = 0 == (CurrDb % DbStep);
 		CString s;
-		s.Format(_T("%.1f dB"), CurrDb);
-
+		if (DrawTextLabel)
+		{
+			s.Format(_T("%d.%d dB"), CurrDb / 100, (CurrDb % 100) / 10);
+		}
 		if (CurrVal >= yLow && CurrVal <= yHigh)
 		{
-			int yDev = (int)WaveToY(CurrVal);
+			int y = WaveToY(CurrVal);
 
-			pDC->MoveTo(ChannelRect.right - 3, yDev);
-			pDC->LineTo(ChannelRect.right, yDev);
+			pDC->MoveTo(ChannelRect.right - 3, y);
+			pDC->LineTo(ChannelRect.right, y);
 
-			pDC->TextOut(ChannelRect.right - 3, yDev + tm.tmHeight / 2, s);
+			if (DrawTextLabel
+				&& y >= clipr.top + tm.tmHeight / 2
+				&& y <= clipr.bottom - tm.tmHeight / 2)
+			{
+				pDC->TextOut(ChannelRect.right - 3, y + tm.tmHeight / 2, s);
+			}
 		}
 		if (-CurrVal >= yLow && -CurrVal <= yHigh)
 		{
-			int yDev = (int)WaveToY(-CurrVal);
-			pDC->MoveTo(ChannelRect.right - 3, yDev);
-			pDC->LineTo(ChannelRect.right, yDev);
+			int y = WaveToY(-CurrVal);
+			pDC->MoveTo(ChannelRect.right - 3, y);
+			pDC->LineTo(ChannelRect.right, y);
 
-			pDC->TextOut(ChannelRect.right - 3, yDev + tm.tmHeight / 2, s);
+			if (DrawTextLabel
+				&& y >= clipr.top + tm.tmHeight / 2
+				&& y <= clipr.bottom - tm.tmHeight / 2)
+			{
+				pDC->TextOut(ChannelRect.right - 3, y + tm.tmHeight / 2, s);
+			}
 		}
 
-		CurrVal *= MultStep;
-		CurrDb += DbStep;
+		CurrVal *= MultTickStep;
+		CurrDb -= DbTickStep;
 	}
 }
 
@@ -430,8 +484,14 @@ void CAmplitudeRuler::OnLButtonDblClk(UINT nFlags, CPoint point)
 {
 	CVerticalRuler::OnLButtonDblClk(nFlags, point);
 	// set default scale
-	double one = 1.0;
-	NotifySiblingViews(VerticalScaleChanged, &one);
+	int ScaleIndex = 0;
+	NotifySiblingViews(VerticalScaleIndexChanged, &ScaleIndex);
+	// reset offset
+	NotifyViewsData data;
+	data.Amplitude.MaxRange = m_MaxAmplitudeRange;
+	data.Amplitude.NewScale = m_VerticalScale;
+	data.Amplitude.NewOffset = 0.;
+	NotifySiblingViews(VerticalScaleAndOffsetChanged, &data);
 }
 
 void CAmplitudeRuler::OnViewAmplRulerSamples()
@@ -539,11 +599,17 @@ afx_msg LRESULT CAmplitudeRuler::OnUwmNotifyViews(WPARAM wParam, LPARAM lParam)
 {
 	switch (wParam)
 	{
-	case VerticalScaleChanged:
-		// lParam points to double new scale
-		if (m_VerticalScale != *(double*)lParam)
+	case VerticalScaleAndOffsetChanged:
+	{
+		NotifyViewsData * data = (NotifyViewsData *)lParam;
+		if (m_VerticalScale != data->Amplitude.NewScale
+			|| data->Amplitude.NewOffset != m_WaveOffsetY
+			|| data->Amplitude.MaxRange != m_MaxAmplitudeRange)
 		{
-			m_VerticalScale = *(double*)lParam;
+			m_WaveOffsetY = data->Amplitude.NewOffset;
+			m_VerticalScale = data->Amplitude.NewScale;
+			m_MaxAmplitudeRange = data->Amplitude.MaxRange;
+
 			if (m_bIsTrackingSelection)
 			{
 				ReleaseCapture();
@@ -551,9 +617,8 @@ afx_msg LRESULT CAmplitudeRuler::OnUwmNotifyViews(WPARAM wParam, LPARAM lParam)
 			}
 
 			Invalidate();
-			// check for the proper offset, correct if necessary
-			m_WaveOffsetY = WaveCalculate(m_WaveOffsetY, m_VerticalScale, 0, m_Heights.NominalChannelHeight).AdjustOffset(m_WaveOffsetY);
 		}
+	}
 		break;
 
 	case AmplitudeOffsetChanged:
