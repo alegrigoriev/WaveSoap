@@ -14,7 +14,7 @@
 #include "ElapsedTime.h"
 #include "ContextWorkerThread.h"
 
-#define DUMP_ON_EXECUTE 1
+#define DUMP_ON_EXECUTE 0
 
 static int fround(double d)
 {
@@ -516,9 +516,9 @@ void CTwoFilesOperation::Dump(unsigned indent) const
 	BaseClass::Dump(indent);
 
 	if (m_DstFile.IsOpen()
-		&& m_DstStart != NULL
-		&& m_DstEnd != NULL
-		&& m_DstPos != NULL)
+		&& m_DstStart != 0
+		&& m_DstEnd != 0
+		&& m_DstPos != 0)
 	{
 		int SampleRate = m_DstFile.SampleRate();
 
@@ -890,7 +890,7 @@ BOOL CThroughProcessOperation::OperationProc()
 
 		}
 		while (res && 0 == (m_Flags & OperationContextPassFinished)
-				&& GetTickCount() - dwStartTime < 1000);
+				&& GetTickCount() - dwStartTime < 200);
 
 		if (m_DstFile.IsOpen() && OperationBeginPos != m_DstPos)
 		{
@@ -1019,7 +1019,7 @@ BOOL CThroughProcessOperation::OperationProc()
 
 		}
 		while (res && 0 == (m_Flags & OperationContextPassFinished)
-				&& GetTickCount() - dwStartTime < 1000);
+				&& GetTickCount() - dwStartTime < 200);
 
 		if (m_DstFile.IsOpen() && OperationBeginPos != m_DstPos)
 		{
@@ -3358,7 +3358,7 @@ BOOL CWaveProcContext::MakeCompatibleFormat(WAVEFORMATEX const * pSrcWf, WAVEFOR
 
 	if (pDstWf->nSamplesPerSec != pSrcWf->nSamplesPerSec)
 	{
-		AddWaveProc(new CResampleFilter(pDstWf->nSamplesPerSec, CResampleFilter::DefaultFilterLength, FALSE));
+		AddWaveProc(new CResampleFilter(pDstWf->nSamplesPerSec, FALSE));
 
 		m_DstFile.GetInstanceData()->RescaleMarkers(pSrcWf->nSamplesPerSec, pDstWf->nSamplesPerSec);
 	}
