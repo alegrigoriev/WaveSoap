@@ -1214,9 +1214,8 @@ BOOL CWaveSoapFrontDoc::DoPaste(SAMPLE_INDEX Start, SAMPLE_INDEX End, CHANNEL_MA
 			DstFile.GetInstanceData()->RescaleMarkers(SrcFile.SampleRate(), TargetSampleRate);
 
 			CResampleContext::auto_ptr pResampleContext(
-														new CResampleContext(this, IDS_RESAMPLE_CLIPBOARD_STATUS_PROMPT,
-															0,
-															SrcFile, DstFile, TargetSampleRate, CResampleFilter::DefaultFilterLength, FALSE));
+														new CResampleContext(this, IDS_RESAMPLE_CLIPBOARD_STATUS_PROMPT, 0,
+															SrcFile, DstFile, TargetSampleRate, FALSE));
 
 			SrcFile = DstFile;
 
@@ -4161,7 +4160,8 @@ void CWaveSoapFrontDoc::OnProcessResample()
 	}
 
 	pContext->AddContext(new CResampleContext(this,
-							0, 0, m_WavFile, DstFile, NewSamplingRate, CResampleFilter::DefaultFilterLength, FALSE));
+											0, 0, m_WavFile, DstFile, NewSamplingRate,
+											FALSE));
 
 	pContext->AddContext(new CReplaceFileContext(this, _T(""), DstFile, false));
 
@@ -4583,7 +4583,6 @@ BOOL CWaveSoapFrontDoc::OpenDShowFileDocument(LPCTSTR lpszPathName)
 
 	TRACE(_T("CWaveSoapFrontDoc::OpenDShowFileDocument(%s)\n"), lpszPathName);
 
-	CThisApp * pApp = GetApp();
 	m_bDirectMode = FALSE;
 	m_bReadOnly = FALSE;
 

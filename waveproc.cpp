@@ -18,7 +18,7 @@
 
 #include "FFT.h"
 
-#define TRACE_WAVEPROC 0
+#define TRACE_WAVEPROC 1
 #define USE_CUBIC_INTERPOLATION 1
 
 template <typename T = UCHAR, unsigned s = 512>
@@ -168,12 +168,8 @@ public:
 		{
 			Count = 0xFFFF;
 		}
-		Type * buf = new Type[Count];
-		if (NULL != buf)
-		{
-			SetBuffer(buf, Count);
-			bBufferAllocated = true;
-		}
+		SetBuffer(new Type[Count], Count);
+		bBufferAllocated = true;
 	}
 };
 
@@ -580,6 +576,7 @@ BOOL CWaveProc::SetInputWaveformat(CWaveFormat const & Wf, CHANNEL_MASK channels
 		|| m_OutputSampleType == SampleTypeAny)
 	{
 		m_OutputFormat = m_InputFormat;   // the format doesn't change
+		m_OutputSampleType = m_InputSampleType;
 	}
 
 	return TRUE;
@@ -2541,7 +2538,7 @@ struct SIGNAL_PARAMS
 	}
 	void Dump(int n)
 	{
-		TRACE("%i: Power=%f, Freq=%f, AvgFreq=%f, FreqDev=%f, Tonal=%i, transient=%i\n", n, Power[0] / (32768.*32768.), sp_Freq, sp_AvgFreq, sp_FreqDev, m_TonalBand, m_TransientBand);
+		TRACE("%i: Power=%f, Freq=%f, AvgFreq=%f, FreqDev=%f, Tonal=%i, transient=%i\n", n, Power[0], sp_Freq, sp_AvgFreq, sp_FreqDev, m_TonalBand, m_TransientBand);
 	}
 };
 
@@ -2913,9 +2910,9 @@ struct NoiseReductionChannelData
 	RingBufferA<DATA> PassThroughBuffer;
 	// pointer to array
 	// for accumulating output result
-	float * m_AccumBuffer;
-	DATA * m_FftInBuffer;
-	std::complex<DATA> * m_FftOutBuffer;
+	ATL::CHeapPtr<float> m_AccumBuffer;
+	ATL::CHeapPtr<DATA> m_FftInBuffer;
+	ATL::CHeapPtr<std::complex<DATA> > m_FftOutBuffer;
 	std::vector<SIGNAL_PARAMS> m_pParams;
 
 	NoiseReductionChannelData(NoiseReductionCore * nr, int FftOrder, BOOL PassThrough);
@@ -2924,7 +2921,7 @@ struct NoiseReductionChannelData
 	// return all samples left in the buffers
 	// returns number of samples drained
 	int FlushSamples(DATA * pBuf, int nOutSamples, int nChannels);
-	int FillInBuffer(WAVE_SAMPLE const * pBuf, int nInSamples, int nChannels);
+	int FillInBuffer(DATA const * pBuf, int nInSamples, int nChannels);
 	int DrainOutBuffer(DATA * pBuf, int nOutSamples, int nChannels);
 	void ResetOutBuffer();
 
@@ -3101,7 +3098,7 @@ NoiseReductionCore::NoiseReductionCore(int nFftOrder, NUMBER_OF_CHANNELS nChanne
 	double const NoiseFloorDelta = exp((m_LevelThresholdForNoiseHigh - m_LevelThresholdForNoiseLow)
 										/ (m_nFftOrder - MinFrequencyBandToProcess));
 
-	double NoiseFloor = 32768. * 32768. * exp(m_LevelThresholdForNoiseLow /*+ m_MaxNoiseSuppression / m_NoiseReductionRatio*/);
+	double NoiseFloor = exp(m_LevelThresholdForNoiseLow /*+ m_MaxNoiseSuppression / m_NoiseReductionRatio*/);
 
 	for (i = 0; i < m_nFftOrder && i < MinFrequencyBandToProcess; i++)
 	{
@@ -3260,7 +3257,7 @@ int NoiseReductionCore::FlushSamples(DATA * pBuf, int nOutSamples)
 	return FlushedSamples;
 }
 
-int NoiseReductionCore::FillInBuffer(WAVE_SAMPLE const * pBuf, int nSamples)
+int NoiseReductionCore::FillInBuffer(DATA const * pBuf, int nSamples)
 {
 	// fill input buffer
 	int InputSamplesUsed = 0;
@@ -3420,14 +3417,13 @@ unsigned CNoiseReduction::ProcessSoundBuffer(char const * pIn, char * pOut,
 	*pUsedBytes = 0;
 	NUMBER_OF_CHANNELS const nChans = m_InputFormat.NumChannels();
 	unsigned const SampleSize = m_InputFormat.SampleSize();
-	DATA tmp[256];
 
 	unsigned nInSamples = nInBytes / SampleSize;
 	unsigned nOutSamples = nOutBytes / SampleSize;
 	unsigned nStoredSamples = 0;
 
-	WAVE_SAMPLE const * pInBuf = (WAVE_SAMPLE const *) pIn;
-	WAVE_SAMPLE * pOutBuf = (WAVE_SAMPLE *) pOut;
+	float const * pInBuf = (float const *) pIn;
+	float * pOutBuf = (float *) pOut;
 
 	if (NULL == pInBuf)
 	{
@@ -3438,7 +3434,7 @@ unsigned CNoiseReduction::ProcessSoundBuffer(char const * pIn, char * pOut,
 
 		while (0 != nOutSamples)
 		{
-			int TmpSamples = m_pNrCore->FlushSamples(tmp, std::min(unsigned(countof(tmp) / nChans), nOutSamples));
+			int TmpSamples = m_pNrCore->FlushSamples(pOutBuf, nOutSamples);
 
 			if (0 == TmpSamples)
 			{
@@ -3447,12 +3443,7 @@ unsigned CNoiseReduction::ProcessSoundBuffer(char const * pIn, char * pOut,
 
 			nOutSamples -= TmpSamples;
 			nStoredSamples += TmpSamples;
-			TmpSamples *= nChans;
-
-			for (int i = 0; i < TmpSamples; i++, pOutBuf++)
-			{
-				*pOutBuf = DoubleToShort(tmp[i]);
-			}
+			pOutBuf += TmpSamples * nChans;
 		}
 		return nStoredSamples * SampleSize;
 	}
@@ -3483,7 +3474,7 @@ unsigned CNoiseReduction::ProcessSoundBuffer(char const * pIn, char * pOut,
 		int nSavedSamples = 0;
 		while (0 != nOutSamples)
 		{
-			int TmpSamples = m_pNrCore->DrainOutBuffer(tmp, std::min(unsigned(countof(tmp) / nChans), nOutSamples));
+			int TmpSamples = m_pNrCore->DrainOutBuffer(pOutBuf, nOutSamples);
 
 			if (0 == TmpSamples)
 			{
@@ -3491,14 +3482,8 @@ unsigned CNoiseReduction::ProcessSoundBuffer(char const * pIn, char * pOut,
 			}
 
 			nOutSamples -= TmpSamples;
-			nStoredSamples += TmpSamples;
 			nSavedSamples += TmpSamples;
-
-			TmpSamples *= nChans;
-			for (int i = 0; i < TmpSamples; i++, pOutBuf++)
-			{
-				*pOutBuf = DoubleToShort(tmp[i]);
-			}
+			pOutBuf += TmpSamples * nChans;
 		}
 
 		if (0 == nSavedSamples && 0 == InputSamplesUsed)
@@ -3506,6 +3491,7 @@ unsigned CNoiseReduction::ProcessSoundBuffer(char const * pIn, char * pOut,
 			// can do no more
 			break;
 		}
+		nStoredSamples += nSavedSamples;
 	}
 
 	return SampleSize * nStoredSamples;
@@ -3516,9 +3502,6 @@ unsigned CNoiseReduction::ProcessSoundBuffer(char const * pIn, char * pOut,
 NoiseReductionChannelData::NoiseReductionChannelData(NoiseReductionCore * nr, int nFftOrder, BOOL PassThrough)
 	: pNr(nr)
 	, m_FftOrder(nFftOrder)
-	, m_AccumBuffer(new float[nFftOrder])
-	, m_FftInBuffer(new DATA[nFftOrder * 2])
-	, m_FftOutBuffer(new complex<DATA>[nFftOrder + 1])
 	, m_pParams(nFftOrder + 1, SIGNAL_PARAMS(nr))
 	, m_nSamplesReceived(0)
 	, m_nSamplesStored(0)
@@ -3526,6 +3509,12 @@ NoiseReductionChannelData::NoiseReductionChannelData(NoiseReductionCore * nr, in
 	, m_bPassThrough(PassThrough != FALSE)
 	, m_FftResultsProcessed(0)
 {
+	if (!m_AccumBuffer.Allocate(nFftOrder)
+		|| !m_FftInBuffer.Allocate(nFftOrder * 2)
+		|| !m_FftOutBuffer.Allocate(nFftOrder + 1))
+	{
+		throw std::bad_alloc();
+	}
 	memset(m_AccumBuffer, 0, nFftOrder * (sizeof (float)));
 	PassThroughBuffer.AllocateBuffer(nFftOrder * 2);
 	InputDataBuffer.AllocateBuffer(nFftOrder * 2);
@@ -3551,8 +3540,6 @@ int NoiseReductionChannelData::FlushSamples(DATA * pBuf, int nOutSamples, int nC
 
 	for (int i = 0; i < ReadFromOutBuffer; i++, pBuf += nChannels)
 	{
-		ASSERT(InputDataBuffer[0] <= 32767. && InputDataBuffer[0] >= -32768.);
-
 		pBuf[0] = OutputDataBuffer.Read();
 	}
 
@@ -3595,7 +3582,7 @@ int NoiseReductionChannelData::FlushSamples(DATA * pBuf, int nOutSamples, int nC
 	return ReadFromOutBuffer + ReadFromThroughBuffer + ReadFromInBuffer;
 }
 
-int NoiseReductionChannelData::FillInBuffer(WAVE_SAMPLE const * pBuf, int nSamples, int nChannels)
+int NoiseReductionChannelData::FillInBuffer(DATA const * pBuf, int nSamples, int nChannels)
 {
 	nSamples = std::min(nSamples, int(InputDataBuffer.AvailableToWrite()));
 
@@ -3618,7 +3605,6 @@ void NoiseReductionChannelData::ProcessInputFft()
 	for (unsigned n = 0; n < m_FftOrder * 2; n++)
 	{
 		m_FftInBuffer[n] = Window[n] * InputDataBuffer[n];
-		ASSERT(m_FftInBuffer[n] <= 32767. && m_FftInBuffer[n] >= -32768.);
 	}
 
 	ASSERT(PassThroughBuffer.AvailableToWrite() >= m_FftOrder);
@@ -3633,8 +3619,6 @@ void NoiseReductionChannelData::ProcessInputFft()
 	{
 		for (unsigned f = 0; f < m_FftOrder; f++)
 		{
-			ASSERT(PassThroughBuffer[f] <= 32767. && PassThroughBuffer[f] >= -32768.);
-
 			OutputDataBuffer.Write(PassThroughBuffer[f]);
 			m_AccumBuffer[f] = Window[f + m_FftOrder] * PassThroughBuffer[f + m_FftOrder];
 		}
@@ -3645,7 +3629,7 @@ void NoiseReductionChannelData::ProcessInputFft()
 
 	InputDataBuffer.Discard(m_FftOrder);
 
-	FastFourierTransform(m_FftInBuffer, m_FftOutBuffer, m_FftOrder * 2);
+	FastFourierTransform(m_FftInBuffer.m_pData, m_FftOutBuffer.m_pData, m_FftOrder * 2);
 }
 
 void NoiseReductionChannelData::AnalyzeInputFft()
@@ -3653,10 +3637,10 @@ void NoiseReductionChannelData::AnalyzeInputFft()
 	for (unsigned f = 0; f <= m_FftOrder; f++)
 	{
 		m_pParams[f].AnalyzeFftSample(m_FftOutBuffer[f], f);
-		if (f == 1487)//f >= 16000 * m_FftOrder / 22050 -2 && f <= 16000 * m_FftOrder / 22050+2)
-		{
-			m_pParams[f].Dump(f);
-		}
+		if (0) if (f == 1487)//f >= 16000 * m_FftOrder / 22050 -2 && f <= 16000 * m_FftOrder / 22050+2)
+			{
+				m_pParams[f].Dump(f);
+			}
 	}
 }
 
@@ -3682,8 +3666,6 @@ int NoiseReductionChannelData::DrainOutBuffer(DATA * pBuf, int nOutSamples, int 
 
 	for (int i = 0; i < nSamples; i++, pBuf += nChannels)
 	{
-		//ASSERT(OutputDataBuffer[0] <= 32767. && OutputDataBuffer[0] >= -32768.);
-
 		pBuf[0] = OutputDataBuffer.Read();
 	}
 	m_nSamplesStored += nSamples;
@@ -3707,15 +3689,13 @@ void NoiseReductionChannelData::ProcessInverseFft()
 		if ( ! m_bPassThrough)
 		{
 			// perform inverse transform
-			FastInverseFourierTransform(m_FftOutBuffer, m_FftInBuffer, m_FftOrder * 2);
+			FastInverseFourierTransform(m_FftOutBuffer.m_pData, m_FftInBuffer.m_pData, m_FftOrder * 2);
 			float const * Window = & pNr->m_Window[0];
 
 			// add the processed data back to the output buffer
 			for (unsigned f = 0; f < m_FftOrder; f++)
 			{
 				DATA tmp = Window[f] * m_FftInBuffer[f] + m_AccumBuffer[f];
-
-				//ASSERT(tmp <= 32767. && tmp >= -32768.);
 
 				OutputDataBuffer.Write(tmp);
 
@@ -4269,13 +4249,12 @@ CResampleFilter::CResampleFilter()
 	, m_FilterIndex(0)
 	, m_InputPeriod(0x80000000)
 	, m_OutputPeriod(0x80000000)
-	, m_RequestedFilterLength(0)
 	, m_KeepOriginalSampleRate(false)
 {
 	m_InputSampleType = SampleTypeFloat32;
 }
 
-CResampleFilter::CResampleFilter(long NewSampleRate, int FilterLength, BOOL KeepSamplesPerSec)
+CResampleFilter::CResampleFilter(long NewSampleRate, BOOL KeepSamplesPerSec)
 	: m_SrcBufUsed(0)
 	, m_SrcBufFilled(0)
 	, m_SrcFilterLength(0)
@@ -4287,11 +4266,10 @@ CResampleFilter::CResampleFilter(long NewSampleRate, int FilterLength, BOOL Keep
 	, m_FilterIndex(0)
 	, m_InputPeriod(0x80000000)
 	, m_OutputPeriod(0x80000000)
-	, m_RequestedFilterLength(0)
 	, m_KeepOriginalSampleRate(false)
 {
 	m_InputSampleType = SampleTypeFloat32;
-	InitResample(NewSampleRate, FilterLength, KeepSamplesPerSec);
+	InitResample(NewSampleRate, KeepSamplesPerSec);
 }
 
 CResampleFilter::~CResampleFilter()
@@ -4371,17 +4349,20 @@ void CResampleFilter::sinc(double x, FilterCoeff & Result)
 	}
 }
 
-void CResampleFilter::ResampleFilterTap(double arg, double FilterLength, FilterCoeff & Result)
+void CResampleFilter::ResampleFilterTap(double arg, double NumSincWaves, FilterCoeff & Result)
 {
 	// arg goes from -0.5 to +0.5
+	// sinc arg goes from -(NumSincWaves/2)*π to +(NumSincWaves/2)*π
+	// NumSincWaves should be e
 	// FilterLength is number of sin periods in the filter
+	double sinc_arg_scale = NumSincWaves * 2.*M_PI;
 	FilterCoeff Window;
 	FilterWindow(arg, Window);
 	FilterCoeff Sinc;
-	sinc(arg * FilterLength * M_PI, Sinc);
-	Sinc.deriv1 *= FilterLength * M_PI;
-	Sinc.deriv2 *= (FilterLength * M_PI) * (FilterLength * M_PI);
-	Sinc.deriv3 *= (FilterLength * M_PI) * (FilterLength * M_PI) * (FilterLength * M_PI);
+	sinc(arg * sinc_arg_scale, Sinc);
+	Sinc.deriv1 *= sinc_arg_scale;
+	Sinc.deriv2 *= sinc_arg_scale * sinc_arg_scale;
+	Sinc.deriv3 *= sinc_arg_scale * sinc_arg_scale * sinc_arg_scale;
 
 	Result.value = Window.value * Sinc.value;
 	Result.deriv1 = Window.value * Sinc.deriv1 + Window.deriv1 * Sinc.value;
@@ -4409,51 +4390,31 @@ static unsigned long GreatestCommonFactor(unsigned long x1, unsigned long x2)
 	}
 }
 
-void CResampleFilter::InitSlidingFilter(int FilterLength, unsigned long NumberOfFilterTables)
+void CResampleFilter::InitSlidingFilter(unsigned NumSincWaves, unsigned SamplesInFilter, unsigned NumberOfFilterTables)
 {
 	// the filter arrays correspond to output sample positions
 	// NumberOfFilterTables of them are generated
 	m_bUseInterpolatedFilter = FALSE;
+	m_SamplesInFilter = SamplesInFilter;
 	// use fixed coefficients
 	m_FilterArraySize = NumberOfFilterTables * m_SamplesInFilter;
 	m_FilterTable.Allocate(m_FilterArraySize);
 
 	double * p = m_FilterTable;
 	signed InputOffset = 0;
-	signed Accumulator = 0;
-	double NumSincWaves = (FilterLength - 1) * 2;
-
-	FilterCoeff coeff;
-#if 0
-	double x = 1.;
-	FilterCoeff coeff1;
-	FilterCoeff coeff2;
-	sinc(x, coeff1);
-	sinc(x+0.000001, coeff2);
-	coeff.deriv1 = 1000000.*(coeff2.tap - coeff1.tap);
-	coeff.deriv2 = 1000000.*(coeff2.deriv1 - coeff1.deriv1);
-	coeff.deriv3 = 1000000.*(coeff2.deriv2 - coeff1.deriv2);
-	FilterWindow(x, coeff1);
-	FilterWindow(x + 0.000001, coeff2);
-	coeff.deriv1 = 1000000.*(coeff2.tap - coeff1.tap);
-	coeff.deriv2 = 1000000.*(coeff2.deriv1 - coeff1.deriv1);
-	coeff.deriv3 = 1000000.*(coeff2.deriv2 - coeff1.deriv2);
-	ResampleFilterTap(x, NumSincWaves, coeff1);
-	ResampleFilterTap(x + 0.000001, NumSincWaves, coeff2);
-	coeff.deriv1 = 1000000.*(coeff2.tap - coeff1.tap);
-	coeff.deriv2 = 1000000.*(coeff2.deriv1 - coeff1.deriv1);
-	coeff.deriv3 = 1000000.*(coeff2.deriv2 - coeff1.deriv2);
-#endif
+	signed RationalResampleFraction = 0;
+	TRACE(L"InitSlidingFilter SamplesInFilter=%d, NumSincWaves=%d\n", m_SamplesInFilter, NumSincWaves);
+	double CenterOffset = 0.5 - 0.5 / m_SamplesInFilter / NumberOfFilterTables;
 
 	for (unsigned i = 0; i < NumberOfFilterTables; i++)
 	{
-		//TRACE("i=%d, InputOffset=%d\n", i, InputOffset);
+		// i is number of output sample generated by the particular table
 
 		for (unsigned j = 0; j < m_SamplesInFilter; j++, p++)
 		{
-			double arg = double(j + 0.5 +
-					(InputOffset - double(i) * m_InputFormat.SampleRate() / m_EffectiveOutputSampleRate)) / m_SamplesInFilter - 0.5;
-			//ASSERT(arg >= -0.5 && arg <= 0.5);
+			FilterCoeff coeff;
+			double arg = (j + InputOffset - double(i) * m_InputFormat.SampleRate() / m_EffectiveOutputSampleRate) / m_SamplesInFilter - CenterOffset;
+			ASSERT(arg >= -0.5 && arg <= 0.5);
 
 			ResampleFilterTap(arg, NumSincWaves, coeff);
 			*p = coeff.value;
@@ -4461,15 +4422,15 @@ void CResampleFilter::InitSlidingFilter(int FilterLength, unsigned long NumberOf
 			if (0) TRACE("Filter[%d][%d]=%f\n", i, j, *p);
 		}
 
-		Accumulator += m_InputFormat.SampleRate();
-		while (Accumulator > 0)
+		RationalResampleFraction += m_InputFormat.SampleRate();
+		while (RationalResampleFraction > 0)
 		{
-			Accumulator -= m_EffectiveOutputSampleRate;
+			RationalResampleFraction -= m_EffectiveOutputSampleRate;
 			InputOffset++;      // go to the next input sample
 		}
 	}
 
-	ASSERT(Accumulator == 0);
+	ASSERT(RationalResampleFraction == 0);
 	TRACE("After filter calculation: InputOffset=%d\n", InputOffset);
 
 	ResetResample();
@@ -4516,31 +4477,18 @@ void CResampleFilter::InitSlidingFilter(int FilterLength, unsigned long NumberOf
 	ResetResample();
 }
 
-void CResampleFilter::InitSlidingInterpolatedFilter(int FilterLength, int TableSize)
+void CResampleFilter::InitSlidingInterpolatedFilter(unsigned NumSincWaves, unsigned SamplesInFilter, unsigned TableSize)
 {
 	m_bUseInterpolatedFilter = TRUE;
 	// first zero position is defined be the window shape
-
+	m_SamplesInFilter = SamplesInFilter;
 	// number of source taps should be m_SamplesInFilter
-	if (1 || m_EffectiveOutputSampleRate >= m_InputFormat.SampleRate())
-	{
-		// upsampling.
-		//
-		double InputPeriod = 4294967296. / m_SamplesInFilter; // 0x100000000LL
-		m_InputPeriod = (unsigned __int32)(InputPeriod);
-		m_OutputPeriod = (unsigned __int32)(InputPeriod * m_InputFormat.SampleRate() / m_EffectiveOutputSampleRate);
-	}
-	else
-	{
-		// downsampling
-		double OutputPeriod = 4294967296. / (FilterLength + 1.); //0x100000000LL
-		m_OutputPeriod = (unsigned __int32)(OutputPeriod);
-		m_InputPeriod = (unsigned __int32)(OutputPeriod * m_EffectiveOutputSampleRate / m_InputFormat.SampleRate());
-	}
+	double InputPeriod = 4294967296. / m_SamplesInFilter; // 0x100000000LL
+	m_InputPeriod = (unsigned __int32)(InputPeriod);
+	m_OutputPeriod = (unsigned __int32)(InputPeriod * m_InputFormat.SampleRate() / m_EffectiveOutputSampleRate);
 	//TRACE("InputPeriod=%08x, OutputPeriod=%08x\n", m_InputPeriod, m_OutputPeriod);
 
 	m_InterpolatedFilterTable.Allocate(TableSize);
-	double NumSincWaves = (FilterLength)* 2.;
 	double DerivScale = 1. / (1 << ResampleIndexShift);
 	// use sliding squared interpolation
 	FilterCoeff T0, T1;
@@ -4549,7 +4497,7 @@ void CResampleFilter::InitSlidingInterpolatedFilter(int FilterLength, int TableS
 	T1.deriv2 *= TableSize*TableSize;
 	T1.deriv3 *= TableSize*TableSize*TableSize;
 
-	for (signed i = 0; i < TableSize; i++)
+	for (unsigned i = 0; i < TableSize; i++)
 	{
 		double arg = double(i+1) / TableSize - 0.5;
 		T0 = T1;
@@ -4648,7 +4596,7 @@ void CResampleFilter::InitSlidingInterpolatedFilter(int FilterLength, int TableS
 	}
 
 	// normalize the coefficients
-	for (int i = 0; i < TableSize; i++)
+	for (unsigned i = 0; i < TableSize; i++)
 	{
 		m_InterpolatedFilterTable[i].tap /= Max;
 		m_InterpolatedFilterTable[i].A /= Max;
@@ -4689,37 +4637,40 @@ BOOL CResampleFilter::SetInputWaveformat(CWaveFormat const & Wf, CHANNEL_MASK ch
 	unsigned long NumberOfFilterTables = m_EffectiveOutputSampleRate / common;
 
 	// this is number of taps in each filter
-	m_SamplesInFilter = (m_RequestedFilterLength + 1) * 2;
+	unsigned RequestedNumSincWaves = 20;
+	unsigned SamplesInFilter;
+	// select num sinc waves N (number of sin periods) that fit in the window width, for the selected stop slope.
+	// we choose 20.
+	// The sinc argument goes from -RequestedNumSincWaves*PI to RequestedNumSincWaves*PI.
+	// to calculate a filter with the specified 99% pass frequency, take num sinc waves, subtract 2. Number of samples per
+	// sinc period is <sampling rate>/passband. Number of samples in filter=(NumSincWaves-2)*SampleRate/passband
+	ASSERT(m_EffectiveOutputSampleRate < OriginalSampleRate);
+	// when downsampling, the filter number of sin periods is in new sample rate times.
+	// Thus, the filter needs to be longer
+	// Additional *2 multiplier here because we want passband at m_EffectiveOutputSampleRate/2
+	SamplesInFilter = MulDiv((RequestedNumSincWaves - 2) * 2, OriginalSampleRate, m_EffectiveOutputSampleRate);
 
-	if (m_EffectiveOutputSampleRate < OriginalSampleRate)
-	{
-		// when downsampling, the filter number of sin periods is in new sample rate times.
-		// Thus, the filter needs to be longer
-		m_SamplesInFilter = MulDiv(m_SamplesInFilter, OriginalSampleRate, m_EffectiveOutputSampleRate);
-	}
-
-	if (NumberOfFilterTables * m_SamplesInFilter <= MaxNumberOfFilterSamples)
+	if (NumberOfFilterTables * SamplesInFilter <= MaxNumberOfFilterSamples)
 	{
 		// we can use precomputed exact filters
 		// the filter arrays correspond to output sample positions
 		// NumberOfFilterTables of them are generated
-		InitSlidingFilter(m_RequestedFilterLength, NumberOfFilterTables);
+		InitSlidingFilter(RequestedNumSincWaves, SamplesInFilter, NumberOfFilterTables);
 	}
 	else
 	{
 		// we need to use a sliding filter
-		InitSlidingInterpolatedFilter(m_RequestedFilterLength, ResampleFilterSize);
+		InitSlidingInterpolatedFilter(RequestedNumSincWaves, SamplesInFilter, ResampleFilterSize);
 	}
 	return TRUE;
 }
 
-void CResampleFilter::InitResample(long NewSampleRate, int FilterLength, BOOL KeepSamplesPerSec)
+void CResampleFilter::InitResample(long NewSampleRate, BOOL KeepSamplesPerSec)
 {
 	// FilterLength is how many Sin periods are in the array.
 	//
 	m_EffectiveOutputSampleRate = NewSampleRate;
 	m_KeepOriginalSampleRate = KeepSamplesPerSec;
-	m_RequestedFilterLength = FilterLength;
 }
 
 void CResampleFilter::ResetResample()
@@ -4737,7 +4688,7 @@ int CResampleFilter::DoSlidingInterpolatedFilterResample(float * pOut, int OutBu
 	FilterPolyCoeff const * const pTable = m_InterpolatedFilterTable;
 
 	int SamplesFilled, SamplesUsed;
-	for (SamplesFilled = 0, SamplesUsed = 0; SamplesUsed + m_SrcFilterLength <= InSamples
+	for (SamplesFilled = 0, SamplesUsed = 0; SamplesUsed + int(m_SrcFilterLength) <= InSamples
 		&& SamplesFilled < OutBufferSamples; SamplesFilled++)
 	{
 		unsigned __int32 Phase1 = m_Phase;
@@ -4749,7 +4700,7 @@ int CResampleFilter::DoSlidingInterpolatedFilterResample(float * pOut, int OutBu
 
 		for (unsigned j = 0; ; j+= Channels)
 		{
-			ASSERT(pIn + j + Channels <= pIn + InSamples-SamplesUsed);
+			ASSERT(pIn + j + Channels <= pIn + (InSamples-SamplesUsed)*Channels);
 
 			int const TableIndex = Phase1 >> ResampleIndexShift;
 			double PhaseFraction = int(Phase1 & ~(0xFFFFFFFF << ResampleIndexShift));
@@ -4806,7 +4757,7 @@ int CResampleFilter::DoSlidingFilterResample(float * pOut, int OutBufferSamples,
 	long const InputSampleRate = m_InputFormat.SampleRate();
 	long const OutputSampleRate = m_EffectiveOutputSampleRate;
 	int SamplesFilled, SamplesUsed;
-	for (SamplesFilled = 0, SamplesUsed = 0; SamplesUsed + m_SamplesInFilter <= InSamples
+	for (SamplesFilled = 0, SamplesUsed = 0; SamplesUsed + int(m_SamplesInFilter) <= InSamples
 		&& SamplesFilled < OutBufferSamples; SamplesFilled++)
 	{
 		double const * p = m_FilterIndex + m_FilterTable;
@@ -4818,7 +4769,7 @@ int CResampleFilter::DoSlidingFilterResample(float * pOut, int OutBufferSamples,
 
 			for (unsigned j = 0; j != m_SamplesInFilter; j++, FilterSrc += Channels)
 			{
-				ASSERT(FilterSrc < pIn + InSamples - SamplesUsed);
+				ASSERT(FilterSrc < pIn + (InSamples - SamplesUsed)*Channels);
 				OutSample += *FilterSrc * p[j];
 			}
 
@@ -5158,11 +5109,11 @@ BOOL CChannelConvertor::SetInputWaveformat(CWaveFormat const & Wf, CHANNEL_MASK 
 unsigned CChannelConvertor::ProcessSoundBuffer(char const * pIn, char * pOut,
 												unsigned nInBytes, unsigned nOutBytes, unsigned * pUsedBytes)
 {
-	unsigned nSavedBytes = 0;
-	*pUsedBytes = 0;
+	unsigned const InSampleSize = m_InputFormat.SampleSize();
+	unsigned const OutSampleSize = m_OutputFormat.SampleSize();
 
-	int nInSamples = nInBytes / m_InputFormat.SampleSize();
-	int nOutSamples = nOutBytes / m_OutputFormat.SampleSize();
+	unsigned const nInSamples = nInBytes / InSampleSize;
+	unsigned const nOutSamples = nOutBytes / OutSampleSize;
 
 	int nSamples = std::min(nInSamples, nOutSamples);
 
@@ -5170,9 +5121,112 @@ unsigned CChannelConvertor::ProcessSoundBuffer(char const * pIn, char * pOut,
 					pIn, m_ChannelsToProcess, m_InputFormat.NumChannels(),
 					nSamples, m_OutputFormat.GetSampleType(), m_InputFormat.GetSampleType());
 
-	nSavedBytes = nSamples * m_OutputFormat.SampleSize();
-	*pUsedBytes = nSamples * m_InputFormat.SampleSize();
-	return nSavedBytes;
+	*pUsedBytes = nSamples * InSampleSize;
+	return nSamples * OutSampleSize;
+}
+
+unsigned CDecimator::ProcessSoundBuffer(char const * pIn, char * pOut,
+										unsigned nInBytes, unsigned nOutBytes, unsigned * pUsedBytes)
+{
+	unsigned const InSampleSize = m_InputFormat.SampleSize();
+	unsigned const OutSampleSize = m_OutputFormat.SampleSize();
+
+	unsigned const nInSamples = nInBytes / InSampleSize;
+	unsigned const nOutSamples = nOutBytes / OutSampleSize;
+	unsigned Channels = m_InputFormat.NumChannels();
+
+	unsigned nUsedSamples, nSavedSamples;
+
+	for (nUsedSamples = 0, nSavedSamples = 0; nUsedSamples < nInSamples && nSavedSamples < nOutSamples; nUsedSamples++)
+	{
+		if (m_CurrentCounter == 0)
+		{
+			float const * pInFloat = (float const*)pIn;
+			float * pOutFloat = (float *)pOut;
+
+			for (unsigned ch = 0; ch < Channels; ch++)
+			{
+				pOutFloat[ch] = pInFloat[ch];
+			}
+			pOut += OutSampleSize;
+			nSavedSamples++;
+		}
+
+		pIn += InSampleSize;
+		m_CurrentCounter++;
+		if (m_CurrentCounter == m_DecimationRatio)
+		{
+			m_CurrentCounter = 0;
+		}
+	}
+	*pUsedBytes = nUsedSamples * InSampleSize;
+	return nSavedSamples * OutSampleSize;
+}
+
+BOOL CDecimator::SetInputWaveformat(CWaveFormat const & Wf, CHANNEL_MASK channels)
+{
+	if (!BaseClass::SetInputWaveformat(Wf, channels))
+	{
+		return FALSE;
+	}
+	m_OutputFormat.InitFormat(m_OutputSampleType, Wf.SampleRate() / m_DecimationRatio, Wf.NumChannels());
+	return TRUE;
+}
+
+unsigned CDeDecimator::ProcessSoundBuffer(char const * pIn, char * pOut,
+										unsigned nInBytes, unsigned nOutBytes, unsigned * pUsedBytes)
+{
+	unsigned const InSampleSize = m_InputFormat.SampleSize();
+	unsigned const OutSampleSize = m_OutputFormat.SampleSize();
+
+	unsigned const nInSamples = nInBytes / InSampleSize;
+	unsigned const nOutSamples = nOutBytes / OutSampleSize;
+	unsigned Channels = m_InputFormat.NumChannels();
+
+	unsigned nUsedSamples, nSavedSamples;
+	double const ScaleCoeff = m_DecimationRatio;
+
+	for (nUsedSamples = 0, nSavedSamples = 0; nUsedSamples < nInSamples && nSavedSamples < nOutSamples; nSavedSamples++)
+	{
+		float * pOutFloat = (float *)pOut;
+		if (m_CurrentCounter == 0)
+		{
+			float const * pInFloat = (float const*)pIn;
+
+			for (unsigned ch = 0; ch < Channels; ch++)
+			{
+				pOutFloat[ch] = float(pInFloat[ch] * ScaleCoeff);
+			}
+			nUsedSamples++;
+			pIn += InSampleSize;
+		}
+		else
+		{
+			for (unsigned ch = 0; ch < Channels; ch++)
+			{
+				pOutFloat[ch] = 0.;
+			}
+		}
+
+		pOut += OutSampleSize;
+		m_CurrentCounter++;
+		if (m_CurrentCounter == m_DecimationRatio)
+		{
+			m_CurrentCounter = 0;
+		}
+	}
+	*pUsedBytes = nUsedSamples * InSampleSize;
+	return nSavedSamples * OutSampleSize;
+}
+
+BOOL CDeDecimator::SetInputWaveformat(CWaveFormat const & Wf, CHANNEL_MASK channels)
+{
+	if (!BaseClass::SetInputWaveformat(Wf, channels))
+	{
+		return FALSE;
+	}
+	m_OutputFormat.InitFormat(m_OutputSampleType, Wf.SampleRate() * m_DecimationRatio, Wf.NumChannels());
+	return TRUE;
 }
 
 CLameEncConvertor::~CLameEncConvertor()

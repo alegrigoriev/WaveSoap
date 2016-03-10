@@ -494,7 +494,7 @@ public:
 	void Dump(unsigned indent=0) const;
 
 	int FlushSamples(DATA * pBuf, int nOutSamples);
-	int FillInBuffer(WAVE_SAMPLE const * pBuf, int nInSamples);
+	int FillInBuffer(DATA const * pBuf, int nInSamples);
 	int DrainOutBuffer(DATA * pBuf, int nOutSamples);
 	void ResetOutBuffer();
 
@@ -664,7 +664,7 @@ class CResampleFilter: public CWaveProc
 public:
 	typedef std::auto_ptr<ThisClass> auto_ptr;
 	CResampleFilter();
-	CResampleFilter(long NewSampleRate, int FilterLength, BOOL KeepSamplesPerSec);
+	CResampleFilter(long NewSampleRate, BOOL KeepSamplesPerSec);
 
 	virtual ~CResampleFilter();
 
@@ -672,11 +672,11 @@ public:
 										unsigned nInBytes, unsigned nOutBytes, unsigned * pUsedBytes);
 	virtual BOOL SetInputWaveformat(CWaveFormat const & Wf, CHANNEL_MASK channels = ALL_CHANNELS);
 
-	void InitResample(long NewSampleRate, int FilterLength, BOOL KeepSamplesPerSec);
-	enum { DefaultFilterLength = 125, };
+	void InitResample(long NewSampleRate, BOOL KeepSamplesPerSec);
+	enum { DefaultFilterLength = 16, };
 private:
-	void InitSlidingInterpolatedFilter(int FilterLength, int TableSize);
-	void InitSlidingFilter(int FilterLength, unsigned long NumberOfFilterTables);
+	void InitSlidingInterpolatedFilter(unsigned NumSincWaves, unsigned SamplesInFilter, unsigned TableSize);
+	void InitSlidingFilter(unsigned NumSincWaves, unsigned SamplesInFilter, unsigned NumberOfFilterTables);
 
 	// returns samples filled in units of (float*Channels)
 	// OutSamples and InSamples are in units of (float*Channels)
@@ -722,7 +722,7 @@ private:
 		ResampleTableBits = 11,
 		ResampleFilterSize = (1 << ResampleTableBits),
 		ResampleIndexShift = (32 - ResampleTableBits),
-		MaxNumberOfFilterSamples = 500*100,
+		MaxNumberOfFilterSamples = 50*100,
 		SrcBufSize = 0x1000 };
 
 	float m_pSrcBuf[SrcBufSize];
@@ -731,7 +731,6 @@ private:
 
 	unsigned m_SrcBufFilled; // position to put new samples converted from __int16
 	long    m_EffectiveOutputSampleRate;
-	int m_RequestedFilterLength;
 	BOOL m_KeepOriginalSampleRate;
 
 	// m_InterpolatedFilterTable covers the full range from -0.5 to +0.5 of contiguous sinc(x)*window(x) filter function
@@ -829,7 +828,46 @@ public:
 	CByteSwapConvertor()
 	{
 	}
-	virtual ~CByteSwapConvertor() {}
+	virtual unsigned ProcessSoundBuffer(char const * pInBuf, char * pOutBuf,
+										unsigned nInBytes, unsigned nOutBytes, unsigned * pUsedBytes);
+};
+
+// only passes one out of m_DecimationRatio samples to the output
+class CDecimator : public CWaveProc
+{
+	typedef CDecimator ThisClass;
+	typedef CWaveProc BaseClass;
+	int m_DecimationRatio;
+	int m_CurrentCounter;
+public:
+	typedef std::auto_ptr<ThisClass> auto_ptr;
+	CDecimator(int DecimationRatio)
+		: m_DecimationRatio(DecimationRatio)
+		, m_CurrentCounter(0)
+	{
+		m_InputSampleType = SampleTypeFloat32;
+	}
+	virtual BOOL SetInputWaveformat(CWaveFormat const & Wf, CHANNEL_MASK channels);
+	virtual unsigned ProcessSoundBuffer(char const * pInBuf, char * pOutBuf,
+										unsigned nInBytes, unsigned nOutBytes, unsigned * pUsedBytes);
+};
+
+// insertz zero samples to stretch the data by DecimationRatio, and multiplies the samples by that ratio to keep same level
+class CDeDecimator : public CWaveProc
+{
+	typedef CDeDecimator ThisClass;
+	typedef CWaveProc BaseClass;
+	int m_DecimationRatio;
+	int m_CurrentCounter;
+public:
+	typedef std::auto_ptr<ThisClass> auto_ptr;
+	CDeDecimator(int DecimationRatio)
+		: m_DecimationRatio(DecimationRatio)
+		, m_CurrentCounter(0)
+	{
+		m_InputSampleType = SampleTypeFloat32;
+	}
+	virtual BOOL SetInputWaveformat(CWaveFormat const & Wf, CHANNEL_MASK channels);
 	virtual unsigned ProcessSoundBuffer(char const * pInBuf, char * pOutBuf,
 										unsigned nInBytes, unsigned nOutBytes, unsigned * pUsedBytes);
 };

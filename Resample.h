@@ -11,9 +11,9 @@
 #include "waveproc.h"
 /////////////////////////////////////////////////////////////////////////////
 // Resample sound
-class CResampleContext : public CWaveProcContext
+class CResampleContext : public CStagedContext
 {
-	typedef CWaveProcContext BaseClass;
+	typedef CStagedContext BaseClass;
 	typedef CResampleContext ThisClass;
 public:
 	typedef std::auto_ptr<ThisClass> auto_ptr;
@@ -21,9 +21,7 @@ public:
 	CResampleContext(CWaveSoapFrontDoc * pDoc,
 					UINT StatusStringId, UINT OperationNameId,
 					CWaveFile & SrcFile, CWaveFile & DstFile,
-					long NewSampleRate, int FilterLength, BOOL KeepSamplesPerSec);
-
-	virtual void DeInit();
+					long NewSampleRate, BOOL KeepSamplesPerSec);
 };
 
 #endif //AFX_RESAMPLE_H__165978E0_39A0_11D4_9ADD_00C0F0583C4B__INCLUDED_
