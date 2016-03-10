@@ -482,7 +482,7 @@ void CSpectrumSectionView::OnDraw(CDC* pDC)
 			nStartSample = 0;
 		}
 
-		ATL::CHeapPtr<WAVE_SAMPLE> pSrcIntArray;
+		ATL::CHeapPtr<float> pSrcIntArray;
 		pSrcIntArray.Allocate(m_NrFftOrder * nChannels);
 
 		m_pNoiseReduction->Reset();
