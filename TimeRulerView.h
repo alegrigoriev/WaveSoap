@@ -53,6 +53,12 @@ protected:
 	void InvalidateMarkerRegion(WAVEREGIONINFO const * pInfo);
 	virtual void HorizontalScrollByPixels(int Pixels);	// Pixels >0 - picture moves to the right, pixels <0 - picture moves to the left
 	void HorizontalScrollTo(double first_sample_in_view);
+	//virtual void BeginMouseTracking();
+	void DrawSamples(CDC * pDC);
+	void DrawHhMmSs(CDC * pDC);
+	void DrawSeconds(CDC * pDC);
+	void DrawHhMmSsFf(CDC * pDC);
+
 	double WindowXToSample(int x) const
 	{
 		return x * m_HorizontalScale + m_FirstSampleInView;
