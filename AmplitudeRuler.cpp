@@ -464,8 +464,8 @@ void CAmplitudeRuler::VerticalScrollByPixels(int Pixels)
 {
 	// Positive Pixels correspond to mouse moving down. It should change m_WaveOffsetY to positive direction
 	m_MouseYOffsetForScroll += Pixels;
-
-	double offset = m_WaveOffsetBeforeScroll + m_MouseYOffsetForScroll / (m_VerticalScale * m_Heights.NominalChannelHeight);
+	// NominalChannelHeight is equal offset sweep of 2
+	double offset = m_WaveOffsetBeforeScroll + 2* m_MouseYOffsetForScroll / (m_VerticalScale * m_Heights.NominalChannelHeight);
 	NotifySiblingViews(AmplitudeScrollTo, &offset);
 }
 
