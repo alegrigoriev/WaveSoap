@@ -3299,13 +3299,13 @@ void CWaveSoapFrontDoc::SetSampleRate(unsigned SampleRate)
 	{
 		return;
 	}
-	//WAVEFORMATEX * pWf = WaveFormat();
+
 	if (WaveSampleRate() == SampleRate)
 	{
 		return;
 	}
 	CWaveFormat wf;
-	wf.InitFormat(WAVE_FORMAT_PCM, SampleRate, WaveChannels());
+	wf.InitFormat(WaveFormat().GetSampleType(), SampleRate, WaveChannels());	// fixme: use the same tag as the original WF
 
 	CReplaceFormatContext::auto_ptr pContext(
 											new CReplaceFormatContext(this, IDS_SAMPLE_RATE_CHANGE_OPERATION_NAME, wf));
