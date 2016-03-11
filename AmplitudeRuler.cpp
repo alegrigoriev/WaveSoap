@@ -362,10 +362,17 @@ void CAmplitudeRuler::DrawChannelDecibels(CDC * pDC, CRect const & ChannelRect, 
 		}
 		//
 		// if it's multiple of NextDbStep, see if we need to multiply step and skip this value
-		if (0 == (CurrDb % NextDbStep))
+		// except that change from 20 to 50 has to happen at their common multiple
+		if (0 == (CurrDb % NextDbStep) && 0 == (CurrDb % DbStep))
 		{
+			int NextPointToCheck = CurrDb;
+			do
+			{
+				NextPointToCheck -= DbStep;
+			}
+			while (0 != (CurrDb % NextDbStep) || 0 != (CurrDb % DbStep));
 			// check if we have enough space to draw each intermediate value before next multiple of NextDbStep
-			if (pow(10., (CurrDb - NextDbStep + DbStep) / 2000.) - pow(10., (CurrDb - NextDbStep) / 2000.) < nVertStep)
+			if (pow(10., (NextPointToCheck + DbStep) / 2000.) - pow(10., (NextPointToCheck) / 2000.) < nVertStep)
 			{
 				// we don't have enough space to draw the next value
 				DbStep = NextDbStep;
@@ -380,7 +387,21 @@ void CAmplitudeRuler::DrawChannelDecibels(CDC * pDC, CRect const & ChannelRect, 
 		CString s;
 		if (DrawTextLabel)
 		{
-			s.Format(_T("%d.%d dB"), CurrDb / 100, (CurrDb % 100) / 10);
+			if (DbStep >= 100)
+			{
+				s.Format(_T("%d dB"), CurrDb / 100);
+			}
+			else
+			{
+				if (CurrDb >= 0)
+				{
+					s.Format(_T("%d.%01d dB"), CurrDb / 100, (CurrDb % 100) / 10);
+				}
+				else
+				{
+					s.Format(_T("-%d.%01d dB"), -CurrDb / 100, (-CurrDb % 100) / 10);
+				}
+			}
 		}
 		if (CurrVal >= yLow && CurrVal <= yHigh)
 		{
