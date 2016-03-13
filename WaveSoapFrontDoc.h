@@ -47,7 +47,7 @@ class CSoundUpdateInfo : public ListItem<CSoundUpdateInfo>, public CObject
 {
 public:
 	CSoundUpdateInfo(int UpdateCode, ULONG_PTR FileID,
-					SAMPLE_INDEX Begin, SAMPLE_INDEX End, long NewLength)
+					SAMPLE_INDEX Begin, SAMPLE_INDEX End, NUMBER_OF_SAMPLES NewLength)
 		: m_UpdateCode(UpdateCode)
 		, m_NewLength(NewLength)
 		, m_FileID(FileID)
@@ -64,31 +64,43 @@ public:
 		}
 	}
 
-	CSoundUpdateInfo(int UpdateCode, ULONG_PTR FileID,
-					SAMPLE_INDEX PlaybackPosition, CHANNEL_MASK PlaybackChannel)
-		: m_UpdateCode(UpdateCode)
-		, m_NewLength(-1)
-		, m_FileID(FileID)
-	{
-		m_PlaybackPosition = PlaybackPosition;
-		m_PlaybackChannel = PlaybackChannel;
-	}
-
 	ULONG_PTR m_FileID;
 	int m_UpdateCode;
 
-	union
-	{
-		SAMPLE_INDEX m_Begin;
-		SAMPLE_INDEX m_PlaybackPosition;
-	};
+	SAMPLE_INDEX m_Begin;
 
-	union
-	{
-		SAMPLE_INDEX m_End;
-		CHANNEL_MASK m_PlaybackChannel;
-	};
+	SAMPLE_INDEX m_End;
 	NUMBER_OF_SAMPLES m_NewLength;
+};
+
+class CPlaybackUpdateInfo : public CSoundUpdateInfo
+{
+public:
+	CPlaybackUpdateInfo(int UpdateCode, ULONG_PTR FileID,
+						SAMPLE_INDEX PlaybackPosition, SAMPLE_INDEX PlaybackEnd, CHANNEL_MASK PlaybackChannel)
+		: CSoundUpdateInfo(UpdateCode, FileID, 0, 0, -1)
+		, m_PlaybackChannel(PlaybackChannel)
+	{
+		m_Begin = PlaybackPosition;
+		m_End = PlaybackEnd;
+	}
+
+	SAMPLE_INDEX PlaybackPosition() const
+	{
+		return m_Begin;
+	}
+
+	SAMPLE_INDEX PlaybackEnd() const
+	{
+		return m_End;
+	}
+
+	CHANNEL_MASK PlaybackChannel() const
+	{
+		return m_PlaybackChannel;
+	}
+
+	CHANNEL_MASK m_PlaybackChannel;
 };
 
 struct MarkerRegionUpdateInfo : public CObject
@@ -112,11 +124,22 @@ enum {
 	UpdateSoundDontRescanPeaks = 1,
 	UpdateSoundSamplingRateChanged = 2,
 
-	SetSelection_MakeCaretVisible = 1,
-	SetSelection_MoveCaretToCenter = 2,
+	// variants:
+	// 1 - make caret unconditionally visible, only scroll to bring it to the view.
+	// If minimum scroll would discard all the currently visible area, move the cursor to the center.
+	// When bringing the caret from outside the visible area, keep caret within the selection margin from the view edge.
+	// Page up/down should not change the caret position in the window.
+	//
+	SetSelection_MakeCaretVisible = 1,		// move caret within margins of the active view
+	SetSelection_MoveCaretToCenter = 2,		// move caret into center of the active view
 	SetSelection_KeepCaretVisible = SetSelection_MakeCaretVisible | SetSelection_MoveCaretToCenter,
-	SetSelection_SnapToMaximum = 4,
-	SetSelection_MakeFileVisible = 8,   // make sure the end of file is in the view (that not all the view is beyond EOF)
+	SetSelection_SnapToMaximum = 4,			// set caret to the maximum of the view column granularity (for example, when clicked on the view or outline)
+	// make sure the end of file is in the view (that not all the view is beyond EOF); change origin if necessary.
+	// it's used when the file is replaced because of sample rate change
+	SetSelection_MakeFileVisible = 8,
+	SetSelection_KeepSelectionVisible = 0x10,	// make sure the cursor is within the active view
+	SetSelection_DontAdjustView = 0x20,	// Don't shift view
+	SetSelection_Autoscroll = 0x40,		// move caret within margins of the active view
 
 	SaveFile_SameName = 4,
 	SaveFile_CloseAfterSave = 8,
@@ -285,9 +308,9 @@ public:
 
 	//WAVEFORMATEX WavFileFormat;
 
-	SAMPLE_INDEX m_CaretPosition;
-	SAMPLE_INDEX m_SelectionStart;
-	SAMPLE_INDEX m_SelectionEnd;
+	SAMPLE_INDEX m_CaretPosition;		// from m_SelectionStart to m_SelectionEnd
+	SAMPLE_INDEX m_SelectionStart;		// <= m_SelectionEnd
+	SAMPLE_INDEX m_SelectionEnd;		// >= m_SelectionEnd
 
 	CHANNEL_MASK m_SelectedChannel;
 	bool m_TimeSelectionMode;
@@ -295,7 +318,7 @@ public:
 	CHANNEL_MASK GetSelectedChannel() const;
 
 	void SetSelection(SAMPLE_INDEX begin, SAMPLE_INDEX end, CHANNEL_MASK channel,
-					SAMPLE_INDEX caret, int flags = 0);
+					SAMPLE_INDEX caret, int flags = 0);		// begin and end can be not in order
 	void SelectBetweenMarkers(SAMPLE_INDEX Origin);
 	void GotoNextMarker();
 	void GotoPrevMarker();
@@ -307,11 +330,10 @@ public:
 	void FileChanged(CWaveFile & File, SAMPLE_POSITION begin,
 					SAMPLE_POSITION end, NUMBER_OF_SAMPLES length = -1, DWORD flags = 0);
 
-	void PlaybackPositionNotify(SAMPLE_INDEX position, CHANNEL_MASK channel);
+	void PlaybackPositionNotify(SAMPLE_INDEX position, CHANNEL_MASK channel, SAMPLE_INDEX playback_end);
 	BOOL ProcessUpdatePlaybackPosition();
 
-	enum
-	{
+	enum {
 		UpdateSelectionChanged = 1,
 		UpdateSelectionModeChanged,
 		UpdateSoundChanged,
@@ -342,8 +364,8 @@ public:
 	BOOL OpenWaveFile(CWaveFile & WaveFile, LPCTSTR szName, DWORD flags);
 	void QueueSoundUpdate(int UpdateCode, ULONG_PTR FileID,
 						SAMPLE_INDEX Begin, SAMPLE_INDEX End, NUMBER_OF_SAMPLES NewLength, int flags = 0);
-	void CWaveSoapFrontDoc::QueuePlaybackUpdate(int UpdateCode, ULONG_PTR FileID,
-												SAMPLE_INDEX PlaybackPosition, CHANNEL_MASK PlaybackChannel);
+	void CWaveSoapFrontDoc::QueuePlaybackUpdate(ULONG_PTR FileID,
+		SAMPLE_INDEX PlaybackPosition, CHANNEL_MASK PlaybackChannel, SAMPLE_INDEX playback_end);
 
 	enum {
 		QueueSoundUpdateMerge = 1,  // merge update range
@@ -434,11 +456,11 @@ public:
 	}
 	bool CanClearUndo() const
 	{
-		return ! m_UndoList.IsEmpty();
+		return !m_UndoList.IsEmpty();
 	}
 	bool CanClearRedo() const
 	{
-		return ! m_RedoList.IsEmpty();
+		return !m_RedoList.IsEmpty();
 	}
 protected:
 	// save the selected area to the permanent or temporary file

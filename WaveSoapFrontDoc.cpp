@@ -639,7 +639,6 @@ void CWaveSoapFrontDoc::SetSelection(SAMPLE_INDEX begin, SAMPLE_INDEX end,
 	if (end > length) end = length;
 	if (caret < 0) caret = 0;
 	if (caret > length) caret = length;
-	//if (channel < 0 || channel > 1) channel = ALL_CHANNELS;
 
 	if (flags & SetSelection_SnapToMaximum)
 	{
@@ -663,35 +662,29 @@ void CWaveSoapFrontDoc::SetSelection(SAMPLE_INDEX begin, SAMPLE_INDEX end,
 			SamplesToRead = 0x40000;
 		}
 
-		SAMPLE_INDEX pos = BeginSample;
 
-		int nChannels = m_WavFile.Channels();
-// FIXME for multiple channels
-		int nReadChannels = nChannels;
+		int nReadChannels = m_WavFile.NumChannelsFromMask(channel);
 
-		if ( ! m_WavFile.AllChannels(channel))
-		{
-			nReadChannels = 1;
-		}
-
-		WAVE_PEAK Max = 0;
+		SAMPLE_INDEX MaxPos = BeginSample;
+		float Max = 0;
 
 		while (SamplesToRead > 0)
 		{
-			WAVE_SAMPLE data[256];
-			unsigned nWordsToRead = SamplesToRead * nReadChannels;
-			if (nWordsToRead > countof (data))
+			float data[256];
+
+			int DataArraySamples = countof(data) / nReadChannels;
+			if (DataArraySamples > SamplesToRead)
 			{
-				nWordsToRead = countof (data);
+				DataArraySamples = SamplesToRead;
 			}
 
 			long SamplesRead = m_WavFile.ReadSamples(channel,
 													m_WavFile.SampleToPosition(BeginSample),
-													nWordsToRead / nReadChannels, data);
+													DataArraySamples, data, SampleTypeFloat32);
 
-			for (unsigned i = 0; i < nWordsToRead; i++)
+			for (int i = 0; i < DataArraySamples*nReadChannels; i++)
 			{
-				WAVE_PEAK tmp = data[i];
+				float tmp = data[i];
 				if (tmp < 0)
 				{
 					tmp = -tmp;
@@ -700,15 +693,15 @@ void CWaveSoapFrontDoc::SetSelection(SAMPLE_INDEX begin, SAMPLE_INDEX end,
 				if (tmp > Max)
 				{
 					Max = tmp;
-					pos = BeginSample + i / nReadChannels;
+					MaxPos = BeginSample + i / nReadChannels;
 				}
 			}
 			SamplesToRead -= SamplesRead;
 			BeginSample += SamplesRead;
 		}
-		begin = pos;
-		end = pos;
-		caret = pos;
+		begin = MaxPos;
+		end = MaxPos;
+		caret = MaxPos;
 	}
 
 	if (begin <= end)
@@ -730,7 +723,6 @@ void CWaveSoapFrontDoc::SetSelection(SAMPLE_INDEX begin, SAMPLE_INDEX end,
 	ui.SelEnd = m_SelectionEnd;
 	ui.SelChannel = m_SelectedChannel;
 	ui.CaretPos = m_CaretPosition;
-
 	UpdateAllViews(NULL, UpdateSelectionChanged, & ui);
 }
 
@@ -781,27 +773,30 @@ void CWaveSoapFrontDoc::QueueSoundUpdate(int UpdateCode, ULONG_PTR FileID,
 	::PostMessage(GetApp()->m_pMainWnd->m_hWnd, UWM_UPDATE_DOCUMENT_ON_IDLE, 0, (LPARAM)(CDocument*)this);
 }
 
-void CWaveSoapFrontDoc::QueuePlaybackUpdate(int UpdateCode, ULONG_PTR FileID,
-											SAMPLE_INDEX PlaybackPosition, CHANNEL_MASK PlaybackChannel)
+void CWaveSoapFrontDoc::QueuePlaybackUpdate(ULONG_PTR FileID,
+	SAMPLE_INDEX PlaybackPosition, CHANNEL_MASK PlaybackChannel, SAMPLE_INDEX playback_end)
 {
-	CSoundUpdateInfo * pui = new CSoundUpdateInfo(UpdateCode,
-												FileID, PlaybackPosition, PlaybackChannel);
+	CPlaybackUpdateInfo * pui = new CPlaybackUpdateInfo(UpdatePlaybackPositionChanged,
+														FileID, PlaybackPosition, playback_end, PlaybackChannel);
 
 	{
 		CSimpleCriticalSectionLock lock(m_UpdateList);
 		// remove any existing entry
-		for (CSoundUpdateInfo * pEntry = m_UpdateList.First();  m_UpdateList.NotEnd(pEntry); )
+		for (CSoundUpdateInfo * pEntry = m_UpdateList.First(), *next;  m_UpdateList.NotEnd(pEntry); pEntry = next)
 		{
-			CSoundUpdateInfo * next = m_UpdateList.Next(pEntry);
-			if (FileID == pEntry->m_FileID
-				&& pEntry->m_UpdateCode == UpdateCode
-				// don't remove special notifications
-				&& pEntry->m_PlaybackChannel == PlaybackChannel)
+			next = m_UpdateList.Next(pEntry);
+			if (FileID != pEntry->m_FileID
+				|| pEntry->m_UpdateCode != UpdatePlaybackPositionChanged)
+			{
+				continue;
+			}
+			CPlaybackUpdateInfo * curr_pui = static_cast<CPlaybackUpdateInfo *>(pEntry);
+			// don't remove special notifications
+			if (curr_pui->PlaybackChannel() == PlaybackChannel)
 			{
 				m_UpdateList.RemoveEntryUnsafe(pEntry);
 				delete pEntry;
 			}
-			pEntry = next;
 		}
 
 		m_UpdateList.InsertTailUnsafe(pui);
@@ -3194,11 +3189,10 @@ void CWaveSoapFrontDoc::SetModifiedFlag(BOOL bModified, int KeepPreviousUndo)
 	}
 }
 
-void CWaveSoapFrontDoc::PlaybackPositionNotify(SAMPLE_INDEX position, CHANNEL_MASK channel)
+void CWaveSoapFrontDoc::PlaybackPositionNotify(SAMPLE_INDEX position, CHANNEL_MASK channel, SAMPLE_INDEX playback_end)
 {
 	if (0) TRACE("PlaybackPositionNotify p=%d,c=%d\n", position, channel);
-	QueuePlaybackUpdate(UpdatePlaybackPositionChanged, WaveFileID(),
-						position, channel);
+	QueuePlaybackUpdate(WaveFileID(), position, channel, playback_end);
 }
 
 // return TRUE if there was UpdatePlaybackPositionChanged request queued
@@ -3208,10 +3202,9 @@ BOOL CWaveSoapFrontDoc::ProcessUpdatePlaybackPosition()
 	BOOL result = FALSE;
 	m_UpdateList.Lock();
 
-	for (CSoundUpdateInfo * pEntry = m_UpdateList.First()
-		; m_UpdateList.NotEnd(pEntry); )
+	for (CSoundUpdateInfo * pEntry = m_UpdateList.First(), *next; m_UpdateList.NotEnd(pEntry); pEntry = next)
 	{
-		CSoundUpdateInfo * next = m_UpdateList.Next(pEntry);
+		next = m_UpdateList.Next(pEntry);
 
 		if (pEntry->m_UpdateCode == UpdatePlaybackPositionChanged)
 		{
@@ -3224,8 +3217,6 @@ BOOL CWaveSoapFrontDoc::ProcessUpdatePlaybackPosition()
 			result = TRUE;
 			m_UpdateList.Lock();
 		}
-
-		pEntry = next;
 	}
 
 	m_UpdateList.Unlock();
@@ -4232,7 +4223,7 @@ void CWaveSoapFrontDoc::OnEditGoto()
 	}
 	//GetApp()->m_SoundTimeFormat = dlg.m_TimeFormat;
 	SetSelection(dlg.GetSelectedPosition(), dlg.GetSelectedPosition(),
-				m_SelectedChannel, dlg.GetSelectedPosition(), SetSelection_MoveCaretToCenter);
+				m_SelectedChannel, dlg.GetSelectedPosition(), SetSelection_MakeCaretVisible | SetSelection_Autoscroll);
 }
 
 void CWaveSoapFrontDoc::OnUpdateProcessInvert(CCmdUI* pCmdUI)
