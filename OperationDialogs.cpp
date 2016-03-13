@@ -2240,7 +2240,7 @@ void CDeclickDialog::OnOK()
 {
 	if (!UpdateData(TRUE))
 	{
-		TRACE(traceAppMsg, 0, "UpdateData failed during dialog termination.\n");
+		TRACE(traceAppMsg, 0, L"UpdateData failed during dialog termination.\n");
 		// the UpdateData routine will set focus to correct item
 		return;
 	}
@@ -2617,7 +2617,7 @@ void CNoiseReductionDialog::OnOK()
 {
 	if (!UpdateData(TRUE))
 	{
-		TRACE(traceAppMsg, 0, "UpdateData failed during dialog termination.\n");
+		TRACE(traceAppMsg, 0, L"UpdateData failed during dialog termination.\n");
 		// the UpdateData routine will set focus to correct item
 		return;
 	}

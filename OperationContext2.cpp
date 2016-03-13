@@ -1658,11 +1658,12 @@ void CCdReadingContext::PostRetire()
 		}
 
 		// if no data has been read, delete the document
+		ASSERT(m_DstPos - m_DstStart < 0xFFFFFFFFULL - 44);
 		if (m_DstPos == m_DstStart)
 		{
 			m_pDocument->m_bCloseThisDocumentNow = true;
 		}
-		else if (m_DstFile.SetDatachunkLength(m_DstPos - m_DstStart))
+		else if (m_DstFile.SetDatachunkLength(WAV_FILE_SIZE(m_DstPos - m_DstStart)))
 		{
 			m_pDocument->SoundChanged(m_DstFile.GetFileID(), 0, 0, m_DstFile.NumberOfSamples());
 		}
