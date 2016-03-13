@@ -20,9 +20,9 @@ static char THIS_FILE[] = __FILE__;
 #endif
 
 #define TRACE_DRAWING 0
-#define TRACE_MOUSE 0
-#define TRACE_SCROLL 0
-#define TRACE_CARET 0
+#define TRACE_MOUSE 1
+#define TRACE_SCROLL 1
+#define TRACE_CARET 1
 #define TRACE_UPDATE 0
 /////////////////////////////////////////////////////////////////////////////
 // CWaveSoapFrontView
@@ -1392,7 +1392,7 @@ BOOL CWaveSoapFrontView::OnEraseBkgnd(CDC* pDC)
 {
 	CThisApp * pApp = GetApp();
 	ThisDoc * pDoc = GetDocument();
-// FIXME    RemoveSelectionRect();
+	// FIXME    RemoveSelectionRect();
 
 	CRect ClipRect;
 	pDC->GetClipBox(ClipRect);
@@ -1560,7 +1560,7 @@ void CWaveSoapViewBase::OnLButtonDown(UINT nFlags, CPoint point)
 			nChan = SPEAKER_FRONT_RIGHT;
 		}
 
-		pDoc->SetSelection(SelectionStart, SelectionEnd, nChan, nSampleUnderMouse);
+		pDoc->SetSelection(SelectionStart, SelectionEnd, nChan, nSampleUnderMouse, SetSelection_DontAdjustView);
 		OnSetCursor(this, HTCLIENT, WM_LBUTTONDOWN);
 	}
 	else
@@ -1588,7 +1588,7 @@ void CWaveSoapViewBase::OnLButtonUp(UINT nFlags, CPoint point)
 
 				pDoc->SetSelection(nBegin, nEnd, pDoc->m_SelectedChannel, nBegin,
 									SetSelection_SnapToMaximum
-									| SetSelection_MakeCaretVisible);
+									| SetSelection_DontAdjustView);
 			}
 		}
 		ReleaseCapture();
@@ -1643,6 +1643,10 @@ BOOL CWaveSoapViewBase::OnMouseWheel(UINT nFlags, short zDelta, CPoint /*pt*/)
 				AfxGetMainWnd()->SendMessage(WM_COMMAND, ID_VIEW_ZOOMOUTHOR2);
 			}
 		}
+	}
+	else if (nFlags & MK_SHIFT)
+	{
+		// TODO: vertical scroll and zoom
 	}
 	return TRUE;
 }
@@ -1745,7 +1749,7 @@ void CWaveSoapViewBase::OnMouseMove(UINT nFlags, CPoint point)
 			{
 				nChan = SPEAKER_FRONT_RIGHT;
 			}
-			pDoc->SetSelection(SelectionStart, SelectionEnd, nChan, nSampleUnderMouse);
+			pDoc->SetSelection(SelectionStart, SelectionEnd, nChan, nSampleUnderMouse, SetSelection_DontAdjustView);
 		}
 	}
 	else
@@ -1955,10 +1959,10 @@ void CWaveSoapViewBase::OnUpdate(CView* /*pSender*/, LPARAM lHint, CObject* pHin
 	if (lHint == ThisDoc::UpdatePlaybackPositionChanged
 		&& NULL != pHint)
 	{
-		CSoundUpdateInfo * pInfo = static_cast<CSoundUpdateInfo *> (pHint);
+		CPlaybackUpdateInfo * pInfo = static_cast<CPlaybackUpdateInfo *> (pHint);
 		ASSERT(NULL != pInfo);
 
-		UpdatePlaybackCursor(pInfo->m_PlaybackPosition, pInfo->m_PlaybackChannel);
+		UpdatePlaybackCursor(pInfo->PlaybackPosition(), pInfo->PlaybackChannel(), pInfo->PlaybackEnd());
 	}
 	else if (lHint == ThisDoc::UpdateSampleRateChanged
 			&& NULL == pHint)
@@ -2137,8 +2141,7 @@ void CWaveSoapViewBase::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 
 	BOOL KeepSelection = (0 != (0x8000 & GetKeyState(VK_SHIFT)));
 	BOOL CtrlPressed = (0 != (0x8000 & GetKeyState(VK_CONTROL)));
-	BOOL MakeCaretVisible = TRUE;
-	BOOL KeepCaretVisible = FALSE;
+	int VisibilityFlags = 0;
 
 	int nCaretMove = (int)m_HorizontalScale;
 	if (nCaretMove == 0)    // m_HorizontalScale < 1
@@ -2164,7 +2167,6 @@ void CWaveSoapViewBase::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 		if (CtrlPressed)
 		{
 			nCaret = pDoc->GetPrevMarker();
-			KeepCaretVisible = TRUE;
 		}
 		else
 		{
@@ -2185,8 +2187,8 @@ void CWaveSoapViewBase::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 	case VK_RIGHT:
 		if (CtrlPressed)
 		{
+			// Ctrl_Right - go to next marker
 			nCaret = pDoc->GetNextMarker();
-			KeepCaretVisible = TRUE;
 		}
 		else
 		{
@@ -2215,11 +2217,6 @@ void CWaveSoapViewBase::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 			KeepSelection = TRUE;
 			nCaret = nSelBegin;
 		}
-		else if (nSelBegin > nSelEnd)
-		{
-			KeepSelection = TRUE;
-			nCaret = nSelEnd;
-		}
 		else
 		{
 			nCaret = SAMPLE_INDEX(WindowXtoSample(r.left + 1)); // cursor to the left boundary + 1
@@ -2238,11 +2235,6 @@ void CWaveSoapViewBase::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 			KeepSelection = TRUE;
 			nCaret = nSelEnd;
 		}
-		else if (nSelBegin > nSelEnd)
-		{
-			KeepSelection = TRUE;
-			nCaret = nSelBegin;
-		}
 		else
 		{
 			nCaret = SAMPLE_INDEX(WindowXtoSample(r.right - 2)); // cursor to the right boundary + 1
@@ -2259,14 +2251,16 @@ void CWaveSoapViewBase::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 		break;
 
 	case VK_UP:
-		// move the zoomed image up
+		// TODO: move the zoomed image up
 		KeepSelection = TRUE;
-		break;
+		CView::OnKeyDown(nChar, nRepCnt, nFlags);
+		return;
 
 	case VK_DOWN:
-		// move the zoomed image down
+		// TODO: move the zoomed image down
 		KeepSelection = TRUE;
-		break;
+		CView::OnKeyDown(nChar, nRepCnt, nFlags);
+		return;
 
 	case VK_TAB:
 		// toggle selection channel
@@ -2287,7 +2281,7 @@ void CWaveSoapViewBase::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 		}
 
 		KeepSelection = TRUE;
-		MakeCaretVisible = FALSE;
+		VisibilityFlags = MovePointIntoView_DontAdjustView;
 		break;
 	default:
 		// default action
@@ -2324,48 +2318,70 @@ void CWaveSoapViewBase::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 		nSelEnd = nCaret;
 	}
 
-	if (KeepCaretVisible)
-	{
-		AdjustCaretVisibility(nCaret, pDoc->m_CaretPosition, SetSelection_KeepCaretVisible);
-	}
-	else
-	{
-		MovePointIntoView(nCaret, MakeCaretVisible);
-	}
+	//AdjustCaretVisibility(nCaret, pDoc->m_CaretPosition, VisibilityFlags);
 
-	pDoc->SetSelection(nSelBegin, nSelEnd, nChan, nCaret);
+	pDoc->SetSelection(nSelBegin, nSelEnd, nChan, nCaret, VisibilityFlags);
 
 	CView::OnKeyDown(nChar, nRepCnt, nFlags);
 }
 
-void CWaveSoapViewBase::MovePointIntoView(SAMPLE_INDEX nCaret, BOOL bCenter)
+void CWaveSoapViewBase::MovePointIntoView(SAMPLE_INDEX nCaret, int Flags)
 {
 	CRect r;
 	GetClientRect(r);
 
-	int nDesiredPos = SampleToX(nCaret);
-	double scroll;
+	int nCurrentCaretPosition = SampleToX(nCaret);
+	int scroll_pixels = 0;
 	int AutoscrollWidth = GetSystemMetrics(SM_CXVSCROLL);
 
-	if (bCenter)
+	if (nCaret < WindowXtoSample(2 * r.left - r.right)
+		|| nCaret > WindowXtoSample(2 * r.right - r.left))
 	{
-		scroll = (nDesiredPos - r.right / 2) * m_HorizontalScale;
+		// center the new caret
+		SetFirstSampleInView(nCaret - r.Width() * m_HorizontalScale / 2);
+		return;
 	}
-	else if (nDesiredPos < r.left + AutoscrollWidth)
+	else if (Flags & MovePointIntoView_MakeCenter)
 	{
-		scroll = (nDesiredPos - (r.left + AutoscrollWidth)) * m_HorizontalScale;
+		scroll_pixels = nCurrentCaretPosition - r.right / 2;
 	}
-	else if (nDesiredPos >= r.right - AutoscrollWidth)
+	else if (nCurrentCaretPosition < r.left + AutoscrollWidth)
 	{
-		scroll = (nDesiredPos - (r.right - AutoscrollWidth)) * m_HorizontalScale;
+		if (Flags & MovePointIntoView_KeepAutoscrollWidth)
+		{
+			scroll_pixels = nCurrentCaretPosition - (r.left + AutoscrollWidth);
+		}
+		else if (nCurrentCaretPosition < r.left)
+		{
+			scroll_pixels = nCurrentCaretPosition - r.left;
+		}
+		else
+		{
+			return;
+		}
+	}
+	else if (nCurrentCaretPosition > r.right - AutoscrollWidth)
+	{
+		if (Flags & MovePointIntoView_KeepAutoscrollWidth)
+		{
+			scroll_pixels = nCurrentCaretPosition - (r.right - AutoscrollWidth);
+		}
+		else if (nCurrentCaretPosition >= r.right)
+		{
+			scroll_pixels = nCurrentCaretPosition - (r.right-1);
+		}
+		else
+		{
+			return;
+		}
 	}
 	else
 	{
 		return;
 	}
-	if (TRACE_SCROLL) TRACE("MovePointIntoView: DesiredPos=%d, left=%d, right=%d, scroll=%d\n",
-							nDesiredPos, r.left, r.right, scroll);
-	HorizontalScrollBy(scroll);
+	if (TRACE_SCROLL) TRACE("MovePointIntoView: CurrentPos=%d, left=%d, right=%d, scroll=%d\n",
+							nCurrentCaretPosition, r.left, r.right, scroll_pixels);
+	HorizontalScrollBy(scroll_pixels * m_HorizontalScale);
 }
 
 void CWaveSoapViewBase::UpdateCaretPosition()
@@ -2621,7 +2637,7 @@ BOOL CWaveSoapFrontView::OnScrollBy(CSize sizeScroll, BOOL bDoScroll, RECT const
 }
 #endif
 
-void CWaveSoapViewBase::UpdatePlaybackCursor(SAMPLE_INDEX sample, CHANNEL_MASK channel)
+void CWaveSoapViewBase::UpdatePlaybackCursor(SAMPLE_INDEX sample, CHANNEL_MASK channel, SAMPLE_INDEX last_sample)
 {
 	if (0 == m_PlaybackCursorChannel)
 	{
@@ -2632,6 +2648,7 @@ void CWaveSoapViewBase::UpdatePlaybackCursor(SAMPLE_INDEX sample, CHANNEL_MASK c
 	}
 
 	int pos = SampleToX(sample);
+	int last_pos = SampleToX(sample);
 	int OldPos = SampleToX(m_PlaybackCursorDrawnSamplePos);
 
 	if (pos == OldPos
@@ -2662,10 +2679,15 @@ void CWaveSoapViewBase::UpdatePlaybackCursor(SAMPLE_INDEX sample, CHANNEL_MASK c
 		// not in the view;
 		return;
 	}
-	// scroll the cursor to the center
-	// FIXME: if the selection to play is completely visible, do not scroll
-	if (pos > r.right / 2)
+
+	// if the playback end is within view, do not scroll:
+	if (last_pos < r.right)
 	{
+		// do nothing
+	}
+	else if (pos > r.right / 2)
+	{
+		// scroll the playback cursor to the center of window
 		long NewPos;
 		// scroll it to the window
 		if (pos > r.right)
@@ -2949,61 +2971,96 @@ void CWaveSoapViewBase::OnLButtonDblClk(UINT nFlags, CPoint point)
 }
 
 void CWaveSoapViewBase::AdjustCaretVisibility(SAMPLE_INDEX CaretPos, SAMPLE_INDEX OldCaretPos,
-											unsigned Flags)
+											unsigned Flags, SAMPLE_INDEX SelectionBegin, SAMPLE_INDEX SelectionEnd,
+											SAMPLE_INDEX OldSelectionBegin, SAMPLE_INDEX OldSelectionEnd)
 {
+	if (Flags & SetSelection_DontAdjustView)
+	{
+		return;
+	}
 	ThisDoc * pDoc = GetDocument();
 	CRect cr;
 	GetClientRect(cr);
 	// change for foreground frame only
 	CFrameWnd * pFrameWnd = GetParentFrame();
+	long PrevX = SampleToX(OldCaretPos);
+	long NewX = SampleToX(CaretPos);
+	int Center = (cr.left + cr.right) / 2;
 
 	if (NULL != pFrameWnd
 		&& pFrameWnd == pFrameWnd->GetWindow(GW_HWNDFIRST))
 	{
-		if (SetSelection_KeepCaretVisible ==
-			(Flags & SetSelection_KeepCaretVisible))
+		if (Flags & SetSelection_MakeFileVisible)
 		{
-			// move caret toward center
+			SAMPLE_INDEX LastSample = pDoc->WaveFileSamples();
+			if (WindowXtoSample(0) > LastSample)
+			{
+				MovePointIntoView(LastSample, TRUE);
+			}
+		}
+		else if (1)
+		{
+			MovePointIntoView(CaretPos, Flags);
+		}
+		else if (Flags & SetSelection_KeepSelectionVisible)
+		{
+			// move the view as little to have the whole selection visible
+		}
+		else if (Flags & SetSelection_MakeCaretVisible)
+		{
+			// move the view as little to have the whole selection visible
+			if (NewX < cr.left)
+			{
+
+			}
+			else if (NewX >= cr.right)
+			{
+			}
+			else
+			{
+				// do nothing
+			}
+		}
+		else if (SetSelection_KeepCaretVisible ==
+				(Flags & SetSelection_KeepCaretVisible))
+		{
+			// move caret toward center (only if playing and ony until selection boundary gets in the view.
 			// if the caret was from the left side, allow it to stay on the left side,
 			// but when moved to the right, keep it in center.
 			// If the caret was or becomes not visible, bring it to center
-			long PrevX = SampleToX(OldCaretPos);
-			long NewX = SampleToX(CaretPos);
-			int Center = (cr.left + cr.right) / 2;
-
 			if (PrevX < cr.left
 				|| PrevX >= cr.right
 				|| NewX < cr.left
 				|| NewX >= cr.right)
 			{
-				MovePointIntoView(CaretPos, TRUE);
+				MovePointIntoView(CaretPos, MovePointIntoView_MakeCenter);
 			}
 			else if (PrevX < Center)
 			{
 				if (NewX > Center)
 				{
-					MovePointIntoView(CaretPos, TRUE);
+					MovePointIntoView(CaretPos, MovePointIntoView_MakeCenter);
 				}
 				else
 				{
-					MovePointIntoView(CaretPos, FALSE);
+					MovePointIntoView(CaretPos, 0);
 				}
 			}
 			else if (PrevX > Center)
 			{
 				if (NewX < Center)
 				{
-					MovePointIntoView(CaretPos, TRUE);
+					MovePointIntoView(CaretPos, MovePointIntoView_MakeCenter);
 				}
 				else
 				{
-					MovePointIntoView(CaretPos, FALSE);
+					MovePointIntoView(CaretPos, 0);
 				}
 			}
 			else
 			{
 				// keep centered
-				MovePointIntoView(CaretPos, TRUE);
+				MovePointIntoView(CaretPos, MovePointIntoView_MakeCenter);
 			}
 		}
 		else if (Flags & SetSelection_MakeCaretVisible)
@@ -3013,15 +3070,6 @@ void CWaveSoapViewBase::AdjustCaretVisibility(SAMPLE_INDEX CaretPos, SAMPLE_INDE
 		else if (Flags & SetSelection_MoveCaretToCenter)
 		{
 			MovePointIntoView(CaretPos, TRUE);
-		}
-	}
-
-	if (Flags & SetSelection_MakeFileVisible)
-	{
-		SAMPLE_INDEX LastSample = pDoc->WaveFileSamples();
-		if (WindowXtoSample(0) > LastSample)
-		{
-			MovePointIntoView(LastSample, TRUE);
 		}
 	}
 }
@@ -3042,7 +3090,13 @@ void CWaveSoapViewBase::SetHorizontalScale(double NewHorizontalScale, int ZoomCe
 {
 	m_PrevHorizontalScale = m_HorizontalScale;
 	NotifySiblingViews(HorizontalScaleChanged, &NewHorizontalScale);
-	MovePointIntoView(GetDocument()->m_CaretPosition, TRUE);
+	if (ZoomCenter == INT_MAX)
+	{
+		MovePointIntoView(GetDocument()->m_CaretPosition, MovePointIntoView_MakeCenter);
+	}
+	else
+	{
+	}
 }
 
 int CWaveSoapViewBase::SampleToXceil(SAMPLE_INDEX sample) const

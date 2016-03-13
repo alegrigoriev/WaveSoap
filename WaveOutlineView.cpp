@@ -524,17 +524,17 @@ void CWaveOutlineView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
 			{
 				r1.right = cr.right;
 			}
-//            TRACE("CWaveOutlineView: invalidate %d...%d\n", r1.left, r1.right);
+
 			InvalidateRect(& r1, FALSE);
 		}
 	}
 	else if (lHint == CWaveSoapFrontDoc::UpdatePlaybackPositionChanged
 			&& NULL != pHint)
 	{
-		CSoundUpdateInfo * pInfo = static_cast<CSoundUpdateInfo *>(pHint);
+		CPlaybackUpdateInfo * pInfo = static_cast<CPlaybackUpdateInfo *>(pHint);
 		int OldPosition = MulDiv(m_PlaybackCursorPosition, width, nSamples);
-		int NewPosition = MulDiv(pInfo->m_PlaybackPosition, width, nSamples);
-
+		int NewPosition = MulDiv(pInfo->PlaybackPosition(), width, nSamples);
+		// trigger redraw of
 		if (NewPosition != OldPosition)
 		{
 			CRect r;
@@ -547,7 +547,7 @@ void CWaveOutlineView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
 				r.right = OldPosition + 1;
 				InvalidateRect( & r, FALSE);
 			}
-			if (-1 != pInfo->m_PlaybackPosition)
+			if (-1 != pInfo->PlaybackPosition())
 			{
 				r.left = NewPosition;
 				r.right = NewPosition + 1;
@@ -555,7 +555,7 @@ void CWaveOutlineView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
 			}
 		}
 
-		m_PlaybackCursorPosition = pInfo->m_PlaybackPosition;
+		m_PlaybackCursorPosition = pInfo->PlaybackPosition();
 	}
 	else if (lHint == CWaveSoapFrontDoc::UpdateMarkerRegionChanged
 			&& NULL != pHint)
@@ -788,7 +788,7 @@ void CWaveOutlineView::OnLButtonDown(UINT nFlags, CPoint point)
 		}
 		pDoc->SetSelection(SelectionStart, SelectionEnd,
 							ALL_CHANNELS, nSampleUnderMouse,
-							SetSelection_MoveCaretToCenter);
+							SetSelection_MakeCaretVisible | SetSelection_Autoscroll);
 	}
 	else if (0 != nSamples)
 	{
@@ -800,7 +800,7 @@ void CWaveOutlineView::OnLButtonDown(UINT nFlags, CPoint point)
 		SAMPLE_INDEX nEnd = Granularity * MulDiv(point.x + 1, PeaksSamples, width);
 
 		pDoc->SetSelection(nBegin, nEnd, ALL_CHANNELS, nBegin,
-							SetSelection_SnapToMaximum | SetSelection_MoveCaretToCenter);
+							SetSelection_SnapToMaximum | SetSelection_MakeCaretVisible | SetSelection_Autoscroll);
 	}
 
 }
@@ -844,7 +844,7 @@ void CWaveOutlineView::OnLButtonUp(UINT /*nFlags*/, CPoint point)
 			SAMPLE_INDEX_Vector markers;
 			pDoc->m_WavFile.GetSortedMarkers(markers, FALSE);
 
-			unsigned Flags = SetSelection_SnapToMaximum | SetSelection_MoveCaretToCenter;
+			unsigned Flags = SetSelection_SnapToMaximum | SetSelection_MakeCaretVisible | SetSelection_Autoscroll;
 			for (SAMPLE_INDEX_Vector::const_iterator i = markers.begin(); i != markers.end(); i++)
 			{
 				long x = MulDiv( *i, cr.right, nSamples);
@@ -956,7 +956,7 @@ void CWaveOutlineView::OnMouseMove(UINT nFlags, CPoint point)
 		}
 
 		pDoc->SetSelection(SelectionStart, SelectionEnd,
-							ALL_CHANNELS, nSampleUnderMouse, SetSelection_MakeCaretVisible);
+							ALL_CHANNELS, nSampleUnderMouse, SetSelection_MakeCaretVisible | SetSelection_Autoscroll);
 	}
 }
 

@@ -13,7 +13,12 @@
 #include "WaveSoapFrontDoc.h"
 #include "DataSection.h"
 #include <math.h>
-
+enum
+{
+	MovePointIntoView_MakeCenter = SetSelection_MoveCaretToCenter,
+	MovePointIntoView_KeepAutoscrollWidth = SetSelection_Autoscroll,
+	MovePointIntoView_DontAdjustView = SetSelection_DontAdjustView,
+};
 class CWaveSoapViewBase : public CView
 {
 	typedef CView BaseClass;
@@ -62,9 +67,10 @@ public:
 	virtual DWORD ClientHitTest(CPoint p) const = 0;
 
 	void SetFirstSampleInView(double sample);
-	void MovePointIntoView(SAMPLE_INDEX nCaret, BOOL Center = FALSE);
+	void MovePointIntoView(SAMPLE_INDEX nCaret, int Flags = 0);
 	void AdjustCaretVisibility(SAMPLE_INDEX CaretPos, SAMPLE_INDEX OldCaretPos,
-								unsigned Flags);
+								unsigned Flags, SAMPLE_INDEX SelectionBegin = 0, SAMPLE_INDEX SelectionEnd = 0,
+								SAMPLE_INDEX OldSelectionBegin = 0, SAMPLE_INDEX OldSelectionEnd = 0);
 
 	void UpdateHorizontalExtents(NUMBER_OF_SAMPLES Length, int WindowWidth);
 
@@ -78,7 +84,7 @@ public:
 	virtual void DrawPlaybackCursor(CDC * pDC, SAMPLE_INDEX Sample, CHANNEL_MASK Channel);
 	virtual void ShowPlaybackCursor(CDC * pDC = NULL);
 	virtual void HidePlaybackCursor(CDC * pDC = NULL);
-	void UpdatePlaybackCursor(SAMPLE_INDEX sample, CHANNEL_MASK channel);
+	void UpdatePlaybackCursor(SAMPLE_INDEX sample, CHANNEL_MASK channel, SAMPLE_INDEX last_sample);
 	bool PlaybackCursorVisible() const;
 	CBitmap m_PlaybackCursorBitmap;
 	CHANNEL_MASK m_PlaybackCursorChannel;  // 0 = not playing

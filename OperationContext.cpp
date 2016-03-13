@@ -1762,7 +1762,8 @@ void CCopyContext::DeInit()
 	m_SrcStart = m_SrcPos;
 	if (m_Flags & OperationContextCommitFile)
 	{
-		m_DstFile.SetDatachunkLength(m_DstPos - m_DstFile.GetDataChunk()->dwDataOffset);
+		ASSERT(m_DstPos - m_DstFile.GetDataChunk()->dwDataOffset < 0xFFFFFFFFULL - 44);
+		m_DstFile.SetDatachunkLength(WAV_FILE_SIZE(m_DstPos - m_DstFile.GetDataChunk()->dwDataOffset));
 	}
 	m_DstStart = m_DstPos;
 }
@@ -2062,7 +2063,7 @@ BOOL CCopyUndoContext::InitUndoCopy(CWaveFile & SrcFile,     // the file with th
 	{
 		if ( ! m_SrcFile.CreateWaveFile( & SrcFile, NULL,
 										SaveChannel,
-										(SaveEndPos - SaveStartPos) / SrcFile.SampleSize(),
+										NUMBER_OF_SAMPLES((SaveEndPos - SaveStartPos) / SrcFile.SampleSize()),
 										CreateWaveFileTempDir
 										| CreateWaveFileDeleteAfterClose
 										| CreateWaveFileDontCopyInfo
@@ -2100,7 +2101,7 @@ BOOL CCopyUndoContext::InitUndoCopy(CWaveFile & SrcFile,     // the file with th
 	{
 		if ( ! m_SrcFile.CreateWaveFile( & SrcFile, NULL,
 										SaveChannel,
-										(SaveStartPos - SaveEndPos) / SrcFile.SampleSize(),
+										NUMBER_OF_SAMPLES((SaveStartPos - SaveEndPos) / SrcFile.SampleSize()),
 										CreateWaveFileTempDir
 										| CreateWaveFileDeleteAfterClose
 										| CreateWaveFileDontCopyInfo
@@ -2346,7 +2347,7 @@ BOOL CDecompressContext::OperationProc()
 			// calculate new length
 			NUMBER_OF_SAMPLES MaxNumberOfSamples = 0x7FFFFFFF / m_DstFile.SampleSize();
 
-			TotalSamples = (nLastSample * (m_SrcEnd - m_SrcStart)) / (m_SrcPos - m_SrcStart);
+			TotalSamples = NUMBER_OF_SAMPLES((nLastSample * ULONGLONG((m_SrcEnd - m_SrcStart))) / (m_SrcPos - m_SrcStart));
 
 			if (TotalSamples > MaxNumberOfSamples)
 			{
@@ -2430,7 +2431,7 @@ BOOL CSoundPlayContext::Init()
 		return FALSE;
 	}
 
-	m_pDocument->PlaybackPositionNotify(-1, 0);// sample=-1, channel=0
+	m_pDocument->PlaybackPositionNotify(-1, 0, 0);// sample=-1, channel=0
 
 	SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_ABOVE_NORMAL);
 	return TRUE;
@@ -2438,7 +2439,7 @@ BOOL CSoundPlayContext::Init()
 
 void CSoundPlayContext::DeInit()
 {
-	m_pDocument->PlaybackPositionNotify(-1, 0);// sample=-1, channel=0
+	m_pDocument->PlaybackPositionNotify(-1, 0, 0);// sample=-1, channel=0
 	SetThreadPriority(GetCurrentThread(), m_OldThreadPriority);
 
 	m_WaveOut.Reset();
@@ -2465,13 +2466,13 @@ void CSoundPlayContext::PostRetire()
 		}
 #endif
 		m_pDocument->SetSelection(m_SamplePlayed, m_SamplePlayed,
-								m_pDocument->m_SelectedChannel, m_SamplePlayed, SetSelection_MoveCaretToCenter);
+			m_pDocument->m_SelectedChannel, m_SamplePlayed, SetSelection_MakeCaretVisible | SetSelection_Autoscroll);
 	}
 	else
 	{
 		// return caret to the end of selected area
 		m_pDocument->SetSelection(m_pDocument->m_SelectionStart, m_pDocument->m_SelectionEnd,
-								m_pDocument->m_SelectedChannel, m_pDocument->m_SelectionEnd, SetSelection_MoveCaretToCenter);
+			m_pDocument->m_SelectedChannel, m_pDocument->m_SelectionEnd, SetSelection_MakeCaretVisible | SetSelection_Autoscroll);
 	}
 	BaseClass::PostRetire();
 }
@@ -2540,7 +2541,7 @@ BOOL CSoundPlayContext::OperationProc()
 	// notify the document
 	m_SamplePlayed = m_WaveOut.GetPosition() + m_FirstSamplePlayed;
 
-	m_pDocument->PlaybackPositionNotify(m_SamplePlayed, m_Chan);
+	m_pDocument->PlaybackPositionNotify(m_SamplePlayed, m_Chan, m_LastSamplePlayed);
 	return TRUE;
 }
 
@@ -3084,7 +3085,7 @@ void CStatisticsContext::PostRetire()
 			unsigned Channel;
 			SAMPLE_INDEX Sample = dlg.GetMaxSamplePosition( & Channel);
 
-			m_pDocument->SetSelection(Sample, Sample, 1 << Channel, Sample, SetSelection_MoveCaretToCenter);
+			m_pDocument->SetSelection(Sample, Sample, 1 << Channel, Sample, SetSelection_MakeCaretVisible | SetSelection_Autoscroll);
 		}
 	}
 	BaseClass::PostRetire();
