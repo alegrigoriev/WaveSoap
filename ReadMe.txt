@@ -105,8 +105,6 @@ Add 48000 Hz to the PCM format list (deferred)
 
 Problems:
 
-Progress procent wrong during resample (peak scan interference?) TODO: allow percent per stage
-22050->44100 resample takes too long: scanning for peaks gets stuck.
 Ctrl+S doesn't always work
 When playing, zoom should use the playback point as a center.
 WMA format list shows only compatible formats, even when checkbox not checked.
@@ -120,11 +118,8 @@ If there is not enough space to load a compressed file, doesn't show an error
 During exit, asks to reopen the file
 Save As adds "Copy of" for direct file
 Save As fails if the file replaced is read-only
-WinXP doesn't have CDRAL
 Multisession disk shows only begin of tracks. Read the whole structure.
 Multiline edit box in child dialog eats Esc and Enter (DLGC_WANTALLCHARS) (MFC CDialog::PreTranslateMessage() bug
-If there is not enough space on NTFS volume, it will be seen only during flush
-Windows2000 is trying to zero the allocated file
 
 Log Off query doesn't close the active dialog. Recursion is possible. Make sure to check after Cancel
 
@@ -227,7 +222,6 @@ No Disk In Drive has a checkmark
 CD list combo height too low
 
 Deferred or not confirmed:
-Selection mode in FFT view may not exit on capture loss
 Suggests u-Law when saving a file from clipboard (??)
 Daylight saving time change invalidates peak info timestamp (FAT only??)
 doesn't show caret on the outline (as designed)
@@ -235,19 +229,17 @@ doesn't show caret on the outline (as designed)
 
 Add context menu to track list (check/uncheck all/selected)
 Add check/uncheck icons to the header
-Move WMA error dialog to PostRetire, all initialization to Init()
 16 and 20 kbit/s WMA save is incomplete (not reproduced)
-During playback, scrolled remnants of playback cursor seen (video driver?)
 Put buttons for the view commands to the wave window status bar
 CWmaNotInstalledDlg doesn't save "Don't show" flag
 Save As dialog is not centered first time (comdlg problem?)
-??? When time/seconds format is set for status bar, MM:SS is actually shown
 
 Done:
 Support WAVEFORMATEXTENSIBLE.
 Make multichannel editing
 allow 24/32 bit data
 Allow "Minimized" channels
+Move WMA error dialog to PostRetire, all initialization to Init()
 
 For Version 2:
 Make customizable context menu in views
