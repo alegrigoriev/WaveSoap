@@ -1863,7 +1863,7 @@ void CResampleDialog::DoDataExchange(CDataExchange* pDX)
 	DDX_Radio(pDX, IDC_RADIO_CHANGE_PITCH, m_bChangeSamplingRate);
 	DDX_Text(pDX, IDC_EDIT_RATE, m_NewSampleRate);
 	//}}AFX_DATA_MAP
-	DDV_MinMaxUInt(pDX, m_NewSampleRate, m_OldSampleRate / 4, m_OldSampleRate * 4);
+	DDV_MinMaxUInt(pDX, m_NewSampleRate, m_OldSampleRate / 6, m_OldSampleRate * 6);
 
 	m_EditTempo.ExchangeData(pDX, m_TempoChange,
 							IDS_INPUT_NAME_TEMPO_CHANGE, IDS_PERCENT_CHAR, 25., 400.);

@@ -4254,7 +4254,7 @@ CResampleFilter::CResampleFilter()
 	m_InputSampleType = SampleTypeFloat32;
 }
 
-CResampleFilter::CResampleFilter(long NewSampleRate, BOOL KeepSamplesPerSec)
+CResampleFilter::CResampleFilter(long NewSampleRate, double AntiAliasCutoffFrequency, bool KeepSamplesPerSec)
 	: m_SrcBufUsed(0)
 	, m_SrcBufFilled(0)
 	, m_SrcFilterLength(0)
@@ -4267,9 +4267,10 @@ CResampleFilter::CResampleFilter(long NewSampleRate, BOOL KeepSamplesPerSec)
 	, m_InputPeriod(0x80000000)
 	, m_OutputPeriod(0x80000000)
 	, m_KeepOriginalSampleRate(false)
+	, m_AntiAliasCutoffFrequency(1.)
 {
 	m_InputSampleType = SampleTypeFloat32;
-	InitResample(NewSampleRate, KeepSamplesPerSec);
+	InitResample(NewSampleRate, AntiAliasCutoffFrequency, KeepSamplesPerSec);
 }
 
 CResampleFilter::~CResampleFilter()
@@ -4636,11 +4637,9 @@ BOOL CResampleFilter::SetInputWaveformat(CWaveFormat const & Wf, CHANNEL_MASK ch
 	// after this number of output samples, the filter coefficients repeat
 	unsigned long NumberOfFilterTables = m_EffectiveOutputSampleRate / common;
 
-	// this is number of taps in each filter
-	unsigned RequestedNumSincWaves = 20;
-	unsigned SamplesInFilter;
 	// select num sinc waves N (number of sin periods) that fit in the window width, for the selected stop slope.
 	// we choose 20.
+	unsigned RequestedNumSincWaves = 20;
 	// The sinc argument goes from -RequestedNumSincWaves*PI to RequestedNumSincWaves*PI.
 	// to calculate a filter with the specified 99% pass frequency, take num sinc waves, subtract 2. Number of samples per
 	// sinc period is <sampling rate>/passband. Number of samples in filter=(NumSincWaves-2)*SampleRate/passband
@@ -4648,7 +4647,8 @@ BOOL CResampleFilter::SetInputWaveformat(CWaveFormat const & Wf, CHANNEL_MASK ch
 	// when downsampling, the filter number of sin periods is in new sample rate times.
 	// Thus, the filter needs to be longer
 	// Additional *2 multiplier here because we want passband at m_EffectiveOutputSampleRate/2
-	SamplesInFilter = MulDiv((RequestedNumSincWaves - 2) * 2, OriginalSampleRate, m_EffectiveOutputSampleRate);
+	// this is number of taps in each filter
+	unsigned SamplesInFilter = unsigned((RequestedNumSincWaves - 2) * OriginalSampleRate / m_AntiAliasCutoffFrequency);
 
 	if (NumberOfFilterTables * SamplesInFilter <= MaxNumberOfFilterSamples)
 	{
@@ -4665,10 +4665,11 @@ BOOL CResampleFilter::SetInputWaveformat(CWaveFormat const & Wf, CHANNEL_MASK ch
 	return TRUE;
 }
 
-void CResampleFilter::InitResample(long NewSampleRate, BOOL KeepSamplesPerSec)
+void CResampleFilter::InitResample(long NewSampleRate, double AntiAliasCutoffFrequency, BOOL KeepSamplesPerSec)
 {
 	// FilterLength is how many Sin periods are in the array.
 	//
+	m_AntiAliasCutoffFrequency = AntiAliasCutoffFrequency;
 	m_EffectiveOutputSampleRate = NewSampleRate;
 	m_KeepOriginalSampleRate = KeepSamplesPerSec;
 }
@@ -5184,7 +5185,7 @@ unsigned CDeDecimator::ProcessSoundBuffer(char const * pIn, char * pOut,
 	unsigned Channels = m_InputFormat.NumChannels();
 
 	unsigned nUsedSamples, nSavedSamples;
-	double const ScaleCoeff = m_DecimationRatio;
+	double const ScaleCoeff = m_ExpansionRatio;
 
 	for (nUsedSamples = 0, nSavedSamples = 0; nUsedSamples < nInSamples && nSavedSamples < nOutSamples; nSavedSamples++)
 	{
@@ -5210,7 +5211,7 @@ unsigned CDeDecimator::ProcessSoundBuffer(char const * pIn, char * pOut,
 
 		pOut += OutSampleSize;
 		m_CurrentCounter++;
-		if (m_CurrentCounter == m_DecimationRatio)
+		if (m_CurrentCounter == m_ExpansionRatio)
 		{
 			m_CurrentCounter = 0;
 		}
@@ -5225,7 +5226,7 @@ BOOL CDeDecimator::SetInputWaveformat(CWaveFormat const & Wf, CHANNEL_MASK chann
 	{
 		return FALSE;
 	}
-	m_OutputFormat.InitFormat(m_OutputSampleType, Wf.SampleRate() * m_DecimationRatio, Wf.NumChannels());
+	m_OutputFormat.InitFormat(m_OutputSampleType, Wf.SampleRate() * m_ExpansionRatio, Wf.NumChannels());
 	return TRUE;
 }
 
