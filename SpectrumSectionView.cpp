@@ -252,7 +252,7 @@ static void BuildBandArray(double X_Offset, double dBToPixel,
 			}
 		}
 	}
-#ifdef _DEBUG
+#if 0 && defined (_DEBUG)
 	TRACE(L"BuildBandArray %d FFT bands, min %f dB, max %f dB at Y=%d\n", FftBandsProcessed, dBMin, dBMax, MaxY);
 #endif
 }

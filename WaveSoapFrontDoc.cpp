@@ -1210,7 +1210,7 @@ BOOL CWaveSoapFrontDoc::DoPaste(SAMPLE_INDEX Start, SAMPLE_INDEX End, CHANNEL_MA
 
 			CResampleContext::auto_ptr pResampleContext(
 														new CResampleContext(this, IDS_RESAMPLE_CLIPBOARD_STATUS_PROMPT, 0,
-															SrcFile, DstFile, TargetSampleRate, FALSE));
+															SrcFile, DstFile, TargetSampleRate, false));
 
 			SrcFile = DstFile;
 
@@ -4151,8 +4151,7 @@ void CWaveSoapFrontDoc::OnProcessResample()
 	}
 
 	pContext->AddContext(new CResampleContext(this,
-											0, 0, m_WavFile, DstFile, NewSamplingRate,
-											FALSE));
+											0, 0, m_WavFile, DstFile, NewSamplingRate, false));
 
 	pContext->AddContext(new CReplaceFileContext(this, _T(""), DstFile, false));
 

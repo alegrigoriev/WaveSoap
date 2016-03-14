@@ -21,7 +21,7 @@ public:
 	CResampleContext(CWaveSoapFrontDoc * pDoc,
 					UINT StatusStringId, UINT OperationNameId,
 					CWaveFile & SrcFile, CWaveFile & DstFile,
-					long NewSampleRate, BOOL KeepSamplesPerSec);
+					long NewSampleRate, bool KeepSamplesPerSec);
 };
 
 #endif //AFX_RESAMPLE_H__165978E0_39A0_11D4_9ADD_00C0F0583C4B__INCLUDED_

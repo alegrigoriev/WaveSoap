@@ -3359,7 +3359,8 @@ BOOL CWaveProcContext::MakeCompatibleFormat(WAVEFORMATEX const * pSrcWf, WAVEFOR
 
 	if (pDstWf->nSamplesPerSec != pSrcWf->nSamplesPerSec)
 	{
-		AddWaveProc(new CResampleFilter(pDstWf->nSamplesPerSec, FALSE));
+		AddWaveProc(new CResampleFilter(pDstWf->nSamplesPerSec,
+										std::min((double)pDstWf->nSamplesPerSec, (double)pSrcWf->nSamplesPerSec) /2., false));
 
 		m_DstFile.GetInstanceData()->RescaleMarkers(pSrcWf->nSamplesPerSec, pDstWf->nSamplesPerSec);
 	}

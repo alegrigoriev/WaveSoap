@@ -20,9 +20,9 @@ static char THIS_FILE[] = __FILE__;
 #endif
 
 #define TRACE_DRAWING 0
-#define TRACE_MOUSE 1
-#define TRACE_SCROLL 1
-#define TRACE_CARET 1
+#define TRACE_MOUSE 0
+#define TRACE_SCROLL 0
+#define TRACE_CARET 0
 #define TRACE_UPDATE 0
 /////////////////////////////////////////////////////////////////////////////
 // CWaveSoapFrontView

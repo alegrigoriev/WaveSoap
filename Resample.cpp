@@ -20,7 +20,7 @@ public:
 	CResampleProcContext(CWaveSoapFrontDoc * pDoc,
 						UINT StatusStringId, UINT OperationNameId,
 						CWaveFile & SrcFile, CWaveFile & DstFile,
-						long NewSampleRate, BOOL KeepSamplesPerSec);
+						long NewSampleRate, bool KeepSamplesPerSec);
 
 	virtual void DeInit();
 };
@@ -44,62 +44,69 @@ static unsigned long GreatestCommonFactor(unsigned long x1, unsigned long x2)
 CResampleContext::CResampleContext(CWaveSoapFrontDoc * pDoc,
 									UINT StatusStringId, UINT OperationNameId,
 									CWaveFile & SrcFile, CWaveFile &DstFile,
-									long NewSampleRate, BOOL KeepSamplesPerSec)
+									long NewSampleRate, bool KeepSamplesPerSec)
 	: BaseClass(pDoc, StatusStringId, OperationNameId)
 {
 	long InputSampleRate = SrcFile.SampleRate();
 
 	long common = GreatestCommonFactor(NewSampleRate, InputSampleRate);
-	long Pre_DeDecimateRate = NewSampleRate / common;
+	long PreExpansionRate = NewSampleRate / common;
 	long PostDecimateRate = InputSampleRate / common;
-	if (Pre_DeDecimateRate <= 6 && PostDecimateRate <= 6)
+
+	if (PreExpansionRate > 6 || PostDecimateRate > 6)
 	{
-		// if doing downsample:
-		// find out the fraction factors and see if we can go without fractional filter
-		Pre_DeDecimateRate = (NewSampleRate + InputSampleRate - 1) / InputSampleRate;
-		while (InputSampleRate * Pre_DeDecimateRate * 2 < NewSampleRate * 3)
+		// cannot use just decimation and expansion (de-decimation). This conversion will require fractional sliding interpolating filter
+		// make sure the filter 99% pass frequency is at or below 3/4*PI, which means the sample rate fraction is under or equal 3/4
+		PreExpansionRate = (NewSampleRate + InputSampleRate - 1) / InputSampleRate;
+		while (NewSampleRate * 4 > InputSampleRate * PreExpansionRate * 3)
 		{
-			Pre_DeDecimateRate += 1;
+			PreExpansionRate += 1;
 		}
 
-		PostDecimateRate = (InputSampleRate * Pre_DeDecimateRate + NewSampleRate - 1) / NewSampleRate;
-		while (InputSampleRate * Pre_DeDecimateRate * 2 < NewSampleRate * PostDecimateRate * 3)
+		PostDecimateRate = InputSampleRate * PreExpansionRate / NewSampleRate;
+		while (NewSampleRate * 4 > InputSampleRate * PreExpansionRate * 3 / PostDecimateRate)
 		{
 			PostDecimateRate -= 1;
 		}
-	}
-	else
-	{
-		// will use IIR and combination of decimation and de-decimation
-		// no constraints on the ratio
 	}
 
 	try
 	{
 		CWaveProcContext * pFirstPass = new CWaveProcContext(pDoc);
 		AddContext(pFirstPass);
-		if (Pre_DeDecimateRate != 1)
+		if (PreExpansionRate != 1)
 		{
-			pFirstPass->AddWaveProc(new CDeDecimator(Pre_DeDecimateRate));
-			InputSampleRate *= Pre_DeDecimateRate;
+			pFirstPass->AddWaveProc(new CDeDecimator(PreExpansionRate));
 		}
-		long IirCutoffFrequency = NewSampleRate / 2;
+		double AntiAliasCutoffFrequency;
+		if (NewSampleRate > InputSampleRate)
+		{
+			// upsampling, the antialiasing is based on the input frequency
+			AntiAliasCutoffFrequency = InputSampleRate / 2.;
+		}
+		else
+		{
+			// downsampling, the antialiasing is based on the output frequency
+			AntiAliasCutoffFrequency = NewSampleRate / 2.;
+		}
 
 		FilterCoefficients coeffs = { 0 };
 		LowpassFilter lpf;
-		double PassbandLoss = 0.995;
+		double PassbandLoss = 0.997;
 		double StopbandLoss = 0.003;	// -50 dB for each pass, -100 dB result
 
-		if (InputSampleRate * Pre_DeDecimateRate == NewSampleRate * PostDecimateRate)
+		if (PostDecimateRate > 1
+			|| InputSampleRate * PreExpansionRate == NewSampleRate)
 		{
 			// will not use fractional resample filter, so can have more passband loss
 			// and need more stopband loss
-			PassbandLoss = 0.99;
+			// make sure we'll not see ghosts of aliases in FFT view
+			PassbandLoss = 0.999;
 			StopbandLoss = 0.001;	// -60 dB for each pass, -120 dB result
 		}
 
-		lpf.CreateElliptic(IirCutoffFrequency * 0.99*2.*M_PI / InputSampleRate, PassbandLoss,
-							IirCutoffFrequency * 2.*M_PI / InputSampleRate, StopbandLoss);
+		lpf.CreateElliptic(AntiAliasCutoffFrequency * 0.99*2.*M_PI / (InputSampleRate * PreExpansionRate), PassbandLoss,
+							AntiAliasCutoffFrequency * 2.*M_PI / (InputSampleRate * PreExpansionRate), StopbandLoss);
 
 		lpf.GetCoefficients(coeffs.m_LpfCoeffs);
 		coeffs.m_nLpfOrder = lpf.GetFilterOrder();
@@ -111,8 +118,8 @@ CResampleContext::CResampleContext(CWaveSoapFrontDoc * pDoc,
 
 		CWaveFormat TempFileFormat;
 		// TODO: add post-roll
-		TempFileFormat.InitFormat(SampleTypeFloat32, InputSampleRate, SrcFile.Channels());
-		NUMBER_OF_SAMPLES TempFileNumberOfSamples = SrcFile.NumberOfSamples() * Pre_DeDecimateRate;
+		TempFileFormat.InitFormat(SampleTypeFloat32, InputSampleRate * PreExpansionRate, SrcFile.Channels());
+		NUMBER_OF_SAMPLES TempFileNumberOfSamples = SrcFile.NumberOfSamples() * PreExpansionRate;
 
 		CWaveFile TempFile;
 		if (!TempFile.CreateWaveFile(NULL, TempFileFormat, ALL_CHANNELS, TempFileNumberOfSamples,
@@ -139,18 +146,17 @@ CResampleContext::CResampleContext(CWaveSoapFrontDoc * pDoc,
 		pSecondPass->AddWaveProc(pFilter2);
 
 		pSecondPass->InitSource(TempFile, 0, TempFileNumberOfSamples /*+ 1000*/, ALL_CHANNELS);
-		pSecondPass->InitDestination(DstFile, 0, NewSampleRate*LONGLONG(TempFileNumberOfSamples) / InputSampleRate, ALL_CHANNELS, FALSE);
+		pSecondPass->InitDestination(DstFile, 0, NewSampleRate*LONGLONG(SrcFile.NumberOfSamples()) / InputSampleRate, ALL_CHANNELS, FALSE);
 
 		if (PostDecimateRate != 1)
 		{
-			InputSampleRate /= PostDecimateRate;
 			pSecondPass->AddWaveProc(new CDecimator(PostDecimateRate));
 		}
 
-		if (InputSampleRate != NewSampleRate)
+		if (InputSampleRate * PreExpansionRate != NewSampleRate * PostDecimateRate)
 		{
 			// fractional resample, add CResampleFilter
-			pSecondPass->AddWaveProc(new CResampleFilter(NewSampleRate, KeepSamplesPerSec));
+			pSecondPass->AddWaveProc(new CResampleFilter(NewSampleRate, AntiAliasCutoffFrequency, KeepSamplesPerSec));
 		}
 
 	}
@@ -164,12 +170,14 @@ CResampleContext::CResampleContext(CWaveSoapFrontDoc * pDoc,
 CResampleProcContext::CResampleProcContext(CWaveSoapFrontDoc * pDoc,
 											UINT StatusStringId, UINT OperationNameId,
 											CWaveFile & SrcFile, CWaveFile &DstFile,
-											long NewSampleRate, BOOL KeepSamplesPerSec)
+											long NewSampleRate, bool KeepSamplesPerSec)
 	: BaseClass(pDoc, StatusStringId, OperationNameId)
 {
 	InitSource(SrcFile, 0, LAST_SAMPLE, ALL_CHANNELS);
 	InitDestination(DstFile, 0, LAST_SAMPLE, ALL_CHANNELS, FALSE);
-	AddWaveProc(new CResampleFilter(NewSampleRate, KeepSamplesPerSec));
+#if 0
+	FIXME AddWaveProc(new CResampleFilter(NewSampleRate, KeepSamplesPerSec));
+#endif
 }
 
 void CResampleProcContext::DeInit()

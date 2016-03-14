@@ -664,7 +664,7 @@ class CResampleFilter: public CWaveProc
 public:
 	typedef std::auto_ptr<ThisClass> auto_ptr;
 	CResampleFilter();
-	CResampleFilter(long NewSampleRate, BOOL KeepSamplesPerSec);
+	CResampleFilter(long NewSampleRate, double AntiAliasCutoffFrequency, bool KeepSamplesPerSec);
 
 	virtual ~CResampleFilter();
 
@@ -672,7 +672,7 @@ public:
 										unsigned nInBytes, unsigned nOutBytes, unsigned * pUsedBytes);
 	virtual BOOL SetInputWaveformat(CWaveFormat const & Wf, CHANNEL_MASK channels = ALL_CHANNELS);
 
-	void InitResample(long NewSampleRate, BOOL KeepSamplesPerSec);
+	void InitResample(long NewSampleRate, double AntiAliasCutoffFrequency, BOOL KeepSamplesPerSec);
 	enum { DefaultFilterLength = 16, };
 private:
 	void InitSlidingInterpolatedFilter(unsigned NumSincWaves, unsigned SamplesInFilter, unsigned TableSize);
@@ -737,8 +737,9 @@ private:
 	ATL::CHeapPtr<FilterPolyCoeff> m_InterpolatedFilterTable;
 	ATL::CHeapPtr<double> m_FilterTable;
 
-	BOOL m_bUseInterpolatedFilter;		// TRUE if using InterpolatedFilterTable instead of precalculated exact m_FilterTable
+	double m_AntiAliasCutoffFrequency;
 	unsigned m_SrcFilterLength;		// number of input samples necessary to cover the whole interpolating filter
+	bool m_bUseInterpolatedFilter;		// TRUE if using InterpolatedFilterTable instead of precalculated exact m_FilterTable
 	// Upsampling:
 	// m_InputPeriod = 0x100000000LL/((FilterLength+1)*2)
 	// m_OutputPeriod = F_old/F_new*0x100000000LL/((FilterLength+1)*2)
@@ -857,12 +858,12 @@ class CDeDecimator : public CWaveProc
 {
 	typedef CDeDecimator ThisClass;
 	typedef CWaveProc BaseClass;
-	int m_DecimationRatio;
+	int m_ExpansionRatio;
 	int m_CurrentCounter;
 public:
 	typedef std::auto_ptr<ThisClass> auto_ptr;
-	CDeDecimator(int DecimationRatio)
-		: m_DecimationRatio(DecimationRatio)
+	CDeDecimator(int ExpansionRatio)
+		: m_ExpansionRatio(ExpansionRatio)
 		, m_CurrentCounter(0)
 	{
 		m_InputSampleType = SampleTypeFloat32;
