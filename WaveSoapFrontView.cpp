@@ -103,6 +103,7 @@ CWaveSoapViewBase::CWaveSoapViewBase()
 	m_PlaybackCursorDrawn(false),
 	m_NewSelectionMade(false),
 	m_AutoscrollTimerID(0),
+	m_AutoscrollOriginX(0),
 	m_PlaybackCursorDrawnSamplePos(0),
 	m_WheelAccumulator(0),
 	m_FirstSampleInView(0.),
@@ -1707,6 +1708,7 @@ void CWaveSoapViewBase::OnMouseMove(UINT nFlags, CPoint point)
 				if (NULL == m_AutoscrollTimerID)
 				{
 					m_AutoscrollTimerID = SetTimer(UINT_PTR(this+1), 50, NULL);
+					m_AutoscrollOriginX = point.x;
 					if (TRACE_CARET) TRACE("Timer %X started\n", m_AutoscrollTimerID);
 				}
 			}
@@ -1779,6 +1781,7 @@ void CWaveSoapFrontView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
 		}
 
 		AdjustCaretVisibility(pInfo->CaretPos, pInfo->OldCaretPos, pInfo->Flags);
+		pInfo->Flags = SetSelection_DontAdjustView;
 
 		// calculate new selection boundaries
 		int SelBegin = SampleToX(pInfo->SelBegin);
@@ -2139,8 +2142,8 @@ void CWaveSoapViewBase::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 	SAMPLE_INDEX nSelEnd = pDoc->m_SelectionEnd;
 	CHANNEL_MASK nChan = pDoc->m_SelectedChannel;
 
-	BOOL KeepSelection = (0 != (0x8000 & GetKeyState(VK_SHIFT)));
-	BOOL CtrlPressed = (0 != (0x8000 & GetKeyState(VK_CONTROL)));
+	bool KeepSelection = (0 != (0x8000 & GetKeyState(VK_SHIFT)));
+	bool const CtrlPressed = (0 != (0x8000 & GetKeyState(VK_CONTROL)));
 	int VisibilityFlags = 0;
 
 	int nCaretMove = (int)m_HorizontalScale;
@@ -2154,11 +2157,11 @@ void CWaveSoapViewBase::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 	GetClientRect(r);
 
 	// page is one half of the window width
-	long nPage = long((r.Width()  / 2) * m_HorizontalScale);
+	long nPage = long((r.Width() * 7 / 8) * m_HorizontalScale);
 	if (CtrlPressed)
 	{
 		// make it 7/8 of the window width
-		nPage = long((r.Width() * 7 / 8) * m_HorizontalScale);
+		nPage = long((r.Width() / 2) * m_HorizontalScale);
 	}
 
 	switch (nChar)
@@ -2214,7 +2217,7 @@ void CWaveSoapViewBase::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 		}
 		else if (nSelBegin < nSelEnd)
 		{
-			KeepSelection = TRUE;
+			KeepSelection = true;
 			nCaret = nSelBegin;
 		}
 		else
@@ -2232,7 +2235,7 @@ void CWaveSoapViewBase::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 		}
 		else if (nSelBegin < nSelEnd)
 		{
-			KeepSelection = TRUE;
+			KeepSelection = true;
 			nCaret = nSelEnd;
 		}
 		else
@@ -2243,22 +2246,22 @@ void CWaveSoapViewBase::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 		break;
 
 	case VK_PRIOR:
+		VisibilityFlags = MovePointIntoView_KeepOldCaretPosition;
 		nCaret -= nPage;
 		break;
 
 	case VK_NEXT:
+		VisibilityFlags = MovePointIntoView_KeepOldCaretPosition;
 		nCaret += nPage;
 		break;
 
 	case VK_UP:
-		// TODO: move the zoomed image up
-		KeepSelection = TRUE;
+		// TODO: move the zoomed image up by 1/8 of visible range
 		CView::OnKeyDown(nChar, nRepCnt, nFlags);
 		return;
 
 	case VK_DOWN:
-		// TODO: move the zoomed image down
-		KeepSelection = TRUE;
+		// TODO: move the zoomed image down by 1/8 of visible range
 		CView::OnKeyDown(nChar, nRepCnt, nFlags);
 		return;
 
@@ -2280,7 +2283,7 @@ void CWaveSoapViewBase::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 			}
 		}
 
-		KeepSelection = TRUE;
+		KeepSelection = true;
 		VisibilityFlags = MovePointIntoView_DontAdjustView;
 		break;
 	default:
@@ -2325,65 +2328,6 @@ void CWaveSoapViewBase::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 	CView::OnKeyDown(nChar, nRepCnt, nFlags);
 }
 
-void CWaveSoapViewBase::MovePointIntoView(SAMPLE_INDEX nCaret, int Flags)
-{
-	CRect r;
-	GetClientRect(r);
-
-	int nCurrentCaretPosition = SampleToX(nCaret);
-	int scroll_pixels = 0;
-	int AutoscrollWidth = GetSystemMetrics(SM_CXVSCROLL);
-
-	if (nCaret < WindowXtoSample(2 * r.left - r.right)
-		|| nCaret > WindowXtoSample(2 * r.right - r.left))
-	{
-		// center the new caret
-		SetFirstSampleInView(nCaret - r.Width() * m_HorizontalScale / 2);
-		return;
-	}
-	else if (Flags & MovePointIntoView_MakeCenter)
-	{
-		scroll_pixels = nCurrentCaretPosition - r.right / 2;
-	}
-	else if (nCurrentCaretPosition < r.left + AutoscrollWidth)
-	{
-		if (Flags & MovePointIntoView_KeepAutoscrollWidth)
-		{
-			scroll_pixels = nCurrentCaretPosition - (r.left + AutoscrollWidth);
-		}
-		else if (nCurrentCaretPosition < r.left)
-		{
-			scroll_pixels = nCurrentCaretPosition - r.left;
-		}
-		else
-		{
-			return;
-		}
-	}
-	else if (nCurrentCaretPosition > r.right - AutoscrollWidth)
-	{
-		if (Flags & MovePointIntoView_KeepAutoscrollWidth)
-		{
-			scroll_pixels = nCurrentCaretPosition - (r.right - AutoscrollWidth);
-		}
-		else if (nCurrentCaretPosition >= r.right)
-		{
-			scroll_pixels = nCurrentCaretPosition - (r.right-1);
-		}
-		else
-		{
-			return;
-		}
-	}
-	else
-	{
-		return;
-	}
-	if (TRACE_SCROLL) TRACE("MovePointIntoView: CurrentPos=%d, left=%d, right=%d, scroll=%d\n",
-							nCurrentCaretPosition, r.left, r.right, scroll_pixels);
-	HorizontalScrollBy(scroll_pixels * m_HorizontalScale);
-}
-
 void CWaveSoapViewBase::UpdateCaretPosition()
 {
 	CreateAndShowCaret();
@@ -2422,6 +2366,8 @@ void CWaveSoapViewBase::HorizontalScrollByPixels(int pixels)
 	HorizontalScrollBy(-pixels * m_HorizontalScale);
 }
 
+// scroll_offset < 0 - image moves to the right, first pixel in view decremented
+// scroll_offset > 0 - image moves to the left, first pixel in view incremented
 void CWaveSoapViewBase::HorizontalScrollBy(double samples)
 {
 	SetFirstSampleInView(m_FirstSampleInView + samples);
@@ -2880,31 +2826,48 @@ void CWaveSoapViewBase::OnTimer(UINT_PTR nIDEvent)
 		if (nHit & ( VSHT_RIGHT_AUTOSCROLL | VSHT_LEFT_AUTOSCROLL))
 		{
 			//TRACE("OnTimer: VSHT_RIGHT_AUTOSCROLL\n");
-			double scroll;
+			double scroll = 0;
 			int nDistance;
 
 			if (nHit & VSHT_RIGHT_AUTOSCROLL)
 			{
-				CRect r;
-				GetClientRect(r);
-
-				nDistance = p.x - r.right + GetSystemMetrics(SM_CXVSCROLL) - 1;
-				scroll = m_HorizontalScale;
+				nDistance = p.x - m_AutoscrollOriginX;
+				if (TRACE_SCROLL) TRACE("nDistance = %d\n", nDistance);
+				if (nDistance > 0)
+				{
+					if (nDistance > 8)
+					{
+						scroll = m_HorizontalScale * 256;
+					}
+					else
+					{
+						scroll = m_HorizontalScale * (1 << nDistance);
+					}
+				}
+				else
+				{
+					m_AutoscrollOriginX = p.x;
+				}
 			}
 			else
 			{
-				scroll = -m_HorizontalScale;
 				nDistance = GetSystemMetrics(SM_CXVSCROLL) - p.x - 1;
-			}
-
-			if (TRACE_SCROLL) TRACE("nDistance = %d\n", nDistance);
-			if (nDistance > 14)
-			{
-				nDistance = 14;
-			}
-			if (nDistance > 0)
-			{
-				scroll *= 1 << nDistance;
+				if (TRACE_SCROLL) TRACE("nDistance = %d\n", nDistance);
+				if (nDistance > 0)
+				{
+					if (nDistance > 8)
+					{
+						scroll = -256 * m_HorizontalScale;
+					}
+					else
+					{
+						scroll = -m_HorizontalScale * (1 << nDistance);
+					}
+				}
+				else
+				{
+					m_AutoscrollOriginX = p.x;
+				}
 			}
 
 			HorizontalScrollBy(scroll);
@@ -2978,99 +2941,89 @@ void CWaveSoapViewBase::AdjustCaretVisibility(SAMPLE_INDEX CaretPos, SAMPLE_INDE
 	{
 		return;
 	}
-	ThisDoc * pDoc = GetDocument();
-	CRect cr;
-	GetClientRect(cr);
 	// change for foreground frame only
 	CFrameWnd * pFrameWnd = GetParentFrame();
-	long PrevX = SampleToX(OldCaretPos);
-	long NewX = SampleToX(CaretPos);
-	int Center = (cr.left + cr.right) / 2;
 
-	if (NULL != pFrameWnd
-		&& pFrameWnd == pFrameWnd->GetWindow(GW_HWNDFIRST))
+	if (NULL == pFrameWnd
+		|| pFrameWnd != pFrameWnd->GetWindow(GW_HWNDFIRST))
 	{
-		if (Flags & SetSelection_MakeFileVisible)
-		{
-			SAMPLE_INDEX LastSample = pDoc->WaveFileSamples();
-			if (WindowXtoSample(0) > LastSample)
-			{
-				MovePointIntoView(LastSample, TRUE);
-			}
-		}
-		else if (1)
-		{
-			MovePointIntoView(CaretPos, Flags);
-		}
-		else if (Flags & SetSelection_KeepSelectionVisible)
-		{
-			// move the view as little to have the whole selection visible
-		}
-		else if (Flags & SetSelection_MakeCaretVisible)
-		{
-			// move the view as little to have the whole selection visible
-			if (NewX < cr.left)
-			{
+		return;
+	}
+	CRect r;
+	GetClientRect(r);
 
-			}
-			else if (NewX >= cr.right)
-			{
-			}
-			else
-			{
-				// do nothing
-			}
-		}
-		else if (SetSelection_KeepCaretVisible ==
-				(Flags & SetSelection_KeepCaretVisible))
+	int scroll_pixels = 0;
+	int nCurrentCaretPosition = SampleToX(CaretPos);
+
+	if (Flags & MovePointIntoView_KeepOldCaretPosition)
+	{
+		// no danger of overflow, because it's used for page up/down
+		int OldCaretX = SampleToX(OldCaretPos);
+		if (OldCaretX >= r.left
+			|| OldCaretX < r.right)
 		{
-			// move caret toward center (only if playing and ony until selection boundary gets in the view.
-			// if the caret was from the left side, allow it to stay on the left side,
-			// but when moved to the right, keep it in center.
-			// If the caret was or becomes not visible, bring it to center
-			if (PrevX < cr.left
-				|| PrevX >= cr.right
-				|| NewX < cr.left
-				|| NewX >= cr.right)
-			{
-				MovePointIntoView(CaretPos, MovePointIntoView_MakeCenter);
-			}
-			else if (PrevX < Center)
-			{
-				if (NewX > Center)
-				{
-					MovePointIntoView(CaretPos, MovePointIntoView_MakeCenter);
-				}
-				else
-				{
-					MovePointIntoView(CaretPos, 0);
-				}
-			}
-			else if (PrevX > Center)
-			{
-				if (NewX < Center)
-				{
-					MovePointIntoView(CaretPos, MovePointIntoView_MakeCenter);
-				}
-				else
-				{
-					MovePointIntoView(CaretPos, 0);
-				}
-			}
-			else
-			{
-				// keep centered
-				MovePointIntoView(CaretPos, MovePointIntoView_MakeCenter);
-			}
+			scroll_pixels = nCurrentCaretPosition - OldCaretX;
+			nCurrentCaretPosition = OldCaretX;
+			Flags = MovePointIntoView_KeepAutoscrollWidth;
 		}
-		else if (Flags & SetSelection_MakeCaretVisible)
+		else
 		{
-			MovePointIntoView(CaretPos, FALSE);
+			Flags = MovePointIntoView_MakeCenter;
 		}
-		else if (Flags & SetSelection_MoveCaretToCenter)
+	}
+
+	if (Flags & SetSelection_MakeFileVisible)
+	{
+		SAMPLE_INDEX LastSample = GetDocument()->WaveFileSamples();
+		if (WindowXtoSample(0) > LastSample)
 		{
-			MovePointIntoView(CaretPos, TRUE);
+			CaretPos = LastSample;
+			Flags = MovePointIntoView_MakeCenter;
 		}
+	}
+
+	int AutoscrollWidth = GetSystemMetrics(SM_CXVSCROLL);
+
+	if (CaretPos < WindowXtoSample(2 * r.left - r.right)
+		|| CaretPos > WindowXtoSample(2 * r.right - r.left))
+	{
+		// center the new caret
+		SetFirstSampleInView(CaretPos - r.Width() * m_HorizontalScale / 2);
+		return;
+	}
+
+	if (Flags & MovePointIntoView_MakeCenter)
+	{
+		scroll_pixels += nCurrentCaretPosition - r.right / 2;
+	}
+	else if (nCurrentCaretPosition < r.left + AutoscrollWidth)
+	{
+		if (Flags & MovePointIntoView_KeepAutoscrollWidth)
+		{
+			scroll_pixels += nCurrentCaretPosition - (r.left + AutoscrollWidth);
+		}
+		else if (nCurrentCaretPosition < r.left)
+		{
+			scroll_pixels += nCurrentCaretPosition - r.left;
+		}
+	}
+	else if (nCurrentCaretPosition > r.right - AutoscrollWidth)
+	{
+		if (Flags & MovePointIntoView_KeepAutoscrollWidth)
+		{
+			scroll_pixels += nCurrentCaretPosition - (r.right - AutoscrollWidth);
+		}
+		else if (nCurrentCaretPosition >= r.right)
+		{
+			scroll_pixels += nCurrentCaretPosition - (r.right - 1);
+		}
+	}
+
+	if (scroll_pixels)
+	{
+		if (TRACE_SCROLL) TRACE("MovePointIntoView: CurrentPos=%d, left=%d, right=%d, scroll=%d\n",
+								nCurrentCaretPosition, r.left, r.right, scroll_pixels);
+		HorizontalScrollBy(scroll_pixels * m_HorizontalScale);
 	}
 }
 
@@ -3088,11 +3041,13 @@ void CWaveSoapFrontView::OnViewZoomprevious()
 // if ZoomCenter is INT_MAX, use current caret position
 void CWaveSoapViewBase::SetHorizontalScale(double NewHorizontalScale, int ZoomCenter)
 {
+	ThisDoc * pDoc = GetDocument();
 	m_PrevHorizontalScale = m_HorizontalScale;
 	NotifySiblingViews(HorizontalScaleChanged, &NewHorizontalScale);
 	if (ZoomCenter == INT_MAX)
 	{
-		MovePointIntoView(GetDocument()->m_CaretPosition, MovePointIntoView_MakeCenter);
+		AdjustCaretVisibility(pDoc->m_CaretPosition, pDoc->m_CaretPosition, MovePointIntoView_MakeCenter,
+							pDoc->m_SelectionStart, pDoc->m_SelectionEnd, pDoc->m_SelectionStart, pDoc->m_SelectionEnd);
 	}
 	else
 	{

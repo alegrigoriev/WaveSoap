@@ -18,6 +18,7 @@ enum
 	MovePointIntoView_MakeCenter = SetSelection_MoveCaretToCenter,
 	MovePointIntoView_KeepAutoscrollWidth = SetSelection_Autoscroll,
 	MovePointIntoView_DontAdjustView = SetSelection_DontAdjustView,
+	MovePointIntoView_KeepOldCaretPosition = SetSelection_KeepCaretPosition,
 };
 class CWaveSoapViewBase : public CView
 {
@@ -67,7 +68,6 @@ public:
 	virtual DWORD ClientHitTest(CPoint p) const = 0;
 
 	void SetFirstSampleInView(double sample);
-	void MovePointIntoView(SAMPLE_INDEX nCaret, int Flags = 0);
 	void AdjustCaretVisibility(SAMPLE_INDEX CaretPos, SAMPLE_INDEX OldCaretPos,
 								unsigned Flags, SAMPLE_INDEX SelectionBegin = 0, SAMPLE_INDEX SelectionEnd = 0,
 								SAMPLE_INDEX OldSelectionBegin = 0, SAMPLE_INDEX OldSelectionEnd = 0);
@@ -97,6 +97,7 @@ public:
 
 	bool m_NewSelectionMade;             // during playback, the caret is hidden unless a different selection were made
 	UINT_PTR m_AutoscrollTimerID;
+	int  m_AutoscrollOriginX;
 	CBitmap m_CursorBitmap;
 	int m_WheelAccumulator;
 	int nKeyPressed;

@@ -1338,8 +1338,8 @@ void CWaveFftView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
 		}
 
 		AdjustCaretVisibility(pInfo->CaretPos, pInfo->OldCaretPos, pInfo->Flags);
+		pInfo->Flags = SetSelection_DontAdjustView;
 
-		//ChangeSelection(pInfo->SelBegin, pInfo->SelEnd, nLowExtent, nHighExtent); // FIXME: Draw selection rectangles
 		ShowSelectionRect();
 		CreateAndShowCaret();
 		return; // don't call Wave view OnUpdate in this case

@@ -137,7 +137,7 @@ enum {
 	// make sure the end of file is in the view (that not all the view is beyond EOF); change origin if necessary.
 	// it's used when the file is replaced because of sample rate change
 	SetSelection_MakeFileVisible = 8,
-	SetSelection_KeepSelectionVisible = 0x10,	// make sure the cursor is within the active view
+	SetSelection_KeepCaretPosition = 0x10,
 	SetSelection_DontAdjustView = 0x20,	// Don't shift view
 	SetSelection_Autoscroll = 0x40,		// move caret within margins of the active view
 
