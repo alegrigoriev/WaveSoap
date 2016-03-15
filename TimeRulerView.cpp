@@ -46,8 +46,6 @@ CTimeRulerView::CTimeRulerView()
 	, m_HitOffset(0)
 	, m_FirstSampleInView(0.)
 	, m_HorizontalScale(2048.)
-	, m_TotalSamplesInView(100.)
-	, m_TotalSamplesInExtent(100.)
 {
 	memzero(m_PopupMenuHit);
 }
@@ -1776,16 +1774,14 @@ BOOL CTimeRulerView::OnNotify(WPARAM wParam, LPARAM lParam, LRESULT* pResult)
 
 afx_msg LRESULT CTimeRulerView::OnUwmNotifyViews(WPARAM wParam, LPARAM lParam)
 {
+	NotifyViewsData * data = (NotifyViewsData *)lParam;
 	switch (wParam)
 	{
 	case HorizontalOriginChanged:
-		HorizontalScrollTo(*(double*)lParam);
+		HorizontalScrollTo(data->HorizontalScroll.FirstSampleInView);
 		break;
 	case HorizontalExtentChanged:
 	{
-		NotifyViewsData * data = (NotifyViewsData*)lParam;
-		m_TotalSamplesInExtent = data->HorizontalScroll.TotalSamplesInExtent;
-		m_TotalSamplesInView = data->HorizontalScroll.TotalSamplesInView;
 		m_FirstSampleInView = data->HorizontalScroll.FirstSampleInView;
 		m_HorizontalScale = data->HorizontalScroll.HorizontalScale;
 

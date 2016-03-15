@@ -2378,13 +2378,15 @@ void CWaveSoapViewBase::SetFirstSampleInView(double sample)
 	NUMBER_OF_SAMPLES TotalSamples = WaveFileSamples();
 	CRect cr;
 	GetClientRect(cr);
-	double SamplesInView = cr.Width() * m_HorizontalScale;
+	NotifyViewsData data = { 0 };
+	data.HorizontalScroll.TotalSamplesInView = cr.Width() * m_HorizontalScale;
+
 	int ReservedPixels = cr.Width() / 10;
 	if (ReservedPixels > 100)
 	{
 		ReservedPixels = 100;
 	}
-	double MaximumFirstSampleValue = TotalSamples + ReservedPixels * m_HorizontalScale - SamplesInView;
+	double MaximumFirstSampleValue = TotalSamples + ReservedPixels * m_HorizontalScale - data.HorizontalScroll.TotalSamplesInView;
 	if (MaximumFirstSampleValue < 0.)
 	{
 		MaximumFirstSampleValue = 0.;
@@ -2402,7 +2404,8 @@ void CWaveSoapViewBase::SetFirstSampleInView(double sample)
 	// adjust it for integer number of pixels
 	sample -= fmod(sample, m_HorizontalScale);
 	// the update will reflect here
-	NotifySiblingViews(HorizontalOriginChanged, &sample);
+	data.HorizontalScroll.FirstSampleInView = sample;
+	NotifySiblingViews(HorizontalOriginChanged, &data);
 }
 
 void CWaveSoapFrontView::OnHScroll(UINT nSBCode, UINT nPos, CScrollBar* pScrollBar)
@@ -3492,6 +3495,7 @@ afx_msg LRESULT CWaveSoapViewBase::OnUwmNotifyViews(WPARAM wParam, LPARAM lParam
 {
 	CRect cr;
 	GetClientRect(cr);
+	NotifyViewsData *data = (NotifyViewsData *) lParam;
 
 	switch (wParam)
 	{
@@ -3501,13 +3505,12 @@ afx_msg LRESULT CWaveSoapViewBase::OnUwmNotifyViews(WPARAM wParam, LPARAM lParam
 
 	case HorizontalExtentChanged:
 	{
-		NotifyViewsData *data = (NotifyViewsData *) lParam;
 		m_FirstSampleInView = data->HorizontalScroll.FirstSampleInView;
 		UpdateCaretPosition();
 	}
 		break;
 	case HorizontalOriginChanged:
-		double NewFirstSample = *(double*) lParam;  // it's validated to be in the proper range and adjusted for whole pixels
+		double NewFirstSample = data->HorizontalScroll.FirstSampleInView;  // it's validated to be in the proper range and adjusted for whole pixels
 		// see if we do scroll or invalidation
 		double offset_pixels = (NewFirstSample - m_FirstSampleInView) / m_HorizontalScale;
 		ASSERT(0. == fmod(offset_pixels, 1.));
