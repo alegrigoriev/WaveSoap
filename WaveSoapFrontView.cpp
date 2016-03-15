@@ -1920,7 +1920,7 @@ void CWaveSoapFrontView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
 		}
 
 		// calculate update boundaries
-		r1.left = SampleToX(pInfo->m_Begin);
+		r1.left = SampleToX(pInfo->m_Begin) - 1;
 		r1.right = SampleToXceil(pInfo->m_End) + 2;
 
 		if (r1.left != r1.right
