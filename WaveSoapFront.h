@@ -300,6 +300,7 @@ enum FftWindowType
 	WindowTypeHalfSine = 1,
 	WindowTypeHamming = 2,
 	WindowTypeNuttall = 3,
+	WindowTypeMaximum = WindowTypeNuttall,
 };
 
 enum SiblingNotifyCode
