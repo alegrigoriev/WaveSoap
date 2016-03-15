@@ -4648,7 +4648,15 @@ BOOL CResampleFilter::SetInputWaveformat(CWaveFormat const & Wf, CHANNEL_MASK ch
 	// Thus, the filter needs to be longer
 	// Additional *2 multiplier here because we want passband at m_EffectiveOutputSampleRate/2
 	// this is number of taps in each filter
-	unsigned SamplesInFilter = unsigned((RequestedNumSincWaves - 2) * OriginalSampleRate / m_AntiAliasCutoffFrequency);
+	unsigned SamplesInFilter;
+	if (WindowType == WindowTypeBlackman)
+	{
+		SamplesInFilter = unsigned((RequestedNumSincWaves - 2) * OriginalSampleRate / m_AntiAliasCutoffFrequency);
+	}
+	else
+	{
+		SamplesInFilter = unsigned((RequestedNumSincWaves - 4) * OriginalSampleRate / m_AntiAliasCutoffFrequency);
+	}
 
 	if (NumberOfFilterTables * SamplesInFilter <= MaxNumberOfFilterSamples)
 	{

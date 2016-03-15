@@ -692,7 +692,7 @@ private:
 		WindowTypeSquareSine,
 		WindowTypeNuttall,
 		WindowTypeBlackman,
-		WindowType = WindowTypeBlackman,
+		WindowType = WindowTypeNuttall,
 	};
 
 	struct FilterCoeff
