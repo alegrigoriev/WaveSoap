@@ -114,7 +114,7 @@ int CSpectrumSectionView::DbToWindowX(double db) const
 	return m_XOrigin + int((db - m_DbOffset) / m_DbPerPixel + 0.5);     // round
 }
 
-
+// this function reads total FftOrder*(NumberOfSamplesAveraged+1) samples
 void CSpectrumSectionView::CalculateFftPowerSum(float * FftSum,
 												SAMPLE_INDEX FirstSample,
 												int NumberOfSamplesAveraged, int FftOrder)
@@ -122,12 +122,12 @@ void CSpectrumSectionView::CalculateFftPowerSum(float * FftSum,
 	CWaveSoapFrontDoc* pDoc = GetDocument();
 	NUMBER_OF_CHANNELS nChannels = pDoc->WaveChannels();
 
-	ATL::CHeapPtr<complex<float> > FftArray;
-	FftArray.Allocate(nChannels * (FftOrder + 1));
+	ATL::CHeapPtr<float> FftArray;
+	FftArray.Allocate(2 * FftOrder + 2);
 
-	ATL::CHeapPtr<float> SrcIntArray;
+	ATL::CHeapPtr<float> SrcF32Array;
 	// FftOrder * 2 source real samples produces FftOrder frequency bands
-	SrcIntArray.Allocate(FftOrder * 2 * nChannels);
+	SrcF32Array.Allocate(FftOrder * 2 * nChannels);
 
 	int i;
 
@@ -136,68 +136,38 @@ void CSpectrumSectionView::CalculateFftPowerSum(float * FftSum,
 		FftSum[i] = 0.;
 	}
 
+	pDoc->m_WavFile.ReadSamples(ALL_CHANNELS,
+								pDoc->m_WavFile.SampleToPosition(FirstSample), FftOrder, &SrcF32Array[0], SampleTypeFloat32);
 	for (int FftSample = 0; FftSample < NumberOfSamplesAveraged; FftSample++)
 	{
 		// FftOrder * 2 source real samples produces FftOrder frequency bands
-		pDoc->m_WavFile.ReadSamples(ALL_CHANNELS,
-			pDoc->m_WavFile.SampleToPosition(FirstSample), FftOrder * 2, SrcIntArray, SampleTypeFloat32);
-
 		FirstSample += FftOrder;
+		pDoc->m_WavFile.ReadSamples(ALL_CHANNELS,
+			pDoc->m_WavFile.SampleToPosition(FirstSample), FftOrder, &SrcF32Array[FftOrder*nChannels], SampleTypeFloat32);
+
 		float * pFftSum = FftSum;
 		for (int ch = 0; ch < nChannels; )
 		{
-			float * pSrcIntArray = &SrcIntArray[ch];
-			if (1 == nChannels - ch)
+			float * pSrcF32Array = &SrcF32Array[ch];
+			// FftOrder * 2 source real samples produces FftOrder+1 frequency bands
+			for (i = 0; i < FftOrder*2; i++, pSrcF32Array+=nChannels)
 			{
-				// FftOrder * 2 source real samples produces FftOrder frequency bands
-				for (i = 0; i < FftOrder; i++)
-				{
-					FftArray[i].real(pSrcIntArray[i * 2] * m_pFftWindow[i * 2]);
-					FftArray[i].imag(pSrcIntArray[i * 2 + 1] * m_pFftWindow[i * 2 + 1]);
-				}
-
-				FastFourierTransform((float*)&FftArray[0], &FftArray[0], FftOrder * 2);
-
-				pFftSum[0] += FftArray[i].real() * FftArray[i].real();
-
-				for (i = 1; i < FftOrder; i++)
-				{
-					pFftSum[i] += FftArray[i].real() * FftArray[i].real()
-								+ FftArray[i].imag() * FftArray[i].imag();
-				}
-				ch++;
-				pFftSum += FftOrder;
+				FftArray[i] = *pSrcF32Array * m_pFftWindow[i];
 			}
-			else // process two channels at once
+
+			FastFourierTransform(&FftArray[0], (complex<float>*)&FftArray[0], FftOrder * 2);
+
+			pFftSum[0] += FftArray[0] * FftArray[0];
+
+			for (i = 1; i < FftOrder; i++)
 			{
-				for (i = 0; i < FftOrder * 2; i++, pSrcIntArray += nChannels)
-				{
-					FftArray[i].real(pSrcIntArray[0] * m_pFftWindow[i]);
-					FftArray[i].imag(pSrcIntArray[1] * m_pFftWindow[i]);
-				}
-
-				FastFourierTransform(&FftArray[0], &FftArray[0], FftOrder * 2);
-				// channel 0 was in real part, ch 1 was imag part
-				// left result is (re1+re2)/2, (im1-im2)/2
-				// right result is (re1-re2)/2, (im1+im2)/2
-				pFftSum[0] += float(0.25 * (FftArray[0].real() * FftArray[0].real()));
-				pFftSum[FftOrder] += float(0.25 * (FftArray[0].imag() * FftArray[0].imag()));
-
-				for (i = 1; i < FftOrder; i++, pFftSum ++)
-				{
-					double re1 = FftArray[i].real() + FftArray[(m_FftOrder * 2 - i)].real();
-					double re2 = FftArray[i].real() - FftArray[(m_FftOrder * 2 - i)].real();
-					double im1 = FftArray[i].imag() - FftArray[(m_FftOrder * 2 - i)].imag();
-					double im2 = FftArray[i].imag() + FftArray[(m_FftOrder * 2 - i)].imag();
-
-					pFftSum[0] += float(0.25 * (re1 * re1 + im1 * im1));
-					pFftSum[FftOrder] += float(0.25 * (re2 * re2 + im2 * im2));
-				}
-
-				ch += 2;
-				pFftSum += FftOrder;
+				pFftSum[i] += FftArray[i*2] * FftArray[i*2]
+							+ FftArray[i*2+1] * FftArray[i*2+1];
 			}
+			ch++;
+			pFftSum += FftOrder;
 		}
+		memmove(&SrcF32Array[0], &SrcF32Array[FftOrder*nChannels], FftOrder*nChannels*sizeof SrcF32Array[0]);
 	}
 }
 
@@ -422,6 +392,7 @@ void CSpectrumSectionView::OnDraw(CDC* pDC)
 		return;
 	}
 
+	NUMBER_OF_SAMPLES WaveFileSamples = pDoc->WaveFileSamples();
 	SAMPLE_INDEX nStartSample = pDoc->m_SelectionStart;
 
 #if 0
@@ -463,39 +434,39 @@ void CSpectrumSectionView::OnDraw(CDC* pDC)
 	CPen RedPen(PS_SOLID, 0, RGB(255, 0, 0));
 	CPen LightGreenPen(PS_SOLID, 0, RGB(64, 255, 64));
 
+	int const NrPreroll = 16;
 	if (m_bShowNoiseThreshold
-		&& NULL != m_pNoiseReduction)
+		&& NULL != m_pNoiseReduction
+		&& WaveFileSamples >= m_NrFftOrder * NrPreroll)
 	{
 		NrMasking.Allocate(m_NrFftOrder * nChannels);
 		NrResult.Allocate(m_NrFftOrder * nChannels);
 
 		// fill the array
-
-		int const Preroll = 16;
-
-		if (nStartSample >= m_NrFftOrder * Preroll)
+		SAMPLE_INDEX nNrStartSample = nStartSample;
+		if (nNrStartSample >= m_NrFftOrder * NrPreroll)
 		{
-			nStartSample -= m_NrFftOrder * Preroll;
+			nNrStartSample -= m_NrFftOrder * NrPreroll;
 		}
 		else
 		{
-			nStartSample = 0;
+			nNrStartSample = 0;
 		}
 
-		ATL::CHeapPtr<float> pSrcIntArray;
-		pSrcIntArray.Allocate(m_NrFftOrder * nChannels);
+		ATL::CHeapPtr<float> pSrcF32Array;
+		pSrcF32Array.Allocate(m_NrFftOrder * nChannels);
 
 		m_pNoiseReduction->Reset();
 
-		for (int i = 0; i < Preroll; i++)
+		for (int i = 0; i < NrPreroll; i++)
 		{
 			if (m_NrFftOrder != pDoc->m_WavFile.ReadSamples(ALL_CHANNELS,
-					pDoc->m_WavFile.SampleToPosition(nStartSample), m_NrFftOrder, pSrcIntArray))
+					pDoc->m_WavFile.SampleToPosition(nNrStartSample), m_NrFftOrder, pSrcF32Array))
 			{
 				break;
 			}
 
-			int InputSamplesUsed = m_pNoiseReduction->FillInBuffer(pSrcIntArray, m_NrFftOrder);
+			int InputSamplesUsed = m_pNoiseReduction->FillInBuffer(pSrcF32Array, m_NrFftOrder);
 			nStartSample += InputSamplesUsed;
 
 			if (m_pNoiseReduction->CanProcessFft())
@@ -521,8 +492,12 @@ void CSpectrumSectionView::OnDraw(CDC* pDC)
 
 	// if there is selection, calculate the whole region sum
 	int NumberOfFftSamplesAveraged =
-		(pDoc->m_SelectionEnd - pDoc->m_SelectionStart) / m_FftOrder + 1;
-	if (NumberOfFftSamplesAveraged > 100)
+		(pDoc->m_SelectionEnd - pDoc->m_SelectionStart) / m_FftOrder;
+	if (NumberOfFftSamplesAveraged == 0)
+	{
+		NumberOfFftSamplesAveraged = 1;
+	}
+	else if (NumberOfFftSamplesAveraged > 100)
 	{
 		NumberOfFftSamplesAveraged = 100;
 	}
@@ -530,6 +505,21 @@ void CSpectrumSectionView::OnDraw(CDC* pDC)
 	{
 		NumberOfFftSamplesAveraged = 4;
 		nStartSample = m_PlaybackSample;
+	}
+
+	if (WaveFileSamples < m_FftOrder * NumberOfFftSamplesAveraged)
+	{
+		NumberOfFftSamplesAveraged = WaveFileSamples / m_FftOrder - 1;
+		if (NumberOfFftSamplesAveraged <= 0)
+		{
+			return;
+		}
+		nStartSample = 0;
+	}
+
+	if (nStartSample > WaveFileSamples - m_FftOrder * NumberOfFftSamplesAveraged)
+	{
+		nStartSample = WaveFileSamples - m_FftOrder * NumberOfFftSamplesAveraged;
 	}
 	if (nStartSample > m_FftOrder)
 	{
@@ -540,11 +530,12 @@ void CSpectrumSectionView::OnDraw(CDC* pDC)
 		nStartSample = 0;
 	}
 
+	// this function reads total FftOrder*(NumberOfSamplesAveraged+1) samples
 	CalculateFftPowerSum(m_pFftSum, nStartSample, NumberOfFftSamplesAveraged, m_FftOrder);
 
 	double const PowerScaleCoeff = 4. / (NumberOfFftSamplesAveraged * m_FftOrder * m_FftOrder);
 
-	double const NrPowerScaleCoeff = 1. / (32768. * m_NrFftOrder * m_NrFftOrder);
+	double const NrPowerScaleCoeff = 1. / (m_NrFftOrder * m_NrFftOrder);
 
 	// now that we have calculated the FFT
 
