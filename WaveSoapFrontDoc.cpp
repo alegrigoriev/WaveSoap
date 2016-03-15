@@ -2773,7 +2773,7 @@ void CWaveSoapFrontDoc::OnUpdateFileSaveCopyAs(CCmdUI* pCmdUI)
 void CWaveSoapFrontDoc::OnEditSelectAll()
 {
 	NUMBER_OF_SAMPLES len = WaveFileSamples();
-	SetSelection(0, len, ALL_CHANNELS, len, SetSelection_MakeCaretVisible);
+	SetSelection(0, len, ALL_CHANNELS, len, SetSelection_DontAdjustView);
 }
 
 void CWaveSoapFrontDoc::OnEditSelection()
