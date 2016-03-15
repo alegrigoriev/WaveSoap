@@ -90,8 +90,6 @@ protected:
 
 	double m_FirstSampleInView;
 	double m_HorizontalScale;
-	double m_TotalSamplesInView;
-	double m_TotalSamplesInExtent;
 
 	UINT_PTR m_AutoscrollTimerID;
 	int m_MarkerHeight;

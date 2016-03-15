@@ -1503,7 +1503,9 @@ afx_msg LRESULT CWaveMDIChildClient::OnUwmNotifyViews(WPARAM wParam, LPARAM lPar
 	switch (wParam)
 	{
 	case HorizontalOriginChanged:
-		m_CurrentFirstSampleInView = *(double*)lParam;
+	{
+		NotifyViewsData * data = (NotifyViewsData *)lParam;
+		m_CurrentFirstSampleInView = data->HorizontalScroll.FirstSampleInView;
 		if (m_CurrentTotalSamplesInView < m_CurrentTotalSamplesInExtent)
 		{
 			int new_pos = int(scrollinfo.nMin + (scrollinfo.nMax + 1 - scrollinfo.nMin) * m_CurrentFirstSampleInView / m_CurrentTotalSamplesInExtent);
@@ -1523,10 +1525,11 @@ afx_msg LRESULT CWaveMDIChildClient::OnUwmNotifyViews(WPARAM wParam, LPARAM lPar
 				break;
 			}
 
-			scrollinfo.nPage = scrollinfo.nMax +1 - scrollinfo.nMin;
+			scrollinfo.nPage = scrollinfo.nMax + 1 - scrollinfo.nMin;
 			scrollinfo.fMask = SIF_PAGE | SIF_POS;
 		}
 		m_sb.SetScrollInfo(&scrollinfo);
+	}
 		break;
 
 	case HorizontalExtentChanged:

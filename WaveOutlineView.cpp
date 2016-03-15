@@ -43,8 +43,9 @@ BEGIN_MESSAGE_MAP(CWaveOutlineView, CView)
 	ON_WM_MOUSEMOVE()
 	ON_WM_CAPTURECHANGED()
 	ON_WM_SETCURSOR()
-	//}}AFX_MSG_MAP
 	ON_WM_LBUTTONDBLCLK()
+	ON_MESSAGE(UWM_NOTIFY_VIEWS, &CWaveOutlineView::OnUwmNotifyViews)
+	//}}AFX_MSG_MAP
 END_MESSAGE_MAP()
 
 /////////////////////////////////////////////////////////////////////////////
@@ -242,18 +243,25 @@ void CWaveOutlineView::OnDraw(CDC* pDC)
 		}
 	}
 
-	WAVE_PEAK PeakMax = SHORT_MIN;
-	WAVE_PEAK PeakMin = SHORT_MAX;
+	WAVE_PEAK PeakMax = -1.;
+	WAVE_PEAK PeakMin = 1.;
 	if (0 == nSamples)
 	{
 		PeakMax = 1;
-		PeakMin = 1;
+		PeakMin = -1.;
 	}
 	else
 	{
 		WavePeak Peak = pDoc->m_WavFile.GetPeakMinMax(0, TotalPeaks);
 		PeakMax = Peak.high;
 		PeakMin = Peak.low;
+	}
+
+	if (PeakMax == PeakMin
+		&& fabs(PeakMax) < 1.)
+	{
+		PeakMax = 1.;
+		PeakMin = 1.;
 	}
 
 	PeakMax = std::abs(PeakMax);
@@ -500,7 +508,7 @@ void CWaveOutlineView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
 		}
 		if (m_LastMaxAmplitude != PeakMax)
 		{
-			Invalidate();
+			Invalidate(FALSE);
 			return;
 		}
 
@@ -1142,5 +1150,22 @@ unsigned CWaveOutlineView::HitTest(POINT p, RECT * pHitRect/*, int * OffsetX*/) 
 	}
 
 	return result;
+}
+
+afx_msg LRESULT CWaveOutlineView::OnUwmNotifyViews(WPARAM wParam, LPARAM lParam)
+{
+	CRect cr;
+	GetClientRect(cr);
+	NotifyViewsData *data = (NotifyViewsData *)lParam;
+
+	switch (wParam)
+	{
+	case HorizontalOriginChanged:
+	case HorizontalExtentChanged:
+		NotifyViewExtents(data->HorizontalScroll.FirstSampleInView,
+						data->HorizontalScroll.FirstSampleInView + data->HorizontalScroll.TotalSamplesInView - 1);
+		break;
+	}
+	return 0;
 }
 

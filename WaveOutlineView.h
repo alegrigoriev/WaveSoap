@@ -77,6 +77,7 @@ protected:
 	afx_msg void OnLButtonDblClk(UINT nFlags, CPoint point);
 	virtual BOOL OnNotify(WPARAM wParam, LPARAM lParam, LRESULT* pResult);
 	DECLARE_MESSAGE_MAP()
+	afx_msg LRESULT OnUwmNotifyViews(WPARAM wParam, LPARAM lParam);
 public:
 protected:
 };
