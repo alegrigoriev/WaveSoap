@@ -36,7 +36,7 @@ CSpectrumSectionView::CSpectrumSectionView()
 	, m_nFftSumSize(0)
 	, m_PlaybackSample(0)
 	, m_pNoiseReduction(NULL)
-	, m_FftWindowType(WindowTypeSquaredSine)
+	, m_FftWindowType(WindowTypeNuttall)
 
 	, m_VerticalScale(1.)
 	, m_FirstbandVisible(0.)

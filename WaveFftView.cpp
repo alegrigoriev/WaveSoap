@@ -404,7 +404,7 @@ CWaveFftView::CWaveFftView()
 	m_FftResultArrayWidth(0),
 	m_FftResultArrayHeight(0),
 	m_FirstbandVisible(0),
-	m_FftWindowType(WindowTypeSquaredSine),
+	m_FftWindowType(GetApp()->m_FftWindowType),
 	m_IndexOfFftBegin(0),
 	m_FftArraySize(0),
 	m_PrevSelectionEnd(0),

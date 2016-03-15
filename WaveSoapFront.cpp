@@ -447,7 +447,7 @@ BOOL CWaveSoapFrontApp::InitInstance()
 
 	Profile.AddItem(_T("Settings"), _T("SpectrumSectionWidth"), m_SpectrumSectionWidth, 100, 1, 1000);
 	Profile.AddItem(_T("Settings"), _T("FftBandsOrder"), m_FftBandsOrder, 9, 6, 13);
-	Profile.AddItem(_T("Settings"), _T("FftWindowType"), m_FftWindowType, 0, 0, 2);
+	Profile.AddItem(_T("Settings"), _T("FftWindowType"), m_FftWindowType, (int)WindowTypeNuttall, 0, (int)WindowTypeMaximum);
 	Profile.AddItem(_T("Settings"), _T("DefaultOpenMode"), m_DefaultOpenMode, DefaultOpenBuffered, 0, 2);
 
 	Profile.AddItem(_T("Settings"), _T("MaxMemoryFileSize"), m_MaxMemoryFileSize, 64, 1, 16*1024);
