@@ -60,8 +60,12 @@ protected:
 	// range of calculated result kept in m_pFftSum
 	SAMPLE_INDEX m_CalculatedResultBegin;
 	SAMPLE_INDEX m_CalculatedResultEnd;
+	SAMPLE_INDEX m_CalculatedNoiseResultBegin;
+	SAMPLE_INDEX m_CalculatedNoiseResultEnd;
 
-	float * m_pFftSum;
+	ATL::CHeapPtr<float> m_pFftSum;					// calculated FFT power sum
+	ATL::CHeapPtr<float> m_NrMasking;	// calculated NR result
+	ATL::CHeapPtr<float> m_NrResult;
 	ATL::CHeapPtr<float> m_pFftWindow;
 	bool m_FftWindowValid;
 
@@ -69,6 +73,7 @@ protected:
 	int m_NrFftOrder;
 	int m_FftWindowType;
 	int m_nFftSumSize;
+	int m_AllocatedNrArraySize;
 	long m_PlaybackSample;
 
 	double m_DbOffset;	// dB for the rightmost pixel
