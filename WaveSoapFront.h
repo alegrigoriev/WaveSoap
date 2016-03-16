@@ -356,6 +356,14 @@ struct NotifyViewsData
 			UINT	MinimizedMenuId;
 			POINT p;		// menu position in screen coordinates
 		} PopupMenu;
+		struct
+		{
+			double Origin;
+			double Scale;
+			double DbPerPixel;
+			double Max;
+			double Min;
+		} SpectrumSection;
 	};
 };
 

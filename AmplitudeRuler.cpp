@@ -578,7 +578,6 @@ void CAmplitudeRuler::SetNewAmplitudeOffset(double offset)
 		{
 			// down
 			ToFillBkgnd.bottom = ToFillBkgnd.top + ToScroll;
-
 		}
 		else if (ToScroll < 0)
 		{
@@ -662,6 +661,11 @@ afx_msg LRESULT CAmplitudeRuler::OnUwmNotifyViews(WPARAM wParam, LPARAM lParam)
 	return 0;
 }
 
+BOOL CAmplitudeRuler::OnEraseBkgnd(CDC* pDC)
+{
+	// Don't do anything. The whole window is covered by a bitmap
+	return TRUE;
+}
 /////////////////////////////////////////////////////////////////////////////
 // CSpectrumSectionRuler
 
@@ -689,6 +693,7 @@ BEGIN_MESSAGE_MAP(CSpectrumSectionRuler, BaseClass)
 	//}}AFX_MSG_MAP
 	ON_WM_SIZE()
 	ON_MESSAGE(UWM_NOTIFY_VIEWS, &CSpectrumSectionRuler::OnUwmNotifyViews)
+	ON_WM_ERASEBKGND()
 END_MESSAGE_MAP()
 
 /////////////////////////////////////////////////////////////////////////////
@@ -704,20 +709,29 @@ int CSpectrumSectionRuler::DbToWindowX(double db) const
 	return m_XOrigin + int((db - m_DbOffset) / m_DbPerPixel + 0.5);     // round
 }
 
-void CSpectrumSectionRuler::OnDraw(CDC* pDC)
+void CSpectrumSectionRuler::OnDraw(CDC* pDrawDC)
 {
 	CWaveSoapFrontDoc* pDoc = GetDocument();
 	if (! pDoc->m_WavFile.IsOpen())
 	{
 		return;
 	}
-
-	CGdiObjectSave OldFont(pDC, pDC->SelectStockObject(ANSI_VAR_FONT));
-
-	// draw horizontal line with ticks and numbers
-	CPen DarkGrayPen(PS_SOLID, 0, 0x808080);
+	// Draw with double buffering
 	CRect cr;
 	GetClientRect( & cr);
+
+	CDC dc;
+	dc.CreateCompatibleDC(NULL);
+	CBitmap DrawBitmap;
+	DrawBitmap.CreateCompatibleBitmap(pDrawDC, cr.Width(), cr.Height());
+
+	CDC * pDC = & dc;
+	CGdiObjectSaveT<CBitmap> OldBitmap(pDC, pDC->SelectObject(& DrawBitmap));
+	CGdiObjectSave OldFont(pDC, pDC->SelectStockObject(ANSI_VAR_FONT));
+
+	pDC->FillSolidRect(cr, GetSysColor(COLOR_WINDOW));
+	// draw horizontal line with ticks and numbers
+	CPen DarkGrayPen(PS_SOLID, 0, 0x808080);
 
 	int nTickCount;
 	double LeftExt = floor(WindowXToDb(cr.left));
@@ -842,6 +856,8 @@ void CSpectrumSectionRuler::OnDraw(CDC* pDC)
 			pDC->LineTo(x, cr.bottom - 5);
 		}
 	}
+
+	pDrawDC->BitBlt(cr.left, cr.top, cr.Width(), cr.Height(), pDC, cr.left, cr.top, SRCCOPY);
 }
 
 void CSpectrumSectionRuler::OnSize(UINT nType, int cx, int cy)
@@ -894,27 +910,19 @@ void CSpectrumSectionRuler::BeginMouseTracking()
 
 void CSpectrumSectionRuler::OnLButtonDblClk(UINT /*nFlags*/, CPoint /*point*/)
 {
-	double scale = 1.;
-	NotifySiblingViews(SpectrumSectionScaleChange, &scale);
+	NotifyViewsData data;
+	data.SpectrumSection.Scale = 1.;
+	NotifySiblingViews(SpectrumSectionScaleChange, &data);
 }
 
 void CSpectrumSectionRuler::HorizontalScrollByPixels(int Pixels)
 {
 // Pixels >0 - picture moves to the right, pixels <0 - picture moves to the left
 	m_MouseXOffsetForScroll += Pixels;
-	double offset = m_DbOffsetBeforeScroll - m_MouseXOffsetForScroll * m_DbPerPixel;
+	NotifyViewsData data;
+	data.SpectrumSection.Origin = m_DbOffsetBeforeScroll - m_MouseXOffsetForScroll * m_DbPerPixel;
 
-	NotifySiblingViews(SpectrumSectionHorScrollTo, &offset);
-}
-
-void CSpectrumSectionRuler::HorizontalScrollTo(double DbOffset)
-{
-	// FirstSample is aligned to multiple of HorizontalScale
-	int ScrollPixels = int (-DbOffset / m_DbPerPixel + 0.5) - int(-m_DbOffset / m_DbPerPixel + 0.5);
-	m_DbOffset = DbOffset;
-
-	//ScrollWindow(-ScrollPixels, 0);
-	Invalidate(FALSE);
+	NotifySiblingViews(SpectrumSectionHorScrollTo, &data);
 }
 
 void CSpectrumSectionRuler::OnContextMenu(CWnd* /*pWnd*/, CPoint point)
@@ -947,31 +955,40 @@ void CSpectrumSectionRuler::OnContextMenu(CWnd* /*pWnd*/, CPoint point)
 
 afx_msg LRESULT CSpectrumSectionRuler::OnUwmNotifyViews(WPARAM wParam, LPARAM lParam)
 {
+	NotifyViewsData *pData;
 	switch (wParam)
 	{
-	case SpectrumSectionDbOriginChange:
-		HorizontalScrollTo(*(double*)lParam);
-		break;
-
 	case SpectrumSectionDbScaleChange:
 	{
-		double scale = *(double*)lParam;
-		if (scale == m_DbPerPixel)
+		pData = (NotifyViewsData *)lParam;
+		if (pData->SpectrumSection.DbPerPixel != m_DbPerPixel)
 		{
-			break;
+			m_DbPerPixel = pData->SpectrumSection.DbPerPixel;
+			Invalidate(TRUE);
 		}
-		m_DbPerPixel = scale;
-		Invalidate(TRUE);
+	}
+		// fall through, no break
+	case SpectrumSectionDbOriginChange:
+	{
+		pData = (NotifyViewsData *)lParam;
+		pData->SpectrumSection.Origin -= fmod(pData->SpectrumSection.Origin - pData->SpectrumSection.Max, m_DbPerPixel);
+		// scroll left or right
+		int ScrollPixels = int(floor((pData->SpectrumSection.Max-pData->SpectrumSection.Origin) / m_DbPerPixel + 0.5)
+								- floor((pData->SpectrumSection.Max-m_DbOffset) / m_DbPerPixel + 0.5));
+		m_DbOffset = pData->SpectrumSection.Origin;
+
+		ScrollWindow(ScrollPixels, 0);
+		Invalidate(FALSE);	// do not erase background now, but allow to redraw the whole window
 	}
 		break;
-
 	}
 
 	return 0;
 }
 
-BOOL CAmplitudeRuler::OnEraseBkgnd(CDC* pDC)
+BOOL CSpectrumSectionRuler::OnEraseBkgnd(CDC* pDC)
 {
-	// TODO: Add your message handler code here and/or call default
+	// Don't do anything. The whole window is covered by a bitmap
 	return TRUE;
 }
+

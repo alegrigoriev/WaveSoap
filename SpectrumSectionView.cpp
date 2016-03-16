@@ -26,7 +26,6 @@ IMPLEMENT_DYNCREATE(CSpectrumSectionView, CView)
 CSpectrumSectionView::CSpectrumSectionView()
 	: m_dNoiseThresholdLow(-60.)
 	, m_dNoiseThresholdHigh(-70.)
-	, m_nBeginFrequency(1000)
 	, m_bCrossHairDrawn(false)
 	, m_FftOrder(512)
 	, m_pFftSum(NULL)
@@ -48,6 +47,8 @@ CSpectrumSectionView::CSpectrumSectionView()
 	, m_bIsTrackingSelection(false)
 	, m_FftWindowValid(false)
 	, m_XOrigin(0)
+	, m_CalculatedResultBegin(-1)
+	, m_CalculatedResultEnd(-1)
 {
 	memzero(m_Heights);
 	memzero(m_InvalidAreaTop);
@@ -597,9 +598,7 @@ void CSpectrumSectionView::OnDraw(CDC* pDC)
 			points = BuildPointArray(NrIdArray, IdxSize, NrArrayXY, cr.Height());
 
 			DrawPointArray(pDC, NrArrayXY, points, cr.right);
-
 		}
-
 
 		IdxSize = CalculateFftBandArray(IdArray, m_Heights, ch, m_FftOrder, m_VerticalScale, m_FirstbandVisible);
 
@@ -619,10 +618,7 @@ void CSpectrumSectionView::OnDraw(CDC* pDC)
 			pDC->LineTo(cr.right, m_Heights.ch[ch].clip_bottom);
 		}
 	}
-	if (!_CrtCheckMemory())
-	{
-		DebugBreak();
-	}
+
 	if (m_bCrossHairDrawn)
 	{
 		DrawCrossHair(m_PrevCrossHair, pDC);
@@ -740,15 +736,9 @@ int CSpectrumSectionView::OnMouseActivate(CWnd* pDesktopWnd, UINT nHitTest, UINT
 
 void CSpectrumSectionView::OnInitialUpdate()
 {
-	CRect r;
-	GetClientRect(r);
-	double DbPerPixel = 2.;
-	if (r.Width() != 0)
-	{
-		DbPerPixel = (m_DbMax - m_DbMin) / m_Scale / r.Width();
-	}
-	NotifySiblingViews(SpectrumSectionDbScaleChange, &DbPerPixel);
-	NotifySiblingViews(SpectrumSectionDbOriginChange, &m_DbOffset);
+	NotifyViewsData data;
+	data.SpectrumSection.Scale = 1.;
+	NotifySiblingViews(SpectrumSectionScaleChange, &data);
 }
 
 void CSpectrumSectionView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
@@ -846,8 +836,9 @@ void CSpectrumSectionView::OnViewSsShowNoiseThreshold()
 
 void CSpectrumSectionView::OnViewSsZoominhor2()
 {
-	double scale = m_Scale * 2.;
-	NotifySiblingViews(SpectrumSectionScaleChange, &scale);
+	NotifyViewsData data;
+	data.SpectrumSection.Scale = m_Scale * 2.;
+	NotifySiblingViews(SpectrumSectionScaleChange, &data);
 }
 
 void CSpectrumSectionView::OnUpdateViewSsZoominhor2(CCmdUI* pCmdUI)
@@ -857,8 +848,9 @@ void CSpectrumSectionView::OnUpdateViewSsZoominhor2(CCmdUI* pCmdUI)
 
 void CSpectrumSectionView::OnViewSsZoomouthor2()
 {
-	double scale = m_Scale / 2.;
-	NotifySiblingViews(SpectrumSectionScaleChange, &scale);
+	NotifyViewsData data;
+	data.SpectrumSection.Scale = m_Scale / 2.;
+	NotifySiblingViews(SpectrumSectionScaleChange, &data);
 }
 
 void CSpectrumSectionView::OnUpdateViewSsZoomouthor2(CCmdUI* pCmdUI)
@@ -1099,14 +1091,11 @@ void CSpectrumSectionView::SetNewFftOffset(double first_band)
 
 void CSpectrumSectionView::OnSize(UINT nType, int cx, int cy)
 {
-	double DbPerPixel = 2.;
-	if (cx != 0)
-	{
-		DbPerPixel = (m_DbMax - m_DbMin) / m_Scale / cx;
-	}
 	m_XOrigin = cx;
-	NotifySiblingViews(SpectrumSectionDbScaleChange, &DbPerPixel);
 	BaseClass::OnSize(nType, cx, cy);
+	NotifyViewsData data;
+	data.SpectrumSection.Scale = m_Scale;
+	NotifySiblingViews(SpectrumSectionScaleChange, &data);
 }
 
 double CSpectrumSectionView::AdjustOffset(double offset) const
@@ -1157,12 +1146,15 @@ void CSpectrumSectionView::AdjustDbRange()
 		|| OldMax != m_DbMax)
 	{
 		// recalculate db per pixel
-		NotifySiblingViews(SpectrumSectionScaleChange, &m_Scale);
+		NotifyViewsData data;
+		data.SpectrumSection.Scale = m_Scale;
+		NotifySiblingViews(SpectrumSectionScaleChange, &data);
 	}
 }
 
 LRESULT CSpectrumSectionView::OnUwmNotifyViews(WPARAM wParam, LPARAM lParam)
 {
+	NotifyViewsData data, *pData;
 	switch (wParam)
 	{
 	case FftVerticalScaleChanged:
@@ -1220,33 +1212,38 @@ LRESULT CSpectrumSectionView::OnUwmNotifyViews(WPARAM wParam, LPARAM lParam)
 	case SpectrumSectionHorScrollTo:
 	{
 		// clip the new origin, adjust it to closest pixel,
-		double origin = *(double*)lParam;
+		pData = (NotifyViewsData *) lParam;
+		data.SpectrumSection.Origin = pData->SpectrumSection.Origin;
 		double DbInView = (m_DbMax - m_DbMin) / m_Scale;
-		if (origin > m_DbMax)
+		if (data.SpectrumSection.Origin > m_DbMax)
 		{
-			origin = m_DbMax;
+			data.SpectrumSection.Origin = m_DbMax;
 		}
-		else if (origin < m_DbMin + DbInView)
+		else if (data.SpectrumSection.Origin < m_DbMin + DbInView)
 		{
-			origin = m_DbMin + DbInView;
+			data.SpectrumSection.Origin = m_DbMin + DbInView;
 		}
-		NotifySiblingViews(SpectrumSectionDbOriginChange, &origin);
+		data.SpectrumSection.Scale = m_Scale;
+		data.SpectrumSection.DbPerPixel = m_DbPerPixel;
+		data.SpectrumSection.Max = m_DbMax;
+		data.SpectrumSection.Min = m_DbMin;
+		NotifySiblingViews(SpectrumSectionDbOriginChange, &data);
 	}
 		break;
 
 	case SpectrumSectionScaleChange:
 	{
+		pData = (NotifyViewsData *) lParam;
 		// change current scale, double 1 to 256
-		double *scale = (double*)lParam;
-		if (*scale < 1.)
+		if (pData->SpectrumSection.Scale < 1.)
 		{
-			*scale = 1.;
+			pData->SpectrumSection.Scale = 1.;
 		}
-		else if (*scale > 16.)
+		else if (pData->SpectrumSection.Scale > 16.)
 		{
-			*scale = 16.;
+			pData->SpectrumSection.Scale = 16.;
 		}
-		m_Scale = *scale;
+		m_Scale = pData->SpectrumSection.Scale;
 
 		CRect r;
 		GetClientRect(r);
@@ -1266,33 +1263,37 @@ LRESULT CSpectrumSectionView::OnUwmNotifyViews(WPARAM wParam, LPARAM lParam)
 		{
 			DbPerPixel = DbInView / r.Width();
 		}
-
-		NotifySiblingViews(SpectrumSectionDbScaleChange, &DbPerPixel);
-		NotifySiblingViews(SpectrumSectionDbOriginChange, &origin);
-	}
-		break;
-
-	case SpectrumSectionDbOriginChange:
-	{
-		double origin = *(double*)lParam;
-		// scroll left or right
-		int ScrollPixels = int(-origin / m_DbPerPixel + 0.5) - int(-m_DbOffset / m_DbPerPixel + 0.5);
-		m_DbOffset = origin;
-
-		ScrollWindow(ScrollPixels, 0);
+		data.SpectrumSection.Scale = m_Scale;
+		data.SpectrumSection.Origin = origin;
+		data.SpectrumSection.DbPerPixel = DbPerPixel;
+		data.SpectrumSection.Max = m_DbMax;
+		data.SpectrumSection.Min = m_DbMin;
+		NotifySiblingViews(SpectrumSectionDbScaleChange, &data);
 	}
 		break;
 
 	case SpectrumSectionDbScaleChange:
 	{
-		double scale = *(double*)lParam;
-		if (scale == m_DbPerPixel)
+		pData = (NotifyViewsData *)lParam;
+		if (pData->SpectrumSection.DbPerPixel != m_DbPerPixel)
 		{
-			break;
+			m_DbPerPixel = pData->SpectrumSection.DbPerPixel;
+			Invalidate(TRUE);
 		}
-		m_DbPerPixel = scale;
-		Invalidate(TRUE);
 	}
+		// fall through, no break
+	case SpectrumSectionDbOriginChange:
+	{
+		pData = (NotifyViewsData *)lParam;
+		pData->SpectrumSection.Origin -= fmod(pData->SpectrumSection.Origin - m_DbMax, m_DbPerPixel);
+		// scroll left or right
+		int ScrollPixels = int(floor((m_DbMax-pData->SpectrumSection.Origin) / m_DbPerPixel + 0.5) - floor((m_DbMax-m_DbOffset) / m_DbPerPixel + 0.5));
+		m_DbOffset = pData->SpectrumSection.Origin;
+
+		ScrollWindow(ScrollPixels, 0);
+	}
+		break;
+
 		break;
 	}
 

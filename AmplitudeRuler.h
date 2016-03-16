@@ -121,7 +121,6 @@ protected:
 
 	double WindowXToDb(int x) const;
 	int DbToWindowX(double db) const;
-	void HorizontalScrollTo(double DbOffset);
 
 	// Implementation
 protected:
@@ -147,6 +146,7 @@ protected:
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 	afx_msg LRESULT OnUwmNotifyViews(WPARAM wParam, LPARAM lParam);
+	afx_msg BOOL OnEraseBkgnd(CDC* pDC);
 };
 
 #ifndef _DEBUG  // debug version in AmplitudeRuler.cpp

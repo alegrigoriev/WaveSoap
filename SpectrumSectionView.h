@@ -26,7 +26,6 @@ public:
 
 	double m_dNoiseThresholdLow;
 	double m_dNoiseThresholdHigh;
-	int m_nBeginFrequency;
 	bool m_bShowCrossHair;
 
 // Operations
@@ -58,6 +57,9 @@ protected:
 							int NumberOfSamplesAveraged, int FftOrder);
 
 	int m_FftOrder;     // frequencies in FFT conversions (window width=2*FFT order)
+	// range of calculated result kept in m_pFftSum
+	SAMPLE_INDEX m_CalculatedResultBegin;
+	SAMPLE_INDEX m_CalculatedResultEnd;
 
 	float * m_pFftSum;
 	ATL::CHeapPtr<float> m_pFftWindow;
