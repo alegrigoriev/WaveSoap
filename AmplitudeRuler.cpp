@@ -123,7 +123,7 @@ void CAmplitudeRuler::OnDraw(CDC* pDrawDC)
 
 		pDC->FillSolidRect(clipr, GetSysColor(COLOR_WINDOW));
 
-		if (!m_Heights.ch[ch].minimized)
+		if (!m_Heights.ChannelMinimized(ch))
 		{
 			if (0) TRACE("CAmplitudeRuler::OnDraw: ch %d zero pos =%d\n",
 				ch, (int)WaveCalculate(m_WaveOffsetY, m_VerticalScale, m_Heights.ch[ch].top, m_Heights.ch[ch].bottom)(0.));
@@ -559,7 +559,7 @@ void CAmplitudeRuler::SetNewAmplitudeOffset(double offset)
 
 	for (int ch = 0; ch < nChannels; ch++)
 	{
-		if (m_Heights.ch[ch].minimized)
+		if (m_Heights.ChannelMinimized(ch))
 		{
 			continue;
 		}
