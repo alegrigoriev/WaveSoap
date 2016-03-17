@@ -671,7 +671,7 @@ void CWaveFftView::OnDraw(CDC* pDC)
 			int ScaledHeight = m_Heights.ch[ch].bottom - m_Heights.ch[ch].top;
 			int OffsetPixels = 0;
 
-			if (! m_Heights.ch[ch].minimized)
+			if (! m_Heights.ChannelMinimized(ch))
 			{
 				ScaledHeight = int(m_Heights.NominalChannelHeight * m_VerticalScale);
 				OffsetPixels = int(ScaledHeight * m_FirstbandVisible/ m_FftOrder);
@@ -922,7 +922,7 @@ void CWaveFftView::OnDraw(CDC* pDC)
 			for (int ch = 0; ch < nChannels; ch++)
 			{
 				int BrushOffset = 0;
-				if ( ! m_Heights.ch[ch].minimized)
+				if ( ! m_Heights.ChannelMinimized(ch))
 				{
 					BrushOffset = FftOffsetPixels;
 				}
@@ -1646,7 +1646,7 @@ int CWaveFftView::BuildSelectionRegion(CRgn * NormalRgn, CRgn* MinimizedRgn,
 		if (selected & (1 << chan))
 		{
 			RgnData * rgn;
-			if (m_Heights.ch[chan].minimized)
+			if (m_Heights.ChannelMinimized(chan))
 			{
 				rgn = &data_min;
 			}
@@ -1886,8 +1886,11 @@ void CWaveFftView::SetNewFftOffset(double first_band)
 	// scroll channels rectangles
 	CWaveSoapFrontDoc * pDoc = GetDocument();
 	int nChannels = pDoc->WaveChannels();
-	CRect cr;
+
+	CRect cr, original_cr;
 	GetClientRect(cr);
+	original_cr = cr;
+
 	int const FileEnd = SampleToXceil(pDoc->WaveFileSamples());
 	if (cr.right > FileEnd)
 	{
@@ -1896,98 +1899,145 @@ void CWaveFftView::SetNewFftOffset(double first_band)
 
 	long OldOffsetPixels = long(m_FirstbandVisible * int(m_VerticalScale * m_Heights.NominalChannelHeight) / m_FftOrder);
 	long NewOffsetPixels = long(first_band * int(m_VerticalScale * m_Heights.NominalChannelHeight) / m_FftOrder);
-	int cy = GetSystemMetrics(SM_CYSIZEFRAME);
+	m_FirstbandVisible = first_band;
 
-	CHANNEL_MASK Selected = m_PrevSelectedChannel;
+	CHANNEL_MASK Selected = m_PrevSelectedChannel;		// currently drawn selected channel
 	if (pDoc->m_SelectionStart == pDoc->m_SelectionEnd)
 	{
 		Selected = 0;
 	}
+	int RightSampleInView = (int)ceil(m_FirstSampleInView + cr.Width() * m_HorizontalScale);
+	int selected_left = 0, selected_right = RightSampleInView;
+
+	if (pDoc->m_SelectionEnd <= m_FirstSampleInView
+		|| pDoc->m_SelectionStart >= RightSampleInView)
+	{
+		Selected = 0;
+	}
+	else
+	{
+		if (pDoc->m_SelectionStart > m_FirstSampleInView)
+		{
+			selected_left = SampleToX(pDoc->m_SelectionStart);
+		}
+		if (pDoc->m_SelectionEnd < RightSampleInView)
+		{
+			selected_right = SampleToX(pDoc->m_SelectionEnd);
+		}
+	}
+
 	// offset of the zero line down
 	int ToScroll = NewOffsetPixels - OldOffsetPixels;       // >0 - down, <0 - up
+	if (ToScroll == 0)
+	{
+		return;
+	}
 
+	int cy = GetSystemMetrics(SM_CYSIZEFRAME);
+
+	CWindowDC dc(this);		// for filling the scrolled in rectangles
 	HideCaret();
 
+	CRgn TotalUpdateRgn;
+	CRgn NewUpdateRgn;
+	TotalUpdateRgn.CreateRectRgn(0, 0, 0, 0);
+	NewUpdateRgn.CreateRectRgn(0, 0, 0, 0);
+	GetUpdateRgn(&TotalUpdateRgn);
+
+	CRgn ChannelUpdateRgn;
+	CRgn ChannelRectRgn;
+	CRgn SeparatorUpdateRgn;		// for one pixel separator line
+	ChannelUpdateRgn.CreateRectRgn(0, 0, 0, 0);
+	ChannelRectRgn.CreateRectRgn(0, 0, 0, 0);
+	SeparatorUpdateRgn.CreateRectRgn(0, 0, 0, 0);
+	CRgn SelectionRgn;
+	SelectionRgn.CreateRectRgn(0, 0, 0, 0);
+	CRgn FillRgn;
+	FillRgn.CreateRectRgn(0, 0, 0, 0);
+	// now split it to channel regions
+	ValidateRect(cr);	// ScrollWindow will not scroll invalid areas
 	for (int ch = 0; ch < nChannels; ch++)
 	{
-		if (m_Heights.ch[ch].minimized)
+		ChannelRectRgn.SetRectRgn(cr.left, m_Heights.ch[ch].clip_top, cr.right, m_Heights.ch[ch].clip_bottom);
+		ChannelUpdateRgn.CombineRgn(&TotalUpdateRgn, &ChannelRectRgn, RGN_AND);
+
+		SeparatorUpdateRgn.SetRectRgn(cr.left, m_Heights.ch[ch].clip_bottom, cr.right, m_Heights.ch[ch].clip_bottom + 1);
+		SeparatorUpdateRgn.CombineRgn(&SeparatorUpdateRgn, &TotalUpdateRgn, RGN_AND);
+
+		if (m_Heights.ChannelMinimized(ch))
 		{
+			NewUpdateRgn.CombineRgn(&NewUpdateRgn, &ChannelUpdateRgn, RGN_OR);
+			NewUpdateRgn.CombineRgn(&NewUpdateRgn, &SeparatorUpdateRgn, RGN_OR);
 			continue;
 		}
 
 		CRect ClipRect(cr.left, m_Heights.ch[ch].clip_top, cr.right, m_Heights.ch[ch].clip_bottom);
 		CRect ScrollRect(ClipRect);
-		ScrollRect.top += m_InvalidAreaTop[ch];
-		ScrollRect.bottom -= m_InvalidAreaBottom[ch];
+		CRect SelectionBoundaryTop(selected_left, ClipRect.top, selected_right, ClipRect.top + cy);
+		CRect SelectionBoundaryBottom(selected_left, ClipRect.bottom - cy, selected_right, ClipRect.bottom);
 
-		if (ch == 0)
+		// see if there is a selection boundary on the top
+		if ((Selected & (1 << ch))
+			&& (ch == 0 || 0 == (Selected & (1 << (ch - 1)))))
 		{
-			InvalidateMarkerLabels(ToScroll);
+			ScrollRect.top = SelectionBoundaryTop.bottom;
+			SelectionRgn.SetRectRgn(SelectionBoundaryTop);
+			ChannelUpdateRgn.CombineRgn(&ChannelUpdateRgn, &SelectionRgn, RGN_OR);
 		}
-
-		if (ScrollRect.Height() <= 0)
+		// see if there is a selection boundary on the bottom
+		if ((Selected & (1 << ch))
+			&& (ch + 1 == nChannels || 0 == (Selected & (1 << (ch + 1)))))
 		{
-			InvalidateRect(ClipRect);
-			continue;
+			ScrollRect.bottom = SelectionBoundaryBottom.top;
+			SelectionRgn.SetRectRgn(SelectionBoundaryBottom);
+			ChannelUpdateRgn.CombineRgn(&ChannelUpdateRgn, &SelectionRgn, RGN_OR);
 		}
+		CRect ToFillBkgnd(ScrollRect);
 
 		if (ToScroll > 0)
 		{
 			// down
-			m_InvalidAreaTop[ch] += ToScroll;
-
-			CRect ToInvalidate(cr.left, ClipRect.top, cr.right, ClipRect.top + m_InvalidAreaTop[ch]);
-
-			// see if there is a selection boundary on the top
-			if ((Selected & (1 << ch))
-				&& (ch == 0 || 0 == (Selected & (1 << (ch - 1))))
-				&& m_InvalidAreaTop[ch] < cy + ToScroll)
-			{
-				ToInvalidate.bottom = ClipRect.top + cy + ToScroll;
-			}
-
-			ScrollWindow(0, ToScroll, ScrollRect, ClipRect);
-			InvalidateRect(ToInvalidate);
-
-			// see if there is a selection boundary on the bottom
-			if ((Selected & (1 << ch))
-				&& (ch + 1 == nChannels || 0 == (Selected & (1 << (ch + 1)))))
-			{
-				InvalidateRect(CRect(cr.left, ClipRect.bottom - cy, cr.right, ClipRect.bottom));
-			}
-		}
-		else if (ToScroll < 0)
-		{
-			// up
-			m_InvalidAreaBottom[ch] -= ToScroll;
-
-			CRect ToInvalidate(cr.left, ClipRect.bottom - m_InvalidAreaBottom[ch], cr.right, ClipRect.bottom);
-
-			// see if there is a selection boundary on the bottom
-			if ((Selected & (1 << ch))
-				&& (ch + 1 == nChannels || 0 == (Selected & (1 << (ch + 1))))
-				&& m_InvalidAreaBottom[ch] < cy - ToScroll)
-			{
-				ToInvalidate.top = ClipRect.bottom - cy + ToScroll;
-			}
-
-			ScrollWindow(0, ToScroll, ScrollRect, ClipRect);
-			InvalidateRect(ToInvalidate);
-
-			// see if there is a selection boundary on the top
-			if ((Selected & (1 << ch))
-				&& (ch == 0 || 0 == (Selected & (1 << (ch - 1)))))
-			{
-				InvalidateRect(CRect(cr.left, ClipRect.top, cr.right, ClipRect.top + cy));
-			}
+			ToFillBkgnd.bottom = ToFillBkgnd.top + ToScroll;
+			SelectionBoundaryTop.bottom += ToScroll;
 		}
 		else
 		{
-			continue;
+			// up
+			ToFillBkgnd.top = ToFillBkgnd.bottom + ToScroll;
+			SelectionBoundaryBottom.top += ToScroll;
+		}
+
+		ScrollWindow(0, ToScroll, ScrollRect, ClipRect);
+		dc.FillSolidRect(ToFillBkgnd, 0);	// fill with black
+
+		// offset the update region by scroll
+		ChannelUpdateRgn.OffsetRgn(0, ToScroll);
+
+		FillRgn.SetRectRgn(ToFillBkgnd);
+		ChannelUpdateRgn.CombineRgn(&ChannelUpdateRgn, &FillRgn, RGN_OR);
+
+		ChannelUpdateRgn.CombineRgn(&ChannelUpdateRgn, &ChannelRectRgn, RGN_AND);
+		NewUpdateRgn.CombineRgn(&NewUpdateRgn, &ChannelUpdateRgn, RGN_OR);
+		if (ch + 1 != nChannels)
+		{
+			NewUpdateRgn.CombineRgn(&NewUpdateRgn, &SeparatorUpdateRgn, RGN_OR);
 		}
 	}
+
+	if (cr.right != original_cr.right)
+	{
+		ChannelUpdateRgn.SetRectRgn(cr);
+		ChannelUpdateRgn.CombineRgn(&ChannelUpdateRgn, &TotalUpdateRgn, RGN_AND);
+		NewUpdateRgn.CombineRgn(&NewUpdateRgn, &ChannelUpdateRgn, RGN_OR);
+	}
+	InvalidateRgn(&NewUpdateRgn, FALSE);
+
+	if (!m_Heights.ChannelMinimized(0))
+	{
+		InvalidateMarkerLabels(ToScroll);
+	}
+
 	ShowCaret();
-	m_FirstbandVisible = first_band;
 }
 
 afx_msg LRESULT CWaveFftView::OnUwmNotifyViews(WPARAM wParam, LPARAM lParam)
