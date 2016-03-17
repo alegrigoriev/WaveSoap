@@ -380,7 +380,12 @@ struct NotifyChannelHeightsData
 {
 	int NumChannels;
 	int NominalChannelHeight;      // non-minimized channel height, not including the separator line. This is used for scroll calculation
+	bool AllChannelsMinimized;
 	ChannelHeight ch[MAX_NUMBER_OF_CHANNELS];
+	bool ChannelMinimized(int chan) const
+	{
+		return AllChannelsMinimized || ch[chan].minimized;
+	}
 };
 
 #define NotifySiblingViews(NotifyCode, data) NotifySiblingViews_(this, NotifyCode, data)

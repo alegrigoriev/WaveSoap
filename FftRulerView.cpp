@@ -112,7 +112,7 @@ void CFftRulerView::OnDraw(CDC* pDrawDC)
 
 		pDC->FillSolidRect(clipr, GetSysColor(COLOR_WINDOW));
 
-		if (!m_Heights.ch[ch].minimized)
+		if (!m_Heights.ChannelMinimized(ch))
 		{
 			// if all the chart was drawn, how many scans it would have:
 			int TotalRows = int(m_Heights.NominalChannelHeight * m_VerticalScale);
@@ -287,7 +287,7 @@ void CFftRulerView::SetNewFftOffset(double first_band)
 
 	for (int ch = 0; ch < nChannels; ch++)
 	{
-		if (m_Heights.ch[ch].minimized)
+		if (m_Heights.ChannelMinimized(ch))
 		{
 			continue;
 		}

@@ -309,7 +309,7 @@ static void DrawPointArray(CDC * pDC, DoublePoint * ppArray, int NumberOfPoints,
 }
 
 // Build band array with number of bands to sum and draw. No actual FFT data is calculated, only drawing table.
-int CalculateFftBandArray(ATL::CHeapPtr<FftGraphBand> &IdArray, NotifyChannelHeightsData & heights, int ch,
+int CalculateFftBandArray(ATL::CHeapPtr<FftGraphBand> &IdArray, NotifyChannelHeightsData const& heights, int ch,
 						int FftOrder, double VerticalScale, double FirstBandVisible)
 {
 	int LastRow = 0;
@@ -321,7 +321,7 @@ int CalculateFftBandArray(ATL::CHeapPtr<FftGraphBand> &IdArray, NotifyChannelHei
 
 	int ScaledHeight = height;
 	int OffsetPixels = 0;
-	if (!heights.ch[ch].minimized)
+	if (!heights.ChannelMinimized(ch))
 	{
 		ScaledHeight = int(heights.NominalChannelHeight * VerticalScale);
 		OffsetPixels = int(ScaledHeight * FirstBandVisible / FftOrder);
@@ -1055,7 +1055,7 @@ void CSpectrumSectionView::SetNewFftOffset(double first_band)
 
 	for (int ch = 0; ch < nChannels; ch++)
 	{
-		if (m_Heights.ch[ch].minimized)
+		if (m_Heights.ChannelMinimized(ch))
 		{
 			continue;
 		}

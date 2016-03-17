@@ -447,7 +447,7 @@ void CWaveSoapFrontView::OnDraw(CDC* pDC)
 					continue;
 				}
 
-				bool const ChannelMinimized = m_Heights.ch[ch].minimized;
+				bool const ChannelMinimized = m_Heights.ChannelMinimized(ch);
 
 				WaveCalculate WaveToY(ChannelMinimized ? 0. : m_WaveOffsetY,
 									ChannelMinimized ? 1. : m_VerticalScale,
@@ -1147,7 +1147,7 @@ DWORD CWaveSoapFrontView::ClientHitTest(CPoint p) const
 		&& ChannelUnderCursor < pDoc->WaveChannels())
 	{
 		result |= ChannelUnderCursor;
-		if (m_Heights.ch[ChannelUnderCursor].minimized)
+		if (m_Heights.ChannelMinimized(ChannelUnderCursor))
 		{
 			result |= VSHT_CHANNEL_MINIMIZED;
 		}
@@ -2490,8 +2490,8 @@ void CWaveSoapViewBase::RecalculateChannelHeight(int cy)
 	// minimum height of non-minimized channels is SM_CYHSCROLL.
 	// Normal height of non-minimized channels is >2*SM_CYHSCROLL.
 	// minimum height of non-minimized channels is 2*SM_CYHSCROLL.
-	// When the window height cannot accomodate all of them, they are pushed out
 	// channels can be different height to accomodate for fractions?
+	m_Heights.AllChannelsMinimized = false;
 	if (cy + 1 >= nChannels * 2 * cyhscroll)
 	{
 		ChannelHeight = (cy + 1 - NumberOfMinimizedChannels * MinimizedChannelHeight) / (nChannels - NumberOfMinimizedChannels);
@@ -2501,10 +2501,16 @@ void CWaveSoapViewBase::RecalculateChannelHeight(int cy)
 		ChannelHeight = cyhscroll * 2;
 		MinimizedChannelHeight = (cy + 1 - (nChannels - NumberOfMinimizedChannels) * ChannelHeight) / NumberOfMinimizedChannels;
 	}
+	else if (cy + 1 >= nChannels * cyhscroll)
+	{
+		MinimizedChannelHeight = cyhscroll;
+		ChannelHeight = (cy + 1 - NumberOfMinimizedChannels * cyhscroll) / (nChannels - NumberOfMinimizedChannels);
+	}
 	else
 	{
-		ChannelHeight = cyhscroll * 2;
-		MinimizedChannelHeight = cyhscroll;
+		m_Heights.AllChannelsMinimized = true;
+		ChannelHeight = (cy + 1) / nChannels;
+		MinimizedChannelHeight = ChannelHeight;
 	}
 
 	int ExtraPixels = cy + 1 - MinimizedChannelHeight * NumberOfMinimizedChannels - (nChannels - NumberOfMinimizedChannels) * ChannelHeight;
@@ -3282,24 +3288,12 @@ afx_msg LRESULT CWaveSoapFrontView::OnUwmNotifyViews(WPARAM wParam, LPARAM lPara
 			break;
 		}
 
-		if (HitTest & VSHT_CHANNEL_MINIMIZED)
-		{
-			MENUITEMINFO info = { sizeof info, MIIM_ID };
-			info.wID = ID_VIEW_MAXIMIZE_0 + (HitTest & VSHT_CHANNEL_MASK);
-
-			pPopup->SetMenuItemInfoW(ID_VIEW_MAXIMIZE_0, &info, FALSE);
-		}
-		else if (GetDocument()->WaveChannels() >= 2)
-		{
-			MENUITEMINFO info = { sizeof info, MIIM_ID };
-			info.wID = ID_VIEW_MINIMIZE_0 + (HitTest & VSHT_CHANNEL_MASK);
-
-			pPopup->SetMenuItemInfoW(ID_VIEW_MINIMIZE_0, &info, FALSE);
-		}
-		else
+		if (GetDocument()->WaveChannels() < 2
+			|| m_Heights.AllChannelsMinimized)
 		{
 			// delete the "minimize" and the last separator before it
 			pPopup->RemoveMenu(ID_VIEW_MINIMIZE_0, MF_BYCOMMAND);
+			pPopup->RemoveMenu(ID_VIEW_MAXIMIZE_0, MF_BYCOMMAND);
 			int count = pPopup->GetMenuItemCount();
 			MENUITEMINFO info = { sizeof info, MIIM_TYPE };
 			if (count > 2)
@@ -3310,6 +3304,20 @@ afx_msg LRESULT CWaveSoapFrontView::OnUwmNotifyViews(WPARAM wParam, LPARAM lPara
 					pPopup->RemoveMenu(count - 1, MF_BYPOSITION);
 				}
 			}
+		}
+		else if (HitTest & VSHT_CHANNEL_MINIMIZED)
+		{
+			MENUITEMINFO info = { sizeof info, MIIM_ID };
+			info.wID = ID_VIEW_MAXIMIZE_0 + (HitTest & VSHT_CHANNEL_MASK);
+
+			pPopup->SetMenuItemInfoW(ID_VIEW_MAXIMIZE_0, &info, FALSE);
+		}
+		else
+		{
+			MENUITEMINFO info = { sizeof info, MIIM_ID };
+			info.wID = ID_VIEW_MINIMIZE_0 + (HitTest & VSHT_CHANNEL_MASK);
+
+			pPopup->SetMenuItemInfoW(ID_VIEW_MINIMIZE_0, &info, FALSE);
 		}
 
 		int Command = pPopup->TrackPopupMenu(
@@ -3408,7 +3416,7 @@ void CWaveSoapFrontView::SetNewAmplitudeOffset(double offset)
 	// offset of the zero line down
 	for (int ch = 0; ch < nChannels; ch++)
 	{
-		if (m_Heights.ch[ch].minimized)
+		if (m_Heights.ChannelMinimized(ch))
 		{
 			continue;
 		}
