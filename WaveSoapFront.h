@@ -21,6 +21,7 @@ typedef class CWaveSoapFrontApp CThisApp;
 #include "LocaleUtilities.h"
 #include "WaveSupport.h"
 #include "ContextWorkerThread.h"
+#include "WorkerThreadPool.h"
 /////////////////////////////////////////////////////////////////////////////
 // CWaveSoapFrontApp:
 // See WaveSoapFront.cpp for the implementation of this class
@@ -245,7 +246,10 @@ public:
 
 	CDocument* OpenDocumentFile(LPCTSTR lpszPathName, int flags);
 	virtual CDocument* OpenDocumentFile(LPCTSTR lpszPathName);
-
+	bool AddWorkerThreadPoolJob(WorkerThreadPoolJob * job)
+	{
+		return m_WorkerThreadPool.AddJob(job);
+	}
 	CPalette * GetPalette();
 	CPalette   m_Palette;
 	void CreatePalette();
@@ -272,6 +276,7 @@ public:
 	DECLARE_MESSAGE_MAP()
 
 	CContextWorkerThread m_Thread;
+	WorkerThreadPool m_WorkerThreadPool;
 
 	HINSTANCE m_hWMVCORE_DLL_Handle;
 public:

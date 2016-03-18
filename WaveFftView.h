@@ -11,6 +11,7 @@
 /////////////////////////////////////////////////////////////////////////////
 // CWaveFftView view
 #include "WaveSoapFrontView.h"
+#include "KInterlocked.h"
 
 class CWaveFftView : public CWaveSoapViewBase
 {
@@ -49,8 +50,6 @@ protected:
 	// m_IndexOfFftBegin is number of row with m_FftResultBegin
 	// FFT array is stored as a ring array of 'm_FftResultArrayWidth' columns
 	// m_IndexOfFftBegin is offset in the array of the beginning column.
-	// m_FftResultBegin holds the median sample index of the first column.
-	// m_FftResultEnd holds the median sample index of the last column.
 	float * m_pFftResultArray;
 	unsigned m_FftArraySize;
 	int m_FftResultArrayWidth;    // number of FFT sets
@@ -64,8 +63,10 @@ protected:
 
 	ATL::CHeapPtr<float> m_pFftWindow;
 	bool m_FftWindowValid;
-	typedef double DATA;
-	ATL::CHeapPtr<DATA> m_pFftBuf;  // for calculations, sized  m_FftOrder * 2 + 2
+
+	ATL::CHeapPtr<float> m_FftBuf[sizeof(ULONG_PTR)*8];  // for calculations, each sized  m_FftOrder * 2 + 2
+	NUM_volatile<ULONG_PTR> m_FftArrayBusyMask;
+	int m_AllocatedFftBufSize;
 
 	int m_FftWindowType;
 	int m_FftOrder;     // frequencies in FFT conversions (window width=2*FFT order)
@@ -76,6 +77,10 @@ protected:
 	void AllocateFftArray(SAMPLE_INDEX SampleLeft, SAMPLE_INDEX SampleRight);
 
 	float const * GetFftResult(SAMPLE_INDEX sample, unsigned channel);
+	static bool FillFftColumnWorkitem(WorkerThreadPoolItem * pItem);
+	void FillFftColumn(struct DrawFftWorkItem * pItem);
+	static bool FillFftColumnPaletteWorkitem(WorkerThreadPoolItem * pItem);
+	void FillFftColumnPalette(struct DrawFftWorkItem * pItem);
 
 	// to which FFT displayed column the sample falls in (samples from N*m_FftSpacing +/- m_FftSpacing/2).
 	// Use for display conversion only

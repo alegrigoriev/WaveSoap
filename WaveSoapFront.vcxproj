@@ -459,6 +459,7 @@
     <ClCompile Include="CommonSources\Math\FilterMath.cpp" />
     <ClCompile Include="CommonSources\Math\PolyMath.cpp" />
     <ClCompile Include="CommonSources\Math\PolyRatio.cpp" />
+    <ClCompile Include="CommonSources\Utils\WorkerThreadPool.cpp" />
   </ItemGroup>
   <ItemGroup>
     <CustomBuild Include="hlp\WaveSoap.hhp">
@@ -598,6 +599,7 @@ echo.
     <ClInclude Include="ReopenSavedFileCopyDlg.h" />
     <ClInclude Include="Resample.h" />
     <ClInclude Include="CommonSources\UI\ResizableDialog.h" />
+    <ClInclude Include="CommonSources\Utils\WorkerThreadPool.h" />
     <CustomBuild Include="Resource.h">
       <Message Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Making help include file...</Message>
       <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Making help include file...</Message>
