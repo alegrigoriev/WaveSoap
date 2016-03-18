@@ -12,6 +12,7 @@
 
 #include "WaveSoapFrontDoc.h"
 #include "DataSection.h"
+
 #include <math.h>
 enum
 {

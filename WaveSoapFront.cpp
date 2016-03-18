@@ -576,6 +576,7 @@ BOOL CWaveSoapFrontApp::InitInstance()
 
 	// start the processing thread
 	m_Thread.Start();
+	m_WorkerThreadPool.Start();
 
 	m_pMainWnd->DragAcceptFiles();
 	// The main window has been initialized, so show and update it.
@@ -919,7 +920,7 @@ CDocument* CWaveSoapDocTemplate::OpenDocumentFile(LPCTSTR lpszPathName,
 int CWaveSoapFrontApp::ExitInstance()
 {
 	m_Thread.Stop();
-
+	m_WorkerThreadPool.ShutDown();
 
 	LPTSTR dirbuf = m_CurrentDir.GetBuffer(MAX_PATH+1);
 	if (dirbuf)
