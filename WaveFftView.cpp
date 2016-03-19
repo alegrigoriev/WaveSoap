@@ -796,7 +796,7 @@ void CWaveFftView::OnDraw(CPaintDC* pDC, CRgn * UpdateRgn)
 		return;
 	}
 
-	AllocateFftArray((SAMPLE_INDEX)left, (SAMPLE_INDEX)right);  // full width of the client area at least
+	AllocateFftArray((SAMPLE_INDEX)WindowXtoSample(cr.left), (SAMPLE_INDEX)WindowXtoSample(cr.right));  // full width of the client area at least
 
 	if (!m_FftWindowValid)
 	{
