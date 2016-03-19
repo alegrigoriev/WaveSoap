@@ -144,6 +144,14 @@ protected:
 	friend class CSpectrumSectionView;
 	DECLARE_MESSAGE_MAP()
 	afx_msg LRESULT OnUwmNotifyViews(WPARAM wParam, LPARAM lParam);
+#ifdef _DEBUG
+	// performance stats
+	DWORD m_DrawingBeginTime;
+	LONG_volatile m_NumberOfFftCalculated;
+	LONG_volatile m_NumberOfPixelsSet;
+	LONG_volatile m_NumberOfColumnsSet;
+	LONG_volatile m_NumberOfPixelJobs;
+#endif
 };
 
 /////////////////////////////////////////////////////////////////////////////
