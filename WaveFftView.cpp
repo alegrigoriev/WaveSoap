@@ -150,27 +150,251 @@ static const unsigned char palette[128 * 3] =
 
 };
 
-SAMPLE_INDEX CWaveFftView::SampleToFftBaseSample(SAMPLE_INDEX sample)
+struct RgnData
+{
+	ATL::CHeapPtr<RGNDATAHEADER> hdr;
+
+	RgnData(int InitialNumberOfRects = 16);
+	void AddRect(int left, int top, int right, int bottom);
+	bool Allocate(int NumberOfRects);
+	operator RGNDATA*() { return CONTAINING_RECORD(PRGNDATAHEADER(hdr), RGNDATA, rdh); }
+	BOOL GetRegionData(CRgn const * rgn);
+
+	int AllocatedNumberOfRects;
+
+	RECT* begin()
+	{
+		return  (RECT*)((operator RGNDATA*())->Buffer);
+	}
+	RECT* end()
+	{
+		return begin()+hdr->nCount;
+	}
+	RECT & operator[](int n)
+	{
+		ASSERT(n < AllocatedNumberOfRects);
+		ASSERT(n <= (int)hdr->nCount);
+		return begin()[n];
+	}
+};
+
+RgnData::RgnData(int InitialNumberOfRects)
+	:AllocatedNumberOfRects(-1)
+{
+	Allocate(InitialNumberOfRects);
+	hdr->dwSize = sizeof hdr;
+	hdr->iType = RDH_RECTANGLES;
+	hdr->nCount = 0;
+	hdr->nRgnSize = sizeof hdr;
+	hdr->rcBound.top = 0;
+	hdr->rcBound.bottom = 0;
+	hdr->rcBound.left = 0;
+	hdr->rcBound.right = 0;
+}
+
+void RgnData::AddRect(int left, int top, int right, int bottom)
+{
+	if ((int)hdr->nCount < AllocatedNumberOfRects)
+	{
+		RECT * rect = begin() + hdr->nCount;
+		rect->left = left;
+		rect->top = top;
+		rect->right = right;
+		rect->bottom = bottom;
+
+		if (hdr->nCount == 0)
+		{
+			hdr->rcBound = rect[0];
+		}
+		else
+		{
+			if (hdr->rcBound.left > left)
+			{
+				hdr->rcBound.left = left;
+			}
+			if (hdr->rcBound.right < right)
+			{
+				hdr->rcBound.right = right;
+			}
+			if (hdr->rcBound.top > top)
+			{
+				hdr->rcBound.top = top;
+			}
+			if (hdr->rcBound.bottom < bottom)
+			{
+				hdr->rcBound.bottom = bottom;
+			}
+		}
+		hdr->nCount++;
+		hdr->nRgnSize += sizeof (RECT);
+	}
+}
+
+bool RgnData::Allocate(int NumberOfRects)
+{
+	if (AllocatedNumberOfRects >= NumberOfRects)
+	{
+		return true;
+	}
+	if (!hdr.ReallocateBytes(sizeof (RGNDATAHEADER) + sizeof (RECT) * NumberOfRects))
+	{
+		return false;
+	}
+	AllocatedNumberOfRects = NumberOfRects;
+	return true;
+}
+
+BOOL RgnData::GetRegionData(CRgn const * rgn)
+{
+	int RequiredBytes = rgn->GetRegionData(NULL, 0);
+	if (!hdr.ReallocateBytes(RequiredBytes))
+	{
+		return FALSE;
+	}
+	AllocatedNumberOfRects = (RequiredBytes - sizeof(RGNDATAHEADER)) / sizeof(RECT);
+	return rgn->GetRegionData(*this, RequiredBytes) != 0;
+}
+
+namespace
+{
+// It's assumed the rectangles are normalized (right <= left)
+static bool rect_less(RECT const& r1, RECT const& r2)
+{
+	if (r1.left < r2.left)
+	{
+		return true;
+	}
+	if (r1.left > r2.left)
+	{
+		return false;
+	}
+	if (r1.right < r2.right)
+	{
+		return true;
+	}
+	if (r1.right > r2.right)
+	{
+		return false;
+	}
+	if (r1.top < r2.top)
+	{
+		return true;
+	}
+	if (r1.top > r2.top)
+	{
+		return false;
+	}
+	if (r1.bottom < r2.bottom)
+	{
+		return true;
+	}
+	//if (r1.bottom > r2.bottom)
+	{
+	}
+	return false;
+}
+static bool rect_left_less(RECT const& r1, RECT const& r2)
+{
+	return r1.left < r2.left;
+}
+}
+
+/////////////////////////////////////////////////////////////////////////////
+// CWaveFftView
+
+IMPLEMENT_DYNCREATE(CWaveFftView, CView);
+
+CWaveFftView::CWaveFftView()
+	: m_pFftResultArray(NULL),
+	m_FftResultArrayWidth(0),
+	m_FftResultArrayHeight(0),
+	m_FirstbandVisible(0),
+	m_FftWindowType(GetApp()->m_FftWindowType),
+	m_IndexOfFftBegin(0),
+	m_FftArraySize(0),
+	m_PrevSelectionEnd(0),
+	m_PrevSelectionStart(0),
+	m_PrevSelectedChannel(0),
+	m_VerticalScale(1.)
+	, m_FftArrayBusyMask(0)
+	, m_AllocatedFftBufSize(0)
+	, m_FftWindowValid(false)
+{
+	m_FftOrder = 1 << GetApp()->m_FftBandsOrder;
+	m_FftSpacing = m_FftOrder;
+}
+
+CWaveFftView::~CWaveFftView()
+{
+	delete[] m_pFftResultArray;
+	m_pFftResultArray = NULL;
+}
+
+
+BEGIN_MESSAGE_MAP(CWaveFftView, BaseClass)
+	//{{AFX_MSG_MAP(CWaveFftView)
+	ON_COMMAND(ID_VIEW_ZOOMVERT_NORMAL, OnViewZoomvertNormal)
+	ON_COMMAND(ID_VIEW_ZOOMINVERT, OnViewZoomInVert)
+	ON_COMMAND(ID_VIEW_ZOOMOUTVERT, OnViewZoomOutVert)
+	ON_WM_PAINT()
+	ON_WM_ERASEBKGND()
+	ON_COMMAND_RANGE(ID_FFT_BANDS_32, ID_FFT_BANDS_16384, OnFftBands)
+	ON_UPDATE_COMMAND_UI_RANGE(ID_FFT_BANDS_64, ID_FFT_BANDS_16384, OnUpdateFftBands)
+
+	ON_COMMAND(ID_FFT_WINDOW_SQUARED_SINE, OnFftWindowSquaredSine)
+	ON_UPDATE_COMMAND_UI(ID_FFT_WINDOW_SQUARED_SINE, OnUpdateFftWindowSquaredSine)
+	ON_COMMAND(ID_FFT_WINDOW_SINE, OnFftWindowSine)
+	ON_UPDATE_COMMAND_UI(ID_FFT_WINDOW_SINE, OnUpdateFftWindowSine)
+	ON_COMMAND(ID_FFT_WINDOW_HAMMING, OnFftWindowHamming)
+	ON_UPDATE_COMMAND_UI(ID_FFT_WINDOW_HAMMING, OnUpdateFftWindowHamming)
+	ON_COMMAND(ID_FFT_WINDOW_NUTTALL, OnFftWindowNuttall)
+	ON_UPDATE_COMMAND_UI(ID_FFT_WINDOW_NUTTALL, OnUpdateFftWindowNuttall)
+	ON_COMMAND(ID_VIEW_DECREASE_FFT_BANDS, OnViewDecreaseFftBands)
+	ON_COMMAND(ID_VIEW_INCREASE_FFT_BANDS, OnViewIncreaseFftBands)
+	//}}AFX_MSG_MAP
+	ON_COMMAND(ID_VIEW_SS_ZOOMINVERT, OnViewZoomInVert)
+	ON_UPDATE_COMMAND_UI(ID_VIEW_SS_ZOOMINVERT, OnUpdateViewZoomInVert)
+	ON_COMMAND(ID_VIEW_SS_ZOOMOUTVERT, OnViewZoomOutVert)
+	ON_UPDATE_COMMAND_UI(ID_VIEW_SS_ZOOMOUTVERT, OnUpdateViewZoomOutVert)
+	ON_COMMAND(ID_VIEW_SS_ZOOMVERT_NORMAL, OnViewZoomvertNormal)
+	ON_UPDATE_COMMAND_UI(ID_VIEW_SS_ZOOMVERT_NORMAL, OnUpdateViewZoomvertNormal)
+	ON_MESSAGE(UWM_NOTIFY_VIEWS, &CWaveFftView::OnUwmNotifyViews)
+	ON_WM_CONTEXTMENU()
+END_MESSAGE_MAP()
+
+static int fround(double d)
+{
+	if (d >= 0.)
+	{
+		return int(d + 0.5);
+	}
+	else
+	{
+		return int(d - 0.5);
+	}
+}
+
+SAMPLE_INDEX CWaveFftView::SampleToFftBaseSample(SAMPLE_INDEX sample) const
 {
 	sample += m_FftOrder;
 	return sample & -m_FftSpacing;
 }
 
 // the base sample corresponds to the FFT center
-SAMPLE_INDEX CWaveFftView::DisplaySampleToFftBaseSample(SAMPLE_INDEX sample)
+SAMPLE_INDEX CWaveFftView::DisplaySampleToFftBaseSample(SAMPLE_INDEX sample) const
 {
 	sample += m_FftSpacing >> 1;
 	return sample & -m_FftSpacing;
 }
 
 // display sample to FftColumn
-long CWaveFftView::SampleToFftColumn(SAMPLE_INDEX sample)
+long CWaveFftView::SampleToFftColumn(SAMPLE_INDEX sample) const
 {
 	return (sample + (m_FftSpacing >> 1)) / m_FftSpacing;
 }
 
 // to calculate the first column to be invalidated. The sample belongs to this column and possibly next
-long CWaveFftView::SampleToFftColumnLowerBound(SAMPLE_INDEX sample)
+long CWaveFftView::SampleToFftColumnLowerBound(SAMPLE_INDEX sample) const
 {
 	if (sample < m_FftOrder)
 	{
@@ -180,7 +404,7 @@ long CWaveFftView::SampleToFftColumnLowerBound(SAMPLE_INDEX sample)
 }
 
 // to calculate the last column to be invalidated. The sample belongs to this column and possibly before it
-long CWaveFftView::SampleToFftColumnUpperBound(SAMPLE_INDEX sample)
+long CWaveFftView::SampleToFftColumnUpperBound(SAMPLE_INDEX sample) const
 {
 	if (sample >= LONG_MAX - m_FftOrder)
 	{
@@ -191,7 +415,7 @@ long CWaveFftView::SampleToFftColumnUpperBound(SAMPLE_INDEX sample)
 
 // the display columns divided at m_FftSpacing/2
 // this returns the left boundary of the band
-SAMPLE_INDEX CWaveFftView::FftColumnToDisplaySample(long Column)
+SAMPLE_INDEX CWaveFftView::FftColumnToDisplaySample(long Column) const
 {
 	if (Column == 0)
 	{
@@ -218,6 +442,18 @@ void CWaveFftView::InvalidateFftColumnRange(long first_column, long last_column)
 	{
 		m_pFftResultArray[((m_IndexOfFftBegin + i + m_FftResultArrayWidth - m_FirstFftColumn) % m_FftResultArrayWidth) * m_FftResultArrayHeight] = 0;
 	}
+}
+
+bool CWaveFftView::IsFftResultCalculated(SAMPLE_INDEX sample) const
+{
+	long FftColumn = SampleToFftColumn(sample);
+	// see if it's within the array
+	ASSERT(FftColumn >= m_FirstFftColumn && FftColumn < m_FirstFftColumn + m_FftResultArrayWidth);
+
+	float * pFftColumn = m_pFftResultArray +
+						m_FftResultArrayHeight * ((m_IndexOfFftBegin + FftColumn - m_FirstFftColumn) % m_FftResultArrayWidth);
+
+	return pFftColumn[0] == 1;
 }
 
 float const * CWaveFftView::GetFftResult(SAMPLE_INDEX sample, unsigned channel)
@@ -336,81 +572,6 @@ void CWaveFftView::FillLogPalette(LOGPALETTE * pal, int nEntries)
 }
 
 /////////////////////////////////////////////////////////////////////////////
-// CWaveFftView
-
-IMPLEMENT_DYNCREATE(CWaveFftView, CView);
-
-CWaveFftView::CWaveFftView()
-	: m_pFftResultArray(NULL),
-	m_FftResultArrayWidth(0),
-	m_FftResultArrayHeight(0),
-	m_FirstbandVisible(0),
-	m_FftWindowType(GetApp()->m_FftWindowType),
-	m_IndexOfFftBegin(0),
-	m_FftArraySize(0),
-	m_PrevSelectionEnd(0),
-	m_PrevSelectionStart(0),
-	m_PrevSelectedChannel(0),
-	m_VerticalScale(1.)
-	, m_FftArrayBusyMask(0)
-	, m_AllocatedFftBufSize(0)
-	, m_FftWindowValid(false)
-{
-	m_FftOrder = 1 << GetApp()->m_FftBandsOrder;
-	m_FftSpacing = m_FftOrder;
-}
-
-CWaveFftView::~CWaveFftView()
-{
-	delete[] m_pFftResultArray;
-	m_pFftResultArray = NULL;
-}
-
-
-BEGIN_MESSAGE_MAP(CWaveFftView, BaseClass)
-	//{{AFX_MSG_MAP(CWaveFftView)
-	ON_COMMAND(ID_VIEW_ZOOMVERT_NORMAL, OnViewZoomvertNormal)
-	ON_COMMAND(ID_VIEW_ZOOMINVERT, OnViewZoomInVert)
-	ON_COMMAND(ID_VIEW_ZOOMOUTVERT, OnViewZoomOutVert)
-	ON_WM_PAINT()
-	ON_WM_ERASEBKGND()
-	ON_COMMAND_RANGE(ID_FFT_BANDS_32, ID_FFT_BANDS_16384, OnFftBands)
-	ON_UPDATE_COMMAND_UI_RANGE(ID_FFT_BANDS_64, ID_FFT_BANDS_16384, OnUpdateFftBands)
-
-	ON_COMMAND(ID_FFT_WINDOW_SQUARED_SINE, OnFftWindowSquaredSine)
-	ON_UPDATE_COMMAND_UI(ID_FFT_WINDOW_SQUARED_SINE, OnUpdateFftWindowSquaredSine)
-	ON_COMMAND(ID_FFT_WINDOW_SINE, OnFftWindowSine)
-	ON_UPDATE_COMMAND_UI(ID_FFT_WINDOW_SINE, OnUpdateFftWindowSine)
-	ON_COMMAND(ID_FFT_WINDOW_HAMMING, OnFftWindowHamming)
-	ON_UPDATE_COMMAND_UI(ID_FFT_WINDOW_HAMMING, OnUpdateFftWindowHamming)
-	ON_COMMAND(ID_FFT_WINDOW_NUTTALL, OnFftWindowNuttall)
-	ON_UPDATE_COMMAND_UI(ID_FFT_WINDOW_NUTTALL, OnUpdateFftWindowNuttall)
-	ON_COMMAND(ID_VIEW_DECREASE_FFT_BANDS, OnViewDecreaseFftBands)
-	ON_COMMAND(ID_VIEW_INCREASE_FFT_BANDS, OnViewIncreaseFftBands)
-	//}}AFX_MSG_MAP
-	ON_COMMAND(ID_VIEW_SS_ZOOMINVERT, OnViewZoomInVert)
-	ON_UPDATE_COMMAND_UI(ID_VIEW_SS_ZOOMINVERT, OnUpdateViewZoomInVert)
-	ON_COMMAND(ID_VIEW_SS_ZOOMOUTVERT, OnViewZoomOutVert)
-	ON_UPDATE_COMMAND_UI(ID_VIEW_SS_ZOOMOUTVERT, OnUpdateViewZoomOutVert)
-	ON_COMMAND(ID_VIEW_SS_ZOOMVERT_NORMAL, OnViewZoomvertNormal)
-	ON_UPDATE_COMMAND_UI(ID_VIEW_SS_ZOOMVERT_NORMAL, OnUpdateViewZoomvertNormal)
-	ON_MESSAGE(UWM_NOTIFY_VIEWS, &CWaveFftView::OnUwmNotifyViews)
-	ON_WM_CONTEXTMENU()
-END_MESSAGE_MAP()
-
-static int fround(double d)
-{
-	if (d >= 0.)
-	{
-		return int(d + 0.5);
-	}
-	else
-	{
-		return int(d - 0.5);
-	}
-}
-
-/////////////////////////////////////////////////////////////////////////////
 // CWaveFftView drawing
 namespace
 {
@@ -421,125 +582,121 @@ struct FftGraphBand
 	int FftBand;
 	int NumBandsToSum;
 };
-typedef FftGraphBand FftGraphChannels[MAX_NUMBER_OF_CHANNELS];
 }
 
 struct DrawFftWorkItem : WorkerThreadPoolItem
 {
 	CWaveFftView * pView;
 	long nCurrentFftColumn;
-	NUMBER_OF_CHANNELS nChannels;
+	int nChannel;
 	unsigned char* pColBmp;
 	int stride;
 	int nColumns;
-	FftGraphChannels * pIdArray;
-	RGBQUAD const * pColor;
+	FftGraphBand * pId;
+	RGBQUAD const * pColor;	// palette
 	double PowerLogToPalIndex;
+	int  valid_top;
+	int  valid_bottom;
 };
 
-bool CWaveFftView::FillFftColumnWorkitem(WorkerThreadPoolItem * pItem)
+bool CWaveFftView::CalculateFftColumnWorkitem(WorkerThreadPoolItem * pItem)
 {
 	DrawFftWorkItem * pDrawItem = static_cast<DrawFftWorkItem *>(pItem);
-	pDrawItem->pView->FillFftColumn(pDrawItem);
+	pDrawItem->pView->CalculateFftColumn(pDrawItem);
 	return true;
 }
 
-void CWaveFftView::FillFftColumn(DrawFftWorkItem * pDrawItem)
+void CWaveFftView::CalculateFftColumn(DrawFftWorkItem * pDrawItem)
 {
-	NUMBER_OF_CHANNELS nChannels = pDrawItem->nChannels;
+	// this will calculate the result for all channels
+	GetFftResult(FftColumnToDisplaySample(pDrawItem->nCurrentFftColumn), 0);
+}
+
+bool CWaveFftView::FillChannelFftColumnWorkitem(WorkerThreadPoolItem * pItem)
+{
+	DrawFftWorkItem * pDrawItem = static_cast<DrawFftWorkItem *>(pItem);
+	pDrawItem->pView->FillChannelFftColumn(pDrawItem);
+	return true;
+}
+
+void CWaveFftView::FillChannelFftColumn(DrawFftWorkItem * pDrawItem)
+{
 	unsigned char* pColBmp = pDrawItem->pColBmp;
 	int stride = pDrawItem->stride;
 	int nColumns = pDrawItem->nColumns;
-	FftGraphChannels * pIdArray = pDrawItem->pIdArray;
 	double PowerLogToPalIndex = pDrawItem->PowerLogToPalIndex;
+	int valid_top = pDrawItem->valid_top;
+	int valid_bottom = pDrawItem->valid_bottom;
 
-	for (int ch = 0; ch < nChannels; ch++)
+	// the result is already calculated and cached, no cost here
+	float const *pData = GetFftResult(FftColumnToDisplaySample(pDrawItem->nCurrentFftColumn), pDrawItem->nChannel);
+
+	FftGraphBand const * pId = pDrawItem->pId;
+	for (int ff = 0; ff < m_FftOrder; ff++, pId++)
 	{
-		float const *pData = GetFftResult(FftColumnToDisplaySample(pDrawItem->nCurrentFftColumn), ch);
-#if 0
-		double MaxResult = 0.;
-		for (ff = 0; ff < m_FftOrder; ff++)
+		if (pId->NumDisplayRows == 0)
 		{
-			if (MaxResult < pData[ff])
-			{
-				MaxResult = pData[ff];
-			}
+			break;
 		}
-#endif
-		for (int ff = 0; ff < m_FftOrder; ff++)
+		if (pId->y >= valid_top
+			&& pId->y + pId->NumDisplayRows <= valid_bottom)
 		{
-			FftGraphBand const * pId = &pIdArray[ff][ch];
-			if (pId->NumDisplayRows == 0)
-			{
-				break;
-			}
-			unsigned char red = 0;
-			unsigned char g = 0;
-			unsigned char b = 0;
-			if (pData != NULL)
-			{
-				ASSERT(pId->FftBand < m_FftOrder);
-				ASSERT(pId->FftBand + pId->NumBandsToSum <= m_FftOrder);
-
-				float sum = 0.;
-				for (int f = pId->FftBand; f < pId->FftBand + pId->NumBandsToSum; f++)
-				{
-					sum += pData[f];
-				}
-				sum /= pId->NumBandsToSum;
-
-				int PaletteIndex = 255;
-
-				if (sum != 0.)
-				{
-					// max power= (32768 * m_FftOrder * 2) ^ 2
-					PaletteIndex = int(PowerLogToPalIndex * -log(sum));
-
-					if (PaletteIndex < 0)
-					{
-						PaletteIndex = 0;
-					}
-					else if (PaletteIndex > 255)
-					{
-						PaletteIndex = 255;
-					}
-				}
-
-				RGBQUAD const * pColor = &pDrawItem->pColor[PaletteIndex];
-				// set the color to pId->nNumOfRows rows
-				red = pColor->rgbRed;
-				g = pColor->rgbGreen;
-				b = pColor->rgbBlue;
-			}
-
-			BYTE * pRgb = pColBmp + pId->y * stride;
-
-			ASSERT(pId->y >= m_Heights.ch[ch].clip_top);
-			ASSERT(pId->y + pId->NumDisplayRows <= m_Heights.ch[ch].clip_bottom);
-
-			for (int y = 0; y < pId->NumDisplayRows; y++, pRgb += stride - nColumns * 3)
-			{
-				// set the color to nColumns pixels across
-				for (int x = 0; x < nColumns; x++, pRgb += 3)
-				{
-					//ASSERT(pRgb >= pBmp && pRgb + 3 <= pBmp + BmpSize);
-					pRgb[0] = b;    // B
-					pRgb[1] = g;    // G
-					pRgb[2] = red;    // R
-				}
-			}
+			// this band is in the area not to update
+			continue;
 		}
-		// draw a gray separator line
-		if (ch != nChannels - 1)
+		unsigned char red = 0;
+		unsigned char g = 0;
+		unsigned char b = 0;
+		if (pData != NULL)
 		{
-			BYTE * pRgb = pColBmp + m_Heights.ch[ch].clip_bottom * stride;
+			ASSERT(pId->FftBand < m_FftOrder);
+			ASSERT(pId->FftBand + pId->NumBandsToSum <= m_FftOrder);
 
-			for (int x = 0; x < nColumns; x++, pRgb += 3)
+			float sum = 0.;
+			for (int f = pId->FftBand; f < pId->FftBand + pId->NumBandsToSum; f++)
 			{
-				//ASSERT(pRgb >= pBmp && pRgb + 3 <= pBmp + BmpSize);
-				pRgb[0] = 0x80;    // B
-				pRgb[1] = 0x80;    // G
-				pRgb[2] = 0x80;    // R
+				sum += pData[f];
+			}
+			sum /= pId->NumBandsToSum;
+
+			int PaletteIndex = 255;
+
+			if (sum != 0.)
+			{
+				// max power= (32768 * m_FftOrder * 2) ^ 2
+				PaletteIndex = int(PowerLogToPalIndex * -log(sum));
+
+				if (PaletteIndex < 0)
+				{
+					PaletteIndex = 0;
+				}
+				else if (PaletteIndex > 255)
+				{
+					PaletteIndex = 255;
+				}
+			}
+
+			RGBQUAD const * pColor = &pDrawItem->pColor[PaletteIndex];
+			// set the color to pId->nNumOfRows rows
+			red = pColor->rgbRed;
+			g = pColor->rgbGreen;
+			b = pColor->rgbBlue;
+		}
+
+		BYTE * pRgb = pColBmp + pId->y * stride;
+
+		ASSERT(pId->y >= m_Heights.ch[pDrawItem->nChannel].clip_top);
+		ASSERT(pId->y + pId->NumDisplayRows <= m_Heights.ch[pDrawItem->nChannel].clip_bottom);
+
+		for (int y = 0; y < pId->NumDisplayRows; y++, pRgb += stride)
+		{
+			// set the color to nColumns pixels across
+			BYTE * pRowRgb = pRgb;
+			for (int x = 0; x < nColumns; x++, pRowRgb += 3)
+			{
+				pRowRgb[0] = b;    // B
+				pRowRgb[1] = g;    // G
+				pRowRgb[2] = red;    // R
 			}
 		}
 	}
@@ -554,69 +711,62 @@ bool CWaveFftView::FillFftColumnPaletteWorkitem(WorkerThreadPoolItem * pItem)
 
 void CWaveFftView::FillFftColumnPalette(DrawFftWorkItem * pDrawItem)
 {
-	NUMBER_OF_CHANNELS nChannels = pDrawItem->nChannels;
 	unsigned char* pColBmp = pDrawItem->pColBmp;
 	int stride = pDrawItem->stride;
 	int nColumns = pDrawItem->nColumns;
-	FftGraphChannels * pIdArray = pDrawItem->pIdArray;
 	double PowerLogToPalIndex = pDrawItem->PowerLogToPalIndex;
 
-	for (int ch = 0; ch < nChannels; ch++)
+	float const *pData = GetFftResult(FftColumnToDisplaySample(pDrawItem->nCurrentFftColumn), pDrawItem->nChannel);
+
+	FftGraphBand const * pId = pDrawItem->pId;
+	for (int ff = 0; ff < m_FftOrder; ff++, pId++)
 	{
-		float const *pData = GetFftResult(FftColumnToDisplaySample(pDrawItem->nCurrentFftColumn), ch);
-
-		for (int ff = 0; ff < m_FftOrder; ff++)
+		if (pId->NumDisplayRows == 0)
 		{
-			FftGraphBand const * pId = &pIdArray[ff][ch];
-			if (pId->NumDisplayRows == 0)
+			break;
+		}
+		unsigned char ColorIndex = 0;
+		if (pData != NULL)
+		{
+			float sum = 0.;
+			for (int f = pId->FftBand; f < pId->FftBand + pId->NumBandsToSum; f++)
 			{
-				break;
+				sum += pData[f];
 			}
-			unsigned char ColorIndex = 0;
-			if (pData != NULL)
+			sum /= pId->NumBandsToSum;
+
+			int PaletteIndex = 127;
+
+			if (sum != 0.)
 			{
-				float sum = 0.;
-				for (int f = pId->FftBand; f < pId->FftBand + pId->NumBandsToSum; f++)
+				PaletteIndex = int(PowerLogToPalIndex * - log(sum));
+
+				if (PaletteIndex < 0)
 				{
-					sum += pData[f];
+					PaletteIndex = 0;
 				}
-				sum /= pId->NumBandsToSum;
-
-				int PaletteIndex = 127;
-
-				if (sum != 0.)
+				else if (PaletteIndex > 127)
 				{
-					// max power= (32768 * m_FftOrder * 2) ^ 2
-					PaletteIndex = int(PowerLogToPalIndex * - log(sum));
-
-					if (PaletteIndex < 0)
-					{
-						PaletteIndex = 0;
-					}
-					else if (PaletteIndex > 127)
-					{
-						PaletteIndex = 127;
-					}
+					PaletteIndex = 127;
 				}
-
-				PaletteIndex += 10;
 			}
-			// set the color to pId->nNumOfRows rows
-			BYTE * pPal = pColBmp + pId->y * stride;
-			for (int y = 0; y < pId->NumDisplayRows; y++, pPal += stride)
+
+			PaletteIndex += 10;
+		}
+		// set the color to pId->nNumOfRows rows
+		BYTE * pPal = pColBmp + pId->y * stride;
+		for (int y = 0; y < pId->NumDisplayRows; y++, pPal += stride)
+		{
+			// set the color to nColumns pixels across
+			for (int x = 0; x < nColumns; x++)
 			{
-				// set the color to nColumns pixels across
-				for (int x = 0; x < nColumns; x++)
-				{
-					//ASSERT(pPal >= pBmp && pPal+x < pBmp + BmpSize);
-					pPal[x] = ColorIndex;
-				}
+				pPal[x] = ColorIndex;
 			}
 		}
 	}
 }
 
-void CWaveFftView::OnDraw(CDC* pDC)
+void CWaveFftView::OnDraw(CPaintDC* pDC, CRgn * UpdateRgn)
 {
 	CWaveSoapFrontDoc* pDoc = GetDocument();
 	if (! pDoc->m_WavFile.IsOpen())
@@ -624,22 +774,10 @@ void CWaveFftView::OnDraw(CDC* pDC)
 		return;
 	}
 
-	// show FFT:
-	// 1. build grayscale palette and realize it (for 8 bit mode)
-	// 2. allocate 256 colors or truecolor bitmap section
-	CRect r;
-	CRect cr;
+	CRect r(pDC->m_ps.rcPaint);	// paint rectangle
+	CRect cr;	// client rectangle
 	GetClientRect( & cr);
-	double left, right;
 
-	if (pDC->IsKindOf(RUNTIME_CLASS(CPaintDC)))
-	{
-		r = ((CPaintDC*)pDC)->m_ps.rcPaint;
-	}
-	else
-	{
-		pDC->GetClipBox(&r);
-	}
 	// limit right to the file area
 	int FileEnd = SampleToXceil(pDoc->WaveFileSamples());
 
@@ -648,314 +786,440 @@ void CWaveFftView::OnDraw(CDC* pDC)
 		r.right = FileEnd;
 	}
 
-	//int iClientWidth = r.right - r.left;
-	left = WindowXtoSample(r.left);
-	right = WindowXtoSample(r.right);
+	double left = WindowXtoSample(r.left);		// (fractional) sample corresponding to r.left
+	double right = WindowXtoSample(r.right);	// (fractional) sample corresponding to r.right
 
 	if (left < 0) left = 0;
 
-	if (r.left < r.right)
+	if (r.left >= r.right)
 	{
-		AllocateFftArray((SAMPLE_INDEX)WindowXtoSample(cr.left), (SAMPLE_INDEX)WindowXtoSample(cr.right));  // full width of the client area at least
+		return;
+	}
 
-		if (!m_FftWindowValid)
+	AllocateFftArray((SAMPLE_INDEX)left, (SAMPLE_INDEX)right);  // full width of the client area at least
+
+	if (!m_FftWindowValid)
+	{
+		TRACE("Calculating FFT window\n");
+		if (!m_pFftWindow)
 		{
-			TRACE("Calculating FFT window\n");
-			if (!m_pFftWindow)
-			{
-				m_pFftWindow.Allocate(m_FftOrder * 2);
-			}
-
-			for (int w = 0; w < m_FftOrder * 2; w++)
-			{
-				// X changes from 0 to 2pi
-				double X = (w + 0.5) * M_PI /  m_FftOrder;
-
-				switch (m_FftWindowType)
-				{
-				default:
-				case WindowTypeSquaredSine:
-					// squared sine
-					m_pFftWindow[w] = float((0.5 - 0.5 * cos(X))
-											/ (m_FftOrder * 0.46518375880479441036888825236993));
-					break;
-				case WindowTypeHalfSine:
-					// half sine
-					m_pFftWindow[w] = float((0.707107 * sin (0.5 * X))
-											/ (m_FftOrder * 0.34132424511039137114306807472343));
-					break;
-				case WindowTypeHamming:
-					// Hamming window (sucks!!!)
-					m_pFftWindow[w] = float((0.9 * (0.54 - 0.46 * cos (X)))
-											/ (m_FftOrder * 0.44467411795859108283066893223012));
-					break;
-
-				case WindowTypeNuttall:
-					// Nuttall window:
-					// w(n) = 0.355768 – 0.487396*cos(2pn/N) + 0.144232*cos(4pn/N) – 0.012604*cos(6pn/N)
-					m_pFftWindow[w] = float((0.355768 - 0.487396*cos(X) + 0.144232*cos(2 * X) - 0.012604*cos(3 * X))
-											/ (m_FftOrder * 0.34132424511039137114306807472343));
-					break;
-				}
-			}
-			m_FftWindowValid = true;
+			m_pFftWindow.Allocate(m_FftOrder * 2);
 		}
 
-		void * pBits;
-		bool bUsePalette;
-		unsigned width = r.right - r.left;
-		long height = cr.bottom - cr.top;
-		unsigned stride = (width * 3 + 3) & ~3;
-		unsigned BmpSize = stride * height;
-		int BytesPerPixel = 3;
-		double DbRange = 130. + 10. * log10(m_FftOrder / 512.);
-
-		double PowerLogToPalIndex;
-
-		struct BM
+		for (int w = 0; w < m_FftOrder * 2; w++)
 		{
-			BITMAPINFO bmi;
-			RGBQUAD MorebmiColors[256];
-		} bmi = {sizeof (BITMAPINFOHEADER) };
+			// X changes from 0 to 2pi
+			double X = (w + 0.5) * M_PI /  m_FftOrder;
 
-		bmi.bmi.bmiHeader.biSize = sizeof (BITMAPINFOHEADER);
-		bmi.bmi.bmiHeader.biWidth = r.right - r.left;
-		bmi.bmi.bmiHeader.biHeight = -height;
-		bmi.bmi.bmiHeader.biPlanes = 1;
-		bmi.bmi.bmiHeader.biCompression = BI_RGB;
-		bmi.bmi.bmiHeader.biSizeImage = 0;
-		bmi.bmi.bmiHeader.biXPelsPerMeter = 0;
-		bmi.bmi.bmiHeader.biYPelsPerMeter = 0;
-		bmi.bmi.bmiHeader.biClrUsed = 0;
-		bmi.bmi.bmiHeader.biClrImportant = 0;
-
-		CPushDcPalette OldPalette(pDC, NULL);
-
-		if ((pDC->GetDeviceCaps(RASTERCAPS) & RC_PALETTE)
-			&& 8 == pDC->GetDeviceCaps(BITSPIXEL))
-		{
-			BytesPerPixel = 1;
-			bUsePalette = true;
-			bmi.bmi.bmiHeader.biBitCount = 8;
-
-			int i;
-			PALETTEENTRY SysPalette[256];
-			GetSystemPaletteEntries(*pDC, 0, 256, SysPalette);
-			for (i = 0; i < 10; i++)
+			switch (m_FftWindowType)
 			{
-				bmi.bmi.bmiColors[i].rgbReserved = 0;
-				bmi.bmi.bmiColors[i].rgbRed = SysPalette[i].peRed;
-				bmi.bmi.bmiColors[i].rgbGreen = SysPalette[i].peGreen;
-				bmi.bmi.bmiColors[i].rgbBlue = SysPalette[i].peBlue;
-			}
-			for (int j = 0; j < sizeof palette && i < 255; j += 3, i++)
-			{
-				bmi.bmi.bmiColors[i].rgbReserved = 0;
-				bmi.bmi.bmiColors[i].rgbRed = palette[j];
-				bmi.bmi.bmiColors[i].rgbGreen = palette[j + 1];
-				bmi.bmi.bmiColors[i].rgbBlue = palette[j + 2];
-			}
-			for ( ; i < 256; i++)
-			{
-				bmi.bmi.bmiColors[i].rgbReserved = 0;
-				bmi.bmi.bmiColors[i].rgbRed = SysPalette[i].peRed;
-				bmi.bmi.bmiColors[i].rgbGreen = SysPalette[i].peGreen;
-				bmi.bmi.bmiColors[i].rgbBlue = SysPalette[i].peBlue;
-			}
+			default:
+			case WindowTypeSquaredSine:
+				// squared sine
+				m_pFftWindow[w] = float((0.5 - 0.5 * cos(X))
+										/ (m_FftOrder * 0.46518375880479441036888825236993));
+				break;
+			case WindowTypeHalfSine:
+				// half sine
+				m_pFftWindow[w] = float((0.707107 * sin (0.5 * X))
+										/ (m_FftOrder * 0.34132424511039137114306807472343));
+				break;
+			case WindowTypeHamming:
+				// Hamming window (sucks!!!)
+				m_pFftWindow[w] = float((0.9 * (0.54 - 0.46 * cos (X)))
+										/ (m_FftOrder * 0.44467411795859108283066893223012));
+				break;
 
-			bmi.bmi.bmiHeader.biClrUsed = i;
-			stride = (width + 3) & ~3;
-			BmpSize = stride * height;
-			OldPalette.PushPalette(GetApp()->GetPalette(), FALSE);
-
-			PowerLogToPalIndex = 127 / (DbRange / 10. * log(10.));
+			case WindowTypeNuttall:
+				// Nuttall window:
+				// w(n) = 0.355768 – 0.487396*cos(2pn/N) + 0.144232*cos(4pn/N) – 0.012604*cos(6pn/N)
+				m_pFftWindow[w] = float((0.355768 - 0.487396*cos(X) + 0.144232*cos(2 * X) - 0.012604*cos(3 * X))
+										/ (m_FftOrder * 0.34132424511039137114306807472343));
+				break;
+			}
 		}
-		else
+		m_FftWindowValid = true;
+	}
+
+	void * pBits;
+	bool bUsePalette;
+	unsigned width = r.right - r.left;
+	long height = cr.bottom - cr.top;
+	unsigned stride = (width * 3 + 3) & ~3;
+	unsigned BmpSize = stride * height;
+	int BytesPerPixel = 3;
+	double DbRange = 130. + 10. * log10(m_FftOrder / 512.);
+
+	double PowerLogToPalIndex;
+
+	struct BM
+	{
+		BITMAPINFO bmi;
+		RGBQUAD MorebmiColors[256];
+	} bmi = {sizeof (BITMAPINFOHEADER) };
+
+	bmi.bmi.bmiHeader.biSize = sizeof (BITMAPINFOHEADER);
+	bmi.bmi.bmiHeader.biWidth = r.right - r.left;
+	bmi.bmi.bmiHeader.biHeight = -height;
+	bmi.bmi.bmiHeader.biPlanes = 1;
+	bmi.bmi.bmiHeader.biCompression = BI_RGB;
+	bmi.bmi.bmiHeader.biSizeImage = 0;
+	bmi.bmi.bmiHeader.biXPelsPerMeter = 0;
+	bmi.bmi.bmiHeader.biYPelsPerMeter = 0;
+	bmi.bmi.bmiHeader.biClrUsed = 0;
+	bmi.bmi.bmiHeader.biClrImportant = 0;
+
+	CPushDcPalette OldPalette(pDC, NULL);
+
+	if ((pDC->GetDeviceCaps(RASTERCAPS) & RC_PALETTE)
+		&& 8 == pDC->GetDeviceCaps(BITSPIXEL))
+	{
+		BytesPerPixel = 1;
+		bUsePalette = true;
+		bmi.bmi.bmiHeader.biBitCount = 8;
+
+		int i;
+		PALETTEENTRY SysPalette[256];
+		GetSystemPaletteEntries(*pDC, 0, 256, SysPalette);
+		for (i = 0; i < 10; i++)
 		{
-			BytesPerPixel = 3;
-			bUsePalette = false;
-			bmi.bmi.bmiHeader.biBitCount = 24;
-			// fill interpolated palette for 256 RGB colors
-			bmi.MorebmiColors[0].rgbRed = 255;
-			bmi.MorebmiColors[0].rgbGreen = 255;
-			bmi.MorebmiColors[0].rgbBlue = 255;
-			unsigned char const * pPal = palette;
-			for (int i = 0; i < 256-2; i += 2, pPal+=3)
-			{
-				bmi.MorebmiColors[i + 2].rgbRed = pPal[0];
-				bmi.MorebmiColors[i + 2].rgbGreen = pPal[1];
-				bmi.MorebmiColors[i + 2].rgbBlue = pPal[2];
-				bmi.MorebmiColors[i + 1].rgbRed = (bmi.MorebmiColors[i].rgbRed + bmi.MorebmiColors[i + 2].rgbRed) /2;
-				bmi.MorebmiColors[i + 1].rgbGreen = (bmi.MorebmiColors[i].rgbGreen + bmi.MorebmiColors[i + 2].rgbGreen) / 2;
-				bmi.MorebmiColors[i + 1].rgbBlue = (bmi.MorebmiColors[i].rgbBlue + bmi.MorebmiColors[i + 2].rgbBlue) / 2;
-			}
-			bmi.MorebmiColors[255].rgbRed = 0;
-			bmi.MorebmiColors[255].rgbGreen = 0;
-			bmi.MorebmiColors[255].rgbBlue = 0;
-			PowerLogToPalIndex = 255 / (DbRange / 10. * log(10.));
+			bmi.bmi.bmiColors[i].rgbReserved = 0;
+			bmi.bmi.bmiColors[i].rgbRed = SysPalette[i].peRed;
+			bmi.bmi.bmiColors[i].rgbGreen = SysPalette[i].peGreen;
+			bmi.bmi.bmiColors[i].rgbBlue = SysPalette[i].peBlue;
 		}
-
-		// log of FFT slot power to map to zero palette index
-		double const PowerOffset = log(2. * m_FftOrder) * 2.;
-
-		CBitmap hbm;
-		hbm.Attach(CreateDIBSection(pDC->GetSafeHdc(), & bmi.bmi, DIB_RGB_COLORS,
-									& pBits, NULL, 0));
-
-		if (HGDIOBJ(hbm) == NULL)
+		for (int j = 0; j < sizeof palette && i < 255; j += 3, i++)
 		{
-			return;
+			bmi.bmi.bmiColors[i].rgbReserved = 0;
+			bmi.bmi.bmiColors[i].rgbRed = palette[j];
+			bmi.bmi.bmiColors[i].rgbGreen = palette[j + 1];
+			bmi.bmi.bmiColors[i].rgbBlue = palette[j + 2];
+		}
+		for ( ; i < 256; i++)
+		{
+			bmi.bmi.bmiColors[i].rgbReserved = 0;
+			bmi.bmi.bmiColors[i].rgbRed = SysPalette[i].peRed;
+			bmi.bmi.bmiColors[i].rgbGreen = SysPalette[i].peGreen;
+			bmi.bmi.bmiColors[i].rgbBlue = SysPalette[i].peBlue;
 		}
 
-		// get windowed samples with 50% overlap
-		LPBYTE pBmp = LPBYTE(pBits);
+		bmi.bmi.bmiHeader.biClrUsed = i;
+		stride = (width + 3) & ~3;
+		BmpSize = stride * height;
+		OldPalette.PushPalette(GetApp()->GetPalette(), FALSE);
 
-		memset(pBmp, 0, BmpSize);
+		PowerLogToPalIndex = 127 / (DbRange / 10. * log(10.));
+	}
+	else
+	{
+		BytesPerPixel = 3;
+		bUsePalette = false;
+		bmi.bmi.bmiHeader.biBitCount = 24;
+		// fill interpolated palette for 256 RGB colors
+		bmi.MorebmiColors[0].rgbRed = 255;
+		bmi.MorebmiColors[0].rgbGreen = 255;
+		bmi.MorebmiColors[0].rgbBlue = 255;
+		unsigned char const * pPal = palette;
+		for (int i = 0; i < 256-2; i += 2, pPal+=3)
+		{
+			bmi.MorebmiColors[i + 2].rgbRed = pPal[0];
+			bmi.MorebmiColors[i + 2].rgbGreen = pPal[1];
+			bmi.MorebmiColors[i + 2].rgbBlue = pPal[2];
+			bmi.MorebmiColors[i + 1].rgbRed = (bmi.MorebmiColors[i].rgbRed + bmi.MorebmiColors[i + 2].rgbRed) /2;
+			bmi.MorebmiColors[i + 1].rgbGreen = (bmi.MorebmiColors[i].rgbGreen + bmi.MorebmiColors[i + 2].rgbGreen) / 2;
+			bmi.MorebmiColors[i + 1].rgbBlue = (bmi.MorebmiColors[i].rgbBlue + bmi.MorebmiColors[i + 2].rgbBlue) / 2;
+		}
+		bmi.MorebmiColors[255].rgbRed = 0;
+		bmi.MorebmiColors[255].rgbGreen = 0;
+		bmi.MorebmiColors[255].rgbBlue = 0;
+		PowerLogToPalIndex = 255 / (DbRange / 10. * log(10.));
+	}
 
-		// fill the array
+	// log of FFT slot power to map to zero palette index
+	double const PowerOffset = log(2. * m_FftOrder) * 2.;
 
-		NUMBER_OF_CHANNELS nChannels = pDoc->WaveChannels();
-		// find offset in the FFT result array for 'left' point
-		// and how many columns to fill with this color
-		ASSERT(m_FftSpacing >= m_HorizontalScale);
+	CBitmap hbm;
+	hbm.Attach(CreateDIBSection(pDC->GetSafeHdc(), & bmi.bmi, DIB_RGB_COLORS,
+								& pBits, NULL, 0));
 
-		// find vertical offset in the result array and how many
-		// rows to fill with this color
-		// build an array of vertical offsets for each band and for each channel
+	if (HGDIOBJ(hbm) == NULL)
+	{
+		return;
+	}
 
-		ATL::CHeapPtr<FftGraphBand[MAX_NUMBER_OF_CHANNELS]> pIdArray;
-		if ( !pIdArray.Allocate(m_FftOrder))
+	LPBYTE pBmp = LPBYTE(pBits);
+
+	memset(pBmp, 0, BmpSize);
+
+	// fill the array
+
+	NUMBER_OF_CHANNELS nChannels = pDoc->WaveChannels();
+	// find offset in the FFT result array for 'left' point
+	// and how many columns to fill with this color
+	ASSERT(m_FftSpacing >= m_HorizontalScale);
+
+	// find vertical offset in the result array and how many
+	// rows to fill with this color
+	// build an array of vertical offsets for each band and for each channel
+
+	ATL::CHeapPtr<FftGraphBand> pIdArray[MAX_NUMBER_OF_CHANNELS];
+	RgnData UpdateRgnData[MAX_NUMBER_OF_CHANNELS];
+
+	CRgn ChannelRgn;
+	ChannelRgn.CreateRectRgn(0, 0, 0, 0);
+
+	for (int ch = 0; ch < nChannels; ch++)
+	{
+		int LastRow = 0;
+		int k;
+		int top = m_Heights.ch[ch].clip_top;
+		int bottom = m_Heights.ch[ch].clip_bottom;
+		ChannelRgn.SetRectRgn(r.left, top, r.right, bottom);
+
+		int ScaledHeight = m_Heights.ch[ch].bottom - m_Heights.ch[ch].top;
+		int OffsetPixels = 0;
+
+		if (! m_Heights.ChannelMinimized(ch))
+		{
+			ScaledHeight = int(m_Heights.NominalChannelHeight * m_VerticalScale);
+			OffsetPixels = int(ScaledHeight * m_FirstbandVisible/ m_FftOrder);
+		}
+
+		if ( !pIdArray[ch].Allocate(bottom - top + 1))
 		{
 			return;          // Allocate is non-throwing
 		}
 
-		// vertical scrolling and scaling:
-		// Each channel occupies integer number of pixels in the display units. Channels may have different height.
-		// The scroll bar position is translated to integer pixel position for each channel.
-		//
-		for (int ch = 0; ch < nChannels; ch++)
+		// get the update region for the channel
+		ChannelRgn.CombineRgn(&ChannelRgn, UpdateRgn, RGN_AND);
+
+		if (!UpdateRgnData[ch].GetRegionData(&ChannelRgn))
 		{
-			int LastRow = 0;
-			int k;
-			int top = m_Heights.ch[ch].clip_top;
-			int bottom = m_Heights.ch[ch].clip_bottom;
+			return;
+		}
 
-			int ScaledHeight = m_Heights.ch[ch].bottom - m_Heights.ch[ch].top;
-			int OffsetPixels = 0;
-
-			if (! m_Heights.ChannelMinimized(ch))
+		std::sort(UpdateRgnData[ch].begin(), UpdateRgnData[ch].end(), rect_less);
+		// fill the array
+		int y = bottom;
+		FftGraphBand * pId = pIdArray[ch];
+		for (k = 0, LastRow = 0; k < m_FftOrder; k++, pId++)
+		{
+			ASSERT(k < bottom - top + 1);
+			if (y <= top)
 			{
-				ScaledHeight = int(m_Heights.NominalChannelHeight * m_VerticalScale);
-				OffsetPixels = int(ScaledHeight * m_FirstbandVisible/ m_FftOrder);
+				pId->NumBandsToSum = 0;
+				pId->NumDisplayRows = 0;
+				break;
 			}
 
-			// fill the array
-			int y = bottom;
-			for (k = 0, LastRow = 0; k < m_FftOrder; k++)
+			int FirstFftSample = (bottom - y + OffsetPixels) * m_FftOrder / ScaledHeight;
+
+			pId->FftBand = FirstFftSample;
+			pId->NumDisplayRows = 0;
+			// see if the Fft band will take multiple display rows, or a single display row will take multiple bands
+
+			while (y > top)
 			{
-				if (y <= top)
+				y--;
+				pId->NumDisplayRows++;
+				int NextFftSample = (bottom - y + OffsetPixels) * m_FftOrder / ScaledHeight;
+
+				if (NextFftSample >= m_FftOrder)
 				{
-					pIdArray[k][ch].NumBandsToSum = 0;
-					pIdArray[k][ch].NumDisplayRows = 0;
+					pId->NumBandsToSum = m_FftOrder - FirstFftSample;
+					y = top;
 					break;
 				}
 
-				int FirstFftSample = (bottom - y + OffsetPixels) * m_FftOrder / ScaledHeight;
-
-				pIdArray[k][ch].FftBand = FirstFftSample;
-				pIdArray[k][ch].NumDisplayRows = 0;
-				// see if the Fft band will take multiple display rows, or a single display row will take multiple bands
-
-				while (y > top)
+				if (NextFftSample > FirstFftSample)
 				{
-					y--;
-					pIdArray[k][ch].NumDisplayRows++;
-					int NextFftSample = (bottom - y + OffsetPixels) * m_FftOrder / ScaledHeight;
+					pId->NumBandsToSum = NextFftSample - FirstFftSample;
+					break;
+				}
+			}
 
-					if (NextFftSample >= m_FftOrder)
-					{
-						pIdArray[k][ch].NumBandsToSum = m_FftOrder - FirstFftSample;
-						y = top;
-						break;
-					}
+			pId->y = y;  // top of display band
 
-					if (NextFftSample > FirstFftSample)
+			if (0 && r.left == -1 && k < 20) TRACE("FftView: ch:%d y=%d-%d fft band %d-%d\n", ch, pId->y, pId->y + pId->NumDisplayRows -1,
+													pId->FftBand, pId->FftBand + pId->NumBandsToSum -1);
+		}
+	}
+
+	DrawFftWorkItem wi[128];	// 32 items per job
+	WorkerThreadPoolJob ThreadPoolJob[4];
+	for (int a = 0; a < countof(wi); a++)
+	{
+		wi[a].pView = this;
+		wi[a].PowerLogToPalIndex = PowerLogToPalIndex;
+		wi[a].stride = stride;
+		ThreadPoolJob[a / (countof(wi) / countof(ThreadPoolJob))].m_DoneItems.InsertTail(&wi[a]);
+	}
+	int JobsOutstanding = 0;
+	int NextJob = 0;
+
+	// first, pre-calculate all FFT, one per work item
+	for(int col = r.left; col < r.right; )
+	{
+		// 'left' is the first sample index in the area to redraw
+		int nColumns;
+		long nCurrentFftColumn;
+		int CurrentColumnRight;
+		if (m_FftSpacing <= m_HorizontalScale)
+		{
+			// each FFT takes one column of display
+			nCurrentFftColumn = int(WindowXtoSample(col) / m_FftSpacing);
+			CurrentColumnRight = col + 1;
+		}
+		else
+		{
+			nCurrentFftColumn = long(0.5 + WindowXtoSample(col) / m_FftSpacing);
+			CurrentColumnRight = (int)SampleToX(nCurrentFftColumn * m_FftSpacing + m_FftSpacing/2);
+		}
+
+		ASSERT(nCurrentFftColumn >= 0);
+
+		if (CurrentColumnRight > r.right)
+		{
+			CurrentColumnRight = r.right;
+		}
+
+		nColumns = CurrentColumnRight - col;
+		col = CurrentColumnRight;
+
+		if (IsFftResultCalculated(FftColumnToDisplaySample(nCurrentFftColumn)))
+		{
+			continue;
+		}
+		if (JobsOutstanding == countof(ThreadPoolJob))
+		{
+			ThreadPoolJob[NextJob].WaitForCompletion();
+			JobsOutstanding--;
+		}
+
+		DrawFftWorkItem * pItem = static_cast<DrawFftWorkItem *>(ThreadPoolJob[NextJob].m_DoneItems.RemoveHead());
+		pItem->nCurrentFftColumn = nCurrentFftColumn;
+
+		pItem->Proc = CalculateFftColumnWorkitem;
+
+		ThreadPoolJob[NextJob].AddWorkitem(pItem);
+
+		if (ThreadPoolJob[NextJob].m_DoneItems.IsEmpty())
+		{
+			GetApp()->AddWorkerThreadPoolJob(&ThreadPoolJob[NextJob]);
+			JobsOutstanding++;
+			NextJob = (NextJob + 1) % countof(ThreadPoolJob);
+		}
+	}
+
+	// see if we have a job we didn't post yet. Need to flush it before starting to fill the bitmap
+	if (JobsOutstanding < countof(ThreadPoolJob) && ThreadPoolJob[NextJob].m_WorkitemsPending)
+	{
+		GetApp()->AddWorkerThreadPoolJob(&ThreadPoolJob[NextJob]);
+		JobsOutstanding++;
+		NextJob = (NextJob + 1) & (countof(ThreadPoolJob) - 1);
+	}
+	for(int col = r.left; col < r.right; )
+	{
+		unsigned char * pColBmp = pBmp + (col - r.left) * BytesPerPixel;
+		// 'left' is the first sample index in the area to redraw
+		int nColumns;
+		long nCurrentFftColumn;
+		int CurrentColumnRight;
+		if (m_FftSpacing <= m_HorizontalScale)
+		{
+			// each FFT takes one column of display
+			nCurrentFftColumn = int(WindowXtoSample(col) / m_FftSpacing);
+			CurrentColumnRight = col + 1;
+		}
+		else
+		{
+			nCurrentFftColumn = long(0.5 + WindowXtoSample(col) / m_FftSpacing);
+			CurrentColumnRight = (int)SampleToX(nCurrentFftColumn * m_FftSpacing + m_FftSpacing/2);
+		}
+
+		ASSERT(nCurrentFftColumn >= 0);
+
+		if (CurrentColumnRight > r.right)
+		{
+			CurrentColumnRight = r.right;
+		}
+
+		nColumns = CurrentColumnRight - col;
+		col = CurrentColumnRight;
+		for (int ch = 0; ch < nChannels; ch++)
+		{
+			// find out the Y range to update
+			int clip_top = m_Heights.ch[ch].clip_top;
+			int clip_bottom = m_Heights.ch[ch].clip_bottom;
+			int valid_top = clip_top;
+			int valid_bottom = clip_bottom;
+			CRect rr(col, valid_top, col, valid_bottom);
+
+			RECT * begin = UpdateRgnData[ch].begin();
+			RECT * end = UpdateRgnData[ch].end();
+			// find the first rectangle not crossing the target
+			end = std::lower_bound(begin, end, rr, rect_left_less);
+			rr.left = col - nColumns;
+
+			for (; begin < end; begin++)
+			{
+				if (begin->right < rr.left)
+				{
+					continue;
+				}
+				if (begin->top <= valid_top)
+				{
+					if (valid_top < begin->bottom)
 					{
-						pIdArray[k][ch].NumBandsToSum = NextFftSample - FirstFftSample;
-						break;
+						valid_top = begin->bottom;
 					}
 				}
-
-				pIdArray[k][ch].y = y;  // top of display band
-
-				if (r.left == -1 && k < 20) TRACE("FftView: ch:%d y=%d-%d fft band %d-%d\n", ch, pIdArray[k][ch].y, pIdArray[k][ch].y + pIdArray[k][ch].NumDisplayRows -1,
-												pIdArray[k][ch].FftBand, pIdArray[k][ch].FftBand + pIdArray[k][ch].NumBandsToSum -1);
+				else if (begin->bottom >= valid_bottom)
+				{
+					if (valid_bottom > begin->top)
+					{
+						valid_bottom = begin->top;
+					}
+				}
+				else if (begin->bottom - valid_top < valid_bottom - begin->top)
+				{
+					valid_top = begin->bottom;
+				}
+				else
+				{
+					valid_bottom = begin->top;
+				}
 			}
-		}
 
-		DrawFftWorkItem wi[128];	// 32 items per job
-		WorkerThreadPoolJob ThreadPoolJob[4];
-		for (int a = 0; a < countof(wi); a++)
-		{
-			wi[a].pView = this;
-			wi[a].PowerLogToPalIndex = PowerLogToPalIndex;
-			if (bUsePalette)
+			if (valid_top == clip_top
+				&& valid_bottom == clip_bottom)
 			{
-				wi[a].Proc = FillFftColumnPaletteWorkitem;
+				continue;
 			}
-			else
-			{
-				wi[a].pColor = bmi.MorebmiColors;
-				wi[a].Proc = FillFftColumnWorkitem;
-			}
-			wi[a].nChannels = nChannels;
-			wi[a].pIdArray = pIdArray;
-			wi[a].stride = stride;
-			ThreadPoolJob[a / (countof(wi) / countof(ThreadPoolJob))].m_DoneItems.InsertTail(&wi[a]);
-		}
-		int JobsOutstanding = 0;
-		int NextJob = 0;
-
-		for(int col = r.left; col < r.right; )
-		{
-			unsigned char * pColBmp = pBmp + (col - r.left) * BytesPerPixel;
-			// 'left' is the first sample index in the area to redraw
-			int nColumns;
-			long nCurrentFftColumn;
-			int CurrentColumnRight;
-			if (m_FftSpacing <= m_HorizontalScale)
-			{
-				// each FFT takes one column of display
-				nCurrentFftColumn = int(WindowXtoSample(col) / m_FftSpacing);
-				CurrentColumnRight = col + 1;
-			}
-			else
-			{
-				nCurrentFftColumn = long(0.5 + WindowXtoSample(col) / m_FftSpacing);
-				CurrentColumnRight = (int)SampleToX((nCurrentFftColumn + 0.5) * m_FftSpacing);
-			}
-
-			ASSERT(nCurrentFftColumn >= 0);
-
-			if (CurrentColumnRight > r.right)
-			{
-				CurrentColumnRight = r.right;
-			}
-
 
 			if (JobsOutstanding == countof(ThreadPoolJob))
 			{
 				ThreadPoolJob[NextJob].WaitForCompletion();
 				JobsOutstanding--;
 			}
-
-			nColumns = CurrentColumnRight - col;
-			col = CurrentColumnRight;
-
 			DrawFftWorkItem * pItem = static_cast<DrawFftWorkItem *>(ThreadPoolJob[NextJob].m_DoneItems.RemoveHead());
 			pItem->nCurrentFftColumn = nCurrentFftColumn;
 			pItem->nColumns = nColumns;
 			pItem->pColBmp = pColBmp;
+			pItem->valid_top = valid_top;
+			pItem->valid_bottom = valid_bottom;
+
+			if (bUsePalette)
+			{
+				pItem->Proc = FillFftColumnPaletteWorkitem;
+			}
+			else
+			{
+				pItem->pColor = bmi.MorebmiColors;
+				pItem->Proc = FillChannelFftColumnWorkitem;
+			}
+			pItem->nChannel = ch;
+			pItem->pId = pIdArray[ch];
 
 			ThreadPoolJob[NextJob].AddWorkitem(pItem);
 
@@ -966,120 +1230,140 @@ void CWaveFftView::OnDraw(CDC* pDC)
 				NextJob = (NextJob + 1) & (countof(ThreadPoolJob) - 1);
 			}
 		}
-		// see if we have a job we didn't post yet
-		if (JobsOutstanding < 4 && ThreadPoolJob[NextJob].m_WorkitemsPending)
-		{
-			GetApp()->AddWorkerThreadPoolJob(&ThreadPoolJob[NextJob]);
-			JobsOutstanding++;
-			NextJob = (NextJob + 1) & (countof(ThreadPoolJob) - 1);
-		}
-		// wait for all jobs complete.
-
-		for (NextJob = (NextJob - JobsOutstanding) & (countof(ThreadPoolJob) - 1); JobsOutstanding != 0; JobsOutstanding--)
-		{
-			ThreadPoolJob[NextJob].WaitForCompletion();
-			NextJob = (NextJob + 1) & (countof(ThreadPoolJob) - 1);
-		}
-		// draw markers as inverted dashed lines into the bitmap
-		SAMPLE_INDEX_Vector markers;
-		pDoc->m_WavFile.GetSortedMarkers(markers, FALSE);     // unique positions
-
-		long prev_x = -1;
-		for (SAMPLE_INDEX_Vector::const_iterator i = markers.begin();
-			i != markers.end(); i++)
-		{
-			long x = SampleToX( *i);
-			if (x == prev_x || x < r.left || x >= r.right)
-			{
-				continue;
-			}
-
-			prev_x = x;
-
-			long FftOffsetPixels = long(m_FirstbandVisible * int(m_VerticalScale * m_Heights.NominalChannelHeight) / m_FftOrder);
-			for (int ch = 0; ch < nChannels; ch++)
-			{
-				int BrushOffset = 0;
-				if ( ! m_Heights.ChannelMinimized(ch))
-				{
-					BrushOffset = FftOffsetPixels;
-				}
-				unsigned char * pColBmp = pBmp + (x - r.left) * BytesPerPixel + stride * m_Heights.ch[ch].clip_top;
-				if ( ! bUsePalette)
-				{
-					for (int y = m_Heights.ch[ch].clip_top; y < m_Heights.ch[ch].clip_bottom; y++, pColBmp += stride)
-					{
-						if ((y - BrushOffset) & 2)
-						{
-							pColBmp[0] = ~pColBmp[0];
-							pColBmp[1] = ~pColBmp[1];
-							pColBmp[2] = ~pColBmp[2];
-						}
-					}
-				}
-				else
-				{
-					for (int y = m_Heights.ch[ch].clip_top; y < m_Heights.ch[ch].clip_bottom; y++, pColBmp += stride)
-					{
-						if ((y + BrushOffset) & 2)
-						{
-							// colors go from 10 to 127+10 (128 colors)
-							// reverse them
-							pColBmp[0] = 127 + 20 - pColBmp[0];
-						}
-					}
-				}
-			}
-			// draw marker every four pixels
-			pDC->PatBlt(x, cr.top, 1, cr.bottom - cr.top, PATINVERT);
-		}
-
-
-		// copy bitmap to output window
-		SetDIBitsToDevice(pDC->GetSafeHdc(), r.left, cr.top,
-						width, height,
-						0, 0, 0, height, pBits, & bmi.bmi,
-						DIB_RGB_COLORS);
-
-		CGdiObjectSave OldFont(pDC, pDC->SelectStockObject(ANSI_VAR_FONT));
-
-		CThisApp * pApp = GetApp();
-		pDC->SetBkColor(pApp->m_WaveBackground);
-		pDC->SetTextColor(0xFFFFFF ^ pApp->m_WaveBackground);
-		pDC->SetBkMode(OPAQUE);
-
-		CWaveFile::InstanceDataWav * pInst = pDoc->m_WavFile.GetInstanceData();
-
-		for (CuePointVectorIterator i = pInst->m_CuePoints.begin();
-			i != pInst->m_CuePoints.end(); i++)
-		{
-			long x = SampleToX(i->dwSampleOffset);
-
-			// draw text
-			if (x < r.right)
-			{
-				LPCTSTR txt = pInst->GetCueText(i->CuePointID);
-				if (NULL != txt)
-				{
-					int count = (int)_tcslen(txt);
-					CPoint size = pDC->GetTextExtent(txt, count);
-					if (x + size.x > r.left)
-					{
-						pDC->DrawText(txt, count, CRect(x, cr.top, x + size.x, cr.top + size.y),
-									DT_LEFT | DT_NOPREFIX | DT_SINGLELINE | DT_TOP);
-					}
-				}
-			}
-		}
-
-		GdiFlush(); // make sure bitmap is drawn before deleting it (NT only)
-		// free resources
 	}
-	if (m_PlaybackCursorDrawn)
+	for (int ch = 0; ch + 1 != nChannels; ch++)
 	{
-		DrawPlaybackCursor(pDC, m_PlaybackCursorDrawnSamplePos, m_PlaybackCursorChannel);
+		// draw a gray separator line
+		BYTE * pRgb = pBmp + m_Heights.ch[ch].clip_bottom * stride;
+		if (!bUsePalette)
+		{
+			for (int x = r.left; x < r.right; x++, pRgb += 3)
+			{
+				//ASSERT(pRgb >= pBmp && pRgb + 3 <= pBmp + BmpSize);
+				pRgb[0] = 0x80;    // B
+				pRgb[1] = 0x80;    // G
+				pRgb[2] = 0x80;    // R
+			}
+		}
+		else
+		{
+			for (int x = r.left; x < r.right; x++, pRgb ++)
+			{
+				// set the color to nColumns pixels across
+				//ASSERT(pPal >= pBmp && pPal+x < pBmp + BmpSize);
+				*pRgb = 0x80;
+			}
+		}
 	}
-	RedrawSelectionRect(pDC, 0, 0, 0, m_PrevSelectionStart, m_PrevSelectionEnd, m_PrevSelectedChannel);
+
+	// see if we have a job we didn't post yet
+	if (JobsOutstanding < countof(ThreadPoolJob) && ThreadPoolJob[NextJob].m_WorkitemsPending)
+	{
+		GetApp()->AddWorkerThreadPoolJob(&ThreadPoolJob[NextJob]);
+		JobsOutstanding++;
+		NextJob = (NextJob + 1) & (countof(ThreadPoolJob) - 1);
+	}
+	// wait for all jobs complete.
+
+	for (NextJob = (NextJob - JobsOutstanding) & (countof(ThreadPoolJob) - 1); JobsOutstanding != 0; JobsOutstanding--)
+	{
+		ThreadPoolJob[NextJob].WaitForCompletion();
+		NextJob = (NextJob + 1) & (countof(ThreadPoolJob) - 1);
+	}
+	// draw markers as inverted dashed lines into the bitmap
+	SAMPLE_INDEX_Vector markers;
+	pDoc->m_WavFile.GetSortedMarkers(markers, FALSE);     // unique positions
+
+	long prev_x = -1;
+	for (SAMPLE_INDEX_Vector::const_iterator i = markers.begin();
+		i != markers.end(); i++)
+	{
+		long x = SampleToX( *i);
+		if (x == prev_x || x < r.left || x >= r.right)
+		{
+			continue;
+		}
+
+		prev_x = x;
+
+		long FftOffsetPixels = long(m_FirstbandVisible * int(m_VerticalScale * m_Heights.NominalChannelHeight) / m_FftOrder);
+		for (int ch = 0; ch < nChannels; ch++)
+		{
+			int BrushOffset = 0;
+			if ( ! m_Heights.ChannelMinimized(ch))
+			{
+				BrushOffset = FftOffsetPixels;
+			}
+			unsigned char * pColBmp = pBmp + (x - r.left) * BytesPerPixel + stride * m_Heights.ch[ch].clip_top;
+			if ( ! bUsePalette)
+			{
+				for (int y = m_Heights.ch[ch].clip_top; y < m_Heights.ch[ch].clip_bottom; y++, pColBmp += stride)
+				{
+					if ((y - BrushOffset) & 2)
+					{
+						pColBmp[0] = ~pColBmp[0];
+						pColBmp[1] = ~pColBmp[1];
+						pColBmp[2] = ~pColBmp[2];
+					}
+				}
+			}
+			else
+			{
+				for (int y = m_Heights.ch[ch].clip_top; y < m_Heights.ch[ch].clip_bottom; y++, pColBmp += stride)
+				{
+					if ((y + BrushOffset) & 2)
+					{
+						// colors go from 10 to 127+10 (128 colors)
+						// reverse them
+						pColBmp[0] = 127 + 20 - pColBmp[0];
+					}
+				}
+			}
+		}
+		// draw marker every four pixels
+		pDC->PatBlt(x, cr.top, 1, cr.bottom - cr.top, PATINVERT);
+	}
+
+
+	// copy bitmap to output window
+	SetDIBitsToDevice(pDC->GetSafeHdc(), r.left, cr.top,
+					width, height,
+					0, 0, 0, height, pBits, & bmi.bmi,
+					DIB_RGB_COLORS);
+
+	CGdiObjectSave OldFont(pDC, pDC->SelectStockObject(ANSI_VAR_FONT));
+
+	CThisApp * pApp = GetApp();
+	pDC->SetBkColor(pApp->m_WaveBackground);
+	pDC->SetTextColor(0xFFFFFF ^ pApp->m_WaveBackground);
+	pDC->SetBkMode(OPAQUE);
+
+	CWaveFile::InstanceDataWav * pInst = pDoc->m_WavFile.GetInstanceData();
+
+	for (CuePointVectorIterator i = pInst->m_CuePoints.begin();
+		i != pInst->m_CuePoints.end(); i++)
+	{
+		long x = SampleToX(i->dwSampleOffset);
+
+		// draw text
+		if (x < r.right)
+		{
+			LPCTSTR txt = pInst->GetCueText(i->CuePointID);
+			if (NULL != txt)
+			{
+				int count = (int)_tcslen(txt);
+				CPoint size = pDC->GetTextExtent(txt, count);
+				if (x + size.x > r.left)
+				{
+					pDC->DrawText(txt, count, CRect(x, cr.top, x + size.x, cr.top + size.y),
+								DT_LEFT | DT_NOPREFIX | DT_SINGLELINE | DT_TOP);
+				}
+			}
+		}
+	}
+
+	GdiFlush(); // make sure bitmap is drawn before deleting it (NT only)
+	// free resources
 }
 
 void CWaveFftView::AllocateFftArray(SAMPLE_INDEX SampleLeft, SAMPLE_INDEX SampleRight)
@@ -1263,7 +1547,7 @@ void CWaveFftView::OnPaint()
 	CRgn InvalidRgn;
 	CRgn RectToDraw;
 	CRect r;
-	UpdRgn.CreateRectRgn(0, 0, 1, 1);
+	UpdRgn.CreateRectRgn(0, 0, 0, 0);
 	if (ERROR != GetUpdateRgn( & UpdRgn, FALSE))
 	{
 		UpdRgn.GetRgnBox( & r);
@@ -1274,7 +1558,7 @@ void CWaveFftView::OnPaint()
 
 			RectToDraw.CreateRectRgnIndirect( & r);
 			// init the handle
-			InvalidRgn.CreateRectRgn(0, 0, 1, 1);
+			InvalidRgn.CreateRectRgn(0, 0, 0, 0);
 			// subtract the draw rectangle from the remaining update region
 			InvalidRgn.CombineRgn( & UpdRgn, & RectToDraw, RGN_DIFF);
 			// limit the update region with the draw rectangle
@@ -1288,16 +1572,20 @@ void CWaveFftView::OnPaint()
 		TRACE("No update region !\n");
 	}
 	// do regular paint on the smaller region
-	BaseClass::OnPaint();
+	{
+		CPaintDC dc(this);
+		OnDraw(&dc, &UpdRgn);
+
+		if (m_PlaybackCursorDrawn)
+		{
+			DrawPlaybackCursor(&dc, m_PlaybackCursorDrawnSamplePos, m_PlaybackCursorChannel);
+		}
+		RedrawSelectionRect(&dc, 0, 0, 0, m_PrevSelectionStart, m_PrevSelectionEnd, m_PrevSelectedChannel);
+	}
 	if (NULL != HGDIOBJ(InvalidRgn))
 	{
 		// invalidate the remainder of the update region
-		InvalidateRgn( & InvalidRgn, TRUE);
-	}
-	else
-	{
-		memzero(m_InvalidAreaTop);
-		memzero(m_InvalidAreaBottom);
+		InvalidateRgn( & InvalidRgn, FALSE);
 	}
 }
 
@@ -1667,66 +1955,6 @@ void CWaveFftView::ShowSelectionRect()
 	m_PrevSelectedChannel = pDoc->m_SelectedChannel;
 }
 
-struct RgnData
-{
-	RGNDATAHEADER hdr;
-	RECT rect[4 * MAX_NUMBER_OF_CHANNELS];
-
-	RgnData();
-	void AddRect(int left, int top, int right, int bottom);
-
-	operator RGNDATA*() { return CONTAINING_RECORD(&hdr, RGNDATA, rdh); }
-};
-
-RgnData::RgnData()
-{
-	hdr.dwSize = sizeof hdr;
-	hdr.iType = RDH_RECTANGLES;
-	hdr.nCount = 0;
-	hdr.nRgnSize = sizeof hdr;
-	hdr.rcBound.top = 0;
-	hdr.rcBound.bottom = 0;
-	hdr.rcBound.left = 0;
-	hdr.rcBound.right = 0;
-}
-
-void RgnData::AddRect(int left, int top, int right, int bottom)
-{
-	if (hdr.nCount < countof(rect))
-	{
-		rect[hdr.nCount].left = left;
-		rect[hdr.nCount].top = top;
-		rect[hdr.nCount].right = right;
-		rect[hdr.nCount].bottom = bottom;
-
-		if (hdr.nCount == 0)
-		{
-			hdr.rcBound = rect[0];
-		}
-		else
-		{
-			if (hdr.rcBound.left > left)
-			{
-				hdr.rcBound.left = left;
-			}
-			if (hdr.rcBound.right < right)
-			{
-				hdr.rcBound.right = right;
-			}
-			if (hdr.rcBound.top > top)
-			{
-				hdr.rcBound.top = top;
-			}
-			if (hdr.rcBound.bottom < bottom)
-			{
-				hdr.rcBound.bottom = bottom;
-			}
-		}
-		hdr.nCount++;
-		hdr.nRgnSize += sizeof (RECT);
-	}
-}
-
 int CWaveFftView::BuildSelectionRegion(CRgn * NormalRgn, CRgn* MinimizedRgn,
 										SAMPLE_INDEX SelectionStart, SAMPLE_INDEX SelectionEnd, CHANNEL_MASK selected)
 {
@@ -1736,7 +1964,7 @@ int CWaveFftView::BuildSelectionRegion(CRgn * NormalRgn, CRgn* MinimizedRgn,
 	int cx = GetSystemMetrics(SM_CXSIZEFRAME);
 	int cy = GetSystemMetrics(SM_CYSIZEFRAME);
 
-	RgnData data, data_min;
+	RgnData data(4 * MAX_NUMBER_OF_CHANNELS), data_min(4 * MAX_NUMBER_OF_CHANNELS);
 
 	if (SelectionStart == SelectionEnd
 		|| selected == 0)
@@ -1800,10 +2028,10 @@ int CWaveFftView::BuildSelectionRegion(CRgn * NormalRgn, CRgn* MinimizedRgn,
 			}
 		}
 	}
-	NormalRgn->CreateFromData(NULL, data.hdr.nRgnSize, data);
-	MinimizedRgn->CreateFromData(NULL, data_min.hdr.nRgnSize, data_min);
+	NormalRgn->CreateFromData(NULL, data.hdr->nRgnSize, data);
+	MinimizedRgn->CreateFromData(NULL, data_min.hdr->nRgnSize, data_min);
 
-	return data.hdr.nCount + (data_min.hdr.nCount << 16);
+	return data.hdr->nCount + (data_min.hdr->nCount << 16);
 }
 
 void CWaveFftView::RedrawSelectionRect(CDC * pDC, SAMPLE_INDEX OldSelectionStart, SAMPLE_INDEX OldSelectionEnd, CHANNEL_MASK OldSelectedChannel,

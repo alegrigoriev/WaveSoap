@@ -30,13 +30,14 @@ public:
 	// ClassWizard generated virtual function overrides
 	//{{AFX_VIRTUAL(CWaveFftView)
 protected:
-	virtual void OnDraw(CDC* pDC);      // overridden to draw this view
 	virtual void OnInitialUpdate();
 	virtual BOOL PreCreateWindow(CREATESTRUCT& cs);
 	virtual void OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint);
 	//}}AFX_VIRTUAL
-	enum { MaxDrawColumnPerOnDraw = 128};
-// Implementation
+	void OnDraw(CDC* pDC) {} // not called
+	void OnDraw(CPaintDC* pDC, CRgn * UpdateRgn);
+	enum { MaxDrawColumnPerOnDraw = 256};
+	// Implementation
 protected:
 	virtual ~CWaveFftView();
 #ifdef _DEBUG
@@ -76,23 +77,26 @@ protected:
 
 	void AllocateFftArray(SAMPLE_INDEX SampleLeft, SAMPLE_INDEX SampleRight);
 
+	bool IsFftResultCalculated(SAMPLE_INDEX sample) const;
 	float const * GetFftResult(SAMPLE_INDEX sample, unsigned channel);
-	static bool FillFftColumnWorkitem(WorkerThreadPoolItem * pItem);
-	void FillFftColumn(struct DrawFftWorkItem * pItem);
+	static bool CalculateFftColumnWorkitem(WorkerThreadPoolItem * pItem);
+	void CalculateFftColumn(struct DrawFftWorkItem * pItem);
+	static bool FillChannelFftColumnWorkitem(WorkerThreadPoolItem * pItem);
+	void FillChannelFftColumn(struct DrawFftWorkItem * pItem);
 	static bool FillFftColumnPaletteWorkitem(WorkerThreadPoolItem * pItem);
 	void FillFftColumnPalette(struct DrawFftWorkItem * pItem);
 
 	// to which FFT displayed column the sample falls in (samples from N*m_FftSpacing +/- m_FftSpacing/2).
 	// Use for display conversion only
-	long SampleToFftColumn(SAMPLE_INDEX sample);
+	long SampleToFftColumn(SAMPLE_INDEX sample) const;
 	// which leftmost FFT column the sample affects:
-	long SampleToFftColumnLowerBound(SAMPLE_INDEX sample);
+	long SampleToFftColumnLowerBound(SAMPLE_INDEX sample) const;
 	// which rightmost FFT column the sample affects:
-	long SampleToFftColumnUpperBound(SAMPLE_INDEX sample);
+	long SampleToFftColumnUpperBound(SAMPLE_INDEX sample) const;
 
-	SAMPLE_INDEX FftColumnToDisplaySample(long Column);
-	SAMPLE_INDEX SampleToFftBaseSample(SAMPLE_INDEX sample);
-	SAMPLE_INDEX DisplaySampleToFftBaseSample(SAMPLE_INDEX sample);
+	SAMPLE_INDEX FftColumnToDisplaySample(long Column) const;
+	SAMPLE_INDEX SampleToFftBaseSample(SAMPLE_INDEX sample) const;
+	SAMPLE_INDEX DisplaySampleToFftBaseSample(SAMPLE_INDEX sample) const;
 	void InvalidateFftColumnRange(long first_column, long last_column);  // including last
 	void SetVerticalScale(double NewVerticalScale);
 
