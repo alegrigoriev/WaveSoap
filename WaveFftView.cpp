@@ -319,6 +319,9 @@ CWaveFftView::CWaveFftView()
 	, m_FftArrayBusyMask(0)
 	, m_AllocatedFftBufSize(0)
 	, m_FftWindowValid(false)
+#ifdef _DEBUG
+	, m_DrawingBeginTime(0)
+#endif
 {
 	m_FftOrder = 1 << GetApp()->m_FftBandsOrder;
 	m_FftSpacing = m_FftOrder;
@@ -516,6 +519,9 @@ float const * CWaveFftView::GetFftResult(SAMPLE_INDEX sample, unsigned channel)
 		return NULL;
 	}
 
+#ifdef _DEBUG
+	m_NumberOfFftCalculated++;
+#endif
 	float * pRes = pFftColumn + 1;
 
 	long const NeedSamples = m_FftOrder * 2;
@@ -628,6 +634,10 @@ void CWaveFftView::FillChannelFftColumn(DrawFftWorkItem * pDrawItem)
 	int valid_top = pDrawItem->valid_top;
 	int valid_bottom = pDrawItem->valid_bottom;
 
+#ifdef _DEBUG
+	m_NumberOfPixelJobs++;
+	m_NumberOfColumnsSet += nColumns;
+#endif
 	// the result is already calculated and cached, no cost here
 	float const *pData = GetFftResult(FftColumnToDisplaySample(pDrawItem->nCurrentFftColumn), pDrawItem->nChannel);
 
@@ -688,6 +698,9 @@ void CWaveFftView::FillChannelFftColumn(DrawFftWorkItem * pDrawItem)
 		ASSERT(pId->y >= m_Heights.ch[pDrawItem->nChannel].clip_top);
 		ASSERT(pId->y + pId->NumDisplayRows <= m_Heights.ch[pDrawItem->nChannel].clip_bottom);
 
+#ifdef _DEBUG
+		m_NumberOfPixelsSet += pId->NumDisplayRows * nColumns;
+#endif
 		for (int y = 0; y < pId->NumDisplayRows; y++, pRgb += stride)
 		{
 			// set the color to nColumns pixels across
@@ -719,6 +732,10 @@ void CWaveFftView::FillFftColumnPalette(DrawFftWorkItem * pDrawItem)
 	float const *pData = GetFftResult(FftColumnToDisplaySample(pDrawItem->nCurrentFftColumn), pDrawItem->nChannel);
 
 	FftGraphBand const * pId = pDrawItem->pId;
+#ifdef _DEBUG
+	m_NumberOfPixelJobs++;
+	m_NumberOfColumnsSet += nColumns;
+#endif
 	for (int ff = 0; ff < m_FftOrder; ff++, pId++)
 	{
 		if (pId->NumDisplayRows == 0)
@@ -753,6 +770,9 @@ void CWaveFftView::FillFftColumnPalette(DrawFftWorkItem * pDrawItem)
 
 			PaletteIndex += 10;
 		}
+#ifdef _DEBUG
+		m_NumberOfPixelsSet += pId->NumDisplayRows * nColumns;
+#endif
 		// set the color to pId->nNumOfRows rows
 		BYTE * pPal = pColBmp + pId->y * stride;
 		for (int y = 0; y < pId->NumDisplayRows; y++, pPal += stride)
@@ -1543,6 +1563,12 @@ void CWaveFftView::OnInitialUpdate()
 
 void CWaveFftView::OnPaint()
 {
+#ifdef _DEBUG
+	if (m_DrawingBeginTime == 0)
+	{
+		m_DrawingBeginTime = GetTickCount();
+	}
+#endif
 	CRgn UpdRgn;
 	CRgn InvalidRgn;
 	CRgn RectToDraw;
@@ -1587,6 +1613,20 @@ void CWaveFftView::OnPaint()
 		// invalidate the remainder of the update region
 		InvalidateRgn( & InvalidRgn, FALSE);
 	}
+#ifdef _DEBUG
+	else
+	{
+		if (m_NumberOfColumnsSet) TRACE(L"FFT OnPaint: %d FFT calculated, %d pixels set for %d columns (%d per column), %d jobs in %d ms\n",
+										LONG(m_NumberOfFftCalculated), LONG(m_NumberOfPixelsSet), LONG(m_NumberOfColumnsSet),
+										LONG(m_NumberOfPixelsSet) / LONG(m_NumberOfColumnsSet),
+										LONG(m_NumberOfPixelJobs), GetTickCount() - m_DrawingBeginTime);
+		m_NumberOfFftCalculated = 0;
+		m_NumberOfPixelsSet = 0;
+		m_NumberOfColumnsSet = 0;
+		m_NumberOfPixelJobs = 0;
+		m_DrawingBeginTime = 0;
+	}
+#endif
 }
 
 BOOL CWaveFftView::OnEraseBkgnd(CDC* pDC)
