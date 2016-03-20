@@ -3365,7 +3365,6 @@ BEGIN
     IDS_SOUND_MAY_BE_CLIPPED 
                             "%s:\nAs a result of the operation, some samples might exceed limit and be clipped, causing sound distortion. Continue?"
     IDS_M_UNABLE_TO_CREATE_UNDO "Unable to save undo data, continue?"
-    IDS_STATISTICS_FORMAT   "%s (%s)\r\n%s (%s dB; %.2f%%)\r\n\r\n%s (%s)\r\n%s (%s dB; %.2f%%)\r\n\r\n%s (%s)\r\n%s (%s dB; %.2f%%)\r\n\r\n%s dB (%.2f%%)\r\n%s (%s dB; %.2f%%)\r\n%.2f Hz\r\n\r\n%08X"
     IDS_REOPEN_IN_DIRECT_MODE 
                             "File ""%s"" saved. \nYou can reopen it in either direct or buffered mode, or close it. If you choose to reopen in buffered mode, a new temporary file will be created."
     IDS_RELOAD_COMPRESSED_FILE 
@@ -3546,10 +3545,6 @@ BEGIN
     IDS_EXPRESSIONS_SAVE_TITLE "Save All Expression"
     IDS_EXPRESSIONS_LOAD_TITLE "Load Expressions"
     IDS_CANNOT_OPEN_WMA     "%s\nThis file cannot be opened because a required DLL is not found in the system folder.\nTo be able to open MP3 and WMA files, you need to install Windows Media Player version 7 or later"
-    IDS_STATISTICS_FORMAT_RIGHT 
-                            "%s (%s)\r\n%s (%s dB; %.2f%%)\r\n\r\n%s (%s)\r\n%s (%s dB; %.2f%%)\r\n\r\n%s (%s)\r\n%s (%s dB; %.2f%%)\r\n\r\n%s dB (%.2f%%)\r\n%s (%s dB; %.2f%%)\r\n%.2f Hz\r\n\r\n%08X\r\nCombined CRC: %08X"
-    IDS_STATISTICS_FORMAT_LEFT 
-                            "%s (%s)\r\n%s (%s dB; %.2f%%)\r\n\r\n%s (%s)\r\n%s (%s dB; %.2f%%)\r\n\r\n%s (%s)\r\n%s (%s dB; %.2f%%)\r\n\r\n%s dB (%.2f%%)\r\n%s (%s dB; %.2f%%)\r\n%.2f Hz\r\n\r\n%08X\r\nChecksum: %08X"
     IDS_FILTER_FILE_FILTER  "Filter files (*.Fltr)|*.Fltr|All Files (*.*)|*||"
     IDS_FILTER_SAVE_TITLE   "Save Filter As"
     IDS_FILTER_LOAD_TITLE   "Load Filter"
@@ -3954,8 +3949,9 @@ STRINGTABLE
 BEGIN
     IDS_STATISTICS_FORMAT_LINE5 "Max positive peak position:\t%s (%s)\r\n"
     IDS_STATISTICS_FORMAT_LINE6 
-                            "Max positive peak value:\t%s dB (%.2f%%)\r\n\r\n"
-    IDS_STATISTICS_FORMAT_LINE7 "RMS power:\t%s (%s dB; %.2f%%)\r\n"
+                            "Max positive peak value:\t%s (%s dB; %.2f%%)\r\n\r\n"
+    IDS_STATISTICS_FORMAT_LINE7 
+                            "Root of Mean Square (RMS):\t%s (%s dB; %.2f%%)\r\n"
     IDS_STATISTICS_FORMAT_LINE8 
                             "Average value (DC offset):\t%s (%s dB; %.2f%%)\r\n"
     IDS_STATISTICS_FORMAT_LINE9 "Zero crossings:\t%.2f Hz\r\n\r\n"
