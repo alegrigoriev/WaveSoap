@@ -39,6 +39,10 @@ void SkipWhitespace(LPCTSTR * ppStr)
 }
 
 CExpressionEvaluationProc::CExpressionEvaluationProc()
+	:m_CurrentChannel(0)
+	, m_DataStackIndex(0)
+	, m_DataTypeStackIndex(0)
+	, m_ConstantBufferIndex(0)
 {
 	m_InputSampleType = SampleTypeFloat32;
 }
@@ -52,6 +56,13 @@ BOOL CExpressionEvaluationProc::Init()
 	m_nSelectionSampleArgument = 0;
 	m_dSelectionTimeArgument = 0.;
 	m_dFileTimeArgument = m_nFileSampleArgument / double(m_nSamplingRate);
+	for (unsigned i = 0; i < countof(m_DitherState); i++)
+	{
+		for (unsigned j = 0; j < countof(m_DitherState[i]); j++)
+		{
+			m_DitherState[i][j] = 0.;
+		}
+	}
 	return TRUE;
 }
 
@@ -72,8 +83,9 @@ void CExpressionEvaluationProc::ProcessSoundSample(char const * pInSample, char 
 	}
 }
 
-void CExpressionEvaluationProc::ProcessSampleValue(void const * pInSample, void * pOutSample, unsigned /*channel*/)
+void CExpressionEvaluationProc::ProcessSampleValue(void const * pInSample, void * pOutSample, unsigned channel)
 {
+	m_CurrentChannel = channel;
 	m_dCurrentSample = *(float const*)pInSample;
 	Evaluate();
 	*(float*)pOutSample = (float)* m_pResultAddress;
@@ -116,6 +128,7 @@ CString CExpressionEvaluationProc::GetToken(LPCTSTR * ppStr, TokenType * pType)
 		_T("sqrt"), eSqrtFunc,
 		_T("abs"), eAbsFunc,
 		_T("noise"), eNoiseFunc,
+		_T("dither"), eDitherFunc,
 		_T("pi"), ePiConstant,
 		_T("n"), eSelectionSampleNumber,
 		_T("N"), eAbsoluteSampleNumber,
@@ -179,7 +192,7 @@ CExpressionEvaluationProc::CompileParenthesedExpression(LPCTSTR * ppStr)
 	return eRightParenthesis;
 }
 
-void CExpressionEvaluationProc::CompileFunctionOfDouble(void (* Function)(Operation * t), LPCTSTR * ppStr)
+void CExpressionEvaluationProc::CompileFunctionOfDouble(void (ThisClass::* Function)(Operation * t), LPCTSTR * ppStr)
 {
 	CompileParenthesedExpression( ppStr);
 	// can't put those right to the function call, because
@@ -222,7 +235,7 @@ CExpressionEvaluationProc::TokenType
 		{
 			int * pSrc = PopInt();
 			int * pDst = PushInt();
-			AddOperation(NegateInt, pDst, pSrc, NULL);
+			AddOperation(&ThisClass::NegateInt, pDst, pSrc, NULL);
 		}
 		else if (eDoubleConstant == type)
 		{
@@ -232,7 +245,7 @@ CExpressionEvaluationProc::TokenType
 		{
 			double * pSrc = PopDouble();
 			double * pDst = PushDouble();
-			AddOperation(NegateDouble, pDst, pSrc, NULL);
+			AddOperation(&ThisClass::NegateDouble, pDst, pSrc, NULL);
 		}
 		else
 		{
@@ -251,7 +264,7 @@ CExpressionEvaluationProc::TokenType
 		{
 			int * pSrc = PopInt();
 			int * pDst = PushInt();
-			AddOperation(ComplementInt, pDst, pSrc, NULL);
+			AddOperation(&ThisClass::ComplementInt, pDst, pSrc, NULL);
 		}
 		else
 		{
@@ -265,51 +278,51 @@ CExpressionEvaluationProc::TokenType
 		break;
 
 	case eSinusFunc:
-		CompileFunctionOfDouble(Sin, ppStr);
+		CompileFunctionOfDouble(&ThisClass::Sin, ppStr);
 		break;
 
 	case eCosinusFunc:
-		CompileFunctionOfDouble(Cos, ppStr);
+		CompileFunctionOfDouble(&ThisClass::Cos, ppStr);
 		break;
 
 	case eTangensFunc:
-		CompileFunctionOfDouble(Tan, ppStr);
+		CompileFunctionOfDouble(&ThisClass::Tan, ppStr);
 		break;
 
 	case eSinusHFunc:
-		CompileFunctionOfDouble(SinH, ppStr);
+		CompileFunctionOfDouble(&ThisClass::SinH, ppStr);
 		break;
 
 	case eCosinusHFunc:
-		CompileFunctionOfDouble(CosH, ppStr);
+		CompileFunctionOfDouble(&ThisClass::CosH, ppStr);
 		break;
 
 	case eTangensHFunc:
-		CompileFunctionOfDouble(TanH, ppStr);
+		CompileFunctionOfDouble(&ThisClass::TanH, ppStr);
 		break;
 
 	case eExpFunc:
-		CompileFunctionOfDouble(Exp, ppStr);
+		CompileFunctionOfDouble(&ThisClass::Exp, ppStr);
 		break;
 
 	case eExp10Func:
-		CompileFunctionOfDouble(Exp10, ppStr);
+		CompileFunctionOfDouble(&ThisClass::Exp10, ppStr);
 		break;
 
 	case eLogFunc:
-		CompileFunctionOfDouble(Log, ppStr);
+		CompileFunctionOfDouble(&ThisClass::Log, ppStr);
 		break;
 
 	case eLog10Func:
-		CompileFunctionOfDouble(Log10, ppStr);
+		CompileFunctionOfDouble(&ThisClass::Log10, ppStr);
 		break;
 
 	case eSqrtFunc:
-		CompileFunctionOfDouble(Sqrt, ppStr);
+		CompileFunctionOfDouble(&ThisClass::Sqrt, ppStr);
 		break;
 
 	case eAbsFunc:
-		CompileFunctionOfDouble(Abs, ppStr);
+		CompileFunctionOfDouble(&ThisClass::Abs, ppStr);
 		break;
 
 	case eInt:
@@ -362,9 +375,12 @@ CExpressionEvaluationProc::TokenType
 		}
 		{
 			double * pDst = PushDouble();
-			AddOperation(Noise, pDst, NULL, NULL);
+			AddOperation(&ThisClass::Noise, pDst, NULL, NULL);
 		}
-		return eNoiseFunc;
+		break;
+
+	case eDitherFunc:
+		CompileFunctionOfDouble(&ThisClass::Dither, ppStr);
 		break;
 
 	case eIntConstant:
@@ -453,7 +469,7 @@ void CExpressionEvaluationProc::CompileAnd()
 		{
 			int * pSrc1 = PopInt();
 			int * pDst = PushInt();
-			AddOperation(AndInt, pDst, pSrc1, pSrc2);
+			AddOperation(&ThisClass::AndInt, pDst, pSrc1, pSrc2);
 			return;
 		}
 	}
@@ -473,7 +489,7 @@ void CExpressionEvaluationProc::CompileOr()
 		{
 			int * pSrc1 = PopInt();
 			int * pDst = PushInt();
-			AddOperation(OrInt, pDst, pSrc1, pSrc2);
+			AddOperation(&ThisClass::OrInt, pDst, pSrc1, pSrc2);
 			return;
 		}
 	}
@@ -493,7 +509,7 @@ void CExpressionEvaluationProc::CompileXor()
 		{
 			int * pSrc1 = PopInt();
 			int * pDst = PushInt();
-			AddOperation(XorInt, pDst, pSrc1, pSrc2);
+			AddOperation(&ThisClass::XorInt, pDst, pSrc1, pSrc2);
 			return;
 		}
 	}
@@ -513,14 +529,14 @@ void CExpressionEvaluationProc::CompileAdd()
 		{
 			int * pSrc1 = PopInt();
 			int * pDst = PushInt();
-			AddOperation(AddInt, pDst, pSrc1, pSrc2);
+			AddOperation(&ThisClass::AddInt, pDst, pSrc1, pSrc2);
 		}
 		else if (eDoubleConstant == type
 				|| eDoubleExpression == type)
 		{
 			double * pSrc1 = PopDouble();
 			double * pDst = PushDouble();
-			AddOperation(AddDoubleInt, pDst, pSrc1, pSrc2);
+			AddOperation(&ThisClass::AddDoubleInt, pDst, pSrc1, pSrc2);
 		}
 		else
 		{
@@ -537,14 +553,14 @@ void CExpressionEvaluationProc::CompileAdd()
 		{
 			int * pSrc1 = PopInt();
 			double * pDst = PushDouble();
-			AddOperation(AddDoubleInt, pDst, pSrc2, pSrc1);
+			AddOperation(&ThisClass::AddDoubleInt, pDst, pSrc2, pSrc1);
 		}
 		else if (eDoubleConstant == type
 				|| eDoubleExpression == type)
 		{
 			double * pSrc1 = PopDouble();
 			double * pDst = PushDouble();
-			AddOperation(AddDouble, pDst, pSrc1, pSrc2);
+			AddOperation(&ThisClass::AddDouble, pDst, pSrc1, pSrc2);
 		}
 		else
 		{
@@ -570,14 +586,14 @@ void CExpressionEvaluationProc::CompileSubtract()
 		{
 			int * pSrc1 = PopInt();
 			int * pDst = PushInt();
-			AddOperation(SubtractInt, pDst, pSrc1, pSrc2);
+			AddOperation(&ThisClass::SubtractInt, pDst, pSrc1, pSrc2);
 		}
 		else if (eDoubleConstant == type
 				|| eDoubleExpression == type)
 		{
 			double * pSrc1 = PopDouble();
 			double * pDst = PushDouble();
-			AddOperation(SubtractDoubleInt, pDst, pSrc1, pSrc2);
+			AddOperation(&ThisClass::SubtractDoubleInt, pDst, pSrc1, pSrc2);
 		}
 		else
 		{
@@ -594,14 +610,14 @@ void CExpressionEvaluationProc::CompileSubtract()
 		{
 			int * pSrc1 = PopInt();
 			double * pDst = PushDouble();
-			AddOperation(SubtractIntDouble, pDst, pSrc1, pSrc2);
+			AddOperation(&ThisClass::SubtractIntDouble, pDst, pSrc1, pSrc2);
 		}
 		else if (eDoubleConstant == type
 				|| eDoubleExpression == type)
 		{
 			double * pSrc1 = PopDouble();
 			double * pDst = PushDouble();
-			AddOperation(SubtractDouble, pDst, pSrc1, pSrc2);
+			AddOperation(&ThisClass::SubtractDouble, pDst, pSrc1, pSrc2);
 		}
 		else
 		{
@@ -720,6 +736,42 @@ void CExpressionEvaluationProc::Noise(Operation *t)
 	*t->dDst = ((rand() ^ (rand() << 9)) - 0x800000) / double(0x800000);
 }
 
+void CExpressionEvaluationProc::Dither(Operation *t)
+{
+	// The double argument is a number of LSB units of amplitude of noise to the dither filter
+	C_ASSERT(RAND_MAX == 0x7FFF);
+	//
+	static double FilterCoeffs[countof(m_DitherState[0])/2] =
+	{
+		// triangular filter
+		7./32,
+		-5./32,
+		3./32,
+		-1./32,
+	};
+	static bool coeffs_calculated = false;
+	if (!coeffs_calculated)
+	{
+		for (unsigned i = 0; i < countof(FilterCoeffs); i++)
+		{
+		}
+		coeffs_calculated = true;
+	}
+	double * DitherState = m_DitherState[m_CurrentChannel];
+	memmove(DitherState + 1, DitherState,
+			sizeof DitherState[0] * (countof(FilterCoeffs)*2-1));
+	DitherState[0] = *t->dSrc1 * (rand() - 0x4000) / (0x4000LL * 0x8000);
+
+	double result = 0.;
+	for (unsigned i = 0; i < countof(FilterCoeffs); i++)
+	{
+		result += FilterCoeffs[i] * (DitherState[i + countof(FilterCoeffs)] - DitherState[countof(FilterCoeffs) - 1 - i]);
+	}
+	result -= 0.95*DitherState[countof(FilterCoeffs)*2];
+	DitherState[countof(FilterCoeffs) * 2] = result;
+	*t->dDst = result * 0.05;
+}
+
 void CExpressionEvaluationProc::CompileMultiply()
 {
 	TokenType type = GetTopOfStackType();
@@ -733,14 +785,14 @@ void CExpressionEvaluationProc::CompileMultiply()
 		{
 			int * pSrc1 = PopInt();
 			int * pDst = PushInt();
-			AddOperation(MultiplyInt, pDst, pSrc1, pSrc2);
+			AddOperation(&ThisClass::MultiplyInt, pDst, pSrc1, pSrc2);
 		}
 		else if (eDoubleConstant == type
 				|| eDoubleExpression == type)
 		{
 			double * pSrc1 = PopDouble();
 			double * pDst = PushDouble();
-			AddOperation(MultiplyDoubleInt, pDst, pSrc1, pSrc2);
+			AddOperation(&ThisClass::MultiplyDoubleInt, pDst, pSrc1, pSrc2);
 		}
 		else
 		{
@@ -757,14 +809,14 @@ void CExpressionEvaluationProc::CompileMultiply()
 		{
 			int * pSrc1 = PopInt();
 			double * pDst = PushDouble();
-			AddOperation(MultiplyDoubleInt, pDst, pSrc2, pSrc1);
+			AddOperation(&ThisClass::MultiplyDoubleInt, pDst, pSrc2, pSrc1);
 		}
 		else if (eDoubleConstant == type
 				|| eDoubleExpression == type)
 		{
 			double * pSrc1 = PopDouble();
 			double * pDst = PushDouble();
-			AddOperation(MultiplyDouble, pDst, pSrc1, pSrc2);
+			AddOperation(&ThisClass::MultiplyDouble, pDst, pSrc1, pSrc2);
 		}
 		else
 		{
@@ -790,14 +842,14 @@ void CExpressionEvaluationProc::CompileModulo()
 		{
 			int * pSrc1 = PopInt();
 			int * pDst = PushInt();
-			AddOperation(ModuloInt, pDst, pSrc1, pSrc2);
+			AddOperation(&ThisClass::ModuloInt, pDst, pSrc1, pSrc2);
 		}
 		else if (eDoubleConstant == type
 				|| eDoubleExpression == type)
 		{
 			double * pSrc1 = PopDouble();
 			double * pDst = PushDouble();
-			AddOperation(ModuloDoubleInt, pDst, pSrc1, pSrc2);
+			AddOperation(&ThisClass::ModuloDoubleInt, pDst, pSrc1, pSrc2);
 		}
 		else
 		{
@@ -814,14 +866,14 @@ void CExpressionEvaluationProc::CompileModulo()
 		{
 			int * pSrc1 = PopInt();
 			double * pDst = PushDouble();
-			AddOperation(ModuloIntDouble, pDst, pSrc1, pSrc2);
+			AddOperation(&ThisClass::ModuloIntDouble, pDst, pSrc1, pSrc2);
 		}
 		else if (eDoubleConstant == type
 				|| eDoubleExpression == type)
 		{
 			double * pSrc1 = PopDouble();
 			double * pDst = PushDouble();
-			AddOperation(ModuloDouble, pDst, pSrc1, pSrc2);
+			AddOperation(&ThisClass::ModuloDouble, pDst, pSrc1, pSrc2);
 		}
 		else
 		{
@@ -847,14 +899,14 @@ void CExpressionEvaluationProc::CompileDivide()
 		{
 			int * pSrc1 = PopInt();
 			int * pDst = PushInt();
-			AddOperation(DivideInt, pDst, pSrc1, pSrc2);
+			AddOperation(&ThisClass::DivideInt, pDst, pSrc1, pSrc2);
 		}
 		else if (eDoubleConstant == type
 				|| eDoubleExpression == type)
 		{
 			double * pSrc1 = PopDouble();
 			double * pDst = PushDouble();
-			AddOperation(DivideDoubleInt, pDst, pSrc1, pSrc2);
+			AddOperation(&ThisClass::DivideDoubleInt, pDst, pSrc1, pSrc2);
 		}
 		else
 		{
@@ -871,14 +923,14 @@ void CExpressionEvaluationProc::CompileDivide()
 		{
 			int * pSrc1 = PopInt();
 			double * pDst = PushDouble();
-			AddOperation(DivideIntDouble, pDst, pSrc1, pSrc2);
+			AddOperation(&ThisClass::DivideIntDouble, pDst, pSrc1, pSrc2);
 		}
 		else if (eDoubleConstant == type
 				|| eDoubleExpression == type)
 		{
 			double * pSrc1 = PopDouble();
 			double * pDst = PushDouble();
-			AddOperation(DivideDouble, pDst, pSrc1, pSrc2);
+			AddOperation(&ThisClass::DivideDouble, pDst, pSrc1, pSrc2);
 		}
 		else
 		{
@@ -1016,7 +1068,7 @@ CExpressionEvaluationProc::TokenType
 	return eEndOfExpression;
 }
 
-void CExpressionEvaluationProc::AddOperation(void (* Function)(Operation * t),
+void CExpressionEvaluationProc::AddOperation(void (ThisClass::* Function)(Operation * t),
 											void * pDst, void * pSrc1, void * pSrc2)
 {
 	Operation t;
@@ -1223,7 +1275,7 @@ int * CExpressionEvaluationProc::PopInt()
 		// convert to int
 		double * pSrc = PopDouble();
 		int * pDst = PushInt();
-		AddOperation(DoubleToInt, pDst, pSrc, NULL);
+		AddOperation(&ThisClass::DoubleToInt, pDst, pSrc, NULL);
 		return PopInt();
 	}
 	throw L"Internal Error";
@@ -1260,7 +1312,7 @@ double * CExpressionEvaluationProc::PopDouble()
 		// convert to double
 		int * pSrc = PopInt();
 		double * pDst = PushDouble();
-		AddOperation(IntToDouble, pDst, pSrc, NULL);
+		AddOperation(&ThisClass::IntToDouble, pDst, pSrc, NULL);
 		return PopDouble();
 	}
 	throw L"Internal Error";
@@ -1297,7 +1349,7 @@ void CExpressionEvaluationProc::Evaluate()
 {
 	for (unsigned i = 0; i < m_OperationArray.size(); i++)
 	{
-		m_OperationArray[i].Function( & m_OperationArray[i]);
+		(this->*(m_OperationArray[i].Function))( & m_OperationArray[i]);
 	}
 }
 

@@ -69,6 +69,7 @@ private:
 		eSqrtFunc,
 		eAbsFunc,
 		eNoiseFunc,
+		eDitherFunc,
 		eInt,
 		eIntConstant,
 		eIntExpression,
@@ -99,9 +100,7 @@ private:
 	};
 	struct Operation
 	{
-		//Operation * Next;
-		//TokenType Type;
-		void (* Function)(Operation * t);
+		void (ThisClass::* Function)(Operation * t);
 		union {
 			double * dSrc1;
 			int * nSrc1;
@@ -122,9 +121,9 @@ private:
 	TokenType CompileTerm(LPCTSTR * ppStr);
 	TokenType CompileExpression(LPCTSTR * ppStr);
 	TokenType CompileParenthesedExpression(LPCTSTR * ppStr);
-	void AddOperation(void (* Function)(Operation * t),
+	void AddOperation(void (ThisClass::* Function)(Operation * t),
 					void * pDst, void * pSrc1, void * pSrc2);
-	void CompileFunctionOfDouble(void (* Function)(Operation * t), LPCTSTR * ppStr);
+	void CompileFunctionOfDouble(void (ThisClass::* Function)(Operation * t), LPCTSTR * ppStr);
 	TokenType GetTopOfStackType();
 	void PushConstant(int data);
 	void PushConstant(double data);
@@ -183,122 +182,124 @@ private:
 	double m_dCurrentSample;
 	int m_nSamplingRate;
 	double m_SamplePeriod;
+
+	int m_CurrentChannel;
+	double m_DitherState[MAX_NUMBER_OF_CHANNELS][16];
 	// op functions:
-	static void AddDouble(Operation *t)
+	void AddDouble(Operation *t)
 	{
 		*t->dDst = *t->dSrc1 + *t->dSrc2;
 	}
-	static void AddInt(Operation *t)
+	void AddInt(Operation *t)
 	{
 		*t->nDst = *t->nSrc1 + *t->nSrc2;
 	}
-	static void AddDoubleInt(Operation *t)
+	void AddDoubleInt(Operation *t)
 	{
 		*t->dDst = *t->dSrc1 + *t->nSrc2;
 	}
 
-	static void SubtractDouble(Operation *t)
+	void SubtractDouble(Operation *t)
 	{
 		*t->dDst = *t->dSrc1 - *t->dSrc2;
 	}
-	static void SubtractInt(Operation *t)
+	void SubtractInt(Operation *t)
 	{
 		*t->dDst = *t->dSrc1 - *t->dSrc2;
 	}
-	static void SubtractDoubleInt(Operation *t)
+	void SubtractDoubleInt(Operation *t)
 	{
 		*t->dDst = *t->dSrc1 - *t->nSrc2;
 	}
-	static void SubtractIntDouble(Operation *t)
+	void SubtractIntDouble(Operation *t)
 	{
 		*t->dDst = *t->nSrc1 - *t->dSrc2;
 	}
 
-	static void MultiplyDouble(Operation *t)
+	void MultiplyDouble(Operation *t)
 	{
 		*t->dDst = *t->dSrc1 * *t->dSrc2;
 	}
-	static void MultiplyInt(Operation *t)
+	void MultiplyInt(Operation *t)
 	{
 		*t->nDst = *t->nSrc1 * *t->nSrc2;
 	}
-	static void MultiplyDoubleInt(Operation *t)
+	void MultiplyDoubleInt(Operation *t)
 	{
 		*t->dDst = *t->dSrc1 * *t->nSrc2;
 	}
 
-	static void DivideDouble(Operation *t);
-	static void DivideInt(Operation *t);
-	static void DivideDoubleInt(Operation *t);
-	static void DivideIntDouble(Operation *t);
+	void DivideDouble(Operation *t);
+	void DivideInt(Operation *t);
+	void DivideDoubleInt(Operation *t);
+	void DivideIntDouble(Operation *t);
 
-	static void ModuloDouble(Operation *t);
-	static void ModuloInt(Operation *t);
-	static void ModuloDoubleInt(Operation *t);
-	static void ModuloIntDouble(Operation *t);
+	void ModuloDouble(Operation *t);
+	void ModuloInt(Operation *t);
+	void ModuloDoubleInt(Operation *t);
+	void ModuloIntDouble(Operation *t);
 
-	static void NegateInt(Operation *t)
+	void NegateInt(Operation *t)
 	{
 		*t->nDst = - *t->nSrc1;
 	}
-	static void ComplementInt(Operation *t)
+	void ComplementInt(Operation *t)
 	{
 		*t->nDst = ~ *t->nSrc1;
 	}
-	static void NegateDouble(Operation *t)
+	void NegateDouble(Operation *t)
 	{
 		*t->dDst = - *t->dSrc1;
 	}
-	static void Sin(Operation *t)
+	void Sin(Operation *t)
 	{
 		*t->dDst = sin(fmod(*t->dSrc1, 6.2831853071795864769252867));
 	}
-	static void Cos(Operation *t)
+	void Cos(Operation *t)
 	{
 		*t->dDst = cos(fmod(*t->dSrc1, 6.2831853071795864769252867));
 	}
-	static void Tan(Operation *t)
+	void Tan(Operation *t)
 	{
 		*t->dDst = tan(*t->dSrc1);
 	}
-	static void SinH(Operation *t)
+	void SinH(Operation *t)
 	{
 		*t->dDst = sinh(*t->dSrc1);
 	}
-	static void CosH(Operation *t)  { *t->dDst = cosh(*t->dSrc1); }
-	static void TanH(Operation *t)  { *t->dDst = tanh(*t->dSrc1); }
-	static void Exp(Operation *t)
+	void CosH(Operation *t)  { *t->dDst = cosh(*t->dSrc1); }
+	void TanH(Operation *t)  { *t->dDst = tanh(*t->dSrc1); }
+	void Exp(Operation *t)
 	{
 		*t->dDst = exp(*t->dSrc1);
 	}
-	static void Exp10(Operation *t)
+	void Exp10(Operation *t)
 	{
 		*t->dDst = exp(*t->dSrc1 * 2.3025850929940456840);
 	}
-	static void Log(Operation *t);
-	static void Log10(Operation *t);
-	static void Sqrt(Operation *t);
-	static void Noise(Operation *t);
-	static void Abs(Operation *t)
+	void Log(Operation *t);
+	void Log10(Operation *t);
+	void Sqrt(Operation *t);
+	void Noise(Operation *t);
+	void Abs(Operation *t)
 	{
 		*t->dDst = fabs(*t->dSrc1);
 	}
-	static void DoubleToInt(Operation *t)
+	void Dither(Operation *t);
+	void DoubleToInt(Operation *t)
 	{
 		*t->nDst = int(*t->dSrc1);
 	}
-	static void IntToDouble(Operation *t)
+	void IntToDouble(Operation *t)
 	{
 		*t->dDst = *t->nSrc1;
 	}
-	static void AndInt(Operation *t)
+	void AndInt(Operation *t)
 	{
 		*t->nDst = *t->nSrc1 & *t->nSrc2;
 	}
-	static void OrInt(Operation *t) { *t->nDst = *t->nSrc1 | *t->nSrc2; }
-	static void XorInt(Operation *t) { *t->nDst = *t->nSrc1 ^ *t->nSrc2; }
-	//static void (Operation *t)  { *t->Dst = *t->Src1  *t->Src2; }
-	//static void (Operation *t)  { *t->Dst = *t->Src1  *t->Src2; }
+	void OrInt(Operation *t) { *t->nDst = *t->nSrc1 | *t->nSrc2; }
+	void XorInt(Operation *t) { *t->nDst = *t->nSrc1 ^ *t->nSrc2; }
 	virtual BOOL Init();
 };
 
