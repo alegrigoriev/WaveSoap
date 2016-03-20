@@ -869,6 +869,10 @@ void CWaveFftView::OnDraw(CPaintDC* pDC, CRgn * UpdateRgn)
 	unsigned BmpSize = stride * height;
 	int BytesPerPixel = 3;
 	double DbRange = 130. + 10. * log10(m_FftOrder / 512.);
+	if (pDoc->m_WavFile.GetSampleType() == SampleType16bit)
+	{
+		DbRange -= 10.;
+	}
 
 	double PowerLogToPalIndex;
 
