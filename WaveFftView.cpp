@@ -807,7 +807,7 @@ void CWaveFftView::OnDraw(CPaintDC* pDC, CRgn * UpdateRgn)
 	}
 
 	double left = WindowXtoSample(r.left);		// (fractional) sample corresponding to r.left
-	double right = WindowXtoSample(r.right);	// (fractional) sample corresponding to r.right
+	//double right = WindowXtoSample(r.right);	// (fractional) sample corresponding to r.right
 
 	if (left < 0) left = 0;
 
@@ -1666,9 +1666,12 @@ BOOL CWaveFftView::OnEraseBkgnd(CDC* pDC)
 			CBrush GrayBrush( & bmp);
 
 			CRect gr = ClipRect;
-			gr.left = FileEnd;
+			gr.left = FileEnd + 1;
 
 			pDC->FillRect(gr, & GrayBrush);
+			gr.left = FileEnd;
+			gr.right = FileEnd + 1;
+			pDC->FillSolidRect(gr, RGB(0xFF, 0xFF, 0xFF));
 		}
 		catch (CResourceException * e)
 		{
