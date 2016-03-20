@@ -4199,7 +4199,7 @@ void CWaveSoapFrontDoc::OnFileStatistics()
 
 void CWaveSoapFrontDoc::OnUpdateFileStatistics(CCmdUI* pCmdUI)
 {
-	pCmdUI->Enable(CanReadFile() && m_WavFile.Channels() <= 2);
+	pCmdUI->Enable(CanReadFile());
 }
 
 void CWaveSoapFrontDoc::OnUpdateEditGoto(CCmdUI* pCmdUI)

@@ -1398,6 +1398,7 @@ BOOL CStatisticsDialog::OnInitDialog()
 			{
 				RmsDb = _T("-Inf.");
 			}
+			Rms = LtoaCS(long(sqrt(stats->m_Energy / nSamples)));
 			RmsPercent = 100. * sqrt(stats->m_Energy / (nSamples * 1073741824.));
 
 			if (stats->m_Sum / nSamples != 0)
@@ -1456,7 +1457,8 @@ BOOL CStatisticsDialog::OnInitDialog()
 			{
 				RmsDb = _T("-Inf.");
 			}
-			RmsPercent = 100. * sqrt(stats->m_Energy / (nSamples * (32768.*65536.*32768.*65536.)));
+			Rms = LtoaCS(long(sqrt(stats->m_Energy / nSamples)));
+			RmsPercent = sqrt(stats->m_Energy / (nSamples * (32.768*65536.*32.768*65536.)));
 
 			if (stats->m_Sum / nSamples != 0)
 			{
@@ -1514,6 +1516,7 @@ BOOL CStatisticsDialog::OnInitDialog()
 			{
 				RmsDb = _T("-Inf.");
 			}
+			Rms.Format(_T("%.6f"), sqrt(stats->m_Energy / nSamples));
 			RmsPercent = 100. * sqrt(stats->m_Energy / nSamples);
 
 			if (stats->m_Sum / nSamples != 0)
@@ -1596,7 +1599,7 @@ BOOL CStatisticsDialog::OnInitDialog()
 		text += s;
 	}
 
-	INT TabStops[2] = { 90, 220 };
+	INT TabStops[2] = { 90, 110 };
 	m_EditBox.SetTabStops(2, TabStops);
 	m_EditBox.ReplaceSel(text);
 	m_EditBox.SetSel(0, 0);
