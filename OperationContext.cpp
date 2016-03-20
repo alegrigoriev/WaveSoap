@@ -3384,6 +3384,10 @@ unsigned CWaveProcContext::ProcessBuffer(char const * pInBuf, // if BACKWARD pas
 
 BOOL CWaveProcContext::Init()
 {
+	if ( ! BaseClass::Init())
+	{
+		return FALSE;
+	}
 	if (m_SrcFile.IsOpen())
 	{
 		if ( ! m_ProcBatch.SetInputWaveformat(m_SrcFile.GetWaveFormat(), m_SrcChan))
@@ -3397,10 +3401,6 @@ BOOL CWaveProcContext::Init()
 		{
 			return FALSE;
 		}
-	}
-	if ( ! BaseClass::Init())
-	{
-		return FALSE;
 	}
 	return m_ProcBatch.Init();
 }
