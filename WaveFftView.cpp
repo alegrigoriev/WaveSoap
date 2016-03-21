@@ -1762,7 +1762,7 @@ void CWaveFftView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
 		CRect r1(r);
 		// calculate update boundaries
 		r1.left = SampleToX(SampleToFftColumnLowerBound(left) * m_FftSpacing);
-		r1.right = SampleToX(SampleToFftColumnUpperBound(right) + 1) * m_FftSpacing;
+		r1.right = SampleToX((SampleToFftColumnUpperBound(right) + 1) * m_FftSpacing);
 
 		if (r1.left != r1.right
 			// limit the rectangles with the window boundaries
