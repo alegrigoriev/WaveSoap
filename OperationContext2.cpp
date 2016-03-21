@@ -741,7 +741,7 @@ void CExpressionEvaluationProc::Dither(Operation *t)
 	// The double argument is a number of LSB units of amplitude of noise to the dither filter
 	C_ASSERT(RAND_MAX == 0x7FFF);
 	//
-	static double FilterCoeffs[countof(m_DitherState[0])/2] =
+	static double FilterCoeffs[] =
 	{
 		// triangular filter
 		7./32,
