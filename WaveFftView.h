@@ -52,7 +52,6 @@ protected:
 	// FFT array is stored as a ring array of 'm_FftResultArrayWidth' columns
 	// m_IndexOfFftBegin is offset in the array of the beginning column.
 	float * m_pFftResultArray;
-	unsigned m_FftArraySize;
 	int m_FftResultArrayWidth;    // number of FFT sets
 	int m_FftResultArrayHeight;   // m_FftOrder * pDoc->WaveChannels() + 1;
 	int m_IndexOfFftBegin;
@@ -75,12 +74,11 @@ protected:
 
 	void OnSetWindowType(int window);
 
-	void AllocateFftArray(SAMPLE_INDEX SampleLeft, SAMPLE_INDEX SampleRight);
+	void AllocateFftArray(long FftColumnLeft, long FftColumnRight, int NewFftSpacing);
 
-	bool IsFftResultCalculated(SAMPLE_INDEX sample) const;
-	float const * GetFftResult(SAMPLE_INDEX sample, unsigned channel);
+	bool IsFftResultCalculated(long FftColumn) const;
+	float const * GetFftResult(long FftColumn, unsigned channel);
 	static bool CalculateFftColumnWorkitem(WorkerThreadPoolItem * pItem);
-	void CalculateFftColumn(struct DrawFftWorkItem * pItem);
 	static bool FillChannelFftColumnWorkitem(WorkerThreadPoolItem * pItem);
 	void FillChannelFftColumn(struct DrawFftWorkItem * pItem);
 	static bool FillFftColumnPaletteWorkitem(WorkerThreadPoolItem * pItem);
@@ -88,7 +86,7 @@ protected:
 
 	// to which FFT displayed column the sample falls in (samples from N*m_FftSpacing +/- m_FftSpacing/2).
 	// Use for display conversion only
-	long SampleToFftColumn(SAMPLE_INDEX sample) const;
+	long DisplaySampleToFftColumn(SAMPLE_INDEX sample) const;
 	// which leftmost FFT column the sample affects:
 	long SampleToFftColumnLowerBound(SAMPLE_INDEX sample) const;
 	// which rightmost FFT column the sample affects:
