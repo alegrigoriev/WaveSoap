@@ -74,6 +74,8 @@ protected:
 	//{{AFX_MSG(CAmplitudeRuler)
 	afx_msg int OnCreate(LPCREATESTRUCT lpCreateStruct);
 	afx_msg void OnLButtonDblClk(UINT nFlags, CPoint point);
+	afx_msg void OnLButtonDown(UINT nFlags, CPoint point);
+	afx_msg void OnLButtonUp(UINT nFlags, CPoint point);
 	afx_msg void OnViewAmplRulerSamples();
 	afx_msg void OnViewAmplRulerPercent();
 	afx_msg void OnViewAmplRulerDecibels();

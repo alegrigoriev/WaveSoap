@@ -42,6 +42,8 @@ BEGIN_MESSAGE_MAP(CAmplitudeRuler, BaseClass)
 	//{{AFX_MSG_MAP(CAmplitudeRuler)
 	ON_WM_CREATE()
 	ON_WM_LBUTTONDBLCLK()
+	ON_WM_LBUTTONDOWN()
+	ON_WM_LBUTTONUP()
 	ON_COMMAND(ID_VIEW_AMPL_RULER_SAMPLES, OnViewAmplRulerSamples)
 	ON_COMMAND(ID_VIEW_AMPL_RULER_PERCENT, OnViewAmplRulerPercent)
 	ON_COMMAND(ID_VIEW_AMPL_RULER_DECIBELS, OnViewAmplRulerDecibels)
@@ -513,6 +515,46 @@ void CAmplitudeRuler::OnLButtonDblClk(UINT nFlags, CPoint point)
 	data.Amplitude.NewScale = m_VerticalScale;
 	data.Amplitude.NewOffset = 0.;
 	NotifySiblingViews(VerticalScaleAndOffsetChanged, &data);
+}
+
+void CAmplitudeRuler::OnLButtonDown(UINT nFlags, CPoint point)
+{
+	if (nFlags & MK_CONTROL)
+	{
+		// toggling this channel selection, unless it's the only channel selected
+		CWaveSoapFrontDoc * pDoc = GetDocument();
+		// get hit test for channel
+		for (int ch = 0; ch < m_Heights.NumChannels; ch++)
+		{
+			if (point.y >= m_Heights.ch[ch].top
+				&& point.y < m_Heights.ch[ch].bottom)
+			{
+				CHANNEL_MASK mask = 1 << ch;
+				if ((pDoc->m_SelectedChannel & ~(0xFFFFFFFF << m_Heights.NumChannels)) != mask)
+				{
+					pDoc->SetSelection(pDoc->m_SelectionStart, pDoc->m_SelectionEnd, pDoc->m_SelectedChannel ^ mask,
+										pDoc->m_CaretPosition, SetSelection_DontAdjustView);
+				}
+				break;
+			}
+		}
+	}
+	else
+	{
+		// store the starting mouse position
+		PrevMouseY = point.y;
+		ButtonPressed = WM_LBUTTONDOWN;
+	}
+}
+
+void CAmplitudeRuler::OnLButtonUp(UINT /*nFlags*/, CPoint /*point*/)
+{
+	ButtonPressed = 0;
+	if (m_bIsTrackingSelection)
+	{
+		ReleaseCapture();
+		m_bIsTrackingSelection = FALSE;
+	}
 }
 
 void CAmplitudeRuler::OnViewAmplRulerSamples()
