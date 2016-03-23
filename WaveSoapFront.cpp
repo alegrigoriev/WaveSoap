@@ -2350,7 +2350,7 @@ CString GetSelectionText(SAMPLE_INDEX Start, SAMPLE_INDEX End, CHANNEL_MASK Chan
 	CString s;
 	if (nChannels > 1)
 	{
-		CHANNEL_MASK mask = ~(~0L << nChannels);
+		CHANNEL_MASK mask = CWaveFormat::ChannelsMaskFromNumberOfChannels(nChannels);
 
 		CString sChans;
 		sChans.LoadString(IDS_STEREO);
