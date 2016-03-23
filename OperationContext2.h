@@ -807,8 +807,6 @@ protected:
 	CCopyUndoContext * m_pUndoLow;
 	CCopyUndoContext * m_pUndoHigh;
 
-	SAMPLE_POSITION m_HighDstPos;
-
 	virtual BOOL CreateUndo();
 	virtual ListHead<COperationContext> * GetUndoChain();
 	virtual void DeleteUndo();
