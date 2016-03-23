@@ -2041,6 +2041,9 @@ int CWaveFftView::BuildSelectionRegion(CRgn * NormalRgn, CRgn* MinimizedRgn,
 		if (selected & (1 << chan))
 		{
 			RgnData * rgn;
+			int clip_top = m_Heights.ch[chan].clip_top;
+			int clip_bottom = m_Heights.ch[chan].clip_bottom;
+
 			if (m_Heights.ChannelMinimized(chan))
 			{
 				rgn = &data_min;
@@ -2050,8 +2053,8 @@ int CWaveFftView::BuildSelectionRegion(CRgn * NormalRgn, CRgn* MinimizedRgn,
 				rgn = &data;
 			}
 
-			rgn->AddRect(left, m_Heights.ch[chan].clip_top, left + cx, m_Heights.ch[chan].clip_bottom);
-			rgn->AddRect(right - cx, m_Heights.ch[chan].clip_top, right, m_Heights.ch[chan].clip_bottom);
+			rgn->AddRect(left, clip_top, left + cx, clip_bottom);
+			rgn->AddRect(right - cx, clip_top, right, clip_bottom);
 
 			if (right - left <= cx * 2)
 			{
@@ -2060,11 +2063,11 @@ int CWaveFftView::BuildSelectionRegion(CRgn * NormalRgn, CRgn* MinimizedRgn,
 
 			if (chan == 0 || 0 == (selected & (1 << (chan - 1))))
 			{
-				rgn->AddRect(left + cx, m_Heights.ch[chan].clip_top, right - cx, m_Heights.ch[chan].clip_top + cy);
+				rgn->AddRect(left + cx,clip_top, right - cx, clip_top + cy);
 			}
 			if (chan + 1 == NumChannels || 0 == (selected & (1 << (chan + 1))))
 			{
-				rgn->AddRect(left + cx, m_Heights.ch[chan].clip_bottom - cy, right - cx, m_Heights.ch[chan].clip_bottom);
+				rgn->AddRect(left + cx, clip_bottom - cy, right - cx, clip_bottom);
 			}
 		}
 	}
@@ -2132,7 +2135,7 @@ void CWaveFftView::RedrawSelectionRect(CDC * pDC, SAMPLE_INDEX OldSelectionStart
 		CBrush brush_min;
 
 		OldClipRgn.CreateRectRgn(0, 0, 0, 0);
-		::GetClipRgn((HDC)*pDrawDC, (HRGN)OldClipRgn);
+		BOOL HasClipRegion = ::GetClipRgn((HDC)*pDrawDC, (HRGN)OldClipRgn);
 
 		R.CreateRectRgn(0, 0, 0, 0);
 		R.CombineRgn(&OldRgn, &NewRgn, RGN_XOR);
@@ -2153,7 +2156,7 @@ void CWaveFftView::RedrawSelectionRect(CDC * pDC, SAMPLE_INDEX OldSelectionStart
 
 			R.CombineRgn(&OldRgnMinimized, &NewRgnMinimized, RGN_XOR);
 
-			pDrawDC->SelectClipRgn(&OldClipRgn, RGN_COPY);
+			pDrawDC->SelectClipRgn(HasClipRegion? &OldClipRgn : NULL, RGN_COPY);
 			pDrawDC->SelectClipRgn(&R, RGN_AND);
 
 			pDrawDC->GetClipBox(clip);
