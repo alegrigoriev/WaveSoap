@@ -2754,16 +2754,16 @@ BOOL CReverseOperation::OperationProc()
 	SAMPLE_POSITION dwOperationBeginTop = m_SrcPos;
 	SAMPLE_POSITION dwOperationBeginBottom = m_DstPos;
 
-	int const TempBufCount = 1024;
-	ASSERT(m_DstFile.GetSampleType() == SampleType16bit);
-	WAVE_SAMPLE BufBottom[TempBufCount];		// FIXME: handle 32 bit formats
-	WAVE_SAMPLE BufTop[TempBufCount];
+	int const TempBufCount = 4096;
+
+	UCHAR BufBottom[TempBufCount];
+	UCHAR BufTop[TempBufCount];
 
 	int const DstSampleSize = m_DstFile.SampleSize();
 
 	NUMBER_OF_CHANNELS const NumDstChannels = m_DstFile.Channels();
 
-	int const TempBufSamples = TempBufCount / NumDstChannels;
+	int const TempBufSamples = sizeof BufTop / DstSampleSize;
 
 	do
 	{
@@ -2774,8 +2774,9 @@ BOOL CReverseOperation::OperationProc()
 			CanReadSamples = TempBufSamples;
 		}
 
-		WAVE_SAMPLE * p1 = BufBottom;
-		WAVE_SAMPLE * p2 = BufTop + TempBufCount;
+		long const DataSize = CanReadSamples * DstSampleSize;
+		UCHAR * p1 = BufBottom;
+		UCHAR * p2 = BufTop + DataSize;
 
 		if (-CanReadSamples != m_DstFile.ReadSamples(ALL_CHANNELS,
 													m_SrcPos, -CanReadSamples, p2, m_DstFile.GetSampleType())
@@ -2788,7 +2789,6 @@ BOOL CReverseOperation::OperationProc()
 			break;
 		}
 
-		long const DataSize = CanReadSamples * DstSampleSize;
 
 		// save the old data to undo buffer
 		if (NULL != m_pUndoLow)
@@ -2804,20 +2804,19 @@ BOOL CReverseOperation::OperationProc()
 
 		for (NUMBER_OF_SAMPLES i = 0; i < CanReadSamples; i++)
 		{
-			p2 -= NumDstChannels;
-			for (NUMBER_OF_CHANNELS ch = 0; ch < NumDstChannels; ch ++)
-			{
-				std::swap(p1[ch], p2[ch]);
-				//WAVE_SAMPLE tmp = p1[ch];
-				//p1[ch] = p2[ch];
-				//p2[ch] = tmp;
-			}
-			p1 += NumDstChannels;
+			LONG tmp[MAX_NUMBER_OF_CHANNELS];
+			ASSERT(DstSampleSize <= sizeof tmp);
+
+			p2 -= DstSampleSize;
+			memcpy(tmp, p2, DstSampleSize);
+			memcpy(p2, p1, DstSampleSize);
+			memcpy(p1, tmp, DstSampleSize);
+			p1 += DstSampleSize;
 		}
 
 		// save the data back
 		if (-CanReadSamples != m_DstFile.WriteSamples(m_DstChan,
-													m_SrcPos, -CanReadSamples, BufTop + TempBufCount,
+													m_SrcPos, -CanReadSamples, BufTop + DataSize,
 													m_DstChan, NumDstChannels, m_DstFile.GetSampleType())
 			|| CanReadSamples != m_DstFile.WriteSamples(m_DstChan,
 														m_DstPos, CanReadSamples, BufBottom,
@@ -2829,8 +2828,8 @@ BOOL CReverseOperation::OperationProc()
 			break;
 		}
 
-		m_SrcPos -= CanReadSamples * DstSampleSize;
-		m_DstPos += CanReadSamples * DstSampleSize;
+		m_SrcPos -= DataSize;
+		m_DstPos += DataSize;
 	}
 	while ((m_DstPos < m_DstEnd
 				&& GetTickCount() - dwStartTime < 1000)
