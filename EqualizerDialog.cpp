@@ -841,7 +841,7 @@ void CEqualizerGraphWnd::OnNcCalcSize(BOOL /*bCalcValidRects*/,
 	int ncHeight = 2 + GetSystemMetrics(SM_CYMENUSIZE);
 	int ncWidth;
 
-	CWindowDC wDC(GetDesktopWindow());
+	CWindowDC wDC(this);
 	CGdiObjectSave Old(wDC, wDC.SelectStockObject(ANSI_VAR_FONT));
 
 	ncWidth = 3 + wDC.GetTextExtent(_T("-20 dB"), 6).cx;

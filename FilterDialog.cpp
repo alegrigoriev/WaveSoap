@@ -1147,7 +1147,7 @@ BOOL CFilterGraphWnd::OnEraseBkgnd(CDC* pDC)
 void CFilterGraphWnd::OnNcCalcSize(BOOL /*bCalcValidRects*/,
 									NCCALCSIZE_PARAMS * lpncsp)
 {
-	CWindowDC wDC(GetDesktopWindow());
+	CWindowDC wDC(this);
 	CGdiObjectSave Old(wDC, wDC.SelectStockObject(ANSI_VAR_FONT));
 
 	int ncWidth = 3 + wDC.GetTextExtent(_T(" -20 dB"), 7).cx;

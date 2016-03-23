@@ -920,7 +920,7 @@ void CTimeRulerView::OnUpdate( CView* /*pSender*/, LPARAM lHint, CObject* pHint 
 
 int CTimeRulerView::CalculateHeight()
 {
-	CWindowDC dc(GetDesktopWindow());
+	CWindowDC dc(AfxGetMainWnd());
 	CGdiObjectSave OldFont(dc, dc.SelectStockObject(ANSI_VAR_FONT));
 
 	TEXTMETRIC tm;
@@ -937,7 +937,7 @@ unsigned CTimeRulerView::HitTest(POINT p, RECT * pHitRect, int * OffsetX) const
 	unsigned result = HitTestNone;
 	CWaveSoapFrontDoc * pDoc = GetDocument();
 
-	CWindowDC dc(GetDesktopWindow());
+	CWindowDC dc(const_cast<CTimeRulerView*>(this));
 	CGdiObjectSave OldFont(dc, dc.SelectStockObject(ANSI_VAR_FONT));
 
 	CRect cr;
