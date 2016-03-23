@@ -205,7 +205,7 @@ void CFftRulerView::OnDraw(CDC* pDrawDC)
 
 int CFftRulerView::CalculateWidth()
 {
-	CWindowDC wDC(GetDesktopWindow());
+	CWindowDC wDC(AfxGetMainWnd());
 
 	CGdiObjectSave Old(wDC, wDC.SelectStockObject(ANSI_VAR_FONT));
 	int Width = 4 + wDC.GetTextExtent(_T("-000,000"), 8).cx;
@@ -253,7 +253,7 @@ void CFftRulerView::OnLButtonDown(UINT nFlags, CPoint point)
 				&& point.y < m_Heights.ch[ch].bottom)
 			{
 				CHANNEL_MASK mask = 1 << ch;
-				if ((pDoc->m_SelectedChannel & ~(0xFFFFFFFF << m_Heights.NumChannels)) != mask)
+				if ((pDoc->m_SelectedChannel & CWaveFormat::ChannelsMaskFromNumberOfChannels(m_Heights.NumChannels)) != mask)
 				{
 					pDoc->SetSelection(pDoc->m_SelectionStart, pDoc->m_SelectionEnd, pDoc->m_SelectedChannel ^ mask,
 										pDoc->m_CaretPosition, SetSelection_DontAdjustView);
