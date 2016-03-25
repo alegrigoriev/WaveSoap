@@ -375,7 +375,6 @@ CFileSaveUiSupport::CFileSaveUiSupport(CWaveFormat const & Wf)
 	, m_bCompatibleFormatsOnly(TRUE)
 	, m_FileType(SaveFile_NonWavFile)
 	, m_SelectedRawFormat(RawSoundFilePcm16Lsb)
-	, m_NumOfFileTypes(0)
 {
 	FileParameters * pRawParams = PersistentFileParameters::GetData();
 	switch (pRawParams->RawFileFormat.wFormatTag)
@@ -427,6 +426,8 @@ CWaveSoapFileSaveDialog::CWaveSoapFileSaveDialog(BOOL bOpenFileDialog, // TRUE f
 				lpszFilter, pParentWnd)
 	, CFileSaveUiSupport(Wf)
 	, m_pDocument(pDoc)
+	, m_NumFormatTagComboItems(0)
+	, m_NumAttributeComboItems(0)
 {
 	m_ofn.lpTemplateName = MAKEINTRESOURCE(IDD_DIALOG_SAVE_TEMPLATE_V5);
 #if _WIN32_WINNT < _WIN32_WINNT_WIN6
@@ -459,6 +460,53 @@ BEGIN_MESSAGE_MAP(CWaveSoapFileSaveDialog, BaseClass)
 	ON_CBN_SELCHANGE(IDC_COMBO_ATTRIBUTES, OnComboAttributesChange)
 	//}}AFX_MSG_MAP
 END_MESSAGE_MAP()
+void CWaveSoapFileSaveDialog::OnButtonClicked(DWORD dwIDCtl)
+{
+	BaseClass::OnButtonClicked(dwIDCtl);
+}
+
+void CWaveSoapFileSaveDialog::OnCheckButtonToggled(DWORD dwIDCtl, BOOL bChecked)
+{
+	if (dwIDCtl == IDC_CHECK_COMPATIBLE_FORMATS)
+	{
+		OnCompatibleFormatsClicked();
+	}
+}
+
+void CWaveSoapFileSaveDialog::OnItemSelected(DWORD dwIDCtl, DWORD dwIDItem)
+{
+	if (dwIDCtl == IDC_COMBO_FORMAT)
+	{
+		OnComboFormatsChange();
+	}
+	else if (dwIDCtl == IDC_COMBO_ATTRIBUTES)
+	{
+		OnComboAttributesChange();
+	}
+}
+
+INT_PTR CWaveSoapFileSaveDialog::DoModal()
+{
+	// add all special controls
+	// Get the interface pointer
+
+	if (m_bVistaStyle)
+	{
+		//
+		// Perform any interface functionality here
+		//
+		AddText(IDC_STATIC_FORMAT, L"Format:");
+		AddComboBox(IDC_COMBO_FORMAT);
+		AddCheckButton(IDC_CHECK_COMPATIBLE_FORMATS, L"Compatible Formats Only", FALSE);
+
+		AddText(IDC_STATIC_ATTRIBUTES, L"Attributes:");
+		AddComboBox(IDC_COMBO_ATTRIBUTES);
+
+		OnCommonInitDone();
+	}
+
+	return BaseClass::DoModal();
+}
 
 BOOL CWaveSoapFileSaveDialog::OnFileNameOK()
 {
@@ -474,7 +522,7 @@ BOOL CWaveSoapFileSaveDialog::OnFileNameOK()
 	}
 	BaseClass::OnFileNameOK();
 	// save format selection
-	m_SelectedFormat = m_AttributesCombo.GetCurSel();
+	m_SelectedFormat = GetAttributesComboSelection();
 
 	CFileSaveUiSupport::m_Profile.FlushAll();
 
@@ -492,6 +540,116 @@ UINT CWaveSoapFileSaveDialog::OnShareViolation( LPCTSTR lpszPathName)
 		return OFN_SHAREFALLTHROUGH;
 	}
 	return OFN_SHAREWARN;
+}
+
+void CWaveSoapFileSaveDialog::ResetFormatTagCombo()
+{
+	if (m_bVistaStyle)
+	{
+		while (m_NumFormatTagComboItems > 0)
+		{
+			m_NumFormatTagComboItems--;
+			RemoveControlItem(IDC_COMBO_FORMAT, m_NumFormatTagComboItems);
+		}
+	}
+	else
+	{
+		m_FormatTagCombo.ResetContent();
+	}
+}
+
+void CWaveSoapFileSaveDialog::AddFormatTagComboString(int idx, LPCWSTR string)
+{
+	if (m_bVistaStyle)
+	{
+		AddControlItem(IDC_COMBO_FORMAT, m_NumFormatTagComboItems, string);
+		m_NumFormatTagComboItems++;
+	}
+	else
+	{
+		m_FormatTagCombo.InsertString(idx, string);
+	}
+}
+
+int CWaveSoapFileSaveDialog::GetFormatTagComboSelection()
+{
+	if (m_bVistaStyle)
+	{
+		DWORD sel = (DWORD)-1;
+		GetSelectedControlItem(IDC_COMBO_FORMAT, sel);
+		return sel;
+	}
+	else
+	{
+		return m_FormatTagCombo.GetCurSel();
+	}
+}
+
+void CWaveSoapFileSaveDialog::SetFormatTagComboSelection(int sel)
+{
+	if (m_bVistaStyle)
+	{
+		SetSelectedControlItem(IDC_COMBO_FORMAT, sel);
+	}
+	else
+	{
+		m_FormatTagCombo.SetCurSel(sel);
+	}
+}
+
+void CWaveSoapFileSaveDialog::ResetAttributesCombo()
+{
+	if (m_bVistaStyle)
+	{
+		while (m_NumAttributeComboItems > 0)
+		{
+			m_NumAttributeComboItems--;
+			RemoveControlItem(IDC_COMBO_ATTRIBUTES, m_NumAttributeComboItems);
+		}
+	}
+	else
+	{
+		m_AttributesCombo.ResetContent();
+	}
+}
+
+void CWaveSoapFileSaveDialog::AddAttributesComboString(int idx, LPCWSTR string)
+{
+	if (m_bVistaStyle)
+	{
+		AddControlItem(IDC_COMBO_ATTRIBUTES, m_NumAttributeComboItems, string);
+		m_NumAttributeComboItems++;
+	}
+	else
+	{
+		m_AttributesCombo.InsertString(idx, string);
+	}
+}
+
+int CWaveSoapFileSaveDialog::GetAttributesComboSelection()
+{
+	if (m_bVistaStyle)
+	{
+		DWORD sel = (DWORD)-1;
+		GetSelectedControlItem(IDC_COMBO_ATTRIBUTES, sel);
+		return sel;
+	}
+	else
+	{
+		return m_AttributesCombo.GetCurSel();
+	}
+}
+
+void CWaveSoapFileSaveDialog::SetAttributesComboSelection(int sel)
+{
+	if (m_bVistaStyle)
+	{
+		SetSelectedControlItem(IDC_COMBO_ATTRIBUTES, sel);
+	}
+	else
+	{
+		m_AttributesCombo.SetCurSel(sel);
+	}
 }
 
 int CFileSaveUiSupport::GetFileTypeFlags() const
@@ -544,11 +702,13 @@ WaveFormatTagEx const CFileSaveUiSupport::ExcludeFormats[] =
 {
 	WAVE_FORMAT_MPEGLAYER3,
 	WAVE_FORMAT_MSAUDIO1,
-	WAVE_FORMAT_MSAUDIO1+1,
+	WAVE_FORMAT_WMAUDIO2,
+	WAVE_FORMAT_WMAUDIO3,
+	WAVE_FORMAT_WMAUDIO_LOSSLESS,
 	WORD(0),
 };
 
-void CFileSaveUiSupport::FillFormatTagCombo(WaveFormatTagEx const ListOfTags[], int NumTags, DWORD Flags)
+void CFileSaveUiSupport::FillFormatTagArray(WaveFormatTagEx const ListOfTags[], int NumTags, DWORD Flags)
 {
 	if (m_bCompatibleFormatsOnly)
 	{
@@ -569,12 +729,11 @@ void CFileSaveUiSupport::FillFormatTagCombo(WaveFormatTagEx const ListOfTags[], 
 
 	m_Acm.FillFormatTagArray(m_Wf, ListOfTags, NumTags, Flags);
 
-	if (m_FormatTagCombo.m_hWnd == NULL)
-	{
-		return;
-	}
+}
 
-	m_FormatTagCombo.ResetContent();
+void CFileSaveUiSupport::FillFormatTagCombo()
+{
+	ResetFormatTagCombo();
 
 	int sel = -1;
 	for (unsigned i = 0; i < m_Acm.m_FormatTags.size(); i++)
@@ -583,7 +742,7 @@ void CFileSaveUiSupport::FillFormatTagCombo(WaveFormatTagEx const ListOfTags[], 
 		{
 			sel = i;
 		}
-		m_FormatTagCombo.AddString(m_Acm.m_FormatTags[i].Name);
+		AddFormatTagComboString(0, m_Acm.m_FormatTags[i].Name);
 	}
 
 	if (-1 == sel
@@ -592,25 +751,33 @@ void CFileSaveUiSupport::FillFormatTagCombo(WaveFormatTagEx const ListOfTags[], 
 		sel = 0;
 		m_SelectedTag = m_Acm.m_FormatTags[0].Tag;
 	}
-	m_FormatTagCombo.SetCurSel(sel);
+	SetFormatTagComboSelection(sel);
 }
 
 int CFileSaveUiSupport::FillFormatCombo(unsigned SelFormat, int Flags)
 {
-	if (m_AttributesCombo.m_hWnd == NULL)
+	if (! m_AttributesCombo.m_hWnd == NULL)
 	{
 		return 0;
 	}
 
-	m_AttributesCombo.ResetContent();
+	ResetAttributesCombo();
 
 	if ( ! m_Acm.FillFormatArray(SelFormat, Flags))
 	{
 		return 0;
 	}
 
-	return m_Acm.FillFormatsCombo( & m_AttributesCombo, m_Wf,
+	std::vector<CString> Strings;
+	int sel = m_Acm.GetFormatsStrings(Strings, m_Wf,
 									m_SelectedTag, m_SelectedBitrate);
+
+	for (int i = 0; i != Strings.size(); i++)
+	{
+		AddAttributesComboString(i, Strings[i]);
+	}
+	SetAttributesComboSelection(sel);
+	return sel;
 }
 
 void CFileSaveUiSupport::OnCompatibleFormatsClicked()
@@ -618,12 +785,13 @@ void CFileSaveUiSupport::OnCompatibleFormatsClicked()
 	switch (m_FileType)
 	{
 	case SaveFile_WavFile:
-		FillFormatTagCombo(ExcludeFormats, -1, WaveFormatExcludeFormats);
-		m_SelectedFormat = FillFormatCombo(m_FormatTagCombo.GetCurSel());
+		FillFormatTagArray(ExcludeFormats, -1, WaveFormatExcludeFormats);
+		FillFormatTagCombo();
+		m_SelectedFormat = FillFormatCombo(GetFormatTagComboSelection());
 		break;
 
 	case SaveFile_Mp3File:
-		m_SelectedFormat = FillFormatCombo(m_FormatTagCombo.GetCurSel());
+		m_SelectedFormat = FillFormatCombo(GetFormatTagComboSelection());
 		break;
 
 	case SaveFile_WmaFile:
@@ -634,7 +802,7 @@ void CFileSaveUiSupport::OnCompatibleFormatsClicked()
 
 void CFileSaveUiSupport::OnComboAttributesChange()
 {
-	unsigned sel = m_AttributesCombo.GetCurSel();
+	unsigned sel = GetAttributesComboSelection();
 
 	switch (m_FileType)
 	{
@@ -669,7 +837,7 @@ void CFileSaveUiSupport::OnComboAttributesChange()
 
 void CFileSaveUiSupport::OnComboFormatsChange()
 {
-	int sel = m_FormatTagCombo.GetCurSel();
+	int sel = GetFormatTagComboSelection();
 	switch (m_FileType)
 	{
 	case SaveFile_WavFile:
@@ -679,9 +847,15 @@ void CFileSaveUiSupport::OnComboFormatsChange()
 		break;
 	case SaveFile_Mp3File:
 		// MP3 file
-		m_SelectedTag = m_Acm.m_FormatTags[sel].Tag;
-		m_SelectedMp3Encoder = sel;
-		m_SelectedFormat = FillFormatCombo(sel);
+		if (!m_Acm.m_FormatTags.empty())
+		{
+			m_SelectedTag = m_Acm.m_FormatTags[sel].Tag;
+			m_SelectedMp3Encoder = sel;
+			m_SelectedFormat = FillFormatCombo(sel);
+		}
+		else
+		{
+		}
 		break;
 	case SaveFile_WmaFile:
 		// WMA file
@@ -702,15 +876,13 @@ void CFileSaveUiSupport::FillFileTypes(CDocManager * pDocManager)
 {
 	// do for all doc template
 
-	unsigned nFilterIndex = 0;
-
-	for (POSITION pos = pDocManager->GetFirstDocTemplatePosition();
-		nFilterIndex < countof (m_DefExt) && pos != NULL; )
+	for (POSITION pos = pDocManager->GetFirstDocTemplatePosition(); pos != NULL; )
 	{
 		CDocTemplate* pTemplate = pDocManager->GetNextDocTemplate(pos);
 
 		CWaveSoapDocTemplate * pWaveTemplate =
 			dynamic_cast<CWaveSoapDocTemplate *>(pTemplate);
+		FileType file_type;
 
 		if (NULL != pWaveTemplate)
 		{
@@ -719,20 +891,18 @@ void CFileSaveUiSupport::FillFileTypes(CDocManager * pDocManager)
 				continue;
 			}
 
-			m_TemplateFlags[nFilterIndex] = pWaveTemplate->GetDocumentTypeFlags();
+			file_type.TemplateFlags = pWaveTemplate->GetDocumentTypeFlags();
 		}
 		else
 		{
-			m_TemplateFlags[nFilterIndex] = 0;
+			file_type.TemplateFlags = 0;
 		}
 
-		pTemplate->GetDocString(m_DefExt[nFilterIndex], CDocTemplate::filterExt);
-		pTemplate->GetDocString(m_FileTypeStrings[nFilterIndex], CDocTemplate::filterName);
-
-		nFilterIndex++;
+		pTemplate->GetDocString(file_type.DefExt, CDocTemplate::filterExt);
+		pTemplate->GetDocString(file_type.FileTypeStrings, CDocTemplate::filterName);
+		m_FileTypes.push_back(file_type);
 	}
 
-	m_NumOfFileTypes = nFilterIndex;
 }
 
 void CWaveSoapFileSaveDialog::AddAllTypeFilters(CDocManager * pDocManager)
@@ -741,13 +911,13 @@ void CWaveSoapFileSaveDialog::AddAllTypeFilters(CDocManager * pDocManager)
 
 	unsigned nFilterIndex = 0;
 
-	for (POSITION pos = pDocManager->GetFirstDocTemplatePosition();
-		nFilterIndex < countof (m_DefExt) && pos != NULL; )
+	for (POSITION pos = pDocManager->GetFirstDocTemplatePosition(); pos != NULL; )
 	{
 		CDocTemplate* pTemplate = pDocManager->GetNextDocTemplate(pos);
 
 		CWaveSoapDocTemplate * pWaveTemplate =
 			dynamic_cast<CWaveSoapDocTemplate *>(pTemplate);
+		FileType file_type;
 
 		if (NULL != pWaveTemplate)
 		{
@@ -756,11 +926,11 @@ void CWaveSoapFileSaveDialog::AddAllTypeFilters(CDocManager * pDocManager)
 				continue;
 			}
 
-			m_TemplateFlags[nFilterIndex] = pWaveTemplate->GetDocumentTypeFlags();
+			file_type.TemplateFlags = pWaveTemplate->GetDocumentTypeFlags();
 		}
 		else
 		{
-			m_TemplateFlags[nFilterIndex] = 0;
+			file_type.TemplateFlags = 0;
 		}
 
 		// BUGBUG: What If the file was opened through "All WMA files" template?
@@ -774,12 +944,12 @@ void CWaveSoapFileSaveDialog::AddAllTypeFilters(CDocManager * pDocManager)
 		_AfxAppendFilterSuffix(m_strFilter, m_ofn, pTemplate,
 								pDefaultExtCString);
 
-		pTemplate->GetDocString(m_DefExt[nFilterIndex], CDocTemplate::filterExt);
+		pTemplate->GetDocString(file_type.DefExt, CDocTemplate::filterExt);
+		m_FileTypes.push_back(file_type);
 
 		nFilterIndex++;
 	}
 
-	m_NumOfFileTypes = nFilterIndex;
 	// append the "*.*" all files filter
 	CString allFilter;
 	VERIFY(allFilter.LoadString(AFX_IDS_ALLFILTER));
@@ -795,7 +965,14 @@ void CWaveSoapFileSaveDialog::AddAllTypeFilters(CDocManager * pDocManager)
 
 void CWaveSoapFileSaveDialog::OnCompatibleFormatsClicked()
 {
-	m_bCompatibleFormatsOnly = ((CButton*)GetDlgItem(IDC_CHECK_COMPATIBLE_FORMATS))->GetCheck();
+	if (m_bVistaStyle)
+	{
+		GetCheckButtonState(IDC_CHECK_COMPATIBLE_FORMATS, m_bCompatibleFormatsOnly);
+	}
+	else
+	{
+		m_bCompatibleFormatsOnly = ((CButton*)GetDlgItem(IDC_CHECK_COMPATIBLE_FORMATS))->GetCheck();
+	}
 	CFileSaveUiSupport::OnCompatibleFormatsClicked();
 }
 
@@ -822,8 +999,16 @@ void CWaveSoapFileSaveDialog::OnInitDone()
 		m_AttributesCombo.SubclassDlgItem(IDC_COMBO_ATTRIBUTES, this);
 	}
 
-	if (m_SelectedTag.Tag == WAVE_FORMAT_MSAUDIO1
-		|| m_SelectedTag.Tag == WAVE_FORMAT_MSAUDIO1 + 1)
+	OnCommonInitDone();
+
+	BaseClass::OnInitDone();
+}
+
+void CWaveSoapFileSaveDialog::OnCommonInitDone()
+{
+	//fill format combo box.
+
+	if (m_SelectedTag.IsWma())
 	{
 		m_SelectedWmaBitrate = m_Wf.BytesPerSec() * 8;
 		m_SelectedBitrate = m_SelectedWmaBitrate;
@@ -841,18 +1026,18 @@ void CWaveSoapFileSaveDialog::OnInitDone()
 
 	CheckDlgButton(IDC_CHECK_COMPATIBLE_FORMATS, m_bCompatibleFormatsOnly);
 
-	if (m_ofn.nFilterIndex <= m_NumOfFileTypes
+	if (m_ofn.nFilterIndex <= m_FileTypes.size()
 		&& 0 != m_ofn.nFilterIndex)
 	{
-		SetFileType(m_TemplateFlags[m_ofn.nFilterIndex - 1] & (SaveFile_NonWavFile & ~ SaveRawFileMsbFirst));
+		SetFileType(m_FileTypes[m_ofn.nFilterIndex - 1].TemplateFlags & (SaveFile_NonWavFile & ~ SaveRawFileMsbFirst));
 	}
 	else
 	{
 		unsigned type = GetFileTypeForName(m_ofn.lpstrFile);
 
-		for (unsigned i = 0; i < m_NumOfFileTypes; i++)
+		for (unsigned i = 0; i < m_FileTypes.size(); i++)
 		{
-			if (m_TemplateFlags[i] == type)
+			if (m_FileTypes[i].TemplateFlags == type)
 			{
 				m_ofn.nFilterIndex = i + 1;
 				break;
@@ -861,50 +1046,41 @@ void CWaveSoapFileSaveDialog::OnInitDone()
 		SetFileType(type);
 	}
 
-	BaseClass::OnInitDone();
 }
 
 void CWaveSoapFileSaveDialog::OnTypeChange()
 {
 	TRACE("Current type = %d\n", m_ofn.nFilterIndex);
 	// get file name
-	CString name;
+	CPath name;
 	// set new default extension
-	GetFileDlg()->SendMessage(CDM_SETDEFEXT, 0, LPARAM(LPCTSTR(m_DefExt[m_ofn.nFilterIndex]) + 1));
 
-	CWnd * pTmp = GetFileDlg()->GetDlgItem(edt1);
-	if (NULL == pTmp)
+	if (!m_bVistaStyle)
 	{
-		// new style dialog
-		pTmp = GetFileDlg()->GetDlgItem(cmb13);
-	}
-	if (NULL != pTmp)
-	{
-		pTmp->SetFocus();
-		pTmp->GetWindowText(name);
-	}
-	// get the extension
-	if ( ! name.IsEmpty())
-	{
-		int idx = name.ReverseFind('.');
-		// replace the extension
-		if (idx != -1)
+		SetDefExt((LPCTSTR)(m_FileTypes[m_ofn.nFilterIndex - 1].DefExt) + 1);
+		CWnd * pTmp = GetFileDlg()->GetDlgItem(edt1);
+		if (NULL == pTmp)
 		{
-			// need to replace
-			if (idx >= name.GetLength() - 4)
+			// new style dialog
+			pTmp = GetFileDlg()->GetDlgItem(cmb13);
+		}
+		if (NULL != pTmp)
+		{
+			pTmp->SetFocus();
+			pTmp->GetWindowText(name);
+			if (!((CString&)name).IsEmpty())
 			{
-				name.Delete(idx, name.GetLength() - idx);
-				name += m_DefExt[m_ofn.nFilterIndex - 1];
+				name.RenameExtension(m_FileTypes[m_ofn.nFilterIndex - 1].DefExt);
+				pTmp->SetWindowText(name);
 			}
-
-			GetFileDlg()->SendMessage(CDM_SETCONTROLTEXT, edt1, LPARAM(LPCTSTR(name)));
 		}
 	}
+	// get the extension
 
-	if (m_ofn.nFilterIndex <= m_NumOfFileTypes
+	if (m_ofn.nFilterIndex <= m_FileTypes.size()
 		&& 0 != m_ofn.nFilterIndex)
 	{
-		SetFileType(m_TemplateFlags[m_ofn.nFilterIndex - 1] & (SaveFile_NonWavFile & ~ SaveRawFileMsbFirst));
+		SetFileType(m_FileTypes[m_ofn.nFilterIndex - 1].TemplateFlags & (SaveFile_NonWavFile & ~ SaveRawFileMsbFirst));
 	}
 	else
 	{
@@ -927,10 +1103,56 @@ void CWaveSoapFileSaveDialog::OnFileNameChange()
 
 void CWaveSoapFileSaveDialog::ShowDlgItem(UINT nID, int nCmdShow)
 {
+	if (m_bVistaStyle)
+	{
+		CDCONTROLSTATEF state;
+		if (SUCCEEDED(GetControlState(nID, state)))
+		{
+			switch (nCmdShow)
+			{
+			case SW_HIDE:
+				state = CDCS_INACTIVE;
+				break;
+			case SW_SHOW:
+				state = CDCS_ENABLEDVISIBLE;
+				break;
+			case SW_SHOWNA:
+			case SW_SHOWNOACTIVATE:
+				state = CDCS_ENABLEDVISIBLE;
+				break;
+			}
+			SetControlState(nID, state);
+		}
+		return;
+	}
 	CWnd * pWnd = GetDlgItem(nID);
 	if (pWnd)
 	{
 		pWnd->ShowWindow(nCmdShow);
+	}
+}
+
+void CWaveSoapFileSaveDialog::SetDlgItemTextW(UINT nID, LPCWSTR str)
+{
+	if (m_bVistaStyle)
+	{
+		SetControlLabel(nID, str);
+	}
+	else
+	{
+		CWnd::SetDlgItemTextW(nID, str);
+	}
+}
+
+void CWaveSoapFileSaveDialog::CheckDlgButton(UINT nID, UINT state)
+{
+	if (m_bVistaStyle)
+	{
+		SetCheckButtonState(nID, state);
+	}
+	else
+	{
+		CWnd::CheckDlgButton(nID, state);
 	}
 }
 
@@ -960,9 +1182,10 @@ void CWaveSoapFileSaveDialog::SetFileType(ULONG nType)
 		ShowDlgItem(IDC_STATIC_COMMENTS, SW_SHOWNOACTIVATE);
 		ShowDlgItem(IDC_EDIT_COMMENT, SW_SHOWNOACTIVATE);
 
-		FillFormatTagCombo(ExcludeFormats, -1, WaveFormatExcludeFormats);
+		FillFormatTagArray(ExcludeFormats, -1, WaveFormatExcludeFormats);
+		FillFormatTagCombo();
 
-		m_SelectedFormat = FillFormatCombo(m_FormatTagCombo.GetCurSel());
+		m_SelectedFormat = FillFormatCombo(GetFormatTagComboSelection());
 		break;  // go on
 
 	case SaveFile_Mp3File:
@@ -1045,11 +1268,11 @@ unsigned CFileSaveUiSupport::GetFileTypeForExt(LPCTSTR lpExt)
 	{
 		CString s(lpExt);
 		s.TrimRight();
-		for (unsigned i = 0; i < m_NumOfFileTypes; i++)
+		for (unsigned i = 0; i < m_FileTypes.size(); i++)
 		{
-			if (0 == m_DefExt[i].CompareNoCase(lpExt))
+			if (0 == m_FileTypes[i].DefExt.CompareNoCase(lpExt))
 			{
-				type = m_TemplateFlags[i];
+				type = m_FileTypes[i].TemplateFlags;
 				break;
 			}
 		}
@@ -1070,41 +1293,41 @@ unsigned CFileSaveUiSupport::GetFileTypeForName(LPCTSTR FileName)
 void CFileSaveUiSupport::FillLameEncoderFormats()
 {
 	m_Acm.FillLameEncoderFormats();
-	m_AttributesCombo.ResetContent();
+	ResetAttributesCombo();
 	unsigned sel = 0;
 
 	for (unsigned i = 0; i < m_Acm.m_Formats.size(); i++)
 	{
-		m_AttributesCombo.AddString(m_Acm.m_Formats[i].Name);
+		AddAttributesComboString(i, m_Acm.m_Formats[i].Name);
 		if (int(m_Acm.m_Formats[i].Wf.BytesPerSec() / 125) == m_SelectedMp3Bitrate)
 		{
 			sel = i;
 		}
 	}
-	m_AttributesCombo.SetCurSel(sel);
+	SetAttributesComboSelection(sel);
 }
 
 void CFileSaveUiSupport::FillRawFormatsCombo()
 {
 	CString s;
-	m_FormatTagCombo.ResetContent();
+	ResetFormatTagCombo();
 
 	s.LoadString(IDS_RAW_16BIT_LSB);
-	m_FormatTagCombo.InsertString(RawSoundFilePcm16Lsb, s);
+	AddFormatTagComboString(RawSoundFilePcm16Lsb, s);
 
 	s.LoadString(IDS_RAW_16BIT_MSB);
-	m_FormatTagCombo.InsertString(RawSoundFilePcm16Msb, s);
+	AddFormatTagComboString(RawSoundFilePcm16Msb, s);
 
 	s.LoadString(IDS_RAW_8BITS_PCM);
-	m_FormatTagCombo.InsertString(RawSoundFilePcm8, s);
+	AddFormatTagComboString(RawSoundFilePcm8, s);
 
 	s.LoadString(IDS_RAW_8BITS_ALAW);
-	m_FormatTagCombo.InsertString(RawSoundFileALaw8, s);
+	AddFormatTagComboString(RawSoundFileALaw8, s);
 
 	s.LoadString(IDS_RAW_8BITS_ULAW);
-	m_FormatTagCombo.InsertString(RawSoundFileULaw8, s);
+	AddFormatTagComboString(RawSoundFileULaw8, s);
 
-	m_FormatTagCombo.SetCurSel(m_SelectedRawFormat);
+	SetFormatTagComboSelection(m_SelectedRawFormat);
 
 }
 
@@ -1113,6 +1336,7 @@ void CFileSaveUiSupport::FillWmaFormatCombo()
 	m_Acm.FillWmaFormatTags();
 	if (m_Acm.m_FormatTags.empty())
 	{
+		ResetAttributesCombo();
 		return;
 	}
 
@@ -1122,26 +1346,27 @@ void CFileSaveUiSupport::FillWmaFormatCombo()
 
 void CFileSaveUiSupport::FillMp3EncoderCombo()
 {
-	m_FormatTagCombo.ResetContent();
+	ResetFormatTagCombo();
 	m_Acm.FillMp3EncoderTags(m_bCompatibleFormatsOnly ?
 								WaveFormatMatchCompatibleFormats
 							: WaveFormatMatchFormatTag);
 
 	if (m_Acm.m_FormatTags.empty())
 	{
+		ResetAttributesCombo();
 		return;
 	}
 
 	for (unsigned i = 0; i < m_Acm.m_FormatTags.size(); i++)
 	{
-		m_FormatTagCombo.AddString(m_Acm.m_FormatTags[i].Name);
+		AddFormatTagComboString(i, m_Acm.m_FormatTags[i].Name);
 	}
 
 	if (m_SelectedMp3Encoder >= m_Acm.m_FormatTags.size())
 	{
 		m_SelectedMp3Encoder = 0;
 	}
-	m_FormatTagCombo.SetCurSel(m_SelectedMp3Encoder);
+	SetFormatTagComboSelection(m_SelectedMp3Encoder);
 	m_SelectedTag = m_Acm.m_FormatTags[m_SelectedMp3Encoder].Tag;
 	FillFormatCombo(m_SelectedMp3Encoder);
 }

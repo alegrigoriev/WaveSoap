@@ -474,9 +474,9 @@ void CSplitToFilesDialog::OnComboAttributesChange()
 void CSplitToFilesDialog::OnComboFileTypeSelChange()
 {
 	unsigned FileType = m_SaveAsTypesCombo.GetCurSel();
-	if (FileType < m_NumOfFileTypes)
+	if (FileType < m_FileTypes.size())
 	{
-		SetFileType(m_TemplateFlags[FileType]);
+		SetFileType(m_FileTypes[FileType].TemplateFlags);
 		//CFileSaveUiSupport::OnComboAttributesChange();
 	}
 }
@@ -589,9 +589,10 @@ void CSplitToFilesDialog::SetFileType(unsigned nType, BOOL Force)
 		//ShowDlgItem(IDC_CHECK_COMPATIBLE_FORMATS, SW_SHOWNOACTIVATE);
 		//ShowDlgItem(IDC_STATIC_FORMAT_ATTRIBUTES, SW_SHOWNOACTIVATE);
 
-		FillFormatTagCombo(ExcludeFormats, -1, WaveFormatExcludeFormats);
+		FillFormatTagArray(ExcludeFormats, -1, WaveFormatExcludeFormats);
+		FillFormatTagCombo();
 
-		m_SelectedFormat = FillFormatCombo(m_FormatTagCombo.GetCurSel());
+		m_SelectedFormat = FillFormatCombo(GetFormatTagComboSelection());
 		break;  // go on
 
 	case SaveFile_Mp3File:
@@ -658,8 +659,7 @@ BOOL CSplitToFilesDialog::OnInitDialog()
 	m_eFilenamePrefix.SetExtendedUI();
 	m_RecentFilenamePrefixes.LoadCombo(& m_eFilenamePrefix);
 
-	if (m_SelectedTag.Tag == WAVE_FORMAT_MSAUDIO1
-		|| m_SelectedTag.Tag == WAVE_FORMAT_MSAUDIO1 + 1)
+	if (m_SelectedTag.IsWma())
 	{
 		m_SelectedBitrate = m_SelectedWmaBitrate;
 	}
@@ -718,23 +718,23 @@ BOOL CSplitToFilesDialog::OnInitDialog()
 	unsigned sel = 0;
 	for (unsigned i = 0; i < countof(FileTypeIds); i++)
 	{
+		FileType file_type;
 		VERIFY(s.LoadString(FileTypeIds[i][0]));
 		AfxExtractSubString(filter, s, CDocTemplate::filterName);
 
 		m_SaveAsTypesCombo.AddString(filter);
-		AfxExtractSubString(filter, m_DefExt[i], CDocTemplate::filterExt);
+		AfxExtractSubString(filter, file_type.DefExt, CDocTemplate::filterExt);
 
-		m_TemplateFlags[i] = FileTypeIds[i][1];
+		file_type.TemplateFlags = FileTypeIds[i][1];
 		if (FileTypeIds[i][1] == m_FileType)
 		{
 			sel = i;
 		}
+		m_FileTypes.push_back(file_type);
 	}
 
-	m_NumOfFileTypes = countof(FileTypeIds);
-
 	m_SaveAsTypesCombo.SetCurSel(sel);
-	m_FileType = m_TemplateFlags[sel];
+	m_FileType = m_FileTypes[sel].TemplateFlags;
 
 	SetFileType(m_FileType, TRUE); // force file type set
 
@@ -765,7 +765,7 @@ void CSplitToFilesDialog::OnOK()
 	m_RecentFolders.Flush();
 	m_RecentFilenamePrefixes.Flush();
 
-	m_SelectedFormat = m_AttributesCombo.GetCurSel();
+	m_SelectedFormat = GetAttributesComboSelection();
 
 	CFileSaveUiSupport::m_Profile.FlushAll();
 }
@@ -949,5 +949,45 @@ void CSplitToFilesDialog::OnBnClickedButtonDelete()
 			}
 		}
 	}
+}
+
+void CSplitToFilesDialog::ResetFormatTagCombo()
+{
+	m_FormatTagCombo.ResetContent();
+}
+
+void CSplitToFilesDialog::AddFormatTagComboString(int idx, LPCWSTR string)
+{
+	m_FormatTagCombo.InsertString(idx, string);
+}
+
+int CSplitToFilesDialog::GetFormatTagComboSelection()
+{
+	return m_FormatTagCombo.GetCurSel();
+}
+
+void CSplitToFilesDialog::SetFormatTagComboSelection(int sel)
+{
+	m_FormatTagCombo.SetCurSel(sel);
+}
+
+void CSplitToFilesDialog::ResetAttributesCombo()
+{
+	m_AttributesCombo.ResetContent();
+}
+
+void CSplitToFilesDialog::AddAttributesComboString(int idx, LPCWSTR string)
+{
+	m_AttributesCombo.InsertString(idx, string);
+}
+
+int CSplitToFilesDialog::GetAttributesComboSelection()
+{
+	return m_AttributesCombo.GetCurSel();
+}
+
+void CSplitToFilesDialog::SetAttributesComboSelection(int sel)
+{
+	m_AttributesCombo.SetCurSel(sel);
 }
 

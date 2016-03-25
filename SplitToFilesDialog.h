@@ -71,6 +71,15 @@ protected:
 	virtual BOOL OnInitDialog();
 	virtual BOOL PreTranslateMessage(MSG* pMsg);
 
+	virtual void ResetFormatTagCombo();
+	virtual void AddFormatTagComboString(int idx, LPCWSTR string);
+	virtual int GetFormatTagComboSelection();
+	virtual void SetFormatTagComboSelection(int sel);
+	virtual void ResetAttributesCombo();
+	virtual void AddAttributesComboString(int idx, LPCWSTR string);
+	virtual int GetAttributesComboSelection();
+	virtual void SetAttributesComboSelection(int sel);
+
 	void SetFileType(unsigned nType, BOOL Force = FALSE);
 	void ShowDlgItem(UINT nID, int nCmdShow);
 
