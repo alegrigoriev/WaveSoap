@@ -515,14 +515,14 @@ BOOL CWaveSoapFrontApp::InitInstance()
 
 	AddDocTemplate(m_pWmaTypeTemplate);
 
-	// register DShow document
+	// register DShow documents
 	m_pDShowTypeTemplate = new CWaveSoapDocTemplate(
 													IDR_WAVESOTYPE, IDR_DSHOW_TYPE,
 													RUNTIME_CLASS(CWaveSoapFrontDoc),
 													RUNTIME_CLASS(CChildFrame), // custom MDI child frame
 													RUNTIME_CLASS(CWaveSoapFrontView),
-													OpenDocumentDShowFile);
-
+													OpenDocumentDShowFile | DocumentFlagOpenOnly);
+	// TODO: create templates to save FLAC and OGG
 	AddDocTemplate(m_pDShowTypeTemplate);
 
 	// register AVI document

@@ -133,13 +133,13 @@ protected:
 	BOOL m_bCompatibleFormatsOnly;
 
 	CString m_FormatTagName;
-	static unsigned const MaxFileTypes = 10;
-
-	CString m_DefExt[MaxFileTypes];
-	CString m_FileTypeStrings[MaxFileTypes];
-	CString m_FileTypeFilters[MaxFileTypes];
-	ULONG m_TemplateFlags[MaxFileTypes];
-	unsigned m_NumOfFileTypes;
+	struct FileType
+	{
+		CString DefExt;
+		CString FileTypeStrings;
+		ULONG TemplateFlags;
+	};
+	std::vector<FileType> m_FileTypes;
 
 	CWaveFormat m_Wf; // original format
 	CString WaveFormat;
@@ -156,7 +156,8 @@ protected:
 
 	void FillFileTypes(CDocManager * pDocManager);
 
-	void FillFormatTagCombo(WaveFormatTagEx const ListOfTags[] = NULL, int NumTags = 0, DWORD Flags = 0);
+	void FillFormatTagArray(WaveFormatTagEx const ListOfTags[] = NULL, int NumTags = 0, DWORD Flags = 0);
+	void FillFormatTagCombo();
 
 	void FillWmaFormatCombo();
 	void FillMp3EncoderCombo();
@@ -169,6 +170,14 @@ protected:
 	afx_msg void OnComboAttributesChange();
 
 	static WaveFormatTagEx const ExcludeFormats[];
+	virtual void ResetFormatTagCombo() = 0;
+	virtual void AddFormatTagComboString(int idx, LPCWSTR string) = 0;
+	virtual int GetFormatTagComboSelection() = 0;
+	virtual void SetFormatTagComboSelection(int sel) = 0;
+	virtual void ResetAttributesCombo() = 0;
+	virtual void AddAttributesComboString(int idx, LPCWSTR string) = 0;
+	virtual int GetAttributesComboSelection() = 0;
+	virtual void SetAttributesComboSelection(int sel) = 0;
 };
 
 class CWaveSoapFileSaveDialog : public CFileDialogWithHistory, public CFileSaveUiSupport
@@ -190,17 +199,21 @@ public:
 	virtual UINT OnShareViolation( LPCTSTR lpszPathName );
 
 	void ShowDlgItem(UINT nID, int nCmdShow);
+	void SetDlgItemTextW(UINT nID, LPCWSTR str);
+	void CheckDlgButton(UINT nID, UINT state);
 	void AddAllTypeFilters(CDocManager * pDocManager);
 
+	virtual INT_PTR DoModal();
 protected:
 	CWaveSoapFrontDoc * m_pDocument;
 	CString m_strFilter;
 	CString m_strDefaultExt;
+	int m_NumFormatTagComboItems, m_NumAttributeComboItems;
 
 	virtual void OnInitDone();
+	void OnCommonInitDone();
 	virtual void OnTypeChange();
 	virtual void OnFileNameChange();
-
 	// the function argument is one of SaveFile_WavFile, SaveFile_Mp3File, SaveFile_WmaFile
 	void SetFileType(ULONG nType);
 	void SetFileType(LPCTSTR lpExt);
@@ -211,7 +224,19 @@ protected:
 	afx_msg void OnComboFormatsChange();
 	afx_msg void OnComboAttributesChange();
 	//}}AFX_MSG
+	virtual void OnButtonClicked(DWORD dwIDCtl);
+	virtual void OnCheckButtonToggled(DWORD dwIDCtl, BOOL bChecked);
+	virtual void OnItemSelected(DWORD dwIDCtl, DWORD dwIDItem);
+
 	DECLARE_MESSAGE_MAP()
+	virtual void ResetFormatTagCombo();
+	virtual void AddFormatTagComboString(int idx, LPCWSTR string);
+	virtual int GetFormatTagComboSelection();
+	virtual void SetFormatTagComboSelection(int sel);
+	virtual void ResetAttributesCombo();
+	virtual void AddAttributesComboString(int idx, LPCWSTR string);
+	virtual int GetAttributesComboSelection();
+	virtual void SetAttributesComboSelection(int sel);
 	CWnd* GetFileDlg()
 	{
 #if _WIN32_WINNT < _WIN32_WINNT_WIN6
