@@ -36,7 +36,7 @@ protected:
 	//}}AFX_VIRTUAL
 	void OnDraw(CDC* pDC) {} // not called
 	void OnDraw(CPaintDC* pDC, CRgn * UpdateRgn);
-	enum { MaxDrawColumnPerOnDraw = 256};
+	enum { MaxDrawColumnPerOnDraw = 512};
 	// Implementation
 protected:
 	virtual ~CWaveFftView();
@@ -148,7 +148,6 @@ protected:
 	LONG_volatile m_NumberOfFftCalculated;
 	LONG_volatile m_NumberOfPixelsSet;
 	LONG_volatile m_NumberOfColumnsSet;
-	LONG_volatile m_NumberOfPixelJobs;
 #endif
 };
 
