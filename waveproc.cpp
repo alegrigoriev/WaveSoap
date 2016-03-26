@@ -1203,7 +1203,7 @@ void quad_regression(double const X[], double const Y[], unsigned NumPoints, dou
 	C_result = C;
 }
 
-typedef complex<double> complex_d;
+typedef std::complex<double> complex_d;
 typedef std::vector<complex_d> complex_vector;
 typedef std::vector<double> double_vector;
 typedef double_vector::iterator double_iterator;
@@ -2766,7 +2766,7 @@ void SIGNAL_PARAMS::AnalyzeStereoFftSample(std::complex<DATA> left, std::complex
 	}
 }
 
-void SIGNAL_PARAMS::AnalyzeFftSample(complex<DATA> smp, int nSample)
+void SIGNAL_PARAMS::AnalyzeFftSample(std::complex<DATA> smp, int nSample)
 {
 
 	if ( ! PreprocessFftSample(smp, nSample))
@@ -3629,7 +3629,7 @@ void NoiseReductionChannelData::ProcessInputFft()
 
 	InputDataBuffer.Discard(m_FftOrder);
 
-	FastFourierTransform(m_FftInBuffer.m_pData, m_FftOutBuffer.m_pData, m_FftOrder * 2);
+	FastFourierTransform((float*)m_FftInBuffer, (std::complex<float>*)m_FftOutBuffer, m_FftOrder * 2);
 }
 
 void NoiseReductionChannelData::AnalyzeInputFft()
@@ -3689,7 +3689,7 @@ void NoiseReductionChannelData::ProcessInverseFft()
 		if ( ! m_bPassThrough)
 		{
 			// perform inverse transform
-			FastInverseFourierTransform(m_FftOutBuffer.m_pData, m_FftInBuffer.m_pData, m_FftOrder * 2);
+			FastInverseFourierTransform((std::complex<float>*)m_FftOutBuffer, (float*)m_FftInBuffer, m_FftOrder * 2);
 			float const * Window = & pNr->m_Window[0];
 
 			// add the processed data back to the output buffer
@@ -4483,6 +4483,9 @@ void CResampleFilter::InitSlidingInterpolatedFilter(unsigned NumSincWaves, unsig
 	m_bUseInterpolatedFilter = TRUE;
 	// first zero position is defined be the window shape
 	m_SamplesInFilter = SamplesInFilter;
+	__assume(m_EffectiveOutputSampleRate != 0);
+	__assume(m_SamplesInFilter != 0);
+	__assume(TableSize != 0);
 	// number of source taps should be m_SamplesInFilter
 	double InputPeriod = 4294967296. / m_SamplesInFilter; // 0x100000000LL
 	m_InputPeriod = (unsigned __int32)(InputPeriod);

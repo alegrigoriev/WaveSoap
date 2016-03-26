@@ -324,6 +324,29 @@ CWaveFftView::CWaveFftView()
 {
 	m_FftOrder = 1 << GetApp()->m_FftBandsOrder;
 	m_FftSpacing = m_FftOrder;
+
+#if 0 && defined(_DEBUG)
+	// verify FFT functions
+	typedef float data;
+	int const num_bands = 8;
+	data real_src[num_bands*2];
+	std::complex<data> complex_src[num_bands];
+	std::complex<data> complex_dst[num_bands + 1];
+
+	for (int f = 0; f < num_bands; f++)
+	{
+		for (int i = 0; i < countof(real_src); i++)
+		{
+			real_src[i] = cos(M_PI * 2 * f * i / countof(real_src));
+		}
+		FastFourierTransform(real_src, complex_dst, countof(real_src));
+		for (int i = 0; i < countof(real_src); i++)
+		{
+			real_src[i] = sin(M_PI * 2 * (f + 1) * i / countof(real_src));
+		}
+		FastFourierTransform(real_src, complex_dst, countof(real_src));
+	}
+#endif
 }
 
 CWaveFftView::~CWaveFftView()
@@ -539,7 +562,7 @@ float const * CWaveFftView::GetFftResult(long FftColumn, unsigned channel)
 			pFftBuf[k] *= m_pFftWindow[k];
 		}
 
-		FastFourierTransform(pFftBuf, reinterpret_cast<complex<float> *>(pFftBuf),
+		FastFourierTransform(pFftBuf, reinterpret_cast<std::complex<float> *>(pFftBuf),
 							m_FftOrder * 2);
 
 		for (int i = 0, k = 0; i < m_FftOrder; i++, k += 2)
