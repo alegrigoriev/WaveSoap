@@ -158,7 +158,7 @@ void CSpectrumSectionView::CalculateFftPowerSum(float * FftSum,
 				FftArray[i] = *pSrcF32Array * m_pFftWindow[i];
 			}
 
-			FastFourierTransform(&FftArray[0], (complex<float>*)&FftArray[0], FftOrder * 2);
+			FastFourierTransform(&FftArray[0], reinterpret_cast<std::complex<float>*>(&FftArray[0]), FftOrder * 2);
 
 			pFftSum[0] += FftArray[0] * FftArray[0];
 
