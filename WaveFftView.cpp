@@ -614,22 +614,41 @@ struct FftGraphBand
 struct DrawFftWorkItem : WorkerThreadPoolItem
 {
 	CWaveFftView * pView;
-	long nCurrentFftColumn;
-	int nChannel;
-	unsigned char* pColBmp;
-	int stride;
-	int nColumns;
-	FftGraphBand * pId;
-	RGBQUAD const * pColor;	// palette
-	double PowerLogToPalIndex;
-	int  valid_top;
-	int  valid_bottom;
+	float const**FftResultVector;
+	union
+	{
+		struct
+		{
+			long FirstFftColumn;
+			long FftColumns[16];
+			int NumFftColumns;
+		} Fft;
+		struct
+		{
+			int x_left;
+			int x_right;
+			unsigned char* pColBmp;
+			int stride;
+			int FirstFftColumnWidth;	// first column to draw may have partial width
+			int FftColumnWidth;			// width of all other columns
+			FftGraphBand const * pId;
+			RGBQUAD const * pColor;	// palette
+			double PowerLogToPalIndex;
+			int  update_top;
+			int  update_bottom;
+		} Bmp;
+	};
 };
 
 bool CWaveFftView::CalculateFftColumnWorkitem(WorkerThreadPoolItem * pItem)
 {
 	DrawFftWorkItem * pDrawItem = static_cast<DrawFftWorkItem *>(pItem);
-	pDrawItem->pView->GetFftResult(pDrawItem->nCurrentFftColumn, 0);
+	for (int i = 0; i < pDrawItem->Fft.NumFftColumns; i++)
+	{
+		pDrawItem->FftResultVector[pDrawItem->Fft.FftColumns[i] - pDrawItem->Fft.FirstFftColumn]
+			= pDrawItem->pView->GetFftResult(pDrawItem->Fft.FftColumns[i], 0);
+	}
+	pDrawItem->Fft.NumFftColumns = 0;
 	return true;
 }
 
@@ -642,89 +661,87 @@ bool CWaveFftView::FillChannelFftColumnWorkitem(WorkerThreadPoolItem * pItem)
 
 void CWaveFftView::FillChannelFftColumn(DrawFftWorkItem * pDrawItem)
 {
-	unsigned char* pColBmp = pDrawItem->pColBmp;
-	int stride = pDrawItem->stride;
-	int nColumns = pDrawItem->nColumns;
-	double PowerLogToPalIndex = pDrawItem->PowerLogToPalIndex;
-	int valid_top = pDrawItem->valid_top;
-	int valid_bottom = pDrawItem->valid_bottom;
+	int stride = pDrawItem->Bmp.stride;
+	double PowerLogToPalIndex = pDrawItem->Bmp.PowerLogToPalIndex;
+	int update_top = pDrawItem->Bmp.update_top;
+	int update_bottom = pDrawItem->Bmp.update_bottom;
 
-#ifdef _DEBUG
-	m_NumberOfPixelJobs++;
-	m_NumberOfColumnsSet += nColumns;
-#endif
-	// the result is already calculated and cached, no cost here
-	float const *pData = GetFftResult(pDrawItem->nCurrentFftColumn, pDrawItem->nChannel);
+	FftGraphBand const * pId = pDrawItem->Bmp.pId;
 
-	FftGraphBand const * pId = pDrawItem->pId;
 	for (int ff = 0; ff < m_FftOrder; ff++, pId++)
 	{
-		if (pId->NumDisplayRows == 0)
+		if (pId->NumBandsToSum == 0)
 		{
 			break;
 		}
-		if (pId->y >= valid_top
-			&& pId->y + pId->NumDisplayRows <= valid_bottom)
+		// the graph band array is filled from bottom to top
+		// valid_top to valid_bottom is exclided from update
+		if (pId->y + pId->NumDisplayRows <= update_top)
+		{
+			// this band is in the area not to update
+			break;
+		}
+		if (pId->y >= update_bottom)
 		{
 			// this band is in the area not to update
 			continue;
 		}
-		unsigned char red = 0;
-		unsigned char g = 0;
-		unsigned char b = 0;
-		if (pData != NULL)
+
+		int NumPixelsAcross = pDrawItem->Bmp.FirstFftColumnWidth;
+		for (int x = pDrawItem->Bmp.x_left, i = 0; x < pDrawItem->Bmp.x_right; x += NumPixelsAcross, i++, NumPixelsAcross = pDrawItem->Bmp.FftColumnWidth)
 		{
-			ASSERT(pId->FftBand < m_FftOrder);
-			ASSERT(pId->FftBand + pId->NumBandsToSum <= m_FftOrder);
+			BYTE * pRgb = pDrawItem->Bmp.pColBmp + pId->y * stride + x * 3;
 
-			float sum = 0.;
-			for (int f = pId->FftBand; f < pId->FftBand + pId->NumBandsToSum; f++)
+			unsigned char red = 0;
+			unsigned char g = 0;
+			unsigned char b = 0;
+			float const * pData = pDrawItem->FftResultVector[i];
+			if (pData != NULL)
 			{
-				sum += pData[f];
-			}
-			sum /= pId->NumBandsToSum;
-
-			int PaletteIndex = 255;
-
-			if (sum != 0.)
-			{
-				// max power= (32768 * m_FftOrder * 2) ^ 2
-				PaletteIndex = int(PowerLogToPalIndex * -log(sum));
-
-				if (PaletteIndex < 0)
+				float sum = 0.;
+				for (int f = pId->FftBand; f < pId->FftBand + pId->NumBandsToSum; f++)
 				{
-					PaletteIndex = 0;
+					sum += pData[f];
 				}
-				else if (PaletteIndex > 255)
+				sum /= pId->NumBandsToSum;
+
+				int PaletteIndex = 255;
+
+				if (sum != 0.)
 				{
-					PaletteIndex = 255;
+					// max power= (32768 * m_FftOrder * 2) ^ 2
+					PaletteIndex = int(PowerLogToPalIndex * -log(sum));
+
+					if (PaletteIndex < 0)
+					{
+						PaletteIndex = 0;
+					}
+					else if (PaletteIndex > 255)
+					{
+						PaletteIndex = 255;
+					}
 				}
+
+				RGBQUAD const * pColor = &pDrawItem->Bmp.pColor[PaletteIndex];
+				// set the color to pId->nNumOfRows rows
+				red = pColor->rgbRed;
+				g = pColor->rgbGreen;
+				b = pColor->rgbBlue;
 			}
-
-			RGBQUAD const * pColor = &pDrawItem->pColor[PaletteIndex];
-			// set the color to pId->nNumOfRows rows
-			red = pColor->rgbRed;
-			g = pColor->rgbGreen;
-			b = pColor->rgbBlue;
-		}
-
-		BYTE * pRgb = pColBmp + pId->y * stride;
-
-		ASSERT(pId->y >= m_Heights.ch[pDrawItem->nChannel].clip_top);
-		ASSERT(pId->y + pId->NumDisplayRows <= m_Heights.ch[pDrawItem->nChannel].clip_bottom);
 
 #ifdef _DEBUG
-		m_NumberOfPixelsSet += pId->NumDisplayRows * nColumns;
+			m_NumberOfPixelsSet += pId->NumDisplayRows * NumPixelsAcross;
 #endif
-		for (int y = 0; y < pId->NumDisplayRows; y++, pRgb += stride)
-		{
-			// set the color to nColumns pixels across
-			BYTE * pRowRgb = pRgb;
-			for (int x = 0; x < nColumns; x++, pRowRgb += 3)
+			for (int y = 0; y < pId->NumDisplayRows; y++, pRgb += stride)
 			{
-				pRowRgb[0] = b;    // B
-				pRowRgb[1] = g;    // G
-				pRowRgb[2] = red;    // R
+				// set the color to nColumns pixels across
+				BYTE * pRowRgb = pRgb;
+				for (int xx = 0; xx < NumPixelsAcross; xx++, pRowRgb += 3)
+				{
+					pRowRgb[0] = b;    // B
+					pRowRgb[1] = g;    // G
+					pRowRgb[2] = red;    // R
+				}
 			}
 		}
 	}
@@ -739,63 +756,77 @@ bool CWaveFftView::FillFftColumnPaletteWorkitem(WorkerThreadPoolItem * pItem)
 
 void CWaveFftView::FillFftColumnPalette(DrawFftWorkItem * pDrawItem)
 {
-	unsigned char* pColBmp = pDrawItem->pColBmp;
-	int stride = pDrawItem->stride;
-	int nColumns = pDrawItem->nColumns;
-	double PowerLogToPalIndex = pDrawItem->PowerLogToPalIndex;
+	int stride = pDrawItem->Bmp.stride;
+	double PowerLogToPalIndex = pDrawItem->Bmp.PowerLogToPalIndex;
+	int update_top = pDrawItem->Bmp.update_top;
+	int update_bottom = pDrawItem->Bmp.update_bottom;
 
-	float const *pData = GetFftResult(pDrawItem->nCurrentFftColumn, pDrawItem->nChannel);
+	FftGraphBand const * pId = pDrawItem->Bmp.pId;
 
-	FftGraphBand const * pId = pDrawItem->pId;
-#ifdef _DEBUG
-	m_NumberOfPixelJobs++;
-	m_NumberOfColumnsSet += nColumns;
-#endif
 	for (int ff = 0; ff < m_FftOrder; ff++, pId++)
 	{
-		if (pId->NumDisplayRows == 0)
+		if (pId->NumBandsToSum == 0)
 		{
 			break;
 		}
-		unsigned char ColorIndex = 0;
-		if (pData != NULL)
+		// the graph band array is filled from bottom to top
+		// valid_top to valid_bottom is exclided from update
+		if (pId->y + pId->NumDisplayRows <= update_top)
 		{
-			float sum = 0.;
-			for (int f = pId->FftBand; f < pId->FftBand + pId->NumBandsToSum; f++)
-			{
-				sum += pData[f];
-			}
-			sum /= pId->NumBandsToSum;
-
-			int PaletteIndex = 127;
-
-			if (sum != 0.)
-			{
-				PaletteIndex = int(PowerLogToPalIndex * - log(sum));
-
-				if (PaletteIndex < 0)
-				{
-					PaletteIndex = 0;
-				}
-				else if (PaletteIndex > 127)
-				{
-					PaletteIndex = 127;
-				}
-			}
-
-			PaletteIndex += 10;
+			// this band is in the area not to update
+			break;
 		}
-#ifdef _DEBUG
-		m_NumberOfPixelsSet += pId->NumDisplayRows * nColumns;
-#endif
-		// set the color to pId->nNumOfRows rows
-		BYTE * pPal = pColBmp + pId->y * stride;
-		for (int y = 0; y < pId->NumDisplayRows; y++, pPal += stride)
+		if (pId->y >= update_bottom)
 		{
-			// set the color to nColumns pixels across
-			for (int x = 0; x < nColumns; x++)
+			// this band is in the area not to update
+			continue;
+		}
+
+		int NumPixelsAcross = pDrawItem->Bmp.FirstFftColumnWidth;
+		for (int x = pDrawItem->Bmp.x_left, i = 0; x < pDrawItem->Bmp.x_right; x += NumPixelsAcross, i++, NumPixelsAcross = pDrawItem->Bmp.FftColumnWidth)
+		{
+			BYTE * pPal = pDrawItem->Bmp.pColBmp + pId->y * stride + x;
+
+			unsigned char ColorIndex = 0;
+			float const * pData = pDrawItem->FftResultVector[i];
+			if (pData != NULL)
 			{
-				pPal[x] = ColorIndex;
+				float sum = 0.;
+				for (int f = pId->FftBand; f < pId->FftBand + pId->NumBandsToSum; f++)
+				{
+					sum += pData[f];
+				}
+				sum /= pId->NumBandsToSum;
+
+				int PaletteIndex = 127;
+
+				if (sum != 0.)
+				{
+					PaletteIndex = int(PowerLogToPalIndex * -log(sum));
+
+					if (PaletteIndex < 0)
+					{
+						PaletteIndex = 0;
+					}
+					else if (PaletteIndex > 127)
+					{
+						PaletteIndex = 127;
+					}
+				}
+
+				PaletteIndex += 10;
+			}
+#ifdef _DEBUG
+			m_NumberOfPixelsSet += pId->NumDisplayRows * NumPixelsAcross;
+#endif
+			// set the color to pId->nNumOfRows rows
+			for (int y = 0; y < pId->NumDisplayRows; y++, pPal += stride)
+			{
+				// set the color to nColumns pixels across
+				for (int xx = 0; xx < NumPixelsAcross; xx++)
+				{
+					pPal[xx] = ColorIndex;
+				}
 			}
 		}
 	}
@@ -830,7 +861,9 @@ void CWaveFftView::OnDraw(CPaintDC* pDC, CRgn * UpdateRgn)
 	{
 		return;
 	}
-
+#ifdef _DEBUG
+	m_NumberOfColumnsSet += r.right - r.left;
+#endif
 	int NewFftSpacing = m_FftOrder / 4;
 
 	if (NewFftSpacing < m_HorizontalScale)
@@ -843,7 +876,6 @@ void CWaveFftView::OnDraw(CPaintDC* pDC, CRgn * UpdateRgn)
 
 	if (!m_FftWindowValid)
 	{
-		TRACE("Calculating FFT window\n");
 		if (!m_pFftWindow)
 		{
 			m_pFftWindow.Allocate(m_FftOrder * 2);
@@ -907,7 +939,7 @@ void CWaveFftView::OnDraw(CPaintDC* pDC, CRgn * UpdateRgn)
 
 	bmi.bmi.bmiHeader.biSize = sizeof (BITMAPINFOHEADER);
 	bmi.bmi.bmiHeader.biWidth = r.right - r.left;
-	bmi.bmi.bmiHeader.biHeight = -height;
+	bmi.bmi.bmiHeader.biHeight = -height;	// this will be top-down bitmap, with origin in top left
 	bmi.bmi.bmiHeader.biPlanes = 1;
 	bmi.bmi.bmiHeader.biCompression = BI_RGB;
 	bmi.bmi.bmiHeader.biSizeImage = 0;
@@ -1009,11 +1041,26 @@ void CWaveFftView::OnDraw(CPaintDC* pDC, CRgn * UpdateRgn)
 	// rows to fill with this color
 	// build an array of vertical offsets for each band and for each channel
 
-	ATL::CHeapPtr<FftGraphBand> pIdArray[MAX_NUMBER_OF_CHANNELS];
-	RgnData UpdateRgnData[MAX_NUMBER_OF_CHANNELS];
+	ATL::CHeapPtr<FftGraphBand> IdArray;
+	FftGraphBand* pIdArray[MAX_NUMBER_OF_CHANNELS] = { 0 };
+	RECT UpdateRects[MAX_NUMBER_OF_CHANNELS * 2] = { 0 };	// each channel area may have update area on top and bottom
+	ATL::CHeapPtr<float const*> FftResultArray;
+	RgnData UpdateRgnData;
+	if (!UpdateRgnData.GetRegionData(UpdateRgn)
+		|| !IdArray.Allocate(cr.Height() + nChannels)
+		|| !FftResultArray.Allocate(r.Width()))
+	{
+		return;
+	}
 
-	CRgn ChannelRgn;
-	ChannelRgn.CreateRectRgn(0, 0, 0, 0);
+#ifdef _DEBUG
+	if (0) for (RECT * p = UpdateRgnData.begin(), *end = UpdateRgnData.end(); p != end; p++)
+		{
+			TRACE(L"Update Rect: left=%d, top=%d, right=%d, bottom=%d\n", p->left, p->top, p->right, p->bottom);
+		}
+#endif
+
+	FftGraphBand * pId = IdArray;
 
 	for (int ch = 0; ch < nChannels; ch++)
 	{
@@ -1021,7 +1068,6 @@ void CWaveFftView::OnDraw(CPaintDC* pDC, CRgn * UpdateRgn)
 		int k;
 		int top = m_Heights.ch[ch].clip_top;
 		int bottom = m_Heights.ch[ch].clip_bottom;
-		ChannelRgn.SetRectRgn(r.left, top, r.right, bottom);
 
 		int ScaledHeight = m_Heights.ch[ch].bottom - m_Heights.ch[ch].top;
 		int OffsetPixels = 0;
@@ -1032,36 +1078,82 @@ void CWaveFftView::OnDraw(CPaintDC* pDC, CRgn * UpdateRgn)
 			OffsetPixels = int(ScaledHeight * m_FirstbandVisible/ m_FftOrder);
 		}
 
-		if ( !pIdArray[ch].Allocate(bottom - top + 1))
+		int valid_top = top;
+		int valid_bottom = bottom + 1;
+		CRect rr(r.left, valid_top, r.right, valid_bottom);
+
+		RECT * pr = UpdateRgnData.begin();
+		RECT * end = UpdateRgnData.end();
+		// find the first rectangle not crossing the target
+
+		for (; pr < end; pr++)
 		{
-			return;          // Allocate is non-throwing
+			if (pr->top <= valid_top)
+			{
+				if (valid_top < pr->bottom)
+				{
+					valid_top = pr->bottom;
+				}
+			}
+			else if (pr->bottom >= valid_bottom)
+			{
+				if (valid_bottom > pr->top)
+				{
+					valid_bottom = pr->top;
+				}
+			}
+			else if (pr->bottom - valid_top < valid_bottom - pr->top)
+			{
+				valid_top = pr->bottom;
+			}
+			else
+			{
+				valid_bottom = pr->top;
+			}
 		}
 
-		// get the update region for the channel
-		ChannelRgn.CombineRgn(&ChannelRgn, UpdateRgn, RGN_AND);
-
-		if (!UpdateRgnData[ch].GetRegionData(&ChannelRgn))
+		if (valid_top == top
+			&& valid_bottom == bottom + 1)
 		{
-			return;
+			// no update on this channel, no need to fill pIdArray
+			continue;
+		}
+		if (valid_top >= valid_bottom)
+		{
+			valid_top = top;
+			valid_bottom = top;
 		}
 
-		std::sort(UpdateRgnData[ch].begin(), UpdateRgnData[ch].end(), rect_less);
+		pIdArray[ch] = pId;
+
+		UpdateRects[ch * 2].left = r.left;
+		UpdateRects[ch * 2].right = r.right;
+		UpdateRects[ch * 2].top = top;
+		UpdateRects[ch * 2].bottom = valid_top;
+
+		UpdateRects[ch * 2 + 1].left = r.left;
+		UpdateRects[ch * 2 + 1].right = r.right;
+		UpdateRects[ch * 2 + 1].top = valid_bottom;
+		UpdateRects[ch * 2 + 1].bottom = bottom+1;
+
 		// fill the array
 		int y = bottom;
-		FftGraphBand * pId = pIdArray[ch];
-		for (k = 0, LastRow = 0; k < m_FftOrder; k++, pId++)
+		for (k = 0, LastRow = 0; k < m_FftOrder; k++)
 		{
 			ASSERT(k < bottom - top + 1);
+			ASSERT(pId < &IdArray[cr.Height() + nChannels]);
+
 			if (y <= top)
 			{
 				pId->NumBandsToSum = 0;
 				pId->NumDisplayRows = 0;
+				pId++;
 				break;
 			}
 
 			int FirstFftSample = (bottom - y + OffsetPixels) * m_FftOrder / ScaledHeight;
 
-			pId->FftBand = FirstFftSample;
+			pId->FftBand = FirstFftSample + ch * m_FftOrder;
 			pId->NumDisplayRows = 0;
 			// see if the Fft band will take multiple display rows, or a single display row will take multiple bands
 
@@ -1085,72 +1177,81 @@ void CWaveFftView::OnDraw(CPaintDC* pDC, CRgn * UpdateRgn)
 				}
 			}
 
-			pId->y = y;  // top of display band
-
-			if (0 && r.left == -1 && k < 20) TRACE("FftView: ch:%d y=%d-%d fft band %d-%d\n", ch, pId->y, pId->y + pId->NumDisplayRows -1,
-													pId->FftBand, pId->FftBand + pId->NumBandsToSum -1);
+			if (y < valid_top || y + pId->NumDisplayRows > valid_bottom)
+			{
+				pId->y = y;  // top of display band
+				pId++;
+			}	// otherwise this band is not drawn
 		}
 	}
 
+	long FirstFftColumn = long(WindowXtoSample(r.left) / m_FftSpacing);
 	DrawFftWorkItem wi[128];	// 32 items per job
 	WorkerThreadPoolJob ThreadPoolJob[4];
 	for (int a = 0; a < countof(wi); a++)
 	{
 		wi[a].pView = this;
-		wi[a].PowerLogToPalIndex = PowerLogToPalIndex;
-		wi[a].stride = stride;
+		wi[a].Bmp.PowerLogToPalIndex = PowerLogToPalIndex;
+		wi[a].Bmp.stride = stride;
+		wi[a].FftResultVector = FftResultArray;
+		wi[a].Fft.FirstFftColumn = FirstFftColumn;
 		ThreadPoolJob[a / (countof(wi) / countof(ThreadPoolJob))].m_DoneItems.InsertTail(&wi[a]);
 	}
 	int JobsOutstanding = 0;
 	int NextJob = 0;
 
 	// first, pre-calculate all FFT, one per work item
-	for(int col = r.left; col < r.right; )
+	int FftColumnsFilled = 0;
+
+	long nCurrentFftColumn = FirstFftColumn;
+	for(int col = r.left; col < r.right; nCurrentFftColumn++)
 	{
 		// 'left' is the first sample index in the area to redraw
-		int nColumns;
-		long nCurrentFftColumn;
-		int CurrentColumnRight;
-
-		nCurrentFftColumn = long(WindowXtoSample(col) / m_FftSpacing);
-		if (m_FftSpacing == m_HorizontalScale)
-		{
-			// each FFT takes one column of display
-			CurrentColumnRight = col + 1;
-		}
-		else
+		int CurrentColumnRight = col + 1;
+		if (m_FftSpacing != m_HorizontalScale)
 		{
 			CurrentColumnRight = (int)SampleToX((nCurrentFftColumn + 1) * m_FftSpacing);
 		}
 
 		ASSERT(nCurrentFftColumn >= 0);
 
-		if (CurrentColumnRight > r.right)
-		{
-			CurrentColumnRight = r.right;
-		}
-
-		nColumns = CurrentColumnRight - col;
 		col = CurrentColumnRight;
 
-		if (IsFftResultCalculated(nCurrentFftColumn))
-		{
-			continue;
-		}
 		if (JobsOutstanding == countof(ThreadPoolJob))
 		{
 			ThreadPoolJob[NextJob].WaitForCompletion();
 			JobsOutstanding--;
 		}
 
-		DrawFftWorkItem * pItem = static_cast<DrawFftWorkItem *>(ThreadPoolJob[NextJob].m_DoneItems.RemoveHead());
-		pItem->nCurrentFftColumn = nCurrentFftColumn;
+		DrawFftWorkItem * pItem = static_cast<DrawFftWorkItem *>(ThreadPoolJob[NextJob].m_DoneItems.First());
+
+		if ( !IsFftResultCalculated(nCurrentFftColumn))
+		{
+			pItem->Fft.FftColumns[FftColumnsFilled] = nCurrentFftColumn;
+			FftColumnsFilled++;
+		}
+		else
+		{
+			ASSERT(nCurrentFftColumn - FirstFftColumn < r.Width());
+			FftResultArray[nCurrentFftColumn - FirstFftColumn] = GetFftResult(nCurrentFftColumn, 0);
+		}
+
+		if (FftColumnsFilled == 0
+			|| (FftColumnsFilled < countof(pItem->Fft.FftColumns)
+				&& col < r.right))
+		{
+			continue;
+		}
+		pItem->Fft.NumFftColumns = FftColumnsFilled;
+		FftColumnsFilled = 0;
+		ThreadPoolJob[NextJob].m_DoneItems.RemoveHead();
 
 		pItem->Proc = CalculateFftColumnWorkitem;
 
 		ThreadPoolJob[NextJob].AddWorkitem(pItem);
 
-		if (ThreadPoolJob[NextJob].m_DoneItems.IsEmpty())
+		if (ThreadPoolJob[NextJob].m_DoneItems.IsEmpty()
+			|| col >= r.right)
 		{
 			GetApp()->AddWorkerThreadPoolJob(&ThreadPoolJob[NextJob]);
 			JobsOutstanding++;
@@ -1158,126 +1259,90 @@ void CWaveFftView::OnDraw(CPaintDC* pDC, CRgn * UpdateRgn)
 		}
 	}
 
-	// see if we have a job we didn't post yet. Need to flush it before starting to fill the bitmap
+	// 'left' is the first sample index in the area to redraw
+	int FirstColumnWidth = 1;
+
+	if (m_FftSpacing != m_HorizontalScale)
+	{
+		FirstColumnWidth = (int)SampleToX((FirstFftColumn + 1) * m_FftSpacing) - r.left;
+	}
+
+	ASSERT(FirstFftColumn >= 0);
+
+	if (FirstColumnWidth + r.left > r.right)
+	{
+		FirstColumnWidth = r.right - r.left;
+	}
+
+	RECT CurrentRect = UpdateRects[0];
+	for (int ch2 = 0; ; )
+	{
+		if (CurrentRect.top >= CurrentRect.bottom)
+		{
+			ch2++;
+			if (ch2 >= nChannels * 2)
+			{
+				break;
+			}
+			CurrentRect = UpdateRects[ch2];
+			continue;
+		}
+		int ch = ch2 / 2;
+		// find out the Y range to update
+
+		if (JobsOutstanding == countof(ThreadPoolJob))
+		{
+			ThreadPoolJob[NextJob].WaitForCompletion();
+			JobsOutstanding--;
+		}
+
+		int RowsPerWorkitem = std::max(cr.Height() / 32, 16);
+		// allow one workitem to fill up to 1/32 of the total screen width
+		if (CurrentRect.bottom - CurrentRect.top < RowsPerWorkitem * 3 / 2)
+		{
+			RowsPerWorkitem = CurrentRect.bottom - CurrentRect.top;
+		}
+		DrawFftWorkItem * pItem = static_cast<DrawFftWorkItem *>(ThreadPoolJob[NextJob].m_DoneItems.RemoveHead());
+		pItem->Bmp.FirstFftColumnWidth = FirstColumnWidth;
+		pItem->Bmp.FftColumnWidth = int(m_FftSpacing / m_HorizontalScale);
+		pItem->Bmp.x_left = 0;
+		pItem->Bmp.x_right = r.right - r.left;
+
+		pItem->Bmp.pColBmp = pBmp;
+
+		pItem->Bmp.update_top = CurrentRect.top;
+		CurrentRect.top += RowsPerWorkitem;
+		pItem->Bmp.update_bottom = CurrentRect.top;
+
+		if (bUsePalette)
+		{
+			pItem->Proc = FillFftColumnPaletteWorkitem;
+		}
+		else
+		{
+			pItem->Bmp.pColor = bmi.MorebmiColors;
+			pItem->Proc = FillChannelFftColumnWorkitem;
+		}
+		pItem->Bmp.pId = pIdArray[ch];
+
+		ThreadPoolJob[NextJob].AddWorkitem(pItem);
+
+		if (ThreadPoolJob[NextJob].m_DoneItems.IsEmpty())
+		{
+			GetApp()->AddWorkerThreadPoolJob(&ThreadPoolJob[NextJob]);
+			JobsOutstanding++;
+			NextJob = (NextJob + 1) & (countof(ThreadPoolJob) - 1);
+		}
+	}
+
+	// see if we have a job we didn't post yet
 	if (JobsOutstanding < countof(ThreadPoolJob) && ThreadPoolJob[NextJob].m_WorkitemsPending)
 	{
 		GetApp()->AddWorkerThreadPoolJob(&ThreadPoolJob[NextJob]);
 		JobsOutstanding++;
 		NextJob = (NextJob + 1) & (countof(ThreadPoolJob) - 1);
 	}
-	for(int col = r.left; col < r.right; )
-	{
-		unsigned char * pColBmp = pBmp + (col - r.left) * BytesPerPixel;
-		// 'left' is the first sample index in the area to redraw
-		int nColumns;
-		long nCurrentFftColumn;
-		int CurrentColumnRight;
-		if (m_FftSpacing <= m_HorizontalScale)
-		{
-			// each FFT takes one column of display
-			nCurrentFftColumn = int(WindowXtoSample(col) / m_FftSpacing);
-			CurrentColumnRight = col + 1;
-		}
-		else
-		{
-			nCurrentFftColumn = long(0.5 + WindowXtoSample(col) / m_FftSpacing);
-			CurrentColumnRight = (int)SampleToX(nCurrentFftColumn * m_FftSpacing + m_FftSpacing/2);
-		}
 
-		ASSERT(nCurrentFftColumn >= 0);
-
-		if (CurrentColumnRight > r.right)
-		{
-			CurrentColumnRight = r.right;
-		}
-
-		nColumns = CurrentColumnRight - col;
-		col = CurrentColumnRight;
-		for (int ch = 0; ch < nChannels; ch++)
-		{
-			// find out the Y range to update
-			int clip_top = m_Heights.ch[ch].clip_top;
-			int clip_bottom = m_Heights.ch[ch].clip_bottom;
-			int valid_top = clip_top;
-			int valid_bottom = clip_bottom;
-			CRect rr(col, valid_top, col, valid_bottom);
-
-			RECT * begin = UpdateRgnData[ch].begin();
-			RECT * end = UpdateRgnData[ch].end();
-			// find the first rectangle not crossing the target
-			end = std::lower_bound(begin, end, rr, rect_left_less);
-			rr.left = col - nColumns;
-
-			for (; begin < end; begin++)
-			{
-				if (begin->right < rr.left)
-				{
-					continue;
-				}
-				if (begin->top <= valid_top)
-				{
-					if (valid_top < begin->bottom)
-					{
-						valid_top = begin->bottom;
-					}
-				}
-				else if (begin->bottom >= valid_bottom)
-				{
-					if (valid_bottom > begin->top)
-					{
-						valid_bottom = begin->top;
-					}
-				}
-				else if (begin->bottom - valid_top < valid_bottom - begin->top)
-				{
-					valid_top = begin->bottom;
-				}
-				else
-				{
-					valid_bottom = begin->top;
-				}
-			}
-
-			if (valid_top == clip_top
-				&& valid_bottom == clip_bottom)
-			{
-				continue;
-			}
-
-			if (JobsOutstanding == countof(ThreadPoolJob))
-			{
-				ThreadPoolJob[NextJob].WaitForCompletion();
-				JobsOutstanding--;
-			}
-			DrawFftWorkItem * pItem = static_cast<DrawFftWorkItem *>(ThreadPoolJob[NextJob].m_DoneItems.RemoveHead());
-			pItem->nCurrentFftColumn = nCurrentFftColumn;
-			pItem->nColumns = nColumns;
-			pItem->pColBmp = pColBmp;
-			pItem->valid_top = valid_top;
-			pItem->valid_bottom = valid_bottom;
-
-			if (bUsePalette)
-			{
-				pItem->Proc = FillFftColumnPaletteWorkitem;
-			}
-			else
-			{
-				pItem->pColor = bmi.MorebmiColors;
-				pItem->Proc = FillChannelFftColumnWorkitem;
-			}
-			pItem->nChannel = ch;
-			pItem->pId = pIdArray[ch];
-
-			ThreadPoolJob[NextJob].AddWorkitem(pItem);
-
-			if (ThreadPoolJob[NextJob].m_DoneItems.IsEmpty())
-			{
-				GetApp()->AddWorkerThreadPoolJob(&ThreadPoolJob[NextJob]);
-				JobsOutstanding++;
-				NextJob = (NextJob + 1) & (countof(ThreadPoolJob) - 1);
-			}
-		}
-	}
 	for (int ch = 0; ch + 1 != nChannels; ch++)
 	{
 		// draw a gray separator line
@@ -1303,13 +1368,6 @@ void CWaveFftView::OnDraw(CPaintDC* pDC, CRgn * UpdateRgn)
 		}
 	}
 
-	// see if we have a job we didn't post yet
-	if (JobsOutstanding < countof(ThreadPoolJob) && ThreadPoolJob[NextJob].m_WorkitemsPending)
-	{
-		GetApp()->AddWorkerThreadPoolJob(&ThreadPoolJob[NextJob]);
-		JobsOutstanding++;
-		NextJob = (NextJob + 1) & (countof(ThreadPoolJob) - 1);
-	}
 	// wait for all jobs complete.
 
 	for (NextJob = (NextJob - JobsOutstanding) & (countof(ThreadPoolJob) - 1); JobsOutstanding != 0; JobsOutstanding--)
@@ -1318,6 +1376,40 @@ void CWaveFftView::OnDraw(CPaintDC* pDC, CRgn * UpdateRgn)
 		NextJob = (NextJob + 1) & (countof(ThreadPoolJob) - 1);
 	}
 	// draw markers as inverted dashed lines into the bitmap
+	// copy bitmap to output window
+	CurrentRect = UpdateRects[0];
+	for (int ch2 = 0; ch2 != nChannels*2; ch2++)
+	{
+		// 1. Merge with previous rectangle
+		CurrentRect.bottom = UpdateRects[ch2].bottom;
+
+		if (ch2 + 1 != nChannels * 2
+			&& UpdateRects[ch2+1].top <= CurrentRect.bottom)
+		{
+			continue;
+		}
+		// else we have discontinuity or it's the last rectangle
+		if (CurrentRect.bottom != CurrentRect.top)
+		{
+			/*
+			SetDibitsToDevice on a top-down bitmap (negative bmHeight)
+			counts YSrc from the bottom of the array. YSrc=1 skips the bottom scn, etc.
+			Then it maps scan height-(YSrc + dwHeight) to YDest, and height-YSrc to YDest+dwHeight.
+			This means, origins for destination and source do not point to the same apparent pixel.
+			Also, this is why operation with full src and dst size and zero YSrc and YDst works.
+			*/
+			SetDIBitsToDevice(pDC->GetSafeHdc(),
+							r.left, CurrentRect.top,
+							width, CurrentRect.bottom - CurrentRect.top,
+							0, height - CurrentRect.bottom, 0, height,
+							pBits, &bmi.bmi, DIB_RGB_COLORS);
+		}
+		if (ch2 + 1 != nChannels * 2)
+		{
+			CurrentRect = UpdateRects[ch2 + 1];
+		}
+	}
+
 	SAMPLE_INDEX_Vector markers;
 	pDoc->m_WavFile.GetSortedMarkers(markers, FALSE);     // unique positions
 
@@ -1370,13 +1462,6 @@ void CWaveFftView::OnDraw(CPaintDC* pDC, CRgn * UpdateRgn)
 		// draw marker every four pixels
 		pDC->PatBlt(x, cr.top, 1, cr.bottom - cr.top, PATINVERT);
 	}
-
-
-	// copy bitmap to output window
-	SetDIBitsToDevice(pDC->GetSafeHdc(), r.left, cr.top,
-					width, height,
-					0, 0, 0, height, pBits, & bmi.bmi,
-					DIB_RGB_COLORS);
 
 	CGdiObjectSave OldFont(pDC, pDC->SelectStockObject(ANSI_VAR_FONT));
 
@@ -1592,7 +1677,6 @@ void CWaveFftView::OnPaint()
 	if (ERROR != GetUpdateRgn( & UpdRgn, TRUE))
 	{
 		UpdRgn.GetRgnBox( & r);
-		//TRACE("Update region width=%d\n", r.Width());
 		if (r.Width() > MaxDrawColumnPerOnDraw)
 		{
 			r.right = r.left + MaxDrawColumnPerOnDraw;
@@ -1631,14 +1715,13 @@ void CWaveFftView::OnPaint()
 #ifdef _DEBUG
 	else
 	{
-		if (0 && m_NumberOfColumnsSet) TRACE(L"FFT OnPaint: %d FFT calculated, %d pixels set for %d columns (%d per column), %d jobs in %d ms\n",
+		if (0 && m_NumberOfColumnsSet) TRACE(L"FFT OnPaint: %d FFT calculated, %d pixels set for %d columns (%d per column) in %d ms\n",
 											LONG(m_NumberOfFftCalculated), LONG(m_NumberOfPixelsSet), LONG(m_NumberOfColumnsSet),
 											LONG(m_NumberOfPixelsSet) / LONG(m_NumberOfColumnsSet),
-											LONG(m_NumberOfPixelJobs), GetTickCount() - m_DrawingBeginTime);
+											GetTickCount() - m_DrawingBeginTime);
 		m_NumberOfFftCalculated = 0;
 		m_NumberOfPixelsSet = 0;
 		m_NumberOfColumnsSet = 0;
-		m_NumberOfPixelJobs = 0;
 		m_DrawingBeginTime = 0;
 	}
 #endif
@@ -2452,7 +2535,15 @@ void CWaveFftView::SetNewFftOffset(double first_band)
 		NewUpdateRgn.CombineRgn(&NewUpdateRgn, &ChannelUpdateRgn, RGN_OR);
 	}
 	InvalidateRgn(&NewUpdateRgn, FALSE);
-
+#if 0 && defined(_DEBUG)
+	TRACE(L"Scroll by %d pixels\n", ToScroll);
+	RgnData rd;
+	rd.GetRegionData(&NewUpdateRgn);
+	if (0) for (RECT * p = rd.begin(), *end = rd.end(); p != end; p++)
+		{
+			TRACE(L"Update Rect: left=%d, top=%d, right=%d, bottom=%d\n", p->left, p->top, p->right, p->bottom);
+		}
+#endif
 	if (!m_Heights.ChannelMinimized(0))
 	{
 		InvalidateMarkerLabels(ToScroll);
