@@ -451,6 +451,7 @@ BOOL CWaveSoapFrontApp::InitInstance()
 	Profile.AddItem(_T("Settings"), _T("DefaultOpenMode"), m_DefaultOpenMode, DefaultOpenBuffered, 0, 2);
 
 	Profile.AddItem(_T("Settings"), _T("MaxMemoryFileSize"), m_MaxMemoryFileSize, 64, 1, 16*1024);
+	Profile.AddItem(_T("Settings"), _T("TempFileDirectory"), m_sTempDir, L"");
 	Profile.AddItem(_T("Settings"), _T("Allow4GbWavFile"), m_bAllow4GbWavFile, FALSE);
 	Profile.AddItem(_T("Settings"), _T("MetaTextEncoding"), CMmioFile::m_TextEncodingInFiles, 0, 0, 2);
 
