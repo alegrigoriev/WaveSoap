@@ -691,6 +691,10 @@ void CWaveFftView::FillChannelFftColumn(DrawFftWorkItem * pDrawItem)
 		for (int x = pDrawItem->Bmp.x_left, i = 0; x < pDrawItem->Bmp.x_right; x += NumPixelsAcross, i++, NumPixelsAcross = pDrawItem->Bmp.FftColumnWidth)
 		{
 			BYTE * pRgb = pDrawItem->Bmp.pColBmp + pId->y * stride + x * 3;
+			if (x + NumPixelsAcross > pDrawItem->Bmp.x_right)
+			{
+				NumPixelsAcross = pDrawItem->Bmp.x_right - x;
+			}
 
 			unsigned char red = 0;
 			unsigned char g = 0;
@@ -786,6 +790,10 @@ void CWaveFftView::FillFftColumnPalette(DrawFftWorkItem * pDrawItem)
 		for (int x = pDrawItem->Bmp.x_left, i = 0; x < pDrawItem->Bmp.x_right; x += NumPixelsAcross, i++, NumPixelsAcross = pDrawItem->Bmp.FftColumnWidth)
 		{
 			BYTE * pPal = pDrawItem->Bmp.pColBmp + pId->y * stride + x;
+			if (x + NumPixelsAcross > pDrawItem->Bmp.x_right)
+			{
+				NumPixelsAcross = pDrawItem->Bmp.x_right - x;
+			}
 
 			unsigned char ColorIndex = 0;
 			float const * pData = pDrawItem->FftResultVector[i];
@@ -938,7 +946,7 @@ void CWaveFftView::OnDraw(CPaintDC* pDC, CRgn * UpdateRgn)
 	} bmi = {sizeof (BITMAPINFOHEADER) };
 
 	bmi.bmi.bmiHeader.biSize = sizeof (BITMAPINFOHEADER);
-	bmi.bmi.bmiHeader.biWidth = r.right - r.left;
+	bmi.bmi.bmiHeader.biWidth = width;
 	bmi.bmi.bmiHeader.biHeight = -height;	// this will be top-down bitmap, with origin in top left
 	bmi.bmi.bmiHeader.biPlanes = 1;
 	bmi.bmi.bmiHeader.biCompression = BI_RGB;
@@ -1199,6 +1207,7 @@ void CWaveFftView::OnDraw(CPaintDC* pDC, CRgn * UpdateRgn)
 	}
 	int JobsOutstanding = 0;
 	int NextJob = 0;
+	WorkerThreadPoolJob * pJob = &ThreadPoolJob[NextJob];
 
 	// first, pre-calculate all FFT, one per work item
 	int FftColumnsFilled = 0;
@@ -1219,11 +1228,11 @@ void CWaveFftView::OnDraw(CPaintDC* pDC, CRgn * UpdateRgn)
 
 		if (JobsOutstanding == countof(ThreadPoolJob))
 		{
-			ThreadPoolJob[NextJob].WaitForCompletion();
+			pJob->WaitForCompletion();
 			JobsOutstanding--;
 		}
 
-		DrawFftWorkItem * pItem = static_cast<DrawFftWorkItem *>(ThreadPoolJob[NextJob].m_DoneItems.First());
+		DrawFftWorkItem * pItem = static_cast<DrawFftWorkItem *>(pJob->m_DoneItems.First());
 
 		if ( !IsFftResultCalculated(nCurrentFftColumn))
 		{
@@ -1236,29 +1245,36 @@ void CWaveFftView::OnDraw(CPaintDC* pDC, CRgn * UpdateRgn)
 			FftResultArray[nCurrentFftColumn - FirstFftColumn] = GetFftResult(nCurrentFftColumn, 0);
 		}
 
-		if (FftColumnsFilled == 0
-			|| (FftColumnsFilled < countof(pItem->Fft.FftColumns)
-				&& col < r.right))
+		if (FftColumnsFilled < countof(pItem->Fft.FftColumns)
+			&& col < r.right)
 		{
 			continue;
 		}
-		pItem->Fft.NumFftColumns = FftColumnsFilled;
-		FftColumnsFilled = 0;
-		ThreadPoolJob[NextJob].m_DoneItems.RemoveHead();
 
-		pItem->Proc = CalculateFftColumnWorkitem;
-
-		ThreadPoolJob[NextJob].AddWorkitem(pItem);
-
-		if (ThreadPoolJob[NextJob].m_DoneItems.IsEmpty()
-			|| col >= r.right)
+		if (FftColumnsFilled != 0)
 		{
-			GetApp()->AddWorkerThreadPoolJob(&ThreadPoolJob[NextJob]);
+			pItem->Fft.NumFftColumns = FftColumnsFilled;
+			FftColumnsFilled = 0;
+			pJob->m_DoneItems.RemoveHead();
+
+			pItem->Proc = CalculateFftColumnWorkitem;
+
+			pJob->AddWorkitem(pItem);
+		}
+
+		if (pJob->m_WorkitemsPending != 0
+			&& (pJob->m_DoneItems.IsEmpty() || col >= r.right))
+		{
+			GetApp()->AddWorkerThreadPoolJob(pJob);
 			JobsOutstanding++;
 			NextJob = (NextJob + 1) % countof(ThreadPoolJob);
+			pJob = &ThreadPoolJob[NextJob];
 		}
 	}
 
+	// Make sure the last job is submitted
+	ASSERT(JobsOutstanding == countof(ThreadPoolJob)
+			|| pJob->m_WorkitemsPending == 0);
 	// 'left' is the first sample index in the area to redraw
 	int FirstColumnWidth = 1;
 
@@ -1292,17 +1308,17 @@ void CWaveFftView::OnDraw(CPaintDC* pDC, CRgn * UpdateRgn)
 
 		if (JobsOutstanding == countof(ThreadPoolJob))
 		{
-			ThreadPoolJob[NextJob].WaitForCompletion();
+			pJob->WaitForCompletion();
 			JobsOutstanding--;
 		}
 
 		int RowsPerWorkitem = std::max(cr.Height() / 32, 16);
-		// allow one workitem to fill up to 1/32 of the total screen width
+		// allow one workitem to fill up to 1/32 of the total screen height
 		if (CurrentRect.bottom - CurrentRect.top < RowsPerWorkitem * 3 / 2)
 		{
 			RowsPerWorkitem = CurrentRect.bottom - CurrentRect.top;
 		}
-		DrawFftWorkItem * pItem = static_cast<DrawFftWorkItem *>(ThreadPoolJob[NextJob].m_DoneItems.RemoveHead());
+		DrawFftWorkItem * pItem = static_cast<DrawFftWorkItem *>(pJob->m_DoneItems.RemoveHead());
 		pItem->Bmp.FirstFftColumnWidth = FirstColumnWidth;
 		pItem->Bmp.FftColumnWidth = int(m_FftSpacing / m_HorizontalScale);
 		pItem->Bmp.x_left = 0;
@@ -1325,22 +1341,24 @@ void CWaveFftView::OnDraw(CPaintDC* pDC, CRgn * UpdateRgn)
 		}
 		pItem->Bmp.pId = pIdArray[ch];
 
-		ThreadPoolJob[NextJob].AddWorkitem(pItem);
+		pJob->AddWorkitem(pItem);
 
-		if (ThreadPoolJob[NextJob].m_DoneItems.IsEmpty())
+		if (pJob->m_DoneItems.IsEmpty())
 		{
-			GetApp()->AddWorkerThreadPoolJob(&ThreadPoolJob[NextJob]);
+			GetApp()->AddWorkerThreadPoolJob(pJob);
 			JobsOutstanding++;
-			NextJob = (NextJob + 1) & (countof(ThreadPoolJob) - 1);
+			NextJob = (NextJob + 1) % countof(ThreadPoolJob);
+			pJob = &ThreadPoolJob[NextJob];
 		}
 	}
 
 	// see if we have a job we didn't post yet
-	if (JobsOutstanding < countof(ThreadPoolJob) && ThreadPoolJob[NextJob].m_WorkitemsPending)
+	if (JobsOutstanding < countof(ThreadPoolJob) && pJob->m_WorkitemsPending)
 	{
-		GetApp()->AddWorkerThreadPoolJob(&ThreadPoolJob[NextJob]);
+		GetApp()->AddWorkerThreadPoolJob(pJob);
 		JobsOutstanding++;
-		NextJob = (NextJob + 1) & (countof(ThreadPoolJob) - 1);
+		NextJob = (NextJob + 1) % countof(ThreadPoolJob);
+		pJob = &ThreadPoolJob[NextJob];
 	}
 
 	for (int ch = 0; ch + 1 != nChannels; ch++)
@@ -1370,10 +1388,10 @@ void CWaveFftView::OnDraw(CPaintDC* pDC, CRgn * UpdateRgn)
 
 	// wait for all jobs complete.
 
-	for (NextJob = (NextJob - JobsOutstanding) & (countof(ThreadPoolJob) - 1); JobsOutstanding != 0; JobsOutstanding--)
+	for (; JobsOutstanding != 0; JobsOutstanding--)
 	{
-		ThreadPoolJob[NextJob].WaitForCompletion();
-		NextJob = (NextJob + 1) & (countof(ThreadPoolJob) - 1);
+		pJob = &ThreadPoolJob[(NextJob - JobsOutstanding) & (countof(ThreadPoolJob) - 1)];
+		pJob->WaitForCompletion();
 	}
 	// draw markers as inverted dashed lines into the bitmap
 	// copy bitmap to output window
