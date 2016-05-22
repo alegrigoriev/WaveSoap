@@ -818,16 +818,26 @@ void CFilterGraphWnd::OnPaint()
 		{
 			SrcOffset = w;
 		}
-		if (i <= HpfPassbandIndex)
+		if (i == HpfStopbandIndex
+			|| i == HpfPassbandIndex)
 		{
 			if ( ! HighPassEnabled())
 			{
 				continue;
 			}
 		}
-		else if (i <= NotchZeroIndex)
+		else if (i == NotchBeginIndex
+				|| i == NotchZeroIndex)
 		{
 			if (!NotchEnabled())
+			{
+				continue;
+			}
+		}
+		else if (i == LpfPassbandIndex
+				|| i == LpfStopbandIndex)
+		{
+			if (!LowPassEnabled())
 			{
 				continue;
 			}
