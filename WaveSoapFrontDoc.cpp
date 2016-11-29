@@ -3609,7 +3609,7 @@ void CWaveSoapFrontDoc::OnProcessChangevolume()
 			&& Volume[1] * MaxR > 32767.))
 	{
 		CString s;
-		s.Format(IDS_SOUND_MAY_BE_CLIPPED, GetTitle());
+		s.Format(IDS_SOUND_MAY_BE_CLIPPED, static_cast<LPCTSTR>(GetTitle()));
 		if (IDYES != AfxMessageBox(s, MB_YESNO | MB_ICONQUESTION))
 		{
 			return;
@@ -3825,7 +3825,7 @@ void CWaveSoapFrontDoc::OnProcessDcoffset()
 				&& (MaxR > 0x7FFF || MinR < -0x8000)))
 		{
 			CString s;
-			s.Format(IDS_SOUND_MAY_BE_CLIPPED, GetTitle());
+			s.Format(IDS_SOUND_MAY_BE_CLIPPED, static_cast<LPCTSTR>(GetTitle()));
 			if (IDYES != AfxMessageBox(s, MB_YESNO | MB_ICONQUESTION))
 			{
 				return;
@@ -4778,7 +4778,7 @@ void CWaveSoapFrontDoc::OnToolsInterpolate()
 	{
 		OnIdle();   // update views
 		CString s;
-		s.Format(IDS_SOUND_CLIPPED, GetTitle(), int(crm.GetMaxClipped() * (100. / 32678)));
+		s.Format(IDS_SOUND_CLIPPED, static_cast<LPCTSTR>(GetTitle()), int(crm.GetMaxClipped() * (100. / 32678)));
 		AfxMessageBox(s, MB_OK | MB_ICONEXCLAMATION);
 	}
 }

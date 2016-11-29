@@ -620,11 +620,11 @@ void CTimeRulerView::DrawSeconds(CDC * pDC)
 
 			if (DistTime < 1.)
 			{
-				s.Format(_T("%s%c%03d"), s1, DecimalPoint, ms);
+				s.Format(_T("%s%c%03d"), static_cast<LPCTSTR>(s1), DecimalPoint, ms);
 			}
 			else
 			{
-				s.Format(_T("%s%c0"), s1, DecimalPoint);
+				s.Format(_T("%s%c0"), static_cast<LPCTSTR>(s1), DecimalPoint);
 			}
 			pDC->TextOut(x + 2, RulerBase - 5, s);
 
