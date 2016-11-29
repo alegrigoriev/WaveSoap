@@ -2743,36 +2743,7 @@ double CScanContext::CScanProc::GetMax(unsigned channel) const
 	{
 		return 0;
 	}
-	double max = 0;
-	if (m_MaxSample[channel] > 0)
-	{
-		if (max < m_MaxSample[channel])
-		{
-			max = m_MaxSample[channel];
-		}
-	}
-	else
-	{
-		if (max < -m_MaxSample[channel])
-		{
-			max = -m_MaxSample[channel];
-		}
-	}
-	if (m_MinSample[channel] > 0)
-	{
-		if (max < m_MinSample[channel])
-		{
-			max = m_MinSample[channel];
-		}
-	}
-	else
-	{
-		if (max < -m_MinSample[channel])
-		{
-			max = -m_MinSample[channel];
-		}
-	}
-	return max;
+	return std::max(fabs(m_MaxSample[channel]), fabs(m_MinSample[channel]));
 }
 
 double CScanContext::CScanProc::GetAverage(unsigned channel) const
