@@ -157,7 +157,7 @@ void COperationContext::PostRetire()
 		CDocumentPopup pop(m_pDocument);
 
 		CString s;
-		s.Format(IDS_SOUND_CLIPPED, m_pDocument->GetTitle(), int(GetMaxClipped() * (100. / 32678)));
+		s.Format(IDS_SOUND_CLIPPED, static_cast<LPCTSTR>(m_pDocument->GetTitle()), int(GetMaxClipped() * (100. / 32678)));
 		AfxMessageBox(s, MB_OK | MB_ICONEXCLAMATION);
 	}
 

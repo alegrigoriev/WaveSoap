@@ -203,7 +203,7 @@ void CResampleProcContext::DeInit()
 			CDocumentPopup pop(m_pContext->m_pDocument);
 
 			CString s;
-			s.Format(IDS_SOUND_CLIPPED, m_pContext->m_pDocument->GetTitle(),
+			s.Format(IDS_SOUND_CLIPPED, static_cast<LPCTSTR>(m_pContext->m_pDocument->GetTitle()),
 					int(m_pContext->GetMaxClipped() * (100. / 32678)));
 
 			CString s1;

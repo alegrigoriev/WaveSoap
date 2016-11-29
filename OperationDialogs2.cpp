@@ -1381,7 +1381,7 @@ void CCdGrabbingDialog::OnEndlabeleditListTracks(NMHDR* pNMHDR, LRESULT* pResult
 				&& 0 == s.CompareNoCase(m_Tracks[t].Track))
 			{
 				CString m;
-				m.Format(IDS_TRACK_NAME_ALREADY_EXISTS, s);
+				m.Format(IDS_TRACK_NAME_ALREADY_EXISTS, static_cast<LPCTSTR>(s));
 				AfxMessageBox(m);
 				*pResult = FALSE;
 				return;
