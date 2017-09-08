@@ -256,7 +256,7 @@ CBatchProcessing::Item::Item(CWaveProc * proc)
 	}
 }
 
-CBatchProcessing::Item::Item(Item & item)
+CBatchProcessing::Item::Item(Item && item)
 	: Proc(item.Proc),
 	InBuf(item.InBuf), OutBuf(item.OutBuf),
 	InBufGetIndex(item.InBufGetIndex), InBufPutIndex(item.InBufPutIndex),
@@ -268,7 +268,7 @@ CBatchProcessing::Item::Item(Item & item)
 	item.OutBuf = NULL;
 }
 
-CBatchProcessing::Item & CBatchProcessing::Item::operator =(Item& item)
+CBatchProcessing::Item & CBatchProcessing::Item::operator =(Item&& item)
 {
 	Proc = item.Proc;
 	InBuf = item.InBuf;
