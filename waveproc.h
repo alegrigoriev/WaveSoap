@@ -641,8 +641,8 @@ protected:
 		BOOL Init();
 
 		Item(CWaveProc * proc);
-		Item(Item & item);
-		Item & operator =(Item& item);
+		Item(Item && item);
+		Item & operator =(Item&& item);
 
 		unsigned FillInputBuffer(const char * Buf, unsigned BufFilled, CWaveFormat const * pWf, CHANNEL_MASK SrcChannelMask); // returns number bytes used
 		unsigned FillOutputBuffer(char * Buf, unsigned BufFree, CWaveFormat const * pWf, CHANNEL_MASK DstChannelMask); // returns number bytes used
