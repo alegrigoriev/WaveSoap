@@ -772,7 +772,7 @@ int CFileSaveUiSupport::FillFormatCombo(unsigned SelFormat, int Flags)
 	int sel = m_Acm.GetFormatsStrings(Strings, m_Wf,
 									m_SelectedTag, m_SelectedBitrate);
 
-	for (int i = 0; i != Strings.size(); i++)
+	for (unsigned i = 0; i != Strings.size(); i++)
 	{
 		AddAttributesComboString(i, Strings[i]);
 	}

@@ -1,4 +1,5 @@
 TODO tasks:
+Scrollbar for spectrum section view non-functional
 waveproc.cpp: refactor CDeclick::ProcessSoundBuffer.
 waveproc.cpp: split finding clicks and interpolating them to separate phases
 Change "Removing clicks" to "Detecting clicks"
