@@ -37,7 +37,7 @@
     <ClCompile Include="ApplicationParameters.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="ApplicationProfile.cpp">
+    <ClCompile Include="CommonSources\Utils\ApplicationProfile.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="BatchConvertDlg.cpp">
@@ -49,7 +49,7 @@
     <ClCompile Include="BladeMp3Encoder.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="CdDrive.cpp">
+    <ClCompile Include="CommonSources\MMedia\CdDrive.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="ChildDialog.cpp">
@@ -61,7 +61,7 @@
     <ClCompile Include="CustomSampleRateDlg.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="DirectFile.cpp">
+    <ClCompile Include="CommonSources\MMedia\DirectFile.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="EditFadeInOut.cpp">
@@ -76,28 +76,28 @@
     <ClCompile Include="FftRulerView.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="FileDialogWithHistory.cpp">
+    <ClCompile Include="CommonSources\UI\FileDialogWithHistory.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="FilterDialog.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="FolderDialog.cpp">
+    <ClCompile Include="CommonSources\UI\FolderDialog.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="LocaleUtilities.cpp">
+    <ClCompile Include="CommonSources\Utils\LocaleUtilities.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="MainFrm.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="MessageBoxSynch.cpp">
+    <ClCompile Include="CommonSources\UI\MessageBoxSynch.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="NewFilePropertiesDlg.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="NumEdit.cpp">
+    <ClCompile Include="CommonSources\UI\NumEdit.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="OperationContext.cpp">
@@ -133,13 +133,13 @@
     <ClCompile Include="Resample.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Ruler.cpp">
+    <ClCompile Include="CommonSources\UI\Ruler.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="SaveExpressionDialog.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="shellink.cpp">
+    <ClCompile Include="CommonSources\UI\shellink.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="SpectrumSectionView.cpp">
@@ -151,13 +151,13 @@
     <ClCompile Include="StdAfx.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="TimeEdit.cpp">
+    <ClCompile Include="CommonSources\UI\TimeEdit.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="TimeRulerView.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="TimeToStr.cpp">
+    <ClCompile Include="CommonSources\UI\TimeToStr.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="UndoRedoOptionsDlg.cpp">
@@ -166,7 +166,7 @@
     <ClCompile Include="WaveFftView.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="WaveFile.cpp">
+    <ClCompile Include="CommonSources\MMedia\WaveFile.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="WaveOutlineView.cpp">
@@ -187,30 +187,30 @@
     <ClCompile Include="WaveSoapFrontView.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="WaveSupport.cpp">
+    <ClCompile Include="CommonSources\MMedia\WaveSupport.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="WmaFile.cpp">
+    <ClCompile Include="CommonSources\MMedia\WmaFile.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="FilterMath.cpp">
+    <ClCompile Include="CommonSources\Math\FilterMath.cpp">
       <Filter>FilterMath</Filter>
     </ClCompile>
-    <ClCompile Include="PolyMath.cpp">
+    <ClCompile Include="CommonSources\Math\PolyMath.cpp">
       <Filter>FilterMath</Filter>
     </ClCompile>
-    <ClCompile Include="PolyRatio.cpp">
+    <ClCompile Include="CommonSources\Math\PolyRatio.cpp">
       <Filter>FilterMath</Filter>
     </ClCompile>
-    <ClCompile Include="Matrix.cpp">
+    <ClCompile Include="CommonSources\Math\Matrix.cpp">
       <Filter>Matrix math</Filter>
+    </ClCompile>
+    <ClCompile Include="CommonSources\Utils\WorkerThreadPool.cpp">
+      <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="DialogWithSelection.inl">
-      <Filter>Header Files</Filter>
-    </None>
-    <None Include="FFT.inl">
       <Filter>Header Files</Filter>
     </None>
     <None Include="res\bitmap_load.bmp">
@@ -289,6 +289,9 @@
     <None Include="Project Classes.doc" />
     <None Include="ReadMe.txt" />
     <None Include="Test Plan.doc" />
+    <None Include="CommonSources\Math\FFT.inl">
+      <Filter>Header Files</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="WaveSoapFront.rc">
@@ -302,9 +305,6 @@
     <ClInclude Include="ApplicationParameters.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="ApplicationProfile.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="BatchConvertDlg.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -314,7 +314,7 @@
     <ClInclude Include="BladeMP3EncDLL.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="CdDrive.h">
+    <ClInclude Include="CommonSources\MMedia\CdDrive.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="ChildDialog.h">
@@ -323,25 +323,19 @@
     <ClInclude Include="ChildFrm.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="CoInitHelper.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="CustomSampleRateDlg.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="DataSection.h">
+    <ClInclude Include="CommonSources\MMedia\DataSection.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="DialogWithSelection.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="DirectFile.h">
+    <ClInclude Include="CommonSources\MMedia\DirectFile.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="EditFadeInOut.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="ElapsedTime.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="EqualizerDialog.h">
@@ -350,49 +344,28 @@
     <ClInclude Include="FadeInOutDialog.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="fft.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="FftRulerView.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="FileDialogWithHistory.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="FilterDialog.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="FolderDialog.h">
+    <ClInclude Include="CommonSources\UI\GdiObjectSave.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="GdiObjectSave.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="KInterlocked.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="KListEntry.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="LastError.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="LocaleUtilities.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="MainFrameEx.h">
+    <ClInclude Include="CommonSources\UI\MainFrameEx.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="MainFrm.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="MessageBoxSynch.h">
+    <ClInclude Include="CommonSources\UI\MessageBoxSynch.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="NewFilePropertiesDlg.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="NumEdit.h">
+    <ClInclude Include="CommonSources\UI\NumEdit.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="OperationContext.h">
@@ -408,9 +381,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="PasteResampleModeDlg.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="PathEx.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="PreferencesPropertySheet.h">
@@ -431,19 +401,16 @@
     <ClInclude Include="Resample.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="ResizableDialog.h">
+    <ClInclude Include="CommonSources\UI\ResizableDialog.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Ruler.h">
+    <ClInclude Include="CommonSources\UI\Ruler.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="SaveExpressionDialog.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="shellink.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="SimpleCriticalSection.h">
+    <ClInclude Include="CommonSources\UI\shellink.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="SpectrumSectionView.h">
@@ -455,16 +422,16 @@
     <ClInclude Include="StdAfx.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="TimeEdit.h">
+    <ClInclude Include="CommonSources\UI\TimeEdit.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="TimeRulerView.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="TimeToStr.h">
+    <ClInclude Include="CommonSources\UI\TimeToStr.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="UiUpdatedDlg.h">
+    <ClInclude Include="CommonSources\UI\UiUpdatedDlg.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="UndoRedoOptionsDlg.h">
@@ -473,7 +440,7 @@
     <ClInclude Include="WaveFftView.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="WaveFile.h">
+    <ClInclude Include="CommonSources\MMedia\WaveFile.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="WaveOutlineView.h">
@@ -494,28 +461,70 @@
     <ClInclude Include="WaveSoapFrontView.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="WaveSupport.h">
+    <ClInclude Include="CommonSources\MMedia\WaveSupport.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="WmaFile.h">
+    <ClInclude Include="CommonSources\MMedia\WmaFile.h">
       <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="wnaspi32.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="FilterMath.h">
-      <Filter>FilterMath</Filter>
-    </ClInclude>
-    <ClInclude Include="PolyMath.h">
-      <Filter>FilterMath</Filter>
-    </ClInclude>
-    <ClInclude Include="PolyRatio.h">
-      <Filter>FilterMath</Filter>
-    </ClInclude>
-    <ClInclude Include="Matrix.h">
-      <Filter>Matrix math</Filter>
     </ClInclude>
     <ClInclude Include="ContextWorkerThread.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="CommonSources\Utils\ApplicationProfile.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="CommonSources\Utils\ElapsedTime.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="CommonSources\Math\fft.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="CommonSources\Utils\KInterlocked.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="CommonSources\Utils\KListEntry.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="CommonSources\Utils\LastError.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="CommonSources\Utils\LocaleUtilities.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="CommonSources\Utils\PathEx.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="CommonSources\Utils\WorkerThreadPool.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="CommonSources\Utils\SimpleCriticalSection.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="CommonSources\Utils\wnaspi32.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="CommonSources\Math\FilterMath.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="CommonSources\Math\PolyMath.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="CommonSources\Math\PolyRatio.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="CommonSources\Utils\CoInitHelper.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="CommonSources\Math\Matrix.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="CommonSources\MMedia\DigitalSignalArray.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="FileDialogWithHistory.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="CommonSources\UI\FolderDialog.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
