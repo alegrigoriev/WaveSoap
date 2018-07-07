@@ -105,7 +105,7 @@
     </Midl>
     <ClCompile>
       <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>.;BaseClasses;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>.;BaseClasses;CommonSources\Utils;CommonSources\Math;CommonSources\MMedia;CommonSources\UI;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>_DEBUG;WIN32;_WINDOWS;_WIN32_WINNT=_WIN32_WINNT_WIN7;OEMRESOURCE;USE_MMCKINFO64;_CONVERSION_DONT_USE_THREAD_LOCALE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <PreprocessToFile>false</PreprocessToFile>
       <PreprocessSuppressLineNumbers>false</PreprocessSuppressLineNumbers>
@@ -153,7 +153,7 @@
     </Midl>
     <ClCompile>
       <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>.;BaseClasses;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>.;BaseClasses;CommonSources\Utils;CommonSources\Math;CommonSources\MMedia;CommonSources\UI;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>_DEBUG;WIN32;_WINDOWS;_WIN32_WINNT=_WIN32_WINNT_WINXP;OEMRESOURCE;USE_MMCKINFO64;_CONVERSION_DONT_USE_THREAD_LOCALE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <PreprocessToFile>false</PreprocessToFile>
       <PreprocessSuppressLineNumbers>false</PreprocessSuppressLineNumbers>
@@ -200,7 +200,7 @@
     </Midl>
     <ClCompile>
       <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>.;BaseClasses;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>.;BaseClasses;CommonSources\Utils;CommonSources\Math;CommonSources\MMedia;CommonSources\UI;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>_DEBUG;WIN32;_WINDOWS;_WIN32_WINNT=_WIN32_WINNT_WIN7;OEMRESOURCE;USE_MMCKINFO64;_CONVERSION_DONT_USE_THREAD_LOCALE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <PreprocessToFile>false</PreprocessToFile>
       <PreprocessSuppressLineNumbers>false</PreprocessSuppressLineNumbers>
@@ -247,7 +247,7 @@
       <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <OmitFramePointers>true</OmitFramePointers>
-      <AdditionalIncludeDirectories>.;BaseClasses;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>.;BaseClasses;CommonSources\Utils;CommonSources\Math;CommonSources\MMedia;CommonSources\UI;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>NDEBUG;WIN32;_WINDOWS;_WIN32_WINNT=_WIN32_WINNT_WIN7;OEMRESOURCE;USE_MMCKINFO64;_CONVERSION_DONT_USE_THREAD_LOCALE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <StringPooling>true</StringPooling>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
@@ -295,7 +295,7 @@
       <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <OmitFramePointers>true</OmitFramePointers>
-      <AdditionalIncludeDirectories>.;BaseClasses;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>.;BaseClasses;CommonSources\Utils;CommonSources\Math;CommonSources\MMedia;CommonSources\UI;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>NDEBUG;WIN32;_WINDOWS;_WIN32_WINNT=_WIN32_WINNT_WINXP;OEMRESOURCE;USE_MMCKINFO64;_CONVERSION_DONT_USE_THREAD_LOCALE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <StringPooling>true</StringPooling>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
@@ -342,7 +342,7 @@
       <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <OmitFramePointers>true</OmitFramePointers>
-      <AdditionalIncludeDirectories>.;BaseClasses;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>.;BaseClasses;CommonSources\Utils;CommonSources\Math;CommonSources\MMedia;CommonSources\UI;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>NDEBUG;WIN32;_WINDOWS;_WIN32_WINNT=_WIN32_WINNT_WIN7;OEMRESOURCE;USE_MMCKINFO64;_CONVERSION_DONT_USE_THREAD_LOCALE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <StringPooling>true</StringPooling>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
@@ -381,28 +381,28 @@
   <ItemGroup>
     <ClCompile Include="AmplitudeRuler.cpp" />
     <ClCompile Include="ApplicationParameters.cpp" />
-    <ClCompile Include="ApplicationProfile.cpp" />
+    <ClCompile Include="CommonSources\Utils\ApplicationProfile.cpp" />
     <ClCompile Include="BatchConvertDlg.cpp" />
     <ClCompile Include="BatchSaveTargetDlg.cpp" />
     <ClCompile Include="BladeMp3Encoder.cpp" />
-    <ClCompile Include="CdDrive.cpp" />
+    <ClCompile Include="CommonSources\MMedia\CdDrive.cpp" />
     <ClCompile Include="ChildDialog.cpp" />
     <ClCompile Include="ChildFrm.cpp" />
     <ClCompile Include="CustomSampleRateDlg.cpp" />
-    <ClCompile Include="DirectFile.cpp" />
+    <ClCompile Include="CommonSources\MMedia\DirectFile.cpp" />
     <ClCompile Include="EditFadeInOut.cpp" />
     <ClCompile Include="EqualizerDialog.cpp" />
     <ClCompile Include="FadeInOutDialog.cpp" />
     <ClCompile Include="FftRulerView.cpp" />
-    <ClCompile Include="FileDialogWithHistory.cpp" />
+    <ClCompile Include="CommonSources\UI\FileDialogWithHistory.cpp" />
     <ClCompile Include="FilterDialog.cpp" />
-    <ClCompile Include="FolderDialog.cpp" />
-    <ClCompile Include="LocaleUtilities.cpp" />
+    <ClCompile Include="CommonSources\UI\FolderDialog.cpp" />
+    <ClCompile Include="CommonSources\Utils\LocaleUtilities.cpp" />
     <ClCompile Include="MainFrm.cpp" />
-    <ClCompile Include="Matrix.cpp" />
-    <ClCompile Include="MessageBoxSynch.cpp" />
+    <ClCompile Include="CommonSources\Math\Matrix.cpp" />
+    <ClCompile Include="CommonSources\UI\MessageBoxSynch.cpp" />
     <ClCompile Include="NewFilePropertiesDlg.cpp" />
-    <ClCompile Include="NumEdit.cpp" />
+    <ClCompile Include="CommonSources\UI\NumEdit.cpp" />
     <ClCompile Include="OperationContext.cpp" />
     <ClCompile Include="OperationContext2.cpp" />
     <ClCompile Include="OperationDialogs.cpp" />
@@ -414,9 +414,9 @@
     <ClCompile Include="ReopenConvertedFileDlg.cpp" />
     <ClCompile Include="ReopenSavedFileCopyDlg.cpp" />
     <ClCompile Include="Resample.cpp" />
-    <ClCompile Include="Ruler.cpp" />
+    <ClCompile Include="CommonSources\UI\Ruler.cpp" />
     <ClCompile Include="SaveExpressionDialog.cpp" />
-    <ClCompile Include="shellink.cpp" />
+    <ClCompile Include="CommonSources\UI\shellink.cpp" />
     <ClCompile Include="SpectrumSectionView.cpp" />
     <ClCompile Include="SplitToFilesDialog.cpp" />
     <ClCompile Include="StdAfx.cpp">
@@ -429,12 +429,12 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
       </PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="TimeEdit.cpp" />
+    <ClCompile Include="CommonSources\UI\TimeEdit.cpp" />
     <ClCompile Include="TimeRulerView.cpp" />
-    <ClCompile Include="TimeToStr.cpp" />
+    <ClCompile Include="CommonSources\UI\TimeToStr.cpp" />
     <ClCompile Include="UndoRedoOptionsDlg.cpp" />
     <ClCompile Include="WaveFftView.cpp" />
-    <ClCompile Include="WaveFile.cpp">
+    <ClCompile Include="CommonSources\MMedia\WaveFile.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Use</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Use</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -448,11 +448,11 @@
     <ClCompile Include="WaveSoapFront.cpp" />
     <ClCompile Include="WaveSoapFrontDoc.cpp" />
     <ClCompile Include="WaveSoapFrontView.cpp" />
-    <ClCompile Include="WaveSupport.cpp" />
-    <ClCompile Include="WmaFile.cpp" />
-    <ClCompile Include="FilterMath.cpp" />
-    <ClCompile Include="PolyMath.cpp" />
-    <ClCompile Include="PolyRatio.cpp" />
+    <ClCompile Include="CommonSources\MMedia\WaveSupport.cpp" />
+    <ClCompile Include="CommonSources\MMedia\WmaFile.cpp" />
+    <ClCompile Include="CommonSources\Math\FilterMath.cpp" />
+    <ClCompile Include="CommonSources\Math\PolyMath.cpp" />
+    <ClCompile Include="CommonSources\Math\PolyRatio.cpp" />
   </ItemGroup>
   <ItemGroup>
     <CustomBuild Include="hlp\WaveSoap.hhp">
@@ -510,7 +510,7 @@ echo.
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(OutDir)%(Filename).chm;%(Outputs)</Outputs>
     </CustomBuild>
     <None Include="DialogWithSelection.inl" />
-    <None Include="FFT.inl" />
+    <None Include="CommonSources\Math\FFT.inl" />
     <None Include="res\bitmap_load.bmp" />
     <None Include="res\bmp00001.bmp" />
     <None Include="res\bmp00002.bmp" />
@@ -546,52 +546,53 @@ echo.
   <ItemGroup>
     <ClInclude Include="AmplitudeRuler.h" />
     <ClInclude Include="ApplicationParameters.h" />
-    <ClInclude Include="ApplicationProfile.h" />
+    <ClInclude Include="CommonSources\MMedia\DigitalSignalArray.h" />
+    <ClInclude Include="CommonSources\Utils\ApplicationProfile.h" />
     <ClInclude Include="BatchConvertDlg.h" />
     <ClInclude Include="BatchSaveTargetDlg.h" />
     <ClInclude Include="BladeMP3EncDLL.h" />
-    <ClInclude Include="CdDrive.h" />
+    <ClInclude Include="CommonSources\MMedia\CdDrive.h" />
     <ClInclude Include="ChildDialog.h" />
     <ClInclude Include="ChildFrm.h" />
-    <ClInclude Include="CoInitHelper.h" />
+    <ClInclude Include="CommonSources\Utils\CoInitHelper.h" />
     <ClInclude Include="ContextWorkerThread.h" />
     <ClInclude Include="CustomSampleRateDlg.h" />
-    <ClInclude Include="DataSection.h" />
+    <ClInclude Include="CommonSources\MMedia\DataSection.h" />
     <ClInclude Include="DialogWithSelection.h" />
-    <ClInclude Include="DirectFile.h" />
+    <ClInclude Include="CommonSources\MMedia\DirectFile.h" />
     <ClInclude Include="EditFadeInOut.h" />
-    <ClInclude Include="ElapsedTime.h" />
+    <ClInclude Include="CommonSources\Utils\ElapsedTime.h" />
     <ClInclude Include="EqualizerDialog.h" />
     <ClInclude Include="FadeInOutDialog.h" />
-    <ClInclude Include="fft.h" />
+    <ClInclude Include="CommonSources\Math\fft.h" />
     <ClInclude Include="FftRulerView.h" />
     <ClInclude Include="FileDialogWithHistory.h" />
     <ClInclude Include="FilterDialog.h" />
-    <ClInclude Include="FolderDialog.h" />
-    <ClInclude Include="GdiObjectSave.h" />
-    <ClInclude Include="KInterlocked.h" />
-    <ClInclude Include="KListEntry.h" />
-    <ClInclude Include="LastError.h" />
-    <ClInclude Include="LocaleUtilities.h" />
-    <ClInclude Include="MainFrameEx.h" />
+    <ClInclude Include="CommonSources\UI\FolderDialog.h" />
+    <ClInclude Include="CommonSources\UI\GdiObjectSave.h" />
+    <ClInclude Include="CommonSources\Utils\KInterlocked.h" />
+    <ClInclude Include="CommonSources\Utils\KListEntry.h" />
+    <ClInclude Include="CommonSources\Utils\LastError.h" />
+    <ClInclude Include="CommonSources\Utils\LocaleUtilities.h" />
+    <ClInclude Include="CommonSources\UI\MainFrameEx.h" />
     <ClInclude Include="MainFrm.h" />
-    <ClInclude Include="Matrix.h" />
-    <ClInclude Include="MessageBoxSynch.h" />
+    <ClInclude Include="CommonSources\Math\Matrix.h" />
+    <ClInclude Include="CommonSources\UI\MessageBoxSynch.h" />
     <ClInclude Include="NewFilePropertiesDlg.h" />
-    <ClInclude Include="NumEdit.h" />
+    <ClInclude Include="CommonSources\UI\NumEdit.h" />
     <ClInclude Include="OperationContext.h" />
     <ClInclude Include="OperationContext2.h" />
     <ClInclude Include="OperationDialogs.h" />
     <ClInclude Include="OperationDialogs2.h" />
     <ClInclude Include="PasteResampleModeDlg.h" />
-    <ClInclude Include="PathEx.h" />
+    <ClInclude Include="CommonSources\Utils\PathEx.h" />
     <ClInclude Include="PreferencesPropertySheet.h" />
     <ClInclude Include="RawFileParametersDlg.h" />
     <ClInclude Include="ReopenCompressedFileDialog.h" />
     <ClInclude Include="ReopenConvertedFileDlg.h" />
     <ClInclude Include="ReopenSavedFileCopyDlg.h" />
     <ClInclude Include="Resample.h" />
-    <ClInclude Include="ResizableDialog.h" />
+    <ClInclude Include="CommonSources\UI\ResizableDialog.h" />
     <CustomBuild Include="Resource.h">
       <Message Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Making help include file...</Message>
       <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Making help include file...</Message>
@@ -658,32 +659,32 @@ makehm /h /a afxhh.h IDW_,HIDW_,0x50000 "%(Filename)%(Extension)" &gt;&gt; "hlp\
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">hlp\HTMLDefines.h;%(Outputs)</Outputs>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">hlp\HTMLDefines.h;%(Outputs)</Outputs>
     </CustomBuild>
-    <ClInclude Include="Ruler.h" />
+    <ClInclude Include="CommonSources\UI\Ruler.h" />
     <ClInclude Include="SaveExpressionDialog.h" />
-    <ClInclude Include="shellink.h" />
-    <ClInclude Include="SimpleCriticalSection.h" />
+    <ClInclude Include="CommonSources\UI\shellink.h" />
+    <ClInclude Include="CommonSources\Utils\SimpleCriticalSection.h" />
     <ClInclude Include="SpectrumSectionView.h" />
     <ClInclude Include="SplitToFilesDialog.h" />
     <ClInclude Include="StdAfx.h" />
-    <ClInclude Include="TimeEdit.h" />
+    <ClInclude Include="CommonSources\UI\TimeEdit.h" />
     <ClInclude Include="TimeRulerView.h" />
-    <ClInclude Include="TimeToStr.h" />
-    <ClInclude Include="UiUpdatedDlg.h" />
+    <ClInclude Include="CommonSources\UI\TimeToStr.h" />
+    <ClInclude Include="CommonSources\UI\UiUpdatedDlg.h" />
     <ClInclude Include="UndoRedoOptionsDlg.h" />
     <ClInclude Include="WaveFftView.h" />
-    <ClInclude Include="WaveFile.h" />
+    <ClInclude Include="CommonSources\MMedia\WaveFile.h" />
     <ClInclude Include="WaveOutlineView.h" />
     <ClInclude Include="waveproc.h" />
     <ClInclude Include="WaveSoapFileDialogs.h" />
     <ClInclude Include="WaveSoapFront.h" />
     <ClInclude Include="WaveSoapFrontDoc.h" />
     <ClInclude Include="WaveSoapFrontView.h" />
-    <ClInclude Include="WaveSupport.h" />
-    <ClInclude Include="WmaFile.h" />
-    <ClInclude Include="wnaspi32.h" />
-    <ClInclude Include="FilterMath.h" />
-    <ClInclude Include="PolyMath.h" />
-    <ClInclude Include="PolyRatio.h" />
+    <ClInclude Include="CommonSources\MMedia\WaveSupport.h" />
+    <ClInclude Include="CommonSources\MMedia\WmaFile.h" />
+    <ClInclude Include="CommonSources\Utils\wnaspi32.h" />
+    <ClInclude Include="CommonSources\Math\FilterMath.h" />
+    <ClInclude Include="CommonSources\Math\PolyMath.h" />
+    <ClInclude Include="CommonSources\Math\PolyRatio.h" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="baseclasses\baseclasses.vcxproj">

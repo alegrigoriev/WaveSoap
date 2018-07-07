@@ -1,3 +1,7 @@
 [submodule "baseclasses"]
 	path = baseclasses
 	url = ../baseclasses
+[submodule "CommonSources"]
+	path = CommonSources
+	url = ../CommonSources
+	branch = master
