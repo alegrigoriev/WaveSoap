@@ -125,7 +125,7 @@ void CSpectrumSectionView::CalculateFftPowerSum(float * FftSum,
 	CWaveSoapFrontDoc* pDoc = GetDocument();
 	NUMBER_OF_CHANNELS nChannels = pDoc->WaveChannels();
 
-	ATL::CHeapPtr<float> FftArray;
+	ATL::CHeapPtr<float, AlignedAllocator> FftArray;
 	FftArray.Allocate(2 * FftOrder + 2);
 
 	ATL::CHeapPtr<float> SrcF32Array;
