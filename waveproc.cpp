@@ -2911,8 +2911,8 @@ struct NoiseReductionChannelData
 	// pointer to array
 	// for accumulating output result
 	ATL::CHeapPtr<float> m_AccumBuffer;
-	ATL::CHeapPtr<DATA> m_FftInBuffer;
-	ATL::CHeapPtr<std::complex<DATA> > m_FftOutBuffer;
+	ATL::CHeapPtr<DATA, AlignedAllocator> m_FftInBuffer;
+	ATL::CHeapPtr<std::complex<DATA>, AlignedAllocator> m_FftOutBuffer;
 	std::vector<SIGNAL_PARAMS> m_pParams;
 
 	NoiseReductionChannelData(NoiseReductionCore * nr, int FftOrder, BOOL PassThrough);

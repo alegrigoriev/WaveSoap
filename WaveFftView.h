@@ -64,7 +64,7 @@ protected:
 	ATL::CHeapPtr<float> m_pFftWindow;
 	bool m_FftWindowValid;
 
-	ATL::CHeapPtr<float> m_FftBuf[sizeof(ULONG_PTR)*8];  // for calculations, each sized  m_FftOrder * 2 + 2
+	ATL::CHeapPtr<float, AlignedAllocator> m_FftBuf[sizeof(ULONG_PTR)*8];  // for calculations, each sized  m_FftOrder * 2 + 2
 	NUM_volatile<ULONG_PTR> m_FftArrayBusyMask;
 	int m_AllocatedFftBufSize;
 

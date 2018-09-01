@@ -71,6 +71,29 @@ inline void AssignMultiSz(CStringA & dst, LPCWSTR src)
 	dst = CStringA(src, MultiSzLen(src));
 }
 
+template<int alignment> class CCRTAllocatorAligned
+{
+public:
+	_Ret_maybenull_ _Post_writable_byte_size_(nBytes) _ATL_DECLSPEC_ALLOCATOR static void* Reallocate(
+		_In_ void* p,
+		_In_ size_t nBytes) throw()
+	{
+		return _aligned_realloc(p, nBytes, alignment);
+	}
+
+	_Ret_maybenull_ _Post_writable_byte_size_(nBytes) _ATL_DECLSPEC_ALLOCATOR static void* Allocate(_In_ size_t nBytes) throw()
+	{
+		return _aligned_malloc(nBytes, alignment);
+	}
+
+	static void Free(_In_ void* p) throw()
+	{
+		_aligned_free(p);
+	}
+};
+
+typedef CCRTAllocatorAligned<16> AlignedAllocator;
+
 #define EnableDlgItem(id, Enable) \
 	::EnableWindow(GetDlgItem(id)->GetSafeHwnd(), Enable)
 
