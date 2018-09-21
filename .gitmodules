@@ -1,0 +1,3 @@
+[submodule "baseclasses"]
+	path = baseclasses
+	url = ../baseclasses
