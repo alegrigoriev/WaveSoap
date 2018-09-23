@@ -710,7 +710,7 @@ makehm /h /a afxhh.h IDW_,HIDW_,0x50000 "%(Filename)%(Extension)" &gt;&gt; "hlp\
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="baseclasses\baseclasses.vcxproj">
-      <Project>{e8a3f6fa-ae1c-4c8e-a0b6-9c8480324eaa}</Project>
+      <Project>{4cbc0173-27e6-4218-ae06-5efdca7b2547}</Project>
       <UseLibraryDependencyInputs>true</UseLibraryDependencyInputs>
     </ProjectReference>
   </ItemGroup>
