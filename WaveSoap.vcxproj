@@ -538,6 +538,7 @@ echo.
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(OutDir)%(Filename).chm;%(Outputs)</Outputs>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(OutDir)%(Filename).chm;%(Outputs)</Outputs>
     </CustomBuild>
+    <None Include="CommonSources\Utils\MultiString.inl" />
     <None Include="DialogWithSelection.inl" />
     <None Include="CommonSources\Math\FFT.inl" />
     <None Include="res\bitmap_load.bmp" />

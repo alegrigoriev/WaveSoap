@@ -291,6 +291,9 @@
     <None Include="CommonSources\Math\FFT.inl">
       <Filter>Header Files</Filter>
     </None>
+    <None Include="CommonSources\Utils\MultiString.inl">
+      <Filter>Header Files</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="WaveSoapFront.rc">
