@@ -133,7 +133,7 @@ void CWaveOutlineView::OnDraw(CDC* pDC)
 		int PrevIdx = ur.left * TotalPeaks / width;
 		for (i = ur.left; i < ur.right; i++)
 		{
-			int NewIdx = (i + 1) * TotalPeaks / width;
+			int NewIdx = MulDiv(i + 1, TotalPeaks, width);
 
 			pPeaks[i] = pDoc->m_WavFile.GetPeakMinMax(PrevIdx, NewIdx);
 

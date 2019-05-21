@@ -84,7 +84,7 @@ void CNewFilePropertiesDlg::DoDataExchange(CDataExchange* pDX)
 			MaxFileLength = 0xFFFFFFFFu - 0x100000u;
 		}
 
-		NUMBER_OF_SAMPLES MaxLength = MaxFileLength / (m_NumberOfChannels * m_nSamplingRate * SampleSize);
+		WAV_FILE_SIZE MaxLength = MaxFileLength / (m_NumberOfChannels * m_nSamplingRate * SampleSize);
 
 		if (m_Length < 0
 			|| m_Length > MaxLength)

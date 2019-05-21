@@ -31,6 +31,24 @@ template<typename T> inline void memzero(T & obj)
 
 #include <MultiString.inl>
 
+inline LONGLONG MulDiv64(
+						_In_ LONGLONG nNumber,
+						_In_ LONGLONG nNumerator,
+						_In_ LONGLONG nDenominator
+						)
+{
+	return (nNumber * nNumerator) / nDenominator;
+}
+
+inline ULONG UMulDiv(
+					_In_ ULONG nNumber,
+					_In_ ULONG nNumerator,
+					_In_ ULONG nDenominator
+					)
+{
+	return (ULONG)(UInt32x32To64(nNumber, nNumerator) / nDenominator);
+}
+
 template<int alignment> class CCRTAllocatorAligned
 {
 public:

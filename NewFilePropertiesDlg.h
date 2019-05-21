@@ -66,7 +66,7 @@ protected:
 	int m_nSamplingRate;
 	int m_SampleType;
 	//}}AFX_DATA
-	long m_Length;
+	NUMBER_OF_SAMPLES m_Length;
 
 // Overrides
 	// ClassWizard generated virtual function overrides
