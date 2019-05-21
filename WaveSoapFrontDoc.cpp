@@ -2199,8 +2199,8 @@ BOOL CWaveSoapFrontDoc::OnSaveRawFile(class COperationContext ** ppOp, int flags
 		NewTempFilename += _T(".temp");
 	}
 
-	DWORD FileSize = MulDiv(pWf->nAvgBytesPerSec, m_WavFile.GetDataChunk()->cksize,
-							WaveFormat().BytesPerSec());
+	DWORD64 FileSize = MulDiv64(pWf->nAvgBytesPerSec, m_WavFile.GetDataChunk()->cksize,
+								WaveFormat().BytesPerSec());
 	if (FALSE == NewWaveFile.CreateWaveFile(& m_OriginalWavFile, pWf, ALL_CHANNELS,
 											FileSize,
 											CreateWaveFileDontInitStructure

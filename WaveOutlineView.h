@@ -37,9 +37,9 @@ protected:
 
 // Implementation
 protected:
-	int m_PlaybackCursorPosition;
-	int m_LeftViewBoundary;
-	int m_RightViewBoundary;
+	SAMPLE_INDEX m_PlaybackCursorPosition;
+	SAMPLE_INDEX m_LeftViewBoundary;
+	SAMPLE_INDEX m_RightViewBoundary;
 	WAVE_PEAK m_LastMaxAmplitude;
 	bool bIsTrackingSelection;
 	int nKeyPressed;
