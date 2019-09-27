@@ -215,7 +215,6 @@ void CTimeRulerView::DrawSamples(CDC * pDC)
 	GetClientRect(cr);
 	int const RulerBase = cr.bottom - m_MarkerHeight - 2;
 
-	TCHAR const DecimalPoint = GetApp()->m_DecimalPoint;
 	float const SampleRate = float(pDoc->WaveSampleRate());
 
 	int nTickCount = 1;
@@ -341,7 +340,6 @@ void CTimeRulerView::DrawHhMmSs(CDC * pDC)
 	GetClientRect(cr);
 	int const RulerBase = cr.bottom - m_MarkerHeight - 2;
 
-	TCHAR const DecimalPoint = GetApp()->m_DecimalPoint;
 	float const SampleRate = float(pDoc->WaveSampleRate());
 
 	int nTickCount = 1;
@@ -516,7 +514,7 @@ void CTimeRulerView::DrawSeconds(CDC * pDC)
 	GetClientRect(cr);
 	int const RulerBase = cr.bottom - m_MarkerHeight - 2;
 
-	TCHAR const DecimalPoint = GetApp()->m_DecimalPoint;
+	LPCTSTR DecimalPoint = LocaleParameters::DecimalPoint();
 	float const SampleRate = float(pDoc->WaveSampleRate());
 
 	int nTickCount = 1;
@@ -620,11 +618,11 @@ void CTimeRulerView::DrawSeconds(CDC * pDC)
 
 			if (DistTime < 1.)
 			{
-				s.Format(_T("%s%c%03d"), static_cast<LPCTSTR>(s1), DecimalPoint, ms);
+				s.Format(_T("%s%s%03d"), static_cast<LPCTSTR>(s1), DecimalPoint, ms);
 			}
 			else
 			{
-				s.Format(_T("%s%c0"), static_cast<LPCTSTR>(s1), DecimalPoint);
+				s.Format(_T("%s%s0"), static_cast<LPCTSTR>(s1), DecimalPoint);
 			}
 			pDC->TextOut(x + 2, RulerBase - 5, s);
 
@@ -651,7 +649,6 @@ void CTimeRulerView::DrawHhMmSsFf(CDC * pDC)
 	GetClientRect(cr);
 	int const RulerBase = cr.bottom - m_MarkerHeight - 2;
 
-	TCHAR const DecimalPoint = GetApp()->m_DecimalPoint;
 	float const SampleRate = float(pDoc->WaveSampleRate());
 
 	int nTickCount = 1;

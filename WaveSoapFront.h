@@ -121,8 +121,7 @@ protected:
 class COperationContext;
 
 class CWaveSoapFrontApp : public CWinAppEx,
-	public DirectFileParameters,
-	public LocaleParameters
+	public DirectFileParameters
 {
 	typedef CWinAppEx BaseClass;
 public:
