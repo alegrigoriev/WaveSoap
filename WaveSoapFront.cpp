@@ -475,7 +475,7 @@ BOOL CWaveSoapFrontApp::InitInstance()
 
 	if (m_bUseCountrySpecificNumberAndTime)
 	{
-		LoadLocaleParameters();
+		LocaleParameters::Load();
 	}
 
 	m_FileCache = new CDirectFileCacheProxy(m_MaxFileCache * 0x100000);
