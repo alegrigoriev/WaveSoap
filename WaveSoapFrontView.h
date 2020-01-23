@@ -3,12 +3,7 @@
 //
 /////////////////////////////////////////////////////////////////////////////
 
-#if !defined(AFX_WAVESOAPFRONTVIEW_H__FFA16C4E_2FA7_11D4_9ADD_00C0F0583C4B__INCLUDED_)
-#define AFX_WAVESOAPFRONTVIEW_H__FFA16C4E_2FA7_11D4_9ADD_00C0F0583C4B__INCLUDED_
-
-#if _MSC_VER > 1000
 #pragma once
-#endif // _MSC_VER > 1000
 
 #include "WaveSoapFrontDoc.h"
 #include "DataSection.h"
@@ -292,4 +287,3 @@ protected:
 //{{AFX_INSERT_LOCATION}}
 // Microsoft Visual C++ will insert additional declarations immediately before the previous line.
 
-#endif // !defined(AFX_WAVESOAPFRONTVIEW_H__FFA16C4E_2FA7_11D4_9ADD_00C0F0583C4B__INCLUDED_)

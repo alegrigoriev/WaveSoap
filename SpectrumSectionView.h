@@ -1,10 +1,5 @@
 // Copyright Alexander Grigoriev, 1997-2002, All Rights Reserved
-#if !defined(AFX_SPECTRUMSECTIONVIEW_H__6686D1B7_327B_4095_B596_07E91D2CB8FB__INCLUDED_)
-#define AFX_SPECTRUMSECTIONVIEW_H__6686D1B7_327B_4095_B596_07E91D2CB8FB__INCLUDED_
-
-#if _MSC_VER > 1000
 #pragma once
-#endif // _MSC_VER > 1000
 // SpectrumSectionView.h : header file
 //
 
@@ -138,4 +133,3 @@ inline CWaveSoapFrontDoc* CSpectrumSectionView::GetDocument() const
 //{{AFX_INSERT_LOCATION}}
 // Microsoft Visual C++ will insert additional declarations immediately before the previous line.
 
-#endif // !defined(AFX_SPECTRUMSECTIONVIEW_H__6686D1B7_327B_4095_B596_07E91D2CB8FB__INCLUDED_)

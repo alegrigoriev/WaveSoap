@@ -1,10 +1,5 @@
 // Copyright Alexander Grigoriev, 1997-2002, All Rights Reserved
-#if !defined(AFX_FILTERDIALOG_H__E4CA69D8_E2BD_4C89_AB70_2F3F8C35FF3B__INCLUDED_)
-#define AFX_FILTERDIALOG_H__E4CA69D8_E2BD_4C89_AB70_2F3F8C35FF3B__INCLUDED_
-
-#if _MSC_VER > 1000
 #pragma once
-#endif // _MSC_VER > 1000
 // FilterDialog.h : header file
 //
 #include "ResizableDialog.h"
@@ -88,4 +83,3 @@ protected:
 //{{AFX_INSERT_LOCATION}}
 // Microsoft Visual C++ will insert additional declarations immediately before the previous line.
 
-#endif // !defined(AFX_FILTERDIALOG_H__E4CA69D8_E2BD_4C89_AB70_2F3F8C35FF3B__INCLUDED_)

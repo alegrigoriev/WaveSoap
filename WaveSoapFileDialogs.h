@@ -1,10 +1,5 @@
 // Copyright Alexander Grigoriev, 1997-2002, All Rights Reserved
-#if !defined(AFX_WAVESOAPFILE_DIALOGS_H__FFA16C44_2FA7_11D4_9ADD_00C0F0583C4B__INCLUDED_)
-#define AFX_WAVESOAPFILE_DIALOGS_H__FFA16C44_2FA7_11D4_9ADD_00C0F0583C4B__INCLUDED_
-
-#if _MSC_VER > 1000
 #pragma once
-#endif // _MSC_VER > 1000
 
 #ifndef __AFXWIN_H__
 	#error include 'stdafx.h' before including this file for PCH
@@ -247,5 +242,3 @@ protected:
 	}
 };
 
-
-#endif // AFX_WAVESOAPFILE_DIALOGS_H__FFA16C44_2FA7_11D4_9ADD_00C0F0583C4B__INCLUDED_

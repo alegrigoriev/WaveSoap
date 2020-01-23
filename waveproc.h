@@ -1,7 +1,6 @@
 // Copyright Alexander Grigoriev, 1997-2002, All Rights Reserved
 // waveproc.h
-#ifndef __WAVEPROC_H_
-#define __WAVEPROC_H_
+#pragma once
 
 #include <complex>
 #include <afxtempl.h>
@@ -687,8 +686,7 @@ private:
 
 	void ResetResample();
 
-	enum
-	{
+	enum {
 		WindowTypeSquareSine,
 		WindowTypeNuttall,
 		WindowTypeBlackman,
@@ -722,8 +720,9 @@ private:
 		ResampleTableBits = 11,
 		ResampleFilterSize = (1 << ResampleTableBits),
 		ResampleIndexShift = (32 - ResampleTableBits),
-		MaxNumberOfFilterSamples = 50*100,
-		SrcBufSize = 0x1000 };
+		MaxNumberOfFilterSamples = 50 * 100,
+		SrcBufSize = 0x1000
+	};
 
 	float m_pSrcBuf[SrcBufSize];
 
@@ -990,5 +989,3 @@ protected:
 	virtual BOOL Init();
 	virtual void DeInit();
 };
-
-#endif //#ifndef __WAVEPROC_H_

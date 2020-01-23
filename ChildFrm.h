@@ -2,13 +2,8 @@
 // ChildFrm.h : interface of the CChildFrame class
 //
 /////////////////////////////////////////////////////////////////////////////
-
-#if !defined(AFX_CHILDFRM_H__FFA16C4A_2FA7_11D4_9ADD_00C0F0583C4B__INCLUDED_)
-#define AFX_CHILDFRM_H__FFA16C4A_2FA7_11D4_9ADD_00C0F0583C4B__INCLUDED_
-
-#if _MSC_VER > 1000
 #pragma once
-#endif // _MSC_VER > 1000
+
 #include "resource.h"
 #include <vector>
 
@@ -142,7 +137,9 @@ public:
 public:
 	virtual BOOL OnCmdMsg(UINT nID, int nCode, void* pExtra, AFX_CMDHANDLERINFO* pHandlerInfo);
 	//}}AFX_VIRTUAL
-	enum { HorizontalRulerID = 1,
+	enum
+	{
+		HorizontalRulerID = 1,
 		VerticalWaveRulerID,
 		VerticalFftRulerID,
 		SpectrumSectionViewID,
@@ -258,5 +255,3 @@ protected:
 /////////////////////////////////////////////////////////////////////////////
 //{{AFX_INSERT_LOCATION}}
 // Microsoft Visual C++ will insert additional declarations immediately before the previous line.
-
-#endif // !defined(AFX_CHILDFRM_H__FFA16C4A_2FA7_11D4_9ADD_00C0F0583C4B__INCLUDED_)
