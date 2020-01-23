@@ -1,10 +1,5 @@
 // Copyright Alexander Grigoriev, 1997-2002, All Rights Reserved
-#if !defined(AFX_OPERATIONDIALOGS_H__F0C2FDC2_64C6_11D4_9ADD_00C0F0583C4B__INCLUDED_)
-#define AFX_OPERATIONDIALOGS_H__F0C2FDC2_64C6_11D4_9ADD_00C0F0583C4B__INCLUDED_
-
-#if _MSC_VER > 1000
 #pragma once
-#endif // _MSC_VER > 1000
 // OperationDialogs.h : header file
 //
 #include "NumEdit.h"
@@ -119,8 +114,11 @@ public:
 	double GetRightVolume();
 
 	// Dialog Data
-	enum { IDD = IDD_DIALOG_VOLUME_CHANGE,
-		IDD_MONO = IDD_DIALOG_VOLUME_CHANGE_MONO };
+	enum
+	{
+		IDD = IDD_DIALOG_VOLUME_CHANGE,
+		IDD_MONO = IDD_DIALOG_VOLUME_CHANGE_MONO,
+	};
 	//{{AFX_DATA(CVolumeChangeDialog)
 	CSliderCtrl	m_SliderVolumeRight;
 	CSliderCtrl	m_SliderVolumeLeft;
@@ -914,4 +912,3 @@ protected:
 //{{AFX_INSERT_LOCATION}}
 // Microsoft Visual C++ will insert additional declarations immediately before the previous line.
 
-#endif // !defined(AFX_OPERATIONDIALOGS_H__F0C2FDC2_64C6_11D4_9ADD_00C0F0583C4B__INCLUDED_)

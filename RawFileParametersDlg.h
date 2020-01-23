@@ -1,10 +1,5 @@
 // Copyright Alexander Grigoriev, 1997-2002, All Rights Reserved
-#if !defined(AFX_RAWFILEPARAMETERSDLG_H__B0281B13_1E04_4C49_B08D_20F9BFDCFDFF__INCLUDED_)
-#define AFX_RAWFILEPARAMETERSDLG_H__B0281B13_1E04_4C49_B08D_20F9BFDCFDFF__INCLUDED_
-
-#if _MSC_VER > 1000
 #pragma once
-#endif // _MSC_VER > 1000
 // RawFileParametersDlg.h : header file
 //
 #include "ApplicationProfile.h"
@@ -142,4 +137,3 @@ protected:
 //{{AFX_INSERT_LOCATION}}
 // Microsoft Visual C++ will insert additional declarations immediately before the previous line.
 
-#endif // !defined(AFX_RAWFILEPARAMETERSDLG_H__B0281B13_1E04_4C49_B08D_20F9BFDCFDFF__INCLUDED_)

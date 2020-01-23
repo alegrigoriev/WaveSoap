@@ -2,12 +2,7 @@
 // WaveSoapFront.h : main header file for the WAVESOAPFRONT application
 //
 
-#if !defined(AFX_WAVESOAPFRONT_H__FFA16C44_2FA7_11D4_9ADD_00C0F0583C4B__INCLUDED_)
-#define AFX_WAVESOAPFRONT_H__FFA16C44_2FA7_11D4_9ADD_00C0F0583C4B__INCLUDED_
-
-#if _MSC_VER > 1000
 #pragma once
-#endif // _MSC_VER > 1000
 
 #ifndef __AFXWIN_H__
 	#error include 'stdafx.h' before including this file for PCH
@@ -152,7 +147,8 @@ public:
 	{
 		DefaultOpenReadOnly = 0,
 		DefaultOpenDirect = 1,
-		DefaultOpenBuffered = 2, };
+		DefaultOpenBuffered = 2,
+	};
 
 	bool m_bOpenChildMaximized;
 	bool m_bShowToolbar;
@@ -428,4 +424,3 @@ void _AfxAppendFilterSuffix(CString& filter, OPENFILENAME& ofn,
 /////////////////////////////////////////////////////////////////////////////
 //{{AFX_INSERT_LOCATION}}
 // Microsoft Visual C++ will insert additional declarations immediately before the previous line.
-#endif // !defined(AFX_WAVESOAPFRONT_H__FFA16C44_2FA7_11D4_9ADD_00C0F0583C4B__INCLUDED_)

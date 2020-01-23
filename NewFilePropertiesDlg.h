@@ -1,10 +1,5 @@
 // Copyright Alexander Grigoriev, 1997-2002, All Rights Reserved
-#if !defined(AFX_NEWFILEPROPERTIESDLG_H__306F663B_DA8B_4A53_9573_334F54B5D3CF__INCLUDED_)
-#define AFX_NEWFILEPROPERTIESDLG_H__306F663B_DA8B_4A53_9573_334F54B5D3CF__INCLUDED_
-
-#if _MSC_VER > 1000
 #pragma once
-#endif // _MSC_VER > 1000
 // NewFilePropertiesDlg.h : header file
 //
 
@@ -87,4 +82,3 @@ protected:
 //{{AFX_INSERT_LOCATION}}
 // Microsoft Visual C++ will insert additional declarations immediately before the previous line.
 
-#endif // !defined(AFX_NEWFILEPROPERTIESDLG_H__306F663B_DA8B_4A53_9573_334F54B5D3CF__INCLUDED_)

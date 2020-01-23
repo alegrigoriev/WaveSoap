@@ -1,10 +1,5 @@
 // Copyright Alexander Grigoriev, 1997-2002, All Rights Reserved
-#if !defined(AFX_TIMERULERVIEW_H__0755E980_3D17_11D4_9ADD_00C0F0583C4B__INCLUDED_)
-#define AFX_TIMERULERVIEW_H__0755E980_3D17_11D4_9ADD_00C0F0583C4B__INCLUDED_
-
-#if _MSC_VER > 1000
 #pragma once
-#endif // _MSC_VER > 1000
 // TimeRulerView.h : header file
 //
 #include "Ruler.h"
@@ -144,4 +139,3 @@ inline CWaveSoapFrontDoc* CTimeRulerView::GetDocument() const
 //{{AFX_INSERT_LOCATION}}
 // Microsoft Visual C++ will insert additional declarations immediately before the previous line.
 
-#endif // !defined(AFX_TIMERULERVIEW_H__0755E980_3D17_11D4_9ADD_00C0F0583C4B__INCLUDED_)

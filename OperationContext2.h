@@ -1,11 +1,6 @@
 // Copyright Alexander Grigoriev, 1997-2002, All Rights Reserved
 // OperationContext.h
-#if !defined(AFX_OPERATIONCONTEXT2_H__FFA16C44_2FA7_11D4_9ADD_00C0F0583C4B__INCLUDED_)
-#define AFX_OPERATIONCONTEXT2_H__FFA16C44_2FA7_11D4_9ADD_00C0F0583C4B__INCLUDED_
-
-#if _MSC_VER > 1000
 #pragma once
-#endif // _MSC_VER > 1000
 
 #include "OperationContext.h"
 #include "EqualizerDialog.h"
@@ -144,7 +139,9 @@ private:
 	void CompileOr();
 	void CompileXor();
 
-	enum { ExpressionStackSize = 64,
+	enum
+	{
+		ExpressionStackSize = 64,
 		DataStackSize = ExpressionStackSize * 2,
 		NumberOfIntConstants = 128,
 		NumberOfDoubleConstants = 64,
@@ -813,4 +810,3 @@ protected:
 	virtual BOOL OperationProc();
 };
 
-#endif // AFX_OPERATIONCONTEXT2_H__FFA16C44_2FA7_11D4_9ADD_00C0F0583C4B__INCLUDED_

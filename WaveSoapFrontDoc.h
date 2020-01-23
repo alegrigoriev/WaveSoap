@@ -2,13 +2,7 @@
 // WaveSoapFrontDoc.h : interface of the CWaveSoapFrontDoc class
 //
 /////////////////////////////////////////////////////////////////////////////
-
-#if !defined(AFX_WAVESOAPFRONTDOC_H__FFA16C4C_2FA7_11D4_9ADD_00C0F0583C4B__INCLUDED_)
-#define AFX_WAVESOAPFRONTDOC_H__FFA16C4C_2FA7_11D4_9ADD_00C0F0583C4B__INCLUDED_
-
-#if _MSC_VER > 1000
 #pragma once
-#endif // _MSC_VER > 1000
 #include "WmaFile.h"
 #include "KListEntry.h"
 #include "KInterlocked.h"
@@ -133,7 +127,8 @@ enum {
 	SetSelection_MakeCaretVisible = 1,		// move caret within margins of the active view
 	SetSelection_MoveCaretToCenter = 2,		// move caret into center of the active view
 	SetSelection_KeepCaretVisible = SetSelection_MakeCaretVisible | SetSelection_MoveCaretToCenter,
-	SetSelection_SnapToMaximum = 4,			// set caret to the maximum of the view column granularity (for example, when clicked on the view or outline)
+	SetSelection_SnapToMaximum = 4,
+	// set caret to the maximum of the view column granularity (for example, when clicked on the view or outline)
 	// make sure the end of file is in the view (that not all the view is beyond EOF); change origin if necessary.
 	// it's used when the file is replaced because of sample rate change
 	SetSelection_MakeFileVisible = 8,
@@ -649,4 +644,3 @@ struct MP3_IDTAG
 //{{AFX_INSERT_LOCATION}}
 // Microsoft Visual C++ will insert additional declarations immediately before the previous line.
 
-#endif // !defined(AFX_WAVESOAPFRONTDOC_H__FFA16C4C_2FA7_11D4_9ADD_00C0F0583C4B__INCLUDED_)

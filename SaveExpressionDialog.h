@@ -1,10 +1,5 @@
 // Copyright Alexander Grigoriev, 1997-2002, All Rights Reserved
-#if !defined(AFX_SAVEEXPRESSIONDIALOG_H__1FEC6434_5713_49ED_815E_6B35C28D8CD9__INCLUDED_)
-#define AFX_SAVEEXPRESSIONDIALOG_H__1FEC6434_5713_49ED_815E_6B35C28D8CD9__INCLUDED_
-
-#if _MSC_VER > 1000
 #pragma once
-#endif // _MSC_VER > 1000
 // SaveExpressionDialog.h : header file
 //
 
@@ -80,4 +75,3 @@ protected:
 //{{AFX_INSERT_LOCATION}}
 // Microsoft Visual C++ will insert additional declarations immediately before the previous line.
 
-#endif // !defined(AFX_SAVEEXPRESSIONDIALOG_H__1FEC6434_5713_49ED_815E_6B35C28D8CD9__INCLUDED_)

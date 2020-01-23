@@ -1,10 +1,5 @@
 // Copyright Alexander Grigoriev, 1997-2002, All Rights Reserved
-#if !defined(AFX_EQUALIZERDIALOG_H__D9EA5D94_8BAC_4E78_A268_6D4AD2625D48__INCLUDED_)
-#define AFX_EQUALIZERDIALOG_H__D9EA5D94_8BAC_4E78_A268_6D4AD2625D48__INCLUDED_
-
-#if _MSC_VER > 1000
 #pragma once
-#endif // _MSC_VER > 1000
 // EqualizerDialog.h : header file
 //
 #include "NumEdit.h"
@@ -89,4 +84,3 @@ protected:
 //{{AFX_INSERT_LOCATION}}
 // Microsoft Visual C++ will insert additional declarations immediately before the previous line.
 
-#endif // !defined(AFX_EQUALIZERDIALOG_H__D9EA5D94_8BAC_4E78_A268_6D4AD2625D48__INCLUDED_)

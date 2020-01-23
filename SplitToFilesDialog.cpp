@@ -5,7 +5,6 @@
 /////////////////////////////////////////////////////////////////////////////
 
 #include "stdafx.h"
-//#include "WaveSoapFront.h"
 #include "SplitToFilesDialog.h"
 #include "WaveFile.h"
 #include "TimeToStr.h"

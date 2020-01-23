@@ -1,10 +1,5 @@
 // Copyright Alexander Grigoriev, 1997-2002, All Rights Reserved
-#if !defined(AFX_BATCHSAVETARGETDLG_H__CFACB615_6CD0_466E_BF66_D0C867C94CCE__INCLUDED_)
-#define AFX_BATCHSAVETARGETDLG_H__CFACB615_6CD0_466E_BF66_D0C867C94CCE__INCLUDED_
-
-#if _MSC_VER > 1000
 #pragma once
-#endif // _MSC_VER > 1000
 // BatchSaveTargetDlg.h : header file
 //
 #include "NumEdit.h"
@@ -89,5 +84,3 @@ protected:
 
 //{{AFX_INSERT_LOCATION}}
 // Microsoft Visual C++ will insert additional declarations immediately before the previous line.
-
-#endif // !defined(AFX_BATCHSAVETARGETDLG_H__CFACB615_6CD0_466E_BF66_D0C867C94CCE__INCLUDED_)
