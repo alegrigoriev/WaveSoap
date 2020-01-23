@@ -290,10 +290,13 @@ void CSaveRawFileDlg::DoDataExchange(CDataExchange* pDX)
 		case 0:
 		default:
 			m_WaveFormat.wFormatTag = WAVE_FORMAT_PCM;
+			break;
 		case 1:
 			m_WaveFormat.wFormatTag = WAVE_FORMAT_ALAW;
+			break;
 		case 2:
 			m_WaveFormat.wFormatTag = WAVE_FORMAT_MULAW;
+			break;
 		}
 
 		m_WaveFormat.nBlockAlign = m_WaveFormat.wBitsPerSample * m_WaveFormat.nChannels / 8;
