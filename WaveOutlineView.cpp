@@ -1162,8 +1162,8 @@ afx_msg LRESULT CWaveOutlineView::OnUwmNotifyViews(WPARAM wParam, LPARAM lParam)
 	{
 	case HorizontalOriginChanged:
 	case HorizontalExtentChanged:
-		NotifyViewExtents(data->HorizontalScroll.FirstSampleInView,
-						data->HorizontalScroll.FirstSampleInView + data->HorizontalScroll.TotalSamplesInView - 1);
+		NotifyViewExtents(SAMPLE_INDEX(data->HorizontalScroll.FirstSampleInView),
+						SAMPLE_INDEX(data->HorizontalScroll.FirstSampleInView + data->HorizontalScroll.TotalSamplesInView - 1));
 		break;
 	}
 	return 0;
