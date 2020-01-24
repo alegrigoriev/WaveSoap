@@ -199,7 +199,6 @@ END_MESSAGE_MAP()
 
 CWaveSoapFrontDoc::CWaveSoapFrontDoc()
 	:m_CaretPosition(0),
-	m_TimeSelectionMode(TRUE),
 	m_SelectionStart(0),
 	m_SelectionEnd(0),
 	m_bReadOnly(true),
@@ -330,7 +329,6 @@ BOOL CWaveSoapFrontDoc::OnNewDocument(NewFileParameters * pParams)
 
 	m_FileTypeFlags = pParams->m_FileTypeFlags & OpenDocumentNonWavFile;
 
-	m_TimeSelectionMode = TRUE;
 	m_bReadOnly = false;
 
 	NUMBER_OF_SAMPLES nSamples = pParams->m_InitialSamples;

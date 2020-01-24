@@ -1540,75 +1540,66 @@ void CWaveSoapViewBase::OnLButtonDown(UINT nFlags, CPoint point)
 		nSampleUnderMouse = pDoc->WaveFileSamples();
 	}
 
-	if (pDoc->m_TimeSelectionMode)
+	CView::OnLButtonDown(nFlags, point);
+
+	nKeyPressed = WM_LBUTTONDOWN;
+	if ((nFlags & MK_SHIFT)
+		|| (nHit & (VSHT_SEL_BOUNDARY_L | VSHT_SEL_BOUNDARY_R)))
 	{
-		CView::OnLButtonDown(nFlags, point);
-		nKeyPressed = WM_LBUTTONDOWN;
-		if ((nFlags & MK_SHIFT)
-			|| (nHit & (VSHT_SEL_BOUNDARY_L | VSHT_SEL_BOUNDARY_R)))
+		if (nSampleUnderMouse <
+			(double(SelectionStart) + SelectionEnd) / 2)
 		{
-			if (nSampleUnderMouse <
-				(double(SelectionStart) + SelectionEnd) / 2)
-			{
-				SelectionStart = nSampleUnderMouse;
-			}
-			else
-			{
-				SelectionEnd = nSampleUnderMouse;
-			}
+			SelectionStart = nSampleUnderMouse;
 		}
 		else
 		{
-			SelectionStart = nSampleUnderMouse;
-			SelectionEnd = SelectionStart;
+			SelectionEnd = nSampleUnderMouse;
 		}
-
-		CHANNEL_MASK nChan = ALL_CHANNELS;
-		if (nHit & VSHT_LEFT_CHAN)
-		{
-			nChan = SPEAKER_FRONT_LEFT;
-		}
-		else if (nHit & VSHT_RIGHT_CHAN)
-		{
-			nChan = SPEAKER_FRONT_RIGHT;
-		}
-
-		pDoc->SetSelection(SelectionStart, SelectionEnd, nChan, nSampleUnderMouse, SetSelection_DontAdjustView);
-		OnSetCursor(this, HTCLIENT, WM_LBUTTONDOWN);
 	}
 	else
 	{
-		BaseClass::OnLButtonDown(nFlags, point);
+		SelectionStart = nSampleUnderMouse;
+		SelectionEnd = SelectionStart;
 	}
+
+	CHANNEL_MASK nChan = ALL_CHANNELS;
+	if (nHit & VSHT_LEFT_CHAN)
+	{
+		nChan = SPEAKER_FRONT_LEFT;
+	}
+	else if (nHit & VSHT_RIGHT_CHAN)
+	{
+		nChan = SPEAKER_FRONT_RIGHT;
+	}
+
+	pDoc->SetSelection(SelectionStart, SelectionEnd, nChan, nSampleUnderMouse, SetSelection_DontAdjustView);
+	OnSetCursor(this, HTCLIENT, WM_LBUTTONDOWN);
 }
 
 void CWaveSoapViewBase::OnLButtonUp(UINT nFlags, CPoint point)
 {
 	ThisDoc * pDoc = GetDocument();
 
-	if (pDoc->m_TimeSelectionMode)
+	if (!bIsTrackingSelection
+		&&  nKeyPressed == WM_LBUTTONDOWN)
 	{
-		if ( ! bIsTrackingSelection
-			&&  nKeyPressed == WM_LBUTTONDOWN)
+		// mouse hasn't moved after click
+		if (GetApp()->m_bSnapMouseSelectionToMax
+			// the whole area wasn't selected
+			&& pDoc->m_SelectionStart == pDoc->m_SelectionEnd)
 		{
-			// mouse hasn't moved after click
-			if (GetApp()->m_bSnapMouseSelectionToMax
-				// the whole area wasn't selected
-				&& pDoc->m_SelectionStart == pDoc->m_SelectionEnd)
-			{
-				SAMPLE_INDEX nBegin = SAMPLE_INDEX(WindowXtoSample(point.x));
-				SAMPLE_INDEX nEnd = SAMPLE_INDEX(WindowXtoSample(point.x + 1));
+			SAMPLE_INDEX nBegin = SAMPLE_INDEX(WindowXtoSample(point.x));
+			SAMPLE_INDEX nEnd = SAMPLE_INDEX(WindowXtoSample(point.x + 1));
 
-				pDoc->SetSelection(nBegin, nEnd, pDoc->m_SelectedChannel, nBegin,
-									SetSelection_SnapToMaximum
-									| SetSelection_DontAdjustView);
-			}
+			pDoc->SetSelection(nBegin, nEnd, pDoc->m_SelectedChannel, nBegin,
+								SetSelection_SnapToMaximum
+								| SetSelection_DontAdjustView);
 		}
-		ReleaseCapture();
-		bIsTrackingSelection = false;
-		nKeyPressed = 0;
-
 	}
+	ReleaseCapture();
+	bIsTrackingSelection = false;
+	nKeyPressed = 0;
+
 	BaseClass::OnLButtonUp(nFlags, point);
 }
 
@@ -1698,78 +1689,74 @@ void CWaveSoapViewBase::OnMouseMove(UINT nFlags, CPoint point)
 	SAMPLE_INDEX SelectionStart = pDoc->m_SelectionStart;
 	SAMPLE_INDEX SelectionEnd = pDoc->m_SelectionEnd;
 
-	if (pDoc->m_TimeSelectionMode)
+	CView::OnMouseMove(nFlags, point);
+
+	if (nKeyPressed == 0)
 	{
-		CView::OnMouseMove(nFlags, point);
-		if (nKeyPressed != 0)
+		return;
+	}
+
+	if (!bIsTrackingSelection)
+	{
+		if (pDoc->m_CaretPosition >= nSampleUnderMouse
+			&& pDoc->m_CaretPosition < SAMPLE_INDEX(WindowXtoSample(point.x + 1)))
 		{
-			if ( ! bIsTrackingSelection)
-			{
-				if (pDoc->m_CaretPosition >= nSampleUnderMouse
-					&& pDoc->m_CaretPosition < SAMPLE_INDEX(WindowXtoSample(point.x + 1)))
-				{
-					// mouse didn't move outside this column
-					return;
-				}
-				bIsTrackingSelection = true;
-				SetCapture();
-			}
-
-			if (nHit & (VSHT_LEFT_AUTOSCROLL | VSHT_RIGHT_AUTOSCROLL))
-			{
-				if (NULL == m_AutoscrollTimerID)
-				{
-					m_AutoscrollTimerID = SetTimer(UINT_PTR(this+1), 50, NULL);
-					m_AutoscrollOriginX = point.x;
-					if (TRACE_CARET) TRACE("Timer %X started\n", m_AutoscrollTimerID);
-				}
-			}
-			else if (NULL != m_AutoscrollTimerID)
-			{
-				KillTimer(m_AutoscrollTimerID);
-				m_AutoscrollTimerID = NULL;
-			}
-			// tracked side (where the caret is) is moved,
-			// other side stays
-			if (SelectionStart == pDoc->m_CaretPosition)
-			{
-				SelectionStart = nSampleUnderMouse;
-			}
-			else if (SelectionEnd == pDoc->m_CaretPosition)
-			{
-				SelectionEnd = nSampleUnderMouse;
-			}
-			else if (nSampleUnderMouse <
-					(double(SelectionStart) + SelectionEnd) / 2)
-			{
-				SelectionStart = nSampleUnderMouse;
-			}
-			else
-			{
-				SelectionEnd = nSampleUnderMouse;
-			}
-
-			CHANNEL_MASK nChan = ALL_CHANNELS;
-			if (nHit & (VSHT_NOWAVE | VSHT_NONCLIENT))
-			{
-				// don't change the channel
-				nChan = pDoc->m_SelectedChannel;
-			}
-			else if (nHit & VSHT_LEFT_CHAN)
-			{
-				nChan = SPEAKER_FRONT_LEFT;
-			}
-			else if (nHit & VSHT_RIGHT_CHAN)
-			{
-				nChan = SPEAKER_FRONT_RIGHT;
-			}
-			pDoc->SetSelection(SelectionStart, SelectionEnd, nChan, nSampleUnderMouse, SetSelection_DontAdjustView);
+			// mouse didn't move outside this column
+			return;
 		}
+		bIsTrackingSelection = true;
+		SetCapture();
+	}
+
+	if (nHit & (VSHT_LEFT_AUTOSCROLL | VSHT_RIGHT_AUTOSCROLL))
+	{
+		if (NULL == m_AutoscrollTimerID)
+		{
+			m_AutoscrollTimerID = SetTimer(UINT_PTR(this+1), 50, NULL);
+			m_AutoscrollOriginX = point.x;
+			if (TRACE_CARET) TRACE("Timer %X started\n", m_AutoscrollTimerID);
+		}
+	}
+	else if (NULL != m_AutoscrollTimerID)
+	{
+		KillTimer(m_AutoscrollTimerID);
+		m_AutoscrollTimerID = NULL;
+	}
+	// tracked side (where the caret is) is moved,
+	// other side stays
+	if (SelectionStart == pDoc->m_CaretPosition)
+	{
+		SelectionStart = nSampleUnderMouse;
+	}
+	else if (SelectionEnd == pDoc->m_CaretPosition)
+	{
+		SelectionEnd = nSampleUnderMouse;
+	}
+	else if (nSampleUnderMouse <
+			(double(SelectionStart) + SelectionEnd) / 2)
+	{
+		SelectionStart = nSampleUnderMouse;
 	}
 	else
 	{
-		BaseClass::OnMouseMove(nFlags, point);
+		SelectionEnd = nSampleUnderMouse;
 	}
+
+	CHANNEL_MASK nChan = ALL_CHANNELS;
+	if (nHit & (VSHT_NOWAVE | VSHT_NONCLIENT))
+	{
+		// don't change the channel
+		nChan = pDoc->m_SelectedChannel;
+	}
+	else if (nHit & VSHT_LEFT_CHAN)
+	{
+		nChan = SPEAKER_FRONT_LEFT;
+	}
+	else if (nHit & VSHT_RIGHT_CHAN)
+	{
+		nChan = SPEAKER_FRONT_RIGHT;
+	}
+	pDoc->SetSelection(SelectionStart, SelectionEnd, nChan, nSampleUnderMouse, SetSelection_DontAdjustView);
 }
 
 void CWaveSoapFrontView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
