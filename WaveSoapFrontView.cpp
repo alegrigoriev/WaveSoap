@@ -1126,7 +1126,7 @@ void CWaveSoapFrontView::OnUpdateViewZoomOutVert(CCmdUI* pCmdUI)
 }
 
 // return client hit test code. 'p' is in client coordinates
-DWORD CWaveSoapFrontView::ClientHitTest(CPoint p) const
+DWORD CWaveSoapViewBase::ClientHitTest(CPoint p) const
 {
 	ThisDoc * pDoc = GetDocument();
 	DWORD result = 0;
@@ -1213,26 +1213,6 @@ DWORD CWaveSoapFrontView::ClientHitTest(CPoint p) const
 
 	if (p.x < DataEnd)
 	{
-		if (pDoc->WaveChannels() == 2)
-		{
-			if (ChannelUnderCursor == 0 && p.y < SampleValueToY(0., ChannelUnderCursor))
-			{
-				result |= VSHT_LEFT_CHAN;
-			}
-			else if (ChannelUnderCursor == 1 && p.y > SampleValueToY(0., ChannelUnderCursor))
-			{
-				result |= VSHT_RIGHT_CHAN;
-			}
-			else
-			{
-				result |= VSHT_BCKGND;
-			}
-		}
-		else
-		{
-			result |= VSHT_BCKGND;
-		}
-
 		int const AutoscrollWidth = GetSystemMetrics(SM_CXVSCROLL);
 		if (r.right > AutoscrollWidth)
 		{
@@ -1250,6 +1230,38 @@ DWORD CWaveSoapFrontView::ClientHitTest(CPoint p) const
 	{
 		result |= VSHT_NOWAVE;
 	}
+	return result;
+}
+
+// return client hit test code. 'p' is in client coordinates
+DWORD CWaveSoapFrontView::ClientHitTest(CPoint p) const
+{
+	DWORD result = BaseClass::ClientHitTest(p);
+
+	if (0 == (result & (VSHT_NOWAVE | VSHT_NONCLIENT)))
+	{
+		if (GetDocument()->WaveChannels() == 2)
+		{
+			const int ChannelUnderCursor = result & VSHT_CHANNEL_MASK;
+			if (ChannelUnderCursor == 0 && p.y < SampleValueToY(0., ChannelUnderCursor))
+			{
+				result |= VSHT_LEFT_CHAN;
+			}
+			else if (ChannelUnderCursor == 1 && p.y > SampleValueToY(0., ChannelUnderCursor))
+			{
+				result |= VSHT_RIGHT_CHAN;
+			}
+			else
+			{
+				result |= VSHT_BCKGND;
+			}
+		}
+		else
+		{
+			result |= VSHT_BCKGND;
+		}
+	}
+
 	return result;
 }
 
