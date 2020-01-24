@@ -61,7 +61,7 @@ public:
 	void InvalidateMarkerRegion(WAVEREGIONINFO const * pInfo);
 
 	void RecalculateChannelHeight(int cy);
-	virtual DWORD ClientHitTest(CPoint p) const = 0;
+	virtual DWORD ClientHitTest(CPoint p) const;
 
 	void SetFirstSampleInView(double sample);
 	void AdjustCaretVisibility(SAMPLE_INDEX CaretPos, SAMPLE_INDEX OldCaretPos,

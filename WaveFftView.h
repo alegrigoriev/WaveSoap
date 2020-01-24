@@ -40,7 +40,6 @@ protected:
 	virtual void Dump(CDumpContext& dc) const;
 #endif
 
-	DWORD ClientHitTest(CPoint p) const;
 	// FFT array is stored as circular buffer of FFT columns.
 	// each column is a row of the array of m_FftResultArrayHeight bytes
 	// m_IndexOfFftBegin is number of row with m_FftResultBegin
