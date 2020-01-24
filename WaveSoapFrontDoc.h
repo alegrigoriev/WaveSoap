@@ -308,7 +308,6 @@ public:
 	SAMPLE_INDEX m_SelectionEnd;		// >= m_SelectionEnd
 
 	CHANNEL_MASK m_SelectedChannel;
-	bool m_TimeSelectionMode;
 
 	CHANNEL_MASK GetSelectedChannel() const;
 
