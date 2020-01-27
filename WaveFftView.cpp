@@ -308,7 +308,7 @@ CWaveFftView::CWaveFftView()
 	: m_pFftResultArray(NULL),
 	m_FftResultArrayWidth(0),
 	m_FftResultArrayHeight(0),
-	m_FirstbandVisible(0),
+	m_VisibleBottom(0),
 	m_FftWindowType(GetApp()->m_FftWindowType),
 	m_IndexOfFftBegin(0),
 	m_PrevSelectionEnd(0),
@@ -1083,7 +1083,7 @@ void CWaveFftView::OnDraw(CPaintDC* pDC, CRgn * UpdateRgn)
 		if (! m_Heights.ChannelMinimized(ch))
 		{
 			ScaledHeight = int(m_Heights.NominalChannelHeight * m_VerticalScale);
-			OffsetPixels = int(ScaledHeight * m_FirstbandVisible/ m_FftOrder);
+			OffsetPixels = int(ScaledHeight * m_VisibleBottom);
 		}
 
 		int valid_top = top;
@@ -1443,7 +1443,7 @@ void CWaveFftView::OnDraw(CPaintDC* pDC, CRgn * UpdateRgn)
 
 		prev_x = x;
 
-		long FftOffsetPixels = long(m_FirstbandVisible * int(m_VerticalScale * m_Heights.NominalChannelHeight) / m_FftOrder);
+		long FftOffsetPixels = long(m_VisibleBottom * int(m_VerticalScale * m_Heights.NominalChannelHeight));
 		for (int ch = 0; ch < nChannels; ch++)
 		{
 			int BrushOffset = 0;
@@ -1936,7 +1936,6 @@ void CWaveFftView::OnSetBands(int order)
 	int NewBands = 1 << order;
 	if (NewBands != m_FftOrder)
 	{
-		m_FirstbandVisible = m_FirstbandVisible * NewBands / m_FftOrder;
 		m_FftOrder = NewBands;
 		GetApp()->m_FftBandsOrder = order;
 
@@ -2142,7 +2141,7 @@ void CWaveFftView::RedrawSelectionRect(CDC * pDC, SAMPLE_INDEX OldSelectionStart
 
 		int OddFileOffset = (int)fmod(floor(m_FirstSampleInView / m_HorizontalScale), 2.);
 
-		int VerticalOddOffset = 1 & int(m_FirstbandVisible * int(m_VerticalScale * m_Heights.NominalChannelHeight) / m_FftOrder);
+		int VerticalOddOffset = 1 & int(m_VisibleBottom * int(m_VerticalScale * m_Heights.NominalChannelHeight));
 		bmp.CreateBitmap(8, 8, 1, 1, pattern + (OddFileOffset ^ VerticalOddOffset));
 
 		CBrush brush(&bmp);
@@ -2298,7 +2297,7 @@ double CWaveFftView::AdjustOffset(double offset) const
 	return offset;
 }
 
-void CWaveFftView::SetNewFftOffset(double first_band)
+void CWaveFftView::SetNewFftOffset(double visible_bottom)
 {
 	// scroll channels rectangles
 	CWaveSoapFrontDoc * pDoc = GetDocument();
@@ -2314,9 +2313,9 @@ void CWaveFftView::SetNewFftOffset(double first_band)
 		cr.right = FileEnd;
 	}
 
-	long OldOffsetPixels = long(m_FirstbandVisible * int(m_VerticalScale * m_Heights.NominalChannelHeight) / m_FftOrder);
-	long NewOffsetPixels = long(first_band * int(m_VerticalScale * m_Heights.NominalChannelHeight) / m_FftOrder);
-	m_FirstbandVisible = first_band;
+	long OldOffsetPixels = long(m_VisibleBottom * int(m_VerticalScale * m_Heights.NominalChannelHeight));
+	long NewOffsetPixels = long(visible_bottom * int(m_VerticalScale * m_Heights.NominalChannelHeight));
+	m_VisibleBottom = visible_bottom;
 
 	CHANNEL_MASK Selected = m_PrevSelectedChannel;		// currently drawn selected channel
 	if (pDoc->m_SelectionStart == pDoc->m_SelectionEnd)
@@ -2503,7 +2502,7 @@ afx_msg LRESULT CWaveFftView::OnUwmNotifyViews(WPARAM wParam, LPARAM lParam)
 		// find max and min offset for this scale
 		m_VerticalScale = *(double*)lParam;
 
-		m_FirstbandVisible = AdjustOffset(m_FirstbandVisible);
+		m_VisibleBottom = AdjustOffset(m_VisibleBottom);
 
 		Invalidate(TRUE);
 		break;

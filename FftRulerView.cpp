@@ -22,10 +22,9 @@ IMPLEMENT_DYNCREATE(CFftRulerView, CVerticalRuler)
 
 CFftRulerView::CFftRulerView()
 	: m_VerticalScale(1.)
-	, m_FirstbandVisible(0.)
-	, m_FftOffsetBeforeScroll(0)
+	, m_VisibleBottom(0.)
+	, m_BottomBeforeScroll(0)
 	, m_MouseYOffsetForScroll(0)
-	, m_FftOrder(1024)
 {
 	memzero(m_Heights);
 }
@@ -124,17 +123,6 @@ void CFftRulerView::OnDraw(CDC* pDrawDC)
 				continue;
 			}
 
-			int LastFftSample = int(m_FftOrder - m_FirstbandVisible);
-			int FirstFftSample = LastFftSample + (-m_Heights.NominalChannelHeight * m_FftOrder) / TotalRows;
-			if (FirstFftSample < 0)
-			{
-				LastFftSample -= FirstFftSample;
-				FirstFftSample = 0;
-			}
-
-			//int FirstRowInView = FirstFftSample * TotalRows / pMasterView->m_FftOrder;
-			//int FftSamplesInView = LastFftSample - FirstFftSample + 1;
-
 			int nSampleUnits = int(nVertStep * pDoc->WaveSampleRate() / 2 / (m_Heights.NominalChannelHeight * m_VerticalScale));
 			// round sample units to 10 or 5
 			int step;
@@ -160,16 +148,16 @@ void CFftRulerView::OnDraw(CDC* pDrawDC)
 			}
 
 			// round to previous multiple of step
-			long F_low = int(m_FirstbandVisible * 0.5 * pDoc->WaveSampleRate() / m_FftOrder);
+			long F_low = int(m_VisibleBottom * 0.5 * pDoc->WaveSampleRate());
 			// round to the next or current multiple of step
 			F_low -= F_low % (step*ticks);
 
 			for (long F = F_low, j = 0; ; F += step, j++)
 			{
 				// F is frequency
-				double band = double(F) / (0.5 * pDoc->WaveSampleRate())
-							* m_FftOrder;
-				int yDev = m_Heights.ch[ch].clip_bottom - (int)fround((band - m_FirstbandVisible) / m_FftOrder * m_Heights.NominalChannelHeight * m_VerticalScale);
+				double band = double(F) / (0.5 * pDoc->WaveSampleRate());
+
+				int yDev = m_Heights.ch[ch].clip_bottom - (int)fround((band - m_VisibleBottom) * m_Heights.NominalChannelHeight * m_VerticalScale);
 
 				if (yDev < clipr.top)
 				{
@@ -303,7 +291,7 @@ double CFftRulerView::AdjustOffset(double offset) const
 	int ScaledHeight = int(m_Heights.NominalChannelHeight * m_VerticalScale);
 	int MaxOffsetPixels = ScaledHeight - m_Heights.NominalChannelHeight;
 
-	double MaxOffset = double(MaxOffsetPixels) * m_FftOrder / ScaledHeight;
+	double MaxOffset = double(MaxOffsetPixels) / ScaledHeight;
 	ASSERT(MaxOffset >= 0);
 	ASSERT(offset >= 0);
 	if (offset > MaxOffset)
@@ -313,7 +301,7 @@ double CFftRulerView::AdjustOffset(double offset) const
 	return offset;
 }
 
-void CFftRulerView::SetNewFftOffset(double first_band)
+void CFftRulerView::SetNewFftOffset(double visible_bottom)
 {
 	// scroll channels rectangles
 	CWaveSoapFrontDoc * pDoc = GetDocument();
@@ -322,8 +310,8 @@ void CFftRulerView::SetNewFftOffset(double first_band)
 	GetClientRect(cr);
 	CWindowDC dc(this);
 
-	long OldOffsetPixels = long(m_FirstbandVisible * int(m_VerticalScale * m_Heights.NominalChannelHeight) / m_FftOrder);
-	long NewOffsetPixels = long(first_band * int(m_VerticalScale * m_Heights.NominalChannelHeight) / m_FftOrder);
+	long OldOffsetPixels = long(m_VisibleBottom * int(m_VerticalScale * m_Heights.NominalChannelHeight));
+	long NewOffsetPixels = long(visible_bottom * int(m_VerticalScale * m_Heights.NominalChannelHeight));
 
 	int ToScroll = NewOffsetPixels - OldOffsetPixels;       // >0 - down, <0 - up
 
@@ -357,7 +345,7 @@ void CFftRulerView::SetNewFftOffset(double first_band)
 		ScrollWindow(0, ToScroll, ScrollRect, ClipRect);
 		dc.FillSolidRect(ToFillBkgnd, GetSysColor(COLOR_WINDOW));
 	}
-	m_FirstbandVisible = first_band;
+	m_VisibleBottom = visible_bottom;
 	// make it redraw the whole window without erasing the background
 	Invalidate(FALSE);
 }
@@ -379,21 +367,10 @@ afx_msg LRESULT CFftRulerView::OnUwmNotifyViews(WPARAM wParam, LPARAM lParam)
 
 			Invalidate(TRUE);
 			// check for the proper offset, correct if necessary
-			m_FirstbandVisible = AdjustOffset(m_FirstbandVisible);
+			m_VisibleBottom = AdjustOffset(m_VisibleBottom);
 		}
 		break;
 
-	case FftBandsChanged:
-	{
-		int NewBands = *(int*)lParam;
-		if (NewBands != m_FftOrder)
-		{
-			m_FirstbandVisible = m_FirstbandVisible * NewBands / m_FftOrder;
-			m_FftOrder = NewBands;
-			Invalidate(FALSE);
-		}
-	}
-		break;
 	case FftOffsetChanged:
 		SetNewFftOffset(*(double*) lParam);
 		break;
@@ -412,14 +389,14 @@ afx_msg LRESULT CFftRulerView::OnUwmNotifyViews(WPARAM wParam, LPARAM lParam)
 void CFftRulerView::BeginMouseTracking()
 {
 	m_MouseYOffsetForScroll = 0;
-	m_FftOffsetBeforeScroll = m_FirstbandVisible;
+	m_BottomBeforeScroll = m_VisibleBottom;
 }
 
 void CFftRulerView::VerticalScrollByPixels(int Pixels)
 {
 	m_MouseYOffsetForScroll += Pixels;
 
-	double offset = m_FftOffsetBeforeScroll + (double)m_MouseYOffsetForScroll * m_FftOrder / int(m_Heights.NominalChannelHeight * m_VerticalScale);
+	double offset = m_BottomBeforeScroll + (double)m_MouseYOffsetForScroll / int(m_Heights.NominalChannelHeight * m_VerticalScale);
 	NotifySiblingViews(FftScrollTo, &offset);
 }
 
