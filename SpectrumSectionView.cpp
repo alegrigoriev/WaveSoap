@@ -38,7 +38,7 @@ CSpectrumSectionView::CSpectrumSectionView()
 	, m_FftWindowType(WindowTypeNuttall)
 
 	, m_VerticalScale(1.)
-	, m_FirstbandVisible(0.)
+	, m_VisibleBottom(0.)
 	, m_DbOffset(0.)
 	, m_DbMin(-120.)   // max dB range
 	, m_DbMax(0.)
@@ -568,7 +568,7 @@ void CSpectrumSectionView::OnDraw(CDC* pDC)
 			&& NULL != m_pNoiseReduction)
 		{
 			IdxSize = CalculateFftBandArray(NrIdArray, m_Heights, ch,
-											m_NrFftOrder, m_VerticalScale, m_FirstbandVisible * m_NrFftOrder / m_FftOrder);
+											m_NrFftOrder, m_VerticalScale, m_VisibleBottom * m_NrFftOrder);
 			// draw lines for "tonal" bands, from left to right
 			pDC->SelectObject(LightGreenPen);
 
@@ -602,7 +602,7 @@ void CSpectrumSectionView::OnDraw(CDC* pDC)
 			DrawPointArray(pDC, NrArrayXY, points, cr.right);
 		}
 
-		IdxSize = CalculateFftBandArray(IdArray, m_Heights, ch, m_FftOrder, m_VerticalScale, m_FirstbandVisible);
+		IdxSize = CalculateFftBandArray(IdArray, m_Heights, ch, m_FftOrder, m_VerticalScale, m_VisibleBottom * m_FftOrder);
 
 		pDC->SelectObject(&BlackPen);
 
@@ -1040,7 +1040,7 @@ void CSpectrumSectionView::GetChannelClipRect(int Channel, RECT * pR) const
 	pR->bottom = m_Heights.ch[Channel].clip_bottom;
 }
 
-void CSpectrumSectionView::SetNewFftOffset(double first_band)
+void CSpectrumSectionView::SetNewFftOffset(double visible_bottom)
 {
 	// scroll channels rectangles
 	CWaveSoapFrontDoc * pDoc = GetDocument();
@@ -1048,8 +1048,8 @@ void CSpectrumSectionView::SetNewFftOffset(double first_band)
 	CRect cr;
 	GetClientRect(cr);
 
-	long OldOffsetPixels = long(m_FirstbandVisible * int(m_VerticalScale * m_Heights.NominalChannelHeight) / m_FftOrder);
-	long NewOffsetPixels = long(first_band * int(m_VerticalScale * m_Heights.NominalChannelHeight) / m_FftOrder);
+	long OldOffsetPixels = long(m_VisibleBottom * int(m_VerticalScale * m_Heights.NominalChannelHeight));
+	long NewOffsetPixels = long(visible_bottom * int(m_VerticalScale * m_Heights.NominalChannelHeight));
 
 	int ToScroll = NewOffsetPixels - OldOffsetPixels;       // >0 - down, <0 - up
 
@@ -1101,7 +1101,7 @@ void CSpectrumSectionView::SetNewFftOffset(double first_band)
 			continue;
 		}
 	}
-	m_FirstbandVisible = first_band;
+	m_VisibleBottom = visible_bottom;
 	Invalidate(TRUE);
 }
 
@@ -1124,7 +1124,7 @@ double CSpectrumSectionView::AdjustOffset(double offset) const
 	int ScaledHeight = int(m_Heights.NominalChannelHeight * m_VerticalScale);
 	int MaxOffsetPixels = ScaledHeight - m_Heights.NominalChannelHeight;
 
-	double MaxOffset = double(MaxOffsetPixels) * m_FftOrder / ScaledHeight;
+	double MaxOffset = double(MaxOffsetPixels) / ScaledHeight;
 	ASSERT(MaxOffset >= 0);
 	ASSERT(offset >= 0);
 	if (offset > MaxOffset)
@@ -1185,7 +1185,7 @@ LRESULT CSpectrumSectionView::OnUwmNotifyViews(WPARAM wParam, LPARAM lParam)
 			}
 			Invalidate(TRUE);
 			// check for the proper offset, correct if necessary
-			m_FirstbandVisible = AdjustOffset(m_FirstbandVisible);
+			m_VisibleBottom = AdjustOffset(m_VisibleBottom);
 		}
 		break;
 	case FftOffsetChanged:

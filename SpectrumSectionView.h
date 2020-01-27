@@ -86,7 +86,10 @@ protected:
 	int m_InvalidAreaTop[MAX_NUMBER_OF_CHANNELS];
 	int m_InvalidAreaBottom[MAX_NUMBER_OF_CHANNELS];
 
-	double m_FirstbandVisible;     // how much the chart is scrolled. 0 = DC is visible
+	// how much the chart is scrolled.
+	// 0 = DC is visible.
+	// Whole frequency range is 1.
+	double m_VisibleBottom;
 	double m_VerticalScale;
 
 	bool m_bIsTrackingSelection;
@@ -100,7 +103,9 @@ protected:
 protected:
 	virtual void RemoveSelectionRect();
 	virtual void RestoreSelectionRect();
-	void SetNewFftOffset(double first_band);
+
+	// Offset 1 corresponds to the whole frequency range
+	void SetNewFftOffset(double visible_bottom);
 	double AdjustOffset(double offset) const;
 	void AdjustDbRange();
 	LRESULT OnMouseLeave(WPARAM wParam, LPARAM lParam);

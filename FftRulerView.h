@@ -39,14 +39,17 @@ protected:
 	virtual void Dump(CDumpContext& dc) const;
 #endif
 	double m_VerticalScale;
-	double m_FirstbandVisible;     // how much the chart is scrolled. 0 = DC is visible
+	// how much the chart is scrolled.
+	// 0 = DC is visible.
+	// Whole frequency range is 1.
+	double m_VisibleBottom;
+	double m_BottomBeforeScroll;
 	NotifyChannelHeightsData m_Heights;
-	int m_FftOrder;
-	double m_FftOffsetBeforeScroll;
 	int m_MouseYOffsetForScroll;
 
+	// Offset 1 corresponds to the whole frequency range
 	double AdjustOffset(double offset) const;
-	void SetNewFftOffset(double first_band);
+	void SetNewFftOffset(double visible_bottom);
 
 	// Generated message map functions
 protected:

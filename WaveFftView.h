@@ -52,7 +52,10 @@ protected:
 
 	long         m_FirstFftColumn;      // at m_IndexOfFftBegin
 
-	double m_FirstbandVisible;     // how much the chart is scrolled. 0 = DC is visible
+	// how much the chart is scrolled.
+	// 0 = DC is visible.
+	// Whole frequency range is 1.
+	double m_VisibleBottom;
 	double m_VerticalScale;
 
 	ATL::CHeapPtr<float> m_pFftWindow;
@@ -92,8 +95,9 @@ protected:
 	void InvalidateFftColumnRange(long first_column, long last_column);  // including last
 	void SetVerticalScale(double NewVerticalScale);
 
+	// Offset 1 corresponds to the whole frequency range
 	double AdjustOffset(double offset) const;
-	void SetNewFftOffset(double first_band);
+	void SetNewFftOffset(double visible_bottom);
 
 	void RedrawSelectionRect(CDC * pDC, SAMPLE_INDEX OldSelectionStart, SAMPLE_INDEX OldSelectionEnd, CHANNEL_MASK OldSelectedChannel,
 							SAMPLE_INDEX NewSelectionStart, SAMPLE_INDEX NewSelectionEnd, CHANNEL_MASK NewSelectedChannel);
