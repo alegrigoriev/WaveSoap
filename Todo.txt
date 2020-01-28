@@ -1,5 +1,4 @@
 TODO tasks:
-Scrollbar for spectrum section view non-functional
 waveproc.cpp: refactor CDeclick::ProcessSoundBuffer.
 waveproc.cpp: split finding clicks and interpolating them to separate phases
 Change "Removing clicks" to "Detecting clicks"
@@ -106,6 +105,9 @@ Add 48000 Hz to the PCM format list (deferred)
 
 Problems:
 
+Wrong cursor in FFT view (hit test)
+Scrollbar for spectrum section view non-functional
+Can't save float and 32 bit format
 Ctrl+S doesn't always work
 When playing, zoom should use the playback point as a center.
 WMA format list shows only compatible formats, even when checkbox not checked.
@@ -164,7 +166,7 @@ MRU list doesn't show directories
 Simple sample rate change did not work
 File resample doesn't tell about overflow
 When scrolling during playback, checkered background after EOF is constantly blinking (caused by LCD)
-Reopen after save new file doesn't work	 (test with marker set/change)
+Reopen after save new file doesn't work  (test with marker set/change)
 Losing metadata on save
 Click interpolation: selection 2 samples long causes overflow
 No redo after "Undo Interpolate"
@@ -290,7 +292,7 @@ If using the temporary file as
 Attributes to read from WMA/MP3/WAV file:
 
 WM/AlbumTitle
-WM/Author	 (artist)
+WM/Author    (artist)
 WM/Title  (file title)
 WM/Year
 WM/Genre (ignore??)
