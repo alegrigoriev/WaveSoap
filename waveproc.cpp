@@ -4499,7 +4499,7 @@ void CResampleFilter::InitSlidingInterpolatedFilter(unsigned NumSincWaves, unsig
 	ResampleFilterTap(-0.5, NumSincWaves, T1);
 	T1.deriv1 *= TableSize;
 	T1.deriv2 *= TableSize*TableSize;
-	T1.deriv3 *= TableSize*TableSize*TableSize;
+	T1.deriv3 *= (float)TableSize*TableSize*TableSize;
 
 	for (unsigned i = 0; i < TableSize; i++)
 	{
@@ -4511,7 +4511,7 @@ void CResampleFilter::InitSlidingInterpolatedFilter(unsigned NumSincWaves, unsig
 		// 1 step corresponds to 1./ ResampleFilterSize argument
 		T1.deriv1 /= TableSize;
 		T1.deriv2 /= TableSize*TableSize;
-		T1.deriv3 /= TableSize*TableSize*TableSize;
+		T1.deriv3 /= (float)TableSize*TableSize*TableSize;
 		// the derivatives are now scaled for the step equal 1. THis will simplify the calculations
 
 		// scale the table and adjust it for contiguous first and second derivative
