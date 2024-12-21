@@ -915,7 +915,7 @@ void CWaveFftView::OnDraw(CPaintDC* pDC, CRgn * UpdateRgn)
 
 			case WindowTypeNuttall:
 				// Nuttall window:
-				// w(n) = 0.355768 – 0.487396*cos(2pn/N) + 0.144232*cos(4pn/N) – 0.012604*cos(6pn/N)
+				// w(n) = 0.355768 â€“ 0.487396*cos(2pn/N) + 0.144232*cos(4pn/N) â€“ 0.012604*cos(6pn/N)
 				m_pFftWindow[w] = float((0.355768 - 0.487396*cos(X) + 0.144232*cos(2 * X) - 0.012604*cos(3 * X))
 										/ (m_FftOrder * 0.34132424511039137114306807472343));
 				break;
@@ -1021,9 +1021,6 @@ void CWaveFftView::OnDraw(CPaintDC* pDC, CRgn * UpdateRgn)
 		bmi.MorebmiColors[255].rgbBlue = 0;
 		PowerLogToPalIndex = 255 / (DbRange / 10. * log(10.));
 	}
-
-	// log of FFT slot power to map to zero palette index
-	double const PowerOffset = log(2. * m_FftOrder) * 2.;
 
 	CBitmap hbm;
 	hbm.Attach(CreateDIBSection(pDC->GetSafeHdc(), & bmi.bmi, DIB_RGB_COLORS,
