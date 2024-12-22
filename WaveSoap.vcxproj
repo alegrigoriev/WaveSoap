@@ -484,15 +484,14 @@
   <ItemGroup>
     <CustomBuild Include="hlp\WaveSoap.hhp">
       <Message>Making help file...</Message>
-      <Command>start /wait hhc "hlp\%(Filename)%(Extension)"
-if not exist "hlp\%(Filename).chm" goto :HelpError
-copy "hlp\%(Filename).chm" "$(OutDir)%(Filename).chm"
-goto :HelpDone
-:HelpError
-echo hlp\%(Filename).hhp(1) : error:Problem encountered creating help file
-echo.
-:HelpDone
-echo.
+      <Command>hhc "hlp\%(Filename)%(Extension)" &gt;hlp\%(Filename).chm.log
+if NOT ERRORLEVEL 1 (
+rem hhc returns 1 on success and 0 on fail
+echo hlp\%(Filename).chm build failed, see hlp\%(Filename).chm.log for details
+exit 1
+)
+move /y "hlp\%(Filename).chm" "$(OutDir)%(Filename).chm"
+echo $(OutDir)%(Filename).chm created
 </Command>
       <AdditionalInputs>hlp\HTMLDefines.h;%(AdditionalInputs)</AdditionalInputs>
       <Outputs>$(OutDir)%(Filename).chm;%(Outputs)</Outputs>

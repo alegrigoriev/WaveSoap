@@ -10,3 +10,4 @@ Release/
 x64/
 *.obj
 *.user
+hlp/*.log
